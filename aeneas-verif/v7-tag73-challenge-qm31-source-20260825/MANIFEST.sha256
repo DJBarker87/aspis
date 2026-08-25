@@ -1,8 +1,9 @@
 fa1f5aa96d5d650190b74278dc021ec5bd11c0d2bf0a6ab21117246bc43bc55b  ./DEPLOYED-SOURCE.sha256
-d5a266d76281dcdf26812d52e06d580b04532009f17ba0af0164cf132265504c  ./FILE-MODES.manifest
-7a191f71d300132e72777fed92645349088da3cad4d0f9d879c6b4242d8af8ba  ./README.md
+14cedeac3b0b17ba617a7c7c1b1f3fe284e22e464594b29d7f79fa0be2c56da7  ./COMPOSITION-RESULT.md
+6b23cb771ab083e966f7a5a043dbd192902b9ee7ae7681ce4dbd660fcf78b8db  ./FILE-MODES.manifest
+276bdbf6b9a5005c2b235f311df9d8ad128528e9fb361170209815c60860f851  ./README.md
 ce83ea9a635aac7e4ac3417bf7e7364ebffc0d1077b15f32c4c7e1eb68ef03ee  ./REPLAY-RESULT.md
-0512438bc7c89407e9763d024361168d86d2598b665db03a3705832842a75af1  ./SOURCE-PROVENANCE.md
+8c5abdd510474c0df8af2db7e77931bdb898fd089a0f5d51843a745c8a529ee8  ./SOURCE-PROVENANCE.md
 f7aa184c0a7970fd51cec48141a5a4d64827d7d99de8e7616aac552bc9bce0e7  ./extraction/V7Tag73ChallengeQm31Full.llbc
 90aefc33a74204fa747821ae68ee091957586c1e2ff997dbdb873ad6304e173f  ./generated/V7Tag73ChallengeQm31/Funs.lean
 c9c4ecd61ded8e98397c9496dc544a218c41562b7a59ccc5696872af098edcb8  ./generated/V7Tag73ChallengeQm31/FunsExternal.lean
@@ -10,9 +11,13 @@ c9c4ecd61ded8e98397c9496dc544a218c41562b7a59ccc5696872af098edcb8  ./generated/V7
 0d55f7976302de188725b2adacd1cfcc4d2dbdf0f905751358d8044dbf020bdb  ./harness/Cargo.lock
 db8a9110e744b912952177829c8697ed9581976f9ac013462c614550955f19a4  ./harness/Cargo.toml
 e7dee419676ca199a566a9bcd40aa8736c65ed5a0182c51674bfa865dc21eac3  ./harness/src/lib.rs
-968d3a2a6b9c6f4105a6946351a71bdb08685813c35f16c4310c65084d9c0159  ./logs/manifest-final.log
+e5ba3b3e226e055de58f6de350b35ba75d14ecbd0c525178e1b540ac4f721c53  ./logs/V7CompactSemanticSourceBridge.axioms.log
+87bc7c26137f9e98eb6bb21e08cdff82f4ac079e5b9fc8b0298731fc8c268130  ./logs/V7CompactSemanticSourceBridge.olean.sha256
+6b4f28cab02b514de42ac1e88abadfbee3003d8320d5ef2acfeeb3ed77af7e79  ./logs/manifest-final.log
+47930269446e307cb75bf9080dfb7d8e1408b1350445d7e3254ecc6866fbbf9a  ./logs/nuc-accepted-source-composition03.log
 f8e6725266a866ab8ba4c2a7ede2d6af0341576a980a9ae015c12a78417603be  ./logs/nuc-llbc-structured-diff.log
 6e59f9423a7fd305104074d7765f7ef429303f09249cdddf4002fab4696789d1  ./logs/nuc-replay-final8.log
+65ff7aaa5d49ee2f982c84b51374451ff78d556c936383a2c4078132467caf3e  ./normalization/assert-accepted-source-axioms.pl
 edf00211cb7c9106313acb827686cec63cc747d0688d107bbdc49d5e719e8f07  ./normalization/assert-mir-only-drift.pl
 eba4fbfd3a7fa11da5c5e7835ca5d08dda0463a032426d6990f792057d2e1a32  ./normalization/canonicalize-llbc.pl
 0efa7f53830b01d37e930cd7b400a3ae00799acf719ff0284cbb1e29c783b6f8  ./normalization/compare-canonical-json.pl
@@ -22,6 +27,7 @@ c39a95fb123a0290b81e2b5611d614386ad644c87e3a011ecd3809da7dfc9fd8  ./raw-generate
 bd315a00ca9ff9f17e3e5c278cd90a093b5a9f840e63d5ed1e1cea5127053751  ./raw-generated/FunsExternal_Template.lean
 ed7d41b7b5e74fd42c2c070416a7fb91550c6e12ca863b1ed16b048d0948ed90  ./raw-generated/Types.lean
 c4c47dd007dee4a7de345838a551f766895204c5aed1239869cecf24f911067b  ./replacement/V7CompactSemanticChallengeOpaqueNoDedup/FunsExternal.lean
+665f376206f896956ff9eb3a40b1fea96b1e12c377e7d04702650e98ff8fbc99  ./replay-accepted-source-composition.sh
 382cbfb62be3d9518f27ac21a8d833902aa8b079b37e94229c64ad3c2285e9d3  ./replay.sh
 0b87cb490afbc5ff73c07bd05483a62d815d83bd86e1c65a67c04689b2184cab  ./toolchain/TOOLCHAIN.md
 6c864dc43a96c6cdb27bd18a31177d1c9ccf04a587a89283d9dd174a705d021e  ./toolchain/build-patched-aeneas.sh
@@ -29,3 +35,4 @@ b4bfdf70bf94fec863454edf05e0d31342c0a83db2a123f9ecd5aaa961ee1db8  ../../AspisFor
 5abaafc2d345511dda0eb96cd40154daff137f79dc4bcfa8247a45acea639c9c  ../lean432/aeneas-b59d5188-lean432.patch
 f7f643caaee597aa0bf1b8147396fcef80ff1e8073db43c0db631deec5b8dd30  ../v7-tag73-compact-semantic-source-20260825/generated-full/V7CompactSemanticChallengeOpaqueNoDedup/Types.lean
 73fefb4eee847570c37c230277f9c8526646a19a41522061580f41348dc1878e  ../v7-tag73-compact-semantic-source-20260825/generated-full/V7CompactSemanticChallengeOpaqueNoDedup/Funs.lean
+1e45009650690933eca7e3b4e5535632ce1f9023510dbfd637f1145e10722732  ../v7-tag73-compact-semantic-source-20260825/proof/V7CompactSemanticSourceBridge.lean

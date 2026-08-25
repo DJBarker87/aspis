@@ -1,0 +1,479 @@
+/home/dombarker/project-offloads/aeneas-d860-v6/backends/lean/aspis-v7-compact-semantic-root/V7CompactSemanticSourceBridge.lean: OK
+/home/dombarker/project-offloads/aspis-pool-entrypoint-20260825-a1/aeneas-verif/v7-tag73-compact-semantic-source-20260825/generated-full/V7CompactSemanticChallengeOpaqueNoDedup/Types.lean: OK
+/home/dombarker/project-offloads/aspis-pool-entrypoint-20260825-a1/aeneas-verif/v7-tag73-compact-semantic-source-20260825/generated-full/V7CompactSemanticChallengeOpaqueNoDedup/Funs.lean: OK
+/home/dombarker/project-offloads/v7-tag73-challenge-qm31-source-20260825-work/bundle/replacement/V7CompactSemanticChallengeOpaqueNoDedup/FunsExternal.lean: OK
+/home/dombarker/project-offloads/v7-tag73-challenge-qm31-source-20260825-work/bundle/proof/V7Tag73ChallengeQm31SourceCertificate.lean: OK
+/home/dombarker/project-offloads/v7-tag73-challenge-qm31-source-20260825-work/bundle/logs/nuc-replay-final8.log: OK
+/home/dombarker/project-offloads/v7-tag73-challenge-qm31-source-20260825-work/replacement-olean/V7CompactSemanticChallengeOpaqueNoDedup/Types.olean: OK
+/home/dombarker/project-offloads/v7-tag73-challenge-qm31-source-20260825-work/replacement-olean/V7CompactSemanticChallengeOpaqueNoDedup/FunsExternal.olean: OK
+/home/dombarker/project-offloads/v7-tag73-challenge-qm31-source-20260825-work/root-olean/V7CompactSemanticChallengeOpaqueNoDedup/Funs.olean: OK
+/home/dombarker/project-offloads/v7-tag73-challenge-qm31-source-20260825-work/proof-olean/V7Tag73ChallengeQm31SourceCertificate.olean: OK
+/home/dombarker/project-offloads/v7-tag73-challenge-qm31-source-20260825-work/olean/V7Tag73ChallengeQm31/Types.olean: OK
+/home/dombarker/project-offloads/v7-tag73-challenge-qm31-source-20260825-work/olean/V7Tag73ChallengeQm31/FunsExternal.olean: OK
+/home/dombarker/project-offloads/v7-tag73-challenge-qm31-source-20260825-work/olean/V7Tag73ChallengeQm31/Funs.olean: OK
+/home/dombarker/project-offloads/aspis-v7-accepted-semantic-relation-20260825-agent/AspisFormal/lake-manifest.json: OK
+/tmp/tmp.DG1IflTXHW/dependency-olean/V7CompactSemanticChallengeOpaqueNoDedup/Types.olean: OK
+/tmp/tmp.DG1IflTXHW/dependency-olean/V7CompactSemanticChallengeOpaqueNoDedup/FunsExternal.olean: OK
+/tmp/tmp.DG1IflTXHW/dependency-olean/V7CompactSemanticChallengeOpaqueNoDedup/Funs.olean: OK
+V7CompactSemanticSourceBridge.lean:116:24: warning: This simp argument is unused:
+  bodyEquation
+
+Hint: Omit it from the simp argument list.
+  simp [̵b̵o̵d̵y̵E̵q̵u̵a̵t̵i̵o̵n̵]̵ ̵at run
+
+Note: This linter can be disabled with `set_option linter.unusedSimpArgs false`
+V7CompactSemanticSourceBridge.lean:117:17: warning: This simp argument is unused:
+  bodyEquation
+
+Hint: Omit it from the simp argument list.
+  simp [̵b̵o̵d̵y̵E̵q̵u̵a̵t̵i̵o̵n̵]̵ ̵at run
+
+Note: This linter can be disabled with `set_option linter.unusedSimpArgs false`
+V7CompactSemanticSourceBridge.lean:121:21: warning: This simp argument is unused:
+  bodyEquation
+
+Hint: Omit it from the simp argument list.
+  simp only [̵b̵o̵d̵y̵E̵q̵u̵a̵t̵i̵o̵n̵,̵ ̵b̵i̵n̵d̵_̵t̵c̵_̵o̵k̵]̵[̲b̲i̲n̲d̲_̲t̲c̲_̲o̲k̲]̲ at run
+
+Note: This linter can be disabled with `set_option linter.unusedSimpArgs false`
+V7CompactSemanticSourceBridge.lean:121:35: warning: This simp argument is unused:
+  bind_tc_ok
+
+Hint: Omit it from the simp argument list.
+  simp only [bodyEquation,̵ ̵b̵i̵n̵d̵_̵t̵c̵_̵o̵k̵] at run
+
+Note: This linter can be disabled with `set_option linter.unusedSimpArgs false`
+V7CompactSemanticSourceBridge.lean:126:21: warning: This simp argument is unused:
+  bodyEquation
+
+Hint: Omit it from the simp argument list.
+  simp only [̵b̵o̵d̵y̵E̵q̵u̵a̵t̵i̵o̵n̵,̵ ̵b̵i̵n̵d̵_̵t̵c̵_̵o̵k̵]̵[̲b̲i̲n̲d̲_̲t̲c̲_̲o̲k̲]̲ at run
+
+Note: This linter can be disabled with `set_option linter.unusedSimpArgs false`
+V7CompactSemanticSourceBridge.lean:126:35: warning: This simp argument is unused:
+  bind_tc_ok
+
+Hint: Omit it from the simp argument list.
+  simp only [bodyEquation,̵ ̵b̵i̵n̵d̵_̵t̵c̵_̵o̵k̵] at run
+
+Note: This linter can be disabled with `set_option linter.unusedSimpArgs false`
+V7CompactSemanticSourceBridge.lean:1102:29: warning: Variable name `zero` is not explicitly referenced.
+
+The binding can be removed (if unused) or named `_` (if used implicitly).
+
+Note: This linter can be disabled with `set_option linter.unusedVariables false`
+V7CompactSemanticSourceBridge.lean:1143:22: warning: This simp argument is unused:
+  Bind.bind
+
+Hint: Omit it from the simp argument list.
+  simp_all [B̵i̵n̵d̵.̵b̵i̵n̵d̵,̵ ̵Aeneas.Std.bind, outerStatePending]
+
+Note: This linter can be disabled with `set_option linter.unusedSimpArgs false`
+V7CompactSemanticSourceBridge.lean:1143:33: warning: This simp argument is unused:
+  Aeneas.Std.bind
+
+Hint: Omit it from the simp argument list.
+  simp_all [Bind.bind, A̵e̵n̵e̵a̵s̵.̵S̵t̵d̵.̵b̵i̵n̵d̵,̵ ̵outerStatePending]
+
+Note: This linter can be disabled with `set_option linter.unusedSimpArgs false`
+V7CompactSemanticSourceBridge.lean:1143:50: warning: This simp argument is unused:
+  outerStatePending
+
+Hint: Omit it from the simp argument list.
+  simp_all [Bind.bind, Aeneas.Std.bind,̵ ̵o̵u̵t̵e̵r̵S̵t̵a̵t̵e̵P̵e̵n̵d̵i̵n̵g̵]
+
+Note: This linter can be disabled with `set_option linter.unusedSimpArgs false`
+V7CompactSemanticSourceBridge.lean:1149:28: warning: This simp argument is unused:
+  Bind.bind
+
+Hint: Omit it from the simp argument list.
+  simp_all [B̵i̵n̵d̵.̵b̵i̵n̵d̵,̵ ̵Aeneas.Std.bind, outerStatePending]
+
+Note: This linter can be disabled with `set_option linter.unusedSimpArgs false`
+V7CompactSemanticSourceBridge.lean:1149:39: warning: This simp argument is unused:
+  Aeneas.Std.bind
+
+Hint: Omit it from the simp argument list.
+  simp_all [Bind.bind, A̵e̵n̵e̵a̵s̵.̵S̵t̵d̵.̵b̵i̵n̵d̵,̵ ̵outerStatePending]
+
+Note: This linter can be disabled with `set_option linter.unusedSimpArgs false`
+V7CompactSemanticSourceBridge.lean:1149:56: warning: This simp argument is unused:
+  outerStatePending
+
+Hint: Omit it from the simp argument list.
+  simp_all [Bind.bind, Aeneas.Std.bind,̵ ̵o̵u̵t̵e̵r̵S̵t̵a̵t̵e̵P̵e̵n̵d̵i̵n̵g̵]
+
+Note: This linter can be disabled with `set_option linter.unusedSimpArgs false`
+V7CompactSemanticSourceBridge.lean:1160:28: warning: This simp argument is unused:
+  Bind.bind
+
+Hint: Omit it from the simp argument list.
+  simp_all [B̵i̵n̵d̵.̵b̵i̵n̵d̵,̵ ̵Aeneas.Std.bind, outerStatePending]
+
+Note: This linter can be disabled with `set_option linter.unusedSimpArgs false`
+V7CompactSemanticSourceBridge.lean:1160:39: warning: This simp argument is unused:
+  Aeneas.Std.bind
+
+Hint: Omit it from the simp argument list.
+  simp_all [Bind.bind, A̵e̵n̵e̵a̵s̵.̵S̵t̵d̵.̵b̵i̵n̵d̵,̵ ̵outerStatePending]
+
+Note: This linter can be disabled with `set_option linter.unusedSimpArgs false`
+V7CompactSemanticSourceBridge.lean:1160:56: warning: This simp argument is unused:
+  outerStatePending
+
+Hint: Omit it from the simp argument list.
+  simp_all [Bind.bind, Aeneas.Std.bind,̵ ̵o̵u̵t̵e̵r̵S̵t̵a̵t̵e̵P̵e̵n̵d̵i̵n̵g̵]
+
+Note: This linter can be disabled with `set_option linter.unusedSimpArgs false`
+V7CompactSemanticSourceBridge.lean:1174:28: warning: This simp argument is unused:
+  Bind.bind
+
+Hint: Omit it from the simp argument list.
+  simp_all [B̵i̵n̵d̵.̵b̵i̵n̵d̵,̵ ̵Aeneas.Std.bind, outerStatePending]
+
+Note: This linter can be disabled with `set_option linter.unusedSimpArgs false`
+V7CompactSemanticSourceBridge.lean:1174:39: warning: This simp argument is unused:
+  Aeneas.Std.bind
+
+Hint: Omit it from the simp argument list.
+  simp_all [Bind.bind, A̵e̵n̵e̵a̵s̵.̵S̵t̵d̵.̵b̵i̵n̵d̵,̵ ̵outerStatePending]
+
+Note: This linter can be disabled with `set_option linter.unusedSimpArgs false`
+V7CompactSemanticSourceBridge.lean:1174:56: warning: This simp argument is unused:
+  outerStatePending
+
+Hint: Omit it from the simp argument list.
+  simp_all [Bind.bind, Aeneas.Std.bind,̵ ̵o̵u̵t̵e̵r̵S̵t̵a̵t̵e̵P̵e̵n̵d̵i̵n̵g̵]
+
+Note: This linter can be disabled with `set_option linter.unusedSimpArgs false`
+V7CompactSemanticSourceBridge.lean:1179:28: warning: This simp argument is unused:
+  outerStatePending
+
+Hint: Omit it from the simp argument list.
+  simp_all ̵[̵o̵u̵t̵e̵r̵S̵t̵a̵t̵e̵P̵e̵n̵d̵i̵n̵g̵]̵
+
+Note: This linter can be disabled with `set_option linter.unusedSimpArgs false`
+V7CompactSemanticSourceBridge.lean:1190:42: warning: This simp argument is unused:
+  outerStatePending
+
+Hint: Omit it from the simp argument list.
+  simp_all [Bind.bind, Aeneas.Std.bind,̵ ̵o̵u̵t̵e̵r̵S̵t̵a̵t̵e̵P̵e̵n̵d̵i̵n̵g̵]
+
+Note: This linter can be disabled with `set_option linter.unusedSimpArgs false`
+V7CompactSemanticSourceBridge.lean:1150:4: warning: 'repeat' (split at run <;> try simp_all [Bind.bind, Aeneas.Std.bind, outerStatePending])' tactic does nothing
+
+Note: This linter can be disabled with `set_option linter.unusedTactic false`
+V7CompactSemanticSourceBridge.lean:1153:4: warning: 'all_goals try casesm (Slice Std.U8 × (Slice Std.U8 → Std.Array Std.U8 433#usize))' tactic does nothing
+
+Note: This linter can be disabled with `set_option linter.unusedTactic false`
+V7CompactSemanticSourceBridge.lean:1155:4: warning: 'all_goals try simp_all [Bind.bind, Aeneas.Std.bind, outerStatePending]' tactic does nothing
+
+Note: This linter can be disabled with `set_option linter.unusedTactic false`
+V7CompactSemanticSourceBridge.lean:1156:4: warning: 'repeat' (split at run <;> try simp_all [Bind.bind, Aeneas.Std.bind, outerStatePending])' tactic does nothing
+
+Note: This linter can be disabled with `set_option linter.unusedTactic false`
+V7CompactSemanticSourceBridge.lean:1161:4: warning: 'repeat' (split at run <;> try simp_all [Bind.bind, Aeneas.Std.bind, outerStatePending])' tactic does nothing
+
+Note: This linter can be disabled with `set_option linter.unusedTactic false`
+V7CompactSemanticSourceBridge.lean:1175:4: warning: 'repeat' (split at run <;> try simp_all [Bind.bind, Aeneas.Std.bind, outerStatePending])' tactic does nothing
+
+Note: This linter can be disabled with `set_option linter.unusedTactic false`
+V7CompactSemanticSourceBridge.lean:1152:8: warning: this tactic is never executed
+
+Note: This linter can be disabled with `set_option linter.unreachableTactic false`
+V7CompactSemanticSourceBridge.lean:1158:8: warning: this tactic is never executed
+
+Note: This linter can be disabled with `set_option linter.unreachableTactic false`
+V7CompactSemanticSourceBridge.lean:1163:8: warning: this tactic is never executed
+
+Note: This linter can be disabled with `set_option linter.unreachableTactic false`
+V7CompactSemanticSourceBridge.lean:1177:8: warning: this tactic is never executed
+
+Note: This linter can be disabled with `set_option linter.unreachableTactic false`
+V7CompactSemanticSourceBridge.lean:1217:22: warning: This simp argument is unused:
+  Bind.bind
+
+Hint: Omit it from the simp argument list.
+  simp_all [̵B̵i̵n̵d̵.̵b̵i̵n̵d̵,̵ ̵A̵e̵n̵e̵a̵s̵.̵S̵t̵d̵.̵b̵i̵n̵d̵,̵[̲A̲e̲n̲e̲a̲s̲.̲S̲t̲d̲.̲b̲i̲n̲d̲,̲ outerStatePending, outerOutputPending]
+
+Note: This linter can be disabled with `set_option linter.unusedSimpArgs false`
+V7CompactSemanticSourceBridge.lean:1217:33: warning: This simp argument is unused:
+  Aeneas.Std.bind
+
+Hint: Omit it from the simp argument list.
+  simp_all [Bind.bind, A̵e̵n̵e̵a̵s̵.̵S̵t̵d̵.̵b̵i̵n̵d̵,̵ ̵outerStatePending, outerOutputPending]
+
+Note: This linter can be disabled with `set_option linter.unusedSimpArgs false`
+V7CompactSemanticSourceBridge.lean:1217:50: warning: This simp argument is unused:
+  outerStatePending
+
+Hint: Omit it from the simp argument list.
+  simp_all [Bind.bind, Aeneas.Std.bind, outerS̵t̵a̵t̵e̵P̵e̵n̵d̵i̵n̵g̵,̵
+  ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵o̵u̵t̵e̵r̵OutputPending]
+
+Note: This linter can be disabled with `set_option linter.unusedSimpArgs false`
+V7CompactSemanticSourceBridge.lean:1218:10: warning: This simp argument is unused:
+  outerOutputPending
+
+Hint: Omit it from the simp argument list.
+  simp_all [Bind.bind, Aeneas.Std.bind, outerStatePending,̵
+  ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵o̵u̵t̵e̵r̵O̵u̵t̵p̵u̵t̵P̵e̵n̵d̵i̵n̵g̵]
+
+Note: This linter can be disabled with `set_option linter.unusedSimpArgs false`
+V7CompactSemanticSourceBridge.lean:1224:28: warning: This simp argument is unused:
+  Bind.bind
+
+Hint: Omit it from the simp argument list.
+  simp_all [̵B̵i̵n̵d̵.̵b̵i̵n̵d̵,̵ ̵A̵e̵n̵e̵a̵s̵.̵S̵t̵d̵.̵b̵i̵n̵d̵,̵[̲A̲e̲n̲e̲a̲s̲.̲S̲t̲d̲.̲b̲i̲n̲d̲,̲ outerStatePending, outerOutputPending]
+
+Note: This linter can be disabled with `set_option linter.unusedSimpArgs false`
+V7CompactSemanticSourceBridge.lean:1224:39: warning: This simp argument is unused:
+  Aeneas.Std.bind
+
+Hint: Omit it from the simp argument list.
+  simp_all [Bind.bind, A̵e̵n̵e̵a̵s̵.̵S̵t̵d̵.̵b̵i̵n̵d̵,̵ ̵outerStatePending, outerOutputPending]
+
+Note: This linter can be disabled with `set_option linter.unusedSimpArgs false`
+V7CompactSemanticSourceBridge.lean:1224:56: warning: This simp argument is unused:
+  outerStatePending
+
+Hint: Omit it from the simp argument list.
+  simp_all [Bind.bind, Aeneas.Std.bind, outerS̵t̵a̵t̵e̵P̵e̵n̵d̵i̵n̵g̵,̵
+  ̵ ̵ ̵ ̵ ̵ ̵ ̵o̵u̵t̵e̵r̵OutputPending]
+
+Note: This linter can be disabled with `set_option linter.unusedSimpArgs false`
+V7CompactSemanticSourceBridge.lean:1225:6: warning: This simp argument is unused:
+  outerOutputPending
+
+Hint: Omit it from the simp argument list.
+  simp_all [Bind.bind, Aeneas.Std.bind, outerStatePending,̵
+  ̵ ̵ ̵ ̵ ̵ ̵ ̵o̵u̵t̵e̵r̵O̵u̵t̵p̵u̵t̵P̵e̵n̵d̵i̵n̵g̵]
+
+Note: This linter can be disabled with `set_option linter.unusedSimpArgs false`
+V7CompactSemanticSourceBridge.lean:1239:28: warning: This simp argument is unused:
+  Bind.bind
+
+Hint: Omit it from the simp argument list.
+  simp_all [̵B̵i̵n̵d̵.̵b̵i̵n̵d̵,̵ ̵A̵e̵n̵e̵a̵s̵.̵S̵t̵d̵.̵b̵i̵n̵d̵,̵[̲A̲e̲n̲e̲a̲s̲.̲S̲t̲d̲.̲b̲i̲n̲d̲,̲ outerStatePending, outerOutputPending]
+
+Note: This linter can be disabled with `set_option linter.unusedSimpArgs false`
+V7CompactSemanticSourceBridge.lean:1239:39: warning: This simp argument is unused:
+  Aeneas.Std.bind
+
+Hint: Omit it from the simp argument list.
+  simp_all [Bind.bind, A̵e̵n̵e̵a̵s̵.̵S̵t̵d̵.̵b̵i̵n̵d̵,̵ ̵outerStatePending, outerOutputPending]
+
+Note: This linter can be disabled with `set_option linter.unusedSimpArgs false`
+V7CompactSemanticSourceBridge.lean:1239:56: warning: This simp argument is unused:
+  outerStatePending
+
+Hint: Omit it from the simp argument list.
+  simp_all [Bind.bind, Aeneas.Std.bind, outerS̵t̵a̵t̵e̵P̵e̵n̵d̵i̵n̵g̵,̵
+  ̵ ̵ ̵ ̵ ̵ ̵ ̵o̵u̵t̵e̵r̵OutputPending]
+
+Note: This linter can be disabled with `set_option linter.unusedSimpArgs false`
+V7CompactSemanticSourceBridge.lean:1240:6: warning: This simp argument is unused:
+  outerOutputPending
+
+Hint: Omit it from the simp argument list.
+  simp_all [Bind.bind, Aeneas.Std.bind, outerStatePending,̵
+  ̵ ̵ ̵ ̵ ̵ ̵ ̵o̵u̵t̵e̵r̵O̵u̵t̵p̵u̵t̵P̵e̵n̵d̵i̵n̵g̵]
+
+Note: This linter can be disabled with `set_option linter.unusedSimpArgs false`
+V7CompactSemanticSourceBridge.lean:1255:28: warning: This simp argument is unused:
+  Bind.bind
+
+Hint: Omit it from the simp argument list.
+  simp_all [̵B̵i̵n̵d̵.̵b̵i̵n̵d̵,̵ ̵A̵e̵n̵e̵a̵s̵.̵S̵t̵d̵.̵b̵i̵n̵d̵,̵[̲A̲e̲n̲e̲a̲s̲.̲S̲t̲d̲.̲b̲i̲n̲d̲,̲ outerStatePending, outerOutputPending]
+
+Note: This linter can be disabled with `set_option linter.unusedSimpArgs false`
+V7CompactSemanticSourceBridge.lean:1255:39: warning: This simp argument is unused:
+  Aeneas.Std.bind
+
+Hint: Omit it from the simp argument list.
+  simp_all [Bind.bind, A̵e̵n̵e̵a̵s̵.̵S̵t̵d̵.̵b̵i̵n̵d̵,̵ ̵outerStatePending, outerOutputPending]
+
+Note: This linter can be disabled with `set_option linter.unusedSimpArgs false`
+V7CompactSemanticSourceBridge.lean:1255:56: warning: This simp argument is unused:
+  outerStatePending
+
+Hint: Omit it from the simp argument list.
+  simp_all [Bind.bind, Aeneas.Std.bind, outerS̵t̵a̵t̵e̵P̵e̵n̵d̵i̵n̵g̵,̵
+  ̵ ̵ ̵ ̵ ̵ ̵ ̵o̵u̵t̵e̵r̵OutputPending]
+
+Note: This linter can be disabled with `set_option linter.unusedSimpArgs false`
+V7CompactSemanticSourceBridge.lean:1256:6: warning: This simp argument is unused:
+  outerOutputPending
+
+Hint: Omit it from the simp argument list.
+  simp_all [Bind.bind, Aeneas.Std.bind, outerStatePending,̵
+  ̵ ̵ ̵ ̵ ̵ ̵ ̵o̵u̵t̵e̵r̵O̵u̵t̵p̵u̵t̵P̵e̵n̵d̵i̵n̵g̵]
+
+Note: This linter can be disabled with `set_option linter.unusedSimpArgs false`
+V7CompactSemanticSourceBridge.lean:1266:28: warning: This simp argument is unused:
+  outerStatePending
+
+Hint: Omit it from the simp argument list.
+  simp_all [outerS̵t̵a̵t̵e̵P̵e̵n̵d̵i̵n̵g̵,̵ ̵o̵u̵t̵e̵r̵OutputPending,
+        core.result.Result.Insts.CoreOpsTryTraitFromResidualResultInfallible.from_residual,
+        v6_transcript.V6TranscriptError.Insts.CoreConvertFromV6WireError.from]
+
+Note: This linter can be disabled with `set_option linter.unusedSimpArgs false`
+V7CompactSemanticSourceBridge.lean:1266:47: warning: This simp argument is unused:
+  outerOutputPending
+
+Hint: Omit it from the simp argument list.
+  simp_all [outerStatePending, ̵o̵u̵t̵e̵r̵O̵u̵t̵p̵u̵t̵P̵e̵n̵d̵i̵n̵g̵,̵
+        core.result.Result.Insts.CoreOpsTryTraitFromResidualResultInfallible.from_residual,
+        v6_transcript.V6TranscriptError.Insts.CoreConvertFromV6WireError.from]
+
+Note: This linter can be disabled with `set_option linter.unusedSimpArgs false`
+V7CompactSemanticSourceBridge.lean:1226:4: warning: 'repeat'
+  (split at run <;>
+      try simp_all [Bind.bind, Aeneas.Std.bind, outerStatePending, outerOutputPending])' tactic does nothing
+
+Note: This linter can be disabled with `set_option linter.unusedTactic false`
+V7CompactSemanticSourceBridge.lean:1230:4: warning: 'all_goals try casesm (Slice Std.U8 × (Slice Std.U8 → Std.Array Std.U8 433#usize))' tactic does nothing
+
+Note: This linter can be disabled with `set_option linter.unusedTactic false`
+V7CompactSemanticSourceBridge.lean:1232:4: warning: 'all_goals try simp_all [Bind.bind, Aeneas.Std.bind, outerStatePending, outerOutputPending]' tactic does nothing
+
+Note: This linter can be disabled with `set_option linter.unusedTactic false`
+V7CompactSemanticSourceBridge.lean:1234:4: warning: 'repeat'
+  (split at run <;>
+      try simp_all [Bind.bind, Aeneas.Std.bind, outerStatePending, outerOutputPending])' tactic does nothing
+
+Note: This linter can be disabled with `set_option linter.unusedTactic false`
+V7CompactSemanticSourceBridge.lean:1241:4: warning: 'repeat'
+  (split at run <;>
+      try simp_all [Bind.bind, Aeneas.Std.bind, outerStatePending, outerOutputPending])' tactic does nothing
+
+Note: This linter can be disabled with `set_option linter.unusedTactic false`
+V7CompactSemanticSourceBridge.lean:1257:4: warning: 'repeat'
+  (split at run <;>
+      try simp_all [Bind.bind, Aeneas.Std.bind, outerStatePending, outerOutputPending])' tactic does nothing
+
+Note: This linter can be disabled with `set_option linter.unusedTactic false`
+V7CompactSemanticSourceBridge.lean:1265:4: warning: 'all_goals try casesm AcceptedPayload' tactic does nothing
+
+Note: This linter can be disabled with `set_option linter.unusedTactic false`
+V7CompactSemanticSourceBridge.lean:1228:8: warning: this tactic is never executed
+
+Note: This linter can be disabled with `set_option linter.unreachableTactic false`
+V7CompactSemanticSourceBridge.lean:1236:8: warning: this tactic is never executed
+
+Note: This linter can be disabled with `set_option linter.unreachableTactic false`
+V7CompactSemanticSourceBridge.lean:1243:8: warning: this tactic is never executed
+
+Note: This linter can be disabled with `set_option linter.unreachableTactic false`
+V7CompactSemanticSourceBridge.lean:1259:8: warning: this tactic is never executed
+
+Note: This linter can be disabled with `set_option linter.unreachableTactic false`
+V7CompactSemanticSourceBridge.lean:1683:12: warning: This simp argument is unused:
+  core.convert.FromSame.from
+
+Hint: Omit it from the simp argument list.
+  simp_all [Bind.bind, Aeneas.Std.bind,
+  ̵  ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵core.result.Result.Insts.CoreOpsTry.branch,
+              core.result.Result.Insts.CoreOpsTryTraitFromResidualResultInfallible.from_residual,
+              c̵o̵r̵e̵.̵c̵o̵n̵ve̵r̵t̵.̵F̵r̵o̵m̵S̵a̵m̵e̵.̵f̵r̵o̵m̵,̵
+  ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵v̵6_transcript.V6TranscriptError.Insts.CoreConvertFromV6WireError.from]
+
+Note: This linter can be disabled with `set_option linter.unusedSimpArgs false`
+V7CompactSemanticSourceBridge.lean:1701:20: warning: This simp argument is unused:
+  core.result.Result.Insts.CoreOpsTry.branch
+
+Hint: Omit it from the simp argument list.
+  simp_all [Bind.bind, Aeneas.Std.bind, core.result.Result.map_err,
+                      v6_transcript.verify_compact_semantic_sumcheck.closure.Insts.CoreOpsFunctionFnOnceTupleStateOnlyHidingScheduleErrorV6TranscriptError.call_once,
+                      c̵o̵r̵e̵.̵r̵e̵s̵u̵l̵t̵.̵R̵e̵s̵u̵l̵t̵.̵I̵n̵s̵t̵s̵.̵C̵o̵r̵e̵O̵p̵s̵T̵r̵y̵.̵b̵r̵a̵n̵c̵h̵,̵core.result.Result.Insts.CoreOpsTryTraitFromResidualResultInfallible.from_residual,
+                      core.convert.FromSame.from]
+
+Note: This linter can be disabled with `set_option linter.unusedSimpArgs false`
+V7CompactSemanticSourceBridge.lean:1706:20: warning: This simp argument is unused:
+  core.result.Result.Insts.CoreOpsTry.branch
+
+Hint: Omit it from the simp argument list.
+  simp only [core.result.Result.map_err, c̵o̵r̵e̵.̵r̵e̵s̵u̵l̵t̵.̵R̵e̵s̵u̵l̵t̵.̵I̵n̵s̵t̵s̵.̵C̵o̵r̵e̵O̵p̵s̵T̵r̵y̵.̵b̵r̵a̵n̵c̵h̵,̵ ̵bind_tc_ok] at run
+
+Note: This linter can be disabled with `set_option linter.unusedSimpArgs false`
+'V7CompactSemanticSourceBridge.loop_success_has_exact_trace' depends on axioms: [propext, Classical.choice, Quot.sound]
+'V7CompactSemanticSourceBridge.inner_body_continue_measure_exact' depends on axioms: [propext,
+ Classical.choice,
+ Quot.sound]
+'V7CompactSemanticSourceBridge.inner_body_continue_decreases' depends on axioms: [propext, Classical.choice, Quot.sound]
+'V7CompactSemanticSourceBridge.inner_loop_success_has_exact_trace' depends on axioms: [propext,
+ Classical.choice,
+ Quot.sound]
+'V7CompactSemanticSourceBridge.inner_body_done_pending_safe' depends on axioms: [propext, Classical.choice, Quot.sound]
+'V7CompactSemanticSourceBridge.inner_body_done_status_one_preserves_pending' depends on axioms: [propext,
+ Classical.choice,
+ Quot.sound]
+'V7CompactSemanticSourceBridge.inner_body_done_status_one_exhausted' depends on axioms: [propext,
+ Classical.choice,
+ Quot.sound]
+'V7CompactSemanticSourceBridge.inner_body_done_ok_origin' depends on axioms: [propext, Classical.choice, Quot.sound]
+'V7CompactSemanticSourceBridge.inner_trace_status_one_preserves_pending' depends on axioms: [propext,
+ Classical.choice,
+ Quot.sound]
+'V7CompactSemanticSourceBridge.inner_trace_ok_origin' depends on axioms: [propext, Classical.choice, Quot.sound]
+'V7CompactSemanticSourceBridge.inner_trace_status_one_contCount_eq_measure' depends on axioms: [propext,
+ Classical.choice,
+ Quot.sound]
+'V7CompactSemanticSourceBridge.outer_body_cont_preserves_pending' depends on axioms: [propext,
+ Classical.choice,
+ Quot.sound]
+'V7CompactSemanticSourceBridge.outer_body_done_ok_origin' depends on axioms: [propext, Classical.choice, Quot.sound]
+'V7CompactSemanticSourceBridge.outer_body_done_ok_from_none_exhausted' depends on axioms: [propext,
+ Classical.choice,
+ Quot.sound]
+'V7CompactSemanticSourceBridge.outer_trace_ok_origin' depends on axioms: [propext, Classical.choice, Quot.sound]
+'V7CompactSemanticSourceBridge.outer_body_continue_measure_exact' depends on axioms: [propext,
+ Classical.choice,
+ Quot.sound]
+'V7CompactSemanticSourceBridge.outer_body_continue_decreases' depends on axioms: [propext, Classical.choice, Quot.sound]
+'V7CompactSemanticSourceBridge.outer_trace_from_none_contCount_eq_measure' depends on axioms: [propext,
+ Classical.choice,
+ Quot.sound]
+'V7CompactSemanticSourceBridge.outer_loop_success_has_exact_trace' depends on axioms: [propext,
+ Classical.choice,
+ Quot.sound]
+'V7CompactSemanticSourceBridge.accepted_execution_prefix_eta_eq' depends on axioms: [propext,
+ Classical.choice,
+ Quot.sound]
+'V7CompactSemanticSourceBridge.accepted_main_exposes_exact_outer_trace' depends on axioms: [propext,
+ Classical.choice,
+ Quot.sound]
+'V7CompactSemanticSourceBridge.accepted_main_exposes_exact_prefix_eta' depends on axioms: [propext,
+ Classical.choice,
+ Quot.sound]
+V7CompactSemanticSourceBridge.accepted_execution_prefix_eta_eq axioms: [propext, Classical.choice, Quot.sound]
+V7CompactSemanticSourceBridge.accepted_main_exposes_exact_outer_trace axioms: [propext, Classical.choice, Quot.sound]
+V7CompactSemanticSourceBridge.accepted_main_exposes_exact_prefix_eta axioms: [propext, Classical.choice, Quot.sound]
+V7CompactSemanticFullGenerated.transcript.Transcript.challenge_qm31_is_source_generated axioms: [propext, Classical.choice, Quot.sound]
+accepted-source callback axiom: absent
+sampler replacement certificate: standard Lean axioms only
+V7 challenge_qm31 accepted-source composition replay: PASS
+	Command being timed: "env REPO_ROOT=/home/dombarker/project-offloads/aspis-pool-entrypoint-20260825-a1 COMPACT_SOURCE_BRIDGE=/home/dombarker/project-offloads/aeneas-d860-v6/backends/lean/aspis-v7-compact-semantic-root/V7CompactSemanticSourceBridge.lean COMPACT_BUNDLE_ROOT=/home/dombarker/project-offloads/aspis-pool-entrypoint-20260825-a1/aeneas-verif/v7-tag73-compact-semantic-source-20260825/generated-full/V7CompactSemanticChallengeOpaqueNoDedup COMPOSITION_DIAGNOSTICS_DIR=/home/dombarker/project-offloads/v7-tag73-challenge-qm31-source-20260825-work/diagnostics/accepted-source-composition03 LEAN_NUM_THREADS=1 /home/dombarker/project-offloads/v7-tag73-challenge-qm31-source-20260825-work/bundle/replay-accepted-source-composition.sh"
+	User time (seconds): 17.68
+	System time (seconds): 0.83
+	Percent of CPU this job got: 251%
+	Elapsed (wall clock) time (h:mm:ss or m:ss): 0:07.35
+	Average shared text size (kbytes): 0
+	Average unshared data size (kbytes): 0
+	Average stack size (kbytes): 0
+	Average total size (kbytes): 0
+	Maximum resident set size (kbytes): 2699552
+	Average resident set size (kbytes): 0
+	Major (requiring I/O) page faults: 16
+	Minor (reclaiming a frame) page faults: 125312
+	Voluntary context switches: 10878
+	Involuntary context switches: 320
+	Swaps: 0
+	File system inputs: 50792
+	File system outputs: 11808
+	Socket messages sent: 0
+	Socket messages received: 0
+	Signals delivered: 0
+	Page size (bytes): 4096
+	Exit status: 0

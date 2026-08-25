@@ -101,6 +101,22 @@ compact generated `Funs.lean` against that replacement.  Its only MIR-option
 whitelist is the recorded bundled `null` versus replayed `"Built"` spelling;
 all other structured drift fails the replay.
 
+`replay-accepted-source-composition.sh` is the narrow follow-on check.  It
+pins the current production `V7CompactSemanticSourceBridge.lean`, compiles it
+against the concrete replacement `FunsExternal.olean`, and parses the
+kernel's `#print axioms` output for all three public accepted-source
+theorems.  It accepts only `propext`, `Classical.choice`, and `Quot.sound` and
+also rechecks the green replacement certificate output.  The transcript's
+arbitrary total hash function remains an explicit record field, not an
+opaque sampler axiom.
+
+That focused composition replay is green under
+`v7-tag73-qm31-accepted-source-compose03.scope`: 2,699,552 KiB maximum RSS,
+zero swaps, and 7.35 seconds wall time.  All three public accepted-source
+theorems report exactly the three standard Lean axioms above and no
+`challenge_qm31` callback axiom.  `COMPOSITION-RESULT.md` records the exact
+unit, invocation, source hash, compiled olean hash, and residual boundary.
+
 Run the focused replay on the NUC under the recorded cap:
 
 ```sh

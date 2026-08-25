@@ -1,4 +1,6 @@
 0755 ./replay.sh
+0755 ./replay-accepted-source-composition.sh
+0755 ./normalization/assert-accepted-source-axioms.pl
 0755 ./normalization/assert-mir-only-drift.pl
 0755 ./normalization/canonicalize-llbc.pl
 0755 ./normalization/compare-canonical-json.pl

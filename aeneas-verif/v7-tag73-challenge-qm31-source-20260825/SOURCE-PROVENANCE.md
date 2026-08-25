@@ -20,6 +20,8 @@
   `2beae4347eb134ccfa73f56b471d278bbdfbcb2b56d14a10c6ac8976240d8e8c`
 - normalized generated `Funs.lean` SHA-256:
   `2406554baf66146eb9d0434fdd65fbf78dad177e63f538e660f449e9c4c4b884`
+- production `proof/V7CompactSemanticSourceBridge.lean` SHA-256:
+  `1e45009650690933eca7e3b4e5535632ce1f9023510dbfd637f1145e10722732`
 
 The current worktree copies of these deployed files have the same hashes.
 The extraction harness delegates to `Transcript::challenge_qm31`; it does not
@@ -64,3 +66,25 @@ the output block, changes only byte 32 to `2`, hashes `state || 2` for the
 successor state, and stores that second digest in the returned transcript.
 The source certificate proves both exact hash inputs; it does not attach a
 cryptographic assumption to the hash callback.
+
+## Accepted-source composition
+
+`replay-accepted-source-composition.sh` hash-checks the production source
+bridge above and the green sampler replay artifacts, then compiles that exact
+bridge with the concrete replacement `FunsExternal.olean` ahead of the
+compact generated module root.  Its axiom parser audits all three public
+`accepted_*` source theorems and the replacement certificate.  The only
+permitted dependencies are Lean's `propext`, `Classical.choice`, and
+`Quot.sound`; the former opaque `transcript.Transcript.challenge_qm31`
+constant is rejected if it appears as an axiom.
+
+The remaining hash boundary is not an axiom: the compact transcript record
+contains the explicit arbitrary total field
+`hash : Slice (Slice Std.U8) → Array Std.U8 32#usize`, which the replacement
+passes into the source-generated sampler.
+
+The focused composition run compiled the pinned production bridge to olean
+SHA-256
+`d98432f89146ccf88f28e06ae742c023646f20dcfef9026ed5fb1d1005c82e4d`.
+Its three public accepted-source theorem inventories contain only `propext`,
+`Classical.choice`, and `Quot.sound`.

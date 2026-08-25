@@ -1,4 +1,5 @@
 ./DEPLOYED-SOURCE.sha256: OK
+./COMPOSITION-RESULT.md: OK
 ./FILE-MODES.manifest: OK
 ./README.md: OK
 ./REPLAY-RESULT.md: OK
@@ -10,8 +11,12 @@
 ./harness/Cargo.lock: OK
 ./harness/Cargo.toml: OK
 ./harness/src/lib.rs: OK
+./logs/V7CompactSemanticSourceBridge.axioms.log: OK
+./logs/V7CompactSemanticSourceBridge.olean.sha256: OK
+./logs/nuc-accepted-source-composition03.log: OK
 ./logs/nuc-llbc-structured-diff.log: OK
 ./logs/nuc-replay-final8.log: OK
+./normalization/assert-accepted-source-axioms.pl: OK
 ./normalization/assert-mir-only-drift.pl: OK
 ./normalization/canonicalize-llbc.pl: OK
 ./normalization/compare-canonical-json.pl: OK
@@ -21,6 +26,7 @@
 ./raw-generated/FunsExternal_Template.lean: OK
 ./raw-generated/Types.lean: OK
 ./replacement/V7CompactSemanticChallengeOpaqueNoDedup/FunsExternal.lean: OK
+./replay-accepted-source-composition.sh: OK
 ./replay.sh: OK
 ./toolchain/TOOLCHAIN.md: OK
 ./toolchain/build-patched-aeneas.sh: OK
@@ -28,3 +34,4 @@
 ../lean432/aeneas-b59d5188-lean432.patch: OK
 ../v7-tag73-compact-semantic-source-20260825/generated-full/V7CompactSemanticChallengeOpaqueNoDedup/Types.lean: OK
 ../v7-tag73-compact-semantic-source-20260825/generated-full/V7CompactSemanticChallengeOpaqueNoDedup/Funs.lean: OK
+../v7-tag73-compact-semantic-source-20260825/proof/V7CompactSemanticSourceBridge.lean: OK
