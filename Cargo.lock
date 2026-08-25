@@ -177,6 +177,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "aspis-pool"
+version = "0.1.0"
+dependencies = [
+ "aspis-core",
+ "aspis-statement",
+ "sha2 0.10.9",
+ "solana-program",
+ "solana-sdk-ids",
+]
+
+[[package]]
 name = "aspis-prover"
 version = "0.1.0"
 dependencies = [

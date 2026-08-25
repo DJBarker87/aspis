@@ -1,0 +1,65 @@
+use solana_program::program_error::ProgramError;
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[repr(u32)]
+pub enum PoolV1ProgramError {
+    InvalidAccountType = 0x4153_2001,
+    InvalidRootPageAddress = 0x4153_2002,
+    StateHistoryMismatch = 0x4153_2003,
+    TreeFull = 0x4153_2004,
+    InsufficientTreeCapacity = 0x4153_2005,
+    UnexpectedRootPage = 0x4153_2006,
+    NonCanonicalLeaf = 0x4153_2007,
+    ArithmeticOverflow = 0x4153_2008,
+    InvalidPoolStateAddress = 0x4153_2009,
+    InvalidVerifierRegistryAddress = 0x4153_200A,
+    InvalidVerifierEntryAddress = 0x4153_200B,
+    InvalidVerifierRegistry = 0x4153_200C,
+    InvalidVerifierEntry = 0x4153_200D,
+    VerifierRegistryPaused = 0x4153_200E,
+    VerifierEntryInactive = 0x4153_200F,
+    VerifierEntryNotActiveYet = 0x4153_2010,
+    VerifierEntryRetired = 0x4153_2011,
+    VerifierSelectionMismatch = 0x4153_2012,
+    InvalidTokenProgram = 0x4153_2013,
+    InvalidMint = 0x4153_2014,
+    InvalidTokenAccount = 0x4153_2015,
+    InvalidVaultAuthority = 0x4153_2016,
+    InvalidVaultTokenAddress = 0x4153_2017,
+    InvalidDepositAmount = 0x4153_2018,
+    InsufficientDepositFunds = 0x4153_2019,
+    UnsupportedTokenConfiguration = 0x4153_201A,
+    InvalidEncryptedNotePayload = 0x4153_201B,
+    TokenBalanceDeltaMismatch = 0x4153_201C,
+    InvalidSourceAuthority = 0x4153_201D,
+    InvalidHistoricalAnchorEnvelope = 0x4153_201E,
+    HistoricalAnchorIdentityMismatch = 0x4153_201F,
+    HistoricalAnchorSelectionMismatch = 0x4153_2020,
+    HistoricalAnchorInFuture = 0x4153_2021,
+    InvalidHistoricalAnchorPage = 0x4153_2022,
+    HistoricalAnchorRootMismatch = 0x4153_2023,
+    InvalidNullifierMarkerAddress = 0x4153_2024,
+    InvalidNullifierMarkerAccount = 0x4153_2025,
+    NullifierAlreadyConsumed = 0x4153_2026,
+    InvalidVerifierProgramAccount = 0x4153_2027,
+    InvalidVerifierProofAccount = 0x4153_2028,
+    VerifierProofBindingMismatch = 0x4153_2029,
+    InvalidVerifierDispatchEnvelope = 0x4153_202A,
+    VerifierDispatchIdentityMismatch = 0x4153_202B,
+    InvalidVerifierReturnProgram = 0x4153_202C,
+    InvalidVerifierReturnData = 0x4153_202D,
+    VerifierResultBindingMismatch = 0x4153_202E,
+    MissingVerifierReturnData = 0x4153_202F,
+    InvalidWithdrawalAmount = 0x4153_2030,
+    InsufficientVaultFunds = 0x4153_2031,
+    InvalidDestinationTokenAccount = 0x4153_2032,
+    InvalidSystemProgram = 0x4153_2033,
+    InvalidPayer = 0x4153_2034,
+    InvalidFreshAccount = 0x4153_2035,
+}
+
+impl From<PoolV1ProgramError> for ProgramError {
+    fn from(error: PoolV1ProgramError) -> Self {
+        Self::Custom(error as u32)
+    }
+}

@@ -1,0 +1,22 @@
+[package]
+name = "aspis-pool"
+edition.workspace = true
+license.workspace = true
+version.workspace = true
+description = "Pool V1 authenticated Solana state-transition program"
+
+[lib]
+crate-type = ["cdylib", "lib"]
+
+[features]
+default = []
+no-entrypoint = []
+
+[dependencies]
+aspis-core.workspace = true
+aspis-statement = { workspace = true, features = ["pool-v1-kernel"] }
+solana-program.workspace = true
+solana-sdk-ids = "2.2.1"
+
+[dev-dependencies]
+sha2.workspace = true

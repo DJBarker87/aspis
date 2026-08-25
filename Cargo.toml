@@ -3,6 +3,7 @@ members = [
     "crates/aspis-core",
     "crates/aspis-prover",
     "crates/aspis-statement",
+    "programs/aspis-pool",
     "programs/aspis-registry",
     "programs/aspis-verifier",
     "xtask",
