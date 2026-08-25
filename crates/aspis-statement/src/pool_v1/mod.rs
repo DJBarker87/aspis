@@ -7,6 +7,7 @@
 //! it must not reinterpret an existing atomic-v2 account as Pool V1.
 
 pub mod authorization_receipt;
+pub mod authorization_receipt_account;
 pub mod deposit;
 pub mod format;
 pub mod historical_anchor;
@@ -28,6 +29,30 @@ pub use authorization_receipt::{
     POOL_V1_AUTHORIZATION_RECEIPT_MAGIC, POOL_V1_AUTHORIZATION_RECEIPT_PREFIX_BYTES,
     POOL_V1_AUTHORIZATION_RECEIPT_SEED, POOL_V1_AUTHORIZATION_RECEIPT_STATUS_VERIFIED,
     POOL_V1_AUTHORIZATION_RECEIPT_VERSION,
+};
+pub use authorization_receipt_account::{
+    authorize_close_pool_v1_authorization_receipt_account_v1,
+    decode_pool_v1_authorization_receipt_account_v1,
+    finalize_pool_v1_authorization_receipt_account_v1,
+    initialize_pool_v1_authorization_receipt_account_v1,
+    pool_v1_authorization_receipt_binding_digest_v1,
+    pool_v1_authorization_receipt_pda_inputs_for_binding_v1,
+    pool_v1_authorization_receipt_request_digest_v1,
+    validate_pool_v1_authorization_receipt_account_pda_inputs_v1,
+    validate_pool_v1_authorization_receipt_account_request_v1,
+    PoolV1AuthorizationReceiptAccountErrorV1, PoolV1AuthorizationReceiptAccountStatusV1,
+    PoolV1AuthorizationReceiptAccountV1, PoolV1AuthorizationReceiptCloseAuthorizationV1,
+    PoolV1AuthorizationReceiptPdaInputsV1, POOL_V1_AUTHORIZATION_RECEIPT_ACCOUNT_BYTES,
+    POOL_V1_AUTHORIZATION_RECEIPT_ACCOUNT_DIGEST_BYTES,
+    POOL_V1_AUTHORIZATION_RECEIPT_ACCOUNT_DIGEST_DOMAIN,
+    POOL_V1_AUTHORIZATION_RECEIPT_ACCOUNT_HASH_SHA256,
+    POOL_V1_AUTHORIZATION_RECEIPT_ACCOUNT_HEADER_BYTES,
+    POOL_V1_AUTHORIZATION_RECEIPT_ACCOUNT_MAGIC,
+    POOL_V1_AUTHORIZATION_RECEIPT_ACCOUNT_STATUS_PENDING,
+    POOL_V1_AUTHORIZATION_RECEIPT_ACCOUNT_STATUS_VERIFIED,
+    POOL_V1_AUTHORIZATION_RECEIPT_ACCOUNT_VERSION,
+    POOL_V1_AUTHORIZATION_RECEIPT_BINDING_DIGEST_DOMAIN,
+    POOL_V1_AUTHORIZATION_RECEIPT_REQUEST_DIGEST_DOMAIN,
 };
 
 pub use deposit::{
