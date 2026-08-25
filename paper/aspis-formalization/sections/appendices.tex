@@ -42,6 +42,58 @@ return value is absent from the derived evidence.  The proof instead uses the
 opening, fold, relation, and accumulator equations established before that
 call.
 
+\section{Coherent extraction and relation proof}
+\label{app:coherent-extraction}
+
+This appendix gives the central algebraic argument behind
+\cref{thm:four-fold-extraction,prop:fold-duality}.  Let \(Y_r\) be the received
+word at layer \(r\), let \(E_r\) be its checked encoder, and let
+\(F_{\alpha_r}\) be the coefficient fold at round \(r\).  The final layer is
+the published vector \(c^{(4)}\in\K^4\).
+
+For the backward argument, suppose the query miss and four predecessor events
+do not occur.  Since the eighteen accepted queries are consistent and the
+global consistency set exceeds the decoded agreement threshold, the final
+vector has a close predecessor \(c^{(3)}\in\K^{16}\) satisfying
+\(F_{\alpha_3}(c^{(3)})=c^{(4)}\).  Repeating the predecessor theorem gives
+\[
+  c^{(2)}\in\K^{64},\qquad
+  c^{(1)}\in\K^{256},\qquad
+  c^{(0)}\in\K^{1024},
+\]
+with \(F_{\alpha_r}(c^{(r)})=c^{(r+1)}\) at every round.  The vector
+\(c^{(0)}\) lies in the initial decoder list, whose cardinality is at most
+240.  This proves existence of one coherent initial candidate.  It does not
+multiply four independently chosen list sizes because every later candidate
+is selected as a predecessor on the same chain.
+
+The backward selector sees the complete challenge tuple, so it is not used to
+justify Fiat--Shamir probabilities.  The forward proof supplies that step.
+At each transcript prefix it chooses a deterministic nearby candidate whenever
+one exists.  The one-round reduction defines the set of challenges that can
+move this strategy from a prefix with no valid continuation to one with a
+valid continuation.  That set is a function of the current prefix, hence is
+fixed before its challenge.  An accepted execution starting without a close
+initial candidate must therefore incur the query miss or cross one of these
+four prefix-determined sets.
+
+For the relation bridge, consider one fibre
+\(v=(v_0,v_1,v_2,v_3)\) with weights
+\(w=(w_0,w_1,w_2,w_3)\).  Define
+\begin{align*}
+  F_\alpha(v)
+    &=v_0+\alpha v_1+\alpha^2v_2+\alpha^3v_3,\\
+  D_\alpha(w)
+    &=\frac{w_0+\alpha^3w_1+\alpha^2w_2+\alpha w_3}{4}.
+\end{align*}
+Expanding \(F_\alpha(v)D_\alpha(w)\) by powers of \(\alpha\) gives a
+degree-six polynomial.  Its deployed boundary readout
+\(4(p_0+p_4)\) is exactly \(\sum_{i=0}^3v_iw_i\), and its evaluation at
+\(\alpha\) is the folded product.  Summing over all fibres yields
+\cref{prop:fold-duality}.  Induction over the four dimensions then carries
+the initial dot-product claim to the final four coefficients using precisely
+the challenges already fixed by the transcript.
+
 \section{Failure-decomposition proof}
 \label{app:failure-proof}
 
@@ -81,6 +133,67 @@ then
   \leq\frac{10}{10\cdot2^{100}}=2^{-100}.
 \]
 
+\section{Published-theorem interface map}
+\label{app:published-interface-map}
+
+Table~\ref{tab:published-interface-map} makes the literature boundary
+literal.  The S-two references are to the 24 March 2026 revision
+\cite{CarmonEtAl2026Stwo}.  Here \(\alpha=1-\theta\) denotes agreement,
+\(M\) is the degree of the challenge-indexed curve, and \(m\) is the
+Guruswami--Sudan multiplicity.  The named Aspis predicates are assumptions at
+the published-theorem boundary; the displayed substitutions and the
+predicate-to-verifier transports are checked in Lean.
+
+\begin{table}[h!]
+\centering
+\scriptsize
+\caption{Exact external theorem interfaces and V5 substitutions.}
+\label{tab:published-interface-map}
+\begin{tabularx}{\textwidth}{@{}R{0.22\textwidth}YR{0.25\textwidth}@{}}
+\toprule
+Published result & Concrete V5 substitution & Aspis predicate and checked consequence \\
+\midrule
+S-two Protocol~3, Theorem~19 (batching), Appendix~A.2 Corollary~1, and
+Equations~(73)--(74) &
+\(F_q=\F\), \(F=K=\K\); \(N=1024\), \(|D|=2^{19}\),
+\(\rho=N/|D|=1/512\), \(\delta=1-\rho\),
+\(\alpha=(21/20)\sqrt{\rho}\), \(\theta=1-\alpha\), \(M=18\),
+\(m=10\), \(\lfloor\alpha|D|\rfloor=24{,}328\), and
+\(\ell_{\mathrm{GS}}<240\). &
+\texttt{PublishedAppendixA2}\newline
+\texttt{Width19CurveDecodability}; Lean checks the
+quartic field, strict circle subcode, domain, degree, agreement floor, list
+cap, Johnson interval, and the \(\K^*\) denominator. \\
+\addlinespace
+S-two Protocol~3, Theorem~19 (folding), Appendix~A.2 Theorem~25, and
+Equations~(73)--(74) &
+Degree \(M=3\); common \(\alpha=(21/20)\sqrt{1/512}\).  The tuples
+\((|D|,k-1,\lfloor\alpha|D|\rfloor,m)\) are
+\((131072,255,6082,10)\), \((32768,63,1520,9)\),
+\((8192,15,380,6)\), and \((2048,3,95,3)\), with
+\(\rho=(k-1)/|D|\) and \(\theta=1-\alpha\) in every round. &
+\texttt{PublishedOrdinary}\newline
+\texttt{PolynomialCurveDecoding}; proved encoder
+realizations transport it to \texttt{V5OutputEncoder}\newline
+\texttt{CurveDecoding} for the
+four exact folded domains and bases. \\
+\addlinespace
+S-two Theorem~22, Equations~(89)--(90), instantiating the BCS
+state-restoration theorem &
+\(R=30\) post-initial-ensemble public-coin rounds, \(\lambda=256\), and
+\(1\leq Q\leq2^{128}\).  With
+\(\varepsilon_{\mathrm I}=\max_i\varepsilon_i\), the normalized bound is
+\((1+30/Q)\varepsilon_{\mathrm I}
+ +3(Q+1/Q)2^{-256}\). &
+\texttt{M0ExcludedBCS}\newline
+\texttt{DeploymentPremises}; the exact arithmetic function is
+\texttt{bcsError} with \((R,\mathit{capErr})=(30,2^{-256})\).  The predicate
+separately requires public-coin semantics, the random-oracle/Fiat--Shamir
+comparison, and PCS/Merkle applicability. \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
 \section{Query-sampler calculation}
 \label{app:query-calculation}
 
@@ -108,7 +221,7 @@ decrease the unconditioned bad-query probability.
 \label{app:artifact-checklist}
 
 The
-\href{https://github.com/DJBarker87/aspis/blob/main/paper/aspis-formalization/ARTIFACT.md}
+\href{https://github.com/DJBarker87/aspis/blob/aspis-v5-formalization-paper-v1/paper/aspis-formalization/ARTIFACT.md}
 {artifact guide} supplies exact commands, files, declarations, revisions, and
 digests.  A complete independent check has four parts.
 

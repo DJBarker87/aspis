@@ -1,8 +1,12 @@
 # How Aspis works
 
-Aspis V5 verifies a private-spend proof and applies its public state change on
-Solana. The spender does not publish the private record, owner secret, value,
-or Merkle path.
+Aspis verifies a transparent private-spend proof and applies its public state
+change on Solana. To our knowledge at the 24 August 2026 search cutoff, the
+published transaction is the first Solana mainnet result of its exact kind:
+direct trusted-setup-free proof verification followed by the corresponding
+nullifier and pool update in the same atomic transaction. The private record,
+owner secret, value, and Merkle path are hidden by the declared computational
+hiding model.
 
 The proof check and state update are atomic. If any instruction, account,
 statement, proof, or state recheck fails, the pool and nullifier are not
@@ -21,13 +25,15 @@ satisfies these conditions:
 - the output commitment and next pool root are computed correctly; and
 - the public nullifier is derived from the private input.
 
-The soundness goal is that an accepted proof corresponds to a witness meeting
-all of these rules, except with the probability assigned to explicit failure
-events. Lean checks the spend relation and the finite failure decomposition.
-The deployed-source proof then follows any accepted translated verifier call
-end to end through the parser, transcript, six work checks, 18 queries, five
-authenticated opening sections, FRI folds, 76 claims, 58 relation fields, and
-both final accumulators. Its clean replay passed on 24 August 2026.
+The soundness theorem classifies any accepted false statement into explicit
+failure events. Lean also proves the spend-witness extraction, exact
+Mersenne-field domains and encoders, coherent four-fold polynomial extraction,
+the exact capped-query law, candidate and verifier-weight fold duality, theft
+reductions, and the nullifier state machine. The deployed-source proof follows
+any successful translated verifier call end to end through the parser,
+transcript, six work checks, 18 queries, five authenticated opening sections,
+four low-degree folds, 76 claims, 58 relation fields, and both final
+accumulators. Its clean replay passed on 24 August 2026.
 
 After acceptance, the program records the public nullifier and later spends
 with the same marker address are rejected. Lean separately checks the
@@ -122,7 +128,8 @@ simulation and landed metadata both reported 1,334,452 CU.
 
 After finality:
 
-1. Tag 64 closed the retained proof account and returned 525,660,961 lamports
+1. The cleanup instruction closed the retained proof account and returned
+   525,660,961 lamports
    to the payer.
 2. ProgramData close sent 9,049,204,080 lamports directly to the pinned refund
    recipient.
@@ -145,12 +152,13 @@ time.
 - The proved privacy view does not include fee-payer linkage, timing, network
   metadata, transaction graphs, or physical side channels.
 
-## Historical q18/g37 result
+## Earlier mainnet result
 
-The earlier q18/g37 Tag-65 result used a 65,407-byte proof and a different
-proof-account lifecycle. Its often-cited count of 71 is only
-`1 create + 69 uploads + 1 finalize`; it excludes its two pool transactions
-and final Tag-65 spend. V5 did not switch from 71 to 84 during execution.
+The earlier demonstration used a 65,407-byte proof and a different
+proof-account lifecycle. Its often-cited count of 71 covers only one account
+creation, 69 uploads, and one finalization. It excludes the two pool
+transactions and the spend itself. The current release has always used the
+broader 84-transaction lifecycle count.
 
-The q18/g37 evidence remains in the
+The earlier evidence remains in the
 [historical mainnet record](mainnet-demo.md). V5 is the current result.

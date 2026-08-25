@@ -1,11 +1,13 @@
 # Documentation
 
-Aspis V5 combines an end-to-end Lean proof of every successful execution of
-the selected deployed verifier path with a reproducible Solana program and a
-finalized mainnet archive. For each accepted call, the theorem follows that
-single translated Rust execution through
-the complete transcript, authentication, FRI, relation, and accumulator data
-flow. Its clean Lean 4.32 replay passed on 24 August 2026 over 331 tracked
+Aspis combines the first publicly evidenced Solana mainnet result of its exact
+kind, to our knowledge at the 24 August 2026 search cutoff, with an end-to-end
+formal proof of the deployed successful verifier path. The transaction
+directly verified a transparent, computationally hiding private-spend proof
+and atomically recorded its nullifier and new pool state. For every successful
+translated Rust call, Lean follows the same execution through the statement,
+byte transcript, authentication, four low-degree folds, algebraic relation,
+and both final accumulators. The clean Lean 4.32 replay covers 331 tracked
 modules.
 
 ## Start here
@@ -37,10 +39,10 @@ modules.
 | Finalized V5 transaction and cleanup | [mainnet bundle](../release/aspis-v5-tag67-mainnet-v1/) |
 | Reconstruction of closed proof and program accounts | [full payer RPC archive](../release/aspis-v5-tag67-mainnet-rpc-archive-v1/) |
 
-The central theorem is
-`AspisV5AcceptedOneRunDeterministicFinal.accepted_composite_security_conclusion_for_any_terminal_evaluator`.
-It derives both final accumulator equalities internally from the same accepted
-execution. The proof's trust boundary is summarized once in the
+The central theorem derives both final accumulator equalities from the same
+accepted execution. The [artifact guide](../paper/aspis-formalization/ARTIFACT.md)
+maps the paper's theorem names to exact declarations and replay commands. The
+proof's assumption boundary is summarized in the
 [assumptions ledger](assumptions-ledger.md).
 
 ## Publication records
@@ -50,6 +52,6 @@ the exact, qualified comparison used by the paper. Historical reviews under
 [`docs/reviews/`](reviews/) preserve their original cutoffs and should be read
 as snapshots rather than current status pages.
 
-The earlier q18/g37 Tag-65 feasibility result remains in the
-[historical mainnet record](mainnet-demo.md). V5 is the current publication
-result.
+The earlier feasibility result remains in the
+[historical mainnet record](mainnet-demo.md). The later mainnet transaction and
+end-to-end proof are the current publication result.

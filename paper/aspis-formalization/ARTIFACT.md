@@ -7,16 +7,19 @@ that the manuscript remains readable.
 Paper title: **Aspis: End-to-End Formal Verification of a Transparent Private Spend
 on Solana**
 
-Repository: <https://github.com/DJBarker87/aspis>
+Development repository: <https://github.com/DJBarker87/aspis>
+
+Frozen V5 publication tag:
+[`aspis-v5-formalization-paper-v1`](https://github.com/DJBarker87/aspis/tree/aspis-v5-formalization-paper-v1)
 
 Formal source baseline: `a561d9a304a6c86fb037c974c4198b4eb94ecb61`
 
 Deployed-program source: `06788d44d30ea8cbd391899dddaf6f0acc6e4a3f`
 
-The publication tag should point to the repository revision containing this
-guide, the manuscript source, and the generated PDF. The formal replay reads
-the tracked source baseline, while the deployment bundle retains its earlier
-clean build source.
+The publication tag points to the repository revision containing this guide,
+the manuscript source, and the generated PDF. The formal replay reads the
+tracked source baseline, while the deployment bundle retains its earlier clean
+build source. The moving development branch is not the publication identity.
 
 ## 1. Main theorem and clean replay
 

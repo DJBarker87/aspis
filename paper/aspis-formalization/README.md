@@ -4,12 +4,21 @@ This is the canonical arXiv and IACR manuscript:
 
 > **Aspis: End-to-End Formal Verification of a Transparent Private Spend on Solana**
 
-The paper's main result is an end-to-end Lean theorem for every successful
+The paper reports, to our knowledge at the 24 August 2026 search cutoff, the
+first publicly evidenced Solana mainnet transaction to directly verify a
+transparent, computationally hiding private-spend proof and atomically record
+its nullifier and new pool state within the compute limit.
+
+Its main formal result is an end-to-end Lean theorem for every successful
 execution of the deployed proof-checking path. The theorem derives every
-acceptance-critical transcript, work, query, opening, low-degree, relation, and
-accumulator fact from the same translated Rust call. The numerical
-`2^-100` statement is presented as a conditional work-normalized theorem, with
-the raw post-grind accounting reported separately.
+acceptance-critical transcript, work, query, opening, low-degree, relation,
+and accumulator fact from the same translated Rust call. The mathematical
+development gives the complete evaluated argument, including spend-witness
+extraction, concrete field and encoder results, coherent four-fold extraction,
+the exact capped-query law, fold duality, theft and state reductions, and the
+finite security experiment. The `2^-100` statement is a conditional
+work-normalized theorem, with raw post-grinding accounting reported
+separately.
 
 Repository declaration names and release labels are intentionally absent from
 the manuscript. [`ARTIFACT.md`](ARTIFACT.md) maps its mathematical theorem

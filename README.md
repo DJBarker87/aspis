@@ -2,27 +2,30 @@
 
 [![Spend integration](https://github.com/DJBarker87/aspis/actions/workflows/spend-integration.yml/badge.svg)](https://github.com/DJBarker87/aspis/actions/workflows/spend-integration.yml)
 
-Aspis is a transparent private-spend verifier for Solana with an end-to-end
-formal proof of its selected accepting V5 verifier path. For every successful
-call through the Charon/Aeneas translation of the deployed Rust callback, Lean
-derives the exact parse, transcript, proof-of-work checks, query schedule,
-authenticated openings, FRI execution, relation execution, and both terminal
-accumulators used to reach the maintained security-event conclusion.
+Aspis is a transparent, computationally hiding private-spend verifier for
+Solana with an end-to-end formal proof of its deployed successful path. To our
+knowledge, following a public-evidence search completed on 24 August 2026, it
+provides the first publicly evidenced Solana mainnet transaction to directly
+verify a trusted-setup-free private-spend proof and atomically record the
+corresponding nullifier and new pool state within the transaction compute
+limit.
 
-The same V5 source was compiled reproducibly to a 1,258,496-byte Solana SBF
-program. A finalized mainnet-beta transaction ran the complete deployed
-verifier over a 75,358-byte proof, advanced the pool, and recorded the public
-nullifier as spent in 1,334,452 compute units.
+The final transaction verified a 75,358-byte proof in 1,334,452 compute units.
+The 1,258,496-byte Solana program is byte-reproducible from the pinned source
+and tools. For every successful call through the functional translation of
+the deployed Rust proof checker, Lean derives the exact parse, byte
+transcript, work checks, query schedule, authenticated openings, four
+low-degree folds, complete algebraic relation, and both terminal accumulator
+equalities from that same execution.
 
 ## End-to-end accepted-path verification
 
-The publication theorem is
-`AspisV5AcceptedOneRunDeterministicFinal.accepted_composite_security_conclusion_for_any_terminal_evaluator`.
-Its clean Lean 4.32 replay passed on 24 August 2026 over all 331 tracked modules
-in the accepted-path closure.
+The publication theorem covers every successful translated execution of the
+deployed proof checker. Its clean Lean 4.32 replay passed on 24 August 2026
+over all 331 tracked modules in the accepted-path closure. Exact declaration
+names are kept in the [artifact guide](paper/aspis-formalization/ARTIFACT.md).
 
-From any successful translated call to
-`verify_mode9_composite_with_live_statement`, the proof derives:
+From any successful translated call, the proof derives:
 
 - the parsed proof body and live public statement;
 - every Fiat-Shamir challenge and all six ordered work checks;
@@ -40,10 +43,9 @@ From any successful translated call to
   four-term dot product.
 
 Every value comes from the same accepted execution. Neither accumulator
-equality is supplied by the theorem's caller. The final theorem also installs
-the released FRI tables internally and is independent of the opaque terminal
-evaluator's returned value because the authenticated FRI and relation checks
-provide the security evidence used downstream.
+equality is supplied by the theorem's caller. The authenticated low-degree and
+relation evidence is derived directly, so the proof does not rely on a final
+helper's return value as a summary of unchecked work.
 
 The [formal-verification overview](docs/formal-verification.md) gives the
 theorem map, and the [15-stop source map](docs/v5-accepted-source-map.md)
@@ -211,9 +213,9 @@ a freshly sampled demonstration witness and an anonymity set of one.
 | `paper/aspis-formalization/` | Current formalization and security paper |
 | `docs/` | Methodology, assumptions, code maps, and release records |
 
-The earlier q18/g37 Tag-65 feasibility transaction used 1,344,003 compute
-units and remains available in the [historical mainnet record](docs/mainnet-demo.md).
-V5 is the current publication result.
+An earlier feasibility transaction used 1,344,003 compute units and remains
+available in the [historical mainnet record](docs/mainnet-demo.md). The later
+transaction and end-to-end theorem described above are the publication result.
 
 ## Citation and license
 

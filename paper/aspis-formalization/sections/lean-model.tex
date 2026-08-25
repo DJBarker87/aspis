@@ -2,11 +2,13 @@
 \label{sec:lean-model}
 
 The formal development is written in Lean~4 on top of mathlib
-\cite{deMouraUllrich2021Lean4,MathlibCommunity2020}.  It separates the
-private-spend relation, field and domain theory, low-degree argument,
-transcript, authenticated openings, state transition, and probability
-experiment.  Composition is expressed through theorem hypotheses rather than
-through an informal claim that two models coincide.
+\cite{deMouraUllrich2021Lean4,MathlibCommunity2020}.  This section gives the
+mathematical core in the order used by the soundness proof: extract a spend
+witness from an algebraic trace, establish the concrete evaluation codes,
+carry one decoded candidate through four folds, connect those folds to the
+algebraic relation, authenticate every queried value, and prove the spend
+state transition.  The implementation and probability arguments consume
+these theorems in \cref{sec:implementation,sec:soundness}.
 
 \subsection{From algebraic rows to a spend witness}
 
@@ -25,14 +27,17 @@ opened hash rows follow the specified Poseidon2 round function, both
 depth-twenty paths are well formed, and the six spend fields in \(O\) equal
 the corresponding fields in \(x\).  If the deployed note, nullifier, and
 Merkle-node functions implement that round function on the reached inputs,
-then \(x\) has a witness satisfying \cref{def:spend}.
+then \(x\) has a witness satisfying Definition~\ref{def:spend}.
 \end{theorem}
 
-The Lean proof constructs the witness rather than taking it as a premise.  In
-particular, it converts the field balance equation into
-\cref{eq:value-balance} using the \(2^{30}\) range bounds, rebuilds both
-twenty-level hash chains from their intermediate rows, and obtains the input
-and output note equations from the same opened columns.
+The Lean proof constructs the witness from the opened columns.  It converts
+the field balance equation into \cref{eq:value-balance} using the
+\(2^{30}\) range bounds, rebuilds both twenty-level hash chains from their
+intermediate rows, derives ownership and the nullifier from the input-note
+opening, and obtains both note equations from the same trace.  The range
+argument is essential: since each quantity is below \(2^{30}\), equality in
+\(\mathbb F_{2^{31}-1}\) lifts to equality of the represented integers with
+no modular wraparound.
 
 This theorem supplies the final semantic step of extraction:
 \[
@@ -54,26 +59,30 @@ sign.  The degree-four challenge field is built as a fixed tower over \(\F\),
 including the packing basis and arithmetic identities used by the verifier.
 
 The program stores circle evaluations in bit-reversed order and groups four
-symbols into each query fibre.  The formalization proves:
+symbols into each query fibre.
 
-\begin{itemize}[leftmargin=*]
-  \item distinctness of every evaluated circle and line-domain point;
-  \item the exact relation between bit reversal and the four positions in a
-        fibre;
-  \item equality between the initial encoder and evaluation of its circle
-        polynomial in stored order;
-  \item the polynomial-evaluation identities for the three later encoders and
-        final four-coefficient encoder; and
-  \item the later-code distance bounds obtained from agreement limits
-        \(255,63,15,3\).
-\end{itemize}
+\begin{theorem}[Concrete domains and encoders]
+\label{thm:domains-encoders}
+The selected circle generator over \(\F\) has order \(2^{31}\).  Every point
+in the initial circle domain and three later line domains is distinct.  Under
+bit-reversed storage, each query fibre maps to its four specified circle
+positions.  All four encoders equal polynomial evaluation on their stated
+domains and in their deployed order.  The later agreement bounds are
+\(255,63,15,3\), which gives the required distance hypotheses.
+\end{theorem}
 
-The published circle-code decoding result is represented as an explicit
-mathematical assumption.  Lean verifies its application to the concrete
-field, domain sizes, agreement threshold, list bound, nineteen batched columns,
-and maximum batching exponent eighteen.  Thus parameter substitution is
-machine checked even though the general decoding theorem is imported from the
-literature.
+The order proof reduces equality of horizontal coordinates to equality of
+generator exponents up to sign.  The encoder proofs then unfold the exact
+permutation and fibre maps used by the verifier.  This establishes more than
+the cardinality of the domains: it identifies each stored symbol with the
+polynomial evaluation that the fold equations require.
+
+The published circle-code decoding result is supplied at a named mathematical
+interface.  Lean verifies its application to the concrete field, domain
+sizes, agreement threshold, list bound, nineteen batched columns, and maximum
+batching exponent eighteen.  The general decoder theorem comes from the
+literature; every parameter used to instantiate it here is checked by the
+formal development.
 
 \subsection{One candidate through four folds}
 
@@ -95,12 +104,52 @@ decoder list whose four exact radix-four folds equal the final polynomial
 published in the transcript.
 \end{theorem}
 
-The same fold challenges also update the weights used by the algebraic
-relation.  A separate duality proof shows that folding candidate values and
-folding verifier weights preserve their dot product in every round.  The
-relation argument then bounds the challenge tuples capable of repairing a
-false incoming claim.  Later messages may depend on earlier challenges, but
-each bad set is fixed before the challenge it counts.
+The extraction proof has complementary backward and forward parts.  Starting
+from the four published coefficients, the backward argument selects close
+predecessors at dimensions \(16\), \(64\), \(256\), and \(1024\).  Outside
+the four predecessor-failure events this gives one chain
+\[
+  c^{(0)}\in\K^{1024},\quad
+  c^{(r+1)}=F_{\alpha_r}(c^{(r)}),\quad
+  c^{(4)}=c_{\mathrm{final}}.
+\]
+Only \(c^{(0)}\) is chosen from the bounded decoder list; the later vectors
+are its folds, so the list-size factor is paid once.  For Fiat--Shamir, the
+forward argument chooses a deterministic nearby candidate from each available
+transcript prefix.  A transition from a state with no coherent continuation
+to one with a continuation can occur only when the next challenge lies in a
+bad set already fixed by that prefix.  This is the causal statement needed by
+the oracle reduction.
+
+The same four challenges update the weights used by the algebraic relation.
+Let \(F_\alpha:\K^{4n}\to\K^n\) be the natural coefficient fold, let
+\(D_\alpha:\K^{4n}\to\K^n\) be the verifier's dual weight fold, and let
+\(\partial\) denote the boundary functional on the seven coefficients of a
+round polynomial.
+
+\begin{proposition}[Candidate and weight fold duality]
+\label{prop:fold-duality}
+For candidate values \(v\in\K^{4n}\) and verifier weights
+\(w\in\K^{4n}\), the deployed convolution constructs a polynomial
+\(P_{v,w}\) of degree at most six satisfying
+\[
+  \partial P_{v,w}=\sum_{i=0}^{4n-1}v_iw_i,
+  \qquad
+  P_{v,w}(\alpha)
+  =\sum_{j=0}^{n-1}F_\alpha(v)_jD_\alpha(w)_j.
+\]
+These identities hold at dimensions \(1024\), \(256\), \(64\), and \(16\)
+with the coefficient and weight orders used by the Rust verifier.
+\end{proposition}
+
+For one four-element fibre, the coefficient fold uses weights
+\((1,\alpha,\alpha^2,\alpha^3)\), while the dual fold uses
+\((1,\alpha^3,\alpha^2,\alpha)/4\).  Expanding their product gives the seven
+coefficients of \(P_{v,w}\).  Summing this identity over fibres proves the
+proposition.  The relation argument applies it in every round and bounds the
+challenge tuples capable of repairing a false scalar claim.  Prover messages
+may depend on earlier challenges, while each repair set is fixed before the
+challenge charged to it.
 
 \subsection{Byte-level transcript}
 
@@ -168,24 +217,32 @@ and finalized persistence is isolated in the runtime assumptions of
 \begin{table}[t]
 \centering
 \small
-\caption{Main machine-checked mathematical results.}
+\caption{Main machine-checked mathematical results and their role.}
 \label{tab:formal-results}
-\begin{tabularx}{\textwidth}{@{}R{0.31\textwidth}Y@{}}
+\begin{tabularx}{\textwidth}{@{}R{0.22\textwidth}YY@{}}
 \toprule
-Result & Checked content \\
+Result & Checked content & Use in the security argument \\
 \midrule
 Spend extraction & Arithmetic, ownership, notes, nullifier, public fields,
-and both Merkle paths imply a witness for \cref{def:spend}. \\
-Domain correctness & Circle-generator order, distinct evaluation points,
-stored ordering, encoder identities, and later-code distances. \\
+and both Merkle paths imply a witness for Definition~\ref{def:spend}. & Turns a valid
+extracted trace into a valid private spend. \\
+Domains and encoders & Circle-generator order, distinct evaluation points,
+stored ordering, encoder identities, and later-code distances. & Discharges
+the concrete hypotheses of the decoding argument. \\
 Four-fold extraction & One coherent initial candidate reaches the final
-polynomial, or a prefix-timed bad challenge occurs. \\
+polynomial, or a prefix-timed bad challenge occurs. & Prevents adaptive
+switching between decoder candidates. \\
+Fold duality & The degree-six round polynomial carries the current candidate
+dot product to the candidate and weight folds. & Joins low degree to the
+algebraic relation. \\
 Transcript correctness & Exact byte payloads, operation order, work placement,
-and challenge consumption. \\
+and challenge consumption. & Supplies the causal random-coin schedule. \\
 Opening correctness & Exact five-tree parsing and authentication of every
-value consumed by the low-degree checker. \\
+value consumed by the low-degree checker. & Binds checked values to committed
+proof data. \\
 State correctness & Exact successful marker and pool update, replay rejection,
-rollback in the state model, and cleanup preservation. \\
+rollback in the state model, and cleanup preservation. & Gives a one-time
+atomic ledger transition. \\
 \bottomrule
 \end{tabularx}
 \end{table}

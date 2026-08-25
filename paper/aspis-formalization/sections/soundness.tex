@@ -5,7 +5,7 @@
 
 The adversary chooses a public statement and proof after observing the public
 history.  It succeeds when the verifier accepts but the statement has no
-witness satisfying \cref{def:spend}.  The adversary may adapt its oracle
+witness satisfying Definition~\ref{def:spend}.  The adversary may adapt its oracle
 queries and later messages to the transcript prefix already available.  Its
 resources include SHA-256 oracle queries and the work spent searching for the
 six nonces.
@@ -18,14 +18,22 @@ events describe either a deterministic mismatch between the deployed
 execution and the formal experiment or a cryptographic failure such as a hash
 collision.
 
-This single-experiment formulation matters because event bounds taken from
-different conditioned experiments cannot safely be added.  In Lean, the
-coverage theorem is pointwise:
+This single-experiment formulation permits one pointwise coverage theorem.
+
+\begin{theorem}[Finite failure decomposition]
+\label{thm:failure-decomposition}
+For every outcome in the security experiment, acceptance of a false statement
+implies either the concrete protocol failure event \(C\) or one of the
+eighteen external events:
 \begin{equation}
   A_{\mathrm{false}}
   \subseteq C\cup\bigcup_{i=1}^{18}E_i.
   \label{eq:event-coverage}
 \end{equation}
+The detailed ledger contains each event exactly once, and its union is equal
+to the right-hand side of \cref{eq:event-coverage}.
+\end{theorem}
+
 The detailed protocol ledger has six entries: the query and final-work event,
 four fold events, and relation repair.  Lean proves that their union equals
 \(C\).
@@ -87,22 +95,40 @@ claims their natural logical role.
 \subsection{Bounded distinct-query sampling}
 
 The query sampler is modeled exactly, including its sixty-four-draw limit and
-first-occurrence rule.  Conditioned on collecting eighteen positions, every
-ordered list of eighteen distinct elements has the same number of preimages.
-For a fixed bad set of size at most \(A\) in a domain of size \(N\), the
-probability that all queries land in that set is therefore
+first-occurrence rule.  Let \(S(W)\) retain the first eighteen distinct
+elements of a word sequence \(W\in[N]^{64}\), returning \(\bot\) when fewer
+than eighteen distinct values appear.
+
+\begin{theorem}[Exact capped distinct-query law]
+\label{thm:query-law}
+If the words of \(W\) are uniform in \([N]\), then conditioned on
+\(S(W)\neq\bot\), every ordered injection \([18]\hookrightarrow[N]\) has
+the same probability.  For every fixed \(B\subseteq[N]\) of size
+\(18\leq A\leq N\),
 \begin{equation}
-  \prod_{j=0}^{17}\frac{A-j}{N-j}.
+  \Prob[S(W)\neq\bot\ \wedge\ \operatorname{im}S(W)\subseteq B]
+  \leq \frac{(A)_{18}}{(N)_{18}}
+  =\prod_{j=0}^{17}\frac{A-j}{N-j}.
   \label{eq:without-replacement}
 \end{equation}
-The same expression upper-bounds the unconditioned event that sampling
-succeeds and every output is bad, because exhaustion causes rejection.  The
-concrete calculation uses
-\[
-  N=131{,}072,
-  \qquad A\leq6{,}082.
-\]
-Lean proves both uniformity and the resulting finite rational inequality.
+\end{theorem}
+
+Here \((m)_k=m(m-1)\cdots(m-k+1)\).  For any two ordered injections, a
+permutation of \([N]\) maps the complete
+preimage of one under \(S\) bijectively to the preimage of the other.  This
+proves conditional uniformity despite the variable number of duplicate draws.
+There are \((A)_{18}\) injections into \(B\) and \((N)_{18}\) injections
+in total.  Sampler exhaustion rejects, which gives the unconditioned
+inequality in \cref{eq:without-replacement}.
+
+For the verifier, \(N=131{,}072\) and \(A\leq6{,}082\).  Lean checks the
+falling-factorial identity and the concrete inequality
+\begin{equation}
+  \frac{(6082)_{18}}{(131072)_{18}}\,2^{-32}\leq2^{-111},
+  \label{eq:query-concrete-bound}
+\end{equation}
+where the displayed \(2^{-32}\) factor belongs to the separately modeled
+final work condition.
 
 \subsection{Low-degree and relation reductions}
 
@@ -112,17 +138,28 @@ and multiplicity hypotheses of the cited circle-code decoding result.  The
 general decoding theorem remains a literature assumption.
 
 Second, \cref{thm:four-fold-extraction} preserves one decoder candidate through
-all four folds.  Each exceptional challenge set is determined by the
-appropriate transcript prefix.  A separate adaptive-oracle theorem shows
-that \(Q\) completed fresh attempts cost at most \(Q\) times the one-attempt
-bound, even when the next attempt depends on the full previous history.
+all four folds.  The backward proof constructs the exact coefficient chain;
+the forward proof assigns each exceptional challenge set to the transcript
+prefix that fixes it.  A separate adaptive-oracle theorem shows that \(Q\)
+completed fresh attempts cost at most \(Q\) times the one-attempt bound, even
+when the next attempt depends on the full previous history.
 
 Third, the algebraic relation connects the extracted candidate to
-\cref{def:spend}.  Nineteen columns are batched with a nonzero extension-field
-challenge of maximum exponent eighteen.  Sequential challenges bound the
-tuples capable of repairing false scalar claims, while the fold-duality proof
-keeps candidate values and verifier weights consistent.  The final semantic
-step is \cref{thm:spend-after-extraction}.
+Definition~\ref{def:spend}.  Nineteen columns are batched with a nonzero extension-field
+challenge of maximum exponent eighteen.  For a supplied family of \(L\)
+candidate strategies, the checked relation argument places all repairing
+twelve-challenge tuples in a set of relative size at most
+\begin{equation}
+  \frac{32L}{|\K|},
+  \qquad L\leq240.
+  \label{eq:relation-repair}
+\end{equation}
+The sequential construction permits each later message to depend on the
+earlier challenges already revealed.  \Cref{prop:fold-duality} proves that
+the candidate coefficients and verifier weights carry the same scalar claim
+through each fold.  The final semantic step is
+\cref{thm:spend-after-extraction}, which constructs a private-spend witness
+from the resulting trace.
 
 The Fiat--Shamir step uses the published state-restoration analysis for
 interactive oracle proofs \cite{BenSassonChiesaSpooner2016,
@@ -130,6 +167,9 @@ BlockGarretaKatzThalerTiwariZajac2023,CarmonEtAl2026Stwo}.  The byte-level
 transcript proof determines the exact oracle inputs and causal schedule.  The
 random-oracle replacement and applicability of the published theorem are
 explicit assumptions at this boundary.
+Appendix~\ref{app:published-interface-map} records the exact published result,
+equation, concrete parameter substitution, and Aspis predicate at each such
+interface.
 
 \subsection{Work-normalized accounting}
 
