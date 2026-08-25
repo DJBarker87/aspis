@@ -818,9 +818,9 @@ fn create_and_write_marker_v1<'info, R: PoolCpiRuntimeV1>(
     system_program_account: &AccountInfo<'info>,
     planned: PlannedNullifierMarkerV1,
 ) -> ProgramResult {
-    if planned.preparation == NullifierMarkerPreparationV1::CreateOrAllocateSystemOwned {
-        let nullifier_bytes = planned.marker.canonical_nullifier_encoding();
-        let bump_seed = [planned.address_bump];
+    if planned.preparation() == NullifierMarkerPreparationV1::CreateOrAllocateSystemOwned {
+        let nullifier_bytes = planned.marker().canonical_nullifier_encoding();
+        let bump_seed = [planned.address_bump()];
         let seeds: &[&[u8]] = &[
             POOL_V1_NULLIFIER_MARKER_SEED,
             pool.as_ref(),
@@ -837,14 +837,14 @@ fn create_and_write_marker_v1<'info, R: PoolCpiRuntimeV1>(
             seeds,
         )?;
     }
-    let ready = plan_nullifier_marker_consumption_v1(program_id, marker_account, planned.marker)?;
-    if ready.preparation != NullifierMarkerPreparationV1::PopulateProgramOwnedZeroed
-        || ready.encoded_marker != planned.encoded_marker
+    let ready = plan_nullifier_marker_consumption_v1(program_id, marker_account, planned.marker())?;
+    if ready.preparation() != NullifierMarkerPreparationV1::PopulateProgramOwnedZeroed
+        || ready.encoded_marker() != planned.encoded_marker()
     {
         return Err(PoolV1ProgramError::InvalidNullifierMarkerAccount.into());
     }
     let mut data = marker_account.try_borrow_mut_data()?;
-    data.copy_from_slice(&planned.encoded_marker);
+    data.copy_from_slice(&planned.encoded_marker());
     Ok(())
 }
 
@@ -1146,9 +1146,10 @@ where
             if replanned != planned_marker {
                 return Err(PoolV1ProgramError::InvalidNullifierMarkerAccount.into());
             }
-            if replanned.preparation == NullifierMarkerPreparationV1::CreateOrAllocateSystemOwned {
-                let nullifier_bytes = replanned.marker.canonical_nullifier_encoding();
-                let bump_seed = [replanned.address_bump];
+            if replanned.preparation() == NullifierMarkerPreparationV1::CreateOrAllocateSystemOwned
+            {
+                let nullifier_bytes = replanned.marker().canonical_nullifier_encoding();
+                let bump_seed = [replanned.address_bump()];
                 let seeds: &[&[u8]] = &[
                     POOL_V1_NULLIFIER_MARKER_SEED,
                     pool.key.as_ref(),
@@ -1177,14 +1178,14 @@ where
             validate_exact_withdrawal_delta_v1(token_accounts, &withdrawal_plan)?;
 
             let ready = plan_marker_from_envelope_v1(program_id, marker, &decoded.envelope)?;
-            if ready.preparation != NullifierMarkerPreparationV1::PopulateProgramOwnedZeroed
-                || ready.encoded_marker != replanned.encoded_marker
+            if ready.preparation() != NullifierMarkerPreparationV1::PopulateProgramOwnedZeroed
+                || ready.encoded_marker() != replanned.encoded_marker()
             {
                 return Err(PoolV1ProgramError::InvalidNullifierMarkerAccount.into());
             }
             marker
                 .try_borrow_mut_data()?
-                .copy_from_slice(&ready.encoded_marker);
+                .copy_from_slice(&ready.encoded_marker());
             Ok(())
         },
     )?;

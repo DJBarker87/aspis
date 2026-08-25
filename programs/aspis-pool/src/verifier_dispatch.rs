@@ -259,12 +259,13 @@ pub fn plan_authenticated_verifier_dispatch_v1(
     require_selected_verifier_program_account(verifier_program_account, &selected_program)?;
     authenticate_proof_account_body_v1(proof_account, &selected_program, pool, &claim, hash)?;
 
-    if authenticated_selection.pool != envelope.pool
-        || authenticated_selection.verifier_program != claim.verifier_program
-        || authenticated_selection.profile_binding != envelope.verifier_profile
-        || authenticated_selection.release_binding != envelope.verifier_release
-        || authenticated_selection.statement_version != POOL_V1_HISTORICAL_ANCHOR_VERSION
-    {
+    if !authenticated_selection.matches(
+        envelope.pool,
+        claim.verifier_program,
+        envelope.verifier_profile,
+        envelope.verifier_release,
+        POOL_V1_HISTORICAL_ANCHOR_VERSION,
+    ) {
         return Err(PoolV1ProgramError::VerifierDispatchIdentityMismatch.into());
     }
 
@@ -293,7 +294,7 @@ pub fn plan_authenticated_verifier_dispatch_v1(
 
     Ok(PlannedVerifierDispatchV1 {
         envelope,
-        registry_generation: authenticated_selection.registry_generation,
+        registry_generation: authenticated_selection.registry_generation(),
         request_binding: binding,
         request_bytes,
         expected_result,

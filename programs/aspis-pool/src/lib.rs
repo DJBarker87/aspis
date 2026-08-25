@@ -20,6 +20,8 @@ pub mod error;
 pub mod history;
 pub mod instruction;
 pub mod nullifier;
+pub(crate) mod prepared_settlement;
+pub(crate) mod prepared_settlement_format;
 pub mod processor;
 pub mod registry;
 pub mod state;

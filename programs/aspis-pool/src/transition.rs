@@ -42,14 +42,14 @@ pub(crate) enum AuthorizedAppendV1 {
 }
 
 impl AuthorizedAppendV1 {
-    fn count(self) -> u64 {
+    pub(crate) fn count(self) -> u64 {
         match self {
             Self::One(_) => 1,
             Self::Two(_, _) => 2,
         }
     }
 
-    fn validate_leaves(self) -> Result<(), ProgramError> {
+    pub(crate) fn validate_leaves(self) -> Result<(), ProgramError> {
         let valid = match self {
             Self::One(leaf) => digest_is_canonical(&leaf),
             Self::Two(first, second) => digest_is_canonical(&first) && digest_is_canonical(&second),
@@ -82,7 +82,7 @@ pub(crate) struct PrevalidatedCurrentHistoryV1 {
 }
 
 impl PrevalidatedCurrentHistoryV1 {
-    fn require_matches(
+    pub(crate) fn require_matches(
         self,
         program_id: &Pubkey,
         pool_account: &AccountInfo,
@@ -110,6 +110,17 @@ impl PrevalidatedCurrentHistoryV1 {
         }
         Ok(self.header)
     }
+}
+
+/// Exact checked append output used by the prepared-settlement builder.
+///
+/// This capability is crate-private: the only constructor below consumes the
+/// processor's sealed canonical-state token and delegates to the same checked
+/// incremental-tree append used by the direct atomic path.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub(crate) struct PreparedAuthorizedAppendImagesV1 {
+    pub next_state_image: Box<[u8; POOL_V1_STATE_ACCOUNT_BYTES]>,
+    pub receipt: AuthorizedAppendReceiptV1,
 }
 
 /// A transition whose output tree was produced by the checked incremental
@@ -291,6 +302,27 @@ fn prepare_append_from_validated_tree(
     Ok(PreparedAuthorizedAppendV1 {
         next_state,
         receipt,
+    })
+}
+
+/// Produce the exact next Pool image and append receipts from one already
+/// validated state. Poseidon is intentionally confined to this preparation
+/// function; the later prepared-settlement apply gate consumes only bytes,
+/// SHA-256 bindings and the checked receipts returned here.
+pub(crate) fn prepare_authorized_append_images_v1(
+    state: &CanonicalPoolStateV1,
+    request: AuthorizedAppendV1,
+) -> Result<PreparedAuthorizedAppendImagesV1, ProgramError> {
+    request.validate_leaves()?;
+    let prepared = AuthorizedSourceStateV1::Canonical(state).prepare(request)?;
+    let image: Box<[u8]> = alloc::vec![0u8; POOL_V1_STATE_ACCOUNT_BYTES].into_boxed_slice();
+    let mut image: Box<[u8; POOL_V1_STATE_ACCOUNT_BYTES]> = image
+        .try_into()
+        .map_err(|_| ProgramError::InvalidAccountData)?;
+    prepared.next_state.write_encoding_prevalidated(&mut image);
+    Ok(PreparedAuthorizedAppendImagesV1 {
+        next_state_image: image,
+        receipt: prepared.receipt,
     })
 }
 

@@ -51,10 +51,28 @@ pub enum NullifierMarkerPreparationV1 {
 /// Fully validated but unapplied marker plan.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct PlannedNullifierMarkerV1 {
-    pub preparation: NullifierMarkerPreparationV1,
-    pub address_bump: u8,
-    pub marker: PoolV1NullifierMarkerV1,
-    pub encoded_marker: [u8; POOL_V1_NULLIFIER_MARKER_ACCOUNT_BYTES],
+    preparation: NullifierMarkerPreparationV1,
+    address_bump: u8,
+    marker: PoolV1NullifierMarkerV1,
+    encoded_marker: [u8; POOL_V1_NULLIFIER_MARKER_ACCOUNT_BYTES],
+}
+
+impl PlannedNullifierMarkerV1 {
+    pub(crate) fn preparation(self) -> NullifierMarkerPreparationV1 {
+        self.preparation
+    }
+
+    pub(crate) fn address_bump(self) -> u8 {
+        self.address_bump
+    }
+
+    pub(crate) fn marker(self) -> PoolV1NullifierMarkerV1 {
+        self.marker
+    }
+
+    pub(crate) fn encoded_marker(self) -> [u8; POOL_V1_NULLIFIER_MARKER_ACCOUNT_BYTES] {
+        self.encoded_marker
+    }
 }
 
 /// Plan consumption of one exact canonical nullifier marker without writing.

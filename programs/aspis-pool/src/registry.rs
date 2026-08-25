@@ -54,12 +54,46 @@ pub(crate) struct VerifierSelectionV1 {
 /// active entry all agree at `current_slot`.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub(crate) struct AuthenticatedVerifierSelectionV1 {
-    pub pool: [u8; 32],
-    pub verifier_program: [u8; 32],
-    pub profile_binding: [u8; 32],
-    pub release_binding: [u8; 32],
-    pub statement_version: u8,
-    pub registry_generation: u64,
+    policy: VerifierPolicyV1,
+    pool: [u8; 32],
+    verifier_program: [u8; 32],
+    profile_binding: [u8; 32],
+    release_binding: [u8; 32],
+    statement_version: u8,
+    registry_generation: u64,
+    /// Exact slot at which the registry/entry pair was authenticated.  Hot
+    /// settlement paths must require this to equal their settlement slot so a
+    /// capability obtained before a pause or retirement cannot be replayed.
+    authenticated_at_slot: u64,
+}
+
+impl AuthenticatedVerifierSelectionV1 {
+    pub(crate) fn matches_policy(self, policy: &VerifierPolicyV1) -> bool {
+        self.policy == *policy
+    }
+
+    pub(crate) fn matches(
+        self,
+        pool: [u8; 32],
+        verifier_program: [u8; 32],
+        profile_binding: [u8; 32],
+        release_binding: [u8; 32],
+        statement_version: u8,
+    ) -> bool {
+        self.pool == pool
+            && self.verifier_program == verifier_program
+            && self.profile_binding == profile_binding
+            && self.release_binding == release_binding
+            && self.statement_version == statement_version
+    }
+
+    pub(crate) fn registry_generation(self) -> u64 {
+        self.registry_generation
+    }
+
+    pub(crate) fn authenticated_at_slot(self) -> u64 {
+        self.authenticated_at_slot
+    }
 }
 
 fn require_readonly_registry_account(
@@ -168,12 +202,14 @@ pub(crate) fn authenticate_verifier_selection_v1(
     }
 
     Ok(AuthenticatedVerifierSelectionV1 {
+        policy: *policy,
         pool: entry.pool,
         verifier_program: entry.verifier_program,
         profile_binding: entry.profile_binding,
         release_binding: entry.release_binding,
         statement_version: entry.statement_version,
         registry_generation: registry.generation,
+        authenticated_at_slot: current_slot,
     })
 }
 
@@ -290,8 +326,15 @@ mod tests {
             100,
         )
         .unwrap();
-        assert_eq!(authenticated.pool, pool.to_bytes());
-        assert_eq!(authenticated.registry_generation, 3);
+        assert!(authenticated.matches(
+            pool.to_bytes(),
+            selection.verifier_program,
+            selection.profile_binding,
+            selection.release_binding,
+            selection.statement_version,
+        ));
+        assert_eq!(authenticated.registry_generation(), 3);
+        assert_eq!(authenticated.authenticated_at_slot(), 100);
         assert_eq!(registry_data, registry_before);
         assert_eq!(entry_data, entry_before);
     }
