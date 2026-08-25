@@ -1,0 +1,49 @@
+Running as unit: aspis-tag73-readschedule-proof03.scope; invocation ID: 437b4cf7f5f143f6844df0841ef1bae5
+'V7CompactSemanticReadSchedule.FieldReadTrace.append' depends on axioms: [propext, Classical.choice, Quot.sound]
+'V7CompactSemanticReadSchedule.inner_body_cont_exposes_exact_read' depends on axioms: [propext,
+ Classical.choice,
+ Quot.sound]
+'V7CompactSemanticReadSchedule.inner_body_done_status_one_reader_unchanged' depends on axioms: [propext,
+ Classical.choice,
+ Quot.sound]
+'V7CompactSemanticReadSchedule.inner_trace_status_one_exposes_exact_reads' depends on axioms: [propext,
+ Classical.choice,
+ Quot.sound]
+'V7CompactSemanticReadSchedule.outer_body_cont_exposes_exact_round_reads' depends on axioms: [propext,
+ Classical.choice,
+ Quot.sound]
+'V7CompactSemanticReadSchedule.outer_body_done_ok_from_none_reader_unchanged' depends on axioms: [propext,
+ Classical.choice,
+ Quot.sound]
+'V7CompactSemanticReadSchedule.outer_trace_from_none_exposes_exact_reads' depends on axioms: [propext,
+ Classical.choice,
+ Quot.sound]
+'V7CompactSemanticReadSchedule.accepted_execution_exposes_exact_271_reads' depends on axioms: [propext,
+ Classical.choice,
+ Quot.sound]
+'V7CompactSemanticReadSchedule.accepted_main_exposes_exact_271_reads' depends on axioms: [propext,
+ Classical.choice,
+ Quot.sound]
+	Command being timed: "/home/dombarker/.elan/toolchains/leanprover--lean4---v4.32.0/bin/lean -j1 -o /home/dombarker/project-offloads/v7-tag73-read-schedule-proof02/read-olean/V7CompactSemanticReadSchedule.olean V7CompactSemanticReadSchedule.lean"
+	User time (seconds): 3.63
+	System time (seconds): 0.40
+	Percent of CPU this job got: 99%
+	Elapsed (wall clock) time (h:mm:ss or m:ss): 0:04.04
+	Average shared text size (kbytes): 0
+	Average unshared data size (kbytes): 0
+	Average stack size (kbytes): 0
+	Average total size (kbytes): 0
+	Maximum resident set size (kbytes): 2572672
+	Average resident set size (kbytes): 0
+	Major (requiring I/O) page faults: 26
+	Minor (reclaiming a frame) page faults: 69564
+	Voluntary context switches: 1990
+	Involuntary context switches: 95
+	Swaps: 0
+	File system inputs: 8680
+	File system outputs: 3416
+	Socket messages sent: 0
+	Socket messages received: 0
+	Signals delivered: 0
+	Page size (bytes): 4096
+	Exit status: 0
