@@ -1,0 +1,82 @@
+diff --git a/src/interp/InterpExpansion.ml b/src/interp/InterpExpansion.ml
+index f24d3721..ddf8729b 100644
+--- a/src/interp/InterpExpansion.ml
++++ b/src/interp/InterpExpansion.ml
+@@ -344,7 +344,7 @@ let compute_expanded_symbolic_adt_value (span : Meta.span)
+ 
+ let expand_symbolic_value_shared_borrow (span : Meta.span)
+     (original_sv : symbolic_value) (original_sv_place : SA.mplace option)
+-    (ref_ty : rty) : cm_fun =
++    (region : region) (ref_ty : rty) : cm_fun =
+  fun ctx ->
+   (* First, replace the projectors on borrows. *)
+   let bid = ctx.fresh_borrow_id () in
+@@ -475,6 +475,46 @@ let expand_symbolic_value_shared_borrow (span : Meta.span)
+   (* Finally, replace the projectors on loans *)
+   let see = SeSharedRef (bid, shared_sv) in
+   let ctx = apply_symbolic_expansion_to_aevalues span original_sv see ctx in
++  let ctx =
++    match region with
++    | RStatic ->
++        (* Static regions have no return abstraction: the region hierarchy
++           intentionally removes them because they outlive every translated
++           function.  For an opaque call returning [&'static T], expansion has
++           nevertheless introduced [SB bid].  Preserve the corresponding
++           immutable value in a non-ending dummy loan, exactly as global
++           references are modeled by [push_value_to_dummy_shared_loan].
++
++           [shared_sv] remains the symbolic inner value synthesized from the
++           call result; this only restores the missing loan/borrow invariant
++           and does not choose or duplicate the referenced value. *)
++        let shared_value = mk_tvalue_from_symbolic_value shared_sv in
++        let loan : tvalue =
++          {
++            value = VLoan (VSharedLoan (bid, shared_value));
++            ty = shared_value.ty;
++          }
++        in
++        let dummy_id = ctx.fresh_dummy_var_id () in
++        ctx_push_dummy_var ctx dummy_id loan
++    | _ -> ctx
++  in
++  let ctx =
++    match region with
++    | RStatic ->
++        (* Runtime context values use erased regions.  Static remains present
++           in the opaque declaration long enough to select the persistent-loan
++           case, then is erased throughout the concrete context just like the
++           other reference regions carried by values. *)
++        let eraser =
++          object
++            inherit [_] map_eval_ctx
++            method! visit_RStatic _ = RErased
++          end
++        in
++        eraser#visit_eval_ctx () ctx
++    | _ -> ctx
++  in
+   ( ctx,
+     (* Update the synthesized program *)
+     S.synthesize_symbolic_expansion_no_branching span original_sv
+@@ -515,7 +555,7 @@ let expand_symbolic_value_borrow (span : Meta.span)
+             original_sv_place see e )
+   | RShared ->
+       expand_symbolic_value_shared_borrow span original_sv original_sv_place
+-        ref_ty ctx
++        region ref_ty ctx
+ 
+ let expand_symbolic_bool (span : Meta.span) (sv : symbolic_value)
+     (sv_place : SA.mplace option) :
+diff --git a/src/interp/InterpPaths.ml b/src/interp/InterpPaths.ml
+index ec23375a..91a0cdc0 100644
+--- a/src/interp/InterpPaths.ml
++++ b/src/interp/InterpPaths.ml
+@@ -256,7 +256,7 @@ let rec access_place (span : Meta.span) (access : projection_access)
+         let updated_ty = erase_regions updated.ty in
+         let v_ty = erase_regions v.ty in
+         (* Type checking *)
+-        if updated_ty <> v.ty then (
++        if updated_ty <> v_ty then (
+           [%ltrace
+             "Not the same type:\n- nv.ty: "
+             ^ ty_to_string ctx updated_ty

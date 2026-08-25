@@ -1,0 +1,11 @@
+--- a/V7AcceptedKernel/Types.lean
++++ b/V7AcceptedKernel/Types.lean
+@@ -264,7 +264,7 @@
+ @[reducible]
+ def v7_verifier.verify_v7_read_only_with_statement_digest_and_schedule.closure_1
+   :=
+-  Slice (Slice Std.U8) → Result (Array Std.U8 32#usize) ×
++  (Slice (Slice Std.U8) → Result (Array Std.U8 32#usize)) ×
+   aspis_core.v7_onefold.V7CompactOneFoldWire
+ 
+ /-- [aspis_verifier::v7_verifier::verify_v7_read_only_with_statement_digest_and_schedule.closure]

@@ -1,0 +1,82 @@
+V7 accepted-source replay result (superseded diagnostic overlay replay)
+Superseded by: EXACT-ROOT-REPLAY-RESULT.txt
+Status: retained only as historical evidence of the pre-fix translator boundary
+Date: 2026-08-25
+Exit status: 0
+Final result: V7 accepted-source replay: PASS (overlay equivalence remains explicit)
+
+Command:
+  CHARON_BIN=/Users/dominic/charon-cb50-metadata/bin/charon \
+  AENEAS_BIN=/private/tmp/aspis-v6-aeneas-result-aware.UcbEt6/aeneas/src/_build/default/main.exe \
+  AENEAS_LEAN_BACKEND=/private/tmp/aspis-v6-aeneas-result-aware.UcbEt6/aeneas/backends/lean \
+  bash aeneas-verif/v7-onefold-accepted-source-20260825/replay.sh
+
+Replay policy:
+  - This was the single authorized exact replay.
+  - LEAN_NUM_THREADS=1 and CARGO_BUILD_JOBS=1 were forced.
+  - No broad regression, proof regeneration, SBF rebuild, deployment, NUC job,
+    or production-source edit was performed.
+  - The active Charon/rustc process was spot-checked at approximately 600 MB
+    RSS; the local 6 GB stop threshold was not approached.
+
+Pinned-input gates:
+  - complete MANIFEST.sha256 verification: PASS
+  - complete GENERATED-PROOF.sha256 verification: PASS
+  - deployed commit: 1589706d38a5e8ca705fbf7aaed2c82cf8595510
+  - deployed tree: d43572d059a48a871933be4ab7067e7ded2fab28
+  - DEPLOYED-SOURCE.sha256 inside disposable git archive: PASS
+  - forbidden Lean placeholders (sorry/admit): none found
+
+Normalized LLBC gates:
+  - exact deployed production root:
+    46e15b05151445109ce5bb3dced20242c9aac0000f086a6282e2e01d77c88763
+  - diagnostic second-schedule root:
+    258c07c8642f4b2531ea66759a46cd5c5209460d738c430c15a2ed3151a5bdc3
+  - extraction-only accepted-kernel wrapper:
+    b97b4753cc12ce34429891812f14e23e048b96a1be68ff2955a3c467b87083fe
+  - extraction-only deferred-parser wrapper:
+    282d6ee3a3b44702e94b4cba0a0c298b639dd0a5f82d71f41f5c63ab17c669fc
+
+Exact reproduced Aeneas boundaries:
+  - deployed root: Error Unreachable, v7_verifier.rs:120:8-120:55,
+    interp/Interp.ml:619
+  - diagnostic root: Error Unreachable, v7_verifier.rs:160:8-160:56,
+    interp/Interp.ml:619
+  - full raw outputs are archived under production-root/.
+
+Fresh generated-byte comparisons:
+  - V7AcceptedKernel/Types.lean: byte-identical
+  - V7AcceptedKernel/Funs.lean: byte-identical
+  - V7AcceptedKernel/TypesExternal_Template.lean versus archived
+    TypesExternal.lean: byte-identical
+  - V7AcceptedKernel/FunsExternal_Template.lean versus archived
+    FunsExternal.lean: byte-identical
+  - accepted-kernel translation.json after pinned-version normalization:
+    byte-identical
+  - V7DeferredParser/Types.lean: byte-identical
+  - V7DeferredParser/Funs.lean: byte-identical
+  - V7DeferredParser/FunsExternal_Template.lean: byte-identical
+  - deferred-parser translation.json after pinned-version normalization:
+    byte-identical
+
+Serialized Lean checks:
+  - generated accepted-kernel TypesExternal, Types, FunsExternal and Funs:
+    PASS
+  - V7AcceptedKernelSourceBridge.lean: PASS
+  - generated deferred-parser Types, FunsExternal and Funs: PASS
+  - V7DeferredParserSourceBridge.lean: PASS
+
+Checked bridge theorems:
+  - acceptedKernel_success_exact
+  - acceptedKernel_parser_rejection_is_fail_closed
+  - acceptedKernel_transcript_rejection_is_fail_closed
+  - extracted_entry_is_exact_deferred_parser
+  - extracted_parser_rejects_oversized_frontier
+  - extracted_parser_success_is_deployed_parser_success
+
+Boundary retained after PASS:
+  V7-SOURCE-OVERLAY-EQUIVALENCE is named and unproved. The exact deployed
+  production root was archived at the Charon LLBC layer, but the pinned Aeneas
+  revision cannot translate its two frozen &'static schedule accessor returns.
+  The accepted-kernel Lean proof therefore applies to the extraction-only
+  schedule-explicit wrapper, not directly to the byte-identical deployed root.

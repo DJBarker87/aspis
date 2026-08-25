@@ -1,0 +1,86 @@
+diff --git a/crates/aspis-core/src/v7_onefold.rs b/crates/aspis-core/src/v7_onefold.rs
+index 37056fe..96f5903 100644
+--- a/crates/aspis-core/src/v7_onefold.rs
++++ b/crates/aspis-core/src/v7_onefold.rs
+@@ -178,6 +178,18 @@ impl<'a> V7CompactOneFoldWire<'a> {
+     }
+ }
+ 
++/// Extraction-only free-function boundary for the deployed inherent parser.
++/// This wrapper is never compiled into the deployed SBF.  It exists because
++/// the pinned Charon/Aeneas toolchain cannot select an inherent method as a
++/// standalone translation root.
++#[inline(always)]
++pub fn parse_v7_compact_onefold_wire_deferred(
++    bytes: &[u8],
++    frontier_nodes: usize,
++) -> Result<V7CompactOneFoldWire<'_>, V6WireError> {
++    V7CompactOneFoldWire::parse_deferred_canonicality(bytes, frontier_nodes)
++}
++
+ /// Authenticate and gamma-combine every complete V7 query opening.
+ pub fn verify_and_gamma_combine_v7_openings(
+     hash: HashFn,
+diff --git a/programs/aspis-verifier/src/v7_verifier.rs b/programs/aspis-verifier/src/v7_verifier.rs
+index 54ba589..b559f03 100644
+--- a/programs/aspis-verifier/src/v7_verifier.rs
++++ b/programs/aspis-verifier/src/v7_verifier.rs
+@@ -14,7 +14,8 @@ use aspis_core::v6_transcript::{
+     V6TranscriptError, V6VerifiedTranscript,
+ };
+ use aspis_core::v7_onefold::{
+-    verify_and_gamma_combine_v7_openings, V7CompactOneFoldWire,
++    parse_v7_compact_onefold_wire_deferred, verify_and_gamma_combine_v7_openings,
++    V7CompactOneFoldWire,
+ };
+ use aspis_core::HashFn;
+ use aspis_statement::atomic_state_only_terminal::{
+@@ -129,3 +130,48 @@ pub fn verify_v7_read_only_with_statement_digest(
+         folded_query_sum,
+     })
+ }
++
++/// Extraction-only schedule-explicit copy of the deployed acceptance kernel.
++/// The deployed root above calls the same parser, constructs the same context,
++/// and supplies the two frozen schedule functions at these two arguments.
++/// This wrapper is never compiled into the deployed SBF; it exists because the
++/// pinned Aeneas revision cannot synthesize a frozen borrow returned by an
++/// opaque static-schedule function.
++#[allow(clippy::too_many_arguments)]
++#[inline(always)]
++pub(crate) fn verify_v7_read_only_with_statement_digest_and_schedule(
++    hash: HashFn,
++    proof: &[u8],
++    frontier_nodes: usize,
++    program_id: &Pubkey,
++    release_binding: [u8; 32],
++    attempt_id: &Pubkey,
++    statement: &AtomicPaymentStatementV4,
++    statement_digest: [u8; 32],
++    inactive_row_groups: &[u8; 64],
++    inactive_group_masks: &[u16],
++    check_pow: bool,
++) -> Result<VerifiedV7ReadOnly, V7VerifyError> {
++    let wire = parse_v7_compact_onefold_wire_deferred(proof, frontier_nodes)?;
++    let context = V6TranscriptContext {
++        program_id: program_id.to_bytes(),
++        release_binding,
++        statement_digest,
++        attempt_id: attempt_id.to_bytes(),
++    };
++    let transcript = verify_v7_compact_transcript_and_relation_prepared(
++        hash,
++        &wire,
++        &context,
++        inactive_row_groups,
++        inactive_group_masks,
++        check_pow,
++        |view| crate::v6_verifier::terminal_matches(statement, view),
++        |view| authenticate_and_fold_queries(hash, &wire, view),
++    )?;
++    let folded_query_sum = transcript.folded_query_sum;
++    Ok(VerifiedV7ReadOnly {
++        transcript,
++        folded_query_sum,
++    })
++}

@@ -1,0 +1,11 @@
+--- a/V7ProductionRoot/Types.lean
++++ b/V7ProductionRoot/Types.lean
+@@ -263,7 +263,7 @@
+ /-- [aspis_verifier::v7_verifier::verify_v7_read_only_with_statement_digest::closure#1]
+     Source: 'programs/aspis-verifier/src/v7_verifier.rs', lines 124:8-124:63 -/
+ def v7_verifier.verify_v7_read_only_with_statement_digest.closure_1 :=
+-  Slice (Slice Std.U8) → Result (Array Std.U8 32#usize) ×
++  (Slice (Slice Std.U8) → Result (Array Std.U8 32#usize)) ×
+   aspis_core.v7_onefold.V7CompactOneFoldWire
+ 
+ /-- [aspis_verifier::v7_verifier::verify_v7_read_only_with_statement_digest::closure]

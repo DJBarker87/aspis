@@ -1,0 +1,761 @@
+{
+  "aeneas_version": "d860ac47-dirty",
+  "charon_version": "0.1.223",
+  "crate": "aspis_core",
+  "functions": [
+    {
+      "def_id": 11,
+      "lean_name": "V7DeferredParserGenerated.core.option.Option.unwrap_or_default",
+      "lean_file": "V7DeferredParser/FunsExternal_Template.lean",
+      "rust_name": "core::option::{core::option::Option<T>}::unwrap_or_default",
+      "is_local": false,
+      "source": {
+        "file": "/rustc/library/core/src/option.rs",
+        "begin_line": 1090,
+        "end_line": 1092
+      },
+      "is_opaque": true,
+      "can_fail": true,
+      "can_diverge": false,
+      "is_rec": false,
+      "reducible": false
+    },
+    {
+      "def_id": 3,
+      "lean_name": "V7DeferredParserGenerated.core.option.Option.ok_or",
+      "lean_file": "V7DeferredParser/FunsExternal_Template.lean",
+      "rust_name": "core::option::{core::option::Option<T>}::ok_or",
+      "is_local": false,
+      "source": {
+        "file": "/rustc/library/core/src/option.rs",
+        "begin_line": 1334,
+        "end_line": 1334
+      },
+      "is_opaque": true,
+      "can_fail": true,
+      "can_diverge": false,
+      "is_rec": false,
+      "reducible": false
+    },
+    {
+      "def_id": 10,
+      "lean_name": "V7DeferredParserGenerated.core.option.OptionShared0T.copied",
+      "lean_file": "V7DeferredParser/FunsExternal_Template.lean",
+      "rust_name": "core::option::{core::option::Option<&'_0 T>}::copied",
+      "is_local": false,
+      "source": {
+        "file": "/rustc/library/core/src/option.rs",
+        "begin_line": 2135,
+        "end_line": 2137
+      },
+      "is_opaque": true,
+      "can_fail": true,
+      "can_diverge": false,
+      "is_rec": false,
+      "reducible": false
+    },
+    {
+      "def_id": 13,
+      "lean_name": "V7DeferredParserGenerated.core.result.Result.map_err",
+      "lean_file": "V7DeferredParser/FunsExternal_Template.lean",
+      "rust_name": "core::result::{core::result::Result<T, E>}::map_err",
+      "is_local": false,
+      "source": {
+        "file": "/rustc/library/core/src/result.rs",
+        "begin_line": 962,
+        "end_line": 964
+      },
+      "is_opaque": true,
+      "can_fail": true,
+      "can_diverge": false,
+      "is_rec": false,
+      "reducible": false
+    },
+    {
+      "def_id": 9,
+      "lean_name": "V7DeferredParserGenerated.core.slice.Slice.last",
+      "lean_file": "V7DeferredParser/FunsExternal_Template.lean",
+      "rust_name": "core::slice::{[T]}::last",
+      "is_local": false,
+      "source": {
+        "file": "/rustc/library/core/src/slice/mod.rs",
+        "begin_line": 281,
+        "end_line": 281
+      },
+      "is_opaque": true,
+      "can_fail": true,
+      "can_diverge": false,
+      "is_rec": false,
+      "reducible": false
+    },
+    {
+      "def_id": 32,
+      "lean_name": "V7DeferredParserGenerated.v6_onefold.packed_bytes",
+      "lean_file": "V7DeferredParser/Funs.lean",
+      "rust_name": "aspis_core::v6_onefold::packed_bytes",
+      "is_local": true,
+      "source": {
+        "file": "crates/aspis-core/src/v6_onefold.rs",
+        "begin_line": 68,
+        "end_line": 70
+      },
+      "is_opaque": false,
+      "can_fail": true,
+      "can_diverge": false,
+      "is_rec": false,
+      "reducible": false
+    },
+    {
+      "def_id": 16,
+      "lean_name": "V7DeferredParserGenerated.v7_onefold.V7CompactOneFoldWire.parse_deferred_canonicality.closure_2.Insts.CoreOpsFunctionFnOnceTupleTryFromSliceErrorV6WireError.call_once",
+      "lean_file": "V7DeferredParser/Funs.lean",
+      "rust_name": "aspis_core::v7_onefold::{aspis_core::v7_onefold::V7CompactOneFoldWire<'a>}::parse_deferred_canonicality::{impl core::ops::function::FnOnce<(core::array::TryFromSliceError,), aspis_core::v6_onefold::V6WireError> for aspis_core::v7_onefold::{aspis_core::v7_onefold::V7CompactOneFoldWire<'a>}::parse_deferred_canonicality::closure#2<'a>}::call_once",
+      "is_local": true,
+      "source": {
+        "file": "crates/aspis-core/src/v7_onefold.rs",
+        "begin_line": 159,
+        "end_line": 159
+      },
+      "is_opaque": false,
+      "can_fail": true,
+      "can_diverge": false,
+      "is_rec": false,
+      "reducible": false
+    },
+    {
+      "def_id": 15,
+      "lean_name": "V7DeferredParserGenerated.v7_onefold.V7CompactOneFoldWire.parse_deferred_canonicality.closure_1.Insts.CoreOpsFunctionFnOnceTupleTryFromSliceErrorV6WireError.call_once",
+      "lean_file": "V7DeferredParser/Funs.lean",
+      "rust_name": "aspis_core::v7_onefold::{aspis_core::v7_onefold::V7CompactOneFoldWire<'a>}::parse_deferred_canonicality::{impl core::ops::function::FnOnce<(core::array::TryFromSliceError,), aspis_core::v6_onefold::V6WireError> for aspis_core::v7_onefold::{aspis_core::v7_onefold::V7CompactOneFoldWire<'a>}::parse_deferred_canonicality::closure#1<'a>}::call_once",
+      "is_local": true,
+      "source": {
+        "file": "crates/aspis-core/src/v7_onefold.rs",
+        "begin_line": 158,
+        "end_line": 158
+      },
+      "is_opaque": false,
+      "can_fail": true,
+      "can_diverge": false,
+      "is_rec": false,
+      "reducible": false
+    },
+    {
+      "def_id": 14,
+      "lean_name": "V7DeferredParserGenerated.v7_onefold.V7CompactOneFoldWire.parse_deferred_canonicality.closure.Insts.CoreOpsFunctionFnOnceTupleTryFromSliceErrorV6WireError.call_once",
+      "lean_file": "V7DeferredParser/Funs.lean",
+      "rust_name": "aspis_core::v7_onefold::{aspis_core::v7_onefold::V7CompactOneFoldWire<'a>}::parse_deferred_canonicality::{impl core::ops::function::FnOnce<(core::array::TryFromSliceError,), aspis_core::v6_onefold::V6WireError> for aspis_core::v7_onefold::{aspis_core::v7_onefold::V7CompactOneFoldWire<'a>}::parse_deferred_canonicality::closure<'a>}::call_once",
+      "is_local": true,
+      "source": {
+        "file": "crates/aspis-core/src/v7_onefold.rs",
+        "begin_line": 157,
+        "end_line": 157
+      },
+      "is_opaque": false,
+      "can_fail": true,
+      "can_diverge": false,
+      "is_rec": false,
+      "reducible": false
+    },
+    {
+      "def_id": 1,
+      "lean_name": "V7DeferredParserGenerated.v7_onefold.V7CompactOneFoldWire.parse_deferred_canonicality",
+      "lean_file": "V7DeferredParser/Funs.lean",
+      "rust_name": "aspis_core::v7_onefold::{aspis_core::v7_onefold::V7CompactOneFoldWire<'a>}::parse_deferred_canonicality",
+      "is_local": true,
+      "source": {
+        "file": "crates/aspis-core/src/v7_onefold.rs",
+        "begin_line": 130,
+        "end_line": 164
+      },
+      "is_opaque": false,
+      "can_fail": true,
+      "can_diverge": false,
+      "is_rec": false,
+      "reducible": false
+    },
+    {
+      "def_id": 0,
+      "lean_name": "V7DeferredParserGenerated.v7_onefold.parse_v7_compact_onefold_wire_deferred",
+      "lean_file": "V7DeferredParser/Funs.lean",
+      "rust_name": "aspis_core::v7_onefold::parse_v7_compact_onefold_wire_deferred",
+      "is_local": true,
+      "source": {
+        "file": "crates/aspis-core/src/v7_onefold.rs",
+        "begin_line": 187,
+        "end_line": 192
+      },
+      "is_opaque": false,
+      "can_fail": true,
+      "can_diverge": false,
+      "is_rec": false,
+      "reducible": false
+    }
+  ],
+  "types": [
+    {
+      "def_id": 2,
+      "lean_name": "V7DeferredParserGenerated.v6_onefold.V6WireError",
+      "lean_file": "V7DeferredParser/Types.lean",
+      "rust_name": "aspis_core::v6_onefold::V6WireError",
+      "is_local": true,
+      "source": {
+        "file": "crates/aspis-core/src/v6_onefold.rs",
+        "begin_line": 73,
+        "end_line": 80
+      }
+    },
+    {
+      "def_id": 1,
+      "lean_name": "V7DeferredParserGenerated.v7_onefold.V7CompactOneFoldWire",
+      "lean_file": "V7DeferredParser/Types.lean",
+      "rust_name": "aspis_core::v7_onefold::V7CompactOneFoldWire",
+      "is_local": true,
+      "source": {
+        "file": "crates/aspis-core/src/v7_onefold.rs",
+        "begin_line": 108,
+        "end_line": 116
+      }
+    },
+    {
+      "def_id": 9,
+      "lean_name": "V7DeferredParserGenerated.v7_onefold.V7CompactOneFoldWire.parse_deferred_canonicality.closure_2",
+      "lean_file": "V7DeferredParser/Types.lean",
+      "rust_name": "aspis_core::v7_onefold::{aspis_core::v7_onefold::V7CompactOneFoldWire<'a>}::parse_deferred_canonicality::closure#2",
+      "is_local": true,
+      "source": {
+        "file": "crates/aspis-core/src/v7_onefold.rs",
+        "begin_line": 159,
+        "end_line": 159
+      }
+    },
+    {
+      "def_id": 8,
+      "lean_name": "V7DeferredParserGenerated.v7_onefold.V7CompactOneFoldWire.parse_deferred_canonicality.closure_1",
+      "lean_file": "V7DeferredParser/Types.lean",
+      "rust_name": "aspis_core::v7_onefold::{aspis_core::v7_onefold::V7CompactOneFoldWire<'a>}::parse_deferred_canonicality::closure#1",
+      "is_local": true,
+      "source": {
+        "file": "crates/aspis-core/src/v7_onefold.rs",
+        "begin_line": 158,
+        "end_line": 158
+      }
+    },
+    {
+      "def_id": 7,
+      "lean_name": "V7DeferredParserGenerated.v7_onefold.V7CompactOneFoldWire.parse_deferred_canonicality.closure",
+      "lean_file": "V7DeferredParser/Types.lean",
+      "rust_name": "aspis_core::v7_onefold::{aspis_core::v7_onefold::V7CompactOneFoldWire<'a>}::parse_deferred_canonicality::closure",
+      "is_local": true,
+      "source": {
+        "file": "crates/aspis-core/src/v7_onefold.rs",
+        "begin_line": 157,
+        "end_line": 157
+      }
+    }
+  ],
+  "globals": [
+    {
+      "def_id": 25,
+      "lean_name": "V7DeferredParserGenerated.v6_onefold.V6_C1_COLUMNS",
+      "lean_file": "V7DeferredParser/Funs.lean",
+      "rust_name": "aspis_core::v6_onefold::V6_C1_COLUMNS",
+      "is_local": true,
+      "source": {
+        "file": "crates/aspis-core/src/v6_onefold.rs",
+        "begin_line": 22,
+        "end_line": 22
+      },
+      "can_fail": false
+    },
+    {
+      "def_id": 26,
+      "lean_name": "V7DeferredParserGenerated.v6_onefold.V6_C2_COLUMNS",
+      "lean_file": "V7DeferredParser/Funs.lean",
+      "rust_name": "aspis_core::v6_onefold::V6_C2_COLUMNS",
+      "is_local": true,
+      "source": {
+        "file": "crates/aspis-core/src/v6_onefold.rs",
+        "begin_line": 23,
+        "end_line": 23
+      },
+      "can_fail": false
+    },
+    {
+      "def_id": 29,
+      "lean_name": "V7DeferredParserGenerated.v6_onefold.V6_TOTAL_COLUMNS",
+      "lean_file": "V7DeferredParser/Funs.lean",
+      "rust_name": "aspis_core::v6_onefold::V6_TOTAL_COLUMNS",
+      "is_local": true,
+      "source": {
+        "file": "crates/aspis-core/src/v6_onefold.rs",
+        "begin_line": 24,
+        "end_line": 24
+      },
+      "can_fail": true
+    },
+    {
+      "def_id": 9,
+      "lean_name": "V7DeferredParserGenerated.v6_onefold.V6_QUERY_COUNT",
+      "lean_file": "V7DeferredParser/Funs.lean",
+      "rust_name": "aspis_core::v6_onefold::V6_QUERY_COUNT",
+      "is_local": true,
+      "source": {
+        "file": "crates/aspis-core/src/v6_onefold.rs",
+        "begin_line": 25,
+        "end_line": 25
+      },
+      "can_fail": false
+    },
+    {
+      "def_id": 31,
+      "lean_name": "V7DeferredParserGenerated.v6_onefold.V6_SEMANTIC_ROUNDS",
+      "lean_file": "V7DeferredParser/Funs.lean",
+      "rust_name": "aspis_core::v6_onefold::V6_SEMANTIC_ROUNDS",
+      "is_local": true,
+      "source": {
+        "file": "crates/aspis-core/src/v6_onefold.rs",
+        "begin_line": 27,
+        "end_line": 27
+      },
+      "can_fail": false
+    },
+    {
+      "def_id": 32,
+      "lean_name": "V7DeferredParserGenerated.v6_onefold.V6_SEMANTIC_SENT_VALUES",
+      "lean_file": "V7DeferredParser/Funs.lean",
+      "rust_name": "aspis_core::v6_onefold::V6_SEMANTIC_SENT_VALUES",
+      "is_local": true,
+      "source": {
+        "file": "crates/aspis-core/src/v6_onefold.rs",
+        "begin_line": 28,
+        "end_line": 28
+      },
+      "can_fail": false
+    },
+    {
+      "def_id": 28,
+      "lean_name": "V7DeferredParserGenerated.v6_onefold.V6_POINT_CLAIM_ROWS",
+      "lean_file": "V7DeferredParser/Funs.lean",
+      "rust_name": "aspis_core::v6_onefold::V6_POINT_CLAIM_ROWS",
+      "is_local": true,
+      "source": {
+        "file": "crates/aspis-core/src/v6_onefold.rs",
+        "begin_line": 33,
+        "end_line": 33
+      },
+      "can_fail": false
+    },
+    {
+      "def_id": 19,
+      "lean_name": "V7DeferredParserGenerated.v6_onefold.V6_RELATION_ROUNDS",
+      "lean_file": "V7DeferredParser/Funs.lean",
+      "rust_name": "aspis_core::v6_onefold::V6_RELATION_ROUNDS",
+      "is_local": true,
+      "source": {
+        "file": "crates/aspis-core/src/v6_onefold.rs",
+        "begin_line": 34,
+        "end_line": 34
+      },
+      "can_fail": false
+    },
+    {
+      "def_id": 20,
+      "lean_name": "V7DeferredParserGenerated.v6_onefold.V6_RELATION_SENT_VALUES",
+      "lean_file": "V7DeferredParser/Funs.lean",
+      "rust_name": "aspis_core::v6_onefold::V6_RELATION_SENT_VALUES",
+      "is_local": true,
+      "source": {
+        "file": "crates/aspis-core/src/v6_onefold.rs",
+        "begin_line": 35,
+        "end_line": 35
+      },
+      "can_fail": false
+    },
+    {
+      "def_id": 34,
+      "lean_name": "V7DeferredParserGenerated.v6_onefold.V6_INITIAL_CLAIM_OFFSET",
+      "lean_file": "V7DeferredParser/Funs.lean",
+      "rust_name": "aspis_core::v6_onefold::V6_INITIAL_CLAIM_OFFSET",
+      "is_local": true,
+      "source": {
+        "file": "crates/aspis-core/src/v6_onefold.rs",
+        "begin_line": 36,
+        "end_line": 36
+      },
+      "can_fail": false
+    },
+    {
+      "def_id": 33,
+      "lean_name": "V7DeferredParserGenerated.v6_onefold.V6_SEMANTIC_QM31_OFFSET",
+      "lean_file": "V7DeferredParser/Funs.lean",
+      "rust_name": "aspis_core::v6_onefold::V6_SEMANTIC_QM31_OFFSET",
+      "is_local": true,
+      "source": {
+        "file": "crates/aspis-core/src/v6_onefold.rs",
+        "begin_line": 37,
+        "end_line": 37
+      },
+      "can_fail": true
+    },
+    {
+      "def_id": 30,
+      "lean_name": "V7DeferredParserGenerated.v6_onefold.V6_POINT_CLAIMS_QM31_OFFSET",
+      "lean_file": "V7DeferredParser/Funs.lean",
+      "rust_name": "aspis_core::v6_onefold::V6_POINT_CLAIMS_QM31_OFFSET",
+      "is_local": true,
+      "source": {
+        "file": "crates/aspis-core/src/v6_onefold.rs",
+        "begin_line": 38,
+        "end_line": 39
+      },
+      "can_fail": true
+    },
+    {
+      "def_id": 27,
+      "lean_name": "V7DeferredParserGenerated.v6_onefold.V6_INACTIVE_CLAIM_QM31_OFFSET",
+      "lean_file": "V7DeferredParser/Funs.lean",
+      "rust_name": "aspis_core::v6_onefold::V6_INACTIVE_CLAIM_QM31_OFFSET",
+      "is_local": true,
+      "source": {
+        "file": "crates/aspis-core/src/v6_onefold.rs",
+        "begin_line": 40,
+        "end_line": 41
+      },
+      "can_fail": true
+    },
+    {
+      "def_id": 24,
+      "lean_name": "V7DeferredParserGenerated.v6_onefold.V6_OOD_QM31_OFFSET",
+      "lean_file": "V7DeferredParser/Funs.lean",
+      "rust_name": "aspis_core::v6_onefold::V6_OOD_QM31_OFFSET",
+      "is_local": true,
+      "source": {
+        "file": "crates/aspis-core/src/v6_onefold.rs",
+        "begin_line": 42,
+        "end_line": 42
+      },
+      "can_fail": true
+    },
+    {
+      "def_id": 21,
+      "lean_name": "V7DeferredParserGenerated.v6_onefold.V6_RELATION_QM31_OFFSET",
+      "lean_file": "V7DeferredParser/Funs.lean",
+      "rust_name": "aspis_core::v6_onefold::V6_RELATION_QM31_OFFSET",
+      "is_local": true,
+      "source": {
+        "file": "crates/aspis-core/src/v6_onefold.rs",
+        "begin_line": 43,
+        "end_line": 43
+      },
+      "can_fail": true
+    },
+    {
+      "def_id": 15,
+      "lean_name": "V7DeferredParserGenerated.v6_onefold.V6_FINAL_QM31_OFFSET",
+      "lean_file": "V7DeferredParser/Funs.lean",
+      "rust_name": "aspis_core::v6_onefold::V6_FINAL_QM31_OFFSET",
+      "is_local": true,
+      "source": {
+        "file": "crates/aspis-core/src/v6_onefold.rs",
+        "begin_line": 44,
+        "end_line": 45
+      },
+      "can_fail": true
+    },
+    {
+      "def_id": 16,
+      "lean_name": "V7DeferredParserGenerated.v6_onefold.V6_FINAL_QM31_VALUES",
+      "lean_file": "V7DeferredParser/Funs.lean",
+      "rust_name": "aspis_core::v6_onefold::V6_FINAL_QM31_VALUES",
+      "is_local": true,
+      "source": {
+        "file": "crates/aspis-core/src/v6_onefold.rs",
+        "begin_line": 46,
+        "end_line": 46
+      },
+      "can_fail": false
+    },
+    {
+      "def_id": 11,
+      "lean_name": "V7DeferredParserGenerated.v6_onefold.V6_FIXED_QM31_VALUES",
+      "lean_file": "V7DeferredParser/Funs.lean",
+      "rust_name": "aspis_core::v6_onefold::V6_FIXED_QM31_VALUES",
+      "is_local": true,
+      "source": {
+        "file": "crates/aspis-core/src/v6_onefold.rs",
+        "begin_line": 47,
+        "end_line": 47
+      },
+      "can_fail": true
+    },
+    {
+      "def_id": 8,
+      "lean_name": "V7DeferredParserGenerated.v6_onefold.V6_FIXED_M31_LIMBS",
+      "lean_file": "V7DeferredParser/Funs.lean",
+      "rust_name": "aspis_core::v6_onefold::V6_FIXED_M31_LIMBS",
+      "is_local": true,
+      "source": {
+        "file": "crates/aspis-core/src/v6_onefold.rs",
+        "begin_line": 48,
+        "end_line": 48
+      },
+      "can_fail": true
+    },
+    {
+      "def_id": 4,
+      "lean_name": "V7DeferredParserGenerated.v6_onefold.V6_FIXED_PACKED_FIELD_BYTES",
+      "lean_file": "V7DeferredParser/Funs.lean",
+      "rust_name": "aspis_core::v6_onefold::V6_FIXED_PACKED_FIELD_BYTES",
+      "is_local": true,
+      "source": {
+        "file": "crates/aspis-core/src/v6_onefold.rs",
+        "begin_line": 49,
+        "end_line": 49
+      },
+      "can_fail": true
+    },
+    {
+      "def_id": 5,
+      "lean_name": "V7DeferredParserGenerated.v6_onefold.V6_WORK_NONCE_BYTES",
+      "lean_file": "V7DeferredParser/Funs.lean",
+      "rust_name": "aspis_core::v6_onefold::V6_WORK_NONCE_BYTES",
+      "is_local": true,
+      "source": {
+        "file": "crates/aspis-core/src/v6_onefold.rs",
+        "begin_line": 51,
+        "end_line": 51
+      },
+      "can_fail": true
+    },
+    {
+      "def_id": 22,
+      "lean_name": "V7DeferredParserGenerated.v6_onefold.V6_C1_LIMBS_PER_QUERY",
+      "lean_file": "V7DeferredParser/Funs.lean",
+      "rust_name": "aspis_core::v6_onefold::V6_C1_LIMBS_PER_QUERY",
+      "is_local": true,
+      "source": {
+        "file": "crates/aspis-core/src/v6_onefold.rs",
+        "begin_line": 54,
+        "end_line": 54
+      },
+      "can_fail": true
+    },
+    {
+      "def_id": 23,
+      "lean_name": "V7DeferredParserGenerated.v6_onefold.V6_C2_LIMBS_PER_QUERY",
+      "lean_file": "V7DeferredParser/Funs.lean",
+      "rust_name": "aspis_core::v6_onefold::V6_C2_LIMBS_PER_QUERY",
+      "is_local": true,
+      "source": {
+        "file": "crates/aspis-core/src/v6_onefold.rs",
+        "begin_line": 55,
+        "end_line": 55
+      },
+      "can_fail": true
+    },
+    {
+      "def_id": 17,
+      "lean_name": "V7DeferredParserGenerated.v6_onefold.V6_C1_PACKED_BYTES_PER_QUERY",
+      "lean_file": "V7DeferredParser/Funs.lean",
+      "rust_name": "aspis_core::v6_onefold::V6_C1_PACKED_BYTES_PER_QUERY",
+      "is_local": true,
+      "source": {
+        "file": "crates/aspis-core/src/v6_onefold.rs",
+        "begin_line": 56,
+        "end_line": 56
+      },
+      "can_fail": true
+    },
+    {
+      "def_id": 18,
+      "lean_name": "V7DeferredParserGenerated.v6_onefold.V6_C2_PACKED_BYTES_PER_QUERY",
+      "lean_file": "V7DeferredParser/Funs.lean",
+      "rust_name": "aspis_core::v6_onefold::V6_C2_PACKED_BYTES_PER_QUERY",
+      "is_local": true,
+      "source": {
+        "file": "crates/aspis-core/src/v6_onefold.rs",
+        "begin_line": 57,
+        "end_line": 57
+      },
+      "can_fail": true
+    },
+    {
+      "def_id": 1,
+      "lean_name": "V7DeferredParserGenerated.v7_onefold.V7_COMPACT_DIGEST_BYTES",
+      "lean_file": "V7DeferredParser/Funs.lean",
+      "rust_name": "aspis_core::v7_onefold::V7_COMPACT_DIGEST_BYTES",
+      "is_local": true,
+      "source": {
+        "file": "crates/aspis-core/src/v7_onefold.rs",
+        "begin_line": 26,
+        "end_line": 26
+      },
+      "can_fail": false
+    },
+    {
+      "def_id": 0,
+      "lean_name": "V7DeferredParserGenerated.v7_onefold.V7_COMPACT_FRONTIER_CAP_PER_TREE",
+      "lean_file": "V7DeferredParser/Funs.lean",
+      "rust_name": "aspis_core::v7_onefold::V7_COMPACT_FRONTIER_CAP_PER_TREE",
+      "is_local": true,
+      "source": {
+        "file": "crates/aspis-core/src/v7_onefold.rs",
+        "begin_line": 29,
+        "end_line": 29
+      },
+      "can_fail": false
+    },
+    {
+      "def_id": 14,
+      "lean_name": "V7DeferredParserGenerated.v7_onefold.V7_COMPACT_PRIVATE_SALT_BYTES",
+      "lean_file": "V7DeferredParser/Funs.lean",
+      "rust_name": "aspis_core::v7_onefold::V7_COMPACT_PRIVATE_SALT_BYTES",
+      "is_local": true,
+      "source": {
+        "file": "crates/aspis-core/src/v7_onefold.rs",
+        "begin_line": 47,
+        "end_line": 47
+      },
+      "can_fail": false
+    },
+    {
+      "def_id": 3,
+      "lean_name": "V7DeferredParserGenerated.v7_onefold.V7_COMPACT_PRODUCTION_LIMIT_BYTES",
+      "lean_file": "V7DeferredParser/Funs.lean",
+      "rust_name": "aspis_core::v7_onefold::V7_COMPACT_PRODUCTION_LIMIT_BYTES",
+      "is_local": true,
+      "source": {
+        "file": "crates/aspis-core/src/v7_onefold.rs",
+        "begin_line": 48,
+        "end_line": 48
+      },
+      "can_fail": true
+    },
+    {
+      "def_id": 12,
+      "lean_name": "V7DeferredParserGenerated.v7_onefold.V7_COMPACT_C1_BYTES_PER_QUERY",
+      "lean_file": "V7DeferredParser/Funs.lean",
+      "rust_name": "aspis_core::v7_onefold::V7_COMPACT_C1_BYTES_PER_QUERY",
+      "is_local": true,
+      "source": {
+        "file": "crates/aspis-core/src/v7_onefold.rs",
+        "begin_line": 49,
+        "end_line": 49
+      },
+      "can_fail": true
+    },
+    {
+      "def_id": 13,
+      "lean_name": "V7DeferredParserGenerated.v7_onefold.V7_COMPACT_C2_BYTES_PER_QUERY",
+      "lean_file": "V7DeferredParser/Funs.lean",
+      "rust_name": "aspis_core::v7_onefold::V7_COMPACT_C2_BYTES_PER_QUERY",
+      "is_local": true,
+      "source": {
+        "file": "crates/aspis-core/src/v7_onefold.rs",
+        "begin_line": 50,
+        "end_line": 50
+      },
+      "can_fail": true
+    },
+    {
+      "def_id": 10,
+      "lean_name": "V7DeferredParserGenerated.v7_onefold.V7_COMPACT_QUERY_BYTES",
+      "lean_file": "V7DeferredParser/Funs.lean",
+      "rust_name": "aspis_core::v7_onefold::V7_COMPACT_QUERY_BYTES",
+      "is_local": true,
+      "source": {
+        "file": "crates/aspis-core/src/v7_onefold.rs",
+        "begin_line": 51,
+        "end_line": 52
+      },
+      "can_fail": true
+    },
+    {
+      "def_id": 6,
+      "lean_name": "V7DeferredParserGenerated.v7_onefold.V7_COMPACT_QUERY_SECTION_BYTES",
+      "lean_file": "V7DeferredParser/Funs.lean",
+      "rust_name": "aspis_core::v7_onefold::V7_COMPACT_QUERY_SECTION_BYTES",
+      "is_local": true,
+      "source": {
+        "file": "crates/aspis-core/src/v7_onefold.rs",
+        "begin_line": 53,
+        "end_line": 53
+      },
+      "can_fail": true
+    },
+    {
+      "def_id": 7,
+      "lean_name": "V7DeferredParserGenerated.v7_onefold.V7_COMPACT_ROOT_BYTES",
+      "lean_file": "V7DeferredParser/Funs.lean",
+      "rust_name": "aspis_core::v7_onefold::V7_COMPACT_ROOT_BYTES",
+      "is_local": true,
+      "source": {
+        "file": "crates/aspis-core/src/v7_onefold.rs",
+        "begin_line": 54,
+        "end_line": 54
+      },
+      "can_fail": true
+    },
+    {
+      "def_id": 2,
+      "lean_name": "V7DeferredParserGenerated.v7_onefold.V7_COMPACT_BODY_WITHOUT_FRONTIERS",
+      "lean_file": "V7DeferredParser/Funs.lean",
+      "rust_name": "aspis_core::v7_onefold::V7_COMPACT_BODY_WITHOUT_FRONTIERS",
+      "is_local": true,
+      "source": {
+        "file": "crates/aspis-core/src/v7_onefold.rs",
+        "begin_line": 55,
+        "end_line": 58
+      },
+      "can_fail": true
+    }
+  ],
+  "trait_decls": [],
+  "trait_impls": [
+    {
+      "def_id": 2,
+      "lean_name": "V7DeferredParserGenerated.v7_onefold.V7CompactOneFoldWire.parse_deferred_canonicality.closure_2.Insts.CoreOpsFunctionFnOnceTupleTryFromSliceErrorV6WireError",
+      "lean_file": "V7DeferredParser/Funs.lean",
+      "rust_name": "aspis_core::v7_onefold::{aspis_core::v7_onefold::V7CompactOneFoldWire<'a>}::parse_deferred_canonicality::{impl core::ops::function::FnOnce<(core::array::TryFromSliceError,), aspis_core::v6_onefold::V6WireError> for aspis_core::v7_onefold::{aspis_core::v7_onefold::V7CompactOneFoldWire<'a>}::parse_deferred_canonicality::closure#2<'a>}",
+      "is_local": true,
+      "source": {
+        "file": "crates/aspis-core/src/v7_onefold.rs",
+        "begin_line": 159,
+        "end_line": 159
+      },
+      "impl_trait_def_id": 5,
+      "impl_trait_rust_name": "core::ops::function::FnOnce",
+      "impl_trait_is_builtin": true
+    },
+    {
+      "def_id": 1,
+      "lean_name": "V7DeferredParserGenerated.v7_onefold.V7CompactOneFoldWire.parse_deferred_canonicality.closure_1.Insts.CoreOpsFunctionFnOnceTupleTryFromSliceErrorV6WireError",
+      "lean_file": "V7DeferredParser/Funs.lean",
+      "rust_name": "aspis_core::v7_onefold::{aspis_core::v7_onefold::V7CompactOneFoldWire<'a>}::parse_deferred_canonicality::{impl core::ops::function::FnOnce<(core::array::TryFromSliceError,), aspis_core::v6_onefold::V6WireError> for aspis_core::v7_onefold::{aspis_core::v7_onefold::V7CompactOneFoldWire<'a>}::parse_deferred_canonicality::closure#1<'a>}",
+      "is_local": true,
+      "source": {
+        "file": "crates/aspis-core/src/v7_onefold.rs",
+        "begin_line": 158,
+        "end_line": 158
+      },
+      "impl_trait_def_id": 5,
+      "impl_trait_rust_name": "core::ops::function::FnOnce",
+      "impl_trait_is_builtin": true
+    },
+    {
+      "def_id": 0,
+      "lean_name": "V7DeferredParserGenerated.v7_onefold.V7CompactOneFoldWire.parse_deferred_canonicality.closure.Insts.CoreOpsFunctionFnOnceTupleTryFromSliceErrorV6WireError",
+      "lean_file": "V7DeferredParser/Funs.lean",
+      "rust_name": "aspis_core::v7_onefold::{aspis_core::v7_onefold::V7CompactOneFoldWire<'a>}::parse_deferred_canonicality::{impl core::ops::function::FnOnce<(core::array::TryFromSliceError,), aspis_core::v6_onefold::V6WireError> for aspis_core::v7_onefold::{aspis_core::v7_onefold::V7CompactOneFoldWire<'a>}::parse_deferred_canonicality::closure<'a>}",
+      "is_local": true,
+      "source": {
+        "file": "crates/aspis-core/src/v7_onefold.rs",
+        "begin_line": 157,
+        "end_line": 157
+      },
+      "impl_trait_def_id": 5,
+      "impl_trait_rust_name": "core::ops::function::FnOnce",
+      "impl_trait_is_builtin": true
+    }
+  ]
+}

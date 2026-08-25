@@ -1,0 +1,63 @@
+V7 exact deployed-root accepted-source replay
+Date: 2026-08-25 Europe/London
+Exit status: 0
+Result: V7 exact deployed-root accepted-source replay: PASS (no source-overlay equivalence boundary)
+
+Command (from /Users/dominic/ZK-v7):
+
+  CHARON_BIN=/Users/dominic/charon-cb50-metadata/bin/charon \
+  AENEAS_BIN=/private/tmp/aspis-v6-aeneas-result-aware.UcbEt6/aeneas/src/_build/default/main.exe \
+  AENEAS_LEAN_BACKEND=/private/tmp/aspis-v6-aeneas-result-aware.UcbEt6/aeneas/backends/lean \
+  bash aeneas-verif/v7-onefold-accepted-source-20260825/replay.sh
+
+The replay forced CARGO_BUILD_JOBS=1, LEAN_NUM_THREADS=1, Aeneas
+`-sequential`, and Lean `-j1`. The largest observed aggregate RSS of matching
+Charon/Aeneas/Cargo/Lean/Lake/Rust processes was 1,005,376 KiB; the largest
+single observed process was 650,192 KiB.
+
+Pinned deployed inputs:
+
+- commit: 1589706d38a5e8ca705fbf7aaed2c82cf8595510
+- tree: d43572d059a48a871933be4ab7067e7ded2fab28
+- production SBF SHA-256:
+  0d3c21f3ba9b291149aa82d9632417669bbe9a6490a46f718522666b47a670f4
+- frozen proof SHA-256:
+  e8e15ce268447b92ac1344292bc879dcb0bf7534621ce077d8790097975dcecb
+
+Pinned translation tools:
+
+- Charon binary SHA-256:
+  776344b8bfb7f3ec4ba78d5007ae79c1ef3f4ed654de05f04266693759a37375
+- patched Aeneas binary SHA-256:
+  c824ad52b6fecc69abd41ed3206781132f6c84850de2ee6bb5bbb0ed5ad29926
+- static-return Aeneas patch SHA-256:
+  e1478a1b08a116af4902116b53848df2ff06dced82776dc549e01a3eaaee79fa
+
+Replay checks passed:
+
+1. Source checksums from a disposable git archive of the deployed commit.
+2. Exact unmodified production-root Charon extraction.
+3. Normalized production LLBC SHA-256:
+   46e15b05151445109ce5bb3dced20242c9aac0000f086a6282e2e01d77c88763
+4. Direct Aeneas translation of all 11 transparent functions without an
+   extraction-only Rust wrapper.
+5. Byte-for-byte equality for regenerated production Types/Funs/external
+   templates and normalized translation metadata.
+6. Kernel compilation of the exact generated production root and the direct
+   source-bridge proof.
+7. Kernel compilation of the independently generated deployed parser bridge.
+8. No `sorry` or `admit` in the checked Lean bundle.
+
+Direct deployed-root theorems checked:
+
+- AspisV7ProductionRootSourceBridge.deployedRoot_success_exact
+- AspisV7ProductionRootSourceBridge.deployedRoot_parser_rejection_is_fail_closed
+- AspisV7ProductionRootSourceBridge.deployedRoot_transcript_rejection_is_fail_closed
+
+The former V7-SOURCE-OVERLAY-EQUIVALENCE source-review boundary is absent from
+this proof chain. Remaining named boundaries are the correctness of the pinned
+Charon/Aeneas translators and the generated typed opaque interfaces (parser,
+schedule accessors, transcript/relation verifier, field/terminal functions and
+Solana public-key conversion), plus SHA-256, SBF compilation and runtime
+correspondence. No production Rust, cryptography, SBF, proof, or deployed state
+was changed by this replay.

@@ -1,0 +1,47 @@
+diff --git a/programs/aspis-verifier/src/v7_verifier.rs b/programs/aspis-verifier/src/v7_verifier.rs
+index 54ba589..8355f0a 100644
+--- a/programs/aspis-verifier/src/v7_verifier.rs
++++ b/programs/aspis-verifier/src/v7_verifier.rs
+@@ -129,3 +129,42 @@ pub fn verify_v7_read_only_with_statement_digest(
+         folded_query_sum,
+     })
+ }
++
++/// Diagnostic-only root used to demonstrate the second frozen-schedule
++/// translation failure after the first schedule has been supplied explicitly.
++#[allow(clippy::too_many_arguments)]
++fn verify_v7_read_only_with_statement_digest_row_schedule_only(
++    hash: HashFn,
++    proof: &[u8],
++    frontier_nodes: usize,
++    program_id: &Pubkey,
++    release_binding: [u8; 32],
++    attempt_id: &Pubkey,
++    statement: &AtomicPaymentStatementV4,
++    statement_digest: [u8; 32],
++    inactive_row_groups: &[u8; 64],
++    check_pow: bool,
++) -> Result<VerifiedV7ReadOnly, V7VerifyError> {
++    let wire = V7CompactOneFoldWire::parse_deferred_canonicality(proof, frontier_nodes)?;
++    let context = V6TranscriptContext {
++        program_id: program_id.to_bytes(),
++        release_binding,
++        statement_digest,
++        attempt_id: attempt_id.to_bytes(),
++    };
++    let transcript = verify_v7_compact_transcript_and_relation_prepared(
++        hash,
++        &wire,
++        &context,
++        inactive_row_groups,
++        atomic_state_only_copy_inactive_group_masks_v3(),
++        check_pow,
++        |view| crate::v6_verifier::terminal_matches(statement, view),
++        |view| authenticate_and_fold_queries(hash, &wire, view),
++    )?;
++    let folded_query_sum = transcript.folded_query_sum;
++    Ok(VerifiedV7ReadOnly {
++        transcript,
++        folded_query_sum,
++    })
++}
