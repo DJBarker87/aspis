@@ -990,6 +990,9 @@ impl DurableRelayerStateV1 {
         &mut self,
         policy: RelayerPolicyV1,
         request_id: [u8; 32],
+        now_slot: u64,
+        estimated_fee_lamports: u64,
+        fee_payer_balance_lamports: u64,
     ) -> Result<(), DurableStateErrorV1> {
         if relayer_policy_id_v1(policy) != self.policy_id {
             return Err(DurableStateErrorV1::PolicyMismatch);
@@ -1017,11 +1020,13 @@ impl DurableRelayerStateV1 {
         if entry.status != DurableRelayerStatusV1::Queued {
             return Err(DurableStateErrorV1::InvalidQueueTransition);
         }
-        if entry.plan.fee_payer != policy.operator_fee_payer
-            || !policy_allows_kind_v1(policy, entry.plan.kind)
-        {
-            return Err(DurableStateErrorV1::InvalidQueueTransition);
-        }
+        validate_execution_context_v1(
+            policy,
+            &entry.plan,
+            now_slot,
+            estimated_fee_lamports,
+            fee_payer_balance_lamports,
+        )?;
         entry.status = DurableRelayerStatusV1::Inflight;
         self.persist_entries_v1(entries)
     }
@@ -1137,6 +1142,66 @@ fn policy_allows_kind_v1(policy: RelayerPolicyV1, kind: RelayerRequestKindV1) ->
         RelayerRequestKindV1::PrivateTransfer => policy.allow_private_transfer,
         RelayerRequestKindV1::Withdrawal => policy.allow_withdrawal,
     }
+}
+
+fn validate_execution_context_v1(
+    policy: RelayerPolicyV1,
+    plan: &RelayerPlanV1,
+    now_slot: u64,
+    estimated_fee_lamports: u64,
+    fee_payer_balance_lamports: u64,
+) -> Result<(), DurableStateErrorV1> {
+    if plan.fee_payer != policy.operator_fee_payer {
+        return Err(DurableStateErrorV1::Admission(
+            RelayerAdmissionErrorV1::WrongFeePayer,
+        ));
+    }
+    if !policy_allows_kind_v1(policy, plan.kind) {
+        return Err(DurableStateErrorV1::Admission(
+            RelayerAdmissionErrorV1::InstructionKindDisabled,
+        ));
+    }
+    if plan.snapshot.observed_slot > now_slot {
+        return Err(DurableStateErrorV1::Admission(
+            RelayerAdmissionErrorV1::FutureSnapshot,
+        ));
+    }
+    if now_slot - plan.snapshot.observed_slot > policy.max_snapshot_age_slots {
+        return Err(DurableStateErrorV1::Admission(
+            RelayerAdmissionErrorV1::StaleSnapshot,
+        ));
+    }
+    if estimated_fee_lamports > policy.max_estimated_fee_lamports {
+        return Err(DurableStateErrorV1::Admission(
+            RelayerAdmissionErrorV1::FeeEstimateTooHigh,
+        ));
+    }
+    let required = policy
+        .minimum_fee_payer_reserve_lamports
+        .checked_add(estimated_fee_lamports)
+        .ok_or(DurableStateErrorV1::Admission(
+            RelayerAdmissionErrorV1::InsufficientFeeReserve,
+        ))?;
+    if fee_payer_balance_lamports < required {
+        return Err(DurableStateErrorV1::Admission(
+            RelayerAdmissionErrorV1::InsufficientFeeReserve,
+        ));
+    }
+    if plan.kind != RelayerRequestKindV1::Deposit {
+        let mut signers = plan
+            .instruction
+            .accounts
+            .iter()
+            .filter(|account| account.is_signer);
+        if !matches!(signers.next(), Some(account) if account.pubkey == plan.fee_payer)
+            || signers.next().is_some()
+        {
+            return Err(DurableStateErrorV1::Admission(
+                RelayerAdmissionErrorV1::OperatorSignerMismatch,
+            ));
+        }
+    }
+    Ok(())
 }
 
 fn validate_policy_shape_v1(policy: RelayerPolicyV1) -> Result<(), DurableStateErrorV1> {
@@ -1730,7 +1795,9 @@ mod tests {
                 .unwrap(),
             RelayerEnqueueOutcomeV1::AlreadyPresent
         );
-        store.mark_inflight_v1(policy, first.request_id).unwrap();
+        store
+            .mark_inflight_v1(policy, first.request_id, 910, 5_000, 1_005_000)
+            .unwrap();
         drop(store);
 
         let mut restarted = DurableRelayerStateV1::open_or_create_v1(&path, policy).unwrap();
