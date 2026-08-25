@@ -2,14 +2,22 @@ import Mathlib.MeasureTheory.Integral.Lebesgue.Markov
 import AspisFormal.K1.V7FsAokExperiment
 
 /-!
-# The conditional classical-ROM compiler step for V7 Tag 73
+# Legacy conditional probability ledger for V7 Tag 73
 
-This file proves the probability bookkeeping around the Fiat--Shamir step.  It
-does **not** postulate the desired bound as a field of a compiler object.  The
-the core protocol-specific statement that is not yet proved is exposed as
+This file proves probability bookkeeping around a deliberately conditional
+Fiat--Shamir step.  It does **not** instantiate the deployed Tag-73 compiler,
+and it does not postulate the desired bound as a field of a compiler object.
+The core protocol-specific statement that is not yet proved is exposed as
 `Tag73FreshAcceptanceTraceCover`: outside the enumerated compiler events, a
 fresh accepting deployed execution must induce a legal restricted
 state-restoration execution of the interactive Tag-73 IOP.
+
+The event vocabulary below predates the exact applicability audit and is an
+over-inclusive observed-proof ledger.  In particular its BCS, C2, grinding,
+sampler, simulator, and WUR entries are **not** established plain-ROM Tag-73
+losses.  Names containing `exact` mean only that the supplied allowances are
+expanded and summed without hidden normalization.  The honest plain failure
+partition is defined separately in `V7Tag73PlainRawError`.
 
 Observed-proof instantiation also needs the separately enumerated canonical
 simulation, programming, and weak-unique-response event bounds; this file does
@@ -31,11 +39,10 @@ open AspisK1.V7Tag73TranscriptSchedule
 
 noncomputable section
 
-/-! ## Exact raw error vocabulary -/
+/-! ## Legacy conditional allowance vocabulary -/
 
-/-- Failures internal to the Tag-73 ROM-to-interactive trace adapter.  The
-three nonce loops are separate constructors because they occur at different
-saved transcript states. -/
+/-- Historical candidate events for an observed-proof adapter.  This type is
+not a claim that every constructor contributes loss to the plain theorem. -/
 inductive CompilerFailureKind where
   | bcsFull256HashChain
   | challengeDependentC2
@@ -91,9 +98,10 @@ structure UpstreamErrorTerms where
   k14CoherentChainSelection : ENNReal
   k15SpendWitnessRecovery : ENNReal
 
-/-- The exact full-output BCS 2016 Theorem 7.1 compiler term at 256 bits.
-It is not a 104-bit birthday slogan, and it says nothing about the separate
-208-bit two-tree commitment error. -/
+/-- The literal full-output BCS 2016 Theorem 7.1 benchmark at 256 bits.
+`V7BcsApplicabilityGate` proves that the deployed Tag-73 transcript is not the
+literal Section-6 compiler, so this definition is not an instantiated Tag-73
+loss.  It is retained only for the legacy conditional ledger. -/
 def bcsFull256HashChainLoss (adversaryOracleQueries : Nat) : ENNReal :=
   3 * (((adversaryOracleQueries : ENNReal) ^ 2) + 1) /
     ((2 : ENNReal) ^ 256)
@@ -147,7 +155,9 @@ def upstreamFailureAllowance (terms : UpstreamErrorTerms) :
   | .k14CoherentChainSelection => terms.k14CoherentChainSelection
   | .k15SpendWitnessRecovery => terms.k15SpendWitnessRecovery
 
-/-- The raw compiler loss is a union-bound sum, not a work-normalized ratio. -/
+/-- Sum of the legacy supplied allowances, not a proved Tag-73 compiler loss.
+It is at least honest about using a raw union sum rather than work
+normalization. -/
 def exactCompilerRawError (budget : ResourceBudget)
     (minimumChallengeCardinality : Nat) (terms : CompilerErrorTerms) : ENNReal :=
   ∑ kind : CompilerFailureKind,
@@ -161,6 +171,11 @@ def exactTag73RawExtractionError (budget : ResourceBudget)
     (compiler : CompilerErrorTerms) : ENNReal :=
   exactUpstreamRawError upstream +
     exactCompilerRawError budget minimumChallengeCardinality compiler
+
+/-! Despite its historical name, `exactTag73RawExtractionError` is exact only
+as an algebraic expansion of caller-supplied allowances.  It must not be used
+as the final plain-ROM error expression without proving the corresponding
+events and the trace cover. -/
 
 /-! The following two equations make every summand kernel-visible. -/
 
@@ -236,19 +251,21 @@ def compilerFailureUnion {Sample : Type*}
     (events : CompilerFailureEvents Sample) : Set Sample :=
   ⋃ kind : CompilerFailureKind, events.event kind
 
-/-! ## A typed interactive target, independent of FS acceptance -/
+/-! ## Legacy candidate interactive target -/
 
 structure RestrictedReplay (RandomTape : Type*) where
   tapeIdentity : RandomTape
-  /-- Prefix index in the deployed event schedule.  Zero is the forbidden
-  empty-verifier checkpoint of restricted state restoration. -/
+  /-- Legacy event-prefix metadata. Positivity does not by itself prove that
+  this prefix denotes a complete previously seen verifier state. -/
   prefixLength : Nat
   /-- Only queries newly made by this replay, not the inherited first-run
   prefix. -/
   newQueries : List QueryRecord
 
-/-- Operational data produced by the missing ROM-to-IOP adapter.  It contains
-no witness and no assertion that extraction succeeded. -/
+/-- Legacy candidate adapter data. A caller can construct this record without
+running `checkedRefine` or the start-only coupling, so the record is not itself
+evidence of deployed refinement or legal state restoration. It contains no
+witness and no assertion that extraction succeeded. -/
 structure InteractiveTag73Run
     (RandomTape Statement Proof : Type*) where
   transcriptOracle : HashOracle
@@ -338,6 +355,10 @@ def q1OnlyContainsAdversaryQueries
     (run : InteractiveTag73Run RandomTape Statement Proof) : Prop :=
   ∀ query ∈ run.firstRunQ1, query.actor = .adversary
 
+/-- Legacy token/prefix checks. Equality of a public tape token and a positive
+event index prove neither common hidden-tape origin nor a complete verifier
+checkpoint; `V7FsStateRestorationCoupling` supplies the stronger start-only
+operational construction and leaves the complete-state map explicit. -/
 def replaysUseSameTapeAndNonemptyCheckpoints
     {RandomTape Statement Proof : Type*}
     (run : InteractiveTag73Run RandomTape Statement Proof) : Prop :=
@@ -349,9 +370,10 @@ def replaysUseSameTapeAndNonemptyCheckpoints
         (afterAcceptedQueryScan run.messages).length ∧
     ∀ query ∈ replay.newQueries, query.actor = .extractorReplay
 
-/-- Concrete operational legality.  C2 dependency, three stage-indexed
-grinding choices, and first-cap-203 selection are already enforced by the
-dependent fields of `Messages` and `FirstCap203Search`. -/
+/-- Legacy candidate legality predicate. The dependent schedule fields encode
+C2 ordering, stage-indexed nonce annotations, and first-cap-203 selection, but
+this predicate does not link raw blocks to decoders, derive terminal acceptance,
+or prove that replay prefixes are legal verifier states. -/
 def IsLegalInteractiveTag73
     {RandomTape Statement Proof : Type*} (budget : ResourceBudget)
     (run : InteractiveTag73Run RandomTape Statement Proof) : Prop :=
@@ -388,8 +410,9 @@ def IsLegalInteractiveTag73
   run.sharedOracle.totalCalls = run.sharedOracle.history.length ∧
   WithinBudget run.resources budget
 
-/-- The interactive set is derived from an adapter-produced typed run; it is
-not an arbitrary set that could be chosen equal to FS acceptance. -/
+/-- Legacy set selected through a caller-supplied `world`. The type alone does
+not show that `world` was produced by the deterministic adapter, so no theorem
+should treat this set as an instantiated interactive execution. -/
 def legalInteractiveTag73Set
     {Sample RandomTape Statement Proof Witness : Type*}
     [Fintype Sample] [MeasurableSpace Sample]
@@ -412,8 +435,10 @@ def legalInteractiveTag73Set
       (experiment.outcome sample).simulations.length ∧
     IsLegalInteractiveTag73 experiment.budget run}
 
-/-- The exact currently-missing K1.6 statement.  This cover mentions no
-witness and no extraction probability. -/
+/-- Legacy conditional cover. It packages essentially the missing compiler
+bridge and is therefore not accepted as a proof of K1.6. It mentions no
+witness and no extraction probability, but a caller still has to prove the
+acceptance-to-interactive inclusion. -/
 def Tag73FreshAcceptanceTraceCover
     {Sample RandomTape Statement Proof Witness : Type*}
     [Fintype Sample] [MeasurableSpace Sample]
@@ -423,8 +448,10 @@ def Tag73FreshAcceptanceTraceCover
   FreshAcceptanceEvent experiment \ legalInteractiveTag73Set experiment world ⊆
     compilerFailureUnion events
 
-/-- Honest typed K1.2--K1.5 insertion point.  Its left side is the interactive
-state-restoration experiment, never the Fiat--Shamir accepting event. -/
+/-- Conditional K1.2--K1.5 insertion point for the legacy candidate set. Its
+left side is not the Fiat--Shamir accepting event, but it becomes an honest
+state-restoration premise only after the candidate set is constructively
+linked to the exact interactive experiment. -/
 def UpstreamK12ToK15KnowledgeBound
     {Sample RandomTape Statement Proof Witness : Type*}
     [Fintype Sample] [MeasurableSpace Sample]
@@ -436,6 +463,8 @@ def UpstreamK12ToK15KnowledgeBound
     polynomialLoss * validExtractionProbability experiment +
       exactUpstreamRawError terms
 
+/-- Caller-supplied bounds for every legacy event. This structure performs no
+Tag-73 probability analysis and can double-count overlapping events. -/
 structure CompilerFailureBounds
     {Sample RandomTape Statement Proof Witness : Type*}
     [Fintype Sample] [MeasurableSpace Sample]
@@ -471,13 +500,14 @@ theorem compiler_failure_union_probability_le
     _ = exactCompilerRawError experiment.budget minimumChallengeCardinality
           terms := rfl
 
-/-! ## Conditional K1.6 theorems -/
+/-! ## Legacy conditional K1.6 bookkeeping theorems -/
 
-/-- Raw observed-proof AoK inequality.  The theorem proves the compiler
+/-- Conditional observed-proof AoK arithmetic.  The theorem proves the
 arithmetic from (1) the protocol-specific trace cover, (2) the interactive
 K1.2--K1.5 knowledge theorem, and (3) individually bounded raw events.  It does
 not divide soundness by adversary work and it does not assert pointwise
-extraction from every accepting proof. -/
+extraction from every accepting proof.  It is not a proof of the trace cover
+or of literal BCS applicability. -/
 theorem v7_tag73_fs_aok_raw_from_trace_cover
     {Sample RandomTape Statement Proof Witness : Type*}
     [Fintype Sample] [MeasurableSpace Sample]
