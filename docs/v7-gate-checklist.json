@@ -1,0 +1,94 @@
+{
+  "protocol": "Aspis V7 staged split-tensor + V6 one-fold",
+  "status": "ACTIVE_PHASE_3_HOST_REFERENCE",
+  "baseline_required": "v6-onefold-research-freeze",
+  "repository_baseline": {
+    "commit": "a6fa6d817e3cf343c8639684e4ab2ce289c40355",
+    "v6_proof_body_bytes": 33336,
+    "v6_sbf_sha256": "53ff6c8da29646bb8fc78f37656e42bf1c53bbe10026df13eea77624b66f1d4d",
+    "v6_devnet_compute_units": 1247328,
+    "status": "source/devnet frozen; final formal release certificates running on NUC"
+  },
+  "preferred_targets": {
+    "proof_body_bytes": 30720,
+    "full_verifier_cu": 1300000,
+    "hard_cu_gate": 1350000,
+    "peak_prover_memory_mib": 192,
+    "hard_peak_memory_mib": 256,
+    "work_relative_to_v6": 1.25,
+    "hard_work_relative_to_v6": 1.5,
+    "work_normalized_security_bits": 100
+  },
+  "phases": [
+    {
+      "id": 0,
+      "name": "V6 freeze",
+      "status": "complete for V7 baseline at a6fa6d8; V6 release proof tail continues independently"
+    },
+    {
+      "id": 1,
+      "name": "split-tensor algebra",
+      "status": "complete: exact manifest, Rust zeta/Mobius/MLE implementation, KATs, and Lean 26+3 restriction identity"
+    },
+    {
+      "id": 2,
+      "name": "published-theorem audit",
+      "status": "complete: direct SwitchFold shape rejected; degree-corrected S-two random-point PCS fallback selected"
+    },
+    {
+      "id": 3,
+      "name": "host reference code switch",
+      "status": "in progress"
+    },
+    {
+      "id": 4,
+      "name": "deterministic formal extraction",
+      "status": "not started"
+    },
+    {
+      "id": 5,
+      "name": "query/frontier formalisation",
+      "status": "not started"
+    },
+    {
+      "id": 6,
+      "name": "SBF kernel prototype",
+      "status": "not started"
+    },
+    {
+      "id": 7,
+      "name": "complete wire/prover",
+      "status": "not started"
+    },
+    {
+      "id": 8,
+      "name": "complete hiding theorem",
+      "status": "not started"
+    },
+    {
+      "id": 9,
+      "name": "security ledger and BCS",
+      "status": "not started"
+    },
+    {
+      "id": 10,
+      "name": "Rust-to-Lean closure",
+      "status": "not started"
+    },
+    {
+      "id": 11,
+      "name": "deployment/release",
+      "status": "not started"
+    }
+  ],
+  "hard_kill_conditions": [
+    "exact code-switch theorem cannot be matched without a new unbounded conjecture",
+    "production link requires all four source rows for every V6 fibre",
+    "net code-switch overhead exceeds 2840 bytes for the 30 KiB target",
+    "full verifier exceeds 1.35M CU",
+    "peak prover memory exceeds 256 MiB",
+    "expected honest grinding exceeds 1.5x V6",
+    "complete-view hiding requires changes that erase the operational gain",
+    "final security theorem has an unbudgeted dominant event"
+  ]
+}

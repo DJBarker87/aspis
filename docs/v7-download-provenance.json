@@ -1,0 +1,47 @@
+{
+  "artifact": "aspis_v7_download_groundwork_provenance",
+  "schema_version": 1,
+  "imported_at_utc": "2026-08-25T08:37:30Z",
+  "baseline_commit": "a6fa6d817e3cf343c8639684e4ab2ce289c40355",
+  "sources": [
+    {
+      "download_name": "aspis_v7_split_tensor_onefold_plan.md",
+      "download_sha256": "b4f2f6a8184ae6a0cc3c80614d4d9f4334bc2c30194a953037d3d08adfb27f93",
+      "repository_path": "docs/v7-split-tensor-onefold-plan.md",
+      "import_policy": "copied, then corrected only for the frozen V6 baseline and derived byte budget"
+    },
+    {
+      "download_name": "aspis_v7_gate_checklist.json",
+      "download_sha256": "6c191d42648fc8e9617dff937d3b37a65f91674a2ca9ffc637f705d62f745b3b",
+      "repository_path": "docs/v7-gate-checklist.json",
+      "import_policy": "copied, then corrected only for the frozen V6 baseline and derived byte budget"
+    },
+    {
+      "download_name": "aspis_research_cryptography_assurance_standard.md",
+      "download_sha256": "f389681068bc982c45275ed9c2175674bfe7e241f62ec5f6e4d0fc0816c9e65a",
+      "repository_path": "docs/v7-cryptography-assurance-standard.md",
+      "import_policy": "byte-for-byte copy"
+    }
+  ],
+  "derived_corrections": {
+    "v6_body_bytes": 33336,
+    "bytes_to_save_for_30_kib": 2616,
+    "gross_query_record_saving": 5456,
+    "maximum_net_link_overhead_for_30_kib": 2840
+  },
+  "phase_1_artifacts": {
+    "profile_manifest_sha256": "871fd1518b1548d7daca2a48e88ef97ec05a6f5390c959d0df8af4067c89bbe0",
+    "rust_profile_sha256": "0b5f15c358f9897d84dcb6377e3ea448e5ebceba0bca42660ad60996de3c4a02",
+    "rust_lane_zeta_sha256": "41d0ad3a95b4d39d6ea39d67e81a2631dc138ebe8630c1a9ff4c77fcd8a8f5a3",
+    "rust_kat_generator_sha256": "e8b3e39ae48be1503940a702b1a3c0bf1f4e2649a64b93e649c2c1aaf04397eb",
+    "lane_kats_sha256": "d9e6e5d4779380a9f1eeb61edce5bec784e293c0f2817ca664e6a953c60322be",
+    "lean_profile_sha256": "d301667657220845fe4e174cc790bc59814914f927f20296b7a93f19455553c2",
+    "lean_boolean_zeta_sha256": "37d8f9a5c9f0b44fd4d091e8dc4d89d8d34e0632aa00a49b63d0c22c296d6649",
+    "lean_gamma_restriction_sha256": "27ec36ea65a0643b16dc39706146a72041f2325bb5c36866c2ffa9caba2586ff"
+  },
+  "phase_2_artifacts": {
+    "theorem_audit_sha256": "b370f1321db21f630a6ed20b9be2b7abb2c80e368d67610de2e8b04279640177",
+    "lean_interfaces_sha256": "4ac865065efaa082789708022af729d034b3dcab5da7fc1e3017e87a57f5863e",
+    "decision": "preferred local code switch blocked; degree-corrected random-point PCS fallback selected"
+  }
+}

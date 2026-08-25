@@ -48,6 +48,8 @@ pub mod transcript;
 pub mod v6_onefold;
 pub mod v6_query_batch;
 pub mod v6_transcript;
+pub mod v7_lane_zeta;
+pub mod v7_profile;
 pub mod verify;
 
 pub use params::{FoldPayload, MerkleMode, Profile, PROFILES};

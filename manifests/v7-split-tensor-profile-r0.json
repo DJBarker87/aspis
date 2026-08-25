@@ -1,0 +1,52 @@
+{
+  "schema": "aspis-v7-split-tensor-profile",
+  "revision": "r0-phase1-algebra",
+  "status": "phase1-algebra-only-not-production-wire",
+  "baseline": {
+    "git_commit": "a6fa6d817e3cf343c8639684e4ab2ce289c40355",
+    "v6_profile": "tag72-onefold",
+    "v6_body_bytes": 33336,
+    "v6_final_coefficients": 256
+  },
+  "fields": {
+    "base": "M31",
+    "base_modulus": 2147483647,
+    "extension": "QM31",
+    "tower": "M31[i,u]/(i^2+1,u^2-(2+i))",
+    "qm31_limb_order": ["c0.a", "c0.b", "c1.a", "c1.b"],
+    "qm31_basis_order": ["1", "i", "u", "i*u"]
+  },
+  "row_variables": 10,
+  "row_coefficients": 1024,
+  "stage_a": {
+    "source_lanes": 26,
+    "lane_variables": 5,
+    "padded_lanes": 32,
+    "lane_index_order": "little-endian-bit-subset",
+    "padding_indices": [26, 27, 28, 29, 30, 31],
+    "lane_point": ["gamma", "gamma^2", "gamma^4", "gamma^8", "gamma^16"]
+  },
+  "stage_b": {
+    "source_qm31_lanes": 3,
+    "limbs_per_lane": 4,
+    "source_m31_lanes": 12,
+    "lane_variables": 4,
+    "padded_lanes": 16,
+    "flat_index": "basis_index+4*source_lane",
+    "padding_indices": [12, 13, 14, 15],
+    "lane_point": ["i", "u", "gamma", "gamma^2"],
+    "outer_gamma_power": 26
+  },
+  "combined_lane_order": {
+    "indices_0_through_25": "stage_a_m31_lanes",
+    "indices_26_through_28": "stage_b_qm31_lanes"
+  },
+  "commitment_table_transform": "boolean-subset-zeta",
+  "digest_bytes": 32,
+  "wire_r0_policy": {
+    "query_streams": "separate",
+    "salts": "independent",
+    "claim_table": "full",
+    "production_enabled": false
+  }
+}
