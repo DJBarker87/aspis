@@ -1,13 +1,17 @@
-# Aspis
+# Aspis: Transparent ZK Private Spends on Solana
 
 [![Spend integration](https://github.com/DJBarker87/aspis/actions/workflows/spend-integration.yml/badge.svg)](https://github.com/DJBarker87/aspis/actions/workflows/spend-integration.yml)
 
-Aspis is a research implementation of a private spend on Solana. A user proves
-that a private record can be spent under the pool's rules without publishing
-the record, owner secret, value, or Merkle path. The program verifies the
-proof, advances the pool, and records the public nullifier as spent atomically:
-every check and write succeeds together, or none of them do. The proof system does
-not require a trusted setup ceremony.
+Aspis is a **transparent ZK on Solana** research project: a
+**trusted-setup-free ZK** private-spend protocol with an **on-chain STARK
+verifier** built around Circle STARK techniques. A user proves that a private
+record can be spent under the pool's rules without publishing the record,
+owner secret, value, or Merkle path. The Solana program verifies the proof,
+advances the pool, and records the public nullifier as spent atomically: every
+check and write succeeds together, or none of them do.
+
+This is the `DJBarker87/aspis` cryptography project. It is unrelated to the
+DeFi product at `aspis.finance`.
 
 The result is more than one transaction. The repository connects the
 mathematical construction to Lean proofs, selected production Rust, a
