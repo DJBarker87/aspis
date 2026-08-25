@@ -71,7 +71,7 @@ coordinate is exposed.  After the output coordinate, `forkAdvance` retains it
 while waiting for the immediately following advance coordinate. -/
 inductive UnifiedExposureCursor (globalOracleCalls : Nat) where
   | machine
-      {MachineResult : Type}
+      {MachineResult : Type*}
       (limits : OracleLimits)
       (limitBound : limits.totalCalls ≤ globalOracleCalls)
       (actor : QueryActor)
@@ -132,7 +132,7 @@ inductive UnifiedExposureRequest (globalOracleCalls : Nat) where
   | halted
   | transitionLimit
   | machineFresh
-      {MachineResult : Type}
+      {MachineResult : Type*}
       (limits : OracleLimits)
       (limitBound : limits.totalCalls ≤ globalOracleCalls)
       (actor : QueryActor)
