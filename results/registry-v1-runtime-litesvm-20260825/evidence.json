@@ -1,0 +1,893 @@
+{
+  "schema": "aspis.registry-v1.runtime-evidence.v1",
+  "harness_version": "aspis-registry-litesvm-evidence-v1",
+  "litesvm_version": "0.16.0",
+  "agave_runtime_version": "4.2.1",
+  "execution_environment": "in-process LiteSVM; deterministic local identities; no RPC or network transaction",
+  "compute_unit_limit": 1400000,
+  "registry_program_id": "ESrpUvg2gM75m1mzoSuquCaoabs42edBCCdabdvDgJBg",
+  "program_id_status": "deterministic test-only runtime address; no deployment id selected",
+  "artifact": {
+    "path": "../artifacts/aspis_registry.so",
+    "bytes": 102648,
+    "sha256": "1066ffc4bf8a12a0ea56b64474b70e172162fc7852b66293c0c8c5f1380f0ff6",
+    "expected_bytes": 102648,
+    "expected_sha256": "1066ffc4bf8a12a0ea56b64474b70e172162fc7852b66293c0c8c5f1380f0ff6",
+    "exact_match": true
+  },
+  "addresses": {
+    "authority": "9hSR6S7WPtxmTojgo6GG3k4yDPecgJY292j7xrsUGWBu",
+    "entry_a": "9joS86JK8uNSUxwyRJeNfALho3ovvEezPBeNKNjYBM3L",
+    "entry_b": "HvBVXWQipQyeessQEDgWqhsrw1Tifrr5amoY9TVuucYb",
+    "payer": "AKnL4NNf3DGWZJS6cPknBuEGnVsV4A4m5tgebLHaRSZ9",
+    "pool": "6URwbPipuA4MJLG7LCRRZuWnms3JZ9cRG3z9indXWz8G",
+    "registry": "AoR8UZVhxqjZ4eTf4EU6dEQhS1kaUVfK1mwUxw22L42H",
+    "rollback_entry": "9HCGzTJBoxRK9C513yT4WzXik4Ps6BVRpe71zGSkxGBx",
+    "wrong_authority": "GyGKxMyg1p9SsHfm15MkNUu1u9TN2JtTspcdmrtGUdse"
+  },
+  "steps": [
+    {
+      "name": "initialize_registry_pda",
+      "slot": 100,
+      "outcome": "success",
+      "expected_error": null,
+      "actual_error": null,
+      "simulation_matches_execution": true,
+      "compute_units": 6786,
+      "compute_unit_limit": 1400000,
+      "fee_lamports": 10000,
+      "rent_debit_lamports": 1781760,
+      "payer_before_lamports": 50000000000,
+      "payer_after_lamports": 49998208240,
+      "payer_delta_lamports": 1791760,
+      "expected_payer_delta_lamports": 1791760,
+      "return_data": {
+        "program_id": "11111111111111111111111111111111",
+        "data_bytes": 0,
+        "data_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      "logs": [
+        "Program ComputeBudget111111111111111111111111111111 invoke [1]",
+        "Program ComputeBudget111111111111111111111111111111 success",
+        "Program ESrpUvg2gM75m1mzoSuquCaoabs42edBCCdabdvDgJBg invoke [1]",
+        "Program 11111111111111111111111111111111 invoke [2]",
+        "Program 11111111111111111111111111111111 success",
+        "Program ESrpUvg2gM75m1mzoSuquCaoabs42edBCCdabdvDgJBg consumed 6636 of 1399850 compute units",
+        "Program ESrpUvg2gM75m1mzoSuquCaoabs42edBCCdabdvDgJBg success"
+      ],
+      "system_program_invoke_observed": true,
+      "system_program_success_observed": true,
+      "rollback_accounts": []
+    },
+    {
+      "name": "wrong_authority_signer_rejected",
+      "slot": 100,
+      "outcome": "rejected",
+      "expected_error": "InstructionError(1, Custom(1095970824))",
+      "actual_error": "InstructionError(1, Custom(1095970824))",
+      "simulation_matches_execution": true,
+      "compute_units": 2741,
+      "compute_unit_limit": 1400000,
+      "fee_lamports": 10000,
+      "rent_debit_lamports": 0,
+      "payer_before_lamports": 49998208240,
+      "payer_after_lamports": 49998198240,
+      "payer_delta_lamports": 10000,
+      "expected_payer_delta_lamports": 10000,
+      "return_data": {
+        "program_id": "ESrpUvg2gM75m1mzoSuquCaoabs42edBCCdabdvDgJBg",
+        "data_bytes": 0,
+        "data_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      "logs": [
+        "Program ComputeBudget111111111111111111111111111111 invoke [1]",
+        "Program ComputeBudget111111111111111111111111111111 success",
+        "Program ESrpUvg2gM75m1mzoSuquCaoabs42edBCCdabdvDgJBg invoke [1]",
+        "Program ESrpUvg2gM75m1mzoSuquCaoabs42edBCCdabdvDgJBg consumed 2591 of 1399850 compute units",
+        "Program ESrpUvg2gM75m1mzoSuquCaoabs42edBCCdabdvDgJBg failed: custom program error: 0x41533008"
+      ],
+      "system_program_invoke_observed": false,
+      "system_program_success_observed": false,
+      "rollback_accounts": [
+        {
+          "label": "registry",
+          "address": "AoR8UZVhxqjZ4eTf4EU6dEQhS1kaUVfK1mwUxw22L42H",
+          "before": {
+            "exists": true,
+            "lamports": 1781760,
+            "owner": "ESrpUvg2gM75m1mzoSuquCaoabs42edBCCdabdvDgJBg",
+            "executable": false,
+            "rent_epoch": 18446744073709551615,
+            "data_bytes": 128,
+            "data_sha256": "a5dff556b0cf7a04cec55d30d2d3f8e4720d5fc15a8e8a427e4495160a7d06aa"
+          },
+          "after": {
+            "exists": true,
+            "lamports": 1781760,
+            "owner": "ESrpUvg2gM75m1mzoSuquCaoabs42edBCCdabdvDgJBg",
+            "executable": false,
+            "rent_epoch": 18446744073709551615,
+            "data_bytes": 128,
+            "data_sha256": "a5dff556b0cf7a04cec55d30d2d3f8e4720d5fc15a8e8a427e4495160a7d06aa"
+          },
+          "exact_match": true
+        }
+      ]
+    },
+    {
+      "name": "stored_authority_without_signature_rejected",
+      "slot": 100,
+      "outcome": "rejected",
+      "expected_error": "InstructionError(1, Custom(1095970824))",
+      "actual_error": "InstructionError(1, Custom(1095970824))",
+      "simulation_matches_execution": true,
+      "compute_units": 2744,
+      "compute_unit_limit": 1400000,
+      "fee_lamports": 5000,
+      "rent_debit_lamports": 0,
+      "payer_before_lamports": 49998198240,
+      "payer_after_lamports": 49998193240,
+      "payer_delta_lamports": 5000,
+      "expected_payer_delta_lamports": 5000,
+      "return_data": {
+        "program_id": "ESrpUvg2gM75m1mzoSuquCaoabs42edBCCdabdvDgJBg",
+        "data_bytes": 0,
+        "data_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      "logs": [
+        "Program ComputeBudget111111111111111111111111111111 invoke [1]",
+        "Program ComputeBudget111111111111111111111111111111 success",
+        "Program ESrpUvg2gM75m1mzoSuquCaoabs42edBCCdabdvDgJBg invoke [1]",
+        "Program ESrpUvg2gM75m1mzoSuquCaoabs42edBCCdabdvDgJBg consumed 2594 of 1399850 compute units",
+        "Program ESrpUvg2gM75m1mzoSuquCaoabs42edBCCdabdvDgJBg failed: custom program error: 0x41533008"
+      ],
+      "system_program_invoke_observed": false,
+      "system_program_success_observed": false,
+      "rollback_accounts": [
+        {
+          "label": "registry",
+          "address": "AoR8UZVhxqjZ4eTf4EU6dEQhS1kaUVfK1mwUxw22L42H",
+          "before": {
+            "exists": true,
+            "lamports": 1781760,
+            "owner": "ESrpUvg2gM75m1mzoSuquCaoabs42edBCCdabdvDgJBg",
+            "executable": false,
+            "rent_epoch": 18446744073709551615,
+            "data_bytes": 128,
+            "data_sha256": "a5dff556b0cf7a04cec55d30d2d3f8e4720d5fc15a8e8a427e4495160a7d06aa"
+          },
+          "after": {
+            "exists": true,
+            "lamports": 1781760,
+            "owner": "ESrpUvg2gM75m1mzoSuquCaoabs42edBCCdabdvDgJBg",
+            "executable": false,
+            "rent_epoch": 18446744073709551615,
+            "data_bytes": 128,
+            "data_sha256": "a5dff556b0cf7a04cec55d30d2d3f8e4720d5fc15a8e8a427e4495160a7d06aa"
+          },
+          "exact_match": true
+        }
+      ]
+    },
+    {
+      "name": "wrong_entry_pda_rejected",
+      "slot": 100,
+      "outcome": "rejected",
+      "expected_error": "InstructionError(1, Custom(1095970827))",
+      "actual_error": "InstructionError(1, Custom(1095970827))",
+      "simulation_matches_execution": true,
+      "compute_units": 6035,
+      "compute_unit_limit": 1400000,
+      "fee_lamports": 10000,
+      "rent_debit_lamports": 0,
+      "payer_before_lamports": 49998193240,
+      "payer_after_lamports": 49998183240,
+      "payer_delta_lamports": 10000,
+      "expected_payer_delta_lamports": 10000,
+      "return_data": {
+        "program_id": "ESrpUvg2gM75m1mzoSuquCaoabs42edBCCdabdvDgJBg",
+        "data_bytes": 0,
+        "data_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      "logs": [
+        "Program ComputeBudget111111111111111111111111111111 invoke [1]",
+        "Program ComputeBudget111111111111111111111111111111 success",
+        "Program ESrpUvg2gM75m1mzoSuquCaoabs42edBCCdabdvDgJBg invoke [1]",
+        "Program ESrpUvg2gM75m1mzoSuquCaoabs42edBCCdabdvDgJBg consumed 5885 of 1399850 compute units",
+        "Program ESrpUvg2gM75m1mzoSuquCaoabs42edBCCdabdvDgJBg failed: custom program error: 0x4153300b"
+      ],
+      "system_program_invoke_observed": false,
+      "system_program_success_observed": false,
+      "rollback_accounts": [
+        {
+          "label": "registry",
+          "address": "AoR8UZVhxqjZ4eTf4EU6dEQhS1kaUVfK1mwUxw22L42H",
+          "before": {
+            "exists": true,
+            "lamports": 1781760,
+            "owner": "ESrpUvg2gM75m1mzoSuquCaoabs42edBCCdabdvDgJBg",
+            "executable": false,
+            "rent_epoch": 18446744073709551615,
+            "data_bytes": 128,
+            "data_sha256": "a5dff556b0cf7a04cec55d30d2d3f8e4720d5fc15a8e8a427e4495160a7d06aa"
+          },
+          "after": {
+            "exists": true,
+            "lamports": 1781760,
+            "owner": "ESrpUvg2gM75m1mzoSuquCaoabs42edBCCdabdvDgJBg",
+            "executable": false,
+            "rent_epoch": 18446744073709551615,
+            "data_bytes": 128,
+            "data_sha256": "a5dff556b0cf7a04cec55d30d2d3f8e4720d5fc15a8e8a427e4495160a7d06aa"
+          },
+          "exact_match": true
+        },
+        {
+          "label": "wrong_entry",
+          "address": "H5hM4fqRjygvCYXnp6dgFLgZ6o4uJ8Q9z7dAsTfapHmF",
+          "before": {
+            "exists": false,
+            "lamports": null,
+            "owner": null,
+            "executable": null,
+            "rent_epoch": null,
+            "data_bytes": null,
+            "data_sha256": null
+          },
+          "after": {
+            "exists": false,
+            "lamports": null,
+            "owner": null,
+            "executable": null,
+            "rent_epoch": null,
+            "data_bytes": null,
+            "data_sha256": null
+          },
+          "exact_match": true
+        }
+      ]
+    },
+    {
+      "name": "stale_generation_rejected",
+      "slot": 100,
+      "outcome": "rejected",
+      "expected_error": "InstructionError(1, Custom(1095970828))",
+      "actual_error": "InstructionError(1, Custom(1095970828))",
+      "simulation_matches_execution": true,
+      "compute_units": 2753,
+      "compute_unit_limit": 1400000,
+      "fee_lamports": 10000,
+      "rent_debit_lamports": 0,
+      "payer_before_lamports": 49998183240,
+      "payer_after_lamports": 49998173240,
+      "payer_delta_lamports": 10000,
+      "expected_payer_delta_lamports": 10000,
+      "return_data": {
+        "program_id": "ESrpUvg2gM75m1mzoSuquCaoabs42edBCCdabdvDgJBg",
+        "data_bytes": 0,
+        "data_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      "logs": [
+        "Program ComputeBudget111111111111111111111111111111 invoke [1]",
+        "Program ComputeBudget111111111111111111111111111111 success",
+        "Program ESrpUvg2gM75m1mzoSuquCaoabs42edBCCdabdvDgJBg invoke [1]",
+        "Program ESrpUvg2gM75m1mzoSuquCaoabs42edBCCdabdvDgJBg consumed 2603 of 1399850 compute units",
+        "Program ESrpUvg2gM75m1mzoSuquCaoabs42edBCCdabdvDgJBg failed: custom program error: 0x4153300c"
+      ],
+      "system_program_invoke_observed": false,
+      "system_program_success_observed": false,
+      "rollback_accounts": [
+        {
+          "label": "registry",
+          "address": "AoR8UZVhxqjZ4eTf4EU6dEQhS1kaUVfK1mwUxw22L42H",
+          "before": {
+            "exists": true,
+            "lamports": 1781760,
+            "owner": "ESrpUvg2gM75m1mzoSuquCaoabs42edBCCdabdvDgJBg",
+            "executable": false,
+            "rent_epoch": 18446744073709551615,
+            "data_bytes": 128,
+            "data_sha256": "a5dff556b0cf7a04cec55d30d2d3f8e4720d5fc15a8e8a427e4495160a7d06aa"
+          },
+          "after": {
+            "exists": true,
+            "lamports": 1781760,
+            "owner": "ESrpUvg2gM75m1mzoSuquCaoabs42edBCCdabdvDgJBg",
+            "executable": false,
+            "rent_epoch": 18446744073709551615,
+            "data_bytes": 128,
+            "data_sha256": "a5dff556b0cf7a04cec55d30d2d3f8e4720d5fc15a8e8a427e4495160a7d06aa"
+          },
+          "exact_match": true
+        }
+      ]
+    },
+    {
+      "name": "system_cpi_schedule_then_later_failure_rolls_back",
+      "slot": 100,
+      "outcome": "rejected",
+      "expected_error": "InstructionError(2, Custom(1095970828))",
+      "actual_error": "InstructionError(2, Custom(1095970828))",
+      "simulation_matches_execution": true,
+      "compute_units": 12559,
+      "compute_unit_limit": 1400000,
+      "fee_lamports": 10000,
+      "rent_debit_lamports": 0,
+      "payer_before_lamports": 49998173240,
+      "payer_after_lamports": 49998163240,
+      "payer_delta_lamports": 10000,
+      "expected_payer_delta_lamports": 10000,
+      "return_data": {
+        "program_id": "ESrpUvg2gM75m1mzoSuquCaoabs42edBCCdabdvDgJBg",
+        "data_bytes": 0,
+        "data_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      "logs": [
+        "Program ComputeBudget111111111111111111111111111111 invoke [1]",
+        "Program ComputeBudget111111111111111111111111111111 success",
+        "Program ESrpUvg2gM75m1mzoSuquCaoabs42edBCCdabdvDgJBg invoke [1]",
+        "Program 11111111111111111111111111111111 invoke [2]",
+        "Program 11111111111111111111111111111111 success",
+        "Program ESrpUvg2gM75m1mzoSuquCaoabs42edBCCdabdvDgJBg consumed 9806 of 1399850 compute units",
+        "Program ESrpUvg2gM75m1mzoSuquCaoabs42edBCCdabdvDgJBg success",
+        "Program ESrpUvg2gM75m1mzoSuquCaoabs42edBCCdabdvDgJBg invoke [1]",
+        "Program ESrpUvg2gM75m1mzoSuquCaoabs42edBCCdabdvDgJBg consumed 2603 of 1390044 compute units",
+        "Program ESrpUvg2gM75m1mzoSuquCaoabs42edBCCdabdvDgJBg failed: custom program error: 0x4153300c"
+      ],
+      "system_program_invoke_observed": true,
+      "system_program_success_observed": true,
+      "rollback_accounts": [
+        {
+          "label": "registry",
+          "address": "AoR8UZVhxqjZ4eTf4EU6dEQhS1kaUVfK1mwUxw22L42H",
+          "before": {
+            "exists": true,
+            "lamports": 1781760,
+            "owner": "ESrpUvg2gM75m1mzoSuquCaoabs42edBCCdabdvDgJBg",
+            "executable": false,
+            "rent_epoch": 18446744073709551615,
+            "data_bytes": 128,
+            "data_sha256": "a5dff556b0cf7a04cec55d30d2d3f8e4720d5fc15a8e8a427e4495160a7d06aa"
+          },
+          "after": {
+            "exists": true,
+            "lamports": 1781760,
+            "owner": "ESrpUvg2gM75m1mzoSuquCaoabs42edBCCdabdvDgJBg",
+            "executable": false,
+            "rent_epoch": 18446744073709551615,
+            "data_bytes": 128,
+            "data_sha256": "a5dff556b0cf7a04cec55d30d2d3f8e4720d5fc15a8e8a427e4495160a7d06aa"
+          },
+          "exact_match": true
+        },
+        {
+          "label": "new_entry_pda",
+          "address": "9HCGzTJBoxRK9C513yT4WzXik4Ps6BVRpe71zGSkxGBx",
+          "before": {
+            "exists": false,
+            "lamports": null,
+            "owner": null,
+            "executable": null,
+            "rent_epoch": null,
+            "data_bytes": null,
+            "data_sha256": null
+          },
+          "after": {
+            "exists": false,
+            "lamports": null,
+            "owner": null,
+            "executable": null,
+            "rent_epoch": null,
+            "data_bytes": null,
+            "data_sha256": null
+          },
+          "exact_match": true
+        }
+      ]
+    },
+    {
+      "name": "schedule_profile_a_at_exact_delay",
+      "slot": 100,
+      "outcome": "success",
+      "expected_error": null,
+      "actual_error": null,
+      "simulation_matches_execution": true,
+      "compute_units": 9956,
+      "compute_unit_limit": 1400000,
+      "fee_lamports": 10000,
+      "rent_debit_lamports": 2227200,
+      "payer_before_lamports": 49998163240,
+      "payer_after_lamports": 49995926040,
+      "payer_delta_lamports": 2237200,
+      "expected_payer_delta_lamports": 2237200,
+      "return_data": {
+        "program_id": "11111111111111111111111111111111",
+        "data_bytes": 0,
+        "data_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      "logs": [
+        "Program ComputeBudget111111111111111111111111111111 invoke [1]",
+        "Program ComputeBudget111111111111111111111111111111 success",
+        "Program ESrpUvg2gM75m1mzoSuquCaoabs42edBCCdabdvDgJBg invoke [1]",
+        "Program 11111111111111111111111111111111 invoke [2]",
+        "Program 11111111111111111111111111111111 success",
+        "Program ESrpUvg2gM75m1mzoSuquCaoabs42edBCCdabdvDgJBg consumed 9806 of 1399850 compute units",
+        "Program ESrpUvg2gM75m1mzoSuquCaoabs42edBCCdabdvDgJBg success"
+      ],
+      "system_program_invoke_observed": true,
+      "system_program_success_observed": true,
+      "rollback_accounts": []
+    },
+    {
+      "name": "early_activation_rejected",
+      "slot": 109,
+      "outcome": "rejected",
+      "expected_error": "InstructionError(1, Custom(1095970834))",
+      "actual_error": "InstructionError(1, Custom(1095970834))",
+      "simulation_matches_execution": true,
+      "compute_units": 5270,
+      "compute_unit_limit": 1400000,
+      "fee_lamports": 10000,
+      "rent_debit_lamports": 0,
+      "payer_before_lamports": 49995926040,
+      "payer_after_lamports": 49995916040,
+      "payer_delta_lamports": 10000,
+      "expected_payer_delta_lamports": 10000,
+      "return_data": {
+        "program_id": "ESrpUvg2gM75m1mzoSuquCaoabs42edBCCdabdvDgJBg",
+        "data_bytes": 0,
+        "data_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      "logs": [
+        "Program ComputeBudget111111111111111111111111111111 invoke [1]",
+        "Program ComputeBudget111111111111111111111111111111 success",
+        "Program ESrpUvg2gM75m1mzoSuquCaoabs42edBCCdabdvDgJBg invoke [1]",
+        "Program ESrpUvg2gM75m1mzoSuquCaoabs42edBCCdabdvDgJBg consumed 5120 of 1399850 compute units",
+        "Program ESrpUvg2gM75m1mzoSuquCaoabs42edBCCdabdvDgJBg failed: custom program error: 0x41533012"
+      ],
+      "system_program_invoke_observed": false,
+      "system_program_success_observed": false,
+      "rollback_accounts": [
+        {
+          "label": "registry",
+          "address": "AoR8UZVhxqjZ4eTf4EU6dEQhS1kaUVfK1mwUxw22L42H",
+          "before": {
+            "exists": true,
+            "lamports": 1781760,
+            "owner": "ESrpUvg2gM75m1mzoSuquCaoabs42edBCCdabdvDgJBg",
+            "executable": false,
+            "rent_epoch": 18446744073709551615,
+            "data_bytes": 128,
+            "data_sha256": "ed75e6be810a0249908450e4cf0d716f2c6026da5372a505b11580e520b11dc4"
+          },
+          "after": {
+            "exists": true,
+            "lamports": 1781760,
+            "owner": "ESrpUvg2gM75m1mzoSuquCaoabs42edBCCdabdvDgJBg",
+            "executable": false,
+            "rent_epoch": 18446744073709551615,
+            "data_bytes": 128,
+            "data_sha256": "ed75e6be810a0249908450e4cf0d716f2c6026da5372a505b11580e520b11dc4"
+          },
+          "exact_match": true
+        },
+        {
+          "label": "entry_a",
+          "address": "9joS86JK8uNSUxwyRJeNfALho3ovvEezPBeNKNjYBM3L",
+          "before": {
+            "exists": true,
+            "lamports": 2227200,
+            "owner": "ESrpUvg2gM75m1mzoSuquCaoabs42edBCCdabdvDgJBg",
+            "executable": false,
+            "rent_epoch": 18446744073709551615,
+            "data_bytes": 192,
+            "data_sha256": "4d6991eb82bcd37749e2f82ab90ff0e47bd5b4afac6dac420e72d3f6536c777d"
+          },
+          "after": {
+            "exists": true,
+            "lamports": 2227200,
+            "owner": "ESrpUvg2gM75m1mzoSuquCaoabs42edBCCdabdvDgJBg",
+            "executable": false,
+            "rent_epoch": 18446744073709551615,
+            "data_bytes": 192,
+            "data_sha256": "4d6991eb82bcd37749e2f82ab90ff0e47bd5b4afac6dac420e72d3f6536c777d"
+          },
+          "exact_match": true
+        }
+      ]
+    },
+    {
+      "name": "activate_profile_a",
+      "slot": 110,
+      "outcome": "success",
+      "expected_error": null,
+      "actual_error": null,
+      "simulation_matches_execution": true,
+      "compute_units": 5858,
+      "compute_unit_limit": 1400000,
+      "fee_lamports": 10000,
+      "rent_debit_lamports": 0,
+      "payer_before_lamports": 49995916040,
+      "payer_after_lamports": 49995906040,
+      "payer_delta_lamports": 10000,
+      "expected_payer_delta_lamports": 10000,
+      "return_data": {
+        "program_id": "ESrpUvg2gM75m1mzoSuquCaoabs42edBCCdabdvDgJBg",
+        "data_bytes": 0,
+        "data_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      "logs": [
+        "Program ComputeBudget111111111111111111111111111111 invoke [1]",
+        "Program ComputeBudget111111111111111111111111111111 success",
+        "Program ESrpUvg2gM75m1mzoSuquCaoabs42edBCCdabdvDgJBg invoke [1]",
+        "Program ESrpUvg2gM75m1mzoSuquCaoabs42edBCCdabdvDgJBg consumed 5708 of 1399850 compute units",
+        "Program ESrpUvg2gM75m1mzoSuquCaoabs42edBCCdabdvDgJBg success"
+      ],
+      "system_program_invoke_observed": false,
+      "system_program_success_observed": false,
+      "rollback_accounts": []
+    },
+    {
+      "name": "pause_registry",
+      "slot": 110,
+      "outcome": "success",
+      "expected_error": null,
+      "actual_error": null,
+      "simulation_matches_execution": true,
+      "compute_units": 3008,
+      "compute_unit_limit": 1400000,
+      "fee_lamports": 10000,
+      "rent_debit_lamports": 0,
+      "payer_before_lamports": 49995906040,
+      "payer_after_lamports": 49995896040,
+      "payer_delta_lamports": 10000,
+      "expected_payer_delta_lamports": 10000,
+      "return_data": {
+        "program_id": "ESrpUvg2gM75m1mzoSuquCaoabs42edBCCdabdvDgJBg",
+        "data_bytes": 0,
+        "data_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      "logs": [
+        "Program ComputeBudget111111111111111111111111111111 invoke [1]",
+        "Program ComputeBudget111111111111111111111111111111 success",
+        "Program ESrpUvg2gM75m1mzoSuquCaoabs42edBCCdabdvDgJBg invoke [1]",
+        "Program ESrpUvg2gM75m1mzoSuquCaoabs42edBCCdabdvDgJBg consumed 2858 of 1399850 compute units",
+        "Program ESrpUvg2gM75m1mzoSuquCaoabs42edBCCdabdvDgJBg success"
+      ],
+      "system_program_invoke_observed": false,
+      "system_program_success_observed": false,
+      "rollback_accounts": []
+    },
+    {
+      "name": "unpause_registry",
+      "slot": 110,
+      "outcome": "success",
+      "expected_error": null,
+      "actual_error": null,
+      "simulation_matches_execution": true,
+      "compute_units": 3011,
+      "compute_unit_limit": 1400000,
+      "fee_lamports": 10000,
+      "rent_debit_lamports": 0,
+      "payer_before_lamports": 49995896040,
+      "payer_after_lamports": 49995886040,
+      "payer_delta_lamports": 10000,
+      "expected_payer_delta_lamports": 10000,
+      "return_data": {
+        "program_id": "ESrpUvg2gM75m1mzoSuquCaoabs42edBCCdabdvDgJBg",
+        "data_bytes": 0,
+        "data_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      "logs": [
+        "Program ComputeBudget111111111111111111111111111111 invoke [1]",
+        "Program ComputeBudget111111111111111111111111111111 success",
+        "Program ESrpUvg2gM75m1mzoSuquCaoabs42edBCCdabdvDgJBg invoke [1]",
+        "Program ESrpUvg2gM75m1mzoSuquCaoabs42edBCCdabdvDgJBg consumed 2861 of 1399850 compute units",
+        "Program ESrpUvg2gM75m1mzoSuquCaoabs42edBCCdabdvDgJBg success"
+      ],
+      "system_program_invoke_observed": false,
+      "system_program_success_observed": false,
+      "rollback_accounts": []
+    },
+    {
+      "name": "schedule_compatible_replacement_b",
+      "slot": 110,
+      "outcome": "success",
+      "expected_error": null,
+      "actual_error": null,
+      "simulation_matches_execution": true,
+      "compute_units": 9956,
+      "compute_unit_limit": 1400000,
+      "fee_lamports": 10000,
+      "rent_debit_lamports": 2227200,
+      "payer_before_lamports": 49995886040,
+      "payer_after_lamports": 49993648840,
+      "payer_delta_lamports": 2237200,
+      "expected_payer_delta_lamports": 2237200,
+      "return_data": {
+        "program_id": "11111111111111111111111111111111",
+        "data_bytes": 0,
+        "data_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      "logs": [
+        "Program ComputeBudget111111111111111111111111111111 invoke [1]",
+        "Program ComputeBudget111111111111111111111111111111 success",
+        "Program ESrpUvg2gM75m1mzoSuquCaoabs42edBCCdabdvDgJBg invoke [1]",
+        "Program 11111111111111111111111111111111 invoke [2]",
+        "Program 11111111111111111111111111111111 success",
+        "Program ESrpUvg2gM75m1mzoSuquCaoabs42edBCCdabdvDgJBg consumed 9806 of 1399850 compute units",
+        "Program ESrpUvg2gM75m1mzoSuquCaoabs42edBCCdabdvDgJBg success"
+      ],
+      "system_program_invoke_observed": true,
+      "system_program_success_observed": true,
+      "rollback_accounts": []
+    },
+    {
+      "name": "activate_replacement_b",
+      "slot": 120,
+      "outcome": "success",
+      "expected_error": null,
+      "actual_error": null,
+      "simulation_matches_execution": true,
+      "compute_units": 5858,
+      "compute_unit_limit": 1400000,
+      "fee_lamports": 10000,
+      "rent_debit_lamports": 0,
+      "payer_before_lamports": 49993648840,
+      "payer_after_lamports": 49993638840,
+      "payer_delta_lamports": 10000,
+      "expected_payer_delta_lamports": 10000,
+      "return_data": {
+        "program_id": "ESrpUvg2gM75m1mzoSuquCaoabs42edBCCdabdvDgJBg",
+        "data_bytes": 0,
+        "data_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      "logs": [
+        "Program ComputeBudget111111111111111111111111111111 invoke [1]",
+        "Program ComputeBudget111111111111111111111111111111 success",
+        "Program ESrpUvg2gM75m1mzoSuquCaoabs42edBCCdabdvDgJBg invoke [1]",
+        "Program ESrpUvg2gM75m1mzoSuquCaoabs42edBCCdabdvDgJBg consumed 5708 of 1399850 compute units",
+        "Program ESrpUvg2gM75m1mzoSuquCaoabs42edBCCdabdvDgJBg success"
+      ],
+      "system_program_invoke_observed": false,
+      "system_program_success_observed": false,
+      "rollback_accounts": []
+    },
+    {
+      "name": "retire_a_with_distinct_active_compatible_b",
+      "slot": 121,
+      "outcome": "success",
+      "expected_error": null,
+      "actual_error": null,
+      "simulation_matches_execution": true,
+      "compute_units": 8337,
+      "compute_unit_limit": 1400000,
+      "fee_lamports": 10000,
+      "rent_debit_lamports": 0,
+      "payer_before_lamports": 49993638840,
+      "payer_after_lamports": 49993628840,
+      "payer_delta_lamports": 10000,
+      "expected_payer_delta_lamports": 10000,
+      "return_data": {
+        "program_id": "ESrpUvg2gM75m1mzoSuquCaoabs42edBCCdabdvDgJBg",
+        "data_bytes": 0,
+        "data_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      "logs": [
+        "Program ComputeBudget111111111111111111111111111111 invoke [1]",
+        "Program ComputeBudget111111111111111111111111111111 success",
+        "Program ESrpUvg2gM75m1mzoSuquCaoabs42edBCCdabdvDgJBg invoke [1]",
+        "Program ESrpUvg2gM75m1mzoSuquCaoabs42edBCCdabdvDgJBg consumed 8187 of 1399850 compute units",
+        "Program ESrpUvg2gM75m1mzoSuquCaoabs42edBCCdabdvDgJBg success"
+      ],
+      "system_program_invoke_observed": false,
+      "system_program_success_observed": false,
+      "rollback_accounts": []
+    },
+    {
+      "name": "freeze_registry_immutably",
+      "slot": 121,
+      "outcome": "success",
+      "expected_error": null,
+      "actual_error": null,
+      "simulation_matches_execution": true,
+      "compute_units": 2972,
+      "compute_unit_limit": 1400000,
+      "fee_lamports": 10000,
+      "rent_debit_lamports": 0,
+      "payer_before_lamports": 49993628840,
+      "payer_after_lamports": 49993618840,
+      "payer_delta_lamports": 10000,
+      "expected_payer_delta_lamports": 10000,
+      "return_data": {
+        "program_id": "ESrpUvg2gM75m1mzoSuquCaoabs42edBCCdabdvDgJBg",
+        "data_bytes": 0,
+        "data_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      "logs": [
+        "Program ComputeBudget111111111111111111111111111111 invoke [1]",
+        "Program ComputeBudget111111111111111111111111111111 success",
+        "Program ESrpUvg2gM75m1mzoSuquCaoabs42edBCCdabdvDgJBg invoke [1]",
+        "Program ESrpUvg2gM75m1mzoSuquCaoabs42edBCCdabdvDgJBg consumed 2822 of 1399850 compute units",
+        "Program ESrpUvg2gM75m1mzoSuquCaoabs42edBCCdabdvDgJBg success"
+      ],
+      "system_program_invoke_observed": false,
+      "system_program_success_observed": false,
+      "rollback_accounts": []
+    },
+    {
+      "name": "post_freeze_mutation_rejected",
+      "slot": 121,
+      "outcome": "rejected",
+      "expected_error": "InstructionError(1, Custom(1095970830))",
+      "actual_error": "InstructionError(1, Custom(1095970830))",
+      "simulation_matches_execution": true,
+      "compute_units": 2695,
+      "compute_unit_limit": 1400000,
+      "fee_lamports": 10000,
+      "rent_debit_lamports": 0,
+      "payer_before_lamports": 49993618840,
+      "payer_after_lamports": 49993608840,
+      "payer_delta_lamports": 10000,
+      "expected_payer_delta_lamports": 10000,
+      "return_data": {
+        "program_id": "ESrpUvg2gM75m1mzoSuquCaoabs42edBCCdabdvDgJBg",
+        "data_bytes": 0,
+        "data_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      "logs": [
+        "Program ComputeBudget111111111111111111111111111111 invoke [1]",
+        "Program ComputeBudget111111111111111111111111111111 success",
+        "Program ESrpUvg2gM75m1mzoSuquCaoabs42edBCCdabdvDgJBg invoke [1]",
+        "Program ESrpUvg2gM75m1mzoSuquCaoabs42edBCCdabdvDgJBg consumed 2545 of 1399850 compute units",
+        "Program ESrpUvg2gM75m1mzoSuquCaoabs42edBCCdabdvDgJBg failed: custom program error: 0x4153300e"
+      ],
+      "system_program_invoke_observed": false,
+      "system_program_success_observed": false,
+      "rollback_accounts": [
+        {
+          "label": "registry",
+          "address": "AoR8UZVhxqjZ4eTf4EU6dEQhS1kaUVfK1mwUxw22L42H",
+          "before": {
+            "exists": true,
+            "lamports": 1781760,
+            "owner": "ESrpUvg2gM75m1mzoSuquCaoabs42edBCCdabdvDgJBg",
+            "executable": false,
+            "rent_epoch": 18446744073709551615,
+            "data_bytes": 128,
+            "data_sha256": "296da811ef464a5037a32ab5d42f552c3f55e3970a329305a59d07da6f832487"
+          },
+          "after": {
+            "exists": true,
+            "lamports": 1781760,
+            "owner": "ESrpUvg2gM75m1mzoSuquCaoabs42edBCCdabdvDgJBg",
+            "executable": false,
+            "rent_epoch": 18446744073709551615,
+            "data_bytes": 128,
+            "data_sha256": "296da811ef464a5037a32ab5d42f552c3f55e3970a329305a59d07da6f832487"
+          },
+          "exact_match": true
+        },
+        {
+          "label": "entry_a",
+          "address": "9joS86JK8uNSUxwyRJeNfALho3ovvEezPBeNKNjYBM3L",
+          "before": {
+            "exists": true,
+            "lamports": 2227200,
+            "owner": "ESrpUvg2gM75m1mzoSuquCaoabs42edBCCdabdvDgJBg",
+            "executable": false,
+            "rent_epoch": 18446744073709551615,
+            "data_bytes": 192,
+            "data_sha256": "651b72636d630ce25c2d051e284f1ea052e31e2c447b452617f2b5b81fb410fa"
+          },
+          "after": {
+            "exists": true,
+            "lamports": 2227200,
+            "owner": "ESrpUvg2gM75m1mzoSuquCaoabs42edBCCdabdvDgJBg",
+            "executable": false,
+            "rent_epoch": 18446744073709551615,
+            "data_bytes": 192,
+            "data_sha256": "651b72636d630ce25c2d051e284f1ea052e31e2c447b452617f2b5b81fb410fa"
+          },
+          "exact_match": true
+        },
+        {
+          "label": "entry_b",
+          "address": "HvBVXWQipQyeessQEDgWqhsrw1Tifrr5amoY9TVuucYb",
+          "before": {
+            "exists": true,
+            "lamports": 2227200,
+            "owner": "ESrpUvg2gM75m1mzoSuquCaoabs42edBCCdabdvDgJBg",
+            "executable": false,
+            "rent_epoch": 18446744073709551615,
+            "data_bytes": 192,
+            "data_sha256": "a0893b44f1fda3a8867993745c80eb912e2fcc4faed2fcd5993a5abaa474a083"
+          },
+          "after": {
+            "exists": true,
+            "lamports": 2227200,
+            "owner": "ESrpUvg2gM75m1mzoSuquCaoabs42edBCCdabdvDgJBg",
+            "executable": false,
+            "rent_epoch": 18446744073709551615,
+            "data_bytes": 192,
+            "data_sha256": "a0893b44f1fda3a8867993745c80eb912e2fcc4faed2fcd5993a5abaa474a083"
+          },
+          "exact_match": true
+        }
+      ]
+    }
+  ],
+  "rent": {
+    "registry_account_bytes": 128,
+    "registry_rent_lamports": 1781760,
+    "entry_account_bytes": 192,
+    "entry_rent_lamports": 2227200,
+    "initialize_payer_delta_lamports": 1791760,
+    "initialize_expected_rent_plus_fee": 1791760,
+    "schedule_a_payer_delta_lamports": 2237200,
+    "schedule_a_expected_rent_plus_fee": 2237200,
+    "schedule_b_payer_delta_lamports": 2237200,
+    "schedule_b_expected_rent_plus_fee": 2237200,
+    "rolled_back_schedule_payer_delta_lamports": 10000,
+    "rolled_back_schedule_expected_fee_only": 10000
+  },
+  "final_state": {
+    "registry": {
+      "exists": true,
+      "lamports": 1781760,
+      "owner": "ESrpUvg2gM75m1mzoSuquCaoabs42edBCCdabdvDgJBg",
+      "executable": false,
+      "rent_epoch": 18446744073709551615,
+      "data_bytes": 128,
+      "data_sha256": "296da811ef464a5037a32ab5d42f552c3f55e3970a329305a59d07da6f832487"
+    },
+    "entry_a": {
+      "exists": true,
+      "lamports": 2227200,
+      "owner": "ESrpUvg2gM75m1mzoSuquCaoabs42edBCCdabdvDgJBg",
+      "executable": false,
+      "rent_epoch": 18446744073709551615,
+      "data_bytes": 192,
+      "data_sha256": "651b72636d630ce25c2d051e284f1ea052e31e2c447b452617f2b5b81fb410fa"
+    },
+    "entry_b": {
+      "exists": true,
+      "lamports": 2227200,
+      "owner": "ESrpUvg2gM75m1mzoSuquCaoabs42edBCCdabdvDgJBg",
+      "executable": false,
+      "rent_epoch": 18446744073709551615,
+      "data_bytes": 192,
+      "data_sha256": "a0893b44f1fda3a8867993745c80eb912e2fcc4faed2fcd5993a5abaa474a083"
+    },
+    "generation": 8,
+    "registry_flags": 2,
+    "immutable": true,
+    "authority_zeroed": true,
+    "entry_a_status": "Retired",
+    "entry_a_activation_slot": 110,
+    "entry_a_retirement_slot": 121,
+    "entry_b_status": "Active",
+    "entry_b_activation_slot": 120,
+    "entry_b_retirement_slot": 18446744073709551615,
+    "entries_exactly_compatible": true
+  },
+  "assertions": {
+    "all_compute_units_at_or_below_1400000": true,
+    "all_rejections_rollback_exact": true,
+    "all_return_data_empty": true,
+    "all_simulations_match_execution": true,
+    "artifact_hash_and_size_exact": true,
+    "distinct_active_compatible_replacement_used": true,
+    "final_generation_exactly_8": true,
+    "freeze_zeroed_authority": true,
+    "no_network_deploy_or_send": true,
+    "registry_and_entries_exact_rent": true,
+    "system_cpi_rollback_exact": true
+  },
+  "explicit_boundaries": [
+    "LiteSVM executes the SBF artifact locally; this is not validator, devnet, or deployment evidence.",
+    "The deterministic authority is a keypair, not an exercised multisig-program PDA CPI signer; the registry only enforces the stored key and runtime signer bit.",
+    "Program upgrade-authority governance remains outside this registry-account mutation lifecycle.",
+    "Policy/profile manifest authenticity and the approved SHA-256 collision boundary remain external."
+  ]
+}
