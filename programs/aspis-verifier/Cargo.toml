@@ -53,6 +53,13 @@ v6-production-tag72 = ["spend-production"]
 # digests, a single cap-203 query stream, and complete authenticated C2
 # fibres. It stays opt-in until the V7 release gates are frozen.
 v7-production-tag73 = ["spend-production"]
+# Opt-in Pool verifier surface. It retains the frozen Tag-73 proof relation
+# and adds only the ASVQ read-only profile handler. Existing Tag-73 release
+# builds do not enable this feature and therefore remain byte-isolated.
+v7-pool-dispatch-profile = [
+    "v7-production-tag73",
+    "aspis-statement/pool-v1-kernel",
+]
 
 [dependencies]
 aspis-core = { path = "../../crates/aspis-core" }

@@ -61,6 +61,9 @@ fn production_require_empty(input: &[u8]) -> ProgramResult {
 ///   state transition, enabled by `v6-production-tag72`.
 /// - 73: complete compact V7 one-fold verification plus the retained-proof
 ///   atomic state transition, enabled by `v7-production-tag73`.
+/// - `ASVQ`: exact Pool-selected Tag-73 read-only profile dispatch, enabled by
+///   `v7-pool-dispatch-profile`. This is a four-byte discriminator rather than
+///   another numeric prefix because `ASVQ` is already the frozen CPI request.
 ///
 /// Every other historical or diagnostic tag fails before account access.
 pub fn process_spend_production_instruction(
@@ -68,6 +71,22 @@ pub fn process_spend_production_instruction(
     accounts: &[AccountInfo],
     instruction_data: &[u8],
 ) -> ProgramResult {
+    // A valid ASVQ is at least the 384-byte prefix plus one payload byte. The
+    // length gate preserves the historical fixed 169-byte numeric tag-65 wire
+    // even in the rare case its first public bytes spell `SVQ`.
+    #[cfg(any(feature = "v7-pool-dispatch-profile", test))]
+    if instruction_data.len()
+        > aspis_statement::pool_v1::POOL_V1_VERIFIER_DISPATCH_BINDING_PREFIX_BYTES
+        && instruction_data
+            .starts_with(&aspis_statement::pool_v1::POOL_V1_VERIFIER_DISPATCH_REQUEST_MAGIC)
+    {
+        return crate::v7_pool_dispatch::process_v7_pool_tag73_asvq_instruction(
+            program_id,
+            accounts,
+            instruction_data,
+        );
+    }
+
     let (&tag, mut wire) = instruction_data
         .split_first()
         .ok_or(ProgramError::InvalidInstructionData)?;

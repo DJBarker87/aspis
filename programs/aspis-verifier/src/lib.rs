@@ -122,6 +122,8 @@ pub mod v6_transaction;
     test
 ))]
 pub mod v6_verifier;
+#[cfg(any(feature = "v7-pool-dispatch-profile", test))]
+pub mod v7_pool_dispatch;
 #[cfg(any(feature = "v7-production-tag73", test))]
 pub mod v7_transaction;
 #[cfg(any(feature = "v7-cu-probe", feature = "v7-production-tag73", test))]
