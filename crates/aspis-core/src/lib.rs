@@ -48,7 +48,10 @@ pub mod transcript;
 pub mod v6_onefold;
 pub mod v6_query_batch;
 pub mod v6_transcript;
+pub mod v7_code_switch;
+pub mod v7_compact_onefold;
 pub mod v7_lane_zeta;
+pub mod v7_merkle;
 pub mod v7_profile;
 pub mod verify;
 

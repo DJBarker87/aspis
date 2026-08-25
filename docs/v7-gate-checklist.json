@@ -1,6 +1,6 @@
 {
-  "protocol": "Aspis V7 staged split-tensor + V6 one-fold",
-  "status": "ACTIVE_PHASE_3_HOST_REFERENCE",
+  "protocol": "Aspis V7 compact Tag-72 successor; split-tensor gate retained",
+  "status": "ACTIVE_PHASE_5_FRONTIER_AND_PHASE_6_SBF",
   "baseline_required": "v6-onefold-research-freeze",
   "repository_baseline": {
     "commit": "a6fa6d817e3cf343c8639684e4ab2ce289c40355",
@@ -33,22 +33,22 @@
     {
       "id": 2,
       "name": "published-theorem audit",
-      "status": "complete: direct SwitchFold shape rejected; degree-corrected S-two random-point PCS fallback selected"
+      "status": "complete: direct SwitchFold shape rejected; conditional S-two fallback authorized for measurement"
     },
     {
       "id": 3,
       "name": "host reference code switch",
-      "status": "in progress"
+      "status": "complete: three-tree fallback measured at 36040 bytes (35016 punctured) and killed; compact successor host reconstruction selected at 30672-byte maximum"
     },
     {
       "id": 4,
       "name": "deterministic formal extraction",
-      "status": "not started"
+      "status": "in progress: generic fold reconstruction and exact deployed-QM31 specialization pass in Lean"
     },
     {
       "id": 5,
       "name": "query/frontier formalisation",
-      "status": "not started"
+      "status": "in progress: cap-203 numerator and security arithmetic pass; generated recurrence provenance pending NUC"
     },
     {
       "id": 6,

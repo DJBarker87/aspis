@@ -2,8 +2,15 @@
 
 Date: 2026-08-25  
 Baseline: `a6fa6d817e3cf343c8639684e4ab2ce289c40355`  
-Decision: **preferred local code switch BLOCKED; degree-corrected random-point
-PCS link SELECTED**
+Decision: **preferred local code switch BLOCKED; measured fallback fails the
+wire gate; compact Tag-72 successor SELECTED**
+
+> Update after Phase 3: the degree-corrected random-point PCS construction
+> below remains a valid conditional research route, but its measured wire is
+> 36,040 bytes (35,016 bytes even with a security-costly punctured source
+> domain).  It is therefore not the production V7 profile.  The selected
+> profile and exact 30,672-byte census are frozen in
+> `docs/v7-compact-tag72-pivot.md`.
 
 This audit is deliberately narrower than a security proof.  It checks whether
 the published statements actually have the hypotheses needed by the proposed
@@ -156,7 +163,7 @@ degree-corrected/lifted protocol or remain in a separately justified
 unique-decoding regime.  Copying the current S-two implementation is not an
 accepted theorem instantiation.
 
-## Gate result
+## Original Phase-2 gate result
 
 | Gate | Result |
 |---|---|
@@ -165,7 +172,7 @@ accepted theorem instantiation.
 | modular fallback has a published conditional route | **PASS, conditional** |
 | SBF implementation authorized | **NO -- measure host fallback first** |
 
-Phase 2 is closed with the prescribed pivot.  Phase 3 may build only the host
-reference fallback, produce an exact byte census and prove its polynomial
-degree/transcript predicates.  If its net overhead exceeds 2,840 bytes or its
-proof body exceeds 32 KiB, the profile stops before SBF integration.
+Phase 2 closed with permission to measure the fallback.  Phase 3 did so and
+triggered the wire kill condition before SBF integration.  The algebra and
+theorem audit remain retained evidence; production work continues only on the
+separately documented compact Tag-72 successor.

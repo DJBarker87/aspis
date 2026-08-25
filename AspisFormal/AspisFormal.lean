@@ -109,6 +109,8 @@ import AspisFormal.V7SplitTensorProfile
 import AspisFormal.V7BooleanZeta
 import AspisFormal.V7GammaRestriction
 import AspisFormal.V7PublishedCodeSwitchInterfaces
+import AspisFormal.V7CompactOneFold
+import AspisFormal.V7CompactSecurityLedger
 import AspisFormal.V5ComponentCExactTowerDeployment
 import AspisFormal.V5ComponentCQM31RustFormulaSeam
 import AspisFormal.V5ComponentCEncoderCorrespondence

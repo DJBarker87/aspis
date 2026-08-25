@@ -222,6 +222,14 @@ pub mod label {
     /// Canonical QM31 encoding of the verifier-computed random combination of
     /// the sixteen authenticated folded query values.
     pub const V6_QUERY_BATCH_CLAIM: u8 = 56;
+    /// V7's sole compact-query stream. The one-byte counter is verifier
+    /// derived and the first cap-203 candidate must be used.
+    pub const V7_QUERY_CANDIDATE: u8 = 57;
+    /// Domain separator after the accepted V7 q16 draw and before its scalar
+    /// query-batch challenge.
+    pub const V7_QUERY_BATCH_CHALLENGE: u8 = 58;
+    /// Verifier-computed V7 scalar query-batch claim.
+    pub const V7_QUERY_BATCH_CLAIM: u8 = 59;
 }
 
 const DOM_ABSORB: u8 = 0x00;
