@@ -203,6 +203,24 @@ theorem controller_answer_implies_exposure_available
     simpa [fresh_answer_tape_to_list_length] using available
   next _ => contradiction
 
+/-- A successful controller answer is literally the next element of its
+closed-over tape, at the index determined by the concrete fresh history. -/
+theorem controller_answer_is_next_tape_value
+    {steps : Nat} (tape : FreshAnswerTape Digest256 steps)
+    (history : List QueryRecord) (input : ShaInput) (output : ShaOutput)
+    (answered : controllerFromFreshAnswerTape tape history input =
+      .answer output) :
+    ∃ available : (freshAnswerEnumeration history).length <
+        (freshAnswerTapeToList tape).length,
+      output = (freshAnswerTapeToList tape).get
+        ⟨(freshAnswerEnumeration history).length, available⟩ := by
+  unfold controllerFromFreshAnswerTape at answered
+  split at answered
+  next available =>
+    simp only [ControllerDecision.answer.injEq] at answered
+    exact ⟨available, answered.symm⟩
+  next _ => contradiction
+
 theorem controller_refuses_after_all_exposures
     {steps : Nat} (tape : FreshAnswerTape Digest256 steps)
     (history : List QueryRecord)
@@ -222,10 +240,23 @@ def WithinFreshAnswerTape {steps : Nat}
     (tape : FreshAnswerTape Digest256 steps) (state : OracleState) : Prop :=
   FreshHistoryCountCoherent state ∧ state.freshCalls ≤ steps
 
+/-- Exact content coherence: the fresh records in the executable history are
+the consumed prefix of the source tape, not merely a list of the same
+length. -/
+def FreshHistoryMatchesTape {steps : Nat}
+    (tape : FreshAnswerTape Digest256 steps) (state : OracleState) : Prop :=
+  freshAnswerEnumeration state.history =
+    (freshAnswerTapeToList tape).take state.freshCalls
+
 theorem empty_oracle_within_fresh_answer_tape
     {steps : Nat} (tape : FreshAnswerTape Digest256 steps) :
     WithinFreshAnswerTape tape emptyOracle := by
   exact ⟨empty_oracle_fresh_history_count_coherent, Nat.zero_le steps⟩
+
+theorem empty_oracle_fresh_history_matches_tape
+    {steps : Nat} (tape : FreshAnswerTape Digest256 steps) :
+    FreshHistoryMatchesTape tape emptyOracle := by
+  rfl
 
 /-- A successful call made with the concrete tape controller preserves the
 hard fresh-exposure cap.  The bound follows from the controller's actual
@@ -265,6 +296,55 @@ theorem tape_query_success_preserves_fresh_exposure_bound
           change state.freshCalls + 1 ≤ steps
           omega
 
+/-- Successful cached calls preserve the consumed prefix, and successful
+fresh calls append exactly the next tape element. -/
+theorem tape_query_success_preserves_fresh_history_contents
+    {steps : Nat} (tape : FreshAnswerTape Digest256 steps)
+    (limits : OracleLimits) (actor : QueryActor)
+    (state nextState : OracleState) (input : ShaInput) (output : ShaOutput)
+    (within : WithinFreshAnswerTape tape state)
+    (contentCoherent : FreshHistoryMatchesTape tape state)
+    (success : queryOracle (controllerFromFreshAnswerTape tape) limits actor
+      state input = .ok (output, nextState)) :
+    FreshHistoryMatchesTape tape nextState := by
+  unfold queryOracle at success
+  split at success <;> try contradiction
+  next _ =>
+    split at success
+    next entry found =>
+      simp only [Except.ok.injEq, Prod.mk.injEq] at success
+      rcases success with ⟨_, rfl⟩
+      unfold FreshHistoryMatchesTape at contentCoherent ⊢
+      rw [fresh_answer_enumeration_append]
+      cases entry.source <;>
+        simpa [cachedOrigin, freshAnswerEnumeration] using contentCoherent
+    next missing =>
+      split at success <;> try contradiction
+      next _ =>
+        split at success
+        next _ => contradiction
+        next answer answered =>
+          obtain ⟨available, answerValue⟩ :=
+            controller_answer_is_next_tape_value
+              tape state.history input answer answered
+          simp only [Except.ok.injEq, Prod.mk.injEq] at success
+          rcases success with ⟨_, rfl⟩
+          have coherent := within.1
+          unfold FreshHistoryCountCoherent at coherent
+          have availableAtFreshCalls : state.freshCalls <
+              (freshAnswerTapeToList tape).length := by
+            simpa only [← coherent] using available
+          have answerAtFreshCalls : answer =
+              (freshAnswerTapeToList tape).get
+                ⟨state.freshCalls, availableAtFreshCalls⟩ := by
+            simpa only [coherent] using answerValue
+          unfold FreshHistoryMatchesTape at contentCoherent ⊢
+          rw [fresh_answer_enumeration_append,
+            fresh_answer_enumeration_fresh_singleton, contentCoherent,
+            answerAtFreshCalls]
+          exact List.take_concat_get'
+            (freshAnswerTapeToList tape) state.freshCalls availableAtFreshCalls
+
 /-- Complete executable runs under the tape controller satisfy both exact
 fresh-record counting and the global cap `freshCalls ≤ steps`. -/
 theorem run_machine_with_uniform_tape_preserves_exposure_bound
@@ -295,6 +375,40 @@ theorem run_machine_with_uniform_tape_preserves_exposure_bound
                   actor state nextState input output within queryResult
               simpa using ih nextState (next output) nextWithin
 
+/-- Full-machine preservation of the exact consumed tape prefix. -/
+theorem run_machine_with_uniform_tape_preserves_fresh_history_contents
+    {Result : Type*} {steps : Nat}
+    (tape : FreshAnswerTape Digest256 steps) (limits : OracleLimits)
+    (actor : QueryActor) (fuel : Nat) (state : OracleState)
+    (program : OracleMachine Result)
+    (within : WithinFreshAnswerTape tape state)
+    (contentCoherent : FreshHistoryMatchesTape tape state) :
+    FreshHistoryMatchesTape tape
+      (runMachine (controllerFromFreshAnswerTape tape) limits actor fuel state
+        program).oracle := by
+  induction fuel generalizing state program with
+  | zero =>
+      cases program <;> simp [runMachine, contentCoherent]
+  | succ fuel ih =>
+      cases program with
+      | pure result => simpa [runMachine] using contentCoherent
+      | abort reason => simpa [runMachine] using contentCoherent
+      | query input next =>
+          simp only [runMachine]
+          cases queryResult : queryOracle (controllerFromFreshAnswerTape tape)
+              limits actor state input with
+          | error reason => simpa using contentCoherent
+          | ok pair =>
+              rcases pair with ⟨output, nextState⟩
+              have nextWithin :=
+                tape_query_success_preserves_fresh_exposure_bound tape limits
+                  actor state nextState input output within queryResult
+              have nextMatches :=
+                tape_query_success_preserves_fresh_history_contents tape limits
+                  actor state nextState input output within contentCoherent
+                    queryResult
+              simpa using ih nextState (next output) nextWithin nextMatches
+
 /-- The actual machine-valued experiment over a uniform tape.  Unlike
 `ObservedProofExperiment.law`, its source of fresh answers is fixed by
 construction. -/
@@ -315,6 +429,22 @@ theorem uniform_tape_machine_fresh_exposure_bound
         ≤ steps := by
   exact run_machine_with_uniform_tape_preserves_exposure_bound tape limits actor
     fuel emptyOracle program (empty_oracle_within_fresh_answer_tape tape)
+
+/-- Every completed run's fresh-answer encoding is literally the prefix of
+its source uniform tape consumed by that run. -/
+theorem uniform_tape_machine_fresh_answers_are_consumed_prefix
+    {Result : Type*} (steps : Nat) (limits : OracleLimits)
+    (actor : QueryActor) (fuel : Nat) (program : OracleMachine Result)
+    (tape : FreshAnswerTape Digest256 steps) :
+    freshAnswerEnumeration
+        (runMachineFromUniformFreshTape steps limits actor fuel program tape).oracle.history =
+      (freshAnswerTapeToList tape).take
+        (runMachineFromUniformFreshTape steps limits actor fuel program
+          tape).oracle.freshCalls := by
+  exact run_machine_with_uniform_tape_preserves_fresh_history_contents tape
+    limits actor fuel emptyOracle program
+      (empty_oracle_within_fresh_answer_tape tape)
+      (empty_oracle_fresh_history_matches_tape tape)
 
 /-- The concrete pushforward law of the executable run.  This definition is
 the missing probabilistic ingredient that an arbitrary
@@ -452,10 +582,14 @@ theorem exact_accounting_resource_failure_event_empty
 #print axioms run_machine_preserves_fresh_history_count
 #print axioms fresh_answer_tape_to_list_length
 #print axioms controller_answer_implies_exposure_available
+#print axioms controller_answer_is_next_tape_value
 #print axioms controller_refuses_after_all_exposures
 #print axioms tape_query_success_preserves_fresh_exposure_bound
+#print axioms tape_query_success_preserves_fresh_history_contents
 #print axioms run_machine_with_uniform_tape_preserves_exposure_bound
+#print axioms run_machine_with_uniform_tape_preserves_fresh_history_contents
 #print axioms uniform_tape_machine_fresh_exposure_bound
+#print axioms uniform_tape_machine_fresh_answers_are_consumed_prefix
 #print axioms uniform_fresh_oracle_machine_law_event_probability
 #print axioms uniform_fresh_oracle_machine_overflow_probability_zero
 #print axioms concrete_restoration_binding_failure_event_empty
