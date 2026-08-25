@@ -1,0 +1,22 @@
+[workspace]
+
+[package]
+name = "aspis-pool-wallet-v1"
+version = "0.1.0"
+edition = "2021"
+license = "MIT OR Apache-2.0"
+publish = false
+description = "Isolated Pool V1 encrypted-note envelope, recipient scanner and durable cursor"
+
+[dependencies]
+aspis-core = { path = "../aspis-core" }
+aspis-pool = { path = "../../programs/aspis-pool", default-features = false, features = ["no-entrypoint"] }
+aspis-statement = { path = "../aspis-statement" }
+hpke = { version = "=0.14.0", default-features = false, features = ["alloc", "chacha", "x25519"] }
+sha2 = { version = "=0.11.0", default-features = false }
+serde = { version = "=1.0.229", features = ["derive"] }
+serde_json = "=1.0.151"
+solana-program = "=2.3.0"
+solana-sdk-ids = "=2.2.1"
+subtle = { version = "=2.6.1", default-features = false }
+zeroize = { version = "=1.8.1", features = ["derive"] }
