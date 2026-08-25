@@ -125,15 +125,12 @@ impl M31 {
     }
 
     /// Division by two in canonical form. For odd x, `(x + P) / 2` is the
-    /// unique field element whose double is x; this avoids a field multiply
-    /// by the constant `M31_HALF`.
+    /// unique field element whose double is x. Since `P = 2^31 - 1`, this is
+    /// exactly a one-bit rotate within the low 31 bits, avoiding both a field
+    /// multiply and an input-dependent branch.
     #[inline(always)]
     pub fn half(self) -> M31 {
-        if self.0 & 1 == 0 {
-            M31(self.0 >> 1)
-        } else {
-            M31(((self.0 as u64 + P as u64) >> 1) as u32)
-        }
+        M31((self.0 >> 1) | ((self.0 & 1) << 30))
     }
 
     pub fn pow(self, mut exp: u64) -> M31 {
@@ -245,7 +242,13 @@ impl CM31 {
     pub fn mul(self, rhs: CM31) -> CM31 {
         let m0 = self.a.mul(rhs.a);
         let m1 = self.b.mul(rhs.b);
-        let m2 = self.a.add(self.b).mul(rhs.a.add(rhs.b));
+        // Both unreduced sums are below `2P < 2^32`, so their product fits
+        // in u64. Reducing after the product is identical to first reducing
+        // each sum modulo P, and removes two canonical-add branches from
+        // every CM31 multiplication.
+        let m2 = M31::reduce_u64(
+            (u64::from(self.a.0) + u64::from(self.b.0)) * (u64::from(rhs.a.0) + u64::from(rhs.b.0)),
+        );
         CM31 {
             a: m0.sub(m1),
             b: m2.sub(m0).sub(m1),
@@ -257,7 +260,12 @@ impl CM31 {
     #[inline(always)]
     pub fn square(self) -> CM31 {
         CM31 {
-            a: self.a.add(self.b).mul(self.a.sub(self.b)),
+            // `(a+b)*(a-b)` with raw representatives. Both factors are
+            // below 2P and their product is strictly below 2^64.
+            a: M31::reduce_u64(
+                (u64::from(self.a.0) + u64::from(self.b.0))
+                    * (u64::from(self.a.0) + u64::from(P) - u64::from(self.b.0)),
+            ),
             b: self.a.mul(self.b).double(),
         }
     }
@@ -522,6 +530,30 @@ pub fn qm31_sum_products3(left: [QM31; 3], right: [QM31; 3]) -> QM31 {
     qm31_sum_products_small(left, right)
 }
 
+/// Exact sum of three `QM31 * M31` products with one reduction per output
+/// limb.  This is the aligned-base kernel used when line-domain coordinates
+/// stay in M31 while transcript challenges live in QM31.
+#[inline(always)]
+pub fn qm31_m31_sum_products3(left: [QM31; 3], right: [M31; 3]) -> QM31 {
+    let dot = |a: M31, b: M31, c: M31| {
+        M31::reduce_u64(
+            u64::from(a.0) * u64::from(right[0].0)
+                + u64::from(b.0) * u64::from(right[1].0)
+                + u64::from(c.0) * u64::from(right[2].0),
+        )
+    };
+    QM31 {
+        c0: CM31 {
+            a: dot(left[0].c0.a, left[1].c0.a, left[2].c0.a),
+            b: dot(left[0].c0.b, left[1].c0.b, left[2].c0.b),
+        },
+        c1: CM31 {
+            a: dot(left[0].c1.a, left[1].c1.a, left[2].c1.a),
+            b: dot(left[0].c1.b, left[1].c1.b, left[2].c1.b),
+        },
+    }
+}
+
 /// Exact four-product sum with 36 M31 products and 9 reductions.
 #[inline(always)]
 pub fn qm31_sum_products4(left: [QM31; 4], right: [QM31; 4]) -> QM31 {
@@ -595,6 +627,56 @@ pub fn qm31_sum_products3_prepared(left: &[PreparedQm31Multiplier; 3], right: &[
             }
         }
     }
+    qm31_from_karatsuba_channel_sums(sums)
+}
+
+/// Exact affine three-product sum with the constant folded into the same nine
+/// Karatsuba reduction channels.
+///
+/// This is algebraically `constant + sum_i left[i] * right[i]`. Encoding the
+/// constant directly in the unreduced channels removes four canonical M31
+/// additions from every arity-four coefficient fold. The largest channel is
+/// still below `3 * (P - 1)^2 + 4 * (P - 1) < 2^64`.
+#[inline(always)]
+pub fn qm31_add_sum_products3_prepared(
+    constant: QM31,
+    left: &[PreparedQm31Multiplier; 3],
+    right: &[QM31; 3],
+) -> QM31 {
+    let mut sums = [[0u64; 3]; 3];
+    for index in 0..3 {
+        let right_sum = right[index].c0.add(right[index].c1);
+        let right_components = [
+            [
+                right[index].c0.a,
+                right[index].c0.b,
+                right[index].c0.a.add(right[index].c0.b),
+            ],
+            [
+                right[index].c1.a,
+                right[index].c1.b,
+                right[index].c1.a.add(right[index].c1.b),
+            ],
+            [right_sum.a, right_sum.b, right_sum.a.add(right_sum.b)],
+        ];
+        for component in 0..3 {
+            for channel in 0..3 {
+                sums[component][channel] += left[index].components[component][channel].0 as u64
+                    * right_components[component][channel].0 as u64;
+            }
+        }
+    }
+
+    let a0 = u64::from(constant.c0.a.0);
+    let b0 = u64::from(constant.c0.b.0);
+    let a1 = u64::from(constant.c1.a.0);
+    let b1 = u64::from(constant.c1.b.0);
+    // Add c0 to the Karatsuba m0 channel. Add c0+c1 to m2 so the
+    // reconstruction c1=m2-m0-m1 receives exactly c1.
+    sums[0][0] += a0;
+    sums[0][2] += a0 + b0;
+    sums[2][0] += a0 + a1;
+    sums[2][2] += a0 + a1 + b0 + b1;
     qm31_from_karatsuba_channel_sums(sums)
 }
 
@@ -915,10 +997,11 @@ pub fn qm31_pack_base4(values: &[QM31]) -> QM31 {
 pub fn qm31_power_table<const N: usize>(gamma: QM31) -> [QM31; N] {
     let mut table = [QM31::ZERO; N];
     let mut power = QM31::ONE;
+    let prepared_gamma = PreparedQm31Multiplier::new(gamma);
     for (index, entry) in table.iter_mut().enumerate() {
         *entry = power;
         if index + 1 != N {
-            power = power.mul(gamma);
+            power = prepared_gamma.mul(power);
         }
     }
     table
@@ -1856,6 +1939,81 @@ pub fn qm31_dot(weights: &[QM31], values: &[QM31]) -> QM31 {
         c0: m0.add(mul_by_r(m1)),
         c1: m2.sub(m0).sub(m1),
     }
+}
+
+/// Three exact QM31 dots over one shared weight vector.
+///
+/// The three outputs retain independent product and reduction channels, while
+/// the common weight's CM31/Karatsuba decomposition is performed once per
+/// element. The 256-element outer windows have the same overflow proof as
+/// [`qm31_dot`].
+pub fn qm31_dot3(weights: &[QM31], values: [&[QM31]; 3]) -> [QM31; 3] {
+    for row in values {
+        assert_eq!(weights.len(), row.len());
+    }
+    let mut sums = [[M31::ZERO; 9]; 3];
+    const OUTER_COLUMNS: usize = 256;
+    for outer_start in (0..weights.len()).step_by(OUTER_COLUMNS) {
+        let outer_end = core::cmp::min(outer_start + OUTER_COLUMNS, weights.len());
+        let mut outer = [[0u64; 9]; 3];
+        for start in (outer_start..outer_end).step_by(4) {
+            let end = core::cmp::min(start + 4, outer_end);
+            let mut raw = [[0u64; 9]; 3];
+            for index in start..end {
+                let weight = weights[index];
+                let weight_sum = weight.c0.add(weight.c1);
+                let left = [
+                    [weight.c0.a, weight.c0.b, weight.c0.a.add(weight.c0.b)],
+                    [weight.c1.a, weight.c1.b, weight.c1.a.add(weight.c1.b)],
+                    [weight_sum.a, weight_sum.b, weight_sum.a.add(weight_sum.b)],
+                ];
+                for row in 0..3 {
+                    let value = values[row][index];
+                    let value_sum = value.c0.add(value.c1);
+                    let right = [
+                        [value.c0.a, value.c0.b, value.c0.a.add(value.c0.b)],
+                        [value.c1.a, value.c1.b, value.c1.a.add(value.c1.b)],
+                        [value_sum.a, value_sum.b, value_sum.a.add(value_sum.b)],
+                    ];
+                    for component in 0..3 {
+                        let offset = 3 * component;
+                        raw[row][offset] +=
+                            u64::from(left[component][0].0) * u64::from(right[component][0].0);
+                        raw[row][offset + 1] +=
+                            u64::from(left[component][1].0) * u64::from(right[component][1].0);
+                        raw[row][offset + 2] +=
+                            u64::from(left[component][2].0) * u64::from(right[component][2].0);
+                    }
+                }
+            }
+            for row in 0..3 {
+                for channel in 0..9 {
+                    outer[row][channel] += u64::from(M31::reduce_u64(raw[row][channel]).0);
+                }
+            }
+        }
+        for row in 0..3 {
+            for channel in 0..9 {
+                sums[row][channel] = sums[row][channel].add(M31::reduce_u64(outer[row][channel]));
+            }
+        }
+    }
+
+    core::array::from_fn(|row| {
+        let component = |offset: usize| CM31 {
+            a: sums[row][offset].sub(sums[row][offset + 1]),
+            b: sums[row][offset + 2]
+                .sub(sums[row][offset])
+                .sub(sums[row][offset + 1]),
+        };
+        let m0 = component(0);
+        let m1 = component(3);
+        let m2 = component(6);
+        QM31 {
+            c0: m0.add(mul_by_r(m1)),
+            c1: m2.sub(m0).sub(m1),
+        }
+    })
 }
 
 /// Montgomery batch inversion over M31: one field inversion for the whole
@@ -2891,6 +3049,43 @@ mod tests {
                 sum.add(weight.mul(*value))
             });
         assert_eq!(qm31_dot(&weights, &values), naive);
+    }
+
+    #[test]
+    fn three_shared_weight_dots_match_independent_dots() {
+        let mut state = 0xd073_5eed_31c0_ffee;
+        for len in [0usize, 1, 3, 4, 5, 16, 29, 80, 257, 513] {
+            let weights = (0..len)
+                .map(|_| next_random_qm31(&mut state))
+                .collect::<alloc::vec::Vec<_>>();
+            let rows: [alloc::vec::Vec<QM31>; 3] =
+                core::array::from_fn(|_| (0..len).map(|_| next_random_qm31(&mut state)).collect());
+            assert_eq!(
+                qm31_dot3(&weights, [&rows[0], &rows[1], &rows[2]]),
+                core::array::from_fn(|row| qm31_dot(&weights, &rows[row])),
+                "shared-weight length {len}"
+            );
+        }
+    }
+
+    #[test]
+    fn affine_prepared_three_product_sum_matches_naive() {
+        let mut state = 0xaff1_0e03_d073_5eed;
+        for case in 0..512 {
+            let constant = next_random_qm31(&mut state);
+            let left: [QM31; 3] = core::array::from_fn(|_| next_random_qm31(&mut state));
+            let right: [QM31; 3] = core::array::from_fn(|_| next_random_qm31(&mut state));
+            let prepared = left.map(PreparedQm31Multiplier::new);
+            let expected = left
+                .into_iter()
+                .zip(right.iter().copied())
+                .fold(constant, |sum, (a, b)| sum.add(a.mul(b)));
+            assert_eq!(
+                qm31_add_sum_products3_prepared(constant, &prepared, &right),
+                expected,
+                "affine case {case}"
+            );
+        }
     }
 
     #[test]

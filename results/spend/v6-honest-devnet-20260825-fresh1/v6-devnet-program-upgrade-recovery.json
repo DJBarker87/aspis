@@ -1,0 +1,56 @@
+{
+  "artifact": "aspis_v6_devnet_program_upgrade_recovery",
+  "schema_version": 1,
+  "status": "finalized_evidence",
+  "generated_at_utc": "2026-08-25T02:15:42Z",
+  "network": "devnet",
+  "genesis_hash": "EtWTRABZaYq6iMfeYKouRu166VU2xqa1wcaWoxPkrZBG",
+  "program_id": "7Q2nGsPg8rbjdxKHK4jxTgEWLTyd9o1X4KMSjCieRmue",
+  "programdata_address": "cdRqe7MGCEJ2Z6iZfWuXtuymRiAhXtyfDgT47sKZr69",
+  "upgrade_authority": "8AFmGcC2azHYGJz1VrDb8qJbCYdhVBTM5GE6TTSY3W2k",
+  "release_sbf": {
+    "path": "/Users/dominic/ZK-docs-final/target/deploy/aspis_verifier_v6_tag72_production.so",
+    "bytes": 1151632,
+    "sha256": "99028978d3d049fff7efa91ab544a5820632c83dfbf9548615089c3ad52908a2"
+  },
+  "prior_onchain_program_sha256": "f3bcf466e506b33b09cf5a9f73e7e32bb0c1bf94cac62c93a8337fe7ec06eba7",
+  "upgrade": {
+    "signature": "2zg4eTFauH6xT54JHKmJG9BgeMRrJfKMUrrP6XW2jRtjb9iEJER4BhRdpSN1EDU1B1qeWxsFu8eVKAAeZ2y7SmFg",
+    "finalized_slot": 487613740,
+    "block_time_utc": "2026-08-25T01:55:53Z",
+    "status": "Ok",
+    "compute_units_consumed": 2370,
+    "fee_lamports": 5000,
+    "loader_buffer": "GWzK9jtByPptYqz9UiuaZ8yszCkzKWX4SsSTyGoAVHmc",
+    "loader_buffer_refund_lamports": 8353204080,
+    "loader_buffer_absent_after_finality": true
+  },
+  "post_upgrade_onchain_program": {
+    "last_deploy_slot": 487613740,
+    "programdata_account_bytes": 1151677,
+    "programdata_metadata_bytes": 45,
+    "programdata_capacity_bytes": 1151632,
+    "program_dump_bytes": 1151632,
+    "program_dump_sha256": "99028978d3d049fff7efa91ab544a5820632c83dfbf9548615089c3ad52908a2",
+    "byte_equal_to_release_sbf": true,
+    "unused_programdata_padding_bytes": 0,
+    "upgrade_authority_exact": true
+  },
+  "unused_retry_buffer_cleanup": {
+    "buffer": "56jvBuuRBbjRyKoBKyDhPapaeRVULVBth1VSSuyiKqnS",
+    "signature": "5eQid3189ytqavZuTeTq756XqJUfj5NJvVPQJwZ66NUzK5eLqGYF36AN45Kt818W9wCeit46rt63aBzWwfH7zsdH",
+    "finalized_slot": 487616284,
+    "block_time_utc": "2026-08-25T02:05:02Z",
+    "status": "Ok",
+    "compute_units_consumed": 2370,
+    "fee_lamports": 5000,
+    "refund_lamports": 8353204080,
+    "buffer_absent_after_finality": true,
+    "remaining_authority_buffers": 0
+  },
+  "linked_execution_evidence": "/Users/dominic/ZK-docs-final/results/spend/v6-honest-devnet-20260825-fresh1/v6-devnet-execution-attempt3.json",
+  "explicit_nonclaims": [
+    "No mainnet-beta transaction was constructed or submitted.",
+    "The upgrade transaction is recorded separately because the successful lifecycle executor correctly observed the exact release SBF already deployed and did not redeploy it."
+  ]
+}

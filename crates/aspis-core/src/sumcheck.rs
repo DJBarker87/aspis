@@ -12,7 +12,10 @@
 use alloc::vec::Vec;
 
 use crate::circle::{double_x, SecureCirclePoint};
-use crate::field::{qm31_sum_products2_prepared, PreparedQm31Multiplier, M31_QUARTER, QM31};
+use crate::field::{
+    qm31_m31_sum_products3, qm31_sum_products2_prepared, qm31_sum_products4,
+    PreparedQm31Multiplier, CM31, M31, M31_QUARTER, QM31,
+};
 use crate::verify::EvaluationClaim;
 
 pub const SUMCHECK_COEFFICIENTS: usize = 7;
@@ -30,6 +33,20 @@ enum WeightComponent {
     /// circle point is `[..., pi(x), x, y]`; a line point is
     /// `[..., pi(x), x]`.
     Tensor { scale: QM31, factors: Vec<QM31> },
+    /// Line-tensor evaluation whose low coordinate and every iterated
+    /// `pi(x) = 2x^2 - 1` remain in M31.  Keeping the aligned base-field
+    /// coordinate instead of eight lifted QM31 factors removes repeated
+    /// extension-field squaring and enables mixed-width fold kernels.
+    LineM31Tensor { scale: QM31, x: M31 },
+    /// Several line tensors sharing one live log length. V6 installs all
+    /// sixteen query-evaluation covectors together, avoiding sixteen enum
+    /// dispatches per relation round while preserving each independent scale
+    /// and base-field line coordinate exactly.
+    LineM31Batch {
+        scales: Vec<QM31>,
+        xs: Vec<M31>,
+        deferred_halvings: u8,
+    },
     /// `scale * product(pair_j[index_bit_j])`. This represents sparse
     /// subcube indicators without materializing a full covector; unlike the
     /// Tensor variant, either zero-bit weight may itself be zero.
@@ -631,6 +648,72 @@ impl WeightAccumulator {
         self.add_tensor_factors(scale, factors)
     }
 
+    /// Add the same line-evaluation covector while retaining its coordinate
+    /// in the M31 subfield.  The component is exact, not an approximation:
+    /// its unfurled weights and every dual-folded weight equal those produced
+    /// by `add_line_tensor(scale, QM31::from_cm31(CM31::from_m31(x)))`.
+    pub fn add_line_m31_tensor(&mut self, scale: QM31, x: M31) -> Result<(), TensorWeightError> {
+        if self.log_len == 0 {
+            return Err(TensorWeightError::FactorCount);
+        }
+        self.components
+            .push(WeightComponent::LineM31Tensor { scale, x });
+        Ok(())
+    }
+
+    /// Install multiple exact M31-aligned line tensors as one component.
+    pub fn add_line_m31_batch(
+        &mut self,
+        scales: &[QM31],
+        xs: &[M31],
+    ) -> Result<(), TensorWeightError> {
+        if self.log_len == 0 || scales.is_empty() || scales.len() != xs.len() {
+            return Err(TensorWeightError::FactorCount);
+        }
+        self.components.push(WeightComponent::LineM31Batch {
+            scales: scales.to_vec(),
+            xs: xs.to_vec(),
+            deferred_halvings: 0,
+        });
+        Ok(())
+    }
+
+    /// Merge two multilinear components once their remaining points are
+    /// identical. Linearity makes
+    /// `a * eq(z, ·) + b * eq(z, ·) = (a + b) * eq(z, ·)` exactly, so this
+    /// changes only the representation of the public relation covector.
+    ///
+    /// V6 uses this after folding away the two coordinates complemented by
+    /// its XOR-12 statement point. Keeping the shape check here makes the
+    /// protocol-specific caller fail closed if that public relationship ever
+    /// changes.
+    pub fn merge_equal_multilinear_components(&mut self, first: usize, second: usize) -> bool {
+        if first >= second || second >= self.components.len() {
+            return false;
+        }
+        let (left, right) = self.components.split_at_mut(second);
+        let WeightComponent::Multilinear {
+            scale: first_scale,
+            point: first_point,
+        } = &mut left[first]
+        else {
+            return false;
+        };
+        let WeightComponent::Multilinear {
+            scale: second_scale,
+            point: second_point,
+        } = &right[0]
+        else {
+            return false;
+        };
+        if first_point != second_point {
+            return false;
+        }
+        *first_scale = first_scale.add(*second_scale);
+        self.components.remove(second);
+        true
+    }
+
     pub fn weight_at(&self, index: u32) -> QM31 {
         debug_assert!(index < (1u32 << self.log_len));
         let mut total = QM31::ZERO;
@@ -660,6 +743,40 @@ impl WeightAccumulator {
                         }
                     }
                     value
+                }
+                WeightComponent::LineM31Tensor { scale, x } => {
+                    let mut value = *scale;
+                    let mut factor = *x;
+                    let mut bit = 0u32;
+                    while bit < self.log_len {
+                        if index & (1u32 << bit) != 0 {
+                            value = value.mul_m31(factor);
+                        }
+                        factor = Self::double_x_m31(factor);
+                        bit += 1;
+                    }
+                    value
+                }
+                WeightComponent::LineM31Batch {
+                    scales,
+                    xs,
+                    deferred_halvings,
+                } => {
+                    let mut sum = QM31::ZERO;
+                    for (&scale, &x) in scales.iter().zip(xs) {
+                        let mut value = scale;
+                        let mut factor = x;
+                        let mut bit = 0u32;
+                        while bit < self.log_len {
+                            if index & (1u32 << bit) != 0 {
+                                value = value.mul_m31(factor);
+                            }
+                            factor = Self::double_x_m31(factor);
+                            bit += 1;
+                        }
+                        sum = sum.add(value);
+                    }
+                    Self::halve_qm31(sum, *deferred_halvings)
                 }
                 WeightComponent::Product { scale, pairs } => {
                     let mut value = *scale;
@@ -821,6 +938,67 @@ impl WeightAccumulator {
                         index += 1;
                     }
                 }
+                WeightComponent::LineM31Tensor { scale, x } => {
+                    let mut factors = Vec::with_capacity(self.log_len as usize);
+                    let mut factor = *x;
+                    for _ in 0..self.log_len {
+                        factors.push(factor);
+                        factor = Self::double_x_m31(factor);
+                    }
+                    let mut values = [QM31::ZERO; N];
+                    if N != 0 {
+                        values[0] = *scale;
+                    }
+                    let mut index = 1usize;
+                    while index < N {
+                        let bit = index.trailing_zeros() as usize;
+                        values[index] = values[index ^ (1usize << bit)].mul_m31(factors[bit]);
+                        index += 1;
+                    }
+                    let mut index = 0usize;
+                    while index < N {
+                        output[index] = output[index].add(values[index]);
+                        index += 1;
+                    }
+                }
+                WeightComponent::LineM31Batch {
+                    scales,
+                    xs,
+                    deferred_halvings,
+                } => {
+                    let mut component_values = [QM31::ZERO; N];
+                    for (&scale, &x) in scales.iter().zip(xs) {
+                        let mut factors = Vec::with_capacity(self.log_len as usize);
+                        let mut factor = x;
+                        for _ in 0..self.log_len {
+                            factors.push(factor);
+                            factor = Self::double_x_m31(factor);
+                        }
+                        let mut values = [QM31::ZERO; N];
+                        if N != 0 {
+                            values[0] = scale;
+                        }
+                        let mut index = 1usize;
+                        while index < N {
+                            let bit = index.trailing_zeros() as usize;
+                            values[index] = values[index ^ (1usize << bit)].mul_m31(factors[bit]);
+                            index += 1;
+                        }
+                        let mut index = 0usize;
+                        while index < N {
+                            component_values[index] = component_values[index].add(values[index]);
+                            index += 1;
+                        }
+                    }
+                    let mut index = 0usize;
+                    while index < N {
+                        output[index] = output[index].add(Self::halve_qm31(
+                            component_values[index],
+                            *deferred_halvings,
+                        ));
+                        index += 1;
+                    }
+                }
                 WeightComponent::Product { scale, pairs } => {
                     add_product_prefix(&mut output, pairs, 0, 0, *scale);
                 }
@@ -955,6 +1133,58 @@ impl WeightAccumulator {
         factors.truncate(split);
     }
 
+    #[inline(always)]
+    fn double_x_m31(x: M31) -> M31 {
+        x.mul(x).double().sub(M31::ONE)
+    }
+
+    #[inline(always)]
+    fn halve_qm31(mut value: QM31, count: u8) -> QM31 {
+        let mut index = 0u8;
+        while index < count {
+            value = value.half();
+            index += 1;
+        }
+        value
+    }
+
+    fn fold_line_m31_tensor_arity4(
+        scale: &mut QM31,
+        x: &mut M31,
+        alpha: QM31,
+        alpha2: QM31,
+        alpha3: QM31,
+    ) {
+        let low = *x;
+        let high = Self::double_x_m31(low);
+        let cross = high.mul(low);
+        let mixed = qm31_m31_sum_products3([alpha3, alpha2, alpha], [low, high, cross]);
+        *scale = scale.mul(QM31::ONE.add(mixed).half().half());
+        *x = Self::double_x_m31(high);
+    }
+
+    fn fold_line_m31_batch_arity4(
+        scales: &mut [QM31],
+        xs: &mut [M31],
+        deferred_halvings: &mut u8,
+        alpha: QM31,
+        alpha2: QM31,
+        alpha3: QM31,
+    ) {
+        debug_assert_eq!(scales.len(), xs.len());
+        let mut index = 0usize;
+        while index < scales.len() {
+            let low = xs[index];
+            let high = Self::double_x_m31(low);
+            let cross = high.mul(low);
+            let mixed = qm31_m31_sum_products3([alpha3, alpha2, alpha], [low, high, cross]);
+            scales[index] = scales[index].mul(QM31::ONE.add(mixed));
+            xs[index] = Self::double_x_m31(high);
+            index += 1;
+        }
+        *deferred_halvings += 2;
+    }
+
     fn fold_dense_arity4(values: &mut Vec<QM31>, alpha: QM31, alpha2: QM31, alpha3: QM31) {
         let chunk_count = values.len() / 4;
         let mut folded = Vec::with_capacity(chunk_count);
@@ -1036,6 +1266,21 @@ impl WeightAccumulator {
             WeightComponent::Tensor { scale, factors } => {
                 Self::fold_tensor_arity4(scale, factors, alpha3, prepared_alpha, prepared_alpha2)
             }
+            WeightComponent::LineM31Tensor { scale, x } => {
+                Self::fold_line_m31_tensor_arity4(scale, x, alpha, alpha2, alpha3)
+            }
+            WeightComponent::LineM31Batch {
+                scales,
+                xs,
+                deferred_halvings,
+            } => Self::fold_line_m31_batch_arity4(
+                scales,
+                xs,
+                deferred_halvings,
+                alpha,
+                alpha2,
+                alpha3,
+            ),
             WeightComponent::Product { scale, pairs } => {
                 let split = pairs.len() - 2;
                 let high = pairs[split];
@@ -1194,6 +1439,21 @@ impl WeightAccumulator {
                     prepared_alpha,
                     prepared_alpha2,
                 ),
+                WeightComponent::LineM31Tensor { scale, x } => {
+                    Self::fold_line_m31_tensor_arity4(scale, x, alpha, alpha2, alpha3)
+                }
+                WeightComponent::LineM31Batch {
+                    scales,
+                    xs,
+                    deferred_halvings,
+                } => Self::fold_line_m31_batch_arity4(
+                    scales,
+                    xs,
+                    deferred_halvings,
+                    alpha,
+                    alpha2,
+                    alpha3,
+                ),
                 WeightComponent::Dense { values } => {
                     Self::fold_dense_arity4(values, alpha, alpha2, alpha3);
                 }
@@ -1302,7 +1562,96 @@ impl WeightAccumulator {
     pub fn dot(&self, values: &[QM31]) -> QM31 {
         debug_assert_eq!(values.len(), 1usize << self.log_len);
         if self.log_len == 2 && values.len() == 4 {
-            let mut total = QM31::ZERO;
+            // All V6 query checks arrive here as line tensors over the same
+            // four final coefficients.  Linearity lets us sum their four
+            // covector coordinates first, then perform one four-product
+            // extension-field dot.  The former spelling performed one full
+            // QM31 multiplication per query after independently evaluating
+            // the same coefficient tuple.
+            let line_deferred_halvings = self
+                .components
+                .iter()
+                .filter_map(|component| match component {
+                    WeightComponent::LineM31Batch {
+                        deferred_halvings, ..
+                    } => Some(*deferred_halvings),
+                    _ => None,
+                })
+                .max()
+                .unwrap_or(0);
+            let mut line_count = 0usize;
+            let mut line_constant_limbs = [M31::ZERO; 4];
+            let mut line_raw = [[0u64; 4]; 3];
+            let mut line_sums = [[M31::ZERO; 4]; 3];
+            for component in &self.components {
+                let mut accumulate_line = |mut scale: QM31, x: M31, mut halvings: u8| {
+                    while halvings < line_deferred_halvings {
+                        scale = scale.add(scale);
+                        halvings += 1;
+                    }
+                    let high = Self::double_x_m31(x);
+                    let factors = [x, high, x.mul(high)];
+                    let limbs = [scale.c0.a.0, scale.c0.b.0, scale.c1.a.0, scale.c1.b.0];
+                    for limb in 0..4 {
+                        line_constant_limbs[limb] = line_constant_limbs[limb].add(M31(limbs[limb]));
+                        for slot in 0..3 {
+                            line_raw[slot][limb] +=
+                                u64::from(limbs[limb]) * u64::from(factors[slot].0);
+                        }
+                    }
+                    line_count += 1;
+                    if line_count % 4 == 0 {
+                        for slot in 0..3 {
+                            for limb in 0..4 {
+                                line_sums[slot][limb] = line_sums[slot][limb]
+                                    .add(M31::reduce_u64(line_raw[slot][limb]));
+                                line_raw[slot][limb] = 0;
+                            }
+                        }
+                    }
+                };
+                match component {
+                    WeightComponent::LineM31Tensor { scale, x } => accumulate_line(*scale, *x, 0),
+                    WeightComponent::LineM31Batch {
+                        scales,
+                        xs,
+                        deferred_halvings,
+                    } => {
+                        for (&scale, &x) in scales.iter().zip(xs) {
+                            accumulate_line(scale, x, *deferred_halvings);
+                        }
+                    }
+                    _ => {}
+                }
+            }
+            if line_count % 4 != 0 {
+                for slot in 0..3 {
+                    for limb in 0..4 {
+                        line_sums[slot][limb] =
+                            line_sums[slot][limb].add(M31::reduce_u64(line_raw[slot][limb]));
+                    }
+                }
+            }
+            let from_limbs = |limbs: [M31; 4]| QM31 {
+                c0: CM31::new(limbs[0], limbs[1]),
+                c1: CM31::new(limbs[2], limbs[3]),
+            };
+            let mut total = if line_count == 0 {
+                QM31::ZERO
+            } else {
+                Self::halve_qm31(
+                    qm31_sum_products4(
+                        [
+                            from_limbs(line_constant_limbs),
+                            from_limbs(line_sums[0]),
+                            from_limbs(line_sums[1]),
+                            from_limbs(line_sums[2]),
+                        ],
+                        [values[0], values[1], values[2], values[3]],
+                    ),
+                    line_deferred_halvings,
+                )
+            };
             for component in &self.components {
                 let contribution = match component {
                     WeightComponent::Geometric { scale, base } => {
@@ -1325,6 +1674,8 @@ impl WeightAccumulator {
                         let high = values[2].add(factors[1].mul(values[3]));
                         scale.mul(low.add(factors[0].mul(high)))
                     }
+                    WeightComponent::LineM31Tensor { .. } => QM31::ZERO,
+                    WeightComponent::LineM31Batch { .. } => QM31::ZERO,
                     WeightComponent::Product { scale, pairs } => {
                         debug_assert_eq!(pairs.len(), 2);
                         let evaluation = values[0]

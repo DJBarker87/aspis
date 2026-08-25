@@ -212,3 +212,11 @@ import AspisFormal.V6SecurityLedger
 import AspisFormal.V6RelationFold
 import AspisFormal.V6Width29CorrelatedAgreement
 import AspisFormal.V6FirstCompactSampler
+import AspisFormal.V6BinaryFrontier
+import AspisFormal.V6CompactFrontierCertificate
+import AspisFormal.V6QueryBatchSoundness
+import AspisFormal.V6HidingFinalFactorization
+import AspisFormal.V6PairedSaltHiding
+import AspisFormal.V6TranscriptRelationGrammar
+import AspisFormal.V6AcceptedPathObligations
+import AspisFormal.V6ConditionalCompleteSecurity

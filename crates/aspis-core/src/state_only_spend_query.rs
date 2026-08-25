@@ -27,6 +27,13 @@ pub struct StateOnlySpendQueryPowers {
 impl StateOnlySpendQueryPowers {
     pub fn new(gamma: QM31) -> Self {
         let powers = qm31_power_table::<SPEND_TOTAL_COLUMNS>(gamma);
+        Self::from_full_table(&powers)
+    }
+
+    /// Prepare the spend-query kernels from an already-derived power table.
+    /// V6 uses this to share one exact `[1, gamma, ..., gamma^28]` table
+    /// between its three point-claim dots and all sixteen opened fibres.
+    pub fn from_full_table(powers: &[QM31; SPEND_TOTAL_COLUMNS]) -> Self {
         let base_powers: [QM31; STATE_ONLY_TOTAL_COLUMNS] =
             core::array::from_fn(|index| powers[index]);
         Self {

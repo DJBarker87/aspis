@@ -1,0 +1,731 @@
+{
+  "all_mutations_rejected": true,
+  "artifact": "aspis_v6_onefold_host_adversarial_replay",
+  "cases": [
+    {
+      "category": "fixed_fields",
+      "error": "Transcript(TerminalRejected)",
+      "name": "fixed_initial_claim",
+      "rejected": true
+    },
+    {
+      "category": "semantic_sumcheck",
+      "error": "Transcript(TerminalRejected)",
+      "name": "semantic_round_0",
+      "rejected": true
+    },
+    {
+      "category": "semantic_sumcheck",
+      "error": "Transcript(TerminalRejected)",
+      "name": "semantic_round_1",
+      "rejected": true
+    },
+    {
+      "category": "semantic_sumcheck",
+      "error": "Transcript(TerminalRejected)",
+      "name": "semantic_round_2",
+      "rejected": true
+    },
+    {
+      "category": "semantic_sumcheck",
+      "error": "Transcript(TerminalRejected)",
+      "name": "semantic_round_3",
+      "rejected": true
+    },
+    {
+      "category": "semantic_sumcheck",
+      "error": "Transcript(TerminalRejected)",
+      "name": "semantic_round_4",
+      "rejected": true
+    },
+    {
+      "category": "semantic_sumcheck",
+      "error": "Transcript(TerminalRejected)",
+      "name": "semantic_round_5",
+      "rejected": true
+    },
+    {
+      "category": "semantic_sumcheck",
+      "error": "Transcript(TerminalRejected)",
+      "name": "semantic_round_6",
+      "rejected": true
+    },
+    {
+      "category": "semantic_sumcheck",
+      "error": "Transcript(TerminalRejected)",
+      "name": "semantic_round_7",
+      "rejected": true
+    },
+    {
+      "category": "semantic_sumcheck",
+      "error": "Transcript(TerminalRejected)",
+      "name": "semantic_round_8",
+      "rejected": true
+    },
+    {
+      "category": "semantic_sumcheck",
+      "error": "Transcript(TerminalRejected)",
+      "name": "semantic_round_9",
+      "rejected": true
+    },
+    {
+      "category": "point_claims",
+      "error": "Transcript(TerminalRejected)",
+      "name": "point_claim_row_0_column_0",
+      "rejected": true
+    },
+    {
+      "category": "point_claims",
+      "error": "Transcript(WorkRejected { stage: Batch })",
+      "name": "point_claim_row_0_column_28",
+      "rejected": true
+    },
+    {
+      "category": "point_claims",
+      "error": "Transcript(TerminalRejected)",
+      "name": "point_claim_row_1_column_0",
+      "rejected": true
+    },
+    {
+      "category": "point_claims",
+      "error": "Transcript(WorkRejected { stage: Batch })",
+      "name": "point_claim_row_1_column_28",
+      "rejected": true
+    },
+    {
+      "category": "point_claims",
+      "error": "Transcript(TerminalRejected)",
+      "name": "point_claim_row_2_column_0",
+      "rejected": true
+    },
+    {
+      "category": "point_claims",
+      "error": "Transcript(WorkRejected { stage: Batch })",
+      "name": "point_claim_row_2_column_28",
+      "rejected": true
+    },
+    {
+      "category": "inactive_claim",
+      "error": "Transcript(WorkRejected { stage: Fold })",
+      "name": "inactive_claim",
+      "rejected": true
+    },
+    {
+      "category": "ood_values",
+      "error": "Transcript(WorkRejected { stage: Fold })",
+      "name": "ood_value_0",
+      "rejected": true
+    },
+    {
+      "category": "ood_values",
+      "error": "Transcript(WorkRejected { stage: Fold })",
+      "name": "ood_value_1",
+      "rejected": true
+    },
+    {
+      "category": "relation_sumcheck",
+      "error": "Transcript(WorkRejected { stage: Fold })",
+      "name": "relation_round_0",
+      "rejected": true
+    },
+    {
+      "category": "relation_sumcheck",
+      "error": "Transcript(RelationTerminal)",
+      "name": "relation_round_1",
+      "rejected": true
+    },
+    {
+      "category": "relation_sumcheck",
+      "error": "Transcript(RelationTerminal)",
+      "name": "relation_round_2",
+      "rejected": true
+    },
+    {
+      "category": "relation_sumcheck",
+      "error": "Transcript(RelationTerminal)",
+      "name": "relation_round_3",
+      "rejected": true
+    },
+    {
+      "category": "terminal_polynomial",
+      "error": "Transcript(WorkRejected { stage: Final })",
+      "name": "final256_coefficient_0",
+      "rejected": true
+    },
+    {
+      "category": "terminal_polynomial",
+      "error": "Transcript(WorkRejected { stage: Final })",
+      "name": "final256_coefficient_1",
+      "rejected": true
+    },
+    {
+      "category": "terminal_polynomial",
+      "error": "Transcript(WorkRejected { stage: Final })",
+      "name": "final256_coefficient_127",
+      "rejected": true
+    },
+    {
+      "category": "terminal_polynomial",
+      "error": "Transcript(WorkRejected { stage: Final })",
+      "name": "final256_coefficient_255",
+      "rejected": true
+    },
+    {
+      "category": "root_or_work",
+      "error": "Transcript(TerminalRejected)",
+      "name": "c1_root",
+      "rejected": true
+    },
+    {
+      "category": "root_or_work",
+      "error": "Transcript(TerminalRejected)",
+      "name": "c2_root",
+      "rejected": true
+    },
+    {
+      "category": "root_or_work",
+      "error": "Transcript(WorkRejected { stage: Batch })",
+      "name": "batch_work_nonce",
+      "rejected": true
+    },
+    {
+      "category": "root_or_work",
+      "error": "Transcript(WorkRejected { stage: Fold })",
+      "name": "fold_work_nonce",
+      "rejected": true
+    },
+    {
+      "category": "root_or_work",
+      "error": "Transcript(WorkRejected { stage: Final })",
+      "name": "final_work_nonce",
+      "rejected": true
+    },
+    {
+      "category": "authenticated_query_record",
+      "error": "Transcript(Wire(MerkleMismatch))",
+      "name": "query_0_c1",
+      "rejected": true
+    },
+    {
+      "category": "authenticated_query_record",
+      "error": "Transcript(Wire(MerkleMismatch))",
+      "name": "query_0_c2",
+      "rejected": true
+    },
+    {
+      "category": "authenticated_query_record",
+      "error": "Transcript(Wire(MerkleMismatch))",
+      "name": "query_0_salt",
+      "rejected": true
+    },
+    {
+      "category": "authenticated_query_record",
+      "error": "Transcript(Wire(MerkleMismatch))",
+      "name": "query_1_c1",
+      "rejected": true
+    },
+    {
+      "category": "authenticated_query_record",
+      "error": "Transcript(Wire(MerkleMismatch))",
+      "name": "query_1_c2",
+      "rejected": true
+    },
+    {
+      "category": "authenticated_query_record",
+      "error": "Transcript(Wire(MerkleMismatch))",
+      "name": "query_1_salt",
+      "rejected": true
+    },
+    {
+      "category": "authenticated_query_record",
+      "error": "Transcript(Wire(MerkleMismatch))",
+      "name": "query_2_c1",
+      "rejected": true
+    },
+    {
+      "category": "authenticated_query_record",
+      "error": "Transcript(Wire(MerkleMismatch))",
+      "name": "query_2_c2",
+      "rejected": true
+    },
+    {
+      "category": "authenticated_query_record",
+      "error": "Transcript(Wire(MerkleMismatch))",
+      "name": "query_2_salt",
+      "rejected": true
+    },
+    {
+      "category": "authenticated_query_record",
+      "error": "Transcript(Wire(MerkleMismatch))",
+      "name": "query_3_c1",
+      "rejected": true
+    },
+    {
+      "category": "authenticated_query_record",
+      "error": "Transcript(Wire(MerkleMismatch))",
+      "name": "query_3_c2",
+      "rejected": true
+    },
+    {
+      "category": "authenticated_query_record",
+      "error": "Transcript(Wire(MerkleMismatch))",
+      "name": "query_3_salt",
+      "rejected": true
+    },
+    {
+      "category": "authenticated_query_record",
+      "error": "Transcript(Wire(MerkleMismatch))",
+      "name": "query_4_c1",
+      "rejected": true
+    },
+    {
+      "category": "authenticated_query_record",
+      "error": "Transcript(Wire(MerkleMismatch))",
+      "name": "query_4_c2",
+      "rejected": true
+    },
+    {
+      "category": "authenticated_query_record",
+      "error": "Transcript(Wire(MerkleMismatch))",
+      "name": "query_4_salt",
+      "rejected": true
+    },
+    {
+      "category": "authenticated_query_record",
+      "error": "Transcript(Wire(MerkleMismatch))",
+      "name": "query_5_c1",
+      "rejected": true
+    },
+    {
+      "category": "authenticated_query_record",
+      "error": "Transcript(Wire(MerkleMismatch))",
+      "name": "query_5_c2",
+      "rejected": true
+    },
+    {
+      "category": "authenticated_query_record",
+      "error": "Transcript(Wire(MerkleMismatch))",
+      "name": "query_5_salt",
+      "rejected": true
+    },
+    {
+      "category": "authenticated_query_record",
+      "error": "Transcript(Wire(MerkleMismatch))",
+      "name": "query_6_c1",
+      "rejected": true
+    },
+    {
+      "category": "authenticated_query_record",
+      "error": "Transcript(Wire(MerkleMismatch))",
+      "name": "query_6_c2",
+      "rejected": true
+    },
+    {
+      "category": "authenticated_query_record",
+      "error": "Transcript(Wire(MerkleMismatch))",
+      "name": "query_6_salt",
+      "rejected": true
+    },
+    {
+      "category": "authenticated_query_record",
+      "error": "Transcript(Wire(MerkleMismatch))",
+      "name": "query_7_c1",
+      "rejected": true
+    },
+    {
+      "category": "authenticated_query_record",
+      "error": "Transcript(Wire(MerkleMismatch))",
+      "name": "query_7_c2",
+      "rejected": true
+    },
+    {
+      "category": "authenticated_query_record",
+      "error": "Transcript(Wire(MerkleMismatch))",
+      "name": "query_7_salt",
+      "rejected": true
+    },
+    {
+      "category": "authenticated_query_record",
+      "error": "Transcript(Wire(MerkleMismatch))",
+      "name": "query_8_c1",
+      "rejected": true
+    },
+    {
+      "category": "authenticated_query_record",
+      "error": "Transcript(Wire(MerkleMismatch))",
+      "name": "query_8_c2",
+      "rejected": true
+    },
+    {
+      "category": "authenticated_query_record",
+      "error": "Transcript(Wire(MerkleMismatch))",
+      "name": "query_8_salt",
+      "rejected": true
+    },
+    {
+      "category": "authenticated_query_record",
+      "error": "Transcript(Wire(MerkleMismatch))",
+      "name": "query_9_c1",
+      "rejected": true
+    },
+    {
+      "category": "authenticated_query_record",
+      "error": "Transcript(Wire(MerkleMismatch))",
+      "name": "query_9_c2",
+      "rejected": true
+    },
+    {
+      "category": "authenticated_query_record",
+      "error": "Transcript(Wire(MerkleMismatch))",
+      "name": "query_9_salt",
+      "rejected": true
+    },
+    {
+      "category": "authenticated_query_record",
+      "error": "Transcript(Wire(MerkleMismatch))",
+      "name": "query_10_c1",
+      "rejected": true
+    },
+    {
+      "category": "authenticated_query_record",
+      "error": "Transcript(Wire(MerkleMismatch))",
+      "name": "query_10_c2",
+      "rejected": true
+    },
+    {
+      "category": "authenticated_query_record",
+      "error": "Transcript(Wire(MerkleMismatch))",
+      "name": "query_10_salt",
+      "rejected": true
+    },
+    {
+      "category": "authenticated_query_record",
+      "error": "Transcript(Wire(MerkleMismatch))",
+      "name": "query_11_c1",
+      "rejected": true
+    },
+    {
+      "category": "authenticated_query_record",
+      "error": "Transcript(Wire(MerkleMismatch))",
+      "name": "query_11_c2",
+      "rejected": true
+    },
+    {
+      "category": "authenticated_query_record",
+      "error": "Transcript(Wire(MerkleMismatch))",
+      "name": "query_11_salt",
+      "rejected": true
+    },
+    {
+      "category": "authenticated_query_record",
+      "error": "Transcript(Wire(MerkleMismatch))",
+      "name": "query_12_c1",
+      "rejected": true
+    },
+    {
+      "category": "authenticated_query_record",
+      "error": "Transcript(Wire(MerkleMismatch))",
+      "name": "query_12_c2",
+      "rejected": true
+    },
+    {
+      "category": "authenticated_query_record",
+      "error": "Transcript(Wire(MerkleMismatch))",
+      "name": "query_12_salt",
+      "rejected": true
+    },
+    {
+      "category": "authenticated_query_record",
+      "error": "Transcript(Wire(MerkleMismatch))",
+      "name": "query_13_c1",
+      "rejected": true
+    },
+    {
+      "category": "authenticated_query_record",
+      "error": "Transcript(Wire(MerkleMismatch))",
+      "name": "query_13_c2",
+      "rejected": true
+    },
+    {
+      "category": "authenticated_query_record",
+      "error": "Transcript(Wire(MerkleMismatch))",
+      "name": "query_13_salt",
+      "rejected": true
+    },
+    {
+      "category": "authenticated_query_record",
+      "error": "Transcript(Wire(MerkleMismatch))",
+      "name": "query_14_c1",
+      "rejected": true
+    },
+    {
+      "category": "authenticated_query_record",
+      "error": "Transcript(Wire(MerkleMismatch))",
+      "name": "query_14_c2",
+      "rejected": true
+    },
+    {
+      "category": "authenticated_query_record",
+      "error": "Transcript(Wire(MerkleMismatch))",
+      "name": "query_14_salt",
+      "rejected": true
+    },
+    {
+      "category": "authenticated_query_record",
+      "error": "Transcript(Wire(MerkleMismatch))",
+      "name": "query_15_c1",
+      "rejected": true
+    },
+    {
+      "category": "authenticated_query_record",
+      "error": "Transcript(Wire(MerkleMismatch))",
+      "name": "query_15_c2",
+      "rejected": true
+    },
+    {
+      "category": "authenticated_query_record",
+      "error": "Transcript(Wire(MerkleMismatch))",
+      "name": "query_15_salt",
+      "rejected": true
+    },
+    {
+      "category": "merkle_frontier",
+      "error": "Transcript(Wire(MerkleMismatch))",
+      "name": "c1_frontier_node_0",
+      "rejected": true
+    },
+    {
+      "category": "merkle_frontier",
+      "error": "Transcript(Wire(MerkleMismatch))",
+      "name": "c1_frontier_node_104",
+      "rejected": true
+    },
+    {
+      "category": "merkle_frontier",
+      "error": "Transcript(Wire(MerkleMismatch))",
+      "name": "c1_frontier_node_208",
+      "rejected": true
+    },
+    {
+      "category": "merkle_frontier",
+      "error": "Transcript(Wire(MerkleMismatch))",
+      "name": "c2_frontier_node_0",
+      "rejected": true
+    },
+    {
+      "category": "merkle_frontier",
+      "error": "Transcript(Wire(MerkleMismatch))",
+      "name": "c2_frontier_node_104",
+      "rejected": true
+    },
+    {
+      "category": "merkle_frontier",
+      "error": "Transcript(Wire(MerkleMismatch))",
+      "name": "c2_frontier_node_208",
+      "rejected": true
+    },
+    {
+      "category": "canonical_encoding",
+      "error": "Transcript(Wire(NonCanonicalM31))",
+      "name": "noncanonical_fixed_m31",
+      "rejected": true
+    },
+    {
+      "category": "canonical_encoding",
+      "error": "Transcript(Wire(NonCanonicalM31))",
+      "name": "noncanonical_query_c1_m31",
+      "rejected": true
+    },
+    {
+      "category": "canonical_encoding",
+      "error": "Transcript(Wire(NonCanonicalM31))",
+      "name": "noncanonical_query_c2_m31",
+      "rejected": true
+    },
+    {
+      "category": "canonical_encoding",
+      "error": "Query(NonCanonicalM31)",
+      "name": "nonzero_fixed_padding_bits",
+      "rejected": true
+    },
+    {
+      "category": "framing",
+      "error": "Query(WrongLength)",
+      "name": "proof_truncated",
+      "rejected": true
+    },
+    {
+      "category": "framing",
+      "error": "Query(WrongLength)",
+      "name": "proof_trailing_byte",
+      "rejected": true
+    },
+    {
+      "category": "frontier_framing",
+      "error": "Query(WrongLength)",
+      "name": "frontier_c1_minus_one",
+      "rejected": true
+    },
+    {
+      "category": "frontier_framing",
+      "error": "Query(WrongLength)",
+      "name": "frontier_c2_minus_one",
+      "rejected": true
+    },
+    {
+      "category": "frontier_framing",
+      "error": "Query(WrongLength)",
+      "name": "frontier_both_zero",
+      "rejected": true
+    },
+    {
+      "category": "frontier_framing",
+      "error": "Query(FrontierTooLarge)",
+      "name": "frontier_above_cap",
+      "rejected": true
+    },
+    {
+      "category": "selector_binding",
+      "error": "Transcript(FrontierCountMismatch { expected: 203, c1: 209, c2: 209 })",
+      "name": "wrong_valid_selector_1",
+      "rejected": true
+    },
+    {
+      "category": "selector_binding",
+      "error": "Transcript(FrontierCountMismatch { expected: 202, c1: 209, c2: 209 })",
+      "name": "wrong_valid_selector_2",
+      "rejected": true
+    },
+    {
+      "category": "selector_binding",
+      "error": "Transcript(QuerySelector)",
+      "name": "invalid_selector_3",
+      "rejected": true
+    },
+    {
+      "category": "selector_binding",
+      "error": "Transcript(QuerySelector)",
+      "name": "invalid_selector_255",
+      "rejected": true
+    },
+    {
+      "category": "transcript_context",
+      "error": "Transcript(TerminalRejected)",
+      "name": "release_binding",
+      "rejected": true
+    },
+    {
+      "category": "transcript_context",
+      "error": "Transcript(TerminalRejected)",
+      "name": "runtime_program_id",
+      "rejected": true
+    },
+    {
+      "category": "transcript_context",
+      "error": "Transcript(TerminalRejected)",
+      "name": "proof_account_attempt_id",
+      "rejected": true
+    },
+    {
+      "category": "public_statement_binding",
+      "error": "Transcript(TerminalRejected)",
+      "name": "statement_pool",
+      "rejected": true
+    },
+    {
+      "category": "public_statement_binding",
+      "error": "Transcript(TerminalRejected)",
+      "name": "statement_sequence",
+      "rejected": true
+    },
+    {
+      "category": "public_statement_binding",
+      "error": "Transcript(TerminalRejected)",
+      "name": "statement_current_anchor",
+      "rejected": true
+    },
+    {
+      "category": "public_statement_binding",
+      "error": "Transcript(TerminalRejected)",
+      "name": "statement_nullifier",
+      "rejected": true
+    },
+    {
+      "category": "public_statement_binding",
+      "error": "Transcript(TerminalRejected)",
+      "name": "statement_output_commitment",
+      "rejected": true
+    },
+    {
+      "category": "public_statement_binding",
+      "error": "Transcript(TerminalRejected)",
+      "name": "statement_output_anchor",
+      "rejected": true
+    },
+    {
+      "category": "public_statement_binding",
+      "error": "Transcript(TerminalRejected)",
+      "name": "statement_asset_id",
+      "rejected": true
+    },
+    {
+      "category": "public_statement_binding",
+      "error": "Transcript(TerminalRejected)",
+      "name": "statement_fee",
+      "rejected": true
+    },
+    {
+      "category": "public_statement_binding",
+      "error": "Transcript(TerminalRejected)",
+      "name": "statement_deployment_domain",
+      "rejected": true
+    },
+    {
+      "category": "instruction_framing",
+      "error": "InvalidInstructionData",
+      "name": "instruction_bad_tag",
+      "rejected": true
+    },
+    {
+      "category": "instruction_framing",
+      "error": "InvalidInstructionData",
+      "name": "instruction_truncated",
+      "rejected": true
+    },
+    {
+      "category": "instruction_framing",
+      "error": "InvalidInstructionData",
+      "name": "instruction_trailing_byte",
+      "rejected": true
+    }
+  ],
+  "compact_counter": 3,
+  "frontier_nodes_per_tree": 209,
+  "honest_baseline_accepted": true,
+  "metadata_path": "/home/dombarker/project-offloads/aspis-v6-onefold/results/spend/v6-honest-devnet-20260825/v6-honest-proof.json",
+  "metadata_sha256": "f84df8fc9b83074d3f4ad6828309bb213e0abf780bd21cdcfdf0a4084eee47a0",
+  "production_pow_enabled_for_every_host_replay": true,
+  "program_id": "7Q2nGsPg8rbjdxKHK4jxTgEWLTyd9o1X4KMSjCieRmue",
+  "proof_account": "48kmPn3Tazz4DwpF5yQpJfEDevFFxQ6mMx3SoENPtxJ8",
+  "proof_bytes": 33336,
+  "proof_path": "/home/dombarker/project-offloads/aspis-v6-onefold/results/spend/v6-honest-devnet-20260825/v6-proof.bin",
+  "proof_sha256": "2e828a5b8b8b328da073be5a643548ed15beec315eb5797f8d04a668b309d5f9",
+  "rejected_case_count": 116,
+  "schema_version": 1,
+  "scope": [
+    "every semantic sumcheck round",
+    "every relation sumcheck round",
+    "every point-claim row boundary",
+    "all sixteen C1/C2/salt query records",
+    "both roots and all three work nonces",
+    "both Merkle frontiers",
+    "canonical packed-field and padding teeth",
+    "proof and instruction exact framing",
+    "selector/frontier metadata",
+    "program/release/attempt transcript context",
+    "every public statement component"
+  ],
+  "selector": 0,
+  "statement_path": "/home/dombarker/project-offloads/aspis-v6-onefold/results/spend/v6-honest-devnet-20260825/v6-statement.json",
+  "statement_sha256": "675d8c9b70f51e4eb202af00591d84a93d580bf607ec7f850db5c9017d4088a2"
+}

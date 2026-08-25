@@ -41,3 +41,11 @@ Its deterministic archive identity is recorded in
 Use the tags when reproducing research history. Use the default branch for
 the current implementation. Git history is the authoritative per-change
 record.
+
+## V5 Component-C q18 frozen maps
+
+The V6 integration also retains the final V5 Component-C q18 matrix and
+quotient-obstruction artifacts under `results/spend/`. Their exact paths,
+sizes and SHA-256 identities are pinned in
+[`v5-component-c-frozen-q18-2026-08-25-manifest.json`](v5-component-c-frozen-q18-2026-08-25-manifest.json).
+They remain V5 evidence and are not inputs to the V6 verifier.

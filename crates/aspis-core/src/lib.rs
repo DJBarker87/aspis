@@ -46,6 +46,8 @@ pub mod statement_sumcheck;
 pub mod sumcheck;
 pub mod transcript;
 pub mod v6_onefold;
+pub mod v6_query_batch;
+pub mod v6_transcript;
 pub mod verify;
 
 pub use params::{FoldPayload, MerkleMode, Profile, PROFILES};

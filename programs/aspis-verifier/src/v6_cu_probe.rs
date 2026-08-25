@@ -7,9 +7,22 @@
 use aspis_core::field::{CM31, M31, QM31};
 use aspis_core::v6_onefold::{
     binary_frontier_nodes, evaluate_packed_final256_at_queries, fold_v6_onefold_queries,
-    prepare_v6_onefold_coordinates, verify_and_gamma_combine_v6_binary_openings, V6OneFoldWire,
-    V6_QUERY_COUNT,
+    prepare_v6_onefold_coordinates, verify_and_gamma_combine_v6_binary_openings,
+    verify_and_gamma_combine_v6_binary_openings_prepared, V6OneFoldWire, V6_QUERY_COUNT,
 };
+use aspis_core::v6_query_batch::V6AuthenticatedQueryBatch;
+use aspis_core::v6_transcript::{
+    verify_v6_transcript_and_relation_prepared,
+    verify_v6_transcript_and_relation_prepared_with_diagnostic_trace, V6RelationDiagnosticPhase,
+    V6SemanticView, V6TranscriptContext, V6TranscriptError,
+};
+use aspis_statement::atomic_state_only_terminal::{
+    atomic_state_only_copy_inactive_group_masks_v3, atomic_state_only_copy_inactive_row_groups_v3,
+    atomic_state_only_selected_masked_terminal_value_compiled_v3,
+    atomic_state_only_selected_masked_terminal_value_compiled_with_diagnostic_trace_v3,
+};
+use aspis_statement::state_only_terminal::StateOnlyTerminalDiagnosticPhase;
+use aspis_statement::{AtomicPaymentStatementV4, SpendPublic, STATE_ONLY_SELECTED_TERMINAL_CLAIMS};
 use solana_program::{
     account_info::AccountInfo,
     entrypoint::ProgramResult,
@@ -22,6 +35,31 @@ use solana_program::{
 
 pub const V6_CU_PROBE_TAG: u8 = 68;
 pub const V6_CU_PROBE_WIRE_BYTES: usize = 1 + 2 + 2 + V6_QUERY_COUNT * 4;
+/// Full read-only algebra/PCS diagnostic. This remains unreachable from every
+/// production build and deliberately substitutes `true` for the live
+/// statement terminal while measuring all other V6 verification work.
+pub const V6_FULL_CU_PROBE_TAG: u8 = 69;
+pub const V6_FULL_CU_PROBE_WIRE_BYTES: usize = 1 + 2 + 2 + 1;
+/// Exact semantic-terminal phase diagnostic. It shares the full probe wire,
+/// runs the real terminal polynomial on transcript-derived inputs, and stops
+/// before the PCS relation. It is unreachable from production builds.
+pub const V6_TERMINAL_CU_PROBE_TAG: u8 = 70;
+pub const V6_TERMINAL_CU_PROBE_WIRE_BYTES: usize = V6_FULL_CU_PROBE_WIRE_BYTES;
+/// One-instruction core-verifier diagnostic: exact terminal, all three work
+/// hashes, relation, Merkle authentication and one-fold checks. It still
+/// excludes the atomic account wrapper/state write and is unreachable from
+/// production builds.
+pub const V6_INTEGRATED_CU_PROBE_TAG: u8 = 71;
+pub const V6_INTEGRATED_CU_PROBE_WIRE_BYTES: usize = V6_FULL_CU_PROBE_WIRE_BYTES;
+/// Complete diagnostic atomic wrapper around the uninstrumented V6 core.
+/// This tag exists only under `v6-cu-probe`; production will use the same
+/// wrapper and digest handoff after an honest proof fixture is available.
+pub const V6_ATOMIC_CU_PROBE_TAG: u8 = 72;
+const V6_ATOMIC_PUBLIC_WIRE_BYTES: usize = 4 * 32 + 2 * 4 + 32;
+pub const V6_ATOMIC_CU_PROBE_WIRE_BYTES: usize =
+    V6_FULL_CU_PROBE_WIRE_BYTES + V6_ATOMIC_PUBLIC_WIRE_BYTES;
+pub const V6_PROBE_RELEASE_BINDING: [u8; 32] = [0x56; 32];
+pub const V6_PROBE_STATEMENT_DIGEST: [u8; 32] = [0x53; 32];
 
 #[cfg(not(feature = "no-entrypoint"))]
 solana_program::entrypoint!(process_v6_cu_probe_instruction);
@@ -42,10 +80,357 @@ fn read_u32(input: &mut &[u8]) -> Result<u32, ProgramError> {
     Ok(u32::from_le_bytes(*head))
 }
 
+fn read_array<const N: usize>(input: &mut &[u8]) -> Result<[u8; N], ProgramError> {
+    let (head, tail) = input
+        .split_first_chunk::<N>()
+        .ok_or(ProgramError::InvalidInstructionData)?;
+    *input = tail;
+    Ok(*head)
+}
+
 fn qm31_bytes(value: QM31) -> [u8; 16] {
     let mut bytes = [0u8; 16];
     value.write_le_bytes(&mut bytes);
     bytes
+}
+
+/// Execute the real SBF SHA-256 syscall for every transcript operation. A
+/// grinding call is uniquely shaped as `(32-byte state, 1-byte domain,
+/// 8-byte nonce)`; only for that diagnostic call, clear the returned leading
+/// bytes so the all-zero CU fixture can pass 34-bit work and continue. Work
+/// hashes do not mutate transcript state, so every subsequent challenge is
+/// identical to the production hash path.
+fn sbf_hashv_accept_probe_work(inputs: &[&[u8]]) -> [u8; 32] {
+    let mut digest = crate::verify::sbf_hashv(inputs);
+    if inputs.len() == 3 && inputs[0].len() == 32 && inputs[1].len() == 1 && inputs[2].len() == 8 {
+        digest[..5].fill(0);
+    }
+    digest
+}
+
+fn diagnostic_statement() -> AtomicPaymentStatementV4 {
+    AtomicPaymentStatementV4 {
+        pool: [0u8; 32],
+        sequence: 0,
+        spend: SpendPublic {
+            anchor: [M31::ZERO; 8],
+            nullifier: [M31::ZERO; 8],
+            output_commitment: [M31::ZERO; 8],
+            asset_id: M31::ZERO,
+            fee: 0,
+        },
+        output_anchor: [M31::ZERO; 8],
+        deployment_domain: [0u8; 32],
+    }
+}
+
+fn terminal_claims(view: &V6SemanticView<'_>) -> [QM31; STATE_ONLY_SELECTED_TERMINAL_CLAIMS] {
+    core::array::from_fn(|index| {
+        let row = index / 28;
+        let column = index % 28;
+        view.point_claims[row][column]
+    })
+}
+
+#[inline(never)]
+fn log_terminal_phase(phase: StateOnlyTerminalDiagnosticPhase) {
+    match phase {
+        StateOnlyTerminalDiagnosticPhase::Prepared => msg!("aspis-v6-terminal:prepared"),
+        StateOnlyTerminalDiagnosticPhase::Poseidon => msg!("aspis-v6-terminal:poseidon"),
+        StateOnlyTerminalDiagnosticPhase::SemanticInitial => {
+            msg!("aspis-v6-terminal:semantic-initial")
+        }
+        StateOnlyTerminalDiagnosticPhase::SemanticAbsorption => {
+            msg!("aspis-v6-terminal:semantic-absorption")
+        }
+        StateOnlyTerminalDiagnosticPhase::SemanticMerkle => {
+            msg!("aspis-v6-terminal:semantic-merkle")
+        }
+        StateOnlyTerminalDiagnosticPhase::SemanticRange => {
+            msg!("aspis-v6-terminal:semantic-range")
+        }
+        StateOnlyTerminalDiagnosticPhase::SemanticPublic => {
+            msg!("aspis-v6-terminal:semantic-public")
+        }
+        StateOnlyTerminalDiagnosticPhase::CopyPatterns => {
+            msg!("aspis-v6-terminal:copy-patterns")
+        }
+        StateOnlyTerminalDiagnosticPhase::CopyRouting => {
+            msg!("aspis-v6-terminal:copy-routing")
+        }
+        StateOnlyTerminalDiagnosticPhase::Copy => msg!("aspis-v6-terminal:copy"),
+        StateOnlyTerminalDiagnosticPhase::CompositionEquality => {
+            msg!("aspis-v6-terminal:composition-equality")
+        }
+        StateOnlyTerminalDiagnosticPhase::Mask => msg!("aspis-v6-terminal:mask"),
+        StateOnlyTerminalDiagnosticPhase::Final => msg!("aspis-v6-terminal:final"),
+    }
+    sol_log_compute_units();
+}
+
+#[inline(never)]
+fn log_relation_phase(phase: V6RelationDiagnosticPhase) {
+    match phase {
+        V6RelationDiagnosticPhase::Start => msg!("aspis-v6-integrated:relation-start"),
+        V6RelationDiagnosticPhase::PreparedWeights => {
+            msg!("aspis-v6-integrated:relation-prepared-weights")
+        }
+        V6RelationDiagnosticPhase::CircleSamples => {
+            msg!("aspis-v6-integrated:relation-circle-samples")
+        }
+        V6RelationDiagnosticPhase::RelationFields => {
+            msg!("aspis-v6-integrated:relation-fields")
+        }
+        V6RelationDiagnosticPhase::RoundZero => {
+            msg!("aspis-v6-integrated:relation-round-zero")
+        }
+        V6RelationDiagnosticPhase::Final256 => msg!("aspis-v6-integrated:relation-final256"),
+        V6RelationDiagnosticPhase::Queries => msg!("aspis-v6-integrated:relation-queries"),
+        V6RelationDiagnosticPhase::QueryBatch => {
+            msg!("aspis-v6-integrated:relation-query-batch")
+        }
+        V6RelationDiagnosticPhase::RoundOnePolynomial => {
+            msg!("aspis-v6-integrated:relation-round-one-polynomial")
+        }
+        V6RelationDiagnosticPhase::RoundOneWeights => {
+            msg!("aspis-v6-integrated:relation-round-one-weights")
+        }
+        V6RelationDiagnosticPhase::RoundOne => {
+            msg!("aspis-v6-integrated:relation-round-one-values")
+        }
+        V6RelationDiagnosticPhase::RoundTwoPolynomial => {
+            msg!("aspis-v6-integrated:relation-round-two-polynomial")
+        }
+        V6RelationDiagnosticPhase::RoundTwoWeights => {
+            msg!("aspis-v6-integrated:relation-round-two-weights")
+        }
+        V6RelationDiagnosticPhase::RoundTwo => {
+            msg!("aspis-v6-integrated:relation-round-two-values")
+        }
+        V6RelationDiagnosticPhase::RoundThreePolynomial => {
+            msg!("aspis-v6-integrated:relation-round-three-polynomial")
+        }
+        V6RelationDiagnosticPhase::RoundThreeWeights => {
+            msg!("aspis-v6-integrated:relation-round-three-weights")
+        }
+        V6RelationDiagnosticPhase::RoundThree => {
+            msg!("aspis-v6-integrated:relation-round-three-values")
+        }
+        V6RelationDiagnosticPhase::Terminal => msg!("aspis-v6-integrated:relation-terminal"),
+    }
+    sol_log_compute_units();
+}
+
+#[inline(never)]
+fn process_v6_integrated_probe(
+    program_id: &Pubkey,
+    proof_account: &AccountInfo,
+    proof: &[u8],
+    c1_frontier_nodes: usize,
+    c2_frontier_nodes: usize,
+    selector: u8,
+) -> ProgramResult {
+    msg!("aspis-v6-integrated:entry");
+    sol_log_compute_units();
+    let parsed =
+        V6OneFoldWire::parse_deferred_canonicality(proof, c1_frontier_nodes, c2_frontier_nodes)
+            .map_err(|_| ProgramError::InvalidAccountData)?;
+    msg!("aspis-v6-integrated:parsed");
+    sol_log_compute_units();
+
+    let context = V6TranscriptContext {
+        program_id: program_id.to_bytes(),
+        release_binding: V6_PROBE_RELEASE_BINDING,
+        statement_digest: V6_PROBE_STATEMENT_DIGEST,
+        attempt_id: proof_account.key.to_bytes(),
+    };
+    let statement = diagnostic_statement();
+    let mut terminal_value = QM31::ZERO;
+    let verified = verify_v6_transcript_and_relation_prepared_with_diagnostic_trace(
+        sbf_hashv_accept_probe_work,
+        &parsed,
+        &context,
+        selector,
+        atomic_state_only_copy_inactive_row_groups_v3(),
+        atomic_state_only_copy_inactive_group_masks_v3(),
+        true,
+        |view| {
+            msg!("aspis-v6-integrated:terminal-start");
+            sol_log_compute_units();
+            let Ok(value) = atomic_state_only_selected_masked_terminal_value_compiled_v3(
+                &statement,
+                &terminal_claims(view),
+                &view.point,
+                view.lambda,
+                view.chi,
+                view.batching.theta,
+                &view.batching.zerocheck_point,
+                view.batching.mu,
+                view.eta,
+            ) else {
+                return false;
+            };
+            terminal_value = value;
+            msg!("aspis-v6-integrated:terminal-end");
+            sol_log_compute_units();
+            true
+        },
+        |view| {
+            msg!("aspis-v6-integrated:query-start");
+            sol_log_compute_units();
+            let combined = verify_and_gamma_combine_v6_binary_openings_prepared(
+                sbf_hashv_accept_probe_work,
+                &parsed,
+                view.queries,
+                view.gamma_powers,
+            )?;
+            msg!("aspis-v6-integrated:merkle-and-gamma");
+            sol_log_compute_units();
+            let coordinates = prepare_v6_onefold_coordinates(view.queries)?;
+            msg!("aspis-v6-integrated:coordinates");
+            sol_log_compute_units();
+            let folded = fold_v6_onefold_queries(&combined, &coordinates, view.alpha0);
+            msg!("aspis-v6-integrated:onefold-query-values");
+            sol_log_compute_units();
+            Ok(V6AuthenticatedQueryBatch {
+                values: folded,
+                line_x: coordinates.line_x,
+            })
+        },
+        log_relation_phase,
+    )
+    .map_err(|_| ProgramError::InvalidAccountData)?;
+    msg!("aspis-v6-integrated:relation-tail");
+    sol_log_compute_units();
+    let folded_sum = qm31_bytes(verified.folded_query_sum);
+    let terminal = qm31_bytes(terminal_value);
+    let slices = [
+        folded_sum.as_slice(),
+        terminal.as_slice(),
+        verified.transcript_state_after_queries.as_slice(),
+    ];
+    let sink = hashv(&slices);
+    sol_log_data(&[b"aspis-v6-integrated-core-probe-v1", sink.as_ref()]);
+    msg!("aspis-v6-integrated:sink");
+    sol_log_compute_units();
+    Ok(())
+}
+
+#[inline(never)]
+fn process_v6_atomic_probe<'a>(
+    program_id: &Pubkey,
+    accounts: &[AccountInfo<'a>],
+    public: &crate::atomic_payment::AtomicPaymentPublicInputs,
+    c1_frontier_nodes: usize,
+    c2_frontier_nodes: usize,
+    selector: u8,
+) -> ProgramResult {
+    crate::atomic_payment::verify_and_apply_atomic_payment_state(
+        program_id,
+        accounts,
+        public,
+        |proof_account, statement, statement_digest| {
+            let account_data = proof_account.try_borrow_data()?;
+            if !crate::lifecycle::proof_account_finalized(&account_data) {
+                return Err(ProgramError::InvalidAccountData);
+            }
+            let (proof_start, proof_end) = crate::lifecycle::uploaded_proof_bounds(&account_data)?;
+            let proof = &account_data[proof_start..proof_end];
+            let parsed = V6OneFoldWire::parse_deferred_canonicality(
+                proof,
+                c1_frontier_nodes,
+                c2_frontier_nodes,
+            )
+            .map_err(|_| ProgramError::InvalidAccountData)?;
+            let context = V6TranscriptContext {
+                program_id: program_id.to_bytes(),
+                release_binding: V6_PROBE_RELEASE_BINDING,
+                statement_digest: *statement_digest,
+                attempt_id: proof_account.key.to_bytes(),
+            };
+            verify_v6_transcript_and_relation_prepared(
+                sbf_hashv_accept_probe_work,
+                &parsed,
+                &context,
+                selector,
+                atomic_state_only_copy_inactive_row_groups_v3(),
+                atomic_state_only_copy_inactive_group_masks_v3(),
+                true,
+                |view| {
+                    atomic_state_only_selected_masked_terminal_value_compiled_v3(
+                        statement,
+                        &terminal_claims(view),
+                        &view.point,
+                        view.lambda,
+                        view.chi,
+                        view.batching.theta,
+                        &view.batching.zerocheck_point,
+                        view.batching.mu,
+                        view.eta,
+                    )
+                    .is_ok()
+                },
+                |view| {
+                    let combined = verify_and_gamma_combine_v6_binary_openings_prepared(
+                        sbf_hashv_accept_probe_work,
+                        &parsed,
+                        view.queries,
+                        view.gamma_powers,
+                    )?;
+                    let coordinates = prepare_v6_onefold_coordinates(view.queries)?;
+                    Ok(V6AuthenticatedQueryBatch {
+                        values: fold_v6_onefold_queries(&combined, &coordinates, view.alpha0),
+                        line_x: coordinates.line_x,
+                    })
+                },
+            )
+            .map_err(|_| ProgramError::InvalidAccountData)?;
+            Ok(())
+        },
+    )
+}
+
+#[inline(never)]
+fn process_v6_atomic_probe_instruction(
+    program_id: &Pubkey,
+    accounts: &[AccountInfo],
+    instruction_data: &[u8],
+) -> ProgramResult {
+    if instruction_data.len() != V6_ATOMIC_CU_PROBE_WIRE_BYTES {
+        return Err(ProgramError::InvalidInstructionData);
+    }
+    let proof_account = accounts.first().ok_or(ProgramError::NotEnoughAccountKeys)?;
+    if proof_account.owner != program_id || proof_account.is_writable {
+        return Err(ProgramError::IncorrectProgramId);
+    }
+    let mut input = &instruction_data[1..];
+    let c1_frontier_nodes = usize::from(read_u16(&mut input)?);
+    let c2_frontier_nodes = usize::from(read_u16(&mut input)?);
+    let selector = input
+        .first()
+        .copied()
+        .ok_or(ProgramError::InvalidInstructionData)?;
+    input = &input[1..];
+    let public = crate::atomic_payment::AtomicPaymentPublicInputs {
+        current_anchor: read_array(&mut input)?,
+        nullifier: read_array(&mut input)?,
+        output_commitment: read_array(&mut input)?,
+        output_anchor: read_array(&mut input)?,
+        asset_id: read_u32(&mut input)?,
+        fee: read_u32(&mut input)?,
+        deployment_domain: read_array(&mut input)?,
+    };
+    if !input.is_empty() {
+        return Err(ProgramError::InvalidInstructionData);
+    }
+    process_v6_atomic_probe(
+        program_id,
+        accounts,
+        &public,
+        c1_frontier_nodes,
+        c2_frontier_nodes,
+        selector,
+    )
 }
 
 pub fn process_v6_cu_probe_instruction(
@@ -53,9 +438,21 @@ pub fn process_v6_cu_probe_instruction(
     accounts: &[AccountInfo],
     instruction_data: &[u8],
 ) -> ProgramResult {
-    if instruction_data.len() != V6_CU_PROBE_WIRE_BYTES
-        || instruction_data.first().copied() != Some(V6_CU_PROBE_TAG)
-    {
+    let tag = instruction_data
+        .first()
+        .copied()
+        .ok_or(ProgramError::InvalidInstructionData)?;
+    if tag == V6_ATOMIC_CU_PROBE_TAG {
+        return process_v6_atomic_probe_instruction(program_id, accounts, instruction_data);
+    }
+    let expected_wire_bytes = match tag {
+        V6_CU_PROBE_TAG => V6_CU_PROBE_WIRE_BYTES,
+        V6_FULL_CU_PROBE_TAG => V6_FULL_CU_PROBE_WIRE_BYTES,
+        V6_TERMINAL_CU_PROBE_TAG => V6_TERMINAL_CU_PROBE_WIRE_BYTES,
+        V6_INTEGRATED_CU_PROBE_TAG => V6_INTEGRATED_CU_PROBE_WIRE_BYTES,
+        _ => return Err(ProgramError::InvalidInstructionData),
+    };
+    if instruction_data.len() != expected_wire_bytes {
         return Err(ProgramError::InvalidInstructionData);
     }
     let proof_account = accounts.first().ok_or(ProgramError::NotEnoughAccountKeys)?;
@@ -67,9 +464,22 @@ pub fn process_v6_cu_probe_instruction(
     let c1_frontier_nodes = usize::from(read_u16(&mut input)?);
     let c2_frontier_nodes = usize::from(read_u16(&mut input)?);
     let mut queries = [0u32; V6_QUERY_COUNT];
-    for query in &mut queries {
-        *query = read_u32(&mut input)?;
-    }
+    let full_selector = if tag == V6_FULL_CU_PROBE_TAG
+        || tag == V6_TERMINAL_CU_PROBE_TAG
+        || tag == V6_INTEGRATED_CU_PROBE_TAG
+    {
+        let selector = input
+            .first()
+            .copied()
+            .ok_or(ProgramError::InvalidInstructionData)?;
+        input = &input[1..];
+        Some(selector)
+    } else {
+        for query in &mut queries {
+            *query = read_u32(&mut input)?;
+        }
+        None
+    };
     if !input.is_empty() {
         return Err(ProgramError::InvalidInstructionData);
     }
@@ -80,6 +490,138 @@ pub fn process_v6_cu_probe_instruction(
     }
     let (proof_start, proof_end) = crate::lifecycle::uploaded_proof_bounds(&account_data)?;
     let proof = &account_data[proof_start..proof_end];
+
+    if tag == V6_TERMINAL_CU_PROBE_TAG {
+        let selector = full_selector.ok_or(ProgramError::InvalidInstructionData)?;
+        msg!("aspis-v6-terminal:entry");
+        sol_log_compute_units();
+        let parsed =
+            V6OneFoldWire::parse_deferred_canonicality(proof, c1_frontier_nodes, c2_frontier_nodes)
+                .map_err(|_| ProgramError::InvalidAccountData)?;
+        msg!("aspis-v6-terminal:parsed");
+        sol_log_compute_units();
+        let context = V6TranscriptContext {
+            program_id: program_id.to_bytes(),
+            release_binding: V6_PROBE_RELEASE_BINDING,
+            statement_digest: V6_PROBE_STATEMENT_DIGEST,
+            attempt_id: proof_account.key.to_bytes(),
+        };
+        let statement = diagnostic_statement();
+        let result = verify_v6_transcript_and_relation_prepared(
+            crate::verify::sbf_hashv,
+            &parsed,
+            &context,
+            selector,
+            atomic_state_only_copy_inactive_row_groups_v3(),
+            atomic_state_only_copy_inactive_group_masks_v3(),
+            false,
+            |view| {
+                msg!("aspis-v6-terminal:start");
+                sol_log_compute_units();
+                let value = atomic_state_only_selected_masked_terminal_value_compiled_with_diagnostic_trace_v3(
+                    &statement,
+                    &terminal_claims(view),
+                    &view.point,
+                    view.lambda,
+                    view.chi,
+                    view.batching.theta,
+                    &view.batching.zerocheck_point,
+                    view.batching.mu,
+                    view.eta,
+                    log_terminal_phase,
+                );
+                let Ok(value) = value else {
+                    return false;
+                };
+                let bytes = qm31_bytes(value);
+                sol_log_data(&[b"aspis-v6-terminal-value-v1", bytes.as_slice()]);
+                msg!("aspis-v6-terminal:output");
+                sol_log_compute_units();
+                false
+            },
+            |_| Err(aspis_core::v6_onefold::V6WireError::WrongLength),
+        );
+        return match result {
+            Err(V6TranscriptError::TerminalRejected) => Ok(()),
+            _ => Err(ProgramError::InvalidAccountData),
+        };
+    }
+
+    if tag == V6_INTEGRATED_CU_PROBE_TAG {
+        let selector = full_selector.ok_or(ProgramError::InvalidInstructionData)?;
+        return process_v6_integrated_probe(
+            program_id,
+            proof_account,
+            proof,
+            c1_frontier_nodes,
+            c2_frontier_nodes,
+            selector,
+        );
+    }
+
+    if tag == V6_FULL_CU_PROBE_TAG {
+        let selector = full_selector.ok_or(ProgramError::InvalidInstructionData)?;
+
+        msg!("aspis-v6-full:entry");
+        sol_log_compute_units();
+        let parsed =
+            V6OneFoldWire::parse_deferred_canonicality(proof, c1_frontier_nodes, c2_frontier_nodes)
+                .map_err(|_| ProgramError::InvalidAccountData)?;
+        msg!("aspis-v6-full:parsed");
+        sol_log_compute_units();
+
+        let context = V6TranscriptContext {
+            program_id: program_id.to_bytes(),
+            release_binding: V6_PROBE_RELEASE_BINDING,
+            statement_digest: V6_PROBE_STATEMENT_DIGEST,
+            attempt_id: proof_account.key.to_bytes(),
+        };
+        let verified = verify_v6_transcript_and_relation_prepared(
+            crate::verify::sbf_hashv,
+            &parsed,
+            &context,
+            selector,
+            atomic_state_only_copy_inactive_row_groups_v3(),
+            atomic_state_only_copy_inactive_group_masks_v3(),
+            false,
+            |_| true,
+            |view| {
+                msg!("aspis-v6-full:transcript-prefix");
+                sol_log_compute_units();
+                let combined = verify_and_gamma_combine_v6_binary_openings_prepared(
+                    crate::verify::sbf_hashv,
+                    &parsed,
+                    view.queries,
+                    view.gamma_powers,
+                )?;
+                msg!("aspis-v6-full:merkle-and-gamma");
+                sol_log_compute_units();
+                let coordinates = prepare_v6_onefold_coordinates(view.queries)?;
+                msg!("aspis-v6-full:coordinates");
+                sol_log_compute_units();
+                let folded = fold_v6_onefold_queries(&combined, &coordinates, view.alpha0);
+                msg!("aspis-v6-full:onefold-query-values");
+                sol_log_compute_units();
+                Ok(V6AuthenticatedQueryBatch {
+                    values: folded,
+                    line_x: coordinates.line_x,
+                })
+            },
+        )
+        .map_err(|_| ProgramError::InvalidAccountData)?;
+        msg!("aspis-v6-full:relation-tail");
+        sol_log_compute_units();
+        let folded_sum = qm31_bytes(verified.folded_query_sum);
+        let slices = [
+            folded_sum.as_slice(),
+            verified.transcript_state_after_queries.as_slice(),
+        ];
+        let sink = hashv(&slices);
+        sol_log_data(&[b"aspis-v6-full-readonly-probe-v1", sink.as_ref()]);
+        msg!("aspis-v6-full:sink");
+        sol_log_compute_units();
+        return Ok(());
+    }
 
     msg!("aspis-v6-cu:entry");
     sol_log_compute_units();

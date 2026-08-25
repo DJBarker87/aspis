@@ -1,0 +1,47 @@
+{
+  "all_work_checked": true,
+  "artifact": "aspis_v6_onefold_honest_mined_proof",
+  "compact_counter": 2,
+  "frontier_nodes_per_tree": 209,
+  "host_full_acceptance": true,
+  "nonce_store": "/Users/dominic/.config/aspis/v6-final-devnet-20260825/nonce-ledger",
+  "pool": "6qN7usnskogh5EhNXTizaTDgvVjYsPwQmXN6FM9FeoLx",
+  "program_id": "7Q2nGsPg8rbjdxKHK4jxTgEWLTyd9o1X4KMSjCieRmue",
+  "proof_account": "A5mwVjqsvuoAaW4yK7dEawHVuf9UcFkRaowqBExKc4C5",
+  "proof_bytes": 33336,
+  "proof_path": "/Users/dominic/ZK-docs-final/results/spend/v6-final-devnet-20260825/v6-proof.bin",
+  "proof_sha256": "b768ecd0e7cb9686198c11900217bb227ae539aadf41032ebe56c359c24a438a",
+  "queries": [
+    152923,
+    41573,
+    125154,
+    198143,
+    199195,
+    126196,
+    181025,
+    22338,
+    192526,
+    90042,
+    114555,
+    57175,
+    202857,
+    93022,
+    91980,
+    133476
+  ],
+  "release_binding_hex": "36d1d6a71b6a6e669982ca9ea67bc19fd1331a2c212ca803a1b6c5da176e5e18",
+  "schema_version": 1,
+  "selector": 0,
+  "statement_path": "/Users/dominic/ZK-docs-final/results/spend/v6-final-devnet-20260825/v6-statement.json",
+  "statement_sha256": "cae9d13bc4365080416d2e3e0d35c83eb74f9af806472f06eb6133f391519122",
+  "work_bits": [
+    34,
+    31,
+    34
+  ],
+  "work_nonces": [
+    8275573897,
+    1792408616,
+    10288322592
+  ]
+}

@@ -16,6 +16,7 @@ mod v5_component_c_rank;
 mod v5_cu_probe;
 mod v5_mainnet_refund;
 mod v6_cu_probe;
+mod v6_release;
 
 use std::fs;
 use std::path::PathBuf;
@@ -119,6 +120,91 @@ fn main() -> Result<()> {
                 "v6-onefold-cu-probe: packed parser, two Merkle trees, and q16 one-fold checks used {} CU; wrote {}",
                 outcome.compute_units,
                 outcome.path.display(),
+            );
+            Ok(())
+        }
+        Some("v6-full-readonly-cu-probe") => {
+            let dir = stage2_results_dir()?;
+            let outcome = v6_cu_probe::run_full_read_only(&dir)?;
+            eprintln!(
+                "v6-full-readonly-cu-probe: transcript, relation, two Merkle trees, and one-fold checks used {} CU; wrote {}",
+                outcome.compute_units,
+                outcome.path.display(),
+            );
+            Ok(())
+        }
+        Some("v6-terminal-cu-probe") => {
+            let dir = stage2_results_dir()?;
+            let outcome = v6_cu_probe::run_terminal(&dir)?;
+            eprintln!(
+                "v6-terminal-cu-probe: transcript prefix plus exact atomic terminal used {} CU; wrote {}",
+                outcome.compute_units,
+                outcome.path.display(),
+            );
+            Ok(())
+        }
+        Some("v6-integrated-cu-probe") => {
+            let dir = stage2_results_dir()?;
+            let outcome = v6_cu_probe::run_integrated(&dir)?;
+            eprintln!(
+                "v6-integrated-cu-probe: exact terminal, work hashes, transcript, relation, two Merkle trees and one-fold checks used {} CU; wrote {}",
+                outcome.compute_units,
+                outcome.path.display(),
+            );
+            Ok(())
+        }
+        Some("v6-atomic-cu-probe") => {
+            let dir = stage2_results_dir()?;
+            let outcome = v6_cu_probe::run_atomic(&dir)?;
+            eprintln!(
+                "v6-atomic-cu-probe: complete atomic wrapper worst case used {} CU; wrote {}",
+                outcome.compute_units,
+                outcome.path.display(),
+            );
+            Ok(())
+        }
+        Some("v6-honest-proof") => {
+            let arguments = args.collect::<Vec<_>>();
+            let outcome = v6_release::build_honest_proof(&arguments)?;
+            eprintln!(
+                "v6-honest-proof: mined proof accepted on host; body={} selector={} counter={} frontier={}; wrote {}",
+                outcome.proof_bytes,
+                outcome.selector,
+                outcome.compact_counter,
+                outcome.frontier_nodes,
+                outcome.metadata_path.display(),
+            );
+            Ok(())
+        }
+        Some("v6-production-simulate") => {
+            let arguments = args.collect::<Vec<_>>();
+            let outcome = v6_release::simulate_production(&arguments)?;
+            eprintln!(
+                "v6-production-simulate: honest tag-72 accepted at {} CU (worst measured marker path); wrote {}",
+                outcome.maximum_compute_units,
+                outcome.evidence_path.display(),
+            );
+            Ok(())
+        }
+        Some("v6-adversarial") => {
+            let arguments = args.collect::<Vec<_>>();
+            let outcome = v6_release::run_adversarial(&arguments)?;
+            eprintln!(
+                "v6-adversarial: honest production proof accepted and all {} mutation cases rejected; wrote {}",
+                outcome.rejected_cases,
+                outcome.evidence_path.display(),
+            );
+            Ok(())
+        }
+        Some("v6-devnet-execute") => {
+            let arguments = args.collect::<Vec<_>>();
+            let outcome = spend_devnet::execute_v6(&arguments)?;
+            eprintln!(
+                "v6-devnet-execute: finalized tag72 {} at slot {} using {} CU; immutable evidence {}",
+                outcome.final_transaction.signature,
+                outcome.final_transaction.finalized_slot,
+                outcome.landed_compute_units,
+                outcome.evidence_path,
             );
             Ok(())
         }

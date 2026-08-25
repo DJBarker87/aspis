@@ -20,8 +20,11 @@ The checked facts are:
   `255`, imply direct list caps `100` and `99` respectively;
 * the generic circle encoder/fold square really does specialize to
   `1024 -> 256` coefficients and `2^20 -> 2^18` symbols; and
-* the released-compatible `16 + 3` PCS width would give `30685` bytes; and
-* the selected V6 `26 + 3` width gives `33785` bytes at the same frontier cap,
+* the selected V6 grammar uses the three point rows already consumed by the
+  maintained selected-hiding terminal, rather than V5's obsolete fourth
+  structured-mask row;
+* the released-compatible `16 + 3` PCS width would give `30391` bytes; and
+* the selected V6 `26 + 3` width gives `33336` bytes at the same frontier cap,
   below the 40-KiB hard limit but not below the 30-KiB optimization target.
 
 The published circle/RS decoding and correlated-agreement theorems, the
@@ -207,10 +210,12 @@ theorem one_circle_fold_ends_in_explicit_final256
 /-! ## Exact wire arithmetic from the proposed grammar
 
 The repository has two relevant column widths.  V5's production PCS uses 16
-M31 C1 columns and 3 QM31 C2 columns.  The selected hiding algebra adds ten
-mask-only C1 columns, but that 26 + 3 width is not integrated into the PCS.
-Keeping the profile explicit prevents the 30,685-byte result for 16 + 3 from
-being accidentally advertised as a result for 26 + 3. -/
+M31 C1 columns and 3 QM31 C2 columns.  V6 integrates all ten selected
+mask-only C1 columns and therefore freezes the production profile at 26 + 3.
+Keeping both profiles explicit prevents the smaller 16 + 3 comparison result
+from being accidentally advertised as the V6 production body.  These counts
+also use V6's exact three point-claim rows; the obsolete V5 fourth row is not
+part of the V6 grammar. -/
 
 structure WireProfile where
   c1Columns : Nat
@@ -234,7 +239,7 @@ def selectedHidingWireProfile : WireProfile where
 def packedBytes (bits : Nat) : Nat := (bits + 7) / 8
 
 def fixedQm31Count (profile : WireProfile) : Nat :=
-  1 + 10 * 27 + 4 * (profile.c1Columns + profile.c2Columns) +
+  1 + 10 * 27 + 3 * (profile.c1Columns + profile.c2Columns) +
     1 + 2 + 4 * 6 + 256
 
 def fixedWireBytesFor (profile : WireProfile) : Nat :=
@@ -252,16 +257,16 @@ def proofBodyBytesFor (profile : WireProfile) : Nat :=
     2 * profile.frontier * 32
 
 theorem released_compatible_fixed_qm31_count :
-    fixedQm31Count releasedCompatibleWireProfile = 630 := by
+    fixedQm31Count releasedCompatibleWireProfile = 611 := by
   norm_num [fixedQm31Count, releasedCompatibleWireProfile]
 
 theorem released_compatible_body_size :
-    proofBodyBytesFor releasedCompatibleWireProfile = 30685 := by
+    proofBodyBytesFor releasedCompatibleWireProfile = 30391 := by
   norm_num [proofBodyBytesFor, fixedWireBytesFor, bytesPerQueryFor,
     packedBytes, fixedQm31Count, releasedCompatibleWireProfile]
 
 theorem released_compatible_body_margin :
-    proofBodyBytesFor releasedCompatibleWireProfile + 35 =
+    proofBodyBytesFor releasedCompatibleWireProfile + 329 =
       maxProofBodyBytes := by
   norm_num [proofBodyBytesFor, fixedWireBytesFor, bytesPerQueryFor,
     packedBytes, fixedQm31Count, releasedCompatibleWireProfile,
@@ -273,11 +278,11 @@ theorem released_compatible_upload_count :
     packedBytes, fixedQm31Count, releasedCompatibleWireProfile]
 
 theorem selected_hiding_fixed_qm31_count :
-    fixedQm31Count selectedHidingWireProfile = 670 := by
+    fixedQm31Count selectedHidingWireProfile = 641 := by
   norm_num [fixedQm31Count, selectedHidingWireProfile]
 
 theorem selected_hiding_body_size :
-    proofBodyBytesFor selectedHidingWireProfile = 33785 := by
+    proofBodyBytesFor selectedHidingWireProfile = 33336 := by
   norm_num [proofBodyBytesFor, fixedWireBytesFor, bytesPerQueryFor,
     packedBytes, fixedQm31Count, selectedHidingWireProfile]
 
@@ -288,14 +293,14 @@ theorem selected_hiding_does_not_fit_30_kib :
     maxProofBodyBytes]
 
 theorem selected_hiding_fits_40_kib :
-    proofBodyBytesFor selectedHidingWireProfile + 7175 =
+    proofBodyBytesFor selectedHidingWireProfile + 7624 =
       hardProofBodyBytes := by
   norm_num [proofBodyBytesFor, fixedWireBytesFor, bytesPerQueryFor,
     packedBytes, fixedQm31Count, selectedHidingWireProfile,
     hardProofBodyBytes]
 
 theorem selected_hiding_upload_count :
-    (proofBodyBytesFor selectedHidingWireProfile + 959) / 960 = 36 := by
+    (proofBodyBytesFor selectedHidingWireProfile + 959) / 960 = 35 := by
   norm_num [proofBodyBytesFor, fixedWireBytesFor, bytesPerQueryFor,
     packedBytes, fixedQm31Count, selectedHidingWireProfile]
 
@@ -306,10 +311,10 @@ def selectedHidingCompactWireProfile (frontier : Nat) : WireProfile where
   frontier := frontier
 
 theorem selected_hiding_largest_frontier_below_30_kib :
-    proofBodyBytesFor (selectedHidingCompactWireProfile 161) ≤
+    proofBodyBytesFor (selectedHidingCompactWireProfile 168) ≤
         maxProofBodyBytes ∧
       maxProofBodyBytes <
-        proofBodyBytesFor (selectedHidingCompactWireProfile 162) := by
+        proofBodyBytesFor (selectedHidingCompactWireProfile 169) := by
   norm_num [proofBodyBytesFor, fixedWireBytesFor, bytesPerQueryFor,
     packedBytes, fixedQm31Count, selectedHidingCompactWireProfile,
     maxProofBodyBytes]

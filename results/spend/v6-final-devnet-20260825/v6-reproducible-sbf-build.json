@@ -1,0 +1,39 @@
+{
+  "artifact": "aspis_v6_onefold_reproducible_sbf_build",
+  "schema_version": 1,
+  "profile": "V6-26C1-3C2-B10-q16-onefold-final256-f209",
+  "release_feature": "v6-production-tag72",
+  "build_command": "NO_DNA=1 cargo-build-sbf --manifest-path programs/aspis-verifier/Cargo.toml --no-default-features --features v6-production-tag72 --sbf-out-dir <isolated-output>",
+  "builder": {
+    "kernel": "Linux 6.8.0-110-generic x86_64",
+    "distribution": "Ubuntu 24.04.4 LTS",
+    "cargo_build_sbf": "2.3.0",
+    "platform_tools": "1.48",
+    "rustc": "1.84.1"
+  },
+  "source_isolation": {
+    "independent_source_copies": 2,
+    "excluded_non_source_directories": [
+      ".git",
+      "target",
+      ".lake"
+    ]
+  },
+  "build_a": {
+    "sbf_bytes": 1151632,
+    "sbf_sha256": "53ff6c8da29646bb8fc78f37656e42bf1c53bbe10026df13eea77624b66f1d4d",
+    "maximum_resident_set_kib": 522396,
+    "log": "reproducible-build/linux-build-a.log",
+    "log_sha256": "1522318de4cc1ebfaa1fc1cb585716fd8469bb5f04dab60cad57fe214bf7e827"
+  },
+  "build_b": {
+    "sbf_bytes": 1151632,
+    "sbf_sha256": "53ff6c8da29646bb8fc78f37656e42bf1c53bbe10026df13eea77624b66f1d4d",
+    "maximum_resident_set_kib": 522692,
+    "log": "reproducible-build/linux-build-b.log",
+    "log_sha256": "0ad7065ac9032b6789198a1aed71f20f54d12902b7b37bfaae0c3aa20d88103a"
+  },
+  "builds_byte_identical": true,
+  "matches_simulated_and_deployed_candidate": true,
+  "cross_host_note": "The macOS-hosted platform-tools build is not the release artifact: its Rust sysroot panic paths use /Users/runner rather than Linux platform-tools' /home/runner, changing ELF rodata, relocations, and the file hash. Both isolated Linux release builds are byte-identical to the simulated/deployed candidate."
+}

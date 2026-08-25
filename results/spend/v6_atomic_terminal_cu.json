@@ -1,0 +1,101 @@
+{
+  "scope": "exact V6 transcript prefix followed by the production-equivalent atomic-v3 selected masked semantic terminal, with diagnostic phase boundaries; excludes work hashes, PCS relation, Merkle openings and state mutation",
+  "proof_body_bytes": 32248,
+  "selector": 0,
+  "frontier_nodes_per_tree": 192,
+  "compute_units": 545012,
+  "repeated_compute_units": [
+    545012,
+    545012,
+    545012
+  ],
+  "deterministic_three_of_three": true,
+  "phase_markers": [
+    {
+      "label": "entry",
+      "remaining": 1398969,
+      "delta_from_previous": null
+    },
+    {
+      "label": "parsed",
+      "remaining": 1398693,
+      "delta_from_previous": 276
+    },
+    {
+      "label": "start",
+      "remaining": 1168604,
+      "delta_from_previous": 230089
+    },
+    {
+      "label": "prepared",
+      "remaining": 1128885,
+      "delta_from_previous": 39719
+    },
+    {
+      "label": "poseidon",
+      "remaining": 1040668,
+      "delta_from_previous": 88217
+    },
+    {
+      "label": "semantic-initial",
+      "remaining": 1035098,
+      "delta_from_previous": 5570
+    },
+    {
+      "label": "semantic-absorption",
+      "remaining": 1029268,
+      "delta_from_previous": 5830
+    },
+    {
+      "label": "semantic-merkle",
+      "remaining": 1029056,
+      "delta_from_previous": 212
+    },
+    {
+      "label": "semantic-range",
+      "remaining": 1010476,
+      "delta_from_previous": 18580
+    },
+    {
+      "label": "semantic-public",
+      "remaining": 997515,
+      "delta_from_previous": 12961
+    },
+    {
+      "label": "copy-patterns",
+      "remaining": 976105,
+      "delta_from_previous": 21410
+    },
+    {
+      "label": "copy-routing",
+      "remaining": 916680,
+      "delta_from_previous": 59425
+    },
+    {
+      "label": "copy",
+      "remaining": 894124,
+      "delta_from_previous": 22556
+    },
+    {
+      "label": "composition-equality",
+      "remaining": 871298,
+      "delta_from_previous": 22826
+    },
+    {
+      "label": "mask",
+      "remaining": 857067,
+      "delta_from_previous": 14231
+    },
+    {
+      "label": "final",
+      "remaining": 856837,
+      "delta_from_previous": 230
+    },
+    {
+      "label": "output",
+      "remaining": 855047,
+      "delta_from_previous": 1790
+    }
+  ],
+  "build_command": "NO_DNA=1 cargo-build-sbf --manifest-path programs/aspis-verifier/Cargo.toml --no-default-features --features v6-cu-probe"
+}

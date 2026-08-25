@@ -204,9 +204,7 @@ impl CirclePcsShape {
 /// `CirclePcsShape::validate`. The production build does not enable this
 /// feature, so this wrapper is absent from the deployed program.
 #[cfg(feature = "formal-verification")]
-pub fn formal_validate_shape(
-    input: CirclePcsShape,
-) -> Result<CirclePcsShape, CirclePcsShapeError> {
+pub fn formal_validate_shape(input: CirclePcsShape) -> Result<CirclePcsShape, CirclePcsShapeError> {
     input.validate()
 }
 

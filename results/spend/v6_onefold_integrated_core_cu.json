@@ -1,0 +1,180 @@
+{
+  "scope": "one validator instruction executing the exact atomic semantic terminal, three real SHA-256 grinding calls, complete V6 transcript/relation, verifier-derived q16 schedule, two-tree Merkle authentication, 26+3 batching and one circle fold",
+  "omitted_from_measurement": [
+    "statement digest plus production atomic account validation/state mutation",
+    "honest grinding outcomes (probe computes each real hash then clears only its returned leading bytes so the zero fixture continues)"
+  ],
+  "proof_body_bytes": 32248,
+  "selector": 0,
+  "compact_counter": 0,
+  "frontier_nodes_per_tree": 192,
+  "queries": [
+    90764,
+    44864,
+    24739,
+    92238,
+    92467,
+    232967,
+    73820,
+    84173,
+    203619,
+    29188,
+    18993,
+    29788,
+    78734,
+    234537,
+    231512,
+    16427
+  ],
+  "compute_units": 1288625,
+  "headroom_under_consensus_limit": 111375,
+  "repeated_compute_units": [
+    1288625,
+    1288625,
+    1288625
+  ],
+  "deterministic_three_of_three": true,
+  "phase_markers": [
+    {
+      "label": "entry",
+      "remaining": 1398949,
+      "delta_from_previous": null
+    },
+    {
+      "label": "parsed",
+      "remaining": 1398671,
+      "delta_from_previous": 278
+    },
+    {
+      "label": "terminal-start",
+      "remaining": 1167469,
+      "delta_from_previous": 231202
+    },
+    {
+      "label": "terminal-end",
+      "remaining": 867980,
+      "delta_from_previous": 299489
+    },
+    {
+      "label": "relation-start",
+      "remaining": 867717,
+      "delta_from_previous": 263
+    },
+    {
+      "label": "relation-prepared-weights",
+      "remaining": 827664,
+      "delta_from_previous": 40053
+    },
+    {
+      "label": "relation-circle-samples",
+      "remaining": 813660,
+      "delta_from_previous": 14004
+    },
+    {
+      "label": "relation-fields",
+      "remaining": 806593,
+      "delta_from_previous": 7067
+    },
+    {
+      "label": "relation-round-zero",
+      "remaining": 793786,
+      "delta_from_previous": 12807
+    },
+    {
+      "label": "relation-final256",
+      "remaining": 712371,
+      "delta_from_previous": 81415
+    },
+    {
+      "label": "relation-queries",
+      "remaining": 701529,
+      "delta_from_previous": 10842
+    },
+    {
+      "label": "query-start",
+      "remaining": 701281,
+      "delta_from_previous": 248
+    },
+    {
+      "label": "merkle-and-gamma",
+      "remaining": 304098,
+      "delta_from_previous": 397183
+    },
+    {
+      "label": "coordinates",
+      "remaining": 296517,
+      "delta_from_previous": 7581
+    },
+    {
+      "label": "onefold-query-values",
+      "remaining": 274877,
+      "delta_from_previous": 21640
+    },
+    {
+      "label": "relation-query-batch",
+      "remaining": 264094,
+      "delta_from_previous": 10783
+    },
+    {
+      "label": "relation-round-one-polynomial",
+      "remaining": 260770,
+      "delta_from_previous": 3324
+    },
+    {
+      "label": "relation-round-one-weights",
+      "remaining": 234814,
+      "delta_from_previous": 25956
+    },
+    {
+      "label": "relation-round-one-values",
+      "remaining": 198306,
+      "delta_from_previous": 36508
+    },
+    {
+      "label": "relation-round-two-polynomial",
+      "remaining": 194986,
+      "delta_from_previous": 3320
+    },
+    {
+      "label": "relation-round-two-weights",
+      "remaining": 167638,
+      "delta_from_previous": 27348
+    },
+    {
+      "label": "relation-round-two-values",
+      "remaining": 157816,
+      "delta_from_previous": 9822
+    },
+    {
+      "label": "relation-round-three-polynomial",
+      "remaining": 154496,
+      "delta_from_previous": 3320
+    },
+    {
+      "label": "relation-round-three-weights",
+      "remaining": 130999,
+      "delta_from_previous": 23497
+    },
+    {
+      "label": "relation-round-three-values",
+      "remaining": 127840,
+      "delta_from_previous": 3159
+    },
+    {
+      "label": "relation-terminal",
+      "remaining": 113277,
+      "delta_from_previous": 14563
+    },
+    {
+      "label": "relation-tail",
+      "remaining": 112203,
+      "delta_from_previous": 1074
+    },
+    {
+      "label": "sink",
+      "remaining": 111425,
+      "delta_from_previous": 778
+    }
+  ],
+  "build_command": "NO_DNA=1 cargo-build-sbf --manifest-path programs/aspis-verifier/Cargo.toml --no-default-features --features v6-cu-probe"
+}

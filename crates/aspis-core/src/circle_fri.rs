@@ -279,6 +279,41 @@ pub fn selected_circle_fiber_points_shared(
         return Ok(points);
     }
 
+    if domain_log_size == 20 {
+        let mut points = Vec::with_capacity(fibers.len());
+        for &fiber in fibers {
+            if fiber as usize >= fiber_count {
+                return Err(CircleFriError::CircleFiberOutOfRange);
+            }
+            // `fiber < 2^18` was just checked. The three tables partition the
+            // exact 18-bit bit-reversed natural index into 6-bit windows.
+            let natural = (fiber as usize).reverse_bits() >> (usize::BITS - 18);
+            let [low_x, low_y] = V6_CIRCLE_LOW6_WINDOW[natural & 0x3f];
+            let mut point = BaseCirclePoint {
+                x: M31(low_x),
+                y: M31(low_y),
+            };
+            let middle_index = (natural >> 6) & 0x3f;
+            if middle_index != 0 {
+                let [middle_x, middle_y] = V6_CIRCLE_MIDDLE6_WINDOW[middle_index];
+                point = point.add(BaseCirclePoint {
+                    x: M31(middle_x),
+                    y: M31(middle_y),
+                });
+            }
+            let high_index = natural >> 12;
+            if high_index != 0 {
+                let [high_x, high_y] = V6_CIRCLE_HIGH6_WINDOW[high_index];
+                point = point.add(BaseCirclePoint {
+                    x: M31(high_x),
+                    y: M31(high_y),
+                });
+            }
+            points.push(point);
+        }
+        return Ok(points);
+    }
+
     let initial = point_from_group_index(half_odds_initial_index(domain_log_size - 1));
     let mut step_power = point_from_group_index(half_odds_step_index(domain_log_size - 1));
     let mut step_powers = Vec::with_capacity(query_log_size as usize);
@@ -1429,6 +1464,21 @@ mod tests {
                 point.add(point),
                 "doubling parity at natural index {natural}",
             );
+            expected = expected.add(step);
+        }
+    }
+
+    #[test]
+    fn v6_three_windows_match_every_circle_fiber_point() {
+        let query_log_size = 18u32;
+        let fibers = (0..1usize << query_log_size)
+            .map(|natural| bit_reverse_index(natural, query_log_size).unwrap() as u32)
+            .collect::<Vec<_>>();
+        let actual = selected_circle_fiber_points_shared(20, &fibers).unwrap();
+        let mut expected = point_from_group_index(half_odds_initial_index(19));
+        let step = point_from_group_index(half_odds_step_index(19));
+        for (natural, point) in actual.into_iter().enumerate() {
+            assert_eq!(point, expected, "natural index {natural}");
             expected = expected.add(step);
         }
     }

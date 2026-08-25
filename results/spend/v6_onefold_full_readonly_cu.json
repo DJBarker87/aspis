@@ -1,0 +1,87 @@
+{
+  "scope": "isolated local-validator complete V6 fixed-field transcript, compact semantic/relation algebra, verifier-derived first-compact q16 schedule, typed shared-salt two-tree Merkle authentication, 26+3 batching, one circle-to-line fold, and final256 evaluations on a zero-codeword PCS fixture",
+  "omitted_from_measurement": [
+    "live atomic-spend semantic terminal (diagnostic callback returns true)",
+    "three proof-of-work SHA-256 checks (nonces are absorbed in exact order)",
+    "statement digest plus atomic account validation and state mutation"
+  ],
+  "profile": "B10, 26 M31 C1 columns + 3 QM31 C2 columns, three point rows, q16, first-compact frontier cap 209",
+  "proof_body_bytes": 32248,
+  "hard_limit_bytes": 40960,
+  "margin_bytes": 8712,
+  "selector": 0,
+  "compact_counter": 0,
+  "frontier_nodes_per_tree": 192,
+  "queries": [
+    90764,
+    44864,
+    24739,
+    92238,
+    92467,
+    232967,
+    73820,
+    84173,
+    203619,
+    29188,
+    18993,
+    29788,
+    78734,
+    234537,
+    231512,
+    16427
+  ],
+  "compute_units": 1032506,
+  "repeated_compute_units": [
+    1032506,
+    1032506,
+    1032506
+  ],
+  "deterministic_three_of_three": true,
+  "phase_markers": [
+    {
+      "label": "entry",
+      "remaining": 1398971,
+      "delta_from_previous": null
+    },
+    {
+      "label": "parsed",
+      "remaining": 1398695,
+      "delta_from_previous": 276
+    },
+    {
+      "label": "transcript-prefix",
+      "remaining": 983921,
+      "delta_from_previous": 414774
+    },
+    {
+      "label": "merkle-and-gamma",
+      "remaining": 588136,
+      "delta_from_previous": 395785
+    },
+    {
+      "label": "coordinates",
+      "remaining": 567653,
+      "delta_from_previous": 20483
+    },
+    {
+      "label": "onefold-query-values",
+      "remaining": 546013,
+      "delta_from_previous": 21640
+    },
+    {
+      "label": "relation-tail",
+      "remaining": 368286,
+      "delta_from_previous": 177727
+    },
+    {
+      "label": "sink",
+      "remaining": 367543,
+      "delta_from_previous": 743
+    }
+  ],
+  "sbf_path": "target/deploy/aspis_verifier_v6_onefold_probe.so",
+  "sbf_bytes": 836368,
+  "sbf_sha256": "860004c35fb41dec79831e5d970b7ec402c993abd42e14f9e1b2fdef5fd50a03",
+  "build_command": "NO_DNA=1 cargo-build-sbf --manifest-path programs/aspis-verifier/Cargo.toml --no-default-features --features v6-cu-probe",
+  "conclusion": "The measured read-only algebra/PCS path is within the 1.35M engineering gate. The omitted live semantic terminal, work hashes, statement digest and atomic wrapper must still be added and measured before selecting one transaction."
+}

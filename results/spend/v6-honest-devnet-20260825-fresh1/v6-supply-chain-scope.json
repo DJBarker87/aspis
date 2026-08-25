@@ -1,0 +1,64 @@
+{
+  "artifact": "aspis_v6_onefold_supply_chain_scope_v1",
+  "generated_at_utc": "2026-08-25T05:47:06Z",
+  "cargo_lock_sha256": "354a35fbc0b3fb26e5529db67188e4bdb687e234000ddcdaeabda818ebab013b",
+  "rustsec_database": {
+    "commit": "a7bfe16948bf6f3ee25bdee4822209f87da21b80",
+    "last_updated": "2026-08-24T22:42:17-04:00",
+    "advisory_count": 1226
+  },
+  "workspace_audit": {
+    "command": "cargo audit --json",
+    "dependency_count": 433,
+    "vulnerability_count": 2,
+    "clean": false,
+    "vulnerabilities": [
+      {
+        "id": "RUSTSEC-2024-0344",
+        "package": "curve25519-dalek 3.2.0",
+        "title": "timing variability in scalar subtraction",
+        "scope": "legacy host-only Solana SDK signer dependency"
+      },
+      {
+        "id": "RUSTSEC-2022-0093",
+        "package": "ed25519-dalek 1.0.1",
+        "title": "double-public-key signing oracle",
+        "scope": "legacy host-only Solana SDK signer dependency"
+      }
+    ]
+  },
+  "production_sbf_graph": {
+    "command": "cargo tree -p aspis-verifier --no-default-features --features v6-production-tag72",
+    "contains_curve25519_dalek_3_2_0": false,
+    "contains_ed25519_dalek_1_0_1": false,
+    "contains_patched_curve25519_dalek_4_1_3": true,
+    "vulnerable_package_count": 0,
+    "status": "pass"
+  },
+  "legacy_host_graph": {
+    "root": "aspis-xtask -> solana-sdk 2.3.1",
+    "signer_path": "solana-sdk 2.3.1 -> solana-keypair 2.2.3 -> ed25519-dalek 1.0.1 -> curve25519-dalek 3.2.0",
+    "signing_oracle_reachability_note": "solana-keypair 2.2.3 validates that the serialized public key equals the public key derived from the secret, and the Aspis executors use read_keypair_file rather than constructing an ed25519-dalek keypair directly",
+    "timing_note": "the old curve25519 implementation remains present in the software signing path, so this is not recorded as a clean host audit",
+    "status": "pending_isolated_v6_signer_hardening"
+  },
+  "informational_scope": {
+    "rand_0_7_3_in_production_sbf": {
+      "advisory": "RUSTSEC-2026-0097",
+      "enabled_path": "solana-program 2.3.0 -> solana-secp256k1-recover 2.2.1 -> libsecp256k1 0.6.0 -> rand 0.7.3",
+      "log_feature_enabled": false,
+      "custom_logger_present": false,
+      "advisory_preconditions_reachable": false
+    },
+    "memmap2_0_5_10": {
+      "advisory": "RUSTSEC-2026-0186",
+      "scope": "legacy host-only solana-genesis-config dependency; not in the production SBF graph or V6 execution call path"
+    }
+  },
+  "release_disposition": {
+    "production_sbf_dependency_gate": "pass",
+    "whole_workspace_audit_gate": "fail",
+    "mainnet_signing_gate": "pending",
+    "claim": "The deployed V6 program is not affected by the two vulnerability findings. Mainnet readiness still requires a release-pinned signing path that does not execute the legacy curve25519-dalek 3.2.0 signer."
+  }
+}

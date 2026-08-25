@@ -1,0 +1,799 @@
+{
+  "aeneas_version": "d860ac47-dirty",
+  "charon_version": "0.1.223",
+  "crate": "aspis_verifier",
+  "functions": [
+    {
+      "def_id": 21,
+      "lean_name": "V6AcceptedKernelGenerated.core.array.from_fn",
+      "lean_file": "V6AcceptedKernel/FunsExternal_Template.lean",
+      "rust_name": "core::array::from_fn",
+      "is_local": false,
+      "source": {
+        "file": "/rustc/library/core/src/array/mod.rs",
+        "begin_line": 110,
+        "end_line": 112
+      },
+      "is_opaque": true,
+      "can_fail": true,
+      "can_diverge": false,
+      "is_rec": false,
+      "reducible": false
+    },
+    {
+      "def_id": 16,
+      "lean_name": "V6AcceptedKernelGenerated.core.result.Result.is_ok_and",
+      "lean_file": "V6AcceptedKernel/FunsExternal_Template.lean",
+      "rust_name": "core::result::{core::result::Result<T, E>}::is_ok_and",
+      "is_local": false,
+      "source": {
+        "file": "/rustc/library/core/src/result.rs",
+        "begin_line": 619,
+        "end_line": 623
+      },
+      "is_opaque": true,
+      "can_fail": true,
+      "can_diverge": false,
+      "is_rec": false,
+      "reducible": false
+    },
+    {
+      "def_id": 25,
+      "lean_name": "V6AcceptedKernelGenerated.aspis_core.field.QM31.Insts.CoreCmpPartialEqQM31.eq",
+      "lean_file": "V6AcceptedKernel/FunsExternal_Template.lean",
+      "rust_name": "aspis_core::field::{impl core::cmp::PartialEq<aspis_core::field::QM31> for aspis_core::field::QM31}::eq",
+      "is_local": false,
+      "source": {
+        "file": "crates/aspis-core/src/field.rs",
+        "begin_line": 359,
+        "end_line": 359
+      },
+      "is_opaque": true,
+      "can_fail": true,
+      "can_diverge": false,
+      "is_rec": false,
+      "reducible": false
+    },
+    {
+      "def_id": 1,
+      "lean_name": "V6AcceptedKernelGenerated.aspis_core.v6_onefold.parse_v6_onefold_wire_deferred",
+      "lean_file": "V6AcceptedKernel/FunsExternal_Template.lean",
+      "rust_name": "aspis_core::v6_onefold::parse_v6_onefold_wire_deferred",
+      "is_local": false,
+      "source": {
+        "file": "crates/aspis-core/src/v6_onefold.rs",
+        "begin_line": 207,
+        "end_line": 211
+      },
+      "is_opaque": true,
+      "can_fail": true,
+      "can_diverge": false,
+      "is_rec": false,
+      "reducible": false
+    },
+    {
+      "def_id": 17,
+      "lean_name": "V6AcceptedKernelGenerated.aspis_core.v6_onefold.verify_and_gamma_combine_v6_binary_openings_prepared",
+      "lean_file": "V6AcceptedKernel/FunsExternal_Template.lean",
+      "rust_name": "aspis_core::v6_onefold::verify_and_gamma_combine_v6_binary_openings_prepared",
+      "is_local": false,
+      "source": {
+        "file": "crates/aspis-core/src/v6_onefold.rs",
+        "begin_line": 503,
+        "end_line": 508
+      },
+      "is_opaque": true,
+      "can_fail": true,
+      "can_diverge": false,
+      "is_rec": false,
+      "reducible": false
+    },
+    {
+      "def_id": 18,
+      "lean_name": "V6AcceptedKernelGenerated.aspis_core.v6_onefold.prepare_v6_onefold_coordinates",
+      "lean_file": "V6AcceptedKernel/FunsExternal_Template.lean",
+      "rust_name": "aspis_core::v6_onefold::prepare_v6_onefold_coordinates",
+      "is_local": false,
+      "source": {
+        "file": "crates/aspis-core/src/v6_onefold.rs",
+        "begin_line": 791,
+        "end_line": 793
+      },
+      "is_opaque": true,
+      "can_fail": true,
+      "can_diverge": false,
+      "is_rec": false,
+      "reducible": false
+    },
+    {
+      "def_id": 19,
+      "lean_name": "V6AcceptedKernelGenerated.aspis_core.v6_onefold.fold_v6_onefold_queries",
+      "lean_file": "V6AcceptedKernel/FunsExternal_Template.lean",
+      "rust_name": "aspis_core::v6_onefold::fold_v6_onefold_queries",
+      "is_local": false,
+      "source": {
+        "file": "crates/aspis-core/src/v6_onefold.rs",
+        "begin_line": 843,
+        "end_line": 847
+      },
+      "is_opaque": true,
+      "can_fail": true,
+      "can_diverge": false,
+      "is_rec": false,
+      "reducible": false
+    },
+    {
+      "def_id": 5,
+      "lean_name": "V6AcceptedKernelGenerated.aspis_core.v6_transcript.verify_v6_transcript_and_relation_prepared",
+      "lean_file": "V6AcceptedKernel/FunsExternal_Template.lean",
+      "rust_name": "aspis_core::v6_transcript::verify_v6_transcript_and_relation_prepared",
+      "is_local": false,
+      "source": {
+        "file": "crates/aspis-core/src/v6_transcript.rs",
+        "begin_line": 768,
+        "end_line": 781
+      },
+      "is_opaque": true,
+      "can_fail": true,
+      "can_diverge": false,
+      "is_rec": false,
+      "reducible": false
+    },
+    {
+      "def_id": 15,
+      "lean_name": "V6AcceptedKernelGenerated.aspis_statement.atomic_state_only_terminal.atomic_state_only_selected_masked_terminal_value_compiled_v3",
+      "lean_file": "V6AcceptedKernel/FunsExternal_Template.lean",
+      "rust_name": "aspis_statement::atomic_state_only_terminal::atomic_state_only_selected_masked_terminal_value_compiled_v3",
+      "is_local": false,
+      "source": {
+        "file": "crates/aspis-statement/src/atomic_state_only_terminal.rs",
+        "begin_line": 1494,
+        "end_line": 1504
+      },
+      "is_opaque": true,
+      "can_fail": true,
+      "can_diverge": false,
+      "is_rec": false,
+      "reducible": false
+    },
+    {
+      "def_id": 3,
+      "lean_name": "V6AcceptedKernelGenerated.solana_pubkey.Pubkey.to_bytes",
+      "lean_file": "V6AcceptedKernel/FunsExternal_Template.lean",
+      "rust_name": "solana_pubkey::{solana_pubkey::Pubkey}::to_bytes",
+      "is_local": false,
+      "source": {
+        "file": "/cargo/registry/src/index.crates.io-1949cf8c6b5b557f/solana-pubkey-2.4.0/src/lib.rs",
+        "begin_line": 960,
+        "end_line": 960
+      },
+      "is_opaque": true,
+      "can_fail": true,
+      "can_diverge": false,
+      "is_rec": false,
+      "reducible": false
+    },
+    {
+      "def_id": 10,
+      "lean_name": "V6AcceptedKernelGenerated.v6_verifier.V6VerifyError.Insts.CoreConvertFromV6TranscriptError.from",
+      "lean_file": "V6AcceptedKernel/Funs.lean",
+      "rust_name": "aspis_verifier::v6_verifier::{impl core::convert::From<aspis_core::v6_transcript::V6TranscriptError> for aspis_verifier::v6_verifier::V6VerifyError}::from",
+      "is_local": true,
+      "source": {
+        "file": "programs/aspis-verifier/src/v6_verifier.rs",
+        "begin_line": 35,
+        "end_line": 37
+      },
+      "is_opaque": false,
+      "can_fail": true,
+      "can_diverge": false,
+      "is_rec": false,
+      "reducible": false
+    },
+    {
+      "def_id": 9,
+      "lean_name": "V6AcceptedKernelGenerated.v6_verifier.V6VerifyError.Insts.CoreConvertFromV6WireError.from",
+      "lean_file": "V6AcceptedKernel/Funs.lean",
+      "rust_name": "aspis_verifier::v6_verifier::{impl core::convert::From<aspis_core::v6_onefold::V6WireError> for aspis_verifier::v6_verifier::V6VerifyError}::from",
+      "is_local": true,
+      "source": {
+        "file": "programs/aspis-verifier/src/v6_verifier.rs",
+        "begin_line": 41,
+        "end_line": 43
+      },
+      "is_opaque": false,
+      "can_fail": true,
+      "can_diverge": false,
+      "is_rec": false,
+      "reducible": false
+    },
+    {
+      "def_id": 27,
+      "lean_name": "V6AcceptedKernelGenerated.v6_verifier.terminal_claims.closure.Insts.CoreOpsFunctionFnMutTupleUsizeQM31.call_mut",
+      "lean_file": "V6AcceptedKernel/Funs.lean",
+      "rust_name": "aspis_verifier::v6_verifier::terminal_claims::{impl core::ops::function::FnMut<(usize,), aspis_core::field::QM31> for aspis_verifier::v6_verifier::terminal_claims::closure<'_0>}::call_mut",
+      "is_local": true,
+      "source": {
+        "file": "programs/aspis-verifier/src/v6_verifier.rs",
+        "begin_line": 56,
+        "end_line": 60
+      },
+      "is_opaque": false,
+      "can_fail": true,
+      "can_diverge": false,
+      "is_rec": false,
+      "reducible": false
+    },
+    {
+      "def_id": 26,
+      "lean_name": "V6AcceptedKernelGenerated.v6_verifier.terminal_claims.closure.Insts.CoreOpsFunctionFnOnceTupleUsizeQM31.call_once",
+      "lean_file": "V6AcceptedKernel/Funs.lean",
+      "rust_name": "aspis_verifier::v6_verifier::terminal_claims::{impl core::ops::function::FnOnce<(usize,), aspis_core::field::QM31> for aspis_verifier::v6_verifier::terminal_claims::closure<'_0>}::call_once",
+      "is_local": true,
+      "source": {
+        "file": "programs/aspis-verifier/src/v6_verifier.rs",
+        "begin_line": 56,
+        "end_line": 60
+      },
+      "is_opaque": false,
+      "can_fail": true,
+      "can_diverge": false,
+      "is_rec": false,
+      "reducible": false
+    },
+    {
+      "def_id": 14,
+      "lean_name": "V6AcceptedKernelGenerated.v6_verifier.terminal_claims",
+      "lean_file": "V6AcceptedKernel/Funs.lean",
+      "rust_name": "aspis_verifier::v6_verifier::terminal_claims",
+      "is_local": true,
+      "source": {
+        "file": "programs/aspis-verifier/src/v6_verifier.rs",
+        "begin_line": 52,
+        "end_line": 61
+      },
+      "is_opaque": false,
+      "can_fail": true,
+      "can_diverge": false,
+      "is_rec": false,
+      "reducible": false
+    },
+    {
+      "def_id": 20,
+      "lean_name": "V6AcceptedKernelGenerated.v6_verifier.terminal_matches.closure.Insts.CoreOpsFunctionFnOnceTupleQM31Bool.call_once",
+      "lean_file": "V6AcceptedKernel/Funs.lean",
+      "rust_name": "aspis_verifier::v6_verifier::terminal_matches::{impl core::ops::function::FnOnce<(aspis_core::field::QM31,), bool> for aspis_verifier::v6_verifier::terminal_matches::closure<'_0, '_1>}::call_once",
+      "is_local": true,
+      "source": {
+        "file": "programs/aspis-verifier/src/v6_verifier.rs",
+        "begin_line": 75,
+        "end_line": 75
+      },
+      "is_opaque": false,
+      "can_fail": true,
+      "can_diverge": false,
+      "is_rec": false,
+      "reducible": false
+    },
+    {
+      "def_id": 11,
+      "lean_name": "V6AcceptedKernelGenerated.v6_verifier.terminal_matches",
+      "lean_file": "V6AcceptedKernel/Funs.lean",
+      "rust_name": "aspis_verifier::v6_verifier::terminal_matches",
+      "is_local": true,
+      "source": {
+        "file": "programs/aspis-verifier/src/v6_verifier.rs",
+        "begin_line": 63,
+        "end_line": 76
+      },
+      "is_opaque": false,
+      "can_fail": true,
+      "can_diverge": false,
+      "is_rec": false,
+      "reducible": false
+    },
+    {
+      "def_id": 12,
+      "lean_name": "V6AcceptedKernelGenerated.v6_verifier.authenticate_and_fold_queries",
+      "lean_file": "V6AcceptedKernel/Funs.lean",
+      "rust_name": "aspis_verifier::v6_verifier::authenticate_and_fold_queries",
+      "is_local": true,
+      "source": {
+        "file": "programs/aspis-verifier/src/v6_verifier.rs",
+        "begin_line": 79,
+        "end_line": 95
+      },
+      "is_opaque": false,
+      "can_fail": true,
+      "can_diverge": false,
+      "is_rec": false,
+      "reducible": false
+    },
+    {
+      "def_id": 7,
+      "lean_name": "V6AcceptedKernelGenerated.v6_verifier.verify_v6_read_only_with_statement_digest_and_schedule.closure_1.Insts.CoreOpsFunctionFnOnceTupleSharedV6QueryBatchViewResultV6AuthenticatedQueryBatchV6WireError.call_once",
+      "lean_file": "V6AcceptedKernel/Funs.lean",
+      "rust_name": "aspis_verifier::v6_verifier::verify_v6_read_only_with_statement_digest_and_schedule::{impl core::ops::function::FnOnce<(&'_ aspis_core::v6_transcript::V6QueryBatchView<'_>,), core::result::Result<aspis_core::v6_query_batch::V6AuthenticatedQueryBatch, aspis_core::v6_onefold::V6WireError>> for aspis_verifier::v6_verifier::verify_v6_read_only_with_statement_digest_and_schedule::closure#1<'_0, '_1, '_2>}::call_once",
+      "is_local": true,
+      "source": {
+        "file": "programs/aspis-verifier/src/v6_verifier.rs",
+        "begin_line": 203,
+        "end_line": 203
+      },
+      "is_opaque": false,
+      "can_fail": true,
+      "can_diverge": false,
+      "is_rec": false,
+      "reducible": false
+    },
+    {
+      "def_id": 6,
+      "lean_name": "V6AcceptedKernelGenerated.v6_verifier.verify_v6_read_only_with_statement_digest_and_schedule.closure.Insts.CoreOpsFunctionFnOnceTupleSharedV6SemanticViewBool.call_once",
+      "lean_file": "V6AcceptedKernel/Funs.lean",
+      "rust_name": "aspis_verifier::v6_verifier::verify_v6_read_only_with_statement_digest_and_schedule::{impl core::ops::function::FnOnce<(&'_ aspis_core::v6_transcript::V6SemanticView<'_>,), bool> for aspis_verifier::v6_verifier::verify_v6_read_only_with_statement_digest_and_schedule::closure<'_0>}::call_once",
+      "is_local": true,
+      "source": {
+        "file": "programs/aspis-verifier/src/v6_verifier.rs",
+        "begin_line": 202,
+        "end_line": 202
+      },
+      "is_opaque": false,
+      "can_fail": true,
+      "can_diverge": false,
+      "is_rec": false,
+      "reducible": false
+    },
+    {
+      "def_id": 0,
+      "lean_name": "V6AcceptedKernelGenerated.v6_verifier.verify_v6_read_only_with_statement_digest_and_schedule",
+      "lean_file": "V6AcceptedKernel/Funs.lean",
+      "rust_name": "aspis_verifier::v6_verifier::verify_v6_read_only_with_statement_digest_and_schedule",
+      "is_local": true,
+      "source": {
+        "file": "programs/aspis-verifier/src/v6_verifier.rs",
+        "begin_line": 172,
+        "end_line": 210
+      },
+      "is_opaque": false,
+      "can_fail": true,
+      "can_diverge": false,
+      "is_rec": false,
+      "reducible": false
+    }
+  ],
+  "types": [
+    {
+      "def_id": 26,
+      "lean_name": "V6AcceptedKernelGenerated.aspis_core.field.PreparedQm31Multiplier",
+      "lean_file": "V6AcceptedKernel/TypesExternal_Template.lean",
+      "rust_name": "aspis_core::field::PreparedQm31Multiplier",
+      "is_local": false,
+      "source": {
+        "file": "crates/aspis-core/src/field.rs",
+        "begin_line": 370,
+        "end_line": 370
+      }
+    },
+    {
+      "def_id": 5,
+      "lean_name": "V6AcceptedKernelGenerated.aspis_core.v6_onefold.V6OneFoldWire",
+      "lean_file": "V6AcceptedKernel/TypesExternal_Template.lean",
+      "rust_name": "aspis_core::v6_onefold::V6OneFoldWire",
+      "is_local": false,
+      "source": {
+        "file": "crates/aspis-core/src/v6_onefold.rs",
+        "begin_line": 90,
+        "end_line": 90
+      }
+    },
+    {
+      "def_id": 0,
+      "lean_name": "V6AcceptedKernelGenerated.solana_pubkey.Pubkey",
+      "lean_file": "V6AcceptedKernel/TypesExternal_Template.lean",
+      "rust_name": "solana_pubkey::Pubkey",
+      "is_local": false,
+      "source": {
+        "file": "/cargo/registry/src/index.crates.io-1949cf8c6b5b557f/solana-pubkey-2.4.0/src/lib.rs",
+        "begin_line": 166,
+        "end_line": 166
+      }
+    },
+    {
+      "def_id": 19,
+      "lean_name": "V6AcceptedKernelGenerated.aspis_core.field.M31",
+      "lean_file": "V6AcceptedKernel/Types.lean",
+      "rust_name": "aspis_core::field::M31",
+      "is_local": false,
+      "source": {
+        "file": "crates/aspis-core/src/field.rs",
+        "begin_line": 20,
+        "end_line": 20
+      }
+    },
+    {
+      "def_id": 23,
+      "lean_name": "V6AcceptedKernelGenerated.aspis_core.field.CM31",
+      "lean_file": "V6AcceptedKernel/Types.lean",
+      "rust_name": "aspis_core::field::CM31",
+      "is_local": false,
+      "source": {
+        "file": "crates/aspis-core/src/field.rs",
+        "begin_line": 191,
+        "end_line": 191
+      }
+    },
+    {
+      "def_id": 17,
+      "lean_name": "V6AcceptedKernelGenerated.aspis_core.field.QM31",
+      "lean_file": "V6AcceptedKernel/Types.lean",
+      "rust_name": "aspis_core::field::QM31",
+      "is_local": false,
+      "source": {
+        "file": "crates/aspis-core/src/field.rs",
+        "begin_line": 360,
+        "end_line": 360
+      }
+    },
+    {
+      "def_id": 25,
+      "lean_name": "V6AcceptedKernelGenerated.aspis_core.state_only_query.StateOnlyQueryPowers",
+      "lean_file": "V6AcceptedKernel/Types.lean",
+      "rust_name": "aspis_core::state_only_query::StateOnlyQueryPowers",
+      "is_local": false,
+      "source": {
+        "file": "crates/aspis-core/src/state_only_query.rs",
+        "begin_line": 27,
+        "end_line": 27
+      }
+    },
+    {
+      "def_id": 22,
+      "lean_name": "V6AcceptedKernelGenerated.aspis_core.state_only_spend_query.StateOnlySpendQueryPowers",
+      "lean_file": "V6AcceptedKernel/Types.lean",
+      "rust_name": "aspis_core::state_only_spend_query::StateOnlySpendQueryPowers",
+      "is_local": false,
+      "source": {
+        "file": "crates/aspis-core/src/state_only_spend_query.rs",
+        "begin_line": 22,
+        "end_line": 22
+      }
+    },
+    {
+      "def_id": 21,
+      "lean_name": "V6AcceptedKernelGenerated.aspis_core.statement_sumcheck.PaymentConstraintChallenges",
+      "lean_file": "V6AcceptedKernel/Types.lean",
+      "rust_name": "aspis_core::statement_sumcheck::PaymentConstraintChallenges",
+      "is_local": false,
+      "source": {
+        "file": "crates/aspis-core/src/statement_sumcheck.rs",
+        "begin_line": 26,
+        "end_line": 26
+      }
+    },
+    {
+      "def_id": 8,
+      "lean_name": "V6AcceptedKernelGenerated.aspis_core.v6_onefold.V6WireError",
+      "lean_file": "V6AcceptedKernel/Types.lean",
+      "rust_name": "aspis_core::v6_onefold::V6WireError",
+      "is_local": false,
+      "source": {
+        "file": "crates/aspis-core/src/v6_onefold.rs",
+        "begin_line": 73,
+        "end_line": 73
+      }
+    },
+    {
+      "def_id": 29,
+      "lean_name": "V6AcceptedKernelGenerated.aspis_core.v6_onefold.V6OneFoldCoordinates",
+      "lean_file": "V6AcceptedKernel/Types.lean",
+      "rust_name": "aspis_core::v6_onefold::V6OneFoldCoordinates",
+      "is_local": false,
+      "source": {
+        "file": "crates/aspis-core/src/v6_onefold.rs",
+        "begin_line": 780,
+        "end_line": 780
+      }
+    },
+    {
+      "def_id": 16,
+      "lean_name": "V6AcceptedKernelGenerated.aspis_core.v6_query_batch.V6AuthenticatedQueryBatch",
+      "lean_file": "V6AcceptedKernel/Types.lean",
+      "rust_name": "aspis_core::v6_query_batch::V6AuthenticatedQueryBatch",
+      "is_local": false,
+      "source": {
+        "file": "crates/aspis-core/src/v6_query_batch.rs",
+        "begin_line": 27,
+        "end_line": 27
+      }
+    },
+    {
+      "def_id": 9,
+      "lean_name": "V6AcceptedKernelGenerated.aspis_core.v6_transcript.V6TranscriptContext",
+      "lean_file": "V6AcceptedKernel/Types.lean",
+      "rust_name": "aspis_core::v6_transcript::V6TranscriptContext",
+      "is_local": false,
+      "source": {
+        "file": "crates/aspis-core/src/v6_transcript.rs",
+        "begin_line": 57,
+        "end_line": 57
+      }
+    },
+    {
+      "def_id": 20,
+      "lean_name": "V6AcceptedKernelGenerated.aspis_core.v6_transcript.V6WorkStage",
+      "lean_file": "V6AcceptedKernel/Types.lean",
+      "rust_name": "aspis_core::v6_transcript::V6WorkStage",
+      "is_local": false,
+      "source": {
+        "file": "crates/aspis-core/src/v6_transcript.rs",
+        "begin_line": 69,
+        "end_line": 69
+      }
+    },
+    {
+      "def_id": 11,
+      "lean_name": "V6AcceptedKernelGenerated.aspis_core.v6_transcript.V6TranscriptError",
+      "lean_file": "V6AcceptedKernel/Types.lean",
+      "rust_name": "aspis_core::v6_transcript::V6TranscriptError",
+      "is_local": false,
+      "source": {
+        "file": "crates/aspis-core/src/v6_transcript.rs",
+        "begin_line": 101,
+        "end_line": 101
+      }
+    },
+    {
+      "def_id": 13,
+      "lean_name": "V6AcceptedKernelGenerated.aspis_core.v6_transcript.V6SemanticView",
+      "lean_file": "V6AcceptedKernel/Types.lean",
+      "rust_name": "aspis_core::v6_transcript::V6SemanticView",
+      "is_local": false,
+      "source": {
+        "file": "crates/aspis-core/src/v6_transcript.rs",
+        "begin_line": 133,
+        "end_line": 133
+      }
+    },
+    {
+      "def_id": 10,
+      "lean_name": "V6AcceptedKernelGenerated.aspis_core.v6_transcript.V6VerifiedTranscript",
+      "lean_file": "V6AcceptedKernel/Types.lean",
+      "rust_name": "aspis_core::v6_transcript::V6VerifiedTranscript",
+      "is_local": false,
+      "source": {
+        "file": "crates/aspis-core/src/v6_transcript.rs",
+        "begin_line": 144,
+        "end_line": 144
+      }
+    },
+    {
+      "def_id": 15,
+      "lean_name": "V6AcceptedKernelGenerated.aspis_core.v6_transcript.V6QueryBatchView",
+      "lean_file": "V6AcceptedKernel/Types.lean",
+      "rust_name": "aspis_core::v6_transcript::V6QueryBatchView",
+      "is_local": false,
+      "source": {
+        "file": "crates/aspis-core/src/v6_transcript.rs",
+        "begin_line": 163,
+        "end_line": 163
+      }
+    },
+    {
+      "def_id": 27,
+      "lean_name": "V6AcceptedKernelGenerated.aspis_statement.state_only_terminal.StateOnlyTerminalError",
+      "lean_file": "V6AcceptedKernel/Types.lean",
+      "rust_name": "aspis_statement::state_only_terminal::StateOnlyTerminalError",
+      "is_local": false,
+      "source": {
+        "file": "crates/aspis-statement/src/state_only_terminal.rs",
+        "begin_line": 46,
+        "end_line": 46
+      }
+    },
+    {
+      "def_id": 18,
+      "lean_name": "V6AcceptedKernelGenerated.aspis_statement.spend.SpendPublic",
+      "lean_file": "V6AcceptedKernel/Types.lean",
+      "rust_name": "aspis_statement::spend::SpendPublic",
+      "is_local": false,
+      "source": {
+        "file": "crates/aspis-statement/src/spend.rs",
+        "begin_line": 30,
+        "end_line": 30
+      }
+    },
+    {
+      "def_id": 1,
+      "lean_name": "V6AcceptedKernelGenerated.aspis_statement.atomic_statement.AtomicPaymentStatementV4",
+      "lean_file": "V6AcceptedKernel/Types.lean",
+      "rust_name": "aspis_statement::atomic_statement::AtomicPaymentStatementV4",
+      "is_local": false,
+      "source": {
+        "file": "crates/aspis-statement/src/atomic_statement.rs",
+        "begin_line": 36,
+        "end_line": 36
+      }
+    },
+    {
+      "def_id": 4,
+      "lean_name": "V6AcceptedKernelGenerated.v6_verifier.V6VerifyError",
+      "lean_file": "V6AcceptedKernel/Types.lean",
+      "rust_name": "aspis_verifier::v6_verifier::V6VerifyError",
+      "is_local": true,
+      "source": {
+        "file": "programs/aspis-verifier/src/v6_verifier.rs",
+        "begin_line": 28,
+        "end_line": 32
+      }
+    },
+    {
+      "def_id": 3,
+      "lean_name": "V6AcceptedKernelGenerated.v6_verifier.VerifiedV6ReadOnly",
+      "lean_file": "V6AcceptedKernel/Types.lean",
+      "rust_name": "aspis_verifier::v6_verifier::VerifiedV6ReadOnly",
+      "is_local": true,
+      "source": {
+        "file": "programs/aspis-verifier/src/v6_verifier.rs",
+        "begin_line": 47,
+        "end_line": 50
+      }
+    },
+    {
+      "def_id": 30,
+      "lean_name": "V6AcceptedKernelGenerated.v6_verifier.terminal_claims.closure",
+      "lean_file": "V6AcceptedKernel/Types.lean",
+      "rust_name": "aspis_verifier::v6_verifier::terminal_claims::closure",
+      "is_local": true,
+      "source": {
+        "file": "programs/aspis-verifier/src/v6_verifier.rs",
+        "begin_line": 56,
+        "end_line": 60
+      }
+    },
+    {
+      "def_id": 28,
+      "lean_name": "V6AcceptedKernelGenerated.v6_verifier.terminal_matches.closure",
+      "lean_file": "V6AcceptedKernel/Types.lean",
+      "rust_name": "aspis_verifier::v6_verifier::terminal_matches::closure",
+      "is_local": true,
+      "source": {
+        "file": "programs/aspis-verifier/src/v6_verifier.rs",
+        "begin_line": 75,
+        "end_line": 75
+      }
+    },
+    {
+      "def_id": 14,
+      "lean_name": "V6AcceptedKernelGenerated.v6_verifier.verify_v6_read_only_with_statement_digest_and_schedule.closure_1",
+      "lean_file": "V6AcceptedKernel/Types.lean",
+      "rust_name": "aspis_verifier::v6_verifier::verify_v6_read_only_with_statement_digest_and_schedule::closure#1",
+      "is_local": true,
+      "source": {
+        "file": "programs/aspis-verifier/src/v6_verifier.rs",
+        "begin_line": 203,
+        "end_line": 203
+      }
+    },
+    {
+      "def_id": 12,
+      "lean_name": "V6AcceptedKernelGenerated.v6_verifier.verify_v6_read_only_with_statement_digest_and_schedule.closure",
+      "lean_file": "V6AcceptedKernel/Types.lean",
+      "rust_name": "aspis_verifier::v6_verifier::verify_v6_read_only_with_statement_digest_and_schedule::closure",
+      "is_local": true,
+      "source": {
+        "file": "programs/aspis-verifier/src/v6_verifier.rs",
+        "begin_line": 202,
+        "end_line": 202
+      }
+    }
+  ],
+  "globals": [],
+  "trait_decls": [],
+  "trait_impls": [
+    {
+      "def_id": 5,
+      "lean_name": "V6AcceptedKernelGenerated.v6_verifier.V6VerifyError.Insts.CoreConvertFromV6TranscriptError",
+      "lean_file": "V6AcceptedKernel/Funs.lean",
+      "rust_name": "aspis_verifier::v6_verifier::{impl core::convert::From<aspis_core::v6_transcript::V6TranscriptError> for aspis_verifier::v6_verifier::V6VerifyError}",
+      "is_local": true,
+      "source": {
+        "file": "programs/aspis-verifier/src/v6_verifier.rs",
+        "begin_line": 34,
+        "end_line": 38
+      },
+      "impl_trait_def_id": 0,
+      "impl_trait_rust_name": "core::convert::From",
+      "impl_trait_is_builtin": true
+    },
+    {
+      "def_id": 4,
+      "lean_name": "V6AcceptedKernelGenerated.v6_verifier.V6VerifyError.Insts.CoreConvertFromV6WireError",
+      "lean_file": "V6AcceptedKernel/Funs.lean",
+      "rust_name": "aspis_verifier::v6_verifier::{impl core::convert::From<aspis_core::v6_onefold::V6WireError> for aspis_verifier::v6_verifier::V6VerifyError}",
+      "is_local": true,
+      "source": {
+        "file": "programs/aspis-verifier/src/v6_verifier.rs",
+        "begin_line": 40,
+        "end_line": 44
+      },
+      "impl_trait_def_id": 0,
+      "impl_trait_rust_name": "core::convert::From",
+      "impl_trait_is_builtin": true
+    },
+    {
+      "def_id": 12,
+      "lean_name": "V6AcceptedKernelGenerated.v6_verifier.terminal_claims.closure.Insts.CoreOpsFunctionFnOnceTupleUsizeQM31",
+      "lean_file": "V6AcceptedKernel/Funs.lean",
+      "rust_name": "aspis_verifier::v6_verifier::terminal_claims::{impl core::ops::function::FnOnce<(usize,), aspis_core::field::QM31> for aspis_verifier::v6_verifier::terminal_claims::closure<'_0>}",
+      "is_local": true,
+      "source": {
+        "file": "programs/aspis-verifier/src/v6_verifier.rs",
+        "begin_line": 56,
+        "end_line": 60
+      },
+      "impl_trait_def_id": 1,
+      "impl_trait_rust_name": "core::ops::function::FnOnce",
+      "impl_trait_is_builtin": true
+    },
+    {
+      "def_id": 13,
+      "lean_name": "V6AcceptedKernelGenerated.v6_verifier.terminal_claims.closure.Insts.CoreOpsFunctionFnMutTupleUsizeQM31",
+      "lean_file": "V6AcceptedKernel/Funs.lean",
+      "rust_name": "aspis_verifier::v6_verifier::terminal_claims::{impl core::ops::function::FnMut<(usize,), aspis_core::field::QM31> for aspis_verifier::v6_verifier::terminal_claims::closure<'_0>}",
+      "is_local": true,
+      "source": {
+        "file": "programs/aspis-verifier/src/v6_verifier.rs",
+        "begin_line": 56,
+        "end_line": 60
+      },
+      "impl_trait_def_id": 6,
+      "impl_trait_rust_name": "core::ops::function::FnMut",
+      "impl_trait_is_builtin": true
+    },
+    {
+      "def_id": 8,
+      "lean_name": "V6AcceptedKernelGenerated.v6_verifier.terminal_matches.closure.Insts.CoreOpsFunctionFnOnceTupleQM31Bool",
+      "lean_file": "V6AcceptedKernel/Funs.lean",
+      "rust_name": "aspis_verifier::v6_verifier::terminal_matches::{impl core::ops::function::FnOnce<(aspis_core::field::QM31,), bool> for aspis_verifier::v6_verifier::terminal_matches::closure<'_0, '_1>}",
+      "is_local": true,
+      "source": {
+        "file": "programs/aspis-verifier/src/v6_verifier.rs",
+        "begin_line": 75,
+        "end_line": 75
+      },
+      "impl_trait_def_id": 1,
+      "impl_trait_rust_name": "core::ops::function::FnOnce",
+      "impl_trait_is_builtin": true
+    },
+    {
+      "def_id": 1,
+      "lean_name": "V6AcceptedKernelGenerated.v6_verifier.verify_v6_read_only_with_statement_digest_and_schedule.closure_1.Insts.CoreOpsFunctionFnOnceTupleSharedV6QueryBatchViewResultV6AuthenticatedQueryBatchV6WireError",
+      "lean_file": "V6AcceptedKernel/Funs.lean",
+      "rust_name": "aspis_verifier::v6_verifier::verify_v6_read_only_with_statement_digest_and_schedule::{impl core::ops::function::FnOnce<(&'_ aspis_core::v6_transcript::V6QueryBatchView<'_>,), core::result::Result<aspis_core::v6_query_batch::V6AuthenticatedQueryBatch, aspis_core::v6_onefold::V6WireError>> for aspis_verifier::v6_verifier::verify_v6_read_only_with_statement_digest_and_schedule::closure#1<'_0, '_1, '_2>}",
+      "is_local": true,
+      "source": {
+        "file": "programs/aspis-verifier/src/v6_verifier.rs",
+        "begin_line": 203,
+        "end_line": 203
+      },
+      "impl_trait_def_id": 1,
+      "impl_trait_rust_name": "core::ops::function::FnOnce",
+      "impl_trait_is_builtin": true
+    },
+    {
+      "def_id": 0,
+      "lean_name": "V6AcceptedKernelGenerated.v6_verifier.verify_v6_read_only_with_statement_digest_and_schedule.closure.Insts.CoreOpsFunctionFnOnceTupleSharedV6SemanticViewBool",
+      "lean_file": "V6AcceptedKernel/Funs.lean",
+      "rust_name": "aspis_verifier::v6_verifier::verify_v6_read_only_with_statement_digest_and_schedule::{impl core::ops::function::FnOnce<(&'_ aspis_core::v6_transcript::V6SemanticView<'_>,), bool> for aspis_verifier::v6_verifier::verify_v6_read_only_with_statement_digest_and_schedule::closure<'_0>}",
+      "is_local": true,
+      "source": {
+        "file": "programs/aspis-verifier/src/v6_verifier.rs",
+        "begin_line": 202,
+        "end_line": 202
+      },
+      "impl_trait_def_id": 1,
+      "impl_trait_rust_name": "core::ops::function::FnOnce",
+      "impl_trait_is_builtin": true
+    }
+  ]
+}

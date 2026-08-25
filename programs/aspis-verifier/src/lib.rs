@@ -59,7 +59,11 @@ compile_error!(
 
 #[cfg(all(
     feature = "v6-cu-probe",
-    any(feature = "spend-production", feature = "v5-production-tag67"),
+    any(
+        feature = "spend-production",
+        feature = "v5-production-tag67",
+        feature = "v6-production-tag72"
+    ),
     not(feature = "no-entrypoint")
 ))]
 compile_error!(
@@ -76,8 +80,6 @@ compile_error!("V6_CU_PROBE_FORBIDS_V5_PROBE: select exactly one local probe ent
 pub mod atomic_payment;
 pub mod dispatch;
 pub mod lifecycle;
-#[cfg(feature = "v6-cu-probe")]
-pub mod v6_cu_probe;
 #[cfg(any(feature = "v5-cu-probe", feature = "v5-production-tag67"))]
 pub mod v5_atomic_terminal;
 #[cfg(any(feature = "v5-cu-probe", feature = "v5-production-tag67"))]
@@ -86,6 +88,12 @@ pub mod v5_cu_probe;
 pub mod v5_full_transaction;
 #[cfg(any(feature = "v5-cu-probe", feature = "v5-production-tag67"))]
 pub mod v5_relation_stress;
+#[cfg(feature = "v6-cu-probe")]
+pub mod v6_cu_probe;
+#[cfg(any(feature = "v6-production-tag72", test))]
+pub mod v6_transaction;
+#[cfg(any(feature = "v6-cu-probe", feature = "v6-production-tag72", test))]
+pub mod v6_verifier;
 pub mod verify;
 pub mod wire;
 

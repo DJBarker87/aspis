@@ -1,0 +1,37 @@
+{
+  "artifact": "aspis_v6_onefold_production_sbf_simulation",
+  "build_command": "NO_DNA=1 cargo-build-sbf --manifest-path programs/aspis-verifier/Cargo.toml --no-default-features --features v6-production-tag72",
+  "compact_counter": 2,
+  "deterministic_three_of_three_both_paths": true,
+  "exact_terminal_equality": true,
+  "frontier_nodes_per_tree": 209,
+  "headroom_under_1_3m": 52618,
+  "host_production_acceptance": true,
+  "maximum_compute_units": 1247382,
+  "missing_marker_completed_system_program_cpi": true,
+  "missing_marker_repeated_compute_units": [
+    1247382,
+    1247382,
+    1247382
+  ],
+  "nullifier_marker": "6ABozTwi9V24Eqe6rpZC747dxKHSGqWoHryg9QPoYMpn",
+  "pool": "6qN7usnskogh5EhNXTizaTDgvVjYsPwQmXN6FM9FeoLx",
+  "program_id": "7Q2nGsPg8rbjdxKHK4jxTgEWLTyd9o1X4KMSjCieRmue",
+  "program_owned_marker_repeated_compute_units": [
+    1245048,
+    1245048,
+    1245048
+  ],
+  "proof_account": "A5mwVjqsvuoAaW4yK7dEawHVuf9UcFkRaowqBExKc4C5",
+  "proof_bytes": 33336,
+  "proof_path": "/Users/dominic/ZK-docs-final/results/spend/v6-final-devnet-20260825/v6-proof.bin",
+  "proof_sha256": "b768ecd0e7cb9686198c11900217bb227ae539aadf41032ebe56c359c24a438a",
+  "real_work_checks": true,
+  "sbf_bytes": 1151632,
+  "sbf_path": "/Users/dominic/ZK-docs-final/results/spend/v6-honest-devnet-20260825-fresh1/aspis_verifier_v6_tag72_sourcebridge_candidate.so",
+  "sbf_sha256": "53ff6c8da29646bb8fc78f37656e42bf1c53bbe10026df13eea77624b66f1d4d",
+  "schema_version": 1,
+  "selector": 0,
+  "statement_path": "/Users/dominic/ZK-docs-final/results/spend/v6-final-devnet-20260825/v6-statement.json",
+  "statement_sha256": "cae9d13bc4365080416d2e3e0d35c83eb74f9af806472f06eb6133f391519122"
+}

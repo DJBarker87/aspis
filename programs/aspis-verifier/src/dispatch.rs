@@ -57,6 +57,8 @@ fn production_require_empty(input: &[u8]) -> ProgramResult {
 ///   atomic proof-account close and rent refund; and
 /// - 67: complete v5 verification plus the retained-proof atomic state
 ///   transition, enabled by the default `v5-production-tag67` feature.
+/// - 72: complete V6 one-fold verification plus the retained-proof atomic
+///   state transition, enabled by `v6-production-tag72`.
 ///
 /// Every other historical or diagnostic tag fails before account access.
 pub fn process_spend_production_instruction(
@@ -212,6 +214,12 @@ pub fn process_spend_production_instruction(
             instruction_data,
             crate::v5_cu_probe::verify_uploaded_v5_mode9_cu_fixture,
         ),
+        #[cfg(feature = "v6-production-tag72")]
+        72 => crate::v6_transaction::process_v6_atomic_instruction(
+            program_id,
+            accounts,
+            instruction_data,
+        ),
         _ => Err(ProgramError::InvalidInstructionData),
     }
 }
@@ -333,6 +341,11 @@ mod tests {
             process_spend_production_instruction(&id(), &[], &[67]),
             Err(ProgramError::InvalidInstructionData)
         );
+        #[cfg(not(feature = "v6-production-tag72"))]
+        assert_eq!(
+            process_spend_production_instruction(&id(), &[], &[72]),
+            Err(ProgramError::InvalidInstructionData)
+        );
     }
 
     #[cfg(feature = "v5-production-tag67")]
@@ -365,5 +378,24 @@ mod tests {
             process_spend_production_instruction(&program_id, &[], &[66]),
             Err(ProgramError::InvalidInstructionData)
         );
+    }
+
+    #[cfg(feature = "v6-production-tag72")]
+    #[test]
+    fn tag72_production_routes_only_through_v6_atomic_parser() {
+        let mut wire = vec![0u8; crate::v6_transaction::V6_ATOMIC_WIRE_BYTES];
+        wire[0] = crate::v6_transaction::V6_PRODUCTION_TAG;
+        assert_eq!(
+            process_spend_production_instruction(&id(), &[], &wire),
+            Err(ProgramError::NotEnoughAccountKeys)
+        );
+
+        // The adjacent probe-only tags remain unreachable in production.
+        for tag in [68u8, 69, 70, 71] {
+            assert_eq!(
+                process_spend_production_instruction(&id(), &[], &[tag]),
+                Err(ProgramError::InvalidInstructionData)
+            );
+        }
     }
 }

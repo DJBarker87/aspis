@@ -1,0 +1,47 @@
+{
+  "all_work_checked": true,
+  "artifact": "aspis_v6_onefold_honest_mined_proof",
+  "compact_counter": 0,
+  "frontier_nodes_per_tree": 199,
+  "host_full_acceptance": true,
+  "nonce_store": "/home/dombarker/project-offloads/aspis-v6-private/nonce-ledger-fresh1",
+  "pool": "4bfLMZxefuaeUSugtm1ctkokx5FHY2UxeNBzgqRgLddF",
+  "program_id": "7Q2nGsPg8rbjdxKHK4jxTgEWLTyd9o1X4KMSjCieRmue",
+  "proof_account": "48kmPn3Tazz4DwpF5yQpJfEDevFFxQ6mMx3SoENPtxJ8",
+  "proof_bytes": 32696,
+  "proof_path": "/home/dombarker/project-offloads/aspis-v6-proof-fresh1/results/spend/v6-honest-devnet-20260825-fresh1/v6-proof.bin",
+  "proof_sha256": "0374e4141a17df5740f1d59d4c174407b501f98a18d70122366902624fbf11b1",
+  "queries": [
+    86003,
+    186383,
+    96813,
+    99560,
+    106556,
+    100140,
+    37250,
+    143917,
+    182004,
+    235903,
+    16818,
+    97096,
+    240540,
+    2402,
+    181827,
+    134884
+  ],
+  "release_binding_hex": "36d1d6a71b6a6e669982ca9ea67bc19fd1331a2c212ca803a1b6c5da176e5e18",
+  "schema_version": 1,
+  "selector": 0,
+  "statement_path": "/home/dombarker/project-offloads/aspis-v6-proof-fresh1/results/spend/v6-honest-devnet-20260825-fresh1/v6-statement.json",
+  "statement_sha256": "62e71a25e1eb1078bdc0eab7d9370ff4b94830f5d4fcaadc0e2c7c9076a67483",
+  "work_bits": [
+    34,
+    31,
+    34
+  ],
+  "work_nonces": [
+    18054577711,
+    2429465635,
+    20402706604
+  ]
+}

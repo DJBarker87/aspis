@@ -194,6 +194,34 @@ pub mod label {
     /// geometry. This precedes the generic shape so future suffix semantics
     /// cannot reuse the same Fiat-Shamir schedule.
     pub const M31_PROFILE24_PCS_SUFFIX_HEADER: u8 = 46;
+    /// V6 program identity and frozen release binding. The profile record,
+    /// program id and release id precede the live statement and proof-attempt
+    /// identifier, so a proof cannot be replayed into another deployment.
+    pub const V6_DEPLOYMENT_CONTEXT: u8 = 47;
+    /// `round || c0 || c2 || ... || c27` for V6's compact semantic
+    /// sumcheck. `c1` is reconstructed from the running boundary claim.
+    pub const V6_COMPACT_SEMANTIC_ROUND: u8 = 48;
+    /// Three point-major rows of all 29 committed V6 lanes.
+    pub const V6_POINT_CLAIMS: u8 = 49;
+    /// V6's post-gamma copy-inactive claim, fixed before `kappa`.
+    pub const V6_INACTIVE_CLAIM: u8 = 50;
+    /// One of the two layer-zero circle OOD values: `sample || value`.
+    pub const V6_CIRCLE_OOD_VALUE: u8 = 51;
+    /// `round || c0 || c1 || c2 || c3 || c5 || c6` for a V6 relation
+    /// reduction. `c4` is reconstructed from `4*(c0+c4)=claim`.
+    pub const V6_COMPACT_RELATION_ROUND: u8 = 52;
+    /// The complete disclosed 256-element coefficient vector, encoded as
+    /// canonical 16-byte QM31 values for transcript hashing.
+    pub const V6_FINAL256: u8 = 53;
+    /// V6 compact-query domain record `selector || counter`.
+    pub const V6_QUERY_CANDIDATE: u8 = 54;
+    /// Domain separator immediately after the accepted V6 q16 draw and
+    /// before the random linear-combination challenge for the sixteen fold
+    /// equalities.
+    pub const V6_QUERY_BATCH_CHALLENGE: u8 = 55;
+    /// Canonical QM31 encoding of the verifier-computed random combination of
+    /// the sixteen authenticated folded query values.
+    pub const V6_QUERY_BATCH_CLAIM: u8 = 56;
 }
 
 const DOM_ABSORB: u8 = 0x00;
@@ -269,8 +297,22 @@ impl Transcript {
         }
     }
 
+    #[inline(never)]
     pub fn absorb(&mut self, label: u8, data: &[u8]) {
-        self.state = (self.hash)(&[&self.state, &[DOM_ABSORB, label], data]);
+        // Most transcript records are short. Packing their fixed state and
+        // framing into one buffer reduces SBF slice translation while the
+        // large point/final vectors retain the zero-copy hashv path.
+        const PACKED_ABSORB_BYTES: usize = 192;
+        if data.len() <= PACKED_ABSORB_BYTES - 34 {
+            let mut input = [0u8; PACKED_ABSORB_BYTES];
+            input[..32].copy_from_slice(&self.state);
+            input[32] = DOM_ABSORB;
+            input[33] = label;
+            input[34..34 + data.len()].copy_from_slice(data);
+            self.state = (self.hash)(&[&input[..34 + data.len()]]);
+        } else {
+            self.state = (self.hash)(&[&self.state, &[DOM_ABSORB, label], data]);
+        }
     }
 
     /// Internal evidence hook for candidate schedule teeth. This is not a
@@ -280,9 +322,14 @@ impl Transcript {
     }
 
     /// Squeeze one 32-byte block and advance the state.
+    #[inline(never)]
     pub fn squeeze_block(&mut self) -> [u8; 32] {
-        let out = (self.hash)(&[&self.state, &[DOM_SQUEEZE]]);
-        self.state = (self.hash)(&[&self.state, &[DOM_ADVANCE]]);
+        let mut squeeze = [0u8; 33];
+        squeeze[..32].copy_from_slice(&self.state);
+        squeeze[32] = DOM_SQUEEZE;
+        let out = (self.hash)(&[&squeeze]);
+        squeeze[32] = DOM_ADVANCE;
+        self.state = (self.hash)(&[&squeeze]);
         out
     }
 
@@ -811,6 +858,18 @@ mod tests {
         h.finalize().into()
     }
 
+    /// Return the transcript state from either the original two-slice hashv
+    /// spelling or the allocation-free packed spelling used by production.
+    /// Test-only adversarial backends model the concatenated hash input, so
+    /// they must not depend on how that byte string is split into slices.
+    fn framed_state<'a>(inputs: &'a [&'a [u8]], domain: u8) -> Option<&'a [u8]> {
+        match inputs {
+            [state, frame] if state.len() == 32 && *frame == [domain] => Some(*state),
+            [packed] if packed.len() == 33 && packed[32] == domain => Some(&packed[..32]),
+            _ => None,
+        }
+    }
+
     fn grinding_input_probe(inputs: &[&[u8]]) -> [u8; 32] {
         assert_eq!(inputs.len(), 3);
         assert_eq!(inputs[0], &[0u8; 32]);
@@ -947,8 +1006,8 @@ mod tests {
     /// sampler must skip the duplicate, consume the next block, and retain
     /// the order of the first occurrence of every accepted position.
     fn duplicate_query_prefix_hash(inputs: &[&[u8]]) -> [u8; 32] {
-        if inputs.len() == 2 && inputs[1] == [DOM_SQUEEZE] {
-            let first = inputs[0][0] == 0;
+        if let Some(state) = framed_state(inputs, DOM_SQUEEZE) {
+            let first = state[0] == 0;
             let words = if first {
                 [7u32, 7, 8, 9, 10, 11, 12, 13]
             } else {
@@ -959,8 +1018,8 @@ mod tests {
                 block[index * 4..index * 4 + 4].copy_from_slice(&word.to_le_bytes());
             }
             block
-        } else if inputs.len() == 2 && inputs[1] == [DOM_ADVANCE] {
-            let mut state: [u8; 32] = inputs[0].try_into().unwrap();
+        } else if let Some(state) = framed_state(inputs, DOM_ADVANCE) {
+            let mut state: [u8; 32] = state.try_into().unwrap();
             state[0] = state[0].wrapping_add(1);
             state
         } else {
@@ -983,16 +1042,16 @@ mod tests {
     }
 
     fn zero_then_nonzero_hash(inputs: &[&[u8]]) -> [u8; 32] {
-        if inputs.len() == 2 && inputs[1] == [DOM_SQUEEZE] {
+        if let Some(state) = framed_state(inputs, DOM_SQUEEZE) {
             let mut block = [0u8; 32];
-            if inputs[0][0] != 0 {
+            if state[0] != 0 {
                 for (word, chunk) in block.chunks_exact_mut(4).enumerate() {
                     chunk.copy_from_slice(&(word as u32 + 1).to_le_bytes());
                 }
             }
             block
-        } else if inputs.len() == 2 && inputs[1] == [DOM_ADVANCE] {
-            let mut state: [u8; 32] = inputs[0].try_into().unwrap();
+        } else if let Some(state) = framed_state(inputs, DOM_ADVANCE) {
+            let mut state: [u8; 32] = state.try_into().unwrap();
             state[0] = state[0].wrapping_add(1);
             state
         } else {
@@ -1042,7 +1101,7 @@ mod tests {
     }
 
     fn cm31_only_hash(inputs: &[&[u8]]) -> [u8; 32] {
-        if inputs.len() == 2 && inputs[1] == [DOM_SQUEEZE] {
+        if framed_state(inputs, DOM_SQUEEZE).is_some() {
             let mut block = [0u8; 32];
             block[0..4].copy_from_slice(&1u32.to_le_bytes());
             block[4..8].copy_from_slice(&2u32.to_le_bytes());
@@ -1069,7 +1128,7 @@ mod tests {
     }
 
     fn singular_circle_hash(inputs: &[&[u8]]) -> [u8; 32] {
-        if inputs.len() == 2 && inputs[1] == [DOM_SQUEEZE] {
+        if framed_state(inputs, DOM_SQUEEZE).is_some() {
             let mut block = [0u8; 32];
             // t = i in CM31, hence 1+t^2 = 0. The pure helper reports the
             // singularity; the bounded transcript sampler retries then errs.
@@ -1092,7 +1151,7 @@ mod tests {
     /// Backend that rejects exactly the first draw: word 0 masks to P, the
     /// retry must consume the NEXT word (fresh bytes), not re-hash.
     fn first_word_p_hash(inputs: &[&[u8]]) -> [u8; 32] {
-        if inputs.len() == 2 && inputs[1] == [0x01u8] {
+        if framed_state(inputs, DOM_SQUEEZE).is_some() {
             // DOM_SQUEEZE block: word0 = P (rejected), then 1, 2, 3, 4, ...
             let mut block = [0u8; 32];
             block[0..4].copy_from_slice(&0x7FFF_FFFFu32.to_le_bytes());

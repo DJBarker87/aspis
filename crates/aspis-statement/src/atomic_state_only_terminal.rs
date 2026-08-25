@@ -7,7 +7,8 @@
 use alloc::{boxed::Box, vec, vec::Vec};
 
 use aspis_core::field::{
-    qm31_dot, qm31_m31_dot, qm31_pack_base4, PreparedQm31Multiplier, CM31, M31, P, QM31,
+    qm31_dot, qm31_m31_dot, qm31_pack_base4, qm31_sum_products2, qm31_sum_products4,
+    PreparedQm31Multiplier, CM31, M31, P, QM31,
 };
 use aspis_core::state_only_hiding::{
     state_only_selected_mask_value, STATE_ONLY_HIDING_MASK_ONLY_C1_COLUMNS,
@@ -129,14 +130,21 @@ pub fn atomic_state_only_copy_active_rows_v3(
 }
 
 pub fn atomic_state_only_copy_inactive_row_masks_v3() -> [u16; 64] {
-    let mut masks = [u16::MAX; 64];
-    for &row in &constants::COMPILED_ATOMIC_COPY_ACTIVE_ROWS {
-        let row = usize::from(row);
-        let low = (row & 15) as u32;
-        let word = row >> 4u32;
-        masks[word] &= !(1u16 << low);
-    }
-    masks
+    constants::COMPILED_ATOMIC_COPY_INACTIVE_ROW_MASKS
+}
+
+/// Frozen row-to-group schedule for the exact atomic-v3 inactive covector.
+///
+/// This is generated from the same pinned copy registry as the row masks, so
+/// the verifier can skip rebuilding and deduplicating public layout data.
+pub fn atomic_state_only_copy_inactive_row_groups_v3() -> &'static [u8; 64] {
+    &constants::COMPILED_ATOMIC_COPY_INACTIVE_ROW_GROUPS
+}
+
+/// Deduplicated masks referenced by
+/// [`atomic_state_only_copy_inactive_row_groups_v3`].
+pub fn atomic_state_only_copy_inactive_group_masks_v3() -> &'static [u16] {
+    &constants::COMPILED_ATOMIC_COPY_INACTIVE_GROUP_MASKS
 }
 
 pub fn atomic_state_only_copy_inactive_indicator_v3() -> Vec<QM31> {
@@ -158,6 +166,44 @@ pub fn atomic_state_only_copy_inactive_indicator_v3() -> Vec<QM31> {
 struct AtomicSelectors {
     high: [QM31; 64],
     low: [QM31; 16],
+}
+
+#[inline(always)]
+fn atomic_selector_mask_sum_64(values: &[QM31; 64], mut mask: u64) -> QM31 {
+    let complement = mask.count_ones() > 32;
+    if complement {
+        mask = !mask;
+    }
+    let mut sum = if complement { QM31::ONE } else { QM31::ZERO };
+    while mask != 0 {
+        let index = mask.trailing_zeros() as usize;
+        sum = if complement {
+            sum.sub(values[index])
+        } else {
+            sum.add(values[index])
+        };
+        mask &= mask - 1;
+    }
+    sum
+}
+
+#[inline(always)]
+fn atomic_selector_mask_sum_16(values: &[QM31; 16], mut mask: u16) -> QM31 {
+    let complement = mask.count_ones() > 8;
+    if complement {
+        mask = !mask;
+    }
+    let mut sum = if complement { QM31::ONE } else { QM31::ZERO };
+    while mask != 0 {
+        let index = mask.trailing_zeros() as usize;
+        sum = if complement {
+            sum.sub(values[index])
+        } else {
+            sum.add(values[index])
+        };
+        mask &= mask - 1;
+    }
+    sum
 }
 
 #[inline(always)]
@@ -212,20 +258,8 @@ impl AtomicSelectors {
             .iter()
             .copied()
             .fold(QM31::ZERO, |sum, (high_mask, low_mask)| {
-                let high = self
-                    .high
-                    .iter()
-                    .copied()
-                    .enumerate()
-                    .filter(|(index, _)| high_mask & (1u64 << index) != 0)
-                    .fold(QM31::ZERO, |sum, (_, value)| sum.add(value));
-                let low = self
-                    .low
-                    .iter()
-                    .copied()
-                    .enumerate()
-                    .filter(|(index, _)| low_mask & (1u16 << index) != 0)
-                    .fold(QM31::ZERO, |sum, (_, value)| sum.add(value));
+                let high = atomic_selector_mask_sum_64(&self.high, high_mask);
+                let low = atomic_selector_mask_sum_16(&self.low, low_mask);
                 sum.add(high.mul(low))
             })
     }
@@ -249,43 +283,11 @@ impl LegacyAtomicSelectors {
         legacy_partition_constants::COMPILED_ATOMIC_COPY_ACTIVE_FACTORS
             .iter()
             .copied()
-            .fold(QM31::ZERO, |sum, (mut high_mask, mut low_mask)| {
-                // Both arrays are complete multilinear equality bases, so
-                // each sums to one at every (including off-domain) point.
-                // Evaluate a dense mask through its smaller complement.  In
-                // the deployed six-factor partition this turns the 42-entry
-                // high mask into 22 subtractions.
-                let high = if high_mask.count_ones() > 32 {
-                    high_mask = !high_mask;
-                    let mut high = QM31::ONE;
-                    while high_mask != 0 {
-                        let index = high_mask.trailing_zeros() as usize;
-                        high = high.sub(self.high[index]);
-                        high_mask &= high_mask - 1;
-                    }
-                    high
-                } else {
-                    let mut high = QM31::ZERO;
-                    while high_mask != 0 {
-                        let index = high_mask.trailing_zeros() as usize;
-                        high = high.add(self.high[index]);
-                        high_mask &= high_mask - 1;
-                    }
-                    high
-                };
-                // The final deployed low mask selects all sixteen basis
-                // values, hence is exactly one without a scan.
-                let low = if low_mask == u16::MAX {
-                    QM31::ONE
-                } else {
-                    let mut low = QM31::ZERO;
-                    while low_mask != 0 {
-                        let index = low_mask.trailing_zeros() as usize;
-                        low = low.add(self.low[index]);
-                        low_mask &= low_mask - 1;
-                    }
-                    low
-                };
+            .fold(QM31::ZERO, |sum, (high_mask, low_mask)| {
+                // Complete multilinear equality bases sum to one even away
+                // from the Boolean cube, so dense masks use their complement.
+                let high = atomic_selector_mask_sum_64(&self.high, high_mask);
+                let low = atomic_selector_mask_sum_16(&self.low, low_mask);
                 sum.add(high.mul(low))
             })
     }
@@ -334,6 +336,133 @@ impl AtomicSemanticSelectors {
     }
 }
 
+/// One selector tensor shared by the minimum-rank copy routing and the
+/// semantic/Poseidon terminal.  The routing-friendly split is
+/// `(bits 5..0, bits 9..6)`.  Semantic blocks use bits `9..4`, so their
+/// four-way middle factor is recovered as a marginal of the 64-entry tensor;
+/// semantic local rows use bits `3..0` and are the complementary marginal.
+/// This is an exact tensor re-association, not a changed polynomial.
+#[derive(Clone, Copy)]
+struct AtomicCrossSelectors {
+    copy: AtomicSelectors,
+    semantic_mid: [QM31; 4],
+    semantic_local: [QM31; 16],
+    poseidon_block: QM31,
+    path_block: QM31,
+}
+
+impl AtomicCrossSelectors {
+    fn at_point(point: &[QM31; 10]) -> Self {
+        let copy = AtomicSelectors::at_point(point);
+        let semantic_mid = core::array::from_fn(|middle| {
+            copy.high[middle * 16..(middle + 1) * 16]
+                .iter()
+                .copied()
+                .fold(QM31::ZERO, QM31::add)
+        });
+        let semantic_local = core::array::from_fn(|local| {
+            copy.high[local]
+                .add(copy.high[16 + local])
+                .add(copy.high[32 + local])
+                .add(copy.high[48 + local])
+        });
+
+        // Blocks 0..47 are twelve complete middle fibres. Block 48 is the
+        // first middle value of upper fibre 12. Path blocks 4..43 are ten
+        // complete upper fibres, so both selectors stay sparse in this split.
+        let poseidon_block = copy.low[..12]
+            .iter()
+            .copied()
+            .fold(QM31::ZERO, QM31::add)
+            .add(copy.low[12].mul(semantic_mid[0]));
+        let path_block = copy.low[1..11].iter().copied().fold(QM31::ZERO, QM31::add);
+        Self {
+            copy,
+            semantic_mid,
+            semantic_local,
+            poseidon_block,
+            path_block,
+        }
+    }
+
+    /// Keep the large selector-construction temporary out of the verifier's
+    /// already dense terminal stack frame. The allocation is unchanged; only
+    /// the SBF frame boundary is made explicit.
+    #[inline(never)]
+    fn boxed_at_point(point: &[QM31; 10]) -> Box<Self> {
+        Box::new(Self::at_point(point))
+    }
+
+    #[inline(always)]
+    fn block(&self, block: usize) -> QM31 {
+        debug_assert!(block < 64);
+        self.copy.low[block >> 2].mul(self.semantic_mid[block & 3])
+    }
+
+    #[inline(always)]
+    fn row(&self, row: usize) -> QM31 {
+        self.copy.row(row)
+    }
+
+    fn poseidon(&self) -> StateOnlyPoseidonSelectors {
+        StateOnlyPoseidonSelectors {
+            block: self.poseidon_block,
+            local: self.semantic_local,
+        }
+    }
+}
+
+trait AtomicSemanticSelectorView {
+    fn local(&self) -> &[QM31; 16];
+    fn block(&self, block: usize) -> QM31;
+    fn row(&self, row: usize) -> QM31;
+    fn path_block(&self) -> QM31;
+}
+
+impl AtomicSemanticSelectorView for AtomicSemanticSelectors {
+    #[inline(always)]
+    fn local(&self) -> &[QM31; 16] {
+        &self.low
+    }
+
+    #[inline(always)]
+    fn block(&self, block: usize) -> QM31 {
+        self.high[block]
+    }
+
+    #[inline(always)]
+    fn row(&self, row: usize) -> QM31 {
+        AtomicSemanticSelectors::row(self, row)
+    }
+
+    #[inline(always)]
+    fn path_block(&self) -> QM31 {
+        self.path_block
+    }
+}
+
+impl AtomicSemanticSelectorView for AtomicCrossSelectors {
+    #[inline(always)]
+    fn local(&self) -> &[QM31; 16] {
+        &self.semantic_local
+    }
+
+    #[inline(always)]
+    fn block(&self, block: usize) -> QM31 {
+        AtomicCrossSelectors::block(self, block)
+    }
+
+    #[inline(always)]
+    fn row(&self, row: usize) -> QM31 {
+        AtomicCrossSelectors::row(self, row)
+    }
+
+    #[inline(always)]
+    fn path_block(&self) -> QM31 {
+        self.path_block
+    }
+}
+
 #[inline(always)]
 fn lift(value: M31) -> QM31 {
     QM31::from_cm31(CM31::from_m31(value))
@@ -341,41 +470,42 @@ fn lift(value: M31) -> QM31 {
 
 fn atomic_copy_pattern_values(
     openings: &[QM31; C1_COLUMNS],
-    powers: &[QM31; 16],
+    powers: &[QM31],
 ) -> [QM31; ATOMIC_STATE_ONLY_COMPILED_COPY_PATTERNS] {
+    debug_assert!(powers.len() >= 9);
     // The generated inventory has fifteen affine tuple shapes but only five
     // distinct length-eight opening windows. Since
     // powers[j + 8] = powers[j] * lambda^8, compute those windows once and
     // reconstruct every shape by an exact field identity. The generated
     // constants remain the provenance for both affine offsets.
     let a = qm31_dot(&powers[..8], &openings[..8]);
-    let b = qm31_dot(&powers[..8], &openings[8..16]);
     let c = qm31_dot(&powers[..8], &openings[1..9]);
-    let d_values = [
-        openings[8],
-        openings[9],
-        openings[10],
-        openings[11],
-        openings[12],
-        openings[13],
-        openings[0],
-        openings[1],
-    ];
-    let d = qm31_dot(&powers[..8], &d_values);
+    // B and D have the same first six products. Compute that prefix once;
+    // only their final two opening lanes differ.
+    let bd_prefix = qm31_dot(&powers[..6], &openings[8..14]);
+    let b = bd_prefix.add(qm31_sum_products2(
+        [powers[6], powers[7]],
+        [openings[14], openings[15]],
+    ));
+    let d = bd_prefix.add(qm31_sum_products2(
+        [powers[6], powers[7]],
+        [openings[0], openings[1]],
+    ));
     let e = qm31_dot(&powers[..8], &openings[2..10]);
     let lambda = powers[0];
     let lambda8 = powers[7];
     let x0 = powers[0].mul(openings[0]);
     let x11 = powers[0].mul(openings[11]);
     let x12 = powers[0].mul(openings[12]);
+    let lambda8_b = lambda8.mul(b);
     let path_tweak = M31(constants::ATOMIC_COPY_PATTERNS[14].offsets[8]);
     [
-        a.add(lambda8.mul(b)),
+        a.add(lambda8_b),
         a,
         c,
         b,
         d,
-        b.add(lambda8.mul(b)),
+        b.add(lambda8_b),
         a.add(lambda8.mul(e)),
         a.add(lambda8.mul(d)),
         x11,
@@ -412,16 +542,44 @@ fn atomic_copy_pattern_values_generated_reference(
     })
 }
 
+/// Dot one generated pattern support without paying a separate canonical
+/// reduction for every selected product. The largest frozen support has nine
+/// entries; `qm31_dot` groups them four at a time in the same field.
+#[inline(never)]
+fn atomic_pattern_masked_dot(
+    routing: &[QM31],
+    pattern_values: &[QM31; ATOMIC_STATE_ONLY_COMPILED_COPY_PATTERNS],
+    mut support: u16,
+) -> QM31 {
+    debug_assert!(routing.len() >= ATOMIC_STATE_ONLY_COMPILED_COPY_PATTERNS);
+    let mut selected_routing = [QM31::ZERO; ATOMIC_STATE_ONLY_COMPILED_COPY_PATTERNS];
+    let mut selected_patterns = [QM31::ZERO; ATOMIC_STATE_ONLY_COMPILED_COPY_PATTERNS];
+    let mut selected = 0usize;
+    while support != 0 {
+        let pattern = support.trailing_zeros() as usize;
+        selected_routing[selected] = routing[pattern];
+        selected_patterns[selected] = pattern_values[pattern];
+        selected += 1;
+        support &= support - 1;
+    }
+    qm31_dot(
+        &selected_routing[..selected],
+        &selected_patterns[..selected],
+    )
+}
+
 #[inline(always)]
 fn routing_linear_form(entries: &[(u8, u32)], selectors: &[QM31]) -> QM31 {
     // Keep exact ±1 terms in their own small accumulator. The generated
     // factors contain at most 52 entries, so even the noncanonical `P - 0`
-    // representative is bounded by `52 * P < 2^64`. Genuine products retain
-    // the audited four-product groups: `4 * (P - 1)^2 < 2^64`.
+    // representative is bounded by `52 * P < 2^64`. Genuine products are
+    // grouped by their exact public coefficient sum, with
+    // `(P - 1) * sum(coefficients) <= u64::MAX` checked before accumulation.
     let mut signed = [0u64; 4];
     let mut products = [0u64; 4];
     let mut reduced_products = [0u64; 4];
-    let mut product_count = 0usize;
+    let mut product_coefficient_sum = 0u64;
+    const MAX_PRODUCT_COEFFICIENT_SUM: u64 = u64::MAX / (P as u64 - 1);
     for &(index, coefficient) in entries {
         let selector = selectors[usize::from(index)];
         let limbs = [
@@ -442,21 +600,26 @@ fn routing_linear_form(entries: &[(u8, u32)], selectors: &[QM31]) -> QM31 {
                 }
             }
             _ => {
-                for limb in 0..4 {
-                    products[limb] += u64::from(limbs[limb]) * u64::from(coefficient);
-                }
-                product_count += 1;
-                if product_count == 4 {
+                let coefficient = u64::from(coefficient);
+                // A channel is bounded by `(P - 1) * sum(coefficients)`.
+                // Generated coefficients are public and canonical, so pack
+                // as many consecutive terms as the exact u64 bound permits
+                // instead of reducing after every four regardless of size.
+                if product_coefficient_sum > MAX_PRODUCT_COEFFICIENT_SUM - coefficient {
                     for limb in 0..4 {
                         reduced_products[limb] += u64::from(M31::reduce_u64(products[limb]).0);
                     }
                     products = [0u64; 4];
-                    product_count = 0;
+                    product_coefficient_sum = 0;
                 }
+                for limb in 0..4 {
+                    products[limb] += u64::from(limbs[limb]) * coefficient;
+                }
+                product_coefficient_sum += coefficient;
             }
         }
     }
-    if product_count != 0 {
+    if product_coefficient_sum != 0 {
         for limb in 0..4 {
             reduced_products[limb] += u64::from(M31::reduce_u64(products[limb]).0);
         }
@@ -548,30 +711,68 @@ fn legacy_copy_active_scanning_reference(selectors: &LegacyAtomicSelectors) -> Q
         })
 }
 
+#[inline(never)]
+fn evaluate_routing_linear_forms(
+    factors: &[(u16, u8)],
+    entries: &[(u8, u32)],
+    selectors: &[QM31],
+) -> Vec<QM31> {
+    factors
+        .iter()
+        .map(|&(start, len)| {
+            let start = usize::from(start);
+            routing_linear_form(&entries[start..start + usize::from(len)], selectors)
+        })
+        .collect()
+}
+
+#[inline(never)]
+fn evaluate_factorized_routing_linear_forms(
+    basis_factors: &[(u16, u8)],
+    reconstruction_factors: &[(u16, u8)],
+    direct_basis: &[u8],
+    entries: &[(u8, u32)],
+    selectors: &[QM31],
+) -> Vec<QM31> {
+    debug_assert_eq!(reconstruction_factors.len(), direct_basis.len());
+    let basis = evaluate_routing_linear_forms(basis_factors, entries, selectors);
+    reconstruction_factors
+        .iter()
+        .zip(direct_basis)
+        .map(|(&(start, len), &direct)| {
+            if direct != u8::MAX {
+                basis[usize::from(direct)]
+            } else {
+                let start = usize::from(start);
+                routing_linear_form(&entries[start..start + usize::from(len)], &basis)
+            }
+        })
+        .collect()
+}
+
 fn evaluate_atomic_copy_routing(selectors: &AtomicSelectors) -> Vec<QM31> {
-    let left_values = (0..constants::ATOMIC_COPY_ROUTING_LEFT_FACTORS.len())
-        .map(|index| {
-            let (start, len) = constants::ATOMIC_COPY_ROUTING_LEFT_FACTORS[index];
-            let start = usize::from(start);
-            routing_linear_form(
-                &constants::ATOMIC_COPY_ROUTING_ENTRIES[start..start + usize::from(len)],
-                &selectors.high,
-            )
-        })
-        .collect::<Vec<_>>();
-    let right_values = (0..constants::ATOMIC_COPY_ROUTING_RIGHT_FACTORS.len())
-        .map(|index| {
-            let (start, len) = constants::ATOMIC_COPY_ROUTING_RIGHT_FACTORS[index];
-            let start = usize::from(start);
-            routing_linear_form(
-                &constants::ATOMIC_COPY_ROUTING_ENTRIES[start..start + usize::from(len)],
-                &selectors.low,
-            )
-        })
+    let left_values = evaluate_factorized_routing_linear_forms(
+        &constants::ATOMIC_COPY_ROUTING_LEFT_BASIS_FACTORS,
+        &constants::ATOMIC_COPY_ROUTING_LEFT_RECONSTRUCTION_FACTORS,
+        &constants::ATOMIC_COPY_ROUTING_LEFT_DIRECT_BASIS,
+        &constants::ATOMIC_COPY_ROUTING_ENTRIES,
+        &selectors.high,
+    );
+    let right_values = evaluate_factorized_routing_linear_forms(
+        &constants::ATOMIC_COPY_ROUTING_RIGHT_BASIS_FACTORS,
+        &constants::ATOMIC_COPY_ROUTING_RIGHT_RECONSTRUCTION_FACTORS,
+        &constants::ATOMIC_COPY_ROUTING_RIGHT_DIRECT_BASIS,
+        &constants::ATOMIC_COPY_ROUTING_ENTRIES,
+        &selectors.low,
+    );
+    let right_prepared = right_values
+        .iter()
+        .copied()
+        .map(PreparedQm31Multiplier::new)
         .collect::<Vec<_>>();
     let mut matrices = vec![QM31::ZERO; 4 * (2 + ATOMIC_STATE_ONLY_COMPILED_COPY_PATTERNS)];
     for &(left, right, matrix_start, matrix_len) in &constants::ATOMIC_COPY_ROUTING_PAIR_TERMS {
-        let product = left_values[usize::from(left)].mul(right_values[usize::from(right)]);
+        let product = right_prepared[usize::from(right)].mul(left_values[usize::from(left)]);
         let start = usize::from(matrix_start);
         for &matrix in
             &constants::ATOMIC_COPY_ROUTING_DESTINATIONS[start..start + usize::from(matrix_len)]
@@ -631,10 +832,14 @@ fn atomic_copy_lane_from_routing_impl<F>(
 where
     F: FnMut(StateOnlyTerminalDiagnosticPhase),
 {
-    let mut powers = [QM31::ZERO; 16];
+    // The factorized pattern inventory consumes only lambda^1..lambda^9.
+    // Higher powers belonged to the pre-factorization 16-lane spelling and
+    // have no remaining term in the exact generated reconstruction.
+    let mut powers = [QM31::ZERO; 9];
     powers[0] = lambda;
+    let prepared_lambda = PreparedQm31Multiplier::new(lambda);
     for index in 1..powers.len() {
-        powers[index] = powers[index - 1].mul(lambda);
+        powers[index] = prepared_lambda.mul(powers[index - 1]);
     }
     let pattern_values = atomic_copy_pattern_values(openings, &powers);
     trace(StateOnlyTerminalDiagnosticPhase::CopyPatterns);
@@ -645,14 +850,11 @@ where
     for slot in 0..4 {
         let base = slot * (2 + ATOMIC_STATE_ONLY_COMPILED_COPY_PATTERNS);
         weights[slot] = routing[base];
-        values[slot] = routing[base + 1];
-        let mut support = constants::ATOMIC_COPY_ROUTING_PATTERN_MASKS[slot];
-        while support != 0 {
-            let pattern = support.trailing_zeros() as usize;
-            values[slot] =
-                values[slot].add(routing[base + 2 + pattern].mul(pattern_values[pattern]));
-            support &= support - 1;
-        }
+        values[slot] = routing[base + 1].add(atomic_pattern_masked_dot(
+            &routing[base + 2..],
+            &pattern_values,
+            constants::ATOMIC_COPY_ROUTING_PATTERN_MASKS[slot],
+        ));
     }
     let d = [
         chi.sub(values[0]),
@@ -662,13 +864,13 @@ where
     ];
     let producer_denominator = d[0].mul(d[1]);
     let consumer_denominator = d[2].mul(d[3]);
-    let producer = weights[0].mul(d[1]).add(weights[1].mul(d[0]));
-    let consumer = weights[2].mul(d[3]).add(weights[3].mul(d[2]));
-    let output = selectors.copy_active().mul(
-        producer_denominator
-            .mul(h1_z.mul(consumer_denominator).add(consumer))
-            .sub(consumer_denominator.mul(producer)),
+    let producer = qm31_sum_products2([weights[0], weights[1]], [d[1], d[0]]);
+    let consumer = qm31_sum_products2([weights[2], weights[3]], [d[3], d[2]]);
+    let cleared = qm31_sum_products2(
+        [producer_denominator, consumer_denominator.neg()],
+        [h1_z.mul(consumer_denominator).add(consumer), producer],
     );
+    let output = selectors.copy_active().mul(cleared);
     trace(StateOnlyTerminalDiagnosticPhase::Copy);
     output
 }
@@ -700,7 +902,7 @@ pub fn atomic_state_only_copy_terminal_lane_compiled_v3(
 fn atomic_copy_lane_from_shared_semantic_routing_impl<F>(
     openings: &[QM31; C1_COLUMNS],
     h1_z: QM31,
-    selectors: &AtomicSemanticSelectors,
+    selectors: &LegacyAtomicSelectors,
     lambda: QM31,
     chi: QM31,
     mut trace: F,
@@ -708,11 +910,7 @@ fn atomic_copy_lane_from_shared_semantic_routing_impl<F>(
 where
     F: FnMut(StateOnlyTerminalDiagnosticPhase),
 {
-    let legacy = LegacyAtomicSelectors {
-        high: selectors.high,
-        low: selectors.low,
-    };
-    let mut powers = [QM31::ZERO; 16];
+    let mut powers = [QM31::ZERO; 9];
     powers[0] = lambda;
     let prepared_lambda = PreparedQm31Multiplier::new(lambda);
     for index in 1..powers.len() {
@@ -720,7 +918,7 @@ where
     }
     let pattern_values = atomic_copy_pattern_values(openings, &powers);
     trace(StateOnlyTerminalDiagnosticPhase::CopyPatterns);
-    let routing = evaluate_atomic_copy_routing_legacy(&legacy);
+    let routing = evaluate_atomic_copy_routing_legacy(selectors);
     trace(StateOnlyTerminalDiagnosticPhase::CopyRouting);
     let mut values = [QM31::ZERO; 4];
     let mut weights = [QM31::ZERO; 4];
@@ -746,7 +944,7 @@ where
     let consumer_denominator = d[2].mul(d[3]);
     let producer = weights[0].mul(d[1]).add(weights[1].mul(d[0]));
     let consumer = weights[2].mul(d[3]).add(weights[3].mul(d[2]));
-    let output = legacy.copy_active().mul(
+    let output = selectors.copy_active().mul(
         producer_denominator
             .mul(h1_z.mul(consumer_denominator).add(consumer))
             .sub(consumer_denominator.mul(producer)),
@@ -768,7 +966,7 @@ pub fn atomic_state_only_copy_terminal_lane_legacy_partition_v3(
     lambda: QM31,
     chi: QM31,
 ) -> QM31 {
-    let selectors = Box::new(AtomicSemanticSelectors::at_point(point));
+    let selectors = Box::new(LegacyAtomicSelectors::at_point(point));
     atomic_copy_lane_from_shared_semantic_routing_impl(
         openings_z,
         h1_z,
@@ -818,6 +1016,7 @@ fn atomic_accumulate<const N: usize>(
 ) {
     let first = start / 4;
     let last = (start + N - 1) / 4;
+    let prepared_selector = PreparedQm31Multiplier::new(selector);
     for group in first..=last {
         let lanes: [QM31; 4] = core::array::from_fn(|slot| {
             let source = 4 * group + slot;
@@ -827,15 +1026,44 @@ fn atomic_accumulate<const N: usize>(
                 QM31::ZERO
             }
         });
-        packed[group] = packed[group].add(selector.mul(qm31_pack_base4(&lanes)));
+        packed[group] = packed[group].add(prepared_selector.mul(qm31_pack_base4(&lanes)));
+    }
+}
+
+/// Accumulate four independently selected residual vectors into the same
+/// packed lane range with one lazy four-product reduction per group.
+#[inline(always)]
+fn atomic_accumulate4<const N: usize>(
+    packed: &mut [QM31; ATOMIC_PACKED_SEMANTIC_LANES],
+    start: usize,
+    values: &[[QM31; N]; 4],
+    selectors: [QM31; 4],
+) {
+    let first = start / 4;
+    let last = (start + N - 1) / 4;
+    for group in first..=last {
+        let grouped: [QM31; 4] = core::array::from_fn(|input| {
+            let lanes: [QM31; 4] = core::array::from_fn(|slot| {
+                let source = 4 * group + slot;
+                if source >= start && source < start + N {
+                    values[input][source - start]
+                } else {
+                    QM31::ZERO
+                }
+            });
+            qm31_pack_base4(&lanes)
+        });
+        packed[group] = packed[group].add(qm31_sum_products4(selectors, grouped));
     }
 }
 
 #[inline(always)]
-fn atomic_retained_initial_sums(selectors: &AtomicSemanticSelectors) -> (QM31, QM31, QM31) {
+fn atomic_retained_initial_sums<S: AtomicSemanticSelectorView>(
+    selectors: &S,
+) -> (QM31, QM31, QM31) {
     let highs = ATOMIC_RETAINED_INITIAL_BLOCK_INDICES.map(|index| {
         let block = usize::from(state_constants::INITIAL_BLOCKS[index].0) >> 4;
-        selectors.high[block]
+        selectors.block(block)
     });
     let high_sum = highs.iter().copied().fold(QM31::ZERO, QM31::add);
     let domains = ATOMIC_RETAINED_INITIAL_BLOCK_INDICES
@@ -860,13 +1088,14 @@ fn atomic_reconstruct_10(view: &[QM31]) -> QM31 {
 }
 
 #[inline(never)]
-fn atomic_semantic_packed_impl<F>(
+fn atomic_semantic_packed_impl<S, F>(
     statement: &AtomicPaymentStatementV4,
     openings: &StateOnlyPoseidonOpenings,
-    selectors: &AtomicSemanticSelectors,
+    selectors: &S,
     mut trace: F,
 ) -> [QM31; ATOMIC_PACKED_SEMANTIC_LANES]
 where
+    S: AtomicSemanticSelectorView,
     F: FnMut(StateOnlyTerminalDiagnosticPhase),
 {
     let mut packed = [QM31::ZERO; ATOMIC_PACKED_SEMANTIC_LANES];
@@ -877,8 +1106,8 @@ where
     // to zero.  The retained owner/note/nullifier/output blocks keep the
     // original domain/length initial-state constraints.
     let (initial_high_sum, domain_sum, length_sum) = atomic_retained_initial_sums(selectors);
-    let initial_selector = selectors.low[0].mul(initial_high_sum);
-    let path_initial_selector = selectors.low[0].mul(selectors.path_block);
+    let initial_selector = selectors.local()[0].mul(initial_high_sum);
+    let path_initial_selector = selectors.local()[0].mul(selectors.path_block());
     let initial_or_path_selector = initial_selector.add(path_initial_selector);
     for group in 0..2 {
         packed[group] =
@@ -888,7 +1117,7 @@ where
         packed[group] =
             initial_selector.mul(qm31_pack_base4(&openings.z[4 * group..4 * group + 4]));
     }
-    packed[2] = packed[2].sub(selectors.low[0].mul(qm31_pack_base4(&[
+    packed[2] = packed[2].sub(selectors.local()[0].mul(qm31_pack_base4(&[
         domain_sum,
         length_sum,
         QM31::ZERO,
@@ -900,14 +1129,15 @@ where
     // these supports: 0x00fc at block 3, 0xff00 at blocks 1/44/45/46, and
     // 0xfffc at block 48.  Combining masks before multiplication leaves two
     // selectors: lanes 2..7 and lanes 8..15.
-    let absorption_low = selectors.low[12];
-    let low_lanes_selector = absorption_low.mul(selectors.high[3].add(selectors.high[48]));
+    let absorption_low = selectors.local()[12];
+    let low_lanes_selector = absorption_low.mul(selectors.block(3).add(selectors.block(48)));
     let high_lanes_selector = absorption_low.mul(
-        selectors.high[1]
-            .add(selectors.high[44])
-            .add(selectors.high[45])
-            .add(selectors.high[46])
-            .add(selectors.high[48]),
+        selectors
+            .block(1)
+            .add(selectors.block(44))
+            .add(selectors.block(45))
+            .add(selectors.block(46))
+            .add(selectors.block(48)),
     );
     for group in 0..4 {
         let residuals: [QM31; 4] = core::array::from_fn(|slot| {
@@ -967,16 +1197,17 @@ where
     atomic_add_preweighted(&mut packed, 66, &fee_total);
     trace(StateOnlyTerminalDiagnosticPhase::SemanticRange);
 
-    for (block, digest) in [
-        (23usize, &statement.spend.anchor),
-        (43usize, &statement.output_anchor),
-        (45usize, &statement.spend.nullifier),
-        (48usize, &statement.spend.output_commitment),
-    ] {
-        let residuals: [QM31; DIGEST_ELEMS] =
-            core::array::from_fn(|limb| openings.z[limb].sub(lift(digest[limb])));
-        atomic_accumulate(&mut packed, 67, &residuals, selectors.row(block * 16 + 11));
-    }
+    let public_digests = [
+        &statement.spend.anchor,
+        &statement.output_anchor,
+        &statement.spend.nullifier,
+        &statement.spend.output_commitment,
+    ];
+    let public_residuals: [[QM31; DIGEST_ELEMS]; 4] = core::array::from_fn(|input| {
+        core::array::from_fn(|limb| openings.z[limb].sub(lift(public_digests[input][limb])))
+    });
+    let public_selectors = [23usize, 43, 45, 48].map(|block| selectors.row(block * 16 + 11));
+    atomic_accumulate4(&mut packed, 67, &public_residuals, public_selectors);
 
     let assets: [QM31; 2] = core::array::from_fn(|lane| {
         let (row, column) = [
@@ -1111,19 +1342,24 @@ fn atomic_semantic_packed_unfactored_reference(
 }
 
 #[inline(never)]
-fn atomic_semantic_packed(
+fn atomic_semantic_packed<S: AtomicSemanticSelectorView>(
     statement: &AtomicPaymentStatementV4,
     openings: &StateOnlyPoseidonOpenings,
-    selectors: &AtomicSemanticSelectors,
+    selectors: &S,
 ) -> [QM31; ATOMIC_PACKED_SEMANTIC_LANES] {
     atomic_semantic_packed_impl(statement, openings, selectors, |_| {})
 }
 
 fn atomic_equality_value(left: &[QM31; 10], right: &[QM31; 10]) -> QM31 {
-    left.iter().zip(right).fold(QM31::ONE, |product, (a, b)| {
-        let ab = a.mul(*b);
-        product.mul(QM31::ONE.sub(*a).sub(*b).add(ab).add(ab))
-    })
+    let factor = |a: QM31, b: QM31| {
+        let ab = a.mul(b);
+        QM31::ONE.sub(a).sub(b).add(ab).add(ab)
+    };
+    let mut product = factor(left[0], right[0]);
+    for (&a, &b) in left[1..].iter().zip(&right[1..]) {
+        product = product.mul(factor(a, b));
+    }
+    product
 }
 
 #[allow(clippy::too_many_arguments)]
@@ -1155,18 +1391,12 @@ fn atomic_state_only_composition_parts_compiled_v3(
     };
     let mask_only =
         core::array::from_fn(|column| atomic_selected_claim(claims, 0, C1_COLUMNS + column));
-    let selectors = Box::new(AtomicSemanticSelectors::at_point(point));
+    let selectors = AtomicCrossSelectors::boxed_at_point(point);
     let poseidon = evaluate_state_only_poseidon_oracle_projected(&openings, &selectors.poseidon());
-    let semantic = atomic_semantic_packed(statement, &openings, &selectors);
+    let semantic = atomic_semantic_packed(statement, &openings, selectors.as_ref());
     let h1_z = atomic_selected_claim(claims, 0, ATOMIC_SELECTED_H1_COLUMN);
-    let copy = atomic_copy_lane_from_shared_semantic_routing_impl(
-        &openings.z,
-        h1_z,
-        &selectors,
-        lambda,
-        chi,
-        |_| {},
-    );
+    let copy =
+        atomic_copy_lane_from_routing_impl(&openings.z, h1_z, &selectors.copy, lambda, chi, |_| {});
     let prepared_theta = PreparedQm31Multiplier::new(theta);
     let mut composition = copy;
     for lane in semantic.into_iter().rev() {
@@ -1316,19 +1546,18 @@ where
     };
     let mask_only =
         core::array::from_fn(|column| atomic_selected_claim(claims, 0, C1_COLUMNS + column));
-    let semantic_selectors = Box::new(AtomicSemanticSelectors::at_point(point));
+    let selectors = AtomicCrossSelectors::boxed_at_point(point);
     trace(StateOnlyTerminalDiagnosticPhase::Prepared);
 
-    let poseidon =
-        evaluate_state_only_poseidon_oracle_projected(&openings, &semantic_selectors.poseidon());
+    let poseidon = evaluate_state_only_poseidon_oracle_projected(&openings, &selectors.poseidon());
     trace(StateOnlyTerminalDiagnosticPhase::Poseidon);
     let semantic =
-        atomic_semantic_packed_impl(statement, &openings, &semantic_selectors, &mut trace);
+        atomic_semantic_packed_impl(statement, &openings, selectors.as_ref(), &mut trace);
     let h1_z = atomic_selected_claim(claims, 0, ATOMIC_SELECTED_H1_COLUMN);
-    let copy = atomic_copy_lane_from_shared_semantic_routing_impl(
+    let copy = atomic_copy_lane_from_routing_impl(
         &openings.z,
         h1_z,
-        &semantic_selectors,
+        &selectors.copy,
         lambda,
         chi,
         &mut trace,
@@ -1396,6 +1625,26 @@ mod tests {
             QM31 {
                 c0: CM31::new(self.m31(), self.m31()),
                 c1: CM31::new(self.m31(), self.m31()),
+            }
+        }
+    }
+
+    #[test]
+    fn cross_partition_selectors_match_semantic_partition_off_domain() {
+        let mut rng = Rng(0x4352_4f53_535f_4241);
+        for _ in 0..16 {
+            let point = core::array::from_fn(|_| rng.qm31());
+            let cross = AtomicCrossSelectors::at_point(&point);
+            let semantic = AtomicSemanticSelectors::at_point(&point);
+
+            assert_eq!(cross.semantic_local, semantic.low);
+            assert_eq!(cross.poseidon(), semantic.poseidon());
+            assert_eq!(cross.path_block, semantic.path_block);
+            for block in 0..64 {
+                assert_eq!(cross.block(block), semantic.high[block]);
+            }
+            for row in 0..TRACE_ROWS {
+                assert_eq!(cross.row(row), semantic.row(row));
             }
         }
     }
@@ -1863,15 +2112,38 @@ mod tests {
             }
         }
 
+        fn check_factorized(
+            basis_factors: &[(u16, u8)],
+            reconstruction_factors: &[(u16, u8)],
+            direct_basis: &[u8],
+            entries: &[(u8, u32)],
+            selectors: &[QM31],
+        ) {
+            check(basis_factors, entries, selectors);
+            let basis = evaluate_routing_linear_forms(basis_factors, entries, selectors);
+            for (&factor, &direct) in reconstruction_factors.iter().zip(direct_basis) {
+                if direct == u8::MAX {
+                    check(core::slice::from_ref(&factor), entries, &basis);
+                } else {
+                    assert!(usize::from(direct) < basis.len());
+                    assert_eq!(factor.1, 0);
+                }
+            }
+        }
+
         let check_point = |point: [QM31; 10]| {
             let rank_74 = AtomicSelectors::at_point(&point);
-            check(
-                &constants::ATOMIC_COPY_ROUTING_LEFT_FACTORS,
+            check_factorized(
+                &constants::ATOMIC_COPY_ROUTING_LEFT_BASIS_FACTORS,
+                &constants::ATOMIC_COPY_ROUTING_LEFT_RECONSTRUCTION_FACTORS,
+                &constants::ATOMIC_COPY_ROUTING_LEFT_DIRECT_BASIS,
                 &constants::ATOMIC_COPY_ROUTING_ENTRIES,
                 &rank_74.high,
             );
-            check(
-                &constants::ATOMIC_COPY_ROUTING_RIGHT_FACTORS,
+            check_factorized(
+                &constants::ATOMIC_COPY_ROUTING_RIGHT_BASIS_FACTORS,
+                &constants::ATOMIC_COPY_ROUTING_RIGHT_RECONSTRUCTION_FACTORS,
+                &constants::ATOMIC_COPY_ROUTING_RIGHT_DIRECT_BASIS,
                 &constants::ATOMIC_COPY_ROUTING_ENTRIES,
                 &rank_74.low,
             );
@@ -1899,8 +2171,10 @@ mod tests {
             c1: CM31::new(M31::ONE, M31(P - 2)),
         };
         for selectors in [[maximal; 64], [alternating; 64]] {
-            check(
-                &constants::ATOMIC_COPY_ROUTING_LEFT_FACTORS,
+            check_factorized(
+                &constants::ATOMIC_COPY_ROUTING_LEFT_BASIS_FACTORS,
+                &constants::ATOMIC_COPY_ROUTING_LEFT_RECONSTRUCTION_FACTORS,
+                &constants::ATOMIC_COPY_ROUTING_LEFT_DIRECT_BASIS,
                 &constants::ATOMIC_COPY_ROUTING_ENTRIES,
                 &selectors,
             );
@@ -1911,8 +2185,10 @@ mod tests {
             );
         }
         for selectors in [[maximal; 16], [alternating; 16]] {
-            check(
-                &constants::ATOMIC_COPY_ROUTING_RIGHT_FACTORS,
+            check_factorized(
+                &constants::ATOMIC_COPY_ROUTING_RIGHT_BASIS_FACTORS,
+                &constants::ATOMIC_COPY_ROUTING_RIGHT_RECONSTRUCTION_FACTORS,
+                &constants::ATOMIC_COPY_ROUTING_RIGHT_DIRECT_BASIS,
                 &constants::ATOMIC_COPY_ROUTING_ENTRIES,
                 &selectors,
             );

@@ -1,0 +1,175 @@
+{
+  "scope": "complete retained-proof atomic instruction: exact account/public validation, statement SHA-256 digest handoff, uninstrumented V6 semantic terminal/transcript/relation/two-tree PCS/one-fold verification, and atomic pool/nullifier mutation; measures both preallocated and missing-marker paths",
+  "caveats": [
+    "the probe performs every real grinding SHA-256 syscall but clears only the returned leading work bytes so the synthetic zero-codeword fixture continues",
+    "the synthetic terminal is fully evaluated but this CU-only tag accepts any successful terminal evaluation; production and honest-proof gates require equality to the transcript terminal claim"
+  ],
+  "proof_body_bytes": 33336,
+  "selector": 1,
+  "compact_counter": 7,
+  "frontier_nodes_per_tree": 209,
+  "queries": [
+    73084,
+    250668,
+    170040,
+    207960,
+    171218,
+    209665,
+    44537,
+    244347,
+    23899,
+    144467,
+    39961,
+    19803,
+    42498,
+    49689,
+    56399,
+    191603
+  ],
+  "proof_address": "GH7YkRi9soPCbXqUkP5XanWr5YU3qZJCUSYmGXhQXtD3",
+  "pool_address": "CDY4kzJhAWJcA2XFQb9XJK7dXMvQoYy7kjdvg6ST2JYM",
+  "worst_frontier_search_attempts": 228,
+  "program_owned_marker_compute_units": 1276998,
+  "missing_marker_compute_units": 1279332,
+  "maximum_compute_units": 1279332,
+  "headroom_under_target": 20668,
+  "program_owned_marker_repeated_compute_units": [
+    1276998,
+    1276998,
+    1276998
+  ],
+  "missing_marker_repeated_compute_units": [
+    1279332,
+    1279332,
+    1279332
+  ],
+  "deterministic_both_three_of_three": true,
+  "missing_marker_completed_system_program_cpi": true,
+  "all_selectors_counter7_frontier_cap": true,
+  "selector_cases": [
+    {
+      "selector": 0,
+      "compact_counter": 7,
+      "frontier_nodes_per_tree": 209,
+      "proof_body_bytes": 33336,
+      "queries": [
+        162824,
+        175247,
+        155342,
+        44314,
+        255351,
+        173181,
+        99414,
+        110062,
+        203129,
+        183308,
+        122058,
+        216069,
+        49328,
+        183198,
+        57764,
+        160783
+      ],
+      "proof_address": "9kXYDwVgx1LasThtrGjZBBTwbBCcBAnC89T2uMNZVLuK",
+      "worst_frontier_search_attempts": 1155,
+      "program_owned_marker_compute_units": 1276168,
+      "missing_marker_compute_units": 1278502,
+      "maximum_compute_units": 1278502,
+      "program_owned_marker_repeated_compute_units": [
+        1276168,
+        1276168,
+        1276168
+      ],
+      "missing_marker_repeated_compute_units": [
+        1278502,
+        1278502,
+        1278502
+      ],
+      "deterministic_both_three_of_three": true,
+      "missing_marker_completed_system_program_cpi": true
+    },
+    {
+      "selector": 1,
+      "compact_counter": 7,
+      "frontier_nodes_per_tree": 209,
+      "proof_body_bytes": 33336,
+      "queries": [
+        73084,
+        250668,
+        170040,
+        207960,
+        171218,
+        209665,
+        44537,
+        244347,
+        23899,
+        144467,
+        39961,
+        19803,
+        42498,
+        49689,
+        56399,
+        191603
+      ],
+      "proof_address": "GH7YkRi9soPCbXqUkP5XanWr5YU3qZJCUSYmGXhQXtD3",
+      "worst_frontier_search_attempts": 228,
+      "program_owned_marker_compute_units": 1276998,
+      "missing_marker_compute_units": 1279332,
+      "maximum_compute_units": 1279332,
+      "program_owned_marker_repeated_compute_units": [
+        1276998,
+        1276998,
+        1276998
+      ],
+      "missing_marker_repeated_compute_units": [
+        1279332,
+        1279332,
+        1279332
+      ],
+      "deterministic_both_three_of_three": true,
+      "missing_marker_completed_system_program_cpi": true
+    },
+    {
+      "selector": 2,
+      "compact_counter": 7,
+      "frontier_nodes_per_tree": 209,
+      "proof_body_bytes": 33336,
+      "queries": [
+        91958,
+        32067,
+        205205,
+        256570,
+        196706,
+        57962,
+        198521,
+        149367,
+        168651,
+        63423,
+        142286,
+        241104,
+        240220,
+        61432,
+        225288,
+        187973
+      ],
+      "proof_address": "JARr9S4wqnjrFuazMUA7WYwpEDAxp6jpPwPUjB5SgXvd",
+      "worst_frontier_search_attempts": 512,
+      "program_owned_marker_compute_units": 1276104,
+      "missing_marker_compute_units": 1278438,
+      "maximum_compute_units": 1278438,
+      "program_owned_marker_repeated_compute_units": [
+        1276104,
+        1276104,
+        1276104
+      ],
+      "missing_marker_repeated_compute_units": [
+        1278438,
+        1278438,
+        1278438
+      ],
+      "deterministic_both_three_of_three": true,
+      "missing_marker_completed_system_program_cpi": true
+    }
+  ],
+  "build_command": "NO_DNA=1 cargo-build-sbf --manifest-path programs/aspis-verifier/Cargo.toml --no-default-features --features v6-cu-probe"
+}

@@ -283,10 +283,7 @@ fn decode_selected_later_slot(
 /// universally with a loop-free reference that Charon/Aeneas can translate.
 #[cfg(feature = "formal-verification")]
 #[doc(hidden)]
-pub fn formal_decode_later_leaf(
-    leaf: &[u8],
-    layer: u8,
-) -> Result<[QM31; 4], CircleQueryError> {
+pub fn formal_decode_later_leaf(leaf: &[u8], layer: u8) -> Result<[QM31; 4], CircleQueryError> {
     decode_later_leaf(leaf, layer)
 }
 

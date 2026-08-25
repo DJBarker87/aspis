@@ -817,6 +817,16 @@ enum PcsSchedule {
     /// continuation.  If the raw+sumcheck kernel spans this complete module,
     /// every later linear PCS/fold/OOD view is contained automatically.
     RootMessage,
+    /// V6 exact-sequence target.  The root-message map is identical to
+    /// `RootMessage`, but the q16 raw openings are evaluated on V6's log-20
+    /// circle domain rather than the legacy log-19 q16 diagnostic domain.
+    RootMessageV6Log20,
+}
+
+impl PcsSchedule {
+    fn is_root_message(self) -> bool {
+        matches!(self, Self::RootMessage | Self::RootMessageV6Log20)
+    }
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -2524,7 +2534,7 @@ fn row_public_maps(
                     &hybrid_later_indices,
                     layout,
                 )?,
-                PcsSchedule::RootMessage => {
+                PcsSchedule::RootMessage | PcsSchedule::RootMessageV6Log20 => {
                     let mut message = vec![QM31::ZERO; TRACE_ROWS];
                     if row != inactive_dependent {
                         message[row] = QM31::ONE;
@@ -4554,6 +4564,34 @@ pub fn probe_atomic_state_only_profile22_root_neutral_rank(
     )
 }
 
+/// Exact conservative hiding-rank replay for the production V6 one-fold
+/// shape: atomic-v3 mask layout, the frozen production factor schedule,
+/// sixteen four-symbol layer-zero openings on the log-20 circle domain, and
+/// the complete gamma-combined 1024-element root message.  Spanning this
+/// target is sufficient for every later linear fold/final projection.
+///
+/// The report deliberately retains both ambient and same-statement witness
+/// containment fields.  Callers must use the protocol-coupled containment
+/// booleans for the HVZK gate; an ambient deficit is not silently promoted to
+/// a proof failure or success.
+pub fn probe_v6_onefold_atomic_root_message_hiding_rank(
+    schedule: &StateOnlyTranscriptScheduleResult,
+) -> Result<StateOnlyHidingRankGateReport, StateOnlyHidingRankGateError> {
+    if schedule.query_count != 16 {
+        return Err(StateOnlyHidingRankGateError::Shape);
+    }
+    check_state_only_complete_hiding_rank_inner_for_layout(
+        schedule,
+        false,
+        FactorSchedule::Production,
+        None,
+        LateSwitchSupport::WitnessDifferenceSuperset,
+        PcsSchedule::RootMessageV6Log20,
+        true,
+        RankLayout::AtomicV3,
+    )
+}
+
 /// Project one concrete atomic-v3 semantic-trace difference and its exact
 /// unmasked degree-27 sumcheck-observation difference through the same frozen
 /// q16 mask quotient used by the conservative witness audit.
@@ -5304,16 +5342,23 @@ fn check_state_only_complete_hiding_rank_inner_for_layout_and_delta_and_projecti
     {
         return Err(StateOnlyHidingRankGateError::Shape);
     }
-    let domain_log = STATE_ONLY_LOG_ROWS
-        + if schedule.query_count == 36 {
-            4
-        } else if schedule.query_count == 29 {
-            5
-        } else if schedule.query_count == 16 {
-            9
-        } else {
+    let domain_log = if pcs_schedule == PcsSchedule::RootMessageV6Log20 {
+        if schedule.query_count != 16 {
             return Err(StateOnlyHidingRankGateError::Shape);
-        };
+        }
+        STATE_ONLY_LOG_ROWS + 10
+    } else {
+        STATE_ONLY_LOG_ROWS
+            + if schedule.query_count == 36 {
+                4
+            } else if schedule.query_count == 29 {
+                5
+            } else if schedule.query_count == 16 {
+                9
+            } else {
+                return Err(StateOnlyHidingRankGateError::Shape);
+            }
+    };
     let encoder = CircleEncoder::new_for_domain_log(domain_log);
     let rows = row_public_maps(&encoder, domain_log, schedule, pcs_schedule, layout)?;
     let layer0_m31 = rows[0].layer0_m31.len();
@@ -6119,7 +6164,7 @@ fn check_state_only_complete_hiding_rank_inner_for_layout_and_delta_and_projecti
             encoder.codeword_len() / FIBER_SLOTS,
         )
         .map_err(|_| StateOnlyHidingRankGateError::Shape)?;
-        let full_tails = if pcs_schedule == PcsSchedule::RootMessage {
+        let full_tails = if pcs_schedule.is_root_message() {
             (0..TRACE_ROWS)
                 .map(|row| {
                     let mut message = vec![QM31::ZERO; TRACE_ROWS];
@@ -6173,7 +6218,7 @@ fn check_state_only_complete_hiding_rank_inner_for_layout_and_delta_and_projecti
             TRACE_ROWS - 1,
         ];
         for row in guard_rows {
-            let direct = if pcs_schedule == PcsSchedule::RootMessage {
+            let direct = if pcs_schedule.is_root_message() {
                 let mut message = vec![QM31::ZERO; TRACE_ROWS];
                 message[row] = QM31::ONE;
                 message
@@ -6217,7 +6262,7 @@ fn check_state_only_complete_hiding_rank_inner_for_layout_and_delta_and_projecti
                 *value = value.add(coefficient.mul(*basis));
             }
         }
-        let dense_projection = if pcs_schedule == PcsSchedule::RootMessage {
+        let dense_projection = if pcs_schedule.is_root_message() {
             combined_message.clone()
         } else {
             raw_root0_message_pcs_tail_dense(
@@ -6275,7 +6320,7 @@ fn check_state_only_complete_hiding_rank_inner_for_layout_and_delta_and_projecti
                 }
             }
         }
-        let physical_dense_projection = if pcs_schedule == PcsSchedule::RootMessage {
+        let physical_dense_projection = if pcs_schedule.is_root_message() {
             physical_message.clone()
         } else {
             raw_root0_message_pcs_tail_dense(
@@ -8175,6 +8220,7 @@ fn check_state_only_complete_hiding_rank_inner_for_layout_and_delta_and_projecti
             PcsSchedule::Arity4x4 => "arity4x4",
             PcsSchedule::Arity4ThenArity8 => "arity4_then_arity8_final32",
             PcsSchedule::RootMessage => "root_message_exact_sequence",
+            PcsSchedule::RootMessageV6Log20 => "v6_log20_root_message_exact_sequence",
         },
         tail_qm31_probe: !tail_qm31_mask_factors.is_empty(),
         tail_qm31_mask_factor: match tail_qm31_mask_factors {

@@ -1,0 +1,32 @@
+{
+  "artifact": "aspis_v5_component_c_frozen_q18_archive",
+  "schema_version": 1,
+  "generated_at_utc": "2026-08-25T07:46:02Z",
+  "scope": "V5-only Component-C frozen q18 matrices and quotient-obstruction evidence retained across the V6 integration",
+  "objects": {
+    "results/spend/v5_component_c_frozen_q18_emat.bin": {
+      "bytes": 1261741,
+      "sha256": "de129355802c79f3c13745c470fcac6bdb5a1d7a618c5c47f6e91f010fbaaafd"
+    },
+    "results/spend/v5_component_c_frozen_q18_emat.json": {
+      "bytes": 5374,
+      "sha256": "ddd544569bdc20c8df4693e26daf509165271c009908742e0619cc023c5537a4"
+    },
+    "results/spend/v5_component_c_frozen_q18_fmat.bin": {
+      "bytes": 4208373,
+      "sha256": "226183c02ab937b5c82d60c7a8acef259a0bf46cbf3b797181fb8c6e5f2def95"
+    },
+    "results/spend/v5_component_c_frozen_q18_fmat.json": {
+      "bytes": 6025,
+      "sha256": "40f623f367d8edf39c1551795c365d21bb739c6ca363c278c401cb67ef936f8d"
+    },
+    "results/spend/v5_component_c_frozen_q18_quotient_obstruction.bin": {
+      "bytes": 1567944,
+      "sha256": "49f992b3ff4b1e831dd33790bc87309fca51660eea38d70726c0f1e091069dd1"
+    },
+    "results/spend/v5_component_c_frozen_q18_quotient_obstruction.json": {
+      "bytes": 28187,
+      "sha256": "dc62af6592dcd0462df42eced194ac35a64793c86cd64273483199db1dd0904b"
+    }
+  }
+}

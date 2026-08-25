@@ -1,0 +1,11 @@
+--- a/V6AcceptedKernel/Types.lean
++++ b/V6AcceptedKernel/Types.lean
+@@ -262,7 +262,7 @@
+     Source: 'programs/aspis-verifier/src/v6_verifier.rs', lines 203:8-203:63 -/
+ def v6_verifier.verify_v6_read_only_with_statement_digest_and_schedule.closure_1
+   :=
+-  Slice (Slice Std.U8) → Result (Array Std.U8 32#usize) ×
++  (Slice (Slice Std.U8) → Result (Array Std.U8 32#usize)) ×
+   aspis_core.v6_onefold.V6OneFoldWire
+ 
+ /-- [aspis_verifier::v6_verifier::verify_v6_read_only_with_statement_digest_and_schedule.closure]

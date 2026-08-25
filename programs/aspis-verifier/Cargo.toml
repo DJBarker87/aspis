@@ -20,8 +20,8 @@ spend-production = [
     "spend-dynamic-rate512",
 ]
 # Production-only entrypoint registration. The deployed entrypoint accepts
-# the eight lifecycle tags (0, 1, 59, 60, 62, 63, 64, 65) and the frozen v5
-# transaction tag 67; every other tag fails closed before account access.
+# the lifecycle tags and only the explicitly enabled frozen proof versions;
+# every other tag fails closed before account access.
 spend-minimal-dispatch = []
 # Production derives only the 18 authenticated Rate-1/512 query paths instead
 # of linking six full-domain coordinate tables into the deployed ELF.
@@ -39,6 +39,11 @@ v6-cu-probe = []
 # The executable, transcript, formal, and CU gates are recorded in the release
 # preflight. This feature is included in `default`.
 v5-production-tag67 = ["spend-production"]
+# Candidate production switch for the V6 26+3 one-fold verifier. Tag 72 uses
+# real SHA-256 work checks, exact semantic-terminal equality, canonical packed
+# parsing, and the unchanged atomic verify-and-apply wrapper. It remains
+# opt-in until the V6 release gates and devnet receipt are frozen.
+v6-production-tag72 = ["spend-production"]
 
 [dependencies]
 aspis-core = { path = "../../crates/aspis-core" }

@@ -210,6 +210,88 @@ pub fn verify_minimal_subtree_bytes(
     node_pos == node_bytes.len() && level.len() == 1 && level[0].0 == 0 && level[0].1 == *root
 }
 
+/// Verify two typed binary trees over the same sorted query topology.
+///
+/// Every leaf and internal digest is still hashed independently.  Only the
+/// public index walk, sibling-presence decisions, and scratch-vector traffic
+/// are shared.  This is the exact shape used by V6's C1 and C2 commitments.
+pub fn verify_two_minimal_subtrees_bytes(
+    hash: HashFn,
+    roots: (&[u8; 32], &[u8; 32]),
+    depth: u32,
+    entries: &[(u32, [u8; 32], [u8; 32])],
+    node_bytes: (&[u8], &[u8]),
+    level: &mut Vec<(u32, [u8; 32], [u8; 32])>,
+    next: &mut Vec<(u32, [u8; 32], [u8; 32])>,
+) -> bool {
+    if entries.is_empty()
+        || depth >= 32
+        || node_bytes.0.len() & 31 != 0
+        || node_bytes.1.len() & 31 != 0
+        || node_bytes.0.len() != node_bytes.1.len()
+    {
+        return false;
+    }
+    for pair in entries.windows(2) {
+        if pair[0].0 >= pair[1].0 {
+            return false;
+        }
+    }
+    if entries.last().unwrap().0 >= (1u32 << depth) {
+        return false;
+    }
+
+    let mut node_pos = 0usize;
+    level.clear();
+    level.extend_from_slice(entries);
+    for _ in 0..depth {
+        next.clear();
+        let mut index = 0usize;
+        while index < level.len() {
+            let (position, c1, c2) = level[index];
+            let parent = if position & 1 == 0
+                && index + 1 < level.len()
+                && level[index + 1].0 == position + 1
+            {
+                let (_, c1_right, c2_right) = level[index + 1];
+                index += 2;
+                (
+                    node_hash(hash, &c1, &c1_right),
+                    node_hash(hash, &c2, &c2_right),
+                )
+            } else {
+                if node_pos + 32 > node_bytes.0.len() {
+                    return false;
+                }
+                let c1_sibling: [u8; 32] =
+                    node_bytes.0[node_pos..node_pos + 32].try_into().unwrap();
+                let c2_sibling: [u8; 32] =
+                    node_bytes.1[node_pos..node_pos + 32].try_into().unwrap();
+                node_pos += 32;
+                index += 1;
+                if position & 1 == 0 {
+                    (
+                        node_hash(hash, &c1, &c1_sibling),
+                        node_hash(hash, &c2, &c2_sibling),
+                    )
+                } else {
+                    (
+                        node_hash(hash, &c1_sibling, &c1),
+                        node_hash(hash, &c2_sibling, &c2),
+                    )
+                }
+            };
+            next.push((position >> 1, parent.0, parent.1));
+        }
+        core::mem::swap(level, next);
+    }
+    node_pos == node_bytes.0.len()
+        && level.len() == 1
+        && level[0].0 == 0
+        && level[0].1 == *roots.0
+        && level[0].2 == *roots.1
+}
+
 /// Allocation-reusing radix-4 minimal-subtree verifier.
 ///
 /// `binary_depth` is log2(number of leaves), so it must be even. Frontier

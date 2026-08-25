@@ -172,6 +172,36 @@ fn main() {
     }
     write_point_array(&mut output, "RATE512_CIRCLE_LOW8_WINDOW", &low_window);
     write_point_array(&mut output, "RATE512_CIRCLE_HIGH9_WINDOW", &high_window);
+
+    // Exact three-window decomposition for V6's 18-bit rate-1/1024 circle
+    // fibre index.  The low window carries the fixed coset initial point;
+    // the middle and high windows carry ordinary step multiples.  At runtime
+    // this replaces an 18-element power basis plus a popcount-sized group
+    // walk with at most two group additions per selected query.
+    let mut v6_low_window = Vec::with_capacity(1 << 6);
+    let mut v6_low = group_point(initial(19));
+    let v6_step = group_point(step(19));
+    for _ in 0..1 << 6 {
+        v6_low_window.push(v6_low);
+        v6_low = add(v6_low, v6_step);
+    }
+    let mut v6_middle_window = Vec::with_capacity(1 << 6);
+    let mut v6_middle = Point { x: 1, y: 0 };
+    let v6_middle_step = group_point(step(19) << 6);
+    for _ in 0..1 << 6 {
+        v6_middle_window.push(v6_middle);
+        v6_middle = add(v6_middle, v6_middle_step);
+    }
+    let mut v6_high_window = Vec::with_capacity(1 << 6);
+    let mut v6_high = Point { x: 1, y: 0 };
+    let v6_high_step = group_point(step(19) << 12);
+    for _ in 0..1 << 6 {
+        v6_high_window.push(v6_high);
+        v6_high = add(v6_high, v6_high_step);
+    }
+    write_point_array(&mut output, "V6_CIRCLE_LOW6_WINDOW", &v6_low_window);
+    write_point_array(&mut output, "V6_CIRCLE_MIDDLE6_WINDOW", &v6_middle_window);
+    write_point_array(&mut output, "V6_CIRCLE_HIGH6_WINDOW", &v6_high_window);
     let path = PathBuf::from(env::var_os("OUT_DIR").unwrap()).join("circle_tables.rs");
     fs::write(path, output).unwrap();
 }

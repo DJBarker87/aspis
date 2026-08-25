@@ -14,7 +14,10 @@ use aspis_core::field::{
     PreparedQm31Multiplier, CM31, M31, P, QM31,
 };
 
-use crate::poseidon2::{trace_round_constant, trace_round_descriptor, POSEIDON2_WIDTH, RATE};
+use crate::poseidon2::{
+    trace_round_constant, trace_round_descriptor, EXTERNAL_FINAL, EXTERNAL_INITIAL, INTERNAL,
+    POSEIDON2_WIDTH, RATE,
+};
 
 pub const STATE_ONLY_POSEIDON_COLUMNS: usize = POSEIDON2_WIDTH;
 pub const STATE_ONLY_POSEIDON_PACKED_LANES: usize = POSEIDON2_WIDTH / 4;
@@ -300,6 +303,22 @@ fn full_round(
     state
 }
 
+/// Full round whose constants are pinned base-field values. Only c0.a changes
+/// during the addition, avoiding three zero-limb additions per lane in the
+/// two fixed leading rounds.
+#[inline(never)]
+fn full_round_m31_constants(
+    mut state: [QM31; POSEIDON2_WIDTH],
+    constants: [u32; POSEIDON2_WIDTH],
+) -> [QM31; POSEIDON2_WIDTH] {
+    for lane in 0..POSEIDON2_WIDTH {
+        state[lane].c0.a = state[lane].c0.a.add(M31(constants[lane]));
+        state[lane] = pow5(state[lane]);
+    }
+    external_linear_lazy(&mut state);
+    state
+}
+
 #[inline(never)]
 fn full_round_packed(
     mut state: [QM31; POSEIDON2_WIDTH],
@@ -307,6 +326,18 @@ fn full_round_packed(
 ) -> [QM31; STATE_ONLY_POSEIDON_PACKED_LANES] {
     for lane in 0..POSEIDON2_WIDTH {
         state[lane] = pow5(state[lane].add(constants[lane]));
+    }
+    external_linear_packed(state)
+}
+
+#[inline(never)]
+fn full_round_m31_constants_packed(
+    mut state: [QM31; POSEIDON2_WIDTH],
+    constants: [u32; POSEIDON2_WIDTH],
+) -> [QM31; STATE_ONLY_POSEIDON_PACKED_LANES] {
+    for lane in 0..POSEIDON2_WIDTH {
+        state[lane].c0.a = state[lane].c0.a.add(M31(constants[lane]));
+        state[lane] = pow5(state[lane]);
     }
     external_linear_packed(state)
 }
@@ -324,10 +355,10 @@ fn leading_pair(openings: &StateOnlyPoseidonOpenings) -> [QM31; POSEIDON2_WIDTH]
         state[lane] = state[lane].add(openings.xor12_z[lane]);
     }
     external_linear_lazy(&mut state);
-    let (round0, round0_full) = trace_round_descriptor(0).expect("pinned round zero");
-    let (round1, round1_full) = trace_round_descriptor(1).expect("pinned round one");
-    debug_assert!(round0_full && round1_full);
-    full_round(full_round(state, round0.map(lift)), round1.map(lift))
+    full_round_m31_constants(
+        full_round_m31_constants(state, EXTERNAL_INITIAL[0]),
+        EXTERNAL_INITIAL[1],
+    )
 }
 
 fn leading_pair_packed(
@@ -338,10 +369,37 @@ fn leading_pair_packed(
         state[lane] = state[lane].add(openings.xor12_z[lane]);
     }
     external_linear_lazy(&mut state);
-    let (round0, round0_full) = trace_round_descriptor(0).expect("pinned round zero");
-    let (round1, round1_full) = trace_round_descriptor(1).expect("pinned round one");
-    debug_assert!(round0_full && round1_full);
-    full_round_packed(full_round(state, round0.map(lift)), round1.map(lift))
+    full_round_m31_constants_packed(
+        full_round_m31_constants(state, EXTERNAL_INITIAL[0]),
+        EXTERNAL_INITIAL[1],
+    )
+}
+
+#[inline(never)]
+fn interpolate_three_constant_columns(
+    weights: [QM31; 3],
+    columns: [&[u32; POSEIDON2_WIDTH]; 3],
+) -> [QM31; POSEIDON2_WIDTH] {
+    core::array::from_fn(|lane| {
+        let constants = [columns[0][lane], columns[1][lane], columns[2][lane]];
+        let dot_limb = |limbs: [u32; 3]| {
+            M31::reduce_u64(
+                u64::from(limbs[0]) * u64::from(constants[0])
+                    + u64::from(limbs[1]) * u64::from(constants[1])
+                    + u64::from(limbs[2]) * u64::from(constants[2]),
+            )
+        };
+        QM31 {
+            c0: CM31::new(
+                dot_limb(weights.map(|weight| weight.c0.a.0)),
+                dot_limb(weights.map(|weight| weight.c0.b.0)),
+            ),
+            c1: CM31::new(
+                dot_limb(weights.map(|weight| weight.c1.a.0)),
+                dot_limb(weights.map(|weight| weight.c1.b.0)),
+            ),
+        }
+    })
 }
 
 fn interpolated_full_pair(
@@ -350,24 +408,14 @@ fn interpolated_full_pair(
 ) -> [QM31; POSEIDON2_WIDTH] {
     const ROWS: [usize; 3] = [1, 9, 10];
     let weights = ROWS.map(|row| local[row]);
-    let even = core::array::from_fn(|lane| {
-        let constants = ROWS.map(|row| {
-            let (constant, full) =
-                trace_round_constant(2 * row, lane).expect("pinned full even round");
-            debug_assert!(full);
-            constant
-        });
-        qm31_m31_dot(&weights, &constants)
-    });
-    let odd = core::array::from_fn(|lane| {
-        let constants = ROWS.map(|row| {
-            let (constant, full) =
-                trace_round_constant(2 * row + 1, lane).expect("pinned full odd round");
-            debug_assert!(full);
-            constant
-        });
-        qm31_m31_dot(&weights, &constants)
-    });
+    let even = interpolate_three_constant_columns(
+        weights,
+        [&EXTERNAL_INITIAL[2], &EXTERNAL_FINAL[0], &EXTERNAL_FINAL[2]],
+    );
+    let odd = interpolate_three_constant_columns(
+        weights,
+        [&EXTERNAL_INITIAL[3], &EXTERNAL_FINAL[1], &EXTERNAL_FINAL[3]],
+    );
     full_round(full_round(state, even), odd)
 }
 
@@ -377,24 +425,14 @@ fn interpolated_full_pair_packed(
 ) -> [QM31; STATE_ONLY_POSEIDON_PACKED_LANES] {
     const ROWS: [usize; 3] = [1, 9, 10];
     let weights = ROWS.map(|row| local[row]);
-    let even = core::array::from_fn(|lane| {
-        let constants = ROWS.map(|row| {
-            let (constant, full) =
-                trace_round_constant(2 * row, lane).expect("pinned full even round");
-            debug_assert!(full);
-            constant
-        });
-        qm31_m31_dot(&weights, &constants)
-    });
-    let odd = core::array::from_fn(|lane| {
-        let constants = ROWS.map(|row| {
-            let (constant, full) =
-                trace_round_constant(2 * row + 1, lane).expect("pinned full odd round");
-            debug_assert!(full);
-            constant
-        });
-        qm31_m31_dot(&weights, &constants)
-    });
+    let even = interpolate_three_constant_columns(
+        weights,
+        [&EXTERNAL_INITIAL[2], &EXTERNAL_FINAL[0], &EXTERNAL_FINAL[2]],
+    );
+    let odd = interpolate_three_constant_columns(
+        weights,
+        [&EXTERNAL_INITIAL[3], &EXTERNAL_FINAL[1], &EXTERNAL_FINAL[3]],
+    );
     full_round_packed(full_round(state, even), odd)
 }
 
@@ -404,18 +442,8 @@ fn interpolated_internal_pair(
 ) -> [QM31; POSEIDON2_WIDTH] {
     const ROWS: [usize; 7] = [2, 3, 4, 5, 6, 7, 8];
     let weights = ROWS.map(|row| local[row]);
-    let even_constants = ROWS.map(|row| {
-        let (constant, full) =
-            trace_round_constant(2 * row, 0).expect("pinned internal even round");
-        debug_assert!(!full);
-        constant
-    });
-    let odd_constants = ROWS.map(|row| {
-        let (constant, full) =
-            trace_round_constant(2 * row + 1, 0).expect("pinned internal odd round");
-        debug_assert!(!full);
-        constant
-    });
+    let even_constants = ROWS.map(|row| M31(INTERNAL[2 * (row - 2)]));
+    let odd_constants = ROWS.map(|row| M31(INTERNAL[2 * (row - 2) + 1]));
     let even = qm31_m31_dot(&weights, &even_constants);
     let odd = qm31_m31_dot(&weights, &odd_constants);
     internal_round(internal_round(state, even), odd)

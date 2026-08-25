@@ -1,0 +1,37 @@
+{
+  "artifact": "aspis_v6_onefold_production_sbf_simulation",
+  "build_command": "NO_DNA=1 cargo-build-sbf --manifest-path programs/aspis-verifier/Cargo.toml --no-default-features --features v6-production-tag72",
+  "compact_counter": 3,
+  "deterministic_three_of_three_both_paths": true,
+  "exact_terminal_equality": true,
+  "frontier_nodes_per_tree": 209,
+  "headroom_under_1_3m": 48333,
+  "host_production_acceptance": true,
+  "maximum_compute_units": 1251667,
+  "missing_marker_completed_system_program_cpi": true,
+  "missing_marker_repeated_compute_units": [
+    1251667,
+    1251667,
+    1251667
+  ],
+  "nullifier_marker": "AbWC9vKT7mxRNLeCnFrfi9HFsncF73XfG9TnbJS2jXHy",
+  "pool": "4bfLMZxefuaeUSugtm1ctkokx5FHY2UxeNBzgqRgLddF",
+  "program_id": "7Q2nGsPg8rbjdxKHK4jxTgEWLTyd9o1X4KMSjCieRmue",
+  "program_owned_marker_repeated_compute_units": [
+    1249333,
+    1249333,
+    1249333
+  ],
+  "proof_account": "48kmPn3Tazz4DwpF5yQpJfEDevFFxQ6mMx3SoENPtxJ8",
+  "proof_bytes": 33336,
+  "proof_path": "/home/dombarker/project-offloads/aspis-v6-onefold/results/spend/v6-honest-devnet-20260825/v6-proof.bin",
+  "proof_sha256": "2e828a5b8b8b328da073be5a643548ed15beec315eb5797f8d04a668b309d5f9",
+  "real_work_checks": true,
+  "sbf_bytes": 1151632,
+  "sbf_path": "/home/dombarker/project-offloads/aspis-v6-onefold/target/deploy/aspis_verifier.so",
+  "sbf_sha256": "99028978d3d049fff7efa91ab544a5820632c83dfbf9548615089c3ad52908a2",
+  "schema_version": 1,
+  "selector": 0,
+  "statement_path": "/home/dombarker/project-offloads/aspis-v6-onefold/results/spend/v6-honest-devnet-20260825/v6-statement.json",
+  "statement_sha256": "675d8c9b70f51e4eb202af00591d84a93d580bf607ec7f850db5c9017d4088a2"
+}

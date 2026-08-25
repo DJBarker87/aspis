@@ -1,0 +1,17 @@
+{
+  "artifact": "aspis_v6_onefold_statement",
+  "asset_id": 17,
+  "current_anchor_hex": "90bc3005a8029b06072f386dc6b1ee4e9b4ba513b126d033a96ecc49829cab5a",
+  "deployment_domain_hex": "0f8a800b72fcf5a061f8ef9420815a4af69e097a80bb2148a26c59873a73f241",
+  "fee": 1,
+  "network_tag": "devnet",
+  "nullifier_hex": "890266278df8f3073cab562c6c7d89471363c46841748a1ef3b0432acd0afd5f",
+  "output_anchor_hex": "9f5b8c2dc991e401f3538941af35fd29e00aa319edca8013c7260c61c2e7486e",
+  "output_commitment_hex": "69517012bd98fe78bef9b076069520614ef27f2fc7a0854f72e65055a2edc319",
+  "pool": "4bfLMZxefuaeUSugtm1ctkokx5FHY2UxeNBzgqRgLddF",
+  "profile": "V6-26C1-3C2-B10-q16-onefold-final256-f209",
+  "program_id": "7Q2nGsPg8rbjdxKHK4jxTgEWLTyd9o1X4KMSjCieRmue",
+  "proof_account": "48kmPn3Tazz4DwpF5yQpJfEDevFFxQ6mMx3SoENPtxJ8",
+  "release_binding_hex": "36d1d6a71b6a6e669982ca9ea67bc19fd1331a2c212ca803a1b6c5da176e5e18",
+  "sequence": 0
+}

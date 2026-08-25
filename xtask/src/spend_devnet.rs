@@ -43,8 +43,8 @@ use solana_sdk::{
 use aspis_verifier::{
     atomic_payment::{
         atomic_nullifier_address, AtomicPaymentPublicInputs, AtomicPoolStateV2,
-        ATOMIC_ERROR_NULLIFIER_ALREADY_SPENT, ATOMIC_NULLIFIER_MAGIC, ATOMIC_NULLIFIER_MARKER_LEN,
-        ATOMIC_NULLIFIER_VERSION, ATOMIC_POOL_STATE_LEN,
+        ATOMIC_ERROR_ANCHOR_MISMATCH, ATOMIC_ERROR_NULLIFIER_ALREADY_SPENT, ATOMIC_NULLIFIER_MAGIC,
+        ATOMIC_NULLIFIER_MARKER_LEN, ATOMIC_NULLIFIER_VERSION, ATOMIC_POOL_STATE_LEN,
     },
     AspisInstruction, PROOF_ACCOUNT_HEADER_LEN,
 };
@@ -82,6 +82,9 @@ const DEFAULT_CONFIRM_TIMEOUT: Duration = Duration::from_secs(180);
 const READ_ONLY_RPC_RATE_LIMIT_RETRIES: u8 = 12;
 const SIGNATURE_POLL_INTERVAL: Duration = Duration::from_secs(2);
 const IN_PROGRESS_WARNING: &str = "If this file remains in_progress, execution did not reach the finalized evidence commit. Inspect chain state by recorded signer history before retrying.";
+const V6_DEVNET_EXECUTE_ACK: &str =
+    "I_ACKNOWLEDGE_V6_DEVNET_REHEARSAL_MUTATES_DEVNET_AND_SPENDS_DEVNET_SOL";
+const V6_DEVNET_CU_LIMIT: u32 = 1_300_000;
 
 #[cfg(any(target_os = "linux", target_os = "android"))]
 const EVIDENCE_O_NOFOLLOW: i32 = 0o400000;
@@ -250,6 +253,13 @@ pub struct TransactionEvidence {
     pub serialized_transaction_sha256: String,
     pub compute_units_consumed: Option<u64>,
     pub identical_wire_retries: Option<u8>,
+}
+
+#[derive(Clone, Debug, Serialize)]
+pub struct V6DevnetExecutionOutcome {
+    pub final_transaction: TransactionEvidence,
+    pub landed_compute_units: u64,
+    pub evidence_path: String,
 }
 
 #[derive(Clone, Debug, Serialize)]
@@ -4745,6 +4755,893 @@ fn execute_with_policy(
     Ok(evidence)
 }
 
+#[derive(Clone, Debug)]
+struct V6DevnetConfig {
+    rpc_url: String,
+    payer_keypair: PathBuf,
+    buffer_keypair: PathBuf,
+    program_keypair: Option<PathBuf>,
+    existing_program_id: Option<Pubkey>,
+    pool_keypair: PathBuf,
+    proof_account_keypair: PathBuf,
+    sbf: PathBuf,
+    proof: PathBuf,
+    statement: PathBuf,
+    metadata: PathBuf,
+    solana_cli: PathBuf,
+    evidence: PathBuf,
+    program_max_len: usize,
+}
+
+fn parse_v6_devnet_args(arguments: &[String]) -> Result<V6DevnetConfig> {
+    const REQUIRED: [&str; 13] = [
+        "--rpc-url",
+        "--payer-keypair",
+        "--buffer-keypair",
+        "--pool-keypair",
+        "--proof-account-keypair",
+        "--sbf",
+        "--proof",
+        "--statement",
+        "--metadata",
+        "--solana-cli",
+        "--evidence",
+        "--program-max-len",
+        "--acknowledgement",
+    ];
+    const PROGRAM_IDENTITY: [&str; 2] = ["--program-keypair", "--existing-program-id"];
+    let mut values = BTreeMap::new();
+    let mut execute = false;
+    let mut index = 0usize;
+    while index < arguments.len() {
+        let key = arguments.get(index).context("missing V6 devnet argument")?;
+        if key == "--execute-devnet" {
+            ensure!(!execute, "duplicate --execute-devnet");
+            execute = true;
+            index += 1;
+            continue;
+        }
+        ensure!(
+            REQUIRED.contains(&key.as_str()) || PROGRAM_IDENTITY.contains(&key.as_str()),
+            "unknown V6 devnet argument {key}"
+        );
+        let item = arguments
+            .get(index + 1)
+            .ok_or_else(|| anyhow!("missing value for {key}"))?;
+        ensure!(
+            values.insert(key.clone(), item.clone()).is_none(),
+            "duplicate V6 devnet argument {key}"
+        );
+        index += 2;
+    }
+    ensure!(execute, "V6 devnet execution requires --execute-devnet");
+    for key in REQUIRED {
+        ensure!(values.contains_key(key), "missing V6 devnet argument {key}");
+    }
+    ensure!(
+        PROGRAM_IDENTITY
+            .iter()
+            .filter(|key| values.contains_key(**key))
+            .count()
+            == 1,
+        "V6 devnet execution requires exactly one of --program-keypair or --existing-program-id"
+    );
+    let get = |key: &str| {
+        values
+            .get(key)
+            .map(String::as_str)
+            .with_context(|| format!("missing {key}"))
+    };
+    ensure!(
+        get("--acknowledgement")? == V6_DEVNET_EXECUTE_ACK,
+        "V6 devnet acknowledgement mismatch"
+    );
+    let absolute = |key: &str| -> Result<PathBuf> {
+        let path = PathBuf::from(get(key)?);
+        ensure!(path.is_absolute(), "{key} must be absolute");
+        Ok(path)
+    };
+    let program_max_len = get("--program-max-len")?
+        .parse::<usize>()
+        .context("invalid --program-max-len")?;
+    let program_keypair = values
+        .get("--program-keypair")
+        .map(|value| {
+            let path = PathBuf::from(value);
+            ensure!(path.is_absolute(), "--program-keypair must be absolute");
+            Ok(path)
+        })
+        .transpose()?;
+    let existing_program_id = values
+        .get("--existing-program-id")
+        .map(|value| Pubkey::from_str(value).context("invalid --existing-program-id"))
+        .transpose()?;
+    Ok(V6DevnetConfig {
+        rpc_url: get("--rpc-url")?.to_owned(),
+        payer_keypair: absolute("--payer-keypair")?,
+        buffer_keypair: absolute("--buffer-keypair")?,
+        program_keypair,
+        existing_program_id,
+        pool_keypair: absolute("--pool-keypair")?,
+        proof_account_keypair: absolute("--proof-account-keypair")?,
+        sbf: absolute("--sbf")?,
+        proof: absolute("--proof")?,
+        statement: absolute("--statement")?,
+        metadata: absolute("--metadata")?,
+        solana_cli: absolute("--solana-cli")?,
+        evidence: absolute("--evidence")?,
+        program_max_len,
+    })
+}
+
+fn v6_upgradeable_program_snapshot(
+    rpc: &Rpc,
+    program_id: &Pubkey,
+    expected_authority: &Pubkey,
+) -> Result<Option<UpgradeableProgramSnapshot>> {
+    let Some(program) = rpc.account(program_id)? else {
+        return Ok(None);
+    };
+    let programdata_address = parse_program(&program)?;
+    let programdata = rpc
+        .account(&programdata_address)?
+        .context("V6 ProgramData account missing")?;
+    ensure!(programdata.owner == bpf_loader_upgradeable::id());
+    let state: UpgradeableLoaderState = bincode::deserialize(&programdata.data)?;
+    let UpgradeableLoaderState::ProgramData {
+        slot: programdata_slot,
+        upgrade_authority_address,
+    } = state
+    else {
+        bail!("V6 linked account is not ProgramData")
+    };
+    let upgrade_authority_address =
+        upgrade_authority_address.context("V6 ProgramData is immutable and cannot be rehearsed")?;
+    ensure!(
+        upgrade_authority_address == *expected_authority,
+        "V6 devnet upgrade authority differs from explicit payer"
+    );
+    Ok(Some(UpgradeableProgramSnapshot {
+        program_id: *program_id,
+        program,
+        programdata_address,
+        programdata,
+        programdata_slot,
+        upgrade_authority_address,
+    }))
+}
+
+fn v6_snapshot_has_exact_code(
+    snapshot: &UpgradeableProgramSnapshot,
+    sbf: &[u8],
+    capacity_ceiling: usize,
+) -> bool {
+    snapshot
+        .programdata
+        .data
+        .get(PROGRAMDATA_METADATA_BYTES..)
+        .is_some_and(|code| {
+            code.len() >= sbf.len()
+                && code.len() <= capacity_ceiling
+                && code.get(..sbf.len()) == Some(sbf)
+                && code[sbf.len()..].iter().all(|byte| *byte == 0)
+        })
+}
+
+fn v6_deployed_program_exact(
+    rpc: &Rpc,
+    program_id: &Pubkey,
+    expected_sbf: &[u8],
+    capacity_ceiling: usize,
+    expected_authority: &Pubkey,
+) -> Result<Option<UpgradeableProgramSnapshot>> {
+    let snapshot = v6_upgradeable_program_snapshot(rpc, program_id, expected_authority)?;
+    if let Some(snapshot) = snapshot.as_ref() {
+        ensure!(
+            v6_snapshot_has_exact_code(snapshot, expected_sbf, capacity_ceiling),
+            "V6 ProgramData is not the exact release SBF within the declared capacity ceiling"
+        );
+    }
+    Ok(snapshot)
+}
+
+fn v6_deploy_or_upgrade(
+    rpc: &Rpc,
+    config: &V6DevnetConfig,
+    program_id: &Pubkey,
+    payer: &Keypair,
+    buffer: &Keypair,
+    sbf: &[u8],
+) -> Result<Option<TransactionEvidence>> {
+    if v6_upgradeable_program_snapshot(rpc, program_id, &payer.pubkey())?
+        .as_ref()
+        .is_some_and(|snapshot| v6_snapshot_has_exact_code(snapshot, sbf, config.program_max_len))
+    {
+        return Ok(None);
+    }
+
+    // Loader-v3 requires the program keypair only for an initial deployment.
+    // For an upgrade, the CLI explicitly accepts the existing program address;
+    // the upgrade-authority signature below is the authorizing signature.  The
+    // caller has already pinned `program_id` to the proof, compiled verifier ID
+    // and devnet genesis, and we re-read exact ProgramData bytes after finality.
+    let program_identity = config
+        .program_keypair
+        .as_ref()
+        .map(|path| path.as_os_str().to_owned())
+        .unwrap_or_else(|| program_id.to_string().into());
+
+    let output = Command::new(&config.solana_cli)
+        .arg("--url")
+        .arg(&config.rpc_url)
+        .arg("--keypair")
+        .arg(&config.payer_keypair)
+        .arg("--output")
+        .arg("json")
+        .arg("--commitment")
+        .arg("finalized")
+        .arg("program")
+        .arg("deploy")
+        .arg(&config.sbf)
+        .arg("--program-id")
+        .arg(program_identity)
+        .arg("--upgrade-authority")
+        .arg(&config.payer_keypair)
+        .arg("--fee-payer")
+        .arg(&config.payer_keypair)
+        .arg("--max-len")
+        .arg(config.program_max_len.to_string())
+        .arg("--buffer")
+        .arg(&config.buffer_keypair)
+        // The official public devnet RPC rate-limits one method to forty
+        // calls per ten seconds, below the loader's parallel write burst.
+        // Submit signed loader writes directly to validator TPUs while still
+        // using the pinned RPC for genesis, blockhash, status and finalized
+        // byte-for-byte ProgramData verification.
+        .arg("--use-tpu-client")
+        .arg("--max-sign-attempts")
+        .arg("20")
+        .output()
+        .context("run explicit V6 Solana CLI deploy/upgrade")?;
+    ensure!(
+        output.status.success(),
+        "V6 Solana CLI deploy/upgrade failed with status {}: {}",
+        output.status,
+        String::from_utf8_lossy(&output.stderr).trim()
+    );
+    let signature = extract_deploy_signature(&output.stdout)?;
+    let slot = rpc.wait_finalized(&signature)?;
+    let snapshot = v6_upgradeable_program_snapshot(rpc, program_id, &payer.pubkey())?
+        .context("V6 program missing after finalized deploy/upgrade")?;
+    ensure!(
+        v6_snapshot_has_exact_code(&snapshot, sbf, config.program_max_len),
+        "finalized V6 deployment differs from exact SBF/max-len"
+    );
+    ensure!(
+        rpc.account(&buffer.pubkey())?.is_none(),
+        "V6 deployment buffer remains after finalized upgrade"
+    );
+    let (wire_sha256, message_sha256) = rpc.transaction_wire_and_message_hash(&signature)?;
+    Ok(Some(TransactionEvidence {
+        label: "v6_deploy_or_upgrade_exact_tag72_sbf".to_owned(),
+        signature: signature.to_string(),
+        finalized_slot: slot,
+        message_sha256,
+        serialized_transaction_sha256: wire_sha256,
+        compute_units_consumed: rpc.transaction_cu(&signature)?,
+        identical_wire_retries: Some(0),
+    }))
+}
+
+fn v6_system_cpi_succeeded(logs: &[String]) -> bool {
+    let system = system_program::id().to_string();
+    let invoke = format!("Program {system} invoke");
+    let success = format!("Program {system} success");
+    logs.iter()
+        .position(|line| line.starts_with(&invoke))
+        .is_some_and(|position| logs.iter().skip(position + 1).any(|line| line == &success))
+}
+
+fn submit_v6_expected_failure(
+    rpc: &Rpc,
+    transaction: &Transaction,
+    expected_error: &Value,
+    label: &str,
+) -> Result<(TransactionEvidence, Value)> {
+    let wire = bincode::serialize(transaction)?;
+    let signature = transaction.signatures[0];
+    let response = rpc.call(
+        "sendTransaction",
+        json!([BASE64.encode(&wire), {
+            "encoding":"base64",
+            "skipPreflight":true,
+            "preflightCommitment":"confirmed",
+            "maxRetries":0
+        }]),
+    )?;
+    ensure!(
+        response.as_str() == Some(signature.to_string().as_str()),
+        "RPC returned a different signature for failed V6 replay"
+    );
+    let started = Instant::now();
+    let (slot, observed_error) = loop {
+        if let Some((slot, error, confirmation)) = rpc.signature_status(&signature)? {
+            if confirmation == "finalized" {
+                let error = error.context("V6 replay unexpectedly finalized successfully")?;
+                break (slot, error);
+            }
+        }
+        ensure!(
+            started.elapsed() < DEFAULT_CONFIRM_TIMEOUT,
+            "failed V6 replay did not finalize before timeout"
+        );
+        thread::sleep(SIGNATURE_POLL_INTERVAL);
+    };
+    ensure!(
+        &observed_error == expected_error,
+        "failed V6 replay returned unexpected error: {observed_error}"
+    );
+    let (landed_wire_sha256, landed_message_sha256) =
+        rpc.transaction_wire_and_message_hash(&signature)?;
+    ensure!(landed_wire_sha256 == sha256(&wire));
+    ensure!(landed_message_sha256 == sha256(&bincode::serialize(&transaction.message)?));
+    Ok((
+        TransactionEvidence {
+            label: label.to_owned(),
+            signature: signature.to_string(),
+            finalized_slot: slot,
+            message_sha256: landed_message_sha256,
+            serialized_transaction_sha256: landed_wire_sha256,
+            compute_units_consumed: rpc.transaction_cu(&signature)?,
+            identical_wire_retries: Some(0),
+        },
+        observed_error,
+    ))
+}
+
+/// Execute the exact production V6 tag-72 instruction on genuine devnet.
+/// This surface is deliberately devnet-only and has its own acknowledgement;
+/// it never accepts the mainnet genesis hash.
+#[allow(clippy::too_many_lines)]
+pub fn execute_v6(arguments: &[String]) -> Result<V6DevnetExecutionOutcome> {
+    let config = parse_v6_devnet_args(arguments)?;
+    let rpc_origin_redacted = rpc_origin(&config.rpc_url)?;
+    let rpc = Rpc::new(config.rpc_url.clone())?;
+    let genesis_hash = rpc.genesis_hash()?;
+    ensure!(
+        genesis_hash == DEVNET_GENESIS_HASH,
+        "V6 executor refuses non-devnet genesis {genesis_hash}"
+    );
+
+    let payer = secure_keypair(&config.payer_keypair)?;
+    let buffer = secure_keypair(&config.buffer_keypair)?;
+    let program = config
+        .program_keypair
+        .as_ref()
+        .map(|path| secure_keypair(path))
+        .transpose()?;
+    let program_id = program
+        .as_ref()
+        .map(Signer::pubkey)
+        .or(config.existing_program_id)
+        .context("V6 program identity missing after argument validation")?;
+    let pool = secure_keypair(&config.pool_keypair)?;
+    let proof_account = secure_keypair(&config.proof_account_keypair)?;
+    let sbf = exact_regular_file(&config.sbf)?;
+    ensure!(
+        config.program_max_len >= sbf.len(),
+        "V6 program max length is shorter than SBF"
+    );
+    let inputs = crate::v6_release::load_execution_inputs(
+        &config.proof,
+        &config.statement,
+        &config.metadata,
+        "devnet",
+    )?;
+    ensure!(exact_regular_file(&config.proof)? == inputs.proof);
+    ensure!(exact_regular_file(&config.statement)? == inputs.statement_bytes);
+    ensure!(exact_regular_file(&config.metadata)? == inputs.metadata_bytes);
+    ensure!(program_id == inputs.program_id);
+    ensure!(program_id == aspis_verifier::id());
+    ensure!(pool.pubkey() == inputs.pool);
+    ensure!(proof_account.pubkey() == inputs.proof_account);
+    ensure!(
+        payer.pubkey() != pool.pubkey()
+            && payer.pubkey() != proof_account.pubkey()
+            && payer.pubkey() != buffer.pubkey()
+            && pool.pubkey() != proof_account.pubkey()
+            && pool.pubkey() != buffer.pubkey()
+            && proof_account.pubkey() != buffer.pubkey()
+            && program_id != buffer.pubkey()
+    );
+    ensure!(
+        rpc.account(&pool.pubkey())?.is_none(),
+        "V6 pool key is not fresh"
+    );
+    ensure!(
+        rpc.account(&proof_account.pubkey())?.is_none(),
+        "V6 proof-account key is not fresh"
+    );
+    let nullifier = aspis_statement::encode_digest_canonical(&inputs.statement.spend.nullifier);
+    let (nullifier_address, _) = atomic_nullifier_address(&inputs.program_id, &nullifier);
+    ensure!(
+        rpc.account(&nullifier_address)?.is_none(),
+        "V6 nullifier PDA is not fresh"
+    );
+
+    let pool_rent = rpc.rent(ATOMIC_POOL_STATE_LEN)?;
+    let proof_rent = rpc.rent(PROOF_ACCOUNT_HEADER_LEN + inputs.proof.len())?;
+    let marker_rent = rpc.rent(ATOMIC_NULLIFIER_MARKER_LEN)?;
+    let payer_balance_before = rpc.balance(&payer.pubkey())?;
+    let minimum_budget = pool_rent
+        .checked_add(proof_rent)
+        .and_then(|value| value.checked_add(marker_rent))
+        .and_then(|value| value.checked_add(3_000_000_000))
+        .context("V6 devnet rent budget overflow")?;
+    ensure!(
+        payer_balance_before >= minimum_budget,
+        "V6 devnet payer lacks conservative rent/deployment reserve"
+    );
+
+    let evidence_reservation =
+        EvidenceReservation::reserve(&config.evidence, "aspis_v6_onefold_devnet_execution")?;
+    let deployment =
+        v6_deploy_or_upgrade(&rpc, &config, &inputs.program_id, &payer, &buffer, &sbf)?;
+    let program_before_setup = v6_deployed_program_exact(
+        &rpc,
+        &inputs.program_id,
+        &sbf,
+        config.program_max_len,
+        &payer.pubkey(),
+    )?
+    .context("exact V6 program missing before setup")?;
+
+    // Freshness is checked again after a potentially long loader operation.
+    ensure!(rpc.account(&pool.pubkey())?.is_none());
+    ensure!(rpc.account(&proof_account.pubkey())?.is_none());
+    ensure!(rpc.account(&nullifier_address)?.is_none());
+
+    let mut setup_transactions = Vec::new();
+    setup_transactions.push(create_account_transaction(
+        &rpc,
+        &inputs.program_id,
+        &payer,
+        &pool,
+        pool_rent,
+        ATOMIC_POOL_STATE_LEN,
+        "v6_create_pool_account",
+    )?);
+    let initialize_pool = Instruction {
+        program_id: inputs.program_id,
+        accounts: vec![AccountMeta::new(pool.pubkey(), true)],
+        data: to_vec(&AspisInstruction::InitializeAtomicPool {
+            sequence: inputs.statement.sequence,
+            anchor: aspis_statement::encode_digest_canonical(&inputs.statement.spend.anchor),
+            domain_tag: b"devnet".to_vec(),
+        })?,
+    };
+    let initialize_pool_tx = signed_transaction(
+        &payer,
+        &[&pool],
+        &[initialize_pool],
+        rpc.latest_blockhash()?,
+    );
+    setup_transactions
+        .push(rpc.submit_transaction(&initialize_pool_tx, "v6_tag63_initialize_pool")?);
+    let pool_before = rpc
+        .account(&pool.pubkey())?
+        .context("V6 initialized pool missing")?;
+    let pool_before_state = AtomicPoolStateV2::decode(&pool_before.data)
+        .map_err(|error| anyhow!("decode V6 pool prestate: {error:?}"))?;
+    ensure!(pool_before_state.sequence == inputs.statement.sequence);
+    ensure!(
+        pool_before_state.anchor
+            == aspis_statement::encode_digest_canonical(&inputs.statement.spend.anchor)
+    );
+    ensure!(pool_before_state.deployment_domain == inputs.statement.deployment_domain);
+
+    let create_init = create_and_init_proof_transaction(
+        &inputs.program_id,
+        &payer,
+        &proof_account,
+        proof_rent,
+        inputs.proof.len(),
+        rpc.latest_blockhash()?,
+    )?;
+    let create_init_simulation = rpc.simulate_exact(&bincode::serialize(&create_init)?)?;
+    ensure!(
+        create_init_simulation.error.is_none(),
+        "V6 proof create/init simulation rejected: {:?}",
+        create_init_simulation.error
+    );
+    setup_transactions.push(rpc.submit_transaction(&create_init, "v6_create_and_tag0_init_proof")?);
+    let initialized = rpc
+        .account(&proof_account.pubkey())?
+        .context("V6 initialized proof account missing")?;
+    ensure!(
+        initialized.data
+            == expected_proof_account(&vec![0u8; inputs.proof.len()], payer.pubkey(), false,)
+    );
+    let proof_upload_transaction_count = inputs.proof.len().div_ceil(UPLOAD_CHUNK_BYTES);
+    setup_transactions.extend(upload_proof_chunks(
+        &rpc,
+        &inputs.program_id,
+        &payer,
+        &proof_account,
+        &inputs.proof,
+    )?);
+    let uploaded = rpc
+        .account(&proof_account.pubkey())?
+        .context("V6 uploaded proof account missing")?;
+    ensure!(
+        uploaded.data == expected_proof_account(&inputs.proof, payer.pubkey(), false),
+        "V6 uploaded account bytes differ from honest proof"
+    );
+    let finalize = proof_instruction(
+        &inputs.program_id,
+        payer.pubkey(),
+        proof_account.pubkey(),
+        &AspisInstruction::FinalizeProof,
+    )?;
+    let finalize_tx = signed_transaction(&payer, &[], &[finalize], rpc.latest_blockhash()?);
+    setup_transactions.push(rpc.submit_transaction(&finalize_tx, "v6_tag62_finalize_proof")?);
+    let finalized_proof = rpc
+        .account(&proof_account.pubkey())?
+        .context("V6 finalized proof account missing")?;
+    ensure!(
+        finalized_proof.data == expected_proof_account(&inputs.proof, payer.pubkey(), true),
+        "V6 finalized proof account image drift"
+    );
+    ensure!(sha256(&finalized_proof.data[PROOF_ACCOUNT_HEADER_LEN..]) == inputs.proof_sha256);
+
+    let forbidden_upload = proof_instruction(
+        &inputs.program_id,
+        payer.pubkey(),
+        proof_account.pubkey(),
+        &AspisInstruction::UploadChunk {
+            offset: 0,
+            chunk: vec![inputs.proof[0] ^ 1],
+        },
+    )?;
+    let forbidden_upload_tx =
+        signed_transaction(&payer, &[], &[forbidden_upload], rpc.latest_blockhash()?);
+    let forbidden_upload_error = rpc
+        .simulate_exact(&bincode::serialize(&forbidden_upload_tx)?)?
+        .error
+        .context("sealed V6 proof accepted a post-finalization upload")?;
+    ensure!(forbidden_upload_error == invalid_account_data_simulation_error(0));
+    let second_finalize = proof_instruction(
+        &inputs.program_id,
+        payer.pubkey(),
+        proof_account.pubkey(),
+        &AspisInstruction::FinalizeProof,
+    )?;
+    let second_finalize_tx =
+        signed_transaction(&payer, &[], &[second_finalize], rpc.latest_blockhash()?);
+    let second_finalize_error = rpc
+        .simulate_exact(&bincode::serialize(&second_finalize_tx)?)?
+        .error
+        .context("sealed V6 proof accepted a second finalization")?;
+    ensure!(second_finalize_error == invalid_account_data_simulation_error(0));
+    ensure!(
+        rpc.account(&proof_account.pubkey())?.as_ref() == Some(&finalized_proof),
+        "V6 lifecycle negative simulations changed proof account"
+    );
+
+    let production_data = crate::v6_release::production_instruction(
+        inputs.frontier_nodes,
+        inputs.selector,
+        &inputs.statement,
+    )?;
+    let production_instruction = Instruction {
+        program_id: inputs.program_id,
+        accounts: vec![
+            AccountMeta::new_readonly(proof_account.pubkey(), false),
+            AccountMeta::new(pool.pubkey(), false),
+            AccountMeta::new(nullifier_address, false),
+            AccountMeta::new(payer.pubkey(), true),
+            AccountMeta::new_readonly(system_program::id(), false),
+        ],
+        data: production_data,
+    };
+    let final_tx = signed_transaction(
+        &payer,
+        &[],
+        &[
+            ComputeBudgetInstruction::set_compute_unit_limit(V6_DEVNET_CU_LIMIT),
+            ComputeBudgetInstruction::request_heap_frame(HEAP_FRAME_BYTES),
+            production_instruction.clone(),
+        ],
+        rpc.latest_blockhash()?,
+    );
+    let final_wire = bincode::serialize(&final_tx)?;
+    ensure!(final_wire.len() <= MAX_TRANSACTION_WIRE_BYTES);
+    let final_wire_sha256 = sha256(&final_wire);
+    let final_message_sha256 = sha256(&bincode::serialize(&final_tx.message)?);
+    let program_before_simulation = v6_deployed_program_exact(
+        &rpc,
+        &inputs.program_id,
+        &sbf,
+        config.program_max_len,
+        &payer.pubkey(),
+    )?
+    .context("exact V6 program missing before final simulation")?;
+    let before_simulation_continuity =
+        program_before_simulation.continuity_from(&program_before_setup);
+    ensure!(before_simulation_continuity.all_unchanged());
+    let nullifier_before = rpc.account(&nullifier_address)?;
+    ensure!(nullifier_before.is_none());
+    let simulation = rpc.simulate_exact(&final_wire)?;
+    ensure!(
+        simulation.error.is_none(),
+        "exact signed V6 tag72 simulation rejected: {:?}",
+        simulation.error
+    );
+    let simulation_cu = simulation.units.context("V6 tag72 simulation omitted CU")?;
+    ensure!(
+        simulation_cu < u64::from(V6_DEVNET_CU_LIMIT),
+        "V6 tag72 devnet simulation exceeded strict 1.3M limit"
+    );
+    ensure!(
+        v6_system_cpi_succeeded(&simulation.logs),
+        "V6 tag72 simulation did not complete missing-marker System CPI"
+    );
+    ensure!(rpc.account(&pool.pubkey())?.as_ref() == Some(&pool_before));
+    ensure!(rpc.account(&nullifier_address)? == nullifier_before);
+    ensure!(rpc.account(&proof_account.pubkey())?.as_ref() == Some(&finalized_proof));
+
+    let final_transaction = rpc.submit_wire(
+        &final_wire,
+        final_tx.signatures[0],
+        true,
+        "v6_tag72_atomic_verify_and_apply",
+        final_message_sha256.clone(),
+    )?;
+    ensure!(final_transaction.serialized_transaction_sha256 == final_wire_sha256);
+    let landed_compute_units = final_transaction
+        .compute_units_consumed
+        .context("finalized V6 tag72 omitted computeUnitsConsumed")?;
+    ensure!(
+        landed_compute_units < u64::from(V6_DEVNET_CU_LIMIT),
+        "finalized V6 tag72 exceeded strict 1.3M limit"
+    );
+    let (landed_wire_sha256, landed_message_sha256) =
+        rpc.transaction_wire_and_message_hash(&final_tx.signatures[0])?;
+    ensure!(landed_wire_sha256 == final_wire_sha256);
+    ensure!(landed_message_sha256 == final_message_sha256);
+    let program_after_final = v6_deployed_program_exact(
+        &rpc,
+        &inputs.program_id,
+        &sbf,
+        config.program_max_len,
+        &payer.pubkey(),
+    )?
+    .context("exact V6 program missing after tag72 finality")?;
+    let after_final_continuity = program_after_final.continuity_from(&program_before_setup);
+    ensure!(after_final_continuity.all_unchanged());
+    let pool_after = rpc
+        .account(&pool.pubkey())?
+        .context("V6 pool missing after tag72")?;
+    let pool_after_state = AtomicPoolStateV2::decode(&pool_after.data)
+        .map_err(|error| anyhow!("decode V6 pool poststate: {error:?}"))?;
+    ensure!(pool_after_state.sequence == pool_before_state.sequence + 1);
+    ensure!(
+        pool_after_state.anchor
+            == aspis_statement::encode_digest_canonical(&inputs.statement.output_anchor)
+    );
+    ensure!(pool_after_state.deployment_domain == pool_before_state.deployment_domain);
+    let nullifier_after = rpc
+        .account(&nullifier_address)?
+        .context("V6 nullifier marker missing after tag72")?;
+    ensure!(nullifier_after.owner == inputs.program_id);
+    ensure!(
+        nullifier_after.data == expected_nullifier_marker(pool.pubkey(), nullifier),
+        "V6 nullifier marker image mismatch"
+    );
+    let proof_after = rpc
+        .account(&proof_account.pubkey())?
+        .context("retained V6 proof missing after tag72")?;
+    ensure!(proof_after == finalized_proof);
+
+    // Submit a fresh-blockhash replay as an actual failed devnet transaction,
+    // not merely a simulation. The already-advanced anchor must reject before
+    // any proof work or state mutation, and the runtime must roll back exactly.
+    let replay_tx = signed_transaction(
+        &payer,
+        &[],
+        &[
+            ComputeBudgetInstruction::set_compute_unit_limit(V6_DEVNET_CU_LIMIT),
+            ComputeBudgetInstruction::request_heap_frame(HEAP_FRAME_BYTES),
+            production_instruction,
+        ],
+        rpc.latest_blockhash()?,
+    );
+    let replay_wire = bincode::serialize(&replay_tx)?;
+    let replay_expected_error = custom_simulation_error(2, ATOMIC_ERROR_ANCHOR_MISMATCH);
+    let replay_simulation = rpc.simulate_exact(&replay_wire)?;
+    ensure!(replay_simulation.error.as_ref() == Some(&replay_expected_error));
+    ensure!(rpc.account(&pool.pubkey())?.as_ref() == Some(&pool_after));
+    ensure!(rpc.account(&nullifier_address)?.as_ref() == Some(&nullifier_after));
+    ensure!(rpc.account(&proof_account.pubkey())?.as_ref() == Some(&proof_after));
+    let (replay_transaction, replay_landed_error) = submit_v6_expected_failure(
+        &rpc,
+        &replay_tx,
+        &replay_expected_error,
+        "v6_tag72_duplicate_replay_rejected",
+    )?;
+    ensure!(rpc.account(&pool.pubkey())?.as_ref() == Some(&pool_after));
+    ensure!(rpc.account(&nullifier_address)?.as_ref() == Some(&nullifier_after));
+    ensure!(rpc.account(&proof_account.pubkey())?.as_ref() == Some(&proof_after));
+
+    let close = Instruction {
+        program_id: inputs.program_id,
+        accounts: vec![
+            AccountMeta::new(proof_account.pubkey(), true),
+            AccountMeta::new(payer.pubkey(), true),
+        ],
+        data: to_vec(&AspisInstruction::CloseFinalizedProof)?,
+    };
+    let close_tx = signed_transaction(&payer, &[&proof_account], &[close], rpc.latest_blockhash()?);
+    let close_transaction = rpc.submit_transaction(&close_tx, "v6_tag64_close_proof")?;
+    let (close_fee, close_pre, close_post, _) =
+        rpc.transaction_fee_balances_and_logs(&close_tx.signatures[0])?;
+    let proof_index = close_tx
+        .message
+        .account_keys
+        .iter()
+        .position(|key| *key == proof_account.pubkey())
+        .context("V6 close omitted proof account")?;
+    let payer_index = close_tx
+        .message
+        .account_keys
+        .iter()
+        .position(|key| *key == payer.pubkey())
+        .context("V6 close omitted payer")?;
+    ensure!(close_pre[proof_index] == proof_after.lamports);
+    ensure!(close_post[proof_index] == 0);
+    ensure!(
+        i128::from(close_post[payer_index]) - i128::from(close_pre[payer_index])
+            + i128::from(close_fee)
+            == i128::from(proof_after.lamports),
+        "V6 proof close refund balance equation mismatch"
+    );
+    ensure!(rpc.account(&proof_account.pubkey())?.is_none());
+    ensure!(rpc.account(&pool.pubkey())?.as_ref() == Some(&pool_after));
+    ensure!(rpc.account(&nullifier_address)?.as_ref() == Some(&nullifier_after));
+    let program_after_cleanup = v6_deployed_program_exact(
+        &rpc,
+        &inputs.program_id,
+        &sbf,
+        config.program_max_len,
+        &payer.pubkey(),
+    )?
+    .context("exact V6 program missing after cleanup")?;
+    let after_cleanup_continuity = program_after_cleanup.continuity_from(&program_before_setup);
+    ensure!(after_cleanup_continuity.all_unchanged());
+
+    let payer_balance_after = rpc.balance(&payer.pubkey())?;
+    let simulation_logs_sha256 = sha256(simulation.logs.join("\n").as_bytes());
+    let outcome_final_transaction = final_transaction.clone();
+    let evidence_path = config.evidence.display().to_string();
+    let identities = json!({
+        "program_id": inputs.program_id.to_string(),
+        "payer": payer.pubkey().to_string(),
+        "deployment_buffer": buffer.pubkey().to_string(),
+        "pool": pool.pubkey().to_string(),
+        "proof_account": proof_account.pubkey().to_string(),
+        "nullifier_marker": nullifier_address.to_string(),
+    });
+    let artifacts = json!({
+        "sbf_path": config.sbf,
+        "sbf_bytes": sbf.len(),
+        "sbf_sha256": sha256(&sbf),
+        "programdata_capacity_ceiling": config.program_max_len,
+        "programdata_capacity_bytes":
+            program_before_setup.programdata.data.len() - PROGRAMDATA_METADATA_BYTES,
+        "proof_path": config.proof,
+        "proof_bytes": inputs.proof.len(),
+        "proof_sha256": inputs.proof_sha256,
+        "statement_path": config.statement,
+        "statement_bytes": inputs.statement_bytes.len(),
+        "statement_sha256": inputs.statement_sha256,
+        "metadata_path": config.metadata,
+        "metadata_bytes": inputs.metadata_bytes.len(),
+        "metadata_sha256": inputs.metadata_sha256,
+        "selector": inputs.selector,
+        "compact_counter": inputs.compact_counter,
+        "frontier_nodes_per_tree": inputs.frontier_nodes,
+        "work_bits": [34, 31, 34],
+        "host_production_replay_with_all_work_checks": true,
+    });
+    let program_history = json!({
+        "deployment": deployment,
+        "program_before_setup": program_before_setup.evidence(),
+        "program_before_final_simulation": program_before_simulation.evidence(),
+        "program_before_final_simulation_continuity": before_simulation_continuity,
+        "program_after_finality": program_after_final.evidence(),
+        "program_after_finality_continuity": after_final_continuity,
+        "program_after_cleanup": program_after_cleanup.evidence(),
+        "program_after_cleanup_continuity": after_cleanup_continuity,
+    });
+    let lifecycle = json!({
+        "setup_transactions": setup_transactions,
+        "proof_upload_chunk_bytes": UPLOAD_CHUNK_BYTES,
+        "proof_upload_transaction_count": proof_upload_transaction_count,
+        "sealed_upload_rejected": true,
+        "sealed_second_finalize_rejected": true,
+        "pool_before": pool_before.evidence(pool.pubkey()),
+        "proof_before_tag72": finalized_proof.evidence(proof_account.pubkey()),
+        "nullifier_absent_before_tag72": true,
+    });
+    let tag72 = json!({
+        "tag72_simulation_compute_units": simulation_cu,
+        "tag72_simulation_headroom_under_1_3m":
+            i64::from(V6_DEVNET_CU_LIMIT) - simulation_cu as i64,
+        "tag72_simulation_missing_marker_system_cpi_succeeded": true,
+        "tag72_simulation_logs_sha256": simulation_logs_sha256,
+        "final_transaction": final_transaction,
+        "final_transaction_wire_sha256": final_wire_sha256,
+        "final_transaction_message_sha256": final_message_sha256,
+        "final_transaction_submitted_identically_to_simulation": true,
+        "landed_compute_units": landed_compute_units,
+        "landed_headroom_under_1_3m":
+            i64::from(V6_DEVNET_CU_LIMIT) - landed_compute_units as i64,
+        "strict_compute_limit": V6_DEVNET_CU_LIMIT,
+        "pool_after": pool_after.evidence(pool.pubkey()),
+        "sequence_before": pool_before_state.sequence,
+        "sequence_after": pool_after_state.sequence,
+        "anchor_advanced_to_proven_output": true,
+        "nullifier_after": nullifier_after.evidence(nullifier_address),
+        "proof_retained_byte_exact_after_tag72": true,
+    });
+    let replay = json!({
+        "duplicate_replay_simulation_error": replay_expected_error,
+        "duplicate_replay_landed_transaction": replay_transaction,
+        "duplicate_replay_landed_error": replay_landed_error,
+        "duplicate_replay_exact_rollback": true,
+    });
+    let cleanup = json!({
+        "proof_cleanup_transaction": close_transaction,
+        "proof_cleanup_refund_lamports": proof_after.lamports,
+        "proof_cleanup_fee_lamports": close_fee,
+        "proof_account_absent_after_cleanup": true,
+        "pool_and_marker_retained_as_devnet_evidence": true,
+        "payer_balance_before": payer_balance_before,
+        "payer_balance_after": payer_balance_after,
+    });
+    let evidence = json!({
+        "artifact": "aspis_v6_onefold_devnet_execution",
+        "schema_version": 1,
+        "status": "finalized_evidence",
+        "generated_at_utc": chrono::Utc::now().to_rfc3339(),
+        "network": "devnet",
+        "genesis_hash": genesis_hash,
+        "rpc_origin_redacted": rpc_origin_redacted,
+        "identities": identities,
+        "artifacts": artifacts,
+        "program_history": program_history,
+        "lifecycle": lifecycle,
+        "tag72": tag72,
+        "replay": replay,
+        "cleanup": cleanup,
+        "evidence_path": evidence_path.clone(),
+        "evidence_file_mode": "0444",
+        "cryptographic_profile_unchanged":
+            "V6-26C1-3C2-B10-q16-onefold-final256-frontier209-work34-31-34",
+        "explicit_nonclaims": [
+            "No mainnet-beta transaction was constructed or submitted.",
+            "Devnet execution demonstrates runtime compatibility and CU, not an external security audit.",
+            "The retained devnet pool and nullifier marker are evidence accounts; the large proof account was closed and its rent refunded."
+        ]
+    });
+    evidence_reservation.commit(&evidence)?;
+    Ok(V6DevnetExecutionOutcome {
+        final_transaction: outcome_final_transaction,
+        landed_compute_units,
+        evidence_path,
+    })
+}
+
 #[cfg(test)]
 mod tests {
     use aspis_core::field::M31;
@@ -5002,6 +5899,43 @@ mod tests {
             "--execute-devnet",
             "--acknowledgement",
             UPLOAD_SMOKE_ACK,
+        ]
+        .into_iter()
+        .map(str::to_owned)
+        .collect()
+    }
+
+    fn complete_v6_devnet_args() -> Vec<String> {
+        vec![
+            "--execute-devnet",
+            "--rpc-url",
+            "https://api.devnet.solana.com",
+            "--payer-keypair",
+            "/tmp/v6-payer.json",
+            "--buffer-keypair",
+            "/tmp/v6-buffer.json",
+            "--program-keypair",
+            "/tmp/v6-program.json",
+            "--pool-keypair",
+            "/tmp/v6-pool.json",
+            "--proof-account-keypair",
+            "/tmp/v6-proof-account.json",
+            "--sbf",
+            "/tmp/v6-program.so",
+            "--proof",
+            "/tmp/v6-proof.bin",
+            "--statement",
+            "/tmp/v6-statement.json",
+            "--metadata",
+            "/tmp/v6-metadata.json",
+            "--solana-cli",
+            "/usr/local/bin/solana",
+            "--evidence",
+            "/tmp/v6-evidence.json",
+            "--program-max-len",
+            "1200000",
+            "--acknowledgement",
+            V6_DEVNET_EXECUTE_ACK,
         ]
         .into_iter()
         .map(str::to_owned)
@@ -5536,6 +6470,125 @@ mod tests {
         unknown.push("--unexpected".to_owned());
         unknown.push("value".to_owned());
         assert!(parse_upload_smoke_args(&unknown).is_err());
+    }
+
+    #[test]
+    fn v6_devnet_parser_requires_exact_interlock_and_absolute_inputs() {
+        let parsed = parse_v6_devnet_args(&complete_v6_devnet_args()).unwrap();
+        assert_eq!(parsed.rpc_url, "https://api.devnet.solana.com");
+        assert_eq!(parsed.program_max_len, 1_200_000);
+        assert_eq!(parsed.metadata, PathBuf::from("/tmp/v6-metadata.json"));
+        assert_eq!(parsed.buffer_keypair, PathBuf::from("/tmp/v6-buffer.json"));
+        assert_eq!(
+            parsed.program_keypair,
+            Some(PathBuf::from("/tmp/v6-program.json"))
+        );
+        assert_eq!(parsed.existing_program_id, None);
+
+        let mut existing = complete_v6_devnet_args();
+        let program_keypair = existing
+            .iter()
+            .position(|argument| argument == "--program-keypair")
+            .unwrap();
+        existing.splice(
+            program_keypair..program_keypair + 2,
+            [
+                "--existing-program-id".to_owned(),
+                aspis_verifier::id().to_string(),
+            ],
+        );
+        let parsed_existing = parse_v6_devnet_args(&existing).unwrap();
+        assert_eq!(parsed_existing.program_keypair, None);
+        assert_eq!(
+            parsed_existing.existing_program_id,
+            Some(aspis_verifier::id())
+        );
+
+        let mut both_identities = existing.clone();
+        both_identities.extend([
+            "--program-keypair".to_owned(),
+            "/tmp/v6-program.json".to_owned(),
+        ]);
+        assert!(parse_v6_devnet_args(&both_identities).is_err());
+
+        let mut no_identity = existing;
+        let existing_id = no_identity
+            .iter()
+            .position(|argument| argument == "--existing-program-id")
+            .unwrap();
+        no_identity.drain(existing_id..existing_id + 2);
+        assert!(parse_v6_devnet_args(&no_identity).is_err());
+
+        let mut missing_execute = complete_v6_devnet_args();
+        let execute = missing_execute
+            .iter()
+            .position(|argument| argument == "--execute-devnet")
+            .unwrap();
+        missing_execute.remove(execute);
+        assert!(parse_v6_devnet_args(&missing_execute).is_err());
+
+        let mut wrong_acknowledgement = complete_v6_devnet_args();
+        let acknowledgement = wrong_acknowledgement
+            .iter()
+            .position(|argument| argument == "--acknowledgement")
+            .unwrap();
+        wrong_acknowledgement[acknowledgement + 1] = EXECUTE_ACK.to_owned();
+        assert!(parse_v6_devnet_args(&wrong_acknowledgement).is_err());
+
+        let mut relative = complete_v6_devnet_args();
+        let proof = relative
+            .iter()
+            .position(|argument| argument == "--proof")
+            .unwrap();
+        relative[proof + 1] = "v6-proof.bin".to_owned();
+        assert!(parse_v6_devnet_args(&relative).is_err());
+
+        let mut duplicate = complete_v6_devnet_args();
+        duplicate.extend(["--program-max-len".to_owned(), "1200000".to_owned()]);
+        assert!(parse_v6_devnet_args(&duplicate).is_err());
+
+        let mut unknown = complete_v6_devnet_args();
+        unknown.extend(["--network".to_owned(), "mainnet-beta".to_owned()]);
+        assert!(parse_v6_devnet_args(&unknown).is_err());
+    }
+
+    #[test]
+    fn v6_system_cpi_evidence_requires_invoke_before_success() {
+        let system = system_program::id().to_string();
+        assert!(v6_system_cpi_succeeded(&[
+            format!("Program {system} invoke [1]"),
+            format!("Program {system} success"),
+        ]));
+        assert!(!v6_system_cpi_succeeded(&[format!(
+            "Program {system} success"
+        )]));
+        assert!(!v6_system_cpi_succeeded(&[
+            format!("Program {system} success"),
+            format!("Program {system} invoke [1]"),
+        ]));
+    }
+
+    #[test]
+    fn v6_snapshot_code_identity_binds_capacity_ceiling_and_zero_padding() {
+        let mut snapshot = upgradeable_program_snapshot(23);
+        let sbf = [7u8, 8, 9, 10];
+        snapshot.programdata.data = bincode::serialize(&UpgradeableLoaderState::ProgramData {
+            slot: snapshot.programdata_slot,
+            upgrade_authority_address: Some(snapshot.upgrade_authority_address),
+        })
+        .unwrap();
+        assert_eq!(snapshot.programdata.data.len(), PROGRAMDATA_METADATA_BYTES);
+        snapshot.programdata.data.extend_from_slice(&sbf);
+        assert!(v6_snapshot_has_exact_code(&snapshot, &sbf, 9));
+        snapshot.programdata.data.extend_from_slice(&[0u8; 5]);
+        assert!(v6_snapshot_has_exact_code(&snapshot, &sbf, 9));
+        assert!(!v6_snapshot_has_exact_code(&snapshot, &sbf, 8));
+
+        snapshot.programdata.data[PROGRAMDATA_METADATA_BYTES + sbf.len()] = 1;
+        assert!(!v6_snapshot_has_exact_code(&snapshot, &sbf, 9));
+        snapshot.programdata.data[PROGRAMDATA_METADATA_BYTES + sbf.len()] = 0;
+        snapshot.programdata.data[PROGRAMDATA_METADATA_BYTES] ^= 1;
+        assert!(!v6_snapshot_has_exact_code(&snapshot, &sbf, 9));
     }
 
     #[test]

@@ -9,7 +9,7 @@
 //!    never panic and never index out of bounds — the dispatcher always
 //!    returns a `Result<(), ProgramError>` (a defined error, by construction).
 //!  * Empty instruction data is rejected as `InvalidInstructionData`.
-//!  * Every tag outside the production set {0,1,59,60,62,63,64,65,67} is
+//!  * Every tag outside the feature-selected production set is
 //!    rejected with a defined error.
 
 use aspis_verifier::{id, process_spend_production_instruction};
@@ -18,7 +18,20 @@ use solana_program::{
     account_info::AccountInfo, clock::Epoch, program_error::ProgramError, pubkey::Pubkey,
 };
 
-const PRODUCTION_TAGS: [u8; 9] = [0, 1, 59, 60, 62, 63, 64, 65, 67];
+const PRODUCTION_TAGS: &[u8] = &[
+    0,
+    1,
+    59,
+    60,
+    62,
+    63,
+    64,
+    65,
+    #[cfg(feature = "v5-production-tag67")]
+    67,
+    #[cfg(feature = "v6-production-tag72")]
+    72,
+];
 
 /// One arbitrary account slot: its owner is either the running program or a
 /// foreign key, and its signer/writable bits and data length vary.

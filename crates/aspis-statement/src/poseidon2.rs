@@ -80,7 +80,7 @@ pub struct Poseidon2RoundTransition {
     pub output: [M31; POSEIDON2_WIDTH],
 }
 
-const EXTERNAL_INITIAL: [[u32; 16]; 4] = [
+pub(crate) const EXTERNAL_INITIAL: [[u32; 16]; 4] = [
     [
         0x768bab52, 0x70e0ab7d, 0x3d266c8a, 0x6da42045, 0x600fef22, 0x41dace6b, 0x64f9bdd4,
         0x5d42d4fe, 0x76b1516d, 0x6fc9a717, 0x70ac4fb6, 0x00194ef6, 0x22b644e2, 0x1f7916d5,
@@ -103,7 +103,7 @@ const EXTERNAL_INITIAL: [[u32; 16]; 4] = [
     ],
 ];
 
-const EXTERNAL_FINAL: [[u32; 16]; 4] = [
+pub(crate) const EXTERNAL_FINAL: [[u32; 16]; 4] = [
     [
         0x57090613, 0x1fa42108, 0x17bbef50, 0x1ff7e11c, 0x047b24ca, 0x4e140275, 0x4fa086f5,
         0x079b309c, 0x1159bd47, 0x6d37e4e5, 0x075d8dce, 0x12121ca0, 0x7f6a7c40, 0x68e182ba,
@@ -126,7 +126,7 @@ const EXTERNAL_FINAL: [[u32; 16]; 4] = [
     ],
 ];
 
-const INTERNAL: [u32; 14] = [
+pub(crate) const INTERNAL: [u32; 14] = [
     0x7f7ec4bf, 0x0421926f, 0x5198e669, 0x34db3148, 0x4368bafd, 0x66685c7f, 0x78d3249a, 0x60187881,
     0x76dad67a, 0x0690b437, 0x1ea95311, 0x40e5369a, 0x38f103fc, 0x1d226a21,
 ];
