@@ -1,135 +1,112 @@
-\section{Proof design and lessons}
+\section{Verification methodology}
 \label{sec:proof-design}
 
-Formalizing this verifier exposed several places where a plausible paper
-argument was too weak for the deployed protocol.  This section records the
-resulting proof choices.  They are useful both for checking the present work
-and for extending it.
+The proof was organized around the data actually received and produced by the
+verifier.  This choice shaped both the Lean model and the translation work.
 
-\subsection{Model only what the verifier receives}
+\subsection{Prove local refinements, then one global execution}
 
-The verifier does not receive complete committed tables.  It receives roots,
-selected values, salts, and compressed path material.  A model that begins
-with full tables can prove a sound polynomial-commitment theorem while
-skipping the parser and authentication problem faced by the program.
+For each verifier stage we use three objects: the Rust computation, its
+functional translation, and a mathematical specification.  Local refinement
+theorems connect the translated function to its specification.  A final
+composition theorem starts from an arbitrary successful top-level call and threads the
+same execution record through every local theorem.
 
-The V5 model therefore starts its Merkle bridge with opened records and the
-literal path stream.  It proves that successful parsing consumes the exact
-stream, reconstructs the supplied root, and returns the exact unused suffix.
-The outer driver must pass that suffix to the next tree and reject a nonempty
-final suffix.  This is what makes omitted, duplicated, reordered, and trailing
-path material visible in the theorem statement.
+This last step is essential.  Existential statements of the form ``some
+accepted transcript has these challenges'' and ``some accepted opening has
+these values'' can both be true while referring to different runs.  The
+same-execution theorem instead proves
+\[
+  \rho\text{ succeeds}
+  \Longrightarrow
+  \bigwedge_k \mathcal P_k(\rho),
+\]
+where each property \(\mathcal P_k\) is projected from the same \(\rho\).
+Intermediate equalities are obtained by reducing the translated code, not by
+adding them to the theorem's hypotheses.
 
-\subsection{Follow one candidate through all four folds}
+\subsection{Begin with proof bytes}
 
-List decoding may produce several candidates.  It is invalid to choose a new
-candidate after seeing each later fold challenge unless the probability
-argument pays for that adaptive choice.  The proof instead chooses one member
-of the initial list and follows its four exact folds.  If this cannot be done,
-the run enters one of four named bad-challenge sets.  The candidate choice and
-the bad sets are functions of the transcript prefix available at that point.
+The chain verifier receives roots, selected values, salts, and compressed
+authentication paths.  It never receives complete committed tables.  The
+formal opening model therefore begins with the literal byte stream.  A
+successful section proof must account for every value, salt, path slot, and
+frontier node, and must return its exact unused suffix.  The five-section
+routine passes those suffixes in order and accepts only an empty final suffix.
 
-This causal form also applies to relation messages.  A prover response may
-depend on earlier challenges, but not on a challenge that the transcript has
-not squeezed.  The finite counting lemmas are stated for such prefix-dependent
-strategies rather than for a fixed polynomial selected before the protocol.
+This makes omissions, duplicate records, wrong tree order, and trailing bytes
+ordinary failed proof obligations.  Starting from a hypothetical full table
+would hide all four cases behind an unproved parser assumption.
 
-\subsection{Keep algebraic and authentication arguments separate}
+\subsection{Preserve causality}
 
-Low-degree agreement does not show that the queried value came from a
-committed table.  Merkle authentication does not show that the authenticated
-values satisfy a low-degree relation.  The Lean development joins these
-claims only through an explicit consumed-value map.  Every FRI and relation
-read has to point to the value part of an accepted record in the five-tree
-forest.
+Every prover message is indexed by the transcript prefix available when the
+message is chosen.  Each bad-challenge set is likewise fixed before its
+challenge is sampled.  This discipline is used in the four-fold extraction,
+the relation repair bound, and the multi-attempt oracle argument.
 
-The same separation applies to public fields.  Equality of the final relation
-polynomial at sampled points is not enough unless the coefficients were
-formed from all nineteen lanes in the production order and those lanes bind
-the public statement.  The four coefficient folds, four verifier-weight
-folds, and public-field rows are consequently proved as separate identities.
+The same rule applies at byte level.  The transcript model records absorbs,
+squeezes, and work checks as distinct operations.  The nonce is checked
+against the pre-absorb state, then absorbed, and only then may the next
+challenge be produced.  Exact order is part of the theorem rather than a
+comment on the implementation.
 
-\subsection{Do not assume a compressing hash is injective}
+\subsection{Join authentication and algebra explicitly}
 
-SHA-256 and Poseidon2 map larger input spaces to smaller output spaces.  A
-theorem cannot use global injectivity for either function.  Deterministic
-binding statements are instead phrased as a case split: equal outputs come
-from equal reached inputs, or the execution supplies a concrete collision or
-second-preimage witness.  Probability enters only when an external assumption
-bounds that event.
+Merkle authentication proves that a value belongs to a commitment.
+Low-degree testing proves an algebraic property of queried values.  Neither
+fact implies the other.  A consumed-value map connects them by proving that
+each value read by the fold and relation code is the value returned by the
+corresponding authenticated opening in the same run.
 
-Merkle trees need an additional positional condition.  Two different paths
-to one root expose a node collision when their leaves occupy the same
-position.  Paths with different direction bits can describe different leaves
-in one valid tree.  The application theorem therefore proves the same-position
-case and keeps alternative positions in the attack model until ownership and
-statement binding rule them out.
+Public-statement binding receives the same treatment.  The relation theorem
+uses nineteen columns in a fixed order, and the public-field rows identify six
+of those values with the spend statement.  Lane batching, relation folding,
+and public binding are separate lemmas joined only at the final theorem.
 
-\subsection{Treat the transcript as bytes and operations}
+\subsection{Extract collision witnesses}
 
-An abstract list of challenges cannot detect a missing root, a swapped salt,
-or a work nonce absorbed at the wrong time.  The transcript model records
-each absorb label and byte payload, each squeeze kind, and each work check.
-The work check is a predicate on the current state and nonce; only after it
-succeeds is the nonce absorbed.  The source-shaped schedule proves the exact
-order and maps every later verifier input back to a named squeeze or decoded
-field.
+SHA-256 and Poseidon2 compress their inputs, so their formal interfaces do not
+assume injectivity.  When two reached inputs have the same output, the proof
+either establishes equality of the inputs or returns the unequal pair as a
+collision witness.  The security experiment can then charge the collision
+event under a concrete primitive assumption.
 
-This deterministic result is still different from a Fiat--Shamir security
-argument.  The latter needs a model of the hash oracle, an adversarial query
-budget, and a theorem connecting the byte transcript to that experiment.
-Digest length and known-answer tests do not provide those facts.
+Merkle paths add a positional condition.  Comparing two different leaves at
+the same position identifies the first unequal ordered node inputs with one
+equal parent.  Paths at different positions remain separate cases in the
+theft game.
 
-\subsection{Use one probability space and one ledger}
+\subsection{Keep probability units visible}
 
-Combining bounds from separate informal experiments can hide a conditioning
-change.  The final soundness theorem uses one finite law and one accepted-false
-event.  Every failure is a set in that same sample space.  The nineteen-entry
-ledger has a proved order, no duplicates, and a proved union equality with the
-older detailed ledger.
+Every false-acceptance event lives in one probability space, and the detailed
+ledger has a proved union equality with its grouped form.  This prevents a
+conditioning change from being hidden by prose.  It also forces the analysis
+to distinguish work-normalized probability from the probability of failure
+after the work search has finished.  The factor \(2^{37}\) belongs to one of
+those experiments, not both.
 
-This organization also makes the unit of the probability clear.  The
-work-normalized theorem charges for grinding.  The theft theorem for a
-completed accepted proof uses raw accounting.  A factor of \(2^{37}\) cannot
-be moved between these statements without changing the experiment.
+\subsection{Audit the proof as an artifact}
 
-\subsection{Make source obligations small and exact}
+The replay procedure resolves the dependency closure of the final theorem
+from a clean checkout.  It rejects admitted proofs, unchecked native
+evaluation, and generated files absent from the manifest.  It then compiles
+the closure and prints the final axiom report.  Translation inputs, generated
+code, build tools, deployed bytes, proof bytes, and transaction records are
+checked by separate manifests.
 
-``The Rust verifier implements the model'' is too broad to audit and too easy
-to assume.  The implementation bridge instead names equalities for actual
-functions: the transcript driver, one Merkle-section helper, the five-section
-Merkle caller, the relation caller, the spend transition, and the close path.
-Focused Charon/Aeneas output is used for arithmetic, parsing, and buffer
-helpers that fit its supported Rust subset~\cite{HoEtAl2025Charon,HoProtzenko2022Aeneas}.
+This produces four kinds of evidence with different meanings:
 
-When an enclosing Solana function cannot yet be translated, the source-shaped
-Lean theorem is still useful, but its final Rust equality remains in the
-public status table.  Renaming that premise as an ``accepted execution
-connection'' would not prove it.  Tests supply concrete counterexample
-coverage and byte traces; they do not replace the universal equality.
-
-\subsection{Separate proof, evidence, and trust}
-
-The project records a source commit, pinned build inputs, binary hash, proof
-hash, statement hash, transaction, and before/after state.  These records
-answer whether one archived program and proof can be identified and replayed.
-They do not show that all accepted inputs satisfy the mathematical relation.
-
-Conversely, a Lean theorem can quantify over every modeled input while
-depending on the correctness of Lean, mathlib, a cited decoding theorem, and
-cryptographic assumptions.  Neither kind of evidence subsumes the other.
-The final report therefore uses four labels:
-\begin{description}[leftmargin=0.20\textwidth,style=nextline]
-  \item[Checked in Lean] A theorem with the displayed hypotheses has been
-        accepted by the stated Lean environment.
-  \item[Conditional] The conclusion is proved once named mathematical,
-        source, primitive, or runtime premises are supplied.
-  \item[Tested or recorded] A finite collection of executions, hashes, or
-        chain observations agrees with the stated result.
-  \item[Assumed] No proof in the current repository supplies the claim.
+\begin{description}[leftmargin=0.23\textwidth,style=nextline]
+  \item[Machine-checked theorem] Lean accepts a statement under its displayed
+        hypotheses.
+  \item[Conditional reduction] The conclusion follows when a published
+        mathematical or cryptographic assumption is supplied.
+  \item[Deterministic identity] Recorded source, generated code, or program
+        bytes match by replay and hash.
+  \item[Execution record] One archived transaction exhibits the stated input,
+        cost, and state change.
 \end{description}
 
-The main theorem is therefore reported together with its experiment,
-decomposition, source locations, and trusted base.  The implementation and
-chain connections are stated separately and are not inferred from the
-mathematical proof.
+The paper combines these forms of evidence without treating one as a
+substitute for another.

@@ -1,195 +1,113 @@
 # Security
 
-Please report vulnerabilities through GitHub's private security-advisory
+Report sensitive vulnerabilities through GitHub's private security-advisory
 workflow for this repository. Include the affected commit, a minimal
-reproducer, and the expected impact.
+reproducer, and the expected impact. Public issues are appropriate for
+non-sensitive correctness or reproducibility findings.
 
-The supported research surface is the current `main` branch. Public issue
-reports are appropriate for non-sensitive correctness or reproducibility
-problems.
+The supported research surface is the current `main` branch and the frozen V5
+release artifacts named below.
 
-## How to read the security case
+## Security result
 
-Aspis separates four kinds of evidence rather than presenting them as one
-unqualified proof of Solana itself:
+Aspis V5 has an end-to-end Lean proof of its selected accepting verifier
+callback. From any successful call to the translated deployed path, the
+theorem derives
+the exact parse, Fiat-Shamir challenges, six work checks, 18 distinct queries,
+five authenticated opening sections, four FRI folds, final polynomial, 76
+decoded claims, 58-field relation tail, and both terminal accumulators. The
+clean Lean 4.32 replay passed on 24 August 2026 over 331 tracked modules.
 
-1. Lean checks the maintained mathematical construction and concrete release
-   calculations, subject to the named cryptographic interfaces.
-2. Charon/Aeneas bridge proofs connect selected production V5 Rust paths to
-   those models.
-3. Reproducible-build records connect the reviewed source and pinned tools to
-   the exact deployed SBF.
-4. Rejection tests, property tests, runtime replays, exact-wire simulation,
-   and finalized chain receipts test the operational boundaries.
+Lean separately proves a finite false-acceptance decomposition and the release
+arithmetic. The checked work-normalized protocol subtotal is at most
+`0.7 * 2^-100`. A total external budget of at most `0.3 * 2^-100` yields the
+conditional `2^-100` endpoint. The dominant raw term after completing the
+37-bit grind is about 70--71 bits and is reported separately.
 
-Each layer answers a different question; evidence in one layer does not erase
-an assumption at the boundary to the next.
+The completed theorem covers the selected accepted proof-checker callback.
+The security interpretation uses named interfaces for published decoding and
+Fiat-Shamir results, SHA-256 and Poseidon2 security, extraction, translation,
+compilation, and Solana runtime behavior. The remaining formal composition
+work connects Rust public-statement fields to the abstract theft game and
+lifts the deterministic accepted-call result into the work-normalized
+probability experiment. See the [assumptions ledger](docs/assumptions-ledger.md).
 
-The current accepted-path proof chain starts with one successful translated call
-to the released proof checker. From that same call it derives the parse,
-transcript challenges, six work checks, 18 distinct queries, five
-authenticated opening sections, FRI checks, final polynomial, exact decoded
-claim table, initial relation value, and decoded four-round relation tail.
-These values cannot be chosen from different runs. The accepted general
-accumulator's four initial components, eight additions, twelve-component
-schedule, fold traversal, terminal weights, and dot implementation are derived
-from that execution. The compact constructor, four folds, final assembly, and
-dot are derived internally as well. The final clean replay passed on 24 August 2026, so one
-successful selected translated verifier call therefore yields the maintained
-accepted-path security-event conclusion without a caller-supplied accumulator
-equality.
+## Evidence layers
 
-This is deliberately narrower than verification of the whole program. The
-surrounding account wrapper, compiler, Solana runtime, and persistent state
-transition retain their own stated boundaries. SHA-256 and Poseidon2
-implementation and security properties, the cited decoding and Fiat--Shamir
-results, and the numerical bounds assigned to external failure events are
-also explicit assumptions rather than Lean conclusions.
+| Layer | Security evidence |
+| --- | --- |
+| Mathematical construction | Lean proofs of the spend relation, circle domains, four-fold FRI argument, query sampler, failure ledger, hiding reductions, theft reductions, and marker-state model |
+| Selected deployed verifier | Charon/Aeneas translations and bridge proofs composed into the accepted-call theorem |
+| Compiled program | Pinned clean build inputs reproduce the exact 1,258,496-byte SBF |
+| Runtime behavior | Rejection tests, 122,880 bounded property-test cases, runtime replays, exact signed-wire simulation, and finalized receipts |
+| Historical identity | Full RPC archive reconstructs the 75,358-byte proof and deployed SBF from finalized transaction history |
 
-## Security evidence
+The main publication theorem is
+`AspisV5AcceptedOneRunDeterministicFinal.accepted_composite_security_conclusion_for_any_terminal_evaluator`.
+The exact proof map and replay command are in
+[formal verification](docs/formal-verification.md).
 
-Aspis combines several forms of evidence:
+## Primitive security
 
-- Lean proofs check substantial parts of the mathematical construction and
-  the concrete calculations used by the release.
-- Charon, Aeneas, and additional Lean proofs connect selected production Rust
-  to the maintained mathematical models.
-- Automated tests exercise the transaction, rejected proofs, and malicious
-  account and state arrangements. The latest bounded
-  [pre-mainnet property-test run](results/fuzz/v5-pre-mainnet-proptest-20260724.md)
-  records 122,880 generated cases plus the targeted V5-verifier and state-mutation
-  tests.
-- The recorded source and pinned tools reproduce the exact compiled Solana
-  program.
-- Release records preserve the finalized q18/g37 and V5 mainnet results, as
-  well as the V5 devnet and runtime evidence.
-- The [V5 mainnet record](docs/v5-mainnet-demo.md) binds the exact proof,
-  statement, program, observed nullifier bump 255, exact-wire simulation,
-  landed compute use, and finalized cleanup/refund transactions.
-- `programs/aspis-verifier/tests/v5_mainnet_release_proof.rs` reruns the exact
-  archived proof and statement through the released verifier callback and
-  confirms that changing any public field causes rejection.
-- The [full payer RPC archive](release/aspis-v5-tag67-mainnet-rpc-archive-v1/)
-  reconstructs that proof from 79 finalized uploads and the exact SBF from
-  1,466 finalized loader writes, then compares both with the released files.
-- Independent rank checkers reproduce the eight hiding-rank claims.
+SHA-256 is used for the transcript, proof-of-work checks, and authenticated
+opening trees. Lean specifies the byte framing and records collision,
+target-preimage, callback-divergence, and random-oracle events separately.
 
-The current mathematical review found no concrete forgery or broken finite
-calculation. The earlier batching argument has been repaired: the proof now
-handles a challenge-dependent decoder family without multiplying by the
-240-candidate list cap, and it follows one initial candidate through all four
-folds. Lean also checks the exact released circle-code parameters and the side
-conditions needed by the cited decoding result.
+Poseidon2 over Mersenne31 is used for owner, note, nullifier, and relation
+hashing with width 16, `alpha = 5`, 8 full rounds, and 14 partial rounds.
+Constants, round execution, and typed wrappers are pinned and tested. Recent
+algebraic cryptanalysis improves attacks on Poseidon2 but reports no break of
+the Aspis tuple; because no dedicated concrete advantage is published for
+that exact tuple, the release keeps its collision and target-preimage bounds
+symbolic.
 
-The dominant raw batching event is about 71 bits after a grind has completed.
-Charging the attacker for the released 37-bit grind gives a checked core below
-`0.7 * 2^-100`. The release target is therefore 100 bits of work-normalized
-attack cost, not 128 bits and not a raw `2^-100` probability per completed
-proof. The remaining external events must together fit the reserved
-`0.3 * 2^-100` budget.
+## Theft and state
 
-The final deterministic theorem connects the selected accepted proof-checker
-path to the maintained security-event conclusion. Its clean tracked replay
-passed on 24 August 2026.
-Its main and compact accumulator equalities are proved inside the theorem.
-The stronger form works for any terminal evaluator and installs the released
-FRI tables internally. What remains outside that source theorem is the
-SHA-256 callback and primitive security, Poseidon2 security, published
-decoding/PCS/FRI/Fiat--Shamir applicability, fresh prover randomness,
-extraction, translation and compilation, the surrounding Solana account/state
-code and runtime, and concrete probability bounds for the named external
-events. The deterministic classification also has not yet been lifted into
-the probability experiment used by the conditional 100-bit theorem.
+The fixed-victim proof separates eight cases: extractor failure, credential
+recovery, a second nullifier preimage, a second note opening, a Merkle
+collision at the victim's position, marker-address behavior, runtime/state
+failure, and invalid setup. `ApplicationMerkleBinding.lean` reduces a changed
+leaf at the same position and root to a node-hash collision.
 
-The translated Rust checks consistency between its live statement and
-statement digest. A field-by-field theorem identifying that Rust statement
-with the abstract public statement used by the mathematical false-acceptance
-and theft models is still missing. Until it is supplied, the deterministic
-accepted-path result should not be described as a complete deployed-theft
-theorem.
+`V5NullifierMarkerReplay.lean` proves that a marker address cannot be consumed
+successfully twice in the maintained sequential state model, including the
+case where two distinct nullifiers derive the same address. The deployed
+interpretation uses Solana's recorded locking, rollback, address-derivation,
+and persistence behavior.
 
-Consequently the repository reports a checked 100-bit
-work-normalized **protocol subtotal**, not an unconditional 100-bit deployed
-theft-resistance number. See the [formal-verification overview](docs/formal-verification.md)
-and [dated mathematical review](docs/reviews/mathematical-status-20260814.md).
+## Release identities
 
-`V5AcceptedSpendRelation.lean` proves that the extracted arithmetic,
-Poseidon2, Merkle, and public-input equations imply the complete spend
-relation. The accepted-path chain supplies the verifier-side parse,
-transcript, opening, FRI, claims, initial relation value, and relation tail
-from one translated execution. The final theorem derives both the main and
-compact accumulator equalities and uses them to reach the maintained
-accepted-path security-event conclusion. Its clean tracked replay passed on
-24 August 2026.
-`V5FixedVictimTheftGame.lean` separately classifies a fixed-victim attack into
-eight mathematical and chain-level failures for the attack event defined in
-the Lean model. These results do not prove that an extractor recovers a valid
-witness from every observed accepted proof, or supply numerical Poseidon2 and
-runtime bounds. The marker-state model proves that two sequential successful
-marker writes cannot share an address. Connecting the surrounding Rust and
-Solana state transition to that model, and using it to remove the PDA-alias
-case from the theft game, remains open.
+- Program: `7Q2nGsPg8rbjdxKHK4jxTgEWLTyd9o1X4KMSjCieRmue`
+- SBF SHA-256:
+  `4cf3c1d5ddd47efa68875c0070247e007083c5c9bb2d5988db0d644a609edf40`
+- Finalized V5 transaction:
+  `EJviPgF12i9iK2CveVaQSMeFQqDMFPQ1iPRUYEwNQE3zGquTUZNJXPZEENorcQtsnQj1orFmH1TPsgdbR3vJ2fE`
+- Finalized slot: `435019536`
+- Landed compute: `1,334,452` CU
 
-The project has not yet received an external security audit or published a
-coverage-guided fuzzing campaign.
+The exact archived proof passes the released verifier callback. Mutating any
+of its nine public fields causes rejection. The proof, statement, state
+transition, cleanup, and refunds are preserved in the
+[V5 mainnet bundle](release/aspis-v5-tag67-mainnet-v1/). The
+[full payer RPC archive](release/aspis-v5-tag67-mainnet-rpc-archive-v1/)
+reconstructs the closed proof and program accounts offline.
 
-The assumptions and unproved links are listed on the
-[`assumptions page`](docs/assumptions-ledger.md).
+## Highest-value review targets
 
-For a Solana review, start with the V5 dispatch and all-or-nothing state
-update in
-`programs/aspis-verifier/src/{dispatch,v5_full_transaction}.rs`, then the
-mainnet CU policy and runtime analysis in
-[`release/preflight/v5-production-freeze.md`](release/preflight/v5-production-freeze.md).
+1. Applicability of the cited circle-decoding and BCS Fiat-Shamir results to
+   the exact V5 schedule.
+2. Dedicated cryptanalysis of the Poseidon2-M31 parameter tuple and typed
+   hash modes.
+3. The field-by-field Rust public-statement bridge and the
+   deterministic-to-probability composition.
+4. The pinned Charon/Aeneas translation and clean accepted-path replay.
+5. Deployed Rust surrounding the selected proof-checker callback, especially
+   account parsing, writable-state checks, marker creation, and refund paths.
+6. Rust/LLVM/SBF source-to-binary correspondence.
+7. Solana account locking, rollback, persistent marker state, and runtime
+   repricing.
 
-## Most valuable areas for outside review
-
-The highest-value external work is to attack the boundaries between the four
-layers, rather than merely rerunning already-green checks:
-
-1. Whether the listed failure cases cover every way a false proof could be
-   accepted, and whether the cited coding and Fiat--Shamir results apply with
-   the exact hypotheses recorded by the release. Lean checks the released
-   field, code dimensions, distances, degree limits, query schedule, and
-   finite arithmetic; an outside review should challenge the imported
-   cryptographic theorems and the probability assigned to every external
-   event.
-2. The custom Poseidon2-M31 primitive used for commitments, nullifiers, and
-   Merkle compression, including its cryptographic security and universal
-   all-input Rust equality. Constants and known-answer executions are pinned;
-   those checks are not a primitive-security proof. `TheftResistance.lean`
-   and `V5TheftResistance.lean` use fixed-target second-preimage events.
-   `ApplicationMerkleBinding.lean` proves that a different leaf at the
-   victim's exact tree position and root exposes a node-hash collision.
-   `V5FixedVictimTheftGame.lean` separates extraction failure, credential
-   recovery, nullifier collision, note-opening collision, Merkle collision,
-   PDA aliasing, runtime/state failure, and invalid victim setup, and proves
-   their eight-term union bound. `V5NullifierMarkerReplay.lean` then shows that
-   two sequential successful marker consumptions cannot share an address. The
-   extractor receives a complete prover execution record, not public proof
-   bytes alone. The deployed connection, extraction after observed proofs,
-   target sampling, concrete Poseidon2 bounds, PDA-alias game reduction, and
-   exact Rust/Solana state behavior remain outside the proof.
-3. The trusted boundary around Charon, Aeneas, Lean, the Rust/LLVM/SBF
-   toolchain, and the production SHA-256 callback. These tools and primitive
-   semantics are pinned and replayed, not themselves proved by the final
-   theorem.
-4. Production Rust outside the selected accepted proof-checker path,
-   especially the outer account parser, atomic state wrapper, serializers,
-   and paths not exercised by the released spend.
-5. Solana account validation and aliasing, proof-account and marker state
-   mutation, ordered all-or-nothing updates, refund and cleanup behavior, and
-   the host executor's signer and recovery dependency surface.
-6. Runtime repricing and compute sensitivity for the frozen V5 program on
-   future Solana runtime families.
-
-Poseidon2 constants, domain separation, and wrapper outputs are pinned by CI
-and known-answer tests. Its cryptographic security remains an explicit
-primitive assumption.
-
-The historical q18/g37 review is
-[`docs/reviews/prepublication-security-review.md`](docs/reviews/prepublication-security-review.md).
-The current V5 release gate is
-[`release/preflight/v5-production-freeze.md`](release/preflight/v5-production-freeze.md).
-The finalized V5 execution and pinned refund accounting are
-[`docs/v5-mainnet-demo.md`](docs/v5-mainnet-demo.md).
+For Solana review, begin with
+`programs/aspis-verifier/src/{dispatch,v5_full_transaction}.rs` and the
+[V5 release preflight](release/preflight/v5-production-freeze.md). For the
+formal path, begin with the [15-stop source map](docs/v5-accepted-source-map.md).

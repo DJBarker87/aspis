@@ -1,204 +1,108 @@
-\section{From false acceptance to theft}
+\section{Theft resistance and state}
 \label{sec:theft-state}
 
-A false-acceptance theorem is necessary for theft resistance, but it is not
-the whole claim.  Theft also depends on how a victim note is chosen, what the
-attacker may observe before acting, how note and nullifier hashes are used,
-and whether the chain records a successful spend exactly once.  The Lean
-development treats these questions separately.
+Soundness concerns false statements.  Theft resistance adds a target: a live
+note owned by someone else.  It also depends on what the attacker observes,
+how hash collisions are classified, and whether a successful nullifier remains
+spent on chain.  We formalize these questions in two games and an explicit
+state machine.
 
-\subsection{A fixed victim}
+\subsection{Fixed-victim game}
 
-The simplest game fixes one live note, its depth-20 position, and its Merkle
-siblings before the attacker acts.  The target contains a valid opening
-\((k_\nu,r_{\mathrm{in}},v_{\mathrm{in}},a)\).  Its public note commitment,
-anchor, and nullifier are computed with the deployed owner, note, nullifier,
-and node functions.
+The first game fixes a live note, its tree position, and its depth-twenty path
+before the attack.  The target includes a valid private opening.  Its public
+commitment, root, and nullifier are computed with the same functions used by
+the spend relation.
 
-The event \code{FixedVictimAttackEvent} covers two ways of targeting that
-note.  An accepted proof either uses the victim's nullifier, or it presents a
-leaf at the victim's exact position under the victim anchor.  This definition
-also includes the honest owner.  In a security game, an honest opening is
-therefore classified as credential recovery rather than silently excluded.
-
-Lean proves the following complete case split.
+An accepted proof targets this note if it either publishes the victim's
+nullifier or opens a leaf at the victim's exact position under the victim's
+root.  The following case split is proved in Lean.
 
 \begin{theorem}[Fixed-victim classification]
 \label{thm:fixed-victim}
-Every accepted fixed-victim attack implies at least one of:
+Every accepted attack on the fixed victim yields at least one of the following:
 \begin{enumerate}[leftmargin=*]
-  \item extraction failed to produce a witness satisfying the spend relation;
-  \item the extracted witness contains the victim's secret and nullifier
-        randomness;
-  \item a different secret/randomness pair has the victim's nullifier;
-  \item a different valid note opening has the victim's input commitment; or
-  \item a different leaf at the victim's exact tree position reaches the
-        victim anchor.
+  \item extraction fails to produce a valid spend witness;
+  \item the extracted witness contains the victim's secret credential and
+        nullifier randomness;
+  \item a different secret opening produces the victim's nullifier;
+  \item a different valid note opening produces the victim's commitment; or
+  \item a different leaf at the same tree position produces the victim's
+        root.
 \end{enumerate}
-In the last case, the two paths expose distinct ordered node inputs with the
-same node-hash output at some level.
+In the fifth case, the two paths expose distinct ordered inputs to one
+Merkle-node hash with the same output.
 \end{theorem}
 
-The pointwise result is
-\code{fixed_victim_attack_implies_mathematical_failure}.  Its set form is
-\code{fixed_victim_attack_subset_mathematical_failures}, and
-\code{fixed_victim_attack_measure_le_five_failures} gives the corresponding
-union bound.  None of these theorems assigns a numerical probability to key
-recovery or to a Poseidon2 collision or second preimage.
+The same-position condition is necessary.  Two direction-bit sequences can
+name two legitimate leaves of one tree, so equality of their roots alone is
+not a collision witness for a single node call.  Fixing the position lets the
+proof compare the paths from the leaves upward and identify the first unequal
+node inputs with an equal parent.
 
-The position condition matters.  A different direction-bit sequence denotes
-a different Merkle position.  Equality of two roots reached at different
-positions is not, by itself, a collision witness for one node call.  The
-reduction therefore requires the same position before it derives a concrete
-node collision.  This avoids an invalid global injectivity assumption for a
-compressing hash.
+\subsection{Adaptive public history}
 
-\subsection{First fraudulent spend after public observations}
+The second game gives the attacker an arbitrary finite ordered history of
+public proof records.  After seeing its public projection, the attacker
+chooses a spend attempt as a function of the whole observed prefix.  Success
+is the first fraudulent spend selected by this experiment.
 
-A fixed victim does not cover an attacker who first observes other proofs.
-The module \code{V5AdaptiveObservedTheftGame} models an arbitrary finite,
-ordered history of public proof records.  The attacker sees the public
-projection of that history, chooses a spend attempt, and may depend on the
-entire observed prefix.  The success event is the first fraudulent spend
-selected in this experiment.
+Lean lifts \cref{thm:fixed-victim} to this setting with a history-dependent
+extractor.  It retains a separate event for an invalid or ambiguous victim
+setup, then maps the remaining cases into the false-acceptance, credential,
+hash, state, and runtime events of \cref{sec:soundness}.  The result applies to
+finite histories; a system that admits several final attack attempts must
+include their number in its experiment or use a suitable state-restoration
+bound.
 
-The theorem
-\code{adaptive_first_fraudulent_spend_implies_mathematical_failure} repeats
-the five-way classification with a history-dependent extractor.  Theorems
-\code{adaptive_first_fraudulent_spend_subset_total_final_failure} and
-\code{deployed_adaptive_first_fraudulent_spend_subset_final_or_setup} connect
-that classification to the final failure ledger and retain a separate event
-for an invalid or ambiguous victim setup.
-
-This is a finite-history theorem, not an unlimited-attempt guarantee.  If a
-caller permits several final attack attempts, it must bound their number or
-prove an appropriate state-restoration statement.  It must also show that the
-soundness and extraction premises hold for the distribution induced by the
-observed history.
-
-\subsection{Raw theft accounting}
-
-For a submitted accepted proof, the attacker has already completed the work
-search.  The raw accounting must therefore omit the 37-bit normalization used
-in the budget theorem of \cref{thm:conditional-soundness}.  Lean proves the
-conditional inequality
-\begin{equation}
-  \Prob[\text{first fraudulent spend}]
-  \leq 2^{-75}+B_{\mathrm{external}}+
-    \Prob[\text{invalid victim setup}]
-  \label{eq:raw-theft-75}
-\end{equation}
-as
-\code{deployed_adaptive_first_fraudulent_spend_probability_le_two_pow_neg_75}.
-The external budget in this theorem is a premise; it includes production,
-primitive, credential, and runtime terms rather than proving them small.
-
-A later width-19 theorem substitutes checked arithmetic for the raw batching
-term.  Its conclusion has the form
+For an accepted submitted proof, the work search has already happened.  The
+raw accounting therefore omits the 37-bit normalization.  Its refined form is
 \begin{align}
   \Prob[\text{first fraudulent spend}] \leq {}& 2^{-70}
-    + B_{\mathrm{nonterminal\ statement}}
-    + \Prob[\text{hash/Merkle residual}] \notag\\
-    &+ B_{\mathrm{crypto}}+B_{\mathrm{credential}}
-    +B_{\mathrm{runtime}}+\Prob[\text{invalid victim setup}].
+    +B_{\mathrm{statement}}+\Prob[\text{hash or Merkle residual}] \notag\\
+    &+B_{\mathrm{primitive}}+B_{\mathrm{credential}}
+    +B_{\mathrm{runtime}}+\Prob[\text{invalid setup}].
   \label{eq:raw-theft-70}
 \end{align}
-The exact theorem is
-\code{deployed_qm31_adaptive_theft_probability_le_two_pow_neg_70_plus_remaining}.
-It is an accounting result with visible remaining terms.  It is not a
-numerical deployed theft bound.
+Lean checks the reduction and the explicit \(2^{-70}\) arithmetic.  The other
+terms remain visible so that the formula cannot be mistaken for a closed
+numerical theft bound.
 
-\subsection{Spent-marker transition}
+\subsection{Nullifier-controlled transition}
 
-The source-shaped state model distinguishes account validation, proof
-acceptance, a recheck of mutable pool state, spent-marker creation, and the
-pool-root update.  A successful transition requires five accounts in the
-specified roles, the expected program owners and writable flags, the expected
-derived marker address, derivation bump 255, a usable marker account, and the
-current pool anchor and sequence number.
+The modeled spend transition performs five groups of checks:
 
-The model represents two permitted pre-spend marker states.  A fresh
-system-owned empty account may be prepared for the marker, and an already
-prepared empty program-owned marker may be written.  A marker that already
-contains a spent record is rejected.  On success, the transition records the
-nullifier, writes the new pool anchor, and increments the sequence number.
+\begin{enumerate}[leftmargin=*]
+  \item the five supplied accounts have the required keys, owners, and
+        writable flags;
+  \item the pool root and sequence match the public statement;
+  \item the nullifier maps to the supplied marker address;
+  \item the marker account is fresh or prepared but empty; and
+  \item the proof checker has accepted the same public statement.
+\end{enumerate}
 
-The principal results are:
-\begin{itemize}[leftmargin=*]
-  \item \code{v5_source_success_implies_requirements}: every modeled success
-        satisfies all account, address, bump, proof, marker, and mutable-state
-        checks;
-  \item \code{v5_source_success_exact_state}: the returned state is exactly
-        the modeled marker and pool update;
-  \item \code{v5_source_rejects_preexisting_marker}: an existing marker
-        cannot be overwritten;
-  \item \code{v5_source_success_exact_trace}: a successful trace ends with
-        the mutable-state recheck, marker write, and pool write; and
-  \item \code{no_sequential_success_for_the_same_nullifier}: two modeled
-        sequential successes cannot use the same nullifier.
-\end{itemize}
+On success, the transition writes the nullifier into the marker, replaces the
+pool root, and increments the sequence.  Lean proves the exact resulting
+state, rejection of an occupied marker, and the impossibility of two
+sequential modeled successes with the same nullifier.  Even if two different
+nullifiers map to the same marker address, the first occupied account prevents
+the second transition from overwriting it.
 
-The address case is slightly stronger than a replay-only statement.  If two
-different nullifiers derive to the same marker address, the first marker still
-occupies the account and the second transition cannot overwrite it.  Such an
-address alias remains a named failure in the full reduction because the
-connection between production address derivation and the abstract model is a
-separate assumption.
+The marker prevents replay after a committed spend.  The extraction and theft
+games handle the separate question of whether the first spend was authorized.
 
-The marker prevents a second successful spend after the first has committed.
-It cannot prevent the first successful spend from being fraudulent.  That is
-why extraction, credentials, hash binding, and the first-fraudulent-spend
-game remain necessary.
+\subsection{Cleanup, rollback, and finality}
 
-\subsection{Close, refund, rollback, and finality}
+The proof account may be closed in a later transaction.  The cleanup model
+checks the proof and refund accounts, transfers the full retained balance to
+the supplied refund account, invalidates the proof account, and leaves the
+pool and marker unchanged.  A trace theorem places the spend writes before
+this later refund.
 
-Proof-account closing is modeled as a later transaction.  The close path
-checks the proof and refund account owners, signer and writable flags,
-distinct addresses, an open proof account, and a positive balance.  On
-success it invalidates the proof account, credits the entire modeled proof
-balance to the supplied refund account, and leaves the pool and marker state
-unchanged.  This is proved by
-\code{close_success_refunds_exact_recipient_and_preserves_spend}.
-The ordering theorem
-\code{v5_then_close_trace_has_state_writes_before_refund} places the committed
-marker and pool writes before the later proof invalidation and refund.
-
-The equation \code{rejected_outcome_rolls_back_in_model} is true by the
-definition of the abstract visible-state projection.  It does not prove
-Solana rollback.  Likewise, the Lean transition does not prove account locks,
-system-program behavior, or persistence at finalized commitment.  These are
-fields of \code{ProductionRuntimePremises}; their negations appear as named
-events in the final ledger.
-
-At the source boundary, \code{ExactCurrentRustStateEquality} and
-\code{ExactRustCloseEquality} remain the exact equalities needed to transfer
-the source-shaped transition theorems to all successful production runs.
-Recorded mainnet state supports these equalities for one execution, but one
-execution is not their universal proof.
-
-\begin{table}[t]
-\centering
-\small
-\caption{Theft and state results.}
-\label{tab:theft-state-anchors}
-\begin{tabularx}{\textwidth}{@{}YY@{}}
-\toprule
-Purpose & Lean theorem or definition \\
-\midrule
-Five-way fixed-victim split &
-\code{fixed_victim_attack_implies_mathematical_failure} \\
-Eight-term chain-level union bound &
-\code{deployed_attack_measure_le_eight_failures} \\
-Observed-history classification &
-\code{adaptive_first_fraudulent_spend_implies_mathematical_failure} \\
-Raw 75-bit conditional accounting &
-\code{deployed_adaptive_first_fraudulent_spend_probability_le_two_pow_neg_75} \\
-Width-19 raw conditional accounting &
-\code{deployed_qm31_adaptive_theft_probability_le_two_pow_neg_70_plus_remaining} \\
-Exact modeled spend state & \code{v5_source_success_exact_state} \\
-Existing marker rejection & \code{v5_source_rejects_preexisting_marker} \\
-Close and refund behavior &
-\code{close_success_refunds_exact_recipient_and_preserves_spend} \\
-\bottomrule
-\end{tabularx}
-\end{table}
+Rollback is exact in the abstract state machine: a rejected instruction has
+the original visible state.  Applying this result to Solana uses the runtime
+premises for writable-account locking, system-program behavior, transaction
+rollback, committed marker persistence, and finalized observation.  The
+recorded transaction in \cref{sec:evaluation} supplies a concrete execution
+of the success and cleanup paths; the universal claims remain at the formal
+interfaces listed in \cref{sec:limitations}.

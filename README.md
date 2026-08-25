@@ -2,366 +2,223 @@
 
 [![Spend integration](https://github.com/DJBarker87/aspis/actions/workflows/spend-integration.yml/badge.svg)](https://github.com/DJBarker87/aspis/actions/workflows/spend-integration.yml)
 
-Aspis is a research implementation of a private spend on Solana. A user proves
-that a private record can be spent under the pool's rules without publishing
-the record, owner secret, value, or Merkle path. The program verifies the
-proof, advances the pool, and records the public nullifier as spent atomically:
-every check and write succeeds together, or none of them do. The proof system does
-not require a trusted setup ceremony.
+Aspis is a transparent private-spend verifier for Solana with an end-to-end
+formal proof of its selected accepting V5 verifier path. For every successful
+call through the Charon/Aeneas translation of the deployed Rust callback, Lean
+derives the exact parse, transcript, proof-of-work checks, query schedule,
+authenticated openings, FRI execution, relation execution, and both terminal
+accumulators used to reach the maintained security-event conclusion.
 
-The result is more than one transaction. The repository connects the
-mathematical construction to Lean proofs, selected production Rust, a
-byte-reproducible Solana program, and finalized mainnet evidence.
+The same V5 source was compiled reproducibly to a 1,258,496-byte Solana SBF
+program. A finalized mainnet-beta transaction ran the complete deployed
+verifier over a 75,358-byte proof, advanced the pool, and recorded the public
+nullifier as spent in 1,334,452 compute units.
 
-## From mathematics to mainnet
+## End-to-end accepted-path verification
+
+The publication theorem is
+`AspisV5AcceptedOneRunDeterministicFinal.accepted_composite_security_conclusion_for_any_terminal_evaluator`.
+Its clean Lean 4.32 replay passed on 24 August 2026 over all 331 tracked modules
+in the accepted-path closure.
+
+From any successful translated call to
+`verify_mode9_composite_with_live_statement`, the proof derives:
+
+- the parsed proof body and live public statement;
+- every Fiat-Shamir challenge and all six ordered work checks;
+- the exact 18 distinct query positions;
+- all five Merkle-authenticated opening sections and the values consumed from
+  them;
+- the four FRI folds, coordinate calculations, and final four-coefficient
+  polynomial;
+- the exact 76 decoded point claims, four prepared claims, and initial
+  relation value;
+- the complete 58-field relation tail and four accepted relation rounds;
+- the twelve-component general accumulator, its terminal weights, and final
+  dot product; and
+- the compact accumulator constructor, four folds, final assembly, and
+  four-term dot product.
+
+Every value comes from the same accepted execution. Neither accumulator
+equality is supplied by the theorem's caller. The final theorem also installs
+the released FRI tables internally and is independent of the opaque terminal
+evaluator's returned value because the authenticated FRI and relation checks
+provide the security evidence used downstream.
+
+The [formal-verification overview](docs/formal-verification.md) gives the
+theorem map, and the [15-stop source map](docs/v5-accepted-source-map.md)
+provides the shortest audit route through the Rust and Lean artifacts.
+
+## Mathematics, source, binary, chain
+
+Aspis publishes four independently checkable evidence layers:
 
 ```mermaid
 flowchart LR
-    D["Private-spend construction<br/>and security statements"]
-    L["Lean 4 models<br/>and checked proofs"]
-    R["Selected production Rust"]
-    A["Charon extraction + Aeneas translation<br/>and Lean bridge proofs"]
+    M["Private-spend construction"]
+    L["Lean mathematical proofs"]
+    R["Selected deployed Rust"]
+    A["Charon + Aeneas translation<br/>and Lean bridge proofs"]
     B["Pinned source and tools<br/>byte-reproducible SBF"]
-    X["Finalized V5 mainnet<br/>transaction and account evidence"]
+    X["Finalized V5 mainnet<br/>execution archive"]
 
-    D --> L
+    M --> L
     L --> A
     R --> A
     R --> B
     B --> X
 ```
 
-| Evidence layer | What is established | Primary record |
+| Layer | Published result | Primary record |
 | --- | --- | --- |
-| Mathematics in Lean | Lean checks substantial parts of the spend rules, finite calculations, algebra, and component-level hiding arguments, subject to the assumptions named in each theorem | [formal-verification overview](docs/formal-verification.md) and [`AspisFormal/`](AspisFormal/) |
-| Selected Rust to Lean | Charon and Aeneas translate selected Rust functions into Lean. The final accepted-path theorem follows one successful translated verifier call through the transcript, work, queries, authenticated openings, FRI execution, relation checks, and both final accumulators. Its clean tracked replay passed on 24 August 2026 | [`aeneas-verif/`](aeneas-verif/) |
-| Source to program bytes | A pinned clean source commit and pinned build tools reproduce the exact 1,258,496-byte V5 SBF | [V5 release preflight](release/preflight/v5-production-freeze.md) and [frozen candidate bundle](release/aspis-v5-tag67-frozen-candidate-v1/) |
-| Program to chain | The deployed SBF identity, proof, statement, exact compute, state transition, and cleanup are preserved in a sanitized offline-verifiable bundle | [V5 mainnet bundle](release/aspis-v5-tag67-mainnet-v1/) |
+| Mathematical model | Lean checks the private-spend relation, exact release arithmetic, circle domains and encoders, coherent four-fold FRI argument, distinct-query sampler, hiding reductions, theft reductions, and spent-marker model | [`AspisFormal/`](AspisFormal/) |
+| Deployed accepted path | Generated Lean plus bridge proofs connect every successful selected Rust verifier execution end to end through both final accumulators | [`aeneas-verif/`](aeneas-verif/) |
+| Source to SBF | Pinned source and build tools reproduce the exact 1,258,496-byte program | [V5 preflight](release/preflight/v5-production-freeze.md) |
+| SBF to mainnet | The archived proof, statement, program bytes, transaction, state change, compute use, and cleanup are offline-verifiable | [V5 mainnet bundle](release/aspis-v5-tag67-mainnet-v1/) |
 
-These layers are complementary. A theorem about a model is not automatically a
-theorem about every Rust instruction, and reproducible program bytes are not a
-proof of their mathematics. Aspis records the links and their boundaries
-instead of collapsing them into one broader claim.
+The formal theorem covers the selected accepted proof-checker callback. Its
+named trust boundary consists of the SHA-256 callback, published decoding and
+Fiat-Shamir results, Poseidon2 and SHA-256 security, Charon/Aeneas and the Lean
+kernel, compilation, and Solana runtime semantics. Two further composition
+theorems would connect the Rust public-statement fields to the abstract theft
+game and lift the deterministic accepted-call classification into the
+work-normalized probability experiment. The
+[assumptions ledger](docs/assumptions-ledger.md) records these interfaces once
+with their supporting evidence.
 
-### Current proof-integration status
+## Security result
 
-The final one-run theorem passed its clean tracked replay on 24 August 2026.
-One successful selected translated call to the released V5
-proof checker deterministically yields the maintained accepted-path
-security-event conclusion. The proof derives the general accumulator's exact
-terminal weights and dot product, and the compact accumulator's constructor,
-four folds, final assembly, and dot product, from that same execution. Those
-equalities are internal results, not assumptions supplied by the theorem's
-caller.
+Lean proves an exact finite failure decomposition and the arithmetic used by
+the V5 release. The release target is **100 bits of work-normalized attack
+cost**:
 
-One model link remains outside that theorem. The translated Rust checks that
-the live statement and its digest agree, but the proof does not yet identify
-each field of that Rust statement with the abstract public-statement object
-used by the mathematical false-acceptance and theft models. That missing link
-does not make the recorded proof arbitrary; it limits the claim that the
-deterministic source theorem is already a fully instantiated deployed-theft
-theorem.
+\[
+  B_{\mathrm{protocol}} \le 0.7\cdot 2^{-100},\qquad
+  B_{\mathrm{external}} \le 0.3\cdot 2^{-100}
+  \Longrightarrow B_{\mathrm{total}} \le 2^{-100}.
+\]
 
-An audit found that the previous handwritten Lean outer wrapper reconstructed
-the compact array from an empty iterator, so its writes were discarded. This
-was a proof-artifact error, not a Rust or deployed-program error. Lean now
-contains both a small counterexample for the old wrapper and a corrected
-wrapper that reconstructs the array from the updated original iterator. An
-extended Aeneas translation of the unchanged Rust function now produces the
-correct iterator handback. The final proof connects that generated caller to
-the fold semantics rather than assuming their equality.
+The external budget covers the explicitly named primitive, Fiat-Shamir,
+extraction, toolchain, and runtime events. For an attacker evaluated only
+after completing the 37-bit grind, the dominant raw term is about 70--71 bits;
+the paper reports that raw figure separately from the work-normalized target.
 
-This deterministic theorem does not supply the cryptographic or platform
-premises needed for an unconditional numerical security claim.
-The stronger wrapper works for any terminal evaluator because later security
-reasoning does not consume that evaluator's value; it also installs the
-released FRI tables internally. The SHA-256 callback and primitive security,
-Poseidon2 security, published decoding, PCS/FRI and Fiat--Shamir
-applicability, extraction, compiler, Solana runtime, and numerical event
-budgets remain explicit. The deterministic classification has not yet been
-lifted into the probability space used by the conditional 100-bit theorem.
-No new transaction is needed because this work checks the already released
-source.
+The recent Poseidon2 algebraic attacks improve prior attack estimates but do
+not publish a break of the Aspis parameter set. Aspis therefore treats
+Poseidon2-M31 width 16, `alpha = 5`, 8 full rounds, and 14 partial rounds as a
+named primitive-security assumption and does not assign it an unsupported
+concrete advantage.
 
 ## Mainnet result
 
-On July 25, 2026 in Europe/Berlin (July 24 UTC), the deployed Aspis program ran
-the complete V5 verifier, accepted the archived 75,358-byte proof, and applied
-the state update on Solana mainnet-beta. The finalized transaction:
+On 25 July 2026 in Europe/Berlin (24 July UTC), the deployed V5 program
+completed proof verification and the atomic state update on Solana
+mainnet-beta:
 
-- executed the entire deployed V5 verifier, which returned acceptance for
-  the 75,358-byte archived proof;
-- advanced the pool state;
-- recorded the public nullifier as spent, so later transactions using that
-  nullifier are rejected; and
-- consumed 1,334,452 of Solana's 1,400,000-unit transaction limit.
+- transaction:
+  [`EJviPgF...R3vJ2fE`](https://explorer.solana.com/tx/EJviPgF12i9iK2CveVaQSMeFQqDMFPQ1iPRUYEwNQE3zGquTUZNJXPZEENorcQtsnQj1orFmH1TPsgdbR3vJ2fE?cluster=mainnet-beta);
+- finalized slot: `435019536`;
+- proof: 75,358 bytes;
+- landed compute: 1,334,452 CU under the 1,400,000-CU network limit;
+- program: `7Q2nGsPg8rbjdxKHK4jxTgEWLTyd9o1X4KMSjCieRmue`;
+- nullifier account: `7Umhkv2Z3E2DksnpivCz2tovtbRoL1uXtnYBAtQBgu8Q`;
+- SBF: 1,258,496 bytes, SHA-256
+  `4cf3c1d5ddd47efa68875c0070247e007083c5c9bb2d5988db0d644a609edf40`.
 
-[View the transaction](https://explorer.solana.com/tx/EJviPgF12i9iK2CveVaQSMeFQqDMFPQ1iPRUYEwNQE3zGquTUZNJXPZEENorcQtsnQj1orFmH1TPsgdbR3vJ2fE?cluster=mainnet-beta)
-· [Check the release](release/aspis-v5-tag67-mainnet-v1/)
-· [See formal coverage](docs/formal-verification.md)
+The proof and program accounts were later closed. The
+[full payer RPC archive](release/aspis-v5-tag67-mainnet-rpc-archive-v1/)
+reconstructs the exact proof from 79 finalized uploads and the exact SBF from
+1,466 finalized loader writes. Both reconstructed byte strings match the
+release bundle. The [V5 mainnet record](docs/v5-mainnet-demo.md) gives the
+complete lifecycle and cleanup receipts.
 
-The exact compiled program is tied to the recorded source and build
-environment. Subject to the clean final replay described above, the
-Charon/Aeneas proof layer connects one successful selected production-verifier
-call to the maintained accepted-path security-event conclusion. Both final
-accumulator equalities are derived inside that proof.
+## Methodology
 
-The archived 75,358-byte proof also passes the released verifier callback in a
-new regression test. The same test changes each of the nine public fields in
-turn and confirms that every changed statement is rejected. This directly
-checks the published proof and statement bytes; it does not replace the
-general cryptographic soundness assumptions described below.
+The verification was built in the same order as the runtime data flow:
 
-Because the proof account and ProgramData were closed after the demonstration,
-the [full payer RPC archive](release/aspis-v5-tag67-mainnet-rpc-archive-v1/)
-now reconstructs the exact proof from all 79 finalized uploads and the exact
-SBF from all 1,466 finalized loader writes. Both reconstructed byte strings
-match the released files. It also derives the full loader-v3 ProgramData image
-and binds the released statement to the finalized V5 verification instruction and pool
-initialization.
+1. Specify the public statement, private witness, transcript bytes, five
+   opening trees, FRI schedule, relation, and state transition in Lean.
+2. Prove the release-specific mathematics, including the linked four-fold
+   candidate argument and finite security ledger.
+3. Extract focused deployed Rust with Charon and translate it with Aeneas.
+4. Prove generated-source bridges for each consumer boundary, always carrying
+   values from one accepted execution.
+5. Compose the bridges into the accepted-call theorem and audit its axiom
+   report.
+6. Reproduce the deployed SBF from pinned source and tools.
+7. Bind the archived program, proof, statement, and finalized state transition
+   with offline-verifiable hashes and receipts.
 
-### Exact technical record
+This organization makes the proof reviewable at the same boundaries where
+data changes representation: Rust bytes, generated Lean values, maintained
+mathematical objects, compiled SBF, and finalized chain state.
 
-| Item | Finalized V5 result |
-| --- | --- |
-| Verify-and-apply transaction | `EJviPgF…R3vJ2fE` |
-| Finalized slot | `435019536` |
-| Exact signed-wire simulation / landed compute | 1,334,452 CU / 1,334,452 CU |
-| Transaction compute limit | 1,356,912 CU |
-| Program | `7Q2nGsPg8rbjdxKHK4jxTgEWLTyd9o1X4KMSjCieRmue` |
-| Nullifier | `7Umhkv2Z3E2DksnpivCz2tovtbRoL1uXtnYBAtQBgu8Q` |
-| Nullifier PDA bump | 255 |
-| SBF | 1,258,496 bytes; SHA-256 `4cf3c1d5ddd47efa68875c0070247e007083c5c9bb2d5988db0d644a609edf40` |
+## Reproduce the result
 
-The recorded pre-execution source selected a nullifier with bump 255 and
-required that value in the mainnet runner so PDA derivation stayed inside the
-measured compute budget. The immutable lifecycle evidence records the landed
-bump and transaction but does not pin the exact runner commit used. The exact
-deployed program derived the PDA from the nullifier and required the supplied
-account to match it, but it did not itself require the numeric bump to be 255.
-That in-program restriction was added later. This distinction affects the
-compute policy, not the validity of the landed proof or the rejection of a
-second use of the same nullifier.
+### Mathematical development
 
-The exact mainnet wire simulated and landed at the same compute value, leaving
-22,460 CU below its transaction limit and 65,548 CU below Solana's maximum.
-After finality, three separate cleanup transactions closed the retained proof
-account and ProgramData, then swept the payer. The pinned refund recipient
-`Dni6HwfsjJ3sQFTEtKVGL6RgE7zAXnKA7K8MLBBm2RZp` received
-10,980,894,882 lamports in total, and the payer ended at zero. The
-[V5 mainnet record](docs/v5-mainnet-demo.md) preserves the deployment,
-execution, cleanup, and refund receipts.
-
-## What has been formally checked
-
-Aspis has two connected proof layers. [`AspisFormal/`](AspisFormal/) contains
-the mathematical development. Charon, Aeneas, and further Lean proofs connect
-the selected accepting production verifier path to those models.
-
-For the released V5 proof callback, the checked source chain starts from one
-successful translated verifier execution. It currently derives, from that
-same run:
-
-- the parsed proof and public statement values;
-- the transcript challenges and all six work checks;
-- the exact ordered set of 18 query positions;
-- the five authenticated opening sections and the values read from them;
-- the four FRI folds and final four-coefficient polynomial; and
-- the exact 76 decoded point claims, their four prepared claims, and the
-  resulting initial relation value; and
-- the complete 58-field decoded relation tail and four accepted relation
-  rounds.
-
-Those facts are not supplied as unrelated Rust/model equality assumptions.
-The final theorem also derives the accepted general accumulator schedule and
-terminal dot, together with the compact accumulator's constructor, folds,
-final assembly, and dot. Its clean tracked replay passed on 24 August 2026, so the complete
-deterministic connection from one successful translated verifier call to the
-maintained accepted-path security-event conclusion is established. The
-[accepted-path source map](docs/v5-accepted-source-map.md) gives the short
-review route, and the [formal-verification overview](docs/formal-verification.md)
-lists the exact theorem and replay boundary.
-
-Lean separately checks the private-spend rules, including value balance,
-ownership, both Merkle paths, the nullifier, output note, asset and fee fields,
-and public statement. It also checks the released circle domains and encoders,
-the coherent four-fold FRI candidate argument, the challenge-dependent
-nineteen-word reduction, and the bounded distinct-query sampler. The published
-circle-decoding and Fiat--Shamir theorems remain cited inputs; Lean checks that
-their stated field, distance, degree, and query conditions match the release.
-
-The release target is **100 bits of work-normalized attack cost**. The checked
-protocol subtotal is below `0.7 * 2^-100`, leaving `0.3 * 2^-100` for explicit
-external events. If an attacker is considered only after completing the
-37-bit grind, the dominant raw term is about 70–71 bits. Aspis does not describe
-that raw term as 100-bit security.
-
-The completed source theorems do not verify Charon, Aeneas, Lean, the Rust/SBF compiler,
-Solana, SHA-256, or Poseidon2. It also does not turn the separate production
-zero-knowledge and numerical theft arguments into unconditional claims. The
-published cryptographic results, concrete primitive-security bounds, fresh
-prover randomness, source-to-binary toolchain, and Solana account and
-persistence behavior remain explicit assumptions. The surrounding atomic
-state and refund path has its own source and runtime boundary.
-
-The fixed-victim theft model avoids assuming that a compressing nullifier hash
-is one-to-one. It separates credential recovery, a second nullifier preimage,
-a second note opening, a Merkle collision at the victim's position, marker
-address behavior, invalid setup, and Solana runtime failure. A concrete
-deployed theft number still needs extraction and primitive/runtime bounds, so
-the repository does not claim an unconditional standalone theft-resistance
-number.
-
-No concrete mathematical forgery or accepting invalid proof was found. The
-complete boundary is recorded in the [assumptions ledger](docs/assumptions-ledger.md)
-and [security policy](SECURITY.md).
-
-## What the result demonstrates
-
-Aspis shows that a transparent private-spend proof and its all-or-nothing pool
-and spent-marker update can complete within one Solana transaction after the
-proof has been uploaded and sealed. More distinctively, it publishes
-separately checkable links from the mathematical model, through selected
-production verifier paths, to exact compiled bytes and their finalized
-mainnet execution.
-
-The evidence does not turn those links into one universal theorem. The formal,
-translation, compiler, runtime, and cryptographic boundaries remain explicit
-at the point where each claim depends on them.
-
-## What this release does not provide
-
-- **Application scope.** V5 demonstrates one input, one output, and one
-  sequential pool. It does not provide deposits, multiple inputs or outputs, a
-  wallet, or a growing privacy set; the demonstrated anonymity set was one.
-- **Throughput.** A pool processes spends sequentially, and proving plus
-  proof-of-work grinding dominates latency. Horizontal scaling uses separate
-  pools and therefore fragments anonymity.
-- **Storage.** Each spend leaves one program-derived nullifier account on-chain, so
-  nullifier storage grows linearly.
-- **Proof size and operations.** The proof needs 79 upload transactions before
-  sealing. Temporary rent must be funded and later recovered.
-- **Security model.** The arguments use named assumptions for Poseidon2,
-  SHA-256, Fiat–Shamir, and knowledge extraction. Network metadata, timing,
-  fee-payer linkage, transaction graphs, and physical side channels are
-  outside the proved privacy view.
-- **Demonstration secret.** The published transaction used a newly sampled
-  demonstration witness, not a user's funded private note. Each secret field
-  came from operating-system randomness. The recorded artifact-builder source
-  discarded candidates until the nullifier PDA had bump 255. The witness was
-  not published or retained,
-  so the transaction demonstrates that the released program accepted and
-  applied the archived proof bytes rather than custody of a real asset.
-- **Assurance.** The repository contains formal proofs, tests, reproducible
-  builds, internal review, and finalized chain evidence, but it has not
-  received an external cryptographic or Solana security audit.
-
-The [formalization report](paper/aspis-formalization/) states the proof scope
-and security assumptions in full. The earlier
-[construction paper](paper/aspis-spend/) records the protocol and deployment
-design.
-
-## How the transaction works
-
-The 75,358-byte V5 proof is too large for a Solana transaction packet, so it
-is uploaded to a temporary program-owned account and sealed before use. The V5
-lifecycle comprised 84 transactions:
-
-- 2 pool setup transactions;
-- 1 proof-account create;
-- 79 proof uploads;
-- 1 proof-account seal; and
-- 1 V5 verify-and-apply transaction.
-
-Deployment and the three cleanup transactions are separate from that count.
-During V5 verification, the proof account is read-only and retained so the result can be
-recorded before a separate authorized close. The pool and nullifier account
-are writable. The deployed callback completes all of its checks and returns
-acceptance before any state write.
-
-[How Aspis works](docs/how-it-works.md) explains the statement, upload
-lifecycle, atomic state transition, and cleanup in plain language.
-
-## Reproduce the evidence
-
-### 1. Check the mathematical Lean development
-
-```bash
+```sh
 cd AspisFormal
 lake exe cache get
 lake build
 ```
 
-### 2. Replay the selected Rust-to-Lean proofs
+### End-to-end accepted-path theorem
 
-From the repository root:
+```sh
+aeneas-verif/scripts/replay-accepted-path-lean432.sh
+```
 
-Use the Lean 4.32 aggregate replay under
-`aeneas-verif/v5-result-aware-source-link-20260821/`. It checks the tracked
-accepted-path proof closure and its generated-source dependencies. Until the
-two dot-product equalities above are closed, this is a checkpoint replay, not
-a replay of a completed end-to-end theorem.
+The replay resolves the exact tracked dependency closure, rejects proof
+escapes such as `sorry`, prepares the pinned Aeneas revision, builds the Lean
+theorem, and audits its axiom output.
 
-The [Aeneas replay notes](aeneas-verif/README.md#replaying-the-accepted-path-checkpoint)
-describe the authenticated dependency caches and pinned tool locations.
+### Frozen program identity
 
-### 3. Check the exact program and frozen release inputs
-
-```bash
+```sh
 ./release/aspis-v5-tag67-frozen-candidate-v1/verify.sh
 ```
 
-For a byte-for-byte rebuild, follow the pinned source, Agave, platform-tools,
-and provenance record in the
-[V5 release preflight](release/preflight/v5-production-freeze.md).
+### Finalized mainnet lifecycle
 
-### 4. Check the finalized mainnet lifecycle
-
-```bash
+```sh
 ./release/aspis-v5-tag67-mainnet-v1/verify.sh
 python3 tools/check_release_facts.py
+python3 release/aspis-v5-tag67-mainnet-rpc-archive-v1/verify.py
 ```
 
-These checks are offline. They verify the published proof and statement,
-frozen SBF reference, lifecycle receipts, compute values, cleanup accounting,
-and public release claims against the committed manifests and hashes.
+## Release profile
+
+V5 demonstrates one private input, one private output, one sequential pool,
+and one persistent nullifier account per spend. The proof is uploaded and
+sealed before verification in 79 chunks; the full spend lifecycle uses 84
+transactions. The public privacy view includes the statement and proof
+transcript, while fee-payer linkage, network metadata, timing, and physical
+side channels remain application-level concerns. The mainnet transaction used
+a freshly sampled demonstration witness and an anonymity set of one.
 
 ## Repository map
 
 | Path | Purpose |
 | --- | --- |
-| `AspisFormal/` | Maintained Lean models and mathematical proofs |
-| `aeneas-verif/` | Charon/Aeneas translations and Rust-to-model bridge proofs |
-| `crates/aspis-core/` | Shared fields, transcript, proof format, commitments, and verifier arithmetic |
+| `AspisFormal/` | Maintained Lean mathematical development |
+| `aeneas-verif/` | Charon/Aeneas outputs and source-to-model bridge proofs |
+| `crates/aspis-core/` | Fields, transcript, proof format, commitments, and verifier arithmetic |
 | `crates/aspis-statement/` | Private-spend statement and relation |
-| `crates/aspis-prover/` | Prover, grinding, release fixtures, and security calculators |
-| `programs/aspis-verifier/` | Solana program, V5 dispatch, account checks, and atomic update |
-| `xtask/` | Reproducibility gates, deployment, recovery journal, and cleanup tools |
-| `release/` | Frozen candidate inputs and finalized public release bundles |
-| `results/` | Runtime measurements, build provenance, and supporting evidence |
-| `docs/` | Explanations, assumptions, code navigation, reviews, and release history |
-| `paper/aspis-formalization/` | Formalization report and exact security boundary |
-| `paper/aspis-spend/` | Earlier construction and deployment paper |
+| `crates/aspis-prover/` | Prover, grinding, fixtures, and security calculators |
+| `programs/aspis-verifier/` | Solana verifier, account checks, and atomic update |
+| `release/` | Frozen binary inputs and finalized evidence bundles |
+| `paper/aspis-formalization/` | Current formalization and security paper |
+| `docs/` | Methodology, assumptions, code maps, and release records |
 
-The [accepted V5 source map](docs/v5-accepted-source-map.md) gives auditors a
-15-stop path through the released verifier. The broader [code
-map](docs/code-map.md) links concepts to production entry
-points.
+The earlier q18/g37 Tag-65 feasibility transaction used 1,344,003 compute
+units and remains available in the [historical mainnet record](docs/mainnet-demo.md).
+V5 is the current publication result.
 
-## Historical result
+## Citation and license
 
-The earlier q18/g37 Tag-65 feasibility release remains preserved as history.
-Its finalized mainnet transaction
-[`3G1vog…RPFcv`](https://explorer.solana.com/tx/3G1voggszvDMGi5PbGM1kuEMYKvh2TNMbH6hHHwndUdRQJNT7ehRFpQpksxLnx5tp2xkS5jGi359rVXk42sRPFcv?cluster=mainnet-beta)
-consumed 1,344,003 CU on 2026-07-16. Its design, proof, and immutable bundle
-are documented in the [q18/g37 mainnet record](docs/mainnet-demo.md). V5 is
-the current result.
-
-## Project
-
-Dominic Barker built Aspis as a solo research project using AI-assisted
-engineering. Earlier prototypes and rejected designs remain in the
-[archive index](archive/README.md). Citation metadata is in
-[CITATION.cff](CITATION.cff).
+The current paper is [the Aspis formalization report](paper/aspis-formalization/).
+Citation metadata is in [CITATION.cff](CITATION.cff). Dominic Barker built
+Aspis as a solo research project using AI-assisted engineering.
 
 Licensed under [MIT](LICENSE-MIT) or [Apache-2.0](LICENSE-APACHE).

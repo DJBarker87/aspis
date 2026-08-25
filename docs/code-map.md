@@ -9,7 +9,7 @@ the finalized mainnet transaction. Paths are relative to the repository root.
 | --- | --- |
 | What does a valid private spend mean? | `crates/aspis-statement/src/spend.rs`, `crates/aspis-statement/src/atomic_statement.rs` |
 | Where is the mathematics checked? | `AspisFormal/README.md`, then the modules under `AspisFormal/AspisFormal/` |
-| Where is selected production Rust connected to Lean? | `aeneas-verif/README.md` and the pinned packages it indexes |
+| Where is selected deployed Rust connected to Lean? | `aeneas-verif/README.md` and the pinned packages it indexes |
 | What exactly does an accepted V5 execution call? | `docs/v5-accepted-source-map.md` |
 | Where is the V5 Solana path? | `programs/aspis-verifier/src/dispatch.rs`, `v5_full_transaction.rs`, and `v5_cu_probe.rs` |
 | Where is the exact V5 program recorded? | `release/aspis-v5-tag67-frozen-candidate-v1/` |
@@ -47,22 +47,18 @@ the finalized mainnet transaction. Paths are relative to the repository root.
 | V5 scope | Principal record |
 | --- | --- |
 | Current theorem map and pinned extraction packages | `aeneas-verif/README.md` |
-| One successful production proof-checker execution | `aeneas-verif/v5-result-aware-source-link-20260821/` |
+| Any successful deployed proof-checker execution | `aeneas-verif/v5-result-aware-source-link-20260821/` |
 | Exact transcript operations and six work checks | `aeneas-verif/v5-result-aware-source-link-20260821/proof/` |
 | Five private-opening trees and FRI checks | `aeneas-verif/v5-merkle-unchanged-full-20260820/`, `aeneas-verif/v5-fri-consumer-exact-20260815/` |
 | Four relation rounds and final check | `aeneas-verif/v5-relation-acceptance-20260815/`, `aeneas-verif/v5-relation-full-source-20260820/` |
 | Plain-language scope and remaining boundaries | `docs/formal-verification.md` |
 
-The current accepted-path work starts with a successful translated call to
-the production proof checker. It derives the parser, transcript, work, query,
-private-opening, FRI, decoded claim table, initial relation value, and
-relation tail used by the mathematical security argument from that same
-execution. The accepted twelve-component general schedule, its dot
-implementation, and the compact accumulator's complete state calculation are
-proved. The final theorem derives both accumulator equalities internally and,
-after its clean replay passed on 24 August 2026, takes that same successful translated call to
-the maintained accepted-path security-event conclusion. This is not a proof
-of every Rust function, the compiler, or the Solana runtime.
+The accepted-path theorem starts with any successful call to the translated
+deployed proof checker and follows that same execution through parsing, transcript,
+work, queries, private openings, FRI, decoded claims, the complete relation,
+and both accumulator calculations. Its clean replay passed on 24 August 2026.
+Compiler and Solana-runtime behavior are the named interfaces connecting this
+selected-callback theorem to the reproducible SBF and finalized transaction.
 
 ## V5 Solana transaction
 
@@ -75,7 +71,7 @@ of every Rust function, the compiler, or the Solana runtime.
 | Complete V5 verifier used by the dispatcher | `programs/aspis-verifier/src/v5_cu_probe.rs`, `verify_uploaded_v5_mode9_cu_fixture` |
 | Shared account-distinctness and state guards | `programs/aspis-verifier/src/atomic_payment.rs` |
 
-The production path validates account order, signer/writable requirements,
+The deployed path validates account order, signer/writable requirements,
 owners, distinctness, pool state, and the program-derived nullifier account before writing.
 It verifies the proof and then rechecks mutable state before committing.
 

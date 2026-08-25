@@ -1,25 +1,40 @@
-# Aspis formalization report
+# Aspis paper
 
-This report presents the V5 mathematical construction, its current connection
-to one successful translated production verifier call, and the archived
-Solana mainnet result. The source connection is complete through the decoded
-relation tail, both accumulator executions, and the complete maintained
-relation caller for one successful selected translated callback. The report is
-separate from the earlier deployment-focused
-manuscript in `paper/aspis-spend/`.
+This is the canonical arXiv and IACR manuscript:
 
-Each major claim is paired with Lean definitions or theorem names. The
-soundness statement uses one explicit probability experiment, while cited
-cryptographic results, primitive security, translation, compilation, and
-Solana runtime behavior are listed separately as assumptions.
+> **Aspis: End-to-End Formal Verification of a Transparent Private Spend on Solana**
 
-From the repository root, build only the paper:
+The paper's main result is an end-to-end Lean theorem for every successful
+execution of the deployed proof-checking path. The theorem derives every
+acceptance-critical transcript, work, query, opening, low-degree, relation, and
+accumulator fact from the same translated Rust call. The numerical
+`2^-100` statement is presented as a conditional work-normalized theorem, with
+the raw post-grind accounting reported separately.
+
+Repository declaration names and release labels are intentionally absent from
+the manuscript. [`ARTIFACT.md`](ARTIFACT.md) maps its mathematical theorem
+names to exact Lean declarations, source files, replay commands, hashes, and
+mainnet evidence.
+
+## Build
+
+From this directory:
 
 ```sh
-mkdir -p output/pdf
-cd paper/aspis-formalization
+mkdir -p ../../output/pdf
 latexmk -pdf -interaction=nonstopmode -halt-on-error \
   -outdir=../../output/pdf aspis-formalization.tex
 ```
 
-No Lean or Rust build is required to compile the document.
+The final PDF is `output/pdf/aspis-formalization.pdf`.
+
+## Submission source
+
+The arXiv source set consists of:
+
+- `aspis-formalization.tex`
+- `sections/`
+- `references.bib`
+
+Build products, Lean files, deployment bundles, and repository metadata are
+linked through the artifact guide and should stay out of the TeX upload.

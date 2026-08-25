@@ -1,147 +1,164 @@
 \section{Introduction}
 \label{sec:introduction}
 
-Succinct transparent arguments reduce a statement about a computation to a
-small number of algebraic and authenticated-opening checks.  A deployed
-private-spend verifier adds another set of obligations.  The proof must bind
-the exact public statement, the verifier must authenticate every value it
-uses, the nullifier must control a real state transition, and the
-implementation must preserve the order assumed by the Fiat--Shamir argument.
-Each part is simple to describe in isolation.  Their composition is not.
+Transparent arguments replace a trusted setup with public randomness and
+hash-based commitments.  Their compact verification procedures are attractive
+for blockchains, but the security proof usually describes an abstract
+verifier while the chain executes a parser, transcript engine, opening
+checker, algebraic checker, and state-transition program.  An error at any
+boundary can invalidate a correct protocol proof.  In a private-payment
+application, the executed statement must also be the statement authorized by
+the user, and acceptance must control the one-time marker that prevents the
+same note from being spent twice.
 
-\Aspis{} brings that composition into one auditable development.  It has three
-different kinds of evidence:
+This paper studies that full evidence chain for \Aspis{}, a transparent
+private-spend verifier implemented as a Solana program.  A spend consumes one
+hidden input note and creates one hidden output note.  The public statement
+contains the old and new pool commitments, a public one-time tag called a
+\emph{nullifier}, and the public value balance.  A successful transaction
+checks a transparent proof and records the nullifier and new pool commitment
+atomically.
+
+Our principal contribution is an end-to-end formal result for every successful
+execution of the deployed proof-checking path.  We extract that path from
+the Rust verifier, translate it into Lean~4, and prove that success entails the
+complete body of evidence required by the mathematical verifier.  In
+particular, the theorem derives the statement binding, transcript challenges,
+proof-of-work checks, authenticated openings, low-degree-test queries and
+folds, decoded algebraic claims, relation checks, and final accumulators from
+one execution.  This \emph{same-execution property} rules out a subtle but
+important proof gap: facts established about different successful runs cannot
+be combined as though they described one run.
+
+The source theorem feeds into a larger Lean development of the spend relation,
+finite-field domains, low-degree testing, bounded distinct-query sampling,
+theft reductions, and nullifier-controlled state transition.  A separate
+probability experiment accounts for accepted false statements.  It proves a
+finite failure decomposition and a conditional work-normalized bound.  The
+theorem statement names every assumption needed for that bound.
+
+\subsection{An end-to-end evidence pipeline}
+
+We use \emph{end-to-end} to mean that the formal and empirical evidence can be
+followed across the complete successful proof-checking path, with each handoff
+made explicit.  The evidence has five layers:
+
 \begin{enumerate}[leftmargin=*]
-  \item Lean definitions and proofs for the mathematical model;
-  \item focused Rust-to-Lean translations and source-shaped bridge theorems;
-  \item build and transaction records for the binary that ran on Solana.
+  \item \textbf{Protocol model.}  Lean definitions state the private-spend
+        relation, transcript schedule, authenticated-opening rules,
+        low-degree test, algebraic relation, security experiment, and state
+        transition.
+  \item \textbf{Implementation connection.}  A reproducible translation
+        selects the deployed Rust path and represents its control flow and
+        data transformations in Lean.  Correspondence proofs show that a successful
+        call produces the values consumed by the protocol model.
+  \item \textbf{Same-execution composition.}  One final theorem composes all
+        correspondence proofs from a single call.  It assumes neither a precomputed
+        accumulator equality nor agreement with a separately executed model.
+  \item \textbf{Deterministic build identity.}  A manifest records the source,
+        toolchain, dependencies, program binary, and hashes needed to reproduce
+        the deployed artifact.
+  \item \textbf{Execution evidence.}  An archived finalized transaction binds
+        the program, proof bytes, public statement, compute usage, nullifier,
+        and before-and-after pool state.
 \end{enumerate}
-Together they provide a checked mathematical verifier, a selected source
-connection from one successful translated callback through the complete
-relation caller, the compiled program, and one finalized execution.  The
-report keeps the remaining hash-callback, compiler, cryptographic, and runtime
-boundaries separate from the statements that Lean checks.
 
-The principal result is a checked security decomposition, not an unconditional
-claim of 100-bit deployed security.  Every accepted false outcome in the
-modeled experiment lies in one ideal-protocol event or one of the explicitly
-named primitive, credential, and runtime events.  Lean proves the event
-decomposition and derives the combined probability bound in one sample space.
-For the selected verifier path, separate theorems obtain the deterministic
-transcript, opening, FRI, claim-table, relation, and accumulator evidence from
-one successful translated Rust execution instead of accepting those
-intermediate equalities as inputs.  The final theorem uses the same four-round
-execution for the decoded relation values and both accumulators, proves the
-twelve-component and compact final dots, and reaches the maintained
-security-event conclusion.
-
-The deterministic selected-call theorem and the work-normalized probability
-experiment remain separate results.  A further experiment-level theorem must
-place accepted calls in one causal probability law, map the six-way
-classification into the probability experiment's events, and discharge the
-published and primitive bounds before the conditional \(2^{-100}\) endpoint
-applies to the selected implementation.
-The translated entry path checks consistency of the live statement and its
-digest.  A separate theorem must still identify those Rust statement fields
-with the abstract public statement used by the mathematical false-acceptance
-and theft experiments.
-
-The mathematical background is kept short.  Most of the report is devoted to
-the formal model, security experiment, proof reductions, and source locations.
-Lean declarations are cited by stable names instead of line numbers, which
-change during maintenance.
-
-\subsection{Contributions}
-
-The contributions reported here are:
-\begin{itemize}[leftmargin=*]
-  \item A machine-checked decomposition of accepted false outcomes into one
-        ideal-protocol event and eighteen named external events.  The old and
-        new ledgers have a proved union equality, and the resulting
-        conditional budget theorem uses one probability space without an
-        independence assumption.
-  \item A Lean proof of the released mathematical verifier: the complete
-        one-input/one-output spend relation after extraction, exact M31 circle
-        domains and encoders, four coefficient and verifier-weight folds, a
-        prefix-timed four-round candidate argument, and the exact bounded
-        distinct-query calculation.
-  \item Byte-level transcript and five-tree Merkle specifications, together
-        with focused Charon/Aeneas translations and Lean proofs connecting
-        one successful translated production verifier run to the transcript,
-        authenticated values, FRI checks, exact claim table, initial relation
-        value and decoded relation tail used by the mathematical argument.
-        The same accepted execution supplies the exact main and compact
-        accumulator states and the complete relation caller used by the final
-        selected-path theorem.
-  \item Fixed-victim and observed-history theft reductions, plus explicit
-        state models for account checks, the non-overwritable spent marker,
-        rollback, finalized persistence, and close/refund behavior.
-  \item A reproducible source-to-binary record and archived mainnet execution
-        evidence binding one program, proof, public statement, transaction,
-        and before/after state.
-\end{itemize}
-
-To our knowledge, this is the first finalized Solana mainnet transaction in
-which a Solana L1 program directly verifies a trusted-setup-free proof of a
-note-based private-spend relation and, upon acceptance, atomically records the
-spent nullifier and advances the committed note state.  This is a claim about
-that specific combination, not a claim that Aspis is the first private-payment
-system, shielded pool, or transparent verifier on Solana.
-\Cref{sec:related-work} gives the comparison and its search date;
-\cref{sec:evaluation} identifies the transaction, program, proof, public
-statement, and before/after state.
-
-\subsection{Scope}
-
-The \(2^{-100}\) result is a conditional budget theorem for the
-work-normalized experiment defined in Lean.  It is not the headline claim
-that deployed V5 has an unconditional 100-bit false-acceptance bound.  The
-selected accepting verifier path is connected to the maintained models in
-Lean through its complete relation caller.  The theorem works for any terminal
-evaluator because later security reasoning does not consume its value.  This
-does not verify that evaluator, the compiler, every program function, or the
-Solana runtime.  The published decoding and BCS Fiat--Shamir results, SHA-256
-and Poseidon2 security, the proof assistant and translation tools, compiler,
-and Solana runtime are stated as trusted inputs.
-The mathematical privacy and theft reductions are reported separately from a
-full production privacy or raw theft bound.  \Cref{sec:limitations} gives the
-complete list.
-
-\subsection{Reading guide}
-
-\Cref{sec:background} describes the spend statement and fixed proof profile.
-\Cref{sec:related-work} compares the result with proof-system, formal-methods,
-and Solana work.
-\Cref{sec:lean-model} presents the Lean model and its main definitions.
-\Cref{sec:implementation} explains what is and is not connected to production
-Rust.  \Cref{sec:soundness} gives the single probability experiment and final
-conditional bound.  \Cref{sec:theft-state,sec:privacy} cover theft resistance,
-state behavior, and privacy.  \Cref{sec:proof-design} records proof choices
-that prevent several attractive but invalid shortcuts.  The evaluation
-follows.  The appendices collect assumptions, a dependency map, theorem index,
-failure ledger, and source-audit checklist.
+\Cref{tab:evidence-pipeline} summarizes what each artifact establishes.  The
+paper uses mathematical names for the results; an external artifact guide maps
+those names to machine-checkable declarations, files, commands, and hashes.
+This separation keeps the argument readable while preserving exact audit
+anchors.
 
 \begin{table}[t]
 \centering
 \small
-\caption{Entry points for the report.}
-\label{tab:intro-anchors}
-\begin{tabularx}{\textwidth}{@{}YY@{}}
+\caption{Evidence supporting the end-to-end result.}
+\label{tab:evidence-pipeline}
+\begin{tabularx}{\textwidth}{@{}R{0.20\textwidth}YY@{}}
 \toprule
-Role & Lean item \\
+Artifact & Checked or recorded fact & Reproduction evidence \\
 \midrule
-Extracted trace implies the spend relation &
-\code{AspisV5AcceptedSpendRelation.extracted_trace_implies_spend_relation} \\
-One adversarial experiment &
-\code{AspisV5UnifiedSecurityExperiment.WorkNormalizedV5AdversarialExperiment} \\
-Conditional work-normalized budget theorem &
-\code{AspisV5UnifiedSecurityExperiment.work_normalized_accepted_false_probability_le_two_pow_neg_100_of_released_core} \\
-Transcript schedule &
-\code{AspisV5TranscriptConnection.completeTranscriptTrace} \\
-Authenticated five-tree forest &
-\code{AspisV5MerkleAuthenticationBinding.AcceptedV5Forest} \\
-Production state transition &
-\code{AspisV5TheftStateTransitionReduction.runV5SourceTransition} \\
+Lean development & Protocol definitions, functional correctness, failure
+decomposition, and the same-execution theorem & Clean replay of the complete
+331-module dependency closure \\
+Rust-to-Lean translation & Control flow and values of the successful
+proof-checking path & Pinned translator revision, generated Lean, and source
+manifests \\
+Build record & Identity between recorded source inputs and the deployed
+program bytes & Deterministic build command, toolchain record, and byte hashes \\
+Mainnet record & Successful verification and atomic nullifier and pool update
+& Transaction, account snapshots, proof bytes, and verification script \\
 \bottomrule
 \end{tabularx}
 \end{table}
+
+The final source theorem is stronger than a collection of local correspondence
+lemmas.  Given any successful call, it reconstructs the exact public input
+digest and transcript; verifies six sequential work conditions; obtains
+eighteen distinct query positions; authenticates five opening sections;
+checks four rounds of the low-degree test and its final polynomial; decodes
+seventy-six algebraic claims and the complete relation message; and derives
+both terminal accumulator equalities.  The downstream security conclusion is
+independent of the return value of the final helper because the required
+opening, folding, and relation evidence has already been derived.
+
+\subsection{Security statement}
+
+The security model places the verifier and adversary in one finite probability
+space.  Lean proves that every accepted false statement belongs either to the
+ideal low-degree-and-relation failure event or to an explicitly represented
+cryptographic, credential, compilation, or runtime event.  The proof uses a
+union bound and requires no independence assumption between those events.
+
+For the evaluated parameters, the work-normalized contribution of the modeled
+protocol events is at most
+\[
+  0.7\cdot 2^{-100}.
+\]
+If the combined probability assigned to the remaining external events is at
+most \(0.3\cdot2^{-100}\), the total accepted-false probability is at most
+\(2^{-100}\).  Work normalization charges an adversary for the repeated
+trials needed to satisfy the proof-of-work conditions.  We therefore also
+report a raw per-attempt view; its dominant explicit term is approximately
+\(2^{-70}\), before adding the named external terms.  Keeping these two
+accountings separate prevents a work factor from being silently interpreted
+as a raw cryptographic advantage.
+
+Two composition assumptions determine the precise reach of this result.  The
+first identifies, field by field, the live statement checked by the translated
+Rust path with the abstract statement used in the security and theft
+experiments.  The second embeds the deterministic classification of a
+successful call into the causal probability experiment used for the numerical
+bound.  The paper states these assumptions at their points of use, and the
+artifact package exposes the interfaces needed to discharge them.
+
+\subsection{Contributions}
+
+The contributions are:
+\begin{itemize}[leftmargin=*]
+  \item An end-to-end Lean theorem that derives all acceptance-critical
+        transcript, authentication, low-degree, and algebraic evidence from
+        any successful translated execution of the deployed Rust verifier.
+  \item A machine-checked model of the evaluated private-spend verifier,
+        including its exact finite-field domains, four-round low-degree test,
+        bounded distinct-query sampler, one-input/one-output spend relation,
+        theft reductions, and nullifier-controlled state transition.
+  \item A single security experiment and checked failure decomposition leading
+        to a conditional \(2^{-100}\) work-normalized bound, accompanied by a
+        separate raw accounting and an explicit interface for every external
+        assumption.
+  \item A reproducible evidence package that connects the formal development
+        to translation inputs, deterministic program bytes, proof bytes, and
+        a finalized Solana execution with before-and-after state.
+\end{itemize}
+
+\subsection{Reading guide}
+
+\Cref{sec:background} describes the spend statement and fixed proof parameters.
+\Cref{sec:lean-model} presents the formal model,
+\cref{sec:proof-design,sec:implementation} give the verification method and
+implementation connection, and \cref{sec:soundness} states the unified
+experiment and probability accounting.  \Cref{sec:theft-state,sec:privacy}
+cover theft, state, and privacy; \cref{sec:evaluation} reports replay, build,
+and mainnet evidence.  Assumptions and related work follow, with technical
+proof details in the appendices.

@@ -17,7 +17,7 @@
   },
   "mainnet_release": {
     "path": "../aspis-v5-tag67-mainnet-v1",
-    "manifest_sha256": "0b25b134b06283edc9e602eaca3e085b24d24717d6b9fc920d20c3d695ab8adf",
+    "manifest_sha256": "ab629f095486904fdd4371ac6737f58d93bd29ec71770977ef7a4933978653a0",
     "lifecycle_sha256": "8cf9057173903e98763ba5485d88291b7564cf6464b9e651e8b52696f6c9a1e3",
     "proof": {
       "path": "../aspis-v5-tag67-mainnet-v1/proof/v5-mainnet-proof.bin",

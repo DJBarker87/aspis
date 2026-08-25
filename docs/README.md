@@ -1,72 +1,55 @@
 # Documentation
 
-Aspis V5 is the current release. It records a private-spend construction,
-Lean proofs, selected production verifier paths translated with Charon and
-Aeneas, a byte-reproducible Solana program, and a finalized mainnet-beta state
-transition. The Rust-to-model connection is complete through the initial
-relation value, decoded relation tail, and both final accumulators. The final
-clean replay passed on 24 August 2026, so one successful selected translated verifier call
-deterministically yields the maintained accepted-path security-event
-conclusion; the main and compact accumulator equalities are derived inside
-that theorem.
+Aspis V5 combines an end-to-end Lean proof of every successful execution of
+the selected deployed verifier path with a reproducible Solana program and a
+finalized mainnet archive. For each accepted call, the theorem follows that
+single translated Rust execution through
+the complete transcript, authentication, FRI, relation, and accumulator data
+flow. Its clean Lean 4.32 replay passed on 24 August 2026 over 331 tracked
+modules.
 
 ## Start here
 
-1. [How Aspis works](how-it-works.md) — the private-spend statement, proof
-   upload, atomic transaction, and cleanup
-2. [From mathematics to mainnet](../README.md#from-mathematics-to-mainnet) —
-   the four-stage path
-3. [What has been formally checked](formal-verification.md) — what Lean
-   checks, how selected Rust is connected, and what remains trusted
-4. [V5 mainnet result](v5-mainnet-demo.md) — finalized execution first, then
-   exact deployment, lifecycle, compute, and refund evidence
-5. [Verify and reproduce the
-   evidence](../README.md#reproduce-the-evidence) — separate checks for the
-   proof layers, program identity, and mainnet bundle
-6. [Security assumptions](assumptions-ledger.md) — cryptographic,
-   translation, compiler, and runtime boundaries
-7. [Accepted V5 source map](v5-accepted-source-map.md) — the 15 review stops
-   from instruction dispatch through proof checks and the state update
-8. [Code map](code-map.md) — broader concept-to-file navigation
-9. [Formalization report](../paper/aspis-formalization/) — mathematical,
-   Rust-to-Lean, security, and trusted-boundary record
-10. [Construction paper](../paper/aspis-spend/) — earlier protocol and
-   deployment description
-11. [Design history and previous releases](design-history.md) — evolution of
-   the current V5 result and the earlier q18/g37 record
+1. [Formal verification](formal-verification.md) - the headline theorem,
+   methodology, proof map, assumptions, and replay command.
+2. [How Aspis works](how-it-works.md) - the spend statement, proof upload, and
+   atomic state transition.
+3. [Accepted V5 source map](v5-accepted-source-map.md) - 15 review stops from
+   dispatch to the state update.
+4. [V5 mainnet result](v5-mainnet-demo.md) - transaction, program, proof,
+   compute, lifecycle, and cleanup identities.
+5. [Assumptions ledger](assumptions-ledger.md) - the cryptographic,
+   translation, compiler, and runtime interfaces used by the claims.
+6. [Code map](code-map.md) - concepts and proof claims mapped to deployed
+   files.
+7. [Formalization paper](../paper/aspis-formalization/) - the arXiv/IACR
+   manuscript and artifact manifest.
+8. [Reproduction commands](../README.md#reproduce-the-result) - separate
+   checks for Lean, the accepted Rust path, SBF identity, and chain evidence.
 
-## Evidence by layer
+## Evidence map
 
-| Layer | Record |
+| Result | Record |
 | --- | --- |
-| Maintained mathematical models and Lean proofs | [`AspisFormal/`](../AspisFormal/) and its [proof-status table](../AspisFormal/README.md) |
-| Selected production Rust translated and bridged to Lean | [`aeneas-verif/`](../aeneas-verif/) |
-| Exact V5 SBF and reproducible build inputs | [V5 preflight](../release/preflight/v5-production-freeze.md) and [frozen candidate bundle](../release/aspis-v5-tag67-frozen-candidate-v1/) |
-| Finalized V5 mainnet transaction and cleanup | [mainnet lifecycle bundle](../release/aspis-v5-tag67-mainnet-v1/) |
+| Private-spend mathematics and release arithmetic | [`AspisFormal/`](../AspisFormal/) |
+| End-to-end selected accepted verifier path | [`aeneas-verif/`](../aeneas-verif/) |
+| Exact V5 SBF and pinned build inputs | [V5 preflight](../release/preflight/v5-production-freeze.md) |
+| Finalized V5 transaction and cleanup | [mainnet bundle](../release/aspis-v5-tag67-mainnet-v1/) |
+| Reconstruction of closed proof and program accounts | [full payer RPC archive](../release/aspis-v5-tag67-mainnet-rpc-archive-v1/) |
 
-Run the V5 lifecycle verifier from a repository checkout:
+The central theorem is
+`AspisV5AcceptedOneRunDeterministicFinal.accepted_composite_security_conclusion_for_any_terminal_evaluator`.
+It derives both final accumulator equalities internally from the same accepted
+execution. The proof's trust boundary is summarized once in the
+[assumptions ledger](assumptions-ledger.md).
 
-```bash
-./release/aspis-v5-tag67-mainnet-v1/verify.sh
-python3 tools/check_release_facts.py
-```
+## Publication records
 
-The [V5 evidence-chain publication
-review](reviews/v5-evidence-chain-publication-review.html) records the resolved
-framing and release-integrity findings and the boundaries that remain open to
-outside review.
+The dated [24 August 2026 novelty scan](novelty-rescan-2026-08-24.md) records
+the exact, qualified comparison used by the paper. Historical reviews under
+[`docs/reviews/`](reviews/) preserve their original cutoffs and should be read
+as snapshots rather than current status pages.
 
-The [14 August formal-security extension
-review](reviews/v5-formal-security-extension-20260814.html) explains the new
-false-acceptance and theft proofs in plain English, including what they still
-do not establish for the deployed program.
-
-## History
-
-The earlier q18/g37 Tag-65 feasibility result is retained separately in the
-[historical mainnet record](mainnet-demo.md) and
-[`release/aspis-spend-q18-g37-mainnet-v1/`](../release/aspis-spend-q18-g37-mainnet-v1/).
-It is not the current top-level release.
-
-Design evolution and archived research are indexed in
-[design history](design-history.md) and the [archive](../archive/README.md).
+The earlier q18/g37 Tag-65 feasibility result remains in the
+[historical mainnet record](mainnet-demo.md). V5 is the current publication
+result.

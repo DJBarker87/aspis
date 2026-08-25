@@ -1,215 +1,180 @@
-\section{Connection to the implementation}
+\section{End-to-end implementation verification}
 \label{sec:implementation}
 
-\subsection{Production verifier path}
+The central engineering question is whether the mathematical statements in
+\cref{sec:lean-model} describe the values accepted by the deployed verifier.
+We address this question for the successful proof-checking execution by
+combining functional translation of Rust with manually proved composition
+lemmas.
 
-The deployed verifier reads a fixed proof body, reconstructs the public
-statement digest, replays the transcript, verifies the six work records,
-derives the selected eighteen queries, authenticates five opening sections,
-checks the four FRI folds and final polynomial, checks the relation, and only
-then calls the atomic state transition.
+\subsection{Deployed execution}
 
-The main production functions discussed in this report are:
+The selected Rust path performs the following operations in order:
+
+\begin{enumerate}[leftmargin=*]
+  \item parse the fixed proof body and bind it to the live public statement;
+  \item replay the Fiat--Shamir transcript and six proof-of-work checks;
+  \item derive eighteen distinct query positions;
+  \item authenticate five sections of Merkle openings;
+  \item check four rounds of low-degree folding and the final polynomial;
+  \item decode and batch the algebraic claims, execute four relation rounds,
+        and compare two final dot products; and
+  \item return success to the atomic state-transition code.
+\end{enumerate}
+
+Verification must preserve both data identity and temporal order.  For
+example, a correctly authenticated value from one run cannot justify an
+algebraic check in another, and a challenge cannot constrain a message that
+was absorbed after the challenge was sampled.  We therefore model an
+execution record carrying all intermediate values and prove composition from
+one record.
+
+\subsection{Functional translation from Rust to Lean}
+
+Charon lowers selected safe Rust into a typed intermediate representation;
+Aeneas translates that representation into pure Lean functions
+\cite{HoEtAl2025Charon,HoProtzenko2022Aeneas}.  The translation preserves
+Rust control flow, pattern matching, arrays, slices, and mutable iterators by
+making state changes explicit in the generated function result.  Generated
+functions are then related to the mathematical definitions by Lean theorems.
+
+The complete Solana entry point also contains framework objects, system calls,
+account operations, and function pointers outside the translators' supported
+subset.  The selected translation boundary therefore encloses the
+proof-checking computation, while the surrounding account transition is
+specified separately.  This boundary is exact: the artifact guide records the
+selected Rust source, translator revision, generated Lean, and the theorem
+that reconnects the translated result to the calling verifier.
+
+Translation found one proof-artifact defect.  An early handwritten model of a
+mutable iterator rebuilt an array from the exhausted iterator and discarded
+the writes.  Lean contains a counterexample to that model.  The corrected
+model rebuilds the array from the updated original storage, and an extended
+translation of the unchanged Rust function produces the same behavior.  The
+defect affected the proof model rather than the deployed program; retaining
+the counterexample makes this distinction auditable.
+
+\subsection{Accepted-execution evidence}
+
+For a translated execution \(\rho\), let \(\mathsf{Accept}(\rho)\) mean that
+the proof-checking call returns success.  Let \(\mathsf{Evidence}(\rho)\)
+collect the following facts about that same run:
+
 \begin{itemize}[leftmargin=*]
-  \item transcript state and SHA-256 framing in
-        \code{crates/aspis-core/src/transcript.rs};
-  \item transcript replay, work checks, relation calls, and verifier control
-        flow in \code{programs/aspis-verifier/src/v5_cu_probe.rs};
-  \item preparation and consumption of FRI values in
-        \code{programs/aspis-verifier/src/v5_fri_checks.rs};
-  \item the five-section opening driver
-        \code{verify_v5_private_openings_from_proof};
-  \item the focused opening helper
-        \code{verify_state_only_private_opening_from_proof_with_topology};
-  \item account validation, marker creation, and pool mutation in
-        \code{verify_and_apply_atomic_payment_state_traced_inner};
-  \item proof-account refund in
-        \code{refund_program_owned_proof_account}.
+  \item the parsed body and live statement determine the absorbed statement
+        digest;
+  \item every transcript challenge equals the output of its prescribed hash
+        operation, and all six work conditions hold in order;
+  \item query derivation returns eighteen distinct positions within its draw
+        bound;
+  \item all five opening sections authenticate, consume the exact byte stream,
+        and supply the values later read by the verifier;
+  \item four radix-four folds, their coordinates, and the final
+        four-coefficient polynomial satisfy the low-degree checks;
+  \item the decoder supplies exactly seventy-six point claims, four prepared
+        claims, the initial relation value, and the fifty-eight-field message
+        consumed by the four relation rounds; and
+  \item the twelve-component main accumulator and four-component compact
+        accumulator evolve through those same rounds and equal the two final
+        dot products checked by the verifier.
 \end{itemize}
 
-The production Rust is larger than this list.  The list identifies the path
-for which this paper gives formal anchors.  Dispatch, upload, unrelated
-diagnostic modes, host retry code, compiler lowering, and runtime execution
-are not silently included.
+\begin{theorem}[End-to-end accepted-execution theorem]
+\label{thm:end-to-end-execution}
+For every translated deployed execution \(\rho\),
+\[
+  \mathsf{Accept}(\rho)\Longrightarrow\mathsf{Evidence}(\rho).
+\]
+All components of \(\mathsf{Evidence}(\rho)\) are derived from \(\rho\).
+In particular, neither accumulator equality nor agreement with a separately
+executed mathematical verifier is a premise.
+\end{theorem}
 
-\subsection{Focused extraction}
+The proof is compositional but not merely a conjunction of unrelated helper
+lemmas.  Each stage receives the exact values returned by the preceding stage
+of \(\rho\), and the final theorem uses one shared four-round execution for
+the authenticated values, fold challenges, relation messages, and both
+accumulators.  This is the same-execution property introduced in
+\cref{sec:introduction}.
 
-Charon translates selected safe Rust into its LLBC representation.  Aeneas
-then produces pure Lean functions and proof obligations.  Broad Solana
-functions contain framework types, function pointers, syscalls, and control
-flow outside the selected proof scope, so the project uses focused
-extractions for the verifier callback and source-shaped models for the
-surrounding transaction and runtime behavior.
+The final helper may be represented by an arbitrary function.  The theorem
+still obtains the downstream security evidence because the independently
+derived openings, folds, claims, and dot products contain everything later
+reasoning uses.  Consequently, the security classification does not trust the
+helper's return value as a summary of unverified work.
 
-For each connection we distinguish three statements:
-\begin{enumerate}[leftmargin=*]
-  \item a pure Lean model has the desired property;
-  \item the source-shaped composition equals that model;
-  \item the production Rust function equals the source-shaped composition.
-\end{enumerate}
-Only the third statement turns the first two into a production theorem.  For
-the selected accepted callback, the source proof now reaches the complete
-relation caller.  It derives the main accumulator's twelve terminal weights,
-the compact accumulator's complete state evolution, and both final dot
-products from the same accepted four-round execution.  The theorem still
-allows an arbitrary terminal evaluator because later relation and FRI
-security reasoning does not consume its returned value.  It constructs that
-boundary by reflexivity and installs the released FRI tables internally;
-boundaries outside the selected source path remain named as well.
+\subsection{Transcript and opening correspondence}
 
-\subsection{Transcript coverage}
+For the transcript, the translated code is proved equal to the byte-level
+specification on every reached operation.  The proof covers exact labels, payloads,
+endianness, field and point sampling, nonzero rejection, state advancement,
+and the placement of all work checks.  It then connects each returned
+challenge to the value consumed by the fold or relation code.
 
-The pure transcript result is detailed.  It records every label and payload,
-expands each typed event to primitive hash inputs, places each work check
-immediately before its nonce absorb, and proves that the values supplied to
-the FRI and relation code come from the named squeeze results.  The source
-adapter also decodes the exact fixed-body slices and exact selector byte.
+For authenticated openings, the translated parser is inverted from its
+successful result.  This yields the value--salt split, shifted query index,
+radix-four slots, binary cap, compressed frontier, reconstructed root, and
+literal remaining suffix for each section.  The outer proof fixes the order
+of all five sections and proves that no bytes remain.  A consumer theorem then
+identifies every low-degree read with a returned authenticated value in the
+same execution.
 
-Focused translations cover the production field, nonzero-field,
-out-of-domain, secure-circle, and distinct-query samplers.  The accepted-entry
-proof connects their outputs to the exact values consumed by the FRI and
-relation calls in the same successful execution.  The generic equality
-\code{ExactRustV5TranscriptDriverEquality} remains an interface for other
-callers, but it is not a premise of the completed accepted-entry sampler
-proofs.
+These are deterministic correspondence results.  SHA-256's collision
+resistance and its random-oracle treatment enter later as cryptographic
+assumptions; the correspondence result establishes which concrete byte
+strings and hash calls those assumptions cover.
 
-The transcript hash itself is separated from hash security.  The deterministic
-model says which bytes are hashed and in which order.  The cryptographic model
-defines implementation-divergence, collision, preimage, transcript-divergence,
-and random-oracle events.  Known-answer tests can support the implementation
-equality on selected inputs, but they cannot prove collision resistance or
-random-oracle behavior.
+\subsection{Algebraic correspondence}
 
-\subsection{Merkle coverage}
+The algebraic proof begins with the exact decoded table rather than an
+abstract promise that a relation check succeeded.  It proves the construction
+of four prepared claims, the initial combined value, the complete relation
+message, and the four ordered round calls.  The low-degree and relation sides
+share the same four challenges and final coefficients.
 
-The opening proof follows the actual helper and five-section driver reached by
-the accepted production entry.  It inverts the successful generated execution
-into five exact section traces.  Each trace records the encoded value and salt,
-the tree position, the radix-four levels, the binary cap, the frontier, and the
-literal returned remainder.  The driver proof fixes the five tree order and
-shows that the last call leaves no trailing opening bytes.
+The main accumulator has twelve terminal components, including dense and
+deferred grouped loops.  The compact accumulator has four components and
+passes through a constructor, four fold cases, and final assembly.  Lean
+proves both state evolutions and both final dot products.  Their composition
+closes the last assumed algebraic equalities that previously separated
+local implementation lemmas from the final accepted-execution theorem.
 
-Those traces construct an \code{AcceptedV5Forest}.  A separate consumer proof
-shows that the later FRI checks read the value portions returned by these same
-opening calls.  Outside the explicit SHA-256 collision event, the values are
-unique under the supplied roots and query set.
-
-Thus the accepted-path Merkle theorem does not assume that Rust acceptance
-yields an authenticated forest.  It derives the forest and the consumer
-observation from the successful translated execution.  SHA-256 collision
-resistance and the Solana SHA syscall semantics remain separate assumptions
-after this deterministic source connection.
-
-\subsection{Relation and candidate coverage}
-
-The relation source model covers the prepared point claims, four unrolled
-round calls, staged claim updates, fold challenges, and final coefficients.
-Theorems in \code{V5RelationStressSourceBridge} show that the source-shaped
-caller implies the pure modeled relation checks and that its final
-coefficients equal the values supplied to FRI.
-
-The accepted-entry caller is connected to the unchanged extracted relation
-verifier through the exact 76 decoded claims, four prepared claims, initial
-relation value, and 58-field tail consumed by the four ordered rounds.  The
-same four fold challenges and final polynomial are shared with the FRI call.
-For the general accumulator,
-\code{releasedTerminalDotCandidateExact} proves the complete extracted
-twelve-component dot product, including the dense and deferred grouped loops.
-The accepted-run proof identifies each terminal component with its maintained
-weight and identifies the resulting dot with the verifier's returned value.
-For the compact accumulator, the constructor, four fold cases, final assembly,
-and four-term dot product are connected through the corrected extracted
-iterator.
-\code{accepted_composite_security_conclusion_for_any_terminal_evaluator} uses
-both results in the theorem that starts from one successful selected
-translated verifier call.
-A clean Lean 4.32 replay of the 331 tracked modules in this accepted-path
-closure passed on 24 August 2026 using pinned Aeneas revision
-\code{b59d5188c082f704a418c7cb4e52ad69328002d1}.  The final axiom report contains
-Lean's standard logical foundations and the explicit generated Rust/Solana
-interfaces, but no \code{sorryAx}.
-
-The first handwritten Lean replacement for the compact outer fold rebuilt the
-array from an empty terminal iterator and therefore discarded its writes.  A
-Lean counterexample records that error, and the proof now uses a corrected
-wrapper that rebuilds from the updated original iterator.  This was an error in
-the proof artifact, not in the Rust function or deployed program.  An extended,
-pinned Aeneas translation of the unchanged function now emits the correct
-mutable-iterator handback and compiles under Lean 4.32.  The accepted-run
-theorem connects that generated caller to the fold-semantics proof.
-
-The final candidate construction also has to connect authenticated values and
-transcript challenges to the eligibility, support, message, and response
-functions used by the correlated-agreement theorem.  The mathematical theorem
-is universal over data satisfying that interface.  The production mapping to
-that interface is still an external source obligation.
-
-\subsection{State-transition coverage}
-
-The state bridge gives a source-shaped description of the current spend and
-close functions.  It proves exact account counts, refund-account selection,
-the bump-255 check, successful state writes, rejection of an existing marker,
-and agreement between current and recorded behavior at the observed bump.
-
-The predicates \code{ExactCurrentRustStateEquality} and
-\code{ExactRustCloseEquality} identify the remaining Rust-to-model statements.
-The structure \code{ProductionRuntimePremises} then names account locking,
-system-program behavior, rollback, and finalized persistence.  The theorem
-\code{runtime_premises_hold_outside_iff_no_named_failure} makes their failure
-events explicit.  The model proves what follows if the runtime premises hold;
-it does not formalize the entire Solana runtime.
-
-\subsection{Source, binary, and chain identity}
-
-The deployed binary is identified by SHA-256 and size.  A clean build from the
-recorded source and pinned tools reproduced the binary byte for byte.  The
-release record then identifies the deployed program and finalized transaction.
-This establishes a useful chain of evidence:
-\begin{equation}
-  \text{recorded source} \longrightarrow
-  \text{recorded binary} \longrightarrow
-  \text{recorded transaction}.
-\end{equation}
-The first arrow depends on the build tools and the reproducibility record.
-The second depends on the loader and chain records.  Neither arrow proves the
-cryptographic soundness of all accepted inputs.
-
-The formal paper snapshot is
-\code{45d0ec466133bba6b7c52a39a288809a4943abf2}~\cite{AspisRepository2026}.
-The clean source commit used
-for the deployed binary is
-\code{06788d44d30ea8cbd391899dddaf6f0acc6e4a3f}.  They are intentionally
-reported as different objects: the formal development continued after the
-deployment.
-
-\begin{table}[p]
+\begin{table}[t]
 \centering
 \small
-\caption{Production connections and their current status.}
-\label{tab:implementation-status}
-\begin{tabularx}{\textwidth}{@{}R{0.22\textwidth}Y Y@{}}
+\caption{Coverage of the end-to-end theorem.}
+\label{tab:implementation-coverage}
+\begin{tabularx}{\textwidth}{@{}R{0.22\textwidth}Y@{}}
 \toprule
-Area & Checked result & Remaining statement \\
+Stage & Evidence derived from any successful call \\
 \midrule
-Transcript & Exact schedule, hash framing, production field/point samplers,
-six work checks, and consumed challenge mapping for the accepted callback &
-SHA-256 syscall and random-oracle assumptions; translation-tool trust \\
-Merkle openings & Exact parser, value/salt split, hash inputs, slots, binary
-cap, frontier, returned remainder, five-section order, and authenticated
-consumer observation & SHA-256 syscall semantics and collision resistance \\
-FRI reads & Every accepted FRI read comes from the authenticated opening
-returned by the same production execution; exact four folds and final
-polynomial & Published decoding/Fiat--Shamir results and primitive-security
-bounds \\
-Relation & Exact 76-claim table, four prepared claims, initial relation value,
-58-field tail, four ordered rounds, twelve-component main accumulator, compact
-accumulator, and final relation caller from the same accepted call & SHA-256
-callback semantics; published Fiat--Shamir result and
-primitive-security bounds \\
-Spend state & Five account roles, bump 255, marker and pool writes, close/refund
-projection & Current Rust equality and Solana runtime premises \\
-Hash primitives & Fixed inputs and known-answer executions & Concrete
-collision, preimage, and random-oracle bounds; all-input Poseidon2 equality \\
+Parsing and statement & Fixed body layout, decoded fields, live-statement
+digest, and full input consumption \\
+Transcript and work & Exact hash framing and challenges; six ordered work
+conditions \\
+Queries and openings & Eighteen distinct positions; five authenticated
+sections and all values consumed later \\
+Low-degree test & Four fold comparisons, coordinates, and final polynomial \\
+Algebraic relation & Seventy-six decoded claims, four prepared claims,
+fifty-eight relation fields, and four rounds \\
+Final checks & Twelve-component main state, four-component compact state, and
+both checked dot products \\
 \bottomrule
 \end{tabularx}
 \end{table}
+
+\subsection{Replay and auditability}
+
+The accepted-execution result has a tracked dependency closure of 331 Lean
+modules.  The replay script resolves every dependency from a clean checkout,
+uses the pinned translator revision, rejects unfinished proof markers and
+unchecked native evaluation, builds the closure, and prints the axioms of the
+final theorem.  The recorded replay uses Lean~4.32 and reports only Lean's
+standard logical foundations; it contains no admitted project theorem.
+
+The source-to-binary record is a separate evidence layer.  A clean build from
+the archived source and pinned Solana and Rust tools reproduces the deployed
+program byte for byte.  The release archive then binds those bytes to the
+program identifier and finalized transaction.  Full declaration names, file
+paths, commands, source revisions, and digests live in the artifact guide
+rather than in the manuscript.
