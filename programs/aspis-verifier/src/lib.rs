@@ -62,7 +62,8 @@ compile_error!(
     any(
         feature = "spend-production",
         feature = "v5-production-tag67",
-        feature = "v6-production-tag72"
+        feature = "v6-production-tag72",
+        feature = "v7-production-tag73"
     ),
     not(feature = "no-entrypoint")
 ))]
@@ -76,6 +77,27 @@ compile_error!(
     not(feature = "no-entrypoint")
 ))]
 compile_error!("V6_CU_PROBE_FORBIDS_V5_PROBE: select exactly one local probe entrypoint");
+
+#[cfg(all(
+    feature = "v7-cu-probe",
+    any(
+        feature = "spend-production",
+        feature = "v5-production-tag67",
+        feature = "v6-production-tag72",
+        feature = "v7-production-tag73"
+    ),
+    not(feature = "no-entrypoint")
+))]
+compile_error!(
+    "V7_CU_PROBE_FORBIDS_PRODUCTION: the V7 local CU probe must use its isolated entrypoint"
+);
+
+#[cfg(all(
+    feature = "v7-cu-probe",
+    any(feature = "v5-cu-probe", feature = "v6-cu-probe"),
+    not(feature = "no-entrypoint")
+))]
+compile_error!("V7_CU_PROBE_FORBIDS_OTHER_PROBES: select exactly one local probe entrypoint");
 
 pub mod atomic_payment;
 pub mod dispatch;
@@ -92,8 +114,18 @@ pub mod v5_relation_stress;
 pub mod v6_cu_probe;
 #[cfg(any(feature = "v6-production-tag72", test))]
 pub mod v6_transaction;
-#[cfg(any(feature = "v6-cu-probe", feature = "v6-production-tag72", test))]
+#[cfg(any(
+    feature = "v6-cu-probe",
+    feature = "v6-production-tag72",
+    feature = "v7-cu-probe",
+    feature = "v7-production-tag73",
+    test
+))]
 pub mod v6_verifier;
+#[cfg(any(feature = "v7-production-tag73", test))]
+pub mod v7_transaction;
+#[cfg(any(feature = "v7-cu-probe", feature = "v7-production-tag73", test))]
+pub mod v7_verifier;
 pub mod verify;
 pub mod wire;
 

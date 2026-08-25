@@ -8,7 +8,7 @@ version.workspace = true
 aspis-core = { path = "../crates/aspis-core" }
 aspis-prover = { path = "../crates/aspis-prover", features = ["v5-mask"] }
 aspis-statement = { path = "../crates/aspis-statement" }
-aspis-verifier = { path = "../programs/aspis-verifier", default-features = false, features = ["no-entrypoint", "v5-cu-probe", "v6-cu-probe", "v6-production-tag72"] }
+aspis-verifier = { path = "../programs/aspis-verifier", default-features = false, features = ["no-entrypoint", "v5-cu-probe", "v6-cu-probe", "v6-production-tag72", "v7-production-tag73"] }
 anyhow.workspace = true
 base64.workspace = true
 bincode.workspace = true

@@ -31,6 +31,8 @@ const PRODUCTION_TAGS: &[u8] = &[
     67,
     #[cfg(feature = "v6-production-tag72")]
     72,
+    #[cfg(feature = "v7-production-tag73")]
+    73,
 ];
 
 /// One arbitrary account slot: its owner is either the running program or a

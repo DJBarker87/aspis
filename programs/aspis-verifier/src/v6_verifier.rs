@@ -49,7 +49,9 @@ pub struct VerifiedV6ReadOnly {
     pub folded_query_sum: QM31,
 }
 
-fn terminal_claims(view: &V6SemanticView<'_>) -> [QM31; STATE_ONLY_SELECTED_TERMINAL_CLAIMS] {
+pub(crate) fn terminal_claims(
+    view: &V6SemanticView<'_>,
+) -> [QM31; STATE_ONLY_SELECTED_TERMINAL_CLAIMS] {
     // The maintained atomic selected-hiding terminal consumes 3 x 28 lanes:
     // C1[0..26], H and G. V6's appended D lane is column 28 and participates
     // only in the PCS relation, exactly as in the maintained spend profile.
@@ -60,7 +62,10 @@ fn terminal_claims(view: &V6SemanticView<'_>) -> [QM31; STATE_ONLY_SELECTED_TERM
     })
 }
 
-fn terminal_matches(statement: &AtomicPaymentStatementV4, view: &V6SemanticView<'_>) -> bool {
+pub(crate) fn terminal_matches(
+    statement: &AtomicPaymentStatementV4,
+    view: &V6SemanticView<'_>,
+) -> bool {
     atomic_state_only_selected_masked_terminal_value_compiled_v3(
         statement,
         &terminal_claims(view),

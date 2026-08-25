@@ -1,0 +1,6 @@
+{
+  "artifact": "aspis_v7_onefold_devnet_execution",
+  "reserved_at_utc": "2026-08-25T11:37:03.571172+00:00",
+  "status": "in_progress_no_claim",
+  "warning": "If this file remains in_progress, execution did not reach the finalized evidence commit. Inspect chain state by recorded signer history before retrying."
+}

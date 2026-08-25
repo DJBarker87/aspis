@@ -176,12 +176,34 @@ fn main() -> Result<()> {
             );
             Ok(())
         }
+        Some("v7-honest-proof") => {
+            let arguments = args.collect::<Vec<_>>();
+            let outcome = v6_release::build_honest_v7_proof(&arguments)?;
+            eprintln!(
+                "v7-honest-proof: mined proof accepted on host; body={} counter={} frontier={}; wrote {}",
+                outcome.proof_bytes,
+                outcome.compact_counter,
+                outcome.frontier_nodes,
+                outcome.metadata_path.display(),
+            );
+            Ok(())
+        }
         Some("v6-production-simulate") => {
             let arguments = args.collect::<Vec<_>>();
             let outcome = v6_release::simulate_production(&arguments)?;
             eprintln!(
                 "v6-production-simulate: honest tag-72 accepted at {} CU (worst measured marker path); wrote {}",
                 outcome.maximum_compute_units,
+                outcome.evidence_path.display(),
+            );
+            Ok(())
+        }
+        Some("v7-production-simulate") => {
+            let arguments = args.collect::<Vec<_>>();
+            let outcome = v6_release::simulate_v7_production(&arguments)?;
+            eprintln!(
+                "v7-production-simulate: honest V7 accepted at {} CU; wrote {}",
+                outcome.compute_units,
                 outcome.evidence_path.display(),
             );
             Ok(())
@@ -196,11 +218,33 @@ fn main() -> Result<()> {
             );
             Ok(())
         }
+        Some("v7-adversarial") => {
+            let arguments = args.collect::<Vec<_>>();
+            let outcome = v6_release::run_v7_adversarial(&arguments)?;
+            eprintln!(
+                "v7-adversarial: honest production proof accepted and all {} focused mutation cases rejected; wrote {}",
+                outcome.rejected_cases,
+                outcome.evidence_path.display(),
+            );
+            Ok(())
+        }
         Some("v6-devnet-execute") => {
             let arguments = args.collect::<Vec<_>>();
             let outcome = spend_devnet::execute_v6(&arguments)?;
             eprintln!(
                 "v6-devnet-execute: finalized tag72 {} at slot {} using {} CU; immutable evidence {}",
+                outcome.final_transaction.signature,
+                outcome.final_transaction.finalized_slot,
+                outcome.landed_compute_units,
+                outcome.evidence_path,
+            );
+            Ok(())
+        }
+        Some("v7-devnet-execute") => {
+            let arguments = args.collect::<Vec<_>>();
+            let outcome = spend_devnet::execute_v7(&arguments)?;
+            eprintln!(
+                "v7-devnet-execute: finalized V7 {} at slot {} using {} CU; immutable evidence {}",
                 outcome.final_transaction.signature,
                 outcome.final_transaction.finalized_slot,
                 outcome.landed_compute_units,

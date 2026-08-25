@@ -59,6 +59,8 @@ fn production_require_empty(input: &[u8]) -> ProgramResult {
 ///   transition, enabled by the default `v5-production-tag67` feature.
 /// - 72: complete V6 one-fold verification plus the retained-proof atomic
 ///   state transition, enabled by `v6-production-tag72`.
+/// - 73: complete compact V7 one-fold verification plus the retained-proof
+///   atomic state transition, enabled by `v7-production-tag73`.
 ///
 /// Every other historical or diagnostic tag fails before account access.
 pub fn process_spend_production_instruction(
@@ -220,6 +222,12 @@ pub fn process_spend_production_instruction(
             accounts,
             instruction_data,
         ),
+        #[cfg(feature = "v7-production-tag73")]
+        73 => crate::v7_transaction::process_v7_atomic_instruction(
+            program_id,
+            accounts,
+            instruction_data,
+        ),
         _ => Err(ProgramError::InvalidInstructionData),
     }
 }
@@ -346,6 +354,11 @@ mod tests {
             process_spend_production_instruction(&id(), &[], &[72]),
             Err(ProgramError::InvalidInstructionData)
         );
+        #[cfg(not(feature = "v7-production-tag73"))]
+        assert_eq!(
+            process_spend_production_instruction(&id(), &[], &[73]),
+            Err(ProgramError::InvalidInstructionData)
+        );
     }
 
     #[cfg(feature = "v5-production-tag67")]
@@ -397,5 +410,16 @@ mod tests {
                 Err(ProgramError::InvalidInstructionData)
             );
         }
+    }
+
+    #[cfg(feature = "v7-production-tag73")]
+    #[test]
+    fn tag73_production_routes_only_through_v7_atomic_parser() {
+        let mut wire = vec![0u8; crate::v7_transaction::V7_ATOMIC_WIRE_BYTES];
+        wire[0] = crate::v7_transaction::V7_PRODUCTION_TAG;
+        assert_eq!(
+            process_spend_production_instruction(&id(), &[], &wire),
+            Err(ProgramError::NotEnoughAccountKeys)
+        );
     }
 }

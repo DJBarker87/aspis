@@ -52,6 +52,8 @@ pub mod v7_code_switch;
 pub mod v7_compact_onefold;
 pub mod v7_lane_zeta;
 pub mod v7_merkle;
+pub mod v7_merkle208;
+pub mod v7_onefold;
 pub mod v7_profile;
 pub mod verify;
 

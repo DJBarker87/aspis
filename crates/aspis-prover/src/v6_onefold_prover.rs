@@ -20,26 +20,38 @@ use aspis_core::sumcheck::{
 };
 use aspis_core::transcript::{label, Transcript};
 use aspis_core::v6_onefold::{
-    binary_frontier_nodes, fold_v6_onefold_queries, prepare_v6_onefold_coordinates,
-    verify_and_gamma_combine_v6_binary_openings_prepared, V6OneFoldWire, V6WireError,
-    V6_BODY_WITHOUT_FRONTIERS, V6_C1_PACKED_BYTES_PER_QUERY, V6_C1_TREE_TAG,
-    V6_C2_PACKED_BYTES_PER_QUERY, V6_C2_TREE_TAG, V6_FINAL_QM31_OFFSET, V6_FINAL_QM31_VALUES,
-    V6_FIXED_M31_LIMBS, V6_FIXED_PACKED_FIELD_BYTES, V6_FRONTIER_CAP_PER_TREE, V6_HARD_BODY_LIMIT,
-    V6_INACTIVE_CLAIM_QM31_OFFSET, V6_INITIAL_CLAIM_OFFSET, V6_OOD_QM31_OFFSET,
-    V6_POINT_CLAIMS_QM31_OFFSET, V6_POINT_CLAIM_ROWS, V6_QUERY_COUNT, V6_RELATION_QM31_OFFSET,
-    V6_RELATION_ROUNDS, V6_RELATION_SENT_VALUES, V6_SEMANTIC_QM31_OFFSET, V6_SEMANTIC_ROUNDS,
-    V6_SEMANTIC_SENT_VALUES, V6_TOTAL_COLUMNS,
+    binary_frontier_nodes, fold_v6_onefold_queries,
+    prepare_v6_onefold_coordinates, verify_and_gamma_combine_v6_binary_openings_prepared,
+    V6OneFoldWire, V6WireError, V6_BODY_WITHOUT_FRONTIERS, V6_C1_PACKED_BYTES_PER_QUERY,
+    V6_C1_TREE_TAG, V6_C2_PACKED_BYTES_PER_QUERY, V6_C2_TREE_TAG, V6_FINAL_QM31_OFFSET,
+    V6_FINAL_QM31_VALUES, V6_FIXED_M31_LIMBS, V6_FIXED_PACKED_FIELD_BYTES,
+    V6_FRONTIER_CAP_PER_TREE, V6_HARD_BODY_LIMIT, V6_INACTIVE_CLAIM_QM31_OFFSET,
+    V6_INITIAL_CLAIM_OFFSET, V6_OOD_QM31_OFFSET, V6_POINT_CLAIMS_QM31_OFFSET, V6_POINT_CLAIM_ROWS,
+    V6_QUERY_COUNT, V6_RELATION_QM31_OFFSET, V6_RELATION_ROUNDS, V6_RELATION_SENT_VALUES,
+    V6_SEMANTIC_QM31_OFFSET, V6_SEMANTIC_ROUNDS, V6_SEMANTIC_SENT_VALUES, V6_TOTAL_COLUMNS,
 };
 use aspis_core::v6_query_batch::{add_v6_final256_query_batch, V6AuthenticatedQueryBatch};
 use aspis_core::v6_transcript::{
-    v6_statement_points, verify_v6_transcript_and_relation, V6SemanticView, V6TranscriptContext,
+    v6_statement_points, verify_v6_transcript_and_relation,
+    verify_v7_compact_transcript_and_relation_prepared, V6SemanticView, V6TranscriptContext,
     V6VerifiedTranscript, V6_BATCH_WORK_BITS, V6_COMPACT_DRAW_CAP, V6_FINAL_WORK_BITS,
     V6_FOLD_WORK_BITS, V6_PROFILE_BINDING, V6_QUERY_DRAW_LIMIT, V6_QUERY_SELECTOR_COUNT,
     V6_TREE_DEPTH,
 };
+use aspis_core::v7_onefold::{
+    derive_first_v7_compact_queries, verify_and_gamma_combine_v7_openings,
+    V7CompactOneFoldWire,
+    V7_COMPACT_BATCH_WORK_BITS, V7_COMPACT_BODY_WITHOUT_FRONTIERS, V7_COMPACT_DIGEST_BYTES,
+    V7_COMPACT_FINAL_WORK_BITS, V7_COMPACT_FOLD_WORK_BITS, V7_COMPACT_MAX_BODY_BYTES,
+    V7_COMPACT_PROFILE_BINDING,
+};
+use aspis_core::v7_merkle208::{
+    node_hash_v7, private_leaf_hash_v7, V7Digest, V7_C1_TREE_TAG, V7_C2_TREE_TAG,
+};
 use aspis_core::HashFn;
 use aspis_statement::atomic_state_only_registry::build_atomic_state_only_copy_helper_v3;
 use aspis_statement::atomic_state_only_terminal::{
+    atomic_state_only_copy_inactive_group_masks_v3, atomic_state_only_copy_inactive_row_groups_v3,
     atomic_state_only_copy_inactive_row_masks_v3,
     atomic_state_only_selected_masked_terminal_value_compiled_v3,
     atomic_state_only_selected_unmasked_terminal_value_compiled_v3,
@@ -68,6 +80,7 @@ use crate::state_only_spend_candidate::{
 const V6_DOMAIN_LOG: u32 = 20;
 const V6_LEAF_COUNT: usize = 1usize << V6_TREE_DEPTH;
 const V6_ROOT_SALT_DOMAIN: &[u8] = b"aspis-v6-public-root-salt-v1";
+const V7_ROOT_SALT_DOMAIN: &[u8] = b"aspis-v7-public-root-salt-v1";
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct V6ProverContext {
@@ -100,6 +113,67 @@ pub struct BuiltV6OneFoldProof {
     pub work_nonces: [u64; 3],
     pub pow_valid: bool,
     pub transcript_state_after_queries: [u8; 32],
+}
+
+pub type V7ProverContext = V6ProverContext;
+
+#[derive(Clone, Debug)]
+pub struct BuiltV7CompactOneFoldProof {
+    pub bytes: Vec<u8>,
+    pub compact_counter: u8,
+    pub frontier_nodes: usize,
+    pub queries: [u32; V6_QUERY_COUNT],
+    pub work_nonces: [u64; 3],
+    pub pow_valid: bool,
+    pub transcript_state_after_queries: [u8; 32],
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+enum OneFoldBuildProfile {
+    V6,
+    V7Compact,
+}
+
+#[derive(Clone, Debug)]
+struct BuiltOneFoldProof {
+    bytes: Vec<u8>,
+    selector: u8,
+    compact_counter: u8,
+    frontier_nodes: usize,
+    queries: [u32; V6_QUERY_COUNT],
+    work_nonces: [u64; 3],
+    pow_valid: bool,
+    transcript_state_after_queries: [u8; 32],
+}
+
+impl From<BuiltOneFoldProof> for BuiltV6OneFoldProof {
+    fn from(proof: BuiltOneFoldProof) -> Self {
+        Self {
+            bytes: proof.bytes,
+            selector: proof.selector,
+            compact_counter: proof.compact_counter,
+            frontier_nodes: proof.frontier_nodes,
+            queries: proof.queries,
+            work_nonces: proof.work_nonces,
+            pow_valid: proof.pow_valid,
+            transcript_state_after_queries: proof.transcript_state_after_queries,
+        }
+    }
+}
+
+impl From<BuiltOneFoldProof> for BuiltV7CompactOneFoldProof {
+    fn from(proof: BuiltOneFoldProof) -> Self {
+        debug_assert_eq!(proof.selector, 0);
+        Self {
+            bytes: proof.bytes,
+            compact_counter: proof.compact_counter,
+            frontier_nodes: proof.frontier_nodes,
+            queries: proof.queries,
+            work_nonces: proof.work_nonces,
+            pow_valid: proof.pow_valid,
+            transcript_state_after_queries: proof.transcript_state_after_queries,
+        }
+    }
 }
 
 #[derive(Debug)]
@@ -159,6 +233,96 @@ impl BinaryMerkleTree {
             return Err(V6ProverError::Stage("binary frontier terminal"));
         }
         Ok(frontier)
+    }
+}
+
+#[derive(Debug)]
+struct BinaryMerkleTree216 {
+    levels: Vec<Vec<V7Digest>>,
+}
+
+impl BinaryMerkleTree216 {
+    fn from_leaf_hashes(hash: HashFn, leaves: Vec<V7Digest>) -> Result<Self, V6ProverError> {
+        if leaves.len() != V6_LEAF_COUNT {
+            return Err(V6ProverError::Stage("V7 binary leaf count"));
+        }
+        let mut levels = vec![leaves];
+        while levels.last().unwrap().len() > 1 {
+            let next = levels
+                .last()
+                .unwrap()
+                .chunks_exact(2)
+                .map(|pair| node_hash_v7(hash, &pair[0], &pair[1]))
+                .collect();
+            levels.push(next);
+        }
+        Ok(Self { levels })
+    }
+
+    fn root(&self) -> V7Digest {
+        self.levels.last().unwrap()[0]
+    }
+
+    fn frontier(&self, queries: [u32; V6_QUERY_COUNT]) -> Result<Vec<V7Digest>, V6ProverError> {
+        let mut current = queries.to_vec();
+        current.sort_unstable();
+        if current.windows(2).any(|pair| pair[0] == pair[1])
+            || current.last().copied().unwrap_or(u32::MAX) >= V6_LEAF_COUNT as u32
+        {
+            return Err(V6ProverError::Stage("V7 binary query schedule"));
+        }
+        let mut frontier = Vec::new();
+        for level in &self.levels[..self.levels.len() - 1] {
+            let mut next = Vec::with_capacity(current.len());
+            let mut index = 0usize;
+            while index < current.len() {
+                let node = current[index];
+                if node & 1 == 0 && index + 1 < current.len() && current[index + 1] == node + 1 {
+                    next.push(node >> 1);
+                    index += 2;
+                } else {
+                    frontier.push(level[(node ^ 1) as usize]);
+                    next.push(node >> 1);
+                    index += 1;
+                }
+            }
+            next.dedup();
+            current = next;
+        }
+        if current != [0] {
+            return Err(V6ProverError::Stage("V7 binary frontier terminal"));
+        }
+        Ok(frontier)
+    }
+}
+
+#[derive(Debug)]
+enum ProfiledBinaryMerkleTree {
+    V6(BinaryMerkleTree),
+    V7Compact(BinaryMerkleTree216),
+}
+
+impl ProfiledBinaryMerkleTree {
+    fn append_root(&self, output: &mut Vec<u8>) {
+        match self {
+            Self::V6(tree) => output.extend_from_slice(&tree.root()),
+            Self::V7Compact(tree) => output.extend_from_slice(&tree.root()),
+        }
+    }
+
+    fn frontier_bytes(&self, queries: [u32; V6_QUERY_COUNT]) -> Result<Vec<u8>, V6ProverError> {
+        Ok(match self {
+            Self::V6(tree) => tree
+                .frontier(queries)?
+                .into_iter()
+                .flat_map(|node| node.into_iter())
+                .collect(),
+            Self::V7Compact(tree) => tree
+                .frontier(queries)?
+                .into_iter()
+                .flat_map(|node| node.into_iter())
+                .collect(),
+        })
     }
 }
 
@@ -226,16 +390,42 @@ fn packed_c2_fiber(encoded: &[Vec<QM31>], fiber: usize) -> Result<Vec<u8>, V6Pro
     Ok(packed)
 }
 
-fn public_root_salt(hash: HashFn, context: &V6TranscriptContext, tree_tag: u8) -> [u8; 32] {
+fn profile_root_salt(
+    hash: HashFn,
+    domain: &[u8],
+    profile_binding: &[u8; 32],
+    context: &V6TranscriptContext,
+    tree_tag: u8,
+) -> [u8; 32] {
     hash(&[
-        V6_ROOT_SALT_DOMAIN,
-        &V6_PROFILE_BINDING,
+        domain,
+        profile_binding,
         &context.program_id,
         &context.release_binding,
         &context.statement_digest,
         &context.attempt_id,
         &[tree_tag],
     ])
+}
+
+fn public_root_salt(hash: HashFn, context: &V6TranscriptContext, tree_tag: u8) -> [u8; 32] {
+    profile_root_salt(
+        hash,
+        V6_ROOT_SALT_DOMAIN,
+        &V6_PROFILE_BINDING,
+        context,
+        tree_tag,
+    )
+}
+
+fn v7_public_root_salt(hash: HashFn, context: &V6TranscriptContext, tree_tag: u8) -> [u8; 32] {
+    profile_root_salt(
+        hash,
+        V7_ROOT_SALT_DOMAIN,
+        &V7_COMPACT_PROFILE_BINDING,
+        context,
+        tree_tag,
+    )
 }
 
 fn begin_transcript_and_precommit(
@@ -255,6 +445,26 @@ fn begin_transcript_and_precommit(
         StateOnlyHidingContext::atomic_spend_v3(context.statement_digest, context.attempt_id),
     )
     .map_err(|_| V6ProverError::Stage("V6 hiding precommit"))?;
+    Ok((transcript, binding))
+}
+
+fn begin_v7_transcript_and_precommit(
+    hash: HashFn,
+    context: &V6TranscriptContext,
+) -> Result<(Transcript, [u8; 32]), V6ProverError> {
+    let mut transcript = Transcript::new(hash);
+    transcript.absorb(label::PROFILE, &V7_COMPACT_PROFILE_BINDING);
+    transcript.absorb(label::M31_CIRCLE_BASIS, M31_CIRCLE_BASIS_DISCRIMINATOR);
+    let mut deployment = [0u8; 64];
+    deployment[..32].copy_from_slice(&context.program_id);
+    deployment[32..].copy_from_slice(&context.release_binding);
+    transcript.absorb(label::V7_DEPLOYMENT_CONTEXT, &deployment);
+    transcript.absorb(label::STATEMENT, &context.statement_digest);
+    let binding = begin_state_only_hiding_precommit(
+        &mut transcript,
+        StateOnlyHidingContext::atomic_spend_v3(context.statement_digest, context.attempt_id),
+    )
+    .map_err(|_| V6ProverError::Stage("V7 hiding precommit"))?;
     Ok((transcript, binding))
 }
 
@@ -294,6 +504,42 @@ fn absorb_c2_and_sample_batching(
     let batching = begin_state_only_zerocheck(transcript)
         .map_err(|_| V6ProverError::Stage("V6 zerocheck challenges"))?;
     Ok(batching)
+}
+
+fn absorb_v7_c1_and_sample_copy_challenges(
+    transcript: &mut Transcript,
+    hash: HashFn,
+    context: &V6TranscriptContext,
+    c1_root: V7Digest,
+) -> Result<(QM31, QM31), V6ProverError> {
+    let c1_salt = v7_public_root_salt(hash, context, V7_C1_TREE_TAG);
+    let mut c1_record = [0u8; 1 + V7_COMPACT_DIGEST_BYTES + 32];
+    c1_record[0] = 0;
+    c1_record[1..1 + V7_COMPACT_DIGEST_BYTES].copy_from_slice(&c1_root);
+    c1_record[1 + V7_COMPACT_DIGEST_BYTES..].copy_from_slice(&c1_salt);
+    transcript.absorb(label::M31_CIRCLE_ROUND_ROOT, &c1_record);
+    let lambda = transcript
+        .challenge_qm31()
+        .map_err(|_| V6ProverError::Stage("V7 lambda"))?;
+    let chi = transcript
+        .challenge_qm31()
+        .map_err(|_| V6ProverError::Stage("V7 chi"))?;
+    Ok((lambda, chi))
+}
+
+fn absorb_v7_c2_and_sample_batching(
+    transcript: &mut Transcript,
+    hash: HashFn,
+    context: &V6TranscriptContext,
+    c2_root: V7Digest,
+) -> Result<aspis_core::statement_sumcheck::PaymentConstraintChallenges, V6ProverError> {
+    let c2_salt = v7_public_root_salt(hash, context, V7_C2_TREE_TAG);
+    let mut c2_record = [0u8; V7_COMPACT_DIGEST_BYTES + 32];
+    c2_record[..V7_COMPACT_DIGEST_BYTES].copy_from_slice(&c2_root);
+    c2_record[V7_COMPACT_DIGEST_BYTES..].copy_from_slice(&c2_salt);
+    transcript.absorb(label::M31_CIRCLE_C2_ROOT, &c2_record);
+    begin_state_only_zerocheck(transcript)
+        .map_err(|_| V6ProverError::Stage("V7 zerocheck challenges"))
 }
 
 fn interpolate_degree27(values: &[QM31; 28]) -> StateOnlySumcheckPolynomial {
@@ -517,6 +763,21 @@ fn derive_compact_queries(
     Err(V6ProverError::NoCompactSchedule)
 }
 
+fn derive_v7_queries(
+    transcript: &Transcript,
+) -> Result<(u8, u8, [u32; V6_QUERY_COUNT], usize, [u8; 32], Transcript), V6ProverError> {
+    let schedule = derive_first_v7_compact_queries(transcript)
+        .map_err(|_| V6ProverError::NoCompactSchedule)?;
+    Ok((
+        0,
+        schedule.counter,
+        schedule.queries,
+        schedule.frontier_nodes,
+        schedule.transcript_state,
+        schedule.accepted_transcript,
+    ))
+}
+
 fn derive_leaf_salt(
     reserved: &ReservedStateOnlyAttemptSecrets,
     hash: HashFn,
@@ -526,6 +787,17 @@ fn derive_leaf_salt(
     reserved
         .derive_spend_leaf_salt(hash, hiding_context, 0x76, fiber as u32)
         .map_err(|_| V6ProverError::Stage("V6 shared leaf salt"))
+}
+
+fn derive_v7_leaf_salt(
+    reserved: &ReservedStateOnlyAttemptSecrets,
+    hash: HashFn,
+    hiding_context: StateOnlyHidingContext,
+    fiber: usize,
+) -> Result<[u8; 32], V6ProverError> {
+    reserved
+        .derive_spend_leaf_salt(hash, hiding_context, 0x77, fiber as u32)
+        .map_err(|_| V6ProverError::Stage("V7 shared leaf salt"))
 }
 
 fn build_c1_tree(
@@ -558,12 +830,42 @@ fn build_c2_tree(
     BinaryMerkleTree::from_leaf_hashes(hash, c2_hashes)
 }
 
-/// Shared implementation for one exact V6 proof body. Production callers use
-/// [`build_v6_onefold_proof_production`], which fixes `pow_mode` to `Mine`.
+fn build_v7_c1_tree(
+    hash: HashFn,
+    reserved: &ReservedStateOnlyAttemptSecrets,
+    hiding_context: StateOnlyHidingContext,
+    encoded_c1: &[Vec<M31>],
+) -> Result<BinaryMerkleTree216, V6ProverError> {
+    let mut c1_hashes = Vec::with_capacity(V6_LEAF_COUNT);
+    for fiber in 0..V6_LEAF_COUNT {
+        let salt = derive_v7_leaf_salt(reserved, hash, hiding_context, fiber)?;
+        let c1 = packed_c1_fiber(encoded_c1, fiber)?;
+        c1_hashes.push(private_leaf_hash_v7(hash, V7_C1_TREE_TAG, &c1, &salt));
+    }
+    BinaryMerkleTree216::from_leaf_hashes(hash, c1_hashes)
+}
+
+fn build_v7_c2_tree(
+    hash: HashFn,
+    reserved: &ReservedStateOnlyAttemptSecrets,
+    hiding_context: StateOnlyHidingContext,
+    encoded_c2: &[Vec<QM31>],
+) -> Result<BinaryMerkleTree216, V6ProverError> {
+    let mut c2_hashes = Vec::with_capacity(V6_LEAF_COUNT);
+    for fiber in 0..V6_LEAF_COUNT {
+        let salt = derive_v7_leaf_salt(reserved, hash, hiding_context, fiber)?;
+        let c2 = packed_c2_fiber(encoded_c2, fiber)?;
+        c2_hashes.push(private_leaf_hash_v7(hash, V7_C2_TREE_TAG, &c2, &salt));
+    }
+    BinaryMerkleTree216::from_leaf_hashes(hash, c2_hashes)
+}
+
+/// Shared semantic/relation implementation for the frozen V6 proof and its
+/// compact V7 wire successor. Production callers fix `pow_mode` to `Mine`.
 /// A failed build consumes the unpublished attempt and its durable nonce
 /// reservation; callers must never retry it with the same secrets.
 #[allow(clippy::too_many_arguments, clippy::too_many_lines)]
-fn build_v6_onefold_proof_with_pow_mode(
+fn build_onefold_proof_with_pow_mode(
     statement: &AtomicPaymentStatementV4,
     witness: &SpendWitness,
     prover_context: V6ProverContext,
@@ -571,7 +873,8 @@ fn build_v6_onefold_proof_with_pow_mode(
     nonce_store: &mut impl StateOnlyMaskNonceStore,
     hash: HashFn,
     pow_mode: StateOnlyPowMode,
-) -> Result<BuiltV6OneFoldProof, V6ProverError> {
+    profile: OneFoldBuildProfile,
+) -> Result<BuiltOneFoldProof, V6ProverError> {
     if attempt.mask_nonce() != prover_context.attempt_id {
         return Err(V6ProverError::AttemptIdMismatch);
     }
@@ -585,8 +888,12 @@ fn build_v6_onefold_proof_with_pow_mode(
     };
     let hiding_context =
         StateOnlyHidingContext::atomic_spend_v3(statement_digest, prover_context.attempt_id);
-    let (mut transcript, precommit_binding) =
-        begin_transcript_and_precommit(hash, &transcript_context)?;
+    let (mut transcript, precommit_binding) = match profile {
+        OneFoldBuildProfile::V6 => begin_transcript_and_precommit(hash, &transcript_context)?,
+        OneFoldBuildProfile::V7Compact => {
+            begin_v7_transcript_and_precommit(hash, &transcript_context)?
+        }
+    };
     let (reserved, mask_material) = attempt
         .reserve_and_build_atomic_mask_material_v3(
             hash,
@@ -613,10 +920,32 @@ fn build_v6_onefold_proof_with_pow_mode(
     let encoder = CircleEncoder::new_for_domain_log(V6_DOMAIN_LOG);
     let encoded_c1 = encode_state_only_c1_columns(&encoder, &selected_c1)
         .map_err(|_| V6ProverError::Stage("V6 C1 encoding"))?;
-    let c1_tree = build_c1_tree(hash, &reserved, hiding_context, &encoded_c1)?;
-    let c1_root = c1_tree.root();
-    let (lambda, chi) =
-        absorb_c1_and_sample_copy_challenges(&mut transcript, hash, &transcript_context, c1_root)?;
+    let c1_tree =
+        match profile {
+            OneFoldBuildProfile::V6 => ProfiledBinaryMerkleTree::V6(build_c1_tree(
+                hash,
+                &reserved,
+                hiding_context,
+                &encoded_c1,
+            )?),
+            OneFoldBuildProfile::V7Compact => ProfiledBinaryMerkleTree::V7Compact(
+                build_v7_c1_tree(hash, &reserved, hiding_context, &encoded_c1)?,
+            ),
+        };
+    let (lambda, chi) = match &c1_tree {
+        ProfiledBinaryMerkleTree::V6(tree) => absorb_c1_and_sample_copy_challenges(
+            &mut transcript,
+            hash,
+            &transcript_context,
+            tree.root(),
+        )?,
+        ProfiledBinaryMerkleTree::V7Compact(tree) => absorb_v7_c1_and_sample_copy_challenges(
+            &mut transcript,
+            hash,
+            &transcript_context,
+            tree.root(),
+        )?,
+    };
 
     let mut h1 = build_atomic_state_only_copy_helper_v3(&trace, lambda, chi)
         .map_err(|_| V6ProverError::Stage("V6 copy helper"))?;
@@ -628,10 +957,29 @@ fn build_v6_onefold_proof_with_pow_mode(
     let c2_messages = vec![h1.clone(), applied.g.clone(), d.clone()];
     let encoded_c2 = encode_state_only_spend_c2_columns(&encoder, &c2_messages)
         .map_err(|_| V6ProverError::Stage("V6 C2 encoding"))?;
-    let c2_tree = build_c2_tree(hash, &reserved, hiding_context, &encoded_c2)?;
-    let c2_root = c2_tree.root();
-    let batching =
-        absorb_c2_and_sample_batching(&mut transcript, hash, &transcript_context, c2_root)?;
+    let c2_tree =
+        match profile {
+            OneFoldBuildProfile::V6 => ProfiledBinaryMerkleTree::V6(build_c2_tree(
+                hash,
+                &reserved,
+                hiding_context,
+                &encoded_c2,
+            )?),
+            OneFoldBuildProfile::V7Compact => ProfiledBinaryMerkleTree::V7Compact(
+                build_v7_c2_tree(hash, &reserved, hiding_context, &encoded_c2)?,
+            ),
+        };
+    let batching = match &c2_tree {
+        ProfiledBinaryMerkleTree::V6(tree) => {
+            absorb_c2_and_sample_batching(&mut transcript, hash, &transcript_context, tree.root())?
+        }
+        ProfiledBinaryMerkleTree::V7Compact(tree) => absorb_v7_c2_and_sample_batching(
+            &mut transcript,
+            hash,
+            &transcript_context,
+            tree.root(),
+        )?,
+    };
 
     let mut fields = vec![QM31::ZERO; V6_FIXED_M31_LIMBS / 4];
     let initial_claim = state_only_initial_mask_claim(&trace, &applied.mask_only_c1, &applied.g)
@@ -703,8 +1051,16 @@ fn build_v6_onefold_proof_with_pow_mode(
         &semantic_point,
     )?;
     absorb_point_claims(&mut transcript, &mut fields, &point_claims);
-    let batch_nonce = work_nonce(&transcript, V6_BATCH_WORK_BITS, pow_mode)?;
-    let mut pow_valid = transcript.grinding_ok(batch_nonce, V6_BATCH_WORK_BITS);
+    let work_bits = match profile {
+        OneFoldBuildProfile::V6 => [V6_BATCH_WORK_BITS, V6_FOLD_WORK_BITS, V6_FINAL_WORK_BITS],
+        OneFoldBuildProfile::V7Compact => [
+            V7_COMPACT_BATCH_WORK_BITS,
+            V7_COMPACT_FOLD_WORK_BITS,
+            V7_COMPACT_FINAL_WORK_BITS,
+        ],
+    };
+    let batch_nonce = work_nonce(&transcript, work_bits[0], pow_mode)?;
+    let mut pow_valid = transcript.grinding_ok(batch_nonce, work_bits[0]);
     absorb_work(&mut transcript, 0, batch_nonce);
     let gamma = transcript
         .challenge_nonzero_qm31()
@@ -771,8 +1127,8 @@ fn build_v6_onefold_proof_with_pow_mode(
         return Err(V6ProverError::Stage("V6 first relation boundary"));
     }
     write_and_absorb_compact_relation(&mut transcript, &mut fields, 0, &first);
-    let fold_nonce = work_nonce(&transcript, V6_FOLD_WORK_BITS, pow_mode)?;
-    pow_valid &= transcript.grinding_ok(fold_nonce, V6_FOLD_WORK_BITS);
+    let fold_nonce = work_nonce(&transcript, work_bits[1], pow_mode)?;
+    pow_valid &= transcript.grinding_ok(fold_nonce, work_bits[1]);
     absorb_work(&mut transcript, 1, fold_nonce);
     let alpha0 = transcript
         .challenge_qm31()
@@ -793,8 +1149,8 @@ fn build_v6_onefold_proof_with_pow_mode(
     }
     absorb_final256(&mut transcript, &mut fields, &relation_values);
 
-    let final_nonce = work_nonce(&transcript, V6_FINAL_WORK_BITS, pow_mode)?;
-    pow_valid &= transcript.grinding_ok(final_nonce, V6_FINAL_WORK_BITS);
+    let final_nonce = work_nonce(&transcript, work_bits[2], pow_mode)?;
+    pow_valid &= transcript.grinding_ok(final_nonce, work_bits[2]);
     absorb_work(&mut transcript, 2, final_nonce);
     let (
         selector,
@@ -803,28 +1159,31 @@ fn build_v6_onefold_proof_with_pow_mode(
         frontier_nodes,
         state_after_queries,
         accepted_query_transcript,
-    ) = derive_compact_queries(&transcript)?;
+    ) = match profile {
+        OneFoldBuildProfile::V6 => derive_compact_queries(&transcript)?,
+        OneFoldBuildProfile::V7Compact => derive_v7_queries(&transcript)?,
+    };
     transcript = accepted_query_transcript;
     let expected_frontier = binary_frontier_nodes(queries, V6_TREE_DEPTH)?;
     if expected_frontier != frontier_nodes {
         return Err(V6ProverError::Stage("V6 frontier count"));
     }
 
-    transcript.absorb(label::V6_QUERY_BATCH_CHALLENGE, &[]);
+    let query_batch_labels = match profile {
+        OneFoldBuildProfile::V6 => (label::V6_QUERY_BATCH_CHALLENGE, label::V6_QUERY_BATCH_CLAIM),
+        OneFoldBuildProfile::V7Compact => {
+            (label::V7_QUERY_BATCH_CHALLENGE, label::V7_QUERY_BATCH_CLAIM)
+        }
+    };
+    transcript.absorb(query_batch_labels.0, &[]);
     let query_batch_challenge = transcript
         .challenge_nonzero_qm31()
         .map_err(|_| V6ProverError::Stage("V6 query batch challenge"))?;
     let folded_query_values =
         core::array::from_fn(|ordinal| folded_codeword[queries[ordinal] as usize]);
-    let mut query_line_x = [M31::ZERO; V6_QUERY_COUNT];
-    for ordinal in 0..V6_QUERY_COUNT {
-        query_line_x[ordinal] = aspis_core::circle_fri::line_domain_x_for_circle(
-            V6_DOMAIN_LOG,
-            1,
-            queries[ordinal] as usize,
-        )
-        .map_err(|_| V6ProverError::Stage("V6 query batch line point"))?;
-    }
+    let query_coordinates = prepare_v6_onefold_coordinates(queries)
+        .map_err(|_| V6ProverError::Stage("one-fold query coordinates"))?;
+    let query_line_x = query_coordinates.line_x;
     let query_claim = add_v6_final256_query_batch(
         &mut weights,
         &mut running_claim,
@@ -838,7 +1197,7 @@ fn build_v6_onefold_proof_with_pow_mode(
     .map_err(|_| V6ProverError::Stage("V6 query batch relation"))?;
     let mut query_claim_bytes = [0u8; 16];
     query_claim.write_le_bytes(&mut query_claim_bytes);
-    transcript.absorb(label::V6_QUERY_BATCH_CLAIM, &query_claim_bytes);
+    transcript.absorb(query_batch_labels.1, &query_claim_bytes);
 
     let mut alphas = [QM31::ZERO; V6_RELATION_ROUNDS];
     alphas[0] = alpha0;
@@ -860,37 +1219,59 @@ fn build_v6_onefold_proof_with_pow_mode(
         return Err(V6ProverError::Stage("V6 relation terminal"));
     }
 
-    let c1_frontier = c1_tree.frontier(queries)?;
-    let c2_frontier = c2_tree.frontier(queries)?;
-    if c1_frontier.len() != frontier_nodes || c2_frontier.len() != frontier_nodes {
+    let frontier_digest_bytes = match profile {
+        OneFoldBuildProfile::V6 => 32,
+        OneFoldBuildProfile::V7Compact => V7_COMPACT_DIGEST_BYTES,
+    };
+    let c1_frontier = c1_tree.frontier_bytes(queries)?;
+    let c2_frontier = c2_tree.frontier_bytes(queries)?;
+    if c1_frontier.len() != frontier_nodes * frontier_digest_bytes
+        || c2_frontier.len() != frontier_nodes * frontier_digest_bytes
+    {
         return Err(V6ProverError::Stage("V6 frontier serialization"));
     }
     let fixed_fields = pack_qm31_fields(&fields);
     if fixed_fields.len() != V6_FIXED_PACKED_FIELD_BYTES {
         return Err(V6ProverError::Stage("V6 fixed-field packing"));
     }
-    let mut body = Vec::with_capacity(V6_BODY_WITHOUT_FRONTIERS + 64 * frontier_nodes);
+    let body_without_frontiers = match profile {
+        OneFoldBuildProfile::V6 => V6_BODY_WITHOUT_FRONTIERS,
+        OneFoldBuildProfile::V7Compact => V7_COMPACT_BODY_WITHOUT_FRONTIERS,
+    };
+    let expected_body_bytes = body_without_frontiers + 2 * frontier_digest_bytes * frontier_nodes;
+    let mut body = Vec::with_capacity(expected_body_bytes);
     body.extend_from_slice(&fixed_fields);
-    body.extend_from_slice(&c1_root);
-    body.extend_from_slice(&c2_root);
+    c1_tree.append_root(&mut body);
+    c2_tree.append_root(&mut body);
     body.extend_from_slice(&batch_nonce.to_le_bytes());
     body.extend_from_slice(&fold_nonce.to_le_bytes());
     body.extend_from_slice(&final_nonce.to_le_bytes());
     for query in queries {
         let fiber = query as usize;
         body.extend_from_slice(&packed_c1_fiber(&encoded_c1, fiber)?);
-        body.extend_from_slice(&packed_c2_fiber(&encoded_c2, fiber)?);
-        body.extend_from_slice(&derive_leaf_salt(&reserved, hash, hiding_context, fiber)?);
+        match profile {
+            OneFoldBuildProfile::V6 => {
+                body.extend_from_slice(&packed_c2_fiber(&encoded_c2, fiber)?);
+                body.extend_from_slice(&derive_leaf_salt(&reserved, hash, hiding_context, fiber)?);
+            }
+            OneFoldBuildProfile::V7Compact => {
+                body.extend_from_slice(&packed_c2_fiber(&encoded_c2, fiber)?);
+                body.extend_from_slice(&derive_v7_leaf_salt(
+                    &reserved,
+                    hash,
+                    hiding_context,
+                    fiber,
+                )?);
+            }
+        }
     }
-    for node in c1_frontier {
-        body.extend_from_slice(&node);
-    }
-    for node in c2_frontier {
-        body.extend_from_slice(&node);
-    }
-    if body.len() != V6_BODY_WITHOUT_FRONTIERS + 64 * frontier_nodes
-        || body.len() >= V6_HARD_BODY_LIMIT
-    {
+    body.extend_from_slice(&c1_frontier);
+    body.extend_from_slice(&c2_frontier);
+    let body_within_profile_limit = match profile {
+        OneFoldBuildProfile::V6 => body.len() < V6_HARD_BODY_LIMIT,
+        OneFoldBuildProfile::V7Compact => body.len() <= V7_COMPACT_MAX_BODY_BYTES,
+    };
+    if body.len() != expected_body_bytes || !body_within_profile_limit {
         return Err(V6ProverError::Stage("V6 body length"));
     }
 
@@ -907,7 +1288,7 @@ fn build_v6_onefold_proof_with_pow_mode(
         }
     }
 
-    Ok(BuiltV6OneFoldProof {
+    Ok(BuiltOneFoldProof {
         bytes: body,
         selector,
         compact_counter,
@@ -930,7 +1311,7 @@ pub fn build_v6_onefold_proof_production(
     nonce_store: &mut impl StateOnlyMaskNonceStore,
     hash: HashFn,
 ) -> Result<BuiltV6OneFoldProof, V6ProverError> {
-    build_v6_onefold_proof_with_pow_mode(
+    build_onefold_proof_with_pow_mode(
         statement,
         witness,
         prover_context,
@@ -938,7 +1319,9 @@ pub fn build_v6_onefold_proof_production(
         nonce_store,
         hash,
         StateOnlyPowMode::Mine,
+        OneFoldBuildProfile::V6,
     )
+    .map(Into::into)
 }
 
 /// Build a diagnostic V6 proof with an explicit work mode.
@@ -955,7 +1338,7 @@ pub fn build_v6_onefold_proof(
     hash: HashFn,
     pow_mode: StateOnlyPowMode,
 ) -> Result<BuiltV6OneFoldProof, V6ProverError> {
-    build_v6_onefold_proof_with_pow_mode(
+    build_onefold_proof_with_pow_mode(
         statement,
         witness,
         prover_context,
@@ -963,7 +1346,57 @@ pub fn build_v6_onefold_proof(
         nonce_store,
         hash,
         pow_mode,
+        OneFoldBuildProfile::V6,
     )
+    .map(Into::into)
+}
+
+/// Build a production compact V7 proof with all three work witnesses mined.
+#[allow(clippy::too_many_arguments)]
+pub fn build_v7_compact_onefold_proof_production(
+    statement: &AtomicPaymentStatementV4,
+    witness: &SpendWitness,
+    prover_context: V7ProverContext,
+    attempt: StateOnlyAttemptSecrets,
+    nonce_store: &mut impl StateOnlyMaskNonceStore,
+    hash: HashFn,
+) -> Result<BuiltV7CompactOneFoldProof, V6ProverError> {
+    build_onefold_proof_with_pow_mode(
+        statement,
+        witness,
+        prover_context,
+        attempt,
+        nonce_store,
+        hash,
+        StateOnlyPowMode::Mine,
+        OneFoldBuildProfile::V7Compact,
+    )
+    .map(Into::into)
+}
+
+/// Diagnostic compact V7 fixture builder with explicit work mode.
+#[cfg(any(test, feature = "insecure-spend-fixture"))]
+#[allow(clippy::too_many_arguments)]
+pub fn build_v7_compact_onefold_proof(
+    statement: &AtomicPaymentStatementV4,
+    witness: &SpendWitness,
+    prover_context: V7ProverContext,
+    attempt: StateOnlyAttemptSecrets,
+    nonce_store: &mut impl StateOnlyMaskNonceStore,
+    hash: HashFn,
+    pow_mode: StateOnlyPowMode,
+) -> Result<BuiltV7CompactOneFoldProof, V6ProverError> {
+    build_onefold_proof_with_pow_mode(
+        statement,
+        witness,
+        prover_context,
+        attempt,
+        nonce_store,
+        hash,
+        pow_mode,
+        OneFoldBuildProfile::V7Compact,
+    )
+    .map(Into::into)
 }
 
 fn terminal_claims(view: &V6SemanticView<'_>) -> [QM31; 84] {
@@ -1040,6 +1473,71 @@ pub fn verify_v6_onefold_proof_core(
     Ok(transcript)
 }
 
+/// Host replay of the complete compact V7 proof-dependent path.
+#[allow(clippy::too_many_arguments)]
+pub fn verify_v7_compact_onefold_proof_core(
+    proof: &BuiltV7CompactOneFoldProof,
+    statement: &AtomicPaymentStatementV4,
+    prover_context: V7ProverContext,
+    hash: HashFn,
+    check_pow: bool,
+) -> Result<V6VerifiedTranscript, V6ProverError> {
+    let wire =
+        V7CompactOneFoldWire::parse_deferred_canonicality(&proof.bytes, proof.frontier_nodes)?;
+    let statement_digest = atomic_payment_statement_digest_v4(statement, hash)
+        .map_err(|_| V6ProverError::Stage("V7 replay statement digest"))?;
+    let context = V6TranscriptContext {
+        program_id: prover_context.program_id,
+        release_binding: prover_context.release_binding,
+        statement_digest,
+        attempt_id: prover_context.attempt_id,
+    };
+    let transcript = verify_v7_compact_transcript_and_relation_prepared(
+        hash,
+        &wire,
+        &context,
+        atomic_state_only_copy_inactive_row_groups_v3(),
+        atomic_state_only_copy_inactive_group_masks_v3(),
+        check_pow,
+        |view| {
+            atomic_state_only_selected_masked_terminal_value_compiled_v3(
+                statement,
+                &terminal_claims(view),
+                &view.point,
+                view.lambda,
+                view.chi,
+                view.batching.theta,
+                &view.batching.zerocheck_point,
+                view.batching.mu,
+                view.eta,
+            )
+            .is_ok_and(|expected| expected == view.terminal_claim)
+        },
+        |view| {
+            let coordinates = prepare_v6_onefold_coordinates(view.queries)?;
+            let combined = verify_and_gamma_combine_v7_openings(
+                hash,
+                &wire,
+                view.queries,
+                view.gamma_powers,
+            )?;
+            Ok(V6AuthenticatedQueryBatch {
+                values: fold_v6_onefold_queries(&combined, &coordinates, view.alpha0),
+                line_x: coordinates.line_x,
+            })
+        },
+    )
+    .map_err(|_| V6ProverError::Stage("V7 transcript replay"))?;
+    if transcript.queries != proof.queries
+        || transcript.selector != 0
+        || transcript.compact_counter != proof.compact_counter
+        || transcript.transcript_state_after_queries != proof.transcript_state_after_queries
+    {
+        return Err(V6ProverError::Stage("V7 query replay"));
+    }
+    Ok(transcript)
+}
+
 /// Replay a V6 proof through the full host verifier with work checks enabled.
 pub fn verify_v6_onefold_proof_production(
     proof: &BuiltV6OneFoldProof,
@@ -1048,6 +1546,16 @@ pub fn verify_v6_onefold_proof_production(
     hash: HashFn,
 ) -> Result<V6VerifiedTranscript, V6ProverError> {
     verify_v6_onefold_proof_core(proof, statement, prover_context, hash, true)
+}
+
+/// Replay a compact V7 proof through the full host verifier with work checks.
+pub fn verify_v7_compact_onefold_proof_production(
+    proof: &BuiltV7CompactOneFoldProof,
+    statement: &AtomicPaymentStatementV4,
+    prover_context: V7ProverContext,
+    hash: HashFn,
+) -> Result<V6VerifiedTranscript, V6ProverError> {
+    verify_v7_compact_onefold_proof_core(proof, statement, prover_context, hash, true)
 }
 
 #[cfg(test)]
@@ -1189,6 +1697,62 @@ mod tests {
             "V6 honest fixture: body={} selector={} compact_counter={} frontier={}",
             proof.bytes.len(),
             proof.selector,
+            proof.compact_counter,
+            proof.frontier_nodes
+        );
+    }
+
+    #[test]
+    fn v7_compact_unmined_fixture_is_accepted_below_thirty_kib() {
+        let (statement, witness) = fixture();
+        let context = V7ProverContext {
+            program_id: [0x11; 32],
+            release_binding: [0x72; 32],
+            attempt_id: [0x25; 32],
+        };
+        let attempt = StateOnlyAttemptSecrets::deterministic_spend_fixture(
+            context.attempt_id,
+            [0x47; 32],
+            [0x69; 32],
+        );
+        let mut nonces = InMemoryStateOnlyMaskNonceStore::default();
+        let proof = build_v7_compact_onefold_proof(
+            &statement,
+            &witness,
+            context,
+            attempt,
+            &mut nonces,
+            HOST_HASH,
+            StateOnlyPowMode::UnminedZero,
+        )
+        .unwrap();
+        assert_eq!(
+            proof.bytes.len(),
+            V7_COMPACT_BODY_WITHOUT_FRONTIERS + 2 * V7_COMPACT_DIGEST_BYTES * proof.frontier_nodes
+        );
+        assert!(proof.bytes.len() <= V7_COMPACT_MAX_BODY_BYTES);
+        assert!(proof.frontier_nodes <= 203);
+        assert!(!proof.pow_valid);
+        let replay =
+            verify_v7_compact_onefold_proof_core(&proof, &statement, context, HOST_HASH, false)
+                .unwrap();
+        assert_eq!(replay.queries, proof.queries);
+        assert_eq!(replay.frontier_nodes, proof.frontier_nodes);
+
+        let query_section = V6_FIXED_PACKED_FIELD_BYTES + 2 * V7_COMPACT_DIGEST_BYTES + 24;
+        let mut changed_opening = proof.clone();
+        changed_opening.bytes[query_section + V6_C1_PACKED_BYTES_PER_QUERY] ^= 1;
+        assert!(verify_v7_compact_onefold_proof_core(
+            &changed_opening,
+            &statement,
+            context,
+            HOST_HASH,
+            false,
+        )
+        .is_err());
+        eprintln!(
+            "V7 compact honest fixture: body={} counter={} frontier={}",
+            proof.bytes.len(),
             proof.compact_counter,
             proof.frontier_nodes
         );

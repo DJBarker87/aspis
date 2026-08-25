@@ -230,6 +230,9 @@ pub mod label {
     pub const V7_QUERY_BATCH_CHALLENGE: u8 = 58;
     /// Verifier-computed V7 scalar query-batch claim.
     pub const V7_QUERY_BATCH_CLAIM: u8 = 59;
+    /// V7 program identity and compact-release binding.  This is distinct
+    /// from V6 even though the semantic/relation labels remain shared.
+    pub const V7_DEPLOYMENT_CONTEXT: u8 = 60;
 }
 
 const DOM_ABSORB: u8 = 0x00;

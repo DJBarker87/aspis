@@ -1,4 +1,5 @@
-//! Exact transcript and relation driver for the V6 26+3 one-fold profile.
+//! Exact transcript and relation driver for the V6 26+3 one-fold profile and
+//! its compact V7 wire successor.
 //!
 //! The driver consumes every fixed packed field exactly once, reconstructs
 //! the two omitted sumcheck coefficients from their checked boundaries,
@@ -18,7 +19,9 @@ use crate::proof::M31_CIRCLE_BASIS_DISCRIMINATOR;
 use crate::state_only_hiding::{
     begin_state_only_hiding_precommit, begin_state_only_masked_sumcheck, StateOnlyHidingContext,
 };
-use crate::state_only_spend_query::{StateOnlySpendQueryPowers, SPEND_TOTAL_COLUMNS};
+use crate::state_only_spend_query::{
+    StateOnlySpendQueryPowers, SPEND_D_GENERATOR_INDEX, SPEND_TOTAL_COLUMNS,
+};
 use crate::state_only_sumcheck::{
     begin_state_only_zerocheck, evaluate_state_only_polynomial, StateOnlySumcheckPolynomial,
 };
@@ -32,6 +35,11 @@ use crate::v6_onefold::{
     V6_SEMANTIC_SENT_VALUES, V6_TOTAL_COLUMNS,
 };
 use crate::v6_query_batch::{add_v6_final256_query_batch, V6AuthenticatedQueryBatch};
+use crate::v7_onefold::{
+    derive_first_v7_compact_queries, V7CompactOneFoldWire, V7_COMPACT_BATCH_WORK_BITS,
+    V7_COMPACT_FINAL_WORK_BITS, V7_COMPACT_FOLD_WORK_BITS, V7_COMPACT_PROFILE_BINDING,
+};
+use crate::v7_merkle208::{V7_C1_TREE_TAG, V7_C2_TREE_TAG, V7_MERKLE_DIGEST_BYTES};
 use crate::HashFn;
 
 pub const V6_BATCH_WORK_BITS: u8 = 34;
@@ -52,6 +60,7 @@ pub const V6_PROFILE_BINDING: [u8; 32] = [
 ];
 
 const V6_ROOT_SALT_DOMAIN: &[u8] = b"aspis-v6-public-root-salt-v1";
+const V7_ROOT_SALT_DOMAIN: &[u8] = b"aspis-v7-public-root-salt-v1";
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct V6TranscriptContext {
@@ -163,23 +172,53 @@ pub struct V6VerifiedTranscript {
 pub struct V6QueryBatchView<'a> {
     pub gamma: QM31,
     pub gamma_powers: &'a StateOnlySpendQueryPowers,
+    pub d_power: QM31,
     pub alpha0: QM31,
+    /// Reserved for profiles that need direct access to the final object. V6
+    /// and the selected full-C2 V7 wire both keep this `None`.
+    pub final256_coefficients: Option<&'a [QM31; V6_FINAL_QM31_VALUES]>,
     pub queries: [u32; V6_QUERY_COUNT],
     pub selector: u8,
     pub compact_counter: u8,
     pub frontier_nodes: usize,
 }
 
-fn public_root_salt(hash: HashFn, context: &V6TranscriptContext, tree_tag: u8) -> [u8; 32] {
+fn profile_root_salt(
+    hash: HashFn,
+    domain: &[u8],
+    profile_binding: &[u8; 32],
+    context: &V6TranscriptContext,
+    tree_tag: u8,
+) -> [u8; 32] {
     hash(&[
-        V6_ROOT_SALT_DOMAIN,
-        &V6_PROFILE_BINDING,
+        domain,
+        profile_binding,
         &context.program_id,
         &context.release_binding,
         &context.statement_digest,
         &context.attempt_id,
         &[tree_tag],
     ])
+}
+
+fn public_root_salt(hash: HashFn, context: &V6TranscriptContext, tree_tag: u8) -> [u8; 32] {
+    profile_root_salt(
+        hash,
+        V6_ROOT_SALT_DOMAIN,
+        &V6_PROFILE_BINDING,
+        context,
+        tree_tag,
+    )
+}
+
+fn v7_public_root_salt(hash: HashFn, context: &V6TranscriptContext, tree_tag: u8) -> [u8; 32] {
+    profile_root_salt(
+        hash,
+        V7_ROOT_SALT_DOMAIN,
+        &V7_COMPACT_PROFILE_BINDING,
+        context,
+        tree_tag,
+    )
 }
 
 fn absorb_c1_root(transcript: &mut Transcript, root: &[u8; 32], salt: &[u8; 32]) {
@@ -194,6 +233,29 @@ fn absorb_c2_root(transcript: &mut Transcript, root: &[u8; 32], salt: &[u8; 32])
     let mut record = [0u8; 64];
     record[..32].copy_from_slice(root);
     record[32..].copy_from_slice(salt);
+    transcript.absorb(label::M31_CIRCLE_C2_ROOT, &record);
+}
+
+fn absorb_v7_c1_root(
+    transcript: &mut Transcript,
+    root: &[u8; V7_MERKLE_DIGEST_BYTES],
+    salt: &[u8; 32],
+) {
+    let mut record = [0u8; 1 + V7_MERKLE_DIGEST_BYTES + 32];
+    record[0] = 0;
+    record[1..1 + V7_MERKLE_DIGEST_BYTES].copy_from_slice(root);
+    record[1 + V7_MERKLE_DIGEST_BYTES..].copy_from_slice(salt);
+    transcript.absorb(label::M31_CIRCLE_ROUND_ROOT, &record);
+}
+
+fn absorb_v7_c2_root(
+    transcript: &mut Transcript,
+    root: &[u8; V7_MERKLE_DIGEST_BYTES],
+    salt: &[u8; 32],
+) {
+    let mut record = [0u8; V7_MERKLE_DIGEST_BYTES + 32];
+    record[..V7_MERKLE_DIGEST_BYTES].copy_from_slice(root);
+    record[V7_MERKLE_DIGEST_BYTES..].copy_from_slice(salt);
     transcript.absorb(label::M31_CIRCLE_C2_ROOT, &record);
 }
 
@@ -228,6 +290,42 @@ fn begin_v6_transcript(
 
     let c2_salt = public_root_salt(hash, context, V6_C2_TREE_TAG);
     absorb_c2_root(&mut transcript, wire.c2_root, &c2_salt);
+    let batching = begin_state_only_zerocheck(&mut transcript)
+        .map_err(|_| V6TranscriptError::ChallengeSampling)?;
+    Ok((transcript, lambda, chi, batching))
+}
+
+#[inline(never)]
+fn begin_v7_compact_transcript(
+    hash: HashFn,
+    context: &V6TranscriptContext,
+    wire: &V7CompactOneFoldWire<'_>,
+) -> Result<(Transcript, QM31, QM31, PaymentConstraintChallenges), V6TranscriptError> {
+    let mut transcript = Transcript::new(hash);
+    transcript.absorb(label::PROFILE, &V7_COMPACT_PROFILE_BINDING);
+    transcript.absorb(label::M31_CIRCLE_BASIS, M31_CIRCLE_BASIS_DISCRIMINATOR);
+    let mut deployment = [0u8; 64];
+    deployment[..32].copy_from_slice(&context.program_id);
+    deployment[32..].copy_from_slice(&context.release_binding);
+    transcript.absorb(label::V7_DEPLOYMENT_CONTEXT, &deployment);
+    transcript.absorb(label::STATEMENT, &context.statement_digest);
+    begin_state_only_hiding_precommit(
+        &mut transcript,
+        StateOnlyHidingContext::atomic_spend_v3(context.statement_digest, context.attempt_id),
+    )
+    .map_err(|_| V6TranscriptError::HidingContext)?;
+
+    let c1_salt = v7_public_root_salt(hash, context, V7_C1_TREE_TAG);
+    absorb_v7_c1_root(&mut transcript, wire.c1_root, &c1_salt);
+    let lambda = transcript
+        .challenge_qm31()
+        .map_err(|_| V6TranscriptError::ChallengeSampling)?;
+    let chi = transcript
+        .challenge_qm31()
+        .map_err(|_| V6TranscriptError::ChallengeSampling)?;
+
+    let c2_salt = v7_public_root_salt(hash, context, V7_C2_TREE_TAG);
+    absorb_v7_c2_root(&mut transcript, wire.c2_root, &c2_salt);
     let batching = begin_state_only_zerocheck(&mut transcript)
         .map_err(|_| V6TranscriptError::ChallengeSampling)?;
     Ok((transcript, lambda, chi, batching))
@@ -315,13 +413,13 @@ fn decode_and_absorb_point_claims(
     Ok(claims)
 }
 
-fn work_nonce(wire: &V6OneFoldWire<'_>, stage: V6WorkStage) -> u64 {
+fn work_nonce_bytes(work_nonces: &[u8; 24], stage: V6WorkStage) -> u64 {
     let offset = match stage {
         V6WorkStage::Batch => 0,
         V6WorkStage::Fold => 8,
         V6WorkStage::Final => 16,
     };
-    u64::from_le_bytes(wire.work_nonces[offset..offset + 8].try_into().unwrap())
+    u64::from_le_bytes(work_nonces[offset..offset + 8].try_into().unwrap())
 }
 
 fn check_and_absorb_work(
@@ -352,12 +450,13 @@ fn check_and_absorb_work(
 fn gamma_point_claims_and_query_powers(
     gamma: QM31,
     claims: &[[QM31; V6_TOTAL_COLUMNS]; V6_POINT_CLAIM_ROWS],
-) -> ([QM31; V6_POINT_CLAIM_ROWS], StateOnlySpendQueryPowers) {
+) -> ([QM31; V6_POINT_CLAIM_ROWS], StateOnlySpendQueryPowers, QM31) {
     debug_assert_eq!(V6_TOTAL_COLUMNS, SPEND_TOTAL_COLUMNS);
     let powers = qm31_power_table::<SPEND_TOTAL_COLUMNS>(gamma);
     (
         qm31_dot3(&powers, [&claims[0], &claims[1], &claims[2]]),
         StateOnlySpendQueryPowers::from_full_table(&powers),
+        powers[SPEND_D_GENERATOR_INDEX],
     )
 }
 
@@ -501,11 +600,18 @@ fn derive_first_compact_queries(
 
 #[allow(clippy::too_many_arguments)]
 #[inline(never)]
-fn finish_v6_relation<QueryFold, Trace>(
+fn finish_onefold_relation<QueryFold, DeriveQueries, Trace>(
     mut transcript: Transcript,
-    wire: &V6OneFoldWire<'_>,
-    mut fields: V6FixedFieldReader<'_>,
+    work_nonces: &[u8; 24],
+    c1_frontier: &[u8],
+    c2_frontier: &[u8],
+    work_bits: [u8; 3],
     selector: u8,
+    frontier_node_bytes: usize,
+    query_batch_labels: (u8, u8),
+    expose_final256_to_query_fold: bool,
+    derive_queries: DeriveQueries,
+    mut fields: V6FixedFieldReader<'_>,
     inactive_row_groups: &[u8; 64],
     inactive_group_masks: &[u16],
     check_pow: bool,
@@ -516,13 +622,19 @@ fn finish_v6_relation<QueryFold, Trace>(
 ) -> Result<V6VerifiedTranscript, V6TranscriptError>
 where
     QueryFold: FnOnce(&V6QueryBatchView<'_>) -> Result<V6AuthenticatedQueryBatch, V6WireError>,
+    DeriveQueries: FnOnce(
+        &Transcript,
+    ) -> Result<
+        ([u32; V6_QUERY_COUNT], u8, usize, [u8; 32], Transcript),
+        V6TranscriptError,
+    >,
     Trace: FnMut(V6RelationDiagnosticPhase),
 {
     trace(V6RelationDiagnosticPhase::Start);
     check_and_absorb_work(
         &mut transcript,
-        work_nonce(wire, V6WorkStage::Batch),
-        V6_BATCH_WORK_BITS,
+        work_nonce_bytes(work_nonces, V6WorkStage::Batch),
+        work_bits[0],
         V6WorkStage::Batch,
         check_pow,
     )?;
@@ -539,7 +651,8 @@ where
 
     let points = v6_statement_points(&semantic_point);
     let point_scales = [QM31::ONE, kappa, kappa.square()];
-    let (combined_claims, gamma_powers) = gamma_point_claims_and_query_powers(gamma, point_claims);
+    let (combined_claims, gamma_powers, d_power) =
+        gamma_point_claims_and_query_powers(gamma, point_claims);
     let gamma_powers = Box::new(gamma_powers);
     let mut running_claim = inactive_claim.add(qm31_sum_products3(point_scales, combined_claims));
     let mut weights = WeightAccumulator::empty(10);
@@ -584,8 +697,8 @@ where
     absorb_compact_relation_polynomial(&mut transcript, 0, &first);
     check_and_absorb_work(
         &mut transcript,
-        work_nonce(wire, V6WorkStage::Fold),
-        V6_FOLD_WORK_BITS,
+        work_nonce_bytes(work_nonces, V6WorkStage::Fold),
+        work_bits[1],
         V6WorkStage::Fold,
         check_pow,
     )?;
@@ -602,8 +715,8 @@ where
 
     check_and_absorb_work(
         &mut transcript,
-        work_nonce(wire, V6WorkStage::Final),
-        V6_FINAL_WORK_BITS,
+        work_nonce_bytes(work_nonces, V6WorkStage::Final),
+        work_bits[2],
         V6WorkStage::Final,
         check_pow,
     )?;
@@ -613,10 +726,16 @@ where
         frontier_nodes,
         transcript_state_after_queries,
         accepted_query_transcript,
-    ) = derive_first_compact_queries(&transcript, selector)?;
+    ) = derive_queries(&transcript)?;
     transcript = accepted_query_transcript;
-    let c1_nodes = wire.c1_frontier.len() / 32;
-    let c2_nodes = wire.c2_frontier.len() / 32;
+    if frontier_node_bytes == 0
+        || c1_frontier.len() % frontier_node_bytes != 0
+        || c2_frontier.len() % frontier_node_bytes != 0
+    {
+        return Err(V6TranscriptError::Wire(V6WireError::WrongLength));
+    }
+    let c1_nodes = c1_frontier.len() / frontier_node_bytes;
+    let c2_nodes = c2_frontier.len() / frontier_node_bytes;
     if c1_nodes != frontier_nodes || c2_nodes != frontier_nodes {
         return Err(V6TranscriptError::FrontierCountMismatch {
             expected: frontier_nodes,
@@ -624,21 +743,29 @@ where
             c2: c2_nodes,
         });
     }
-    transcript.absorb(label::V6_QUERY_BATCH_CHALLENGE, &[]);
+    transcript.absorb(query_batch_labels.0, &[]);
     let query_batch_challenge = transcript
         .challenge_nonzero_qm31()
         .map_err(|_| V6TranscriptError::ChallengeSampling)?;
     trace(V6RelationDiagnosticPhase::Queries);
-    let query_view = V6QueryBatchView {
-        gamma,
-        gamma_powers: &gamma_powers,
-        alpha0: alpha[0],
-        queries,
-        selector,
-        compact_counter,
-        frontier_nodes,
+    let authenticated_queries = {
+        let query_view = V6QueryBatchView {
+            gamma,
+            gamma_powers: &gamma_powers,
+            d_power,
+            alpha0: alpha[0],
+            final256_coefficients: if expose_final256_to_query_fold {
+                Some(folded_values.as_ref())
+            } else {
+                None
+            },
+            queries,
+            selector,
+            compact_counter,
+            frontier_nodes,
+        };
+        query_fold(&query_view).map_err(V6TranscriptError::Wire)?
     };
-    let authenticated_queries = query_fold(&query_view).map_err(V6TranscriptError::Wire)?;
     let query_claim = add_v6_final256_query_batch(
         &mut weights,
         &mut running_claim,
@@ -649,7 +776,7 @@ where
     .map_err(|_| V6TranscriptError::RelationShape)?;
     let mut query_claim_bytes = [0u8; 16];
     query_claim.write_le_bytes(&mut query_claim_bytes);
-    transcript.absorb(label::V6_QUERY_BATCH_CLAIM, &query_claim_bytes);
+    transcript.absorb(query_batch_labels.1, &query_claim_bytes);
     trace(V6RelationDiagnosticPhase::QueryBatch);
 
     for round in 1..V6_RELATION_ROUNDS {
@@ -706,6 +833,101 @@ where
         folded_query_sum,
         transcript_state_after_queries,
     })
+}
+
+#[allow(clippy::too_many_arguments)]
+#[inline(always)]
+fn finish_v6_relation<QueryFold, Trace>(
+    transcript: Transcript,
+    wire: &V6OneFoldWire<'_>,
+    fields: V6FixedFieldReader<'_>,
+    selector: u8,
+    inactive_row_groups: &[u8; 64],
+    inactive_group_masks: &[u16],
+    check_pow: bool,
+    semantic_point: [QM31; V6_SEMANTIC_ROUNDS],
+    point_claims: &[[QM31; V6_TOTAL_COLUMNS]; V6_POINT_CLAIM_ROWS],
+    query_fold: QueryFold,
+    trace: Trace,
+) -> Result<V6VerifiedTranscript, V6TranscriptError>
+where
+    QueryFold: FnOnce(&V6QueryBatchView<'_>) -> Result<V6AuthenticatedQueryBatch, V6WireError>,
+    Trace: FnMut(V6RelationDiagnosticPhase),
+{
+    finish_onefold_relation(
+        transcript,
+        wire.work_nonces,
+        wire.c1_frontier,
+        wire.c2_frontier,
+        [V6_BATCH_WORK_BITS, V6_FOLD_WORK_BITS, V6_FINAL_WORK_BITS],
+        selector,
+        32,
+        (label::V6_QUERY_BATCH_CHALLENGE, label::V6_QUERY_BATCH_CLAIM),
+        false,
+        |candidate_transcript| derive_first_compact_queries(candidate_transcript, selector),
+        fields,
+        inactive_row_groups,
+        inactive_group_masks,
+        check_pow,
+        semantic_point,
+        point_claims,
+        query_fold,
+        trace,
+    )
+}
+
+#[allow(clippy::too_many_arguments)]
+#[inline(always)]
+fn finish_v7_compact_relation<QueryFold, Trace>(
+    transcript: Transcript,
+    wire: &V7CompactOneFoldWire<'_>,
+    fields: V6FixedFieldReader<'_>,
+    inactive_row_groups: &[u8; 64],
+    inactive_group_masks: &[u16],
+    check_pow: bool,
+    semantic_point: [QM31; V6_SEMANTIC_ROUNDS],
+    point_claims: &[[QM31; V6_TOTAL_COLUMNS]; V6_POINT_CLAIM_ROWS],
+    query_fold: QueryFold,
+    trace: Trace,
+) -> Result<V6VerifiedTranscript, V6TranscriptError>
+where
+    QueryFold: FnOnce(&V6QueryBatchView<'_>) -> Result<V6AuthenticatedQueryBatch, V6WireError>,
+    Trace: FnMut(V6RelationDiagnosticPhase),
+{
+    finish_onefold_relation(
+        transcript,
+        wire.work_nonces,
+        wire.c1_frontier,
+        wire.c2_frontier,
+        [
+            V7_COMPACT_BATCH_WORK_BITS,
+            V7_COMPACT_FOLD_WORK_BITS,
+            V7_COMPACT_FINAL_WORK_BITS,
+        ],
+        0,
+        V7_MERKLE_DIGEST_BYTES,
+        (label::V7_QUERY_BATCH_CHALLENGE, label::V7_QUERY_BATCH_CLAIM),
+        false,
+        |candidate_transcript| {
+            let schedule = derive_first_v7_compact_queries(candidate_transcript)
+                .map_err(V6TranscriptError::Wire)?;
+            Ok((
+                schedule.queries,
+                schedule.counter,
+                schedule.frontier_nodes,
+                schedule.transcript_state,
+                schedule.accepted_transcript,
+            ))
+        },
+        fields,
+        inactive_row_groups,
+        inactive_group_masks,
+        check_pow,
+        semantic_point,
+        point_claims,
+        query_fold,
+        trace,
+    )
 }
 
 /// Verify the complete fixed-field transcript and its four-round relation.
@@ -813,6 +1035,58 @@ where
     )
 }
 
+/// Verify the compact V7 transcript while reusing the frozen V6 semantic and
+/// relation algebra.  V7 has its own profile/deployment/root encodings, work
+/// allocation, first-success query stream and query-batch labels; no V6 proof
+/// can enter this wrapper and no V7 proof can enter the V6 wrapper.
+#[allow(clippy::too_many_arguments)]
+#[inline(never)]
+pub fn verify_v7_compact_transcript_and_relation_prepared<TerminalCheck, QueryFold>(
+    hash: HashFn,
+    wire: &V7CompactOneFoldWire<'_>,
+    context: &V6TranscriptContext,
+    inactive_row_groups: &[u8; 64],
+    inactive_group_masks: &[u16],
+    check_pow: bool,
+    terminal_check: TerminalCheck,
+    query_fold: QueryFold,
+) -> Result<V6VerifiedTranscript, V6TranscriptError>
+where
+    TerminalCheck: FnOnce(&V6SemanticView<'_>) -> bool,
+    QueryFold: FnOnce(&V6QueryBatchView<'_>) -> Result<V6AuthenticatedQueryBatch, V6WireError>,
+{
+    let mut fields = V6FixedFieldReader::new(wire.fixed_fields_packed)?;
+    let (mut transcript, lambda, chi, batching) = begin_v7_compact_transcript(hash, context, wire)?;
+    let (eta, semantic_point, semantic_terminal) =
+        verify_compact_semantic_sumcheck(&mut transcript, &mut fields)?;
+    let point_claims = decode_and_absorb_point_claims(&mut transcript, &mut fields)?;
+    let semantic_view = V6SemanticView {
+        lambda,
+        chi,
+        batching,
+        eta,
+        point: semantic_point,
+        terminal_claim: semantic_terminal,
+        point_claims: &point_claims,
+    };
+    if !terminal_check(&semantic_view) {
+        return Err(V6TranscriptError::TerminalRejected);
+    }
+
+    finish_v7_compact_relation(
+        transcript,
+        wire,
+        fields,
+        inactive_row_groups,
+        inactive_group_masks,
+        check_pow,
+        semantic_point,
+        &point_claims,
+        query_fold,
+        |_| {},
+    )
+}
+
 /// Diagnostic twin of [`verify_v6_transcript_and_relation_prepared`]. It is
 /// intended only for CU probes and reports checkpoints after the semantic
 /// terminal without changing any cryptographic operation or transcript byte.
@@ -876,6 +1150,7 @@ where
 mod tests {
     use super::*;
     use crate::v6_onefold::V6_BODY_WITHOUT_FRONTIERS;
+    use crate::v7_onefold::V7_COMPACT_BODY_WITHOUT_FRONTIERS;
     use sha2::{Digest, Sha256};
 
     fn test_hash(inputs: &[&[u8]]) -> [u8; 32] {
@@ -903,6 +1178,29 @@ mod tests {
         V6AuthenticatedQueryBatch {
             values: [QM31::ZERO; V6_QUERY_COUNT],
             line_x: [crate::field::M31::ZERO; V6_QUERY_COUNT],
+        }
+    }
+
+    fn v7_zero_body(frontier: usize) -> Vec<u8> {
+        vec![0u8; V7_COMPACT_BODY_WITHOUT_FRONTIERS + 2 * frontier * V7_MERKLE_DIGEST_BYTES]
+    }
+
+    fn expected_v7_frontier() -> Result<usize, V6TranscriptError> {
+        let body = v7_zero_body(0);
+        let wire = V7CompactOneFoldWire::parse(&body, 0).unwrap();
+        match verify_v7_compact_transcript_and_relation_prepared(
+            test_hash,
+            &wire,
+            &context(),
+            &[0u8; 64],
+            &[u16::MAX],
+            false,
+            |_| true,
+            |_| Ok(zero_query_batch()),
+        ) {
+            Err(V6TranscriptError::FrontierCountMismatch { expected, .. }) => Ok(expected),
+            Err(error) => Err(error),
+            Ok(_) => panic!("zero-frontier V7 fixture unexpectedly matched"),
         }
     }
 
@@ -975,6 +1273,38 @@ mod tests {
             |_| Ok(zero_query_batch()),
         )
         .unwrap();
+        assert_eq!(first.queries, second.queries);
+        assert_eq!(first.compact_counter, second.compact_counter);
+        assert_eq!(first.frontier_nodes, frontier);
+        assert_eq!(first.alpha, second.alpha);
+        assert_eq!(
+            first.transcript_state_after_queries,
+            second.transcript_state_after_queries
+        );
+    }
+
+    #[test]
+    fn v7_zero_relation_uses_its_first_cap203_schedule_and_profile() {
+        let frontier = expected_v7_frontier().unwrap();
+        assert!(frontier <= 203);
+        let body = v7_zero_body(frontier);
+        let wire = V7CompactOneFoldWire::parse(&body, frontier).unwrap();
+        let verify = || {
+            verify_v7_compact_transcript_and_relation_prepared(
+                test_hash,
+                &wire,
+                &context(),
+                &[0u8; 64],
+                &[u16::MAX],
+                false,
+                |_| true,
+                |_| Ok(zero_query_batch()),
+            )
+            .unwrap()
+        };
+        let first = verify();
+        let second = verify();
+        assert_eq!(first.selector, 0);
         assert_eq!(first.queries, second.queries);
         assert_eq!(first.compact_counter, second.compact_counter);
         assert_eq!(first.frontier_nodes, frontier);

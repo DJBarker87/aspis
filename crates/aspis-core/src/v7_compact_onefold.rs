@@ -1,10 +1,10 @@
-//! Host reference for the compact V7 successor to the frozen V6 one-fold
-//! backend.
+//! Rejected host-reference candidate for the compact V7 successor.
 //!
-//! The failed three-tree code-switch gate is kept in `v7_code_switch`.  This
-//! module records the selected wire-only successor instead: the same 29-column
-//! arithmetic and sole arity-four fold, 216-bit Merkle digests, a cap-203
-//! compact query schedule, and one omitted `D` value in every queried fibre.
+//! This module preserves the measured 216-bit/omitted-`D` research branch. It
+//! is **not** the selected production V7 wire. Production V7 lives in
+//! `v7_onefold`: 208-bit digests and every complete C2 fibre disclosed. The
+//! rejected candidate remains archived here so its reconstruction experiment
+//! and negative design evidence are reproducible.
 //!
 //! Omitting that value does not omit a check.  Once `gamma`, the fold
 //! challenge, the final codeword value and the other eleven C2 values are
@@ -44,6 +44,17 @@ pub const V7_COMPACT_SELECTOR_STREAMS: usize = 1;
 pub const V7_COMPACT_BATCH_WORK_BITS: u8 = 35;
 pub const V7_COMPACT_FOLD_WORK_BITS: u8 = 31;
 pub const V7_COMPACT_FINAL_WORK_BITS: u8 = 34;
+
+/// Byte-level V7 profile record absorbed before deployment, statement, roots,
+/// or challenges.  It commits the unchanged 26+3 arithmetic together with
+/// the compact wire's digest width, frontier cap, first-success schedule,
+/// work allocation, tree tags, and revision.
+pub const V7_COMPACT_PROFILE_BINDING: [u8; 32] = [
+    b'A', b'V', b'7', b'C', b'F', b'0', b'0', b'1', // magic/version
+    26, 3, 10, 16, 0xcb, 0x00, 27, 32, // widths, q, cap203, digest/salt bytes
+    27, 4, 6, 35, 31, 34, 0x71, 0xf1, // transcript widths, work, tree tags
+    0x81, 0x02, 8, 20, 18, 1, 64, 0, // 641 fields, final log, logs, stream/cap/rev
+];
 
 pub const V7_COMPACT_C2_QM31_PER_QUERY: usize = 11;
 pub const V7_COMPACT_C2_LIMBS_PER_QUERY: usize = 4 * V7_COMPACT_C2_QM31_PER_QUERY;
@@ -446,24 +457,13 @@ struct V7CompactReconstructionPlan {
 }
 
 fn prepare_v7_compact_reconstruction(
-    gamma: QM31,
+    d_power: QM31,
     alpha: QM31,
     coordinates: &V6OneFoldCoordinates,
-) -> Result<
-    (
-        StateOnlySpendQueryPowers,
-        QM31,
-        [PreparedQm31Multiplier; 3],
-        V7CompactReconstructionPlan,
-    ),
-    V6WireError,
-> {
-    if gamma.is_zero() {
+) -> Result<([PreparedQm31Multiplier; 3], V7CompactReconstructionPlan), V6WireError> {
+    if d_power.is_zero() {
         return Err(V6WireError::FriMismatch);
     }
-    let gamma_powers = qm31_power_table::<SPEND_TOTAL_COLUMNS>(gamma);
-    let d_power = gamma_powers[SPEND_D_GENERATOR_INDEX];
-    let powers = StateOnlySpendQueryPowers::from_full_table(&gamma_powers);
 
     let alpha_squared = alpha.square();
     let alpha_cubed = alpha_squared.mul(alpha);
@@ -490,8 +490,6 @@ fn prepare_v7_compact_reconstruction(
     let denominator_inverses =
         qm31_batch_inverse_16(&denominators).ok_or(V6WireError::FriMismatch)?;
     Ok((
-        powers,
-        d_power,
         alpha_multipliers,
         V7CompactReconstructionPlan {
             omitted_slots,
@@ -539,7 +537,8 @@ pub fn verify_reconstruct_and_gamma_combine_v7_openings(
     wire: &V7CompactOneFoldWire<'_>,
     queries: [u32; V6_QUERY_COUNT],
     expected_folds: [QM31; V6_QUERY_COUNT],
-    gamma: QM31,
+    powers: &StateOnlySpendQueryPowers,
+    d_power: QM31,
     alpha: QM31,
     coordinates: &V6OneFoldCoordinates,
 ) -> Result<[[QM31; 4]; V6_QUERY_COUNT], V6WireError> {
@@ -551,8 +550,8 @@ pub fn verify_reconstruct_and_gamma_combine_v7_openings(
         return Err(V6WireError::InvalidQuerySchedule);
     }
 
-    let (powers, d_power, alpha_multipliers, reconstruction) =
-        prepare_v7_compact_reconstruction(gamma, alpha, coordinates)?;
+    let (alpha_multipliers, reconstruction) =
+        prepare_v7_compact_reconstruction(d_power, alpha, coordinates)?;
 
     let mut combined = [[QM31::ZERO; 4]; V6_QUERY_COUNT];
     let mut entries = Vec::with_capacity(V6_QUERY_COUNT);
@@ -567,7 +566,7 @@ pub fn verify_reconstruct_and_gamma_combine_v7_openings(
             expected_folds[ordinal],
             coordinates.inv_2x[ordinal],
             coordinates.inv_2y[ordinal],
-            &powers,
+            powers,
             d_power,
             &alpha_multipliers,
             omitted_slot,
@@ -664,6 +663,12 @@ mod tests {
 
     #[test]
     fn selected_profile_is_below_thirty_kib_without_shortening_salts() {
+        assert_eq!(&V7_COMPACT_PROFILE_BINDING[..8], b"AV7CF001");
+        assert_eq!(V7_COMPACT_PROFILE_BINDING[12], 203);
+        assert_eq!(V7_COMPACT_PROFILE_BINDING[14], 27);
+        assert_eq!(V7_COMPACT_PROFILE_BINDING[15], 32);
+        assert_eq!(V7_COMPACT_PROFILE_BINDING[19..22], [35, 31, 34]);
+        assert_eq!(V7_COMPACT_PROFILE_BINDING[29..31], [1, 64]);
         assert_eq!(V7_COMPACT_DIGEST_BITS, 216);
         assert_eq!(V7_COMPACT_CLASSICAL_COLLISION_BITS, 108);
         assert_eq!(V7_COMPACT_C1_BYTES_PER_QUERY, 403);
@@ -875,7 +880,9 @@ mod tests {
             c0: CM31::new(M31(31), M31(37)),
             c1: CM31::new(M31(41), M31(43)),
         };
-        let powers = StateOnlySpendQueryPowers::new(gamma);
+        let gamma_powers = qm31_power_table::<SPEND_TOTAL_COLUMNS>(gamma);
+        let d_power = gamma_powers[SPEND_D_GENERATOR_INDEX];
+        let powers = StateOnlySpendQueryPowers::from_full_table(&gamma_powers);
         let mut state = 0x7630_2160_c2c2_0001;
         let mut expected_folds = [QM31::ZERO; V6_QUERY_COUNT];
         let mut expected_combined = [[QM31::ZERO; 4]; V6_QUERY_COUNT];
@@ -942,7 +949,8 @@ mod tests {
             &wire,
             queries,
             expected_folds,
-            gamma,
+            &powers,
+            d_power,
             alpha,
             &coordinates,
         )
@@ -958,7 +966,8 @@ mod tests {
                 &changed,
                 queries,
                 expected_folds,
-                gamma,
+                &powers,
+                d_power,
                 alpha,
                 &coordinates,
             ),
