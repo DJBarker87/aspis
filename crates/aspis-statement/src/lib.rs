@@ -21,6 +21,8 @@ pub mod constraints_v4;
 pub mod direct_range_hiding_v4;
 pub mod hiding_v4;
 pub mod logup;
+#[cfg(any(not(target_os = "solana"), feature = "pool-v1-kernel"))]
+pub mod pool_v1;
 pub mod poseidon2;
 pub mod spend;
 #[cfg(not(target_os = "solana"))]

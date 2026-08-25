@@ -14,6 +14,9 @@ insecure-test-logup-compression = []
 # queries. This preserves the proof and verifier equations while allowing a
 # deployment build to dead-strip the six complete RATE512 lookup tables.
 spend-dynamic-rate512 = []
+# Host by default; the separate Pool V1 program enables this explicitly for
+# SBF. Frozen verifier builds do not enable it.
+pool-v1-kernel = []
 
 [dependencies]
 aspis-core.workspace = true
