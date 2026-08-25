@@ -37,7 +37,7 @@
 \title{\Aspis: End-to-End Formal Verification of a Transparent\\
 Private Spend on Solana}
 \author{Dominic Barker}
-\date{24 August 2026}
+\date{25 August 2026}
 \hypersetup{%
   pdftitle={Aspis: End-to-End Formal Verification of a Transparent Private Spend on Solana},
   pdfauthor={Dominic Barker},
@@ -50,37 +50,33 @@ Private Spend on Solana}
 \maketitle
 
 \begin{abstract}
-Deploying a cryptographic proof verifier creates a gap between a protocol argument
-and the program that accepts a proof.  We present \Aspis{}, a transparent
-(trusted-setup-free) private-spend verifier for Solana, together with an
-end-to-end formal verification pipeline for its successful proof-checking
-path.  The pipeline starts from the deployed Rust verifier, translates the
-selected execution path into Lean~4, and proves that every successful call determines
-every acceptance-critical value used later in the security argument: the
-public-statement digest, Fiat--Shamir transcript and work checks, distinct
-queries, authenticated openings, four low-degree-test folds, final polynomial,
-and the complete algebraic relation including both final accumulators.  All
-are derived from that same execution, with no intermediate acceptance result
-supplied as a separate premise.
+We present \Aspis{}, a transparent, computationally hiding private-spend
+system whose verifier ran on Solana mainnet.  To our knowledge, following a
+public-evidence search completed on 24 August 2026, this is the first publicly
+evidenced Solana mainnet transaction in which a program directly verifies a
+trusted-setup-free private-spend proof and atomically records both its
+nullifier and the resulting pool state.  The transaction verified a
+75,358-byte proof in 1,334,452 compute units.
 
-The mathematical development formalizes the private-spend relation, the
-concrete field and evaluation domains, the low-degree and query-sampling
-arguments, theft reductions, and the nullifier-controlled state transition.
-A single formal experiment classifies accepted false statements into an
-ideal-protocol failure and named cryptographic, credential, compiler, and
-runtime events.  Under the stated decoding and Fiat--Shamir results, the
-work-normalized protocol contribution is at most
-\(0.7\cdot2^{-100}\); assuming the external events contribute at most
-\(0.3\cdot2^{-100}\), the combined bound is \(2^{-100}\).  A separate raw
-accounting gives no credit for completed grinding work.
+Our main result is an end-to-end formal verification of the deployed
+proof-checking path.  From every successful translated Rust call, Lean~4
+derives the public statement, byte-level Fiat--Shamir transcript, six work
+checks, eighteen distinct queries, five authenticated opening sections, four
+low-degree folds, final polynomial, complete algebraic relation, and both
+terminal accumulator equalities.  Every fact comes from the same execution,
+and the theorem is universal over successful calls.
 
-The evidence package contains a clean 331-module Lean replay, pinned
-Rust-to-Lean inputs, a deterministic source-to-binary build, and an archived
-mainnet transaction.  The transaction verifies a 75,358-byte proof and
-atomically records the nullifier and pool update in 1,334,452 compute units.
-The field-level identification of the live Rust statement with the abstract
-security statement, and the causal lift of the deterministic result into the
-probability experiment, remain explicit composition assumptions.
+The mathematical development constructs a spend witness from the trace;
+proves the exact Mersenne-field domains, encoders, capped-query law, coherent
+four-fold candidate chain, and candidate-weight fold duality; and connects
+these results to theft, replay, state, and a finite failure decomposition.
+Published circle-decoding and Fiat--Shamir results give a work-normalized
+protocol contribution of at most \(0.7\cdot2^{-100}\).  With the stated
+external-event budget, the combined conditional bound is \(2^{-100}\), with
+raw post-grinding accounting reported separately.  A clean 331-module replay,
+pinned translation inputs, a byte-reproducible program, and the finalized
+execution archive accompany the proof.  The live-statement identification and
+causal probability lift remain explicit composition interfaces.
 \end{abstract}
 
 \input{sections/introduction}
@@ -99,7 +95,11 @@ probability experiment, remain explicit composition assumptions.
 \appendix
 \input{sections/appendices}
 
+\begingroup
+\small
+\setlength{\bibsep}{0.35em}
 \bibliographystyle{plainnat}
 \bibliography{references}
+\endgroup
 
 \end{document}

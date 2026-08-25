@@ -43,6 +43,11 @@ records.
 
 \subsection{Mainnet execution}
 
+This execution is the chain result underlying the priority claim in
+\cref{sec:introduction}.  The program itself performed the transparent proof
+verification and, on success, wrote the nullifier marker and new pool state in
+the same transaction.
+
 The archived
 \href{https://explorer.solana.com/tx/EJviPgF12i9iK2CveVaQSMeFQqDMFPQ1iPRUYEwNQE3zGquTUZNJXPZEENorcQtsnQj1orFmH1TPsgdbR3vJ2fE}
 {mainnet transaction} finalized at slot 435,019,536.  It read the sealed proof
@@ -76,7 +81,7 @@ Formal dependency closure & 331 tracked Lean modules \\
 Replay environment & Lean~4.32 with pinned Rust-to-Lean translator \\
 Program binary & 1,258,496 bytes; clean build reproduced byte for byte \\
 Proof body & 75,358 bytes \\
-Public statement & 768 bytes \\
+Statement artifact (JSON) & 768 bytes \\
 Finalized spend & slot 435,019,536 \\
 Compute usage & 1,334,452 of 1,356,912 units \\
 State effect & nullifier marker created; root and sequence updated atomically \\

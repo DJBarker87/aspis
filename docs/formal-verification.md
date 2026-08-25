@@ -1,11 +1,17 @@
-# End-to-end formal verification of the V5 accepted path
+# End-to-end formal verification of the deployed verifier
 
-Aspis V5 has a completed end-to-end formal proof for its selected accepting
-proof-checker path. The theorem begins with any successful call to the deployed
-Rust callback as translated by Charon and Aeneas. It follows the values from that
-single execution through parsing, Fiat-Shamir, authentication, FRI, the full
-relation caller, and both final accumulators, then derives the maintained
-accepted-path security-event conclusion in Lean.
+Aspis has a completed end-to-end formal proof for the deployed successful
+proof-checker path. The theorem begins with any successful call to the Rust
+verifier after functional translation by Charon and Aeneas. It follows the
+values from that single execution through parsing, Fiat-Shamir,
+authentication, the four-round low-degree test, the full algebraic relation,
+and both final accumulators, then derives the security classification in Lean.
+
+This formal result accompanies, to our knowledge at the 24 August 2026 search
+cutoff, the first publicly evidenced Solana mainnet transaction to directly
+verify a transparent, computationally hiding private-spend proof and
+atomically record its nullifier and new pool state within the transaction
+compute limit.
 
 The final clean replay passed on 24 August 2026. It resolved and built all 331
 tracked Lean modules in the dependency closure under Lean 4.32 and pinned
@@ -13,31 +19,20 @@ Aeneas revision `b59d5188c082f704a418c7cb4e52ad69328002d1`.
 
 ## The publication theorem
 
-The main declaration is:
-
-```text
-AspisV5AcceptedOneRunDeterministicFinal.
-  accepted_composite_security_conclusion_for_any_terminal_evaluator
-```
-
-Its source is
-[`V5AcceptedOneRunDeterministicFinal.lean`](../aeneas-verif/v5-result-aware-source-link-20260821/proof/V5AcceptedOneRunDeterministicFinal.lean).
-
-In theorem form, a successful translated call to
-`verify_mode9_composite_with_live_statement`, together with the explicit
-SHA-256 callback, released-table, and published-decoding premises, constructs:
+The exact declaration and source location are listed in the
+[artifact guide](../paper/aspis-formalization/ARTIFACT.md). In mathematical
+form, a successful translated verifier call, together with the explicit
+SHA-256, encoder, and published-decoding premises, constructs:
 
 1. a single accepted execution snapshot;
 2. the exact general-accumulator weight schedule; and
 3. the maintained security classification for the authenticated FRI and
    relation execution represented by that snapshot.
 
-The caller supplies neither the general-accumulator equality nor the compact
-accumulator equality. Both are proved inside the theorem from the accepted
-execution. The theorem installs the released FRI tables internally. It also
-quantifies over any terminal evaluator because the security argument consumes
-the independently authenticated FRI and relation evidence rather than that
-opaque evaluator's returned value.
+The caller supplies neither accumulator equality. Both are proved inside the
+theorem from the accepted execution. The security argument consumes the
+independently authenticated low-degree and relation evidence, including the
+values read before the final helper returns.
 
 ## What is followed end to end
 

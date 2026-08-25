@@ -3,25 +3,29 @@ message: "Cite the paper for the formal result and the evidence archive when ref
 title: "Aspis: End-to-End Formal Verification of a Transparent Private Spend on Solana"
 type: software
 version: "5"
-date-released: 2026-08-24
+date-released: 2026-08-25
 authors:
   - family-names: "Barker"
     given-names: "Dominic"
     website: "https://github.com/DJBarker87"
 abstract: >-
-  Aspis provides an end-to-end Lean proof for every successful execution of a
-  transparent private-spend verifier on Solana. Starting from the translated
-  deployed Rust path, the proof derives the parse, Fiat-Shamir transcript, six
-  work checks, 18 distinct queries, five authenticated opening sections, four
-  low-degree folds, final polynomial, complete algebraic claim data, and both
-  final accumulators from the same call. The 331-module replay is paired with
-  pinned translation inputs, a byte-reproducible 1,258,496-byte Solana
-  program, and a finalized mainnet transaction that verified a 75,358-byte
-  proof in 1,334,452 compute units. The paper proves a conditional
-  work-normalized security bound and reports raw post-grind accounting
-  separately. Published decoding and Fiat-Shamir results, concrete primitive
-  security, toolchain correctness, and Solana runtime behavior are explicit
-  assumptions.
+  To our knowledge at the 24 August 2026 public-evidence cutoff, Aspis provides
+  the first publicly evidenced Solana mainnet transaction to directly verify a
+  transparent, computationally hiding private-spend proof and atomically
+  record its nullifier and new pool state. The transaction verified a
+  75,358-byte proof in 1,334,452 compute units. Aspis also provides an
+  end-to-end Lean theorem for every successful execution of the deployed proof
+  checker. From one translated Rust call, the theorem derives the parse,
+  Fiat-Shamir transcript, six work checks, 18 distinct queries, five
+  authenticated opening sections, four low-degree folds, final polynomial,
+  complete algebraic relation, and both final accumulators. The mathematical
+  development proves spend-witness extraction, the concrete field and encoder
+  results, coherent four-fold extraction, the exact query-sampler law, fold
+  duality, theft and state reductions, and the finite failure decomposition.
+  The 331-module replay is paired with pinned translation inputs, a
+  byte-reproducible 1,258,496-byte program, and the finalized execution
+  archive. The paper gives a conditional work-normalized security bound and
+  reports raw post-grinding accounting separately.
 keywords:
   - "zero knowledge"
   - "transparent arguments"
@@ -34,7 +38,7 @@ keywords:
   - "formal verification"
   - "reproducible builds"
 repository-code: "https://github.com/DJBarker87/aspis"
-repository-artifact: "https://github.com/DJBarker87/aspis/tree/main/paper/aspis-formalization"
+repository-artifact: "https://github.com/DJBarker87/aspis/tree/aspis-v5-formalization-paper-v1/paper/aspis-formalization"
 url: "https://github.com/DJBarker87/aspis"
 license:
   - Apache-2.0
@@ -46,7 +50,7 @@ preferred-citation:
     - family-names: "Barker"
       given-names: "Dominic"
   year: 2026
-  url: "https://github.com/DJBarker87/aspis/tree/main/paper/aspis-formalization"
+  url: "https://github.com/DJBarker87/aspis/tree/aspis-v5-formalization-paper-v1/paper/aspis-formalization"
 references:
   - type: software
     title: "Aspis V5 Mainnet Evidence Bundle"
@@ -56,8 +60,8 @@ references:
       - family-names: "Barker"
         given-names: "Dominic"
     repository-code: "https://github.com/DJBarker87/aspis"
-    repository-artifact: "https://github.com/DJBarker87/aspis/tree/main/release/aspis-v5-tag67-mainnet-v1"
-    url: "https://github.com/DJBarker87/aspis/tree/main/release/aspis-v5-tag67-mainnet-v1"
+    repository-artifact: "https://github.com/DJBarker87/aspis/tree/aspis-v5-tag67-mainnet-v1/release/aspis-v5-tag67-mainnet-v1"
+    url: "https://github.com/DJBarker87/aspis/tree/aspis-v5-tag67-mainnet-v1/release/aspis-v5-tag67-mainnet-v1"
     abstract: >-
       Source-linked V5 mainnet evidence for the byte-reproducible
       1,258,496-byte SBF binary, 75,358-byte proof, and finalized

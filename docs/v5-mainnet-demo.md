@@ -2,7 +2,11 @@
 
 On 25 July 2026 in Europe/Berlin (24 July UTC), the current Aspis release
 completed its private-spend verification and state update on Solana
-mainnet-beta. In one transaction, the program:
+mainnet-beta. To our knowledge, following a public-evidence search completed
+on 24 August 2026, this is the first publicly evidenced Solana mainnet
+transaction to directly verify a transparent, computationally hiding
+private-spend proof and atomically record its nullifier and new pool state
+within the transaction compute limit. In that transaction, the program:
 
 - ran the deployed verifier's complete proof-checking path and accepted the
   75,358-byte proof;
@@ -20,8 +24,8 @@ The transaction is the observed final stage of a longer documented path:
 
 | Layer | What is recorded |
 | --- | --- |
-| Mathematical model | Lean checks substantial parts of the construction, release calculations, and maintained V5 verifier model |
-| Selected deployed Rust | Charon/Aeneas translations and Lean bridge proofs connect the selected release path to those models |
+| Mathematical model | Lean checks spend-witness extraction, the concrete domains and encoders, coherent four-fold extraction, the exact query law, fold duality, hiding and theft reductions, state semantics, and the finite security experiment |
+| Selected deployed Rust | Functional translation and Lean proofs connect every successful release execution through the transcript, openings, low-degree test, algebraic relation, and both final accumulators |
 | Compiled program | Pinned source and build tools reproduce the exact Solana program byte for byte |
 | Mainnet execution | Program identity, exact proof, finalized state transition, compute use, and account changes are recorded below |
 
@@ -64,7 +68,7 @@ longer be read from live account state. The
 preserves all 1,570 finalized transactions. Its offline verifier reconstructs
 the exact 75,358-byte proof from the 79 uploads and the exact 1,258,496-byte
 SBF from the loader writes, and both match the released files. It also binds
-the released statement to the landed V5 wire (instruction tag 67) and pool
+the released statement to the deployed V5 instruction encoding and pool
 initialization.
 
 The exact archived proof separately passes the released verifier callback in
@@ -86,12 +90,12 @@ The V5 spend lifecycle comprised 84 transactions:
 | V5 verify and apply | 1 |
 | **Total** | **84** |
 
-This did not change from 71 to 84 during the run. The q18/g37 figure of 71
-counts only its proof-account setup: one create, 69 uploads, and one finalize.
-It excludes that release's two pool transactions and final Tag-65 spend. V5's
-proof is larger, so it required ten more upload chunks, and the V5 total also
-uses the broader end-to-end lifecycle count. Program deployment and the three
-post-execution cleanup transactions are separate.
+This count did not change during the run. The earlier demonstration's figure
+of 71 covered only its proof-account setup: one creation, 69 uploads, and one
+finalization. It excluded that release's two pool transactions and its spend.
+The current proof is larger, so it required ten more upload chunks, and the
+current total also uses the broader end-to-end lifecycle count. Program
+deployment and the three post-execution cleanup transactions are separate.
 
 The resumed V5 lifecycle finalized every write it submitted. Earlier
 unsuccessful V5 candidate-wire attempts did not produce failed on-chain
@@ -122,8 +126,8 @@ balances. The ProgramData refund went directly to that address. The final
 sweep signed an exact payer-balance snapshot minus its transaction fee, so
 unrelated inbound lamports could not redirect the refund.
 
-The earlier q18/g37 demonstration and its different lifecycle are preserved
-unchanged in [the q18/g37 mainnet record](mainnet-demo.md). Machine-readable
+The earlier demonstration and its different lifecycle are preserved
+unchanged in [the historical mainnet record](mainnet-demo.md). Machine-readable
 release identities and measurements are in
 [`release/release-facts.json`](../release/release-facts.json). The sanitized
 proof, statement, finalized lifecycle receipts, and reconciliation are in the

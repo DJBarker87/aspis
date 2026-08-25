@@ -44,20 +44,33 @@ For proof systems, ArkLib develops a modular Lean theory of interactive oracle
 reductions, composition, and knowledge soundness \cite{ArkLib2026}.  Work on
 verifying deployed zero-knowledge verifiers stresses the need to connect an
 abstract security proof to the code that parses and accepts proofs
-\cite{FirsovLivshits2024}.  Aspis contributes an application-specific point in
-this design space: functional translation of a successful Rust verifier path,
-same-execution composition through every acceptance check, private-spend and
-state semantics, and reproducible binary and transaction evidence.
+\cite{FirsovLivshits2024}.  Aspis carries this connection through a complete
+deployed acceptance path.  Its universal theorem starts from the successful
+result of translated Rust and derives the transcript, authenticated openings,
+four low-degree rounds, relation execution, and both final dot products from
+that same call.  The theorem is published together with a reproducible binary
+and a finalized transaction.  This source-to-security span, rather than any
+single refinement lemma, is the formal novelty of the work.
 
 \subsection{Private payments and Solana}
 
 Zerocash established the note-commitment and nullifier pattern used by modern
-shielded payments \cite{BenSassonEtAl2014Zerocash}.  On Solana, Protocol~01
+shielded payments \cite{BenSassonEtAl2014Zerocash}.  Solana's Token-2022
+Confidential Transfer extension uses client-generated equality,
+ciphertext-validity, and range proofs verified by the native ZK ElGamal proof
+program, followed by an encrypted-balance update; the proof program is enabled
+on mainnet and devnet \cite{SolanaConfidentialTransfer2026}.  Elusiv previously
+released a mainnet private-send SDK \cite{ElusivSDK2023}.
+
+Among hash-based proof systems on Solana, Protocol~01
 publishes a transparent STARK-based shielded-payment stack and documented
 devnet verifier \cite{Protocol01Repository2026}.  The solana-pqzk-fullchain
 project directly verifies a Winterfell STARK on devnet and reports
 reproducible costs for an affine-counter statement
-\cite{Yano2026SolanaPQZK}.  Privacy Cash records a mainnet shielded-state
+\cite{Yano2026SolanaPQZK}.  HFIPay describes a transparent Circle STARK
+backend for private claim authorization; its direct verification path uses
+Groth16, while the transparent backend is assigned to aggregation
+\cite{Wang2026HFIPay}.  Privacy Cash records a mainnet shielded-state
 deployment using Groth16, and Light Protocol publishes setup material for its
 Groth16 proving stack
 \cite{PrivacyCashSetup2026,PrivacyCashMainnet2026,
@@ -81,10 +94,14 @@ Machine-checked MPC-in-the-head \cite{AlmeidaEtAl2021MitH} & varies & no & no &
 yes & extracted and verified components \\
 ArkLib \cite{ArkLib2026} & yes & no & no & framework & implementation work in
 progress \\
+Token-2022 confidential transfer \cite{SolanaConfidentialTransfer2026} & yes &
+encrypted balances & mainnet proof program & no & native programs \\
 Protocol~01 \cite{Protocol01Repository2026} & yes & yes & separate devnet
 steps & no & public Rust \\
 solana-pqzk \cite{Yano2026SolanaPQZK} & yes & no & devnet verification & no &
 public Rust \\
+HFIPay \cite{Wang2026HFIPay} & yes & claim authorization & aggregation design &
+no & reference backend \\
 Privacy Cash \cite{PrivacyCashSetup2026,PrivacyCashMainnet2026} & no & yes &
 mainnet & no & public program \\
 Aspis & yes & yes & atomic mainnet record & conditional Lean development &
@@ -93,10 +110,12 @@ translated successful path \\
 \end{tabular}
 \end{table}
 
-The contribution claimed in this paper is the combination of a transparent
-private-spend verifier, same-transaction nullifier and pool update, an
-end-to-end theorem for the successful proof-checking path, reproducible
-program bytes, and archived mainnet evidence.  A public-evidence search
-completed on 24 August 2026 found no earlier public artifact with that complete
-combination.  The comparison is dated and limited to publicly indexed papers,
-repositories, deployments, and patents.
+To our knowledge, following the public-evidence search completed on 24 August
+2026, Aspis is the first publicly evidenced Solana mainnet transaction in
+which a program directly verifies a transparent, computationally hiding
+private-spend proof and atomically records the corresponding nullifier and
+pool-state update within the transaction compute limit.  It is also the first
+such Solana result we found with an end-to-end machine-checked theorem for the
+deployed successful proof-checking path and reproducible source, binary,
+proof, and transaction evidence.  The comparison is dated and covers publicly
+indexed papers, repositories, deployments, and patents.

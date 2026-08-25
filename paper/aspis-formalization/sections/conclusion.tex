@@ -1,28 +1,37 @@
 \section{Conclusion}
 \label{sec:conclusion}
 
-Aspis connects a transparent private-spend argument to every successful
-execution of its deployed verifier.  For any translated Rust call that returns
-success, Lean
-derives the statement digest, transcript, work checks, queries, authenticated
-openings, four low-degree folds, final polynomial, full algebraic claim table,
-relation rounds, and both final accumulators.  The proof obtains these facts
-from the same run and then connects them to the spend relation and
-nullifier-controlled state model.
+Aspis establishes a transparent private spend on Solana mainnet and gives it a
+machine-checked account from deployed code to cryptographic evidence.  To our
+knowledge at the stated search cutoff, its finalized transaction is the first
+publicly evidenced Solana mainnet result to directly verify a transparent,
+computationally hiding private-spend proof and atomically record the
+corresponding nullifier and new pool state.  The 75,358-byte proof was verified
+in 1,334,452 compute units.
 
-The security result uses one probability experiment and a checked failure
-decomposition.  Under the published decoding and Fiat--Shamir results, the
-work-normalized protocol budget is at most \(0.7\cdot2^{-100}\).  Primitive
-and credential bounds totaling at most \(0.3\cdot2^{-100}\), together with
-the stated implementation and runtime correspondences, give the conditional
-\(2^{-100}\) bound.  The raw accounting keeps the completed grinding work out
-of the exponent and exposes the remaining terms.
+The formal result is unusual in its reach.  Given any successful translated
+call to the deployed Rust proof checker, Lean derives the statement digest,
+byte transcript, six work checks, eighteen queries, five authenticated opening
+sections, four low-degree folds, final polynomial, complete relation data, and
+both final accumulator equalities.  One execution supplies every value.  The
+theorem therefore covers the full acceptance computation rather than a
+collection of components whose composition is left to inspection.
 
-The public evidence package makes the result reproducible at each boundary: a
-331-module theorem replay, pinned Rust translation, deterministic program
-build, archived proof and statement, and finalized mainnet state transition.
-The two remaining composition tasks are precise: identify the live Rust
-statement field by field with the abstract security statement, and place the
-deterministic accepted-call classification inside the causal probability
-experiment.  They define the next formal steps without weakening the theorem
-reported here.
+The mathematics beneath that theorem is concrete and complete for the
+evaluated verifier.  It constructs a private-spend witness from the trace,
+proves the Mersenne-field domains and encoders, derives the exact capped-query
+law, extracts one coherent polynomial candidate across four folds, proves the
+candidate and weight duality used by the relation, and connects acceptance to
+theft, replay, and state-transition results.  A single finite experiment then
+classifies false acceptance.  Published decoding and Fiat--Shamir results give
+a work-normalized protocol budget of at most \(0.7\cdot2^{-100}\); the stated
+external budget and correspondences yield the conditional \(2^{-100}\) total,
+with raw post-grinding accounting reported separately.
+
+The theorem replay, pinned translation, byte-identical program build, proof
+and statement bytes, transaction, and account snapshots make each boundary
+independently checkable.  The remaining fieldwise statement identification
+and causal probability lift are explicit composition interfaces.  Taken
+together, the result shows both that transparent private spending fits within
+Solana mainnet's execution limit and that the complete path from proof bytes
+to its cryptographic evidence can be verified at deployed-code granularity.
