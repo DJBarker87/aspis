@@ -31,6 +31,7 @@ pub mod state_only_spend_release;
 pub mod state_only_zerocheck;
 
 pub mod v6_onefold_prover;
+pub mod v8_six_mask_hiding_rank;
 
 /// Provisional Aspis v5 masking component (A): the block-form circle mask.
 /// Feature-gated (`v5-mask`, default OFF) and entirely outside the v4 path.

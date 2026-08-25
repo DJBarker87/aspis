@@ -1,0 +1,87 @@
+{
+  "schema_version": 1,
+  "artifact": "aspis_v8_six_mask_frozen_v7_complete_view_rank",
+  "scope": "focused_host_rank_gate_no_protocol_change_no_deployment",
+  "decision": "BLOCKED",
+  "frozen_v7": {
+    "proof_bytes": 30504,
+    "proof_sha256": "e8e15ce268447b92ac1344292bc879dcb0bf7534621ce077d8790097975dcecb",
+    "compact_counter": 4,
+    "digest_bits": 208,
+    "full_c2": true,
+    "queries": [
+      152742,
+      172436,
+      140755,
+      112262,
+      203944,
+      205890,
+      96695,
+      220077,
+      230153,
+      141221,
+      182970,
+      177051,
+      184191,
+      160328,
+      229391,
+      253215
+    ]
+  },
+  "rank_model": {
+    "mask_oracles": 6,
+    "variables_qm31": 6144,
+    "variables_m31": 24576,
+    "complete_gamma_combined_root_message_qm31": 1024,
+    "complete_root_rank_qm31": 1024,
+    "query_observations_per_oracle_qm31": 64,
+    "point_observations_per_oracle_qm31": 3,
+    "conditioning_rank_per_free_oracle_qm31": [67, 67, 67, 67, 67],
+    "conditioning_rank_after_root_qm31": 335,
+    "conditioned_kernel_qm31": 4785,
+    "sumcheck_fields_qm31": 101,
+    "conditioned_sumcheck_rank_by_revealed_points_qm31": [100, 95, 95, 95],
+    "conditioned_sumcheck_rank_qm31": 95,
+    "ambient_deficit_qm31": 6,
+    "complete_view_rank_qm31": 1454,
+    "complete_view_rank_m31": 5816,
+    "complete_view_kernel_qm31": 4690,
+    "complete_view_kernel_m31": 18760
+  },
+  "universal_local_gate": {
+    "factor_rank": 11,
+    "factor_dimension": 11,
+    "last_linear_coefficient_m31": 201,
+    "result": "PASS",
+    "meaning": "the twelve directions {f_k(t), t*f_k(t)} span every degree-at-most-10 polynomial for every nine-round prefix"
+  },
+  "schedule_guards": {
+    "gamma_nonzero": true,
+    "kappa_nonzero": true,
+    "distinct_queries": true
+  },
+  "interpretation": {
+    "ambient_surjectivity": "FAIL",
+    "attribution": "the complete root costs one ambient sumcheck direction and z costs five; successor(z) and xor12(z) cost no further rank",
+    "not_a_standalone_privacy_break": "legal proof views obey terminal/root compatibility relations, so security requires containment of legal same-statement witness differences rather than full ambient surjectivity",
+    "go_kill": "kill direct six-mask transplant into unchanged degree-27 V7; retain only after a genuinely degree-at-most-10 atomic arithmetization and a coupled legal-view containment proof"
+  },
+  "timing": {
+    "final_rank_elapsed_ms": 1685,
+    "process_real_seconds": 2.15,
+    "process_user_seconds": 1.67,
+    "process_sys_seconds": 0.01,
+    "maximum_resident_set_bytes": 38158336,
+    "peak_memory_footprint_bytes": 32965040,
+    "execution_host": "local_mac",
+    "nuc_used": false,
+    "nuc_reason": "streaming quotient stayed below 40 MB; active V6 Lean session was left untouched"
+  },
+  "formal_boundary": [
+    "one accepted transcript proves a nonzero minor, not the same ranks for every legal transcript",
+    "the exact legal degree-10 atomic witness-difference source space has not been implemented or source-bridged",
+    "a V8 wire/transcript does not yet assign the six mask lanes or bind an independent post-root nonzero batching challenge",
+    "Merkle/SHA-256 salted-root hiding and Fiat-Shamir adaptive scheduling remain external",
+    "unchanged atomic V7 has individual semantic degree 27, so the old degree-10 mask is not an acceptance-preserving replacement"
+  ]
+}
