@@ -26,6 +26,7 @@ use borsh::to_vec;
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
 use sha2::{Digest, Sha256};
+use solana_loader_v3_interface::instruction as loader_v3_instruction;
 #[allow(deprecated)]
 use solana_sdk::system_instruction;
 use solana_sdk::{
@@ -87,6 +88,10 @@ const V6_DEVNET_EXECUTE_ACK: &str =
 const V7_DEVNET_EXECUTE_ACK: &str =
     "I_ACKNOWLEDGE_V7_DEVNET_REHEARSAL_MUTATES_DEVNET_AND_SPENDS_DEVNET_SOL";
 const V6_DEVNET_CU_LIMIT: u32 = 1_300_000;
+// Agave feature `enable_extend_program_checked`. The release rail reads this
+// account before constructing the loader-v3 extension instruction so it stays
+// correct across activation of the checked replacement.
+const EXTEND_PROGRAM_CHECKED_FEATURE_ID: &str = "2oMRZEDWT2tqtYMofhmmfQ8SsjqUFzT6sYXppQDavxwz";
 
 #[cfg(any(target_os = "linux", target_os = "android"))]
 const EVIDENCE_O_NOFOLLOW: i32 = 0o400000;
@@ -3028,6 +3033,40 @@ fn extract_deploy_signature(stdout: &[u8]) -> Result<Signature> {
     bail!("Solana CLI deployment output omitted a parseable signature")
 }
 
+#[allow(deprecated)]
+fn extend_program_checked_active(rpc: &Rpc) -> Result<bool> {
+    let feature_id = Pubkey::from_str(EXTEND_PROGRAM_CHECKED_FEATURE_ID)
+        .context("invalid pinned ExtendProgramChecked feature ID")?;
+    let Some(account) = rpc.account(&feature_id)? else {
+        return Ok(false);
+    };
+    ensure!(
+        account.owner == solana_sdk::feature::id(),
+        "ExtendProgramChecked feature account has the wrong owner"
+    );
+    let feature: solana_sdk::feature::Feature = bincode::deserialize(&account.data)
+        .context("decode ExtendProgramChecked feature account")?;
+    Ok(feature.activated_at.is_some())
+}
+
+fn programdata_extension_instruction(
+    program_id: &Pubkey,
+    authority: &Pubkey,
+    additional_bytes: u32,
+    checked_active: bool,
+) -> Instruction {
+    if checked_active {
+        loader_v3_instruction::extend_program_checked(
+            program_id,
+            authority,
+            Some(authority),
+            additional_bytes,
+        )
+    } else {
+        loader_v3_instruction::extend_program(program_id, Some(authority), additional_bytes)
+    }
+}
+
 fn deploy_cli_args(config: &DevnetConfig, policy: ClusterPolicy) -> Result<Vec<OsString>> {
     if policy == ClusterPolicy::MainnetBeta {
         ensure!(
@@ -5063,29 +5102,21 @@ fn v6_deploy_or_upgrade(
                 .checked_sub(capacity)
                 .context("declared max length does not extend existing ProgramData")?;
             ensure!(additional > 0);
-            let output = Command::new(&config.solana_cli)
-                .arg("--url")
-                .arg(&config.rpc_url)
-                .arg("--keypair")
-                .arg(&config.payer_keypair)
-                .arg("--output")
-                .arg("json")
-                .arg("--commitment")
-                .arg("finalized")
-                .arg("program")
-                .arg("extend")
-                .arg(program_id.to_string())
-                .arg(additional.to_string())
-                .output()
-                .context("run explicit Solana ProgramData extension")?;
-            ensure!(
-                output.status.success(),
-                "Solana ProgramData extension failed with status {}: {}",
-                output.status,
-                String::from_utf8_lossy(&output.stderr).trim()
+            let additional = u32::try_from(additional)
+                .context("ProgramData extension exceeds loader-v3 u32 limit")?;
+            let instruction = programdata_extension_instruction(
+                program_id,
+                &payer.pubkey(),
+                additional,
+                extend_program_checked_active(rpc)?,
             );
-            let signature = extract_deploy_signature(&output.stdout)?;
-            let slot = rpc.wait_finalized(&signature)?;
+            let transaction =
+                signed_transaction(payer, &[], &[instruction], rpc.latest_blockhash()?);
+            let label = match release {
+                OneFoldRelease::V6 => "v6_extend_programdata",
+                OneFoldRelease::V7 => "v7_extend_programdata",
+            };
+            let extension_evidence = rpc.submit_transaction(&transaction, label)?;
             let extended = v6_upgradeable_program_snapshot(rpc, program_id, &payer.pubkey())?
                 .context("program missing after finalized ProgramData extension")?;
             ensure!(
@@ -5093,21 +5124,11 @@ fn v6_deploy_or_upgrade(
                     == config.program_max_len,
                 "finalized ProgramData capacity differs from declared maximum"
             );
-            let (wire_sha256, message_sha256) =
-                rpc.transaction_wire_and_message_hash(&signature)?;
-            evidence.push(TransactionEvidence {
-                label: match release {
-                    OneFoldRelease::V6 => "v6_extend_programdata",
-                    OneFoldRelease::V7 => "v7_extend_programdata",
-                }
-                .to_owned(),
-                signature: signature.to_string(),
-                finalized_slot: slot,
-                message_sha256,
-                serialized_transaction_sha256: wire_sha256,
-                compute_units_consumed: rpc.transaction_cu(&signature)?,
-                identical_wire_retries: Some(0),
-            });
+            ensure!(
+                extended.programdata_slot == extension_evidence.finalized_slot,
+                "ProgramData extension is not the latest finalized program mutation"
+            );
+            evidence.push(extension_evidence);
         }
     }
     if v6_upgradeable_program_snapshot(rpc, program_id, &payer.pubkey())?
@@ -6185,6 +6206,26 @@ mod tests {
     }
 
     #[test]
+    fn programdata_extension_tracks_checked_feature_activation() {
+        let program_id = Pubkey::new_unique();
+        let authority = Pubkey::new_unique();
+        let additional_bytes = 65_537;
+        assert_eq!(
+            programdata_extension_instruction(&program_id, &authority, additional_bytes, false,),
+            loader_v3_instruction::extend_program(&program_id, Some(&authority), additional_bytes,)
+        );
+        assert_eq!(
+            programdata_extension_instruction(&program_id, &authority, additional_bytes, true,),
+            loader_v3_instruction::extend_program_checked(
+                &program_id,
+                &authority,
+                Some(&authority),
+                additional_bytes,
+            )
+        );
+    }
+
+    #[test]
     fn upload_geometry_fits_packet_cap_and_uses_five_finality_windows() {
         assert_eq!(upload_wire_len(UPLOAD_CHUNK_BYTES), 1_173);
         assert_eq!(upload_wire_len(1_019), MAX_TRANSACTION_WIRE_BYTES);
@@ -6680,7 +6721,10 @@ mod tests {
 
     #[test]
     fn v6_devnet_parser_requires_exact_interlock_and_absolute_inputs() {
-        let parsed = parse_v6_devnet_args(&complete_v6_devnet_args()).unwrap();
+        let parse_v6 = |arguments: &[String]| {
+            parse_onefold_devnet_args(arguments, "V6", V6_DEVNET_EXECUTE_ACK)
+        };
+        let parsed = parse_v6(&complete_v6_devnet_args()).unwrap();
         assert_eq!(parsed.rpc_url, "https://api.devnet.solana.com");
         assert_eq!(parsed.program_max_len, 1_200_000);
         assert_eq!(parsed.metadata, PathBuf::from("/tmp/v6-metadata.json"));
@@ -6703,7 +6747,7 @@ mod tests {
                 aspis_verifier::id().to_string(),
             ],
         );
-        let parsed_existing = parse_v6_devnet_args(&existing).unwrap();
+        let parsed_existing = parse_v6(&existing).unwrap();
         assert_eq!(parsed_existing.program_keypair, None);
         assert_eq!(
             parsed_existing.existing_program_id,
@@ -6715,7 +6759,7 @@ mod tests {
             "--program-keypair".to_owned(),
             "/tmp/v6-program.json".to_owned(),
         ]);
-        assert!(parse_v6_devnet_args(&both_identities).is_err());
+        assert!(parse_v6(&both_identities).is_err());
 
         let mut no_identity = existing;
         let existing_id = no_identity
@@ -6723,7 +6767,7 @@ mod tests {
             .position(|argument| argument == "--existing-program-id")
             .unwrap();
         no_identity.drain(existing_id..existing_id + 2);
-        assert!(parse_v6_devnet_args(&no_identity).is_err());
+        assert!(parse_v6(&no_identity).is_err());
 
         let mut missing_execute = complete_v6_devnet_args();
         let execute = missing_execute
@@ -6731,7 +6775,7 @@ mod tests {
             .position(|argument| argument == "--execute-devnet")
             .unwrap();
         missing_execute.remove(execute);
-        assert!(parse_v6_devnet_args(&missing_execute).is_err());
+        assert!(parse_v6(&missing_execute).is_err());
 
         let mut wrong_acknowledgement = complete_v6_devnet_args();
         let acknowledgement = wrong_acknowledgement
@@ -6739,7 +6783,7 @@ mod tests {
             .position(|argument| argument == "--acknowledgement")
             .unwrap();
         wrong_acknowledgement[acknowledgement + 1] = EXECUTE_ACK.to_owned();
-        assert!(parse_v6_devnet_args(&wrong_acknowledgement).is_err());
+        assert!(parse_v6(&wrong_acknowledgement).is_err());
 
         let mut relative = complete_v6_devnet_args();
         let proof = relative
@@ -6747,15 +6791,15 @@ mod tests {
             .position(|argument| argument == "--proof")
             .unwrap();
         relative[proof + 1] = "v6-proof.bin".to_owned();
-        assert!(parse_v6_devnet_args(&relative).is_err());
+        assert!(parse_v6(&relative).is_err());
 
         let mut duplicate = complete_v6_devnet_args();
         duplicate.extend(["--program-max-len".to_owned(), "1200000".to_owned()]);
-        assert!(parse_v6_devnet_args(&duplicate).is_err());
+        assert!(parse_v6(&duplicate).is_err());
 
         let mut unknown = complete_v6_devnet_args();
         unknown.extend(["--network".to_owned(), "mainnet-beta".to_owned()]);
-        assert!(parse_v6_devnet_args(&unknown).is_err());
+        assert!(parse_v6(&unknown).is_err());
     }
 
     #[test]
