@@ -6,15 +6,29 @@
 //! integration may wrap these byte-exact components in new Pool V1 accounts;
 //! it must not reinterpret an existing atomic-v2 account as Pool V1.
 
+pub mod authorization_receipt;
 pub mod deposit;
 pub mod format;
 pub mod historical_anchor;
 pub mod incremental_merkle;
 pub mod nullifier_marker;
 pub mod payment_relation;
+#[cfg(not(target_os = "solana"))]
+pub mod payment_trace;
 pub mod root_history;
 pub mod verifier_dispatch;
 pub mod verifier_registry;
+
+pub use authorization_receipt::{
+    decode_pool_v1_authorization_receipt_v1, encode_pool_v1_authorization_receipt_v1,
+    validate_pool_v1_authorization_receipt_for_settlement_v1,
+    PoolV1AuthorizationReceiptError, PoolV1AuthorizationReceiptV1,
+    POOL_V1_AUTHORIZATION_RECEIPT_BYTES, POOL_V1_AUTHORIZATION_RECEIPT_DIGEST_BYTES,
+    POOL_V1_AUTHORIZATION_RECEIPT_DIGEST_DOMAIN, POOL_V1_AUTHORIZATION_RECEIPT_HASH_SHA256,
+    POOL_V1_AUTHORIZATION_RECEIPT_MAGIC, POOL_V1_AUTHORIZATION_RECEIPT_PREFIX_BYTES,
+    POOL_V1_AUTHORIZATION_RECEIPT_SEED, POOL_V1_AUTHORIZATION_RECEIPT_STATUS_VERIFIED,
+    POOL_V1_AUTHORIZATION_RECEIPT_VERSION,
+};
 
 pub use deposit::{
     decode_deposit_receipt_v1, encode_deposit_receipt_v1, validate_deposit_event_v1,
@@ -63,6 +77,20 @@ pub use payment_relation::{
     PoolV1WithdrawalWitnessV1, POOL_V1_CANONICAL_FEE, POOL_V1_PAYMENT_STATEMENT_BYTES,
     POOL_V1_PAYMENT_STATEMENT_VERSION, POOL_V1_PRIVATE_TRANSFER_STATEMENT_MAGIC,
     POOL_V1_WITHDRAWAL_STATEMENT_MAGIC,
+};
+#[cfg(not(target_os = "solana"))]
+pub use payment_trace::{
+    build_pool_v1_private_transfer_trace_v1, build_pool_v1_withdrawal_trace_v1,
+    pool_v1_payment_trace_block_v1, validate_pool_v1_private_transfer_trace_v1,
+    validate_pool_v1_withdrawal_trace_v1, PoolV1PaymentTraceBlockV1, PoolV1PaymentTraceErrorV1,
+    PoolV1PaymentTracePublicOutputsV1, PoolV1PaymentTraceV1, PoolV1PaymentTraceVariantV1,
+    POOL_V1_PAYMENT_AUX_ROW_END, POOL_V1_PAYMENT_DIRECTION_BITS,
+    POOL_V1_PAYMENT_DIRECTION_ROW_START, POOL_V1_PAYMENT_TRACE_BLOCKS,
+    POOL_V1_PAYMENT_TRACE_BLOCK_ROWS, POOL_V1_PAYMENT_TRACE_C1_COLUMNS,
+    POOL_V1_PAYMENT_TRACE_PERMUTATION_ROWS, POOL_V1_PAYMENT_TRACE_ROWS,
+    POOL_V1_PAYMENT_TRACE_TWO_ROUND_ROWS_PER_BLOCK, POOL_V1_PAYMENT_TRACE_TWO_ROUND_TRANSITIONS,
+    POOL_V1_PAYMENT_VALUE_BITS, POOL_V1_PAYMENT_VALUE_COUNT, POOL_V1_PAYMENT_VALUE_ROW_START,
+    POOL_V1_TAG73_PROOF_GRAMMAR_BYTES,
 };
 pub use root_history::{
     root_history_location, PoolV1RootHistoryError, RootHistoryLocationV1, RootHistoryPageAddressV1,
