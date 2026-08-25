@@ -189,6 +189,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "aspis-registry"
+version = "0.1.0"
+dependencies = [
+ "aspis-statement",
+ "solana-program",
+ "solana-sdk-ids",
+]
+
+[[package]]
 name = "aspis-statement"
 version = "0.1.0"
 dependencies = [
