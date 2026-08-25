@@ -1,5 +1,6 @@
 import Mathlib
 import AspisFormal.Pool.TransferOneToTwoV1
+import AspisFormal.Pool.WithdrawalV1
 
 /-!
 # Pool V1 payment proof relation
@@ -186,6 +187,29 @@ theorem valid_withdrawal_conserves_value
     witness.input.inputValue = witness.change.value + statement.amount := by
   exact valid.2.2.2.2.2.2.2.2.2
 
+theorem valid_withdrawal_yields_ledger_relation
+    {Pool Domain Root Digest Asset Destination Key Salt Path Owner : Type}
+    [DecidableEq Root] [DecidableEq Digest] [DecidableEq Asset]
+    (primitives : Primitives Key Salt Asset Path Owner Root Digest)
+    (statement : WithdrawalPublic Pool Domain Root Digest Asset Destination)
+    (witness : WithdrawalWitness Key Salt Asset Path Owner)
+    (valid : ValidWithdrawal primitives statement witness) :
+    ∃ relation : AspisPool.WithdrawalV1.Relation,
+      relation.inputValue = witness.input.inputValue ∧
+      relation.changeValue = witness.change.value ∧
+      relation.amount = statement.amount := by
+  rcases valid with ⟨inputBound, changeBound, amountPositive, amountBound,
+    _, _, _, _, _, balance⟩
+  exact ⟨{
+    inputValue := witness.input.inputValue
+    changeValue := witness.change.value
+    amount := statement.amount
+    inputBound := inputBound
+    changeBound := changeBound
+    amountPositive := amountPositive
+    amountBound := amountBound
+    balance := balance }, rfl, rfl, rfl⟩
+
 /-- One fixed private-transfer witness determines every proof-relevant public
 anchor/nullifier/output field.  Pool identity, deployment domain and
 anchor sequence are separately transcript-bound statement fields. -/
@@ -226,6 +250,7 @@ theorem same_withdrawal_witness_amount_determined
 
 #print axioms valid_private_transfer_yields_ledger_relation
 #print axioms valid_withdrawal_conserves_value
+#print axioms valid_withdrawal_yields_ledger_relation
 #print axioms same_transfer_witness_public_projection_unique
 #print axioms same_withdrawal_witness_amount_determined
 
