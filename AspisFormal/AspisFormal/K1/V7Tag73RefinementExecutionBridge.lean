@@ -505,7 +505,7 @@ theorem adaptive_prefix_plan_expansion (tape : DeployedFixedTape) :
          (tape.messages.challengeValue .chi) tape.messages.c2] ++
       eventsToActions (prefixAfterC2 tape.messages) := by
   simp [adaptivePrefixPlan, adaptiveRounds, expandAdaptiveRound,
-    eventsToActions, eventActions, List.append_assoc]
+    eventsToActions, eventActions, challengeEvent, List.append_assoc]
 
 theorem run_prefix_work_erased_constructs_exact_actions
     (table : FixedOracleTable) (tape : DeployedFixedTape)
@@ -606,7 +606,179 @@ theorem run_prefix_work_erased_constructs_exact_actions
   · exact hfinalC2.trans rfl
   · exact hfinalBase.trans (hphaseBase.trans beforeBaseNone)
 
-/-! The q16 composition lemmas follow this prefix layer. -/
+/-! ## Exact cloned q16 forest composition -/
+
+theorem candidate_absorb_action_agrees
+    (table : FixedOracleTable) (bindings : FixedBindings)
+    (core : RuntimeCore) (state next : EvalState)
+    (spec : CandidateSpec) (selected : Bool) (base : Digest256)
+    (saved : core.q16Base = some base) (same : SameDigest core state)
+    (run : absorbStep table state (.queryCandidate spec.counter) = some next) :
+    runActionCore table bindings core
+        (.q16CandidateAbsorb spec.counter spec.outcome selected) =
+      some { core with digest := next.digest } := by
+  rw [absorbStep] at run
+  obtain ⟨pair, hstep, hnext⟩ := Option.bind_eq_some_iff.mp run
+  rcases pair with ⟨output, stepped⟩
+  have steppedEquals : stepped = next := by
+    simpa only [pure, Option.some.injEq] using hnext
+  subst stepped
+  obtain ⟨lookup, _, digest⟩ := query_step_appends_one table state next
+    (.absorb (.queryCandidate spec.counter)) output hstep
+  have outputEquals : output = next.digest := by
+    simpa only [RawQueryRole.nextDigest] using digest.symm
+  subst output
+  have normalized : tableLookup table
+      ((bytes state.digest ++ [domAbsorb, queryCandidateLabel]) ++
+        [UInt8.ofNat spec.counter.val]) = some next.digest := by
+    simpa only [RawQueryRole.input, Payload.label, Payload.data] using lookup
+  have normalizedFlat : tableLookup table
+      (bytes state.digest ++ [domAbsorb, queryCandidateLabel,
+        UInt8.ofNat spec.counter.val]) = some next.digest := by
+    simpa only [List.append_assoc, List.cons_append, List.nil_append] using
+      normalized
+  rw [runActionCore]
+  apply Option.bind_eq_some_iff.mpr
+  refine ⟨.single next.digest, ?_, ?_⟩
+  · simp only [deriveReply, actionInputs, lookupSingleInput]
+    change core.digest = state.digest at same
+    rw [same, normalizedFlat]
+    rfl
+  · simp [applyActionWorkErased, saved]
+
+theorem candidate_actions_agree
+    (table : FixedOracleTable) (bindings : FixedBindings)
+    (core : RuntimeCore) (state next : EvalState)
+    (spec : CandidateSpec) (selected : Bool) (base : Digest256)
+    (saved : core.q16Base = some base) (same : SameDigest core state)
+    (run : runCandidate table state spec = some next) :
+    runActionCores table bindings (candidateActions spec selected) core =
+      some { core with digest := next.digest } := by
+  rw [runCandidate] at run
+  obtain ⟨afterCounter, hcounter, run⟩ := Option.bind_eq_some_iff.mp run
+  obtain ⟨blocksPair, hblocks, hnext⟩ := Option.bind_eq_some_iff.mp run
+  rcases blocksPair with ⟨blocks, afterBlocks⟩
+  have nextEquation : { afterBlocks with
+      candidates := afterBlocks.candidates ++
+        [{ counter := spec.counter
+           outcome := spec.outcome
+           baseDigest := state.digest
+           endDigest := afterBlocks.digest
+           blocks := blocks }] } = next := by
+    simpa only [pure, Option.some.injEq] using hnext
+  have nextDigest : afterBlocks.digest = next.digest := by
+    rw [← nextEquation]
+  have counterAction := candidate_absorb_action_agrees table bindings core
+    state afterCounter spec selected base saved same hcounter
+  let counterCore : RuntimeCore := { core with digest := afterCounter.digest }
+  have blocksSame : SameDigest counterCore afterCounter := rfl
+  have blockActions := squeeze_many_actions_agree table bindings
+    (.queryCandidate spec.counter) 0 spec.outcome.blocksUsed counterCore
+    afterCounter afterBlocks blocks blocksSame hblocks
+  rw [nextDigest] at blockActions
+  unfold candidateActions
+  apply run_action_cores_append_of_runs table bindings _ _ core counterCore
+    { counterCore with digest := next.digest }
+  · simpa [runActionCores, counterCore] using counterAction
+  · simpa [squeezeActionsFrom, List.range_eq_range'] using blockActions
+
+theorem discarded_candidates_actions_restore_shared_base
+    (table : FixedOracleTable) (bindings : FixedBindings)
+    (base : Digest256) (specs : List CandidateSpec)
+    (core : RuntimeCore) (state next : EvalState)
+    (saved : core.q16Base = some base)
+    (coreAtBase : core.digest = base)
+    (same : SameDigest core state)
+    (run : runDiscardedCandidates table base specs state = some next) :
+    runActionCores table bindings
+      (specs.flatMap discardedCandidateActions) core = some core ∧
+    next.digest = base := by
+  induction specs generalizing state with
+  | nil =>
+      rw [runDiscardedCandidates] at run
+      have stateEquals : state = next := Option.some.inj run
+      subst next
+      exact ⟨by simp [runActionCores], same.symm.trans coreAtBase⟩
+  | cons spec rest ih =>
+      rw [runDiscardedCandidates] at run
+      obtain ⟨branch, hbranch, hrest⟩ := Option.bind_eq_some_iff.mp run
+      have candidateRun := candidate_actions_agree table bindings core state
+        branch spec false base saved same hbranch
+      let branchCore : RuntimeCore := { core with digest := branch.digest }
+      have restoreRun : runActionCores table bindings
+          [.q16Restore spec.counter] branchCore = some core := by
+        cases core
+        simp_all [runActionCores, runActionCore, deriveReply,
+          applyActionWorkErased, branchCore]
+      have oneDiscard := run_action_cores_append_of_runs table bindings _ _
+        core branchCore core candidateRun restoreRun
+      have restoredSame : SameDigest core (restoreDigest base branch) := by
+        change core.digest = base
+        exact coreAtBase
+      obtain ⟨restRun, finalDigest⟩ := ih (state := restoreDigest base branch)
+        restoredSame hrest
+      constructor
+      · simp only [List.flatMap_cons, discardedCandidateActions]
+        exact run_action_cores_append_of_runs table bindings _ _ core core core
+          oneDiscard restRun
+      · exact finalDigest
+
+theorem run_q16_constructs_exact_cloned_forest
+    (table : FixedOracleTable) (tape : DeployedFixedTape)
+    (prefixCore : RuntimeCore) (prefixState afterQ16 : EvalState)
+    (same : SameDigest prefixCore prefixState)
+    (baseEmpty : prefixCore.q16Base = none)
+    (run : runQ16 table prefixState (q16TapeOfSearch tape.search) =
+      some afterQ16) :
+    ∃ finalCore,
+      runActionCores table
+        (FixedBindings.ofContext tape.messages.context)
+        (q16Plan tape) prefixCore = some finalCore ∧
+      SameDigest finalCore afterQ16 ∧
+      finalCore.q16Base = some prefixState.digest := by
+  rw [runQ16] at run
+  obtain ⟨beforeSelected, hearlier, hselected⟩ :=
+    Option.bind_eq_some_iff.mp run
+  let bindings := FixedBindings.ofContext tape.messages.context
+  let markedCore : RuntimeCore :=
+    { prefixCore with q16Base := some prefixCore.digest }
+  have markRun : runActionCores table bindings [.markQ16Base] prefixCore =
+      some markedCore := by
+    simp [runActionCores, runActionCore, deriveReply,
+      applyActionWorkErased, markedCore]
+  have markedSaved : markedCore.q16Base = some prefixState.digest := by
+    change some prefixCore.digest = some prefixState.digest
+    exact congrArg some same
+  have markedAtBase : markedCore.digest = prefixState.digest := same
+  have markedSame : SameDigest markedCore prefixState := same
+  obtain ⟨earlierRun, beforeSelectedDigest⟩ :=
+    discarded_candidates_actions_restore_shared_base table bindings
+      prefixState.digest (q16TapeOfSearch tape.search).earlier markedCore
+      prefixState beforeSelected markedSaved markedAtBase markedSame hearlier
+  have beforeSelectedSame : SameDigest markedCore beforeSelected := by
+    change prefixCore.digest = beforeSelected.digest
+    exact same.trans beforeSelectedDigest.symm
+  have selectedRun := candidate_actions_agree table bindings markedCore
+    beforeSelected afterQ16 (q16TapeOfSearch tape.search).selected true
+    prefixState.digest markedSaved beforeSelectedSame hselected
+  let selectedCore : RuntimeCore :=
+    { markedCore with digest := afterQ16.digest }
+  have selectedMarker : runActionCores table bindings
+      [.q16Selected (q16TapeOfSearch tape.search).selected.counter]
+      selectedCore = some selectedCore := by
+    simp [runActionCores, runActionCore, deriveReply,
+      applyActionWorkErased]
+  have markedAndEarlier := run_action_cores_append_of_runs table bindings _ _
+    prefixCore markedCore markedCore markRun earlierRun
+  have throughSelected := run_action_cores_append_of_runs table bindings _ _
+    prefixCore markedCore selectedCore markedAndEarlier selectedRun
+  have combined := run_action_cores_append_of_runs table bindings _ _
+    prefixCore selectedCore selectedCore throughSelected selectedMarker
+  refine ⟨selectedCore, ?_, rfl, ?_⟩
+  · simpa [q16Plan, bindings, List.append_assoc] using combined
+  · exact markedSaved
+
+/-! The after-scan and full-plan composition follows this q16 layer. -/
 
 #print axioms table_execution_trace_of_run_action_cores
 #print axioms concrete_first_execution_of_full_plan_run
@@ -621,5 +793,9 @@ theorem run_prefix_work_erased_constructs_exact_actions
 #print axioms machine_events_actions_agree
 #print axioms adaptive_prefix_plan_expansion
 #print axioms run_prefix_work_erased_constructs_exact_actions
+#print axioms candidate_absorb_action_agrees
+#print axioms candidate_actions_agree
+#print axioms discarded_candidates_actions_restore_shared_base
+#print axioms run_q16_constructs_exact_cloned_forest
 
 end AspisK1.V7Tag73RefinementExecutionBridge
