@@ -324,6 +324,7 @@ struct SimulationResult {
     units: Option<u64>,
     err: Option<String>,
     logs: Vec<String>,
+    return_data: Option<(Pubkey, Vec<u8>)>,
 }
 
 /// Result of one narrow local-validator simulation.
@@ -334,6 +335,20 @@ struct SimulationResult {
 pub(crate) struct StatelessSimulationResult {
     pub units: u64,
     pub logs: Vec<String>,
+}
+
+/// One no-send, read-only local-SVM measurement with the top-level program's
+/// return data and pre/post proof-account snapshots retained as evidence.
+pub(crate) struct ReadonlyReturnDataSimulationResult {
+    pub units: u64,
+    pub logs: Vec<String>,
+    pub serialized_transaction_bytes: usize,
+    pub return_data_program_id: Pubkey,
+    pub return_data: Vec<u8>,
+    pub account_owner_before: Pubkey,
+    pub account_owner_after: Pubkey,
+    pub account_data_before: Vec<u8>,
+    pub account_data_after: Vec<u8>,
 }
 
 struct LandedTransactionCost {
@@ -552,7 +567,35 @@ impl Rpc {
                 result["value"]["err"], result["value"]["logs"]
             ))
         };
-        Ok(SimulationResult { units, err, logs })
+        let return_data = if result["value"]["returnData"].is_null() {
+            None
+        } else {
+            let value = &result["value"]["returnData"];
+            let program_id = value["programId"]
+                .as_str()
+                .context("simulation returnData omitted programId")?
+                .parse::<Pubkey>()
+                .context("simulation returnData programId is invalid")?;
+            let encoded = value["data"]
+                .as_array()
+                .context("simulation returnData omitted data tuple")?;
+            ensure!(
+                encoded.len() == 2 && encoded[1].as_str() == Some("base64"),
+                "simulation returnData is not exact base64 framing"
+            );
+            let data = BASE64.decode(
+                encoded[0]
+                    .as_str()
+                    .context("simulation returnData payload is not a string")?,
+            )?;
+            Some((program_id, data))
+        };
+        Ok(SimulationResult {
+            units,
+            err,
+            logs,
+            return_data,
+        })
     }
 }
 
@@ -725,6 +768,91 @@ pub(crate) fn simulate_readonly_program_account_instructions(
         });
     }
     Ok(outcomes)
+}
+
+/// Simulate exactly one read-only program-account instruction without calling
+/// `requestAirdrop` or `sendTransaction`. The payer and proof accounts are
+/// preloaded at validator genesis, the signed wire is submitted only to
+/// `simulateTransaction`, and exact top-level return data is captured.
+pub(crate) fn simulate_readonly_program_account_instruction_with_return_data_no_send(
+    so: &Path,
+    account_address: Pubkey,
+    account_owner: Pubkey,
+    account_data: &[u8],
+    instruction_data: Vec<u8>,
+) -> Result<ReadonlyReturnDataSimulationResult> {
+    let root = workspace_root()?;
+    let account_fixture = write_validator_account_fixture(
+        &root,
+        "v7-pool-dispatch-runtime-input",
+        account_address,
+        account_owner,
+        account_data,
+    )?;
+    let payer = Keypair::new();
+    let payer_fixture = write_validator_account_fixture(
+        &root,
+        "v7-pool-dispatch-simulation-payer",
+        payer.pubkey(),
+        system_program::id(),
+        &[],
+    )?;
+    let validator = start_validator_with_accounts(
+        &root,
+        so,
+        &[
+            (account_address, account_fixture),
+            (payer.pubkey(), payer_fixture),
+        ],
+    )?;
+    let rpc = Rpc::for_validator(&validator)?;
+    let before = rpc_account_snapshot(&rpc, &account_address)?
+        .context("preloaded read-only account is absent before simulation")?;
+    ensure!(
+        before.owner == account_owner && before.data == account_data,
+        "preloaded read-only account does not match requested owner/data"
+    );
+
+    let instruction = Instruction {
+        program_id: aspis_verifier::id(),
+        accounts: vec![AccountMeta::new_readonly(account_address, false)],
+        data: instruction_data,
+    };
+    let transaction = Transaction::new_signed_with_payer(
+        &[
+            ComputeBudgetInstruction::set_compute_unit_limit(VERIFY_CU_LIMIT),
+            ComputeBudgetInstruction::request_heap_frame(HEAP_FRAME_BYTES),
+            instruction,
+        ],
+        Some(&payer.pubkey()),
+        &[&payer],
+        rpc.latest_blockhash()?,
+    );
+    let serialized_transaction_bytes = bincode::serialize(&transaction)?.len();
+    let simulation = rpc.simulate_verbose(&transaction)?;
+    if let Some(error) = simulation.err {
+        bail!("read-only return-data SBF measurement failed: {error}");
+    }
+    let units = simulation
+        .units
+        .context("read-only return-data SBF measurement omitted unitsConsumed")?;
+    let (return_data_program_id, return_data) = simulation
+        .return_data
+        .context("read-only return-data SBF measurement omitted returnData")?;
+    let after = rpc_account_snapshot(&rpc, &account_address)?
+        .context("preloaded read-only account disappeared after simulation")?;
+
+    Ok(ReadonlyReturnDataSimulationResult {
+        units,
+        logs: simulation.logs,
+        serialized_transaction_bytes,
+        return_data_program_id,
+        return_data,
+        account_owner_before: before.owner,
+        account_owner_after: after.owner,
+        account_data_before: before.data,
+        account_data_after: after.data,
+    })
 }
 
 /// Simulate the isolated v5 proof verifier inside the unchanged atomic state

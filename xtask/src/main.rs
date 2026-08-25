@@ -17,6 +17,7 @@ mod v5_cu_probe;
 mod v5_mainnet_refund;
 mod v6_cu_probe;
 mod v6_release;
+mod v7_pool_dispatch_measure;
 
 use std::fs;
 use std::path::PathBuf;
@@ -204,6 +205,16 @@ fn main() -> Result<()> {
             eprintln!(
                 "v7-production-simulate: honest V7 accepted at {} CU; wrote {}",
                 outcome.compute_units,
+                outcome.evidence_path.display(),
+            );
+            Ok(())
+        }
+        Some("v7-pool-dispatch-simulate") => {
+            let arguments = args.collect::<Vec<_>>();
+            let outcome = v7_pool_dispatch_measure::run(&arguments)?;
+            eprintln!(
+                "v7-pool-dispatch-simulate: frozen honest ASVQ handler accepted at {} program CU; wrote {}",
+                outcome.outer_handler_compute_units,
                 outcome.evidence_path.display(),
             );
             Ok(())
@@ -600,7 +611,7 @@ fn main() -> Result<()> {
             Ok(())
         }
         other => bail!(
-            "usage: cargo run -p aspis-xtask -- v5-component-c-obstruction | v5-component-c-rank | v5-component-c-fmat | v5-component-c-emat | v5-cu-probe | v5-devnet-build | v5-devnet-artifact | v5-devnet-readiness | v5-devnet-execute | v5-mainnet-artifact | v5-mainnet-readiness | v5-mainnet-execute | v5-mainnet-proof-close | v5-mainnet-payer-sweep | spend-measure | spend-release | spend-bundle | spend-mainnet-readiness | spend-mainnet-execute | spend-mainnet-cleanup | spend-devnet-readiness | spend-devnet-execute | spend-devnet-upload-smoke | spend-devnet-close-smoke (got {:?})",
+            "usage: cargo run -p aspis-xtask -- v5-component-c-obstruction | v5-component-c-rank | v5-component-c-fmat | v5-component-c-emat | v5-cu-probe | v5-devnet-build | v5-devnet-artifact | v5-devnet-readiness | v5-devnet-execute | v5-mainnet-artifact | v5-mainnet-readiness | v5-mainnet-execute | v5-mainnet-proof-close | v5-mainnet-payer-sweep | spend-measure | spend-release | spend-bundle | spend-mainnet-readiness | spend-mainnet-execute | spend-mainnet-cleanup | spend-devnet-readiness | spend-devnet-execute | spend-devnet-upload-smoke | spend-devnet-close-smoke | v7-pool-dispatch-simulate (got {:?})",
             other
         ),
     }
