@@ -3472,6 +3472,147 @@ theorem candidates_included_trans {first middle final : EvalState}
   intro record member
   exact right record (left record member)
 
+/-! ## Exact public-prefix length for the canonical construction -/
+
+/-- The fixed-prefix replay has one driver microstep per verifier action.
+This strengthens the earlier existential-step interface without changing its
+callers. -/
+theorem fixed_prefix_table_trace_gives_exact_step_count
+    (table : FixedOracleTable) (environment : FutureFreeEnvironment)
+    (raw : RawTag73ProverMessages) (bindings : FixedBindings)
+    (core : RuntimeCore) (actions : List VerifierAction)
+    (state : FutureFreeVerifierState)
+    (trace : TableExecutionTrace table bindings core actions)
+    (control : state.current.control =
+      .adaptive (fixedPrefixBoundaryControl actions))
+    (stateBindings : state.current.bindings = bindings)
+    (stateCore : state.current.core = core) :
+    ∃ pairs final,
+      NonterminalRawDriverTrace environment raw state actions.length pairs final ∧
+      PathUsesFixedTable table pairs ∧
+      final.current.control = .adaptive .awaitingC1 ∧
+      final.current.bindings = bindings ∧
+      final.current.core = tableExecutionLastCore trace := by
+  induction trace generalizing state with
+  | done core =>
+      refine ⟨[], state, .stop state, path_uses_fixed_table_nil table,
+        ?_, stateBindings, ?_⟩
+      · simpa using control
+      · simpa [tableExecutionLastCore] using stateCore
+  | @step core next action rest reply derived applied tail ih =>
+      have controlHead : state.current.control =
+          .adaptive (.fixedPrefix (action :: rest)) := by
+        simpa using control
+      have noSubmission : submitNextRawMessage raw state = none := by
+        simp [submitNextRawMessage, controlHead]
+      have forced : state.current.control.nextVerifierAction? = some action := by
+        rw [controlHead]
+        rfl
+      have derivedState : deriveReply table state.current.bindings
+          state.current.core action = some reply := by
+        simpa [stateBindings, stateCore] using derived
+      let nextSnapshot : FutureFreeSnapshot :=
+        { state.current with
+          control := .adaptive (fixedPrefixBoundaryControl rest)
+          core := next }
+      let nextState : FutureFreeVerifierState :=
+        appendFutureFreeSnapshot state (.verifier action reply) nextSnapshot
+      have advanced : advanceFutureFreeVerifier environment state reply =
+          some nextState := by
+        have appliedState : applyActionWorkErased state.current.core action reply =
+            some next := by
+          simpa [stateCore] using applied
+        have updated : afterFutureFreeVerifierReply environment state.current
+            reply next = some nextSnapshot := by
+          cases rest <;>
+            simp [afterFutureFreeVerifierReply,
+              rawAfterFutureFreeVerifierReply, controlHead,
+              OpenAdaptiveControl.afterVerifierReply,
+              finishFixedPrefixControl, fixedPrefixBoundaryControl,
+              nextSnapshot]
+        simpa [nextState] using
+          advance_future_free_verifier_of_components environment state action
+            reply next nextSnapshot forced appliedState updated
+      obtain ⟨headPairs, headPath, headSupported⟩ :=
+        fixed_table_action_is_raw_future_free_microstep table environment raw
+          state nextState action reply noSubmission forced derivedState advanced
+      have nextControl : nextState.current.control =
+          .adaptive (fixedPrefixBoundaryControl rest) := by
+        rfl
+      have nextBindings : nextState.current.bindings = bindings := by
+        simpa [nextState, nextSnapshot, appendFutureFreeSnapshot,
+          stateBindings]
+      have nextCore : nextState.current.core = next := by rfl
+      obtain ⟨tailPairs, final, tailTrace, tailSupported, finalControl,
+          finalBindings, finalCore⟩ :=
+        ih nextState nextControl nextBindings nextCore
+      have nextNonterminal : isDriverHalt nextState.current.control = false := by
+        rw [nextControl]
+        cases rest <;> rfl
+      refine ⟨headPairs ++ tailPairs, final, ?_,
+        path_uses_fixed_table_append table headPairs tailPairs headSupported
+          tailSupported,
+        finalControl, finalBindings, ?_⟩
+      · simpa using
+          (NonterminalRawDriverTrace.next headPath nextNonterminal tailTrace)
+      · simpa [tableExecutionLastCore] using finalCore
+
+/-- The literal deployed pre-C1 schedule contains exactly six actions. -/
+theorem prefix_before_c1_run_gives_exact_six_step_trace
+    (table : FixedOracleTable) (tape : DeployedFixedTape)
+    (beforeC1 : EvalState)
+    (run : runMachineEventsWorkErased table
+      (prefixBeforeC1 tape.messages) initialEvalState = some beforeC1) :
+    ∃ pairs final,
+      NonterminalRawDriverTrace (fixedTapeFutureFreeEnvironment tape)
+        (fixedTapeRawMessages tape)
+        (initialFutureFreeVerifierState
+          (FixedBindings.ofContext tape.messages.context))
+        6 pairs final ∧
+      PathUsesFixedTable table pairs ∧
+      final.current.control = .adaptive .awaitingC1 ∧
+      SameDigest final.current.core beforeC1 ∧
+      final.current.core.c1Salt = none ∧
+      final.current.core.c2Salt = none ∧
+      final.current.core.q16Base = none := by
+  let bindings := FixedBindings.ofContext tape.messages.context
+  obtain ⟨beforeCore, actionRun, same, c1Salt, c2Salt, q16Base⟩ :=
+    machine_events_actions_agree table bindings
+      (prefixBeforeC1 tape.messages) initialCore initialEvalState beforeC1 rfl
+      run
+  obtain ⟨tableTrace, lastCore⟩ :=
+    table_execution_trace_with_exact_last_of_run table bindings
+      (eventsToActions (prefixBeforeC1 tape.messages)) initialCore beforeCore
+      actionRun
+  let initial := initialFutureFreeVerifierState bindings
+  have initialControl : initial.current.control =
+      .adaptive
+        (fixedPrefixBoundaryControl
+          (eventsToActions (prefixBeforeC1 tape.messages))) := by
+    simp [initial, bindings, initialFutureFreeVerifierState,
+      initialFutureFreeSnapshot, fixed_bindings_recover_context,
+      fixedPrefixBoundaryControl, openFixedPrefixActions, prefixBeforeC1,
+      eventsToActions, eventActions] <;> rfl
+  obtain ⟨pairs, final, trace, supported, finalControl, _finalBindings,
+      finalCore⟩ :=
+    fixed_prefix_table_trace_gives_exact_step_count table
+      (fixedTapeFutureFreeEnvironment tape) (fixedTapeRawMessages tape)
+      bindings initialCore (eventsToActions (prefixBeforeC1 tape.messages))
+      initial tableTrace initialControl rfl rfl
+  have exactTrace : NonterminalRawDriverTrace
+      (fixedTapeFutureFreeEnvironment tape) (fixedTapeRawMessages tape)
+      initial 6 pairs final := by
+    simpa [prefixBeforeC1, eventsToActions, eventActions] using trace
+  refine ⟨pairs, final, exactTrace, supported, finalControl, ?_, ?_, ?_, ?_⟩
+  · rw [finalCore, lastCore]
+    exact same
+  · rw [finalCore, lastCore]
+    exact c1Salt.trans rfl
+  · rw [finalCore, lastCore]
+    exact c2Salt.trans rfl
+  · rw [finalCore, lastCore]
+    exact q16Base.trans rfl
+
 /-! ## The final result type keeps acceptance outside the compiler bridge -/
 
 structure CompleteCheckedFutureFreePath
@@ -3490,16 +3631,39 @@ structure CompleteCheckedFutureFreePath
   externalObligationsExact : externalObligations =
     futureFreeExternalAcceptanceObligations
 
+/-- The unpadded construction returned by the checked refinement, together
+with the exact protocol-local decomposition of its driver fuel.  This record
+does not assert any semantic, Merkle, or terminal acceptance predicate. -/
+structure CanonicalCheckedFutureFreeConstruction
+    (table : FixedOracleTable) (tape : DeployedFixedTape) where
+  complete : CompleteCheckedFutureFreePath table tape
+  adaptiveSteps : Nat
+  beforeQ16Steps : Nat
+  q16Steps : Nat
+  afterQ16Steps : Nat
+  completeFuel : complete.fuel =
+    ((((6 + adaptiveSteps) + beforeQ16Steps) + q16Steps) + afterQ16Steps) + 1
+  adaptiveFuel : adaptiveSteps = 6 +
+    (tape.messages.challengeUse .lambda).blocksUsed +
+    (tape.messages.challengeUse .chi).blocksUsed
+  beforeQ16Fuel : beforeQ16Steps =
+    fixedTapeLinearFuels tape beforeQ16Slots
+  q16Fuel : q16Steps = 2 +
+    discardedQ16Fuel (q16TapeOfSearch tape.search).earlier +
+    (1 + (q16TapeOfSearch tape.search).selected.outcome.blocksUsed)
+  afterQ16Fuel : afterQ16Steps =
+    fixedTapeLinearFuels tape afterQ16PreterminalSlots
+
 /-- A successful work-erased checked refinement drives the complete
 future-free verifier to schedule exhaustion.  This is the deterministic
 compiler-refinement face: the five semantic/authentication obligations remain
 data named by `externalObligations` and are not asserted here. -/
-theorem checked_work_erased_refinement_constructs_complete_future_free_path
+theorem checked_work_erased_refinement_constructs_canonical_future_free_path
     (table : FixedOracleTable) (tape : DeployedFixedTape)
     (rawTrace : InteractiveRawTrace)
     (run : checkedRefineWorkErased table exactDeterministicDecoders tape =
       some rawTrace) :
-    Nonempty (CompleteCheckedFutureFreePath table tape) := by
+    Nonempty (CanonicalCheckedFutureFreeConstruction table tape) := by
   let environment := fixedTapeFutureFreeEnvironment tape
   let raw := fixedTapeRawMessages tape
   let bindings := FixedBindings.ofContext tape.messages.context
@@ -3577,13 +3741,13 @@ theorem checked_work_erased_refinement_constructs_complete_future_free_path
       well_formed_trace_gives_every_challenge_secure table tape rawTrace
         wellFormed
 
-  obtain ⟨prefixSteps, prefixPairs, c1State, prefixTrace, prefixTable,
+  obtain ⟨prefixPairs, c1State, prefixTrace, prefixTable,
       c1Control, c1Same, _c1SaltEmpty, _c2SaltEmpty, _q16BaseEmpty⟩ :=
-    prefix_before_c1_run_gives_future_free_trace table tape
+    prefix_before_c1_run_gives_exact_six_step_trace table tape
       evaluator.beforeC1 evaluator.beforeC1Run
   have c1Fixed : FutureFreeBindingsFixed bindings c1State := by
     apply nonterminal_trace_preserves_fixed_bindings bindings environment raw
-      (initialFutureFreeVerifierState bindings) c1State prefixSteps prefixPairs
+      (initialFutureFreeVerifierState bindings) c1State 6 prefixPairs
     · exact initial_future_free_bindings_are_fixed bindings
     · simpa [environment, raw, bindings] using prefixTrace
 
@@ -3639,27 +3803,27 @@ theorem checked_work_erased_refinement_constructs_complete_future_free_path
       (by simpa [environment, raw] using terminalControl)
 
   have prefixAdaptive := nonterminal_raw_driver_trace_append environment raw
-    (initialFutureFreeVerifierState bindings) c1State afterC2State prefixSteps
+    (initialFutureFreeVerifierState bindings) c1State afterC2State 6
     adaptiveSteps prefixPairs adaptivePairs
     (by simpa [environment, raw, bindings] using prefixTrace)
     (by simpa [environment, raw] using adaptiveTrace)
   have throughBefore := nonterminal_raw_driver_trace_append environment raw
     (initialFutureFreeVerifierState bindings) afterC2State q16State
-    (prefixSteps + adaptiveSteps) beforeSteps
+    (6 + adaptiveSteps) beforeSteps
     (prefixPairs ++ adaptivePairs) beforePairs prefixAdaptive
     (by simpa [environment, raw] using beforeTrace)
   have throughQ16 := nonterminal_raw_driver_trace_append environment raw
     (initialFutureFreeVerifierState bindings) q16State afterQ16State
-    ((prefixSteps + adaptiveSteps) + beforeSteps) q16Steps
+    ((6 + adaptiveSteps) + beforeSteps) q16Steps
     ((prefixPairs ++ adaptivePairs) ++ beforePairs) q16Pairs throughBefore
     (by simpa [environment, raw] using q16Trace)
   have throughAfter := nonterminal_raw_driver_trace_append environment raw
     (initialFutureFreeVerifierState bindings) afterQ16State beforeTerminal
-    (((prefixSteps + adaptiveSteps) + beforeSteps) + q16Steps) afterSteps
+    (((6 + adaptiveSteps) + beforeSteps) + q16Steps) afterSteps
     (((prefixPairs ++ adaptivePairs) ++ beforePairs) ++ q16Pairs) afterPairs
     throughQ16 (by simpa [environment, raw] using afterTrace)
   let nonterminalSteps :=
-    (((prefixSteps + adaptiveSteps) + beforeSteps) + q16Steps) + afterSteps
+    (((6 + adaptiveSteps) + beforeSteps) + q16Steps) + afterSteps
   let nonterminalPairs :=
     (((prefixPairs ++ adaptivePairs) ++ beforePairs) ++ q16Pairs) ++
       afterPairs
@@ -3700,10 +3864,42 @@ theorem checked_work_erased_refinement_constructs_complete_future_free_path
     simpa [environment, raw, bindings] using
       initial_raw_future_free_return_has_exact_run_invariant environment raw
         (nonterminalSteps + 1) nonterminalPairs final fullPath
-  exact ⟨⟨nonterminalSteps + 1, nonterminalPairs, final,
-    by simpa [environment, raw] using fullPath, allTable, exhausted,
-    by simpa [bindings] using invariant,
-    futureFreeExternalAcceptanceObligations, rfl⟩⟩
+  let complete : CompleteCheckedFutureFreePath table tape :=
+    { fuel := nonterminalSteps + 1
+      pairs := nonterminalPairs
+      final := final
+      path := by simpa [environment, raw] using fullPath
+      tableBacked := allTable
+      exhausted := exhausted
+      invariant := by simpa [bindings] using invariant
+      externalObligations := futureFreeExternalAcceptanceObligations
+      externalObligationsExact := rfl }
+  have completeFuel : complete.fuel =
+      ((((6 + adaptiveSteps) + beforeSteps) + q16Steps) + afterSteps) + 1 := by
+    rfl
+  exact ⟨
+    { complete := complete
+      adaptiveSteps := adaptiveSteps
+      beforeQ16Steps := beforeSteps
+      q16Steps := q16Steps
+      afterQ16Steps := afterSteps
+      completeFuel := completeFuel
+      adaptiveFuel := adaptiveFuel
+      beforeQ16Fuel := beforeFuel
+      q16Fuel := q16Fuel
+      afterQ16Fuel := afterFuel }⟩
+
+/-- Compatibility projection retaining the original public theorem surface. -/
+theorem checked_work_erased_refinement_constructs_complete_future_free_path
+    (table : FixedOracleTable) (tape : DeployedFixedTape)
+    (rawTrace : InteractiveRawTrace)
+    (run : checkedRefineWorkErased table exactDeterministicDecoders tape =
+      some rawTrace) :
+    Nonempty (CompleteCheckedFutureFreePath table tape) := by
+  obtain ⟨construction⟩ :=
+    checked_work_erased_refinement_constructs_canonical_future_free_path
+      table tape rawTrace run
+  exact ⟨construction.complete⟩
 
 /-- A strict deployed checked refinement supplies exactly the selected-work
 and exploratory-probe provenance needed by the preceding work-erased
@@ -3721,6 +3917,7 @@ theorem strict_checked_refinement_constructs_complete_future_free_path
         exactDeterministicDecoders tape rawTrace run)
 
 #print axioms refine_work_erased_exposes_complete_evaluator_run
+#print axioms checked_work_erased_refinement_constructs_canonical_future_free_path
 #print axioms checked_work_erased_refinement_constructs_complete_future_free_path
 #print axioms strict_checked_refinement_constructs_complete_future_free_path
 
