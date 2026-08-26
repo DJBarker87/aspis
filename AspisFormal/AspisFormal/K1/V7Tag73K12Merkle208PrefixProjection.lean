@@ -1,5 +1,6 @@
 import AspisFormal.K1.V7Tag73ExactFixedK12MerkleClassifier
 import AspisFormal.K1.V7Tag73K12Merkle208CollisionProbability
+import AspisFormal.K1.V7Tag73HiddenTapeAveraging
 
 /-!
 # Uniform 256-to-208 prefix projection for Tag-73 K1.2
@@ -23,6 +24,7 @@ open AspisK1.V7FsStateRestorationCoupling
 open AspisK1.V7Tag73ResourceLazyOracle
 open AspisK1.V7Tag73AdaptiveLazyOracle
 open AspisK1.V7Tag73ExactCompilerResources
+open AspisK1.V7Tag73HiddenTapeAveraging
 open AspisK1.V7Tag73ExactFixedK12MerkleClassifier
 open AspisK1.V7Tag73K12Merkle208CollisionProbability
 open AspisPool.V7MerkleQueryGrammar
@@ -326,6 +328,61 @@ theorem uniform_digest256_lifted_partial_raw_collision_probability_le_exact_coun
   rw [uniform_digest256_lifted_prefix_event_probability_exact]
   exact uniform_partial_raw_collision_probability_le_exact_count parameters
 
+/-! ## Hidden-tape averaging under the deployed 256-bit law -/
+
+def hiddenDependentLiftedMerkleCausalHitEvent
+    {HiddenTape : Type} {caps : List Nat}
+    (tree : HiddenTape → CausalTargetTree MerkleDigest208 caps) :
+    Set (HiddenTape × FreshAnswerTape RuntimeDigest256 caps.length) :=
+  {pair | (tree pair.1).everHits
+    (runtimeFreshPrefixTape caps.length pair.2)}
+
+theorem hidden_dependent_lifted_merkle_causal_joint_event_slice
+    {HiddenTape : Type} {caps : List Nat}
+    (tree : HiddenTape → CausalTargetTree MerkleDigest208 caps)
+    (hidden : HiddenTape) :
+    jointEventSlice (hiddenDependentLiftedMerkleCausalHitEvent tree) hidden =
+      liftedMerklePrefixEvent caps.length (causalHitEvent (tree hidden)) := by
+  rfl
+
+/-- Averaging over an arbitrary finite prover tape introduces no loss.  The
+fresh coordinates remain the actual uniform 256-bit SHA outputs, while the
+hidden-dependent causal tree sees precisely their deployed 208-bit prefixes.
+-/
+theorem hidden_dependent_lifted_merkle_causal_probability_le_exact_count
+    {HiddenTape : Type} [Fintype HiddenTape]
+    (hiddenLaw : PMF HiddenTape) {caps : List Nat}
+    (tree : HiddenTape → CausalTargetTree MerkleDigest208 caps) :
+    (hiddenTapeUniformFreshJointLaw hiddenLaw caps.length).toOuterMeasure
+        (hiddenDependentLiftedMerkleCausalHitEvent tree) ≤
+      ((caps.sum * (2 ^ 208) ^ (caps.length - 1) : Nat) : ENNReal) /
+        (((2 : ENNReal) ^ 208) ^ caps.length) := by
+  apply joint_event_probability_le_of_every_slice_le
+  intro hidden
+  rw [hidden_dependent_lifted_merkle_causal_joint_event_slice,
+    uniform_digest256_lifted_prefix_event_probability_exact]
+  exact uniform_merkle_digest208_causal_hit_probability_le_exact_count
+    (tree hidden)
+
+theorem hidden_dependent_lifted_resolution_probability_le_exact_count
+    {HiddenTape : Type} [Fintype HiddenTape]
+    (hiddenLaw : PMF HiddenTape)
+    (tree : HiddenTape → CausalTargetTree MerkleDigest208
+      (List.replicate prefixFixedVerifierExposureCap
+        prefixFixedResolutionTargetCap)) :
+    (hiddenTapeUniformFreshJointLaw hiddenLaw
+        (List.replicate prefixFixedVerifierExposureCap
+          prefixFixedResolutionTargetCap).length).toOuterMeasure
+        (hiddenDependentLiftedMerkleCausalHitEvent tree) ≤
+      ((prefixFixedResolutionTargetCoefficient *
+          (2 ^ 208) ^ (prefixFixedVerifierExposureCap - 1) : Nat) : ENNReal) /
+        (((2 : ENNReal) ^ 208) ^ prefixFixedVerifierExposureCap) := by
+  apply joint_event_probability_le_of_every_slice_le
+  intro hidden
+  rw [hidden_dependent_lifted_merkle_causal_joint_event_slice]
+  exact uniform_digest256_lifted_resolution_probability_le_exact_count
+    (tree hidden)
+
 #print axioms runtime_digest_split_prefix_is_deployed_projection
 #print axioms deployed_prefix_fiber_cardinality
 #print axioms uniform_digest256_deployed_prefix_probability_exact
@@ -334,6 +391,8 @@ theorem uniform_digest256_lifted_partial_raw_collision_probability_le_exact_coun
 #print axioms uniform_digest256_lifted_prefix_event_probability_exact
 #print axioms uniform_digest256_lifted_resolution_probability_le_exact_count
 #print axioms uniform_digest256_lifted_partial_raw_collision_probability_le_exact_count
+#print axioms hidden_dependent_lifted_merkle_causal_probability_le_exact_count
+#print axioms hidden_dependent_lifted_resolution_probability_le_exact_count
 
 end
 

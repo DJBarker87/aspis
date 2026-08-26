@@ -249,6 +249,34 @@ noncomputable def uniformMerkleDigest208FreshTape (steps : Nat) :
     PMF (FreshAnswerTape Digest208 steps) :=
   PMF.uniformOfFintype (FreshAnswerTape Digest208 steps)
 
+/-! ## Generic uniform 208-bit causal law -/
+
+theorem uniform_merkle_digest208_causal_hit_probability_eq
+    {caps : List Nat} (tree : CausalTargetTree Digest208 caps) :
+    (uniformMerkleDigest208FreshTape caps.length).toOuterMeasure
+        (causalHitEvent tree) =
+      (causalHitCount tree : ENNReal) /
+        (((2 : ENNReal) ^ 208) ^ caps.length) := by
+  classical
+  unfold uniformMerkleDigest208FreshTape
+  rw [PMF.toOuterMeasure_uniformOfFintype_apply]
+  change (causalHitCount tree : ENNReal) /
+      (Fintype.card (FreshAnswerTape Digest208 caps.length) : ENNReal) = _
+  rw [fresh_answer_tape_card, merkle_digest208_cardinality]
+  norm_num
+
+theorem uniform_merkle_digest208_causal_hit_probability_le_exact_count
+    {caps : List Nat} (tree : CausalTargetTree Digest208 caps) :
+    (uniformMerkleDigest208FreshTape caps.length).toOuterMeasure
+        (causalHitEvent tree) ≤
+      ((caps.sum * (2 ^ 208) ^ (caps.length - 1) : Nat) : ENNReal) /
+        (((2 : ENNReal) ^ 208) ^ caps.length) := by
+  rw [uniform_merkle_digest208_causal_hit_probability_eq]
+  apply ENNReal.div_le_div_right
+  have bound := causal_hit_count_le_target_caps tree
+  rw [merkle_digest208_cardinality] at bound
+  exact_mod_cast bound
+
 theorem uniform_merkle_digest208_collision_probability_eq
     (freshExposures : Nat) :
     (uniformMerkleDigest208FreshTape
@@ -367,6 +395,8 @@ theorem uniform_partial_raw_collision_probability_le_exact_count
 #print axioms collision_universe_length_le_shared_log_add_thirty_eight
 #print axioms global_shared_sha_call_cap_expanded
 #print axioms prefix_collision_tree_hit_count_le_choose_two
+#print axioms uniform_merkle_digest208_causal_hit_probability_eq
+#print axioms uniform_merkle_digest208_causal_hit_probability_le_exact_count
 #print axioms uniform_merkle_digest208_collision_probability_le_exact_count
 #print axioms prefix_fixed_resolution_target_coefficient_exact
 #print axioms prefix_fixed_resolution_tree_hit_count_le
