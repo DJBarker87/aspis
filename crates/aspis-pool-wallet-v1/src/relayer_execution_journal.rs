@@ -383,6 +383,9 @@ impl DurableRelayerExecutionJournalV1 {
             .ok_or(RelayerExecutionJournalErrorV1::InvalidTransition)?;
         if signed.transaction_signature != transaction_signature
             || finalized.point.slot() < record.simulation.simulated_at_slot
+            || finalized.fee_lamports != record.simulation.estimated_fee_lamports
+            || finalized.compute_units_consumed == 0
+            || finalized.compute_units_consumed > u64::from(record.simulation.compute_unit_limit)
         {
             return Err(RelayerExecutionJournalErrorV1::OutcomeMismatch);
         }
@@ -589,6 +592,10 @@ fn validate_record_v1(
                 || finalized.poststate_sha256 == [0u8; 32]
                 || finalized.provider_set_digest == [0u8; 32]
                 || finalized.point.slot() < record.simulation.simulated_at_slot
+                || finalized.fee_lamports != record.simulation.estimated_fee_lamports
+                || finalized.compute_units_consumed == 0
+                || finalized.compute_units_consumed
+                    > u64::from(record.simulation.compute_unit_limit)
             {
                 return Err(RelayerExecutionJournalErrorV1::InvalidRecord);
             }
@@ -1191,6 +1198,18 @@ mod tests {
             poststate_sha256: [0x73; 32],
             provider_set_digest: [0x61; 32],
         };
+        let mut wrong_fee = finalized;
+        wrong_fee.fee_lamports -= 1;
+        assert_eq!(
+            journal.record_finalized_v1(request_id, [0x51; 64], wrong_fee),
+            Err(RelayerExecutionJournalErrorV1::OutcomeMismatch)
+        );
+        let mut excessive_compute = finalized;
+        excessive_compute.compute_units_consumed = u64::from(simulation().compute_unit_limit) + 1;
+        assert_eq!(
+            journal.record_finalized_v1(request_id, [0x51; 64], excessive_compute),
+            Err(RelayerExecutionJournalErrorV1::OutcomeMismatch)
+        );
         journal
             .record_finalized_v1(request_id, [0x51; 64], finalized)
             .unwrap();
