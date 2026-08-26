@@ -370,7 +370,7 @@ impl ExactTwoProviderRelayerRpcV1 {
     }
 }
 
-fn request_binding_digest_v1(
+pub(crate) fn request_binding_digest_v1(
     endpoint: RelayerRpcEndpointV1,
     request_id: u64,
     request_min_context_slot: Option<u64>,

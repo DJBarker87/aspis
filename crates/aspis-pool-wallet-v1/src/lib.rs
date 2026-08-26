@@ -22,6 +22,7 @@ pub mod registry_transaction_builder;
 pub mod relayer;
 pub mod relayer_execution_journal;
 pub mod relayer_finalized_evidence;
+pub mod relayer_rpc_composition;
 pub mod relayer_rpc_json;
 pub mod relayer_rpc_quorum;
 pub mod relayer_transaction;

@@ -339,6 +339,10 @@ impl ExactRelayerSimulationRequestV1 {
         self.min_context_slot
     }
 
+    pub fn compute_unit_limit(&self) -> u32 {
+        self.compute_unit_limit
+    }
+
     pub fn unsigned_transaction_wire(&self) -> &[u8] {
         &self.unsigned_transaction_wire
     }
@@ -477,6 +481,10 @@ impl FinalizedFeeForMessageRequestV1 {
         self.min_context_slot
     }
 
+    pub fn serialized_message(&self) -> &[u8] {
+        &self.serialized_message
+    }
+
     pub fn encode_json_v1(&self) -> Vec<u8> {
         serde_json::to_vec(&RpcRequestWireV1 {
             jsonrpc: "2.0",
@@ -552,6 +560,14 @@ impl ExactSendTransactionRequestV1 {
         self.min_context_slot
     }
 
+    pub fn transaction_signature(&self) -> &[u8; 64] {
+        &self.transaction_signature
+    }
+
+    pub fn signed_wire(&self) -> &[u8] {
+        &self.signed_wire
+    }
+
     pub fn encode_json_v1(&self) -> Vec<u8> {
         serde_json::to_vec(&RpcRequestWireV1 {
             jsonrpc: "2.0",
@@ -610,6 +626,10 @@ impl SignatureStatusesRequestV1 {
 
     pub fn request_id(&self) -> u64 {
         self.request_id
+    }
+
+    pub fn transaction_signature(&self) -> &[u8; 64] {
+        &self.transaction_signature
     }
 
     pub fn encode_json_v1(&self) -> Vec<u8> {
