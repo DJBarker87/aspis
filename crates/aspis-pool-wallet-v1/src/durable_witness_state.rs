@@ -702,6 +702,7 @@ mod tests {
             deposit_outcomes: Vec::new(),
             transition_outcomes: Vec::new(),
             transition_evidence: Vec::new(),
+            initializations: Vec::new(),
             append_evidence: vec![append],
             prepared_settlements: Vec::new(),
             cancelled_settlements: Vec::new(),

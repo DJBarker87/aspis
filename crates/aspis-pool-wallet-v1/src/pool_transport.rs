@@ -106,6 +106,12 @@ pub struct AuthenticatedPreparedSettlementV1 {
     pub rollover_shard: Option<[u8; 32]>,
 }
 
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct AuthenticatedInitializationV1 {
+    pub id: DepositEventIdV1,
+    pub receipt: InitializationReceiptV1,
+}
+
 /// A deposit reconstructed from one successful top-level `ASDI`.  Its root is
 /// intentionally absent here: the finalized indexer obtains that value from
 /// the canonical Pool-owned history page before constructing the scan record.
@@ -157,7 +163,7 @@ pub struct AuthenticatedCancelledSettlementV1 {
 /// Receipt-independent view used by the finalized block indexer.  Every
 /// variant represents one successful top-level invocation of the pinned Pool.
 pub enum AuthenticatedTopLevelPoolInstructionV1 {
-    Initialization(InitializationReceiptV1),
+    Initialization(AuthenticatedInitializationV1),
     PreparedSettlement(AuthenticatedPreparedSettlementV1),
     CancelledSettlement(AuthenticatedCancelledSettlementV1),
     Deposit(AuthenticatedDepositInstructionV1),
@@ -1023,13 +1029,18 @@ pub fn authenticate_top_level_pool_instruction_v1(
         .map_err(|_| PoolRpcAdapterErrorV1::EventIdentity)
     };
     if magic == POOL_V1_INITIALIZE_INSTRUCTION_MAGIC {
-        return authenticate_initialization_without_receipt_v1(
+        let receipt = authenticate_initialization_without_receipt_v1(
             &program_id,
             identity,
             instruction,
             observed_pool_return_data,
-        )
-        .map(AuthenticatedTopLevelPoolInstructionV1::Initialization);
+        )?;
+        return Ok(AuthenticatedTopLevelPoolInstructionV1::Initialization(
+            AuthenticatedInitializationV1 {
+                id: lifecycle_id()?,
+                receipt,
+            },
+        ));
     }
     if magic == crate::rpc_adapter::POOL_V1_DEPOSIT_INSTRUCTION_MAGIC {
         return authenticate_deposit_without_receipt_v1(

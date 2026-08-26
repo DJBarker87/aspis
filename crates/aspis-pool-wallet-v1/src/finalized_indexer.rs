@@ -29,9 +29,10 @@ use solana_program::pubkey::Pubkey;
 use crate::{
     pool_transport::{
         authenticate_top_level_pool_instruction_v1, AuthenticatedCancelledSettlementV1,
-        AuthenticatedDepositInstructionV1, AuthenticatedPreparedSettlementPlanIdentityV1,
-        AuthenticatedPreparedSettlementV1, AuthenticatedTopLevelPoolInstructionV1,
-        AuthenticatedTransitionInstructionV1, PoolRpcAdapterErrorV1,
+        AuthenticatedDepositInstructionV1, AuthenticatedInitializationV1,
+        AuthenticatedPreparedSettlementPlanIdentityV1, AuthenticatedPreparedSettlementV1,
+        AuthenticatedTopLevelPoolInstructionV1, AuthenticatedTransitionInstructionV1,
+        PoolRpcAdapterErrorV1,
     },
     rpc_adapter::{
         DepositRpcAdapterErrorV1, DepositRpcBindingV1, FinalizedRpcTransactionV1,
@@ -201,6 +202,9 @@ pub struct FinalizedBlockIngestResultV1 {
     /// by nullifier and reconciling recipient/change delivery. Rollback uses
     /// the included output ids; no note opening or secret is retained.
     pub transition_evidence: Vec<FinalizedTransitionEvidenceV1>,
+    /// Successful initialization invocations, retained with their exact
+    /// transaction/instruction identity for relayer finality correlation.
+    pub initializations: Vec<AuthenticatedInitializationV1>,
     /// Every successful append in exact top-level instruction/output order.
     pub append_evidence: Vec<FinalizedAppendEvidenceV1>,
     /// Successful non-appending `ASPP` preparations in transaction order.
@@ -293,7 +297,7 @@ pub enum FinalizedIndexerErrorV1 {
 }
 
 enum PreparedPoolInvocationV1 {
-    Initialization,
+    Initialization(AuthenticatedInitializationV1),
     PreparedSettlement(AuthenticatedPreparedSettlementV1),
     CancelledSettlement(AuthenticatedCancelledSettlementV1),
     Deposit(AuthenticatedDepositInstructionV1),
@@ -560,8 +564,8 @@ fn prepare_transaction_v1(
             other => FinalizedIndexerErrorV1::PoolTransport(other),
         })?;
         let prepared = match authenticated {
-            AuthenticatedTopLevelPoolInstructionV1::Initialization(_) => {
-                PreparedPoolInvocationV1::Initialization
+            AuthenticatedTopLevelPoolInstructionV1::Initialization(initialization) => {
+                PreparedPoolInvocationV1::Initialization(initialization)
             }
             AuthenticatedTopLevelPoolInstructionV1::PreparedSettlement(prepared) => {
                 PreparedPoolInvocationV1::PreparedSettlement(prepared)
@@ -657,7 +661,7 @@ fn prepare_block_transport_v1(
                         ))?
                         .root_sequence
                 }
-                PreparedPoolInvocationV1::Initialization
+                PreparedPoolInvocationV1::Initialization(_)
                 | PreparedPoolInvocationV1::PreparedSettlement(_)
                 | PreparedPoolInvocationV1::CancelledSettlement(_) => current_root_sequence,
             };
@@ -684,7 +688,7 @@ pub fn required_root_page_numbers_for_finalized_rpc_block_v1(
     let mut pages = BTreeSet::new();
     for invocation in &prepared.invocations {
         match invocation {
-            PreparedPoolInvocationV1::Initialization
+            PreparedPoolInvocationV1::Initialization(_)
             | PreparedPoolInvocationV1::PreparedSettlement(_)
             | PreparedPoolInvocationV1::CancelledSettlement(_) => {}
             PreparedPoolInvocationV1::Deposit(deposit) => {
@@ -711,7 +715,7 @@ fn authenticate_root_pages_v1(
     let mut needed_pages = BTreeSet::new();
     for invocation in invocations {
         match invocation {
-            PreparedPoolInvocationV1::Initialization
+            PreparedPoolInvocationV1::Initialization(_)
             | PreparedPoolInvocationV1::PreparedSettlement(_)
             | PreparedPoolInvocationV1::CancelledSettlement(_) => {}
             PreparedPoolInvocationV1::Deposit(deposit) => {
@@ -804,7 +808,7 @@ fn authenticate_root_pages_v1(
     let mut evidence = Vec::new();
     for invocation in invocations {
         let requirements: Vec<_> = match invocation {
-            PreparedPoolInvocationV1::Initialization
+            PreparedPoolInvocationV1::Initialization(_)
             | PreparedPoolInvocationV1::PreparedSettlement(_)
             | PreparedPoolInvocationV1::CancelledSettlement(_) => Vec::new(),
             PreparedPoolInvocationV1::Deposit(deposit) => {
@@ -882,7 +886,7 @@ pub fn ingest_finalized_rpc_block_v1(
         let mut presented_ids = Vec::new();
         for invocation in &invocations {
             match invocation {
-                PreparedPoolInvocationV1::Initialization
+                PreparedPoolInvocationV1::Initialization(_)
                 | PreparedPoolInvocationV1::PreparedSettlement(_)
                 | PreparedPoolInvocationV1::CancelledSettlement(_) => {}
                 PreparedPoolInvocationV1::Deposit(deposit) => presented_ids.push(deposit.id),
@@ -920,13 +924,16 @@ pub fn ingest_finalized_rpc_block_v1(
     let mut deposit_outcomes = Vec::new();
     let mut transition_outcomes = Vec::new();
     let mut transition_evidence = Vec::new();
+    let mut initializations = Vec::new();
     let mut append_evidence = Vec::new();
     let mut prepared_settlements = Vec::new();
     let mut cancelled_settlements = Vec::new();
     let mut plan_lifecycle = Vec::new();
     for invocation in &invocations {
         match invocation {
-            PreparedPoolInvocationV1::Initialization => {}
+            PreparedPoolInvocationV1::Initialization(initialization) => {
+                initializations.push(*initialization);
+            }
             PreparedPoolInvocationV1::PreparedSettlement(prepared) => {
                 prepared_settlements.push(*prepared);
                 plan_lifecycle.push(FinalizedPreparedSettlementLifecycleV1::Prepared(*prepared));
@@ -1088,6 +1095,7 @@ pub fn ingest_finalized_rpc_block_v1(
         deposit_outcomes,
         transition_outcomes,
         transition_evidence,
+        initializations,
         append_evidence,
         prepared_settlements,
         cancelled_settlements,

@@ -461,6 +461,24 @@ pub struct FinalizedTransactionExecutionV1 {
 }
 
 impl FinalizedTransactionExecutionV1 {
+    #[cfg(test)]
+    pub(crate) fn test_only_v1(
+        point: FinalizedChainPointV1,
+        transaction_signature: [u8; 64],
+        fee_lamports: u64,
+        compute_units_consumed: u64,
+    ) -> Self {
+        assert_ne!(transaction_signature, [0u8; 64]);
+        assert_ne!(fee_lamports, 0);
+        assert_ne!(compute_units_consumed, 0);
+        Self {
+            point,
+            transaction_signature,
+            fee_lamports,
+            compute_units_consumed,
+        }
+    }
+
     pub fn point(&self) -> FinalizedChainPointV1 {
         self.point
     }
