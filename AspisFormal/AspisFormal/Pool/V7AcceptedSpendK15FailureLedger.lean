@@ -150,8 +150,8 @@ def failureEvent
   | .tupleCompression => CopyTupleCompressionCollision
       (concreteDeployedCopyRegistryProjection extraction) lambda
   | .oodMix => execution.discrepancyTrace.MixCancellation 0
-  | .relationAlpha => ¬ ∀ round : Fin 4,
-      execution.alpha round ∉ execution.relationCollisionSet round
+  | .relationAlpha => ∃ round : Fin 4,
+      execution.discrepancyTrace.AlphaRepair round
   | .kappaPointRow => KappaPointRowCollision fields extraction
       transcript.point kappa
   | .gammaPointLane => GammaPointLaneCollision fields extraction transcript.point
@@ -259,9 +259,9 @@ theorem accepted_semantic_relation_implies_spend_witness_or_k15_failure
   by_cases gammaPointLane : event .gammaPointLane
   · exact Or.inr ⟨.gammaPointLane, gammaPointLane⟩
   have noRelationAlpha : ∀ round : Fin 4,
-      execution.alpha round ∉ execution.relationCollisionSet round :=
-    Classical.not_not.mp (by
-      simpa only [event, failureEvent] using relationAlpha)
+      ¬ execution.discrepancyTrace.AlphaRepair round := by
+    intro round repair
+    exact relationAlpha ⟨round, repair⟩
   have accepted :=
     accepted_semantic_relation_deployed_copy_lane_consequence basis statement
       masks fields transcript compact extraction

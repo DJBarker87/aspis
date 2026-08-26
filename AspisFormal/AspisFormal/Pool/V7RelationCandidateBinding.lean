@@ -267,6 +267,39 @@ theorem afterMix_zero (execution : CandidateExecution K) :
       execution.secondOodClaim execution.firstMix execution.secondMix
       execution.four_ne_zero
 
+/-- In every relation round the post-mix discrepancy is exactly the incoming
+scalar minus the honest candidate boundary.  For round zero this includes the
+two adaptive OOD values; later rounds have no new OOD errors. -/
+theorem afterMix_eq_incoming_sub_honest_boundary
+    (execution : CandidateExecution K) (round : Fin 4) :
+    execution.discrepancyTrace.afterMix round =
+      execution.incomingAt round -
+        relationBoundary (execution.honestAt round) := by
+  fin_cases round
+  · simpa [incomingAt, honestAt] using execution.afterMix_zero
+  · simp [FourRoundDiscrepancyTrace.afterMix, discrepancyTrace, incomingAt,
+      honestAt]
+    rw [relationBoundary_polynomialForExtension _ _ _ execution.four_ne_zero]
+    rfl
+  · simp [FourRoundDiscrepancyTrace.afterMix, discrepancyTrace, incomingAt,
+      honestAt]
+    rw [relationBoundary_polynomialForExtension _ _ _ execution.four_ne_zero]
+    rfl
+  · simp [FourRoundDiscrepancyTrace.afterMix, discrepancyTrace, incomingAt,
+      honestAt]
+    rw [relationBoundary_polynomialForExtension _ _ _ execution.four_ne_zero]
+    rfl
+
+/-- An actual alpha repair necessarily starts from a wrong incoming scalar;
+this is the nonzeroness premise needed by the degree-six root bound. -/
+theorem wrongIncoming_of_alphaRepair
+    (execution : CandidateExecution K) (round : Fin 4)
+    (repair : execution.discrepancyTrace.AlphaRepair round) :
+    execution.incomingAt round ≠ relationBoundary (execution.honestAt round) := by
+  intro equal
+  apply repair.1
+  rw [execution.afterMix_eq_incoming_sub_honest_boundary round, equal, sub_self]
+
 /-- With an exact disclosed fold and query injection, round zero's carried
 discrepancy is exactly the claimed-minus-honest polynomial evaluation. -/
 theorem nextError_zero (execution : CandidateExecution K)
@@ -433,6 +466,24 @@ theorem relationCollisionSet_card_le_six
         execution.relationBoundary_claimedCoefficients execution.claim3 3
   · exact wrongIncoming
 
+/-- The exact canonical relation-alpha failure surface: an actual scalar
+repair is membership in a bad set of at most six challenges.  Equality of
+already-equal claimed/honest polynomials is deliberately not a failure. -/
+theorem alphaRepair_has_degreeSix_bad_set
+    [Fintype K] [DecidableEq K]
+    (execution : CandidateExecution K)
+    (finalMatches : execution.Final256Matches)
+    (queryExact : execution.QueryInjectionExact)
+    (round : Fin 4)
+    (repair : execution.discrepancyTrace.AlphaRepair round) :
+    execution.alpha round ∈ execution.relationCollisionSet round ∧
+      (execution.relationCollisionSet round).card ≤ 6 := by
+  exact ⟨
+    execution.alphaRepair_mem_relationCollisionSet finalMatches queryExact
+      round repair,
+    execution.relationCollisionSet_card_le_six round
+      (execution.wrongIncoming_of_alphaRepair round repair)⟩
+
 /-- Final terminal acceptance makes the last scalar discrepancy zero. -/
 theorem terminal_discrepancy_zero (execution : CandidateExecution K)
     (terminal : execution.RelationTerminalAccepts) :
@@ -442,19 +493,19 @@ theorem terminal_discrepancy_zero (execution : CandidateExecution K)
   rw [← terminal]
   exact sub_self _
 
-/-- Outside the exact two-OOD cancellation and the four exact degree-six
-collision sets, terminal acceptance forces the initial and both OOD claims to
-be the fixed candidate's true linear-functional values. -/
+/-- Outside the exact two-OOD cancellation and all four actual alpha-repair
+events, terminal acceptance forces the initial and both OOD claims to be the
+fixed candidate's true linear-functional values. -/
 theorem initial_and_ood_claims_exact_outside_collisions
     [Fintype K] [DecidableEq K]
     (execution : CandidateExecution K)
-    (finalMatches : execution.Final256Matches)
-    (queryExact : execution.QueryInjectionExact)
+    (_finalMatches : execution.Final256Matches)
+    (_queryExact : execution.QueryInjectionExact)
     (terminal : execution.RelationTerminalAccepts)
     (noOodCancellation :
       ¬ execution.discrepancyTrace.MixCancellation 0)
-    (noRelationCollision : ∀ round : Fin 4,
-      execution.alpha round ∉ execution.relationCollisionSet round) :
+    (noAlphaRepair : ∀ round : Fin 4,
+      ¬ execution.discrepancyTrace.AlphaRepair round) :
     execution.initialClaim =
         candidateClaim execution.initialWeights execution.initialValues ∧
       execution.firstOodClaim =
@@ -474,9 +525,7 @@ theorem initial_and_ood_claims_exact_outside_collisions
         exact noOodCancellation mixRepair
       · exact execution.no_later_mixCancellation round (Nat.pos_of_ne_zero roundZero)
           mixRepair
-    · exact noRelationCollision round
-        (execution.alphaRepair_mem_relationCollisionSet finalMatches queryExact
-          round alphaRepair)
+    · exact noAlphaRepair round alphaRepair
   have initialZero : execution.discrepancyTrace.before 0 = 0 := by
     by_contra initialNonzero
     exact noFalse (Or.inl initialNonzero)
@@ -496,9 +545,12 @@ theorem initial_and_ood_claims_exact_outside_collisions
 
 #print axioms relationBoundary_claimedCoefficients
 #print axioms afterMix_zero
+#print axioms afterMix_eq_incoming_sub_honest_boundary
+#print axioms wrongIncoming_of_alphaRepair
 #print axioms nextError_zero
 #print axioms alphaRepair_mem_relationCollisionSet
 #print axioms relationCollisionSet_card_le_six
+#print axioms alphaRepair_has_degreeSix_bad_set
 #print axioms initial_and_ood_claims_exact_outside_collisions
 
 end CandidateExecution

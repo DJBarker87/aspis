@@ -469,13 +469,13 @@ theorem relation_and_point_claims_exact_outside_collisions
     (queryExact : execution.QueryInjectionExact)
     (terminal : execution.RelationTerminalAccepts)
     (noOodCancellation : ¬ execution.discrepancyTrace.MixCancellation 0)
-    (noRelationCollision : ∀ round : Fin 4,
-      execution.alpha round ∉ execution.relationCollisionSet round)
+    (noAlphaRepair : ∀ round : Fin 4,
+      ¬ execution.discrepancyTrace.AlphaRepair round)
     (noKappaCollision : ¬ KappaPointRowCollision fields extraction point kappa)
     (noGammaCollision : ¬ GammaPointLaneCollision fields extraction point) :
     ExtractedRelationClaimsExact masks fields extraction point kappa execution := by
   have relationClaims := execution.initial_and_ood_claims_exact_outside_collisions
-    finalMatches queryExact terminal noOodCancellation noRelationCollision
+    finalMatches queryExact terminal noOodCancellation noAlphaRepair
   have candidateInitial :
       candidateClaim execution.initialWeights execution.initialValues =
         extractedRelationClaimBeforeOod masks extraction point kappa := by
@@ -603,8 +603,8 @@ theorem accepted_semantic_relation_consequence
     (queryExact : execution.QueryInjectionExact)
     (relationTerminal : execution.RelationTerminalAccepts)
     (noOodCancellation : ¬ execution.discrepancyTrace.MixCancellation 0)
-    (noRelationCollision : ∀ round : Fin 4,
-      execution.alpha round ∉ execution.relationCollisionSet round)
+    (noAlphaRepair : ∀ round : Fin 4,
+      ¬ execution.discrepancyTrace.AlphaRepair round)
     (noKappaCollision : ¬ KappaPointRowCollision fields extraction
       transcript.point kappa)
     (noGammaCollision : ¬ GammaPointLaneCollision fields extraction
@@ -623,7 +623,7 @@ theorem accepted_semantic_relation_consequence
     extraction transcript.point kappa execution initialEncoderEq
     executionInitialValues executionInitialWeights executionInitialClaim
     inactiveExact finalMatches queryExact relationTerminal noOodCancellation
-    noRelationCollision noKappaCollision noGammaCollision
+    noAlphaRepair noKappaCollision noGammaCollision
   exact {
     rows := rows
     arithmetic := arithmetic

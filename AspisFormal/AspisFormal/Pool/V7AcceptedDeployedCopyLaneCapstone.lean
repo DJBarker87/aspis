@@ -313,8 +313,8 @@ theorem accepted_semantic_relation_deployed_copy_lane_consequence
     (queryExact : execution.QueryInjectionExact)
     (relationTerminal : execution.RelationTerminalAccepts)
     (noOodCancellation : ¬ execution.discrepancyTrace.MixCancellation 0)
-    (noRelationCollision : ∀ round : Fin 4,
-      execution.alpha round ∉ execution.relationCollisionSet round)
+    (noAlphaRepair : ∀ round : Fin 4,
+      ¬ execution.discrepancyTrace.AlphaRepair round)
     (noKappaCollision : ¬ KappaPointRowCollision fields extraction
       transcript.point kappa)
     (noGammaCollision : ¬ GammaPointLaneCollision fields extraction
@@ -358,7 +358,7 @@ theorem accepted_semantic_relation_deployed_copy_lane_consequence
     noRepair noHelper noZerocheck noTheta balanceAlias kappa execution
     initialEncoderEq executionInitialValues executionInitialWeights
     executionInitialClaim inactiveExact finalMatches queryExact relationTerminal
-    noOodCancellation noRelationCollision noKappaCollision noGammaCollision
+    noOodCancellation noAlphaRepair noKappaCollision noGammaCollision
   have balance := copyRationalBalance_zero_of_accepted_copy_rows_aggregate
     statement extraction poseidonRows lambda chi helper
       (by simpa [source, copyLane] using rows)
