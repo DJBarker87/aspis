@@ -23,6 +23,7 @@ use crate::{
 
 const RELAYER_EXECUTION_MAGIC_V1: [u8; 4] = *b"ASRJ";
 const RELAYER_EXECUTION_VERSION_V1: u8 = 1;
+const RELAYER_EXECUTION_VERSION_V2: u8 = 2;
 const RELAYER_EXECUTION_HEADER_BYTES_V1: usize = 88;
 const RELAYER_EXECUTION_RECORD_BYTES_V1: usize = 576;
 const RELAYER_EXECUTION_CHECKSUM_OFFSET_V1: usize = 56;
@@ -139,6 +140,43 @@ pub struct RelayerFinalizedEvidenceV1 {
     pub(crate) provider_set_digest: [u8; 32],
 }
 
+/// A transaction that reached finalized commitment but whose exact Solana
+/// execution result was an error. This is deliberately distinct from
+/// `RelayerTerminalFailureEvidenceV1`, which means the blockhash validity
+/// window expired without a landed transaction.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct RelayerFinalizedFailureEvidenceV1 {
+    pub(crate) point: FinalizedChainPointV1,
+    pub(crate) fee_lamports: u64,
+    pub(crate) compute_units_consumed: u64,
+    /// Digest binding the exact failed status, agreed finalized block request,
+    /// failed block execution metadata, and canonical optional-root presence.
+    pub(crate) failure_evidence_sha256: [u8; 32],
+    pub(crate) provider_set_digest: [u8; 32],
+}
+
+impl RelayerFinalizedFailureEvidenceV1 {
+    pub fn point(&self) -> FinalizedChainPointV1 {
+        self.point
+    }
+
+    pub fn fee_lamports(&self) -> u64 {
+        self.fee_lamports
+    }
+
+    pub fn compute_units_consumed(&self) -> u64 {
+        self.compute_units_consumed
+    }
+
+    pub fn failure_evidence_sha256(&self) -> &[u8; 32] {
+        &self.failure_evidence_sha256
+    }
+
+    pub fn provider_set_digest(&self) -> &[u8; 32] {
+        &self.provider_set_digest
+    }
+}
+
 impl RelayerFinalizedEvidenceV1 {
     pub fn point(&self) -> FinalizedChainPointV1 {
         self.point
@@ -177,6 +215,7 @@ pub struct RelayerTerminalFailureEvidenceV1 {
 pub enum RelayerExecutionOutcomeV1 {
     Finalized(RelayerFinalizedEvidenceV1),
     TerminalFailure(RelayerTerminalFailureEvidenceV1),
+    FinalizedFailure(RelayerFinalizedFailureEvidenceV1),
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -524,6 +563,49 @@ impl DurableRelayerExecutionJournalV1 {
         Ok(RelayerExecutionJournalUpdateV1::Inserted)
     }
 
+    /// Record a transaction that landed and finalized with an execution
+    /// error. Unlike blockhash expiry, this requires the exact signed
+    /// signature, landed chain point, charged fee, and consumed CU from the
+    /// agreed finalized block.
+    pub fn record_finalized_failure_v1(
+        &mut self,
+        request_id: [u8; 32],
+        transaction_signature: [u8; 64],
+        failed: RelayerFinalizedFailureEvidenceV1,
+    ) -> Result<RelayerExecutionJournalUpdateV1, RelayerExecutionJournalErrorV1> {
+        if failed.failure_evidence_sha256 == [0u8; 32] || failed.provider_set_digest == [0u8; 32] {
+            return Err(RelayerExecutionJournalErrorV1::InvalidRecord);
+        }
+        let mut records = self.records.clone();
+        let record = records
+            .iter_mut()
+            .find(|record| record.request_id == request_id)
+            .ok_or(RelayerExecutionJournalErrorV1::InvalidTransition)?;
+        let signed = record
+            .signed
+            .as_ref()
+            .ok_or(RelayerExecutionJournalErrorV1::InvalidTransition)?;
+        if signed.transaction_signature != transaction_signature
+            || failed.point.slot() < record.simulation.simulated_at_slot
+            || failed.fee_lamports != record.simulation.estimated_fee_lamports
+            || failed.compute_units_consumed == 0
+            || failed.compute_units_consumed > u64::from(record.simulation.compute_unit_limit)
+        {
+            return Err(RelayerExecutionJournalErrorV1::OutcomeMismatch);
+        }
+        let outcome = RelayerExecutionOutcomeV1::FinalizedFailure(failed);
+        if let Some(existing) = record.outcome {
+            return if existing == outcome {
+                Ok(RelayerExecutionJournalUpdateV1::AlreadyPresent)
+            } else {
+                Err(RelayerExecutionJournalErrorV1::OutcomeMismatch)
+            };
+        }
+        record.outcome = Some(outcome);
+        self.persist_v1(records)?;
+        Ok(RelayerExecutionJournalUpdateV1::Inserted)
+    }
+
     fn persist_v1(
         &mut self,
         records: Vec<RelayerExecutionRecordV1>,
@@ -628,7 +710,7 @@ fn encode_execution_journal_v1(
     }
     let mut bytes = vec![0u8; length];
     bytes[..4].copy_from_slice(&RELAYER_EXECUTION_MAGIC_V1);
-    bytes[4] = RELAYER_EXECUTION_VERSION_V1;
+    bytes[4] = RELAYER_EXECUTION_VERSION_V2;
     bytes[8..12].copy_from_slice(
         &u32::try_from(records.len())
             .map_err(|_| RelayerExecutionJournalErrorV1::CountOverflow)?
@@ -692,6 +774,18 @@ fn validate_record_v1(
                 || terminal.provider_set_digest == [0u8; 32]
                 || record.signed.is_some()
                     && terminal.observed_block_height <= record.simulation.last_valid_block_height
+            {
+                return Err(RelayerExecutionJournalErrorV1::InvalidRecord);
+            }
+        }
+        Some(RelayerExecutionOutcomeV1::FinalizedFailure(failed)) => {
+            if record.signed.is_none()
+                || failed.failure_evidence_sha256 == [0u8; 32]
+                || failed.provider_set_digest == [0u8; 32]
+                || failed.point.slot() < record.simulation.simulated_at_slot
+                || failed.fee_lamports != record.simulation.estimated_fee_lamports
+                || failed.compute_units_consumed == 0
+                || failed.compute_units_consumed > u64::from(record.simulation.compute_unit_limit)
             {
                 return Err(RelayerExecutionJournalErrorV1::InvalidRecord);
             }
@@ -766,6 +860,14 @@ fn encode_record_header_v1(
             header[412..416].copy_from_slice(&terminal.failure_code.to_le_bytes());
             header[416..448].copy_from_slice(&terminal.evidence_sha256);
             header[448..480].copy_from_slice(&terminal.provider_set_digest);
+        }
+        Some(RelayerExecutionOutcomeV1::FinalizedFailure(failed)) => {
+            header[294] = 3;
+            encode_chain_point_v1(failed.point, &mut header[404..444]);
+            header[444..452].copy_from_slice(&failed.fee_lamports.to_le_bytes());
+            header[452..460].copy_from_slice(&failed.compute_units_consumed.to_le_bytes());
+            header[460..492].copy_from_slice(&failed.failure_evidence_sha256);
+            header[492..524].copy_from_slice(&failed.provider_set_digest);
         }
         None => {}
     }
@@ -879,7 +981,8 @@ fn decode_execution_journal_v1(
     if bytes[..4] != RELAYER_EXECUTION_MAGIC_V1 {
         return Err(RelayerExecutionJournalErrorV1::WrongMagic);
     }
-    if bytes[4] != RELAYER_EXECUTION_VERSION_V1 {
+    let version = bytes[4];
+    if version != RELAYER_EXECUTION_VERSION_V1 && version != RELAYER_EXECUTION_VERSION_V2 {
         return Err(RelayerExecutionJournalErrorV1::WrongVersion);
     }
     if bytes[5..8].iter().any(|byte| *byte != 0) || bytes[12..56].iter().any(|byte| *byte != 0) {
@@ -911,7 +1014,12 @@ fn decode_execution_journal_v1(
         let signed_flag = decode_flag_v1(header[292])?;
         let submitted_flag = decode_flag_v1(header[293])?;
         let outcome_kind = header[294];
-        if outcome_kind > 2
+        if outcome_kind
+            > if version == RELAYER_EXECUTION_VERSION_V1 {
+                2
+            } else {
+                3
+            }
             || header[295] != 0
             || header[566..568].iter().any(|byte| *byte != 0)
             || header[572..].iter().any(|byte| *byte != 0)
@@ -1000,6 +1108,22 @@ fn decode_execution_journal_v1(
                         failure_code: u32::from_le_bytes(header[412..416].try_into().unwrap()),
                         evidence_sha256: header[416..448].try_into().unwrap(),
                         provider_set_digest: header[448..480].try_into().unwrap(),
+                    },
+                ))
+            }
+            3 => {
+                if header[524..556].iter().any(|byte| *byte != 0) {
+                    return Err(RelayerExecutionJournalErrorV1::NonZeroReserved);
+                }
+                Some(RelayerExecutionOutcomeV1::FinalizedFailure(
+                    RelayerFinalizedFailureEvidenceV1 {
+                        point: decode_chain_point_v1(&header[404..444])?,
+                        fee_lamports: u64::from_le_bytes(header[444..452].try_into().unwrap()),
+                        compute_units_consumed: u64::from_le_bytes(
+                            header[452..460].try_into().unwrap(),
+                        ),
+                        failure_evidence_sha256: header[460..492].try_into().unwrap(),
+                        provider_set_digest: header[492..524].try_into().unwrap(),
                     },
                 ))
             }
@@ -1318,5 +1442,87 @@ mod tests {
                 .unwrap(),
             RelayerExecutionJournalUpdateV1::AlreadyPresent
         );
+    }
+
+    #[test]
+    fn finalized_failure_is_distinct_from_expiry_and_survives_restart() {
+        let directory = TestDirectory::new();
+        let path = directory.0.join("failed-execution.state");
+        let request_id = [0x91; 32];
+        let mut journal = DurableRelayerExecutionJournalV1::open_or_create_v1(&path).unwrap();
+        journal
+            .record_simulation_v1(request_id, [0x92; 32], simulation(), &[])
+            .unwrap();
+        journal
+            .record_signed_wire_v1(request_id, &[1, 2, 3, 4], &Inspector)
+            .unwrap();
+
+        let failed = RelayerFinalizedFailureEvidenceV1 {
+            point: FinalizedChainPointV1::new(102, [0x93; 32]).unwrap(),
+            fee_lamports: simulation().estimated_fee_lamports,
+            compute_units_consumed: 1_100_000,
+            failure_evidence_sha256: [0x94; 32],
+            provider_set_digest: [0x95; 32],
+        };
+        let mut wrong_fee = failed;
+        wrong_fee.fee_lamports -= 1;
+        assert_eq!(
+            journal.record_finalized_failure_v1(request_id, [0x51; 64], wrong_fee),
+            Err(RelayerExecutionJournalErrorV1::OutcomeMismatch)
+        );
+        let mut excessive_compute = failed;
+        excessive_compute.compute_units_consumed = u64::from(simulation().compute_unit_limit) + 1;
+        assert_eq!(
+            journal.record_finalized_failure_v1(request_id, [0x51; 64], excessive_compute),
+            Err(RelayerExecutionJournalErrorV1::OutcomeMismatch)
+        );
+        assert_eq!(
+            journal.record_finalized_failure_v1(request_id, [0x52; 64], failed),
+            Err(RelayerExecutionJournalErrorV1::OutcomeMismatch)
+        );
+        assert_eq!(
+            journal
+                .record_finalized_failure_v1(request_id, [0x51; 64], failed)
+                .unwrap(),
+            RelayerExecutionJournalUpdateV1::Inserted
+        );
+        drop(journal);
+
+        let encoded = fs::read(&path).unwrap();
+        assert_eq!(encoded[4], RELAYER_EXECUTION_VERSION_V2);
+        let journal = DurableRelayerExecutionJournalV1::open_or_create_v1(&path).unwrap();
+        assert_eq!(
+            journal.records()[0].outcome,
+            Some(RelayerExecutionOutcomeV1::FinalizedFailure(failed))
+        );
+    }
+
+    #[test]
+    fn legacy_v1_journal_is_read_and_next_write_migrates_to_v2() {
+        let directory = TestDirectory::new();
+        let path = directory.0.join("legacy-v1.state");
+        let request_id = [0xa1; 32];
+        let mut journal = DurableRelayerExecutionJournalV1::open_or_create_v1(&path).unwrap();
+        journal
+            .record_simulation_v1(request_id, [0xa2; 32], simulation(), &[])
+            .unwrap();
+        drop(journal);
+
+        let mut legacy = fs::read(&path).unwrap();
+        legacy[4] = RELAYER_EXECUTION_VERSION_V1;
+        legacy[RELAYER_EXECUTION_CHECKSUM_OFFSET_V1..RELAYER_EXECUTION_CHECKSUM_OFFSET_V1 + 32]
+            .fill(0);
+        let checksum = execution_journal_checksum_v1(&legacy).unwrap();
+        legacy[RELAYER_EXECUTION_CHECKSUM_OFFSET_V1..RELAYER_EXECUTION_CHECKSUM_OFFSET_V1 + 32]
+            .copy_from_slice(&checksum);
+        fs::write(&path, legacy).unwrap();
+
+        let mut journal = DurableRelayerExecutionJournalV1::open_or_create_v1(&path).unwrap();
+        assert_eq!(journal.records().len(), 1);
+        journal
+            .record_signed_wire_v1(request_id, &[1, 2, 3, 4], &Inspector)
+            .unwrap();
+        drop(journal);
+        assert_eq!(fs::read(&path).unwrap()[4], RELAYER_EXECUTION_VERSION_V2);
     }
 }
