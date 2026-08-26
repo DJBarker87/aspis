@@ -350,6 +350,32 @@ impl<'a, I, S, K> ExactHttpsRelayerExecutionPortV1<'a, I, S, K> {
     }
 }
 
+#[cfg(test)]
+impl<'a, I, S, K, R> ExactHttpsRelayerExecutionPortV1<'a, I, S, K, R> {
+    #[allow(clippy::too_many_arguments)]
+    pub(crate) fn test_only_with_rpc_v1(
+        rpc: R,
+        request_ids: I,
+        signer: S,
+        policy: RelayerExecutionRpcPolicyV1,
+        scan_state: &'a mut ScanStateV1,
+        pool_binding: &'a DepositRpcBindingV1,
+        viewing_secret: &'a ViewingSecretKeyV1,
+        local_keys: &'a K,
+    ) -> Self {
+        Self {
+            rpc,
+            request_ids,
+            signer,
+            policy,
+            scan_state,
+            pool_binding,
+            viewing_secret,
+            local_keys,
+        }
+    }
+}
+
 impl<I, S, K, R> ExactHttpsRelayerExecutionPortV1<'_, I, S, K, R> {
     pub fn scan_state(&self) -> &ScanStateV1 {
         self.scan_state
