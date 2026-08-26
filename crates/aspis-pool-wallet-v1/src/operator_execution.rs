@@ -20,9 +20,9 @@ use crate::{
         derive_relayer_finalized_evidence_v1, RelayerFinalizedEvidenceErrorV1,
     },
     relayer_transaction::{
-        assemble_exact_unsigned_relayer_message_v1, validate_exact_relayer_transaction_v1,
-        AuthenticatedAddressLookupTableV1, RelayerSignedTransactionArtifactV1,
-        RelayerTransactionErrorV1,
+        assemble_exact_unsigned_relayer_message_v1, canonical_relayer_instruction_index_v1,
+        validate_exact_relayer_transaction_v1, AuthenticatedAddressLookupTableV1,
+        RelayerSignedTransactionArtifactV1, RelayerTransactionErrorV1,
     },
     rpc_json::FinalizedTransactionExecutionV1,
 };
@@ -293,6 +293,7 @@ pub fn advance_relayer_execution_v1<R: RelayerExecutionPortV1>(
                 &entry.plan,
                 observation.execution,
                 &observation.indexed_pool,
+                canonical_relayer_instruction_index_v1(record.simulation),
                 observation.provider_set_digest,
             )
             .map_err(RelayerOperatorExecutionErrorV1::FinalizedEvidence)?;
@@ -722,6 +723,7 @@ mod tests {
             &plan,
             execution,
             &indexed_pool,
+            canonical_relayer_instruction_index_v1(simulation),
             *startup.provider_set_digest(),
         )
         .unwrap();

@@ -392,13 +392,23 @@ fn canonical_relayer_instructions_v1(
     instructions.push(ComputeBudgetInstruction::set_compute_unit_limit(
         simulation.compute_unit_limit,
     ));
-    if simulation.compute_unit_price_micro_lamports != 0 {
+    if canonical_relayer_instruction_index_v1(simulation) == 2 {
         instructions.push(ComputeBudgetInstruction::set_compute_unit_price(
             simulation.compute_unit_price_micro_lamports,
         ));
     }
     instructions.push(plan.instruction.clone());
     instructions
+}
+
+/// Zero-based top-level position of the sole Pool instruction in the exact
+/// canonical relayer transaction.
+pub fn canonical_relayer_instruction_index_v1(simulation: RelayerSimulationEvidenceV1) -> u16 {
+    if simulation.compute_unit_price_micro_lamports == 0 {
+        1
+    } else {
+        2
+    }
 }
 
 fn resolve_lookup_tables_v1(
