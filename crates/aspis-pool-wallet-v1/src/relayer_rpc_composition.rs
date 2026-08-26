@@ -10,7 +10,10 @@ use sha2::{Digest as _, Sha256};
 use solana_transaction::versioned::VersionedTransaction;
 
 use crate::{
-    operator_execution::{RelayerSignatureObservationV1, RelayerSimulationArtifactV1},
+    operator_execution::{
+        RelayerNotFoundObservationV1, RelayerPendingObservationV1, RelayerSignatureObservationV1,
+        RelayerSimulationArtifactV1,
+    },
     operator_startup::{provider_set_digest_v1, OperatorStartupReceiptV1},
     relayer::RelayerPlanV1,
     relayer_execution_journal::{RelayerSimulationEvidenceV1, RelayerSubmissionEvidenceV1},
@@ -167,6 +170,12 @@ impl RelayerFinalizedStatusHintV1 {
     pub fn status_request_binding_sha256(&self) -> &[u8; 32] {
         &self.status_request_binding_sha256
     }
+
+    #[cfg(test)]
+    pub(crate) fn test_only_with_context_slot_v1(mut self, context_slot: u64) -> Self {
+        self.context_slot = context_slot;
+        self
+    }
 }
 
 /// A finalized signature status is deliberately not coordinator-ready until
@@ -174,6 +183,9 @@ impl RelayerFinalizedStatusHintV1 {
 pub enum ComposedRelayerSignatureStatusV1 {
     CoordinatorReady(RelayerSignatureObservationV1),
     FinalizedBlockJoinRequired(RelayerFinalizedStatusHintV1),
+    /// A finalized failed transaction must be journaled under a distinct
+    /// failure ABI. It is not a blockhash-expiry observation.
+    FinalizedFailureJoinRequired(RelayerFinalizedStatusHintV1),
 }
 
 /// Compose the exact blockhash, optional ALT, simulation and fee agreements
@@ -316,10 +328,10 @@ pub fn compose_relayer_simulation_artifact_v1(
         return Err(RelayerRpcCompositionErrorV1::CanonicalMessageMismatch);
     }
 
-    Ok(RelayerSimulationArtifactV1 {
+    Ok(RelayerSimulationArtifactV1::from_exact_rpc_composition_v1(
         evidence,
-        lookup_tables: simulation.lookup_tables.clone(),
-    })
+        simulation.lookup_tables.clone(),
+    ))
 }
 
 /// Compose an exact two-provider send response into coordinator submission
@@ -392,9 +404,9 @@ pub fn compose_relayer_signature_status_v1(
                 return Err(RelayerRpcCompositionErrorV1::InvalidSignatureStatus);
             }
             Ok(ComposedRelayerSignatureStatusV1::CoordinatorReady(
-                RelayerSignatureObservationV1::Pending {
-                    provider_set_digest,
-                },
+                RelayerSignatureObservationV1::Pending(
+                    RelayerPendingObservationV1::from_agreed_status_v1(provider_set_digest),
+                ),
             ))
         }
         RelayerSignatureStatusRpcV1::NotFound {
@@ -415,11 +427,13 @@ pub fn compose_relayer_signature_status_v1(
                 return Err(RelayerRpcCompositionErrorV1::ContextOrderMismatch);
             }
             Ok(ComposedRelayerSignatureStatusV1::CoordinatorReady(
-                RelayerSignatureObservationV1::NotFound {
-                    observed_block_height: *block_height.agreement.value(),
-                    evidence_sha256,
-                    provider_set_digest,
-                },
+                RelayerSignatureObservationV1::NotFound(
+                    RelayerNotFoundObservationV1::from_agreed_status_v1(
+                        *block_height.agreement.value(),
+                        evidence_sha256,
+                        provider_set_digest,
+                    ),
+                ),
             ))
         }
         RelayerSignatureStatusRpcV1::Finalized {
@@ -434,21 +448,22 @@ pub fn compose_relayer_signature_status_v1(
             if landed_slot < status_agreement.startup_checkpoint_slot() {
                 return Err(RelayerRpcCompositionErrorV1::InvalidSignatureStatus);
             }
-            Ok(
-                ComposedRelayerSignatureStatusV1::FinalizedBlockJoinRequired(
-                    RelayerFinalizedStatusHintV1 {
-                        transaction_signature: expected_signature,
-                        context_slot,
-                        landed_slot,
-                        succeeded,
-                        execution_result_sha256,
-                        provider_set_digest,
-                        startup_receipt_digest: *status_agreement.startup_receipt_digest(),
-                        status_request_id: status_agreement.request_id(),
-                        status_request_binding_sha256: *status_agreement.request_binding_sha256(),
-                    },
-                ),
-            )
+            let hint = RelayerFinalizedStatusHintV1 {
+                transaction_signature: expected_signature,
+                context_slot,
+                landed_slot,
+                succeeded,
+                execution_result_sha256,
+                provider_set_digest,
+                startup_receipt_digest: *status_agreement.startup_receipt_digest(),
+                status_request_id: status_agreement.request_id(),
+                status_request_binding_sha256: *status_agreement.request_binding_sha256(),
+            };
+            if succeeded {
+                Ok(ComposedRelayerSignatureStatusV1::FinalizedBlockJoinRequired(hint))
+            } else {
+                Ok(ComposedRelayerSignatureStatusV1::FinalizedFailureJoinRequired(hint))
+            }
         }
     }
 }
@@ -830,14 +845,14 @@ mod tests {
             ),
         )
         .unwrap();
-        assert_eq!(artifact.evidence.recent_blockhash, RECENT_BLOCKHASH);
-        assert_eq!(artifact.evidence.last_valid_block_height, 500);
-        assert_eq!(artifact.evidence.simulated_at_slot, SIMULATION_SLOT);
-        assert_eq!(artifact.evidence.estimated_fee_lamports, 10_000);
-        assert_eq!(artifact.evidence.compute_units_consumed, 1_200_000);
+        assert_eq!(artifact.evidence().recent_blockhash, RECENT_BLOCKHASH);
+        assert_eq!(artifact.evidence().last_valid_block_height, 500);
+        assert_eq!(artifact.evidence().simulated_at_slot, SIMULATION_SLOT);
+        assert_eq!(artifact.evidence().estimated_fee_lamports, 10_000);
+        assert_eq!(artifact.evidence().compute_units_consumed, 1_200_000);
         let message_sha256: [u8; 32] = Sha256::digest(message.serialize()).into();
-        assert_eq!(artifact.evidence.unsigned_message_sha256, message_sha256);
-        assert!(artifact.lookup_tables.is_empty());
+        assert_eq!(artifact.evidence().unsigned_message_sha256, message_sha256);
+        assert!(artifact.lookup_tables().is_empty());
 
         assert_eq!(
             compose_relayer_simulation_artifact_v1(
@@ -971,9 +986,9 @@ mod tests {
         let artifact =
             compose_relayer_simulation_artifact_v1(&plan, &startup, COMPUTE_UNIT_PRICE, inputs())
                 .unwrap();
-        assert_eq!(artifact.lookup_tables.len(), 1);
-        assert_eq!(artifact.lookup_tables[0].account_data(), data);
-        assert_eq!(artifact.lookup_tables[0].observed_slot(), SIMULATION_SLOT);
+        assert_eq!(artifact.lookup_tables().len(), 1);
+        assert_eq!(artifact.lookup_tables()[0].account_data(), data);
+        assert_eq!(artifact.lookup_tables()[0].observed_slot(), SIMULATION_SLOT);
 
         let changed_data = lookup_data_v1(&plan, Some(key(241)));
         let changed_response =
@@ -1083,7 +1098,7 @@ mod tests {
             )
             .unwrap(),
             ComposedRelayerSignatureStatusV1::CoordinatorReady(
-                RelayerSignatureObservationV1::Pending { .. }
+                RelayerSignatureObservationV1::Pending(_)
             )
         ));
 
@@ -1118,14 +1133,13 @@ mod tests {
         .unwrap()
         {
             ComposedRelayerSignatureStatusV1::CoordinatorReady(
-                RelayerSignatureObservationV1::NotFound {
-                    observed_block_height,
-                    provider_set_digest,
-                    ..
-                },
+                RelayerSignatureObservationV1::NotFound(observation),
             ) => {
-                assert_eq!(observed_block_height, 700);
-                assert_eq!(provider_set_digest, *startup.provider_set_digest());
+                assert_eq!(observation.observed_block_height(), 700);
+                assert_eq!(
+                    observation.provider_set_digest(),
+                    startup.provider_set_digest()
+                );
             }
             _ => panic!("not-found must be coordinator-ready"),
         }
@@ -1167,6 +1181,43 @@ mod tests {
                 assert_eq!(hint.provider_set_digest(), startup.provider_set_digest());
             }
             _ => panic!("finalized status must require the block/indexer join"),
+        }
+
+        let failed_request = SignatureStatusesRequestV1::new(13, signature).unwrap();
+        let failed_json = failed_request.encode_json_v1();
+        let failure = json!({"InstructionError": [0, "Custom"]});
+        let failed_response = response_v1(
+            13,
+            json!([{
+                "slot": 104,
+                "confirmations": null,
+                "err": failure,
+                "confirmationStatus": "finalized",
+                "status": {"Err": failure}
+            }]),
+            Some(107),
+        );
+        let failed_agreement = quorum
+            .agree_signature_status_v1(
+                &failed_request,
+                exchanges_v1(&failed_json, &failed_response, &failed_response),
+            )
+            .unwrap();
+        match compose_relayer_signature_status_v1(
+            &startup,
+            signature,
+            &failed_request,
+            &failed_agreement,
+            None,
+        )
+        .unwrap()
+        {
+            ComposedRelayerSignatureStatusV1::FinalizedFailureJoinRequired(hint) => {
+                assert!(!hint.succeeded());
+                assert_eq!(hint.landed_slot(), 104);
+                assert_ne!(hint.execution_result_sha256(), &[0u8; 32]);
+            }
+            _ => panic!("failed finality must require its distinct journal ABI"),
         }
     }
 }

@@ -21,13 +21,16 @@ use crate::{
 };
 
 pub const RELAYER_EXECUTION_RESULT_DOMAIN_V1: &[u8] =
-    b"aspis:pool-v1:relayer-finalized-execution:sha256:v1";
+    b"aspis:pool-v1:relayer-finalized-execution-quorum-bound:sha256:v1";
 pub const RELAYER_POSTSTATE_DOMAIN_V1: &[u8] =
     b"aspis:pool-v1:relayer-authenticated-poststate:sha256:v1";
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum RelayerFinalizedEvidenceErrorV1 {
     ZeroProviderSetDigest,
+    ZeroStatusEvidenceDigest,
+    ZeroBlockRequestBinding,
+    ZeroRootRequestBinding,
     MissingLifecycleEvidence,
     MultipleLifecycleEvidence,
     WrongLifecycleEvidence,
@@ -43,9 +46,21 @@ pub fn derive_relayer_finalized_evidence_v1(
     result: &FinalizedBlockIngestResultV1,
     expected_instruction_index: u16,
     provider_set_digest: [u8; 32],
+    status_evidence_sha256: [u8; 32],
+    block_request_binding_sha256: [u8; 32],
+    root_request_binding_sha256: Option<[u8; 32]>,
 ) -> Result<RelayerFinalizedEvidenceV1, RelayerFinalizedEvidenceErrorV1> {
     if provider_set_digest == [0u8; 32] {
         return Err(RelayerFinalizedEvidenceErrorV1::ZeroProviderSetDigest);
+    }
+    if status_evidence_sha256 == [0u8; 32] {
+        return Err(RelayerFinalizedEvidenceErrorV1::ZeroStatusEvidenceDigest);
+    }
+    if block_request_binding_sha256 == [0u8; 32] {
+        return Err(RelayerFinalizedEvidenceErrorV1::ZeroBlockRequestBinding);
+    }
+    if root_request_binding_sha256 == Some([0u8; 32]) {
+        return Err(RelayerFinalizedEvidenceErrorV1::ZeroRootRequestBinding);
     }
     let mut poststate = Sha256::new();
     poststate.update(RELAYER_POSTSTATE_DOMAIN_V1);
@@ -168,6 +183,16 @@ pub fn derive_relayer_finalized_evidence_v1(
     execution_result.update(execution.transaction_signature());
     execution_result.update(execution.fee_lamports().to_le_bytes());
     execution_result.update(execution.compute_units_consumed().to_le_bytes());
+    execution_result.update(provider_set_digest);
+    execution_result.update(status_evidence_sha256);
+    execution_result.update(block_request_binding_sha256);
+    match root_request_binding_sha256 {
+        None => execution_result.update([0u8]),
+        Some(root_request_binding_sha256) => {
+            execution_result.update([1u8]);
+            execution_result.update(root_request_binding_sha256);
+        }
+    }
     execution_result.update(poststate_sha256);
 
     Ok(RelayerFinalizedEvidenceV1 {
@@ -536,8 +561,10 @@ mod tests {
     #[test]
     fn finalized_initialization_binds_exact_signature_metadata_and_pool_poststate() {
         let (plan, execution, result) = fixture();
-        let evidence =
-            derive_relayer_finalized_evidence_v1(&plan, execution, &result, 1, [0x71; 32]).unwrap();
+        let evidence = derive_relayer_finalized_evidence_v1(
+            &plan, execution, &result, 1, [0x71; 32], [0x72; 32], [0x73; 32], None,
+        )
+        .unwrap();
         assert_eq!(evidence.point, execution.point());
         assert_eq!(evidence.fee_lamports, 5_000);
         assert_eq!(evidence.compute_units_consumed, 88_000);
@@ -547,7 +574,9 @@ mod tests {
         let mut wrong = result;
         wrong.initializations[0].receipt.pool = [0x72; 32];
         assert_eq!(
-            derive_relayer_finalized_evidence_v1(&plan, execution, &wrong, 1, [0x71; 32]),
+            derive_relayer_finalized_evidence_v1(
+                &plan, execution, &wrong, 1, [0x71; 32], [0x72; 32], [0x73; 32], None,
+            ),
             Err(RelayerFinalizedEvidenceErrorV1::WrongLifecycleEvidence)
         );
 
@@ -556,8 +585,77 @@ mod tests {
             DepositEventIdV1::new(execution.point(), *execution.transaction_signature(), 2, 0)
                 .unwrap();
         assert_eq!(
-            derive_relayer_finalized_evidence_v1(&plan, execution, &wrong, 1, [0x71; 32]),
+            derive_relayer_finalized_evidence_v1(
+                &plan, execution, &wrong, 1, [0x71; 32], [0x72; 32], [0x73; 32], None,
+            ),
             Err(RelayerFinalizedEvidenceErrorV1::WrongLifecycleEvidence)
+        );
+    }
+
+    #[test]
+    fn finalized_execution_digest_binds_status_and_canonical_request_presence() {
+        let derive = |provider, status, block, root| {
+            let (plan, execution, result) = fixture();
+            derive_relayer_finalized_evidence_v1(
+                &plan, execution, &result, 1, provider, status, block, root,
+            )
+            .unwrap()
+            .execution_result_sha256
+        };
+        let baseline = derive([0x71; 32], [0x72; 32], [0x73; 32], None);
+        let (plan, execution, result) = fixture();
+        let evidence = derive_relayer_finalized_evidence_v1(
+            &plan, execution, &result, 1, [0x71; 32], [0x72; 32], [0x73; 32], None,
+        )
+        .unwrap();
+        let mut exact_none = Sha256::new();
+        exact_none.update(RELAYER_EXECUTION_RESULT_DOMAIN_V1);
+        exact_none.update(plan.request_id);
+        exact_none.update(execution.point().slot().to_le_bytes());
+        exact_none.update(execution.point().block_hash());
+        exact_none.update(execution.transaction_signature());
+        exact_none.update(execution.fee_lamports().to_le_bytes());
+        exact_none.update(execution.compute_units_consumed().to_le_bytes());
+        exact_none.update([0x71; 32]);
+        exact_none.update([0x72; 32]);
+        exact_none.update([0x73; 32]);
+        exact_none.update([0u8]);
+        exact_none.update(evidence.poststate_sha256);
+        assert_eq!(baseline, <[u8; 32]>::from(exact_none.finalize()));
+
+        assert_ne!(baseline, derive([0x74; 32], [0x72; 32], [0x73; 32], None));
+        assert_ne!(baseline, derive([0x71; 32], [0x75; 32], [0x73; 32], None));
+        assert_ne!(baseline, derive([0x71; 32], [0x72; 32], [0x76; 32], None));
+        assert_ne!(
+            baseline,
+            derive([0x71; 32], [0x72; 32], [0x73; 32], Some([0x77; 32]),)
+        );
+
+        let (plan, execution, result) = fixture();
+        assert_eq!(
+            derive_relayer_finalized_evidence_v1(
+                &plan, execution, &result, 1, [0x71; 32], [0u8; 32], [0x73; 32], None,
+            ),
+            Err(RelayerFinalizedEvidenceErrorV1::ZeroStatusEvidenceDigest)
+        );
+        assert_eq!(
+            derive_relayer_finalized_evidence_v1(
+                &plan, execution, &result, 1, [0x71; 32], [0x72; 32], [0u8; 32], None,
+            ),
+            Err(RelayerFinalizedEvidenceErrorV1::ZeroBlockRequestBinding)
+        );
+        assert_eq!(
+            derive_relayer_finalized_evidence_v1(
+                &plan,
+                execution,
+                &result,
+                1,
+                [0x71; 32],
+                [0x72; 32],
+                [0x73; 32],
+                Some([0u8; 32]),
+            ),
+            Err(RelayerFinalizedEvidenceErrorV1::ZeroRootRequestBinding)
         );
     }
 

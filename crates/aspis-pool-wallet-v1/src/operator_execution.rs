@@ -39,23 +39,121 @@ pub struct RelayerExecutionContextV1 {
 pub struct RelayerFinalizedObservationV1 {
     /// Fee/CU/signature metadata retained from the exact successful
     /// transaction in the finalized block response.
-    pub execution: FinalizedTransactionExecutionV1,
+    execution: FinalizedTransactionExecutionV1,
     /// Pool lifecycle evidence produced by the authenticated finalized
     /// indexer from that same block.
-    pub indexed_pool: FinalizedBlockIngestResultV1,
+    indexed_pool: FinalizedBlockIngestResultV1,
     /// Digest of the pinned provider quorum that supplied the observation.
-    pub provider_set_digest: [u8; 32],
+    provider_set_digest: [u8; 32],
+    /// Canonical evidence digest returned by the agreed finalized signature
+    /// status response.
+    status_evidence_sha256: [u8; 32],
+    /// Exact agreed finalized getBlock request binding.
+    block_request_binding_sha256: [u8; 32],
+    /// Exact agreed root-page request binding when the authenticated block
+    /// required a root-page snapshot.
+    root_request_binding_sha256: Option<[u8; 32]>,
+}
+
+impl RelayerFinalizedObservationV1 {
+    pub(crate) fn from_agreed_finality_v1(
+        execution: FinalizedTransactionExecutionV1,
+        indexed_pool: FinalizedBlockIngestResultV1,
+        provider_set_digest: [u8; 32],
+        status_evidence_sha256: [u8; 32],
+        block_request_binding_sha256: [u8; 32],
+        root_request_binding_sha256: Option<[u8; 32]>,
+    ) -> Self {
+        Self {
+            execution,
+            indexed_pool,
+            provider_set_digest,
+            status_evidence_sha256,
+            block_request_binding_sha256,
+            root_request_binding_sha256,
+        }
+    }
+
+    pub fn execution(&self) -> FinalizedTransactionExecutionV1 {
+        self.execution
+    }
+
+    pub fn indexed_pool(&self) -> &FinalizedBlockIngestResultV1 {
+        &self.indexed_pool
+    }
+
+    pub fn provider_set_digest(&self) -> &[u8; 32] {
+        &self.provider_set_digest
+    }
+
+    pub fn status_evidence_sha256(&self) -> &[u8; 32] {
+        &self.status_evidence_sha256
+    }
+
+    pub fn block_request_binding_sha256(&self) -> &[u8; 32] {
+        &self.block_request_binding_sha256
+    }
+
+    pub fn root_request_binding_sha256(&self) -> Option<&[u8; 32]> {
+        self.root_request_binding_sha256.as_ref()
+    }
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct RelayerPendingObservationV1 {
+    provider_set_digest: [u8; 32],
+}
+
+impl RelayerPendingObservationV1 {
+    pub(crate) fn from_agreed_status_v1(provider_set_digest: [u8; 32]) -> Self {
+        Self {
+            provider_set_digest,
+        }
+    }
+
+    pub fn provider_set_digest(&self) -> &[u8; 32] {
+        &self.provider_set_digest
+    }
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct RelayerNotFoundObservationV1 {
+    observed_block_height: u64,
+    evidence_sha256: [u8; 32],
+    provider_set_digest: [u8; 32],
+}
+
+impl RelayerNotFoundObservationV1 {
+    pub(crate) fn from_agreed_status_v1(
+        observed_block_height: u64,
+        evidence_sha256: [u8; 32],
+        provider_set_digest: [u8; 32],
+    ) -> Self {
+        Self {
+            observed_block_height,
+            evidence_sha256,
+            provider_set_digest,
+        }
+    }
+
+    pub fn observed_block_height(&self) -> u64 {
+        self.observed_block_height
+    }
+
+    pub fn evidence_sha256(&self) -> &[u8; 32] {
+        &self.evidence_sha256
+    }
+
+    pub fn provider_set_digest(&self) -> &[u8; 32] {
+        &self.provider_set_digest
+    }
 }
 
 pub enum RelayerSignatureObservationV1 {
     /// The signature is known but has not reached finalized commitment.
-    Pending { provider_set_digest: [u8; 32] },
+    Pending(RelayerPendingObservationV1),
     /// Every pinned provider returned not-found at this block height.
-    NotFound {
-        observed_block_height: u64,
-        evidence_sha256: [u8; 32],
-        provider_set_digest: [u8; 32],
-    },
+    NotFound(RelayerNotFoundObservationV1),
     /// Finalized status and raw authenticated Pool evidence were obtained from
     /// the pinned providers. The coordinator derives the journal outcome; the
     /// runtime cannot provide an unchecked poststate digest.
@@ -64,8 +162,28 @@ pub enum RelayerSignatureObservationV1 {
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct RelayerSimulationArtifactV1 {
-    pub evidence: RelayerSimulationEvidenceV1,
-    pub lookup_tables: Vec<AuthenticatedAddressLookupTableV1>,
+    evidence: RelayerSimulationEvidenceV1,
+    lookup_tables: Vec<AuthenticatedAddressLookupTableV1>,
+}
+
+impl RelayerSimulationArtifactV1 {
+    pub(crate) fn from_exact_rpc_composition_v1(
+        evidence: RelayerSimulationEvidenceV1,
+        lookup_tables: Vec<AuthenticatedAddressLookupTableV1>,
+    ) -> Self {
+        Self {
+            evidence,
+            lookup_tables,
+        }
+    }
+
+    pub fn evidence(&self) -> RelayerSimulationEvidenceV1 {
+        self.evidence
+    }
+
+    pub fn lookup_tables(&self) -> &[AuthenticatedAddressLookupTableV1] {
+        &self.lookup_tables
+    }
 }
 
 /// Production ports obtain the simulation and external signature, but do not
@@ -278,23 +396,24 @@ pub fn advance_relayer_execution_v1<R: RelayerExecutionPortV1>(
         .observe_signature_v1(signed.transaction_signature, startup)
         .map_err(RelayerOperatorExecutionErrorV1::Runtime)?;
     match observation {
-        RelayerSignatureObservationV1::Pending {
-            provider_set_digest,
-        } => {
-            validate_provider_set_v1(startup, provider_set_digest)?;
+        RelayerSignatureObservationV1::Pending(observation) => {
+            validate_provider_set_v1(startup, *observation.provider_set_digest())?;
             Ok(RelayerExecutionStepV1::AwaitingFinality)
         }
         RelayerSignatureObservationV1::Finalized(observation) => {
-            validate_provider_set_v1(startup, observation.provider_set_digest)?;
-            if observation.execution.transaction_signature() != &signed.transaction_signature {
+            validate_provider_set_v1(startup, *observation.provider_set_digest())?;
+            if observation.execution().transaction_signature() != &signed.transaction_signature {
                 return Err(RelayerOperatorExecutionErrorV1::InvalidRuntimeEvidence);
             }
             let finalized = derive_relayer_finalized_evidence_v1(
                 &entry.plan,
-                observation.execution,
-                &observation.indexed_pool,
+                observation.execution(),
+                observation.indexed_pool(),
                 canonical_relayer_instruction_index_v1(record.simulation),
-                observation.provider_set_digest,
+                *observation.provider_set_digest(),
+                *observation.status_evidence_sha256(),
+                *observation.block_request_binding_sha256(),
+                observation.root_request_binding_sha256().copied(),
             )
             .map_err(RelayerOperatorExecutionErrorV1::FinalizedEvidence)?;
             journal
@@ -302,24 +421,22 @@ pub fn advance_relayer_execution_v1<R: RelayerExecutionPortV1>(
                 .map_err(RelayerOperatorExecutionErrorV1::Journal)?;
             Ok(RelayerExecutionStepV1::FinalOutcomeRecorded)
         }
-        RelayerSignatureObservationV1::NotFound {
-            observed_block_height,
-            evidence_sha256,
-            provider_set_digest,
-        } => {
-            validate_provider_set_v1(startup, provider_set_digest)?;
-            if observed_block_height == 0 || evidence_sha256 == [0u8; 32] {
+        RelayerSignatureObservationV1::NotFound(observation) => {
+            validate_provider_set_v1(startup, *observation.provider_set_digest())?;
+            if observation.observed_block_height() == 0
+                || observation.evidence_sha256() == &[0u8; 32]
+            {
                 return Err(RelayerOperatorExecutionErrorV1::InvalidRuntimeEvidence);
             }
-            if observed_block_height > record.simulation.last_valid_block_height {
+            if observation.observed_block_height() > record.simulation.last_valid_block_height {
                 journal
                     .record_terminal_failure_v1(
                         request_id,
                         RelayerTerminalFailureEvidenceV1 {
-                            observed_block_height,
+                            observed_block_height: observation.observed_block_height(),
                             failure_code: RELAYER_TERMINAL_BLOCKHASH_EXPIRED_V1,
-                            evidence_sha256,
-                            provider_set_digest,
+                            evidence_sha256: *observation.evidence_sha256(),
+                            provider_set_digest: *observation.provider_set_digest(),
                         },
                     )
                     .map_err(RelayerOperatorExecutionErrorV1::Journal)?;
@@ -725,27 +842,39 @@ mod tests {
             &indexed_pool,
             canonical_relayer_instruction_index_v1(simulation),
             *startup.provider_set_digest(),
+            [0xb5; 32],
+            [0xb6; 32],
+            None,
         )
         .unwrap();
         let mut runtime = Runtime {
             simulation,
             signed,
             observations: VecDeque::from([
-                RelayerSignatureObservationV1::NotFound {
-                    observed_block_height: 450,
-                    evidence_sha256: [0xa3; 32],
-                    provider_set_digest: *startup.provider_set_digest(),
-                },
-                RelayerSignatureObservationV1::NotFound {
-                    observed_block_height: 451,
-                    evidence_sha256: [0xa4; 32],
-                    provider_set_digest: *startup.provider_set_digest(),
-                },
-                RelayerSignatureObservationV1::Finalized(RelayerFinalizedObservationV1 {
-                    execution,
-                    indexed_pool,
-                    provider_set_digest: *startup.provider_set_digest(),
-                }),
+                RelayerSignatureObservationV1::NotFound(
+                    RelayerNotFoundObservationV1::from_agreed_status_v1(
+                        450,
+                        [0xa3; 32],
+                        *startup.provider_set_digest(),
+                    ),
+                ),
+                RelayerSignatureObservationV1::NotFound(
+                    RelayerNotFoundObservationV1::from_agreed_status_v1(
+                        451,
+                        [0xa4; 32],
+                        *startup.provider_set_digest(),
+                    ),
+                ),
+                RelayerSignatureObservationV1::Finalized(
+                    RelayerFinalizedObservationV1::from_agreed_finality_v1(
+                        execution,
+                        indexed_pool,
+                        *startup.provider_set_digest(),
+                        [0xb5; 32],
+                        [0xb6; 32],
+                        None,
+                    ),
+                ),
             ]),
             signed_messages: Vec::new(),
             submitted_wires: Vec::new(),

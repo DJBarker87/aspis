@@ -21,6 +21,7 @@ pub mod pool_transport;
 pub mod registry_transaction_builder;
 pub mod relayer;
 pub mod relayer_execution_journal;
+pub mod relayer_finality_join;
 pub mod relayer_finalized_evidence;
 pub mod relayer_rpc_composition;
 pub mod relayer_rpc_json;
