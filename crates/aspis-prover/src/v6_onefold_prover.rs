@@ -2070,6 +2070,7 @@ mod tests {
             pool_v1_note_commitment, pool_v1_nullifier, verifier_statement_payload_digest_v1,
             PoolV1InputNoteWitnessV1, PoolV1MembershipWitnessV1, PoolV1OutputNoteWitnessV1,
             PoolV1PaymentRuntimeBindingV1, POOL_V1_HISTORICAL_ANCHOR_VERSION,
+            V7_POOL_NATIVE_TAG73_PROFILE_BINDING, V7_POOL_NATIVE_TAG73_RELEASE_BINDING,
         },
         Digest, MerklePath, SpendPublic,
     };
@@ -2331,8 +2332,8 @@ mod tests {
     #[ignore = "RAM-intensive native Pool proof gate; run on the NUC"]
     fn v7_pool_private_transfer_unmined_proof_replays_end_to_end() {
         let (public, witness, relation_context) = pool_transfer_fixture();
-        let profile_binding = [0x73; 32];
-        let release_binding = [0x74; 32];
+        let profile_binding = V7_POOL_NATIVE_TAG73_PROFILE_BINDING;
+        let release_binding = V7_POOL_NATIVE_TAG73_RELEASE_BINDING;
         let payload = encode_pool_v1_private_transfer_public_v1(&public).unwrap();
         let statement_digest = verifier_statement_payload_digest_v1(
             POOL_V1_HISTORICAL_ANCHOR_VERSION,

@@ -26,6 +26,7 @@ pub mod payment_semantic_terminal;
 #[cfg(not(target_os = "solana"))]
 pub mod payment_trace;
 pub mod root_history;
+pub mod tag73_native_profile;
 pub mod verifier_dispatch;
 pub mod verifier_registry;
 
@@ -174,6 +175,12 @@ pub use root_history::{
     RootHistoryPageV1, POOL_V1_ROOT_HISTORY_CAPACITY, POOL_V1_ROOT_HISTORY_CAPACITY_LOG2,
     POOL_V1_ROOT_HISTORY_PAGE_ACCOUNT_BYTES, POOL_V1_ROOT_HISTORY_PAGE_MAGIC,
     POOL_V1_ROOT_HISTORY_PAGE_SEED, POOL_V1_ROOT_HISTORY_PAGE_VERSION,
+};
+pub use tag73_native_profile::{
+    v7_pool_native_tag73_proof_body_bytes, V7_POOL_NATIVE_TAG73_MIN_FRONTIER_NODES,
+    V7_POOL_NATIVE_TAG73_PROFILE_BINDING, V7_POOL_NATIVE_TAG73_PROFILE_BINDING_PREIMAGE,
+    V7_POOL_NATIVE_TAG73_RELEASE_BINDING, V7_POOL_NATIVE_TAG73_RELEASE_BINDING_PREIMAGE,
+    V7_POOL_NATIVE_TAG73_REQUEST_BYTES,
 };
 pub use verifier_dispatch::{
     decode_verifier_dispatch_request_v1, decode_verifier_dispatch_result_v1,

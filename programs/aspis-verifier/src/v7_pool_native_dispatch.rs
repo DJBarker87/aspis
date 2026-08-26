@@ -18,9 +18,13 @@ use aspis_statement::pool_v1::{
     historical_anchor_envelope_digest_v1, verifier_proof_body_digest_v1,
     HistoricalAnchorEnvelopeV1, PoolV1PrivateTransferPublicV1, PoolV1TransitionKind,
     PoolV1WithdrawalPublicV1, VerifierDispatchBindingV1, VerifierDispatchRequestV1,
-    VerifierDispatchResultV1, POOL_V1_PAYMENT_STATEMENT_BYTES,
-    POOL_V1_VERIFIER_DISPATCH_BINDING_PREFIX_BYTES, POOL_V1_VERIFIER_DISPATCH_RESULT_BYTES,
+    VerifierDispatchResultV1, POOL_V1_VERIFIER_DISPATCH_RESULT_BYTES,
     POOL_V1_VERIFIER_DISPATCH_SUCCESS_CODE,
+};
+pub use aspis_statement::pool_v1::{
+    V7_POOL_NATIVE_TAG73_MIN_FRONTIER_NODES, V7_POOL_NATIVE_TAG73_PROFILE_BINDING,
+    V7_POOL_NATIVE_TAG73_PROFILE_BINDING_PREIMAGE, V7_POOL_NATIVE_TAG73_RELEASE_BINDING,
+    V7_POOL_NATIVE_TAG73_RELEASE_BINDING_PREIMAGE, V7_POOL_NATIVE_TAG73_REQUEST_BYTES,
 };
 use solana_program::{
     account_info::AccountInfo, entrypoint::ProgramResult, program, program_error::ProgramError,
@@ -28,26 +32,6 @@ use solana_program::{
 };
 
 use crate::lifecycle::{proof_account_finalized, uploaded_proof_bounds};
-
-pub const V7_POOL_NATIVE_TAG73_PROFILE_BINDING_PREIMAGE: &[u8] =
-    b"aspis:pool-v1:verifier-profile:tag73-native-payment-v1:asvq-v1";
-pub const V7_POOL_NATIVE_TAG73_PROFILE_BINDING: [u8; 32] = [
-    0x70, 0xa7, 0x85, 0xea, 0x72, 0x34, 0x69, 0xa1, 0x34, 0x97, 0x40, 0x71, 0x62, 0xff, 0x01, 0xb5,
-    0x5b, 0x33, 0x26, 0x87, 0xfd, 0x9d, 0x0a, 0x8c, 0x89, 0xb8, 0x12, 0x59, 0xb2, 0xd1, 0x96, 0x3d,
-];
-
-pub const V7_POOL_NATIVE_TAG73_RELEASE_BINDING_PREIMAGE: &[u8] =
-    b"aspis:v7:pool-v1-payment:26c1-3c2:b10:q16:digest208:cap203:full-c2:work35-31-34:release-v1";
-pub const V7_POOL_NATIVE_TAG73_RELEASE_BINDING: [u8; 32] = [
-    0x9a, 0x29, 0x16, 0xf7, 0x65, 0x7b, 0x7b, 0x85, 0xa3, 0x51, 0x2d, 0x85, 0xd5, 0xa0, 0x58, 0x9c,
-    0x19, 0xe7, 0x55, 0xca, 0x5e, 0x60, 0xd9, 0x10, 0x71, 0xb8, 0x0c, 0x2a, 0xf6, 0x2d, 0x0d, 0xff,
-];
-
-pub const V7_POOL_NATIVE_TAG73_REQUEST_BYTES: usize =
-    POOL_V1_VERIFIER_DISPATCH_BINDING_PREFIX_BYTES + POOL_V1_PAYMENT_STATEMENT_BYTES;
-/// Smallest binary authentication frontier for 16 distinct leaves in a
-/// depth-18 tree (the 16 leaves form one complete depth-four subtree).
-pub const V7_POOL_NATIVE_TAG73_MIN_FRONTIER_NODES: usize = 14;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum V7PoolNativeTag73StatementV1 {
