@@ -9,7 +9,9 @@
 
 use std::path::Path;
 
+use bincode::Options as _;
 use sha2::{Digest as _, Sha256};
+use solana_transaction::versioned::VersionedTransaction;
 
 use crate::durable_state::{AtomicStateFileV1, DurableStateErrorV1};
 use crate::scan_state::FinalizedChainPointV1;
@@ -106,6 +108,55 @@ pub trait SignedTransactionInspectorV1 {
         &self,
         signed_wire: &[u8],
     ) -> Option<InspectedSignedTransactionV1>;
+}
+
+/// Strict production inspector for the currently deployed legacy/v0 Solana
+/// transaction wire. It bounds allocation, rejects trailing aliases, applies
+/// the SDK's structural sanitizer, and verifies every required Ed25519
+/// signature over the exact serialized message before exposing the fee payer.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub struct SolanaSdkSignedTransactionInspectorV1;
+
+impl SignedTransactionInspectorV1 for SolanaSdkSignedTransactionInspectorV1 {
+    fn inspect_and_verify_signed_transaction_v1(
+        &self,
+        signed_wire: &[u8],
+    ) -> Option<InspectedSignedTransactionV1> {
+        if signed_wire.is_empty() || signed_wire.len() > MAX_SIGNED_TRANSACTION_WIRE_BYTES_V1 {
+            return None;
+        }
+        let transaction: VersionedTransaction = bincode::DefaultOptions::new()
+            .with_fixint_encoding()
+            .with_limit(MAX_SIGNED_TRANSACTION_WIRE_BYTES_V1 as u64)
+            .reject_trailing_bytes()
+            .deserialize(signed_wire)
+            .ok()?;
+        transaction.sanitize().ok()?;
+        let unsigned_message = transaction.message.serialize();
+        if transaction
+            .signatures
+            .iter()
+            .zip(transaction.message.static_account_keys())
+            .any(|(signature, pubkey)| !signature.verify(pubkey.as_ref(), &unsigned_message))
+        {
+            return None;
+        }
+
+        let transaction_signature = *transaction.signatures.first()?.as_array();
+        let fee_payer = transaction
+            .message
+            .static_account_keys()
+            .first()?
+            .as_ref()
+            .try_into()
+            .ok()?;
+        let unsigned_message_sha256 = Sha256::digest(&unsigned_message).into();
+        Some(InspectedSignedTransactionV1 {
+            transaction_signature,
+            fee_payer,
+            unsigned_message_sha256,
+        })
+    }
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -790,6 +841,97 @@ mod tests {
             compute_units_consumed: 1_200_000,
             estimated_fee_lamports: 10_000,
         }
+    }
+
+    fn signed_wire(v0: bool) -> (Vec<u8>, [u8; 32], [u8; 32], [u8; 64]) {
+        let fee_payer = [
+            49, 222, 190, 85, 211, 124, 114, 39, 104, 177, 55, 19, 28, 170, 96, 135, 8, 11, 46, 11,
+            96, 185, 75, 215, 133, 209, 69, 117, 207, 164, 152, 188,
+        ];
+
+        // One signer/writable fee payer, one readonly unsigned program, and
+        // one empty instruction. All vector lengths are canonical short-vecs.
+        let mut message = Vec::new();
+        if v0 {
+            message.push(0x80);
+        }
+        message.extend_from_slice(&[1, 0, 1]);
+        message.push(2);
+        message.extend_from_slice(&fee_payer);
+        message.extend_from_slice(&[0x29; 32]);
+        message.extend_from_slice(&[0x39; 32]);
+        message.push(1);
+        message.extend_from_slice(&[1, 1, 0, 0]);
+        if v0 {
+            message.push(0);
+        }
+
+        let signature = if v0 {
+            [
+                59, 70, 255, 237, 28, 139, 151, 182, 204, 237, 46, 64, 133, 164, 252, 29, 51, 114,
+                17, 85, 57, 113, 135, 159, 202, 9, 190, 175, 173, 57, 106, 2, 57, 7, 91, 87, 184,
+                48, 247, 115, 125, 224, 149, 161, 134, 190, 86, 246, 192, 31, 244, 48, 235, 254,
+                232, 189, 221, 83, 97, 217, 251, 169, 207, 2,
+            ]
+        } else {
+            [
+                2, 0, 58, 29, 54, 47, 159, 159, 182, 228, 68, 52, 6, 68, 92, 201, 145, 37, 112,
+                106, 212, 97, 236, 215, 222, 166, 5, 122, 85, 202, 178, 51, 233, 46, 100, 243, 212,
+                11, 88, 51, 39, 138, 120, 228, 232, 127, 204, 152, 227, 118, 45, 118, 113, 67, 152,
+                14, 170, 216, 59, 170, 209, 6, 116, 14,
+            ]
+        };
+        let mut wire = Vec::with_capacity(1 + signature.len() + message.len());
+        wire.push(1);
+        wire.extend_from_slice(&signature);
+        wire.extend_from_slice(&message);
+        (wire, fee_payer, Sha256::digest(&message).into(), signature)
+    }
+
+    #[test]
+    fn production_inspector_verifies_exact_legacy_wire_and_rejects_aliases() {
+        let inspector = SolanaSdkSignedTransactionInspectorV1;
+        let (wire, fee_payer, unsigned_message_sha256, signature) = signed_wire(false);
+        assert_eq!(
+            inspector.inspect_and_verify_signed_transaction_v1(&wire),
+            Some(InspectedSignedTransactionV1 {
+                transaction_signature: signature,
+                fee_payer,
+                unsigned_message_sha256,
+            })
+        );
+
+        let mut trailing_alias = wire.clone();
+        trailing_alias.push(0);
+        assert_eq!(
+            inspector.inspect_and_verify_signed_transaction_v1(&trailing_alias),
+            None
+        );
+
+        let mut noncanonical_signature_count = Vec::with_capacity(wire.len() + 1);
+        noncanonical_signature_count.extend_from_slice(&[0x81, 0]);
+        noncanonical_signature_count.extend_from_slice(&wire[1..]);
+        assert_eq!(
+            inspector.inspect_and_verify_signed_transaction_v1(&noncanonical_signature_count),
+            None
+        );
+
+        let mut changed_message = wire;
+        *changed_message.last_mut().unwrap() = 1;
+        assert_eq!(
+            inspector.inspect_and_verify_signed_transaction_v1(&changed_message),
+            None
+        );
+
+        let (v0_wire, v0_fee_payer, v0_message_sha256, v0_signature) = signed_wire(true);
+        assert_eq!(
+            inspector.inspect_and_verify_signed_transaction_v1(&v0_wire),
+            Some(InspectedSignedTransactionV1 {
+                transaction_signature: v0_signature,
+                fee_payer: v0_fee_payer,
+                unsigned_message_sha256: v0_message_sha256,
+            })
+        );
     }
 
     #[test]
