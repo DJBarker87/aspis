@@ -107,6 +107,86 @@ theorem compact_semantic_events_are_production_events
       sentFieldsOfDecodedCompactMessage_eq_raw decodeExact point round
   simpa only [compactSemanticMessages, sentEq]
 
+/-- If a causal challenge event occurs in a successful list execution, the
+record emitted by that exact occurrence remains in the final sample ledger. -/
+theorem challenge_record_in_final_of_event_mem
+    (table : FixedOracleTable) (events : List MachineEvent)
+    (eval final : EvalState) (id : ChallengeId) (use : SamplerUse id)
+    (causal : ∀ event ∈ events, CausalMachineEvent event)
+    (member : .challenge id use ∈ events)
+    (run : runMachineEvents table events eval = some final) :
+    ∃ blocks, { id := id, blocks := blocks } ∈ final.samples := by
+  induction events generalizing eval with
+  | nil => simp at member
+  | cons event rest ih =>
+      simp only [runMachineEvents] at run
+      obtain ⟨next, eventRun, restRun⟩ := Option.bind_eq_some_iff.mp run
+      have restCausal : ∀ tail ∈ rest, CausalMachineEvent tail := by
+        intro tail tailMember
+        exact causal tail (by simp [tailMember])
+      have included := causalMachineEvents_samples_included table rest next
+        final restCausal restRun
+      rcases List.mem_cons.mp member with head | tail
+      · subst event
+        obtain ⟨blocks, _afterBlocks, _squeezeRun, emitted⟩ :=
+          challengeEvent_exposes_record table eval next id use eventRun
+        exact ⟨blocks, included _ emitted⟩
+      · exact ih (eval := next) restCausal tail restRun
+
+/-- A challenge value recorded by a successful causal execution is a
+canonical exact-tower element, not merely an arbitrary sixteen-byte string. -/
+theorem challenge_value_has_exact_tower_of_event_mem
+    (table : FixedOracleTable) (valueAt : ChallengeId -> Qm31Bytes)
+    (events : List MachineEvent) (eval final : EvalState)
+    (id : ChallengeId) (use : SamplerUse id)
+    (causal : ∀ event ∈ events, CausalMachineEvent event)
+    (member : .challenge id use ∈ events)
+    (run : runMachineEvents table events eval = some final)
+    (decoded : SamplesDecodeAs valueAt final) :
+    ∃ value : QM31Exact,
+      decodeTagQM31ExactLE (valueAt id) = some value := by
+  obtain ⟨blocks, recordMember⟩ :=
+    challenge_record_in_final_of_event_mem table events eval final id use
+      causal member run
+  have parameterDecoded := decoded { id := id, blocks := blocks } recordMember
+  exact decodeChallengeParameter_has_exact_tower_value
+    exactSecureCircleParameterMap id blocks (valueAt id) parameterDecoded
+
+/-- Canonical exact value selected from the deployed challenge bytes.  The
+default branch is eliminated whenever the corresponding event accepted. -/
+noncomputable def exactChallengeValue (valueAt : ChallengeId -> Qm31Bytes)
+    (id : ChallengeId) : QM31Exact :=
+  (decodeTagQM31ExactLE (valueAt id)).getD 0
+
+theorem semantic_challenge_event_mem
+    (uses : (id : ChallengeId) -> SamplerUse id)
+    (messages : Fin 10 -> Degree27Message QM31Exact) (round : Fin 10) :
+    .challenge (.semantic round) (uses (.semantic round)) ∈
+      semanticEventsForMessages uses 0 (List.ofFn messages) := by
+  fin_cases round <;> simp [semanticEventsForMessages]
+
+/-- Successful execution of all ten semantic rounds proves canonical exact
+decoding for the selected exact value of every semantic challenge. -/
+theorem semantic_challenge_values_decode
+    (table : FixedOracleTable) (uses : (id : ChallengeId) -> SamplerUse id)
+    (encodedValue : ChallengeId -> Qm31Bytes)
+    (messages : Fin 10 -> Degree27Message QM31Exact)
+    (eval final : EvalState)
+    (run : runMachineEvents table
+      (semanticEventsForMessages uses 0 (List.ofFn messages)) eval =
+        some final)
+    (decoded : SamplesDecodeAs encodedValue final) (round : Fin 10) :
+    decodeTagQM31ExactLE (encodedValue (.semantic round)) =
+      some (exactChallengeValue encodedValue (.semantic round)) := by
+  have causal := semanticEventsForMessages_are_causal uses 0
+    (List.ofFn messages)
+  obtain ⟨value, valueRun⟩ := challenge_value_has_exact_tower_of_event_mem
+    table encodedValue
+      (semanticEventsForMessages uses 0 (List.ofFn messages)) eval final
+      (.semantic round) (uses (.semantic round)) causal
+      (semantic_challenge_event_mem uses messages round) run decoded
+  simp [exactChallengeValue, valueRun]
+
 /-- A successful causal evaluator run and its accepted final sample ledger
 produce the exact schedule runner, including every decoded QM31 value. -/
 theorem runMachineSemanticEvents_matches_runSemanticMessages
@@ -114,8 +194,9 @@ theorem runMachineSemanticEvents_matches_runSemanticMessages
     (uses : (id : ChallengeId) -> SamplerUse id)
     (encodedValue : ChallengeId -> Qm31Bytes)
     (exactValue : ChallengeId -> QM31Exact)
-    (exactDecode : ∀ id,
-      decodeTagQM31ExactLE (encodedValue id) = some (exactValue id))
+    (exactDecode : ∀ round : Fin 10,
+      decodeTagQM31ExactLE (encodedValue (.semantic round)) =
+        some (exactValue (.semantic round)))
     (index : Nat) (messages : List (Degree27Message QM31Exact))
     (within : index + messages.length ≤ 10)
     (eval final : EvalState) (machine : MachineState)
@@ -174,7 +255,7 @@ theorem runMachineSemanticEvents_matches_runSemanticMessages
           afterChallengeEval afterMessageMachine
           (encodedValue (.semantic round)) (exactValue (.semantic round))
           afterMessageAligned challengeRun challengeAgreement
-          (exactDecode (.semantic round))
+          (exactDecode round)
       obtain ⟨finalMachine, restMatched, finalAligned⟩ :=
         ih (index := index + 1) (within := restWithin)
           (eval := afterChallengeEval) (machine := afterChallengeMachine)
@@ -199,9 +280,84 @@ theorem runMachineSemanticEvents_matches_runSemanticMessages
       rw [restMatched]
       rfl
 
+/-- A successful exact semantic execution of `first ++ second` exposes the
+same exact-value execution of `first`. -/
+theorem runSemanticMessages_exact_prefix_of_append
+    (oracle : HashOracle) (exactValue : ChallengeId -> QM31Exact)
+    (index : Nat)
+    (first second : List (Degree27Message QM31Exact))
+    (within : index + (first ++ second).length ≤ 10)
+    (state final : MachineState)
+    (run : runSemanticMessages oracle index (first ++ second) state =
+      some (semanticValuesForMessages exactValue index (first ++ second),
+        final)) :
+    ∃ middle,
+      runSemanticMessages oracle index first state =
+        some (semanticValuesForMessages exactValue index first, middle) := by
+  induction first generalizing index state final with
+  | nil => exact ⟨state, by simp [runSemanticMessages,
+      semanticValuesForMessages]⟩
+  | cons message rest ih =>
+      have inRange : index < 10 := by
+        simp only [List.cons_append, List.length_cons, List.length_append] at within
+        omega
+      have restWithin : (index + 1) + (rest ++ second).length ≤ 10 := by
+        simp only [List.cons_append, List.length_cons, List.length_append] at within ⊢
+        omega
+      simp only [List.cons_append, runSemanticMessages, dif_pos inRange,
+        semanticValuesForMessages] at run
+      obtain ⟨sampledPair, sampled, run⟩ := Option.bind_eq_some_iff.mp run
+      rcases sampledPair with ⟨challenge, afterChallenge⟩
+      obtain ⟨tailPair, tailRun, resultEq⟩ := Option.bind_eq_some_iff.mp run
+      rcases tailPair with ⟨tailValues, tailFinal⟩
+      have pairEq :
+          (challenge :: tailValues, tailFinal) =
+            (exactValue (.semantic ⟨index, inRange⟩) ::
+              semanticValuesForMessages exactValue (index + 1)
+                (rest ++ second), final) := by
+        simpa only [pure, Option.some.injEq] using resultEq
+      have challengeEq : challenge =
+          exactValue (.semantic ⟨index, inRange⟩) :=
+        (List.cons.inj (congrArg Prod.fst pairEq)).1
+      have tailValuesEq : tailValues =
+          semanticValuesForMessages exactValue (index + 1)
+            (rest ++ second) :=
+        (List.cons.inj (congrArg Prod.fst pairEq)).2
+      have tailFinalEq : tailFinal = final := congrArg Prod.snd pairEq
+      subst challenge
+      subst tailValues
+      subst tailFinal
+      obtain ⟨middle, prefixRun⟩ := ih (index := index + 1)
+        (state := afterChallenge) (final := final) restWithin tailRun
+      refine ⟨middle, ?_⟩
+      simp only [runSemanticMessages, dif_pos inRange,
+        semanticValuesForMessages]
+      rw [sampled]
+      change Option.bind
+        (runSemanticMessages oracle (index + 1) rest afterChallenge)
+        (fun result => some
+          (exactValue (.semantic ⟨index, inRange⟩) :: result.1,
+            result.2)) = _
+      rw [prefixRun]
+      rfl
+
+theorem semanticValuesForMessages_ofFn_prefix
+    (exactValue : ChallengeId -> QM31Exact)
+    (messages : Fin 10 -> Degree27Message QM31Exact) (round : Fin 10) :
+    semanticValuesForMessages exactValue 0
+        (List.ofFn fun earlier : Fin (round.val + 1) =>
+          messages ⟨earlier.val, by omega⟩) =
+      List.ofFn (fun earlier : Fin (round.val + 1) =>
+        exactValue (.semantic ⟨earlier.val, by omega⟩)) := by
+  fin_cases round <;> simp [semanticValuesForMessages]
+
 #print axioms semanticEventsForMessages_are_causal
 #print axioms semanticEventsForMessages_ofFn
 #print axioms compact_semantic_events_are_production_events
+#print axioms challenge_value_has_exact_tower_of_event_mem
+#print axioms semantic_challenge_values_decode
 #print axioms runMachineSemanticEvents_matches_runSemanticMessages
+#print axioms runSemanticMessages_exact_prefix_of_append
+#print axioms semanticValuesForMessages_ofFn_prefix
 
 end AspisK1.V7Tag73SemanticRoundReplay
