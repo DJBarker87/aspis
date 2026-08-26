@@ -13,6 +13,7 @@ counting theorem; no SHA security or extraction-failure inclusion is assumed.
 -/
 
 set_option autoImplicit false
+set_option maxRecDepth 100000
 
 namespace AspisK1.V7Tag73K12Merkle208PrefixProjection
 
@@ -20,6 +21,8 @@ open MeasureTheory
 open AspisK1.V7Tag73TranscriptSchedule
 open AspisK1.V7FsStateRestorationCoupling
 open AspisK1.V7Tag73ResourceLazyOracle
+open AspisK1.V7Tag73AdaptiveLazyOracle
+open AspisK1.V7Tag73ExactCompilerResources
 open AspisK1.V7Tag73ExactFixedK12MerkleClassifier
 open AspisK1.V7Tag73K12Merkle208CollisionProbability
 open AspisPool.V7MerkleQueryGrammar
@@ -132,9 +135,205 @@ theorem uniform_digest256_deployed_prefix_probability_exact
     (ENNReal.mul_div_mul_left (c := (2 : ENNReal) ^ 48)
       1 ((2 : ENNReal) ^ 208) (by positivity) (by finiteness))
 
+/-! ## Exact multi-exposure projection
+
+The single-output fiber calculation is not enough for an adaptive K1.2 game:
+the verifier exposes a sequence of fresh SHA answers.  The following explicit
+equivalence splits an entire fresh-answer tape into its 208-bit prefix tape
+and independent 48-bit tail tape.  Consequently every event depending only
+on the deployed prefixes has exactly the same probability under the uniform
+256-bit tape as it has under the uniform 208-bit tape used by the causal
+target-counting theorem.
+-/
+
+def interleaveProductEquiv {A B C D : Type} :
+    ((A × B) × (C × D)) ≃ ((A × C) × (B × D)) where
+  toFun value := ((value.1.1, value.2.1), (value.1.2, value.2.2))
+  invFun value := ((value.1.1, value.2.1), (value.1.2, value.2.2))
+  left_inv := by intro value; rcases value with ⟨⟨a, b⟩, ⟨c, d⟩⟩; rfl
+  right_inv := by intro value; rcases value with ⟨⟨a, c⟩, ⟨b, d⟩⟩; rfl
+
+def runtimeFreshTapeSplitEquiv : ∀ steps : Nat,
+    FreshAnswerTape RuntimeDigest256 steps ≃
+      (FreshAnswerTape MerkleDigest208 steps ×
+        FreshAnswerTape RuntimeDigestTail48 steps)
+  | 0 =>
+      { toFun := fun _ => (PUnit.unit, PUnit.unit)
+        invFun := fun _ => PUnit.unit
+        left_inv := by intro tape; cases tape; rfl
+        right_inv := by
+          intro tape
+          rcases tape with ⟨pfx, tail⟩
+          cases pfx
+          cases tail
+          rfl }
+  | steps + 1 => by
+      change (RuntimeDigest256 × FreshAnswerTape RuntimeDigest256 steps) ≃
+        ((MerkleDigest208 × FreshAnswerTape MerkleDigest208 steps) ×
+          (RuntimeDigestTail48 ×
+            FreshAnswerTape RuntimeDigestTail48 steps))
+      exact (Equiv.prodCongr runtimeDigestSplitEquiv
+        (runtimeFreshTapeSplitEquiv steps)).trans interleaveProductEquiv
+
+def runtimeFreshPrefixTape (steps : Nat)
+    (tape : FreshAnswerTape RuntimeDigest256 steps) :
+    FreshAnswerTape MerkleDigest208 steps :=
+  (runtimeFreshTapeSplitEquiv steps tape).1
+
+def liftedMerklePrefixEvent (steps : Nat)
+    (event : Set (FreshAnswerTape MerkleDigest208 steps)) :
+    Set (FreshAnswerTape RuntimeDigest256 steps) :=
+  {tape | runtimeFreshPrefixTape steps tape ∈ event}
+
+def liftedMerklePrefixEventEquiv (steps : Nat)
+    (event : Set (FreshAnswerTape MerkleDigest208 steps)) :
+    ↑(liftedMerklePrefixEvent steps event) ≃
+      (↑event × FreshAnswerTape RuntimeDigestTail48 steps) where
+  toFun tape :=
+    (⟨(runtimeFreshTapeSplitEquiv steps tape.1).1, tape.2⟩,
+      (runtimeFreshTapeSplitEquiv steps tape.1).2)
+  invFun value :=
+    ⟨(runtimeFreshTapeSplitEquiv steps).symm (value.1.1, value.2), by
+      change
+        (runtimeFreshTapeSplitEquiv steps
+          ((runtimeFreshTapeSplitEquiv steps).symm
+            (value.1.1, value.2))).1 ∈ event
+      simpa using value.1.2⟩
+  left_inv tape := by
+    apply Subtype.ext
+    change
+      (runtimeFreshTapeSplitEquiv steps).symm
+        ((runtimeFreshTapeSplitEquiv steps tape.1).1,
+          (runtimeFreshTapeSplitEquiv steps tape.1).2) = tape.1
+    exact (runtimeFreshTapeSplitEquiv steps).symm_apply_apply tape.1
+  right_inv value := by
+    rcases value with ⟨prefixMember, tail⟩
+    have split := (runtimeFreshTapeSplitEquiv steps).apply_symm_apply
+      (prefixMember.1, tail)
+    apply Prod.ext
+    · apply Subtype.ext
+      change
+        (runtimeFreshTapeSplitEquiv steps
+          ((runtimeFreshTapeSplitEquiv steps).symm
+            (prefixMember.1, tail))).1 = prefixMember.1
+      exact congrArg Prod.fst split
+    · change
+        (runtimeFreshTapeSplitEquiv steps
+          ((runtimeFreshTapeSplitEquiv steps).symm
+            (prefixMember.1, tail))).2 = tail
+      exact congrArg Prod.snd split
+
+noncomputable instance liftedMerklePrefixEventFintype (steps : Nat)
+    (event : Set (FreshAnswerTape MerkleDigest208 steps)) :
+    Fintype ↑(liftedMerklePrefixEvent steps event) :=
+  Fintype.ofFinite _
+
+noncomputable instance merkleFreshEventFintype (steps : Nat)
+    (event : Set (FreshAnswerTape MerkleDigest208 steps)) : Fintype ↑event :=
+  Fintype.ofFinite _
+
+theorem runtime_tail_fresh_tape_cardinality (steps : Nat) :
+    Fintype.card (FreshAnswerTape RuntimeDigestTail48 steps) =
+      (2 ^ 48) ^ steps := by
+  rw [fresh_answer_tape_card, runtime_digest_tail48_cardinality]
+
+theorem lifted_merkle_prefix_event_cardinality (steps : Nat)
+    (event : Set (FreshAnswerTape MerkleDigest208 steps)) :
+    Fintype.card ↑(liftedMerklePrefixEvent steps event) =
+      Fintype.card ↑event * (2 ^ 48) ^ steps := by
+  rw [Fintype.card_congr (liftedMerklePrefixEventEquiv steps event),
+    Fintype.card_prod, runtime_tail_fresh_tape_cardinality]
+
+/-- Exact distributional bridge for any event over a finite prefix tape. -/
+theorem uniform_digest256_lifted_prefix_event_probability_exact
+    (steps : Nat)
+    (event : Set (FreshAnswerTape MerkleDigest208 steps)) :
+    (uniformDigestFreshTape steps).toOuterMeasure
+        (liftedMerklePrefixEvent steps event) =
+      (uniformMerkleDigest208FreshTape steps).toOuterMeasure event := by
+  classical
+  unfold uniformDigestFreshTape uniformMerkleDigest208FreshTape
+  rw [PMF.toOuterMeasure_uniformOfFintype_apply,
+    PMF.toOuterMeasure_uniformOfFintype_apply,
+    lifted_merkle_prefix_event_cardinality,
+    fresh_answer_tape_card, fresh_answer_tape_card,
+    deployed_digest_256_cardinality, merkle_digest208_cardinality]
+  push_cast
+  have two48 :
+      (281474976710656 : ENNReal) = (2 : ENNReal) ^ 48 := by norm_num
+  have two208 :
+      (411376139330301510538742295639337626245683966408394965837152256 :
+        ENNReal) = (2 : ENNReal) ^ 208 := by norm_num
+  have two256 :
+      (115792089237316195423570985008687907853269984665640564039457584007913129639936 :
+        ENNReal) = (2 : ENNReal) ^ 256 := by norm_num
+  rw [two48, two208, two256]
+  have fullPower :
+      (((2 : ENNReal) ^ 256) ^ steps) =
+        ((2 : ENNReal) ^ 48) ^ steps *
+          ((2 : ENNReal) ^ 208) ^ steps := by
+    rw [← mul_pow, ← pow_add]
+  rw [fullPower]
+  simpa [mul_comm] using
+    (ENNReal.mul_div_mul_left
+      (c := ((2 : ENNReal) ^ 48) ^ steps)
+      (Fintype.card ↑event : ENNReal)
+      (((2 : ENNReal) ^ 208) ^ steps)
+      (by positivity) (by finiteness))
+
+/-! ## Deployed-law specializations
+
+These corollaries eliminate the temporary 208-bit probability space from the
+two K1.2 counting bounds.  Their left sides are events on the actual uniform
+256-bit SHA-answer tape; the only observation made by the events is the exact
+deployed 26-byte prefix projection proved above.
+-/
+
+theorem uniform_digest256_lifted_resolution_probability_le_exact_count
+    (tree : CausalTargetTree MerkleDigest208
+      (List.replicate prefixFixedVerifierExposureCap
+        prefixFixedResolutionTargetCap)) :
+    (uniformDigestFreshTape
+        (List.replicate prefixFixedVerifierExposureCap
+          prefixFixedResolutionTargetCap).length).toOuterMeasure
+        (liftedMerklePrefixEvent
+          (List.replicate prefixFixedVerifierExposureCap
+            prefixFixedResolutionTargetCap).length
+          (causalHitEvent tree)) ≤
+      ((prefixFixedResolutionTargetCoefficient *
+          (2 ^ 208) ^ (prefixFixedVerifierExposureCap - 1) : Nat) : ENNReal) /
+        (((2 : ENNReal) ^ 208) ^ prefixFixedVerifierExposureCap) := by
+  rw [uniform_digest256_lifted_prefix_event_probability_exact]
+  exact uniform_merkle_digest208_resolution_probability_le_exact_count tree
+
+theorem uniform_digest256_lifted_partial_raw_collision_probability_le_exact_count
+    (parameters : ExactCompilerResourceParameters) :
+    (uniformDigestFreshTape
+        (List.range' 0
+          (k12PartialRawCollisionExposureCap parameters)).length).toOuterMeasure
+        (liftedMerklePrefixEvent
+          (List.range' 0
+            (k12PartialRawCollisionExposureCap parameters)).length
+          (causalHitEvent
+            (prefixCollisionTargetTree
+              (k12PartialRawCollisionExposureCap parameters)))) ≤
+      (((k12PartialRawCollisionExposureCap parameters).choose 2 *
+          (2 ^ 208) ^
+            (k12PartialRawCollisionExposureCap parameters - 1) : Nat) :
+          ENNReal) /
+        (((2 : ENNReal) ^ 208) ^
+          k12PartialRawCollisionExposureCap parameters) := by
+  rw [uniform_digest256_lifted_prefix_event_probability_exact]
+  exact uniform_partial_raw_collision_probability_le_exact_count parameters
+
 #print axioms runtime_digest_split_prefix_is_deployed_projection
 #print axioms deployed_prefix_fiber_cardinality
 #print axioms uniform_digest256_deployed_prefix_probability_exact
+#print axioms runtimeFreshTapeSplitEquiv
+#print axioms lifted_merkle_prefix_event_cardinality
+#print axioms uniform_digest256_lifted_prefix_event_probability_exact
+#print axioms uniform_digest256_lifted_resolution_probability_le_exact_count
+#print axioms uniform_digest256_lifted_partial_raw_collision_probability_le_exact_count
 
 end
 
