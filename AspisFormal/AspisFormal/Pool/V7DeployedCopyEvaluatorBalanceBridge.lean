@@ -205,6 +205,54 @@ def deployedConsumerTuple
   deployedEndpointTuple trace (deployedCopyTag link)
     (deployedConsumerEndpoint link)
 
+/-! Literal limb views for the forty unique current-digest links.  Publishing
+these reductions keeps downstream path extraction independent of the private
+`endpoint` and `traceCell` construction helpers. -/
+
+@[simp] theorem deployedProducerTuple_pathCurrent_input_limb
+    {K : Type*} [Field K] (trace : Fin 1024 → Fin 16 → K)
+    (level : Fin 20) (limb : Fin 8) :
+    (deployedProducerTuple trace (.pathCurrent level false)).limbs
+        ⟨limb.val, by omega⟩ =
+      trace (inputPathFinalRow level) ⟨limb.val, by omega⟩ := by
+  have limbBound : limb.val < 16 := by omega
+  simp [deployedProducerTuple, deployedEndpointTuple,
+    deployedProducerEndpoint, deployedPatternLimb, endpoint, traceCell,
+    limbBound]
+
+@[simp] theorem deployedConsumerTuple_pathCurrent_input_limb
+    {K : Type*} [Field K] (trace : Fin 1024 → Fin 16 → K)
+    (level : Fin 20) (limb : Fin 8) :
+    (deployedConsumerTuple trace (.pathCurrent level false)).limbs
+        ⟨limb.val, by omega⟩ =
+      trace (inputPathRow level) ⟨limb.val + 1, by omega⟩ := by
+  have limbBound : limb.val + 1 < 16 := by omega
+  simp [deployedConsumerTuple, deployedEndpointTuple,
+    deployedConsumerEndpoint, deployedPatternLimb, endpoint, traceCell,
+    limbBound]
+
+@[simp] theorem deployedProducerTuple_pathCurrent_output_limb
+    {K : Type*} [Field K] (trace : Fin 1024 → Fin 16 → K)
+    (level : Fin 20) (limb : Fin 8) :
+    (deployedProducerTuple trace (.pathCurrent level true)).limbs
+        ⟨limb.val, by omega⟩ =
+      trace (outputPathFinalRow level) ⟨limb.val, by omega⟩ := by
+  have limbBound : limb.val < 16 := by omega
+  simp [deployedProducerTuple, deployedEndpointTuple,
+    deployedProducerEndpoint, deployedPatternLimb, endpoint, traceCell,
+    limbBound]
+
+@[simp] theorem deployedConsumerTuple_pathCurrent_output_limb
+    {K : Type*} [Field K] (trace : Fin 1024 → Fin 16 → K)
+    (level : Fin 20) (limb : Fin 8) :
+    (deployedConsumerTuple trace (.pathCurrent level true)).limbs
+        ⟨limb.val, by omega⟩ =
+      trace (outputPathRow level) ⟨limb.val + 1, by omega⟩ := by
+  have limbBound : limb.val + 1 < 16 := by omega
+  simp [deployedConsumerTuple, deployedEndpointTuple,
+    deployedConsumerEndpoint, deployedPatternLimb, endpoint, traceCell,
+    limbBound]
+
 private theorem taggedCopyTuple_ext
     {K : Type*} {left right : TaggedCopyTuple K}
     (tag : left.tag = right.tag)
