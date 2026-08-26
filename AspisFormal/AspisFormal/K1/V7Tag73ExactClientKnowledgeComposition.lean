@@ -237,7 +237,8 @@ theorem exact_plain_rom_legal_union_target_exact_count_le
       ac_rfl
 
 /-- Positive-exposure form with the exact
-`(F.choose 2 + F * G) / 2^256` scheduler term. -/
+`(F + F.choose 2 + F * G) / 2^256` scheduler term.  The leading `F` is the
+public dummy-initial-digest seed, not an imported generic ROM loss. -/
 theorem exact_plain_rom_legal_union_target_raw_le
     {HiddenTape TapeIdentity Observation Statement Proof Payload Witness :
       Type}
