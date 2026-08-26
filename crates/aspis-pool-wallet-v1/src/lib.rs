@@ -24,6 +24,7 @@ pub mod scan_state;
 pub mod transaction_builder;
 pub mod verifier_transaction_builder;
 pub mod wallet_transition;
+pub mod witness_state;
 
 use aspis_core::field::{M31, P};
 use aspis_statement::{

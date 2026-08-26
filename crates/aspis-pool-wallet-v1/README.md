@@ -233,6 +233,17 @@ the actual leaf index. Finalized transition evidence carries the authenticated
 public nullifier and output IDs so a note store can atomically mark the input
 spent and reverse that update by rollback ID.
 
+`witness_state` maintains current authentication paths for locally owned notes
+without trusting an indexer or retaining the complete tree. For an old index
+`i` and new append index `n`, it updates exactly the sibling at
+`msb(i XOR n)` from the canonical carry/padding computation, then recomputes
+every tracked path to the authenticated root before committing. New owned
+leaves receive their exact insertion path from the pre-append frontier;
+recovered paths supplied by an indexer are accepted only if they recompute to
+the complete authenticated current root. Root/index/sequence mismatches leave
+the tree and all paths unchanged, and callers can clone a complete witness
+snapshot before starting a proof attempt.
+
 `relayer` is a permissionless, no-sign/no-send operator boundary. It
 revalidates an unsigned instruction against the pinned deployment/current root
 sequence and binds its deterministic request id to the finalized observation
