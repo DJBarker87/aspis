@@ -13,6 +13,7 @@ aspis-core = { path = "../aspis-core" }
 aspis-pool = { path = "../../programs/aspis-pool", default-features = false, features = ["no-entrypoint"] }
 aspis-registry = { path = "../../programs/aspis-registry", default-features = false, features = ["no-entrypoint"] }
 aspis-statement = { path = "../aspis-statement" }
+chacha20poly1305 = { version = "=0.11.0", default-features = false, features = ["alloc", "zeroize"] }
 hpke = { version = "=0.14.0", default-features = false, features = ["alloc", "chacha", "x25519"] }
 sha2 = { version = "=0.11.0", default-features = false }
 serde = { version = "=1.0.229", features = ["derive"] }

@@ -13,6 +13,7 @@
 
 pub mod durable_state;
 pub mod finalized_indexer;
+pub mod note_store_crypto;
 pub mod pool_transport;
 pub mod registry_transaction_builder;
 pub mod relayer;
@@ -361,7 +362,9 @@ fn digest_bytes_are_canonical(bytes: &[u8; 32]) -> bool {
         .all(|limb| u32::from_le_bytes(limb.try_into().unwrap()) < P)
 }
 
-fn encode_note_plaintext_v1(note: &NoteOpeningV1) -> [u8; POOL_V1_NOTE_PLAINTEXT_BYTES] {
+pub(crate) fn encode_note_plaintext_v1(
+    note: &NoteOpeningV1,
+) -> [u8; POOL_V1_NOTE_PLAINTEXT_BYTES] {
     let mut bytes = [0u8; POOL_V1_NOTE_PLAINTEXT_BYTES];
     bytes[..4].copy_from_slice(&POOL_V1_NOTE_PLAINTEXT_MAGIC);
     bytes[4] = POOL_V1_NOTE_PLAINTEXT_VERSION;
@@ -375,7 +378,9 @@ fn encode_note_plaintext_v1(note: &NoteOpeningV1) -> [u8; POOL_V1_NOTE_PLAINTEXT
     bytes
 }
 
-fn decode_note_plaintext_v1(bytes: &[u8]) -> Result<NoteOpeningV1, PoolV1WalletError> {
+pub(crate) fn decode_note_plaintext_v1(
+    bytes: &[u8],
+) -> Result<NoteOpeningV1, PoolV1WalletError> {
     if bytes.len() != POOL_V1_NOTE_PLAINTEXT_BYTES
         || bytes[..4] != POOL_V1_NOTE_PLAINTEXT_MAGIC
         || bytes[4] != POOL_V1_NOTE_PLAINTEXT_VERSION

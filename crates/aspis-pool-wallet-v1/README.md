@@ -270,6 +270,30 @@ derivation for every entry. Exact duplicate enqueue is idempotent; policy
 drift, malformed lifecycle transitions, queue/inflight/rate/fee/reserve limits
 and corrupt images fail closed before mutation.
 
+`note_store_crypto` supplies the concrete authenticated-at-rest layer used by
+the durable wallet. Each sealed opening is exactly 128 bytes:
+
+```text
+0..4      magic ASNS
+4         version 1
+5         flags 0
+6         XChaCha20-Poly1305 algorithm id 1
+7         zero reserved
+8..32     random 24-byte nonce
+32..128   canonical 80-byte ASPN opening plus 16-byte authentication tag
+```
+
+The associated data binds the cipher/key-generation identifier, complete
+108-byte finalized event identity and `ViewOnly`/`Spendable` access class.
+Consequently a sealed note cannot be copied to another event or promoted to a
+spendable record by editing the checksummed public image. Keys and decrypted
+openings are zeroized on drop. `EncryptedLocalSpendAuthenticatorV1` opens only
+a spendable note under that exact context, requests a zeroizing nullifier-key
+copy from an HSM/OS-keystore boundary keyed by the public owner digest, and
+recomputes the finalized public nullifier. Neither the at-rest key nor a
+nullifier key is serialized by this crate. The caller supplies the CSPRNG and
+protects, backs up and rotates the uniformly random at-rest key.
+
 Both stores take a per-image OS exclusive lock, reject symlink/non-regular or
 group/world-readable state files on Unix, bound the complete image, write a
 mode-0600 same-directory temporary file, `fsync` it, atomically rename it and
@@ -304,10 +328,11 @@ The remaining production integration must also:
 - retain and audit the Pool program's instructions-sysvar guard that rejects
   inner invocation, keeping every successful mutation visible to this
   top-level instruction scanner;
-- choose and implement the authenticated at-rest note cipher represented by
-  `note_cipher_id`, protect/rotate its key, implement the local nullifier
-  authenticator, and archive returned public root/transition evidence if the
-  operator requires a longer audit trail than the rollback window;
+- protect, back up and rotate the authenticated note-store key represented by
+  `note_cipher_id`, implement the HSM/OS-keystore lookup behind
+  `LocalNullifierKeyStoreV1`, and archive returned public root/transition
+  evidence if the operator requires a longer audit trail than the rollback
+  window;
 - provide retry, missed-history/backfill, multi-RPC disagreement, retained
   rollback-window sizing, monitoring and backup policy;
 - derive the 32-byte viewing-key IKM from protected wallet entropy with explicit

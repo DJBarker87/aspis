@@ -58,6 +58,7 @@ dependencies = [
  "aspis-pool",
  "aspis-registry",
  "aspis-statement",
+ "chacha20poly1305",
  "hpke",
  "serde",
  "serde_json",
@@ -306,6 +307,7 @@ dependencies = [
  "cfg-if",
  "cipher",
  "cpufeatures 0.3.0",
+ "zeroize",
 ]
 
 [[package]]
@@ -318,6 +320,7 @@ dependencies = [
  "chacha20",
  "cipher",
  "poly1305",
+ "zeroize",
 ]
 
 [[package]]
