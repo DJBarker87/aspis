@@ -1,7 +1,12 @@
 import AspisFormal.K1.V7Tag73K12Merkle208PrefixProjection
+import AspisFormal.K1.V7Tag73ExactFixedK12PrefixClassifier
 import AspisFormal.K1.V7Tag73SchedulerNativePrefixTraversal
 import AspisFormal.K1.V7Tag73CompletedRootProjection
+import AspisFormal.K1.V7Tag73FullResultRootRuns
+import AspisFormal.K1.V7Tag73VerifierOracleStability
+import AspisFormal.K1.V7Tag73ActualNodeCausalProvenance
 import AspisFormal.Pool.V7MerklePartialPathExtractor
+import AspisFormal.Pool.V7MerklePrefixTargetCongruence
 
 /-!
 # Full-output budgeted scheduler tree for exact Tag-73 K1.2
@@ -39,16 +44,25 @@ open AspisK1.V7Tag73RawSameTapeSource
 open AspisK1.V7Tag73ProjectedFreshController
 open AspisK1.V7Tag73ProjectedMachinePrefix
 open AspisK1.V7Tag73CompletedRootProjection
+open AspisK1.V7Tag73FullResultRootRuns
 open AspisK1.V7Tag73TotalizedMachineReflection
+open AspisK1.V7Tag73VerifierOracleStability
+open AspisK1.V7Tag73ActualNodeCausalProvenance
+open AspisK1.V7Tag73SharedOracleVerifierRunner
+open AspisK1.V7Tag73RawFutureFreeDriver
 open AspisK1.V7Tag73ExactCompilerResources
+open AspisK1.V7Tag73ExactCompilerOperationalCaps
 open AspisK1.V7Tag73ExactPlainRomRun
+open AspisK1.V7Tag73ExactSourceAcceptanceModel
 open AspisK1.V7Tag73HiddenTapeAveraging
 open AspisK1.V7Tag73ExactFixedK12MerkleClassifier
+open AspisK1.V7Tag73ExactFixedK12PrefixClassifier
 open AspisK1.V7Tag73K12Merkle208CollisionProbability
 open AspisK1.V7Tag73K12Merkle208PrefixProjection
 open AspisPool.V7MerkleQueryGrammar
 open AspisPool.V7MerkleQueryExtractor
 open AspisPool.V7MerklePartialPathExtractor
+open AspisPool.V7MerklePrefixTargetCongruence
 
 noncomputable section
 
@@ -229,13 +243,14 @@ theorem projected_fresh_returned_trace_run_machine_append_exact
 answer prefix yields the same raw adversary value and prover-final oracle,
 regardless of how many already-exposed verifier answers follow. -/
 theorem k12_prover_run_from_completed_prefix_append_exact
-    {HiddenTape TapeIdentity Observation Statement Payload : Type}
+    {HiddenTape TapeIdentity Observation Statement Payload Final : Type}
     (machine : UniformRawVerifierMachine HiddenTape TapeIdentity Observation
       Statement Tag73K12ParsedProof Payload)
     (hidden : HiddenTape) (available : List Digest256)
     (runtime : SchedulerNativePlainRomRootRuntime TapeIdentity Statement
       Tag73K12ParsedProof Payload)
-    (prefixes : CompletedRootProjectedPrefixes machine hidden available runtime)
+    (prefixes : FullResultRootProjectedPrefixes (Final := Final) machine hidden
+      available runtime)
     (tail : List Digest256) :
     k12ProverRunFromAnswerPrefix machine hidden
         (prefixes.adversary.freshQueries.map Prod.snd ++ tail) =
@@ -247,7 +262,7 @@ theorem k12_prover_run_from_completed_prefix_append_exact
   have wrapped := projected_fresh_returned_trace_run_machine_append_exact
     machine.adversaryLimits .adversary machine.adversaryFuel emptyOracle
     (schedulerStageProgram
-      (RootSchedulerResult TapeIdentity Statement Tag73K12ParsedProof Payload)
+      Final
       (totalizeOracleMachine machine.adversaryFuel
         (machine.blackBox.start hidden machine.observation)))
     prefixes.adversary.freshQueries prefixes.adversary.result
@@ -255,8 +270,7 @@ theorem k12_prover_run_from_completed_prefix_append_exact
     empty_oracle_history_total_coherent prefixes.adversary.trace tail
   rw [prefixes.adversaryResult] at wrapped
   have totalized := run_machine_scheduler_stage_completed_reflects
-    (Final := RootSchedulerResult TapeIdentity Statement Tag73K12ParsedProof
-      Payload)
+    (Final := Final)
     controller machine.adversaryLimits .adversary machine.adversaryFuel
     emptyOracle
     (totalizeOracleMachine machine.adversaryFuel
@@ -271,13 +285,14 @@ theorem k12_prover_run_from_completed_prefix_append_exact
   simpa [k12ProverRunFromAnswerPrefix, controller] using raw
 
 theorem k12_prefix_targets_stable_after_completed_prover
-    {HiddenTape TapeIdentity Observation Statement Payload : Type}
+    {HiddenTape TapeIdentity Observation Statement Payload Final : Type}
     (machine : UniformRawVerifierMachine HiddenTape TapeIdentity Observation
       Statement Tag73K12ParsedProof Payload)
     (hidden : HiddenTape) (available : List Digest256)
     (runtime : SchedulerNativePlainRomRootRuntime TapeIdentity Statement
       Tag73K12ParsedProof Payload)
-    (prefixes : CompletedRootProjectedPrefixes machine hidden available runtime)
+    (prefixes : FullResultRootProjectedPrefixes (Final := Final) machine hidden
+      available runtime)
     (tail : List Digest256) :
     k12PrefixTargetsFromAnswers machine hidden
         (prefixes.adversary.freshQueries.map Prod.snd ++ tail) =
@@ -291,6 +306,216 @@ theorem k12_prefix_targets_stable_after_completed_prover
   unfold k12PrefixTargetsFromAnswers
   rw [k12_prover_run_from_completed_prefix_append_exact machine hidden
     available runtime prefixes tail]
+
+/-! ## Prover-table answers remain fixed through the root verifier -/
+
+theorem projected_machine_prefix_table_extension
+    {MachineResult : Type}
+    (limits : OracleLimits) (actor : QueryActor) (fuel : Nat)
+    (state : OracleState) (program : OracleMachine MachineResult)
+    (available : List Digest256)
+    (returned : ProjectedMachinePrefixReturned limits actor fuel state program
+      available) :
+    ∃ suffix, returned.finalState.table = state.table ++ suffix := by
+  have coherent : HistoryTotalCoherent state :=
+    projected_returned_trace_entry_coherent limits actor fuel state program
+      returned.freshQueries returned.result returned.finalState returned.steps
+        returned.trace
+  have runExact := projected_machine_prefix_returned_run_exact limits actor
+    fuel state program available returned coherent
+  obtain ⟨appended, _history, table, _properties, _length⟩ :=
+    run_machine_fresh_extension_data
+      (controllerFromProjectedFreshAnswers state.history
+        (returned.freshQueries.map Prod.snd))
+      limits actor fuel state program
+  rw [runExact] at table
+  exact ⟨
+    (appended.filter fun record => record.origin = .fresh).map
+      freshTableEntryOfRecord,
+    table⟩
+
+theorem projected_machine_prefix_lookup_retains_segment_answer
+    {MachineResult : Type}
+    (limits : OracleLimits) (actor : QueryActor) (fuel : Nat)
+    (state : OracleState) (program : OracleMachine MachineResult)
+    (available : List Digest256)
+    (returned : ProjectedMachinePrefixReturned limits actor fuel state program
+      available) (record : QueryRecord)
+    (recordMember : record ∈ historySince state returned.finalState) :
+    (lookupEntry returned.finalState record.input).map
+        AspisK1.V7FsAokExperiment.TableEntry.output =
+      some record.output := by
+  have coherent : HistoryTotalCoherent state :=
+    projected_returned_trace_entry_coherent limits actor fuel state program
+      returned.freshQueries returned.result returned.finalState returned.steps
+        returned.trace
+  have runExact := projected_machine_prefix_returned_run_exact limits actor
+    fuel state program available returned coherent
+  have returnedHalt :
+      (runMachine
+        (controllerFromProjectedFreshAnswers state.history
+          (returned.freshQueries.map Prod.snd))
+        limits actor fuel state program).halt = .returned returned.result := by
+    rw [runExact]
+  obtain ⟨pairs, _path, traceExact, _actors, tableAnswers⟩ :=
+    run_machine_returned_has_exact_query_path
+      (controllerFromProjectedFreshAnswers state.history
+        (returned.freshQueries.map Prod.snd))
+      limits actor fuel state program returned.result returnedHalt
+  have finalOracleExact :
+      (runMachine
+        (controllerFromProjectedFreshAnswers state.history
+          (returned.freshQueries.map Prod.snd))
+        limits actor fuel state program).oracle = returned.finalState := by
+    rw [runExact]
+  rw [finalOracleExact] at traceExact tableAnswers
+  have pairMember : (record.input, record.output) ∈ pairs := by
+    rw [← traceExact]
+    exact List.mem_map.mpr ⟨record, recordMember, rfl⟩
+  have found := tableAnswers (record.input, record.output) pairMember
+  simpa only [fixed_table_lookup_eq_lookup_entry_output] using found
+
+theorem table_find_append_preserves_some
+    (table suffix : List AspisK1.V7FsAokExperiment.TableEntry)
+    (input : ShaInput) (entry : AspisK1.V7FsAokExperiment.TableEntry)
+    (found : table.find? (fun candidate => candidate.input = input) =
+      some entry) :
+    (table ++ suffix).find? (fun candidate => candidate.input = input) =
+      some entry := by
+  induction table with
+  | nil => simp at found
+  | cons head tail ih =>
+      by_cases hit : head.input = input
+      · simpa [hit] using found
+      · have tailFound :
+            tail.find? (fun candidate => candidate.input = input) =
+              some entry := by
+          simpa [hit] using found
+        simpa [hit] using ih tailFound
+
+theorem lookupEntry_preserved_by_table_extension
+    (before after : OracleState)
+    (suffix : List AspisK1.V7FsAokExperiment.TableEntry)
+    (extension : after.table = before.table ++ suffix)
+    (input : ShaInput) (entry : AspisK1.V7FsAokExperiment.TableEntry)
+    (found : lookupEntry before input = some entry) :
+    lookupEntry after input = some entry := by
+  unfold lookupEntry at found ⊢
+  rw [extension]
+  exact table_find_append_preserves_some before.table suffix input entry found
+
+theorem completed_root_truncate_views_agree_on_prover_history
+    {HiddenTape TapeIdentity Observation Statement Payload Final : Type}
+    (machine : UniformRawVerifierMachine HiddenTape TapeIdentity Observation
+      Statement Tag73K12ParsedProof Payload)
+    (hidden : HiddenTape) (available : List Digest256)
+    (runtime : SchedulerNativePlainRomRootRuntime TapeIdentity Statement
+      Tag73K12ParsedProof Payload)
+    (prefixes : FullResultRootProjectedPrefixes (Final := Final) machine hidden
+      available runtime) :
+    ∀ rawInput ∈ prefixes.adversary.finalState.history.map
+        (fun record : QueryRecord =>
+          runtimeInputToRawHashInput record.input),
+      truncateAtOracleState prefixes.adversary.finalState rawInput =
+        truncateAtOracleState prefixes.verifier.finalState rawInput := by
+  obtain ⟨suffix, tableExtension⟩ :=
+    projected_machine_prefix_table_extension machine.verifierLimits .verifier
+      machine.verifierFuel prefixes.adversary.finalState
+      (schedulerStageProgram
+        Final
+        (totalizeOracleMachine machine.verifierFuel
+          (initialRawFutureFreeProgram machine.environment
+            prefixes.adversaryValue.rawMessages machine.driverFuel)))
+      prefixes.adversary.remaining prefixes.verifier
+  intro rawInput rawMember
+  obtain ⟨record, recordMember, rfl⟩ := List.mem_map.mp rawMember
+  have segmentMember : record ∈
+      historySince emptyOracle prefixes.adversary.finalState := by
+    simpa [historySince, emptyOracle] using recordMember
+  have retained := projected_machine_prefix_lookup_retains_segment_answer
+    machine.adversaryLimits .adversary machine.adversaryFuel emptyOracle
+    (schedulerStageProgram
+      Final
+      (totalizeOracleMachine machine.adversaryFuel
+        (machine.blackBox.start hidden machine.observation)))
+    available prefixes.adversary record segmentMember
+  cases beforeLookup : lookupEntry prefixes.adversary.finalState record.input with
+  | none => simp [beforeLookup] at retained
+  | some entry =>
+      have afterLookup := lookupEntry_preserved_by_table_extension
+        prefixes.adversary.finalState prefixes.verifier.finalState suffix
+        tableExtension record.input entry beforeLookup
+      simp [truncateAtOracleState, rawHashInputToRuntimeInput_roundtrip,
+        beforeLookup, afterLookup]
+
+/-- The operational tree's prefix-measurable target set is exactly the target
+set appearing in the fixed K1.2 classifier, despite the latter being written
+using the verifier-final total hash view. -/
+theorem exact_k12_prefix_targets_from_completed_root
+    {HiddenTape TapeIdentity Observation Statement Payload Result : Type}
+    {parameters : ExactCompilerResourceParameters}
+    {transitionFuel : Nat}
+    {configuration : ExactPlainRomConfiguration HiddenTape TapeIdentity
+      Observation Statement Tag73K12ParsedProof Payload Result parameters}
+    {projection : AcceptedTapeProjection Statement Tag73K12ParsedProof Payload}
+    {fixedInstance : PublicInstance Statement}
+    {sample : ExactCompilerSample HiddenTape parameters}
+    (input : ExactK12OperationalInput transitionFuel configuration projection
+      fixedInstance sample) (tail : List Digest256) :
+    let prefixes := input.package.root.full.projection.rootPrefixes
+    k12PrefixTargetsFromAnswers configuration.machine sample.1
+        (prefixes.adversary.freshQueries.map Prod.snd ++ tail) =
+      prefixResolutionTargetSet (exactK12Truncate input)
+        (exactK12ProverPrefixQueries input) (exactK12Roots input)
+        (exactK12Openings input) := by
+  let prefixes := input.package.root.full.projection.rootPrefixes
+  have runtimeProjectionExact :
+      exactK12Runtime input =
+        operationalRootRuntime
+          (configuration.machine.tapeIdentity sample.1)
+          prefixes.adversaryValue prefixes.adversary.finalState
+          prefixes.verifier.finalState prefixes.verifierFinalStateValue := by
+    simpa [exactK12Runtime, prefixes] using prefixes.runtimeExact
+  have truncateExact :
+      exactK12Truncate input =
+        truncateAtOracleState prefixes.verifier.finalState := by
+    funext rawInput
+    unfold exactK12Truncate truncateAtOracleState
+    rw [runtimeProjectionExact]
+    rfl
+  calc
+    k12PrefixTargetsFromAnswers configuration.machine sample.1
+        (prefixes.adversary.freshQueries.map Prod.snd ++ tail) =
+      prefixResolutionTargetSet
+        (truncateAtOracleState prefixes.adversary.finalState)
+        (prefixes.adversary.finalState.history.map
+          (fun record : QueryRecord =>
+            runtimeInputToRawHashInput record.input))
+        (rootsOfReturnedValue prefixes.adversaryValue)
+        (openingsOfReturnedValue prefixes.adversaryValue) :=
+      k12_prefix_targets_stable_after_completed_prover
+        configuration.machine sample.1 _
+        input.package.root.fixedRoot.base.runtime prefixes tail
+    _ = prefixResolutionTargetSet
+        (truncateAtOracleState prefixes.verifier.finalState)
+        (prefixes.adversary.finalState.history.map
+          (fun record : QueryRecord =>
+            runtimeInputToRawHashInput record.input))
+        (rootsOfReturnedValue prefixes.adversaryValue)
+        (openingsOfReturnedValue prefixes.adversaryValue) :=
+      prefixResolutionTargetSet_eq_of_agree_on_log _ _ _
+        (completed_root_truncate_views_agree_on_prover_history
+          configuration.machine sample.1 _
+          input.package.root.fixedRoot.base.runtime prefixes)
+        _ _
+    _ = prefixResolutionTargetSet (exactK12Truncate input)
+        (exactK12ProverPrefixQueries input) (exactK12Roots input)
+        (exactK12Openings input) := by
+      rw [truncateExact]
+      simp [exactK12ProverPrefixQueries, exactK12Roots,
+        exactK12Openings, rootsOfReturnedValue,
+        openingsOfReturnedValue, runtimeProjectionExact,
+        operationalRootRuntime]
 
 def schedulerNativeRequestActor?
     {globalOracleCalls : Nat} {Result : Type} :
@@ -426,6 +651,11 @@ theorem exact_k12_budgeted_scheduler_tree_probability_le_deployed_cap
 #print axioms projected_fresh_returned_trace_run_machine_append_exact
 #print axioms k12_prover_run_from_completed_prefix_append_exact
 #print axioms k12_prefix_targets_stable_after_completed_prover
+#print axioms projected_machine_prefix_table_extension
+#print axioms projected_machine_prefix_lookup_retains_segment_answer
+#print axioms lookupEntry_preserved_by_table_extension
+#print axioms completed_root_truncate_views_agree_on_prover_history
+#print axioms exact_k12_prefix_targets_from_completed_root
 #print axioms exact_k12_budgeted_scheduler_tree_probability_le_exact_count
 #print axioms exact_k12_budgeted_scheduler_tree_probability_le_deployed_cap
 
