@@ -61,13 +61,16 @@ fn require_nonzero_distinct(
     program_id: Pubkey,
     accounts: &[Pubkey],
 ) -> Result<(), RegistryTransactionBuilderErrorV1> {
-    if program_id == Pubkey::default() {
+    if program_id == Pubkey::default() || program_id == system_program::id() {
         return Err(RegistryTransactionBuilderErrorV1::UnpinnedProgramId);
     }
     if accounts.iter().any(|key| *key == Pubkey::default()) {
         return Err(RegistryTransactionBuilderErrorV1::ZeroAccount);
     }
-    if accounts.iter().any(|key| *key == program_id) {
+    if accounts
+        .iter()
+        .any(|key| *key == program_id || *key == system_program::id())
+    {
         return Err(RegistryTransactionBuilderErrorV1::AccountAlias);
     }
     let mut unique = BTreeSet::new();
@@ -537,6 +540,19 @@ mod tests {
             )
             .unwrap_err(),
             RegistryTransactionBuilderErrorV1::ZeroActivationDelay
+        );
+        let mut system_authority = route();
+        system_authority.authority = system_program::id();
+        assert_eq!(
+            build_initialize_registry_instruction_v1(
+                registry_program,
+                pool,
+                [9u8; 32],
+                64,
+                system_authority,
+            )
+            .unwrap_err(),
+            RegistryTransactionBuilderErrorV1::ZeroAccount
         );
         assert_eq!(
             build_schedule_registry_profile_instruction_v1(
