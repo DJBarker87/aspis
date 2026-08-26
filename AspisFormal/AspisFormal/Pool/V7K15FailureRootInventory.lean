@@ -1,6 +1,8 @@
 import AspisFormal.Pool.V7K15FailureProbabilityComposition
 import AspisFormal.Pool.V7DeployedCopyLogUpCollisionBounds
 import AspisFormal.Pool.V7PointClaimBatchBinding
+import AspisFormal.Pool.V7FixedTupleSemanticSecurity
+import AspisFormal.Pool.V7FixedC1CopyCollisionSecurity
 
 /-!
 # Exact algebraic-root inventory for the V7 K1.5 ledger
@@ -11,11 +13,12 @@ one overlap-sensitive refinement: after the earlier active-pole branch has
 been excluded, a `CopyChiCollision` occupies at most 365 further `chi`
 values, not the coarse 731-value pole-plus-Wronskian set.
 
-The resulting numerator is 4078.  This is a root inventory, not yet a
-probability theorem: the later state-restoration layer must prove that each
-bad set is fixed at the corresponding Tag-73 challenge prefix.  In
-particular, the selected width-29 component tuple may have been chosen after
-`gamma`, so no pre-challenge consistency is hidden here.
+The local single-trace numerator is 4078.  It is not the final probability
+numerator because the coherent trace is selected after several challenges.
+The fixed width-29 and C1 tuple-list theorems repair that timing honestly:
+candidate-dependent pre-gamma branches are unioned over at most 100 fixed
+candidates, giving the conservative causal numerator 396430.  The remaining
+source/ROM comparison is still an explicit production connection.
 -/
 
 set_option autoImplicit false
@@ -76,6 +79,41 @@ theorem pointCompatibleK14_root_inventory_le_two_pow_neg_112 :
     (3994 : ℝ) /
         ((Fintype.card QM31Exact : ℝ) - 1) ≤
       (1 : ℝ) / 2 ^ 112 := by
+  rw [qm31Exact_card]
+  norm_num [P]
+
+/-! ## Corrected causal fixed-family ledger -/
+
+/-- Root inventory after applying the fixed-family factor exactly where a
+later-selected trace affects an earlier challenge.  The four semantic stages
+use the fixed width-29 list; the three copy stages use the C1-only list fixed
+before lambda and chi.  Independent and post-gamma branches are not
+multiplied. -/
+def fixedFamilyCausalRootCap : FailureKind → Nat
+  | .tenRoundRepair => 100 * (10 * 27)
+  | .helperCancellation => 100
+  | .zerocheckEvaluation => 100 * 10
+  | .thetaLane => 100 * 24
+  | .muZero => 1
+  | .inactiveChi => 1
+  | .activePole => 100 * 366
+  | .copyChi => 100 * 365
+  | .tupleCompression => 100 * 2928
+  | .oodMix => 2
+  | .relationAlpha => 4 * 6
+  | .kappaPointRow => 2
+  | .gammaPointLane => 0
+
+theorem fixedFamilyCausalRootCap_sum_eq_396430 :
+    (orderedFailureKinds.map fixedFamilyCausalRootCap).sum = 396430 := by
+  decide
+
+/-- Even with the full causal list factor, the K1.5 algebraic inventory is
+below `2^-105` before work normalization. -/
+theorem fixedFamilyCausal_root_inventory_le_two_pow_neg_105 :
+    (396430 : ℝ) /
+        ((Fintype.card QM31Exact : ℝ) - 1) ≤
+      (1 : ℝ) / 2 ^ 105 := by
   rw [qm31Exact_card]
   norm_num [P]
 
@@ -192,6 +230,8 @@ theorem canonical_tupleCompression_branch_card_le_2928
 #print axioms effectiveRootCap_sum_eq_4078
 #print axioms pointCompatibleK14RootCap_sum_eq_3994
 #print axioms pointCompatibleK14_root_inventory_le_two_pow_neg_112
+#print axioms fixedFamilyCausalRootCap_sum_eq_396430
+#print axioms fixedFamilyCausal_root_inventory_le_two_pow_neg_105
 #print axioms deployed_effective_root_inventory_le_two_pow_neg_112
 #print axioms activePole_iff_mem_copyChiPoleSet
 #print axioms copyChiCollision_mem_nonPole_of_not_activePole

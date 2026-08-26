@@ -159,6 +159,8 @@ theorem point_compatible_selected_chain_extracts_coherent_trace
       extraction.components = components ∧
       extraction.components ∈ fixedWidth29TupleList decoder
         (extractedWidth29InitialWords words) ∧
+      projectWidth29ToC1 extraction.components ∈
+        fixedC1TupleList decoder (c1Received words) ∧
       ∀ row lane, claims row lane =
         componentPointClaim extraction point row lane := by
   have supportEq := restoredWidth29Strategy_support_eq_selected decoder
@@ -201,8 +203,11 @@ theorem point_compatible_selected_chain_extracts_coherent_trace
       ((restoredWidth29Strategy decoder
         (extractedWidth29InitialWords words) response).support gamma)
       restoredLarge shared everyDecoded
-  refine ⟨extraction, combinedExact, componentsExact, ?_, ?_⟩
+  have c1Member := width29_member_projects_to_fixedC1TupleList decoder words
+    components fixedMember
+  refine ⟨extraction, combinedExact, componentsExact, ?_, ?_, ?_⟩
   · simpa only [componentsExact] using fixedMember
+  · simpa only [componentsExact] using c1Member
   intro row lane
   unfold componentPointClaim
   rw [componentsExact]
@@ -360,6 +365,8 @@ theorem accepted_restored_point_compatible_k14_extracts_coherent_trace
       extraction.combined = family.selected gamma ∧
       extraction.components ∈ fixedWidth29TupleList decoder
         (extractedWidth29InitialWords words) ∧
+      projectWidth29ToC1 extraction.components ∈
+        fixedC1TupleList decoder (c1Received words) ∧
       ∀ row lane, claims row lane =
         componentPointClaim extraction point row lane := by
   rcases certificate with ⟨components, gamma, member, valid, onCurve, shared,
@@ -380,7 +387,7 @@ theorem accepted_restored_point_compatible_k14_extracts_coherent_trace
         (extractedWidth29InitialWords words) components := by
     rw [← supportEq]
     exact shared
-  obtain ⟨extraction, combinedExact, _componentsExact, fixedMember,
+  obtain ⟨extraction, combinedExact, _componentsExact, fixedMember, c1Member,
       exactPointClaims⟩ :=
     point_compatible_selected_chain_extracts_coherent_trace decoder binding
       initialEncoderExact words point claims family.response components gamma
@@ -388,7 +395,8 @@ theorem accepted_restored_point_compatible_k14_extracts_coherent_trace
       (family.disclosedFinal gamma) (family.schedule gamma)
       (family.selected gamma) (family.responseAt gamma available)
       (family.selectedExact gamma available)
-  exact ⟨gamma, extraction, combinedExact, fixedMember, exactPointClaims⟩
+  exact ⟨gamma, extraction, combinedExact, fixedMember, c1Member,
+    exactPointClaims⟩
 
 #print axioms no_restored_point_compatible_k14_card_le
 #print axioms published_exact_of_decoder_encoder_exact

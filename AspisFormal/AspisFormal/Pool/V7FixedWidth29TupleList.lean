@@ -28,6 +28,7 @@ namespace AspisPool.V7FixedWidth29TupleList
 
 open AspisPool.AlgorithmicCircleDecoderV7
 open AspisPool.V7C1ConcreteProjectionBinding
+open AspisPool.V7ExtractedLaneWords
 open AspisPool.V7Width29ComponentExtraction
 open AspisV5ComponentCQM31TowerExact
 open AspisV5FriJohnsonListBound
@@ -163,6 +164,15 @@ theorem fixedWidth29TupleList_card_le_100
       close.2
   omega
 
+/-- Cardinality form used by the existing fixed-candidate probability
+experiments. -/
+theorem fixedWidth29TupleCandidate_card_le_100
+    (decoder : ExactDecoderInstantiation QM31Exact)
+    (lanes : Width29InitialWords QM31Exact) :
+    Fintype.card (FixedWidth29TupleCandidate decoder lanes) ≤ 100 := by
+  rw [Fintype.card_coe]
+  exact fixedWidth29TupleList_card_le_100 decoder lanes
+
 /-- A tuple with a support larger than the deployed strict threshold belongs
 to the one fixed pre-challenge family. -/
 theorem mem_fixedWidth29TupleList_of_shared_support
@@ -180,9 +190,187 @@ theorem mem_fixedWidth29TupleList_of_shared_support
   rw [mem_fixedWidth29TupleList_iff]
   exact ⟨decoded, large.trans_le (Finset.card_le_card shared)⟩
 
+/-! ## The C1-only family fixed before lambda and chi -/
+
+abbrev C1InitialWords := Fin 26 → InitialWord QM31Exact
+abbrev C1InitialMessages := Fin 26 → InitialMessage QM31Exact
+
+noncomputable def c1JointAgreementSet
+    (lanes : C1InitialWords) (components : C1InitialMessages) :
+    Finset (Fin 1048576) := by
+  classical
+  exact Finset.univ.filter fun index =>
+    ∀ column, lanes column index =
+      exactInitialEncoder (components column) index
+
+def c1ComponentCandidateSet
+    (decoder : ExactDecoderInstantiation QM31Exact)
+    (lanes : C1InitialWords) : Finset C1InitialMessages :=
+  Fintype.piFinset fun column =>
+    (decoder.initialDecode (lanes column)).toFinset
+
+noncomputable def fixedC1TupleList
+    (decoder : ExactDecoderInstantiation QM31Exact)
+    (lanes : C1InitialWords) : Finset C1InitialMessages := by
+  classical
+  exact (c1ComponentCandidateSet decoder lanes).filter fun components =>
+    AspisV6PublishedTheoremInterfaces.initialAgreementThreshold <
+      (c1JointAgreementSet lanes components).card
+
+@[simp] theorem mem_fixedC1TupleList_iff
+    (decoder : ExactDecoderInstantiation QM31Exact)
+    (lanes : C1InitialWords) (components : C1InitialMessages) :
+    components ∈ fixedC1TupleList decoder lanes ↔
+      (∀ column,
+        components column ∈ decoder.initialDecode (lanes column)) ∧
+      AspisV6PublishedTheoremInterfaces.initialAgreementThreshold <
+        (c1JointAgreementSet lanes components).card := by
+  classical
+  simp [fixedC1TupleList, c1ComponentCandidateSet]
+
+abbrev FixedC1TupleCandidate
+    (decoder : ExactDecoderInstantiation QM31Exact)
+    (lanes : C1InitialWords) :=
+  {components // components ∈ fixedC1TupleList decoder lanes}
+
+theorem distinct_c1_tuple_joint_agreement_overlap_le_1024
+    (lanes : C1InitialWords) (left right : C1InitialMessages)
+    (different : left ≠ right) :
+    ((c1JointAgreementSet lanes left) ∩
+      (c1JointAgreementSet lanes right)).card ≤ 1024 := by
+  classical
+  have columnDifferent : ∃ column, left column ≠ right column := by
+    simpa only [Function.ne_iff] using different
+  obtain ⟨column, differentAtColumn⟩ := columnDifferent
+  have subset :
+      (c1JointAgreementSet lanes left) ∩
+          (c1JointAgreementSet lanes right) ⊆
+        Finset.univ.filter fun index =>
+          exactInitialEncoder (left column) index =
+            exactInitialEncoder (right column) index := by
+    intro index member
+    have leftMember := (Finset.mem_inter.mp member).1
+    have rightMember := (Finset.mem_inter.mp member).2
+    have leftAll : ∀ c,
+        lanes c index = exactInitialEncoder (left c) index := by
+      simpa only [c1JointAgreementSet, Finset.mem_filter,
+        Finset.mem_univ, true_and] using leftMember
+    have rightAll : ∀ c,
+        lanes c index = exactInitialEncoder (right c) index := by
+      simpa only [c1JointAgreementSet, Finset.mem_filter,
+        Finset.mem_univ, true_and] using rightMember
+    exact Finset.mem_filter.mpr
+      ⟨Finset.mem_univ _,
+        (leftAll column).symm.trans (rightAll column)⟩
+  calc
+    ((c1JointAgreementSet lanes left) ∩
+        (c1JointAgreementSet lanes right)).card ≤
+        (Finset.univ.filter fun index =>
+          exactInitialEncoder (left column) index =
+            exactInitialEncoder (right column) index).card :=
+      Finset.card_le_card subset
+    _ = agreementCount (exactInitialEncoder (left column))
+          (exactInitialEncoder (right column)) := by rfl
+    _ ≤ 1024 := exactInitialEncoder_overlap_cap
+      (left column) (right column) differentAtColumn
+
+theorem fixedC1TupleList_card_le_100
+    (decoder : ExactDecoderInstantiation QM31Exact)
+    (lanes : C1InitialWords) :
+    (fixedC1TupleList decoder lanes).card ≤ 100 := by
+  classical
+  let Candidate := FixedC1TupleCandidate decoder lanes
+  let agreement : Candidate → Finset (Fin 1048576) := fun candidate =>
+    c1JointAgreementSet lanes candidate.1
+  have large : ∀ candidate : Candidate,
+      38230 ≤ (agreement candidate).card := by
+    intro candidate
+    have member := (mem_fixedC1TupleList_iff
+      decoder lanes candidate.1).mp candidate.2
+    have strict : 38229 < (c1JointAgreementSet lanes candidate.1).card := by
+      simpa [AspisV6PublishedTheoremInterfaces.initialAgreementThreshold] using
+        member.2
+    simpa [agreement] using (show 38230 ≤
+      (c1JointAgreementSet lanes candidate.1).card by omega)
+  have overlap : ∀ left right : Candidate, left ≠ right →
+      ((agreement left) ∩ (agreement right)).card ≤ 1024 := by
+    intro left right different
+    have valuesDifferent : left.1 ≠ right.1 := by
+      intro valuesEqual
+      apply different
+      exact Subtype.ext valuesEqual
+    simpa [agreement] using
+      distinct_c1_tuple_joint_agreement_overlap_le_1024
+        lanes left.1 right.1 valuesDifferent
+  have forbidden : Fintype.card Candidate < 101 :=
+    list_card_lt_of_johnson_parameters agreement
+      1048576 38230 1024 101 (by simp) large overlap
+      (by norm_num) (by norm_num) (by norm_num)
+  rw [Fintype.card_coe] at forbidden
+  omega
+
+theorem fixedC1TupleCandidate_card_le_100
+    (decoder : ExactDecoderInstantiation QM31Exact)
+    (lanes : C1InitialWords) :
+    Fintype.card (FixedC1TupleCandidate decoder lanes) ≤ 100 := by
+  rw [Fintype.card_coe]
+  exact fixedC1TupleList_card_le_100 decoder lanes
+
+/-- Restriction of a width-29 tuple to the C1 columns. -/
+def projectWidth29ToC1
+    (components : Width29InitialMessages QM31Exact) : C1InitialMessages :=
+  fun column => components (c1LaneIndex column)
+
+/-- The full joint-agreement set is contained in the C1-only set of the
+projected tuple. -/
+theorem width29_jointAgreement_subset_c1_projection
+    (words : AspisPool.V7MerkleQueryExtractor.ExtractedWords)
+    (components : Width29InitialMessages QM31Exact) :
+    width29JointAgreementSet exactInitialEncoder
+        (extractedWidth29InitialWords words) components ⊆
+      c1JointAgreementSet (c1Received words) (projectWidth29ToC1 components) := by
+  classical
+  intro index member
+  have allLanes : ∀ lane,
+      extractedWidth29InitialWords words lane index =
+        exactInitialEncoder (components lane) index := by
+    simpa only [width29JointAgreementSet, Finset.mem_filter,
+      Finset.mem_univ, true_and] using member
+  simp only [c1JointAgreementSet, Finset.mem_filter, Finset.mem_univ,
+    true_and, projectWidth29ToC1]
+  intro column
+  rw [← extractedWidth29_c1_lane]
+  exact allLanes (c1LaneIndex column)
+
+/-- Every member of the post-C2 width-29 family projects into one C1 family
+that was already fixed before lambda and chi were sampled. -/
+theorem width29_member_projects_to_fixedC1TupleList
+    (decoder : ExactDecoderInstantiation QM31Exact)
+    (words : AspisPool.V7MerkleQueryExtractor.ExtractedWords)
+    (components : Width29InitialMessages QM31Exact)
+    (member : components ∈ fixedWidth29TupleList decoder
+      (extractedWidth29InitialWords words)) :
+    projectWidth29ToC1 components ∈
+      fixedC1TupleList decoder (c1Received words) := by
+  have full := (mem_fixedWidth29TupleList_iff decoder
+    (extractedWidth29InitialWords words) components).mp member
+  rw [mem_fixedC1TupleList_iff]
+  constructor
+  · intro column
+    simpa only [projectWidth29ToC1, extractedWidth29_c1_lane] using
+      full.1 (c1LaneIndex column)
+  · exact full.2.trans_le (Finset.card_le_card
+      (width29_jointAgreement_subset_c1_projection words components))
+
 #print axioms distinct_tuple_joint_agreement_overlap_le_1024
 #print axioms jointlyCloseWidth29CandidateSet_card_le_100
 #print axioms fixedWidth29TupleList_card_le_100
+#print axioms fixedWidth29TupleCandidate_card_le_100
 #print axioms mem_fixedWidth29TupleList_of_shared_support
+#print axioms distinct_c1_tuple_joint_agreement_overlap_le_1024
+#print axioms fixedC1TupleList_card_le_100
+#print axioms fixedC1TupleCandidate_card_le_100
+#print axioms width29_jointAgreement_subset_c1_projection
+#print axioms width29_member_projects_to_fixedC1TupleList
 
 end AspisPool.V7FixedWidth29TupleList
