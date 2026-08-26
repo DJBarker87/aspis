@@ -190,35 +190,89 @@ pub struct FinalizedAppendEvidenceV1 {
 }
 
 pub struct FinalizedBlockIngestResultV1 {
-    pub advance: FinalizedBlockAdvanceV1,
-    pub rollback: Option<RollbackSummaryV1>,
+    pub(crate) advance: FinalizedBlockAdvanceV1,
+    pub(crate) rollback: Option<RollbackSummaryV1>,
     /// Stable identities in exact positional correspondence with
     /// `deposit_outcomes`. Durable note stores use this explicit pairing to
     /// commit recovered ciphertext without guessing transaction/event order.
-    pub deposit_event_ids: Vec<DepositEventIdV1>,
-    pub deposit_outcomes: Vec<DepositScanOutcomeV1>,
-    pub transition_outcomes: Vec<PublicOutputScanOutcomeV1>,
+    pub(crate) deposit_event_ids: Vec<DepositEventIdV1>,
+    pub(crate) deposit_outcomes: Vec<DepositScanOutcomeV1>,
+    pub(crate) transition_outcomes: Vec<PublicOutputScanOutcomeV1>,
     /// Owned, public evidence for atomically marking locally held inputs spent
     /// by nullifier and reconciling recipient/change delivery. Rollback uses
     /// the included output ids; no note opening or secret is retained.
-    pub transition_evidence: Vec<FinalizedTransitionEvidenceV1>,
+    pub(crate) transition_evidence: Vec<FinalizedTransitionEvidenceV1>,
     /// Successful initialization invocations, retained with their exact
     /// transaction/instruction identity for relayer finality correlation.
-    pub initializations: Vec<AuthenticatedInitializationV1>,
+    pub(crate) initializations: Vec<AuthenticatedInitializationV1>,
     /// Every successful append in exact top-level instruction/output order.
-    pub append_evidence: Vec<FinalizedAppendEvidenceV1>,
+    pub(crate) append_evidence: Vec<FinalizedAppendEvidenceV1>,
     /// Successful non-appending `ASPP` preparations in transaction order.
     /// These public addresses let callers reconcile core/shard plan creation
     /// without treating preparation as a spend or leaf append.
-    pub prepared_settlements: Vec<AuthenticatedPreparedSettlementV1>,
+    pub(crate) prepared_settlements: Vec<AuthenticatedPreparedSettlementV1>,
     /// Successful non-appending `ASPX` cancellations in transaction order.
-    pub cancelled_settlements: Vec<AuthenticatedCancelledSettlementV1>,
+    pub(crate) cancelled_settlements: Vec<AuthenticatedCancelledSettlementV1>,
     /// All `ASPP`/`ASPF`/`ASPX` lifecycle observations in exact successful
     /// top-level invocation order. Durable reconciliation must use this list,
     /// not independently sorted transaction signatures.
-    pub plan_lifecycle: Vec<FinalizedPreparedSettlementLifecycleV1>,
-    pub root_evidence: Vec<HistoricalRootEvidenceV1>,
-    pub ignored_failed_pool_transactions: usize,
+    pub(crate) plan_lifecycle: Vec<FinalizedPreparedSettlementLifecycleV1>,
+    pub(crate) root_evidence: Vec<HistoricalRootEvidenceV1>,
+    pub(crate) ignored_failed_pool_transactions: usize,
+}
+
+impl FinalizedBlockIngestResultV1 {
+    pub fn advance(&self) -> FinalizedBlockAdvanceV1 {
+        self.advance
+    }
+
+    pub fn rollback(&self) -> Option<&RollbackSummaryV1> {
+        self.rollback.as_ref()
+    }
+
+    pub fn deposit_event_ids(&self) -> &[DepositEventIdV1] {
+        &self.deposit_event_ids
+    }
+
+    pub fn deposit_outcomes(&self) -> &[DepositScanOutcomeV1] {
+        &self.deposit_outcomes
+    }
+
+    pub fn transition_outcomes(&self) -> &[PublicOutputScanOutcomeV1] {
+        &self.transition_outcomes
+    }
+
+    pub fn transition_evidence(&self) -> &[FinalizedTransitionEvidenceV1] {
+        &self.transition_evidence
+    }
+
+    pub fn initializations(&self) -> &[AuthenticatedInitializationV1] {
+        &self.initializations
+    }
+
+    pub fn append_evidence(&self) -> &[FinalizedAppendEvidenceV1] {
+        &self.append_evidence
+    }
+
+    pub fn prepared_settlements(&self) -> &[AuthenticatedPreparedSettlementV1] {
+        &self.prepared_settlements
+    }
+
+    pub fn cancelled_settlements(&self) -> &[AuthenticatedCancelledSettlementV1] {
+        &self.cancelled_settlements
+    }
+
+    pub fn plan_lifecycle(&self) -> &[FinalizedPreparedSettlementLifecycleV1] {
+        &self.plan_lifecycle
+    }
+
+    pub fn root_evidence(&self) -> &[HistoricalRootEvidenceV1] {
+        &self.root_evidence
+    }
+
+    pub fn ignored_failed_pool_transactions(&self) -> usize {
+        self.ignored_failed_pool_transactions
+    }
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
