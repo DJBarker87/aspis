@@ -755,9 +755,13 @@ mod tests {
     use aspis_statement::{
         atomic_payment_statement_digest_v4,
         pool_v1::{
-            encode_verifier_dispatch_request_v1, verifier_dispatch_binding_from_envelope_v1,
-            PoolV1AuthorizationReceiptAccountStatusV1, VerifierDispatchRequestV1,
+            encode_pool_v1_private_transfer_public_v1, encode_pool_v1_withdrawal_public_v1,
+            encode_verifier_dispatch_request_v1, v7_pool_native_tag73_proof_body_bytes,
+            verifier_dispatch_binding_from_envelope_v1, PoolV1AuthorizationReceiptAccountStatusV1,
+            PoolV1PrivateTransferPublicV1, PoolV1WithdrawalPublicV1, VerifierDispatchRequestV1,
             POOL_V1_VERIFIER_PROOF_ACCOUNT_HEADER_BYTES, POOL_V1_VERIFIER_PROOF_ACCOUNT_MAGIC,
+            V7_POOL_NATIVE_TAG73_MIN_FRONTIER_NODES, V7_POOL_NATIVE_TAG73_PROFILE_BINDING,
+            V7_POOL_NATIVE_TAG73_RELEASE_BINDING,
         },
         SpendPublic,
     };
@@ -916,6 +920,142 @@ mod tests {
                 sha256,
             )
             .unwrap()
+        }
+    }
+
+    struct NativeFixture {
+        program_id: Pubkey,
+        proof_key: Pubkey,
+        upload_authority: Pubkey,
+        pool: [u8; 32],
+        deployment_domain: [u8; 32],
+        anchor_sequence: u64,
+        anchor_root: aspis_statement::Digest,
+        nullifier: aspis_statement::Digest,
+        destination_token_account: [u8; 32],
+        proof_body: Vec<u8>,
+        unsealed_proof_data: Vec<u8>,
+    }
+
+    impl NativeFixture {
+        fn new() -> Self {
+            let program_id = crate::id();
+            let proof_key = Pubkey::new_unique();
+            let upload_authority = Pubkey::new_unique();
+            let proof_body_length =
+                v7_pool_native_tag73_proof_body_bytes(V7_POOL_NATIVE_TAG73_MIN_FRONTIER_NODES)
+                    .unwrap();
+            let proof_body: Vec<u8> = (0..proof_body_length as usize)
+                .map(|index| (index as u8).wrapping_mul(31).wrapping_add(11))
+                .collect();
+            let mut unsealed_proof_data =
+                vec![0u8; POOL_V1_VERIFIER_PROOF_ACCOUNT_HEADER_BYTES + proof_body.len()];
+            unsealed_proof_data[..4].copy_from_slice(&POOL_V1_VERIFIER_PROOF_ACCOUNT_MAGIC);
+            unsealed_proof_data[4..8].copy_from_slice(&proof_body_length.to_le_bytes());
+            unsealed_proof_data[AUTHORITY_OFFSET..AUTHORITY_OFFSET + 32]
+                .copy_from_slice(upload_authority.as_ref());
+            unsealed_proof_data[POOL_V1_VERIFIER_PROOF_ACCOUNT_HEADER_BYTES..]
+                .copy_from_slice(&proof_body);
+            Self {
+                program_id,
+                proof_key,
+                upload_authority,
+                pool: Pubkey::new_unique().to_bytes(),
+                deployment_domain: [0x54; 32],
+                anchor_sequence: 19,
+                anchor_root: digest(410),
+                nullifier: digest(510),
+                destination_token_account: Pubkey::new_unique().to_bytes(),
+                proof_body,
+                unsealed_proof_data,
+            }
+        }
+
+        fn statement_payload(&self, kind: PoolV1TransitionKind) -> Vec<u8> {
+            match kind {
+                PoolV1TransitionKind::PrivateTransfer => {
+                    encode_pool_v1_private_transfer_public_v1(&PoolV1PrivateTransferPublicV1 {
+                        pool: self.pool,
+                        deployment_domain: self.deployment_domain,
+                        anchor_sequence: self.anchor_sequence,
+                        anchor_root: self.anchor_root,
+                        nullifier: self.nullifier,
+                        asset_id: M31(23),
+                        recipient_commitment: digest(610),
+                        change_commitment: digest(710),
+                    })
+                    .unwrap()
+                    .to_vec()
+                }
+                PoolV1TransitionKind::Withdrawal => {
+                    encode_pool_v1_withdrawal_public_v1(&PoolV1WithdrawalPublicV1 {
+                        pool: self.pool,
+                        deployment_domain: self.deployment_domain,
+                        anchor_sequence: self.anchor_sequence,
+                        anchor_root: self.anchor_root,
+                        nullifier: self.nullifier,
+                        asset_id: M31(23),
+                        amount: 9,
+                        destination_token_account: self.destination_token_account,
+                        change_commitment: digest(710),
+                    })
+                    .unwrap()
+                    .to_vec()
+                }
+            }
+        }
+
+        fn request_with_bindings(
+            &self,
+            kind: PoolV1TransitionKind,
+            profile_binding: [u8; 32],
+            release_binding: [u8; 32],
+        ) -> Vec<u8> {
+            let statement = self.statement_payload(kind);
+            let envelope = HistoricalAnchorEnvelopeV1 {
+                transition_kind: kind,
+                pool: self.pool,
+                deployment_domain: self.deployment_domain,
+                anchor_sequence: self.anchor_sequence,
+                anchor_root: self.anchor_root,
+                nullifier: self.nullifier,
+                verifier_profile: profile_binding,
+                verifier_release: release_binding,
+            };
+            let binding = verifier_dispatch_binding_from_envelope_v1(
+                self.program_id.to_bytes(),
+                &envelope,
+                &statement,
+                self.proof_key.to_bytes(),
+                verifier_proof_body_digest_v1(&self.proof_body, sha256),
+                self.proof_body.len() as u32,
+                sha256,
+            )
+            .unwrap();
+            encode_verifier_dispatch_request_v1(
+                &VerifierDispatchRequestV1 {
+                    binding,
+                    statement_payload: &statement,
+                },
+                sha256,
+            )
+            .unwrap()
+        }
+
+        fn request(&self, kind: PoolV1TransitionKind) -> Vec<u8> {
+            self.request_with_bindings(
+                kind,
+                V7_POOL_NATIVE_TAG73_PROFILE_BINDING,
+                V7_POOL_NATIVE_TAG73_RELEASE_BINDING,
+            )
+        }
+
+        fn receipt_address_and_inputs(
+            &self,
+            request: &[u8],
+        ) -> (Pubkey, PoolV1AuthorizationReceiptPdaInputsV1) {
+            let request = decode_verifier_dispatch_request_v1(request, sha256).unwrap();
+            canonical_receipt_pda_for_binding(&self.program_id, &request, sha256).unwrap()
         }
     }
 
@@ -1125,6 +1265,232 @@ mod tests {
         assert_eq!(calls, 1);
         assert!(captured.is_some());
         assert_eq!(proof_data, before);
+    }
+
+    fn initialize_native_receipt(
+        fixture: &NativeFixture,
+        request: &[u8],
+    ) -> [u8; POOL_V1_AUTHORIZATION_RECEIPT_ACCOUNT_BYTES] {
+        assert_eq!(request.len(), V7_POOL_NATIVE_TAG73_REQUEST_BYTES);
+        let system_id = system_program::id();
+        let native_loader = NATIVE_LOADER_ID;
+        let (receipt_key, expected_inputs) = fixture.receipt_address_and_inputs(request);
+        let mut proof_data = fixture.unsealed_proof_data.clone();
+        let proof_before = proof_data.clone();
+        let mut proof_lamports = 1;
+        let mut receipt_lamports = 0;
+        let mut authority_lamports = 50_000;
+        let mut system_lamports = 1;
+        let mut receipt_data = [];
+        let mut authority_data = [];
+        let mut system_data = [];
+        let proof = AccountInfo::new(
+            &fixture.proof_key,
+            false,
+            false,
+            &mut proof_lamports,
+            &mut proof_data,
+            &fixture.program_id,
+            false,
+            Epoch::default(),
+        );
+        let receipt = AccountInfo::new(
+            &receipt_key,
+            false,
+            true,
+            &mut receipt_lamports,
+            &mut receipt_data,
+            &system_id,
+            false,
+            Epoch::default(),
+        );
+        let authority = AccountInfo::new(
+            &fixture.upload_authority,
+            true,
+            true,
+            &mut authority_lamports,
+            &mut authority_data,
+            &system_id,
+            false,
+            Epoch::default(),
+        );
+        let system = AccountInfo::new(
+            &system_id,
+            false,
+            false,
+            &mut system_lamports,
+            &mut system_data,
+            &native_loader,
+            true,
+            Epoch::default(),
+        );
+        let captured = RefCell::new(None);
+        let result = process_v7_pool_receipt_initialize_with_runtime(
+            &fixture.program_id,
+            &[proof, receipt, authority, system],
+            request,
+            sha256,
+            |_| Ok(5_000),
+            |program_id, receipt, authority, system, inputs, plan, pending| {
+                assert_eq!(program_id, &fixture.program_id);
+                assert_eq!(receipt.key, &receipt_key);
+                assert_eq!(authority.key, &fixture.upload_authority);
+                assert_eq!(system.key, &system_id);
+                assert_eq!(inputs, &expected_inputs);
+                assert_eq!(
+                    plan,
+                    ReceiptAccountPreparationV1::Create {
+                        required_lamports: 5_000,
+                    },
+                );
+                captured.replace(Some(*pending));
+                Ok(())
+            },
+        );
+        assert_eq!(result, Ok(()));
+        assert_eq!(proof_data, proof_before);
+        captured.into_inner().unwrap()
+    }
+
+    fn finalize_native_receipt(
+        fixture: &NativeFixture,
+        receipt_key: Pubkey,
+        pending: [u8; POOL_V1_AUTHORIZATION_RECEIPT_ACCOUNT_BYTES],
+        request: &[u8],
+        verified_slot: u64,
+    ) -> (
+        ProgramResult,
+        [u8; POOL_V1_AUTHORIZATION_RECEIPT_ACCOUNT_BYTES],
+        usize,
+    ) {
+        let mut proof_data = fixture.unsealed_proof_data.clone();
+        proof_data[AUTHORITY_OFFSET..AUTHORITY_OFFSET + 32].fill(0);
+        let mut receipt_data = pending;
+        let mut proof_lamports = 1;
+        let mut receipt_lamports = 5_000;
+        let proof = AccountInfo::new(
+            &fixture.proof_key,
+            false,
+            false,
+            &mut proof_lamports,
+            &mut proof_data,
+            &fixture.program_id,
+            false,
+            Epoch::default(),
+        );
+        let receipt = AccountInfo::new(
+            &receipt_key,
+            false,
+            true,
+            &mut receipt_lamports,
+            &mut receipt_data,
+            &fixture.program_id,
+            false,
+            Epoch::default(),
+        );
+        let verify_calls = Cell::new(0);
+        let result = process_v7_pool_receipt_finalize_with_runtime(
+            &fixture.program_id,
+            &[proof, receipt],
+            request,
+            sha256,
+            |program_id, accounts, instruction_data, hash| {
+                verify_calls.set(verify_calls.get() + 1);
+                let [proof] = accounts else {
+                    return Err(ProgramError::InvalidArgument);
+                };
+                assert!(proof_account_finalized(&proof.try_borrow_data()?));
+                let validated = validate_v7_pool_native_tag73_request_v1(
+                    program_id,
+                    proof,
+                    instruction_data,
+                    hash,
+                )?;
+                Ok(validated.request.binding)
+            },
+            || Ok(verified_slot),
+        );
+        (result, receipt_data, verify_calls.get())
+    }
+
+    #[test]
+    fn native_receipt_tag74_seal_tag75_lifecycle_accepts_ascp_and_aswp() {
+        for (index, kind) in [
+            PoolV1TransitionKind::PrivateTransfer,
+            PoolV1TransitionKind::Withdrawal,
+        ]
+        .into_iter()
+        .enumerate()
+        {
+            let fixture = NativeFixture::new();
+            let request = fixture.request(kind);
+            let (receipt_key, _) = fixture.receipt_address_and_inputs(&request);
+            let pending = initialize_native_receipt(&fixture, &request);
+            let decoded_pending =
+                decode_pool_v1_authorization_receipt_account_v1(&pending, sha256).unwrap();
+            assert_eq!(
+                decoded_pending.status,
+                PoolV1AuthorizationReceiptAccountStatusV1::Pending,
+            );
+            let slot = 12_000 + index as u64;
+            let (result, finalized, verify_calls) =
+                finalize_native_receipt(&fixture, receipt_key, pending, &request, slot);
+            assert_eq!(result, Ok(()));
+            assert_eq!(verify_calls, 1);
+            let decoded =
+                decode_pool_v1_authorization_receipt_account_v1(&finalized, sha256).unwrap();
+            assert_eq!(
+                decoded.status,
+                PoolV1AuthorizationReceiptAccountStatusV1::Verified,
+            );
+            assert_eq!(decoded.verified_slot, slot);
+            assert_eq!(
+                decoded.receipt.unwrap().binding,
+                decode_verifier_dispatch_request_v1(&request, sha256)
+                    .unwrap()
+                    .binding,
+            );
+        }
+    }
+
+    #[test]
+    fn native_receipt_tag75_cross_kind_profile_release_and_length_fail_byte_exact() {
+        for kind in [
+            PoolV1TransitionKind::PrivateTransfer,
+            PoolV1TransitionKind::Withdrawal,
+        ] {
+            let fixture = NativeFixture::new();
+            let request = fixture.request(kind);
+            let (receipt_key, _) = fixture.receipt_address_and_inputs(&request);
+            let pending = initialize_native_receipt(&fixture, &request);
+            let other_kind = match kind {
+                PoolV1TransitionKind::PrivateTransfer => PoolV1TransitionKind::Withdrawal,
+                PoolV1TransitionKind::Withdrawal => PoolV1TransitionKind::PrivateTransfer,
+            };
+            let mut short_request = request.clone();
+            short_request.pop();
+            let rejected_requests = [
+                fixture.request(other_kind),
+                fixture.request_with_bindings(
+                    kind,
+                    [0x91; 32],
+                    V7_POOL_NATIVE_TAG73_RELEASE_BINDING,
+                ),
+                fixture.request_with_bindings(
+                    kind,
+                    V7_POOL_NATIVE_TAG73_PROFILE_BINDING,
+                    [0x92; 32],
+                ),
+                short_request,
+            ];
+            for rejected in rejected_requests {
+                let (result, after, verify_calls) =
+                    finalize_native_receipt(&fixture, receipt_key, pending, &rejected, 12_100);
+                assert!(result.is_err());
+                assert_eq!(verify_calls, 0);
+                assert_eq!(after, pending);
+            }
+        }
     }
 
     #[test]

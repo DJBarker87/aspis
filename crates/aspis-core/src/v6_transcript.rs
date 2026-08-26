@@ -302,6 +302,11 @@ fn begin_v7_compact_transcript_with_hiding_context(
     wire: &V7CompactOneFoldWire<'_>,
     hiding_context: StateOnlyHidingContext,
 ) -> Result<(Transcript, QM31, QM31, PaymentConstraintChallenges), V6TranscriptError> {
+    if hiding_context.statement_digest != context.statement_digest
+        || hiding_context.mask_nonce != context.attempt_id
+    {
+        return Err(V6TranscriptError::HidingContext);
+    }
     let mut transcript = Transcript::new(hash);
     transcript.absorb(label::PROFILE, &V7_COMPACT_PROFILE_BINDING);
     transcript.absorb(label::M31_CIRCLE_BASIS, M31_CIRCLE_BASIS_DISCRIMINATOR);
@@ -1364,6 +1369,20 @@ mod tests {
             transfer.transcript_state_after_queries,
             withdrawal.transcript_state_after_queries,
         );
+    }
+
+    #[test]
+    fn typed_v7_hiding_context_rejects_outer_statement_and_attempt_mismatches() {
+        let context = context();
+        for hiding_context in [
+            StateOnlyHidingContext::pool_v1_private_transfer([0x55; 32], context.attempt_id),
+            StateOnlyHidingContext::pool_v1_private_transfer(context.statement_digest, [0x66; 32]),
+        ] {
+            assert_eq!(
+                expected_v7_frontier_with_hiding_context(hiding_context),
+                Err(V6TranscriptError::HidingContext),
+            );
+        }
     }
 
     #[test]
