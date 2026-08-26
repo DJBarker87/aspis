@@ -147,10 +147,47 @@ pub enum OperatorStartupErrorV1 {
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct OperatorStartupReceiptV1 {
-    pub manifest_digest: [u8; 32],
-    pub provider_set_digest: [u8; 32],
-    pub checkpoint: FinalizedReleaseCheckpointV1,
-    pub receipt_digest: [u8; 32],
+    manifest_digest: [u8; 32],
+    provider_set_digest: [u8; 32],
+    checkpoint: FinalizedReleaseCheckpointV1,
+    receipt_digest: [u8; 32],
+}
+
+impl OperatorStartupReceiptV1 {
+    pub fn manifest_digest(&self) -> &[u8; 32] {
+        &self.manifest_digest
+    }
+
+    pub fn provider_set_digest(&self) -> &[u8; 32] {
+        &self.provider_set_digest
+    }
+
+    pub fn checkpoint(&self) -> FinalizedReleaseCheckpointV1 {
+        self.checkpoint
+    }
+
+    pub fn receipt_digest(&self) -> &[u8; 32] {
+        &self.receipt_digest
+    }
+
+    #[cfg(test)]
+    pub(crate) fn test_only_v1(
+        manifest_digest: [u8; 32],
+        provider_set_digest: [u8; 32],
+        checkpoint: FinalizedReleaseCheckpointV1,
+    ) -> Self {
+        let mut hasher = Sha256::new();
+        hasher.update(OPERATOR_STARTUP_RECEIPT_DOMAIN_V1);
+        hasher.update(manifest_digest);
+        hasher.update(provider_set_digest);
+        hash_checkpoint_v1(&mut hasher, checkpoint);
+        Self {
+            manifest_digest,
+            provider_set_digest,
+            checkpoint,
+            receipt_digest: hasher.finalize().into(),
+        }
+    }
 }
 
 pub fn operator_release_manifest_digest_v1(
@@ -568,7 +605,7 @@ mod tests {
         )
         .unwrap();
         assert_eq!(
-            receipt.manifest_digest,
+            *receipt.manifest_digest(),
             operator_release_manifest_digest_v1(&manifest).unwrap()
         );
 
