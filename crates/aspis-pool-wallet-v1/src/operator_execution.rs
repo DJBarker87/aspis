@@ -283,6 +283,7 @@ pub trait RelayerExecutionPortV1 {
         &mut self,
         transaction_signature: [u8; 64],
         signed_wire: &[u8],
+        simulation: RelayerSimulationEvidenceV1,
         startup: &OperatorStartupReceiptV1,
     ) -> Result<RelayerSubmissionEvidenceV1, Self::Error>;
 }
@@ -533,6 +534,7 @@ pub fn advance_relayer_execution_v1<R: RelayerExecutionPortV1>(
                 .submit_exact_signed_wire_v1(
                     signed.transaction_signature,
                     &signed.signed_wire,
+                    record.simulation,
                     startup,
                 )
                 .map_err(RelayerOperatorExecutionErrorV1::Runtime)?;
@@ -786,6 +788,7 @@ mod tests {
             &mut self,
             _transaction_signature: [u8; 64],
             signed_wire: &[u8],
+            _simulation: RelayerSimulationEvidenceV1,
             _startup: &OperatorStartupReceiptV1,
         ) -> Result<RelayerSubmissionEvidenceV1, Self::Error> {
             self.submitted_wires.push(signed_wire.to_vec());
