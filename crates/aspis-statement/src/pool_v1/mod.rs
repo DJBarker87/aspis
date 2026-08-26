@@ -20,6 +20,7 @@ pub mod payment_relation;
 pub mod payment_semantic_oracle;
 #[cfg(not(target_os = "solana"))]
 pub mod payment_semantic_registry;
+pub mod payment_semantic_terminal;
 #[cfg(not(target_os = "solana"))]
 pub mod payment_trace;
 pub mod root_history;
@@ -28,13 +29,12 @@ pub mod verifier_registry;
 
 pub use authorization_receipt::{
     decode_pool_v1_authorization_receipt_v1, encode_pool_v1_authorization_receipt_v1,
-    validate_pool_v1_authorization_receipt_for_settlement_v1,
-    PoolV1AuthorizationReceiptError, PoolV1AuthorizationReceiptV1,
-    POOL_V1_AUTHORIZATION_RECEIPT_BYTES, POOL_V1_AUTHORIZATION_RECEIPT_DIGEST_BYTES,
-    POOL_V1_AUTHORIZATION_RECEIPT_DIGEST_DOMAIN, POOL_V1_AUTHORIZATION_RECEIPT_HASH_SHA256,
-    POOL_V1_AUTHORIZATION_RECEIPT_MAGIC, POOL_V1_AUTHORIZATION_RECEIPT_PREFIX_BYTES,
-    POOL_V1_AUTHORIZATION_RECEIPT_SEED, POOL_V1_AUTHORIZATION_RECEIPT_STATUS_VERIFIED,
-    POOL_V1_AUTHORIZATION_RECEIPT_VERSION,
+    validate_pool_v1_authorization_receipt_for_settlement_v1, PoolV1AuthorizationReceiptError,
+    PoolV1AuthorizationReceiptV1, POOL_V1_AUTHORIZATION_RECEIPT_BYTES,
+    POOL_V1_AUTHORIZATION_RECEIPT_DIGEST_BYTES, POOL_V1_AUTHORIZATION_RECEIPT_DIGEST_DOMAIN,
+    POOL_V1_AUTHORIZATION_RECEIPT_HASH_SHA256, POOL_V1_AUTHORIZATION_RECEIPT_MAGIC,
+    POOL_V1_AUTHORIZATION_RECEIPT_PREFIX_BYTES, POOL_V1_AUTHORIZATION_RECEIPT_SEED,
+    POOL_V1_AUTHORIZATION_RECEIPT_STATUS_VERIFIED, POOL_V1_AUTHORIZATION_RECEIPT_VERSION,
 };
 pub use authorization_receipt_account::{
     authorize_close_pool_v1_authorization_receipt_account_v1,
@@ -98,16 +98,13 @@ pub use nullifier_marker::{
 #[cfg(not(target_os = "solana"))]
 pub use payment_constraint_residuals::{
     evaluate_pool_v1_private_transfer_constraint_residuals_v1,
-    evaluate_pool_v1_withdrawal_constraint_residuals_v1,
-    PoolV1PaymentConstraintResidualErrorV1, PoolV1PaymentConstraintResidualsV1,
-    PoolV1PaymentResidualClassV1, POOL_V1_PAYMENT_AFFINE_INTRINSIC_DEGREE,
-    POOL_V1_PAYMENT_BOOLEAN_INTRINSIC_DEGREE, POOL_V1_PAYMENT_MAX_INTRINSIC_DEGREE,
-    POOL_V1_PAYMENT_PATH_ORDERING_INTRINSIC_DEGREE,
+    evaluate_pool_v1_withdrawal_constraint_residuals_v1, PoolV1PaymentConstraintResidualErrorV1,
+    PoolV1PaymentConstraintResidualsV1, PoolV1PaymentResidualClassV1,
+    POOL_V1_PAYMENT_AFFINE_INTRINSIC_DEGREE, POOL_V1_PAYMENT_BOOLEAN_INTRINSIC_DEGREE,
+    POOL_V1_PAYMENT_MAX_INTRINSIC_DEGREE, POOL_V1_PAYMENT_PATH_ORDERING_INTRINSIC_DEGREE,
     POOL_V1_PAYMENT_PATH_ORDERING_RESIDUAL_COUNT, POOL_V1_PAYMENT_POSEIDON_RESIDUAL_COUNT,
-    POOL_V1_PAYMENT_POSEIDON_SBOX_DEGREE,
-    POOL_V1_PAYMENT_SELECTED_ORACLE_INDIVIDUAL_DEGREE,
-    POOL_V1_PAYMENT_TWO_ROUND_INTRINSIC_DEGREE,
-    POOL_V1_PAYMENT_VALUE_BOOLEAN_RESIDUAL_COUNT,
+    POOL_V1_PAYMENT_POSEIDON_SBOX_DEGREE, POOL_V1_PAYMENT_SELECTED_ORACLE_INDIVIDUAL_DEGREE,
+    POOL_V1_PAYMENT_TWO_ROUND_INTRINSIC_DEGREE, POOL_V1_PAYMENT_VALUE_BOOLEAN_RESIDUAL_COUNT,
     POOL_V1_PAYMENT_ZEROCHECK_INDIVIDUAL_DEGREE,
 };
 pub use payment_relation::{
@@ -123,6 +120,32 @@ pub use payment_relation::{
     PoolV1WithdrawalWitnessV1, POOL_V1_CANONICAL_FEE, POOL_V1_PAYMENT_STATEMENT_BYTES,
     POOL_V1_PAYMENT_STATEMENT_VERSION, POOL_V1_PRIVATE_TRANSFER_STATEMENT_MAGIC,
     POOL_V1_WITHDRAWAL_STATEMENT_MAGIC,
+};
+pub use payment_semantic_terminal::{
+    evaluate_pool_v1_private_transfer_selected_constraint_composition_compiled_v1,
+    evaluate_pool_v1_private_transfer_selected_masked_terminal_compiled_tag73_v1,
+    evaluate_pool_v1_private_transfer_selected_unmasked_terminal_compiled_tag73_v1,
+    evaluate_pool_v1_withdrawal_selected_constraint_composition_compiled_v1,
+    evaluate_pool_v1_withdrawal_selected_masked_terminal_compiled_tag73_v1,
+    evaluate_pool_v1_withdrawal_selected_unmasked_terminal_compiled_tag73_v1,
+    pool_v1_private_transfer_copy_active_at_point_compiled_v1,
+    pool_v1_private_transfer_copy_active_row_masks_compiled_v1,
+    pool_v1_withdrawal_copy_active_at_point_compiled_v1,
+    pool_v1_withdrawal_copy_active_row_masks_compiled_v1, PoolV1PaymentSemanticTerminalErrorV1,
+    PINNED_POOL_V1_PAYMENT_AUXILIARY_LAYOUT_FINGERPRINT_V1,
+    PINNED_POOL_V1_PRIVATE_TRANSFER_COPY_ACTIVE_ROWS_FINGERPRINT_V1,
+    PINNED_POOL_V1_PRIVATE_TRANSFER_SEMANTIC_REGISTRY_FINGERPRINT_V1,
+    PINNED_POOL_V1_WITHDRAWAL_COPY_ACTIVE_ROWS_FINGERPRINT_V1,
+    PINNED_POOL_V1_WITHDRAWAL_SEMANTIC_REGISTRY_FINGERPRINT_V1, POOL_V1_PAYMENT_COPY_LANES,
+    POOL_V1_PAYMENT_MASKED_TERMINAL_DEGREE, POOL_V1_PAYMENT_PACKED_SEMANTIC_LANES,
+    POOL_V1_PAYMENT_POSEIDON_LANES, POOL_V1_PAYMENT_SELECTED_TERMINAL_CLAIMS,
+    POOL_V1_PAYMENT_SELECTED_TERMINAL_COLUMNS, POOL_V1_PAYMENT_SEMANTIC_ORACLE_INDIVIDUAL_DEGREE,
+    POOL_V1_PAYMENT_SEMANTIC_ZEROCHECK_INDIVIDUAL_DEGREE, POOL_V1_PAYMENT_SOURCE_SEMANTIC_LANES,
+    POOL_V1_PAYMENT_TAG73_MU_AGGREGATE_DEGREE, POOL_V1_PAYMENT_TAG73_MU_COLLISION_ROOT_BOUND,
+    POOL_V1_PAYMENT_TERMINAL_C1_COLUMNS, POOL_V1_PAYMENT_TERMINAL_FIXED_HEAP_ALLOCATIONS,
+    POOL_V1_PAYMENT_TERMINAL_POINTS, POOL_V1_PAYMENT_TERMINAL_ROWS,
+    POOL_V1_PAYMENT_TERMINAL_SELECTOR_HEAP_BYTES, POOL_V1_PAYMENT_THETA_COLLISION_DEGREE,
+    POOL_V1_PAYMENT_THETA_LANES,
 };
 #[cfg(not(target_os = "solana"))]
 pub use payment_trace::{

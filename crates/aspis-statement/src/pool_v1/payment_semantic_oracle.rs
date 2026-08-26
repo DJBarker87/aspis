@@ -331,7 +331,7 @@ fn copy_terminal(
     openings: &[QM31; POSEIDON2_WIDTH],
     selectors: &SelectorsV1,
     lambda: QM31,
-) -> Result<CopyRowExtensionV1, PoolV1PaymentSemanticErrorV1> {
+) -> Result<(CopyRowExtensionV1, QM31), PoolV1PaymentSemanticErrorV1> {
     let mut powers = [QM31::ZERO; POSEIDON2_WIDTH];
     let mut power = lambda;
     for output in &mut powers {
@@ -374,7 +374,37 @@ fn copy_terminal(
             ));
         }
     }
-    Ok(row)
+    let mut active_rows = [false; POOL_V1_PAYMENT_TRACE_ROWS];
+    for link in &prepared.registry.links {
+        active_rows[usize::from(link.producer.row)] = true;
+        active_rows[usize::from(link.consumer.row)] = true;
+    }
+    let active = active_rows
+        .into_iter()
+        .enumerate()
+        .filter(|(_, active)| *active)
+        .fold(QM31::ZERO, |sum, (row, _)| sum.add(selectors.row(row)));
+    Ok((row, active))
+}
+
+/// Exact multilinear indicator of rows carrying at least one endpoint in the
+/// selected host copy registry. The compiled terminal pins the same indicator
+/// as variant-specific row masks.
+pub fn pool_v1_payment_copy_active_at_point_v1(
+    prepared: &PoolV1PaymentSemanticPreparedV1,
+    point: &[QM31; 10],
+) -> QM31 {
+    let selectors = SelectorsV1::at_point(point);
+    let mut active_rows = [false; POOL_V1_PAYMENT_TRACE_ROWS];
+    for link in &prepared.registry.links {
+        active_rows[usize::from(link.producer.row)] = true;
+        active_rows[usize::from(link.consumer.row)] = true;
+    }
+    active_rows
+        .into_iter()
+        .enumerate()
+        .filter(|(_, active)| *active)
+        .fold(QM31::ZERO, |sum, (row, _)| sum.add(selectors.row(row)))
 }
 
 fn evaluate_prepared(
@@ -532,13 +562,13 @@ fn evaluate_prepared(
         output_scalar,
     ];
 
-    let terminal = copy_terminal(prepared, &openings.c1.z, &selectors, lambda)?;
-    // The cleared LogUp equation must hold on every row. On a row with no
-    // producer or consumer endpoints its four weights are zero, so this
-    // reduces to `chi^4 * h1 = 0`. Masking those rows would leave arbitrary
-    // helper values available to cancel an active-row mismatch while keeping
-    // the separately checked global helper sum equal to zero.
-    let copy = copy_residual(terminal, openings.h1_z, chi);
+    let (terminal, copy_active) = copy_terminal(prepared, &openings.c1.z, &selectors, lambda)?;
+    // Inactive helper cells are hiding padding and may be random pointwise.
+    // The local cleared LogUp equation is therefore selected by the exact
+    // active-row indicator. The Tag-73 terminal separately binds both the
+    // total helper sum and `(1 - A) * H1`, which also fixes the active sum
+    // outside the roots of the degree-two mu aggregate.
+    let copy = copy_active.mul(copy_residual(terminal, openings.h1_z, chi));
 
     Ok(PoolV1PaymentSemanticResidualsV1 {
         initial,
@@ -874,7 +904,7 @@ mod tests {
     }
 
     #[test]
-    fn inactive_copy_helper_rows_are_constrained_even_when_their_sum_is_zero() {
+    fn inactive_copy_helper_rows_are_not_constrained_pointwise() {
         let (lambda, chi) = challenges();
         let (public, witness, context) = transfer_fixture();
         let trace = build_pool_v1_private_transfer_trace_v1(&public, &witness, context).unwrap();
@@ -908,7 +938,7 @@ mod tests {
                 &public, &openings, &point, lambda, chi, &prepared,
             )
             .unwrap();
-            assert_ne!(residuals.copy, QM31::ZERO, "inactive helper row {row}");
+            assert_eq!(residuals.copy, QM31::ZERO, "inactive helper row {row}");
         }
     }
 

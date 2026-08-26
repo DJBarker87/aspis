@@ -238,6 +238,109 @@ pub enum PoolV1PaymentSemanticRegistryErrorV1 {
     CopyImbalance,
 }
 
+const POOL_V1_PAYMENT_SEMANTIC_REGISTRY_FINGERPRINT_DOMAIN_V1: &[u8] =
+    b"aspis/pool-v1/payment-semantic-registry/v1";
+
+#[inline(always)]
+fn fingerprint_byte(hash: &mut u64, byte: u8) {
+    *hash ^= u64::from(byte);
+    *hash = hash.wrapping_mul(0x0000_0100_0000_01b3);
+}
+
+fn fingerprint_kind(hash: &mut u64, kind: PoolV1PaymentCopyLinkKindV1) {
+    let (tag, parameter) = match kind {
+        PoolV1PaymentCopyLinkKindV1::SpongeCarry { from, to } => {
+            fingerprint_byte(hash, 0);
+            fingerprint_byte(hash, from);
+            fingerprint_byte(hash, to);
+            return;
+        }
+        PoolV1PaymentCopyLinkKindV1::OwnerOutput => (1, 0),
+        PoolV1PaymentCopyLinkKindV1::NullifierKey => (2, 0),
+        PoolV1PaymentCopyLinkKindV1::InputSaltHead => (3, 0),
+        PoolV1PaymentCopyLinkKindV1::InputSaltTail => (4, 0),
+        PoolV1PaymentCopyLinkKindV1::PathCurrent { level } => (5, level),
+        PoolV1PaymentCopyLinkKindV1::PathLeft { level } => (6, level),
+        PoolV1PaymentCopyLinkKindV1::PathRight { level } => (7, level),
+        PoolV1PaymentCopyLinkKindV1::ValueSource { value } => (8, value),
+        PoolV1PaymentCopyLinkKindV1::ConservationInput => (9, 0),
+        PoolV1PaymentCopyLinkKindV1::ConservationRecipientOrAmount => (10, 0),
+        PoolV1PaymentCopyLinkKindV1::ConservationChange => (11, 0),
+        PoolV1PaymentCopyLinkKindV1::ConservationPartial => (12, 0),
+    };
+    fingerprint_byte(hash, tag);
+    fingerprint_byte(hash, parameter);
+}
+
+fn fingerprint_tuple(hash: &mut u64, tuple: PoolV1PaymentCopyTupleV1) {
+    for byte in tuple.row.to_le_bytes() {
+        fingerprint_byte(hash, byte);
+    }
+    for limb in tuple.limbs {
+        match limb {
+            PoolV1PaymentTupleLimbV1::Zero => fingerprint_byte(hash, 0),
+            PoolV1PaymentTupleLimbV1::Constant(value) => {
+                fingerprint_byte(hash, 1);
+                for byte in value.0.to_le_bytes() {
+                    fingerprint_byte(hash, byte);
+                }
+            }
+            PoolV1PaymentTupleLimbV1::AffineCell {
+                cell,
+                scale,
+                offset,
+            } => {
+                fingerprint_byte(hash, 2);
+                for byte in cell.row.to_le_bytes() {
+                    fingerprint_byte(hash, byte);
+                }
+                fingerprint_byte(hash, cell.column);
+                for value in [scale.0, offset.0] {
+                    for byte in value.to_le_bytes() {
+                        fingerprint_byte(hash, byte);
+                    }
+                }
+            }
+        }
+    }
+}
+
+/// FNV-1a identity of the complete ordered host registry, including variant,
+/// semantic link kinds, tags and every affine tuple limb. Generated terminal
+/// constants pin this value and independently compare every compiled endpoint
+/// and pattern in tests.
+pub fn pool_v1_payment_semantic_registry_fingerprint_v1(
+    registry: &PoolV1PaymentSemanticRegistryV1,
+) -> Result<u64, PoolV1PaymentSemanticRegistryErrorV1> {
+    endpoint_slots(registry)?;
+    let mut hash = 0xcbf2_9ce4_8422_2325u64;
+    for &byte in POOL_V1_PAYMENT_SEMANTIC_REGISTRY_FINGERPRINT_DOMAIN_V1 {
+        fingerprint_byte(&mut hash, byte);
+    }
+    fingerprint_byte(
+        &mut hash,
+        match registry.variant {
+            PoolV1PaymentTraceVariantV1::PrivateTransfer => 0,
+            PoolV1PaymentTraceVariantV1::Withdrawal => 1,
+        },
+    );
+    for byte in (registry.links.len() as u16).to_le_bytes() {
+        fingerprint_byte(&mut hash, byte);
+    }
+    for link in &registry.links {
+        for byte in link.id.to_le_bytes() {
+            fingerprint_byte(&mut hash, byte);
+        }
+        for byte in link.tag.0.to_le_bytes() {
+            fingerprint_byte(&mut hash, byte);
+        }
+        fingerprint_kind(&mut hash, link.kind);
+        fingerprint_tuple(&mut hash, link.producer);
+        fingerprint_tuple(&mut hash, link.consumer);
+    }
+    Ok(hash)
+}
+
 fn affine(source: TraceCell) -> PoolV1PaymentTupleLimbV1 {
     PoolV1PaymentTupleLimbV1::AffineCell {
         cell: source,
