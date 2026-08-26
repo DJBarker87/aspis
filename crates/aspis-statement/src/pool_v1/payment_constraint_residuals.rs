@@ -21,22 +21,23 @@ use alloc::vec::Vec;
 use aspis_core::field::M31;
 
 use crate::{
-    poseidon2::{
-        evaluate_trace_round_pair, Digest, DIGEST_ELEMS, MERKLE_NODE_COMPRESSION_V3_TWEAK,
-        POSEIDON2_WIDTH, RATE,
-    },
+    poseidon2::{evaluate_trace_round_pair, Digest, DIGEST_ELEMS, POSEIDON2_WIDTH, RATE},
     spend::{DOMAIN_NOTE, DOMAIN_NULLIFIER, DOMAIN_OWNER_KEY, VALUE_LIMIT},
     state_only_trace::StateOnlyTraceFoundation,
 };
 
 use super::{
     payment_relation::{PoolV1PrivateTransferPublicV1, PoolV1WithdrawalPublicV1},
+    payment_semantic_registry::{
+        pool_v1_payment_aux_cell_is_used_v1, pool_v1_payment_path_aux_v1,
+        pool_v1_payment_value_aux_v1,
+    },
     payment_trace::{
-        POOL_V1_PAYMENT_AUX_ROW_END, POOL_V1_PAYMENT_DIRECTION_BITS,
-        POOL_V1_PAYMENT_DIRECTION_ROW_START, POOL_V1_PAYMENT_TRACE_BLOCKS,
+        POOL_V1_PAYMENT_DIRECTION_BITS, POOL_V1_PAYMENT_TRACE_BLOCKS,
         POOL_V1_PAYMENT_TRACE_BLOCK_ROWS, POOL_V1_PAYMENT_TRACE_C1_COLUMNS,
-        POOL_V1_PAYMENT_TRACE_ROWS, POOL_V1_PAYMENT_TRACE_TWO_ROUND_ROWS_PER_BLOCK,
-        POOL_V1_PAYMENT_VALUE_BITS, POOL_V1_PAYMENT_VALUE_COUNT, POOL_V1_PAYMENT_VALUE_ROW_START,
+        POOL_V1_PAYMENT_TRACE_PERMUTATION_ROWS, POOL_V1_PAYMENT_TRACE_ROWS,
+        POOL_V1_PAYMENT_TRACE_TWO_ROUND_ROWS_PER_BLOCK, POOL_V1_PAYMENT_VALUE_BITS,
+        POOL_V1_PAYMENT_VALUE_COUNT,
     },
 };
 
@@ -81,7 +82,7 @@ pub const POOL_V1_PAYMENT_ZEROCHECK_INDIVIDUAL_DEGREE: usize =
 pub const POOL_V1_PAYMENT_POSEIDON_RESIDUAL_COUNT: usize =
     POOL_V1_PAYMENT_TRACE_BLOCKS * POOL_V1_PAYMENT_TRACE_TWO_ROUND_ROWS_PER_BLOCK * POSEIDON2_WIDTH;
 pub const POOL_V1_PAYMENT_PATH_ORDERING_RESIDUAL_COUNT: usize =
-    POOL_V1_PAYMENT_DIRECTION_BITS * DIGEST_ELEMS;
+    POOL_V1_PAYMENT_DIRECTION_BITS * DIGEST_ELEMS * 2;
 pub const POOL_V1_PAYMENT_VALUE_BOOLEAN_RESIDUAL_COUNT: usize =
     POOL_V1_PAYMENT_VALUE_COUNT * POOL_V1_PAYMENT_VALUE_BITS;
 
@@ -91,8 +92,8 @@ const POOL_V1_PAYMENT_TRANSFER_ALIAS_RESIDUAL_COUNT: usize = 27;
 const POOL_V1_PAYMENT_WITHDRAWAL_ALIAS_RESIDUAL_COUNT: usize = 26;
 const POOL_V1_PAYMENT_TRANSFER_PUBLIC_RESIDUAL_COUNT: usize = 4 * DIGEST_ELEMS;
 const POOL_V1_PAYMENT_WITHDRAWAL_PUBLIC_RESIDUAL_COUNT: usize = 3 * DIGEST_ELEMS;
-const POOL_V1_PAYMENT_TRANSFER_ZERO_PADDING_RESIDUAL_COUNT: usize = 6_626;
-const POOL_V1_PAYMENT_WITHDRAWAL_ZERO_PADDING_RESIDUAL_COUNT: usize = 6_722;
+const POOL_V1_PAYMENT_TRANSFER_ZERO_PADDING_RESIDUAL_COUNT: usize = 5_978;
+const POOL_V1_PAYMENT_WITHDRAWAL_ZERO_PADDING_RESIDUAL_COUNT: usize = 6_074;
 
 const _: () = assert!(POSEIDON2_WIDTH == 16);
 const _: () = assert!(DIGEST_ELEMS == 8);
@@ -101,7 +102,7 @@ const _: () = assert!(POOL_V1_PAYMENT_MAX_INTRINSIC_DEGREE == 25);
 const _: () = assert!(POOL_V1_PAYMENT_SELECTED_ORACLE_INDIVIDUAL_DEGREE == 26);
 const _: () = assert!(POOL_V1_PAYMENT_ZEROCHECK_INDIVIDUAL_DEGREE == 27);
 const _: () = assert!(POOL_V1_PAYMENT_POSEIDON_RESIDUAL_COUNT == 8_624);
-const _: () = assert!(POOL_V1_PAYMENT_PATH_ORDERING_RESIDUAL_COUNT == 160);
+const _: () = assert!(POOL_V1_PAYMENT_PATH_ORDERING_RESIDUAL_COUNT == 320);
 const _: () = assert!(POOL_V1_PAYMENT_VALUE_BOOLEAN_RESIDUAL_COUNT == 90);
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -239,21 +240,18 @@ fn row_cell(trace: &StateOnlyTraceFoundation, row: usize, column: usize) -> M31 
 
 #[inline(always)]
 fn direction_cell(trace: &StateOnlyTraceFoundation, level: usize) -> M31 {
-    row_cell(
-        trace,
-        POOL_V1_PAYMENT_DIRECTION_ROW_START + level / POSEIDON2_WIDTH,
-        level % POSEIDON2_WIDTH,
-    )
+    let target = pool_v1_payment_path_aux_v1(level)
+        .expect("twenty-level path layout")
+        .bit;
+    row_cell(trace, usize::from(target.row), usize::from(target.column))
 }
 
 #[inline(always)]
 fn value_bit_cell(trace: &StateOnlyTraceFoundation, value: usize, bit: usize) -> M31 {
-    let row_start = POOL_V1_PAYMENT_VALUE_ROW_START + 2 * value;
-    row_cell(
-        trace,
-        row_start + bit / POSEIDON2_WIDTH,
-        bit % POSEIDON2_WIDTH,
-    )
+    let target = pool_v1_payment_value_aux_v1(value)
+        .expect("three-value layout")
+        .bits[bit];
+    row_cell(trace, usize::from(target.row), usize::from(target.column))
 }
 
 fn append_equal(left: M31, right: M31, output: &mut Vec<M31>) {
@@ -393,20 +391,33 @@ fn append_path_ordering_residuals(
     path_ordering: &mut Vec<M31>,
 ) {
     for level in 0..POOL_V1_PAYMENT_DIRECTION_BITS {
+        let aux = pool_v1_payment_path_aux_v1(level).expect("twenty-level path layout");
         let bit = direction_cell(trace, level);
         direction_booleanity[level] = bit.mul(bit.sub(M31::ONE));
-        let block = 4 + level;
-        let previous_block = block - 1;
         for lane in 0..DIGEST_ELEMS {
-            let current = cell(trace, previous_block, 11, lane);
-            let left = cell(trace, block, 12, lane);
-            let right = if lane + 1 == DIGEST_ELEMS {
-                cell(trace, block, 0, RATE + lane).sub(MERKLE_NODE_COMPRESSION_V3_TWEAK)
-            } else {
-                cell(trace, block, 0, RATE + lane)
-            };
-            // bit=0 selects left=current; bit=1 selects right=current.
-            path_ordering.push(left.sub(current).add(bit.mul(right.sub(left))));
+            let current = row_cell(
+                trace,
+                usize::from(aux.current[lane].row),
+                usize::from(aux.current[lane].column),
+            );
+            let sibling = row_cell(
+                trace,
+                usize::from(aux.sibling[lane].row),
+                usize::from(aux.sibling[lane].column),
+            );
+            let left = row_cell(
+                trace,
+                usize::from(aux.left[lane].row),
+                usize::from(aux.left[lane].column),
+            );
+            let right = row_cell(
+                trace,
+                usize::from(aux.right[lane].row),
+                usize::from(aux.right[lane].column),
+            );
+            // bit=0 gives (current,sibling); bit=1 gives (sibling,current).
+            path_ordering.push(left.sub(current.add(bit.mul(sibling.sub(current)))));
+            path_ordering.push(right.sub(sibling.add(bit.mul(current.sub(sibling)))));
         }
     }
 }
@@ -495,27 +506,13 @@ fn append_zero_padding_residuals(
         append_fixed_zero_block(trace, block, output);
     }
 
-    // Unused direction/value slots and every row after the payment auxiliary
-    // region are fixed zero, so no extra witness can hide there.
-    for column in 4..POSEIDON2_WIDTH {
-        output.push(row_cell(
-            trace,
-            POOL_V1_PAYMENT_DIRECTION_ROW_START + 1,
-            column,
-        ));
-    }
-    for value in 0..POOL_V1_PAYMENT_VALUE_COUNT {
-        for column in 14..POSEIDON2_WIDTH {
-            output.push(row_cell(
-                trace,
-                POOL_V1_PAYMENT_VALUE_ROW_START + 2 * value + 1,
-                column,
-            ));
-        }
-    }
-    for row in POOL_V1_PAYMENT_AUX_ROW_END..POOL_V1_PAYMENT_TRACE_ROWS {
+    // Every unassigned cell in the routed auxiliary region is fixed zero, so
+    // no extra witness can hide outside the declared three-view geometry.
+    for row in POOL_V1_PAYMENT_TRACE_PERMUTATION_ROWS..POOL_V1_PAYMENT_TRACE_ROWS {
         for column in 0..POSEIDON2_WIDTH {
-            output.push(row_cell(trace, row, column));
+            if !pool_v1_payment_aux_cell_is_used_v1(row, column) {
+                output.push(row_cell(trace, row, column));
+            }
         }
     }
 }
@@ -808,9 +805,9 @@ mod tests {
 
     fn set_value_bits(trace: &mut StateOnlyTraceFoundation, value: usize, integer: u32) {
         for bit in 0..POOL_V1_PAYMENT_VALUE_BITS {
-            let row = POOL_V1_PAYMENT_VALUE_ROW_START + 2 * value + bit / POSEIDON2_WIDTH;
-            let column = bit % POSEIDON2_WIDTH;
-            trace.c1[column][row] = M31((integer >> bit) & 1);
+            let target = pool_v1_payment_value_aux_v1(value).unwrap().bits[bit];
+            trace.c1[usize::from(target.column)][usize::from(target.row)] =
+                M31((integer >> bit) & 1);
         }
     }
 
@@ -829,10 +826,10 @@ mod tests {
         assert_eq!(residuals.poseidon_round_pairs.len(), 8_624);
         assert_eq!(residuals.sponge_schedule.len(), 626);
         assert_eq!(residuals.source_aliases.len(), 27);
-        assert_eq!(residuals.path_ordering.len(), 160);
+        assert_eq!(residuals.path_ordering.len(), 320);
         assert_eq!(residuals.public_bindings.len(), 32);
-        assert_eq!(residuals.zero_padding.len(), 6_626);
-        assert_eq!(residuals.residual_count(), 16_209);
+        assert_eq!(residuals.zero_padding.len(), 5_978);
+        assert_eq!(residuals.residual_count(), 15_721);
 
         let (public, trace) = built_withdrawal();
         let residuals =
@@ -841,8 +838,8 @@ mod tests {
         assert_eq!(residuals.sponge_schedule.len(), 548);
         assert_eq!(residuals.source_aliases.len(), 26);
         assert_eq!(residuals.public_bindings.len(), 24);
-        assert_eq!(residuals.zero_padding.len(), 6_722);
-        assert_eq!(residuals.residual_count(), 16_218);
+        assert_eq!(residuals.zero_padding.len(), 6_074);
+        assert_eq!(residuals.residual_count(), 15_730);
     }
 
     #[test]
@@ -871,7 +868,8 @@ mod tests {
         assert_class_nonzero(&residuals, PoolV1PaymentResidualClassV1::SourceAliases);
 
         let mut trace = honest.clone();
-        trace.trace.c1[0][POOL_V1_PAYMENT_DIRECTION_ROW_START] = M31(2);
+        let direction = pool_v1_payment_path_aux_v1(0).unwrap().bit;
+        trace.trace.c1[usize::from(direction.column)][usize::from(direction.row)] = M31(2);
         let residuals =
             evaluate_pool_v1_private_transfer_constraint_residuals_v1(&public, &trace.trace)
                 .unwrap();
@@ -881,7 +879,8 @@ mod tests {
         );
 
         let mut trace = honest.clone();
-        let bit = &mut trace.trace.c1[0][POOL_V1_PAYMENT_DIRECTION_ROW_START];
+        let direction = pool_v1_payment_path_aux_v1(0).unwrap().bit;
+        let bit = &mut trace.trace.c1[usize::from(direction.column)][usize::from(direction.row)];
         *bit = M31::ONE.sub(*bit);
         let residuals =
             evaluate_pool_v1_private_transfer_constraint_residuals_v1(&public, &trace.trace)
@@ -890,14 +889,16 @@ mod tests {
         assert_class_nonzero(&residuals, PoolV1PaymentResidualClassV1::PathOrdering);
 
         let mut trace = honest.clone();
-        trace.trace.c1[0][POOL_V1_PAYMENT_VALUE_ROW_START] = M31(2);
+        let value_bit = pool_v1_payment_value_aux_v1(0).unwrap().bits[0];
+        trace.trace.c1[usize::from(value_bit.column)][usize::from(value_bit.row)] = M31(2);
         let residuals =
             evaluate_pool_v1_private_transfer_constraint_residuals_v1(&public, &trace.trace)
                 .unwrap();
         assert_class_nonzero(&residuals, PoolV1PaymentResidualClassV1::ValueBooleanity);
 
         let mut trace = honest.clone();
-        let bit = &mut trace.trace.c1[0][POOL_V1_PAYMENT_VALUE_ROW_START];
+        let value_bit = pool_v1_payment_value_aux_v1(0).unwrap().bits[0];
+        let bit = &mut trace.trace.c1[usize::from(value_bit.column)][usize::from(value_bit.row)];
         *bit = M31::ONE.sub(*bit);
         let residuals =
             evaluate_pool_v1_private_transfer_constraint_residuals_v1(&public, &trace.trace)

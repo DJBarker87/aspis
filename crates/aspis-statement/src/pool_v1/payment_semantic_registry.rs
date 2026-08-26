@@ -144,6 +144,40 @@ pub const fn pool_v1_payment_conservation_aux_v1() -> PoolV1PaymentConservationA
     }
 }
 
+pub fn pool_v1_payment_aux_cell_is_used_v1(row: usize, column: usize) -> bool {
+    if row >= POOL_V1_PAYMENT_TRACE_ROWS || column >= POSEIDON2_WIDTH {
+        return false;
+    }
+    let target = cell(row, column);
+    for level in 0..20 {
+        let Some(aux) = pool_v1_payment_path_aux_v1(level) else {
+            return false;
+        };
+        if target == aux.bit
+            || aux.current.contains(&target)
+            || aux.left.contains(&target)
+            || aux.right.contains(&target)
+            || aux.sibling.contains(&target)
+        {
+            return true;
+        }
+    }
+    for value in 0..3 {
+        let Some(aux) = pool_v1_payment_value_aux_v1(value) else {
+            return false;
+        };
+        if target == aux.source || aux.bits.contains(&target) {
+            return true;
+        }
+    }
+    let conservation = pool_v1_payment_conservation_aux_v1();
+    target == conservation.input
+        || target == conservation.recipient_or_amount
+        || target == conservation.partial
+        || target == conservation.carried_partial
+        || target == conservation.change
+}
+
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum PoolV1PaymentTupleLimbV1 {
     Zero,
@@ -531,5 +565,11 @@ mod tests {
         assert_eq!(pool_v1_payment_path_aux_v1(19).unwrap().sibling[0].row, 858);
         assert_eq!(pool_v1_payment_value_aux_v1(0).unwrap().bits[20].row, 876);
         assert_eq!(pool_v1_payment_value_aux_v1(2).unwrap().bits[20].row, 872);
+        let used = (POOL_V1_PAYMENT_PATH_AUX_BLOCK_START * POOL_V1_PAYMENT_TRACE_BLOCK_ROWS
+            ..POOL_V1_PAYMENT_TRACE_ROWS)
+            .flat_map(|row| (0..POSEIDON2_WIDTH).map(move |column| (row, column)))
+            .filter(|(row, column)| pool_v1_payment_aux_cell_is_used_v1(*row, *column))
+            .count();
+        assert_eq!(used, 758);
     }
 }

@@ -19,7 +19,7 @@ use crate::{
         StateOnlyTraceFoundation, STATE_ONLY_ABSORPTION_ROW_IN_BLOCK, STATE_ONLY_C1_COLUMNS,
         STATE_ONLY_FINAL_ROW_IN_BLOCK,
     },
-    trace_v4::{BLOCK_ROWS, PERMUTATION_COUNT, TRACE_ROWS},
+    trace_v4::{TraceCell, BLOCK_ROWS, PERMUTATION_COUNT, TRACE_ROWS},
 };
 
 use super::{
@@ -29,6 +29,11 @@ use super::{
         PoolV1InputNoteWitnessV1, PoolV1OutputNoteWitnessV1, PoolV1PaymentRelationContextV1,
         PoolV1PaymentRelationError, PoolV1PrivateTransferPublicV1, PoolV1PrivateTransferWitnessV1,
         PoolV1WithdrawalPublicV1, PoolV1WithdrawalWitnessV1,
+    },
+    payment_semantic_registry::{
+        pool_v1_payment_aux_cell_is_used_v1, pool_v1_payment_conservation_aux_v1,
+        pool_v1_payment_path_aux_v1, pool_v1_payment_value_aux_v1,
+        POOL_V1_PAYMENT_AUX_ROW_END as ROUTED_AUX_ROW_END, POOL_V1_PAYMENT_VALUE_AUX_ROW_START,
     },
     POOL_V1_TREE_DEPTH,
 };
@@ -47,8 +52,8 @@ pub const POOL_V1_PAYMENT_DIRECTION_BITS: usize = 20;
 pub const POOL_V1_PAYMENT_VALUE_COUNT: usize = 3;
 pub const POOL_V1_PAYMENT_VALUE_BITS: usize = 30;
 pub const POOL_V1_PAYMENT_DIRECTION_ROW_START: usize = 784;
-pub const POOL_V1_PAYMENT_VALUE_ROW_START: usize = 786;
-pub const POOL_V1_PAYMENT_AUX_ROW_END: usize = 792;
+pub const POOL_V1_PAYMENT_VALUE_ROW_START: usize = POOL_V1_PAYMENT_VALUE_AUX_ROW_START;
+pub const POOL_V1_PAYMENT_AUX_ROW_END: usize = ROUTED_AUX_ROW_END;
 
 /// The already-frozen Tag-73 native proof grammar.  This arithmetic screen is
 /// recorded here to prevent a trace-only change from silently changing it; it
@@ -339,24 +344,49 @@ fn write_zero_padding(
     Ok(())
 }
 
+fn write_trace_cell(trace: &mut StateOnlyTraceFoundation, target: TraceCell, value: M31) {
+    trace.c1[usize::from(target.column)][usize::from(target.row)] = value;
+}
+
+fn write_path_auxiliary(
+    trace: &mut StateOnlyTraceFoundation,
+    level: usize,
+    bit: M31,
+    current: &Digest,
+    sibling: &Digest,
+    left: &Digest,
+    right: &Digest,
+) -> Result<(), PoolV1PaymentTraceErrorV1> {
+    let aux = pool_v1_payment_path_aux_v1(level).ok_or(PoolV1PaymentTraceErrorV1::HashSchedule)?;
+    write_trace_cell(trace, aux.bit, bit);
+    for lane in 0..DIGEST_ELEMS {
+        write_trace_cell(trace, aux.current[lane], current[lane]);
+        write_trace_cell(trace, aux.sibling[lane], sibling[lane]);
+        write_trace_cell(trace, aux.left[lane], left[lane]);
+        write_trace_cell(trace, aux.right[lane], right[lane]);
+    }
+    Ok(())
+}
+
 fn write_auxiliary(
     trace: &mut StateOnlyTraceFoundation,
-    directions: &[M31; POOL_V1_PAYMENT_DIRECTION_BITS],
     values: &[[M31; POOL_V1_PAYMENT_VALUE_BITS]; POOL_V1_PAYMENT_VALUE_COUNT],
+    actual_values: &[M31; POOL_V1_PAYMENT_VALUE_COUNT],
 ) {
-    for (level, bit) in directions.iter().copied().enumerate() {
-        let row = POOL_V1_PAYMENT_DIRECTION_ROW_START + level / POSEIDON2_WIDTH;
-        let column = level % POSEIDON2_WIDTH;
-        trace.c1[column][row] = bit;
-    }
     for (value_index, bits) in values.iter().enumerate() {
-        let row_start = POOL_V1_PAYMENT_VALUE_ROW_START + 2 * value_index;
+        let aux = pool_v1_payment_value_aux_v1(value_index).expect("three-value layout");
         for (bit_index, bit) in bits.iter().copied().enumerate() {
-            let row = row_start + bit_index / POSEIDON2_WIDTH;
-            let column = bit_index % POSEIDON2_WIDTH;
-            trace.c1[column][row] = bit;
+            write_trace_cell(trace, aux.bits[bit_index], bit);
         }
+        write_trace_cell(trace, aux.source, actual_values[value_index]);
     }
+    let conservation = pool_v1_payment_conservation_aux_v1();
+    let partial = actual_values[0].sub(actual_values[1]);
+    write_trace_cell(trace, conservation.input, actual_values[0]);
+    write_trace_cell(trace, conservation.recipient_or_amount, actual_values[1]);
+    write_trace_cell(trace, conservation.partial, partial);
+    write_trace_cell(trace, conservation.carried_partial, partial);
+    write_trace_cell(trace, conservation.change, actual_values[2]);
 }
 
 fn ordered_children(current: Digest, sibling: Digest, bit: M31) -> (Digest, Digest) {
@@ -384,8 +414,21 @@ fn build_common_prefix(
     let directions = direction_bits(input);
     let mut current = input_leaf;
     for level in 0..POOL_V1_TREE_DEPTH {
-        let (left, right) =
-            ordered_children(current, input.membership.siblings[level], directions[level]);
+        let previous = current;
+        let (left, right) = ordered_children(
+            previous,
+            input.membership.siblings[level],
+            directions[level],
+        );
+        write_path_auxiliary(
+            trace,
+            level,
+            directions[level],
+            &previous,
+            &input.membership.siblings[level],
+            &left,
+            &right,
+        )?;
         current = write_node(trace, 4 + level, &left, &right)?;
         if current != pool_v1_tree_parent(&left, &right) {
             return Err(PoolV1PaymentTraceErrorV1::AnchorParity);
@@ -432,7 +475,15 @@ fn build_transfer_after_relation(
         value_bits(witness.recipient.value),
         value_bits(witness.change.value),
     ];
-    write_auxiliary(&mut trace, &directions, &values);
+    write_auxiliary(
+        &mut trace,
+        &values,
+        &[
+            M31(witness.input.value),
+            M31(witness.recipient.value),
+            M31(witness.change.value),
+        ],
+    );
     Ok(PoolV1PaymentTraceV1 {
         trace,
         variant: PoolV1PaymentTraceVariantV1::PrivateTransfer,
@@ -478,7 +529,15 @@ fn build_withdrawal_after_relation(
         value_bits(public.amount),
         value_bits(witness.change.value),
     ];
-    write_auxiliary(&mut trace, &directions, &values);
+    write_auxiliary(
+        &mut trace,
+        &values,
+        &[
+            M31(witness.input.value),
+            M31(public.amount),
+            M31(witness.change.value),
+        ],
+    );
     Ok(PoolV1PaymentTraceV1 {
         trace,
         variant: PoolV1PaymentTraceVariantV1::Withdrawal,
@@ -610,10 +669,45 @@ fn replay_zero_padding(
     Ok(())
 }
 
+fn validate_trace_cell(
+    trace: &PoolV1PaymentTraceV1,
+    target: TraceCell,
+    expected: M31,
+) -> Result<(), PoolV1PaymentTraceErrorV1> {
+    if trace.trace.c1[usize::from(target.column)][usize::from(target.row)] != expected {
+        return Err(PoolV1PaymentTraceErrorV1::AuxiliaryMismatch {
+            row: target.row,
+            column: target.column,
+        });
+    }
+    Ok(())
+}
+
+fn validate_path_auxiliary(
+    trace: &PoolV1PaymentTraceV1,
+    level: usize,
+    bit: M31,
+    current: &Digest,
+    sibling: &Digest,
+    left: &Digest,
+    right: &Digest,
+) -> Result<(), PoolV1PaymentTraceErrorV1> {
+    let aux = pool_v1_payment_path_aux_v1(level).ok_or(PoolV1PaymentTraceErrorV1::HashSchedule)?;
+    validate_trace_cell(trace, aux.bit, bit)?;
+    for lane in 0..DIGEST_ELEMS {
+        validate_trace_cell(trace, aux.current[lane], current[lane])?;
+        validate_trace_cell(trace, aux.sibling[lane], sibling[lane])?;
+        validate_trace_cell(trace, aux.left[lane], left[lane])?;
+        validate_trace_cell(trace, aux.right[lane], right[lane])?;
+    }
+    Ok(())
+}
+
 fn validate_auxiliary(
     trace: &PoolV1PaymentTraceV1,
     directions: &[M31; POOL_V1_PAYMENT_DIRECTION_BITS],
     values: &[[M31; POOL_V1_PAYMENT_VALUE_BITS]; POOL_V1_PAYMENT_VALUE_COUNT],
+    actual_values: &[M31; POOL_V1_PAYMENT_VALUE_COUNT],
 ) -> Result<(), PoolV1PaymentTraceErrorV1> {
     for (level, expected) in directions.iter().copied().enumerate() {
         if trace.direction_bits[level] != expected {
@@ -633,25 +727,31 @@ fn validate_auxiliary(
         }
     }
 
+    for (value_index, bits) in values.iter().enumerate() {
+        let aux = pool_v1_payment_value_aux_v1(value_index)
+            .ok_or(PoolV1PaymentTraceErrorV1::HashSchedule)?;
+        for (bit_index, expected) in bits.iter().copied().enumerate() {
+            validate_trace_cell(trace, aux.bits[bit_index], expected)?;
+        }
+        validate_trace_cell(trace, aux.source, actual_values[value_index])?;
+    }
+    let conservation = pool_v1_payment_conservation_aux_v1();
+    let partial = actual_values[0].sub(actual_values[1]);
+    for (target, expected) in [
+        (conservation.input, actual_values[0]),
+        (conservation.recipient_or_amount, actual_values[1]),
+        (conservation.partial, partial),
+        (conservation.carried_partial, partial),
+        (conservation.change, actual_values[2]),
+    ] {
+        validate_trace_cell(trace, target, expected)?;
+    }
+
     for row in POOL_V1_PAYMENT_TRACE_PERMUTATION_ROWS..POOL_V1_PAYMENT_TRACE_ROWS {
         for column in 0..POSEIDON2_WIDTH {
-            let expected = if row < POOL_V1_PAYMENT_DIRECTION_ROW_START + 2 {
-                let index = (row - POOL_V1_PAYMENT_DIRECTION_ROW_START) * POSEIDON2_WIDTH + column;
-                directions.get(index).copied().unwrap_or(M31::ZERO)
-            } else if (POOL_V1_PAYMENT_VALUE_ROW_START..POOL_V1_PAYMENT_AUX_ROW_END).contains(&row)
+            if !pool_v1_payment_aux_cell_is_used_v1(row, column)
+                && trace.trace.c1[column][row] != M31::ZERO
             {
-                let value_index = (row - POOL_V1_PAYMENT_VALUE_ROW_START) / 2;
-                let bit_index = (row - (POOL_V1_PAYMENT_VALUE_ROW_START + 2 * value_index))
-                    * POSEIDON2_WIDTH
-                    + column;
-                values[value_index]
-                    .get(bit_index)
-                    .copied()
-                    .unwrap_or(M31::ZERO)
-            } else {
-                M31::ZERO
-            };
-            if trace.trace.c1[column][row] != expected {
                 return Err(PoolV1PaymentTraceErrorV1::AuxiliaryMismatch {
                     row: row as u16,
                     column: column as u8,
@@ -679,8 +779,21 @@ fn validate_common_prefix(
     let directions = direction_bits(input);
     let mut current = input_leaf;
     for level in 0..POOL_V1_TREE_DEPTH {
-        let (left, right) =
-            ordered_children(current, input.membership.siblings[level], directions[level]);
+        let previous = current;
+        let (left, right) = ordered_children(
+            previous,
+            input.membership.siblings[level],
+            directions[level],
+        );
+        validate_path_auxiliary(
+            trace,
+            level,
+            directions[level],
+            &previous,
+            &input.membership.siblings[level],
+            &left,
+            &right,
+        )?;
         current = replay_node(trace, 4 + level, &left, &right)?;
         if current != pool_v1_tree_parent(&left, &right) {
             return Err(PoolV1PaymentTraceErrorV1::AnchorParity);
@@ -729,7 +842,16 @@ fn validate_transfer_after_relation(
         value_bits(witness.recipient.value),
         value_bits(witness.change.value),
     ];
-    validate_auxiliary(trace, &directions, &values)?;
+    validate_auxiliary(
+        trace,
+        &directions,
+        &values,
+        &[
+            M31(witness.input.value),
+            M31(witness.recipient.value),
+            M31(witness.change.value),
+        ],
+    )?;
     if trace.public_outputs
         != (PoolV1PaymentTracePublicOutputsV1::PrivateTransfer {
             anchor,
@@ -776,7 +898,16 @@ fn validate_withdrawal_after_relation(
         value_bits(public.amount),
         value_bits(witness.change.value),
     ];
-    validate_auxiliary(trace, &directions, &values)?;
+    validate_auxiliary(
+        trace,
+        &directions,
+        &values,
+        &[
+            M31(witness.input.value),
+            M31(public.amount),
+            M31(witness.change.value),
+        ],
+    )?;
     if trace.public_outputs
         != (PoolV1PaymentTracePublicOutputsV1::Withdrawal {
             anchor,
@@ -840,8 +971,10 @@ mod tests {
     use super::super::payment_relation::{
         pool_v1_membership_root_v1, PoolV1MembershipWitnessV1, PoolV1PaymentRuntimeBindingV1,
     };
+    use super::super::payment_semantic_registry::verify_pool_v1_payment_copy_registry_v1;
     use super::*;
     use crate::derive_owner_key;
+    use aspis_core::field::{CM31, QM31};
 
     fn digest(seed: u32) -> Digest {
         core::array::from_fn(|index| M31(seed + 17 * index as u32))
@@ -1143,19 +1276,66 @@ mod tests {
         )
         .unwrap();
         for level in 0..20 {
-            let row = POOL_V1_PAYMENT_DIRECTION_ROW_START + level / 16;
-            let column = level % 16;
-            assert_eq!(trace.trace.c1[column][row], trace.direction_bits[level]);
+            let target = pool_v1_payment_path_aux_v1(level).unwrap().bit;
+            assert_eq!(
+                trace.trace.c1[usize::from(target.column)][usize::from(target.row)],
+                trace.direction_bits[level]
+            );
         }
         for value in 0..3 {
             for bit in 0..30 {
-                let row = POOL_V1_PAYMENT_VALUE_ROW_START + 2 * value + bit / 16;
-                let column = bit % 16;
-                assert_eq!(trace.trace.c1[column][row], trace.value_bits[value][bit]);
+                let target = pool_v1_payment_value_aux_v1(value).unwrap().bits[bit];
+                assert_eq!(
+                    trace.trace.c1[usize::from(target.column)][usize::from(target.row)],
+                    trace.value_bits[value][bit]
+                );
             }
         }
-        for row in POOL_V1_PAYMENT_AUX_ROW_END..POOL_V1_PAYMENT_TRACE_ROWS {
-            assert!(trace.trace.c1.iter().all(|column| column[row] == M31::ZERO));
+        for row in POOL_V1_PAYMENT_TRACE_PERMUTATION_ROWS..POOL_V1_PAYMENT_TRACE_ROWS {
+            for column in 0..POSEIDON2_WIDTH {
+                if !pool_v1_payment_aux_cell_is_used_v1(row, column) {
+                    assert_eq!(trace.trace.c1[column][row], M31::ZERO);
+                }
+            }
         }
+    }
+
+    #[test]
+    fn honest_routed_transfer_and_withdrawal_copy_registries_balance() {
+        let lambda = QM31 {
+            c0: CM31::new(M31(123), M31(456)),
+            c1: CM31::new(M31(789), M31(1_011)),
+        };
+        let chi = QM31 {
+            c0: CM31::new(M31(1_213), M31(1_415)),
+            c1: CM31::new(M31(1_617), M31(1_819)),
+        };
+
+        let (public, witness) = transfer_fixture();
+        let transfer = build_pool_v1_private_transfer_trace_v1(
+            &public,
+            &witness,
+            transfer_context(&public, &[]),
+        )
+        .unwrap();
+        verify_pool_v1_payment_copy_registry_v1(
+            PoolV1PaymentTraceVariantV1::PrivateTransfer,
+            &transfer.trace,
+            lambda,
+            chi,
+        )
+        .unwrap();
+
+        let (public, witness) = withdrawal_fixture();
+        let withdrawal =
+            build_pool_v1_withdrawal_trace_v1(&public, &witness, withdrawal_context(&public, &[]))
+                .unwrap();
+        verify_pool_v1_payment_copy_registry_v1(
+            PoolV1PaymentTraceVariantV1::Withdrawal,
+            &withdrawal.trace,
+            lambda,
+            chi,
+        )
+        .unwrap();
     }
 }
