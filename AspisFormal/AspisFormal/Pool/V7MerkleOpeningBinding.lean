@@ -44,12 +44,16 @@ def foldPathInputTrace (truncateSha256 : RawHashInput → Digest208) :
       input :: foldPathInputTrace truncateSha256 (position / 2)
         (truncateSha256 input) rest
 
+def openingRawInputTrace (truncateSha256 : RawHashInput → Digest208)
+    (position : Position) (leafInput : RawHashInput)
+    (siblings : SiblingPath) : List RawHashInput :=
+  leafInput :: foldPathInputTrace truncateSha256 position.val
+    (truncateSha256 leafInput) (List.ofFn siblings)
+
 def openingInputTrace (truncateSha256 : RawHashInput → Digest208)
     (position : Position) (leaf : TypedPreimage)
     (siblings : SiblingPath) : List RawHashInput :=
-  let leafInput := serialize leaf
-  leafInput :: foldPathInputTrace truncateSha256 position.val
-    (truncateSha256 leafInput) (List.ofFn siblings)
+  openingRawInputTrace truncateSha256 position (serialize leaf) siblings
 
 /-- A collision whose left and right preimages are explicitly located in two
 concrete authentication-call traces. -/
@@ -85,6 +89,35 @@ theorem foldPathAux_cons
   by_cases direction : position.testBit 0
   · simp [foldPathAux, orderedNodeInput, direction]
   · simp [foldPathAux, orderedNodeInput, direction]
+
+theorem foldPathInputTrace_append
+    (truncateSha256 : RawHashInput → Digest208) : ∀
+    (initialPath remainingPath : List Digest208)
+      (position : Nat) (current : Digest208),
+    foldPathInputTrace truncateSha256 position current
+        (initialPath ++ remainingPath) =
+      foldPathInputTrace truncateSha256 position current initialPath ++
+        foldPathInputTrace truncateSha256
+          (position / 2 ^ initialPath.length)
+          (foldPathAux truncateSha256 position current initialPath)
+          remainingPath := by
+  intro initialPath
+  induction initialPath with
+  | nil =>
+      intro remainingPath position current
+      simp [foldPathInputTrace, foldPathAux]
+  | cons sibling rest inductionHypothesis =>
+      intro remainingPath position current
+      simp only [List.cons_append, foldPathInputTrace, List.cons_append]
+      rw [inductionHypothesis]
+      rw [foldPathAux_cons]
+      have positionExact :
+          position / 2 / 2 ^ rest.length =
+            position / 2 ^ (rest.length + 1) := by
+        rw [Nat.div_div_eq_div_mul, pow_succ,
+          Nat.mul_comm 2 (2 ^ rest.length)]
+      rw [positionExact]
+      simp only [List.length_cons]
 
 theorem ordered_node_input_ne_of_current_ne
     (position : Nat) {leftCurrent rightCurrent : Digest208}
@@ -257,8 +290,10 @@ theorem same_position_distinct_typed_leaves_expose_cross_trace_collision
   by_cases equalLeafDigest :
       truncateSha256 (serialize leftLeaf) =
         truncateSha256 (serialize rightLeaf)
-  · exact ⟨serialize leftLeaf, by simp [openingInputTrace],
-      serialize rightLeaf, by simp [openingInputTrace], differentInput,
+  · exact ⟨serialize leftLeaf,
+      by simp [openingInputTrace, openingRawInputTrace],
+      serialize rightLeaf,
+      by simp [openingInputTrace, openingRawInputTrace], differentInput,
       equalLeafDigest⟩
   · obtain ⟨collisionLeft, collisionLeftIn, collisionRight,
         collisionRightIn, collisionInputsDifferent, collisionAnswersEqual⟩ :=
@@ -269,11 +304,11 @@ theorem same_position_distinct_typed_leaves_expose_cross_trace_collision
         (List.ofFn rightSiblings) (by simp) equalLeafDigest sameRoot
     exact ⟨collisionLeft,
       by
-        simp only [openingInputTrace, List.mem_cons]
+        simp only [openingInputTrace, openingRawInputTrace, List.mem_cons]
         exact Or.inr collisionLeftIn,
       collisionRight,
       by
-        simp only [openingInputTrace, List.mem_cons]
+        simp only [openingInputTrace, openingRawInputTrace, List.mem_cons]
         exact Or.inr collisionRightIn,
       collisionInputsDifferent, collisionAnswersEqual⟩
 
@@ -303,6 +338,7 @@ theorem same_position_distinct_typed_leaves_in_log_expose_collision
       differentLeaf sameRoot)
 
 #print axioms ordered_node_input_ne_of_current_ne
+#print axioms foldPathInputTrace_append
 #print axioms foldPathAux_collision_of_current_ne_of_eq
 #print axioms foldPathAux_cross_trace_collision_of_current_ne_of_eq
 #print axioms same_position_distinct_typed_leaves_expose_raw_collision
