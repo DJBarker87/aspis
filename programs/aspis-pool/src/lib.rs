@@ -25,6 +25,7 @@ pub(crate) mod prepared_settlement_format;
 pub mod prepared_settlement_instruction;
 pub mod processor;
 pub mod registry;
+pub mod settle_prepared_instruction;
 pub mod state;
 mod transition;
 pub mod vault;
@@ -71,6 +72,12 @@ pub use processor::process_instruction;
 pub use registry::{
     pool_v1_verifier_entry_address, pool_v1_verifier_registry_address, POOL_V1_VERIFIER_ENTRY_SEED,
     POOL_V1_VERIFIER_REGISTRY_SEED,
+};
+pub use settle_prepared_instruction::{
+    decode_settle_prepared_instruction_v1, encode_settle_prepared_instruction_v1,
+    SettlePreparedInstructionFormatErrorV1, SettlePreparedInstructionV1,
+    POOL_V1_SETTLE_PREPARED_HEADER_BYTES, POOL_V1_SETTLE_PREPARED_INSTRUCTION_BYTES,
+    POOL_V1_SETTLE_PREPARED_INSTRUCTION_MAGIC,
 };
 pub use state::{
     pool_v1_state_address, PoolInitializationV1, PoolStateV1, POOL_V1_STATE_ACCOUNT_BYTES,

@@ -10,11 +10,12 @@ Status: this is a host-checked state/custody kernel, not the release Pool
 binary. Initialization and deposit have focused LiteSVM evidence. The direct
 private-spend route is retained as a semantic reference, but a transaction with
 the mock verifier already exhausts the 1,400,000-CU limit. It therefore must
-not be deployed as the production spend route. The release architecture uses
-a verifier-owned authorization receipt and a state-bound prepared-settlement
-plan so the final transaction can atomically consume the nullifier, update the
-tree/history and move custody without rerunning proof verification or Poseidon
-tree construction.
+not be deployed as the production spend route. The public `ASPP`/`ASPF` route
+uses a verifier-owned authorization receipt and a state-bound prepared-
+settlement plan so the final transaction can atomically consume the nullifier,
+update the tree/history, move custody and retire the plan without rerunning
+proof verification or Poseidon tree construction. The exact composition is
+SBF-build clean; validator/LiteSVM compute-unit evidence remains a release gate.
 
 All integers are little-endian. Every fixed wire rejects the wrong magic,
 version, transition kind, digest encoding, nonzero reserved bytes, noncanonical
@@ -170,6 +171,75 @@ execute one legacy SPL Token `TransferChecked`, requires the exact vault debit
 and destination credit, consumes the marker, and appends exactly one change
 commitment. A verifier, token, marker, or append error produces no successful
 Pool return data and the Solana runtime must roll back all CPIs/account changes.
+
+### Prepare settlement: `ASPP`, version 1, exactly 456 bytes
+
+The 24-byte `ASPP` header binds the transition kind and inclusive
+`not_before_slot`/`expires_at_slot` interval. It is followed by one exact
+432-byte `ASPT` or `ASWD` instruction whose nested kind must match. Preparation
+authenticates the finalized 720-byte verifier-owned `ASRA`, the live registry
+selection and exact source Pool/history images, performs the checked append,
+then persists a 10,000-byte Pool-owned `ASPS` core and, only at rollover, an
+8,504-byte `ASRS` shard. Their canonical PDA domains are:
+
+```text
+ASPS core: [b"aspis-settle-plan-v1", pool, statement_digest,
+            source_sequence_le, plan_authority]
+ASRS shard: [b"aspis-settle-roll-v1", core_plan_address]
+```
+
+The preparation account layout is documented in the focused prepared-
+settlement checkpoint. It creates no marker and performs no custody transfer or
+Pool/history mutation.
+
+### Final prepared settlement: `ASPF`, version 1, exactly 224 bytes
+
+```text
+0..4      magic "ASPF"
+4         version 1
+5         transition kind
+6         canonical digest encoding version
+7         zero reserved
+8..224    exact canonical 216-byte ASCP or ASWP statement
+```
+
+The common exact accounts are:
+
+```text
+0  [signer,writable] plan authority/refund recipient (System-owned)
+1  [writable]        canonical Pool state PDA
+2  [writable iff the first new root remains here] current root page
+3  [writable]        canonical next root page, rollover only
++  [writable]        canonical nullifier-marker PDA
++  []                finalized verifier-owned ASRA
++  []                verifier-registry PDA
++  []                exact profile/release entry PDA
++  [writable]        exact 10,000-byte ASPS core PDA
++  [writable]        exact 8,504-byte ASRS shard PDA, rollover only
++  [executable]      System Program
+```
+
+A withdrawal alone appends this exact suffix:
+
+```text
+[]            asset mint
+[writable]    canonical vault token account
+[writable]    statement-bound destination token account
+[]            canonical vault-authority PDA
+[executable]  original SPL Token program
+```
+
+The processor rejects missing/trailing or aliased accounts and wrong signer,
+writable, owner, executable, PDA or data-length states. It takes one `Clock`
+slot, reauthenticates the finalized `ASRA` and live registry at that same slot,
+then invokes the pure prepared-plan apply gate against the exact source
+Pool/current/optional-next history images. After that succeeds it creates or
+populates the marker, executes the authenticated legacy-token withdrawal (if
+any) and proves the exact vault/destination deltas, copies the authenticated
+next Pool/history images, populates the marker, tombstones/refunds the optional
+shard and core, and only then emits the normal 200-byte `ASTR`. Solana rollback
+makes any earlier CPI or write invisible on a later error; replay finds neither
+a fresh marker nor live plan accounts.
 
 ## Spend account ABI
 

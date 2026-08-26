@@ -2,12 +2,13 @@
 
 ## Status and scope
 
-This checkpoint is a host-checked kernel plus public preparation instruction.
-It is **not** an SBF measurement, a LiteSVM lifecycle result, or a deployable
-final-settlement path. Preparation can create and persist the plan PDA(s) (and
-an empty rollover history page when needed), but it does not create a
-nullifier marker, mutate Pool/root-history state, invoke the token program,
-transfer a withdrawal, close/refund a plan, or emit an `ASTR` receipt.
+This checkpoint now includes the public preparation instruction and public
+final atomic settlement processor. It is host-checked and SBF-build clean, but
+it is **not** a LiteSVM lifecycle/CU result or a deployable release. Preparation
+persists the plan PDA(s); final settlement consumes them in one locked call,
+creates/populates the nullifier marker, copies the authenticated next
+Pool/history images, performs and balance-checks an authenticated withdrawal,
+securely retires/refunds the plan accounts, and emits success-only `ASTR` data.
 
 The purpose of the kernel is to move both depth-20 Poseidon append operations
 out of the final atomic transaction while preserving the exact direct Pool V1
@@ -114,13 +115,13 @@ Apply reauthenticates the plan, source images, statement, exact `ASRA`, ordered
 commitments, receipts, roots, page writes, time interval and Pool/nullifier
 bindings. It requires a sealed registry capability authenticated at the exact
 settlement slot; a capability from the preceding slot is rejected even when
-all selected identities match. This forces the future processor to re-read the
-live registry, so pause/inactivation/retirement between preparation and
-settlement fails closed.
+all selected identities match. The final processor re-reads the live registry,
+so pause/inactivation/retirement between preparation and settlement fails
+closed.
 
 The nullifier input is also a sealed `PlannedNullifierMarkerV1`, obtainable only
-by validating the actual writable marker account. The future processor must
-obtain it in the same locked settlement call and atomically create/populate the
+by validating the actual writable marker account. The final processor obtains
+it in the same locked settlement call and atomically creates/populates the
 marker with the Pool/history/custody writes.
 
 Apply returns a sealed authenticated action. For withdrawals it exposes the
@@ -132,6 +133,43 @@ There is no Poseidon or Merkle append in the apply function or its byte-checking
 helpers. Poseidon remains in preparation and direct-path parity supplies the
 cryptographic provenance of the precomputed frontier/root images.
 
+## Public final atomic settlement
+
+`ASPF` is exactly 224 bytes: an 8-byte canonical header followed by the exact
+216-byte `ASCP` or `ASWP` statement authenticated by the plan and `ASRA`.
+The nested statement kind is decoded and checked; wrong length, trailing bytes,
+wrong magic/version/kind/digest encoding, nonzero reserved data and
+noncanonical statements reject.
+
+The account prefix is plan authority/payer (signer,writable,System-owned), Pool
+(writable), current page (writable exactly when the first new root stays in the
+page), and optional next page (writable, rollover only). The suffix is marker
+(writable), finalized `ASRA` (read-only), registry (read-only), entry
+(read-only), core `ASPS` (writable), optional `ASRS` (writable, rollover only),
+and executable System Program. Withdrawal alone appends mint (read-only), vault
+(writable), authenticated destination (writable), vault authority (read-only),
+and executable original SPL Token program. The processor rejects every alias,
+missing/trailing account, wrong owner, privilege, PDA, bump, executable state,
+or exact plan length.
+
+One `Clock::get()` slot drives receipt finality, registry liveness and plan
+activation. The processor authenticates the exact source Pool/current/optional
+next-page images through the pure apply gate before mutation. It then creates
+or validates the rent-exempt marker PDA and, for withdrawal, executes one
+legacy SPL-token transfer signed by the canonical vault-authority PDA using
+only the authenticated amount/destination. Exact pre/post vault debit and
+destination credit are required.
+
+Only authenticated next Pool/history images are copied. The marker is then
+populated, the optional shard is retired before its authenticating core, and
+each plan account is filled with a tombstone, refunded with checked lamport
+arithmetic, assigned to System and resized to zero. `ASTR` return data is set
+only after both closes succeed; the entrypoint clears return data before
+dispatch and on every error. The spent marker plus retired plans reject replay,
+while exact owner/length checks and rent-exempt creation rules resist revival.
+Private transfer retains both ordered outputs and emits the normal 1-to-2
+receipt.
+
 ## Focused evidence
 
 Command:
@@ -140,7 +178,15 @@ Command:
 NO_DNA=1 cargo test -p aspis-pool prepared_settlement --lib --no-default-features
 ```
 
-Result: **15 passed, 0 failed, 49 filtered out**.
+Result: **17 passed, 0 failed, 50 filtered out**.
+
+The exact `ASPF` wire test also passes independently:
+
+```text
+NO_DNA=1 cargo test -p aspis-pool settle_prepared --lib --no-default-features
+```
+
+Result: **1 passed, 0 failed, 66 filtered out**.
 
 The focused cases cover:
 
@@ -160,26 +206,26 @@ The focused cases cover:
 - exact rollover core+shard persistence while leaving the fresh rollover
   history page zero for final settlement; and
 - fail-closed rejection of underfunded program-owned zero rollover-page, core
-  and shard accounts before any plan bytes are persisted.
+  and shard accounts before any plan bytes are persisted;
+- final private-transfer rollover with exact 1-to-2 images/receipt, authority
+  and alias rejection, shard/core retirement/refund, replay rejection and no
+  failure return data; and
+- withdrawal driven by the authenticated amount/destination with exact
+  vault/destination deltas, marker/state/history persistence, core retirement
+  and success-only `ASTR`.
 
-The touched Rust files also pass a file-scoped `rustfmt --check`.
+The touched Rust files pass file-scoped `rustfmt`, `cargo check`, the mandatory
+Solana program autofixer, and `cargo-build-sbf`. The final SBF build reports no
+stack-offset/frame-clobber diagnostic; the authenticated statement aggregate is
+heap-owned so the exact composition stays below the 4 KiB SBF frame limit.
 
-## Mandatory next checkpoint
+## Remaining release gate
 
-The split format and public preparation composition are host-green, but their
-System CPI creation paths are not yet SBF/LiteSVM measured. The next checkpoint
-must first prove creation/rent/heap/CU behavior for the 10,000-byte core and
-optional 8,504-byte shard, then add the separate final-settlement processor.
-That final processor must, in one locked call:
-
-1. require the exact plan authority signer and exact core/optional shard;
-2. enforce all signer/writable/owner/alias constraints;
-3. reauthenticate the live registry using the same `Clock` settlement slot;
-4. re-plan the actual marker account and atomically create/populate it;
-5. copy the authenticated Pool/history images;
-6. execute and balance-check the authenticated withdrawal token CPI, if any;
-7. expose success-only return data; and
-8. enforce plan/shard close, tombstone and refund behavior without replay.
-
-Only after that composition has strict 1.4M-CU runtime evidence may this be
-described as an atomic prepared-settlement transaction.
+The exact atomic processor composition is present and SBF-build clean. The
+remaining focused gate is a validator/LiteSVM lifecycle run proving System CPI
+creation/rent behavior, real SPL-token CPI and close semantics, rollback after
+an already successful CPI followed by a later outer error, serialized
+transaction/account-lock feasibility, and strict 1,400,000-CU headroom for both
+non-rollover and worst-case private-transfer rollover. Until that evidence is
+recorded, this is an atomic prepared-settlement checkpoint rather than a
+deployable release.

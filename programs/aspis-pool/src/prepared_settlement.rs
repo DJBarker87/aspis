@@ -24,8 +24,8 @@ use aspis_statement::{
         validate_pool_v1_authorization_receipt_for_settlement_v1,
         verifier_statement_payload_digest_v1, HistoricalAnchorEnvelopeV1,
         PoolV1AuthorizationReceiptAccountStatusV1, PoolV1AuthorizationReceiptPdaInputsV1,
-        PoolV1AuthorizationReceiptV1, PoolV1PrivateTransferPublicV1, PoolV1TransitionKind,
-        PoolV1WithdrawalPublicV1, VerifierDispatchRequestV1,
+        PoolV1AuthorizationReceiptV1, PoolV1NullifierMarkerV1, PoolV1PrivateTransferPublicV1,
+        PoolV1TransitionKind, PoolV1WithdrawalPublicV1, VerifierDispatchRequestV1,
         POOL_V1_AUTHORIZATION_RECEIPT_ACCOUNT_BYTES, POOL_V1_AUTHORIZATION_RECEIPT_SEED,
         POOL_V1_PAYMENT_STATEMENT_BYTES, POOL_V1_ROOT_HISTORY_CAPACITY,
         POOL_V1_ROOT_HISTORY_PAGE_ACCOUNT_BYTES,
@@ -96,6 +96,10 @@ impl AuthenticatedPreparedSettlementActionV1 {
                 Some((statement.amount, statement.destination_token_account))
             }
         }
+    }
+
+    pub(crate) fn ordered_commitments(self) -> (Digest, Option<Digest>) {
+        self.statement.ordered_commitments()
     }
 }
 
@@ -169,36 +173,45 @@ struct AuthenticatedSettlementStatementV1 {
     receipt_image_digest: [u8; 32],
 }
 
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub(crate) struct PreparedSettlementReceiptClaimV1 {
+    pub transition_kind: PoolV1TransitionKind,
+    pub statement_digest: [u8; 32],
+    pub nullifier: Digest,
+    pub verifier_selection: VerifierSelectionV1,
+    pub marker: PoolV1NullifierMarkerV1,
+}
+
 /// Final-gate context supplied from the already selected transaction
 /// accounts.  Keeping this byte-oriented makes the absence of Poseidon in the
 /// apply phase auditable directly from this module.
-pub(crate) struct PreparedSettlementApplyContextV1<'a> {
-    pub program_id: &'a Pubkey,
-    pub plan_address: &'a Pubkey,
-    pub plan_owner: &'a Pubkey,
-    pub plan_authority: &'a Pubkey,
-    pub plan_image: &'a [u8],
-    pub rollover_shard: Option<PreparedSettlementRolloverShardAccountV1<'a>>,
-    pub pool_address: &'a Pubkey,
-    pub source_pool_image: &'a [u8],
-    pub current_page_address: &'a Pubkey,
-    pub source_current_page_image: &'a [u8],
-    pub next_page: Option<(&'a Pubkey, &'a [u8])>,
-    pub statement_payload: &'a [u8],
+pub(crate) struct PreparedSettlementApplyContextV1<'plan, 'context> {
+    pub program_id: &'context Pubkey,
+    pub plan_address: &'context Pubkey,
+    pub plan_owner: &'context Pubkey,
+    pub plan_authority: &'context Pubkey,
+    pub plan_image: &'plan [u8],
+    pub rollover_shard: Option<PreparedSettlementRolloverShardAccountV1<'plan>>,
+    pub pool_address: &'context Pubkey,
+    pub source_pool_image: &'context [u8],
+    pub current_page_address: &'context Pubkey,
+    pub source_current_page_image: &'context [u8],
+    pub next_page: Option<(&'context Pubkey, &'context [u8])>,
+    pub statement_payload: &'context [u8],
     pub expected_transition_kind: PoolV1TransitionKind,
     pub expected_statement_digest: [u8; 32],
     pub expected_nullifier: Digest,
-    pub authorization_receipt_address: &'a Pubkey,
-    pub authorization_receipt_owner: &'a Pubkey,
-    pub authorization_receipt_image: &'a [u8],
+    pub authorization_receipt_address: &'context Pubkey,
+    pub authorization_receipt_owner: &'context Pubkey,
+    pub authorization_receipt_image: &'context [u8],
     pub authorization_receipt_is_signer: bool,
     pub authorization_receipt_is_writable: bool,
     pub authorization_receipt_executable: bool,
     /// Sealed evidence obtained from the Pool's exact current verifier-policy
     /// registry accounts at `settlement_slot`.
     pub verifier_selection: AuthenticatedVerifierSelectionV1,
-    pub nullifier_marker_address: &'a Pubkey,
-    pub nullifier_marker_plan: &'a PlannedNullifierMarkerV1,
+    pub nullifier_marker_address: &'context Pubkey,
+    pub nullifier_marker_plan: &'context PlannedNullifierMarkerV1,
     pub settlement_slot: u64,
     pub hash: HashFn,
 }
@@ -254,7 +267,7 @@ fn authenticate_statement_and_receipt_v1(
     receipt_image: &[u8],
     settlement_slot: u64,
     hash: HashFn,
-) -> Result<AuthenticatedSettlementStatementV1, ProgramError> {
+) -> Result<Box<AuthenticatedSettlementStatementV1>, ProgramError> {
     if statement_payload.len() != POOL_V1_PAYMENT_STATEMENT_BYTES
         || receipt_image.len() != POOL_V1_AUTHORIZATION_RECEIPT_ACCOUNT_BYTES
     {
@@ -335,17 +348,17 @@ fn authenticate_statement_and_receipt_v1(
     {
         return Err(ProgramError::InvalidAccountData);
     }
-    Ok(AuthenticatedSettlementStatementV1 {
+    Ok(Box::new(AuthenticatedSettlementStatementV1 {
         statement,
         statement_digest,
         receipt,
         envelope,
         receipt_image_digest: exact_image_digest_v1(receipt_image, hash),
-    })
+    }))
 }
 
 fn verifier_selection_from_receipt(
-    authenticated: AuthenticatedSettlementStatementV1,
+    authenticated: &AuthenticatedSettlementStatementV1,
 ) -> VerifierSelectionV1 {
     VerifierSelectionV1 {
         verifier_program: authenticated.receipt.binding.verifier_program,
@@ -357,7 +370,7 @@ fn verifier_selection_from_receipt(
 
 fn authenticated_selection_matches_receipt(
     selected: AuthenticatedVerifierSelectionV1,
-    authenticated: AuthenticatedSettlementStatementV1,
+    authenticated: &AuthenticatedSettlementStatementV1,
 ) -> bool {
     selected.matches(
         authenticated.statement.pool(),
@@ -366,6 +379,38 @@ fn authenticated_selection_matches_receipt(
         authenticated.receipt.binding.release_binding,
         authenticated.receipt.binding.statement_version,
     )
+}
+
+pub(crate) fn authenticate_prepared_settlement_receipt_claim_v1(
+    transition_kind: PoolV1TransitionKind,
+    statement_payload: &[u8],
+    authorization_receipt: &AccountInfo<'_>,
+    settlement_slot: u64,
+    hash: HashFn,
+) -> Result<PreparedSettlementReceiptClaimV1, ProgramError> {
+    if authorization_receipt.executable
+        || authorization_receipt.is_signer
+        || authorization_receipt.is_writable
+    {
+        return Err(ProgramError::InvalidAccountData);
+    }
+    let image = authorization_receipt.try_borrow_data()?;
+    let authenticated = authenticate_statement_and_receipt_v1(
+        transition_kind,
+        statement_payload,
+        authorization_receipt.key,
+        authorization_receipt.owner,
+        &image,
+        settlement_slot,
+        hash,
+    )?;
+    Ok(PreparedSettlementReceiptClaimV1 {
+        transition_kind,
+        statement_digest: authenticated.statement_digest,
+        nullifier: authenticated.statement.nullifier(),
+        verifier_selection: verifier_selection_from_receipt(&authenticated),
+        marker: PoolV1NullifierMarkerV1::from_historical_anchor(&authenticated.envelope),
+    })
 }
 
 fn checked_history_distribution(
@@ -452,14 +497,14 @@ pub(crate) fn build_prepared_settlement_plan_v1(
         pool_account.key,
         &state.verifier_policy,
         registry_accounts,
-        verifier_selection_from_receipt(authenticated),
+        verifier_selection_from_receipt(&authenticated),
         preparation_slot,
     )?;
     if *plan_authority == Pubkey::default()
         || not_before_slot > expires_at_slot
         || preparation_slot > expires_at_slot
         || not_before_slot < authenticated.receipt.verified_slot
-        || !authenticated_selection_matches_receipt(selected, authenticated)
+        || !authenticated_selection_matches_receipt(selected, &authenticated)
         || authenticated.statement.pool() != pool_account.key.to_bytes()
         || authenticated.statement.pool() != state.identity.pool
         || authenticated.statement.deployment_domain() != state.identity.deployment_domain
@@ -789,7 +834,7 @@ fn nullifier_marker_matches(
     program_id: &Pubkey,
     marker_address: &Pubkey,
     marker_plan: &PlannedNullifierMarkerV1,
-    authenticated: AuthenticatedSettlementStatementV1,
+    authenticated: &AuthenticatedSettlementStatementV1,
 ) -> Result<(), ProgramError> {
     let statement = authenticated.statement;
     let marker = marker_plan.marker();
@@ -818,9 +863,9 @@ fn nullifier_marker_matches(
 /// Authenticate and expose the exact prepared images for final atomic
 /// persistence. This function performs SHA-256 and byte comparisons only.
 #[inline(never)]
-pub(crate) fn apply_prepared_settlement_plan_v1(
-    context: PreparedSettlementApplyContextV1<'_>,
-) -> Result<PreparedSettlementApplyResultV1<'_>, ProgramError> {
+pub(crate) fn apply_prepared_settlement_plan_v1<'plan>(
+    context: PreparedSettlementApplyContextV1<'plan, '_>,
+) -> Result<PreparedSettlementApplyResultV1<'plan>, ProgramError> {
     if context.plan_owner != context.program_id
         || context.source_pool_image.len() != POOL_V1_STATE_ACCOUNT_BYTES
         || context.source_current_page_image.len() != POOL_V1_ROOT_HISTORY_PAGE_ACCOUNT_BYTES
@@ -903,7 +948,7 @@ pub(crate) fn apply_prepared_settlement_plan_v1(
         context.hash,
     )?;
     if context.verifier_selection.authenticated_at_slot() != context.settlement_slot
-        || !authenticated_selection_matches_receipt(context.verifier_selection, authenticated)
+        || !authenticated_selection_matches_receipt(context.verifier_selection, &authenticated)
         || authenticated.statement_digest != context.expected_statement_digest
         || authenticated.statement.nullifier() != context.expected_nullifier
         || authenticated.statement.pool() != context.pool_address.to_bytes()
@@ -918,7 +963,7 @@ pub(crate) fn apply_prepared_settlement_plan_v1(
         context.program_id,
         context.nullifier_marker_address,
         context.nullifier_marker_plan,
-        authenticated,
+        &authenticated,
     )?;
     let receipt = validate_receipt_progression(plan)?;
     source_state_and_result_image_match(plan, source_pool)?;
@@ -993,16 +1038,17 @@ mod tests {
         PoolV1PrivateTransferPublicV1, PoolV1WithdrawalPublicV1, RootHistoryPageV1,
         VerifierDispatchBindingV1, VerifierDispatchRequestV1, VerifierEntryStatusV1,
         VerifierRegistryEntryV1, VerifierRegistryV1,
-        POOL_V1_AUTHORIZATION_RECEIPT_ACCOUNT_DIGEST_DOMAIN, POOL_V1_TREE_DEPTH,
-        POOL_V1_VERIFIER_ENTRY_BYTES, POOL_V1_VERIFIER_ENTRY_NO_RETIREMENT_SLOT,
-        POOL_V1_VERIFIER_REGISTRY_BYTES, POOL_V1_VERIFIER_REGISTRY_FLAG_PAUSED,
+        POOL_V1_AUTHORIZATION_RECEIPT_ACCOUNT_DIGEST_DOMAIN,
+        POOL_V1_NULLIFIER_MARKER_ACCOUNT_BYTES, POOL_V1_TREE_DEPTH, POOL_V1_VERIFIER_ENTRY_BYTES,
+        POOL_V1_VERIFIER_ENTRY_NO_RETIREMENT_SLOT, POOL_V1_VERIFIER_REGISTRY_BYTES,
+        POOL_V1_VERIFIER_REGISTRY_FLAG_PAUSED,
     };
     use sha2::{Digest as ShaDigest, Sha256};
     use solana_program::{
         clock::Epoch, entrypoint::ProgramResult, instruction::Instruction, rent::Rent,
     };
-    use solana_sdk_ids::{native_loader, system_program};
-    use std::vec::Vec;
+    use solana_sdk_ids::{bpf_loader, native_loader, system_program};
+    use std::{cell::RefCell, vec::Vec};
 
     use crate::{
         empty_roots::POOL_V1_EMPTY_ROOTS,
@@ -1023,10 +1069,16 @@ mod tests {
             TEST_SOURCE_ROOT_OFFSET,
         },
         prepared_settlement_instruction::encode_prepare_settlement_instruction_v1,
-        processor::{process_prepare_settlement_with_runtime_v1, PoolCpiRuntimeV1},
+        processor::{
+            process_prepare_settlement_with_runtime_v1, process_settle_prepared_with_runtime_v1,
+            PoolCpiRuntimeV1,
+        },
         registry::{pool_v1_verifier_entry_address, pool_v1_verifier_registry_address},
+        settle_prepared_instruction::encode_settle_prepared_instruction_v1,
         state::{pool_v1_state_address, PoolInitializationV1, PoolStateV1},
         transition::apply_authorized_append_after_v1,
+        vault::{pool_v1_vault_authority_address, pool_v1_vault_token_account_address},
+        LEGACY_SPL_TOKEN_ACCOUNT_BYTES, LEGACY_SPL_TOKEN_MINT_ACCOUNT_BYTES,
         LEGACY_SPL_TOKEN_PROGRAM_ID,
     };
 
@@ -1082,6 +1134,65 @@ mod tests {
             _: &[&[&[u8]]],
         ) -> ProgramResult {
             panic!("unexpected preparation CPI")
+        }
+    }
+
+    struct FinalSettlementRuntime {
+        expected_withdrawal: Option<u64>,
+        closed: Vec<Pubkey>,
+    }
+
+    impl PoolCpiRuntimeV1 for FinalSettlementRuntime {
+        fn invoke<'info>(&mut self, _: &Instruction, _: &[AccountInfo<'info>]) -> ProgramResult {
+            panic!("unexpected unsigned final-settlement CPI")
+        }
+
+        fn invoke_signed<'info>(
+            &mut self,
+            instruction: &Instruction,
+            infos: &[AccountInfo<'info>],
+            _: &[&[&[u8]]],
+        ) -> ProgramResult {
+            let amount = self
+                .expected_withdrawal
+                .expect("unexpected signed final-settlement CPI");
+            assert_eq!(instruction.program_id, LEGACY_SPL_TOKEN_PROGRAM_ID);
+            assert_eq!(infos.len(), 5);
+            assert_eq!(instruction.data[0], 12);
+            assert_eq!(
+                u64::from_le_bytes(instruction.data[1..9].try_into().unwrap()),
+                amount
+            );
+            let vault_before =
+                u64::from_le_bytes(infos[0].try_borrow_data()?[64..72].try_into().unwrap());
+            let destination_before =
+                u64::from_le_bytes(infos[2].try_borrow_data()?[64..72].try_into().unwrap());
+            infos[0].try_borrow_mut_data()?[64..72]
+                .copy_from_slice(&vault_before.checked_sub(amount).unwrap().to_le_bytes());
+            infos[2].try_borrow_mut_data()?[64..72].copy_from_slice(
+                &destination_before
+                    .checked_add(amount)
+                    .unwrap()
+                    .to_le_bytes(),
+            );
+            Ok(())
+        }
+
+        fn close_program_account<'info>(
+            &mut self,
+            account: &AccountInfo<'info>,
+            refund_authority: &AccountInfo<'info>,
+            expected_owner: &Pubkey,
+            expected_data_len: usize,
+        ) -> ProgramResult {
+            assert_eq!(account.owner, expected_owner);
+            assert_eq!(account.data_len(), expected_data_len);
+            account.try_borrow_mut_data()?.fill(0xff);
+            let refund = account.lamports();
+            **refund_authority.try_borrow_mut_lamports()? += refund;
+            **account.try_borrow_mut_lamports()? = 0;
+            self.closed.push(*account.key);
+            Ok(())
         }
     }
 
@@ -1157,6 +1268,26 @@ mod tests {
             false,
             Epoch::default(),
         )
+    }
+
+    fn legacy_mint_image(decimals: u8) -> [u8; LEGACY_SPL_TOKEN_MINT_ACCOUNT_BYTES] {
+        let mut image = [0u8; LEGACY_SPL_TOKEN_MINT_ACCOUNT_BYTES];
+        image[44] = decimals;
+        image[45] = 1;
+        image
+    }
+
+    fn legacy_token_image(
+        mint: &Pubkey,
+        authority: &Pubkey,
+        amount: u64,
+    ) -> [u8; LEGACY_SPL_TOKEN_ACCOUNT_BYTES] {
+        let mut image = [0u8; LEGACY_SPL_TOKEN_ACCOUNT_BYTES];
+        image[..32].copy_from_slice(mint.as_ref());
+        image[32..64].copy_from_slice(authority.as_ref());
+        image[64..72].copy_from_slice(&amount.to_le_bytes());
+        image[108] = 1;
+        image
     }
 
     fn state_and_history_at(pool: &Pubkey, leaf_count: u64) -> (PoolStateV1, Vec<u8>) {
@@ -2299,6 +2430,442 @@ mod tests {
             .unwrap()
             .iter()
             .all(|byte| *byte == 0));
+    }
+
+    #[test]
+    fn public_final_private_transfer_copies_rollover_images_closes_plans_and_rejects_replay() {
+        let fixture = standard_fixture(PoolV1TransitionKind::PrivateTransfer, 254);
+        let instruction = encode_settle_prepared_instruction_v1(
+            fixture.transition_kind,
+            &fixture.statement_payload,
+        )
+        .unwrap();
+        let shard_address = fixture.rollover_shard_address.unwrap();
+        let rent = Rent::default();
+        let system_id = system_program::id();
+        let native_loader_id = native_loader::id();
+        let mut authority_lamports = 10;
+        let mut authority_data = [];
+        let mut pool_lamports = 1;
+        let mut pool_data = fixture.source_pool;
+        let mut current_lamports = 1;
+        let mut current_data = fixture.source_current_page.clone();
+        let mut next_lamports = rent.minimum_balance(POOL_V1_ROOT_HISTORY_PAGE_ACCOUNT_BYTES);
+        let mut next_data = fixture.source_next_page.clone();
+        let mut marker_lamports = rent.minimum_balance(POOL_V1_NULLIFIER_MARKER_ACCOUNT_BYTES);
+        let mut marker_data = [0u8; POOL_V1_NULLIFIER_MARKER_ACCOUNT_BYTES];
+        let mut receipt_lamports = 1;
+        let mut receipt_data = fixture.authorization_receipt_image;
+        let mut registry_lamports = 1;
+        let mut registry_data = fixture.registry_image;
+        let mut entry_lamports = 1;
+        let mut entry_data = fixture.entry_image;
+        let mut core_lamports = 101;
+        let mut core_data = fixture.plan_image.clone();
+        let mut shard_lamports = 202;
+        let mut shard_data = fixture.rollover_shard_image.clone().unwrap();
+        let mut system_lamports = 1;
+        let mut system_data = [];
+        let accounts = vec![
+            account(
+                &fixture.authority,
+                &system_id,
+                &mut authority_lamports,
+                &mut authority_data,
+                true,
+                true,
+            ),
+            account(
+                &fixture.pool,
+                &fixture.program_id,
+                &mut pool_lamports,
+                &mut pool_data,
+                false,
+                true,
+            ),
+            account(
+                &fixture.current_page,
+                &fixture.program_id,
+                &mut current_lamports,
+                &mut current_data,
+                false,
+                true,
+            ),
+            account(
+                &fixture.next_page,
+                &fixture.program_id,
+                &mut next_lamports,
+                &mut next_data,
+                false,
+                true,
+            ),
+            account(
+                &fixture.marker_address,
+                &fixture.program_id,
+                &mut marker_lamports,
+                &mut marker_data,
+                false,
+                true,
+            ),
+            account(
+                &fixture.authorization_receipt_address,
+                &fixture.authorization_receipt_owner,
+                &mut receipt_lamports,
+                &mut receipt_data,
+                false,
+                false,
+            ),
+            account(
+                &fixture.registry_address,
+                &fixture.registry_program,
+                &mut registry_lamports,
+                &mut registry_data,
+                false,
+                false,
+            ),
+            account(
+                &fixture.entry_address,
+                &fixture.registry_program,
+                &mut entry_lamports,
+                &mut entry_data,
+                false,
+                false,
+            ),
+            account(
+                &fixture.plan_address,
+                &fixture.program_id,
+                &mut core_lamports,
+                core_data.as_mut(),
+                false,
+                true,
+            ),
+            account(
+                &shard_address,
+                &fixture.program_id,
+                &mut shard_lamports,
+                shard_data.as_mut(),
+                false,
+                true,
+            ),
+            AccountInfo::new(
+                &system_id,
+                false,
+                false,
+                &mut system_lamports,
+                &mut system_data,
+                &native_loader_id,
+                true,
+                Epoch::default(),
+            ),
+        ];
+
+        let returned = RefCell::new(Vec::new());
+        let mut missing_signature = accounts.clone();
+        missing_signature[0].is_signer = false;
+        assert_eq!(
+            process_settle_prepared_with_runtime_v1(
+                &fixture.program_id,
+                &missing_signature,
+                &instruction,
+                SETTLEMENT_SLOT,
+                &rent,
+                sha256,
+                &mut FinalSettlementRuntime {
+                    expected_withdrawal: None,
+                    closed: Vec::new(),
+                },
+                |data| returned.borrow_mut().extend_from_slice(data),
+            ),
+            Err(PoolV1ProgramError::InvalidPayer.into())
+        );
+        let mut alias = accounts.clone();
+        alias[7] = alias[6].clone();
+        assert_eq!(
+            process_settle_prepared_with_runtime_v1(
+                &fixture.program_id,
+                &alias,
+                &instruction,
+                SETTLEMENT_SLOT,
+                &rent,
+                sha256,
+                &mut FinalSettlementRuntime {
+                    expected_withdrawal: None,
+                    closed: Vec::new(),
+                },
+                |data| returned.borrow_mut().extend_from_slice(data),
+            ),
+            Err(ProgramError::InvalidArgument)
+        );
+        assert!(returned.borrow().is_empty());
+        assert_eq!(
+            accounts[1].try_borrow_data().unwrap().as_ref(),
+            &fixture.source_pool
+        );
+        assert_eq!(
+            accounts[2].try_borrow_data().unwrap().as_ref(),
+            fixture.source_current_page.as_slice()
+        );
+        assert_eq!(
+            accounts[3].try_borrow_data().unwrap().as_ref(),
+            fixture.source_next_page.as_slice()
+        );
+        drop(missing_signature);
+        drop(alias);
+
+        let mut runtime = FinalSettlementRuntime {
+            expected_withdrawal: None,
+            closed: Vec::new(),
+        };
+        process_settle_prepared_with_runtime_v1(
+            &fixture.program_id,
+            &accounts,
+            &instruction,
+            SETTLEMENT_SLOT,
+            &rent,
+            sha256,
+            &mut runtime,
+            |data| returned.borrow_mut().extend_from_slice(data),
+        )
+        .unwrap();
+        let replay_returned = RefCell::new(Vec::new());
+        assert!(process_settle_prepared_with_runtime_v1(
+            &fixture.program_id,
+            &accounts,
+            &instruction,
+            SETTLEMENT_SLOT,
+            &rent,
+            sha256,
+            &mut FinalSettlementRuntime {
+                expected_withdrawal: None,
+                closed: Vec::new(),
+            },
+            |data| replay_returned.borrow_mut().extend_from_slice(data),
+        )
+        .is_err());
+        assert!(replay_returned.borrow().is_empty());
+        drop(accounts);
+
+        assert_eq!(pool_data, fixture.direct_pool);
+        assert_eq!(current_data, fixture.direct_current_page);
+        assert_eq!(next_data, fixture.direct_next_page);
+        assert_eq!(&marker_data[..4], b"ASNM");
+        assert_eq!(authority_lamports, 313);
+        assert_eq!(core_lamports, 0);
+        assert_eq!(shard_lamports, 0);
+        assert!(core_data.iter().all(|byte| *byte == 0xff));
+        assert!(shard_data.iter().all(|byte| *byte == 0xff));
+        assert_eq!(runtime.closed, vec![shard_address, fixture.plan_address]);
+        let returned = returned.borrow();
+        assert_eq!(returned.len(), 200);
+        assert_eq!(&returned[..4], b"ASTR");
+        assert_eq!(returned[5], PoolV1TransitionKind::PrivateTransfer as u8);
+        assert_eq!(returned[6], 2);
+    }
+
+    #[test]
+    fn public_final_withdrawal_uses_authenticated_custody_delta_and_success_only_receipt() {
+        let fixture = standard_fixture(PoolV1TransitionKind::Withdrawal, 0);
+        let instruction = encode_settle_prepared_instruction_v1(
+            fixture.transition_kind,
+            &fixture.statement_payload,
+        )
+        .unwrap();
+        let rent = Rent::default();
+        let system_id = system_program::id();
+        let native_loader_id = native_loader::id();
+        let bpf_loader_id = bpf_loader::id();
+        let mint = Pubkey::new_from_array(initialization().asset_mint);
+        let vault = pool_v1_vault_token_account_address(&fixture.program_id, &fixture.pool).0;
+        let vault_authority = pool_v1_vault_authority_address(&fixture.program_id, &fixture.pool).0;
+        let destination = Pubkey::new_from_array([71u8; 32]);
+        let destination_authority = Pubkey::new_unique();
+        let mut authority_lamports = 10;
+        let mut authority_data = [];
+        let mut pool_lamports = 1;
+        let mut pool_data = fixture.source_pool;
+        let mut current_lamports = 1;
+        let mut current_data = fixture.source_current_page.clone();
+        let mut marker_lamports = rent.minimum_balance(POOL_V1_NULLIFIER_MARKER_ACCOUNT_BYTES);
+        let mut marker_data = [0u8; POOL_V1_NULLIFIER_MARKER_ACCOUNT_BYTES];
+        let mut receipt_lamports = 1;
+        let mut receipt_data = fixture.authorization_receipt_image;
+        let mut registry_lamports = 1;
+        let mut registry_data = fixture.registry_image;
+        let mut entry_lamports = 1;
+        let mut entry_data = fixture.entry_image;
+        let mut core_lamports = 101;
+        let mut core_data = fixture.plan_image.clone();
+        let mut system_lamports = 1;
+        let mut system_data = [];
+        let mut mint_lamports = 1;
+        let mut mint_data = legacy_mint_image(6);
+        let mut vault_lamports = 1;
+        let mut vault_data = legacy_token_image(&mint, &vault_authority, 100);
+        let mut destination_lamports = 1;
+        let mut destination_data = legacy_token_image(&mint, &destination_authority, 10);
+        let mut vault_authority_lamports = 1;
+        let mut vault_authority_data = [];
+        let mut token_program_lamports = 1;
+        let mut token_program_data = [];
+        let accounts = vec![
+            account(
+                &fixture.authority,
+                &system_id,
+                &mut authority_lamports,
+                &mut authority_data,
+                true,
+                true,
+            ),
+            account(
+                &fixture.pool,
+                &fixture.program_id,
+                &mut pool_lamports,
+                &mut pool_data,
+                false,
+                true,
+            ),
+            account(
+                &fixture.current_page,
+                &fixture.program_id,
+                &mut current_lamports,
+                &mut current_data,
+                false,
+                true,
+            ),
+            account(
+                &fixture.marker_address,
+                &fixture.program_id,
+                &mut marker_lamports,
+                &mut marker_data,
+                false,
+                true,
+            ),
+            account(
+                &fixture.authorization_receipt_address,
+                &fixture.authorization_receipt_owner,
+                &mut receipt_lamports,
+                &mut receipt_data,
+                false,
+                false,
+            ),
+            account(
+                &fixture.registry_address,
+                &fixture.registry_program,
+                &mut registry_lamports,
+                &mut registry_data,
+                false,
+                false,
+            ),
+            account(
+                &fixture.entry_address,
+                &fixture.registry_program,
+                &mut entry_lamports,
+                &mut entry_data,
+                false,
+                false,
+            ),
+            account(
+                &fixture.plan_address,
+                &fixture.program_id,
+                &mut core_lamports,
+                core_data.as_mut(),
+                false,
+                true,
+            ),
+            AccountInfo::new(
+                &system_id,
+                false,
+                false,
+                &mut system_lamports,
+                &mut system_data,
+                &native_loader_id,
+                true,
+                Epoch::default(),
+            ),
+            account(
+                &mint,
+                &LEGACY_SPL_TOKEN_PROGRAM_ID,
+                &mut mint_lamports,
+                &mut mint_data,
+                false,
+                false,
+            ),
+            account(
+                &vault,
+                &LEGACY_SPL_TOKEN_PROGRAM_ID,
+                &mut vault_lamports,
+                &mut vault_data,
+                false,
+                true,
+            ),
+            account(
+                &destination,
+                &LEGACY_SPL_TOKEN_PROGRAM_ID,
+                &mut destination_lamports,
+                &mut destination_data,
+                false,
+                true,
+            ),
+            account(
+                &vault_authority,
+                &system_id,
+                &mut vault_authority_lamports,
+                &mut vault_authority_data,
+                false,
+                false,
+            ),
+            AccountInfo::new(
+                &LEGACY_SPL_TOKEN_PROGRAM_ID,
+                false,
+                false,
+                &mut token_program_lamports,
+                &mut token_program_data,
+                &bpf_loader_id,
+                true,
+                Epoch::default(),
+            ),
+        ];
+        let returned = RefCell::new(Vec::new());
+        let mut runtime = FinalSettlementRuntime {
+            expected_withdrawal: Some(17),
+            closed: Vec::new(),
+        };
+        process_settle_prepared_with_runtime_v1(
+            &fixture.program_id,
+            &accounts,
+            &instruction,
+            SETTLEMENT_SLOT,
+            &rent,
+            sha256,
+            &mut runtime,
+            |data| returned.borrow_mut().extend_from_slice(data),
+        )
+        .unwrap();
+        assert_eq!(pool_data, fixture.direct_pool);
+        assert_eq!(current_data, fixture.direct_current_page);
+        assert_eq!(
+            u64::from_le_bytes(vault_data[64..72].try_into().unwrap()),
+            83
+        );
+        assert_eq!(
+            u64::from_le_bytes(destination_data[64..72].try_into().unwrap()),
+            27
+        );
+        assert_eq!(&marker_data[..4], b"ASNM");
+        assert_eq!(authority_lamports, 111);
+        assert_eq!(core_lamports, 0);
+        assert!(core_data.iter().all(|byte| *byte == 0xff));
+        assert_eq!(runtime.closed, vec![fixture.plan_address]);
+        let returned = returned.borrow();
+        assert_eq!(returned.len(), 200);
+        assert_eq!(&returned[..4], b"ASTR");
+        assert_eq!(returned[5], PoolV1TransitionKind::Withdrawal as u8);
+        assert_eq!(returned[6], 1);
+        assert_eq!(&returned[104..136], destination.as_ref());
+        assert_eq!(
+            u32::from_le_bytes(returned[136..140].try_into().unwrap()),
+            17
+        );
     }
 
     #[test]
