@@ -1,5 +1,6 @@
 import AspisFormal.K1.V7Tag73ExactFixedK13K14FailureReduction
 import AspisFormal.Pool.V7CorrelatedPointClaimExtraction
+import AspisFormal.Pool.V7FixedWidth29TupleList
 
 /-!
 # Restoration-wide point-compatible K1.4 extraction
@@ -26,6 +27,7 @@ open AspisPool.V7CoherentTraceExtraction
 open AspisPool.V7CombinedCandidateExact
 open AspisPool.V7CorrelatedPointClaimExtraction
 open AspisPool.V7ExtractedLaneWords
+open AspisPool.V7FixedWidth29TupleList
 open AspisPool.V7PointClaimBatchBinding
 open AspisPool.V7Width29ComponentExtraction
 open AspisV5ComponentADeployedTerminalApplicability
@@ -155,6 +157,8 @@ theorem point_compatible_selected_chain_extracts_coherent_trace
         disclosedFinal schedule,
       extraction.combined = selected ∧
       extraction.components = components ∧
+      extraction.components ∈ fixedWidth29TupleList decoder
+        (extractedWidth29InitialWords words) ∧
       ∀ row lane, claims row lane =
         componentPointClaim extraction point row lane := by
   have supportEq := restoredWidth29Strategy_support_eq_selected decoder
@@ -184,7 +188,21 @@ theorem point_compatible_selected_chain_extracts_coherent_trace
     selected_chain_and_matching_components_extract_coherent_trace decoder
       binding words gamma disclosedFinal schedule selected selectedEq components
       everyDecoded selectedShared selectedOnCurve
-  refine ⟨extraction, combinedExact, componentsExact, ?_⟩
+  have restoredLarge :
+      AspisV6PublishedTheoremInterfaces.initialAgreementThreshold <
+        ((restoredWidth29Strategy decoder
+          (extractedWidth29InitialWords words) response).support gamma).card := by
+    rw [supportEq]
+    exact selectedValid.1
+  have fixedMember : components ∈ fixedWidth29TupleList decoder
+      (extractedWidth29InitialWords words) :=
+    mem_fixedWidth29TupleList_of_shared_support decoder
+      (extractedWidth29InitialWords words) components
+      ((restoredWidth29Strategy decoder
+        (extractedWidth29InitialWords words) response).support gamma)
+      restoredLarge shared everyDecoded
+  refine ⟨extraction, combinedExact, componentsExact, ?_, ?_⟩
+  · simpa only [componentsExact] using fixedMember
   intro row lane
   unfold componentPointClaim
   rw [componentsExact]
@@ -340,6 +358,8 @@ theorem accepted_restored_point_compatible_k14_extracts_coherent_trace
         (extraction : CoherentTraceExtraction decoder binding words gamma
           (family.disclosedFinal gamma) (family.schedule gamma)),
       extraction.combined = family.selected gamma ∧
+      extraction.components ∈ fixedWidth29TupleList decoder
+        (extractedWidth29InitialWords words) ∧
       ∀ row lane, claims row lane =
         componentPointClaim extraction point row lane := by
   rcases certificate with ⟨components, gamma, member, valid, onCurve, shared,
@@ -360,14 +380,15 @@ theorem accepted_restored_point_compatible_k14_extracts_coherent_trace
         (extractedWidth29InitialWords words) components := by
     rw [← supportEq]
     exact shared
-  obtain ⟨extraction, combinedExact, _componentsExact, exactPointClaims⟩ :=
+  obtain ⟨extraction, combinedExact, _componentsExact, fixedMember,
+      exactPointClaims⟩ :=
     point_compatible_selected_chain_extracts_coherent_trace decoder binding
       initialEncoderExact words point claims family.response components gamma
       restoredOnCurve restoredShared claimsExact
       (family.disclosedFinal gamma) (family.schedule gamma)
       (family.selected gamma) (family.responseAt gamma available)
       (family.selectedExact gamma available)
-  exact ⟨gamma, extraction, combinedExact, exactPointClaims⟩
+  exact ⟨gamma, extraction, combinedExact, fixedMember, exactPointClaims⟩
 
 #print axioms no_restored_point_compatible_k14_card_le
 #print axioms published_exact_of_decoder_encoder_exact
