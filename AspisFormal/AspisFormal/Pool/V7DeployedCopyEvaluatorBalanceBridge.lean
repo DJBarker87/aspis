@@ -99,6 +99,16 @@ def outputPathLeftRow (level : Fin 20) : Fin 1024 :=
 def outputPathRightRow (level : Fin 20) : Fin 1024 :=
   ⟨384 + 16 * level.val, by omega⟩
 
+/-- The current/left/right physical rows selected by an input/output path flag. -/
+def selectedPathCurrentRow (level : Fin 20) (output : Bool) : Fin 1024 :=
+  if output then outputPathRow level else inputPathRow level
+
+def selectedPathLeftRow (level : Fin 20) (output : Bool) : Fin 1024 :=
+  if output then outputPathLeftRow level else inputPathLeftRow level
+
+def selectedPathRightRow (level : Fin 20) (output : Bool) : Fin 1024 :=
+  if output then outputPathRightRow level else inputPathRightRow level
+
 /-- Full producer endpoint projection, including the regular eight-link path
 block at each of twenty levels. -/
 def deployedProducerEndpoint : DeployedCopyLink → DeployedCopyEndpoint
@@ -252,6 +262,74 @@ these reductions keeps downstream path extraction independent of the private
   simp [deployedConsumerTuple, deployedEndpointTuple,
     deployedConsumerEndpoint, deployedPatternLimb, endpoint, traceCell,
     limbBound]
+
+/-! Literal tuple views for the two-by-two selection links.  A selection tag
+is intentionally shared by its two items, so these shapes are kept distinct
+until the Boolean path bit determines the only legal matching. -/
+
+@[simp] theorem deployedProducerTuple_pathSelect_current_limb
+    {K : Type*} [Field K] (trace : Fin 1024 → Fin 16 → K)
+    (level : Fin 20) (output : Bool) (limb : Fin 16) :
+    (deployedProducerTuple trace (.pathSelect level output 0)).limbs limb =
+      if limb.val < 9 then trace (selectedPathCurrentRow level output) limb
+      else 0 := by
+  cases output <;>
+    simp [deployedProducerTuple, deployedEndpointTuple,
+      deployedProducerEndpoint, deployedPatternLimb, selectedPathCurrentRow,
+      endpoint, traceCell]
+
+@[simp] theorem deployedProducerTuple_pathSelect_sibling_limb
+    {K : Type*} [Field K] (trace : Fin 1024 → Fin 16 → K)
+    (level : Fin 20) (output : Bool) (limb : Fin 16) :
+    (deployedProducerTuple trace (.pathSelect level output 1)).limbs limb =
+      if limb.val = 0 then 1 - trace (siblingPathRow level) 0
+      else if limb.val < 9 then trace (siblingPathRow level) limb else 0 := by
+  cases output <;>
+    simp [deployedProducerTuple, deployedEndpointTuple,
+      deployedProducerEndpoint, deployedPatternLimb, endpoint, traceCell]
+
+@[simp] theorem deployedConsumerTuple_pathSelect_left_limb
+    {K : Type*} [Field K] (trace : Fin 1024 → Fin 16 → K)
+    (level : Fin 20) (output : Bool) (limb : Fin 16) :
+    (deployedConsumerTuple trace (.pathSelect level output 0)).limbs limb =
+      if limb.val = 0 then 0
+      else if limbBound : limb.val < 9 then
+        trace (selectedPathLeftRow level output)
+          ⟨limb.val - 1, by omega⟩
+      else 0 := by
+  cases output <;>
+    simp only [deployedConsumerTuple, deployedEndpointTuple,
+      deployedConsumerEndpoint, deployedPatternLimb, selectedPathLeftRow,
+      Bool.false_eq_true, ↓reduceIte, endpoint]
+  all_goals
+    by_cases isZero : limb.val = 0
+    · simp [isZero]
+    · by_cases active : limb.val < 9
+      · have cellBound : limb.val - 1 < 16 := by omega
+        simp [isZero, active, traceCell, cellBound]
+      · simp [isZero, active]
+
+@[simp] theorem deployedConsumerTuple_pathSelect_right_limb
+    {K : Type*} [Field K] (trace : Fin 1024 → Fin 16 → K)
+    (level : Fin 20) (output : Bool) (limb : Fin 16) :
+    (deployedConsumerTuple trace (.pathSelect level output 1)).limbs limb =
+      if limb.val = 0 then 1
+      else if limbBound : limb.val < 9 then
+        trace (selectedPathRightRow level output)
+            ⟨7 + limb.val, by omega⟩ +
+          (if limb.val = 8 then (1051521018 : K) else 0)
+      else 0 := by
+  cases output <;>
+    simp only [deployedConsumerTuple, deployedEndpointTuple,
+      deployedConsumerEndpoint, deployedPatternLimb, selectedPathRightRow,
+      Bool.false_eq_true, ↓reduceIte, endpoint]
+  all_goals
+    by_cases isZero : limb.val = 0
+    · simp [isZero]
+    · by_cases active : limb.val < 9
+      · have cellBound : 7 + limb.val < 16 := by omega
+        simp [isZero, active, traceCell, cellBound]
+      · simp [isZero, active]
 
 private theorem taggedCopyTuple_ext
     {K : Type*} {left right : TaggedCopyTuple K}
