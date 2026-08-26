@@ -15,6 +15,8 @@ pub mod incremental_merkle;
 pub mod nullifier_marker;
 #[cfg(not(target_os = "solana"))]
 pub mod payment_constraint_residuals;
+#[cfg(not(target_os = "solana"))]
+pub mod payment_hiding;
 pub mod payment_relation;
 #[cfg(not(target_os = "solana"))]
 pub mod payment_semantic_oracle;
@@ -107,6 +109,11 @@ pub use payment_constraint_residuals::{
     POOL_V1_PAYMENT_TWO_ROUND_INTRINSIC_DEGREE, POOL_V1_PAYMENT_VALUE_BOOLEAN_RESIDUAL_COUNT,
     POOL_V1_PAYMENT_ZEROCHECK_INDIVIDUAL_DEGREE,
 };
+#[cfg(not(target_os = "solana"))]
+pub use payment_hiding::{
+    pool_v1_payment_relation_free_mask_cells_v1, pool_v1_payment_relation_free_mask_fingerprint_v1,
+    POOL_V1_PAYMENT_RELATION_FREE_PADDING_LOCAL_ROW_START_V1,
+};
 pub use payment_relation::{
     decode_pool_v1_private_transfer_public_v1, decode_pool_v1_withdrawal_public_v1,
     encode_pool_v1_private_transfer_public_v1, encode_pool_v1_withdrawal_public_v1,
@@ -133,6 +140,7 @@ pub use payment_semantic_terminal::{
     pool_v1_withdrawal_copy_active_at_point_compiled_v1,
     pool_v1_withdrawal_copy_active_row_masks_compiled_v1, PoolV1PaymentSemanticTerminalErrorV1,
     PINNED_POOL_V1_PAYMENT_AUXILIARY_LAYOUT_FINGERPRINT_V1,
+    PINNED_POOL_V1_PAYMENT_RELATION_FREE_MASK_FINGERPRINT_V1,
     PINNED_POOL_V1_PRIVATE_TRANSFER_COPY_ACTIVE_ROWS_FINGERPRINT_V1,
     PINNED_POOL_V1_PRIVATE_TRANSFER_SEMANTIC_REGISTRY_FINGERPRINT_V1,
     PINNED_POOL_V1_WITHDRAWAL_COPY_ACTIVE_ROWS_FINGERPRINT_V1,

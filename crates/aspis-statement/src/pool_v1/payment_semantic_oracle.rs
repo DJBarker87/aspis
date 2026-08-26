@@ -23,18 +23,16 @@ use crate::{
 use super::{
     payment_relation::{PoolV1PrivateTransferPublicV1, PoolV1WithdrawalPublicV1},
     payment_semantic_registry::{
-        build_pool_v1_payment_semantic_registry_v1, pool_v1_payment_aux_cell_is_used_v1,
-        pool_v1_payment_conservation_aux_v1, pool_v1_payment_copy_rows_v1,
-        pool_v1_payment_path_aux_v1, pool_v1_payment_value_aux_v1, PoolV1PaymentCopyTupleV1,
-        PoolV1PaymentSemanticRegistryErrorV1, PoolV1PaymentSemanticRegistryV1,
-        PoolV1PaymentTupleLimbV1, POOL_V1_PAYMENT_BASE_SEMANTIC_LANES,
-        POOL_V1_PAYMENT_PACKED_BASE_LANES, POOL_V1_PAYMENT_RANDOMIZED_SEMANTIC_LANES,
-        POOL_V1_PAYMENT_SEMANTIC_LANES, POOL_V1_PAYMENT_THETA_LANES,
+        build_pool_v1_payment_semantic_registry_v1, pool_v1_payment_conservation_aux_v1,
+        pool_v1_payment_copy_rows_v1, pool_v1_payment_path_aux_v1, pool_v1_payment_value_aux_v1,
+        PoolV1PaymentCopyTupleV1, PoolV1PaymentSemanticRegistryErrorV1,
+        PoolV1PaymentSemanticRegistryV1, PoolV1PaymentTupleLimbV1,
+        POOL_V1_PAYMENT_BASE_SEMANTIC_LANES, POOL_V1_PAYMENT_PACKED_BASE_LANES,
+        POOL_V1_PAYMENT_RANDOMIZED_SEMANTIC_LANES, POOL_V1_PAYMENT_SEMANTIC_LANES,
+        POOL_V1_PAYMENT_THETA_LANES,
     },
     payment_trace::{
-        PoolV1PaymentTraceVariantV1, POOL_V1_PAYMENT_TRACE_BLOCKS,
-        POOL_V1_PAYMENT_TRACE_BLOCK_ROWS, POOL_V1_PAYMENT_TRACE_PERMUTATION_ROWS,
-        POOL_V1_PAYMENT_TRACE_ROWS,
+        PoolV1PaymentTraceVariantV1, POOL_V1_PAYMENT_TRACE_BLOCK_ROWS, POOL_V1_PAYMENT_TRACE_ROWS,
     },
 };
 
@@ -436,18 +434,8 @@ fn evaluate_prepared(
             }
         }
     }
-    // The auxiliary region has a sparse declared layout. Fold every unused
-    // cell into the corresponding column lane; at a Boolean row the selectors
-    // are disjoint, so zero of this lane fixes that cell to zero without
-    // allocating another semantic lane.
-    for row in POOL_V1_PAYMENT_TRACE_PERMUTATION_ROWS..POOL_V1_PAYMENT_TRACE_ROWS {
-        let selector = selectors.row(row);
-        for lane in 0..POSEIDON2_WIDTH {
-            if !pool_v1_payment_aux_cell_is_used_v1(row, lane) {
-                initial[lane] = initial[lane].add(selector.mul(openings.c1.z[lane]));
-            }
-        }
-    }
+    // Undeclared auxiliary cells are relation-free masking material.  Every
+    // declared cell remains bound below or by the copy registry.
 
     let mut absorption_zero = [QM31::ZERO; POOL_V1_PAYMENT_ABSORPTION_ZERO_LANES];
     for block in 0..49 {
@@ -457,18 +445,7 @@ fn evaluate_prepared(
             absorption_zero[lane] = absorption_zero[lane].add(selector.mul(openings.c1.z[lane]));
         }
     }
-    // Rows 13..15 of every permutation block are canonical padding. They are
-    // outside the two-round Poseidon oracle and must not carry free witness
-    // values.
-    for block in 0..POOL_V1_PAYMENT_TRACE_BLOCKS {
-        for local_row in 13..POOL_V1_PAYMENT_TRACE_BLOCK_ROWS {
-            let selector = selectors.row(block * POOL_V1_PAYMENT_TRACE_BLOCK_ROWS + local_row);
-            for lane in 0..POSEIDON2_WIDTH {
-                absorption_zero[lane] =
-                    absorption_zero[lane].add(selector.mul(openings.c1.z[lane]));
-            }
-        }
-    }
+    // Rows 13..15 are outside Poseidon and are relation-free masking material.
 
     let merkle_selector = (0..20).fold(QM31::ZERO, |sum, level| {
         sum.add(selectors.row(usize::from(
@@ -669,6 +646,10 @@ pub fn pool_v1_payment_copy_helper_sum_v1(h1: &[QM31]) -> Option<QM31> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::pool_v1::{
+        payment_semantic_registry::pool_v1_payment_aux_cell_is_used_v1,
+        POOL_V1_PAYMENT_TRACE_PERMUTATION_ROWS,
+    };
     use crate::{
         derive_owner_key,
         pool_v1::{
@@ -943,7 +924,7 @@ mod tests {
     }
 
     #[test]
-    fn permutation_and_auxiliary_padding_cells_are_constrained() {
+    fn permutation_and_auxiliary_padding_cells_are_relation_free() {
         let (lambda, chi) = challenges();
         let (public, witness, context) = transfer_fixture();
         let honest = build_pool_v1_private_transfer_trace_v1(&public, &witness, context).unwrap();
@@ -971,7 +952,7 @@ mod tests {
                 &public, &openings, &point, lambda, chi, &prepared,
             )
             .unwrap();
-            assert!(!residuals.all_zero(), "padding cell ({row}, {lane})");
+            assert!(residuals.all_zero(), "padding cell ({row}, {lane})");
         }
     }
 }

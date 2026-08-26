@@ -54,6 +54,8 @@ pub const PINNED_POOL_V1_WITHDRAWAL_SEMANTIC_REGISTRY_FINGERPRINT_V1: u64 =
     constants::WITHDRAWAL_REGISTRY_FINGERPRINT;
 pub const PINNED_POOL_V1_PAYMENT_AUXILIARY_LAYOUT_FINGERPRINT_V1: u64 =
     constants::AUXILIARY_USED_COLUMN_MASKS_FINGERPRINT;
+pub const PINNED_POOL_V1_PAYMENT_RELATION_FREE_MASK_FINGERPRINT_V1: u64 =
+    constants::RELATION_FREE_MASK_FINGERPRINT;
 pub const PINNED_POOL_V1_PRIVATE_TRANSFER_COPY_ACTIVE_ROWS_FINGERPRINT_V1: u64 =
     constants::PRIVATE_TRANSFER_ACTIVE_ROWS_FINGERPRINT;
 pub const PINNED_POOL_V1_WITHDRAWAL_COPY_ACTIVE_ROWS_FINGERPRINT_V1: u64 =
@@ -62,8 +64,6 @@ pub const PINNED_POOL_V1_WITHDRAWAL_COPY_ACTIVE_ROWS_FINGERPRINT_V1: u64 =
 const SELECTED_H1_COLUMN: usize =
     POOL_V1_PAYMENT_TERMINAL_C1_COLUMNS + STATE_ONLY_HIDING_MASK_ONLY_C1_COLUMNS;
 const SELECTED_G_COLUMN: usize = SELECTED_H1_COLUMN + 1;
-const AUXILIARY_ROW_START: usize = 784;
-const COMPILED_AUXILIARY_ROW_END: usize = 880;
 const VALUE_AUXILIARY_BLOCK: usize = 54;
 const COPY_PATTERN_COUNT: usize = 13;
 
@@ -439,26 +439,7 @@ fn semantic_packed(
             }
         }
     }
-    let mut auxiliary_unused = [QM31::ZERO; 16];
-    for (offset, &used_mask) in constants::AUXILIARY_USED_COLUMN_MASKS.iter().enumerate() {
-        let selector = selectors.row(AUXILIARY_ROW_START + offset);
-        for (lane, sum) in auxiliary_unused.iter_mut().enumerate() {
-            if used_mask & (1 << lane) == 0 {
-                *sum = sum.add(selector);
-            }
-        }
-    }
-    let completely_unused_tail = selectors.high[COMPILED_AUXILIARY_ROW_END >> 4..]
-        .iter()
-        .copied()
-        .fold(QM31::ZERO, QM31::add);
-    for lane in 0..16 {
-        initial[lane] = initial[lane].add(
-            auxiliary_unused[lane]
-                .add(completely_unused_tail)
-                .mul(openings.z[lane]),
-        );
-    }
+    // Undeclared auxiliary cells are the Pool relation-free C1 masks.
     add_preweighted(&mut packed, 0, &initial);
 
     let mut absorption_zero = [QM31::ZERO; 16];
@@ -468,18 +449,7 @@ fn semantic_packed(
             absorption_zero[lane] = absorption_zero[lane].add(selector.mul(openings.z[lane]));
         }
     }
-    let permutation_blocks = selectors.high[..49]
-        .iter()
-        .copied()
-        .fold(QM31::ZERO, QM31::add);
-    let padding_selector = permutation_blocks.mul(
-        selectors.low[13]
-            .add(selectors.low[14])
-            .add(selectors.low[15]),
-    );
-    for lane in 0..16 {
-        absorption_zero[lane] = absorption_zero[lane].add(padding_selector.mul(openings.z[lane]));
-    }
+    // Permutation rows 13..15 are outside Poseidon and relation-free.
     add_preweighted(&mut packed, 16, &absorption_zero);
 
     let path_blocks = selectors.high[49..54]
@@ -796,14 +766,19 @@ define_variant_terminal!(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use alloc::vec::Vec;
+    use alloc::{vec, vec::Vec};
     use aspis_core::field::P;
     use aspis_core::state_only_hiding::state_only_selected_mask_value;
 
     use crate::{
+        constraints_v4::{multilinear_evaluate, multilinear_evaluate_qm31},
         derive_owner_key,
         pool_v1::{
             build_pool_v1_private_transfer_trace_v1, build_pool_v1_withdrawal_trace_v1,
+            payment_hiding::{
+                pool_v1_payment_relation_free_mask_cells_v1,
+                pool_v1_payment_relation_free_mask_fingerprint_v1,
+            },
             payment_semantic_oracle::{
                 build_pool_v1_payment_copy_helper_v1,
                 evaluate_pool_v1_private_transfer_semantic_oracle_v1,
@@ -826,6 +801,7 @@ mod tests {
         state_only_poseidon::{
             evaluate_state_only_poseidon_oracle_projected, StateOnlyPoseidonSelectors,
         },
+        StateOnlyTraceFoundation,
     };
 
     #[derive(Clone, Copy)]
@@ -1135,7 +1111,7 @@ mod tests {
         assert_registry_identity(PoolV1PaymentTraceVariantV1::Withdrawal);
         let mut fingerprint = 0xcbf2_9ce4_8422_2325u64;
         for offset in 0..96 {
-            let row = AUXILIARY_ROW_START + offset;
+            let row = 784 + offset;
             let host_mask = (0..16).fold(0u16, |mask, column| {
                 if pool_v1_payment_aux_cell_is_used_v1(row, column) {
                     mask | (1 << column)
@@ -1153,48 +1129,145 @@ mod tests {
             fingerprint,
             PINNED_POOL_V1_PAYMENT_AUXILIARY_LAYOUT_FINGERPRINT_V1
         );
-        for row in COMPILED_AUXILIARY_ROW_END..POOL_V1_PAYMENT_TERMINAL_ROWS {
+        assert_eq!(
+            pool_v1_payment_relation_free_mask_fingerprint_v1().unwrap(),
+            PINNED_POOL_V1_PAYMENT_RELATION_FREE_MASK_FINGERPRINT_V1,
+        );
+        for row in 880..POOL_V1_PAYMENT_TERMINAL_ROWS {
             for column in 0..16 {
                 assert!(!pool_v1_payment_aux_cell_is_used_v1(row, column));
             }
         }
     }
 
-    fn add_zero_sum_inactive_padding(h1: &mut [QM31], masks: &[u16; 64], value: QM31) {
-        let inactive = (0..1024)
-            .filter(|row| masks[row >> 4] & (1 << (row & 15)) == 0)
-            .take(2)
-            .collect::<Vec<_>>();
-        assert_eq!(inactive.len(), 2);
-        h1[inactive[0]] = h1[inactive[0]].add(value);
-        h1[inactive[1]] = h1[inactive[1]].sub(value);
+    fn row_is_active(masks: &[u16; 64], row: usize) -> bool {
+        masks[row >> 4] & (1 << (row & 15)) != 0
+    }
+
+    fn apply_test_pool_masks(
+        trace: &mut StateOnlyTraceFoundation,
+        h1: &mut [QM31],
+        masks: &[u16; 64],
+        rng: &mut Rng,
+    ) -> ([Vec<M31>; 10], Vec<QM31>) {
+        let cells = pool_v1_payment_relation_free_mask_cells_v1().unwrap();
+        for cell in &cells {
+            let value = &mut trace.c1[usize::from(cell.column)][usize::from(cell.row)];
+            *value = value.add(rng.m31());
+        }
+        for column in 0..16 {
+            let dependent = cells
+                .iter()
+                .rev()
+                .find(|cell| {
+                    usize::from(cell.column) == column
+                        && !row_is_active(masks, usize::from(cell.row))
+                })
+                .map(|cell| usize::from(cell.row))
+                .unwrap();
+            let sum = (0..1024)
+                .filter(|&row| row != dependent && !row_is_active(masks, row))
+                .fold(M31::ZERO, |sum, row| sum.add(trace.c1[column][row]));
+            trace.c1[column][dependent] = M31::ZERO.sub(sum);
+        }
+
+        let dependent = (0..1024).find(|&row| !row_is_active(masks, row)).unwrap();
+        let mut mask_only: [Vec<M31>; 10] =
+            core::array::from_fn(|_| (0..1024).map(|_| rng.m31()).collect());
+        for column in &mut mask_only {
+            let sum = (0..1024)
+                .filter(|&row| row != dependent && !row_is_active(masks, row))
+                .fold(M31::ZERO, |sum, row| sum.add(column[row]));
+            column[dependent] = M31::ZERO.sub(sum);
+        }
+        let mut g = (0..1024).map(|_| rng.qm31()).collect::<Vec<_>>();
+        let g_sum = (0..1024)
+            .filter(|&row| row != dependent && !row_is_active(masks, row))
+            .fold(QM31::ZERO, |sum, row| sum.add(g[row]));
+        g[dependent] = QM31::ZERO.sub(g_sum);
+
+        let mut padding = vec![QM31::ZERO; 1024];
+        for row in 0..1024 {
+            if row != dependent && !row_is_active(masks, row) {
+                padding[row] = rng.qm31();
+            }
+        }
+        let padding_sum = (0..1024)
+            .filter(|&row| row != dependent && !row_is_active(masks, row))
+            .fold(QM31::ZERO, |sum, row| sum.add(padding[row]));
+        padding[dependent] = QM31::ZERO.sub(padding_sum);
+        for row in 0..1024 {
+            h1[row] = h1[row].add(padding[row]);
+        }
+        (mask_only, g)
+    }
+
+    fn claims_from_masked_row(
+        openings: &PoolV1PaymentSemanticOpeningsV1,
+        mask_only: &[Vec<M31>; 10],
+        g: &[QM31],
+        row: usize,
+    ) -> [QM31; POOL_V1_PAYMENT_SELECTED_TERMINAL_CLAIMS] {
+        let mut claims = claims_from_openings(openings);
+        for column in 0..10 {
+            claims[16 + column] = lift(mask_only[column][row]);
+        }
+        claims[SELECTED_G_COLUMN] = g[row];
+        claims
+    }
+
+    fn claims_from_masked_tables(
+        openings: &PoolV1PaymentSemanticOpeningsV1,
+        mask_only: &[Vec<M31>; 10],
+        g: &[QM31],
+        point: &[QM31; 10],
+    ) -> [QM31; POOL_V1_PAYMENT_SELECTED_TERMINAL_CLAIMS] {
+        let mut claims = claims_from_openings(openings);
+        for column in 0..10 {
+            claims[16 + column] = multilinear_evaluate(&mask_only[column], point).unwrap();
+        }
+        claims[SELECTED_G_COLUMN] = multilinear_evaluate_qm31(g, point).unwrap();
+        claims
     }
 
     #[test]
     fn honest_boolean_tag73_terminal_sums_zero_with_random_inactive_h1_for_both_variants() {
-        let (lambda, chi, theta, mu, _) = challenges();
+        let (lambda, chi, theta, mu, eta) = challenges();
         let zerocheck_point = core::array::from_fn(|index| lift(M31(20_000 + index as u32)));
-        let random_padding = lift(M31(987_654));
+        let mut rng = Rng(0x504f_4f4c_4d41_534b);
 
         let (public, witness, context) = transfer_fixture();
-        let trace = build_pool_v1_private_transfer_trace_v1(&public, &witness, context).unwrap();
+        let mut trace = build_pool_v1_private_transfer_trace_v1(&public, &witness, context)
+            .unwrap()
+            .trace
+            .clone();
         let prepared = prepare_pool_v1_payment_semantic_oracle_v1(
             PoolV1PaymentTraceVariantV1::PrivateTransfer,
         )
         .unwrap();
-        let mut h1 =
-            build_pool_v1_payment_copy_helper_v1(&prepared, &trace.trace, lambda, chi).unwrap();
-        add_zero_sum_inactive_padding(
+        let mut h1 = build_pool_v1_payment_copy_helper_v1(&prepared, &trace, lambda, chi).unwrap();
+        let (mask_only, g) = apply_test_pool_masks(
+            &mut trace,
             &mut h1,
             &constants::PRIVATE_TRANSFER_ACTIVE_ROW_MASKS,
-            random_padding,
+            &mut rng,
         );
         let mut terminal_sum = QM31::ZERO;
+        let mut masked_sum = QM31::ZERO;
+        let mut mask_sum = QM31::ZERO;
         for row in 0..1024 {
             let point = boolean_point(row);
             let openings =
-                pool_v1_payment_semantic_openings_at_point_v1(&trace.trace, &h1, &point).unwrap();
-            let claims = claims_from_openings(&openings);
+                pool_v1_payment_semantic_openings_at_point_v1(&trace, &h1, &point).unwrap();
+            let claims = claims_from_masked_row(&openings, &mask_only, &g, row);
+            assert_eq!(
+                evaluate_pool_v1_private_transfer_selected_constraint_composition_compiled_v1(
+                    &public, &claims, &point, lambda, chi, theta,
+                )
+                .unwrap(),
+                QM31::ZERO,
+                "masked transfer composition row {row}",
+            );
             terminal_sum = terminal_sum.add(
                 evaluate_pool_v1_private_transfer_selected_unmasked_terminal_compiled_tag73_v1(
                     &public,
@@ -1208,27 +1281,76 @@ mod tests {
                 )
                 .unwrap(),
             );
+            masked_sum = masked_sum.add(
+                evaluate_pool_v1_private_transfer_selected_masked_terminal_compiled_tag73_v1(
+                    &public,
+                    &claims,
+                    &point,
+                    lambda,
+                    chi,
+                    theta,
+                    &zerocheck_point,
+                    mu,
+                    eta,
+                )
+                .unwrap(),
+            );
+            let c1 = core::array::from_fn(|column| lift(trace.c1[column][row]));
+            let mask_row = core::array::from_fn(|column| lift(mask_only[column][row]));
+            mask_sum = mask_sum.add(state_only_selected_mask_value(
+                &c1, &mask_row, g[row], &point,
+            ));
         }
         assert_eq!(terminal_sum, QM31::ZERO);
+        assert_eq!(masked_sum, mask_sum);
+        let off_domain = core::array::from_fn(|_| rng.qm31());
+        let openings =
+            pool_v1_payment_semantic_openings_at_point_v1(&trace, &h1, &off_domain).unwrap();
+        let claims = claims_from_masked_tables(&openings, &mask_only, &g, &off_domain);
+        assert_random_identity_private(
+            &public,
+            &prepared,
+            &claims,
+            &off_domain,
+            lambda,
+            chi,
+            theta,
+            &zerocheck_point,
+            mu,
+            eta,
+        );
 
         let (public, witness, context) = withdrawal_fixture();
-        let trace = build_pool_v1_withdrawal_trace_v1(&public, &witness, context).unwrap();
+        let mut trace = build_pool_v1_withdrawal_trace_v1(&public, &witness, context)
+            .unwrap()
+            .trace
+            .clone();
         let prepared =
             prepare_pool_v1_payment_semantic_oracle_v1(PoolV1PaymentTraceVariantV1::Withdrawal)
                 .unwrap();
-        let mut h1 =
-            build_pool_v1_payment_copy_helper_v1(&prepared, &trace.trace, lambda, chi).unwrap();
-        add_zero_sum_inactive_padding(
+        let mut h1 = build_pool_v1_payment_copy_helper_v1(&prepared, &trace, lambda, chi).unwrap();
+        let (mask_only, g) = apply_test_pool_masks(
+            &mut trace,
             &mut h1,
             &constants::WITHDRAWAL_ACTIVE_ROW_MASKS,
-            random_padding,
+            &mut rng,
         );
         let mut terminal_sum = QM31::ZERO;
+        let mut masked_sum = QM31::ZERO;
+        let mut mask_sum = QM31::ZERO;
         for row in 0..1024 {
             let point = boolean_point(row);
             let openings =
-                pool_v1_payment_semantic_openings_at_point_v1(&trace.trace, &h1, &point).unwrap();
-            let claims = claims_from_openings(&openings);
+                pool_v1_payment_semantic_openings_at_point_v1(&trace, &h1, &point).unwrap();
+            let claims = claims_from_masked_row(&openings, &mask_only, &g, row);
+            assert_eq!(
+                evaluate_pool_v1_withdrawal_selected_constraint_composition_compiled_v1(
+                    &public, &claims, &point, lambda, chi, theta,
+                )
+                .unwrap(),
+                QM31::ZERO,
+                "masked withdrawal composition row {row}",
+            );
             terminal_sum = terminal_sum.add(
                 evaluate_pool_v1_withdrawal_selected_unmasked_terminal_compiled_tag73_v1(
                     &public,
@@ -1242,8 +1364,44 @@ mod tests {
                 )
                 .unwrap(),
             );
+            masked_sum = masked_sum.add(
+                evaluate_pool_v1_withdrawal_selected_masked_terminal_compiled_tag73_v1(
+                    &public,
+                    &claims,
+                    &point,
+                    lambda,
+                    chi,
+                    theta,
+                    &zerocheck_point,
+                    mu,
+                    eta,
+                )
+                .unwrap(),
+            );
+            let c1 = core::array::from_fn(|column| lift(trace.c1[column][row]));
+            let mask_row = core::array::from_fn(|column| lift(mask_only[column][row]));
+            mask_sum = mask_sum.add(state_only_selected_mask_value(
+                &c1, &mask_row, g[row], &point,
+            ));
         }
         assert_eq!(terminal_sum, QM31::ZERO);
+        assert_eq!(masked_sum, mask_sum);
+        let off_domain = core::array::from_fn(|_| rng.qm31());
+        let openings =
+            pool_v1_payment_semantic_openings_at_point_v1(&trace, &h1, &off_domain).unwrap();
+        let claims = claims_from_masked_tables(&openings, &mask_only, &g, &off_domain);
+        assert_random_identity_withdrawal(
+            &public,
+            &prepared,
+            &claims,
+            &off_domain,
+            lambda,
+            chi,
+            theta,
+            &zerocheck_point,
+            mu,
+            eta,
+        );
     }
 
     fn openings_from_claims(

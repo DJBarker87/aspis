@@ -11,18 +11,28 @@ use std::path::{Path, PathBuf};
 #[cfg(unix)]
 use std::os::unix::fs::OpenOptionsExt;
 
-use aspis_core::state_only_hiding::StateOnlyHidingContext;
+use aspis_core::state_only_hiding::{
+    StateOnlyHidingContext, PINNED_POOL_V1_PAYMENT_RELATION_FREE_MASK_FINGERPRINT,
+    PINNED_POOL_V1_PRIVATE_TRANSFER_HIDING_LAYOUT_FACTOR_FINGERPRINT,
+    PINNED_POOL_V1_WITHDRAWAL_HIDING_LAYOUT_FACTOR_FINGERPRINT,
+};
 use aspis_core::state_only_masked_switch_basis::PINNED_MASKED_SWITCH_UNIVERSAL_CODE_BASIS_FINGERPRINT;
 use aspis_core::HashFn;
 use aspis_statement::{
     atomic_state_only_terminal::atomic_state_only_copy_active_rows_v3,
+    pool_v1::{
+        pool_v1_private_transfer_copy_active_row_masks_compiled_v1,
+        pool_v1_withdrawal_copy_active_row_masks_compiled_v1,
+    },
     STATE_ONLY_POSEIDON_TRACE_ROWS,
 };
 use sha2::{Digest, Sha256};
 use zeroize::{Zeroize, Zeroizing};
 
 use crate::state_only_hiding::{
-    build_atomic_state_only_mask_material_v3_from_entropy_ref, StateOnlyMaskBuildError,
+    build_atomic_state_only_mask_material_v3_from_entropy_ref,
+    build_pool_v1_private_transfer_mask_material_v1_from_entropy_ref,
+    build_pool_v1_withdrawal_mask_material_v1_from_entropy_ref, StateOnlyMaskBuildError,
     StateOnlyMaskMaterial, StateOnlyMaskNonceStore,
 };
 
@@ -41,6 +51,12 @@ const SPEND_PRIVATE_ATTEMPT_BINDING_DOMAIN: &[u8] =
 const SPEND_PRIVATE_WIRE_DESCRIPTOR: &[u8] =
     b"profile=spend;generators=H26,G27,D28;factorD=0;selector=3;depths=17,17,15,13,11;widths=416,192,64,64,64;trees=c1,c2,w1,w2,w3";
 const SPEND_D_SEED_DOMAIN: &[u8] = b"aspis:state-only:spend:zero-factor-d-seed:v1";
+const POOL_V1_PRIVATE_ATTEMPT_BINDING_DOMAIN: &[u8] =
+    b"aspis:state-only:pool-v1:private-attempt-binding:v1";
+const POOL_V1_PRIVATE_WIRE_DESCRIPTOR: &[u8] =
+    b"profile=pool-v1-tag73;generators=H26,G27,D28;factorD=0;rows=1024;c1=16;selected=28;theta=29;queries=16;first-cap=203";
+const POOL_V1_SOURCE_SEED_DOMAIN: &[u8] = b"aspis:state-only:pool-v1:source-seed:v1";
+const POOL_V1_D_SEED_DOMAIN: &[u8] = b"aspis:state-only:pool-v1:zero-factor-d-seed:v1";
 const PROFILE21_SOURCE_SEED_DOMAIN: &[u8] = b"aspis:state-only:profile21:source-seed:v1";
 const PROFILE21_SOURCE_EXPAND_DOMAIN: &[u8] = b"aspis:state-only:profile21:source-expand:v1";
 const LEAF_SALT_DOMAIN: &[u8] = b"aspis:state-only:private-leaf-salt:v1";
@@ -74,6 +90,7 @@ pub struct StateOnlyAttemptSecrets {
 pub struct ReservedStateOnlyAttemptSecrets {
     mask_nonce: [u8; 32],
     precommit_binding: [u8; 32],
+    reserved_context: StateOnlyHidingContext,
     leaf_salt_seed: Zeroizing<[u8; 32]>,
     source_mask_seed: Zeroizing<[u8; 32]>,
 }
@@ -254,6 +271,113 @@ impl StateOnlyAttemptSecrets {
             ReservedStateOnlyAttemptSecrets {
                 mask_nonce: self.mask_nonce,
                 precommit_binding,
+                reserved_context: context,
+                leaf_salt_seed: self.leaf_salt_seed,
+                source_mask_seed,
+            },
+            material,
+        ))
+    }
+
+    pub fn reserve_and_build_pool_v1_private_transfer_mask_material_v1(
+        mut self,
+        hash: HashFn,
+        precommit_binding: [u8; 32],
+        context: StateOnlyHidingContext,
+        nonce_store: &mut impl StateOnlyMaskNonceStore,
+    ) -> Result<(ReservedStateOnlyAttemptSecrets, StateOnlyMaskMaterial), StateOnlyMaskBuildError>
+    {
+        if context.mask_nonce != self.mask_nonce
+            || context.mask_layout_fingerprint
+                != PINNED_POOL_V1_PAYMENT_RELATION_FREE_MASK_FINGERPRINT
+            || context.layout_factor_fingerprint
+                != PINNED_POOL_V1_PRIVATE_TRANSFER_HIDING_LAYOUT_FACTOR_FINGERPRINT
+        {
+            return Err(StateOnlyMaskBuildError::Layout);
+        }
+        if !nonce_store.reserve(context.statement_digest, context.mask_nonce) {
+            return Err(StateOnlyMaskBuildError::ReusedMaskNonce);
+        }
+        let mut pre_reserved = PreReservedNonce {
+            statement_digest: context.statement_digest,
+            mask_nonce: context.mask_nonce,
+            consumed: false,
+        };
+        let material = build_pool_v1_private_transfer_mask_material_v1_from_entropy_ref(
+            hash,
+            precommit_binding,
+            context,
+            &self.field_mask_entropy,
+            &mut pre_reserved,
+        )?;
+        if !pre_reserved.consumed {
+            return Err(StateOnlyMaskBuildError::ReusedMaskNonce);
+        }
+        let source_mask_seed = Zeroizing::new(hash(&[
+            POOL_V1_SOURCE_SEED_DOMAIN,
+            &precommit_binding,
+            &context.encode(),
+            self.field_mask_entropy.as_ref(),
+        ]));
+        self.field_mask_entropy.zeroize();
+        Ok((
+            ReservedStateOnlyAttemptSecrets {
+                mask_nonce: self.mask_nonce,
+                precommit_binding,
+                reserved_context: context,
+                leaf_salt_seed: self.leaf_salt_seed,
+                source_mask_seed,
+            },
+            material,
+        ))
+    }
+
+    pub fn reserve_and_build_pool_v1_withdrawal_mask_material_v1(
+        mut self,
+        hash: HashFn,
+        precommit_binding: [u8; 32],
+        context: StateOnlyHidingContext,
+        nonce_store: &mut impl StateOnlyMaskNonceStore,
+    ) -> Result<(ReservedStateOnlyAttemptSecrets, StateOnlyMaskMaterial), StateOnlyMaskBuildError>
+    {
+        if context.mask_nonce != self.mask_nonce
+            || context.mask_layout_fingerprint
+                != PINNED_POOL_V1_PAYMENT_RELATION_FREE_MASK_FINGERPRINT
+            || context.layout_factor_fingerprint
+                != PINNED_POOL_V1_WITHDRAWAL_HIDING_LAYOUT_FACTOR_FINGERPRINT
+        {
+            return Err(StateOnlyMaskBuildError::Layout);
+        }
+        if !nonce_store.reserve(context.statement_digest, context.mask_nonce) {
+            return Err(StateOnlyMaskBuildError::ReusedMaskNonce);
+        }
+        let mut pre_reserved = PreReservedNonce {
+            statement_digest: context.statement_digest,
+            mask_nonce: context.mask_nonce,
+            consumed: false,
+        };
+        let material = build_pool_v1_withdrawal_mask_material_v1_from_entropy_ref(
+            hash,
+            precommit_binding,
+            context,
+            &self.field_mask_entropy,
+            &mut pre_reserved,
+        )?;
+        if !pre_reserved.consumed {
+            return Err(StateOnlyMaskBuildError::ReusedMaskNonce);
+        }
+        let source_mask_seed = Zeroizing::new(hash(&[
+            POOL_V1_SOURCE_SEED_DOMAIN,
+            &precommit_binding,
+            &context.encode(),
+            self.field_mask_entropy.as_ref(),
+        ]));
+        self.field_mask_entropy.zeroize();
+        Ok((
+            ReservedStateOnlyAttemptSecrets {
+                mask_nonce: self.mask_nonce,
+                precommit_binding,
+                reserved_context: context,
                 leaf_salt_seed: self.leaf_salt_seed,
                 source_mask_seed,
             },
@@ -357,6 +481,49 @@ impl ReservedStateOnlyAttemptSecrets {
         ]))
     }
 
+    fn validate_pool_v1_context(
+        &self,
+        context: StateOnlyHidingContext,
+    ) -> Result<(), StateOnlyMaskBuildError> {
+        let final_pool_factor = matches!(
+            context.layout_factor_fingerprint,
+            PINNED_POOL_V1_PRIVATE_TRANSFER_HIDING_LAYOUT_FACTOR_FINGERPRINT
+                | PINNED_POOL_V1_WITHDRAWAL_HIDING_LAYOUT_FACTOR_FINGERPRINT
+        );
+        if context != self.reserved_context
+            || context.mask_nonce != self.mask_nonce
+            || context.mask_layout_fingerprint
+                != PINNED_POOL_V1_PAYMENT_RELATION_FREE_MASK_FINGERPRINT
+            || !final_pool_factor
+        {
+            return Err(StateOnlyMaskBuildError::Layout);
+        }
+        Ok(())
+    }
+
+    /// Derive one Pool V1 private tree salt under the complete width-29
+    /// Tag-73 attempt descriptor. The exact reserved statement and variant
+    /// context must be replayed; atomic/spend and crossed Pool contexts fail.
+    pub fn derive_pool_v1_leaf_salt(
+        &self,
+        hash: HashFn,
+        context: StateOnlyHidingContext,
+        tree_tag: u8,
+        leaf_index: u32,
+    ) -> Result<[u8; 32], StateOnlyMaskBuildError> {
+        self.validate_pool_v1_context(context)?;
+        let attempt_binding =
+            pool_v1_private_attempt_binding(hash, &self.precommit_binding, context);
+        Ok(hash(&[
+            LEAF_SALT_DOMAIN,
+            &attempt_binding,
+            &self.mask_nonce,
+            &[tree_tag],
+            &leaf_index.to_le_bytes(),
+            self.leaf_salt_seed.as_ref(),
+        ]))
+    }
+
     /// Expand one independently domain-separated full-domain QM31 D lane.
     /// Values on copy-inactive rows have zero sum, matching the raw-block
     /// balancing convention used by G/H1 while leaving every active row and
@@ -401,6 +568,75 @@ impl ReservedStateOnlyAttemptSecrets {
                 .fold(aspis_core::field::QM31::ZERO, |sum, value| sum.add(value.1));
         d.0[dependent] = aspis_core::field::QM31::ZERO.sub(sum);
         Ok(core::mem::take(&mut d.0))
+    }
+
+    fn derive_pool_v1_zero_factor_d(
+        &self,
+        hash: HashFn,
+        context: StateOnlyHidingContext,
+        expected_factor_fingerprint: u64,
+        active_masks: &[u16; 64],
+    ) -> Result<Vec<aspis_core::field::QM31>, StateOnlyMaskBuildError> {
+        self.validate_pool_v1_context(context)?;
+        if context.layout_factor_fingerprint != expected_factor_fingerprint {
+            return Err(StateOnlyMaskBuildError::Layout);
+        }
+        let attempt_binding =
+            pool_v1_private_attempt_binding(hash, &self.precommit_binding, context);
+        let mut expander = Profile21SourceExpander::new(
+            hash,
+            hash(&[
+                POOL_V1_D_SEED_DOMAIN,
+                &attempt_binding,
+                self.source_mask_seed.as_ref(),
+            ]),
+        );
+        let mut d = SensitiveQm31Vec(Vec::with_capacity(STATE_ONLY_POSEIDON_TRACE_ROWS));
+        for _ in 0..STATE_ONLY_POSEIDON_TRACE_ROWS {
+            d.0.push(expander.qm31()?);
+        }
+        let active: [bool; STATE_ONLY_POSEIDON_TRACE_ROWS] =
+            core::array::from_fn(|row| active_masks[row >> 4] & (1 << (row & 15)) != 0);
+        let dependent = active
+            .iter()
+            .position(|is_active| !*is_active)
+            .ok_or(StateOnlyMaskBuildError::Layout)?;
+        let sum =
+            d.0.iter()
+                .copied()
+                .enumerate()
+                .filter(|(row, _)| !active[*row] && *row != dependent)
+                .fold(aspis_core::field::QM31::ZERO, |sum, (_, value)| {
+                    sum.add(value)
+                });
+        d.0[dependent] = aspis_core::field::QM31::ZERO.sub(sum);
+        Ok(core::mem::take(&mut d.0))
+    }
+
+    pub fn derive_pool_v1_private_transfer_zero_factor_d(
+        &self,
+        hash: HashFn,
+        context: StateOnlyHidingContext,
+    ) -> Result<Vec<aspis_core::field::QM31>, StateOnlyMaskBuildError> {
+        self.derive_pool_v1_zero_factor_d(
+            hash,
+            context,
+            PINNED_POOL_V1_PRIVATE_TRANSFER_HIDING_LAYOUT_FACTOR_FINGERPRINT,
+            pool_v1_private_transfer_copy_active_row_masks_compiled_v1(),
+        )
+    }
+
+    pub fn derive_pool_v1_withdrawal_zero_factor_d(
+        &self,
+        hash: HashFn,
+        context: StateOnlyHidingContext,
+    ) -> Result<Vec<aspis_core::field::QM31>, StateOnlyMaskBuildError> {
+        self.derive_pool_v1_zero_factor_d(
+            hash,
+            context,
+            PINNED_POOL_V1_WITHDRAWAL_HIDING_LAYOUT_FACTOR_FINGERPRINT,
+            pool_v1_withdrawal_copy_active_row_masks_compiled_v1(),
+        )
     }
 
     /// Deterministically expand the reserved attempt's field-mask domain into
@@ -539,6 +775,19 @@ pub fn spend_private_attempt_binding(
     ])
 }
 
+pub fn pool_v1_private_attempt_binding(
+    hash: HashFn,
+    precommit_binding: &[u8; 32],
+    context: StateOnlyHidingContext,
+) -> [u8; 32] {
+    hash(&[
+        POOL_V1_PRIVATE_ATTEMPT_BINDING_DOMAIN,
+        precommit_binding,
+        &context.encode(),
+        POOL_V1_PRIVATE_WIRE_DESCRIPTOR,
+    ])
+}
+
 /// Append-only filesystem-backed nonce ledger. `create_new` is the
 /// concurrency linearization point; file and directory `fsync` make a
 /// successful reservation durable before mask derivation. Any I/O error is
@@ -650,6 +899,141 @@ mod tests {
             .map(|byte| format!("{byte:02x}"))
             .collect::<String>();
         std::env::temp_dir().join(format!("aspis-{label}-{}-{suffix}", std::process::id()))
+    }
+
+    fn copy_inactive_sum(
+        values: &[aspis_core::field::QM31],
+        masks: &[u16; 64],
+    ) -> aspis_core::field::QM31 {
+        values
+            .iter()
+            .copied()
+            .enumerate()
+            .filter(|(row, _)| masks[row >> 4] & (1 << (row & 15)) == 0)
+            .fold(aspis_core::field::QM31::ZERO, |sum, (_, value)| {
+                sum.add(value)
+            })
+    }
+
+    #[test]
+    fn pool_attempt_typestates_build_masks_and_variant_balanced_d() {
+        let transfer_nonce = [0x41; 32];
+        let transfer_context =
+            StateOnlyHidingContext::pool_v1_private_transfer([0x73; 32], transfer_nonce);
+        let transfer_attempt = StateOnlyAttemptSecrets::deterministic_spend_fixture(
+            transfer_nonce,
+            [0x31; 32],
+            [0x51; 32],
+        );
+        let mut transfer_store =
+            crate::state_only_hiding::InMemoryStateOnlyMaskNonceStore::default();
+        let (transfer_reserved, _material) = transfer_attempt
+            .reserve_and_build_pool_v1_private_transfer_mask_material_v1(
+                crate::HOST_HASH,
+                [0x21; 32],
+                transfer_context,
+                &mut transfer_store,
+            )
+            .unwrap();
+        let transfer_salt = transfer_reserved
+            .derive_pool_v1_leaf_salt(crate::HOST_HASH, transfer_context, 0x76, 7)
+            .unwrap();
+        assert_eq!(
+            transfer_salt,
+            transfer_reserved
+                .derive_pool_v1_leaf_salt(crate::HOST_HASH, transfer_context, 0x76, 7)
+                .unwrap(),
+        );
+        assert_ne!(
+            transfer_salt,
+            transfer_reserved
+                .derive_pool_v1_leaf_salt(crate::HOST_HASH, transfer_context, 0x77, 7)
+                .unwrap(),
+        );
+        assert_eq!(
+            transfer_reserved
+                .derive_pool_v1_leaf_salt(
+                    crate::HOST_HASH,
+                    StateOnlyHidingContext::pool_v1_withdrawal([0x73; 32], transfer_nonce),
+                    0x76,
+                    7,
+                )
+                .unwrap_err(),
+            StateOnlyMaskBuildError::Layout,
+        );
+        assert_eq!(
+            transfer_reserved
+                .derive_pool_v1_leaf_salt(
+                    crate::HOST_HASH,
+                    StateOnlyHidingContext::pool_v1_private_transfer([0x74; 32], transfer_nonce,),
+                    0x76,
+                    7,
+                )
+                .unwrap_err(),
+            StateOnlyMaskBuildError::Layout,
+        );
+        assert_eq!(
+            transfer_reserved
+                .derive_pool_v1_leaf_salt(
+                    crate::HOST_HASH,
+                    StateOnlyHidingContext::atomic_spend_v3([0x73; 32], transfer_nonce),
+                    0x76,
+                    7,
+                )
+                .unwrap_err(),
+            StateOnlyMaskBuildError::Layout,
+        );
+        let transfer_d = transfer_reserved
+            .derive_pool_v1_private_transfer_zero_factor_d(crate::HOST_HASH, transfer_context)
+            .unwrap();
+        assert_eq!(transfer_d.len(), STATE_ONLY_POSEIDON_TRACE_ROWS);
+        assert_eq!(
+            copy_inactive_sum(
+                &transfer_d,
+                pool_v1_private_transfer_copy_active_row_masks_compiled_v1(),
+            ),
+            aspis_core::field::QM31::ZERO,
+        );
+        assert_eq!(
+            transfer_reserved
+                .derive_pool_v1_withdrawal_zero_factor_d(crate::HOST_HASH, transfer_context)
+                .unwrap_err(),
+            StateOnlyMaskBuildError::Layout,
+        );
+
+        let withdrawal_nonce = [0x42; 32];
+        let withdrawal_context =
+            StateOnlyHidingContext::pool_v1_withdrawal([0x73; 32], withdrawal_nonce);
+        let withdrawal_attempt = StateOnlyAttemptSecrets::deterministic_spend_fixture(
+            withdrawal_nonce,
+            [0x32; 32],
+            [0x52; 32],
+        );
+        let mut withdrawal_store =
+            crate::state_only_hiding::InMemoryStateOnlyMaskNonceStore::default();
+        let (withdrawal_reserved, _material) = withdrawal_attempt
+            .reserve_and_build_pool_v1_withdrawal_mask_material_v1(
+                crate::HOST_HASH,
+                [0x22; 32],
+                withdrawal_context,
+                &mut withdrawal_store,
+            )
+            .unwrap();
+        assert!(withdrawal_reserved
+            .derive_pool_v1_leaf_salt(crate::HOST_HASH, withdrawal_context, 0x76, 7)
+            .is_ok());
+        let withdrawal_d = withdrawal_reserved
+            .derive_pool_v1_withdrawal_zero_factor_d(crate::HOST_HASH, withdrawal_context)
+            .unwrap();
+        assert_eq!(withdrawal_d.len(), STATE_ONLY_POSEIDON_TRACE_ROWS);
+        assert_eq!(
+            copy_inactive_sum(
+                &withdrawal_d,
+                pool_v1_withdrawal_copy_active_row_masks_compiled_v1(),
+            ),
+            aspis_core::field::QM31::ZERO,
+        );
+        assert_ne!(transfer_d, withdrawal_d);
     }
 
     #[test]

@@ -14,15 +14,22 @@ use aspis_core::state_only_hiding::{
 };
 use aspis_core::state_only_hiding::{
     begin_state_only_masked_sumcheck, state_only_selected_mask_value, StateOnlyHidingContext,
-    StateOnlyHidingScheduleError, STATE_ONLY_H1_PADDING_MASK_END, STATE_ONLY_H1_PADDING_MASK_START,
-    STATE_ONLY_HIDING_C1_COLUMNS, STATE_ONLY_HIDING_MASK_ONLY_C1_COLUMNS,
-    STATE_ONLY_HIDING_SUMCHECK_ROUNDS,
+    StateOnlyHidingScheduleError, PINNED_POOL_V1_PAYMENT_RELATION_FREE_MASK_FINGERPRINT,
+    PINNED_POOL_V1_PRIVATE_TRANSFER_HIDING_LAYOUT_FACTOR_FINGERPRINT,
+    PINNED_POOL_V1_WITHDRAWAL_HIDING_LAYOUT_FACTOR_FINGERPRINT, STATE_ONLY_H1_PADDING_MASK_END,
+    STATE_ONLY_H1_PADDING_MASK_START, STATE_ONLY_HIDING_C1_COLUMNS,
+    STATE_ONLY_HIDING_MASK_ONLY_C1_COLUMNS, STATE_ONLY_HIDING_SUMCHECK_ROUNDS,
 };
 use aspis_core::transcript::Transcript;
 use aspis_core::HashFn;
 use aspis_statement::{
     atomic_state_only_registry::atomic_state_only_relation_free_mask_cells_v3,
     atomic_state_only_terminal::atomic_state_only_copy_active_rows_v3,
+    pool_v1::{
+        pool_v1_payment_relation_free_mask_cells_v1,
+        pool_v1_private_transfer_copy_active_row_masks_compiled_v1,
+        pool_v1_withdrawal_copy_active_row_masks_compiled_v1,
+    },
     state_only_copy_active_rows_v4, state_only_relation_free_mask_cells_v4,
     StateOnlyTraceFoundation, STATE_ONLY_POSEIDON_TRACE_ROWS,
 };
@@ -129,6 +136,18 @@ fn active_rows(rows: &[u16]) -> [bool; STATE_ONLY_POSEIDON_TRACE_ROWS] {
 
 fn atomic_copy_active_rows() -> [bool; STATE_ONLY_POSEIDON_TRACE_ROWS] {
     active_rows(atomic_state_only_copy_active_rows_v3())
+}
+
+fn active_rows_from_masks(masks: &[u16; 64]) -> [bool; STATE_ONLY_POSEIDON_TRACE_ROWS] {
+    core::array::from_fn(|row| masks[row >> 4] & (1 << (row & 15)) != 0)
+}
+
+fn pool_v1_private_transfer_copy_active_rows() -> [bool; STATE_ONLY_POSEIDON_TRACE_ROWS] {
+    active_rows_from_masks(pool_v1_private_transfer_copy_active_row_masks_compiled_v1())
+}
+
+fn pool_v1_withdrawal_copy_active_rows() -> [bool; STATE_ONLY_POSEIDON_TRACE_ROWS] {
+    active_rows_from_masks(pool_v1_withdrawal_copy_active_row_masks_compiled_v1())
 }
 
 fn first_inactive_row(active: &[bool; STATE_ONLY_POSEIDON_TRACE_ROWS]) -> usize {
@@ -249,6 +268,20 @@ pub fn apply_atomic_state_only_h1_padding_mask_v3(
     padding: &[QM31],
 ) -> Result<(), StateOnlyMaskBuildError> {
     apply_h1_padding_mask_for_active(h1, padding, &atomic_copy_active_rows())
+}
+
+pub fn apply_pool_v1_private_transfer_h1_padding_mask_v1(
+    h1: &mut [QM31],
+    padding: &[QM31],
+) -> Result<(), StateOnlyMaskBuildError> {
+    apply_h1_padding_mask_for_active(h1, padding, &pool_v1_private_transfer_copy_active_rows())
+}
+
+pub fn apply_pool_v1_withdrawal_h1_padding_mask_v1(
+    h1: &mut [QM31],
+    padding: &[QM31],
+) -> Result<(), StateOnlyMaskBuildError> {
+    apply_h1_padding_mask_for_active(h1, padding, &pool_v1_withdrawal_copy_active_rows())
 }
 
 struct SeedExpander {
@@ -459,6 +492,105 @@ pub(crate) fn build_atomic_state_only_mask_material_v3_from_entropy_ref(
     )
 }
 
+fn build_pool_v1_payment_mask_material_v1(
+    hash: HashFn,
+    precommit_binding: [u8; 32],
+    context: StateOnlyHidingContext,
+    private_entropy: &[u8; 32],
+    nonce_store: &mut impl StateOnlyMaskNonceStore,
+    expected_factor_fingerprint: u64,
+    active: &[bool; STATE_ONLY_POSEIDON_TRACE_ROWS],
+) -> Result<StateOnlyMaskMaterial, StateOnlyMaskBuildError> {
+    if context.mask_layout_fingerprint != PINNED_POOL_V1_PAYMENT_RELATION_FREE_MASK_FINGERPRINT
+        || context.layout_factor_fingerprint != expected_factor_fingerprint
+    {
+        return Err(StateOnlyMaskBuildError::Layout);
+    }
+    let cells = pool_v1_payment_relation_free_mask_cells_v1()
+        .map_err(|_| StateOnlyMaskBuildError::Layout)?;
+    build_mask_material_for_layout(
+        hash,
+        precommit_binding,
+        context,
+        private_entropy,
+        nonce_store,
+        &cells,
+        active,
+    )
+}
+
+pub(crate) fn build_pool_v1_private_transfer_mask_material_v1_from_entropy_ref(
+    hash: HashFn,
+    precommit_binding: [u8; 32],
+    context: StateOnlyHidingContext,
+    private_entropy: &[u8; 32],
+    nonce_store: &mut impl StateOnlyMaskNonceStore,
+) -> Result<StateOnlyMaskMaterial, StateOnlyMaskBuildError> {
+    build_pool_v1_payment_mask_material_v1(
+        hash,
+        precommit_binding,
+        context,
+        private_entropy,
+        nonce_store,
+        PINNED_POOL_V1_PRIVATE_TRANSFER_HIDING_LAYOUT_FACTOR_FINGERPRINT,
+        &pool_v1_private_transfer_copy_active_rows(),
+    )
+}
+
+pub(crate) fn build_pool_v1_withdrawal_mask_material_v1_from_entropy_ref(
+    hash: HashFn,
+    precommit_binding: [u8; 32],
+    context: StateOnlyHidingContext,
+    private_entropy: &[u8; 32],
+    nonce_store: &mut impl StateOnlyMaskNonceStore,
+) -> Result<StateOnlyMaskMaterial, StateOnlyMaskBuildError> {
+    build_pool_v1_payment_mask_material_v1(
+        hash,
+        precommit_binding,
+        context,
+        private_entropy,
+        nonce_store,
+        PINNED_POOL_V1_WITHDRAWAL_HIDING_LAYOUT_FACTOR_FINGERPRINT,
+        &pool_v1_withdrawal_copy_active_rows(),
+    )
+}
+
+pub fn build_pool_v1_private_transfer_mask_material_v1(
+    hash: HashFn,
+    precommit_binding: [u8; 32],
+    context: StateOnlyHidingContext,
+    mut private_entropy: [u8; 32],
+    nonce_store: &mut impl StateOnlyMaskNonceStore,
+) -> Result<StateOnlyMaskMaterial, StateOnlyMaskBuildError> {
+    let result = build_pool_v1_private_transfer_mask_material_v1_from_entropy_ref(
+        hash,
+        precommit_binding,
+        context,
+        &private_entropy,
+        nonce_store,
+    );
+    private_entropy.zeroize();
+    result
+}
+
+pub fn build_pool_v1_withdrawal_mask_material_v1(
+    hash: HashFn,
+    precommit_binding: [u8; 32],
+    context: StateOnlyHidingContext,
+    mut private_entropy: [u8; 32],
+    nonce_store: &mut impl StateOnlyMaskNonceStore,
+) -> Result<StateOnlyMaskMaterial, StateOnlyMaskBuildError> {
+    let result = build_pool_v1_withdrawal_mask_material_v1_from_entropy_ref(
+        hash,
+        precommit_binding,
+        context,
+        &private_entropy,
+        nonce_store,
+    );
+    private_entropy.zeroize();
+    result
+}
+
 /// Consume the one-time material while applying it, making accidental reuse
 /// through this API impossible without reconstructing material from a reused
 /// nonce (which the nonce store rejects).
@@ -527,6 +659,34 @@ pub fn apply_atomic_state_only_mask_material_v3(
     let cells = atomic_state_only_relation_free_mask_cells_v3()
         .map_err(|_| StateOnlyMaskBuildError::Layout)?;
     apply_mask_material_for_layout(trace, material, &cells, &atomic_copy_active_rows())
+}
+
+pub fn apply_pool_v1_private_transfer_mask_material_v1(
+    trace: &mut StateOnlyTraceFoundation,
+    material: StateOnlyMaskMaterial,
+) -> Result<AppliedStateOnlyMasks, StateOnlyMaskBuildError> {
+    let cells = pool_v1_payment_relation_free_mask_cells_v1()
+        .map_err(|_| StateOnlyMaskBuildError::Layout)?;
+    apply_mask_material_for_layout(
+        trace,
+        material,
+        &cells,
+        &pool_v1_private_transfer_copy_active_rows(),
+    )
+}
+
+pub fn apply_pool_v1_withdrawal_mask_material_v1(
+    trace: &mut StateOnlyTraceFoundation,
+    material: StateOnlyMaskMaterial,
+) -> Result<AppliedStateOnlyMasks, StateOnlyMaskBuildError> {
+    let cells = pool_v1_payment_relation_free_mask_cells_v1()
+        .map_err(|_| StateOnlyMaskBuildError::Layout)?;
+    apply_mask_material_for_layout(
+        trace,
+        material,
+        &cells,
+        &pool_v1_withdrawal_copy_active_rows(),
+    )
 }
 
 fn evaluate_m31_table(
@@ -817,6 +977,90 @@ mod tests {
         transcript.absorb(label::STATEMENT, &context.statement_digest);
         let binding = begin_state_only_hiding_precommit(&mut transcript, context).unwrap();
         (binding, transcript)
+    }
+
+    fn inactive_m31_sum(table: &[M31], active: &[bool; 1024]) -> M31 {
+        table
+            .iter()
+            .copied()
+            .enumerate()
+            .filter(|(row, _)| !active[*row])
+            .fold(M31::ZERO, |sum, (_, value)| sum.add(value))
+    }
+
+    #[test]
+    fn pool_material_and_h1_helpers_use_the_exact_variant_contexts() {
+        let transfer_context =
+            StateOnlyHidingContext::pool_v1_private_transfer([0x73; 32], [0x41; 32]);
+        let (transfer_binding, _) = precommit(transfer_context);
+        let mut transfer_store = InMemoryStateOnlyMaskNonceStore::default();
+        let transfer_material = build_pool_v1_private_transfer_mask_material_v1(
+            HOST_HASH,
+            transfer_binding,
+            transfer_context,
+            [0x31; 32],
+            &mut transfer_store,
+        )
+        .unwrap();
+        assert_eq!(transfer_material.c1.len(), 5_428);
+        let mut transfer_trace = zero_trace();
+        let transfer_applied =
+            apply_pool_v1_private_transfer_mask_material_v1(&mut transfer_trace, transfer_material)
+                .unwrap();
+        let transfer_active = pool_v1_private_transfer_copy_active_rows();
+        assert!(transfer_trace
+            .c1
+            .iter()
+            .all(|column| inactive_m31_sum(column, &transfer_active) == M31::ZERO));
+        let mut transfer_h1 = vec![QM31::ZERO; STATE_ONLY_POSEIDON_TRACE_ROWS];
+        apply_pool_v1_private_transfer_h1_padding_mask_v1(
+            &mut transfer_h1,
+            &transfer_applied.h1_padding,
+        )
+        .unwrap();
+        assert_eq!(transfer_h1, transfer_applied.h1_padding);
+
+        let withdrawal_context = StateOnlyHidingContext::pool_v1_withdrawal([0x73; 32], [0x42; 32]);
+        let (withdrawal_binding, _) = precommit(withdrawal_context);
+        let mut withdrawal_store = InMemoryStateOnlyMaskNonceStore::default();
+        let withdrawal_material = build_pool_v1_withdrawal_mask_material_v1(
+            HOST_HASH,
+            withdrawal_binding,
+            withdrawal_context,
+            [0x32; 32],
+            &mut withdrawal_store,
+        )
+        .unwrap();
+        assert_eq!(withdrawal_material.c1.len(), 5_428);
+        let mut withdrawal_trace = zero_trace();
+        let withdrawal_applied =
+            apply_pool_v1_withdrawal_mask_material_v1(&mut withdrawal_trace, withdrawal_material)
+                .unwrap();
+        let withdrawal_active = pool_v1_withdrawal_copy_active_rows();
+        assert!(withdrawal_trace
+            .c1
+            .iter()
+            .all(|column| inactive_m31_sum(column, &withdrawal_active) == M31::ZERO));
+        let mut withdrawal_h1 = vec![QM31::ZERO; STATE_ONLY_POSEIDON_TRACE_ROWS];
+        apply_pool_v1_withdrawal_h1_padding_mask_v1(
+            &mut withdrawal_h1,
+            &withdrawal_applied.h1_padding,
+        )
+        .unwrap();
+        assert_eq!(withdrawal_h1, withdrawal_applied.h1_padding);
+
+        let mut wrong_store = InMemoryStateOnlyMaskNonceStore::default();
+        assert_eq!(
+            build_pool_v1_private_transfer_mask_material_v1(
+                HOST_HASH,
+                withdrawal_binding,
+                withdrawal_context,
+                [0x33; 32],
+                &mut wrong_store,
+            )
+            .err(),
+            Some(StateOnlyMaskBuildError::Layout),
+        );
     }
 
     #[test]
