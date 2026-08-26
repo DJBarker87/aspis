@@ -99,6 +99,26 @@ impl AuthenticatedAddressLookupTableV1 {
         self.observed_slot
     }
 
+    pub(crate) fn owner(&self) -> Pubkey {
+        self.owner
+    }
+
+    pub(crate) fn lamports(&self) -> u64 {
+        self.lamports
+    }
+
+    pub(crate) fn executable(&self) -> bool {
+        self.executable
+    }
+
+    pub(crate) fn rent_epoch(&self) -> u64 {
+        self.rent_epoch
+    }
+
+    pub(crate) fn commitment(&self) -> SolanaRpcCommitmentV1 {
+        self.commitment
+    }
+
     pub fn provider_set_digest(&self) -> &[u8; 32] {
         &self.provider_set_digest
     }
@@ -121,6 +141,37 @@ pub struct ValidatedRelayerTransactionV1 {
     pub inspected: InspectedSignedTransactionV1,
     pub simulation_accounts_sha256: [u8; 32],
     pub lookup_table_count: u16,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct ExactUnsignedRelayerMessageV1 {
+    message: VersionedMessage,
+    serialized_message: Vec<u8>,
+    message_sha256: [u8; 32],
+    simulation_accounts_sha256: [u8; 32],
+    lookup_table_count: u16,
+}
+
+impl ExactUnsignedRelayerMessageV1 {
+    pub fn message(&self) -> &VersionedMessage {
+        &self.message
+    }
+
+    pub fn serialized_message(&self) -> &[u8] {
+        &self.serialized_message
+    }
+
+    pub fn message_sha256(&self) -> &[u8; 32] {
+        &self.message_sha256
+    }
+
+    pub fn simulation_accounts_sha256(&self) -> &[u8; 32] {
+        &self.simulation_accounts_sha256
+    }
+
+    pub fn lookup_table_count(&self) -> u16 {
+        self.lookup_table_count
+    }
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -220,12 +271,12 @@ pub fn relayer_simulation_accounts_sha256_v1(
 
 /// Verify signatures and prove that the signed legacy/v0 message is exactly
 /// the canonical transaction for `plan` and the successful simulation.
-pub fn validate_exact_relayer_transaction_v1(
+pub fn assemble_exact_unsigned_relayer_message_v1(
     plan: &RelayerPlanV1,
     startup: &OperatorStartupReceiptV1,
     simulation: RelayerSimulationEvidenceV1,
-    artifact: &RelayerSignedTransactionArtifactV1,
-) -> Result<ValidatedRelayerTransactionV1, RelayerTransactionErrorV1> {
+    lookup_tables: &[AuthenticatedAddressLookupTableV1],
+) -> Result<ExactUnsignedRelayerMessageV1, RelayerTransactionErrorV1> {
     validate_durable_plan_v1(plan)?;
     if simulation.simulated_at_slot < plan.snapshot.observed_slot
         || simulation.recent_blockhash == [0u8; 32]
@@ -244,6 +295,64 @@ pub fn validate_exact_relayer_transaction_v1(
     if simulation.startup_receipt_digest != *startup.receipt_digest() {
         return Err(RelayerTransactionErrorV1::StartupReceiptMismatch);
     }
+    let accounts_digest = relayer_simulation_accounts_sha256_v1(
+        plan,
+        simulation.simulated_at_slot,
+        *startup.provider_set_digest(),
+        lookup_tables,
+    )?;
+    if accounts_digest != simulation.simulation_accounts_sha256 {
+        return Err(RelayerTransactionErrorV1::WrongSimulationAccountsDigest);
+    }
+
+    let instructions = canonical_relayer_instructions_v1(plan, simulation);
+    let recent_blockhash = Hash::new_from_array(simulation.recent_blockhash);
+    let message = if lookup_tables.is_empty() {
+        VersionedMessage::Legacy(legacy::Message::new_with_blockhash(
+            &instructions,
+            Some(&plan.fee_payer),
+            &recent_blockhash,
+        ))
+    } else {
+        let tables = resolve_lookup_tables_v1(simulation.simulated_at_slot, lookup_tables)?;
+        let message =
+            v0::Message::try_compile(&plan.fee_payer, &instructions, &tables, recent_blockhash)
+                .map_err(|_| RelayerTransactionErrorV1::MessageCompileFailed)?;
+        if message.address_table_lookups.len() != lookup_tables.len() {
+            return Err(RelayerTransactionErrorV1::LookupTableCountMismatch);
+        }
+        VersionedMessage::V0(message)
+    };
+    let serialized_message = message.serialize();
+    let message_sha256 = Sha256::digest(&serialized_message).into();
+    if message_sha256 != simulation.unsigned_message_sha256 {
+        return Err(RelayerTransactionErrorV1::SignedMessageMismatch);
+    }
+
+    Ok(ExactUnsignedRelayerMessageV1 {
+        message,
+        serialized_message,
+        message_sha256,
+        simulation_accounts_sha256: accounts_digest,
+        lookup_table_count: u16::try_from(lookup_tables.len())
+            .map_err(|_| RelayerTransactionErrorV1::TooManyLookupTables)?,
+    })
+}
+
+/// Verify signatures and prove that the signed legacy/v0 message is exactly
+/// the reconstructed transaction for `plan` and the persisted simulation.
+pub fn validate_exact_relayer_transaction_v1(
+    plan: &RelayerPlanV1,
+    startup: &OperatorStartupReceiptV1,
+    simulation: RelayerSimulationEvidenceV1,
+    artifact: &RelayerSignedTransactionArtifactV1,
+) -> Result<ValidatedRelayerTransactionV1, RelayerTransactionErrorV1> {
+    let expected = assemble_exact_unsigned_relayer_message_v1(
+        plan,
+        startup,
+        simulation,
+        &artifact.lookup_tables,
+    )?;
     if artifact.signed_wire.is_empty()
         || artifact.signed_wire.len() > MAX_SIGNED_TRANSACTION_WIRE_BYTES_V1
     {
@@ -258,69 +367,20 @@ pub fn validate_exact_relayer_transaction_v1(
     transaction
         .sanitize()
         .map_err(|_| RelayerTransactionErrorV1::SignedTransactionRejected)?;
-
     let inspected = SolanaSdkSignedTransactionInspectorV1
         .inspect_and_verify_signed_transaction_v1(&artifact.signed_wire)
         .ok_or(RelayerTransactionErrorV1::SignedTransactionRejected)?;
     if inspected.fee_payer != plan.fee_payer.to_bytes() {
         return Err(RelayerTransactionErrorV1::WrongFeePayer);
     }
-    if transaction.message.recent_blockhash().as_ref() != simulation.recent_blockhash {
-        return Err(RelayerTransactionErrorV1::WrongRecentBlockhash);
-    }
-    if inspected.unsigned_message_sha256 != simulation.unsigned_message_sha256 {
-        return Err(RelayerTransactionErrorV1::SignedMessageMismatch);
-    }
-
-    let accounts_digest = relayer_simulation_accounts_sha256_v1(
-        plan,
-        simulation.simulated_at_slot,
-        *startup.provider_set_digest(),
-        &artifact.lookup_tables,
-    )?;
-    if accounts_digest != simulation.simulation_accounts_sha256 {
-        return Err(RelayerTransactionErrorV1::WrongSimulationAccountsDigest);
-    }
-
-    let instructions = canonical_relayer_instructions_v1(plan, simulation);
-    let recent_blockhash = Hash::new_from_array(simulation.recent_blockhash);
-    let expected = match &transaction.message {
-        VersionedMessage::Legacy(_) => {
-            if !artifact.lookup_tables.is_empty() {
-                return Err(RelayerTransactionErrorV1::LookupTableCountMismatch);
-            }
-            VersionedMessage::Legacy(legacy::Message::new_with_blockhash(
-                &instructions,
-                Some(&plan.fee_payer),
-                &recent_blockhash,
-            ))
-        }
-        VersionedMessage::V0(message) => {
-            if message.address_table_lookups.is_empty()
-                || message.address_table_lookups.len() != artifact.lookup_tables.len()
-            {
-                return Err(RelayerTransactionErrorV1::LookupTableCountMismatch);
-            }
-            let tables = resolve_lookup_tables_v1(
-                simulation.simulated_at_slot,
-                &message.address_table_lookups,
-                &artifact.lookup_tables,
-            )?;
-            VersionedMessage::V0(
-                v0::Message::try_compile(&plan.fee_payer, &instructions, &tables, recent_blockhash)
-                    .map_err(|_| RelayerTransactionErrorV1::MessageCompileFailed)?,
-            )
-        }
-    };
-    if transaction.message != expected {
+    if transaction.message != expected.message {
         return Err(RelayerTransactionErrorV1::SignedMessageMismatch);
     }
 
     Ok(ValidatedRelayerTransactionV1 {
         inspected,
-        simulation_accounts_sha256: accounts_digest,
-        lookup_table_count: u16::try_from(artifact.lookup_tables.len())
-            .map_err(|_| RelayerTransactionErrorV1::TooManyLookupTables)?,
+        simulation_accounts_sha256: expected.simulation_accounts_sha256,
+        lookup_table_count: expected.lookup_table_count,
     })
 }
 
@@ -343,7 +403,6 @@ fn canonical_relayer_instructions_v1(
 
 fn resolve_lookup_tables_v1(
     simulated_at_slot: u64,
-    message_lookups: &[v0::MessageAddressTableLookup],
     authenticated: &[AuthenticatedAddressLookupTableV1],
 ) -> Result<Vec<AddressLookupTableAccount>, RelayerTransactionErrorV1> {
     if authenticated.len() > MAX_LOOKUP_TABLES_V1 {
@@ -352,10 +411,7 @@ fn resolve_lookup_tables_v1(
     let mut output = Vec::with_capacity(authenticated.len());
     let mut all_addresses = HashSet::new();
     let mut previous_key = None;
-    for (lookup, account) in message_lookups.iter().zip(authenticated) {
-        if lookup.account_key != account.address {
-            return Err(RelayerTransactionErrorV1::LookupTableOrderMismatch);
-        }
+    for account in authenticated {
         if previous_key.is_some_and(|key| key >= account.address) {
             return Err(RelayerTransactionErrorV1::LookupTableOrderMismatch);
         }
@@ -387,14 +443,6 @@ fn resolve_lookup_tables_v1(
             .any(|address| !all_addresses.insert(*address))
         {
             return Err(RelayerTransactionErrorV1::DuplicateLookupTableAddress);
-        }
-        if lookup
-            .writable_indexes
-            .iter()
-            .chain(&lookup.readonly_indexes)
-            .any(|index| usize::from(*index) >= table.addresses.len())
-        {
-            return Err(RelayerTransactionErrorV1::InvalidLookupTableAccount);
         }
         output.push(AddressLookupTableAccount {
             key: account.address,

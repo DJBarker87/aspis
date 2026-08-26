@@ -16,7 +16,8 @@ use crate::{
         RelayerTerminalFailureEvidenceV1, SolanaSdkSignedTransactionInspectorV1,
     },
     relayer_transaction::{
-        validate_exact_relayer_transaction_v1, RelayerSignedTransactionArtifactV1,
+        assemble_exact_unsigned_relayer_message_v1, validate_exact_relayer_transaction_v1,
+        AuthenticatedAddressLookupTableV1, RelayerSignedTransactionArtifactV1,
         RelayerTransactionErrorV1,
     },
 };
@@ -44,12 +45,19 @@ pub enum RelayerSignatureObservationV1 {
     Finalized(RelayerFinalizedEvidenceV1),
 }
 
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct RelayerSimulationArtifactV1 {
+    pub evidence: RelayerSimulationEvidenceV1,
+    pub lookup_tables: Vec<AuthenticatedAddressLookupTableV1>,
+}
+
 /// Production ports obtain the simulation and external signature, but do not
 /// define what transaction is accepted. Before journaling, this coordinator
 /// reconstructs the only canonical legacy/v0 message from `plan`, authenticates
 /// every ALT from the returned raw finalized account image, and requires exact
-/// message equality plus all required Ed25519 signatures. A restart must return
-/// the same authenticated inputs and message hash; submission uses only the
+/// message equality plus all required Ed25519 signatures. The successful
+/// simulation's raw ALT images are journaled before signing, so a restart
+/// reconstructs from those immutable bytes and submission uses only the
 /// already-journaled wire.
 pub trait RelayerExecutionPortV1 {
     type Error;
@@ -58,13 +66,14 @@ pub trait RelayerExecutionPortV1 {
         &mut self,
         plan: &RelayerPlanV1,
         startup: &OperatorStartupReceiptV1,
-    ) -> Result<RelayerSimulationEvidenceV1, Self::Error>;
+    ) -> Result<RelayerSimulationArtifactV1, Self::Error>;
 
-    fn sign_exact_simulated_plan_v1(
+    fn sign_exact_unsigned_message_v1(
         &mut self,
         plan: &RelayerPlanV1,
         simulation: RelayerSimulationEvidenceV1,
-    ) -> Result<RelayerSignedTransactionArtifactV1, Self::Error>;
+        exact_unsigned_message: &[u8],
+    ) -> Result<Vec<u8>, Self::Error>;
 
     fn observe_signature_v1(
         &mut self,
@@ -105,6 +114,7 @@ pub enum RelayerOperatorExecutionErrorV1<E> {
     StartupReceiptMismatch,
     PlanBeforeStartupCheckpoint,
     PolicyChangedBeforeSigning,
+    MissingPersistedSimulationLookupTables,
     InvalidRuntimeEvidence,
     ProviderSetMismatch,
 }
@@ -174,12 +184,25 @@ pub fn advance_relayer_execution_v1<R: RelayerExecutionPortV1>(
 
     let Some(record) = existing_record else {
         validate_plan_checkpoint_v1(startup, &entry.plan)?;
-        let simulation = runtime
+        let simulation_artifact = runtime
             .simulate_exact_plan_v1(&entry.plan, startup)
             .map_err(RelayerOperatorExecutionErrorV1::Runtime)?;
+        let simulation = simulation_artifact.evidence;
         validate_simulation_evidence_v1(startup, &entry.plan, context, simulation)?;
+        assemble_exact_unsigned_relayer_message_v1(
+            &entry.plan,
+            startup,
+            simulation,
+            &simulation_artifact.lookup_tables,
+        )
+        .map_err(RelayerOperatorExecutionErrorV1::Transaction)?;
         journal
-            .record_simulation_v1(request_id, relayer_policy_id_v1(policy), simulation)
+            .record_simulation_v1(
+                request_id,
+                relayer_policy_id_v1(policy),
+                simulation,
+                &simulation_artifact.lookup_tables,
+            )
             .map_err(RelayerOperatorExecutionErrorV1::Journal)?;
         return Ok(RelayerExecutionStepV1::SimulationRecorded);
     };
@@ -192,9 +215,32 @@ pub fn advance_relayer_execution_v1<R: RelayerExecutionPortV1>(
         if record.policy_id != relayer_policy_id_v1(policy) {
             return Err(RelayerOperatorExecutionErrorV1::PolicyChangedBeforeSigning);
         }
-        let signed = runtime
-            .sign_exact_simulated_plan_v1(&entry.plan, record.simulation)
+        let exact = assemble_exact_unsigned_relayer_message_v1(
+            &entry.plan,
+            startup,
+            record.simulation,
+            &record.simulation_lookup_tables,
+        )
+        .map_err(|error| {
+            if record.simulation_lookup_tables.is_empty()
+                && error == RelayerTransactionErrorV1::SignedMessageMismatch
+            {
+                RelayerOperatorExecutionErrorV1::MissingPersistedSimulationLookupTables
+            } else {
+                RelayerOperatorExecutionErrorV1::Transaction(error)
+            }
+        })?;
+        let signed_wire = runtime
+            .sign_exact_unsigned_message_v1(
+                &entry.plan,
+                record.simulation,
+                exact.serialized_message(),
+            )
             .map_err(RelayerOperatorExecutionErrorV1::Runtime)?;
+        let signed = RelayerSignedTransactionArtifactV1 {
+            signed_wire,
+            lookup_tables: record.simulation_lookup_tables.clone(),
+        };
         validate_exact_relayer_transaction_v1(&entry.plan, startup, record.simulation, &signed)
             .map_err(RelayerOperatorExecutionErrorV1::Transaction)?;
         journal
@@ -468,6 +514,7 @@ mod tests {
         simulation: RelayerSimulationEvidenceV1,
         signed: RelayerSignedTransactionArtifactV1,
         observations: VecDeque<RelayerSignatureObservationV1>,
+        signed_messages: Vec<Vec<u8>>,
         submitted_wires: Vec<Vec<u8>>,
     }
 
@@ -478,16 +525,21 @@ mod tests {
             &mut self,
             _plan: &RelayerPlanV1,
             _startup: &OperatorStartupReceiptV1,
-        ) -> Result<RelayerSimulationEvidenceV1, Self::Error> {
-            Ok(self.simulation)
+        ) -> Result<RelayerSimulationArtifactV1, Self::Error> {
+            Ok(RelayerSimulationArtifactV1 {
+                evidence: self.simulation,
+                lookup_tables: self.signed.lookup_tables.clone(),
+            })
         }
 
-        fn sign_exact_simulated_plan_v1(
+        fn sign_exact_unsigned_message_v1(
             &mut self,
             _plan: &RelayerPlanV1,
             _simulation: RelayerSimulationEvidenceV1,
-        ) -> Result<RelayerSignedTransactionArtifactV1, Self::Error> {
-            Ok(self.signed.clone())
+            exact_unsigned_message: &[u8],
+        ) -> Result<Vec<u8>, Self::Error> {
+            self.signed_messages.push(exact_unsigned_message.to_vec());
+            Ok(self.signed.signed_wire.clone())
         }
 
         fn observe_signature_v1(
@@ -571,7 +623,8 @@ mod tests {
             Some(&plan.fee_payer),
             &recent_blockhash,
         ));
-        let unsigned_message_sha256 = Sha256::digest(message.serialize()).into();
+        let exact_unsigned_message = message.serialize();
+        let unsigned_message_sha256 = Sha256::digest(&exact_unsigned_message).into();
         let transaction =
             VersionedTransaction::try_new(message, &[&fee_payer, &source_authority]).unwrap();
         let signature = *transaction.signatures[0].as_array();
@@ -621,6 +674,7 @@ mod tests {
                 },
                 RelayerSignatureObservationV1::Finalized(finalized),
             ]),
+            signed_messages: Vec::new(),
             submitted_wires: Vec::new(),
         };
 
@@ -724,6 +778,7 @@ mod tests {
             );
         }
         assert_eq!(runtime.submitted_wires, vec![signed_wire]);
+        assert_eq!(runtime.signed_messages, vec![exact_unsigned_message]);
 
         let journal = DurableRelayerExecutionJournalV1::open_or_create_v1(&journal_path).unwrap();
         let record = journal.record_v1(request_id).unwrap();

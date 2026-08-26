@@ -11,10 +11,15 @@ use std::path::Path;
 
 use bincode::Options as _;
 use sha2::{Digest as _, Sha256};
+use solana_program::pubkey::Pubkey;
 use solana_transaction::versioned::VersionedTransaction;
 
-use crate::durable_state::{AtomicStateFileV1, DurableStateErrorV1};
 use crate::scan_state::FinalizedChainPointV1;
+use crate::{
+    durable_state::{AtomicStateFileV1, DurableStateErrorV1},
+    finalized_indexer::SolanaRpcCommitmentV1,
+    relayer_transaction::AuthenticatedAddressLookupTableV1,
+};
 
 const RELAYER_EXECUTION_MAGIC_V1: [u8; 4] = *b"ASRJ";
 const RELAYER_EXECUTION_VERSION_V1: u8 = 1;
@@ -25,6 +30,9 @@ const MAX_RELAYER_EXECUTION_IMAGE_BYTES_V1: usize = 64 * 1024 * 1024;
 const MAX_RELAYER_EXECUTION_RECORDS_V1: usize = 100_000;
 /// Supports present 1,232-byte transactions and the proposed 4 KiB class.
 const MAX_SIGNED_TRANSACTION_WIRE_BYTES_V1: usize = 4096;
+const RELAYER_LOOKUP_TABLE_HEADER_BYTES_V1: usize = 132;
+const MAX_RELAYER_LOOKUP_TABLES_V1: usize = 256;
+const MAX_RELAYER_LOOKUP_TABLE_DATA_BYTES_V1: usize = 56 + 256 * 32;
 const RELAYER_EXECUTION_CHECKSUM_DOMAIN_V1: &[u8] =
     b"aspis:pool-v1:relayer-execution-journal:sha256:v1";
 
@@ -90,6 +98,9 @@ pub struct RelayerExecutionRecordV1 {
     pub request_id: [u8; 32],
     pub policy_id: [u8; 32],
     pub simulation: RelayerSimulationEvidenceV1,
+    /// Exact finalized ALT images used by the successful simulation. They are
+    /// persisted before signing so restart never refetches mutable table state.
+    pub simulation_lookup_tables: Vec<AuthenticatedAddressLookupTableV1>,
     pub signed: Option<RelayerSignedWireV1>,
     pub submission: Option<RelayerSubmissionEvidenceV1>,
     pub outcome: Option<RelayerExecutionOutcomeV1>,
@@ -231,10 +242,15 @@ impl DurableRelayerExecutionJournalV1 {
         request_id: [u8; 32],
         policy_id: [u8; 32],
         simulation: RelayerSimulationEvidenceV1,
+        lookup_tables: &[AuthenticatedAddressLookupTableV1],
     ) -> Result<RelayerExecutionJournalUpdateV1, RelayerExecutionJournalErrorV1> {
         validate_simulation_v1(request_id, policy_id, simulation)?;
+        validate_lookup_tables_v1(simulation, lookup_tables)?;
         if let Some(existing) = self.record_v1(request_id) {
-            return if existing.policy_id == policy_id && existing.simulation == simulation {
+            return if existing.policy_id == policy_id
+                && existing.simulation == simulation
+                && existing.simulation_lookup_tables == lookup_tables
+            {
                 Ok(RelayerExecutionJournalUpdateV1::AlreadyPresent)
             } else {
                 Err(RelayerExecutionJournalErrorV1::DuplicateRequest)
@@ -248,6 +264,7 @@ impl DurableRelayerExecutionJournalV1 {
             request_id,
             policy_id,
             simulation,
+            simulation_lookup_tables: lookup_tables.to_vec(),
             signed: None,
             submission: None,
             outcome: None,
@@ -457,6 +474,31 @@ fn validate_simulation_v1(
     Ok(())
 }
 
+fn validate_lookup_tables_v1(
+    simulation: RelayerSimulationEvidenceV1,
+    lookup_tables: &[AuthenticatedAddressLookupTableV1],
+) -> Result<(), RelayerExecutionJournalErrorV1> {
+    if lookup_tables.len() > MAX_RELAYER_LOOKUP_TABLES_V1 {
+        return Err(RelayerExecutionJournalErrorV1::CountOverflow);
+    }
+    let mut previous = None;
+    for table in lookup_tables {
+        if previous.is_some_and(|address| address >= table.address())
+            || table.observed_slot() != simulation.simulated_at_slot
+            || table.owner() != solana_sdk_ids::address_lookup_table::id()
+            || table.lamports() == 0
+            || table.executable()
+            || table.commitment() != SolanaRpcCommitmentV1::Finalized
+            || table.provider_set_digest() == &[0u8; 32]
+            || !(56..=MAX_RELAYER_LOOKUP_TABLE_DATA_BYTES_V1).contains(&table.account_data().len())
+        {
+            return Err(RelayerExecutionJournalErrorV1::InvalidRecord);
+        }
+        previous = Some(table.address());
+    }
+    Ok(())
+}
+
 fn encode_execution_journal_v1(
     records: &[RelayerExecutionRecordV1],
 ) -> Result<Vec<u8>, RelayerExecutionJournalErrorV1> {
@@ -471,14 +513,16 @@ fn encode_execution_journal_v1(
     {
         return Err(RelayerExecutionJournalErrorV1::DuplicateRequest);
     }
-    let wires = ordered.iter().try_fold(0usize, |total, record| {
+    let payloads = ordered.iter().try_fold(0usize, |total, record| {
         validate_record_v1(record)?;
-        let length = record
+        let lookup_length = encoded_lookup_tables_length_v1(&record.simulation_lookup_tables)?;
+        let wire_length = record
             .signed
             .as_ref()
             .map_or(0, |signed| signed.signed_wire.len());
         total
-            .checked_add(length)
+            .checked_add(lookup_length)
+            .and_then(|length| length.checked_add(wire_length))
             .ok_or(RelayerExecutionJournalErrorV1::CountOverflow)
     })?;
     let length = RELAYER_EXECUTION_HEADER_BYTES_V1
@@ -488,7 +532,7 @@ fn encode_execution_journal_v1(
                 .checked_mul(RELAYER_EXECUTION_RECORD_BYTES_V1)
                 .ok_or(RelayerExecutionJournalErrorV1::CountOverflow)?,
         )
-        .and_then(|value| value.checked_add(wires))
+        .and_then(|value| value.checked_add(payloads))
         .ok_or(RelayerExecutionJournalErrorV1::CountOverflow)?;
     if length > MAX_RELAYER_EXECUTION_IMAGE_BYTES_V1 {
         return Err(RelayerExecutionJournalErrorV1::CountOverflow);
@@ -506,6 +550,9 @@ fn encode_execution_journal_v1(
         let header = &mut bytes[offset..offset + RELAYER_EXECUTION_RECORD_BYTES_V1];
         encode_record_header_v1(record, header)?;
         offset += RELAYER_EXECUTION_RECORD_BYTES_V1;
+        let lookup_bytes = encode_lookup_tables_v1(&record.simulation_lookup_tables)?;
+        bytes[offset..offset + lookup_bytes.len()].copy_from_slice(&lookup_bytes);
+        offset += lookup_bytes.len();
         if let Some(signed) = &record.signed {
             bytes[offset..offset + signed.signed_wire.len()].copy_from_slice(&signed.signed_wire);
             offset += signed.signed_wire.len();
@@ -521,6 +568,7 @@ fn validate_record_v1(
     record: &RelayerExecutionRecordV1,
 ) -> Result<(), RelayerExecutionJournalErrorV1> {
     validate_simulation_v1(record.request_id, record.policy_id, record.simulation)?;
+    validate_lookup_tables_v1(record.simulation, &record.simulation_lookup_tables)?;
     if record.submission.is_some() && record.signed.is_none()
         || record.signed.as_ref().is_some_and(|signed| {
             signed.transaction_signature == [0u8; 64]
@@ -583,6 +631,18 @@ fn encode_record_header_v1(
     );
     header[276..284].copy_from_slice(&record.simulation.compute_units_consumed.to_le_bytes());
     header[284..292].copy_from_slice(&record.simulation.estimated_fee_lamports.to_le_bytes());
+    header[564..566].copy_from_slice(
+        &u16::try_from(record.simulation_lookup_tables.len())
+            .map_err(|_| RelayerExecutionJournalErrorV1::CountOverflow)?
+            .to_le_bytes(),
+    );
+    header[568..572].copy_from_slice(
+        &u32::try_from(encoded_lookup_tables_length_v1(
+            &record.simulation_lookup_tables,
+        )?)
+        .map_err(|_| RelayerExecutionJournalErrorV1::CountOverflow)?
+        .to_le_bytes(),
+    );
     if let Some(signed) = &record.signed {
         header[292] = 1;
         header[296..360].copy_from_slice(&signed.transaction_signature);
@@ -617,6 +677,102 @@ fn encode_record_header_v1(
         None => {}
     }
     Ok(())
+}
+
+fn encoded_lookup_tables_length_v1(
+    lookup_tables: &[AuthenticatedAddressLookupTableV1],
+) -> Result<usize, RelayerExecutionJournalErrorV1> {
+    if lookup_tables.len() > MAX_RELAYER_LOOKUP_TABLES_V1 {
+        return Err(RelayerExecutionJournalErrorV1::CountOverflow);
+    }
+    lookup_tables.iter().try_fold(0usize, |total, table| {
+        total
+            .checked_add(RELAYER_LOOKUP_TABLE_HEADER_BYTES_V1)
+            .and_then(|length| length.checked_add(table.account_data().len()))
+            .ok_or(RelayerExecutionJournalErrorV1::CountOverflow)
+    })
+}
+
+fn encode_lookup_tables_v1(
+    lookup_tables: &[AuthenticatedAddressLookupTableV1],
+) -> Result<Vec<u8>, RelayerExecutionJournalErrorV1> {
+    let length = encoded_lookup_tables_length_v1(lookup_tables)?;
+    let mut bytes = Vec::with_capacity(length);
+    for table in lookup_tables {
+        let data_length = u32::try_from(table.account_data().len())
+            .map_err(|_| RelayerExecutionJournalErrorV1::CountOverflow)?;
+        bytes.extend_from_slice(table.address().as_ref());
+        bytes.extend_from_slice(table.owner().as_ref());
+        bytes.extend_from_slice(&table.observed_slot().to_le_bytes());
+        bytes.extend_from_slice(&table.lamports().to_le_bytes());
+        bytes.push(u8::from(table.executable()));
+        bytes.push(match table.commitment() {
+            SolanaRpcCommitmentV1::Processed => 0,
+            SolanaRpcCommitmentV1::Confirmed => 1,
+            SolanaRpcCommitmentV1::Finalized => 2,
+        });
+        bytes.extend_from_slice(&[0u8; 6]);
+        bytes.extend_from_slice(&table.rent_epoch().to_le_bytes());
+        bytes.extend_from_slice(table.provider_set_digest());
+        bytes.extend_from_slice(&data_length.to_le_bytes());
+        bytes.extend_from_slice(table.account_data());
+    }
+    Ok(bytes)
+}
+
+fn decode_lookup_tables_v1(
+    bytes: &[u8],
+    count: usize,
+) -> Result<Vec<AuthenticatedAddressLookupTableV1>, RelayerExecutionJournalErrorV1> {
+    if count > MAX_RELAYER_LOOKUP_TABLES_V1 {
+        return Err(RelayerExecutionJournalErrorV1::CountOverflow);
+    }
+    let mut tables = Vec::with_capacity(count);
+    let mut offset = 0usize;
+    for _ in 0..count {
+        let header_end = offset
+            .checked_add(RELAYER_LOOKUP_TABLE_HEADER_BYTES_V1)
+            .ok_or(RelayerExecutionJournalErrorV1::CountOverflow)?;
+        let header = bytes
+            .get(offset..header_end)
+            .ok_or(RelayerExecutionJournalErrorV1::WrongLength)?;
+        if header[82..88].iter().any(|byte| *byte != 0) || header[81] != 2 {
+            return Err(RelayerExecutionJournalErrorV1::InvalidRecord);
+        }
+        let data_length = u32::from_le_bytes(header[128..132].try_into().unwrap()) as usize;
+        if !(56..=MAX_RELAYER_LOOKUP_TABLE_DATA_BYTES_V1).contains(&data_length) {
+            return Err(RelayerExecutionJournalErrorV1::InvalidRecord);
+        }
+        let data_end = header_end
+            .checked_add(data_length)
+            .ok_or(RelayerExecutionJournalErrorV1::CountOverflow)?;
+        let account_data = bytes
+            .get(header_end..data_end)
+            .ok_or(RelayerExecutionJournalErrorV1::WrongLength)?
+            .to_vec();
+        let table = AuthenticatedAddressLookupTableV1::new(
+            Pubkey::new_from_array(header[..32].try_into().unwrap()),
+            Pubkey::new_from_array(header[32..64].try_into().unwrap()),
+            u64::from_le_bytes(header[64..72].try_into().unwrap()),
+            u64::from_le_bytes(header[72..80].try_into().unwrap()),
+            match header[80] {
+                0 => false,
+                1 => true,
+                _ => return Err(RelayerExecutionJournalErrorV1::InvalidRecord),
+            },
+            u64::from_le_bytes(header[88..96].try_into().unwrap()),
+            SolanaRpcCommitmentV1::Finalized,
+            header[96..128].try_into().unwrap(),
+            account_data,
+        )
+        .map_err(|_| RelayerExecutionJournalErrorV1::InvalidRecord)?;
+        tables.push(table);
+        offset = data_end;
+    }
+    if offset != bytes.len() {
+        return Err(RelayerExecutionJournalErrorV1::WrongLength);
+    }
+    Ok(tables)
 }
 
 fn decode_execution_journal_v1(
@@ -662,18 +818,34 @@ fn decode_execution_journal_v1(
         let signed_flag = decode_flag_v1(header[292])?;
         let submitted_flag = decode_flag_v1(header[293])?;
         let outcome_kind = header[294];
-        if outcome_kind > 2 || header[295] != 0 || header[564..].iter().any(|byte| *byte != 0) {
+        if outcome_kind > 2
+            || header[295] != 0
+            || header[566..568].iter().any(|byte| *byte != 0)
+            || header[572..].iter().any(|byte| *byte != 0)
+        {
             return Err(RelayerExecutionJournalErrorV1::NonZeroReserved);
         }
         let wire_length = u32::from_le_bytes(header[360..364].try_into().unwrap()) as usize;
+        let lookup_table_count = u16::from_le_bytes(header[564..566].try_into().unwrap()) as usize;
+        let lookup_bytes_length = u32::from_le_bytes(header[568..572].try_into().unwrap()) as usize;
+        if lookup_table_count > MAX_RELAYER_LOOKUP_TABLES_V1 {
+            return Err(RelayerExecutionJournalErrorV1::CountOverflow);
+        }
         if signed_flag != (wire_length != 0) || wire_length > MAX_SIGNED_TRANSACTION_WIRE_BYTES_V1 {
             return Err(RelayerExecutionJournalErrorV1::InvalidRecord);
         }
-        let wire_end = header_end
+        let lookup_end = header_end
+            .checked_add(lookup_bytes_length)
+            .ok_or(RelayerExecutionJournalErrorV1::CountOverflow)?;
+        let lookup_bytes = bytes
+            .get(header_end..lookup_end)
+            .ok_or(RelayerExecutionJournalErrorV1::WrongLength)?;
+        let simulation_lookup_tables = decode_lookup_tables_v1(lookup_bytes, lookup_table_count)?;
+        let wire_end = lookup_end
             .checked_add(wire_length)
             .ok_or(RelayerExecutionJournalErrorV1::CountOverflow)?;
         let signed_wire = bytes
-            .get(header_end..wire_end)
+            .get(lookup_end..wire_end)
             .ok_or(RelayerExecutionJournalErrorV1::WrongLength)?;
         let simulation = RelayerSimulationEvidenceV1 {
             simulated_at_slot: u64::from_le_bytes(header[64..72].try_into().unwrap()),
@@ -744,6 +916,7 @@ fn decode_execution_journal_v1(
             request_id,
             policy_id: header[32..64].try_into().unwrap(),
             simulation,
+            simulation_lookup_tables,
             signed,
             submission,
             outcome,
@@ -957,16 +1130,28 @@ mod tests {
         let path = directory.0.join("execution.state");
         let request_id = [0x11; 32];
         let policy_id = [0x12; 32];
+        let lookup_tables = vec![AuthenticatedAddressLookupTableV1::new(
+            Pubkey::new_from_array([0x81; 32]),
+            solana_sdk_ids::address_lookup_table::id(),
+            simulation().simulated_at_slot,
+            1_000_000,
+            false,
+            9,
+            SolanaRpcCommitmentV1::Finalized,
+            [0x82; 32],
+            vec![0x83; 56],
+        )
+        .unwrap()];
         let mut journal = DurableRelayerExecutionJournalV1::open_or_create_v1(&path).unwrap();
         let mut impossible_priority_fee = simulation();
         impossible_priority_fee.compute_unit_price_micro_lamports = u64::MAX;
         assert_eq!(
-            journal.record_simulation_v1([0x10; 32], policy_id, impossible_priority_fee,),
+            journal.record_simulation_v1([0x10; 32], policy_id, impossible_priority_fee, &[]),
             Err(RelayerExecutionJournalErrorV1::InvalidRecord)
         );
         assert_eq!(
             journal
-                .record_simulation_v1(request_id, policy_id, simulation())
+                .record_simulation_v1(request_id, policy_id, simulation(), &lookup_tables)
                 .unwrap(),
             RelayerExecutionJournalUpdateV1::Inserted
         );
@@ -986,6 +1171,7 @@ mod tests {
         drop(journal);
 
         let mut journal = DurableRelayerExecutionJournalV1::open_or_create_v1(&path).unwrap();
+        assert_eq!(journal.records()[0].simulation_lookup_tables, lookup_tables);
         assert_eq!(
             journal.records()[0].signed.as_ref().unwrap().signed_wire,
             [1, 2, 3, 4]
