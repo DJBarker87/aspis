@@ -9,6 +9,7 @@ use aspis_core::merkle::node_hash;
 use aspis_core::proof::M31_CIRCLE_BASIS_DISCRIMINATOR;
 use aspis_core::state_only_hiding::{
     begin_state_only_hiding_precommit, begin_state_only_masked_sumcheck, StateOnlyHidingContext,
+    PINNED_POOL_V1_PAYMENT_RELATION_FREE_MASK_FINGERPRINT,
 };
 use aspis_core::state_only_private_merkle::private_leaf_hash;
 use aspis_core::state_only_sumcheck::{
@@ -20,33 +21,33 @@ use aspis_core::sumcheck::{
 };
 use aspis_core::transcript::{label, Transcript};
 use aspis_core::v6_onefold::{
-    binary_frontier_nodes, fold_v6_onefold_queries,
-    prepare_v6_onefold_coordinates, verify_and_gamma_combine_v6_binary_openings_prepared,
-    V6OneFoldWire, V6WireError, V6_BODY_WITHOUT_FRONTIERS, V6_C1_PACKED_BYTES_PER_QUERY,
-    V6_C1_TREE_TAG, V6_C2_PACKED_BYTES_PER_QUERY, V6_C2_TREE_TAG, V6_FINAL_QM31_OFFSET,
-    V6_FINAL_QM31_VALUES, V6_FIXED_M31_LIMBS, V6_FIXED_PACKED_FIELD_BYTES,
-    V6_FRONTIER_CAP_PER_TREE, V6_HARD_BODY_LIMIT, V6_INACTIVE_CLAIM_QM31_OFFSET,
-    V6_INITIAL_CLAIM_OFFSET, V6_OOD_QM31_OFFSET, V6_POINT_CLAIMS_QM31_OFFSET, V6_POINT_CLAIM_ROWS,
-    V6_QUERY_COUNT, V6_RELATION_QM31_OFFSET, V6_RELATION_ROUNDS, V6_RELATION_SENT_VALUES,
-    V6_SEMANTIC_QM31_OFFSET, V6_SEMANTIC_ROUNDS, V6_SEMANTIC_SENT_VALUES, V6_TOTAL_COLUMNS,
+    binary_frontier_nodes, fold_v6_onefold_queries, prepare_v6_onefold_coordinates,
+    verify_and_gamma_combine_v6_binary_openings_prepared, V6OneFoldWire, V6WireError,
+    V6_BODY_WITHOUT_FRONTIERS, V6_C1_PACKED_BYTES_PER_QUERY, V6_C1_TREE_TAG,
+    V6_C2_PACKED_BYTES_PER_QUERY, V6_C2_TREE_TAG, V6_FINAL_QM31_OFFSET, V6_FINAL_QM31_VALUES,
+    V6_FIXED_M31_LIMBS, V6_FIXED_PACKED_FIELD_BYTES, V6_FRONTIER_CAP_PER_TREE, V6_HARD_BODY_LIMIT,
+    V6_INACTIVE_CLAIM_QM31_OFFSET, V6_INITIAL_CLAIM_OFFSET, V6_OOD_QM31_OFFSET,
+    V6_POINT_CLAIMS_QM31_OFFSET, V6_POINT_CLAIM_ROWS, V6_QUERY_COUNT, V6_RELATION_QM31_OFFSET,
+    V6_RELATION_ROUNDS, V6_RELATION_SENT_VALUES, V6_SEMANTIC_QM31_OFFSET, V6_SEMANTIC_ROUNDS,
+    V6_SEMANTIC_SENT_VALUES, V6_TOTAL_COLUMNS,
 };
 use aspis_core::v6_query_batch::{add_v6_final256_query_batch, V6AuthenticatedQueryBatch};
 use aspis_core::v6_transcript::{
     v6_statement_points, verify_v6_transcript_and_relation,
-    verify_v7_compact_transcript_and_relation_prepared, V6SemanticView, V6TranscriptContext,
-    V6VerifiedTranscript, V6_BATCH_WORK_BITS, V6_COMPACT_DRAW_CAP, V6_FINAL_WORK_BITS,
-    V6_FOLD_WORK_BITS, V6_PROFILE_BINDING, V6_QUERY_DRAW_LIMIT, V6_QUERY_SELECTOR_COUNT,
-    V6_TREE_DEPTH,
-};
-use aspis_core::v7_onefold::{
-    derive_first_v7_compact_queries, verify_and_gamma_combine_v7_openings,
-    V7CompactOneFoldWire,
-    V7_COMPACT_BATCH_WORK_BITS, V7_COMPACT_BODY_WITHOUT_FRONTIERS, V7_COMPACT_DIGEST_BYTES,
-    V7_COMPACT_FINAL_WORK_BITS, V7_COMPACT_FOLD_WORK_BITS, V7_COMPACT_MAX_BODY_BYTES,
-    V7_COMPACT_PROFILE_BINDING,
+    verify_v7_compact_transcript_and_relation_prepared,
+    verify_v7_compact_transcript_and_relation_prepared_with_hiding_context, V6SemanticView,
+    V6TranscriptContext, V6VerifiedTranscript, V6_BATCH_WORK_BITS, V6_COMPACT_DRAW_CAP,
+    V6_FINAL_WORK_BITS, V6_FOLD_WORK_BITS, V6_PROFILE_BINDING, V6_QUERY_DRAW_LIMIT,
+    V6_QUERY_SELECTOR_COUNT, V6_TREE_DEPTH,
 };
 use aspis_core::v7_merkle208::{
     node_hash_v7, private_leaf_hash_v7, V7Digest, V7_C1_TREE_TAG, V7_C2_TREE_TAG,
+};
+use aspis_core::v7_onefold::{
+    derive_first_v7_compact_queries, verify_and_gamma_combine_v7_openings, V7CompactOneFoldWire,
+    V7_COMPACT_BATCH_WORK_BITS, V7_COMPACT_BODY_WITHOUT_FRONTIERS, V7_COMPACT_DIGEST_BYTES,
+    V7_COMPACT_FINAL_WORK_BITS, V7_COMPACT_FOLD_WORK_BITS, V7_COMPACT_MAX_BODY_BYTES,
+    V7_COMPACT_PROFILE_BINDING,
 };
 use aspis_core::HashFn;
 use aspis_statement::atomic_state_only_registry::build_atomic_state_only_copy_helper_v3;
@@ -59,9 +60,23 @@ use aspis_statement::atomic_state_only_terminal::{
     atomic_state_only_selected_unmasked_terminal_value_compiled_v3,
 };
 use aspis_statement::atomic_state_only_trace::build_atomic_state_only_trace_v3;
+use aspis_statement::pool_v1::payment_semantic_oracle::{
+    build_pool_v1_payment_copy_helper_v1, prepare_pool_v1_payment_semantic_oracle_v1,
+};
 use aspis_statement::{
-    atomic_payment_statement_digest_v4, multilinear_evaluate_qm31, state_only_copy_helper_sum,
-    AtomicPaymentStatementV4, SpendWitness,
+    atomic_payment_statement_digest_v4, multilinear_evaluate_qm31,
+    pool_v1::{
+        build_pool_v1_private_transfer_trace_v1, build_pool_v1_withdrawal_trace_v1,
+        evaluate_pool_v1_private_transfer_selected_masked_terminal_compiled_tag73_v1,
+        evaluate_pool_v1_private_transfer_selected_unmasked_terminal_compiled_tag73_v1,
+        evaluate_pool_v1_withdrawal_selected_masked_terminal_compiled_tag73_v1,
+        evaluate_pool_v1_withdrawal_selected_unmasked_terminal_compiled_tag73_v1,
+        pool_v1_private_transfer_copy_active_row_masks_compiled_v1,
+        pool_v1_withdrawal_copy_active_row_masks_compiled_v1, PoolV1PaymentRelationContextV1,
+        PoolV1PaymentTraceVariantV1, PoolV1PrivateTransferPublicV1, PoolV1PrivateTransferWitnessV1,
+        PoolV1WithdrawalPublicV1, PoolV1WithdrawalWitnessV1,
+    },
+    state_only_copy_helper_sum, AtomicPaymentStatementV4, SpendWitness,
 };
 
 use crate::circle_candidate::{
@@ -72,7 +87,10 @@ use crate::state_only_candidate_prefix::{statement_evaluations, StateOnlyPowMode
 use crate::state_only_entropy::{ReservedStateOnlyAttemptSecrets, StateOnlyAttemptSecrets};
 use crate::state_only_hiding::{
     apply_atomic_state_only_h1_padding_mask_v3, apply_atomic_state_only_mask_material_v3,
-    state_only_initial_mask_claim, state_only_mask_oracle_value, StateOnlyMaskNonceStore,
+    apply_pool_v1_private_transfer_h1_padding_mask_v1,
+    apply_pool_v1_private_transfer_mask_material_v1, apply_pool_v1_withdrawal_h1_padding_mask_v1,
+    apply_pool_v1_withdrawal_mask_material_v1, state_only_initial_mask_claim,
+    state_only_mask_oracle_value, StateOnlyMaskNonceStore,
 };
 use crate::state_only_spend_candidate::{
     encode_state_only_spend_c2_columns, gamma_combine_state_only_spend_codewords,
@@ -134,6 +152,26 @@ pub struct BuiltV7CompactOneFoldProof {
 enum OneFoldBuildProfile {
     V6,
     V7Compact,
+}
+
+#[derive(Clone, Copy)]
+enum OneFoldRelation<'a> {
+    Atomic {
+        statement: &'a AtomicPaymentStatementV4,
+        witness: &'a SpendWitness,
+    },
+    PoolPrivateTransfer {
+        public: &'a PoolV1PrivateTransferPublicV1,
+        witness: &'a PoolV1PrivateTransferWitnessV1,
+        context: PoolV1PaymentRelationContextV1<'a>,
+        statement_digest: [u8; 32],
+    },
+    PoolWithdrawal {
+        public: &'a PoolV1WithdrawalPublicV1,
+        witness: &'a PoolV1WithdrawalWitnessV1,
+        context: PoolV1PaymentRelationContextV1<'a>,
+        statement_digest: [u8; 32],
+    },
 }
 
 #[derive(Clone, Debug)]
@@ -453,6 +491,7 @@ fn begin_transcript_and_precommit(
 fn begin_v7_transcript_and_precommit(
     hash: HashFn,
     context: &V6TranscriptContext,
+    hiding_context: StateOnlyHidingContext,
 ) -> Result<(Transcript, [u8; 32]), V6ProverError> {
     let mut transcript = Transcript::new(hash);
     transcript.absorb(label::PROFILE, &V7_COMPACT_PROFILE_BINDING);
@@ -462,10 +501,7 @@ fn begin_v7_transcript_and_precommit(
     deployment[32..].copy_from_slice(&context.release_binding);
     transcript.absorb(label::V7_DEPLOYMENT_CONTEXT, &deployment);
     transcript.absorb(label::STATEMENT, &context.statement_digest);
-    let binding = begin_state_only_hiding_precommit(
-        &mut transcript,
-        StateOnlyHidingContext::atomic_spend_v3(context.statement_digest, context.attempt_id),
-    )
+    let binding = begin_state_only_hiding_precommit(&mut transcript, hiding_context)
     .map_err(|_| V6ProverError::Stage("V7 hiding precommit"))?;
     Ok((transcript, binding))
 }
@@ -780,6 +816,10 @@ fn derive_v7_queries(
     ))
 }
 
+fn pool_inactive_row_masks(active: &[u16; 64]) -> [u16; 64] {
+    core::array::from_fn(|group| !active[group])
+}
+
 fn derive_leaf_salt(
     reserved: &ReservedStateOnlyAttemptSecrets,
     hash: HashFn,
@@ -797,9 +837,14 @@ fn derive_v7_leaf_salt(
     hiding_context: StateOnlyHidingContext,
     fiber: usize,
 ) -> Result<[u8; 32], V6ProverError> {
-    reserved
-        .derive_spend_leaf_salt(hash, hiding_context, 0x77, fiber as u32)
-        .map_err(|_| V6ProverError::Stage("V7 shared leaf salt"))
+    let salt = if hiding_context.mask_layout_fingerprint
+        == PINNED_POOL_V1_PAYMENT_RELATION_FREE_MASK_FINGERPRINT
+    {
+        reserved.derive_pool_v1_leaf_salt(hash, hiding_context, 0x77, fiber as u32)
+    } else {
+        reserved.derive_spend_leaf_salt(hash, hiding_context, 0x77, fiber as u32)
+    };
+    salt.map_err(|_| V6ProverError::Stage("V7 shared leaf salt"))
 }
 
 fn build_c1_tree(
@@ -868,8 +913,7 @@ fn build_v7_c2_tree(
 /// reservation; callers must never retry it with the same secrets.
 #[allow(clippy::too_many_arguments, clippy::too_many_lines)]
 fn build_onefold_proof_with_pow_mode(
-    statement: &AtomicPaymentStatementV4,
-    witness: &SpendWitness,
+    relation: OneFoldRelation<'_>,
     prover_context: V6ProverContext,
     attempt: StateOnlyAttemptSecrets,
     nonce_store: &mut impl StateOnlyMaskNonceStore,
@@ -880,37 +924,118 @@ fn build_onefold_proof_with_pow_mode(
     if attempt.mask_nonce() != prover_context.attempt_id {
         return Err(V6ProverError::AttemptIdMismatch);
     }
-    let statement_digest = atomic_payment_statement_digest_v4(statement, hash)
-        .map_err(|_| V6ProverError::Stage("V6 statement digest"))?;
+    if profile == OneFoldBuildProfile::V6 && !matches!(relation, OneFoldRelation::Atomic { .. }) {
+        return Err(V6ProverError::Stage("Pool relation requires V7"));
+    }
+    let statement_digest = match relation {
+        OneFoldRelation::Atomic { statement, .. } => {
+            atomic_payment_statement_digest_v4(statement, hash)
+                .map_err(|_| V6ProverError::Stage("V6 statement digest"))?
+        }
+        OneFoldRelation::PoolPrivateTransfer {
+            statement_digest, ..
+        }
+        | OneFoldRelation::PoolWithdrawal {
+            statement_digest, ..
+        } => statement_digest,
+    };
     let transcript_context = V6TranscriptContext {
         program_id: prover_context.program_id,
         release_binding: prover_context.release_binding,
         statement_digest,
         attempt_id: prover_context.attempt_id,
     };
-    let hiding_context =
-        StateOnlyHidingContext::atomic_spend_v3(statement_digest, prover_context.attempt_id);
+    let hiding_context = match relation {
+        OneFoldRelation::Atomic { .. } => {
+            StateOnlyHidingContext::atomic_spend_v3(statement_digest, prover_context.attempt_id)
+        }
+        OneFoldRelation::PoolPrivateTransfer { .. } => {
+            StateOnlyHidingContext::pool_v1_private_transfer(
+                statement_digest,
+                prover_context.attempt_id,
+            )
+        }
+        OneFoldRelation::PoolWithdrawal { .. } => {
+            StateOnlyHidingContext::pool_v1_withdrawal(statement_digest, prover_context.attempt_id)
+        }
+    };
     let (mut transcript, precommit_binding) = match profile {
         OneFoldBuildProfile::V6 => begin_transcript_and_precommit(hash, &transcript_context)?,
         OneFoldBuildProfile::V7Compact => {
-            begin_v7_transcript_and_precommit(hash, &transcript_context)?
+            begin_v7_transcript_and_precommit(hash, &transcript_context, hiding_context)?
         }
     };
-    let (reserved, mask_material) = attempt
-        .reserve_and_build_atomic_mask_material_v3(
+    let (reserved, mask_material) = match relation {
+        OneFoldRelation::Atomic { .. } => attempt.reserve_and_build_atomic_mask_material_v3(
             hash,
             precommit_binding,
             hiding_context,
             nonce_store,
-        )
+        ),
+        OneFoldRelation::PoolPrivateTransfer { .. } => attempt
+            .reserve_and_build_pool_v1_private_transfer_mask_material_v1(
+                hash,
+                precommit_binding,
+                hiding_context,
+                nonce_store,
+            ),
+        OneFoldRelation::PoolWithdrawal { .. } => attempt
+            .reserve_and_build_pool_v1_withdrawal_mask_material_v1(
+                hash,
+                precommit_binding,
+                hiding_context,
+                nonce_store,
+            ),
+    }
         .map_err(|_| V6ProverError::Stage("V6 mask reservation"))?;
-    let d = reserved
-        .derive_spend_zero_factor_d(hash, hiding_context)
+    let d = match relation {
+        OneFoldRelation::Atomic { .. } => reserved.derive_spend_zero_factor_d(hash, hiding_context),
+        OneFoldRelation::PoolPrivateTransfer { .. } => {
+            reserved.derive_pool_v1_private_transfer_zero_factor_d(hash, hiding_context)
+        }
+        OneFoldRelation::PoolWithdrawal { .. } => {
+            reserved.derive_pool_v1_withdrawal_zero_factor_d(hash, hiding_context)
+        }
+    }
         .map_err(|_| V6ProverError::Stage("V6 D derivation"))?;
+    let mut trace = match relation {
+        OneFoldRelation::Atomic { statement, witness } => {
     let mut atomic = build_atomic_state_only_trace_v3(statement, witness)
         .map_err(|_| V6ProverError::Stage("V6 atomic trace"))?;
-    let mut trace = core::mem::take(&mut atomic.trace);
-    let applied = apply_atomic_state_only_mask_material_v3(&mut trace, mask_material)
+            core::mem::take(&mut atomic.trace)
+        }
+        OneFoldRelation::PoolPrivateTransfer {
+            public,
+            witness,
+            context,
+            ..
+        } => {
+            let mut payment = build_pool_v1_private_transfer_trace_v1(public, witness, context)
+                .map_err(|_| V6ProverError::Stage("V7 Pool transfer trace"))?;
+            core::mem::take(&mut payment.trace)
+        }
+        OneFoldRelation::PoolWithdrawal {
+            public,
+            witness,
+            context,
+            ..
+        } => {
+            let mut payment = build_pool_v1_withdrawal_trace_v1(public, witness, context)
+                .map_err(|_| V6ProverError::Stage("V7 Pool withdrawal trace"))?;
+            core::mem::take(&mut payment.trace)
+        }
+    };
+    let applied = match relation {
+        OneFoldRelation::Atomic { .. } => {
+            apply_atomic_state_only_mask_material_v3(&mut trace, mask_material)
+        }
+        OneFoldRelation::PoolPrivateTransfer { .. } => {
+            apply_pool_v1_private_transfer_mask_material_v1(&mut trace, mask_material)
+        }
+        OneFoldRelation::PoolWithdrawal { .. } => {
+            apply_pool_v1_withdrawal_mask_material_v1(&mut trace, mask_material)
+        }
+    }
         .map_err(|_| V6ProverError::Stage("V6 mask application"))?;
 
     let selected_c1 = trace
@@ -949,9 +1074,38 @@ fn build_onefold_proof_with_pow_mode(
         )?,
     };
 
-    let mut h1 = build_atomic_state_only_copy_helper_v3(&trace, lambda, chi)
-        .map_err(|_| V6ProverError::Stage("V6 copy helper"))?;
+    let mut h1 = match relation {
+        OneFoldRelation::Atomic { .. } => {
+            build_atomic_state_only_copy_helper_v3(&trace, lambda, chi)
+                .map_err(|_| V6ProverError::Stage("V6 copy helper"))?
+        }
+        OneFoldRelation::PoolPrivateTransfer { .. } => {
+            let prepared = prepare_pool_v1_payment_semantic_oracle_v1(
+                PoolV1PaymentTraceVariantV1::PrivateTransfer,
+            )
+            .map_err(|_| V6ProverError::Stage("V7 Pool transfer registry"))?;
+            build_pool_v1_payment_copy_helper_v1(&prepared, &trace, lambda, chi)
+                .map_err(|_| V6ProverError::Stage("V7 Pool transfer copy helper"))?
+        }
+        OneFoldRelation::PoolWithdrawal { .. } => {
+            let prepared =
+                prepare_pool_v1_payment_semantic_oracle_v1(PoolV1PaymentTraceVariantV1::Withdrawal)
+                    .map_err(|_| V6ProverError::Stage("V7 Pool withdrawal registry"))?;
+            build_pool_v1_payment_copy_helper_v1(&prepared, &trace, lambda, chi)
+                .map_err(|_| V6ProverError::Stage("V7 Pool withdrawal copy helper"))?
+        }
+    };
+    match relation {
+        OneFoldRelation::Atomic { .. } => {
     apply_atomic_state_only_h1_padding_mask_v3(&mut h1, &applied.h1_padding)
+        }
+        OneFoldRelation::PoolPrivateTransfer { .. } => {
+            apply_pool_v1_private_transfer_h1_padding_mask_v1(&mut h1, &applied.h1_padding)
+        }
+        OneFoldRelation::PoolWithdrawal { .. } => {
+            apply_pool_v1_withdrawal_h1_padding_mask_v1(&mut h1, &applied.h1_padding)
+        }
+    }
         .map_err(|_| V6ProverError::Stage("V6 H padding mask"))?;
     if state_only_copy_helper_sum(&h1) != Some(QM31::ZERO) {
         return Err(V6ProverError::Stage("V6 H sum"));
@@ -998,7 +1152,8 @@ fn build_onefold_proof_with_pow_mode(
             .map_err(|_| V6ProverError::Stage("V6 mask oracle"))?;
         let claims = statement_evaluations(&trace, &applied.mask_only_c1, &h1, &applied.g, point)
             .map_err(|_| V6ProverError::Stage("V6 semantic claims"))?;
-        let original = match profile {
+        let original = match relation {
+            OneFoldRelation::Atomic { statement, .. } => match profile {
             OneFoldBuildProfile::V6 => {
                 atomic_state_only_selected_unmasked_terminal_value_compiled_v3(
             statement,
@@ -1011,6 +1166,7 @@ fn build_onefold_proof_with_pow_mode(
             batching.mu,
         )
             }
+                .map_err(|_| ()),
             OneFoldBuildProfile::V7Compact => {
                 atomic_state_only_selected_unmasked_terminal_value_compiled_tag73(
                     statement,
@@ -1022,6 +1178,34 @@ fn build_onefold_proof_with_pow_mode(
                     &batching.zerocheck_point,
                     batching.mu,
                 )
+            }
+                .map_err(|_| ()),
+            },
+            OneFoldRelation::PoolPrivateTransfer { public, .. } => {
+                evaluate_pool_v1_private_transfer_selected_unmasked_terminal_compiled_tag73_v1(
+                    public,
+                    &claims,
+                    point,
+                    lambda,
+                    chi,
+                    batching.theta,
+                    &batching.zerocheck_point,
+                    batching.mu,
+                )
+                .map_err(|_| ())
+            }
+            OneFoldRelation::PoolWithdrawal { public, .. } => {
+                evaluate_pool_v1_withdrawal_selected_unmasked_terminal_compiled_tag73_v1(
+                    public,
+                    &claims,
+                    point,
+                    lambda,
+                    chi,
+                    batching.theta,
+                    &batching.zerocheck_point,
+                    batching.mu,
+                )
+                .map_err(|_| ())
             }
         }
         .map_err(|_| V6ProverError::Stage("V6 semantic oracle"))?;
@@ -1094,7 +1278,15 @@ fn build_onefold_proof_with_pow_mode(
         encoder.codeword_len(),
     )
     .map_err(|_| V6ProverError::Stage("V6 combined codeword"))?;
-    let inactive_masks = atomic_state_only_copy_inactive_row_masks_v3();
+    let inactive_masks = match relation {
+        OneFoldRelation::Atomic { .. } => atomic_state_only_copy_inactive_row_masks_v3(),
+        OneFoldRelation::PoolPrivateTransfer { .. } => {
+            pool_inactive_row_masks(pool_v1_private_transfer_copy_active_row_masks_compiled_v1())
+        }
+        OneFoldRelation::PoolWithdrawal { .. } => {
+            pool_inactive_row_masks(pool_v1_withdrawal_copy_active_row_masks_compiled_v1())
+        }
+    };
     let inactive = inactive_claim(&combined_message, inactive_masks)?;
     fields[V6_INACTIVE_CLAIM_QM31_OFFSET] = inactive;
     let mut inactive_bytes = [0u8; 16];
@@ -1330,8 +1522,7 @@ pub fn build_v6_onefold_proof_production(
     hash: HashFn,
 ) -> Result<BuiltV6OneFoldProof, V6ProverError> {
     build_onefold_proof_with_pow_mode(
-        statement,
-        witness,
+        OneFoldRelation::Atomic { statement, witness },
         prover_context,
         attempt,
         nonce_store,
@@ -1357,8 +1548,7 @@ pub fn build_v6_onefold_proof(
     pow_mode: StateOnlyPowMode,
 ) -> Result<BuiltV6OneFoldProof, V6ProverError> {
     build_onefold_proof_with_pow_mode(
-        statement,
-        witness,
+        OneFoldRelation::Atomic { statement, witness },
         prover_context,
         attempt,
         nonce_store,
@@ -1380,8 +1570,7 @@ pub fn build_v7_compact_onefold_proof_production(
     hash: HashFn,
 ) -> Result<BuiltV7CompactOneFoldProof, V6ProverError> {
     build_onefold_proof_with_pow_mode(
-        statement,
-        witness,
+        OneFoldRelation::Atomic { statement, witness },
         prover_context,
         attempt,
         nonce_store,
@@ -1405,8 +1594,127 @@ pub fn build_v7_compact_onefold_proof(
     pow_mode: StateOnlyPowMode,
 ) -> Result<BuiltV7CompactOneFoldProof, V6ProverError> {
     build_onefold_proof_with_pow_mode(
-        statement,
+        OneFoldRelation::Atomic { statement, witness },
+        prover_context,
+        attempt,
+        nonce_store,
+        hash,
+        pow_mode,
+        OneFoldBuildProfile::V7Compact,
+    )
+    .map(Into::into)
+}
+
+/// Build a production native Pool V1 private-transfer proof.  The statement
+/// digest must be the exact digest in the surrounding 600-byte ASVQ binding;
+/// it is committed before C1 and checked by the selected verifier profile.
+#[allow(clippy::too_many_arguments)]
+pub fn build_v7_pool_private_transfer_onefold_proof_production(
+    public: &PoolV1PrivateTransferPublicV1,
+    witness: &PoolV1PrivateTransferWitnessV1,
+    relation_context: PoolV1PaymentRelationContextV1<'_>,
+    statement_digest: [u8; 32],
+    prover_context: V7ProverContext,
+    attempt: StateOnlyAttemptSecrets,
+    nonce_store: &mut impl StateOnlyMaskNonceStore,
+    hash: HashFn,
+) -> Result<BuiltV7CompactOneFoldProof, V6ProverError> {
+    build_onefold_proof_with_pow_mode(
+        OneFoldRelation::PoolPrivateTransfer {
+            public,
+            witness,
+            context: relation_context,
+            statement_digest,
+        },
+        prover_context,
+        attempt,
+        nonce_store,
+        hash,
+        StateOnlyPowMode::Mine,
+        OneFoldBuildProfile::V7Compact,
+    )
+    .map(Into::into)
+}
+
+/// Build a production native Pool V1 withdrawal proof.
+#[allow(clippy::too_many_arguments)]
+pub fn build_v7_pool_withdrawal_onefold_proof_production(
+    public: &PoolV1WithdrawalPublicV1,
+    witness: &PoolV1WithdrawalWitnessV1,
+    relation_context: PoolV1PaymentRelationContextV1<'_>,
+    statement_digest: [u8; 32],
+    prover_context: V7ProverContext,
+    attempt: StateOnlyAttemptSecrets,
+    nonce_store: &mut impl StateOnlyMaskNonceStore,
+    hash: HashFn,
+) -> Result<BuiltV7CompactOneFoldProof, V6ProverError> {
+    build_onefold_proof_with_pow_mode(
+        OneFoldRelation::PoolWithdrawal {
+            public,
         witness,
+            context: relation_context,
+            statement_digest,
+        },
+        prover_context,
+        attempt,
+        nonce_store,
+        hash,
+        StateOnlyPowMode::Mine,
+        OneFoldBuildProfile::V7Compact,
+    )
+    .map(Into::into)
+}
+
+#[cfg(any(test, feature = "insecure-spend-fixture"))]
+#[allow(clippy::too_many_arguments)]
+pub fn build_v7_pool_private_transfer_onefold_proof(
+    public: &PoolV1PrivateTransferPublicV1,
+    witness: &PoolV1PrivateTransferWitnessV1,
+    relation_context: PoolV1PaymentRelationContextV1<'_>,
+    statement_digest: [u8; 32],
+    prover_context: V7ProverContext,
+    attempt: StateOnlyAttemptSecrets,
+    nonce_store: &mut impl StateOnlyMaskNonceStore,
+    hash: HashFn,
+    pow_mode: StateOnlyPowMode,
+) -> Result<BuiltV7CompactOneFoldProof, V6ProverError> {
+    build_onefold_proof_with_pow_mode(
+        OneFoldRelation::PoolPrivateTransfer {
+            public,
+            witness,
+            context: relation_context,
+            statement_digest,
+        },
+        prover_context,
+        attempt,
+        nonce_store,
+        hash,
+        pow_mode,
+        OneFoldBuildProfile::V7Compact,
+    )
+    .map(Into::into)
+}
+
+#[cfg(any(test, feature = "insecure-spend-fixture"))]
+#[allow(clippy::too_many_arguments)]
+pub fn build_v7_pool_withdrawal_onefold_proof(
+    public: &PoolV1WithdrawalPublicV1,
+    witness: &PoolV1WithdrawalWitnessV1,
+    relation_context: PoolV1PaymentRelationContextV1<'_>,
+    statement_digest: [u8; 32],
+    prover_context: V7ProverContext,
+    attempt: StateOnlyAttemptSecrets,
+    nonce_store: &mut impl StateOnlyMaskNonceStore,
+    hash: HashFn,
+    pow_mode: StateOnlyPowMode,
+) -> Result<BuiltV7CompactOneFoldProof, V6ProverError> {
+    build_onefold_proof_with_pow_mode(
+        OneFoldRelation::PoolWithdrawal {
+            public,
+            witness,
+            context: relation_context,
+            statement_digest,
+        },
         prover_context,
         attempt,
         nonce_store,
@@ -1533,12 +1841,8 @@ pub fn verify_v7_compact_onefold_proof_core(
         },
         |view| {
             let coordinates = prepare_v6_onefold_coordinates(view.queries)?;
-            let combined = verify_and_gamma_combine_v7_openings(
-                hash,
-                &wire,
-                view.queries,
-                view.gamma_powers,
-            )?;
+            let combined =
+                verify_and_gamma_combine_v7_openings(hash, &wire, view.queries, view.gamma_powers)?;
             Ok(V6AuthenticatedQueryBatch {
                 values: fold_v6_onefold_queries(&combined, &coordinates, view.alpha0),
                 line_x: coordinates.line_x,
@@ -1554,6 +1858,143 @@ pub fn verify_v7_compact_onefold_proof_core(
         return Err(V6ProverError::Stage("V7 query replay"));
     }
     Ok(transcript)
+}
+
+#[derive(Clone, Copy)]
+enum PoolV1ProofPublic<'a> {
+    PrivateTransfer(&'a PoolV1PrivateTransferPublicV1),
+    Withdrawal(&'a PoolV1WithdrawalPublicV1),
+}
+
+#[allow(clippy::too_many_arguments)]
+fn verify_v7_pool_onefold_proof_core(
+    proof: &BuiltV7CompactOneFoldProof,
+    public: PoolV1ProofPublic<'_>,
+    statement_digest: [u8; 32],
+    prover_context: V7ProverContext,
+    hash: HashFn,
+    check_pow: bool,
+) -> Result<V6VerifiedTranscript, V6ProverError> {
+    let wire =
+        V7CompactOneFoldWire::parse_deferred_canonicality(&proof.bytes, proof.frontier_nodes)?;
+    let context = V6TranscriptContext {
+        program_id: prover_context.program_id,
+        release_binding: prover_context.release_binding,
+        statement_digest,
+        attempt_id: prover_context.attempt_id,
+    };
+    let active = match public {
+        PoolV1ProofPublic::PrivateTransfer(_) => {
+            pool_v1_private_transfer_copy_active_row_masks_compiled_v1()
+        }
+        PoolV1ProofPublic::Withdrawal(_) => pool_v1_withdrawal_copy_active_row_masks_compiled_v1(),
+    };
+    let inactive_group_masks = pool_inactive_row_masks(active);
+    let inactive_row_groups: [u8; 64] = core::array::from_fn(|group| group as u8);
+    let hiding_context = match public {
+        PoolV1ProofPublic::PrivateTransfer(_) => StateOnlyHidingContext::pool_v1_private_transfer(
+            statement_digest,
+            prover_context.attempt_id,
+        ),
+        PoolV1ProofPublic::Withdrawal(_) => {
+            StateOnlyHidingContext::pool_v1_withdrawal(statement_digest, prover_context.attempt_id)
+        }
+    };
+    let transcript = verify_v7_compact_transcript_and_relation_prepared_with_hiding_context(
+        hash,
+        &wire,
+        &context,
+        hiding_context,
+        &inactive_row_groups,
+        &inactive_group_masks,
+        check_pow,
+        |view| {
+            let claims = terminal_claims(view);
+            let expected = match public {
+                PoolV1ProofPublic::PrivateTransfer(public) => {
+                    evaluate_pool_v1_private_transfer_selected_masked_terminal_compiled_tag73_v1(
+                        public,
+                        &claims,
+                        &view.point,
+                        view.lambda,
+                        view.chi,
+                        view.batching.theta,
+                        &view.batching.zerocheck_point,
+                        view.batching.mu,
+                        view.eta,
+                    )
+                }
+                PoolV1ProofPublic::Withdrawal(public) => {
+                    evaluate_pool_v1_withdrawal_selected_masked_terminal_compiled_tag73_v1(
+                        public,
+                        &claims,
+                        &view.point,
+                        view.lambda,
+                        view.chi,
+                        view.batching.theta,
+                        &view.batching.zerocheck_point,
+                        view.batching.mu,
+                        view.eta,
+                    )
+                }
+            };
+            expected.is_ok_and(|expected| expected == view.terminal_claim)
+        },
+        |view| {
+            let coordinates = prepare_v6_onefold_coordinates(view.queries)?;
+            let combined =
+                verify_and_gamma_combine_v7_openings(hash, &wire, view.queries, view.gamma_powers)?;
+            Ok(V6AuthenticatedQueryBatch {
+                values: fold_v6_onefold_queries(&combined, &coordinates, view.alpha0),
+                line_x: coordinates.line_x,
+            })
+        },
+    )
+    .map_err(|_| V6ProverError::Stage("V7 Pool transcript replay"))?;
+    if transcript.queries != proof.queries
+        || transcript.selector != 0
+        || transcript.compact_counter != proof.compact_counter
+        || transcript.transcript_state_after_queries != proof.transcript_state_after_queries
+    {
+        return Err(V6ProverError::Stage("V7 Pool query replay"));
+    }
+    Ok(transcript)
+}
+
+pub fn verify_v7_pool_private_transfer_onefold_proof_core(
+    proof: &BuiltV7CompactOneFoldProof,
+    public: &PoolV1PrivateTransferPublicV1,
+    statement_digest: [u8; 32],
+    prover_context: V7ProverContext,
+    hash: HashFn,
+    check_pow: bool,
+) -> Result<V6VerifiedTranscript, V6ProverError> {
+    verify_v7_pool_onefold_proof_core(
+        proof,
+        PoolV1ProofPublic::PrivateTransfer(public),
+        statement_digest,
+        prover_context,
+        hash,
+        check_pow,
+    )
+}
+
+pub fn verify_v7_pool_withdrawal_onefold_proof_core(
+    proof: &BuiltV7CompactOneFoldProof,
+    public: &PoolV1WithdrawalPublicV1,
+    statement_digest: [u8; 32],
+    prover_context: V7ProverContext,
+    hash: HashFn,
+    check_pow: bool,
+) -> Result<V6VerifiedTranscript, V6ProverError> {
+    verify_v7_pool_onefold_proof_core(
+        proof,
+        PoolV1ProofPublic::Withdrawal(public),
+        statement_digest,
+        prover_context,
+        hash,
+        check_pow,
+    )
 }
 
 /// Replay a V6 proof through the full host verifier with work checks enabled.
@@ -1576,6 +2017,40 @@ pub fn verify_v7_compact_onefold_proof_production(
     verify_v7_compact_onefold_proof_core(proof, statement, prover_context, hash, true)
 }
 
+pub fn verify_v7_pool_private_transfer_onefold_proof_production(
+    proof: &BuiltV7CompactOneFoldProof,
+    public: &PoolV1PrivateTransferPublicV1,
+    statement_digest: [u8; 32],
+    prover_context: V7ProverContext,
+    hash: HashFn,
+) -> Result<V6VerifiedTranscript, V6ProverError> {
+    verify_v7_pool_private_transfer_onefold_proof_core(
+        proof,
+        public,
+        statement_digest,
+        prover_context,
+        hash,
+        true,
+    )
+}
+
+pub fn verify_v7_pool_withdrawal_onefold_proof_production(
+    proof: &BuiltV7CompactOneFoldProof,
+    public: &PoolV1WithdrawalPublicV1,
+    statement_digest: [u8; 32],
+    prover_context: V7ProverContext,
+    hash: HashFn,
+) -> Result<V6VerifiedTranscript, V6ProverError> {
+    verify_v7_pool_withdrawal_onefold_proof_core(
+        proof,
+        public,
+        statement_digest,
+        prover_context,
+        hash,
+        true,
+    )
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -1589,8 +2064,14 @@ mod tests {
     };
     use aspis_statement::atomic_state_only_trace::atomic_merkle_root_v3;
     use aspis_statement::{
-        derive_nullifier, derive_owner_key, note_commitment, output_commitment, Digest, MerklePath,
-        SpendPublic,
+        derive_nullifier, derive_owner_key, note_commitment, output_commitment,
+        pool_v1::{
+            encode_pool_v1_private_transfer_public_v1, pool_v1_membership_root_v1,
+            pool_v1_note_commitment, pool_v1_nullifier, verifier_statement_payload_digest_v1,
+            PoolV1InputNoteWitnessV1, PoolV1MembershipWitnessV1, PoolV1OutputNoteWitnessV1,
+            PoolV1PaymentRuntimeBindingV1, POOL_V1_HISTORICAL_ANCHOR_VERSION,
+        },
+        Digest, MerklePath, SpendPublic,
     };
 
     fn digest(seed: u32) -> Digest {
@@ -1640,6 +2121,76 @@ mod tests {
             deployment_domain: [0x5d; 32],
         };
         (statement, witness)
+    }
+
+    fn pool_transfer_fixture() -> (
+        PoolV1PrivateTransferPublicV1,
+        PoolV1PrivateTransferWitnessV1,
+        PoolV1PaymentRelationContextV1<'static>,
+    ) {
+        let input = PoolV1InputNoteWitnessV1 {
+            nullifier_key: digest(10),
+            salt: digest(100),
+            value: 1_000,
+            membership: PoolV1MembershipWitnessV1 {
+                siblings: core::array::from_fn(|level| digest(1_000 + level as u32 * 100)),
+                index: 0x5_4321,
+            },
+        };
+        let recipient = PoolV1OutputNoteWitnessV1 {
+            owner_key: digest(300),
+            salt: digest(400),
+            value: 600,
+        };
+        let change = PoolV1OutputNoteWitnessV1 {
+            owner_key: digest(500),
+            salt: digest(600),
+            value: 400,
+        };
+        let witness = PoolV1PrivateTransferWitnessV1 {
+            input,
+            recipient,
+            change,
+        };
+        let asset_id = M31(77);
+        let leaf = pool_v1_note_commitment(
+            &derive_owner_key(&witness.input.nullifier_key),
+            witness.input.value,
+            asset_id,
+            &witness.input.salt,
+        );
+        let anchor_root = pool_v1_membership_root_v1(leaf, &witness.input.membership).unwrap();
+        let public = PoolV1PrivateTransferPublicV1 {
+            pool: [1; 32],
+            deployment_domain: [2; 32],
+            anchor_sequence: 42,
+            anchor_root,
+            nullifier: pool_v1_nullifier(&witness.input.nullifier_key, &witness.input.salt),
+            asset_id,
+            recipient_commitment: pool_v1_note_commitment(
+                &witness.recipient.owner_key,
+                witness.recipient.value,
+                asset_id,
+                &witness.recipient.salt,
+            ),
+            change_commitment: pool_v1_note_commitment(
+                &witness.change.owner_key,
+                witness.change.value,
+                asset_id,
+                &witness.change.salt,
+            ),
+        };
+        let context = PoolV1PaymentRelationContextV1 {
+            runtime_binding: PoolV1PaymentRuntimeBindingV1 {
+                pool: public.pool,
+                deployment_domain: public.deployment_domain,
+                anchor_sequence: public.anchor_sequence,
+                anchor_root: public.anchor_root,
+                asset_id: public.asset_id,
+            },
+            spent_nullifiers: &[],
+        };
+        (public, witness, context)
     }
 
     #[test]
@@ -1773,6 +2324,68 @@ mod tests {
             proof.bytes.len(),
             proof.compact_counter,
             proof.frontier_nodes
+        );
+    }
+
+    #[test]
+    #[ignore = "RAM-intensive native Pool proof gate; run on the NUC"]
+    fn v7_pool_private_transfer_unmined_proof_replays_end_to_end() {
+        let (public, witness, relation_context) = pool_transfer_fixture();
+        let profile_binding = [0x73; 32];
+        let release_binding = [0x74; 32];
+        let payload = encode_pool_v1_private_transfer_public_v1(&public).unwrap();
+        let statement_digest = verifier_statement_payload_digest_v1(
+            POOL_V1_HISTORICAL_ANCHOR_VERSION,
+            &profile_binding,
+            &release_binding,
+            &payload,
+            HOST_HASH,
+        )
+        .unwrap();
+        let context = V7ProverContext {
+            program_id: [0x11; 32],
+            release_binding,
+            attempt_id: [0x27; 32],
+        };
+        let attempt = StateOnlyAttemptSecrets::deterministic_spend_fixture(
+            context.attempt_id,
+            [0x49; 32],
+            [0x6b; 32],
+        );
+        let mut nonces = InMemoryStateOnlyMaskNonceStore::default();
+        let proof = build_v7_pool_private_transfer_onefold_proof(
+            &public,
+            &witness,
+            relation_context,
+            statement_digest,
+            context,
+            attempt,
+            &mut nonces,
+            HOST_HASH,
+            StateOnlyPowMode::UnminedZero,
+        )
+        .unwrap();
+        assert_eq!(
+            proof.bytes.len(),
+            V7_COMPACT_BODY_WITHOUT_FRONTIERS + 2 * V7_COMPACT_DIGEST_BYTES * proof.frontier_nodes
+        );
+        assert!(proof.bytes.len() <= V7_COMPACT_MAX_BODY_BYTES);
+        let replay = verify_v7_pool_private_transfer_onefold_proof_core(
+            &proof,
+            &public,
+            statement_digest,
+            context,
+            HOST_HASH,
+            false,
+        )
+        .unwrap();
+        assert_eq!(replay.queries, proof.queries);
+        assert_eq!(replay.frontier_nodes, proof.frontier_nodes);
+        eprintln!(
+            "V7 Pool transfer fixture: body={} counter={} frontier={}",
+            proof.bytes.len(),
+            proof.compact_counter,
+            proof.frontier_nodes,
         );
     }
 

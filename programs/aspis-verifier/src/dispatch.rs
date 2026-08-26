@@ -85,6 +85,15 @@ pub fn process_spend_production_instruction(
         && instruction_data
             .starts_with(&aspis_statement::pool_v1::POOL_V1_VERIFIER_DISPATCH_REQUEST_MAGIC)
     {
+        if instruction_data.len()
+            == crate::v7_pool_native_dispatch::V7_POOL_NATIVE_TAG73_REQUEST_BYTES
+        {
+            return crate::v7_pool_native_dispatch::process_v7_pool_native_tag73_asvq_instruction(
+                program_id,
+                accounts,
+                instruction_data,
+            );
+        }
         return crate::v7_pool_dispatch::process_v7_pool_tag73_asvq_instruction(
             program_id,
             accounts,

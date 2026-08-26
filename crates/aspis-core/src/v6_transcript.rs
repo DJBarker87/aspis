@@ -296,10 +296,11 @@ fn begin_v6_transcript(
 }
 
 #[inline(never)]
-fn begin_v7_compact_transcript(
+fn begin_v7_compact_transcript_with_hiding_context(
     hash: HashFn,
     context: &V6TranscriptContext,
     wire: &V7CompactOneFoldWire<'_>,
+    hiding_context: StateOnlyHidingContext,
 ) -> Result<(Transcript, QM31, QM31, PaymentConstraintChallenges), V6TranscriptError> {
     let mut transcript = Transcript::new(hash);
     transcript.absorb(label::PROFILE, &V7_COMPACT_PROFILE_BINDING);
@@ -309,10 +310,7 @@ fn begin_v7_compact_transcript(
     deployment[32..].copy_from_slice(&context.release_binding);
     transcript.absorb(label::V7_DEPLOYMENT_CONTEXT, &deployment);
     transcript.absorb(label::STATEMENT, &context.statement_digest);
-    begin_state_only_hiding_precommit(
-        &mut transcript,
-        StateOnlyHidingContext::atomic_spend_v3(context.statement_digest, context.attempt_id),
-    )
+    begin_state_only_hiding_precommit(&mut transcript, hiding_context)
     .map_err(|_| V6TranscriptError::HidingContext)?;
 
     let c1_salt = v7_public_root_salt(hash, context, V7_C1_TREE_TAG);
@@ -1055,8 +1053,46 @@ where
     TerminalCheck: FnOnce(&V6SemanticView<'_>) -> bool,
     QueryFold: FnOnce(&V6QueryBatchView<'_>) -> Result<V6AuthenticatedQueryBatch, V6WireError>,
 {
+    verify_v7_compact_transcript_and_relation_prepared_with_hiding_context(
+        hash,
+        wire,
+        context,
+        StateOnlyHidingContext::atomic_spend_v3(context.statement_digest, context.attempt_id),
+        inactive_row_groups,
+        inactive_group_masks,
+        check_pow,
+        terminal_check,
+        query_fold,
+    )
+}
+
+/// Pool/native-profile entrypoint for the compact V7 transcript.  The caller
+/// supplies a typed hiding context whose statement digest and nonce are
+/// checked by the hiding precommit.  The legacy wrapper above remains pinned
+/// to the atomic-spend context and therefore keeps its exact transcript.
+#[allow(clippy::too_many_arguments)]
+#[inline(never)]
+pub fn verify_v7_compact_transcript_and_relation_prepared_with_hiding_context<
+    TerminalCheck,
+    QueryFold,
+>(
+    hash: HashFn,
+    wire: &V7CompactOneFoldWire<'_>,
+    context: &V6TranscriptContext,
+    hiding_context: StateOnlyHidingContext,
+    inactive_row_groups: &[u8; 64],
+    inactive_group_masks: &[u16],
+    check_pow: bool,
+    terminal_check: TerminalCheck,
+    query_fold: QueryFold,
+) -> Result<V6VerifiedTranscript, V6TranscriptError>
+where
+    TerminalCheck: FnOnce(&V6SemanticView<'_>) -> bool,
+    QueryFold: FnOnce(&V6QueryBatchView<'_>) -> Result<V6AuthenticatedQueryBatch, V6WireError>,
+{
     let mut fields = V6FixedFieldReader::new(wire.fixed_fields_packed)?;
-    let (mut transcript, lambda, chi, batching) = begin_v7_compact_transcript(hash, context, wire)?;
+    let (mut transcript, lambda, chi, batching) =
+        begin_v7_compact_transcript_with_hiding_context(hash, context, wire, hiding_context)?;
     let (eta, semantic_point, semantic_terminal) =
         verify_compact_semantic_sumcheck(&mut transcript, &mut fields)?;
     let point_claims = decode_and_absorb_point_claims(&mut transcript, &mut fields)?;

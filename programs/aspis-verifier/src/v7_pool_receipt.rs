@@ -11,9 +11,10 @@
 //! 74, 75, and 76 are reserved here so the production dispatcher can append
 //! them without changing any older wire ordinal.
 //!
-//! This lifecycle inherits the currently selected Tag-73 ASVQ profile: the
-//! legacy `AtomicPaymentStatementV4` private-transfer relation.  It is not a
-//! claim about the newer full Pool payment relation.
+//! The lifecycle accepts either the legacy read-only compatibility profile or
+//! the native Pool V1 private-transfer/withdrawal profile.  The selected
+//! profile and release are immutable receipt bindings; finalization replays
+//! the same request through the matching full verifier before writing.
 
 use aspis_core::HashFn;
 use aspis_statement::{
@@ -50,6 +51,10 @@ use crate::{
     v7_pool_dispatch::{
         decode_v7_pool_tag73_profile_payload_v1, verify_v7_pool_tag73_asvq_with_runtime,
         V7_POOL_TAG73_PROFILE_BINDING,
+    },
+    v7_pool_native_dispatch::{
+        validate_v7_pool_native_tag73_request_v1, verify_v7_pool_native_tag73_asvq_with_runtime,
+        V7_POOL_NATIVE_TAG73_REQUEST_BYTES,
     },
     v7_transaction::V7_RELEASE_BINDING,
 };
@@ -125,7 +130,7 @@ fn statement_matches_dispatch_binding(
 /// The finalized handler deliberately reuses the canonical verifier helper;
 /// initialization needs this metadata-only form because its proof upload must
 /// still contain the nonzero authority that prevents PDA squatting.
-fn validate_unsealed_tag73_request<'a>(
+fn validate_unsealed_legacy_tag73_request<'a>(
     program_id: &Pubkey,
     proof_account: &AccountInfo<'_>,
     instruction_data: &'a [u8],
@@ -174,6 +179,72 @@ fn validate_unsealed_tag73_request<'a>(
         return Err(ProgramError::InvalidInstructionData);
     }
     Ok(request)
+}
+
+/// Metadata-only validation used before the upload authority is cleared.
+/// Exact request length selects the native profile because its canonical
+/// 216-byte Pool statement makes the complete ASVQ exactly 600 bytes; the
+/// legacy A7P1 compatibility payload makes its ASVQ exactly 776 bytes.
+fn validate_unsealed_selected_tag73_request<'a>(
+    program_id: &Pubkey,
+    proof_account: &AccountInfo<'_>,
+    instruction_data: &'a [u8],
+    hash: HashFn,
+) -> Result<VerifierDispatchRequestV1<'a>, ProgramError> {
+    if instruction_data.len() == V7_POOL_NATIVE_TAG73_REQUEST_BYTES {
+        return Ok(validate_v7_pool_native_tag73_request_v1(
+            program_id,
+            proof_account,
+            instruction_data,
+            hash,
+        )?
+        .request);
+    }
+    validate_unsealed_legacy_tag73_request(program_id, proof_account, instruction_data, hash)
+}
+
+fn verify_selected_tag73_asvq_with_runtime(
+    program_id: &Pubkey,
+    accounts: &[AccountInfo<'_>],
+    instruction_data: &[u8],
+    hash: HashFn,
+) -> Result<aspis_statement::pool_v1::VerifierDispatchBindingV1, ProgramError> {
+    if instruction_data.len() == V7_POOL_NATIVE_TAG73_REQUEST_BYTES {
+        return verify_v7_pool_native_tag73_asvq_with_runtime(
+            program_id,
+            accounts,
+            instruction_data,
+            hash,
+        );
+    }
+    verify_v7_pool_tag73_asvq_with_runtime(
+        program_id,
+        accounts,
+        instruction_data,
+        hash,
+        |proof,
+         frontier_nodes,
+         program_id,
+         release_binding,
+         attempt_id,
+         statement,
+         statement_digest,
+         check_pow| {
+            crate::v7_verifier::verify_v7_read_only_with_statement_digest(
+                hash,
+                proof,
+                frontier_nodes,
+                program_id,
+                release_binding,
+                attempt_id,
+                statement,
+                statement_digest,
+                check_pow,
+            )
+            .map_err(|_| ProgramError::InvalidAccountData)?;
+            Ok(())
+        },
+    )
 }
 
 fn canonical_receipt_pda_for_binding(
@@ -377,8 +448,12 @@ where
         return Err(ProgramError::InvalidArgument);
     }
 
-    let request =
-        validate_unsealed_tag73_request(program_id, proof_account, instruction_data, hash)?;
+    let request = validate_unsealed_selected_tag73_request(
+        program_id,
+        proof_account,
+        instruction_data,
+        hash,
+    )?;
     let proof_header_upload_authority = {
         let data = proof_account.try_borrow_data()?;
         if proof_account_finalized(&data) {
@@ -434,7 +509,8 @@ where
     )
 }
 
-/// Tag 74 body: one exact 776-byte Tag-73 `ASVQ` request.
+/// Tag 74 body: one canonical Tag-73 `ASVQ` request (600-byte native Pool V1
+/// or 776-byte legacy compatibility profile).
 ///
 /// Accounts (exactly four): read-only unsealed verifier-owned `ASPU`, writable
 /// canonical System-owned receipt PDA, writable upload-authority signer/payer,
@@ -485,15 +561,11 @@ fn process_v7_pool_receipt_finalize_with_runtime<'a, V, S>(
 ) -> ProgramResult
 where
     V: FnOnce(
+        &Pubkey,
+        &[AccountInfo<'a>],
         &[u8],
-        usize,
-        &Pubkey,
-        [u8; 32],
-        &Pubkey,
-        &AtomicPaymentStatementV4,
-        [u8; 32],
-        bool,
-    ) -> ProgramResult,
+        HashFn,
+    ) -> Result<aspis_statement::pool_v1::VerifierDispatchBindingV1, ProgramError>,
     S: FnOnce() -> Result<u64, ProgramError>,
 {
     let [proof_account, receipt_account] =
@@ -524,12 +596,11 @@ where
         )?;
     }
 
-    let binding = verify_v7_pool_tag73_asvq_with_runtime(
+    let binding = verify(
         program_id,
         core::slice::from_ref(proof_account),
         instruction_data,
         hash,
-        verify,
     )?;
     if binding != request.binding {
         return Err(ProgramError::InvalidInstructionData);
@@ -578,28 +649,7 @@ pub fn process_v7_pool_receipt_finalize_instruction(
         accounts,
         instruction_data,
         crate::verify::sbf_hashv,
-        |proof,
-         frontier_nodes,
-         program_id,
-         release_binding,
-         attempt_id,
-         statement,
-         statement_digest,
-         check_pow| {
-            crate::v7_verifier::verify_v7_read_only_with_statement_digest(
-                crate::verify::sbf_hashv,
-                proof,
-                frontier_nodes,
-                program_id,
-                release_binding,
-                attempt_id,
-                statement,
-                statement_digest,
-                check_pow,
-            )
-            .map_err(|_| ProgramError::InvalidAccountData)?;
-            Ok(())
-        },
+        verify_selected_tag73_asvq_with_runtime,
         || Ok(Clock::get()?.slot),
     )
 }
@@ -1113,23 +1163,31 @@ mod tests {
             &[proof, receipt],
             &fixture.request,
             sha256,
-            |proof,
-             frontier_nodes,
-             program_id,
-             release_binding,
-             attempt_id,
-             statement,
-             _,
-             check_pow| {
-                verify_calls.set(verify_calls.get() + 1);
-                assert_eq!(proof, fixture.proof_body);
-                assert_eq!(frontier_nodes, usize::from(V7_POOL_TAG73_FRONTIER_NODES));
-                assert_eq!(program_id, &fixture.program_id);
-                assert_eq!(release_binding, V7_RELEASE_BINDING);
-                assert_eq!(attempt_id, &fixture.proof_key);
-                assert_eq!(statement, &fixture.statement);
-                assert!(check_pow);
-                Ok(())
+            |program_id, accounts, instruction_data, hash| {
+                verify_v7_pool_tag73_asvq_with_runtime(
+                    program_id,
+                    accounts,
+                    instruction_data,
+                    hash,
+                    |proof,
+                     frontier_nodes,
+                     program_id,
+                     release_binding,
+                     attempt_id,
+                     statement,
+                     _,
+                     check_pow| {
+                        verify_calls.set(verify_calls.get() + 1);
+                        assert_eq!(proof, fixture.proof_body);
+                        assert_eq!(frontier_nodes, usize::from(V7_POOL_TAG73_FRONTIER_NODES));
+                        assert_eq!(program_id, &fixture.program_id);
+                        assert_eq!(release_binding, V7_RELEASE_BINDING);
+                        assert_eq!(attempt_id, &fixture.proof_key);
+                        assert_eq!(statement, &fixture.statement);
+                        assert!(check_pow);
+                        Ok(())
+                    },
+                )
             },
             || {
                 slot_calls.set(slot_calls.get() + 1);
@@ -1183,9 +1241,9 @@ mod tests {
             &[proof, receipt],
             &fixture.request,
             sha256,
-            |_, _, _, _, _, _, _, _| {
+            |_, _, _, _| {
                 called.set(true);
-                Ok(())
+                Ok(fixture.request().binding)
             },
             || Ok(9_002),
         );
@@ -1230,7 +1288,7 @@ mod tests {
             &[proof, receipt],
             &fixture.request,
             sha256,
-            |_, _, _, _, _, _, _, _| Err(ProgramError::Custom(92)),
+            |_, _, _, _| Err(ProgramError::Custom(92)),
             || {
                 slot_called.set(true);
                 Ok(9_001)

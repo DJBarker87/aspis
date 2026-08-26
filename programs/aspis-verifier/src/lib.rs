@@ -125,6 +125,8 @@ pub mod v6_verifier;
 #[cfg(any(feature = "v7-pool-dispatch-profile", test))]
 pub mod v7_pool_dispatch;
 #[cfg(any(feature = "v7-pool-dispatch-profile", test))]
+pub mod v7_pool_native_dispatch;
+#[cfg(any(feature = "v7-pool-dispatch-profile", test))]
 pub mod v7_pool_receipt;
 #[cfg(any(feature = "v7-production-tag73", test))]
 pub mod v7_transaction;
