@@ -1,4 +1,5 @@
 import AspisFormal.K1.V7Tag73AtomicForkUniformScheduler
+import AspisFormal.K1.V7Tag73SeededTargetArithmetic
 
 /-!
 # Exact K1.6 compiler resources for Tag-73
@@ -26,10 +27,17 @@ two-tree boundary and are not silently treated as full-256 transcript
 exposures.  Thus a cursor used here is the full-256 compiler projection; the
 typed Merkle authentication theorem must be composed separately.
 
-The adaptive target list is exactly `[0 + G, 1 + G, ..., (F - 1) + G]`.
-Consequently its first-principles coefficient is
+The adaptive target list is exactly `[1 + G, 2 + G, ..., F + G]`.
+The extra target at every coordinate is the deployed public all-zero dummy
+digest, which is not itself sampled from the oracle but remains a possible
+ancestor state throughout restoration.  Consequently the first-principles
+coefficient is
 
-`F.choose 2 + F * G`.
+`F + F.choose 2 + F * G`.
+
+Equivalently, this is the old global-forward-reference family with constant
+`G + 1`.  Omitting the seed is unsound: a later sampled advance answer can be
+zero and can then reuse the pair programmed at the dummy root.
 
 No compiler-failure inclusion, acceptance statement, extractor conclusion,
 BCS coefficient, or independence premise occurs in this file.
@@ -50,6 +58,7 @@ open AspisK1.V7Tag73GlobalForwardReferenceBound
 open AspisK1.V7Tag73OperationalCausalInjection
 open AspisK1.V7Tag73AtomicForkUniformScheduler
 open AspisK1.V7Tag73ResourceLazyOracle
+open AspisK1.V7Tag73SeededTargetArithmetic
 
 noncomputable section
 
@@ -272,31 +281,35 @@ theorem exact_compiler_timeout_event_empty_of_hard_runtime_cap
 
 def exactCompilerTargetCaps
     (parameters : ExactCompilerResourceParameters) : List Nat :=
-  tag73GlobalForwardReferenceCaps
+  operationalCapsFrom 1
     (unifiedFull256ExposureCap parameters)
     (globalFull256OracleCallCap parameters)
 
 def exactCompilerTargetCoefficient
     (parameters : ExactCompilerResourceParameters) : Nat :=
-  (unifiedFull256ExposureCap parameters).choose 2 +
-    unifiedFull256ExposureCap parameters *
-      globalFull256OracleCallCap parameters
+  seededTargetCoefficient
+    (unifiedFull256ExposureCap parameters)
+    (globalFull256OracleCallCap parameters)
 
 theorem exact_compiler_target_caps_length
     (parameters : ExactCompilerResourceParameters) :
     (exactCompilerTargetCaps parameters).length =
       unifiedFull256ExposureCap parameters := by
-  exact tag73_global_forward_reference_caps_length _ _
+  exact operational_caps_from_one_length _ _
 
 theorem exact_compiler_target_caps_sum
     (parameters : ExactCompilerResourceParameters) :
     (exactCompilerTargetCaps parameters).sum =
       exactCompilerTargetCoefficient parameters := by
-  exact tag73_global_forward_reference_caps_sum_exact _ _
+  exact operational_caps_from_one_sum_exact _ _
 
 theorem exact_compiler_target_coefficient_expanded
     (parameters : ExactCompilerResourceParameters) :
     exactCompilerTargetCoefficient parameters =
+      (parameters.q1ShaCallCap + 1511 +
+          parameters.forkRequestCap *
+            (parameters.q1ShaCallCap + 1511) +
+          2 * parameters.forkRequestCap) +
       (parameters.q1ShaCallCap + 1511 +
           parameters.forkRequestCap *
             (parameters.q1ShaCallCap + 1511) +
@@ -325,17 +338,19 @@ def exactCompilerJointLaw
   hiddenTapeUniformFreshJointLaw hiddenLaw
     (exactCompilerTargetCaps parameters).length
 
-/-- The causal tree for the exact `UnifiedExposureCursor G`.  Its targets are
-chosen before their coordinate and its padding fixes the law at length `F`. -/
+/-- The causal tree for the exact `UnifiedExposureCursor G`.  It begins with
+the deployed public dummy digest already seen; later coordinates add every
+sampled answer.  Targets are chosen before their coordinate and padding fixes
+the law at length `F`. -/
 noncomputable def exactCompilerTargetTree
     (parameters : ExactCompilerResourceParameters)
     (transitionFuel : Nat)
     (cursor : UnifiedExposureCursor
       (globalFull256OracleCallCap parameters)) :
     CausalTargetTree Digest256 (exactCompilerTargetCaps parameters) :=
-  unifiedExposureTargetTree
-    (globalFull256OracleCallCap parameters)
-    (unifiedFull256ExposureCap parameters) transitionFuel cursor
+  unifiedExposureTargetTreeFrom
+    (globalFull256OracleCallCap parameters) transitionFuel 1
+    (unifiedFull256ExposureCap parameters) {zeroBytes 32} (by simp) cursor
 
 def exactCompilerTargetEvent
     {HiddenTape : Type}
@@ -362,7 +377,8 @@ def exactCompilerPositiveExposureError
 theorem exact_compiler_exact_count_error_expanded
     (parameters : ExactCompilerResourceParameters) :
     exactCompilerExactCountError parameters =
-      ((((unifiedFull256ExposureCap parameters).choose 2 +
+      (((unifiedFull256ExposureCap parameters +
+          (unifiedFull256ExposureCap parameters).choose 2 +
           unifiedFull256ExposureCap parameters *
             globalFull256OracleCallCap parameters) *
           (2 ^ 256) ^
@@ -383,11 +399,25 @@ theorem exact_compiler_target_probability_le_exact_count
     (exactCompilerJointLaw hiddenLaw parameters).toOuterMeasure
         (exactCompilerTargetEvent parameters transitionFuel cursor) ≤
       exactCompilerExactCountError parameters := by
-  exact global_forward_reference_hidden_tree_probability_le_exact_count
-    hiddenLaw (unifiedFull256ExposureCap parameters)
-    (globalFull256OracleCallCap parameters)
-    (fun hidden =>
+  have bound := hidden_dependent_causal_tree_probability_le_exact_count
+    hiddenLaw (fun hidden =>
       exactCompilerTargetTree parameters transitionFuel (cursor hidden))
+  simpa only [exactCompilerJointLaw, exactCompilerTargetEvent,
+    exactCompilerExactCountError, exact_compiler_target_caps_sum,
+    exact_compiler_target_caps_length] using bound
+
+private theorem exact_compiler_finite_exact_count_ratio_succ
+    (coefficient exponent : Nat) :
+    (((coefficient * (2 ^ 256) ^ exponent : Nat) : ENNReal) /
+        (((2 : ENNReal) ^ 256) ^ (exponent + 1))) =
+      (coefficient : ENNReal) / ((2 : ENNReal) ^ 256) := by
+  push_cast
+  apply (ENNReal.div_eq_div_iff
+    (a := (2 : ENNReal) ^ 256)
+    (b := ((2 : ENNReal) ^ 256) ^ (exponent + 1))
+    (by norm_num) (by simp) (by positivity) (by simp)).2
+  rw [pow_succ]
+  ring
 
 /-- Positive-`F` form with the literal final coefficient. -/
 theorem exact_compiler_target_probability_le_div_two_pow_256
@@ -399,16 +429,32 @@ theorem exact_compiler_target_probability_le_div_two_pow_256
       (globalFull256OracleCallCap parameters)) :
     (exactCompilerJointLaw hiddenLaw parameters).toOuterMeasure
         (exactCompilerTargetEvent parameters transitionFuel cursor) ≤
-      (((unifiedFull256ExposureCap parameters).choose 2 +
+      ((unifiedFull256ExposureCap parameters +
+          (unifiedFull256ExposureCap parameters).choose 2 +
           unifiedFull256ExposureCap parameters *
             globalFull256OracleCallCap parameters : Nat) : ENNReal) /
         ((2 : ENNReal) ^ 256) := by
-  exact global_forward_reference_hidden_tree_probability_le_div_two_pow_256
-    hiddenLaw (unifiedFull256ExposureCap parameters)
-    (globalFull256OracleCallCap parameters)
-    (exact_compiler_unified_exposure_cap_positive parameters)
-    (fun hidden =>
-      exactCompilerTargetTree parameters transitionFuel (cursor hidden))
+  have positive := exact_compiler_unified_exposure_cap_positive parameters
+  obtain ⟨exponent, exposureExact⟩ := Nat.exists_eq_succ_of_ne_zero
+    (Nat.ne_of_gt positive)
+  have exactBound := exact_compiler_target_probability_le_exact_count
+    hiddenLaw parameters transitionFuel cursor
+  calc
+    (exactCompilerJointLaw hiddenLaw parameters).toOuterMeasure
+        (exactCompilerTargetEvent parameters transitionFuel cursor) ≤
+      exactCompilerExactCountError parameters := exactBound
+    _ = (exactCompilerTargetCoefficient parameters : ENNReal) /
+        ((2 : ENNReal) ^ 256) := by
+      unfold exactCompilerExactCountError
+      rw [exposureExact]
+      exact exact_compiler_finite_exact_count_ratio_succ
+        (exactCompilerTargetCoefficient parameters) exponent
+    _ = ((unifiedFull256ExposureCap parameters +
+          (unifiedFull256ExposureCap parameters).choose 2 +
+          unifiedFull256ExposureCap parameters *
+            globalFull256OracleCallCap parameters : Nat) : ENNReal) /
+        ((2 : ENNReal) ^ 256) := by
+      rfl
 
 theorem exact_compiler_target_probability_zero_when_F_zero
     {HiddenTape : Type} [Fintype HiddenTape]
@@ -427,6 +473,10 @@ theorem exact_compiler_positive_error_expanded
     (parameters : ExactCompilerResourceParameters) :
     exactCompilerPositiveExposureError parameters =
       ((((parameters.q1ShaCallCap + 1511 +
+          parameters.forkRequestCap *
+            (parameters.q1ShaCallCap + 1511) +
+          2 * parameters.forkRequestCap) +
+        (parameters.q1ShaCallCap + 1511 +
           parameters.forkRequestCap *
             (parameters.q1ShaCallCap + 1511) +
           2 * parameters.forkRequestCap).choose 2 +
