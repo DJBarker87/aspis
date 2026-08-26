@@ -1,6 +1,8 @@
 import AspisFormal.K1.V7Tag73ExactConcreteStageAssembly
 import AspisFormal.K1.V7Tag73ExactFixedK13K14FailureReduction
 import AspisFormal.K1.V7Tag73ExactParsedProofSourceBinding
+import AspisFormal.K1.V7Tag73ExactOneFoldEncoderBinding
+import AspisFormal.K1.V7Tag73ExactOneFoldRestorationStrategy
 import AspisFormal.K1.V7Tag73Q16FirstCompactUniformity
 
 /-!
@@ -31,6 +33,8 @@ open AspisK1.V7Tag73ExactFixedK12MerkleClassifier
 open AspisK1.V7Tag73ExactFixedK12PrefixClassifier
 open AspisK1.V7Tag73ExactFixedK13K14Classifier
 open AspisK1.V7Tag73ExactFixedK13K14FailureReduction
+open AspisK1.V7Tag73ExactOneFoldEncoderBinding
+open AspisK1.V7Tag73ExactOneFoldRestorationStrategy
 open AspisK1.V7Tag73ExactParsedProofSourceBinding
 open AspisK1.V7Tag73OperationalSemanticReplay
 open AspisK1.V7Tag73Q16FirstCompactUniformity
@@ -44,6 +48,7 @@ open AspisPool.V7CoherentTraceExtraction
 open AspisV5ComponentCQM31TowerExact
 open AspisV5WithoutReplacementQuerySoundness
 open AspisV6OneFoldCandidateExtraction
+open AspisV6PublishedTheoremInterfaces
 
 noncomputable section
 
@@ -176,6 +181,57 @@ theorem query_phase_failure_exposes_literal_q16_bad_set
       (exactK13Encoders decoder) (exactK13Transcript input k12), failure.2,
     query_phase_failure_is_literal_selected_all_in_bad source failure⟩
 
+/-! ## Exact one-fold published-theorem target -/
+
+/-- A concrete K1.3 one-fold failure is charged to one fixed pre-alpha bad
+set of size at most the published degree-three cap.  The sampled alpha is
+also identified with the literal operational transcript challenge. -/
+theorem onefold_failure_exposes_exact_published_bad_set
+    {HiddenTape TapeIdentity Observation Statement Payload Result : Type}
+    {parameters : ExactCompilerResourceParameters}
+    {transitionFuel : Nat}
+    {configuration : ExactPlainRomConfiguration HiddenTape TapeIdentity
+      Observation Statement Tag73K12ParsedProof Payload Result parameters}
+    {projection : AcceptedTapeProjection Statement Tag73K12ParsedProof Payload}
+    {fixedInstance : PublicInstance Statement}
+    {sample : ExactCompilerSample HiddenTape parameters}
+    {decoder : ExactDecoderInstantiation QM31Exact}
+    {input : ExactK12OperationalInput transitionFuel configuration projection
+      fixedInstance sample}
+    {k12 : ExactPrefixK12Certificate input}
+    {decoded : Fin 641 → QM31Exact}
+    (source : ExactParsedProofSourceBinding input decoded)
+    (initialEncoderExact : decoder.initialEncoder = exactInitialEncoder)
+    (finalEncoderExact : decoder.finalEncoder = exactFinalEncoder)
+    (published : PublishedOneFoldCurveDecodability exactFinalLinear)
+    (failure : OneFoldReductionFailure (exactK13ParsedProof input).schedule
+      (exactK13Encoders decoder) (exactK13Transcript input k12)) :
+    let binding := exactOneFoldAlgebraBinding
+      (exactK13ParsedProof input).schedule (exactK13Encoders decoder)
+      initialEncoderExact finalEncoderExact source.inverseTablesExact
+    (exactK13ParsedProof input).schedule.alpha =
+        exactOperationalChallenge input (.alpha 0) ∧
+      (exactK13ParsedProof input).schedule.alpha ∈
+        oneFoldBadChallenges (exactK13ParsedProof input).schedule
+          (exactK13Encoders decoder) binding (exactK13Transcript input k12) ∧
+      (oneFoldBadChallenges (exactK13ParsedProof input).schedule
+        (exactK13Encoders decoder) binding
+        (exactK13Transcript input k12)).card ≤ foldChallengeCap := by
+  dsimp only
+  refine ⟨source.alphaZeroExact, ?_⟩
+  have publishedForBinding : PublishedOneFoldCurveDecodability
+      (exactOneFoldAlgebraBinding (exactK13ParsedProof input).schedule
+        (exactK13Encoders decoder) initialEncoderExact finalEncoderExact
+        source.inverseTablesExact).finalLinear := by
+    change PublishedOneFoldCurveDecodability exactFinalLinear
+    exact published
+  exact oneFoldReductionFailure_has_published_cap
+    (exactK13ParsedProof input).schedule (exactK13Encoders decoder)
+    (exactOneFoldAlgebraBinding (exactK13ParsedProof input).schedule
+      (exactK13Encoders decoder) initialEncoderExact finalEncoderExact
+      source.inverseTablesExact)
+    (exactK13Transcript input k12) publishedForBinding failure
+
 theorem assembled_k13_error_subset_query_or_onefold
     {HiddenTape TapeIdentity Observation Statement Payload Witness : Type}
     {parameters : ExactCompilerResourceParameters}
@@ -268,6 +324,7 @@ theorem assembled_k13_k14_error_subset_exact_union
 #print axioms assembled_k13_k14_error_subset_exact_union
 #print axioms query_phase_failure_is_literal_selected_all_in_bad
 #print axioms query_phase_failure_exposes_literal_q16_bad_set
+#print axioms onefold_failure_exposes_exact_published_bad_set
 
 end
 
