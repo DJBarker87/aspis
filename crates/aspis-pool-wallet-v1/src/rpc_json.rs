@@ -466,6 +466,41 @@ pub struct FinalizedTransactionExecutionV1 {
     compute_units_consumed: u64,
 }
 
+/// Exact fee/CU/result metadata for a transaction found in an authenticated
+/// finalized block. Unlike `FinalizedTransactionExecutionV1`, this record also
+/// represents a transaction whose Solana execution failed, allowing the
+/// relayer journal to distinguish a landed failure from blockhash expiry.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct FinalizedTransactionObservationV1 {
+    point: FinalizedChainPointV1,
+    transaction_signature: [u8; 64],
+    succeeded: bool,
+    fee_lamports: u64,
+    compute_units_consumed: u64,
+}
+
+impl FinalizedTransactionObservationV1 {
+    pub fn point(&self) -> FinalizedChainPointV1 {
+        self.point
+    }
+
+    pub fn transaction_signature(&self) -> &[u8; 64] {
+        &self.transaction_signature
+    }
+
+    pub fn succeeded(&self) -> bool {
+        self.succeeded
+    }
+
+    pub fn fee_lamports(&self) -> u64 {
+        self.fee_lamports
+    }
+
+    pub fn compute_units_consumed(&self) -> u64 {
+        self.compute_units_consumed
+    }
+}
+
 impl FinalizedTransactionExecutionV1 {
     #[cfg(test)]
     pub(crate) fn test_only_v1(
@@ -518,6 +553,25 @@ impl FinalizedRpcJsonPlanV1 {
         &self,
         transaction_signature: [u8; 64],
     ) -> Result<FinalizedTransactionExecutionV1, RpcJsonErrorV1> {
+        let observation = self.transaction_observation_v1(transaction_signature)?;
+        if !observation.succeeded {
+            return Err(RpcJsonErrorV1::TransactionFailed);
+        }
+        Ok(FinalizedTransactionExecutionV1 {
+            point: observation.point,
+            transaction_signature: observation.transaction_signature,
+            fee_lamports: observation.fee_lamports,
+            compute_units_consumed: observation.compute_units_consumed,
+        })
+    }
+
+    /// Return exact finalized block metadata for either a successful or failed
+    /// execution. The transaction must occur exactly once and must carry the
+    /// fee/CU metadata needed to reconcile it against the signed simulation.
+    pub fn transaction_observation_v1(
+        &self,
+        transaction_signature: [u8; 64],
+    ) -> Result<FinalizedTransactionObservationV1, RpcJsonErrorV1> {
         let mut matched = None;
         for transaction in &self.block.transactions {
             let Some(primary_signature) = transaction.signatures.first() else {
@@ -534,9 +588,6 @@ impl FinalizedRpcJsonPlanV1 {
             matched = Some(transaction);
         }
         let transaction = matched.ok_or(RpcJsonErrorV1::TransactionNotFound)?;
-        if !transaction.succeeded {
-            return Err(RpcJsonErrorV1::TransactionFailed);
-        }
         let fee_lamports = transaction
             .fee_lamports
             .filter(|fee| *fee != 0)
@@ -549,9 +600,10 @@ impl FinalizedRpcJsonPlanV1 {
             .map_err(|_| RpcJsonErrorV1::InvalidRecentBlockhash)?;
         let point = FinalizedChainPointV1::new(self.block.slot, blockhash)
             .map_err(|_| RpcJsonErrorV1::InvalidRecentBlockhash)?;
-        Ok(FinalizedTransactionExecutionV1 {
+        Ok(FinalizedTransactionObservationV1 {
             point,
             transaction_signature,
+            succeeded: transaction.succeeded,
             fee_lamports,
             compute_units_consumed,
         })
@@ -1118,6 +1170,28 @@ mod tests {
         assert_eq!(
             plan.transaction_execution_v1([0x56; 64]),
             Err(RpcJsonErrorV1::TransactionNotFound)
+        );
+
+        let mut failed_response: serde_json::Value =
+            serde_json::from_slice(&v0_block_response(41, true)).unwrap();
+        failed_response["result"]["transactions"][0]["meta"]["err"] =
+            serde_json::json!({"InstructionError": [2, {"Custom": 0x1771}]});
+        let failed_plan = plan_finalized_get_block_json_v1(
+            &state,
+            &binding,
+            request,
+            &serde_json::to_vec(&failed_response).unwrap(),
+        )
+        .unwrap();
+        let failed = failed_plan.transaction_observation_v1([0x55; 64]).unwrap();
+        assert!(!failed.succeeded());
+        assert_eq!(failed.point().slot(), 101);
+        assert_eq!(failed.transaction_signature(), &[0x55; 64]);
+        assert_eq!(failed.fee_lamports(), 5_000);
+        assert_eq!(failed.compute_units_consumed(), 777);
+        assert_eq!(
+            failed_plan.transaction_execution_v1([0x55; 64]),
+            Err(RpcJsonErrorV1::TransactionFailed)
         );
     }
 
