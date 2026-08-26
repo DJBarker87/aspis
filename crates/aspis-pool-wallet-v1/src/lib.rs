@@ -20,6 +20,7 @@ pub mod rpc_json;
 pub mod rpc_wire;
 pub mod scan_state;
 pub mod transaction_builder;
+pub mod verifier_transaction_builder;
 pub mod wallet_transition;
 
 use aspis_core::field::{M31, P};
