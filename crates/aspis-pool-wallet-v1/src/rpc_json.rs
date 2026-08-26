@@ -26,7 +26,7 @@ use crate::{
     },
     rpc_adapter::DepositRpcBindingV1,
     rpc_wire::decode_base58_fixed_v1,
-    scan_state::{LocalOwnerKeyStoreV1, ScanStateV1},
+    scan_state::{FinalizedChainPointV1, LocalOwnerKeyStoreV1, ScanStateV1},
     ViewingSecretKeyV1,
 };
 
@@ -58,6 +58,10 @@ pub enum RpcJsonErrorV1 {
     MissingRootAccount,
     EmptyRootAccount,
     WrongRootAccountSpace,
+    TransactionNotFound,
+    DuplicateTransaction,
+    TransactionFailed,
+    MissingExecutionMetadata,
     FinalizedIndexer(FinalizedIndexerErrorV1),
 }
 
@@ -336,6 +340,8 @@ struct OwnedTransactionV1 {
     loaded_addresses: Option<OwnedLoadedAddressesV1>,
     instructions: Vec<OwnedInstructionV1>,
     succeeded: bool,
+    fee_lamports: Option<u64>,
+    compute_units_consumed: Option<u64>,
     return_data: Option<OwnedReturnDataV1>,
 }
 
@@ -446,6 +452,32 @@ pub struct FinalizedRpcJsonPlanV1 {
     root_page_bindings: Vec<RootPageAddressBindingV1>,
 }
 
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct FinalizedTransactionExecutionV1 {
+    point: FinalizedChainPointV1,
+    transaction_signature: [u8; 64],
+    fee_lamports: u64,
+    compute_units_consumed: u64,
+}
+
+impl FinalizedTransactionExecutionV1 {
+    pub fn point(&self) -> FinalizedChainPointV1 {
+        self.point
+    }
+
+    pub fn transaction_signature(&self) -> &[u8; 64] {
+        &self.transaction_signature
+    }
+
+    pub fn fee_lamports(&self) -> u64 {
+        self.fee_lamports
+    }
+
+    pub fn compute_units_consumed(&self) -> u64 {
+        self.compute_units_consumed
+    }
+}
+
 impl FinalizedRpcJsonPlanV1 {
     pub fn block_request(&self) -> FinalizedGetBlockRequestV1 {
         self.block_request
@@ -453,6 +485,52 @@ impl FinalizedRpcJsonPlanV1 {
 
     pub fn root_page_bindings(&self) -> &[RootPageAddressBindingV1] {
         &self.root_page_bindings
+    }
+
+    /// Return fee/CU evidence only from the exact successful finalized block
+    /// transaction whose primary signature matches `transaction_signature`.
+    /// A status response alone is deliberately insufficient for this record.
+    pub fn transaction_execution_v1(
+        &self,
+        transaction_signature: [u8; 64],
+    ) -> Result<FinalizedTransactionExecutionV1, RpcJsonErrorV1> {
+        let mut matched = None;
+        for transaction in &self.block.transactions {
+            let Some(primary_signature) = transaction.signatures.first() else {
+                continue;
+            };
+            let primary_signature = decode_base58_fixed_v1::<64>(primary_signature)
+                .map_err(|_| RpcJsonErrorV1::TransactionNotFound)?;
+            if primary_signature != transaction_signature {
+                continue;
+            }
+            if matched.is_some() {
+                return Err(RpcJsonErrorV1::DuplicateTransaction);
+            }
+            matched = Some(transaction);
+        }
+        let transaction = matched.ok_or(RpcJsonErrorV1::TransactionNotFound)?;
+        if !transaction.succeeded {
+            return Err(RpcJsonErrorV1::TransactionFailed);
+        }
+        let fee_lamports = transaction
+            .fee_lamports
+            .filter(|fee| *fee != 0)
+            .ok_or(RpcJsonErrorV1::MissingExecutionMetadata)?;
+        let compute_units_consumed = transaction
+            .compute_units_consumed
+            .filter(|units| *units != 0)
+            .ok_or(RpcJsonErrorV1::MissingExecutionMetadata)?;
+        let blockhash = decode_base58_fixed_v1::<32>(&self.block.blockhash)
+            .map_err(|_| RpcJsonErrorV1::InvalidRecentBlockhash)?;
+        let point = FinalizedChainPointV1::new(self.block.slot, blockhash)
+            .map_err(|_| RpcJsonErrorV1::InvalidRecentBlockhash)?;
+        Ok(FinalizedTransactionExecutionV1 {
+            point,
+            transaction_signature,
+            fee_lamports,
+            compute_units_consumed,
+        })
     }
 
     pub fn root_pages_request_v1(
@@ -624,7 +702,6 @@ pub fn plan_finalized_get_block_json_v1(
             meta.loaded_addresses.as_ref(),
         )?;
         let _ = (
-            &meta.fee,
             &meta.pre_balances,
             &meta.post_balances,
             &meta.inner_instructions,
@@ -633,7 +710,6 @@ pub fn plan_finalized_get_block_json_v1(
             &meta.post_token_balances,
             &meta.rewards,
             &meta.status,
-            &meta.compute_units_consumed,
             &meta.cost_units,
         );
         let message = transaction.transaction.message;
@@ -662,6 +738,8 @@ pub fn plan_finalized_get_block_json_v1(
             loaded_addresses,
             instructions,
             succeeded: meta.err.is_none(),
+            fee_lamports: meta.fee,
+            compute_units_consumed: meta.compute_units_consumed,
             return_data,
         });
     }
@@ -924,7 +1002,9 @@ mod tests {
                     },
                     "meta": {
                         "err": null,
-                        "loadedAddresses": loaded
+                        "loadedAddresses": loaded,
+                        "fee": 5_000,
+                        "computeUnitsConsumed": 777
                     },
                     "version": 0
                 }],
@@ -955,6 +1035,12 @@ mod tests {
         )
         .unwrap();
         assert!(plan.root_page_bindings().is_empty());
+        let execution = plan.transaction_execution_v1([0x55; 64]).unwrap();
+        assert_eq!(execution.point().slot(), 101);
+        assert_eq!(execution.point().block_hash(), &[0xa1; 32]);
+        assert_eq!(execution.transaction_signature(), &[0x55; 64]);
+        assert_eq!(execution.fee_lamports(), 5_000);
+        assert_eq!(execution.compute_units_consumed(), 777);
         let result = ingest_finalized_rpc_json_plan_v1(
             &mut state, &binding, &plan, None, None, &viewing, &EmptyKeys,
         )
@@ -964,6 +1050,33 @@ mod tests {
             crate::scan_state::FinalizedBlockAdvanceV1::Advanced
         );
         assert_eq!(state.head().slot(), 101);
+    }
+
+    #[test]
+    fn finalized_execution_requires_exact_success_fee_and_compute_metadata() {
+        let (state, binding, _) = fixture();
+        let request = FinalizedGetBlockRequestV1::new(41, 101).unwrap();
+        let mut response: serde_json::Value =
+            serde_json::from_slice(&v0_block_response(41, true)).unwrap();
+        response["result"]["transactions"][0]["meta"]
+            .as_object_mut()
+            .unwrap()
+            .remove("computeUnitsConsumed");
+        let plan = plan_finalized_get_block_json_v1(
+            &state,
+            &binding,
+            request,
+            &serde_json::to_vec(&response).unwrap(),
+        )
+        .unwrap();
+        assert_eq!(
+            plan.transaction_execution_v1([0x55; 64]),
+            Err(RpcJsonErrorV1::MissingExecutionMetadata)
+        );
+        assert_eq!(
+            plan.transaction_execution_v1([0x56; 64]),
+            Err(RpcJsonErrorV1::TransactionNotFound)
+        );
     }
 
     #[test]
