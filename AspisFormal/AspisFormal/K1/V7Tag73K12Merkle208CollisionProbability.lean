@@ -6,9 +6,11 @@ import AspisFormal.Pool.V7MerkleQueryExtractor
 # Exact shared-208-bit collision accounting for Tag-73 K1.2
 
 This module proves the collision part of the K1.2 random-oracle ledger from
-finite counting.  It deliberately does not claim that every K1.2 extraction
-failure is a collision: the missing-query, forward-reference and guessed-root
-subclasses still need their causal injection into a target tree.
+finite counting.  It also records the exact target-count coefficient used by
+the prefix-fixed partial-path extractor: sixteen positions in each of two
+trees give at most thirty-two causally fixed first-unresolved targets during
+the verifier's 468 typed Merkle calls.  The separate operational injection
+from a concrete resolution failure into that causal tree remains explicit.
 
 The accounting is shared across both typed Merkle trees and every other call
 to the same SHA-256 oracle.  In particular, the verifier's 468 typed-tree
@@ -157,6 +159,56 @@ theorem k12_collision_universe_exposure_cap_expanded
         (parameters.forkRequestCap + 1) * 468 + 38 := by
   rfl
 
+/-! ## Prefix-fixed partial-path inventory
+
+The partial extractor does not hash either canonical-default subtree chain.
+Its collision event is therefore over the actual shared raw log only, without
+the old 38-slot completion surcharge.  A failed sampled traversal has one
+first unresolved digest target.  There are exactly sixteen positions in each
+of the two trees, hence at most thirty-two such targets, all fixed at the
+prover-final prefix before the verifier exposes any typed Merkle answers. -/
+
+def prefixFixedResolutionTargetCap : Nat :=
+  2 * disclosedQueryPairs
+
+theorem prefix_fixed_resolution_target_cap_exact :
+    prefixFixedResolutionTargetCap = 32 := by
+  norm_num [prefixFixedResolutionTargetCap, disclosedQueryPairs]
+
+def prefixFixedVerifierExposureCap : Nat :=
+  deployedTypedMerkleVerifierCallCap
+
+theorem prefix_fixed_verifier_exposure_cap_exact :
+    prefixFixedVerifierExposureCap = 468 := by
+  rfl
+
+/-- Exact coefficient for the causal first-unresolved-target event in one
+deployed verifier execution. -/
+def prefixFixedResolutionTargetCoefficient : Nat :=
+  prefixFixedVerifierExposureCap * prefixFixedResolutionTargetCap
+
+theorem prefix_fixed_resolution_target_coefficient_exact :
+    prefixFixedResolutionTargetCoefficient = 14976 := by
+  norm_num [prefixFixedResolutionTargetCoefficient,
+    prefixFixedVerifierExposureCap, prefixFixedResolutionTargetCap,
+    disclosedQueryPairs, deployedTypedMerkleVerifierCallCap]
+
+/-- The partial extractor's raw collision exposure cap has no canonical
+default evaluations.  This is the shared compiler/original/replay SHA-call
+ceiling already used by the exact K1.6 resource certificate. -/
+def k12PartialRawCollisionExposureCap
+    (parameters : ExactCompilerResourceParameters) : Nat :=
+  globalSharedShaCallCap parameters
+
+theorem k12_partial_raw_collision_exposure_cap_expanded
+    (parameters : ExactCompilerResourceParameters) :
+    k12PartialRawCollisionExposureCap parameters =
+      parameters.q1ShaCallCap + 1511 +
+        parameters.forkRequestCap *
+          (2 * parameters.q1ShaCallCap + 1511) +
+        (parameters.forkRequestCap + 1) * 468 := by
+  rfl
+
 /-! ## First-principles adaptive prefix-collision law -/
 
 def prefixCollisionTargetTreeFrom (step remaining : Nat)
@@ -227,12 +279,98 @@ theorem uniform_merkle_digest208_collision_probability_le_exact_count
   apply ENNReal.div_le_div_right
   exact_mod_cast prefix_collision_tree_hit_count_le_choose_two freshExposures
 
+/-! ## First-unresolved-path causal target law -/
+
+/-- Any operational decision tree exposing at most the deployed 468 typed
+Merkle answers and carrying at most the two-tree/sixteen-position target set
+at each answer has the exact `14976 / 2^208` union coefficient.  Adaptivity is
+already enforced by `CausalTargetTree`: a target set may depend on earlier
+answers but never on the answer currently being tested. -/
+theorem prefix_fixed_resolution_tree_hit_count_le
+    (tree : CausalTargetTree Digest208
+      (List.replicate prefixFixedVerifierExposureCap
+        prefixFixedResolutionTargetCap)) :
+    causalHitCount tree ≤
+      prefixFixedResolutionTargetCoefficient *
+        (2 ^ 208) ^ (prefixFixedVerifierExposureCap - 1) := by
+  have bound := causal_hit_count_le_target_caps tree
+  rw [merkle_digest208_cardinality] at bound
+  have sumExact :
+      (List.replicate prefixFixedVerifierExposureCap
+        prefixFixedResolutionTargetCap).sum =
+          prefixFixedResolutionTargetCoefficient := by
+    rw [List.sum_replicate]
+    simp only [nsmul_eq_mul, Nat.cast_id,
+      prefixFixedResolutionTargetCoefficient]
+  rw [sumExact, List.length_replicate] at bound
+  exact bound
+
+theorem uniform_merkle_digest208_resolution_probability_eq
+    (tree : CausalTargetTree Digest208
+      (List.replicate prefixFixedVerifierExposureCap
+        prefixFixedResolutionTargetCap)) :
+    (uniformMerkleDigest208FreshTape
+        (List.replicate prefixFixedVerifierExposureCap
+          prefixFixedResolutionTargetCap).length).toOuterMeasure
+        (causalHitEvent tree) =
+      (causalHitCount tree : ENNReal) /
+        (((2 : ENNReal) ^ 208) ^ prefixFixedVerifierExposureCap) := by
+  classical
+  unfold uniformMerkleDigest208FreshTape
+  rw [PMF.toOuterMeasure_uniformOfFintype_apply]
+  change
+    (causalHitCount tree : ENNReal) /
+        (Fintype.card
+          (FreshAnswerTape Digest208
+            (List.replicate prefixFixedVerifierExposureCap
+              prefixFixedResolutionTargetCap).length) : ENNReal) = _
+  rw [fresh_answer_tape_card, merkle_digest208_cardinality]
+  rw [List.length_replicate]
+  norm_num only [Nat.cast_pow, Nat.cast_ofNat]
+
+theorem uniform_merkle_digest208_resolution_probability_le_exact_count
+    (tree : CausalTargetTree Digest208
+      (List.replicate prefixFixedVerifierExposureCap
+        prefixFixedResolutionTargetCap)) :
+    (uniformMerkleDigest208FreshTape
+        (List.replicate prefixFixedVerifierExposureCap
+          prefixFixedResolutionTargetCap).length).toOuterMeasure
+        (causalHitEvent tree) ≤
+      ((prefixFixedResolutionTargetCoefficient *
+          (2 ^ 208) ^ (prefixFixedVerifierExposureCap - 1) : Nat) : ENNReal) /
+        (((2 : ENNReal) ^ 208) ^ prefixFixedVerifierExposureCap) := by
+  rw [uniform_merkle_digest208_resolution_probability_eq]
+  apply ENNReal.div_le_div_right
+  exact_mod_cast prefix_fixed_resolution_tree_hit_count_le tree
+
+/-- The partial extractor's shared raw collision term is the ordinary
+birthday count at the no-default exposure cap. -/
+theorem uniform_partial_raw_collision_probability_le_exact_count
+    (parameters : ExactCompilerResourceParameters) :
+    (uniformMerkleDigest208FreshTape
+        (List.range' 0
+          (k12PartialRawCollisionExposureCap parameters)).length).toOuterMeasure
+        (causalHitEvent
+          (prefixCollisionTargetTree
+            (k12PartialRawCollisionExposureCap parameters))) ≤
+      (((k12PartialRawCollisionExposureCap parameters).choose 2 *
+          (2 ^ 208) ^
+            (k12PartialRawCollisionExposureCap parameters - 1) : Nat) :
+          ENNReal) /
+        (((2 : ENNReal) ^ 208) ^
+          k12PartialRawCollisionExposureCap parameters) := by
+  exact uniform_merkle_digest208_collision_probability_le_exact_count _
+
 #print axioms merkle_digest208_cardinality
 #print axioms two_tree_default_input_slots_exact
 #print axioms collision_universe_length_le_shared_log_add_thirty_eight
 #print axioms global_shared_sha_call_cap_expanded
 #print axioms prefix_collision_tree_hit_count_le_choose_two
 #print axioms uniform_merkle_digest208_collision_probability_le_exact_count
+#print axioms prefix_fixed_resolution_target_coefficient_exact
+#print axioms prefix_fixed_resolution_tree_hit_count_le
+#print axioms uniform_merkle_digest208_resolution_probability_le_exact_count
+#print axioms uniform_partial_raw_collision_probability_le_exact_count
 
 end
 
