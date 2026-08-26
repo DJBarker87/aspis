@@ -53,7 +53,9 @@ use aspis_statement::atomic_state_only_registry::build_atomic_state_only_copy_he
 use aspis_statement::atomic_state_only_terminal::{
     atomic_state_only_copy_inactive_group_masks_v3, atomic_state_only_copy_inactive_row_groups_v3,
     atomic_state_only_copy_inactive_row_masks_v3,
+    atomic_state_only_selected_masked_terminal_value_compiled_tag73,
     atomic_state_only_selected_masked_terminal_value_compiled_v3,
+    atomic_state_only_selected_unmasked_terminal_value_compiled_tag73,
     atomic_state_only_selected_unmasked_terminal_value_compiled_v3,
 };
 use aspis_statement::atomic_state_only_trace::build_atomic_state_only_trace_v3;
@@ -996,7 +998,9 @@ fn build_onefold_proof_with_pow_mode(
             .map_err(|_| V6ProverError::Stage("V6 mask oracle"))?;
         let claims = statement_evaluations(&trace, &applied.mask_only_c1, &h1, &applied.g, point)
             .map_err(|_| V6ProverError::Stage("V6 semantic claims"))?;
-        let original = atomic_state_only_selected_unmasked_terminal_value_compiled_v3(
+        let original = match profile {
+            OneFoldBuildProfile::V6 => {
+                atomic_state_only_selected_unmasked_terminal_value_compiled_v3(
             statement,
             &claims,
             point,
@@ -1006,6 +1010,20 @@ fn build_onefold_proof_with_pow_mode(
             &batching.zerocheck_point,
             batching.mu,
         )
+            }
+            OneFoldBuildProfile::V7Compact => {
+                atomic_state_only_selected_unmasked_terminal_value_compiled_tag73(
+                    statement,
+                    &claims,
+                    point,
+                    lambda,
+                    chi,
+                    batching.theta,
+                    &batching.zerocheck_point,
+                    batching.mu,
+                )
+            }
+        }
         .map_err(|_| V6ProverError::Stage("V6 semantic oracle"))?;
         Ok(mask.add(eta.mul(original)))
     };
@@ -1500,7 +1518,7 @@ pub fn verify_v7_compact_onefold_proof_core(
         atomic_state_only_copy_inactive_group_masks_v3(),
         check_pow,
         |view| {
-            atomic_state_only_selected_masked_terminal_value_compiled_v3(
+            atomic_state_only_selected_masked_terminal_value_compiled_tag73(
                 statement,
                 &terminal_claims(view),
                 &view.point,

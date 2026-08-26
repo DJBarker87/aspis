@@ -11,8 +11,8 @@ use aspis_core::v6_onefold::{
 };
 use aspis_core::v6_query_batch::V6AuthenticatedQueryBatch;
 use aspis_core::v6_transcript::{
-    verify_v7_compact_transcript_and_relation_prepared, V6QueryBatchView, V6TranscriptContext,
-    V6TranscriptError, V6VerifiedTranscript,
+    verify_v7_compact_transcript_and_relation_prepared, V6QueryBatchView, V6SemanticView,
+    V6TranscriptContext, V6TranscriptError, V6VerifiedTranscript,
 };
 use aspis_core::v7_onefold::{
     verify_and_gamma_combine_v7_openings, V7CompactOneFoldWire,
@@ -20,6 +20,7 @@ use aspis_core::v7_onefold::{
 use aspis_core::HashFn;
 use aspis_statement::atomic_state_only_terminal::{
     atomic_state_only_copy_inactive_group_masks_v3, atomic_state_only_copy_inactive_row_groups_v3,
+    atomic_state_only_selected_masked_terminal_value_compiled_tag73,
 };
 use aspis_statement::{atomic_payment_statement_digest_v4, AtomicPaymentStatementV4};
 use solana_program::pubkey::Pubkey;
@@ -47,6 +48,21 @@ impl From<V6WireError> for V7VerifyError {
 pub struct VerifiedV7ReadOnly {
     pub transcript: V6VerifiedTranscript,
     pub folded_query_sum: QM31,
+}
+
+fn terminal_matches(statement: &AtomicPaymentStatementV4, view: &V6SemanticView<'_>) -> bool {
+    atomic_state_only_selected_masked_terminal_value_compiled_tag73(
+        statement,
+        &crate::v6_verifier::terminal_claims(view),
+        &view.point,
+        view.lambda,
+        view.chi,
+        view.batching.theta,
+        &view.batching.zerocheck_point,
+        view.batching.mu,
+        view.eta,
+    )
+    .is_ok_and(|expected| expected == view.terminal_claim)
 }
 
 #[inline(never)]
@@ -120,7 +136,7 @@ pub fn verify_v7_read_only_with_statement_digest(
         atomic_state_only_copy_inactive_row_groups_v3(),
         atomic_state_only_copy_inactive_group_masks_v3(),
         check_pow,
-        |view| crate::v6_verifier::terminal_matches(statement, view),
+        |view| terminal_matches(statement, view),
         |view| authenticate_and_fold_queries(hash, &wire, view),
     )?;
     let folded_query_sum = transcript.folded_query_sum;

@@ -828,7 +828,7 @@ fn atomic_copy_lane_from_routing_impl<F>(
     lambda: QM31,
     chi: QM31,
     mut trace: F,
-) -> QM31
+) -> (QM31, QM31)
 where
     F: FnMut(StateOnlyTerminalDiagnosticPhase),
 {
@@ -870,9 +870,10 @@ where
         [producer_denominator, consumer_denominator.neg()],
         [h1_z.mul(consumer_denominator).add(consumer), producer],
     );
-    let output = selectors.copy_active().mul(cleared);
+    let copy_active = selectors.copy_active();
+    let output = copy_active.mul(cleared);
     trace(StateOnlyTerminalDiagnosticPhase::Copy);
-    output
+    (output, copy_active)
 }
 
 #[inline(never)]
@@ -883,7 +884,7 @@ fn atomic_copy_lane_from_routing(
     lambda: QM31,
     chi: QM31,
 ) -> QM31 {
-    atomic_copy_lane_from_routing_impl(openings, h1_z, selectors, lambda, chi, |_| {})
+    atomic_copy_lane_from_routing_impl(openings, h1_z, selectors, lambda, chi, |_| {}).0
 }
 
 /// Evaluate the exact atomic-v3 copy/LogUp terminal lane from the z opening.
@@ -1378,6 +1379,7 @@ fn atomic_state_only_composition_parts_compiled_v3(
         [QM31; STATE_ONLY_HIDING_MASK_ONLY_C1_COLUMNS],
         QM31,
         QM31,
+        QM31,
     ),
     StateOnlyTerminalError,
 > {
@@ -1395,7 +1397,7 @@ fn atomic_state_only_composition_parts_compiled_v3(
     let poseidon = evaluate_state_only_poseidon_oracle_projected(&openings, &selectors.poseidon());
     let semantic = atomic_semantic_packed(statement, &openings, selectors.as_ref());
     let h1_z = atomic_selected_claim(claims, 0, ATOMIC_SELECTED_H1_COLUMN);
-    let copy =
+    let (copy, copy_active) =
         atomic_copy_lane_from_routing_impl(&openings.z, h1_z, &selectors.copy, lambda, chi, |_| {});
     let prepared_theta = PreparedQm31Multiplier::new(theta);
     let mut composition = copy;
@@ -1411,6 +1413,7 @@ fn atomic_state_only_composition_parts_compiled_v3(
         mask_only,
         atomic_selected_claim(claims, 0, ATOMIC_SELECTED_G_COLUMN),
         h1_z,
+        copy_active,
     ))
 }
 
@@ -1451,12 +1454,52 @@ fn atomic_state_only_terminal_parts_compiled_v3(
     ),
     StateOnlyTerminalError,
 > {
-    let (composition, c1, mask_only, g, h1_z) = atomic_state_only_composition_parts_compiled_v3(
+    let (composition, c1, mask_only, g, h1_z, _) = atomic_state_only_composition_parts_compiled_v3(
         statement, claims, point, lambda, chi, theta,
     )?;
     let original = atomic_equality_value(zerocheck_point, point)
         .mul(composition)
         .add(mu.mul(h1_z));
+    Ok((original, c1, mask_only, g))
+}
+
+/// Tag-73 strengthens the frozen atomic-v3 terminal with an aggregate
+/// inactive-helper check. Honest hiding may place random nonzero values on
+/// inactive rows, so requiring `H1(z) = 0` pointwise would destroy the hiding
+/// construction. Instead the additional `mu^2 * (1 - A(z)) * H1(z)` term
+/// proves that the inactive helper values sum to zero. Together with the
+/// existing `mu * H1(z)` total-sum check, this forces the active helper sum to
+/// zero outside the roots of a degree-two polynomial in transcript challenge
+/// `mu`. `A` is the exact multilinear indicator of copy-active Boolean rows.
+#[allow(clippy::too_many_arguments)]
+#[inline(never)]
+fn atomic_state_only_terminal_parts_compiled_tag73(
+    statement: &AtomicPaymentStatementV4,
+    claims: &[QM31; ATOMIC_SELECTED_TERMINAL_CLAIMS],
+    point: &[QM31; 10],
+    lambda: QM31,
+    chi: QM31,
+    theta: QM31,
+    zerocheck_point: &[QM31; 10],
+    mu: QM31,
+) -> Result<
+    (
+        QM31,
+        [QM31; C1_COLUMNS],
+        [QM31; STATE_ONLY_HIDING_MASK_ONLY_C1_COLUMNS],
+        QM31,
+    ),
+    StateOnlyTerminalError,
+> {
+    let (composition, c1, mask_only, g, h1_z, copy_active) =
+        atomic_state_only_composition_parts_compiled_v3(
+            statement, claims, point, lambda, chi, theta,
+        )?;
+    let inactive_h1 = QM31::ONE.sub(copy_active).mul(h1_z);
+    let original = atomic_equality_value(zerocheck_point, point)
+        .mul(composition)
+        .add(mu.mul(h1_z))
+        .add(mu.mul(mu).mul(inactive_h1));
     Ok((original, c1, mask_only, g))
 }
 
@@ -1487,6 +1530,31 @@ pub fn atomic_state_only_selected_unmasked_terminal_value_compiled_v3(
     .0)
 }
 
+/// Exact unmasked Tag-73 terminal with aggregate inactive-helper soundness.
+#[allow(clippy::too_many_arguments)]
+pub fn atomic_state_only_selected_unmasked_terminal_value_compiled_tag73(
+    statement: &AtomicPaymentStatementV4,
+    claims: &[QM31; ATOMIC_SELECTED_TERMINAL_CLAIMS],
+    point: &[QM31; 10],
+    lambda: QM31,
+    chi: QM31,
+    theta: QM31,
+    zerocheck_point: &[QM31; 10],
+    mu: QM31,
+) -> Result<QM31, StateOnlyTerminalError> {
+    Ok(atomic_state_only_terminal_parts_compiled_tag73(
+        statement,
+        claims,
+        point,
+        lambda,
+        chi,
+        theta,
+        zerocheck_point,
+        mu,
+    )?
+    .0)
+}
+
 /// Complete width-28 masked terminal for the sound same-private-path atomic
 /// replacement statement.
 #[allow(clippy::too_many_arguments)]
@@ -1503,6 +1571,35 @@ pub fn atomic_state_only_selected_masked_terminal_value_compiled_v3(
     eta: QM31,
 ) -> Result<QM31, StateOnlyTerminalError> {
     let (original, c1, mask_only, g) = atomic_state_only_terminal_parts_compiled_v3(
+        statement,
+        claims,
+        point,
+        lambda,
+        chi,
+        theta,
+        zerocheck_point,
+        mu,
+    )?;
+    let mask = state_only_selected_mask_value(&c1, &mask_only, g, point);
+    Ok(mask.add(eta.mul(original)))
+}
+
+/// Complete width-28 masked Tag-73 terminal. This changes no wire fields or
+/// proof length; it only strengthens the transcript-bound semantic oracle.
+#[allow(clippy::too_many_arguments)]
+#[inline(never)]
+pub fn atomic_state_only_selected_masked_terminal_value_compiled_tag73(
+    statement: &AtomicPaymentStatementV4,
+    claims: &[QM31; ATOMIC_SELECTED_TERMINAL_CLAIMS],
+    point: &[QM31; 10],
+    lambda: QM31,
+    chi: QM31,
+    theta: QM31,
+    zerocheck_point: &[QM31; 10],
+    mu: QM31,
+    eta: QM31,
+) -> Result<QM31, StateOnlyTerminalError> {
+    let (original, c1, mask_only, g) = atomic_state_only_terminal_parts_compiled_tag73(
         statement,
         claims,
         point,
@@ -1561,7 +1658,8 @@ where
         lambda,
         chi,
         &mut trace,
-    );
+    )
+    .0;
     let prepared_theta = PreparedQm31Multiplier::new(theta);
     let mut composition = copy;
     for lane in semantic.into_iter().rev() {
@@ -2331,6 +2429,103 @@ mod tests {
                 ]
             );
         }
+    }
+
+    #[test]
+    fn tag73_adds_only_the_inactive_helper_aggregate_term() {
+        let statement = AtomicPaymentStatementV4 {
+            pool: [0x73; 32],
+            sequence: 73,
+            spend: SpendPublic {
+                anchor: [M31::ZERO; DIGEST_ELEMS],
+                nullifier: [M31::ZERO; DIGEST_ELEMS],
+                output_commitment: [M31::ZERO; DIGEST_ELEMS],
+                asset_id: M31::ZERO,
+                fee: 0,
+            },
+            output_anchor: [M31::ZERO; DIGEST_ELEMS],
+            deployment_domain: [0x37; 32],
+        };
+        let mut claims = [QM31::ZERO; ATOMIC_SELECTED_TERMINAL_CLAIMS];
+        let helper = lift(M31(3));
+        claims[ATOMIC_SELECTED_H1_COLUMN] = helper;
+        let lambda = lift(M31(5));
+        let chi = lift(M31(11));
+        let theta = lift(M31(13));
+        let mu = lift(M31(7));
+        let zerocheck_point = [QM31::ZERO; 10];
+        let boolean_point = |row: usize| {
+            core::array::from_fn(|coordinate| {
+                if row & (1 << (9 - coordinate)) == 0 {
+                    QM31::ZERO
+                } else {
+                    QM31::ONE
+                }
+            })
+        };
+
+        // Row zero is not in the copy registry. The frozen terminal sees only
+        // the total helper sum; Tag-73 additionally charges exactly mu^2 * H1
+        // to the inactive aggregate.
+        let inactive_point = boolean_point(0);
+        assert_eq!(
+            AtomicSelectors::at_point(&inactive_point).copy_active(),
+            QM31::ZERO
+        );
+        let frozen_inactive = atomic_state_only_selected_unmasked_terminal_value_compiled_v3(
+            &statement,
+            &claims,
+            &inactive_point,
+            lambda,
+            chi,
+            theta,
+            &zerocheck_point,
+            mu,
+        )
+        .unwrap();
+        let tag73_inactive = atomic_state_only_selected_unmasked_terminal_value_compiled_tag73(
+            &statement,
+            &claims,
+            &inactive_point,
+            lambda,
+            chi,
+            theta,
+            &zerocheck_point,
+            mu,
+        )
+        .unwrap();
+        assert_eq!(tag73_inactive.sub(frozen_inactive), mu.mul(mu).mul(helper));
+
+        // Row 11 is copy-active. The new term is exactly zero there, keeping
+        // the deployed local copy constraint and all V5/V6 algebra unchanged.
+        let active_point = boolean_point(11);
+        assert_eq!(
+            AtomicSelectors::at_point(&active_point).copy_active(),
+            QM31::ONE
+        );
+        let frozen_active = atomic_state_only_selected_unmasked_terminal_value_compiled_v3(
+            &statement,
+            &claims,
+            &active_point,
+            lambda,
+            chi,
+            theta,
+            &zerocheck_point,
+            mu,
+        )
+        .unwrap();
+        let tag73_active = atomic_state_only_selected_unmasked_terminal_value_compiled_tag73(
+            &statement,
+            &claims,
+            &active_point,
+            lambda,
+            chi,
+            theta,
+            &zerocheck_point,
+            mu,
+        )
+        .unwrap();
+        assert_eq!(tag73_active, frozen_active);
     }
 
     #[test]
