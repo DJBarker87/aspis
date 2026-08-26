@@ -175,6 +175,19 @@ pub struct HistoricalRootEvidenceV1 {
     pub snapshot_context_slot: u64,
 }
 
+/// Exact public append stream reconstructed from authenticated top-level Pool
+/// instructions and finalized root-history pages.  This includes unrelated
+/// recipients: a wallet needs every leaf in exact order to maintain its own
+/// Merkle authentication paths without trusting an indexer-supplied witness.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct FinalizedAppendEvidenceV1 {
+    pub event_id: DepositEventIdV1,
+    pub leaf_index: u64,
+    pub root_sequence: u64,
+    pub note_commitment: [u8; 32],
+    pub root: [u8; 32],
+}
+
 pub struct FinalizedBlockIngestResultV1 {
     pub advance: FinalizedBlockAdvanceV1,
     pub rollback: Option<RollbackSummaryV1>,
@@ -188,6 +201,8 @@ pub struct FinalizedBlockIngestResultV1 {
     /// by nullifier and reconciling recipient/change delivery. Rollback uses
     /// the included output ids; no note opening or secret is retained.
     pub transition_evidence: Vec<FinalizedTransitionEvidenceV1>,
+    /// Every successful append in exact top-level instruction/output order.
+    pub append_evidence: Vec<FinalizedAppendEvidenceV1>,
     /// Successful non-appending `ASPP` preparations in transaction order.
     /// These public addresses let callers reconcile core/shard plan creation
     /// without treating preparation as a spend or leaf append.
@@ -905,6 +920,7 @@ pub fn ingest_finalized_rpc_block_v1(
     let mut deposit_outcomes = Vec::new();
     let mut transition_outcomes = Vec::new();
     let mut transition_evidence = Vec::new();
+    let mut append_evidence = Vec::new();
     let mut prepared_settlements = Vec::new();
     let mut cancelled_settlements = Vec::new();
     let mut plan_lifecycle = Vec::new();
@@ -931,6 +947,13 @@ pub fn ingest_finalized_rpc_block_v1(
                     .map_err(|_| FinalizedIndexerErrorV1::HistoricalRootMismatch)?;
                 let note_commitment = decode_digest_canonical(&deposit.note_commitment)
                     .map_err(|_| FinalizedIndexerErrorV1::HistoricalRootMismatch)?;
+                append_evidence.push(FinalizedAppendEvidenceV1 {
+                    event_id: deposit.id,
+                    leaf_index: deposit.leaf_index,
+                    root_sequence: deposit.root_sequence,
+                    note_commitment: deposit.note_commitment,
+                    root: encode_digest_canonical(&root),
+                });
                 let encrypted_note_payload_bytes =
                     u16::try_from(deposit.encrypted_note_payload.len())
                         .map_err(|_| FinalizedIndexerErrorV1::CountOverflow)?;
@@ -1033,6 +1056,13 @@ pub fn ingest_finalized_rpc_block_v1(
                             })
                             .map_err(FinalizedIndexerErrorV1::ScanState)?,
                     );
+                    append_evidence.push(FinalizedAppendEvidenceV1 {
+                        event_id: output.id,
+                        leaf_index: output.leaf_index,
+                        root_sequence: output.root_sequence,
+                        note_commitment: output.commitment,
+                        root,
+                    });
                 }
                 transition_evidence.push(FinalizedTransitionEvidenceV1 {
                     receipt,
@@ -1058,6 +1088,7 @@ pub fn ingest_finalized_rpc_block_v1(
         deposit_outcomes,
         transition_outcomes,
         transition_evidence,
+        append_evidence,
         prepared_settlements,
         cancelled_settlements,
         plan_lifecycle,
@@ -1812,6 +1843,33 @@ mod tests {
         assert_eq!(result.deposit_event_ids[1].instruction_index(), 1);
         assert_eq!(result.root_evidence[0].root_sequence, 8);
         assert_eq!(result.root_evidence[1].root_sequence, 9);
+        assert_eq!(result.append_evidence.len(), 2);
+        assert_eq!(
+            result.append_evidence[0].event_id,
+            result.deposit_event_ids[0]
+        );
+        assert_eq!(result.append_evidence[0].leaf_index, 7);
+        assert_eq!(result.append_evidence[0].root_sequence, 8);
+        let deposit_commitment = encode_digest_canonical(&pool_v1_note_commitment(
+            &digest(10),
+            77,
+            M31(9),
+            &digest(100),
+        ));
+        assert_eq!(
+            result.append_evidence[0].note_commitment,
+            deposit_commitment
+        );
+        assert_eq!(
+            result.append_evidence[1].event_id,
+            result.deposit_event_ids[1]
+        );
+        assert_eq!(result.append_evidence[1].leaf_index, 8);
+        assert_eq!(result.append_evidence[1].root_sequence, 9);
+        assert_eq!(
+            result.append_evidence[1].note_commitment,
+            deposit_commitment
+        );
         assert_eq!(state.next_leaf_index(), 9);
         assert_eq!(state.root(), &encode_digest_canonical(&final_root));
     }
@@ -2245,6 +2303,13 @@ mod tests {
             encode_digest_canonical(&first_intermediate)
         );
         assert_eq!(first.root_evidence[1].root_sequence, 9);
+        assert_eq!(first.append_evidence.len(), 2);
+        assert_eq!(first.append_evidence[0].leaf_index, 7);
+        assert_eq!(first.append_evidence[0].root_sequence, 8);
+        assert_eq!(first.append_evidence[0].note_commitment, digest_bytes(810));
+        assert_eq!(first.append_evidence[1].leaf_index, 8);
+        assert_eq!(first.append_evidence[1].root_sequence, 9);
+        assert_eq!(first.append_evidence[1].note_commitment, digest_bytes(820));
         assert_eq!(state.next_leaf_index(), 9);
         assert_eq!(state.root(), &encode_digest_canonical(&first_final));
 

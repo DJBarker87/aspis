@@ -17,7 +17,7 @@ use aspis_statement::{
     Digest,
 };
 
-use crate::scan_state::DepositEventIdV1;
+use crate::{finalized_indexer::FinalizedAppendEvidenceV1, scan_state::DepositEventIdV1};
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum WitnessStateErrorV1 {
@@ -263,6 +263,47 @@ impl WalletWitnessStateV1 {
             tracked_event_id,
         })
     }
+
+    /// Apply the complete append stream returned by finalized ingestion.  The
+    /// selection contains only locally owned event IDs; every unselected leaf
+    /// is still applied because it changes later authentication paths.
+    pub fn apply_finalized_appends_v1(
+        &mut self,
+        appends: &[FinalizedAppendEvidenceV1],
+        track_event_ids: &[DepositEventIdV1],
+    ) -> Result<Vec<WitnessAppendReceiptV1>, WitnessStateErrorV1> {
+        let mut unique_appends = std::collections::HashSet::with_capacity(appends.len());
+        if !appends
+            .iter()
+            .all(|append| unique_appends.insert(append.event_id))
+        {
+            return Err(WitnessStateErrorV1::DuplicateWitness);
+        }
+        let mut unique_tracks = std::collections::HashSet::with_capacity(track_event_ids.len());
+        if !track_event_ids
+            .iter()
+            .all(|event_id| unique_tracks.insert(*event_id) && unique_appends.contains(event_id))
+        {
+            return Err(WitnessStateErrorV1::WitnessNotFound);
+        }
+        let mut working = self.clone();
+        let mut receipts = Vec::with_capacity(appends.len());
+        for append in appends {
+            receipts.push(
+                working.append_authenticated_leaf_v1(
+                    append.leaf_index,
+                    append.root_sequence,
+                    append.note_commitment,
+                    append.root,
+                    unique_tracks
+                        .contains(&append.event_id)
+                        .then_some(append.event_id),
+                )?,
+            );
+        }
+        *self = working;
+        Ok(receipts)
+    }
 }
 
 fn append_partial_roots_v1(
@@ -368,6 +409,41 @@ mod tests {
             assert_eq!(witness.leaf_index(), index);
             assert_eq!(witness.leaf(), &leaves[index as usize]);
         }
+    }
+
+    #[test]
+    fn finalized_append_stream_tracks_selected_notes_and_is_atomic() {
+        let leaves: Vec<_> = (0..4).map(|index| digest(index + 1)).collect();
+        let mut appends = Vec::new();
+        for index in 0..leaves.len() {
+            appends.push(FinalizedAppendEvidenceV1 {
+                event_id: event(index as u64),
+                leaf_index: index as u64,
+                root_sequence: index as u64 + 1,
+                note_commitment: encode_digest_canonical(&leaves[index]),
+                root: encode_digest_canonical(&reference_prefix_root(&leaves[..=index])),
+            });
+        }
+
+        let mut state = WalletWitnessStateV1::empty();
+        let receipts = state
+            .apply_finalized_appends_v1(&appends, &[event(1), event(3)])
+            .unwrap();
+        assert_eq!(receipts.len(), appends.len());
+        assert_eq!(state.tracked().len(), 2);
+        assert!(state
+            .tracked()
+            .iter()
+            .all(|witness| witness.root() == state.tree().root));
+
+        let before = state.clone();
+        let mut bad = appends[3];
+        bad.leaf_index = 4;
+        assert_eq!(
+            state.apply_finalized_appends_v1(&[bad], &[]),
+            Err(WitnessStateErrorV1::RootSequenceMismatch)
+        );
+        assert_eq!(state, before);
     }
 
     #[test]

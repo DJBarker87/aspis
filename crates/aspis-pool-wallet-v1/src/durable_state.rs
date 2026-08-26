@@ -735,6 +735,23 @@ fn validate_candidate_transition_v1(
     if root_ids.len() != result.root_evidence.len() || root_ids != reported_set {
         return Err(DurableStateErrorV1::CandidateStateMismatch);
     }
+    let append_ids: HashSet<_> = result
+        .append_evidence
+        .iter()
+        .map(|evidence| evidence.event_id)
+        .collect();
+    if append_ids.len() != result.append_evidence.len()
+        || append_ids != reported_set
+        || result.append_evidence.iter().any(|append| {
+            !result.root_evidence.iter().any(|root| {
+                root.event_id == append.event_id
+                    && root.root_sequence == append.root_sequence
+                    && root.root == append.root
+            })
+        })
+    {
+        return Err(DurableStateErrorV1::CandidateStateMismatch);
+    }
 
     let expected_ids = match (&result.advance, &result.rollback) {
         (FinalizedBlockAdvanceV1::AlreadyCurrent, None) => {
@@ -781,6 +798,14 @@ fn validate_candidate_transition_v1(
     };
     let expected_set: HashSet<_> = expected_ids.iter().copied().collect();
     if expected_set.len() != expected_ids.len() || expected_set != reported_set {
+        return Err(DurableStateErrorV1::CandidateStateMismatch);
+    }
+    if result
+        .append_evidence
+        .iter()
+        .map(|evidence| evidence.event_id)
+        .ne(expected_ids.iter().copied())
+    {
         return Err(DurableStateErrorV1::CandidateStateMismatch);
     }
     Ok(())
@@ -2158,7 +2183,9 @@ mod tests {
     use hpke::rand_core::{TryCryptoRng, TryRng};
 
     use crate::{
-        finalized_indexer::{FinalizedTransitionEvidenceV1, HistoricalRootEvidenceV1},
+        finalized_indexer::{
+            FinalizedAppendEvidenceV1, FinalizedTransitionEvidenceV1, HistoricalRootEvidenceV1,
+        },
         note_store_crypto::{
             open_note_opening_v1, rotate_wallet_note_store_key_v1, seal_recovered_note_v1,
             NoteStoreCipherV1, NoteStoreCryptoErrorV1,
@@ -2285,6 +2312,13 @@ mod tests {
                 authenticated_transport: vec![0x71, 0x72],
                 settled_plan: None,
             }],
+            append_evidence: vec![FinalizedAppendEvidenceV1 {
+                event_id: output_id,
+                leaf_index: 0,
+                root_sequence: 1,
+                note_commitment: encode_digest_canonical(&digest(20)),
+                root: encode_digest_canonical(&digest(40)),
+            }],
             prepared_settlements: Vec::new(),
             cancelled_settlements: Vec::new(),
             plan_lifecycle: Vec::new(),
@@ -2347,6 +2381,7 @@ mod tests {
             )],
             transition_outcomes: Vec::new(),
             transition_evidence: Vec::new(),
+            append_evidence: result.append_evidence.clone(),
             prepared_settlements: Vec::new(),
             cancelled_settlements: Vec::new(),
             plan_lifecycle: Vec::new(),
@@ -2403,6 +2438,7 @@ mod tests {
             deposit_outcomes: Vec::new(),
             transition_outcomes: Vec::new(),
             transition_evidence: Vec::new(),
+            append_evidence: Vec::new(),
             prepared_settlements: Vec::new(),
             cancelled_settlements: Vec::new(),
             plan_lifecycle: Vec::new(),
@@ -2586,6 +2622,7 @@ mod tests {
             deposit_outcomes: Vec::new(),
             transition_outcomes: Vec::new(),
             transition_evidence: Vec::new(),
+            append_evidence: Vec::new(),
             prepared_settlements: vec![prepared],
             cancelled_settlements: Vec::new(),
             plan_lifecycle: vec![FinalizedPreparedSettlementLifecycleV1::Prepared(prepared)],
@@ -2627,6 +2664,7 @@ mod tests {
             deposit_outcomes: Vec::new(),
             transition_outcomes: Vec::new(),
             transition_evidence: Vec::new(),
+            append_evidence: Vec::new(),
             prepared_settlements: Vec::new(),
             cancelled_settlements: vec![cancelled],
             plan_lifecycle: vec![FinalizedPreparedSettlementLifecycleV1::Cancelled(cancelled)],
@@ -2659,6 +2697,7 @@ mod tests {
             deposit_outcomes: Vec::new(),
             transition_outcomes: Vec::new(),
             transition_evidence: Vec::new(),
+            append_evidence: Vec::new(),
             prepared_settlements: Vec::new(),
             cancelled_settlements: Vec::new(),
             plan_lifecycle: Vec::new(),
