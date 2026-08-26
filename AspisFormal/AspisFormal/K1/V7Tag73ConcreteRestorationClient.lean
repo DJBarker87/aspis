@@ -717,7 +717,12 @@ private def continueWithFailure
   let failed := accumulator.addFailure request reason
   resume (.failed reason) failed
 
-private def dispatchPreparedRestoration
+/-- Execute one already validated preparation through pair scheduling,
+programming, literal-start prover replay, and restored verifier execution.
+This definition is public so downstream trace proofs can unfold the actual
+dispatcher; callers still cannot supply a verifier snapshot or restore
+function. -/
+def dispatchPreparedRestoration
     {Statement Proof Payload Result : Type*}
     {globalOracleCalls : Nat}
     (startProgram : OracleMachine
@@ -879,7 +884,9 @@ private def dispatchPreparedRestoration
     continueWithFailure prepared.request .incoherentPrefixOracle withPrefix
       resume
 
-private def dispatchConcreteRestoration
+/-- Prepare and dispatch one concrete restoration request.  Kept public only
+as an operational unfolding boundary for scheduler-trace proofs. -/
+def dispatchConcreteRestoration
     {Statement Proof Payload Result : Type*}
     {globalOracleCalls : Nat}
     (startProgram : OracleMachine
