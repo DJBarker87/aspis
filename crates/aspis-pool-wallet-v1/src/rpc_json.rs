@@ -316,23 +316,27 @@ struct ReturnDataJsonV1 {
     data: (String, String),
 }
 
+#[derive(Clone, Debug, PartialEq, Eq)]
 struct OwnedInstructionV1 {
     program_id_index: u16,
     accounts: Vec<u16>,
     data_base58: String,
 }
 
+#[derive(Clone, Debug, PartialEq, Eq)]
 struct OwnedLoadedAddressesV1 {
     writable: Vec<String>,
     readonly: Vec<String>,
 }
 
+#[derive(Clone, Debug, PartialEq, Eq)]
 struct OwnedReturnDataV1 {
     program_id_base58: String,
     data: String,
     encoding: String,
 }
 
+#[derive(Clone, Debug, PartialEq, Eq)]
 struct OwnedTransactionV1 {
     version: SolanaRpcTransactionVersionV1,
     signatures: Vec<String>,
@@ -345,6 +349,7 @@ struct OwnedTransactionV1 {
     return_data: Option<OwnedReturnDataV1>,
 }
 
+#[derive(Clone, Debug, PartialEq, Eq)]
 struct OwnedBlockV1 {
     slot: u64,
     blockhash: String,
@@ -446,6 +451,7 @@ impl OwnedBlockV1 {
     }
 }
 
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub struct FinalizedRpcJsonPlanV1 {
     block_request: FinalizedGetBlockRequestV1,
     block: OwnedBlockV1,
@@ -789,14 +795,14 @@ pub fn plan_finalized_get_block_json_v1(
     })
 }
 
-#[derive(Deserialize)]
+#[derive(Debug, Deserialize, PartialEq, Eq)]
 #[serde(deny_unknown_fields)]
 struct GetMultipleAccountsResultJsonV1 {
     context: RpcContextJsonV1,
     value: Vec<Option<AccountJsonV1>>,
 }
 
-#[derive(Deserialize)]
+#[derive(Debug, Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
 struct RpcContextJsonV1 {
     slot: u64,
@@ -804,7 +810,7 @@ struct RpcContextJsonV1 {
     api_version: Option<String>,
 }
 
-#[derive(Deserialize)]
+#[derive(Debug, Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
 struct AccountJsonV1 {
     data: (String, String),
@@ -813,6 +819,24 @@ struct AccountJsonV1 {
     owner: String,
     rent_epoch: u64,
     space: u64,
+}
+
+pub(crate) fn root_page_responses_semantically_equal_v1(
+    request: &FinalizedRootPagesRequestV1,
+    first_response_json: &[u8],
+    second_response_json: &[u8],
+) -> Result<bool, RpcJsonErrorV1> {
+    let max_bytes = request
+        .bindings
+        .len()
+        .checked_mul(POOL_V1_ROOT_PAGE_JSON_MAX_BYTES_PER_ACCOUNT)
+        .and_then(|size| size.checked_add(4_096))
+        .ok_or(RpcJsonErrorV1::ResponseTooLarge)?;
+    let first: GetMultipleAccountsResultJsonV1 =
+        parse_response_v1(request.request_id, first_response_json, max_bytes)?;
+    let second: GetMultipleAccountsResultJsonV1 =
+        parse_response_v1(request.request_id, second_response_json, max_bytes)?;
+    Ok(first == second)
 }
 
 /// Consume the exact root-page response planned above and atomically invoke
@@ -1153,5 +1177,49 @@ mod tests {
             Some(RpcJsonErrorV1::RootResponsePresenceMismatch)
         );
         assert_eq!(state, original);
+    }
+
+    #[test]
+    fn root_page_semantic_agreement_ignores_json_formatting_but_not_account_state() {
+        let request = FinalizedRootPagesRequestV1 {
+            request_id: 77,
+            min_context_slot: 101,
+            bindings: vec![RootPageAddressBindingV1 {
+                page_number: 0,
+                address: [0x31; 32],
+            }],
+        };
+        let response = serde_json::json!({
+            "jsonrpc": "2.0",
+            "id": 77,
+            "result": {
+                "context": {"slot": 101},
+                "value": [{
+                    "data": ["AA==", "base64"],
+                    "executable": false,
+                    "lamports": 1,
+                    "owner": encode_base58(&[0x41; 32]),
+                    "rentEpoch": 2,
+                    "space": 1
+                }]
+            }
+        });
+        let compact = serde_json::to_vec(&response).unwrap();
+        let pretty = serde_json::to_vec_pretty(&response).unwrap();
+        assert_eq!(
+            root_page_responses_semantically_equal_v1(&request, &compact, &pretty),
+            Ok(true)
+        );
+
+        let mut changed = response;
+        changed["result"]["value"][0]["lamports"] = serde_json::json!(2);
+        assert_eq!(
+            root_page_responses_semantically_equal_v1(
+                &request,
+                &compact,
+                &serde_json::to_vec(&changed).unwrap(),
+            ),
+            Ok(false)
+        );
     }
 }
