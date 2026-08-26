@@ -1,5 +1,5 @@
 import AspisFormal.Pool.V7AcceptedSemanticRelationComposition
-import AspisFormal.Pool.V7DeployedCopyEvaluatorBalanceBridge
+import AspisFormal.Pool.V7Tag73InactiveHelperAggregate
 
 /-!
 # Accepted Tag-73 deployed-copy capstone
@@ -17,8 +17,8 @@ before the existing arithmetic/public-field closure theorem is invoked.
 
 The source-generated registry certificate remains an adjacent Aeneas leaf.
 It checks that the concrete endpoint/tag/pattern table used here is the one at
-the pinned deployed Rust source; it does not replace the remaining helper
-support or sampled-challenge premises below.
+the pinned deployed Rust source; it does not replace the remaining aggregate
+helper or sampled-challenge premises below.
 -/
 
 set_option autoImplicit false
@@ -46,6 +46,7 @@ open AspisPool.V7OpenedColumnsFromTrace
 open AspisPool.V7PointClaimBatchBinding
 open AspisPool.V7RelationCandidateBinding
 open AspisPool.V7SelectedSemanticPointClaims
+open AspisPool.V7Tag73InactiveHelperAggregate
 open AspisPool.V7Width29ComponentExtraction
 open AspisSumcheckMasking
 open AspisV5AcceptedSpendRelation
@@ -195,7 +196,7 @@ theorem accepted_deployed_copy_lane_consequence_of_semantic_relation
         (deployedCompiledCopyLane
           (concreteDeployedCopyRegistryProjection extraction)
           lambda chi helper))
-    (inactiveZero : DeployedCopyHelperInactiveZero helper)
+    (inactiveSumZero : DeployedCopyHelperInactiveSumZero helper)
     (helperSumZero : tableSum helper = 0)
     (chiNonzero : ¬ DeployedCopyInactiveSlotCollision chi)
     (noPole : ¬ DeployedCopyActivePole
@@ -206,12 +207,13 @@ theorem accepted_deployed_copy_lane_consequence_of_semantic_relation
       (concreteDeployedCopyRegistryProjection extraction) lambda) :
     AcceptedDeployedCopyLaneConsequence statement masks fields extraction
       point kappa execution poseidonRows lambda chi helper := by
-  have balance := copyRationalBalance_zero_of_accepted_copy_rows statement
-    extraction poseidonRows lambda chi helper accepted.rows inactiveZero
-    helperSumZero chiNonzero noPole
-  have aliases := requiredTraceAliases_of_accepted_copy_rows statement
-    extraction poseidonRows lambda chi helper accepted.rows inactiveZero
-    helperSumZero chiNonzero noPole noChiCollision noCompressionCollision
+  have balance := copyRationalBalance_zero_of_accepted_copy_rows_aggregate
+    statement extraction poseidonRows lambda chi helper accepted.rows
+    helperSumZero inactiveSumZero chiNonzero noPole
+  have aliases := requiredTraceAliases_of_accepted_copy_rows_aggregate
+    statement extraction poseidonRows lambda chi helper accepted.rows
+    helperSumZero inactiveSumZero chiNonzero noPole noChiCollision
+    noCompressionCollision
   exact {
     semanticRelation := accepted
     helperSumZero := helperSumZero
@@ -222,8 +224,9 @@ theorem accepted_deployed_copy_lane_consequence_of_semantic_relation
 /-- Full accepted K1.5 capstone for the deployed copy lane.  Relative to
 `accepted_semantic_relation_consequence`, this theorem hard-codes the exact
 copy evaluator and discharges the former `BalanceOutputCellAlias` and helper
-zero-sum inputs.  The helper support equation, `mu != 0`, denominator
-exclusions, and the two sampled LogUp collision exclusions remain explicit. -/
+zero-sum inputs.  The aggregate inactive-helper zero-sum, `mu != 0`,
+denominator exclusions, and the two sampled LogUp collision exclusions remain
+explicit.  No inactive helper cell is required to be pointwise zero. -/
 theorem accepted_semantic_relation_deployed_copy_lane_consequence
     {Public Root : Type*}
     {scheme : FiatShamirSchedule Public Root QM31Exact}
@@ -287,7 +290,7 @@ theorem accepted_semantic_relation_deployed_copy_lane_consequence
           (concreteDeployedCopyRegistryProjection extraction)
           lambda chi helper))
       theta)
-    (inactiveZero : DeployedCopyHelperInactiveZero helper)
+    (inactiveSumZero : DeployedCopyHelperInactiveSumZero helper)
     (muNonzero : mu ≠ 0)
     (chiNonzero : ¬ DeployedCopyInactiveSlotCollision chi)
     (noPole : ¬ DeployedCopyActivePole
@@ -341,9 +344,10 @@ theorem accepted_semantic_relation_deployed_copy_lane_consequence
       copyLane theta zerocheckPoint mu helper rows unmaskedSumZero muNonzero
   have aliases : RequiredTraceAliases
       (rawOpenedColumnsFromTrace (extractedPhysicalTrace extraction)) :=
-    requiredTraceAliases_of_accepted_copy_rows statement extraction poseidonRows
-      lambda chi helper (by simpa [source, copyLane] using rows) inactiveZero
-      helperSumZero chiNonzero noPole noChiCollision noCompressionCollision
+    requiredTraceAliases_of_accepted_copy_rows_aggregate statement extraction
+      poseidonRows lambda chi helper (by simpa [source, copyLane] using rows)
+      helperSumZero inactiveSumZero chiNonzero noPole noChiCollision
+      noCompressionCollision
   have balanceAlias : BalanceOutputCellAlias
       (extractedPhysicalTrace extraction) :=
     (balanceOutputCellAlias_iff_raw_alias
@@ -355,10 +359,10 @@ theorem accepted_semantic_relation_deployed_copy_lane_consequence
     initialEncoderEq executionInitialValues executionInitialWeights
     executionInitialClaim inactiveExact finalMatches queryExact relationTerminal
     noOodCancellation noRelationCollision noKappaCollision noGammaCollision
-  have balance := copyRationalBalance_zero_of_accepted_copy_rows statement
-    extraction poseidonRows lambda chi helper
+  have balance := copyRationalBalance_zero_of_accepted_copy_rows_aggregate
+    statement extraction poseidonRows lambda chi helper
       (by simpa [source, copyLane] using rows)
-      inactiveZero helperSumZero chiNonzero noPole
+      helperSumZero inactiveSumZero chiNonzero noPole
   exact {
     semanticRelation := by simpa [source, copyLane] using semanticRelation
     helperSumZero := helperSumZero
@@ -389,7 +393,7 @@ theorem required_trace_aliases_or_deployed_copy_failure
       (deployedCompiledCopyLane
         (concreteDeployedCopyRegistryProjection extraction)
         lambda chi helper))
-    (inactiveZero : DeployedCopyHelperInactiveZero helper)
+    (inactiveSumZero : DeployedCopyHelperInactiveSumZero helper)
     (helperSumZero : tableSum helper = 0) :
     DeployedCopyInactiveSlotCollision chi ∨
       DeployedCopyActivePole
@@ -413,9 +417,10 @@ theorem required_trace_aliases_or_deployed_copy_failure
             (concreteDeployedCopyRegistryProjection extraction) lambda
         · exact Or.inr (Or.inr (Or.inr (Or.inl compressionCollision)))
         · exact Or.inr (Or.inr (Or.inr (Or.inr
-            (requiredTraceAliases_of_accepted_copy_rows statement extraction
-              poseidonRows lambda chi helper acceptedRows inactiveZero
-              helperSumZero chiZero pole chiCollision compressionCollision))))
+            (requiredTraceAliases_of_accepted_copy_rows_aggregate statement
+              extraction poseidonRows lambda chi helper acceptedRows
+              helperSumZero inactiveSumZero chiZero pole chiCollision
+              compressionCollision))))
 
 /-! ## Audit -/
 
