@@ -361,43 +361,57 @@ theorem native_copyExact_of_rust_boolean_copy_lane
 
 /-! ## Explicit generated-root/source boundary and identity pins -/
 
-/-- Interface expected from a Charon/Aeneas harness around the private Rust
-`copy_lane` root. -/
-structure ExtractedRustBooleanCopyLane (K : Type*) where
-  evaluate : NativePaymentVariantV1 → (Fin 16 → K) → TerminalPoint K →
-    K → K → K → Option (K × K)
+/-- Raw-field interface expected from the Charon/Aeneas extraction wrapper
+around the private Rust `copy_lane` root.  The wrapper accepts exactly the
+variant and selected Boolean row rather than a second implementation of
+`Selectors::expand`. -/
+structure ExtractedRustBooleanCopyLane (R : Type*) where
+  evaluate : NativePaymentVariantV1 → Fin 1024 → (Fin 16 → R) →
+    R → R → R → Option (R × R)
 
 /-- The only generated-root premise: a successful extracted evaluation
 returns the pure source-shaped result above.  It neither asserts PCS opening
 validity nor any terminal acceptance conclusion. -/
 def AeneasBooleanCopyLaneSourceEquality
-    {K : Type*} [Field K] (rust : ExtractedRustBooleanCopyLane K) : Prop :=
-  ∀ variant openings point h1 lambda chi output,
-    rust.evaluate variant openings point h1 lambda chi = some output →
-      output = rustCompiledCopyLaneAtPoint
-        variant openings point h1 lambda chi
+    {R K : Type*} [Field K] (valid : R → Prop) (view : R → K)
+    (rust : ExtractedRustBooleanCopyLane R) : Prop :=
+  ∀ variant selected openings h1 lambda chi output,
+    (∀ column, valid (openings column)) →
+    valid h1 → valid lambda → valid chi →
+    rust.evaluate variant selected openings h1 lambda chi = some output →
+      (view output.1, view output.2) = rustCompiledCopyLaneAtPoint
+        variant (fun column => view (openings column))
+          (booleanPointOfRow (F := K) selected)
+          (view h1) (view lambda) (view chi)
 
 theorem extractedRustBooleanCopyLane_eq_native
-    {K : Type*} [Field K]
-    (rust : ExtractedRustBooleanCopyLane K)
-    (sourceEquality : AeneasBooleanCopyLaneSourceEquality rust)
+    {R K : Type*} [Field K]
+    (valid : R → Prop) (view : R → K)
+    (rust : ExtractedRustBooleanCopyLane R)
+    (sourceEquality : AeneasBooleanCopyLaneSourceEquality valid view rust)
     (variant : NativePaymentVariantV1)
     (trace : Fin 1024 → Fin 16 → K) (selected : Fin 1024)
-    (openings : Fin 16 → K)
-    (openingsExact : AuthenticatedC1BooleanOpenings trace selected openings)
-    (helper : Fin 1024 → K) (lambda chi : K) (output : K × K)
-    (success : rust.evaluate variant openings
-      (booleanPointOfRow (F := K) selected) (helper selected) lambda chi =
-        some output) :
-    output = (nativeCompiledCopyLane variant trace lambda chi helper selected,
+    (openings : Fin 16 → R) (h1 lambda chi : R)
+    (openingsValid : ∀ column, valid (openings column))
+    (h1Valid : valid h1) (lambdaValid : valid lambda) (chiValid : valid chi)
+    (openingsExact : AuthenticatedC1BooleanOpenings trace selected
+      (fun column => view (openings column)))
+    (helper : Fin 1024 → K) (helperExact : view h1 = helper selected)
+    (output : R × R)
+    (success : rust.evaluate variant selected openings h1 lambda chi =
+      some output) :
+    (view output.1, view output.2) =
+      (nativeCompiledCopyLane variant trace (view lambda) (view chi)
+        helper selected,
       compiledCopyActiveField variant selected) := by
-  rw [sourceEquality variant openings (booleanPointOfRow selected)
-    (helper selected) lambda chi output success]
+  rw [sourceEquality variant selected openings h1 lambda chi output
+    openingsValid h1Valid lambdaValid chiValid success, helperExact]
   exact rustCompiledCopyLaneAtBooleanPoint_eq_native variant trace selected
-    openings openingsExact helper lambda chi
+    (fun column => view (openings column)) openingsExact helper
+      (view lambda) (view chi)
 
 def auditedRustSourceRevision : String :=
-  "4ff47268a8b7a69aacd7917706520fc2bc016c80"
+  "65a46367387d3985dd8cf52929df2629c2be15c9"
 
 def auditedRustSourceTree : String :=
   "d8887822d0a0dda089e51ed2dba2c8fbce702b72"
