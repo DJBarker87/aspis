@@ -30,6 +30,7 @@ open AspisPool.AlgorithmicCircleDecoderV7
 open AspisPool.V7AcceptedSemanticRelationComposition
 open AspisPool.V7AcceptedSpendK15FailureLedger
 open AspisPool.V7AtomicSemanticRowsFromTrace
+open AspisPool.V7C1ConcreteProjectionBinding
 open AspisPool.V7C1SubfieldRecovery
 open AspisPool.V7CoherentTraceExtraction
 open AspisPool.V7CompactSemanticBinding
@@ -57,6 +58,7 @@ open AspisV5SumcheckTranscriptBinding
 open AspisSumcheckMasking
 open AspisV6OneFoldCandidateExtraction
 open AspisV6TranscriptRelationGrammar
+open AspisV6Width29CorrelatedAgreement
 
 /-- An active pole is in the fixed-source chi bad set.  Keeping this generic
 lemma opaque prevents the dependent concrete registry from being unfolded by
@@ -194,6 +196,34 @@ theorem packedSourceFamilyChiWitness_mem_familyChiBad
         rcases member with ⟨link, equal⟩
         exact ⟨link, equal.symm⟩
 
+/-- Every coherent extraction belongs to the fixed pre-`gamma` tuple family
+once the decoder encoder is identified with the exact deployed encoder. -/
+theorem coherentTraceExtraction_components_mem_fixedWidth29TupleList
+    {decoder : ExactDecoderInstantiation QM31Exact}
+    {binding : InitialProjectionBinding decoder}
+    {words : V7MerkleQueryExtractor.ExtractedWords}
+    {gamma : QM31Exact} {disclosedFinal : FinalMessage QM31Exact}
+    {schedule : ExactSchedule}
+    (initialEncoderExact : decoder.initialEncoder = exactInitialEncoder)
+    (extraction : CoherentTraceExtraction decoder binding words gamma
+      disclosedFinal schedule) :
+    extraction.components ∈ fixedWidth29TupleList decoder
+      (extractedWidth29InitialWords words) := by
+  have valid := selected_chain_yields_valid_width29_response decoder words
+    gamma disclosedFinal schedule extraction.combined
+      extraction.combinedSelected
+  have shared :
+      (selectedCandidateStrategy decoder
+        (extractedWidth29InitialWords words) extraction.combined).support gamma ⊆
+      width29JointAgreementSet exactInitialEncoder
+        (extractedWidth29InitialWords words) extraction.components := by
+    simpa only [initialEncoderExact] using extraction.sharedSupport
+  exact mem_fixedWidth29TupleList_of_shared_support decoder
+    (extractedWidth29InitialWords words) extraction.components
+    ((selectedCandidateStrategy decoder
+      (extractedWidth29InitialWords words) extraction.combined).support gamma)
+    valid.1 shared extraction.everyComponentDecoded
+
 /-- The fixed-family candidate represented by one accepted extraction. -/
 def extractedFixedWidth29Candidate
     {decoder : ExactDecoderInstantiation QM31Exact}
@@ -245,19 +275,20 @@ inductive FixedFamilyK15Failure
     (fields : FixedFieldView QM31Exact)
     (extraction : CoherentTraceExtraction decoder binding words gamma
       disclosedFinal schedule)
-    (point : Fin 10 → QM31Exact)
+    (zerocheckPoint point : Fin 10 → QM31Exact)
     (lambda chi theta mu kappa : QM31Exact)
     (execution : CandidateExecution QM31Exact) : Prop where
   | semantic : FixedWidth29SemanticFailure decoder
-      (extractedWidth29InitialWords words) terminal sumcheck theta point mu →
-      FixedFamilyK15Failure terminal sumcheck fields extraction point
+      (extractedWidth29InitialWords words) terminal sumcheck theta
+        zerocheckPoint point mu →
+      FixedFamilyK15Failure terminal sumcheck fields extraction zerocheckPoint point
         lambda chi theta mu kappa execution
   | copyLambda : (∃ candidate : FixedC1TupleCandidate decoder
       (c1Received words),
       CopyTupleCompressionCollision
         (fixedC1CopySourceFamily decoder (c1Received words) candidate).registry
         lambda) →
-      FixedFamilyK15Failure terminal sumcheck fields extraction point
+      FixedFamilyK15Failure terminal sumcheck fields extraction zerocheckPoint point
         lambda chi theta mu kappa execution
   | copyChi : (∃ candidate : FixedC1TupleCandidate decoder
       (c1Received words),
@@ -267,23 +298,23 @@ inductive FixedFamilyK15Failure
         CopyChiCollision
           (fixedC1CopySourceFamily decoder
             (c1Received words) candidate).registry lambda chi) →
-      FixedFamilyK15Failure terminal sumcheck fields extraction point
+      FixedFamilyK15Failure terminal sumcheck fields extraction zerocheckPoint point
         lambda chi theta mu kappa execution
   | muZero : mu = 0 →
-      FixedFamilyK15Failure terminal sumcheck fields extraction point
+      FixedFamilyK15Failure terminal sumcheck fields extraction zerocheckPoint point
         lambda chi theta mu kappa execution
   | inactiveChi : DeployedCopyInactiveSlotCollision chi →
-      FixedFamilyK15Failure terminal sumcheck fields extraction point
+      FixedFamilyK15Failure terminal sumcheck fields extraction zerocheckPoint point
         lambda chi theta mu kappa execution
   | oodMix : execution.discrepancyTrace.MixCancellation 0 →
-      FixedFamilyK15Failure terminal sumcheck fields extraction point
+      FixedFamilyK15Failure terminal sumcheck fields extraction zerocheckPoint point
         lambda chi theta mu kappa execution
   | relationAlpha : (∃ round : Fin 4,
       execution.discrepancyTrace.AlphaRepair round) →
-      FixedFamilyK15Failure terminal sumcheck fields extraction point
+      FixedFamilyK15Failure terminal sumcheck fields extraction zerocheckPoint point
         lambda chi theta mu kappa execution
   | kappaPointRow : KappaPointRowCollision fields extraction point kappa →
-      FixedFamilyK15Failure terminal sumcheck fields extraction point
+      FixedFamilyK15Failure terminal sumcheck fields extraction zerocheckPoint point
         lambda chi theta mu kappa execution
 
 /-- Grouping the thirteen canonical branches into the eight constructors
@@ -294,7 +325,7 @@ theorem groupedFixedFamilyRootCap_eq_inventory :
   rw [fixedFamilyCausalRootCap_sum_eq_396430]
 
 set_option linter.constructorNameAsVariable false in
-theorem failureEvidence_implies_fixedFamilyK15Failure
+theorem failureEvidence_implies_fixedFamilyK15Failure_of_gamma_cover
     {Public Root : Type*}
     {scheme : FiatShamirSchedule Public Root QM31Exact}
     {decoder : ExactDecoderInstantiation QM31Exact}
@@ -328,7 +359,6 @@ theorem failureEvidence_implies_fixedFamilyK15Failure
     (execution : CandidateExecution QM31Exact)
     (fixedMember : extraction.components ∈ fixedWidth29TupleList decoder
       (extractedWidth29InitialWords words))
-    (zerocheckPointExact : zerocheckPoint = transcript.point)
     (terminal : FixedWidth29TupleCandidate decoder
       (extractedWidth29InitialWords words) → FixedTerminalAlgebraPlan QM31Exact)
     (sumcheck : FixedWidth29TupleCandidate decoder
@@ -339,14 +369,14 @@ theorem failureEvidence_implies_fixedFamilyK15Failure
     (sumcheckCausal : WireUsesAdaptiveDegree27Plan
       (acceptedProductionWireOfCompact fields transcript compact) honest
       (sumcheck (extractedFixedWidth29Candidate extraction fixedMember)))
-    (allPointClaimsExact : ∀ row lane,
-      fields.pointClaim row lane =
-        componentPointClaim extraction transcript.point row lane)
+    (gammaCover : GammaPointLaneCollision fields extraction transcript.point →
+      FixedFamilyK15Failure terminal sumcheck fields extraction zerocheckPoint
+        transcript.point lambda chi theta mu kappa execution)
     (failure : FailureEvidence
       (failureEvent basis rc statement fields transcript compact extraction
         lambda chi theta zerocheckPoint mu helper mask honest kappa execution)) :
-    FixedFamilyK15Failure terminal sumcheck fields extraction transcript.point
-      lambda chi theta mu kappa execution := by
+    FixedFamilyK15Failure terminal sumcheck fields extraction zerocheckPoint
+      transcript.point lambda chi theta mu kappa execution := by
   classical
   let selected := extractedFixedWidth29Candidate extraction fixedMember
   have selectedTerminalExact : terminal selected =
@@ -380,7 +410,7 @@ theorem failureEvidence_implies_fixedFamilyK15Failure
       have covered := selected_semantic_failure_mem_fixedWidth29_family decoder
         (extractedWidth29InitialWords words) terminal sumcheck selected
         (acceptedProductionWireOfCompact fields transcript compact) honest
-        semanticSource theta mu (Or.inl holds)
+        semanticSource theta zerocheckPoint mu (Or.inl holds)
       exact FixedFamilyK15Failure.semantic covered
   | helperCancellation =>
       change HelperCancellation basis
@@ -391,14 +421,13 @@ theorem failureEvidence_implies_fixedFamilyK15Failure
             lambda chi helper))
         theta zerocheckPoint mu helper at holds
       have algebraFailure : FixedTerminalAlgebraFailure (terminal selected)
-          theta transcript.point mu := by
+          theta zerocheckPoint mu := by
         rw [selectedTerminalExact]
-        rw [← zerocheckPointExact]
         exact Or.inl holds
       have covered := selected_semantic_failure_mem_fixedWidth29_family decoder
         (extractedWidth29InitialWords words) terminal sumcheck selected
         (acceptedProductionWireOfCompact fields transcript compact) honest
-        semanticSource theta mu (Or.inr algebraFailure)
+        semanticSource theta zerocheckPoint mu (Or.inr algebraFailure)
       exact FixedFamilyK15Failure.semantic covered
   | zerocheckEvaluation =>
       change ZerocheckEvaluationCollision basis
@@ -409,14 +438,13 @@ theorem failureEvidence_implies_fixedFamilyK15Failure
             lambda chi helper))
         theta zerocheckPoint at holds
       have algebraFailure : FixedTerminalAlgebraFailure (terminal selected)
-          theta transcript.point mu := by
+          theta zerocheckPoint mu := by
         rw [selectedTerminalExact]
-        rw [← zerocheckPointExact]
         exact Or.inr (Or.inl holds)
       have covered := selected_semantic_failure_mem_fixedWidth29_family decoder
         (extractedWidth29InitialWords words) terminal sumcheck selected
         (acceptedProductionWireOfCompact fields transcript compact) honest
-        semanticSource theta mu (Or.inr algebraFailure)
+        semanticSource theta zerocheckPoint mu (Or.inr algebraFailure)
       exact FixedFamilyK15Failure.semantic covered
   | thetaLane =>
       change ThetaLaneCollision basis
@@ -427,13 +455,13 @@ theorem failureEvidence_implies_fixedFamilyK15Failure
             lambda chi helper))
         theta at holds
       have algebraFailure : FixedTerminalAlgebraFailure (terminal selected)
-          theta transcript.point mu := by
+          theta zerocheckPoint mu := by
         rw [selectedTerminalExact]
         exact Or.inr (Or.inr holds)
       have covered := selected_semantic_failure_mem_fixedWidth29_family decoder
         (extractedWidth29InitialWords words) terminal sumcheck selected
         (acceptedProductionWireOfCompact fields transcript compact) honest
-        semanticSource theta mu (Or.inr algebraFailure)
+        semanticSource theta zerocheckPoint mu (Or.inr algebraFailure)
       exact FixedFamilyK15Failure.semantic covered
   | muZero =>
       change mu = 0 at holds
@@ -475,17 +503,146 @@ theorem failureEvidence_implies_fixedFamilyK15Failure
       exact FixedFamilyK15Failure.kappaPointRow holds
   | gammaPointLane =>
       change GammaPointLaneCollision fields extraction transcript.point at holds
-      exact False.elim
-        ((gamma_point_lane_collision_impossible_of_all_claims_exact
-          fields extraction transcript.point allPointClaimsExact) holds)
+      exact gammaCover holds
+
+/-- Without strengthening K1.4, the deterministic ledger has exactly one
+residual branch: a nonzero point-claim discrepancy killed by `gamma`.  Every
+other branch is already in the fixed causal family counted below. -/
+theorem failureEvidence_implies_gammaPointLane_or_fixedFamilyK15Failure
+    {Public Root : Type*}
+    {scheme : FiatShamirSchedule Public Root QM31Exact}
+    {decoder : ExactDecoderInstantiation QM31Exact}
+    {binding : InitialProjectionBinding decoder}
+    {words : V7MerkleQueryExtractor.ExtractedWords}
+    {gamma : QM31Exact} {disclosedFinal : FinalMessage QM31Exact}
+    {schedule : ExactSchedule}
+    (basis : Basis (Fin 4) F QM31Exact)
+    (rc : RoundConstants)
+    (statement : V5PublicStatement)
+    (fields : FixedFieldView QM31Exact)
+    (transcript : AcceptedRun scheme)
+    (compact : CompactAcceptedRunEvidence fields transcript)
+    (extraction : CoherentTraceExtraction decoder binding words gamma
+      disclosedFinal schedule)
+    (lambda chi theta : QM31Exact)
+    (zerocheckPoint : Fin 10 → QM31Exact)
+    (mu : QM31Exact)
+    (helper mask : Fin 1024 → QM31Exact)
+    (honest : FixedOracleTenRoundTrace
+      (maskedOracle transcript.eta
+        (extractedUnmaskedSemanticTable basis statement extraction
+          (deployedPoseidonRows rc (extractedPhysicalTrace extraction))
+          (deployedCompiledCopyLane
+            (concreteDeployedCopyRegistryProjection extraction)
+            lambda chi helper)
+          theta zerocheckPoint mu helper)
+        mask)
+      transcript.point)
+    (kappa : QM31Exact)
+    (execution : CandidateExecution QM31Exact)
+    (fixedMember : extraction.components ∈ fixedWidth29TupleList decoder
+      (extractedWidth29InitialWords words))
+    (terminal : FixedWidth29TupleCandidate decoder
+      (extractedWidth29InitialWords words) → FixedTerminalAlgebraPlan QM31Exact)
+    (sumcheck : FixedWidth29TupleCandidate decoder
+      (extractedWidth29InitialWords words) → AdaptiveDegree27MessagePlan QM31Exact)
+    (terminalExact : terminal
+      (extractedFixedWidth29Candidate extraction fixedMember) =
+        extractedFixedTerminalPlan basis rc statement extraction lambda chi helper)
+    (sumcheckCausal : WireUsesAdaptiveDegree27Plan
+      (acceptedProductionWireOfCompact fields transcript compact) honest
+      (sumcheck (extractedFixedWidth29Candidate extraction fixedMember)))
+    (failure : FailureEvidence
+      (failureEvent basis rc statement fields transcript compact extraction
+        lambda chi theta zerocheckPoint mu helper mask honest kappa execution)) :
+    GammaPointLaneCollision fields extraction transcript.point ∨
+      FixedFamilyK15Failure terminal sumcheck fields extraction zerocheckPoint
+        transcript.point lambda chi theta mu kappa execution := by
+  classical
+  by_cases gammaCollision :
+      GammaPointLaneCollision fields extraction transcript.point
+  · exact Or.inl gammaCollision
+  · exact Or.inr
+      (failureEvidence_implies_fixedFamilyK15Failure_of_gamma_cover
+        basis rc statement fields transcript compact extraction lambda chi theta
+        zerocheckPoint mu helper mask honest kappa execution fixedMember
+        terminal sumcheck terminalExact sumcheckCausal
+        (fun collision => (gammaCollision collision).elim) failure)
+
+/-- The strengthened K1.4 all-claims certificate eliminates the sole residual
+gamma branch and recovers the fixed-family-only result used by the existing
+capstone. -/
+theorem failureEvidence_implies_fixedFamilyK15Failure
+    {Public Root : Type*}
+    {scheme : FiatShamirSchedule Public Root QM31Exact}
+    {decoder : ExactDecoderInstantiation QM31Exact}
+    {binding : InitialProjectionBinding decoder}
+    {words : V7MerkleQueryExtractor.ExtractedWords}
+    {gamma : QM31Exact} {disclosedFinal : FinalMessage QM31Exact}
+    {schedule : ExactSchedule}
+    (basis : Basis (Fin 4) F QM31Exact)
+    (rc : RoundConstants)
+    (statement : V5PublicStatement)
+    (fields : FixedFieldView QM31Exact)
+    (transcript : AcceptedRun scheme)
+    (compact : CompactAcceptedRunEvidence fields transcript)
+    (extraction : CoherentTraceExtraction decoder binding words gamma
+      disclosedFinal schedule)
+    (lambda chi theta : QM31Exact)
+    (zerocheckPoint : Fin 10 → QM31Exact)
+    (mu : QM31Exact)
+    (helper mask : Fin 1024 → QM31Exact)
+    (honest : FixedOracleTenRoundTrace
+      (maskedOracle transcript.eta
+        (extractedUnmaskedSemanticTable basis statement extraction
+          (deployedPoseidonRows rc (extractedPhysicalTrace extraction))
+          (deployedCompiledCopyLane
+            (concreteDeployedCopyRegistryProjection extraction)
+            lambda chi helper)
+          theta zerocheckPoint mu helper)
+        mask)
+      transcript.point)
+    (kappa : QM31Exact)
+    (execution : CandidateExecution QM31Exact)
+    (fixedMember : extraction.components ∈ fixedWidth29TupleList decoder
+      (extractedWidth29InitialWords words))
+    (terminal : FixedWidth29TupleCandidate decoder
+      (extractedWidth29InitialWords words) → FixedTerminalAlgebraPlan QM31Exact)
+    (sumcheck : FixedWidth29TupleCandidate decoder
+      (extractedWidth29InitialWords words) → AdaptiveDegree27MessagePlan QM31Exact)
+    (terminalExact : terminal
+      (extractedFixedWidth29Candidate extraction fixedMember) =
+        extractedFixedTerminalPlan basis rc statement extraction lambda chi helper)
+    (sumcheckCausal : WireUsesAdaptiveDegree27Plan
+      (acceptedProductionWireOfCompact fields transcript compact) honest
+      (sumcheck (extractedFixedWidth29Candidate extraction fixedMember)))
+    (allPointClaimsExact : ∀ row lane,
+      fields.pointClaim row lane =
+        componentPointClaim extraction transcript.point row lane)
+    (failure : FailureEvidence
+      (failureEvent basis rc statement fields transcript compact extraction
+        lambda chi theta zerocheckPoint mu helper mask honest kappa execution)) :
+    FixedFamilyK15Failure terminal sumcheck fields extraction zerocheckPoint
+      transcript.point lambda chi theta mu kappa execution := by
+  exact failureEvidence_implies_fixedFamilyK15Failure_of_gamma_cover
+    basis rc statement fields transcript compact extraction lambda chi theta
+    zerocheckPoint mu helper mask honest kappa execution fixedMember
+    terminal sumcheck terminalExact sumcheckCausal
+    (fun collision => False.elim
+      ((gamma_point_lane_collision_impossible_of_all_claims_exact fields
+        extraction transcript.point allPointClaimsExact) collision)) failure
 
 #print axioms extractedFixedWidth29Candidate
+#print axioms coherentTraceExtraction_components_mem_fixedWidth29TupleList
 #print axioms extractedFixedTerminalPlan
 #print axioms activePole_mem_fixedSourceChiBad
 #print axioms copyChiCollision_mem_fixedSourceChiBad
 #print axioms packedSourceFamilyTupleCompressionWitness_mem_familyLambdaBad
 #print axioms packedSourceFamilyChiWitness_mem_familyChiBad
 #print axioms groupedFixedFamilyRootCap_eq_inventory
+#print axioms failureEvidence_implies_fixedFamilyK15Failure_of_gamma_cover
+#print axioms
+  failureEvidence_implies_gammaPointLane_or_fixedFamilyK15Failure
 #print axioms failureEvidence_implies_fixedFamilyK15Failure
 
 end AspisPool.V7K15FixedFamilyCausalCover

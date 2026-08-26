@@ -76,13 +76,13 @@ def FixedWidth29SemanticFailure
       FixedTerminalAlgebraPlan QM31Exact)
     (sumcheck : FixedWidth29TupleCandidate decoder lanes →
       AdaptiveDegree27MessagePlan QM31Exact)
-    (theta : QM31Exact) (point : Fin 10 → QM31Exact)
+    (theta : QM31Exact) (zerocheckPoint sumcheckPoint : Fin 10 → QM31Exact)
     (mu : QM31Exact) : Prop :=
   ∃ candidate,
-    FixedTerminalAlgebraBad (terminal candidate) theta point mu ∨
+    FixedTerminalAlgebraBad (terminal candidate) theta zerocheckPoint mu ∨
       ∃ round,
-        point round ∈ (sumcheck candidate).badAt
-          (challengeHistory point round)
+        sumcheckPoint round ∈ (sumcheck candidate).badAt
+          (challengeHistory sumcheckPoint round)
 
 /-- Exact source data needed to place one accepted semantic trace inside the
 fixed-family event. `causal` states that each pair of degree-27 messages is
@@ -153,18 +153,20 @@ theorem selected_semantic_failure_mem_fixedWidth29_family
     (reference : FixedOracleTenRoundTrace table wire.transcript.point)
     (source : SelectedFixedWidth29SemanticSource decoder lanes terminal sumcheck
       selected wire reference)
-    (theta mu : QM31Exact)
+    (theta : QM31Exact)
+    (zerocheckPoint : Fin 10 → QM31Exact)
+    (mu : QM31Exact)
     (failure : TenRoundRepair wire reference ∨
       FixedTerminalAlgebraFailure (terminal selected) theta
-        wire.transcript.point mu) :
+        zerocheckPoint mu) :
     FixedWidth29SemanticFailure decoder lanes terminal sumcheck theta
-      wire.transcript.point mu := by
+      zerocheckPoint wire.transcript.point mu := by
   rcases failure with repair | terminalFailure
   · have hit := tenRoundRepair_hits_adaptive_badSet wire reference
       (sumcheck selected) source.causal repair
     exact ⟨selected, Or.inr hit⟩
   · exact ⟨selected, Or.inl
-      (source.terminalCovered theta wire.transcript.point mu terminalFailure)⟩
+      (source.terminalCovered theta zerocheckPoint mu terminalFailure)⟩
 
 /-- The exact ideal subtotal over the one fixed width-29 tuple family. -/
 noncomputable def fixedWidth29CombinedIdealSemanticSubtotal
