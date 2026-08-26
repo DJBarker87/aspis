@@ -1240,6 +1240,28 @@ mod tests {
         }
     }
 
+    fn expected_v7_frontier_with_hiding_context(
+        hiding_context: StateOnlyHidingContext,
+    ) -> Result<usize, V6TranscriptError> {
+        let body = v7_zero_body(0);
+        let wire = V7CompactOneFoldWire::parse(&body, 0).unwrap();
+        match verify_v7_compact_transcript_and_relation_prepared_with_hiding_context(
+            test_hash,
+            &wire,
+            &context(),
+            hiding_context,
+            &[0u8; 64],
+            &[u16::MAX],
+            false,
+            |_| true,
+            |_| Ok(zero_query_batch()),
+        ) {
+            Err(V6TranscriptError::FrontierCountMismatch { expected, .. }) => Ok(expected),
+            Err(error) => Err(error),
+            Ok(_) => panic!("zero-frontier typed V7 fixture unexpectedly matched"),
+        }
+    }
+
     fn expected_frontier_for_selector(selector: u8) -> Result<usize, V6TranscriptError> {
         let body = zero_body(0);
         let wire = V6OneFoldWire::parse(&body, 0, 0).unwrap();
@@ -1272,6 +1294,75 @@ mod tests {
         assert_eq!(
             u16::from_le_bytes([V6_PROFILE_BINDING[24], V6_PROFILE_BINDING[25]]),
             641
+        );
+    }
+
+    #[test]
+    fn typed_v7_hiding_context_preserves_atomic_wrapper_and_separates_pool_variants() {
+        let context = context();
+        let verify_typed = |hiding_context| {
+            let frontier = expected_v7_frontier_with_hiding_context(hiding_context).unwrap();
+            let body = v7_zero_body(frontier);
+            let wire = V7CompactOneFoldWire::parse(&body, frontier).unwrap();
+            verify_v7_compact_transcript_and_relation_prepared_with_hiding_context(
+                test_hash,
+                &wire,
+                &context,
+                hiding_context,
+                &[0u8; 64],
+                &[u16::MAX],
+                false,
+                |_| true,
+                |_| Ok(zero_query_batch()),
+            )
+            .unwrap()
+        };
+        let atomic =
+            StateOnlyHidingContext::atomic_spend_v3(context.statement_digest, context.attempt_id);
+        let atomic_frontier = expected_v7_frontier().unwrap();
+        let atomic_body = v7_zero_body(atomic_frontier);
+        let atomic_wire = V7CompactOneFoldWire::parse(&atomic_body, atomic_frontier).unwrap();
+        let wrapped = verify_v7_compact_transcript_and_relation_prepared(
+            test_hash,
+            &atomic_wire,
+            &context,
+            &[0u8; 64],
+            &[u16::MAX],
+            false,
+            |_| true,
+            |_| Ok(zero_query_batch()),
+        )
+        .unwrap();
+        let typed_atomic = verify_typed(atomic);
+        assert_eq!(wrapped.gamma, typed_atomic.gamma);
+        assert_eq!(wrapped.kappa, typed_atomic.kappa);
+        assert_eq!(wrapped.alpha, typed_atomic.alpha);
+        assert_eq!(wrapped.queries, typed_atomic.queries);
+        assert_eq!(wrapped.selector, typed_atomic.selector);
+        assert_eq!(wrapped.compact_counter, typed_atomic.compact_counter);
+        assert_eq!(wrapped.frontier_nodes, typed_atomic.frontier_nodes);
+        assert_eq!(wrapped.semantic_point, typed_atomic.semantic_point);
+        assert_eq!(
+            wrapped.query_batch_challenge,
+            typed_atomic.query_batch_challenge,
+        );
+        assert_eq!(wrapped.folded_query_sum, typed_atomic.folded_query_sum);
+        assert_eq!(
+            wrapped.transcript_state_after_queries,
+            typed_atomic.transcript_state_after_queries,
+        );
+
+        let transfer = verify_typed(StateOnlyHidingContext::pool_v1_private_transfer(
+            context.statement_digest,
+            context.attempt_id,
+        ));
+        let withdrawal = verify_typed(StateOnlyHidingContext::pool_v1_withdrawal(
+            context.statement_digest,
+            context.attempt_id,
+        ));
+        assert_ne!(
+            transfer.transcript_state_after_queries,
+            withdrawal.transcript_state_after_queries,
         );
     }
 
