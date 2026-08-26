@@ -3,13 +3,18 @@
 //!
 //! This module performs no transport and does not infer finality. Both inputs
 //! must already have been produced by their exact, startup-pinned two-provider
-//! agreement layers. A finalized failed transaction remains a separate ABI
-//! boundary and is never converted into a blockhash-expiry observation.
+//! agreement layers. A finalized failed transaction is joined into its own
+//! sealed capability and is never converted into blockhash expiry.
 
 use crate::{
-    operator_execution::{RelayerFinalizedObservationV1, RelayerSignatureObservationV1},
+    operator_execution::{
+        RelayerFinalizedFailureObservationV1, RelayerFinalizedObservationV1,
+        RelayerSignatureObservationV1,
+    },
     operator_startup::{provider_set_digest_v1, OperatorStartupReceiptV1},
     relayer_rpc_composition::RelayerFinalizedStatusHintV1,
+    relayer_rpc_json::SignatureStatusesRequestV1,
+    relayer_rpc_quorum::{request_binding_digest_v1, RelayerRpcEndpointV1},
     rpc_json::RpcJsonErrorV1,
     rpc_json_quorum::{AgreedFinalizedBlockIngestV1, AgreedFinalizedRpcJsonPlanV1},
 };
@@ -24,6 +29,9 @@ pub enum RelayerFinalityJoinErrorV1 {
     RequestedLandedSlotMismatch,
     StatusContextBeforeLanded,
     FinalizedFailureJoinRequired,
+    FinalizedSuccessJoinRequired,
+    TransactionOutcomeMismatch,
+    FailedIngestMismatch,
     TransactionExecution(RpcJsonErrorV1),
     ExecutionPointMismatch,
 }
@@ -46,6 +54,82 @@ pub fn join_successful_relayer_finality_v1(
     plan: &AgreedFinalizedRpcJsonPlanV1,
     ingest: AgreedFinalizedBlockIngestV1,
 ) -> Result<RelayerSignatureObservationV1, RelayerFinalityJoinErrorV1> {
+    let (expected_provider_set_digest, root_request_binding_sha256) =
+        validate_common_finality_join_v1(startup, hint, plan, &ingest)?;
+    if !hint.succeeded() {
+        return Err(RelayerFinalityJoinErrorV1::FinalizedFailureJoinRequired);
+    }
+
+    let execution = plan
+        .plan()
+        .transaction_execution_v1(*hint.transaction_signature())?;
+    if execution.point().slot() != hint.landed_slot()
+        || execution.transaction_signature() != hint.transaction_signature()
+    {
+        return Err(RelayerFinalityJoinErrorV1::ExecutionPointMismatch);
+    }
+
+    Ok(RelayerSignatureObservationV1::Finalized(
+        RelayerFinalizedObservationV1::from_agreed_finality_v1(
+            execution,
+            ingest.into_result(),
+            expected_provider_set_digest,
+            *hint.execution_result_sha256(),
+            *plan.block_request_binding_sha256(),
+            root_request_binding_sha256,
+        ),
+    ))
+}
+
+/// Join one failed finalized signature-status hint to the exact failed
+/// transaction in the agreed block and the authenticated ingest result from
+/// that same block. The returned sealed capability can only become the
+/// journal's landed `FinalizedFailure` outcome; it is never treated as expiry.
+pub fn join_failed_relayer_finality_v1(
+    startup: &OperatorStartupReceiptV1,
+    hint: RelayerFinalizedStatusHintV1,
+    plan: &AgreedFinalizedRpcJsonPlanV1,
+    ingest: AgreedFinalizedBlockIngestV1,
+) -> Result<RelayerSignatureObservationV1, RelayerFinalityJoinErrorV1> {
+    let (expected_provider_set_digest, root_request_binding_sha256) =
+        validate_common_finality_join_v1(startup, hint, plan, &ingest)?;
+    if hint.succeeded() {
+        return Err(RelayerFinalityJoinErrorV1::FinalizedSuccessJoinRequired);
+    }
+
+    let transaction = plan
+        .plan()
+        .transaction_observation_v1(*hint.transaction_signature())?;
+    if transaction.succeeded() {
+        return Err(RelayerFinalityJoinErrorV1::TransactionOutcomeMismatch);
+    }
+    if transaction.point().slot() != hint.landed_slot()
+        || transaction.transaction_signature() != hint.transaction_signature()
+    {
+        return Err(RelayerFinalityJoinErrorV1::ExecutionPointMismatch);
+    }
+    if ingest.result().ignored_failed_pool_transactions() == 0 {
+        return Err(RelayerFinalityJoinErrorV1::FailedIngestMismatch);
+    }
+
+    Ok(RelayerSignatureObservationV1::FinalizedFailure(
+        RelayerFinalizedFailureObservationV1::from_agreed_finality_v1(
+            transaction,
+            ingest.into_result(),
+            expected_provider_set_digest,
+            *hint.execution_result_sha256(),
+            *plan.block_request_binding_sha256(),
+            root_request_binding_sha256,
+        ),
+    ))
+}
+
+fn validate_common_finality_join_v1(
+    startup: &OperatorStartupReceiptV1,
+    hint: RelayerFinalizedStatusHintV1,
+    plan: &AgreedFinalizedRpcJsonPlanV1,
+    ingest: &AgreedFinalizedBlockIngestV1,
+) -> Result<([u8; 32], Option<[u8; 32]>), RelayerFinalityJoinErrorV1> {
     if startup.receipt_digest() == &[0u8; 32]
         || startup.receipt_digest() != hint.startup_receipt_digest()
         || startup.receipt_digest() != plan.startup_receipt_digest()
@@ -68,6 +152,19 @@ pub fn join_successful_relayer_finality_v1(
     if hint.status_request_id() == 0
         || hint.status_request_binding_sha256() == &[0u8; 32]
         || hint.execution_result_sha256() == &[0u8; 32]
+    {
+        return Err(RelayerFinalityJoinErrorV1::InvalidStatusEvidence);
+    }
+    let status_request =
+        SignatureStatusesRequestV1::new(hint.status_request_id(), *hint.transaction_signature())
+            .map_err(|_| RelayerFinalityJoinErrorV1::InvalidStatusEvidence)?;
+    if hint.status_request_binding_sha256()
+        != &request_binding_digest_v1(
+            RelayerRpcEndpointV1::SignatureStatuses,
+            hint.status_request_id(),
+            None,
+            &status_request.encode_json_v1(),
+        )
     {
         return Err(RelayerFinalityJoinErrorV1::InvalidStatusEvidence);
     }
@@ -94,29 +191,7 @@ pub fn join_successful_relayer_finality_v1(
     if hint.context_slot() < hint.landed_slot() {
         return Err(RelayerFinalityJoinErrorV1::StatusContextBeforeLanded);
     }
-    if !hint.succeeded() {
-        return Err(RelayerFinalityJoinErrorV1::FinalizedFailureJoinRequired);
-    }
-
-    let execution = plan
-        .plan()
-        .transaction_execution_v1(*hint.transaction_signature())?;
-    if execution.point().slot() != hint.landed_slot()
-        || execution.transaction_signature() != hint.transaction_signature()
-    {
-        return Err(RelayerFinalityJoinErrorV1::ExecutionPointMismatch);
-    }
-
-    Ok(RelayerSignatureObservationV1::Finalized(
-        RelayerFinalizedObservationV1::from_agreed_finality_v1(
-            execution,
-            ingest.into_result(),
-            expected_provider_set_digest,
-            *hint.execution_result_sha256(),
-            *plan.block_request_binding_sha256(),
-            root_request_binding_sha256,
-        ),
-    ))
+    Ok((expected_provider_set_digest, root_request_binding_sha256))
 }
 
 #[cfg(test)]
@@ -238,7 +313,24 @@ mod tests {
         .unwrap()
     }
 
-    fn block_response_v1(request_id: u64, signature: [u8; 64]) -> Vec<u8> {
+    fn block_response_v1(
+        request_id: u64,
+        signature: [u8; 64],
+        succeeded: bool,
+        fee_lamports: u64,
+        compute_units_consumed: u64,
+    ) -> Vec<u8> {
+        let program_key = if succeeded { [0x71; 32] } else { [0x91; 32] };
+        let instructions = if succeeded {
+            Vec::new()
+        } else {
+            vec![json!({"programIdIndex": 0, "accounts": [], "data": "1"})]
+        };
+        let error = if succeeded {
+            serde_json::Value::Null
+        } else {
+            json!({"InstructionError": [0, {"Custom": 0x1771}]})
+        };
         response_v1(
             request_id,
             json!({
@@ -254,17 +346,17 @@ mod tests {
                                 "numReadonlySignedAccounts": 0,
                                 "numReadonlyUnsignedAccounts": 0
                             },
-                            "accountKeys": [encode_base58(&[0x71; 32])],
+                            "accountKeys": [encode_base58(&program_key)],
                             "recentBlockhash": encode_base58(&[0x72; 32]),
-                            "instructions": [],
+                            "instructions": instructions,
                             "addressTableLookups": []
                         }
                     },
                     "meta": {
-                        "err": null,
+                        "err": error,
                         "loadedAddresses": {"writable": [], "readonly": []},
-                        "fee": 5_000,
-                        "computeUnitsConsumed": 777
+                        "fee": fee_lamports,
+                        "computeUnitsConsumed": compute_units_consumed
                     },
                     "version": 0
                 }],
@@ -292,10 +384,38 @@ mod tests {
         AgreedFinalizedRpcJsonPlanV1,
         AgreedFinalizedBlockIngestV1,
     ) {
+        agreed_block_outcome_v1(
+            block_request_id,
+            block_slot,
+            block_signature,
+            true,
+            5_000,
+            777,
+        )
+    }
+
+    fn agreed_block_outcome_v1(
+        block_request_id: u64,
+        block_slot: u64,
+        block_signature: [u8; 64],
+        succeeded: bool,
+        fee_lamports: u64,
+        compute_units_consumed: u64,
+    ) -> (
+        OperatorStartupReceiptV1,
+        AgreedFinalizedRpcJsonPlanV1,
+        AgreedFinalizedBlockIngestV1,
+    ) {
         let (mut state, binding, viewing, startup, quorum) = fixture();
         let request = FinalizedGetBlockRequestV1::new(block_request_id, block_slot).unwrap();
         let request_json = request.encode_json_v1();
-        let response = block_response_v1(block_request_id, block_signature);
+        let response = block_response_v1(
+            block_request_id,
+            block_signature,
+            succeeded,
+            fee_lamports,
+            compute_units_consumed,
+        );
         let agreed = agree_finalized_get_block_plan_v1(
             &quorum,
             &state,
@@ -405,6 +525,17 @@ mod tests {
         );
 
         let (_, _, ingest) = agreed_block_v1(41, LANDED_SLOT, SIGNATURE);
+        let wrong_provider = OperatorStartupReceiptV1::test_only_v1(
+            *startup.receipt_digest(),
+            [0x98; 32],
+            startup.checkpoint(),
+        );
+        assert_eq!(
+            join_successful_relayer_finality_v1(&wrong_provider, hint, &plan, ingest).err(),
+            Some(RelayerFinalityJoinErrorV1::ProviderSetMismatch)
+        );
+
+        let (_, _, ingest) = agreed_block_v1(41, LANDED_SLOT, SIGNATURE);
         let wrong_slot_hint = finalized_hint_v1(&startup, SIGNATURE, LANDED_SLOT + 1, true);
         assert_eq!(
             join_successful_relayer_finality_v1(&startup, wrong_slot_hint, &plan, ingest).err(),
@@ -434,6 +565,138 @@ mod tests {
         assert_eq!(
             join_successful_relayer_finality_v1(&startup, failed_hint, &plan, ingest).err(),
             Some(RelayerFinalityJoinErrorV1::FinalizedFailureJoinRequired)
+        );
+    }
+
+    #[test]
+    fn exact_failed_finality_join_returns_sealed_landed_failure_observation() {
+        let (startup, plan, ingest) =
+            agreed_block_outcome_v1(51, LANDED_SLOT, SIGNATURE, false, 5_000, 777);
+        assert_eq!(ingest.result().ignored_failed_pool_transactions(), 1);
+        let hint = finalized_hint_v1(&startup, SIGNATURE, LANDED_SLOT, false);
+        let status_evidence = *hint.execution_result_sha256();
+        let block_binding = *plan.block_request_binding_sha256();
+        match join_failed_relayer_finality_v1(&startup, hint, &plan, ingest).unwrap() {
+            RelayerSignatureObservationV1::FinalizedFailure(observation) => {
+                assert!(!observation.transaction().succeeded());
+                assert_eq!(observation.transaction().point().slot(), LANDED_SLOT);
+                assert_eq!(
+                    observation.transaction().transaction_signature(),
+                    &SIGNATURE
+                );
+                assert_eq!(observation.transaction().fee_lamports(), 5_000);
+                assert_eq!(observation.transaction().compute_units_consumed(), 777);
+                assert_eq!(
+                    observation.provider_set_digest(),
+                    startup.provider_set_digest()
+                );
+                assert_eq!(observation.status_evidence_sha256(), &status_evidence);
+                assert_eq!(observation.block_request_binding_sha256(), &block_binding);
+                assert!(observation.root_request_binding_sha256().is_none());
+                assert_eq!(
+                    observation
+                        .indexed_pool()
+                        .ignored_failed_pool_transactions(),
+                    1
+                );
+            }
+            _ => panic!("failed join must return a landed finalized-failure observation"),
+        }
+    }
+
+    #[test]
+    fn failed_join_rejects_success_cross_use_signature_slot_and_binding_mismatches() {
+        let (startup, failed_plan, _) =
+            agreed_block_outcome_v1(51, LANDED_SLOT, SIGNATURE, false, 5_000, 777);
+
+        let (_, _, failed_ingest) =
+            agreed_block_outcome_v1(51, LANDED_SLOT, SIGNATURE, false, 5_000, 777);
+        let success_hint = finalized_hint_v1(&startup, SIGNATURE, LANDED_SLOT, true);
+        assert_eq!(
+            join_failed_relayer_finality_v1(&startup, success_hint, &failed_plan, failed_ingest,)
+                .err(),
+            Some(RelayerFinalityJoinErrorV1::FinalizedSuccessJoinRequired)
+        );
+
+        let (_, success_plan, success_ingest) = agreed_block_v1(52, LANDED_SLOT, SIGNATURE);
+        let failed_hint = finalized_hint_v1(&startup, SIGNATURE, LANDED_SLOT, false);
+        assert_eq!(
+            join_failed_relayer_finality_v1(&startup, failed_hint, &success_plan, success_ingest,)
+                .err(),
+            Some(RelayerFinalityJoinErrorV1::TransactionOutcomeMismatch)
+        );
+
+        let (_, _, failed_ingest) =
+            agreed_block_outcome_v1(51, LANDED_SLOT, SIGNATURE, false, 5_000, 777);
+        assert_eq!(
+            join_successful_relayer_finality_v1(
+                &startup,
+                success_hint,
+                &failed_plan,
+                failed_ingest,
+            )
+            .err(),
+            Some(RelayerFinalityJoinErrorV1::TransactionExecution(
+                RpcJsonErrorV1::TransactionFailed
+            ))
+        );
+
+        let (_, _, failed_ingest) =
+            agreed_block_outcome_v1(51, LANDED_SLOT, SIGNATURE, false, 5_000, 777);
+        let wrong_status_binding_hint = finalized_hint_v1(&startup, SIGNATURE, LANDED_SLOT, false)
+            .test_only_with_status_request_binding_v1([0x9a; 32]);
+        assert_eq!(
+            join_failed_relayer_finality_v1(
+                &startup,
+                wrong_status_binding_hint,
+                &failed_plan,
+                failed_ingest,
+            )
+            .err(),
+            Some(RelayerFinalityJoinErrorV1::InvalidStatusEvidence)
+        );
+
+        let (_, _, wrong_binding_ingest) =
+            agreed_block_outcome_v1(53, LANDED_SLOT, SIGNATURE, false, 5_000, 777);
+        assert_eq!(
+            join_failed_relayer_finality_v1(
+                &startup,
+                failed_hint,
+                &failed_plan,
+                wrong_binding_ingest,
+            )
+            .err(),
+            Some(RelayerFinalityJoinErrorV1::BlockRequestBindingMismatch)
+        );
+
+        let (_, _, failed_ingest) =
+            agreed_block_outcome_v1(51, LANDED_SLOT, SIGNATURE, false, 5_000, 777);
+        let wrong_slot_hint = finalized_hint_v1(&startup, SIGNATURE, LANDED_SLOT + 1, false);
+        assert_eq!(
+            join_failed_relayer_finality_v1(
+                &startup,
+                wrong_slot_hint,
+                &failed_plan,
+                failed_ingest,
+            )
+            .err(),
+            Some(RelayerFinalityJoinErrorV1::RequestedLandedSlotMismatch)
+        );
+
+        let (_, _, failed_ingest) =
+            agreed_block_outcome_v1(51, LANDED_SLOT, SIGNATURE, false, 5_000, 777);
+        let wrong_signature_hint = finalized_hint_v1(&startup, [0x56; 64], LANDED_SLOT, false);
+        assert_eq!(
+            join_failed_relayer_finality_v1(
+                &startup,
+                wrong_signature_hint,
+                &failed_plan,
+                failed_ingest,
+            )
+            .err(),
+            Some(RelayerFinalityJoinErrorV1::TransactionExecution(
+                RpcJsonErrorV1::TransactionNotFound
+            ))
         );
     }
 }

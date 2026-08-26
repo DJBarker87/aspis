@@ -176,6 +176,15 @@ impl RelayerFinalizedStatusHintV1 {
         self.context_slot = context_slot;
         self
     }
+
+    #[cfg(test)]
+    pub(crate) fn test_only_with_status_request_binding_v1(
+        mut self,
+        status_request_binding_sha256: [u8; 32],
+    ) -> Self {
+        self.status_request_binding_sha256 = status_request_binding_sha256;
+        self
+    }
 }
 
 /// A finalized signature status is deliberately not coordinator-ready until

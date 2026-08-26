@@ -17,14 +17,15 @@ use crate::{
         SolanaSdkSignedTransactionInspectorV1,
     },
     relayer_finalized_evidence::{
-        derive_relayer_finalized_evidence_v1, RelayerFinalizedEvidenceErrorV1,
+        derive_relayer_finalized_evidence_v1, derive_relayer_finalized_failure_evidence_v1,
+        RelayerFinalizedEvidenceErrorV1,
     },
     relayer_transaction::{
         assemble_exact_unsigned_relayer_message_v1, canonical_relayer_instruction_index_v1,
         validate_exact_relayer_transaction_v1, AuthenticatedAddressLookupTableV1,
         RelayerSignedTransactionArtifactV1, RelayerTransactionErrorV1,
     },
-    rpc_json::FinalizedTransactionExecutionV1,
+    rpc_json::{FinalizedTransactionExecutionV1, FinalizedTransactionObservationV1},
 };
 
 pub const RELAYER_TERMINAL_BLOCKHASH_EXPIRED_V1: u32 = 1;
@@ -76,6 +77,64 @@ impl RelayerFinalizedObservationV1 {
 
     pub fn execution(&self) -> FinalizedTransactionExecutionV1 {
         self.execution
+    }
+
+    pub fn indexed_pool(&self) -> &FinalizedBlockIngestResultV1 {
+        &self.indexed_pool
+    }
+
+    pub fn provider_set_digest(&self) -> &[u8; 32] {
+        &self.provider_set_digest
+    }
+
+    pub fn status_evidence_sha256(&self) -> &[u8; 32] {
+        &self.status_evidence_sha256
+    }
+
+    pub fn block_request_binding_sha256(&self) -> &[u8; 32] {
+        &self.block_request_binding_sha256
+    }
+
+    pub fn root_request_binding_sha256(&self) -> Option<&[u8; 32]> {
+        self.root_request_binding_sha256.as_ref()
+    }
+}
+
+pub struct RelayerFinalizedFailureObservationV1 {
+    /// Exact fee/CU/signature/result metadata retained from the failed
+    /// transaction in the agreed finalized block response.
+    transaction: FinalizedTransactionObservationV1,
+    /// Authenticated ingest result from that same agreed block. The failure
+    /// derivation requires the indexer to have ignored the failed Pool
+    /// transaction and emitted no lifecycle evidence for this signature.
+    indexed_pool: FinalizedBlockIngestResultV1,
+    provider_set_digest: [u8; 32],
+    status_evidence_sha256: [u8; 32],
+    block_request_binding_sha256: [u8; 32],
+    root_request_binding_sha256: Option<[u8; 32]>,
+}
+
+impl RelayerFinalizedFailureObservationV1 {
+    pub(crate) fn from_agreed_finality_v1(
+        transaction: FinalizedTransactionObservationV1,
+        indexed_pool: FinalizedBlockIngestResultV1,
+        provider_set_digest: [u8; 32],
+        status_evidence_sha256: [u8; 32],
+        block_request_binding_sha256: [u8; 32],
+        root_request_binding_sha256: Option<[u8; 32]>,
+    ) -> Self {
+        Self {
+            transaction,
+            indexed_pool,
+            provider_set_digest,
+            status_evidence_sha256,
+            block_request_binding_sha256,
+            root_request_binding_sha256,
+        }
+    }
+
+    pub fn transaction(&self) -> FinalizedTransactionObservationV1 {
+        self.transaction
     }
 
     pub fn indexed_pool(&self) -> &FinalizedBlockIngestResultV1 {
@@ -158,6 +217,10 @@ pub enum RelayerSignatureObservationV1 {
     /// the pinned providers. The coordinator derives the journal outcome; the
     /// runtime cannot provide an unchecked poststate digest.
     Finalized(RelayerFinalizedObservationV1),
+    /// The exact signed transaction landed at finalized commitment but its
+    /// Solana execution failed. This is a durable landed-failure outcome, not
+    /// blockhash expiry and not a resubmission signal.
+    FinalizedFailure(RelayerFinalizedFailureObservationV1),
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -418,6 +481,26 @@ pub fn advance_relayer_execution_v1<R: RelayerExecutionPortV1>(
             .map_err(RelayerOperatorExecutionErrorV1::FinalizedEvidence)?;
             journal
                 .record_finalized_v1(request_id, signed.transaction_signature, finalized)
+                .map_err(RelayerOperatorExecutionErrorV1::Journal)?;
+            Ok(RelayerExecutionStepV1::FinalOutcomeRecorded)
+        }
+        RelayerSignatureObservationV1::FinalizedFailure(observation) => {
+            validate_provider_set_v1(startup, *observation.provider_set_digest())?;
+            if observation.transaction().transaction_signature() != &signed.transaction_signature {
+                return Err(RelayerOperatorExecutionErrorV1::InvalidRuntimeEvidence);
+            }
+            let failed = derive_relayer_finalized_failure_evidence_v1(
+                &entry.plan,
+                observation.transaction(),
+                observation.indexed_pool(),
+                *observation.provider_set_digest(),
+                *observation.status_evidence_sha256(),
+                *observation.block_request_binding_sha256(),
+                observation.root_request_binding_sha256().copied(),
+            )
+            .map_err(RelayerOperatorExecutionErrorV1::FinalizedEvidence)?;
+            journal
+                .record_finalized_failure_v1(request_id, signed.transaction_signature, failed)
                 .map_err(RelayerOperatorExecutionErrorV1::Journal)?;
             Ok(RelayerExecutionStepV1::FinalOutcomeRecorded)
         }
@@ -991,6 +1074,220 @@ mod tests {
         assert_eq!(
             record.outcome,
             Some(RelayerExecutionOutcomeV1::Finalized(finalized))
+        );
+    }
+
+    #[test]
+    fn finalized_failure_restarts_to_normal_completion_and_rejects_fee_cu_mismatch() {
+        let directory = TestDirectory::new();
+        let queue_path = directory.0.join("failed-queue.state");
+        let journal_path = directory.0.join("failed-execution.state");
+        let fee_payer = Keypair::new();
+        let source_authority = Keypair::new();
+        let (plan, policy, startup, context) =
+            fixture(fee_payer.pubkey(), source_authority.pubkey());
+        let request_id = plan.request_id;
+        {
+            let mut queue = DurableRelayerStateV1::open_or_create_v1(&queue_path, policy).unwrap();
+            queue
+                .admit_and_enqueue_v1(
+                    policy,
+                    context.now_slot,
+                    context.estimated_fee_lamports,
+                    context.fee_payer_balance_lamports,
+                    &plan,
+                )
+                .unwrap();
+        }
+
+        let recent_blockhash = Hash::new_from_array([0x39; 32]);
+        let instructions = [
+            ComputeBudgetInstruction::set_compute_unit_limit(1_400_000),
+            plan.instruction.clone(),
+        ];
+        let message = VersionedMessage::Legacy(legacy::Message::new_with_blockhash(
+            &instructions,
+            Some(&plan.fee_payer),
+            &recent_blockhash,
+        ));
+        let exact_unsigned_message = message.serialize();
+        let transaction =
+            VersionedTransaction::try_new(message, &[&fee_payer, &source_authority]).unwrap();
+        let signature = *transaction.signatures[0].as_array();
+        let signed_wire = bincode::serialize(&transaction).unwrap();
+        let signed = RelayerSignedTransactionArtifactV1 {
+            signed_wire: signed_wire.clone(),
+            lookup_tables: Vec::new(),
+        };
+        let simulation = RelayerSimulationEvidenceV1 {
+            simulated_at_slot: 901,
+            recent_blockhash: [0x39; 32],
+            last_valid_block_height: 500,
+            fee_payer: plan.fee_payer.to_bytes(),
+            unsigned_message_sha256: Sha256::digest(&exact_unsigned_message).into(),
+            simulation_result_sha256: [0xa1; 32],
+            simulation_accounts_sha256: relayer_simulation_accounts_sha256_v1(
+                &plan,
+                901,
+                *startup.provider_set_digest(),
+                &[],
+            )
+            .unwrap(),
+            startup_receipt_digest: *startup.receipt_digest(),
+            compute_unit_limit: 1_400_000,
+            compute_unit_price_micro_lamports: 0,
+            compute_units_consumed: 1_200_000,
+            estimated_fee_lamports: context.estimated_fee_lamports,
+        };
+        let point = FinalizedChainPointV1::new(903, [0xc1; 32]).unwrap();
+        let failed_ingest = || FinalizedBlockIngestResultV1 {
+            advance: FinalizedBlockAdvanceV1::Advanced,
+            rollback: None,
+            deposit_event_ids: Vec::new(),
+            deposit_outcomes: Vec::new(),
+            transition_outcomes: Vec::new(),
+            transition_evidence: Vec::new(),
+            initializations: Vec::new(),
+            append_evidence: Vec::new(),
+            prepared_settlements: Vec::new(),
+            cancelled_settlements: Vec::new(),
+            plan_lifecycle: Vec::new(),
+            root_evidence: Vec::new(),
+            ignored_failed_pool_transactions: 1,
+        };
+        let failed_observation = |fee_lamports, compute_units_consumed, status_digest| {
+            RelayerSignatureObservationV1::FinalizedFailure(
+                RelayerFinalizedFailureObservationV1::from_agreed_finality_v1(
+                    FinalizedTransactionObservationV1::test_only_v1(
+                        point,
+                        signature,
+                        false,
+                        fee_lamports,
+                        compute_units_consumed,
+                    ),
+                    failed_ingest(),
+                    *startup.provider_set_digest(),
+                    status_digest,
+                    [0xc3; 32],
+                    Some([0xc4; 32]),
+                ),
+            )
+        };
+        let valid_transaction = FinalizedTransactionObservationV1::test_only_v1(
+            point,
+            signature,
+            false,
+            context.estimated_fee_lamports,
+            simulation.compute_units_consumed,
+        );
+        let expected = derive_relayer_finalized_failure_evidence_v1(
+            &plan,
+            valid_transaction,
+            &failed_ingest(),
+            *startup.provider_set_digest(),
+            [0xc2; 32],
+            [0xc3; 32],
+            Some([0xc4; 32]),
+        )
+        .unwrap();
+        let mut runtime = Runtime {
+            simulation,
+            signed,
+            observations: VecDeque::from([
+                RelayerSignatureObservationV1::NotFound(
+                    RelayerNotFoundObservationV1::from_agreed_status_v1(
+                        450,
+                        [0xc0; 32],
+                        *startup.provider_set_digest(),
+                    ),
+                ),
+                failed_observation(
+                    context.estimated_fee_lamports - 1,
+                    simulation.compute_units_consumed,
+                    [0xd1; 32],
+                ),
+                failed_observation(
+                    context.estimated_fee_lamports,
+                    u64::from(simulation.compute_unit_limit) + 1,
+                    [0xd2; 32],
+                ),
+                failed_observation(
+                    context.estimated_fee_lamports,
+                    simulation.compute_units_consumed,
+                    [0xc2; 32],
+                ),
+            ]),
+            signed_messages: Vec::new(),
+            submitted_wires: Vec::new(),
+        };
+
+        for expected_step in [
+            RelayerExecutionStepV1::InflightMarked,
+            RelayerExecutionStepV1::SimulationRecorded,
+            RelayerExecutionStepV1::SignedWireRecorded,
+            RelayerExecutionStepV1::Submitted,
+        ] {
+            assert_eq!(
+                advance_after_restart(
+                    &queue_path,
+                    &journal_path,
+                    policy,
+                    context,
+                    request_id,
+                    &startup,
+                    &mut runtime,
+                )
+                .unwrap(),
+                expected_step
+            );
+        }
+
+        for _ in 0..2 {
+            assert_eq!(
+                advance_after_restart(
+                    &queue_path,
+                    &journal_path,
+                    policy,
+                    context,
+                    request_id,
+                    &startup,
+                    &mut runtime,
+                ),
+                Err(RelayerOperatorExecutionErrorV1::Journal(
+                    RelayerExecutionJournalErrorV1::OutcomeMismatch
+                ))
+            );
+            let journal =
+                DurableRelayerExecutionJournalV1::open_or_create_v1(&journal_path).unwrap();
+            assert!(journal.record_v1(request_id).unwrap().outcome.is_none());
+        }
+
+        for expected_step in [
+            RelayerExecutionStepV1::FinalOutcomeRecorded,
+            RelayerExecutionStepV1::QueueCompleted,
+            RelayerExecutionStepV1::AlreadyCompleted,
+        ] {
+            assert_eq!(
+                advance_after_restart(
+                    &queue_path,
+                    &journal_path,
+                    policy,
+                    context,
+                    request_id,
+                    &startup,
+                    &mut runtime,
+                )
+                .unwrap(),
+                expected_step
+            );
+        }
+        assert_eq!(runtime.submitted_wires, vec![signed_wire]);
+        assert_eq!(runtime.signed_messages, vec![exact_unsigned_message]);
+
+        let journal = DurableRelayerExecutionJournalV1::open_or_create_v1(&journal_path).unwrap();
+        assert_eq!(
+            journal.record_v1(request_id).unwrap().outcome,
+            Some(RelayerExecutionOutcomeV1::FinalizedFailure(expected))
         );
     }
 }

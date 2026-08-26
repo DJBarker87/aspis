@@ -1,22 +1,26 @@
 //! Correlation of relayer finality with the authenticated finalized indexer.
 //!
 //! Signature status is only a liveness hint. A successful journal outcome is
-//! derived here from the exact primary signature in a finalized `getBlock`,
-//! its fee/CU metadata, and exactly one authenticated Pool lifecycle effect.
+//! derived from the exact finalized transaction and authenticated Pool
+//! lifecycle effect; a landed execution failure is derived separately from
+//! the exact failed transaction plus the indexer's failed-Pool fact.
 
 use aspis_pool::instruction::{encode_initialization_receipt_v1, encode_transition_receipt_v1};
 use aspis_statement::pool_v1::PoolV1TransitionKind;
 use sha2::{Digest as _, Sha256};
 
 use crate::{
-    finalized_indexer::{FinalizedBlockIngestResultV1, FinalizedTransitionEvidenceV1},
+    finalized_indexer::{
+        FinalizedBlockIngestResultV1, FinalizedPreparedSettlementLifecycleV1,
+        FinalizedTransitionEvidenceV1,
+    },
     pool_transport::{
         AuthenticatedCancelledSettlementV1, AuthenticatedInitializationV1,
         AuthenticatedPreparedSettlementPlanIdentityV1, AuthenticatedPreparedSettlementV1,
     },
     relayer::{RelayerPlanV1, RelayerRequestKindV1},
-    relayer_execution_journal::RelayerFinalizedEvidenceV1,
-    rpc_json::FinalizedTransactionExecutionV1,
+    relayer_execution_journal::{RelayerFinalizedEvidenceV1, RelayerFinalizedFailureEvidenceV1},
+    rpc_json::{FinalizedTransactionExecutionV1, FinalizedTransactionObservationV1},
     scan_state::DepositEventIdV1,
 };
 
@@ -24,6 +28,8 @@ pub const RELAYER_EXECUTION_RESULT_DOMAIN_V1: &[u8] =
     b"aspis:pool-v1:relayer-finalized-execution-quorum-bound:sha256:v1";
 pub const RELAYER_POSTSTATE_DOMAIN_V1: &[u8] =
     b"aspis:pool-v1:relayer-authenticated-poststate:sha256:v1";
+pub const RELAYER_FAILURE_RESULT_DOMAIN_V1: &[u8] =
+    b"aspis:pool-v1:relayer-finalized-failure-quorum-bound:sha256:v1";
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum RelayerFinalizedEvidenceErrorV1 {
@@ -31,6 +37,9 @@ pub enum RelayerFinalizedEvidenceErrorV1 {
     ZeroStatusEvidenceDigest,
     ZeroBlockRequestBinding,
     ZeroRootRequestBinding,
+    ExpectedFailedTransaction,
+    MissingFailedIngestEvidence,
+    UnexpectedFailedLifecycleEvidence,
     MissingLifecycleEvidence,
     MultipleLifecycleEvidence,
     WrongLifecycleEvidence,
@@ -38,6 +47,63 @@ pub enum RelayerFinalizedEvidenceErrorV1 {
     WrongPreparedPlan,
     WrongAuthenticatedTransport,
     CountOverflow,
+}
+
+/// Derive the durable evidence for a transaction that landed in the agreed
+/// finalized block but whose Solana execution failed. This path deliberately
+/// carries no successful Pool poststate: the authenticated indexer must have
+/// ignored at least one failed Pool transaction and must not have emitted any
+/// lifecycle evidence for this exact signature and point.
+pub fn derive_relayer_finalized_failure_evidence_v1(
+    plan: &RelayerPlanV1,
+    observation: FinalizedTransactionObservationV1,
+    result: &FinalizedBlockIngestResultV1,
+    provider_set_digest: [u8; 32],
+    status_evidence_sha256: [u8; 32],
+    block_request_binding_sha256: [u8; 32],
+    root_request_binding_sha256: Option<[u8; 32]>,
+) -> Result<RelayerFinalizedFailureEvidenceV1, RelayerFinalizedEvidenceErrorV1> {
+    validate_quorum_evidence_v1(
+        provider_set_digest,
+        status_evidence_sha256,
+        block_request_binding_sha256,
+        root_request_binding_sha256,
+    )?;
+    if observation.succeeded() {
+        return Err(RelayerFinalizedEvidenceErrorV1::ExpectedFailedTransaction);
+    }
+    if result.ignored_failed_pool_transactions() == 0 {
+        return Err(RelayerFinalizedEvidenceErrorV1::MissingFailedIngestEvidence);
+    }
+    if result_contains_lifecycle_for_observation_v1(result, observation) {
+        return Err(RelayerFinalizedEvidenceErrorV1::UnexpectedFailedLifecycleEvidence);
+    }
+    let ignored_failed_pool_transactions = u64::try_from(result.ignored_failed_pool_transactions())
+        .map_err(|_| RelayerFinalizedEvidenceErrorV1::CountOverflow)?;
+
+    let mut failure = Sha256::new();
+    failure.update(RELAYER_FAILURE_RESULT_DOMAIN_V1);
+    failure.update(plan.request_id);
+    failure.update([request_kind_byte_v1(plan.kind)]);
+    hash_exact_plan_v1(&mut failure, plan)?;
+    failure.update(observation.point().slot().to_le_bytes());
+    failure.update(observation.point().block_hash());
+    failure.update(observation.transaction_signature());
+    failure.update(observation.fee_lamports().to_le_bytes());
+    failure.update(observation.compute_units_consumed().to_le_bytes());
+    failure.update(provider_set_digest);
+    failure.update(status_evidence_sha256);
+    failure.update(block_request_binding_sha256);
+    hash_optional_request_binding_v1(&mut failure, root_request_binding_sha256);
+    failure.update(ignored_failed_pool_transactions.to_le_bytes());
+
+    Ok(RelayerFinalizedFailureEvidenceV1 {
+        point: observation.point(),
+        fee_lamports: observation.fee_lamports(),
+        compute_units_consumed: observation.compute_units_consumed(),
+        failure_evidence_sha256: failure.finalize().into(),
+        provider_set_digest,
+    })
 }
 
 pub fn derive_relayer_finalized_evidence_v1(
@@ -50,18 +116,12 @@ pub fn derive_relayer_finalized_evidence_v1(
     block_request_binding_sha256: [u8; 32],
     root_request_binding_sha256: Option<[u8; 32]>,
 ) -> Result<RelayerFinalizedEvidenceV1, RelayerFinalizedEvidenceErrorV1> {
-    if provider_set_digest == [0u8; 32] {
-        return Err(RelayerFinalizedEvidenceErrorV1::ZeroProviderSetDigest);
-    }
-    if status_evidence_sha256 == [0u8; 32] {
-        return Err(RelayerFinalizedEvidenceErrorV1::ZeroStatusEvidenceDigest);
-    }
-    if block_request_binding_sha256 == [0u8; 32] {
-        return Err(RelayerFinalizedEvidenceErrorV1::ZeroBlockRequestBinding);
-    }
-    if root_request_binding_sha256 == Some([0u8; 32]) {
-        return Err(RelayerFinalizedEvidenceErrorV1::ZeroRootRequestBinding);
-    }
+    validate_quorum_evidence_v1(
+        provider_set_digest,
+        status_evidence_sha256,
+        block_request_binding_sha256,
+        root_request_binding_sha256,
+    )?;
     let mut poststate = Sha256::new();
     poststate.update(RELAYER_POSTSTATE_DOMAIN_V1);
     poststate.update(plan.request_id);
@@ -186,13 +246,7 @@ pub fn derive_relayer_finalized_evidence_v1(
     execution_result.update(provider_set_digest);
     execution_result.update(status_evidence_sha256);
     execution_result.update(block_request_binding_sha256);
-    match root_request_binding_sha256 {
-        None => execution_result.update([0u8]),
-        Some(root_request_binding_sha256) => {
-            execution_result.update([1u8]);
-            execution_result.update(root_request_binding_sha256);
-        }
-    }
+    hash_optional_request_binding_v1(&mut execution_result, root_request_binding_sha256);
     execution_result.update(poststate_sha256);
 
     Ok(RelayerFinalizedEvidenceV1 {
@@ -203,6 +257,81 @@ pub fn derive_relayer_finalized_evidence_v1(
         poststate_sha256,
         provider_set_digest,
     })
+}
+
+fn validate_quorum_evidence_v1(
+    provider_set_digest: [u8; 32],
+    status_evidence_sha256: [u8; 32],
+    block_request_binding_sha256: [u8; 32],
+    root_request_binding_sha256: Option<[u8; 32]>,
+) -> Result<(), RelayerFinalizedEvidenceErrorV1> {
+    if provider_set_digest == [0u8; 32] {
+        return Err(RelayerFinalizedEvidenceErrorV1::ZeroProviderSetDigest);
+    }
+    if status_evidence_sha256 == [0u8; 32] {
+        return Err(RelayerFinalizedEvidenceErrorV1::ZeroStatusEvidenceDigest);
+    }
+    if block_request_binding_sha256 == [0u8; 32] {
+        return Err(RelayerFinalizedEvidenceErrorV1::ZeroBlockRequestBinding);
+    }
+    if root_request_binding_sha256 == Some([0u8; 32]) {
+        return Err(RelayerFinalizedEvidenceErrorV1::ZeroRootRequestBinding);
+    }
+    Ok(())
+}
+
+fn hash_optional_request_binding_v1(
+    hasher: &mut Sha256,
+    root_request_binding_sha256: Option<[u8; 32]>,
+) {
+    match root_request_binding_sha256 {
+        None => hasher.update([0u8]),
+        Some(root_request_binding_sha256) => {
+            hasher.update([1u8]);
+            hasher.update(root_request_binding_sha256);
+        }
+    }
+}
+
+fn result_contains_lifecycle_for_observation_v1(
+    result: &FinalizedBlockIngestResultV1,
+    observation: FinalizedTransactionObservationV1,
+) -> bool {
+    let matches = |id: &DepositEventIdV1| {
+        id.point() == observation.point()
+            && id.transaction_signature() == observation.transaction_signature()
+    };
+    result.deposit_event_ids().iter().any(matches)
+        || result
+            .transition_evidence()
+            .iter()
+            .flat_map(|transition| &transition.output_ids)
+            .any(matches)
+        || result
+            .initializations()
+            .iter()
+            .any(|value| matches(&value.id))
+        || result
+            .append_evidence()
+            .iter()
+            .any(|value| matches(&value.event_id))
+        || result
+            .prepared_settlements()
+            .iter()
+            .any(|value| matches(&value.id))
+        || result
+            .cancelled_settlements()
+            .iter()
+            .any(|value| matches(&value.id))
+        || result.plan_lifecycle().iter().any(|value| match value {
+            FinalizedPreparedSettlementLifecycleV1::Prepared(value) => matches(&value.id),
+            FinalizedPreparedSettlementLifecycleV1::Settled { id, .. } => matches(id),
+            FinalizedPreparedSettlementLifecycleV1::Cancelled(value) => matches(&value.id),
+        })
+        || result
+            .root_evidence()
+            .iter()
+            .any(|value| matches(&value.event_id))
 }
 
 fn exactly_one_v1<'a, T>(
@@ -656,6 +785,108 @@ mod tests {
                 Some([0u8; 32]),
             ),
             Err(RelayerFinalizedEvidenceErrorV1::ZeroRootRequestBinding)
+        );
+    }
+
+    #[test]
+    fn finalized_failure_digest_binds_plan_execution_quorum_and_failed_ingest() {
+        let failed_fixture = |succeeded, fee_lamports, compute_units_consumed, failed_count| {
+            let (plan, execution, mut result) = fixture();
+            result.initializations.clear();
+            result.ignored_failed_pool_transactions = failed_count;
+            let observation = FinalizedTransactionObservationV1::test_only_v1(
+                execution.point(),
+                *execution.transaction_signature(),
+                succeeded,
+                fee_lamports,
+                compute_units_consumed,
+            );
+            (plan, observation, result)
+        };
+        let (plan, observation, result) = failed_fixture(false, 5_000, 88_000, 1);
+        let evidence = derive_relayer_finalized_failure_evidence_v1(
+            &plan,
+            observation,
+            &result,
+            [0x71; 32],
+            [0x72; 32],
+            [0x73; 32],
+            None,
+        )
+        .unwrap();
+
+        let mut exact = Sha256::new();
+        exact.update(RELAYER_FAILURE_RESULT_DOMAIN_V1);
+        exact.update(plan.request_id);
+        exact.update([request_kind_byte_v1(plan.kind)]);
+        hash_exact_plan_v1(&mut exact, &plan).unwrap();
+        exact.update(observation.point().slot().to_le_bytes());
+        exact.update(observation.point().block_hash());
+        exact.update(observation.transaction_signature());
+        exact.update(observation.fee_lamports().to_le_bytes());
+        exact.update(observation.compute_units_consumed().to_le_bytes());
+        exact.update([0x71; 32]);
+        exact.update([0x72; 32]);
+        exact.update([0x73; 32]);
+        exact.update([0u8]);
+        exact.update(1u64.to_le_bytes());
+        let exact: [u8; 32] = exact.finalize().into();
+        assert_eq!(evidence.failure_evidence_sha256(), &exact);
+        assert_eq!(evidence.point(), observation.point());
+        assert_eq!(evidence.fee_lamports(), 5_000);
+        assert_eq!(evidence.compute_units_consumed(), 88_000);
+
+        let derive = |fee_lamports, compute_units_consumed, failed_count, root| {
+            let (plan, observation, result) =
+                failed_fixture(false, fee_lamports, compute_units_consumed, failed_count);
+            *derive_relayer_finalized_failure_evidence_v1(
+                &plan,
+                observation,
+                &result,
+                [0x71; 32],
+                [0x72; 32],
+                [0x73; 32],
+                root,
+            )
+            .unwrap()
+            .failure_evidence_sha256()
+        };
+        let baseline = *evidence.failure_evidence_sha256();
+        assert_ne!(baseline, derive(5_001, 88_000, 1, None));
+        assert_ne!(baseline, derive(5_000, 88_001, 1, None));
+        assert_ne!(baseline, derive(5_000, 88_000, 2, None));
+        assert_ne!(baseline, derive(5_000, 88_000, 1, Some([0x74; 32])));
+
+        let (plan, succeeded, result) = failed_fixture(true, 5_000, 88_000, 1);
+        assert_eq!(
+            derive_relayer_finalized_failure_evidence_v1(
+                &plan, succeeded, &result, [0x71; 32], [0x72; 32], [0x73; 32], None,
+            ),
+            Err(RelayerFinalizedEvidenceErrorV1::ExpectedFailedTransaction)
+        );
+
+        let (plan, failed, result) = failed_fixture(false, 5_000, 88_000, 0);
+        assert_eq!(
+            derive_relayer_finalized_failure_evidence_v1(
+                &plan, failed, &result, [0x71; 32], [0x72; 32], [0x73; 32], None,
+            ),
+            Err(RelayerFinalizedEvidenceErrorV1::MissingFailedIngestEvidence)
+        );
+
+        let (plan, execution, mut result) = fixture();
+        result.ignored_failed_pool_transactions = 1;
+        let failed = FinalizedTransactionObservationV1::test_only_v1(
+            execution.point(),
+            *execution.transaction_signature(),
+            false,
+            execution.fee_lamports(),
+            execution.compute_units_consumed(),
+        );
+        assert_eq!(
+            derive_relayer_finalized_failure_evidence_v1(
+                &plan, failed, &result, [0x71; 32], [0x72; 32], [0x73; 32], None,
+            ),
+            Err(RelayerFinalizedEvidenceErrorV1::UnexpectedFailedLifecycleEvidence)
         );
     }
 
