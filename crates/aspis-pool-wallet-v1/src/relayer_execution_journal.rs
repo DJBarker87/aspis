@@ -69,14 +69,40 @@ pub struct RelayerSubmissionEvidenceV1 {
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct RelayerFinalizedEvidenceV1 {
-    pub point: FinalizedChainPointV1,
-    pub fee_lamports: u64,
-    pub compute_units_consumed: u64,
+    pub(crate) point: FinalizedChainPointV1,
+    pub(crate) fee_lamports: u64,
+    pub(crate) compute_units_consumed: u64,
     /// Digest of the exact finalized RPC status/error object. A successful
     /// result still has a nonzero canonical digest.
-    pub execution_result_sha256: [u8; 32],
-    pub poststate_sha256: [u8; 32],
-    pub provider_set_digest: [u8; 32],
+    pub(crate) execution_result_sha256: [u8; 32],
+    pub(crate) poststate_sha256: [u8; 32],
+    pub(crate) provider_set_digest: [u8; 32],
+}
+
+impl RelayerFinalizedEvidenceV1 {
+    pub fn point(&self) -> FinalizedChainPointV1 {
+        self.point
+    }
+
+    pub fn fee_lamports(&self) -> u64 {
+        self.fee_lamports
+    }
+
+    pub fn compute_units_consumed(&self) -> u64 {
+        self.compute_units_consumed
+    }
+
+    pub fn execution_result_sha256(&self) -> &[u8; 32] {
+        &self.execution_result_sha256
+    }
+
+    pub fn poststate_sha256(&self) -> &[u8; 32] {
+        &self.poststate_sha256
+    }
+
+    pub fn provider_set_digest(&self) -> &[u8; 32] {
+        &self.provider_set_digest
+    }
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
