@@ -28,6 +28,7 @@ pub mod relayer_rpc_json;
 pub mod relayer_rpc_quorum;
 pub mod relayer_transaction;
 pub mod rpc_adapter;
+pub mod rpc_https_transport;
 pub mod rpc_json;
 pub mod rpc_json_quorum;
 pub mod rpc_wire;
