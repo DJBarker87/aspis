@@ -2,11 +2,12 @@
 
 ## Status and scope
 
-This checkpoint is a host-checked, crate-private kernel. It is **not** a public
-instruction, an SBF measurement, a LiteSVM lifecycle result, or a deployable
-settlement path. In particular, it does not create/allocate the plan PDA,
-persist any image, invoke the System or token programs, transfer a withdrawal,
-close/refund a plan, or emit return data.
+This checkpoint is a host-checked kernel plus public preparation instruction.
+It is **not** an SBF measurement, a LiteSVM lifecycle result, or a deployable
+final-settlement path. Preparation can create and persist the plan PDA(s) (and
+an empty rollover history page when needed), but it does not create a
+nullifier marker, mutate Pool/root-history state, invoke the token program,
+transfer a withdrawal, close/refund a plan, or emit an `ASTR` receipt.
 
 The purpose of the kernel is to move both depth-20 Poseidon append operations
 out of the final atomic transaction while preserving the exact direct Pool V1
@@ -15,20 +16,37 @@ authenticated plan; final apply uses SHA-256 and byte comparisons only.
 
 ## Canonical plan
 
-The `ASPS` V1 plan has one exact 18,192-byte representation. Its trailing
-domain-separated SHA-256 digest authenticates every preceding byte. The
-Pool-owned PDA is derived from:
+The `ASPS` V1 core has one exact **10,000-byte** representation. Bytes through
+offset 9,904 preserve the original authenticated fields and precomputed next
+Pool/current-page images. The final 96 bytes contain an optional rollover-shard
+address, its SHA-256 digest, and the core's domain-separated SHA-256 digest.
+The Pool-owned core PDA is derived from:
 
 ```text
 [b"aspis-settle-plan-v1", pool, statement_digest,
  source_sequence_le, plan_authority]
 ```
 
-The 18,192-byte monolith exceeds Solana's 10,240-byte per-instruction account
-data-increase limit. The next processor therefore cannot use the generic
-one-shot `create_or_allocate` path: it must use authenticated staged
-pending-plus-reallocation, or preferably two hash-bound shards each smaller
-than 10,240 bytes.
+When no rollover occurs, the shard address/digest are zero and supplying a
+shard is rejected. A rollover uses one exact **8,504-byte** `ASRS` account:
+16-byte header, core/program/Pool/statement/source-sequence/authority/next-page
+bindings, the exact 8,256-byte rollover-page image, and a domain-separated
+SHA-256 digest. Its PDA is derived from:
+
+```text
+[b"aspis-settle-roll-v1", core_plan_address]
+```
+
+The core authenticates the shard address/digest; the shard authenticates the
+core address and all transition-identity fields. Both account sizes are at or
+below Solana's 10,240-byte per-instruction account-data-increase limit, so each
+can use the Pool's one-shot signed PDA creator without staging or realloc.
+The builder allocates the 10,000-byte core first and writes the updated current
+history page directly into its final slice. It then allocates the optional
+8,504-byte shard and writes the rollover page directly into that final slice.
+No standalone 8,256-byte history-page staging buffers coexist with the two
+outputs; a compile-time bound places the owned output images below the default
+32 KiB SBF heap before runtime measurement.
 
 The nonzero `plan_authority` is also the only accepted close/refund authority.
 Including source sequence and authority prevents same-statement stale-plan
@@ -48,6 +66,28 @@ The authenticated body binds:
 - an activation/expiry interval.
 
 ## Preparation authorization
+
+The exact public `ASPP` instruction is a fixed 24-byte timing/kind header plus
+one byte-identical 432-byte canonical `ASPT` or `ASWD` spend instruction. The
+nested kind is checked rather than trusted. Its account layout is canonical:
+
+```text
+plan_authority/payer (signer,writable), Pool (writable),
+anchor page (read-only), [distinct current page (read-only)],
+[fresh rollover page (writable)], finalized ASRA (read-only),
+registry (read-only), entry (read-only), core plan PDA (writable),
+[rollover shard PDA (writable)], System Program (read-only executable)
+```
+
+The processor rejects trailing/missing accounts, every account alias, wrong
+owners, executable/signing data accounts, writable receipt/registry/history
+inputs, a non-system payer, and noncanonical PDA addresses. It takes one Clock
+slot, builds against the live registry and exact receipt/history/state images,
+creates each required Pool PDA at its exact sub-10,240-byte size, rechecks
+post-CPI owner/length/zero state and rent exemption, and only then copies the
+authenticated image. An exact-size, program-owned zero account is rejected if
+it is underfunded, closing the same-transaction revival/non-persistence path.
+Any later failure rolls all preceding creations back atomically.
 
 Preparation accepts only a canonical verified `ASRA` wrapper. It recomputes
 the request, statement and binding digests, validates the receipt PDA under
@@ -97,10 +137,10 @@ cryptographic provenance of the precomputed frontier/root images.
 Command:
 
 ```text
-NO_DNA=1 cargo test -p aspis-pool prepared_settlement -- --nocapture
+NO_DNA=1 cargo test -p aspis-pool prepared_settlement --lib --no-default-features
 ```
 
-Result: **10 passed, 0 failed, 49 filtered out**.
+Result: **15 passed, 0 failed, 49 filtered out**.
 
 The focused cases cover:
 
@@ -114,29 +154,32 @@ The focused cases cover:
 - pending/bad-digest/bad-PDA/bad-binding/altered-nested `ASRA` rejection;
 - a fully self-consistent receipt for a non-Pool historical root; and
 - paused/inactive/wrong-program/wrong-profile registry selection plus
-  retirement between preparation and settlement.
+  retirement between preparation and settlement;
+- exact public `ASPP` core persistence with authority/privilege/alias
+  rejection; and
+- exact rollover core+shard persistence while leaving the fresh rollover
+  history page zero for final settlement; and
+- fail-closed rejection of underfunded program-owned zero rollover-page, core
+  and shard accounts before any plan bytes are persisted.
 
 The touched Rust files also pass a file-scoped `rustfmt --check`.
 
 ## Mandatory next checkpoint
 
-The current 18,192-byte monolithic plan exceeds Solana's 10,240-byte maximum
-per-instruction account-data increase. The public processor therefore must not
-reuse the generic one-shot PDA creator: it must either use a fail-closed staged
-pending/reallocation protocol or, preferably, split the plan into two mutually
-hash-bound PDAs whose individual images are each below that limit.
+The split format and public preparation composition are host-green, but their
+System CPI creation paths are not yet SBF/LiteSVM measured. The next checkpoint
+must first prove creation/rent/heap/CU behavior for the 10,000-byte core and
+optional 8,504-byte shard, then add the separate final-settlement processor.
+That final processor must, in one locked call:
 
-The next commit must add the public processor/instruction composition and test
-it under SBF/LiteSVM. That processor must, in one locked call:
-
-1. require the exact plan authority signer when creating/funding a plan PDA;
+1. require the exact plan authority signer and exact core/optional shard;
 2. enforce all signer/writable/owner/alias constraints;
 3. reauthenticate the live registry using the same `Clock` settlement slot;
 4. re-plan the actual marker account and atomically create/populate it;
 5. copy the authenticated Pool/history images;
 6. execute and balance-check the authenticated withdrawal token CPI, if any;
 7. expose success-only return data; and
-8. enforce close/tombstone/refund behavior without enabling replay.
+8. enforce plan/shard close, tombstone and refund behavior without replay.
 
 Only after that composition has strict 1.4M-CU runtime evidence may this be
 described as an atomic prepared-settlement transaction.

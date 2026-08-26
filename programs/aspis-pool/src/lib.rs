@@ -22,6 +22,7 @@ pub mod instruction;
 pub mod nullifier;
 pub(crate) mod prepared_settlement;
 pub(crate) mod prepared_settlement_format;
+pub mod prepared_settlement_instruction;
 pub mod processor;
 pub mod registry;
 pub mod state;
@@ -53,6 +54,18 @@ pub use instruction::{
 pub use nullifier::{
     plan_nullifier_marker_consumption_v1, pool_v1_nullifier_marker_address,
     NullifierMarkerPreparationV1, PlannedNullifierMarkerV1,
+};
+pub use prepared_settlement_format::{
+    pool_v1_prepared_settlement_plan_address, pool_v1_prepared_settlement_rollover_address,
+    POOL_V1_PREPARED_SETTLEMENT_CORE_ACCOUNT_BYTES,
+    POOL_V1_PREPARED_SETTLEMENT_ROLLOVER_ACCOUNT_BYTES, POOL_V1_PREPARED_SETTLEMENT_ROLLOVER_SEED,
+    POOL_V1_PREPARED_SETTLEMENT_SEED,
+};
+pub use prepared_settlement_instruction::{
+    decode_prepare_settlement_instruction_v1, encode_prepare_settlement_instruction_v1,
+    PrepareSettlementInstructionFormatErrorV1, PrepareSettlementInstructionV1,
+    POOL_V1_PREPARE_SETTLEMENT_HEADER_BYTES, POOL_V1_PREPARE_SETTLEMENT_INSTRUCTION_BYTES,
+    POOL_V1_PREPARE_SETTLEMENT_INSTRUCTION_MAGIC,
 };
 pub use processor::process_instruction;
 pub use registry::{

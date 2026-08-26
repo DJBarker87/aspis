@@ -47,8 +47,8 @@ use crate::{
     prepared_settlement_format::{
         decode_prepared_settlement_plan_v1, encode_prepared_settlement_plan_v1,
         exact_image_digest_v1, pool_v1_prepared_settlement_plan_address,
-        PreparedSettlementPlanFieldsV1, PreparedSettlementPlanViewV1,
-        POOL_V1_PREPARED_SETTLEMENT_ACCOUNT_BYTES,
+        PreparedSettlementPlanFieldsV1, PreparedSettlementPlanImagesV1,
+        PreparedSettlementPlanViewV1, PreparedSettlementRolloverShardAccountV1,
     },
     registry::{
         authenticate_verifier_selection_v1, AuthenticatedVerifierSelectionV1, VerifierSelectionV1,
@@ -178,6 +178,7 @@ pub(crate) struct PreparedSettlementApplyContextV1<'a> {
     pub plan_owner: &'a Pubkey,
     pub plan_authority: &'a Pubkey,
     pub plan_image: &'a [u8],
+    pub rollover_shard: Option<PreparedSettlementRolloverShardAccountV1<'a>>,
     pub pool_address: &'a Pubkey,
     pub source_pool_image: &'a [u8],
     pub current_page_address: &'a Pubkey,
@@ -423,7 +424,7 @@ pub(crate) fn build_prepared_settlement_plan_v1(
     not_before_slot: u64,
     expires_at_slot: u64,
     hash: HashFn,
-) -> Result<Box<[u8; POOL_V1_PREPARED_SETTLEMENT_ACCOUNT_BYTES]>, ProgramError> {
+) -> Result<PreparedSettlementPlanImagesV1, ProgramError> {
     state.require_same_writable_account(program_id, pool_account)?;
     if authorization_receipt_account.executable
         || authorization_receipt_account.is_signer
@@ -512,54 +513,38 @@ pub(crate) fn build_prepared_settlement_plan_v1(
         (&**source_current_data)
             .try_into()
             .map_err(|_| ProgramError::InvalidAccountData)?;
-    let mut next_current_image = zeroed_page_box()?;
-    next_current_image.copy_from_slice(source_current_image);
-    let mut next_rollover_image = zeroed_page_box()?;
-
     let roots = append_roots(&prepared.receipt)?;
-    if roots_in_current != 0 {
-        append_roots_unchecked(
-            next_current_image.as_mut(),
-            current_header,
-            &roots[..roots_in_current],
-        );
-    }
-
-    let (next_page_address, source_next_digest, encoded_next_page) = if roots_in_next == 0 {
-        if supplied_next_page.is_some() {
-            return Err(PoolV1ProgramError::UnexpectedRootPage.into());
-        }
-        (None, None, None)
-    } else {
-        let next = supplied_next_page.ok_or(PoolV1ProgramError::UnexpectedRootPage)?;
-        let page_number = current_header
-            .page_number
-            .checked_add(1)
-            .ok_or(PoolV1ProgramError::ArithmeticOverflow)?;
-        validate_new_page_account(program_id, pool_account.key, page_number, next)?;
-        if next.key == pool_account.key || next.key == current_page_account.key {
-            return Err(ProgramError::InvalidAccountData);
-        }
-        let source_next = next.try_borrow_data()?;
-        let source_next_image: &[u8; POOL_V1_ROOT_HISTORY_PAGE_ACCOUNT_BYTES] = (&**source_next)
-            .try_into()
-            .map_err(|_| ProgramError::InvalidAccountData)?;
-        let first_sequence = page_number
-            .checked_mul(POOL_V1_ROOT_HISTORY_CAPACITY as u64)
-            .ok_or(PoolV1ProgramError::ArithmeticOverflow)?;
-        write_new_page_unchecked(
-            next_rollover_image.as_mut(),
-            pool_account.key,
-            page_number,
-            first_sequence,
-            &roots[roots_in_current..],
-        );
-        (
-            Some(next.key.to_bytes()),
-            Some(exact_image_digest_v1(source_next_image, hash)),
-            Some(next_rollover_image.as_ref()),
-        )
-    };
+    let (next_page_address, source_next_digest, rollover_page_number, rollover_first_sequence) =
+        if roots_in_next == 0 {
+            if supplied_next_page.is_some() {
+                return Err(PoolV1ProgramError::UnexpectedRootPage.into());
+            }
+            (None, None, 0, 0)
+        } else {
+            let next = supplied_next_page.ok_or(PoolV1ProgramError::UnexpectedRootPage)?;
+            let page_number = current_header
+                .page_number
+                .checked_add(1)
+                .ok_or(PoolV1ProgramError::ArithmeticOverflow)?;
+            validate_new_page_account(program_id, pool_account.key, page_number, next)?;
+            if next.key == pool_account.key || next.key == current_page_account.key {
+                return Err(ProgramError::InvalidAccountData);
+            }
+            let source_next = next.try_borrow_data()?;
+            let source_next_image: &[u8; POOL_V1_ROOT_HISTORY_PAGE_ACCOUNT_BYTES] =
+                (&**source_next)
+                    .try_into()
+                    .map_err(|_| ProgramError::InvalidAccountData)?;
+            let first_sequence = page_number
+                .checked_mul(POOL_V1_ROOT_HISTORY_CAPACITY as u64)
+                .ok_or(PoolV1ProgramError::ArithmeticOverflow)?;
+            (
+                Some(next.key.to_bytes()),
+                Some(exact_image_digest_v1(source_next_image, hash)),
+                page_number,
+                first_sequence,
+            )
+        };
     let (_, pda_bump) = pool_v1_prepared_settlement_plan_address(
         program_id,
         pool_account.key,
@@ -592,8 +577,21 @@ pub(crate) fn build_prepared_settlement_plan_v1(
             first_receipt: prepared.receipt.first,
             second_receipt: prepared.receipt.second,
             next_pool_image: &prepared.next_state_image,
-            next_current_page_image: &next_current_image,
-            next_rollover_page_image: encoded_next_page,
+        },
+        |output| {
+            output.copy_from_slice(source_current_image);
+            if roots_in_current != 0 {
+                append_roots_unchecked(output, current_header, &roots[..roots_in_current]);
+            }
+        },
+        |output| {
+            write_new_page_unchecked(
+                output,
+                pool_account.key,
+                rollover_page_number,
+                rollover_first_sequence,
+                &roots[roots_in_current..],
+            );
         },
         hash,
     )
@@ -832,8 +830,13 @@ pub(crate) fn apply_prepared_settlement_plan_v1(
     {
         return Err(ProgramError::InvalidAccountData);
     }
-    let plan = decode_prepared_settlement_plan_v1(context.plan_image, context.hash)
-        .map_err(ProgramError::from)?;
+    let plan = decode_prepared_settlement_plan_v1(
+        context.plan_address,
+        context.plan_image,
+        context.rollover_shard,
+        context.hash,
+    )
+    .map_err(ProgramError::from)?;
     let (expected_plan_address, expected_plan_bump) = pool_v1_prepared_settlement_plan_address(
         context.program_id,
         context.pool_address,
@@ -945,6 +948,7 @@ pub(crate) fn authorize_prepared_settlement_plan_close_v1(
     plan_address: &Pubkey,
     plan_owner: &Pubkey,
     plan_image: &[u8],
+    rollover_shard: Option<PreparedSettlementRolloverShardAccountV1<'_>>,
     refund_authority: &Pubkey,
     refund_authority_is_signer: bool,
     hash: HashFn,
@@ -952,7 +956,8 @@ pub(crate) fn authorize_prepared_settlement_plan_close_v1(
     if plan_owner != program_id || !refund_authority_is_signer {
         return Err(ProgramError::InvalidAccountData);
     }
-    let plan = decode_prepared_settlement_plan_v1(plan_image, hash).map_err(ProgramError::from)?;
+    let plan = decode_prepared_settlement_plan_v1(plan_address, plan_image, rollover_shard, hash)
+        .map_err(ProgramError::from)?;
     let authority = Pubkey::new_from_array(plan.plan_authority);
     let pool = Pubkey::new_from_array(plan.pool);
     let expected = pool_v1_prepared_settlement_plan_address(
@@ -993,17 +998,32 @@ mod tests {
         POOL_V1_VERIFIER_REGISTRY_BYTES, POOL_V1_VERIFIER_REGISTRY_FLAG_PAUSED,
     };
     use sha2::{Digest as ShaDigest, Sha256};
-    use solana_program::clock::Epoch;
+    use solana_program::{
+        clock::Epoch, entrypoint::ProgramResult, instruction::Instruction, rent::Rent,
+    };
+    use solana_sdk_ids::{native_loader, system_program};
     use std::vec::Vec;
 
     use crate::{
         empty_roots::POOL_V1_EMPTY_ROOTS,
+        instruction::{
+            encode_private_transfer_instruction_v1, encode_withdrawal_instruction_v1,
+            PrivateTransferStatementV1, WithdrawalStatementV1,
+        },
         nullifier::plan_nullifier_marker_consumption_v1,
         prepared_settlement_format::{
-            decode_prepared_settlement_plan_v1, reauthenticate_prepared_settlement_plan_for_test,
-            TEST_FIRST_COMMITMENT_OFFSET, TEST_FIRST_RECEIPT_ROOT_OFFSET,
-            TEST_SECOND_COMMITMENT_OFFSET, TEST_SOURCE_ROOT_OFFSET,
+            bind_prepared_settlement_rollover_for_test, decode_prepared_settlement_plan_v1,
+            reauthenticate_prepared_settlement_plan_for_test,
+            reauthenticate_prepared_settlement_rollover_for_test, PreparedSettlementPlanImagesV1,
+            PreparedSettlementRolloverShardAccountV1,
+            POOL_V1_PREPARED_SETTLEMENT_CORE_ACCOUNT_BYTES,
+            POOL_V1_PREPARED_SETTLEMENT_ROLLOVER_ACCOUNT_BYTES, TEST_FIRST_COMMITMENT_OFFSET,
+            TEST_FIRST_RECEIPT_ROOT_OFFSET, TEST_ROLLOVER_SHARD_CORE_ADDRESS_OFFSET,
+            TEST_ROLLOVER_SHARD_IMAGE_OFFSET, TEST_SECOND_COMMITMENT_OFFSET,
+            TEST_SOURCE_ROOT_OFFSET,
         },
+        prepared_settlement_instruction::encode_prepare_settlement_instruction_v1,
+        processor::{process_prepare_settlement_with_runtime_v1, PoolCpiRuntimeV1},
         registry::{pool_v1_verifier_entry_address, pool_v1_verifier_registry_address},
         state::{pool_v1_state_address, PoolInitializationV1, PoolStateV1},
         transition::apply_authorized_append_after_v1,
@@ -1047,6 +1067,23 @@ mod tests {
 
     const PREPARATION_SLOT: u64 = 105;
     const SETTLEMENT_SLOT: u64 = 150;
+
+    struct NoPreparationCpi;
+
+    impl PoolCpiRuntimeV1 for NoPreparationCpi {
+        fn invoke<'info>(&mut self, _: &Instruction, _: &[AccountInfo<'info>]) -> ProgramResult {
+            panic!("unexpected preparation CPI")
+        }
+
+        fn invoke_signed<'info>(
+            &mut self,
+            _: &Instruction,
+            _: &[AccountInfo<'info>],
+            _: &[&[&[u8]]],
+        ) -> ProgramResult {
+            panic!("unexpected preparation CPI")
+        }
+    }
 
     fn registry_selection(binding: &VerifierDispatchBindingV1) -> VerifierSelectionV1 {
         VerifierSelectionV1 {
@@ -1170,7 +1207,9 @@ mod tests {
         verifier_selection: AuthenticatedVerifierSelectionV1,
         authority: Pubkey,
         plan_address: Pubkey,
-        plan_image: Box<[u8; POOL_V1_PREPARED_SETTLEMENT_ACCOUNT_BYTES]>,
+        plan_image: Box<[u8; POOL_V1_PREPARED_SETTLEMENT_CORE_ACCOUNT_BYTES]>,
+        rollover_shard_address: Option<Pubkey>,
+        rollover_shard_image: Option<Box<[u8; POOL_V1_PREPARED_SETTLEMENT_ROLLOVER_ACCOUNT_BYTES]>>,
         marker_address: Pubkey,
         marker_plan: PlannedNullifierMarkerV1,
         direct_pool: [u8; POOL_V1_STATE_ACCOUNT_BYTES],
@@ -1323,7 +1362,7 @@ mod tests {
         let mut entry_lamports = 1;
         let mut registry_for_plan = registry_image;
         let mut entry_for_plan = entry_image;
-        let (plan_image, settlement_selection) = {
+        let (plan_images, settlement_selection) = {
             let pool_account = account(
                 &pool,
                 &program_id,
@@ -1374,7 +1413,7 @@ mod tests {
                 SETTLEMENT_SLOT,
             )
             .unwrap();
-            let plan_image = if has_next_page {
+            let plan_images = if has_next_page {
                 let next_account = account(
                     &next_page,
                     &program_id,
@@ -1421,14 +1460,14 @@ mod tests {
                 )
                 .unwrap()
             };
-            (plan_image, settlement_selection)
+            (plan_images, settlement_selection)
         };
         assert_eq!(source_pool_for_plan, source_pool);
         assert_eq!(source_current_for_plan, source_current_page);
         assert_eq!(source_next_for_plan, source_next_page);
         assert_eq!(registry_for_plan, registry_image);
         assert_eq!(entry_for_plan, entry_image);
-        let plan_address = pool_v1_prepared_settlement_plan_address(
+        let expected_plan_address = pool_v1_prepared_settlement_plan_address(
             &program_id,
             &pool,
             &statement_digest,
@@ -1436,6 +1475,14 @@ mod tests {
             &authority,
         )
         .0;
+        assert_eq!(plan_images.core_address, expected_plan_address);
+        assert_eq!(plan_images.rollover_shard.is_some(), has_next_page);
+        let plan_address = plan_images.core_address;
+        let plan_image = plan_images.core_image;
+        let (rollover_shard_address, rollover_shard_image) = match plan_images.rollover_shard {
+            Some(shard) => (Some(shard.address), Some(shard.image)),
+            None => (None, None),
+        };
 
         let marker = PoolV1NullifierMarkerV1 {
             transition_kind,
@@ -1546,6 +1593,8 @@ mod tests {
             authority,
             plan_address,
             plan_image,
+            rollover_shard_address,
+            rollover_shard_image,
             marker_address,
             marker_plan,
             direct_pool,
@@ -1563,6 +1612,65 @@ mod tests {
             kind,
             leaf_count,
         )
+    }
+
+    fn prepare_instruction_for_fixture(
+        fixture: &Fixture,
+    ) -> [u8; crate::prepared_settlement_instruction::POOL_V1_PREPARE_SETTLEMENT_INSTRUCTION_BYTES]
+    {
+        let envelope = HistoricalAnchorEnvelopeV1 {
+            transition_kind: fixture.transition_kind,
+            pool: fixture.pool.to_bytes(),
+            deployment_domain: initialization().deployment_domain,
+            anchor_sequence: fixture.direct_receipt.first.leaf_index,
+            anchor_root: PoolStateV1::decode(&fixture.source_pool, &fixture.pool)
+                .unwrap()
+                .tree
+                .root,
+            nullifier: fixture.nullifier,
+            verifier_profile: [41u8; 32],
+            verifier_release: [42u8; 32],
+        };
+        let spend = match fixture.transition_kind {
+            PoolV1TransitionKind::PrivateTransfer => {
+                let statement =
+                    decode_pool_v1_private_transfer_public_v1(&fixture.statement_payload).unwrap();
+                encode_private_transfer_instruction_v1(
+                    &envelope,
+                    &PrivateTransferStatementV1 {
+                        pool: statement.pool,
+                        deployment_domain: statement.deployment_domain,
+                        anchor_sequence: statement.anchor_sequence,
+                        anchor_root: statement.anchor_root,
+                        nullifier: statement.nullifier,
+                        asset_id: statement.asset_id,
+                        recipient_commitment: statement.recipient_commitment,
+                        change_commitment: statement.change_commitment,
+                    },
+                )
+                .unwrap()
+            }
+            PoolV1TransitionKind::Withdrawal => {
+                let statement =
+                    decode_pool_v1_withdrawal_public_v1(&fixture.statement_payload).unwrap();
+                encode_withdrawal_instruction_v1(
+                    &envelope,
+                    &WithdrawalStatementV1 {
+                        pool: statement.pool,
+                        deployment_domain: statement.deployment_domain,
+                        anchor_sequence: statement.anchor_sequence,
+                        anchor_root: statement.anchor_root,
+                        nullifier: statement.nullifier,
+                        asset_id: statement.asset_id,
+                        amount: statement.amount,
+                        destination_token_account: statement.destination_token_account,
+                        change_commitment: statement.change_commitment,
+                    },
+                )
+                .unwrap()
+            }
+        };
+        encode_prepare_settlement_instruction_v1(fixture.transition_kind, 110, 200, &spend).unwrap()
     }
 
     fn fixture_request(fixture: &Fixture) -> AuthorizedAppendV1 {
@@ -1585,7 +1693,7 @@ mod tests {
         registry_image: &mut [u8; POOL_V1_VERIFIER_REGISTRY_BYTES],
         entry_image: &mut [u8; POOL_V1_VERIFIER_ENTRY_BYTES],
         preparation_slot: u64,
-    ) -> Result<Box<[u8; POOL_V1_PREPARED_SETTLEMENT_ACCOUNT_BYTES]>, ProgramError> {
+    ) -> Result<PreparedSettlementPlanImagesV1, ProgramError> {
         let mut pool_image = fixture.source_pool;
         let mut current_image = fixture.source_current_page.clone();
         let mut next_image = fixture.source_next_page.clone();
@@ -1689,7 +1797,7 @@ mod tests {
     #[allow(clippy::too_many_arguments)]
     fn apply_with<'a>(
         fixture: &'a Fixture,
-        plan_image: &'a Box<[u8; POOL_V1_PREPARED_SETTLEMENT_ACCOUNT_BYTES]>,
+        plan_image: &'a Box<[u8; POOL_V1_PREPARED_SETTLEMENT_CORE_ACCOUNT_BYTES]>,
         source_pool: &'a [u8],
         source_current: &'a [u8],
         source_next: Option<&'a [u8]>,
@@ -1719,7 +1827,7 @@ mod tests {
     #[allow(clippy::too_many_arguments)]
     fn apply_with_selection<'a>(
         fixture: &'a Fixture,
-        plan_image: &'a Box<[u8; POOL_V1_PREPARED_SETTLEMENT_ACCOUNT_BYTES]>,
+        plan_image: &'a Box<[u8; POOL_V1_PREPARED_SETTLEMENT_CORE_ACCOUNT_BYTES]>,
         source_pool: &'a [u8],
         source_current: &'a [u8],
         source_next: Option<&'a [u8]>,
@@ -1732,12 +1840,25 @@ mod tests {
         verifier_selection: AuthenticatedVerifierSelectionV1,
     ) -> Result<PreparedSettlementApplyResultV1<'a>, ProgramError> {
         let next_page = source_next.map(|image| (&fixture.next_page, image));
+        let rollover_shard = match (
+            fixture.rollover_shard_address.as_ref(),
+            fixture.rollover_shard_image.as_ref(),
+        ) {
+            (Some(address), Some(image)) => Some(PreparedSettlementRolloverShardAccountV1 {
+                address,
+                owner: &fixture.program_id,
+                image: image.as_ref(),
+            }),
+            (None, None) => None,
+            _ => return Err(ProgramError::InvalidAccountData),
+        };
         apply_prepared_settlement_plan_v1(PreparedSettlementApplyContextV1 {
             program_id: &fixture.program_id,
             plan_address: &fixture.plan_address,
             plan_owner: &fixture.program_id,
             plan_authority: authority,
             plan_image: plan_image.as_ref(),
+            rollover_shard,
             pool_address: &fixture.pool,
             source_pool_image: source_pool,
             current_page_address: &fixture.current_page,
@@ -1811,9 +1932,393 @@ mod tests {
     }
 
     #[test]
+    fn public_preparation_processor_persists_exact_core_and_rejects_privilege_aliases() {
+        let fixture = standard_fixture(PoolV1TransitionKind::Withdrawal, 0);
+        let instruction = prepare_instruction_for_fixture(&fixture);
+        let expected_core = fixture.plan_image.clone();
+        let rent = Rent::default();
+        let required_core_lamports =
+            rent.minimum_balance(POOL_V1_PREPARED_SETTLEMENT_CORE_ACCOUNT_BYTES);
+        let system_id = system_program::id();
+        let native_loader_id = native_loader::id();
+        let mut payer_lamports = 1;
+        let mut payer_data = [];
+        let mut pool_lamports = 1;
+        let mut pool_data = fixture.source_pool;
+        let mut page_lamports = 1;
+        let mut page_data = fixture.source_current_page.clone();
+        let mut receipt_lamports = 1;
+        let mut receipt_data = fixture.authorization_receipt_image;
+        let mut registry_lamports = 1;
+        let mut registry_data = fixture.registry_image;
+        let mut entry_lamports = 1;
+        let mut entry_data = fixture.entry_image;
+        let mut core_lamports = required_core_lamports.saturating_sub(1);
+        let mut core_data: Box<[u8; POOL_V1_PREPARED_SETTLEMENT_CORE_ACCOUNT_BYTES]> =
+            vec![0u8; POOL_V1_PREPARED_SETTLEMENT_CORE_ACCOUNT_BYTES]
+                .into_boxed_slice()
+                .try_into()
+                .unwrap();
+        let mut system_lamports = 1;
+        let mut system_data = [];
+        let accounts = vec![
+            account(
+                &fixture.authority,
+                &system_id,
+                &mut payer_lamports,
+                &mut payer_data,
+                true,
+                true,
+            ),
+            account(
+                &fixture.pool,
+                &fixture.program_id,
+                &mut pool_lamports,
+                &mut pool_data,
+                false,
+                true,
+            ),
+            account(
+                &fixture.current_page,
+                &fixture.program_id,
+                &mut page_lamports,
+                &mut page_data,
+                false,
+                false,
+            ),
+            account(
+                &fixture.authorization_receipt_address,
+                &fixture.authorization_receipt_owner,
+                &mut receipt_lamports,
+                &mut receipt_data,
+                false,
+                false,
+            ),
+            account(
+                &fixture.registry_address,
+                &fixture.registry_program,
+                &mut registry_lamports,
+                &mut registry_data,
+                false,
+                false,
+            ),
+            account(
+                &fixture.entry_address,
+                &fixture.registry_program,
+                &mut entry_lamports,
+                &mut entry_data,
+                false,
+                false,
+            ),
+            account(
+                &fixture.plan_address,
+                &fixture.program_id,
+                &mut core_lamports,
+                core_data.as_mut(),
+                false,
+                true,
+            ),
+            AccountInfo::new(
+                &system_id,
+                false,
+                false,
+                &mut system_lamports,
+                &mut system_data,
+                &native_loader_id,
+                true,
+                Epoch::default(),
+            ),
+        ];
+        assert_eq!(
+            process_prepare_settlement_with_runtime_v1(
+                &fixture.program_id,
+                &accounts,
+                &instruction,
+                PREPARATION_SLOT,
+                &rent,
+                sha256,
+                &mut NoPreparationCpi,
+            ),
+            Err(PoolV1ProgramError::InvalidFreshAccount.into())
+        );
+        assert!(accounts[6]
+            .try_borrow_data()
+            .unwrap()
+            .iter()
+            .all(|byte| *byte == 0));
+        **accounts[6].try_borrow_mut_lamports().unwrap() = required_core_lamports;
+        assert_eq!(
+            process_prepare_settlement_with_runtime_v1(
+                &fixture.program_id,
+                &accounts,
+                &instruction,
+                PREPARATION_SLOT,
+                &rent,
+                sha256,
+                &mut NoPreparationCpi,
+            ),
+            Ok(())
+        );
+        assert_eq!(
+            accounts[6].try_borrow_data().unwrap().as_ref(),
+            expected_core.as_ref()
+        );
+
+        let mut alias = accounts.clone();
+        alias[4] = alias[3].clone();
+        assert_eq!(
+            process_prepare_settlement_with_runtime_v1(
+                &fixture.program_id,
+                &alias,
+                &instruction,
+                PREPARATION_SLOT,
+                &rent,
+                sha256,
+                &mut NoPreparationCpi,
+            ),
+            Err(ProgramError::InvalidArgument)
+        );
+        let mut missing_signature = accounts.clone();
+        missing_signature[0].is_signer = false;
+        assert_eq!(
+            process_prepare_settlement_with_runtime_v1(
+                &fixture.program_id,
+                &missing_signature,
+                &instruction,
+                PREPARATION_SLOT,
+                &rent,
+                sha256,
+                &mut NoPreparationCpi,
+            ),
+            Err(PoolV1ProgramError::InvalidPayer.into())
+        );
+        let mut writable_receipt = accounts.clone();
+        writable_receipt[3].is_writable = true;
+        assert!(process_prepare_settlement_with_runtime_v1(
+            &fixture.program_id,
+            &writable_receipt,
+            &instruction,
+            PREPARATION_SLOT,
+            &rent,
+            sha256,
+            &mut NoPreparationCpi,
+        )
+        .is_err());
+    }
+
+    #[test]
+    fn public_preparation_processor_persists_exact_rollover_core_and_shard() {
+        let fixture = standard_fixture(PoolV1TransitionKind::PrivateTransfer, 254);
+        let instruction = prepare_instruction_for_fixture(&fixture);
+        let expected_core = fixture.plan_image.clone();
+        let expected_shard = fixture.rollover_shard_image.clone().unwrap();
+        let shard_address = fixture.rollover_shard_address.unwrap();
+        let rent = Rent::default();
+        let required_page_lamports = rent.minimum_balance(POOL_V1_ROOT_HISTORY_PAGE_ACCOUNT_BYTES);
+        let required_core_lamports =
+            rent.minimum_balance(POOL_V1_PREPARED_SETTLEMENT_CORE_ACCOUNT_BYTES);
+        let required_shard_lamports =
+            rent.minimum_balance(POOL_V1_PREPARED_SETTLEMENT_ROLLOVER_ACCOUNT_BYTES);
+        let system_id = system_program::id();
+        let native_loader_id = native_loader::id();
+        let mut payer_lamports = 1;
+        let mut payer_data = [];
+        let mut pool_lamports = 1;
+        let mut pool_data = fixture.source_pool;
+        let mut page_lamports = 1;
+        let mut page_data = fixture.source_current_page.clone();
+        let mut next_lamports = required_page_lamports.saturating_sub(1);
+        let mut next_data = fixture.source_next_page.clone();
+        let mut receipt_lamports = 1;
+        let mut receipt_data = fixture.authorization_receipt_image;
+        let mut registry_lamports = 1;
+        let mut registry_data = fixture.registry_image;
+        let mut entry_lamports = 1;
+        let mut entry_data = fixture.entry_image;
+        let mut core_lamports = required_core_lamports;
+        let mut core_data: Box<[u8; POOL_V1_PREPARED_SETTLEMENT_CORE_ACCOUNT_BYTES]> =
+            vec![0u8; POOL_V1_PREPARED_SETTLEMENT_CORE_ACCOUNT_BYTES]
+                .into_boxed_slice()
+                .try_into()
+                .unwrap();
+        let mut shard_lamports = required_shard_lamports.saturating_sub(1);
+        let mut shard_data: Box<[u8; POOL_V1_PREPARED_SETTLEMENT_ROLLOVER_ACCOUNT_BYTES]> =
+            vec![0u8; POOL_V1_PREPARED_SETTLEMENT_ROLLOVER_ACCOUNT_BYTES]
+                .into_boxed_slice()
+                .try_into()
+                .unwrap();
+        let mut system_lamports = 1;
+        let mut system_data = [];
+        let accounts = vec![
+            account(
+                &fixture.authority,
+                &system_id,
+                &mut payer_lamports,
+                &mut payer_data,
+                true,
+                true,
+            ),
+            account(
+                &fixture.pool,
+                &fixture.program_id,
+                &mut pool_lamports,
+                &mut pool_data,
+                false,
+                true,
+            ),
+            account(
+                &fixture.current_page,
+                &fixture.program_id,
+                &mut page_lamports,
+                &mut page_data,
+                false,
+                false,
+            ),
+            account(
+                &fixture.next_page,
+                &fixture.program_id,
+                &mut next_lamports,
+                &mut next_data,
+                false,
+                true,
+            ),
+            account(
+                &fixture.authorization_receipt_address,
+                &fixture.authorization_receipt_owner,
+                &mut receipt_lamports,
+                &mut receipt_data,
+                false,
+                false,
+            ),
+            account(
+                &fixture.registry_address,
+                &fixture.registry_program,
+                &mut registry_lamports,
+                &mut registry_data,
+                false,
+                false,
+            ),
+            account(
+                &fixture.entry_address,
+                &fixture.registry_program,
+                &mut entry_lamports,
+                &mut entry_data,
+                false,
+                false,
+            ),
+            account(
+                &fixture.plan_address,
+                &fixture.program_id,
+                &mut core_lamports,
+                core_data.as_mut(),
+                false,
+                true,
+            ),
+            account(
+                &shard_address,
+                &fixture.program_id,
+                &mut shard_lamports,
+                shard_data.as_mut(),
+                false,
+                true,
+            ),
+            AccountInfo::new(
+                &system_id,
+                false,
+                false,
+                &mut system_lamports,
+                &mut system_data,
+                &native_loader_id,
+                true,
+                Epoch::default(),
+            ),
+        ];
+        assert_eq!(
+            process_prepare_settlement_with_runtime_v1(
+                &fixture.program_id,
+                &accounts,
+                &instruction,
+                PREPARATION_SLOT,
+                &rent,
+                sha256,
+                &mut NoPreparationCpi,
+            ),
+            Err(PoolV1ProgramError::InvalidFreshAccount.into())
+        );
+        assert!(accounts[3]
+            .try_borrow_data()
+            .unwrap()
+            .iter()
+            .all(|byte| *byte == 0));
+        **accounts[3].try_borrow_mut_lamports().unwrap() = required_page_lamports;
+        assert_eq!(
+            process_prepare_settlement_with_runtime_v1(
+                &fixture.program_id,
+                &accounts,
+                &instruction,
+                PREPARATION_SLOT,
+                &rent,
+                sha256,
+                &mut NoPreparationCpi,
+            ),
+            Err(PoolV1ProgramError::InvalidFreshAccount.into())
+        );
+        assert!(accounts[7]
+            .try_borrow_data()
+            .unwrap()
+            .iter()
+            .all(|byte| *byte == 0));
+        assert!(accounts[8]
+            .try_borrow_data()
+            .unwrap()
+            .iter()
+            .all(|byte| *byte == 0));
+        **accounts[8].try_borrow_mut_lamports().unwrap() = required_shard_lamports;
+        assert_eq!(
+            process_prepare_settlement_with_runtime_v1(
+                &fixture.program_id,
+                &accounts,
+                &instruction,
+                PREPARATION_SLOT,
+                &rent,
+                sha256,
+                &mut NoPreparationCpi,
+            ),
+            Ok(())
+        );
+        assert_eq!(
+            accounts[7].try_borrow_data().unwrap().as_ref(),
+            expected_core.as_ref()
+        );
+        assert_eq!(
+            accounts[8].try_borrow_data().unwrap().as_ref(),
+            expected_shard.as_ref()
+        );
+        assert!(accounts[3]
+            .try_borrow_data()
+            .unwrap()
+            .iter()
+            .all(|byte| *byte == 0));
+    }
+
+    #[test]
     fn withdrawal_and_private_transfer_are_byte_exact_with_the_direct_path() {
         assert_parity(&standard_fixture(PoolV1TransitionKind::Withdrawal, 0));
         assert_parity(&standard_fixture(PoolV1TransitionKind::PrivateTransfer, 0));
+    }
+
+    #[test]
+    fn rollover_encoder_owned_output_images_fit_default_solana_heap() {
+        assert_eq!(
+            crate::prepared_settlement_format::PREPARED_SETTLEMENT_MAX_LIVE_OUTPUT_IMAGE_BYTES,
+            POOL_V1_STATE_ACCOUNT_BYTES
+                + POOL_V1_PREPARED_SETTLEMENT_CORE_ACCOUNT_BYTES
+                + POOL_V1_PREPARED_SETTLEMENT_ROLLOVER_ACCOUNT_BYTES
+        );
+        assert!(
+            crate::prepared_settlement_format::PREPARED_SETTLEMENT_MAX_LIVE_OUTPUT_IMAGE_BYTES
+                < 32 * 1_024
+        );
     }
 
     #[test]
@@ -1832,11 +2337,130 @@ mod tests {
         for offset in 0..changed.len() {
             changed[offset] ^= 1;
             assert!(
-                decode_prepared_settlement_plan_v1(changed.as_ref(), sha256).is_err(),
-                "plan byte {offset} was not authenticated"
+                decode_prepared_settlement_plan_v1(
+                    &fixture.plan_address,
+                    changed.as_ref(),
+                    None,
+                    sha256,
+                )
+                .is_err(),
+                "core byte {offset} was not authenticated"
             );
             changed[offset] ^= 1;
         }
+
+        let rollover = standard_fixture(PoolV1TransitionKind::PrivateTransfer, 254);
+        let shard_address = rollover.rollover_shard_address.as_ref().unwrap();
+        let mut changed_shard = rollover.rollover_shard_image.clone().unwrap();
+        for offset in 0..changed_shard.len() {
+            changed_shard[offset] ^= 1;
+            let shard = PreparedSettlementRolloverShardAccountV1 {
+                address: shard_address,
+                owner: &rollover.program_id,
+                image: changed_shard.as_ref(),
+            };
+            assert!(
+                decode_prepared_settlement_plan_v1(
+                    &rollover.plan_address,
+                    rollover.plan_image.as_ref(),
+                    Some(shard),
+                    sha256,
+                )
+                .is_err(),
+                "rollover-shard byte {offset} was not authenticated"
+            );
+            changed_shard[offset] ^= 1;
+        }
+    }
+
+    #[test]
+    fn rollover_shard_is_mutually_bound_and_semantically_checked() {
+        let fixture = standard_fixture(PoolV1TransitionKind::PrivateTransfer, 254);
+        let shard_address = fixture.rollover_shard_address.as_ref().unwrap();
+        let shard_image = fixture.rollover_shard_image.as_ref().unwrap();
+
+        assert!(decode_prepared_settlement_plan_v1(
+            &fixture.plan_address,
+            fixture.plan_image.as_ref(),
+            None,
+            sha256,
+        )
+        .is_err());
+        let wrong_owner = Pubkey::new_unique();
+        assert!(decode_prepared_settlement_plan_v1(
+            &fixture.plan_address,
+            fixture.plan_image.as_ref(),
+            Some(PreparedSettlementRolloverShardAccountV1 {
+                address: shard_address,
+                owner: &wrong_owner,
+                image: shard_image.as_ref(),
+            }),
+            sha256,
+        )
+        .is_err());
+
+        let no_rollover = standard_fixture(PoolV1TransitionKind::Withdrawal, 0);
+        assert!(decode_prepared_settlement_plan_v1(
+            &no_rollover.plan_address,
+            no_rollover.plan_image.as_ref(),
+            Some(PreparedSettlementRolloverShardAccountV1 {
+                address: shard_address,
+                owner: &fixture.program_id,
+                image: shard_image.as_ref(),
+            }),
+            sha256,
+        )
+        .is_err());
+
+        let mut wrong_core = fixture.plan_image.clone();
+        let mut wrong_core_shard = shard_image.clone();
+        wrong_core_shard[TEST_ROLLOVER_SHARD_CORE_ADDRESS_OFFSET] ^= 1;
+        reauthenticate_prepared_settlement_rollover_for_test(&mut wrong_core_shard, sha256);
+        bind_prepared_settlement_rollover_for_test(&mut wrong_core, &wrong_core_shard, sha256);
+        assert!(decode_prepared_settlement_plan_v1(
+            &fixture.plan_address,
+            wrong_core.as_ref(),
+            Some(PreparedSettlementRolloverShardAccountV1 {
+                address: shard_address,
+                owner: &fixture.program_id,
+                image: wrong_core_shard.as_ref(),
+            }),
+            sha256,
+        )
+        .is_err());
+
+        let mut wrong_image_core = fixture.plan_image.clone();
+        let mut wrong_image_shard = shard_image.clone();
+        wrong_image_shard[TEST_ROLLOVER_SHARD_IMAGE_OFFSET + 101] ^= 1;
+        reauthenticate_prepared_settlement_rollover_for_test(&mut wrong_image_shard, sha256);
+        bind_prepared_settlement_rollover_for_test(
+            &mut wrong_image_core,
+            &wrong_image_shard,
+            sha256,
+        );
+        let plan = decode_prepared_settlement_plan_v1(
+            &fixture.plan_address,
+            wrong_image_core.as_ref(),
+            Some(PreparedSettlementRolloverShardAccountV1 {
+                address: shard_address,
+                owner: &fixture.program_id,
+                image: wrong_image_shard.as_ref(),
+            }),
+            sha256,
+        )
+        .unwrap();
+        let source_current: &[u8; POOL_V1_ROOT_HISTORY_PAGE_ACCOUNT_BYTES] =
+            fixture.source_current_page.as_slice().try_into().unwrap();
+        let source_next: &[u8; POOL_V1_ROOT_HISTORY_PAGE_ACCOUNT_BYTES] =
+            fixture.source_next_page.as_slice().try_into().unwrap();
+        assert!(history_result_images_match(
+            &fixture.program_id,
+            &fixture.pool,
+            plan,
+            source_current,
+            Some(source_next),
+        )
+        .is_err());
     }
 
     #[test]
@@ -2474,6 +3098,7 @@ mod tests {
                 &first.plan_address,
                 &program_id,
                 first.plan_image.as_ref(),
+                None,
                 &first_authority,
                 true,
                 sha256,
@@ -2485,6 +3110,7 @@ mod tests {
             &first.plan_address,
             &program_id,
             first.plan_image.as_ref(),
+            None,
             &second_authority,
             true,
             sha256,
@@ -2495,6 +3121,7 @@ mod tests {
             &first.plan_address,
             &program_id,
             first.plan_image.as_ref(),
+            None,
             &first_authority,
             false,
             sha256,

@@ -57,6 +57,16 @@ use crate::{
         plan_nullifier_marker_consumption_v1, NullifierMarkerPreparationV1,
         PlannedNullifierMarkerV1,
     },
+    prepared_settlement::build_prepared_settlement_plan_v1,
+    prepared_settlement_format::{
+        decode_prepared_settlement_plan_v1, PreparedSettlementRolloverShardAccountV1,
+        POOL_V1_PREPARED_SETTLEMENT_CORE_ACCOUNT_BYTES,
+        POOL_V1_PREPARED_SETTLEMENT_ROLLOVER_ACCOUNT_BYTES,
+        POOL_V1_PREPARED_SETTLEMENT_ROLLOVER_SEED, POOL_V1_PREPARED_SETTLEMENT_SEED,
+    },
+    prepared_settlement_instruction::{
+        decode_prepare_settlement_instruction_v1, POOL_V1_PREPARE_SETTLEMENT_INSTRUCTION_MAGIC,
+    },
     state::{
         pool_v1_state_address, CanonicalPoolStateV1, PoolStateV1, POOL_V1_STATE_ACCOUNT_BYTES,
         POOL_V1_STATE_SEED,
@@ -85,7 +95,7 @@ const SPL_TOKEN_INITIALIZE_ACCOUNT3_DISCRIMINANT: u8 = 18;
 #[cfg(not(feature = "no-entrypoint"))]
 solana_program::entrypoint!(process_instruction);
 
-trait PoolCpiRuntimeV1 {
+pub(crate) trait PoolCpiRuntimeV1 {
     fn invoke<'info>(
         &mut self,
         instruction: &Instruction,
@@ -392,6 +402,22 @@ fn create_program_pda_if_needed<'info, R: PoolCpiRuntimeV1>(
             program_id,
             signer_seeds,
         )?;
+    }
+    Ok(())
+}
+
+fn require_fresh_rent_exempt_program_pda(
+    account: &AccountInfo<'_>,
+    program_id: &Pubkey,
+    expected_address: &Pubkey,
+    exact_bytes: usize,
+    rent: &Rent,
+) -> ProgramResult {
+    if plan_fresh_program_pda(account, program_id, expected_address, exact_bytes)?
+        != FreshPdaPreparationV1::ProgramOwnedZeroed
+        || !rent.is_exempt(account.lamports(), exact_bytes)
+    {
+        return Err(PoolV1ProgramError::InvalidFreshAccount.into());
     }
     Ok(())
 }
@@ -734,6 +760,395 @@ fn validate_spend_binding_v1(
         || statement_asset_id != state.identity.asset_id
     {
         return Err(PoolV1ProgramError::VerifierDispatchIdentityMismatch.into());
+    }
+    Ok(())
+}
+
+#[derive(Clone, Copy)]
+struct PrepareSettlementRequestV1<'a> {
+    transition_kind: PoolV1TransitionKind,
+    request: AuthorizedAppendV1,
+    anchor_sequence: u64,
+    statement_pool: [u8; 32],
+    statement_domain: [u8; 32],
+    statement_asset_id: aspis_core::field::M31,
+    statement_payload: &'a [u8],
+    not_before_slot: u64,
+    expires_at_slot: u64,
+}
+
+fn decode_prepare_settlement_request_v1(
+    instruction_data: &[u8],
+) -> Result<PrepareSettlementRequestV1<'_>, ProgramError> {
+    let prepared = decode_prepare_settlement_instruction_v1(instruction_data)?;
+    match prepared.transition_kind {
+        PoolV1TransitionKind::PrivateTransfer => {
+            let spend = decode_private_transfer_instruction_v1(prepared.spend_instruction)?;
+            Ok(PrepareSettlementRequestV1 {
+                transition_kind: PoolV1TransitionKind::PrivateTransfer,
+                request: AuthorizedAppendV1::Two(
+                    spend.statement.recipient_commitment,
+                    spend.statement.change_commitment,
+                ),
+                anchor_sequence: spend.statement.anchor_sequence,
+                statement_pool: spend.statement.pool,
+                statement_domain: spend.statement.deployment_domain,
+                statement_asset_id: spend.statement.asset_id,
+                statement_payload: spend.statement_payload,
+                not_before_slot: prepared.not_before_slot,
+                expires_at_slot: prepared.expires_at_slot,
+            })
+        }
+        PoolV1TransitionKind::Withdrawal => {
+            let spend = decode_withdrawal_instruction_v1(prepared.spend_instruction)?;
+            Ok(PrepareSettlementRequestV1 {
+                transition_kind: PoolV1TransitionKind::Withdrawal,
+                request: AuthorizedAppendV1::One(spend.statement.change_commitment),
+                anchor_sequence: spend.statement.anchor_sequence,
+                statement_pool: spend.statement.pool,
+                statement_domain: spend.statement.deployment_domain,
+                statement_asset_id: spend.statement.asset_id,
+                statement_payload: spend.statement_payload,
+                not_before_slot: prepared.not_before_slot,
+                expires_at_slot: prepared.expires_at_slot,
+            })
+        }
+    }
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+struct PrepareSettlementPageLayoutV1 {
+    anchor_index: usize,
+    current_index: usize,
+    next_index: Option<usize>,
+    suffix_start: usize,
+    next_page_number: Option<u64>,
+    next_page_bump: Option<u8>,
+}
+
+/// Exact preparation-only page layout. Unlike the atomic spend layout, both
+/// existing history pages are read-only because preparation persists only the
+/// plan PDA(s). A rollover page is a fresh writable Pool PDA and remains all
+/// zeroes until the later atomic settlement writes the authenticated image.
+fn plan_prepare_settlement_page_layout_v1(
+    program_id: &Pubkey,
+    accounts: &[AccountInfo<'_>],
+    state: &PoolStateV1,
+    anchor_sequence: u64,
+    append_count: u64,
+) -> Result<PrepareSettlementPageLayoutV1, ProgramError> {
+    require_spend_capacity(state, append_count)?;
+    let pool = accounts.get(1).ok_or(ProgramError::NotEnoughAccountKeys)?;
+    let anchor_number = root_history_location(anchor_sequence).page_number;
+    let current_number = root_history_location(state.current_root_sequence()).page_number;
+    let last_number =
+        root_history_location(state.current_root_sequence() + append_count).page_number;
+    if anchor_number > current_number || last_number > current_number.saturating_add(1) {
+        return Err(PoolV1ProgramError::StateHistoryMismatch.into());
+    }
+
+    let anchor_key = crate::pool_v1_root_page_address(program_id, pool.key, anchor_number).0;
+    let current_key = crate::pool_v1_root_page_address(program_id, pool.key, current_number).0;
+    let anchor_index = 2;
+    let anchor = accounts
+        .get(anchor_index)
+        .ok_or(ProgramError::NotEnoughAccountKeys)?;
+    if anchor.key != &anchor_key {
+        return Err(PoolV1ProgramError::InvalidRootPageAddress.into());
+    }
+    require_program_account(anchor, program_id, false)?;
+    if anchor.is_signer {
+        return Err(ProgramError::InvalidAccountData);
+    }
+
+    let mut cursor = 3;
+    let current_index = if anchor_key == current_key {
+        anchor_index
+    } else {
+        let index = cursor;
+        cursor += 1;
+        let current = accounts
+            .get(index)
+            .ok_or(ProgramError::NotEnoughAccountKeys)?;
+        if current.key != &current_key {
+            return Err(PoolV1ProgramError::InvalidRootPageAddress.into());
+        }
+        require_program_account(current, program_id, false)?;
+        if current.is_signer {
+            return Err(ProgramError::InvalidAccountData);
+        }
+        index
+    };
+
+    let (next_index, next_page_number, next_page_bump) = if last_number > current_number {
+        let index = cursor;
+        cursor += 1;
+        let next = accounts
+            .get(index)
+            .ok_or(ProgramError::NotEnoughAccountKeys)?;
+        let (expected, bump) = crate::pool_v1_root_page_address(program_id, pool.key, last_number);
+        if next.key != &expected {
+            return Err(PoolV1ProgramError::InvalidRootPageAddress.into());
+        }
+        (Some(index), Some(last_number), Some(bump))
+    } else {
+        (None, None, None)
+    };
+    Ok(PrepareSettlementPageLayoutV1 {
+        anchor_index,
+        current_index,
+        next_index,
+        suffix_start: cursor,
+        next_page_number,
+        next_page_bump,
+    })
+}
+
+#[allow(clippy::too_many_arguments)]
+fn create_prepare_rollover_page_if_needed<'info, R: PoolCpiRuntimeV1>(
+    runtime: &mut R,
+    program_id: &Pubkey,
+    accounts: &[AccountInfo<'info>],
+    layout: PrepareSettlementPageLayoutV1,
+    payer: &AccountInfo<'info>,
+    system_program_account: &AccountInfo<'info>,
+    rent: &Rent,
+) -> ProgramResult {
+    let Some(next_index) = layout.next_index else {
+        return Ok(());
+    };
+    let next_page = &accounts[next_index];
+    let page_number = layout
+        .next_page_number
+        .ok_or(PoolV1ProgramError::StateHistoryMismatch)?;
+    let bump = layout
+        .next_page_bump
+        .ok_or(PoolV1ProgramError::StateHistoryMismatch)?;
+    let preparation = plan_fresh_program_pda(
+        next_page,
+        program_id,
+        &crate::pool_v1_root_page_address(program_id, accounts[1].key, page_number).0,
+        POOL_V1_ROOT_HISTORY_PAGE_ACCOUNT_BYTES,
+    )?;
+    let page_number_bytes = page_number.to_le_bytes();
+    let bump_seed = [bump];
+    let seeds: &[&[u8]] = &[
+        POOL_V1_ROOT_HISTORY_PAGE_SEED,
+        accounts[1].key.as_ref(),
+        &page_number_bytes,
+        &bump_seed,
+    ];
+    create_program_pda_if_needed(
+        runtime,
+        program_id,
+        payer,
+        next_page,
+        system_program_account,
+        POOL_V1_ROOT_HISTORY_PAGE_ACCOUNT_BYTES,
+        preparation,
+        seeds,
+    )?;
+    require_fresh_rent_exempt_program_pda(
+        next_page,
+        program_id,
+        &crate::pool_v1_root_page_address(program_id, accounts[1].key, page_number).0,
+        POOL_V1_ROOT_HISTORY_PAGE_ACCOUNT_BYTES,
+        rent,
+    )?;
+    validate_new_page_account(program_id, accounts[1].key, page_number, next_page)
+}
+
+/// Prepare the exact state-bound settlement images and persist only their
+/// Pool-owned core/shard PDAs. This is deliberately not final settlement: it
+/// does not create a nullifier marker, mutate Pool/history state, transfer
+/// vault assets, close/refund a plan, or emit an `ASTR` receipt.
+#[allow(clippy::too_many_arguments)]
+#[inline(never)]
+pub(crate) fn process_prepare_settlement_with_runtime_v1<'info, R: PoolCpiRuntimeV1>(
+    program_id: &Pubkey,
+    accounts: &[AccountInfo<'info>],
+    instruction_data: &[u8],
+    current_slot: u64,
+    rent: &Rent,
+    hash: HashFn,
+    runtime: &mut R,
+) -> ProgramResult {
+    let request = decode_prepare_settlement_request_v1(instruction_data)?;
+    let payer = accounts.first().ok_or(ProgramError::NotEnoughAccountKeys)?;
+    let pool = accounts.get(1).ok_or(ProgramError::NotEnoughAccountKeys)?;
+    let state = load_canonical_pool_state(program_id, pool)?;
+    validate_spend_binding_v1(
+        pool,
+        &state,
+        request.transition_kind,
+        request.transition_kind,
+        &request.statement_pool,
+        &request.statement_domain,
+        request.statement_asset_id,
+    )?;
+    let layout = plan_prepare_settlement_page_layout_v1(
+        program_id,
+        accounts,
+        &state,
+        request.anchor_sequence,
+        request.request.count(),
+    )?;
+    let has_rollover = layout.next_index.is_some();
+    let expected_accounts = layout.suffix_start + if has_rollover { 6 } else { 5 };
+    if accounts.len() != expected_accounts {
+        return Err(if accounts.len() < expected_accounts {
+            ProgramError::NotEnoughAccountKeys
+        } else {
+            ProgramError::InvalidArgument
+        });
+    }
+    require_unique_accounts(accounts)?;
+
+    let receipt = &accounts[layout.suffix_start];
+    let registry_accounts = &accounts[layout.suffix_start + 1..layout.suffix_start + 3];
+    let core_plan = &accounts[layout.suffix_start + 3];
+    let rollover_plan = has_rollover.then(|| &accounts[layout.suffix_start + 4]);
+    let system_program_account = &accounts[layout.suffix_start + if has_rollover { 5 } else { 4 }];
+    require_payer_and_system_program(payer, system_program_account)?;
+
+    // If this transition crosses a history-page boundary, materialize the
+    // exact all-zero page before building the plan. Any later failure rolls
+    // this CPI back atomically; the builder then validates that exact account.
+    create_prepare_rollover_page_if_needed(
+        runtime,
+        program_id,
+        accounts,
+        layout,
+        payer,
+        system_program_account,
+        rent,
+    )?;
+
+    let supplied_next_page = layout.next_index.map(|index| &accounts[index]);
+    let images = build_prepared_settlement_plan_v1(
+        program_id,
+        pool,
+        &accounts[layout.anchor_index],
+        &accounts[layout.current_index],
+        supplied_next_page,
+        &state,
+        request.request,
+        request.statement_payload,
+        receipt,
+        registry_accounts,
+        payer.key,
+        current_slot,
+        request.not_before_slot,
+        request.expires_at_slot,
+        hash,
+    )?;
+    if core_plan.key != &images.core_address || images.rollover_shard.is_some() != has_rollover {
+        return Err(PoolV1ProgramError::InvalidFreshAccount.into());
+    }
+    let core_preparation = plan_fresh_program_pda(
+        core_plan,
+        program_id,
+        &images.core_address,
+        POOL_V1_PREPARED_SETTLEMENT_CORE_ACCOUNT_BYTES,
+    )?;
+    let shard_preparation = match (rollover_plan, images.rollover_shard.as_ref()) {
+        (None, None) => None,
+        (Some(account), Some(shard)) if account.key == &shard.address => Some((
+            account,
+            shard,
+            plan_fresh_program_pda(
+                account,
+                program_id,
+                &shard.address,
+                POOL_V1_PREPARED_SETTLEMENT_ROLLOVER_ACCOUNT_BYTES,
+            )?,
+        )),
+        _ => return Err(PoolV1ProgramError::InvalidFreshAccount.into()),
+    };
+
+    let virtual_shard =
+        images
+            .rollover_shard
+            .as_ref()
+            .map(|shard| PreparedSettlementRolloverShardAccountV1 {
+                address: &shard.address,
+                owner: program_id,
+                image: shard.image.as_ref(),
+            });
+    let plan = decode_prepared_settlement_plan_v1(
+        &images.core_address,
+        images.core_image.as_ref(),
+        virtual_shard,
+        hash,
+    )
+    .map_err(ProgramError::from)?;
+
+    let source_sequence_bytes = plan.source_sequence.to_le_bytes();
+    let core_bump_seed = [plan.pda_bump];
+    let core_seeds: &[&[u8]] = &[
+        POOL_V1_PREPARED_SETTLEMENT_SEED,
+        pool.key.as_ref(),
+        &plan.statement_digest,
+        &source_sequence_bytes,
+        payer.key.as_ref(),
+        &core_bump_seed,
+    ];
+    create_program_pda_if_needed(
+        runtime,
+        program_id,
+        payer,
+        core_plan,
+        system_program_account,
+        POOL_V1_PREPARED_SETTLEMENT_CORE_ACCOUNT_BYTES,
+        core_preparation,
+        core_seeds,
+    )?;
+    if let Some((account, shard, preparation)) = shard_preparation {
+        let shard_bump_seed = [shard.pda_bump];
+        let shard_seeds: &[&[u8]] = &[
+            POOL_V1_PREPARED_SETTLEMENT_ROLLOVER_SEED,
+            core_plan.key.as_ref(),
+            &shard_bump_seed,
+        ];
+        create_program_pda_if_needed(
+            runtime,
+            program_id,
+            payer,
+            account,
+            system_program_account,
+            POOL_V1_PREPARED_SETTLEMENT_ROLLOVER_ACCOUNT_BYTES,
+            preparation,
+            shard_seeds,
+        )?;
+    }
+
+    // Recheck post-CPI ownership/zero state before the first plan byte is
+    // persisted. This rejects a runtime/account substitution rather than
+    // treating successful System instructions as sufficient evidence.
+    require_fresh_rent_exempt_program_pda(
+        core_plan,
+        program_id,
+        &images.core_address,
+        POOL_V1_PREPARED_SETTLEMENT_CORE_ACCOUNT_BYTES,
+        rent,
+    )?;
+    if let Some((account, shard, _)) = shard_preparation {
+        require_fresh_rent_exempt_program_pda(
+            account,
+            program_id,
+            &shard.address,
+            POOL_V1_PREPARED_SETTLEMENT_ROLLOVER_ACCOUNT_BYTES,
+            rent,
+        )?;
+    }
+
+    core_plan
+        .try_borrow_mut_data()?
+        .copy_from_slice(images.core_image.as_ref());
+    if let Some((account, shard, _)) = shard_preparation {
+        account
+            .try_borrow_mut_data()?
+            .copy_from_slice(shard.image.as_ref());
     }
     Ok(())
 }
@@ -1258,6 +1673,18 @@ pub fn process_instruction(
         )
     } else if magic == POOL_V1_DEPOSIT_INSTRUCTION_MAGIC {
         process_deposit_with_runtime_v1(program_id, accounts, instruction_data, &mut runtime)
+    } else if magic == POOL_V1_PREPARE_SETTLEMENT_INSTRUCTION_MAGIC {
+        let slot = Clock::get()?.slot;
+        let rent = Rent::get()?;
+        process_prepare_settlement_with_runtime_v1(
+            program_id,
+            accounts,
+            instruction_data,
+            slot,
+            &rent,
+            solana_sha256,
+            &mut runtime,
+        )
     } else if magic == POOL_V1_PRIVATE_TRANSFER_INSTRUCTION_MAGIC {
         let slot = Clock::get()?.slot;
         process_private_transfer_with_runtime_v1(
