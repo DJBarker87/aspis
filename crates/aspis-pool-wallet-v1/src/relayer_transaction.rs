@@ -15,6 +15,7 @@ use solana_address_lookup_table_interface::state::AddressLookupTable;
 use solana_compute_budget_interface::ComputeBudgetInstruction;
 use solana_message::{legacy, v0, AddressLookupTableAccount, VersionedMessage};
 use solana_program::{hash::Hash, pubkey::Pubkey};
+use solana_signature::Signature;
 use solana_transaction::versioned::VersionedTransaction;
 
 use crate::{
@@ -152,6 +153,26 @@ pub struct ExactUnsignedRelayerMessageV1 {
     lookup_table_count: u16,
 }
 
+/// Canonical zero-signature transaction submitted to `simulateTransaction`
+/// before any signer is contacted. Its message is built from the finalized
+/// blockhash/ALT quorum and the same compute-budget rules later rechecked
+/// against successful simulation evidence.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct ExactPreSimulationRelayerTransactionV1 {
+    exact_message: ExactUnsignedRelayerMessageV1,
+    unsigned_transaction_wire: Vec<u8>,
+}
+
+impl ExactPreSimulationRelayerTransactionV1 {
+    pub fn exact_message(&self) -> &ExactUnsignedRelayerMessageV1 {
+        &self.exact_message
+    }
+
+    pub fn unsigned_transaction_wire(&self) -> &[u8] {
+        &self.unsigned_transaction_wire
+    }
+}
+
 impl ExactUnsignedRelayerMessageV1 {
     pub fn message(&self) -> &VersionedMessage {
         &self.message
@@ -197,6 +218,7 @@ pub enum RelayerTransactionErrorV1 {
     SameSlotLookupTableExtension,
     DuplicateLookupTableAddress,
     MessageCompileFailed,
+    UnsignedTransactionSerializationFailed,
 }
 
 /// Canonical digest persisted with the simulation before signing.
@@ -305,24 +327,7 @@ pub fn assemble_exact_unsigned_relayer_message_v1(
         return Err(RelayerTransactionErrorV1::WrongSimulationAccountsDigest);
     }
 
-    let instructions = canonical_relayer_instructions_v1(plan, simulation);
-    let recent_blockhash = Hash::new_from_array(simulation.recent_blockhash);
-    let message = if lookup_tables.is_empty() {
-        VersionedMessage::Legacy(legacy::Message::new_with_blockhash(
-            &instructions,
-            Some(&plan.fee_payer),
-            &recent_blockhash,
-        ))
-    } else {
-        let tables = resolve_lookup_tables_v1(simulation.simulated_at_slot, lookup_tables)?;
-        let message =
-            v0::Message::try_compile(&plan.fee_payer, &instructions, &tables, recent_blockhash)
-                .map_err(|_| RelayerTransactionErrorV1::MessageCompileFailed)?;
-        if message.address_table_lookups.len() != lookup_tables.len() {
-            return Err(RelayerTransactionErrorV1::LookupTableCountMismatch);
-        }
-        VersionedMessage::V0(message)
-    };
+    let message = compile_canonical_relayer_message_v1(plan, simulation, lookup_tables)?;
     let serialized_message = message.serialize();
     let message_sha256 = Sha256::digest(&serialized_message).into();
     if message_sha256 != simulation.unsigned_message_sha256 {
@@ -337,6 +342,106 @@ pub fn assemble_exact_unsigned_relayer_message_v1(
         lookup_table_count: u16::try_from(lookup_tables.len())
             .map_err(|_| RelayerTransactionErrorV1::TooManyLookupTables)?,
     })
+}
+
+/// Construct the exact zero-signature transaction used for simulation from
+/// finalized quorum inputs. No simulation result, fee result, or signer output
+/// is accepted here, removing the circularity between message construction and
+/// the later evidence that authenticates that same message.
+#[allow(clippy::too_many_arguments)]
+pub fn assemble_exact_pre_simulation_relayer_transaction_v1(
+    plan: &RelayerPlanV1,
+    startup: &OperatorStartupReceiptV1,
+    observed_slot: u64,
+    recent_blockhash: [u8; 32],
+    last_valid_block_height: u64,
+    compute_unit_limit: u32,
+    compute_unit_price_micro_lamports: u64,
+    lookup_tables: &[AuthenticatedAddressLookupTableV1],
+) -> Result<ExactPreSimulationRelayerTransactionV1, RelayerTransactionErrorV1> {
+    validate_durable_plan_v1(plan)?;
+    if observed_slot < plan.snapshot.observed_slot
+        || recent_blockhash == [0u8; 32]
+        || last_valid_block_height == 0
+        || compute_unit_limit == 0
+        || startup.receipt_digest() == &[0u8; 32]
+    {
+        return Err(RelayerTransactionErrorV1::InvalidSimulationEvidence);
+    }
+    let simulation_accounts_sha256 = relayer_simulation_accounts_sha256_v1(
+        plan,
+        observed_slot,
+        *startup.provider_set_digest(),
+        lookup_tables,
+    )?;
+    let minimum_priority_fee =
+        minimum_priority_fee_lamports_v1(compute_unit_limit, compute_unit_price_micro_lamports);
+    let estimated_fee_lamports = u64::try_from(minimum_priority_fee.max(1))
+        .map_err(|_| RelayerTransactionErrorV1::InvalidSimulationEvidence)?;
+    let provisional = RelayerSimulationEvidenceV1 {
+        simulated_at_slot: observed_slot,
+        recent_blockhash,
+        last_valid_block_height,
+        fee_payer: plan.fee_payer.to_bytes(),
+        unsigned_message_sha256: [0u8; 32],
+        simulation_result_sha256: [1u8; 32],
+        simulation_accounts_sha256,
+        startup_receipt_digest: *startup.receipt_digest(),
+        compute_unit_limit,
+        compute_unit_price_micro_lamports,
+        compute_units_consumed: 0,
+        estimated_fee_lamports,
+    };
+    let message = compile_canonical_relayer_message_v1(plan, provisional, lookup_tables)?;
+    let serialized_message = message.serialize();
+    let message_sha256 = Sha256::digest(&serialized_message).into();
+    let exact_message = ExactUnsignedRelayerMessageV1 {
+        message: message.clone(),
+        serialized_message,
+        message_sha256,
+        simulation_accounts_sha256,
+        lookup_table_count: u16::try_from(lookup_tables.len())
+            .map_err(|_| RelayerTransactionErrorV1::TooManyLookupTables)?,
+    };
+    let unsigned_transaction_wire = bincode::serialize(&VersionedTransaction {
+        signatures: vec![
+            Signature::default();
+            usize::from(message.header().num_required_signatures)
+        ],
+        message,
+    })
+    .map_err(|_| RelayerTransactionErrorV1::UnsignedTransactionSerializationFailed)?;
+    Ok(ExactPreSimulationRelayerTransactionV1 {
+        exact_message,
+        unsigned_transaction_wire,
+    })
+}
+
+fn compile_canonical_relayer_message_v1(
+    plan: &RelayerPlanV1,
+    simulation: RelayerSimulationEvidenceV1,
+    lookup_tables: &[AuthenticatedAddressLookupTableV1],
+) -> Result<VersionedMessage, RelayerTransactionErrorV1> {
+    let instructions = canonical_relayer_instructions_v1(plan, simulation);
+    let recent_blockhash = Hash::new_from_array(simulation.recent_blockhash);
+    if lookup_tables.is_empty() {
+        Ok(VersionedMessage::Legacy(
+            legacy::Message::new_with_blockhash(
+                &instructions,
+                Some(&plan.fee_payer),
+                &recent_blockhash,
+            ),
+        ))
+    } else {
+        let tables = resolve_lookup_tables_v1(simulation.simulated_at_slot, lookup_tables)?;
+        let message =
+            v0::Message::try_compile(&plan.fee_payer, &instructions, &tables, recent_blockhash)
+                .map_err(|_| RelayerTransactionErrorV1::MessageCompileFailed)?;
+        if message.address_table_lookups.len() != lookup_tables.len() {
+            return Err(RelayerTransactionErrorV1::LookupTableCountMismatch);
+        }
+        Ok(VersionedMessage::V0(message))
+    }
 }
 
 /// Verify signatures and prove that the signed legacy/v0 message is exactly
@@ -693,6 +798,28 @@ mod tests {
         let (fee_payer, source_authority, plan, startup) = fixture();
         let (simulation, artifact) =
             signed_artifact(&fee_payer, &source_authority, &plan, &startup, vec![]);
+        let pre_simulation = assemble_exact_pre_simulation_relayer_transaction_v1(
+            &plan,
+            &startup,
+            SIMULATION_SLOT,
+            simulation.recent_blockhash,
+            simulation.last_valid_block_height,
+            simulation.compute_unit_limit,
+            simulation.compute_unit_price_micro_lamports,
+            &[],
+        )
+        .unwrap();
+        assert_eq!(
+            pre_simulation.exact_message().message_sha256(),
+            &simulation.unsigned_message_sha256
+        );
+        let unsigned: VersionedTransaction =
+            bincode::deserialize(pre_simulation.unsigned_transaction_wire()).unwrap();
+        assert_eq!(unsigned.message, *pre_simulation.exact_message().message());
+        assert!(unsigned
+            .signatures
+            .iter()
+            .all(|signature| *signature == Signature::default()));
         let validated =
             validate_exact_relayer_transaction_v1(&plan, &startup, simulation, &artifact).unwrap();
         assert_eq!(validated.lookup_table_count, 0);
@@ -733,6 +860,22 @@ mod tests {
         );
         let (simulation, artifact) =
             signed_artifact(&fee_payer, &source_authority, &plan, &startup, vec![table]);
+        let pre_simulation = assemble_exact_pre_simulation_relayer_transaction_v1(
+            &plan,
+            &startup,
+            SIMULATION_SLOT,
+            simulation.recent_blockhash,
+            simulation.last_valid_block_height,
+            simulation.compute_unit_limit,
+            simulation.compute_unit_price_micro_lamports,
+            &artifact.lookup_tables,
+        )
+        .unwrap();
+        assert_eq!(
+            pre_simulation.exact_message().message_sha256(),
+            &simulation.unsigned_message_sha256
+        );
+        assert_eq!(pre_simulation.exact_message().lookup_table_count(), 1);
         let validated =
             validate_exact_relayer_transaction_v1(&plan, &startup, simulation, &artifact).unwrap();
         assert_eq!(validated.lookup_table_count, 1);
