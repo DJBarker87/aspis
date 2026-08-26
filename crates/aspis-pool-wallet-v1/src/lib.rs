@@ -23,6 +23,7 @@ pub mod relayer;
 pub mod relayer_execution_journal;
 pub mod relayer_finality_join;
 pub mod relayer_finalized_evidence;
+pub mod relayer_https_rpc;
 pub mod relayer_rpc_composition;
 pub mod relayer_rpc_json;
 pub mod relayer_rpc_quorum;
