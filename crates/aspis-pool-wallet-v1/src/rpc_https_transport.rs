@@ -16,6 +16,8 @@ use reqwest::{
 };
 use sha2::{Digest as _, Sha256};
 
+use crate::relayer_rpc_quorum::{ExactProviderRpcExchangeV1, ExactTwoProviderRelayerRpcV1};
+
 pub const RPC_HTTPS_PROVIDER_ID_DOMAIN_V1: &[u8] = b"aspis:pool-v1:rpc-https-provider:sha256:v1";
 pub const RPC_HTTPS_MAX_RESPONSE_BYTES_V1: usize = 64 * 1024 * 1024;
 const RPC_HTTPS_USER_AGENT_V1: &str = "aspis-pool-v1-operator/1";
@@ -33,6 +35,18 @@ pub enum RpcHttpsTransportErrorV1 {
     InvalidContentType,
     ResponseTooLarge,
     EmptyResponse,
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum RpcHttpsQuorumTransportErrorV1 {
+    ProviderOrderMismatch,
+    Provider {
+        provider_index: u8,
+        error: RpcHttpsTransportErrorV1,
+    },
+    WorkerPanicked {
+        provider_index: u8,
+    },
 }
 
 /// Derive the manifest provider identity from the exact normalized HTTPS URL.
@@ -171,6 +185,121 @@ impl ExactHttpsRpcProviderV1 {
     }
 }
 
+/// Exact request/response bytes from the startup-pinned provider pair. The
+/// request is retained inside the sealed result so callers cannot associate
+/// either response with different bytes before invoking a quorum decoder.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct ExactTwoProviderRpcResponsesV1 {
+    provider_ids: [[u8; 32]; 2],
+    request_json: Vec<u8>,
+    response_json: [Vec<u8>; 2],
+}
+
+impl ExactTwoProviderRpcResponsesV1 {
+    pub fn provider_ids(&self) -> &[[u8; 32]; 2] {
+        &self.provider_ids
+    }
+
+    pub fn request_json(&self) -> &[u8] {
+        &self.request_json
+    }
+
+    pub fn response_json(&self, provider_index: usize) -> Option<&[u8]> {
+        self.response_json.get(provider_index).map(Vec::as_slice)
+    }
+
+    pub fn exchanges_v1(&self) -> [ExactProviderRpcExchangeV1<'_>; 2] {
+        [
+            ExactProviderRpcExchangeV1::new(
+                self.provider_ids[0],
+                &self.request_json,
+                &self.response_json[0],
+            ),
+            ExactProviderRpcExchangeV1::new(
+                self.provider_ids[1],
+                &self.request_json,
+                &self.response_json[1],
+            ),
+        ]
+    }
+}
+
+/// Parallel exact-byte transport for the same canonical provider pair pinned
+/// by `ExactTwoProviderRelayerRpcV1` at successful operator startup.
+pub struct ExactTwoProviderHttpsTransportV1 {
+    providers: [ExactHttpsRpcProviderV1; 2],
+}
+
+impl fmt::Debug for ExactTwoProviderHttpsTransportV1 {
+    fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
+        formatter
+            .debug_struct("ExactTwoProviderHttpsTransportV1")
+            .field(
+                "provider_ids",
+                &[
+                    *self.providers[0].provider_id(),
+                    *self.providers[1].provider_id(),
+                ],
+            )
+            .finish_non_exhaustive()
+    }
+}
+
+impl ExactTwoProviderHttpsTransportV1 {
+    pub fn new(
+        providers: [ExactHttpsRpcProviderV1; 2],
+        quorum: &ExactTwoProviderRelayerRpcV1,
+    ) -> Result<Self, RpcHttpsQuorumTransportErrorV1> {
+        if providers[0].provider_id() != &quorum.provider_ids()[0]
+            || providers[1].provider_id() != &quorum.provider_ids()[1]
+        {
+            return Err(RpcHttpsQuorumTransportErrorV1::ProviderOrderMismatch);
+        }
+        Ok(Self { providers })
+    }
+
+    pub fn provider_ids(&self) -> [[u8; 32]; 2] {
+        [
+            *self.providers[0].provider_id(),
+            *self.providers[1].provider_id(),
+        ]
+    }
+
+    /// Submit one immutable request to both providers concurrently. There is
+    /// no hidden retry; disagreement and retry scheduling remain explicit at
+    /// the operator layer.
+    pub fn post_both_exact_json_v1(
+        &self,
+        request_json: &[u8],
+        max_response_bytes: usize,
+    ) -> Result<ExactTwoProviderRpcResponsesV1, RpcHttpsQuorumTransportErrorV1> {
+        let (first, second) = std::thread::scope(|scope| {
+            let first = scope
+                .spawn(|| self.providers[0].post_exact_json_v1(request_json, max_response_bytes));
+            let second = scope
+                .spawn(|| self.providers[1].post_exact_json_v1(request_json, max_response_bytes));
+            (first.join(), second.join())
+        });
+        let first = first
+            .map_err(|_| RpcHttpsQuorumTransportErrorV1::WorkerPanicked { provider_index: 0 })?
+            .map_err(|error| RpcHttpsQuorumTransportErrorV1::Provider {
+                provider_index: 0,
+                error,
+            })?;
+        let second = second
+            .map_err(|_| RpcHttpsQuorumTransportErrorV1::WorkerPanicked { provider_index: 1 })?
+            .map_err(|error| RpcHttpsQuorumTransportErrorV1::Provider {
+                provider_index: 1,
+                error,
+            })?;
+        Ok(ExactTwoProviderRpcResponsesV1 {
+            provider_ids: self.provider_ids(),
+            request_json: request_json.to_vec(),
+            response_json: [first, second],
+        })
+    }
+}
+
 fn canonical_https_endpoint_v1(endpoint: &str) -> Result<Url, RpcHttpsTransportErrorV1> {
     let endpoint = Url::parse(endpoint).map_err(|_| RpcHttpsTransportErrorV1::InvalidEndpoint)?;
     if endpoint.scheme() != "https"
@@ -188,6 +317,12 @@ fn canonical_https_endpoint_v1(endpoint: &str) -> Result<Url, RpcHttpsTransportE
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::{
+        operator_startup::{
+            provider_set_digest_v1, FinalizedReleaseCheckpointV1, OperatorStartupReceiptV1,
+        },
+        scan_state::FinalizedChainPointV1,
+    };
 
     #[test]
     fn provider_identity_pins_normalized_https_endpoint_without_exposure() {
@@ -216,6 +351,52 @@ mod tests {
         assert_eq!(
             rpc_https_provider_id_v1("https://rpc.example.invalid/#fragment"),
             Err(RpcHttpsTransportErrorV1::InvalidEndpoint)
+        );
+    }
+
+    #[test]
+    fn provider_pair_must_equal_the_startup_quorum_order() {
+        let mut endpoints = [
+            (
+                rpc_https_provider_id_v1("https://one.example.invalid/rpc").unwrap(),
+                "https://one.example.invalid/rpc",
+            ),
+            (
+                rpc_https_provider_id_v1("https://two.example.invalid/rpc").unwrap(),
+                "https://two.example.invalid/rpc",
+            ),
+        ];
+        endpoints.sort_by_key(|entry| entry.0);
+        let provider_ids = [endpoints[0].0, endpoints[1].0];
+        let startup = OperatorStartupReceiptV1::test_only_v1(
+            [0x31; 32],
+            provider_set_digest_v1(&provider_ids),
+            FinalizedReleaseCheckpointV1 {
+                point: FinalizedChainPointV1::new(100, [0x32; 32]).unwrap(),
+                pool_state_sha256: [0x33; 32],
+                root_sequence: 7,
+                root: [0x34; 32],
+            },
+        );
+        let quorum = ExactTwoProviderRelayerRpcV1::new(provider_ids, &startup).unwrap();
+        let providers = [
+            ExactHttpsRpcProviderV1::new(endpoints[0].0, endpoints[0].1, Duration::from_secs(30))
+                .unwrap(),
+            ExactHttpsRpcProviderV1::new(endpoints[1].0, endpoints[1].1, Duration::from_secs(30))
+                .unwrap(),
+        ];
+        let transport = ExactTwoProviderHttpsTransportV1::new(providers, &quorum).unwrap();
+        assert_eq!(transport.provider_ids(), provider_ids);
+
+        let reversed = [
+            ExactHttpsRpcProviderV1::new(endpoints[1].0, endpoints[1].1, Duration::from_secs(30))
+                .unwrap(),
+            ExactHttpsRpcProviderV1::new(endpoints[0].0, endpoints[0].1, Duration::from_secs(30))
+                .unwrap(),
+        ];
+        assert_eq!(
+            ExactTwoProviderHttpsTransportV1::new(reversed, &quorum).unwrap_err(),
+            RpcHttpsQuorumTransportErrorV1::ProviderOrderMismatch
         );
     }
 }
