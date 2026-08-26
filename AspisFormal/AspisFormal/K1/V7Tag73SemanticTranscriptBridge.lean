@@ -28,6 +28,8 @@ open AspisK1.V7Tag73SamplerDecoder
 open AspisK1.V7Tag73SecureCircleMap
 open AspisK1.V7Tag73FixedFieldMessageBridge
 open AspisSumcheckMasking
+open AspisV5ComponentCRejectionSampler
+open AspisV5ComponentCQM31Representation
 open AspisV5ComponentCQM31TowerExact
 open AspisV5AcceptedSumcheckSourceBridge
 open AspisV5SumcheckCommitment
@@ -164,6 +166,76 @@ def runEta (preEta : SemanticPreEta) : Option (QM31Exact × MachineState) := do
 
 /-! ## Exact compact semantic message encoding -/
 
+/-- The inverse direction of the four-byte mathematical `u32` codec. -/
+theorem encodeWordLE_decodeWordLE (wordBytes : WordBytes) :
+    encodeWordLE (decodeWordLE wordBytes) = wordBytes := by
+  have injective : Function.Injective encodeWordLE :=
+    Function.LeftInverse.injective decodeWordLE_encodeWordLE
+  have sameCard : Fintype.card RawWord = Fintype.card WordBytes := by
+    simp [RawWord, WordBytes, rawWordCount]
+  have surjective : Function.Surjective encodeWordLE :=
+    ((Fintype.bijective_iff_injective_and_card encodeWordLE).2
+      ⟨injective, sameCard⟩).2
+  obtain ⟨word, encoded⟩ := surjective wordBytes
+  rw [← encoded, decodeWordLE_encodeWordLE]
+
+/-- Successful canonical four-limb decoding determines every input byte. -/
+theorem encodeQM31LE_of_decodeQM31LE
+    (encoded : AspisV5ComponentCQM31Representation.QM31Bytes)
+    (limbs : QM31Limbs) (decoded : decodeQM31LE encoded = some limbs) :
+    encodeQM31LE limbs = encoded := by
+  unfold decodeQM31LE at decoded
+  split at decoded
+  next canonical =>
+    have limbsEq := Option.some.inj decoded
+    rw [← limbsEq]
+    funext offset
+    let position : Fin 4 × Fin 4 := finProdFinEquiv.symm offset
+    have rawEq :
+        m31AsRawWord
+            ⟨decodeWordLE (qm31LimbBytes encoded position.1),
+              canonical position.1⟩ =
+          decodeWordLE (qm31LimbBytes encoded position.1) := by
+      apply Fin.ext
+      rfl
+    change encodeM31LE
+        ⟨decodeWordLE (qm31LimbBytes encoded position.1),
+          canonical position.1⟩ position.2 = encoded offset
+    rw [encodeM31LE, rawEq, encodeWordLE_decodeWordLE]
+    change encoded (limbByteIndex position.1 position.2) = encoded offset
+    congr 1
+    exact (finProdFinEquiv (m := 4) (n := 4)).apply_symm_apply offset
+  next noncanonical => simp at decoded
+
+/-- A successful Tag-73 canonical decode round-trips to the literal runtime
+bytes, not merely to an extension-field value with the same cardinality. -/
+theorem encodeTagQM31ExactLE_of_decode
+    (encoded : Qm31Bytes) (value : QM31Exact)
+    (decoded : decodeTagQM31ExactLE encoded = some value) :
+    encodeTagQM31ExactLE value = encoded := by
+  unfold decodeTagQM31ExactLE at decoded
+  unfold decodeQM31ExactLE at decoded
+  cases lower : decodeQM31LE (tagQm31BytesToExact encoded) with
+  | none => simp [lower] at decoded
+  | some limbs =>
+      rw [lower] at decoded
+      have valueEq := Option.some.inj decoded
+      rw [← valueEq]
+      unfold encodeTagQM31ExactLE encodeQM31ExactLE
+      rw [Equiv.symm_apply_apply]
+      apply congrArg exactQm31BytesToTag
+      exact encodeQM31LE_of_decodeQM31LE
+        (tagQm31BytesToExact encoded) limbs lower
+
+/-- Canonical decoding is injective on accepted Tag-73 byte strings. -/
+theorem decodeTagQM31ExactLE_injective_on_success
+    (left right : Qm31Bytes) (value : QM31Exact)
+    (leftDecoded : decodeTagQM31ExactLE left = some value)
+    (rightDecoded : decodeTagQM31ExactLE right = some value) :
+    left = right := by
+  rw [← encodeTagQM31ExactLE_of_decode left value leftDecoded,
+    ← encodeTagQM31ExactLE_of_decode right value rightDecoded]
+
 /-- The Tag-73 wire omits coefficient one.  Slot zero carries coefficient
 zero; slots one through twenty-six carry coefficients two through twenty-seven. -/
 def sentFieldsOfMessage (message : Degree27Message QM31Exact) :
@@ -208,6 +280,21 @@ theorem sentFieldsOfCompactMessage
     apply Fin.ext
     simp
     omega
+
+/-- The compact algebraic message serializes byte-for-byte as the accepted
+raw Tag-73 semantic section. -/
+theorem sentFieldsOfDecodedCompactMessage_eq_raw
+    {raw : AspisK1.V7Tag73RawProverMessages.RawTag73ProverMessages}
+    {decoded : Fin 641 -> QM31Exact}
+    (decodeExact : FixedFieldDecodeExact raw decoded)
+    (point : Fin 10 -> QM31Exact) (round : Fin 10) :
+    sentFieldsOfMessage
+        (compactSemanticMessage (decodedFixedFieldView decoded) point round) =
+      raw.semanticSent round := by
+  rw [sentFieldsOfCompactMessage]
+  funext sent
+  apply encodeTagQM31ExactLE_of_decode
+  exact decode_semantic_of_fixedFieldDecodeExact decodeExact round sent
 
 /-! ## Prefix-only semantic replay and schedule -/
 
@@ -317,7 +404,11 @@ def acceptedRunOfExactSemanticReplay
   point_eq := exactSemanticReplay_point_eq replay
 
 #print axioms sampleChallengeFrom_stops_at_first_success
+#print axioms encodeQM31LE_of_decodeQM31LE
+#print axioms encodeTagQM31ExactLE_of_decode
+#print axioms decodeTagQM31ExactLE_injective_on_success
 #print axioms sentFieldsOfCompactMessage
+#print axioms sentFieldsOfDecodedCompactMessage_eq_raw
 #print axioms exactSemanticReplay_eta_eq
 #print axioms exactSemanticReplay_point_eq
 #print axioms acceptedRunOfExactSemanticReplay
