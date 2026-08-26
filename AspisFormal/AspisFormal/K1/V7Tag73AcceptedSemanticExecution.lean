@@ -17,6 +17,7 @@ open AspisK1.V7Tag73TranscriptSchedule
 open AspisK1.V7Tag73DeterministicRefinement
 open AspisK1.V7Tag73SecureCircleMap
 open AspisK1.V7Tag73CausalEventReplay
+open AspisK1.V7Tag73SamplerDecoder
 open AspisK1.V7Tag73SemanticRoundReplay
 open AspisK1.V7Tag73CheckedRefinementFullFutureFreePath
 open AspisK1.V7Tag73SemanticTranscriptBridge
@@ -25,8 +26,10 @@ open AspisK1.V7Tag73RawProverMessages
 open AspisV5AcceptedSumcheckSourceBridge
 open AspisV5ComponentCQM31TowerExact
 open AspisV5SumcheckCommitment
+open AspisV5SumcheckTranscriptBinding
 open AspisPool.V7CompactSemanticBinding
 open AspisV6AcceptedPathObligations
+open AspisV6TranscriptRelationGrammar
 
 noncomputable section
 
@@ -787,12 +790,83 @@ theorem semantic_segments_have_exact_challenge_values
       semanticStandard segmentDecoded
   simp [exactChallengeValue, valueRun]
 
+/-- The accepted eta occurrence used the deployed nonzero sampler, so its
+canonical exact-tower value is nonzero. -/
+theorem semantic_segments_eta_ne_zero
+    (table : FixedOracleTable) (tape : DeployedFixedTape)
+    (rawTrace : InteractiveRawTrace)
+    (evaluator : CompleteWorkErasedEvaluatorRun table tape rawTrace)
+    (segments : SemanticExecutionSegments table tape.messages
+      evaluator.afterC2 evaluator.prefixState)
+    (finalDecoded : StateSamplesDecodeAs tape.messages evaluator.finalState) :
+    exactChallengeValue tape.messages.challengeValue .eta ≠ 0 := by
+  have segmentDecoded := semantic_segments_decode_from_final_ledger table tape
+    rawTrace evaluator segments finalDecoded
+  have etaCausal : ∀ event ∈ [challengeEvent tape.messages .eta],
+      CausalMachineEvent event := by simp [challengeEvent, CausalMachineEvent]
+  have etaStandard : runMachineEvents table
+      [challengeEvent tape.messages .eta] segments.beforeEta =
+        some segments.afterEta := by
+    rw [← runMachineEventsWorkErased_eq_of_causal table _ _ etaCausal]
+    exact segments.etaRun
+  have semanticCausal := production_semantic_events_are_causal tape.messages
+  have semanticStandard : runMachineEvents table
+      (semanticEvents tape.messages) segments.afterEta =
+        some segments.afterSemantic := by
+    rw [← runMachineEventsWorkErased_eq_of_causal table _ _ semanticCausal]
+    exact segments.semanticRun
+  have afterEtaIncluded := causalMachineEvents_samples_included table
+    (semanticEvents tape.messages) segments.afterEta segments.afterSemantic
+      semanticCausal semanticStandard
+  have decodedAfterEta := samplesDecodeAs_of_included
+    tape.messages.challengeValue segments.afterEta segments.afterSemantic
+      afterEtaIncluded segmentDecoded
+  obtain ⟨blocks, recordMember⟩ :=
+    challenge_record_in_final_of_event_mem table
+      [challengeEvent tape.messages .eta] segments.beforeEta segments.afterEta
+      .eta (tape.messages.challengeUse .eta) etaCausal
+      (by simp [challengeEvent]) etaStandard
+  have parameterDecoded := decodedAfterEta { id := .eta, blocks := blocks }
+    recordMember
+  have nonzeroRun : decodeNonzeroExact blocks =
+      some (tape.messages.challengeValue .eta) := by
+    simpa [decodeChallengeParameter, samplerMode] using parameterDecoded
+  have etaDecode :=
+    (semantic_segments_have_exact_challenge_values table tape rawTrace evaluator
+      segments finalDecoded).1
+  exact exactChallengeValue_ne_zero_of_nonzero_run
+    tape.messages.challengeValue .eta blocks nonzeroRun etaDecode
+
 theorem ofFn_prefix_append_drop
     {A : Type*} (values : Fin 10 -> A) (round : Fin 10) :
     (List.ofFn fun earlier : Fin (round.val + 1) =>
         values ⟨earlier.val, by omega⟩) ++
       (List.ofFn values).drop (round.val + 1) = List.ofFn values := by
   fin_cases round <;> simp
+
+/-- Exact accepted transcript data obtained from the compact fixed-field
+messages. -/
+structure ExactCompactSemanticReplay
+    (preEta : SemanticPreEta) (eta : QM31Exact)
+    (fields : FixedFieldView QM31Exact) (point : Fin 10 → QM31Exact) : Prop where
+  replay : ExactSemanticReplay preEta eta
+    (compactSemanticMessages fields point) point
+  etaNonzero : eta ≠ 0
+
+def ExactCompactSemanticReplay.acceptedRun
+    {preEta : SemanticPreEta} {eta : QM31Exact}
+    {fields : FixedFieldView QM31Exact} {point : Fin 10 → QM31Exact}
+    (certificate : ExactCompactSemanticReplay preEta eta fields point) :
+    AcceptedRun tag73SemanticSchedule :=
+  acceptedRunOfExactSemanticReplay certificate.replay
+
+def ExactCompactSemanticReplay.compactEvidence
+    {preEta : SemanticPreEta} {eta : QM31Exact}
+    {fields : FixedFieldView QM31Exact} {point : Fin 10 → QM31Exact}
+    (certificate : ExactCompactSemanticReplay preEta eta fields point) :
+    CompactAcceptedRunEvidence fields certificate.acceptedRun where
+  messages := rfl
+  etaNonzero := certificate.etaNonzero
 
 /-- The checked fixed-table evaluator, canonical fixed-field decoder, and
 literal transcript schedule construct the exact future-free accepted run
@@ -922,6 +996,28 @@ theorem complete_evaluator_constructs_exactSemanticReplay
   simpa only [messagePrefix, messages, point, exactValue, semanticPreEtaOf]
     using prefixRun
 
+/-- The literal accepted evaluator constructs both the exact transcript replay
+and the nonzero evidence required by the K1.5 compact accepted-run interface. -/
+theorem complete_evaluator_constructs_exactCompactSemanticReplay
+    (table : FixedOracleTable) (tape : DeployedFixedTape)
+    (rawTrace : InteractiveRawTrace)
+    (evaluator : CompleteWorkErasedEvaluatorRun table tape rawTrace)
+    (segments : SemanticExecutionSegments table tape.messages
+      evaluator.afterC2 evaluator.prefixState)
+    (finalDecoded : StateSamplesDecodeAs tape.messages evaluator.finalState)
+    (decoded : Fin 641 → QM31Exact)
+    (fixedDecode : FixedFieldDecodeExact (rawOfMessages tape.messages) decoded) :
+    ExactCompactSemanticReplay (semanticPreEtaOf table tape.messages)
+      (exactChallengeValue tape.messages.challengeValue .eta)
+      (decodedFixedFieldView decoded)
+      (fun round => exactChallengeValue tape.messages.challengeValue
+        (.semantic round)) := by
+  exact {
+    replay := complete_evaluator_constructs_exactSemanticReplay table tape
+      rawTrace evaluator segments finalDecoded decoded fixedDecode
+    etaNonzero := semantic_segments_eta_ne_zero table tape rawTrace evaluator
+      segments finalDecoded }
+
 #print axioms prefixAfterC2_exact_semantic_factorization
 #print axioms production_semantic_events_are_causal
 #print axioms runHashEvents_success_implies_runOnlyEvents
@@ -932,6 +1028,8 @@ theorem complete_evaluator_constructs_exactSemanticReplay
 #print axioms semantic_segments_have_exact_challenge_values
 #print axioms complete_evaluator_constructs_stateBeforeEta
 #print axioms complete_evaluator_constructs_exactSemanticReplay
+#print axioms semantic_segments_eta_ne_zero
+#print axioms complete_evaluator_constructs_exactCompactSemanticReplay
 
 end
 

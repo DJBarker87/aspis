@@ -21,6 +21,7 @@ open AspisK1.V7Tag73SamplerDecoder
 open AspisK1.V7Tag73SamplerDecoderExact
 open AspisK1.V7Tag73SecureCircleMap
 open AspisK1.V7Tag73DeployedDecoderFiberCap
+open AspisK1.V7Tag73IncrementalSamplerControl
 open AspisK1.V7FsStateRestorationCoupling
 open AspisV5ComponentCRejectionSampler
 open AspisV5ComponentCQM31Representation
@@ -162,10 +163,44 @@ theorem decodeChallengeParameter_has_exact_tower_value
   rw [← valueEq]
   exact exactDecode
 
+/-! ## Nonzero-mode value preservation -/
+
+/-- The bounded nonzero retry loop can return only a byte string different
+from the all-zero QM31 encoding.  This follows from the executable retry
+branch itself, not from a distributional assumption. -/
+theorem decodeNonzeroPrefix_value_ne_zero
+    (attempts : Nat) (blocks : List Digest256) (decoded : OrdinaryPrefixDecode)
+    (run : decodeNonzeroPrefix attempts blocks = some decoded) :
+    decoded.value ≠ zeroBytes 16 := by
+  induction attempts generalizing blocks decoded with
+  | zero => simp [decodeNonzeroPrefix] at run
+  | succ attempts ih =>
+      simp only [decodeNonzeroPrefix] at run
+      obtain ⟨first, firstRun, run⟩ := Option.bind_eq_some_iff.mp run
+      by_cases zero : first.value = zeroBytes 16
+      · rw [if_pos zero] at run
+        exact ih first.remainingBlocks decoded run
+      · rw [if_neg zero] at run
+        have decodedEq : first = decoded := Option.some.inj run
+        simpa [← decodedEq] using zero
+
+/-- Exact completion of the nonzero sampler preserves the same executable
+nonzero check. -/
+theorem decodeNonzeroExact_value_ne_zero
+    (blocks : List Digest256) (encoded : Qm31Bytes)
+    (run : decodeNonzeroExact blocks = some encoded) :
+    encoded ≠ zeroBytes 16 := by
+  obtain ⟨decoded, prefixRun, _remaining, valueEq⟩ :=
+    decodeNonzeroExact_witness blocks encoded run
+  rw [← valueEq]
+  exact decodeNonzeroPrefix_value_ne_zero 3 blocks decoded prefixRun
+
 #print axioms runtime_limb_bytes_eq_encodeM31LE
 #print axioms encodeQm31Limbs_eq_exact_encoding
 #print axioms decodeTagQM31ExactLE_encodeQm31Limbs
 #print axioms decodeOrdinaryPrefix_value_has_exact_tower_value
 #print axioms decodeChallengeParameter_has_exact_tower_value
+#print axioms decodeNonzeroPrefix_value_ne_zero
+#print axioms decodeNonzeroExact_value_ne_zero
 
 end AspisK1.V7Tag73SamplerExactValue

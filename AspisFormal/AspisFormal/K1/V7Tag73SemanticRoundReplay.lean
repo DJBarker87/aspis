@@ -19,6 +19,7 @@ open AspisK1.V7Tag73DeterministicRefinement
 open AspisK1.V7Tag73SecureCircleMap
 open AspisK1.V7Tag73SemanticTranscriptBridge
 open AspisK1.V7Tag73CausalEventReplay
+open AspisK1.V7Tag73SamplerDecoder
 open AspisK1.V7Tag73SamplerExactValue
 open AspisK1.V7Tag73FixedFieldMessageBridge
 open AspisK1.V7Tag73RawProverMessages
@@ -157,6 +158,31 @@ default branch is eliminated whenever the corresponding event accepted. -/
 noncomputable def exactChallengeValue (valueAt : ChallengeId -> Qm31Bytes)
     (id : ChallengeId) : QM31Exact :=
   (decodeTagQM31ExactLE (valueAt id)).getD 0
+
+@[simp] theorem encodeTagQM31ExactLE_zero :
+    encodeTagQM31ExactLE (0 : QM31Exact) = zeroBytes 16 := by
+  funext index
+  fin_cases index <;> rfl
+
+/-- Successful nonzero-sampler bytes decode to a nonzero element of the exact
+QM31 tower. -/
+theorem exactChallengeValue_ne_zero_of_nonzero_run
+    (valueAt : ChallengeId -> Qm31Bytes) (id : ChallengeId)
+    (blocks : List Digest256)
+    (run : decodeNonzeroExact blocks = some (valueAt id))
+    (decoded : decodeTagQM31ExactLE (valueAt id) =
+      some (exactChallengeValue valueAt id)) :
+    exactChallengeValue valueAt id ≠ 0 := by
+  intro valueZero
+  have roundtrip := encodeTagQM31ExactLE_of_decode (valueAt id)
+    (exactChallengeValue valueAt id) decoded
+  have bytesZero : valueAt id = zeroBytes 16 := by
+    calc
+      valueAt id = encodeTagQM31ExactLE (exactChallengeValue valueAt id) :=
+        roundtrip.symm
+      _ = encodeTagQM31ExactLE 0 := congrArg encodeTagQM31ExactLE valueZero
+      _ = zeroBytes 16 := encodeTagQM31ExactLE_zero
+  exact decodeNonzeroExact_value_ne_zero blocks (valueAt id) run bytesZero
 
 theorem semantic_challenge_event_mem
     (uses : (id : ChallengeId) -> SamplerUse id)
@@ -355,6 +381,8 @@ theorem semanticValuesForMessages_ofFn_prefix
 #print axioms semanticEventsForMessages_ofFn
 #print axioms compact_semantic_events_are_production_events
 #print axioms challenge_value_has_exact_tower_of_event_mem
+#print axioms encodeTagQM31ExactLE_zero
+#print axioms exactChallengeValue_ne_zero_of_nonzero_run
 #print axioms semantic_challenge_values_decode
 #print axioms runMachineSemanticEvents_matches_runSemanticMessages
 #print axioms runSemanticMessages_exact_prefix_of_append
