@@ -1057,6 +1057,78 @@ theorem start_concrete_restoration_client_from_root_induction
     configuration motive terminal requestStep restorationFuel
       (initialRestorationAccumulatorFromRoot root) client
 
+/-- Dependent form of the interpreter induction hook.  This version retains
+the current fuel, accumulator and residual client in the motive, which is
+necessary for monotone resource arguments: a terminal accumulator is bounded
+relative to the concrete accumulator at that recursive call, not relative to
+an arbitrary runtime value.  The cursor argument is still the literal private
+interpreter result, and the step case still consumes the real dispatcher. -/
+theorem start_concrete_restoration_client_from_root_dependent_induction
+    {Statement Proof Payload Result : Type*}
+    {globalOracleCalls : Nat}
+    (startProgram : OracleMachine
+      (CheckedRawTag73AdversaryReturnedValue Statement Proof Payload))
+    (environment : FutureFreeEnvironment)
+    (root : ConcreteRestorationNode Statement Proof Payload)
+    (configuration : ConcreteRestorationConfiguration)
+    (restorationFuel : Nat)
+    (client : ConcreteRestorationClient Result)
+    (motive : (fuel : Nat) →
+      ConcreteRestorationAccumulator Statement Proof Payload →
+      ConcreteRestorationClient Result →
+      SchedulerNativeCursor globalOracleCalls
+        (ConcreteRestorationClientRun Statement Proof Payload Result) → Prop)
+    (pureCase : ∀ fuel accumulator result,
+      motive fuel accumulator (.pure result)
+        (.returned
+          { halt := .returned result
+            accumulator := accumulator }))
+    (exhaustedCase : ∀ accumulator request next,
+      motive 0 accumulator (.restore request next)
+        (.returned
+          { halt := .restorationFuelExhausted
+            accumulator := accumulator.addFailure request
+              .restorationFuelExhausted }))
+    (requestStep : ∀ fuel accumulator request next
+      (resume : ConcreteRestorationReply →
+        ConcreteRestorationAccumulator Statement Proof Payload →
+          SchedulerNativeCursor globalOracleCalls
+            (ConcreteRestorationClientRun Statement Proof Payload Result)),
+      (∀ reply nextAccumulator,
+        motive fuel nextAccumulator (next reply)
+          (resume reply nextAccumulator)) →
+      motive (fuel + 1) accumulator (.restore request next)
+        (dispatchOneConcreteRestoration startProgram environment configuration
+          accumulator request resume)) :
+    motive restorationFuel (initialRestorationAccumulatorFromRoot root) client
+      (startConcreteRestorationClientFromRoot
+        (globalOracleCalls := globalOracleCalls) startProgram environment root
+        configuration restorationFuel client) := by
+  have aux : ∀ fuel accumulator residualClient,
+      motive fuel accumulator residualClient
+        (runConcreteRestorationClient startProgram environment configuration
+          fuel accumulator residualClient) := by
+    intro fuel
+    induction fuel with
+    | zero =>
+        intro accumulator residualClient
+        cases residualClient with
+        | pure result => exact pureCase 0 accumulator result
+        | restore request next =>
+            exact exhaustedCase accumulator request next
+    | succ fuel ih =>
+        intro accumulator residualClient
+        cases residualClient with
+        | pure result => exact pureCase (fuel + 1) accumulator result
+        | restore request next =>
+            apply requestStep fuel accumulator request next
+              (fun reply nextAccumulator =>
+                runConcreteRestorationClient startProgram environment
+                  configuration fuel nextAccumulator (next reply))
+            intro reply nextAccumulator
+            exact ih nextAccumulator (next reply)
+  exact aux restorationFuel (initialRestorationAccumulatorFromRoot root) client
+
 /-- Entry point deriving the initial node store from one actual raw verifier
 execution. -/
 def startConcreteRestorationClient
@@ -1118,6 +1190,7 @@ def startConcreteRestorationClient
 #print axioms initial_accumulator_from_root_is_singleton
 #print axioms start_pure_client_from_root_returns_exact_accumulator
 #print axioms start_concrete_restoration_client_from_root_induction
+#print axioms start_concrete_restoration_client_from_root_dependent_induction
 
 end
 
