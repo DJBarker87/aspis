@@ -27,6 +27,10 @@ open AspisK1.V7Tag73ExactPlainRomRun
 open AspisK1.V7Tag73ExactSourceAcceptanceModel
 open AspisK1.V7Tag73ExactFixedOperationalStateMap
 open AspisK1.V7Tag73ExactFixedK12MerkleClassifier
+open AspisK1.V7Tag73ProjectedFreshController
+open AspisK1.V7Tag73ConcreteRestorationClient
+open AspisK1.V7Tag73SchedulerNativePlainRomExperiment
+open AspisK1.V7Tag73RawFutureFreeDriver
 open AspisPool.V7MerkleQueryGrammar
 open AspisPool.V7MerkleQueryExtractor
 open AspisPool.V7MerkleOpeningBinding
@@ -104,6 +108,75 @@ def ExactPrefixK12PrefixIncluded
   TraceIncludedInLog (exactK12ProverPrefixQueries input)
     (exactK12OrderedQueries input)
 
+theorem exactK12_prover_history_is_prefix_of_verifier_final_history
+    {HiddenTape TapeIdentity Observation Statement Payload Result : Type}
+    {parameters : ExactCompilerResourceParameters}
+    {transitionFuel : Nat}
+    {configuration : ExactPlainRomConfiguration HiddenTape TapeIdentity
+      Observation Statement Tag73K12ParsedProof Payload Result parameters}
+    {projection : AcceptedTapeProjection Statement Tag73K12ParsedProof Payload}
+    {fixedInstance : PublicInstance Statement}
+    {sample : ExactCompilerSample HiddenTape parameters}
+    (input : ExactK12OperationalInput transitionFuel configuration projection
+      fixedInstance sample) :
+    (exactK12Runtime input).proverFinalOracle.history <+:
+      (exactK12Runtime input).verifierFinalOracle.history := by
+  let prefixes := input.package.root.full.projection.rootPrefixes
+  have suffix := projected_fresh_returned_trace_preserves_suffix
+    configuration.machine.verifierLimits .verifier
+    prefixes.adversary.finalState.history []
+    configuration.machine.verifierFuel prefixes.adversary.finalState
+    (schedulerStageProgram
+      (SchedulerNativePlainRomResult TapeIdentity Statement Tag73K12ParsedProof
+        Payload Result)
+      (totalizeOracleMachine configuration.machine.verifierFuel
+        (initialRawFutureFreeProgram configuration.machine.environment
+          prefixes.adversaryValue.rawMessages
+          configuration.machine.driverFuel)))
+    prefixes.verifier.freshQueries prefixes.verifier.result
+    prefixes.verifier.finalState prefixes.verifier.steps
+    (projected_fresh_suffix_initial prefixes.adversary.finalState)
+    prefixes.verifier.trace
+  obtain ⟨appended, historyExact, _freshExact⟩ := suffix
+  have projectedPrefix : prefixes.adversary.finalState.history <+:
+      prefixes.verifier.finalState.history :=
+    ⟨appended, historyExact.symm⟩
+  have runtimeExact := prefixes.runtimeExact
+  have proverExact :
+      (exactK12Runtime input).proverFinalOracle =
+        prefixes.adversary.finalState := by
+    have projectionExact := congrArg
+      (fun runtime => runtime.proverFinalOracle) runtimeExact
+    simpa [exactK12Runtime, prefixes, operationalRootRuntime] using
+      projectionExact
+  have verifierExact :
+      (exactK12Runtime input).verifierFinalOracle =
+        prefixes.verifier.finalState := by
+    have projectionExact := congrArg
+      (fun runtime => runtime.verifierFinalOracle) runtimeExact
+    simpa [exactK12Runtime, prefixes, operationalRootRuntime] using
+      projectionExact
+  simpa [proverExact, verifierExact] using projectedPrefix
+
+theorem exactK12_prover_prefix_is_included_in_full_log
+    {HiddenTape TapeIdentity Observation Statement Payload Result : Type}
+    {parameters : ExactCompilerResourceParameters}
+    {transitionFuel : Nat}
+    {configuration : ExactPlainRomConfiguration HiddenTape TapeIdentity
+      Observation Statement Tag73K12ParsedProof Payload Result parameters}
+    {projection : AcceptedTapeProjection Statement Tag73K12ParsedProof Payload}
+    {fixedInstance : PublicInstance Statement}
+    {sample : ExactCompilerSample HiddenTape parameters}
+    (input : ExactK12OperationalInput transitionFuel configuration projection
+      fixedInstance sample) :
+    ExactPrefixK12PrefixIncluded input := by
+  have historyPrefix :=
+    exactK12_prover_history_is_prefix_of_verifier_final_history input
+  have mappedPrefix := historyPrefix.map
+    (fun record => runtimeInputToRawHashInput record.input)
+  intro rawInput inputIn
+  exact mappedPrefix.subset inputIn
+
 structure ExactPrefixK12Certificate
     {HiddenTape TapeIdentity Observation Statement Payload Result : Type}
     {parameters : ExactCompilerResourceParameters}
@@ -144,7 +217,6 @@ inductive ExactPrefixK12Error
   | openingAuthenticationRejected
       (failure : ¬ accepted_two_tree_openings (exactK12Truncate input)
         (exactK12Roots input) (exactK12Openings input))
-  | proverPrefixNotIncluded (failure : ¬ ExactPrefixK12PrefixIncluded input)
   | prefixPathResolution
       (failure : PrefixPathResolutionFailure (exactK12Truncate input)
         (exactK12ProverPrefixQueries input) (exactK12Roots input)
@@ -170,34 +242,33 @@ noncomputable def classifyExactPrefixK12
   classical
   by_cases accepted : accepted_two_tree_openings (exactK12Truncate input)
       (exactK12Roots input) (exactK12Openings input)
-  · by_cases prefixIncluded : ExactPrefixK12PrefixIncluded input
-    · by_cases resolutionFailure : PrefixPathResolutionFailure
-          (exactK12Truncate input) (exactK12ProverPrefixQueries input)
-          (exactK12Roots input) (exactK12Openings input)
-      · exact .inr (.prefixPathResolution resolutionFailure)
-      · by_cases suppliedCovered : ExactPrefixK12SuppliedCoverage input
-        · by_cases collision : RawLogTruncatedDigestCollision
-              (exactK12Truncate input) (exactK12OrderedQueries input)
-          · exact .inr (.sharedRawPrefixCollision collision)
-          · let words := exactPrefixK12Words input
-            have projections : disclosuresAreProjections words
-                (exactK12Openings input) := by
-              exact accepted_openings_are_prefix_fixed_projections
-                (exactK12Truncate input) (exactK12ProverPrefixQueries input)
-                (exactK12OrderedQueries input) (exactK12Roots input)
-                (exactK12Openings input) accepted prefixIncluded
-                resolutionFailure suppliedCovered.1 suppliedCovered.2 collision
-            exact .inl
-              { words := words
-                wordsExact := rfl
-                openingsAccepted := accepted
-                prefixIncluded := prefixIncluded
-                noResolutionFailure := resolutionFailure
-                suppliedCovered := suppliedCovered
-                noCollision := collision
-                projections := projections }
-        · exact .inr (.suppliedOpeningTraceMissing suppliedCovered)
-    · exact .inr (.proverPrefixNotIncluded prefixIncluded)
+  · have prefixIncluded := exactK12_prover_prefix_is_included_in_full_log input
+    by_cases resolutionFailure : PrefixPathResolutionFailure
+        (exactK12Truncate input) (exactK12ProverPrefixQueries input)
+        (exactK12Roots input) (exactK12Openings input)
+    · exact .inr (.prefixPathResolution resolutionFailure)
+    · by_cases suppliedCovered : ExactPrefixK12SuppliedCoverage input
+      · by_cases collision : RawLogTruncatedDigestCollision
+            (exactK12Truncate input) (exactK12OrderedQueries input)
+        · exact .inr (.sharedRawPrefixCollision collision)
+        · let words := exactPrefixK12Words input
+          have projections : disclosuresAreProjections words
+              (exactK12Openings input) := by
+            exact accepted_openings_are_prefix_fixed_projections
+              (exactK12Truncate input) (exactK12ProverPrefixQueries input)
+              (exactK12OrderedQueries input) (exactK12Roots input)
+              (exactK12Openings input) accepted prefixIncluded
+              resolutionFailure suppliedCovered.1 suppliedCovered.2 collision
+          exact .inl
+            { words := words
+              wordsExact := rfl
+              openingsAccepted := accepted
+              prefixIncluded := prefixIncluded
+              noResolutionFailure := resolutionFailure
+              suppliedCovered := suppliedCovered
+              noCollision := collision
+              projections := projections }
+      · exact .inr (.suppliedOpeningTraceMissing suppliedCovered)
   · exact .inr (.openingAuthenticationRejected accepted)
 
 theorem exactPrefixK12_words_have_frozen_lengths
@@ -219,6 +290,8 @@ theorem exactPrefixK12_words_have_frozen_lengths
     extractPrefixFixedWords_c2_length _ _ _⟩
 
 #print axioms classifyExactPrefixK12
+#print axioms exactK12_prover_history_is_prefix_of_verifier_final_history
+#print axioms exactK12_prover_prefix_is_included_in_full_log
 #print axioms exactPrefixK12_words_have_frozen_lengths
 
 end
