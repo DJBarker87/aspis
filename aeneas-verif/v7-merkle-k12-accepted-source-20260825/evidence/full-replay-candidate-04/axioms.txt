@@ -1,0 +1,313 @@
+'AspisV7DeferredParserSourceBridge.extracted_entry_is_exact_deferred_parser' depends on axioms: [propext,
+ Classical.choice,
+ Quot.sound]
+'AspisV7DeferredParserSourceBridge.extracted_parser_rejects_oversized_frontier' depends on axioms: [propext,
+ Classical.choice,
+ Quot.sound]
+'AspisV7DeferredParserSourceBridge.extracted_parser_success_is_deployed_parser_success' depends on axioms: [propext,
+ Classical.choice,
+ Quot.sound]
+'AspisV7MerkleCallerNamespaceBridge.caller_truncate_sha256_v7_eq' depends on axioms: [propext,
+ Classical.choice,
+ Quot.sound]
+'AspisV7MerkleCallerNamespaceBridge.caller_private_leaf_hash_v7_eq' depends on axioms: [propext,
+ Classical.choice,
+ Quot.sound]
+'AspisV7MerkleCallerNamespaceBridge.caller_node_hash_v7_eq' depends on axioms: [propext, Classical.choice, Quot.sound]
+'AspisV7MerkleCallerNamespaceBridge.caller_verify_two_minimal_subtrees_v7_bytes_eq' depends on axioms: [propext,
+ Classical.choice,
+ Quot.sound]
+'AspisV7MerkleCallerNamespaceBridge.deferredWireEquiv' depends on axioms: [propext, Classical.choice, Quot.sound]
+'AspisV7MerkleCallerNamespaceBridge.deferredWireQuery_is_translated_caller_query' depends on axioms: [propext,
+ Classical.choice,
+ Quot.sound]
+'AspisV7MerkleCallerNamespaceBridge.deferredWireQuery_success_fields' depends on axioms: [propext,
+ Classical.choice,
+ Quot.sound]
+'AspisPool.V7MerkleQueryGrammar.serialize_injective' depends on axioms: [propext, Quot.sound]
+'AspisPool.V7MerkleQueryGrammar.truncatedDigestCollision_iff_serialized_collision' depends on axioms: [propext,
+ Quot.sound]
+'AspisPool.V7MerkleQueryGrammar.frozen_tree_parameters' depends on axioms: [propext]
+'AspisPool.V7MerkleQueryGrammar.resolveFirstAux_cons_match' depends on axioms: [propext, Classical.choice, Quot.sound]
+'AspisPool.V7MerkleQueryGrammar.resolveFirstAux_cons_miss' depends on axioms: [propext, Classical.choice, Quot.sound]
+'AspisPool.V7MerkleQueryExtractor.finishExtraction_success_yields_match' depends on axioms: [propext,
+ Classical.choice,
+ Quot.sound]
+'AspisPool.V7MerkleQueryExtractor.extractV7Words_success_yields_roots_and_openings_match' depends on axioms: [propext,
+ Classical.choice,
+ Quot.sound]
+'AspisPool.V7MerkleQueryExtractor.extractV7Words_success_yields_causal_provenance' depends on axioms: [propext,
+ Classical.choice,
+ Quot.sound]
+'AspisPool.V7MerkleQueryExtractor.accepted_two_tree_openings_extract_or_typed_failure' depends on axioms: [propext,
+ Classical.choice,
+ Quot.sound]
+'AspisPool.V7MerkleParserRoundtrip.parse_serialize_typed_preimage' depends on axioms: [propext,
+ Classical.choice,
+ Quot.sound]
+'AspisPool.V7MerkleParserRoundtrip.serialize_parse_typed_preimage' depends on axioms: [propext,
+ Classical.choice,
+ Quot.sound]
+'AspisPool.V7MerkleParserRoundtrip.parse_typed_preimage_eq_some_iff' depends on axioms: [propext,
+ Classical.choice,
+ Quot.sound]
+'AspisV7MerkleK12SourceBridge.truncate_sha256_v7_exact' depends on axioms: [propext, Classical.choice, Quot.sound]
+'AspisV7MerkleK12SourceBridge.private_leaf_hash_v7_exact' depends on axioms: [propext, Classical.choice, Quot.sound]
+'AspisV7MerkleK12SourceBridge.node_hash_v7_exact' depends on axioms: [propext, Classical.choice, Quot.sound]
+'AspisV7MerkleK12SourceBridge.inner_body_cannot_return_true' depends on axioms: [propext, Classical.choice, Quot.sound]
+'AspisV7MerkleK12SourceBridge.loop_result_option_never_true' depends on axioms: [propext, Classical.choice, Quot.sound]
+'AspisV7MerkleK12SourceBridge.loop_success_excludes_bad_output' depends on axioms: [propext,
+ Classical.choice,
+ Quot.sound]
+'AspisV7MerkleK12SourceBridge.loop_success_yields_exact_trace' depends on axioms: [propext,
+ Classical.choice,
+ Quot.sound]
+'AspisV7MerkleK12SourceBridge.inner_loop_success_yields_exact_control_flow_trace' depends on axioms: [propext,
+ Classical.choice,
+ Quot.sound]
+'AspisV7MerkleK12SourceBridge.outer_loop_success_yields_exact_control_flow_trace' depends on axioms: [propext,
+ Classical.choice,
+ Quot.sound]
+'AspisV7MerkleK12SourceBridge.inner_loop_cannot_return_true' depends on axioms: [propext, Classical.choice, Quot.sound]
+'AspisV7MerkleK12SourceBridge.outer_body_cannot_return_true' depends on axioms: [propext, Classical.choice, Quot.sound]
+'AspisV7MerkleK12SourceBridge.outer_loop_cannot_return_true' depends on axioms: [propext, Classical.choice, Quot.sound]
+'AspisV7MerkleK12SourceBridge.partial_eq_u8_array_true_implies_equal' depends on axioms: [propext,
+ Classical.choice,
+ Quot.sound]
+'AspisV7MerkleK12SourceBridge.verify_two_subtrees_success_yields_exact_traversal' depends on axioms: [propext,
+ Classical.choice,
+ Quot.sound]
+'AspisV7MerkleK12SourceBridge.verify_two_subtrees_success_implies_exact_shape' depends on axioms: [propext,
+ Classical.choice,
+ Quot.sound]
+'AspisV7MerkleK12LayoutBridge.truncate_sha256_v7_is_first_26_bytes' depends on axioms: [propext,
+ Classical.choice,
+ Quot.sound]
+'AspisV7MerkleK12LayoutBridge.deferred_parser_success_has_exact_layout' depends on axioms: [propext,
+ Classical.choice,
+ Quot.sound]
+'AspisV7MerkleK12LayoutBridge.deferred_parser_merkle_material_is_raw_bytes' depends on axioms: [propext,
+ Classical.choice,
+ Quot.sound]
+'AspisV7MerkleK12LayoutBridge.deferred_parser_rejects_wrong_or_trailing_length' depends on axioms: [propext,
+ Classical.choice,
+ Quot.sound]
+'AspisV7MerkleK12LayoutBridge.private_leaf_hash_v7_c1_matches_frozen_serialize' depends on axioms: [propext,
+ Classical.choice,
+ Quot.sound]
+'AspisV7MerkleK12LayoutBridge.private_leaf_hash_v7_c2_matches_frozen_serialize' depends on axioms: [propext,
+ Classical.choice,
+ Quot.sound]
+'AspisV7MerkleK12LayoutBridge.node_hash_v7_matches_frozen_serialize' depends on axioms: [propext,
+ Classical.choice,
+ Quot.sound]
+'AspisV7MerkleK12LayoutBridge.frozen_parser_success_iff_exact_serialization' depends on axioms: [propext,
+ Classical.choice,
+ Quot.sound]
+'AspisV7MerkleK12LayoutBridge.frozen_parser_rejects_untyped_input' depends on axioms: [propext,
+ Classical.choice,
+ Quot.sound]
+'AspisV7MerkleK12LayoutBridge.frozen_parser_rejects_trailing_bytes' depends on axioms: [propext,
+ Classical.choice,
+ Quot.sound]
+'AspisV7MerkleK12LayoutBridge.paired_leaf_source_inputs_share_exact_salt' depends on axioms: [propext,
+ Classical.choice,
+ Quot.sound]
+'AspisV7MerkleK12AcceptedBridge.digestFixed_eq_frozenTruncate_of_bytes' depends on axioms: [propext,
+ Classical.choice,
+ Quot.sound]
+'AspisV7MerkleK12AcceptedBridge.node_hash_v7_matches_frozen_digest' depends on axioms: [propext,
+ Classical.choice,
+ Quot.sound]
+'AspisV7MerkleK12AcceptedBridge.c1_leaf_hash_v7_matches_frozen_digest' depends on axioms: [propext,
+ Classical.choice,
+ Quot.sound]
+'AspisV7MerkleK12AcceptedBridge.c2_leaf_hash_v7_matches_frozen_digest' depends on axioms: [propext,
+ Classical.choice,
+ Quot.sound]
+'AspisV7MerkleK12AcceptedBridge.GeneratedSourcePath.siblingList_length' depends on axioms: [propext,
+ Classical.choice,
+ Quot.sound]
+'AspisV7MerkleK12AcceptedBridge.GeneratedSourcePath.siblingVector_bytes' depends on axioms: [propext,
+ Classical.choice,
+ Quot.sound]
+'AspisV7MerkleK12AcceptedBridge.generated_source_path_foldPathAux' depends on axioms: [propext,
+ Classical.choice,
+ Quot.sound]
+'AspisV7MerkleK12AcceptedBridge.generated_source_path_foldPath' depends on axioms: [propext,
+ Classical.choice,
+ Quot.sound]
+'AspisV7MerkleK12AcceptedBridge.openingOfSourcePaths_authenticates' depends on axioms: [propext,
+ Classical.choice,
+ Quot.sound]
+'AspisV7MerkleK12AcceptedBridge.PairedSourceOpening.authenticates' depends on axioms: [propext,
+ Classical.choice,
+ Quot.sound]
+'AspisV7MerkleK12AcceptedBridge.exact_source_opening_batch_accepted' depends on axioms: [propext,
+ Classical.choice,
+ Quot.sound]
+'AspisV7MerkleK12AcceptedBridge.PairedHashRounds.pathsFromMember' depends on axioms: [propext,
+ Classical.choice,
+ Quot.sound]
+'AspisV7MerkleK12AcceptedBridge.exact_source_hash_rounds_imply_accepted_two_tree_openings' depends on axioms: [propext,
+ Classical.choice,
+ Quot.sound]
+'AspisV7MerkleK12TraversalBridge.vec_clear_success_values_empty' depends on axioms: [propext,
+ Classical.choice,
+ Quot.sound]
+'AspisV7MerkleK12TraversalBridge.vec_push_success_values_append' depends on axioms: [propext,
+ Classical.choice,
+ Quot.sound]
+'AspisV7MerkleK12TraversalBridge.vec_extend_builtin_success_values_append' depends on axioms: [propext,
+ Classical.choice,
+ Quot.sound]
+'AspisV7MerkleK12TraversalBridge.ExactInnerEdgeTrace.preserves_scratch_members' depends on axioms: [propext,
+ Classical.choice,
+ Quot.sound]
+'AspisV7MerkleK12TraversalBridge.ExactInnerEdgeTrace.destinationOfMember' depends on axioms: [propext,
+ Classical.choice,
+ Quot.sound]
+'AspisV7MerkleK12TraversalBridge.ExactInnerEdgeTrace.toPairedHashRound' depends on axioms: [propext,
+ Classical.choice,
+ Quot.sound]
+'AspisV7MerkleK12TraversalBridge.ExactOuterEdgeTrace.toPairedHashRounds' depends on axioms: [propext,
+ Classical.choice,
+ Quot.sound]
+'AspisV7MerkleK12TraversalBridge.exact_traversal_final_level_values' depends on axioms: [propext,
+ Classical.choice,
+ Quot.sound]
+'AspisV7MerkleK12TraversalBridge.exact_traversal_cleared_level_values' depends on axioms: [propext,
+ Classical.choice,
+ Quot.sound]
+'AspisV7MerkleK12TraversalBridge.exact_traversal_seeded_level_values' depends on axioms: [propext,
+ Classical.choice,
+ Quot.sound]
+'AspisV7MerkleK12TraversalBridge.exact_outer_edge_trace_implies_accepted_two_tree_openings' depends on axioms: [propext,
+ Classical.choice,
+ Quot.sound]
+'AspisV7MerkleK12InnerTraceBridge.exact_inner_body_active_cannot_done_none' depends on axioms: [propext,
+ Classical.choice,
+ Quot.sound]
+'AspisV7MerkleK12InnerTraceBridge.exact_inner_body_done_none_is_exhausted' depends on axioms: [propext,
+ Classical.choice,
+ Quot.sound]
+'AspisV7MerkleK12InnerTraceBridge.list_drop_eq_getElem_cons' depends on axioms: [propext, Classical.choice, Quot.sound]
+'AspisV7MerkleK12InnerTraceBridge.list_drop_eq_two_getElem_cons' depends on axioms: [propext,
+ Classical.choice,
+ Quot.sound]
+'AspisV7MerkleK12InnerTraceBridge.frontier_even_continue_step_of_exact_runs' depends on axioms: [propext,
+ Classical.choice,
+ Quot.sound]
+'AspisV7MerkleK12InnerTraceBridge.frontier_odd_continue_step_of_exact_runs' depends on axioms: [propext,
+ Classical.choice,
+ Quot.sound]
+'AspisV7MerkleK12InnerTraceBridge.paired_continue_step_of_exact_runs' depends on axioms: [propext,
+ Classical.choice,
+ Quot.sound]
+'AspisV7MerkleK12InnerTraceBridge.exact_inner_body_paired_cont_yields_step' depends on axioms: [propext,
+ Classical.choice,
+ Quot.sound]
+'AspisV7MerkleK12InnerTraceBridge.exact_inner_body_odd_frontier_cont_yields_step' depends on axioms: [propext,
+ Classical.choice,
+ Quot.sound]
+'AspisV7MerkleK12InnerTraceBridge.exact_inner_body_even_last_frontier_cont_yields_step' depends on axioms: [propext,
+ Classical.choice,
+ Quot.sound]
+'AspisV7MerkleK12InnerTraceBridge.exact_inner_body_even_gap_frontier_cont_yields_step' depends on axioms: [propext,
+ Classical.choice,
+ Quot.sound]
+'AspisV7MerkleK12InnerTraceBridge.exact_inner_body_odd_cont_yields_step' depends on axioms: [propext,
+ Classical.choice,
+ Quot.sound]
+'AspisV7MerkleK12InnerTraceBridge.exact_inner_body_even_last_cont_yields_step' depends on axioms: [propext,
+ Classical.choice,
+ Quot.sound]
+'AspisV7MerkleK12InnerTraceBridge.exact_inner_body_even_gap_cont_yields_step' depends on axioms: [propext,
+ Classical.choice,
+ Quot.sound]
+'AspisV7MerkleK12InnerTraceBridge.exact_inner_body_cont_yields_step' depends on axioms: [propext,
+ Classical.choice,
+ Quot.sound]
+'AspisV7MerkleK12InnerTraceBridge.exact_inner_control_flow_trace_yields_indexed_trace' depends on axioms: [propext,
+ Classical.choice,
+ Quot.sound]
+'AspisV7MerkleK12InnerTraceBridge.exact_inner_control_flow_trace_yields_edge_trace' depends on axioms: [propext,
+ Classical.choice,
+ Quot.sound]
+'AspisV7MerkleK12InnerTraceBridge.ExactInnerIndexedTrace.toEdgeTrace' depends on axioms: [propext,
+ Classical.choice,
+ Quot.sound]
+'AspisV7MerkleK12InnerTraceBridge.u32_shr_one_i32_val' depends on axioms: [propext, Classical.choice, Quot.sound]
+'AspisV7MerkleK12InnerTraceBridge.testBit_zero_false_of_and_one_eq_zero' depends on axioms: [propext,
+ Classical.choice,
+ Quot.sound]
+'AspisV7MerkleK12InnerTraceBridge.testBit_zero_true_of_and_one_ne_zero' depends on axioms: [propext,
+ Classical.choice,
+ Quot.sound]
+'AspisV7MerkleK12OuterTraceBridge.range_next_u32_some_exact' depends on axioms: [propext, Classical.choice, Quot.sound]
+'AspisV7MerkleK12OuterTraceBridge.range_next_u32_none_implies_exhausted' depends on axioms: [propext,
+ Classical.choice,
+ Quot.sound]
+'AspisV7MerkleK12OuterTraceBridge.exact_outer_body_done_none_is_exhausted' depends on axioms: [propext,
+ Classical.choice,
+ Quot.sound]
+'AspisV7MerkleK12OuterTraceBridge.ExactOuterNestedTrace.rounds_eq_range_remaining_of_result_none' depends on axioms: [propext,
+ Classical.choice,
+ Quot.sound]
+'AspisV7MerkleK12OuterTraceBridge.ExactOuterNestedTrace.rounds_eq_range_remaining' depends on axioms: [propext,
+ Classical.choice,
+ Quot.sound]
+'AspisV7MerkleK12OuterTraceBridge.ExactOuterNestedTrace.rounds_eq_treeDepth_of_production_range' depends on axioms: [propext,
+ Classical.choice,
+ Quot.sound]
+'AspisV7MerkleK12OuterTraceBridge.ExactOuterNestedTrace.yields_outer_edge_trace_of_result_none' depends on axioms: [propext,
+ Classical.choice,
+ Quot.sound]
+'AspisV7MerkleK12OuterTraceBridge.ExactOuterNestedTrace.yields_outer_edge_trace' depends on axioms: [propext,
+ Classical.choice,
+ Quot.sound]
+'AspisV7MerkleK12OuterTraceBridge.exact_outer_control_flow_trace_yields_nested_trace' depends on axioms: [propext,
+ Classical.choice,
+ Quot.sound]
+'AspisV7MerkleK12OuterTraceBridge.outerEdgeTraceOfExactTraversal' depends on axioms: [propext,
+ Classical.choice,
+ Quot.sound]
+'AspisV7MerkleK12OuterTraceBridge.exact_translated_traversal_implies_accepted_two_tree_openings' depends on axioms: [propext,
+ Classical.choice,
+ Quot.sound]
+'AspisV7MerkleK12OuterTraceBridge.exactTraversalOfVerifierSuccess' depends on axioms: [propext,
+ Classical.choice,
+ Quot.sound]
+'AspisV7MerkleK12OuterTraceBridge.translated_verifier_success_implies_accepted_two_tree_openings' depends on axioms: [propext,
+ Classical.choice,
+ Quot.sound]
+'AspisV7MerkleK12CallerBridge.caller_query_success_lengths' depends on axioms: [propext, Classical.choice, Quot.sound]
+'AspisV7MerkleK12CallerBridge.pairedSourceSeedOfCallerLeafRuns' depends on axioms: [propext,
+ Classical.choice,
+ Quot.sound]
+'AspisV7MerkleK12CallerBridge.caller_loop_success_yields_exact_control_flow_trace' depends on axioms: [propext,
+ Classical.choice,
+ Quot.sound]
+'AspisV7MerkleK12CallerBridge.ExactAcceptedCallerTrace.terminalEvidence' depends on axioms: [propext,
+ Classical.choice,
+ Quot.sound]
+'AspisV7MerkleK12CallerBridge.CallerTerminalEvidence.standaloneVerifierRun' depends on axioms: [propext,
+ Classical.choice,
+ Quot.sound]
+'AspisV7MerkleK12CallerBridge.exactTraversalOfCallerTrace' depends on axioms: [propext, Classical.choice, Quot.sound]
+'AspisV7MerkleK12CallerBridge.openingProofOfExactCallerTrace' depends on axioms: [propext, Classical.choice, Quot.sound]
+'AspisV7MerkleK12CallerBridge.exact_translated_caller_trace_implies_accepted_two_tree_openings' depends on axioms: [propext,
+ Classical.choice,
+ Quot.sound]
+'AspisV7MerkleK12CallerBridge.translated_caller_success_yields_exact_wrapper_control_flow' depends on axioms: [propext,
+ Classical.choice,
+ Quot.sound]
+'AspisV7MerkleK12CallerBridge.ExactCallerWrapperControlFlow.order_positions_strict' depends on axioms: [propext,
+ Classical.choice,
+ Quot.sound]
+'AspisV7MerkleK12CallerBridge.exact_caller_control_flow_trace_yields_accepted_trace' depends on axioms: [propext,
+ Classical.choice,
+ Quot.sound]
+'AspisV7MerkleK12CallerBridge.translated_caller_success_implies_accepted_two_tree_openings' depends on axioms: [propext,
+ Classical.choice,
+ Quot.sound]

@@ -1,0 +1,174 @@
+V7 TAG-73 TRANSPARENT PRODUCTION CALLER AENEAS TRANSLATION
+=========================================================
+
+Status: FINAL RESULT-AWARE TRANSLATION PASS
+Date: 2026-08-26
+Host: nuc.local
+
+Input and tool identity
+-----------------------
+
+Production Rust commit:
+  01f5f4f722cfdf6bc29c157fc3db6ff5ab5e413a
+Caller LLBC SHA-256:
+  88f4208020474047b8bbe8e7028bbff0a0460b6548c58d40c17db0649ef65e07
+Aeneas source commit:
+  d860ac47ed548d3da6d799afc013779ce470516c
+Aeneas source tree:
+  ecae180dff9c59c9ff93fbc78e5df1e8988b18bb
+Clean source archive SHA-256:
+  472d499c25a7e944f6754126df51de758cd8a5733f5a6ec2ce653c652cb65722
+
+The Linux x86-64 tool was built from that clean archive after applying, in
+order, the three frozen bundle patches:
+
+  129eb64f687a84f2a87f437ee9d66a35b7e378b2c23619a5b00a69826dc2ea12
+    aeneas-d860ac47-ocaml52-exhaustive-match.patch
+  e1478a1b08a116af4902116b53848df2ff06dced82776dc549e01a3eaaee79fa
+    aeneas-d860ac47-static-return-loan.patch
+  3747ba951a504eb2d44f4668a749b6ce638734c097a697c235f23f03a869f432
+    aeneas-d860ac47-v6-result-flow.patch
+
+Built binary version:
+  aeneas d860ac47-patched-result-aware
+Built binary SHA-256:
+  87f65bd36e0dad06d322f833fcb4cb6c3e7d84acf149b31d0c4e61656d23ea4a
+Binary format:
+  ELF 64-bit LSB executable, x86-64, statically linked, not stripped
+
+Build chronology and resources
+------------------------------
+
+The build used the pinned `nixos/nix:2.24.11` image digest
+`sha256:4bfe741027f0bfbef745862cbf3b5f424ee99801c04138146c0000a28759636d`
+inside an isolated dockerd. The workload used a 22 GiB memory-high,
+28 GiB memory-max, and zero-swap cgroup.
+
+Attempt 01 reached the Charon test suite but its container PID limit of 512
+caused 22 `EAGAIN` thread-creation failures (393 tests passed, 2 ignored).
+It was not an OOM and it did not reveal a semantic test mismatch. Exit was 1
+after 19:15.17 wall time. The complete Charon log is preserved.
+
+For attempt 02, only the owned container's PID ceiling was raised to 4096;
+the exact source, Nix store, and memory/swap limits were unchanged. Charon's
+tests and the static Aeneas build passed:
+
+  exit status: 0
+  wall time after the cached retry: 2:44.12
+  workload cgroup memory.peak: 6835535872 bytes
+  workload cgroup memory.swap.current / memory.swap.peak: 0 / 0
+  workload cgroup pids.peak: 735
+  OOM / OOM-kill events: 0 / 0
+
+`/usr/bin/time` measured the Docker client rather than the container workload;
+the workload figures above are the direct container cgroup readings. Exact
+commands, source/patch hashes, Docker identity, stdout, time data, cgroup data,
+and both build attempts are under `caller/evidence/toolchain-build/`.
+
+Exact final Aeneas command
+--------------------------
+
+  /home/dombarker/project-offloads/aspis-v7-k12-merkle-source-20260826/toolchain-result-aware-d860ac47/output/aeneas-d860ac47-result-aware-linux-x86_64 \
+    -sequential -no-progress-bar -abort-on-error -backend lean \
+    -namespace V7MerkleCallerGenerated \
+    -dest /home/dombarker/project-offloads/aspis-v7-k12-merkle-source-20260826/caller-translation-02/generated \
+    -subdir V7MerkleCaller -split-files -emit-json \
+    /home/dombarker/project-offloads/aspis-v7-k12-merkle-source-20260826/caller-extraction-02/output/V7MerkleCaller.llbc
+
+The payload ran in the transient unit
+`aspis-v7-caller-aeneas-result-aware-20260826` with
+`MemoryHigh=22G`, `MemoryMax=28G`, and `MemorySwapMax=0`.
+
+Translation resource result:
+
+  invocation ID: c106cb692eca41c0aa79dd3741695561
+  systemd result / exit: success / 0
+  wall time: 0:48.27
+  Aeneas reported time: 48.141457 s
+  user / system time: 47.81 s / 0.45 s
+  maximum RSS: 538900 KiB
+  /usr/bin/time swaps: 0
+  host MemAvailable before / after: 32526640 / 32535428 kB
+  host SwapFree before / after: 244 / 248 kB
+
+Final raw generated artifacts
+-----------------------------
+
+  caller/generated/V7MerkleCaller/Types.lean
+    bytes 4563
+    SHA-256 238b18a33b3a554e58d9f02b174e4824fdba2a4462b2026cac21938491ff6f7e
+  caller/generated/V7MerkleCaller/TypesExternal_Template.lean
+    bytes 1123
+    SHA-256 ec5e646e8f308070e1b97f85bcdb56b1890065d587865a713b8093645ca542eb
+  caller/generated/V7MerkleCaller/FunsExternal_Template.lean
+    bytes 8746
+    SHA-256 f539ac8e9cfc1bd5d0528b35b1e2acaa611d45e2182fb16a75fdbd67f4c63c5c
+  caller/generated/V7MerkleCaller/Funs.lean
+    bytes 88305
+    SHA-256 06aa67e665caea1d206f01adbac5f014a4b3581ded7ddcd9f13de9f06273e999
+  caller/extraction/translation.json
+    bytes 74171
+    SHA-256 4cb416e1daa5819b3e5c4406f55c32cd5be6e828b382fe50029a0b2fc71fe4af
+
+No generated file was normalized or hand-edited. Aeneas emitted one warning
+that its Lean library Iterator trait lacks the `any` field. Every emitted
+external template entry is supplied by an executable, non-axiom definition
+documented in `CALLER-EXTERNAL-INVENTORY.md`.
+
+Result-aware alignment
+----------------------
+
+The final generated callback is exactly:
+
+  Slice (Slice U8) -> Result (Array U8 32)
+
+for `private_leaf_hash`, `private_leaf_hash_v7`, `node_hash_v7`,
+`verify_two_minimal_subtrees_v7_bytes`, and
+`verify_and_gamma_combine_v7_openings`. Hash calls are monadic (`let a <-
+hash ...`), so hash failure remains visible to translated production control
+flow. This is the same convention as the four-root V7 Merkle translation.
+
+The prior pure-callback diagnostic translation is retained, but cannot be
+mistaken for the final artifact: its raw files are quarantined under
+`caller/evidence/translation-01/generated/`, and its remaining execution
+evidence stays under `caller/evidence/translation-01/`.
+
+Combined Lean import
+--------------------
+
+The raw generated caller imports with the executable caller-unique external
+definitions, the shared V7 Merkle external definitions, and the deterministic
+generated compatibility overlay documented in `CALLER-EXTERNAL-INVENTORY.md`.
+The final focused compile was:
+
+  unit: aspis-v7-caller-lean-compile-05
+  invocation ID: 5997e62169f44c6da0b4d75e2e826472
+  exit status: 0
+  wall / user / system: 14.38 / 9.91 / 4.61 s
+  maximum RSS: 2611984 KiB
+  swaps: 0
+  MemAvailable gate: 32518596 kB
+
+`caller/evidence/lean-compile-01/` retains the exact final command, source and
+patch hashes, stdout/stderr, time output, and the four preceding focused
+interface diagnostics.  The standalone namespace-bridge replay extends this
+compile with the exact deferred-parser extraction and the proof that duplicate
+Merkle bodies and wire fields agree.
+
+The final combined namespace replay passed in unit
+`aspis-v7-caller-namespace-12`, invocation
+`f0abe441f3674d20b8f1edd446abfaa6`: exit 0, 23.69 seconds wall,
+2,612,928 KiB maximum RSS, and zero swaps. Its complete stdout records that
+all seven printed equality/wire/query theorems depend on exactly
+`[propext, Classical.choice, Quot.sound]`. Evidence, including the preceding
+focused import and proof diagnostics, is under
+`caller/evidence/namespace-bridge-01/`.
+
+Isolation cleanup
+-----------------
+
+After the build and final translation, the isolated dockerd and containerd
+were stopped. Their owned Docker data root, exec root, socket, PID file, and
+residual namespace mount were removed. Evidence confirms zero owned daemon
+processes and mounts. The built binary, patched source, and evidence remain
+on nuc.local. No system Docker unit was restored by this lane.

@@ -1,0 +1,73 @@
+V7 K1.2 exact-base four-root extraction equality audit
+Date: 2026-08-26 Europe/London
+Requested production commit: 01f5f4f722cfdf6bc29c157fc3db6ff5ab5e413a
+Requested production tree: f634f5d7d8ff6606f1a9db40771111e49f5f7e53
+
+Result:
+  exact-base normalized LLBC equals the archived normalized LLBC: PASS
+  exact-base generated Types and external templates are byte-identical: PASS
+  exact-base generated translation.json is byte-identical: PASS
+  exact-base generated Funs.lean after the pinned failure-diagnostic-only
+    normalization is byte-identical: PASS
+
+Four exact Charon roots:
+  crate::v7_merkle208::truncate_sha256_v7
+  crate::v7_merkle208::private_leaf_hash_v7
+  crate::v7_merkle208::node_hash_v7
+  crate::v7_merkle208::verify_two_minimal_subtrees_v7_bytes
+
+Normalized LLBC SHA-256, fresh and archived:
+  f43c3b6596bb4a527d46d9c4163e6ce21eef3db0ef6a55ecb6261b7fa5368d91
+
+Fresh Aeneas equality:
+  Types.lean: byte-identical
+  TypesExternal_Template.lean: byte-identical
+  FunsExternal_Template.lean: byte-identical
+  translation.json: byte-identical
+  Funs.lean: one generated difference before normalization, exactly the
+    formatting of the Rust expect diagnostic in truncate_sha256_v7;
+    byte-identical after applying
+    extraction/aeneas-failure-diagnostic-normalization.patch
+  normalized Funs.lean SHA-256:
+    f3728e5098898f90010d3091413305517cd72b8fb19c5951f2c2ee80980da81b
+
+Focused commands (run from a disposable git archive of the exact commit):
+
+  env CARGO_BUILD_JOBS=1 CARGO_TARGET_DIR=<temporary>/cargo-target \
+    /usr/bin/time -l /Users/dominic/charon-cb50-metadata/bin/charon cargo \
+    --preset aeneas --mir built --sysroot default \
+    --start-from crate::v7_merkle208::truncate_sha256_v7 \
+    --start-from crate::v7_merkle208::private_leaf_hash_v7 \
+    --start-from crate::v7_merkle208::node_hash_v7 \
+    --start-from crate::v7_merkle208::verify_two_minimal_subtrees_v7_bytes \
+    --dest-file <temporary>/V7MerkleK12-base.llbc \
+    -- --package aspis-core --lib
+
+  /usr/bin/time -l \
+    /private/tmp/aspis-v6-aeneas-result-aware.UcbEt6/aeneas/src/_build/default/main.exe \
+    -sequential -no-progress-bar -abort-on-error -backend lean \
+    -namespace V7MerkleK12Generated -dest <temporary>/generated \
+    -subdir V7MerkleK12 -split-files -emit-json \
+    <temporary>/V7MerkleK12-base.llbc
+
+Resource evidence:
+  Charon: exit 0; 10.78 s wall; 719,749,120 bytes maximum RSS; 0 swaps.
+  Aeneas: exit 0; 27.34 s wall; 415,711,232 bytes maximum RSS; 0 swaps.
+  CARGO_BUILD_JOBS=1; Aeneas -sequential.
+
+Chronology and memory policy:
+  This focused local replay completed before the later instruction to move all
+  further Charon/Aeneas work to nuc.local. No further local extraction or
+  translation was started. A later NUC availability check reported
+  MemAvailable=23,572,412 kB with swap full, below the required 24 GiB gate,
+  so no NUC job was started. Future replay must wait for MemAvailable >=24 GiB
+  and run inside the established MemoryHigh=22G, MemoryMax=28G,
+  MemorySwapMax=0 cgroup.
+
+Important non-result:
+  This audit proves extraction equality only for the four roots above and their
+  extracted dependency, state_only_private_merkle::private_leaf_hash. It does
+  not translate the v7_onefold parser or production caller. In particular it
+  does not establish depth 18, count 16, C1/C2 tag selection, shared-salt use,
+  caller root/frontier selection, or parser-to-caller accepted-result flow.
+

@@ -1,0 +1,7 @@
+patching file V7MerkleCaller/Funs.lean
+Hunk #1 succeeded at 28 (offset 2 lines).
+Hunk #2 succeeded at 907 (offset 1 line).
+Hunk #3 succeeded at 1016 (offset 1 line).
+Hunk #5 succeeded at 1114 with fuzz 2.
+patching file V7DeferredParser/FunsExternal.lean
+/tmp/v7-merkle-caller-namespace.WEthp6/V7MerkleCallerNamespaceBridge.lean:1:0: error: object file '/tmp/v7-merkle-caller-namespace.WEthp6/V7MerkleK12/Funs.olean' of module V7MerkleK12.Funs does not exist

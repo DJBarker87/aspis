@@ -1,0 +1,23 @@
+patching file V7MerkleCaller/Funs.lean
+patching file V7DeferredParser/FunsExternal.lean
+patching file V7DeferredParser/FunsExternal.lean
+Hunk #2 succeeded at 17 (offset 1 line).
+patching file V7DeferredParser/Types.lean
+'AspisV7MerkleCallerNamespaceBridge.caller_truncate_sha256_v7_eq' depends on axioms: [propext,
+ Classical.choice,
+ Quot.sound]
+'AspisV7MerkleCallerNamespaceBridge.caller_private_leaf_hash_v7_eq' depends on axioms: [propext,
+ Classical.choice,
+ Quot.sound]
+'AspisV7MerkleCallerNamespaceBridge.caller_node_hash_v7_eq' depends on axioms: [propext, Classical.choice, Quot.sound]
+'AspisV7MerkleCallerNamespaceBridge.caller_verify_two_minimal_subtrees_v7_bytes_eq' depends on axioms: [propext,
+ Classical.choice,
+ Quot.sound]
+'AspisV7MerkleCallerNamespaceBridge.deferredWireEquiv' depends on axioms: [propext, Classical.choice, Quot.sound]
+'AspisV7MerkleCallerNamespaceBridge.deferredWireQuery_is_translated_caller_query' depends on axioms: [propext,
+ Classical.choice,
+ Quot.sound]
+'AspisV7MerkleCallerNamespaceBridge.deferredWireQuery_success_fields' depends on axioms: [propext,
+ Classical.choice,
+ Quot.sound]
+V7 caller/Merkle/deferred-parser namespace bridge: PASS

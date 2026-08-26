@@ -1,0 +1,85 @@
+V7 TAG-73 TRANSPARENT PRODUCTION CALLER EXTRACTION
+=================================================
+
+Status: PASS (attempt 02)
+Date: 2026-08-26
+Host: nuc.local
+Production commit: 01f5f4f722cfdf6bc29c157fc3db6ff5ab5e413a
+Production tree: f634f5d7d8ff6606f1a9db40771111e49f5f7e53
+Rust toolchain: nightly-2026-06-01
+rustc: 1.98.0-nightly (14210df0e 2026-05-31)
+cargo: 1.98.0-nightly (fbb61be30 2026-05-26)
+Charon binary SHA-256:
+  b2b0961a3c55aca64752b2fa4a4701ba0c06b860236979e5727c07de8ac2310c
+
+Exact timed Charon payload (attempt 02):
+
+  /home/dombarker/.cargo/bin/rustup run nightly-2026-06-01 \
+    /home/dombarker/project-offloads/ZK-v5-formal/toolchains/charon/bin/charon cargo \
+    --preset aeneas --mir built --sysroot default \
+    --start-from crate::v7_onefold::verify_and_gamma_combine_v7_openings \
+    --include aspis_core::v7_onefold \
+    --include aspis_core::v7_merkle208 \
+    --include aspis_core::state_only_private_merkle \
+    --include aspis_core::v6_onefold::gamma_combine_v6_packed_layer0 \
+    --include aspis_core::field \
+    --dest-file /home/dombarker/project-offloads/aspis-v7-k12-merkle-source-20260826/caller-extraction-02/output/V7MerkleCaller.llbc \
+    -- --package aspis-core --lib
+
+The timed payload ran with its working directory set to the disposable exact
+commit archive at caller-extraction-02/source.  It ran in the established
+cgroup with:
+
+  MemoryHigh=22G
+  MemoryMax=28G
+  MemorySwapMax=0
+  TasksMax=64
+
+Attempt 02 resource result:
+
+  exit status: 0
+  wall time: 0:06.19
+  user time: 5.42 s
+  system time: 0.54 s
+  maximum RSS: 647396 KiB
+  /usr/bin/time swaps: 0
+  cgroup memory.peak: 1057210368 bytes
+  cgroup memory.swap.current: 0
+  host MemAvailable before: 30320172 kB
+  host MemAvailable after: 30035916 kB
+  host SwapFree before/after: 2674128 kB / 2674128 kB
+
+Frozen LLBC:
+
+  path: caller/extraction/V7MerkleCaller.llbc
+  bytes: 3625432
+  SHA-256: 88f4208020474047b8bbe8e7028bbff0a0460b6548c58d40c17db0649ef65e07
+
+The command supplied no project-specific --opaque option.  Read-only LLBC
+audit results:
+
+  translated.options.opaque = []
+  all 59 local function declarations have opacity Transparent
+  all 18 local aspis_core::field functions have opacity Transparent
+
+Principal transparent definitions and source spans:
+
+  def 0   v7_onefold::verify_and_gamma_combine_v7_openings  v7_onefold.rs:183-225
+  def 8   V7CompactOneFoldWire::query                       v7_onefold.rs:166-179
+  def 11  gamma_combine_v6_packed_layer0                    v6_onefold.rs:554-627
+  def 14  verify_two_minimal_subtrees_v7_bytes              v7_merkle208.rs:51-128
+  def 15  private_leaf_hash_v7                              v7_merkle208.rs:31-38
+  def 156 node_hash_v7                                      v7_merkle208.rs:41-47
+  def 157 state_only_private_merkle::private_leaf_hash       state_only_private_merkle.rs:28-35
+  def 158 truncate_sha256_v7                                v7_merkle208.rs:24-28
+
+Failed attempt chronology:
+
+Attempt 01 used the same timed Charon payload and cgroup but omitted the
+working-directory change before invoking Cargo.  It failed before compilation
+with `could not find Cargo.toml`, exit 101, wall time 0:00.15, maximum RSS
+32208 KiB, zero /usr/bin/time swaps, and cgroup peak 210292736 bytes.  Its logs
+are preserved under caller/evidence/extraction-01 and were not overwritten.
+
+The successful attempt-02 logs are preserved byte-for-byte under
+caller/evidence/extraction-02.

@@ -1,0 +1,33 @@
+/home/dombarker/project-offloads/aspis-v7-k12-merkle-source-20260826/caller-lean-compile-01/workspace/V7MerkleCaller/Funs.lean:29:10: error: Type mismatch
+  core.slice.iter.IteratorIterMut.next
+has type
+  core.slice.iter.IterMut ?m.3 →
+    Result
+      (Option ?m.3 ×
+        core.slice.iter.IterMut ?m.3 × (core.slice.iter.IterMut ?m.3 → Option ?m.3 → core.slice.iter.IterMut ?m.3))
+but is expected to have type
+  core.slice.iter.IterMut T → Result (Option T × core.slice.iter.IterMut T)
+/home/dombarker/project-offloads/aspis-v7-k12-merkle-source-20260826/caller-lean-compile-01/workspace/V7MerkleCaller/Funs.lean:912:53: error: Application type mismatch: The argument
+  b
+has type
+  Prop
+but is expected to have type
+  Bool
+in the application
+  core.convert.num.FromU32Bool.from b
+/home/dombarker/project-offloads/aspis-v7-k12-merkle-source-20260826/caller-lean-compile-01/workspace/V7MerkleCaller/Funs.lean:869:2: warning: declaration uses `sorry`
+/home/dombarker/project-offloads/aspis-v7-k12-merkle-source-20260826/caller-lean-compile-01/workspace/V7MerkleCaller/Funs.lean:1019:7: error(lean.unknownIdentifier): Unknown constant `Aeneas.Std.core.slice.iter.IterMut.Insts.CoreIterTraitsIteratorIteratorMutAT`
+/home/dombarker/project-offloads/aspis-v7-k12-merkle-source-20260826/caller-lean-compile-01/workspace/V7MerkleCaller/Funs.lean:1016:5: error: expected a product type, got
+  core.iter.adapters.enumerate.Enumerate (core.slice.iter.IterMut field.QM31)
+/home/dombarker/project-offloads/aspis-v7-k12-merkle-source-20260826/caller-lean-compile-01/workspace/V7MerkleCaller/Funs.lean:999:2: warning: declaration uses `sorry`
+/home/dombarker/project-offloads/aspis-v7-k12-merkle-source-20260826/caller-lean-compile-01/workspace/V7MerkleCaller/Funs.lean:1106:38: error: Application type mismatch: The argument
+  back
+has type
+  core.slice.iter.IterMut field.QM31 → core.slice.iter.IterMut field.QM31
+but is expected to have type
+  core.slice.iter.IterMut field.QM31
+in the application
+  into_iter_back back
+/home/dombarker/project-offloads/aspis-v7-k12-merkle-source-20260826/caller-lean-compile-01/workspace/V7MerkleCaller/Funs.lean:1111:11: error(lean.unknownIdentifier): Unknown constant `Aeneas.Std.core.slice.iter.IterMut.Insts.CoreIterTraitsIteratorIteratorMutAT`
+/home/dombarker/project-offloads/aspis-v7-k12-merkle-source-20260826/caller-lean-compile-01/workspace/V7MerkleCaller/Funs.lean:1068:5: error: expected a product type, got
+  core.iter.adapters.enumerate.Enumerate (core.slice.iter.IterMut field.QM31)

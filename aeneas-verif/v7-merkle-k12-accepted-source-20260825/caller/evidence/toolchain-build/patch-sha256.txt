@@ -1,0 +1,3 @@
+129eb64f687a84f2a87f437ee9d66a35b7e378b2c23619a5b00a69826dc2ea12  /home/dombarker/project-offloads/aspis-v7-k12-merkle-source-20260826/toolchain-result-aware-d860ac47/patches/aeneas-d860ac47-ocaml52-exhaustive-match.patch
+e1478a1b08a116af4902116b53848df2ff06dced82776dc549e01a3eaaee79fa  /home/dombarker/project-offloads/aspis-v7-k12-merkle-source-20260826/toolchain-result-aware-d860ac47/patches/aeneas-d860ac47-static-return-loan.patch
+3747ba951a504eb2d44f4668a749b6ce638734c097a697c235f23f03a869f432  /home/dombarker/project-offloads/aspis-v7-k12-merkle-source-20260826/toolchain-result-aware-d860ac47/patches/aeneas-d860ac47-v6-result-flow.patch

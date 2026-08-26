@@ -1,0 +1,119 @@
+V7 Tag-73 Merkle Rust-to-Lean/Aeneas source bridge replay
+Result: PASS
+UTC: 2026-08-26T16:34:35Z through 2026-08-26T16:36:22Z
+
+Pinned production source:
+  commit 01f5f4f722cfdf6bc29c157fc3db6ff5ab5e413a
+  tree   f634f5d7d8ff6606f1a9db40771111e49f5f7e53
+
+Integrated command:
+  See evidence/full-replay-candidate-04/command.txt for the exact command.
+  It invoked replay.sh on nuc.local as dombarker under:
+    MemoryHigh=22G
+    MemoryMax=28G
+    MemorySwapMax=0
+    LEAN_NUM_THREADS=1
+  MemAvailable gate:
+    32,292,552 kB available
+    25,165,824 kB required
+    PASS
+
+Integrated execution:
+  unit: aspis-v7-k12-full-candidate-04.service
+  invocation: 11ea48dcf29c4311a384c96b8db6f9de
+  exit status: 0
+  wall: 1:46.57
+  user: 85.61 s
+  system: 21.58 s
+  maximum RSS: 7,097,940 KiB
+  swaps: 0
+  final line:
+    V7 K1.2 exact translated caller/source layout, traversal, and
+    accepted-predicate replay: PASS
+
+The replay checked:
+  - exact production commit/tree and DEPLOYED-SOURCE.sha256;
+  - exact generated, caller, toolchain, proof, and manifest hashes;
+  - no sorry, admit, sorryAx, or project-specific axiom declaration in
+    executable generated modules or proof sources;
+  - transparent deferred-parser translation and parser source bridge;
+  - frozen V7MerkleQueryGrammar, V7MerkleQueryExtractor, and
+    V7MerkleParserRoundtrip;
+  - the four-root Merkle translation and source equality bridge;
+  - exact byte/layout/SHA truncation bridge;
+  - accepted-opening hash/path bridge;
+  - exact verifier inner and outer traversal bridges;
+  - transparent caller translation and cross-namespace equality bridge; and
+  - the literal translated-caller success-to-frozen-accepted theorem.
+
+Strongest source-correspondence theorems:
+  AspisV7MerkleK12SourceBridge.truncate_sha256_v7_exact
+  AspisV7MerkleK12SourceBridge.private_leaf_hash_v7_exact
+  AspisV7MerkleK12SourceBridge.node_hash_v7_exact
+  AspisV7MerkleK12SourceBridge.verify_two_subtrees_success_yields_exact_traversal
+  AspisV7MerkleK12SourceBridge.verify_two_subtrees_success_implies_exact_shape
+  AspisV7MerkleK12LayoutBridge.deferred_parser_success_has_exact_layout
+  AspisV7MerkleK12LayoutBridge.truncate_sha256_v7_is_first_26_bytes
+  AspisV7MerkleK12LayoutBridge.private_leaf_hash_v7_c1_matches_frozen_serialize
+  AspisV7MerkleK12LayoutBridge.private_leaf_hash_v7_c2_matches_frozen_serialize
+  AspisV7MerkleK12LayoutBridge.node_hash_v7_matches_frozen_serialize
+  AspisV7MerkleK12OuterTraceBridge.translated_verifier_success_implies_accepted_two_tree_openings
+  AspisV7MerkleK12CallerBridge.translated_caller_success_yields_exact_wrapper_control_flow
+  AspisV7MerkleK12CallerBridge.exact_caller_control_flow_trace_yields_accepted_trace
+  AspisV7MerkleK12CallerBridge.translated_caller_success_implies_accepted_two_tree_openings
+
+The final source-facing theorem has:
+  - a literal success premise for translated production
+    verify_and_gamma_combine_v7_openings;
+  - the explicit HashCallbackEqualsSha256 interface;
+  - no accepted-opening, path, root, ordering, injectivity, or
+    Rust-agrees-with-Lean premise; and
+  - the existing frozen accepted_two_tree_openings predicate as conclusion.
+
+Axiom inventory:
+  replay.sh emitted 118 #print axioms results.
+  The complete unabridged output is:
+    evidence/full-replay-candidate-04/axioms.txt
+  Every dependency is a subset of:
+    propext
+    Classical.choice
+    Quot.sound
+  No output contains sorryAx or a project-specific axiom. In particular,
+  translated_caller_success_implies_accepted_two_tree_openings reports exactly:
+    [propext, Classical.choice, Quot.sound]
+
+Focused NUC evidence:
+  caller Charon extraction:
+    exit 0; wall 6.19 s; max RSS 647,396 KiB; swaps 0
+  caller Aeneas translation:
+    exit 0; wall 48.27 s; max RSS 538,900 KiB; swaps 0
+  caller namespace bridge:
+    exit 0; wall 23.69 s; max RSS 2,612,928 KiB; swaps 0
+  layout bridge:
+    exit 0; wall 31.67 s; max RSS 7,098,188 KiB; swaps 0
+  accepted bridge:
+    exit 0; wall 4.30 s; max RSS 6,968,012 KiB; swaps 0
+  traversal bridge:
+    exit 0; wall 4.01 s; max RSS 6,950,348 KiB; swaps 0
+  inner trace bridge:
+    exit 0; wall 7.83 s; max RSS 7,056,396 KiB; swaps 0
+  outer trace bridge:
+    exit 0; wall 3.98 s; max RSS 7,007,972 KiB; swaps 0
+  caller bridge:
+    exit 0; wall 9.03 s; max RSS 7,092,336 KiB; swaps 0
+
+All heavy work above ran on nuc.local after MemAvailable >= 24 GiB and under
+the established 22/28 GiB, zero-swap policy. Exact extraction commands and
+resource records are in EXTRACTION-RESULT.txt, CALLER-EXTRACTION-RESULT.txt,
+CALLER-TRANSLATION-RESULT.txt, and caller/evidence/. Focused Lean commands are
+the module-specific lake env lean -j1 invocations recorded in their evidence;
+the integrated exact command is frozen in the evidence path above.
+
+Smallest remaining source boundary:
+  SHA-256 primitive semantics itself, represented only by the explicit
+  HashCallbackEqualsSha256 interface. Charon/Aeneas/compiler provenance is
+  part of the source-tool trust base, not a theorem premise. Solana runtime
+  behavior and the excluded K1.2 cryptographic mathematics are outside scope.
+
+No production Rust was modified. Nothing was pushed, merged, deployed, signed,
+or submitted.

@@ -1,0 +1,7 @@
+129eb64f687a84f2a87f437ee9d66a35b7e378b2c23619a5b00a69826dc2ea12  aeneas-verif/v7-merkle-k12-accepted-source-20260825/toolchain/aeneas-d860ac47-ocaml52-exhaustive-match.patch
+e1478a1b08a116af4902116b53848df2ff06dced82776dc549e01a3eaaee79fa  aeneas-verif/v7-merkle-k12-accepted-source-20260825/toolchain/aeneas-d860ac47-static-return-loan.patch
+3747ba951a504eb2d44f4668a749b6ce638734c097a697c235f23f03a869f432  aeneas-verif/v7-merkle-k12-accepted-source-20260825/toolchain/aeneas-d860ac47-v6-result-flow.patch
+c18bcb1805ac59beeaa2c11e1ae8294005d6104843849885f2414e5bb5fa08e6  aeneas-verif/v7-merkle-k12-accepted-source-20260825/toolchain/v7-deferred-parser-combined-external.patch
+6ce35a6960018b4d639054cee3fabe90ad4fd7ae13bc2b3263bd6f99dc406a39  aeneas-verif/v7-merkle-k12-accepted-source-20260825/toolchain/v7-deferred-parser-caller-combined.patch
+dc7c9b2e1a65859245d190059afa5fe0afb0ea87759d34ae7e16ae128d2660b7  aeneas-verif/v7-merkle-k12-accepted-source-20260825/toolchain/v7-merkle-caller-generated-compat.patch
+9dad4d4105290ea51d18db2a82d2c80108e262e3477b78c69fb99fff75e3c3e0  aeneas-verif/v7-merkle-k12-accepted-source-20260825/extraction/aeneas-failure-diagnostic-normalization.patch
