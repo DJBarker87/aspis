@@ -1,5 +1,6 @@
 import AspisFormal.K1.V7Tag73ExactFixedOperationalStateMap
 import AspisFormal.Pool.V7MerkleQueryExtractor
+import AspisFormal.Pool.V7CoherentTraceExtraction
 
 /-!
 # Exact fixed-run K1.2 Merkle classifier for Tag-73
@@ -41,11 +42,18 @@ noncomputable section
 
 /-! ## Concrete post-parser proof material -/
 
-/-- The K1.2-relevant part of the canonical Tag-73 parsed proof.  It contains
-only public opening data; roots remain single-sourced from the transcript
-messages and oracle answers remain single-sourced from the scheduler state. -/
+/-- The extraction-relevant canonical Tag-73 parsed proof.  Roots remain
+single-sourced from the transcript messages and oracle answers remain
+single-sourced from the scheduler state.  The downstream fields are plain
+parsed data, not acceptance or extraction propositions. -/
 structure Tag73K12ParsedProof where
   openings : TwoTreeOpeningProof
+  gamma : AspisV5ComponentCQM31TowerExact.QM31Exact
+  disclosedFinal :
+    AspisPool.AlgorithmicCircleDecoderV7.FinalMessage
+      AspisV5ComponentCQM31TowerExact.QM31Exact
+  schedule : AspisPool.V7CoherentTraceExtraction.ExactSchedule
+  queries : AspisV5WithoutReplacementQuerySoundness.QuerySchedule 16 262144
 
 /-! ## Exact runtime-byte conversion -/
 
