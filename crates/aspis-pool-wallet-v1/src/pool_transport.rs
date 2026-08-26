@@ -2,29 +2,39 @@
 //!
 //! Solana return data is transaction-global, so a wallet accepts it only for
 //! one unique, final top-level invocation of the deployment-pinned Pool. This
-//! module extends the original deposit adapter to initialization and the two
-//! proof-authorized transitions without accepting inner-instruction guesses.
+//! module extends the original deposit adapter to initialization, preparation,
+//! and the two proof-authorized transitions without accepting inner-instruction
+//! guesses.
+
+use std::collections::BTreeSet;
 
 use aspis_core::field::M31;
 use aspis_pool::{
-    decode_initialize_instruction_v1, decode_private_transfer_instruction_v1,
-    decode_withdrawal_instruction_v1, instruction::encode_transition_receipt_v1,
-    pool_v1_root_page_address, pool_v1_state_address, pool_v1_vault_token_account_address,
+    decode_initialize_instruction_v1, decode_prepare_settlement_instruction_v1,
+    decode_private_transfer_instruction_v1, decode_withdrawal_instruction_v1,
+    instruction::encode_transition_receipt_v1, pool_v1_prepared_settlement_plan_address,
+    pool_v1_prepared_settlement_rollover_address, pool_v1_root_page_address, pool_v1_state_address,
+    pool_v1_vault_token_account_address, PrepareSettlementInstructionFormatErrorV1,
     TransitionReceiptV1, POOL_V1_INITIALIZATION_RECEIPT_BYTES,
-    POOL_V1_INITIALIZE_INSTRUCTION_MAGIC, POOL_V1_PRIVATE_TRANSFER_INSTRUCTION_MAGIC,
-    POOL_V1_TRANSITION_RECEIPT_BYTES, POOL_V1_TRANSITION_RECEIPT_MAGIC,
-    POOL_V1_WITHDRAWAL_INSTRUCTION_MAGIC,
+    POOL_V1_INITIALIZE_INSTRUCTION_MAGIC, POOL_V1_PREPARE_SETTLEMENT_INSTRUCTION_MAGIC,
+    POOL_V1_PRIVATE_TRANSFER_INSTRUCTION_MAGIC, POOL_V1_TRANSITION_RECEIPT_BYTES,
+    POOL_V1_TRANSITION_RECEIPT_MAGIC, POOL_V1_WITHDRAWAL_INSTRUCTION_MAGIC,
 };
 use aspis_statement::{
     decode_digest_canonical, encode_digest_canonical,
-    pool_v1::{PoolV1TransitionKind, POOL_V1_DIGEST_ENCODING_VERSION},
+    pool_v1::{
+        root_history_location, verifier_statement_payload_digest_v1, PoolV1TransitionKind,
+        POOL_V1_DIGEST_ENCODING_VERSION, POOL_V1_HISTORICAL_ANCHOR_VERSION, POOL_V1_LEAF_CAPACITY,
+    },
 };
+use sha2::{Digest as _, Sha256};
 use solana_program::pubkey::Pubkey;
+use solana_sdk_ids::system_program;
 
 use crate::{
     rpc_adapter::{
         authenticate_finalized_rpc_deposit_v1, DepositRpcAdapterErrorV1, DepositRpcBindingV1,
-        FinalizedRpcTransactionV1,
+        FinalizedRpcTransactionV1, ResolvedRpcInstructionV1,
     },
     scan_state::{DepositEventIdV1, DepositScanIdentityV1, FinalizedDepositRecordV1},
 };
@@ -67,8 +77,27 @@ pub struct AuthenticatedTransitionV1 {
     pub authenticated_transport: Vec<u8>,
 }
 
+/// Finalized, successful preparation of a state-bound Pool plan. Preparation
+/// is non-appending: this metadata is public reconciliation evidence only and
+/// does not advance the wallet leaf/nullifier cursor.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct AuthenticatedPreparedSettlementV1 {
+    pub transition_kind: PoolV1TransitionKind,
+    pub source_root_sequence: u64,
+    pub not_before_slot: u64,
+    pub expires_at_slot: u64,
+    pub plan_authority: [u8; 32],
+    pub authorization_receipt: [u8; 32],
+    pub verifier_registry: [u8; 32],
+    pub verifier_entry: [u8; 32],
+    pub core_plan: [u8; 32],
+    pub rollover_page: Option<[u8; 32]>,
+    pub rollover_shard: Option<[u8; 32]>,
+}
+
 pub enum AuthenticatedPoolInvocationV1<'a> {
     Initialization(InitializationReceiptV1),
+    PreparedSettlement(AuthenticatedPreparedSettlementV1),
     Deposit(FinalizedDepositRecordV1<'a>),
     Transition(AuthenticatedTransitionV1),
 }
@@ -80,6 +109,7 @@ pub enum PoolRpcAdapterErrorV1 {
     MultiplePoolInstructions,
     PoolInstructionNotFinal,
     MissingReturnData,
+    UnexpectedReturnData,
     WrongReturnDataProgram,
     UnsupportedPoolInstruction,
     WrongReceiptLength,
@@ -93,8 +123,12 @@ pub enum PoolRpcAdapterErrorV1 {
     IdentityMismatch,
     ReceiptInstructionMismatch,
     EventIdentity,
+    MissingInstructionAccounts,
+    InstructionAccountAlias,
+    WrongInstructionAccounts,
     Deposit(DepositRpcAdapterErrorV1),
     PoolInstruction(aspis_pool::PoolInstructionFormatErrorV1),
+    PreparedSettlementInstruction(PrepareSettlementInstructionFormatErrorV1),
 }
 
 pub fn decode_initialization_receipt_v1(
@@ -219,10 +253,184 @@ fn require_identity(
     }
 }
 
+fn sha256_parts_v1(parts: &[&[u8]]) -> [u8; 32] {
+    let mut hasher = Sha256::new();
+    for part in parts {
+        hasher.update(part);
+    }
+    hasher.finalize().into()
+}
+
+fn authenticate_prepared_settlement_v1(
+    program_id: &Pubkey,
+    identity: &DepositScanIdentityV1,
+    current_root_sequence: u64,
+    instruction: &ResolvedRpcInstructionV1<'_>,
+) -> Result<AuthenticatedPreparedSettlementV1, PoolRpcAdapterErrorV1> {
+    let prepared = decode_prepare_settlement_instruction_v1(instruction.data)
+        .map_err(PoolRpcAdapterErrorV1::PreparedSettlementInstruction)?;
+    let (envelope, statement_payload, append_count) = match prepared.transition_kind {
+        PoolV1TransitionKind::PrivateTransfer => {
+            let spend = decode_private_transfer_instruction_v1(prepared.spend_instruction)
+                .map_err(PoolRpcAdapterErrorV1::PoolInstruction)?;
+            require_identity(
+                identity,
+                &spend.statement.pool,
+                &spend.statement.deployment_domain,
+                spend.statement.asset_id,
+            )?;
+            (spend.envelope, spend.statement_payload, 2u64)
+        }
+        PoolV1TransitionKind::Withdrawal => {
+            let spend = decode_withdrawal_instruction_v1(prepared.spend_instruction)
+                .map_err(PoolRpcAdapterErrorV1::PoolInstruction)?;
+            require_identity(
+                identity,
+                &spend.statement.pool,
+                &spend.statement.deployment_domain,
+                spend.statement.asset_id,
+            )?;
+            (spend.envelope, spend.statement_payload, 1u64)
+        }
+    };
+    if instruction.account_keys.is_empty() {
+        return Err(PoolRpcAdapterErrorV1::MissingInstructionAccounts);
+    }
+    let mut unique = BTreeSet::new();
+    if !instruction
+        .account_keys
+        .iter()
+        .all(|account| unique.insert(*account))
+    {
+        return Err(PoolRpcAdapterErrorV1::InstructionAccountAlias);
+    }
+    let final_sequence = current_root_sequence
+        .checked_add(append_count)
+        .ok_or(PoolRpcAdapterErrorV1::WrongInstructionAccounts)?;
+    if envelope.anchor_sequence > current_root_sequence
+        || current_root_sequence >= POOL_V1_LEAF_CAPACITY
+        || final_sequence > POOL_V1_LEAF_CAPACITY
+    {
+        return Err(PoolRpcAdapterErrorV1::WrongInstructionAccounts);
+    }
+    let pool = Pubkey::new_from_array(*identity.pool());
+    let anchor_page_number = root_history_location(envelope.anchor_sequence).page_number;
+    let current_page_number = root_history_location(current_root_sequence).page_number;
+    let final_page_number = root_history_location(final_sequence).page_number;
+    if anchor_page_number > current_page_number
+        || final_page_number > current_page_number.saturating_add(1)
+    {
+        return Err(PoolRpcAdapterErrorV1::WrongInstructionAccounts);
+    }
+    let account = |index: usize| {
+        instruction
+            .account_keys
+            .get(index)
+            .copied()
+            .ok_or(PoolRpcAdapterErrorV1::WrongInstructionAccounts)
+    };
+    if account(0)? == [0u8; 32] || account(1)? != *identity.pool() {
+        return Err(PoolRpcAdapterErrorV1::WrongInstructionAccounts);
+    }
+    let plan_authority = account(0)?;
+    let anchor_page = pool_v1_root_page_address(program_id, &pool, anchor_page_number)
+        .0
+        .to_bytes();
+    let current_page = pool_v1_root_page_address(program_id, &pool, current_page_number)
+        .0
+        .to_bytes();
+    let mut cursor = 2usize;
+    if account(cursor)? != anchor_page {
+        return Err(PoolRpcAdapterErrorV1::WrongInstructionAccounts);
+    }
+    cursor += 1;
+    if current_page != anchor_page {
+        if account(cursor)? != current_page {
+            return Err(PoolRpcAdapterErrorV1::WrongInstructionAccounts);
+        }
+        cursor += 1;
+    }
+    let has_rollover = final_page_number > current_page_number;
+    let rollover_page = if has_rollover {
+        let expected = pool_v1_root_page_address(program_id, &pool, final_page_number)
+            .0
+            .to_bytes();
+        if account(cursor)? != expected {
+            return Err(PoolRpcAdapterErrorV1::WrongInstructionAccounts);
+        }
+        cursor += 1;
+        Some(expected)
+    } else {
+        None
+    };
+    let expected_accounts = cursor + if has_rollover { 6 } else { 5 };
+    if instruction.account_keys.len() != expected_accounts {
+        return Err(PoolRpcAdapterErrorV1::WrongInstructionAccounts);
+    }
+    let authorization_receipt = account(cursor)?;
+    let verifier_registry = account(cursor + 1)?;
+    let verifier_entry = account(cursor + 2)?;
+    if authorization_receipt == [0u8; 32]
+        || verifier_registry == [0u8; 32]
+        || verifier_entry == [0u8; 32]
+    {
+        return Err(PoolRpcAdapterErrorV1::WrongInstructionAccounts);
+    }
+    let statement_digest = verifier_statement_payload_digest_v1(
+        POOL_V1_HISTORICAL_ANCHOR_VERSION,
+        &envelope.verifier_profile,
+        &envelope.verifier_release,
+        statement_payload,
+        sha256_parts_v1,
+    )
+    .map_err(|_| PoolRpcAdapterErrorV1::WrongInstructionAccounts)?;
+    let core_plan = pool_v1_prepared_settlement_plan_address(
+        program_id,
+        &pool,
+        &statement_digest,
+        current_root_sequence,
+        &Pubkey::new_from_array(plan_authority),
+    )
+    .0;
+    if account(cursor + 3)? != core_plan.to_bytes() {
+        return Err(PoolRpcAdapterErrorV1::WrongInstructionAccounts);
+    }
+    let rollover_shard = if has_rollover {
+        let expected = pool_v1_prepared_settlement_rollover_address(program_id, &core_plan)
+            .0
+            .to_bytes();
+        if account(cursor + 4)? != expected
+            || account(cursor + 5)? != system_program::id().to_bytes()
+        {
+            return Err(PoolRpcAdapterErrorV1::WrongInstructionAccounts);
+        }
+        Some(expected)
+    } else {
+        if account(cursor + 4)? != system_program::id().to_bytes() {
+            return Err(PoolRpcAdapterErrorV1::WrongInstructionAccounts);
+        }
+        None
+    };
+    Ok(AuthenticatedPreparedSettlementV1 {
+        transition_kind: prepared.transition_kind,
+        source_root_sequence: current_root_sequence,
+        not_before_slot: prepared.not_before_slot,
+        expires_at_slot: prepared.expires_at_slot,
+        plan_authority,
+        authorization_receipt,
+        verifier_registry,
+        verifier_entry,
+        core_plan: core_plan.to_bytes(),
+        rollover_page,
+        rollover_shard,
+    })
+}
+
 /// Authenticate exactly one successful final top-level Pool invocation.
 pub fn authenticate_finalized_rpc_pool_v1<'a>(
     binding: &DepositRpcBindingV1,
     identity: &DepositScanIdentityV1,
+    current_root_sequence: u64,
     transaction: &'a FinalizedRpcTransactionV1<'a>,
 ) -> Result<AuthenticatedPoolInvocationV1<'a>, PoolRpcAdapterErrorV1> {
     let program_id = Pubkey::new_from_array(*binding.program_id());
@@ -245,6 +453,28 @@ pub fn authenticate_finalized_rpc_pool_v1<'a>(
         return authenticate_finalized_rpc_deposit_v1(binding, identity, transaction)
             .map(AuthenticatedPoolInvocationV1::Deposit)
             .map_err(PoolRpcAdapterErrorV1::Deposit);
+    }
+
+    if magic == POOL_V1_PREPARE_SETTLEMENT_INSTRUCTION_MAGIC {
+        let authenticated = authenticate_prepared_settlement_v1(
+            &program_id,
+            identity,
+            current_root_sequence,
+            instruction,
+        )?;
+        match transaction.return_data {
+            None => {}
+            Some(return_data) if return_data.program_id != *binding.program_id() => {
+                return Err(PoolRpcAdapterErrorV1::WrongReturnDataProgram);
+            }
+            Some(return_data) if !return_data.data.is_empty() => {
+                return Err(PoolRpcAdapterErrorV1::UnexpectedReturnData);
+            }
+            Some(_) => {}
+        }
+        return Ok(AuthenticatedPoolInvocationV1::PreparedSettlement(
+            authenticated,
+        ));
     }
 
     let return_data = transaction
@@ -398,12 +628,16 @@ pub fn authenticate_finalized_rpc_pool_v1<'a>(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::rpc_adapter::ResolvedRpcInstructionV1;
+    use crate::rpc_adapter::{ResolvedRpcInstructionV1, ResolvedRpcReturnDataV1};
     use aspis_pool::{
         encode_withdrawal_instruction_v1, instruction::encode_transition_receipt_v1,
         WithdrawalStatementV1,
     };
     use aspis_statement::{pool_v1::HistoricalAnchorEnvelopeV1, poseidon2::Digest};
+
+    use crate::transaction_builder::{
+        build_prepare_withdrawal_instruction_v1, PreparedSettlementRouteAccountsV1,
+    };
 
     fn digest(seed: u32) -> Digest {
         core::array::from_fn(|index| M31(seed + 17 * index as u32))
@@ -498,6 +732,7 @@ mod tests {
         let return_wire = encode_transition_receipt_v1(&receipt).unwrap();
         let instructions = [ResolvedRpcInstructionV1 {
             program_id,
+            account_keys: &[],
             data: &instruction_wire,
         }];
         let transaction = FinalizedRpcTransactionV1 {
@@ -512,7 +747,7 @@ mod tests {
         };
 
         let authenticated =
-            authenticate_finalized_rpc_pool_v1(&binding, &identity, &transaction).unwrap();
+            authenticate_finalized_rpc_pool_v1(&binding, &identity, 11, &transaction).unwrap();
         let AuthenticatedPoolInvocationV1::Transition(authenticated) = authenticated else {
             panic!("withdrawal must authenticate as a transition");
         };
@@ -539,8 +774,182 @@ mod tests {
             ..transaction
         };
         assert_eq!(
-            authenticate_finalized_rpc_pool_v1(&binding, &identity, &mismatched_transaction,).err(),
+            authenticate_finalized_rpc_pool_v1(&binding, &identity, 11, &mismatched_transaction,)
+                .err(),
             Some(PoolRpcAdapterErrorV1::ReceiptInstructionMismatch)
+        );
+    }
+
+    #[test]
+    fn prepared_settlement_transport_exposes_exact_plan_and_rejects_alias_or_return_data() {
+        let program_id = [0x91; 32];
+        let program_key = Pubkey::new_from_array(program_id);
+        let mint = Pubkey::new_from_array([3; 32]);
+        let pool = pool_v1_state_address(&program_key, &mint).0;
+        let vault = pool_v1_vault_token_account_address(&program_key, &pool).0;
+        let identity = DepositScanIdentityV1::new(
+            pool.to_bytes(),
+            [2; 32],
+            mint.to_bytes(),
+            vault.to_bytes(),
+            9,
+        )
+        .unwrap();
+        let envelope = HistoricalAnchorEnvelopeV1 {
+            transition_kind: PoolV1TransitionKind::Withdrawal,
+            pool: *identity.pool(),
+            deployment_domain: *identity.deployment_domain(),
+            anchor_sequence: 7,
+            anchor_root: digest(50),
+            nullifier: digest(60),
+            verifier_profile: [5; 32],
+            verifier_release: [6; 32],
+        };
+        let statement = WithdrawalStatementV1 {
+            pool: envelope.pool,
+            deployment_domain: envelope.deployment_domain,
+            anchor_sequence: envelope.anchor_sequence,
+            anchor_root: envelope.anchor_root,
+            nullifier: envelope.nullifier,
+            asset_id: M31(identity.asset_id()),
+            amount: 25,
+            destination_token_account: [7; 32],
+            change_commitment: digest(70),
+        };
+        let instruction = build_prepare_withdrawal_instruction_v1(
+            program_key,
+            7,
+            &envelope,
+            &statement,
+            100,
+            120,
+            PreparedSettlementRouteAccountsV1 {
+                plan_authority: Pubkey::new_from_array([8; 32]),
+                registry_program: Pubkey::new_from_array([9; 32]),
+                authorization_receipt: Pubkey::new_from_array([10; 32]),
+            },
+        )
+        .unwrap();
+        let account_keys: Vec<_> = instruction
+            .accounts
+            .iter()
+            .map(|account| account.pubkey.to_bytes())
+            .collect();
+        let instructions = [ResolvedRpcInstructionV1 {
+            program_id,
+            account_keys: &account_keys,
+            data: &instruction.data,
+        }];
+        let transaction = FinalizedRpcTransactionV1 {
+            point: crate::scan_state::FinalizedChainPointV1::new(42, [8; 32]).unwrap(),
+            transaction_signature: [9; 64],
+            succeeded: true,
+            top_level_instructions: &instructions,
+            return_data: None,
+        };
+        let binding = DepositRpcBindingV1::new(program_id).unwrap();
+        let authenticated =
+            authenticate_finalized_rpc_pool_v1(&binding, &identity, 7, &transaction).unwrap();
+        let AuthenticatedPoolInvocationV1::PreparedSettlement(prepared) = authenticated else {
+            panic!("ASPP must authenticate as a prepared settlement");
+        };
+        assert_eq!(prepared.transition_kind, PoolV1TransitionKind::Withdrawal);
+        assert_eq!(prepared.source_root_sequence, 7);
+        assert_eq!(prepared.core_plan, account_keys[6]);
+        assert_eq!(prepared.rollover_page, None);
+        assert_eq!(prepared.rollover_shard, None);
+
+        let rollover_sequence = aspis_statement::pool_v1::POOL_V1_ROOT_HISTORY_CAPACITY as u64 - 1;
+        let rollover_envelope = HistoricalAnchorEnvelopeV1 {
+            anchor_sequence: rollover_sequence,
+            ..envelope
+        };
+        let rollover_statement = WithdrawalStatementV1 {
+            anchor_sequence: rollover_sequence,
+            ..statement
+        };
+        let rollover_instruction = build_prepare_withdrawal_instruction_v1(
+            program_key,
+            rollover_sequence,
+            &rollover_envelope,
+            &rollover_statement,
+            100,
+            120,
+            PreparedSettlementRouteAccountsV1 {
+                plan_authority: Pubkey::new_from_array([8; 32]),
+                registry_program: Pubkey::new_from_array([9; 32]),
+                authorization_receipt: Pubkey::new_from_array([10; 32]),
+            },
+        )
+        .unwrap();
+        let rollover_keys: Vec<_> = rollover_instruction
+            .accounts
+            .iter()
+            .map(|account| account.pubkey.to_bytes())
+            .collect();
+        let rollover_instructions = [ResolvedRpcInstructionV1 {
+            program_id,
+            account_keys: &rollover_keys,
+            data: &rollover_instruction.data,
+        }];
+        let rollover_transaction = FinalizedRpcTransactionV1 {
+            point: crate::scan_state::FinalizedChainPointV1::new(43, [11; 32]).unwrap(),
+            transaction_signature: [12; 64],
+            succeeded: true,
+            top_level_instructions: &rollover_instructions,
+            return_data: None,
+        };
+        let AuthenticatedPoolInvocationV1::PreparedSettlement(rollover) =
+            authenticate_finalized_rpc_pool_v1(
+                &binding,
+                &identity,
+                rollover_sequence,
+                &rollover_transaction,
+            )
+            .unwrap()
+        else {
+            panic!("rollover ASPP must authenticate as a prepared settlement");
+        };
+        assert_eq!(rollover.rollover_page, Some(rollover_keys[3]));
+        assert_eq!(rollover.core_plan, rollover_keys[7]);
+        assert_eq!(rollover.rollover_shard, Some(rollover_keys[8]));
+
+        let nonempty = [1u8];
+        let unexpected_return = FinalizedRpcTransactionV1 {
+            return_data: Some(ResolvedRpcReturnDataV1 {
+                program_id,
+                data: &nonempty,
+            }),
+            ..transaction
+        };
+        assert_eq!(
+            authenticate_finalized_rpc_pool_v1(&binding, &identity, 7, &unexpected_return).err(),
+            Some(PoolRpcAdapterErrorV1::UnexpectedReturnData)
+        );
+
+        let mut aliased_keys = account_keys.clone();
+        aliased_keys[3] = aliased_keys[2];
+        let aliased_instruction = [ResolvedRpcInstructionV1 {
+            program_id,
+            account_keys: &aliased_keys,
+            data: &instruction.data,
+        }];
+        let aliased = FinalizedRpcTransactionV1 {
+            top_level_instructions: &aliased_instruction,
+            ..transaction
+        };
+        assert_eq!(
+            authenticate_finalized_rpc_pool_v1(&binding, &identity, 7, &aliased).err(),
+            Some(PoolRpcAdapterErrorV1::InstructionAccountAlias)
+        );
+
+        let failed = FinalizedRpcTransactionV1 {
+            succeeded: false,
+            ..transaction
+        };
+        assert_eq!(
+            authenticate_finalized_rpc_pool_v1(&binding, &identity, 7, &failed).err(),
+            Some(PoolRpcAdapterErrorV1::TransactionFailed)
         );
     }
 }

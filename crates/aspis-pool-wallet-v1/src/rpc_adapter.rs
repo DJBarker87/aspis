@@ -144,11 +144,14 @@ impl DepositRpcBindingV1 {
     }
 }
 
-/// One top-level compiled instruction after the RPC account-key index has been
-/// resolved to the exact 32-byte program id and its data has been decoded.
+/// One top-level compiled instruction after every RPC account-key index has
+/// been resolved. Retaining the ordered account keys lets non-returning Pool
+/// instructions authenticate deterministic plan PDAs instead of trusting only
+/// their instruction bytes.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct ResolvedRpcInstructionV1<'a> {
     pub program_id: [u8; 32],
+    pub account_keys: &'a [[u8; 32]],
     pub data: &'a [u8],
 }
 
@@ -408,6 +411,7 @@ mod tests {
 
         let wrong_program = [ResolvedRpcInstructionV1 {
             program_id: [0x98; 32],
+            account_keys: &[],
             data: &instruction_data,
         }];
         let transaction = FinalizedRpcTransactionV1 {
@@ -429,6 +433,7 @@ mod tests {
         wrong_version_data[4] = 2;
         let wrong_version = [ResolvedRpcInstructionV1 {
             program_id: PROGRAM_ID,
+            account_keys: &[],
             data: &wrong_version_data,
         }];
         let transaction = FinalizedRpcTransactionV1 {
@@ -446,6 +451,7 @@ mod tests {
         trailing_instruction_data.push(0);
         let trailing_instruction = [ResolvedRpcInstructionV1 {
             program_id: PROGRAM_ID,
+            account_keys: &[],
             data: &trailing_instruction_data,
         }];
         let transaction = FinalizedRpcTransactionV1 {
@@ -461,6 +467,7 @@ mod tests {
 
         let canonical_instruction = [ResolvedRpcInstructionV1 {
             program_id: PROGRAM_ID,
+            account_keys: &[],
             data: &instruction_data,
         }];
         let transaction = FinalizedRpcTransactionV1 {
@@ -502,10 +509,12 @@ mod tests {
         let non_final = [
             ResolvedRpcInstructionV1 {
                 program_id: PROGRAM_ID,
+                account_keys: &[],
                 data: &instruction_data,
             },
             ResolvedRpcInstructionV1 {
                 program_id: [0x88; 32],
+                account_keys: &[],
                 data: &other_instruction_data,
             },
         ];
@@ -527,10 +536,12 @@ mod tests {
         let repeated_pool = [
             ResolvedRpcInstructionV1 {
                 program_id: PROGRAM_ID,
+                account_keys: &[],
                 data: &instruction_data,
             },
             ResolvedRpcInstructionV1 {
                 program_id: PROGRAM_ID,
+                account_keys: &[],
                 data: &instruction_data,
             },
         ];
@@ -552,6 +563,7 @@ mod tests {
         let record = return_record(&payload);
         let instructions = [ResolvedRpcInstructionV1 {
             program_id: PROGRAM_ID,
+            account_keys: &[],
             data: &instruction_data,
         }];
         let anchor_state = anchored_state();

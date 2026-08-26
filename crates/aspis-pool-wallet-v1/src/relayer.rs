@@ -21,6 +21,7 @@ pub const POOL_V1_RELAYER_POLICY_DOMAIN: &[u8] = b"aspis:pool-v1:relayer-operato
 pub enum RelayerRequestKindV1 {
     Initialize,
     Deposit,
+    PrepareSettlement,
     PrivateTransfer,
     Withdrawal,
 }
@@ -62,6 +63,7 @@ fn request_kind_v1(instruction: &Instruction) -> Result<RelayerRequestKindV1, Re
     match instruction.data.get(..4) {
         Some(b"ASIN") => Ok(RelayerRequestKindV1::Initialize),
         Some(b"ASDI") => Ok(RelayerRequestKindV1::Deposit),
+        Some(b"ASPP") => Ok(RelayerRequestKindV1::PrepareSettlement),
         Some(b"ASPT") => Ok(RelayerRequestKindV1::PrivateTransfer),
         Some(b"ASWD") => Ok(RelayerRequestKindV1::Withdrawal),
         _ => Err(RelayerErrorV1::InvalidInstruction(
@@ -130,6 +132,7 @@ pub struct RelayerPolicyV1 {
     pub operator_fee_payer: Pubkey,
     pub allow_initialize: bool,
     pub allow_deposit: bool,
+    pub allow_prepare_settlement: bool,
     pub allow_private_transfer: bool,
     pub allow_withdrawal: bool,
     pub max_snapshot_age_slots: u64,
@@ -183,6 +186,7 @@ fn kind_enabled(policy: RelayerPolicyV1, kind: RelayerRequestKindV1) -> bool {
     match kind {
         RelayerRequestKindV1::Initialize => policy.allow_initialize,
         RelayerRequestKindV1::Deposit => policy.allow_deposit,
+        RelayerRequestKindV1::PrepareSettlement => policy.allow_prepare_settlement,
         RelayerRequestKindV1::PrivateTransfer => policy.allow_private_transfer,
         RelayerRequestKindV1::Withdrawal => policy.allow_withdrawal,
     }
@@ -199,6 +203,7 @@ pub fn relayer_policy_id_v1(policy: RelayerPolicyV1) -> [u8; 32] {
     hasher.update([
         u8::from(policy.allow_initialize),
         u8::from(policy.allow_deposit),
+        u8::from(policy.allow_prepare_settlement),
         u8::from(policy.allow_private_transfer),
         u8::from(policy.allow_withdrawal),
     ]);
@@ -326,10 +331,16 @@ pub trait RelayerRequestStoreV1 {
 mod tests {
     use super::*;
     use aspis_core::field::M31;
-    use aspis_pool::{deposit::DepositRequestV1, pool_v1_state_address};
-    use aspis_statement::poseidon2::Digest;
+    use aspis_pool::{deposit::DepositRequestV1, pool_v1_state_address, WithdrawalStatementV1};
+    use aspis_statement::{
+        pool_v1::{HistoricalAnchorEnvelopeV1, PoolV1TransitionKind},
+        poseidon2::Digest,
+    };
 
-    use crate::transaction_builder::build_deposit_instruction_v1;
+    use crate::transaction_builder::{
+        build_deposit_instruction_v1, build_prepare_withdrawal_instruction_v1,
+        PreparedSettlementRouteAccountsV1,
+    };
 
     fn key(seed: u8) -> Pubkey {
         Pubkey::new_from_array([seed; 32])
@@ -404,6 +415,7 @@ mod tests {
             operator_fee_payer: key(6),
             allow_initialize: false,
             allow_deposit: true,
+            allow_prepare_settlement: true,
             allow_private_transfer: true,
             allow_withdrawal: true,
             max_snapshot_age_slots: 32,
@@ -491,5 +503,98 @@ mod tests {
             ),
             Err(RelayerAdmissionErrorV1::StaleSnapshot)
         );
+    }
+
+    #[test]
+    fn prepared_settlement_replay_is_stable_and_requires_explicit_operator_policy() {
+        let program_id = key(1);
+        let mint = key(2);
+        let pool = pool_v1_state_address(&program_id, &mint).0;
+        let fee_payer = key(6);
+        let envelope = HistoricalAnchorEnvelopeV1 {
+            transition_kind: PoolV1TransitionKind::Withdrawal,
+            pool: pool.to_bytes(),
+            deployment_domain: [8; 32],
+            anchor_sequence: 7,
+            anchor_root: digest(30),
+            nullifier: digest(40),
+            verifier_profile: [11; 32],
+            verifier_release: [12; 32],
+        };
+        let statement = WithdrawalStatementV1 {
+            pool: envelope.pool,
+            deployment_domain: envelope.deployment_domain,
+            anchor_sequence: envelope.anchor_sequence,
+            anchor_root: envelope.anchor_root,
+            nullifier: envelope.nullifier,
+            asset_id: M31(9),
+            amount: 77,
+            destination_token_account: [13; 32],
+            change_commitment: digest(50),
+        };
+        let instruction = build_prepare_withdrawal_instruction_v1(
+            program_id,
+            7,
+            &envelope,
+            &statement,
+            910,
+            930,
+            PreparedSettlementRouteAccountsV1 {
+                plan_authority: fee_payer,
+                registry_program: key(5),
+                authorization_receipt: key(10),
+            },
+        )
+        .unwrap();
+        let snapshot = RelayerSnapshotV1 {
+            pinned_program_id: program_id,
+            registry_program: key(5),
+            current_root_sequence: 7,
+            observed_slot: 900,
+            pool_state_sha256: [0xab; 32],
+        };
+        let first =
+            prepare_permissionless_relayer_plan_v1(snapshot, fee_payer, &instruction).unwrap();
+        let replay =
+            prepare_permissionless_relayer_plan_v1(snapshot, fee_payer, &instruction).unwrap();
+        assert_eq!(first.request_id, replay.request_id);
+        assert_eq!(first.kind, RelayerRequestKindV1::PrepareSettlement);
+
+        let policy = RelayerPolicyV1 {
+            paused: false,
+            operator_fee_payer: fee_payer,
+            allow_initialize: false,
+            allow_deposit: false,
+            allow_prepare_settlement: false,
+            allow_private_transfer: false,
+            allow_withdrawal: false,
+            max_snapshot_age_slots: 32,
+            max_queue_depth: 4,
+            max_inflight: 2,
+            rate_window_slots: 16,
+            max_admissions_per_window: 2,
+            max_estimated_fee_lamports: 10_000,
+            minimum_fee_payer_reserve_lamports: 1_000_000,
+        };
+        let context = RelayerAdmissionContextV1 {
+            now_slot: 910,
+            queue_depth: 0,
+            inflight: 0,
+            rate_window_start_slot: 904,
+            admissions_in_window: 0,
+            estimated_fee_lamports: 5_000,
+            fee_payer_balance_lamports: 1_005_000,
+        };
+        assert_eq!(
+            admit_relayer_plan_v1(policy, context, &first),
+            Err(RelayerAdmissionErrorV1::InstructionKindDisabled)
+        );
+        let enabled = RelayerPolicyV1 {
+            allow_prepare_settlement: true,
+            ..policy
+        };
+        let admission = admit_relayer_plan_v1(enabled, context, &first).unwrap();
+        assert_eq!(admission.kind, RelayerRequestKindV1::PrepareSettlement);
+        assert_ne!(relayer_policy_id_v1(enabled), relayer_policy_id_v1(policy));
     }
 }
