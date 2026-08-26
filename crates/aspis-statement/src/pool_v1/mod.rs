@@ -17,6 +17,8 @@ pub mod nullifier_marker;
 pub mod payment_constraint_residuals;
 pub mod payment_relation;
 #[cfg(not(target_os = "solana"))]
+pub mod payment_semantic_oracle;
+#[cfg(not(target_os = "solana"))]
 pub mod payment_semantic_registry;
 #[cfg(not(target_os = "solana"))]
 pub mod payment_trace;

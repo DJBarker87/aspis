@@ -1,8 +1,9 @@
 # V7 Pool V1 payment-relation foundation
 
-Status: executable semantic oracle and exact ABI conversion are implemented;
-Tag-73 trace/compiler/verifier integration is **not** implemented by this
-work.
+Status: the exact ABI conversion, routed 1,024-row trace, semantic registry,
+copy helper and executable three-view semantic oracle are implemented;
+Tag-73 prover/deployed-verifier/profile integration is **not** implemented by
+this work.
 
 ## Exact custody relations
 
@@ -73,6 +74,40 @@ statement slice produced by the production Pool instruction encoder. It also
 round-trips that exact slice through both independent decoders. No adapter
 hash or lossy field map sits between the proof statement and the bytes the
 Pool applies.
+
+## Routed trace and semantic registry
+
+Both variants now compile into the existing 1,024-row, sixteen-column C1
+geometry. The Poseidon schedule occupies blocks 0 through 48. Five auxiliary
+path blocks encode all 20 Merkle levels as `(bit, current, sibling, left,
+right)` tuples, and block 54 carries the three transfer values or the two
+withdrawal values plus their 30-bit decompositions and conservation sources.
+Unused rows and columns are canonical zero padding.
+
+The generated registry has 78 copy links for private transfer and 75 for
+withdrawal. It connects the hidden preimages, every Poseidon carry, all Merkle
+path inputs and outputs, the 30-bit source values, and the conservation
+aliases. No link relies on a prose-only equality.
+
+The non-Poseidon semantic oracle has 94 base residuals:
+
+| Residual class | Lanes |
+|---|---:|
+| initial-state, domain separation and unused auxiliary zeroes | 16 |
+| absorption and permutation-local padding zeroes | 16 |
+| Merkle direction and ordering | 17 |
+| direct 30-bit range and recomposition | 33 |
+| value conservation | 2 |
+| public digest bindings | 8 |
+| public scalar bindings | 2 |
+| **base total** | **94** |
+
+Those M31-valued Boolean-row residuals pack into 24 QM31 lanes. The copy
+LogUp residual is lane 25. Together with the four existing Poseidon lanes,
+the relation therefore consumes exactly the frozen 29-lane theta composition
+and adds no serialized proof claim. This is an executable host/compiler fact;
+it does not become an on-chain Tag-73 claim until the same oracle and terminal
+constants are wired into the prover and deployed verifier.
 
 ## Logical lane and constraint inventory
 
@@ -148,15 +183,21 @@ frontiers, the proof-body wire remains exactly the frozen V7 size:
 = 30,504 bytes
 ```
 
-This is a feasibility result, not a proof-size measurement. A compiler that
-adds serialized claims, columns, sumcheck coefficients or query openings
-would change the wire. The 30,504-byte claim becomes valid only after an exact
-trace/registry build proves that the existing geometry and grammar suffice.
+This is still a feasibility result, not a Pool proof-size measurement. The
+exact trace, registry and lane packing now show that the existing geometry and
+grammar suffice at the semantic-oracle boundary. A prover or verifier change
+that adds serialized claims, columns, sumcheck coefficients or query openings
+would still change the wire, so 30,504 bytes must be confirmed from an actual
+Pool proof before it is a release measurement.
 
 ## Mutation evidence and honest boundary
 
 Focused tests currently establish:
 
+- honest transfer and withdrawal traces make all 95 semantic residuals zero
+  at every one of the 1,024 Boolean rows;
+- the copy helper has zero terminal sum for both honest variants;
+- changing the public withdrawal amount is detected at its exact routed row;
 - honest transfer and withdrawal acceptance;
 - v3 membership-root parity with the existing atomic v3 reference;
 - byte-exact ASCP/ASWP encoding parity with the production Pool encoder;
@@ -179,21 +220,20 @@ statement boundary; the existing Pool withdrawal planner checks the second.
 This foundation must not be advertised as a Pool Tag-73 proof until all of the
 following are complete:
 
-1. Assign exact 1,024-row/column layouts for the 32-block transfer and 29-block
-   withdrawal schedules, including all private sources, aliases and padding.
-2. Generate and independently replay every copy, Poseidon, path-bit,
-   index-reconstruction, range and conservation constraint.
-3. Prove that the nine-limb transfer and six-limb withdrawal range systems
+1. Independently formalize and replay the routed layout, copy registry,
+   Poseidon schedule, path ordering, range reconstruction, conservation and
+   public bindings in Lean and through the accepted Rust/Aeneas source bridge.
+2. Prove that the nine-limb transfer and six-limb withdrawal range systems
    have the required lookup/masking rank and zero-knowledge factorization.
-4. Bind every public algebraic lane to the exact ASCP/ASWP payload and every
+3. Bind every public algebraic lane to the exact ASCP/ASWP payload and every
    transcript-only byte to the profile statement digest.
-5. Add prover trace construction, terminal constants, accepted-kernel/source
+4. Add prover trace construction, terminal constants, accepted-kernel/source
    bridges, Aeneas replay and Lean semantic/composition theorems.
-6. Create a new registry profile/release. The current
+5. Create a new registry profile/release. The current
    `v7_pool_dispatch.rs` profile is explicitly the old same-path
    `AtomicPaymentStatementV4`, accepts only private-transfer kind and cannot
    authorize either relation defined here.
-7. Run proof-level mutation coverage, exact proof-size measurement, SBF/CU
+6. Run proof-level mutation coverage, exact proof-size measurement, SBF/CU
    profiling and the real Pool lifecycle with the non-mock verifier.
 
 Until those gates close, the Pool program and executable oracle are useful
