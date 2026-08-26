@@ -14,8 +14,10 @@ not be deployed as the production spend route. The public `ASPP`/`ASPF` route
 uses a verifier-owned authorization receipt and a state-bound prepared-
 settlement plan so the final transaction can atomically consume the nullifier,
 update the tree/history, move custody and retire the plan without rerunning
-proof verification or Poseidon tree construction. The exact composition is
-SBF-build clean; validator/LiteSVM compute-unit evidence remains a release gate.
+proof verification or Poseidon tree construction. Public `ASPX` cancellation
+lets the authenticated plan authority retire and reclaim a stale, expired or
+voluntarily abandoned plan. The exact composition is SBF-build clean;
+validator/LiteSVM compute-unit evidence remains a release gate.
 
 All integers are little-endian. Every fixed wire rejects the wrong magic,
 version, transition kind, digest encoding, nonzero reserved bytes, noncanonical
@@ -191,6 +193,47 @@ ASRS shard: [b"aspis-settle-roll-v1", core_plan_address]
 The preparation account layout is documented in the focused prepared-
 settlement checkpoint. It creates no marker and performs no custody transfer or
 Pool/history mutation.
+
+### Cancel prepared settlement: `ASPX`, version 1, exactly 8 bytes
+
+```text
+0..4  magic "ASPX"
+4     version 1
+5     account shape: 1 = core only, 2 = core + rollover shard
+6..8  zero reserved
+```
+
+The shape selects one of two exact account lists; missing or trailing accounts
+and every cross-role alias reject:
+
+```text
+0  [signer,writable] plan authority/refund recipient (System-owned)
+1  [writable]        exact 10,000-byte ASPS core PDA
+2  [writable]        exact 8,504-byte ASRS shard PDA, shape 2 only
+```
+
+The authority must be non-executable and byte-equal to the nonzero authority
+authenticated inside the plan. The core and optional shard must be Pool-owned,
+writable, nonsigner, non-executable exact PDAs with their exact sizes. The
+processor delegates to the same pure close gate used by final settlement,
+which verifies the complete core SHA-256 image and, for shape 2, the core-bound
+shard address, PDA, bindings and SHA-256 image. A shape-1 instruction cannot
+omit a shard required by its core, and shape 2 cannot attach a shard to a
+core-only plan.
+
+Cancellation is authority-controlled and valid at any time: before activation,
+after expiry, after the source Pool has advanced, or simply when the authority
+abandons the plan. It does not read Clock or live Pool state. Solana writable
+account locking serializes cancellation against final settlement, so only one
+of the racing instructions can consume the same plan accounts.
+
+After full authentication, the processor tombstones/refunds/deallocates the
+optional shard first and the authenticating core second. All lamports go only
+to the authenticated authority. Successful return data is the same exact
+8-byte canonical `ASPX` shape acknowledgment and is emitted only after every
+required close succeeds. Any close failure returns an error, exposes no success
+data, and relies on normal Solana transaction rollback to restore an earlier
+shard close.
 
 ### Final prepared settlement: `ASPF`, version 1, exactly 224 bytes
 

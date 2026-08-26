@@ -2,13 +2,15 @@
 
 ## Status and scope
 
-This checkpoint now includes the public preparation instruction and public
-final atomic settlement processor. It is host-checked and SBF-build clean, but
-it is **not** a LiteSVM lifecycle/CU result or a deployable release. Preparation
-persists the plan PDA(s); final settlement consumes them in one locked call,
-creates/populates the nullifier marker, copies the authenticated next
-Pool/history images, performs and balance-checks an authenticated withdrawal,
-securely retires/refunds the plan accounts, and emits success-only `ASTR` data.
+This checkpoint now includes public preparation, public authority-only
+cancellation/refund, and the public final atomic settlement processor. It is
+host-checked and SBF-build clean, but it is **not** a LiteSVM lifecycle/CU result
+or a deployable release. Preparation persists the plan PDA(s); cancellation
+authenticates and retires abandoned plan PDA(s); final settlement consumes them
+in one locked call, creates/populates the nullifier marker, copies the
+authenticated next Pool/history images, performs and balance-checks an
+authenticated withdrawal, securely retires/refunds the plan accounts, and
+emits success-only `ASTR` data.
 
 The purpose of the kernel is to move both depth-20 Poseidon append operations
 out of the final atomic transaction while preserving the exact direct Pool V1
@@ -133,6 +135,40 @@ There is no Poseidon or Merkle append in the apply function or its byte-checking
 helpers. Poseidon remains in preparation and direct-path parity supplies the
 cryptographic provenance of the precomputed frontier/root images.
 
+## Public authority-only cancellation/refund
+
+`ASPX` is exactly 8 bytes: magic, version 1, an explicit account-shape byte
+(`1` for core only, `2` for core plus rollover shard), and two zero reserved
+bytes. Wrong length, trailing bytes, wrong magic/version/shape, and nonzero
+reserved bytes reject. Shape 1 requires exactly authority plus core; shape 2
+requires exactly authority, core and shard. Every account key must be globally
+distinct.
+
+The refund authority must be a signer, writable, non-executable and
+System-owned, matching the safe payer assumptions at preparation. The pure
+close gate decodes the complete exact-size Pool-owned core with SHA-256,
+rederives its authority-bound PDA and requires the embedded nonzero authority
+to equal that signer. Rollover cancellation additionally decodes and hashes the
+exact-size Pool-owned shard, authenticating its core address, PDA, Pool,
+program, statement, source sequence, authority and next-page bindings. Both
+plan accounts must be writable, nonsigner and non-executable. The explicit
+shape therefore cannot omit a required shard or smuggle one beside a core-only
+plan.
+
+Cancellation intentionally has no Clock, Pool state or history account. The
+authenticated authority can cancel before activation, after expiry, after the
+source state becomes stale, or voluntarily at any other time. Writable account
+locking serializes a race with final settlement: whichever transaction locks
+and retires the plan first makes the other fail exact owner/size/image checks.
+
+After complete authentication the optional shard is tombstoned, refunded,
+assigned to System and resized to zero before the authenticating core receives
+the same treatment. Every lamport is credited only to the authenticated
+authority with checked arithmetic. The exact canonical 8-byte `ASPX` shape
+acknowledgment is exposed as return data only after both closes succeed. A late
+core-close failure returns an error and exposes no success data; Solana's
+transaction rollback restores the earlier shard close.
+
 ## Public final atomic settlement
 
 `ASPF` is exactly 224 bytes: an 8-byte canonical header followed by the exact
@@ -188,6 +224,14 @@ NO_DNA=1 cargo test -p aspis-pool settle_prepared --lib --no-default-features
 
 Result: **1 passed, 0 failed, 66 filtered out**.
 
+The exact public cancellation wire and both processor shapes pass together:
+
+```text
+NO_DNA=1 cargo test -p aspis-pool cancel --lib --no-default-features
+```
+
+Result: **3 passed, 0 failed, 67 filtered out**.
+
 The focused cases cover:
 
 - byte-exact withdrawal and private-transfer parity with the direct path;
@@ -197,6 +241,10 @@ The focused cases cover:
 - reauthenticated root, append-receipt and output-order substitution;
 - statement/nullifier substitution using a genuinely validated marker plan;
 - authority, source-sequence, parallel-authority and close/refund bindings;
+- exact `ASPX` shape/cardinality, authority/signature, alias, shard/PDA and
+  core/shard SHA-256 rejection before any refund;
+- successful core-only and core+shard refunds, mandatory shard-before-core
+  ordering, and no success data after an injected late core-close failure;
 - pending/bad-digest/bad-PDA/bad-binding/altered-nested `ASRA` rejection;
 - a fully self-consistent receipt for a non-Pool historical root; and
 - paused/inactive/wrong-program/wrong-profile registry selection plus

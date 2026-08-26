@@ -985,9 +985,9 @@ pub(crate) fn apply_prepared_settlement_plan_v1<'plan>(
     })
 }
 
-/// Exact close/refund authorization for a prepared-plan PDA.  A future public
-/// close instruction may delegate to this pure gate, but cannot redirect the
-/// refund: only the nonzero authority authenticated inside the plan may sign.
+/// Exact close/refund authorization for a prepared-plan PDA. The public cancel
+/// instruction delegates to this pure gate and cannot redirect the refund:
+/// only the nonzero authority authenticated inside the plan may sign.
 pub(crate) fn authorize_prepared_settlement_plan_close_v1(
     program_id: &Pubkey,
     plan_address: &Pubkey,
@@ -1051,6 +1051,10 @@ mod tests {
     use std::{cell::RefCell, vec::Vec};
 
     use crate::{
+        cancel_prepared_settlement_instruction::{
+            encode_cancel_prepared_settlement_instruction_v1,
+            CancelPreparedSettlementAccountShapeV1,
+        },
         empty_roots::POOL_V1_EMPTY_ROOTS,
         instruction::{
             encode_private_transfer_instruction_v1, encode_withdrawal_instruction_v1,
@@ -1070,6 +1074,7 @@ mod tests {
         },
         prepared_settlement_instruction::encode_prepare_settlement_instruction_v1,
         processor::{
+            process_cancel_prepared_settlement_with_runtime_v1,
             process_prepare_settlement_with_runtime_v1, process_settle_prepared_with_runtime_v1,
             PoolCpiRuntimeV1,
         },
@@ -1140,6 +1145,46 @@ mod tests {
     struct FinalSettlementRuntime {
         expected_withdrawal: Option<u64>,
         closed: Vec<Pubkey>,
+    }
+
+    struct CancelSettlementRuntime {
+        fail_on: Option<Pubkey>,
+        closed: Vec<Pubkey>,
+    }
+
+    impl PoolCpiRuntimeV1 for CancelSettlementRuntime {
+        fn invoke<'info>(&mut self, _: &Instruction, _: &[AccountInfo<'info>]) -> ProgramResult {
+            panic!("unexpected cancellation CPI")
+        }
+
+        fn invoke_signed<'info>(
+            &mut self,
+            _: &Instruction,
+            _: &[AccountInfo<'info>],
+            _: &[&[&[u8]]],
+        ) -> ProgramResult {
+            panic!("unexpected signed cancellation CPI")
+        }
+
+        fn close_program_account<'info>(
+            &mut self,
+            account: &AccountInfo<'info>,
+            refund_authority: &AccountInfo<'info>,
+            expected_owner: &Pubkey,
+            expected_data_len: usize,
+        ) -> ProgramResult {
+            assert_eq!(account.owner, expected_owner);
+            assert_eq!(account.data_len(), expected_data_len);
+            self.closed.push(*account.key);
+            if self.fail_on == Some(*account.key) {
+                return Err(ProgramError::Custom(0xcace));
+            }
+            account.try_borrow_mut_data()?.fill(0xff);
+            let refund = account.lamports();
+            **refund_authority.try_borrow_mut_lamports()? += refund;
+            **account.try_borrow_mut_lamports()? = 0;
+            Ok(())
+        }
     }
 
     impl PoolCpiRuntimeV1 for FinalSettlementRuntime {
@@ -2430,6 +2475,355 @@ mod tests {
             .unwrap()
             .iter()
             .all(|byte| *byte == 0));
+    }
+
+    #[test]
+    fn public_cancel_core_only_authenticates_layout_authority_and_digest_before_refund() {
+        let fixture = standard_fixture(PoolV1TransitionKind::Withdrawal, 0);
+        let instruction = encode_cancel_prepared_settlement_instruction_v1(
+            CancelPreparedSettlementAccountShapeV1::CoreOnly,
+        );
+        let system_id = system_program::id();
+        let mut authority_lamports = 10;
+        let mut authority_data = [];
+        let mut core_lamports = 101;
+        let mut core_data = fixture.plan_image.clone();
+        let accounts = vec![
+            account(
+                &fixture.authority,
+                &system_id,
+                &mut authority_lamports,
+                &mut authority_data,
+                true,
+                true,
+            ),
+            account(
+                &fixture.plan_address,
+                &fixture.program_id,
+                &mut core_lamports,
+                core_data.as_mut(),
+                false,
+                true,
+            ),
+        ];
+        let returned = RefCell::new(Vec::new());
+        let mut runtime = CancelSettlementRuntime {
+            fail_on: None,
+            closed: Vec::new(),
+        };
+
+        let mut missing_signature = accounts.clone();
+        missing_signature[0].is_signer = false;
+        assert_eq!(
+            process_cancel_prepared_settlement_with_runtime_v1(
+                &fixture.program_id,
+                &missing_signature,
+                &instruction,
+                sha256,
+                &mut runtime,
+                |data| returned.borrow_mut().extend_from_slice(data),
+            ),
+            Err(PoolV1ProgramError::InvalidPayer.into())
+        );
+
+        let wrong_authority_key = Pubkey::new_unique();
+        let mut wrong_authority = accounts.clone();
+        wrong_authority[0].key = &wrong_authority_key;
+        assert!(process_cancel_prepared_settlement_with_runtime_v1(
+            &fixture.program_id,
+            &wrong_authority,
+            &instruction,
+            sha256,
+            &mut runtime,
+            |data| returned.borrow_mut().extend_from_slice(data),
+        )
+        .is_err());
+
+        let alias = vec![accounts[0].clone(), accounts[0].clone()];
+        assert_eq!(
+            process_cancel_prepared_settlement_with_runtime_v1(
+                &fixture.program_id,
+                &alias,
+                &instruction,
+                sha256,
+                &mut runtime,
+                |data| returned.borrow_mut().extend_from_slice(data),
+            ),
+            Err(ProgramError::InvalidArgument)
+        );
+        assert_eq!(
+            process_cancel_prepared_settlement_with_runtime_v1(
+                &fixture.program_id,
+                &accounts[..1],
+                &instruction,
+                sha256,
+                &mut runtime,
+                |data| returned.borrow_mut().extend_from_slice(data),
+            ),
+            Err(ProgramError::NotEnoughAccountKeys)
+        );
+        let trailing = vec![
+            accounts[0].clone(),
+            accounts[1].clone(),
+            accounts[0].clone(),
+        ];
+        assert_eq!(
+            process_cancel_prepared_settlement_with_runtime_v1(
+                &fixture.program_id,
+                &trailing,
+                &instruction,
+                sha256,
+                &mut runtime,
+                |data| returned.borrow_mut().extend_from_slice(data),
+            ),
+            Err(ProgramError::InvalidArgument)
+        );
+
+        let mut readonly_core = accounts.clone();
+        readonly_core[1].is_writable = false;
+        assert_eq!(
+            process_cancel_prepared_settlement_with_runtime_v1(
+                &fixture.program_id,
+                &readonly_core,
+                &instruction,
+                sha256,
+                &mut runtime,
+                |data| returned.borrow_mut().extend_from_slice(data),
+            ),
+            Err(ProgramError::InvalidAccountData)
+        );
+
+        let digest_offset = POOL_V1_PREPARED_SETTLEMENT_CORE_ACCOUNT_BYTES - 1;
+        accounts[1].try_borrow_mut_data().unwrap()[digest_offset] ^= 1;
+        assert!(process_cancel_prepared_settlement_with_runtime_v1(
+            &fixture.program_id,
+            &accounts,
+            &instruction,
+            sha256,
+            &mut runtime,
+            |data| returned.borrow_mut().extend_from_slice(data),
+        )
+        .is_err());
+        accounts[1].try_borrow_mut_data().unwrap()[digest_offset] ^= 1;
+
+        assert!(runtime.closed.is_empty());
+        assert!(returned.borrow().is_empty());
+        process_cancel_prepared_settlement_with_runtime_v1(
+            &fixture.program_id,
+            &accounts,
+            &instruction,
+            sha256,
+            &mut runtime,
+            |data| returned.borrow_mut().extend_from_slice(data),
+        )
+        .unwrap();
+        drop(readonly_core);
+        drop(trailing);
+        drop(alias);
+        drop(wrong_authority);
+        drop(missing_signature);
+        drop(accounts);
+
+        assert_eq!(runtime.closed, vec![fixture.plan_address]);
+        assert_eq!(authority_lamports, 111);
+        assert_eq!(core_lamports, 0);
+        assert!(core_data.iter().all(|byte| *byte == 0xff));
+        assert_eq!(returned.into_inner(), instruction);
+    }
+
+    #[test]
+    fn public_cancel_rollover_authenticates_shard_and_orders_late_failure_before_success() {
+        let fixture = standard_fixture(PoolV1TransitionKind::PrivateTransfer, 254);
+        let instruction = encode_cancel_prepared_settlement_instruction_v1(
+            CancelPreparedSettlementAccountShapeV1::CoreAndRolloverShard,
+        );
+        let core_only_instruction = encode_cancel_prepared_settlement_instruction_v1(
+            CancelPreparedSettlementAccountShapeV1::CoreOnly,
+        );
+        let shard_address = fixture.rollover_shard_address.unwrap();
+        let system_id = system_program::id();
+        let mut authority_lamports = 10;
+        let mut authority_data = [];
+        let mut core_lamports = 101;
+        let mut core_data = fixture.plan_image.clone();
+        let mut shard_lamports = 202;
+        let mut shard_data = fixture.rollover_shard_image.clone().unwrap();
+        let accounts = vec![
+            account(
+                &fixture.authority,
+                &system_id,
+                &mut authority_lamports,
+                &mut authority_data,
+                true,
+                true,
+            ),
+            account(
+                &fixture.plan_address,
+                &fixture.program_id,
+                &mut core_lamports,
+                core_data.as_mut(),
+                false,
+                true,
+            ),
+            account(
+                &shard_address,
+                &fixture.program_id,
+                &mut shard_lamports,
+                shard_data.as_mut(),
+                false,
+                true,
+            ),
+        ];
+        let returned = RefCell::new(Vec::new());
+        let mut runtime = CancelSettlementRuntime {
+            fail_on: None,
+            closed: Vec::new(),
+        };
+
+        assert_eq!(
+            process_cancel_prepared_settlement_with_runtime_v1(
+                &fixture.program_id,
+                &accounts,
+                &core_only_instruction,
+                sha256,
+                &mut runtime,
+                |data| returned.borrow_mut().extend_from_slice(data),
+            ),
+            Err(ProgramError::InvalidArgument)
+        );
+        assert_eq!(
+            process_cancel_prepared_settlement_with_runtime_v1(
+                &fixture.program_id,
+                &accounts[..2],
+                &instruction,
+                sha256,
+                &mut runtime,
+                |data| returned.borrow_mut().extend_from_slice(data),
+            ),
+            Err(ProgramError::NotEnoughAccountKeys)
+        );
+        let mut alias = accounts.clone();
+        alias[2] = alias[1].clone();
+        assert_eq!(
+            process_cancel_prepared_settlement_with_runtime_v1(
+                &fixture.program_id,
+                &alias,
+                &instruction,
+                sha256,
+                &mut runtime,
+                |data| returned.borrow_mut().extend_from_slice(data),
+            ),
+            Err(ProgramError::InvalidArgument)
+        );
+
+        let wrong_shard_key = Pubkey::new_unique();
+        let mut wrong_shard = accounts.clone();
+        wrong_shard[2].key = &wrong_shard_key;
+        assert!(process_cancel_prepared_settlement_with_runtime_v1(
+            &fixture.program_id,
+            &wrong_shard,
+            &instruction,
+            sha256,
+            &mut runtime,
+            |data| returned.borrow_mut().extend_from_slice(data),
+        )
+        .is_err());
+
+        let shard_digest_offset = POOL_V1_PREPARED_SETTLEMENT_ROLLOVER_ACCOUNT_BYTES - 1;
+        accounts[2].try_borrow_mut_data().unwrap()[shard_digest_offset] ^= 1;
+        assert!(process_cancel_prepared_settlement_with_runtime_v1(
+            &fixture.program_id,
+            &accounts,
+            &instruction,
+            sha256,
+            &mut runtime,
+            |data| returned.borrow_mut().extend_from_slice(data),
+        )
+        .is_err());
+        accounts[2].try_borrow_mut_data().unwrap()[shard_digest_offset] ^= 1;
+        assert!(runtime.closed.is_empty());
+        assert!(returned.borrow().is_empty());
+
+        // The injected second-close failure proves the shard/core ordering and
+        // that no success data can escape. In a real instruction, Solana rolls
+        // the first close back with the rest of the failed transaction.
+        runtime.fail_on = Some(fixture.plan_address);
+        assert_eq!(
+            process_cancel_prepared_settlement_with_runtime_v1(
+                &fixture.program_id,
+                &accounts,
+                &instruction,
+                sha256,
+                &mut runtime,
+                |data| returned.borrow_mut().extend_from_slice(data),
+            ),
+            Err(ProgramError::Custom(0xcace))
+        );
+        assert_eq!(runtime.closed, vec![shard_address, fixture.plan_address]);
+        assert!(returned.borrow().is_empty());
+        drop(wrong_shard);
+        drop(alias);
+        drop(accounts);
+
+        // Host AccountInfo mocks have no transaction rollback, so restore the
+        // exact preimage before exercising the successful path below.
+        assert_eq!(authority_lamports, 212);
+        assert_eq!(shard_lamports, 0);
+        assert!(shard_data.iter().all(|byte| *byte == 0xff));
+        authority_lamports = 10;
+        shard_lamports = 202;
+        shard_data = fixture.rollover_shard_image.clone().unwrap();
+        let success_accounts = vec![
+            account(
+                &fixture.authority,
+                &system_id,
+                &mut authority_lamports,
+                &mut authority_data,
+                true,
+                true,
+            ),
+            account(
+                &fixture.plan_address,
+                &fixture.program_id,
+                &mut core_lamports,
+                core_data.as_mut(),
+                false,
+                true,
+            ),
+            account(
+                &shard_address,
+                &fixture.program_id,
+                &mut shard_lamports,
+                shard_data.as_mut(),
+                false,
+                true,
+            ),
+        ];
+        let mut success_runtime = CancelSettlementRuntime {
+            fail_on: None,
+            closed: Vec::new(),
+        };
+        process_cancel_prepared_settlement_with_runtime_v1(
+            &fixture.program_id,
+            &success_accounts,
+            &instruction,
+            sha256,
+            &mut success_runtime,
+            |data| returned.borrow_mut().extend_from_slice(data),
+        )
+        .unwrap();
+        drop(success_accounts);
+
+        assert_eq!(
+            success_runtime.closed,
+            vec![shard_address, fixture.plan_address]
+        );
+        assert_eq!(authority_lamports, 313);
+        assert_eq!(core_lamports, 0);
+        assert_eq!(shard_lamports, 0);
+        assert!(core_data.iter().all(|byte| *byte == 0xff));
+        assert!(shard_data.iter().all(|byte| *byte == 0xff));
+        assert_eq!(returned.into_inner(), instruction);
     }
 
     #[test]

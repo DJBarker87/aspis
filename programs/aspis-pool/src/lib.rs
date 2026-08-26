@@ -13,6 +13,7 @@
 extern crate std;
 
 pub mod anchor;
+pub mod cancel_prepared_settlement_instruction;
 pub mod deposit;
 pub mod deposit_transport;
 pub mod empty_roots;
@@ -34,6 +35,13 @@ pub mod verifier_dispatch;
 pub use anchor::{
     authenticate_historical_anchor_v1, AuthenticatedHistoricalAnchorV1,
     HistoricalAnchorAuthorizationV1,
+};
+pub use cancel_prepared_settlement_instruction::{
+    decode_cancel_prepared_settlement_instruction_v1,
+    encode_cancel_prepared_settlement_instruction_v1, CancelPreparedSettlementAccountShapeV1,
+    CancelPreparedSettlementInstructionFormatErrorV1, CancelPreparedSettlementInstructionV1,
+    POOL_V1_CANCEL_PREPARED_SETTLEMENT_INSTRUCTION_BYTES,
+    POOL_V1_CANCEL_PREPARED_SETTLEMENT_INSTRUCTION_MAGIC,
 };
 pub use deposit::{apply_vault_backed_deposit_v1, DepositRequestV1};
 pub use deposit_transport::process_vault_backed_deposit_instruction_v1;

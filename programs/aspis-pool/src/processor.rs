@@ -41,6 +41,11 @@ use crate::{
         authenticate_historical_anchor_after_prevalidated_state_v1,
         authenticate_historical_anchor_v1, HistoricalAnchorAuthorizationV1,
     },
+    cancel_prepared_settlement_instruction::{
+        decode_cancel_prepared_settlement_instruction_v1,
+        encode_cancel_prepared_settlement_instruction_v1,
+        POOL_V1_CANCEL_PREPARED_SETTLEMENT_INSTRUCTION_MAGIC,
+    },
     deposit_transport::{
         process_prevalidated_vault_backed_deposit_v1, POOL_V1_DEPOSIT_INSTRUCTION_MAGIC,
     },
@@ -59,7 +64,8 @@ use crate::{
     },
     prepared_settlement::{
         apply_prepared_settlement_plan_v1, authenticate_prepared_settlement_receipt_claim_v1,
-        build_prepared_settlement_plan_v1, PreparedSettlementApplyContextV1,
+        authorize_prepared_settlement_plan_close_v1, build_prepared_settlement_plan_v1,
+        PreparedSettlementApplyContextV1,
     },
     prepared_settlement_format::{
         decode_prepared_settlement_plan_v1, PreparedSettlementRolloverShardAccountV1,
@@ -1337,6 +1343,107 @@ fn require_prepared_plan_account_v1(
     Ok(())
 }
 
+/// Authenticate and retire one exact prepared plan without applying its Pool
+/// transition. There is intentionally no Clock or Pool-state dependency: the
+/// plan authority may cancel before activation, after expiry, or after source
+/// state becomes stale. Account locking serializes cancellation with final
+/// settlement, so only one instruction can successfully consume the plan.
+#[inline(never)]
+pub(crate) fn process_cancel_prepared_settlement_with_runtime_v1<'info, R, S>(
+    program_id: &Pubkey,
+    accounts: &[AccountInfo<'info>],
+    instruction_data: &[u8],
+    hash: HashFn,
+    runtime: &mut R,
+    set_return_data: S,
+) -> ProgramResult
+where
+    R: PoolCpiRuntimeV1,
+    S: FnOnce(&[u8]),
+{
+    let instruction = decode_cancel_prepared_settlement_instruction_v1(instruction_data)?;
+    let expected_accounts = instruction.account_shape.account_count();
+    if accounts.len() != expected_accounts {
+        return Err(if accounts.len() < expected_accounts {
+            ProgramError::NotEnoughAccountKeys
+        } else {
+            ProgramError::InvalidArgument
+        });
+    }
+    require_unique_accounts(accounts)?;
+
+    let plan_authority = &accounts[0];
+    if !plan_authority.is_signer
+        || !plan_authority.is_writable
+        || plan_authority.executable
+        || plan_authority.owner != &system_program::id()
+    {
+        return Err(PoolV1ProgramError::InvalidPayer.into());
+    }
+    let core_plan = &accounts[1];
+    require_prepared_plan_account_v1(
+        core_plan,
+        program_id,
+        POOL_V1_PREPARED_SETTLEMENT_CORE_ACCOUNT_BYTES,
+    )?;
+    let rollover_plan = instruction
+        .account_shape
+        .has_rollover_shard()
+        .then(|| &accounts[2]);
+    if let Some(shard) = rollover_plan {
+        require_prepared_plan_account_v1(
+            shard,
+            program_id,
+            POOL_V1_PREPARED_SETTLEMENT_ROLLOVER_ACCOUNT_BYTES,
+        )?;
+    }
+
+    let core_data = core_plan.try_borrow_data()?;
+    let shard_data = rollover_plan
+        .map(|account| account.try_borrow_data())
+        .transpose()?;
+    let rollover_shard = match (rollover_plan, shard_data.as_ref()) {
+        (Some(account), Some(image)) => Some(PreparedSettlementRolloverShardAccountV1 {
+            address: account.key,
+            owner: account.owner,
+            image: image.as_ref(),
+        }),
+        (None, None) => None,
+        _ => return Err(ProgramError::InvalidAccountData),
+    };
+    authorize_prepared_settlement_plan_close_v1(
+        program_id,
+        core_plan.key,
+        core_plan.owner,
+        core_data.as_ref(),
+        rollover_shard,
+        plan_authority.key,
+        plan_authority.is_signer,
+        hash,
+    )?;
+
+    drop(shard_data);
+    drop(core_data);
+    if let Some(shard) = rollover_plan {
+        runtime.close_program_account(
+            shard,
+            plan_authority,
+            program_id,
+            POOL_V1_PREPARED_SETTLEMENT_ROLLOVER_ACCOUNT_BYTES,
+        )?;
+    }
+    runtime.close_program_account(
+        core_plan,
+        plan_authority,
+        program_id,
+        POOL_V1_PREPARED_SETTLEMENT_CORE_ACCOUNT_BYTES,
+    )?;
+
+    let receipt = encode_cancel_prepared_settlement_instruction_v1(instruction.account_shape);
+    set_return_data(&receipt);
+    Ok(())
+}
+
 #[allow(clippy::too_many_arguments)]
 fn create_prepared_marker_if_needed_v1<'info, R: PoolCpiRuntimeV1>(
     runtime: &mut R,
@@ -2155,6 +2262,15 @@ pub fn process_instruction(
             &rent,
             solana_sha256,
             &mut runtime,
+        )
+    } else if magic == POOL_V1_CANCEL_PREPARED_SETTLEMENT_INSTRUCTION_MAGIC {
+        process_cancel_prepared_settlement_with_runtime_v1(
+            program_id,
+            accounts,
+            instruction_data,
+            solana_sha256,
+            &mut runtime,
+            program::set_return_data,
         )
     } else if magic == POOL_V1_SETTLE_PREPARED_INSTRUCTION_MAGIC {
         let slot = Clock::get()?.slot;
