@@ -49,12 +49,20 @@ pub enum NoteStoreCryptoErrorV1 {
     NonZeroReserved,
     AuthenticationFailed,
     InvalidNullifierKey,
+    SameCipher,
+    Durable(crate::durable_state::DurableStateErrorV1),
     Wallet(PoolV1WalletError),
 }
 
 impl From<PoolV1WalletError> for NoteStoreCryptoErrorV1 {
     fn from(error: PoolV1WalletError) -> Self {
         Self::Wallet(error)
+    }
+}
+
+impl From<crate::durable_state::DurableStateErrorV1> for NoteStoreCryptoErrorV1 {
+    fn from(error: crate::durable_state::DurableStateErrorV1) -> Self {
+        Self::Durable(error)
     }
 }
 
@@ -245,6 +253,44 @@ pub fn open_note_opening_v1(
     let decoded = decode_note_plaintext_v1(&plaintext).map_err(NoteStoreCryptoErrorV1::Wallet);
     plaintext.zeroize();
     decoded
+}
+
+/// Atomically rotate every encrypted note in one locked durable wallet.
+/// Every old record must authenticate under its exact event/access context;
+/// every replacement is prepared in memory first; the durable image and its
+/// cipher identifier change together in one fsync/rename commit.
+pub fn rotate_wallet_note_store_key_v1(
+    rng: &mut impl CryptoRng,
+    wallet: &mut crate::durable_state::DurableWalletStateV1,
+    old_cipher: &NoteStoreCipherV1,
+    new_cipher: &NoteStoreCipherV1,
+) -> Result<(), NoteStoreCryptoErrorV1> {
+    if old_cipher.cipher_id == new_cipher.cipher_id {
+        return Err(NoteStoreCryptoErrorV1::SameCipher);
+    }
+    if wallet.note_cipher_id() != &old_cipher.cipher_id {
+        return Err(NoteStoreCryptoErrorV1::Durable(
+            crate::durable_state::DurableStateErrorV1::CipherMismatch,
+        ));
+    }
+    let mut replacements = Vec::with_capacity(wallet.notes().len());
+    for stored in wallet.notes() {
+        let note = open_note_opening_v1(
+            old_cipher,
+            stored.event_id,
+            stored.access,
+            &stored.sealed_note,
+        )?;
+        replacements.push(seal_recovered_note_v1(
+            rng,
+            new_cipher,
+            stored.event_id,
+            stored.access,
+            &note,
+        )?);
+    }
+    wallet.replace_note_cipher_v1(old_cipher.cipher_id, new_cipher.cipher_id, &replacements)?;
+    Ok(())
 }
 
 /// Concrete durable-state spend authenticator.  The note opening is decrypted

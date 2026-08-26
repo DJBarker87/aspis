@@ -80,6 +80,7 @@ pub enum DurableStateErrorV1 {
     NonCanonicalOrder,
     IdentityMismatch,
     CipherMismatch,
+    CipherRotationMismatch,
     InvalidCipherId,
     InvalidSealedNote,
     MissingRecoveredNote,
@@ -390,6 +391,55 @@ impl DurableWalletStateV1 {
 
     pub fn notes(&self) -> &[StoredSealedNoteV1] {
         &self.notes
+    }
+
+    /// Atomically replace every opaque note ciphertext and advance the
+    /// cipher/key-generation identifier.  This crate-internal primitive is
+    /// exposed only through the authenticated `note_store_crypto` rotation,
+    /// which opens every old ciphertext and seals every replacement before
+    /// this all-or-nothing state transition is attempted.
+    pub(crate) fn replace_note_cipher_v1(
+        &mut self,
+        expected_old_cipher_id: [u8; 32],
+        new_cipher_id: [u8; 32],
+        replacements: &[SealedRecoveredNoteV1],
+    ) -> Result<(), DurableStateErrorV1> {
+        if self.note_cipher_id != expected_old_cipher_id {
+            return Err(DurableStateErrorV1::CipherMismatch);
+        }
+        if new_cipher_id == [0u8; 32] || new_cipher_id == expected_old_cipher_id {
+            return Err(DurableStateErrorV1::InvalidCipherId);
+        }
+        if replacements.len() != self.notes.len() {
+            return Err(DurableStateErrorV1::CipherRotationMismatch);
+        }
+        let mut notes = self.notes.clone();
+        let mut supplied = HashSet::with_capacity(replacements.len());
+        for replacement in replacements {
+            validate_sealed_note_v1(replacement)?;
+            if !supplied.insert(replacement.event_id) {
+                return Err(DurableStateErrorV1::CipherRotationMismatch);
+            }
+            let note = notes
+                .iter_mut()
+                .find(|note| note.event_id == replacement.event_id)
+                .ok_or(DurableStateErrorV1::CipherRotationMismatch)?;
+            if note.access != replacement.access {
+                return Err(DurableStateErrorV1::CipherRotationMismatch);
+            }
+            note.sealed_note.clone_from(&replacement.sealed_note);
+        }
+        let bytes = encode_wallet_image_v1(
+            &self.scan_state,
+            new_cipher_id,
+            &notes,
+            &self.base_prepared_plans,
+            &self.prepared_plan_lifecycle,
+        )?;
+        self.file.replace(&bytes)?;
+        self.note_cipher_id = new_cipher_id;
+        self.notes = notes;
+        Ok(())
     }
 
     /// Finalized prepared plans not yet closed by a successful `ASPF` or
@@ -2088,6 +2138,7 @@ fn read_array_v1<const N: usize>(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use core::convert::Infallible;
     use std::{
         fs,
         path::PathBuf,
@@ -2104,9 +2155,14 @@ mod tests {
         pool_v1::{HistoricalAnchorEnvelopeV1, PoolV1TransitionKind},
         poseidon2::Digest,
     };
+    use hpke::rand_core::{TryCryptoRng, TryRng};
 
     use crate::{
         finalized_indexer::{FinalizedTransitionEvidenceV1, HistoricalRootEvidenceV1},
+        note_store_crypto::{
+            open_note_opening_v1, rotate_wallet_note_store_key_v1, seal_recovered_note_v1,
+            NoteStoreCipherV1, NoteStoreCryptoErrorV1,
+        },
         scan_state::{
             DepositScanIdentityV1, FinalizedBlockAdvanceV1, FinalizedBlockV1,
             FinalizedPublicOutputRecordV1,
@@ -2120,6 +2176,34 @@ mod tests {
     };
 
     static TEMP_COUNTER: AtomicU64 = AtomicU64::new(0);
+
+    struct FixedTestRng(u8);
+
+    impl TryRng for FixedTestRng {
+        type Error = Infallible;
+
+        fn try_next_u32(&mut self) -> Result<u32, Self::Error> {
+            let mut bytes = [0u8; 4];
+            self.try_fill_bytes(&mut bytes)?;
+            Ok(u32::from_le_bytes(bytes))
+        }
+
+        fn try_next_u64(&mut self) -> Result<u64, Self::Error> {
+            let mut bytes = [0u8; 8];
+            self.try_fill_bytes(&mut bytes)?;
+            Ok(u64::from_le_bytes(bytes))
+        }
+
+        fn try_fill_bytes(&mut self, destination: &mut [u8]) -> Result<(), Self::Error> {
+            for byte in destination {
+                *byte = self.0;
+                self.0 = self.0.wrapping_add(1);
+            }
+            Ok(())
+        }
+    }
+
+    impl TryCryptoRng for FixedTestRng {}
 
     struct TestDirectory(PathBuf);
 
@@ -2349,6 +2433,118 @@ mod tests {
             DurableWalletStateV1::open_or_create_v1(&path, initial, [0xc1; 32]).err(),
             Some(DurableStateErrorV1::ChecksumMismatch)
         );
+    }
+
+    #[test]
+    fn note_store_key_rotation_is_complete_atomic_and_restart_pinned() {
+        let directory = TestDirectory::new();
+        let path = directory.path("wallet-rotation.state");
+        let initial = scan_fixture();
+        let old_cipher = NoteStoreCipherV1::from_key_bytes([0x61; 32]).unwrap();
+        let new_cipher = NoteStoreCipherV1::from_key_bytes([0x62; 32]).unwrap();
+        let wrong_cipher = NoteStoreCipherV1::from_key_bytes([0x63; 32]).unwrap();
+        let mut store =
+            DurableWalletStateV1::open_or_create_v1(&path, initial.clone(), old_cipher.cipher_id())
+                .unwrap();
+
+        let mut candidate = initial.clone();
+        let point = FinalizedChainPointV1::new(101, [0xa1; 32]).unwrap();
+        candidate
+            .advance_finalized_block_v1(FinalizedBlockV1::new(point, initial.head()).unwrap())
+            .unwrap();
+        let output_id = DepositEventIdV1::new(point, [0x51; 64], 0, 0).unwrap();
+        candidate
+            .ingest_finalized_public_output_v1(FinalizedPublicOutputRecordV1 {
+                id: output_id,
+                pool: *candidate.identity().pool(),
+                leaf_index: 0,
+                root_sequence: 1,
+                note_commitment: encode_digest_canonical(&digest(20)),
+                root: encode_digest_canonical(&digest(40)),
+                authenticated_transport: &[0x71, 0x72],
+            })
+            .unwrap();
+        let note = NoteOpeningV1::new([0x31; 32], 7, 9, [0x41; 32]).unwrap();
+        let sealed = seal_recovered_note_v1(
+            &mut FixedTestRng(0x10),
+            &old_cipher,
+            output_id,
+            SealedNoteAccessV1::Spendable,
+            &note,
+        )
+        .unwrap();
+        store
+            .commit_finalized_ingest_v1(
+                candidate.clone(),
+                &transition_result(
+                    output_id,
+                    *candidate.identity().pool(),
+                    FinalizedBlockAdvanceV1::Advanced,
+                ),
+                &[sealed],
+                &[],
+                &RejectAllSpends,
+            )
+            .unwrap();
+        let old_sealed = store.notes()[0].sealed_note.clone();
+
+        assert_eq!(
+            rotate_wallet_note_store_key_v1(
+                &mut FixedTestRng(0x40),
+                &mut store,
+                &wrong_cipher,
+                &new_cipher,
+            )
+            .err(),
+            Some(NoteStoreCryptoErrorV1::Durable(
+                DurableStateErrorV1::CipherMismatch
+            ))
+        );
+        assert_eq!(store.note_cipher_id(), &old_cipher.cipher_id());
+        assert_eq!(store.notes()[0].sealed_note, old_sealed);
+
+        rotate_wallet_note_store_key_v1(
+            &mut FixedTestRng(0x70),
+            &mut store,
+            &old_cipher,
+            &new_cipher,
+        )
+        .unwrap();
+        assert_eq!(store.note_cipher_id(), &new_cipher.cipher_id());
+        assert_ne!(store.notes()[0].sealed_note, old_sealed);
+        assert_eq!(
+            open_note_opening_v1(
+                &old_cipher,
+                output_id,
+                SealedNoteAccessV1::Spendable,
+                &store.notes()[0].sealed_note,
+            )
+            .err(),
+            Some(NoteStoreCryptoErrorV1::AuthenticationFailed)
+        );
+        let opened = open_note_opening_v1(
+            &new_cipher,
+            output_id,
+            SealedNoteAccessV1::Spendable,
+            &store.notes()[0].sealed_note,
+        )
+        .unwrap();
+        assert_eq!(opened.owner_key(), note.owner_key());
+        drop(store);
+
+        assert_eq!(
+            DurableWalletStateV1::open_or_create_v1(
+                &path,
+                initial.clone(),
+                old_cipher.cipher_id(),
+            )
+            .err(),
+            Some(DurableStateErrorV1::CipherMismatch)
+        );
+        let restarted =
+            DurableWalletStateV1::open_or_create_v1(&path, initial, new_cipher.cipher_id())
+                .unwrap();
+        assert_eq!(restarted.notes().len(), 1);
     }
 
     #[test]

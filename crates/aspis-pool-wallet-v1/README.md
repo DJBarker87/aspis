@@ -292,7 +292,11 @@ a spendable note under that exact context, requests a zeroizing nullifier-key
 copy from an HSM/OS-keystore boundary keyed by the public owner digest, and
 recomputes the finalized public nullifier. Neither the at-rest key nor a
 nullifier key is serialized by this crate. The caller supplies the CSPRNG and
-protects, backs up and rotates the uniformly random at-rest key.
+protects and backs up the uniformly random at-rest key.
+`rotate_wallet_note_store_key_v1` authenticates every old record, prepares
+every replacement, and atomically advances all ciphertexts and the durable
+key-generation identifier in one fsync/rename commit; any wrong key, malformed
+record or incomplete replacement leaves the wallet image unchanged.
 
 Both stores take a per-image OS exclusive lock, reject symlink/non-regular or
 group/world-readable state files on Unix, bound the complete image, write a
@@ -328,7 +332,7 @@ The remaining production integration must also:
 - retain and audit the Pool program's instructions-sysvar guard that rejects
   inner invocation, keeping every successful mutation visible to this
   top-level instruction scanner;
-- protect, back up and rotate the authenticated note-store key represented by
+- protect and back up the authenticated note-store keys represented by
   `note_cipher_id`, implement the HSM/OS-keystore lookup behind
   `LocalNullifierKeyStoreV1`, and archive returned public root/transition
   evidence if the operator requires a longer audit trail than the rollback
