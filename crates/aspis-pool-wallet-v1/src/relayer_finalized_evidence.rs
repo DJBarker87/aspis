@@ -149,7 +149,7 @@ pub fn derive_relayer_finalized_evidence_v1(
                     .first()
                     .is_some_and(|id| event_matches_execution_v1(id, execution))
             }))?;
-            validate_transition_v1(plan, transition)?;
+            validate_transition_v1(plan, execution, transition)?;
             hash_transition_v1(&mut poststate, transition)?;
         }
     }
@@ -289,6 +289,7 @@ fn hash_optional_pubkey_v1(hasher: &mut Sha256, value: Option<[u8; 32]>) {
 
 fn validate_transition_v1(
     plan: &RelayerPlanV1,
+    execution: FinalizedTransactionExecutionV1,
     transition: &FinalizedTransitionEvidenceV1,
 ) -> Result<(), RelayerFinalizedEvidenceErrorV1> {
     let expected_kind = match plan.kind {
@@ -301,9 +302,10 @@ fn validate_transition_v1(
         }
         _ => return Err(RelayerFinalizedEvidenceErrorV1::WrongTransitionKind),
     };
-    if transition.receipt.transition_kind != expected_kind || transition.output_ids.is_empty() {
+    if transition.receipt.transition_kind != expected_kind {
         return Err(RelayerFinalizedEvidenceErrorV1::WrongTransitionKind);
     }
+    validate_transition_output_ids_v1(execution, expected_kind, &transition.output_ids)?;
     let receipt = encode_transition_receipt_v1(&transition.receipt)
         .map_err(|_| RelayerFinalizedEvidenceErrorV1::WrongAuthenticatedTransport)?;
     let expected_length = plan
@@ -336,6 +338,30 @@ fn validate_transition_v1(
             return Err(RelayerFinalizedEvidenceErrorV1::WrongPreparedPlan)
         }
         _ => {}
+    }
+    Ok(())
+}
+
+fn validate_transition_output_ids_v1(
+    execution: FinalizedTransactionExecutionV1,
+    transition_kind: PoolV1TransitionKind,
+    output_ids: &[DepositEventIdV1],
+) -> Result<(), RelayerFinalizedEvidenceErrorV1> {
+    let expected_count = match transition_kind {
+        PoolV1TransitionKind::PrivateTransfer => 2,
+        PoolV1TransitionKind::Withdrawal => 1,
+    };
+    if output_ids.len() != expected_count {
+        return Err(RelayerFinalizedEvidenceErrorV1::WrongLifecycleEvidence);
+    }
+    let instruction_index = output_ids[0].instruction_index();
+    for (event_index, id) in output_ids.iter().enumerate() {
+        if !event_matches_execution_v1(id, execution)
+            || id.instruction_index() != instruction_index
+            || usize::from(id.event_index()) != event_index
+        {
+            return Err(RelayerFinalizedEvidenceErrorV1::WrongLifecycleEvidence);
+        }
     }
     Ok(())
 }
@@ -497,6 +523,54 @@ mod tests {
         wrong.initializations[0].receipt.pool = [0x72; 32];
         assert_eq!(
             derive_relayer_finalized_evidence_v1(&plan, execution, &wrong, [0x71; 32]),
+            Err(RelayerFinalizedEvidenceErrorV1::WrongLifecycleEvidence)
+        );
+    }
+
+    #[test]
+    fn transition_output_ids_bind_every_output_to_one_finalized_instruction() {
+        let (_, execution, _) = fixture();
+        let point = execution.point();
+        let signature = *execution.transaction_signature();
+        let output = |point, signature, instruction_index, event_index| {
+            DepositEventIdV1::new(point, signature, instruction_index, event_index).unwrap()
+        };
+        let canonical = [
+            output(point, signature, 3, 0),
+            output(point, signature, 3, 1),
+        ];
+        assert_eq!(
+            validate_transition_output_ids_v1(
+                execution,
+                PoolV1TransitionKind::PrivateTransfer,
+                &canonical,
+            ),
+            Ok(())
+        );
+
+        let wrong_point = FinalizedChainPointV1::new(point.slot() + 1, [0x81; 32]).unwrap();
+        let mutations = [
+            [canonical[0], output(wrong_point, signature, 3, 1)],
+            [canonical[0], output(point, [0x82; 64], 3, 1)],
+            [canonical[0], output(point, signature, 4, 1)],
+            [canonical[0], output(point, signature, 3, 0)],
+        ];
+        for mutated in mutations {
+            assert_eq!(
+                validate_transition_output_ids_v1(
+                    execution,
+                    PoolV1TransitionKind::PrivateTransfer,
+                    &mutated,
+                ),
+                Err(RelayerFinalizedEvidenceErrorV1::WrongLifecycleEvidence)
+            );
+        }
+        assert_eq!(
+            validate_transition_output_ids_v1(
+                execution,
+                PoolV1TransitionKind::Withdrawal,
+                &canonical,
+            ),
             Err(RelayerFinalizedEvidenceErrorV1::WrongLifecycleEvidence)
         );
     }
