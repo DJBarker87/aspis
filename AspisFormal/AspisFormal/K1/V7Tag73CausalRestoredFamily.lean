@@ -41,6 +41,193 @@ open AspisV6PublishedTheoremInterfaces
 
 noncomputable section
 
+/-- The exact pre-K1.4 information carried by one restored continuation.
+This is deliberately weaker than `RestoredK14Branch`: a width-29
+decomposition failure still has a canonical selected K1.3 chain and must
+therefore remain present in the response family used to bound K1.4. -/
+structure RestoredSelectedBranch
+    (decoder : ExactDecoderInstantiation QM31Exact)
+    (words : AspisPool.V7MerkleQueryExtractor.ExtractedWords)
+    (gamma : QM31Exact) where
+  disclosedFinal : FinalMessage QM31Exact
+  schedule : ExactSchedule
+  selected : ExactCandidatePair
+  selectedExact :
+    selectCandidateChain
+        (decoder.decodeBoth
+          (extractedIdealTranscript words gamma disclosedFinal).initial
+          (foldedReceived schedule
+            (extractedIdealTranscript words gamma disclosedFinal)))
+      schedule disclosedFinal = some selected
+
+/-- K1.3 acceptance always supplies the canonical selected chain, including
+on the branch where K1.4 subsequently reports width-29 decomposition
+failure. -/
+theorem exactK13_has_selected_chain
+    {HiddenTape TapeIdentity Observation Statement Payload Result : Type}
+    {parameters : ExactCompilerResourceParameters}
+    {transitionFuel : Nat}
+    {configuration : ExactPlainRomConfiguration HiddenTape TapeIdentity
+      Observation Statement Tag73K12ParsedProof Payload Result parameters}
+    {projection : AcceptedTapeProjection Statement Tag73K12ParsedProof Payload}
+    {fixedInstance : PublicInstance Statement}
+    {sample : ExactCompilerSample HiddenTape parameters}
+    {decoder : ExactDecoderInstantiation QM31Exact}
+    {input : ExactK12OperationalInput transitionFuel configuration projection
+      fixedInstance sample}
+    {k12 : ExactPrefixK12Certificate input}
+    (k13 : ExactK13Certificate decoder input k12) :
+    ∃ selected,
+      selectCandidateChain
+          (decoder.decodeBoth
+            (exactK13Transcript input k12).initial
+            (foldedReceived (exactK13ParsedProof input).schedule
+              (exactK13Transcript input k12)))
+        (exactK13ParsedProof input).schedule
+        (exactK13ParsedProof input).disclosedFinal = some selected := by
+  obtain ⟨selected, selectedExact, _initial, _final, _fold, _terminal⟩ :=
+    accepted_selects_one_consistent_chain
+      (exactK13ParsedProof input).schedule (exactK13Encoders decoder)
+      (exactK13Transcript input k12) (exactK13ParsedProof input).queries
+      decoder rfl rfl k13.accepts k13.noQueryFailure k13.noFoldFailure
+      k13.noListCapFailure
+  exact ⟨selected, selectedExact⟩
+
+/-- Forget the later K1.4 result while retaining the selected K1.3 response
+from the literal fixed execution. -/
+noncomputable def restoredSelectedBranchOfExactK13
+    {HiddenTape TapeIdentity Observation Statement Payload Result : Type}
+    {parameters : ExactCompilerResourceParameters}
+    {transitionFuel : Nat}
+    {configuration : ExactPlainRomConfiguration HiddenTape TapeIdentity
+      Observation Statement Tag73K12ParsedProof Payload Result parameters}
+    {projection : AcceptedTapeProjection Statement Tag73K12ParsedProof Payload}
+    {fixedInstance : PublicInstance Statement}
+    {sample : ExactCompilerSample HiddenTape parameters}
+    {decoder : ExactDecoderInstantiation QM31Exact}
+    {input : ExactK12OperationalInput transitionFuel configuration projection
+      fixedInstance sample}
+    {k12 : ExactPrefixK12Certificate input}
+    (k13 : ExactK13Certificate decoder input k12) :
+    RestoredSelectedBranch decoder k12.words (exactK13ParsedProof input).gamma :=
+  { disclosedFinal := (exactK13ParsedProof input).disclosedFinal
+    schedule := (exactK13ParsedProof input).schedule
+    selected := Classical.choose (exactK13_has_selected_chain k13)
+    selectedExact := Classical.choose_spec (exactK13_has_selected_chain k13) }
+
+/-- A pre-gamma restoration client supplies at most one canonical selected
+K1.3 branch per challenge.  Unavailable challenges are totalized by a real
+fallback branch but have empty support in the resulting family. -/
+structure RestoredSelectedBranchProvider
+    (decoder : ExactDecoderInstantiation QM31Exact)
+    (words : AspisPool.V7MerkleQueryExtractor.ExtractedWords) where
+  fallbackGamma : QM31Exact
+  fallback : RestoredSelectedBranch decoder words fallbackGamma
+  branch : (gamma : QM31Exact) →
+    Option (RestoredSelectedBranch decoder words gamma)
+
+def selectedProviderAvailable
+    {decoder : ExactDecoderInstantiation QM31Exact}
+    {words : AspisPool.V7MerkleQueryExtractor.ExtractedWords}
+    (provider : RestoredSelectedBranchProvider decoder words)
+    (gamma : QM31Exact) : Prop :=
+  (provider.branch gamma).isSome
+
+/-- The exact accepted-family object required by the correlated width-29
+theorem, now constructed already at K1.3 rather than assuming K1.4 success. -/
+def restoredSelectedChainFamilyOfK13Provider
+    {decoder : ExactDecoderInstantiation QM31Exact}
+    {words : AspisPool.V7MerkleQueryExtractor.ExtractedWords}
+    (provider : RestoredSelectedBranchProvider decoder words) :
+    RestoredSelectedChainFamily decoder words where
+  available := selectedProviderAvailable provider
+  response := fun gamma =>
+    match provider.branch gamma with
+    | some branch => branch.selected.1
+    | none => provider.fallback.selected.1
+  disclosedFinal := fun gamma =>
+    match provider.branch gamma with
+    | some branch => branch.disclosedFinal
+    | none => provider.fallback.disclosedFinal
+  schedule := fun gamma =>
+    match provider.branch gamma with
+    | some branch => branch.schedule
+    | none => provider.fallback.schedule
+  selected := fun gamma =>
+    match provider.branch gamma with
+    | some branch => branch.selected
+    | none => provider.fallback.selected
+  responseAt := by
+    intro gamma available
+    cases branchEq : provider.branch gamma with
+    | none => simp [selectedProviderAvailable, branchEq] at available
+    | some branch => simp [branchEq]
+  selectedExact := by
+    intro gamma available
+    cases branchEq : provider.branch gamma with
+    | none => simp [selectedProviderAvailable, branchEq] at available
+    | some branch => simpa [branchEq] using branch.selectedExact
+
+theorem k13_family_selected_of_branch
+    {decoder : ExactDecoderInstantiation QM31Exact}
+    {words : AspisPool.V7MerkleQueryExtractor.ExtractedWords}
+    (provider : RestoredSelectedBranchProvider decoder words)
+    (gamma : QM31Exact)
+    (branch : RestoredSelectedBranch decoder words gamma)
+    (branchExact : provider.branch gamma = some branch) :
+    (restoredSelectedChainFamilyOfK13Provider provider).available gamma ∧
+      (restoredSelectedChainFamilyOfK13Provider provider).selected gamma =
+        branch.selected := by
+  constructor <;> simp [restoredSelectedChainFamilyOfK13Provider,
+    selectedProviderAvailable, branchExact]
+
+noncomputable def causalK13ProviderGammaTarget
+    {decoder : ExactDecoderInstantiation QM31Exact}
+    {words : AspisPool.V7MerkleQueryExtractor.ExtractedWords}
+    (point : Fin 10 → QM31Exact)
+    (claims : Fin 3 → Fin 29 → QM31Exact)
+    (provider : Tag73OuterSamplerSkeleton →
+      RestoredSelectedBranchProvider decoder words)
+    (skeleton : Tag73OuterSamplerSkeleton) : Finset QM31Exact :=
+  acceptedRestoredPointConstrainedGammaSet decoder words point claims
+    (restoredSelectedChainFamilyOfK13Provider (provider skeleton))
+
+def causalK13ProviderRawGammaEvent
+    {decoder : ExactDecoderInstantiation QM31Exact}
+    {words : AspisPool.V7MerkleQueryExtractor.ExtractedWords}
+    (point : Fin 10 → QM31Exact)
+    (claims : Fin 3 → Fin 29 → QM31Exact)
+    (provider : Tag73OuterSamplerSkeleton →
+      RestoredSelectedBranchProvider decoder words) :
+    Set SuccessfulTag73RawNonzeroAttempts :=
+  rawSkeletonDependentGammaEvent
+    (causalK13ProviderGammaTarget point claims provider)
+
+/-- The width-29 K1.4 bound uses the pre-K1.4 selected-chain family.  Thus a
+branch where K1.3 succeeded but matching decomposition failed is included in
+the challenged family rather than silently disappearing. -/
+theorem no_k14_causal_k13_provider_raw_gamma_probability_le
+    {decoder : ExactDecoderInstantiation QM31Exact}
+    (published : PublishedInitialWidth29CurveDecodability exactInitialEncoder)
+    {words : AspisPool.V7MerkleQueryExtractor.ExtractedWords}
+    (point : Fin 10 → QM31Exact)
+    (claims : Fin 3 → Fin 29 → QM31Exact)
+    (provider : Tag73OuterSamplerSkeleton →
+      RestoredSelectedBranchProvider decoder words)
+    (noK14 : ∀ skeleton,
+      ¬ HasAcceptedRestoredPointCompatibleK14 decoder words point claims
+        (restoredSelectedChainFamilyOfK13Provider (provider skeleton))) :
+    (PMF.uniformOfFintype SuccessfulTag73RawNonzeroAttempts).toOuterMeasure
+        (causalK13ProviderRawGammaEvent point claims provider) ≤
+      (AspisV6PublishedTheoremInterfaces.initialBatchChallengeCap : ENNReal) /
+        ((P ^ 4 - 1 : Nat) : ENNReal) := by
+  apply raw_skeleton_dependent_gamma_probability_le
+  intro skeleton
+  exact no_accepted_restored_point_compatible_k14_card_le decoder published
+    words point claims
+      (restoredSelectedChainFamilyOfK13Provider (provider skeleton))
+      (noK14 skeleton)
+
 /-- The exact information supplied by one restored branch after it has passed
 K1.2--K1.4.  Its selected pair is not caller supplied: it is the pair carried
 by the coherent extraction and certified by `combinedSelected`. -/
@@ -243,6 +430,11 @@ end
 
 
 #print axioms restoredSelectedChainFamilyOfProvider
+#print axioms exactK13_has_selected_chain
+#print axioms restoredSelectedBranchOfExactK13
+#print axioms restoredSelectedChainFamilyOfK13Provider
+#print axioms k13_family_selected_of_branch
+#print axioms no_k14_causal_k13_provider_raw_gamma_probability_le
 #print axioms family_of_provider_selected_of_branch
 #print axioms restoredK14BranchOfExactCertificate
 #print axioms no_k14_causal_provider_raw_gamma_probability_le
