@@ -134,12 +134,14 @@ struct SemanticPublic {
 }
 
 #[derive(Clone, Copy)]
+#[cfg(test)]
 struct CompiledRegistry {
     patterns: &'static [CompiledPoolV1PaymentPattern],
     links: &'static [CompiledPoolV1PaymentLink],
     active_row_masks: &'static [u16; 64],
 }
 
+#[cfg(test)]
 fn compiled_registry(variant: CompiledVariant) -> CompiledRegistry {
     match variant {
         CompiledVariant::PrivateTransfer => CompiledRegistry {
@@ -237,13 +239,16 @@ impl Selectors {
     }
 
     fn copy_active(&self, masks: &[u16; 64]) -> QM31 {
-        masks
-            .iter()
-            .enumerate()
-            .filter(|(_, mask)| **mask != 0)
-            .fold(QM31::ZERO, |sum, (block, &mask)| {
-                sum.add(self.high[block].mul(selector_mask_sum_16(&self.low, mask)))
-            })
+        let mut sum = QM31::ZERO;
+        let mut block = 0usize;
+        while block < 64 {
+            let mask = masks[block];
+            if mask != 0 {
+                sum = sum.add(self.high[block].mul(selector_mask_sum_16(&self.low, mask)));
+            }
+            block += 1;
+        }
+        sum
     }
 }
 
@@ -258,20 +263,28 @@ pub fn pool_v1_withdrawal_copy_active_at_point_compiled_v1(point: &[QM31; 10]) -
 fn pattern_values(
     openings: &[QM31; POSEIDON2_WIDTH],
     lambda: QM31,
-    patterns: &[CompiledPoolV1PaymentPattern],
+    patterns: &[CompiledPoolV1PaymentPattern; COPY_PATTERN_COUNT],
 ) -> [QM31; COPY_PATTERN_COUNT] {
     let mut powers = [QM31::ZERO; POSEIDON2_WIDTH];
     let mut power = lambda;
-    for output in &mut powers {
-        *output = power;
+    let mut limb = 0usize;
+    while limb < POSEIDON2_WIDTH {
+        powers[limb] = power;
         power = power.mul(lambda);
+        limb += 1;
     }
-    core::array::from_fn(|pattern_index| {
+    let mut result = [QM31::ZERO; COPY_PATTERN_COUNT];
+    let mut pattern_index = 0usize;
+    while pattern_index < COPY_PATTERN_COUNT {
         let pattern = patterns[pattern_index];
         let mut value = QM31::ZERO;
-        for limb in 0..POSEIDON2_WIDTH {
+        limb = 0;
+        while limb < POSEIDON2_WIDTH {
             let source = match pattern.kinds[limb] {
-                0 => continue,
+                0 => {
+                    limb += 1;
+                    continue;
+                }
                 1 => lift(M31(pattern.offsets[limb])),
                 2 => openings[usize::from(pattern.columns[limb])]
                     .mul_m31(M31(pattern.scales[limb]))
@@ -279,9 +292,12 @@ fn pattern_values(
                 _ => unreachable!("generated Pool V1 tuple kind"),
             };
             value = value.add(powers[limb].mul(source));
+            limb += 1;
         }
-        value
-    })
+        result[pattern_index] = value;
+        pattern_index += 1;
+    }
+    result
 }
 
 #[derive(Clone, Copy)]
@@ -312,43 +328,125 @@ fn copy_residual(row: CopyRowExtension, helper: QM31, chi: QM31) -> QM31 {
         .sub(consumer_denominator.mul(producer_numerator))
 }
 
-fn copy_lane(
+fn accumulate_copy_endpoint(
+    values: &mut [QM31; 2],
+    weights: &mut [QM31; 2],
+    endpoint: CompiledPoolV1PaymentEndpoint,
+    tag: u32,
+    patterns: &[QM31; COPY_PATTERN_COUNT],
+    selectors: &Selectors,
+) {
+    let selector = selectors.row(usize::from(endpoint.row));
+    let slot = usize::from(endpoint.slot);
+    weights[slot] = weights[slot].add(selector);
+    let compressed = lift(M31(tag)).add(patterns[usize::from(endpoint.pattern)]);
+    values[slot] = values[slot].add(selector.mul(compressed));
+}
+
+fn copy_lane_for_registry<const LINK_COUNT: usize>(
     openings: &[QM31; POSEIDON2_WIDTH],
     h1_z: QM31,
     selectors: &Selectors,
     lambda: QM31,
     chi: QM31,
-    registry: CompiledRegistry,
+    patterns: &[CompiledPoolV1PaymentPattern; COPY_PATTERN_COUNT],
+    links: &[CompiledPoolV1PaymentLink; LINK_COUNT],
+    active_row_masks: &[u16; 64],
 ) -> (QM31, QM31) {
-    let patterns = pattern_values(openings, lambda, registry.patterns);
+    let patterns = pattern_values(openings, lambda, patterns);
     let mut row = CopyRowExtension {
         producer_values: [QM31::ZERO; 2],
         producer_weights: [QM31::ZERO; 2],
         consumer_values: [QM31::ZERO; 2],
         consumer_weights: [QM31::ZERO; 2],
     };
-    for link in registry.links {
-        for (endpoint, values, weights) in [
-            (
-                link.producer,
-                &mut row.producer_values,
-                &mut row.producer_weights,
-            ),
-            (
-                link.consumer,
-                &mut row.consumer_values,
-                &mut row.consumer_weights,
-            ),
-        ] {
-            let selector = selectors.row(usize::from(endpoint.row));
-            let slot = usize::from(endpoint.slot);
-            weights[slot] = weights[slot].add(selector);
-            let compressed = lift(M31(link.tag)).add(patterns[usize::from(endpoint.pattern)]);
-            values[slot] = values[slot].add(selector.mul(compressed));
-        }
+    let mut link_index = 0usize;
+    while link_index < LINK_COUNT {
+        let link = links[link_index];
+        accumulate_copy_endpoint(
+            &mut row.producer_values,
+            &mut row.producer_weights,
+            link.producer,
+            link.tag,
+            &patterns,
+            selectors,
+        );
+        accumulate_copy_endpoint(
+            &mut row.consumer_values,
+            &mut row.consumer_weights,
+            link.consumer,
+            link.tag,
+            &patterns,
+            selectors,
+        );
+        link_index += 1;
     }
-    let active = selectors.copy_active(registry.active_row_masks);
+    let active = selectors.copy_active(active_row_masks);
     (active.mul(copy_residual(row, h1_z, chi)), active)
+}
+
+fn copy_lane(
+    openings: &[QM31; POSEIDON2_WIDTH],
+    h1_z: QM31,
+    selectors: &Selectors,
+    lambda: QM31,
+    chi: QM31,
+    variant: CompiledVariant,
+) -> (QM31, QM31) {
+    match variant {
+        CompiledVariant::PrivateTransfer => copy_lane_for_registry(
+            openings,
+            h1_z,
+            selectors,
+            lambda,
+            chi,
+            &constants::PRIVATE_TRANSFER_COPY_PATTERNS,
+            &constants::PRIVATE_TRANSFER_COPY_LINKS,
+            &constants::PRIVATE_TRANSFER_ACTIVE_ROW_MASKS,
+        ),
+        CompiledVariant::Withdrawal => copy_lane_for_registry(
+            openings,
+            h1_z,
+            selectors,
+            lambda,
+            chi,
+            &constants::WITHDRAWAL_COPY_PATTERNS,
+            &constants::WITHDRAWAL_COPY_LINKS,
+            &constants::WITHDRAWAL_ACTIVE_ROW_MASKS,
+        ),
+    }
+}
+
+/// Source-extraction entry for the Boolean restriction of the compiled Copy
+/// lane. `variant` is zero for private transfer and one for withdrawal; all
+/// other values and rows outside the 1,024-row terminal are rejected.
+///
+/// This is deliberately a wrapper around `copy_lane`, not a second evaluator.
+/// The one-hot selectors are exactly `Selectors::at_point` at the Boolean
+/// terminal point for `selected_row`.
+#[doc(hidden)]
+pub fn pool_v1_payment_copy_lane_boolean_extraction_v1(
+    variant: u8,
+    selected_row: u16,
+    openings: &[QM31; POSEIDON2_WIDTH],
+    h1_z: QM31,
+    lambda: QM31,
+    chi: QM31,
+) -> Option<(QM31, QM31)> {
+    if usize::from(selected_row) >= POOL_V1_PAYMENT_TERMINAL_ROWS {
+        return None;
+    }
+    let variant = match variant {
+        0 => CompiledVariant::PrivateTransfer,
+        1 => CompiledVariant::Withdrawal,
+        _ => return None,
+    };
+    let mut high = [QM31::ZERO; 64];
+    let mut low = [QM31::ZERO; 16];
+    high[usize::from(selected_row >> 4)] = QM31::ONE;
+    low[usize::from(selected_row & 15)] = QM31::ONE;
+    let selectors = Selectors { high, low };
+    Some(copy_lane(openings, h1_z, &selectors, lambda, chi, variant))
 }
 
 #[inline(always)]
@@ -610,7 +708,7 @@ fn composition_parts(
         selectors.as_ref(),
         lambda,
         chi,
-        compiled_registry(public.variant),
+        public.variant,
     );
     let prepared_theta = PreparedQm31Multiplier::new(theta);
     let mut composition = copy;
@@ -1140,6 +1238,66 @@ mod tests {
         }
     }
 
+    #[test]
+    fn boolean_extraction_wrapper_is_the_private_copy_lane() {
+        let mut rng = Rng(0x243f_6a88_85a3_08d3);
+        for (variant_byte, variant) in [
+            (0u8, CompiledVariant::PrivateTransfer),
+            (1u8, CompiledVariant::Withdrawal),
+        ] {
+            for selected_row in [0u16, 11, 412, 784, 871, 1023] {
+                let openings = core::array::from_fn(|_| rng.qm31());
+                let h1_z = rng.qm31();
+                let lambda = rng.qm31();
+                let chi = rng.qm31();
+                let point = boolean_point(usize::from(selected_row));
+                let expected = copy_lane(
+                    &openings,
+                    h1_z,
+                    &Selectors::at_point(&point),
+                    lambda,
+                    chi,
+                    variant,
+                );
+                assert_eq!(
+                    pool_v1_payment_copy_lane_boolean_extraction_v1(
+                        variant_byte,
+                        selected_row,
+                        &openings,
+                        h1_z,
+                        lambda,
+                        chi,
+                    ),
+                    Some(expected),
+                );
+            }
+        }
+
+        let zero = [QM31::ZERO; POSEIDON2_WIDTH];
+        assert_eq!(
+            pool_v1_payment_copy_lane_boolean_extraction_v1(
+                2,
+                0,
+                &zero,
+                QM31::ZERO,
+                QM31::ZERO,
+                QM31::ZERO,
+            ),
+            None,
+        );
+        assert_eq!(
+            pool_v1_payment_copy_lane_boolean_extraction_v1(
+                0,
+                1024,
+                &zero,
+                QM31::ZERO,
+                QM31::ZERO,
+                QM31::ZERO,
+            ),
+            None,
+        );
+    }
+
     fn row_is_active(masks: &[u16; 64], row: usize) -> bool {
         masks[row >> 4] & (1 << (row & 15)) != 0
     }
@@ -1469,7 +1627,7 @@ mod tests {
                 &selectors,
                 lambda,
                 chi,
-                compiled_registry(CompiledVariant::PrivateTransfer),
+                CompiledVariant::PrivateTransfer,
             )
             .0,
             residuals.copy,
@@ -1562,7 +1720,7 @@ mod tests {
                 &selectors,
                 lambda,
                 chi,
-                compiled_registry(CompiledVariant::Withdrawal),
+                CompiledVariant::Withdrawal,
             )
             .0,
             residuals.copy,
