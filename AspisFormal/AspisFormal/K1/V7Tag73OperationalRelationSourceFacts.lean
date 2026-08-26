@@ -20,6 +20,9 @@ set_option maxRecDepth 100000
 
 namespace AspisK1.V7Tag73OperationalRelationSourceFacts
 
+open Module
+open AspisFormal.ArithmetizationCore
+open AspisFormal.HashMerkleModel
 open AspisK1.V7FsAokExperiment
 open AspisK1.V7Tag73TranscriptSchedule
 open AspisK1.V7Tag73ExactCompilerResources
@@ -32,20 +35,41 @@ open AspisK1.V7Tag73ExactFixedK13K14Classifier
 open AspisK1.V7Tag73OperationalSemanticReplay
 open AspisK1.V7Tag73ExactParsedProofSourceBinding
 open AspisK1.V7Tag73OperationalK15Classifier
+open AspisK1.V7Tag73AcceptedSemanticExecution
 open AspisK1.V7Tag73ExactOneFoldEncoderBinding
+open AspisK1.V7Tag73FixedFieldMessageBridge
+open AspisK1.V7Tag73RawProverMessages
+open AspisK1.V7Tag73SemanticTranscriptBridge
 open AspisPool.AlgorithmicCircleDecoderV7
+open AspisPool.V7AcceptedDeployedCopyLaneCapstone
 open AspisPool.V7AcceptedSemanticRelationComposition
+open AspisPool.V7AcceptedSpendK15FailureLedger
 open AspisPool.V7C1SubfieldRecovery
+open AspisPool.V7C1ConcreteProjectionBinding
 open AspisPool.V7CoherentTraceExtraction
+open AspisPool.V7CompactSemanticBinding
+open AspisPool.V7DeterministicSpendWitness
+open AspisPool.V7OpenedColumnsFromTrace
+open AspisPool.V7DeployedCopyEvaluatorBalanceBridge
+open AspisPool.V7DeployedCopyLogUpAliasClosure
+open AspisPool.V7InactiveClaimBinding
+open AspisPool.V7PoseidonRowsFromTrace
 open AspisPool.V7RelationCandidateBinding
+open AspisPool.V7Tag73InactiveHelperAggregate
+open AspisSumcheckMasking
+open AspisV5AcceptedSpendRelation
+open AspisV5AcceptedSumcheckSourceBridge
+open AspisV5ComponentADeployedTerminalApplicability
 open AspisCircleGroupOrder
 open AspisCircleTensorBinding
 open AspisV5ComponentCConcreteFoldLinearity
 open AspisV5ComponentCQM31TowerExact
 open AspisV5FriRelationCandidateBridge
 open AspisV5FriConcreteEncoderApplicability
+open AspisV5SumcheckTranscriptBinding
 open AspisV6AcceptedPathObligations
 open AspisV6OneFoldCandidateExtraction
+open AspisV6TranscriptRelationGrammar
 open AspisV7ExactOneFoldDomains
 
 noncomputable section
@@ -282,12 +306,133 @@ theorem positive_relation_facts_of_exact_source_bindings
     query_injection_exact_of_source_binding querySource,
     relation_terminal_accepts_of_source_trace terminalSource⟩
 
+/-! ## Operational K1.5 with only source-level relation premises -/
+
+/- Source-facing operational K1.5 classifier.  Compared with
+`operational_k14_implies_decoded_witness_or_k15_failure`, the aggregate
+final256, q16-injection and terminal-acceptance premises have disappeared.
+They are derived here from literal evaluator equalities, with the q16
+positions and batching challenge fixed to the actual parsed proof and
+operational transcript. -/
+set_option maxHeartbeats 5000000 in
+theorem operational_k14_source_implies_decoded_witness_or_k15_failure
+    {HiddenTape TapeIdentity Observation Statement Payload Result : Type}
+    {parameters : ExactCompilerResourceParameters}
+    {transitionFuel : Nat}
+    {configuration : ExactPlainRomConfiguration HiddenTape TapeIdentity
+      Observation Statement Tag73K12ParsedProof Payload Result parameters}
+    {projection : AcceptedTapeProjection Statement Tag73K12ParsedProof Payload}
+    {fixedInstance : PublicInstance Statement}
+    {sample : ExactCompilerSample HiddenTape parameters}
+    {decoder : ExactDecoderInstantiation QM31Exact}
+    {decoderBinding : InitialProjectionBinding decoder}
+    (input : ExactK12OperationalInput transitionFuel configuration projection
+      fixedInstance sample)
+    {k12 : ExactPrefixK12Certificate input}
+    (k14 : ExactK14Certificate decoder decoderBinding input k12)
+    (decoded : Fin 641 → QM31Exact)
+    (fixedDecode : FixedFieldDecodeExact
+      (rawOfMessages (exactOperationalTape input).messages) decoded)
+    (sourceBinding : ExactParsedProofSourceBinding input decoded)
+    (basis : Basis (Fin 4) F QM31Exact)
+    (rc : RoundConstants)
+    {deployedOwner : Digest → Digest}
+    {deployedNote : Digest → F → F → Digest → Digest}
+    {deployedNullifier : Digest → Digest → Digest}
+    {deployedNode : Digest → Digest → Digest}
+    (poseidon : Poseidon2Faithful rc deployedOwner deployedNote
+      deployedNullifier deployedNode)
+    (statement : V5PublicStatement)
+    (masks : InactiveMasks)
+    (helper mask : Fin 1024 → QM31Exact)
+    (honest : FixedOracleTenRoundTrace
+      (maskedOracle (operationalAcceptedRun input decoded fixedDecode).eta
+        (extractedUnmaskedSemanticTable basis statement k14.extraction
+          (deployedPoseidonRows rc
+            (extractedPhysicalTrace k14.extraction))
+          (deployedCompiledCopyLane
+            (concreteDeployedCopyRegistryProjection k14.extraction)
+            (exactOperationalChallenge input .lambda)
+            (exactOperationalChallenge input .chi) helper)
+          (exactOperationalChallenge input .theta)
+          (fun coordinate => exactOperationalChallenge input
+            (.zerocheckPoint coordinate))
+          (exactOperationalChallenge input .mu) helper)
+        mask)
+      (operationalAcceptedRun input decoded fixedDecode).point)
+    (maskInitialExact : (operationalFixedFields decoded).initialClaim =
+      tableSum mask)
+    (terminalOpeningExact :
+      semanticTerminalClaim (operationalFixedFields decoded)
+          (operationalAcceptedRun input decoded fixedDecode).point =
+        claimAtStep
+          (tableSum
+            (maskedOracle (operationalAcceptedRun input decoded fixedDecode).eta
+              (extractedUnmaskedSemanticTable basis statement k14.extraction
+                (deployedPoseidonRows rc
+                  (extractedPhysicalTrace k14.extraction))
+                (deployedCompiledCopyLane
+                  (concreteDeployedCopyRegistryProjection k14.extraction)
+                  (exactOperationalChallenge input .lambda)
+                  (exactOperationalChallenge input .chi) helper)
+                (exactOperationalChallenge input .theta)
+                (fun coordinate => exactOperationalChallenge input
+                  (.zerocheckPoint coordinate))
+                (exactOperationalChallenge input .mu) helper)
+              mask))
+          honest.messages
+          (operationalAcceptedRun input decoded fixedDecode).point
+          (Fin.last 10))
+    (inactiveSumZero : DeployedCopyHelperInactiveSumZero helper)
+    (execution : CandidateExecution QM31Exact)
+    (initialEncoderEq : decoder.initialEncoder = exactInitialEncoder)
+    (executionInitialWeights : execution.initialWeights =
+      extractedInitialRelationWeights masks
+        (operationalAcceptedRun input decoded fixedDecode).point
+        (exactOperationalChallenge input .kappa))
+    (executionInitialClaim : execution.initialClaim =
+      relationClaimBeforeOod (operationalFixedFields decoded)
+        (exactK13ParsedProof input).gamma
+        (exactOperationalChallenge input .kappa))
+    (inactiveExact : (operationalFixedFields decoded).inactiveClaim =
+      inactiveClaim masks k14.extraction.combined.1)
+    (finalSource : ExactFinal256ExecutionBinding k14 decoded execution)
+    (querySource : ExactQueryInjectionSourceBinding execution
+      (exactK13ParsedProof input).queries
+      (exactOperationalChallenge input .queryBatch))
+    (terminalSource : ExactRelationTerminalSourceTrace execution) :
+    ExactParsedProofSourceBinding input decoded ∧
+      (let witness := decodeTag73SpendWitness statement k14.extraction
+       (OpenedColumnsMatchStatement statement witness.opened ∧
+        SpendRelation deployedOwner deployedNote deployedNullifier deployedNode
+          witness.opened witness.inputValue witness.outputValue) ∨
+        FailureEvidence
+          (failureEvent basis rc statement (operationalFixedFields decoded)
+            (operationalAcceptedRun input decoded fixedDecode)
+            (operationalCompactEvidence input decoded fixedDecode)
+            k14.extraction
+            (exactOperationalChallenge input .lambda)
+            (exactOperationalChallenge input .chi)
+            (exactOperationalChallenge input .theta)
+            (fun coordinate => exactOperationalChallenge input
+              (.zerocheckPoint coordinate))
+            (exactOperationalChallenge input .mu) helper mask honest
+            (exactOperationalChallenge input .kappa) execution)) := by
+  have positive := positive_relation_facts_of_exact_source_bindings
+    sourceBinding finalSource querySource terminalSource
+  exact operational_k14_implies_decoded_witness_or_k15_failure input k14 decoded
+    fixedDecode sourceBinding basis rc poseidon statement masks helper mask
+    honest maskInitialExact terminalOpeningExact inactiveSumZero execution
+    initialEncoderEq finalSource.initialValuesExact executionInitialWeights
+    executionInitialClaim inactiveExact positive.1 positive.2.1 positive.2.2
+
 #print axioms candidateClaim_exactQueryBatchWeights
 #print axioms exactFinalEncoder_eq_candidateClaim
 #print axioms final256_matches_of_exact_source_bindings
 #print axioms query_injection_exact_of_source_binding
 #print axioms relation_terminal_accepts_of_source_trace
 #print axioms positive_relation_facts_of_exact_source_bindings
+#print axioms operational_k14_source_implies_decoded_witness_or_k15_failure
 
 end
 
