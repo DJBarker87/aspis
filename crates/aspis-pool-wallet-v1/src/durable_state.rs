@@ -124,13 +124,13 @@ impl From<RelayerAdmissionErrorV1> for DurableStateErrorV1 {
     }
 }
 
-struct AtomicStateFileV1 {
+pub(crate) struct AtomicStateFileV1 {
     path: PathBuf,
     _lock: File,
 }
 
 impl AtomicStateFileV1 {
-    fn acquire(path: &Path) -> Result<Self, DurableStateErrorV1> {
+    pub(crate) fn acquire(path: &Path) -> Result<Self, DurableStateErrorV1> {
         let file_name = path.file_name().ok_or(DurableStateErrorV1::InvalidPath)?;
         if file_name.is_empty() {
             return Err(DurableStateErrorV1::InvalidPath);
@@ -165,7 +165,7 @@ impl AtomicStateFileV1 {
         })
     }
 
-    fn read_optional(&self) -> Result<Option<Vec<u8>>, DurableStateErrorV1> {
+    pub(crate) fn read_optional(&self) -> Result<Option<Vec<u8>>, DurableStateErrorV1> {
         let mut file = match File::open(&self.path) {
             Ok(file) => file,
             Err(error) if error.kind() == io::ErrorKind::NotFound => return Ok(None),
@@ -186,7 +186,7 @@ impl AtomicStateFileV1 {
         Ok(Some(bytes))
     }
 
-    fn replace(&self, bytes: &[u8]) -> Result<(), DurableStateErrorV1> {
+    pub(crate) fn replace(&self, bytes: &[u8]) -> Result<(), DurableStateErrorV1> {
         if bytes.len() > MAX_DURABLE_IMAGE_BYTES {
             return Err(DurableStateErrorV1::ImageTooLarge);
         }

@@ -12,6 +12,7 @@
 #![forbid(unsafe_code)]
 
 pub mod durable_state;
+pub mod durable_witness_state;
 pub mod finalized_indexer;
 pub mod note_store_crypto;
 pub mod pool_transport;
