@@ -5,7 +5,13 @@
 //! anchor, append-only output, withdrawal, or future 1-to-2 P3/P4 relations.
 //! No Pool account is accepted or written.
 
-use aspis_core::HashFn;
+use aspis_core::{
+    v7_onefold::{
+        V7_COMPACT_BODY_WITHOUT_FRONTIERS, V7_COMPACT_DIGEST_BYTES,
+        V7_COMPACT_FRONTIER_CAP_PER_TREE, V7_COMPACT_MAX_BODY_BYTES,
+    },
+    HashFn,
+};
 use aspis_statement::{
     atomic_payment_statement_digest_v4, decode_asset_id_canonical, decode_digest_canonical,
     encode_atomic_payment_statement_v4,
@@ -34,8 +40,13 @@ pub const V7_POOL_TAG73_PROFILE_PAYLOAD_MAGIC: [u8; 4] = *b"A7P1";
 pub const V7_POOL_TAG73_PROFILE_PAYLOAD_VERSION: u8 = 1;
 pub const V7_POOL_TAG73_PROOF_SOURCE_SEALED_ASPU: u8 = 1;
 pub const V7_POOL_TAG73_CHECK_ALL_WORK: u8 = 1;
-pub const V7_POOL_TAG73_FRONTIER_NODES: u16 = 203;
-pub const V7_POOL_TAG73_PROOF_BODY_BYTES: u32 = 30_504;
+/// Smallest binary authentication frontier for 16 distinct leaves in a
+/// depth-18 tree (the 16 leaves form one complete depth-four subtree).
+pub const V7_POOL_TAG73_MIN_FRONTIER_NODES: u16 = 14;
+/// Frozen cap, retained under the original public name for source consumers.
+pub const V7_POOL_TAG73_FRONTIER_NODES: u16 = V7_COMPACT_FRONTIER_CAP_PER_TREE as u16;
+/// Frozen maximum body size, retained under the original public name.
+pub const V7_POOL_TAG73_PROOF_BODY_BYTES: u32 = V7_COMPACT_MAX_BODY_BYTES as u32;
 pub const V7_POOL_TAG73_PROFILE_PAYLOAD_BYTES: usize = 392;
 pub const V7_POOL_TAG73_PROFILE_BINDING_PREIMAGE: &[u8] =
     b"aspis:pool-v1:verifier-profile:tag73-read-only-atomic-payment-v4:asvq-v1";
@@ -70,6 +81,20 @@ pub enum V7PoolTag73ProfileFormatError {
     WrongRelease,
     NonCanonicalStatement,
     StatementDigestMismatch,
+}
+
+/// Canonical compact proof length for a transcript-derived frontier count.
+/// Both C1 and C2 use the same frontier count and 208-bit digest width.
+pub const fn v7_pool_tag73_proof_body_bytes(frontier_nodes: u16) -> Option<u32> {
+    if frontier_nodes < V7_POOL_TAG73_MIN_FRONTIER_NODES
+        || frontier_nodes > V7_POOL_TAG73_FRONTIER_NODES
+    {
+        return None;
+    }
+    Some(
+        V7_COMPACT_BODY_WITHOUT_FRONTIERS as u32
+            + 2 * frontier_nodes as u32 * V7_COMPACT_DIGEST_BYTES as u32,
+    )
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -133,10 +158,9 @@ fn validate_profile_payload_v1(
     payload: &V7PoolTag73ProfilePayloadV1,
     hash: HashFn,
 ) -> Result<[u8; ATOMIC_PAYMENT_STATEMENT_PAYLOAD_BYTES], V7PoolTag73ProfileFormatError> {
-    if payload.frontier_nodes != V7_POOL_TAG73_FRONTIER_NODES {
-        return Err(V7PoolTag73ProfileFormatError::WrongFrontierCount);
-    }
-    if payload.proof_body_length != V7_POOL_TAG73_PROOF_BODY_BYTES {
+    let expected_length = v7_pool_tag73_proof_body_bytes(payload.frontier_nodes)
+        .ok_or(V7PoolTag73ProfileFormatError::WrongFrontierCount)?;
+    if payload.proof_body_length != expected_length {
         return Err(V7PoolTag73ProfileFormatError::WrongProofLength);
     }
     if required_binding_is_zero(&payload.verifier_program)
@@ -346,7 +370,7 @@ where
         return Err(ProgramError::InvalidAccountData);
     }
     let proof = &data[proof_start..proof_end];
-    if proof.len() != V7_POOL_TAG73_PROOF_BODY_BYTES as usize
+    if proof.len() != payload.proof_body_length as usize
         || verifier_proof_body_digest_v1(proof, hash) != request.binding.proof_body_digest
     {
         return Err(ProgramError::InvalidAccountData);
@@ -532,9 +556,11 @@ mod tests {
         program_id: Pubkey,
         proof_key: Pubkey,
         statement: AtomicPaymentStatementV4,
+        frontier_nodes: u16,
         proof_body: Vec<u8>,
     ) -> Fixture {
-        assert_eq!(proof_body.len(), V7_POOL_TAG73_PROOF_BODY_BYTES as usize);
+        let proof_body_length = v7_pool_tag73_proof_body_bytes(frontier_nodes).unwrap();
+        assert_eq!(proof_body.len(), proof_body_length as usize);
         let proof_body_digest = verifier_proof_body_digest_v1(&proof_body, sha256);
         let statement_digest = atomic_payment_statement_digest_v4(&statement, sha256).unwrap();
         let envelope = HistoricalAnchorEnvelopeV1 {
@@ -548,8 +574,8 @@ mod tests {
             verifier_release: V7_RELEASE_BINDING,
         };
         let profile = V7PoolTag73ProfilePayloadV1 {
-            frontier_nodes: V7_POOL_TAG73_FRONTIER_NODES,
-            proof_body_length: V7_POOL_TAG73_PROOF_BODY_BYTES,
+            frontier_nodes,
+            proof_body_length,
             proof_body_digest,
             verifier_program: program_id.to_bytes(),
             release_binding: V7_RELEASE_BINDING,
@@ -575,15 +601,12 @@ mod tests {
             &fixture.envelope,
             &fixture.payload,
             proof_body_digest,
-            V7_POOL_TAG73_PROOF_BODY_BYTES,
+            proof_body_length,
         );
-        fixture.proof_data = vec![
-            0u8;
-            POOL_V1_VERIFIER_PROOF_ACCOUNT_HEADER_BYTES
-                + V7_POOL_TAG73_PROOF_BODY_BYTES as usize
-        ];
+        fixture.proof_data =
+            vec![0u8; POOL_V1_VERIFIER_PROOF_ACCOUNT_HEADER_BYTES + proof_body_length as usize];
         fixture.proof_data[..4].copy_from_slice(&POOL_V1_VERIFIER_PROOF_ACCOUNT_MAGIC);
-        fixture.proof_data[4..8].copy_from_slice(&V7_POOL_TAG73_PROOF_BODY_BYTES.to_le_bytes());
+        fixture.proof_data[4..8].copy_from_slice(&proof_body_length.to_le_bytes());
         fixture.proof_data[POOL_V1_VERIFIER_PROOF_ACCOUNT_HEADER_BYTES..]
             .copy_from_slice(&fixture.proof_body);
         fixture
@@ -596,7 +619,13 @@ mod tests {
         let proof_body = (0..V7_POOL_TAG73_PROOF_BODY_BYTES as usize)
             .map(|index| (index as u8).wrapping_mul(29).wrapping_add(7))
             .collect();
-        fixture_from(program_id, proof_key, synthetic_statement(pool), proof_body)
+        fixture_from(
+            program_id,
+            proof_key,
+            synthetic_statement(pool),
+            V7_POOL_TAG73_FRONTIER_NODES,
+            proof_body,
+        )
     }
 
     #[derive(Clone, Copy, Default)]
@@ -679,7 +708,7 @@ mod tests {
              check_pow| {
                 calls.set(calls.get() + 1);
                 assert_eq!(proof, fixture.proof_body);
-                assert_eq!(frontier_nodes, usize::from(V7_POOL_TAG73_FRONTIER_NODES));
+                assert_eq!(frontier_nodes, usize::from(fixture.profile.frontier_nodes));
                 assert_eq!(program_id, &fixture.program_id);
                 assert_eq!(release_binding, V7_RELEASE_BINDING);
                 assert_eq!(attempt_id, &fixture.proof_key);
@@ -750,6 +779,56 @@ mod tests {
             returned.success_code,
             POOL_V1_VERIFIER_DISPATCH_SUCCESS_CODE
         );
+        assert_eq!(proof_data, fixture.proof_data);
+    }
+
+    #[test]
+    fn p3f_canonical_variable_frontier_length_reaches_verifier() {
+        assert_eq!(
+            v7_pool_tag73_proof_body_bytes(V7_POOL_TAG73_MIN_FRONTIER_NODES),
+            Some(20_676)
+        );
+        assert_eq!(
+            v7_pool_tag73_proof_body_bytes(V7_POOL_TAG73_FRONTIER_NODES),
+            Some(V7_POOL_TAG73_PROOF_BODY_BYTES)
+        );
+        assert_eq!(
+            v7_pool_tag73_proof_body_bytes(V7_POOL_TAG73_MIN_FRONTIER_NODES - 1),
+            None
+        );
+        assert_eq!(
+            v7_pool_tag73_proof_body_bytes(V7_POOL_TAG73_FRONTIER_NODES + 1),
+            None
+        );
+
+        // The current strengthened deterministic Tag-73 fixture derives a
+        // 201-node first-cap schedule and therefore a 30,400-byte body.
+        let frontier_nodes = 201;
+        let proof_body_length = v7_pool_tag73_proof_body_bytes(frontier_nodes).unwrap();
+        assert_eq!(proof_body_length, 30_400);
+        let program_id = crate::id();
+        let proof_key = Pubkey::new_unique();
+        let pool = Pubkey::new_unique();
+        let proof_body = (0..proof_body_length as usize)
+            .map(|index| (index as u8).wrapping_mul(31).wrapping_add(11))
+            .collect();
+        let fixture = fixture_from(
+            program_id,
+            proof_key,
+            synthetic_statement(pool),
+            frontier_nodes,
+            proof_body,
+        );
+        let mut proof_data = fixture.proof_data.clone();
+        let result = run_injected(
+            &fixture,
+            &fixture.request,
+            &mut proof_data,
+            AccountConfusion::default(),
+            None,
+        );
+        assert_eq!(result.result, Ok(()));
+        assert_eq!(result.verify_calls, 1);
         assert_eq!(proof_data, fixture.proof_data);
     }
 
@@ -1092,7 +1171,13 @@ mod tests {
             verifier_proof_body_digest_v1(&proof_body, sha256),
             hex32("e8e15ce268447b92ac1344292bc879dcb0bf7534621ce077d8790097975dcecb")
         );
-        let fixture = fixture_from(program_id, proof_key, statement, proof_body);
+        let fixture = fixture_from(
+            program_id,
+            proof_key,
+            statement,
+            V7_POOL_TAG73_FRONTIER_NODES,
+            proof_body,
+        );
         let mut proof_data = fixture.proof_data.clone();
         let mut lamports = 1;
         let proof_account = AccountInfo::new(
