@@ -1,6 +1,7 @@
 import AspisFormal.K1.V7Tag73ExactFixedK12MerkleClassifier
 import AspisFormal.K1.V7Tag73K12Merkle208CollisionProbability
 import AspisFormal.K1.V7Tag73HiddenTapeAveraging
+import AspisFormal.K1.V7BudgetedAdaptiveTargets
 
 /-!
 # Uniform 256-to-208 prefix projection for Tag-73 K1.2
@@ -25,6 +26,7 @@ open AspisK1.V7Tag73ResourceLazyOracle
 open AspisK1.V7Tag73AdaptiveLazyOracle
 open AspisK1.V7Tag73ExactCompilerResources
 open AspisK1.V7Tag73HiddenTapeAveraging
+open AspisK1.V7BudgetedAdaptiveTargets
 open AspisK1.V7Tag73ExactFixedK12MerkleClassifier
 open AspisK1.V7Tag73K12Merkle208CollisionProbability
 open AspisPool.V7MerkleQueryGrammar
@@ -383,6 +385,78 @@ theorem hidden_dependent_lifted_resolution_probability_le_exact_count
   exact uniform_digest256_lifted_resolution_probability_le_exact_count
     (tree hidden)
 
+/-! ## Answer-dependent verifier phase with an exact charged budget -/
+
+def hiddenDependentLiftedBudgetedMerkleHitEvent
+    {HiddenTape : Type} {targetCap budget : Nat} {caps : List Nat}
+    (tree : HiddenTape →
+      BudgetedCausalTargetTree MerkleDigest208 targetCap caps budget) :
+    Set (HiddenTape × FreshAnswerTape RuntimeDigest256 caps.length) :=
+  {pair | (tree pair.1).toCausal.everHits
+    (runtimeFreshPrefixTape caps.length pair.2)}
+
+theorem hidden_dependent_lifted_budgeted_merkle_joint_event_slice
+    {HiddenTape : Type} {targetCap budget : Nat} {caps : List Nat}
+    (tree : HiddenTape →
+      BudgetedCausalTargetTree MerkleDigest208 targetCap caps budget)
+    (hidden : HiddenTape) :
+    jointEventSlice
+        (hiddenDependentLiftedBudgetedMerkleHitEvent tree) hidden =
+      liftedMerklePrefixEvent caps.length
+        (budgetedCausalHitEvent (tree hidden)) := by
+  rfl
+
+/-- A phase may begin at a tape-dependent coordinate without charging every
+padded coordinate.  Only the structurally consumed charged budget appears in
+the numerator. -/
+theorem hidden_dependent_lifted_budgeted_merkle_probability_le_exact_count
+    {HiddenTape : Type} [Fintype HiddenTape]
+    (hiddenLaw : PMF HiddenTape) {targetCap budget : Nat} {caps : List Nat}
+    (tree : HiddenTape →
+      BudgetedCausalTargetTree MerkleDigest208 targetCap caps budget) :
+    (hiddenTapeUniformFreshJointLaw hiddenLaw caps.length).toOuterMeasure
+        (hiddenDependentLiftedBudgetedMerkleHitEvent tree) ≤
+      ((budget * targetCap *
+          (2 ^ 208) ^ (caps.length - 1) : Nat) : ENNReal) /
+        (((2 : ENNReal) ^ 208) ^ caps.length) := by
+  apply joint_event_probability_le_of_every_slice_le
+  intro hidden
+  rw [hidden_dependent_lifted_budgeted_merkle_joint_event_slice,
+    uniform_digest256_lifted_prefix_event_probability_exact]
+  change
+    (uniformMerkleDigest208FreshTape caps.length).toOuterMeasure
+        (causalHitEvent (tree hidden).toCausal) ≤ _
+  rw [uniform_merkle_digest208_causal_hit_probability_eq]
+  apply ENNReal.div_le_div_right
+  have bound := budgeted_causal_hit_count_le (tree hidden)
+  rw [merkle_digest208_cardinality] at bound
+  exact_mod_cast bound
+
+/-- Root-verifier specialization.  The verifier can start after an adaptive
+number of prover coordinates, yet at most its exact 1,511 fresh-call budget is
+charged and every charged target set contains at most the 32 two-tree first
+unresolved digests. -/
+theorem hidden_dependent_lifted_root_verifier_resolution_probability_le_exact_count
+    {HiddenTape : Type} [Fintype HiddenTape]
+    (hiddenLaw : PMF HiddenTape) (steps : Nat)
+    (tree : HiddenTape →
+      BudgetedCausalTargetTree MerkleDigest208
+        prefixFixedResolutionTargetCap
+        (List.replicate steps prefixFixedResolutionTargetCap)
+        deployedFull256VerifierCallCap) :
+    (hiddenTapeUniformFreshJointLaw hiddenLaw
+        (List.replicate steps prefixFixedResolutionTargetCap).length).toOuterMeasure
+        (hiddenDependentLiftedBudgetedMerkleHitEvent tree) ≤
+      ((deployedFull256VerifierCallCap * prefixFixedResolutionTargetCap *
+          (2 ^ 208) ^
+            ((List.replicate steps prefixFixedResolutionTargetCap).length - 1) :
+          Nat) : ENNReal) /
+        (((2 : ENNReal) ^ 208) ^
+          (List.replicate steps prefixFixedResolutionTargetCap).length) := by
+  simpa using
+    (hidden_dependent_lifted_budgeted_merkle_probability_le_exact_count
+      hiddenLaw tree)
+
 #print axioms runtime_digest_split_prefix_is_deployed_projection
 #print axioms deployed_prefix_fiber_cardinality
 #print axioms uniform_digest256_deployed_prefix_probability_exact
@@ -393,6 +467,8 @@ theorem hidden_dependent_lifted_resolution_probability_le_exact_count
 #print axioms uniform_digest256_lifted_partial_raw_collision_probability_le_exact_count
 #print axioms hidden_dependent_lifted_merkle_causal_probability_le_exact_count
 #print axioms hidden_dependent_lifted_resolution_probability_le_exact_count
+#print axioms hidden_dependent_lifted_budgeted_merkle_probability_le_exact_count
+#print axioms hidden_dependent_lifted_root_verifier_resolution_probability_le_exact_count
 
 end
 
