@@ -88,19 +88,19 @@ theorem split_combine_successful_ordinary_raw
     (successfulOrdinaryRawFactorization raw).2 = successfulTag73Values raw := by
   rfl
 
-abbrev Tag73OuterSamplerSkeleton := Fin 3 → Tag73OrdinarySamplerSkeleton
+abbrev Tag73OrdinaryAttemptSkeletons := Fin 3 → Tag73OrdinarySamplerSkeleton
 
-instance : Nonempty Tag73OuterSamplerSkeleton := inferInstance
+instance : Nonempty Tag73OrdinaryAttemptSkeletons := inferInstance
 
 def splitSuccessfulOuterRaw
     (raw : Tag73SuccessfulOrdinaryRawAttempts) :
-    Tag73OuterSamplerSkeleton × Tag73NonzeroAttemptValues :=
+    Tag73OrdinaryAttemptSkeletons × Tag73NonzeroAttemptValues :=
   (fun attempt => (successfulOrdinaryRawFactorization (raw attempt)).1,
    fun attempt => tag73FourLimbsToExact
      (successfulOrdinaryRawFactorization (raw attempt)).2)
 
 def combineSuccessfulOuterRaw
-    (pair : Tag73OuterSamplerSkeleton × Tag73NonzeroAttemptValues) :
+    (pair : Tag73OrdinaryAttemptSkeletons × Tag73NonzeroAttemptValues) :
     Tag73SuccessfulOrdinaryRawAttempts :=
   fun attempt => successfulOrdinaryRawFactorization.symm
     (pair.1 attempt, tag73FourLimbsToExact.symm (pair.2 attempt))
@@ -120,7 +120,7 @@ theorem combine_split_successful_outer_raw
   exact successfulOrdinaryRawFactorization.symm_apply_apply (raw attempt)
 
 theorem split_combine_successful_outer_raw
-    (pair : Tag73OuterSamplerSkeleton × Tag73NonzeroAttemptValues) :
+    (pair : Tag73OrdinaryAttemptSkeletons × Tag73NonzeroAttemptValues) :
     splitSuccessfulOuterRaw (combineSuccessfulOuterRaw pair) = pair := by
   apply Prod.ext
   · funext attempt
@@ -134,7 +134,7 @@ theorem split_combine_successful_outer_raw
 condition. -/
 def successfulOuterRawFactorization :
     Tag73SuccessfulOrdinaryRawAttempts ≃
-      Tag73OuterSamplerSkeleton × Tag73NonzeroAttemptValues where
+      Tag73OrdinaryAttemptSkeletons × Tag73NonzeroAttemptValues where
   toFun := splitSuccessfulOuterRaw
   invFun := combineSuccessfulOuterRaw
   left_inv := combine_split_successful_outer_raw
@@ -145,16 +145,47 @@ def successfulOuterRawFactorization :
     (splitSuccessfulOuterRaw raw).2 = successfulRawAttemptExactValues raw := by
   rfl
 
-def splitSuccessfulRawNonzero
+/-- Canonical fibre retaining the complete outer-attempt value pattern while
+relabeling only the returned nonzero value to one.  Thus the outer stopping
+position, preceding zeros, and unused later values remain nuisance data. -/
+abbrev Tag73NonzeroValueSkeleton :=
+  {attempts : SuccessfulTag73NonzeroAttempts //
+    successfulTag73NonzeroValue attempts = ⟨1, one_ne_zero⟩}
+
+instance : Nonempty Tag73NonzeroValueSkeleton := by
+  let sampleAttempts := successfulTag73NonzeroAttemptsExample
+  exact ⟨(successfulTag73NonzeroValueFibreEquiv
+    (successfulTag73NonzeroValue sampleAttempts) ⟨1, one_ne_zero⟩)
+      ⟨sampleAttempts, rfl⟩⟩
+
+/-- Exact decomposition of the complete successful outer value vector into
+all non-returned nuisance values and the returned uniform nonzero value. -/
+def successfulNonzeroValueFactorization :
+    SuccessfulTag73NonzeroAttempts ≃
+      Tag73NonzeroValueSkeleton × NonzeroQM31Exact :=
+  (Equiv.sigmaFiberEquiv successfulTag73NonzeroValue).symm |>.trans
+    (Equiv.sigmaCongrRight fun value =>
+      successfulTag73NonzeroValueFibreEquiv value ⟨1, one_ne_zero⟩) |>.trans
+    (Equiv.sigmaEquivProd NonzeroQM31Exact Tag73NonzeroValueSkeleton) |>.trans
+    (Equiv.prodComm _ _)
+
+/-- The complete causal nuisance component: raw limb stopping paths plus the
+outer nonzero-attempt pattern and every non-returned value. -/
+abbrev Tag73OuterSamplerSkeleton :=
+  Tag73OrdinaryAttemptSkeletons × Tag73NonzeroValueSkeleton
+
+instance : Nonempty Tag73OuterSamplerSkeleton := inferInstance
+
+private def splitRawToOrdinaryAndValues
     (raw : SuccessfulTag73RawNonzeroAttempts) :
-    Tag73OuterSamplerSkeleton × SuccessfulTag73NonzeroAttempts :=
+    Tag73OrdinaryAttemptSkeletons × SuccessfulTag73NonzeroAttempts :=
   ((splitSuccessfulOuterRaw raw.1).1,
     ⟨(splitSuccessfulOuterRaw raw.1).2, by
       rw [splitSuccessfulOuterRaw_values]
       exact raw.2⟩)
 
-def combineSuccessfulRawNonzero
-    (pair : Tag73OuterSamplerSkeleton ×
+private def combineRawFromOrdinaryAndValues
+    (pair : Tag73OrdinaryAttemptSkeletons ×
       SuccessfulTag73NonzeroAttempts) : SuccessfulTag73RawNonzeroAttempts := by
   let raw := combineSuccessfulOuterRaw (pair.1, pair.2.1)
   refine ⟨raw, ?_⟩
@@ -166,16 +197,17 @@ def combineSuccessfulRawNonzero
   rw [valuesExact]
   exact pair.2.2
 
-theorem combine_split_successful_raw_nonzero
+private theorem combine_split_raw_to_ordinary_and_values
     (raw : SuccessfulTag73RawNonzeroAttempts) :
-    combineSuccessfulRawNonzero (splitSuccessfulRawNonzero raw) = raw := by
+    combineRawFromOrdinaryAndValues (splitRawToOrdinaryAndValues raw) = raw := by
   apply Subtype.ext
-  unfold combineSuccessfulRawNonzero splitSuccessfulRawNonzero
+  unfold combineRawFromOrdinaryAndValues splitRawToOrdinaryAndValues
   exact combine_split_successful_outer_raw raw.1
 
-theorem split_combine_successful_raw_nonzero
-    (pair : Tag73OuterSamplerSkeleton × SuccessfulTag73NonzeroAttempts) :
-    splitSuccessfulRawNonzero (combineSuccessfulRawNonzero pair) = pair := by
+private theorem split_combine_raw_from_ordinary_and_values
+    (pair : Tag73OrdinaryAttemptSkeletons ×
+      SuccessfulTag73NonzeroAttempts) :
+    splitRawToOrdinaryAndValues (combineRawFromOrdinaryAndValues pair) = pair := by
   apply Prod.ext
   · change (splitSuccessfulOuterRaw
       (combineSuccessfulOuterRaw (pair.1, pair.2.1))).1 = pair.1
@@ -185,22 +217,31 @@ theorem split_combine_successful_raw_nonzero
       (combineSuccessfulOuterRaw (pair.1, pair.2.1))).2 = pair.2.1
     rw [split_combine_successful_outer_raw]
 
-/-- Strong deployed-sampler factorization: all path/nuisance data is an
-independent product component, while the second component is precisely the
-three-attempt successful value experiment already proved uniform. -/
+private def rawOrdinaryAndValuesFactorization :
+    SuccessfulTag73RawNonzeroAttempts ≃
+      Tag73OrdinaryAttemptSkeletons × SuccessfulTag73NonzeroAttempts where
+  toFun := splitRawToOrdinaryAndValues
+  invFun := combineRawFromOrdinaryAndValues
+  left_inv := combine_split_raw_to_ordinary_and_values
+  right_inv := split_combine_raw_from_ordinary_and_values
+
+/-- Strong deployed-sampler factorization: every executed-path and unused
+coordinate is in the first component; the second component is only the
+returned nonzero QM31 value. -/
 def successfulRawNonzeroFactorization :
     SuccessfulTag73RawNonzeroAttempts ≃
-      Tag73OuterSamplerSkeleton × SuccessfulTag73NonzeroAttempts where
-  toFun := splitSuccessfulRawNonzero
-  invFun := combineSuccessfulRawNonzero
-  left_inv := combine_split_successful_raw_nonzero
-  right_inv := split_combine_successful_raw_nonzero
+      Tag73OuterSamplerSkeleton × NonzeroQM31Exact :=
+  rawOrdinaryAndValuesFactorization |>.trans
+    (Equiv.prodCongr (Equiv.refl Tag73OrdinaryAttemptSkeletons)
+      successfulNonzeroValueFactorization) |>.trans
+    { toFun := fun pair => ((pair.1, pair.2.1), pair.2.2)
+      invFun := fun pair => (pair.1.1, pair.1.2, pair.2)
+      left_inv := by intro pair; rfl
+      right_inv := by intro pair; rfl }
 
 @[simp] theorem successfulRawNonzeroFactorization_value
     (raw : SuccessfulTag73RawNonzeroAttempts) :
-    successfulTag73NonzeroValue
-        (successfulRawNonzeroFactorization raw).2 =
-      successfulRawNonzeroValue raw := by
+    (successfulRawNonzeroFactorization raw).2 = successfulRawNonzeroValue raw := by
   rfl
 
 end
@@ -208,6 +249,7 @@ end
 
 #print axioms successfulOrdinaryRawFactorization
 #print axioms successfulOuterRawFactorization
+#print axioms successfulNonzeroValueFactorization
 #print axioms successfulRawNonzeroFactorization
 #print axioms successfulRawNonzeroFactorization_value
 

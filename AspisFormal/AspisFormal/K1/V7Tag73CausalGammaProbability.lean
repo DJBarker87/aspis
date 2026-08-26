@@ -26,19 +26,19 @@ noncomputable section
 
 def fixedSkeletonSuccessfulValueLaw
     (skeleton : Tag73OuterSamplerSkeleton) :
-    PMF (Tag73OuterSamplerSkeleton × SuccessfulTag73NonzeroAttempts) :=
-  (PMF.uniformOfFintype SuccessfulTag73NonzeroAttempts).map
-    fun attempts => (skeleton, attempts)
+    PMF (Tag73OuterSamplerSkeleton × NonzeroQM31Exact) :=
+  (PMF.uniformOfFintype NonzeroQM31Exact).map
+    fun value => (skeleton, value)
 
 def skeletonSuccessfulValueJointLaw :
-    PMF (Tag73OuterSamplerSkeleton × SuccessfulTag73NonzeroAttempts) :=
+    PMF (Tag73OuterSamplerSkeleton × NonzeroQM31Exact) :=
   (PMF.uniformOfFintype Tag73OuterSamplerSkeleton).bind
     fixedSkeletonSuccessfulValueLaw
 
 theorem skeletonSuccessfulValueJointLaw_eq_uniform :
     skeletonSuccessfulValueJointLaw =
       PMF.uniformOfFintype
-        (Tag73OuterSamplerSkeleton × SuccessfulTag73NonzeroAttempts) := by
+        (Tag73OuterSamplerSkeleton × NonzeroQM31Exact) := by
   classical
   ext pair
   rw [skeletonSuccessfulValueJointLaw, PMF.bind_apply]
@@ -48,9 +48,35 @@ theorem skeletonSuccessfulValueJointLaw_eq_uniform :
     · rw [if_pos rfl, PMF.uniformOfFintype_apply,
         PMF.uniformOfFintype_apply, PMF.uniformOfFintype_apply,
         Fintype.card_prod, Nat.cast_mul]
+      have outerCard : Fintype.card Tag73OuterSamplerSkeleton =
+          Fintype.card Tag73OrdinaryAttemptSkeletons *
+            Fintype.card Tag73NonzeroValueSkeleton := by
+        exact Fintype.card_prod _ _
+      rw [Fintype.card_prod, outerCard, Nat.cast_mul]
+      rw [Nat.cast_mul]
+      change
+        ((Fintype.card Tag73OrdinaryAttemptSkeletons : ENNReal) *
+            (Fintype.card Tag73NonzeroValueSkeleton : ENNReal))⁻¹ *
+            (Fintype.card NonzeroQM31Exact : ENNReal)⁻¹ =
+          (((Fintype.card Tag73OrdinaryAttemptSkeletons : ENNReal) *
+              (Fintype.card Tag73NonzeroValueSkeleton : ENNReal)) *
+            (Fintype.card NonzeroQM31Exact : ENNReal))⁻¹
       exact (ENNReal.mul_inv
-        (Or.inl (Nat.cast_ne_zero.mpr Fintype.card_ne_zero))
-        (Or.inl (ENNReal.natCast_ne_top _))).symm
+        (a := (Fintype.card Tag73OrdinaryAttemptSkeletons : ENNReal) *
+          (Fintype.card Tag73NonzeroValueSkeleton : ENNReal))
+        (b := (Fintype.card NonzeroQM31Exact : ENNReal))
+        (Or.inl (mul_ne_zero
+          (Nat.cast_ne_zero.mpr
+            (Fintype.card_ne_zero : Fintype.card
+              Tag73OrdinaryAttemptSkeletons ≠ 0))
+          (Nat.cast_ne_zero.mpr
+            (Fintype.card_ne_zero : Fintype.card
+              Tag73NonzeroValueSkeleton ≠ 0))))
+        (Or.inl (ENNReal.mul_ne_top
+          (ENNReal.natCast_ne_top
+            (Fintype.card Tag73OrdinaryAttemptSkeletons))
+          (ENNReal.natCast_ne_top
+            (Fintype.card Tag73NonzeroValueSkeleton))))).symm
     · intro attempts attemptsNe
       rw [if_neg]
       intro equal
@@ -74,7 +100,7 @@ theorem successful_raw_factorization_law :
     (PMF.uniformOfFintype SuccessfulTag73RawNonzeroAttempts).map
         successfulRawNonzeroFactorization =
       PMF.uniformOfFintype
-        (Tag73OuterSamplerSkeleton × SuccessfulTag73NonzeroAttempts) :=
+        (Tag73OuterSamplerSkeleton × NonzeroQM31Exact) :=
       AspisV5RankOneOpeningHiding.uniform_map_equiv
         successfulRawNonzeroFactorization
     _ = skeletonSuccessfulValueJointLaw :=
@@ -82,14 +108,14 @@ theorem successful_raw_factorization_law :
 
 def skeletonDependentGammaEvent
     (target : Tag73OuterSamplerSkeleton → Finset QM31Exact) :
-    Set (Tag73OuterSamplerSkeleton × SuccessfulTag73NonzeroAttempts) :=
-  {pair | (successfulTag73NonzeroValue pair.2).1 ∈ target pair.1}
+    Set (Tag73OuterSamplerSkeleton × NonzeroQM31Exact) :=
+  {pair | pair.2.1 ∈ target pair.1}
 
 def skeletonGammaEventSlice
     (target : Tag73OuterSamplerSkeleton → Finset QM31Exact)
     (skeleton : Tag73OuterSamplerSkeleton) :
-    Set SuccessfulTag73NonzeroAttempts :=
-  {attempts | (successfulTag73NonzeroValue attempts).1 ∈ target skeleton}
+    Set NonzeroQM31Exact :=
+  {value | value.1 ∈ target skeleton}
 
 def rawSkeletonDependentGammaEvent
     (target : Tag73OuterSamplerSkeleton → Finset QM31Exact) :
@@ -103,7 +129,7 @@ theorem skeleton_joint_event_probability_eq_weighted_slices
         (skeletonDependentGammaEvent target) =
       ∑' skeleton : Tag73OuterSamplerSkeleton,
         (PMF.uniformOfFintype Tag73OuterSamplerSkeleton) skeleton *
-          (PMF.uniformOfFintype SuccessfulTag73NonzeroAttempts).toOuterMeasure
+          (PMF.uniformOfFintype NonzeroQM31Exact).toOuterMeasure
             (skeletonGammaEventSlice target skeleton) := by
   unfold skeletonSuccessfulValueJointLaw fixedSkeletonSuccessfulValueLaw
   rw [PMF.toOuterMeasure_bind_apply]
@@ -115,21 +141,12 @@ theorem skeleton_joint_event_probability_eq_weighted_slices
 theorem successful_value_slice_probability_le
     (target : Tag73OuterSamplerSkeleton → Finset QM31Exact)
     (skeleton : Tag73OuterSamplerSkeleton) :
-    (PMF.uniformOfFintype SuccessfulTag73NonzeroAttempts).toOuterMeasure
+    (PMF.uniformOfFintype NonzeroQM31Exact).toOuterMeasure
         (skeletonGammaEventSlice target skeleton) ≤
       ((target skeleton).card : ENNReal) /
         ((P ^ 4 - 1 : Nat) : ENNReal) := by
-  have mapped := congrArg PMF.toOuterMeasure
-    successfulTag73NonzeroValue_uniform
-  have eventEquality :
-      (PMF.uniformOfFintype SuccessfulTag73NonzeroAttempts).toOuterMeasure
-          (skeletonGammaEventSlice target skeleton) =
-        (PMF.uniformOfFintype NonzeroQM31Exact).toOuterMeasure
-          (nonzeroTargetEvent (target skeleton)) := by
-    rw [← successfulTag73NonzeroValue_uniform,
-      PMF.toOuterMeasure_map_apply]
-    rfl
-  rw [eventEquality]
+  change (PMF.uniformOfFintype NonzeroQM31Exact).toOuterMeasure
+      (nonzeroTargetEvent (target skeleton)) ≤ _
   exact uniform_nonzero_target_probability_le (target skeleton)
 
 /-- A target family chosen from the complete sampler skeleton has the same
@@ -146,7 +163,7 @@ theorem skeleton_dependent_gamma_probability_le
   calc
     (∑' skeleton : Tag73OuterSamplerSkeleton,
         (PMF.uniformOfFintype Tag73OuterSamplerSkeleton) skeleton *
-          (PMF.uniformOfFintype SuccessfulTag73NonzeroAttempts).toOuterMeasure
+          (PMF.uniformOfFintype NonzeroQM31Exact).toOuterMeasure
             (skeletonGammaEventSlice target skeleton)) ≤
         ∑' skeleton : Tag73OuterSamplerSkeleton,
           (PMF.uniformOfFintype Tag73OuterSamplerSkeleton) skeleton *

@@ -1,5 +1,6 @@
 import AspisFormal.K1.V7Tag73CausalGammaProbability
 import AspisFormal.K1.V7Tag73ExactFixedK13K14Classifier
+import AspisFormal.K1.V7Tag73ParsedK13K14Classifier
 import AspisFormal.K1.V7Tag73RestoredPointCompatibleK14
 
 /-!
@@ -31,6 +32,7 @@ open AspisK1.V7Tag73ExactFixedOperationalStateMap
 open AspisK1.V7Tag73ExactFixedK12MerkleClassifier
 open AspisK1.V7Tag73ExactFixedK12PrefixClassifier
 open AspisK1.V7Tag73ExactFixedK13K14Classifier
+open AspisK1.V7Tag73ParsedK13K14Classifier
 open AspisPool.AlgorithmicCircleDecoderV7
 open AspisPool.V7CandidateChainExtraction
 open AspisPool.V7C1ConcreteProjectionBinding
@@ -115,14 +117,51 @@ noncomputable def restoredSelectedBranchOfExactK13
     selected := Classical.choose (exactK13_has_selected_chain k13)
     selectedExact := Classical.choose_spec (exactK13_has_selected_chain k13) }
 
+theorem parsedK13_has_selected_chain
+    {decoder : ExactDecoderInstantiation QM31Exact}
+    {words : AspisPool.V7MerkleQueryExtractor.ExtractedWords}
+    {proof : Tag73K12ParsedProof}
+    (k13 : ParsedK13Certificate decoder words proof) :
+    ∃ selected,
+      selectCandidateChain
+          (decoder.decodeBoth
+            (parsedK13Transcript words proof).initial
+            (foldedReceived proof.schedule
+              (parsedK13Transcript words proof)))
+        proof.schedule proof.disclosedFinal = some selected := by
+  obtain ⟨selected, selectedExact, _initial, _final, _fold, _terminal⟩ :=
+    accepted_selects_one_consistent_chain proof.schedule
+      (decoderCodeEncoders decoder) (parsedK13Transcript words proof)
+      proof.queries decoder rfl rfl k13.accepts k13.noQueryFailure
+      k13.noFoldFailure k13.noListCapFailure
+  exact ⟨selected, selectedExact⟩
+
+/-- A parser-data K1.3 certificate, such as one obtained from a restored
+accumulator node, supplies the same causal response-family branch. -/
+noncomputable def restoredSelectedBranchOfParsedK13
+    {decoder : ExactDecoderInstantiation QM31Exact}
+    {words : AspisPool.V7MerkleQueryExtractor.ExtractedWords}
+    {proof : Tag73K12ParsedProof}
+    (k13 : ParsedK13Certificate decoder words proof) :
+    RestoredSelectedBranch decoder words proof.gamma :=
+  { disclosedFinal := proof.disclosedFinal
+    schedule := proof.schedule
+    selected := Classical.choose (parsedK13_has_selected_chain k13)
+    selectedExact := Classical.choose_spec (parsedK13_has_selected_chain k13) }
+
 /-- A pre-gamma restoration client supplies at most one canonical selected
 K1.3 branch per challenge.  Unavailable challenges are totalized by a real
 fallback branch but have empty support in the resulting family. -/
 structure RestoredSelectedBranchProvider
     (decoder : ExactDecoderInstantiation QM31Exact)
     (words : AspisPool.V7MerkleQueryExtractor.ExtractedWords) where
-  fallbackGamma : QM31Exact
-  fallback : RestoredSelectedBranch decoder words fallbackGamma
+  /-- Fixed pre-gamma values used only on unavailable branches, whose
+  accepted strategy has empty support.  They intentionally carry no
+  post-gamma certificate. -/
+  defaultResponse : InitialMessage QM31Exact
+  defaultDisclosedFinal : FinalMessage QM31Exact
+  defaultSchedule : ExactSchedule
+  defaultSelected : ExactCandidatePair
   branch : (gamma : QM31Exact) →
     Option (RestoredSelectedBranch decoder words gamma)
 
@@ -144,19 +183,19 @@ def restoredSelectedChainFamilyOfK13Provider
   response := fun gamma =>
     match provider.branch gamma with
     | some branch => branch.selected.1
-    | none => provider.fallback.selected.1
+    | none => provider.defaultResponse
   disclosedFinal := fun gamma =>
     match provider.branch gamma with
     | some branch => branch.disclosedFinal
-    | none => provider.fallback.disclosedFinal
+    | none => provider.defaultDisclosedFinal
   schedule := fun gamma =>
     match provider.branch gamma with
     | some branch => branch.schedule
-    | none => provider.fallback.schedule
+    | none => provider.defaultSchedule
   selected := fun gamma =>
     match provider.branch gamma with
     | some branch => branch.selected
-    | none => provider.fallback.selected
+    | none => provider.defaultSelected
   responseAt := by
     intro gamma available
     cases branchEq : provider.branch gamma with
@@ -180,6 +219,83 @@ theorem k13_family_selected_of_branch
         branch.selected := by
   constructor <;> simp [restoredSelectedChainFamilyOfK13Provider,
     selectedProviderAvailable, branchExact]
+
+/-! ## Finite accumulator family -/
+
+/-- Existentially packed parser-data branch used by the finite terminal
+accumulator.  The challenge is stored together with the dependently typed
+selected-chain certificate. -/
+structure PackedRestoredSelectedBranch
+    (decoder : ExactDecoderInstantiation QM31Exact)
+    (words : AspisPool.V7MerkleQueryExtractor.ExtractedWords) where
+  gamma : QM31Exact
+  branch : RestoredSelectedBranch decoder words gamma
+
+noncomputable def firstRestoredSelectedBranch?
+    {decoder : ExactDecoderInstantiation QM31Exact}
+    {words : AspisPool.V7MerkleQueryExtractor.ExtractedWords} :
+    List (PackedRestoredSelectedBranch decoder words) →
+      (gamma : QM31Exact) → Option (RestoredSelectedBranch decoder words gamma)
+  | [], _gamma => none
+  | packed :: rest, gamma =>
+      if exact : packed.gamma = gamma then
+        some (exact ▸ packed.branch)
+      else
+        firstRestoredSelectedBranch? rest gamma
+
+/-- A nonempty finite list of certified restored K1.3 branches constructs a
+totalized provider.  The distinguished root is inserted first, so its exact
+selected chain wins even if another restored node happens to repeat gamma. -/
+noncomputable def finiteK13Provider
+    {decoder : ExactDecoderInstantiation QM31Exact}
+    {words : AspisPool.V7MerkleQueryExtractor.ExtractedWords}
+    (defaultResponse : InitialMessage QM31Exact)
+    (defaultDisclosedFinal : FinalMessage QM31Exact)
+    (defaultSchedule : ExactSchedule)
+    (defaultSelected : ExactCandidatePair)
+    (root : PackedRestoredSelectedBranch decoder words)
+    (restored : List (PackedRestoredSelectedBranch decoder words)) :
+    RestoredSelectedBranchProvider decoder words where
+  defaultResponse := defaultResponse
+  defaultDisclosedFinal := defaultDisclosedFinal
+  defaultSchedule := defaultSchedule
+  defaultSelected := defaultSelected
+  branch := firstRestoredSelectedBranch? (root :: restored)
+
+@[simp] theorem finiteK13Provider_root_branch
+    {decoder : ExactDecoderInstantiation QM31Exact}
+    {words : AspisPool.V7MerkleQueryExtractor.ExtractedWords}
+    (defaultResponse : InitialMessage QM31Exact)
+    (defaultDisclosedFinal : FinalMessage QM31Exact)
+    (defaultSchedule : ExactSchedule)
+    (defaultSelected : ExactCandidatePair)
+    (root : PackedRestoredSelectedBranch decoder words)
+    (restored : List (PackedRestoredSelectedBranch decoder words)) :
+    (finiteK13Provider defaultResponse defaultDisclosedFinal defaultSchedule
+      defaultSelected root restored).branch root.gamma = some root.branch := by
+  simp [finiteK13Provider, firstRestoredSelectedBranch?]
+
+theorem finite_k13_family_contains_exact_root
+    {decoder : ExactDecoderInstantiation QM31Exact}
+    {words : AspisPool.V7MerkleQueryExtractor.ExtractedWords}
+    (defaultResponse : InitialMessage QM31Exact)
+    (defaultDisclosedFinal : FinalMessage QM31Exact)
+    (defaultSchedule : ExactSchedule)
+    (defaultSelected : ExactCandidatePair)
+    (root : PackedRestoredSelectedBranch decoder words)
+    (restored : List (PackedRestoredSelectedBranch decoder words)) :
+    (restoredSelectedChainFamilyOfK13Provider
+        (finiteK13Provider defaultResponse defaultDisclosedFinal defaultSchedule
+          defaultSelected root restored)).available root.gamma ∧
+      (restoredSelectedChainFamilyOfK13Provider
+        (finiteK13Provider defaultResponse defaultDisclosedFinal defaultSchedule
+          defaultSelected root restored)).selected root.gamma =
+          root.branch.selected :=
+  k13_family_selected_of_branch
+    (finiteK13Provider defaultResponse defaultDisclosedFinal defaultSchedule
+      defaultSelected root restored) root.gamma root.branch
+    (finiteK13Provider_root_branch defaultResponse defaultDisclosedFinal
+      defaultSchedule defaultSelected root restored)
 
 noncomputable def causalK13ProviderGammaTarget
     {decoder : ExactDecoderInstantiation QM31Exact}
@@ -376,6 +492,17 @@ def restoredK14BranchOfExactCertificate
   schedule := (exactK13ParsedProof input).schedule
   extraction := k14.extraction
 
+def restoredK14BranchOfParsedCertificate
+    {decoder : ExactDecoderInstantiation QM31Exact}
+    {binding : InitialProjectionBinding decoder}
+    {words : AspisPool.V7MerkleQueryExtractor.ExtractedWords}
+    {proof : Tag73K12ParsedProof}
+    (k14 : ParsedK14Certificate decoder binding words proof) :
+    RestoredK14Branch decoder binding words proof.gamma where
+  disclosedFinal := proof.disclosedFinal
+  schedule := proof.schedule
+  extraction := k14.extraction
+
 noncomputable def causalProviderGammaTarget
     {decoder : ExactDecoderInstantiation QM31Exact}
     (binding : InitialProjectionBinding decoder)
@@ -432,11 +559,15 @@ end
 #print axioms restoredSelectedChainFamilyOfProvider
 #print axioms exactK13_has_selected_chain
 #print axioms restoredSelectedBranchOfExactK13
+#print axioms restoredSelectedBranchOfParsedK13
+#print axioms finiteK13Provider_root_branch
+#print axioms finite_k13_family_contains_exact_root
 #print axioms restoredSelectedChainFamilyOfK13Provider
 #print axioms k13_family_selected_of_branch
 #print axioms no_k14_causal_k13_provider_raw_gamma_probability_le
 #print axioms family_of_provider_selected_of_branch
 #print axioms restoredK14BranchOfExactCertificate
+#print axioms restoredK14BranchOfParsedCertificate
 #print axioms no_k14_causal_provider_raw_gamma_probability_le
 
 end AspisK1.V7Tag73CausalRestoredFamily
