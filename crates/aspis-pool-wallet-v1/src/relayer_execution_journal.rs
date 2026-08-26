@@ -434,6 +434,9 @@ fn validate_simulation_v1(
     policy_id: [u8; 32],
     simulation: RelayerSimulationEvidenceV1,
 ) -> Result<(), RelayerExecutionJournalErrorV1> {
+    let minimum_priority_fee = u128::from(simulation.compute_unit_limit)
+        .saturating_mul(u128::from(simulation.compute_unit_price_micro_lamports))
+        .div_ceil(1_000_000);
     if request_id == [0u8; 32]
         || policy_id == [0u8; 32]
         || simulation.simulated_at_slot == 0
@@ -447,6 +450,7 @@ fn validate_simulation_v1(
         || simulation.compute_unit_limit == 0
         || simulation.compute_units_consumed > u64::from(simulation.compute_unit_limit)
         || simulation.estimated_fee_lamports == 0
+        || minimum_priority_fee > u128::from(simulation.estimated_fee_lamports)
     {
         return Err(RelayerExecutionJournalErrorV1::InvalidRecord);
     }
@@ -954,6 +958,12 @@ mod tests {
         let request_id = [0x11; 32];
         let policy_id = [0x12; 32];
         let mut journal = DurableRelayerExecutionJournalV1::open_or_create_v1(&path).unwrap();
+        let mut impossible_priority_fee = simulation();
+        impossible_priority_fee.compute_unit_price_micro_lamports = u64::MAX;
+        assert_eq!(
+            journal.record_simulation_v1([0x10; 32], policy_id, impossible_priority_fee,),
+            Err(RelayerExecutionJournalErrorV1::InvalidRecord)
+        );
         assert_eq!(
             journal
                 .record_simulation_v1(request_id, policy_id, simulation())
