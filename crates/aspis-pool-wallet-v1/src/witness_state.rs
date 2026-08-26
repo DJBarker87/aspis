@@ -12,10 +12,12 @@ use aspis_statement::{
     decode_digest_canonical, encode_digest_canonical,
     pool_v1::{
         pool_v1_empty_roots, pool_v1_tree_parent, IncrementalMerkleTreeV1, PoolV1TreeError,
-        POOL_V1_LEAF_CAPACITY, POOL_V1_TREE_DEPTH,
+        POOL_V1_DIGEST_ENCODING_VERSION, POOL_V1_LEAF_CAPACITY, POOL_V1_TREE_DEPTH,
+        POOL_V1_TREE_HASH_VERSION, POOL_V1_TREE_STATE_ACCOUNT_BYTES,
     },
     Digest,
 };
+use sha2::{Digest as _, Sha256};
 
 use crate::{finalized_indexer::FinalizedAppendEvidenceV1, scan_state::DepositEventIdV1};
 
@@ -29,7 +31,24 @@ pub enum WitnessStateErrorV1 {
     DuplicateWitness,
     WitnessNotFound,
     InvalidWitness,
+    WrongImageLength,
+    WrongImageMagic,
+    WrongImageVersion,
+    WrongImageParameters,
+    NonZeroReserved,
+    ChecksumMismatch,
+    CountOverflow,
+    NonCanonicalOrder,
+    InvalidEventIdentity,
 }
+
+pub const WALLET_WITNESS_STATE_MAGIC_V1: [u8; 4] = *b"ASWS";
+pub const WALLET_WITNESS_STATE_VERSION_V1: u8 = 1;
+pub const WALLET_WITNESS_STATE_HEADER_BYTES_V1: usize = 64;
+pub const WALLET_WITNESS_RECORD_BYTES_V1: usize = 108 + 8 + 32 + 32 * POOL_V1_TREE_DEPTH;
+const WALLET_WITNESS_CHECKSUM_OFFSET_V1: usize = 32;
+const MAX_WALLET_WITNESS_IMAGE_BYTES_V1: usize = 64 * 1024 * 1024;
+const WALLET_WITNESS_CHECKSUM_DOMAIN_V1: &[u8] = b"aspis:pool-v1:wallet-witness-state:sha256:v1";
 
 impl From<PoolV1TreeError> for WitnessStateErrorV1 {
     fn from(error: PoolV1TreeError) -> Self {
@@ -343,6 +362,184 @@ fn witness_root_v1(
     current
 }
 
+/// Canonical fixed-record image for the authenticated frontier and every
+/// locally tracked path. Records are sorted by leaf index, then event ID, so
+/// logically identical state has one byte representation.
+pub fn encode_wallet_witness_state_v1(
+    state: &WalletWitnessStateV1,
+) -> Result<Vec<u8>, WitnessStateErrorV1> {
+    state.tree.validate()?;
+    let count = state.tracked.len();
+    let records_bytes = count
+        .checked_mul(WALLET_WITNESS_RECORD_BYTES_V1)
+        .ok_or(WitnessStateErrorV1::CountOverflow)?;
+    let length = WALLET_WITNESS_STATE_HEADER_BYTES_V1
+        .checked_add(POOL_V1_TREE_STATE_ACCOUNT_BYTES)
+        .and_then(|value| value.checked_add(records_bytes))
+        .ok_or(WitnessStateErrorV1::CountOverflow)?;
+    if length > MAX_WALLET_WITNESS_IMAGE_BYTES_V1 {
+        return Err(WitnessStateErrorV1::CountOverflow);
+    }
+    let count = u32::try_from(count).map_err(|_| WitnessStateErrorV1::CountOverflow)?;
+    let mut ordered: Vec<_> = state.tracked.iter().collect();
+    ordered.sort_by_key(|witness| (witness.leaf_index, encode_event_id_v1(witness.event_id)));
+    if ordered.windows(2).any(|pair| {
+        pair[0].leaf_index == pair[1].leaf_index || pair[0].event_id == pair[1].event_id
+    }) {
+        return Err(WitnessStateErrorV1::DuplicateWitness);
+    }
+
+    let mut output = vec![0u8; length];
+    output[..4].copy_from_slice(&WALLET_WITNESS_STATE_MAGIC_V1);
+    output[4] = WALLET_WITNESS_STATE_VERSION_V1;
+    output[5] = POOL_V1_TREE_DEPTH as u8;
+    output[6] = POOL_V1_TREE_HASH_VERSION;
+    output[7] = POOL_V1_DIGEST_ENCODING_VERSION;
+    output[8..12].copy_from_slice(&count.to_le_bytes());
+    output[12..16].copy_from_slice(
+        &u32::try_from(WALLET_WITNESS_RECORD_BYTES_V1)
+            .map_err(|_| WitnessStateErrorV1::CountOverflow)?
+            .to_le_bytes(),
+    );
+    output[16..20].copy_from_slice(
+        &u32::try_from(POOL_V1_TREE_STATE_ACCOUNT_BYTES)
+            .map_err(|_| WitnessStateErrorV1::CountOverflow)?
+            .to_le_bytes(),
+    );
+    let tree = state.tree.encode()?;
+    let tree_start = WALLET_WITNESS_STATE_HEADER_BYTES_V1;
+    output[tree_start..tree_start + tree.len()].copy_from_slice(&tree);
+    let mut offset = tree_start + tree.len();
+    for witness in ordered {
+        let record = &mut output[offset..offset + WALLET_WITNESS_RECORD_BYTES_V1];
+        record[..108].copy_from_slice(&encode_event_id_v1(witness.event_id));
+        record[108..116].copy_from_slice(&witness.leaf_index.to_le_bytes());
+        record[116..148].copy_from_slice(&encode_digest_canonical(&witness.leaf));
+        for (level, sibling) in witness.siblings.iter().enumerate() {
+            let start = 148 + 32 * level;
+            record[start..start + 32].copy_from_slice(&encode_digest_canonical(sibling));
+        }
+        offset += WALLET_WITNESS_RECORD_BYTES_V1;
+    }
+    let checksum = wallet_witness_checksum_v1(&output)?;
+    output[WALLET_WITNESS_CHECKSUM_OFFSET_V1..WALLET_WITNESS_CHECKSUM_OFFSET_V1 + 32]
+        .copy_from_slice(&checksum);
+    Ok(output)
+}
+
+pub fn decode_wallet_witness_state_v1(
+    bytes: &[u8],
+) -> Result<WalletWitnessStateV1, WitnessStateErrorV1> {
+    if bytes.len() < WALLET_WITNESS_STATE_HEADER_BYTES_V1 + POOL_V1_TREE_STATE_ACCOUNT_BYTES
+        || bytes.len() > MAX_WALLET_WITNESS_IMAGE_BYTES_V1
+    {
+        return Err(WitnessStateErrorV1::WrongImageLength);
+    }
+    if bytes[..4] != WALLET_WITNESS_STATE_MAGIC_V1 {
+        return Err(WitnessStateErrorV1::WrongImageMagic);
+    }
+    if bytes[4] != WALLET_WITNESS_STATE_VERSION_V1 {
+        return Err(WitnessStateErrorV1::WrongImageVersion);
+    }
+    if bytes[5] != POOL_V1_TREE_DEPTH as u8
+        || bytes[6] != POOL_V1_TREE_HASH_VERSION
+        || bytes[7] != POOL_V1_DIGEST_ENCODING_VERSION
+        || u32::from_le_bytes(bytes[12..16].try_into().unwrap()) as usize
+            != WALLET_WITNESS_RECORD_BYTES_V1
+        || u32::from_le_bytes(bytes[16..20].try_into().unwrap()) as usize
+            != POOL_V1_TREE_STATE_ACCOUNT_BYTES
+    {
+        return Err(WitnessStateErrorV1::WrongImageParameters);
+    }
+    if bytes[20..32].iter().any(|byte| *byte != 0) {
+        return Err(WitnessStateErrorV1::NonZeroReserved);
+    }
+    let encoded_checksum: [u8; 32] = bytes[32..64].try_into().unwrap();
+    if encoded_checksum != wallet_witness_checksum_v1(bytes)? {
+        return Err(WitnessStateErrorV1::ChecksumMismatch);
+    }
+    let count = u32::from_le_bytes(bytes[8..12].try_into().unwrap()) as usize;
+    let expected_length = WALLET_WITNESS_STATE_HEADER_BYTES_V1
+        .checked_add(POOL_V1_TREE_STATE_ACCOUNT_BYTES)
+        .and_then(|value| {
+            count
+                .checked_mul(WALLET_WITNESS_RECORD_BYTES_V1)
+                .and_then(|records| value.checked_add(records))
+        })
+        .ok_or(WitnessStateErrorV1::CountOverflow)?;
+    if expected_length != bytes.len() {
+        return Err(WitnessStateErrorV1::WrongImageLength);
+    }
+    let tree_start = WALLET_WITNESS_STATE_HEADER_BYTES_V1;
+    let tree_end = tree_start + POOL_V1_TREE_STATE_ACCOUNT_BYTES;
+    let tree = IncrementalMerkleTreeV1::decode(&bytes[tree_start..tree_end])?;
+    let mut state = WalletWitnessStateV1::from_authenticated_tree_v1(
+        tree,
+        encode_digest_canonical(&tree.root),
+    )?;
+    let mut previous_key = None;
+    let mut offset = tree_end;
+    for _ in 0..count {
+        let record = &bytes[offset..offset + WALLET_WITNESS_RECORD_BYTES_V1];
+        let encoded_event: [u8; 108] = record[..108].try_into().unwrap();
+        let event_id = decode_event_id_v1(&encoded_event)?;
+        let leaf_index = u64::from_le_bytes(record[108..116].try_into().unwrap());
+        let key = (leaf_index, encoded_event);
+        if previous_key.is_some_and(|previous| previous >= key) {
+            return Err(WitnessStateErrorV1::NonCanonicalOrder);
+        }
+        previous_key = Some(key);
+        let leaf: [u8; 32] = record[116..148].try_into().unwrap();
+        let mut siblings = [[0u8; 32]; POOL_V1_TREE_DEPTH];
+        for (level, sibling) in siblings.iter_mut().enumerate() {
+            let start = 148 + 32 * level;
+            *sibling = record[start..start + 32].try_into().unwrap();
+        }
+        state.import_current_witness_v1(event_id, leaf_index, leaf, siblings)?;
+        offset += WALLET_WITNESS_RECORD_BYTES_V1;
+    }
+    Ok(state)
+}
+
+fn wallet_witness_checksum_v1(bytes: &[u8]) -> Result<[u8; 32], WitnessStateErrorV1> {
+    if bytes.len() < WALLET_WITNESS_STATE_HEADER_BYTES_V1 {
+        return Err(WitnessStateErrorV1::WrongImageLength);
+    }
+    let length = u64::try_from(bytes.len()).map_err(|_| WitnessStateErrorV1::CountOverflow)?;
+    let mut hasher = Sha256::new();
+    hasher.update(WALLET_WITNESS_CHECKSUM_DOMAIN_V1);
+    hasher.update(length.to_le_bytes());
+    hasher.update(&bytes[..WALLET_WITNESS_CHECKSUM_OFFSET_V1]);
+    hasher.update([0u8; 32]);
+    hasher.update(&bytes[WALLET_WITNESS_CHECKSUM_OFFSET_V1 + 32..]);
+    Ok(hasher.finalize().into())
+}
+
+fn encode_event_id_v1(event_id: DepositEventIdV1) -> [u8; 108] {
+    let mut bytes = [0u8; 108];
+    bytes[..8].copy_from_slice(&event_id.point().slot().to_le_bytes());
+    bytes[8..40].copy_from_slice(event_id.point().block_hash());
+    bytes[40..104].copy_from_slice(event_id.transaction_signature());
+    bytes[104..106].copy_from_slice(&event_id.instruction_index().to_le_bytes());
+    bytes[106..108].copy_from_slice(&event_id.event_index().to_le_bytes());
+    bytes
+}
+
+fn decode_event_id_v1(bytes: &[u8; 108]) -> Result<DepositEventIdV1, WitnessStateErrorV1> {
+    let point = crate::scan_state::FinalizedChainPointV1::new(
+        u64::from_le_bytes(bytes[..8].try_into().unwrap()),
+        bytes[8..40].try_into().unwrap(),
+    )
+    .map_err(|_| WitnessStateErrorV1::InvalidEventIdentity)?;
+    DepositEventIdV1::new(
+        point,
+        bytes[40..104].try_into().unwrap(),
+        u16::from_le_bytes(bytes[104..106].try_into().unwrap()),
+        u16::from_le_bytes(bytes[106..108].try_into().unwrap()),
+    )
+    .map_err(|_| WitnessStateErrorV1::InvalidEventIdentity)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -444,6 +641,43 @@ mod tests {
             Err(WitnessStateErrorV1::RootSequenceMismatch)
         );
         assert_eq!(state, before);
+    }
+
+    #[test]
+    fn canonical_witness_image_round_trips_and_rejects_corruption() {
+        let leaves: Vec<_> = (0..4).map(|index| digest(index + 1)).collect();
+        let mut state = WalletWitnessStateV1::empty();
+        for index in 0..leaves.len() {
+            state
+                .append_authenticated_leaf_v1(
+                    index as u64,
+                    index as u64 + 1,
+                    encode_digest_canonical(&leaves[index]),
+                    encode_digest_canonical(&reference_prefix_root(&leaves[..=index])),
+                    [1usize, 3].contains(&index).then(|| event(index as u64)),
+                )
+                .unwrap();
+        }
+        let encoded = encode_wallet_witness_state_v1(&state).unwrap();
+        assert_eq!(
+            encoded.len(),
+            WALLET_WITNESS_STATE_HEADER_BYTES_V1
+                + POOL_V1_TREE_STATE_ACCOUNT_BYTES
+                + 2 * WALLET_WITNESS_RECORD_BYTES_V1
+        );
+        assert_eq!(decode_wallet_witness_state_v1(&encoded).unwrap(), state);
+        assert_eq!(
+            encode_wallet_witness_state_v1(&decode_wallet_witness_state_v1(&encoded).unwrap())
+                .unwrap(),
+            encoded
+        );
+
+        let mut corrupt = encoded;
+        *corrupt.last_mut().unwrap() ^= 1;
+        assert_eq!(
+            decode_wallet_witness_state_v1(&corrupt),
+            Err(WitnessStateErrorV1::ChecksumMismatch)
+        );
     }
 
     #[test]
