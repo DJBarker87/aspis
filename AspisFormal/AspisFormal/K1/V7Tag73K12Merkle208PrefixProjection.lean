@@ -116,6 +116,66 @@ theorem deployed_prefix_fiber_cardinality (target : MerkleDigest208) :
   rw [Fintype.card_congr (deployedPrefixFiberEquiv target)]
   exact runtime_digest_tail48_cardinality
 
+/-! ## Full-output preimages of 208-bit target sets
+
+The operational scheduler branches on the complete 256-bit answer.  It is
+therefore not sound to represent a later target set by a decision tree whose
+continuations see only the 208-bit projection.  Instead, every 208-bit target
+set is lifted to its full 256-bit preimage.  The next-node continuation still
+receives the complete answer, while the exact `2^48` fiber factor preserves
+the desired `2^-208` probability per target.
+-/
+
+def deployedPrefixTargetPreimage (targets : Finset MerkleDigest208) :
+    Finset RuntimeDigest256 :=
+  Finset.univ.filter fun digest =>
+    runtimeDigest256PrefixToMerkleDigest digest ∈ targets
+
+def deployedPrefixTargetPreimageEquiv (targets : Finset MerkleDigest208) :
+    ↑(deployedPrefixTargetPreimage targets) ≃
+      (↑targets × RuntimeDigestTail48) where
+  toFun digest :=
+    (⟨runtimeDigest256PrefixToMerkleDigest digest.1, by
+        exact (Finset.mem_filter.mp digest.2).2⟩,
+      (runtimeDigestSplitEquiv digest.1).2)
+  invFun value :=
+    ⟨runtimeDigestSplitEquiv.symm (value.1.1, value.2), by
+      simp only [deployedPrefixTargetPreimage, Finset.mem_filter,
+        Finset.mem_univ, true_and]
+      rw [← runtime_digest_split_prefix_is_deployed_projection]
+      simpa using value.1.2⟩
+  left_inv digest := by
+    apply Subtype.ext
+    apply runtimeDigestSplitEquiv.injective
+    simp only [Equiv.apply_symm_apply]
+    apply Prod.ext
+    · exact runtime_digest_split_prefix_is_deployed_projection digest.1
+    · rfl
+  right_inv value := by
+    rcases value with ⟨target, tail⟩
+    apply Prod.ext
+    · apply Subtype.ext
+      change
+        runtimeDigest256PrefixToMerkleDigest
+            (runtimeDigestSplitEquiv.symm (target.1, tail)) = target.1
+      rw [← runtime_digest_split_prefix_is_deployed_projection]
+      simp
+    · simp
+
+theorem deployed_prefix_target_preimage_cardinality
+    (targets : Finset MerkleDigest208) :
+    (deployedPrefixTargetPreimage targets).card = targets.card * 2 ^ 48 := by
+  rw [← Fintype.card_coe, Fintype.card_congr
+    (deployedPrefixTargetPreimageEquiv targets), Fintype.card_prod,
+    Fintype.card_coe, runtime_digest_tail48_cardinality]
+
+theorem deployed_prefix_target_preimage_card_le
+    (targets : Finset MerkleDigest208) {targetCap : Nat}
+    (targetCardLe : targets.card ≤ targetCap) :
+    (deployedPrefixTargetPreimage targets).card ≤ targetCap * 2 ^ 48 := by
+  rw [deployed_prefix_target_preimage_cardinality]
+  exact Nat.mul_le_mul_right _ targetCardLe
+
 /-- Every concrete 208-bit prefix has exactly `2^48` full SHA outputs above
 it, hence exactly mass `2^-208` under the deployed uniform 256-bit law. -/
 theorem uniform_digest256_deployed_prefix_probability_exact
@@ -457,6 +517,82 @@ theorem hidden_dependent_lifted_root_verifier_resolution_probability_le_exact_co
     (hidden_dependent_lifted_budgeted_merkle_probability_le_exact_count
       hiddenLaw tree)
 
+/-! ## Fully adaptive 256-bit scheduler specialization
+
+Unlike the prefix-only bridge above, this is the form consumed by the actual
+Tag-73 scheduler.  Its continuations observe the complete 256-bit answer.
+At a charged coordinate the operational construction installs
+`deployedPrefixTargetPreimage targets`, whose cap is exactly the 32-target
+inventory times the `2^48` suffix fiber.
+-/
+
+def hiddenDependentBudgetedRuntimeHitEvent
+    {HiddenTape : Type} {targetCap budget : Nat} {caps : List Nat}
+    (tree : HiddenTape →
+      BudgetedCausalTargetTree RuntimeDigest256 targetCap caps budget) :
+    Set (HiddenTape × FreshAnswerTape RuntimeDigest256 caps.length) :=
+  {pair | (tree pair.1).toCausal.everHits pair.2}
+
+theorem hidden_dependent_budgeted_runtime_joint_event_slice
+    {HiddenTape : Type} {targetCap budget : Nat} {caps : List Nat}
+    (tree : HiddenTape →
+      BudgetedCausalTargetTree RuntimeDigest256 targetCap caps budget)
+    (hidden : HiddenTape) :
+    jointEventSlice (hiddenDependentBudgetedRuntimeHitEvent tree) hidden =
+      budgetedCausalHitEvent (tree hidden) := by
+  rfl
+
+theorem hidden_dependent_budgeted_runtime_probability_le_exact_count
+    {HiddenTape : Type} [Fintype HiddenTape]
+    (hiddenLaw : PMF HiddenTape) {targetCap budget : Nat} {caps : List Nat}
+    (tree : HiddenTape →
+      BudgetedCausalTargetTree RuntimeDigest256 targetCap caps budget) :
+    (hiddenTapeUniformFreshJointLaw hiddenLaw caps.length).toOuterMeasure
+        (hiddenDependentBudgetedRuntimeHitEvent tree) ≤
+      ((budget * targetCap *
+          (2 ^ 256) ^ (caps.length - 1) : Nat) : ENNReal) /
+        (((2 : ENNReal) ^ 256) ^ caps.length) := by
+  apply joint_event_probability_le_of_every_slice_le
+  intro hidden
+  rw [hidden_dependent_budgeted_runtime_joint_event_slice]
+  change
+    (uniformDigestFreshTape caps.length).toOuterMeasure
+        (causalHitEvent (tree hidden).toCausal) ≤ _
+  rw [uniform_digest_causal_hit_probability_eq]
+  apply ENNReal.div_le_div_right
+  have bound := budgeted_causal_hit_count_le (tree hidden)
+  rw [deployed_digest_256_cardinality] at bound
+  exact_mod_cast bound
+
+/-- The operational root-verifier form.  Full 256-bit continuations are
+retained, but at most 1,511 coordinates are charged and every installed
+full-output target set is the preimage of at most 32 Merkle digests. -/
+theorem hidden_dependent_budgeted_runtime_root_verifier_probability_le_exact_count
+    {HiddenTape : Type} [Fintype HiddenTape]
+    (hiddenLaw : PMF HiddenTape) (steps : Nat)
+    (tree : HiddenTape →
+      BudgetedCausalTargetTree RuntimeDigest256
+        (prefixFixedResolutionTargetCap * 2 ^ 48)
+        (List.replicate steps
+          (prefixFixedResolutionTargetCap * 2 ^ 48))
+        deployedFull256VerifierCallCap) :
+    (hiddenTapeUniformFreshJointLaw hiddenLaw
+        (List.replicate steps
+          (prefixFixedResolutionTargetCap * 2 ^ 48)).length).toOuterMeasure
+        (hiddenDependentBudgetedRuntimeHitEvent tree) ≤
+      ((deployedFull256VerifierCallCap *
+          (prefixFixedResolutionTargetCap * 2 ^ 48) *
+          (2 ^ 256) ^
+            ((List.replicate steps
+              (prefixFixedResolutionTargetCap * 2 ^ 48)).length - 1) : Nat) :
+        ENNReal) /
+        (((2 : ENNReal) ^ 256) ^
+          (List.replicate steps
+            (prefixFixedResolutionTargetCap * 2 ^ 48)).length) := by
+  simpa using
+    (hidden_dependent_budgeted_runtime_probability_le_exact_count
+      hiddenLaw tree)
+
 #print axioms runtime_digest_split_prefix_is_deployed_projection
 #print axioms deployed_prefix_fiber_cardinality
 #print axioms uniform_digest256_deployed_prefix_probability_exact
@@ -469,6 +605,10 @@ theorem hidden_dependent_lifted_root_verifier_resolution_probability_le_exact_co
 #print axioms hidden_dependent_lifted_resolution_probability_le_exact_count
 #print axioms hidden_dependent_lifted_budgeted_merkle_probability_le_exact_count
 #print axioms hidden_dependent_lifted_root_verifier_resolution_probability_le_exact_count
+#print axioms deployed_prefix_target_preimage_cardinality
+#print axioms deployed_prefix_target_preimage_card_le
+#print axioms hidden_dependent_budgeted_runtime_probability_le_exact_count
+#print axioms hidden_dependent_budgeted_runtime_root_verifier_probability_le_exact_count
 
 end
 
