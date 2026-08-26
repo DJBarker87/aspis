@@ -1,6 +1,7 @@
 import AspisFormal.K1.V7Tag73ExactFixedK13K14FailureReduction
 import AspisFormal.Pool.V7CorrelatedPointClaimExtraction
 import AspisFormal.Pool.V7FixedWidth29TupleList
+import AspisFormal.Pool.V7PointClaimBatchBinding
 
 /-!
 # Restoration-wide point-compatible K1.4 extraction
@@ -34,6 +35,7 @@ open AspisV5ComponentADeployedTerminalApplicability
 open AspisV5ComponentCQM31TowerExact
 open AspisV6OneFoldCandidateExtraction
 open AspisV6PublishedTheoremInterfaces
+open AspisV6TranscriptRelationGrammar
 open AspisV6Width29ConstrainedFunctionalExtraction
 open AspisV6Width29CorrelatedAgreement
 
@@ -303,6 +305,107 @@ noncomputable def acceptedRestoredPointConstrainedGammaSet
     (constrainedWidth29Strategy (pointFunctional point) claims
       (acceptedRestoredWidth29Strategy decoder words family))
 
+set_option maxHeartbeats 5000000 in
+/-- One actually accepted restored branch enters the single constrained gamma
+set whenever its two-level point aggregate is exact outside the earlier
+degree-two `kappa` collision.  The zerocheck point is unrelated here: `point`
+is the later semantic MLE point bound into the serialized claim rows. -/
+theorem accepted_branch_mem_restored_point_constrained_gamma_set
+    (decoder : ExactDecoderInstantiation QM31Exact)
+    (binding : InitialProjectionBinding decoder)
+    (initialEncoderExact : decoder.initialEncoder = exactInitialEncoder)
+    (words : AspisPool.V7MerkleQueryExtractor.ExtractedWords)
+    (point : Fin 10 → QM31Exact)
+    (fields : FixedFieldView QM31Exact)
+    (family : RestoredSelectedChainFamily decoder words)
+    (gamma kappa : QM31Exact)
+    (available : family.available gamma)
+    (extraction : CoherentTraceExtraction decoder binding words gamma
+      (family.disclosedFinal gamma) (family.schedule gamma))
+    (combinedExact : extraction.combined = family.selected gamma)
+    (gammaNonzero : gamma ≠ 0)
+    (aggregateExact : claimedPointBatch fields gamma kappa =
+      extractedPointBatch extraction point kappa)
+    (noKappaCollision :
+      ¬ KappaPointRowCollision fields extraction point kappa) :
+    gamma ∈ acceptedRestoredPointConstrainedGammaSet decoder words point
+      fields.pointClaim family := by
+  classical
+  have everyRowZero :=
+    every_row_gamma_discrepancy_zero_of_aggregate_exact fields extraction
+      point kappa aggregateExact noKappaCollision
+  have responseAt := family.responseAt gamma available
+  have selectedValid := selected_chain_yields_valid_width29_response decoder
+    words gamma (family.disclosedFinal gamma) (family.schedule gamma)
+    extraction.combined extraction.combinedSelected
+  have acceptedSupportEqRestored :=
+    accepted_restored_support_eq_restored_of_available decoder words family
+      gamma available
+  have restoredSupportEqSelected :=
+    restoredWidth29Strategy_support_eq_selected decoder
+      (extractedWidth29InitialWords words) (family.selected gamma)
+      family.response gamma responseAt
+  have acceptedSupportEqSelected :
+      (acceptedRestoredWidth29Strategy decoder words family).support gamma =
+        (selectedCandidateStrategy decoder
+          (extractedWidth29InitialWords words) extraction.combined).support gamma := by
+    rw [acceptedSupportEqRestored, restoredSupportEqSelected, ← combinedExact]
+  have acceptedValid : Width29ValidResponse exactInitialEncoder
+      AspisV6PublishedTheoremInterfaces.initialAgreementThreshold
+      (extractedWidth29InitialWords words)
+      (acceptedRestoredWidth29Strategy decoder words family) gamma := by
+    constructor
+    · rw [acceptedSupportEqSelected]
+      exact selectedValid.1
+    · intro index member
+      have selectedMember : index ∈
+          (selectedCandidateStrategy decoder
+            (extractedWidth29InitialWords words) extraction.combined).support
+              gamma := by
+        rw [← acceptedSupportEqSelected]
+        exact member
+      have selectedAgreement := selectedValid.2 index selectedMember
+      change width29CurveValue (extractedWidth29InitialWords words) gamma index =
+        exactInitialEncoder (family.response gamma) index
+      rw [responseAt, ← combinedExact, ← initialEncoderExact]
+      exact selectedAgreement
+  have functionalConstraint : Width29FunctionalConstraint
+      (pointFunctional point) fields.pointClaim
+      (acceptedRestoredWidth29Strategy decoder words family) gamma := by
+    intro row
+    have rowZero : rowGammaDiscrepancy fields extraction point row = 0 :=
+      congrFun everyRowZero row
+    have rowBatchExact :=
+      (rowGammaDiscrepancy_eq_zero_iff fields extraction point row).mp rowZero
+    calc
+      pointFunctional point row
+          ((acceptedRestoredWidth29Strategy decoder words family).candidate gamma) =
+          pointFunctional point row (family.response gamma) := by rfl
+      _ = pointFunctional point row (family.selected gamma).1 := by
+        rw [responseAt]
+      _ = pointFunctional point row extraction.combined.1 := by
+        rw [combinedExact]
+      _ = pointFunctional point row
+          (batchInitialMessages extraction.components gamma) := by
+        rw [CoherentTraceExtraction.combined_eq_batchInitialMessages extraction
+          initialEncoderExact]
+      _ = width29Batch
+          (fun lane => componentPointClaim extraction point row lane) gamma :=
+        pointFunctional_batchInitialMessages point row extraction.components gamma
+      _ = width29Batch (fields.pointClaim row) gamma := rowBatchExact.symm
+  unfold acceptedRestoredPointConstrainedGammaSet
+  rw [mem_width29GoodChallenges_iff]
+  refine ⟨gammaNonzero, ?_⟩
+  constructor
+  · simpa [constrainedWidth29Strategy, functionalConstraint] using
+      acceptedValid.1
+  · intro index member
+    have acceptedMember : index ∈
+        (acceptedRestoredWidth29Strategy decoder words family).support gamma := by
+      simpa [constrainedWidth29Strategy, functionalConstraint] using member
+    simpa [constrainedWidth29Strategy, functionalConstraint] using
+      acceptedValid.2 index acceptedMember
+
 def HasAcceptedRestoredPointCompatibleK14
     (decoder : ExactDecoderInstantiation QM31Exact)
     (words : AspisPool.V7MerkleQueryExtractor.ExtractedWords)
@@ -403,6 +506,7 @@ theorem accepted_restored_point_compatible_k14_extracts_coherent_trace
 #print axioms point_compatible_selected_chain_extracts_coherent_trace
 #print axioms accepted_restored_valid_implies_available
 #print axioms no_accepted_restored_point_compatible_k14_card_le
+#print axioms accepted_branch_mem_restored_point_constrained_gamma_set
 #print axioms
   accepted_restored_point_compatible_k14_extracts_coherent_trace
 

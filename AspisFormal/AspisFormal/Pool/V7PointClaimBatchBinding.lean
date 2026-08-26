@@ -142,6 +142,38 @@ noncomputable def rowGammaDiscrepancy
     (point : Fin 10 → QM31Exact) (row : Fin 3) : QM31Exact :=
   width29Batch (pointClaimDiscrepancy fields extraction point row) gamma
 
+set_option maxRecDepth 100000 in
+/-- A zero row discrepancy is exactly equality between the serialized and
+extracted twenty-nine-lane gamma batches. -/
+theorem rowGammaDiscrepancy_eq_zero_iff
+    {decoder : ExactDecoderInstantiation QM31Exact}
+    {binding : InitialProjectionBinding decoder}
+    {words : V7MerkleQueryExtractor.ExtractedWords}
+    {gamma : QM31Exact} {disclosedFinal : FinalMessage QM31Exact}
+    {schedule : ExactSchedule}
+    (fields : FixedFieldView QM31Exact)
+    (extraction : CoherentTraceExtraction decoder binding words gamma
+      disclosedFinal schedule)
+    (point : Fin 10 → QM31Exact) (row : Fin 3) :
+    rowGammaDiscrepancy fields extraction point row = 0 ↔
+      width29Batch (fields.pointClaim row) gamma =
+        width29Batch
+          (fun lane => componentPointClaim extraction point row lane) gamma := by
+  unfold rowGammaDiscrepancy pointClaimDiscrepancy width29Batch
+  have difference :
+      (∑ lane : Fin 29,
+        (fields.pointClaim row lane -
+          componentPointClaim extraction point row lane) * gamma ^ lane.val) =
+        (∑ lane : Fin 29, fields.pointClaim row lane * gamma ^ lane.val) -
+          ∑ lane : Fin 29,
+            componentPointClaim extraction point row lane * gamma ^ lane.val := by
+    rw [← Finset.sum_sub_distrib]
+    apply Finset.sum_congr rfl
+    intro lane _
+    ring
+  rw [difference]
+  exact sub_eq_zero
+
 /-- The point-claim part of the initial relation claim as serialized.  The
 copy-inactive claim is intentionally excluded and must be authenticated by
 the caller before using this equality. -/
@@ -265,6 +297,32 @@ theorem gamma_point_lane_collision_impossible_of_all_claims_exact
   funext lane
   exact sub_eq_zero.mpr (allExact row lane)
 
+/-- Exact aggregate equality and absence of the degree-two `kappa` collision
+force all three row-wise gamma batches to zero.  This is the information a
+restoration-wide point-compatible response needs; it does not yet assert that
+the twenty-nine claims inside each row are individually exact. -/
+theorem every_row_gamma_discrepancy_zero_of_aggregate_exact
+    {decoder : ExactDecoderInstantiation QM31Exact}
+    {binding : InitialProjectionBinding decoder}
+    {words : V7MerkleQueryExtractor.ExtractedWords}
+    {gamma : QM31Exact} {disclosedFinal : FinalMessage QM31Exact}
+    {schedule : ExactSchedule}
+    (fields : FixedFieldView QM31Exact)
+    (extraction : CoherentTraceExtraction decoder binding words gamma
+      disclosedFinal schedule)
+    (point : Fin 10 → QM31Exact) (kappa : QM31Exact)
+    (aggregateExact : claimedPointBatch fields gamma kappa =
+      extractedPointBatch extraction point kappa)
+    (noKappaCollision : ¬ KappaPointRowCollision fields extraction point kappa) :
+    (fun row => rowGammaDiscrepancy fields extraction point row) = 0 := by
+  have rowBatchZero :
+      threeRowBatch
+        (fun row => rowGammaDiscrepancy fields extraction point row) kappa = 0 := by
+    rw [← claimedPointBatch_sub_extractedPointBatch]
+    exact sub_eq_zero.mpr aggregateExact
+  by_contra nonzero
+  exact noKappaCollision ⟨nonzero, rowBatchZero⟩
+
 /-- Outside the exact degree-two and degree-twenty-eight collision events,
 one aggregate equality fixes every serialized point claim individually. -/
 theorem all_point_claims_exact_outside_collisions
@@ -284,15 +342,10 @@ theorem all_point_claims_exact_outside_collisions
     ∀ row lane,
       fields.pointClaim row lane =
         componentPointClaim extraction point row lane := by
-  have rowBatchZero :
-      threeRowBatch
-        (fun row => rowGammaDiscrepancy fields extraction point row) kappa = 0 := by
-    rw [← claimedPointBatch_sub_extractedPointBatch]
-    exact sub_eq_zero.mpr aggregateExact
   have everyRowBatchZero :
       (fun row => rowGammaDiscrepancy fields extraction point row) = 0 := by
-    by_contra nonzero
-    exact noKappaCollision ⟨nonzero, rowBatchZero⟩
+    exact every_row_gamma_discrepancy_zero_of_aggregate_exact fields extraction
+      point kappa aggregateExact noKappaCollision
   intro row lane
   have thisRowBatchZero :
       rowGammaDiscrepancy fields extraction point row = 0 := by
@@ -367,7 +420,9 @@ theorem fixed_gamma_collision_set_card_le_twenty_eight
 
 #print axioms threeRow_nonzero_collision_card_le_two
 #print axioms claimedPointBatch_sub_extractedPointBatch
+#print axioms rowGammaDiscrepancy_eq_zero_iff
 #print axioms gamma_point_lane_collision_impossible_of_all_claims_exact
+#print axioms every_row_gamma_discrepancy_zero_of_aggregate_exact
 #print axioms all_point_claims_exact_outside_collisions
 #print axioms semantic_point_claims_exact_outside_collisions
 #print axioms fixed_kappa_collision_set_card_le_two
