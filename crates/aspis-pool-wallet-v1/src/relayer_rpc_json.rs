@@ -469,6 +469,14 @@ impl FinalizedFeeForMessageRequestV1 {
         })
     }
 
+    pub fn request_id(&self) -> u64 {
+        self.request_id
+    }
+
+    pub fn min_context_slot(&self) -> u64 {
+        self.min_context_slot
+    }
+
     pub fn encode_json_v1(&self) -> Vec<u8> {
         serde_json::to_vec(&RpcRequestWireV1 {
             jsonrpc: "2.0",
@@ -536,6 +544,14 @@ impl ExactSendTransactionRequestV1 {
         })
     }
 
+    pub fn request_id(&self) -> u64 {
+        self.request_id
+    }
+
+    pub fn min_context_slot(&self) -> u64 {
+        self.min_context_slot
+    }
+
     pub fn encode_json_v1(&self) -> Vec<u8> {
         serde_json::to_vec(&RpcRequestWireV1 {
             jsonrpc: "2.0",
@@ -590,6 +606,10 @@ impl SignatureStatusesRequestV1 {
             request_id,
             transaction_signature,
         })
+    }
+
+    pub fn request_id(&self) -> u64 {
+        self.request_id
     }
 
     pub fn encode_json_v1(&self) -> Vec<u8> {
@@ -682,6 +702,14 @@ impl FinalizedBlockHeightRequestV1 {
             request_id,
             min_context_slot,
         })
+    }
+
+    pub fn request_id(&self) -> u64 {
+        self.request_id
+    }
+
+    pub fn min_context_slot(&self) -> u64 {
+        self.min_context_slot
     }
 
     pub fn encode_json_v1(&self) -> Vec<u8> {

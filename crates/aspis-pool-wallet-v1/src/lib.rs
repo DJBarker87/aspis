@@ -23,6 +23,7 @@ pub mod relayer;
 pub mod relayer_execution_journal;
 pub mod relayer_finalized_evidence;
 pub mod relayer_rpc_json;
+pub mod relayer_rpc_quorum;
 pub mod relayer_transaction;
 pub mod rpc_adapter;
 pub mod rpc_json;

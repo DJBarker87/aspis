@@ -424,7 +424,7 @@ fn provider_without_identity_v1(
     }
 }
 
-fn provider_set_digest_v1(providers: &[[u8; 32]]) -> [u8; 32] {
+pub(crate) fn provider_set_digest_v1(providers: &[[u8; 32]]) -> [u8; 32] {
     let mut hasher = Sha256::new();
     hasher.update(b"aspis:pool-v1:operator-provider-set:sha256:v1");
     hasher.update((providers.len() as u32).to_le_bytes());
