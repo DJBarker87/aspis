@@ -38,21 +38,71 @@ const RELAYER_EXECUTION_CHECKSUM_DOMAIN_V1: &[u8] =
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct RelayerSimulationEvidenceV1 {
-    pub simulated_at_slot: u64,
-    pub recent_blockhash: [u8; 32],
-    pub last_valid_block_height: u64,
-    pub fee_payer: [u8; 32],
-    pub unsigned_message_sha256: [u8; 32],
+    pub(crate) simulated_at_slot: u64,
+    pub(crate) recent_blockhash: [u8; 32],
+    pub(crate) last_valid_block_height: u64,
+    pub(crate) fee_payer: [u8; 32],
+    pub(crate) unsigned_message_sha256: [u8; 32],
     /// Digest of the exact successful simulation result/error object.
-    pub simulation_result_sha256: [u8; 32],
-    pub simulation_accounts_sha256: [u8; 32],
-    pub startup_receipt_digest: [u8; 32],
-    pub compute_unit_limit: u32,
+    pub(crate) simulation_result_sha256: [u8; 32],
+    pub(crate) simulation_accounts_sha256: [u8; 32],
+    pub(crate) startup_receipt_digest: [u8; 32],
+    pub(crate) compute_unit_limit: u32,
     /// Exact priority price instruction; zero means the canonical transaction
     /// omits `SetComputeUnitPrice` entirely.
-    pub compute_unit_price_micro_lamports: u64,
-    pub compute_units_consumed: u64,
-    pub estimated_fee_lamports: u64,
+    pub(crate) compute_unit_price_micro_lamports: u64,
+    pub(crate) compute_units_consumed: u64,
+    pub(crate) estimated_fee_lamports: u64,
+}
+
+impl RelayerSimulationEvidenceV1 {
+    pub fn simulated_at_slot(&self) -> u64 {
+        self.simulated_at_slot
+    }
+
+    pub fn recent_blockhash(&self) -> &[u8; 32] {
+        &self.recent_blockhash
+    }
+
+    pub fn last_valid_block_height(&self) -> u64 {
+        self.last_valid_block_height
+    }
+
+    pub fn fee_payer(&self) -> &[u8; 32] {
+        &self.fee_payer
+    }
+
+    pub fn unsigned_message_sha256(&self) -> &[u8; 32] {
+        &self.unsigned_message_sha256
+    }
+
+    pub fn simulation_result_sha256(&self) -> &[u8; 32] {
+        &self.simulation_result_sha256
+    }
+
+    pub fn simulation_accounts_sha256(&self) -> &[u8; 32] {
+        &self.simulation_accounts_sha256
+    }
+
+    pub fn startup_receipt_digest(&self) -> &[u8; 32] {
+        &self.startup_receipt_digest
+    }
+
+    pub fn compute_unit_limit(&self) -> u32 {
+        self.compute_unit_limit
+    }
+
+    pub fn compute_unit_price_micro_lamports(&self) -> u64 {
+        self.compute_unit_price_micro_lamports
+    }
+
+    pub fn compute_units_consumed(&self) -> u64 {
+        self.compute_units_consumed
+    }
+
+    pub fn estimated_fee_lamports(&self) -> u64 {
+        self.estimated_fee_lamports
+    }
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -63,8 +113,18 @@ pub struct RelayerSignedWireV1 {
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct RelayerSubmissionEvidenceV1 {
-    pub submitted_at_slot: u64,
-    pub provider_set_digest: [u8; 32],
+    pub(crate) submitted_at_slot: u64,
+    pub(crate) provider_set_digest: [u8; 32],
+}
+
+impl RelayerSubmissionEvidenceV1 {
+    pub fn submitted_at_slot(&self) -> u64 {
+        self.submitted_at_slot
+    }
+
+    pub fn provider_set_digest(&self) -> &[u8; 32] {
+        &self.provider_set_digest
+    }
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
