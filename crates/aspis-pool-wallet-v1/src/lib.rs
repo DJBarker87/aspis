@@ -14,6 +14,7 @@
 pub mod durable_state;
 pub mod finalized_indexer;
 pub mod pool_transport;
+pub mod registry_transaction_builder;
 pub mod relayer;
 pub mod rpc_adapter;
 pub mod rpc_json;
