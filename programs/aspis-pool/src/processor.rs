@@ -19,6 +19,10 @@ use aspis_statement::{
         POOL_V1_ROOT_HISTORY_PAGE_SEED,
     },
 };
+#[cfg(target_os = "solana")]
+use solana_program::instruction::get_stack_height;
+#[cfg(any(target_os = "solana", test))]
+use solana_program::instruction::TRANSACTION_LEVEL_STACK_HEIGHT;
 #[allow(deprecated)]
 use solana_program::system_instruction;
 use solana_program::{
@@ -2237,6 +2241,13 @@ pub fn process_instruction(
     instruction_data: &[u8],
 ) -> ProgramResult {
     program::set_return_data(&[]);
+    // The finalized wallet/indexer authenticates transaction-level Pool
+    // instructions.  Rejecting CPI here prevents an inner invocation from
+    // advancing the append-only tree without a corresponding top-level scan
+    // record.  Host unit tests exercise the pure predicate below; LiteSVM and
+    // validator release gates exercise the production syscall.
+    #[cfg(target_os = "solana")]
+    require_transaction_level_invocation_v1(get_stack_height())?;
     let magic = instruction_data
         .get(..4)
         .ok_or(ProgramError::InvalidInstructionData)?;
@@ -2316,6 +2327,15 @@ pub fn process_instruction(
         program::set_return_data(&[]);
     }
     result
+}
+
+#[cfg(any(target_os = "solana", test))]
+#[inline(always)]
+fn require_transaction_level_invocation_v1(stack_height: usize) -> ProgramResult {
+    if stack_height != TRANSACTION_LEVEL_STACK_HEIGHT {
+        return Err(PoolV1ProgramError::CpiInvocationForbidden.into());
+    }
+    Ok(())
 }
 
 #[cfg(test)]
@@ -2481,6 +2501,25 @@ mod tests {
             process_instruction(&program_id, &[], b"NOPE"),
             Err(ProgramError::InvalidInstructionData)
         );
+    }
+
+    #[test]
+    fn transaction_level_gate_rejects_every_cpi_stack_height() {
+        assert_eq!(
+            require_transaction_level_invocation_v1(TRANSACTION_LEVEL_STACK_HEIGHT),
+            Ok(())
+        );
+        for stack_height in [
+            0,
+            TRANSACTION_LEVEL_STACK_HEIGHT + 1,
+            TRANSACTION_LEVEL_STACK_HEIGHT + 2,
+            usize::MAX,
+        ] {
+            assert_eq!(
+                require_transaction_level_invocation_v1(stack_height),
+                Err(PoolV1ProgramError::CpiInvocationForbidden.into())
+            );
+        }
     }
 
     #[test]

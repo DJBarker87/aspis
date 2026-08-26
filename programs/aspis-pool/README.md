@@ -25,6 +25,12 @@ M31 limbs, wrong length, and trailing bytes. All accounts supplied to one Pool
 instruction must have distinct public keys, including accounts occupying
 different semantic roles.
 
+Every Pool instruction must be invoked at Solana transaction stack height
+one. The entrypoint rejects CPI before decoding or mutating any account. This
+pins the append-only event surface to the top-level instructions authenticated
+by the finalized wallet/indexer; verifier, System and SPL Token calls made by
+the Pool remain ordinary inner invocations.
+
 ## Top-level instruction ABI
 
 ### Initialize: `ASIN`, version 1, exactly 184 bytes

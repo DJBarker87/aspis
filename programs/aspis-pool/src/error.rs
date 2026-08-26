@@ -56,6 +56,7 @@ pub enum PoolV1ProgramError {
     InvalidSystemProgram = 0x4153_2033,
     InvalidPayer = 0x4153_2034,
     InvalidFreshAccount = 0x4153_2035,
+    CpiInvocationForbidden = 0x4153_2036,
 }
 
 impl From<PoolV1ProgramError> for ProgramError {
