@@ -1,6 +1,7 @@
 import AspisFormal.Pool.V7C1SubfieldRecovery
 import AspisFormal.V5FriInitialCircleEncoderIdentity
 import AspisFormal.V6EncoderDistance
+import AspisFormal.V7ExactOneFoldDomains
 
 /-!
 # Concrete mathematical C1 projection binding
@@ -35,6 +36,7 @@ open AspisV5FriCoherentCandidateExtraction
 open AspisV5FriConcreteEncoderApplicability
 open AspisV5FriInitialCircleEncoderIdentity
 open AspisCircleTensorBinding
+open AspisV7ExactOneFoldDomains
 
 /-! ## The base-coordinate projection is M31-linear -/
 
@@ -192,14 +194,15 @@ theorem projectBase_initialP1_eval
   rw [coefficientEq] at projected
   exact projected
 
-/-! ## Exact log-20 mathematical circle encoder -/
+/-! ## Exact stored log-20 mathematical circle encoder -/
 
-/-- The exact mathematical V6 initial encoder.  This is intentionally an
-ordinary evaluator, not a claim about the production FFT implementation. -/
+/-- The exact mathematical V7 initial encoder in the production bit-reversed,
+fibre-major order.  This is intentionally an ordinary evaluator, not yet a
+claim about the production FFT implementation. -/
 noncomputable def exactInitialEncoder :
     InitialMessage QM31Exact → InitialWord QM31Exact :=
   fun message index =>
-    let point := AspisV6EncoderDistance.initialCirclePoint index
+    let point := storedInitialCirclePoint20 index
     let x := algebraMap (ZMod AspisCircleGroupOrder.P) QM31Exact
       (AspisCircleGroupOrder.X point)
     let y := algebraMap (ZMod AspisCircleGroupOrder.P) QM31Exact point.1.2
@@ -228,18 +231,33 @@ theorem exactInitialPolynomialPair_injective :
       (initialP0 message, initialP1 message)) :=
   initialPolynomialPair_injective
 
+/-- The stored order is a permutation of the exact log-20 half-odd coset, so
+the generic circle-polynomial root theorem applies without changing its
+distance bound. -/
+noncomputable def exactInitialEncoderCircleRealization :
+    AspisV5FriCircleEncoderDistance.CirclePolynomialRealization
+      exactInitialEncoder where
+  point := storedInitialCirclePoint20
+  point_injective := storedInitialCirclePoint20_injective
+  avoids_west_pole := storedInitialCirclePoint20_x_ne_neg_one
+  p0 := initialP0
+  p1 := initialP1
+  p0_degree_lt := exactInitialP0_degree_lt
+  p1_degree_lt := exactInitialP1_degree_lt
+  coefficient_pair_injective := exactInitialPolynomialPair_injective
+  encoder_eq_circle_eval := by
+    intro message index
+    rfl
+
 /-- The existing exact circle root-count theorem applied to the concrete
 mathematical evaluator. -/
 theorem exactInitialEncoder_overlap_cap
     (left right : InitialMessage QM31Exact) (different : left ≠ right) :
     agreementCount (exactInitialEncoder left)
       (exactInitialEncoder right) ≤ 1024 := by
-  have cap := AspisV6EncoderDistance.exactInitialCoset_agreement_card_le_1024
-    (K := QM31Exact) (Message := InitialMessage QM31Exact)
-    exactInitialEncoder initialP0 initialP1
-    exactInitialP0_degree_lt exactInitialP1_degree_lt
-    exactInitialPolynomialPair_injective
-    (by intro message index; rfl) left right different
+  have cap := AspisV5FriCircleEncoderDistance.agreementSet_card_le_1024
+    exactInitialEncoder exactInitialEncoderCircleRealization
+    left right different
   calc
     agreementCount (exactInitialEncoder left) (exactInitialEncoder right) =
         (AspisV5FriCoherentCandidateExtraction.agreementSet
@@ -271,6 +289,7 @@ theorem initialProjectionBinding_of_initialEncoder_eq
 
 #print axioms projectBase_naturalCoefficientPolynomial_eval
 #print axioms exactInitialEncoder_commutes
+#print axioms exactInitialEncoderCircleRealization
 #print axioms exactInitialEncoder_overlap_cap
 #print axioms initialProjectionBinding_of_initialEncoder_eq
 
