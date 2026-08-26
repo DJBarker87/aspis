@@ -1,4 +1,5 @@
 import AspisFormal.K1.V7Tag73FixedFieldMessageBridge
+import AspisFormal.K1.V7Tag73IncrementalSamplerControl
 import AspisFormal.K1.V7Tag73SecureCircleMap
 import AspisFormal.Pool.V7CompactSemanticBinding
 
@@ -25,6 +26,7 @@ namespace AspisK1.V7Tag73SemanticTranscriptBridge
 open AspisK1.V7Tag73TranscriptSchedule
 open AspisK1.V7Tag73DeterministicRefinement
 open AspisK1.V7Tag73SamplerDecoder
+open AspisK1.V7Tag73IncrementalSamplerControl
 open AspisK1.V7Tag73SecureCircleMap
 open AspisK1.V7Tag73FixedFieldMessageBridge
 open AspisSumcheckMasking
@@ -37,6 +39,109 @@ open AspisV5SumcheckTranscriptBinding
 open AspisV6TranscriptRelationGrammar
 open AspisV6AcceptedPathObligations
 open AspisPool.V7CompactSemanticBinding
+
+/-! ## Total oracle induced by the accepted finite table -/
+
+/-- Totalize the accepted first-hit table only for use as the deterministic
+schedule function.  Every successful replay below proves that its queried
+entries were present, so the zero default is unreachable on that path. -/
+def tableHashOracle (table : FixedOracleTable) : HashOracle where
+  answer := fun input => (tableLookup table input).getD (zeroBytes 32)
+
+theorem tableHashOracle_answer_of_lookup
+    (table : FixedOracleTable) (input : ByteString) (output : Digest256)
+    (found : tableLookup table input = some output) :
+    (tableHashOracle table).answer input = output := by
+  simp [tableHashOracle, found]
+
+theorem absorbStep_matches_tableHashOracle_digest
+    (table : FixedOracleTable) (eval next : EvalState)
+    (machine : MachineState) (payload : Payload)
+    (aligned : machine.digest = eval.digest)
+    (run : absorbStep table eval payload = some next) :
+    (absorb (tableHashOracle table) machine payload).digest = next.digest := by
+  unfold absorbStep at run
+  obtain ⟨result, queryRun, resultEq⟩ := Option.bind_eq_some_iff.mp run
+  rcases result with ⟨output, queried⟩
+  have nextEq : queried = next := by
+    simpa only [pure, Option.some.injEq] using resultEq
+  subst next
+  obtain ⟨found, _, digestEq⟩ :=
+    query_step_appends_one table eval queried (.absorb payload) output queryRun
+  simp only [RawQueryRole.input] at found
+  simp only [RawQueryRole.nextDigest] at digestEq
+  change (tableHashOracle table).answer
+      (bytes machine.digest ++ [domAbsorb, payload.label] ++ payload.data) =
+    queried.digest
+  rw [aligned, tableHashOracle_answer_of_lookup table _ output found, digestEq]
+
+theorem squeezeStep_matches_tableHashOracle
+    (table : FixedOracleTable) (eval next : EvalState)
+    (machine : MachineState) (owner : SqueezeOwner) (block : Nat)
+    (output : Digest256) (aligned : machine.digest = eval.digest)
+    (run : squeezeStep table eval owner block = some (output, next)) :
+    (squeezeBlock (tableHashOracle table) machine).1 = output ∧
+      (squeezeBlock (tableHashOracle table) machine).2.digest = next.digest := by
+  obtain ⟨outputFound, advanceFound, _⟩ :=
+    squeeze_step_emits_two_distinct_queries table eval next owner block output run
+  rw [← aligned] at outputFound advanceFound
+  constructor
+  · change (tableHashOracle table).answer (bytes machine.digest ++ [domSqueeze]) =
+      output
+    exact tableHashOracle_answer_of_lookup table _ output outputFound
+  · change (tableHashOracle table).answer (bytes machine.digest ++ [domAdvance]) =
+      next.digest
+    exact tableHashOracle_answer_of_lookup table _ next.digest advanceFound
+
+theorem squeezeManyFrom_matches_tableHashOracle
+    (table : FixedOracleTable) (owner : SqueezeOwner)
+    (first count : Nat) (eval next : EvalState) (machine : MachineState)
+    (outputs : List Digest256) (aligned : machine.digest = eval.digest)
+    (run : squeezeManyFrom table owner first count eval = some (outputs, next)) :
+    (squeezeBlocks (tableHashOracle table) count machine).1 = outputs ∧
+      (squeezeBlocks (tableHashOracle table) count machine).2.digest =
+        next.digest := by
+  induction count generalizing first eval machine outputs next with
+  | zero =>
+      simp only [squeezeManyFrom] at run
+      have pairEq := Option.some.inj run
+      cases pairEq
+      simp [squeezeBlocks, aligned]
+  | succ count ih =>
+      simp only [squeezeManyFrom] at run
+      obtain ⟨firstPair, firstRun, run⟩ := Option.bind_eq_some_iff.mp run
+      rcases firstPair with ⟨output, afterBlock⟩
+      obtain ⟨restPair, restRun, resultEq⟩ := Option.bind_eq_some_iff.mp run
+      rcases restPair with ⟨restOutputs, finalEval⟩
+      have finalEq : (output :: restOutputs, finalEval) = (outputs, next) :=
+        Option.some.inj resultEq
+      have outputsEq := congrArg Prod.fst finalEq
+      have nextEq := congrArg Prod.snd finalEq
+      simp only at outputsEq nextEq
+      subst outputs
+      subst next
+      have firstMatch := squeezeStep_matches_tableHashOracle table eval
+        afterBlock machine owner first output aligned firstRun
+      let afterMachine := (squeezeBlock (tableHashOracle table) machine).2
+      have restMatch := ih (first := first + 1) (eval := afterBlock)
+        (machine := afterMachine) (outputs := restOutputs) (next := finalEval)
+        firstMatch.2 restRun
+      simp only [squeezeBlocks]
+      constructor
+      · rw [firstMatch.1]
+        exact congrArg (output :: .) restMatch.1
+      · exact restMatch.2
+
+theorem squeezeMany_matches_tableHashOracle
+    (table : FixedOracleTable) (owner : SqueezeOwner)
+    (count : Nat) (eval next : EvalState) (machine : MachineState)
+    (outputs : List Digest256) (aligned : machine.digest = eval.digest)
+    (run : squeezeMany table owner count eval = some (outputs, next)) :
+    (squeezeBlocks (tableHashOracle table) count machine).1 = outputs ∧
+      (squeezeBlocks (tableHashOracle table) count machine).2.digest =
+        next.digest := by
+  exact squeezeManyFrom_matches_tableHashOracle table owner 0 count eval next
+    machine outputs aligned run
 
 /-! ## Incremental deployed challenge sampler -/
 
@@ -114,6 +219,169 @@ theorem sampleChallengeFrom_stops_at_first_success
           · simpa [accumulated, List.append_assoc] using hdecode
           · simp only [List.length_cons]
             omega
+
+/-- Conversely, a duplex run whose final block list decodes and whose strict
+prefixes do not decode is exactly the incremental deployed sampler run. -/
+theorem sampleChallengeFrom_of_squeezeBlocks
+    (oracle : HashOracle) (id : ChallengeId)
+    (prior outputs : List Digest256) (state finalState : MachineState)
+    (value : Qm31Bytes) (fuel : Nat)
+    (positive : outputs ≠ []) (withinFuel : outputs.length ≤ fuel)
+    (squeezed : squeezeBlocks oracle outputs.length state =
+      (outputs, finalState))
+    (accepted : decodeChallengeParameter exactSecureCircleParameterMap id
+      (prior ++ outputs) = some value)
+    (minimal : ∀ count, count < outputs.length →
+      decodeChallengeParameter exactSecureCircleParameterMap id
+        (prior ++ outputs.take count) = none) :
+    sampleChallengeFrom oracle id fuel prior state = some (value, finalState) := by
+  induction outputs generalizing prior state finalState fuel with
+  | nil => exact False.elim (positive rfl)
+  | cons output rest ih =>
+      cases fuel with
+      | zero => simp at withinFuel
+      | succ fuel =>
+          let first := squeezeBlock oracle state
+          let remaining := squeezeBlocks oracle rest.length first.2
+          have expanded :
+              (first.1 :: remaining.1, remaining.2) =
+                (output :: rest, finalState) := by
+            simpa [first, remaining, squeezeBlocks] using squeezed
+          have listsEq := congrArg Prod.fst expanded
+          have finalEq := congrArg Prod.snd expanded
+          have outputEq : first.1 = output := (List.cons.inj listsEq).1
+          have restEq : remaining.1 = rest := (List.cons.inj listsEq).2
+          have remainingEq :
+              squeezeBlocks oracle rest.length first.2 = (rest, finalState) := by
+            apply Prod.ext
+            · exact restEq
+            · exact finalEq
+          simp only [sampleChallengeFrom]
+          rw [show (squeezeBlock oracle state).1 = output by exact outputEq]
+          by_cases restEmpty : rest = []
+          · have firstFinal : first.2 = finalState := by
+              simpa [restEmpty, squeezeBlocks] using remainingEq
+            have acceptedFirst :
+                decodeChallengeParameter exactSecureCircleParameterMap id
+                    (prior ++ [output]) = some value := by
+              simpa [restEmpty] using accepted
+            rw [acceptedFirst]
+            simp [first, firstFinal]
+          · have currentNone :
+                decodeChallengeParameter exactSecureCircleParameterMap id
+                    (prior ++ [output]) = none := by
+              have strict : 1 < (output :: rest).length := by
+                cases rest with
+                | nil => exact False.elim (restEmpty rfl)
+                | cons next tail => simp
+              have firstPrefix := minimal 1 strict
+              simpa using firstPrefix
+            rw [currentNone]
+            have restWithin : rest.length ≤ fuel := by
+              simp only [List.length_cons] at withinFuel
+              omega
+            have restAccepted :
+                decodeChallengeParameter exactSecureCircleParameterMap id
+                    ((prior ++ [output]) ++ rest) = some value := by
+              simpa [List.append_assoc] using accepted
+            have restMinimal : ∀ count, count < rest.length →
+                decodeChallengeParameter exactSecureCircleParameterMap id
+                    ((prior ++ [output]) ++ rest.take count) = none := by
+              intro count strict
+              have old := minimal (count + 1) (by simp; omega)
+              simpa [List.take_succ_cons, List.append_assoc] using old
+            exact ih (prior := prior ++ [output]) (state := first.2)
+              (finalState := finalState) (fuel := fuel) restEmpty restWithin
+                remainingEq restAccepted restMinimal
+
+/-- One successful fixed-table challenge event is the same first-success
+incremental challenge under the totalized table oracle.  This is the generic
+execution seam used at eta and at every semantic round. -/
+theorem runMachineChallenge_matches_sampleChallenge
+    (table : FixedOracleTable) (id : ChallengeId) (use : SamplerUse id)
+    (eval next : EvalState) (machine : MachineState)
+    (value : Qm31Bytes) (aligned : machine.digest = eval.digest)
+    (run : runMachineEvent table eval (.challenge id use) = some next)
+    (decoded : ∀ blocks squeezedEval,
+      squeezeMany table (.challenge id) use.blocksUsed eval =
+        some (blocks, squeezedEval) →
+      decodeChallengeParameter exactSecureCircleParameterMap id blocks =
+        some value) :
+    ∃ finalMachine,
+      sampleChallenge (tableHashOracle table) id machine =
+        some (value, finalMachine) ∧
+      finalMachine.digest = next.digest := by
+  simp only [runMachineEvent] at run
+  obtain ⟨squeezedPair, squeezedRun, resultEq⟩ :=
+    Option.bind_eq_some_iff.mp run
+  rcases squeezedPair with ⟨blocks, squeezedEval⟩
+  have nextEq :
+      { squeezedEval with
+        samples := squeezedEval.samples ++ [{ id := id, blocks := blocks }] } =
+        next := by
+    simpa only [pure, Option.some.injEq] using resultEq
+  rw [← nextEq] at ⊢
+  have sizes := squeeze_many_exact_sizes table (.challenge id) use.blocksUsed
+    eval squeezedEval blocks squeezedRun
+  have machineMatch := squeezeMany_matches_tableHashOracle table
+    (.challenge id) use.blocksUsed eval squeezedEval machine blocks aligned
+      squeezedRun
+  let finalMachine :=
+    (squeezeBlocks (tableHashOracle table) use.blocksUsed machine).2
+  have accepted := decoded blocks squeezedEval squeezedRun
+  have positive : blocks ≠ [] := by
+    intro empty
+    have lengthZero : blocks.length = 0 := by simp [empty]
+    rw [sizes.1] at lengthZero
+    have consumes := use.consumesBlock
+    omega
+  have withinCap :
+      blocks.length ≤ samplerBlockCap (samplerMode id) := by
+    rw [sizes.1]
+    exact use.withinDeployedCap
+  have firstSuccess : ∀ count, count < blocks.length →
+      decodeChallengeParameter exactSecureCircleParameterMap id
+        ([] ++ blocks.take count) = none := by
+    intro count strict
+    simpa using decodeChallengeParameter_accepted_is_prefix_minimal
+      exactSecureCircleParameterMap id blocks value accepted count strict
+  have exactSqueeze :
+      squeezeBlocks (tableHashOracle table) blocks.length machine =
+        (blocks, finalMachine) := by
+    rw [sizes.1]
+    apply Prod.ext
+    · exact machineMatch.1
+    · rfl
+  have sampled := sampleChallengeFrom_of_squeezeBlocks
+    (tableHashOracle table) id [] blocks machine finalMachine value
+      (samplerBlockCap (samplerMode id)) positive withinCap exactSqueeze
+        (by simpa using accepted) firstSuccess
+  refine ⟨finalMachine, ?_, machineMatch.2⟩
+  exact sampled
+
+theorem runMachineChallenge_matches_sampleExactChallenge
+    (table : FixedOracleTable) (id : ChallengeId) (use : SamplerUse id)
+    (eval next : EvalState) (machine : MachineState)
+    (encoded : Qm31Bytes) (value : QM31Exact)
+    (aligned : machine.digest = eval.digest)
+    (run : runMachineEvent table eval (.challenge id use) = some next)
+    (decodedParameter : ∀ blocks squeezedEval,
+      squeezeMany table (.challenge id) use.blocksUsed eval =
+        some (blocks, squeezedEval) →
+      decodeChallengeParameter exactSecureCircleParameterMap id blocks =
+        some encoded)
+    (decodedExact : decodeTagQM31ExactLE encoded = some value) :
+    ∃ finalMachine,
+      sampleExactChallenge (tableHashOracle table) id machine =
+        some (value, finalMachine) ∧
+      finalMachine.digest = next.digest := by
+  obtain ⟨finalMachine, sampled, digestEq⟩ :=
+    runMachineChallenge_matches_sampleChallenge table id use eval next machine
+      encoded aligned run decodedParameter
+  refine ⟨finalMachine, ?_, digestEq⟩
+  unfold sampleExactChallenge
+  rw [sampled]
+  simp [decodedExact]
 
 /-! ## Prefix which is genuinely available before eta -/
 
@@ -403,7 +671,12 @@ def acceptedRunOfExactSemanticReplay
   eta_eq := exactSemanticReplay_eta_eq replay
   point_eq := exactSemanticReplay_point_eq replay
 
+#print axioms absorbStep_matches_tableHashOracle_digest
+#print axioms squeezeMany_matches_tableHashOracle
 #print axioms sampleChallengeFrom_stops_at_first_success
+#print axioms sampleChallengeFrom_of_squeezeBlocks
+#print axioms runMachineChallenge_matches_sampleChallenge
+#print axioms runMachineChallenge_matches_sampleExactChallenge
 #print axioms encodeQM31LE_of_decodeQM31LE
 #print axioms encodeTagQM31ExactLE_of_decode
 #print axioms decodeTagQM31ExactLE_injective_on_success
