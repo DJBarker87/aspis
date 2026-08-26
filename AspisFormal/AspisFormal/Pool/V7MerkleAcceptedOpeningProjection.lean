@@ -46,6 +46,126 @@ def C2CanonicalTraceCoverage
       (openingInputTrace truncateSha256 position
         (.c2Leaf leaf.value leaf.salt) siblings) log
 
+def C1CoveredCanonicalOpening
+    (truncateSha256 : RawHashInput → Digest208)
+    (words : List C1Leaf) (root : Digest208) (position : Position)
+    (log : OrderedRawQueryLog) : Prop :=
+  ∃ leaf : C1Leaf, ∃ siblings : SiblingPath,
+    words[position.val]? = some leaf ∧
+      foldPath truncateSha256 position (c1LeafDigest truncateSha256 leaf)
+        siblings = root ∧
+      TraceIncludedInLog
+        (openingInputTrace truncateSha256 position
+          (.c1Leaf leaf.value leaf.salt) siblings) log
+
+def C2CoveredCanonicalOpening
+    (truncateSha256 : RawHashInput → Digest208)
+    (words : List C2Leaf) (root : Digest208) (position : Position)
+    (log : OrderedRawQueryLog) : Prop :=
+  ∃ leaf : C2Leaf, ∃ siblings : SiblingPath,
+    words[position.val]? = some leaf ∧
+      foldPath truncateSha256 position (c2LeafDigest truncateSha256 leaf)
+        siblings = root ∧
+      TraceIncludedInLog
+        (openingInputTrace truncateSha256 position
+          (.c2Leaf leaf.value leaf.salt) siblings) log
+
+theorem c1_covered_opening_is_projection_or_raw_collision
+    (truncateSha256 : RawHashInput → Digest208)
+    (words : List C1Leaf) (root : Digest208) (opening : PairedOpening)
+    (log : OrderedRawQueryLog)
+    (canonical : C1CoveredCanonicalOpening truncateSha256 words root
+      opening.position log)
+    (accepted :
+      foldPath truncateSha256 opening.position
+          (c1DisclosedLeafDigest truncateSha256 opening)
+          opening.c1Siblings = root)
+    (suppliedCovered : TraceIncludedInLog
+      (openingInputTrace truncateSha256 opening.position
+        (.c1Leaf opening.c1Value opening.sharedSalt) opening.c1Siblings) log) :
+    words[opening.position.val]? = some
+        ⟨opening.c1Value, opening.sharedSalt⟩ ∨
+      RawLogTruncatedDigestCollision truncateSha256 log := by
+  obtain ⟨canonicalLeaf, canonicalSiblings, canonicalLeafAt, canonicalRoot,
+      canonicalCovered⟩ := canonical
+  let canonicalTyped : TypedPreimage :=
+    .c1Leaf canonicalLeaf.value canonicalLeaf.salt
+  let suppliedTyped : TypedPreimage :=
+    .c1Leaf opening.c1Value opening.sharedSalt
+  by_cases sameLeaf : canonicalTyped = suppliedTyped
+  · left
+    have leafExact : canonicalLeaf =
+        ⟨opening.c1Value, opening.sharedSalt⟩ := by
+      cases canonicalLeaf with
+      | mk value salt =>
+          simp [canonicalTyped, suppliedTyped] at sameLeaf
+          rcases sameLeaf with ⟨rfl, rfl⟩
+          rfl
+    rw [leafExact] at canonicalLeafAt
+    exact canonicalLeafAt
+  · right
+    have sameRoot :
+        foldPath truncateSha256 opening.position
+            (truncateSha256 (serialize canonicalTyped)) canonicalSiblings =
+          foldPath truncateSha256 opening.position
+            (truncateSha256 (serialize suppliedTyped)) opening.c1Siblings := by
+      simpa [canonicalTyped, suppliedTyped, c1LeafDigest,
+        c1DisclosedLeafDigest] using canonicalRoot.trans accepted.symm
+    exact same_position_distinct_typed_leaves_in_log_expose_collision
+      truncateSha256 log opening.position canonicalTyped suppliedTyped
+      canonicalSiblings opening.c1Siblings
+      (by simpa [canonicalTyped] using canonicalCovered)
+      (by simpa [suppliedTyped] using suppliedCovered)
+      sameLeaf sameRoot
+
+theorem c2_covered_opening_is_projection_or_raw_collision
+    (truncateSha256 : RawHashInput → Digest208)
+    (words : List C2Leaf) (root : Digest208) (opening : PairedOpening)
+    (log : OrderedRawQueryLog)
+    (canonical : C2CoveredCanonicalOpening truncateSha256 words root
+      opening.position log)
+    (accepted :
+      foldPath truncateSha256 opening.position
+          (c2DisclosedLeafDigest truncateSha256 opening)
+          opening.c2Siblings = root)
+    (suppliedCovered : TraceIncludedInLog
+      (openingInputTrace truncateSha256 opening.position
+        (.c2Leaf opening.c2Value opening.sharedSalt) opening.c2Siblings) log) :
+    words[opening.position.val]? = some
+        ⟨opening.c2Value, opening.sharedSalt⟩ ∨
+      RawLogTruncatedDigestCollision truncateSha256 log := by
+  obtain ⟨canonicalLeaf, canonicalSiblings, canonicalLeafAt, canonicalRoot,
+      canonicalCovered⟩ := canonical
+  let canonicalTyped : TypedPreimage :=
+    .c2Leaf canonicalLeaf.value canonicalLeaf.salt
+  let suppliedTyped : TypedPreimage :=
+    .c2Leaf opening.c2Value opening.sharedSalt
+  by_cases sameLeaf : canonicalTyped = suppliedTyped
+  · left
+    have leafExact : canonicalLeaf =
+        ⟨opening.c2Value, opening.sharedSalt⟩ := by
+      cases canonicalLeaf with
+      | mk value salt =>
+          simp [canonicalTyped, suppliedTyped] at sameLeaf
+          rcases sameLeaf with ⟨rfl, rfl⟩
+          rfl
+    rw [leafExact] at canonicalLeafAt
+    exact canonicalLeafAt
+  · right
+    have sameRoot :
+        foldPath truncateSha256 opening.position
+            (truncateSha256 (serialize canonicalTyped)) canonicalSiblings =
+          foldPath truncateSha256 opening.position
+            (truncateSha256 (serialize suppliedTyped)) opening.c2Siblings := by
+      simpa [canonicalTyped, suppliedTyped, c2LeafDigest,
+        c2DisclosedLeafDigest] using canonicalRoot.trans accepted.symm
+    exact same_position_distinct_typed_leaves_in_log_expose_collision
+      truncateSha256 log opening.position canonicalTyped suppliedTyped
+      canonicalSiblings opening.c2Siblings
+      (by simpa [canonicalTyped] using canonicalCovered)
+      (by simpa [suppliedTyped] using suppliedCovered)
+      sameLeaf sameRoot
+
 theorem c1_accepted_opening_is_projection_or_raw_collision
     (truncateSha256 : RawHashInput → Digest208)
     (words : List C1Leaf) (root : Digest208) (opening : PairedOpening)
@@ -195,9 +315,46 @@ theorem accepted_openings_are_extracted_projections_outside_raw_collision
       (c2SuppliedCovered ordinal)).resolve_right noCollision
   exact ⟨c1Projection, c2Projection⟩
 
+theorem accepted_openings_are_projections_of_covered_paths
+    (truncateSha256 : RawHashInput → Digest208)
+    (words : ExtractedWords) (roots : Roots)
+    (proof : TwoTreeOpeningProof) (log : OrderedRawQueryLog)
+    (accepted : accepted_two_tree_openings truncateSha256 roots proof)
+    (c1Canonical : ∀ ordinal : Fin disclosedQueryPairs,
+      C1CoveredCanonicalOpening truncateSha256 words.c1 roots.c1
+        (proof ordinal).position log)
+    (c2Canonical : ∀ ordinal : Fin disclosedQueryPairs,
+      C2CoveredCanonicalOpening truncateSha256 words.c2 roots.c2
+        (proof ordinal).position log)
+    (c1SuppliedCovered : ∀ ordinal : Fin disclosedQueryPairs,
+      TraceIncludedInLog
+        (openingInputTrace truncateSha256 (proof ordinal).position
+          (.c1Leaf (proof ordinal).c1Value (proof ordinal).sharedSalt)
+          (proof ordinal).c1Siblings) log)
+    (c2SuppliedCovered : ∀ ordinal : Fin disclosedQueryPairs,
+      TraceIncludedInLog
+        (openingInputTrace truncateSha256 (proof ordinal).position
+          (.c2Leaf (proof ordinal).c2Value (proof ordinal).sharedSalt)
+          (proof ordinal).c2Siblings) log)
+    (noCollision :
+      ¬ RawLogTruncatedDigestCollision truncateSha256 log) :
+    disclosuresAreProjections words proof := by
+  intro ordinal
+  have acceptedAt := accepted.2 ordinal
+  exact ⟨
+    (c1_covered_opening_is_projection_or_raw_collision truncateSha256
+      words.c1 roots.c1 (proof ordinal) log (c1Canonical ordinal)
+      acceptedAt.1 (c1SuppliedCovered ordinal)).resolve_right noCollision,
+    (c2_covered_opening_is_projection_or_raw_collision truncateSha256
+      words.c2 roots.c2 (proof ordinal) log (c2Canonical ordinal)
+      acceptedAt.2 (c2SuppliedCovered ordinal)).resolve_right noCollision⟩
+
 #print axioms c1_accepted_opening_is_projection_or_raw_collision
 #print axioms c2_accepted_opening_is_projection_or_raw_collision
+#print axioms c1_covered_opening_is_projection_or_raw_collision
+#print axioms c2_covered_opening_is_projection_or_raw_collision
 #print axioms
   accepted_openings_are_extracted_projections_outside_raw_collision
+#print axioms accepted_openings_are_projections_of_covered_paths
 
 end AspisPool.V7MerkleAcceptedOpeningProjection
