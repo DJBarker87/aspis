@@ -20,12 +20,16 @@ use solana_program::{instruction::AccountMeta, instruction::Instruction, pubkey:
 use subtle::ConstantTimeEq;
 
 use crate::{
-    finalized_indexer::FinalizedBlockIngestResultV1,
+    finalized_indexer::{FinalizedBlockIngestResultV1, FinalizedPreparedSettlementLifecycleV1},
+    pool_transport::{
+        AuthenticatedCancelledSettlementV1, AuthenticatedPreparedSettlementPlanIdentityV1,
+        AuthenticatedPreparedSettlementV1,
+    },
     relayer::{
-        admit_relayer_plan_v1, prepare_permissionless_relayer_plan_v1, relayer_policy_id_v1,
-        RelayerAdmissionContextV1, RelayerAdmissionErrorV1, RelayerAdmissionV1,
-        RelayerEnqueueOutcomeV1, RelayerErrorV1, RelayerPlanV1, RelayerPolicyV1,
-        RelayerRequestKindV1,
+        admit_relayer_plan_v1, prepare_permissionless_prepared_relayer_plan_v1,
+        prepare_permissionless_relayer_plan_v1, relayer_policy_id_v1, RelayerAdmissionContextV1,
+        RelayerAdmissionErrorV1, RelayerAdmissionV1, RelayerEnqueueOutcomeV1, RelayerErrorV1,
+        RelayerPlanV1, RelayerPolicyV1, RelayerRequestKindV1,
     },
     scan_state::{
         decode_scan_state_v1, encode_scan_state_v1, DepositEventIdV1, DepositScanOutcomeV1,
@@ -39,14 +43,18 @@ const RELAYER_MAGIC: [u8; 4] = *b"ASRQ";
 const DURABLE_VERSION: u8 = 1;
 const WALLET_HEADER_BYTES: usize = 88;
 const WALLET_RECORD_HEADER_BYTES: usize = 256;
+const PLAN_LIFECYCLE_HEADER_BYTES: usize = 16;
+const PLAN_LIFECYCLE_RECORD_BYTES: usize = 428;
 const RELAYER_HEADER_BYTES: usize = 88;
 const RELAYER_RECORD_HEADER_BYTES: usize = 276;
+const RELAYER_PREPARED_PLAN_CONTEXT_BYTES: usize = 240;
 const CHECKSUM_OFFSET: usize = 56;
 
 const MAX_DURABLE_IMAGE_BYTES: usize = 64 * 1024 * 1024;
 const MAX_SEALED_NOTE_BYTES: usize = 1024 * 1024;
 const MAX_NOTE_RECORDS: usize = 1_000_000;
 const MAX_RELAYER_RECORDS: usize = 100_000;
+const MAX_PLAN_LIFECYCLE_RECORDS: usize = 1_000_000;
 const MAX_RELAYER_ACCOUNTS: usize = 256;
 const MAX_RELAYER_INSTRUCTION_BYTES: usize = 1024 * 1024;
 
@@ -80,6 +88,7 @@ pub enum DurableStateErrorV1 {
     CandidateStateMismatch,
     InvalidRollback,
     InvalidSpendUpdate,
+    InvalidPlanLifecycle,
     SpendNotAuthorized,
     AlreadySpentDifferently,
     PolicyMismatch,
@@ -322,6 +331,9 @@ pub struct DurableWalletStateV1 {
     scan_state: ScanStateV1,
     note_cipher_id: [u8; 32],
     notes: Vec<StoredSealedNoteV1>,
+    base_prepared_plans: Vec<AuthenticatedPreparedSettlementV1>,
+    prepared_plan_lifecycle: Vec<FinalizedPreparedSettlementLifecycleV1>,
+    active_prepared_plans: Vec<AuthenticatedPreparedSettlementV1>,
 }
 
 impl DurableWalletStateV1 {
@@ -335,27 +347,36 @@ impl DurableWalletStateV1 {
         }
         let file = AtomicStateFileV1::acquire(path.as_ref())?;
         if let Some(bytes) = file.read_optional()? {
-            let (scan_state, stored_cipher_id, notes) = decode_wallet_image_v1(&bytes)?;
+            let (scan_state, stored_cipher_id, notes, base_prepared_plans, lifecycle) =
+                decode_wallet_image_v1(&bytes)?;
             if scan_state.identity() != initial_scan_state.identity() {
                 return Err(DurableStateErrorV1::IdentityMismatch);
             }
             if stored_cipher_id != note_cipher_id {
                 return Err(DurableStateErrorV1::CipherMismatch);
             }
+            let active_prepared_plans =
+                replay_prepared_plan_lifecycle_v1(&base_prepared_plans, &lifecycle)?;
             return Ok(Self {
                 file,
                 scan_state,
                 note_cipher_id,
                 notes,
+                base_prepared_plans,
+                prepared_plan_lifecycle: lifecycle,
+                active_prepared_plans,
             });
         }
-        let bytes = encode_wallet_image_v1(&initial_scan_state, note_cipher_id, &[])?;
+        let bytes = encode_wallet_image_v1(&initial_scan_state, note_cipher_id, &[], &[], &[])?;
         file.replace(&bytes)?;
         Ok(Self {
             file,
             scan_state: initial_scan_state,
             note_cipher_id,
             notes: Vec::new(),
+            base_prepared_plans: Vec::new(),
+            prepared_plan_lifecycle: Vec::new(),
+            active_prepared_plans: Vec::new(),
         })
     }
 
@@ -371,6 +392,12 @@ impl DurableWalletStateV1 {
         &self.notes
     }
 
+    /// Finalized prepared plans not yet closed by a successful `ASPF` or
+    /// `ASPX`. All fields are public account/reconciliation metadata.
+    pub fn active_prepared_plans(&self) -> &[AuthenticatedPreparedSettlementV1] {
+        &self.active_prepared_plans
+    }
+
     /// Advance the rollback anchor and durably commit it without deleting
     /// wallet notes. Deliveries for an event must be reconciled before its
     /// block is pruned because the compact cursor no longer retains that ID.
@@ -380,9 +407,29 @@ impl DurableWalletStateV1 {
     ) -> Result<PruneSummaryV1, DurableStateErrorV1> {
         let mut candidate = self.scan_state.clone();
         let summary = candidate.prune_finalized_history_through_v1(ancestor)?;
-        let bytes = encode_wallet_image_v1(&candidate, self.note_cipher_id, &self.notes)?;
+        let mut base_prepared_plans = self.base_prepared_plans.clone();
+        let mut lifecycle = Vec::new();
+        for event in &self.prepared_plan_lifecycle {
+            if candidate.retains_chain_point_v1(plan_lifecycle_event_id_v1(event).point()) {
+                lifecycle.push(*event);
+            } else {
+                apply_prepared_plan_lifecycle_event_v1(&mut base_prepared_plans, event)?;
+            }
+        }
+        let active_prepared_plans =
+            replay_prepared_plan_lifecycle_v1(&base_prepared_plans, &lifecycle)?;
+        let bytes = encode_wallet_image_v1(
+            &candidate,
+            self.note_cipher_id,
+            &self.notes,
+            &base_prepared_plans,
+            &lifecycle,
+        )?;
         self.file.replace(&bytes)?;
         self.scan_state = candidate;
+        self.base_prepared_plans = base_prepared_plans;
+        self.prepared_plan_lifecycle = lifecycle;
+        self.active_prepared_plans = active_prepared_plans;
         Ok(summary)
     }
 
@@ -520,10 +567,47 @@ impl DurableWalletStateV1 {
             }
         }
 
-        let bytes = encode_wallet_image_v1(&candidate_scan_state, self.note_cipher_id, &notes)?;
+        validate_reported_plan_lifecycle_v1(result)?;
+        let mut lifecycle = self.prepared_plan_lifecycle.clone();
+        if result.rollback.is_some() {
+            lifecycle.retain(|event| {
+                candidate_scan_state
+                    .retains_chain_point_v1(plan_lifecycle_event_id_v1(event).point())
+            });
+        }
+        for event in &result.plan_lifecycle {
+            if !candidate_scan_state
+                .retains_chain_point_v1(plan_lifecycle_event_id_v1(event).point())
+            {
+                return Err(DurableStateErrorV1::CandidateStateMismatch);
+            }
+            if let Some(existing) = lifecycle.iter().find(|existing| {
+                plan_lifecycle_event_id_v1(existing) == plan_lifecycle_event_id_v1(event)
+            }) {
+                if existing != event {
+                    return Err(DurableStateErrorV1::InvalidPlanLifecycle);
+                }
+                continue;
+            }
+            lifecycle.push(*event);
+        }
+        if lifecycle.len() > MAX_PLAN_LIFECYCLE_RECORDS {
+            return Err(DurableStateErrorV1::CountOverflow);
+        }
+        let active_prepared_plans =
+            replay_prepared_plan_lifecycle_v1(&self.base_prepared_plans, &lifecycle)?;
+        let bytes = encode_wallet_image_v1(
+            &candidate_scan_state,
+            self.note_cipher_id,
+            &notes,
+            &self.base_prepared_plans,
+            &lifecycle,
+        )?;
         self.file.replace(&bytes)?;
         self.scan_state = candidate_scan_state;
         self.notes = notes;
+        self.prepared_plan_lifecycle = lifecycle;
+        self.active_prepared_plans = active_prepared_plans;
         Ok(())
     }
 
@@ -556,7 +640,13 @@ impl DurableWalletStateV1 {
         }
         let mut notes = self.notes.clone();
         insert_sealed_note_v1(&mut notes, recovered)?;
-        let bytes = encode_wallet_image_v1(&self.scan_state, self.note_cipher_id, &notes)?;
+        let bytes = encode_wallet_image_v1(
+            &self.scan_state,
+            self.note_cipher_id,
+            &notes,
+            &self.base_prepared_plans,
+            &self.prepared_plan_lifecycle,
+        )?;
         self.file.replace(&bytes)?;
         self.notes = notes;
         Ok(RelayerEnqueueOutcomeV1::Inserted)
@@ -646,6 +736,164 @@ fn validate_candidate_transition_v1(
     Ok(())
 }
 
+fn plan_lifecycle_event_id_v1(event: &FinalizedPreparedSettlementLifecycleV1) -> DepositEventIdV1 {
+    match event {
+        FinalizedPreparedSettlementLifecycleV1::Prepared(plan) => plan.id,
+        FinalizedPreparedSettlementLifecycleV1::Settled { id, .. } => *id,
+        FinalizedPreparedSettlementLifecycleV1::Cancelled(cancelled) => cancelled.id,
+    }
+}
+
+fn prepared_plan_identity_v1(
+    plan: &AuthenticatedPreparedSettlementV1,
+) -> AuthenticatedPreparedSettlementPlanIdentityV1 {
+    AuthenticatedPreparedSettlementPlanIdentityV1 {
+        plan_authority: plan.plan_authority,
+        core_plan: plan.core_plan,
+        rollover_shard: plan.rollover_shard,
+    }
+}
+
+fn validate_reported_plan_lifecycle_v1(
+    result: &FinalizedBlockIngestResultV1,
+) -> Result<(), DurableStateErrorV1> {
+    let prepared: Vec<_> = result
+        .plan_lifecycle
+        .iter()
+        .filter_map(|event| match event {
+            FinalizedPreparedSettlementLifecycleV1::Prepared(plan) => Some(*plan),
+            _ => None,
+        })
+        .collect();
+    let cancelled: Vec<_> = result
+        .plan_lifecycle
+        .iter()
+        .filter_map(|event| match event {
+            FinalizedPreparedSettlementLifecycleV1::Cancelled(plan) => Some(*plan),
+            _ => None,
+        })
+        .collect();
+    let settled: Vec<_> = result
+        .plan_lifecycle
+        .iter()
+        .filter_map(|event| match event {
+            FinalizedPreparedSettlementLifecycleV1::Settled { id, plan } => Some((*id, *plan)),
+            _ => None,
+        })
+        .collect();
+    let expected_settled: Vec<_> = result
+        .transition_evidence
+        .iter()
+        .filter_map(|evidence| {
+            evidence
+                .settled_plan
+                .map(|plan| (evidence.output_ids.first().copied(), plan))
+        })
+        .map(|(id, plan)| {
+            id.map(|id| (id, plan))
+                .ok_or(DurableStateErrorV1::InvalidPlanLifecycle)
+        })
+        .collect::<Result<_, _>>()?;
+    if prepared != result.prepared_settlements
+        || cancelled != result.cancelled_settlements
+        || settled != expected_settled
+    {
+        return Err(DurableStateErrorV1::InvalidPlanLifecycle);
+    }
+    let mut ids = HashSet::new();
+    if !result
+        .plan_lifecycle
+        .iter()
+        .all(|event| ids.insert(plan_lifecycle_event_id_v1(event)))
+    {
+        return Err(DurableStateErrorV1::InvalidPlanLifecycle);
+    }
+    Ok(())
+}
+
+fn apply_prepared_plan_lifecycle_event_v1(
+    active: &mut Vec<AuthenticatedPreparedSettlementV1>,
+    event: &FinalizedPreparedSettlementLifecycleV1,
+) -> Result<(), DurableStateErrorV1> {
+    match event {
+        FinalizedPreparedSettlementLifecycleV1::Prepared(plan) => {
+            if plan.plan_authority == [0u8; 32]
+                || plan.authorization_receipt == [0u8; 32]
+                || plan.verifier_registry == [0u8; 32]
+                || plan.verifier_entry == [0u8; 32]
+                || plan.core_plan == [0u8; 32]
+                || plan.expires_at_slot < plan.not_before_slot
+                || plan.rollover_page.is_some() != plan.rollover_shard.is_some()
+            {
+                return Err(DurableStateErrorV1::InvalidPlanLifecycle);
+            }
+            if active
+                .iter()
+                .any(|existing| existing.core_plan == plan.core_plan)
+            {
+                return Err(DurableStateErrorV1::InvalidPlanLifecycle);
+            }
+            active.push(*plan);
+        }
+        FinalizedPreparedSettlementLifecycleV1::Settled { plan, .. } => {
+            close_prepared_plan_v1(active, *plan)?;
+        }
+        FinalizedPreparedSettlementLifecycleV1::Cancelled(cancelled) => {
+            close_prepared_plan_v1(
+                active,
+                AuthenticatedPreparedSettlementPlanIdentityV1 {
+                    plan_authority: cancelled.plan_authority,
+                    core_plan: cancelled.core_plan,
+                    rollover_shard: cancelled.rollover_shard,
+                },
+            )?;
+        }
+    }
+    Ok(())
+}
+
+fn close_prepared_plan_v1(
+    active: &mut Vec<AuthenticatedPreparedSettlementV1>,
+    identity: AuthenticatedPreparedSettlementPlanIdentityV1,
+) -> Result<(), DurableStateErrorV1> {
+    if identity.plan_authority == [0u8; 32] || identity.core_plan == [0u8; 32] {
+        return Err(DurableStateErrorV1::InvalidPlanLifecycle);
+    }
+    let Some(index) = active
+        .iter()
+        .position(|plan| plan.core_plan == identity.core_plan)
+    else {
+        // A wallet may begin scanning after the corresponding ASPP. The
+        // authenticated closure is still retained in the rollback journal.
+        return Ok(());
+    };
+    if prepared_plan_identity_v1(&active[index]) != identity {
+        return Err(DurableStateErrorV1::InvalidPlanLifecycle);
+    }
+    active.remove(index);
+    Ok(())
+}
+
+fn replay_prepared_plan_lifecycle_v1(
+    base: &[AuthenticatedPreparedSettlementV1],
+    lifecycle: &[FinalizedPreparedSettlementLifecycleV1],
+) -> Result<Vec<AuthenticatedPreparedSettlementV1>, DurableStateErrorV1> {
+    let mut active = base.to_vec();
+    let mut cores = HashSet::new();
+    if !active.iter().all(|plan| cores.insert(plan.core_plan)) {
+        return Err(DurableStateErrorV1::DuplicateRecord);
+    }
+    let mut ids = HashSet::new();
+    for event in lifecycle {
+        if !ids.insert(plan_lifecycle_event_id_v1(event)) {
+            return Err(DurableStateErrorV1::DuplicateRecord);
+        }
+        apply_prepared_plan_lifecycle_event_v1(&mut active, event)?;
+    }
+    active.sort_by_key(|plan| plan.core_plan);
+    Ok(active)
+}
+
 fn validate_sealed_note_v1(note: &SealedRecoveredNoteV1) -> Result<(), DurableStateErrorV1> {
     if note.sealed_note.is_empty() || note.sealed_note.len() > MAX_SEALED_NOTE_BYTES {
         return Err(DurableStateErrorV1::InvalidSealedNote);
@@ -681,10 +929,145 @@ fn insert_sealed_note_v1(
     Ok(())
 }
 
+fn encode_plan_lifecycle_record_v1(
+    event: &FinalizedPreparedSettlementLifecycleV1,
+) -> Result<[u8; PLAN_LIFECYCLE_RECORD_BYTES], DurableStateErrorV1> {
+    let mut bytes = [0u8; PLAN_LIFECYCLE_RECORD_BYTES];
+    bytes[..108].copy_from_slice(&encode_event_id_v1(plan_lifecycle_event_id_v1(event)));
+    match event {
+        FinalizedPreparedSettlementLifecycleV1::Prepared(plan) => {
+            bytes[108] = 1;
+            bytes[109] = plan.transition_kind as u8;
+            bytes[110] = u8::from(plan.rollover_page.is_some())
+                | (u8::from(plan.rollover_shard.is_some()) << 1);
+            bytes[116..124].copy_from_slice(&plan.source_root_sequence.to_le_bytes());
+            bytes[124..132].copy_from_slice(&plan.not_before_slot.to_le_bytes());
+            bytes[132..140].copy_from_slice(&plan.expires_at_slot.to_le_bytes());
+            bytes[140..172].copy_from_slice(&plan.plan_authority);
+            bytes[172..204].copy_from_slice(&plan.authorization_receipt);
+            bytes[204..236].copy_from_slice(&plan.verifier_registry);
+            bytes[236..268].copy_from_slice(&plan.verifier_entry);
+            bytes[268..300].copy_from_slice(&plan.core_plan);
+            if let Some(page) = plan.rollover_page {
+                bytes[300..332].copy_from_slice(&page);
+            }
+            if let Some(shard) = plan.rollover_shard {
+                bytes[332..364].copy_from_slice(&shard);
+            }
+            bytes[364..396].copy_from_slice(&plan.verifier_profile);
+            bytes[396..428].copy_from_slice(&plan.verifier_release);
+        }
+        FinalizedPreparedSettlementLifecycleV1::Settled { plan, .. } => {
+            bytes[108] = 2;
+            bytes[110] = u8::from(plan.rollover_shard.is_some()) << 1;
+            bytes[140..172].copy_from_slice(&plan.plan_authority);
+            bytes[268..300].copy_from_slice(&plan.core_plan);
+            if let Some(shard) = plan.rollover_shard {
+                bytes[332..364].copy_from_slice(&shard);
+            }
+        }
+        FinalizedPreparedSettlementLifecycleV1::Cancelled(cancelled) => {
+            bytes[108] = 3;
+            bytes[110] = u8::from(cancelled.rollover_shard.is_some()) << 1;
+            bytes[140..172].copy_from_slice(&cancelled.plan_authority);
+            bytes[268..300].copy_from_slice(&cancelled.core_plan);
+            if let Some(shard) = cancelled.rollover_shard {
+                bytes[332..364].copy_from_slice(&shard);
+            }
+        }
+    }
+    Ok(bytes)
+}
+
+fn decode_plan_lifecycle_record_v1(
+    bytes: &[u8],
+) -> Result<FinalizedPreparedSettlementLifecycleV1, DurableStateErrorV1> {
+    if bytes.len() != PLAN_LIFECYCLE_RECORD_BYTES {
+        return Err(DurableStateErrorV1::Truncated);
+    }
+    if bytes[111..116] != [0u8; 5] || bytes[110] & !3 != 0 {
+        return Err(DurableStateErrorV1::NonZeroReserved);
+    }
+    let id = decode_event_id_v1(&read_array_v1(bytes, 0)?)?;
+    let authority = read_array_v1(bytes, 140)?;
+    let core = read_array_v1(bytes, 268)?;
+    let page = (bytes[110] & 1 != 0)
+        .then(|| read_array_v1(bytes, 300))
+        .transpose()?;
+    let shard = (bytes[110] & 2 != 0)
+        .then(|| read_array_v1(bytes, 332))
+        .transpose()?;
+    match bytes[108] {
+        1 => {
+            let transition_kind = match bytes[109] {
+                1 => aspis_statement::pool_v1::PoolV1TransitionKind::PrivateTransfer,
+                2 => aspis_statement::pool_v1::PoolV1TransitionKind::Withdrawal,
+                _ => return Err(DurableStateErrorV1::InvalidPlanLifecycle),
+            };
+            let plan = AuthenticatedPreparedSettlementV1 {
+                id,
+                transition_kind,
+                source_root_sequence: read_u64_v1(bytes, 116)?,
+                not_before_slot: read_u64_v1(bytes, 124)?,
+                expires_at_slot: read_u64_v1(bytes, 132)?,
+                plan_authority: authority,
+                authorization_receipt: read_array_v1(bytes, 172)?,
+                verifier_registry: read_array_v1(bytes, 204)?,
+                verifier_entry: read_array_v1(bytes, 236)?,
+                verifier_profile: read_array_v1(bytes, 364)?,
+                verifier_release: read_array_v1(bytes, 396)?,
+                core_plan: core,
+                rollover_page: page,
+                rollover_shard: shard,
+            };
+            let mut validation = Vec::new();
+            apply_prepared_plan_lifecycle_event_v1(
+                &mut validation,
+                &FinalizedPreparedSettlementLifecycleV1::Prepared(plan),
+            )?;
+            Ok(FinalizedPreparedSettlementLifecycleV1::Prepared(plan))
+        }
+        2 | 3 => {
+            if bytes[109] != 0
+                || page.is_some()
+                || bytes[116..140].iter().any(|byte| *byte != 0)
+                || bytes[172..268].iter().any(|byte| *byte != 0)
+                || bytes[300..332].iter().any(|byte| *byte != 0)
+                || bytes[364..].iter().any(|byte| *byte != 0)
+            {
+                return Err(DurableStateErrorV1::NonZeroReserved);
+            }
+            let identity = AuthenticatedPreparedSettlementPlanIdentityV1 {
+                plan_authority: authority,
+                core_plan: core,
+                rollover_shard: shard,
+            };
+            if authority == [0u8; 32] || core == [0u8; 32] {
+                return Err(DurableStateErrorV1::InvalidPlanLifecycle);
+            }
+            if bytes[108] == 2 {
+                Ok(FinalizedPreparedSettlementLifecycleV1::Settled { id, plan: identity })
+            } else {
+                Ok(FinalizedPreparedSettlementLifecycleV1::Cancelled(
+                    AuthenticatedCancelledSettlementV1 {
+                        id,
+                        plan_authority: authority,
+                        core_plan: core,
+                        rollover_shard: shard,
+                    },
+                ))
+            }
+        }
+        _ => Err(DurableStateErrorV1::InvalidPlanLifecycle),
+    }
+}
+
 fn encode_wallet_image_v1(
     scan_state: &ScanStateV1,
     note_cipher_id: [u8; 32],
     notes: &[StoredSealedNoteV1],
+    base_prepared_plans: &[AuthenticatedPreparedSettlementV1],
+    lifecycle: &[FinalizedPreparedSettlementLifecycleV1],
 ) -> Result<Vec<u8>, DurableStateErrorV1> {
     if note_cipher_id == [0u8; 32] {
         return Err(DurableStateErrorV1::InvalidCipherId);
@@ -692,6 +1075,13 @@ fn encode_wallet_image_v1(
     if notes.len() > MAX_NOTE_RECORDS {
         return Err(DurableStateErrorV1::CountOverflow);
     }
+    if base_prepared_plans.len() > MAX_PLAN_LIFECYCLE_RECORDS
+        || lifecycle.len() > MAX_PLAN_LIFECYCLE_RECORDS
+        || base_prepared_plans.len().saturating_add(lifecycle.len()) > MAX_PLAN_LIFECYCLE_RECORDS
+    {
+        return Err(DurableStateErrorV1::CountOverflow);
+    }
+    replay_prepared_plan_lifecycle_v1(base_prepared_plans, lifecycle)?;
     let scan = encode_scan_state_v1(scan_state)?;
     let scan_length = u64::try_from(scan.len()).map_err(|_| DurableStateErrorV1::CountOverflow)?;
     let note_count = u32::try_from(notes.len()).map_err(|_| DurableStateErrorV1::CountOverflow)?;
@@ -728,22 +1118,71 @@ fn encode_wallet_image_v1(
             return Err(DurableStateErrorV1::ImageTooLarge);
         }
     }
+    if !base_prepared_plans.is_empty() || !lifecycle.is_empty() {
+        let record_count = base_prepared_plans
+            .len()
+            .checked_add(lifecycle.len())
+            .ok_or(DurableStateErrorV1::CountOverflow)?;
+        let lifecycle_bytes = PLAN_LIFECYCLE_HEADER_BYTES
+            .checked_add(
+                record_count
+                    .checked_mul(PLAN_LIFECYCLE_RECORD_BYTES)
+                    .ok_or(DurableStateErrorV1::CountOverflow)?,
+            )
+            .ok_or(DurableStateErrorV1::CountOverflow)?;
+        output[52..56].copy_from_slice(
+            &u32::try_from(lifecycle_bytes)
+                .map_err(|_| DurableStateErrorV1::CountOverflow)?
+                .to_le_bytes(),
+        );
+        let mut header = [0u8; PLAN_LIFECYCLE_HEADER_BYTES];
+        header[..4].copy_from_slice(b"ASPL");
+        header[4] = DURABLE_VERSION;
+        header[8..12].copy_from_slice(
+            &u32::try_from(base_prepared_plans.len())
+                .map_err(|_| DurableStateErrorV1::CountOverflow)?
+                .to_le_bytes(),
+        );
+        header[12..16].copy_from_slice(
+            &u32::try_from(lifecycle.len())
+                .map_err(|_| DurableStateErrorV1::CountOverflow)?
+                .to_le_bytes(),
+        );
+        output.extend_from_slice(&header);
+        let mut base_ordered = base_prepared_plans.to_vec();
+        base_ordered.sort_by_key(|plan| plan.core_plan);
+        for plan in base_ordered {
+            output.extend_from_slice(&encode_plan_lifecycle_record_v1(
+                &FinalizedPreparedSettlementLifecycleV1::Prepared(plan),
+            )?);
+        }
+        for event in lifecycle {
+            output.extend_from_slice(&encode_plan_lifecycle_record_v1(event)?);
+        }
+    }
     finish_checksum_v1(WALLET_CHECKSUM_DOMAIN, &mut output)?;
     Ok(output)
 }
 
 fn decode_wallet_image_v1(
     bytes: &[u8],
-) -> Result<(ScanStateV1, [u8; 32], Vec<StoredSealedNoteV1>), DurableStateErrorV1> {
+) -> Result<
+    (
+        ScanStateV1,
+        [u8; 32],
+        Vec<StoredSealedNoteV1>,
+        Vec<AuthenticatedPreparedSettlementV1>,
+        Vec<FinalizedPreparedSettlementLifecycleV1>,
+    ),
+    DurableStateErrorV1,
+> {
     validate_header_v1(bytes, WALLET_MAGIC, WALLET_HEADER_BYTES)?;
     verify_checksum_v1(WALLET_CHECKSUM_DOMAIN, bytes)?;
     let cipher_id = read_array_v1(bytes, 8)?;
     if cipher_id == [0u8; 32] {
         return Err(DurableStateErrorV1::InvalidCipherId);
     }
-    if bytes[52..56] != [0u8; 4] {
-        return Err(DurableStateErrorV1::NonZeroReserved);
-    }
+    let lifecycle_length = read_u32_v1(bytes, 52)? as usize;
     let scan_length =
         usize::try_from(read_u64_v1(bytes, 40)?).map_err(|_| DurableStateErrorV1::CountOverflow)?;
     let note_count = read_u32_v1(bytes, 48)? as usize;
@@ -813,10 +1252,75 @@ fn decode_wallet_image_v1(
         });
         offset = sealed_end;
     }
-    if offset != bytes.len() {
-        return Err(DurableStateErrorV1::TrailingBytes);
+    let lifecycle_end = offset
+        .checked_add(lifecycle_length)
+        .ok_or(DurableStateErrorV1::CountOverflow)?;
+    if lifecycle_end != bytes.len() {
+        return Err(if lifecycle_end < bytes.len() {
+            DurableStateErrorV1::TrailingBytes
+        } else {
+            DurableStateErrorV1::Truncated
+        });
     }
-    Ok((scan_state, cipher_id, notes))
+    if lifecycle_length == 0 {
+        return Ok((scan_state, cipher_id, notes, Vec::new(), Vec::new()));
+    }
+    let header_end = offset
+        .checked_add(PLAN_LIFECYCLE_HEADER_BYTES)
+        .ok_or(DurableStateErrorV1::CountOverflow)?;
+    let header = bytes
+        .get(offset..header_end)
+        .ok_or(DurableStateErrorV1::Truncated)?;
+    if header[..4] != *b"ASPL" {
+        return Err(DurableStateErrorV1::WrongMagic);
+    }
+    if header[4] != DURABLE_VERSION {
+        return Err(DurableStateErrorV1::WrongVersion);
+    }
+    if header[5..8] != [0u8; 3] {
+        return Err(DurableStateErrorV1::NonZeroReserved);
+    }
+    let base_count = read_u32_v1(header, 8)? as usize;
+    let event_count = read_u32_v1(header, 12)? as usize;
+    if base_count.saturating_add(event_count) > MAX_PLAN_LIFECYCLE_RECORDS
+        || lifecycle_length
+            != PLAN_LIFECYCLE_HEADER_BYTES
+                + (base_count + event_count) * PLAN_LIFECYCLE_RECORD_BYTES
+    {
+        return Err(DurableStateErrorV1::CountOverflow);
+    }
+    offset = header_end;
+    let mut base = Vec::with_capacity(base_count);
+    let mut previous_core = None;
+    for _ in 0..base_count {
+        let end = offset + PLAN_LIFECYCLE_RECORD_BYTES;
+        let event = decode_plan_lifecycle_record_v1(
+            bytes
+                .get(offset..end)
+                .ok_or(DurableStateErrorV1::Truncated)?,
+        )?;
+        let FinalizedPreparedSettlementLifecycleV1::Prepared(plan) = event else {
+            return Err(DurableStateErrorV1::InvalidPlanLifecycle);
+        };
+        if previous_core.is_some_and(|core| core >= plan.core_plan) {
+            return Err(DurableStateErrorV1::NonCanonicalOrder);
+        }
+        previous_core = Some(plan.core_plan);
+        base.push(plan);
+        offset = end;
+    }
+    let mut lifecycle = Vec::with_capacity(event_count);
+    for _ in 0..event_count {
+        let end = offset + PLAN_LIFECYCLE_RECORD_BYTES;
+        lifecycle.push(decode_plan_lifecycle_record_v1(
+            bytes
+                .get(offset..end)
+                .ok_or(DurableStateErrorV1::Truncated)?,
+        )?);
+        offset = end;
+    }
+    replay_prepared_plan_lifecycle_v1(&base, &lifecycle)?;
+    Ok((scan_state, cipher_id, notes, base, lifecycle))
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -1123,11 +1627,19 @@ fn validate_relayer_state_v1(
         {
             return Err(DurableStateErrorV1::InvalidRelayerState);
         }
-        let rebuilt = prepare_permissionless_relayer_plan_v1(
-            entry.plan.snapshot,
-            entry.plan.fee_payer,
-            &entry.plan.instruction,
-        )?;
+        let rebuilt = match entry.plan.prepared_plan {
+            Some(context) => prepare_permissionless_prepared_relayer_plan_v1(
+                entry.plan.snapshot,
+                entry.plan.fee_payer,
+                &context,
+                &entry.plan.instruction,
+            )?,
+            None => prepare_permissionless_relayer_plan_v1(
+                entry.plan.snapshot,
+                entry.plan.fee_payer,
+                &entry.plan.instruction,
+            )?,
+        };
         if rebuilt != entry.plan {
             return Err(DurableStateErrorV1::InvalidRelayerState);
         }
@@ -1140,6 +1652,8 @@ fn policy_allows_kind_v1(policy: RelayerPolicyV1, kind: RelayerRequestKindV1) ->
         RelayerRequestKindV1::Initialize => policy.allow_initialize,
         RelayerRequestKindV1::Deposit => policy.allow_deposit,
         RelayerRequestKindV1::PrepareSettlement => policy.allow_prepare_settlement,
+        RelayerRequestKindV1::SettlePrepared => policy.allow_settle_prepared,
+        RelayerRequestKindV1::CancelPrepared => policy.allow_cancel_prepared,
         RelayerRequestKindV1::PrivateTransfer => policy.allow_private_transfer,
         RelayerRequestKindV1::Withdrawal => policy.allow_withdrawal,
     }
@@ -1220,6 +1734,69 @@ fn validate_policy_shape_v1(policy: RelayerPolicyV1) -> Result<(), DurableStateE
     Ok(())
 }
 
+fn encode_relayer_prepared_plan_context_v1(
+    context: crate::transaction_builder::PreparedSettlementValidationContextV1,
+) -> [u8; RELAYER_PREPARED_PLAN_CONTEXT_BYTES] {
+    let mut bytes = [0u8; RELAYER_PREPARED_PLAN_CONTEXT_BYTES];
+    bytes[0] = context.transition_kind as u8;
+    bytes[1] =
+        u8::from(context.rollover_shard.is_some()) | (u8::from(context.asset_mint.is_some()) << 1);
+    bytes[8..16].copy_from_slice(&context.source_root_sequence.to_le_bytes());
+    bytes[16..48].copy_from_slice(context.plan_authority.as_ref());
+    bytes[48..80].copy_from_slice(context.authorization_receipt.as_ref());
+    bytes[80..112].copy_from_slice(&context.verifier_profile);
+    bytes[112..144].copy_from_slice(&context.verifier_release);
+    bytes[144..176].copy_from_slice(context.core_plan.as_ref());
+    if let Some(shard) = context.rollover_shard {
+        bytes[176..208].copy_from_slice(shard.as_ref());
+    }
+    if let Some(mint) = context.asset_mint {
+        bytes[208..240].copy_from_slice(mint.as_ref());
+    }
+    bytes
+}
+
+fn decode_relayer_prepared_plan_context_v1(
+    bytes: &[u8],
+) -> Result<crate::transaction_builder::PreparedSettlementValidationContextV1, DurableStateErrorV1>
+{
+    if bytes.len() != RELAYER_PREPARED_PLAN_CONTEXT_BYTES {
+        return Err(DurableStateErrorV1::Truncated);
+    }
+    if bytes[1] & !3 != 0 || bytes[2..8].iter().any(|byte| *byte != 0) {
+        return Err(DurableStateErrorV1::NonZeroReserved);
+    }
+    let transition_kind = match bytes[0] {
+        1 => aspis_statement::pool_v1::PoolV1TransitionKind::PrivateTransfer,
+        2 => aspis_statement::pool_v1::PoolV1TransitionKind::Withdrawal,
+        _ => return Err(DurableStateErrorV1::InvalidRelayerState),
+    };
+    let rollover_shard = (bytes[1] & 1 != 0)
+        .then(|| read_array_v1(bytes, 176).map(Pubkey::new_from_array))
+        .transpose()?;
+    let asset_mint = (bytes[1] & 2 != 0)
+        .then(|| read_array_v1(bytes, 208).map(Pubkey::new_from_array))
+        .transpose()?;
+    if rollover_shard.is_none() && bytes[176..208].iter().any(|byte| *byte != 0)
+        || asset_mint.is_none() && bytes[208..240].iter().any(|byte| *byte != 0)
+    {
+        return Err(DurableStateErrorV1::NonZeroReserved);
+    }
+    Ok(
+        crate::transaction_builder::PreparedSettlementValidationContextV1 {
+            transition_kind,
+            source_root_sequence: read_u64_v1(bytes, 8)?,
+            plan_authority: Pubkey::new_from_array(read_array_v1(bytes, 16)?),
+            authorization_receipt: Pubkey::new_from_array(read_array_v1(bytes, 48)?),
+            verifier_profile: read_array_v1(bytes, 80)?,
+            verifier_release: read_array_v1(bytes, 112)?,
+            core_plan: Pubkey::new_from_array(read_array_v1(bytes, 144)?),
+            rollover_shard,
+            asset_mint,
+        },
+    )
+}
+
 fn encode_relayer_image_v1(
     policy_id: [u8; 32],
     rate_window_start_slot: u64,
@@ -1252,6 +1829,7 @@ fn encode_relayer_image_v1(
             DurableRelayerStatusV1::Queued => 0,
             DurableRelayerStatusV1::Inflight => 1,
         };
+        header[34] = u8::from(entry.plan.prepared_plan.is_some());
         header[36..68].copy_from_slice(entry.plan.snapshot.pinned_program_id.as_ref());
         header[68..100].copy_from_slice(entry.plan.snapshot.registry_program.as_ref());
         header[100..108].copy_from_slice(&entry.plan.snapshot.current_root_sequence.to_le_bytes());
@@ -1272,6 +1850,9 @@ fn encode_relayer_image_v1(
             output.push(u8::from(account.is_writable));
         }
         output.extend_from_slice(&entry.plan.instruction.data);
+        if let Some(context) = entry.plan.prepared_plan {
+            output.extend_from_slice(&encode_relayer_prepared_plan_context_v1(context));
+        }
         if output.len() > MAX_DURABLE_IMAGE_BYTES {
             return Err(DurableStateErrorV1::ImageTooLarge);
         }
@@ -1301,7 +1882,12 @@ fn decode_relayer_image_v1(
         let header = bytes
             .get(offset..header_end)
             .ok_or(DurableStateErrorV1::Truncated)?;
-        if header[34..36] != [0u8; 2] || header[272..276] != [0u8; 4] {
+        let has_prepared_plan = match header[34] {
+            0 => false,
+            1 => true,
+            _ => return Err(DurableStateErrorV1::InvalidRelayerState),
+        };
+        if header[35] != 0 || header[272..276] != [0u8; 4] {
             return Err(DurableStateErrorV1::NonZeroReserved);
         }
         let kind = decode_kind_v1(header[32])?;
@@ -1321,6 +1907,13 @@ fn decode_relayer_image_v1(
         let record_end = header_end
             .checked_add(accounts_bytes)
             .and_then(|end| end.checked_add(data_length))
+            .and_then(|end| {
+                end.checked_add(if has_prepared_plan {
+                    RELAYER_PREPARED_PLAN_CONTEXT_BYTES
+                } else {
+                    0
+                })
+            })
             .ok_or(DurableStateErrorV1::CountOverflow)?;
         let body = bytes
             .get(header_end..record_end)
@@ -1344,15 +1937,22 @@ fn decode_relayer_image_v1(
             observed_slot: read_u64_v1(header, 108)?,
             pool_state_sha256: read_array_v1(header, 116)?,
         };
+        let data_end = accounts_bytes + data_length;
+        let prepared_plan = if has_prepared_plan {
+            Some(decode_relayer_prepared_plan_context_v1(&body[data_end..])?)
+        } else {
+            None
+        };
         let plan = RelayerPlanV1 {
             request_id: read_array_v1(header, 0)?,
             kind,
             snapshot,
             fee_payer: Pubkey::new_from_array(read_array_v1(header, 148)?),
+            prepared_plan,
             instruction: Instruction {
                 program_id: Pubkey::new_from_array(read_array_v1(header, 180)?),
                 accounts,
-                data: body[accounts_bytes..].to_vec(),
+                data: body[accounts_bytes..data_end].to_vec(),
             },
         };
         let admission = RelayerAdmissionV1 {
@@ -1411,6 +2011,8 @@ fn encode_kind_v1(kind: RelayerRequestKindV1) -> u8 {
         RelayerRequestKindV1::PrivateTransfer => 2,
         RelayerRequestKindV1::Withdrawal => 3,
         RelayerRequestKindV1::PrepareSettlement => 4,
+        RelayerRequestKindV1::SettlePrepared => 5,
+        RelayerRequestKindV1::CancelPrepared => 6,
     }
 }
 
@@ -1421,6 +2023,8 @@ fn decode_kind_v1(byte: u8) -> Result<RelayerRequestKindV1, DurableStateErrorV1>
         2 => Ok(RelayerRequestKindV1::PrivateTransfer),
         3 => Ok(RelayerRequestKindV1::Withdrawal),
         4 => Ok(RelayerRequestKindV1::PrepareSettlement),
+        5 => Ok(RelayerRequestKindV1::SettlePrepared),
+        6 => Ok(RelayerRequestKindV1::CancelPrepared),
         _ => Err(DurableStateErrorV1::InvalidRelayerState),
     }
 }
@@ -1509,7 +2113,8 @@ mod tests {
         },
         transaction_builder::{
             build_deposit_instruction_v1, build_prepare_withdrawal_instruction_v1,
-            PreparedSettlementRouteAccountsV1,
+            build_settle_prepared_withdrawal_instruction_v1, PreparedSettlementRouteAccountsV1,
+            PreparedSettlementValidationContextV1,
         },
         NoteOpeningV1,
     };
@@ -1594,9 +2199,11 @@ mod tests {
                 },
                 output_ids: vec![output_id],
                 authenticated_transport: vec![0x71, 0x72],
+                settled_plan: None,
             }],
             prepared_settlements: Vec::new(),
             cancelled_settlements: Vec::new(),
+            plan_lifecycle: Vec::new(),
             root_evidence: vec![HistoricalRootEvidenceV1 {
                 event_id: output_id,
                 root_sequence: 1,
@@ -1658,6 +2265,7 @@ mod tests {
             transition_evidence: Vec::new(),
             prepared_settlements: Vec::new(),
             cancelled_settlements: Vec::new(),
+            plan_lifecycle: Vec::new(),
             root_evidence: result.root_evidence.clone(),
             ignored_failed_pool_transactions: 0,
         };
@@ -1713,6 +2321,7 @@ mod tests {
             transition_evidence: Vec::new(),
             prepared_settlements: Vec::new(),
             cancelled_settlements: Vec::new(),
+            plan_lifecycle: Vec::new(),
             root_evidence: Vec::new(),
             ignored_failed_pool_transactions: 0,
         };
@@ -1740,6 +2349,134 @@ mod tests {
             DurableWalletStateV1::open_or_create_v1(&path, initial, [0xc1; 32]).err(),
             Some(DurableStateErrorV1::ChecksumMismatch)
         );
+    }
+
+    #[test]
+    fn prepared_plan_lifecycle_persists_closure_and_rolls_back_atomically() {
+        let directory = TestDirectory::new();
+        let path = directory.path("plans.state");
+        let initial = scan_fixture();
+        let mut store =
+            DurableWalletStateV1::open_or_create_v1(&path, initial.clone(), [0xc1; 32]).unwrap();
+
+        let prepared_point = FinalizedChainPointV1::new(101, [0xa1; 32]).unwrap();
+        let mut prepared_state = initial.clone();
+        prepared_state
+            .advance_finalized_block_v1(
+                FinalizedBlockV1::new(prepared_point, initial.head()).unwrap(),
+            )
+            .unwrap();
+        let prepared_id = DepositEventIdV1::new(prepared_point, [0x51; 64], 0, 0).unwrap();
+        let prepared = AuthenticatedPreparedSettlementV1 {
+            id: prepared_id,
+            transition_kind: PoolV1TransitionKind::PrivateTransfer,
+            source_root_sequence: 0,
+            not_before_slot: 101,
+            expires_at_slot: 120,
+            plan_authority: [0x21; 32],
+            authorization_receipt: [0x22; 32],
+            verifier_registry: [0x23; 32],
+            verifier_entry: [0x24; 32],
+            verifier_profile: [0x25; 32],
+            verifier_release: [0x26; 32],
+            core_plan: [0x27; 32],
+            rollover_page: None,
+            rollover_shard: None,
+        };
+        let prepared_result = FinalizedBlockIngestResultV1 {
+            advance: FinalizedBlockAdvanceV1::Advanced,
+            rollback: None,
+            deposit_event_ids: Vec::new(),
+            deposit_outcomes: Vec::new(),
+            transition_outcomes: Vec::new(),
+            transition_evidence: Vec::new(),
+            prepared_settlements: vec![prepared],
+            cancelled_settlements: Vec::new(),
+            plan_lifecycle: vec![FinalizedPreparedSettlementLifecycleV1::Prepared(prepared)],
+            root_evidence: Vec::new(),
+            ignored_failed_pool_transactions: 0,
+        };
+        store
+            .commit_finalized_ingest_v1(
+                prepared_state,
+                &prepared_result,
+                &[],
+                &[],
+                &RejectAllSpends,
+            )
+            .unwrap();
+        assert_eq!(store.active_prepared_plans(), &[prepared]);
+        drop(store);
+
+        let mut store =
+            DurableWalletStateV1::open_or_create_v1(&path, initial.clone(), [0xc1; 32]).unwrap();
+        assert_eq!(store.active_prepared_plans(), &[prepared]);
+        let cancelled_point = FinalizedChainPointV1::new(102, [0xa2; 32]).unwrap();
+        let mut cancelled_state = store.scan_state().clone();
+        cancelled_state
+            .advance_finalized_block_v1(
+                FinalizedBlockV1::new(cancelled_point, prepared_point).unwrap(),
+            )
+            .unwrap();
+        let cancelled = AuthenticatedCancelledSettlementV1 {
+            id: DepositEventIdV1::new(cancelled_point, [0x52; 64], 0, 0).unwrap(),
+            plan_authority: prepared.plan_authority,
+            core_plan: prepared.core_plan,
+            rollover_shard: None,
+        };
+        let cancelled_result = FinalizedBlockIngestResultV1 {
+            advance: FinalizedBlockAdvanceV1::Advanced,
+            rollback: None,
+            deposit_event_ids: Vec::new(),
+            deposit_outcomes: Vec::new(),
+            transition_outcomes: Vec::new(),
+            transition_evidence: Vec::new(),
+            prepared_settlements: Vec::new(),
+            cancelled_settlements: vec![cancelled],
+            plan_lifecycle: vec![FinalizedPreparedSettlementLifecycleV1::Cancelled(cancelled)],
+            root_evidence: Vec::new(),
+            ignored_failed_pool_transactions: 0,
+        };
+        store
+            .commit_finalized_ingest_v1(
+                cancelled_state,
+                &cancelled_result,
+                &[],
+                &[],
+                &RejectAllSpends,
+            )
+            .unwrap();
+        assert!(store.active_prepared_plans().is_empty());
+
+        let mut replacement = store.scan_state().clone();
+        let rollback = replacement.rollback_to_v1(prepared_point).unwrap();
+        let replacement_point = FinalizedChainPointV1::new(103, [0xb3; 32]).unwrap();
+        replacement
+            .advance_finalized_block_v1(
+                FinalizedBlockV1::new(replacement_point, prepared_point).unwrap(),
+            )
+            .unwrap();
+        let rollback_result = FinalizedBlockIngestResultV1 {
+            advance: FinalizedBlockAdvanceV1::Advanced,
+            rollback: Some(rollback),
+            deposit_event_ids: Vec::new(),
+            deposit_outcomes: Vec::new(),
+            transition_outcomes: Vec::new(),
+            transition_evidence: Vec::new(),
+            prepared_settlements: Vec::new(),
+            cancelled_settlements: Vec::new(),
+            plan_lifecycle: Vec::new(),
+            root_evidence: Vec::new(),
+            ignored_failed_pool_transactions: 0,
+        };
+        store
+            .commit_finalized_ingest_v1(replacement, &rollback_result, &[], &[], &RejectAllSpends)
+            .unwrap();
+        assert_eq!(store.active_prepared_plans(), &[prepared]);
+        drop(store);
+        let restarted =
+            DurableWalletStateV1::open_or_create_v1(&path, initial, [0xc1; 32]).unwrap();
+        assert_eq!(restarted.active_prepared_plans(), &[prepared]);
     }
 
     fn relayer_fixture(amount: u32) -> (RelayerPlanV1, RelayerPolicyV1) {
@@ -1781,6 +2518,8 @@ mod tests {
             allow_initialize: false,
             allow_deposit: true,
             allow_prepare_settlement: true,
+            allow_settle_prepared: true,
+            allow_cancel_prepared: true,
             allow_private_transfer: true,
             allow_withdrawal: true,
             max_snapshot_age_slots: 32,
@@ -1852,6 +2591,8 @@ mod tests {
             allow_initialize: false,
             allow_deposit: false,
             allow_prepare_settlement: true,
+            allow_settle_prepared: true,
+            allow_cancel_prepared: true,
             allow_private_transfer: false,
             allow_withdrawal: false,
             max_snapshot_age_slots: 32,
@@ -1862,6 +2603,74 @@ mod tests {
             max_estimated_fee_lamports: 10_000,
             minimum_fee_payer_reserve_lamports: 1_000_000,
         };
+        (plan, policy)
+    }
+
+    fn prepared_finalization_relayer_fixture() -> (RelayerPlanV1, RelayerPolicyV1) {
+        let program = key(1);
+        let mint = key(2);
+        let pool = pool_v1_state_address(&program, &mint).0;
+        let fee_payer = key(6);
+        let envelope = HistoricalAnchorEnvelopeV1 {
+            transition_kind: PoolV1TransitionKind::Withdrawal,
+            pool: pool.to_bytes(),
+            deployment_domain: [8; 32],
+            anchor_sequence: 7,
+            anchor_root: digest(30),
+            nullifier: digest(40),
+            verifier_profile: [11; 32],
+            verifier_release: [12; 32],
+        };
+        let statement = WithdrawalStatementV1 {
+            pool: envelope.pool,
+            deployment_domain: envelope.deployment_domain,
+            anchor_sequence: envelope.anchor_sequence,
+            anchor_root: envelope.anchor_root,
+            nullifier: envelope.nullifier,
+            asset_id: M31(9),
+            amount: 77,
+            destination_token_account: [13; 32],
+            change_commitment: digest(50),
+        };
+        let instruction = build_settle_prepared_withdrawal_instruction_v1(
+            program,
+            7,
+            mint,
+            &envelope,
+            &statement,
+            PreparedSettlementRouteAccountsV1 {
+                plan_authority: fee_payer,
+                registry_program: key(5),
+                authorization_receipt: key(10),
+            },
+        )
+        .unwrap();
+        let snapshot = crate::relayer::RelayerSnapshotV1 {
+            pinned_program_id: program,
+            registry_program: key(5),
+            current_root_sequence: 7,
+            observed_slot: 900,
+            pool_state_sha256: [0xab; 32],
+        };
+        let context = PreparedSettlementValidationContextV1 {
+            transition_kind: PoolV1TransitionKind::Withdrawal,
+            source_root_sequence: 7,
+            plan_authority: fee_payer,
+            authorization_receipt: key(10),
+            verifier_profile: envelope.verifier_profile,
+            verifier_release: envelope.verifier_release,
+            core_plan: instruction.accounts[7].pubkey,
+            rollover_shard: None,
+            asset_mint: Some(mint),
+        };
+        let plan = prepare_permissionless_prepared_relayer_plan_v1(
+            snapshot,
+            fee_payer,
+            &context,
+            &instruction,
+        )
+        .unwrap();
+        let (_, policy) = prepared_relayer_fixture();
         (plan, policy)
     }
 
@@ -1901,6 +2710,22 @@ mod tests {
                 .unwrap(),
             RelayerEnqueueOutcomeV1::AlreadyPresent
         );
+    }
+
+    #[test]
+    fn prepared_finalization_queue_persists_exact_validation_context() {
+        let directory = TestDirectory::new();
+        let path = directory.path("finalization-relayer.state");
+        let (plan, policy) = prepared_finalization_relayer_fixture();
+        let mut store = DurableRelayerStateV1::open_or_create_v1(&path, policy).unwrap();
+        store
+            .admit_and_enqueue_v1(policy, 910, 5_000, 1_005_000, &plan)
+            .unwrap();
+        drop(store);
+        let restarted = DurableRelayerStateV1::open_or_create_v1(&path, policy).unwrap();
+        assert_eq!(restarted.entries().len(), 1);
+        assert_eq!(restarted.entries()[0].plan, plan);
+        assert!(restarted.entries()[0].plan.prepared_plan.is_some());
     }
 
     #[test]

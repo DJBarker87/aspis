@@ -11,7 +11,10 @@
 use sha2::{Digest as _, Sha256};
 use solana_program::{instruction::Instruction, pubkey::Pubkey};
 
-use crate::transaction_builder::{validate_pool_instruction_v1, PoolTransactionBuilderErrorV1};
+use crate::transaction_builder::{
+    validate_pool_instruction_v1, validate_prepared_plan_instruction_v1,
+    PoolTransactionBuilderErrorV1, PreparedSettlementValidationContextV1,
+};
 
 pub const POOL_V1_RELAYER_REQUEST_DOMAIN: &[u8] =
     b"aspis:pool-v1:permissionless-relayer-request:sha256:v1";
@@ -22,6 +25,8 @@ pub enum RelayerRequestKindV1 {
     Initialize,
     Deposit,
     PrepareSettlement,
+    SettlePrepared,
+    CancelPrepared,
     PrivateTransfer,
     Withdrawal,
 }
@@ -48,6 +53,9 @@ pub struct RelayerPlanV1 {
     /// Public transaction fee-payer address only. No signing material is ever
     /// accepted or retained by this crate.
     pub fee_payer: Pubkey,
+    /// Present only for ASPF/ASPX. This public finalized-ASPP identity is
+    /// persisted with the request so restart can repeat exact validation.
+    pub prepared_plan: Option<PreparedSettlementValidationContextV1>,
     pub instruction: Instruction,
 }
 
@@ -64,6 +72,8 @@ fn request_kind_v1(instruction: &Instruction) -> Result<RelayerRequestKindV1, Re
         Some(b"ASIN") => Ok(RelayerRequestKindV1::Initialize),
         Some(b"ASDI") => Ok(RelayerRequestKindV1::Deposit),
         Some(b"ASPP") => Ok(RelayerRequestKindV1::PrepareSettlement),
+        Some(b"ASPF") => Ok(RelayerRequestKindV1::SettlePrepared),
+        Some(b"ASPX") => Ok(RelayerRequestKindV1::CancelPrepared),
         Some(b"ASPT") => Ok(RelayerRequestKindV1::PrivateTransfer),
         Some(b"ASWD") => Ok(RelayerRequestKindV1::Withdrawal),
         _ => Err(RelayerErrorV1::InvalidInstruction(
@@ -80,19 +90,61 @@ pub fn prepare_permissionless_relayer_plan_v1(
     fee_payer: Pubkey,
     instruction: &Instruction,
 ) -> Result<RelayerPlanV1, RelayerErrorV1> {
+    prepare_permissionless_relayer_plan_after_validation_v1(
+        snapshot,
+        fee_payer,
+        instruction,
+        None,
+        || {
+            validate_pool_instruction_v1(
+                snapshot.pinned_program_id,
+                snapshot.current_root_sequence,
+                snapshot.registry_program,
+                instruction,
+            )
+        },
+    )
+}
+
+/// Validate an untrusted `ASPF`/`ASPX` request against both the Pool snapshot
+/// and finalized `ASPP` plan metadata before exposing it to an operator.
+pub fn prepare_permissionless_prepared_relayer_plan_v1(
+    snapshot: RelayerSnapshotV1,
+    fee_payer: Pubkey,
+    context: &PreparedSettlementValidationContextV1,
+    instruction: &Instruction,
+) -> Result<RelayerPlanV1, RelayerErrorV1> {
+    prepare_permissionless_relayer_plan_after_validation_v1(
+        snapshot,
+        fee_payer,
+        instruction,
+        Some(*context),
+        || {
+            validate_prepared_plan_instruction_v1(
+                snapshot.pinned_program_id,
+                snapshot.current_root_sequence,
+                snapshot.registry_program,
+                context,
+                instruction,
+            )
+        },
+    )
+}
+
+fn prepare_permissionless_relayer_plan_after_validation_v1(
+    snapshot: RelayerSnapshotV1,
+    fee_payer: Pubkey,
+    instruction: &Instruction,
+    prepared_plan: Option<PreparedSettlementValidationContextV1>,
+    validate: impl FnOnce() -> Result<(), PoolTransactionBuilderErrorV1>,
+) -> Result<RelayerPlanV1, RelayerErrorV1> {
     if fee_payer == Pubkey::default() {
         return Err(RelayerErrorV1::InvalidFeePayer);
     }
     if snapshot.observed_slot == 0 || snapshot.pool_state_sha256 == [0u8; 32] {
         return Err(RelayerErrorV1::UnauthenticatedSnapshot);
     }
-    validate_pool_instruction_v1(
-        snapshot.pinned_program_id,
-        snapshot.current_root_sequence,
-        snapshot.registry_program,
-        instruction,
-    )
-    .map_err(RelayerErrorV1::InvalidInstruction)?;
+    validate().map_err(RelayerErrorV1::InvalidInstruction)?;
     let kind = request_kind_v1(instruction)?;
 
     let account_count =
@@ -107,6 +159,7 @@ pub fn prepare_permissionless_relayer_plan_v1(
     hasher.update(snapshot.observed_slot.to_le_bytes());
     hasher.update(snapshot.pool_state_sha256);
     hasher.update(fee_payer.as_ref());
+    hash_prepared_plan_context_v1(&mut hasher, prepared_plan);
     hasher.update(account_count.to_le_bytes());
     for account in &instruction.accounts {
         hasher.update(account.pubkey.as_ref());
@@ -119,8 +172,40 @@ pub fn prepare_permissionless_relayer_plan_v1(
         kind,
         snapshot,
         fee_payer,
+        prepared_plan,
         instruction: instruction.clone(),
     })
+}
+
+fn hash_prepared_plan_context_v1(
+    hasher: &mut Sha256,
+    context: Option<PreparedSettlementValidationContextV1>,
+) {
+    let Some(context) = context else {
+        hasher.update([0u8]);
+        return;
+    };
+    hasher.update([1u8, context.transition_kind as u8]);
+    hasher.update(context.source_root_sequence.to_le_bytes());
+    hasher.update(context.plan_authority.as_ref());
+    hasher.update(context.authorization_receipt.as_ref());
+    hasher.update(context.verifier_profile);
+    hasher.update(context.verifier_release);
+    hasher.update(context.core_plan.as_ref());
+    match context.rollover_shard {
+        Some(shard) => {
+            hasher.update([1u8]);
+            hasher.update(shard.as_ref());
+        }
+        None => hasher.update([0u8]),
+    }
+    match context.asset_mint {
+        Some(mint) => {
+            hasher.update([1u8]);
+            hasher.update(mint.as_ref());
+        }
+        None => hasher.update([0u8]),
+    }
 }
 
 /// Public, secret-free operator policy. A production service persists this
@@ -133,6 +218,8 @@ pub struct RelayerPolicyV1 {
     pub allow_initialize: bool,
     pub allow_deposit: bool,
     pub allow_prepare_settlement: bool,
+    pub allow_settle_prepared: bool,
+    pub allow_cancel_prepared: bool,
     pub allow_private_transfer: bool,
     pub allow_withdrawal: bool,
     pub max_snapshot_age_slots: u64,
@@ -187,6 +274,8 @@ fn kind_enabled(policy: RelayerPolicyV1, kind: RelayerRequestKindV1) -> bool {
         RelayerRequestKindV1::Initialize => policy.allow_initialize,
         RelayerRequestKindV1::Deposit => policy.allow_deposit,
         RelayerRequestKindV1::PrepareSettlement => policy.allow_prepare_settlement,
+        RelayerRequestKindV1::SettlePrepared => policy.allow_settle_prepared,
+        RelayerRequestKindV1::CancelPrepared => policy.allow_cancel_prepared,
         RelayerRequestKindV1::PrivateTransfer => policy.allow_private_transfer,
         RelayerRequestKindV1::Withdrawal => policy.allow_withdrawal,
     }
@@ -204,6 +293,8 @@ pub fn relayer_policy_id_v1(policy: RelayerPolicyV1) -> [u8; 32] {
         u8::from(policy.allow_initialize),
         u8::from(policy.allow_deposit),
         u8::from(policy.allow_prepare_settlement),
+        u8::from(policy.allow_settle_prepared),
+        u8::from(policy.allow_cancel_prepared),
         u8::from(policy.allow_private_transfer),
         u8::from(policy.allow_withdrawal),
     ]);
@@ -338,8 +429,9 @@ mod tests {
     };
 
     use crate::transaction_builder::{
-        build_deposit_instruction_v1, build_prepare_withdrawal_instruction_v1,
-        PreparedSettlementRouteAccountsV1,
+        build_cancel_prepared_settlement_instruction_v1, build_deposit_instruction_v1,
+        build_prepare_withdrawal_instruction_v1, build_settle_prepared_withdrawal_instruction_v1,
+        PreparedSettlementRouteAccountsV1, PreparedSettlementValidationContextV1,
     };
 
     fn key(seed: u8) -> Pubkey {
@@ -416,6 +508,8 @@ mod tests {
             allow_initialize: false,
             allow_deposit: true,
             allow_prepare_settlement: true,
+            allow_settle_prepared: true,
+            allow_cancel_prepared: true,
             allow_private_transfer: true,
             allow_withdrawal: true,
             max_snapshot_age_slots: 32,
@@ -566,6 +660,8 @@ mod tests {
             allow_initialize: false,
             allow_deposit: false,
             allow_prepare_settlement: false,
+            allow_settle_prepared: false,
+            allow_cancel_prepared: false,
             allow_private_transfer: false,
             allow_withdrawal: false,
             max_snapshot_age_slots: 32,
@@ -596,5 +692,71 @@ mod tests {
         let admission = admit_relayer_plan_v1(enabled, context, &first).unwrap();
         assert_eq!(admission.kind, RelayerRequestKindV1::PrepareSettlement);
         assert_ne!(relayer_policy_id_v1(enabled), relayer_policy_id_v1(policy));
+
+        let finalize = build_settle_prepared_withdrawal_instruction_v1(
+            program_id,
+            7,
+            mint,
+            &envelope,
+            &statement,
+            PreparedSettlementRouteAccountsV1 {
+                plan_authority: fee_payer,
+                registry_program: key(5),
+                authorization_receipt: key(10),
+            },
+        )
+        .unwrap();
+        let plan_context = PreparedSettlementValidationContextV1 {
+            transition_kind: PoolV1TransitionKind::Withdrawal,
+            source_root_sequence: 7,
+            plan_authority: fee_payer,
+            authorization_receipt: key(10),
+            verifier_profile: envelope.verifier_profile,
+            verifier_release: envelope.verifier_release,
+            core_plan: finalize.accounts[7].pubkey,
+            rollover_shard: None,
+            asset_mint: Some(mint),
+        };
+        let finalize_plan = prepare_permissionless_prepared_relayer_plan_v1(
+            snapshot,
+            fee_payer,
+            &plan_context,
+            &finalize,
+        )
+        .unwrap();
+        assert_eq!(finalize_plan.kind, RelayerRequestKindV1::SettlePrepared);
+        assert_eq!(
+            admit_relayer_plan_v1(policy, context, &finalize_plan),
+            Err(RelayerAdmissionErrorV1::InstructionKindDisabled)
+        );
+        let settle_enabled = RelayerPolicyV1 {
+            allow_settle_prepared: true,
+            ..policy
+        };
+        admit_relayer_plan_v1(settle_enabled, context, &finalize_plan).unwrap();
+
+        let cancel = build_cancel_prepared_settlement_instruction_v1(
+            program_id,
+            fee_payer,
+            plan_context.core_plan,
+            None,
+        )
+        .unwrap();
+        let cancel_plan = prepare_permissionless_prepared_relayer_plan_v1(
+            RelayerSnapshotV1 {
+                current_root_sequence: 8,
+                ..snapshot
+            },
+            fee_payer,
+            &plan_context,
+            &cancel,
+        )
+        .unwrap();
+        assert_eq!(cancel_plan.kind, RelayerRequestKindV1::CancelPrepared);
+        let cancel_enabled = RelayerPolicyV1 {
+            allow_cancel_prepared: true,
+            ..policy
+        };
+        admit_relayer_plan_v1(cancel_enabled, context, &cancel_plan).unwrap();
     }
 }

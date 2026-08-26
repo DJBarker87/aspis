@@ -8,27 +8,33 @@
 use std::collections::BTreeSet;
 
 use aspis_pool::{
-    decode_initialize_instruction_v1, decode_prepare_settlement_instruction_v1,
-    decode_private_transfer_instruction_v1, decode_withdrawal_instruction_v1,
+    decode_cancel_prepared_settlement_instruction_v1, decode_initialize_instruction_v1,
+    decode_prepare_settlement_instruction_v1, decode_private_transfer_instruction_v1,
+    decode_settle_prepared_instruction_v1, decode_withdrawal_instruction_v1,
     deposit::DepositRequestV1,
     deposit_transport::{
         decode_deposit_instruction_v1, encode_deposit_instruction_v1,
         DepositInstructionFormatErrorV1, POOL_V1_DEPOSIT_INSTRUCTION_MAGIC,
     },
-    encode_initialize_instruction_v1, encode_prepare_settlement_instruction_v1,
-    encode_private_transfer_instruction_v1, encode_withdrawal_instruction_v1,
+    encode_cancel_prepared_settlement_instruction_v1, encode_initialize_instruction_v1,
+    encode_prepare_settlement_instruction_v1, encode_private_transfer_instruction_v1,
+    encode_settle_prepared_instruction_v1, encode_withdrawal_instruction_v1,
     pool_v1_nullifier_marker_address, pool_v1_prepared_settlement_plan_address,
     pool_v1_prepared_settlement_rollover_address, pool_v1_root_page_address, pool_v1_state_address,
     pool_v1_vault_authority_address, pool_v1_vault_token_account_address,
-    pool_v1_verifier_entry_address, pool_v1_verifier_registry_address, PoolInitializationV1,
-    PoolInstructionFormatErrorV1, PrepareSettlementInstructionFormatErrorV1,
-    PrivateTransferStatementV1, WithdrawalStatementV1, LEGACY_SPL_TOKEN_PROGRAM_ID,
+    pool_v1_verifier_entry_address, pool_v1_verifier_registry_address,
+    CancelPreparedSettlementAccountShapeV1, CancelPreparedSettlementInstructionFormatErrorV1,
+    PoolInitializationV1, PoolInstructionFormatErrorV1, PrepareSettlementInstructionFormatErrorV1,
+    PrivateTransferStatementV1, SettlePreparedInstructionFormatErrorV1, WithdrawalStatementV1,
+    LEGACY_SPL_TOKEN_PROGRAM_ID, POOL_V1_CANCEL_PREPARED_SETTLEMENT_INSTRUCTION_MAGIC,
     POOL_V1_INITIALIZE_INSTRUCTION_MAGIC, POOL_V1_PREPARE_SETTLEMENT_INSTRUCTION_MAGIC,
-    POOL_V1_PRIVATE_TRANSFER_INSTRUCTION_MAGIC, POOL_V1_WITHDRAWAL_INSTRUCTION_MAGIC,
+    POOL_V1_PRIVATE_TRANSFER_INSTRUCTION_MAGIC, POOL_V1_SETTLE_PREPARED_INSTRUCTION_MAGIC,
+    POOL_V1_WITHDRAWAL_INSTRUCTION_MAGIC,
 };
 use aspis_statement::{
     encode_digest_canonical,
     pool_v1::{
+        decode_pool_v1_private_transfer_public_v1, decode_pool_v1_withdrawal_public_v1,
         root_history_location, verifier_statement_payload_digest_v1, HistoricalAnchorEnvelopeV1,
         PoolV1TransitionKind, POOL_V1_HISTORICAL_ANCHOR_VERSION, POOL_V1_LEAF_CAPACITY,
     },
@@ -54,6 +60,8 @@ pub enum PoolTransactionBuilderErrorV1 {
     DepositFormat(DepositInstructionFormatErrorV1),
     PoolFormat(PoolInstructionFormatErrorV1),
     PreparedSettlementFormat(PrepareSettlementInstructionFormatErrorV1),
+    SettlePreparedFormat(SettlePreparedInstructionFormatErrorV1),
+    CancelPreparedFormat(CancelPreparedSettlementInstructionFormatErrorV1),
 }
 
 impl From<DepositInstructionFormatErrorV1> for PoolTransactionBuilderErrorV1 {
@@ -71,6 +79,18 @@ impl From<PoolInstructionFormatErrorV1> for PoolTransactionBuilderErrorV1 {
 impl From<PrepareSettlementInstructionFormatErrorV1> for PoolTransactionBuilderErrorV1 {
     fn from(error: PrepareSettlementInstructionFormatErrorV1) -> Self {
         Self::PreparedSettlementFormat(error)
+    }
+}
+
+impl From<SettlePreparedInstructionFormatErrorV1> for PoolTransactionBuilderErrorV1 {
+    fn from(error: SettlePreparedInstructionFormatErrorV1) -> Self {
+        Self::SettlePreparedFormat(error)
+    }
+}
+
+impl From<CancelPreparedSettlementInstructionFormatErrorV1> for PoolTransactionBuilderErrorV1 {
+    fn from(error: CancelPreparedSettlementInstructionFormatErrorV1) -> Self {
+        Self::CancelPreparedFormat(error)
     }
 }
 
@@ -95,6 +115,23 @@ pub struct PreparedSettlementRouteAccountsV1 {
     pub plan_authority: Pubkey,
     pub registry_program: Pubkey,
     pub authorization_receipt: Pubkey,
+}
+
+/// Public, secret-free identity of one finalized prepared plan. It is the
+/// extra state required to validate an `ASPF`/`ASPX` request exactly instead
+/// of accepting opaque plan accounts from an untrusted relayer submitter.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct PreparedSettlementValidationContextV1 {
+    pub transition_kind: PoolV1TransitionKind,
+    pub source_root_sequence: u64,
+    pub plan_authority: Pubkey,
+    pub authorization_receipt: Pubkey,
+    pub verifier_profile: [u8; 32],
+    pub verifier_release: [u8; 32],
+    pub core_plan: Pubkey,
+    pub rollover_shard: Option<Pubkey>,
+    /// Required for withdrawals and ignored for private transfers.
+    pub asset_mint: Option<Pubkey>,
 }
 
 fn require_pinned_program(program_id: &Pubkey) -> Result<(), PoolTransactionBuilderErrorV1> {
@@ -461,6 +498,232 @@ pub fn build_prepare_withdrawal_instruction_v1(
     )
 }
 
+#[allow(clippy::too_many_arguments)]
+fn build_settle_prepared_instruction_v1(
+    program_id: Pubkey,
+    current_root_sequence: u64,
+    transition_kind: PoolV1TransitionKind,
+    envelope: &HistoricalAnchorEnvelopeV1,
+    statement_payload: &[u8],
+    route: PreparedSettlementRouteAccountsV1,
+    withdrawal_mint: Option<Pubkey>,
+    withdrawal_destination: Option<Pubkey>,
+) -> Result<Instruction, PoolTransactionBuilderErrorV1> {
+    require_pinned_program(&program_id)?;
+    if route.plan_authority == Pubkey::default()
+        || route.registry_program == Pubkey::default()
+        || route.authorization_receipt == Pubkey::default()
+        || envelope.transition_kind != transition_kind
+    {
+        return Err(PoolTransactionBuilderErrorV1::WrongAccountLayout);
+    }
+    let pool = Pubkey::new_from_array(envelope.pool);
+    let append_count = match transition_kind {
+        PoolV1TransitionKind::PrivateTransfer => 2,
+        PoolV1TransitionKind::Withdrawal => 1,
+    };
+    let final_sequence = current_root_sequence
+        .checked_add(append_count)
+        .ok_or(PoolTransactionBuilderErrorV1::ArithmeticOverflow)?;
+    if current_root_sequence >= POOL_V1_LEAF_CAPACITY || final_sequence > POOL_V1_LEAF_CAPACITY {
+        return Err(PoolTransactionBuilderErrorV1::TreeCapacityExceeded);
+    }
+    let first_sequence = current_root_sequence
+        .checked_add(1)
+        .ok_or(PoolTransactionBuilderErrorV1::ArithmeticOverflow)?;
+    let current_page_number = root_history_location(current_root_sequence).page_number;
+    let first_page_number = root_history_location(first_sequence).page_number;
+    let final_page_number = root_history_location(final_sequence).page_number;
+    if first_page_number < current_page_number
+        || final_page_number > current_page_number.saturating_add(1)
+    {
+        return Err(PoolTransactionBuilderErrorV1::WrongAccountLayout);
+    }
+    let statement_digest = verifier_statement_payload_digest_v1(
+        POOL_V1_HISTORICAL_ANCHOR_VERSION,
+        &envelope.verifier_profile,
+        &envelope.verifier_release,
+        statement_payload,
+        sha256_parts_v1,
+    )
+    .map_err(|_| PoolTransactionBuilderErrorV1::WrongAccountLayout)?;
+    let core_plan = pool_v1_prepared_settlement_plan_address(
+        &program_id,
+        &pool,
+        &statement_digest,
+        current_root_sequence,
+        &route.plan_authority,
+    )
+    .0;
+    let has_rollover = final_page_number > current_page_number;
+    let current_page = pool_v1_root_page_address(&program_id, &pool, current_page_number).0;
+    let mut accounts = vec![
+        AccountMeta::new(route.plan_authority, true),
+        AccountMeta::new(pool, false),
+        if first_page_number == current_page_number {
+            AccountMeta::new(current_page, false)
+        } else {
+            AccountMeta::new_readonly(current_page, false)
+        },
+    ];
+    if has_rollover {
+        accounts.push(AccountMeta::new(
+            pool_v1_root_page_address(&program_id, &pool, final_page_number).0,
+            false,
+        ));
+    }
+    let marker = pool_v1_nullifier_marker_address(
+        &program_id,
+        &pool,
+        &encode_digest_canonical(&envelope.nullifier),
+    )
+    .map_err(|_| PoolTransactionBuilderErrorV1::WrongAccountLayout)?
+    .0;
+    accounts.extend([
+        AccountMeta::new(marker, false),
+        AccountMeta::new_readonly(route.authorization_receipt, false),
+        AccountMeta::new_readonly(
+            pool_v1_verifier_registry_address(&route.registry_program, &pool).0,
+            false,
+        ),
+        AccountMeta::new_readonly(
+            pool_v1_verifier_entry_address(
+                &route.registry_program,
+                &pool,
+                &envelope.verifier_profile,
+                &envelope.verifier_release,
+            )
+            .0,
+            false,
+        ),
+        AccountMeta::new(core_plan, false),
+    ]);
+    if has_rollover {
+        accounts.push(AccountMeta::new(
+            pool_v1_prepared_settlement_rollover_address(&program_id, &core_plan).0,
+            false,
+        ));
+    }
+    accounts.push(AccountMeta::new_readonly(system_program::id(), false));
+    match transition_kind {
+        PoolV1TransitionKind::PrivateTransfer => {
+            if withdrawal_mint.is_some() || withdrawal_destination.is_some() {
+                return Err(PoolTransactionBuilderErrorV1::WrongAccountLayout);
+            }
+        }
+        PoolV1TransitionKind::Withdrawal => {
+            let mint = withdrawal_mint.ok_or(PoolTransactionBuilderErrorV1::WrongAccountLayout)?;
+            let destination =
+                withdrawal_destination.ok_or(PoolTransactionBuilderErrorV1::WrongAccountLayout)?;
+            if pool_v1_state_address(&program_id, &mint).0 != pool {
+                return Err(PoolTransactionBuilderErrorV1::WrongAccountLayout);
+            }
+            accounts.extend([
+                AccountMeta::new_readonly(mint, false),
+                AccountMeta::new(
+                    pool_v1_vault_token_account_address(&program_id, &pool).0,
+                    false,
+                ),
+                AccountMeta::new(destination, false),
+                AccountMeta::new_readonly(
+                    pool_v1_vault_authority_address(&program_id, &pool).0,
+                    false,
+                ),
+                AccountMeta::new_readonly(LEGACY_SPL_TOKEN_PROGRAM_ID, false),
+            ]);
+        }
+    }
+    require_unique_accounts(&accounts)?;
+    Ok(Instruction {
+        program_id,
+        accounts,
+        data: encode_settle_prepared_instruction_v1(transition_kind, statement_payload)?.to_vec(),
+    })
+}
+
+/// Build the exact unsigned `ASPF` finalization for a prepared private
+/// transfer. The authority remains the only signer; this function retains no
+/// signing or proof material.
+pub fn build_settle_prepared_private_transfer_instruction_v1(
+    program_id: Pubkey,
+    current_root_sequence: u64,
+    envelope: &HistoricalAnchorEnvelopeV1,
+    statement: &PrivateTransferStatementV1,
+    route: PreparedSettlementRouteAccountsV1,
+) -> Result<Instruction, PoolTransactionBuilderErrorV1> {
+    let nested = encode_private_transfer_instruction_v1(envelope, statement)?;
+    let decoded = decode_private_transfer_instruction_v1(&nested)?;
+    build_settle_prepared_instruction_v1(
+        program_id,
+        current_root_sequence,
+        PoolV1TransitionKind::PrivateTransfer,
+        &decoded.envelope,
+        decoded.statement_payload,
+        route,
+        None,
+        None,
+    )
+}
+
+/// Build the exact unsigned `ASPF` finalization for a prepared withdrawal.
+#[allow(clippy::too_many_arguments)]
+pub fn build_settle_prepared_withdrawal_instruction_v1(
+    program_id: Pubkey,
+    current_root_sequence: u64,
+    asset_mint: Pubkey,
+    envelope: &HistoricalAnchorEnvelopeV1,
+    statement: &WithdrawalStatementV1,
+    route: PreparedSettlementRouteAccountsV1,
+) -> Result<Instruction, PoolTransactionBuilderErrorV1> {
+    let nested = encode_withdrawal_instruction_v1(envelope, statement)?;
+    let decoded = decode_withdrawal_instruction_v1(&nested)?;
+    build_settle_prepared_instruction_v1(
+        program_id,
+        current_root_sequence,
+        PoolV1TransitionKind::Withdrawal,
+        &decoded.envelope,
+        decoded.statement_payload,
+        route,
+        Some(asset_mint),
+        Some(Pubkey::new_from_array(statement.destination_token_account)),
+    )
+}
+
+/// Build the exact authority-only `ASPX` close/refund instruction for a
+/// finalized prepared-plan identity.
+pub fn build_cancel_prepared_settlement_instruction_v1(
+    program_id: Pubkey,
+    plan_authority: Pubkey,
+    core_plan: Pubkey,
+    rollover_shard: Option<Pubkey>,
+) -> Result<Instruction, PoolTransactionBuilderErrorV1> {
+    require_pinned_program(&program_id)?;
+    if plan_authority == Pubkey::default() || core_plan == Pubkey::default() {
+        return Err(PoolTransactionBuilderErrorV1::WrongAccountLayout);
+    }
+    let shape = if rollover_shard.is_some() {
+        CancelPreparedSettlementAccountShapeV1::CoreAndRolloverShard
+    } else {
+        CancelPreparedSettlementAccountShapeV1::CoreOnly
+    };
+    let mut accounts = vec![
+        AccountMeta::new(plan_authority, true),
+        AccountMeta::new(core_plan, false),
+    ];
+    if let Some(shard) = rollover_shard {
+        if shard != pool_v1_prepared_settlement_rollover_address(&program_id, &core_plan).0 {
+            return Err(PoolTransactionBuilderErrorV1::WrongAccountLayout);
+        }
+        accounts.push(AccountMeta::new(shard, false));
+    }
+    require_unique_accounts(&accounts)?;
+    Ok(Instruction {
+        program_id,
+        accounts,
+        data: encode_cancel_prepared_settlement_instruction_v1(shape).to_vec(),
+    })
+}
+
 fn append_verifier_suffix_v1(
     program_id: &Pubkey,
     pool: &Pubkey,
@@ -741,6 +1004,155 @@ pub fn validate_pool_instruction_v1(
     } else {
         Err(PoolTransactionBuilderErrorV1::WrongAccountLayout)
     }
+}
+
+/// Rebuild and compare an untrusted `ASPF` or `ASPX` request using the exact
+/// public identity authenticated when its `ASPP` plan finalized. This is
+/// deliberately separate from [`validate_pool_instruction_v1`]: a relayer
+/// must not infer a plan authority, verifier release, or core PDA from the
+/// request it is validating.
+pub fn validate_prepared_plan_instruction_v1(
+    pinned_program_id: Pubkey,
+    current_root_sequence: u64,
+    registry_program: Pubkey,
+    context: &PreparedSettlementValidationContextV1,
+    instruction: &Instruction,
+) -> Result<(), PoolTransactionBuilderErrorV1> {
+    require_pinned_program(&pinned_program_id)?;
+    if instruction.program_id != pinned_program_id {
+        return Err(PoolTransactionBuilderErrorV1::WrongProgramId);
+    }
+    require_unique_accounts(&instruction.accounts)?;
+    if context.plan_authority == Pubkey::default()
+        || context.authorization_receipt == Pubkey::default()
+        || context.core_plan == Pubkey::default()
+    {
+        return Err(PoolTransactionBuilderErrorV1::WrongAccountLayout);
+    }
+    let magic = instruction
+        .data
+        .get(..4)
+        .ok_or(PoolTransactionBuilderErrorV1::WrongAccountLayout)?;
+    let rebuilt = if magic == POOL_V1_SETTLE_PREPARED_INSTRUCTION_MAGIC {
+        if context.source_root_sequence != current_root_sequence {
+            return Err(PoolTransactionBuilderErrorV1::WrongAccountLayout);
+        }
+        let settled = decode_settle_prepared_instruction_v1(&instruction.data)?;
+        if settled.transition_kind != context.transition_kind {
+            return Err(PoolTransactionBuilderErrorV1::WrongAccountLayout);
+        }
+        let route = PreparedSettlementRouteAccountsV1 {
+            plan_authority: context.plan_authority,
+            registry_program,
+            authorization_receipt: context.authorization_receipt,
+        };
+        match settled.transition_kind {
+            PoolV1TransitionKind::PrivateTransfer => {
+                if context.asset_mint.is_some() {
+                    return Err(PoolTransactionBuilderErrorV1::WrongAccountLayout);
+                }
+                let public = decode_pool_v1_private_transfer_public_v1(settled.statement_payload)
+                    .map_err(|_| PoolTransactionBuilderErrorV1::WrongAccountLayout)?;
+                let envelope = HistoricalAnchorEnvelopeV1 {
+                    transition_kind: settled.transition_kind,
+                    pool: public.pool,
+                    deployment_domain: public.deployment_domain,
+                    anchor_sequence: public.anchor_sequence,
+                    anchor_root: public.anchor_root,
+                    nullifier: public.nullifier,
+                    verifier_profile: context.verifier_profile,
+                    verifier_release: context.verifier_release,
+                };
+                build_settle_prepared_private_transfer_instruction_v1(
+                    pinned_program_id,
+                    current_root_sequence,
+                    &envelope,
+                    &PrivateTransferStatementV1 {
+                        pool: public.pool,
+                        deployment_domain: public.deployment_domain,
+                        anchor_sequence: public.anchor_sequence,
+                        anchor_root: public.anchor_root,
+                        nullifier: public.nullifier,
+                        asset_id: public.asset_id,
+                        recipient_commitment: public.recipient_commitment,
+                        change_commitment: public.change_commitment,
+                    },
+                    route,
+                )?
+            }
+            PoolV1TransitionKind::Withdrawal => {
+                let mint = context
+                    .asset_mint
+                    .ok_or(PoolTransactionBuilderErrorV1::WrongAccountLayout)?;
+                let public = decode_pool_v1_withdrawal_public_v1(settled.statement_payload)
+                    .map_err(|_| PoolTransactionBuilderErrorV1::WrongAccountLayout)?;
+                let envelope = HistoricalAnchorEnvelopeV1 {
+                    transition_kind: settled.transition_kind,
+                    pool: public.pool,
+                    deployment_domain: public.deployment_domain,
+                    anchor_sequence: public.anchor_sequence,
+                    anchor_root: public.anchor_root,
+                    nullifier: public.nullifier,
+                    verifier_profile: context.verifier_profile,
+                    verifier_release: context.verifier_release,
+                };
+                build_settle_prepared_withdrawal_instruction_v1(
+                    pinned_program_id,
+                    current_root_sequence,
+                    mint,
+                    &envelope,
+                    &WithdrawalStatementV1 {
+                        pool: public.pool,
+                        deployment_domain: public.deployment_domain,
+                        anchor_sequence: public.anchor_sequence,
+                        anchor_root: public.anchor_root,
+                        nullifier: public.nullifier,
+                        asset_id: public.asset_id,
+                        amount: public.amount,
+                        destination_token_account: public.destination_token_account,
+                        change_commitment: public.change_commitment,
+                    },
+                    route,
+                )?
+            }
+        }
+    } else if magic == POOL_V1_CANCEL_PREPARED_SETTLEMENT_INSTRUCTION_MAGIC {
+        let cancelled = decode_cancel_prepared_settlement_instruction_v1(&instruction.data)?;
+        if cancelled.account_shape.has_rollover_shard() != context.rollover_shard.is_some() {
+            return Err(PoolTransactionBuilderErrorV1::WrongAccountLayout);
+        }
+        build_cancel_prepared_settlement_instruction_v1(
+            pinned_program_id,
+            context.plan_authority,
+            context.core_plan,
+            context.rollover_shard,
+        )?
+    } else {
+        return Err(PoolTransactionBuilderErrorV1::WrongAccountLayout);
+    };
+    if rebuilt != *instruction {
+        return Err(PoolTransactionBuilderErrorV1::WrongAccountLayout);
+    }
+    if magic == POOL_V1_SETTLE_PREPARED_INSTRUCTION_MAGIC {
+        let output_count = match context.transition_kind {
+            PoolV1TransitionKind::PrivateTransfer => 2,
+            PoolV1TransitionKind::Withdrawal => 1,
+        };
+        let rollover = root_history_location(current_root_sequence + output_count).page_number
+            > root_history_location(current_root_sequence).page_number;
+        let core_index = if rollover { 8 } else { 7 };
+        if instruction.accounts[core_index].pubkey != context.core_plan
+            || (rollover
+                && instruction.accounts[core_index + 1].pubkey
+                    != context
+                        .rollover_shard
+                        .ok_or(PoolTransactionBuilderErrorV1::WrongAccountLayout)?)
+            || (!rollover && context.rollover_shard.is_some())
+        {
+            return Err(PoolTransactionBuilderErrorV1::WrongAccountLayout);
+        }
+    }
+    Ok(())
 }
 
 #[cfg(test)]
@@ -1166,6 +1578,207 @@ mod tests {
         forged.accounts[2].pubkey = forged.accounts[1].pubkey;
         assert_eq!(
             validate_pool_instruction_v1(program_id, current, route().registry_program, &forged),
+            Err(PoolTransactionBuilderErrorV1::AccountAlias)
+        );
+    }
+
+    #[test]
+    fn prepared_finalization_and_cancellation_are_exact_for_both_shapes() {
+        let program_id = key(1);
+        let mint = key(3);
+        let pool = pool_v1_state_address(&program_id, &mint).0;
+        let private_envelope = envelope(PoolV1TransitionKind::PrivateTransfer, pool);
+        let private_statement = PrivateTransferStatementV1 {
+            pool: pool.to_bytes(),
+            deployment_domain: private_envelope.deployment_domain,
+            anchor_sequence: private_envelope.anchor_sequence,
+            anchor_root: private_envelope.anchor_root,
+            nullifier: private_envelope.nullifier,
+            asset_id: M31(9),
+            recipient_commitment: digest(300),
+            change_commitment: digest(400),
+        };
+        let settled = build_settle_prepared_private_transfer_instruction_v1(
+            program_id,
+            7,
+            &private_envelope,
+            &private_statement,
+            prepared_route(),
+        )
+        .unwrap();
+        assert_eq!(settled.accounts.len(), 9);
+        assert_eq!(
+            decode_settle_prepared_instruction_v1(&settled.data)
+                .unwrap()
+                .transition_kind,
+            PoolV1TransitionKind::PrivateTransfer
+        );
+        let context = PreparedSettlementValidationContextV1 {
+            transition_kind: PoolV1TransitionKind::PrivateTransfer,
+            source_root_sequence: 7,
+            plan_authority: prepared_route().plan_authority,
+            authorization_receipt: prepared_route().authorization_receipt,
+            verifier_profile: private_envelope.verifier_profile,
+            verifier_release: private_envelope.verifier_release,
+            core_plan: settled.accounts[7].pubkey,
+            rollover_shard: None,
+            asset_mint: None,
+        };
+        validate_prepared_plan_instruction_v1(
+            program_id,
+            7,
+            prepared_route().registry_program,
+            &context,
+            &settled,
+        )
+        .unwrap();
+        let cancelled = build_cancel_prepared_settlement_instruction_v1(
+            program_id,
+            context.plan_authority,
+            context.core_plan,
+            None,
+        )
+        .unwrap();
+        assert_eq!(cancelled.accounts.len(), 2);
+        validate_prepared_plan_instruction_v1(
+            program_id,
+            99,
+            prepared_route().registry_program,
+            &context,
+            &cancelled,
+        )
+        .unwrap();
+
+        let withdrawal_envelope = envelope(PoolV1TransitionKind::Withdrawal, pool);
+        let withdrawal_statement = WithdrawalStatementV1 {
+            pool: pool.to_bytes(),
+            deployment_domain: withdrawal_envelope.deployment_domain,
+            anchor_sequence: withdrawal_envelope.anchor_sequence,
+            anchor_root: withdrawal_envelope.anchor_root,
+            nullifier: withdrawal_envelope.nullifier,
+            asset_id: M31(9),
+            amount: 5,
+            destination_token_account: key(11).to_bytes(),
+            change_commitment: digest(500),
+        };
+        let withdrawal = build_settle_prepared_withdrawal_instruction_v1(
+            program_id,
+            7,
+            mint,
+            &withdrawal_envelope,
+            &withdrawal_statement,
+            prepared_route(),
+        )
+        .unwrap();
+        assert_eq!(withdrawal.accounts.len(), 14);
+        let withdrawal_context = PreparedSettlementValidationContextV1 {
+            transition_kind: PoolV1TransitionKind::Withdrawal,
+            core_plan: withdrawal.accounts[7].pubkey,
+            asset_mint: Some(mint),
+            verifier_profile: withdrawal_envelope.verifier_profile,
+            verifier_release: withdrawal_envelope.verifier_release,
+            ..context
+        };
+        validate_prepared_plan_instruction_v1(
+            program_id,
+            7,
+            prepared_route().registry_program,
+            &withdrawal_context,
+            &withdrawal,
+        )
+        .unwrap();
+
+        let current = aspis_statement::pool_v1::POOL_V1_ROOT_HISTORY_CAPACITY as u64 - 1;
+        let rollover = build_settle_prepared_private_transfer_instruction_v1(
+            program_id,
+            current,
+            &private_envelope,
+            &private_statement,
+            prepared_route(),
+        )
+        .unwrap();
+        assert_eq!(rollover.accounts.len(), 11);
+        assert!(!rollover.accounts[2].is_writable);
+        assert!(rollover.accounts[3].is_writable);
+        let rollover_context = PreparedSettlementValidationContextV1 {
+            source_root_sequence: current,
+            core_plan: rollover.accounts[8].pubkey,
+            rollover_shard: Some(rollover.accounts[9].pubkey),
+            ..context
+        };
+        validate_prepared_plan_instruction_v1(
+            program_id,
+            current,
+            prepared_route().registry_program,
+            &rollover_context,
+            &rollover,
+        )
+        .unwrap();
+        let withdrawal_rollover = build_settle_prepared_withdrawal_instruction_v1(
+            program_id,
+            current,
+            mint,
+            &withdrawal_envelope,
+            &withdrawal_statement,
+            prepared_route(),
+        )
+        .unwrap();
+        assert_eq!(withdrawal_rollover.accounts.len(), 16);
+        assert!(!withdrawal_rollover.accounts[2].is_writable);
+        assert!(withdrawal_rollover.accounts[3].is_writable);
+        let withdrawal_rollover_context = PreparedSettlementValidationContextV1 {
+            source_root_sequence: current,
+            core_plan: withdrawal_rollover.accounts[8].pubkey,
+            rollover_shard: Some(withdrawal_rollover.accounts[9].pubkey),
+            ..withdrawal_context
+        };
+        validate_prepared_plan_instruction_v1(
+            program_id,
+            current,
+            prepared_route().registry_program,
+            &withdrawal_rollover_context,
+            &withdrawal_rollover,
+        )
+        .unwrap();
+        let rollover_cancel = build_cancel_prepared_settlement_instruction_v1(
+            program_id,
+            rollover_context.plan_authority,
+            rollover_context.core_plan,
+            rollover_context.rollover_shard,
+        )
+        .unwrap();
+        assert_eq!(rollover_cancel.accounts.len(), 3);
+        validate_prepared_plan_instruction_v1(
+            program_id,
+            current,
+            prepared_route().registry_program,
+            &rollover_context,
+            &rollover_cancel,
+        )
+        .unwrap();
+
+        let mut wrong_authority = context;
+        wrong_authority.plan_authority = key(99);
+        assert_eq!(
+            validate_prepared_plan_instruction_v1(
+                program_id,
+                7,
+                prepared_route().registry_program,
+                &wrong_authority,
+                &settled,
+            ),
+            Err(PoolTransactionBuilderErrorV1::WrongAccountLayout)
+        );
+        let mut aliased = rollover_cancel;
+        aliased.accounts[2].pubkey = aliased.accounts[1].pubkey;
+        assert_eq!(
+            validate_prepared_plan_instruction_v1(
+                program_id,
+                current,
+                prepared_route().registry_program,
+                &rollover_context,
+                &aliased,
+            ),
             Err(PoolTransactionBuilderErrorV1::AccountAlias)
         );
     }

@@ -132,6 +132,12 @@ owner-key lookup interface.
   events. Deposit payloads are scanned in-band; private-transfer/change
   ciphertext delivery is an external channel bound to the finalized `ASTR`
   leaf context.
+- `FinalizedBlockIngestResultV1::plan_lifecycle` preserves successful
+  `ASPP`/`ASPF`/`ASPX` observations in exact invocation order. The durable
+  wallet commits that public journal in the same atomic rename as scan/note
+  updates, reverses orphaned close events on rollback, and folds pruned events
+  into its lifecycle anchor. No proof, signing key, viewing key or note opening
+  enters this metadata.
 - The crate supplies fsync/atomic wallet and relayer state images. Selection
   and key management for the opaque note encryption-at-rest scheme, backups,
   rollback pruning, backfill, missed-slot scheduling, monitoring and

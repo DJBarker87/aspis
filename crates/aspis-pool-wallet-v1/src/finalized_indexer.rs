@@ -29,9 +29,9 @@ use solana_program::pubkey::Pubkey;
 use crate::{
     pool_transport::{
         authenticate_top_level_pool_instruction_v1, AuthenticatedCancelledSettlementV1,
-        AuthenticatedDepositInstructionV1, AuthenticatedPreparedSettlementV1,
-        AuthenticatedTopLevelPoolInstructionV1, AuthenticatedTransitionInstructionV1,
-        PoolRpcAdapterErrorV1,
+        AuthenticatedDepositInstructionV1, AuthenticatedPreparedSettlementPlanIdentityV1,
+        AuthenticatedPreparedSettlementV1, AuthenticatedTopLevelPoolInstructionV1,
+        AuthenticatedTransitionInstructionV1, PoolRpcAdapterErrorV1,
     },
     rpc_adapter::{
         DepositRpcAdapterErrorV1, DepositRpcBindingV1, FinalizedRpcTransactionV1,
@@ -194,8 +194,22 @@ pub struct FinalizedBlockIngestResultV1 {
     pub prepared_settlements: Vec<AuthenticatedPreparedSettlementV1>,
     /// Successful non-appending `ASPX` cancellations in transaction order.
     pub cancelled_settlements: Vec<AuthenticatedCancelledSettlementV1>,
+    /// All `ASPP`/`ASPF`/`ASPX` lifecycle observations in exact successful
+    /// top-level invocation order. Durable reconciliation must use this list,
+    /// not independently sorted transaction signatures.
+    pub plan_lifecycle: Vec<FinalizedPreparedSettlementLifecycleV1>,
     pub root_evidence: Vec<HistoricalRootEvidenceV1>,
     pub ignored_failed_pool_transactions: usize,
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum FinalizedPreparedSettlementLifecycleV1 {
+    Prepared(AuthenticatedPreparedSettlementV1),
+    Settled {
+        id: DepositEventIdV1,
+        plan: AuthenticatedPreparedSettlementPlanIdentityV1,
+    },
+    Cancelled(AuthenticatedCancelledSettlementV1),
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -203,6 +217,7 @@ pub struct FinalizedTransitionEvidenceV1 {
     pub receipt: TransitionReceiptV1,
     pub output_ids: Vec<DepositEventIdV1>,
     pub authenticated_transport: Vec<u8>,
+    pub settled_plan: Option<AuthenticatedPreparedSettlementPlanIdentityV1>,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -892,14 +907,19 @@ pub fn ingest_finalized_rpc_block_v1(
     let mut transition_evidence = Vec::new();
     let mut prepared_settlements = Vec::new();
     let mut cancelled_settlements = Vec::new();
+    let mut plan_lifecycle = Vec::new();
     for invocation in &invocations {
         match invocation {
             PreparedPoolInvocationV1::Initialization => {}
             PreparedPoolInvocationV1::PreparedSettlement(prepared) => {
                 prepared_settlements.push(*prepared);
+                plan_lifecycle.push(FinalizedPreparedSettlementLifecycleV1::Prepared(*prepared));
             }
             PreparedPoolInvocationV1::CancelledSettlement(cancelled) => {
                 cancelled_settlements.push(*cancelled);
+                plan_lifecycle.push(FinalizedPreparedSettlementLifecycleV1::Cancelled(
+                    *cancelled,
+                ));
             }
             PreparedPoolInvocationV1::Deposit(deposit) => {
                 let root = root_evidence
@@ -1018,7 +1038,14 @@ pub fn ingest_finalized_rpc_block_v1(
                     receipt,
                     output_ids: transition.outputs.iter().map(|output| output.id).collect(),
                     authenticated_transport,
+                    settled_plan: transition.settled_plan,
                 });
+                if let Some(plan) = transition.settled_plan {
+                    plan_lifecycle.push(FinalizedPreparedSettlementLifecycleV1::Settled {
+                        id: transition.outputs[0].id,
+                        plan,
+                    });
+                }
             }
         }
     }
@@ -1033,6 +1060,7 @@ pub fn ingest_finalized_rpc_block_v1(
         transition_evidence,
         prepared_settlements,
         cancelled_settlements,
+        plan_lifecycle,
         root_evidence,
         ignored_failed_pool_transactions: prepared.ignored_failed_pool_transactions,
     })

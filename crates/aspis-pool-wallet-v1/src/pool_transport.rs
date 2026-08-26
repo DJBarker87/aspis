@@ -90,6 +90,7 @@ pub struct AuthenticatedTransitionV1 {
 /// does not advance the wallet leaf/nullifier cursor.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct AuthenticatedPreparedSettlementV1 {
+    pub id: DepositEventIdV1,
     pub transition_kind: PoolV1TransitionKind,
     pub source_root_sequence: u64,
     pub not_before_slot: u64,
@@ -98,6 +99,8 @@ pub struct AuthenticatedPreparedSettlementV1 {
     pub authorization_receipt: [u8; 32],
     pub verifier_registry: [u8; 32],
     pub verifier_entry: [u8; 32],
+    pub verifier_profile: [u8; 32],
+    pub verifier_release: [u8; 32],
     pub core_plan: [u8; 32],
     pub rollover_page: Option<[u8; 32]>,
     pub rollover_shard: Option<[u8; 32]>,
@@ -131,10 +134,21 @@ pub struct AuthenticatedTransitionInstructionV1 {
     pub outputs: Vec<AuthenticatedTransitionOutputV1>,
     pub instruction_bytes: Vec<u8>,
     pub observed_pool_return_data: Option<Vec<u8>>,
+    /// Present only for `ASPF`; identifies the authenticated core/shard that
+    /// the same successful append retired.
+    pub settled_plan: Option<AuthenticatedPreparedSettlementPlanIdentityV1>,
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct AuthenticatedPreparedSettlementPlanIdentityV1 {
+    pub plan_authority: [u8; 32],
+    pub core_plan: [u8; 32],
+    pub rollover_shard: Option<[u8; 32]>,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct AuthenticatedCancelledSettlementV1 {
+    pub id: DepositEventIdV1,
     pub plan_authority: [u8; 32],
     pub core_plan: [u8; 32],
     pub rollover_shard: Option<[u8; 32]>,
@@ -325,6 +339,7 @@ fn authenticate_prepared_settlement_v1(
     program_id: &Pubkey,
     identity: &DepositScanIdentityV1,
     current_root_sequence: u64,
+    id: DepositEventIdV1,
     instruction: &ResolvedRpcInstructionV1<'_>,
 ) -> Result<AuthenticatedPreparedSettlementV1, PoolRpcAdapterErrorV1> {
     let prepared = decode_prepare_settlement_instruction_v1(instruction.data)
@@ -472,6 +487,7 @@ fn authenticate_prepared_settlement_v1(
         None
     };
     Ok(AuthenticatedPreparedSettlementV1 {
+        id,
         transition_kind: prepared.transition_kind,
         source_root_sequence: current_root_sequence,
         not_before_slot: prepared.not_before_slot,
@@ -480,6 +496,8 @@ fn authenticate_prepared_settlement_v1(
         authorization_receipt,
         verifier_registry,
         verifier_entry,
+        verifier_profile: envelope.verifier_profile,
+        verifier_release: envelope.verifier_release,
         core_plan: core_plan.to_bytes(),
         rollover_page,
         rollover_shard,
@@ -759,7 +777,7 @@ fn validate_prepared_transition_accounts_v1(
     transition_kind: PoolV1TransitionKind,
     withdrawal_destination: Option<[u8; 32]>,
     instruction: &ResolvedRpcInstructionV1<'_>,
-) -> Result<(), PoolRpcAdapterErrorV1> {
+) -> Result<AuthenticatedPreparedSettlementPlanIdentityV1, PoolRpcAdapterErrorV1> {
     require_unique_instruction_accounts_v1(instruction)?;
     let pool = Pubkey::new_from_array(*identity.pool());
     let current_page_number = root_history_location(current_root_sequence).page_number;
@@ -805,13 +823,27 @@ fn validate_prepared_transition_accounts_v1(
     {
         return Err(PoolRpcAdapterErrorV1::WrongInstructionAccounts);
     }
+    let plan_authority = instruction_account_v1(instruction, 0)?;
+    let core_plan = instruction_account_v1(instruction, cursor + 4)?;
     cursor += 5;
-    if rollover {
-        if instruction_account_v1(instruction, cursor)? == [0u8; 32] {
+    let rollover_shard = if rollover {
+        let shard = instruction_account_v1(instruction, cursor)?;
+        if shard == [0u8; 32]
+            || shard
+                != pool_v1_prepared_settlement_rollover_address(
+                    program_id,
+                    &Pubkey::new_from_array(core_plan),
+                )
+                .0
+                .to_bytes()
+        {
             return Err(PoolRpcAdapterErrorV1::WrongInstructionAccounts);
         }
         cursor += 1;
-    }
+        Some(shard)
+    } else {
+        None
+    };
     if instruction_account_v1(instruction, cursor)? != system_program::id().to_bytes() {
         return Err(PoolRpcAdapterErrorV1::WrongInstructionAccounts);
     }
@@ -830,7 +862,11 @@ fn validate_prepared_transition_accounts_v1(
             return Err(PoolRpcAdapterErrorV1::WrongInstructionAccounts);
         }
     }
-    Ok(())
+    Ok(AuthenticatedPreparedSettlementPlanIdentityV1 {
+        plan_authority,
+        core_plan,
+        rollover_shard,
+    })
 }
 
 #[allow(clippy::too_many_arguments)]
@@ -863,8 +899,8 @@ fn authenticated_transition_without_receipt_v1(
     }
     let destination = (transition_kind == PoolV1TransitionKind::Withdrawal)
         .then_some(second_output_or_destination);
-    if prepared {
-        validate_prepared_transition_accounts_v1(
+    let settled_plan = if prepared {
+        Some(validate_prepared_transition_accounts_v1(
             program_id,
             identity,
             current_root_sequence,
@@ -873,7 +909,7 @@ fn authenticated_transition_without_receipt_v1(
             transition_kind,
             destination,
             instruction,
-        )?;
+        )?)
     } else {
         validate_direct_transition_accounts_v1(
             program_id,
@@ -886,7 +922,8 @@ fn authenticated_transition_without_receipt_v1(
             destination,
             instruction,
         )?;
-    }
+        None
+    };
     let instruction_index =
         u16::try_from(instruction_index).map_err(|_| PoolRpcAdapterErrorV1::EventIdentity)?;
     let first_id = DepositEventIdV1::new(
@@ -937,6 +974,7 @@ fn authenticated_transition_without_receipt_v1(
         outputs,
         instruction_bytes: instruction.data.to_vec(),
         observed_pool_return_data: observed_pool_return_data.map(<[u8]>::to_vec),
+        settled_plan,
     })
 }
 
@@ -975,6 +1013,15 @@ pub fn authenticate_top_level_pool_instruction_v1(
         .data
         .get(..4)
         .ok_or(PoolRpcAdapterErrorV1::UnsupportedPoolInstruction)?;
+    let lifecycle_id = || {
+        DepositEventIdV1::new(
+            transaction.point,
+            transaction.transaction_signature,
+            u16::try_from(instruction_index).map_err(|_| PoolRpcAdapterErrorV1::EventIdentity)?,
+            0,
+        )
+        .map_err(|_| PoolRpcAdapterErrorV1::EventIdentity)
+    };
     if magic == POOL_V1_INITIALIZE_INSTRUCTION_MAGIC {
         return authenticate_initialization_without_receipt_v1(
             &program_id,
@@ -1001,6 +1048,7 @@ pub fn authenticate_top_level_pool_instruction_v1(
             &program_id,
             identity,
             current_root_sequence,
+            lifecycle_id()?,
             instruction,
         )?;
         if observed_pool_return_data.is_some_and(|bytes| !bytes.is_empty()) {
@@ -1022,7 +1070,15 @@ pub fn authenticate_top_level_pool_instruction_v1(
         }
         let rollover_shard = if cancelled.account_shape.has_rollover_shard() {
             let shard = instruction_account_v1(instruction, 2)?;
-            if shard == [0u8; 32] {
+            if shard == [0u8; 32]
+                || shard
+                    != pool_v1_prepared_settlement_rollover_address(
+                        &program_id,
+                        &Pubkey::new_from_array(instruction_account_v1(instruction, 1)?),
+                    )
+                    .0
+                    .to_bytes()
+            {
                 return Err(PoolRpcAdapterErrorV1::WrongInstructionAccounts);
             }
             Some(shard)
@@ -1034,6 +1090,7 @@ pub fn authenticate_top_level_pool_instruction_v1(
         }
         return Ok(AuthenticatedTopLevelPoolInstructionV1::CancelledSettlement(
             AuthenticatedCancelledSettlementV1 {
+                id: lifecycle_id()?,
                 plan_authority: instruction_account_v1(instruction, 0)?,
                 core_plan: instruction_account_v1(instruction, 1)?,
                 rollover_shard,
@@ -1191,6 +1248,14 @@ pub fn authenticate_finalized_rpc_pool_v1<'a>(
             &program_id,
             identity,
             current_root_sequence,
+            DepositEventIdV1::new(
+                transaction.point,
+                transaction.transaction_signature,
+                u16::try_from(instruction_index)
+                    .map_err(|_| PoolRpcAdapterErrorV1::EventIdentity)?,
+                0,
+            )
+            .map_err(|_| PoolRpcAdapterErrorV1::EventIdentity)?,
             instruction,
         )?;
         match transaction.return_data {
@@ -1819,7 +1884,11 @@ mod tests {
         let wire = encode_cancel_prepared_settlement_instruction_v1(
             CancelPreparedSettlementAccountShapeV1::CoreAndRolloverShard,
         );
-        let account_keys = [[8; 32], [9; 32], [10; 32]];
+        let core_plan = Pubkey::new_from_array([9; 32]);
+        let rollover_shard = pool_v1_prepared_settlement_rollover_address(&program_key, &core_plan)
+            .0
+            .to_bytes();
+        let account_keys = [[8; 32], core_plan.to_bytes(), rollover_shard];
         let instructions = [ResolvedRpcInstructionV1 {
             program_id,
             account_keys: &account_keys,
@@ -1865,7 +1934,7 @@ mod tests {
             Some(PoolRpcAdapterErrorV1::ReturnDataMismatch)
         );
 
-        let aliased_accounts = [[8; 32], [8; 32], [10; 32]];
+        let aliased_accounts = [[8; 32], [8; 32], rollover_shard];
         let aliased_instructions = [ResolvedRpcInstructionV1 {
             program_id,
             account_keys: &aliased_accounts,

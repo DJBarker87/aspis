@@ -192,12 +192,18 @@ for the scheduler to retry or record as skipped.
 ## Unsigned builders, local spends and relaying
 
 `transaction_builder` reuses the program crate's frozen encoders and Solana
-SDK address functions to construct exact unsigned `ASIN`, `ASDI`, `ASPT` and
-`ASWD` instructions. It derives every Pool/history/nullifier/vault/registry
+SDK address functions to construct exact unsigned `ASIN`, `ASDI`, `ASPT`,
+`ASWD`, `ASPP`, `ASPF` and `ASPX` instructions. It derives every
+Pool/history/nullifier/vault/registry/prepared-plan
 PDA from an explicitly pinned program id, selects the rollover layout from the
 supplied current root sequence, freezes privilege/order bits and rejects all
 account aliases. Its inverse validator rebuilds an untrusted instruction and
-requires byte-for-byte account/data equality.
+requires byte-for-byte account/data equality. `ASPF`/`ASPX` validation also
+requires the public plan authority, source sequence, verifier profile/release,
+receipt and core/shard identity authenticated from finalized `ASPP`; those
+values are never inferred from the request. `ASPX` remains valid when the Pool
+has advanced beyond the plan's source sequence, matching its authority-only,
+state-independent cancellation semantics.
 
 `wallet_transition` explicitly matches a recovered input owner key to a local
 nullifier/spending key, derives only the public nullifier in zeroized
@@ -217,6 +223,10 @@ admission gate fails closed on emergency pause, stale/future snapshots,
 disabled instruction kinds, a mismatched operator payer, signer mismatch,
 queue or inflight saturation, a global slot-window rate limit, excessive fee
 estimates and insufficient post-fee reserve.
+`ASPF` and `ASPX` have distinct opt-in policy switches. Their deterministic
+requests bind and durably retain the finalized public `ASPP` validation
+context, so restart repeats the same exact validator without retaining proof
+or signing material.
 
 `durable_state` supplies that production storage layer. `DurableWalletStateV1`
 holds the canonical public scan image and only caller-encrypted, opaque note
@@ -228,6 +238,12 @@ record. Reorg commits delete removed note IDs and reverse spent markers whose
 authenticated transition output disappeared. Marking a local input spent also
 requires a `LocalSpendAuthenticatorV1` implementation to match the finalized
 public nullifier without exposing a spending key to this crate.
+The same atomic image carries an ordered, checksummed public plan-lifecycle
+journal. Finalized `ASPP` inserts the authenticated plan, while `ASPF` or
+`ASPX` removes the matching authority/core/shard identity. A retained fork
+removes orphaned lifecycle events and therefore restores a plan whose closure
+was rolled back. Pruning folds old events into an anchor snapshot, keeping
+active-plan state correct without extending the frozen `ASWS` scan-state ABI.
 
 `DurableRelayerStateV1` persists the policy hash, slot-window counter, full
 canonical request/snapshot/instruction, admission record and queued/inflight
