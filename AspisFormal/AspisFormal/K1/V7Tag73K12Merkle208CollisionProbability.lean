@@ -165,8 +165,9 @@ The partial extractor does not hash either canonical-default subtree chain.
 Its collision event is therefore over the actual shared raw log only, without
 the old 38-slot completion surcharge.  A failed sampled traversal has one
 first unresolved digest target.  There are exactly sixteen positions in each
-of the two trees, hence at most thirty-two such targets, all fixed at the
-prover-final prefix before the verifier exposes any typed Merkle answers. -/
+of the two trees, hence at most thirty-two such targets.  The positions may
+depend on earlier q16 sampler answers, but the resulting target set is fixed
+before the verifier exposes the typed Merkle answer currently being tested. -/
 
 def prefixFixedResolutionTargetCap : Nat :=
   2 * disclosedQueryPairs

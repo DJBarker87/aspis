@@ -228,6 +228,226 @@ def resolveC2Path (truncateSha256 : RawHashInput → Digest208)
     Option (ResolvedPath C2Leaf treeDepth) :=
   resolvePath parseC2Leaf truncateSha256 log treeDepth root position.val
 
+/-! ## First unresolved digest targets
+
+This companion traversal returns the digest whose matching preimage is first
+unavailable (or has the wrong grammar) while walking from the public root
+toward one sampled leaf.  Unlike the opening trace, it is root-to-leaf: when
+a parent is already resolved in the prover-final prefix, the next target is
+the selected child digest stored in that prefix-fixed parent.
+-/
+
+def firstUnresolvedTarget {Leaf : Type}
+    (parseLeaf : RawHashInput → Option Leaf)
+    (truncateSha256 : RawHashInput → Digest208)
+    (log : OrderedRawQueryLog) :
+    (height : Nat) → Digest208 → Nat → Option Digest208
+  | 0, target, _ =>
+      match resolveInput truncateSha256 target log with
+      | none => some target
+      | some input =>
+          match parseLeaf input with
+          | none => some target
+          | some _ => none
+  | height + 1, target, position =>
+      match resolveInput truncateSha256 target log with
+      | none => some target
+      | some input =>
+          match parseTypedPreimage input with
+          | some (.node left right) =>
+              if position.testBit height then
+                firstUnresolvedTarget parseLeaf truncateSha256 log
+                  height right position
+              else
+                firstUnresolvedTarget parseLeaf truncateSha256 log
+                  height left position
+          | _ => some target
+
+def firstUnresolvedC1Target
+    (truncateSha256 : RawHashInput → Digest208)
+    (log : OrderedRawQueryLog) (root : Digest208) (position : Position) :
+    Option Digest208 :=
+  firstUnresolvedTarget parseC1Leaf truncateSha256 log treeDepth root
+    position.val
+
+def firstUnresolvedC2Target
+    (truncateSha256 : RawHashInput → Digest208)
+    (log : OrderedRawQueryLog) (root : Digest208) (position : Position) :
+    Option Digest208 :=
+  firstUnresolvedTarget parseC2Leaf truncateSha256 log treeDepth root
+    position.val
+
+theorem resolvePath_none_iff_firstUnresolvedTarget_isSome
+    {Leaf : Type}
+    (parseLeaf : RawHashInput → Option Leaf)
+    (truncateSha256 : RawHashInput → Digest208)
+    (log : OrderedRawQueryLog) : ∀
+    (height : Nat) (target : Digest208) (position : Nat),
+    resolvePath parseLeaf truncateSha256 log height target position = none ↔
+      (firstUnresolvedTarget parseLeaf truncateSha256 log height target
+        position).isSome := by
+  intro height
+  induction height with
+  | zero =>
+      intro target position
+      cases inputEquation : resolveInput truncateSha256 target log with
+      | none => simp [resolvePath, firstUnresolvedTarget, inputEquation]
+      | some input =>
+          cases leafEquation : parseLeaf input with
+          | none =>
+              simp [resolvePath, firstUnresolvedTarget, inputEquation,
+                leafEquation]
+          | some leaf =>
+              simp [resolvePath, firstUnresolvedTarget, inputEquation,
+                leafEquation]
+  | succ height inductionHypothesis =>
+      intro target position
+      cases inputEquation : resolveInput truncateSha256 target log with
+      | none => simp [resolvePath, firstUnresolvedTarget, inputEquation]
+      | some input =>
+          cases typedEquation : parseTypedPreimage input with
+          | none =>
+              simp [resolvePath, firstUnresolvedTarget, inputEquation,
+                typedEquation]
+          | some typed =>
+              cases typed with
+              | c1Leaf value salt =>
+                  simp [resolvePath, firstUnresolvedTarget, inputEquation,
+                    typedEquation]
+              | c2Leaf value salt =>
+                  simp [resolvePath, firstUnresolvedTarget, inputEquation,
+                    typedEquation]
+              | node left right =>
+                  by_cases direction : position.testBit height
+                  · cases childEquation : resolvePath parseLeaf truncateSha256
+                        log height right position with
+                    | none =>
+                        simpa [resolvePath, firstUnresolvedTarget,
+                          inputEquation, typedEquation, direction,
+                          childEquation] using
+                            inductionHypothesis right position
+                    | some child =>
+                        simpa [resolvePath, firstUnresolvedTarget,
+                          inputEquation, typedEquation, direction,
+                          childEquation] using
+                            inductionHypothesis right position
+                  · have directionFalse : position.testBit height = false :=
+                      Bool.eq_false_iff.mpr direction
+                    cases childEquation : resolvePath parseLeaf truncateSha256
+                        log height left position with
+                    | none =>
+                        simpa [resolvePath, firstUnresolvedTarget,
+                          inputEquation, typedEquation, directionFalse,
+                          childEquation] using
+                            inductionHypothesis left position
+                    | some child =>
+                        simpa [resolvePath, firstUnresolvedTarget,
+                          inputEquation, typedEquation, directionFalse,
+                          childEquation] using
+                            inductionHypothesis left position
+
+theorem resolveC1Path_none_iff_firstUnresolvedC1Target_isSome
+    (truncateSha256 : RawHashInput → Digest208)
+    (log : OrderedRawQueryLog) (root : Digest208) (position : Position) :
+    resolveC1Path truncateSha256 log root position = none ↔
+      (firstUnresolvedC1Target truncateSha256 log root position).isSome := by
+  exact resolvePath_none_iff_firstUnresolvedTarget_isSome parseC1Leaf
+    truncateSha256 log treeDepth root position.val
+
+theorem resolveC2Path_none_iff_firstUnresolvedC2Target_isSome
+    (truncateSha256 : RawHashInput → Digest208)
+    (log : OrderedRawQueryLog) (root : Digest208) (position : Position) :
+    resolveC2Path truncateSha256 log root position = none ↔
+      (firstUnresolvedC2Target truncateSha256 log root position).isSome := by
+  exact resolvePath_none_iff_firstUnresolvedTarget_isSome parseC2Leaf
+    truncateSha256 log treeDepth root position.val
+
+def prefixResolutionTargetList
+    (truncateSha256 : RawHashInput → Digest208)
+    (prefixLog : OrderedRawQueryLog) (roots : Roots)
+    (proof : TwoTreeOpeningProof) : List Digest208 :=
+  (List.ofFn (fun ordinal : Fin disclosedQueryPairs =>
+      firstUnresolvedC1Target truncateSha256 prefixLog roots.c1
+        (proof ordinal).position)).filterMap id ++
+    (List.ofFn (fun ordinal : Fin disclosedQueryPairs =>
+      firstUnresolvedC2Target truncateSha256 prefixLog roots.c2
+        (proof ordinal).position)).filterMap id
+
+def prefixResolutionTargetSet
+    (truncateSha256 : RawHashInput → Digest208)
+    (prefixLog : OrderedRawQueryLog) (roots : Roots)
+    (proof : TwoTreeOpeningProof) : Finset Digest208 :=
+  (prefixResolutionTargetList truncateSha256 prefixLog roots proof).toFinset
+
+private theorem filterMap_length_le {Alpha Beta : Type}
+    (map : Alpha → Option Beta) : ∀ values : List Alpha,
+    (values.filterMap map).length ≤ values.length := by
+  intro values
+  induction values with
+  | nil => simp
+  | cons value rest inductionHypothesis =>
+      cases equation : map value with
+      | none =>
+          simp only [List.filterMap_cons, equation]
+          exact inductionHypothesis.trans (Nat.le_succ _)
+      | some mapped =>
+          simp only [List.filterMap_cons, equation, List.length_cons]
+          exact Nat.succ_le_succ inductionHypothesis
+
+theorem prefixResolutionTargetList_length_le
+    (truncateSha256 : RawHashInput → Digest208)
+    (prefixLog : OrderedRawQueryLog) (roots : Roots)
+    (proof : TwoTreeOpeningProof) :
+    (prefixResolutionTargetList truncateSha256 prefixLog roots proof).length ≤
+      2 * disclosedQueryPairs := by
+  unfold prefixResolutionTargetList
+  rw [List.length_append]
+  have c1Bound := filterMap_length_le id
+    (List.ofFn (fun ordinal : Fin disclosedQueryPairs =>
+      firstUnresolvedC1Target truncateSha256 prefixLog roots.c1
+        (proof ordinal).position))
+  have c2Bound := filterMap_length_le id
+    (List.ofFn (fun ordinal : Fin disclosedQueryPairs =>
+      firstUnresolvedC2Target truncateSha256 prefixLog roots.c2
+        (proof ordinal).position))
+  simp only [List.length_ofFn] at c1Bound c2Bound
+  omega
+
+theorem prefixResolutionTargetSet_card_le
+    (truncateSha256 : RawHashInput → Digest208)
+    (prefixLog : OrderedRawQueryLog) (roots : Roots)
+    (proof : TwoTreeOpeningProof) :
+    (prefixResolutionTargetSet truncateSha256 prefixLog roots proof).card ≤
+      2 * disclosedQueryPairs := by
+  exact (List.toFinset_card_le _).trans
+    (prefixResolutionTargetList_length_le truncateSha256 prefixLog roots proof)
+
+theorem firstUnresolvedC1Target_mem_prefixResolutionTargetSet
+    (truncateSha256 : RawHashInput → Digest208)
+    (prefixLog : OrderedRawQueryLog) (roots : Roots)
+    (proof : TwoTreeOpeningProof) (ordinal : Fin disclosedQueryPairs)
+    (target : Digest208)
+    (targetEquation : firstUnresolvedC1Target truncateSha256 prefixLog roots.c1
+      (proof ordinal).position = some target) :
+    target ∈ prefixResolutionTargetSet truncateSha256 prefixLog roots proof := by
+  apply List.mem_toFinset.mpr
+  apply List.mem_append_left
+  apply List.mem_filterMap.mpr
+  exact ⟨some target, List.mem_ofFn.mpr ⟨ordinal, targetEquation⟩, rfl⟩
+
+theorem firstUnresolvedC2Target_mem_prefixResolutionTargetSet
+    (truncateSha256 : RawHashInput → Digest208)
+    (prefixLog : OrderedRawQueryLog) (roots : Roots)
+    (proof : TwoTreeOpeningProof) (ordinal : Fin disclosedQueryPairs)
+    (target : Digest208)
+    (targetEquation : firstUnresolvedC2Target truncateSha256 prefixLog roots.c2
+      (proof ordinal).position = some target) :
+    target ∈ prefixResolutionTargetSet truncateSha256 prefixLog roots proof := by
+  apply List.mem_toFinset.mpr
+  apply List.mem_append_right
+  apply List.mem_filterMap.mpr
+  exact ⟨some target, List.mem_ofFn.mpr ⟨ordinal, targetEquation⟩, rfl⟩
+
 /-! ## Every successful traversal is a prefix-covered opening -/
 
 theorem resolvePath_success_authenticates_and_is_covered
@@ -503,6 +723,45 @@ def PrefixPathResolutionFailure
       resolveC2Path truncateSha256 prefixLog roots.c2
         (proof ordinal).position = none
 
+theorem prefixPathResolutionFailure_yields_firstTarget
+    (truncateSha256 : RawHashInput → Digest208)
+    (prefixLog : OrderedRawQueryLog) (roots : Roots)
+    (proof : TwoTreeOpeningProof)
+    (failure : PrefixPathResolutionFailure truncateSha256 prefixLog roots
+      proof) :
+    ∃ target ∈ prefixResolutionTargetSet truncateSha256 prefixLog roots proof,
+      (∃ ordinal : Fin disclosedQueryPairs,
+        firstUnresolvedC1Target truncateSha256 prefixLog roots.c1
+          (proof ordinal).position = some target) ∨
+      (∃ ordinal : Fin disclosedQueryPairs,
+        firstUnresolvedC2Target truncateSha256 prefixLog roots.c2
+          (proof ordinal).position = some target) := by
+  obtain ⟨ordinal, c1Failure | c2Failure⟩ := failure
+  · have targetExists :=
+      (resolveC1Path_none_iff_firstUnresolvedC1Target_isSome
+        truncateSha256 prefixLog roots.c1 (proof ordinal).position).mp
+          c1Failure
+    cases targetEquation : firstUnresolvedC1Target truncateSha256 prefixLog
+        roots.c1 (proof ordinal).position with
+    | none => simp [targetEquation] at targetExists
+    | some target =>
+        exact ⟨target,
+          firstUnresolvedC1Target_mem_prefixResolutionTargetSet truncateSha256
+            prefixLog roots proof ordinal target targetEquation,
+          Or.inl ⟨ordinal, targetEquation⟩⟩
+  · have targetExists :=
+      (resolveC2Path_none_iff_firstUnresolvedC2Target_isSome
+        truncateSha256 prefixLog roots.c2 (proof ordinal).position).mp
+          c2Failure
+    cases targetEquation : firstUnresolvedC2Target truncateSha256 prefixLog
+        roots.c2 (proof ordinal).position with
+    | none => simp [targetEquation] at targetExists
+    | some target =>
+        exact ⟨target,
+          firstUnresolvedC2Target_mem_prefixResolutionTargetSet truncateSha256
+            prefixLog roots proof ordinal target targetEquation,
+          Or.inr ⟨ordinal, targetEquation⟩⟩
+
 theorem no_prefix_path_resolution_failure_yields_paths
     (truncateSha256 : RawHashInput → Digest208)
     (prefixLog : OrderedRawQueryLog) (roots : Roots)
@@ -602,6 +861,10 @@ theorem accepted_openings_are_prefix_fixed_projections
 #print axioms parseTypedPreimage_success_reserializes
 #print axioms resolveInput_success_digest
 #print axioms resolveInput_success_mem
+#print axioms resolvePath_none_iff_firstUnresolvedTarget_isSome
+#print axioms prefixResolutionTargetList_length_le
+#print axioms prefixResolutionTargetSet_card_le
+#print axioms prefixPathResolutionFailure_yields_firstTarget
 #print axioms resolvePath_success_authenticates_and_is_covered
 #print axioms resolvedC1Path_yields_covered_prefix_opening
 #print axioms resolvedC2Path_yields_covered_prefix_opening
