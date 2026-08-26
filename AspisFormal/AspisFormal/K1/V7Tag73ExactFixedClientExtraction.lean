@@ -6,7 +6,8 @@ import AspisFormal.K1.V7Tag73ExactClientKnowledgeComposition
 
 The restoration client is run by the same result-carrying scheduler as the
 compiler coupling.  A successful extraction for a fixed-instance argument of
-knowledge must return a witness for the public instance fixed before oracle
+knowledge must evaluate the returned fixed extractor on that run's literal
+accumulator and recover a witness for the public instance fixed before oracle
 access; a witness for a different root instance is not counted.
 -/
 
@@ -36,11 +37,12 @@ def exactFixedPlainRomValidClientExtractionEvent
     (fixedInstance : PublicInstance Statement)
     (relation : PublicInstance Statement → Witness → Prop) :
     Set (ExactCompilerSample HiddenTape parameters) :=
-  {sample | ∃ root clientRun witness,
+  {sample | ∃ root clientRun extractor witness,
     exactPlainRomCompleted? transitionFuel configuration sample =
         some (root, clientRun) ∧
       root.adversaryValue.1.publicProof.publicInstance = fixedInstance ∧
-      clientRun.halt = .returned (some witness) ∧
+      clientRun.halt = .returned extractor ∧
+      extractor clientRun.accumulator = some witness ∧
       relation fixedInstance witness}
 
 theorem mem_exact_fixed_plain_rom_valid_client_extraction_event_iff
@@ -54,11 +56,12 @@ theorem mem_exact_fixed_plain_rom_valid_client_extraction_event_iff
     (sample : ExactCompilerSample HiddenTape parameters) :
     sample ∈ exactFixedPlainRomValidClientExtractionEvent transitionFuel
         configuration fixedInstance relation ↔
-      ∃ root clientRun witness,
+      ∃ root clientRun extractor witness,
         exactPlainRomCompleted? transitionFuel configuration sample =
             some (root, clientRun) ∧
           root.adversaryValue.1.publicProof.publicInstance = fixedInstance ∧
-          clientRun.halt = .returned (some witness) ∧
+          clientRun.halt = .returned extractor ∧
+          extractor clientRun.accumulator = some witness ∧
           relation fixedInstance witness := by
   rfl
 
@@ -92,8 +95,10 @@ theorem exact_fixed_valid_extraction_subset_root_indexed
         relation := by
   intro sample member
   rcases member with
-    ⟨root, clientRun, witness, completed, fixedRoot, returned, valid⟩
-  refine ⟨root, clientRun, witness, completed, returned, ?_⟩
+    ⟨root, clientRun, extractor, witness, completed, fixedRoot, returned,
+      extracted, valid⟩
+  refine ⟨root, clientRun, extractor, witness, completed, returned,
+    extracted, ?_⟩
   rw [fixedRoot]
   exact valid
 

@@ -6,10 +6,10 @@ import AspisFormal.K1.V7Tag73ConcreteKnowledgeInsertion
 
 This leaf replaces the outcome-map extraction event used by the older
 observed-proof interface with an event computed from `runExactPlainRom`.
-The restoration client's result type is `Option Witness`: a valid extraction
-sample must reach the actual scheduler terminal, return `some witness` from
-the actual client run, and satisfy the relation for the public instance in
-the actual root prover result.
+The restoration client's result is a fixed extractor program.  A valid
+extraction sample must reach the actual scheduler terminal, apply that program
+to the literal terminal replay accumulator, recover `some witness`, and
+satisfy the relation for the public instance in the actual root prover result.
 
 The left-hand `legalSameTapeEvent` remains an explicit argument because its
 operational construction belongs to the compiler-coupling lane.  This file
@@ -34,15 +34,25 @@ noncomputable section
 
 /-! ## The result-native valid-extraction event -/
 
-/-- The exact plain-ROM configuration whose restoration client returns either
-one extracted witness or no witness.  No separate extractor result map is
-accepted. -/
+/-- A fixed extractor program returned by the restoration client.  It is
+chosen independently of the hidden tape and is evaluated on the literal
+terminal accumulator produced by that client run. -/
+abbrev ExactPlainRomWitnessExtractor
+    (Statement Proof Payload Witness : Type) :=
+  ConcreteRestorationAccumulator Statement Proof Payload → Option Witness
+
+/-- The exact plain-ROM configuration whose restoration client returns an
+extractor program.  Applying it to the actual terminal accumulator lets a
+real extractor inspect the replay nodes it requested without admitting a
+caller-selected per-sample witness map. -/
 abbrev ExactPlainRomWitnessConfiguration
     (HiddenTape TapeIdentity Observation Statement Proof Payload Witness :
       Type)
     (parameters : ExactCompilerResourceParameters) :=
   ExactPlainRomConfiguration HiddenTape TapeIdentity Observation Statement
-    Proof Payload (Option Witness) parameters
+    Proof Payload
+      (ExactPlainRomWitnessExtractor Statement Proof Payload Witness)
+      parameters
 
 /-- A valid extraction is read directly from the actual scheduler/client
 result.  The relation consumes the literal public instance returned at the
@@ -56,10 +66,11 @@ def exactPlainRomValidClientExtractionEvent
       Observation Statement Proof Payload Witness parameters)
     (relation : PublicInstance Statement → Witness → Prop) :
     Set (ExactCompilerSample HiddenTape parameters) :=
-  {sample | ∃ root clientRun witness,
+  {sample | ∃ root clientRun extractor witness,
     exactPlainRomCompleted? transitionFuel configuration sample =
         some (root, clientRun) ∧
-      clientRun.halt = .returned (some witness) ∧
+      clientRun.halt = .returned extractor ∧
+      extractor clientRun.accumulator = some witness ∧
       relation root.adversaryValue.1.publicProof.publicInstance witness}
 
 /-- Kernel-visible expansion showing that membership uses no outcome/world
@@ -75,10 +86,11 @@ theorem exact_plain_rom_valid_client_extraction_event_iff
     (sample : ExactCompilerSample HiddenTape parameters) :
     sample ∈ exactPlainRomValidClientExtractionEvent transitionFuel
         configuration relation ↔
-      ∃ root clientRun witness,
+      ∃ root clientRun extractor witness,
         exactPlainRomCompleted? transitionFuel configuration sample =
             some (root, clientRun) ∧
-          clientRun.halt = .returned (some witness) ∧
+          clientRun.halt = .returned extractor ∧
+          extractor clientRun.accumulator = some witness ∧
           relation root.adversaryValue.1.publicProof.publicInstance witness := by
   rfl
 

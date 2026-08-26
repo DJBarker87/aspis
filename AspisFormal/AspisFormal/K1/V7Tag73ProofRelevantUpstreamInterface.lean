@@ -18,12 +18,13 @@ The four stages remain dependent and separately classified:
 * K1.2 authenticates the two typed, shared-topology 208-bit Merkle trees;
 * K1.3 decodes the deployed circle words and bounded candidate list;
 * K1.4 selects one coherent candidate chain;
-* K1.5 recovers the spend witness and returns it through the actual fixed-
-  instance restoration client.
+* K1.5 recovers the spend witness by applying the actual fixed-instance
+  restoration client's returned extractor to its literal accumulator.
 
 Success at the last stage is not an abstract witness proposition.  It is a
 proof-relevant certificate containing the literal completed scheduler root,
-client run, and returned witness.  The certificate is equivalent to
+client run, returned extractor, accumulator evaluation, and witness.  The
+certificate is equivalent to
 membership in the already defined fixed client-extraction event.
 
 There is deliberately no Fiat--Shamir acceptance field, clean-event field,
@@ -64,8 +65,9 @@ noncomputable section
 /-- Proof-relevant form of the existing fixed client-extraction event.
 
 Every datum is read from the literal result-carrying scheduler.  In
-particular, `clientReturned` is about the actual restoration-client terminal;
-there is no extractor result map or caller-selected witness source. -/
+particular, `clientReturned` is about the actual restoration-client terminal
+and `extractorReturned` evaluates it on that run's actual accumulator; there
+is no caller-selected per-sample witness source. -/
 structure ExactFixedClientExtractionCertificate
     {HiddenTape TapeIdentity Observation Statement Proof Payload Witness : Type}
     {parameters : ExactCompilerResourceParameters}
@@ -78,14 +80,16 @@ structure ExactFixedClientExtractionCertificate
   root : SchedulerNativePlainRomRootRuntime TapeIdentity Statement Proof
     Payload
   clientRun : ConcreteRestorationClientRun Statement Proof Payload
-    (Option Witness)
+    (ExactPlainRomWitnessExtractor Statement Proof Payload Witness)
+  extractor : ExactPlainRomWitnessExtractor Statement Proof Payload Witness
   witness : Witness
   completed :
     exactPlainRomCompleted? transitionFuel configuration sample =
       some (root, clientRun)
   fixedInstanceExact :
     root.adversaryValue.1.publicProof.publicInstance = fixedInstance
-  clientReturned : clientRun.halt = .returned (some witness)
+  clientReturned : clientRun.halt = .returned extractor
+  extractorReturned : extractor clientRun.accumulator = some witness
   relationValid : relation fixedInstance witness
 
 /-- Forgetting the proof-relevant packaging gives membership in the literal
@@ -103,9 +107,11 @@ theorem ExactFixedClientExtractionCertificate.toEventMembership
       configuration fixedInstance relation sample) :
     sample ∈ exactFixedPlainRomValidClientExtractionEvent transitionFuel
       configuration fixedInstance relation := by
-  exact ⟨certificate.root, certificate.clientRun, certificate.witness,
+  exact ⟨certificate.root, certificate.clientRun, certificate.extractor,
+    certificate.witness,
     certificate.completed, certificate.fixedInstanceExact,
-    certificate.clientReturned, certificate.relationValid⟩
+    certificate.clientReturned, certificate.extractorReturned,
+    certificate.relationValid⟩
 
 /-- The event and the proof-relevant certificate contain exactly the same
 root, client-run, witness, and fixed-instance equalities. -/
@@ -123,14 +129,17 @@ theorem mem_exact_fixed_client_extraction_event_iff_certificate
       Nonempty (ExactFixedClientExtractionCertificate transitionFuel
         configuration fixedInstance relation sample) := by
   constructor
-  · rintro ⟨root, clientRun, witness, completed, fixedExact, returned, valid⟩
+  · rintro ⟨root, clientRun, extractor, witness, completed, fixedExact,
+      returned, extracted, valid⟩
     exact ⟨
       { root := root
         clientRun := clientRun
+        extractor := extractor
         witness := witness
         completed := completed
         fixedInstanceExact := fixedExact
         clientReturned := returned
+        extractorReturned := extracted
         relationValid := valid }⟩
   · rintro ⟨certificate⟩
     exact certificate.toEventMembership
