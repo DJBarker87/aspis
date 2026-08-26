@@ -347,6 +347,35 @@ theorem requiredTraceAliases_of_tagged_multisets_equal
   exact requiredTraceAliases_of_copy_sources extraction
     (requiredCopySourceEquations_of_all_required_values_equal extraction allEqual)
 
+/-- The first input-path selection tuple must match either the left or right
+consumer.  Its selector limb therefore forces the physical path bit to zero
+or one; no separate path-bitness premise is needed once the full tagged
+multiset equality has been recovered. -/
+theorem pathBitsAreBinary_of_tagged_multisets_equal
+    {decoder : ExactDecoderInstantiation QM31Exact}
+    {binding : InitialProjectionBinding decoder}
+    {words : V7MerkleQueryExtractor.ExtractedWords}
+    {gamma : QM31Exact} {disclosedFinal : FinalMessage QM31Exact}
+    {schedule : ExactSchedule}
+    (extraction : CoherentTraceExtraction decoder binding words gamma
+      disclosedFinal schedule)
+    (taggedEqual :
+      producerTaggedMultiset
+          (concreteDeployedCopyRegistryProjection extraction) =
+        consumerTaggedMultiset
+          (concreteDeployedCopyRegistryProjection extraction)) :
+    PathBitsAreBinary
+      (rawOpenedColumnsFromTrace (extractedPhysicalTrace extraction)) := by
+  intro level
+  obtain ⟨consumerItem, tupleEqual⟩ :=
+    concrete_pathSelect_producer_matches_consumer extraction taggedEqual
+      level false 0
+  fin_cases consumerItem
+  · exact Or.inl (current_match_left_forces_zero extraction
+      level false tupleEqual)
+  · exact Or.inr (current_match_right_forces_one extraction
+      level false tupleEqual)
+
 /-- Every shared selection tag receives the exact Boolean-dependent pairing. -/
 theorem pathSelect_pair_exact_of_binary_and_tagged_multisets_equal
     {decoder : ExactDecoderInstantiation QM31Exact}
@@ -420,6 +449,7 @@ theorem pathSelect_pair_exact_of_binary_and_tagged_multisets_equal
 #print axioms sibling_match_right_forces_zero
 #print axioms pathSelect_pair_exact_of_bit_zero
 #print axioms pathSelect_pair_exact_of_bit_one
+#print axioms pathBitsAreBinary_of_tagged_multisets_equal
 #print axioms requiredTraceAliases_of_tagged_multisets_equal
 #print axioms pathSelect_pair_exact_of_binary_and_tagged_multisets_equal
 
