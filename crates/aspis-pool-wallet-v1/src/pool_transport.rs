@@ -1,30 +1,37 @@
-//! Exact successful Pool V1 top-level instruction/return-data authentication.
+//! Exact successful Pool V1 top-level instruction authentication.
 //!
-//! Solana return data is transaction-global, so a wallet accepts it only for
-//! one unique, final top-level invocation of the deployment-pinned Pool. This
-//! module extends the original deposit adapter to initialization, preparation,
-//! and the two proof-authorized transitions without accepting inner-instruction
-//! guesses.
+//! Solana return data is transaction-global.  The finalized block adapter
+//! therefore reconstructs every successful top-level Pool invocation in
+//! transaction order from its canonical instruction/accounts and authenticates
+//! append roots from Pool-owned history pages.  Return data from the final Pool
+//! setter is only an additional byte-exact consistency check; later programs
+//! may legitimately overwrite it.
 
 use std::collections::BTreeSet;
 
 use aspis_core::field::M31;
 use aspis_pool::{
-    decode_initialize_instruction_v1, decode_prepare_settlement_instruction_v1,
-    decode_private_transfer_instruction_v1, decode_withdrawal_instruction_v1,
+    decode_cancel_prepared_settlement_instruction_v1, decode_initialize_instruction_v1,
+    decode_prepare_settlement_instruction_v1, decode_private_transfer_instruction_v1,
+    decode_settle_prepared_instruction_v1, decode_withdrawal_instruction_v1,
     instruction::encode_transition_receipt_v1, pool_v1_prepared_settlement_plan_address,
     pool_v1_prepared_settlement_rollover_address, pool_v1_root_page_address, pool_v1_state_address,
-    pool_v1_vault_token_account_address, PrepareSettlementInstructionFormatErrorV1,
-    TransitionReceiptV1, POOL_V1_INITIALIZATION_RECEIPT_BYTES,
+    pool_v1_vault_authority_address, pool_v1_vault_token_account_address,
+    CancelPreparedSettlementInstructionFormatErrorV1, PrepareSettlementInstructionFormatErrorV1,
+    SettlePreparedInstructionFormatErrorV1, TransitionReceiptV1, LEGACY_SPL_TOKEN_PROGRAM_ID,
+    POOL_V1_CANCEL_PREPARED_SETTLEMENT_INSTRUCTION_MAGIC, POOL_V1_INITIALIZATION_RECEIPT_BYTES,
     POOL_V1_INITIALIZE_INSTRUCTION_MAGIC, POOL_V1_PREPARE_SETTLEMENT_INSTRUCTION_MAGIC,
-    POOL_V1_PRIVATE_TRANSFER_INSTRUCTION_MAGIC, POOL_V1_TRANSITION_RECEIPT_BYTES,
-    POOL_V1_TRANSITION_RECEIPT_MAGIC, POOL_V1_WITHDRAWAL_INSTRUCTION_MAGIC,
+    POOL_V1_PRIVATE_TRANSFER_INSTRUCTION_MAGIC, POOL_V1_SETTLE_PREPARED_INSTRUCTION_MAGIC,
+    POOL_V1_TRANSITION_RECEIPT_BYTES, POOL_V1_TRANSITION_RECEIPT_MAGIC,
+    POOL_V1_WITHDRAWAL_INSTRUCTION_MAGIC,
 };
 use aspis_statement::{
     decode_digest_canonical, encode_digest_canonical,
     pool_v1::{
-        root_history_location, verifier_statement_payload_digest_v1, PoolV1TransitionKind,
-        POOL_V1_DIGEST_ENCODING_VERSION, POOL_V1_HISTORICAL_ANCHOR_VERSION, POOL_V1_LEAF_CAPACITY,
+        decode_pool_v1_private_transfer_public_v1, decode_pool_v1_withdrawal_public_v1,
+        pool_v1_note_commitment, root_history_location, verifier_statement_payload_digest_v1,
+        PoolV1TransitionKind, POOL_V1_DIGEST_ENCODING_VERSION, POOL_V1_HISTORICAL_ANCHOR_VERSION,
+        POOL_V1_LEAF_CAPACITY,
     },
 };
 use sha2::{Digest as _, Sha256};
@@ -33,7 +40,8 @@ use solana_sdk_ids::system_program;
 
 use crate::{
     rpc_adapter::{
-        authenticate_finalized_rpc_deposit_v1, DepositRpcAdapterErrorV1, DepositRpcBindingV1,
+        authenticate_finalized_rpc_deposit_v1, decode_deposit_instruction_v1,
+        DepositInstructionFormatErrorV1, DepositRpcAdapterErrorV1, DepositRpcBindingV1,
         FinalizedRpcTransactionV1, ResolvedRpcInstructionV1,
     },
     scan_state::{DepositEventIdV1, DepositScanIdentityV1, FinalizedDepositRecordV1},
@@ -95,6 +103,53 @@ pub struct AuthenticatedPreparedSettlementV1 {
     pub rollover_shard: Option<[u8; 32]>,
 }
 
+/// A deposit reconstructed from one successful top-level `ASDI`.  Its root is
+/// intentionally absent here: the finalized indexer obtains that value from
+/// the canonical Pool-owned history page before constructing the scan record.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct AuthenticatedDepositInstructionV1 {
+    pub id: DepositEventIdV1,
+    pub source_token_account: [u8; 32],
+    pub amount: u32,
+    pub note_commitment: [u8; 32],
+    pub encrypted_note_payload: Vec<u8>,
+    pub leaf_index: u64,
+    pub root_sequence: u64,
+    pub observed_pool_return_data: Option<Vec<u8>>,
+}
+
+/// One append transition reconstructed without trusting transaction-global
+/// return data.  The final root/ASTR image is filled from authenticated root
+/// history after the complete block transport pass.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct AuthenticatedTransitionInstructionV1 {
+    pub transition_kind: PoolV1TransitionKind,
+    pub nullifier: aspis_statement::poseidon2::Digest,
+    pub first_output: aspis_statement::poseidon2::Digest,
+    pub second_output_or_destination: [u8; 32],
+    pub withdrawal_amount: u32,
+    pub outputs: Vec<AuthenticatedTransitionOutputV1>,
+    pub instruction_bytes: Vec<u8>,
+    pub observed_pool_return_data: Option<Vec<u8>>,
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct AuthenticatedCancelledSettlementV1 {
+    pub plan_authority: [u8; 32],
+    pub core_plan: [u8; 32],
+    pub rollover_shard: Option<[u8; 32]>,
+}
+
+/// Receipt-independent view used by the finalized block indexer.  Every
+/// variant represents one successful top-level invocation of the pinned Pool.
+pub enum AuthenticatedTopLevelPoolInstructionV1 {
+    Initialization(InitializationReceiptV1),
+    PreparedSettlement(AuthenticatedPreparedSettlementV1),
+    CancelledSettlement(AuthenticatedCancelledSettlementV1),
+    Deposit(AuthenticatedDepositInstructionV1),
+    Transition(AuthenticatedTransitionInstructionV1),
+}
+
 pub enum AuthenticatedPoolInvocationV1<'a> {
     Initialization(InitializationReceiptV1),
     PreparedSettlement(AuthenticatedPreparedSettlementV1),
@@ -129,6 +184,11 @@ pub enum PoolRpcAdapterErrorV1 {
     Deposit(DepositRpcAdapterErrorV1),
     PoolInstruction(aspis_pool::PoolInstructionFormatErrorV1),
     PreparedSettlementInstruction(PrepareSettlementInstructionFormatErrorV1),
+    DepositInstruction(DepositInstructionFormatErrorV1),
+    SettlePreparedInstruction(SettlePreparedInstructionFormatErrorV1),
+    CancelPreparedInstruction(CancelPreparedSettlementInstructionFormatErrorV1),
+    SequenceOverflow,
+    ReturnDataMismatch,
 }
 
 pub fn decode_initialization_receipt_v1(
@@ -426,6 +486,677 @@ fn authenticate_prepared_settlement_v1(
     })
 }
 
+fn require_unique_instruction_accounts_v1(
+    instruction: &ResolvedRpcInstructionV1<'_>,
+) -> Result<(), PoolRpcAdapterErrorV1> {
+    if instruction.account_keys.is_empty() {
+        return Err(PoolRpcAdapterErrorV1::MissingInstructionAccounts);
+    }
+    let mut unique = BTreeSet::new();
+    if !instruction
+        .account_keys
+        .iter()
+        .all(|account| unique.insert(*account))
+    {
+        return Err(PoolRpcAdapterErrorV1::InstructionAccountAlias);
+    }
+    Ok(())
+}
+
+fn instruction_account_v1(
+    instruction: &ResolvedRpcInstructionV1<'_>,
+    index: usize,
+) -> Result<[u8; 32], PoolRpcAdapterErrorV1> {
+    instruction
+        .account_keys
+        .get(index)
+        .copied()
+        .ok_or(PoolRpcAdapterErrorV1::WrongInstructionAccounts)
+}
+
+fn initialization_receipt_bytes_v1(receipt: InitializationReceiptV1) -> [u8; 104] {
+    let mut bytes = [0u8; 104];
+    bytes[..4].copy_from_slice(&POOL_V1_INITIALIZATION_RECEIPT_MAGIC);
+    bytes[4] = 1;
+    bytes[8..40].copy_from_slice(&receipt.pool);
+    bytes[40..72].copy_from_slice(&receipt.root_page_zero);
+    bytes[72..104].copy_from_slice(&receipt.vault_token_account);
+    bytes
+}
+
+fn authenticate_initialization_without_receipt_v1(
+    program_id: &Pubkey,
+    identity: &DepositScanIdentityV1,
+    instruction: &ResolvedRpcInstructionV1<'_>,
+    observed_pool_return_data: Option<&[u8]>,
+) -> Result<InitializationReceiptV1, PoolRpcAdapterErrorV1> {
+    let initialization = decode_initialize_instruction_v1(instruction.data)
+        .map_err(PoolRpcAdapterErrorV1::PoolInstruction)?;
+    if initialization.asset_mint != *identity.asset_mint()
+        || initialization.deployment_domain != *identity.deployment_domain()
+        || initialization.asset_id.0 != identity.asset_id()
+    {
+        return Err(PoolRpcAdapterErrorV1::IdentityMismatch);
+    }
+    require_unique_instruction_accounts_v1(instruction)?;
+    if instruction.account_keys.len() != 7 {
+        return Err(PoolRpcAdapterErrorV1::WrongInstructionAccounts);
+    }
+    let mint = Pubkey::new_from_array(initialization.asset_mint);
+    let pool = pool_v1_state_address(program_id, &mint).0;
+    let page = pool_v1_root_page_address(program_id, &pool, 0).0;
+    let vault = pool_v1_vault_token_account_address(program_id, &pool).0;
+    if instruction_account_v1(instruction, 0)? == [0u8; 32]
+        || instruction_account_v1(instruction, 1)? != pool.to_bytes()
+        || instruction_account_v1(instruction, 2)? != page.to_bytes()
+        || instruction_account_v1(instruction, 3)? != mint.to_bytes()
+        || instruction_account_v1(instruction, 4)? != vault.to_bytes()
+        || instruction_account_v1(instruction, 5)? != LEGACY_SPL_TOKEN_PROGRAM_ID.to_bytes()
+        || instruction_account_v1(instruction, 6)? != system_program::id().to_bytes()
+        || pool.to_bytes() != *identity.pool()
+        || vault.to_bytes() != *identity.vault_token_account()
+    {
+        return Err(PoolRpcAdapterErrorV1::WrongInstructionAccounts);
+    }
+    let receipt = InitializationReceiptV1 {
+        pool: pool.to_bytes(),
+        root_page_zero: page.to_bytes(),
+        vault_token_account: vault.to_bytes(),
+    };
+    if observed_pool_return_data
+        .is_some_and(|observed| observed != initialization_receipt_bytes_v1(receipt))
+    {
+        return Err(PoolRpcAdapterErrorV1::ReturnDataMismatch);
+    }
+    Ok(receipt)
+}
+
+fn authenticate_deposit_without_receipt_v1(
+    program_id: &Pubkey,
+    identity: &DepositScanIdentityV1,
+    current_root_sequence: u64,
+    transaction: &FinalizedRpcTransactionV1<'_>,
+    instruction_index: usize,
+    instruction: &ResolvedRpcInstructionV1<'_>,
+    observed_pool_return_data: Option<&[u8]>,
+) -> Result<AuthenticatedDepositInstructionV1, PoolRpcAdapterErrorV1> {
+    let deposit = decode_deposit_instruction_v1(instruction.data)
+        .map_err(PoolRpcAdapterErrorV1::DepositInstruction)?;
+    require_unique_instruction_accounts_v1(instruction)?;
+    if current_root_sequence >= POOL_V1_LEAF_CAPACITY {
+        return Err(PoolRpcAdapterErrorV1::SequenceOverflow);
+    }
+    let root_sequence = current_root_sequence
+        .checked_add(1)
+        .ok_or(PoolRpcAdapterErrorV1::SequenceOverflow)?;
+    let pool = Pubkey::new_from_array(*identity.pool());
+    let current_page_number = root_history_location(current_root_sequence).page_number;
+    let final_page_number = root_history_location(root_sequence).page_number;
+    let rollover = final_page_number > current_page_number;
+    if final_page_number > current_page_number.saturating_add(1)
+        || instruction.account_keys.len() != if rollover { 10 } else { 7 }
+        || instruction_account_v1(instruction, 0)? != *identity.pool()
+        || instruction_account_v1(instruction, 1)?
+            != pool_v1_root_page_address(program_id, &pool, current_page_number)
+                .0
+                .to_bytes()
+    {
+        return Err(PoolRpcAdapterErrorV1::WrongInstructionAccounts);
+    }
+    let cursor = if rollover {
+        if instruction_account_v1(instruction, 2)?
+            != pool_v1_root_page_address(program_id, &pool, final_page_number)
+                .0
+                .to_bytes()
+        {
+            return Err(PoolRpcAdapterErrorV1::WrongInstructionAccounts);
+        }
+        3
+    } else {
+        2
+    };
+    let source_token_account = instruction_account_v1(instruction, cursor + 1)?;
+    if instruction_account_v1(instruction, cursor)? != *identity.asset_mint()
+        || source_token_account == [0u8; 32]
+        || instruction_account_v1(instruction, cursor + 2)? == [0u8; 32]
+        || instruction_account_v1(instruction, cursor + 3)? != *identity.vault_token_account()
+        || instruction_account_v1(instruction, cursor + 4)?
+            != LEGACY_SPL_TOKEN_PROGRAM_ID.to_bytes()
+    {
+        return Err(PoolRpcAdapterErrorV1::WrongInstructionAccounts);
+    }
+    if rollover
+        && (instruction_account_v1(instruction, cursor + 5)? == [0u8; 32]
+            || instruction_account_v1(instruction, cursor + 6)? != system_program::id().to_bytes())
+    {
+        return Err(PoolRpcAdapterErrorV1::WrongInstructionAccounts);
+    }
+    let instruction_index =
+        u16::try_from(instruction_index).map_err(|_| PoolRpcAdapterErrorV1::EventIdentity)?;
+    let id = DepositEventIdV1::new(
+        transaction.point,
+        transaction.transaction_signature,
+        instruction_index,
+        0,
+    )
+    .map_err(|_| PoolRpcAdapterErrorV1::EventIdentity)?;
+    Ok(AuthenticatedDepositInstructionV1 {
+        id,
+        source_token_account,
+        amount: deposit.amount,
+        note_commitment: encode_digest_canonical(&pool_v1_note_commitment(
+            &deposit.owner_key,
+            deposit.amount,
+            M31(identity.asset_id()),
+            &deposit.salt,
+        )),
+        encrypted_note_payload: deposit.encrypted_note_payload.to_vec(),
+        leaf_index: current_root_sequence,
+        root_sequence,
+        observed_pool_return_data: observed_pool_return_data.map(<[u8]>::to_vec),
+    })
+}
+
+#[allow(clippy::too_many_arguments)]
+fn validate_direct_transition_accounts_v1(
+    program_id: &Pubkey,
+    identity: &DepositScanIdentityV1,
+    current_root_sequence: u64,
+    final_root_sequence: u64,
+    anchor_sequence: u64,
+    nullifier: &aspis_statement::poseidon2::Digest,
+    transition_kind: PoolV1TransitionKind,
+    withdrawal_destination: Option<[u8; 32]>,
+    instruction: &ResolvedRpcInstructionV1<'_>,
+) -> Result<(), PoolRpcAdapterErrorV1> {
+    require_unique_instruction_accounts_v1(instruction)?;
+    if anchor_sequence > current_root_sequence {
+        return Err(PoolRpcAdapterErrorV1::WrongInstructionAccounts);
+    }
+    let pool = Pubkey::new_from_array(*identity.pool());
+    let anchor_page_number = root_history_location(anchor_sequence).page_number;
+    let current_page_number = root_history_location(current_root_sequence).page_number;
+    let final_page_number = root_history_location(final_root_sequence).page_number;
+    if anchor_page_number > current_page_number
+        || final_page_number > current_page_number.saturating_add(1)
+    {
+        return Err(PoolRpcAdapterErrorV1::WrongInstructionAccounts);
+    }
+    if instruction_account_v1(instruction, 0)? != *identity.pool() {
+        return Err(PoolRpcAdapterErrorV1::WrongInstructionAccounts);
+    }
+    let mut cursor = 1usize;
+    let anchor_page = pool_v1_root_page_address(program_id, &pool, anchor_page_number)
+        .0
+        .to_bytes();
+    let current_page = pool_v1_root_page_address(program_id, &pool, current_page_number)
+        .0
+        .to_bytes();
+    if instruction_account_v1(instruction, cursor)? != anchor_page {
+        return Err(PoolRpcAdapterErrorV1::WrongInstructionAccounts);
+    }
+    cursor += 1;
+    if current_page != anchor_page {
+        if instruction_account_v1(instruction, cursor)? != current_page {
+            return Err(PoolRpcAdapterErrorV1::WrongInstructionAccounts);
+        }
+        cursor += 1;
+    }
+    if final_page_number > current_page_number {
+        let next_page = pool_v1_root_page_address(program_id, &pool, final_page_number)
+            .0
+            .to_bytes();
+        if instruction_account_v1(instruction, cursor)? != next_page {
+            return Err(PoolRpcAdapterErrorV1::WrongInstructionAccounts);
+        }
+        cursor += 1;
+    }
+    let token_suffix = usize::from(transition_kind == PoolV1TransitionKind::Withdrawal) * 5;
+    let marker = aspis_pool::pool_v1_nullifier_marker_address(
+        program_id,
+        &pool,
+        &encode_digest_canonical(nullifier),
+    )
+    .map_err(|_| PoolRpcAdapterErrorV1::WrongInstructionAccounts)?
+    .0
+    .to_bytes();
+    if instruction.account_keys.len() != cursor + 7 + token_suffix
+        || instruction_account_v1(instruction, cursor)? != marker
+        || instruction_account_v1(instruction, cursor + 1)? == [0u8; 32]
+        || instruction_account_v1(instruction, cursor + 2)? != system_program::id().to_bytes()
+        || instruction_account_v1(instruction, cursor + 3)? == [0u8; 32]
+        || instruction_account_v1(instruction, cursor + 4)? == [0u8; 32]
+        || instruction_account_v1(instruction, cursor + 5)? == [0u8; 32]
+        || instruction_account_v1(instruction, cursor + 6)? == [0u8; 32]
+    {
+        return Err(PoolRpcAdapterErrorV1::WrongInstructionAccounts);
+    }
+    if let Some(destination) = withdrawal_destination {
+        let token = cursor + 7;
+        if instruction_account_v1(instruction, token)? != *identity.asset_mint()
+            || instruction_account_v1(instruction, token + 1)? != *identity.vault_token_account()
+            || instruction_account_v1(instruction, token + 2)? != destination
+            || instruction_account_v1(instruction, token + 3)?
+                != pool_v1_vault_authority_address(program_id, &pool)
+                    .0
+                    .to_bytes()
+            || instruction_account_v1(instruction, token + 4)?
+                != LEGACY_SPL_TOKEN_PROGRAM_ID.to_bytes()
+        {
+            return Err(PoolRpcAdapterErrorV1::WrongInstructionAccounts);
+        }
+    }
+    Ok(())
+}
+
+#[allow(clippy::too_many_arguments)]
+fn validate_prepared_transition_accounts_v1(
+    program_id: &Pubkey,
+    identity: &DepositScanIdentityV1,
+    current_root_sequence: u64,
+    final_root_sequence: u64,
+    nullifier: &aspis_statement::poseidon2::Digest,
+    transition_kind: PoolV1TransitionKind,
+    withdrawal_destination: Option<[u8; 32]>,
+    instruction: &ResolvedRpcInstructionV1<'_>,
+) -> Result<(), PoolRpcAdapterErrorV1> {
+    require_unique_instruction_accounts_v1(instruction)?;
+    let pool = Pubkey::new_from_array(*identity.pool());
+    let current_page_number = root_history_location(current_root_sequence).page_number;
+    let final_page_number = root_history_location(final_root_sequence).page_number;
+    if final_page_number > current_page_number.saturating_add(1)
+        || instruction_account_v1(instruction, 0)? == [0u8; 32]
+        || instruction_account_v1(instruction, 1)? != *identity.pool()
+        || instruction_account_v1(instruction, 2)?
+            != pool_v1_root_page_address(program_id, &pool, current_page_number)
+                .0
+                .to_bytes()
+    {
+        return Err(PoolRpcAdapterErrorV1::WrongInstructionAccounts);
+    }
+    let rollover = final_page_number > current_page_number;
+    let mut cursor = 3usize;
+    if rollover {
+        if instruction_account_v1(instruction, cursor)?
+            != pool_v1_root_page_address(program_id, &pool, final_page_number)
+                .0
+                .to_bytes()
+        {
+            return Err(PoolRpcAdapterErrorV1::WrongInstructionAccounts);
+        }
+        cursor += 1;
+    }
+    let token_suffix = usize::from(transition_kind == PoolV1TransitionKind::Withdrawal) * 5;
+    let expected_accounts = cursor + 5 + usize::from(rollover) + 1 + token_suffix;
+    let marker = aspis_pool::pool_v1_nullifier_marker_address(
+        program_id,
+        &pool,
+        &encode_digest_canonical(nullifier),
+    )
+    .map_err(|_| PoolRpcAdapterErrorV1::WrongInstructionAccounts)?
+    .0
+    .to_bytes();
+    if instruction.account_keys.len() != expected_accounts
+        || instruction_account_v1(instruction, cursor)? != marker
+        || instruction_account_v1(instruction, cursor + 1)? == [0u8; 32]
+        || instruction_account_v1(instruction, cursor + 2)? == [0u8; 32]
+        || instruction_account_v1(instruction, cursor + 3)? == [0u8; 32]
+        || instruction_account_v1(instruction, cursor + 4)? == [0u8; 32]
+    {
+        return Err(PoolRpcAdapterErrorV1::WrongInstructionAccounts);
+    }
+    cursor += 5;
+    if rollover {
+        if instruction_account_v1(instruction, cursor)? == [0u8; 32] {
+            return Err(PoolRpcAdapterErrorV1::WrongInstructionAccounts);
+        }
+        cursor += 1;
+    }
+    if instruction_account_v1(instruction, cursor)? != system_program::id().to_bytes() {
+        return Err(PoolRpcAdapterErrorV1::WrongInstructionAccounts);
+    }
+    cursor += 1;
+    if let Some(destination) = withdrawal_destination {
+        if instruction_account_v1(instruction, cursor)? != *identity.asset_mint()
+            || instruction_account_v1(instruction, cursor + 1)? != *identity.vault_token_account()
+            || instruction_account_v1(instruction, cursor + 2)? != destination
+            || instruction_account_v1(instruction, cursor + 3)?
+                != pool_v1_vault_authority_address(program_id, &pool)
+                    .0
+                    .to_bytes()
+            || instruction_account_v1(instruction, cursor + 4)?
+                != LEGACY_SPL_TOKEN_PROGRAM_ID.to_bytes()
+        {
+            return Err(PoolRpcAdapterErrorV1::WrongInstructionAccounts);
+        }
+    }
+    Ok(())
+}
+
+#[allow(clippy::too_many_arguments)]
+fn authenticated_transition_without_receipt_v1(
+    program_id: &Pubkey,
+    identity: &DepositScanIdentityV1,
+    current_root_sequence: u64,
+    transaction: &FinalizedRpcTransactionV1<'_>,
+    instruction_index: usize,
+    instruction: &ResolvedRpcInstructionV1<'_>,
+    transition_kind: PoolV1TransitionKind,
+    anchor_sequence: u64,
+    nullifier: aspis_statement::poseidon2::Digest,
+    first_output: aspis_statement::poseidon2::Digest,
+    second_output_or_destination: [u8; 32],
+    withdrawal_amount: u32,
+    observed_pool_return_data: Option<&[u8]>,
+    prepared: bool,
+) -> Result<AuthenticatedTransitionInstructionV1, PoolRpcAdapterErrorV1> {
+    let output_count = match transition_kind {
+        PoolV1TransitionKind::PrivateTransfer => 2u64,
+        PoolV1TransitionKind::Withdrawal => 1u64,
+    };
+    let final_root_sequence = current_root_sequence
+        .checked_add(output_count)
+        .ok_or(PoolRpcAdapterErrorV1::SequenceOverflow)?;
+    if current_root_sequence >= POOL_V1_LEAF_CAPACITY || final_root_sequence > POOL_V1_LEAF_CAPACITY
+    {
+        return Err(PoolRpcAdapterErrorV1::SequenceOverflow);
+    }
+    let destination = (transition_kind == PoolV1TransitionKind::Withdrawal)
+        .then_some(second_output_or_destination);
+    if prepared {
+        validate_prepared_transition_accounts_v1(
+            program_id,
+            identity,
+            current_root_sequence,
+            final_root_sequence,
+            &nullifier,
+            transition_kind,
+            destination,
+            instruction,
+        )?;
+    } else {
+        validate_direct_transition_accounts_v1(
+            program_id,
+            identity,
+            current_root_sequence,
+            final_root_sequence,
+            anchor_sequence,
+            &nullifier,
+            transition_kind,
+            destination,
+            instruction,
+        )?;
+    }
+    let instruction_index =
+        u16::try_from(instruction_index).map_err(|_| PoolRpcAdapterErrorV1::EventIdentity)?;
+    let first_id = DepositEventIdV1::new(
+        transaction.point,
+        transaction.transaction_signature,
+        instruction_index,
+        0,
+    )
+    .map_err(|_| PoolRpcAdapterErrorV1::EventIdentity)?;
+    let mut outputs = vec![AuthenticatedTransitionOutputV1 {
+        id: first_id,
+        transition_kind,
+        role: if transition_kind == PoolV1TransitionKind::PrivateTransfer {
+            TransitionOutputRoleV1::Recipient
+        } else {
+            TransitionOutputRoleV1::Change
+        },
+        leaf_index: current_root_sequence,
+        root_sequence: current_root_sequence + 1,
+        commitment: encode_digest_canonical(&first_output),
+        expected_root: None,
+    }];
+    if transition_kind == PoolV1TransitionKind::PrivateTransfer {
+        let second = decode_digest_canonical(&second_output_or_destination)
+            .map_err(|_| PoolRpcAdapterErrorV1::NonCanonicalDigest)?;
+        outputs.push(AuthenticatedTransitionOutputV1 {
+            id: DepositEventIdV1::new(
+                transaction.point,
+                transaction.transaction_signature,
+                instruction_index,
+                1,
+            )
+            .map_err(|_| PoolRpcAdapterErrorV1::EventIdentity)?,
+            transition_kind,
+            role: TransitionOutputRoleV1::Change,
+            leaf_index: current_root_sequence + 1,
+            root_sequence: final_root_sequence,
+            commitment: encode_digest_canonical(&second),
+            expected_root: None,
+        });
+    }
+    Ok(AuthenticatedTransitionInstructionV1 {
+        transition_kind,
+        nullifier,
+        first_output,
+        second_output_or_destination,
+        withdrawal_amount,
+        outputs,
+        instruction_bytes: instruction.data.to_vec(),
+        observed_pool_return_data: observed_pool_return_data.map(<[u8]>::to_vec),
+    })
+}
+
+/// Authenticate one successful top-level Pool instruction by its explicit
+/// transaction index.  `observed_pool_return_data` must be supplied only for
+/// the transaction's last Pool instruction when `meta.returnData` is owned by
+/// the pinned Pool.  Callers pass `None` when a later program overwrote it.
+pub fn authenticate_top_level_pool_instruction_v1(
+    binding: &DepositRpcBindingV1,
+    identity: &DepositScanIdentityV1,
+    current_root_sequence: u64,
+    transaction: &FinalizedRpcTransactionV1<'_>,
+    instruction_index: usize,
+    observed_pool_return_data: Option<&[u8]>,
+) -> Result<AuthenticatedTopLevelPoolInstructionV1, PoolRpcAdapterErrorV1> {
+    if !transaction.succeeded {
+        return Err(PoolRpcAdapterErrorV1::TransactionFailed);
+    }
+    let instruction = transaction
+        .top_level_instructions
+        .get(instruction_index)
+        .ok_or(PoolRpcAdapterErrorV1::PoolInstructionMissing)?;
+    if instruction.program_id != *binding.program_id() {
+        return Err(PoolRpcAdapterErrorV1::PoolInstructionMissing);
+    }
+    let program_id = Pubkey::new_from_array(*binding.program_id());
+    let mint = Pubkey::new_from_array(*identity.asset_mint());
+    let expected_pool = pool_v1_state_address(&program_id, &mint).0;
+    let expected_vault = pool_v1_vault_token_account_address(&program_id, &expected_pool).0;
+    if expected_pool.to_bytes() != *identity.pool()
+        || expected_vault.to_bytes() != *identity.vault_token_account()
+    {
+        return Err(PoolRpcAdapterErrorV1::IdentityMismatch);
+    }
+    let magic = instruction
+        .data
+        .get(..4)
+        .ok_or(PoolRpcAdapterErrorV1::UnsupportedPoolInstruction)?;
+    if magic == POOL_V1_INITIALIZE_INSTRUCTION_MAGIC {
+        return authenticate_initialization_without_receipt_v1(
+            &program_id,
+            identity,
+            instruction,
+            observed_pool_return_data,
+        )
+        .map(AuthenticatedTopLevelPoolInstructionV1::Initialization);
+    }
+    if magic == crate::rpc_adapter::POOL_V1_DEPOSIT_INSTRUCTION_MAGIC {
+        return authenticate_deposit_without_receipt_v1(
+            &program_id,
+            identity,
+            current_root_sequence,
+            transaction,
+            instruction_index,
+            instruction,
+            observed_pool_return_data,
+        )
+        .map(AuthenticatedTopLevelPoolInstructionV1::Deposit);
+    }
+    if magic == POOL_V1_PREPARE_SETTLEMENT_INSTRUCTION_MAGIC {
+        let prepared = authenticate_prepared_settlement_v1(
+            &program_id,
+            identity,
+            current_root_sequence,
+            instruction,
+        )?;
+        if observed_pool_return_data.is_some_and(|bytes| !bytes.is_empty()) {
+            return Err(PoolRpcAdapterErrorV1::ReturnDataMismatch);
+        }
+        return Ok(AuthenticatedTopLevelPoolInstructionV1::PreparedSettlement(
+            prepared,
+        ));
+    }
+    if magic == POOL_V1_CANCEL_PREPARED_SETTLEMENT_INSTRUCTION_MAGIC {
+        let cancelled = decode_cancel_prepared_settlement_instruction_v1(instruction.data)
+            .map_err(PoolRpcAdapterErrorV1::CancelPreparedInstruction)?;
+        require_unique_instruction_accounts_v1(instruction)?;
+        if instruction.account_keys.len() != cancelled.account_shape.account_count()
+            || instruction_account_v1(instruction, 0)? == [0u8; 32]
+            || instruction_account_v1(instruction, 1)? == [0u8; 32]
+        {
+            return Err(PoolRpcAdapterErrorV1::WrongInstructionAccounts);
+        }
+        let rollover_shard = if cancelled.account_shape.has_rollover_shard() {
+            let shard = instruction_account_v1(instruction, 2)?;
+            if shard == [0u8; 32] {
+                return Err(PoolRpcAdapterErrorV1::WrongInstructionAccounts);
+            }
+            Some(shard)
+        } else {
+            None
+        };
+        if observed_pool_return_data.is_some_and(|bytes| bytes != instruction.data) {
+            return Err(PoolRpcAdapterErrorV1::ReturnDataMismatch);
+        }
+        return Ok(AuthenticatedTopLevelPoolInstructionV1::CancelledSettlement(
+            AuthenticatedCancelledSettlementV1 {
+                plan_authority: instruction_account_v1(instruction, 0)?,
+                core_plan: instruction_account_v1(instruction, 1)?,
+                rollover_shard,
+            },
+        ));
+    }
+    if magic == POOL_V1_PRIVATE_TRANSFER_INSTRUCTION_MAGIC {
+        let decoded = decode_private_transfer_instruction_v1(instruction.data)
+            .map_err(PoolRpcAdapterErrorV1::PoolInstruction)?;
+        require_identity(
+            identity,
+            &decoded.statement.pool,
+            &decoded.statement.deployment_domain,
+            decoded.statement.asset_id,
+        )?;
+        return authenticated_transition_without_receipt_v1(
+            &program_id,
+            identity,
+            current_root_sequence,
+            transaction,
+            instruction_index,
+            instruction,
+            PoolV1TransitionKind::PrivateTransfer,
+            decoded.statement.anchor_sequence,
+            decoded.statement.nullifier,
+            decoded.statement.recipient_commitment,
+            encode_digest_canonical(&decoded.statement.change_commitment),
+            0,
+            observed_pool_return_data,
+            false,
+        )
+        .map(AuthenticatedTopLevelPoolInstructionV1::Transition);
+    }
+    if magic == POOL_V1_WITHDRAWAL_INSTRUCTION_MAGIC {
+        let decoded = decode_withdrawal_instruction_v1(instruction.data)
+            .map_err(PoolRpcAdapterErrorV1::PoolInstruction)?;
+        require_identity(
+            identity,
+            &decoded.statement.pool,
+            &decoded.statement.deployment_domain,
+            decoded.statement.asset_id,
+        )?;
+        return authenticated_transition_without_receipt_v1(
+            &program_id,
+            identity,
+            current_root_sequence,
+            transaction,
+            instruction_index,
+            instruction,
+            PoolV1TransitionKind::Withdrawal,
+            decoded.statement.anchor_sequence,
+            decoded.statement.nullifier,
+            decoded.statement.change_commitment,
+            decoded.statement.destination_token_account,
+            decoded.statement.amount,
+            observed_pool_return_data,
+            false,
+        )
+        .map(AuthenticatedTopLevelPoolInstructionV1::Transition);
+    }
+    if magic == POOL_V1_SETTLE_PREPARED_INSTRUCTION_MAGIC {
+        let settled = decode_settle_prepared_instruction_v1(instruction.data)
+            .map_err(PoolRpcAdapterErrorV1::SettlePreparedInstruction)?;
+        return match settled.transition_kind {
+            PoolV1TransitionKind::PrivateTransfer => {
+                let public = decode_pool_v1_private_transfer_public_v1(settled.statement_payload)
+                    .map_err(|_| PoolRpcAdapterErrorV1::ReceiptInstructionMismatch)?;
+                require_identity(
+                    identity,
+                    &public.pool,
+                    &public.deployment_domain,
+                    public.asset_id,
+                )?;
+                authenticated_transition_without_receipt_v1(
+                    &program_id,
+                    identity,
+                    current_root_sequence,
+                    transaction,
+                    instruction_index,
+                    instruction,
+                    settled.transition_kind,
+                    public.anchor_sequence,
+                    public.nullifier,
+                    public.recipient_commitment,
+                    encode_digest_canonical(&public.change_commitment),
+                    0,
+                    observed_pool_return_data,
+                    true,
+                )
+                .map(AuthenticatedTopLevelPoolInstructionV1::Transition)
+            }
+            PoolV1TransitionKind::Withdrawal => {
+                let public = decode_pool_v1_withdrawal_public_v1(settled.statement_payload)
+                    .map_err(|_| PoolRpcAdapterErrorV1::ReceiptInstructionMismatch)?;
+                require_identity(
+                    identity,
+                    &public.pool,
+                    &public.deployment_domain,
+                    public.asset_id,
+                )?;
+                authenticated_transition_without_receipt_v1(
+                    &program_id,
+                    identity,
+                    current_root_sequence,
+                    transaction,
+                    instruction_index,
+                    instruction,
+                    settled.transition_kind,
+                    public.anchor_sequence,
+                    public.nullifier,
+                    public.change_commitment,
+                    public.destination_token_account,
+                    public.amount,
+                    observed_pool_return_data,
+                    true,
+                )
+                .map(AuthenticatedTopLevelPoolInstructionV1::Transition)
+            }
+        };
+    }
+    Err(PoolRpcAdapterErrorV1::UnsupportedPoolInstruction)
+}
+
 /// Authenticate exactly one successful final top-level Pool invocation.
 pub fn authenticate_finalized_rpc_pool_v1<'a>(
     binding: &DepositRpcBindingV1,
@@ -630,10 +1361,17 @@ mod tests {
     use super::*;
     use crate::rpc_adapter::{ResolvedRpcInstructionV1, ResolvedRpcReturnDataV1};
     use aspis_pool::{
+        encode_cancel_prepared_settlement_instruction_v1, encode_settle_prepared_instruction_v1,
         encode_withdrawal_instruction_v1, instruction::encode_transition_receipt_v1,
-        WithdrawalStatementV1,
+        CancelPreparedSettlementAccountShapeV1, WithdrawalStatementV1,
     };
-    use aspis_statement::{pool_v1::HistoricalAnchorEnvelopeV1, poseidon2::Digest};
+    use aspis_statement::{
+        pool_v1::{
+            encode_pool_v1_private_transfer_public_v1, HistoricalAnchorEnvelopeV1,
+            PoolV1PrivateTransferPublicV1,
+        },
+        poseidon2::Digest,
+    };
 
     use crate::transaction_builder::{
         build_prepare_withdrawal_instruction_v1, PreparedSettlementRouteAccountsV1,
@@ -950,6 +1688,248 @@ mod tests {
         assert_eq!(
             authenticate_finalized_rpc_pool_v1(&binding, &identity, 7, &failed).err(),
             Some(PoolRpcAdapterErrorV1::TransactionFailed)
+        );
+    }
+
+    #[test]
+    fn per_instruction_prepared_settlement_reconstructs_outputs_without_return_data() {
+        let program_id = [0x91; 32];
+        let program_key = Pubkey::new_from_array(program_id);
+        let mint = Pubkey::new_from_array([3; 32]);
+        let pool = pool_v1_state_address(&program_key, &mint).0;
+        let vault = pool_v1_vault_token_account_address(&program_key, &pool).0;
+        let identity = DepositScanIdentityV1::new(
+            pool.to_bytes(),
+            [2; 32],
+            mint.to_bytes(),
+            vault.to_bytes(),
+            9,
+        )
+        .unwrap();
+        let statement = PoolV1PrivateTransferPublicV1 {
+            pool: *identity.pool(),
+            deployment_domain: *identity.deployment_domain(),
+            anchor_sequence: 3,
+            anchor_root: digest(40),
+            nullifier: digest(50),
+            asset_id: M31(identity.asset_id()),
+            recipient_commitment: digest(60),
+            change_commitment: digest(70),
+        };
+        let payload = encode_pool_v1_private_transfer_public_v1(&statement).unwrap();
+        let wire =
+            encode_settle_prepared_instruction_v1(PoolV1TransitionKind::PrivateTransfer, &payload)
+                .unwrap();
+        let marker = aspis_pool::pool_v1_nullifier_marker_address(
+            &program_key,
+            &pool,
+            &encode_digest_canonical(&statement.nullifier),
+        )
+        .unwrap()
+        .0;
+        let account_keys = [
+            [8; 32],
+            pool.to_bytes(),
+            pool_v1_root_page_address(&program_key, &pool, 0)
+                .0
+                .to_bytes(),
+            marker.to_bytes(),
+            [10; 32],
+            [11; 32],
+            [12; 32],
+            [13; 32],
+            system_program::id().to_bytes(),
+        ];
+        let instructions = [ResolvedRpcInstructionV1 {
+            program_id,
+            account_keys: &account_keys,
+            data: &wire,
+        }];
+        let transaction = FinalizedRpcTransactionV1 {
+            point: crate::scan_state::FinalizedChainPointV1::new(42, [8; 32]).unwrap(),
+            transaction_signature: [9; 64],
+            succeeded: true,
+            top_level_instructions: &instructions,
+            return_data: None,
+        };
+        let binding = DepositRpcBindingV1::new(program_id).unwrap();
+        let authenticated = authenticate_top_level_pool_instruction_v1(
+            &binding,
+            &identity,
+            7,
+            &transaction,
+            0,
+            None,
+        )
+        .unwrap();
+        let AuthenticatedTopLevelPoolInstructionV1::Transition(transition) = authenticated else {
+            panic!("ASPF must authenticate as a transition");
+        };
+        assert_eq!(
+            transition.transition_kind,
+            PoolV1TransitionKind::PrivateTransfer
+        );
+        assert_eq!(transition.outputs.len(), 2);
+        assert_eq!(transition.outputs[0].leaf_index, 7);
+        assert_eq!(transition.outputs[0].root_sequence, 8);
+        assert_eq!(transition.outputs[1].leaf_index, 8);
+        assert_eq!(transition.outputs[1].root_sequence, 9);
+        assert_eq!(transition.observed_pool_return_data, None);
+
+        let mut wrong_accounts = account_keys;
+        wrong_accounts[3] = [14; 32];
+        let wrong_instructions = [ResolvedRpcInstructionV1 {
+            program_id,
+            account_keys: &wrong_accounts,
+            data: &wire,
+        }];
+        let wrong_transaction = FinalizedRpcTransactionV1 {
+            top_level_instructions: &wrong_instructions,
+            ..transaction
+        };
+        assert_eq!(
+            authenticate_top_level_pool_instruction_v1(
+                &binding,
+                &identity,
+                7,
+                &wrong_transaction,
+                0,
+                None,
+            )
+            .err(),
+            Some(PoolRpcAdapterErrorV1::WrongInstructionAccounts)
+        );
+    }
+
+    #[test]
+    fn per_instruction_cancellation_is_shape_and_acknowledgement_bound() {
+        let program_id = [0x91; 32];
+        let program_key = Pubkey::new_from_array(program_id);
+        let mint = Pubkey::new_from_array([3; 32]);
+        let pool = pool_v1_state_address(&program_key, &mint).0;
+        let vault = pool_v1_vault_token_account_address(&program_key, &pool).0;
+        let identity = DepositScanIdentityV1::new(
+            pool.to_bytes(),
+            [2; 32],
+            mint.to_bytes(),
+            vault.to_bytes(),
+            9,
+        )
+        .unwrap();
+        let wire = encode_cancel_prepared_settlement_instruction_v1(
+            CancelPreparedSettlementAccountShapeV1::CoreAndRolloverShard,
+        );
+        let account_keys = [[8; 32], [9; 32], [10; 32]];
+        let instructions = [ResolvedRpcInstructionV1 {
+            program_id,
+            account_keys: &account_keys,
+            data: &wire,
+        }];
+        let transaction = FinalizedRpcTransactionV1 {
+            point: crate::scan_state::FinalizedChainPointV1::new(42, [8; 32]).unwrap(),
+            transaction_signature: [9; 64],
+            succeeded: true,
+            top_level_instructions: &instructions,
+            return_data: None,
+        };
+        let binding = DepositRpcBindingV1::new(program_id).unwrap();
+        let authenticated = authenticate_top_level_pool_instruction_v1(
+            &binding,
+            &identity,
+            7,
+            &transaction,
+            0,
+            Some(&wire),
+        )
+        .unwrap();
+        let AuthenticatedTopLevelPoolInstructionV1::CancelledSettlement(cancelled) = authenticated
+        else {
+            panic!("ASPX must authenticate as a cancellation");
+        };
+        assert_eq!(cancelled.plan_authority, account_keys[0]);
+        assert_eq!(cancelled.core_plan, account_keys[1]);
+        assert_eq!(cancelled.rollover_shard, Some(account_keys[2]));
+
+        let mut wrong_acknowledgement = wire;
+        wrong_acknowledgement[7] = 1;
+        assert_eq!(
+            authenticate_top_level_pool_instruction_v1(
+                &binding,
+                &identity,
+                7,
+                &transaction,
+                0,
+                Some(&wrong_acknowledgement),
+            )
+            .err(),
+            Some(PoolRpcAdapterErrorV1::ReturnDataMismatch)
+        );
+
+        let aliased_accounts = [[8; 32], [8; 32], [10; 32]];
+        let aliased_instructions = [ResolvedRpcInstructionV1 {
+            program_id,
+            account_keys: &aliased_accounts,
+            data: &wire,
+        }];
+        let aliased_transaction = FinalizedRpcTransactionV1 {
+            top_level_instructions: &aliased_instructions,
+            ..transaction
+        };
+        assert_eq!(
+            authenticate_top_level_pool_instruction_v1(
+                &binding,
+                &identity,
+                7,
+                &aliased_transaction,
+                0,
+                Some(&wire),
+            )
+            .err(),
+            Some(PoolRpcAdapterErrorV1::InstructionAccountAlias)
+        );
+    }
+
+    #[test]
+    fn per_instruction_unknown_successful_pool_wire_fails_closed() {
+        let program_id = [0x91; 32];
+        let program_key = Pubkey::new_from_array(program_id);
+        let mint = Pubkey::new_from_array([3; 32]);
+        let pool = pool_v1_state_address(&program_key, &mint).0;
+        let vault = pool_v1_vault_token_account_address(&program_key, &pool).0;
+        let identity = DepositScanIdentityV1::new(
+            pool.to_bytes(),
+            [2; 32],
+            mint.to_bytes(),
+            vault.to_bytes(),
+            9,
+        )
+        .unwrap();
+        let unknown = *b"NOPE";
+        let account_keys = [[8; 32]];
+        let instructions = [ResolvedRpcInstructionV1 {
+            program_id,
+            account_keys: &account_keys,
+            data: &unknown,
+        }];
+        let transaction = FinalizedRpcTransactionV1 {
+            point: crate::scan_state::FinalizedChainPointV1::new(42, [8; 32]).unwrap(),
+            transaction_signature: [9; 64],
+            succeeded: true,
+            top_level_instructions: &instructions,
+            return_data: None,
+        };
+        let binding = DepositRpcBindingV1::new(program_id).unwrap();
+        assert_eq!(
+            authenticate_top_level_pool_instruction_v1(
+                &binding,
+                &identity,
+                7,
+                &transaction,
+                0,
+                None,
+            )
+            .err(),
+            Some(PoolRpcAdapterErrorV1::UnsupportedPoolInstruction)
         );
     }
 }

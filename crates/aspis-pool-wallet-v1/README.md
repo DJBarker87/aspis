@@ -129,7 +129,8 @@ On success, the Pool transport calls Solana `set_return_data` with exactly the
 canonical `224-byte DepositReceiptV1 || declared payload`. The call occurs only
 after the vault-backed deposit kernel and return-record encoding succeed.
 Solana return data is transaction-global and identifies only its most recent
-setter, so `rpc_adapter` accepts a transaction only when all of these hold:
+setter. The narrow compatibility `rpc_adapter` therefore accepts a transaction
+only when all of these hold:
 
 - `meta.err` is null;
 - the deployment-pinned Pool program is the only top-level Pool invocation;
@@ -142,8 +143,14 @@ setter, so `rpc_adapter` accepts a transaction only when all of these hold:
 - the receipt Pool, mint and vault equal the configured scan identity, whose
   Pool and vault are independently re-derived from the pinned program and mint.
 
-`finalized_indexer` consumes an exact RPC-shaped block view and closes the
-binary/chain/root checks around all four frozen Pool instructions. It strictly
+`finalized_indexer` is the production block path. It consumes an exact
+RPC-shaped block view and closes the binary/chain/root checks around all seven
+frozen Pool instructions (`ASIN`, `ASDI`, `ASPT`, `ASWD`, `ASPP`, `ASPF`,
+`ASPX`). It processes every successful top-level Pool instruction in
+transaction order, reconstructs append results from canonical instruction and
+account data, and treats final Pool-owned return data only as a byte-exact
+consistency check. A trailing non-Pool program may overwrite return data
+without hiding a Pool mutation. It strictly
 decodes bounded base58 instruction/key/signature fields, strict bounded base58
 or padded base64 return data, and padded base64 account data; resolves
 version-0 keys as static, loaded writable, loaded readonly; checks every
@@ -151,13 +158,15 @@ compiled index; requires an explicitly asserted finalized block; and links the
 exact blockhash, previous blockhash and `parentSlot`. A failed Pool transaction
 never emits a scan event even when RPC reports return data.
 
-Successful `ASIN` is accepted only with its exact `ASIR` identity/PDA receipt.
-Successful `ASPT`/`ASWD` requires an exact `ASTR` matching the instruction's
-Pool, domain, asset, nullifier, commitments/destination, amount and leaf
-sequence. The private transfer's otherwise-unreported intermediate root is
-read from authenticated history at the first output sequence. For every
-successful append, the layer additionally requires a single-context finalized
-root-account batch at or after the block slot. It re-derives each page PDA from
+Successful `ASIN` is accepted only with its exact identity and PDA layout.
+Successful `ASPT`/`ASWD`/`ASPF` results are reconstructed from the canonical
+statement and exact account layout; `ASPP` and `ASPX` expose non-appending plan
+reconciliation evidence. Every output root, including a private transfer's
+intermediate root, is read from authenticated history. If the final Pool
+setter's `ASIR`, `ASPD`, `ASTR` or `ASPX` bytes remain in `meta.returnData`,
+they must equal the reconstructed result. For every successful append, the
+layer additionally requires a single-context finalized root-account batch at
+or after the block slot. It re-derives each page PDA from
 the pinned program, Pool and page number, then checks Pool-program ownership,
 non-executable status, the complete canonical ASPR V1 account image and every
 exact appended root/sequence. A read-only planning pass returns the sorted
@@ -258,8 +267,9 @@ The remaining production integration must also:
 - fetch every required root-page snapshot at finalized commitment; ingestion
   independently re-derives each supplied page binding from the exact deployed
   program id, Pool and page number before trusting its address or contents;
-- preserve top-level-only invocation or extend authentication to inner
-  instructions before allowing any Pool transition through CPI;
+- retain and audit the Pool program's instructions-sysvar guard that rejects
+  inner invocation, keeping every successful mutation visible to this
+  top-level instruction scanner;
 - choose and implement the authenticated at-rest note cipher represented by
   `note_cipher_id`, protect/rotate its key, implement the local nullifier
   authenticator, and archive returned public root/transition evidence if the

@@ -1,11 +1,15 @@
 # Pool V1 finalized indexer contract
 
 `rpc_json` and `finalized_indexer` form the strict boundary between Solana
-JSON-RPC data and the durable Pool wallet scan state. They authenticate the final unique
-top-level `ASIN`/`ASDI`/`ASPT`/`ASWD` invocation and its exact Pool-owned
-return data. The crate emits and strictly parses the exact requests below but
-does not open a network connection. A client sends those bytes and passes the
-bounded response bytes back to `plan_finalized_get_block_json_v1` and
+JSON-RPC data and the durable Pool wallet scan state. They authenticate every
+successful top-level `ASIN`/`ASDI`/`ASPT`/`ASWD`/`ASPP`/`ASPF`/`ASPX`
+invocation in transaction order. Append receipts are reconstructed from the
+canonical instruction/accounts and authenticated root-history pages. Because
+Solana return data is transaction-global, Pool-owned return data is only an
+additional byte-exact check on the final Pool setter; a later non-Pool program
+may overwrite it. The crate emits and strictly parses the exact requests below
+but does not open a network connection. A client sends those bytes and passes
+the bounded response bytes back to `plan_finalized_get_block_json_v1` and
 `ingest_finalized_rpc_json_plan_v1`.
 
 ## Required RPC requests
@@ -79,10 +83,12 @@ preserved by the production Pool entrypoint and upgrade policy.
 
 ## Block application and reorg behavior
 
-All wire decoding, top-level Pool V1/return-data matching, and root-page checks
-run before scan mutation. `ASTR` output roots are authenticated individually;
-for a 1-to-2 transfer the first root comes from history and the second must
-also equal the receipt's final root. Application then occurs on a clone:
+All wire decoding, per-instruction account/PDA matching, optional final
+Pool-return-data matching, and root-page checks run before scan mutation.
+Every reconstructed append root is authenticated individually; for a 1-to-2
+transfer both the intermediate and final roots come from history, with an
+observed final `ASTR`, when available, required to match exactly. Application
+then occurs on a clone:
 
 - an exact replay of the retained head requires the same ordered append-output IDs;
 - a direct child advances normally, including skipped-slot parent linkage;
@@ -117,14 +123,15 @@ owner-key lookup interface.
   exact PDAs. Every supplied `RootPageAddressBindingV1` is independently
   re-derived from the pinned program id, Pool and page number before any RPC
   account data is trusted. There is no default program ID.
-- The transport authenticates only a final top-level Pool invocation. The
-  deployed program must forbid Pool-through-CPI, or a future indexer must
-  authenticate inner instructions as well.
-- The only accepted successful Pool wires are frozen `ASIN`, `ASDI`, `ASPT`
-  and `ASWD`; unknown versions/instructions stop the complete block. `ASIN` is
-  authenticated as non-appending. Deposit payloads are scanned in-band;
-  private-transfer/change ciphertext delivery is an external channel bound to
-  the finalized `ASTR` leaf context.
+- The pinned deployed program rejects inner invocation using the instructions
+  sysvar, so every successful Pool mutation is visible in the top-level
+  message instruction sequence consumed here.
+- The only accepted successful Pool wires are frozen `ASIN`, `ASDI`, `ASPT`,
+  `ASWD`, `ASPP`, `ASPF` and `ASPX`; unknown versions/instructions stop the
+  complete block. `ASIN`, `ASPP` and `ASPX` are non-appending reconciliation
+  events. Deposit payloads are scanned in-band; private-transfer/change
+  ciphertext delivery is an external channel bound to the finalized `ASTR`
+  leaf context.
 - The crate supplies fsync/atomic wallet and relayer state images. Selection
   and key management for the opaque note encryption-at-rest scheme, backups,
   rollback pruning, backfill, missed-slot scheduling, monitoring and

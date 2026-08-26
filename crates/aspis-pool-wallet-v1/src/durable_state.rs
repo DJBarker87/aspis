@@ -1596,6 +1596,7 @@ mod tests {
                 authenticated_transport: vec![0x71, 0x72],
             }],
             prepared_settlements: Vec::new(),
+            cancelled_settlements: Vec::new(),
             root_evidence: vec![HistoricalRootEvidenceV1 {
                 event_id: output_id,
                 root_sequence: 1,
@@ -1656,6 +1657,7 @@ mod tests {
             transition_outcomes: Vec::new(),
             transition_evidence: Vec::new(),
             prepared_settlements: Vec::new(),
+            cancelled_settlements: Vec::new(),
             root_evidence: result.root_evidence.clone(),
             ignored_failed_pool_transactions: 0,
         };
@@ -1710,6 +1712,7 @@ mod tests {
             transition_outcomes: Vec::new(),
             transition_evidence: Vec::new(),
             prepared_settlements: Vec::new(),
+            cancelled_settlements: Vec::new(),
             root_evidence: Vec::new(),
             ignored_failed_pool_transactions: 0,
         };

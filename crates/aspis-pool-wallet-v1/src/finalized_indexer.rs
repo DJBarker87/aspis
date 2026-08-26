@@ -5,28 +5,33 @@
 //! client or serde layer must map the named RPC fields into these borrowed
 //! views and assert the commitment used for each request. From there the
 //! indexer strictly decodes Solana binary strings, resolves v0 loaded
-//! addresses, authenticates the final top-level Pool deposit/return-data pair,
-//! verifies every receipt root against a deployment-owned canonical root-page
-//! account, and applies the complete block transactionally to `ScanStateV1`.
+//! addresses, authenticates every top-level Pool invocation in transaction
+//! order, verifies every reconstructed append root against a deployment-owned
+//! canonical root-page account, and applies the complete block transactionally
+//! to `ScanStateV1`. Transaction-global return data is only an optional exact
+//! check on the final Pool setter; a later program may overwrite it.
 
 use std::collections::BTreeSet;
 
-use aspis_pool::pool_v1_root_page_address;
-use aspis_pool::TransitionReceiptV1;
+use aspis_pool::{
+    instruction::encode_transition_receipt_v1, pool_v1_root_page_address, TransitionReceiptV1,
+};
 use aspis_statement::{
-    encode_digest_canonical,
+    decode_digest_canonical, encode_digest_canonical,
     pool_v1::{
         root_history::{read_root_history_page_root_v1, validate_root_history_page_bytes_v1},
-        root_history_location, PoolV1RootHistoryError, POOL_V1_DEPOSIT_RETURN_MAX_BYTES,
-        POOL_V1_ROOT_HISTORY_PAGE_ACCOUNT_BYTES,
+        root_history_location, DepositEventV1, DepositReceiptV1, PoolV1RootHistoryError,
+        POOL_V1_DEPOSIT_RETURN_MAX_BYTES, POOL_V1_ROOT_HISTORY_PAGE_ACCOUNT_BYTES,
     },
 };
 use solana_program::pubkey::Pubkey;
 
 use crate::{
     pool_transport::{
-        authenticate_finalized_rpc_pool_v1, AuthenticatedPoolInvocationV1,
-        AuthenticatedPreparedSettlementV1, AuthenticatedTransitionOutputV1, PoolRpcAdapterErrorV1,
+        authenticate_top_level_pool_instruction_v1, AuthenticatedCancelledSettlementV1,
+        AuthenticatedDepositInstructionV1, AuthenticatedPreparedSettlementV1,
+        AuthenticatedTopLevelPoolInstructionV1, AuthenticatedTransitionInstructionV1,
+        PoolRpcAdapterErrorV1,
     },
     rpc_adapter::{
         DepositRpcAdapterErrorV1, DepositRpcBindingV1, FinalizedRpcTransactionV1,
@@ -37,7 +42,7 @@ use crate::{
         RpcBinaryDecodeErrorV1,
     },
     scan_state::{
-        decode_deposit_event_record_v1, DepositEventIdV1, DepositEventRecordErrorV1,
+        encode_deposit_event_record_v1, DepositEventIdV1, DepositEventRecordErrorV1,
         DepositScanOutcomeV1, FinalizedBlockAdvanceV1, FinalizedBlockV1, FinalizedChainPointV1,
         FinalizedDepositRecordV1, FinalizedPublicOutputRecordV1, LocalOwnerKeyStoreV1,
         PublicOutputScanOutcomeV1, RollbackSummaryV1, ScanStateErrorV1, ScanStateV1,
@@ -187,6 +192,8 @@ pub struct FinalizedBlockIngestResultV1 {
     /// These public addresses let callers reconcile core/shard plan creation
     /// without treating preparation as a spend or leaf append.
     pub prepared_settlements: Vec<AuthenticatedPreparedSettlementV1>,
+    /// Successful non-appending `ASPX` cancellations in transaction order.
+    pub cancelled_settlements: Vec<AuthenticatedCancelledSettlementV1>,
     pub root_evidence: Vec<HistoricalRootEvidenceV1>,
     pub ignored_failed_pool_transactions: usize,
 }
@@ -255,24 +262,12 @@ pub enum FinalizedIndexerErrorV1 {
     ScanState(ScanStateErrorV1),
 }
 
-struct PreparedDepositV1 {
-    id: DepositEventIdV1,
-    record_bytes: Vec<u8>,
-    root_sequence: u64,
-    root: [u8; 32],
-}
-
-struct PreparedTransitionV1 {
-    receipt: TransitionReceiptV1,
-    outputs: Vec<AuthenticatedTransitionOutputV1>,
-    authenticated_transport: Vec<u8>,
-}
-
 enum PreparedPoolInvocationV1 {
     Initialization,
     PreparedSettlement(AuthenticatedPreparedSettlementV1),
-    Deposit(PreparedDepositV1),
-    Transition(PreparedTransitionV1),
+    CancelledSettlement(AuthenticatedCancelledSettlementV1),
+    Deposit(AuthenticatedDepositInstructionV1),
+    Transition(AuthenticatedTransitionInstructionV1),
 }
 
 struct PreparedBlockTransportV1 {
@@ -370,10 +365,10 @@ fn prepare_transaction_v1(
     point: FinalizedChainPointV1,
     binding: &DepositRpcBindingV1,
     identity: &crate::scan_state::DepositScanIdentityV1,
-    current_root_sequence: u64,
+    mut current_root_sequence: u64,
     transaction: &SolanaRpcTransactionV1<'_>,
     seen_primary_signatures: &mut BTreeSet<[u8; 64]>,
-) -> Result<(Option<PreparedPoolInvocationV1>, bool), FinalizedIndexerErrorV1> {
+) -> Result<(Vec<PreparedPoolInvocationV1>, bool), FinalizedIndexerErrorV1> {
     let account_keys = resolve_account_keys_v1(transaction)?;
     if transaction.signatures_base58.is_empty() {
         return Err(FinalizedIndexerErrorV1::MissingSignature);
@@ -475,10 +470,10 @@ fn prepare_transaction_v1(
         .iter()
         .any(|instruction| instruction.program_id == *binding.program_id());
     if !transaction.succeeded {
-        return Ok((None, invokes_pool));
+        return Ok((Vec::new(), invokes_pool));
     }
     if !invokes_pool {
-        return Ok((None, false));
+        return Ok((Vec::new(), false));
     }
 
     let resolved_return_data =
@@ -495,58 +490,73 @@ fn prepare_transaction_v1(
         top_level_instructions: &resolved_instructions,
         return_data: resolved_return_data,
     };
-    let invocation = authenticate_finalized_rpc_pool_v1(
-        binding,
-        identity,
-        current_root_sequence,
-        &resolved_transaction,
-    )
-    .map_err(|error| match error {
-        PoolRpcAdapterErrorV1::Deposit(deposit) => {
-            FinalizedIndexerErrorV1::DepositTransport(deposit)
-        }
-        PoolRpcAdapterErrorV1::PoolInstructionNotFinal
-            if resolved_transaction
-                .top_level_instructions
-                .iter()
-                .any(|instruction| {
-                    instruction.program_id == *binding.program_id()
-                        && instruction.data.get(..4)
-                            == Some(&crate::rpc_adapter::POOL_V1_DEPOSIT_INSTRUCTION_MAGIC)
-                }) =>
-        {
-            FinalizedIndexerErrorV1::DepositTransport(
-                DepositRpcAdapterErrorV1::DepositInstructionNotFinal,
-            )
-        }
-        other => FinalizedIndexerErrorV1::PoolTransport(other),
-    })?;
-    let prepared = match invocation {
-        AuthenticatedPoolInvocationV1::Initialization(_) => {
-            PreparedPoolInvocationV1::Initialization
-        }
-        AuthenticatedPoolInvocationV1::PreparedSettlement(prepared) => {
-            PreparedPoolInvocationV1::PreparedSettlement(prepared)
-        }
-        AuthenticatedPoolInvocationV1::Deposit(observation) => {
-            let event = decode_deposit_event_record_v1(observation.record_bytes)
-                .map_err(FinalizedIndexerErrorV1::DepositRecord)?;
-            PreparedPoolInvocationV1::Deposit(PreparedDepositV1 {
-                id: observation.id,
-                record_bytes: observation.record_bytes.to_vec(),
-                root_sequence: event.receipt.root_sequence,
-                root: encode_digest_canonical(&event.receipt.root),
-            })
-        }
-        AuthenticatedPoolInvocationV1::Transition(transition) => {
-            PreparedPoolInvocationV1::Transition(PreparedTransitionV1 {
-                receipt: transition.receipt,
-                outputs: transition.outputs,
-                authenticated_transport: transition.authenticated_transport,
-            })
-        }
-    };
-    Ok((Some(prepared), false))
+    let pool_instruction_indices: Vec<_> = resolved_transaction
+        .top_level_instructions
+        .iter()
+        .enumerate()
+        .filter_map(|(index, instruction)| {
+            (instruction.program_id == *binding.program_id()).then_some(index)
+        })
+        .collect();
+    let last_pool_instruction =
+        pool_instruction_indices
+            .last()
+            .copied()
+            .ok_or(FinalizedIndexerErrorV1::PoolTransport(
+                PoolRpcAdapterErrorV1::PoolInstructionMissing,
+            ))?;
+    let pool_owned_return = resolved_return_data
+        .filter(|return_data| return_data.program_id == *binding.program_id())
+        .map(|return_data| return_data.data);
+    let mut prepared_invocations = Vec::with_capacity(pool_instruction_indices.len());
+    for instruction_index in pool_instruction_indices {
+        let observed_pool_return_data = (instruction_index == last_pool_instruction)
+            .then_some(pool_owned_return)
+            .flatten();
+        let authenticated = authenticate_top_level_pool_instruction_v1(
+            binding,
+            identity,
+            current_root_sequence,
+            &resolved_transaction,
+            instruction_index,
+            observed_pool_return_data,
+        )
+        .map_err(|error| match error {
+            PoolRpcAdapterErrorV1::DepositInstruction(deposit) => {
+                FinalizedIndexerErrorV1::DepositTransport(
+                    DepositRpcAdapterErrorV1::DepositInstruction(deposit),
+                )
+            }
+            other => FinalizedIndexerErrorV1::PoolTransport(other),
+        })?;
+        let prepared = match authenticated {
+            AuthenticatedTopLevelPoolInstructionV1::Initialization(_) => {
+                PreparedPoolInvocationV1::Initialization
+            }
+            AuthenticatedTopLevelPoolInstructionV1::PreparedSettlement(prepared) => {
+                PreparedPoolInvocationV1::PreparedSettlement(prepared)
+            }
+            AuthenticatedTopLevelPoolInstructionV1::CancelledSettlement(cancelled) => {
+                PreparedPoolInvocationV1::CancelledSettlement(cancelled)
+            }
+            AuthenticatedTopLevelPoolInstructionV1::Deposit(deposit) => {
+                current_root_sequence = deposit.root_sequence;
+                PreparedPoolInvocationV1::Deposit(deposit)
+            }
+            AuthenticatedTopLevelPoolInstructionV1::Transition(transition) => {
+                current_root_sequence = transition
+                    .outputs
+                    .last()
+                    .ok_or(FinalizedIndexerErrorV1::PoolTransport(
+                        PoolRpcAdapterErrorV1::WrongOutputCount,
+                    ))?
+                    .root_sequence;
+                PreparedPoolInvocationV1::Transition(transition)
+            }
+        };
+        prepared_invocations.push(prepared);
+    }
+    Ok((prepared_invocations, false))
 }
 
 fn prepare_block_transport_v1(
@@ -592,7 +602,7 @@ fn prepare_block_transport_v1(
     let mut invocations = Vec::new();
     let mut ignored_failed_pool_transactions = 0usize;
     for transaction in block.transactions {
-        let (invocation, ignored_failed_pool) = prepare_transaction_v1(
+        let (transaction_invocations, ignored_failed_pool) = prepare_transaction_v1(
             point,
             binding,
             state.identity(),
@@ -605,14 +615,21 @@ fn prepare_block_transport_v1(
                 .checked_add(1)
                 .ok_or(FinalizedIndexerErrorV1::CountOverflow)?;
         }
-        if let Some(invocation) = invocation {
+        for invocation in transaction_invocations {
             current_root_sequence = match &invocation {
                 PreparedPoolInvocationV1::Deposit(deposit) => deposit.root_sequence,
                 PreparedPoolInvocationV1::Transition(transition) => {
-                    transition.receipt.root_sequence
+                    transition
+                        .outputs
+                        .last()
+                        .ok_or(FinalizedIndexerErrorV1::PoolTransport(
+                            PoolRpcAdapterErrorV1::WrongOutputCount,
+                        ))?
+                        .root_sequence
                 }
                 PreparedPoolInvocationV1::Initialization
-                | PreparedPoolInvocationV1::PreparedSettlement(_) => current_root_sequence,
+                | PreparedPoolInvocationV1::PreparedSettlement(_)
+                | PreparedPoolInvocationV1::CancelledSettlement(_) => current_root_sequence,
             };
             invocations.push(invocation);
         }
@@ -638,7 +655,8 @@ pub fn required_root_page_numbers_for_finalized_rpc_block_v1(
     for invocation in &prepared.invocations {
         match invocation {
             PreparedPoolInvocationV1::Initialization
-            | PreparedPoolInvocationV1::PreparedSettlement(_) => {}
+            | PreparedPoolInvocationV1::PreparedSettlement(_)
+            | PreparedPoolInvocationV1::CancelledSettlement(_) => {}
             PreparedPoolInvocationV1::Deposit(deposit) => {
                 pages.insert(root_history_location(deposit.root_sequence).page_number);
             }
@@ -664,7 +682,8 @@ fn authenticate_root_pages_v1(
     for invocation in invocations {
         match invocation {
             PreparedPoolInvocationV1::Initialization
-            | PreparedPoolInvocationV1::PreparedSettlement(_) => {}
+            | PreparedPoolInvocationV1::PreparedSettlement(_)
+            | PreparedPoolInvocationV1::CancelledSettlement(_) => {}
             PreparedPoolInvocationV1::Deposit(deposit) => {
                 needed_pages.insert(root_history_location(deposit.root_sequence).page_number);
             }
@@ -756,9 +775,10 @@ fn authenticate_root_pages_v1(
     for invocation in invocations {
         let requirements: Vec<_> = match invocation {
             PreparedPoolInvocationV1::Initialization
-            | PreparedPoolInvocationV1::PreparedSettlement(_) => Vec::new(),
+            | PreparedPoolInvocationV1::PreparedSettlement(_)
+            | PreparedPoolInvocationV1::CancelledSettlement(_) => Vec::new(),
             PreparedPoolInvocationV1::Deposit(deposit) => {
-                vec![(deposit.id, deposit.root_sequence, Some(deposit.root))]
+                vec![(deposit.id, deposit.root_sequence, None)]
             }
             PreparedPoolInvocationV1::Transition(transition) => transition
                 .outputs
@@ -833,7 +853,8 @@ pub fn ingest_finalized_rpc_block_v1(
         for invocation in &invocations {
             match invocation {
                 PreparedPoolInvocationV1::Initialization
-                | PreparedPoolInvocationV1::PreparedSettlement(_) => {}
+                | PreparedPoolInvocationV1::PreparedSettlement(_)
+                | PreparedPoolInvocationV1::CancelledSettlement(_) => {}
                 PreparedPoolInvocationV1::Deposit(deposit) => presented_ids.push(deposit.id),
                 PreparedPoolInvocationV1::Transition(transition) => {
                     presented_ids.extend(transition.outputs.iter().map(|output| output.id));
@@ -870,14 +891,55 @@ pub fn ingest_finalized_rpc_block_v1(
     let mut transition_outcomes = Vec::new();
     let mut transition_evidence = Vec::new();
     let mut prepared_settlements = Vec::new();
+    let mut cancelled_settlements = Vec::new();
     for invocation in &invocations {
         match invocation {
             PreparedPoolInvocationV1::Initialization => {}
             PreparedPoolInvocationV1::PreparedSettlement(prepared) => {
                 prepared_settlements.push(*prepared);
             }
+            PreparedPoolInvocationV1::CancelledSettlement(cancelled) => {
+                cancelled_settlements.push(*cancelled);
+            }
             PreparedPoolInvocationV1::Deposit(deposit) => {
-                let observation = FinalizedDepositRecordV1::new(deposit.id, &deposit.record_bytes);
+                let root = root_evidence
+                    .iter()
+                    .find(|evidence| evidence.event_id == deposit.id)
+                    .ok_or(FinalizedIndexerErrorV1::MissingRootPageSnapshot)?
+                    .root;
+                let root = decode_digest_canonical(&root)
+                    .map_err(|_| FinalizedIndexerErrorV1::HistoricalRootMismatch)?;
+                let note_commitment = decode_digest_canonical(&deposit.note_commitment)
+                    .map_err(|_| FinalizedIndexerErrorV1::HistoricalRootMismatch)?;
+                let encrypted_note_payload_bytes =
+                    u16::try_from(deposit.encrypted_note_payload.len())
+                        .map_err(|_| FinalizedIndexerErrorV1::CountOverflow)?;
+                let record_bytes = encode_deposit_event_record_v1(&DepositEventV1 {
+                    receipt: DepositReceiptV1 {
+                        pool: *working.identity().pool(),
+                        asset_mint: *working.identity().asset_mint(),
+                        source_token_account: deposit.source_token_account,
+                        vault_token_account: *working.identity().vault_token_account(),
+                        amount: deposit.amount,
+                        encrypted_note_payload_bytes,
+                        note_commitment,
+                        leaf_index: deposit.leaf_index,
+                        root_sequence: deposit.root_sequence,
+                        root,
+                    },
+                    encrypted_note_payload: &deposit.encrypted_note_payload,
+                })
+                .map_err(FinalizedIndexerErrorV1::DepositRecord)?;
+                if deposit
+                    .observed_pool_return_data
+                    .as_deref()
+                    .is_some_and(|observed| observed != record_bytes)
+                {
+                    return Err(FinalizedIndexerErrorV1::PoolTransport(
+                        PoolRpcAdapterErrorV1::ReturnDataMismatch,
+                    ));
+                }
+                let observation = FinalizedDepositRecordV1::new(deposit.id, &record_bytes);
                 deposit_event_ids.push(deposit.id);
                 deposit_outcomes.push(
                     working
@@ -886,6 +948,52 @@ pub fn ingest_finalized_rpc_block_v1(
                 );
             }
             PreparedPoolInvocationV1::Transition(transition) => {
+                let last_output =
+                    transition
+                        .outputs
+                        .last()
+                        .ok_or(FinalizedIndexerErrorV1::PoolTransport(
+                            PoolRpcAdapterErrorV1::WrongOutputCount,
+                        ))?;
+                let root = root_evidence
+                    .iter()
+                    .find(|evidence| evidence.event_id == last_output.id)
+                    .ok_or(FinalizedIndexerErrorV1::MissingRootPageSnapshot)?
+                    .root;
+                let receipt = TransitionReceiptV1 {
+                    transition_kind: transition.transition_kind,
+                    pool: *working.identity().pool(),
+                    nullifier: transition.nullifier,
+                    first_output: transition.first_output,
+                    second_output_or_destination: transition.second_output_or_destination,
+                    withdrawal_amount: transition.withdrawal_amount,
+                    first_leaf_index: transition.outputs[0].leaf_index,
+                    second_leaf_index: transition
+                        .outputs
+                        .get(1)
+                        .map_or(0, |output| output.leaf_index),
+                    root_sequence: last_output.root_sequence,
+                    root: decode_digest_canonical(&root)
+                        .map_err(|_| FinalizedIndexerErrorV1::HistoricalRootMismatch)?,
+                };
+                let receipt_bytes = encode_transition_receipt_v1(&receipt).map_err(|error| {
+                    FinalizedIndexerErrorV1::PoolTransport(PoolRpcAdapterErrorV1::PoolInstruction(
+                        error,
+                    ))
+                })?;
+                if transition
+                    .observed_pool_return_data
+                    .as_deref()
+                    .is_some_and(|observed| observed != receipt_bytes)
+                {
+                    return Err(FinalizedIndexerErrorV1::PoolTransport(
+                        PoolRpcAdapterErrorV1::ReturnDataMismatch,
+                    ));
+                }
+                let mut authenticated_transport =
+                    Vec::with_capacity(transition.instruction_bytes.len() + receipt_bytes.len());
+                authenticated_transport.extend_from_slice(&transition.instruction_bytes);
+                authenticated_transport.extend_from_slice(&receipt_bytes);
                 for output in &transition.outputs {
                     let root = root_evidence
                         .iter()
@@ -901,15 +1009,15 @@ pub fn ingest_finalized_rpc_block_v1(
                                 root_sequence: output.root_sequence,
                                 note_commitment: output.commitment,
                                 root,
-                                authenticated_transport: &transition.authenticated_transport,
+                                authenticated_transport: &authenticated_transport,
                             })
                             .map_err(FinalizedIndexerErrorV1::ScanState)?,
                     );
                 }
                 transition_evidence.push(FinalizedTransitionEvidenceV1 {
-                    receipt: transition.receipt,
+                    receipt,
                     output_ids: transition.outputs.iter().map(|output| output.id).collect(),
-                    authenticated_transport: transition.authenticated_transport.clone(),
+                    authenticated_transport,
                 });
             }
         }
@@ -924,6 +1032,7 @@ pub fn ingest_finalized_rpc_block_v1(
         transition_outcomes,
         transition_evidence,
         prepared_settlements,
+        cancelled_settlements,
         root_evidence,
         ignored_failed_pool_transactions: prepared.ignored_failed_pool_transactions,
     })
@@ -934,7 +1043,6 @@ mod tests {
     use super::*;
     use aspis_core::field::M31;
     use aspis_pool::{
-        encode_private_transfer_instruction_v1,
         instruction::{encode_transition_receipt_v1, TransitionReceiptV1},
         PrivateTransferStatementV1, WithdrawalStatementV1,
     };
@@ -954,7 +1062,8 @@ mod tests {
         },
         scan_state::{encode_deposit_event_record_v1, DepositScanIdentityV1, LocalOwnerKeyStoreV1},
         transaction_builder::{
-            build_prepare_withdrawal_instruction_v1, PreparedSettlementRouteAccountsV1,
+            build_prepare_withdrawal_instruction_v1, build_private_transfer_instruction_v1,
+            PreparedSettlementRouteAccountsV1, VerifierRouteAccountsV1,
         },
         PoolV1WalletError,
     };
@@ -1086,10 +1195,19 @@ mod tests {
     }
 
     fn deposit_record(leaf_index: u64, root: Digest, payload: &[u8]) -> Vec<u8> {
+        deposit_record_for_source(leaf_index, root, payload, [0x55; 32])
+    }
+
+    fn deposit_record_for_source(
+        leaf_index: u64,
+        root: Digest,
+        payload: &[u8],
+        source_token_account: [u8; 32],
+    ) -> Vec<u8> {
         let receipt = DepositReceiptV1 {
             pool: *identity().pool(),
             asset_mint: *identity().asset_mint(),
-            source_token_account: [0x55; 32],
+            source_token_account,
             vault_token_account: *identity().vault_token_account(),
             amount: 77,
             encrypted_note_payload_bytes: payload.len() as u16,
@@ -1145,8 +1263,20 @@ mod tests {
             recipient_commitment: recipient,
             change_commitment: change,
         };
-        let instruction_wire =
-            encode_private_transfer_instruction_v1(&envelope, &statement).unwrap();
+        let built_instruction = build_private_transfer_instruction_v1(
+            Pubkey::new_from_array(PROGRAM_ID),
+            7,
+            &envelope,
+            &statement,
+            VerifierRouteAccountsV1 {
+                payer: Pubkey::new_from_array([0x63; 32]),
+                registry_program: Pubkey::new_from_array([0x64; 32]),
+                verifier_program: Pubkey::new_from_array([0x65; 32]),
+                sealed_proof_account: Pubkey::new_from_array([0x66; 32]),
+            },
+        )
+        .unwrap();
+        let instruction_wire = built_instruction.data;
         let mut return_wire = encode_transition_receipt_v1(&TransitionReceiptV1 {
             transition_kind: PoolV1TransitionKind::PrivateTransfer,
             pool: *identity().pool(),
@@ -1167,12 +1297,18 @@ mod tests {
 
         let instruction_data = encode_base58(&instruction_wire);
         let return_data = encode_base64(&return_wire);
-        let payer = encode_base58(&[0x63; 32]);
-        let pool_program = encode_base58(&PROGRAM_ID);
-        let static_keys = [payer.as_str(), pool_program.as_str()];
-        let account_indices = [0u16];
+        let mut encoded_keys = Vec::with_capacity(built_instruction.accounts.len() + 1);
+        encoded_keys.push(encode_base58(&PROGRAM_ID));
+        encoded_keys.extend(
+            built_instruction
+                .accounts
+                .iter()
+                .map(|account| encode_base58(account.pubkey.as_ref())),
+        );
+        let static_keys: Vec<_> = encoded_keys.iter().map(String::as_str).collect();
+        let account_indices: Vec<_> = (1..=built_instruction.accounts.len() as u16).collect();
         let instructions = [SolanaRpcCompiledInstructionV1 {
-            program_id_index: 1,
+            program_id_index: 0,
             account_indices: &account_indices,
             data_base58: &instruction_data,
         }];
@@ -1186,7 +1322,7 @@ mod tests {
             top_level_instructions: &instructions,
             succeeded: true,
             return_data: Some(SolanaRpcReturnDataV1 {
-                program_id_base58: &pool_program,
+                program_id_base58: &static_keys[0],
                 binary: SolanaRpcEncodedBinaryV1 {
                     data: &return_data,
                     encoding: "base64",
@@ -1261,6 +1397,7 @@ mod tests {
         append_non_pool_instruction: bool,
         succeeded: bool,
         return_encoding: &'static str,
+        return_program: [u8; 32],
         root_commitment: SolanaRpcCommitmentV1,
         root_context_slot: u64,
         root_owner: [u8; 32],
@@ -1288,11 +1425,12 @@ mod tests {
                 block_commitment: SolanaRpcCommitmentV1::Finalized,
                 version: SolanaRpcTransactionVersionV1::V0,
                 include_loaded_addresses: true,
-                program_id_index: 2,
+                program_id_index: 9,
                 instruction_version: POOL_V1_DEPOSIT_INSTRUCTION_VERSION,
                 append_non_pool_instruction: false,
                 succeeded: true,
                 return_encoding: "base64",
+                return_program: PROGRAM_ID,
                 root_commitment: SolanaRpcCommitmentV1::Finalized,
                 root_context_slot: block.0,
                 root_owner: PROGRAM_ID,
@@ -1323,14 +1461,32 @@ mod tests {
             let payer = encode_base58(&[0x61; 32]);
             let non_pool_program = encode_base58(&[0x62; 32]);
             let pool_program = encode_base58(&PROGRAM_ID);
+            let pool = encode_base58(identity().pool());
+            let current_page = encode_base58(&root_page_address(0));
+            let asset_mint = encode_base58(identity().asset_mint());
+            let source_token_account = encode_base58(&[0x55; 32]);
+            let source_owner = encode_base58(&[0x56; 32]);
+            let vault = encode_base58(identity().vault_token_account());
+            let token_program = encode_base58(aspis_pool::LEGACY_SPL_TOKEN_PROGRAM_ID.as_ref());
+            let base_keys = vec![
+                payer.as_str(),
+                pool.as_str(),
+                current_page.as_str(),
+                asset_mint.as_str(),
+                source_token_account.as_str(),
+                source_owner.as_str(),
+                vault.as_str(),
+                token_program.as_str(),
+            ];
             let static_keys = match self.version {
-                SolanaRpcTransactionVersionV1::Legacy => vec![
-                    payer.as_str(),
-                    non_pool_program.as_str(),
-                    pool_program.as_str(),
-                ],
+                SolanaRpcTransactionVersionV1::Legacy => {
+                    let mut keys = base_keys.clone();
+                    keys.push(non_pool_program.as_str());
+                    keys.push(pool_program.as_str());
+                    keys
+                }
                 SolanaRpcTransactionVersionV1::V0
-                | SolanaRpcTransactionVersionV1::Unsupported(_) => vec![payer.as_str()],
+                | SolanaRpcTransactionVersionV1::Unsupported(_) => base_keys,
             };
             let loaded_writable = [non_pool_program.as_str()];
             let loaded_readonly = [pool_program.as_str()];
@@ -1340,7 +1496,7 @@ mod tests {
                         writable: &loaded_writable,
                         readonly: &loaded_readonly,
                     });
-            let instruction_accounts = [0u16];
+            let instruction_accounts = [1u16, 2, 3, 4, 5, 6, 7];
             let mut instructions = vec![SolanaRpcCompiledInstructionV1 {
                 program_id_index: self.program_id_index,
                 account_indices: &instruction_accounts,
@@ -1349,14 +1505,14 @@ mod tests {
             let non_pool_data = encode_base58(&[7]);
             if self.append_non_pool_instruction {
                 instructions.push(SolanaRpcCompiledInstructionV1 {
-                    program_id_index: 1,
-                    account_indices: &instruction_accounts,
+                    program_id_index: 8,
+                    account_indices: &[0],
                     data_base58: &non_pool_data,
                 });
             }
             let signature = encode_base58(&[self.signature_byte; 64]);
             let signatures = [signature.as_str()];
-            let return_program = encode_base58(&PROGRAM_ID);
+            let return_program = encode_base58(&self.return_program);
             let transaction = SolanaRpcTransactionV1 {
                 version: self.version,
                 signatures_base58: &signatures,
@@ -1493,7 +1649,7 @@ mod tests {
         assert_eq!(state.root(), &encode_digest_canonical(&root));
         assert_eq!(state.head().slot(), 101);
 
-        let mut base58_fixture = fixture;
+        let mut base58_fixture = fixture.clone();
         base58_fixture.return_encoding = "base58";
         let mut base58_state = initial_state();
         let base58_result = base58_fixture
@@ -1501,6 +1657,135 @@ mod tests {
             .unwrap();
         assert_eq!(base58_result.deposit_outcomes.len(), 1);
         assert_eq!(base58_state.next_leaf_index(), 8);
+
+        // A later top-level program may both follow the Pool call and replace
+        // transaction-global return data. The append remains reconstructible
+        // from ASDI plus the authenticated history page.
+        let mut overwritten = fixture;
+        overwritten.append_non_pool_instruction = true;
+        overwritten.return_program = [0x62; 32];
+        let mut overwritten_state = initial_state();
+        let overwritten_result = overwritten
+            .ingest(&mut overwritten_state, &viewing_secret())
+            .unwrap();
+        assert_eq!(overwritten_result.deposit_outcomes.len(), 1);
+        assert_eq!(overwritten_state.next_leaf_index(), 8);
+    }
+
+    #[test]
+    fn two_pool_deposits_in_one_transaction_ingest_in_instruction_order() {
+        let first_root = digest(701);
+        let final_root = digest(702);
+        let first_payload = [0xaa];
+        let second_payload = [0xbb];
+        let first_wire = instruction_bytes(&first_payload);
+        let second_wire = instruction_bytes(&second_payload);
+        let first_data = encode_base58(&first_wire);
+        let second_data = encode_base58(&second_wire);
+        let return_wire = deposit_record_for_source(8, final_root, &second_payload, [0x57; 32]);
+        let return_data = encode_base64(&return_wire);
+
+        let encoded_keys = [
+            encode_base58(&PROGRAM_ID),
+            encode_base58(identity().pool()),
+            encode_base58(&root_page_address(0)),
+            encode_base58(identity().asset_mint()),
+            encode_base58(&[0x55; 32]),
+            encode_base58(&[0x56; 32]),
+            encode_base58(identity().vault_token_account()),
+            encode_base58(aspis_pool::LEGACY_SPL_TOKEN_PROGRAM_ID.as_ref()),
+            encode_base58(&[0x57; 32]),
+            encode_base58(&[0x58; 32]),
+        ];
+        let keys: Vec<_> = encoded_keys.iter().map(String::as_str).collect();
+        let first_accounts = [1u16, 2, 3, 4, 5, 6, 7];
+        let second_accounts = [1u16, 2, 3, 8, 9, 6, 7];
+        let instructions = [
+            SolanaRpcCompiledInstructionV1 {
+                program_id_index: 0,
+                account_indices: &first_accounts,
+                data_base58: &first_data,
+            },
+            SolanaRpcCompiledInstructionV1 {
+                program_id_index: 0,
+                account_indices: &second_accounts,
+                data_base58: &second_data,
+            },
+        ];
+        let signature = encode_base58(&[0x75; 64]);
+        let signatures = [signature.as_str()];
+        let transaction = SolanaRpcTransactionV1 {
+            version: SolanaRpcTransactionVersionV1::Legacy,
+            signatures_base58: &signatures,
+            static_account_keys_base58: &keys,
+            loaded_addresses: None,
+            top_level_instructions: &instructions,
+            succeeded: true,
+            return_data: Some(SolanaRpcReturnDataV1 {
+                program_id_base58: keys[0],
+                binary: SolanaRpcEncodedBinaryV1 {
+                    data: &return_data,
+                    encoding: "base64",
+                },
+            }),
+        };
+        let transactions = [transaction];
+        let block_hash = encode_base58(&[0xa1; 32]);
+        let parent_hash = encode_base58(&[0xa0; 32]);
+        let block = SolanaRpcBlockV1 {
+            asserted_commitment: SolanaRpcCommitmentV1::Finalized,
+            slot: 101,
+            blockhash_base58: &block_hash,
+            previous_blockhash_base58: &parent_hash,
+            parent_slot: 100,
+            transactions: &transactions,
+        };
+
+        let mut roots = history_roots(9, final_root);
+        roots[8] = first_root;
+        let mut page_bytes = vec![0u8; POOL_V1_ROOT_HISTORY_PAGE_ACCOUNT_BYTES];
+        initialize_root_history_page_bytes_v1(&mut page_bytes, *identity().pool(), 0, &roots)
+            .unwrap();
+        let page_data = encode_base64(&page_bytes);
+        let page_address_bytes = root_page_address(0);
+        let page_address = encode_base58(&page_address_bytes);
+        let owner = encode_base58(&PROGRAM_ID);
+        let accounts = [SolanaRpcRootPageAccountV1 {
+            page_number: 0,
+            address_base58: &page_address,
+            owner_base58: &owner,
+            executable: false,
+            data: SolanaRpcEncodedBinaryV1 {
+                data: &page_data,
+                encoding: "base64",
+            },
+        }];
+        let batch = SolanaRpcRootPageBatchV1 {
+            asserted_commitment: SolanaRpcCommitmentV1::Finalized,
+            context_slot: 101,
+            accounts: &accounts,
+        };
+        let mut state = initial_state();
+        let result = ingest_finalized_rpc_block_v1(
+            &mut state,
+            &DepositRpcBindingV1::new(PROGRAM_ID).unwrap(),
+            &[RootPageAddressBindingV1 {
+                page_number: 0,
+                address: page_address_bytes,
+            }],
+            &block,
+            Some(&batch),
+            &viewing_secret(),
+            &EmptyKeyStore,
+        )
+        .unwrap();
+        assert_eq!(result.deposit_event_ids.len(), 2);
+        assert_eq!(result.deposit_event_ids[0].instruction_index(), 0);
+        assert_eq!(result.deposit_event_ids[1].instruction_index(), 1);
+        assert_eq!(result.root_evidence[0].root_sequence, 8);
+        assert_eq!(result.root_evidence[1].root_sequence, 9);
+        assert_eq!(state.next_leaf_index(), 9);
+        assert_eq!(state.root(), &encode_digest_canonical(&final_root));
     }
 
     #[test]
@@ -1691,15 +1976,6 @@ mod tests {
             FinalizedIndexerErrorV1::WrongReturnDataEncoding,
         ));
 
-        let mut non_final_pool = canonical.clone();
-        non_final_pool.append_non_pool_instruction = true;
-        cases.push((
-            non_final_pool,
-            FinalizedIndexerErrorV1::DepositTransport(
-                DepositRpcAdapterErrorV1::DepositInstructionNotFinal,
-            ),
-        ));
-
         let mut old_root_snapshot = canonical.clone();
         old_root_snapshot.root_context_slot = 100;
         cases.push((
@@ -1723,7 +1999,10 @@ mod tests {
 
         let mut forged_root = canonical;
         forged_root.roots = history_roots(8, digest(701));
-        cases.push((forged_root, FinalizedIndexerErrorV1::HistoricalRootMismatch));
+        cases.push((
+            forged_root,
+            FinalizedIndexerErrorV1::PoolTransport(PoolRpcAdapterErrorV1::ReturnDataMismatch),
+        ));
 
         for (fixture, expected_error) in cases {
             let mut state = initial_state();
@@ -1834,9 +2113,9 @@ mod tests {
         assert_eq!(state.next_leaf_index(), 9);
         assert_eq!(state.root(), &encode_digest_canonical(&root_b_replacement));
 
-        // Root and transport authentication both succeed, then the receipt's
-        // skipped leaf fails only after the working clone has rolled back.
-        // The live cursor must remain on the previously accepted replacement.
+        // The forged transaction-global receipt claims a skipped leaf even
+        // though instruction-order reconstruction starts from the retained
+        // parent. Its byte mismatch rejects before the working clone commits.
         let bad_root = digest(703);
         let bad_replacement = DepositFixture::new(
             (102, 0xc2, 101, 0xa1),
@@ -1848,8 +2127,8 @@ mod tests {
         let before_partial_failure = state.clone();
         assert_eq!(
             bad_replacement.ingest(&mut state, &secret).err(),
-            Some(FinalizedIndexerErrorV1::ScanState(
-                ScanStateErrorV1::UnexpectedLeafIndex
+            Some(FinalizedIndexerErrorV1::PoolTransport(
+                PoolRpcAdapterErrorV1::ReturnDataMismatch
             ))
         );
         assert_eq!(state, before_partial_failure);
@@ -1999,7 +2278,7 @@ mod tests {
             )
             .err(),
             Some(FinalizedIndexerErrorV1::PoolTransport(
-                PoolRpcAdapterErrorV1::WrongReceiptLength
+                PoolRpcAdapterErrorV1::ReturnDataMismatch
             ))
         );
         assert_eq!(fresh, before);
