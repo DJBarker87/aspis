@@ -55,14 +55,18 @@ finite instances. -/
 abbrev ShapeOrdering {depth : Nat} (shape : Shape depth) :=
   Fin (selected shape) ≃ (shapeLeaves shape : Type)
 
+/-- A fixed reference ordering for a shape.  Security arguments use only its
+bijection laws; deployed position compatibility is supplied separately by
+`leafPositionEquiv`. -/
+def canonicalShapeOrdering {depth : Nat} (shape : Shape depth) :
+    ShapeOrdering shape :=
+  Fintype.equivOfCardEq (by
+    simpa [shapeLeaves_card])
+
 theorem shape_ordering_card {depth : Nat} (shape : Shape depth) :
     Fintype.card (ShapeOrdering shape) =
       Nat.factorial (selected shape) := by
-  let equivalence :
-      Fin (selected shape) ≃ (shapeLeaves shape : Type) :=
-    Fintype.equivOfCardEq (by
-      simpa [shapeLeaves_card])
-  simpa using Fintype.card_equiv equivalence
+  simpa using Fintype.card_equiv (canonicalShapeOrdering shape)
 
 /-! ## Bit-compatible leaf positions -/
 
