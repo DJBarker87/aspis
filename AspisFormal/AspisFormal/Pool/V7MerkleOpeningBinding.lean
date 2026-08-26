@@ -59,6 +59,22 @@ def CrossTraceRawCollision
   ∃ left ∈ leftTrace, ∃ right ∈ rightTrace,
     left ≠ right ∧ truncateSha256 left = truncateSha256 right
 
+def TraceIncludedInLog (trace : List RawHashInput)
+    (log : OrderedRawQueryLog) : Prop :=
+  ∀ input ∈ trace, input ∈ log
+
+theorem cross_trace_collision_yields_raw_log_collision
+    (truncateSha256 : RawHashInput → Digest208)
+    (leftTrace rightTrace : List RawHashInput)
+    (log : OrderedRawQueryLog)
+    (leftIncluded : TraceIncludedInLog leftTrace log)
+    (rightIncluded : TraceIncludedInLog rightTrace log)
+    (collision : CrossTraceRawCollision truncateSha256 leftTrace rightTrace) :
+    RawLogTruncatedDigestCollision truncateSha256 log := by
+  obtain ⟨left, leftIn, right, rightIn, different, equalDigest⟩ := collision
+  exact ⟨left, leftIncluded left leftIn, right, rightIncluded right rightIn,
+    different, equalDigest⟩
+
 theorem foldPathAux_cons
     (truncateSha256 : RawHashInput → Digest208)
     (position : Nat) (current sibling : Digest208)
@@ -261,10 +277,36 @@ theorem same_position_distinct_typed_leaves_expose_cross_trace_collision
         exact Or.inr collisionRightIn,
       collisionInputsDifferent, collisionAnswersEqual⟩
 
+theorem same_position_distinct_typed_leaves_in_log_expose_collision
+    (truncateSha256 : RawHashInput → Digest208)
+    (log : OrderedRawQueryLog)
+    (position : Position)
+    (leftLeaf rightLeaf : TypedPreimage)
+    (leftSiblings rightSiblings : SiblingPath)
+    (leftIncluded : TraceIncludedInLog
+      (openingInputTrace truncateSha256 position leftLeaf leftSiblings) log)
+    (rightIncluded : TraceIncludedInLog
+      (openingInputTrace truncateSha256 position rightLeaf rightSiblings) log)
+    (differentLeaf : leftLeaf ≠ rightLeaf)
+    (sameRoot :
+      foldPath truncateSha256 position
+          (truncateSha256 (serialize leftLeaf)) leftSiblings =
+        foldPath truncateSha256 position
+          (truncateSha256 (serialize rightLeaf)) rightSiblings) :
+    RawLogTruncatedDigestCollision truncateSha256 log := by
+  exact cross_trace_collision_yields_raw_log_collision truncateSha256
+    (openingInputTrace truncateSha256 position leftLeaf leftSiblings)
+    (openingInputTrace truncateSha256 position rightLeaf rightSiblings)
+    log leftIncluded rightIncluded
+    (same_position_distinct_typed_leaves_expose_cross_trace_collision
+      truncateSha256 position leftLeaf rightLeaf leftSiblings rightSiblings
+      differentLeaf sameRoot)
+
 #print axioms ordered_node_input_ne_of_current_ne
 #print axioms foldPathAux_collision_of_current_ne_of_eq
 #print axioms foldPathAux_cross_trace_collision_of_current_ne_of_eq
 #print axioms same_position_distinct_typed_leaves_expose_raw_collision
 #print axioms same_position_distinct_typed_leaves_expose_cross_trace_collision
+#print axioms same_position_distinct_typed_leaves_in_log_expose_collision
 
 end AspisPool.V7MerkleOpeningBinding
