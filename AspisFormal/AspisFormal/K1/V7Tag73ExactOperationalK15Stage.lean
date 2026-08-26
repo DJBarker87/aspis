@@ -313,7 +313,7 @@ structure ExactTag73OperationalK15Failure
       deployedNullifier deployedNode}
     (material : ExactTag73OperationalK15Material input k12 k14 basis rc
       poseidon) : Type where
-  evidence : FailureEvidence
+  evidence : CausalFailureEvidence
     (failureEvent basis rc fixedInstance.statement
       (operationalFixedFields material.data.decoded)
       (operationalAcceptedRun input material.data.decoded

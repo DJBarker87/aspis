@@ -123,7 +123,7 @@ theorem assembled_k15_error_event_exact
 
 /-- Membership exposes the proposition-level causal branch itself, rather
 than merely an inhabitant of an opaque stage error type. -/
-theorem mem_exact_k15_failure_event_iff_failure_evidence
+theorem mem_exact_k15_failure_event_iff_causal_failure_evidence
     {HiddenTape TapeIdentity Observation Payload : Type}
     {parameters : ExactCompilerResourceParameters}
     {transitionFuel : Nat}
@@ -155,7 +155,7 @@ theorem mem_exact_k15_failure_event_iff_failure_evidence
         (k12 : ExactPrefixK12Certificate input)
         (k13 : ExactK13Certificate decoder input k12)
         (k14 : ExactK14Certificate decoder decoderBinding input k12),
-        FailureEvidence
+        CausalFailureEvidence
           (failureEvent basis rc fixedInstance.statement
             (operationalFixedFields
               (environment.material sample input k12 k13 k14).data.decoded)
@@ -184,7 +184,7 @@ theorem mem_exact_k15_failure_event_iff_failure_evidence
     exact ⟨input, k12, k13, k14, ⟨⟨evidence⟩⟩⟩
 
 #print axioms assembled_k15_error_event_exact
-#print axioms mem_exact_k15_failure_event_iff_failure_evidence
+#print axioms mem_exact_k15_failure_event_iff_causal_failure_evidence
 
 end
 

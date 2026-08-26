@@ -325,7 +325,8 @@ theorem groupedFixedFamilyRootCap_eq_inventory :
   rw [fixedFamilyCausalRootCap_sum_eq_396430]
 
 set_option linter.constructorNameAsVariable false in
-theorem failureEvidence_implies_fixedFamilyK15Failure_of_gamma_cover
+theorem failureKind_elim_causal
+    {Result : Prop}
     {Public Root : Type*}
     {scheme : FiatShamirSchedule Public Root QM31Exact}
     {decoder : ExactDecoderInstantiation QM31Exact}
@@ -369,14 +370,15 @@ theorem failureEvidence_implies_fixedFamilyK15Failure_of_gamma_cover
     (sumcheckCausal : WireUsesAdaptiveDegree27Plan
       (acceptedProductionWireOfCompact fields transcript compact) honest
       (sumcheck (extractedFixedWidth29Candidate extraction fixedMember)))
-    (gammaCover : GammaPointLaneCollision fields extraction transcript.point →
+    (kind : FailureKind)
+    (fixedCover :
       FixedFamilyK15Failure terminal sumcheck fields extraction zerocheckPoint
-        transcript.point lambda chi theta mu kappa execution)
-    (failure : FailureEvidence
-      (failureEvent basis rc statement fields transcript compact extraction
-        lambda chi theta zerocheckPoint mu helper mask honest kappa execution)) :
-    FixedFamilyK15Failure terminal sumcheck fields extraction zerocheckPoint
-      transcript.point lambda chi theta mu kappa execution := by
+        transcript.point lambda chi theta mu kappa execution → Result)
+    (gammaCover : kind = .gammaPointLane →
+      GammaPointLaneCollision fields extraction transcript.point → Result)
+    (holds : failureEvent basis rc statement fields transcript compact extraction
+      lambda chi theta zerocheckPoint mu helper mask honest kappa execution kind) :
+    Result := by
   classical
   let selected := extractedFixedWidth29Candidate extraction fixedMember
   have selectedTerminalExact : terminal selected =
@@ -401,7 +403,6 @@ theorem failureEvidence_implies_fixedFamilyK15Failure_of_gamma_cover
         packedCopySourceOfExtraction extraction := by
     simpa only [c1Candidate, fixedC1CopySourceFamily] using
       packedCopySourceOfC1Tuple_project_extraction extraction
-  rcases failure with ⟨kind, holds⟩
   cases kind with
   | tenRoundRepair =>
       change TenRoundRepair
@@ -411,7 +412,7 @@ theorem failureEvidence_implies_fixedFamilyK15Failure_of_gamma_cover
         (extractedWidth29InitialWords words) terminal sumcheck selected
         (acceptedProductionWireOfCompact fields transcript compact) honest
         semanticSource theta zerocheckPoint mu (Or.inl holds)
-      exact FixedFamilyK15Failure.semantic covered
+      exact fixedCover (FixedFamilyK15Failure.semantic covered)
   | helperCancellation =>
       change HelperCancellation basis
         (extractedConstraintRows statement extraction
@@ -428,7 +429,7 @@ theorem failureEvidence_implies_fixedFamilyK15Failure_of_gamma_cover
         (extractedWidth29InitialWords words) terminal sumcheck selected
         (acceptedProductionWireOfCompact fields transcript compact) honest
         semanticSource theta zerocheckPoint mu (Or.inr algebraFailure)
-      exact FixedFamilyK15Failure.semantic covered
+      exact fixedCover (FixedFamilyK15Failure.semantic covered)
   | zerocheckEvaluation =>
       change ZerocheckEvaluationCollision basis
         (extractedConstraintRows statement extraction
@@ -445,7 +446,7 @@ theorem failureEvidence_implies_fixedFamilyK15Failure_of_gamma_cover
         (extractedWidth29InitialWords words) terminal sumcheck selected
         (acceptedProductionWireOfCompact fields transcript compact) honest
         semanticSource theta zerocheckPoint mu (Or.inr algebraFailure)
-      exact FixedFamilyK15Failure.semantic covered
+      exact fixedCover (FixedFamilyK15Failure.semantic covered)
   | thetaLane =>
       change ThetaLaneCollision basis
         (extractedConstraintRows statement extraction
@@ -462,16 +463,17 @@ theorem failureEvidence_implies_fixedFamilyK15Failure_of_gamma_cover
         (extractedWidth29InitialWords words) terminal sumcheck selected
         (acceptedProductionWireOfCompact fields transcript compact) honest
         semanticSource theta zerocheckPoint mu (Or.inr algebraFailure)
-      exact FixedFamilyK15Failure.semantic covered
+      exact fixedCover (FixedFamilyK15Failure.semantic covered)
   | muZero =>
       change mu = 0 at holds
-      exact FixedFamilyK15Failure.muZero holds
+      exact fixedCover (FixedFamilyK15Failure.muZero holds)
   | inactiveChi =>
       change DeployedCopyInactiveSlotCollision chi at holds
-      exact FixedFamilyK15Failure.inactiveChi holds
+      exact fixedCover (FixedFamilyK15Failure.inactiveChi holds)
   | activePole =>
       change DeployedCopyActivePole
         (concreteDeployedCopyRegistryProjection extraction) lambda chi at holds
+      apply fixedCover
       apply FixedFamilyK15Failure.copyChi
       refine ⟨c1Candidate, Or.inl ?_⟩
       rw [c1SourceExact]
@@ -479,6 +481,7 @@ theorem failureEvidence_implies_fixedFamilyK15Failure_of_gamma_cover
   | copyChi =>
       change CopyChiCollision
         (concreteDeployedCopyRegistryProjection extraction) lambda chi at holds
+      apply fixedCover
       apply FixedFamilyK15Failure.copyChi
       refine ⟨c1Candidate, Or.inr ?_⟩
       rw [c1SourceExact]
@@ -486,24 +489,25 @@ theorem failureEvidence_implies_fixedFamilyK15Failure_of_gamma_cover
   | tupleCompression =>
       change CopyTupleCompressionCollision
         (concreteDeployedCopyRegistryProjection extraction) lambda at holds
+      apply fixedCover
       apply FixedFamilyK15Failure.copyLambda
       refine ⟨c1Candidate, ?_⟩
       rw [c1SourceExact]
       exact holds
   | oodMix =>
       change execution.discrepancyTrace.MixCancellation 0 at holds
-      exact FixedFamilyK15Failure.oodMix holds
+      exact fixedCover (FixedFamilyK15Failure.oodMix holds)
   | relationAlpha =>
       change (∃ round : Fin 4,
         execution.discrepancyTrace.AlphaRepair round) at holds
-      exact FixedFamilyK15Failure.relationAlpha holds
+      exact fixedCover (FixedFamilyK15Failure.relationAlpha holds)
   | kappaPointRow =>
       change KappaPointRowCollision fields extraction transcript.point kappa
         at holds
-      exact FixedFamilyK15Failure.kappaPointRow holds
+      exact fixedCover (FixedFamilyK15Failure.kappaPointRow holds)
   | gammaPointLane =>
       change GammaPointLaneCollision fields extraction transcript.point at holds
-      exact gammaCover holds
+      exact gammaCover rfl holds
 
 /-- Without strengthening K1.4, the deterministic ledger has exactly one
 residual branch: a nonzero point-claim discrepancy killed by `gamma`.  Every
@@ -559,15 +563,12 @@ theorem failureEvidence_implies_gammaPointLane_or_fixedFamilyK15Failure
       FixedFamilyK15Failure terminal sumcheck fields extraction zerocheckPoint
         transcript.point lambda chi theta mu kappa execution := by
   classical
-  by_cases gammaCollision :
-      GammaPointLaneCollision fields extraction transcript.point
-  · exact Or.inl gammaCollision
-  · exact Or.inr
-      (failureEvidence_implies_fixedFamilyK15Failure_of_gamma_cover
-        basis rc statement fields transcript compact extraction lambda chi theta
-        zerocheckPoint mu helper mask honest kappa execution fixedMember
-        terminal sumcheck terminalExact sumcheckCausal
-        (fun collision => (gammaCollision collision).elim) failure)
+  rcases failure with ⟨kind, holds⟩
+  exact failureKind_elim_causal
+    basis rc statement fields transcript compact extraction lambda chi theta
+    zerocheckPoint mu helper mask honest kappa execution fixedMember
+    terminal sumcheck terminalExact sumcheckCausal kind Or.inr
+    (fun _ collision => Or.inl collision) holds
 
 /-- The strengthened K1.4 all-claims certificate eliminates the sole residual
 gamma branch and recovers the fixed-family-only result used by the existing
@@ -624,13 +625,15 @@ theorem failureEvidence_implies_fixedFamilyK15Failure
         lambda chi theta zerocheckPoint mu helper mask honest kappa execution)) :
     FixedFamilyK15Failure terminal sumcheck fields extraction zerocheckPoint
       transcript.point lambda chi theta mu kappa execution := by
-  exact failureEvidence_implies_fixedFamilyK15Failure_of_gamma_cover
+  rcases failure with ⟨kind, holds⟩
+  exact failureKind_elim_causal
     basis rc statement fields transcript compact extraction lambda chi theta
     zerocheckPoint mu helper mask honest kappa execution fixedMember
-    terminal sumcheck terminalExact sumcheckCausal
-    (fun collision => False.elim
+    terminal sumcheck terminalExact sumcheckCausal kind
+    (fun fixed => fixed)
+    (fun _ collision => False.elim
       ((gamma_point_lane_collision_impossible_of_all_claims_exact fields
-        extraction transcript.point allPointClaimsExact) collision)) failure
+        extraction transcript.point allPointClaimsExact) collision)) holds
 
 #print axioms extractedFixedWidth29Candidate
 #print axioms coherentTraceExtraction_components_mem_fixedWidth29TupleList
@@ -640,7 +643,7 @@ theorem failureEvidence_implies_fixedFamilyK15Failure
 #print axioms packedSourceFamilyTupleCompressionWitness_mem_familyLambdaBad
 #print axioms packedSourceFamilyChiWitness_mem_familyChiBad
 #print axioms groupedFixedFamilyRootCap_eq_inventory
-#print axioms failureEvidence_implies_fixedFamilyK15Failure_of_gamma_cover
+#print axioms failureKind_elim_causal
 #print axioms
   failureEvidence_implies_gammaPointLane_or_fixedFamilyK15Failure
 #print axioms failureEvidence_implies_fixedFamilyK15Failure

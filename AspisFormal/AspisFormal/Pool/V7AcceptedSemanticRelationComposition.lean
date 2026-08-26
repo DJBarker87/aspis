@@ -445,6 +445,64 @@ The three `executionInitial*` equalities are individual source projections.
 batching cannot separate from point row zero.  Query injection and final-fold
 matching retain their exact, already defined equality predicates.
 -/
+theorem relation_and_point_aggregate_exact_outside_relation_collisions
+    {decoder : ExactDecoderInstantiation QM31Exact}
+    {binding : InitialProjectionBinding decoder}
+    {words : V7MerkleQueryExtractor.ExtractedWords}
+    {gamma : QM31Exact} {disclosedFinal : FinalMessage QM31Exact}
+    {schedule : ExactSchedule}
+    (masks : InactiveMasks)
+    (fields : FixedFieldView QM31Exact)
+    (extraction : CoherentTraceExtraction decoder binding words gamma
+      disclosedFinal schedule)
+    (point : Fin 10 → QM31Exact) (kappa : QM31Exact)
+    (execution : CandidateExecution QM31Exact)
+    (initialEncoderEq : decoder.initialEncoder = exactInitialEncoder)
+    (executionInitialValues : execution.initialValues = extraction.combined.1)
+    (executionInitialWeights : execution.initialWeights =
+      extractedInitialRelationWeights masks point kappa)
+    (executionInitialClaim : execution.initialClaim =
+      relationClaimBeforeOod fields gamma kappa)
+    (inactiveExact : fields.inactiveClaim =
+      inactiveClaim masks extraction.combined.1)
+    (finalMatches : execution.Final256Matches)
+    (queryExact : execution.QueryInjectionExact)
+    (terminal : execution.RelationTerminalAccepts)
+    (noOodCancellation : ¬ execution.discrepancyTrace.MixCancellation 0)
+    (noAlphaRepair : ∀ round : Fin 4,
+      ¬ execution.discrepancyTrace.AlphaRepair round) :
+    relationClaimBeforeOod fields gamma kappa =
+        extractedRelationClaimBeforeOod masks extraction point kappa ∧
+      execution.firstOodClaim =
+        candidateClaim execution.firstOodWeights execution.initialValues ∧
+      execution.secondOodClaim execution.firstMix =
+        candidateClaim (execution.secondOodWeights execution.firstMix)
+          execution.initialValues ∧
+      claimedPointBatch fields gamma kappa =
+        extractedPointBatch extraction point kappa := by
+  have relationClaims := execution.initial_and_ood_claims_exact_outside_collisions
+    finalMatches queryExact terminal noOodCancellation noAlphaRepair
+  have candidateInitial :
+      candidateClaim execution.initialWeights execution.initialValues =
+        extractedRelationClaimBeforeOod masks extraction point kappa := by
+    rw [executionInitialWeights, executionInitialValues]
+    exact candidateClaim_extractedInitialRelationWeights_eq_extractedRelation
+      masks extraction point kappa initialEncoderEq
+  have relationExact : relationClaimBeforeOod fields gamma kappa =
+      extractedRelationClaimBeforeOod masks extraction point kappa := by
+    calc
+      relationClaimBeforeOod fields gamma kappa = execution.initialClaim :=
+        executionInitialClaim.symm
+      _ = candidateClaim execution.initialWeights execution.initialValues :=
+        relationClaims.1
+      _ = extractedRelationClaimBeforeOod masks extraction point kappa :=
+        candidateInitial
+  have aggregateExact : claimedPointBatch fields gamma kappa =
+      extractedPointBatch extraction point kappa :=
+    point_aggregate_exact_of_relation_and_inactive_exact masks fields extraction
+      point kappa relationExact inactiveExact
+  exact ⟨relationExact, relationClaims.2.1, relationClaims.2.2, aggregateExact⟩
+
 theorem relation_and_point_claims_exact_outside_collisions
     {decoder : ExactDecoderInstantiation QM31Exact}
     {binding : InitialProjectionBinding decoder}
@@ -474,35 +532,19 @@ theorem relation_and_point_claims_exact_outside_collisions
     (noKappaCollision : ¬ KappaPointRowCollision fields extraction point kappa)
     (noGammaCollision : ¬ GammaPointLaneCollision fields extraction point) :
     ExtractedRelationClaimsExact masks fields extraction point kappa execution := by
-  have relationClaims := execution.initial_and_ood_claims_exact_outside_collisions
-    finalMatches queryExact terminal noOodCancellation noAlphaRepair
-  have candidateInitial :
-      candidateClaim execution.initialWeights execution.initialValues =
-        extractedRelationClaimBeforeOod masks extraction point kappa := by
-    rw [executionInitialWeights, executionInitialValues]
-    exact candidateClaim_extractedInitialRelationWeights_eq_extractedRelation
-      masks extraction point kappa initialEncoderEq
-  have relationExact : relationClaimBeforeOod fields gamma kappa =
-      extractedRelationClaimBeforeOod masks extraction point kappa := by
-    calc
-      relationClaimBeforeOod fields gamma kappa = execution.initialClaim :=
-        executionInitialClaim.symm
-      _ = candidateClaim execution.initialWeights execution.initialValues :=
-        relationClaims.1
-      _ = extractedRelationClaimBeforeOod masks extraction point kappa :=
-        candidateInitial
-  have aggregateExact : claimedPointBatch fields gamma kappa =
-      extractedPointBatch extraction point kappa :=
-    point_aggregate_exact_of_relation_and_inactive_exact masks fields extraction
-      point kappa relationExact inactiveExact
+  obtain ⟨relationExact, firstOod, secondOod, aggregateExact⟩ :=
+    relation_and_point_aggregate_exact_outside_relation_collisions masks fields
+      extraction point kappa execution initialEncoderEq executionInitialValues
+      executionInitialWeights executionInitialClaim inactiveExact finalMatches
+      queryExact terminal noOodCancellation noAlphaRepair
   have everyPoint := all_point_claims_exact_outside_collisions fields extraction
     point kappa aggregateExact noKappaCollision noGammaCollision
   have everySemantic := semantic_point_claims_exact_outside_collisions fields
     extraction point kappa aggregateExact noKappaCollision noGammaCollision
   exact {
     initialRelation := relationExact
-    firstOod := relationClaims.2.1
-    secondOod := relationClaims.2.2
+    firstOod := firstOod
+    secondOod := secondOod
     pointClaims := everyPoint
     semanticPointClaims := everySemantic
   }
@@ -636,6 +678,7 @@ theorem accepted_semantic_relation_consequence
 #print axioms constraint_rows_vanish_of_compact_acceptance
 #print axioms multilinearEvalValue_batchInitialMessages
 #print axioms candidateClaim_extractedInitialRelationWeights_eq_extractedRelation
+#print axioms relation_and_point_aggregate_exact_outside_relation_collisions
 #print axioms relation_and_point_claims_exact_outside_collisions
 #print axioms accepted_semantic_relation_consequence
 

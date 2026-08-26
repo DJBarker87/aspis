@@ -80,6 +80,27 @@ theorem failureKind_card : Fintype.card FailureKind = 13 := by decide
 def FailureEvidence (event : FailureKind → Prop) : Prop :=
   ∃ kind, event kind
 
+/-- Proof-relevant causal form of the ledger.  Only the final gamma branch
+needs predecessor information downstream: reaching it means the relation OOD,
+relation-alpha and kappa-row branches were already ruled out. -/
+def CausalFailureEvidence (event : FailureKind → Prop) : Prop :=
+  ∃ kind, event kind ∧
+    (kind = .gammaPointLane →
+      ¬ event .oodMix ∧ ¬ event .relationAlpha ∧
+        ¬ event .kappaPointRow)
+
+theorem CausalFailureEvidence.toFailureEvidence
+    {event : FailureKind → Prop}
+    (failure : CausalFailureEvidence event) : FailureEvidence event := by
+  rcases failure with ⟨kind, holds, _clear⟩
+  exact ⟨kind, holds⟩
+
+theorem causalFailureEvidence_of_nonGamma
+    {event : FailureKind → Prop} {kind : FailureKind}
+    (notGamma : kind ≠ .gammaPointLane) (holds : event kind) :
+    CausalFailureEvidence event := by
+  exact ⟨kind, holds, fun equal => (notGamma equal).elim⟩
+
 /-- The thirteen exact predicates omitted by no deterministic step.  Their
 order is fixed by `FailureKind`, avoiding an opaque nested disjunction. -/
 def failureEvent
@@ -159,7 +180,7 @@ def failureEvent
 /-- Complete deterministic K1.5 endpoint.  All positive premises are exact
 data/refinement facts supplied by the transcript, PCS, helper builder and
 candidate extractor.  No sampled-challenge goodness premise remains. -/
-theorem accepted_semantic_relation_implies_spend_witness_or_k15_failure
+theorem accepted_semantic_relation_implies_spend_witness_or_causal_k15_failure
     {Public Root : Type*}
     {scheme : FiatShamirSchedule Public Root QM31Exact}
     {decoder : ExactDecoderInstantiation QM31Exact}
@@ -225,7 +246,7 @@ theorem accepted_semantic_relation_implies_spend_witness_or_k15_failure
     (relationTerminal : execution.RelationTerminalAccepts) :
     StatementHasSpendWitness statement deployedOwner deployedNote
         deployedNullifier deployedNode ∨
-      FailureEvidence (failureEvent basis rc statement fields transcript compact
+      CausalFailureEvidence (failureEvent basis rc statement fields transcript compact
         extraction lambda chi theta zerocheckPoint mu helper mask honest kappa
         execution) := by
   classical
@@ -233,31 +254,40 @@ theorem accepted_semantic_relation_implies_spend_witness_or_k15_failure
     extraction lambda chi theta zerocheckPoint mu helper mask honest kappa
     execution
   by_cases repair : event .tenRoundRepair
-  · exact Or.inr ⟨.tenRoundRepair, repair⟩
+  · exact Or.inr (causalFailureEvidence_of_nonGamma (by decide) repair)
   by_cases helperCollision : event .helperCancellation
-  · exact Or.inr ⟨.helperCancellation, helperCollision⟩
+  · exact Or.inr
+      (causalFailureEvidence_of_nonGamma (by decide) helperCollision)
   by_cases zerocheckCollision : event .zerocheckEvaluation
-  · exact Or.inr ⟨.zerocheckEvaluation, zerocheckCollision⟩
+  · exact Or.inr
+      (causalFailureEvidence_of_nonGamma (by decide) zerocheckCollision)
   by_cases thetaCollision : event .thetaLane
-  · exact Or.inr ⟨.thetaLane, thetaCollision⟩
+  · exact Or.inr
+      (causalFailureEvidence_of_nonGamma (by decide) thetaCollision)
   by_cases muZero : event .muZero
-  · exact Or.inr ⟨.muZero, muZero⟩
+  · exact Or.inr (causalFailureEvidence_of_nonGamma (by decide) muZero)
   by_cases inactiveChi : event .inactiveChi
-  · exact Or.inr ⟨.inactiveChi, inactiveChi⟩
+  · exact Or.inr
+      (causalFailureEvidence_of_nonGamma (by decide) inactiveChi)
   by_cases activePole : event .activePole
-  · exact Or.inr ⟨.activePole, activePole⟩
+  · exact Or.inr
+      (causalFailureEvidence_of_nonGamma (by decide) activePole)
   by_cases copyChi : event .copyChi
-  · exact Or.inr ⟨.copyChi, copyChi⟩
+  · exact Or.inr (causalFailureEvidence_of_nonGamma (by decide) copyChi)
   by_cases tupleCompression : event .tupleCompression
-  · exact Or.inr ⟨.tupleCompression, tupleCompression⟩
+  · exact Or.inr
+      (causalFailureEvidence_of_nonGamma (by decide) tupleCompression)
   by_cases oodMix : event .oodMix
-  · exact Or.inr ⟨.oodMix, oodMix⟩
+  · exact Or.inr (causalFailureEvidence_of_nonGamma (by decide) oodMix)
   by_cases relationAlpha : event .relationAlpha
-  · exact Or.inr ⟨.relationAlpha, relationAlpha⟩
+  · exact Or.inr
+      (causalFailureEvidence_of_nonGamma (by decide) relationAlpha)
   by_cases kappaPointRow : event .kappaPointRow
-  · exact Or.inr ⟨.kappaPointRow, kappaPointRow⟩
+  · exact Or.inr
+      (causalFailureEvidence_of_nonGamma (by decide) kappaPointRow)
   by_cases gammaPointLane : event .gammaPointLane
-  · exact Or.inr ⟨.gammaPointLane, gammaPointLane⟩
+  · exact Or.inr ⟨.gammaPointLane, gammaPointLane, fun _ =>
+      ⟨oodMix, relationAlpha, kappaPointRow⟩⟩
   have noRelationAlpha : ∀ round : Fin 4,
       ¬ execution.discrepancyTrace.AlphaRepair round := by
     intro round repair
@@ -279,7 +309,9 @@ theorem accepted_semantic_relation_implies_spend_witness_or_k15_failure
       accepted copyChi tupleCompression)
 
 #print axioms failureKind_card
+#print axioms CausalFailureEvidence.toFailureEvidence
+#print axioms causalFailureEvidence_of_nonGamma
 #print axioms
-  accepted_semantic_relation_implies_spend_witness_or_k15_failure
+  accepted_semantic_relation_implies_spend_witness_or_causal_k15_failure
 
 end AspisPool.V7AcceptedSpendK15FailureLedger

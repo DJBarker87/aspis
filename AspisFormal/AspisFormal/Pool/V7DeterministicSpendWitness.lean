@@ -315,7 +315,7 @@ theorem acceptedDeployedRows_implies_decodedSpendWitnessValid
 output of `decodeTag73SpendWitness`, unless one of the thirteen already named
 causal failure events holds.  The success branch is no longer an existential
 witness selected by a proof. -/
-theorem accepted_semantic_relation_implies_decoded_witness_or_k15_failure
+theorem accepted_semantic_relation_implies_decoded_witness_or_causal_k15_failure
     {Public Root : Type*}
     {scheme : FiatShamirSchedule Public Root QM31Exact}
     {decoder : ExactDecoderInstantiation QM31Exact}
@@ -383,41 +383,67 @@ theorem accepted_semantic_relation_implies_decoded_witness_or_k15_failure
     (OpenedColumnsMatchStatement statement witness.opened ∧
       SpendRelation deployedOwner deployedNote deployedNullifier deployedNode
         witness.opened witness.inputValue witness.outputValue) ∨
-      FailureEvidence (failureEvent basis rc statement fields transcript compact
+      CausalFailureEvidence (failureEvent basis rc statement fields transcript compact
         extraction lambda chi theta zerocheckPoint mu helper mask honest kappa
         execution) := by
   classical
   let event := failureEvent basis rc statement fields transcript compact
     extraction lambda chi theta zerocheckPoint mu helper mask honest kappa
     execution
-  by_cases failed : FailureEvidence event
-  · exact Or.inr failed
-  · have outside : ∀ kind, ¬ event kind := by
-      intro kind holds
-      exact failed ⟨kind, holds⟩
-    have noRelationAlpha : ∀ round : Fin 4,
-        ¬ execution.discrepancyTrace.AlphaRepair round := by
-      intro round repair
-      exact outside .relationAlpha ⟨round, repair⟩
-    have accepted :=
-      accepted_semantic_relation_deployed_copy_lane_consequence basis statement
-        masks fields transcript compact extraction
-        (deployedPoseidonRows rc (extractedPhysicalTrace extraction))
-        lambda chi theta zerocheckPoint mu helper mask honest maskInitialExact
-        terminalOpeningExact (outside .tenRoundRepair)
-        (outside .helperCancellation) (outside .zerocheckEvaluation)
-        (outside .thetaLane) inactiveSumZero (outside .muZero)
-        (outside .inactiveChi) (outside .activePole) (outside .copyChi)
-        (outside .tupleCompression) kappa execution initialEncoderEq
-        executionInitialValues executionInitialWeights executionInitialClaim
-        inactiveExact finalMatches queryExact relationTerminal
-        (outside .oodMix) noRelationAlpha (outside .kappaPointRow)
-        (outside .gammaPointLane)
-    exact Or.inl
-      (acceptedDeployedRows_implies_decodedSpendWitnessValid rc poseidon
-        statement masks fields extraction transcript.point kappa execution
-        lambda chi helper accepted (outside .copyChi)
-        (outside .tupleCompression))
+  by_cases repair : event .tenRoundRepair
+  · exact Or.inr (causalFailureEvidence_of_nonGamma (by decide) repair)
+  by_cases helperCollision : event .helperCancellation
+  · exact Or.inr
+      (causalFailureEvidence_of_nonGamma (by decide) helperCollision)
+  by_cases zerocheckCollision : event .zerocheckEvaluation
+  · exact Or.inr
+      (causalFailureEvidence_of_nonGamma (by decide) zerocheckCollision)
+  by_cases thetaCollision : event .thetaLane
+  · exact Or.inr
+      (causalFailureEvidence_of_nonGamma (by decide) thetaCollision)
+  by_cases muZero : event .muZero
+  · exact Or.inr (causalFailureEvidence_of_nonGamma (by decide) muZero)
+  by_cases inactiveChi : event .inactiveChi
+  · exact Or.inr
+      (causalFailureEvidence_of_nonGamma (by decide) inactiveChi)
+  by_cases activePole : event .activePole
+  · exact Or.inr
+      (causalFailureEvidence_of_nonGamma (by decide) activePole)
+  by_cases copyChi : event .copyChi
+  · exact Or.inr (causalFailureEvidence_of_nonGamma (by decide) copyChi)
+  by_cases tupleCompression : event .tupleCompression
+  · exact Or.inr
+      (causalFailureEvidence_of_nonGamma (by decide) tupleCompression)
+  by_cases oodMix : event .oodMix
+  · exact Or.inr (causalFailureEvidence_of_nonGamma (by decide) oodMix)
+  by_cases relationAlpha : event .relationAlpha
+  · exact Or.inr
+      (causalFailureEvidence_of_nonGamma (by decide) relationAlpha)
+  by_cases kappaPointRow : event .kappaPointRow
+  · exact Or.inr
+      (causalFailureEvidence_of_nonGamma (by decide) kappaPointRow)
+  by_cases gammaPointLane : event .gammaPointLane
+  · exact Or.inr ⟨.gammaPointLane, gammaPointLane, fun _ =>
+      ⟨oodMix, relationAlpha, kappaPointRow⟩⟩
+  have noRelationAlpha : ∀ round : Fin 4,
+      ¬ execution.discrepancyTrace.AlphaRepair round := by
+    intro round failure
+    exact relationAlpha ⟨round, failure⟩
+  have accepted :=
+    accepted_semantic_relation_deployed_copy_lane_consequence basis statement
+      masks fields transcript compact extraction
+      (deployedPoseidonRows rc (extractedPhysicalTrace extraction))
+      lambda chi theta zerocheckPoint mu helper mask honest maskInitialExact
+      terminalOpeningExact repair helperCollision zerocheckCollision
+      thetaCollision inactiveSumZero muZero inactiveChi activePole copyChi
+      tupleCompression kappa execution initialEncoderEq executionInitialValues
+      executionInitialWeights executionInitialClaim inactiveExact finalMatches
+      queryExact relationTerminal oodMix noRelationAlpha kappaPointRow
+      gammaPointLane
+  exact Or.inl
+    (acceptedDeployedRows_implies_decodedSpendWitnessValid rc poseidon
+      statement masks fields extraction transcript.point kappa execution
+      lambda chi helper accepted copyChi tupleCompression)
 
 #print axioms field_eq_natCast_decodeFieldBit
 #print axioms range_value_sound_deterministic
@@ -426,6 +452,6 @@ theorem accepted_semantic_relation_implies_decoded_witness_or_k15_failure
 #print axioms extracted_trace_implies_deterministic_spend_relation
 #print axioms acceptedDeployedRows_implies_decodedSpendWitnessValid
 #print axioms
-  accepted_semantic_relation_implies_decoded_witness_or_k15_failure
+  accepted_semantic_relation_implies_decoded_witness_or_causal_k15_failure
 
 end AspisPool.V7DeterministicSpendWitness

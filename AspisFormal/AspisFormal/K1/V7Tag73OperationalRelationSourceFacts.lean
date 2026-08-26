@@ -406,7 +406,7 @@ theorem operational_k14_source_implies_decoded_witness_or_k15_failure
        (OpenedColumnsMatchStatement statement witness.opened ∧
         SpendRelation deployedOwner deployedNote deployedNullifier deployedNode
           witness.opened witness.inputValue witness.outputValue) ∨
-        FailureEvidence
+        CausalFailureEvidence
           (failureEvent basis rc statement (operationalFixedFields decoded)
             (operationalAcceptedRun input decoded fixedDecode)
             (operationalCompactEvidence input decoded fixedDecode)

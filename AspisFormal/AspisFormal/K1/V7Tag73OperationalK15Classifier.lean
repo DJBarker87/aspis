@@ -237,7 +237,7 @@ theorem operational_k14_implies_decoded_witness_or_k15_failure
        (OpenedColumnsMatchStatement statement witness.opened ∧
         SpendRelation deployedOwner deployedNote deployedNullifier deployedNode
           witness.opened witness.inputValue witness.outputValue) ∨
-        FailureEvidence
+        CausalFailureEvidence
           (failureEvent basis rc statement (operationalFixedFields decoded)
             (operationalAcceptedRun input decoded fixedDecode)
             (operationalCompactEvidence input decoded fixedDecode)
@@ -250,7 +250,7 @@ theorem operational_k14_implies_decoded_witness_or_k15_failure
             (exactOperationalChallenge input .mu) helper mask honest
             (exactOperationalChallenge input .kappa) execution)) := by
   refine ⟨sourceBinding, ?_⟩
-  exact accepted_semantic_relation_implies_decoded_witness_or_k15_failure
+  exact accepted_semantic_relation_implies_decoded_witness_or_causal_k15_failure
       basis rc poseidon statement masks (operationalFixedFields decoded)
       (operationalAcceptedRun input decoded fixedDecode)
       (operationalCompactEvidence input decoded fixedDecode) k14.extraction

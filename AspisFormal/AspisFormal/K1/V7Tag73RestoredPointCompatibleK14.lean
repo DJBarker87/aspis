@@ -320,8 +320,10 @@ theorem accepted_branch_mem_restored_point_constrained_gamma_set
     (family : RestoredSelectedChainFamily decoder words)
     (gamma kappa : QM31Exact)
     (available : family.available gamma)
+    {disclosedFinal : FinalMessage QM31Exact}
+    {schedule : ExactSchedule}
     (extraction : CoherentTraceExtraction decoder binding words gamma
-      (family.disclosedFinal gamma) (family.schedule gamma))
+      disclosedFinal schedule)
     (combinedExact : extraction.combined = family.selected gamma)
     (gammaNonzero : gamma ≠ 0)
     (aggregateExact : claimedPointBatch fields gamma kappa =
@@ -336,7 +338,7 @@ theorem accepted_branch_mem_restored_point_constrained_gamma_set
       point kappa aggregateExact noKappaCollision
   have responseAt := family.responseAt gamma available
   have selectedValid := selected_chain_yields_valid_width29_response decoder
-    words gamma (family.disclosedFinal gamma) (family.schedule gamma)
+    words gamma disclosedFinal schedule
     extraction.combined extraction.combinedSelected
   have acceptedSupportEqRestored :=
     accepted_restored_support_eq_restored_of_available decoder words family
