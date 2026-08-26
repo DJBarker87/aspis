@@ -150,3 +150,74 @@ will pin the dynamic seed order `[proof_account, statement_digest,
 binding_digest]` with the bump kept separately.  The separately hashed request
 digest root at lines 214:0-223:1 remains the next prerequisite for pending and
 finalized account-image construction.
+
+## PDA-input constructor and dynamic-seed source checkpoint
+
+This checkpoint combines exactly two independently named Charon start roots in
+one extraction so both declarations share the same generated
+`PoolV1AuthorizationReceiptPdaInputsV1` type:
+
+- public `pool_v1_authorization_receipt_pda_inputs_for_binding_v1` at
+  `authorization_receipt_account.rs:225:0-236:1`;
+- public `PoolV1AuthorizationReceiptPdaInputsV1::dynamic_seeds`, whose impl
+  spans lines 103:0-113:1 and whose function body spans lines 106:4-112:5.
+
+The terminal constructor theorem is
+`pda_inputs_for_binding_source_exact`.  A successful extracted call maps to
+the formal `PdaInputs` record with the exact proof-account and statement-digest
+copies, the supplied bump, and the SHA-256 binding digest proved by the
+preceding source chain.  The formal conversion adds only the already-frozen
+static seed string `aspis-verify-receipt-v1`; Rust deliberately returns that
+static prefix out of band.
+
+`dynamic_seeds_source_exact` proves that the extracted fixed
+`[[u8; 32]; 3]` method returns exactly
+`[proof_account, statement_digest, binding_digest]`.  The combined theorem
+`pda_dynamic_seeds_source_exact` composes the two production roots and proves
+that their returned list is exactly `wirePdaDynamicSeeds sha256 binding` in
+that order.  The proof does not model or assume Solana address derivation or
+curve rejection.  Its only external boundary is the same explicit successful
+SHA callback equality used by the binding-digest checkpoint; no Poseidon or
+circle boundary is present.
+
+Charon gate `aspis-receipt-pda-charon-v1` passed from the pinned committed
+source using these two exact start roots, one Cargo job, `MemoryMax=14G`,
+`MemorySwapMax=0`, 8.56 seconds wall time, 494,032 KiB peak RSS, and zero swap.
+Aeneas gate `aspis-receipt-pda-aeneas-v1` passed in 1.07 seconds with
+234,632 KiB peak RSS and zero swap.  Lean 4.32 gates
+`aspis-receipt-pda-types-v1`, `aspis-receipt-pda-external-v2`, and
+`aspis-receipt-pda-funs-v1` all passed with zero swap and peak RSS values
+2,478,332 KiB, 2,454,044 KiB, and 2,495,056 KiB respectively.
+
+Focused proof gate `aspis-receipt-pda-proof-v3` passed with one Lean thread,
+`MemoryMax=14G`, `MemorySwapMax=0`, 44.51 seconds wall time, 6,367,436 KiB
+peak RSS reported by `/usr/bin/time`, and zero swap.  All twenty printed
+declarations depend only on `propext`, `Classical.choice`, and `Quot.sound`;
+`byteOfGenerated_toNat` and `bytes32List_injective` omit
+`Classical.choice`.  There are no `sorry`, `admit`, project axioms,
+conclusion-shaped premises, or `#exit`.
+
+The raw Aeneas hashes for `Types.lean` and `Funs.lean` are respectively
+`d8da61642fd0e9cce50f1dbb110cbf9ddf1ee9a6994fb818c6f1ce22493d9c53`
+and `c8410109368a52fe7d51f416108496d8bff480c197efc22506ea9e95f6ae51e1`.
+Reverse-normalizing the scoped Lean 4.32 import lines reproduces both raw
+hashes exactly.
+
+### PDA-input artifact hashes
+
+- `extraction/AuthorizationReceiptPdaInputs.llbc`:
+  `46edecba07a8a5305414c73b5b7d8441dee2e8c6cc0032f9067663a573c2930c`.
+- `generated/AuthorizationReceiptPdaInputs/Types.lean`:
+  `45361aa7ca0e1606257af7ee6e287c19698bf865f7869856b0f185be058e651b`.
+- `generated/AuthorizationReceiptPdaInputs/Funs.lean`:
+  `872d64f30de7ce6fb3353ffd3799702cee2594706668d378b795fe7992f45280`.
+- `generated/AuthorizationReceiptPdaInputs/FunsExternal.lean`:
+  `e8fb4166f5f095404a9ad091e983ff160d50d0910b7ab6b545eab8061903e8d5`.
+- `proof/AuthorizationReceiptPdaInputsSourceBridge.lean`:
+  `7c646e32f90a051dc06aa3cf5cfae60247ae28371b0ccd4762c2a9942199e295`.
+
+The smallest remaining production boundary is the separate public
+`pool_v1_authorization_receipt_request_digest_v1` root at
+`authorization_receipt_account.rs:214:0-223:1`.  It transitively contains the
+variable-length ASVQ request encoder and its SHA callback and is intentionally
+excluded from this checkpoint.
