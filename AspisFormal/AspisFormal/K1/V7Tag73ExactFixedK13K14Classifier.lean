@@ -1,4 +1,4 @@
-import AspisFormal.K1.V7Tag73ExactFixedK12CoveredClassifier
+import AspisFormal.K1.V7Tag73ExactFixedK12PrefixClassifier
 import AspisFormal.Pool.V7CoherentTraceExtraction
 
 /-!
@@ -30,6 +30,7 @@ open AspisK1.V7Tag73ExactPlainRomRun
 open AspisK1.V7Tag73ExactSourceAcceptanceModel
 open AspisK1.V7Tag73ExactFixedOperationalStateMap
 open AspisK1.V7Tag73ExactFixedK12MerkleClassifier
+open AspisK1.V7Tag73ExactFixedK12PrefixClassifier
 open AspisPool.AlgorithmicCircleDecoderV7
 open AspisPool.V7CandidateChainExtraction
 open AspisPool.V7C1SubfieldRecovery
@@ -64,7 +65,7 @@ def exactK13Transcript
     {sample : ExactCompilerSample HiddenTape parameters}
     (input : ExactK12OperationalInput transitionFuel configuration projection
       fixedInstance sample)
-    (k12 : ExactK12Certificate input) : IdealTranscript QM31Exact :=
+    (k12 : ExactPrefixK12Certificate input) : IdealTranscript QM31Exact :=
   extractedIdealTranscript k12.words (exactK13ParsedProof input).gamma
     (exactK13ParsedProof input).disclosedFinal
 
@@ -84,7 +85,7 @@ structure ExactK13Certificate
     (decoder : ExactDecoderInstantiation QM31Exact)
     (input : ExactK12OperationalInput transitionFuel configuration projection
       fixedInstance sample)
-    (k12 : ExactK12Certificate input) where
+    (k12 : ExactPrefixK12Certificate input) where
   lists : DecodedCandidateLists QM31Exact
   listsExact : lists = decoder.decodeBoth (exactK13Transcript input k12).initial
     (foldedReceived (exactK13ParsedProof input).schedule
@@ -113,7 +114,7 @@ inductive ExactK13Error
     (decoder : ExactDecoderInstantiation QM31Exact)
     (input : ExactK12OperationalInput transitionFuel configuration projection
       fixedInstance sample)
-    (k12 : ExactK12Certificate input) : Type
+    (k12 : ExactPrefixK12Certificate input) : Type
   | idealRejected :
       ¬ IdealAccepts (exactK13ParsedProof input).schedule
         (exactK13Encoders decoder) (exactK13Transcript input k12)
@@ -145,7 +146,7 @@ noncomputable def classifyExactK13
     (decoder : ExactDecoderInstantiation QM31Exact)
     (input : ExactK12OperationalInput transitionFuel configuration projection
       fixedInstance sample)
-    (k12 : ExactK12Certificate input) :
+    (k12 : ExactPrefixK12Certificate input) :
     ExactK13Certificate decoder input k12 ⊕ ExactK13Error decoder input k12 := by
   classical
   by_cases accepts : IdealAccepts (exactK13ParsedProof input).schedule
@@ -186,7 +187,7 @@ structure ExactK14Certificate
     (binding : InitialProjectionBinding decoder)
     (input : ExactK12OperationalInput transitionFuel configuration projection
       fixedInstance sample)
-    (k12 : ExactK12Certificate input) where
+    (k12 : ExactPrefixK12Certificate input) where
   extraction : CoherentTraceExtraction decoder binding k12.words
     (exactK13ParsedProof input).gamma
     (exactK13ParsedProof input).disclosedFinal
@@ -204,7 +205,7 @@ inductive ExactK14Error
     (decoder : ExactDecoderInstantiation QM31Exact)
     (input : ExactK12OperationalInput transitionFuel configuration projection
       fixedInstance sample)
-    (k12 : ExactK12Certificate input) : Type
+    (k12 : ExactPrefixK12Certificate input) : Type
   | width29 : Width29DecompositionFailure decoder k12.words
       (exactK13ParsedProof input).gamma
       (exactK13ParsedProof input).disclosedFinal
@@ -224,7 +225,7 @@ noncomputable def classifyExactK14
     (binding : InitialProjectionBinding decoder)
     (input : ExactK12OperationalInput transitionFuel configuration projection
       fixedInstance sample)
-    (k12 : ExactK12Certificate input)
+    (k12 : ExactPrefixK12Certificate input)
     (k13 : ExactK13Certificate decoder input k12) :
     ExactK14Certificate decoder binding input k12 ⊕
       ExactK14Error decoder input k12 := by
@@ -263,7 +264,7 @@ noncomputable def classifyExactK13K14
     (binding : InitialProjectionBinding decoder)
     (input : ExactK12OperationalInput transitionFuel configuration projection
       fixedInstance sample)
-    (k12 : ExactK12Certificate input) :
+    (k12 : ExactPrefixK12Certificate input) :
     ExactK14Certificate decoder binding input k12 ⊕
       (ExactK13Error decoder input k12 ⊕ ExactK14Error decoder input k12) :=
   match classifyExactK13 decoder input k12 with
