@@ -53,7 +53,7 @@ structure DeployedCopyEndpoint where
   pattern : Fin 15
   deriving DecidableEq, Repr
 
-private def endpoint (row : Fin 1024) (slot : Fin 2)
+def endpoint (row : Fin 1024) (slot : Fin 2)
     (pattern : Fin 15) : DeployedCopyEndpoint :=
   { row := row, slot := slot, pattern := pattern }
 
@@ -157,7 +157,7 @@ def deployedCopySourceIndex : DeployedCopyLink → Fin 183
 
 /-! ## All fifteen affine tuple patterns -/
 
-private def traceCell
+def traceCell
     {K : Type*} [Zero K]
     (trace : Fin 1024 → Fin 16 → K) (row : Fin 1024) (column : Nat) : K :=
   if h : column < 16 then trace row ⟨column, h⟩ else 0
