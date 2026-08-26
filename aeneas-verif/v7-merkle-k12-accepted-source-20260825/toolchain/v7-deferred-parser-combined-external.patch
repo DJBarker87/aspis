@@ -1,0 +1,17 @@
+--- a/V7DeferredParser/FunsExternal.lean
++++ b/V7DeferredParser/FunsExternal.lean
+@@ -1,6 +1,7 @@
+ -- Exact transparent interpretations of the Rust core-library functions left
+ -- external by the V7 deferred-parser Charon extraction.
+ import Aeneas
++import V7MerkleK12.FunsExternal
+ import V7DeferredParser.Types
+ 
+ open Aeneas Aeneas.Std Result ControlFlow Error
+@@ -41,6 +42,3 @@ def core.result.Result.map_err
+       let mapped ← function.call_once state error
+       ok (.Err mapped)
+ 
+-@[rust_fun "core::slice::{[@T]}::last"]
+-def core.slice.Slice.last {T : Type} : Slice T → Result (Option T) :=
+-  fun slice => ok slice.val.getLast?

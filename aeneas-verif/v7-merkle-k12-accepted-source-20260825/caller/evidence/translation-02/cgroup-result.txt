@@ -1,0 +1,7 @@
+Result=success
+ExecMainStatus=0
+MemoryPeak=[not set]
+MemorySwapPeak=[not set]
+MemoryHigh=infinity
+MemoryMax=infinity
+MemorySwapMax=infinity

@@ -1,0 +1,11 @@
+--- a/V7MerkleK12/Funs.lean
++++ b/V7MerkleK12/Funs.lean
+@@ -73,8 +73,8 @@ def v7_merkle208.truncate_sha256_v7
+       { «end» := v7_merkle208.V7_MERKLE_DIGEST_BYTES }
+   let r ←
+     core.array.TryFromArrayCopySlice.try_from 26#usize core.marker.CopyU8 s
+-  core.result.Result.expect core.fmt.DebugTryFromSliceError r (toStr
+-    "fixed 26-byte SHA-256 prefix")
++  core.result.Result.expect core.fmt.DebugTryFromSliceError r
++    (⟨[], Nat.zero_le _⟩ : Str)
+

@@ -1,0 +1,67 @@
+--- a/V7MerkleCaller/Funs.lean
++++ b/V7MerkleCaller/Funs.lean
+@@ -26,7 +26,7 @@
+   "core::iter::traits::iterator::Iterator<core::slice::iter::IterMut<'a, @T>, &'a mut @T>"]
+ impl_def core.slice.iter.IterMut.Insts.CoreIterTraitsIteratorIteratorMutAT (T :
+   Type) : core.iter.traits.iterator.Iterator (core.slice.iter.IterMut T) T := {
+-  next := core.slice.iter.IteratorIterMut.next
++  next := core.slice.iter.IteratorIterMut.next_without_writeback
+   enumerate := core.iter.traits.iterator.Iterator.enumerate.trait_default
+     (core.slice.iter.IterMut.Insts.CoreIterTraitsIteratorIteratorMutAT T)
+ }
+@@ -906,7 +906,7 @@
+               if i5 >= field.P
+               then ok (value.c1.b, true)
+               else let i6 := value.c1.b
+-                   ok (value.c1.b, i6 >= field.P)
++                   ok (value.c1.b, if i6 >= field.P then true else false)
+             ok (({ a := value.c1.a, b := m1 } : field.CM31), b2)
+         ok (value.c0.b, c1, b1)
+     let i4 ← lift (core.convert.num.FromU32Bool.from b)
+@@ -1015,9 +1015,7 @@
+     (core.slice.iter.IterMut field.QM31)))
+   := do
+   let (o, iter1, next_back) ←
+-    core.iter.adapters.enumerate.IteratorEnumerate.next
+-      (core.slice.iter.IterMut.Insts.CoreIterTraitsIteratorIteratorMutAT
+-      field.QM31) iter
++    core.iter.adapters.enumerate.IteratorEnumerateMut.next iter
+   match o with
+   | none => ok (done (fun e => let e1 := next_back e none
+                                back e1))
+@@ -1103,13 +1101,11 @@
+       let right_val1 := Slice.len c2_packed
+       massert (left_val2 = right_val1)
+       massert (left_val3 = 0#u8)
+-      let combined1 := into_iter_back back
++      let combined1 := into_iter_back (back iter)
+       let (s, to_slice_mut_back) ← lift (Array.to_slice_mut combined1)
+       let (im, iter_mut_back) ← core.slice.Slice.iter_mut s
+       let (iter3, enumerate_back) ←
+-        core.iter.traits.iterator.Iterator.enumerate.trait_default
+-          (core.slice.iter.IterMut.Insts.CoreIterTraitsIteratorIteratorMutAT
+-          field.QM31) im
++        core.iter.adapters.enumerate.IteratorEnumerateMut.enumerate im
+       let im1 := back1 iter2
+       let a1 := into_iter_back1 im1
+       let back2 ←
+@@ -1118,7 +1114,7 @@
+       if invalid1 != 0#u32
+       then ok (core.result.Result.Err v6_onefold.V6WireError.NonCanonicalM31)
+       else
+-        let im2 := enumerate_back back2
++        let im2 := enumerate_back (back2 iter3)
+         let s1 := iter_mut_back im2
+         let combined2 := to_slice_mut_back s1
+         ok (core.result.Result.Ok combined2)
+@@ -1154,8 +1150,8 @@
+       { «end» := v7_merkle208.V7_MERKLE_DIGEST_BYTES }
+   let r ←
+     core.array.TryFromArrayCopySlice.try_from 26#usize core.marker.CopyU8 s
+-  core.result.Result.expect core.fmt.DebugTryFromSliceError r (toStr
+-    "fixed 26-byte SHA-256 prefix")
++  core.result.Result.expect core.fmt.DebugTryFromSliceError r
++    (⟨[], Nat.zero_le _⟩ : Str)
+ 
+ /-- [aspis_core::v7_merkle208::private_leaf_hash_v7]:
+     Source: 'crates/aspis-core/src/v7_merkle208.rs', lines 31:0-38:1

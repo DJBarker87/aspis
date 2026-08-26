@@ -1,0 +1,25 @@
+Focused target: V7MerkleK12CallerBridge.lean
+Date: 2026-08-26
+Host: nuc.local
+Unit: aspis-v7-k12-caller-30.service
+Invocation ID: 9f9525c9db974fda9d6950905b58fd2f
+MemAvailable immediately before evidence setup: 32,300,116 kB
+MemoryHigh: 22G
+MemoryMax: 28G
+MemorySwapMax: 0
+LEAN_NUM_THREADS: 1
+Lean jobs: 1
+Exit status: 0
+Wall time: 0:09.03
+Maximum resident set size: 7,092,336 kB
+Swaps: 0
+Source SHA-256: 5f80ecf03873c011274de3c2011b962e87e03d709f3b14e88689050d7be0ebe2
+
+All twelve #print axioms commands report exactly:
+  [propext, Classical.choice, Quot.sound]
+
+The complete command is in command.txt. The complete compiler output,
+including every #print axioms result and /usr/bin/time -v resource record,
+is in lean.log. The pre-run /proc/meminfo snapshot is in
+meminfo-before.txt. V7MerkleK12CallerBridge.lean is the exact compiled
+source copy.

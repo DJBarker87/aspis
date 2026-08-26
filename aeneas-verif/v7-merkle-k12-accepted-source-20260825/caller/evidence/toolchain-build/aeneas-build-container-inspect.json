@@ -1,0 +1,236 @@
+[
+    {
+        "Id": "3fead99019785fda7a8c58a346b9f86385d71456163f050e1bc23ae5a40bc087",
+        "Created": "2026-08-26T11:22:36.972187923Z",
+        "Path": "/bin/sh",
+        "Args": [
+            "-lc",
+            "mkdir -p /work && cp -R /src /work/aeneas && chmod -R u+w /work/aeneas && cd /work/aeneas && nix --extra-experimental-features \"nix-command flakes\" build --impure path:/work/aeneas#aeneas-static --out-link /work/result && cp /work/result/bin/aeneas /output/aeneas-d860ac47-result-aware-linux-x86_64"
+        ],
+        "State": {
+            "Status": "exited",
+            "Running": false,
+            "Paused": false,
+            "Restarting": false,
+            "OOMKilled": false,
+            "Dead": false,
+            "Pid": 0,
+            "ExitCode": 0,
+            "Error": "",
+            "StartedAt": "2026-08-26T11:46:13.04596281Z",
+            "FinishedAt": "2026-08-26T11:48:57.056016987Z"
+        },
+        "Image": "sha256:1f72a3c9b55983cbaf757980c3b643202d93c2beaa2957b0744dcce69270fe8c",
+        "ResolvConfPath": "/home/dombarker/project-offloads/aspis-v7-k12-merkle-source-20260826/toolchain-result-aware-d860ac47/docker-data/containers/3fead99019785fda7a8c58a346b9f86385d71456163f050e1bc23ae5a40bc087/resolv.conf",
+        "HostnamePath": "/home/dombarker/project-offloads/aspis-v7-k12-merkle-source-20260826/toolchain-result-aware-d860ac47/docker-data/containers/3fead99019785fda7a8c58a346b9f86385d71456163f050e1bc23ae5a40bc087/hostname",
+        "HostsPath": "/home/dombarker/project-offloads/aspis-v7-k12-merkle-source-20260826/toolchain-result-aware-d860ac47/docker-data/containers/3fead99019785fda7a8c58a346b9f86385d71456163f050e1bc23ae5a40bc087/hosts",
+        "LogPath": "/home/dombarker/project-offloads/aspis-v7-k12-merkle-source-20260826/toolchain-result-aware-d860ac47/docker-data/containers/3fead99019785fda7a8c58a346b9f86385d71456163f050e1bc23ae5a40bc087/3fead99019785fda7a8c58a346b9f86385d71456163f050e1bc23ae5a40bc087-json.log",
+        "Name": "/aspis-v7-result-aware-aeneas-build",
+        "RestartCount": 0,
+        "Driver": "vfs",
+        "Platform": "linux",
+        "MountLabel": "",
+        "ProcessLabel": "",
+        "AppArmorProfile": "docker-default",
+        "ExecIDs": null,
+        "HostConfig": {
+            "Binds": [
+                "/home/dombarker/project-offloads/aspis-v7-k12-merkle-source-20260826/toolchain-result-aware-d860ac47/source:/src:ro",
+                "/home/dombarker/project-offloads/aspis-v7-k12-merkle-source-20260826/toolchain-result-aware-d860ac47/output:/output"
+            ],
+            "ContainerIDFile": "",
+            "LogConfig": {
+                "Type": "json-file",
+                "Config": {}
+            },
+            "NetworkMode": "host",
+            "PortBindings": {},
+            "RestartPolicy": {
+                "Name": "no",
+                "MaximumRetryCount": 0
+            },
+            "AutoRemove": false,
+            "VolumeDriver": "",
+            "VolumesFrom": null,
+            "ConsoleSize": [
+                0,
+                0
+            ],
+            "CapAdd": null,
+            "CapDrop": null,
+            "CgroupnsMode": "private",
+            "Dns": null,
+            "DnsOptions": [],
+            "DnsSearch": [],
+            "ExtraHosts": null,
+            "GroupAdd": null,
+            "IpcMode": "private",
+            "Cgroup": "",
+            "Links": null,
+            "OomScoreAdj": 0,
+            "PidMode": "",
+            "Privileged": false,
+            "PublishAllPorts": false,
+            "ReadonlyRootfs": false,
+            "SecurityOpt": null,
+            "UTSMode": "",
+            "UsernsMode": "",
+            "ShmSize": 67108864,
+            "Runtime": "runc",
+            "Isolation": "",
+            "CpuShares": 0,
+            "Memory": 30064771072,
+            "NanoCpus": 0,
+            "CgroupParent": "",
+            "BlkioWeight": 0,
+            "BlkioWeightDevice": [],
+            "BlkioDeviceReadBps": [],
+            "BlkioDeviceWriteBps": [],
+            "BlkioDeviceReadIOps": [],
+            "BlkioDeviceWriteIOps": [],
+            "CpuPeriod": 0,
+            "CpuQuota": 0,
+            "CpuRealtimePeriod": 0,
+            "CpuRealtimeRuntime": 0,
+            "CpusetCpus": "",
+            "CpusetMems": "",
+            "Devices": [],
+            "DeviceCgroupRules": null,
+            "DeviceRequests": null,
+            "MemoryReservation": 23622320128,
+            "MemorySwap": 30064771072,
+            "MemorySwappiness": null,
+            "OomKillDisable": null,
+            "PidsLimit": 4096,
+            "Ulimits": [],
+            "CpuCount": 0,
+            "CpuPercent": 0,
+            "IOMaximumIOps": 0,
+            "IOMaximumBandwidth": 0,
+            "MaskedPaths": [
+                "/proc/acpi",
+                "/proc/asound",
+                "/proc/interrupts",
+                "/proc/kcore",
+                "/proc/keys",
+                "/proc/latency_stats",
+                "/proc/sched_debug",
+                "/proc/scsi",
+                "/proc/timer_list",
+                "/proc/timer_stats",
+                "/sys/devices/virtual/powercap",
+                "/sys/firmware",
+                "/sys/devices/system/cpu/cpu0/thermal_throttle",
+                "/sys/devices/system/cpu/cpu1/thermal_throttle",
+                "/sys/devices/system/cpu/cpu2/thermal_throttle",
+                "/sys/devices/system/cpu/cpu3/thermal_throttle",
+                "/sys/devices/system/cpu/cpu4/thermal_throttle",
+                "/sys/devices/system/cpu/cpu5/thermal_throttle",
+                "/sys/devices/system/cpu/cpu6/thermal_throttle",
+                "/sys/devices/system/cpu/cpu7/thermal_throttle",
+                "/sys/devices/system/cpu/cpu8/thermal_throttle",
+                "/sys/devices/system/cpu/cpu9/thermal_throttle",
+                "/sys/devices/system/cpu/cpu10/thermal_throttle",
+                "/sys/devices/system/cpu/cpu11/thermal_throttle",
+                "/sys/devices/system/cpu/cpu12/thermal_throttle",
+                "/sys/devices/system/cpu/cpu13/thermal_throttle",
+                "/sys/devices/system/cpu/cpu14/thermal_throttle",
+                "/sys/devices/system/cpu/cpu15/thermal_throttle",
+                "/sys/devices/system/cpu/cpu16/thermal_throttle",
+                "/sys/devices/system/cpu/cpu17/thermal_throttle",
+                "/sys/devices/system/cpu/cpu18/thermal_throttle",
+                "/sys/devices/system/cpu/cpu19/thermal_throttle",
+                "/sys/devices/system/cpu/cpu20/thermal_throttle",
+                "/sys/devices/system/cpu/cpu21/thermal_throttle"
+            ],
+            "ReadonlyPaths": [
+                "/proc/bus",
+                "/proc/fs",
+                "/proc/irq",
+                "/proc/sys",
+                "/proc/sysrq-trigger"
+            ]
+        },
+        "GraphDriver": {
+            "Data": {
+                "ID": "3fead99019785fda7a8c58a346b9f86385d71456163f050e1bc23ae5a40bc087",
+                "SourceDir": "/home/dombarker/project-offloads/aspis-v7-k12-merkle-source-20260826/toolchain-result-aware-d860ac47/docker-data/vfs/dir/6fc8e235a9d5e41c718544bbb3081ac1623a7c5e7a7fcf92ef2a2a904ff4af38"
+            },
+            "Name": "vfs"
+        },
+        "Mounts": [
+            {
+                "Type": "bind",
+                "Source": "/home/dombarker/project-offloads/aspis-v7-k12-merkle-source-20260826/toolchain-result-aware-d860ac47/output",
+                "Destination": "/output",
+                "Mode": "",
+                "RW": true,
+                "Propagation": "rprivate"
+            },
+            {
+                "Type": "bind",
+                "Source": "/home/dombarker/project-offloads/aspis-v7-k12-merkle-source-20260826/toolchain-result-aware-d860ac47/source",
+                "Destination": "/src",
+                "Mode": "ro",
+                "RW": false,
+                "Propagation": "rprivate"
+            }
+        ],
+        "Config": {
+            "Hostname": "nuc",
+            "Domainname": "",
+            "User": "",
+            "AttachStdin": false,
+            "AttachStdout": true,
+            "AttachStderr": true,
+            "Tty": false,
+            "OpenStdin": false,
+            "StdinOnce": false,
+            "Env": [
+                "AENEAS_RELEASE_VERSION=d860ac47-patched-result-aware",
+                "USER=root",
+                "PATH=/root/.nix-profile/bin:/nix/var/nix/profiles/default/bin:/nix/var/nix/profiles/default/sbin",
+                "MANPATH=/root/.nix-profile/share/man:/nix/var/nix/profiles/default/share/man",
+                "SSL_CERT_FILE=/nix/var/nix/profiles/default/etc/ssl/certs/ca-bundle.crt",
+                "GIT_SSL_CAINFO=/nix/var/nix/profiles/default/etc/ssl/certs/ca-bundle.crt",
+                "NIX_SSL_CERT_FILE=/nix/var/nix/profiles/default/etc/ssl/certs/ca-bundle.crt",
+                "NIX_PATH=/nix/var/nix/profiles/per-user/root/channels:/root/.nix-defexpr/channels"
+            ],
+            "Cmd": [
+                "-lc",
+                "mkdir -p /work && cp -R /src /work/aeneas && chmod -R u+w /work/aeneas && cd /work/aeneas && nix --extra-experimental-features \"nix-command flakes\" build --impure path:/work/aeneas#aeneas-static --out-link /work/result && cp /work/result/bin/aeneas /output/aeneas-d860ac47-result-aware-linux-x86_64"
+            ],
+            "Image": "nixos/nix:2.24.11",
+            "Volumes": null,
+            "WorkingDir": "",
+            "Entrypoint": [
+                "/bin/sh"
+            ],
+            "Labels": {}
+        },
+        "NetworkSettings": {
+            "SandboxID": "",
+            "SandboxKey": "",
+            "Ports": {},
+            "Networks": {
+                "host": {
+                    "IPAMConfig": null,
+                    "Links": null,
+                    "Aliases": null,
+                    "DriverOpts": null,
+                    "GwPriority": 0,
+                    "NetworkID": "e54c42a6cf804e4b9017fb7dcd361888379d2a0da8dcecd1b541c70432666c3d",
+                    "EndpointID": "",
+                    "Gateway": "",
+                    "IPAddress": "",
+                    "MacAddress": "",
+                    "IPPrefixLen": 0,
+                    "IPv6Gateway": "",
+                    "GlobalIPv6Address": "",
+                    "GlobalIPv6PrefixLen": 0,
+                    "DNSNames": null
+                }
+            }
+        }
+    }
+]

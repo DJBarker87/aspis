@@ -1,0 +1,2102 @@
+{
+  "aeneas_version": "d860ac47-patched-result-aware",
+  "charon_version": "0.1.223",
+  "crate": "aspis_core",
+  "functions": [
+    {
+      "def_id": 6,
+      "lean_name": "V7MerkleCallerGenerated.Array.Insts.CoreIterTraitsCollectIntoIteratorTIntoIter.into_iter",
+      "lean_file": "V7MerkleCaller/FunsExternal_Template.lean",
+      "rust_name": "core::array::iter::{impl core::iter::traits::collect::IntoIterator<T, core::array::iter::IntoIter<T, N>> for [T; N]}::into_iter",
+      "is_local": false,
+      "source": {
+        "file": "/rustc/library/core/src/array/iter.rs",
+        "begin_line": 56,
+        "end_line": 56
+      },
+      "is_opaque": true,
+      "can_fail": true,
+      "can_diverge": false,
+      "is_rec": false,
+      "reducible": false
+    },
+    {
+      "def_id": 7,
+      "lean_name": "V7MerkleCallerGenerated.core.array.iter.IntoIter.Insts.CoreIterTraitsIteratorIterator.next",
+      "lean_file": "V7MerkleCaller/FunsExternal_Template.lean",
+      "rust_name": "core::array::iter::{impl core::iter::traits::iterator::Iterator<T> for core::array::iter::IntoIter<T, N>}::next",
+      "is_local": false,
+      "source": {
+        "file": "/rustc/library/core/src/array/iter.rs",
+        "begin_line": 242,
+        "end_line": 242
+      },
+      "is_opaque": true,
+      "can_fail": true,
+      "can_diverge": false,
+      "is_rec": false,
+      "reducible": false
+    },
+    {
+      "def_id": 1,
+      "lean_name": "V7MerkleCallerGenerated.core.array.from_fn",
+      "lean_file": "V7MerkleCaller/FunsExternal_Template.lean",
+      "rust_name": "core::array::from_fn",
+      "is_local": false,
+      "source": {
+        "file": "/rustc/library/core/src/array/mod.rs",
+        "begin_line": 110,
+        "end_line": 112
+      },
+      "is_opaque": true,
+      "can_fail": true,
+      "can_diverge": false,
+      "is_rec": false,
+      "reducible": false
+    },
+    {
+      "def_id": 131,
+      "lean_name": "V7MerkleCallerGenerated.MutAArray.Insts.CoreIterTraitsCollectIntoIteratorMutATIterMut.into_iter",
+      "lean_file": "V7MerkleCaller/FunsExternal_Template.lean",
+      "rust_name": "core::array::{impl core::iter::traits::collect::IntoIterator<&'a mut T, core::slice::iter::IterMut<'a, T>> for &'a mut [T; N]}::into_iter",
+      "is_local": false,
+      "source": {
+        "file": "/rustc/library/core/src/array/mod.rs",
+        "begin_line": 376,
+        "end_line": 376
+      },
+      "is_opaque": true,
+      "can_fail": true,
+      "can_diverge": false,
+      "is_rec": false,
+      "reducible": false
+    },
+    {
+      "def_id": 4,
+      "lean_name": "V7MerkleCallerGenerated.core.iter.traits.iterator.Iterator.any.default",
+      "lean_file": "V7MerkleCaller/FunsExternal_Template.lean",
+      "rust_name": "core::iter::traits::iterator::Iterator::any",
+      "is_local": false,
+      "source": {
+        "file": "/rustc/library/core/src/iter/traits/iterator.rs",
+        "begin_line": 2885,
+        "end_line": 2888
+      },
+      "is_opaque": true,
+      "can_fail": true,
+      "can_diverge": false,
+      "is_rec": false,
+      "reducible": false
+    },
+    {
+      "def_id": 9,
+      "lean_name": "V7MerkleCallerGenerated.core.option.Option.ok_or",
+      "lean_file": "V7MerkleCaller/FunsExternal_Template.lean",
+      "rust_name": "core::option::{core::option::Option<T>}::ok_or",
+      "is_local": false,
+      "source": {
+        "file": "/rustc/library/core/src/option.rs",
+        "begin_line": 1334,
+        "end_line": 1334
+      },
+      "is_opaque": true,
+      "can_fail": true,
+      "can_diverge": false,
+      "is_rec": false,
+      "reducible": false
+    },
+    {
+      "def_id": 125,
+      "lean_name": "V7MerkleCallerGenerated.core.option.Option.Insts.CoreOpsTry_traitTry.branch",
+      "lean_file": "V7MerkleCaller/FunsExternal_Template.lean",
+      "rust_name": "core::option::{impl core::ops::try_trait::Try for core::option::Option<T>}::branch",
+      "is_local": false,
+      "source": {
+        "file": "/rustc/library/core/src/option.rs",
+        "begin_line": 2779,
+        "end_line": 2779
+      },
+      "is_opaque": true,
+      "can_fail": true,
+      "can_diverge": false,
+      "is_rec": false,
+      "reducible": false
+    },
+    {
+      "def_id": 126,
+      "lean_name": "V7MerkleCallerGenerated.core.option.Option.Insts.CoreOpsTry_traitFromResidualOptionInfallible.from_residual",
+      "lean_file": "V7MerkleCaller/FunsExternal_Template.lean",
+      "rust_name": "core::option::{impl core::ops::try_trait::FromResidual<core::option::Option<core::convert::Infallible>> for core::option::Option<T>}::from_residual",
+      "is_local": false,
+      "source": {
+        "file": "/rustc/library/core/src/option.rs",
+        "begin_line": 2793,
+        "end_line": 2793
+      },
+      "is_opaque": true,
+      "can_fail": true,
+      "can_diverge": false,
+      "is_rec": false,
+      "reducible": false
+    },
+    {
+      "def_id": 124,
+      "lean_name": "V7MerkleCallerGenerated.core.result.Result.ok",
+      "lean_file": "V7MerkleCaller/FunsExternal_Template.lean",
+      "rust_name": "core::result::{core::result::Result<T, E>}::ok",
+      "is_local": false,
+      "source": {
+        "file": "/rustc/library/core/src/result.rs",
+        "begin_line": 708,
+        "end_line": 711
+      },
+      "is_opaque": true,
+      "can_fail": true,
+      "can_diverge": false,
+      "is_rec": false,
+      "reducible": false
+    },
+    {
+      "def_id": 218,
+      "lean_name": "V7MerkleCallerGenerated.core.slice.iter.IterMut.Insts.CoreIterTraitsIteratorIteratorMutAT.any",
+      "lean_file": "V7MerkleCaller/FunsExternal_Template.lean",
+      "rust_name": "core::slice::iter::{impl core::iter::traits::iterator::Iterator<&'a mut T> for core::slice::iter::IterMut<'a, T>}::any",
+      "is_local": false,
+      "source": {
+        "file": "/rustc/library/core/src/slice/iter/macros.rs",
+        "begin_line": 326,
+        "end_line": 329
+      },
+      "is_opaque": true,
+      "can_fail": true,
+      "can_diverge": false,
+      "is_rec": false,
+      "reducible": false
+    },
+    {
+      "def_id": 106,
+      "lean_name": "V7MerkleCallerGenerated.core.slice.iter.Windows.Insts.CoreIterTraitsIteratorIteratorSharedASlice.next",
+      "lean_file": "V7MerkleCaller/FunsExternal_Template.lean",
+      "rust_name": "core::slice::iter::{impl core::iter::traits::iterator::Iterator<&'a [T]> for core::slice::iter::Windows<'a, T>}::next",
+      "is_local": false,
+      "source": {
+        "file": "/rustc/library/core/src/slice/iter.rs",
+        "begin_line": 1354,
+        "end_line": 1354
+      },
+      "is_opaque": true,
+      "can_fail": true,
+      "can_diverge": false,
+      "is_rec": false,
+      "reducible": false
+    },
+    {
+      "def_id": 147,
+      "lean_name": "V7MerkleCallerGenerated.core.slice.Slice.last",
+      "lean_file": "V7MerkleCaller/FunsExternal_Template.lean",
+      "rust_name": "core::slice::{[T]}::last",
+      "is_local": false,
+      "source": {
+        "file": "/rustc/library/core/src/slice/mod.rs",
+        "begin_line": 281,
+        "end_line": 281
+      },
+      "is_opaque": true,
+      "can_fail": true,
+      "can_diverge": false,
+      "is_rec": false,
+      "reducible": false
+    },
+    {
+      "def_id": 3,
+      "lean_name": "V7MerkleCallerGenerated.core.slice.Slice.windows",
+      "lean_file": "V7MerkleCaller/FunsExternal_Template.lean",
+      "rust_name": "core::slice::{[T]}::windows",
+      "is_local": false,
+      "source": {
+        "file": "/rustc/library/core/src/slice/mod.rs",
+        "begin_line": 1116,
+        "end_line": 1116
+      },
+      "is_opaque": true,
+      "can_fail": true,
+      "can_diverge": false,
+      "is_rec": false,
+      "reducible": false
+    },
+    {
+      "def_id": 2,
+      "lean_name": "V7MerkleCallerGenerated.core.slice.Slice.sort_unstable_by_key",
+      "lean_file": "V7MerkleCaller/FunsExternal_Template.lean",
+      "rust_name": "core::slice::{[T]}::sort_unstable_by_key",
+      "is_local": false,
+      "source": {
+        "file": "/rustc/library/core/src/slice/mod.rs",
+        "begin_line": 3241,
+        "end_line": 3244
+      },
+      "is_opaque": true,
+      "can_fail": true,
+      "can_diverge": false,
+      "is_rec": false,
+      "reducible": false
+    },
+    {
+      "def_id": 149,
+      "lean_name": "V7MerkleCallerGenerated.alloc.vec.Vec.clear",
+      "lean_file": "V7MerkleCaller/FunsExternal_Template.lean",
+      "rust_name": "alloc::vec::{alloc::vec::Vec<T>}::clear",
+      "is_local": false,
+      "source": {
+        "file": "/rustc/library/alloc/src/vec/mod.rs",
+        "begin_line": 3028,
+        "end_line": 3028
+      },
+      "is_opaque": true,
+      "can_fail": true,
+      "can_diverge": false,
+      "is_rec": false,
+      "reducible": false
+    },
+    {
+      "def_id": 254,
+      "lean_name": "V7MerkleCallerGenerated.field.reduce_u64",
+      "lean_file": "V7MerkleCaller/Funs.lean",
+      "rust_name": "aspis_core::field::reduce_u64",
+      "is_local": true,
+      "source": {
+        "file": "crates/aspis-core/src/field.rs",
+        "begin_line": 28,
+        "end_line": 41
+      },
+      "is_opaque": false,
+      "can_fail": true,
+      "can_diverge": false,
+      "is_rec": false,
+      "reducible": false
+    },
+    {
+      "def_id": 257,
+      "lean_name": "V7MerkleCallerGenerated.field.M31.add",
+      "lean_file": "V7MerkleCaller/Funs.lean",
+      "rust_name": "aspis_core::field::{aspis_core::field::M31}::add",
+      "is_local": true,
+      "source": {
+        "file": "crates/aspis-core/src/field.rs",
+        "begin_line": 56,
+        "end_line": 59
+      },
+      "is_opaque": false,
+      "can_fail": true,
+      "can_diverge": false,
+      "is_rec": false,
+      "reducible": false
+    },
+    {
+      "def_id": 326,
+      "lean_name": "V7MerkleCallerGenerated.field.M31.sub",
+      "lean_file": "V7MerkleCaller/Funs.lean",
+      "rust_name": "aspis_core::field::{aspis_core::field::M31}::sub",
+      "is_local": true,
+      "source": {
+        "file": "crates/aspis-core/src/field.rs",
+        "begin_line": 62,
+        "end_line": 65
+      },
+      "is_opaque": false,
+      "can_fail": true,
+      "can_diverge": false,
+      "is_rec": false,
+      "reducible": false
+    },
+    {
+      "def_id": 140,
+      "lean_name": "V7MerkleCallerGenerated.field.M31.reduce_u64",
+      "lean_file": "V7MerkleCaller/Funs.lean",
+      "rust_name": "aspis_core::field::{aspis_core::field::M31}::reduce_u64",
+      "is_local": true,
+      "source": {
+        "file": "crates/aspis-core/src/field.rs",
+        "begin_line": 95,
+        "end_line": 97
+      },
+      "is_opaque": false,
+      "can_fail": true,
+      "can_diverge": false,
+      "is_rec": false,
+      "reducible": false
+    },
+    {
+      "def_id": 325,
+      "lean_name": "V7MerkleCallerGenerated.field.M31.double",
+      "lean_file": "V7MerkleCaller/Funs.lean",
+      "rust_name": "aspis_core::field::{aspis_core::field::M31}::double",
+      "is_local": true,
+      "source": {
+        "file": "crates/aspis-core/src/field.rs",
+        "begin_line": 123,
+        "end_line": 125
+      },
+      "is_opaque": false,
+      "can_fail": true,
+      "can_diverge": false,
+      "is_rec": false,
+      "reducible": false
+    },
+    {
+      "def_id": 142,
+      "lean_name": "V7MerkleCallerGenerated.field.CM31.new",
+      "lean_file": "V7MerkleCaller/Funs.lean",
+      "rust_name": "aspis_core::field::{aspis_core::field::CM31}::new",
+      "is_local": true,
+      "source": {
+        "file": "crates/aspis-core/src/field.rs",
+        "begin_line": 207,
+        "end_line": 209
+      },
+      "is_opaque": false,
+      "can_fail": true,
+      "can_diverge": false,
+      "is_rec": false,
+      "reducible": false
+    },
+    {
+      "def_id": 256,
+      "lean_name": "V7MerkleCallerGenerated.field.CM31.add",
+      "lean_file": "V7MerkleCaller/Funs.lean",
+      "rust_name": "aspis_core::field::{aspis_core::field::CM31}::add",
+      "is_local": true,
+      "source": {
+        "file": "crates/aspis-core/src/field.rs",
+        "begin_line": 217,
+        "end_line": 222
+      },
+      "is_opaque": false,
+      "can_fail": true,
+      "can_diverge": false,
+      "is_rec": false,
+      "reducible": false
+    },
+    {
+      "def_id": 299,
+      "lean_name": "V7MerkleCallerGenerated.field.CM31.sub",
+      "lean_file": "V7MerkleCaller/Funs.lean",
+      "rust_name": "aspis_core::field::{aspis_core::field::CM31}::sub",
+      "is_local": true,
+      "source": {
+        "file": "crates/aspis-core/src/field.rs",
+        "begin_line": 225,
+        "end_line": 230
+      },
+      "is_opaque": false,
+      "can_fail": true,
+      "can_diverge": false,
+      "is_rec": false,
+      "reducible": false
+    },
+    {
+      "def_id": 298,
+      "lean_name": "V7MerkleCallerGenerated.field.mul_by_r",
+      "lean_file": "V7MerkleCaller/Funs.lean",
+      "rust_name": "aspis_core::field::mul_by_r",
+      "is_local": true,
+      "source": {
+        "file": "crates/aspis-core/src/field.rs",
+        "begin_line": 788,
+        "end_line": 794
+      },
+      "is_opaque": false,
+      "can_fail": true,
+      "can_diverge": false,
+      "is_rec": false,
+      "reducible": false
+    },
+    {
+      "def_id": 324,
+      "lean_name": "V7MerkleCallerGenerated.field.qm31_from_karatsuba_channel_sums.closure.Insts.CoreOpsFunctionFnTupleArrayU643CM31.call",
+      "lean_file": "V7MerkleCaller/Funs.lean",
+      "rust_name": "aspis_core::field::qm31_from_karatsuba_channel_sums::{impl core::ops::function::Fn<([u64; 3usize],), aspis_core::field::CM31> for aspis_core::field::qm31_from_karatsuba_channel_sums::closure}::call",
+      "is_local": true,
+      "source": {
+        "file": "crates/aspis-core/src/field.rs",
+        "begin_line": 410,
+        "end_line": 418
+      },
+      "is_opaque": false,
+      "can_fail": true,
+      "can_diverge": false,
+      "is_rec": false,
+      "reducible": false
+    },
+    {
+      "def_id": 255,
+      "lean_name": "V7MerkleCallerGenerated.field.qm31_from_karatsuba_channel_sums",
+      "lean_file": "V7MerkleCaller/Funs.lean",
+      "rust_name": "aspis_core::field::qm31_from_karatsuba_channel_sums",
+      "is_local": true,
+      "source": {
+        "file": "crates/aspis-core/src/field.rs",
+        "begin_line": 409,
+        "end_line": 426
+      },
+      "is_opaque": false,
+      "can_fail": true,
+      "can_diverge": false,
+      "is_rec": false,
+      "reducible": false
+    },
+    {
+      "def_id": 143,
+      "lean_name": "V7MerkleCallerGenerated.field.qm31_sum_products3_prepared_loop0_loop0_loop0.body",
+      "lean_file": "V7MerkleCaller/Funs.lean",
+      "rust_name": "aspis_core::field::qm31_sum_products3_prepared",
+      "is_local": true,
+      "source": {
+        "file": "crates/aspis-core/src/field.rs",
+        "begin_line": 624,
+        "end_line": 627
+      },
+      "is_opaque": false,
+      "can_fail": true,
+      "can_diverge": true,
+      "is_rec": false,
+      "reducible": false,
+      "loop": { "id": 2, "pos": [ 0, 0, 0 ], "is_body": true },
+      "parent_lean_name": "V7MerkleCallerGenerated.field.qm31_sum_products3_prepared"
+    },
+    {
+      "def_id": 143,
+      "lean_name": "V7MerkleCallerGenerated.field.qm31_sum_products3_prepared_loop0_loop0_loop0",
+      "lean_file": "V7MerkleCaller/Funs.lean",
+      "rust_name": "aspis_core::field::qm31_sum_products3_prepared",
+      "is_local": true,
+      "source": {
+        "file": "crates/aspis-core/src/field.rs",
+        "begin_line": 624,
+        "end_line": 627
+      },
+      "is_opaque": false,
+      "can_fail": true,
+      "can_diverge": true,
+      "is_rec": false,
+      "reducible": false,
+      "loop": { "id": 2, "pos": [ 0, 0, 0 ], "is_body": false },
+      "parent_lean_name": "V7MerkleCallerGenerated.field.qm31_sum_products3_prepared"
+    },
+    {
+      "def_id": 143,
+      "lean_name": "V7MerkleCallerGenerated.field.qm31_sum_products3_prepared_loop0_loop0.body",
+      "lean_file": "V7MerkleCaller/Funs.lean",
+      "rust_name": "aspis_core::field::qm31_sum_products3_prepared",
+      "is_local": true,
+      "source": {
+        "file": "crates/aspis-core/src/field.rs",
+        "begin_line": 623,
+        "end_line": 628
+      },
+      "is_opaque": false,
+      "can_fail": true,
+      "can_diverge": true,
+      "is_rec": false,
+      "reducible": false,
+      "loop": { "id": 1, "pos": [ 0, 0 ], "is_body": true },
+      "parent_lean_name": "V7MerkleCallerGenerated.field.qm31_sum_products3_prepared"
+    },
+    {
+      "def_id": 143,
+      "lean_name": "V7MerkleCallerGenerated.field.qm31_sum_products3_prepared_loop0_loop0",
+      "lean_file": "V7MerkleCaller/Funs.lean",
+      "rust_name": "aspis_core::field::qm31_sum_products3_prepared",
+      "is_local": true,
+      "source": {
+        "file": "crates/aspis-core/src/field.rs",
+        "begin_line": 623,
+        "end_line": 628
+      },
+      "is_opaque": false,
+      "can_fail": true,
+      "can_diverge": true,
+      "is_rec": false,
+      "reducible": false,
+      "loop": { "id": 1, "pos": [ 0, 0 ], "is_body": false },
+      "parent_lean_name": "V7MerkleCallerGenerated.field.qm31_sum_products3_prepared"
+    },
+    {
+      "def_id": 143,
+      "lean_name": "V7MerkleCallerGenerated.field.qm31_sum_products3_prepared_loop0.body",
+      "lean_file": "V7MerkleCaller/Funs.lean",
+      "rust_name": "aspis_core::field::qm31_sum_products3_prepared",
+      "is_local": true,
+      "source": {
+        "file": "crates/aspis-core/src/field.rs",
+        "begin_line": 608,
+        "end_line": 629
+      },
+      "is_opaque": false,
+      "can_fail": true,
+      "can_diverge": true,
+      "is_rec": false,
+      "reducible": false,
+      "loop": { "id": 0, "pos": [ 0 ], "is_body": true },
+      "parent_lean_name": "V7MerkleCallerGenerated.field.qm31_sum_products3_prepared"
+    },
+    {
+      "def_id": 143,
+      "lean_name": "V7MerkleCallerGenerated.field.qm31_sum_products3_prepared_loop0",
+      "lean_file": "V7MerkleCaller/Funs.lean",
+      "rust_name": "aspis_core::field::qm31_sum_products3_prepared",
+      "is_local": true,
+      "source": {
+        "file": "crates/aspis-core/src/field.rs",
+        "begin_line": 608,
+        "end_line": 629
+      },
+      "is_opaque": false,
+      "can_fail": true,
+      "can_diverge": true,
+      "is_rec": false,
+      "reducible": false,
+      "loop": { "id": 0, "pos": [ 0 ], "is_body": false },
+      "parent_lean_name": "V7MerkleCallerGenerated.field.qm31_sum_products3_prepared"
+    },
+    {
+      "def_id": 143,
+      "lean_name": "V7MerkleCallerGenerated.field.qm31_sum_products3_prepared",
+      "lean_file": "V7MerkleCaller/Funs.lean",
+      "rust_name": "aspis_core::field::qm31_sum_products3_prepared",
+      "is_local": true,
+      "source": {
+        "file": "crates/aspis-core/src/field.rs",
+        "begin_line": 606,
+        "end_line": 631
+      },
+      "is_opaque": false,
+      "can_fail": true,
+      "can_diverge": true,
+      "is_rec": false,
+      "reducible": false
+    },
+    {
+      "def_id": 144,
+      "lean_name": "V7MerkleCallerGenerated.field.QM31.add",
+      "lean_file": "V7MerkleCaller/Funs.lean",
+      "rust_name": "aspis_core::field::{aspis_core::field::QM31}::add",
+      "is_local": true,
+      "source": {
+        "file": "crates/aspis-core/src/field.rs",
+        "begin_line": 824,
+        "end_line": 829
+      },
+      "is_opaque": false,
+      "can_fail": true,
+      "can_diverge": false,
+      "is_rec": false,
+      "reducible": false
+    },
+    {
+      "def_id": 157,
+      "lean_name": "V7MerkleCallerGenerated.state_only_private_merkle.private_leaf_hash",
+      "lean_file": "V7MerkleCaller/Funs.lean",
+      "rust_name": "aspis_core::state_only_private_merkle::private_leaf_hash",
+      "is_local": true,
+      "source": {
+        "file": "crates/aspis-core/src/state_only_private_merkle.rs",
+        "begin_line": 28,
+        "end_line": 35
+      },
+      "is_opaque": false,
+      "can_fail": true,
+      "can_diverge": false,
+      "is_rec": false,
+      "reducible": false
+    },
+    {
+      "def_id": 287,
+      "lean_name": "V7MerkleCallerGenerated.v6_onefold.packed_bytes",
+      "lean_file": "V7MerkleCaller/Funs.lean",
+      "rust_name": "aspis_core::v6_onefold::packed_bytes",
+      "is_local": true,
+      "source": {
+        "file": "crates/aspis-core/src/v6_onefold.rs",
+        "begin_line": 68,
+        "end_line": 70
+      },
+      "is_opaque": false,
+      "can_fail": true,
+      "can_diverge": false,
+      "is_rec": false,
+      "reducible": false
+    },
+    {
+      "def_id": 130,
+      "lean_name": "V7MerkleCallerGenerated.v6_onefold.PackedM31Reader.new",
+      "lean_file": "V7MerkleCaller/Funs.lean",
+      "rust_name": "aspis_core::v6_onefold::{aspis_core::v6_onefold::PackedM31Reader<'a>}::new",
+      "is_local": true,
+      "source": {
+        "file": "crates/aspis-core/src/v6_onefold.rs",
+        "begin_line": 300,
+        "end_line": 307
+      },
+      "is_opaque": false,
+      "can_fail": true,
+      "can_diverge": false,
+      "is_rec": false,
+      "reducible": false
+    },
+    {
+      "def_id": 135,
+      "lean_name": "V7MerkleCallerGenerated.v6_onefold.PackedM31Reader.next_loop.body",
+      "lean_file": "V7MerkleCaller/Funs.lean",
+      "rust_name": "aspis_core::v6_onefold::{aspis_core::v6_onefold::PackedM31Reader<'a>}::next",
+      "is_local": true,
+      "source": {
+        "file": "crates/aspis-core/src/v6_onefold.rs",
+        "begin_line": 311,
+        "end_line": 311
+      },
+      "is_opaque": false,
+      "can_fail": true,
+      "can_diverge": true,
+      "is_rec": false,
+      "reducible": false,
+      "loop": { "id": 0, "pos": [ 0 ], "is_body": true },
+      "parent_lean_name": "V7MerkleCallerGenerated.v6_onefold.PackedM31Reader.next"
+    },
+    {
+      "def_id": 135,
+      "lean_name": "V7MerkleCallerGenerated.v6_onefold.PackedM31Reader.next_loop",
+      "lean_file": "V7MerkleCaller/Funs.lean",
+      "rust_name": "aspis_core::v6_onefold::{aspis_core::v6_onefold::PackedM31Reader<'a>}::next",
+      "is_local": true,
+      "source": {
+        "file": "crates/aspis-core/src/v6_onefold.rs",
+        "begin_line": 311,
+        "end_line": 311
+      },
+      "is_opaque": false,
+      "can_fail": true,
+      "can_diverge": true,
+      "is_rec": false,
+      "reducible": false,
+      "loop": { "id": 0, "pos": [ 0 ], "is_body": false },
+      "parent_lean_name": "V7MerkleCallerGenerated.v6_onefold.PackedM31Reader.next"
+    },
+    {
+      "def_id": 135,
+      "lean_name": "V7MerkleCallerGenerated.v6_onefold.PackedM31Reader.next",
+      "lean_file": "V7MerkleCaller/Funs.lean",
+      "rust_name": "aspis_core::v6_onefold::{aspis_core::v6_onefold::PackedM31Reader<'a>}::next",
+      "is_local": true,
+      "source": {
+        "file": "crates/aspis-core/src/v6_onefold.rs",
+        "begin_line": 310,
+        "end_line": 321
+      },
+      "is_opaque": false,
+      "can_fail": true,
+      "can_diverge": true,
+      "is_rec": false,
+      "reducible": false
+    },
+    {
+      "def_id": 139,
+      "lean_name": "V7MerkleCallerGenerated.v6_onefold.PackedM31Reader.qm31",
+      "lean_file": "V7MerkleCaller/Funs.lean",
+      "rust_name": "aspis_core::v6_onefold::{aspis_core::v6_onefold::PackedM31Reader<'a>}::qm31",
+      "is_local": true,
+      "source": {
+        "file": "crates/aspis-core/src/v6_onefold.rs",
+        "begin_line": 324,
+        "end_line": 329
+      },
+      "is_opaque": false,
+      "can_fail": true,
+      "can_diverge": true,
+      "is_rec": false,
+      "reducible": false
+    },
+    {
+      "def_id": 11,
+      "lean_name": "V7MerkleCallerGenerated.v6_onefold.gamma_combine_v6_packed_layer0_loop0_loop0_loop0_loop0.body",
+      "lean_file": "V7MerkleCaller/Funs.lean",
+      "rust_name": "aspis_core::v6_onefold::gamma_combine_v6_packed_layer0",
+      "is_local": true,
+      "source": {
+        "file": "crates/aspis-core/src/v6_onefold.rs",
+        "begin_line": 577,
+        "end_line": 579
+      },
+      "is_opaque": false,
+      "can_fail": true,
+      "can_diverge": true,
+      "is_rec": false,
+      "reducible": false,
+      "loop": { "id": 3, "pos": [ 0, 0, 0, 0 ], "is_body": true },
+      "parent_lean_name": "V7MerkleCallerGenerated.v6_onefold.gamma_combine_v6_packed_layer0"
+    },
+    {
+      "def_id": 11,
+      "lean_name": "V7MerkleCallerGenerated.v6_onefold.gamma_combine_v6_packed_layer0_loop0_loop0_loop0_loop0",
+      "lean_file": "V7MerkleCaller/Funs.lean",
+      "rust_name": "aspis_core::v6_onefold::gamma_combine_v6_packed_layer0",
+      "is_local": true,
+      "source": {
+        "file": "crates/aspis-core/src/v6_onefold.rs",
+        "begin_line": 577,
+        "end_line": 579
+      },
+      "is_opaque": false,
+      "can_fail": true,
+      "can_diverge": true,
+      "is_rec": false,
+      "reducible": false,
+      "loop": { "id": 3, "pos": [ 0, 0, 0, 0 ], "is_body": false },
+      "parent_lean_name": "V7MerkleCallerGenerated.v6_onefold.gamma_combine_v6_packed_layer0"
+    },
+    {
+      "def_id": 11,
+      "lean_name": "V7MerkleCallerGenerated.v6_onefold.gamma_combine_v6_packed_layer0_loop0_loop0_loop0.body",
+      "lean_file": "V7MerkleCaller/Funs.lean",
+      "rust_name": "aspis_core::v6_onefold::gamma_combine_v6_packed_layer0",
+      "is_local": true,
+      "source": {
+        "file": "crates/aspis-core/src/v6_onefold.rs",
+        "begin_line": 572,
+        "end_line": 580
+      },
+      "is_opaque": false,
+      "can_fail": true,
+      "can_diverge": true,
+      "is_rec": false,
+      "reducible": false,
+      "loop": { "id": 2, "pos": [ 0, 0, 0 ], "is_body": true },
+      "parent_lean_name": "V7MerkleCallerGenerated.v6_onefold.gamma_combine_v6_packed_layer0"
+    },
+    {
+      "def_id": 11,
+      "lean_name": "V7MerkleCallerGenerated.v6_onefold.gamma_combine_v6_packed_layer0_loop0_loop0_loop0",
+      "lean_file": "V7MerkleCaller/Funs.lean",
+      "rust_name": "aspis_core::v6_onefold::gamma_combine_v6_packed_layer0",
+      "is_local": true,
+      "source": {
+        "file": "crates/aspis-core/src/v6_onefold.rs",
+        "begin_line": 572,
+        "end_line": 580
+      },
+      "is_opaque": false,
+      "can_fail": true,
+      "can_diverge": true,
+      "is_rec": false,
+      "reducible": false,
+      "loop": { "id": 2, "pos": [ 0, 0, 0 ], "is_body": false },
+      "parent_lean_name": "V7MerkleCallerGenerated.v6_onefold.gamma_combine_v6_packed_layer0"
+    },
+    {
+      "def_id": 11,
+      "lean_name": "V7MerkleCallerGenerated.v6_onefold.gamma_combine_v6_packed_layer0_loop0_loop0_loop1.body",
+      "lean_file": "V7MerkleCaller/Funs.lean",
+      "rust_name": "aspis_core::v6_onefold::gamma_combine_v6_packed_layer0",
+      "is_local": true,
+      "source": {
+        "file": "crates/aspis-core/src/v6_onefold.rs",
+        "begin_line": 581,
+        "end_line": 583
+      },
+      "is_opaque": false,
+      "can_fail": true,
+      "can_diverge": true,
+      "is_rec": false,
+      "reducible": false,
+      "loop": { "id": 4, "pos": [ 0, 0, 1 ], "is_body": true },
+      "parent_lean_name": "V7MerkleCallerGenerated.v6_onefold.gamma_combine_v6_packed_layer0"
+    },
+    {
+      "def_id": 11,
+      "lean_name": "V7MerkleCallerGenerated.v6_onefold.gamma_combine_v6_packed_layer0_loop0_loop0_loop1",
+      "lean_file": "V7MerkleCaller/Funs.lean",
+      "rust_name": "aspis_core::v6_onefold::gamma_combine_v6_packed_layer0",
+      "is_local": true,
+      "source": {
+        "file": "crates/aspis-core/src/v6_onefold.rs",
+        "begin_line": 581,
+        "end_line": 583
+      },
+      "is_opaque": false,
+      "can_fail": true,
+      "can_diverge": true,
+      "is_rec": false,
+      "reducible": false,
+      "loop": { "id": 4, "pos": [ 0, 0, 1 ], "is_body": false },
+      "parent_lean_name": "V7MerkleCallerGenerated.v6_onefold.gamma_combine_v6_packed_layer0"
+    },
+    {
+      "def_id": 11,
+      "lean_name": "V7MerkleCallerGenerated.v6_onefold.gamma_combine_v6_packed_layer0_loop0_loop0.body",
+      "lean_file": "V7MerkleCaller/Funs.lean",
+      "rust_name": "aspis_core::v6_onefold::gamma_combine_v6_packed_layer0",
+      "is_local": true,
+      "source": {
+        "file": "crates/aspis-core/src/v6_onefold.rs",
+        "begin_line": 570,
+        "end_line": 584
+      },
+      "is_opaque": false,
+      "can_fail": true,
+      "can_diverge": true,
+      "is_rec": false,
+      "reducible": false,
+      "loop": { "id": 1, "pos": [ 0, 0 ], "is_body": true },
+      "parent_lean_name": "V7MerkleCallerGenerated.v6_onefold.gamma_combine_v6_packed_layer0"
+    },
+    {
+      "def_id": 11,
+      "lean_name": "V7MerkleCallerGenerated.v6_onefold.gamma_combine_v6_packed_layer0_loop0_loop0",
+      "lean_file": "V7MerkleCaller/Funs.lean",
+      "rust_name": "aspis_core::v6_onefold::gamma_combine_v6_packed_layer0",
+      "is_local": true,
+      "source": {
+        "file": "crates/aspis-core/src/v6_onefold.rs",
+        "begin_line": 570,
+        "end_line": 584
+      },
+      "is_opaque": false,
+      "can_fail": true,
+      "can_diverge": true,
+      "is_rec": false,
+      "reducible": false,
+      "loop": { "id": 1, "pos": [ 0, 0 ], "is_body": false },
+      "parent_lean_name": "V7MerkleCallerGenerated.v6_onefold.gamma_combine_v6_packed_layer0"
+    },
+    {
+      "def_id": 11,
+      "lean_name": "V7MerkleCallerGenerated.v6_onefold.gamma_combine_v6_packed_layer0_loop0_loop1_loop0.body",
+      "lean_file": "V7MerkleCaller/Funs.lean",
+      "rust_name": "aspis_core::v6_onefold::gamma_combine_v6_packed_layer0",
+      "is_local": true,
+      "source": {
+        "file": "crates/aspis-core/src/v6_onefold.rs",
+        "begin_line": 591,
+        "end_line": 593
+      },
+      "is_opaque": false,
+      "can_fail": true,
+      "can_diverge": true,
+      "is_rec": false,
+      "reducible": false,
+      "loop": { "id": 6, "pos": [ 0, 1, 0 ], "is_body": true },
+      "parent_lean_name": "V7MerkleCallerGenerated.v6_onefold.gamma_combine_v6_packed_layer0"
+    },
+    {
+      "def_id": 11,
+      "lean_name": "V7MerkleCallerGenerated.v6_onefold.gamma_combine_v6_packed_layer0_loop0_loop1_loop0",
+      "lean_file": "V7MerkleCaller/Funs.lean",
+      "rust_name": "aspis_core::v6_onefold::gamma_combine_v6_packed_layer0",
+      "is_local": true,
+      "source": {
+        "file": "crates/aspis-core/src/v6_onefold.rs",
+        "begin_line": 591,
+        "end_line": 593
+      },
+      "is_opaque": false,
+      "can_fail": true,
+      "can_diverge": true,
+      "is_rec": false,
+      "reducible": false,
+      "loop": { "id": 6, "pos": [ 0, 1, 0 ], "is_body": false },
+      "parent_lean_name": "V7MerkleCallerGenerated.v6_onefold.gamma_combine_v6_packed_layer0"
+    },
+    {
+      "def_id": 11,
+      "lean_name": "V7MerkleCallerGenerated.v6_onefold.gamma_combine_v6_packed_layer0_loop0_loop1.body",
+      "lean_file": "V7MerkleCaller/Funs.lean",
+      "rust_name": "aspis_core::v6_onefold::gamma_combine_v6_packed_layer0",
+      "is_local": true,
+      "source": {
+        "file": "crates/aspis-core/src/v6_onefold.rs",
+        "begin_line": 586,
+        "end_line": 594
+      },
+      "is_opaque": false,
+      "can_fail": true,
+      "can_diverge": true,
+      "is_rec": false,
+      "reducible": false,
+      "loop": { "id": 5, "pos": [ 0, 1 ], "is_body": true },
+      "parent_lean_name": "V7MerkleCallerGenerated.v6_onefold.gamma_combine_v6_packed_layer0"
+    },
+    {
+      "def_id": 11,
+      "lean_name": "V7MerkleCallerGenerated.v6_onefold.gamma_combine_v6_packed_layer0_loop0_loop1",
+      "lean_file": "V7MerkleCaller/Funs.lean",
+      "rust_name": "aspis_core::v6_onefold::gamma_combine_v6_packed_layer0",
+      "is_local": true,
+      "source": {
+        "file": "crates/aspis-core/src/v6_onefold.rs",
+        "begin_line": 586,
+        "end_line": 594
+      },
+      "is_opaque": false,
+      "can_fail": true,
+      "can_diverge": true,
+      "is_rec": false,
+      "reducible": false,
+      "loop": { "id": 5, "pos": [ 0, 1 ], "is_body": false },
+      "parent_lean_name": "V7MerkleCallerGenerated.v6_onefold.gamma_combine_v6_packed_layer0"
+    },
+    {
+      "def_id": 11,
+      "lean_name": "V7MerkleCallerGenerated.v6_onefold.gamma_combine_v6_packed_layer0_loop0_loop2.body",
+      "lean_file": "V7MerkleCaller/Funs.lean",
+      "rust_name": "aspis_core::v6_onefold::gamma_combine_v6_packed_layer0",
+      "is_local": true,
+      "source": {
+        "file": "crates/aspis-core/src/v6_onefold.rs",
+        "begin_line": 595,
+        "end_line": 597
+      },
+      "is_opaque": false,
+      "can_fail": true,
+      "can_diverge": true,
+      "is_rec": false,
+      "reducible": false,
+      "loop": { "id": 7, "pos": [ 0, 2 ], "is_body": true },
+      "parent_lean_name": "V7MerkleCallerGenerated.v6_onefold.gamma_combine_v6_packed_layer0"
+    },
+    {
+      "def_id": 11,
+      "lean_name": "V7MerkleCallerGenerated.v6_onefold.gamma_combine_v6_packed_layer0_loop0_loop2",
+      "lean_file": "V7MerkleCaller/Funs.lean",
+      "rust_name": "aspis_core::v6_onefold::gamma_combine_v6_packed_layer0",
+      "is_local": true,
+      "source": {
+        "file": "crates/aspis-core/src/v6_onefold.rs",
+        "begin_line": 595,
+        "end_line": 597
+      },
+      "is_opaque": false,
+      "can_fail": true,
+      "can_diverge": true,
+      "is_rec": false,
+      "reducible": false,
+      "loop": { "id": 7, "pos": [ 0, 2 ], "is_body": false },
+      "parent_lean_name": "V7MerkleCallerGenerated.v6_onefold.gamma_combine_v6_packed_layer0"
+    },
+    {
+      "def_id": 11,
+      "lean_name": "V7MerkleCallerGenerated.v6_onefold.gamma_combine_v6_packed_layer0_loop0.body",
+      "lean_file": "V7MerkleCaller/Funs.lean",
+      "rust_name": "aspis_core::v6_onefold::gamma_combine_v6_packed_layer0",
+      "is_local": true,
+      "source": {
+        "file": "crates/aspis-core/src/v6_onefold.rs",
+        "begin_line": 568,
+        "end_line": 602
+      },
+      "is_opaque": false,
+      "can_fail": true,
+      "can_diverge": true,
+      "is_rec": false,
+      "reducible": false,
+      "loop": { "id": 0, "pos": [ 0 ], "is_body": true },
+      "parent_lean_name": "V7MerkleCallerGenerated.v6_onefold.gamma_combine_v6_packed_layer0"
+    },
+    {
+      "def_id": 11,
+      "lean_name": "V7MerkleCallerGenerated.v6_onefold.gamma_combine_v6_packed_layer0_loop0",
+      "lean_file": "V7MerkleCaller/Funs.lean",
+      "rust_name": "aspis_core::v6_onefold::gamma_combine_v6_packed_layer0",
+      "is_local": true,
+      "source": {
+        "file": "crates/aspis-core/src/v6_onefold.rs",
+        "begin_line": 568,
+        "end_line": 602
+      },
+      "is_opaque": false,
+      "can_fail": true,
+      "can_diverge": true,
+      "is_rec": false,
+      "reducible": false,
+      "loop": { "id": 0, "pos": [ 0 ], "is_body": false },
+      "parent_lean_name": "V7MerkleCallerGenerated.v6_onefold.gamma_combine_v6_packed_layer0"
+    },
+    {
+      "def_id": 11,
+      "lean_name": "V7MerkleCallerGenerated.v6_onefold.gamma_combine_v6_packed_layer0_loop1_loop0.body",
+      "lean_file": "V7MerkleCaller/Funs.lean",
+      "rust_name": "aspis_core::v6_onefold::gamma_combine_v6_packed_layer0",
+      "is_local": true,
+      "source": {
+        "file": "crates/aspis-core/src/v6_onefold.rs",
+        "begin_line": 610,
+        "end_line": 615
+      },
+      "is_opaque": false,
+      "can_fail": true,
+      "can_diverge": true,
+      "is_rec": false,
+      "reducible": false,
+      "loop": { "id": 9, "pos": [ 1, 0 ], "is_body": true },
+      "parent_lean_name": "V7MerkleCallerGenerated.v6_onefold.gamma_combine_v6_packed_layer0"
+    },
+    {
+      "def_id": 11,
+      "lean_name": "V7MerkleCallerGenerated.v6_onefold.gamma_combine_v6_packed_layer0_loop1_loop0",
+      "lean_file": "V7MerkleCaller/Funs.lean",
+      "rust_name": "aspis_core::v6_onefold::gamma_combine_v6_packed_layer0",
+      "is_local": true,
+      "source": {
+        "file": "crates/aspis-core/src/v6_onefold.rs",
+        "begin_line": 610,
+        "end_line": 615
+      },
+      "is_opaque": false,
+      "can_fail": true,
+      "can_diverge": true,
+      "is_rec": false,
+      "reducible": false,
+      "loop": { "id": 9, "pos": [ 1, 0 ], "is_body": false },
+      "parent_lean_name": "V7MerkleCallerGenerated.v6_onefold.gamma_combine_v6_packed_layer0"
+    },
+    {
+      "def_id": 11,
+      "lean_name": "V7MerkleCallerGenerated.v6_onefold.gamma_combine_v6_packed_layer0_loop1.body",
+      "lean_file": "V7MerkleCaller/Funs.lean",
+      "rust_name": "aspis_core::v6_onefold::gamma_combine_v6_packed_layer0",
+      "is_local": true,
+      "source": {
+        "file": "crates/aspis-core/src/v6_onefold.rs",
+        "begin_line": 609,
+        "end_line": 616
+      },
+      "is_opaque": false,
+      "can_fail": true,
+      "can_diverge": true,
+      "is_rec": false,
+      "reducible": false,
+      "loop": { "id": 8, "pos": [ 1 ], "is_body": true },
+      "parent_lean_name": "V7MerkleCallerGenerated.v6_onefold.gamma_combine_v6_packed_layer0"
+    },
+    {
+      "def_id": 11,
+      "lean_name": "V7MerkleCallerGenerated.v6_onefold.gamma_combine_v6_packed_layer0_loop1",
+      "lean_file": "V7MerkleCaller/Funs.lean",
+      "rust_name": "aspis_core::v6_onefold::gamma_combine_v6_packed_layer0",
+      "is_local": true,
+      "source": {
+        "file": "crates/aspis-core/src/v6_onefold.rs",
+        "begin_line": 609,
+        "end_line": 616
+      },
+      "is_opaque": false,
+      "can_fail": true,
+      "can_diverge": true,
+      "is_rec": false,
+      "reducible": false,
+      "loop": { "id": 8, "pos": [ 1 ], "is_body": false },
+      "parent_lean_name": "V7MerkleCallerGenerated.v6_onefold.gamma_combine_v6_packed_layer0"
+    },
+    {
+      "def_id": 11,
+      "lean_name": "V7MerkleCallerGenerated.v6_onefold.gamma_combine_v6_packed_layer0_loop2.body",
+      "lean_file": "V7MerkleCaller/Funs.lean",
+      "rust_name": "aspis_core::v6_onefold::gamma_combine_v6_packed_layer0",
+      "is_local": true,
+      "source": {
+        "file": "crates/aspis-core/src/v6_onefold.rs",
+        "begin_line": 619,
+        "end_line": 622
+      },
+      "is_opaque": false,
+      "can_fail": true,
+      "can_diverge": true,
+      "is_rec": false,
+      "reducible": false,
+      "loop": { "id": 10, "pos": [ 2 ], "is_body": true },
+      "parent_lean_name": "V7MerkleCallerGenerated.v6_onefold.gamma_combine_v6_packed_layer0"
+    },
+    {
+      "def_id": 11,
+      "lean_name": "V7MerkleCallerGenerated.v6_onefold.gamma_combine_v6_packed_layer0_loop2",
+      "lean_file": "V7MerkleCaller/Funs.lean",
+      "rust_name": "aspis_core::v6_onefold::gamma_combine_v6_packed_layer0",
+      "is_local": true,
+      "source": {
+        "file": "crates/aspis-core/src/v6_onefold.rs",
+        "begin_line": 619,
+        "end_line": 622
+      },
+      "is_opaque": false,
+      "can_fail": true,
+      "can_diverge": true,
+      "is_rec": false,
+      "reducible": false,
+      "loop": { "id": 10, "pos": [ 2 ], "is_body": false },
+      "parent_lean_name": "V7MerkleCallerGenerated.v6_onefold.gamma_combine_v6_packed_layer0"
+    },
+    {
+      "def_id": 11,
+      "lean_name": "V7MerkleCallerGenerated.v6_onefold.gamma_combine_v6_packed_layer0",
+      "lean_file": "V7MerkleCaller/Funs.lean",
+      "rust_name": "aspis_core::v6_onefold::gamma_combine_v6_packed_layer0",
+      "is_local": true,
+      "source": {
+        "file": "crates/aspis-core/src/v6_onefold.rs",
+        "begin_line": 554,
+        "end_line": 627
+      },
+      "is_opaque": false,
+      "can_fail": true,
+      "can_diverge": true,
+      "is_rec": false,
+      "reducible": false
+    },
+    {
+      "def_id": 158,
+      "lean_name": "V7MerkleCallerGenerated.v7_merkle208.truncate_sha256_v7",
+      "lean_file": "V7MerkleCaller/Funs.lean",
+      "rust_name": "aspis_core::v7_merkle208::truncate_sha256_v7",
+      "is_local": true,
+      "source": {
+        "file": "crates/aspis-core/src/v7_merkle208.rs",
+        "begin_line": 24,
+        "end_line": 28
+      },
+      "is_opaque": false,
+      "can_fail": true,
+      "can_diverge": false,
+      "is_rec": false,
+      "reducible": false
+    },
+    {
+      "def_id": 15,
+      "lean_name": "V7MerkleCallerGenerated.v7_merkle208.private_leaf_hash_v7",
+      "lean_file": "V7MerkleCaller/Funs.lean",
+      "rust_name": "aspis_core::v7_merkle208::private_leaf_hash_v7",
+      "is_local": true,
+      "source": {
+        "file": "crates/aspis-core/src/v7_merkle208.rs",
+        "begin_line": 31,
+        "end_line": 38
+      },
+      "is_opaque": false,
+      "can_fail": true,
+      "can_diverge": false,
+      "is_rec": false,
+      "reducible": false
+    },
+    {
+      "def_id": 156,
+      "lean_name": "V7MerkleCallerGenerated.v7_merkle208.node_hash_v7",
+      "lean_file": "V7MerkleCaller/Funs.lean",
+      "rust_name": "aspis_core::v7_merkle208::node_hash_v7",
+      "is_local": true,
+      "source": {
+        "file": "crates/aspis-core/src/v7_merkle208.rs",
+        "begin_line": 41,
+        "end_line": 47
+      },
+      "is_opaque": false,
+      "can_fail": true,
+      "can_diverge": false,
+      "is_rec": false,
+      "reducible": false
+    },
+    {
+      "def_id": 259,
+      "lean_name": "V7MerkleCallerGenerated.v7_merkle208.verify_two_minimal_subtrees_v7_bytes.closure.Insts.CoreOpsFunctionFnMutTupleSharedSliceTupleU32ArrayU826ArrayU826Bool.call_mut",
+      "lean_file": "V7MerkleCaller/Funs.lean",
+      "rust_name": "aspis_core::v7_merkle208::verify_two_minimal_subtrees_v7_bytes::{impl core::ops::function::FnMut<(&'_ [(u32, [u8; 26usize], [u8; 26usize])],), bool> for aspis_core::v7_merkle208::verify_two_minimal_subtrees_v7_bytes::closure}::call_mut",
+      "is_local": true,
+      "source": {
+        "file": "crates/aspis-core/src/v7_merkle208.rs",
+        "begin_line": 68,
+        "end_line": 68
+      },
+      "is_opaque": false,
+      "can_fail": true,
+      "can_diverge": false,
+      "is_rec": false,
+      "reducible": false
+    },
+    {
+      "def_id": 258,
+      "lean_name": "V7MerkleCallerGenerated.v7_merkle208.verify_two_minimal_subtrees_v7_bytes.closure.Insts.CoreOpsFunctionFnOnceTupleSharedSliceTupleU32ArrayU826ArrayU826Bool.call_once",
+      "lean_file": "V7MerkleCaller/Funs.lean",
+      "rust_name": "aspis_core::v7_merkle208::verify_two_minimal_subtrees_v7_bytes::{impl core::ops::function::FnOnce<(&'_ [(u32, [u8; 26usize], [u8; 26usize])],), bool> for aspis_core::v7_merkle208::verify_two_minimal_subtrees_v7_bytes::closure}::call_once",
+      "is_local": true,
+      "source": {
+        "file": "crates/aspis-core/src/v7_merkle208.rs",
+        "begin_line": 68,
+        "end_line": 68
+      },
+      "is_opaque": false,
+      "can_fail": true,
+      "can_diverge": false,
+      "is_rec": false,
+      "reducible": false
+    },
+    {
+      "def_id": 14,
+      "lean_name": "V7MerkleCallerGenerated.v7_merkle208.verify_two_minimal_subtrees_v7_bytes_loop0_loop0.body",
+      "lean_file": "V7MerkleCaller/Funs.lean",
+      "rust_name": "aspis_core::v7_merkle208::verify_two_minimal_subtrees_v7_bytes",
+      "is_local": true,
+      "source": {
+        "file": "crates/aspis-core/src/v7_merkle208.rs",
+        "begin_line": 80,
+        "end_line": 128
+      },
+      "is_opaque": false,
+      "can_fail": true,
+      "can_diverge": true,
+      "is_rec": false,
+      "reducible": false,
+      "loop": { "id": 1, "pos": [ 0, 0 ], "is_body": true },
+      "parent_lean_name": "V7MerkleCallerGenerated.v7_merkle208.verify_two_minimal_subtrees_v7_bytes"
+    },
+    {
+      "def_id": 14,
+      "lean_name": "V7MerkleCallerGenerated.v7_merkle208.verify_two_minimal_subtrees_v7_bytes_loop0_loop0",
+      "lean_file": "V7MerkleCaller/Funs.lean",
+      "rust_name": "aspis_core::v7_merkle208::verify_two_minimal_subtrees_v7_bytes",
+      "is_local": true,
+      "source": {
+        "file": "crates/aspis-core/src/v7_merkle208.rs",
+        "begin_line": 80,
+        "end_line": 128
+      },
+      "is_opaque": false,
+      "can_fail": true,
+      "can_diverge": true,
+      "is_rec": false,
+      "reducible": false,
+      "loop": { "id": 1, "pos": [ 0, 0 ], "is_body": false },
+      "parent_lean_name": "V7MerkleCallerGenerated.v7_merkle208.verify_two_minimal_subtrees_v7_bytes"
+    },
+    {
+      "def_id": 14,
+      "lean_name": "V7MerkleCallerGenerated.v7_merkle208.verify_two_minimal_subtrees_v7_bytes_loop0.body",
+      "lean_file": "V7MerkleCaller/Funs.lean",
+      "rust_name": "aspis_core::v7_merkle208::verify_two_minimal_subtrees_v7_bytes",
+      "is_local": true,
+      "source": {
+        "file": "crates/aspis-core/src/v7_merkle208.rs",
+        "begin_line": 77,
+        "end_line": 128
+      },
+      "is_opaque": false,
+      "can_fail": true,
+      "can_diverge": true,
+      "is_rec": false,
+      "reducible": false,
+      "loop": { "id": 0, "pos": [ 0 ], "is_body": true },
+      "parent_lean_name": "V7MerkleCallerGenerated.v7_merkle208.verify_two_minimal_subtrees_v7_bytes"
+    },
+    {
+      "def_id": 14,
+      "lean_name": "V7MerkleCallerGenerated.v7_merkle208.verify_two_minimal_subtrees_v7_bytes_loop0",
+      "lean_file": "V7MerkleCaller/Funs.lean",
+      "rust_name": "aspis_core::v7_merkle208::verify_two_minimal_subtrees_v7_bytes",
+      "is_local": true,
+      "source": {
+        "file": "crates/aspis-core/src/v7_merkle208.rs",
+        "begin_line": 77,
+        "end_line": 128
+      },
+      "is_opaque": false,
+      "can_fail": true,
+      "can_diverge": true,
+      "is_rec": false,
+      "reducible": false,
+      "loop": { "id": 0, "pos": [ 0 ], "is_body": false },
+      "parent_lean_name": "V7MerkleCallerGenerated.v7_merkle208.verify_two_minimal_subtrees_v7_bytes"
+    },
+    {
+      "def_id": 14,
+      "lean_name": "V7MerkleCallerGenerated.v7_merkle208.verify_two_minimal_subtrees_v7_bytes",
+      "lean_file": "V7MerkleCaller/Funs.lean",
+      "rust_name": "aspis_core::v7_merkle208::verify_two_minimal_subtrees_v7_bytes",
+      "is_local": true,
+      "source": {
+        "file": "crates/aspis-core/src/v7_merkle208.rs",
+        "begin_line": 51,
+        "end_line": 128
+      },
+      "is_opaque": false,
+      "can_fail": true,
+      "can_diverge": true,
+      "is_rec": false,
+      "reducible": false
+    },
+    {
+      "def_id": 8,
+      "lean_name": "V7MerkleCallerGenerated.v7_onefold.V7CompactOneFoldWire.query",
+      "lean_file": "V7MerkleCaller/Funs.lean",
+      "rust_name": "aspis_core::v7_onefold::{aspis_core::v7_onefold::V7CompactOneFoldWire<'a>}::query",
+      "is_local": true,
+      "source": {
+        "file": "crates/aspis-core/src/v7_onefold.rs",
+        "begin_line": 166,
+        "end_line": 179
+      },
+      "is_opaque": false,
+      "can_fail": true,
+      "can_diverge": false,
+      "is_rec": false,
+      "reducible": false
+    },
+    {
+      "def_id": 22,
+      "lean_name": "V7MerkleCallerGenerated.v7_onefold.verify_and_gamma_combine_v7_openings.closure_2.Insts.CoreOpsFunctionFnMutTupleSharedSlicePairU32UsizeBool.call_mut",
+      "lean_file": "V7MerkleCaller/Funs.lean",
+      "rust_name": "aspis_core::v7_onefold::verify_and_gamma_combine_v7_openings::{impl core::ops::function::FnMut<(&'_ [(u32, usize)],), bool> for aspis_core::v7_onefold::verify_and_gamma_combine_v7_openings::closure#2}::call_mut",
+      "is_local": true,
+      "source": {
+        "file": "crates/aspis-core/src/v7_onefold.rs",
+        "begin_line": 193,
+        "end_line": 193
+      },
+      "is_opaque": false,
+      "can_fail": true,
+      "can_diverge": false,
+      "is_rec": false,
+      "reducible": false
+    },
+    {
+      "def_id": 21,
+      "lean_name": "V7MerkleCallerGenerated.v7_onefold.verify_and_gamma_combine_v7_openings.closure_2.Insts.CoreOpsFunctionFnOnceTupleSharedSlicePairU32UsizeBool.call_once",
+      "lean_file": "V7MerkleCaller/Funs.lean",
+      "rust_name": "aspis_core::v7_onefold::verify_and_gamma_combine_v7_openings::{impl core::ops::function::FnOnce<(&'_ [(u32, usize)],), bool> for aspis_core::v7_onefold::verify_and_gamma_combine_v7_openings::closure#2}::call_once",
+      "is_local": true,
+      "source": {
+        "file": "crates/aspis-core/src/v7_onefold.rs",
+        "begin_line": 193,
+        "end_line": 193
+      },
+      "is_opaque": false,
+      "can_fail": true,
+      "can_diverge": false,
+      "is_rec": false,
+      "reducible": false
+    },
+    {
+      "def_id": 20,
+      "lean_name": "V7MerkleCallerGenerated.v7_onefold.verify_and_gamma_combine_v7_openings.closure_1.Insts.CoreOpsFunctionFnMutTupleSharedPairU32UsizeU32.call_mut",
+      "lean_file": "V7MerkleCaller/Funs.lean",
+      "rust_name": "aspis_core::v7_onefold::verify_and_gamma_combine_v7_openings::{impl core::ops::function::FnMut<(&'_ (u32, usize),), u32> for aspis_core::v7_onefold::verify_and_gamma_combine_v7_openings::closure#1}::call_mut",
+      "is_local": true,
+      "source": {
+        "file": "crates/aspis-core/src/v7_onefold.rs",
+        "begin_line": 191,
+        "end_line": 191
+      },
+      "is_opaque": false,
+      "can_fail": true,
+      "can_diverge": false,
+      "is_rec": false,
+      "reducible": false
+    },
+    {
+      "def_id": 19,
+      "lean_name": "V7MerkleCallerGenerated.v7_onefold.verify_and_gamma_combine_v7_openings.closure_1.Insts.CoreOpsFunctionFnOnceTupleSharedPairU32UsizeU32.call_once",
+      "lean_file": "V7MerkleCaller/Funs.lean",
+      "rust_name": "aspis_core::v7_onefold::verify_and_gamma_combine_v7_openings::{impl core::ops::function::FnOnce<(&'_ (u32, usize),), u32> for aspis_core::v7_onefold::verify_and_gamma_combine_v7_openings::closure#1}::call_once",
+      "is_local": true,
+      "source": {
+        "file": "crates/aspis-core/src/v7_onefold.rs",
+        "begin_line": 191,
+        "end_line": 191
+      },
+      "is_opaque": false,
+      "can_fail": true,
+      "can_diverge": false,
+      "is_rec": false,
+      "reducible": false
+    },
+    {
+      "def_id": 18,
+      "lean_name": "V7MerkleCallerGenerated.v7_onefold.verify_and_gamma_combine_v7_openings.closure.Insts.CoreOpsFunctionFnMutTupleUsizePairU32Usize.call_mut",
+      "lean_file": "V7MerkleCaller/Funs.lean",
+      "rust_name": "aspis_core::v7_onefold::verify_and_gamma_combine_v7_openings::{impl core::ops::function::FnMut<(usize,), (u32, usize)> for aspis_core::v7_onefold::verify_and_gamma_combine_v7_openings::closure<'_0>}::call_mut",
+      "is_local": true,
+      "source": {
+        "file": "crates/aspis-core/src/v7_onefold.rs",
+        "begin_line": 190,
+        "end_line": 190
+      },
+      "is_opaque": false,
+      "can_fail": true,
+      "can_diverge": false,
+      "is_rec": false,
+      "reducible": false
+    },
+    {
+      "def_id": 17,
+      "lean_name": "V7MerkleCallerGenerated.v7_onefold.verify_and_gamma_combine_v7_openings.closure.Insts.CoreOpsFunctionFnOnceTupleUsizePairU32Usize.call_once",
+      "lean_file": "V7MerkleCaller/Funs.lean",
+      "rust_name": "aspis_core::v7_onefold::verify_and_gamma_combine_v7_openings::{impl core::ops::function::FnOnce<(usize,), (u32, usize)> for aspis_core::v7_onefold::verify_and_gamma_combine_v7_openings::closure<'_0>}::call_once",
+      "is_local": true,
+      "source": {
+        "file": "crates/aspis-core/src/v7_onefold.rs",
+        "begin_line": 190,
+        "end_line": 190
+      },
+      "is_opaque": false,
+      "can_fail": true,
+      "can_diverge": false,
+      "is_rec": false,
+      "reducible": false
+    },
+    {
+      "def_id": 0,
+      "lean_name": "V7MerkleCallerGenerated.v7_onefold.verify_and_gamma_combine_v7_openings_loop.body",
+      "lean_file": "V7MerkleCaller/Funs.lean",
+      "rust_name": "aspis_core::v7_onefold::verify_and_gamma_combine_v7_openings",
+      "is_local": true,
+      "source": {
+        "file": "crates/aspis-core/src/v7_onefold.rs",
+        "begin_line": 200,
+        "end_line": 225
+      },
+      "is_opaque": false,
+      "can_fail": true,
+      "can_diverge": true,
+      "is_rec": false,
+      "reducible": false,
+      "loop": { "id": 0, "pos": [ 0 ], "is_body": true },
+      "parent_lean_name": "V7MerkleCallerGenerated.v7_onefold.verify_and_gamma_combine_v7_openings"
+    },
+    {
+      "def_id": 0,
+      "lean_name": "V7MerkleCallerGenerated.v7_onefold.verify_and_gamma_combine_v7_openings_loop",
+      "lean_file": "V7MerkleCaller/Funs.lean",
+      "rust_name": "aspis_core::v7_onefold::verify_and_gamma_combine_v7_openings",
+      "is_local": true,
+      "source": {
+        "file": "crates/aspis-core/src/v7_onefold.rs",
+        "begin_line": 200,
+        "end_line": 225
+      },
+      "is_opaque": false,
+      "can_fail": true,
+      "can_diverge": true,
+      "is_rec": false,
+      "reducible": false,
+      "loop": { "id": 0, "pos": [ 0 ], "is_body": false },
+      "parent_lean_name": "V7MerkleCallerGenerated.v7_onefold.verify_and_gamma_combine_v7_openings"
+    },
+    {
+      "def_id": 0,
+      "lean_name": "V7MerkleCallerGenerated.v7_onefold.verify_and_gamma_combine_v7_openings",
+      "lean_file": "V7MerkleCaller/Funs.lean",
+      "rust_name": "aspis_core::v7_onefold::verify_and_gamma_combine_v7_openings",
+      "is_local": true,
+      "source": {
+        "file": "crates/aspis-core/src/v7_onefold.rs",
+        "begin_line": 183,
+        "end_line": 225
+      },
+      "is_opaque": false,
+      "can_fail": true,
+      "can_diverge": true,
+      "is_rec": false,
+      "reducible": false
+    }
+  ],
+  "types": [
+    {
+      "def_id": 11,
+      "lean_name": "V7MerkleCallerGenerated.core.array.iter.IntoIter",
+      "lean_file": "V7MerkleCaller/TypesExternal_Template.lean",
+      "rust_name": "core::array::iter::IntoIter",
+      "is_local": false,
+      "source": {
+        "file": "/rustc/library/core/src/array/iter.rs",
+        "begin_line": 20,
+        "end_line": 20
+      }
+    },
+    {
+      "def_id": 7,
+      "lean_name": "V7MerkleCallerGenerated.core.slice.iter.Windows",
+      "lean_file": "V7MerkleCaller/TypesExternal_Template.lean",
+      "rust_name": "core::slice::iter::Windows",
+      "is_local": false,
+      "source": {
+        "file": "/rustc/library/core/src/slice/iter.rs",
+        "begin_line": 1329,
+        "end_line": 1329
+      }
+    },
+    {
+      "def_id": 53,
+      "lean_name": "V7MerkleCallerGenerated.field.M31",
+      "lean_file": "V7MerkleCaller/Types.lean",
+      "rust_name": "aspis_core::field::M31",
+      "is_local": true,
+      "source": {
+        "file": "crates/aspis-core/src/field.rs",
+        "begin_line": 20,
+        "end_line": 20
+      }
+    },
+    {
+      "def_id": 18,
+      "lean_name": "V7MerkleCallerGenerated.field.CM31",
+      "lean_file": "V7MerkleCaller/Types.lean",
+      "rust_name": "aspis_core::field::CM31",
+      "is_local": true,
+      "source": {
+        "file": "crates/aspis-core/src/field.rs",
+        "begin_line": 191,
+        "end_line": 194
+      }
+    },
+    {
+      "def_id": 3,
+      "lean_name": "V7MerkleCallerGenerated.field.QM31",
+      "lean_file": "V7MerkleCaller/Types.lean",
+      "rust_name": "aspis_core::field::QM31",
+      "is_local": true,
+      "source": {
+        "file": "crates/aspis-core/src/field.rs",
+        "begin_line": 360,
+        "end_line": 363
+      }
+    },
+    {
+      "def_id": 17,
+      "lean_name": "V7MerkleCallerGenerated.field.PreparedQm31Multiplier",
+      "lean_file": "V7MerkleCaller/Types.lean",
+      "rust_name": "aspis_core::field::PreparedQm31Multiplier",
+      "is_local": true,
+      "source": {
+        "file": "crates/aspis-core/src/field.rs",
+        "begin_line": 370,
+        "end_line": 372
+      }
+    },
+    {
+      "def_id": 74,
+      "lean_name": "V7MerkleCallerGenerated.field.qm31_from_karatsuba_channel_sums.closure",
+      "lean_file": "V7MerkleCaller/Types.lean",
+      "rust_name": "aspis_core::field::qm31_from_karatsuba_channel_sums::closure",
+      "is_local": true,
+      "source": {
+        "file": "crates/aspis-core/src/field.rs",
+        "begin_line": 410,
+        "end_line": 418
+      }
+    },
+    {
+      "def_id": 16,
+      "lean_name": "V7MerkleCallerGenerated.state_only_query.StateOnlyQueryPowers",
+      "lean_file": "V7MerkleCaller/Types.lean",
+      "rust_name": "aspis_core::state_only_query::StateOnlyQueryPowers",
+      "is_local": true,
+      "source": {
+        "file": "crates/aspis-core/src/state_only_query.rs",
+        "begin_line": 27,
+        "end_line": 30
+      }
+    },
+    {
+      "def_id": 1,
+      "lean_name": "V7MerkleCallerGenerated.state_only_spend_query.StateOnlySpendQueryPowers",
+      "lean_file": "V7MerkleCaller/Types.lean",
+      "rust_name": "aspis_core::state_only_spend_query::StateOnlySpendQueryPowers",
+      "is_local": true,
+      "source": {
+        "file": "crates/aspis-core/src/state_only_spend_query.rs",
+        "begin_line": 22,
+        "end_line": 25
+      }
+    },
+    {
+      "def_id": 4,
+      "lean_name": "V7MerkleCallerGenerated.v6_onefold.V6WireError",
+      "lean_file": "V7MerkleCaller/Types.lean",
+      "rust_name": "aspis_core::v6_onefold::V6WireError",
+      "is_local": true,
+      "source": {
+        "file": "crates/aspis-core/src/v6_onefold.rs",
+        "begin_line": 73,
+        "end_line": 80
+      }
+    },
+    {
+      "def_id": 51,
+      "lean_name": "V7MerkleCallerGenerated.v6_onefold.PackedM31Reader",
+      "lean_file": "V7MerkleCaller/Types.lean",
+      "rust_name": "aspis_core::v6_onefold::PackedM31Reader",
+      "is_local": true,
+      "source": {
+        "file": "crates/aspis-core/src/v6_onefold.rs",
+        "begin_line": 249,
+        "end_line": 254
+      }
+    },
+    {
+      "def_id": 56,
+      "lean_name": "V7MerkleCallerGenerated.v7_merkle208.verify_two_minimal_subtrees_v7_bytes.closure",
+      "lean_file": "V7MerkleCaller/Types.lean",
+      "rust_name": "aspis_core::v7_merkle208::verify_two_minimal_subtrees_v7_bytes::closure",
+      "is_local": true,
+      "source": {
+        "file": "crates/aspis-core/src/v7_merkle208.rs",
+        "begin_line": 68,
+        "end_line": 68
+      }
+    },
+    {
+      "def_id": 13,
+      "lean_name": "V7MerkleCallerGenerated.v7_onefold.V7CompactQueryRecord",
+      "lean_file": "V7MerkleCaller/Types.lean",
+      "rust_name": "aspis_core::v7_onefold::V7CompactQueryRecord",
+      "is_local": true,
+      "source": {
+        "file": "crates/aspis-core/src/v7_onefold.rs",
+        "begin_line": 101,
+        "end_line": 105
+      }
+    },
+    {
+      "def_id": 0,
+      "lean_name": "V7MerkleCallerGenerated.v7_onefold.V7CompactOneFoldWire",
+      "lean_file": "V7MerkleCaller/Types.lean",
+      "rust_name": "aspis_core::v7_onefold::V7CompactOneFoldWire",
+      "is_local": true,
+      "source": {
+        "file": "crates/aspis-core/src/v7_onefold.rs",
+        "begin_line": 108,
+        "end_line": 116
+      }
+    },
+    {
+      "def_id": 8,
+      "lean_name": "V7MerkleCallerGenerated.v7_onefold.verify_and_gamma_combine_v7_openings.closure_2",
+      "lean_file": "V7MerkleCaller/Types.lean",
+      "rust_name": "aspis_core::v7_onefold::verify_and_gamma_combine_v7_openings::closure#2",
+      "is_local": true,
+      "source": {
+        "file": "crates/aspis-core/src/v7_onefold.rs",
+        "begin_line": 193,
+        "end_line": 193
+      }
+    },
+    {
+      "def_id": 6,
+      "lean_name": "V7MerkleCallerGenerated.v7_onefold.verify_and_gamma_combine_v7_openings.closure_1",
+      "lean_file": "V7MerkleCaller/Types.lean",
+      "rust_name": "aspis_core::v7_onefold::verify_and_gamma_combine_v7_openings::closure#1",
+      "is_local": true,
+      "source": {
+        "file": "crates/aspis-core/src/v7_onefold.rs",
+        "begin_line": 191,
+        "end_line": 191
+      }
+    },
+    {
+      "def_id": 5,
+      "lean_name": "V7MerkleCallerGenerated.v7_onefold.verify_and_gamma_combine_v7_openings.closure",
+      "lean_file": "V7MerkleCaller/Types.lean",
+      "rust_name": "aspis_core::v7_onefold::verify_and_gamma_combine_v7_openings::closure",
+      "is_local": true,
+      "source": {
+        "file": "crates/aspis-core/src/v7_onefold.rs",
+        "begin_line": 190,
+        "end_line": 190
+      }
+    }
+  ],
+  "globals": [
+    {
+      "def_id": 14,
+      "lean_name": "V7MerkleCallerGenerated.field.P",
+      "lean_file": "V7MerkleCaller/Funs.lean",
+      "rust_name": "aspis_core::field::P",
+      "is_local": true,
+      "source": {
+        "file": "crates/aspis-core/src/field.rs",
+        "begin_line": 16,
+        "end_line": 16
+      },
+      "can_fail": false
+    },
+    {
+      "def_id": 1,
+      "lean_name": "V7MerkleCallerGenerated.field.QM31.ZERO",
+      "lean_file": "V7MerkleCaller/Funs.lean",
+      "rust_name": "aspis_core::field::{aspis_core::field::QM31}::ZERO",
+      "is_local": true,
+      "source": {
+        "file": "crates/aspis-core/src/field.rs",
+        "begin_line": 797,
+        "end_line": 806
+      },
+      "can_fail": false
+    },
+    {
+      "def_id": 31,
+      "lean_name": "V7MerkleCallerGenerated.state_only_private_merkle.DOM_LEAF",
+      "lean_file": "V7MerkleCaller/Funs.lean",
+      "rust_name": "aspis_core::state_only_private_merkle::DOM_LEAF",
+      "is_local": true,
+      "source": {
+        "file": "crates/aspis-core/src/state_only_private_merkle.rs",
+        "begin_line": 9,
+        "end_line": 9
+      },
+      "can_fail": false
+    },
+    {
+      "def_id": 13,
+      "lean_name": "V7MerkleCallerGenerated.v6_onefold.V6_C1_COLUMNS",
+      "lean_file": "V7MerkleCaller/Funs.lean",
+      "rust_name": "aspis_core::v6_onefold::V6_C1_COLUMNS",
+      "is_local": true,
+      "source": {
+        "file": "crates/aspis-core/src/v6_onefold.rs",
+        "begin_line": 22,
+        "end_line": 22
+      },
+      "can_fail": false
+    },
+    {
+      "def_id": 47,
+      "lean_name": "V7MerkleCallerGenerated.v6_onefold.V6_C2_COLUMNS",
+      "lean_file": "V7MerkleCaller/Funs.lean",
+      "rust_name": "aspis_core::v6_onefold::V6_C2_COLUMNS",
+      "is_local": true,
+      "source": {
+        "file": "crates/aspis-core/src/v6_onefold.rs",
+        "begin_line": 23,
+        "end_line": 23
+      },
+      "can_fail": false
+    },
+    {
+      "def_id": 0,
+      "lean_name": "V7MerkleCallerGenerated.v6_onefold.V6_QUERY_COUNT",
+      "lean_file": "V7MerkleCaller/Funs.lean",
+      "rust_name": "aspis_core::v6_onefold::V6_QUERY_COUNT",
+      "is_local": true,
+      "source": {
+        "file": "crates/aspis-core/src/v6_onefold.rs",
+        "begin_line": 25,
+        "end_line": 25
+      },
+      "can_fail": false
+    },
+    {
+      "def_id": 35,
+      "lean_name": "V7MerkleCallerGenerated.v6_onefold.V6_C1_LIMBS_PER_QUERY",
+      "lean_file": "V7MerkleCaller/Funs.lean",
+      "rust_name": "aspis_core::v6_onefold::V6_C1_LIMBS_PER_QUERY",
+      "is_local": true,
+      "source": {
+        "file": "crates/aspis-core/src/v6_onefold.rs",
+        "begin_line": 54,
+        "end_line": 54
+      },
+      "can_fail": true
+    },
+    {
+      "def_id": 36,
+      "lean_name": "V7MerkleCallerGenerated.v6_onefold.V6_C2_LIMBS_PER_QUERY",
+      "lean_file": "V7MerkleCaller/Funs.lean",
+      "rust_name": "aspis_core::v6_onefold::V6_C2_LIMBS_PER_QUERY",
+      "is_local": true,
+      "source": {
+        "file": "crates/aspis-core/src/v6_onefold.rs",
+        "begin_line": 55,
+        "end_line": 55
+      },
+      "can_fail": true
+    },
+    {
+      "def_id": 11,
+      "lean_name": "V7MerkleCallerGenerated.v6_onefold.V6_C1_PACKED_BYTES_PER_QUERY",
+      "lean_file": "V7MerkleCaller/Funs.lean",
+      "rust_name": "aspis_core::v6_onefold::V6_C1_PACKED_BYTES_PER_QUERY",
+      "is_local": true,
+      "source": {
+        "file": "crates/aspis-core/src/v6_onefold.rs",
+        "begin_line": 56,
+        "end_line": 56
+      },
+      "can_fail": true
+    },
+    {
+      "def_id": 12,
+      "lean_name": "V7MerkleCallerGenerated.v6_onefold.V6_C2_PACKED_BYTES_PER_QUERY",
+      "lean_file": "V7MerkleCaller/Funs.lean",
+      "rust_name": "aspis_core::v6_onefold::V6_C2_PACKED_BYTES_PER_QUERY",
+      "is_local": true,
+      "source": {
+        "file": "crates/aspis-core/src/v6_onefold.rs",
+        "begin_line": 57,
+        "end_line": 57
+      },
+      "can_fail": true
+    },
+    {
+      "def_id": 16,
+      "lean_name": "V7MerkleCallerGenerated.v7_merkle208.V7_MERKLE_DIGEST_BYTES",
+      "lean_file": "V7MerkleCaller/Funs.lean",
+      "rust_name": "aspis_core::v7_merkle208::V7_MERKLE_DIGEST_BYTES",
+      "is_local": true,
+      "source": {
+        "file": "crates/aspis-core/src/v7_merkle208.rs",
+        "begin_line": 14,
+        "end_line": 14
+      },
+      "can_fail": false
+    },
+    {
+      "def_id": 2,
+      "lean_name": "V7MerkleCallerGenerated.v7_merkle208.V7_C1_TREE_TAG",
+      "lean_file": "V7MerkleCaller/Funs.lean",
+      "rust_name": "aspis_core::v7_merkle208::V7_C1_TREE_TAG",
+      "is_local": true,
+      "source": {
+        "file": "crates/aspis-core/src/v7_merkle208.rs",
+        "begin_line": 16,
+        "end_line": 16
+      },
+      "can_fail": false
+    },
+    {
+      "def_id": 3,
+      "lean_name": "V7MerkleCallerGenerated.v7_merkle208.V7_C2_TREE_TAG",
+      "lean_file": "V7MerkleCaller/Funs.lean",
+      "rust_name": "aspis_core::v7_merkle208::V7_C2_TREE_TAG",
+      "is_local": true,
+      "source": {
+        "file": "crates/aspis-core/src/v7_merkle208.rs",
+        "begin_line": 17,
+        "end_line": 17
+      },
+      "can_fail": false
+    },
+    {
+      "def_id": 30,
+      "lean_name": "V7MerkleCallerGenerated.v7_merkle208.DOM_NODE",
+      "lean_file": "V7MerkleCaller/Funs.lean",
+      "rust_name": "aspis_core::v7_merkle208::DOM_NODE",
+      "is_local": true,
+      "source": {
+        "file": "crates/aspis-core/src/v7_merkle208.rs",
+        "begin_line": 19,
+        "end_line": 19
+      },
+      "can_fail": false
+    },
+    {
+      "def_id": 10,
+      "lean_name": "V7MerkleCallerGenerated.v7_onefold.V7_COMPACT_PRIVATE_SALT_BYTES",
+      "lean_file": "V7MerkleCaller/Funs.lean",
+      "rust_name": "aspis_core::v7_onefold::V7_COMPACT_PRIVATE_SALT_BYTES",
+      "is_local": true,
+      "source": {
+        "file": "crates/aspis-core/src/v7_onefold.rs",
+        "begin_line": 47,
+        "end_line": 47
+      },
+      "can_fail": false
+    },
+    {
+      "def_id": 8,
+      "lean_name": "V7MerkleCallerGenerated.v7_onefold.V7_COMPACT_C1_BYTES_PER_QUERY",
+      "lean_file": "V7MerkleCaller/Funs.lean",
+      "rust_name": "aspis_core::v7_onefold::V7_COMPACT_C1_BYTES_PER_QUERY",
+      "is_local": true,
+      "source": {
+        "file": "crates/aspis-core/src/v7_onefold.rs",
+        "begin_line": 49,
+        "end_line": 49
+      },
+      "can_fail": true
+    },
+    {
+      "def_id": 9,
+      "lean_name": "V7MerkleCallerGenerated.v7_onefold.V7_COMPACT_C2_BYTES_PER_QUERY",
+      "lean_file": "V7MerkleCaller/Funs.lean",
+      "rust_name": "aspis_core::v7_onefold::V7_COMPACT_C2_BYTES_PER_QUERY",
+      "is_local": true,
+      "source": {
+        "file": "crates/aspis-core/src/v7_onefold.rs",
+        "begin_line": 50,
+        "end_line": 50
+      },
+      "can_fail": true
+    },
+    {
+      "def_id": 7,
+      "lean_name": "V7MerkleCallerGenerated.v7_onefold.V7_COMPACT_QUERY_BYTES",
+      "lean_file": "V7MerkleCaller/Funs.lean",
+      "rust_name": "aspis_core::v7_onefold::V7_COMPACT_QUERY_BYTES",
+      "is_local": true,
+      "source": {
+        "file": "crates/aspis-core/src/v7_onefold.rs",
+        "begin_line": 51,
+        "end_line": 52
+      },
+      "can_fail": true
+    }
+  ],
+  "trait_decls": [],
+  "trait_impls": [
+    {
+      "def_id": 32,
+      "lean_name": "V7MerkleCallerGenerated.core.slice.iter.IterMut.Insts.CoreIterTraitsIteratorIteratorMutAT",
+      "lean_file": "V7MerkleCaller/Funs.lean",
+      "rust_name": "core::slice::iter::{impl core::iter::traits::iterator::Iterator<&'a mut T> for core::slice::iter::IterMut<'a, T>}",
+      "is_local": false,
+      "source": {
+        "file": "/rustc/library/core/src/slice/iter/macros.rs",
+        "begin_line": 153,
+        "end_line": 153
+      },
+      "impl_trait_def_id": 3,
+      "impl_trait_rust_name": "core::iter::traits::iterator::Iterator",
+      "impl_trait_is_builtin": true
+    },
+    {
+      "def_id": 9,
+      "lean_name": "V7MerkleCallerGenerated.core.slice.iter.Windows.Insts.CoreIterTraitsIteratorIteratorSharedASlice",
+      "lean_file": "V7MerkleCaller/Funs.lean",
+      "rust_name": "core::slice::iter::{impl core::iter::traits::iterator::Iterator<&'a [T]> for core::slice::iter::Windows<'a, T>}",
+      "is_local": false,
+      "source": {
+        "file": "/rustc/library/core/src/slice/iter.rs",
+        "begin_line": 1350,
+        "end_line": 1350
+      },
+      "impl_trait_def_id": 3,
+      "impl_trait_rust_name": "core::iter::traits::iterator::Iterator",
+      "impl_trait_is_builtin": true
+    },
+    {
+      "def_id": 39,
+      "lean_name": "V7MerkleCallerGenerated.v7_merkle208.verify_two_minimal_subtrees_v7_bytes.closure.Insts.CoreOpsFunctionFnOnceTupleSharedSliceTupleU32ArrayU826ArrayU826Bool",
+      "lean_file": "V7MerkleCaller/Funs.lean",
+      "rust_name": "aspis_core::v7_merkle208::verify_two_minimal_subtrees_v7_bytes::{impl core::ops::function::FnOnce<(&'_ [(u32, [u8; 26usize], [u8; 26usize])],), bool> for aspis_core::v7_merkle208::verify_two_minimal_subtrees_v7_bytes::closure}",
+      "is_local": true,
+      "source": {
+        "file": "crates/aspis-core/src/v7_merkle208.rs",
+        "begin_line": 68,
+        "end_line": 68
+      },
+      "impl_trait_def_id": 5,
+      "impl_trait_rust_name": "core::ops::function::FnOnce",
+      "impl_trait_is_builtin": true
+    },
+    {
+      "def_id": 40,
+      "lean_name": "V7MerkleCallerGenerated.v7_merkle208.verify_two_minimal_subtrees_v7_bytes.closure.Insts.CoreOpsFunctionFnMutTupleSharedSliceTupleU32ArrayU826ArrayU826Bool",
+      "lean_file": "V7MerkleCaller/Funs.lean",
+      "rust_name": "aspis_core::v7_merkle208::verify_two_minimal_subtrees_v7_bytes::{impl core::ops::function::FnMut<(&'_ [(u32, [u8; 26usize], [u8; 26usize])],), bool> for aspis_core::v7_merkle208::verify_two_minimal_subtrees_v7_bytes::closure}",
+      "is_local": true,
+      "source": {
+        "file": "crates/aspis-core/src/v7_merkle208.rs",
+        "begin_line": 68,
+        "end_line": 68
+      },
+      "impl_trait_def_id": 1,
+      "impl_trait_rust_name": "core::ops::function::FnMut",
+      "impl_trait_is_builtin": true
+    },
+    {
+      "def_id": 4,
+      "lean_name": "V7MerkleCallerGenerated.v7_onefold.verify_and_gamma_combine_v7_openings.closure_2.Insts.CoreOpsFunctionFnOnceTupleSharedSlicePairU32UsizeBool",
+      "lean_file": "V7MerkleCaller/Funs.lean",
+      "rust_name": "aspis_core::v7_onefold::verify_and_gamma_combine_v7_openings::{impl core::ops::function::FnOnce<(&'_ [(u32, usize)],), bool> for aspis_core::v7_onefold::verify_and_gamma_combine_v7_openings::closure#2}",
+      "is_local": true,
+      "source": {
+        "file": "crates/aspis-core/src/v7_onefold.rs",
+        "begin_line": 193,
+        "end_line": 193
+      },
+      "impl_trait_def_id": 5,
+      "impl_trait_rust_name": "core::ops::function::FnOnce",
+      "impl_trait_is_builtin": true
+    },
+    {
+      "def_id": 5,
+      "lean_name": "V7MerkleCallerGenerated.v7_onefold.verify_and_gamma_combine_v7_openings.closure_2.Insts.CoreOpsFunctionFnMutTupleSharedSlicePairU32UsizeBool",
+      "lean_file": "V7MerkleCaller/Funs.lean",
+      "rust_name": "aspis_core::v7_onefold::verify_and_gamma_combine_v7_openings::{impl core::ops::function::FnMut<(&'_ [(u32, usize)],), bool> for aspis_core::v7_onefold::verify_and_gamma_combine_v7_openings::closure#2}",
+      "is_local": true,
+      "source": {
+        "file": "crates/aspis-core/src/v7_onefold.rs",
+        "begin_line": 193,
+        "end_line": 193
+      },
+      "impl_trait_def_id": 1,
+      "impl_trait_rust_name": "core::ops::function::FnMut",
+      "impl_trait_is_builtin": true
+    },
+    {
+      "def_id": 2,
+      "lean_name": "V7MerkleCallerGenerated.v7_onefold.verify_and_gamma_combine_v7_openings.closure_1.Insts.CoreOpsFunctionFnOnceTupleSharedPairU32UsizeU32",
+      "lean_file": "V7MerkleCaller/Funs.lean",
+      "rust_name": "aspis_core::v7_onefold::verify_and_gamma_combine_v7_openings::{impl core::ops::function::FnOnce<(&'_ (u32, usize),), u32> for aspis_core::v7_onefold::verify_and_gamma_combine_v7_openings::closure#1}",
+      "is_local": true,
+      "source": {
+        "file": "crates/aspis-core/src/v7_onefold.rs",
+        "begin_line": 191,
+        "end_line": 191
+      },
+      "impl_trait_def_id": 5,
+      "impl_trait_rust_name": "core::ops::function::FnOnce",
+      "impl_trait_is_builtin": true
+    },
+    {
+      "def_id": 3,
+      "lean_name": "V7MerkleCallerGenerated.v7_onefold.verify_and_gamma_combine_v7_openings.closure_1.Insts.CoreOpsFunctionFnMutTupleSharedPairU32UsizeU32",
+      "lean_file": "V7MerkleCaller/Funs.lean",
+      "rust_name": "aspis_core::v7_onefold::verify_and_gamma_combine_v7_openings::{impl core::ops::function::FnMut<(&'_ (u32, usize),), u32> for aspis_core::v7_onefold::verify_and_gamma_combine_v7_openings::closure#1}",
+      "is_local": true,
+      "source": {
+        "file": "crates/aspis-core/src/v7_onefold.rs",
+        "begin_line": 191,
+        "end_line": 191
+      },
+      "impl_trait_def_id": 1,
+      "impl_trait_rust_name": "core::ops::function::FnMut",
+      "impl_trait_is_builtin": true
+    },
+    {
+      "def_id": 0,
+      "lean_name": "V7MerkleCallerGenerated.v7_onefold.verify_and_gamma_combine_v7_openings.closure.Insts.CoreOpsFunctionFnOnceTupleUsizePairU32Usize",
+      "lean_file": "V7MerkleCaller/Funs.lean",
+      "rust_name": "aspis_core::v7_onefold::verify_and_gamma_combine_v7_openings::{impl core::ops::function::FnOnce<(usize,), (u32, usize)> for aspis_core::v7_onefold::verify_and_gamma_combine_v7_openings::closure<'_0>}",
+      "is_local": true,
+      "source": {
+        "file": "crates/aspis-core/src/v7_onefold.rs",
+        "begin_line": 190,
+        "end_line": 190
+      },
+      "impl_trait_def_id": 5,
+      "impl_trait_rust_name": "core::ops::function::FnOnce",
+      "impl_trait_is_builtin": true
+    },
+    {
+      "def_id": 1,
+      "lean_name": "V7MerkleCallerGenerated.v7_onefold.verify_and_gamma_combine_v7_openings.closure.Insts.CoreOpsFunctionFnMutTupleUsizePairU32Usize",
+      "lean_file": "V7MerkleCaller/Funs.lean",
+      "rust_name": "aspis_core::v7_onefold::verify_and_gamma_combine_v7_openings::{impl core::ops::function::FnMut<(usize,), (u32, usize)> for aspis_core::v7_onefold::verify_and_gamma_combine_v7_openings::closure<'_0>}",
+      "is_local": true,
+      "source": {
+        "file": "crates/aspis-core/src/v7_onefold.rs",
+        "begin_line": 190,
+        "end_line": 190
+      },
+      "impl_trait_def_id": 1,
+      "impl_trait_rust_name": "core::ops::function::FnMut",
+      "impl_trait_is_builtin": true
+    }
+  ]
+}

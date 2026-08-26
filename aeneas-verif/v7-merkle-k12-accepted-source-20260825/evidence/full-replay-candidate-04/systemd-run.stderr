@@ -1,0 +1,7 @@
+Running as unit: aspis-v7-k12-full-candidate-04.service; invocation ID: 11ea48dcf29c4311a384c96b8db6f9de
+Finished with result: success
+Main processes terminated with: code=exited/status=0
+Service runtime: 1min 46.581s
+CPU time consumed: 1min 47.217s
+Memory peak: 256.0K
+Memory swap peak: 0B

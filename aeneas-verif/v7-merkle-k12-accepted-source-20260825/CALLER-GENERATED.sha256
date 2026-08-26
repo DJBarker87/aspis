@@ -1,0 +1,16 @@
+910951a778c6b3a210b5eac029b171550632e9b2a35586dcc8af23ce04c2485b  aeneas-verif/v7-merkle-k12-accepted-source-20260825/CALLER-EXTERNAL-INVENTORY.md
+8f53698d8264d99246a6a97fdf2674558c47515ff23907f74335290618f2d381  aeneas-verif/v7-merkle-k12-accepted-source-20260825/CALLER-EXTRACTION-RESULT.txt
+c2d1b4b0c4db7e2c373c51f3ed936038471e5e270ca71fad55d85540fbf88a68  aeneas-verif/v7-merkle-k12-accepted-source-20260825/CALLER-TRANSLATION-RESULT.txt
+88f4208020474047b8bbe8e7028bbff0a0460b6548c58d40c17db0649ef65e07  aeneas-verif/v7-merkle-k12-accepted-source-20260825/caller/extraction/V7MerkleCaller.llbc
+4cb416e1daa5819b3e5c4406f55c32cd5be6e828b382fe50029a0b2fc71fe4af  aeneas-verif/v7-merkle-k12-accepted-source-20260825/caller/extraction/translation.json
+238b18a33b3a554e58d9f02b174e4824fdba2a4462b2026cac21938491ff6f7e  aeneas-verif/v7-merkle-k12-accepted-source-20260825/caller/generated/V7MerkleCaller/Types.lean
+59638b2a72b211b117164bf7da0a897993a8e6383b68016b94e8c15f26434b30  aeneas-verif/v7-merkle-k12-accepted-source-20260825/caller/generated/V7MerkleCaller/TypesExternal.lean
+ec5e646e8f308070e1b97f85bcdb56b1890065d587865a713b8093645ca542eb  aeneas-verif/v7-merkle-k12-accepted-source-20260825/caller/generated/V7MerkleCaller/TypesExternal_Template.lean
+06aa67e665caea1d206f01adbac5f014a4b3581ded7ddcd9f13de9f06273e999  aeneas-verif/v7-merkle-k12-accepted-source-20260825/caller/generated/V7MerkleCaller/Funs.lean
+4773325afca6a3eb3eda08db9b749567b482cab87c4881dba3216d4df777a121  aeneas-verif/v7-merkle-k12-accepted-source-20260825/caller/generated/V7MerkleCaller/FunsExternal.lean
+f539ac8e9cfc1bd5d0528b35b1e2acaa611d45e2182fb16a75fdbd67f4c63c5c  aeneas-verif/v7-merkle-k12-accepted-source-20260825/caller/generated/V7MerkleCaller/FunsExternal_Template.lean
+26ed6b3b4b459aef9ab45f6ba522cf7ce8bc52158470d8e5b219cbc3c654b2c6  aeneas-verif/v7-merkle-k12-accepted-source-20260825/caller/proof/V7MerkleCallerNamespaceBridge.lean
+e02f655f60aae73029bf725699ee4445d65a277b4c1b8642080377b6b03b2238  aeneas-verif/v7-merkle-k12-accepted-source-20260825/replay-caller-extraction.sh
+46fe9f872586e1bf0cb5e009ba4b7acb2af0d764ab1baa2097fa91a4c1f4daf7  aeneas-verif/v7-merkle-k12-accepted-source-20260825/replay-caller-namespace-bridge.sh
+dc7c9b2e1a65859245d190059afa5fe0afb0ea87759d34ae7e16ae128d2660b7  aeneas-verif/v7-merkle-k12-accepted-source-20260825/toolchain/v7-merkle-caller-generated-compat.patch
+6ce35a6960018b4d639054cee3fabe90ad4fd7ae13bc2b3263bd6f99dc406a39  aeneas-verif/v7-merkle-k12-accepted-source-20260825/toolchain/v7-deferred-parser-caller-combined.patch

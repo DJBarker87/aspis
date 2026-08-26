@@ -1,0 +1,402 @@
+{
+  "aeneas_version": "d860ac47-dirty",
+  "charon_version": "0.1.223",
+  "crate": "aspis_core",
+  "functions": [
+    {
+      "def_id": 13,
+      "lean_name": "V7MerkleK12Generated.core.iter.traits.iterator.Iterator.any.default",
+      "lean_file": "V7MerkleK12/FunsExternal_Template.lean",
+      "rust_name": "core::iter::traits::iterator::Iterator::any",
+      "is_local": false,
+      "source": {
+        "file": "/rustc/library/core/src/iter/traits/iterator.rs",
+        "begin_line": 2885,
+        "end_line": 2888
+      },
+      "is_opaque": true,
+      "can_fail": true,
+      "can_diverge": false,
+      "is_rec": false,
+      "reducible": false
+    },
+    {
+      "def_id": 127,
+      "lean_name": "V7MerkleK12Generated.core.slice.iter.Windows.Insts.CoreIterTraitsIteratorIteratorSharedASlice.next",
+      "lean_file": "V7MerkleK12/FunsExternal_Template.lean",
+      "rust_name": "core::slice::iter::{impl core::iter::traits::iterator::Iterator<&'a [T]> for core::slice::iter::Windows<'a, T>}::next",
+      "is_local": false,
+      "source": {
+        "file": "/rustc/library/core/src/slice/iter.rs",
+        "begin_line": 1354,
+        "end_line": 1354
+      },
+      "is_opaque": true,
+      "can_fail": true,
+      "can_diverge": false,
+      "is_rec": false,
+      "reducible": false
+    },
+    {
+      "def_id": 14,
+      "lean_name": "V7MerkleK12Generated.core.slice.Slice.last",
+      "lean_file": "V7MerkleK12/FunsExternal_Template.lean",
+      "rust_name": "core::slice::{[T]}::last",
+      "is_local": false,
+      "source": {
+        "file": "/rustc/library/core/src/slice/mod.rs",
+        "begin_line": 281,
+        "end_line": 281
+      },
+      "is_opaque": true,
+      "can_fail": true,
+      "can_diverge": false,
+      "is_rec": false,
+      "reducible": false
+    },
+    {
+      "def_id": 12,
+      "lean_name": "V7MerkleK12Generated.core.slice.Slice.windows",
+      "lean_file": "V7MerkleK12/FunsExternal_Template.lean",
+      "rust_name": "core::slice::{[T]}::windows",
+      "is_local": false,
+      "source": {
+        "file": "/rustc/library/core/src/slice/mod.rs",
+        "begin_line": 1116,
+        "end_line": 1116
+      },
+      "is_opaque": true,
+      "can_fail": true,
+      "can_diverge": false,
+      "is_rec": false,
+      "reducible": false
+    },
+    {
+      "def_id": 16,
+      "lean_name": "V7MerkleK12Generated.alloc.vec.Vec.clear",
+      "lean_file": "V7MerkleK12/FunsExternal_Template.lean",
+      "rust_name": "alloc::vec::{alloc::vec::Vec<T>}::clear",
+      "is_local": false,
+      "source": {
+        "file": "/rustc/library/alloc/src/vec/mod.rs",
+        "begin_line": 3028,
+        "end_line": 3028
+      },
+      "is_opaque": true,
+      "can_fail": true,
+      "can_diverge": false,
+      "is_rec": false,
+      "reducible": false
+    },
+    {
+      "def_id": 7,
+      "lean_name": "V7MerkleK12Generated.state_only_private_merkle.private_leaf_hash",
+      "lean_file": "V7MerkleK12/Funs.lean",
+      "rust_name": "aspis_core::state_only_private_merkle::private_leaf_hash",
+      "is_local": true,
+      "source": {
+        "file": "crates/aspis-core/src/state_only_private_merkle.rs",
+        "begin_line": 28,
+        "end_line": 35
+      },
+      "is_opaque": false,
+      "can_fail": true,
+      "can_diverge": false,
+      "is_rec": false,
+      "reducible": false
+    },
+    {
+      "def_id": 0,
+      "lean_name": "V7MerkleK12Generated.v7_merkle208.truncate_sha256_v7",
+      "lean_file": "V7MerkleK12/Funs.lean",
+      "rust_name": "aspis_core::v7_merkle208::truncate_sha256_v7",
+      "is_local": true,
+      "source": {
+        "file": "crates/aspis-core/src/v7_merkle208.rs",
+        "begin_line": 24,
+        "end_line": 28
+      },
+      "is_opaque": false,
+      "can_fail": true,
+      "can_diverge": false,
+      "is_rec": false,
+      "reducible": false
+    },
+    {
+      "def_id": 1,
+      "lean_name": "V7MerkleK12Generated.v7_merkle208.private_leaf_hash_v7",
+      "lean_file": "V7MerkleK12/Funs.lean",
+      "rust_name": "aspis_core::v7_merkle208::private_leaf_hash_v7",
+      "is_local": true,
+      "source": {
+        "file": "crates/aspis-core/src/v7_merkle208.rs",
+        "begin_line": 31,
+        "end_line": 38
+      },
+      "is_opaque": false,
+      "can_fail": true,
+      "can_diverge": false,
+      "is_rec": false,
+      "reducible": false
+    },
+    {
+      "def_id": 2,
+      "lean_name": "V7MerkleK12Generated.v7_merkle208.node_hash_v7",
+      "lean_file": "V7MerkleK12/Funs.lean",
+      "rust_name": "aspis_core::v7_merkle208::node_hash_v7",
+      "is_local": true,
+      "source": {
+        "file": "crates/aspis-core/src/v7_merkle208.rs",
+        "begin_line": 41,
+        "end_line": 47
+      },
+      "is_opaque": false,
+      "can_fail": true,
+      "can_diverge": false,
+      "is_rec": false,
+      "reducible": false
+    },
+    {
+      "def_id": 51,
+      "lean_name": "V7MerkleK12Generated.v7_merkle208.verify_two_minimal_subtrees_v7_bytes.closure.Insts.CoreOpsFunctionFnMutTupleSharedSliceTupleU32ArrayU826ArrayU826Bool.call_mut",
+      "lean_file": "V7MerkleK12/Funs.lean",
+      "rust_name": "aspis_core::v7_merkle208::verify_two_minimal_subtrees_v7_bytes::{impl core::ops::function::FnMut<(&'_ [(u32, [u8; 26usize], [u8; 26usize])],), bool> for aspis_core::v7_merkle208::verify_two_minimal_subtrees_v7_bytes::closure}::call_mut",
+      "is_local": true,
+      "source": {
+        "file": "crates/aspis-core/src/v7_merkle208.rs",
+        "begin_line": 68,
+        "end_line": 68
+      },
+      "is_opaque": false,
+      "can_fail": true,
+      "can_diverge": false,
+      "is_rec": false,
+      "reducible": false
+    },
+    {
+      "def_id": 50,
+      "lean_name": "V7MerkleK12Generated.v7_merkle208.verify_two_minimal_subtrees_v7_bytes.closure.Insts.CoreOpsFunctionFnOnceTupleSharedSliceTupleU32ArrayU826ArrayU826Bool.call_once",
+      "lean_file": "V7MerkleK12/Funs.lean",
+      "rust_name": "aspis_core::v7_merkle208::verify_two_minimal_subtrees_v7_bytes::{impl core::ops::function::FnOnce<(&'_ [(u32, [u8; 26usize], [u8; 26usize])],), bool> for aspis_core::v7_merkle208::verify_two_minimal_subtrees_v7_bytes::closure}::call_once",
+      "is_local": true,
+      "source": {
+        "file": "crates/aspis-core/src/v7_merkle208.rs",
+        "begin_line": 68,
+        "end_line": 68
+      },
+      "is_opaque": false,
+      "can_fail": true,
+      "can_diverge": false,
+      "is_rec": false,
+      "reducible": false
+    },
+    {
+      "def_id": 3,
+      "lean_name": "V7MerkleK12Generated.v7_merkle208.verify_two_minimal_subtrees_v7_bytes_loop0_loop0.body",
+      "lean_file": "V7MerkleK12/Funs.lean",
+      "rust_name": "aspis_core::v7_merkle208::verify_two_minimal_subtrees_v7_bytes",
+      "is_local": true,
+      "source": {
+        "file": "crates/aspis-core/src/v7_merkle208.rs",
+        "begin_line": 80,
+        "end_line": 128
+      },
+      "is_opaque": false,
+      "can_fail": true,
+      "can_diverge": true,
+      "is_rec": false,
+      "reducible": false,
+      "loop": { "id": 1, "pos": [ 0, 0 ], "is_body": true },
+      "parent_lean_name": "V7MerkleK12Generated.v7_merkle208.verify_two_minimal_subtrees_v7_bytes"
+    },
+    {
+      "def_id": 3,
+      "lean_name": "V7MerkleK12Generated.v7_merkle208.verify_two_minimal_subtrees_v7_bytes_loop0_loop0",
+      "lean_file": "V7MerkleK12/Funs.lean",
+      "rust_name": "aspis_core::v7_merkle208::verify_two_minimal_subtrees_v7_bytes",
+      "is_local": true,
+      "source": {
+        "file": "crates/aspis-core/src/v7_merkle208.rs",
+        "begin_line": 80,
+        "end_line": 128
+      },
+      "is_opaque": false,
+      "can_fail": true,
+      "can_diverge": true,
+      "is_rec": false,
+      "reducible": false,
+      "loop": { "id": 1, "pos": [ 0, 0 ], "is_body": false },
+      "parent_lean_name": "V7MerkleK12Generated.v7_merkle208.verify_two_minimal_subtrees_v7_bytes"
+    },
+    {
+      "def_id": 3,
+      "lean_name": "V7MerkleK12Generated.v7_merkle208.verify_two_minimal_subtrees_v7_bytes_loop0.body",
+      "lean_file": "V7MerkleK12/Funs.lean",
+      "rust_name": "aspis_core::v7_merkle208::verify_two_minimal_subtrees_v7_bytes",
+      "is_local": true,
+      "source": {
+        "file": "crates/aspis-core/src/v7_merkle208.rs",
+        "begin_line": 77,
+        "end_line": 128
+      },
+      "is_opaque": false,
+      "can_fail": true,
+      "can_diverge": true,
+      "is_rec": false,
+      "reducible": false,
+      "loop": { "id": 0, "pos": [ 0 ], "is_body": true },
+      "parent_lean_name": "V7MerkleK12Generated.v7_merkle208.verify_two_minimal_subtrees_v7_bytes"
+    },
+    {
+      "def_id": 3,
+      "lean_name": "V7MerkleK12Generated.v7_merkle208.verify_two_minimal_subtrees_v7_bytes_loop0",
+      "lean_file": "V7MerkleK12/Funs.lean",
+      "rust_name": "aspis_core::v7_merkle208::verify_two_minimal_subtrees_v7_bytes",
+      "is_local": true,
+      "source": {
+        "file": "crates/aspis-core/src/v7_merkle208.rs",
+        "begin_line": 77,
+        "end_line": 128
+      },
+      "is_opaque": false,
+      "can_fail": true,
+      "can_diverge": true,
+      "is_rec": false,
+      "reducible": false,
+      "loop": { "id": 0, "pos": [ 0 ], "is_body": false },
+      "parent_lean_name": "V7MerkleK12Generated.v7_merkle208.verify_two_minimal_subtrees_v7_bytes"
+    },
+    {
+      "def_id": 3,
+      "lean_name": "V7MerkleK12Generated.v7_merkle208.verify_two_minimal_subtrees_v7_bytes",
+      "lean_file": "V7MerkleK12/Funs.lean",
+      "rust_name": "aspis_core::v7_merkle208::verify_two_minimal_subtrees_v7_bytes",
+      "is_local": true,
+      "source": {
+        "file": "crates/aspis-core/src/v7_merkle208.rs",
+        "begin_line": 51,
+        "end_line": 128
+      },
+      "is_opaque": false,
+      "can_fail": true,
+      "can_diverge": true,
+      "is_rec": false,
+      "reducible": false
+    }
+  ],
+  "types": [
+    {
+      "def_id": 7,
+      "lean_name": "V7MerkleK12Generated.core.slice.iter.Windows",
+      "lean_file": "V7MerkleK12/TypesExternal_Template.lean",
+      "rust_name": "core::slice::iter::Windows",
+      "is_local": false,
+      "source": {
+        "file": "/rustc/library/core/src/slice/iter.rs",
+        "begin_line": 1329,
+        "end_line": 1329
+      }
+    },
+    {
+      "def_id": 8,
+      "lean_name": "V7MerkleK12Generated.v7_merkle208.verify_two_minimal_subtrees_v7_bytes.closure",
+      "lean_file": "V7MerkleK12/Types.lean",
+      "rust_name": "aspis_core::v7_merkle208::verify_two_minimal_subtrees_v7_bytes::closure",
+      "is_local": true,
+      "source": {
+        "file": "crates/aspis-core/src/v7_merkle208.rs",
+        "begin_line": 68,
+        "end_line": 68
+      }
+    }
+  ],
+  "globals": [
+    {
+      "def_id": 6,
+      "lean_name": "V7MerkleK12Generated.state_only_private_merkle.DOM_LEAF",
+      "lean_file": "V7MerkleK12/Funs.lean",
+      "rust_name": "aspis_core::state_only_private_merkle::DOM_LEAF",
+      "is_local": true,
+      "source": {
+        "file": "crates/aspis-core/src/state_only_private_merkle.rs",
+        "begin_line": 9,
+        "end_line": 9
+      },
+      "can_fail": false
+    },
+    {
+      "def_id": 0,
+      "lean_name": "V7MerkleK12Generated.v7_merkle208.V7_MERKLE_DIGEST_BYTES",
+      "lean_file": "V7MerkleK12/Funs.lean",
+      "rust_name": "aspis_core::v7_merkle208::V7_MERKLE_DIGEST_BYTES",
+      "is_local": true,
+      "source": {
+        "file": "crates/aspis-core/src/v7_merkle208.rs",
+        "begin_line": 14,
+        "end_line": 14
+      },
+      "can_fail": false
+    },
+    {
+      "def_id": 1,
+      "lean_name": "V7MerkleK12Generated.v7_merkle208.DOM_NODE",
+      "lean_file": "V7MerkleK12/Funs.lean",
+      "rust_name": "aspis_core::v7_merkle208::DOM_NODE",
+      "is_local": true,
+      "source": {
+        "file": "crates/aspis-core/src/v7_merkle208.rs",
+        "begin_line": 19,
+        "end_line": 19
+      },
+      "can_fail": false
+    }
+  ],
+  "trait_decls": [],
+  "trait_impls": [
+    {
+      "def_id": 13,
+      "lean_name": "V7MerkleK12Generated.core.slice.iter.Windows.Insts.CoreIterTraitsIteratorIteratorSharedASlice",
+      "lean_file": "V7MerkleK12/Funs.lean",
+      "rust_name": "core::slice::iter::{impl core::iter::traits::iterator::Iterator<&'a [T]> for core::slice::iter::Windows<'a, T>}",
+      "is_local": false,
+      "source": {
+        "file": "/rustc/library/core/src/slice/iter.rs",
+        "begin_line": 1350,
+        "end_line": 1350
+      },
+      "impl_trait_def_id": 6,
+      "impl_trait_rust_name": "core::iter::traits::iterator::Iterator",
+      "impl_trait_is_builtin": true
+    },
+    {
+      "def_id": 11,
+      "lean_name": "V7MerkleK12Generated.v7_merkle208.verify_two_minimal_subtrees_v7_bytes.closure.Insts.CoreOpsFunctionFnOnceTupleSharedSliceTupleU32ArrayU826ArrayU826Bool",
+      "lean_file": "V7MerkleK12/Funs.lean",
+      "rust_name": "aspis_core::v7_merkle208::verify_two_minimal_subtrees_v7_bytes::{impl core::ops::function::FnOnce<(&'_ [(u32, [u8; 26usize], [u8; 26usize])],), bool> for aspis_core::v7_merkle208::verify_two_minimal_subtrees_v7_bytes::closure}",
+      "is_local": true,
+      "source": {
+        "file": "crates/aspis-core/src/v7_merkle208.rs",
+        "begin_line": 68,
+        "end_line": 68
+      },
+      "impl_trait_def_id": 14,
+      "impl_trait_rust_name": "core::ops::function::FnOnce",
+      "impl_trait_is_builtin": true
+    },
+    {
+      "def_id": 12,
+      "lean_name": "V7MerkleK12Generated.v7_merkle208.verify_two_minimal_subtrees_v7_bytes.closure.Insts.CoreOpsFunctionFnMutTupleSharedSliceTupleU32ArrayU826ArrayU826Bool",
+      "lean_file": "V7MerkleK12/Funs.lean",
+      "rust_name": "aspis_core::v7_merkle208::verify_two_minimal_subtrees_v7_bytes::{impl core::ops::function::FnMut<(&'_ [(u32, [u8; 26usize], [u8; 26usize])],), bool> for aspis_core::v7_merkle208::verify_two_minimal_subtrees_v7_bytes::closure}",
+      "is_local": true,
+      "source": {
+        "file": "crates/aspis-core/src/v7_merkle208.rs",
+        "begin_line": 68,
+        "end_line": 68
+      },
+      "impl_trait_def_id": 7,
+      "impl_trait_rust_name": "core::ops::function::FnMut",
+      "impl_trait_is_builtin": true
+    }
+  ]
+}
