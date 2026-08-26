@@ -248,6 +248,131 @@ theorem fixed_selected_width29_bad_challenges_card_le
       (selectedCandidateStrategy decoder
         (extractedWidth29InitialWords words) selected)
 
+/-! ## One restoration-wide strategy, without a decoder-list union -/
+
+/-- A same-tape restoration extractor supplies one selected initial response
+for every possible nonzero batching challenge.  Its agreement support is
+defined canonically from that response.  Unlike `selectedCandidateStrategy`,
+this strategy may select a different response at each challenge, exactly as
+the published correlated-agreement theorem permits. -/
+noncomputable def restoredWidth29Strategy
+    (decoder : ExactDecoderInstantiation QM31Exact)
+    (lanes : Fin 29 →
+      AspisPool.AlgorithmicCircleDecoderV7.InitialWord QM31Exact)
+    (response : QM31Exact → InitialMessage QM31Exact) :
+    Width29ProximateStrategy QM31Exact (Fin 1048576)
+      (InitialMessage QM31Exact) := by
+  classical
+  exact {
+    candidate := response
+    support := fun gamma => Finset.univ.filter fun index =>
+      width29CurveValue lanes gamma index =
+        decoder.initialEncoder (response gamma) index
+  }
+
+@[simp] theorem restoredWidth29Strategy_candidate
+    (decoder : ExactDecoderInstantiation QM31Exact)
+    (lanes : Fin 29 →
+      AspisPool.AlgorithmicCircleDecoderV7.InitialWord QM31Exact)
+    (response : QM31Exact → InitialMessage QM31Exact) (gamma : QM31Exact) :
+    (restoredWidth29Strategy decoder lanes response).candidate gamma =
+      response gamma := by
+  rfl
+
+theorem restoredWidth29Strategy_support_eq_selected
+    (decoder : ExactDecoderInstantiation QM31Exact)
+    (lanes : Fin 29 →
+      AspisPool.AlgorithmicCircleDecoderV7.InitialWord QM31Exact)
+    (selected : ExactCandidatePair)
+    (response : QM31Exact → InitialMessage QM31Exact)
+    (gamma : QM31Exact)
+    (responseAt : response gamma = selected.1) :
+    (restoredWidth29Strategy decoder lanes response).support gamma =
+      (selectedCandidateStrategy decoder lanes selected).support gamma := by
+  classical
+  change (Finset.univ.filter fun index =>
+      width29CurveValue lanes gamma index =
+        decoder.initialEncoder (response gamma) index) =
+    Finset.univ.filter fun index =>
+      width29CurveValue lanes gamma index =
+        decoder.initialEncoder selected.1 index
+  rw [responseAt]
+
+set_option linter.constructorNameAsVariable false in
+/-- A pointwise fixed-run bad response is counted by the single
+restoration-wide strategy when the state-restoration adapter identifies its
+selected message with the response at the sampled challenge. -/
+theorem fixed_selected_bad_mem_restored_width29_bad_challenges
+    (decoder : ExactDecoderInstantiation QM31Exact)
+    (lanes : Fin 29 →
+      AspisPool.AlgorithmicCircleDecoderV7.InitialWord QM31Exact)
+    (selected : ExactCandidatePair)
+    (response : QM31Exact → InitialMessage QM31Exact)
+    (gamma : QM31Exact)
+    (responseAt : response gamma = selected.1)
+    (fixedMember : gamma ∈
+      width29GoodChallenges decoder.initialEncoder
+        AspisV6PublishedTheoremInterfaces.initialAgreementThreshold lanes
+        (width29BadStrategy decoder.initialEncoder
+          AspisV6PublishedTheoremInterfaces.initialAgreementThreshold lanes
+          (selectedCandidateStrategy decoder lanes selected))) :
+    gamma ∈ width29GoodChallenges decoder.initialEncoder
+      AspisV6PublishedTheoremInterfaces.initialAgreementThreshold lanes
+      (width29BadStrategy decoder.initialEncoder
+        AspisV6PublishedTheoremInterfaces.initialAgreementThreshold lanes
+        (restoredWidth29Strategy decoder lanes response)) := by
+  rw [mem_width29BadStrategy_good_iff] at fixedMember ⊢
+  have supportEq := restoredWidth29Strategy_support_eq_selected decoder lanes
+    selected response gamma responseAt
+  have restoredValid : Width29ValidResponse decoder.initialEncoder
+      AspisV6PublishedTheoremInterfaces.initialAgreementThreshold
+      lanes (restoredWidth29Strategy decoder lanes response) gamma := by
+    constructor
+    · rw [supportEq]
+      exact fixedMember.2.1.1
+    · intro index member
+      rw [supportEq] at member
+      have fixedAgreement := fixedMember.2.1.2 index member
+      rw [restoredWidth29Strategy_candidate, responseAt]
+      rw [selectedCandidateStrategy_candidate] at fixedAgreement
+      exact fixedAgreement
+  have restoredNoMatching : ¬ HasMatchingWidth29Decomposition
+      decoder.initialEncoder lanes
+      (restoredWidth29Strategy decoder lanes response) gamma := by
+    intro restoredMatching
+    apply fixedMember.2.2
+    rcases restoredMatching with ⟨components, shared, onCurve⟩
+    refine ⟨components, ?_, ?_⟩
+    · rw [← supportEq]
+      exact shared
+    · unfold Width29CandidateOnCurve at onCurve ⊢
+      rw [restoredWidth29Strategy_candidate, responseAt] at onCurve
+      rw [selectedCandidateStrategy_candidate]
+      exact onCurve
+  exact ⟨fixedMember.1, restoredValid, restoredNoMatching⟩
+
+/-- The one restoration-wide bad set has the published degree-28 cap directly;
+there is no factor 100 or 9,900 from unioning independently selected lists. -/
+theorem restored_width29_bad_challenges_card_le
+    (decoder : ExactDecoderInstantiation QM31Exact)
+    (published : PublishedInitialWidth29CurveDecodability
+      decoder.initialEncoder)
+    (words : AspisPool.V7MerkleQueryExtractor.ExtractedWords)
+    (response : QM31Exact → InitialMessage QM31Exact) :
+    (width29GoodChallenges decoder.initialEncoder
+      AspisV6PublishedTheoremInterfaces.initialAgreementThreshold
+      (extractedWidth29InitialWords words)
+      (width29BadStrategy decoder.initialEncoder
+        AspisV6PublishedTheoremInterfaces.initialAgreementThreshold
+        (extractedWidth29InitialWords words)
+        (restoredWidth29Strategy decoder
+          (extractedWidth29InitialWords words) response))).card ≤
+      initialBatchChallengeCap := by
+  exact initial_bad_response_challenges_card_le decoder.initialEncoder
+    published (extractedWidth29InitialWords words)
+      (restoredWidth29Strategy decoder
+        (extractedWidth29InitialWords words) response)
+
 #print axioms exact_k13_initial_encoder_overlap_cap
 #print axioms exact_k13_initial_list_cap_failure_impossible
 #print axioms exact_k13_error_reduces_to_query_or_onefold
@@ -255,6 +380,8 @@ theorem fixed_selected_width29_bad_challenges_card_le
 #print axioms exact_k13_k14_error_reduces_to_query_or_circle
 #print axioms exact_k14_failure_mem_width29_bad_challenges
 #print axioms fixed_selected_width29_bad_challenges_card_le
+#print axioms fixed_selected_bad_mem_restored_width29_bad_challenges
+#print axioms restored_width29_bad_challenges_card_le
 
 end
 
