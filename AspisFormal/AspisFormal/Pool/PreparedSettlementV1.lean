@@ -267,6 +267,46 @@ theorem authorized_cancel_retires_exact_plan
     cancelPrepared plan.authority plan = { plan with status := .retired } := by
   simp [cancelPrepared, openPlan]
 
+theorem unauthorized_cancel_preserves_exact_plan
+    {Note Root Marker Authority : Type} [DecidableEq Authority]
+    (signer : Authority) (plan : Plan Note Root Marker Authority)
+    (unauthorized : signer ≠ plan.authority) :
+    cancelPrepared signer plan = plan := by
+  simp [cancelPrepared, unauthorized]
+
+/-- Once cancellation retires an open plan, a later apply cannot mutate
+custody even if every other input is favorable. -/
+theorem cancelled_plan_cannot_later_apply
+    {Note Root Marker Authority : Type}
+    [DecidableEq Note] [DecidableEq Root] [DecidableEq Marker]
+    [DecidableEq Authority]
+    (live : State Note Root Marker) (slot : Nat)
+    (plan : Plan Note Root Marker Authority) (openPlan : plan.status = .open) :
+    (applyPrepared live slot plan.authority true true
+      (cancelPrepared plan.authority plan)).state = live := by
+  rw [authorized_cancel_retires_exact_plan plan openPlan]
+  apply retired_plan_apply_preserves_state
+  rfl
+
+/-- The retired plan returned by a successful apply is intrinsically
+single-use: replaying it preserves the already-updated live state. -/
+theorem successful_apply_result_cannot_replay
+    {Note Root Marker Authority : Type}
+    [DecidableEq Note] [DecidableEq Root] [DecidableEq Marker]
+    [DecidableEq Authority]
+    (live : State Note Root Marker) (slot : Nat) (signer : Authority)
+    (plan : Plan Note Root Marker Authority)
+    (authorized : ApplyAuthorized live slot signer true true plan) :
+    let first := applyPrepared live slot signer true true plan
+    (applyPrepared first.state slot signer true true first.plan).state =
+      first.state := by
+  have firstExact : applyPrepared live slot signer true true plan =
+      { state := plan.candidate, plan := { plan with status := .retired } } := by
+    simp [applyPrepared, authorized]
+  rw [firstExact]
+  apply retired_plan_apply_preserves_state
+  rfl
+
 theorem cancel_cannot_change_custody
     {Note Root Marker Authority : Type} [DecidableEq Authority]
     (state : State Note Root Marker) (signer : Authority)
@@ -280,6 +320,9 @@ theorem cancel_cannot_change_custody
 #print axioms retired_plan_apply_preserves_state
 #print axioms expired_plan_apply_preserves_state
 #print axioms authorized_cancel_retires_exact_plan
+#print axioms unauthorized_cancel_preserves_exact_plan
+#print axioms cancelled_plan_cannot_later_apply
+#print axioms successful_apply_result_cannot_replay
 #print axioms cancel_cannot_change_custody
 
 end AspisPool.PreparedSettlementV1
