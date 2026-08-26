@@ -40,6 +40,9 @@ pub struct RelayerSimulationEvidenceV1 {
     pub simulation_accounts_sha256: [u8; 32],
     pub startup_receipt_digest: [u8; 32],
     pub compute_unit_limit: u32,
+    /// Exact priority price instruction; zero means the canonical transaction
+    /// omits `SetComputeUnitPrice` entirely.
+    pub compute_unit_price_micro_lamports: u64,
     pub compute_units_consumed: u64,
     pub estimated_fee_lamports: u64,
 }
@@ -568,6 +571,12 @@ fn encode_record_header_v1(
     header[208..240].copy_from_slice(&record.simulation.simulation_accounts_sha256);
     header[240..272].copy_from_slice(&record.simulation.startup_receipt_digest);
     header[272..276].copy_from_slice(&record.simulation.compute_unit_limit.to_le_bytes());
+    header[556..564].copy_from_slice(
+        &record
+            .simulation
+            .compute_unit_price_micro_lamports
+            .to_le_bytes(),
+    );
     header[276..284].copy_from_slice(&record.simulation.compute_units_consumed.to_le_bytes());
     header[284..292].copy_from_slice(&record.simulation.estimated_fee_lamports.to_le_bytes());
     if let Some(signed) = &record.signed {
@@ -649,7 +658,7 @@ fn decode_execution_journal_v1(
         let signed_flag = decode_flag_v1(header[292])?;
         let submitted_flag = decode_flag_v1(header[293])?;
         let outcome_kind = header[294];
-        if outcome_kind > 2 || header[295] != 0 || header[556..].iter().any(|byte| *byte != 0) {
+        if outcome_kind > 2 || header[295] != 0 || header[564..].iter().any(|byte| *byte != 0) {
             return Err(RelayerExecutionJournalErrorV1::NonZeroReserved);
         }
         let wire_length = u32::from_le_bytes(header[360..364].try_into().unwrap()) as usize;
@@ -672,6 +681,9 @@ fn decode_execution_journal_v1(
             simulation_accounts_sha256: header[208..240].try_into().unwrap(),
             startup_receipt_digest: header[240..272].try_into().unwrap(),
             compute_unit_limit: u32::from_le_bytes(header[272..276].try_into().unwrap()),
+            compute_unit_price_micro_lamports: u64::from_le_bytes(
+                header[556..564].try_into().unwrap(),
+            ),
             compute_units_consumed: u64::from_le_bytes(header[276..284].try_into().unwrap()),
             estimated_fee_lamports: u64::from_le_bytes(header[284..292].try_into().unwrap()),
         };
@@ -838,6 +850,7 @@ mod tests {
             simulation_accounts_sha256: [0x42; 32],
             startup_receipt_digest: [0x43; 32],
             compute_unit_limit: 1_400_000,
+            compute_unit_price_micro_lamports: 1,
             compute_units_consumed: 1_200_000,
             estimated_fee_lamports: 10_000,
         }

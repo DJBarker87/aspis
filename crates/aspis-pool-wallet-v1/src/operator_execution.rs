@@ -15,6 +15,10 @@ use crate::{
         RelayerFinalizedEvidenceV1, RelayerSimulationEvidenceV1, RelayerSubmissionEvidenceV1,
         RelayerTerminalFailureEvidenceV1, SolanaSdkSignedTransactionInspectorV1,
     },
+    relayer_transaction::{
+        validate_exact_relayer_transaction_v1, RelayerSignedTransactionArtifactV1,
+        RelayerTransactionErrorV1,
+    },
 };
 
 pub const RELAYER_TERMINAL_BLOCKHASH_EXPIRED_V1: u32 = 1;
@@ -40,12 +44,13 @@ pub enum RelayerSignatureObservationV1 {
     Finalized(RelayerFinalizedEvidenceV1),
 }
 
-/// Production ports must assemble the exact canonical transaction represented
-/// by `plan`, simulate that same unsigned message, and ask the external signer
-/// to sign only that message. The returned signed wire is independently parsed
-/// and signature-verified before it can reach `submit_exact_signed_wire_v1`.
-/// A restart must rebuild the unsigned message from the durable plan and
-/// simulation evidence; its SHA-256 must therefore remain identical.
+/// Production ports obtain the simulation and external signature, but do not
+/// define what transaction is accepted. Before journaling, this coordinator
+/// reconstructs the only canonical legacy/v0 message from `plan`, authenticates
+/// every ALT from the returned raw finalized account image, and requires exact
+/// message equality plus all required Ed25519 signatures. A restart must return
+/// the same authenticated inputs and message hash; submission uses only the
+/// already-journaled wire.
 pub trait RelayerExecutionPortV1 {
     type Error;
 
@@ -59,7 +64,7 @@ pub trait RelayerExecutionPortV1 {
         &mut self,
         plan: &RelayerPlanV1,
         simulation: RelayerSimulationEvidenceV1,
-    ) -> Result<Vec<u8>, Self::Error>;
+    ) -> Result<RelayerSignedTransactionArtifactV1, Self::Error>;
 
     fn observe_signature_v1(
         &mut self,
@@ -93,6 +98,7 @@ pub enum RelayerExecutionStepV1 {
 pub enum RelayerOperatorExecutionErrorV1<E> {
     Durable(DurableStateErrorV1),
     Journal(RelayerExecutionJournalErrorV1),
+    Transaction(RelayerTransactionErrorV1),
     Runtime(E),
     UnknownRequest,
     CrossStoreMismatch,
@@ -186,13 +192,15 @@ pub fn advance_relayer_execution_v1<R: RelayerExecutionPortV1>(
         if record.policy_id != relayer_policy_id_v1(policy) {
             return Err(RelayerOperatorExecutionErrorV1::PolicyChangedBeforeSigning);
         }
-        let signed_wire = runtime
+        let signed = runtime
             .sign_exact_simulated_plan_v1(&entry.plan, record.simulation)
             .map_err(RelayerOperatorExecutionErrorV1::Runtime)?;
+        validate_exact_relayer_transaction_v1(&entry.plan, startup, record.simulation, &signed)
+            .map_err(RelayerOperatorExecutionErrorV1::Transaction)?;
         journal
             .record_signed_wire_v1(
                 request_id,
-                &signed_wire,
+                &signed.signed_wire,
                 &SolanaSdkSignedTransactionInspectorV1,
             )
             .map_err(RelayerOperatorExecutionErrorV1::Journal)?;
@@ -300,11 +308,15 @@ fn validate_simulation_evidence_v1<E>(
     context: RelayerExecutionContextV1,
     simulation: RelayerSimulationEvidenceV1,
 ) -> Result<(), RelayerOperatorExecutionErrorV1<E>> {
+    let minimum_priority_fee = u128::from(simulation.compute_unit_limit)
+        .saturating_mul(u128::from(simulation.compute_unit_price_micro_lamports))
+        .div_ceil(1_000_000);
     if simulation.startup_receipt_digest != *startup.receipt_digest()
         || simulation.simulated_at_slot < startup.checkpoint().point.slot()
         || simulation.simulated_at_slot < plan.snapshot.observed_slot
         || simulation.fee_payer != plan.fee_payer.to_bytes()
         || simulation.estimated_fee_lamports != context.estimated_fee_lamports
+        || minimum_priority_fee > u128::from(simulation.estimated_fee_lamports)
     {
         return Err(RelayerOperatorExecutionErrorV1::InvalidRuntimeEvidence);
     }
@@ -333,13 +345,19 @@ mod tests {
     use aspis_pool::{deposit::DepositRequestV1, pool_v1_state_address};
     use aspis_statement::poseidon2::Digest;
     use sha2::{Digest as _, Sha256};
-    use solana_program::pubkey::Pubkey;
+    use solana_compute_budget_interface::ComputeBudgetInstruction;
+    use solana_keypair::Keypair;
+    use solana_message::{legacy, VersionedMessage};
+    use solana_program::{hash::Hash, pubkey::Pubkey};
+    use solana_signer::Signer;
+    use solana_transaction::versioned::VersionedTransaction;
 
     use super::*;
     use crate::{
         operator_startup::FinalizedReleaseCheckpointV1,
         relayer::{prepare_permissionless_relayer_plan_v1, RelayerSnapshotV1},
         relayer_execution_journal::RelayerExecutionOutcomeV1,
+        relayer_transaction::relayer_simulation_accounts_sha256_v1,
         scan_state::FinalizedChainPointV1,
         transaction_builder::build_deposit_instruction_v1,
     };
@@ -375,37 +393,15 @@ mod tests {
         core::array::from_fn(|index| M31(seed + 17 * index as u32))
     }
 
-    fn signed_wire() -> (Vec<u8>, [u8; 32], [u8; 32], [u8; 64]) {
-        let fee_payer = [
-            49, 222, 190, 85, 211, 124, 114, 39, 104, 177, 55, 19, 28, 170, 96, 135, 8, 11, 46, 11,
-            96, 185, 75, 215, 133, 209, 69, 117, 207, 164, 152, 188,
-        ];
-        let signature = [
-            2, 0, 58, 29, 54, 47, 159, 159, 182, 228, 68, 52, 6, 68, 92, 201, 145, 37, 112, 106,
-            212, 97, 236, 215, 222, 166, 5, 122, 85, 202, 178, 51, 233, 46, 100, 243, 212, 11, 88,
-            51, 39, 138, 120, 228, 232, 127, 204, 152, 227, 118, 45, 118, 113, 67, 152, 14, 170,
-            216, 59, 170, 209, 6, 116, 14,
-        ];
-        let mut message = Vec::new();
-        message.extend_from_slice(&[1, 0, 1, 2]);
-        message.extend_from_slice(&fee_payer);
-        message.extend_from_slice(&[0x29; 32]);
-        message.extend_from_slice(&[0x39; 32]);
-        message.extend_from_slice(&[1, 1, 1, 0, 0]);
-        let mut wire = Vec::new();
-        wire.push(1);
-        wire.extend_from_slice(&signature);
-        wire.extend_from_slice(&message);
-        (wire, fee_payer, Sha256::digest(&message).into(), signature)
-    }
-
-    fn fixture() -> (
+    fn fixture(
+        fee_payer: Pubkey,
+        source_authority: Pubkey,
+    ) -> (
         RelayerPlanV1,
         RelayerPolicyV1,
         OperatorStartupReceiptV1,
         RelayerExecutionContextV1,
     ) {
-        let (.., fee_payer, _, _) = signed_wire();
         let program_id = key(1);
         let mint = key(2);
         let pool = pool_v1_state_address(&program_id, &mint).0;
@@ -415,9 +411,17 @@ mod tests {
             salt: digest(20),
             encrypted_note_payload: &[],
         };
-        let instruction =
-            build_deposit_instruction_v1(program_id, pool, mint, 7, key(3), key(4), None, &request)
-                .unwrap();
+        let instruction = build_deposit_instruction_v1(
+            program_id,
+            pool,
+            mint,
+            7,
+            key(3),
+            source_authority,
+            None,
+            &request,
+        )
+        .unwrap();
         let snapshot = RelayerSnapshotV1 {
             pinned_program_id: program_id,
             registry_program: key(5),
@@ -425,12 +429,8 @@ mod tests {
             observed_slot: 900,
             pool_state_sha256: [0xab; 32],
         };
-        let plan = prepare_permissionless_relayer_plan_v1(
-            snapshot,
-            Pubkey::new_from_array(fee_payer),
-            &instruction,
-        )
-        .unwrap();
+        let plan =
+            prepare_permissionless_relayer_plan_v1(snapshot, fee_payer, &instruction).unwrap();
         let policy = RelayerPolicyV1 {
             paused: false,
             operator_fee_payer: plan.fee_payer,
@@ -466,7 +466,7 @@ mod tests {
 
     struct Runtime {
         simulation: RelayerSimulationEvidenceV1,
-        signed_wire: Vec<u8>,
+        signed: RelayerSignedTransactionArtifactV1,
         observations: VecDeque<RelayerSignatureObservationV1>,
         submitted_wires: Vec<Vec<u8>>,
     }
@@ -486,8 +486,8 @@ mod tests {
             &mut self,
             _plan: &RelayerPlanV1,
             _simulation: RelayerSimulationEvidenceV1,
-        ) -> Result<Vec<u8>, Self::Error> {
-            Ok(self.signed_wire.clone())
+        ) -> Result<RelayerSignedTransactionArtifactV1, Self::Error> {
+            Ok(self.signed.clone())
         }
 
         fn observe_signature_v1(
@@ -540,7 +540,10 @@ mod tests {
         let directory = TestDirectory::new();
         let queue_path = directory.0.join("queue.state");
         let journal_path = directory.0.join("execution.state");
-        let (plan, policy, startup, context) = fixture();
+        let fee_payer = Keypair::new();
+        let source_authority = Keypair::new();
+        let (plan, policy, startup, context) =
+            fixture(fee_payer.pubkey(), source_authority.pubkey());
         let request_id = plan.request_id;
         {
             let mut queue = DurableRelayerStateV1::open_or_create_v1(&queue_path, policy).unwrap();
@@ -558,17 +561,39 @@ mod tests {
             );
         }
 
-        let (signed_wire, fee_payer, unsigned_message_sha256, signature) = signed_wire();
+        let recent_blockhash = Hash::new_from_array([0x39; 32]);
+        let instructions = [
+            ComputeBudgetInstruction::set_compute_unit_limit(1_400_000),
+            plan.instruction.clone(),
+        ];
+        let message = VersionedMessage::Legacy(legacy::Message::new_with_blockhash(
+            &instructions,
+            Some(&plan.fee_payer),
+            &recent_blockhash,
+        ));
+        let unsigned_message_sha256 = Sha256::digest(message.serialize()).into();
+        let transaction =
+            VersionedTransaction::try_new(message, &[&fee_payer, &source_authority]).unwrap();
+        let signature = *transaction.signatures[0].as_array();
+        let signed_wire = bincode::serialize(&transaction).unwrap();
+        let signed = RelayerSignedTransactionArtifactV1 {
+            signed_wire: signed_wire.clone(),
+            lookup_tables: Vec::new(),
+        };
+        let simulation_accounts_sha256 =
+            relayer_simulation_accounts_sha256_v1(&plan, 901, *startup.provider_set_digest(), &[])
+                .unwrap();
         let simulation = RelayerSimulationEvidenceV1 {
             simulated_at_slot: 901,
             recent_blockhash: [0x39; 32],
             last_valid_block_height: 500,
-            fee_payer,
+            fee_payer: plan.fee_payer.to_bytes(),
             unsigned_message_sha256,
             simulation_result_sha256: [0xa1; 32],
-            simulation_accounts_sha256: [0xa2; 32],
+            simulation_accounts_sha256,
             startup_receipt_digest: *startup.receipt_digest(),
             compute_unit_limit: 1_400_000,
+            compute_unit_price_micro_lamports: 0,
             compute_units_consumed: 1_200_000,
             estimated_fee_lamports: context.estimated_fee_lamports,
         };
@@ -582,7 +607,7 @@ mod tests {
         };
         let mut runtime = Runtime {
             simulation,
-            signed_wire: signed_wire.clone(),
+            signed,
             observations: VecDeque::from([
                 RelayerSignatureObservationV1::NotFound {
                     observed_block_height: 450,

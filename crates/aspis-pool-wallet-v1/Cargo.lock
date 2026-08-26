@@ -64,9 +64,14 @@ dependencies = [
  "serde",
  "serde_json",
  "sha2 0.11.0",
+ "solana-address-lookup-table-interface",
+ "solana-compute-budget-interface",
+ "solana-keypair",
+ "solana-message",
  "solana-program",
  "solana-sdk-ids",
  "solana-signature",
+ "solana-signer",
  "solana-transaction",
  "subtle",
  "zeroize",
@@ -1347,6 +1352,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "solana-compute-budget-interface"
+version = "2.2.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "8432d2c4c22d0499aa06d62e4f7e333f81777b3d7c96050ae9e5cb71a8c3aee4"
+dependencies = [
+ "solana-instruction",
+ "solana-sdk-ids",
+]
+
+[[package]]
 name = "solana-cpi"
 version = "2.2.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2055,8 +2070,10 @@ version = "2.2.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "80657d6088f721148f5d889c828ca60c7daeedac9a8679f9ec215e0c42bcbf41"
 dependencies = [
+ "bincode",
  "serde",
  "serde_derive",
+ "solana-bincode",
  "solana-hash",
  "solana-instruction",
  "solana-keypair",
@@ -2066,6 +2083,8 @@ dependencies = [
  "solana-sdk-ids",
  "solana-short-vec",
  "solana-signature",
+ "solana-signer",
+ "solana-system-interface",
  "solana-transaction-error",
  "wasm-bindgen",
 ]
