@@ -244,6 +244,27 @@ def GammaPointLaneCollision
     pointClaimDiscrepancy fields extraction point row ≠ 0 ∧
       rowGammaDiscrepancy fields extraction point row = 0
 
+/-- A K1.4 certificate that already fixes all 87 point claims makes the local
+post-selected gamma-collision branch impossible. -/
+theorem gamma_point_lane_collision_impossible_of_all_claims_exact
+    {decoder : ExactDecoderInstantiation QM31Exact}
+    {binding : InitialProjectionBinding decoder}
+    {words : V7MerkleQueryExtractor.ExtractedWords}
+    {gamma : QM31Exact} {disclosedFinal : FinalMessage QM31Exact}
+    {schedule : ExactSchedule}
+    (fields : FixedFieldView QM31Exact)
+    (extraction : CoherentTraceExtraction decoder binding words gamma
+      disclosedFinal schedule)
+    (point : Fin 10 → QM31Exact)
+    (allExact : ∀ row lane,
+      fields.pointClaim row lane =
+        componentPointClaim extraction point row lane) :
+    ¬ GammaPointLaneCollision fields extraction point := by
+  rintro ⟨row, discrepancyNonzero, _batchZero⟩
+  apply discrepancyNonzero
+  funext lane
+  exact sub_eq_zero.mpr (allExact row lane)
+
 /-- Outside the exact degree-two and degree-twenty-eight collision events,
 one aggregate equality fixes every serialized point claim individually. -/
 theorem all_point_claims_exact_outside_collisions
@@ -346,6 +367,7 @@ theorem fixed_gamma_collision_set_card_le_twenty_eight
 
 #print axioms threeRow_nonzero_collision_card_le_two
 #print axioms claimedPointBatch_sub_extractedPointBatch
+#print axioms gamma_point_lane_collision_impossible_of_all_claims_exact
 #print axioms all_point_claims_exact_outside_collisions
 #print axioms semantic_point_claims_exact_outside_collisions
 #print axioms fixed_kappa_collision_set_card_le_two

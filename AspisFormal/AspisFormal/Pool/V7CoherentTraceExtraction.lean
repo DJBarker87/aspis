@@ -148,11 +148,6 @@ structure CoherentTraceExtraction
             (extractedIdealTranscript words gamma disclosedFinal)))
         schedule disclosedFinal = some combined
   components : Width29InitialMessages QM31Exact
-  componentsSelected :
-    selectWidth29Components decoder (extractedWidth29InitialWords words)
-        (selectedCandidateStrategy decoder
-          (extractedWidth29InitialWords words) combined) gamma =
-      some components
   everyComponentDecoded : ∀ lane,
     components lane ∈
       decoder.initialDecode ((extractedWidth29InitialWords words) lane)
@@ -212,6 +207,62 @@ def Width29DecompositionFailure
 
 /-- A selected chain plus the published matching-decomposition conclusion
 constructs the complete coherent K1.4 output. -/
+theorem selected_chain_and_matching_components_extract_coherent_trace
+    (decoder : ExactDecoderInstantiation QM31Exact)
+    (binding : InitialProjectionBinding decoder)
+    (words : V7MerkleQueryExtractor.ExtractedWords)
+    (gamma : QM31Exact) (disclosedFinal : FinalMessage QM31Exact)
+    (schedule : ExactSchedule) (selected : ExactCandidatePair)
+    (selectedEq :
+      selectCandidateChain
+          (decoder.decodeBoth
+            (extractedIdealTranscript words gamma disclosedFinal).initial
+            (foldedReceived schedule
+              (extractedIdealTranscript words gamma disclosedFinal)))
+          schedule disclosedFinal = some selected)
+    (components : Width29InitialMessages QM31Exact)
+    (everyDecoded : ∀ lane,
+      components lane ∈
+        decoder.initialDecode ((extractedWidth29InitialWords words) lane))
+    (shared :
+      (selectedCandidateStrategy decoder
+        (extractedWidth29InitialWords words) selected).support gamma ⊆
+      width29JointAgreementSet decoder.initialEncoder
+        (extractedWidth29InitialWords words) components)
+    (onCurve : Width29CandidateOnCurve decoder.initialEncoder
+      (selectedCandidateStrategy decoder
+        (extractedWidth29InitialWords words) selected)
+      components gamma) :
+    ∃ extraction : CoherentTraceExtraction decoder binding words gamma
+        disclosedFinal schedule,
+      extraction.combined = selected ∧ extraction.components = components := by
+  have valid := selected_chain_yields_valid_width29_response decoder words
+    gamma disclosedFinal schedule selected selectedEq
+  have base := extracted_c1_components_are_base decoder binding words
+    (selectedCandidateStrategy decoder
+      (extractedWidth29InitialWords words) selected)
+    gamma components valid shared
+  have exactChain := selectedCandidateChain_is_exact
+    (decoder.decodeBoth
+      (extractedIdealTranscript words gamma disclosedFinal).initial
+      (foldedReceived schedule
+        (extractedIdealTranscript words gamma disclosedFinal)))
+    schedule disclosedFinal selected selectedEq
+  let extraction : CoherentTraceExtraction decoder binding words gamma
+      disclosedFinal schedule := {
+    combined := selected
+    combinedSelected := selectedEq
+    components := components
+    everyComponentDecoded := everyDecoded
+    sharedSupport := shared
+    combinedOnCurve := onCurve
+    c1ComponentsAreBase := base
+    foldsToDisclosedFinal := exactChain.2.2.1.trans exactChain.2.2.2
+  }
+  exact ⟨extraction, rfl, rfl⟩
+
+/-- A selected chain plus the published matching-decomposition conclusion
+constructs the complete coherent K1.4 output. -/
 theorem selected_chain_extracts_coherent_trace
     (decoder : ExactDecoderInstantiation QM31Exact)
     (binding : InitialProjectionBinding decoder)
@@ -235,35 +286,17 @@ theorem selected_chain_extracts_coherent_trace
       extraction.combined = selected := by
   have valid := selected_chain_yields_valid_width29_response decoder words
     gamma disclosedFinal schedule selected selectedEq
-  obtain ⟨components, componentsEq, everyDecoded, shared, onCurve⟩ :=
+  obtain ⟨components, _componentsEq, everyDecoded, shared, onCurve⟩ :=
     matching_decomposition_selects_exact_components decoder
       (extractedWidth29InitialWords words)
       (selectedCandidateStrategy decoder
         (extractedWidth29InitialWords words) selected)
       gamma valid matching
-  have base := extracted_c1_components_are_base decoder binding words
-    (selectedCandidateStrategy decoder
-      (extractedWidth29InitialWords words) selected)
-    gamma components valid shared
-  have exactChain := selectedCandidateChain_is_exact
-    (decoder.decodeBoth
-      (extractedIdealTranscript words gamma disclosedFinal).initial
-      (foldedReceived schedule
-        (extractedIdealTranscript words gamma disclosedFinal)))
-    schedule disclosedFinal selected selectedEq
-  let extraction : CoherentTraceExtraction decoder binding words gamma
-      disclosedFinal schedule := {
-    combined := selected
-    combinedSelected := selectedEq
-    components := components
-    componentsSelected := componentsEq
-    everyComponentDecoded := everyDecoded
-    sharedSupport := shared
-    combinedOnCurve := onCurve
-    c1ComponentsAreBase := base
-    foldsToDisclosedFinal := exactChain.2.2.1.trans exactChain.2.2.2
-  }
-  exact ⟨extraction, rfl⟩
+  obtain ⟨extraction, combinedExact, _componentsExact⟩ :=
+    selected_chain_and_matching_components_extract_coherent_trace decoder
+      binding words gamma disclosedFinal schedule selected selectedEq components
+      everyDecoded shared onCurve
+  exact ⟨extraction, combinedExact⟩
 
 /-- Ideal one-fold acceptance deterministically yields one coherent trace or
 the single explicit width-29 decomposition failure.  Query, fold and list-cap
@@ -307,6 +340,7 @@ theorem accepted_onefold_extracts_coherent_trace_or_width29_failure
 
 #print axioms selected_chain_yields_valid_width29_response
 #print axioms CoherentTraceExtraction.semanticTraceExact
+#print axioms selected_chain_and_matching_components_extract_coherent_trace
 #print axioms selected_chain_extracts_coherent_trace
 #print axioms accepted_onefold_extracts_coherent_trace_or_width29_failure
 

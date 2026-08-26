@@ -118,6 +118,26 @@ private theorem shared_support_implies_lane_close
       valid.1
   omega
 
+/-- Any explicitly supplied tuple on the same large shared support enters all
+twenty-nine deterministic decoder lists.  This public form lets a
+restoration-wide correlated extractor retain its one fixed tuple instead of
+reselecting an unrelated local tuple. -/
+theorem shared_support_components_enter_decoder
+    (decoder : ExactDecoderInstantiation K)
+    (lanes : Width29InitialWords K)
+    (strategy : Width29ProximateStrategy K (Fin 1048576) (InitialMessage K))
+    (gamma : K) (components : Width29InitialMessages K)
+    (valid : Width29ValidResponse decoder.initialEncoder
+      AspisV6PublishedTheoremInterfaces.initialAgreementThreshold
+        lanes strategy gamma)
+    (shared : strategy.support gamma ⊆
+      width29JointAgreementSet decoder.initialEncoder lanes components) :
+    ∀ lane, components lane ∈ decoder.initialDecode (lanes lane) := by
+  intro lane
+  exact decoder.initialComplete (lanes lane) (components lane)
+    (shared_support_implies_lane_close decoder lanes strategy gamma
+      components valid shared lane)
+
 theorem matching_decomposition_enters_component_search
     (decoder : ExactDecoderInstantiation K)
     (lanes : Width29InitialWords K)
@@ -194,6 +214,7 @@ theorem matching_decomposition_selects_exact_components
 
 #print axioms mem_componentCandidateSet_iff
 #print axioms mem_matchingComponentSet_iff
+#print axioms shared_support_components_enter_decoder
 #print axioms matching_decomposition_enters_component_search
 #print axioms matching_decomposition_selects_exact_components
 

@@ -58,6 +58,27 @@ theorem effectiveRootCap_sum_eq_4078 :
     (orderedFailureKinds.map effectiveRootCap).sum = 4078 := by
   decide
 
+/-- K1.5 inventory after the strengthened restoration-wide K1.4 certificate
+has already fixed all 87 point claims.  At that boundary
+`.gammaPointLane` is impossible, so its old local 84-root allowance is not
+charged again. -/
+def pointCompatibleK14RootCap : FailureKind → Nat
+  | .gammaPointLane => 0
+  | kind => effectiveRootCap kind
+
+theorem pointCompatibleK14RootCap_sum_eq_3994 :
+    (orderedFailureKinds.map pointCompatibleK14RootCap).sum = 3994 := by
+  decide
+
+/-- The remaining twelve K1.5 algebraic branches are conservatively below
+`2^-112` once point compatibility has been extracted at K1.4. -/
+theorem pointCompatibleK14_root_inventory_le_two_pow_neg_112 :
+    (3994 : ℝ) /
+        ((Fintype.card QM31Exact : ℝ) - 1) ≤
+      (1 : ℝ) / 2 ^ 112 := by
+  rw [qm31Exact_card]
+  norm_num [P]
+
 /-- Even if every branch is conservatively charged against the nonzero-QM31
 denominator, the complete 4078-root inventory is below `2^-112`.  Ordinary
 samplers actually have denominator `|QM31|`; using `|QM31|-1` here safely
@@ -169,6 +190,8 @@ theorem canonical_tupleCompression_branch_card_le_2928
   simpa [effectiveRootCap] using copyLambdaCollisionSet_card_le_2928 source
 
 #print axioms effectiveRootCap_sum_eq_4078
+#print axioms pointCompatibleK14RootCap_sum_eq_3994
+#print axioms pointCompatibleK14_root_inventory_le_two_pow_neg_112
 #print axioms deployed_effective_root_inventory_le_two_pow_neg_112
 #print axioms activePole_iff_mem_copyChiPoleSet
 #print axioms copyChiCollision_mem_nonPole_of_not_activePole
