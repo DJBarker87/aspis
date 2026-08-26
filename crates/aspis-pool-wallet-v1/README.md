@@ -205,6 +205,24 @@ values are never inferred from the request. `ASPX` remains valid when the Pool
 has advanced beyond the plan's source sequence, matching its authority-only,
 state-independent cancellation semantics.
 
+`verifier_transaction_builder` supplies the missing native proof-authorization
+path without accepting any signer material. It validates an exact Tag-73 proof
+length/frontier shape, computes the proof-body digest, encodes the canonical
+600-byte transfer or withdrawal `ASVQ`, derives its verifier-owned receipt PDA,
+and builds the exact proof create/init/960-byte upload, Tag-74 receipt init,
+proof seal, Tag-75 receipt finalization, read-only verification and proof/receipt
+close instructions. The finalized receipt address is carried directly into a
+`PreparedSettlementRouteAccountsV1`; a relayer cannot substitute it when the
+Pool `ASPP`/`ASPF` builders are used.
+
+`registry_transaction_builder` likewise constructs no transaction or
+signature. It derives the canonical registry and entry PDAs and freezes the
+account order and privileges for initialization, scheduling, activation,
+pause/unpause, release retirement and irreversible freeze. The native helper
+pins the shared Tag-73 profile, release and statement version; the generic
+release-rotation path rejects zero bindings, aliases, same-release retirement
+and cross-profile replacement before exposing an instruction to a multisig.
+
 `wallet_transition` explicitly matches a recovered input owner key to a local
 nullifier/spending key, derives only the public nullifier in zeroized
 temporaries, enforces local value/asset conservation, and prepares recipient
@@ -295,10 +313,11 @@ The remaining production integration must also:
 - derive the 32-byte viewing-key IKM from protected wallet entropy with explicit
   domain separation, use a CSPRNG for encryption, back up keys and zeroize
   caller-owned secret copies;
-- integrate the approved proof generator/profile/release, hardware/remote
-  signer custody, per-origin abuse controls and transaction
-  submission/confirmation reconciliation (the library already persists and
-  enforces the public global fee/reserve/queue/inflight/rate-window gate);
+- feed an accepted proof from the approved prover into the pinned native
+  authorization builder, integrate hardware/remote signer custody, per-origin
+  abuse controls and transaction submission/confirmation reconciliation (the
+  library owns no signer and already persists and enforces the public global
+  fee/reserve/queue/inflight/rate-window gate);
 - execute exact builder output under LiteSVM/Agave against the final SBF and
   pinned deployment id, including CPI rollback, account locks, ALT/v0 message
   sizing, return-data behavior, rent and compute-unit evidence.

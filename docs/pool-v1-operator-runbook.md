@@ -59,6 +59,39 @@ rate-window exhaustion, fee-cap violation or insufficient post-fee reserve is
 a hard rejection. Per-origin/IP abuse controls are additional privacy-aware
 service policy; they never replace the global library gate.
 
+## Native proof authorization sequence
+
+For a private transfer or withdrawal, use the shared native Tag-73 profile and
+execute the unsigned builder outputs in this order:
+
+1. create the exact `40 + proof_body_length` verifier-owned proof account;
+2. initialize its `ASPU` header and upload every ordered 960-byte chunk;
+3. initialize the canonical pending authorization receipt with Tag 74 while
+   the upload authority is still present;
+4. seal the proof account with Tag 62;
+5. run Tag 75 with the identical 600-byte `ASVQ`, producing a finalized
+   verifier-owned receipt only after full proof acceptance;
+6. pass that exact receipt address into `ASPP`, then execute or cancel the
+   state-bound prepared plan; and
+7. close/refund the proof and receipt only when their evidence-retention policy
+   permits it. Receipt closure must not precede the Pool call that consumes it.
+
+Every transaction must be simulated before signing. A request/profile/release,
+proof account, body digest/length, statement kind, receipt PDA, upload authority
+or pending-image mismatch is terminal; operators must rebuild from authenticated
+inputs rather than edit bytes or retry under a compatibility profile.
+
+## Registry governance sequence
+
+Registry instructions must come from the exact unsigned governance builders.
+Initialize with the signed policy binding and nonzero activation delay, schedule
+the pinned native Tag-73 profile/release, wait through that on-chain delay, and
+activate only after the release evidence is complete. Release rotation schedules
+and activates a same-profile replacement before retiring the old release.
+Pause/unpause and freeze use the stored generation exactly; stale generations
+are never automatically retried. Freeze is irreversible and must follow the
+Pool-policy coordination rule in the registry program's release documentation.
+
 ## Required monitoring
 
 Alert and automatically pause new signing on:
