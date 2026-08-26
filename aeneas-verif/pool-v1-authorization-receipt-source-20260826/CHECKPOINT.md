@@ -1,8 +1,9 @@
 # Pool V1 authorization-receipt encoder source checkpoint
 
 This checkpoint links the exact extracted production function
-`encode_verifier_dispatch_result_v1` to
-`AuthorizationReceiptAccountWireV1.encodeWireDispatchResult`.
+`encode_pool_v1_authorization_receipt_v1` to
+`AuthorizationReceiptAccountWireV1.encodeWireReceipt`.  Its proof includes
+the exact transitive source equality for `encode_verifier_dispatch_result_v1`.
 
 ## Pinned inputs
 
@@ -18,33 +19,41 @@ This checkpoint links the exact extracted production function
 - Extracted production spans: binding-field encoder
   `verifier_dispatch.rs:240:0-271:1`, binding validation
   `verifier_dispatch.rs:117:0-147:1`, and dispatch-result encoder
-  `verifier_dispatch.rs:436:0-448:1`.
+  `verifier_dispatch.rs:436:0-448:1`, plus authorization-receipt encoder
+  `authorization_receipt.rs:72:0-91:1`.
 
 The formal target pins the ASVS byte layout, including magic `ASVS`, offsets
 `0,4,5,6,7,8,12,13,16,48,80,112,144,176,184,216,248,280,312,344,376,380,384`,
 little-endian integer encoding, transition discriminants, the canonical M31
 digest limbs, and all 32-byte binding fields. Receipt SHA domains and PDA seed
-order remain in the already-checked wire model; their extracted top-level
-source equality is deliberately not claimed by this dispatch-only checkpoint.
+order remain in the already-checked wire model.  The outer source proof now
+also pins the ASVA magic/version/hash/status bytes, verified-slot LE64 field,
+dispatch splice at `[16,400)`, digest splice at `[400,432)`, and the SHA-256
+callback's exact two-slice input order `[receiptDigestDomain,
+authorizationReceiptPrefix]`.  `GeneratedSha256Matches` is the explicit SHA
+implementation boundary: the proof assumes only that a successful extracted
+callback output agrees with `Sha256` on the concatenation of those supplied
+slices.  It does not assume or claim a SHA implementation theorem.
 
 ## Checked declarations
 
-The terminal theorem is `encode_dispatch_result_source_exact`. Its local chain
-includes exact U32/U64 byte conversion, header/scalar writes, all fourteen
-binding-field writes, totality of the generated eight-limb digest loop,
-successful binding validation consequences, and exact generated output-array
-normalization.
+The terminal theorem is `encode_receipt_source_exact`. Its local chain includes
+`encode_dispatch_result_source_exact`, exact U32/U64 byte conversion,
+header/scalar writes, all fourteen binding-field writes, totality of the
+generated eight-limb digest loop, successful binding validation consequences,
+the exact ASVA header and dispatch/digest slices, exact SHA preimage equality,
+and final 432-byte output-array normalization.
 
 There are no `sorry`, `admit`, project axioms, or conclusion-shaped premises.
 The generated external file contains only transparent definitions for slice
 iteration, the M31 modulus constant, and M31 little-endian bytes.
 
-Focused NUC gate `aspis-receipt-dispatch-checkpoint-v1` passed with one Lean
-thread, `MemoryMax=14G`, `MemorySwapMax=0`, 34.69 seconds wall time,
-7,089,808 KiB peak RSS reported by `/usr/bin/time`, and zero job swap.
+Focused NUC gate `aspis-receipt-outer-checkpoint-v2` passed with one Lean
+thread, `MemoryMax=14G`, `MemorySwapMax=0`, 36.65 seconds wall time,
+7,284,492 KiB peak RSS reported by `/usr/bin/time`, and zero job swap.
 Every printed theorem depends only on Lean/Mathlib foundations:
 `propext`, `Classical.choice`, and `Quot.sound` (the first small byte theorem
-does not need `Classical.choice`).
+does not need `Classical.choice`; `take392_append_exact` needs only `propext`).
 
 ## Artifact hashes
 
@@ -57,8 +66,8 @@ does not need `Classical.choice`).
 - `generated/AuthorizationReceiptEncoder/FunsExternal.lean`:
   `c4a93b8ba69fd8f34f62ed4749b1ffcc4b4b9d62fce9e9a4161310ef6578471a`.
 - `proof/AuthorizationReceiptEncoderSourceBridge.lean`:
-  `643d7a0a1b2a63bd070895bda55a4e0ec461c7553900e76927c252441b912328`.
+  `93ab3fc30cb26c71578e50cafa0e43a8f1571b1e387f265dd323daa7fccd6af0`.
 
-The smallest remaining source-equality boundary is the outer ASVA receipt
-construction and its two-slice SHA-256 callback input. Request/account/PDA
-encoders require subsequent separately extracted roots.
+The smallest remaining source-equality boundary is the request/account/PDA
+wrapper around this receipt encoder.  Those encoders require subsequent
+separately extracted roots; none is claimed by this checkpoint.

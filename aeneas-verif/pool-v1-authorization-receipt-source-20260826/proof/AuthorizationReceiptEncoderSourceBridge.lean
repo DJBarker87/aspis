@@ -902,6 +902,479 @@ theorem encode_dispatch_result_source_exact
                 simpa [bytesOfGenerated] using
                   (u32LE_generated 1095958529#u32).symm
 
+def bytesOfGeneratedSlice (values : Slice Std.U8) : ByteString :=
+  values.val.map byteOfGenerated
+
+def generatedShaPreimage (inputs : Slice (Slice Std.U8)) : ByteString :=
+  inputs.val.flatMap bytesOfGeneratedSlice
+
+def GeneratedSha256Matches (sha256 : Sha256)
+    (hash : Slice (Slice Std.U8) → Result (Array Std.U8 32#usize)) : Prop :=
+  ∀ inputs digest, hash inputs = .ok digest →
+    bytesOfGenerated digest = bytes32List (sha256 (generatedShaPreimage inputs))
+
+@[simp] theorem resultOffset_exact :
+    pool_v1.authorization_receipt.RESULT_OFFSET = 16#usize := by
+  simp [pool_v1.authorization_receipt.RESULT_OFFSET,
+    pool_v1.authorization_receipt.POOL_V1_AUTHORIZATION_RECEIPT_PREFIX_BYTES]
+
+@[simp] theorem digestOffset_exact :
+    pool_v1.authorization_receipt.DIGEST_OFFSET = .ok 400#usize := by
+  have hspec := Std.Usize.add_spec (x := 16#usize) (y := 384#usize) (by
+    scalar_tac)
+  obtain ⟨value, valueEquation, valueVal⟩ :=
+    Aeneas.Std.WP.spec_imp_exists hspec
+  have valueIs400 : value = 400#usize := by
+    apply UScalar.eq_of_val_eq
+    simpa using valueVal
+  unfold pool_v1.authorization_receipt.DIGEST_OFFSET
+  rw [resultOffset_exact]
+  simp only [pool_v1.verifier_dispatch.POOL_V1_VERIFIER_DISPATCH_RESULT_BYTES]
+  rw [valueEquation, valueIs400]
+
+def receiptFixedGeneratedBytes (receipt : GeneratedReceipt) : List Std.U8 :=
+  [65#u8, 83#u8, 86#u8, 65#u8, 1#u8, 1#u8, 1#u8, receipt.pda_bump] ++
+    (core.num.U64.to_le_bytes receipt.verified_slot).val
+
+def receiptHeaderBytes (receipt : GeneratedReceipt) : List Std.U8 :=
+  receiptFixedGeneratedBytes receipt ++ List.replicate 416 0#u8
+
+def receiptHeaderArray (receipt : GeneratedReceipt) : Array Std.U8 432#usize :=
+  ⟨receiptHeaderBytes receipt, by
+    simp [receiptHeaderBytes, receiptFixedGeneratedBytes,
+      core.num.U64.to_le_bytes]⟩
+
+theorem receipt_header_generated_bind {T : Type}
+    (receipt : GeneratedReceipt) (next : Array Std.U8 432#usize → Result T) :
+    (do
+      let output := Array.repeat 432#usize 0#u8
+      let (s, index_mut_back) ←
+        core.array.Array.index_mut (core.ops.index.IndexMutSlice
+          (core.slice.index.SliceIndexRangeToUsizeSlice Std.U8)) output
+          { «end» := 4#usize }
+      let s1 ← lift (Array.to_slice
+        pool_v1.authorization_receipt.POOL_V1_AUTHORIZATION_RECEIPT_MAGIC)
+      let s2 ← core.slice.Slice.copy_from_slice core.marker.CopyU8 s s1
+      let output1 := index_mut_back s2
+      let output2 ← Array.update output1 4#usize
+        pool_v1.authorization_receipt.POOL_V1_AUTHORIZATION_RECEIPT_VERSION
+      let output3 ← Array.update output2 5#usize
+        pool_v1.authorization_receipt.POOL_V1_AUTHORIZATION_RECEIPT_HASH_SHA256
+      let output4 ← Array.update output3 6#usize
+        pool_v1.authorization_receipt.POOL_V1_AUTHORIZATION_RECEIPT_STATUS_VERIFIED
+      let output5 ← Array.update output4 7#usize receipt.pda_bump
+      let (s3, index_mut_back1) ←
+        core.array.Array.index_mut (core.ops.index.IndexMutSlice
+          (core.slice.index.SliceIndexRangeUsizeSlice Std.U8)) output5
+          { start := 8#usize, «end» := 16#usize }
+      let a ← lift (core.num.U64.to_le_bytes receipt.verified_slot)
+      let s4 ← lift (Array.to_slice a)
+      let s5 ← core.slice.Slice.copy_from_slice core.marker.CopyU8 s3 s4
+      next (index_mut_back1 s5)) = next (receiptHeaderArray receipt) := by
+  simp [pool_v1.authorization_receipt.POOL_V1_AUTHORIZATION_RECEIPT_MAGIC,
+    pool_v1.authorization_receipt.POOL_V1_AUTHORIZATION_RECEIPT_VERSION,
+    pool_v1.authorization_receipt.POOL_V1_AUTHORIZATION_RECEIPT_HASH_SHA256,
+    pool_v1.authorization_receipt.POOL_V1_AUTHORIZATION_RECEIPT_STATUS_VERIFIED,
+    Std.lift, core.array.Array.index_mut, core.ops.index.IndexMutSlice,
+    core.slice.index.Slice.index_mut,
+    core.slice.index.SliceIndexRangeToUsizeSlice.index_mut,
+    core.slice.index.SliceIndexRangeUsizeSlice.index_mut,
+    core.slice.Slice.copy_from_slice, Array.to_slice, Array.from_slice,
+    Array.update, Array.repeat, Array.make, List.setSlice!, Slice.len,
+    receiptHeaderArray, receiptHeaderBytes, receiptFixedGeneratedBytes,
+    core.num.U64.to_le_bytes]
+  simp_lists
+
+theorem receipt_header_extracted_bind {T : Type}
+    (receipt : GeneratedReceipt) (next : Array Std.U8 432#usize → Result T) :
+    (do
+      let x ←
+        core.array.Array.index_mut (core.ops.index.IndexMutSlice
+          (core.slice.index.SliceIndexRangeToUsizeSlice Std.U8))
+          (Array.repeat 432#usize 0#u8) { «end» := 4#usize }
+      let s1 ← lift (Array.to_slice
+        pool_v1.authorization_receipt.POOL_V1_AUTHORIZATION_RECEIPT_MAGIC)
+      let s2 ← core.slice.Slice.copy_from_slice core.marker.CopyU8 x.1 s1
+      let output2 ← Array.update (x.2 s2) 4#usize
+        pool_v1.authorization_receipt.POOL_V1_AUTHORIZATION_RECEIPT_VERSION
+      let output3 ← Array.update output2 5#usize
+        pool_v1.authorization_receipt.POOL_V1_AUTHORIZATION_RECEIPT_HASH_SHA256
+      let output4 ← Array.update output3 6#usize
+        pool_v1.authorization_receipt.POOL_V1_AUTHORIZATION_RECEIPT_STATUS_VERIFIED
+      let output5 ← Array.update output4 7#usize receipt.pda_bump
+      let x1 ←
+        core.array.Array.index_mut (core.ops.index.IndexMutSlice
+          (core.slice.index.SliceIndexRangeUsizeSlice Std.U8)) output5
+          { start := 8#usize, «end» := 16#usize }
+      let a ← lift (core.num.U64.to_le_bytes receipt.verified_slot)
+      let s4 ← lift (Array.to_slice a)
+      let s5 ← core.slice.Slice.copy_from_slice core.marker.CopyU8 x1.1 s4
+      next (x1.2 s5)) = next (receiptHeaderArray receipt) := by
+  simp [pool_v1.authorization_receipt.POOL_V1_AUTHORIZATION_RECEIPT_MAGIC,
+    pool_v1.authorization_receipt.POOL_V1_AUTHORIZATION_RECEIPT_VERSION,
+    pool_v1.authorization_receipt.POOL_V1_AUTHORIZATION_RECEIPT_HASH_SHA256,
+    pool_v1.authorization_receipt.POOL_V1_AUTHORIZATION_RECEIPT_STATUS_VERIFIED,
+    Std.lift, core.array.Array.index_mut, core.ops.index.IndexMutSlice,
+    core.slice.index.Slice.index_mut,
+    core.slice.index.SliceIndexRangeToUsizeSlice.index_mut,
+    core.slice.index.SliceIndexRangeUsizeSlice.index_mut,
+    core.slice.Slice.copy_from_slice, Array.to_slice, Array.from_slice,
+    Array.update, Array.repeat, Array.make, List.setSlice!, Slice.len,
+    receiptHeaderArray, receiptHeaderBytes, receiptFixedGeneratedBytes,
+    core.num.U64.to_le_bytes]
+  simp_lists
+
+theorem receipt_header_initial_bind {T : Type}
+    (receipt : GeneratedReceipt) (initial : Array Std.U8 432#usize)
+    (hzero : initial.val = List.replicate 432 0#u8)
+    (next : Array Std.U8 432#usize → Result T) :
+    (do
+      let x ←
+        core.array.Array.index_mut (core.ops.index.IndexMutSlice
+          (core.slice.index.SliceIndexRangeToUsizeSlice Std.U8)) initial
+          { «end» := 4#usize }
+      let s1 ← lift (Array.to_slice
+        pool_v1.authorization_receipt.POOL_V1_AUTHORIZATION_RECEIPT_MAGIC)
+      let s2 ← core.slice.Slice.copy_from_slice core.marker.CopyU8 x.1 s1
+      let output2 ← Array.update (x.2 s2) 4#usize
+        pool_v1.authorization_receipt.POOL_V1_AUTHORIZATION_RECEIPT_VERSION
+      let output3 ← Array.update output2 5#usize
+        pool_v1.authorization_receipt.POOL_V1_AUTHORIZATION_RECEIPT_HASH_SHA256
+      let output4 ← Array.update output3 6#usize
+        pool_v1.authorization_receipt.POOL_V1_AUTHORIZATION_RECEIPT_STATUS_VERIFIED
+      let output5 ← Array.update output4 7#usize receipt.pda_bump
+      let x1 ←
+        core.array.Array.index_mut (core.ops.index.IndexMutSlice
+          (core.slice.index.SliceIndexRangeUsizeSlice Std.U8)) output5
+          { start := 8#usize, «end» := 16#usize }
+      let a ← lift (core.num.U64.to_le_bytes receipt.verified_slot)
+      let s4 ← lift (Array.to_slice a)
+      let s5 ← core.slice.Slice.copy_from_slice core.marker.CopyU8 x1.1 s4
+      next (x1.2 s5)) = next (receiptHeaderArray receipt) := by
+  have hinitial : initial = Array.repeat 432#usize 0#u8 := by
+    apply Subtype.ext
+    simpa [Array.repeat, Array.make] using hzero
+  subst initial
+  exact receipt_header_extracted_bind receipt next
+
+def receiptPrefixGeneratedBytes (receipt : GeneratedReceipt)
+    (dispatchOutput : Array Std.U8 384#usize) : List Std.U8 :=
+  receiptFixedGeneratedBytes receipt ++ dispatchOutput.val
+
+def receiptPrefixGeneratedArray (receipt : GeneratedReceipt)
+    (dispatchOutput : Array Std.U8 384#usize) : Array Std.U8 400#usize :=
+  ⟨receiptPrefixGeneratedBytes receipt dispatchOutput, by
+    simp [receiptPrefixGeneratedBytes, receiptFixedGeneratedBytes,
+      core.num.U64.to_le_bytes,
+      dispatchOutput.property]⟩
+
+def receiptPrefixPaddedArray (receipt : GeneratedReceipt)
+    (dispatchOutput : Array Std.U8 384#usize) : Array Std.U8 432#usize :=
+  ⟨receiptPrefixGeneratedBytes receipt dispatchOutput ++ List.replicate 32 0#u8,
+    by simp [receiptPrefixGeneratedBytes, receiptFixedGeneratedBytes,
+      core.num.U64.to_le_bytes,
+      dispatchOutput.property]⟩
+
+theorem receipt_header_setSlice_dispatch
+    (receipt : GeneratedReceipt) (dispatchOutput : Array Std.U8 384#usize) :
+    (receiptHeaderArray receipt).val.setSlice! 16 dispatchOutput.val =
+      (receiptPrefixPaddedArray receipt dispatchOutput).val := by
+  change
+    (receiptFixedGeneratedBytes receipt ++ List.replicate 416 0#u8).setSlice!
+        16 dispatchOutput.val =
+      (receiptFixedGeneratedBytes receipt ++ dispatchOutput.val) ++
+        List.replicate 32 0#u8
+  rw [setSlice_append_replicate_at
+    (receiptFixedGeneratedBytes receipt) dispatchOutput.val 0#u8 416 16
+    (by simp [receiptFixedGeneratedBytes, core.num.U64.to_le_bytes])
+    (by simp [dispatchOutput.property])]
+  simp [dispatchOutput.property]
+
+theorem receipt_prefix_padded_take
+    (receipt : GeneratedReceipt) (dispatchOutput : Array Std.U8 384#usize) :
+    List.take 400 (receiptPrefixPaddedArray receipt dispatchOutput).val =
+      (receiptPrefixGeneratedArray receipt dispatchOutput).val := by
+  have hprefixLength :
+      (receiptPrefixGeneratedBytes receipt dispatchOutput).length = 400 := by
+    simp [receiptPrefixGeneratedBytes, receiptFixedGeneratedBytes,
+      dispatchOutput.property, core.num.U64.to_le_bytes]
+  change
+    List.take 400
+        (receiptPrefixGeneratedBytes receipt dispatchOutput ++
+          List.replicate 32 0#u8) =
+      receiptPrefixGeneratedBytes receipt dispatchOutput
+  rw [← hprefixLength]
+  exact List.take_append_length
+
+theorem take392_append_exact
+    (left middle suffix : List Std.U8)
+    (hleft : left.length = 8) (hmiddle : middle.length = 384) :
+    List.take 392 (left ++ (middle ++ suffix)) = left ++ middle := by
+  have hprefix : (left ++ middle).length = 392 := by
+    simp [hleft, hmiddle]
+  rw [← List.append_assoc, ← hprefix]
+  exact List.take_append_length
+
+theorem receipt_raw_tail_exact
+    (receipt : GeneratedReceipt) (dispatchOutput : Array Std.U8 384#usize)
+    (suffix : List Std.U8) :
+    List.take 392
+        (List.map (fun byte => (⟨byte⟩ : Std.U8))
+            receipt.verified_slot.bv.toLEBytes ++
+          (dispatchOutput.val ++ suffix)) =
+      List.map (fun byte => (⟨byte⟩ : Std.U8))
+          receipt.verified_slot.bv.toLEBytes ++ dispatchOutput.val := by
+  let slotBytes : List Std.U8 :=
+    List.map (fun byte => (⟨byte⟩ : Std.U8))
+      receipt.verified_slot.bv.toLEBytes
+  have hslot :
+      slotBytes.length = 8 := by
+    simp [slotBytes, BitVec.toLEBytes]
+  have hdispatch : dispatchOutput.val.length = 384 := by
+    simpa using dispatchOutput.property
+  change
+    List.take 392
+        (slotBytes ++ (dispatchOutput.val ++ suffix)) =
+      slotBytes ++ dispatchOutput.val
+  exact take392_append_exact slotBytes dispatchOutput.val suffix hslot hdispatch
+
+theorem receipt_dispatch_generated_bind {T : Type}
+    (receipt : GeneratedReceipt) (dispatchOutput : Array Std.U8 384#usize)
+    (next : Array Std.U8 432#usize → Slice Std.U8 → Result T) :
+    (do
+      let i ← pool_v1.authorization_receipt.DIGEST_OFFSET
+      let (s6, index_mut_back2) ←
+        core.array.Array.index_mut (core.ops.index.IndexMutSlice
+          (core.slice.index.SliceIndexRangeUsizeSlice Std.U8))
+          (receiptHeaderArray receipt)
+          { start := pool_v1.authorization_receipt.RESULT_OFFSET, «end» := i }
+      let s7 ← lift (Array.to_slice dispatchOutput)
+      let s8 ← core.slice.Slice.copy_from_slice core.marker.CopyU8 s6 s7
+      let output7 := index_mut_back2 s8
+      let s9 ←
+        core.array.Array.index (core.ops.index.IndexSlice
+          (core.slice.index.SliceIndexRangeToUsizeSlice Std.U8)) output7
+          { «end» := i }
+      next output7 s9) =
+      next (receiptPrefixPaddedArray receipt dispatchOutput)
+        (Array.to_slice (receiptPrefixGeneratedArray receipt dispatchOutput)) := by
+  rw [digestOffset_exact]
+  simp [resultOffset_exact, Std.lift, core.array.Array.index_mut,
+    core.ops.index.IndexMutSlice, core.slice.index.Slice.index_mut,
+    core.slice.index.SliceIndexRangeUsizeSlice.index_mut,
+    core.slice.index.SliceIndexRangeToUsizeSlice.index,
+    core.slice.Slice.copy_from_slice, Array.to_slice, Array.from_slice,
+    receipt_header_setSlice_dispatch, receipt_prefix_padded_take,
+    Slice.len, dispatchOutput.property]
+  split <;> simp_all [receipt_header_setSlice_dispatch,
+    receipt_prefix_padded_take]
+  all_goals try scalar_tac
+
+def receiptDigestGeneratedInputs (receipt : GeneratedReceipt)
+    (dispatchOutput : Array Std.U8 384#usize) : Slice (Slice Std.U8) :=
+  Array.to_slice (Array.make 2#usize [
+    pool_v1.authorization_receipt.POOL_V1_AUTHORIZATION_RECEIPT_DIGEST_DOMAIN,
+    Array.to_slice (receiptPrefixGeneratedArray receipt dispatchOutput)
+  ] (by simp))
+
+theorem receipt_digest_generated_inputs
+    (receipt : GeneratedReceipt) (dispatchOutput : Array Std.U8 384#usize)
+    (hash : Slice (Slice Std.U8) → Result (Array Std.U8 32#usize)) :
+    pool_v1.authorization_receipt.receipt_digest_v1
+        (Array.to_slice (receiptPrefixGeneratedArray receipt dispatchOutput)) hash =
+      hash (receiptDigestGeneratedInputs receipt dispatchOutput) := by
+  simp [pool_v1.authorization_receipt.receipt_digest_v1,
+    receiptDigestGeneratedInputs, Std.lift]
+
+theorem receipt_digest_domain_generated_exact :
+    bytesOfGeneratedSlice
+        pool_v1.authorization_receipt.POOL_V1_AUTHORIZATION_RECEIPT_DIGEST_DOMAIN =
+      receiptDigestDomain := by
+  simp [bytesOfGeneratedSlice,
+    pool_v1.authorization_receipt.POOL_V1_AUTHORIZATION_RECEIPT_DIGEST_DOMAIN,
+    receiptDigestDomain, byteOfGenerated, Array.to_slice, Array.make]
+
+theorem receipt_prefix_source_exact
+    (receipt : GeneratedReceipt) (dispatchOutput : Array Std.U8 384#usize)
+    (hdispatch : bytesOfGenerated dispatchOutput =
+      encodeWireDispatchResult (bindingOfGenerated receipt.binding)) :
+    bytesOfGenerated (receiptPrefixGeneratedArray receipt dispatchOutput) =
+      wireReceiptPrefixResult (receiptOfGenerated receipt) := by
+  have hslot := (u64LE_generated receipt.verified_slot).symm
+  unfold bytesOfGenerated at hslot hdispatch
+  simp [bytesOfGenerated, receiptPrefixGeneratedArray,
+    receiptPrefixGeneratedBytes, receiptFixedGeneratedBytes,
+    wireReceiptPrefixResult, receiptOfGenerated, asvaMagic,
+    byteOfGenerated, List.map_append]
+  rw [hslot, hdispatch]
+
+theorem receipt_digest_preimage_source_exact
+    (receipt : GeneratedReceipt) (dispatchOutput : Array Std.U8 384#usize)
+    (hdispatch : bytesOfGenerated dispatchOutput =
+      encodeWireDispatchResult (bindingOfGenerated receipt.binding)) :
+    generatedShaPreimage (receiptDigestGeneratedInputs receipt dispatchOutput) =
+      receiptDigestDomain ++
+        wireReceiptPrefixResult (receiptOfGenerated receipt) := by
+  simp [generatedShaPreimage, receiptDigestGeneratedInputs,
+    bytesOfGeneratedSlice, Array.to_slice, Array.make,
+    ← receipt_prefix_source_exact receipt dispatchOutput hdispatch,
+    bytesOfGenerated]
+  simpa [bytesOfGeneratedSlice] using receipt_digest_domain_generated_exact
+
+def receiptGeneratedBytes (receipt : GeneratedReceipt)
+    (dispatchOutput : Array Std.U8 384#usize)
+    (digest : Array Std.U8 32#usize) : List Std.U8 :=
+  receiptPrefixGeneratedBytes receipt dispatchOutput ++ digest.val
+
+def receiptGeneratedArray (receipt : GeneratedReceipt)
+    (dispatchOutput : Array Std.U8 384#usize)
+    (digest : Array Std.U8 32#usize) : Array Std.U8 432#usize :=
+  ⟨receiptGeneratedBytes receipt dispatchOutput digest, by
+    simp [receiptGeneratedBytes, receiptPrefixGeneratedBytes,
+      receiptFixedGeneratedBytes, dispatchOutput.property, digest.property,
+      core.num.U64.to_le_bytes]⟩
+
+theorem receipt_padded_setSlice_digest
+    (receipt : GeneratedReceipt) (dispatchOutput : Array Std.U8 384#usize)
+    (digest : Array Std.U8 32#usize) :
+    (receiptPrefixPaddedArray receipt dispatchOutput).val.setSlice! 400 digest.val =
+      (receiptGeneratedArray receipt dispatchOutput digest).val := by
+  change
+    (receiptPrefixGeneratedBytes receipt dispatchOutput ++
+      List.replicate 32 0#u8).setSlice! 400 digest.val =
+      receiptPrefixGeneratedBytes receipt dispatchOutput ++ digest.val
+  rw [setSlice_append_replicate_at
+    (receiptPrefixGeneratedBytes receipt dispatchOutput) digest.val 0#u8 32 400
+    (by simp [receiptPrefixGeneratedBytes, receiptFixedGeneratedBytes,
+      dispatchOutput.property, core.num.U64.to_le_bytes])
+    (by simp [digest.property])]
+  simp [digest.property]
+
+theorem receipt_digest_write_generated_bind {T : Type}
+    (receipt : GeneratedReceipt) (dispatchOutput : Array Std.U8 384#usize)
+    (digest : Array Std.U8 32#usize)
+    (next : Array Std.U8 432#usize → Result T) :
+    (do
+      let (s10, index_mut_back3) ←
+        core.array.Array.index_mut (core.ops.index.IndexMutSlice
+          (core.slice.index.SliceIndexRangeFromUsizeSlice Std.U8))
+          (receiptPrefixPaddedArray receipt dispatchOutput) { start := 400#usize }
+      let s11 ← lift (Array.to_slice digest)
+      let s12 ← core.slice.Slice.copy_from_slice core.marker.CopyU8 s10 s11
+      next (index_mut_back3 s12)) =
+      next (receiptGeneratedArray receipt dispatchOutput digest) := by
+  simp [Std.lift, core.array.Array.index_mut, core.ops.index.IndexMutSlice,
+    core.slice.index.Slice.index_mut,
+    core.slice.index.SliceIndexRangeFromUsizeSlice.index_mut,
+    core.slice.Slice.copy_from_slice, Array.to_slice, Array.from_slice,
+    receipt_padded_setSlice_digest, Slice.len, digest.property]
+
+theorem receipt_generated_array_source_exact
+    (sha256 : Sha256) (receipt : GeneratedReceipt)
+    (dispatchOutput : Array Std.U8 384#usize)
+    (digest : Array Std.U8 32#usize)
+    (hdispatch : bytesOfGenerated dispatchOutput =
+      encodeWireDispatchResult (bindingOfGenerated receipt.binding))
+    (hdigest : bytesOfGenerated digest = bytes32List (sha256
+      (generatedShaPreimage
+        (receiptDigestGeneratedInputs receipt dispatchOutput)))) :
+    bytesOfGenerated (receiptGeneratedArray receipt dispatchOutput digest) =
+      encodeWireReceipt sha256 (receiptOfGenerated receipt) := by
+  have hprefix := receipt_prefix_source_exact receipt dispatchOutput hdispatch
+  have hpreimage :=
+    receipt_digest_preimage_source_exact receipt dispatchOutput hdispatch
+  unfold bytesOfGenerated at hprefix hdigest
+  change List.map byteOfGenerated
+      (receiptPrefixGeneratedBytes receipt dispatchOutput) =
+    wireReceiptPrefixResult (receiptOfGenerated receipt) at hprefix
+  simp [bytesOfGenerated, receiptGeneratedArray, receiptGeneratedBytes,
+    encodeWireReceipt, List.map_append]
+  rw [hprefix, hdigest, hpreimage]
+
+theorem encode_receipt_source_exact
+    (sha256 : Sha256)
+    (hash : Slice (Slice Std.U8) → Result (Array Std.U8 32#usize))
+    (hhash : GeneratedSha256Matches sha256 hash)
+    (receipt : GeneratedReceipt) (output : Array Std.U8 432#usize)
+    (hrun :
+      pool_v1.authorization_receipt.encode_pool_v1_authorization_receipt_v1
+        receipt hash = .ok (.Ok output)) :
+    bytesOfGenerated output = encodeWireReceipt sha256 (receiptOfGenerated receipt) := by
+  unfold pool_v1.authorization_receipt.encode_pool_v1_authorization_receipt_v1 at hrun
+  generalize hdispatch :
+      pool_v1.verifier_dispatch.encode_verifier_dispatch_result_v1
+        {
+          success_code :=
+            pool_v1.verifier_dispatch.POOL_V1_VERIFIER_DISPATCH_SUCCESS_CODE,
+          binding := receipt.binding
+        } = dispatchResult at hrun
+  cases dispatchResult with
+  | fail error => simp [Bind.bind, Aeneas.Std.bind] at hrun
+  | div => simp [Bind.bind, Aeneas.Std.bind] at hrun
+  | ok dispatchResult =>
+      cases dispatchResult with
+      | Err error =>
+          simp [core.result.Result.Insts.CoreOpsTry.branch,
+            core.result.Result.Insts.CoreOpsTryTraitFromResidualResultInfallible.from_residual,
+            pool_v1.authorization_receipt.PoolV1AuthorizationReceiptError.Insts.CoreConvertFromPoolV1VerifierDispatchFormatError.from,
+            Bind.bind, Aeneas.Std.bind] at hrun
+      | Ok dispatchOutput =>
+          have hdispatchExact :=
+            encode_dispatch_result_source_exact receipt.binding dispatchOutput hdispatch
+          simp only [core.result.Result.Insts.CoreOpsTry.branch, bind_tc_ok] at hrun
+          simp [pool_v1.authorization_receipt.POOL_V1_AUTHORIZATION_RECEIPT_MAGIC,
+            pool_v1.authorization_receipt.POOL_V1_AUTHORIZATION_RECEIPT_VERSION,
+            pool_v1.authorization_receipt.POOL_V1_AUTHORIZATION_RECEIPT_HASH_SHA256,
+            pool_v1.authorization_receipt.POOL_V1_AUTHORIZATION_RECEIPT_STATUS_VERIFIED,
+            digestOffset_exact, resultOffset_exact,
+            pool_v1.authorization_receipt.receipt_digest_v1,
+            pool_v1.authorization_receipt.POOL_V1_AUTHORIZATION_RECEIPT_DIGEST_DOMAIN,
+            Std.lift, core.array.Array.index_mut, core.ops.index.IndexMutSlice,
+            core.slice.index.Slice.index_mut,
+            core.slice.index.SliceIndexRangeToUsizeSlice.index_mut,
+            core.slice.index.SliceIndexRangeUsizeSlice.index_mut,
+            core.slice.index.SliceIndexRangeFromUsizeSlice.index_mut,
+            core.slice.index.SliceIndexRangeToUsizeSlice.index,
+            core.slice.Slice.copy_from_slice, Array.to_slice, Array.from_slice,
+            Array.update, Array.repeat, Array.make, List.setSlice!, Slice.len,
+            core.num.U64.to_le_bytes, Bind.bind, Aeneas.Std.bind,
+            take392_append_exact, BitVec.toLEBytes] at hrun
+          split at hrun
+          case h_2 => simp at hrun
+          case h_3 => simp at hrun
+          case h_1 result digest digestRun =>
+            have hdigestRaw := hhash _ digest digestRun
+            have hdispatchLength : dispatchOutput.val.length = 384 := by
+              simpa using dispatchOutput.property
+            have hdigestLength : digest.val.length = 32 := by
+              simpa using digest.property
+            have htakeDispatch : List.take 384 dispatchOutput.val =
+                dispatchOutput.val := by
+              exact (List.take_eq_self_iff dispatchOutput.val).2
+                hdispatchLength.le
+            have htakeDigest : List.take 32 digest.val = digest.val := by
+              exact (List.take_eq_self_iff digest.val).2 hdigestLength.le
+            simp only [htakeDispatch, htakeDigest] at digestRun hrun
+            simp only [htakeDispatch] at hdigestRaw
+            have hdigestExact :
+                bytesOfGenerated digest = bytes32List (sha256
+                  (generatedShaPreimage
+                    (receiptDigestGeneratedInputs receipt dispatchOutput))) := by
+              simpa [receiptDigestGeneratedInputs, receiptPrefixGeneratedArray,
+                receiptPrefixGeneratedBytes, receiptFixedGeneratedBytes,
+                Array.to_slice, Array.make, core.num.U64.to_le_bytes,
+                BitVec.toLEBytes,
+                pool_v1.authorization_receipt.POOL_V1_AUTHORIZATION_RECEIPT_DIGEST_DOMAIN]
+                using hdigestRaw
+            injection hrun with hgeneratedOutput
+            injection hgeneratedOutput with hgeneratedArray
+            subst output
+            simpa [receiptGeneratedArray, receiptGeneratedBytes,
+              receiptPrefixGeneratedBytes, receiptFixedGeneratedBytes,
+              core.num.U64.to_le_bytes, BitVec.toLEBytes] using
+              (receipt_generated_array_source_exact sha256 receipt
+                dispatchOutput digest hdispatchExact hdigestExact)
+
 #print axioms byteOfGenerated_toNat
 #print axioms bytes32List_bytes32OfGenerated
 #print axioms u32LE_generated
@@ -915,5 +1388,23 @@ theorem encode_dispatch_result_source_exact
 #print axioms encode_binding_fields_success_exact
 #print axioms validation_success_statement_version
 #print axioms encode_dispatch_result_source_exact
+#print axioms resultOffset_exact
+#print axioms digestOffset_exact
+#print axioms receipt_header_generated_bind
+#print axioms receipt_header_extracted_bind
+#print axioms receipt_header_initial_bind
+#print axioms receipt_header_setSlice_dispatch
+#print axioms receipt_prefix_padded_take
+#print axioms take392_append_exact
+#print axioms receipt_raw_tail_exact
+#print axioms receipt_dispatch_generated_bind
+#print axioms receipt_digest_generated_inputs
+#print axioms receipt_digest_domain_generated_exact
+#print axioms receipt_prefix_source_exact
+#print axioms receipt_digest_preimage_source_exact
+#print axioms receipt_padded_setSlice_digest
+#print axioms receipt_digest_write_generated_bind
+#print axioms receipt_generated_array_source_exact
+#print axioms encode_receipt_source_exact
 
 end AspisPool.AuthorizationReceiptEncoderSourceBridge
