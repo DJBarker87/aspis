@@ -1,5 +1,7 @@
 import AspisFormal.K1.V7Tag73ExactConcreteStageAssembly
 import AspisFormal.K1.V7Tag73ExactFixedK13K14FailureReduction
+import AspisFormal.K1.V7Tag73ExactParsedProofSourceBinding
+import AspisFormal.K1.V7Tag73Q16FirstCompactUniformity
 
 /-!
 # Concrete K1.3/K1.4 events for the assembled Tag-73 stages
@@ -29,6 +31,9 @@ open AspisK1.V7Tag73ExactFixedK12MerkleClassifier
 open AspisK1.V7Tag73ExactFixedK12PrefixClassifier
 open AspisK1.V7Tag73ExactFixedK13K14Classifier
 open AspisK1.V7Tag73ExactFixedK13K14FailureReduction
+open AspisK1.V7Tag73ExactParsedProofSourceBinding
+open AspisK1.V7Tag73OperationalSemanticReplay
+open AspisK1.V7Tag73Q16FirstCompactUniformity
 open AspisK1.V7Tag73ExactFixedK16Closure
 open AspisK1.V7Tag73ExactConcreteStageAssembly
 open AspisPool.AlgorithmicCircleDecoderV7
@@ -106,6 +111,70 @@ def exactTag73K14Width29Event
       (exactK13ParsedProof input).gamma
       (exactK13ParsedProof input).disclosedFinal
       (exactK13ParsedProof input).schedule}
+
+/-! ## Literal selected-schedule q16 target -/
+
+/-- A fixed-run query failure says that the literal cap-203 schedule selected
+by the operational transcript lies entirely in one exact consistency set of
+size at most 9,557.  No probability or work normalization appears here. -/
+theorem query_phase_failure_is_literal_selected_all_in_bad
+    {HiddenTape TapeIdentity Observation Statement Payload Result : Type}
+    {parameters : ExactCompilerResourceParameters}
+    {transitionFuel : Nat}
+    {configuration : ExactPlainRomConfiguration HiddenTape TapeIdentity
+      Observation Statement Tag73K12ParsedProof Payload Result parameters}
+    {projection : AcceptedTapeProjection Statement Tag73K12ParsedProof Payload}
+    {fixedInstance : PublicInstance Statement}
+    {sample : ExactCompilerSample HiddenTape parameters}
+    {decoder : ExactDecoderInstantiation QM31Exact}
+    {input : ExactK12OperationalInput transitionFuel configuration projection
+      fixedInstance sample}
+    {k12 : ExactPrefixK12Certificate input}
+    {decoded : Fin 641 → QM31Exact}
+    (source : ExactParsedProofSourceBinding input decoded)
+    (failure : QueryPhaseFailure (exactK13ParsedProof input).schedule
+      (exactK13Encoders decoder) (exactK13Transcript input k12)
+      (exactK13ParsedProof input).queries) :
+    AllInBad
+      (consistencySet (exactK13ParsedProof input).schedule
+        (exactK13Encoders decoder) (exactK13Transcript input k12))
+      (exactOperationalTape input).search.selectedSchedule.positions := by
+  intro ordinal
+  have accepted := accepted_queries_mem_consistencySet
+    (exactK13ParsedProof input).schedule (exactK13Encoders decoder)
+    (exactK13Transcript input k12) (exactK13ParsedProof input).queries
+    failure.1 ordinal
+  rw [source.selectedQueriesExact] at accepted
+  exact accepted
+
+/-- Exact witness consumed by the forthcoming same-tape q16 coupling: one
+pre-q16 consistency set, its deployed cardinality cap, and the actual selected
+schedule landing wholly inside it. -/
+theorem query_phase_failure_exposes_literal_q16_bad_set
+    {HiddenTape TapeIdentity Observation Statement Payload Result : Type}
+    {parameters : ExactCompilerResourceParameters}
+    {transitionFuel : Nat}
+    {configuration : ExactPlainRomConfiguration HiddenTape TapeIdentity
+      Observation Statement Tag73K12ParsedProof Payload Result parameters}
+    {projection : AcceptedTapeProjection Statement Tag73K12ParsedProof Payload}
+    {fixedInstance : PublicInstance Statement}
+    {sample : ExactCompilerSample HiddenTape parameters}
+    {decoder : ExactDecoderInstantiation QM31Exact}
+    {input : ExactK12OperationalInput transitionFuel configuration projection
+      fixedInstance sample}
+    {k12 : ExactPrefixK12Certificate input}
+    {decoded : Fin 641 → QM31Exact}
+    (source : ExactParsedProofSourceBinding input decoded)
+    (failure : QueryPhaseFailure (exactK13ParsedProof input).schedule
+      (exactK13Encoders decoder) (exactK13Transcript input k12)
+      (exactK13ParsedProof input).queries) :
+    ∃ bad : Finset (Fin 262144),
+      bad.card ≤ 9557 ∧
+        AllInBad bad
+          (exactOperationalTape input).search.selectedSchedule.positions := by
+  exact ⟨consistencySet (exactK13ParsedProof input).schedule
+      (exactK13Encoders decoder) (exactK13Transcript input k12), failure.2,
+    query_phase_failure_is_literal_selected_all_in_bad source failure⟩
 
 theorem assembled_k13_error_subset_query_or_onefold
     {HiddenTape TapeIdentity Observation Statement Payload Witness : Type}
@@ -197,6 +266,8 @@ theorem assembled_k13_k14_error_subset_exact_union
 #print axioms assembled_k13_error_subset_query_or_onefold
 #print axioms assembled_k14_error_subset_width29
 #print axioms assembled_k13_k14_error_subset_exact_union
+#print axioms query_phase_failure_is_literal_selected_all_in_bad
+#print axioms query_phase_failure_exposes_literal_q16_bad_set
 
 end
 
