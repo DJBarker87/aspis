@@ -58,6 +58,68 @@ def applyAfterVerifiedDispatch
     (dispatchAuthorized returningProgram selectedProgram expectedBinding returned)
     effectsComplete plan
 
+/-- Complete CPI/return-data outcome composition.  Only a captured result can
+reach the verifier-binding decision; CPI failure and missing return data feed
+`proofAuthorized = false` directly into the same settlement gate. -/
+def applyAfterDispatchOutcome
+    {Note Root Marker Authority Program BindingType : Type}
+    [DecidableEq Note] [DecidableEq Root] [DecidableEq Marker]
+    [DecidableEq Authority] [DecidableEq Program] [DecidableEq BindingType]
+    (live : State Note Root Marker) (slot : Nat) (signer : Authority)
+    (effectsComplete : Bool) (plan : Plan Note Root Marker Authority)
+    (selectedProgram : Program) (expectedBinding : BindingType)
+    (outcome : DispatchOutcome Program (Result BindingType)) :
+    ApplyResult Note Root Marker Authority :=
+  match outcome with
+  | .cpiError => applyPrepared live slot signer false effectsComplete plan
+  | .missingReturnData =>
+      applyPrepared live slot signer false effectsComplete plan
+  | .captured returningProgram returned =>
+      applyAfterVerifiedDispatch live slot signer effectsComplete plan
+        returningProgram selectedProgram expectedBinding returned
+
+theorem cpi_error_preserves_exact_prestate
+    {Note Root Marker Authority Program BindingType : Type}
+    [DecidableEq Note] [DecidableEq Root] [DecidableEq Marker]
+    [DecidableEq Authority] [DecidableEq Program] [DecidableEq BindingType]
+    (live : State Note Root Marker) (slot : Nat) (signer : Authority)
+    (effectsComplete : Bool) (plan : Plan Note Root Marker Authority)
+    (selectedProgram : Program) (expectedBinding : BindingType) :
+    applyAfterDispatchOutcome live slot signer effectsComplete plan
+        selectedProgram expectedBinding (.cpiError) =
+      { state := live, plan := plan } := by
+  apply rejected_apply_is_exact_prestate
+  intro authorized
+  cases authorized.2.2.2.2.1
+
+theorem missing_return_data_preserves_exact_prestate
+    {Note Root Marker Authority Program BindingType : Type}
+    [DecidableEq Note] [DecidableEq Root] [DecidableEq Marker]
+    [DecidableEq Authority] [DecidableEq Program] [DecidableEq BindingType]
+    (live : State Note Root Marker) (slot : Nat) (signer : Authority)
+    (effectsComplete : Bool) (plan : Plan Note Root Marker Authority)
+    (selectedProgram : Program) (expectedBinding : BindingType) :
+    applyAfterDispatchOutcome live slot signer effectsComplete plan
+        selectedProgram expectedBinding (.missingReturnData) =
+      { state := live, plan := plan } := by
+  apply rejected_apply_is_exact_prestate
+  intro authorized
+  cases authorized.2.2.2.2.1
+
+@[simp] theorem captured_outcome_eq_verified_dispatch
+    {Note Root Marker Authority Program BindingType : Type}
+    [DecidableEq Note] [DecidableEq Root] [DecidableEq Marker]
+    [DecidableEq Authority] [DecidableEq Program] [DecidableEq BindingType]
+    (live : State Note Root Marker) (slot : Nat) (signer : Authority)
+    (effectsComplete : Bool) (plan : Plan Note Root Marker Authority)
+    (returningProgram selectedProgram : Program)
+    (expectedBinding : BindingType) (returned : Result BindingType) :
+    applyAfterDispatchOutcome live slot signer effectsComplete plan
+        selectedProgram expectedBinding (.captured returningProgram returned) =
+      applyAfterVerifiedDispatch live slot signer effectsComplete plan
+        returningProgram selectedProgram expectedBinding returned := by
+  rfl
+
 /-- Any verifier-dispatch rejection selects the exact custody/plan pre-state,
 even if all other settlement inputs are favorable. -/
 theorem rejected_dispatch_preserves_exact_prestate
@@ -180,6 +242,9 @@ theorem verified_prepared_withdrawal_matches_direct
   · rfl
 
 #print axioms dispatchAuthorized_eq_true_iff
+#print axioms cpi_error_preserves_exact_prestate
+#print axioms missing_return_data_preserves_exact_prestate
+#print axioms captured_outcome_eq_verified_dispatch
 #print axioms rejected_dispatch_preserves_exact_prestate
 #print axioms accepted_dispatch_applies_candidate_and_retires
 #print axioms verified_prepared_transfer_matches_direct
