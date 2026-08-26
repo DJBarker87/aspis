@@ -221,3 +221,95 @@ The smallest remaining production boundary is the separate public
 `authorization_receipt_account.rs:214:0-223:1`.  It transitively contains the
 variable-length ASVQ request encoder and its SHA callback and is intentionally
 excluded from this checkpoint.
+
+## Request-digest source checkpoint
+
+This checkpoint closes that separate public production root,
+`pool_v1_authorization_receipt_request_digest_v1` at
+`authorization_receipt_account.rs:214:0-223:1`.  Its extraction transitively
+contains the complete variable-length ASVQ request encoder at
+`verifier_dispatch.rs:360:0-392:1`, binding validation at lines
+`117:0-147:1`, the statement-payload digest path at lines `170:0-199:1`, and
+the exact 384-byte binding-field writes at lines `240:0-271:1`.
+
+The terminal theorem is `request_digest_source_exact`.  From a successful
+extracted production call and the explicit `GeneratedSha256Matches` callback
+contract, it proves that the returned bytes are exactly
+`bytes32List (sha256 (wireRequestDigestPreimage (requestOfGenerated request)))`.
+The preimage is the request-digest domain followed by the exact canonical ASVQ
+request image, including its variable-length statement payload.  The local
+source chain proves:
+
+- `statement_payload_digest_preimage_source_exact` and
+  `statement_payload_digest_success_exact`, pinning the statement digest's
+  exact domain, version, profile/release bindings, payload length, and payload;
+- `encode_dispatch_request_source_exact`, pinning successful validation,
+  payload-length equality, the 1024-byte allocation bound, exact 384-byte
+  request header/binding image, and byte-for-byte payload append;
+- `request_digest_preimage_source_exact`, pinning the callback's exact
+  two-slice input order `[requestDigestDomain, canonicalRequest]`;
+- `request_digest_source_exact`, which composes the extracted request encoder
+  with the successful SHA callback contract.
+
+The SHA callback equality is the only cryptographic implementation boundary.
+No SHA implementation theorem, Solana/PDA assumption, Poseidon assumption, or
+circle-field assumption is introduced.  There are no `sorry`, `admit`,
+project axioms, conclusion-shaped premises, or `#exit` in the proof or
+generated modules.  The generated external module contains only transparent
+definitions for slice iteration, the M31 modulus, `Option.ok_or`, and M31
+little-endian bytes.
+
+Charon gate `aspis-receipt-request-charon-v1` passed from the pinned committed
+source with one Cargo job, `MemoryMax=14G`, `MemorySwapMax=0`, 8.85 seconds
+wall time, 489,168 KiB peak RSS, and zero swap.  Aeneas gate
+`aspis-receipt-request-aeneas-v1` passed in 1.16 seconds with 271,948 KiB peak
+RSS and zero swap.  Lean 4.32 gates for normalized `Types`, transparent
+external definitions, and `Funs` passed with peak RSS values 2,387,400 KiB,
+2,371,768 KiB, and 2,420,072 KiB respectively, all with zero swap.
+
+The proof is deliberately split into three bounded modules.  Focused gate
+`aspis-request-only-base-v2` passed in 32.30 seconds with 7,202,268 KiB peak
+RSS and zero swap.  Gate `aspis-request-only-prefix-v6` passed in 5.43 seconds
+with 6,985,548 KiB peak RSS and zero swap.  Terminal gate
+`aspis-request-only-terminal-v32` passed with one Lean thread,
+`MemoryHigh=10G`, `MemoryMax=12G`, `MemorySwapMax=0`, 3.84 seconds wall time,
+6,954,916 KiB peak RSS, and zero swap.  All five terminal `#print axioms`
+results depend only on `propext`, `Classical.choice`, and `Quot.sound`; none
+depends on `sorryAx`.
+
+The raw Aeneas output hashes for `Types.lean` and `Funs.lean` are respectively
+`b2870e766d8d130d068b9bd3334f7f6fad96df8fc54e1a59de206d1d733ca6c`
+and `f46421f01d61e7266dcf9524bbedb98ad82b5173d727ea5dbb4145c6892b3bfc`.
+As in the preceding checkpoints, the tracked normalization changes only the
+generated import lines needed by the pinned Lean 4.32 environment.
+
+### Request-digest artifact hashes
+
+- `extraction/AuthorizationReceiptRequestDigest.llbc`:
+  `fcba07c9a8b9a04da13a39014de8714e0f607a0a7b86b28830d38ca33f06215c`.
+- `generated/AuthorizationReceiptRequestDigest/Types.lean`:
+  `3c1dec5fbb998b4bf56f7dfb631fc3fb8498774691bf41fbecc66f07c8e0045f`.
+- `generated/AuthorizationReceiptRequestDigest/Funs.lean`:
+  `c17149c86f13b8f7398414ddc1c12c37ac2f4bb8791651ccd88ef2b330064ad0`.
+- `generated/AuthorizationReceiptRequestDigest/FunsExternal.lean`:
+  `5864d011f3bd1a02404016c6ab7d5925cb5a51f519bccb66ddfd03500e6e0cf5`.
+- `proof/AuthorizationReceiptRequestDigestDispatchBase.lean`:
+  `f64377f13b01b72127d53fb2e5420082b6e87491295a5644c39b64fa4d20de53`.
+- `proof/AuthorizationReceiptRequestDigestRequestPrefix.lean`:
+  `43361e43505ce38b5b8fe16c1628dc530c2bffe9f146cf92ec448ee0a31543dd`.
+- `proof/AuthorizationReceiptRequestDigestSourceBridge.lean`:
+  `24ca8d6652235fef80ce8c73655e8babdc4468a5b523ef6dc8893bd5211e9bcb`.
+
+The corresponding checked OLean hashes are
+`7b646635467feefc5a1d0dc1a41e655a07df7b038fd52e1bd03179552543aeb1`,
+`dd79184ad17422a95498555a4100d9ae2368475eb08ed8f89f89eb3a4157f0c7`,
+and `284f3a62182f4d7623eb869e2b230b94cbf20aba65681f72971efc0a1a7998f4`
+for the base, prefix, and terminal modules respectively.
+
+With the receipt encoder, binding digest, request digest, and PDA inputs now
+checked independently, the smallest remaining production source-equality
+boundary is the public pending-image constructor
+`initialize_pool_v1_authorization_receipt_account_v1`, including its private
+`encode_pending_after_authority_check` helper.  The finalized-image transition
+and account decoder/validators remain separate subsequent roots; none is
+claimed by this request-digest checkpoint.
