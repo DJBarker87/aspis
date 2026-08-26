@@ -1103,19 +1103,13 @@ theorem three_quadratic_events_le_bcs_numerator
       simp only [div_eq_mul_inv]
       ring
 
-/-- BCS-shaped finite-output benchmark for one adaptive lazy-oracle bad event.
-It is a definition, not a field, axiom, theorem premise, or claimed Tag-73
-result. Literal BCS applicability has failed, so even a proof of this bound
-would still need the query-DAG/forest coupling and could require additional
-Tag-specific events. The three work predicates are absent: selected work
-nonces and transcript absorbs stay in the execution, while only the work
-predicates are erased in the separate deterministic acceptance refinement. -/
-def AdaptiveHashChainProbabilityLemmaNeeded
-    {Sample : Type*} (law : PMF Sample) (adaptiveHashChainBad : Set Sample)
-    (oracleQueries : Nat) : Prop :=
-  law.toOuterMeasure adaptiveHashChainBad ≤
-    3 * (((oracleQueries : ENNReal) ^ 2) + 1) /
-      ((2 : ENNReal) ^ 256)
+/-!
+The former `AdaptiveHashChainProbabilityLemmaNeeded` placeholder has been
+removed.  It encoded a BCS-shaped coefficient without constructing the
+deployed Tag-73 scheduler coupling.  The exact replacement is the seeded
+causal target tree and its operational clean-trace certificate in the
+isolated K1.6 modules; no generic compiler statement is retained here.
+-/
 
 #print axioms splitAtDrivingQuery_success
 #print axioms makeSameTapeExperimentOrigin_identity
