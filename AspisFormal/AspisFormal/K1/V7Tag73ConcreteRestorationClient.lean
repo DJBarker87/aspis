@@ -904,6 +904,30 @@ private def dispatchConcreteRestoration
       dispatchPreparedRestoration startProgram environment configuration prepared
         accumulator resume
 
+/-- One checked layer of the concrete client interpreter.  This wrapper is
+public only so the induction theorem below can state its step case without
+exposing the private recursive runner.  It performs the actual preparation,
+failure recording, fork request, programming, prover replay, verifier suffix,
+and continuation dispatch defined above; it is not a caller-supplied handler.
+-/
+def dispatchOneConcreteRestoration
+    {Statement Proof Payload Result : Type*}
+    {globalOracleCalls : Nat}
+    (startProgram : OracleMachine
+      (CheckedRawTag73AdversaryReturnedValue Statement Proof Payload))
+    (environment : FutureFreeEnvironment)
+    (configuration : ConcreteRestorationConfiguration)
+    (accumulator : ConcreteRestorationAccumulator Statement Proof Payload)
+    (request : ConcreteRestorationRequest)
+    (resume : ConcreteRestorationReply →
+      ConcreteRestorationAccumulator Statement Proof Payload →
+        SchedulerNativeCursor globalOracleCalls
+          (ConcreteRestorationClientRun Statement Proof Payload Result)) :
+    SchedulerNativeCursor globalOracleCalls
+      (ConcreteRestorationClientRun Statement Proof Payload Result) :=
+  dispatchConcreteRestoration startProgram environment configuration
+    accumulator request resume
+
 /-- Total fuel-bounded interpreter.  The recursive call consumes one
 restoration-fuel unit before any asynchronous scheduler stage is installed. -/
 private def runConcreteRestorationClient
@@ -925,11 +949,60 @@ private def runConcreteRestorationClient
         { halt := .restorationFuelExhausted
           accumulator := failed }
   | fuel + 1, accumulator, .restore request next =>
-      dispatchConcreteRestoration startProgram environment configuration accumulator
-        request
+      dispatchOneConcreteRestoration startProgram environment configuration
+        accumulator request
         (fun reply nextAccumulator =>
           runConcreteRestorationClient startProgram environment configuration fuel
             nextAccumulator (next reply))
+
+private theorem run_concrete_restoration_client_induction_aux
+    {Statement Proof Payload Result : Type*}
+    {globalOracleCalls : Nat}
+    (startProgram : OracleMachine
+      (CheckedRawTag73AdversaryReturnedValue Statement Proof Payload))
+    (environment : FutureFreeEnvironment)
+    (configuration : ConcreteRestorationConfiguration)
+    (motive : SchedulerNativeCursor globalOracleCalls
+      (ConcreteRestorationClientRun Statement Proof Payload Result) → Prop)
+    (terminal : ∀ run, motive (.returned run))
+    (requestStep : ∀
+      (accumulator : ConcreteRestorationAccumulator Statement Proof Payload)
+      (request : ConcreteRestorationRequest)
+      (resume : ConcreteRestorationReply →
+        ConcreteRestorationAccumulator Statement Proof Payload →
+          SchedulerNativeCursor globalOracleCalls
+            (ConcreteRestorationClientRun Statement Proof Payload Result)),
+      (∀ reply nextAccumulator, motive (resume reply nextAccumulator)) →
+      motive (dispatchOneConcreteRestoration startProgram environment
+        configuration accumulator request resume))
+    (fuel : Nat)
+    (accumulator : ConcreteRestorationAccumulator Statement Proof Payload)
+    (client : ConcreteRestorationClient Result) :
+    motive (runConcreteRestorationClient startProgram environment configuration
+      fuel accumulator client) := by
+  induction fuel generalizing accumulator client with
+  | zero =>
+      cases client with
+      | pure result =>
+          exact terminal
+            { halt := .returned result, accumulator := accumulator }
+      | restore request next =>
+          exact terminal
+            { halt := .restorationFuelExhausted
+              accumulator := accumulator.addFailure request
+                .restorationFuelExhausted }
+  | succ fuel ih =>
+      cases client with
+      | pure result =>
+          exact terminal
+            { halt := .returned result, accumulator := accumulator }
+      | restore request next =>
+          apply requestStep accumulator request
+            (fun reply nextAccumulator =>
+              runConcreteRestorationClient startProgram environment
+                configuration fuel nextAccumulator (next reply))
+          intro reply nextAccumulator
+          exact ih nextAccumulator (next reply)
 
 /-- Scheduler-native lower-level entry.  A surrounding cursor constructs the
 root from its actual initial prover and verifier callbacks, while every replay
@@ -948,6 +1021,41 @@ def startConcreteRestorationClientFromRoot
       (ConcreteRestorationClientRun Statement Proof Payload Result) :=
   runConcreteRestorationClient startProgram environment configuration
     restorationFuel (initialRestorationAccumulatorFromRoot root) client
+
+/-- Public induction hook for the private fuel-bounded interpreter.  To prove
+a property of the actual client cursor, it is enough to prove it for terminal
+results and show that the real one-request dispatcher preserves it whenever
+all adaptive reply continuations already have it.  No unchecked cursor,
+resource fact, or result field is supplied by the caller. -/
+theorem start_concrete_restoration_client_from_root_induction
+    {Statement Proof Payload Result : Type*}
+    {globalOracleCalls : Nat}
+    (startProgram : OracleMachine
+      (CheckedRawTag73AdversaryReturnedValue Statement Proof Payload))
+    (environment : FutureFreeEnvironment)
+    (root : ConcreteRestorationNode Statement Proof Payload)
+    (configuration : ConcreteRestorationConfiguration)
+    (restorationFuel : Nat)
+    (client : ConcreteRestorationClient Result)
+    (motive : SchedulerNativeCursor globalOracleCalls
+      (ConcreteRestorationClientRun Statement Proof Payload Result) → Prop)
+    (terminal : ∀ run, motive (.returned run))
+    (requestStep : ∀
+      (accumulator : ConcreteRestorationAccumulator Statement Proof Payload)
+      (request : ConcreteRestorationRequest)
+      (resume : ConcreteRestorationReply →
+        ConcreteRestorationAccumulator Statement Proof Payload →
+          SchedulerNativeCursor globalOracleCalls
+            (ConcreteRestorationClientRun Statement Proof Payload Result)),
+      (∀ reply nextAccumulator, motive (resume reply nextAccumulator)) →
+      motive (dispatchOneConcreteRestoration startProgram environment
+        configuration accumulator request resume)) :
+    motive (startConcreteRestorationClientFromRoot
+      (globalOracleCalls := globalOracleCalls) startProgram environment root
+      configuration restorationFuel client) := by
+  exact run_concrete_restoration_client_induction_aux startProgram environment
+    configuration motive terminal requestStep restorationFuel
+      (initialRestorationAccumulatorFromRoot root) client
 
 /-- Entry point deriving the initial node store from one actual raw verifier
 execution. -/
@@ -1009,6 +1117,7 @@ def startConcreteRestorationClient
 #print axioms start_pure_client_returns_exact_root_accumulator
 #print axioms initial_accumulator_from_root_is_singleton
 #print axioms start_pure_client_from_root_returns_exact_accumulator
+#print axioms start_concrete_restoration_client_from_root_induction
 
 end
 
