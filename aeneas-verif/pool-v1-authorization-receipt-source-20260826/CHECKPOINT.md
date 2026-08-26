@@ -71,3 +71,82 @@ does not need `Classical.choice`; `take392_append_exact` needs only `propext`).
 The smallest remaining source-equality boundary is the request/account/PDA
 wrapper around this receipt encoder.  Those encoders require subsequent
 separately extracted roots; none is claimed by this checkpoint.
+
+## Binding-digest source checkpoint
+
+The next bounded root is the exact public production function
+`pool_v1_authorization_receipt_binding_digest_v1` at
+`authorization_receipt_account.rs:200:0-212:1`, including the binding-digest
+domain constant at `authorization_receipt_account.rs:67:0-68:54` and the
+transitive dispatch encoder described above.  The account source at the pinned
+Rust revision has SHA-256
+`132b264453c4d3c286b4d39f92b132c8e662495f809ff2ad57559d37098245cf`.
+
+The terminal theorem is `binding_digest_source_exact`.  From a successful
+generated execution it proves that the returned 32-byte array is exactly
+`bytes32List (sha256 (wireBindingDigestPreimage binding))`.  Its local bridge
+pins the callback's exact two-slice input order to
+`[bindingDigestDomain, encodeWireDispatchResult binding]`.  The only external
+boundary is `GeneratedSha256Matches`: a successful generated callback result
+must equal the abstract `Sha256` value on the concatenation of the slices
+actually supplied by Rust.  No Solana/PDA, Poseidon, or circle assumption is
+used by this root.
+
+The focused theorem inventory is:
+
+- `binding_digest_domain_generated_exact`;
+- `binding_digest_preimage_source_exact`;
+- `binding_digest_source_exact`;
+- the transitive dispatch chain ending in
+  `encode_dispatch_result_source_exact`, including exact scalar encoding,
+  binding-field writes, validation, and canonical M31 digest-loop totality.
+
+Charon gate `aspis-receipt-binding-charon-v3` passed from the pinned committed
+source tree with `--start-from
+crate::pool_v1::authorization_receipt_account::pool_v1_authorization_receipt_binding_digest_v1`,
+one Cargo job, `MemoryMax=14G`, `MemorySwapMax=0`, 8.80 seconds wall time,
+489,880 KiB peak RSS, and zero swap.  Aeneas gate
+`aspis-receipt-binding-aeneas-v1` passed in 1.02 seconds with 241,960 KiB peak
+RSS and zero swap.  The normalized generated `Types`, transparent external
+definitions, and `Funs` each passed Lean 4.32 gates
+`aspis-receipt-binding-{types,external,funs}-v4` with zero swap.  Their peak
+RSS values were 2,510,564 KiB, 2,499,740 KiB, and 2,531,140 KiB respectively.
+
+Focused proof gate `aspis-receipt-binding-proof-v4` passed with one Lean
+thread, `MemoryMax=14G`, `MemorySwapMax=0`, 32.90 seconds wall time,
+7,213,532 KiB peak RSS reported by `/usr/bin/time`, and zero swap.  All sixteen
+printed declarations depend only on `propext`, `Classical.choice`, and
+`Quot.sound`; `byteOfGenerated_toNat` needs only `propext` and `Quot.sound`.
+There are no `sorry`, `admit`, project axioms, conclusion-shaped premises, or
+`#exit`.
+
+The raw Aeneas output hashes for `Types.lean` and `Funs.lean` are respectively
+`68aae987513fd1fe63fa798aac25b87c0b712410f7df7f0dcb91aa92835b8722`
+and `e6c825336506ab36207ddf5603347db0703a1442636496a27ce6fd151c0190cc`.
+The tracked Lean 4.32 normalization changes only their generated `import
+Aeneas` line to the same scoped `Aeneas.Std`, discriminant, and Rust-attribute
+imports used by the preceding receipt checkpoint; reverse-normalizing those
+lines reproduces the two raw hashes exactly.
+
+### Binding-digest artifact hashes
+
+- `extraction/AuthorizationReceiptBindingDigest.llbc`:
+  `9f29d671662844090d98681f76924bf77daf4d187acc0a6f5660bc71c8963b11`.
+- `generated/AuthorizationReceiptBindingDigest/Types.lean`:
+  `dba3111f2733e4627b72e04cf9d1e83cfd0af1479785058d7eecc1685a90d660`.
+- `generated/AuthorizationReceiptBindingDigest/Funs.lean`:
+  `f33b18241deb879bc82647b5ba0ae9c01560db66cdb021cfec2a213a810397f4`.
+- `generated/AuthorizationReceiptBindingDigest/FunsExternal.lean`:
+  `dbb4e90df9e16aa8ea7c3b00a6037d5de9334a743286dcb40f17fd3ad76cb860`.
+- `proof/AuthorizationReceiptBindingDigestSourceBridge.lean`:
+  `b31e78d2a4448c41f09fbe06a12a1a5aaec2468da0213959d119525320dcd155`.
+
+The smallest remaining production source-equality boundary is
+`pool_v1_authorization_receipt_pda_inputs_for_binding_v1` at
+`authorization_receipt_account.rs:225:0-236:1`, together with
+`PoolV1AuthorizationReceiptPdaInputsV1.dynamic_seeds` at lines 103:0-113:1.
+It is now a small constructor theorem over this checked binding digest and
+will pin the dynamic seed order `[proof_account, statement_digest,
+binding_digest]` with the bump kept separately.  The separately hashed request
+digest root at lines 214:0-223:1 remains the next prerequisite for pending and
+finalized account-image construction.
