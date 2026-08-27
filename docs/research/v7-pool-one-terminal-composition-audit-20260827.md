@@ -24,11 +24,19 @@ evidence, but its two successful transactions cannot be concatenated:
 ```
 
 The viable route is deletion rather than moving the prepared work into one
-call. The primary candidate keeps the 30,504-byte proof independent of the live
-append state: it proves the historical spend relation and exact output pair,
-then the locked Pool computes the twenty current append parents during the same
-terminal instruction. A late Tag-73 Stage-B append proof remains a fallback,
-not the default, because its exact wire cost is materially larger.
+call. An exact SBF/LiteSVM probe ruled out computing the current append inside
+the Pool suffix: one pair compression plus twenty upper parents costs 492,863
+CU over the zero-parent baseline before Pool parsing, history, marker or
+custody work. The primary candidate therefore carries the live append through
+late Tag-73 Stage B and returns the verified next pair-tree state. The Pool
+terminal suffix only checks and byte-writes that result atomically with history,
+nullifier and custody effects.
+
+This primary route has a measured/formal cost which must be faced explicitly:
+the proof is 34,658 bytes, 4,154 bytes larger than the frozen 30,504-byte V7
+proof, and a completed proof becomes stale after a competing append. It remains
+one terminal transaction; proof-account creation and uploads are preparatory
+data transport, not a separate authorization or settlement transaction.
 
 ## What the measurements prove
 
@@ -40,6 +48,7 @@ single executable profile.
 | Frozen V7 Tag-73 atomic execution | 1,258,013 CU | The old 30,504-byte proof, all work checks, old 80-byte atomic state and nullifier fit with 141,987 CU below 1.4M. |
 | Current direct Pool private-transfer path with a 485-CU mock verifier | failed after consuming 1,399,850 CU | The current Pool path alone does not fit. The mock verifier is not cryptographic evidence. |
 | Current prepared Pool lifecycle | 1,256,357 + 643,108 = 1,899,465 CU | Pool append/image preparation and later authenticated settlement each fit separately, but no proof verification is included. |
+| Literal production Pool Poseidon probe | 20 parents: 469,798 CU total; 21 parents: 493,270 CU total | The zero-parent transaction costs 407 CU, so twenty upper parents add 469,391 CU and pair compression plus twenty parents add 492,863 CU. This rejects execution-time append under the present implementation. |
 
 The direct-path red gate records 846,646 CU remaining when the mock verifier is
 entered. Therefore the exact pre-verifier Pool prefix consumes:
@@ -83,7 +92,7 @@ Preparation starts at `processor.rs:1052`; settlement starts at
 | Plan PDA creation, zero/rent rechecks and full-image copies | `processor.rs:1138-1232` | Delete completely. |
 | Plan decoding and exact-image comparisons | `prepared_settlement.rs:866-1021` | Delete completely. |
 | Plan close, tombstone and refund | `processor.rs:1728-1746` | Delete completely. There is no terminal plan account. |
-| Poseidon tree append | Preparation only | Compute one pair append from the locked current frontier exactly once in the terminal suffix. The proof authenticates the output pair; there is no prepared duplicate. |
+| Poseidon tree append | Preparation only | Move the one pair compression and twenty upper parents into late Stage B of the proof. The terminal suffix consumes the verified afterstate and performs no Pool Poseidon. |
 | Nullifier marker and withdrawal custody | Settlement only | Retain in the terminal transaction. These are state/economic effects, not reusable preparation. |
 
 The prepared lifecycle's historical-page/current-page concurrency fixture
@@ -134,24 +143,27 @@ saving.
 | Stable Stage-A witness/trace and its commitment | Yes | Reused unchanged while the historical membership root remains retained. |
 | Historical membership-anchor envelope | Yes, subject to retention policy and registry validity | Reauthenticated read-only in the terminal transaction. |
 | Nullifier, output commitments, value/custody statement and output pair | Yes | Bound by both the stable proof prefix and the final terminal statement. |
-| Live append root/frontier | Not part of the primary proof | Read only after the terminal transaction locks the Pool; the Pool computes the one pair append against that exact state. |
-| Completed 30,504-byte proof | Yes | Remains valid across intervening appends while its historical membership root is retained and its nullifier remains fresh. |
-| Late 800-byte snapshot and Stage-B suffix | Fallback only | Required only by the proof-carried-append alternative; that completed fallback proof is stale after a competing append. |
+| Live append root/frontier | No | Captured in the exact 800-byte late snapshot after `lambda, chi` and bound by Stage B. |
+| Stable Stage-A proof prefix | Yes | May be reused while the historical membership root remains retained and the nullifier remains fresh. |
+| Completed 34,658-byte proof | No | Becomes stale after a competing append changes the current pair root/index/frontier. |
+| Late 800-byte snapshot and Stage-B suffix | No | Must be rebuilt from the changed live state after a competing append. |
 | Generic proof-body digest, ASRA and ASPS/ASRS images | Not needed | Deleted from the one-terminal profile. |
 
 ## Append semantics that must remain in the terminal transaction
 
-The primary route keeps the append decision and its deterministic arithmetic in
-the terminal transaction. It must do all of the following:
+The primary route keeps append authorization and every state/economic effect in
+the terminal transaction, while the append arithmetic is proof-carried. It must
+do all of the following:
 
 1. read and canonically decode the live Pool-owned state;
 2. authenticate the independently retained historical membership root;
 3. invoke the registry-selected Tag-73 profile and require immediate
-   authenticated success for the historical spend, nullifier and exact output
-   pair;
-4. compress that verified output pair and compute exactly twenty Poseidon
-   parents from the currently locked pair-tree frontier;
-5. persist exactly the locally computed next sequence, root and frontier;
+   authenticated success for the historical spend, nullifier, exact output
+   pair and late current-state append;
+4. receive the canonical verified afterstate containing next pair index, root
+   and twenty frontier digests;
+5. require its old-state binding to match the currently locked Pool, require
+   `next_index = old_index + 1`, and persist exactly those verified bytes;
 6. append exactly one new root chronologically to retained history, including
    rollover routing;
 7. create/populate the exact fresh nullifier marker once;
@@ -159,16 +171,12 @@ the terminal transaction. It must do all of the following:
    transfer; and
 9. expose success only after every write/CPI has completed.
 
-There is no second append computation: ASPS preparation is absent. Since the
-proof does not bind a prospective current append root, another user's append
-does not make its bytes stale. Solana's writable lock serializes the terminal
-state read and write, and the Pool applies the verified output pair to whichever
-canonical current state it actually locked. Historical membership and current
-append roots therefore remain separate without a proof-rebuild race.
-
-The proof-carried fallback has different concurrency. It absorbs an exact
-800-byte live snapshot after `lambda, chi`; any competing append then requires
-rebuilding Stage B and the entire downstream suffix.
+There is no second append computation and ASPS preparation is absent. The
+proof absorbs an exact 800-byte live snapshot after `lambda, chi`; a competing
+append makes the completed proof stale and requires rebuilding Stage B and the
+downstream suffix. Historical membership and current append roots remain
+semantically separate, but this conservative design accepts optimistic
+concurrency rather than pretending to have removed proof staleness.
 
 ## Why the pair tree is the minimum viable append relation
 
@@ -193,14 +201,20 @@ degree 27. The source constants are in
 `crates/aspis-statement/src/pool_v1/pair_tree_profile.rs:216-263`; the root
 roles and exact 800-byte snapshot are at lines 265-480.
 
-That 48-row result closes the staged fallback's geometry, but it is not the
-primary wire choice. Omitting the twenty live append blocks from the proof
-leaves the 34 stable Poseidon blocks plus the same seven auxiliary blocks: 656
-allocated rows and 368 unused rows. Lean checks that arithmetic in
-`exact_stable_pair_row_screen`, checks the absence of a live-snapshot transcript
-step, and checks the unchanged 30,504-byte wire screen. Its tuple registry, mask
-rank and generated terminal still require a separate exact compilation; this
-audit does not infer them merely by subtracting rows.
+That 48-row result closes the primary staged geometry. The exact Lean wire
+theorem gives 34,658 bytes: four late QM31 C2 lanes add 4,154 bytes, five upload
+chunks and 64 C2 leaf SHA message blocks across q16.
+
+A layout-only reduction from seven total C2 lanes to four is not sound in the
+current protocol. The existing lanes are H1, G and D. G and D are independently
+expanded over all 1,024 rows; H1 occupies copy-active rows and is independently
+padded on the rest except its balance row. The late append occupies rows
+544--863 and its copy links make those rows H1-active too. At a late row the
+existing lanes carry twelve M31 coordinates and the late trace carries sixteen
+more, while four QM31 lanes expose only sixteen coordinates. A fusion would
+therefore change the hiding and terminal mathematics and require a new mask-rank
+proof. It is not a serialization optimization. Even a hypothetical sound
+four-total-lane redesign would be 31,542 bytes, not 30,504 bytes.
 
 Private transfer appends `(occupied recipient, occupied change)`. Withdrawal
 appends `(occupied change, algebraically empty second slot)`. Spending a
@@ -224,42 +238,43 @@ The minimum code changes are:
 1. **Pair-tree state codec.** Add a versioned Pool state whose canonical bytes
    contain pair sequence/index, current root and twenty frontier digests. Do not
    reinterpret the current `ASTS` tree format.
-2. **Stable pair Tag-73 profile.** Compile the 34 stable pair-relation Poseidon
-   blocks, occupancy residuals and output-pair binding into the existing
-   30,504-byte geometry. Preserve q16, digest-208, work 35/31/34, degree 27 and
-   the existing one-fold backend.
+2. **Staged pair Tag-73 profile.** Compile the 34 stable relation blocks, twenty
+   late current-append blocks, occupancy residuals and exact old/new pair-tree
+   binding into the proven 54-block/976-row geometry. Preserve q16, digest-208,
+   work 35/31/34, degree 27 and the existing one-fold backend. Freeze the
+   conservative seven-lane C2 wire at 34,658 bytes before considering any new
+   masking construction.
 3. **Digest-free sealed-proof dispatch.** Replace the generic proof-body-digest
    ASVQ path for this profile by exact finalized account identity/length and
    immediate selected-program return authentication. Keep registry policy,
    program/profile/release and statement binding.
-4. **Compact verifier result.** Return only an exact success image (and,
-   optionally, the already verified 32-byte output-pair digest) rather than
-   echoing the sealed request. The Pool already retains the statement, selected
-   program, proof account, profile and release across the immediate read-only
-   CPI. The runtime identifies the return-data writer, and the source bridge
-   must prove that the selected handler emits a result only after accepting that
-   exact CPI instruction and proof account. Consequently every identity binding
-   is derived from the caller's sealed values and need not be serialized back
-   by the callee. If the Pool computes the pair compression itself, the minimum
-   candidate is an 8-byte success image. If the source bridge exposes the
-   relation's already computed pair digest, the candidate is 40 bytes:
+4. **Compact verifier result.** Return only the canonical verified pair-tree
+   afterstate rather than echoing the sealed request. The Pool already retains
+   the statement, selected program, proof account, profile and release across
+   the immediate read-only CPI. The runtime identifies the return-data writer,
+   and the source bridge must prove that the selected handler emits the result
+   only after accepting that exact CPI instruction and proof account. The raw
+   afterstate is 680 bytes and an eight-byte version/status envelope makes the
+   exact candidate 688 bytes:
 
    ```text
      8  magic/version/kind/success/reserved
-    32  optional verified output-pair digest
+     8  next pair index
+    32  next pair-tree root
+   640  next frontier (20 * 32 bytes)
    ---
-  8/40 bytes
+   688 bytes
    ```
 
-   This is a size screen, not yet a frozen wire. Omitting the echoes is sound
-   only with the immediate-CPI/sealed-plan source theorem just stated. It does
-   not remove any statement/profile binding from the request or proof.
-5. **Single-append atomic suffix.** Add one Pool instruction which consumes that
-   result and the sealed marker preflight, performs exactly one pair-tree append
-   from the locked current frontier, optional withdrawal custody, writes the
-   exact state fields and one chronological root slot/header, writes the marker,
-   and emits a versioned pair-tree `ASTR`. It has no ASPS, ASRS or ASRA account
-   and no duplicated append.
+   This is a size screen, not yet a frozen wire. Omitting identity echoes is
+   sound only with the immediate-CPI/sealed-plan source theorem just stated. It
+   removes no statement/profile binding from the request or proof.
+5. **Byte-only atomic suffix.** Add one Pool instruction which consumes that
+   result and the sealed marker preflight, checks it against the locked old
+   state, performs optional withdrawal custody, writes the exact state fields
+   and one chronological root slot/header, writes the marker, and emits a
+   versioned pair-tree `ASTR`. It performs no Pool Poseidon and has no ASPS,
+   ASRS or ASRA account.
 6. **Rollover policy.** Prefer a pre-existing canonical zero/rent-exempt next
    root page in the first CU gate. Page creation is setup plumbing, not proof
    authorization. A later worst-case gate must separately show whether
@@ -271,8 +286,8 @@ The smallest source cut is therefore a new versioned sibling of
 and one pair-append helper beside
 `apply_authorized_append_after_checked_state_v1`. The new helper replaces the
 current two-single-leaf `source.prepare(request)` path at `transition.rs:697`
-with one pair append authorized by an opaque verifier-result token whose
-constructor is private to the immediate CPI-return parser. Existing account uniqueness, signer/owner,
+with one verified pair-afterstate write authorized by an opaque verifier-result
+token whose constructor is private to the immediate CPI-return parser. Existing account uniqueness, signer/owner,
 canonical PDA, history routing, writable-shape, capacity, checked arithmetic,
 token-account/delta, and all-before-success checks stay in place. No existing
 instruction tag or state format should silently change meaning.
@@ -309,7 +324,7 @@ The private-transfer terminal requires, at maximum rollover shape:
 | registry | read-only | 128 |
 | registry entry | read-only | 192 |
 | selected verifier program | read-only, executable | program account |
-| finalized proof | read-only | 40-byte header + 30,504-byte current reference body |
+| finalized proof | read-only | 40-byte header + 34,658-byte staged pair body |
 | System Program | read-only, executable | native |
 
 Withdrawal adds the mint, vault, destination, vault authority and original SPL
@@ -323,32 +338,26 @@ for the worst withdrawal/rollover shape. This audit does not claim a measured
 ## CU gate
 
 The present 1,258,013-CU V7 result leaves 141,987 CU, but it is the old
-49-block relation and old atomic state, not the pair profile. The stable pair
-relation has 34 rather than 49 proof-side Poseidon blocks, while the Pool adds
-one pair compression and twenty execution-time append parents. Generic dispatch
-SHA passes and all plan machinery are deleted. No numerical net saving may be
-claimed before an instrumented same-binary run.
+49-block relation and old atomic state, not the staged pair profile. The exact
+production-function probe measured the runtime alternative at 469,798 CU for
+twenty parents and 493,270 CU for twenty-one, with a 407-CU zero-parent
+baseline. Thus the twenty upper parents alone exceed the frozen verifier's
+headroom by 327,404 CU before any Pool suffix; the runtime-append route is
+rejected under the present Poseidon implementation.
 
-The staged proof-carried alternative is not a 30,504-byte proof. The exact Lean
+The staged proof-carried candidate is not a 30,504-byte proof. The exact Lean
 wire theorem `exact_staged_wire_cost_if_four_late_lanes_authenticated` gives
 34,658 bytes: 4,154 bytes more, five additional upload chunks, and 64 additional
 C2 leaf SHA-256 message blocks across q16. It also makes completed proofs stale
-after a competing append. That route is retained only if exact measurement
-shows the twenty execution-time parents cannot fit.
-
-One older V6 component probe measured its complete 49-block Poseidon terminal
-segment at 88,217 CU. Scaling that observation gives about 37,807 CU for 21
-permutations, but this is design pressure only: different wrappers, routing and
-compiler output prevent citing it as a pair-append measurement. It is sufficient
-reason to measure the small execution-time append before building a proof format
-which is already known to add 4,154 bytes.
+after a competing append. It is nevertheless now the only conservative
+one-terminal candidate which has not been experimentally ruled out.
 
 The production engineering gate should be split without repeated regression
 runs:
 
-1. measure the stable 30,504-byte pair verifier alone, with exact proof and
-   compact result;
-2. measure the one-pair Pool append/suffix with a verifier transport double;
+1. measure the staged 34,658-byte pair verifier alone, with exact proof and
+   688-byte result;
+2. measure the byte-only Pool suffix with a verifier transport double;
 3. perform one combined private-transfer same-page run;
 4. perform one combined private-transfer rollover run; and
 5. perform one combined withdrawal run with real SPL Token CPI.
@@ -373,19 +382,19 @@ Already kernel checked or source-closed:
 
 Still required for the one-terminal profile:
 
-1. literal Rust tuple/residual registry and terminal equal the stable pair Lean
+1. literal Rust tuple/residual registry and terminal equal the staged pair Lean
    model;
-2. prover and verifier bind the exact historical spend and occupied output-pair
-   semantics without a live append snapshot;
-3. accepted Tag-73 pair proof authorizes exactly the output pair consumed by
-   the terminal append;
+2. prover and verifier bind the exact historical spend, occupied output-pair
+   semantics and 800-byte late live-append snapshot;
+3. accepted Tag-73 pair proof authorizes exactly the 680-byte pair afterstate
+   consumed by the terminal write;
 4. pair-tree Pool bytes decode under the inductive state invariant and the
-   single execution-time append produces the exact next bytes;
+   verified afterstate produces the exact next bytes without a second append;
 5. compact return bytes decode to exactly the accepted verifier result;
 6. finalized proof-account identity/immutability replaces the removed body
    digest without weakening binding;
-7. literal Pool success composes registry selection, verifier result, current
-   pair append, chronological history write, marker single-use and optional
+7. literal Pool success composes registry selection, verifier result, verified
+   pair-afterstate write, chronological history write, marker single-use and optional
    custody delta into the atomic Lean state transition;
 8. duplicate marker, malformed result, wrong selected program, wrong page and
    every late CPI failure select Solana rollback/no afterstate;
