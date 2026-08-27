@@ -21,6 +21,8 @@ open AspisK1.V7Tag73CausalSlotMachineRouter
 
 noncomputable section
 
+universe u
+
 /-- The first value of a provably nonempty length-indexed answer tape. -/
 def freshAnswerTapeHead
     {Output : Type} {steps : Nat}
@@ -47,7 +49,7 @@ def freshAnswerTapeHead
   simp [chooseRemainingDestination, member]
 
 theorem router_eq_special_of_choice
-    {Output Slot State : Type} [DecidableEq Slot]
+    {Output Slot : Type} {State : Type u} [DecidableEq Slot]
     (machine : PreAnswerSlotMachine Output Slot State)
     (slots : Finset Slot) (residual : Nat) (state : State)
     (remaining : 0 < slots.card + residual)
@@ -98,11 +100,78 @@ theorem special_slot_receives_current_answer
   exact eraseFunctionEquiv_symm_chosen slots chosen aligned.1
     ((next aligned.1).coordinateEquiv aligned.2).1
 
+/-- A different named coordinate passes through a special step unchanged and
+is read from the recursively routed tail. -/
+theorem special_other_slot_receives_tail_answer
+    {Output Slot : Type} [DecidableEq Slot]
+    {slots : Finset Slot} {residual : Nat}
+    (chosen current : ↥slots) (different : current.1 ≠ chosen.1)
+    (next : Output → CausalSlotRouter Output Slot
+      (slots.erase chosen.1) residual)
+    (tape : FreshAnswerTape Output (slots.card + residual)) :
+    ((CausalSlotRouter.special chosen next).coordinateEquiv tape).1 current =
+      (CausalSlotRouter.coordinateEquiv (next
+        (castFreshAnswerTape (by
+            rw [Finset.card_erase_of_mem chosen.2]
+            have positive : 0 < slots.card :=
+              Finset.card_pos.mpr ⟨chosen.1, chosen.2⟩
+            omega : slots.card + residual =
+              ((slots.erase chosen.1).card + residual) + 1) tape).1)
+            (castFreshAnswerTape (by
+              rw [Finset.card_erase_of_mem chosen.2]
+              have positive : 0 < slots.card :=
+                Finset.card_pos.mpr ⟨chosen.1, chosen.2⟩
+              omega : slots.card + residual =
+                ((slots.erase chosen.1).card + residual) + 1) tape).2).1
+        ⟨current.1, Finset.mem_erase.mpr ⟨different, current.2⟩⟩ := by
+  classical
+  have totalEq : slots.card + residual =
+      ((slots.erase chosen.1).card + residual) + 1 := by
+    rw [Finset.card_erase_of_mem chosen.2]
+    have positive : 0 < slots.card :=
+      Finset.card_pos.mpr ⟨chosen.1, chosen.2⟩
+    omega
+  let aligned := castFreshAnswerTape totalEq tape
+  change
+    (eraseFunctionEquiv slots chosen).symm
+        (aligned.1, ((next aligned.1).coordinateEquiv aligned.2).1) current =
+      ((next aligned.1).coordinateEquiv aligned.2).1
+        ⟨current.1, Finset.mem_erase.mpr ⟨different, current.2⟩⟩
+  have subtypeDifferent : current ≠ chosen := by
+    intro equal
+    exact different (congrArg Subtype.val equal)
+  simp [eraseFunctionEquiv, subtypeDifferent]
+
+/-- Consuming one residual coordinate leaves every named coordinate equal to
+the recursively routed tail value. -/
+theorem residual_step_named_slot_receives_tail_answer
+    {Output Slot : Type} [DecidableEq Slot]
+    {slots : Finset Slot} {remaining : Nat}
+    (next : Output → CausalSlotRouter Output Slot slots remaining)
+    (tape : FreshAnswerTape Output (slots.card + (remaining + 1)))
+    (current : ↥slots) :
+    ((CausalSlotRouter.residual next).coordinateEquiv tape).1 current =
+      ((next
+        (castFreshAnswerTape (by omega :
+          slots.card + (remaining + 1) =
+            (slots.card + remaining) + 1) tape).1).coordinateEquiv
+          (castFreshAnswerTape (by omega :
+            slots.card + (remaining + 1) =
+              (slots.card + remaining) + 1) tape).2).1 current := by
+  classical
+  have totalEq : slots.card + (remaining + 1) =
+      (slots.card + remaining) + 1 := by omega
+  let aligned := castFreshAnswerTape totalEq tape
+  change
+    ((next aligned.1).coordinateEquiv aligned.2).1 current =
+      ((next aligned.1).coordinateEquiv aligned.2).1 current
+  rfl
+
 /-- When the pre-answer machine names a slot that is still unfilled, its
 compiled router takes the special branch and stores the current answer in
 that slot.  The decision uses only the state preceding the answer. -/
 theorem machine_preferred_slot_receives_current_answer
-    {Output Slot State : Type} [DecidableEq Slot]
+    {Output Slot : Type} {State : Type u} [DecidableEq Slot]
     (machine : PreAnswerSlotMachine Output Slot State)
     (slots : Finset Slot) (residual : Nat) (state : State)
     (slot : Slot) (member : slot ∈ slots)
@@ -138,6 +207,8 @@ theorem machine_preferred_slot_receives_current_answer
       tape
 
 #print axioms special_slot_receives_current_answer
+#print axioms special_other_slot_receives_tail_answer
+#print axioms residual_step_named_slot_receives_tail_answer
 #print axioms machine_preferred_slot_receives_current_answer
 
 end
