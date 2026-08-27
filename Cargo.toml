@@ -6,6 +6,7 @@ members = [
     "programs/aspis-pool",
     "programs/aspis-registry",
     "programs/aspis-verifier",
+    "audit/poseidon-pair-probe/program",
     "xtask",
 ]
 resolver = "2"
