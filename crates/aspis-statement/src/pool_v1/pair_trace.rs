@@ -34,8 +34,8 @@ use super::{
         POOL_V1_PAIR_COPY_ROW_LINKS_V1,
     },
     pair_tree_profile::{
-        pool_v1_pair_path_base_row_v1, PoolV1PairLeafErrorV1, PoolV1PairLeafWitnessV1,
-        PoolV1PairLiveSnapshotV1, POOL_V1_PAIR_INPUT_OCCUPANCY_AUX_ROW,
+        pool_v1_pair_path_base_row_v1, PoolV1PairLatePublicStatementV1, PoolV1PairLeafErrorV1,
+        PoolV1PairLeafWitnessV1, PoolV1PairLiveSnapshotV1, POOL_V1_PAIR_INPUT_OCCUPANCY_AUX_ROW,
         POOL_V1_PAIR_INPUT_SELECTED_SIDE_COLUMN, POOL_V1_PAIR_LATE_APPEND_POSEIDON_BLOCKS,
         POOL_V1_PAIR_OCCUPANCY_COMMITMENT_COLUMN_START, POOL_V1_PAIR_OCCUPANCY_INVERSE_COLUMN,
         POOL_V1_PAIR_OUTPUT_OCCUPANCY_AUX_ROW, POOL_V1_PAIR_PRIVATE_DIRECTIONS,
@@ -120,6 +120,16 @@ pub struct PoolV1PairTraceV1 {
     pub value_bits: [[M31; POOL_V1_PAIR_VALUE_BITS]; POOL_V1_PAIR_VALUE_COUNT],
     pub public_outputs: PoolV1PairTracePublicOutputsV1,
     pub afterstate: PoolV1PairVerifiedAfterstateV1,
+}
+
+/// Host compiler output consumed by the future compact prover. The same
+/// recomputed ASJA is both part of the pre-root public statement and the only
+/// accepted result the verifier may later return.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct PoolV1PairMergedC1CompilationV1 {
+    pub trace: PoolV1PairTraceV1,
+    pub semantic_c1: StateOnlyTraceFoundation,
+    pub public_statement: PoolV1PairLatePublicStatementV1,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -791,6 +801,26 @@ pub fn build_pool_v1_pair_private_transfer_trace_v1(
     Ok(trace)
 }
 
+pub fn compile_pool_v1_pair_private_transfer_merged_c1_v1(
+    public: &PoolV1PrivateTransferPublicV1,
+    witness: &PoolV1PairPrivateTransferWitnessV1,
+    context: PoolV1PaymentRelationContextV1<'_>,
+    live_snapshot: PoolV1PairLiveSnapshotV1,
+) -> Result<PoolV1PairMergedC1CompilationV1, PoolV1PairTraceErrorV1> {
+    let trace =
+        build_pool_v1_pair_private_transfer_trace_v1(public, witness, context, live_snapshot)?;
+    let semantic_c1 = merge_pool_v1_pair_trace_banks_v1(&trace)?;
+    let public_statement = PoolV1PairLatePublicStatementV1 {
+        live_snapshot,
+        candidate_afterstate: trace.afterstate,
+    };
+    Ok(PoolV1PairMergedC1CompilationV1 {
+        trace,
+        semantic_c1,
+        public_statement,
+    })
+}
+
 pub fn build_pool_v1_pair_withdrawal_trace_v1(
     public: &PoolV1WithdrawalPublicV1,
     witness: &PoolV1PairWithdrawalWitnessV1,
@@ -800,6 +830,25 @@ pub fn build_pool_v1_pair_withdrawal_trace_v1(
     let trace = build_withdrawal_inner(public, witness, context, snapshot)?;
     validate_pool_v1_pair_withdrawal_trace_v1(public, witness, context, snapshot, &trace)?;
     Ok(trace)
+}
+
+pub fn compile_pool_v1_pair_withdrawal_merged_c1_v1(
+    public: &PoolV1WithdrawalPublicV1,
+    witness: &PoolV1PairWithdrawalWitnessV1,
+    context: PoolV1PaymentRelationContextV1<'_>,
+    live_snapshot: PoolV1PairLiveSnapshotV1,
+) -> Result<PoolV1PairMergedC1CompilationV1, PoolV1PairTraceErrorV1> {
+    let trace = build_pool_v1_pair_withdrawal_trace_v1(public, witness, context, live_snapshot)?;
+    let semantic_c1 = merge_pool_v1_pair_trace_banks_v1(&trace)?;
+    let public_statement = PoolV1PairLatePublicStatementV1 {
+        live_snapshot,
+        candidate_afterstate: trace.afterstate,
+    };
+    Ok(PoolV1PairMergedC1CompilationV1 {
+        trace,
+        semantic_c1,
+        public_statement,
+    })
 }
 
 fn compare_trace(
@@ -1339,10 +1388,17 @@ mod tests {
     #[test]
     fn checked_merge_overlays_only_the_disjoint_late_rows() {
         let (public, witness, context, snapshot) = fixture();
-        let trace =
-            build_pool_v1_pair_private_transfer_trace_v1(&public, &witness, context, snapshot)
-                .unwrap();
-        let merged = merge_pool_v1_pair_trace_banks_v1(&trace).unwrap();
+        let compiled = compile_pool_v1_pair_private_transfer_merged_c1_v1(
+            &public, &witness, context, snapshot,
+        )
+        .unwrap();
+        let trace = compiled.trace;
+        let merged = compiled.semantic_c1;
+        assert_eq!(compiled.public_statement.live_snapshot, snapshot);
+        assert_eq!(
+            compiled.public_statement.candidate_afterstate,
+            trace.afterstate
+        );
         for column in 0..16 {
             assert_eq!(&merged.c1[column][..544], &trace.stable.c1[column][..544]);
             assert_eq!(&merged.c1[column][544..864], &trace.late[column][544..864]);
