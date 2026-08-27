@@ -33,6 +33,17 @@ use crate::{
     registry::{authenticate_verifier_selection_v1, VerifierSelectionV1},
 };
 
+#[inline(always)]
+fn pair_cu_checkpoint(label: &str) {
+    #[cfg(feature = "pair-afterstate-profile")]
+    {
+        solana_program::log::sol_log(label);
+        solana_program::log::sol_log_compute_units();
+    }
+    #[cfg(not(feature = "pair-afterstate-profile"))]
+    let _ = label;
+}
+
 const PROOF_LENGTH_OFFSET: usize = 4;
 const PROOF_AUTHORITY_OFFSET: usize = 8;
 
@@ -292,15 +303,18 @@ fn invoke_pair_afterstate_verifier_with_runtime_v1<'info, R: PairVerifierRuntime
     };
     let account_infos = [proof.clone(), verifier_program.clone()];
     runtime.clear_return_data();
+    pair_cu_checkpoint("aspis-pair-cu:verifier_cpi_start");
     runtime.invoke(&instruction, &account_infos)?;
     let (returned_program, returned_data) = runtime
         .get_return_data()
         .ok_or(PoolV1ProgramError::MissingVerifierReturnData)?;
-    authenticate_pair_verified_afterstate_return_v1(
+    let authenticated = authenticate_pair_verified_afterstate_return_v1(
         &selected,
         &returned_program,
         &returned_data,
-    )
+    )?;
+    pair_cu_checkpoint("aspis-pair-cu:verifier_cpi_complete");
+    Ok(authenticated)
 }
 
 #[allow(clippy::too_many_arguments)]
@@ -350,6 +364,7 @@ pub(crate) fn dispatch_pair_verified_afterstate_readonly_v1<'info>(
     current_slot: u64,
     hash: HashFn,
 ) -> Result<AuthenticatedPairAfterstateV1, ProgramError> {
+    pair_cu_checkpoint("aspis-pair-cu:verifier_plan_start");
     let plan = plan_pair_verifier_dispatch_v1(
         pool,
         expected_deployment_domain,
@@ -362,6 +377,7 @@ pub(crate) fn dispatch_pair_verified_afterstate_readonly_v1<'info>(
         current_slot,
         hash,
     )?;
+    pair_cu_checkpoint("aspis-pair-cu:verifier_plan_complete");
     let mut runtime = SolanaPairVerifierRuntimeV1;
     invoke_pair_afterstate_verifier_with_runtime_v1(plan, verifier_program, proof, &mut runtime)
 }

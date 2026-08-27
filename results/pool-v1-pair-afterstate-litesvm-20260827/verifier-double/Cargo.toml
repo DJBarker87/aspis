@@ -9,5 +9,9 @@ publish = false
 [lib]
 crate-type = ["cdylib", "lib"]
 
+[features]
+default = []
+profile = []
+
 [dependencies]
 solana-program = "=2.3.0"
