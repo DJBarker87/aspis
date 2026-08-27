@@ -15,6 +15,9 @@ insecure-test-framing = []
 # Exposes private decoder entry points to the isolated universal-equivalence
 # harness. This feature is never enabled by the verifier build.
 formal-verification = []
+# Default-off byte-for-CU experiment for alternate canonical encodings of the
+# fixed Tag-73 field section. No production verifier feature enables it.
+v7-fixed-codec-experiment = []
 
 [dependencies]
 
