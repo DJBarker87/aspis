@@ -1,0 +1,30 @@
+Pool V1 retained-root location source bridge: PASS
+
+Source commit base: 1fe2e773
+Charon: cb50ff16b9f1066b8a97dc06da704de2da2fa41c
+Aeneas: b59d5188c082f704a418c7cb4e52ad69328002d1
+Lean: 4.32.0
+
+production root_history.rs sha256:
+096ea4ced70dee6c4638eb060b5ab299ff9742c9cd199a821c5c8521ff97711f
+
+LLBC sha256:
+a3d3e84aa4438226c349fa6e9ac11887919ff8914cd6a4f41574e1b5011dc05a
+
+generated Types.lean sha256:
+19cf8228b6974ea2e1bf648cf10ab169c53440e7f652b95f94c61352f2c39d79
+
+generated Funs.lean sha256:
+97213b7dbfce2bdfe5595d1f44c0af1a412cd2586e7d57d7a3f2d6a6819ae4d4
+
+Focused generated Types/Funs compile: PASS
+Focused source bridge compile: PASS
+
+Strongest theorem:
+PoolV1TreeHistorySourceBridge.production_root_history_location_source_exact
+
+#print axioms:
+[propext, Classical.choice, Quot.sound]
+
+No sorry, admit, sorryAx or project-specific axiom occurs in the proof.
+The translated function is transparent and has no external semantic callback.

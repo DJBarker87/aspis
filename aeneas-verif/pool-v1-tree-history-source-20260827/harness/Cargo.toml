@@ -1,0 +1,13 @@
+[package]
+name = "pool-v1-tree-history-source-harness"
+version = "0.1.0"
+edition = "2021"
+publish = false
+
+[lib]
+path = "src/lib.rs"
+
+[dependencies]
+aspis-statement = { path = "../../../crates/aspis-statement", features = ["pool-v1-kernel"] }
+
+[workspace]
