@@ -8,7 +8,7 @@
 use alloc::boxed::Box;
 
 use aspis_core::{
-    field::{qm31_pack_base4, PreparedQm31Multiplier, CM31, M31, QM31},
+    field::{qm31_pack_base4, qm31_sum_products4, PreparedQm31Multiplier, CM31, M31, QM31},
     state_only_hiding::{state_only_selected_mask_value, STATE_ONLY_HIDING_MASK_ONLY_C1_COLUMNS},
 };
 
@@ -46,7 +46,7 @@ pub const POOL_V1_PAYMENT_MASKED_TERMINAL_DEGREE: usize = 27;
 /// The runtime terminal performs one fixed-size selector allocation and no
 /// registry-dependent or input-dependent allocation.
 pub const POOL_V1_PAYMENT_TERMINAL_FIXED_HEAP_ALLOCATIONS: usize = 1;
-pub const POOL_V1_PAYMENT_TERMINAL_SELECTOR_HEAP_BYTES: usize = 1_280;
+pub const POOL_V1_PAYMENT_TERMINAL_SELECTOR_HEAP_BYTES: usize = 1_376;
 
 pub const PINNED_POOL_V1_PRIVATE_TRANSFER_SEMANTIC_REGISTRY_FINGERPRINT_V1: u64 =
     constants::PRIVATE_TRANSFER_REGISTRY_FINGERPRINT;
@@ -193,6 +193,12 @@ fn selector_mask_sum_16(values: &[QM31; 16], mut mask: u16) -> QM31 {
 struct Selectors {
     high: [QM31; 64],
     low: [QM31; 16],
+    poseidon_block: QM31,
+    merkle_block: QM31,
+    initial_path_blocks: QM31,
+    fixed_zero_blocks: QM31,
+    initial_common_blocks: QM31,
+    absorption_common_eight_blocks: QM31,
 }
 
 impl Selectors {
@@ -213,11 +219,35 @@ impl Selectors {
         weights
     }
 
-    fn at_point(point: &[QM31; 10]) -> Self {
+    fn from_high_low(high: [QM31; 64], low: [QM31; 16]) -> Self {
+        let sum = |range: core::ops::Range<usize>| {
+            high[range].iter().copied().fold(QM31::ZERO, QM31::add)
+        };
+        let poseidon_block = QM31::ONE.sub(sum(49..64));
+        let merkle_block = sum(49..54);
+        let initial_path_blocks = sum(4..24);
+        let fixed_zero_blocks = sum(32..49);
+        let initial_common_blocks = high[0].add(high[1]).add(high[24]).add(high[29]);
+        let absorption_common_eight_blocks = high[0]
+            .add(high[1])
+            .add(high[2])
+            .add(sum(4..26))
+            .add(high[29])
+            .add(high[30]);
         Self {
-            high: Self::expand(&point[..6]),
-            low: Self::expand(&point[6..]),
+            high,
+            low,
+            poseidon_block,
+            merkle_block,
+            initial_path_blocks,
+            fixed_zero_blocks,
+            initial_common_blocks,
+            absorption_common_eight_blocks,
         }
+    }
+
+    fn at_point(point: &[QM31; 10]) -> Self {
+        Self::from_high_low(Self::expand(&point[..6]), Self::expand(&point[6..]))
     }
 
     #[inline(never)]
@@ -233,7 +263,7 @@ impl Selectors {
 
     fn poseidon(&self) -> StateOnlyPoseidonSelectors {
         StateOnlyPoseidonSelectors {
-            block: self.high[..49].iter().copied().fold(QM31::ZERO, QM31::add),
+            block: self.poseidon_block,
             local: self.low,
         }
     }
@@ -445,7 +475,7 @@ pub fn pool_v1_payment_copy_lane_boolean_extraction_v1(
     let mut low = [QM31::ZERO; 16];
     high[usize::from(selected_row >> 4)] = QM31::ONE;
     low[usize::from(selected_row & 15)] = QM31::ONE;
-    let selectors = Selectors { high, low };
+    let selectors = Selectors::from_high_low(high, low);
     Some(copy_lane(openings, h1_z, &selectors, lambda, chi, variant))
 }
 
@@ -470,6 +500,44 @@ fn add_preweighted<const N: usize>(
     }
 }
 
+/// Accumulate four independently selected residual vectors into one packed
+/// semantic range. The lazy four-product kernel is byte-for-byte field
+/// arithmetic only; it does not change selector or lane order.
+#[inline(always)]
+fn add_selected4<const N: usize>(
+    packed: &mut [QM31; POOL_V1_PAYMENT_PACKED_SEMANTIC_LANES],
+    start: usize,
+    values: &[[QM31; N]; 4],
+    selectors: [QM31; 4],
+) {
+    let first = start / 4;
+    let last = (start + N - 1) / 4;
+    for group in first..=last {
+        let grouped: [QM31; 4] = core::array::from_fn(|input| {
+            let lanes: [QM31; 4] = core::array::from_fn(|slot| {
+                let source = 4 * group + slot;
+                if source >= start && source < start + N {
+                    values[input][source - start]
+                } else {
+                    QM31::ZERO
+                }
+            });
+            qm31_pack_base4(&lanes)
+        });
+        packed[group] = packed[group].add(qm31_sum_products4(selectors, grouped));
+    }
+}
+
+/// Exact little-endian reconstruction of ten extension-field bits.
+#[inline(always)]
+fn reconstruct_10(view: &[QM31; 16]) -> QM31 {
+    view[..9]
+        .iter()
+        .rev()
+        .fold(view[9], |acc, bit| acc.add(acc).add(*bit))
+}
+
+#[cfg(test)]
 fn first_sponge(block: usize, variant: CompiledVariant) -> Option<(M31, usize)> {
     match block {
         0 => Some((DOMAIN_OWNER_KEY, 8)),
@@ -481,11 +549,13 @@ fn first_sponge(block: usize, variant: CompiledVariant) -> Option<(M31, usize)> 
     }
 }
 
+#[cfg(test)]
 fn fixed_zero_block(block: usize, variant: CompiledVariant) -> bool {
     (32..49).contains(&block)
         || (variant == CompiledVariant::Withdrawal && (26..=28).contains(&block))
 }
 
+#[cfg(test)]
 fn expected_initial_limb(block: usize, lane: usize, variant: CompiledVariant) -> Option<M31> {
     if let Some((domain, length)) = first_sponge(block, variant) {
         return Some(match lane {
@@ -500,6 +570,7 @@ fn expected_initial_limb(block: usize, lane: usize, variant: CompiledVariant) ->
     fixed_zero_block(block, variant).then_some(M31::ZERO)
 }
 
+#[cfg(test)]
 fn absorption_length(block: usize, variant: CompiledVariant) -> usize {
     match block {
         0 | 1 | 2 | 4..=25 | 26 | 27 | 29 | 30 => {
@@ -520,13 +591,106 @@ fn absorption_length(block: usize, variant: CompiledVariant) -> usize {
     }
 }
 
-fn semantic_packed(
+/// Factor the two dense Poseidon-row checks through the six-bit block basis
+/// and four-bit local basis. This is the same multilinear polynomial as the
+/// literal block/lane scan: it only groups rows which carry the same residual
+/// shape before multiplying by the opened column values.
+fn semantic_initial_and_absorption_factored(
     public: SemanticPublic,
     openings: &StateOnlyPoseidonOpenings,
     selectors: &Selectors,
-) -> [QM31; POOL_V1_PAYMENT_PACKED_SEMANTIC_LANES] {
-    let mut packed = [QM31::ZERO; POOL_V1_PAYMENT_PACKED_SEMANTIC_LANES];
+) -> ([QM31; 16], [QM31; 16]) {
+    let extra_initial_zero = match public.variant {
+        CompiledVariant::PrivateTransfer => selectors.high[26],
+        CompiledVariant::Withdrawal => selectors.high[26]
+            .add(selectors.high[27])
+            .add(selectors.high[28]),
+    };
+    let full_initial_blocks = selectors
+        .fixed_zero_blocks
+        .add(selectors.initial_common_blocks)
+        .add(extra_initial_zero);
+    let full_initial_selector = selectors.low[0].mul(full_initial_blocks);
+    let rate_initial_selector = selectors.low[0].mul(selectors.initial_path_blocks);
+    let full_initial = PreparedQm31Multiplier::new(full_initial_selector);
+    let full_and_rate_initial =
+        PreparedQm31Multiplier::new(full_initial_selector.add(rate_initial_selector));
+    let mut initial: [QM31; 16] = core::array::from_fn(|lane| {
+        if lane < RATE {
+            full_and_rate_initial.mul(openings.z[lane])
+        } else {
+            full_initial.mul(openings.z[lane])
+        }
+    });
 
+    let note_initial_blocks = match public.variant {
+        CompiledVariant::PrivateTransfer => selectors.high[1]
+            .add(selectors.high[26])
+            .add(selectors.high[29]),
+        CompiledVariant::Withdrawal => selectors.high[1].add(selectors.high[29]),
+    };
+    let domain_high = selectors.high[0]
+        .mul_m31(DOMAIN_OWNER_KEY)
+        .add(note_initial_blocks.mul_m31(DOMAIN_NOTE))
+        .add(selectors.high[24].mul_m31(DOMAIN_NULLIFIER));
+    let length_high = selectors.high[0]
+        .mul_m31(M31(8))
+        .add(note_initial_blocks.mul_m31(M31(18)))
+        .add(selectors.high[24].mul_m31(M31(16)));
+    initial[RATE] = initial[RATE].sub(selectors.low[0].mul(domain_high));
+    initial[RATE + 1] = initial[RATE + 1].sub(selectors.low[0].mul(length_high));
+
+    let (length_eight_blocks, length_two_blocks, length_zero_blocks) = match public.variant {
+        CompiledVariant::PrivateTransfer => (
+            selectors
+                .absorption_common_eight_blocks
+                .add(selectors.high[26])
+                .add(selectors.high[27]),
+            selectors.high[3]
+                .add(selectors.high[28])
+                .add(selectors.high[31]),
+            selectors.fixed_zero_blocks,
+        ),
+        CompiledVariant::Withdrawal => (
+            selectors.absorption_common_eight_blocks,
+            selectors.high[3].add(selectors.high[31]),
+            selectors
+                .fixed_zero_blocks
+                .add(selectors.high[26])
+                .add(selectors.high[27])
+                .add(selectors.high[28]),
+        ),
+    };
+    let zero_selector = selectors.low[12].mul(length_zero_blocks);
+    let zero_or_two_selector = selectors.low[12].mul(length_zero_blocks.add(length_two_blocks));
+    let all_absorption_selector = selectors.low[12].mul(
+        length_zero_blocks
+            .add(length_two_blocks)
+            .add(length_eight_blocks),
+    );
+    let zero = PreparedQm31Multiplier::new(zero_selector);
+    let zero_or_two = PreparedQm31Multiplier::new(zero_or_two_selector);
+    let all = PreparedQm31Multiplier::new(all_absorption_selector);
+    let absorption_zero = core::array::from_fn(|lane| {
+        if lane < 2 {
+            zero.mul(openings.z[lane])
+        } else if lane < RATE {
+            zero_or_two.mul(openings.z[lane])
+        } else {
+            all.mul(openings.z[lane])
+        }
+    });
+    (initial, absorption_zero)
+}
+
+/// Deliberately literal correspondence spelling retained only for focused
+/// host tests of the selector factorization above.
+#[cfg(test)]
+fn semantic_initial_and_absorption_unfactored_reference(
+    public: SemanticPublic,
+    openings: &StateOnlyPoseidonOpenings,
+    selectors: &Selectors,
+) -> ([QM31; 16], [QM31; 16]) {
     let mut initial = [QM31::ZERO; 16];
     for block in 0..49 {
         let selector = selectors.row(block * 16);
@@ -537,9 +701,6 @@ fn semantic_packed(
             }
         }
     }
-    // Undeclared auxiliary cells are the Pool relation-free C1 masks.
-    add_preweighted(&mut packed, 0, &initial);
-
     let mut absorption_zero = [QM31::ZERO; 16];
     for block in 0..49 {
         let selector = selectors.row(block * 16 + 12);
@@ -547,18 +708,29 @@ fn semantic_packed(
             absorption_zero[lane] = absorption_zero[lane].add(selector.mul(openings.z[lane]));
         }
     }
+    (initial, absorption_zero)
+}
+
+fn semantic_packed(
+    public: SemanticPublic,
+    openings: &StateOnlyPoseidonOpenings,
+    selectors: &Selectors,
+) -> [QM31; POOL_V1_PAYMENT_PACKED_SEMANTIC_LANES] {
+    let mut packed = [QM31::ZERO; POOL_V1_PAYMENT_PACKED_SEMANTIC_LANES];
+
+    let (initial, absorption_zero) =
+        semantic_initial_and_absorption_factored(public, openings, selectors);
+    // Undeclared auxiliary cells are the Pool relation-free C1 masks.
+    add_preweighted(&mut packed, 0, &initial);
+
     // Permutation rows 13..15 are outside Poseidon and relation-free.
     add_preweighted(&mut packed, 16, &absorption_zero);
 
-    let path_blocks = selectors.high[49..54]
-        .iter()
-        .copied()
-        .fold(QM31::ZERO, QM31::add);
     let path_locals = selectors.low[0]
         .add(selectors.low[2])
         .add(selectors.low[4])
         .add(selectors.low[6]);
-    let merkle_selector = path_blocks.mul(path_locals);
+    let merkle_selector = selectors.merkle_block.mul(path_locals);
     let bit = openings.z[0];
     let mut merkle = [QM31::ZERO; 17];
     merkle[0] = merkle_selector.mul(bit.mul(bit.sub(QM31::ONE)));
@@ -579,21 +751,13 @@ fn semantic_packed(
     let mut direct_range = [QM31::ZERO; 33];
     for (view, values) in views.into_iter().zip(direct_range[..30].chunks_mut(10)) {
         for bit_index in 0..10 {
-            values[bit_index] =
-                range_selector.mul(view[bit_index].mul(view[bit_index].sub(QM31::ONE)));
+            values[bit_index] = range_selector.mul(view[bit_index].square().sub(view[bit_index]));
         }
     }
-    let reconstructed_value = (0..10).fold(QM31::ZERO, |sum, bit_index| {
-        sum.add(openings.z[bit_index].mul_m31(M31(1 << bit_index)))
-            .add(openings.succ_z[bit_index].mul_m31(M31(1 << (10 + bit_index))))
-            .add(openings.xor12_z[bit_index].mul_m31(M31(1 << (20 + bit_index))))
-    });
-    direct_range[30] = value_selectors
-        .iter()
-        .copied()
-        .fold(QM31::ZERO, |sum, selector| {
-            sum.add(selector.mul(openings.z[10].sub(reconstructed_value)))
-        });
+    let reconstructed_value = reconstruct_10(&openings.z)
+        .add(reconstruct_10(&openings.succ_z).mul_m31(M31(1 << 10)))
+        .add(reconstruct_10(&openings.xor12_z).mul_m31(M31(1 << 20)));
+    direct_range[30] = range_selector.mul(openings.z[10].sub(reconstructed_value));
     direct_range[31] = range_selector.mul(openings.succ_z[10]);
     direct_range[32] = range_selector.mul(openings.xor12_z[10]);
     add_preweighted(&mut packed, 49, &direct_range);
@@ -605,21 +769,26 @@ fn semantic_packed(
     ];
     add_preweighted(&mut packed, 82, &value);
 
-    let mut public_digest = [QM31::ZERO; DIGEST_ELEMS];
-    for (block, digest) in [
-        (23usize, Some(public.anchor)),
-        (25, Some(public.nullifier)),
-        (28, public.recipient),
-        (31, Some(public.change)),
-    ] {
-        let Some(digest) = digest else { continue };
-        let selector = selectors.row(block * 16 + 11);
-        for lane in 0..DIGEST_ELEMS {
-            public_digest[lane] =
-                public_digest[lane].add(selector.mul(openings.z[lane].sub(lift(digest[lane]))));
-        }
-    }
-    add_preweighted(&mut packed, 84, &public_digest);
+    let public_digests = [
+        public.anchor,
+        public.nullifier,
+        public.recipient.unwrap_or([M31::ZERO; DIGEST_ELEMS]),
+        public.change,
+    ];
+    let public_residuals: [[QM31; DIGEST_ELEMS]; 4] = core::array::from_fn(|input| {
+        core::array::from_fn(|lane| openings.z[lane].sub(lift(public_digests[input][lane])))
+    });
+    let public_selectors = [
+        selectors.row(23 * 16 + 11),
+        selectors.row(25 * 16 + 11),
+        if public.recipient.is_some() {
+            selectors.row(28 * 16 + 11)
+        } else {
+            QM31::ZERO
+        },
+        selectors.row(31 * 16 + 11),
+    ];
+    add_selected4(&mut packed, 84, &public_residuals, public_selectors);
 
     let input_asset_selector = selectors.row(2 * 16 + 12);
     let mut output_scalar = selectors
@@ -1062,6 +1231,74 @@ mod tests {
                 QM31::ONE
             }
         })
+    }
+
+    fn factorization_test_publics() -> [SemanticPublic; 2] {
+        [
+            SemanticPublic {
+                variant: CompiledVariant::PrivateTransfer,
+                anchor: digest(10),
+                nullifier: digest(100),
+                asset_id: M31(17),
+                recipient: Some(digest(200)),
+                change: digest(300),
+                withdrawal_amount: None,
+            },
+            SemanticPublic {
+                variant: CompiledVariant::Withdrawal,
+                anchor: digest(10),
+                nullifier: digest(100),
+                asset_id: M31(17),
+                recipient: None,
+                change: digest(300),
+                withdrawal_amount: Some(9),
+            },
+        ]
+    }
+
+    #[test]
+    fn factored_initial_and_absorption_match_literal_scan_off_domain() {
+        let mut rng = Rng(0x504f_4f4c_5f46_4143);
+        for _ in 0..64 {
+            let point = core::array::from_fn(|_| rng.qm31());
+            let selectors = Selectors::at_point(&point);
+            let openings = StateOnlyPoseidonOpenings {
+                z: core::array::from_fn(|_| rng.qm31()),
+                succ_z: core::array::from_fn(|_| rng.qm31()),
+                xor12_z: core::array::from_fn(|_| rng.qm31()),
+            };
+            for public in factorization_test_publics() {
+                assert_eq!(
+                    semantic_initial_and_absorption_factored(public, &openings, &selectors),
+                    semantic_initial_and_absorption_unfactored_reference(
+                        public, &openings, &selectors,
+                    )
+                );
+            }
+        }
+    }
+
+    #[test]
+    fn factored_initial_and_absorption_match_literal_scan_on_all_boolean_rows() {
+        let mut rng = Rng(0x424f_4f4c_5f46_4143);
+        let openings = StateOnlyPoseidonOpenings {
+            z: core::array::from_fn(|_| rng.qm31()),
+            succ_z: core::array::from_fn(|_| rng.qm31()),
+            xor12_z: core::array::from_fn(|_| rng.qm31()),
+        };
+        for row in 0..POOL_V1_PAYMENT_TERMINAL_ROWS {
+            let selectors = Selectors::at_point(&boolean_point(row));
+            for public in factorization_test_publics() {
+                assert_eq!(
+                    semantic_initial_and_absorption_factored(public, &openings, &selectors),
+                    semantic_initial_and_absorption_unfactored_reference(
+                        public, &openings, &selectors,
+                    ),
+                    "row {row} variant {:?}",
+                    public.variant,
+                );
+            }
+        }
     }
 
     fn claims_from_openings(
