@@ -225,27 +225,28 @@ The minimum code changes are:
    ASVQ path for this profile by exact finalized account identity/length and
    immediate selected-program return authentication. Keep registry policy,
    program/profile/release and statement binding.
-4. **Compact verified transition result.** Return the source-snapshot binding
-   and exact next sequence/root/frontier. A concrete 968-byte layout fits the
-   1,024-byte Solana return-data maximum:
+4. **Compact verified transition result.** Return only the information which is
+   created by proof verification rather than echoing the sealed request. The
+   Pool already retains the exact live snapshot, statement, selected program,
+   proof account, profile and release across the immediate read-only CPI. The
+   runtime identifies the return-data writer, and the source bridge must prove
+   that the selected handler emits a result only after accepting that exact CPI
+   instruction and proof account. Consequently source sequence, next sequence,
+   next pair index, history routing and every identity binding are derived from
+   the caller's sealed values; none needs to be serialized back by the callee.
+   The minimum candidate result is 680 bytes:
 
    ```text
-    16  header/version/kind/status
-    64  statement digest + live-snapshot digest
-    24  source sequence + next sequence + next pair index
+     8  magic/version/kind/success/reserved
     32  next root
    640  twenty next-frontier digests
-    16  root-history page/slot routing
-    32  output-pair digest
-    16  pair leaf index + retained-root sequence
-   128  Pool + proof account + profile + release bindings
    ---
-   968 bytes
+   680 bytes
    ```
 
-   This is a size screen, not yet a frozen wire. Redundant fields may be
-   removed, but no source/snapshot/profile binding may be omitted merely to
-   save bytes.
+   This is a size screen, not yet a frozen wire. Omitting the echoes is sound
+   only with the immediate-CPI/sealed-plan source theorem just stated. It does
+   not remove any source/snapshot/profile binding from the request or proof.
 5. **Byte-only atomic suffix.** Add one Pool instruction which consumes that
    result and the sealed marker preflight, performs optional withdrawal
    custody, writes only the exact state fields and one chronological root
@@ -267,6 +268,23 @@ the immediate CPI-return parser. Existing account uniqueness, signer/owner,
 canonical PDA, history routing, writable-shape, capacity, checked arithmetic,
 token-account/delta, and all-before-success checks stay in place. No existing
 instruction tag or state format should silently change meaning.
+
+### Selected-program code identity
+
+The current registry authenticates an executable account's program id plus the
+exact profile and release bindings. It accepts legacy BPF, upgradeable-loader
+and loader-v4 owners, but it does not inspect ProgramData or prove that the
+selected program's deployed bytes cannot change. The registry's own
+`IMMUTABLE` flag freezes registry governance; it does not make an upgradeable
+verifier program immutable.
+
+This does not require a larger verifier result and should not be charged to the
+cryptographic CU profile. It is nevertheless a hard release gate: the signed
+deployment manifest and startup checks must pin the selected program's loader,
+deployed executable hash and upgrade authority, and the production release must
+either be immutable or use the explicitly reviewed governance policy. A future
+on-chain ProgramData check is optional defence in depth; until implemented,
+program upgradeability remains an explicit operational/Solana trust boundary.
 
 ## Exact live accounts and bytes
 
