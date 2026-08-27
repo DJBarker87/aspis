@@ -978,6 +978,8 @@ pub struct PoolV1PairTraceCellV1 {
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum PoolV1PairCopyWeightV1 {
     One,
+    PrivateTransferOnly,
+    WithdrawalOnly,
     AppendCurrentLeft { level: u8 },
     AppendCurrentRight { level: u8 },
 }
@@ -1054,10 +1056,14 @@ pub fn build_pool_v1_pair_copy_registry_v1(
     let mut output = Vec::with_capacity(rows.len());
     for scheduled in rows {
         let (producer, consumer, weight) = match scheduled.kind {
-            PoolV1PairCopyRowLinkKindV1::SpongeCarry { .. } => (
+            PoolV1PairCopyRowLinkKindV1::SpongeCarry { from, .. } => (
                 tuple_cells(scheduled.producer_row as usize, 0, 16, false),
                 tuple_cells(scheduled.consumer_row as usize, 0, 16, false),
-                PoolV1PairCopyWeightV1::One,
+                if from == 27 || from == 28 {
+                    PoolV1PairCopyWeightV1::PrivateTransferOnly
+                } else {
+                    PoolV1PairCopyWeightV1::One
+                },
             ),
             PoolV1PairCopyRowLinkKindV1::OwnerOutput => (
                 tuple_cells(11, 0, 8, false),
@@ -1094,10 +1100,14 @@ pub fn build_pool_v1_pair_copy_registry_v1(
                 tuple_cells(scheduled.consumer_row as usize, 8, 8, true),
                 PoolV1PairCopyWeightV1::One,
             ),
-            PoolV1PairCopyRowLinkKindV1::ValueSource { .. } => (
+            PoolV1PairCopyRowLinkKindV1::ValueSource { value } => (
                 tuple_cells(scheduled.producer_row as usize, 0, 1, false),
                 aux_tuple(scheduled.consumer_row as usize, 10, 1),
-                PoolV1PairCopyWeightV1::One,
+                if value == 1 {
+                    PoolV1PairCopyWeightV1::PrivateTransferOnly
+                } else {
+                    PoolV1PairCopyWeightV1::One
+                },
             ),
             PoolV1PairCopyRowLinkKindV1::ConservationInput => (
                 aux_tuple(960, 10, 1),
@@ -1132,12 +1142,17 @@ pub fn build_pool_v1_pair_copy_registry_v1(
             PoolV1PairCopyRowLinkKindV1::OutputSecondCommitment => (
                 tuple_cells(523, 0, 8, false),
                 aux_tuple(970, 2, 8),
-                PoolV1PairCopyWeightV1::One,
+                PoolV1PairCopyWeightV1::PrivateTransferOnly,
             ),
             PoolV1PairCopyRowLinkKindV1::OutputPairFirst => (
                 tuple_cells(475, 0, 8, false),
                 tuple_cells(540, 0, 8, false),
-                PoolV1PairCopyWeightV1::One,
+                PoolV1PairCopyWeightV1::PrivateTransferOnly,
+            ),
+            PoolV1PairCopyRowLinkKindV1::OutputPairFirstWithdrawal => (
+                tuple_cells(523, 0, 8, false),
+                tuple_cells(540, 0, 8, false),
+                PoolV1PairCopyWeightV1::WithdrawalOnly,
             ),
             PoolV1PairCopyRowLinkKindV1::OutputPairSecond => (
                 aux_tuple(970, 2, 8),
@@ -1184,9 +1199,19 @@ fn tuple_value(trace: &PoolV1PairTraceV1, tuple: PoolV1PairCopyTupleV1) -> [M31;
     })
 }
 
-fn copy_weight(weight: PoolV1PairCopyWeightV1, append_index: u64) -> M31 {
+fn copy_weight(
+    weight: PoolV1PairCopyWeightV1,
+    append_index: u64,
+    variant: PoolV1PairTraceVariantV1,
+) -> M31 {
     match weight {
         PoolV1PairCopyWeightV1::One => M31::ONE,
+        PoolV1PairCopyWeightV1::PrivateTransferOnly => M31(u32::from(
+            variant == PoolV1PairTraceVariantV1::PrivateTransfer,
+        )),
+        PoolV1PairCopyWeightV1::WithdrawalOnly => {
+            M31(u32::from(variant == PoolV1PairTraceVariantV1::Withdrawal))
+        }
         PoolV1PairCopyWeightV1::AppendCurrentLeft { level } => {
             M31(1 - ((append_index >> level) & 1) as u32)
         }
@@ -1209,7 +1234,7 @@ pub fn pool_v1_pair_copy_rows_v1(
     };
     let mut rows = vec![empty; 1024];
     for link in build_pool_v1_pair_copy_registry_v1()? {
-        let weight = copy_weight(link.weight, append_index);
+        let weight = copy_weight(link.weight, append_index, trace.variant);
         for (tuple, producer) in [(link.producer, true), (link.consumer, false)] {
             let row = &mut rows[tuple.row as usize];
             let (values, weights) = if producer {
@@ -1375,7 +1400,10 @@ mod tests {
             .chain(&column[864..])
             .all(|value| *value == M31::ZERO)));
         assert_eq!(trace.afterstate.next_pair_index, 1);
-        assert_eq!(build_pool_v1_pair_copy_registry_v1().unwrap().len(), 126);
+        assert_eq!(
+            build_pool_v1_pair_copy_registry_v1().unwrap().len(),
+            POOL_V1_PAIR_COPY_ROW_LINKS_V1
+        );
         verify_pool_v1_pair_copy_registry_v1(
             &trace,
             snapshot.next_pair_index,

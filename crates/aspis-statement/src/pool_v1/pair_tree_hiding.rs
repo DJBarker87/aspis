@@ -21,10 +21,10 @@ use super::pair_tree_profile::{
 };
 
 pub const POOL_V1_PAIR_RELATION_FREE_PADDING_LOCAL_ROW_START_V1: usize = 13;
-pub const POOL_V1_PAIR_COPY_ROW_LINKS_V1: usize = 126;
+pub const POOL_V1_PAIR_COPY_ROW_LINKS_V1: usize = 127;
 pub const POOL_V1_PAIR_COPY_ACTIVE_ROWS_V1: usize = 199;
 pub const POOL_V1_PAIR_RELATION_FREE_MASK_CELLS_V1: usize = 4_334;
-pub const PINNED_POOL_V1_PAIR_COPY_ROW_SCHEDULE_FINGERPRINT_V1: u64 = 0x9798_5fb3_0cdd_807d;
+pub const PINNED_POOL_V1_PAIR_COPY_ROW_SCHEDULE_FINGERPRINT_V1: u64 = 0x5b01_a440_7ba9_4fce;
 pub const PINNED_POOL_V1_PAIR_COPY_ACTIVE_ROWS_FINGERPRINT_V1: u64 = 0x56e6_c3e3_f386_f273;
 pub const PINNED_POOL_V1_PAIR_RELATION_FREE_MASK_FINGERPRINT_V1: u64 = 0x6a86_249a_2d85_591f;
 
@@ -58,6 +58,7 @@ pub enum PoolV1PairCopyRowLinkKindV1 {
     InputSelectedSide,
     OutputSecondCommitment,
     OutputPairFirst,
+    OutputPairFirstWithdrawal,
     OutputPairSecond,
     /// The two links at each level have complementary public weights
     /// `(1-bit, bit)`. Both rows remain in the fixed active-row inventory.
@@ -207,6 +208,11 @@ pub fn build_pool_v1_pair_copy_row_schedule_v1(
     links.push(link(
         PoolV1PairCopyRowLinkKindV1::OutputPairFirst,
         29 * 16 + 11,
+        33 * 16 + 12,
+    ));
+    links.push(link(
+        PoolV1PairCopyRowLinkKindV1::OutputPairFirstWithdrawal,
+        32 * 16 + 11,
         33 * 16 + 12,
     ));
     links.push(link(
@@ -380,9 +386,10 @@ fn copy_row_link_kind_code_v1(kind: PoolV1PairCopyRowLinkKindV1) -> [u8; 3] {
         PoolV1PairCopyRowLinkKindV1::InputSelectedSide => [14, 0, 0],
         PoolV1PairCopyRowLinkKindV1::OutputSecondCommitment => [15, 0, 0],
         PoolV1PairCopyRowLinkKindV1::OutputPairFirst => [16, 0, 0],
-        PoolV1PairCopyRowLinkKindV1::OutputPairSecond => [17, 0, 0],
-        PoolV1PairCopyRowLinkKindV1::AppendCurrentLeft { level } => [18, level, 0],
-        PoolV1PairCopyRowLinkKindV1::AppendCurrentRight { level } => [19, level, 0],
+        PoolV1PairCopyRowLinkKindV1::OutputPairFirstWithdrawal => [17, 0, 0],
+        PoolV1PairCopyRowLinkKindV1::OutputPairSecond => [18, 0, 0],
+        PoolV1PairCopyRowLinkKindV1::AppendCurrentLeft { level } => [19, level, 0],
+        PoolV1PairCopyRowLinkKindV1::AppendCurrentRight { level } => [20, level, 0],
     }
 }
 
@@ -466,6 +473,10 @@ mod tests {
         let (producers, consumers) = endpoint_counts(&links).unwrap();
         assert!(producers.into_iter().all(|count| count <= 2));
         assert!(consumers.into_iter().all(|count| count <= 2));
+        // The public-variant dual output routing consumes the final available
+        // slots at precisely these two endpoints.
+        assert_eq!(producers[32 * 16 + 11], 2);
+        assert_eq!(consumers[33 * 16 + 12], 2);
         assert_eq!(
             pool_v1_pair_copy_row_schedule_fingerprint_v1().unwrap(),
             PINNED_POOL_V1_PAIR_COPY_ROW_SCHEDULE_FINGERPRINT_V1,
