@@ -1,0 +1,35 @@
+Pool V1 literal history persistence read-after-write composition
+Date: 2026-08-27
+Source base: 1fe2e77323e0e202cb401d73b25ef36801bc4daa
+
+Focused Lean command:
+  LEAN_PATH=<proof oleans>:<generated>:<patched Aeneas Lean path> lean \
+    -o /private/tmp/PoolV1HistoryReadAfterWriteBridge.olean \
+    proof/PoolV1HistoryReadAfterWriteBridge.lean
+
+Result: PASS
+
+Strongest theorems:
+  new_page_success_selected_root_decodes
+  existing_page_success_selected_root_decodes
+
+Exact #print axioms union:
+  [propext, Classical.choice, Quot.sound]
+
+Coverage:
+  - later ordered root writes preserve every earlier selected 32-byte slot;
+  - the selected write is exactly the production canonical encoder output;
+  - the existing-page filled-count write at offsets 56--57 preserves all root
+    slots beginning at offset 64;
+  - the complete rollover/new-page source afterimage preserves every selected
+    encoded root;
+  - the transparent canonical decoder reconstructs the original digest for
+    every selected root under the deployed canonical-limb condition.
+
+The capstones start from literal translated production persistence success,
+not an abstract byte-store callback. They compose the already-proved source
+encoder loop, exact new/existing page traces and source decoder model.
+
+Audit:
+  No sorry, admit, sorryAx, project-specific axiom, persistence callback,
+  codec-correspondence premise or trace-cover premise occurs. NUC was not used.

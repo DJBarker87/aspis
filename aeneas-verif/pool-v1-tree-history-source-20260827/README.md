@@ -232,6 +232,17 @@ This is an actual source-level codec theorem rather than an abstract
 serialization premise.  Both focused theorem groups report only
 `[propext, Classical.choice, Quot.sound]`.
 
+`proof/PoolV1HistoryReadAfterWriteBridge.lean` closes the byte-persistence
+composition for both routing outcomes.  It proves that all later ordered
+writes preserve a selected earlier 32-byte root slot, and that the final
+existing-page filled-count update at offsets 56--57 preserves every root slot
+beginning at offset 64.  The capstones
+`new_page_success_selected_root_decodes` and
+`existing_page_success_selected_root_decodes` start from literal production
+persistence success and conclude that every selected stored root decodes to
+exactly its original digest.  Their axiom union is exactly
+`[propext, Classical.choice, Quot.sound]`.
+
 The retained-root reader passes through Rust's formatting machinery only on
 an impossible `Result::unwrap` failure after a successful fixed-array
 conversion.  Aeneas otherwise exposes its placeholder `core::fmt::Formatter`
@@ -244,12 +255,9 @@ The remaining implementation lift is:
 
 1. lift the now-closed prepared-afterimage validator through the caller that
    constructs it and through the state/root account writes;
-2. compose the now-closed source codec theorem with the exact existing-page
-   and rollover/new-page traces, proving that later ordered writes preserve
-   each selected slot and hence a literal read-after-write result;
-3. close current-page versus rollover routing, including the exact root split,
+2. close current-page versus rollover routing, including the exact root split,
    page number, first sequence and supplied-next-account condition;
-4. carry pool identity, owner, PDA and same-writable-account checks through the
+3. carry pool identity, owner, PDA and same-writable-account checks through the
    successful program path.
 
 The only intended cryptographic semantic boundary is the already-frozen
