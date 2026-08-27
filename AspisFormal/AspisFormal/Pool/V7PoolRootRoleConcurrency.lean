@@ -369,6 +369,26 @@ theorem exact_stageB_lane_expansion :
       stagedPoolStageBQM31Lanes = 7 := by
   decide
 
+/-! The current H1/G/D helpers and the late append values coexist on the late
+rows.  Once that source-level density premise is established, this dimension
+count rules out a layout-only packing into four total QM31 lanes: those lanes
+carry sixteen M31 coordinates, while the simultaneous values require twenty
+eight.  It does not rule out a new masking protocol with a separately proved
+rank theorem. -/
+
+def existingHelperM31Coordinates : Nat :=
+  existingStageBHelperQM31Lanes * m31CoordinatesPerQM31
+def simultaneousLateRowM31Coordinates : Nat :=
+  existingHelperM31Coordinates + lateAppendM31Columns
+def fourQM31LaneM31Capacity : Nat := 4 * m31CoordinatesPerQM31
+
+theorem exact_four_lane_layout_capacity_shortfall :
+    existingHelperM31Coordinates = 12 ∧
+      simultaneousLateRowM31Coordinates = 28 ∧
+      fourQM31LaneM31Capacity = 16 ∧
+      fourQM31LaneM31Capacity < simultaneousLateRowM31Coordinates := by
+  decide
+
 /-! ## Rejected execution-time append profile
 
 This smaller-wire profile proves the stable pair relation only and lets the
@@ -561,6 +581,13 @@ def frozenMaximumBodyBytes : Nat :=
 def stagedMaximumBodyBytes : Nat :=
   maximumBodyBytes stagedFixedQM31Values stagedC2Columns
 
+def hypotheticalFusedC2Columns : Nat := 4
+def hypotheticalFusedFixedQM31Values : Nat :=
+  frozenFixedQM31Values +
+    pointClaimRows * (hypotheticalFusedC2Columns - frozenC2Columns)
+def hypotheticalFusedMaximumBodyBytes : Nat :=
+  maximumBodyBytes hypotheticalFusedFixedQM31Values hypotheticalFusedC2Columns
+
 def stablePairMaximumBodyBytes : Nat :=
   maximumBodyBytes frozenFixedQM31Values frozenC2Columns
 
@@ -603,6 +630,18 @@ theorem exact_staged_c2_leaf_sha_block_increase :
       queryCount *
           (sha256LeafBlocks (c2BytesPerQuery stagedC2Columns) -
             sha256LeafBlocks (c2BytesPerQuery frozenC2Columns)) = 64 := by
+  decide
+
+/-- Even if a new masking theorem made four total C2 lanes sound, the wire
+would still grow: one additional authenticated lane changes all q16 openings
+and adds its claims at all three points. -/
+theorem exact_hypothetical_four_total_lane_wire_cost :
+    hypotheticalFusedFixedQM31Values = 644 ∧
+      c2BytesPerQuery hypotheticalFusedC2Columns = 248 ∧
+      queryBytes hypotheticalFusedC2Columns = 683 ∧
+      fixedFieldBytes hypotheticalFusedFixedQM31Values = 9982 ∧
+      hypotheticalFusedMaximumBodyBytes = 31542 ∧
+      hypotheticalFusedMaximumBodyBytes - frozenMaximumBodyBytes = 1038 := by
   decide
 
 /-! ## Exact live-dependent suffix
@@ -682,6 +721,7 @@ theorem exact_semantic_row_owner_cardinalities :
 #print axioms frozen_tag73_prefix_has_no_late_snapshot
 #print axioms staged_pool_prefix_is_not_the_frozen_tag73_prefix
 #print axioms exact_stageB_lane_expansion
+#print axioms exact_four_lane_layout_capacity_shortfall
 #print axioms exact_staged_wire_cost_if_four_late_lanes_authenticated
 #print axioms exact_stable_pair_row_screen
 #print axioms stable_pair_prefix_has_no_live_append_snapshot
@@ -692,6 +732,7 @@ theorem exact_semantic_row_owner_cardinalities :
 #print axioms exact_proof_carried_afterstate_wire
 #print axioms exact_stable_pair_wire_screen_keeps_frozen_body_size
 #print axioms exact_staged_c2_leaf_sha_block_increase
+#print axioms exact_hypothetical_four_total_lane_wire_cost
 #print axioms exact_live_dependent_suffix_has_fifteen_steps
 #print axioms every_positioned_work_stage_is_live_dependent
 #print axioms exact_semantic_row_owner_cardinalities
