@@ -13,19 +13,20 @@ use crate::trace_v4::TraceCell;
 
 use super::pair_tree_profile::{
     pool_v1_pair_path_base_row_v1, POOL_V1_PAIR_INPUT_OCCUPANCY_AUX_ROW,
-    POOL_V1_PAIR_OCCUPANCY_COMMITMENT_COLUMN_END, POOL_V1_PAIR_OUTPUT_OCCUPANCY_AUX_ROW,
-    POOL_V1_PAIR_PATH_AUX_ROW_START, POOL_V1_PAIR_POSEIDON_BLOCKS, POOL_V1_PAIR_POSEIDON_ROW_END,
-    POOL_V1_PAIR_PRIVATE_DIRECTIONS, POOL_V1_PAIR_TRACE_BLOCK_ROWS, POOL_V1_PAIR_TRACE_COLUMNS,
-    POOL_V1_PAIR_TRACE_ROWS, POOL_V1_PAIR_VALUE_AUX_ROW_START,
+    POOL_V1_PAIR_INPUT_SELECTED_SIDE_COLUMN, POOL_V1_PAIR_OCCUPANCY_COMMITMENT_COLUMN_END,
+    POOL_V1_PAIR_OUTPUT_OCCUPANCY_AUX_ROW, POOL_V1_PAIR_PATH_LOCAL_ROW_OFFSET,
+    POOL_V1_PAIR_POSEIDON_BLOCKS, POOL_V1_PAIR_POSEIDON_ROW_END, POOL_V1_PAIR_PRIVATE_DIRECTIONS,
+    POOL_V1_PAIR_TRACE_BLOCK_ROWS, POOL_V1_PAIR_TRACE_COLUMNS, POOL_V1_PAIR_TRACE_ROWS,
+    POOL_V1_PAIR_VALUE_AUX_ROW_START,
 };
 
 pub const POOL_V1_PAIR_RELATION_FREE_PADDING_LOCAL_ROW_START_V1: usize = 13;
 pub const POOL_V1_PAIR_COPY_ROW_LINKS_V1: usize = 126;
 pub const POOL_V1_PAIR_COPY_ACTIVE_ROWS_V1: usize = 199;
 pub const POOL_V1_PAIR_RELATION_FREE_MASK_CELLS_V1: usize = 4_334;
-pub const PINNED_POOL_V1_PAIR_COPY_ROW_SCHEDULE_FINGERPRINT_V1: u64 = 0x6ce7_4135_d13e_aec1;
-pub const PINNED_POOL_V1_PAIR_COPY_ACTIVE_ROWS_FINGERPRINT_V1: u64 = 0xf2be_ed15_9747_5639;
-pub const PINNED_POOL_V1_PAIR_RELATION_FREE_MASK_FINGERPRINT_V1: u64 = 0xe2cf_8261_feed_9098;
+pub const PINNED_POOL_V1_PAIR_COPY_ROW_SCHEDULE_FINGERPRINT_V1: u64 = 0x9798_5fb3_0cdd_807d;
+pub const PINNED_POOL_V1_PAIR_COPY_ACTIVE_ROWS_FINGERPRINT_V1: u64 = 0x56e6_c3e3_f386_f273;
+pub const PINNED_POOL_V1_PAIR_RELATION_FREE_MASK_FINGERPRINT_V1: u64 = 0x6a86_249a_2d85_591f;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum PoolV1PairCopyRowLinkKindV1 {
@@ -187,9 +188,11 @@ pub fn build_pool_v1_pair_copy_row_schedule_v1(
         64,
         POOL_V1_PAIR_INPUT_OCCUPANCY_AUX_ROW,
     ));
+    let input_selected_side_row =
+        pool_v1_pair_path_base_row_v1(0).ok_or(PoolV1PairHidingLayoutErrorV1::Shape)?;
     links.push(link(
         PoolV1PairCopyRowLinkKindV1::InputSelectedSide,
-        POOL_V1_PAIR_PATH_AUX_ROW_START,
+        input_selected_side_row,
         POOL_V1_PAIR_INPUT_OCCUPANCY_AUX_ROW,
     ));
 
@@ -305,7 +308,7 @@ fn value_aux_cell_is_used(row: usize, column: usize) -> bool {
 
 fn occupancy_aux_cell_is_used(row: usize, column: usize) -> bool {
     (row == POOL_V1_PAIR_INPUT_OCCUPANCY_AUX_ROW
-        && column <= POOL_V1_PAIR_OCCUPANCY_COMMITMENT_COLUMN_END)
+        && column <= POOL_V1_PAIR_INPUT_SELECTED_SIDE_COLUMN)
         || (row == POOL_V1_PAIR_OUTPUT_OCCUPANCY_AUX_ROW
             && column < POOL_V1_PAIR_OCCUPANCY_COMMITMENT_COLUMN_END)
 }
@@ -432,6 +435,7 @@ pub fn pool_v1_pair_copy_active_rows_fingerprint_v1() -> Result<u64, PoolV1PairH
 
 const _: () = assert!(POOL_V1_PAIR_POSEIDON_BLOCKS == 54);
 const _: () = assert!(POOL_V1_PAIR_POSEIDON_ROW_END == 864);
+const _: () = assert!(POOL_V1_PAIR_PATH_LOCAL_ROW_OFFSET == 1);
 
 #[cfg(test)]
 mod tests {
@@ -447,6 +451,18 @@ mod tests {
     fn exact_row_schedule_has_bounded_endpoint_capacity() {
         let links = build_pool_v1_pair_copy_row_schedule_v1().unwrap();
         assert_eq!(links.len(), POOL_V1_PAIR_COPY_ROW_LINKS_V1);
+        let selected_side = links
+            .iter()
+            .find(|link| link.kind == PoolV1PairCopyRowLinkKindV1::InputSelectedSide)
+            .unwrap();
+        assert_eq!(
+            usize::from(selected_side.producer_row),
+            pool_v1_pair_path_base_row_v1(0).unwrap(),
+        );
+        assert_eq!(
+            usize::from(selected_side.consumer_row),
+            POOL_V1_PAIR_INPUT_OCCUPANCY_AUX_ROW,
+        );
         let (producers, consumers) = endpoint_counts(&links).unwrap();
         assert!(producers.into_iter().all(|count| count <= 2));
         assert!(consumers.into_iter().all(|count| count <= 2));
@@ -487,7 +503,7 @@ mod tests {
         assert!(!contains(
             &cells,
             POOL_V1_PAIR_INPUT_OCCUPANCY_AUX_ROW,
-            POOL_V1_PAIR_OCCUPANCY_COMMITMENT_COLUMN_END,
+            POOL_V1_PAIR_INPUT_SELECTED_SIDE_COLUMN,
         ));
         assert_eq!(cells.len(), POOL_V1_PAIR_RELATION_FREE_MASK_CELLS_V1);
         assert_eq!(

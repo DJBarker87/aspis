@@ -219,6 +219,11 @@ pub const POOL_V1_PAIR_POSEIDON_BLOCKS: usize =
     POOL_V1_PAIR_STABLE_POSEIDON_BLOCKS + POOL_V1_PAIR_LATE_APPEND_POSEIDON_BLOCKS;
 pub const POOL_V1_PAIR_PRIVATE_DIRECTIONS: usize = 21;
 pub const POOL_V1_PAIR_DIRECTIONS_PER_AUX_BLOCK: usize = 4;
+/// Rotate the four path bases to local rows 1,3,5,7. Their successors are
+/// 2,4,6,8 and their xor-12 siblings are 13,15,9,11. This preserves the
+/// exact three-row certificate geometry while leaving local rows 0 and 12
+/// relation-free for the full-view masking rank.
+pub const POOL_V1_PAIR_PATH_LOCAL_ROW_OFFSET: usize = 1;
 pub const POOL_V1_PAIR_PATH_AUX_BLOCKS: usize = 6;
 pub const POOL_V1_PAIR_VALUE_AUX_BLOCKS: usize = 1;
 pub const POOL_V1_PAIR_ALLOCATED_BLOCKS: usize =
@@ -235,8 +240,10 @@ pub const POOL_V1_PAIR_PATH_AUX_ROW_END: usize =
 pub const POOL_V1_PAIR_VALUE_AUX_ROW_START: usize = POOL_V1_PAIR_PATH_AUX_ROW_END;
 pub const POOL_V1_PAIR_SEMANTIC_ROW_END: usize = POOL_V1_PAIR_ALLOCATED_ROWS;
 /// The historical input pair and newly appended output pair require distinct
-/// occupancy witnesses.  Each row stores `(occupied, inverse, C[0..8])`, so
-/// its zero-test and all eight empty-slot equations are row-local.
+/// occupancy witnesses. Both rows store `(occupied, inverse, C[0..8))`, so
+/// the zero-test and all eight empty-slot equations are row-local. The input
+/// row additionally stores the selected-side bit in column 10, allowing the
+/// spend relation to enforce `selected_second * (1 - occupied) = 0` locally.
 pub const POOL_V1_PAIR_INPUT_OCCUPANCY_AUX_ROW: usize = POOL_V1_PAIR_VALUE_AUX_ROW_START + 9;
 pub const POOL_V1_PAIR_OUTPUT_OCCUPANCY_AUX_ROW: usize = POOL_V1_PAIR_VALUE_AUX_ROW_START + 10;
 pub const POOL_V1_PAIR_OCCUPANCY_BIT_COLUMN: usize = 0;
@@ -244,6 +251,8 @@ pub const POOL_V1_PAIR_OCCUPANCY_INVERSE_COLUMN: usize = 1;
 pub const POOL_V1_PAIR_OCCUPANCY_COMMITMENT_COLUMN_START: usize = 2;
 pub const POOL_V1_PAIR_OCCUPANCY_COMMITMENT_COLUMN_END: usize =
     POOL_V1_PAIR_OCCUPANCY_COMMITMENT_COLUMN_START + 8;
+pub const POOL_V1_PAIR_INPUT_SELECTED_SIDE_COLUMN: usize =
+    POOL_V1_PAIR_OCCUPANCY_COMMITMENT_COLUMN_END;
 
 pub const POOL_V1_PAIR_POSEIDON_INTRINSIC_DEGREE: usize = 25;
 pub const POOL_V1_PAIR_NEW_RESIDUAL_MAX_INTRINSIC_DEGREE: usize = 2;
@@ -329,6 +338,7 @@ pub const fn pool_v1_pair_path_base_row_v1(level: usize) -> Option<usize> {
     Some(
         POOL_V1_PAIR_PATH_AUX_ROW_START
             + (level / POOL_V1_PAIR_DIRECTIONS_PER_AUX_BLOCK) * POOL_V1_PAIR_TRACE_BLOCK_ROWS
+            + POOL_V1_PAIR_PATH_LOCAL_ROW_OFFSET
             + 2 * (level % POOL_V1_PAIR_DIRECTIONS_PER_AUX_BLOCK),
     )
 }
@@ -337,6 +347,7 @@ const _: () = assert!(POOL_V1_PAIR_TREE_DEPTH == 20);
 const _: () = assert!(POOL_V1_PAIR_NOTE_DEPTH == 21);
 const _: () = assert!(POOL_V1_PAIR_POSEIDON_BLOCKS == 54);
 const _: () = assert!(POOL_V1_PAIR_PATH_AUX_BLOCKS == 6);
+const _: () = assert!(POOL_V1_PAIR_PATH_LOCAL_ROW_OFFSET == 1);
 const _: () = assert!(POOL_V1_PAIR_ALLOCATED_BLOCKS == 61);
 const _: () = assert!(POOL_V1_PAIR_POSEIDON_ROW_END == 864);
 const _: () = assert!(POOL_V1_PAIR_PATH_AUX_ROW_END == 960);
@@ -344,6 +355,7 @@ const _: () = assert!(POOL_V1_PAIR_VALUE_AUX_ROW_START == 960);
 const _: () = assert!(POOL_V1_PAIR_INPUT_OCCUPANCY_AUX_ROW == 969);
 const _: () = assert!(POOL_V1_PAIR_OUTPUT_OCCUPANCY_AUX_ROW == 970);
 const _: () = assert!(POOL_V1_PAIR_OCCUPANCY_COMMITMENT_COLUMN_END == 10);
+const _: () = assert!(POOL_V1_PAIR_INPUT_SELECTED_SIDE_COLUMN == 10);
 const _: () = assert!(POOL_V1_PAIR_SEMANTIC_ROW_END == 976);
 const _: () = assert!(POOL_V1_PAIR_UNALLOCATED_SEMANTIC_ROWS == 48);
 const _: () = assert!(POOL_V1_PAIR_NEW_RESIDUAL_MAX_INTRINSIC_DEGREE <= 2);
@@ -531,8 +543,8 @@ mod tests {
             Some(PoolV1PairPoseidonBlockRoleV1::AppendTreePath(19))
         );
         assert_eq!(pool_v1_pair_poseidon_block_role_v1(54), None);
-        assert_eq!(pool_v1_pair_path_base_row_v1(0), Some(864));
-        assert_eq!(pool_v1_pair_path_base_row_v1(20), Some(944));
+        assert_eq!(pool_v1_pair_path_base_row_v1(0), Some(865));
+        assert_eq!(pool_v1_pair_path_base_row_v1(20), Some(945));
         assert_eq!(pool_v1_pair_path_base_row_v1(21), None);
         assert_eq!(POOL_V1_PAIR_SEMANTIC_ROW_END, 976);
         assert_eq!(POOL_V1_PAIR_UNALLOCATED_SEMANTIC_ROWS, 48);

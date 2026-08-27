@@ -179,12 +179,13 @@ theorem untouched_rows_have_exact_cardinality :
 
 /-! ## Exact auxiliary placement
 
-This mirrors the existing Pool V1 source layout rather than merely rounding a
-row count.  Four path levels share each sixteen-row block.  Their base rows are
-local rows `0,2,4,6`; ordered children use the successor row and the sibling
-digest uses the existing `xor 12` view.  Extending 20 directions to the pair
-side plus twenty upper levels therefore consumes exactly one additional path
-block. -/
+Four path levels share each sixteen-row block. Their bases are deliberately
+rotated to local rows `1,3,5,7`; ordered children use successor rows
+`2,4,6,8`, and sibling digests use the existing `xor 12` rows `13,15,9,11`.
+The rotation leaves local rows `0` and `12` relation-free in every full path
+block, which supplies the two raw-view mask directions absent from the old
+`0,2,4,6` placement. Extending 20 directions to the pair side plus twenty
+upper levels still consumes exactly one additional path block. -/
 
 structure TraceCell where
   row : Nat
@@ -193,7 +194,7 @@ structure TraceCell where
 
 def pathBaseRow (level : Fin 21) : Nat :=
   (pathAuxBlockStart + level.val / directionsPerAuxBlock) * blockRows +
-    2 * (level.val % directionsPerAuxBlock)
+    1 + 2 * (level.val % directionsPerAuxBlock)
 
 def pathSuccessorRow (level : Fin 21) : Nat := pathBaseRow level + 1
 def pathSiblingRow (level : Fin 21) : Nat := Nat.xor (pathBaseRow level) 12
@@ -232,6 +233,15 @@ theorem every_path_aux_cell_is_inside_sixteen_columns :
         (pathSiblingCell level lane).column < traceColumns) := by
   decide
 
+theorem rotated_path_local_rows_are_exact :
+    (Finset.univ.image (fun level : Fin 4 =>
+      pathBaseRow ⟨level.val, by omega⟩ % blockRows)) = {1, 3, 5, 7} ∧
+    (Finset.univ.image (fun level : Fin 4 =>
+      pathSuccessorRow ⟨level.val, by omega⟩ % blockRows)) = {2, 4, 6, 8} ∧
+    (Finset.univ.image (fun level : Fin 4 =>
+      pathSiblingRow ⟨level.val, by omega⟩ % blockRows)) = {9, 11, 13, 15} := by
+  decide
+
 def valueBaseRow (value : Fin 3) : Nat :=
   valueAuxRowStart + 2 * value.val
 
@@ -240,8 +250,9 @@ def valueSiblingRow (value : Fin 3) : Nat := Nat.xor (valueBaseRow value) 12
 def conservationBaseRow : Nat := valueAuxRowStart + 6
 
 /-- Input membership and output append need separate occupancy certificates.
-Each row contains `(occupied, inverse, secondCommitment[0..8])`, making the
-zero test and all eight empty-slot constraints row-local. -/
+Both rows contain `(occupied, inverse, secondCommitment[0..8))`, making the
+zero test and all eight empty-slot constraints row-local. The input row also
+stores the selected-side bit at column 10. -/
 def inputOccupancyAuxRow : Nat := valueAuxRowStart + 9
 def outputOccupancyAuxRow : Nat := valueAuxRowStart + 10
 
@@ -249,6 +260,16 @@ def inputOccupancyBitCell : TraceCell := ⟨inputOccupancyAuxRow, 0⟩
 def inputOccupancyInverseCell : TraceCell := ⟨inputOccupancyAuxRow, 1⟩
 def inputSecondCommitmentCell (lane : Fin 8) : TraceCell :=
   ⟨inputOccupancyAuxRow, 2 + lane.val⟩
+
+def inputSelectedSideSourceCell : TraceCell :=
+  pathBitCell ⟨0, by decide⟩
+
+def inputSelectedSideCell : TraceCell := ⟨inputOccupancyAuxRow, 10⟩
+
+theorem input_selected_side_copy_cells_are_exact :
+    inputSelectedSideSourceCell = ⟨865, 0⟩ ∧
+      inputSelectedSideCell = ⟨969, 10⟩ := by
+  decide
 
 def outputOccupancyBitCell : TraceCell := ⟨outputOccupancyAuxRow, 0⟩
 def outputOccupancyInverseCell : TraceCell := ⟨outputOccupancyAuxRow, 1⟩
@@ -283,7 +304,8 @@ theorem occupancy_auxiliaries_are_distinct_and_do_not_alias_existing_value_rows 
 
 theorem occupancy_commitment_cells_are_inside_sixteen_columns :
     (∀ lane : Fin 8, (inputSecondCommitmentCell lane).column < traceColumns) ∧
-      (∀ lane : Fin 8, (outputSecondCommitmentCell lane).column < traceColumns) := by
+      (∀ lane : Fin 8, (outputSecondCommitmentCell lane).column < traceColumns) ∧
+      inputSelectedSideCell.column < traceColumns := by
   decide
 
 /-! ## Literal polynomial degree of the new constraints -/
@@ -293,6 +315,7 @@ inductive PairResidualVariable where
   | sentinel
   | inverse
   | commitment (lane : Fin 8)
+  | selectedSecond
   | direction
   | current
   | sibling
@@ -315,6 +338,38 @@ noncomputable def occupancySentinelInversePolynomial
 noncomputable def emptySlotCanonicalityPolynomial
     (K : Type) [CommRing K] (lane : Fin 8) : PairResidualPolynomial K :=
   (1 - X .occupied) * X (.commitment lane)
+
+/-- Selecting the right/second historical slot is legal only when that slot
+is occupied. This is the algebraic rule that makes canonical empty slots
+unspendable; it does not rely on hash preimage resistance. -/
+noncomputable def selectedSecondOccupancyPolynomial
+    (K : Type) [CommRing K] : PairResidualPolynomial K :=
+  X .selectedSecond * (1 - X .occupied)
+
+/-- Vanishing of the literal trace residual makes a selected second slot
+occupied. This is the semantic consequence needed by the spend relation, not
+merely a degree count. -/
+theorem selectedSecondOccupancyPolynomial_enforces_occupied
+    (K : Type) [CommRing K]
+    (assignment : PairResidualVariable → K)
+    (selected : assignment .selectedSecond = 1)
+    (vanishes :
+      MvPolynomial.eval assignment (selectedSecondOccupancyPolynomial K) = 0) :
+    assignment .occupied = 1 := by
+  have difference : 1 - assignment .occupied = 0 := by
+    simpa [selectedSecondOccupancyPolynomial, selected] using vanishes
+  exact (sub_eq_zero.mp difference).symm
+
+/-- Equivalently, a canonical empty slot forces the selected-side trace value
+to zero whenever the same residual vanishes. -/
+theorem selectedSecondOccupancyPolynomial_rejects_empty_selection
+    (K : Type) [CommRing K]
+    (assignment : PairResidualVariable → K)
+    (empty : assignment .occupied = 0)
+    (vanishes :
+      MvPolynomial.eval assignment (selectedSecondOccupancyPolynomial K) = 0) :
+    assignment .selectedSecond = 0 := by
+  simpa [selectedSecondOccupancyPolynomial, empty] using vanishes
 
 noncomputable def selectedChildOrderingPolynomial
     (K : Type) [CommRing K] : PairResidualPolynomial K :=
@@ -359,6 +414,20 @@ theorem emptySlotCanonicalityPolynomial_totalDegree_le_two
     rw [MvPolynomial.totalDegree_X]
   exact Nat.add_le_add firstDegree commitmentDegree
 
+theorem selectedSecondOccupancyPolynomial_totalDegree_le_two
+    (K : Type) [CommRing K] [Nontrivial K] :
+    (selectedSecondOccupancyPolynomial K).totalDegree ≤ 2 := by
+  unfold selectedSecondOccupancyPolynomial
+  refine (MvPolynomial.totalDegree_mul _ _).trans ?_
+  have selectedDegree :
+      (X PairResidualVariable.selectedSecond : PairResidualPolynomial K).totalDegree ≤ 1 := by
+    rw [MvPolynomial.totalDegree_X]
+  have occupancyDegree :
+      ((1 - X PairResidualVariable.occupied : PairResidualPolynomial K).totalDegree) ≤ 1 := by
+    refine (MvPolynomial.totalDegree_sub _ _).trans ?_
+    simp
+  exact Nat.add_le_add selectedDegree occupancyDegree
+
 theorem selectedChildOrderingPolynomial_totalDegree_le_two
     (K : Type) [CommRing K] [Nontrivial K] :
     (selectedChildOrderingPolynomial K).totalDegree ≤ 2 := by
@@ -384,10 +453,12 @@ theorem every_literal_new_pair_residual_totalDegree_le_two
     (occupancyBooleanityPolynomial K).totalDegree ≤ 2 ∧
       (occupancySentinelInversePolynomial K).totalDegree ≤ 2 ∧
       (∀ lane, (emptySlotCanonicalityPolynomial K lane).totalDegree ≤ 2) ∧
+      (selectedSecondOccupancyPolynomial K).totalDegree ≤ 2 ∧
       (selectedChildOrderingPolynomial K).totalDegree ≤ 2 := by
   exact ⟨occupancyBooleanityPolynomial_totalDegree_le_two K,
     occupancySentinelInversePolynomial_totalDegree_le_two K,
     emptySlotCanonicalityPolynomial_totalDegree_le_two K,
+    selectedSecondOccupancyPolynomial_totalDegree_le_two K,
     selectedChildOrderingPolynomial_totalDegree_le_two K⟩
 
 /-! ## Degree inventory -/
@@ -397,6 +468,7 @@ inductive ResidualClass where
   | occupancyBooleanity
   | occupancySentinelInverse
   | emptySlotCanonicality
+  | selectedSecondOccupancy
   | selectedChildOrdering
   | cursorBitBinding
   | frontierBinding
@@ -408,6 +480,7 @@ def intrinsicDegree : ResidualClass → Nat
   | .occupancyBooleanity => 2
   | .occupancySentinelInverse => 2
   | .emptySlotCanonicality => 2
+  | .selectedSecondOccupancy => 2
   | .selectedChildOrdering => 2
   | .cursorBitBinding => 1
   | .frontierBinding => 1
@@ -454,7 +527,11 @@ theorem pair_tree_constraints_do_not_raise_degree_cap :
 #print axioms every_path_aux_row_is_exactly_inside_six_block_region
 #print axioms every_path_aux_cell_is_inside_sixteen_columns
 #print axioms exact_value_and_occupancy_rows_inside_final_aux_block
-#print axioms occupancy_auxiliary_does_not_alias_existing_value_rows
+#print axioms occupancy_auxiliaries_are_distinct_and_do_not_alias_existing_value_rows
+#print axioms rotated_path_local_rows_are_exact
+#print axioms input_selected_side_copy_cells_are_exact
+#print axioms selectedSecondOccupancyPolynomial_enforces_occupied
+#print axioms selectedSecondOccupancyPolynomial_rejects_empty_selection
 #print axioms every_literal_new_pair_residual_totalDegree_le_two
 #print axioms every_new_pair_tree_residual_degree_le_two
 #print axioms every_deployed_residual_degree_le_27
