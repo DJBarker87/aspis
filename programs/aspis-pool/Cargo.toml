@@ -12,7 +12,7 @@ crate-type = ["cdylib", "lib"]
 default = []
 no-entrypoint = []
 # Measurement-only entrypoint for the proof-carried pair afterstate.  Release
-# builds do not enable this feature until the real seven-C2-lane verifier emits
+# builds do not enable this feature until the real merged 26-C1/3-C2 verifier emits
 # the authenticated ASJA result.
 pair-afterstate-evidence = []
 pair-afterstate-profile = ["pair-afterstate-evidence"]

@@ -26,7 +26,9 @@ cryptography; it returns the framed `ASJA` body from its verifier-owned account.
 The numbers therefore include the Pool prefix, selected-verifier CPI and
 return transport, and Pool suffix, but must not be added to a frozen verifier
 reference as though the result were an observed combined transaction.  The
-real seven-C2-lane Tag-73 verifier integration remains the decisive CU gate.
+real merged 26-C1/3-C2 Tag-73 pair verifier integration remains the decisive
+soundness gate.  The composed one-terminal capacity audit is recorded
+separately in `../v7-pool-composed-one-terminal-cu-20260827/`.
 
 The pair path is exposed only under the measurement feature
 `pair-afterstate-evidence`.  Normal production builds do not recognize the

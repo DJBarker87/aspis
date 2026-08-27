@@ -5,7 +5,7 @@
 //! index, root and frontier.  The Pool performs no Poseidon call: it validates
 //! the opaque immediate-CPI result and atomically writes state, history and the
 //! one-shot nullifier marker.  The dispatcher remains disabled until the real
-//! seven-C2-lane verifier constructs this result.
+//! merged 26-C1/3-C2 pair verifier constructs this result.
 
 extern crate alloc;
 
