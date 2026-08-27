@@ -107,6 +107,12 @@ use crate::{
     },
 };
 
+#[cfg(feature = "pair-afterstate-evidence")]
+use crate::{
+    pair_dispatch::dispatch_pair_verified_afterstate_readonly_v1,
+    pair_processor::process_pair_private_transfer_with_verifier_v1,
+};
+
 const SPL_TOKEN_INITIALIZE_ACCOUNT3_DISCRIMINANT: u8 = 18;
 
 #[cfg(not(feature = "no-entrypoint"))]
@@ -2309,6 +2315,24 @@ pub fn process_instruction(
             &mut runtime,
             program::set_return_data,
         )
+    } else if cfg!(feature = "pair-afterstate-evidence")
+        && magic == crate::instruction::POOL_V1_PAIR_PRIVATE_TRANSFER_INSTRUCTION_MAGIC
+    {
+        #[cfg(feature = "pair-afterstate-evidence")]
+        {
+            let slot = Clock::get()?.slot;
+            process_pair_private_transfer_with_verifier_v1(
+                program_id,
+                accounts,
+                instruction_data,
+                slot,
+                solana_sha256,
+                dispatch_pair_verified_afterstate_readonly_v1,
+                program::set_return_data,
+            )
+        }
+        #[cfg(not(feature = "pair-afterstate-evidence"))]
+        unreachable!()
     } else if magic == POOL_V1_PRIVATE_TRANSFER_INSTRUCTION_MAGIC {
         let slot = Clock::get()?.slot;
         process_private_transfer_with_runtime_v1(

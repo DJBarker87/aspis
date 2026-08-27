@@ -11,6 +11,10 @@ crate-type = ["cdylib", "lib"]
 [features]
 default = []
 no-entrypoint = []
+# Measurement-only entrypoint for the proof-carried pair afterstate.  Release
+# builds do not enable this feature until the real seven-C2-lane verifier emits
+# the authenticated ASJA result.
+pair-afterstate-evidence = []
 
 [dependencies]
 aspis-core.workspace = true

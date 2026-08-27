@@ -1,0 +1,13 @@
+[package]
+name = "aspis-pair-afterstate-transport-double"
+version = "0.1.0"
+edition = "2021"
+publish = false
+
+[workspace]
+
+[lib]
+crate-type = ["cdylib", "lib"]
+
+[dependencies]
+solana-program = "=2.3.0"
