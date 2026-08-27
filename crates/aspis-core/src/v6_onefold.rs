@@ -329,6 +329,47 @@ impl<'a> PackedM31Reader<'a> {
     }
 }
 
+/// Decode a byte-aligned stream whose limb count is a multiple of eight.
+///
+/// Eight packed 31-bit limbs occupy exactly 31 bytes.  Loading each limb from
+/// its containing little-endian machine word removes the byte-at-a-time
+/// refill loop from the q16 opening hot path while preserving the literal bit
+/// layout and the `P` rejection.  The V6/V7 query sections have fixed widths
+/// 104 and 48, so both are exact multiples of eight with no padding bits.
+#[inline(always)]
+fn decode_packed_m31_eight_aligned<const N: usize>(bytes: &[u8]) -> Result<[u32; N], V6WireError> {
+    if N == 0 || N % 8 != 0 || bytes.len() != (N / 8) * 31 {
+        return Err(V6WireError::WrongLength);
+    }
+    let mut output = [0u32; N];
+    let mut invalid = 0u32;
+    let mut block = 0usize;
+    while block < N / 8 {
+        let byte = block * 31;
+        let chunk = &bytes[byte..byte + 31];
+        let load64 =
+            |offset: usize| u64::from_le_bytes(chunk[offset..offset + 8].try_into().unwrap());
+        let base = block * 8;
+        output[base] = (load64(0) & u64::from(P)) as u32;
+        output[base + 1] = ((load64(3) >> 7) & u64::from(P)) as u32;
+        output[base + 2] = ((load64(7) >> 6) & u64::from(P)) as u32;
+        output[base + 3] = ((load64(11) >> 5) & u64::from(P)) as u32;
+        output[base + 4] = ((load64(15) >> 4) & u64::from(P)) as u32;
+        output[base + 5] = ((load64(19) >> 3) & u64::from(P)) as u32;
+        output[base + 6] = ((load64(23) >> 2) & u64::from(P)) as u32;
+        output[base + 7] = (u32::from_le_bytes(chunk[27..31].try_into().unwrap()) >> 1) & P;
+        for value in &output[base..base + 8] {
+            invalid |= u32::from(*value >= P);
+        }
+        block += 1;
+    }
+    if invalid == 0 {
+        Ok(output)
+    } else {
+        Err(V6WireError::NonCanonicalM31)
+    }
+}
+
 pub fn validate_packed_m31(bytes: &[u8], limbs: usize) -> Result<(), V6WireError> {
     if bytes.len() != packed_bytes(limbs) {
         return Err(V6WireError::WrongLength);
@@ -551,6 +592,7 @@ pub fn verify_and_gamma_combine_v6_binary_openings_prepared(
 
 /// Combine one packed 26-M31-plus-3-QM31 fibre with the exact scalar-power
 /// table used by the selected state-only spend profile.
+#[inline(never)]
 pub fn gamma_combine_v6_packed_layer0(
     c1_packed: &[u8],
     c2_packed: &[u8],
@@ -562,16 +604,14 @@ pub fn gamma_combine_v6_packed_layer0(
         return Err(V6WireError::WrongLength);
     }
 
-    let mut reader = PackedM31Reader::new(c1_packed);
-    let mut invalid = 0u32;
+    let c1 = decode_packed_m31_eight_aligned::<V6_C1_LIMBS_PER_QUERY>(c1_packed)?;
     let mut combined = [QM31::ZERO; 4];
-    for output in &mut combined {
+    for (slot, output) in combined.iter_mut().enumerate() {
         let mut sums = [0u64; 4];
         for block in 0..(V6_C1_COLUMNS / 4) {
             let mut raw = [0u64; 4];
             for column in block * 4..block * 4 + 4 {
-                let value = reader.next();
-                invalid |= u32::from(value >= P);
+                let value = c1[slot * V6_C1_COLUMNS + column];
                 let value = u64::from(value & P);
                 let limbs = powers.base.c1_limbs[column];
                 for limb in 0..4 {
@@ -584,8 +624,7 @@ pub fn gamma_combine_v6_packed_layer0(
         }
         let mut raw = [0u64; 4];
         for column in V6_C1_COLUMNS - 2..V6_C1_COLUMNS {
-            let value = reader.next();
-            invalid |= u32::from(value >= P);
+            let value = c1[slot * V6_C1_COLUMNS + column];
             let value = u64::from(value & P);
             let limbs = powers.base.c1_limbs[column];
             for limb in 0..4 {
@@ -600,28 +639,22 @@ pub fn gamma_combine_v6_packed_layer0(
             c1: CM31::new(M31::reduce_u64(sums[2]), M31::reduce_u64(sums[3])),
         };
     }
-    debug_assert_eq!(reader.byte_index, c1_packed.len());
-    debug_assert_eq!(reader.buffered_bits, 0);
 
     let helper_powers = [powers.base.helpers[0], powers.base.helpers[1], powers.d];
-    let mut reader = PackedM31Reader::new(c2_packed);
+    let c2 = decode_packed_m31_eight_aligned::<V6_C2_LIMBS_PER_QUERY>(c2_packed)?;
     let mut helpers = [[QM31::ZERO; 4]; V6_C2_COLUMNS];
-    for values in &mut helpers {
-        for value in values {
-            *value = reader.qm31();
-            invalid |= u32::from(
-                value.c0.a.0 >= P || value.c0.b.0 >= P || value.c1.a.0 >= P || value.c1.b.0 >= P,
-            );
+    for (helper, values) in helpers.iter_mut().enumerate() {
+        for (slot, value) in values.iter_mut().enumerate() {
+            let limb = 4 * (helper * 4 + slot);
+            *value = QM31 {
+                c0: CM31::new(M31(c2[limb]), M31(c2[limb + 1])),
+                c1: CM31::new(M31(c2[limb + 2]), M31(c2[limb + 3])),
+            };
         }
     }
-    debug_assert_eq!(reader.byte_index, c2_packed.len());
-    debug_assert_eq!(reader.buffered_bits, 0);
     for (slot, output) in combined.iter_mut().enumerate() {
         let values = [helpers[0][slot], helpers[1][slot], helpers[2][slot]];
         *output = output.add(qm31_sum_products3_prepared(&helper_powers, &values));
-    }
-    if invalid != 0 {
-        return Err(V6WireError::NonCanonicalM31);
     }
     Ok(combined)
 }
@@ -1398,6 +1431,51 @@ mod tests {
             gamma_combine_v6_packed_layer0(&c1_packed, &c2_packed, &powers).unwrap(),
             gamma_combine_state_only_spend_layer0_prepared(&c1_unpacked, &c2_unpacked, &powers)
                 .unwrap()
+        );
+    }
+
+    #[test]
+    fn eight_aligned_decoder_matches_literal_packing_and_rejects_p() {
+        let mut state = 0x91a2_b3c4_d5e6_f708u64;
+        let mut c1_limbs = [0u32; V6_C1_LIMBS_PER_QUERY];
+        for value in &mut c1_limbs {
+            state ^= state >> 12;
+            state ^= state << 25;
+            state ^= state >> 27;
+            *value = (state.wrapping_mul(0x2545_f491_4f6c_dd1d) as u32) % P;
+        }
+        c1_limbs[0] = 0;
+        c1_limbs[1] = P - 1;
+        let packed = pack(&c1_limbs);
+        assert_eq!(
+            decode_packed_m31_eight_aligned::<V6_C1_LIMBS_PER_QUERY>(&packed),
+            Ok(c1_limbs)
+        );
+
+        let mut c2_limbs = [0u32; V6_C2_LIMBS_PER_QUERY];
+        for value in &mut c2_limbs {
+            state ^= state >> 12;
+            state ^= state << 25;
+            state ^= state >> 27;
+            *value = (state.wrapping_mul(0x2545_f491_4f6c_dd1d) as u32) % P;
+        }
+        let packed = pack(&c2_limbs);
+        assert_eq!(
+            decode_packed_m31_eight_aligned::<V6_C2_LIMBS_PER_QUERY>(&packed),
+            Ok(c2_limbs)
+        );
+
+        for index in 0..V6_C1_LIMBS_PER_QUERY {
+            let mut malformed = c1_limbs;
+            malformed[index] = P;
+            assert_eq!(
+                decode_packed_m31_eight_aligned::<V6_C1_LIMBS_PER_QUERY>(&pack(&malformed)),
+                Err(V6WireError::NonCanonicalM31)
+            );
+        }
+        assert_eq!(
+            decode_packed_m31_eight_aligned::<V6_C2_LIMBS_PER_QUERY>(&packed[..packed.len() - 1]),
+            Err(V6WireError::WrongLength)
         );
     }
 
