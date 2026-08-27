@@ -1,0 +1,68 @@
+Focused `#print axioms` output, 2026-08-27
+
+AspisV7K13FoldedValuesTrace.generated_callback_is_sourceFoldAt
+  propext
+  Classical.choice
+  Quot.sound
+
+AspisV7K13FoldedValuesTrace.accepted_fold_exposes_exact_sixteen_values
+  propext
+  Classical.choice
+  Quot.sound
+
+AspisV7K13ShiftedResidualTrace.successful_shifted_residual_exposes_exact_factorization
+  propext
+  Classical.choice
+  Quot.sound
+
+AspisV7K13QueryBatchInsertionTrace.accepted_query_batch_exposes_exact_insertion
+  propext
+  Classical.choice
+  Quot.sound
+
+AspisK1.V7Tag73BatchedQuerySourceBridge.candidateClaim_exactShiftedQueryBatchWeights
+  propext
+  Classical.choice
+  Quot.sound
+
+AspisK1.V7Tag73BatchedQuerySourceBridge.exactShiftedQueryBatchWeights_eq_sum
+  propext
+  Classical.choice
+  Quot.sound
+
+AspisK1.V7Tag73BatchedQuerySourceBridge.shiftedQueryBatchClaim_eq_sum
+  propext
+  Classical.choice
+  Quot.sound
+
+AspisK1.V7Tag73BatchedQuerySourceBridge.shifted_claim_difference_eq_shifted_residual
+  propext
+  Classical.choice
+  Quot.sound
+
+AspisK1.V7Tag73BatchedQuerySourceBridge.before_one_eq_joint_discrepancy_of_authenticated_source
+  propext
+  Classical.choice
+  Quot.sound
+
+AspisK1.V7Tag73BatchedQuerySourceBridge.equal_shifted_claims_of_explicit_equality
+  propext
+  Classical.choice
+  Quot.sound
+
+AspisK1.V7Tag73BatchedQuerySourceBridge.query_injection_exact_of_authenticated_source_and_explicit_claim_equality
+  propext
+  Classical.choice
+  Quot.sound
+
+AspisK1.V7Tag73BatchedQuerySourceBridge.shifted_claims_equal_of_authenticated_values_exact
+  propext
+  Classical.choice
+  Quot.sound
+
+Union:
+  propext
+  Classical.choice
+  Quot.sound
+
+No `sorryAx` or project-specific axiom appears.

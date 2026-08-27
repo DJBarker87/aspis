@@ -1,0 +1,53 @@
+diff --git a/crates/aspis-core/src/v6_query_batch.rs b/crates/aspis-core/src/v6_query_batch.rs
+index 2c10cfb6..00000000 100644
+--- a/crates/aspis-core/src/v6_query_batch.rs
++++ b/crates/aspis-core/src/v6_query_batch.rs
+@@ -98,11 +98,39 @@ fn add_final256_query_batch_with_initial_scale(
+         return Err(V6QueryBatchError::InvalidQuerySchedule);
+     }
+ 
+-    let mut scales = [QM31::ZERO; V6_QUERY_BATCH_COUNT];
+-    scales[0] = initial_scale;
+     let prepared_rho = PreparedQm31Multiplier::new(rho);
+-    for ordinal in 1..V6_QUERY_BATCH_COUNT {
+-        scales[ordinal] = prepared_rho.mul(scales[ordinal - 1]);
+-    }
++    let scale1 = prepared_rho.mul(initial_scale);
++    let scale2 = prepared_rho.mul(scale1);
++    let scale3 = prepared_rho.mul(scale2);
++    let scale4 = prepared_rho.mul(scale3);
++    let scale5 = prepared_rho.mul(scale4);
++    let scale6 = prepared_rho.mul(scale5);
++    let scale7 = prepared_rho.mul(scale6);
++    let scale8 = prepared_rho.mul(scale7);
++    let scale9 = prepared_rho.mul(scale8);
++    let scale10 = prepared_rho.mul(scale9);
++    let scale11 = prepared_rho.mul(scale10);
++    let scale12 = prepared_rho.mul(scale11);
++    let scale13 = prepared_rho.mul(scale12);
++    let scale14 = prepared_rho.mul(scale13);
++    let scale15 = prepared_rho.mul(scale14);
++    let scales = [
++        initial_scale,
++        scale1,
++        scale2,
++        scale3,
++        scale4,
++        scale5,
++        scale6,
++        scale7,
++        scale8,
++        scale9,
++        scale10,
++        scale11,
++        scale12,
++        scale13,
++        scale14,
++        scale15,
++    ];
+     weights
+         .add_line_m31_batch(&scales, &authenticated.line_x)
+         .map_err(|_| V6QueryBatchError::WeightShape)?;
+     weights
+         .add_line_m31_batch(&scales, &authenticated.line_x)
+         .map_err(|_| V6QueryBatchError::WeightShape)?;

@@ -1,0 +1,26 @@
+--- V7K13AddBatch/Funs.lean
++++ V7K13AddBatch/Funs.lean
+@@ -31,11 +31,6 @@ impl_def core.array.iter.IntoIter.Insts.CoreIterTraitsIteratorIterator (T :
+     (core.array.iter.IntoIter.Insts.CoreIterTraitsIteratorIterator T N)
+   enumerate := core.iter.traits.iterator.Iterator.enumerate.trait_default
+     (core.array.iter.IntoIter.Insts.CoreIterTraitsIteratorIterator T N)
+-  any := fun {F : Type} (opsfunctionFnMutPTupleFBoolInst :
+-    core.ops.function.FnMut F T Bool) =>
+-    core.iter.traits.iterator.Iterator.any.default
+-    (core.array.iter.IntoIter.Insts.CoreIterTraitsIteratorIterator T N)
+-    opsfunctionFnMutPTupleFBoolInst
+ }
+ 
+ /-- Trait implementation: [core::slice::iter::{impl core::iter::traits::iterator::Iterator<&'a [T]> for core::slice::iter::Windows<'a, T>}]
+@@ -55,11 +50,6 @@ impl_def
+   enumerate := core.iter.traits.iterator.Iterator.enumerate.trait_default
+     (core.slice.iter.Windows.Insts.CoreIterTraitsIteratorIteratorSharedASlice
+     T)
+-  any := fun {F : Type} (opsfunctionFnMutPTupleShared0SliceBoolInst :
+-    core.ops.function.FnMut F (Slice T) Bool) =>
+-    core.iter.traits.iterator.Iterator.any.default
+-    (core.slice.iter.Windows.Insts.CoreIterTraitsIteratorIteratorSharedASlice
+-    T) opsfunctionFnMutPTupleShared0SliceBoolInst
+ }
+ 
+ /-- [aspis_core::field::P]
