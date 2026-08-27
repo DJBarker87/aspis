@@ -63,13 +63,40 @@ Useful grouped readings are:
 - Authenticated afterstate application, receipt/image creation, history/Pool/
   marker writes and transaction tail: **37,323 CU**.
 
-The 34,084-CU `history_written` bracket is the largest remaining byte-only
-hotspot.  The page was already validated before the verifier CPI, and the CPI
-does not receive the history account.  A future source change can retain a
-private validated-header capability across the CPI and append with the
-existing checked header, as the mature transition path already does.  That
-change was deliberately not implemented or remeasured here: the task allowed
-only one changed measurement.
+## Validated-header continuation
+
+A subsequent focused change implements the identified deletion.  Complete
+history validation now returns a private `ValidatedPairHistoryV1` capability
+containing the checked `RootPageHeaderV1`.  The verifier CPI receives only the
+read-only proof account, not the Pool-owned history account, so the checked
+header remains valid across the call.  The final append uses that capability
+for the existing two bounded writes and does not parse the page again.
+
+The one permitted changed same-page execution for this continuation consumed
+**81,922 CU**, again in an **873-byte transaction** with identical simulation
+and execution metadata.  Relative to the immediately preceding 115,695-CU
+profiled artifact:
+
+- `history_written` fell from 34,084 CU to **277 CU**, a 33,807-CU phase
+  reduction;
+- total execution fell by **33,773 CU**; small adjacent phase differences
+  account for the 34-CU difference;
+- the profiled transport-double path is now **60,065 CU** below the current
+  141,987-CU verifier headroom.
+
+The new exact grouped readings are:
+
+- Pool dispatch/state/account/history/nullifier preflight: **65,439 CU**;
+- registry/proof/request planning through CPI start: **8,133 CU**;
+- CPI, 688-byte transport/decode and authentication: **4,835 CU**;
+- afterstate application and all history/Pool/marker writes through the
+  transaction tail: **3,515 CU**.
+
+This remains a transport-double result, not a measured real-verifier
+composition.  The exact record is
+`evidence-same-page-profiled-header-capability.json`; its Pool SBF is 451,264
+bytes with SHA-256
+`e022074c5e8e13f3285419511e1793c8b26f3634b48c524fd9d13f0b4229ce4e`.
 
 ## What remains versus a directly integrated real verifier
 
@@ -104,7 +131,9 @@ combined measurement and cannot be inferred from this run.
 
 ## Evidence and boundaries
 
-- Exact record: `evidence-same-page-profiled.json`
+- Initial exact record: `evidence-same-page-profiled.json`
+- Validated-header exact record:
+  `evidence-same-page-profiled-header-capability.json`
 - Profiled Pool SBF: 450,504 bytes,
   SHA-256 `321ea8659b5f004420bf3d13dd1e0a4fc308ccbab7741e1d392f0d328858e056`
 - Profiled transport double SBF: 21,664 bytes,

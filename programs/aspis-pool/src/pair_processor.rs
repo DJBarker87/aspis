@@ -29,7 +29,7 @@ use crate::{
     history::{
         append_roots_unchecked, read_retained_root, require_program_account, require_program_owned,
         require_root_page_address, validate_new_page_account, validate_root_page_bytes,
-        write_new_page_unchecked,
+        write_new_page_unchecked, RootPageHeaderV1,
     },
     instruction::{
         decode_pair_private_transfer_instruction_v1, encode_transition_receipt_v1,
@@ -60,6 +60,17 @@ struct PairSpendLayoutV1 {
     registry_start: usize,
     verifier_index: usize,
     proof_index: usize,
+}
+
+/// Private capability produced only after the complete current-page checks.
+///
+/// The selected verifier CPI receives only its read-only proof account, so it
+/// cannot mutate the Pool-owned history page.  Retaining this checked header
+/// across that CPI avoids reparsing the full 8,256-byte page before the two
+/// bounded append writes.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+struct ValidatedPairHistoryV1 {
+    current_header: RootPageHeaderV1,
 }
 
 fn require_unique(accounts: &[AccountInfo<'_>]) -> ProgramResult {
@@ -163,7 +174,7 @@ fn validate_history(
     layout: PairSpendLayoutV1,
     anchor_sequence: u64,
     anchor_root: &aspis_statement::poseidon2::Digest,
-) -> ProgramResult {
+) -> Result<ValidatedPairHistoryV1, ProgramError> {
     let pool = &accounts[0];
     let anchor = &accounts[layout.anchor_index];
     let current_location = root_history_location(state.current_root_sequence());
@@ -199,7 +210,9 @@ fn validate_history(
                 &accounts[next_index],
             )?;
         }
-        return Ok(());
+        return Ok(ValidatedPairHistoryV1 {
+            current_header: header,
+        });
     }
 
     require_program_owned(anchor, program_id)?;
@@ -247,7 +260,7 @@ fn validate_history(
             &accounts[next_index],
         )?;
     }
-    Ok(())
+    Ok(ValidatedPairHistoryV1 { current_header })
 }
 
 #[allow(clippy::too_many_arguments)]
@@ -296,7 +309,7 @@ where
     )?;
     require_unique(accounts)?;
     pair_cu_checkpoint("aspis-pair-cu:layout_validated");
-    validate_history(
+    let validated_history = validate_history(
         program_id,
         accounts,
         &state,
@@ -365,10 +378,11 @@ where
     } else {
         let current = &accounts[layout.current_index];
         let mut current_data = current.try_borrow_mut_data()?;
-        let current_location = root_history_location(state.current_root_sequence());
-        let header =
-            validate_root_page_bytes(&current_data, pool.key, current_location.page_number)?;
-        append_roots_unchecked(&mut current_data, header, &[append.root]);
+        append_roots_unchecked(
+            &mut current_data,
+            validated_history.current_header,
+            &[append.root],
+        );
     }
     pair_cu_checkpoint("aspis-pair-cu:history_written");
     pool.try_borrow_mut_data()?
