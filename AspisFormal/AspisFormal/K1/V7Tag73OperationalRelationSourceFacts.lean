@@ -69,6 +69,7 @@ open AspisV5FriConcreteEncoderApplicability
 open AspisV5SumcheckTranscriptBinding
 open AspisV6AcceptedPathObligations
 open AspisV6OneFoldCandidateExtraction
+open AspisV6QueryBatchSoundness
 open AspisV6TranscriptRelationGrammar
 open AspisV7ExactOneFoldDomains
 
@@ -102,8 +103,9 @@ def exactFinalQueryWeight (query : Fin 262144) (coefficient : Fin 256) :
       (storedFirstLineX18 query))
     coefficient.val
 
-/-- The exact final256 covector installed by sixteen ordered q16 evaluations
-and the nonzero query-batch challenge. -/
+/-- The frozen V6-style final256 covector for sixteen ordered evaluations,
+with powers `1, rho, ..., rho^15`.  Tag 73 wraps this base covector in one
+additional factor of `rho` below. -/
 def exactQueryBatchWeights
     (queries : Fin 16 → Fin 262144) (rho : QM31Exact) : Fin 256 → QM31Exact :=
   fun coefficient => ∑ ordinal : Fin 16,
@@ -168,6 +170,44 @@ theorem candidateClaim_exactQueryBatchWeights
       exact congrArg (fun value => rho ^ ordinal.val * value)
         (exactFinalEncoder_eq_candidateClaim coefficients
           (queries ordinal)).symm
+
+/-- The repaired Tag-73 covector is exactly one factor of `rho` times the
+frozen base covector, hence uses powers `rho, ..., rho^16`. -/
+def exactTag73ShiftedQueryBatchWeights
+    (queries : Fin 16 → Fin 262144) (rho : QM31Exact) :
+    Fin 256 → QM31Exact :=
+  fun coefficient => rho * exactQueryBatchWeights queries rho coefficient
+
+/-- The corresponding shifted authenticated scalar. -/
+def exactTag73ShiftedQueryBatchClaim
+    (values : QueryVector QM31Exact) (rho : QM31Exact) : QM31Exact :=
+  rho * queryBatchClaim values rho
+
+theorem candidateClaim_exactTag73ShiftedQueryBatchWeights
+    (queries : Fin 16 → Fin 262144) (rho : QM31Exact)
+    (coefficients : Fin 256 → QM31Exact) :
+    candidateClaim (exactTag73ShiftedQueryBatchWeights queries rho)
+        coefficients =
+      exactTag73ShiftedQueryBatchClaim
+        (fun ordinal => exactFinalEncoder coefficients (queries ordinal)) rho := by
+  classical
+  unfold candidateClaim exactTag73ShiftedQueryBatchWeights
+    exactTag73ShiftedQueryBatchClaim
+  calc
+    (∑ coefficient : Fin 256,
+        coefficients coefficient *
+          (rho * exactQueryBatchWeights queries rho coefficient)) =
+        rho * candidateClaim (exactQueryBatchWeights queries rho)
+          coefficients := by
+      unfold candidateClaim
+      rw [Finset.mul_sum]
+      apply Finset.sum_congr rfl
+      intro coefficient _
+      ring
+    _ = rho * queryBatchClaim
+        (fun ordinal => exactFinalEncoder coefficients (queries ordinal)) rho :=
+      congrArg (fun value : QM31Exact => rho * value)
+        (candidateClaim_exactQueryBatchWeights queries rho coefficients)
 
 /-! ## Small source-facing equality records -/
 
@@ -234,25 +274,30 @@ theorem final256_matches_of_exact_source_bindings
       rw [source.alphaZeroExact, source.initialValuesExact]
 
 /-- Direct q16 evaluator equalities.  `queryClaimExact` is the value returned
-by the authenticated query callback; the linear-algebra theorem above turns
-it into `QueryInjectionExact`. -/
+by the authenticated query callback with the repaired shifted powers.  This
+record alone does not imply `QueryInjectionExact`: K1.3 must additionally
+prove that the authenticated values equal the final-code evaluations. -/
 structure ExactQueryInjectionSourceBinding
     (execution : CandidateExecution QM31Exact)
-    (queries : Fin 16 → Fin 262144) (rho : QM31Exact) : Prop where
-  queryWeightsExact : execution.queryWeights = exactQueryBatchWeights queries rho
+    (queries : Fin 16 → Fin 262144) (rho : QM31Exact)
+    (authenticated : QueryVector QM31Exact) : Prop where
+  queryWeightsExact : execution.queryWeights =
+    exactTag73ShiftedQueryBatchWeights queries rho
   queryClaimExact : execution.queryClaim =
-    queryBatchClaim
-      (fun ordinal => exactFinalEncoder execution.disclosedFinal256
-        (queries ordinal)) rho
+    exactTag73ShiftedQueryBatchClaim authenticated rho
 
 theorem query_injection_exact_of_source_binding
     {execution : CandidateExecution QM31Exact}
     {queries : Fin 16 → Fin 262144} {rho : QM31Exact}
-    (source : ExactQueryInjectionSourceBinding execution queries rho) :
+    {authenticated : QueryVector QM31Exact}
+    (source : ExactQueryInjectionSourceBinding execution queries rho
+      authenticated)
+    (authenticatedExact : authenticated = fun ordinal =>
+      exactFinalEncoder execution.disclosedFinal256 (queries ordinal)) :
     execution.QueryInjectionExact := by
   unfold CandidateExecution.QueryInjectionExact
   rw [source.queryWeightsExact, source.queryClaimExact,
-    candidateClaim_exactQueryBatchWeights]
+    candidateClaim_exactTag73ShiftedQueryBatchWeights, authenticatedExact]
 
 /-- Literal terminal values exposed by the accepted relation tail. -/
 structure ExactRelationTerminalSourceTrace
@@ -295,15 +340,19 @@ theorem positive_relation_facts_of_exact_source_bindings
     {execution : CandidateExecution QM31Exact}
     {queries : Fin 16 → Fin 262144}
     {rho : QM31Exact}
+    {authenticated : QueryVector QM31Exact}
     (parsed : ExactParsedProofSourceBinding input decoded)
     (finalSource : ExactFinal256ExecutionBinding k14 decoded execution)
-    (querySource : ExactQueryInjectionSourceBinding execution queries rho)
+    (querySource : ExactQueryInjectionSourceBinding execution queries rho
+      authenticated)
+    (authenticatedExact : authenticated = fun ordinal =>
+      exactFinalEncoder execution.disclosedFinal256 (queries ordinal))
     (terminalSource : ExactRelationTerminalSourceTrace execution) :
     execution.Final256Matches ∧
       execution.QueryInjectionExact ∧
       execution.RelationTerminalAccepts := by
   exact ⟨final256_matches_of_exact_source_bindings parsed finalSource,
-    query_injection_exact_of_source_binding querySource,
+    query_injection_exact_of_source_binding querySource authenticatedExact,
     relation_terminal_accepts_of_source_trace terminalSource⟩
 
 /-! ## Operational K1.5 with only source-level relation premises -/
@@ -397,9 +446,13 @@ theorem operational_k14_source_implies_decoded_witness_or_k15_failure
     (inactiveExact : (operationalFixedFields decoded).inactiveClaim =
       inactiveClaim masks k14.extraction.combined.1)
     (finalSource : ExactFinal256ExecutionBinding k14 decoded execution)
+    (authenticated : QueryVector QM31Exact)
     (querySource : ExactQueryInjectionSourceBinding execution
       (exactK13ParsedProof input).queries
-      (exactOperationalChallenge input .queryBatch))
+      (exactOperationalChallenge input .queryBatch) authenticated)
+    (authenticatedExact : authenticated = fun ordinal =>
+      exactFinalEncoder execution.disclosedFinal256
+        ((exactK13ParsedProof input).queries ordinal))
     (terminalSource : ExactRelationTerminalSourceTrace execution) :
     ExactParsedProofSourceBinding input decoded ∧
       (let witness := decodeTag73SpendWitness statement k14.extraction
@@ -419,7 +472,7 @@ theorem operational_k14_source_implies_decoded_witness_or_k15_failure
             (exactOperationalChallenge input .mu) helper mask honest
             (exactOperationalChallenge input .kappa) execution)) := by
   have positive := positive_relation_facts_of_exact_source_bindings
-    sourceBinding finalSource querySource terminalSource
+    sourceBinding finalSource querySource authenticatedExact terminalSource
   exact operational_k14_implies_decoded_witness_or_k15_failure input k14 decoded
     fixedDecode sourceBinding basis rc poseidon statement masks helper mask
     honest maskInitialExact terminalOpeningExact inactiveSumZero execution

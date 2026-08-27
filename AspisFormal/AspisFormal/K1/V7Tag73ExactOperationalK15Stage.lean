@@ -1,4 +1,5 @@
 import AspisFormal.K1.V7Tag73ExactConcreteStageAssembly
+import AspisFormal.K1.V7Tag73ExactConcreteK13K14Events
 import AspisFormal.K1.V7Tag73OperationalClientExtractionBridge
 import AspisFormal.K1.V7Tag73OperationalRelationSourceFacts
 
@@ -37,8 +38,10 @@ open AspisK1.V7Tag73ProofRelevantUpstreamInterface
 open AspisK1.V7Tag73ExactFixedK12MerkleClassifier
 open AspisK1.V7Tag73ExactFixedK12PrefixClassifier
 open AspisK1.V7Tag73ExactFixedK13K14Classifier
+open AspisK1.V7Tag73ExactConcreteK13K14Events
 open AspisK1.V7Tag73OperationalSemanticReplay
 open AspisK1.V7Tag73ExactParsedProofSourceBinding
+open AspisK1.V7Tag73ExactOneFoldEncoderBinding
 open AspisK1.V7Tag73OperationalK15Classifier
 open AspisK1.V7Tag73OperationalClientExtractionBridge
 open AspisK1.V7Tag73OperationalRelationSourceFacts
@@ -194,6 +197,7 @@ structure ExactTag73OperationalK15SourceBinding
         (Fin.last 10)
   inactiveSumZero : DeployedCopyHelperInactiveSumZero data.helper
   initialEncoderEq : decoder.initialEncoder = exactInitialEncoder
+  finalEncoderEq : decoder.finalEncoder = exactFinalEncoder
   executionInitialWeights : data.execution.initialWeights =
     extractedInitialRelationWeights data.masks
       (operationalAcceptedRun input data.decoded data.fixedDecode).point
@@ -208,6 +212,7 @@ structure ExactTag73OperationalK15SourceBinding
   querySource : ExactQueryInjectionSourceBinding data.execution
     (exactK13ParsedProof input).queries
     (exactOperationalChallenge input .queryBatch)
+    (exactTag73K13AuthenticatedQueryVector decoder input k12)
 
 /-- All literal per-run material needed by the operational K1.5 theorem. -/
 structure ExactTag73OperationalK15Material
@@ -244,6 +249,69 @@ structure ExactTag73OperationalK15Material
   clientExtracts : clientExtractor
       input.package.root.full.clientRun.accumulator =
     some (decodeTag73SpendWitness fixedInstance.statement k14.extraction)
+
+/-- K1.3 acceptance, the exact final encoder, and the literal decoded final
+vector identify every authenticated q16 value with the corresponding
+evaluation of the relation execution's disclosed vector.  The source does
+not assert `QueryInjectionExact`; that fact is recovered only on the K1.3
+success branch. -/
+theorem ExactTag73OperationalK15Material.authenticatedQueryValuesExact
+    {HiddenTape TapeIdentity Observation Payload : Type}
+    {parameters : ExactCompilerResourceParameters}
+    {transitionFuel : Nat}
+    {configuration : ExactPlainRomWitnessConfiguration HiddenTape TapeIdentity
+      Observation V5PublicStatement Tag73K12ParsedProof Payload
+      DecodedSpendWitness parameters}
+    {projection : AcceptedTapeProjection V5PublicStatement Tag73K12ParsedProof
+      Payload}
+    {fixedInstance : PublicInstance V5PublicStatement}
+    {sample : ExactCompilerSample HiddenTape parameters}
+    {decoder : ExactDecoderInstantiation QM31Exact}
+    {decoderBinding : InitialProjectionBinding decoder}
+    {input : ExactK12OperationalInput transitionFuel configuration projection
+      fixedInstance sample}
+    {k12 : ExactPrefixK12Certificate input}
+    {k14 : ExactK14Certificate decoder decoderBinding input k12}
+    {basis : Basis (Fin 4) F QM31Exact}
+    {rc : RoundConstants}
+    {deployedOwner : Digest → Digest}
+    {deployedNote : Digest → F → F → Digest → Digest}
+    {deployedNullifier : Digest → Digest → Digest}
+    {deployedNode : Digest → Digest → Digest}
+    {poseidon : Poseidon2Faithful rc deployedOwner deployedNote
+      deployedNullifier deployedNode}
+    (material : ExactTag73OperationalK15Material input k12 k14 basis rc
+      poseidon)
+    (k13 : ExactK13Certificate decoder input k12) :
+    exactTag73K13AuthenticatedQueryVector decoder input k12 =
+      fun ordinal => exactFinalEncoder
+        material.data.execution.disclosedFinal256
+        ((exactK13ParsedProof input).queries ordinal) := by
+  have queryVectorsEqual :=
+    (exactTag73K13IdealAccepts_iff_query_vectors_eq decoder input k12).1
+      k13.accepts
+  have disclosedExact : (exactK13ParsedProof input).disclosedFinal =
+      material.data.execution.disclosedFinal256 := by
+    calc
+      (exactK13ParsedProof input).disclosedFinal =
+          decodedFinalMessage material.data.decoded :=
+        material.source.sourceBinding.disclosedFinalExact
+      _ = (operationalFixedFields material.data.decoded).finalCoefficient := rfl
+      _ = material.data.execution.disclosedFinal256 :=
+        material.source.finalSource.disclosedFinalExact.symm
+  calc
+    exactTag73K13AuthenticatedQueryVector decoder input k12 =
+        exactTag73K13ExpectedQueryVector decoder input k12 :=
+      queryVectorsEqual.symm
+    _ = fun ordinal => exactFinalEncoder
+          material.data.execution.disclosedFinal256
+          ((exactK13ParsedProof input).queries ordinal) := by
+      funext ordinal
+      change decoder.finalEncoder (exactK13ParsedProof input).disclosedFinal
+          ((exactK13ParsedProof input).queries ordinal) =
+        exactFinalEncoder material.data.execution.disclosedFinal256
+          ((exactK13ParsedProof input).queries ordinal)
+      rw [material.source.finalEncoderEq, disclosedExact]
 
 /-- The semantic trace after transport to the exact operational table and
 point. -/
@@ -409,7 +477,10 @@ noncomputable def exactTag73OperationalK15Classifier
         material.data.execution material.source.initialEncoderEq
         material.source.executionInitialWeights
         material.source.executionInitialClaim material.source.inactiveExact
-        material.source.finalSource material.source.querySource
+        material.source.finalSource
+        (exactTag73K13AuthenticatedQueryVector decoder input k12)
+        material.source.querySource
+        (material.authenticatedQueryValuesExact k13)
         material.data.terminalSource
     have inhabitedResult : Nonempty
         (ExactFixedClientExtractionCertificate transitionFuel configuration

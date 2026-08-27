@@ -126,6 +126,23 @@ structure ExactAuthenticatedQueryBatchSourceBinding
   queryClaimExact :
     execution.queryClaim = shiftedQueryBatchClaim authenticated rho
 
+/-- The translated source record is definitionally the raw shifted binding
+consumed by the operational K1.5 layer.  This conversion carries no
+pointwise-consistency or acceptance premise. -/
+theorem ExactAuthenticatedQueryBatchSourceBinding.toOperationalSourceBinding
+    {execution : CandidateExecution QM31Exact}
+    {queries : Fin 16 → Fin 262144} {rho : QM31Exact}
+    {authenticated : Fin 16 → QM31Exact}
+    (source : ExactAuthenticatedQueryBatchSourceBinding execution queries rho
+      authenticated) :
+    ExactQueryInjectionSourceBinding execution queries rho authenticated := by
+  constructor
+  · change execution.queryWeights =
+      exactShiftedQueryBatchWeights queries rho
+    exact source.queryWeightsExact
+  · change execution.queryClaim = shiftedQueryBatchClaim authenticated rho
+    exact source.queryClaimExact
+
 /-- The exact scalar carried immediately before the source's shifted query
 injection.  Naming it separately matches the corrected K1.3 obligation and
 keeps it independent of the authenticated query values. -/
@@ -206,6 +223,7 @@ theorem shifted_claims_equal_of_authenticated_values_exact
 #print axioms shiftedQueryBatchClaim_eq_sum
 #print axioms shifted_claim_difference_eq_shifted_residual
 #print axioms before_one_eq_joint_discrepancy_of_authenticated_source
+#print axioms ExactAuthenticatedQueryBatchSourceBinding.toOperationalSourceBinding
 #print axioms equal_shifted_claims_of_explicit_equality
 #print axioms query_injection_exact_of_authenticated_source_and_explicit_claim_equality
 #print axioms shifted_claims_equal_of_authenticated_values_exact

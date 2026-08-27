@@ -301,7 +301,9 @@ theorem exact_operational_k15_failure_reduces_to_restored_or_fixed
       exact noKappaEvent
     have positive := positive_relation_facts_of_exact_source_bindings
       material.source.sourceBinding material.source.finalSource
-      material.source.querySource material.data.terminalSource
+      material.source.querySource
+      (material.authenticatedQueryValuesExact k13)
+      material.data.terminalSource
     have aggregateExact :
         claimedPointBatch fields (exactK13ParsedProof input).gamma
             (exactOperationalChallenge input .kappa) =
