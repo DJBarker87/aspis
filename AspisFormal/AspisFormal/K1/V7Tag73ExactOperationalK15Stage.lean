@@ -1,4 +1,5 @@
 import AspisFormal.K1.V7Tag73ExactConcreteStageAssembly
+import AspisFormal.K1.V7Tag73OperationalClientExtractionBridge
 import AspisFormal.K1.V7Tag73OperationalRelationSourceFacts
 
 /-!
@@ -39,6 +40,7 @@ open AspisK1.V7Tag73ExactFixedK13K14Classifier
 open AspisK1.V7Tag73OperationalSemanticReplay
 open AspisK1.V7Tag73ExactParsedProofSourceBinding
 open AspisK1.V7Tag73OperationalK15Classifier
+open AspisK1.V7Tag73OperationalClientExtractionBridge
 open AspisK1.V7Tag73OperationalRelationSourceFacts
 open AspisK1.V7Tag73FixedFieldMessageBridge
 open AspisK1.V7Tag73RawProverMessages
@@ -235,17 +237,13 @@ structure ExactTag73OperationalK15Material
       deployedNullifier deployedNode) : Type where
   data : ExactTag73OperationalK15Data input
   source : ExactTag73OperationalK15SourceBinding k14 basis rc data
-  clientHandoff :
-    exactTag73SpendRelation (deployedOwner := deployedOwner)
-        (deployedNote := deployedNote) (deployedNullifier := deployedNullifier)
-        (deployedNode := deployedNode) fixedInstance
-        (decodeTag73SpendWitness fixedInstance.statement k14.extraction) →
-      ExactFixedClientExtractionCertificate transitionFuel configuration
-        fixedInstance
-        (exactTag73SpendRelation (deployedOwner := deployedOwner)
-          (deployedNote := deployedNote)
-          (deployedNullifier := deployedNullifier)
-          (deployedNode := deployedNode)) sample
+  clientExtractor : ExactPlainRomWitnessExtractor V5PublicStatement
+    Tag73K12ParsedProof Payload DecodedSpendWitness
+  clientReturned : input.package.root.full.clientRun.halt =
+    .returned clientExtractor
+  clientExtracts : clientExtractor
+      input.package.root.full.clientRun.accumulator =
+    some (decodeTag73SpendWitness fixedInstance.statement k14.extraction)
 
 /-- The semantic trace after transport to the exact operational table and
 point. -/
@@ -422,7 +420,11 @@ noncomputable def exactTag73OperationalK15Classifier
               (deployedNode := deployedNode)) sample ⊕
           ExactTag73OperationalK15Failure material) := by
       rcases classified with ⟨_sourceExact, valid | failure⟩
-      · exact ⟨.inl (material.clientHandoff valid)⟩
+      · exact ⟨.inl
+          (exactFixedClientExtractionCertificateOfOperationalInput input
+            material.clientExtractor
+            (decodeTag73SpendWitness fixedInstance.statement k14.extraction)
+            material.clientReturned material.clientExtracts valid)⟩
       · exact ⟨.inr ⟨failure⟩⟩
     exact Classical.choice inhabitedResult
 
