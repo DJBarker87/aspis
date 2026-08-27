@@ -1,0 +1,31 @@
+translated_success_has_exact_readonly_cpi_and_immediate_result:
+  propext
+  Classical.choice
+  Quot.sound
+  aspis_statement.atomic_statement.decode_digest_canonical
+  solana_sdk_ids.bpf_loader.id
+  solana_sdk_ids.bpf_loader_upgradeable.id
+  solana_sdk_ids.loader_v4.id
+  aspis_statement.pool_v1.pair_forest_accounts.pool_v1_pair_forest_output_lane_v1
+  aspis_statement.pool_v1.pair_terminal.decode_pool_v1_pair_verified_afterstate_v1
+  aspis_statement.pool_v1.pair_terminal.encode_pool_v1_pair_verified_afterstate_v1
+
+translated_next_lane_success_is_exact_asr8_afterstate:
+  propext
+  Classical.choice
+  Quot.sound
+
+every_relevant_late_error_has_no_pool_owned_writes:
+  propext
+
+accepted_transfer_writes_exact_three_pool_images:
+  none
+
+accepted_withdrawal_writes_only_after_exact_token_deltas:
+  none
+
+exact_bindings_pin_retained_and_current_snapshots:
+  propext
+  Quot.sound
+
+No theorem reports sorryAx or a project-specific acceptance/write conclusion.
