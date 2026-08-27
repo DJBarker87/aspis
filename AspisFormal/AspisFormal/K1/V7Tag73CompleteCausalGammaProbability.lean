@@ -124,6 +124,14 @@ def duplexSkeletonDependentGammaEvent
   successfulDuplexNonzeroFactorization ⁻¹'
     completeSkeletonDependentGammaEvent target
 
+@[simp] theorem mem_duplexSkeletonDependentGammaEvent
+    (target : Tag73CompleteSamplerSkeleton → Finset QM31Exact)
+    (sample : SuccessfulTag73DuplexNonzeroAttempts) :
+    sample ∈ duplexSkeletonDependentGammaEvent target ↔
+      (successfulDuplexNonzeroFactorization sample).2.1 ∈
+        target (successfulDuplexNonzeroFactorization sample).1 := by
+  rfl
+
 theorem complete_joint_event_probability_eq_weighted_slices
     (target : Tag73CompleteSamplerSkeleton → Finset QM31Exact) :
     completeSkeletonValueJointLaw.toOuterMeasure

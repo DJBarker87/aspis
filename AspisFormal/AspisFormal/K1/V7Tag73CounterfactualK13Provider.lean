@@ -34,6 +34,26 @@ open AspisV5ComponentCQM31TowerExact
 
 noncomputable section
 
+@[simp] theorem transported_selected_branch_disclosedFinal
+    {decoder : ExactDecoderInstantiation QM31Exact}
+    {words : AspisPool.V7MerkleQueryExtractor.ExtractedWords}
+    {fromGamma toGamma : QM31Exact}
+    (exact : fromGamma = toGamma)
+    (branch : RestoredSelectedBranch decoder words fromGamma) :
+    (exact ▸ branch).disclosedFinal = branch.disclosedFinal := by
+  cases exact
+  rfl
+
+@[simp] theorem transported_selected_branch_schedule
+    {decoder : ExactDecoderInstantiation QM31Exact}
+    {words : AspisPool.V7MerkleQueryExtractor.ExtractedWords}
+    {fromGamma toGamma : QM31Exact}
+    (exact : fromGamma = toGamma)
+    (branch : RestoredSelectedBranch decoder words fromGamma) :
+    (exact ▸ branch).schedule = branch.schedule := by
+  cases exact
+  rfl
+
 /-- The exact duplex sampler execution reconstructed from complete nuisance and
 one returned nonzero gamma. -/
 def duplexForSkeletonValue
@@ -125,7 +145,7 @@ noncomputable def counterfactualK13Provider
 the future-free machine returned that parsed proof and its exact K1.3
 classifier succeeded.  This is the deterministic identity needed before any
 probability argument is applied. -/
-theorem actual_duplex_counterfactual_branch_available
+theorem actual_duplex_counterfactual_branch_source_exact
     {decoder : ExactDecoderInstantiation QM31Exact}
     {words : AspisPool.V7MerkleQueryExtractor.ExtractedWords}
     (oracle : CounterfactualParsedK13Oracle decoder words)
@@ -134,10 +154,12 @@ theorem actual_duplex_counterfactual_branch_available
     (proofExact : oracle.proof? sample = some proof)
     (k13 : ParsedK13Certificate decoder words proof)
     (k13Exact : classifyParsedK13 decoder words proof = .inl k13) :
-    selectedProviderAvailable
-          (counterfactualK13Provider oracle
-          (successfulDuplexNonzeroFactorization sample).1)
-        (successfulDuplexNonzeroValue sample).1 := by
+    ∃ branch,
+      (counterfactualK13Provider oracle
+          (successfulDuplexNonzeroFactorization sample).1).branch
+          (successfulDuplexNonzeroValue sample).1 = some branch ∧
+        branch.disclosedFinal = proof.disclosedFinal ∧
+        branch.schedule = proof.schedule := by
   classical
   have gammaNonzero : (successfulDuplexNonzeroValue sample).1 ≠ 0 :=
     (successfulDuplexNonzeroValue sample).2
@@ -146,7 +168,7 @@ theorem actual_duplex_counterfactual_branch_available
         (successfulDuplexNonzeroValue sample) = sample := by
     rw [← successfulDuplexNonzeroFactorization_value]
     exact duplexForSkeletonValue_factorization sample
-  unfold selectedProviderAvailable counterfactualK13Provider
+  unfold counterfactualK13Provider
   simp only
   unfold counterfactualParsedK13Branch?
   split
@@ -173,9 +195,82 @@ theorem actual_duplex_counterfactual_branch_available
       · rename_i error classifierExact
         rw [k13Exact] at classifierExact
         cases classifierExact
-      · rfl
+      · rename_i returnedK13 classifierExact
+        have k13Eq : returnedK13 = k13 :=
+          Sum.inl.inj (classifierExact.symm.trans k13Exact)
+        subst returnedK13
+        refine ⟨_, rfl, ?_, ?_⟩
+        · simp [restoredSelectedBranchOfParsedK13]
+        · simp [restoredSelectedBranchOfParsedK13]
   · rename_i h
     exact (h gammaNonzero).elim
+
+/-- Forgetting the exact branch identity yields the availability fact used by
+restoration-wide selected-chain families. -/
+theorem actual_duplex_counterfactual_branch_available
+    {decoder : ExactDecoderInstantiation QM31Exact}
+    {words : AspisPool.V7MerkleQueryExtractor.ExtractedWords}
+    (oracle : CounterfactualParsedK13Oracle decoder words)
+    (sample : SuccessfulTag73DuplexNonzeroAttempts)
+    (proof : Tag73K12ParsedProof)
+    (proofExact : oracle.proof? sample = some proof)
+    (k13 : ParsedK13Certificate decoder words proof)
+    (k13Exact : classifyParsedK13 decoder words proof = .inl k13) :
+    selectedProviderAvailable
+        (counterfactualK13Provider oracle
+          (successfulDuplexNonzeroFactorization sample).1)
+        (successfulDuplexNonzeroValue sample).1 := by
+  unfold selectedProviderAvailable
+  obtain ⟨branch, branchExact, _finalExact, _scheduleExact⟩ :=
+    actual_duplex_counterfactual_branch_source_exact oracle sample proof
+    proofExact k13 k13Exact
+  simp [branchExact]
+
+/-- The selected response exposed by the counterfactual family is exactly the
+canonical selected chain of the literal parsed proof.  The statement hides
+the dependent transport used internally by the restored branch. -/
+theorem actual_duplex_counterfactual_selected_exact
+    {decoder : ExactDecoderInstantiation QM31Exact}
+    {words : AspisPool.V7MerkleQueryExtractor.ExtractedWords}
+    (oracle : CounterfactualParsedK13Oracle decoder words)
+    (sample : SuccessfulTag73DuplexNonzeroAttempts)
+    (proof : Tag73K12ParsedProof)
+    (proofExact : oracle.proof? sample = some proof)
+    (k13 : ParsedK13Certificate decoder words proof)
+    (k13Exact : classifyParsedK13 decoder words proof = .inl k13) :
+    selectCandidateChain
+        (decoder.decodeBoth
+          (parsedK13Transcript words proof).initial
+          (foldedReceived proof.schedule
+            (parsedK13Transcript words proof)))
+        proof.schedule proof.disclosedFinal =
+      some ((restoredSelectedChainFamilyOfK13Provider
+        (counterfactualK13Provider oracle
+          (successfulDuplexNonzeroFactorization sample).1)).selected
+            (successfulDuplexNonzeroValue sample).1) := by
+  let provider := counterfactualK13Provider oracle
+    (successfulDuplexNonzeroFactorization sample).1
+  let gamma := (successfulDuplexNonzeroValue sample).1
+  obtain ⟨branch, branchExact, finalExact, scheduleExact⟩ :=
+    actual_duplex_counterfactual_branch_source_exact oracle sample proof
+      proofExact k13 k13Exact
+  have familyFacts := k13_family_selected_of_branch provider gamma branch
+    branchExact
+  have branchSelectedExact := branch.selectedExact
+  have gammaExact : proof.gamma = gamma :=
+    oracle.proofGammaExact sample proof proofExact
+  dsimp [gamma, provider] at gammaExact familyFacts
+  calc
+    selectCandidateChain
+        (decoder.decodeBoth
+          (parsedK13Transcript words proof).initial
+          (foldedReceived proof.schedule
+            (parsedK13Transcript words proof)))
+        proof.schedule proof.disclosedFinal = some branch.selected := by
+      simpa [parsedK13Transcript, gammaExact, finalExact, scheduleExact] using
+        branchSelectedExact
+    _ = some ((restoredSelectedChainFamilyOfK13Provider provider).selected
+        gamma) := by rw [familyFacts.2]
 
 end
 
@@ -184,6 +279,8 @@ end
 #print axioms counterfactualParsedK13Branch?
 #print axioms counterfactualK13Provider
 #print axioms counterfactual_provider_zero_unavailable
+#print axioms actual_duplex_counterfactual_branch_source_exact
 #print axioms actual_duplex_counterfactual_branch_available
+#print axioms actual_duplex_counterfactual_selected_exact
 
 end AspisK1.V7Tag73CounterfactualK13Provider
