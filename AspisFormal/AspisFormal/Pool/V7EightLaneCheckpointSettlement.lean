@@ -58,6 +58,89 @@ def applyTerminal {K Nullifier : Type}
   checkpointMaster := state.checkpointMaster
   retainedAnchors := state.retainedAnchors
 
+/-- Complete Pool-level acceptance: the abstract retained-root predicate is
+instantiated by the actual checkpoint-history set in the same state whose
+live lanes and spent-nullifier set are consumed by settlement. -/
+abbrev ForestPoolAccepted
+    {K Nullifier : Type} [CommRing K]
+    (parent : Digest K → Digest K → Digest K)
+    (emptyLeaf : Digest K)
+    (compressPair : PairLeaf K → Digest K)
+    (depth : Nat)
+    (laneOfNullifier : Nullifier → Lane)
+    (baseRelation :
+      ForestTerminalStatement K Nullifier →
+        ForestTerminalProof K parent → Prop)
+    (state : ForestPoolState K Nullifier)
+    (statement : ForestTerminalStatement K Nullifier)
+    (proof : ForestTerminalProof K parent) : Prop :=
+  ForestAtomicAccepted parent emptyLeaf compressPair depth laneOfNullifier
+    (fun anchor => anchor ∈ state.retainedAnchors) baseRelation state.atomic
+    statement proof
+
+/-- Exact semantic postcondition of one accepted private-spend transaction.
+It names every state fact which the active Rust caller and its Aeneas bridge
+must eventually produce together. -/
+structure ForestOneTransactionPostcondition
+    {K Nullifier : Type} [CommRing K] [NoZeroDivisors K]
+    (parent : Digest K → Digest K → Digest K)
+    (laneOfNullifier : Nullifier → Lane)
+    (state : ForestPoolState K Nullifier)
+    (statement : ForestTerminalStatement K Nullifier)
+    (proof : ForestTerminalProof K parent) : Prop where
+  privateHistoricalMembership :
+    ∃ inputLane : Lane, ∃ directions : Fin 3 → Bool,
+      (∀ level, directions level = forestSuperDirection inputLane level) ∧
+      foldThreeForestLevels parent proof.membershipTrace.laneRoot
+          (fun level => (proof.membershipTrace.levels level).sibling)
+          directions = statement.membershipAnchor
+  anchorWasRetained : statement.membershipAnchor ∈ state.retainedAnchors
+  nullifierWasFresh : statement.nullifier ∉ state.atomic.spentNullifiers
+  outputLaneDerived : statement.outputLane = laneOfNullifier statement.nullifier
+  proofSourceWasLocked : proof.source = state.atomic.lanes statement.outputLane
+  nullifierInserted : statement.nullifier ∈
+    (applyTerminal state statement).atomic.spentNullifiers
+  resultWritten : (applyTerminal state statement).atomic.lanes
+    statement.outputLane = statement.laneResult
+  everyOtherLanePreserved : ∀ lane, lane ≠ statement.outputLane →
+    (applyTerminal state statement).atomic.lanes lane = state.atomic.lanes lane
+  retainedHistoryUnchanged :
+    (applyTerminal state statement).retainedAnchors = state.retainedAnchors
+  checkpointMasterUnchanged :
+    (applyTerminal state statement).checkpointMaster = state.checkpointMaster
+
+/-- Pool-level one-transaction capstone for the forest state model. -/
+theorem accepted_pool_spend_has_exact_one_transaction_postcondition
+    {K Nullifier : Type} [CommRing K] [NoZeroDivisors K]
+    (parent : Digest K → Digest K → Digest K)
+    (emptyLeaf : Digest K)
+    (compressPair : PairLeaf K → Digest K)
+    (depth : Nat)
+    (laneOfNullifier : Nullifier → Lane)
+    (baseRelation :
+      ForestTerminalStatement K Nullifier →
+        ForestTerminalProof K parent → Prop)
+    (state : ForestPoolState K Nullifier)
+    (statement : ForestTerminalStatement K Nullifier)
+    (proof : ForestTerminalProof K parent)
+    (accepted : ForestPoolAccepted parent emptyLeaf compressPair depth
+      laneOfNullifier baseRelation state statement proof) :
+    ForestOneTransactionPostcondition parent laneOfNullifier state statement
+      proof := by
+  refine ⟨?_, accepted.terminal.retainedAnchor, accepted.nullifierFresh,
+    accepted.terminal.outputLaneExact, ?_, ?_, ?_, ?_, rfl, rfl⟩
+  · exact accepted_extracts_private_input_lane parent emptyLeaf compressPair
+      depth laneOfNullifier (fun anchor => anchor ∈ state.retainedAnchors)
+      baseRelation state.atomic.lanes statement proof accepted.terminal
+  · exact accepted_source_is_exact_locked_lane parent emptyLeaf compressPair
+      depth laneOfNullifier (fun anchor => anchor ∈ state.retainedAnchors)
+      baseRelation state.atomic.lanes statement proof accepted.terminal
+  · exact accepted_terminal_marks_nullifier state.atomic statement
+  · exact accepted_terminal_writes_output_lane state.atomic statement
+  · intro lane different
+    exact accepted_terminal_preserves_every_other_lane state.atomic statement
+      lane different
+
 @[simp] theorem checkpoint_retains_exact_observed_global_root
     {K Nullifier : Type}
     (parent : Digest K → Digest K → Digest K)
@@ -157,6 +240,7 @@ theorem distinct_lane_terminal_updates_commute
               · exact (Set.insert_comm firstNullifier secondNullifier nullifiers).symm
 
 #print axioms checkpoint_retains_exact_observed_global_root
+#print axioms accepted_pool_spend_has_exact_one_transaction_postcondition
 #print axioms checkpoint_preserves_atomic_spend_state
 #print axioms checkpoint_preserves_every_existing_anchor
 #print axioms terminal_preserves_checkpoint_master
