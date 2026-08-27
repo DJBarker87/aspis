@@ -88,3 +88,17 @@ pub fn normalized_prepared_history_writeback(
         rollover,
     })
 }
+
+/// Extraction-only projection of `processor::require_unique_accounts` onto
+/// the account keys it reads.  The nested loop bounds and first duplicate
+/// rejection are identical to production; no account-data behavior appears.
+pub fn normalized_require_unique_account_keys(keys: &[[u8; 32]]) -> bool {
+    for left in 0..keys.len() {
+        for right in left + 1..keys.len() {
+            if keys[left] == keys[right] {
+                return false;
+            }
+        }
+    }
+    true
+}

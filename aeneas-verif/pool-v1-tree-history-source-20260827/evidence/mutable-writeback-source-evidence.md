@@ -51,3 +51,28 @@ The canonical encoder name is independently source-closed by
 The preceding unit `aspis-pool-source-state-result-01` used the wrong toolchain
 environment and was discarded. It exited nonzero after duplicate-symbol link
 errors and produced no accepted artifact.
+
+## Account-key uniqueness projection
+
+- Literal production Charon unit: `aspis-pool-unique-accounts-01`
+- Invocation: `f897a3a03cae4c01980cdb40f6d8caf8`
+- Exit: 0
+- Wall: 16.96 s
+- Peak RSS: 504,552 KiB
+- Swap: 0
+- Literal LLBC SHA-256:
+  `96b5bc2a99f842740a69da08423d5221ccd2af59a92cd082024e044ddcde7777`
+- Aeneas blocker: shared indexing of lifetime-bearing `AccountInfo`
+- Normalized-key Charon unit: `aspis-pool-normalized-unique-01`
+- Invocation: `e5e5ee0f48854c408e52d7421f01e1a6`
+- Exit: 0
+- Wall: 13.31 s
+- Peak RSS: 504,812 KiB
+- Swap: 0
+- Normalized LLBC SHA-256:
+  `e48db99a0004f56099de62172c9eed45d02fdcca36688e6697d8855bad95eaef`
+- Inner-loop equal-pair rejection theorem: exit 0, standard Lean trio only
+
+The projection changes only the element type from `AccountInfo` to the exact
+32-byte key field read by the production loop. Its loop bounds, checked
+`left + 1`, equality gate and first-duplicate return are unchanged.

@@ -359,6 +359,25 @@ only the standard Lean trio.  Its LLBC is
 `extraction/PoolV1NormalizedPreparedWriteback.llbc`, SHA-256
 `cc3f38b1ae7d35e9cab94910f9fd64af9ec93eed7931f68110d03dde90961090`.
 
+`proof/PoolV1MutableAccountStoreBridge.lean` closes the generic non-aliasing
+part of mutable persistence.  It executes the production copy order in a
+key-indexed account store and proves that pairwise-distinct pool, current-page
+and optional rollover-page keys preserve every other account while leaving
+each selected key at its exact checked after-image.  The theorem is fully
+generic in the key type and reports only the standard Lean trio; it introduces
+no Solana callback, Pool predicate or semantic axiom.
+
+Production `processor::require_unique_accounts` performs the required
+all-account distinctness scan before any prepared-settlement mutable borrow.
+Charon extracts that literal function, but Aeneas currently stops at the
+shared index of lifetime-bearing `AccountInfo`.  The extraction-only
+`normalized_require_unique_account_keys` projects the exact two nested ranges
+onto the 32-byte keys read by production.  Its translated inner-loop theorem
+`inner_loop_body_rejects_equal_selected_keys` proves that an equal selected
+pair immediately returns `false`, with only the standard Lean trio.  The LLBC
+is `extraction/PoolV1NormalizedUnique.llbc`, SHA-256
+`e48db99a0004f56099de62172c9eed45d02fdcca36688e6697d8855bad95eaef`.
+
 The retained-root reader passes through Rust's formatting machinery only on
 an impossible `Result::unwrap` failure after a successful fixed-array
 conversion.  Aeneas otherwise exposes its placeholder `core::fmt::Formatter`
@@ -367,14 +386,15 @@ the same formatter-as-`Unit` tool-model patch already used by the frozen V5
 source replay in
 `aeneas-patches/0001-model-formatter-as-unobservable-unit-state.patch`.
 
-The remaining implementation lift is now one runtime-composition theorem:
+The remaining implementation lift is now one narrow caller/runtime
+composition:
 
-1. connect the literal result-image gates and the normalized after-image suffix
-   through the transition caller's three mutable `AccountInfo` borrows;
-2. prove the accounts are pairwise non-aliasing under the caller's already
-   checked account identities, and that successful Solana borrow/release
-   operations persist the exact fixed arrays supplied to them; and
-3. compose that write-back with the existing current-page/rollover
+1. lift the normalized nested uniqueness loops through completion to the
+   pairwise-distinct-key predicate consumed by the generic store theorem;
+2. connect the literal result-image gates and normalized after-image suffix
+   through the transition caller's mutable `AccountInfo` borrow/release calls,
+   at the named Solana account-data runtime boundary; and
+3. compose the resulting exact store write-back with the current/rollover
    byte-persistence and read-after-write capstones.
 
 The full literal transition router has been extracted successfully, but the
