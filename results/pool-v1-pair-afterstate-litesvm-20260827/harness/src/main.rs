@@ -3,18 +3,21 @@ use std::{env, fs, path::PathBuf};
 use anyhow::{anyhow, bail, ensure, Context, Result};
 use aspis_core::field::M31;
 use aspis_pool::{
-    encode_pair_private_transfer_instruction_v1, pool_v1_nullifier_marker_address,
-    pool_v1_pair_state_address, pool_v1_root_page_address, PairPoolStateV1, PoolInitializationV1,
-    PrivateTransferStatementV1, POOL_V1_PAIR_STATE_ACCOUNT_BYTES,
+    encode_pair_private_transfer_instruction_v1, encode_pair_withdrawal_instruction_v1,
+    pool_v1_nullifier_marker_address, pool_v1_pair_state_address, pool_v1_root_page_address,
+    pool_v1_vault_authority_address, pool_v1_vault_token_account_address, PairPoolStateV1,
+    PoolInitializationV1, PrivateTransferStatementV1, WithdrawalStatementV1,
+    LEGACY_SPL_TOKEN_ACCOUNT_BYTES, LEGACY_SPL_TOKEN_MINT_ACCOUNT_BYTES,
+    POOL_V1_PAIR_STATE_ACCOUNT_BYTES,
 };
 use aspis_statement::{
     encode_digest_canonical,
     pool_v1::{
         decode_pool_v1_nullifier_marker, encode_pool_v1_pair_verified_afterstate_v1,
         encode_verifier_registry_entry_v1, encode_verifier_registry_v1, root_history_location,
-        HistoricalAnchorEnvelopeV1, PoolV1PairVerifiedAfterstateV1, PoolV1TransitionKind,
-        RootHistoryPageV1, VerifierEntryStatusV1, VerifierPolicyV1, VerifierRegistryEntryV1,
-        VerifierRegistryV1, POOL_V1_NULLIFIER_MARKER_ACCOUNT_BYTES,
+        HistoricalAnchorEnvelopeV1, PoolV1PairLeafWitnessV1, PoolV1PairVerifiedAfterstateV1,
+        PoolV1TransitionKind, RootHistoryPageV1, VerifierEntryStatusV1, VerifierPolicyV1,
+        VerifierRegistryEntryV1, VerifierRegistryV1, POOL_V1_NULLIFIER_MARKER_ACCOUNT_BYTES,
         POOL_V1_PAIR_VERIFIED_AFTERSTATE_BYTES, POOL_V1_ROOT_HISTORY_PAGE_ACCOUNT_BYTES,
         POOL_V1_VERIFIER_ENTRY_NO_RETIREMENT_SLOT, POOL_V1_VERIFIER_PROOF_ACCOUNT_HEADER_BYTES,
         POOL_V1_VERIFIER_PROOF_ACCOUNT_MAGIC,
@@ -43,11 +46,16 @@ const POLICY_BINDING_BYTES: [u8; 32] = [0x19; 32];
 const PROFILE_BINDING_BYTES: [u8; 32] = [0x2A; 32];
 const RELEASE_BINDING_BYTES: [u8; 32] = [0x3B; 32];
 const DEPLOYMENT_DOMAIN_BYTES: [u8; 32] = [0x4C; 32];
+const WITHDRAWAL_AMOUNT: u32 = 25_000;
+const VAULT_BALANCE_BEFORE: u64 = 1_000_000;
+const DESTINATION_BALANCE_BEFORE: u64 = 7_000;
+const TOKEN_DECIMALS: u8 = 6;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 enum Mode {
     SamePage,
     Rollover,
+    WithdrawalSamePage,
 }
 
 #[derive(Debug)]
@@ -94,7 +102,8 @@ impl Mode {
         match value {
             "same-page" => Ok(Self::SamePage),
             "rollover" => Ok(Self::Rollover),
-            _ => bail!("mode must be same-page or rollover"),
+            "withdrawal-same-page" => Ok(Self::WithdrawalSamePage),
+            _ => bail!("mode must be same-page, rollover or withdrawal-same-page"),
         }
     }
 
@@ -102,6 +111,7 @@ impl Mode {
         match self {
             Self::SamePage => "same-page",
             Self::Rollover => "rollover",
+            Self::WithdrawalSamePage => "withdrawal-same-page",
         }
     }
 
@@ -109,7 +119,16 @@ impl Mode {
         match self {
             Self::SamePage => 100,
             Self::Rollover => 255,
+            Self::WithdrawalSamePage => 100,
         }
+    }
+
+    fn is_rollover(self) -> bool {
+        self == Self::Rollover
+    }
+
+    fn is_withdrawal(self) -> bool {
+        self == Self::WithdrawalSamePage
     }
 }
 
@@ -134,6 +153,28 @@ fn sha256_hex(bytes: &[u8]) -> String {
         .iter()
         .map(|byte| format!("{byte:02x}"))
         .collect()
+}
+
+fn legacy_mint_image(supply: u64) -> Vec<u8> {
+    let mut data = vec![0u8; LEGACY_SPL_TOKEN_MINT_ACCOUNT_BYTES];
+    data[36..44].copy_from_slice(&supply.to_le_bytes());
+    data[44] = TOKEN_DECIMALS;
+    data[45] = 1;
+    data
+}
+
+fn legacy_token_image(mint: LegacyPubkey, authority: LegacyPubkey, amount: u64) -> Vec<u8> {
+    let mut data = vec![0u8; LEGACY_SPL_TOKEN_ACCOUNT_BYTES];
+    data[..32].copy_from_slice(mint.as_ref());
+    data[32..64].copy_from_slice(authority.as_ref());
+    data[64..72].copy_from_slice(&amount.to_le_bytes());
+    data[108] = 1;
+    data
+}
+
+fn token_amount(data: &[u8]) -> Result<u64> {
+    ensure!(data.len() == LEGACY_SPL_TOKEN_ACCOUNT_BYTES);
+    Ok(u64::from_le_bytes(data[64..72].try_into()?))
 }
 
 fn put_account(
@@ -212,7 +253,7 @@ fn parse_args() -> Result<(PathBuf, PathBuf, Mode, PathBuf, bool)> {
     let args = env::args().skip(1).collect::<Vec<_>>();
     ensure!(
         args.len() == 4 || (args.len() == 5 && args[4] == "--require-profile"),
-        "usage: harness <aspis_pool.so> <verifier_double.so> <same-page|rollover> <evidence.json> [--require-profile]"
+        "usage: harness <aspis_pool.so> <verifier_double.so> <same-page|rollover|withdrawal-same-page> <evidence.json> [--require-profile]"
     );
     Ok((
         PathBuf::from(&args[0]),
@@ -278,8 +319,14 @@ fn main() -> Result<()> {
     let nullifier = digest(30_000 + mode.source_sequence() as u32);
     let recipient = digest(31_000 + mode.source_sequence() as u32);
     let change = digest(32_000 + mode.source_sequence() as u32);
-    let (expected_state, expected_append) =
-        state.append_occupied_pair_from_program_invariant(recipient, change)?;
+    let (expected_state, expected_append) = if mode.is_withdrawal() {
+        let pair_leaf = PoolV1PairLeafWitnessV1::single_output(change)
+            .and_then(|witness| witness.leaf_digest())
+            .map_err(|error| anyhow!("single-output pair leaf: {error:?}"))?;
+        state.append_verified_pair_from_program_invariant(pair_leaf)?
+    } else {
+        state.append_occupied_pair_from_program_invariant(recipient, change)?
+    };
     let afterstate = encode_pool_v1_pair_verified_afterstate_v1(&PoolV1PairVerifiedAfterstateV1 {
         next_pair_index: expected_state.tree.next_leaf_index,
         next_root: expected_state.tree.root,
@@ -287,8 +334,13 @@ fn main() -> Result<()> {
     })
     .map_err(|error| anyhow!("encode ASJA: {error:?}"))?;
     ensure!(afterstate.len() == POOL_V1_PAIR_VERIFIED_AFTERSTATE_BYTES);
+    let transition_kind = if mode.is_withdrawal() {
+        PoolV1TransitionKind::Withdrawal
+    } else {
+        PoolV1TransitionKind::PrivateTransfer
+    };
     let envelope = HistoricalAnchorEnvelopeV1 {
-        transition_kind: PoolV1TransitionKind::PrivateTransfer,
+        transition_kind,
         pool: pool.to_bytes(),
         deployment_domain: DEPLOYMENT_DOMAIN_BYTES,
         anchor_sequence: MEMBERSHIP_ANCHOR_SEQUENCE,
@@ -297,20 +349,39 @@ fn main() -> Result<()> {
         verifier_profile: PROFILE_BINDING_BYTES,
         verifier_release: RELEASE_BINDING_BYTES,
     };
-    let spend = encode_pair_private_transfer_instruction_v1(
-        &envelope,
-        &PrivateTransferStatementV1 {
-            pool: pool.to_bytes(),
-            deployment_domain: DEPLOYMENT_DOMAIN_BYTES,
-            anchor_sequence: MEMBERSHIP_ANCHOR_SEQUENCE,
-            anchor_root: membership_anchor_root,
-            nullifier,
-            asset_id: M31(73),
-            recipient_commitment: recipient,
-            change_commitment: change,
-        },
-    )
-    .map_err(|error| anyhow!("encode pair spend: {error:?}"))?;
+    let destination = legacy([0x62; 32]);
+    let spend = if mode.is_withdrawal() {
+        encode_pair_withdrawal_instruction_v1(
+            &envelope,
+            &WithdrawalStatementV1 {
+                pool: pool.to_bytes(),
+                deployment_domain: DEPLOYMENT_DOMAIN_BYTES,
+                anchor_sequence: MEMBERSHIP_ANCHOR_SEQUENCE,
+                anchor_root: membership_anchor_root,
+                nullifier,
+                asset_id: M31(73),
+                amount: WITHDRAWAL_AMOUNT,
+                destination_token_account: destination.to_bytes(),
+                change_commitment: change,
+            },
+        )
+        .map_err(|error| anyhow!("encode pair withdrawal: {error:?}"))?
+    } else {
+        encode_pair_private_transfer_instruction_v1(
+            &envelope,
+            &PrivateTransferStatementV1 {
+                pool: pool.to_bytes(),
+                deployment_domain: DEPLOYMENT_DOMAIN_BYTES,
+                anchor_sequence: MEMBERSHIP_ANCHOR_SEQUENCE,
+                anchor_root: membership_anchor_root,
+                nullifier,
+                asset_id: M31(73),
+                recipient_commitment: recipient,
+                change_commitment: change,
+            },
+        )
+        .map_err(|error| anyhow!("encode pair spend: {error:?}"))?
+    };
 
     let registry = aspis_pool::pool_v1_verifier_registry_address(&registry_program, &pool).0;
     let entry = aspis_pool::pool_v1_verifier_entry_address(
@@ -358,6 +429,9 @@ fn main() -> Result<()> {
         &encode_digest_canonical(&nullifier),
     )?
     .0;
+    let token_program = aspis_pool::LEGACY_SPL_TOKEN_PROGRAM_ID;
+    let vault = pool_v1_vault_token_account_address(&pool_program, &pool).0;
+    let vault_authority = pool_v1_vault_authority_address(&pool_program, &pool).0;
 
     let payer = Keypair::new_from_array([1u8; 32]);
     let mut svm = LiteSVM::new();
@@ -368,7 +442,7 @@ fn main() -> Result<()> {
         .map_err(|failed| anyhow!("fund payer: {:?}", failed.err))?;
     put_account(&mut svm, pool, pool_program, state.encode()?.to_vec())?;
     put_account(&mut svm, page_zero, pool_program, page_zero_image.to_vec())?;
-    if mode == Mode::Rollover {
+    if mode.is_rollover() {
         put_account(
             &mut svm,
             page_one,
@@ -390,12 +464,38 @@ fn main() -> Result<()> {
     )?;
     put_account(&mut svm, entry, registry_program, entry_image.to_vec())?;
     put_account(&mut svm, proof, verifier_program, proof_image)?;
+    if mode.is_withdrawal() {
+        put_account(
+            &mut svm,
+            mint,
+            token_program,
+            legacy_mint_image(VAULT_BALANCE_BEFORE + DESTINATION_BALANCE_BEFORE),
+        )?;
+        put_account(
+            &mut svm,
+            vault,
+            token_program,
+            legacy_token_image(mint, vault_authority, VAULT_BALANCE_BEFORE),
+        )?;
+        put_account(
+            &mut svm,
+            destination,
+            token_program,
+            legacy_token_image(mint, legacy([0x63; 32]), DESTINATION_BALANCE_BEFORE),
+        )?;
+        put_account(
+            &mut svm,
+            vault_authority,
+            LegacyPubkey::default(),
+            Vec::new(),
+        )?;
+    }
 
     let page_zero_before = svm
         .get_account(&address(&page_zero))
         .context("page zero missing")?;
-    let mut accounts = vec![meta(pool, true), meta(page_zero, mode == Mode::SamePage)];
-    if mode == Mode::Rollover {
+    let mut accounts = vec![meta(pool, true), meta(page_zero, !mode.is_rollover())];
+    if mode.is_rollover() {
         accounts.push(meta(page_one, true));
     }
     accounts.extend_from_slice(&[
@@ -405,6 +505,15 @@ fn main() -> Result<()> {
         meta(verifier_program, false),
         meta(proof, false),
     ]);
+    if mode.is_withdrawal() {
+        accounts.extend_from_slice(&[
+            meta(mint, false),
+            meta(vault, true),
+            meta(destination, true),
+            meta(vault_authority, false),
+            meta(token_program, false),
+        ]);
+    }
     let instruction = Instruction {
         program_id: address(&pool_program),
         accounts,
@@ -421,7 +530,7 @@ fn main() -> Result<()> {
     ensure!(executed.compute_units_consumed < COMPUTE_UNIT_LIMIT as u64);
     let cu_markers = parse_cu_markers(&executed.logs);
     if require_profile {
-        const EXPECTED_MARKERS: [&str; 19] = [
+        const PRIVATE_MARKERS: [&str; 19] = [
             "handler_entry",
             "state_and_statement_validated",
             "layout_validated",
@@ -442,11 +551,42 @@ fn main() -> Result<()> {
             "marker_written",
             "receipt_returned",
         ];
+        const WITHDRAWAL_MARKERS: [&str; 24] = [
+            "handler_entry",
+            "state_and_statement_validated",
+            "layout_validated",
+            "history_validated",
+            "marker_preflight_complete",
+            "custody_plan_complete",
+            "verifier_plan_start",
+            "verifier_plan_complete",
+            "verifier_cpi_start",
+            "double_entry",
+            "double_frame_validated",
+            "double_return_set",
+            "verifier_cpi_complete",
+            "afterstate_authenticated",
+            "afterstate_applied",
+            "receipt_and_state_image_ready",
+            "state_write_borrows_ready",
+            "custody_cpi_start",
+            "custody_cpi_complete",
+            "custody_delta_validated",
+            "history_written",
+            "pool_state_written",
+            "marker_written",
+            "receipt_returned",
+        ];
+        let expected: &[&str] = if mode.is_withdrawal() {
+            &WITHDRAWAL_MARKERS
+        } else {
+            &PRIVATE_MARKERS
+        };
         ensure!(
             cu_markers
                 .iter()
                 .map(|marker| marker.label.as_str())
-                .eq(EXPECTED_MARKERS),
+                .eq(expected.iter().copied()),
             "profile marker sequence mismatch: {:?}",
             cu_markers
         );
@@ -469,10 +609,10 @@ fn main() -> Result<()> {
     ensure!(marker_decoded.retained_anchor_sequence == MEMBERSHIP_ANCHOR_SEQUENCE);
     ensure!(marker_decoded.retained_anchor_root == membership_anchor_root);
 
-    let target_page = if mode == Mode::SamePage {
-        page_zero
-    } else {
+    let target_page = if mode.is_rollover() {
         page_one
+    } else {
+        page_zero
     };
     let target_after = svm
         .get_account(&address(&target_page))
@@ -493,12 +633,33 @@ fn main() -> Result<()> {
     )
     .map_err(|error| anyhow!("read membership anchor after: {error:?}"))?;
     ensure!(anchor_after == membership_anchor_root);
-    if mode == Mode::Rollover {
+    if mode.is_rollover() {
         ensure!(
             page_zero_after == page_zero_before,
             "rollover mutated full prior page"
         );
     }
+    let (vault_after, destination_after) = if mode.is_withdrawal() {
+        let vault_account = svm
+            .get_account(&address(&vault))
+            .context("vault missing after")?;
+        let destination_account = svm
+            .get_account(&address(&destination))
+            .context("destination missing after")?;
+        let vault_after = token_amount(&vault_account.data)?;
+        let destination_after = token_amount(&destination_account.data)?;
+        ensure!(
+            vault_after == VAULT_BALANCE_BEFORE - u64::from(WITHDRAWAL_AMOUNT),
+            "wrong exact vault debit"
+        );
+        ensure!(
+            destination_after == DESTINATION_BALANCE_BEFORE + u64::from(WITHDRAWAL_AMOUNT),
+            "wrong exact destination credit"
+        );
+        (Some(vault_after), Some(destination_after))
+    } else {
+        (None, None)
+    };
 
     let cu_marker_json = cu_markers
         .iter()
@@ -527,7 +688,7 @@ fn main() -> Result<()> {
             "compute_units": executed.compute_units_consumed,
             "transaction_bytes": tx_bytes,
             "instruction_bytes": spend.len(),
-            "account_metas_excluding_compute_budget_and_payer": if mode == Mode::SamePage { 7 } else { 8 },
+            "account_metas_excluding_compute_budget_and_payer": if mode.is_withdrawal() { 12 } else if mode.is_rollover() { 8 } else { 7 },
             "simulation_equals_execution": true,
             "return_magic": "ASTR",
             "return_bytes": 200
@@ -546,10 +707,21 @@ fn main() -> Result<()> {
             "history_target_page": target_location.page_number,
             "history_target_slot": target_location.slot,
             "historical_anchor_value_preserved": true,
-            "full_prior_page_byte_exact_on_rollover": mode == Mode::Rollover,
+            "full_prior_page_byte_exact_on_rollover": mode.is_rollover(),
             "pool_matches_verifier_afterstate": true,
             "nullifier_marker_created_once": true,
             "pool_side_poseidon_calls": 0
+        },
+        "custody": {
+            "real_legacy_spl_token_cpi_executed": mode.is_withdrawal(),
+            "transfer_checked": mode.is_withdrawal(),
+            "pda_authority_signed": mode.is_withdrawal(),
+            "amount": if mode.is_withdrawal() { Some(WITHDRAWAL_AMOUNT) } else { None },
+            "vault_before": if mode.is_withdrawal() { Some(VAULT_BALANCE_BEFORE) } else { None },
+            "vault_after": vault_after,
+            "destination_before": if mode.is_withdrawal() { Some(DESTINATION_BALANCE_BEFORE) } else { None },
+            "destination_after": destination_after,
+            "exact_pre_post_balance_delta_checked_by_pool": mode.is_withdrawal()
         },
         "transport": {
             "kind": "authenticated selected-verifier CPI transport double",

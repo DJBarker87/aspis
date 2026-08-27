@@ -52,3 +52,10 @@ updates, exact replay rejection before verifier dispatch, stale-afterstate
 rejection with a fresh marker, and byte-exact Pool/history/marker rollback.
 
 No RPC, deploy, signing-key retention, or network transaction was used.
+
+The focused withdrawal continuation is documented separately in
+`WITHDRAWAL-AUDIT.md`. It executes a real legacy SPL Token
+`TransferChecked`, validates the exact vault/destination deltas, and measures
+93,818 CU in a 1,038-byte same-page transaction. Its selected verifier is
+still the transport double, so that number is not a real-proof combined
+measurement and the measurement-only dispatch remains disabled by default.
