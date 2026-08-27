@@ -15,6 +15,12 @@ pub mod incremental_merkle;
 pub mod nullifier_marker;
 #[cfg(not(target_os = "solana"))]
 pub mod pair_constraint_residuals;
+#[cfg(not(target_os = "solana"))]
+pub mod pair_forest_constraint_residuals;
+#[cfg(not(target_os = "solana"))]
+pub mod pair_forest_hiding;
+#[cfg(not(target_os = "solana"))]
+pub mod pair_forest_trace;
 pub mod pair_terminal;
 #[cfg(not(target_os = "solana"))]
 pub mod pair_trace;
