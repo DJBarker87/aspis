@@ -138,10 +138,14 @@ That work cannot fit inside the 141,987-CU headroom of the current verifier.
   production Rust;
 - accepted proof to exact 680-byte afterstate still needs the cryptographic
   Lean theorem and Rust-to-Lean source bridge;
-- the Pool-side authenticated-afterstate token and byte-only mutation suffix
-  still need executable integration;
+- the Pool-side opaque authenticated-afterstate token and byte-only mutation
+  suffix now exist as a production-inactive prototype; the account-level test
+  covers two sequential same-page transitions plus replay/stale rollback, but
+  the real selected verifier does not yet construct that token and no
+  production instruction dispatch enables it;
 - honest and accepted maximum-frontier staged-verifier CU are unmeasured;
-- same-page, rollover and withdrawal combined LiteSVM runs remain required.
+- byte-only same-page/rollover suffix measurement and real combined
+  same-page/rollover/withdrawal LiteSVM runs remain required.
 
 The current source experiment is therefore not a production authorization
 path and makes no claim that the one-terminal transaction already fits.
