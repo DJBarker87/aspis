@@ -16,7 +16,11 @@ pub mod nullifier_marker;
 #[cfg(not(target_os = "solana"))]
 pub mod pair_constraint_residuals;
 #[cfg(not(target_os = "solana"))]
+pub mod pair_forest_constraint_residuals;
+#[cfg(not(target_os = "solana"))]
 pub mod pair_forest_hiding;
+#[cfg(not(target_os = "solana"))]
+pub mod pair_forest_trace;
 pub mod pair_terminal;
 #[cfg(not(target_os = "solana"))]
 pub mod pair_trace;
@@ -108,21 +112,6 @@ pub use nullifier_marker::{
     POOL_V1_NULLIFIER_MARKER_ACCOUNT_BYTES, POOL_V1_NULLIFIER_MARKER_MAGIC,
     POOL_V1_NULLIFIER_MARKER_SEED, POOL_V1_NULLIFIER_MARKER_VERSION,
 };
-pub use pair_terminal::{
-    decode_pool_v1_pair_afterstate_verifier_request_v1, decode_pool_v1_pair_verified_afterstate_v1,
-    decode_pool_v1_pair_verifier_request_v1, decode_pool_v1_pair_verifier_result_v1,
-    encode_pool_v1_pair_afterstate_verifier_request_v1, encode_pool_v1_pair_verified_afterstate_v1,
-    encode_pool_v1_pair_verifier_request_v1, encode_pool_v1_pair_verifier_result_v1,
-    pool_v1_pair_statement_digest_v1, validate_pool_v1_pair_verifier_binding_v1,
-    PoolV1PairAfterstateVerifierRequestV1, PoolV1PairVerifiedAfterstateV1,
-    PoolV1PairVerifierBindingV1, PoolV1PairVerifierRequestV1, PoolV1PairVerifierResultV1,
-    PoolV1PairVerifierTransportErrorV1, POOL_V1_PAIR_AFTERSTATE_VERIFIER_REQUEST_MAGIC,
-    POOL_V1_PAIR_STATEMENT_BINDING_DOMAIN, POOL_V1_PAIR_VERIFIED_AFTERSTATE_BYTES,
-    POOL_V1_PAIR_VERIFIED_AFTERSTATE_MAGIC, POOL_V1_PAIR_VERIFIED_AFTERSTATE_PAYLOAD_BYTES,
-    POOL_V1_PAIR_VERIFIER_REQUEST_HEADER_BYTES, POOL_V1_PAIR_VERIFIER_REQUEST_MAGIC,
-    POOL_V1_PAIR_VERIFIER_RESULT_BYTES, POOL_V1_PAIR_VERIFIER_RESULT_MAGIC,
-    POOL_V1_PAIR_VERIFIER_SUCCESS_CODE, POOL_V1_PAIR_VERIFIER_TRANSPORT_VERSION,
-};
 #[cfg(not(target_os = "solana"))]
 pub use pair_constraint_residuals::{
     evaluate_pool_v1_pair_private_transfer_constraint_residuals_v1,
@@ -157,6 +146,21 @@ pub use pair_forest_hiding::{
     POOL_V1_PAIR_FOREST_FIRST_SUPER_ROOT_BLOCK_V1, POOL_V1_PAIR_FOREST_LANES_V1,
     POOL_V1_PAIR_FOREST_POSEIDON_BLOCKS_V1, POOL_V1_PAIR_FOREST_PRIVATE_DIRECTIONS_V1,
     POOL_V1_PAIR_FOREST_RELATION_FREE_MASK_CELLS_V1, POOL_V1_PAIR_FOREST_SUPER_ROOT_DEPTH_V1,
+};
+pub use pair_terminal::{
+    decode_pool_v1_pair_afterstate_verifier_request_v1, decode_pool_v1_pair_verified_afterstate_v1,
+    decode_pool_v1_pair_verifier_request_v1, decode_pool_v1_pair_verifier_result_v1,
+    encode_pool_v1_pair_afterstate_verifier_request_v1, encode_pool_v1_pair_verified_afterstate_v1,
+    encode_pool_v1_pair_verifier_request_v1, encode_pool_v1_pair_verifier_result_v1,
+    pool_v1_pair_statement_digest_v1, validate_pool_v1_pair_verifier_binding_v1,
+    PoolV1PairAfterstateVerifierRequestV1, PoolV1PairVerifiedAfterstateV1,
+    PoolV1PairVerifierBindingV1, PoolV1PairVerifierRequestV1, PoolV1PairVerifierResultV1,
+    PoolV1PairVerifierTransportErrorV1, POOL_V1_PAIR_AFTERSTATE_VERIFIER_REQUEST_MAGIC,
+    POOL_V1_PAIR_STATEMENT_BINDING_DOMAIN, POOL_V1_PAIR_VERIFIED_AFTERSTATE_BYTES,
+    POOL_V1_PAIR_VERIFIED_AFTERSTATE_MAGIC, POOL_V1_PAIR_VERIFIED_AFTERSTATE_PAYLOAD_BYTES,
+    POOL_V1_PAIR_VERIFIER_REQUEST_HEADER_BYTES, POOL_V1_PAIR_VERIFIER_REQUEST_MAGIC,
+    POOL_V1_PAIR_VERIFIER_RESULT_BYTES, POOL_V1_PAIR_VERIFIER_RESULT_MAGIC,
+    POOL_V1_PAIR_VERIFIER_SUCCESS_CODE, POOL_V1_PAIR_VERIFIER_TRANSPORT_VERSION,
 };
 #[cfg(not(target_os = "solana"))]
 pub use pair_tree_hiding::{
