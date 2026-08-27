@@ -188,7 +188,7 @@ impl PairPoolStateV1 {
     pub(crate) fn apply_authenticated_afterstate_from_program_invariant(
         &self,
         authenticated: &AuthenticatedPairAfterstateV1,
-    ) -> Result<(Self, PairVerifiedAfterstateReceiptV1), ProgramError> {
+    ) -> Result<(Box<Self>, PairVerifiedAfterstateReceiptV1), ProgramError> {
         let afterstate = authenticated.value();
         if self.tree.next_leaf_index >= POOL_V1_PAIR_CAPACITY
             || self.tree.next_leaf_index.checked_add(1) != Some(afterstate.next_pair_index)
@@ -203,7 +203,7 @@ impl PairPoolStateV1 {
             }
         }
         let pair_index = self.tree.next_leaf_index;
-        let next = Self {
+        let next = Box::new(Self {
             identity: self.identity,
             verifier_policy: self.verifier_policy,
             tree: IncrementalMerkleTreeV1 {
@@ -211,7 +211,7 @@ impl PairPoolStateV1 {
                 root: afterstate.next_root,
                 frontier: afterstate.next_frontier,
             },
-        };
+        });
         Ok((
             next,
             PairVerifiedAfterstateReceiptV1 {
@@ -541,7 +541,7 @@ mod tests {
         let (actual, receipt) = state
             .apply_authenticated_afterstate_from_program_invariant(&authenticated)
             .unwrap();
-        assert_eq!(actual, expected);
+        assert_eq!(*actual, expected);
         assert_eq!(receipt.pair_index, 0);
         assert_eq!(receipt.first_note_index, 0);
         assert_eq!(receipt.second_note_index, 1);

@@ -7,7 +7,7 @@
 
 extern crate alloc;
 
-use alloc::{vec, vec::Vec};
+use alloc::{boxed::Box, vec, vec::Vec};
 
 use aspis_core::transcript::HashFn;
 use aspis_statement::pool_v1::{
@@ -52,8 +52,8 @@ pub struct PlannedPairVerifierDispatchV1 {
 /// Opaque proof-carried afterstate.  Its field is private so Pool state code
 /// cannot manufacture an authorization without passing the immediate
 /// selected-program return-data check in this module.
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub(crate) struct AuthenticatedPairAfterstateV1(PoolV1PairVerifiedAfterstateV1);
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub(crate) struct AuthenticatedPairAfterstateV1(Box<PoolV1PairVerifiedAfterstateV1>);
 
 impl AuthenticatedPairAfterstateV1 {
     pub(crate) fn value(&self) -> &PoolV1PairVerifiedAfterstateV1 {
@@ -76,7 +76,7 @@ pub(crate) fn authenticate_pair_verified_afterstate_return_v1(
     }
     let afterstate = decode_pool_v1_pair_verified_afterstate_v1(returned_data)
         .map_err(|_| PoolV1ProgramError::InvalidVerifierReturnData)?;
-    Ok(AuthenticatedPairAfterstateV1(afterstate))
+    Ok(AuthenticatedPairAfterstateV1(Box::new(afterstate)))
 }
 
 trait PairVerifierRuntimeV1 {
@@ -269,6 +269,40 @@ fn invoke_pair_verifier_with_runtime_v1<'info, R: PairVerifierRuntimeV1>(
         .map_err(|_| PoolV1ProgramError::InvalidVerifierReturnData.into())
 }
 
+fn invoke_pair_afterstate_verifier_with_runtime_v1<'info, R: PairVerifierRuntimeV1>(
+    plan: PlannedPairVerifierDispatchV1,
+    verifier_program: &AccountInfo<'info>,
+    proof: &AccountInfo<'info>,
+    runtime: &mut R,
+) -> Result<AuthenticatedPairAfterstateV1, ProgramError> {
+    let selected = Pubkey::new_from_array(plan.binding.verifier_program);
+    require_verifier_program(verifier_program, &selected)?;
+    if proof.key.to_bytes() != plan.binding.proof_account
+        || proof.owner != &selected
+        || proof.executable
+        || proof.is_signer
+        || proof.is_writable
+    {
+        return Err(PoolV1ProgramError::InvalidVerifierProofAccount.into());
+    }
+    let instruction = Instruction {
+        program_id: selected,
+        accounts: vec![AccountMeta::new_readonly(*proof.key, false)],
+        data: plan.request_bytes,
+    };
+    let account_infos = [proof.clone(), verifier_program.clone()];
+    runtime.clear_return_data();
+    runtime.invoke(&instruction, &account_infos)?;
+    let (returned_program, returned_data) = runtime
+        .get_return_data()
+        .ok_or(PoolV1ProgramError::MissingVerifierReturnData)?;
+    authenticate_pair_verified_afterstate_return_v1(
+        &selected,
+        &returned_program,
+        &returned_data,
+    )
+}
+
 #[allow(clippy::too_many_arguments)]
 pub fn dispatch_pair_verifier_readonly_v1<'info>(
     pool: &Pubkey,
@@ -296,6 +330,40 @@ pub fn dispatch_pair_verifier_readonly_v1<'info>(
     )?;
     let mut runtime = SolanaPairVerifierRuntimeV1;
     invoke_pair_verifier_with_runtime_v1(plan, verifier_program, proof, &mut runtime)
+}
+
+/// Measurement-gated selected-verifier transport for the conservative ASJA
+/// afterstate.  It performs the same registry/proof-account binding as the
+/// stable pair dispatch, then accepts only the immediate selected program's
+/// exact 688-byte typed result.
+#[cfg(feature = "pair-afterstate-evidence")]
+#[allow(clippy::too_many_arguments)]
+pub(crate) fn dispatch_pair_verified_afterstate_readonly_v1<'info>(
+    pool: &Pubkey,
+    expected_deployment_domain: &[u8; 32],
+    policy: &VerifierPolicyV1,
+    registry_accounts: &[AccountInfo<'info>],
+    verifier_program: &AccountInfo<'info>,
+    proof: &AccountInfo<'info>,
+    envelope: &HistoricalAnchorEnvelopeV1,
+    statement_payload: &[u8],
+    current_slot: u64,
+    hash: HashFn,
+) -> Result<AuthenticatedPairAfterstateV1, ProgramError> {
+    let plan = plan_pair_verifier_dispatch_v1(
+        pool,
+        expected_deployment_domain,
+        policy,
+        registry_accounts,
+        verifier_program,
+        proof,
+        envelope,
+        statement_payload,
+        current_slot,
+        hash,
+    )?;
+    let mut runtime = SolanaPairVerifierRuntimeV1;
+    invoke_pair_afterstate_verifier_with_runtime_v1(plan, verifier_program, proof, &mut runtime)
 }
 
 #[cfg(test)]

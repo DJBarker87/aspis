@@ -1,0 +1,63 @@
+{
+  "artifacts": {
+    "pool": {
+      "bytes": 446536,
+      "path": "results/pool-v1-pair-afterstate-litesvm-20260827/artifacts/aspis_pool.so",
+      "sha256": "d36b382cb673e35c1842c2db78020cb80a3fcad2a948e6d460a55a8db0203cac"
+    },
+    "verifier_transport_double": {
+      "bytes": 20800,
+      "path": "results/pool-v1-pair-afterstate-litesvm-20260827/artifacts/aspis_pair_afterstate_transport_double.so",
+      "sha256": "f6be90dd1a7088ff9bc7ba95a88e52885c61f036fa4fffaa0ec951a2a9dbe056"
+    }
+  },
+  "boundaries": [
+    "The selected verifier is a transport double: it performs no cryptographic proof verification and returns the framed ASJA bytes from its verifier-owned proof account.",
+    "This number is the executable Pool suffix plus selected-verifier CPI/688-byte return transport; it must not be added to a verifier reference as if it were a measured combined real-proof execution.",
+    "The pair entrypoint is compiled only with the measurement-only pair-afterstate-evidence feature; the default production entrypoint remains disabled.",
+    "Marker and rollover history accounts are exact pre-created Pool-owned zeroed accounts; System creation cost is excluded.",
+    "This is deterministic LiteSVM execution with no network, deploy, or transaction submission."
+  ],
+  "compute_unit_limit": 1400000,
+  "execution": {
+    "account_metas_excluding_compute_budget_and_payer": 7,
+    "compute_units": 150223,
+    "instruction_bytes": 432,
+    "return_bytes": 200,
+    "return_magic": "ASTR",
+    "simulation_equals_execution": true,
+    "transaction_bytes": 873
+  },
+  "mode": "same-page",
+  "profile_slot": 150,
+  "schema": "aspis.pool-v1.pair-afterstate-runtime-evidence.v1",
+  "state_transition": {
+    "full_prior_page_byte_exact_on_rollover": false,
+    "historical_anchor_value_preserved": true,
+    "history_target_page": 0,
+    "history_target_slot": 101,
+    "membership_anchor_sequence": 50,
+    "next_sequence": 101,
+    "nullifier_marker_created_once": true,
+    "pool_matches_verifier_afterstate": true,
+    "pool_side_poseidon_calls": 0,
+    "source_sequence": 100
+  },
+  "transport": {
+    "immediate_return_program_checked": true,
+    "kind": "authenticated selected-verifier CPI transport double",
+    "proof_account_body_bytes": 688,
+    "real_tag73_proof_executed": false,
+    "request_is_registry_and_proof_account_bound": true,
+    "returned_asja_bytes": 688
+  },
+  "toolchain": {
+    "cargo_build_sbf": "solana-cargo-build-sbf 2.3.0",
+    "host": "macOS 26.5 (25F71), Darwin 25.5.0 arm64",
+    "host_cargo": "1.93.0 (083ac5135 2025-12-15)",
+    "host_rustc": "1.93.0 (254b59607 2026-01-19)",
+    "litesvm": "0.16.0",
+    "platform_tools": "v1.48",
+    "sbf_rustc": "1.84.1"
+  }
+}
