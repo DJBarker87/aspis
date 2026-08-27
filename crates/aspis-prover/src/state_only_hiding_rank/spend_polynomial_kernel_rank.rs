@@ -559,7 +559,7 @@ pub fn probe_spend_mixed_polynomial_kernel_rank(
 
     let common_sources = balanced_query_kernel_sources(&roots)?;
     let mut active = [false; TRACE_ROWS];
-    for &row in rank_active_rows(RankLayout::AtomicV3) {
+    for row in rank_active_rows(RankLayout::AtomicV3) {
         active[usize::from(row)] = true;
     }
     let (full_sources, balance_reference, balance_denominator) =
@@ -804,7 +804,7 @@ pub fn probe_spend_root_neutral_polynomial_kernel_rank(
     }
     let common_sources = balanced_query_kernel_sources(&roots)?;
     let mut active = [false; TRACE_ROWS];
-    for &row in rank_active_rows(RankLayout::AtomicV3) {
+    for row in rank_active_rows(RankLayout::AtomicV3) {
         active[usize::from(row)] = true;
     }
     let (full_sources, _, balance_anchor) =

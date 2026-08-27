@@ -302,7 +302,7 @@ fn probe_prefix(
     let lagrange = lagrange_basis();
     let active_rows = rank_active_rows(RankLayout::AtomicV3);
     let mut active = [false; TRACE_ROWS];
-    for &row in active_rows {
+    for &row in &active_rows {
         active[usize::from(row)] = true;
     }
     let global_dependent = (0..TRACE_ROWS)
@@ -620,7 +620,7 @@ pub fn probe_atomic_state_only_spend_zero_factor_qm31_tail_root_neutral(
     let lagrange = lagrange_basis();
     let active_rows = rank_active_rows(RankLayout::AtomicV3);
     let mut active = [false; TRACE_ROWS];
-    for &row in active_rows {
+    for &row in &active_rows {
         active[usize::from(row)] = true;
     }
     let global_dependent = (0..TRACE_ROWS)

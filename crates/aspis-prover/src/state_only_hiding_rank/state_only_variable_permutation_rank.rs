@@ -96,7 +96,7 @@ impl BitPermutation {
 
 fn permuted_active(permutation: BitPermutation) -> [bool; TRACE_ROWS] {
     let mut active = [false; TRACE_ROWS];
-    for &logical in rank_active_rows(RankLayout::AtomicV3) {
+    for logical in rank_active_rows(RankLayout::AtomicV3) {
         active[permutation.logical_row_to_physical(usize::from(logical))] = true;
     }
     active

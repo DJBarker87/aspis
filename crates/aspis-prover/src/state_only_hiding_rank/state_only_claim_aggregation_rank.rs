@@ -335,7 +335,7 @@ fn compact_row_public_maps(
         xor12_point(&schedule.prefix.z),
     ];
     let mut active = [false; TRACE_ROWS];
-    for &row in rank_active_rows(RankLayout::AtomicV3) {
+    for row in rank_active_rows(RankLayout::AtomicV3) {
         active[usize::from(row)] = true;
     }
     let inactive_dependent = (0..TRACE_ROWS)
@@ -1408,7 +1408,7 @@ fn run_atomic_state_only_compact_claim_rank(
     let lagrange = lagrange_basis();
     let active_rows = rank_active_rows(RankLayout::AtomicV3);
     let mut active = [false; TRACE_ROWS];
-    for &row in active_rows {
+    for &row in &active_rows {
         active[usize::from(row)] = true;
     }
     let inactive = (0..TRACE_ROWS)

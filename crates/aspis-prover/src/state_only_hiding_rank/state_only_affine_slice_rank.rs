@@ -579,7 +579,7 @@ fn run_affine_slice_variant(
     let lagrange = lagrange_basis();
     let active_rows = rank_active_rows(RankLayout::AtomicV3);
     let mut active = [false; TRACE_ROWS];
-    for &row in active_rows {
+    for &row in &active_rows {
         active[usize::from(row)] = true;
     }
     let inactive = (0..TRACE_ROWS)

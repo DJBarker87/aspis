@@ -36,6 +36,10 @@ use aspis_statement::atomic_state_only_registry::atomic_state_only_relation_free
 use aspis_statement::atomic_state_only_terminal::{
     atomic_state_only_copy_active_rows_v3, atomic_state_only_copy_inactive_row_masks_v3,
 };
+use aspis_statement::pool_v1::{
+    pool_v1_pair_copy_active_rows_v1, pool_v1_pair_copy_inactive_row_masks_v1,
+    pool_v1_pair_relation_free_mask_cells_v1,
+};
 use aspis_statement::{
     binary_successor_point, state_only_copy_active_rows_v4, state_only_copy_inactive_row_masks_v4,
     state_only_relation_free_mask_cells_v4, xor12_point,
@@ -1045,12 +1049,15 @@ impl TailQm31MaskFactor {
 enum RankLayout {
     StateOnlyV4,
     AtomicV3,
+    PoolPairV1,
 }
 
-fn rank_active_rows(layout: RankLayout) -> &'static [u16] {
+fn rank_active_rows(layout: RankLayout) -> Vec<u16> {
     match layout {
-        RankLayout::StateOnlyV4 => state_only_copy_active_rows_v4(),
-        RankLayout::AtomicV3 => atomic_state_only_copy_active_rows_v3(),
+        RankLayout::StateOnlyV4 => state_only_copy_active_rows_v4().to_vec(),
+        RankLayout::AtomicV3 => atomic_state_only_copy_active_rows_v3().to_vec(),
+        RankLayout::PoolPairV1 => pool_v1_pair_copy_active_rows_v1()
+            .expect("the pinned Pool pair row schedule has bounded endpoints"),
     }
 }
 
@@ -1058,6 +1065,8 @@ fn rank_inactive_masks(layout: RankLayout) -> [u16; 64] {
     match layout {
         RankLayout::StateOnlyV4 => state_only_copy_inactive_row_masks_v4(),
         RankLayout::AtomicV3 => atomic_state_only_copy_inactive_row_masks_v3(),
+        RankLayout::PoolPairV1 => pool_v1_pair_copy_inactive_row_masks_v1()
+            .expect("the pinned Pool pair row schedule has bounded endpoints"),
     }
 }
 
@@ -2484,7 +2493,7 @@ fn row_public_maps(
         xor12_point(&schedule.prefix.z),
     ];
     let mut active = [false; TRACE_ROWS];
-    for &row in rank_active_rows(layout) {
+    for row in rank_active_rows(layout) {
         active[usize::from(row)] = true;
     }
     let inactive_dependent = (0..TRACE_ROWS)
@@ -3818,7 +3827,7 @@ fn probe_atomic_state_only_profile22_root_neutral_sumcheck_inner(
     let lagrange = lagrange_basis();
     let active_rows = rank_active_rows(RankLayout::AtomicV3);
     let mut active = [false; TRACE_ROWS];
-    for &row in active_rows {
+    for &row in &active_rows {
         active[usize::from(row)] = true;
     }
     let global_dependent = (0..TRACE_ROWS)
@@ -4589,6 +4598,33 @@ pub fn probe_v6_onefold_atomic_root_message_hiding_rank(
         PcsSchedule::RootMessageV6Log20,
         true,
         RankLayout::AtomicV3,
+    )
+}
+
+/// Full-view hiding-rank gate for the production-inactive Pool pair-tree
+/// profile.  This uses the exact 126-link/199-active-row source contract and
+/// its mechanically generated 4,334 relation-free cells.  As with the V6
+/// gate, the complete gamma-combined 1024-element root message is the target;
+/// later folds and the final projection are deterministic linear images.
+///
+/// A passing report is a necessary source-layout gate. It does not enable a
+/// verifier profile: the complete tuple registry, late public bindings and
+/// generated terminal still have to reproduce the pinned row contract.
+pub fn probe_pool_v1_pair_root_message_hiding_rank(
+    schedule: &StateOnlyTranscriptScheduleResult,
+) -> Result<StateOnlyHidingRankGateReport, StateOnlyHidingRankGateError> {
+    if schedule.query_count != 16 {
+        return Err(StateOnlyHidingRankGateError::Shape);
+    }
+    check_state_only_complete_hiding_rank_inner_for_layout(
+        schedule,
+        false,
+        FactorSchedule::Production,
+        None,
+        LateSwitchSupport::WitnessDifferenceSuperset,
+        PcsSchedule::RootMessageV6Log20,
+        true,
+        RankLayout::PoolPairV1,
     )
 }
 
@@ -5372,7 +5408,7 @@ fn check_state_only_complete_hiding_rank_inner_for_layout_and_delta_and_projecti
     let lagrange = lagrange_basis();
     let active_rows = rank_active_rows(layout);
     let mut active = [false; TRACE_ROWS];
-    for &row in active_rows {
+    for &row in &active_rows {
         active[usize::from(row)] = true;
     }
     let inactive = (0..TRACE_ROWS)
@@ -5424,6 +5460,8 @@ fn check_state_only_complete_hiding_rank_inner_for_layout_and_delta_and_projecti
         RankLayout::StateOnlyV4 => state_only_relation_free_mask_cells_v4()
             .map_err(|_| StateOnlyHidingRankGateError::Layout)?,
         RankLayout::AtomicV3 => atomic_state_only_relation_free_mask_cells_v3()
+            .map_err(|_| StateOnlyHidingRankGateError::Layout)?,
+        RankLayout::PoolPairV1 => pool_v1_pair_relation_free_mask_cells_v1()
             .map_err(|_| StateOnlyHidingRankGateError::Layout)?,
     };
     let mut cells_by_column = vec![Vec::new(); STATE_ONLY_HIDING_C1_COLUMNS];
@@ -6153,7 +6191,7 @@ fn check_state_only_complete_hiding_rank_inner_for_layout_and_delta_and_projecti
         witness_difference_probe.then_some(terminal_dependent);
     let mut witness_coupled_terminal_identity_guard = false;
     if witness_difference_probe {
-        if layout != RankLayout::AtomicV3
+        if !matches!(layout, RankLayout::AtomicV3 | RankLayout::PoolPairV1)
             || semantic_raw_echelons.len() != STATE_ONLY_HIDING_C1_COLUMNS
         {
             return Err(StateOnlyHidingRankGateError::Layout);
@@ -8489,7 +8527,7 @@ fn probe_atomic_state_only_profile21_upper_oracle_rank_at_insertion(
     let lagrange = lagrange_basis();
     let active_rows = rank_active_rows(RankLayout::AtomicV3);
     let mut active = [false; TRACE_ROWS];
-    for &row in active_rows {
+    for &row in &active_rows {
         active[usize::from(row)] = true;
     }
     let inactive = (0..TRACE_ROWS)

@@ -13,6 +13,8 @@ pub mod format;
 pub mod historical_anchor;
 pub mod incremental_merkle;
 pub mod nullifier_marker;
+#[cfg(not(target_os = "solana"))]
+pub mod pair_tree_hiding;
 pub mod pair_tree_profile;
 #[cfg(not(target_os = "solana"))]
 pub mod payment_constraint_residuals;
@@ -98,6 +100,20 @@ pub use nullifier_marker::{
     validate_pool_v1_nullifier_marker, PoolV1NullifierMarkerFormatError, PoolV1NullifierMarkerV1,
     POOL_V1_NULLIFIER_MARKER_ACCOUNT_BYTES, POOL_V1_NULLIFIER_MARKER_MAGIC,
     POOL_V1_NULLIFIER_MARKER_SEED, POOL_V1_NULLIFIER_MARKER_VERSION,
+};
+#[cfg(not(target_os = "solana"))]
+pub use pair_tree_hiding::{
+    build_pool_v1_pair_copy_row_schedule_v1, pool_v1_pair_aux_cell_is_relation_used_v1,
+    pool_v1_pair_copy_active_row_masks_v1, pool_v1_pair_copy_active_rows_fingerprint_v1,
+    pool_v1_pair_copy_active_rows_v1, pool_v1_pair_copy_inactive_row_masks_v1,
+    pool_v1_pair_copy_row_schedule_fingerprint_v1,
+    pool_v1_pair_relation_free_mask_cells_v1, pool_v1_pair_relation_free_mask_fingerprint_v1,
+    PoolV1PairCopyRowLinkKindV1, PoolV1PairCopyRowLinkV1, PoolV1PairHidingLayoutErrorV1,
+    PINNED_POOL_V1_PAIR_COPY_ACTIVE_ROWS_FINGERPRINT_V1,
+    PINNED_POOL_V1_PAIR_COPY_ROW_SCHEDULE_FINGERPRINT_V1,
+    PINNED_POOL_V1_PAIR_RELATION_FREE_MASK_FINGERPRINT_V1, POOL_V1_PAIR_COPY_ACTIVE_ROWS_V1,
+    POOL_V1_PAIR_COPY_ROW_LINKS_V1, POOL_V1_PAIR_RELATION_FREE_MASK_CELLS_V1,
+    POOL_V1_PAIR_RELATION_FREE_PADDING_LOCAL_ROW_START_V1,
 };
 pub use pair_tree_profile::{
     decode_pool_v1_pair_live_snapshot_v1, encode_pool_v1_pair_live_snapshot_v1,
