@@ -19,10 +19,14 @@ use aspis_pool::{
 use aspis_statement::{
     encode_digest_canonical,
     pool_v1::{
-        encode_pool_v1_pair_forest_terminal_request_v1, pool_v1_pair_forest_output_lane_v1,
+        decode_pool_v1_pair_forest_terminal_request_v1,
+        encode_pool_v1_pair_forest_terminal_request_v1,
+        encode_pool_v1_pair_forest_terminal_statement_v1, pool_v1_pair_forest_output_lane_v1,
         root_history_location, PoolV1PairForestLaneStateV1, PoolV1PairForestMasterV1,
         PoolV1PairForestTerminalPaymentV1, PoolV1PairForestTerminalRequestV1,
-        POOL_V1_PAIR_CAPACITY, POOL_V1_PAIR_FOREST_TERMINAL_VERSION,
+        PoolV1PairForestTerminalStatementV1, POOL_V1_PAIR_CAPACITY,
+        POOL_V1_PAIR_FOREST_TERMINAL_REQUEST_BYTES, POOL_V1_PAIR_FOREST_TERMINAL_STATEMENT_BYTES,
+        POOL_V1_PAIR_FOREST_TERMINAL_VERSION,
     },
 };
 use base64::{engine::general_purpose::STANDARD as BASE64_STANDARD, Engine as _};
@@ -75,6 +79,7 @@ pub enum PairForestTransactionV1ErrorV2 {
     SanitizeFailed,
     SerializationFailed,
     TransactionTooLarge,
+    TerminalTransportMismatch,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -655,6 +660,87 @@ pub fn compare_exact_pair_forest_v0_size_v2(
     })
 }
 
+/// Measurement-only instruction-data choices for the unchanged outer Pool
+/// account list. Neither variant changes program dispatch or is activated by
+/// this wallet module.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum PairForestTerminalTransportVariantV2 {
+    /// Current compact caller request (`ASQ8`, 320 bytes).
+    CompactAsq8,
+    /// Canonical full semantic statement (`ASF8`, 1,880 bytes).
+    FullAsf8,
+}
+
+impl PairForestTerminalTransportVariantV2 {
+    pub const fn instruction_data_bytes_v2(self) -> usize {
+        match self {
+            Self::CompactAsq8 => POOL_V1_PAIR_FOREST_TERMINAL_REQUEST_BYTES,
+            Self::FullAsf8 => POOL_V1_PAIR_FOREST_TERMINAL_STATEMENT_BYTES,
+        }
+    }
+}
+
+/// Replace only the instruction payload while retaining the exact program id
+/// and every account meta, order, signer bit and writable bit.
+///
+/// The full-statement path checks that the canonical ASF8 account identities
+/// and payment public input match the current ASQ8 request. The actual caller
+/// would still have to derive the selected profile/release from the retained
+/// registry metas; this function is a size experiment, not a dispatch path.
+pub fn build_pair_forest_terminal_transport_variant_v2(
+    compact_instruction: &Instruction,
+    statement: &PoolV1PairForestTerminalStatementV1,
+    variant: PairForestTerminalTransportVariantV2,
+) -> Result<Instruction, PairForestTransactionV1ErrorV2> {
+    let request = decode_pool_v1_pair_forest_terminal_request_v1(&compact_instruction.data)
+        .map_err(|_| PairForestTransactionV1ErrorV2::TerminalTransportMismatch)?;
+    if compact_instruction.data.len() != POOL_V1_PAIR_FOREST_TERMINAL_REQUEST_BYTES
+        || compact_instruction.program_id.to_bytes() != request.pool_program
+        || compact_instruction.accounts.len() < 3
+    {
+        return Err(PairForestTransactionV1ErrorV2::TerminalTransportMismatch);
+    }
+    let common = statement.common();
+    if common.master_account != compact_instruction.accounts[0].pubkey.to_bytes()
+        || common.checkpoint_account != compact_instruction.accounts[1].pubkey.to_bytes()
+        || common.selected_lane_account != compact_instruction.accounts[2].pubkey.to_bytes()
+        || request.public.transition_kind() != statement.transition_kind()
+        || request.public.nullifier() != statement.nullifier()
+    {
+        return Err(PairForestTransactionV1ErrorV2::TerminalTransportMismatch);
+    }
+    let same_public = match (request.public, statement) {
+        (
+            PoolV1PairForestTerminalPaymentV1::PrivateTransfer(request),
+            PoolV1PairForestTerminalStatementV1::PrivateTransfer { public, .. },
+        ) => request == *public,
+        (
+            PoolV1PairForestTerminalPaymentV1::Withdrawal(request),
+            PoolV1PairForestTerminalStatementV1::Withdrawal { public, .. },
+        ) => request == *public,
+        _ => false,
+    };
+    if !same_public {
+        return Err(PairForestTransactionV1ErrorV2::TerminalTransportMismatch);
+    }
+    let data = match variant {
+        PairForestTerminalTransportVariantV2::CompactAsq8 => compact_instruction.data.clone(),
+        PairForestTerminalTransportVariantV2::FullAsf8 => {
+            encode_pool_v1_pair_forest_terminal_statement_v1(statement)
+                .map_err(|_| PairForestTransactionV1ErrorV2::TerminalTransportMismatch)?
+                .to_vec()
+        }
+    };
+    if data.len() != variant.instruction_data_bytes_v2() {
+        return Err(PairForestTransactionV1ErrorV2::TerminalTransportMismatch);
+    }
+    Ok(Instruction {
+        program_id: compact_instruction.program_id,
+        accounts: compact_instruction.accounts.clone(),
+        data,
+    })
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -664,9 +750,11 @@ mod tests {
         POOL_V1_PAIR_EMPTY_ROOTS,
     };
     use aspis_statement::pool_v1::{
-        IncrementalMerkleTreeV1, PoolIdentityV1, PoolV1PrivateTransferPublicV1,
-        PoolV1WithdrawalPublicV1, VerifierPolicyV1, POOL_V1_ENCRYPTED_NOTE_PAYLOAD_MAX_BYTES,
-        POOL_V1_PAIR_FOREST_ALL_LANES_MASK, POOL_V1_PAIR_TREE_DEPTH, POOL_V1_ROOT_HISTORY_CAPACITY,
+        IncrementalMerkleTreeV1, PoolIdentityV1, PoolV1PairForestTerminalCommonV1,
+        PoolV1PairLatePublicStatementV1, PoolV1PairLiveSnapshotV1, PoolV1PairVerifiedAfterstateV1,
+        PoolV1PrivateTransferPublicV1, PoolV1WithdrawalPublicV1, VerifierPolicyV1,
+        POOL_V1_ENCRYPTED_NOTE_PAYLOAD_MAX_BYTES, POOL_V1_PAIR_FOREST_ALL_LANES_MASK,
+        POOL_V1_PAIR_TREE_DEPTH, POOL_V1_ROOT_HISTORY_CAPACITY,
     };
 
     use crate::{
@@ -782,8 +870,9 @@ mod tests {
         }
     }
 
-    fn terminal_fixture(
+    fn terminal_fixture_at(
         withdrawal: bool,
+        lane_sequence: u64,
     ) -> (
         Pubkey,
         PoolV1PairForestMasterV1,
@@ -826,7 +915,7 @@ mod tests {
         (
             program,
             master,
-            lane(&master, lane_id, rollover_sequence()),
+            lane(&master, lane_id, lane_sequence),
             profile(&master, registry_program, profile_binding, release_binding),
             PoolV1PairForestTerminalRequestV1 {
                 verifier_profile: profile_binding,
@@ -835,6 +924,123 @@ mod tests {
                 public,
             },
         )
+    }
+
+    fn terminal_fixture(
+        withdrawal: bool,
+    ) -> (
+        Pubkey,
+        PoolV1PairForestMasterV1,
+        PoolV1PairForestLaneStateV1,
+        PairForestSpendProfileSelectionV2,
+        PoolV1PairForestTerminalRequestV1,
+    ) {
+        terminal_fixture_at(withdrawal, rollover_sequence())
+    }
+
+    fn full_statement(
+        instruction: &Instruction,
+        lane: &PoolV1PairForestLaneStateV1,
+        request: &PoolV1PairForestTerminalRequestV1,
+    ) -> PoolV1PairForestTerminalStatementV1 {
+        let (checkpoint_sequence, historical_global_anchor) = match request.public {
+            PoolV1PairForestTerminalPaymentV1::PrivateTransfer(public) => {
+                (public.anchor_sequence, public.anchor_root)
+            }
+            PoolV1PairForestTerminalPaymentV1::Withdrawal(public) => {
+                (public.anchor_sequence, public.anchor_root)
+            }
+        };
+        let common = PoolV1PairForestTerminalCommonV1 {
+            master_account: instruction.accounts[0].pubkey.to_bytes(),
+            checkpoint_account: instruction.accounts[1].pubkey.to_bytes(),
+            selected_lane_account: instruction.accounts[2].pubkey.to_bytes(),
+            output_lane: lane.lane_id,
+            checkpoint_sequence,
+            historical_global_anchor,
+            lane_transition: PoolV1PairLatePublicStatementV1 {
+                live_snapshot: PoolV1PairLiveSnapshotV1 {
+                    pool: lane.master,
+                    deployment_domain: match request.public {
+                        PoolV1PairForestTerminalPaymentV1::PrivateTransfer(public) => {
+                            public.deployment_domain
+                        }
+                        PoolV1PairForestTerminalPaymentV1::Withdrawal(public) => {
+                            public.deployment_domain
+                        }
+                    },
+                    sequence: lane.tree.next_leaf_index,
+                    next_pair_index: lane.tree.next_leaf_index,
+                    current_root: lane.tree.root,
+                    frontier: lane.tree.frontier,
+                },
+                candidate_afterstate: PoolV1PairVerifiedAfterstateV1 {
+                    next_pair_index: lane.tree.next_leaf_index + 1,
+                    next_root: digest(500),
+                    next_frontier: core::array::from_fn(|level| {
+                        digest(600 + u32::try_from(level).unwrap() * 10)
+                    }),
+                },
+            },
+        };
+        match request.public {
+            PoolV1PairForestTerminalPaymentV1::PrivateTransfer(public) => {
+                PoolV1PairForestTerminalStatementV1::PrivateTransfer { common, public }
+            }
+            PoolV1PairForestTerminalPaymentV1::Withdrawal(public) => {
+                PoolV1PairForestTerminalStatementV1::Withdrawal { common, public }
+            }
+        }
+    }
+
+    #[test]
+    fn asq8_and_asf8_variants_measure_same_page_and_rollover_exactly() {
+        for (withdrawal, sequence, expected_accounts, expected_asq8, expected_asf8) in [
+            (false, 1, 9, 811, 2_371),
+            (false, rollover_sequence(), 10, 844, 2_404),
+            (true, 1, 14, 976, 2_536),
+            (true, rollover_sequence(), 15, 1_009, 2_569),
+        ] {
+            let (program, master, lane, profile, request) =
+                terminal_fixture_at(withdrawal, sequence);
+            let compact = build_pair_forest_terminal_instruction_v1_4k_v2(
+                program,
+                &master,
+                &lane,
+                profile,
+                key(21),
+                &request,
+            )
+            .unwrap();
+            assert_eq!(compact.accounts.len(), expected_accounts);
+            let statement = full_statement(&compact, &lane, &request);
+            let asq8 = build_pair_forest_terminal_transport_variant_v2(
+                &compact,
+                &statement,
+                PairForestTerminalTransportVariantV2::CompactAsq8,
+            )
+            .unwrap();
+            let asf8 = build_pair_forest_terminal_transport_variant_v2(
+                &compact,
+                &statement,
+                PairForestTerminalTransportVariantV2::FullAsf8,
+            )
+            .unwrap();
+            assert_eq!(asq8.accounts, asf8.accounts);
+            assert_eq!(asq8.program_id, asf8.program_id);
+            assert_eq!(asq8.data.len(), 320);
+            assert_eq!(asf8.data.len(), 1_880);
+            let compact_tx =
+                build_exact_pair_forest_v1_transaction_v2(&asq8, key(22), [23; 32], config(), &[])
+                    .unwrap();
+            let full_tx =
+                build_exact_pair_forest_v1_transaction_v2(&asf8, key(22), [23; 32], config(), &[])
+                    .unwrap();
+            assert_eq!(compact_tx.serialized_wire_bytes_v2(), expected_asq8);
+            assert_eq!(full_tx.serialized_wire_bytes_v2(), expected_asf8);
+            assert_eq!(expected_asf8 - expected_asq8, 1_560);
+            assert!(expected_asf8 <= SOLANA_V1_TRANSACTION_MAX_BYTES_V2);
+        }
     }
 
     #[test]
