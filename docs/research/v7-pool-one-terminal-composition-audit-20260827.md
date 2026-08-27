@@ -2,9 +2,10 @@
 
 Date: 2026-08-27
 
-Status: read-only source/CU audit. No production Rust, verifier profile,
-dispatch entrypoint, account format, deployment, or transaction was changed by
-this checkpoint.
+Status: active source/CU audit. The pair-afterstate profile and Pool route are
+still production-disabled, but their exact codecs, focused source prototypes,
+and local LiteSVM evidence now exist. No deployment or network transaction was
+performed.
 
 ## Decision
 
@@ -48,9 +49,11 @@ single executable profile.
 | Frozen V7 Tag-73 atomic execution | 1,258,013 CU | The old 30,504-byte proof, all work checks, old 80-byte atomic state and nullifier fit with 141,987 CU below 1.4M. |
 | Current direct Pool private-transfer path with a 485-CU mock verifier | failed after consuming 1,399,850 CU | The current Pool path alone does not fit. The mock verifier is not cryptographic evidence. |
 | Current real native Pool proof, direct verifier only | failed after consuming the full 1,400,000-CU transaction limit | The current 30,192-byte single-leaf Pool relation verifier itself exceeds the limit. This is not the final staged pair profile. |
+| Same proof after exact semantic-terminal prefactorization | **1,395,868 CU accepted** | The terminal fell from 821,667 to 407,973 CU, saving 413,694 CU without changing the proof, transcript, constraints, hashes, or cryptography. This establishes direct-verifier feasibility with only 4,132 CU headroom; it is not the final pair/Pool lifecycle. |
 | Current real native Pool proof, combined direct Pool call | failed at 1,400,000 CU | The Pool consumed a 585,258-CU prefix, the verifier exhausted all 814,592 CU passed to it, no suffix ran, and Pool/history/vault/nullifier rolled back exactly. |
 | Current prepared Pool lifecycle | 1,256,357 + 643,108 = 1,899,465 CU | Pool append/image preparation and later authenticated settlement each fit separately, but no proof verification is included. |
 | Literal production Pool Poseidon probe | 20 parents: 469,798 CU total; 21 parents: 493,270 CU total | The zero-parent transaction costs 407 CU, so twenty upper parents add 469,391 CU and pair compression plus twenty parents add 492,863 CU. This rejects execution-time append under the present implementation. |
+| Proof-carried byte-only Pool path with authenticated verifier transport double | **150,223 CU same-page; 119,206 CU rollover** | Pool parsing, registry selection, CPI/688-byte result transport, exact state/history/marker/custody persistence, and return fit with zero Pool Poseidon. This is isolated plumbing evidence, not a combined real-verifier measurement. |
 
 The direct-path red gate records 846,646 CU remaining when the mock verifier is
 entered. Therefore the exact pre-verifier Pool prefix consumes:
@@ -80,6 +83,25 @@ suffix. Its proof is 30,192 bytes with SHA-256
 `656f25689041ae7f90c9461f4dbe3336478e01e1970ff00c24d1e7d90ed2e72c`;
 it is a current single-leaf baseline, not evidence for the unbuilt 34,658-byte
 staged pair verifier.
+
+The exact post-prefactor phase ledger is frozen in
+`results/v7-pool-terminal-cu-profile-optimized-20260827/`. Of the complete
+1,395,868-CU transaction, the semantic terminal consumes 407,973 CU, the V7
+two-tree authentication consumes 383,343 CU, and the authentication checkpoint
+through verifier exit consumes 560,003 CU. The nonterminal direct-verifier
+work is exactly 987,895 CU, so the terminal could consume at most 412,105 CU;
+the prefactorization clears that direct gate by 4,132 CU.
+
+The byte-only Pool evidence is frozen in
+`results/pool-v1-pair-afterstate-litesvm-20260827/`. Its same-page path is the
+conservative persistence case at 150,223 CU. Adding that independent number to
+the optimized direct transaction is only a budgeting screen, because it
+double-counts transaction/wrapper work and substitutes a transport double for
+the real verifier. That screen is 146,091 CU above 1.4M before the larger
+seven-lane pair proof and before a release margin. Therefore the next exact
+target is at least about 180k CU of noncryptographic verifier/plumbing saving,
+followed by a single integrated measurement; no independent totals will be
+presented as proof that the lifecycle fits.
 
 ## Exact duplicated and removable work
 
