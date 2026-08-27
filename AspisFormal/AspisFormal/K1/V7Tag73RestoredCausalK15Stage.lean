@@ -1,4 +1,5 @@
 import AspisFormal.K1.V7Tag73ExactCausalK15Reduction
+import AspisFormal.K1.V7Tag73OperationalClientExtractionBridge
 
 /-!
 # Restoration-aware causal K1.5 stage for exact Tag-73
@@ -48,6 +49,7 @@ open AspisK1.V7Tag73ExactConcreteStageAssembly
 open AspisK1.V7Tag73ExactOperationalK15Stage
 open AspisK1.V7Tag73ExactCausalK15Reduction
 open AspisK1.V7Tag73OperationalK15Classifier
+open AspisK1.V7Tag73OperationalClientExtractionBridge
 open AspisK1.V7Tag73RestoredPointCompatibleK14
 open AspisPool.AlgorithmicCircleDecoderV7
 open AspisPool.V7AcceptedSpendK15FailureLedger
@@ -175,11 +177,42 @@ def ExactTag73K15Context.run
   operationalAcceptedRun context.input (context.material operational).data.decoded
     (context.material operational).data.fixedDecode
 
+/-- Concrete client evidence required after the restored semantic endpoint
+has produced a valid witness.  The completed scheduler equation and fixed
+public-instance binding are derived from `context.input`, not assumed here. -/
+structure ExactTag73RestoredPointCompatibleClientResult
+    {HiddenTape TapeIdentity Observation Payload : Type}
+    {parameters : ExactCompilerResourceParameters}
+    {transitionFuel : Nat}
+    {configuration : ExactPlainRomWitnessConfiguration HiddenTape TapeIdentity
+      Observation V5PublicStatement Tag73K12ParsedProof Payload
+      DecodedSpendWitness parameters}
+    {projection : AcceptedTapeProjection V5PublicStatement Tag73K12ParsedProof
+      Payload}
+    {fixedInstance : PublicInstance V5PublicStatement}
+    {decoder : ExactDecoderInstantiation QM31Exact}
+    {decoderBinding : InitialProjectionBinding decoder}
+    (context : ExactTag73K15Context transitionFuel configuration projection
+      fixedInstance decoder decoderBinding)
+    {deployedOwner : Digest → Digest}
+    {deployedNote : Digest → F → F → Digest → Digest}
+    {deployedNullifier : Digest → Digest → Digest}
+    {deployedNode : Digest → Digest → Digest} : Type where
+  witness : DecodedSpendWitness
+  relationValid : exactTag73SpendRelation (deployedOwner := deployedOwner)
+    (deployedNote := deployedNote) (deployedNullifier := deployedNullifier)
+    (deployedNode := deployedNode) fixedInstance witness
+  extractor : ExactPlainRomWitnessExtractor V5PublicStatement
+    Tag73K12ParsedProof Payload DecodedSpendWitness
+  clientReturned : context.input.package.root.full.clientRun.halt =
+    .returned extractor
+  extractorReturned : extractor
+      context.input.package.root.full.clientRun.accumulator = some witness
+
 /-- Source/restoration data needed to turn the local operational classifier
-into the correct restoration-aware K1.5 classifier.  `pointCompatibleHandoff`
-is deliberately a client-extraction handoff, not a claimed probability bound:
-its eventual constructor must run the already checked restored coherent trace
-through the semantic/relation endpoint and the actual restoration client. -/
+into the correct restoration-aware K1.5 classifier.  `pointCompatibleResult`
+must separately supply a valid semantic witness and the two literal client
+equations; the generic completed-run certificate is derived downstream. -/
 structure ExactTag73RestoredCausalK15Environment
     {HiddenTape TapeIdentity Observation Payload : Type}
     {parameters : ExactCompilerResourceParameters}
@@ -248,7 +281,7 @@ structure ExactTag73RestoredCausalK15Environment
         (context.material operational).exactHonest
         (sumcheck context
           (extractedFixedWidth29Candidate context.k14.extraction member))
-  pointCompatibleHandoff : ∀ (context : ExactTag73K15Context transitionFuel
+  pointCompatibleResult : ∀ (context : ExactTag73K15Context transitionFuel
       configuration projection fixedInstance decoder decoderBinding),
       (¬ FixedFamilyK15Failure (terminal context) (sumcheck context)
         (context.fields operational) context.k14.extraction
@@ -266,12 +299,10 @@ structure ExactTag73RestoredCausalK15Environment
           (context.fields operational).pointClaim
           (family context) →
         Nonempty
-          (ExactFixedClientExtractionCertificate transitionFuel configuration
-            fixedInstance
-            (exactTag73SpendRelation (deployedOwner := deployedOwner)
-              (deployedNote := deployedNote)
-              (deployedNullifier := deployedNullifier)
-              (deployedNode := deployedNode)) context.sample)
+          (ExactTag73RestoredPointCompatibleClientResult context
+            (deployedOwner := deployedOwner) (deployedNote := deployedNote)
+            (deployedNullifier := deployedNullifier)
+            (deployedNode := deployedNode))
 
 /-- The exact two residual failure shapes after a point-compatible restoration
 has been routed to successful client extraction. -/
@@ -403,9 +434,13 @@ noncomputable def exactTag73RestoredCausalK15Classifier
             ExactTag73RestoredCausalK15Failure environment
               ⟨sample, input, k12, k13, k14⟩) := by
           rcases reduced with restored | fixed | constrained
-          · exact ⟨.inl (Classical.choice
-              (environment.pointCompatibleHandoff
-                context anyFixed restored))⟩
+          · let restoredResult := Classical.choice
+              (environment.pointCompatibleResult context anyFixed restored)
+            exact ⟨.inl
+              (exactFixedClientExtractionCertificateOfOperationalInput
+                context.input restoredResult.extractor restoredResult.witness
+                restoredResult.clientReturned restoredResult.extractorReturned
+                restoredResult.relationValid)⟩
           · exact (anyFixed fixed).elim
           · by_cases restored : HasAcceptedRestoredPointCompatibleK14 decoder
                 k12.words
@@ -413,9 +448,14 @@ noncomputable def exactTag73RestoredCausalK15Classifier
                   material.data.fixedDecode).point
                 (operationalFixedFields material.data.decoded).pointClaim
                 (environment.family ⟨sample, input, k12, k13, k14⟩)
-            · exact ⟨.inl (Classical.choice
-                (environment.pointCompatibleHandoff
-                  context anyFixed restored))⟩
+            · let restoredResult := Classical.choice
+                (environment.pointCompatibleResult context anyFixed restored)
+              exact ⟨.inl
+                (exactFixedClientExtractionCertificateOfOperationalInput
+                  context.input restoredResult.extractor restoredResult.witness
+                  restoredResult.clientReturned
+                  restoredResult.extractorReturned
+                  restoredResult.relationValid)⟩
             · have noRestored : ¬ HasAcceptedRestoredPointCompatibleK14 decoder
                   k12.words
                   (operationalAcceptedRun input material.data.decoded
