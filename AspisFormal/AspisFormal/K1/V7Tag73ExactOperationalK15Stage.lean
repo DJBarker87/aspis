@@ -1,5 +1,7 @@
 import AspisFormal.K1.V7Tag73ExactConcreteStageAssembly
 import AspisFormal.K1.V7Tag73ExactConcreteK13K14Events
+import AspisFormal.K1.V7Tag73BatchedQuerySourceBridge
+import AspisFormal.K1.V7Tag73RelationTailSourceComposition
 import AspisFormal.K1.V7Tag73OperationalClientExtractionBridge
 import AspisFormal.K1.V7Tag73OperationalRelationSourceFacts
 
@@ -39,6 +41,8 @@ open AspisK1.V7Tag73ExactFixedK12MerkleClassifier
 open AspisK1.V7Tag73ExactFixedK12PrefixClassifier
 open AspisK1.V7Tag73ExactFixedK13K14Classifier
 open AspisK1.V7Tag73ExactConcreteK13K14Events
+open AspisK1.V7Tag73BatchedQuerySourceBridge
+open AspisK1.V7Tag73RelationTailSourceComposition
 open AspisK1.V7Tag73OperationalSemanticReplay
 open AspisK1.V7Tag73ExactParsedProofSourceBinding
 open AspisK1.V7Tag73ExactOneFoldEncoderBinding
@@ -112,7 +116,28 @@ structure ExactTag73OperationalK15Data
   honestPoint : Fin 10 → QM31Exact
   honest : FixedOracleTenRoundTrace honestTable honestPoint
   execution : CandidateExecution QM31Exact
-  terminalSource : ExactRelationTerminalSourceTrace execution
+  relationTail : ExactAcceptedRelationTailSourceTrace execution
+    (fun round => exactOperationalChallenge input (.alpha round))
+
+/-- K1.5 consumes the translated tail's raw terminal values.  Its existing
+small terminal-source record is derived here rather than selected
+independently by the environment. -/
+def ExactTag73OperationalK15Data.terminalSource
+    {HiddenTape TapeIdentity Observation Payload : Type}
+    {parameters : ExactCompilerResourceParameters}
+    {transitionFuel : Nat}
+    {configuration : ExactPlainRomWitnessConfiguration HiddenTape TapeIdentity
+      Observation V5PublicStatement Tag73K12ParsedProof Payload
+      DecodedSpendWitness parameters}
+    {projection : AcceptedTapeProjection V5PublicStatement Tag73K12ParsedProof
+      Payload}
+    {fixedInstance : PublicInstance V5PublicStatement}
+    {sample : ExactCompilerSample HiddenTape parameters}
+    {input : ExactK12OperationalInput transitionFuel configuration projection
+      fixedInstance sample}
+    (data : ExactTag73OperationalK15Data input) :
+    ExactRelationTerminalSourceTrace data.execution :=
+  data.relationTail.toTerminalSourceTrace
 
 /-- The exact operational table named by the accepted Tag-73 source. -/
 def exactTag73OperationalTable
@@ -209,7 +234,7 @@ structure ExactTag73OperationalK15SourceBinding
   inactiveExact : (operationalFixedFields data.decoded).inactiveClaim =
     inactiveClaim data.masks k14.extraction.combined.1
   finalSource : ExactFinal256ExecutionBinding k14 data.decoded data.execution
-  querySource : ExactQueryInjectionSourceBinding data.execution
+  querySource : ExactAuthenticatedQueryBatchSourceBinding data.execution
     (exactK13ParsedProof input).queries
     (exactOperationalChallenge input .queryBatch)
     (exactTag73K13AuthenticatedQueryVector decoder input k12)
@@ -249,6 +274,46 @@ structure ExactTag73OperationalK15Material
   clientExtracts : clientExtractor
       input.package.root.full.clientRun.accumulator =
     some (decodeTag73SpendWitness fixedInstance.statement k14.extraction)
+
+/-- The relation portion of K1.5 material is exactly the same raw accepted
+source run used by the K1.3 source environment.  This projection contains no
+K1.3 certificate and therefore does not import query consistency into the
+source boundary. -/
+def ExactTag73OperationalK15Material.acceptedRelationSourceRun
+    {HiddenTape TapeIdentity Observation Payload : Type}
+    {parameters : ExactCompilerResourceParameters}
+    {transitionFuel : Nat}
+    {configuration : ExactPlainRomWitnessConfiguration HiddenTape TapeIdentity
+      Observation V5PublicStatement Tag73K12ParsedProof Payload
+      DecodedSpendWitness parameters}
+    {projection : AcceptedTapeProjection V5PublicStatement Tag73K12ParsedProof
+      Payload}
+    {fixedInstance : PublicInstance V5PublicStatement}
+    {sample : ExactCompilerSample HiddenTape parameters}
+    {decoder : ExactDecoderInstantiation QM31Exact}
+    {decoderBinding : InitialProjectionBinding decoder}
+    {input : ExactK12OperationalInput transitionFuel configuration projection
+      fixedInstance sample}
+    {k12 : ExactPrefixK12Certificate input}
+    {k14 : ExactK14Certificate decoder decoderBinding input k12}
+    {basis : Basis (Fin 4) F QM31Exact}
+    {rc : RoundConstants}
+    {deployedOwner : Digest → Digest}
+    {deployedNote : Digest → F → F → Digest → Digest}
+    {deployedNullifier : Digest → Digest → Digest}
+    {deployedNode : Digest → Digest → Digest}
+    {poseidon : Poseidon2Faithful rc deployedOwner deployedNote
+      deployedNullifier deployedNode}
+    (material : ExactTag73OperationalK15Material input k12 k14 basis rc
+      poseidon) :
+    ExactAcceptedTag73RelationSourceRun decoder input where
+  decoded := material.data.decoded
+  parsedSource := material.source.sourceBinding
+  execution := material.data.execution
+  finalEncoderExact := material.source.finalEncoderEq
+  executionDisclosedFinalExact := material.source.finalSource.disclosedFinalExact
+  executionAlphaZeroExact := material.source.finalSource.alphaZeroExact
+  tail := material.data.relationTail
 
 /-- K1.3 acceptance, the exact final encoder, and the literal decoded final
 vector identify every authenticated q16 value with the corresponding
@@ -479,7 +544,7 @@ noncomputable def exactTag73OperationalK15Classifier
         material.source.executionInitialClaim material.source.inactiveExact
         material.source.finalSource
         (exactTag73K13AuthenticatedQueryVector decoder input k12)
-        material.source.querySource
+        material.source.querySource.toOperationalSourceBinding
         (material.authenticatedQueryValuesExact k13)
         material.data.terminalSource
     have inhabitedResult : Nonempty
@@ -500,6 +565,8 @@ noncomputable def exactTag73OperationalK15Classifier
     exact Classical.choice inhabitedResult
 
 #print axioms exactTag73SpendRelation
+#print axioms ExactTag73OperationalK15Data.terminalSource
+#print axioms ExactTag73OperationalK15Material.acceptedRelationSourceRun
 #print axioms ExactTag73OperationalK15Failure
 #print axioms exactTag73OperationalK15Classifier
 
