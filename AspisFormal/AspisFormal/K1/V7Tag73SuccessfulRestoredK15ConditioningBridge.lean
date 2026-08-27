@@ -77,6 +77,43 @@ theorem uniform_tape_dependent_restored_k15_event_probability_le
       (provider residual) (noRestored residual)
   · exact covered
 
+/-- Transport the gated restoration-aware residual from the successful
+sampler subtype.  The no-restoration condition is part of the target itself,
+so no global `noRestored` premise is needed. -/
+theorem uniform_tape_dependent_restored_k15_residual_event_probability_le
+    {Tape Total Residual : Type}
+    [Fintype Tape] [Nonempty Tape]
+    [Fintype Total] [Nonempty Total]
+    [Fintype Residual] [Nonempty Residual]
+    (success : Total → Prop) [DecidablePred success]
+    [Nonempty {a : Total // success a}]
+    (coordinates : Tape ≃ Residual × Total)
+    (successfulCoordinates :
+      {a : Total // success a} ≃ SuccessfulTag73DuplexNonzeroAttempts)
+    {decoder : ExactDecoderInstantiation QM31Exact}
+    (published : PublishedInitialWidth29CurveDecodability exactInitialEncoder)
+    (words : Residual → AspisPool.V7MerkleQueryExtractor.ExtractedWords)
+    (provider : ∀ residual,
+      RestoredK15PreGammaProvider decoder (words residual))
+    (event : Set Tape)
+    (covered : event ⊆ coordinates ⁻¹'
+      dependentSuccessfulSubtypeEvent success (fun residual =>
+        successfulCoordinates ⁻¹'
+          causalRestoredK15ResidualDuplexGammaEvent (provider residual))) :
+    (PMF.uniformOfFintype Tape).toOuterMeasure event ≤
+      (initialBatchChallengeCap : ENNReal) /
+        ((P ^ 4 - 1 : Nat) : ENNReal) := by
+  apply uniform_tape_dependent_successful_event_probability_le success
+    coordinates successfulCoordinates
+    (fun residual =>
+      causalRestoredK15ResidualDuplexGammaEvent (provider residual))
+    ((initialBatchChallengeCap : ENNReal) /
+      ((P ^ 4 - 1 : Nat) : ENNReal))
+  · intro residual
+    exact causal_restored_k15_residual_duplex_gamma_probability_le published
+      (provider residual)
+  · exact covered
+
 /-- Average the exact fixed-hidden conditioning bridge over the compiler's
 arbitrary hidden-tape law. -/
 theorem exact_compiler_dependent_restored_k15_event_probability_le
@@ -120,9 +157,51 @@ theorem exact_compiler_dependent_restored_k15_event_probability_le
     (provider hidden) (noRestored hidden) (jointEventSlice event hidden)
     (covered hidden)
 
+/-- Hidden-tape averaging for the gated restoration-aware residual.  All
+probabilistic and cardinality work is discharged; the remaining `covered`
+argument is the literal compiler-coordinate/source binding. -/
+theorem exact_compiler_dependent_restored_k15_residual_event_probability_le
+    {HiddenTape Total Residual : Type} [Fintype HiddenTape]
+    [Fintype Total] [Nonempty Total]
+    [Fintype Residual] [Nonempty Residual]
+    (hiddenLaw : PMF HiddenTape) (freshExposures : Nat)
+    (success : Total → Prop) [DecidablePred success]
+    [Nonempty {a : Total // success a}]
+    (coordinates : HiddenTape →
+      FreshAnswerTape Digest256 freshExposures ≃ Residual × Total)
+    (successfulCoordinates :
+      {a : Total // success a} ≃ SuccessfulTag73DuplexNonzeroAttempts)
+    {decoder : ExactDecoderInstantiation QM31Exact}
+    (published : PublishedInitialWidth29CurveDecodability exactInitialEncoder)
+    (words : HiddenTape → Residual →
+      AspisPool.V7MerkleQueryExtractor.ExtractedWords)
+    (provider : ∀ hidden residual,
+      RestoredK15PreGammaProvider decoder (words hidden residual))
+    (event : Set (HiddenTape × FreshAnswerTape Digest256 freshExposures))
+    (covered : ∀ hidden, jointEventSlice event hidden ⊆
+      coordinates hidden ⁻¹'
+        dependentSuccessfulSubtypeEvent success (fun residual =>
+          successfulCoordinates ⁻¹'
+            causalRestoredK15ResidualDuplexGammaEvent
+              (provider hidden residual))) :
+    (hiddenTapeUniformFreshJointLaw hiddenLaw freshExposures).toOuterMeasure
+        event ≤
+      (initialBatchChallengeCap : ENNReal) /
+        ((P ^ 4 - 1 : Nat) : ENNReal) := by
+  apply joint_event_probability_le_of_every_slice_le
+  intro hidden
+  exact
+    uniform_tape_dependent_restored_k15_residual_event_probability_le success
+      (coordinates hidden) successfulCoordinates published (words hidden)
+      (provider hidden) (jointEventSlice event hidden) (covered hidden)
+
 end
 
 #print axioms uniform_tape_dependent_restored_k15_event_probability_le
 #print axioms exact_compiler_dependent_restored_k15_event_probability_le
+#print axioms
+  uniform_tape_dependent_restored_k15_residual_event_probability_le
+#print axioms
+  exact_compiler_dependent_restored_k15_residual_event_probability_le
 
 end AspisK1.V7Tag73SuccessfulRestoredK15ConditioningBridge

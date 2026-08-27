@@ -151,8 +151,11 @@ def exactTag73RestoredFixedK15Events
     context.sample = sample ∧
       exactTag73FixedK15CategoryHolds environment context category}
 
-/-- The only non-fixed residual: an original operational failure remains and
-no point-compatible restored K1.4 chain exists for the same context. -/
+/-- The non-fixed operational residual after excluding both all eight fixed
+families and every point-compatible restored K1.4 chain.  The deterministic
+causal reduction identifies its remaining branch with constrained-gamma
+membership; an actual-law probability use still needs the pre-gamma family
+source binding audited separately. -/
 def exactTag73RestoredK15ResidualEvent
     {HiddenTape TapeIdentity Observation Payload : Type}
     {parameters : ExactCompilerResourceParameters}
@@ -181,6 +184,7 @@ def exactTag73RestoredK15ResidualEvent
     context.sample = sample ∧
       Nonempty (ExactTag73OperationalK15Failure
         (context.material environment.operational)) ∧
+      ¬ context.fixedFailure environment ∧
       ¬ HasAcceptedRestoredPointCompatibleK14 decoder context.k12.words
         (context.run environment.operational).point
         (context.fields environment.operational).pointClaim
