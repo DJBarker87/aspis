@@ -1408,6 +1408,56 @@ mod tests {
         calls: usize,
     }
 
+    struct WithdrawalCpi {
+        fail: bool,
+        calls: usize,
+    }
+
+    impl PoolCpiRuntimeV1 for WithdrawalCpi {
+        fn invoke<'info>(&mut self, _: &Instruction, _: &[AccountInfo<'info>]) -> ProgramResult {
+            panic!("unexpected unsigned CPI")
+        }
+
+        fn invoke_signed<'info>(
+            &mut self,
+            instruction: &Instruction,
+            infos: &[AccountInfo<'info>],
+            _: &[&[&[u8]]],
+        ) -> ProgramResult {
+            self.calls += 1;
+            if self.fail {
+                return Err(ProgramError::Custom(0xc057));
+            }
+            let amount = u64::from_le_bytes(
+                instruction.data[1..9]
+                    .try_into()
+                    .map_err(|_| ProgramError::InvalidInstructionData)?,
+            );
+            let vault = u64::from_le_bytes(
+                infos[0].try_borrow_data()?[64..72]
+                    .try_into()
+                    .map_err(|_| ProgramError::InvalidAccountData)?,
+            );
+            let destination = u64::from_le_bytes(
+                infos[2].try_borrow_data()?[64..72]
+                    .try_into()
+                    .map_err(|_| ProgramError::InvalidAccountData)?,
+            );
+            crate::vault::write_token_amount_for_test(
+                &infos[0],
+                vault
+                    .checked_sub(amount)
+                    .ok_or(PoolV1ProgramError::ArithmeticOverflow)?,
+            )?;
+            crate::vault::write_token_amount_for_test(
+                &infos[2],
+                destination
+                    .checked_add(amount)
+                    .ok_or(PoolV1ProgramError::ArithmeticOverflow)?,
+            )
+        }
+    }
+
     impl PoolCpiRuntimeV1 for DepositCpi {
         fn invoke<'info>(
             &mut self,
@@ -1564,6 +1614,108 @@ mod tests {
 
     fn rent_lamports(bytes: usize) -> u64 {
         Rent::default().minimum_balance(bytes).max(1)
+    }
+
+    fn terminal_base_accounts(
+        program_id: Pubkey,
+        master_key: Pubkey,
+        master_state: &PoolV1PairForestMasterV1,
+        checkpoint_key: Pubkey,
+        checkpoint: &PoolV1PairForestCheckpointV1,
+        lane_key: Pubkey,
+        lane: &PoolV1PairForestLaneStateV1,
+        marker_key: Pubkey,
+    ) -> Vec<TestAccount> {
+        let page_key = pool_v1_root_page_address(&program_id, &lane_key, 0).0;
+        vec![
+            TestAccount {
+                key: master_key,
+                owner: program_id,
+                lamports: 1,
+                data: encode_pool_v1_pair_forest_master_v1(master_state)
+                    .unwrap()
+                    .to_vec(),
+                signer: false,
+                writable: false,
+                executable: false,
+            },
+            TestAccount {
+                key: checkpoint_key,
+                owner: program_id,
+                lamports: 1,
+                data: encode_pool_v1_pair_forest_checkpoint_v1(checkpoint)
+                    .unwrap()
+                    .to_vec(),
+                signer: false,
+                writable: false,
+                executable: false,
+            },
+            TestAccount {
+                key: lane_key,
+                owner: program_id,
+                lamports: 1,
+                data: encode_pool_v1_pair_forest_lane_state_v1(lane, &POOL_V1_PAIR_EMPTY_ROOTS)
+                    .unwrap()
+                    .to_vec(),
+                signer: false,
+                writable: true,
+                executable: false,
+            },
+            TestAccount {
+                key: page_key,
+                owner: program_id,
+                lamports: 1,
+                data: vec![0; POOL_V1_ROOT_HISTORY_PAGE_ACCOUNT_BYTES],
+                signer: false,
+                writable: true,
+                executable: false,
+            },
+            TestAccount {
+                key: marker_key,
+                owner: program_id,
+                lamports: 1,
+                data: vec![0; POOL_V1_NULLIFIER_MARKER_ACCOUNT_BYTES],
+                signer: false,
+                writable: true,
+                executable: false,
+            },
+            TestAccount {
+                key: Pubkey::new_unique(),
+                owner: Pubkey::new_unique(),
+                lamports: 1,
+                data: vec![],
+                signer: false,
+                writable: false,
+                executable: false,
+            },
+            TestAccount {
+                key: Pubkey::new_unique(),
+                owner: Pubkey::new_unique(),
+                lamports: 1,
+                data: vec![],
+                signer: false,
+                writable: false,
+                executable: false,
+            },
+            TestAccount {
+                key: Pubkey::new_unique(),
+                owner: bpf_loader::id(),
+                lamports: 1,
+                data: vec![],
+                signer: false,
+                writable: false,
+                executable: true,
+            },
+            TestAccount {
+                key: Pubkey::new_unique(),
+                owner: Pubkey::new_unique(),
+                lamports: 1,
+                data: vec![],
+                signer: false,
+                writable: false,
+                executable: false,
+            },
+        ]
     }
 
     fn initialization_accounts(program_id: Pubkey, mint: Pubkey) -> Vec<TestAccount> {
@@ -2640,5 +2792,182 @@ mod tests {
                 .collect::<Vec<_>>(),
             before
         );
+    }
+
+    #[test]
+    fn one_terminal_withdrawal_checks_custody_delta_and_failure_precedes_pool_writes() {
+        let program_id = Pubkey::new_unique();
+        let mint = Pubkey::new_unique();
+        let (master_key, mut master_state) = master(program_id, mint);
+        master_state.identity.asset_mint = mint.to_bytes();
+        master_state.identity.token_program = LEGACY_SPL_TOKEN_PROGRAM_ID.to_bytes();
+        master_state.has_checkpoint = true;
+        master_state.next_checkpoint_sequence = 1;
+        let nullifier = digest(2);
+        let lane_id =
+            aspis_statement::pool_v1::pool_v1_pair_forest_output_lane_v1(&nullifier).unwrap();
+        let lane_key = pool_v1_pair_forest_lane_address(&program_id, &master_key, lane_id)
+            .unwrap()
+            .0;
+        let lane = genesis_lane_state(&master_key, lane_id);
+        let (next_tree, _) = lane
+            .tree
+            .append_one_with_empty_roots(digest(9_100), &POOL_V1_PAIR_EMPTY_ROOTS)
+            .unwrap();
+        let checkpoint = PoolV1PairForestCheckpointV1 {
+            master: master_key.to_bytes(),
+            deployment_domain: master_state.identity.deployment_domain,
+            checkpoint_sequence: 0,
+            global_root: digest(7_100),
+            lane_sequences: [0; 8],
+        };
+        let checkpoint_key = pool_v1_pair_forest_checkpoint_address(&program_id, &master_key, 0).0;
+        let destination = Pubkey::new_unique();
+        let request = PoolV1PairForestTerminalRequestV1 {
+            verifier_profile: [41; 32],
+            verifier_release: [42; 32],
+            pool_program: program_id.to_bytes(),
+            public: PoolV1PairForestTerminalPaymentV1::Withdrawal(PoolV1WithdrawalPublicV1 {
+                pool: master_key.to_bytes(),
+                deployment_domain: master_state.identity.deployment_domain,
+                anchor_sequence: 0,
+                anchor_root: checkpoint.global_root,
+                nullifier,
+                asset_id: master_state.identity.asset_id,
+                amount: 25,
+                destination_token_account: destination.to_bytes(),
+                change_commitment: digest(300),
+            }),
+        };
+        let result = PoolV1PairForestTerminalResultV1 {
+            transition_kind: PoolV1TransitionKind::Withdrawal,
+            master_account: master_key.to_bytes(),
+            selected_lane_account: lane_key.to_bytes(),
+            output_lane: lane_id,
+            nullifier,
+            verified_afterstate: PoolV1PairVerifiedAfterstateV1 {
+                next_pair_index: next_tree.next_leaf_index,
+                next_root: next_tree.root,
+                next_frontier: next_tree.frontier,
+            },
+        };
+        let marker_key = crate::pool_v1_nullifier_marker_address(
+            &program_id,
+            &master_key,
+            &aspis_statement::encode_digest_canonical(&nullifier),
+        )
+        .unwrap()
+        .0;
+        let mut accounts = terminal_base_accounts(
+            program_id,
+            master_key,
+            &master_state,
+            checkpoint_key,
+            &checkpoint,
+            lane_key,
+            &lane,
+            marker_key,
+        );
+        let authority = crate::pool_v1_vault_authority_address(&program_id, &master_key).0;
+        accounts.extend([
+            TestAccount {
+                key: mint,
+                owner: LEGACY_SPL_TOKEN_PROGRAM_ID,
+                lamports: 1,
+                data: initialized_mint_data(),
+                signer: false,
+                writable: false,
+                executable: false,
+            },
+            TestAccount {
+                key: crate::pool_v1_vault_token_account_address(&program_id, &master_key).0,
+                owner: LEGACY_SPL_TOKEN_PROGRAM_ID,
+                lamports: 1,
+                data: initialized_token_data(mint, authority, 100),
+                signer: false,
+                writable: true,
+                executable: false,
+            },
+            TestAccount {
+                key: destination,
+                owner: LEGACY_SPL_TOKEN_PROGRAM_ID,
+                lamports: 1,
+                data: initialized_token_data(mint, Pubkey::new_unique(), 10),
+                signer: false,
+                writable: true,
+                executable: false,
+            },
+            TestAccount {
+                key: authority,
+                owner: system_program::id(),
+                lamports: 0,
+                data: vec![],
+                signer: false,
+                writable: false,
+                executable: false,
+            },
+            TestAccount {
+                key: LEGACY_SPL_TOKEN_PROGRAM_ID,
+                owner: native_loader::id(),
+                lamports: 1,
+                data: vec![],
+                signer: false,
+                writable: false,
+                executable: true,
+            },
+        ]);
+        let instruction = encode_pool_v1_pair_forest_terminal_request_v1(&request).unwrap();
+        let before = accounts
+            .iter()
+            .map(|account| account.data.clone())
+            .collect::<Vec<_>>();
+        let infos: Vec<_> = accounts.iter_mut().map(TestAccount::info).collect();
+        let mut failing = WithdrawalCpi {
+            fail: true,
+            calls: 0,
+        };
+        assert!(process_pair_forest_terminal_with_verifier_v1(
+            &program_id,
+            &infos,
+            &instruction,
+            1,
+            &mut failing,
+            |_, _, _, _, _, _, _, _, _, _| Ok(AuthenticatedPairForestResultV1::for_test(result)),
+            |_| {},
+        )
+        .is_err());
+        drop(infos);
+        assert_eq!(failing.calls, 1);
+        assert_eq!(
+            accounts.iter().map(|a| a.data.clone()).collect::<Vec<_>>(),
+            before
+        );
+
+        let infos: Vec<_> = accounts.iter_mut().map(TestAccount::info).collect();
+        let mut success = WithdrawalCpi {
+            fail: false,
+            calls: 0,
+        };
+        process_pair_forest_terminal_with_verifier_v1(
+            &program_id,
+            &infos,
+            &instruction,
+            1,
+            &mut success,
+            |_, _, _, _, _, _, _, _, _, _| Ok(AuthenticatedPairForestResultV1::for_test(result)),
+            |_| {},
+        )
+        .unwrap();
+        drop(infos);
+        assert_eq!(success.calls, 1);
+        assert_eq!(
+            u64::from_le_bytes(accounts[10].data[64..72].try_into().unwrap()),
+            75
+        );
+        assert_eq!(
+            u64::from_le_bytes(accounts[11].data[64..72].try_into().unwrap()),
+            35
+        );
+        assert!(accounts[4].data.iter().any(|byte| *byte != 0));
     }
 }
