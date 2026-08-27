@@ -1,0 +1,128 @@
+{
+  "schema": "aspis-v5-component-c-joint-rank-diagnostic",
+  "version": 1,
+  "status": "exact computational audit evidence; not a Lean theorem or deployed Component-C hiding claim",
+  "scope": {
+    "diagnostic_only": true,
+    "lean_theorem_claimed": false,
+    "deployed_hiding_claimed": false,
+    "delta_or_legal_difference_defined": false,
+    "verifier_wire_changed": false,
+    "production_or_sbf_inclusion": false
+  },
+  "reproducible_command": "NO_DNA=1 cargo run -p aspis-xtask --bin aspis-xtask --release -- v5-component-c-rank",
+  "inputs": {
+    "emat_file": "v5_component_c_frozen_q18_emat.bin",
+    "emat_artifact_sha256": "8fa7c5b0e009f59ec348cf09e5d5e788ca52d048ce9885fba674f13e3efc7e74",
+    "emat_matrix_sha256": "76178865f6b34fd94507e70d336b2b409bf8f7758cb445958a1486e17f9a7d6d",
+    "fmat_file": "v5_component_c_frozen_q18_fmat.bin",
+    "fmat_artifact_sha256": "3ba3a048d51d03d9f884a207e01eead5418400a7f127f3c42f4511ac94bba6c1",
+    "fmat_matrix_sha256": "7e206a4ef6af1d8c1f7857c4c8794c6bf58c8159d356a87fa448471cdc5f3abc",
+    "stacked_matrix_sha256": "89969fb9162b4eb711fca2da58a9d1e7f1e841c161845fd9d698bb1d9fbd7e70",
+    "field": "exact QM31 arithmetic over p = 2^31 - 1"
+  },
+  "exact_qm31_ranks": {
+    "emat_shape": [
+      76,
+      1023
+    ],
+    "emat_rank": 76,
+    "emat_row_deficiency": 0,
+    "fmat_shape": [
+      256,
+      1023
+    ],
+    "fmat_rank": 134,
+    "fmat_row_deficiency": 122,
+    "stacked_shape": [
+      332,
+      1023
+    ],
+    "stacked_rank": 191,
+    "stacked_row_deficiency": 141,
+    "f_restricted_to_ker_e_rank": 115,
+    "f_restricted_to_ker_e_codomain_deficiency": 141,
+    "independent_elimination_agreement": true
+  },
+  "exact_row_block_provenance": [
+    {
+      "name": "relation OOD and sumcheck rows",
+      "f_row_range": [
+        0,
+        36
+      ],
+      "block_rank": 33,
+      "f_prefix_rank": 33,
+      "f_prefix_rank_increment": 33,
+      "stacked_after_e_prefix_rank": 108,
+      "stacked_after_e_rank_increment": 32,
+      "row_space_intersection_with_e_dimension": 1
+    },
+    {
+      "name": "authenticated later layer 1",
+      "f_row_range": [
+        36,
+        108
+      ],
+      "block_rank": 72,
+      "f_prefix_rank": 105,
+      "f_prefix_rank_increment": 72,
+      "stacked_after_e_prefix_rank": 162,
+      "stacked_after_e_rank_increment": 54,
+      "row_space_intersection_with_e_dimension": 19
+    },
+    {
+      "name": "authenticated later layer 2",
+      "f_row_range": [
+        108,
+        180
+      ],
+      "block_rank": 64,
+      "f_prefix_rank": 134,
+      "f_prefix_rank_increment": 29,
+      "stacked_after_e_prefix_rank": 191,
+      "stacked_after_e_rank_increment": 29,
+      "row_space_intersection_with_e_dimension": 19
+    },
+    {
+      "name": "authenticated later layer 3",
+      "f_row_range": [
+        180,
+        252
+      ],
+      "block_rank": 16,
+      "f_prefix_rank": 134,
+      "f_prefix_rank_increment": 0,
+      "stacked_after_e_prefix_rank": 191,
+      "stacked_after_e_rank_increment": 0,
+      "row_space_intersection_with_e_dimension": 19
+    },
+    {
+      "name": "final coefficients",
+      "f_row_range": [
+        252,
+        256
+      ],
+      "block_rank": 4,
+      "f_prefix_rank": 134,
+      "f_prefix_rank_increment": 0,
+      "stacked_after_e_prefix_rank": 191,
+      "stacked_after_e_rank_increment": 0,
+      "row_space_intersection_with_e_dimension": 19
+    }
+  ],
+  "implication": {
+    "condition_met": false,
+    "statement": "If rank(E)=76 and rank([E;F])=332, then the intrinsic map F restricted to ker(E) is surjective onto QM31^256; this algebraic route does not require choosing a Delta parameterization.",
+    "proof_status": "Two independent exact QM31 elimination implementations agree that the full-row-rank condition is false. No right-inverse certificate was emitted; these are computational audit results, not a Lean theorem."
+  },
+  "certificate": null,
+  "benchmark_policy": "wall-clock timings are excluded from this deterministic manifest and printed by the diagnostic",
+  "remaining_blockers": [
+    "Full-view surjectivity is false on this frozen schedule: F restricted to ker(E) has rank 115, not 256.",
+    "A legal-difference/Delta parameterization or an explicitly reduced correlated target is still required to instantiate C-DEC; no such deployed object exists.",
+    "Rust-to-Lean EMatrixFaithful and FMatrixFaithful byte/hash correspondences remain explicit review interfaces.",
+    "A deployed sampler uniform on the chosen legal mask space, and its transcript/entropy binding, are not implemented.",
+    "No verifier, proof serialization, SBF binary, devnet, or mainnet path consumes these artifacts."
+  ]
+}

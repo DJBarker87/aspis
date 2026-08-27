@@ -38,6 +38,26 @@ The tag is pinned to full commit
 Its deterministic archive identity is recorded in
 [`v5-production-closure-2026-07-22-manifest.json`](v5-production-closure-2026-07-22-manifest.json).
 
+## Final V5 end-to-end record
+
+The immutable
+[`aspis-v5-formalization-paper-v1`](https://github.com/DJBarker87/aspis/tree/aspis-v5-formalization-paper-v1)
+tag preserves the frozen end-to-end V5 formalization publication at commit
+`105738ebe0758fd31edbb76f6735c7f5da96dbdd`. The maintained
+`aspis-spend` branch adds only later publication maintenance, including the
+author contact rendered into the PDF.
+
+The `archive/v5-end-to-end-20260827` branch additionally retains the useful
+Component B/C design audits, exact matrix/rank certificates, and compute-unit
+probes that were left in the final V5 workspace. Their own status fields are
+authoritative: several are explicitly provisional or stale-schedule research
+evidence and are not part of the deployed end-to-end claim.
+
+Independent V5 proof-development tips that were not ancestors of a public
+branch are mirrored under `archive/v5/` on the origin remote. Those refs are
+historical preservation points, not an assertion that every experiment was
+accepted into the final theorem.
+
 Use the tags when reproducing research history. Use the default branch for
 the current implementation. Git history is the authoritative per-change
 record.

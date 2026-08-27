@@ -1,0 +1,145 @@
+{
+  "generated_at_utc": "2026-07-19T11:19:18.147249+00:00",
+  "command": "NO_DNA=1 cargo run -p aspis-xtask --bin aspis-xtask --release -- v5-cu-probe",
+  "scope": "One isolated local-SBF tag-67 transaction: sealed real-witness v5 proof account, exact transcript-derived q18 queries, five authenticated openings, semantic terminal, four-claim compact-B relation, complete FRI checks, and the unchanged atomic verify-and-apply state wrapper.",
+  "security_scope": "CU fixture only. The five caller-supplied public FS salt fields implement the wire and transcript-order hook needed by one Chiesa--Fenzi premise; deterministic fixture salts do not instantiate its fresh uniform sampling requirement. The radix-4/oracle transport, BCS reduction, and HVZK obligations remain open. Component B now carries a deterministic fixture pivot pad in its pre-gamma C2 commitment, but fresh independent production sampling and the Rust--Lean correspondence remain open. Component C is explicitly provisional/rejected. This measurement is not a v5 security proof, production grammar, or deployment authorization.",
+  "transaction_repeats": 3,
+  "transaction_total_cu": 1156374,
+  "transaction_cu_limit": 1400000,
+  "transaction_headroom_cu": 243626,
+  "transaction_total_repeats": [
+    1156374,
+    1156374,
+    1156374
+  ],
+  "phase_markers": [
+    {
+      "label": "v5-full-callback-start",
+      "remaining": 1395157,
+      "delta_from_previous": null
+    },
+    {
+      "label": "v5-full-prefix-start",
+      "remaining": 1394652,
+      "delta_from_previous": 505
+    },
+    {
+      "label": "v5-full-prefix-complete",
+      "remaining": 1271169,
+      "delta_from_previous": 123483
+    },
+    {
+      "label": "v5-full-terminal-context-complete",
+      "remaining": 1269970,
+      "delta_from_previous": 1199
+    },
+    {
+      "label": "v5-full-terminal-complete",
+      "remaining": 940901,
+      "delta_from_previous": 329069
+    },
+    {
+      "label": "v5-full-relation-transcript-complete",
+      "remaining": 922219,
+      "delta_from_previous": 18682
+    },
+    {
+      "label": "v5-full-query-binding-complete",
+      "remaining": 918236,
+      "delta_from_previous": 3983
+    },
+    {
+      "label": "v5-full-fri-start",
+      "remaining": 917862,
+      "delta_from_previous": 374
+    },
+    {
+      "label": "v5-full-private-openings-complete",
+      "remaining": 739078,
+      "delta_from_previous": 178784
+    },
+    {
+      "label": "v5-full-fri-claims-complete",
+      "remaining": 707602,
+      "delta_from_previous": 31476
+    },
+    {
+      "label": "v5-full-fri-algebra-complete",
+      "remaining": 442815,
+      "delta_from_previous": 264787
+    },
+    {
+      "label": "v5-full-fri-complete",
+      "remaining": 442551,
+      "delta_from_previous": 264
+    },
+    {
+      "label": "v5-full-relation-start",
+      "remaining": 442347,
+      "delta_from_previous": 204
+    },
+    {
+      "label": "v5-full-relation-complete",
+      "remaining": 244724,
+      "delta_from_previous": 197623
+    },
+    {
+      "label": "v5-full-callback-complete",
+      "remaining": 244494,
+      "delta_from_previous": 230
+    }
+  ],
+  "proof_body_bytes": 75358,
+  "sealed_proof_account_bytes": 75398,
+  "proof_body_sha256": "8befc92d65577d4d7af92de811fb907dc8ec943ef3cbc1d104f4c508392aff4f",
+  "query_indices": [
+    115997,
+    51779,
+    92617,
+    43401,
+    78758,
+    66857,
+    81115,
+    39787,
+    112113,
+    76348,
+    73402,
+    59549,
+    82876,
+    101923,
+    86422,
+    120558,
+    124241,
+    68942
+  ],
+  "opening_index_counts": [
+    18,
+    18,
+    18,
+    18,
+    18
+  ],
+  "opening_frontier_nodes": [
+    326,
+    326,
+    272,
+    218,
+    164
+  ],
+  "opening_section_bytes": [
+    15622,
+    14470,
+    10438,
+    8710,
+    6982
+  ],
+  "probe_sbf_bytes": 1001632,
+  "probe_sbf_sha256": "951c2b6cabe7edbe05e809988306be639ada7f51cb70deb824c3c78c8400fc70",
+  "state_transition_wrapper": "aspis_verifier::atomic_payment::verify_and_apply_atomic_payment_state (proof retained, program-owned zero marker)",
+  "component_a": "real sampled aligned circle masks",
+  "component_b": "real structured ten-round degree-27 sumcheck mask with compact authenticated terminal functional and a deterministic CU-fixture pivot pad committed in C2; fresh independent production sampling remains an explicit obligation",
+  "component_c": "provisional CU-only lane; rejected as a security construction pending complete-view hiding design",
+  "accepted_three_of_three": true,
+  "deterministic_cu_three_of_three": true,
+  "conclusion": "The genuine provisional-v5 tag-67 transaction accepted three of three local-SBF simulations at 1156374 CU. This answers implementation fit only; production sampling/correspondence for the Component-B pivot pad, Component C, and the full security argument remain open."
+}

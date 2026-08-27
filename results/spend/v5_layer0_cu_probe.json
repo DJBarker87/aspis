@@ -1,0 +1,171 @@
+{
+  "generated_at_utc": "2026-07-17T19:57:35.450547+00:00",
+  "command": "cargo run -p aspis-xtask -- v5-cu-probe",
+  "scope": "marked q18 private C1/C2 leaf hashes plus four-slot layer-zero recombination and fixed completion-marker/log overhead; runtime account input and runtime gamma; no proof parser, Merkle paths, later FRI, or v5 masking verifier",
+  "full_v5_measured": false,
+  "authority_note": "This final five-mode build supersedes every earlier two-, three-, or four-mode probe output. Adding a mode changes compiled control flow and code layout, so only comparisons recorded together in this five-mode artifact are authoritative.",
+  "measurement_method": "account borrow, parsing, runtime power preparation, output-vector allocation, and the next marker/log call are in the first marker delta; q18 hashes and combines plus the completion marker/log call are in the second marker delta; output serialisation, sink hash/check, and the remaining transaction overhead are outside both marked deltas; transaction totals are recorded separately",
+  "runtime_input_account": "Fc2Ab9ACaTM3SBYdMNVNHS6yAsvkh1UXBVqxNB78nxzc",
+  "runtime_input_account_bytes": 17304,
+  "runtime_input_sha256": "e2fe5e053d47fbe3a84a2fee77b8d1d6d9bed1e32d953cbf2272060f67697fc3",
+  "query_count": 18,
+  "production_c1_columns": 26,
+  "candidate_c1_columns": 16,
+  "shared_c2_columns": 3,
+  "production_c1_record_bytes": 448,
+  "candidate_c1_record_bytes": 288,
+  "shared_c2_record_bytes": 224,
+  "modes": [
+    {
+      "mode": 0,
+      "name": "production26",
+      "description": "current production 26-C1/3-C2 helper, already using the fused three-product C2 sum",
+      "transaction_total_cu": 176602,
+      "marked_parse_and_power_prep_cu": 10956,
+      "marked_hash_and_combine_kernel_cu": 161990,
+      "transaction_total_minus_marked_deltas_cu": 3656,
+      "transaction_total_repeats": [
+        176602,
+        176602,
+        176602
+      ],
+      "marked_parse_and_power_prep_repeats": [
+        10956,
+        10956,
+        10956
+      ],
+      "marked_hash_and_combine_kernel_repeats": [
+        161990,
+        161990,
+        161990
+      ]
+    },
+    {
+      "mode": 1,
+      "name": "generic26_nonfused",
+      "description": "generic 26-C1 dot and two-plus-one C2 products",
+      "transaction_total_cu": 196189,
+      "marked_parse_and_power_prep_cu": 10957,
+      "marked_hash_and_combine_kernel_cu": 181576,
+      "transaction_total_minus_marked_deltas_cu": 3656,
+      "transaction_total_repeats": [
+        196189,
+        196189,
+        196189
+      ],
+      "marked_parse_and_power_prep_repeats": [
+        10957,
+        10957,
+        10957
+      ],
+      "marked_hash_and_combine_kernel_repeats": [
+        181576,
+        181576,
+        181576
+      ]
+    },
+    {
+      "mode": 2,
+      "name": "generic16_nonfused",
+      "description": "generic 16-C1 dot and two-plus-one C2 products",
+      "transaction_total_cu": 154991,
+      "marked_parse_and_power_prep_cu": 7352,
+      "marked_hash_and_combine_kernel_cu": 143983,
+      "transaction_total_minus_marked_deltas_cu": 3656,
+      "transaction_total_repeats": [
+        154991,
+        154991,
+        154991
+      ],
+      "marked_parse_and_power_prep_repeats": [
+        7352,
+        7352,
+        7352
+      ],
+      "marked_hash_and_combine_kernel_repeats": [
+        143983,
+        143983,
+        143983
+      ]
+    },
+    {
+      "mode": 3,
+      "name": "generic16_fused",
+      "description": "generic 16-C1 dot and exact fused three-product C2 accumulator",
+      "transaction_total_cu": 133676,
+      "marked_parse_and_power_prep_cu": 7353,
+      "marked_hash_and_combine_kernel_cu": 122667,
+      "transaction_total_minus_marked_deltas_cu": 3656,
+      "transaction_total_repeats": [
+        133676,
+        133676,
+        133676
+      ],
+      "marked_parse_and_power_prep_repeats": [
+        7353,
+        7353,
+        7353
+      ],
+      "marked_hash_and_combine_kernel_repeats": [
+        122667,
+        122667,
+        122667
+      ]
+    },
+    {
+      "mode": 4,
+      "name": "generic26_fused",
+      "description": "generic 26-C1 dot and exact fused three-product C2 accumulator",
+      "transaction_total_cu": 174893,
+      "marked_parse_and_power_prep_cu": 10957,
+      "marked_hash_and_combine_kernel_cu": 160280,
+      "transaction_total_minus_marked_deltas_cu": 3656,
+      "transaction_total_repeats": [
+        174893,
+        174893,
+        174893
+      ],
+      "marked_parse_and_power_prep_repeats": [
+        10957,
+        10957,
+        10957
+      ],
+      "marked_hash_and_combine_kernel_repeats": [
+        160280,
+        160280,
+        160280
+      ]
+    }
+  ],
+  "marked_generic_nonfused_width_saving_cu": 37593,
+  "marked_generic_fused_width_saving_cu": 37613,
+  "marked_generic26_fusion_saving_cu": 21296,
+  "marked_generic16_fusion_saving_cu": 21316,
+  "clean_forecast_fused_width_saving_cu": 37613,
+  "clean_forecast_width16_fusion_saving_cu": 21316,
+  "marked_generic_nonfused_width_saving_mode_selection_asymmetry_cu": 20,
+  "marked_generic26_fusion_saving_mode_selection_asymmetry_cu": 20,
+  "production26_uses_current_fused_three_product_helper": true,
+  "production26_to_generic16_fused_is_old_v4_to_v5_comparison": false,
+  "comparison_caveat": "The clean forecast signals use matched three-comparison mode-selection paths: generic26_fused to generic16_fused for width, and generic16_nonfused to generic16_fused for fusion. The raw generic non-fused width and width-26 fusion deltas each contain an observed 20-CU mode-selection asymmetry. Production26 already uses the current fused three-product helper, so its delta to generic16_fused is not an old-v4-to-v5 comparison.",
+  "marked_generic26_nonfused_to_generic16_fused_saving_cu": 58909,
+  "marked_production26_to_generic26_fused_delta_cu": 1710,
+  "marked_production26_to_generic16_fused_delta_cu": 39323,
+  "marked_production26_to_generic16_fused_parse_and_power_saving_cu": 3603,
+  "marked_production26_to_generic16_fused_parse_plus_kernel_saving_cu": 42926,
+  "transaction_production26_to_generic16_fused_delta_cu": 42926,
+  "historical_tag65_projection_made": false,
+  "production_control_sbf_bytes": 922640,
+  "production_control_sbf_sha256": "b4baf31a0c66ce8f0bc419f082c5663b891fa8d4468ec92f8015f59d05e5e26e",
+  "production_control_rebuild_byte_identical": true,
+  "probe_sbf_bytes": 97360,
+  "probe_sbf_sha256": "067bc11537a28fdcc68d15bfce65fcd8f14502bbff1215eb8c245424de46fefa",
+  "unmeasured_obligations": [
+    "full v5 proof parsing and proof-account load cost",
+    "unchanged Merkle authentication paths and later FRI control flow in an integrated v5 binary",
+    "component-B pre-eta commitment and terminal degree-27 authentication",
+    "component-C complete-view masking, transcript binding, and verifier logic",
+    "an exact tag65 baseline and candidate delta measured in one integrated same-worktree SBF"
+  ],
+  "conclusion": "The clean matched-selection-depth signals are 37613 CU for fused width 26-to-16 and 21316 CU for width-16 three-product fusion. The raw non-fused width delta of 37593 CU and raw width-26 fusion delta of 21296 CU each contain the observed 20-CU mode-selection asymmetry. Production26 already invokes the current fused three-product helper; its 39323-CU marked-kernel delta to generic16-fused is not an old-v4-to-v5 comparison. Its parse/preparation-interval delta was 3603 CU, the two marked intervals differed by 42926 CU, and the separately recorded transaction-total delta was 42926 CU. Marked absolute values include the disclosed marker/log overhead, and the first interval includes output allocation. No tag65 headroom or full-v5 fit claim is derived from this isolated probe."
+}

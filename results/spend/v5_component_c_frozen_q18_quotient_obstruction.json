@@ -13,11 +13,11 @@
   "reproducible_command": "NO_DNA=1 cargo run -p aspis-xtask --bin aspis-xtask --release -- v5-component-c-obstruction",
   "inputs": {
     "emat_file": "v5_component_c_frozen_q18_emat.bin",
-    "emat_artifact_sha256": "de129355802c79f3c13745c470fcac6bdb5a1d7a618c5c47f6e91f010fbaaafd",
-    "emat_matrix_sha256": "46115361878afea8e79426aee5594a3739fecd3427a953de51933aaa3c194e4c",
+    "emat_artifact_sha256": "8fa7c5b0e009f59ec348cf09e5d5e788ca52d048ce9885fba674f13e3efc7e74",
+    "emat_matrix_sha256": "76178865f6b34fd94507e70d336b2b409bf8f7758cb445958a1486e17f9a7d6d",
     "fmat_file": "v5_component_c_frozen_q18_fmat.bin",
-    "fmat_artifact_sha256": "226183c02ab937b5c82d60c7a8acef259a0bf46cbf3b797181fb8c6e5f2def95",
-    "fmat_matrix_sha256": "5608e8134c280f80250c1142432b8c4565d79567345405b1369402e452142d30",
+    "fmat_artifact_sha256": "3ba3a048d51d03d9f884a207e01eead5418400a7f127f3c42f4511ac94bba6c1",
+    "fmat_matrix_sha256": "7e206a4ef6af1d8c1f7857c4c8794c6bf58c8159d356a87fa448471cdc5f3abc",
     "field": "exact QM31 arithmetic over p = 2^31 - 1"
   },
   "exact_dimensions": {
@@ -35,45 +35,45 @@
   "certificate": {
     "file": "v5_component_c_frozen_q18_quotient_obstruction.bin",
     "bytes": 1567944,
-    "sha256": "49f992b3ff4b1e831dd33790bc87309fca51660eea38d70726c0f1e091069dd1",
-    "pairs_sha256": "4f40ef1856e9777e56b18b02b0ce59be210b2a659f7d10bf32e867d376e7a1e2",
+    "sha256": "5912a81b657dfe9296d2584623476a59950de15b3bd35f2ec67bb6bd3e00d2f9",
+    "pairs_sha256": "32e0236f52ca263977cfeae1ca6b46cb3444ded087fc38f7412bf35e6bb799e5",
     "format_version": 1,
     "sections": [
       {
         "name": "E rank minor and inverse",
         "offset": 640,
         "bytes": 93040,
-        "sha256": "33262e0cfdf48df879d1b961c9225ac19c11495668dc7291eccd01bda8090bb5"
+        "sha256": "b347e31e10e8359969bd3842cf33b9cd6a2d06af5e842a1486c4b47e32d877c1"
       },
       {
         "name": "F rank minor and inverse",
         "offset": 93680,
         "bytes": 288384,
-        "sha256": "4b274c288fcc78cd49d0fcae6b1867f20da2cd59eeaf08120ceea9c340bb36cf"
+        "sha256": "aa41613f0a484dfa612bb78461b5cb558a0245dc52be3f67519bd0bd9d6ca3c5"
       },
       {
         "name": "[E;F] rank minor and inverse",
         "offset": 382064,
         "bytes": 585240,
-        "sha256": "d6f389a97eeb432a39c4a40f2aeec49db5914a4cdaa5fa65bf39e0e3dbcb2fc9"
+        "sha256": "a7af87a98e8894da56a7da15f1bb24e961c425c7ca6a5554c235552af78789af"
       },
       {
         "name": "canonical 122x256 left-null(F) basis",
         "offset": 967304,
         "bytes": 499712,
-        "sha256": "23332b5d6f5cddbb07c5921e5671870dcec937b4412b91885b5bcba991986923"
+        "sha256": "488ffe0c5a13a91497266395b58749adcbe258742347001dd9c87f7b0a96a30c"
       },
       {
         "name": "canonical 19x76 A coefficients",
         "offset": 1467016,
         "bytes": 23104,
-        "sha256": "d22dd6dc7a16cb5a3af558a004e5005178581c03c025d82c8762a9d15884a2d9"
+        "sha256": "0599da084df9608ab949b3466ae17ea263493a8078587cbb3f5ff6a8e7b8a5fa"
       },
       {
         "name": "canonical 19x256 Q quotient representatives",
         "offset": 1490120,
         "bytes": 77824,
-        "sha256": "2933e5dc0ffdb222d9abffd135d7e94fb9c61553574a1509098532567ce7e97f"
+        "sha256": "c2e336d8f8e5cbe59b6a191c35bbf687ae2e36c0c4fde7e31e0af3c5ce91e505"
       }
     ],
     "e_rank_rows": [
@@ -341,32 +341,32 @@
       108,
       109,
       111,
+      112,
       113,
-      114,
       115,
-      116,
+      117,
       118,
       119,
       120,
       121,
-      123,
+      122,
       124,
-      126,
+      125,
       127,
       128,
+      129,
       130,
-      131,
       132,
       133,
-      134,
+      135,
       136,
-      138,
+      137,
       140,
-      141,
+      142,
       144,
       145,
-      149,
-      150
+      148,
+      149
     ],
     "f_rank_columns": [
       0,
@@ -614,8 +614,8 @@
       110,
       111,
       112,
+      113,
       114,
-      115,
       116,
       118,
       119,
@@ -623,79 +623,79 @@
       121,
       122,
       124,
-      125,
+      126,
       127,
-      129,
+      128,
       130,
       131,
       132,
       133,
       135,
+      136,
       137,
-      138,
       139,
-      140,
       141,
+      142,
       143,
       144,
       145,
       147,
+      148,
       149,
       150,
-      151,
-      152,
       153,
+      154,
       155,
       156,
-      158,
+      157,
       159,
-      161,
+      160,
       162,
       163,
       164,
       165,
       166,
       168,
-      169,
       170,
-      173,
+      171,
+      172,
       174,
       175,
       176,
-      178,
+      177,
       179,
       180,
-      181,
       182,
+      183,
       184,
       185,
       187,
+      188,
       189,
-      190,
       191,
-      192,
+      193,
       194,
       195,
       196,
       197,
-      199,
+      198,
       200,
-      202,
+      201,
       203,
       204,
+      205,
       206,
-      207,
       208,
       209,
-      210,
+      211,
       212,
-      214,
+      213,
       216,
-      217,
+      218,
       220,
       221,
-      225,
-      226
+      224,
+      225
     ],
     "joint_rank_columns": [
       0,
@@ -1047,7 +1047,7 @@
         3
       ],
       "q_nonzero_indices": [
-        37
+        39
       ],
       "q_nonzero_by_block": [
         0,
@@ -1056,9 +1056,9 @@
         0,
         0
       ],
-      "a_sha256": "74e54055f7a472211c774880f59248629f612d0469850fde133b4612b0c1a7bf",
-      "q_sha256": "0b622282e117af3801e40f1235750e4694419e99058e6991482cda4acdf6d403",
-      "common_row_sha256": "e1d54183a1141cc1a996c15700b2d336efb67cc30264ed6aef23c3ed88cd2934"
+      "a_sha256": "f861f377b1dfab8d3dc0cfc7fed284012c4b98e53e81464c4ca06a25fb87e0c1",
+      "q_sha256": "b7c354ca6f57bdf0950efc8a1cc5ae336b735a22961565ffcea05c77b483d338",
+      "common_row_sha256": "144aa36efbb8b3b18253e3dd4869147c42caaec2aab15b9915bd980cd3ae1dd6"
     },
     {
       "index": 1,
@@ -1079,9 +1079,9 @@
         0,
         0
       ],
-      "a_sha256": "1c729ba03c38eafe32dc76db2f16c14e01265b816077d4e8a6044b7d980a7b97",
-      "q_sha256": "d45a0bc05c58f9ab7a8b2d8a81d83601b210866dbd61e53164f6a56f07a748b9",
-      "common_row_sha256": "ba3ece278fa2c36a90b833d819dead3ca8dade21cb0196107b56d172c1d0ef22"
+      "a_sha256": "d785c7c8fefbf22feab300508d505901f33baedba5e8692ed965085c46eca00e",
+      "q_sha256": "6c2f64da1353824b7e080ca7bdd3c4c799e9459d659db2c3ccc05bee12ad98a6",
+      "common_row_sha256": "a79f37f65f214cecaef4f1f81dfd62fbdd37c74b11f9e0757a8d71029535c58e"
     },
     {
       "index": 2,
@@ -1102,9 +1102,9 @@
         0,
         0
       ],
-      "a_sha256": "799746d7ef9ffdb1ee6a414835d4fdaaa063862b4fff775e0d6ac8fcd0fce0dc",
-      "q_sha256": "c8ad07187b86131d58253085cd908398130789e03ca8229a952943a67a31b00b",
-      "common_row_sha256": "0500950b5981fca8d51ffcda2d481ca610b185281464d357be7975b8470eb170"
+      "a_sha256": "5f34e3cc8110e679b19f073019a40b27d6a9529b7c7376ed5fc3c67e6a61fc8f",
+      "q_sha256": "3bbcac035d794b66d3c6ed3cd0109fd7a686377c463fa55e16c1333b828ce0ff",
+      "common_row_sha256": "7dd8b4bf408e627bb0f87cd1eb7ffef7fcf146be09115f9b976d8cda04767f99"
     },
     {
       "index": 3,
@@ -1116,7 +1116,7 @@
         15
       ],
       "q_nonzero_indices": [
-        50
+        49
       ],
       "q_nonzero_by_block": [
         0,
@@ -1125,9 +1125,9 @@
         0,
         0
       ],
-      "a_sha256": "3a2d299fc4ff10835dd2bd0afadb7391f53ee7c4740cd65a99a419926935b186",
-      "q_sha256": "7977081c4ba24d987b6cbef51252e030f8f2acf2e0ebd962a713064662fdf76b",
-      "common_row_sha256": "75456885a02e5d50d1ed14acc25346973d48adf9bd415cc6a02a0bed11cacdcd"
+      "a_sha256": "c5b2c4e1139710afbd8763e95433bf78dfd5e92d0e61684ed00de3ec0c90e061",
+      "q_sha256": "ff1af3d4d5e1cd2cc477389c08574b3f6efeb69200d3899ecee2746263e38be5",
+      "common_row_sha256": "5b255312b3fbb6de9a1a5a2937634e20562caf65019f75fb8a9f53553d1f4bbc"
     },
     {
       "index": 4,
@@ -1139,21 +1139,18 @@
         19
       ],
       "q_nonzero_indices": [
-        53,
-        54,
-        55,
-        125
+        53
       ],
       "q_nonzero_by_block": [
         0,
-        3,
         1,
+        0,
         0,
         0
       ],
-      "a_sha256": "2f26c6a8ccb01a21e9b44580d79ea0b4bd0a3d73b2c0fcc1f5d36b50be19bd13",
-      "q_sha256": "5e1e3d485b97b840e6c4136eabf8beafcedd3316cbfd28a5385f759ddf0e700f",
-      "common_row_sha256": "4853e02b00946eb43f023211a31fb0ca431389c2bc8892813cba3ff2e51d0a86"
+      "a_sha256": "01471ccbdf63d6ca9f5afbcf88f1f6493b5b2f762c72d8f8f550f764b9900b81",
+      "q_sha256": "2ac0451535cd52f50cb6c6fc3b81daad38202f28569de980ccf58651906e01a8",
+      "common_row_sha256": "286e0c19aaf59c9b9ad1b8197ab2a224da548425ef118c6fda63493d22713df8"
     },
     {
       "index": 5,
@@ -1174,9 +1171,9 @@
         0,
         0
       ],
-      "a_sha256": "8df588d1e8f8db43cca82ac63b8722cc4ea6e1157507d38331712e86bc99f8ee",
-      "q_sha256": "d45f70f29e307270fbc3e9887a1057eff382c49f6793062060da32f3b8495aaa",
-      "common_row_sha256": "f6bf3249c3968d89f470852ae47be6a15a0496514fa841ad046545fa6f83c689"
+      "a_sha256": "25396380b9afb570543a31f5cf5ec4ab4c9cd53f041fae9c3f95447a052a2449",
+      "q_sha256": "16a56ea95c3cf5caac2b755225ee3e7cdb21511626a2cb1e9c86fbe1052f1c86",
+      "common_row_sha256": "076d80cbb4228b750bfeee511c1a72345a59bf6397c25cd0e2c69c5e291615ea"
     },
     {
       "index": 6,
@@ -1188,21 +1185,18 @@
         27
       ],
       "q_nonzero_indices": [
-        61,
-        62,
-        63,
-        135
+        62
       ],
       "q_nonzero_by_block": [
         0,
-        3,
         1,
+        0,
         0,
         0
       ],
-      "a_sha256": "33b4a2dcb185931a1b038f4a83e7a83ae2b53490c62e3ba035c2f818b96715a5",
-      "q_sha256": "5435f2148b802ccdc8d29077972188203857da1ccff1ec26266c68f91988882a",
-      "common_row_sha256": "5f2468645f41a0537bc6c496612bdf303b857ef2cf52752998dcbed1b523f141"
+      "a_sha256": "c397c31e34c824b46ec08d0ad440a083c5e51c85018ad3862e3e514b82905867",
+      "q_sha256": "def823d1375e4a5827eda6a594c9a59ce0cd33e69b87fb26badaaca5e1eb740a",
+      "common_row_sha256": "bc8f83cb58e5ca49e1eb8c17f6204029560433ba8c7f3ac46505fa06aeb65eb1"
     },
     {
       "index": 7,
@@ -1214,18 +1208,21 @@
         31
       ],
       "q_nonzero_indices": [
-        66
+        65,
+        66,
+        67,
+        139
       ],
       "q_nonzero_by_block": [
         0,
+        3,
         1,
-        0,
         0,
         0
       ],
-      "a_sha256": "64f08a7e24203a8814e67393a7fdc96a2a122f5bd6859563b739889754300ec3",
-      "q_sha256": "e83f12b777e182203ac17d6b00a5e6eba84ba5fc438a494ea8d1719c021d359a",
-      "common_row_sha256": "55524f18c488a3b091b3f24271a3efc3231e1cb25e1a01629a118c0f2e0cd9ca"
+      "a_sha256": "5c07d4380d1e8233d4528af0ddf3e92ccb680c29b54a3a97597910182bde3990",
+      "q_sha256": "0c46da467a0510693bb5c592fb22534114beed20eb133f9679d9af034cdb53b5",
+      "common_row_sha256": "0e62623038db017e4c23857ec7dae2c1674e0f99fe2b8441435e695bdde90233"
     },
     {
       "index": 8,
@@ -1246,9 +1243,9 @@
         0,
         0
       ],
-      "a_sha256": "5aa03da24fe43a3d279bc4bd291c13641e782ac13fdbfe4d9f6e9e21265bcb4f",
-      "q_sha256": "05d9f6d158ed8da01eead4f03f29cc6e84a8752827390a3b17a73b288d81b322",
-      "common_row_sha256": "78536cd9c2608df0ec75efefe7aa32cd82d0d65f1da6fee6adc98480ebb254f5"
+      "a_sha256": "9278b868f03ff7ac2fea61490aeeef0cc52b746f3e400ffaaf7a1792348316cb",
+      "q_sha256": "a443859a6d532add0f3b99f20d8fa1b4edaa90f3fe2afb8e9181404368a356de",
+      "common_row_sha256": "5ace555ca0c40dec12b7712999b665dfb7b12cd2996067a6ed838589486b8a1b"
     },
     {
       "index": 9,
@@ -1260,21 +1257,18 @@
         39
       ],
       "q_nonzero_indices": [
-        73,
-        74,
-        75,
-        146
+        75
       ],
       "q_nonzero_by_block": [
         0,
-        3,
         1,
+        0,
         0,
         0
       ],
-      "a_sha256": "a7dc610b4d98b5fb344bdd167043e89b681df986972d3657fbbd2dcc604a516b",
-      "q_sha256": "a49358e74cf2c23fd4eb562dd07f1f9de1aa9f9e048e47eb9acdff06a3d7f1ff",
-      "common_row_sha256": "bc2ebffe75ac310fb166a63a8f6192290e757cf81cdfebd9af1ed66280233964"
+      "a_sha256": "fab084ec93525f9ce69eef2715e4075b16cdb99ff4f89f72694fc27625fdab2a",
+      "q_sha256": "4dcdac8e0e1f407d4fb5dbbb7f7cc1408b20b095fb0f1c3e80f48255374e0fc4",
+      "common_row_sha256": "16201ee95e00c28ac38cfd6568837eb6468c9c15f4cee048ae9a25a1278adb29"
     },
     {
       "index": 10,
@@ -1286,18 +1280,21 @@
         43
       ],
       "q_nonzero_indices": [
-        78
+        77,
+        78,
+        79,
+        151
       ],
       "q_nonzero_by_block": [
         0,
+        3,
         1,
-        0,
         0,
         0
       ],
-      "a_sha256": "054599d7931fc83cc433615d480ce07746dfeea7dd7028dcde1aa088d1de550e",
-      "q_sha256": "498ccba4d8b8908fb54cce3391616a0362e8711cba7329301091cd7ecc67241c",
-      "common_row_sha256": "2395fa90400a5a6f1aac054ddb220f2385b12e3af489588d13d8a565a2a14f5d"
+      "a_sha256": "602ee32fdea0991c0b3587db35d1c068bcae4218d57ccc7479d827678ea97348",
+      "q_sha256": "e8bc7aa44dce28492d0d0c9410ac20a38215fd079da6d79a908dd16c4610ba27",
+      "common_row_sha256": "d637c58b556292c2d3d35355ed23f075c5cf2ad8b32f6a58f76239be53b1c355"
     },
     {
       "index": 11,
@@ -1309,7 +1306,7 @@
         47
       ],
       "q_nonzero_indices": [
-        81
+        82
       ],
       "q_nonzero_by_block": [
         0,
@@ -1318,9 +1315,9 @@
         0,
         0
       ],
-      "a_sha256": "110a52191f9cdfe36e62cc238549ca1d29dddd24278c32d6013adfb7c4545cce",
-      "q_sha256": "73997b61305c9fb82f38be1082f6d63bd306ba017bbfa7f25e8bc7c75a41ad33",
-      "common_row_sha256": "e7eeda7c2e7c40dd6814678934f8d54c5678ba5dd200268dfae4e00b92e01a02"
+      "a_sha256": "7568b6caedf4a983789ede490d67838a30cf75622805f242a188e4e57572eff7",
+      "q_sha256": "0ec9846250bb04e0d0a9de10f5e6b599fa142daaf0fba7773d20cb65494a212e",
+      "common_row_sha256": "cd4ddb6e20c82cfaf8aa8c8d81036ceee0a991423d301371edd714e9d8880343"
     },
     {
       "index": 12,
@@ -1332,21 +1329,18 @@
         51
       ],
       "q_nonzero_indices": [
-        85,
-        86,
-        87,
-        158
+        85
       ],
       "q_nonzero_by_block": [
         0,
-        3,
         1,
+        0,
         0,
         0
       ],
-      "a_sha256": "36b4a10c2cc864d43b24ee27fbe785bfb8292b5ce41ec2734dbb4e42ada81c8c",
-      "q_sha256": "753c3086f0936ed7a95a897cc3c5eed796538982735cb383821adafda0688d13",
-      "common_row_sha256": "cf20f8f3d4d132d16aad699b03f047cf2db6681096a169248dc77ad095b41cbc"
+      "a_sha256": "d51827656152ac19a94e7e9f4493a01f06aa4883d6ead7b59e8d9eff9480e496",
+      "q_sha256": "d1f0431844dc950c8fc434fe969d761bc2e68acaddf484344ff0f9f009a33539",
+      "common_row_sha256": "c4bc74bf981689eabe83f00d8631813e9234ee9139947f41f76a553b8c0ffae1"
     },
     {
       "index": 13,
@@ -1367,9 +1361,9 @@
         0,
         0
       ],
-      "a_sha256": "7863a1ec8115d1a30136889ef2fdd9cf8ead2002b47fa3c430f0d6cc7b0a3fb8",
-      "q_sha256": "dd11672bef3bbe9f29d6abf2eeec3f668266b1909edeafd37c415aad357f3c10",
-      "common_row_sha256": "8551c640e3a257e0269de64a23ab7d6111d420604bacbe2368d57ea6063d82aa"
+      "a_sha256": "e9f7b9296f1ae4136e2fed8fff50f8cc6ad1fc9976f61c05745fa958efc83bf4",
+      "q_sha256": "a515a5f84f19d604e01d27cbae30c59e5ee38979f8c5271253bf39bcf24bc47a",
+      "common_row_sha256": "c7a08a10cd03edeb59a87850c41700cc706609ae69383e25f54ab77964bf6c38"
     },
     {
       "index": 14,
@@ -1381,7 +1375,7 @@
         59
       ],
       "q_nonzero_indices": [
-        95
+        93
       ],
       "q_nonzero_by_block": [
         0,
@@ -1390,9 +1384,9 @@
         0,
         0
       ],
-      "a_sha256": "5e1eb22ee87f50f36818acb2d95e3849041ab6c223465cb35a401b7f413b279e",
-      "q_sha256": "94013ed679ae9b8064e3e2f5d1af8c4790a5f2563115019db9fe12cb1cfe549d",
-      "common_row_sha256": "1ff52b1f98f4a07b91dfefa7e52b239a6c8c24be5fbcc0598b4d1cee0d0a3968"
+      "a_sha256": "dfa408afc0b3a1472df07f71bfef7171b55fd960b167391cb19f75416eecc85d",
+      "q_sha256": "0a82b9e95319a17d6d5e21f12be58c2a88d4d81c112633c6a94780b4efae0d5e",
+      "common_row_sha256": "b6aa3f76b92cce93c226a15580da0a2047dcdccefd51de2379b3a4dde5c5fe1f"
     },
     {
       "index": 15,
@@ -1404,21 +1398,18 @@
         63
       ],
       "q_nonzero_indices": [
-        97,
-        98,
-        99,
-        170
+        97
       ],
       "q_nonzero_by_block": [
         0,
-        3,
         1,
+        0,
         0,
         0
       ],
-      "a_sha256": "2ae49133650079fa8a7ad8812e326c24136a2aa81314d864df246a1d875944ee",
-      "q_sha256": "6d117fb06f2c43ceb12ce72d1b0df0ceedb7f198f526a09a4719dd523f74d271",
-      "common_row_sha256": "eb4d201218bbf8028526c4bd59c362282fbb398c6fdb35f1ecb96b608f589a7e"
+      "a_sha256": "f8f75a83ff3d945874e6fcc85f099cfc13ddff35d3a0d3a1dabc5a452b2526d8",
+      "q_sha256": "864c73879ce4a77b2060f1dc6c3d73f4e17d94208cfd9e2e86189a531b02bd47",
+      "common_row_sha256": "05fbe256d833710e5636b8dd6e28d219dc773ed7b5de153c3ce85803d6869001"
     },
     {
       "index": 16,
@@ -1430,7 +1421,7 @@
         67
       ],
       "q_nonzero_indices": [
-        101
+        102
       ],
       "q_nonzero_by_block": [
         0,
@@ -1439,9 +1430,9 @@
         0,
         0
       ],
-      "a_sha256": "0af31166a122eb1eb8d0a7b2818ac4d8db01ca2dc0ccb276a4a528e032d1a500",
-      "q_sha256": "5c30205f2ad34e4cd49f65ff3dae82f198176e9c96338235b7bf6ccc79c55177",
-      "common_row_sha256": "c63e778632e8c58e325f01b354c85b8ae1cd6e9c5119457c639c8b14b16e07e9"
+      "a_sha256": "5ca0551ce67e8c03748ea34215c47c465a2d60ad49a24f4023fd19206e97175a",
+      "q_sha256": "fe369bb8a8436ffcab0f663e3930608e40b5bfec80aac51d62e158d9063e427b",
+      "common_row_sha256": "88656553572be7294137c09bf0f19681c06cb8842239ac8de745fc0680973149"
     },
     {
       "index": 17,
@@ -1453,7 +1444,7 @@
         71
       ],
       "q_nonzero_indices": [
-        107
+        105
       ],
       "q_nonzero_by_block": [
         0,
@@ -1462,9 +1453,9 @@
         0,
         0
       ],
-      "a_sha256": "cef5cd68b6b9dfacd3f5306e59c0a628dc393cb60570f5bce1d7970e5fbd3e33",
-      "q_sha256": "72b07b50087a96e99ce275d2d8fe3e1805a6c82ddf880d954684e18bf8112777",
-      "common_row_sha256": "7f883fe76caf563e031c55da35257d81b19705e5f75a64760fb0ae1dc9cbbd75"
+      "a_sha256": "acebb1e91b31cd6b0255d88358bd788af8f50b369d2abae62728d70d0b22dde1",
+      "q_sha256": "206b1aa6ac55c080119e48e9e716c1282b59b2ba52e04b6b48b7a6746c402ac2",
+      "common_row_sha256": "5dcc2786239b709d6e4a3d91e09a4b2e498404c1bcb5d97702221307df58cc58"
     },
     {
       "index": 18,
@@ -1564,9 +1555,9 @@
         12,
         4
       ],
-      "a_sha256": "860d5e1e65e0195e73928e32f0295a738b3cb40345baaa1479bb34e4b213fbf9",
-      "q_sha256": "55647b80750e993b14d2def7cae30b5b3fcd29637daf6b1b4aac59732d403580",
-      "common_row_sha256": "2ce77c4e27a16714cef04c0f389f87a2bb33425537aaf891735c067949e98267"
+      "a_sha256": "900f419ac3c81e76ad0900e6329d573d6ada5e31dc4a4ebf8d6076cf8649c984",
+      "q_sha256": "ea2193f7a08a5b2869b7fa2b435b32c1a49caa0cff016db910042474cb13c271",
+      "common_row_sha256": "90aa9d0a2ae8be9e6fa09cfe1b10e83246fb9109be814b74eca0ad48470c9602"
     }
   ],
   "block_support": [
@@ -1588,7 +1579,7 @@
       ],
       "q_restriction_rank": 18,
       "pairs_with_nonzero_support": 18,
-      "total_nonzero_coefficients": 28
+      "total_nonzero_coefficients": 22
     },
     {
       "name": "authenticated later layer 2",
@@ -1596,9 +1587,9 @@
         108,
         180
       ],
-      "q_restriction_rank": 6,
-      "pairs_with_nonzero_support": 6,
-      "total_nonzero_coefficients": 53
+      "q_restriction_rank": 3,
+      "pairs_with_nonzero_support": 3,
+      "total_nonzero_coefficients": 50
     },
     {
       "name": "authenticated later layer 3",

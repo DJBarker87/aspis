@@ -1,0 +1,343 @@
+{
+  "generated_at_utc": "2026-07-17T21:16:36.652163+00:00",
+  "command": "cargo run -p aspis-xtask -- v5-cu-probe",
+  "scope": "nine modes in one SBF: five marked q18 layer-zero hash/recombination controls; the three existing Component-B dense/rejected controls; and one compact degree-27 candidate measuring nineteen-lane fourth-claim aggregation, compact state setup, and four dual folds; no full proof parser or integrated v5 verifier",
+  "full_v5_measured": false,
+  "authority_note": "This nine-mode build adds the compact candidate while retaining the dense and rejected controls. Adding a mode changes compiled control flow and code layout, so only comparisons recorded together in this artifact are authoritative.",
+  "measurement_method": "Layer-zero modes retain their two marked intervals. Relation modes use three matched intervals: common relation setup plus canonical lane-claim parsing/gamma aggregation; terminal-weight setup; then the existing four relation folds and final dot (or the explicitly rejected standalone 1023-term dot). The compact mode starts ten repeated-squaring ladders plus one singleton, derives the remaining powers as the folds consume them, and carries an exact degree-27 truncation through four folds without a 1024-value vector. Every mode is submitted three times. Relation modes use a fixed 16-byte post-marker sink; sink hashing and remaining transaction overhead are outside the final marker, and transaction totals are recorded separately.",
+  "runtime_input_account": "gtYDcnyKqqoR6y2rnnSX7xaR95ydeHp7tFERCZs7qym",
+  "runtime_input_account_bytes": 19176,
+  "runtime_input_sha256": "5d5dddfc82fbe34a67d93ceb9005f335766240eca5465d7c7a266f69435f448a",
+  "query_count": 18,
+  "production_c1_columns": 26,
+  "candidate_c1_columns": 16,
+  "shared_c2_columns": 3,
+  "production_c1_record_bytes": 448,
+  "candidate_c1_record_bytes": 288,
+  "shared_c2_record_bytes": 224,
+  "modes": [
+    {
+      "mode": 0,
+      "name": "production26",
+      "description": "current production 26-C1/3-C2 helper, already using the fused three-product C2 sum",
+      "transaction_total_cu": 176538,
+      "marked_parse_and_power_prep_cu": 10970,
+      "marked_hash_and_combine_kernel_cu": 161900,
+      "marked_claim_aggregation_cu": null,
+      "marked_covector_derivation_cu": null,
+      "marked_relation_fold_or_standalone_dot_cu": null,
+      "transaction_total_minus_marked_deltas_cu": 3668,
+      "transaction_total_repeats": [
+        176538,
+        176538,
+        176538
+      ],
+      "marked_parse_and_power_prep_repeats": [
+        10970,
+        10970,
+        10970
+      ],
+      "marked_hash_and_combine_kernel_repeats": [
+        161900,
+        161900,
+        161900
+      ]
+    },
+    {
+      "mode": 1,
+      "name": "generic26_nonfused",
+      "description": "generic 26-C1 dot and two-plus-one C2 products",
+      "transaction_total_cu": 197525,
+      "marked_parse_and_power_prep_cu": 10967,
+      "marked_hash_and_combine_kernel_cu": 182890,
+      "marked_claim_aggregation_cu": null,
+      "marked_covector_derivation_cu": null,
+      "marked_relation_fold_or_standalone_dot_cu": null,
+      "transaction_total_minus_marked_deltas_cu": 3668,
+      "transaction_total_repeats": [
+        197525,
+        197525,
+        197525
+      ],
+      "marked_parse_and_power_prep_repeats": [
+        10967,
+        10967,
+        10967
+      ],
+      "marked_hash_and_combine_kernel_repeats": [
+        182890,
+        182890,
+        182890
+      ]
+    },
+    {
+      "mode": 2,
+      "name": "generic16_nonfused",
+      "description": "generic 16-C1 dot and two-plus-one C2 products",
+      "transaction_total_cu": 156258,
+      "marked_parse_and_power_prep_cu": 7293,
+      "marked_hash_and_combine_kernel_cu": 145297,
+      "marked_claim_aggregation_cu": null,
+      "marked_covector_derivation_cu": null,
+      "marked_relation_fold_or_standalone_dot_cu": null,
+      "transaction_total_minus_marked_deltas_cu": 3668,
+      "transaction_total_repeats": [
+        156258,
+        156258,
+        156258
+      ],
+      "marked_parse_and_power_prep_repeats": [
+        7293,
+        7293,
+        7293
+      ],
+      "marked_hash_and_combine_kernel_repeats": [
+        145297,
+        145297,
+        145297
+      ]
+    },
+    {
+      "mode": 3,
+      "name": "generic16_fused",
+      "description": "generic 16-C1 dot and exact fused three-product C2 accumulator",
+      "transaction_total_cu": 134475,
+      "marked_parse_and_power_prep_cu": 7294,
+      "marked_hash_and_combine_kernel_cu": 123513,
+      "marked_claim_aggregation_cu": null,
+      "marked_covector_derivation_cu": null,
+      "marked_relation_fold_or_standalone_dot_cu": null,
+      "transaction_total_minus_marked_deltas_cu": 3668,
+      "transaction_total_repeats": [
+        134475,
+        134475,
+        134475
+      ],
+      "marked_parse_and_power_prep_repeats": [
+        7294,
+        7294,
+        7294
+      ],
+      "marked_hash_and_combine_kernel_repeats": [
+        123513,
+        123513,
+        123513
+      ]
+    },
+    {
+      "mode": 4,
+      "name": "generic26_fused",
+      "description": "generic 26-C1 dot and exact fused three-product C2 accumulator",
+      "transaction_total_cu": 175778,
+      "marked_parse_and_power_prep_cu": 10966,
+      "marked_hash_and_combine_kernel_cu": 161144,
+      "marked_claim_aggregation_cu": null,
+      "marked_covector_derivation_cu": null,
+      "marked_relation_fold_or_standalone_dot_cu": null,
+      "transaction_total_minus_marked_deltas_cu": 3668,
+      "transaction_total_repeats": [
+        175778,
+        175778,
+        175778
+      ],
+      "marked_parse_and_power_prep_repeats": [
+        10966,
+        10966,
+        10966
+      ],
+      "marked_hash_and_combine_kernel_repeats": [
+        161144,
+        161144,
+        161144
+      ]
+    },
+    {
+      "mode": 5,
+      "name": "relation_3_claims",
+      "description": "nineteen lanes with three gamma-aggregated claims and the existing relation folds",
+      "transaction_total_cu": 114900,
+      "marked_parse_and_power_prep_cu": 45265,
+      "marked_hash_and_combine_kernel_cu": 68215,
+      "marked_claim_aggregation_cu": 45265,
+      "marked_covector_derivation_cu": 209,
+      "marked_relation_fold_or_standalone_dot_cu": 68215,
+      "transaction_total_minus_marked_deltas_cu": 1211,
+      "transaction_total_repeats": [
+        114900,
+        114900,
+        114900
+      ],
+      "marked_parse_and_power_prep_repeats": [
+        45265,
+        45265,
+        45265
+      ],
+      "marked_hash_and_combine_kernel_repeats": [
+        68215,
+        68215,
+        68215
+      ]
+    },
+    {
+      "mode": 6,
+      "name": "relation_4_claims_shared_dense",
+      "description": "nineteen lanes with a kappa^3-scaled fourth gamma-aggregated claim and prototype row covector in the existing relation folds",
+      "transaction_total_cu": 863654,
+      "marked_parse_and_power_prep_cu": 54821,
+      "marked_hash_and_combine_kernel_cu": 488127,
+      "marked_claim_aggregation_cu": 54821,
+      "marked_covector_derivation_cu": 319485,
+      "marked_relation_fold_or_standalone_dot_cu": 488127,
+      "transaction_total_minus_marked_deltas_cu": 1221,
+      "transaction_total_repeats": [
+        863654,
+        863654,
+        863654
+      ],
+      "marked_parse_and_power_prep_repeats": [
+        54821,
+        54821,
+        54821
+      ],
+      "marked_hash_and_combine_kernel_repeats": [
+        488127,
+        488127,
+        488127
+      ]
+    },
+    {
+      "mode": 7,
+      "name": "relation_4_claims_standalone_dot_rejected",
+      "description": "rejected control: kappa^3-scaled fourth claim and prototype covector followed by a standalone 1023-term row dot",
+      "transaction_total_cu": 824399,
+      "marked_parse_and_power_prep_cu": 54818,
+      "marked_hash_and_combine_kernel_cu": 448883,
+      "marked_claim_aggregation_cu": 54818,
+      "marked_covector_derivation_cu": 319485,
+      "marked_relation_fold_or_standalone_dot_cu": 448883,
+      "transaction_total_minus_marked_deltas_cu": 1213,
+      "transaction_total_repeats": [
+        824399,
+        824399,
+        824399
+      ],
+      "marked_parse_and_power_prep_repeats": [
+        54818,
+        54818,
+        54818
+      ],
+      "marked_hash_and_combine_kernel_repeats": [
+        448883,
+        448883,
+        448883
+      ]
+    },
+    {
+      "mode": 8,
+      "name": "relation_4_claims_compact_degree27",
+      "description": "nineteen fourth claims plus ten aligned degree-27 blocks and one initial-state singleton carried through the existing four relation folds without a dense vector",
+      "transaction_total_cu": 190800,
+      "marked_parse_and_power_prep_cu": 54820,
+      "marked_hash_and_combine_kernel_cu": 131194,
+      "marked_claim_aggregation_cu": 54820,
+      "marked_covector_derivation_cu": 3573,
+      "marked_relation_fold_or_standalone_dot_cu": 131194,
+      "transaction_total_minus_marked_deltas_cu": 1213,
+      "transaction_total_repeats": [
+        190800,
+        190800,
+        190800
+      ],
+      "marked_parse_and_power_prep_repeats": [
+        54820,
+        54820,
+        54820
+      ],
+      "marked_hash_and_combine_kernel_repeats": [
+        131194,
+        131194,
+        131194
+      ]
+    }
+  ],
+  "marked_generic_nonfused_width_saving_cu": 37593,
+  "marked_generic_fused_width_saving_cu": 37631,
+  "marked_generic26_fusion_saving_cu": 21746,
+  "marked_generic16_fusion_saving_cu": 21784,
+  "clean_forecast_fused_width_saving_cu": 37631,
+  "clean_forecast_width16_fusion_saving_cu": 21784,
+  "marked_generic_nonfused_width_saving_mode_selection_asymmetry_cu": 38,
+  "marked_generic26_fusion_saving_mode_selection_asymmetry_cu": 38,
+  "production26_uses_current_fused_three_product_helper": true,
+  "production26_to_generic16_fused_is_old_v4_to_v5_comparison": false,
+  "comparison_caveat": "The clean forecast signals use matched three-comparison mode-selection paths: generic26_fused to generic16_fused for width, and generic16_nonfused to generic16_fused for fusion. The raw generic non-fused width and width-26 fusion deltas each contain an observed 38-CU mode-selection asymmetry. Production26 already uses the current fused three-product helper, so its delta to generic16_fused is not an old-v4-to-v5 comparison.",
+  "marked_generic26_nonfused_to_generic16_fused_saving_cu": 59377,
+  "marked_production26_to_generic26_fused_delta_cu": 756,
+  "marked_production26_to_generic16_fused_delta_cu": 38387,
+  "marked_production26_to_generic16_fused_parse_and_power_saving_cu": 3676,
+  "marked_production26_to_generic16_fused_parse_plus_kernel_saving_cu": 42063,
+  "transaction_production26_to_generic16_fused_delta_cu": 42063,
+  "component_b_lane_count": 19,
+  "component_b_existing_claims_per_lane": 3,
+  "component_b_candidate_claims_per_lane": 4,
+  "component_b_dense_rows": 1024,
+  "component_b_nonzero_state_weights": 271,
+  "component_b_zero_pad_weights": 752,
+  "component_b_shared_existing_pcs_pass": true,
+  "component_b_functional_batch_scales": "[1, kappa, kappa^2, kappa^3]",
+  "component_b_functional_batch_sz_degree": 3,
+  "component_b_soundness_ledger_update_required": true,
+  "component_b_default_heap_observation": "The retained literal fixed-array control exceeded the 4 KiB SBF stack and was moved to an algebraically identical heap vector. With the ordinary 2.3 KiB layer-zero sink allocated after its Dense folds, the default SBF heap then exhausted; relation modes therefore use a fixed 16-byte post-marker sink. The compact candidate itself requests no dynamic heap and its 540-byte fixed state builds below the SBF stack limit, but an integrated verifier still needs a lifetime audit with the production parser and sink.",
+  "marked_component_b_fourth_claim_delta_cu": 9556,
+  "marked_component_b_covector_derivation_delta_cu": 319276,
+  "marked_component_b_shared_fold_delta_cu": 419912,
+  "marked_component_b_total_delta_cu": 748744,
+  "transaction_component_b_total_delta_cu": 748754,
+  "rejected_standalone_dot_marked_delta_cu": 380668,
+  "rejected_standalone_total_delta_cu": 709497,
+  "compact_component_b_block_selectors": [
+    0,
+    1,
+    2,
+    3,
+    4,
+    5,
+    6,
+    28,
+    29,
+    30
+  ],
+  "compact_component_b_initial_state_row": 992,
+  "compact_component_b_dependent_pivot_row": 993,
+  "compact_component_b_degree": 27,
+  "compact_component_b_zero_tail_weights": 40,
+  "compact_component_b_state_bytes": 540,
+  "compact_component_b_dynamic_heap_bytes": 0,
+  "compact_component_b_dense_payload_avoided_bytes": 16384,
+  "marked_compact_component_b_fourth_claim_delta_cu": 9555,
+  "marked_compact_component_b_derivation_delta_cu": 3364,
+  "marked_compact_component_b_fold_delta_cu": 62979,
+  "marked_compact_component_b_total_delta_cu": 75898,
+  "transaction_compact_component_b_total_delta_cu": 75900,
+  "provisional_forecast_envelope_cu": 112000,
+  "compact_component_b_fits_provisional_forecast_envelope": true,
+  "provisional_forecast_envelope_after_compact_component_b_cu": 36102,
+  "component_b_binding_caveat": "Both the retained Dense control and the compact candidate batch four functionals as [1, kappa, kappa^2, kappa^3]. The compact path carries the exact public degree-27 row covector through the existing gamma-combined relation and authenticates it only through the existing pre-challenge circle-FRI commitment/pass. This raises the functional-batching Schwartz-Zippel degree from two to three and requires a soundness-ledger update. The probe measures verifier arithmetic and exact dual-fold correspondence; it does not by itself prove transcript binding, hiding, or Rust-to-Lean correspondence. A plain standalone row dot is not a binding commitment and is reported only as a rejected cost control.",
+  "historical_tag65_projection_made": false,
+  "production_control_sbf_bytes": 922640,
+  "production_control_sbf_sha256": "b4baf31a0c66ce8f0bc419f082c5663b891fa8d4468ec92f8015f59d05e5e26e",
+  "production_control_rebuild_byte_identical": true,
+  "probe_sbf_bytes": 463680,
+  "probe_sbf_sha256": "e31d233843a251a2ec7183ef6fca01d21a3148492e14a855e38d7535b5848ae5",
+  "unmeasured_obligations": [
+    "full v5 proof parsing and proof-account load cost",
+    "unchanged Merkle authentication paths and later FRI control flow in an integrated v5 binary",
+    "integrated pre-eta transcript ordering and proof-wire parsing for the nineteen fourth claims",
+    "kernel-checked correspondence between the Rust 1024-row mapping and the Lean terminal functional",
+    "soundness-ledger update for degree-three [1, kappa, kappa^2, kappa^3] functional batching",
+    "integrated stack and default-heap audit with the production parser and output lifetimes",
+    "component-C complete-view masking, transcript binding, and verifier logic",
+    "an exact tag65 baseline and candidate delta measured in one integrated same-worktree SBF"
+  ],
+  "conclusion": "The compact degree-27 candidate adds 9555 CU for nineteen fourth claims, 3364 CU for compact state setup, and 62979 CU for four exact dual folds/final dot: 75898 marked CU in total, with a separately recorded 75900-CU transaction delta. Against the provisional 112000-CU envelope this isolated seam leaves 36102 CU, so it fits that arithmetic envelope by itself; this is not a full-v5 fit claim. Its fixed state is 540 bytes and requests no dynamic heap, avoiding a 16384-byte dense payload. The retained dense control adds 748744 marked CU; the retained rejected standalone construction adds 709497 marked CU. Functional batching still uses [1, kappa, kappa^2, kappa^3] and needs the soundness-ledger update. Layer-zero controls remain: matched fused width saves 37631 CU and width-16 fusion saves 21784 CU."
+}
