@@ -177,6 +177,21 @@ declarations, and `native_decide` in the changed proof sources, rejects
 `sorryAx` and compiled-reduction axioms in the replay output, recompiles both
 modules, and checks the terminal axiom reports.
 
+The formal-source replay was run at revision
+`9c6bc92ce799796bca65e22502cd26d77126363f` with:
+
+```sh
+/usr/bin/time -l ./tools/replay_v7_exact_grs_conversion.sh
+```
+
+The exact Lake targets were
+`AspisFormal.Pool.AlgorithmicCircleDecoderV7` and
+`AspisFormal.K1.V7Tag73ExactGRSConversion`, followed by direct Lean replay of
+the two source files so that every `#print axioms` result appeared in the
+log. The command exited 0 in 42.20 seconds, with peak RSS 5,655,003,136 bytes
+and zero swaps. The replay accepted every terminal theorem with exactly the
+standard axioms listed above and no other axioms.
+
 ## Boundary that remains external
 
 This change does not formalize Guruswami--Sudan or the correlated-agreement
