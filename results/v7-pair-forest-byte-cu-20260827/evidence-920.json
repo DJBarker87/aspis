@@ -1,0 +1,135 @@
+{
+  "baseline_revision": "041780f4ef0be98c5b1675df87917046b62b4c2f",
+  "boundaries": [
+    "the verifier profile constructs ASR8 after byte/account/ASF8 validation without executing Tag-73 cryptography",
+    "the Pool profile writes the verifier-authenticated afterstate bytes without its strict 20-Poseidon reconstruction",
+    "profile log syscalls are metered and inflate the total"
+  ],
+  "compute_unit_limit": 1400000,
+  "compute_units": 634718,
+  "cryptographic_tag73_executed": false,
+  "fixture_frontier_nodes_per_tree": 14,
+  "proof_grammar_max_bytes": 30504,
+  "sbf_build": {
+    "builder": "solana-cargo-build-sbf 2.3.0 / platform-tools v1.48 / rustc 1.84.1",
+    "invocation": "ba8443a17f1e4f7da69f4c730aa23938",
+    "unit": "aspis-v7-byte-cu-sbf-returns-01.service"
+  },
+  "execution_kind": "measurement-only unverified ASQ8/ASF8/ASR8 transport plus byte-only Pool mutation",
+  "final_pool_return_bytes": 792,
+  "instruction_bytes": 320,
+  "phase_ledger": [
+    {
+      "delta_from_previous_marker": null,
+      "label": "aspis-forest-pool-profile:preflight",
+      "remaining": 1334318
+    },
+    {
+      "delta_from_previous_marker": 3655,
+      "label": "aspis-forest-pool-profile:marker-custody-plan",
+      "remaining": 1330663
+    },
+    {
+      "delta_from_previous_marker": 204,
+      "label": "aspis-forest-pool-profile:verifier-cpi-start",
+      "remaining": 1330459
+    },
+    {
+      "delta_from_previous_marker": 614,
+      "label": "aspis-forest-pool-profile:verifier-proof-claim",
+      "remaining": 1329845
+    },
+    {
+      "delta_from_previous_marker": 7598,
+      "label": "aspis-forest-pool-profile:registry-authenticated",
+      "remaining": 1322247
+    },
+    {
+      "delta_from_previous_marker": 1079,
+      "label": "aspis-forest-pool-profile:asq8-encoded",
+      "remaining": 1321168
+    },
+    {
+      "delta_from_previous_marker": 722,
+      "label": "aspis-forest-pool-profile:cpi-invoke",
+      "remaining": 1320446
+    },
+    {
+      "delta_from_previous_marker": 4354,
+      "label": "aspis-asq8-profile:request-accounts",
+      "remaining": 1316092
+    },
+    {
+      "delta_from_previous_marker": 7123,
+      "label": "aspis-asq8-profile:master",
+      "remaining": 1308969
+    },
+    {
+      "delta_from_previous_marker": 2154,
+      "label": "aspis-asq8-profile:checkpoint",
+      "remaining": 1306815
+    },
+    {
+      "delta_from_previous_marker": 5803,
+      "label": "aspis-asq8-profile:lane",
+      "remaining": 1301012
+    },
+    {
+      "delta_from_previous_marker": 339,
+      "label": "aspis-asq8-profile:proof-framing",
+      "remaining": 1300673
+    },
+    {
+      "delta_from_previous_marker": 519913,
+      "label": "aspis-asq8-profile:staged-codecs",
+      "remaining": 780760
+    },
+    {
+      "delta_from_previous_marker": 3011,
+      "label": "aspis-asq8-profile:asf8-reconstructed",
+      "remaining": 777749
+    },
+    {
+      "delta_from_previous_marker": 2487,
+      "label": "aspis-asq8-profile:asr8-encoded",
+      "remaining": 775262
+    },
+    {
+      "delta_from_previous_marker": 389,
+      "label": "aspis-asq8-profile:asr8-returned",
+      "remaining": 774873
+    },
+    {
+      "delta_from_previous_marker": 3538,
+      "label": "aspis-forest-pool-profile:asr8-decoded",
+      "remaining": 771335
+    },
+    {
+      "delta_from_previous_marker": 314,
+      "label": "aspis-forest-pool-profile:verifier-cpi-returned",
+      "remaining": 771021
+    },
+    {
+      "delta_from_previous_marker": 4663,
+      "label": "aspis-forest-pool-profile:asr8-validated",
+      "remaining": 766358
+    },
+    {
+      "delta_from_previous_marker": 244,
+      "label": "aspis-forest-pool-profile:custody-complete",
+      "remaining": 766114
+    },
+    {
+      "delta_from_previous_marker": 517,
+      "label": "aspis-forest-pool-profile:persisted",
+      "remaining": 765597
+    }
+  ],
+  "pool_elf_sha256": "7dca16cac4fab22951d1d6d92bb0b47c2a32f8a553b6f9c8181476409843e81d",
+  "proof_body_bytes": 20676,
+  "schema": "aspis.v7.pair-forest-byte-cu-profile.v1",
+  "transaction_wire_bytes": 827,
+  "upload_payload_bytes": 21364,
+  "verifier_cpi_return_bytes": 920,
+  "verifier_profile_elf_sha256": "de42e9aea7fc08461ca091c63f5c9520849efeaf9e6ff55a4512f6b31c304aaf"
+}

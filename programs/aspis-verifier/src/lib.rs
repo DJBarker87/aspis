@@ -132,6 +132,29 @@ compile_error!(
     "V7_PAIR_FOREST_CU_PROFILE_FORBIDS_OTHER_ENTRYPOINTS: build the unverified transport profile in isolation"
 );
 
+#[cfg(any(
+    all(
+        feature = "v7-pair-forest-cu-return-824",
+        any(
+            feature = "v7-pair-forest-cu-return-856",
+            feature = "v7-pair-forest-cu-return-920",
+            feature = "v7-pair-forest-cu-return-1024"
+        )
+    ),
+    all(
+        feature = "v7-pair-forest-cu-return-856",
+        any(
+            feature = "v7-pair-forest-cu-return-920",
+            feature = "v7-pair-forest-cu-return-1024"
+        )
+    ),
+    all(
+        feature = "v7-pair-forest-cu-return-920",
+        feature = "v7-pair-forest-cu-return-1024"
+    )
+))]
+compile_error!("V7_PAIR_FOREST_CU_RETURN_SWEEP_REQUIRES_EXACTLY_ONE_SIZE");
+
 pub mod atomic_payment;
 pub mod dispatch;
 pub mod lifecycle;

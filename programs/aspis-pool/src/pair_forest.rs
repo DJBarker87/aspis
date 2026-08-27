@@ -19,11 +19,9 @@ use aspis_statement::{
         encode_pool_v1_pair_forest_checkpoint_v1, encode_pool_v1_pair_forest_lane_state_v1,
         encode_pool_v1_pair_forest_master_v1, encode_pool_v1_pair_forest_terminal_result_v1,
         plan_pool_v1_pair_forest_checkpoint_v1, pool_v1_note_commitment,
-        pool_v1_pair_forest_deposit_lane_v1, pool_v1_tree_parent,
-        reconstruct_pool_v1_pair_forest_terminal_statement_v1, root_history_location,
-        validate_pool_v1_pair_forest_terminal_result_against_statement_v1, IncrementalMerkleTreeV1,
-        PoolIdentityV1, PoolV1NullifierMarkerV1, PoolV1PairForestCheckpointV1,
-        PoolV1PairForestLaneStateV1, PoolV1PairForestMasterV1, PoolV1PairForestTerminalCommonV1,
+        pool_v1_pair_forest_deposit_lane_v1, pool_v1_tree_parent, root_history_location,
+        IncrementalMerkleTreeV1, PoolIdentityV1, PoolV1NullifierMarkerV1,
+        PoolV1PairForestCheckpointV1, PoolV1PairForestLaneStateV1, PoolV1PairForestMasterV1,
         PoolV1PairForestTerminalPaymentV1, PoolV1PairForestTerminalRequestV1,
         PoolV1PairLeafWitnessV1, POOL_V1_DIGEST_ENCODING_VERSION, POOL_V1_PAIR_CAPACITY,
         POOL_V1_PAIR_FOREST_CHECKPOINT_ACCOUNT_BYTES, POOL_V1_PAIR_FOREST_LANE_COUNT,
@@ -932,7 +930,131 @@ fn encode_profile_verified_lane_image_v1(
     Ok(output)
 }
 
+#[inline(never)]
+fn decode_terminal_request_box_v1(
+    instruction_data: &[u8],
+) -> Result<Box<PoolV1PairForestTerminalRequestV1>, ProgramError> {
+    decode_pool_v1_pair_forest_terminal_request_v1(instruction_data)
+        .map(Box::new)
+        .map_err(|_| ProgramError::InvalidInstructionData)
+}
+
+#[inline(never)]
+fn decode_master_account_box_v1(
+    program_id: &Pubkey,
+    account: &AccountInfo<'_>,
+) -> Result<Box<PoolV1PairForestMasterV1>, ProgramError> {
+    decode_master_account(program_id, account, false).map(Box::new)
+}
+
+#[inline(never)]
+fn decode_checkpoint_account_box_v1(
+    program_id: &Pubkey,
+    master: &Pubkey,
+    account: &AccountInfo<'_>,
+) -> Result<Box<PoolV1PairForestCheckpointV1>, ProgramError> {
+    decode_retained_pair_forest_checkpoint_account_v1(program_id, master, account).map(Box::new)
+}
+
+#[inline(never)]
+fn decode_lane_account_box_v1(
+    program_id: &Pubkey,
+    master: &Pubkey,
+    expected_lane: u8,
+    account: &AccountInfo<'_>,
+) -> Result<Box<PoolV1PairForestLaneStateV1>, ProgramError> {
+    decode_lane_account(program_id, master, expected_lane, account, true).map(Box::new)
+}
+
 #[allow(clippy::too_many_arguments)]
+#[inline(never)]
+fn validate_authenticated_pair_forest_result_v1(
+    master_account: &AccountInfo<'_>,
+    checkpoint_account: &AccountInfo<'_>,
+    lane_account: &AccountInfo<'_>,
+    master: &PoolV1PairForestMasterV1,
+    checkpoint: &PoolV1PairForestCheckpointV1,
+    lane: &PoolV1PairForestLaneStateV1,
+    request: &PoolV1PairForestTerminalRequestV1,
+    output_lane: u8,
+    result: &aspis_statement::pool_v1::PoolV1PairForestTerminalResultV1,
+) -> ProgramResult {
+    // This is the fieldwise form of reconstructing ASF8 followed by
+    // `validate_*_result_against_statement_v1`. The request, master,
+    // checkpoint, lane and result reached here only after their exact
+    // canonical decoders and PDA/account checks. Avoiding the temporary
+    // 1,880-byte statement is essential on SBF's 4 KiB frame limit; no field
+    // or binding check is removed.
+    let (pool, deployment, anchor_sequence, anchor_root, nullifier) = match request.public {
+        PoolV1PairForestTerminalPaymentV1::PrivateTransfer(public) => (
+            public.pool,
+            public.deployment_domain,
+            public.anchor_sequence,
+            public.anchor_root,
+            public.nullifier,
+        ),
+        PoolV1PairForestTerminalPaymentV1::Withdrawal(public) => (
+            public.pool,
+            public.deployment_domain,
+            public.anchor_sequence,
+            public.anchor_root,
+            public.nullifier,
+        ),
+    };
+    if master_account.key.to_bytes() == [0u8; 32]
+        || checkpoint_account.key.to_bytes() == [0u8; 32]
+        || lane_account.key.to_bytes() == [0u8; 32]
+        || usize::from(output_lane) >= POOL_V1_PAIR_FOREST_LANE_COUNT
+        || pool != master_account.key.to_bytes()
+        || pool != master.identity.pool
+        || deployment != master.identity.deployment_domain
+        || lane.master != pool
+        || lane.lane_id != output_lane
+        || anchor_sequence != checkpoint.checkpoint_sequence
+        || anchor_root != checkpoint.global_root
+        || result.transition_kind != request.public.transition_kind()
+        || result.master_account != master_account.key.to_bytes()
+        || result.selected_lane_account != lane_account.key.to_bytes()
+        || result.output_lane != output_lane
+        || result.nullifier != nullifier
+    {
+        return Err(PoolV1ProgramError::InvalidVerifierReturnData.into());
+    }
+    Ok(())
+}
+
+struct PairForestApplyBytesV1 {
+    next_lane_image: Vec<u8>,
+    result_bytes: Box<[u8; aspis_statement::pool_v1::POOL_V1_PAIR_FOREST_TERMINAL_RESULT_BYTES]>,
+}
+
+#[inline(never)]
+fn prepare_pair_forest_apply_bytes_v1(
+    lane_account: &AccountInfo<'_>,
+    lane: &PoolV1PairForestLaneStateV1,
+    result: &aspis_statement::pool_v1::PoolV1PairForestTerminalResultV1,
+) -> Result<PairForestApplyBytesV1, ProgramError> {
+    let next_lane = Box::new(next_pair_forest_lane_v1(lane, result)?);
+    #[cfg(not(feature = "pair-forest-cu-profile"))]
+    let next_lane_image =
+        encode_pool_v1_pair_forest_lane_state_v1(&next_lane, &POOL_V1_PAIR_EMPTY_ROOTS)
+            .map_err(|_| PoolV1ProgramError::StateHistoryMismatch)?
+            .to_vec();
+    #[cfg(feature = "pair-forest-cu-profile")]
+    let next_lane_image =
+        encode_profile_verified_lane_image_v1(&lane_account.try_borrow_data()?, &next_lane)?;
+    let result_bytes = Box::new(
+        encode_pool_v1_pair_forest_terminal_result_v1(result)
+            .map_err(|_| PoolV1ProgramError::InvalidVerifierReturnData)?,
+    );
+    Ok(PairForestApplyBytesV1 {
+        next_lane_image,
+        result_bytes,
+    })
+}
+
+#[allow(clippy::too_many_arguments)]
+#[inline(never)]
 pub(crate) fn process_pair_forest_terminal_with_verifier_v1<'info, R, V, S>(
     program_id: &Pubkey,
     accounts: &[AccountInfo<'info>],
@@ -958,42 +1080,33 @@ where
     ) -> Result<AuthenticatedPairForestResultV1, ProgramError>,
     S: FnOnce(&[u8]),
 {
-    let request = decode_pool_v1_pair_forest_terminal_request_v1(instruction_data)
-        .map_err(|_| ProgramError::InvalidInstructionData)?;
+    let request = decode_terminal_request_box_v1(instruction_data)?;
     let master_account = accounts.first().ok_or(ProgramError::NotEnoughAccountKeys)?;
     let checkpoint_account = accounts.get(1).ok_or(ProgramError::NotEnoughAccountKeys)?;
     let lane_account = accounts.get(2).ok_or(ProgramError::NotEnoughAccountKeys)?;
-    let master = decode_master_account(program_id, master_account, false)?;
-    let checkpoint = decode_retained_pair_forest_checkpoint_account_v1(
-        program_id,
-        master_account.key,
-        checkpoint_account,
-    )?;
+    let master = decode_master_account_box_v1(program_id, master_account)?;
+    let checkpoint =
+        decode_checkpoint_account_box_v1(program_id, master_account.key, checkpoint_account)?;
     let output_lane =
         aspis_statement::pool_v1::pool_v1_pair_forest_output_lane_v1(request.public.nullifier())
             .map_err(|_| PoolV1ProgramError::NonCanonicalLeaf)?;
-    let lane = decode_lane_account(
-        program_id,
-        master_account.key,
-        output_lane,
-        lane_account,
-        true,
-    )?;
+    let lane =
+        decode_lane_account_box_v1(program_id, master_account.key, output_lane, lane_account)?;
     validate_pair_forest_request_accounts_v1(
         program_id,
         master_account,
         checkpoint_account,
         lane_account,
-        &master,
-        &checkpoint,
-        &lane,
-        &request,
+        master.as_ref(),
+        checkpoint.as_ref(),
+        lane.as_ref(),
+        request.as_ref(),
     )?;
     let withdrawal = matches!(
         request.public,
         PoolV1PairForestTerminalPaymentV1::Withdrawal(_)
     );
-    let layout = plan_pair_forest_spend_layout_v1(program_id, accounts, &lane, withdrawal)?;
+    let layout = plan_pair_forest_spend_layout_v1(program_id, accounts, lane.as_ref(), withdrawal)?;
     profile_checkpoint("aspis-forest-pool-profile:preflight");
 
     let marker = &accounts[layout.marker_index];
@@ -1038,44 +1151,23 @@ where
         &accounts[layout.registry_start..layout.registry_start + 2],
         &accounts[layout.verifier_index],
         &accounts[layout.proof_index],
-        &request,
+        request.as_ref(),
         current_slot,
     )?;
     profile_checkpoint("aspis-forest-pool-profile:verifier-cpi-returned");
     let result = authenticated.value();
-    let common = PoolV1PairForestTerminalCommonV1 {
-        master_account: master_account.key.to_bytes(),
-        checkpoint_account: checkpoint_account.key.to_bytes(),
-        selected_lane_account: lane_account.key.to_bytes(),
+    validate_authenticated_pair_forest_result_v1(
+        master_account,
+        checkpoint_account,
+        lane_account,
+        master.as_ref(),
+        checkpoint.as_ref(),
+        lane.as_ref(),
+        request.as_ref(),
         output_lane,
-        checkpoint_sequence: checkpoint.checkpoint_sequence,
-        historical_global_anchor: checkpoint.global_root,
-        lane_transition: aspis_statement::pool_v1::PoolV1PairLatePublicStatementV1 {
-            live_snapshot: aspis_statement::pool_v1::PoolV1PairLiveSnapshotV1 {
-                pool: master_account.key.to_bytes(),
-                deployment_domain: master.identity.deployment_domain,
-                sequence: lane.tree.next_leaf_index,
-                next_pair_index: lane.tree.next_leaf_index,
-                current_root: lane.tree.root,
-                frontier: lane.tree.frontier,
-            },
-            candidate_afterstate: result.verified_afterstate,
-        },
-    };
-    let statement = reconstruct_pool_v1_pair_forest_terminal_statement_v1(&request, common)
-        .map_err(|_| PoolV1ProgramError::InvalidVerifierReturnData)?;
-    validate_pool_v1_pair_forest_terminal_result_against_statement_v1(&statement, result)
-        .map_err(|_| PoolV1ProgramError::InvalidVerifierReturnData)?;
-    let next_lane = next_pair_forest_lane_v1(&lane, result)?;
-    #[cfg(not(feature = "pair-forest-cu-profile"))]
-    let next_lane_image =
-        encode_pool_v1_pair_forest_lane_state_v1(&next_lane, &POOL_V1_PAIR_EMPTY_ROOTS)
-            .map_err(|_| PoolV1ProgramError::StateHistoryMismatch)?;
-    #[cfg(feature = "pair-forest-cu-profile")]
-    let next_lane_image =
-        encode_profile_verified_lane_image_v1(&lane_account.try_borrow_data()?, &next_lane)?;
-    let result_bytes = encode_pool_v1_pair_forest_terminal_result_v1(result)
-        .map_err(|_| PoolV1ProgramError::InvalidVerifierReturnData)?;
+        result,
+    )?;
+    let apply = prepare_pair_forest_apply_bytes_v1(lane_account, lane.as_ref(), result)?;
     profile_checkpoint("aspis-forest-pool-profile:asr8-validated");
 
     let writable_page = match layout.page {
@@ -1099,7 +1191,7 @@ where
     }
     profile_checkpoint("aspis-forest-pool-profile:custody-complete");
 
-    lane_data.copy_from_slice(&next_lane_image);
+    lane_data.copy_from_slice(&apply.next_lane_image);
     match layout.page {
         PairForestSpendPageV1::Genesis => write_new_page_unchecked(
             &mut page_data,
@@ -1122,7 +1214,7 @@ where
         ),
     }
     marker_data.copy_from_slice(&planned_marker.encoded_marker());
-    set_return_data(&result_bytes);
+    set_return_data(apply.result_bytes.as_ref());
     profile_checkpoint("aspis-forest-pool-profile:persisted");
     Ok(())
 }

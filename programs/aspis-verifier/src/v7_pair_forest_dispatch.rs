@@ -10,6 +10,8 @@
 extern crate alloc;
 
 use alloc::boxed::Box;
+#[cfg(feature = "v7-pair-forest-cu-profile")]
+use alloc::vec;
 
 use aspis_core::v7_staged_pair::V7_STAGED_PAIR_BODY_WITHOUT_FRONTIERS;
 use aspis_statement::pool_v1::{
@@ -49,6 +51,42 @@ const PAIR_FOREST_CHECKPOINT_SEED: &[u8] = b"aspis-pair-forest-checkpoint-v1";
 /// integration gate after every byte/account/PDA check has passed.
 pub const V7_PAIR_FOREST_ASQ8_CRYPTO_NOT_INTEGRATED: u32 = 0x4153_5138;
 
+#[cfg(feature = "v7-pair-forest-cu-return-1024")]
+const V7_PAIR_FOREST_PROFILE_RETURN_BYTES: usize = 1_024;
+#[cfg(all(
+    not(feature = "v7-pair-forest-cu-return-1024"),
+    feature = "v7-pair-forest-cu-return-920"
+))]
+const V7_PAIR_FOREST_PROFILE_RETURN_BYTES: usize = 920;
+#[cfg(all(
+    not(any(
+        feature = "v7-pair-forest-cu-return-1024",
+        feature = "v7-pair-forest-cu-return-920"
+    )),
+    feature = "v7-pair-forest-cu-return-856"
+))]
+const V7_PAIR_FOREST_PROFILE_RETURN_BYTES: usize = 856;
+#[cfg(all(
+    not(any(
+        feature = "v7-pair-forest-cu-return-1024",
+        feature = "v7-pair-forest-cu-return-920",
+        feature = "v7-pair-forest-cu-return-856"
+    )),
+    feature = "v7-pair-forest-cu-return-824"
+))]
+const V7_PAIR_FOREST_PROFILE_RETURN_BYTES: usize = 824;
+#[cfg(all(
+    feature = "v7-pair-forest-cu-profile",
+    not(any(
+        feature = "v7-pair-forest-cu-return-1024",
+        feature = "v7-pair-forest-cu-return-920",
+        feature = "v7-pair-forest-cu-return-856",
+        feature = "v7-pair-forest-cu-return-824"
+    ))
+))]
+const V7_PAIR_FOREST_PROFILE_RETURN_BYTES: usize =
+    aspis_statement::pool_v1::POOL_V1_PAIR_FOREST_TERMINAL_RESULT_BYTES;
+
 #[inline(always)]
 fn profile_checkpoint(label: &'static str) {
     #[cfg(feature = "v7-pair-forest-cu-profile")]
@@ -62,12 +100,81 @@ fn profile_checkpoint(label: &'static str) {
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct ValidatedV7PairForestAsq8V1 {
-    pub request: PoolV1PairForestTerminalRequestV1,
-    pub master: PoolV1PairForestMasterV1,
-    pub checkpoint: PoolV1PairForestCheckpointV1,
-    pub selected_lane: PoolV1PairForestLaneStateV1,
     pub statement: Box<PoolV1PairForestTerminalStatementV1>,
     pub frontier_nodes: usize,
+}
+
+#[inline(never)]
+fn decode_master_box(bytes: &[u8]) -> Result<Box<PoolV1PairForestMasterV1>, ProgramError> {
+    decode_pool_v1_pair_forest_master_v1(bytes)
+        .map(Box::new)
+        .map_err(|_| ProgramError::InvalidAccountData)
+}
+
+#[inline(never)]
+fn decode_checkpoint_box(bytes: &[u8]) -> Result<Box<PoolV1PairForestCheckpointV1>, ProgramError> {
+    decode_pool_v1_pair_forest_checkpoint_v1(bytes)
+        .map(Box::new)
+        .map_err(|_| ProgramError::InvalidAccountData)
+}
+
+#[inline(never)]
+fn decode_lane_box(bytes: &[u8]) -> Result<Box<PoolV1PairForestLaneStateV1>, ProgramError> {
+    decode_pool_v1_pair_forest_lane_state_v1(bytes, &V7_PAIR_EMPTY_ROOTS)
+        .map(Box::new)
+        .map_err(|_| ProgramError::InvalidAccountData)
+}
+
+#[inline(never)]
+fn parse_staged_late_statement_box<'a>(
+    payload: &'a [u8],
+    frontier_nodes: usize,
+    pool: [u8; 32],
+    deployment_domain: [u8; 32],
+    selected_lane: &PoolV1PairForestLaneStateV1,
+) -> Result<Box<PoolV1PairLatePublicStatementV1>, ProgramError> {
+    let live_snapshot = PoolV1PairLiveSnapshotV1 {
+        pool,
+        deployment_domain,
+        sequence: selected_lane.tree.next_leaf_index,
+        next_pair_index: selected_lane.tree.next_leaf_index,
+        current_root: selected_lane.tree.root,
+        frontier: selected_lane.tree.frontier,
+    };
+    let mut live_snapshot_bytes = [0u8; POOL_V1_PAIR_LIVE_SNAPSHOT_BYTES];
+    encode_pool_v1_pair_live_snapshot_v1(&live_snapshot, &mut live_snapshot_bytes)
+        .map_err(|_| ProgramError::InvalidAccountData)?;
+    parse_v7_staged_pair_inputs_v1(payload, frontier_nodes, &live_snapshot_bytes)
+        .map(|parsed| Box::new(parsed.late_statement))
+        .map_err(|_| ProgramError::InvalidAccountData)
+}
+
+#[allow(clippy::too_many_arguments)]
+#[inline(never)]
+fn reconstruct_statement_box(
+    request: &PoolV1PairForestTerminalRequestV1,
+    master_account: [u8; 32],
+    checkpoint_account: [u8; 32],
+    selected_lane_account: [u8; 32],
+    output_lane: u8,
+    checkpoint_sequence: u64,
+    historical_global_anchor: aspis_statement::Digest,
+    lane_transition: &PoolV1PairLatePublicStatementV1,
+) -> Result<Box<PoolV1PairForestTerminalStatementV1>, ProgramError> {
+    reconstruct_pool_v1_pair_forest_terminal_statement_v1(
+        request,
+        PoolV1PairForestTerminalCommonV1 {
+            master_account,
+            checkpoint_account,
+            selected_lane_account,
+            output_lane,
+            checkpoint_sequence,
+            historical_global_anchor,
+            lane_transition: *lane_transition,
+        },
+    )
+    .map(Box::new)
+    .map_err(|_| ProgramError::InvalidInstructionData)
 }
 
 fn frontier_nodes_from_staged_proof_length(length: usize) -> Option<usize> {
@@ -136,8 +243,7 @@ pub fn validate_v7_pair_forest_asq8_request_v1(
     ])?;
     profile_checkpoint("aspis-asq8-profile:request-accounts");
 
-    let master = decode_pool_v1_pair_forest_master_v1(&master_account.try_borrow_data()?)
-        .map_err(|_| ProgramError::InvalidAccountData)?;
+    let master = decode_master_box(&master_account.try_borrow_data()?)?;
     if master.identity.pool != master_account.key.to_bytes()
         || master.initialized_lane_mask != POOL_V1_PAIR_FOREST_ALL_LANES_MASK
         || Pubkey::find_program_address(
@@ -153,9 +259,7 @@ pub fn validate_v7_pair_forest_asq8_request_v1(
     }
     profile_checkpoint("aspis-asq8-profile:master");
 
-    let checkpoint =
-        decode_pool_v1_pair_forest_checkpoint_v1(&checkpoint_account.try_borrow_data()?)
-            .map_err(|_| ProgramError::InvalidAccountData)?;
+    let checkpoint = decode_checkpoint_box(&checkpoint_account.try_borrow_data()?)?;
     if checkpoint.master != master_account.key.to_bytes()
         || checkpoint.deployment_domain != master.identity.deployment_domain
         || Pubkey::find_program_address(
@@ -174,11 +278,7 @@ pub fn validate_v7_pair_forest_asq8_request_v1(
 
     let output_lane = pool_v1_pair_forest_output_lane_v1(request.public.nullifier())
         .map_err(|_| ProgramError::InvalidInstructionData)?;
-    let selected_lane = decode_pool_v1_pair_forest_lane_state_v1(
-        &lane_account.try_borrow_data()?,
-        &V7_PAIR_EMPTY_ROOTS,
-    )
-    .map_err(|_| ProgramError::InvalidAccountData)?;
+    let selected_lane = decode_lane_box(&lane_account.try_borrow_data()?)?;
     if selected_lane.master != master_account.key.to_bytes()
         || selected_lane.lane_id != output_lane
         || Pubkey::find_program_address(
@@ -210,34 +310,24 @@ pub fn validate_v7_pair_forest_asq8_request_v1(
     let frontier_nodes = frontier_nodes_from_staged_proof_length(proof_length)
         .ok_or(ProgramError::InvalidAccountData)?;
     profile_checkpoint("aspis-asq8-profile:proof-framing");
-    let live_snapshot = PoolV1PairLiveSnapshotV1 {
-        pool: master_account.key.to_bytes(),
-        deployment_domain: master.identity.deployment_domain,
-        sequence: selected_lane.tree.next_leaf_index,
-        next_pair_index: selected_lane.tree.next_leaf_index,
-        current_root: selected_lane.tree.root,
-        frontier: selected_lane.tree.frontier,
-    };
-    let mut live_snapshot_bytes = [0u8; POOL_V1_PAIR_LIVE_SNAPSHOT_BYTES];
-    encode_pool_v1_pair_live_snapshot_v1(&live_snapshot, &mut live_snapshot_bytes)
-        .map_err(|_| ProgramError::InvalidAccountData)?;
-    let parsed = parse_v7_staged_pair_inputs_v1(payload, frontier_nodes, &live_snapshot_bytes)
-        .map_err(|_| ProgramError::InvalidAccountData)?;
+    let late_statement = parse_staged_late_statement_box(
+        payload,
+        frontier_nodes,
+        master_account.key.to_bytes(),
+        master.identity.deployment_domain,
+        &selected_lane,
+    )?;
     profile_checkpoint("aspis-asq8-profile:staged-codecs");
-    let common = PoolV1PairForestTerminalCommonV1 {
-        master_account: master_account.key.to_bytes(),
-        checkpoint_account: checkpoint_account.key.to_bytes(),
-        selected_lane_account: lane_account.key.to_bytes(),
+    let statement = reconstruct_statement_box(
+        &request,
+        master_account.key.to_bytes(),
+        checkpoint_account.key.to_bytes(),
+        lane_account.key.to_bytes(),
         output_lane,
-        checkpoint_sequence: checkpoint.checkpoint_sequence,
-        historical_global_anchor: checkpoint.global_root,
-        lane_transition: PoolV1PairLatePublicStatementV1 {
-            live_snapshot,
-            candidate_afterstate: parsed.late_statement.candidate_afterstate,
-        },
-    };
-    let statement = reconstruct_pool_v1_pair_forest_terminal_statement_v1(&request, common)
-        .map_err(|_| ProgramError::InvalidInstructionData)?;
+        checkpoint.checkpoint_sequence,
+        checkpoint.global_root,
+        &late_statement,
+    )?;
     if master.identity.asset_id
         != match request.public {
             aspis_statement::pool_v1::PoolV1PairForestTerminalPaymentV1::PrivateTransfer(
@@ -252,11 +342,7 @@ pub fn validate_v7_pair_forest_asq8_request_v1(
     }
     profile_checkpoint("aspis-asq8-profile:asf8-reconstructed");
     Ok(ValidatedV7PairForestAsq8V1 {
-        request,
-        master,
-        checkpoint,
-        selected_lane,
-        statement: Box::new(statement),
+        statement,
         frontier_nodes,
     })
 }
@@ -292,7 +378,14 @@ where
         let encoded = encode_pool_v1_pair_forest_terminal_result_v1(&result)
             .map_err(|_| ProgramError::InvalidAccountData)?;
         profile_checkpoint("aspis-asq8-profile:asr8-encoded");
-        program::set_return_data(&encoded);
+        // Synthetic return-copy sweep only: any extension repeats a canonical
+        // prefix of ASR8. It is verifier-derived, deterministic and checked by
+        // the Pool profile, but deliberately claims no new settlement field.
+        let mut swept = vec![0u8; V7_PAIR_FOREST_PROFILE_RETURN_BYTES];
+        swept[..encoded.len()].copy_from_slice(&encoded);
+        let tail_len = V7_PAIR_FOREST_PROFILE_RETURN_BYTES - encoded.len();
+        swept[encoded.len()..].copy_from_slice(&encoded[..tail_len]);
+        program::set_return_data(&swept);
         profile_checkpoint("aspis-asq8-profile:asr8-returned");
         return Ok(());
     }

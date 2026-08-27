@@ -171,12 +171,18 @@ fn phase_ledger(logs: &[String]) -> Vec<serde_json::Value> {
 fn main() -> Result<()> {
     let args = env::args().skip(1).collect::<Vec<_>>();
     ensure!(
-        args.len() == 3,
-        "usage: harness <aspis_pool.so> <aspis_verifier.so> <evidence.json>"
+        args.len() == 3 || args.len() == 4,
+        "usage: harness <aspis_pool.so> <aspis_verifier.so> <evidence.json> [expected-return-bytes]"
     );
     let pool_path = PathBuf::from(&args[0]);
     let verifier_path = PathBuf::from(&args[1]);
     let evidence_path = PathBuf::from(&args[2]);
+    let expected_return_bytes = args
+        .get(3)
+        .map(|value| value.parse::<usize>())
+        .transpose()
+        .context("invalid expected return byte count")?
+        .unwrap_or(792);
     ensure!(!evidence_path.exists(), "refusing to overwrite evidence");
     let pool_elf = fs::read(&pool_path)?;
     let verifier_elf = fs::read(&verifier_path)?;
@@ -395,6 +401,10 @@ fn main() -> Result<()> {
     let executed = execute(&mut svm, &payer, instruction)?;
     let phase_ledger = phase_ledger(&executed.logs);
     ensure!(!phase_ledger.is_empty(), "profile markers missing");
+    ensure!(
+        executed.return_data.data.len() == 792,
+        "unexpected final Pool return-data length"
+    );
 
     let lane_after = svm
         .get_account(&address(&lane_key))
@@ -437,9 +447,12 @@ fn main() -> Result<()> {
         "compute_units": executed.compute_units_consumed,
         "transaction_wire_bytes": wire_bytes,
         "instruction_bytes": instruction_data.len(),
+        "proof_grammar_max_bytes": aspis_core::v7_staged_pair::V7_STAGED_PAIR_MAX_BODY_BYTES,
+        "fixture_frontier_nodes_per_tree": frontier_nodes,
         "proof_body_bytes": proof_bytes,
         "upload_payload_bytes": payload_bytes,
-        "return_bytes": executed.return_data.data.len(),
+        "verifier_cpi_return_bytes": expected_return_bytes,
+        "final_pool_return_bytes": executed.return_data.data.len(),
         "pool_elf_sha256": sha256_hex(&pool_elf),
         "verifier_profile_elf_sha256": sha256_hex(&verifier_elf),
         "phase_ledger": phase_ledger,

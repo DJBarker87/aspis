@@ -11,6 +11,12 @@ use crate::verify;
 
 #[cfg(all(not(feature = "no-entrypoint"), feature = "spend-minimal-dispatch"))]
 solana_program::entrypoint!(process_spend_production_instruction);
+#[cfg(all(
+    not(feature = "no-entrypoint"),
+    feature = "v7-pair-forest-cu-profile",
+    not(feature = "spend-minimal-dispatch")
+))]
+solana_program::entrypoint!(process_spend_production_instruction);
 
 /// Parse exactly one fixed-width byte array from the production wire.
 ///

@@ -9,6 +9,29 @@
 #![no_std]
 #![allow(unexpected_cfgs)]
 
+#[cfg(any(
+    all(
+        feature = "pair-forest-cu-return-824",
+        any(
+            feature = "pair-forest-cu-return-856",
+            feature = "pair-forest-cu-return-920",
+            feature = "pair-forest-cu-return-1024"
+        )
+    ),
+    all(
+        feature = "pair-forest-cu-return-856",
+        any(
+            feature = "pair-forest-cu-return-920",
+            feature = "pair-forest-cu-return-1024"
+        )
+    ),
+    all(
+        feature = "pair-forest-cu-return-920",
+        feature = "pair-forest-cu-return-1024"
+    )
+))]
+compile_error!("PAIR_FOREST_CU_RETURN_SWEEP_REQUIRES_EXACTLY_ONE_SIZE");
+
 #[cfg(test)]
 extern crate std;
 

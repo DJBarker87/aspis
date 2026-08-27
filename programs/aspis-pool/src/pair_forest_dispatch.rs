@@ -41,6 +41,41 @@ fn profile_checkpoint(label: &'static str) {
     let _ = label;
 }
 
+#[cfg(feature = "pair-forest-cu-return-1024")]
+const PAIR_FOREST_PROFILE_RETURN_BYTES: usize = 1_024;
+#[cfg(all(
+    not(feature = "pair-forest-cu-return-1024"),
+    feature = "pair-forest-cu-return-920"
+))]
+const PAIR_FOREST_PROFILE_RETURN_BYTES: usize = 920;
+#[cfg(all(
+    not(any(
+        feature = "pair-forest-cu-return-1024",
+        feature = "pair-forest-cu-return-920"
+    )),
+    feature = "pair-forest-cu-return-856"
+))]
+const PAIR_FOREST_PROFILE_RETURN_BYTES: usize = 856;
+#[cfg(all(
+    not(any(
+        feature = "pair-forest-cu-return-1024",
+        feature = "pair-forest-cu-return-920",
+        feature = "pair-forest-cu-return-856"
+    )),
+    feature = "pair-forest-cu-return-824"
+))]
+const PAIR_FOREST_PROFILE_RETURN_BYTES: usize = 824;
+#[cfg(all(
+    feature = "pair-forest-cu-profile",
+    not(any(
+        feature = "pair-forest-cu-return-1024",
+        feature = "pair-forest-cu-return-920",
+        feature = "pair-forest-cu-return-856",
+        feature = "pair-forest-cu-return-824"
+    ))
+))]
+const PAIR_FOREST_PROFILE_RETURN_BYTES: usize = POOL_V1_PAIR_FOREST_TERMINAL_RESULT_BYTES;
+
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub(crate) struct AuthenticatedPairForestResultV1(Box<PoolV1PairForestTerminalResultV1>);
 
@@ -218,11 +253,22 @@ fn invoke_pair_forest_terminal_with_runtime_v1<'info, R: PairForestVerifierRunti
     if returned_program != plan.selected_verifier {
         return Err(PoolV1ProgramError::InvalidVerifierReturnProgram.into());
     }
+    #[cfg(not(feature = "pair-forest-cu-profile"))]
     if returned_data.len() != POOL_V1_PAIR_FOREST_TERMINAL_RESULT_BYTES {
         return Err(PoolV1ProgramError::InvalidVerifierReturnData.into());
     }
-    let result = decode_pool_v1_pair_forest_terminal_result_v1(&returned_data)
-        .map_err(|_| PoolV1ProgramError::InvalidVerifierReturnData)?;
+    #[cfg(feature = "pair-forest-cu-profile")]
+    if returned_data.len() != PAIR_FOREST_PROFILE_RETURN_BYTES
+        || returned_data[POOL_V1_PAIR_FOREST_TERMINAL_RESULT_BYTES..]
+            != returned_data
+                [..PAIR_FOREST_PROFILE_RETURN_BYTES - POOL_V1_PAIR_FOREST_TERMINAL_RESULT_BYTES]
+    {
+        return Err(PoolV1ProgramError::InvalidVerifierReturnData.into());
+    }
+    let result = decode_pool_v1_pair_forest_terminal_result_v1(
+        &returned_data[..POOL_V1_PAIR_FOREST_TERMINAL_RESULT_BYTES],
+    )
+    .map_err(|_| PoolV1ProgramError::InvalidVerifierReturnData)?;
     profile_checkpoint("aspis-forest-pool-profile:asr8-decoded");
     Ok(AuthenticatedPairForestResultV1(Box::new(result)))
 }
@@ -325,12 +371,18 @@ mod tests {
                     next_frontier: core::array::from_fn(|_| [M31::ZERO; 8]),
                 },
             };
-            self.returned = Some((
-                instruction.program_id,
-                encode_pool_v1_pair_forest_terminal_result_v1(&result)
-                    .unwrap()
-                    .to_vec(),
-            ));
+            let encoded = encode_pool_v1_pair_forest_terminal_result_v1(&result).unwrap();
+            #[cfg(not(feature = "pair-forest-cu-profile"))]
+            let returned = encoded.to_vec();
+            #[cfg(feature = "pair-forest-cu-profile")]
+            let returned = {
+                let mut bytes = vec![0u8; PAIR_FOREST_PROFILE_RETURN_BYTES];
+                bytes[..encoded.len()].copy_from_slice(&encoded);
+                let tail_len = PAIR_FOREST_PROFILE_RETURN_BYTES - encoded.len();
+                bytes[encoded.len()..].copy_from_slice(&encoded[..tail_len]);
+                bytes
+            };
+            self.returned = Some((instruction.program_id, returned));
             Ok(())
         }
 

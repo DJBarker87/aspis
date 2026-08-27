@@ -123,8 +123,18 @@ use crate::pair_forest::{
 
 const SPL_TOKEN_INITIALIZE_ACCOUNT3_DISCRIMINANT: u8 = 18;
 
-#[cfg(not(feature = "no-entrypoint"))]
+#[cfg(all(
+    not(feature = "no-entrypoint"),
+    not(feature = "pair-forest-cu-profile")
+))]
 solana_program::entrypoint!(process_instruction);
+
+// Keep the byte-for-CU experiment out of the large multi-instruction
+// production dispatcher.  This is feature-gated, accepts only exact ASQ8,
+// and delegates to the same terminal implementation as the normal dispatcher.
+// Release builds never enable `pair-forest-cu-profile`.
+#[cfg(all(not(feature = "no-entrypoint"), feature = "pair-forest-cu-profile"))]
+solana_program::entrypoint!(process_pair_forest_cu_profile_instruction);
 
 pub(crate) trait PoolCpiRuntimeV1 {
     fn invoke<'info>(
@@ -2261,6 +2271,29 @@ fn dispatch_selected_verifier_v1<'info>(
 /// Exact native Pool dispatcher. Return data is cleared at entry and again on
 /// every error, so an accepted verifier's intermediate `ASVS` cannot escape a
 /// later failed marker/tree/vault transition.
+#[cfg(feature = "pair-forest-cu-profile")]
+#[inline(never)]
+pub fn process_pair_forest_cu_profile_instruction(
+    program_id: &Pubkey,
+    accounts: &[AccountInfo<'_>],
+    instruction_data: &[u8],
+) -> ProgramResult {
+    program::set_return_data(&[]);
+    #[cfg(target_os = "solana")]
+    require_transaction_level_invocation_v1(get_stack_height())?;
+    if instruction_data.get(..4) != Some(b"ASQ8") {
+        return Err(ProgramError::InvalidInstructionData);
+    }
+    let slot = Clock::get()?.slot;
+    let mut runtime = SolanaPoolCpiRuntimeV1;
+    let result =
+        process_pair_forest_terminal_v1(program_id, accounts, instruction_data, slot, &mut runtime);
+    if result.is_err() {
+        program::set_return_data(&[]);
+    }
+    result
+}
+
 #[inline(never)]
 pub fn process_instruction(
     program_id: &Pubkey,

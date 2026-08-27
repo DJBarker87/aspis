@@ -77,6 +77,12 @@ v7-pair-forest-asq8 = [
 # result constructor so only byte/account plumbing can be profiled.  Entrypoint
 # builds are forbidden from combining it with every production switch.
 v7-pair-forest-cu-profile = ["aspis-statement/pool-v1-kernel"]
+# Mutually exclusive, measurement-only ASR8 return-copy sweep points. The
+# production ASR8 codec remains exactly 792 bytes.
+v7-pair-forest-cu-return-824 = ["v7-pair-forest-cu-profile"]
+v7-pair-forest-cu-return-856 = ["v7-pair-forest-cu-profile"]
+v7-pair-forest-cu-return-920 = ["v7-pair-forest-cu-profile"]
+v7-pair-forest-cu-return-1024 = ["v7-pair-forest-cu-profile"]
 
 [dependencies]
 aspis-core = { path = "../../crates/aspis-core" }

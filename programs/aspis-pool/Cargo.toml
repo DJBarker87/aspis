@@ -22,6 +22,12 @@ pair-forest-account-evidence = []
 # Local-only phase logging for the inactive eight-lane one-terminal caller.
 # It changes no wire bytes or state semantics and is never enabled by default.
 pair-forest-cu-profile = ["pair-forest-account-evidence"]
+# Mutually exclusive, measurement-only ASR8 return-copy sweep points. The
+# production ASR8 codec remains exactly 792 bytes.
+pair-forest-cu-return-824 = ["pair-forest-cu-profile"]
+pair-forest-cu-return-856 = ["pair-forest-cu-profile"]
+pair-forest-cu-return-920 = ["pair-forest-cu-profile"]
+pair-forest-cu-return-1024 = ["pair-forest-cu-profile"]
 
 [dependencies]
 aspis-core.workspace = true
