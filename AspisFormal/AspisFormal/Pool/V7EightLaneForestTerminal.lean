@@ -213,6 +213,28 @@ def applyAcceptedTerminal
   lanes := updateLane state.lanes statement.outputLane statement.laneResult
   spentNullifiers := Set.insert statement.nullifier state.spentNullifiers
 
+/-- Complete stateful acceptance for the one terminal transaction.  The
+cryptographic terminal contract is paired with the Pool's literal replay
+precondition: the public nullifier must not already be present in the atomic
+state consumed by this transaction. -/
+structure ForestAtomicAccepted
+    {K Nullifier : Type} [CommRing K]
+    (parent : Digest K → Digest K → Digest K)
+    (emptyLeaf : Digest K)
+    (compressPair : PairLeaf K → Digest K)
+    (depth : Nat)
+    (laneOfNullifier : Nullifier → Lane)
+    (retained : Digest K → Prop)
+    (baseRelation :
+      ForestTerminalStatement K Nullifier →
+        ForestTerminalProof K parent → Prop)
+    (state : ForestAtomicState K Nullifier)
+    (statement : ForestTerminalStatement K Nullifier)
+    (proof : ForestTerminalProof K parent) : Prop where
+  terminal : ForestTerminalAccepted parent emptyLeaf compressPair depth
+    laneOfNullifier retained baseRelation state.lanes statement proof
+  nullifierFresh : statement.nullifier ∉ state.spentNullifiers
+
 @[simp] theorem accepted_terminal_marks_nullifier
     {K Nullifier : Type}
     (state : ForestAtomicState K Nullifier)
@@ -220,6 +242,39 @@ def applyAcceptedTerminal
     statement.nullifier ∈
       (applyAcceptedTerminal state statement).spentNullifiers := by
   exact Set.mem_insert statement.nullifier state.spentNullifiers
+
+/-- Atomic application makes the exact accepted statement ineligible for a
+second application, independent of every cryptographic detail. -/
+theorem applied_terminal_rejects_identical_nullifier
+    {K Nullifier : Type}
+    (state : ForestAtomicState K Nullifier)
+    (statement : ForestTerminalStatement K Nullifier) :
+    ¬ statement.nullifier ∉
+      (applyAcceptedTerminal state statement).spentNullifiers := by
+  exact fun absent => absent (accepted_terminal_marks_nullifier state statement)
+
+/-- Therefore no complete stateful acceptance witness for the same statement
+can exist against the post-state of an accepted atomic application. -/
+theorem identical_statement_cannot_be_accepted_after_application
+    {K Nullifier : Type} [CommRing K]
+    (parent : Digest K → Digest K → Digest K)
+    (emptyLeaf : Digest K)
+    (compressPair : PairLeaf K → Digest K)
+    (depth : Nat)
+    (laneOfNullifier : Nullifier → Lane)
+    (retained : Digest K → Prop)
+    (baseRelation :
+      ForestTerminalStatement K Nullifier →
+        ForestTerminalProof K parent → Prop)
+    (state : ForestAtomicState K Nullifier)
+    (statement : ForestTerminalStatement K Nullifier)
+    (proof : ForestTerminalProof K parent) :
+    ¬ ForestAtomicAccepted parent emptyLeaf compressPair depth
+      laneOfNullifier retained baseRelation
+      (applyAcceptedTerminal state statement) statement proof := by
+  intro acceptedAgain
+  exact applied_terminal_rejects_identical_nullifier state statement
+    acceptedAgain.nullifierFresh
 
 @[simp] theorem accepted_terminal_writes_output_lane
     {K Nullifier : Type}
@@ -268,6 +323,8 @@ theorem accepted_terminal_increments_selected_lane_once
 #print axioms other_lane_update_does_not_stale_completed_proof
 #print axioms changed_output_lane_stales_completed_proof
 #print axioms accepted_terminal_marks_nullifier
+#print axioms applied_terminal_rejects_identical_nullifier
+#print axioms identical_statement_cannot_be_accepted_after_application
 #print axioms accepted_terminal_writes_output_lane
 #print axioms accepted_terminal_preserves_every_other_lane
 #print axioms accepted_terminal_increments_selected_lane_once
