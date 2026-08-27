@@ -1,0 +1,7 @@
+2026-08-27T09:04:24+00:00
+Result=success
+ActiveState=inactive
+SubState=dead
+MemAvailable:   53739140 kB
+SwapTotal:       8388604 kB
+SwapFree:          47176 kB
