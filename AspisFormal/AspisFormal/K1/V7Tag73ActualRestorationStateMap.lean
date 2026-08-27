@@ -42,6 +42,7 @@ open AspisK1.V7Tag73OperationalNodeCertificate
 open AspisK1.V7Tag73ConcreteRestorationTraceInduction
 open AspisK1.V7Tag73CompletedFullRunProjection
 open AspisK1.V7Tag73ActualNodeCausalProvenance
+open AspisK1.V7Tag73Q16ControlInvariant
 
 noncomputable section
 
@@ -429,7 +430,7 @@ theorem dispatch_one_concrete_restoration_preserves_restoration_state_map
                                     remaining := []
                                     availableExact := by simp [verifierRecords]
                                     trace := verifierPrefix.trace }
-                                have childExecution :
+                                let childExecution :
                                     ProjectedRestorationNodeExecution
                                       (Final := ConcreteRestorationClientRun
                                         Statement Proof Payload Result)
@@ -505,11 +506,45 @@ theorem dispatch_one_concrete_restoration_preserves_restoration_state_map
                                     ActualRestorationStateMapInvariant
                                       startProgram configuration verifierTrace
                                         added.2 := by
+                                  have parentMember :
+                                      prepared.parentNode ∈ accumulator.nodes :=
+                                    (ready_preparation_parent_is_stored
+                                      startProgram configuration accumulator
+                                      prepared.request prepared
+                                      preparationAtPrepared).2.1
+                                  have parentQ16 : FutureFreeQ16SlotInvariant
+                                      prepared.parentNode.verifierFinalState :=
+                                    invariant.everyNodeQ16SlotInvariant
+                                      prepared.parentNode parentMember
+                                  have parentClosed : FutureFreeHistoryClosed
+                                      prepared.parentNode.verifierFinalState :=
+                                    invariant.everyNodeHistoryClosed
+                                      prepared.parentNode parentMember
+                                  have selection :=
+                                    prepare_concrete_restoration_ready_selection_exact
+                                      startProgram configuration accumulator
+                                      prepared.request prepared
+                                      preparationAtPrepared
+                                  have beforeSeen : prepared.transition.before ∈
+                                      prepared.parentNode.verifierFinalState.seen :=
+                                    selected_transition_before_is_previously_seen
+                                      prepared.parentNode
+                                      prepared.request.verifierTransitionIndex
+                                      prepared.transition selection.2.1
+                                      parentClosed
+                                  have childQ16 : FutureFreeQ16SlotInvariant
+                                      node.verifierFinalState := by
+                                    apply
+                                      projected_restoration_child_q16_slot_invariant
+                                        childExecution
+                                    · simpa [childExecution] using parentQ16
+                                    · simpa [childExecution] using beforeSeen
                                   simpa [added] using
                                     (restoration_state_map_add_child startProgram
                                       configuration verifierTrace [] charged node
                                         (projected_restoration_child_history_closed
                                           childExecution)
+                                        childQ16
                                         (by simpa using verifierCovered)
                                         chargedInvariant)
                                 change SchedulerNativeCursorAllProjectedTracedReturned _
@@ -663,6 +698,7 @@ theorem returned_concrete_restoration_client_has_exact_state_map
     (client : ConcreteRestorationClient Result)
     (rootTrace : List UnifiedExposureRecord)
     (rootClosed : FutureFreeHistoryClosed root.verifierFinalState)
+    (rootQ16 : FutureFreeQ16SlotInvariant root.verifierFinalState)
     (rootTraceHasNoAdvance : ∀ scheduled,
       (.forkAdvance scheduled : UnifiedExposureRecord) ∉ rootTrace)
     (answers : List Digest256)
@@ -693,7 +729,7 @@ theorem returned_concrete_restoration_client_has_exact_state_map
         configuration restorationFuel client
   have traced := safe rootTrace
     (initial_restoration_state_map startProgram configuration root rootTrace
-      rootClosed rootTraceHasNoAdvance)
+      rootClosed rootQ16 rootTraceHasNoAdvance)
   apply run_scheduler_native_list_run_respects_projected_traced_returned
     (fun result suffix => ActualRestorationStateMapInvariant startProgram
       configuration (rootTrace ++ suffix) result.accumulator)

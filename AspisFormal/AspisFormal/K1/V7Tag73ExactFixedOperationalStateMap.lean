@@ -18,6 +18,7 @@ namespace AspisK1.V7Tag73ExactFixedOperationalStateMap
 
 open AspisK1.V7FsAokExperiment
 open AspisK1.V7Tag73TranscriptSchedule
+open AspisK1.V7Tag73InteractiveAncestor
 open AspisK1.V7Tag73RawSameTapeSource
 open AspisK1.V7Tag73OperationalOracleExposure
 open AspisK1.V7Tag73AtomicForkUniformScheduler
@@ -43,6 +44,7 @@ open AspisK1.V7Tag73RawVerifierExecution
 open AspisK1.V7Tag73ActualNodeCausalProvenance
 open AspisK1.V7Tag73ActualRestorationStateMap
 open AspisK1.V7Tag73ExactOperationalResourceCertificate
+open AspisK1.V7Tag73Q16ControlInvariant
 
 noncomputable section
 
@@ -100,6 +102,36 @@ theorem exact_fixed_package_root_history_closed
     package.root.fixedRoot.base.runtime.verifierFinalState
   rw [← projected.finalStateExact]
   exact closed
+
+/-- The same literal root trace preserves the executable q16 block cap for
+the live state and every complete restoration snapshot. -/
+theorem exact_fixed_package_root_q16_slot_invariant
+    {HiddenTape TapeIdentity Observation Statement Proof Payload Result : Type}
+    {parameters : ExactCompilerResourceParameters}
+    {transitionFuel : Nat}
+    {configuration : ExactPlainRomConfiguration HiddenTape TapeIdentity
+      Observation Statement Proof Payload Result parameters}
+    {projection : AcceptedTapeProjection Statement Proof Payload}
+    {fixedInstance : PublicInstance Statement}
+    {sample : ExactCompilerSample HiddenTape parameters}
+    (package : ExactFixedCleanFullRunFactorizationPackage transitionFuel
+      configuration projection fixedInstance sample) :
+    FutureFreeQ16SlotInvariant
+      package.root.fixedRoot.base.runtime.node.verifierFinalState := by
+  let projected := package.root.fixedRoot.base.projected
+  obtain ⟨pairs, _history, operational⟩ :=
+    raw_verifier_execution_has_operational_trace projected.execution
+  have invariant :=
+    future_free_operational_trace_preserves_q16_slot_invariant
+      projected.execution.environment
+      projected.execution.adversaryValue.rawMessages operational
+      (initial_future_free_q16_slot_invariant
+        (FixedBindings.ofContext
+          projected.execution.adversaryValue.rawMessages.context))
+  change FutureFreeQ16SlotInvariant
+    package.root.fixedRoot.base.runtime.verifierFinalState
+  rw [← projected.finalStateExact]
+  exact invariant
 
 /-- Canonical chronological trace used by the operational state map. -/
 def exactFixedOperationalStateMapTrace
@@ -169,6 +201,7 @@ theorem exact_fixed_completed_package_has_operational_state_map
     configuration.restorationConfiguration configuration.restorationFuel
     configuration.client (exactFixedRootRecords package.root)
     (exact_fixed_package_root_history_closed package)
+    (exact_fixed_package_root_q16_slot_invariant package)
     (full_projected_root_records_have_no_fork_advance
       package.root.full.projection.rootPrefixes)
     package.root.full.projection.rootPrefixes.verifier.remaining
@@ -245,6 +278,7 @@ theorem fixed_legal_member_has_operational_state_restoration_input
 
 #print axioms full_projected_root_records_have_no_fork_advance
 #print axioms exact_fixed_package_root_history_closed
+#print axioms exact_fixed_package_root_q16_slot_invariant
 #print axioms exact_fixed_operational_state_map_trace_is_full_trace
 #print axioms exact_fixed_completed_package_has_operational_state_map
 #print axioms fixed_legal_member_has_operational_state_restoration_input

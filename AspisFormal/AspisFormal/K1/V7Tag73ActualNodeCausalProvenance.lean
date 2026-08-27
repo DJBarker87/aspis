@@ -14,6 +14,7 @@ import AspisFormal.K1.V7Tag73RawStrictReplacementSuffix
 import AspisFormal.K1.V7Tag73CoupledReplayAlignment
 import AspisFormal.K1.V7Tag73AtomicPairFork
 import AspisFormal.K1.V7Tag73PrefixTableProvenance
+import AspisFormal.K1.V7Tag73Q16ControlInvariant
 
 /-!
 # Actual-node causal provenance for the concrete Tag-73 restoration client
@@ -71,6 +72,7 @@ open AspisK1.V7Tag73CoupledReplayAlignment
 open AspisK1.V7Tag73AtomicPairFork
 open AspisK1.V7Tag73PrefixTableProvenance
 open AspisK1.V7Tag73CompletedFullRunProjection
+open AspisK1.V7Tag73Q16ControlInvariant
 
 noncomputable section
 
@@ -1256,6 +1258,42 @@ def EveryStoredNodeHistoryClosed
     Prop :=
   ∀ node ∈ accumulator.nodes,
     FutureFreeHistoryClosed node.verifierFinalState
+
+/-- Every stored verifier run obeys the executable q16 block cap at its live
+snapshot and at every complete snapshot retained for later restoration. -/
+def EveryStoredNodeQ16SlotInvariant
+    {Statement Proof Payload : Type u}
+    (accumulator : ConcreteRestorationAccumulator Statement Proof Payload) :
+    Prop :=
+  ∀ node ∈ accumulator.nodes,
+    FutureFreeQ16SlotInvariant node.verifierFinalState
+
+theorem every_stored_node_q16_slot_invariant_of_nodes_eq
+    {Statement Proof Payload : Type u}
+    (oldAccumulator newAccumulator :
+      ConcreteRestorationAccumulator Statement Proof Payload)
+    (nodesExact : newAccumulator.nodes = oldAccumulator.nodes)
+    (invariant : EveryStoredNodeQ16SlotInvariant oldAccumulator) :
+    EveryStoredNodeQ16SlotInvariant newAccumulator := by
+  intro node member
+  apply invariant node
+  rw [← nodesExact]
+  exact member
+
+theorem every_stored_node_q16_slot_invariant_add_child
+    {Statement Proof Payload : Type u}
+    (accumulator : ConcreteRestorationAccumulator Statement Proof Payload)
+    (child : ConcreteRestorationNode Statement Proof Payload)
+    (invariant : EveryStoredNodeQ16SlotInvariant accumulator)
+    (childInvariant :
+      FutureFreeQ16SlotInvariant child.verifierFinalState) :
+    EveryStoredNodeQ16SlotInvariant (accumulator.addNode child).2 := by
+  intro candidate member
+  simp only [ConcreteRestorationAccumulator.addNode, List.mem_append,
+    List.mem_singleton] at member
+  rcases member with old | rfl
+  · exact invariant candidate old
+  · exact childInvariant
 
 /-- The actual operational object associated with one emitted adjacent fork
 pair.  `preparationExact` and `selectionExact` jointly prove that the parent,
@@ -2889,6 +2927,49 @@ theorem projected_restoration_child_history_closed
   exact drive_raw_future_free_path_preserves_history_closed environment
     child.adversaryValue.rawMessages configuration.driverFuel
       child.verifierEntryState pairs child.verifierFinalState entryClosed path
+
+/-- A projected child inherits the q16 cap from the exact parent snapshot to
+which preparation restores, and its literal future-free verifier trace
+preserves that cap through the returned final state. -/
+theorem projected_restoration_child_q16_slot_invariant
+    {Statement Proof Payload Final : Type u}
+    {startProgram : OracleMachine
+      (CheckedRawTag73AdversaryReturnedValue Statement Proof Payload)}
+    {environment : FutureFreeEnvironment}
+    {configuration : ConcreteRestorationConfiguration}
+    {fullTrace : List UnifiedExposureRecord}
+    {accumulator : ConcreteRestorationAccumulator Statement Proof Payload}
+    {child : ConcreteRestorationNode Statement Proof Payload}
+    (base : ProjectedRestorationNodeExecution
+      (Final := Final) startProgram environment configuration fullTrace
+        accumulator child)
+    (parentInvariant : FutureFreeQ16SlotInvariant
+      base.prepared.parentNode.verifierFinalState)
+    (beforeSeen : base.prepared.transition.before ∈
+      base.prepared.parentNode.verifierFinalState.seen) :
+    FutureFreeQ16SlotInvariant child.verifierFinalState := by
+  have selection := prepare_concrete_restoration_ready_selection_exact
+    startProgram configuration accumulator base.prepared.request base.prepared
+      base.preparationExact
+  have beforeBound : Q16SnapshotSlotBound base.prepared.transition.before :=
+    parentInvariant.2 base.prepared.transition.before beforeSeen
+  have restoredInvariant :
+      FutureFreeQ16SlotInvariant base.prepared.restoredState := by
+    rw [selection.2.2.2]
+    constructor
+    · exact beforeBound
+    · intro snapshot member
+      simp only [restoreIndexedTransition, List.mem_singleton] at member
+      subst snapshot
+      exact beforeBound
+  have entryInvariant :
+      FutureFreeQ16SlotInvariant child.verifierEntryState := by
+    rw [base.restoredEntryExact]
+    exact restoredInvariant
+  obtain ⟨pairs, _path, _historyExact, operational, _tableAnswers⟩ :=
+    projected_restoration_node_verifier_has_operational_trace base
+  exact future_free_operational_trace_preserves_q16_slot_invariant environment
+    child.adversaryValue.rawMessages operational entryInvariant
 
 /-- Historical programming-ledger constructor factored ahead of the global
 transition/table constructor.  Factoring it here keeps the dependency order
@@ -5141,6 +5222,7 @@ structure ActualRestorationStateMapInvariant
     (accumulator : ConcreteRestorationAccumulator Statement Proof Payload) :
     Prop where
   everyNodeHistoryClosed : EveryStoredNodeHistoryClosed accumulator
+  everyNodeQ16SlotInvariant : EveryStoredNodeQ16SlotInvariant accumulator
   everyEmittedPairRestored : EveryEmittedPairHasConcreteRestoration
     startProgram configuration trace
 
@@ -5182,6 +5264,9 @@ theorem restoration_state_map_of_nodes_eq
   { everyNodeHistoryClosed :=
       every_stored_node_history_closed_of_nodes_eq oldAccumulator
         newAccumulator nodesExact invariant.everyNodeHistoryClosed
+    everyNodeQ16SlotInvariant :=
+      every_stored_node_q16_slot_invariant_of_nodes_eq oldAccumulator
+        newAccumulator nodesExact invariant.everyNodeQ16SlotInvariant
     everyEmittedPairRestored := pairsCovered }
 
 /-- Appending one actually returned child preserves closed histories and the
@@ -5195,6 +5280,7 @@ theorem restoration_state_map_add_child
     (accumulator : ConcreteRestorationAccumulator Statement Proof Payload)
     (child : ConcreteRestorationNode Statement Proof Payload)
     (childClosed : FutureFreeHistoryClosed child.verifierFinalState)
+    (childQ16 : FutureFreeQ16SlotInvariant child.verifierFinalState)
     (pairsCovered : EveryEmittedPairHasConcreteRestoration startProgram
       configuration (trace ++ suffix))
     (invariant : ActualRestorationStateMapInvariant startProgram configuration
@@ -5204,6 +5290,9 @@ theorem restoration_state_map_add_child
   { everyNodeHistoryClosed :=
       every_stored_node_history_closed_add_child accumulator child
         invariant.everyNodeHistoryClosed childClosed
+    everyNodeQ16SlotInvariant :=
+      every_stored_node_q16_slot_invariant_add_child accumulator child
+        invariant.everyNodeQ16SlotInvariant childQ16
     everyEmittedPairRestored := pairsCovered }
 
 /-- The singleton root initializes the map on any fork-free root prefix. -/
@@ -5215,6 +5304,7 @@ theorem initial_restoration_state_map
     (root : ConcreteRestorationNode Statement Proof Payload)
     (trace : List UnifiedExposureRecord)
     (rootClosed : FutureFreeHistoryClosed root.verifierFinalState)
+    (rootQ16 : FutureFreeQ16SlotInvariant root.verifierFinalState)
     (noAdvance : ∀ scheduled,
       (.forkAdvance scheduled : UnifiedExposureRecord) ∉ trace) :
     ActualRestorationStateMapInvariant startProgram configuration trace
@@ -5225,6 +5315,12 @@ theorem initial_restoration_state_map
         simpa [initialRestorationAccumulatorFromRoot] using member
       subst node
       exact rootClosed
+    everyNodeQ16SlotInvariant := by
+      intro node member
+      have nodeExact : node = root := by
+        simpa [initialRestorationAccumulatorFromRoot] using member
+      subst node
+      exact rootQ16
     everyEmittedPairRestored :=
       every_emitted_pair_of_no_fork_advance startProgram configuration trace
         noAdvance }
@@ -5267,6 +5363,7 @@ theorem unchanged_continuation_preserves_restoration_state_map
 #print axioms emitted_pair_concrete_restoration_of_ready
 #print axioms every_emitted_pair_append_without_fork_advance
 #print axioms every_emitted_pair_append_scheduled_pair
+#print axioms projected_restoration_child_q16_slot_invariant
 #print axioms initial_restoration_state_map
 #print axioms unchanged_continuation_preserves_restoration_state_map
 
