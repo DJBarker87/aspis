@@ -216,13 +216,40 @@ and existing-page persistence functions are both source-closed, including the
 canonical root slots and their deployed byte offsets.  Its `#print axioms`
 result is exactly `[propext, Classical.choice, Quot.sound]`.
 
+`proof/PoolV1HistoryReadBridge.lean` closes the successful retained-root read
+path from literal production source.  Its capstone
+`read_retained_root_success_has_exact_source_slice` proves the exact deployed
+page and filled-slot checks, checked byte offset `64 + slot * 32`, fixed
+32-byte source slice and canonical decoder result.  No retained-root lookup or
+decoder callback is assumed.
+
+`proof/PoolV1HistoryCodecRoundTripBridge.lean` then connects the literal
+production encoder called by both persistence functions to that exact decoder.
+`encode_digest_canonical_loop_exact` follows all eight ordered little-endian
+limb writes, and `source_encoder_decoder_round_trip` proves that every
+canonically encoded production digest decodes to exactly the original digest.
+This is an actual source-level codec theorem rather than an abstract
+serialization premise.  Both focused theorem groups report only
+`[propext, Classical.choice, Quot.sound]`.
+
+The retained-root reader passes through Rust's formatting machinery only on
+an impossible `Result::unwrap` failure after a successful fixed-array
+conversion.  Aeneas otherwise exposes its placeholder `core::fmt::Formatter`
+as an axiom even though its state is unobservable.  The bundle therefore pins
+the same formatter-as-`Unit` tool-model patch already used by the frozen V5
+source replay in
+`aeneas-patches/0001-model-formatter-as-unobservable-unit-state.patch`.
+
 The remaining implementation lift is:
 
 1. lift the now-closed prepared-afterimage validator through the caller that
    constructs it and through the state/root account writes;
-2. prove literal retained-root lookup is a round trip through the now-closed
-   existing-page and rollover/new-page byte after-images;
-3. carry pool identity, owner, PDA and same-writable-account checks through the
+2. compose the now-closed source codec theorem with the exact existing-page
+   and rollover/new-page traces, proving that later ordered writes preserve
+   each selected slot and hence a literal read-after-write result;
+3. close current-page versus rollover routing, including the exact root split,
+   page number, first sequence and supplied-next-account condition;
+4. carry pool identity, owner, PDA and same-writable-account checks through the
    successful program path.
 
 The only intended cryptographic semantic boundary is the already-frozen
