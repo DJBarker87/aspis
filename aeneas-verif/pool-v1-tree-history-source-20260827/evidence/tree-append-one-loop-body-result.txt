@@ -24,7 +24,7 @@ executable FunsExternal.lean sha256:
 f70b6a9cc70ffda0fe959e3ac9a6b0268b63cf6b099e6c9916827fa180a08187
 
 focused bridge sha256:
-151756cef7596127055b9725d3f44a878e37f850058f129fbaf710621a1950f4
+e7e7134901abaf93ff7fd20973dd1307f2e470ac347d158d520f80f5c3ee804d
 
 Focused generated Types/FunsExternal/Funs compile: PASS
 Focused production append carry-step bridge compile: PASS
@@ -32,9 +32,11 @@ Focused production append carry-step bridge compile: PASS
 Proved theorem group:
 PoolV1TreeAppendOneSourceBridge.append_loop_body_stops_at_depth
 PoolV1TreeAppendOneSourceBridge.append_loop_body_stops_at_zero_bit
+PoolV1TreeAppendOneSourceBridge.append_loop_body_stops_at_nonone_bit
 PoolV1TreeAppendOneSourceBridge.append_loop_body_carries_at_one_bit
+PoolV1TreeAppendOneSourceBridge.append_loop_has_exact_source_trace
 
-#print axioms for all three theorems:
+#print axioms for all five theorems:
 [propext, Classical.choice, Quot.sound]
 
 No sorry, admit, sorryAx, native_decide or project-specific axiom occurs in
@@ -42,4 +44,6 @@ the compiled bridge. ParentCallbackExact is the sole explicit semantic
 premise, exactly at the opaque Poseidon tree-parent primitive. The depth test,
 cursor shift and low-bit test, paired frontier/empty-root indexing, frontier
 replacement and checked level increment are transparent production control
-flow.
+flow. The final theorem lifts these exact steps through the generated loop
+with measure `20 - carry_level`; it has no abstract loop callback, trace-cover
+premise or termination assumption.

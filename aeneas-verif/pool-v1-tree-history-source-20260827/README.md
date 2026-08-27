@@ -82,6 +82,13 @@ All three theorems report exactly
 only semantic premise, and it is used only at the translated production
 Poseidon call.
 
+The capstone `append_loop_has_exact_source_trace` lifts those steps through
+the literal generated loop with a decreasing depth measure. Every successful
+loop execution therefore has an explicit finite prefix of exact one-bit carry
+steps and terminates only at depth 20 or at the deployed non-one low-bit
+branch. It reports the same three standard Lean axioms and introduces no
+abstract loop function, trace-cover premise or termination assumption.
+
 The append translation uses the committed Aeneas constructor tool branch at
 `e9d20a64aa4dcbbc20ba8742a6ddf720f0c575cd` (`aeneas
 aspis-v5-constructor-e9d20a64`). That branch contains the already committed
@@ -103,9 +110,9 @@ declarations rather than treating raw JSON byte order as semantics.
 
 ## Remaining implementation boundary
 
-The smallest next boundary is iteration of the now-proved production carry
-step: prove the generated `loop` reaches the exact first zero cursor bit and
-connect the resulting frontier/carry to the existing `appendCarry` predicate.
+The smallest next boundary is the representation bridge from the now-proved
+finite production carry trace to the existing hash-parametric `appendCarry`
+predicate, including the caller's final carry-slot write.
 After that, the work is:
 
 1. derive two-append as the exact ordered composition of two successful
