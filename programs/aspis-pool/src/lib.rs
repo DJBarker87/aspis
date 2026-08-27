@@ -78,10 +78,16 @@ pub use pair_dispatch::{
 };
 #[cfg(feature = "pair-forest-account-evidence")]
 pub use pair_forest::{
-    decode_retained_pair_forest_checkpoint_account_v1, plan_pair_forest_checkpoint_accounts_v1,
-    pool_v1_pair_forest_checkpoint_address, pool_v1_pair_forest_lane_address,
+    decode_pair_forest_checkpoint_instruction_v1, decode_pair_forest_initialize_instruction_v1,
+    decode_retained_pair_forest_checkpoint_account_v1,
+    encode_pair_forest_checkpoint_instruction_v1, encode_pair_forest_initialize_instruction_v1,
+    plan_pair_forest_checkpoint_accounts_v1, pool_v1_pair_forest_checkpoint_address,
+    pool_v1_pair_forest_global_root_v1, pool_v1_pair_forest_lane_address,
     pool_v1_pair_forest_lane_root_page_address, pool_v1_pair_forest_master_address,
-    PlannedPairForestCheckpointAccountsV1, POOL_V1_PAIR_FOREST_CHECKPOINT_SEED,
+    PlannedPairForestCheckpointAccountsV1, POOL_V1_PAIR_FOREST_CHECKPOINT_ACCOUNT_COUNT,
+    POOL_V1_PAIR_FOREST_CHECKPOINT_INSTRUCTION_BYTES,
+    POOL_V1_PAIR_FOREST_CHECKPOINT_INSTRUCTION_MAGIC, POOL_V1_PAIR_FOREST_CHECKPOINT_SEED,
+    POOL_V1_PAIR_FOREST_INITIALIZE_ACCOUNT_COUNT, POOL_V1_PAIR_FOREST_INITIALIZE_INSTRUCTION_MAGIC,
     POOL_V1_PAIR_FOREST_LANE_SEED, POOL_V1_PAIR_FOREST_MASTER_SEED,
 };
 pub use pair_state::{

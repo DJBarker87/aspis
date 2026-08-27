@@ -115,6 +115,11 @@ use crate::{
     },
 };
 
+#[cfg(feature = "pair-forest-account-evidence")]
+use crate::pair_forest::{
+    process_pair_forest_checkpoint_with_runtime_v1, process_pair_forest_initialize_with_runtime_v1,
+};
+
 const SPL_TOKEN_INITIALIZE_ACCOUNT3_DISCRIMINANT: u8 = 18;
 
 #[cfg(not(feature = "no-entrypoint"))]
@@ -167,7 +172,7 @@ impl PoolCpiRuntimeV1 for SolanaPoolCpiRuntimeV1 {
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
-enum FreshPdaPreparationV1 {
+pub(crate) enum FreshPdaPreparationV1 {
     CreateOrAllocateSystemOwned,
     ProgramOwnedZeroed,
 }
@@ -188,7 +193,7 @@ fn supported_program_loader(owner: &Pubkey) -> bool {
         || owner == &loader_v4::id()
 }
 
-fn require_unique_accounts(accounts: &[AccountInfo<'_>]) -> ProgramResult {
+pub(crate) fn require_unique_accounts(accounts: &[AccountInfo<'_>]) -> ProgramResult {
     for left in 0..accounts.len() {
         for right in left + 1..accounts.len() {
             if accounts[left].key == accounts[right].key {
@@ -199,7 +204,7 @@ fn require_unique_accounts(accounts: &[AccountInfo<'_>]) -> ProgramResult {
     Ok(())
 }
 
-fn require_payer_and_system_program(
+pub(crate) fn require_payer_and_system_program(
     payer: &AccountInfo<'_>,
     system_program_account: &AccountInfo<'_>,
 ) -> ProgramResult {
@@ -261,7 +266,7 @@ fn close_program_account_v1(
     Ok(())
 }
 
-fn plan_fresh_program_pda(
+pub(crate) fn plan_fresh_program_pda(
     account: &AccountInfo<'_>,
     program_id: &Pubkey,
     expected_address: &Pubkey,
@@ -287,7 +292,7 @@ fn plan_fresh_program_pda(
     }
 }
 
-fn create_or_allocate_pda<'info, R: PoolCpiRuntimeV1>(
+pub(crate) fn create_or_allocate_pda<'info, R: PoolCpiRuntimeV1>(
     runtime: &mut R,
     payer: &AccountInfo<'info>,
     account: &AccountInfo<'info>,
@@ -2273,7 +2278,35 @@ pub fn process_instruction(
         .get(..4)
         .ok_or(ProgramError::InvalidInstructionData)?;
     let mut runtime = SolanaPoolCpiRuntimeV1;
-    let result = if magic == POOL_V1_INITIALIZE_INSTRUCTION_MAGIC {
+    let result = if cfg!(feature = "pair-forest-account-evidence") && magic == b"AS8I" {
+        #[cfg(feature = "pair-forest-account-evidence")]
+        {
+            let rent = Rent::get()?;
+            process_pair_forest_initialize_with_runtime_v1(
+                program_id,
+                accounts,
+                instruction_data,
+                &rent,
+                &mut runtime,
+            )
+        }
+        #[cfg(not(feature = "pair-forest-account-evidence"))]
+        unreachable!()
+    } else if cfg!(feature = "pair-forest-account-evidence") && magic == b"AS8C" {
+        #[cfg(feature = "pair-forest-account-evidence")]
+        {
+            let rent = Rent::get()?;
+            process_pair_forest_checkpoint_with_runtime_v1(
+                program_id,
+                accounts,
+                instruction_data,
+                &rent,
+                &mut runtime,
+            )
+        }
+        #[cfg(not(feature = "pair-forest-account-evidence"))]
+        unreachable!()
+    } else if magic == POOL_V1_INITIALIZE_INSTRUCTION_MAGIC {
         process_initialize_with_runtime_v1(
             program_id,
             accounts,
