@@ -73,6 +73,33 @@ structure FixedK15EventBounds
       (fixedK15CategoryCap kind : ENNReal) /
         ((P ^ 4 - 1 : Nat) : ENNReal)
 
+/-- An ordinary uniform QM31 bound safely weakens to the common nonzero-field
+denominator used by the composed ledger. -/
+theorem ordinary_bound_le_common_nonzero_bound (cap : Nat) :
+    (cap : ENNReal) / ((P ^ 4 : Nat) : ENNReal) ≤
+      (cap : ENNReal) / ((P ^ 4 - 1 : Nat) : ENNReal) := by
+  apply ENNReal.div_le_div_left
+  exact_mod_cast Nat.sub_le (P ^ 4) 1
+
+/-- Build the complete ledger from the seven ordinary-sampler component
+bounds and the exact nonzero-kappa component bound. -/
+theorem fixedK15EventBounds_of_ordinary_and_kappa
+    {Coins : Type} (law : PMF Coins) (events : FixedK15Events Coins)
+    (ordinary : ∀ kind, kind ≠ .kappaPointRow →
+      law.toOuterMeasure (events.event kind) ≤
+        (fixedK15CategoryCap kind : ENNReal) /
+          ((P ^ 4 : Nat) : ENNReal))
+    (kappa : law.toOuterMeasure (events.event .kappaPointRow) ≤
+      (2 : ENNReal) / ((P ^ 4 - 1 : Nat) : ENNReal)) :
+    FixedK15EventBounds law events := by
+  refine ⟨fun kind => ?_⟩
+  by_cases isKappa : kind = .kappaPointRow
+  · subst kind
+    exact kappa
+  · exact (ordinary kind isKappa).trans
+      (ordinary_bound_le_common_nonzero_bound
+        (fixedK15CategoryCap kind))
+
 /-- Exact finite-union measure theorem for the corrected K1.5 numerator. -/
 theorem fixed_k15_failure_probability_le
     {Coins : Type} (law : PMF Coins) (events : FixedK15Events Coins)
@@ -118,6 +145,8 @@ theorem fixed_k15_failure_probability_le_two_pow_neg_105 :
   norm_num [P]
 
 #print axioms fixedK15CategoryCap_sum_eq
+#print axioms ordinary_bound_le_common_nonzero_bound
+#print axioms fixedK15EventBounds_of_ordinary_and_kappa
 #print axioms fixed_k15_failure_probability_le
 #print axioms covered_fixed_k15_failure_probability_le
 #print axioms fixed_k15_failure_probability_le_two_pow_neg_105
