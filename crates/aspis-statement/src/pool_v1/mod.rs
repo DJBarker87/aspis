@@ -20,6 +20,7 @@ pub mod pair_forest_accounts;
 pub mod pair_forest_constraint_residuals;
 #[cfg(not(target_os = "solana"))]
 pub mod pair_forest_hiding;
+pub mod pair_forest_terminal;
 #[cfg(not(target_os = "solana"))]
 pub mod pair_forest_trace;
 pub mod pair_terminal;
@@ -145,6 +146,23 @@ pub use pair_forest_accounts::{
     POOL_V1_PAIR_FOREST_LANE_HEADER_BYTES, POOL_V1_PAIR_FOREST_LANE_MAGIC,
     POOL_V1_PAIR_FOREST_LANE_VERSION, POOL_V1_PAIR_FOREST_MASTER_ACCOUNT_BYTES,
     POOL_V1_PAIR_FOREST_MASTER_MAGIC, POOL_V1_PAIR_FOREST_MASTER_VERSION,
+};
+pub use pair_forest_terminal::{
+    decode_pool_v1_pair_forest_terminal_result_v1,
+    decode_pool_v1_pair_forest_terminal_statement_v1,
+    encode_pool_v1_pair_forest_terminal_result_v1,
+    encode_pool_v1_pair_forest_terminal_statement_v1,
+    validate_pool_v1_pair_forest_terminal_result_against_statement_v1,
+    validate_pool_v1_pair_forest_terminal_statement_v1, PoolV1PairForestTerminalAccountsV1,
+    PoolV1PairForestTerminalCommonV1, PoolV1PairForestTerminalFormatErrorV1,
+    PoolV1PairForestTerminalResultV1, PoolV1PairForestTerminalStatementV1,
+    POOL_V1_PAIR_FOREST_TERMINAL_RESULT_BYTES, POOL_V1_PAIR_FOREST_TERMINAL_RESULT_MAGIC,
+    POOL_V1_PAIR_FOREST_TERMINAL_STATEMENT_BYTES, POOL_V1_PAIR_FOREST_TERMINAL_STATEMENT_MAGIC,
+    POOL_V1_PAIR_FOREST_TERMINAL_VERSION,
+};
+#[cfg(not(target_os = "solana"))]
+pub use pair_forest_terminal::{
+    verify_pool_v1_pair_forest_terminal_inactive_v1, PoolV1PairForestTerminalHostErrorV1,
 };
 #[cfg(not(target_os = "solana"))]
 pub use pair_forest_hiding::{
