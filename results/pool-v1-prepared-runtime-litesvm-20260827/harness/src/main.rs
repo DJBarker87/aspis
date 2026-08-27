@@ -10,7 +10,9 @@ use aspis_pool::{
     PrivateTransferStatementV1, POOL_V1_PREPARED_SETTLEMENT_CORE_ACCOUNT_BYTES,
     POOL_V1_PREPARED_SETTLEMENT_ROLLOVER_ACCOUNT_BYTES,
 };
-use aspis_statement::pool_v1::root_history::read_root_history_page_root_v1;
+use aspis_statement::pool_v1::{
+    root_history::read_root_history_page_root_v1, root_history_location,
+};
 use aspis_statement::{
     encode_digest_canonical,
     pool_v1::{
@@ -43,7 +45,8 @@ use solana_transaction::Transaction;
 
 const COMPUTE_UNIT_LIMIT: u32 = 1_400_000;
 const PROFILE_SLOT: u64 = 150;
-const SOURCE_SEQUENCE_TARGET: u64 = 254;
+const MEMBERSHIP_ANCHOR_SEQUENCE: u64 = 100;
+const SOURCE_SEQUENCE_TARGET: u64 = 510;
 const POOL_PROGRAM_BYTES: [u8; 32] = [0xA5; 32];
 const VERIFIER_PROGRAM_BYTES: [u8; 32] = [0xB6; 32];
 const REGISTRY_PROGRAM_BYTES: [u8; 32] = [0xC7; 32];
@@ -217,8 +220,9 @@ fn main() -> Result<()> {
     let registry_program = legacy(REGISTRY_PROGRAM_BYTES);
     let mint = legacy([0x51; 32]);
     let pool = pool_v1_state_address(&pool_program, &mint).0;
-    let page = pool_v1_root_page_address(&pool_program, &pool, 0).0;
-    let next_page = pool_v1_root_page_address(&pool_program, &pool, 1).0;
+    let historical_page = pool_v1_root_page_address(&pool_program, &pool, 0).0;
+    let current_page = pool_v1_root_page_address(&pool_program, &pool, 1).0;
+    let next_page = pool_v1_root_page_address(&pool_program, &pool, 2).0;
     let policy = VerifierPolicyV1 {
         flags: 0,
         registry_program: REGISTRY_PROGRAM_BYTES,
@@ -233,21 +237,49 @@ fn main() -> Result<()> {
         verifier_policy: policy,
     };
     let mut state = PoolStateV1::genesis(&pool, initialization)?;
-    let mut page_model = RootHistoryPageV1::genesis(pool.to_bytes(), state.tree.root);
+    let mut page_models = vec![RootHistoryPageV1::genesis(pool.to_bytes(), state.tree.root)];
+    let mut membership_anchor_root = None;
     for index in 0..SOURCE_SEQUENCE_TARGET {
         let (next_tree, receipt) = state
             .tree
             .append_one(digest(10_000 + index as u32))
             .map_err(|error| anyhow!("seed populated tree at {index}: {error:?}"))?;
-        page_model
+        let location = root_history_location(receipt.root_sequence);
+        if location.page_number as usize == page_models.len() {
+            page_models.push(
+                RootHistoryPageV1::new(pool.to_bytes(), location.page_number)
+                    .map_err(|error| anyhow!("create populated history page: {error:?}"))?,
+            );
+        }
+        page_models[location.page_number as usize]
             .push(receipt.root_sequence, receipt.root)
             .map_err(|error| anyhow!("retain seeded root at {index}: {error:?}"))?;
+        if receipt.root_sequence == MEMBERSHIP_ANCHOR_SEQUENCE {
+            membership_anchor_root = Some(receipt.root);
+        }
         state.tree = next_tree;
     }
     let source_sequence = state.current_root_sequence();
-    let page_image = page_model
+    let membership_anchor_root =
+        membership_anchor_root.context("membership anchor was not seeded")?;
+    let historical_page_image = page_models[0]
         .encode()
-        .map_err(|error| anyhow!("encode genesis root history: {error:?}"))?;
+        .map_err(|error| anyhow!("encode historical root page: {error:?}"))?;
+    let current_page_image = page_models[1]
+        .encode()
+        .map_err(|error| anyhow!("encode current root page: {error:?}"))?;
+    ensure!(
+        read_root_history_page_root_v1(&historical_page_image, MEMBERSHIP_ANCHOR_SEQUENCE,)
+            .map_err(|error| anyhow!("read retained membership anchor: {error:?}"))?
+            == membership_anchor_root,
+        "retained membership root differs from the statement anchor"
+    );
+    ensure!(
+        read_root_history_page_root_v1(&current_page_image, source_sequence)
+            .map_err(|error| anyhow!("read current append root: {error:?}"))?
+            == state.tree.root,
+        "retained current root differs from the append source"
+    );
 
     let nullifier = digest(30_000);
     let recipient = digest(31_000);
@@ -255,8 +287,8 @@ fn main() -> Result<()> {
     let public_statement = PoolV1PrivateTransferPublicV1 {
         pool: pool.to_bytes(),
         deployment_domain: DEPLOYMENT_DOMAIN_BYTES,
-        anchor_sequence: source_sequence,
-        anchor_root: state.tree.root,
+        anchor_sequence: MEMBERSHIP_ANCHOR_SEQUENCE,
+        anchor_root: membership_anchor_root,
         nullifier,
         asset_id: M31(73),
         recipient_commitment: recipient,
@@ -269,8 +301,8 @@ fn main() -> Result<()> {
         transition_kind: PoolV1TransitionKind::PrivateTransfer,
         pool: pool.to_bytes(),
         deployment_domain: DEPLOYMENT_DOMAIN_BYTES,
-        anchor_sequence: source_sequence,
-        anchor_root: state.tree.root,
+        anchor_sequence: MEMBERSHIP_ANCHOR_SEQUENCE,
+        anchor_root: membership_anchor_root,
         nullifier,
         verifier_profile: PROFILE_BINDING_BYTES,
         verifier_release: RELEASE_BINDING_BYTES,
@@ -292,8 +324,8 @@ fn main() -> Result<()> {
         release_binding: RELEASE_BINDING_BYTES,
         pool: pool.to_bytes(),
         deployment_domain: DEPLOYMENT_DOMAIN_BYTES,
-        anchor_sequence: source_sequence,
-        anchor_root: state.tree.root,
+        anchor_sequence: MEMBERSHIP_ANCHOR_SEQUENCE,
+        anchor_root: membership_anchor_root,
         nullifier,
         statement_digest,
         envelope_digest: historical_anchor_envelope_digest_v1(&envelope, sha256)
@@ -421,7 +453,18 @@ fn main() -> Result<()> {
     svm.airdrop(&payer.pubkey(), 10_000_000_000)
         .map_err(|failed| anyhow!("fund payer: {:?}", failed.err))?;
     put_account(&mut svm, pool, pool_program, state.encode()?.to_vec())?;
-    put_account(&mut svm, page, pool_program, page_image.to_vec())?;
+    put_account(
+        &mut svm,
+        historical_page,
+        pool_program,
+        historical_page_image.to_vec(),
+    )?;
+    put_account(
+        &mut svm,
+        current_page,
+        pool_program,
+        current_page_image.to_vec(),
+    )?;
     put_account(
         &mut svm,
         receipt_address,
@@ -458,7 +501,12 @@ fn main() -> Result<()> {
     )?;
 
     let pool_before_prepare = svm.get_account(&address(&pool)).context("pool missing")?;
-    let page_before_prepare = svm.get_account(&address(&page)).context("page missing")?;
+    let historical_page_before_prepare = svm
+        .get_account(&address(&historical_page))
+        .context("historical page missing")?;
+    let current_page_before_prepare = svm
+        .get_account(&address(&current_page))
+        .context("current page missing")?;
     let next_page_before_prepare = svm
         .get_account(&address(&next_page))
         .context("next page missing")?;
@@ -467,7 +515,8 @@ fn main() -> Result<()> {
         accounts: vec![
             meta(payer_legacy, true, true),
             meta(pool, false, true),
-            meta(page, false, false),
+            meta(historical_page, false, false),
+            meta(current_page, false, false),
             meta(next_page, false, true),
             meta(receipt_address, false, false),
             meta(registry, false, false),
@@ -489,7 +538,10 @@ fn main() -> Result<()> {
     )?;
     ensure!(
         svm.get_account(&address(&pool)).as_ref() == Some(&pool_before_prepare)
-            && svm.get_account(&address(&page)).as_ref() == Some(&page_before_prepare)
+            && svm.get_account(&address(&historical_page)).as_ref()
+                == Some(&historical_page_before_prepare)
+            && svm.get_account(&address(&current_page)).as_ref()
+                == Some(&current_page_before_prepare)
             && svm.get_account(&address(&next_page)).as_ref() == Some(&next_page_before_prepare),
         "preparation mutated live Pool state"
     );
@@ -517,7 +569,7 @@ fn main() -> Result<()> {
         accounts: vec![
             meta(payer_legacy, true, true),
             meta(pool, false, true),
-            meta(page, false, true),
+            meta(current_page, false, true),
             meta(next_page, false, true),
             meta(marker, false, true),
             meta(receipt_address, false, false),
@@ -546,7 +598,7 @@ fn main() -> Result<()> {
     )?;
     ensure!(state_after.current_root_sequence() == source_sequence + 2);
     let current_page_after = svm
-        .get_account(&address(&page))
+        .get_account(&address(&current_page))
         .context("current history page missing after settle")?;
     let next_page_after = svm
         .get_account(&address(&next_page))
@@ -569,7 +621,18 @@ fn main() -> Result<()> {
     );
     let decoded_marker = decode_pool_v1_nullifier_marker(&marker_account.data)
         .map_err(|error| anyhow!("decode nullifier marker: {error:?}"))?;
-    ensure!(decoded_marker.nullifier == nullifier && decoded_marker.pool == pool.to_bytes());
+    ensure!(
+        decoded_marker.nullifier == nullifier
+            && decoded_marker.pool == pool.to_bytes()
+            && decoded_marker.retained_anchor_sequence == MEMBERSHIP_ANCHOR_SEQUENCE
+            && decoded_marker.retained_anchor_root == membership_anchor_root,
+        "nullifier marker does not preserve the historical membership anchor"
+    );
+    ensure!(
+        svm.get_account(&address(&historical_page)).as_ref()
+            == Some(&historical_page_before_prepare),
+        "settlement mutated the retained historical anchor page"
+    );
     let plan_closed = svm
         .get_account(&address(&plan))
         .map(|account| account.lamports == 0)
@@ -585,7 +648,8 @@ fn main() -> Result<()> {
     );
 
     let pool_before_replay = svm.get_account(&address(&pool));
-    let page_before_replay = svm.get_account(&address(&page));
+    let historical_page_before_replay = svm.get_account(&address(&historical_page));
+    let current_page_before_replay = svm.get_account(&address(&current_page));
     let next_page_before_replay = svm.get_account(&address(&next_page));
     let marker_before_replay = svm.get_account(&address(&marker));
     svm.expire_blockhash();
@@ -593,7 +657,8 @@ fn main() -> Result<()> {
         run_rejection(&mut svm, &payer, "replay_consumed_plan", settle_instruction)?;
     ensure!(
         svm.get_account(&address(&pool)) == pool_before_replay
-            && svm.get_account(&address(&page)) == page_before_replay
+            && svm.get_account(&address(&historical_page)) == historical_page_before_replay
+            && svm.get_account(&address(&current_page)) == current_page_before_replay
             && svm.get_account(&address(&next_page)) == next_page_before_replay
             && svm.get_account(&address(&marker)) == marker_before_replay,
         "rejected replay mutated Pool state"
@@ -606,6 +671,14 @@ fn main() -> Result<()> {
         "schema": "aspis.pool-v1.prepared-runtime-evidence.v1",
         "profile_slot": PROFILE_SLOT,
         "compute_unit_limit": COMPUTE_UNIT_LIMIT,
+        "concurrency": {
+            "membership_anchor_sequence": MEMBERSHIP_ANCHOR_SEQUENCE,
+            "membership_anchor_root": encode_digest_canonical(&membership_anchor_root),
+            "append_source_sequence": source_sequence,
+            "append_source_root": encode_digest_canonical(&state.tree.root),
+            "historical_and_current_pages_are_distinct": true,
+            "proof_anchor_survives_410_intervening_appends": true
+        },
         "artifact": {
             "path": artifact_path,
             "bytes": artifact.len(),
@@ -632,6 +705,8 @@ fn main() -> Result<()> {
             "sequence_after": state_after.current_root_sequence(),
             "two_ordered_outputs": true,
             "nullifier_marker_exact": true,
+            "nullifier_marker_retains_membership_anchor": true,
+            "historical_anchor_page_unchanged": true,
             "plan_closed_and_refunded": true,
             "rollover_plan_closed_and_refunded": true,
             "rollover_history_page_applied": true
@@ -649,7 +724,8 @@ fn main() -> Result<()> {
             "both_transactions_fit_1232_bytes": true,
             "preparation_is_not_a_state_transition": true,
             "settlement_is_atomic_and_one_shot": true,
-            "private_transfer_crosses_root_page_254_to_256": true,
+            "private_transfer_crosses_root_page_510_to_512": true,
+            "historical_membership_root_is_independent_of_current_append_root": true,
             "no_network_send_or_deploy": true
         },
         "boundaries": [
