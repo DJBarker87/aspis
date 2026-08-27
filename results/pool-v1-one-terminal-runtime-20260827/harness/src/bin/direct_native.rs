@@ -171,24 +171,31 @@ fn main() -> Result<()> {
         &[&payer],
         svm.latest_blockhash(),
     );
-    let simulation = svm
-        .simulate_transaction(tx.clone())
-        .expect_err("native direct verifier unexpectedly fit the strict cap");
-    let execution = svm
-        .send_transaction(tx)
-        .expect_err("native direct verifier unexpectedly fit the strict cap");
-    if simulation.err != execution.err || simulation.meta != execution.meta {
+    let (simulation_outcome, simulation_error, simulation_meta) =
+        match svm.simulate_transaction(tx.clone()) {
+            Ok(success) => ("accepted", None, success.meta),
+            Err(failure) => ("rejected", Some(format!("{:?}", failure.err)), failure.meta),
+        };
+    let (execution_outcome, execution_error, execution_meta) = match svm.send_transaction(tx) {
+        Ok(meta) => ("accepted", None, meta),
+        Err(failure) => ("rejected", Some(format!("{:?}", failure.err)), failure.meta),
+    };
+    if simulation_outcome != execution_outcome
+        || simulation_error != execution_error
+        || simulation_meta != execution_meta
+    {
         bail!("simulation metadata differed from execution");
     }
     let evidence = json!({
-        "schema": "aspis.pool-v1.native-tag73-direct-verifier-red.v1",
+        "schema": "aspis.pool-v1.native-tag73-direct-verifier-profile.v1",
         "compute_unit_limit": CU_LIMIT,
-        "compute_units": execution.meta.compute_units_consumed,
-        "simulation_error": format!("{:?}", simulation.err),
-        "execution_error": format!("{:?}", execution.err),
+        "outcome": execution_outcome,
+        "compute_units": execution_meta.compute_units_consumed,
+        "simulation_error": simulation_error,
+        "execution_error": execution_error,
         "simulation_metadata_equals_execution": true,
-        "return_data_bytes": execution.meta.return_data.data.len(),
-        "logs": execution.meta.pretty_logs(),
+        "return_data_bytes": execution_meta.return_data.data.len(),
+        "logs": execution_meta.pretty_logs(),
         "verifier_sbf": {
             "bytes": verifier.len(),
             "sha256": sha256_hex(&verifier),
@@ -209,8 +216,8 @@ fn main() -> Result<()> {
     fs::write(&output_path, serde_json::to_vec_pretty(&evidence)?)
         .with_context(|| format!("write {}", output_path.display()))?;
     println!(
-        "native Tag-73 direct verifier: RED ({} CU)",
-        execution.meta.compute_units_consumed
+        "native Tag-73 direct verifier: {} ({} CU)",
+        execution_outcome, execution_meta.compute_units_consumed
     );
     Ok(())
 }
