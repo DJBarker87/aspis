@@ -236,9 +236,27 @@ pub(crate) fn plan_legacy_deposit_transfer_v1(
     accounts: &[AccountInfo],
     amount: u32,
 ) -> Result<LegacyDepositTransferPlanV1, ProgramError> {
+    plan_legacy_deposit_transfer_from_identity_v1(
+        program_id,
+        pool,
+        &state.identity,
+        accounts,
+        amount,
+    )
+}
+
+/// Pair-forest and legacy-state deposits share the exact vault identity,
+/// token parsing and direct-owner `TransferChecked` semantics.
+pub(crate) fn plan_legacy_deposit_transfer_from_identity_v1(
+    program_id: &Pubkey,
+    pool: &Pubkey,
+    identity: &PoolIdentityV1,
+    accounts: &[AccountInfo],
+    amount: u32,
+) -> Result<LegacyDepositTransferPlanV1, ProgramError> {
     let [mint_account, source_account, source_authority, vault_account, token_program] =
         exact_five_accounts(accounts)?;
-    if state.identity.token_program != LEGACY_SPL_TOKEN_PROGRAM_ID.to_bytes()
+    if identity.token_program != LEGACY_SPL_TOKEN_PROGRAM_ID.to_bytes()
         || token_program.key != &LEGACY_SPL_TOKEN_PROGRAM_ID
         || !token_program.executable
         || token_program.is_signer
@@ -247,7 +265,7 @@ pub(crate) fn plan_legacy_deposit_transfer_v1(
         return Err(PoolV1ProgramError::InvalidTokenProgram.into());
     }
 
-    let expected_mint = Pubkey::new_from_array(state.identity.asset_mint);
+    let expected_mint = Pubkey::new_from_array(identity.asset_mint);
     if mint_account.key != &expected_mint {
         return Err(PoolV1ProgramError::InvalidMint.into());
     }

@@ -132,12 +132,22 @@ pub fn encode_deposit_instruction_v1(
 pub fn decode_deposit_instruction_v1(
     bytes: &[u8],
 ) -> Result<DepositRequestV1<'_>, DepositInstructionFormatErrorV1> {
+    decode_deposit_instruction_with_magic_v1(bytes, POOL_V1_DEPOSIT_INSTRUCTION_MAGIC)
+}
+
+/// Crate-private strict decoder shared by versioned Pool deposit transports.
+/// Only the four-byte domain separator varies; the remaining frozen request
+/// grammar is byte-identical.
+pub(crate) fn decode_deposit_instruction_with_magic_v1(
+    bytes: &[u8],
+    expected_magic: [u8; 4],
+) -> Result<DepositRequestV1<'_>, DepositInstructionFormatErrorV1> {
     if bytes.len() < POOL_V1_DEPOSIT_INSTRUCTION_HEADER_BYTES
         || bytes.len() > POOL_V1_DEPOSIT_INSTRUCTION_MAX_BYTES
     {
         return Err(DepositInstructionFormatErrorV1::WrongLength);
     }
-    if bytes[..4] != POOL_V1_DEPOSIT_INSTRUCTION_MAGIC {
+    if bytes[..4] != expected_magic {
         return Err(DepositInstructionFormatErrorV1::WrongMagic);
     }
     if bytes[4] != POOL_V1_DEPOSIT_INSTRUCTION_VERSION {
