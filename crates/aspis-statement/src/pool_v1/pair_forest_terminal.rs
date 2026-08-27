@@ -30,6 +30,12 @@ pub const POOL_V1_PAIR_FOREST_TERMINAL_STATEMENT_BYTES: usize =
     144 + POOL_V1_PAIR_LATE_PUBLIC_STATEMENT_BYTES + POOL_V1_PAYMENT_STATEMENT_BYTES;
 pub const POOL_V1_PAIR_FOREST_TERMINAL_RESULT_BYTES: usize =
     8 + 3 * 32 + POOL_V1_PAIR_VERIFIED_AFTERSTATE_BYTES;
+/// Compact transaction/CPI request.  The full 1,880-byte ASF8 statement is
+/// reconstructed by the verifier from this payment public input and the four
+/// canonical read-only accounts `[proof, master, checkpoint, lane]`.
+pub const POOL_V1_PAIR_FOREST_TERMINAL_REQUEST_MAGIC: [u8; 4] = *b"ASQ8";
+pub const POOL_V1_PAIR_FOREST_TERMINAL_REQUEST_BYTES: usize =
+    8 + 3 * 32 + POOL_V1_PAYMENT_STATEMENT_BYTES;
 
 const MASTER_OFFSET: usize = 8;
 const CHECKPOINT_ACCOUNT_OFFSET: usize = 40;
@@ -44,6 +50,41 @@ const RESULT_MASTER_OFFSET: usize = 8;
 const RESULT_SELECTED_LANE_OFFSET: usize = 40;
 const RESULT_NULLIFIER_OFFSET: usize = 72;
 const RESULT_AFTERSTATE_OFFSET: usize = 104;
+
+const REQUEST_PROFILE_OFFSET: usize = 8;
+const REQUEST_RELEASE_OFFSET: usize = 40;
+const REQUEST_POOL_PROGRAM_OFFSET: usize = 72;
+const REQUEST_PAYMENT_OFFSET: usize = 104;
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct PoolV1PairForestTerminalRequestV1 {
+    pub verifier_profile: [u8; 32],
+    pub verifier_release: [u8; 32],
+    pub pool_program: [u8; 32],
+    pub public: PoolV1PairForestTerminalPaymentV1,
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum PoolV1PairForestTerminalPaymentV1 {
+    PrivateTransfer(PoolV1PrivateTransferPublicV1),
+    Withdrawal(PoolV1WithdrawalPublicV1),
+}
+
+impl PoolV1PairForestTerminalPaymentV1 {
+    pub fn transition_kind(&self) -> PoolV1TransitionKind {
+        match self {
+            Self::PrivateTransfer(_) => PoolV1TransitionKind::PrivateTransfer,
+            Self::Withdrawal(_) => PoolV1TransitionKind::Withdrawal,
+        }
+    }
+
+    pub fn nullifier(&self) -> &Digest {
+        match self {
+            Self::PrivateTransfer(public) => &public.nullifier,
+            Self::Withdrawal(public) => &public.nullifier,
+        }
+    }
+}
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct PoolV1PairForestTerminalCommonV1 {
@@ -329,6 +370,111 @@ pub fn decode_pool_v1_pair_forest_terminal_statement_v1(
             public: decode_pool_v1_withdrawal_public_v1(&bytes[PAYMENT_STATEMENT_OFFSET..])
                 .map_err(PoolV1PairForestTerminalFormatErrorV1::Payment)?,
         },
+    };
+    validate_pool_v1_pair_forest_terminal_statement_v1(&statement)?;
+    Ok(statement)
+}
+
+pub fn encode_pool_v1_pair_forest_terminal_request_v1(
+    request: &PoolV1PairForestTerminalRequestV1,
+) -> Result<[u8; POOL_V1_PAIR_FOREST_TERMINAL_REQUEST_BYTES], PoolV1PairForestTerminalFormatErrorV1>
+{
+    if request.verifier_profile == [0u8; 32]
+        || request.verifier_release == [0u8; 32]
+        || request.pool_program == [0u8; 32]
+    {
+        return Err(PoolV1PairForestTerminalFormatErrorV1::NonZeroBinding);
+    }
+    let payment = match request.public {
+        PoolV1PairForestTerminalPaymentV1::PrivateTransfer(public) => {
+            encode_pool_v1_private_transfer_public_v1(&public)
+        }
+        PoolV1PairForestTerminalPaymentV1::Withdrawal(public) => {
+            encode_pool_v1_withdrawal_public_v1(&public)
+        }
+    }
+    .map_err(PoolV1PairForestTerminalFormatErrorV1::Payment)?;
+    let mut output = [0u8; POOL_V1_PAIR_FOREST_TERMINAL_REQUEST_BYTES];
+    output[..4].copy_from_slice(&POOL_V1_PAIR_FOREST_TERMINAL_REQUEST_MAGIC);
+    output[4] = POOL_V1_PAIR_FOREST_TERMINAL_VERSION;
+    output[5] = request.public.transition_kind() as u8;
+    output[6] = POOL_V1_DIGEST_ENCODING_VERSION;
+    output[REQUEST_PROFILE_OFFSET..REQUEST_RELEASE_OFFSET]
+        .copy_from_slice(&request.verifier_profile);
+    output[REQUEST_RELEASE_OFFSET..REQUEST_POOL_PROGRAM_OFFSET]
+        .copy_from_slice(&request.verifier_release);
+    output[REQUEST_POOL_PROGRAM_OFFSET..REQUEST_PAYMENT_OFFSET]
+        .copy_from_slice(&request.pool_program);
+    output[REQUEST_PAYMENT_OFFSET..].copy_from_slice(&payment);
+    Ok(output)
+}
+
+pub fn decode_pool_v1_pair_forest_terminal_request_v1(
+    bytes: &[u8],
+) -> Result<PoolV1PairForestTerminalRequestV1, PoolV1PairForestTerminalFormatErrorV1> {
+    if bytes.len() != POOL_V1_PAIR_FOREST_TERMINAL_REQUEST_BYTES {
+        return Err(PoolV1PairForestTerminalFormatErrorV1::WrongLength);
+    }
+    if bytes[..4] != POOL_V1_PAIR_FOREST_TERMINAL_REQUEST_MAGIC {
+        return Err(PoolV1PairForestTerminalFormatErrorV1::WrongMagic);
+    }
+    if bytes[4] != POOL_V1_PAIR_FOREST_TERMINAL_VERSION {
+        return Err(PoolV1PairForestTerminalFormatErrorV1::WrongVersion);
+    }
+    let kind = transition_kind(bytes[5])?;
+    if bytes[6] != POOL_V1_DIGEST_ENCODING_VERSION {
+        return Err(PoolV1PairForestTerminalFormatErrorV1::WrongDigestEncoding);
+    }
+    if bytes[7] != 0 {
+        return Err(PoolV1PairForestTerminalFormatErrorV1::NonZeroBinding);
+    }
+    let public = match kind {
+        PoolV1TransitionKind::PrivateTransfer => {
+            PoolV1PairForestTerminalPaymentV1::PrivateTransfer(
+                decode_pool_v1_private_transfer_public_v1(&bytes[REQUEST_PAYMENT_OFFSET..])
+                    .map_err(PoolV1PairForestTerminalFormatErrorV1::Payment)?,
+            )
+        }
+        PoolV1TransitionKind::Withdrawal => PoolV1PairForestTerminalPaymentV1::Withdrawal(
+            decode_pool_v1_withdrawal_public_v1(&bytes[REQUEST_PAYMENT_OFFSET..])
+                .map_err(PoolV1PairForestTerminalFormatErrorV1::Payment)?,
+        ),
+    };
+    let request = PoolV1PairForestTerminalRequestV1 {
+        verifier_profile: bytes[REQUEST_PROFILE_OFFSET..REQUEST_RELEASE_OFFSET]
+            .try_into()
+            .map_err(|_| PoolV1PairForestTerminalFormatErrorV1::WrongLength)?,
+        verifier_release: bytes[REQUEST_RELEASE_OFFSET..REQUEST_POOL_PROGRAM_OFFSET]
+            .try_into()
+            .map_err(|_| PoolV1PairForestTerminalFormatErrorV1::WrongLength)?,
+        pool_program: bytes[REQUEST_POOL_PROGRAM_OFFSET..REQUEST_PAYMENT_OFFSET]
+            .try_into()
+            .map_err(|_| PoolV1PairForestTerminalFormatErrorV1::WrongLength)?,
+        public,
+    };
+    if request.verifier_profile == [0u8; 32]
+        || request.verifier_release == [0u8; 32]
+        || request.pool_program == [0u8; 32]
+    {
+        return Err(PoolV1PairForestTerminalFormatErrorV1::NonZeroBinding);
+    }
+    Ok(request)
+}
+
+/// Construct the exact semantic ASF8 object independently on both sides of
+/// the CPI boundary.  Equality of its canonical encoding is the binding that
+/// prevents the compact request from weakening any full-statement field.
+pub fn reconstruct_pool_v1_pair_forest_terminal_statement_v1(
+    request: &PoolV1PairForestTerminalRequestV1,
+    common: PoolV1PairForestTerminalCommonV1,
+) -> Result<PoolV1PairForestTerminalStatementV1, PoolV1PairForestTerminalFormatErrorV1> {
+    let statement = match request.public {
+        PoolV1PairForestTerminalPaymentV1::PrivateTransfer(public) => {
+            PoolV1PairForestTerminalStatementV1::PrivateTransfer { common, public }
+        }
+        PoolV1PairForestTerminalPaymentV1::Withdrawal(public) => {
+            PoolV1PairForestTerminalStatementV1::Withdrawal { common, public }
+        }
     };
     validate_pool_v1_pair_forest_terminal_statement_v1(&statement)?;
     Ok(statement)
@@ -621,6 +767,7 @@ pub use host::{
 
 const _: () = assert!(POOL_V1_PAIR_FOREST_TERMINAL_STATEMENT_BYTES == 1_880);
 const _: () = assert!(POOL_V1_PAIR_FOREST_TERMINAL_RESULT_BYTES == 792);
+const _: () = assert!(POOL_V1_PAIR_FOREST_TERMINAL_REQUEST_BYTES == 320);
 const _: () = assert!(P > 8);
 
 #[cfg(test)]
@@ -953,6 +1100,67 @@ mod tests {
                 decode_pool_v1_pair_forest_terminal_result_v1(&result_bytes),
                 Ok(result)
             );
+        }
+    }
+
+    #[test]
+    fn compact_request_round_trip_reconstructs_byte_identical_asf8_and_rejects_mutations() {
+        for fixture in [transfer_fixture(), withdrawal_fixture()] {
+            let public = match fixture.statement {
+                PoolV1PairForestTerminalStatementV1::PrivateTransfer { public, .. } => {
+                    PoolV1PairForestTerminalPaymentV1::PrivateTransfer(public)
+                }
+                PoolV1PairForestTerminalStatementV1::Withdrawal { public, .. } => {
+                    PoolV1PairForestTerminalPaymentV1::Withdrawal(public)
+                }
+            };
+            let request = PoolV1PairForestTerminalRequestV1 {
+                verifier_profile: [11; 32],
+                verifier_release: [12; 32],
+                pool_program: [13; 32],
+                public,
+            };
+            let encoded = encode_pool_v1_pair_forest_terminal_request_v1(&request).unwrap();
+            assert_eq!(encoded.len(), 320);
+            assert_eq!(
+                decode_pool_v1_pair_forest_terminal_request_v1(&encoded),
+                Ok(request)
+            );
+            let verifier_reconstruction = reconstruct_pool_v1_pair_forest_terminal_statement_v1(
+                &request,
+                *fixture.statement.common(),
+            )
+            .unwrap();
+            let pool_reconstruction = reconstruct_pool_v1_pair_forest_terminal_statement_v1(
+                &decode_pool_v1_pair_forest_terminal_request_v1(&encoded).unwrap(),
+                *fixture.statement.common(),
+            )
+            .unwrap();
+            assert_eq!(
+                encode_pool_v1_pair_forest_terminal_statement_v1(&verifier_reconstruction),
+                encode_pool_v1_pair_forest_terminal_statement_v1(&pool_reconstruction)
+            );
+            assert_eq!(pool_reconstruction, fixture.statement);
+
+            for index in [0usize, 4, 5, 6, 7] {
+                let mut changed = encoded;
+                changed[index] ^= 0x80;
+                assert!(decode_pool_v1_pair_forest_terminal_request_v1(&changed).is_err());
+            }
+            for index in [8usize, 40, 72, 104, 319] {
+                let mut changed = encoded;
+                changed[index] ^= 1;
+                assert_ne!(
+                    decode_pool_v1_pair_forest_terminal_request_v1(&changed),
+                    Ok(request)
+                );
+            }
+            let mut noncanonical = encoded;
+            noncanonical[REQUEST_PAYMENT_OFFSET + 112..REQUEST_PAYMENT_OFFSET + 116].fill(0xff);
+            assert!(decode_pool_v1_pair_forest_terminal_request_v1(&noncanonical).is_err());
+            let mut trailing = encoded.to_vec();
+            trailing.push(0);
+            assert!(decode_pool_v1_pair_forest_terminal_request_v1(&trailing).is_err());
         }
     }
 

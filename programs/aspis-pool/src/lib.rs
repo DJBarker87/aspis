@@ -24,6 +24,8 @@ pub mod nullifier;
 pub mod pair_dispatch;
 #[cfg(feature = "pair-forest-account-evidence")]
 pub mod pair_forest;
+#[cfg(feature = "pair-forest-account-evidence")]
+pub(crate) mod pair_forest_dispatch;
 pub(crate) mod pair_processor;
 pub mod pair_state;
 pub(crate) mod prepared_settlement;
