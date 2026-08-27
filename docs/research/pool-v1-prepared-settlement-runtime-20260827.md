@@ -1,6 +1,47 @@
 # Pool V1 prepared-settlement runtime checkpoint (2026-08-27)
 
-## Result
+## Historical-anchor/current-append concurrency result
+
+The stronger populated-tree fixture now separates the two root roles across
+three history pages:
+
+- the verified proof binds retained membership root sequence 100 on page zero;
+- 410 intervening appends advance the live Pool to sequence 510 on page one;
+- authenticated preparation reads that live append source and prepares the
+  exact two-output transition; and
+- atomic settlement writes sequence 511 to page one and sequence 512 to a new
+  page two.
+
+| Step | Compute units | Transaction bytes |
+|---|---:|---:|
+| `ASPP` authenticated preparation | 1,256,357 | 997 |
+| `ASPF` atomic settlement | 643,108 | 765 |
+| consumed-plan replay rejection | 488,106 | n/a |
+
+The old membership root is therefore fixed before expensive proving, while
+the append root/index is selected from live state only when `ASPP` executes.
+Deposits and spends that land during proving do not stale the proof while its
+retained anchor remains available. The prepared plan then binds the exact
+current Pool/page images: if another append wins after `ASPP` but before
+`ASPF`, `ASPF` rejects and the authority can cancel/refund the stale plan.
+Account locks serialize each instruction, but do not remove this intentionally
+short preparation-to-settlement race window.
+
+Preparation leaves the historical page, current page, next page, and Pool
+byte-exact. Settlement preserves the historical page, advances the live Pool,
+creates a nullifier marker that retains the sequence-100 membership anchor,
+applies both chronological roots, and closes/refunds both plan accounts.
+Replay is rejected without changing Pool, any page, or the marker. Simulation
+and execution metadata are byte-identical, and both successful transactions
+fit the current 1,232-byte serialized transaction ceiling.
+
+The replayable evidence is
+`results/pool-v1-prepared-runtime-litesvm-20260827/evidence-historical-anchor-rollover.json`.
+The clean-worktree profiled SBF is 415,784 bytes with SHA-256
+`5f590a11bcf4c5006afcb4caa2a6a9cf6d81091df8296002be53b3e18e0a2605`.
+It is a focused build, not yet the two-independent-build release certificate.
+
+## Earlier same-page rollover result
 
 The worst non-custody private-transfer page shape now fits the present Solana
 transaction limits in deterministic LiteSVM execution.  The fixture starts at
@@ -21,7 +62,7 @@ rejected with Pool/history/marker state unchanged.  Simulation and execution
 metadata are byte-identical, and both successful transactions fit the current
 1,232-byte serialized transaction ceiling.
 
-The replayable evidence is
+The earlier replayable evidence is
 `results/pool-v1-prepared-runtime-litesvm-20260827/evidence-rollover-final.json`.
 The profiled SBF is 415,784 bytes with SHA-256
 `5f590a11bcf4c5006afcb4caa2a6a9cf6d81091df8296002be53b3e18e0a2605`.
