@@ -16,7 +16,10 @@ use aspis_core::v6_transcript::{
     V6QueryBatchView, V6RelationDiagnosticPhase, V6SemanticView, V6TranscriptContext,
     V7TranscriptDiagnosticPhase,
 };
-use aspis_core::v7_onefold::{verify_and_gamma_combine_v7_openings, V7CompactOneFoldWire};
+use aspis_core::v7_onefold::{
+    verify_and_gamma_combine_v7_openings_with_diagnostic_trace, V7CompactOneFoldWire,
+    V7OpeningDiagnosticPhase,
+};
 use aspis_statement::pool_v1::{
     evaluate_pool_v1_private_transfer_selected_masked_terminal_compiled_tag73_v1,
     pool_v1_private_transfer_copy_active_row_masks_compiled_v1, verifier_proof_body_digest_v1,
@@ -127,11 +130,20 @@ fn authenticate_and_fold_queries(
     checkpoint("aspis-v7-profile:query-fold-start");
     let coordinates = prepare_v6_onefold_coordinates(view.queries)?;
     checkpoint("aspis-v7-profile:query-coordinates");
-    let combined = verify_and_gamma_combine_v7_openings(
+    let combined = verify_and_gamma_combine_v7_openings_with_diagnostic_trace(
         crate::verify::sbf_hashv,
         wire,
         view.queries,
         view.gamma_powers,
+        |phase| {
+            checkpoint(match phase {
+                V7OpeningDiagnosticPhase::GammaCombined => "aspis-v7-profile:query-gamma-combined",
+                V7OpeningDiagnosticPhase::LeavesHashed => "aspis-v7-profile:query-leaves-hashed",
+                V7OpeningDiagnosticPhase::MerkleAuthenticated => {
+                    "aspis-v7-profile:query-merkle-authenticated"
+                }
+            })
+        },
     )?;
     checkpoint("aspis-v7-profile:query-authentication-gamma");
     let values = fold_v6_onefold_queries(&combined, &coordinates, view.alpha0);
