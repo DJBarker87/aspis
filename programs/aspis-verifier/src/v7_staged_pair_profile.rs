@@ -8,25 +8,24 @@
 use aspis_core::{v6_onefold::V6WireError, v7_staged_pair::V7StagedPairOneFoldWire};
 use aspis_statement::pool_v1::{
     decode_pool_v1_pair_live_snapshot_v1, encode_pool_v1_pair_verified_afterstate_v1,
-    PoolV1PairLiveSnapshotErrorV1, PoolV1PairLiveSnapshotV1,
-    PoolV1PairVerifiedAfterstateV1, PoolV1PairVerifierTransportErrorV1,
-    POOL_V1_PAIR_VERIFIED_AFTERSTATE_BYTES,
+    PoolV1PairLiveSnapshotErrorV1, PoolV1PairLiveSnapshotV1, PoolV1PairVerifiedAfterstateV1,
+    PoolV1PairVerifierTransportErrorV1, POOL_V1_PAIR_VERIFIED_AFTERSTATE_BYTES,
 };
 use solana_program::program;
 
 pub const V7_STAGED_PAIR_PROFILE_BINDING_PREIMAGE: &[u8] =
-    b"aspis:pool-v1:verifier-profile:tag73-staged-pair-seven-c2-late-snapshot:asvq-v1";
+    b"aspis:pool-v1:verifier-profile:tag73-staged-pair-seven-c2-logical45-late-snapshot:asvq-v2";
 /// SHA-256 of `V7_STAGED_PAIR_PROFILE_BINDING_PREIMAGE`.
 pub const V7_STAGED_PAIR_PROFILE_BINDING: [u8; 32] = [
-    0xd6, 0x31, 0x5f, 0x90, 0xf5, 0x4f, 0xd7, 0x39, 0x76, 0x7e, 0x7a, 0x18, 0xf4, 0xa6, 0x62, 0x2b,
-    0xab, 0xeb, 0xf5, 0x31, 0xbb, 0x3e, 0x5e, 0xba, 0x32, 0x35, 0x06, 0x63, 0xf6, 0xb6, 0xac, 0x94,
+    0xc0, 0x70, 0x53, 0xc4, 0x3e, 0xf5, 0xd2, 0x14, 0x6e, 0xda, 0xc6, 0x1a, 0x71, 0xe9, 0x20, 0xd4,
+    0xd5, 0xa0, 0xd0, 0x70, 0x72, 0xca, 0xa0, 0x5e, 0x11, 0x9a, 0xb5, 0x18, 0x6e, 0x7d, 0x3f, 0x97,
 ];
 pub const V7_STAGED_PAIR_RELEASE_BINDING_PREIMAGE: &[u8] =
-    b"aspis:verifier:v7:tag73:staged-pair:seven-c2:late-snapshot:proof34658:result688:v1";
+    b"aspis:verifier:v7:tag73:staged-pair:seven-c2:logical45:late-snapshot:proof35216:result688:v2";
 /// SHA-256 of `V7_STAGED_PAIR_RELEASE_BINDING_PREIMAGE`.
 pub const V7_STAGED_PAIR_RELEASE_BINDING: [u8; 32] = [
-    0xa6, 0xe7, 0x6b, 0x24, 0xd1, 0x9f, 0x3a, 0x73, 0xcc, 0x87, 0x0b, 0x5a, 0x1d, 0xa4, 0x97, 0x03,
-    0x77, 0xeb, 0xa2, 0x19, 0xcc, 0xe8, 0xb9, 0x31, 0x4b, 0x05, 0x73, 0xb6, 0xf3, 0xee, 0xe8, 0xbb,
+    0x26, 0xdd, 0x7f, 0xc2, 0xff, 0x25, 0xc2, 0x4f, 0x23, 0x71, 0xbd, 0xc9, 0xc0, 0x6e, 0x6d, 0xc9,
+    0xd0, 0xd6, 0x95, 0xca, 0xf3, 0xff, 0xad, 0xe5, 0xd2, 0xf3, 0xf9, 0x24, 0x06, 0xb5, 0xd5, 0x49,
 ];
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -96,7 +95,9 @@ pub(crate) fn accept_v7_staged_pair_after_full_verification_v1(
 pub(crate) fn encode_accepted_v7_staged_pair_result_v1(
     accepted: AcceptedV7StagedPairAfterstateV1,
 ) -> Result<[u8; POOL_V1_PAIR_VERIFIED_AFTERSTATE_BYTES], V7StagedPairProfileErrorV1> {
-    Ok(encode_pool_v1_pair_verified_afterstate_v1(&accepted.afterstate)?)
+    Ok(encode_pool_v1_pair_verified_afterstate_v1(
+        &accepted.afterstate,
+    )?)
 }
 
 /// The only return-data helper accepts the opaque post-verification token.

@@ -2,10 +2,11 @@
 
 Date: 2026-08-27
 
-Status: the layout-only `7 -> 4` C2 fusion is rejected.  The conservative
-one-terminal design keeps seven C2 lanes, a 34,658-byte maximum proof body, and a
-minimal 680-byte verified afterstate payload.  No SBF build was run for this
-audit.
+Status: the layout-only `7 -> 4` C2 fusion is rejected. The corrected
+conservative one-terminal design keeps seven physical C2 lanes, forty-five
+logical gamma-batched columns, a 35,216-byte maximum proof body, and a minimal
+680-byte verified afterstate payload. No accepting staged SBF verifier exists
+yet.
 
 ## Result
 
@@ -43,16 +44,22 @@ optimization.
 
 ## Exact wire consequences
 
-The frozen 30,504-byte Tag-73 body has three C2 columns.  The conservative
-proof-carried append adds four columns and twelve fixed QM31 point claims:
+The frozen 30,504-byte Tag-73 body has three C2 columns. The conservative
+proof-carried append adds four physical QM31 wire columns, row-wise packing
+sixteen logical M31 trace columns. At a general QM31 sumcheck point, one
+packed polynomial claim does not determine its four component-polynomial
+claims. The terminal must therefore carry sixteen late point claims at each
+of three points, and gamma/query batching must bind forty-five logical columns
+in total. The previous twelve-claim/653-field screen was unsound as a complete
+relation profile and is superseded by:
 
 ```text
 C2 columns                         3 -> 7
 C2 bytes per query               186 -> 434
 sixteen query-record delta              3,968
-fixed point-claim delta                    186
-maximum proof body            30,504 -> 34,658
-total delta                                4,154
+fixed point-claim delta                    744
+maximum proof body            30,504 -> 35,216
+total delta                                4,712
 ```
 
 For comparison only, a sound four-total-lane design would still be 31,542
@@ -66,7 +73,7 @@ packed fixed-field bytes       9,936 -> 9,982   (+46)
 proof body                    30,504 -> 31,542 (+1,038)
 ```
 
-This hypothetical saves 3,116 bytes against the conservative seven-lane body,
+This hypothetical saves 3,674 bytes against the conservative seven-lane body,
 but it is not available under the current hiding construction.
 
 ## Minimal one-terminal afterstate
@@ -112,8 +119,9 @@ request and registry policy; they need not be echoed in the result.
    exact account and absorbs it after `lambda, chi`; the snapshot need not be
    copied into CPI instruction data.
 2. Add the conservative pair Tag-73 proof parser and verifier geometry: seven
-   C2 lanes, 653 fixed QM31 values, 869-byte query records and an exact
-  34,658-byte maximum body.
+   physical C2 lanes, sixteen late logical M31 columns, 45 logical
+   gamma-batched columns, 689 fixed QM31 values, 869-byte query records and an
+   exact 35,216-byte maximum body.
 3. On success set exactly the 688-byte `ASJA` result.  On every verifier error,
    return no success data.
 4. In the Pool, replace the execution-time append call with an authenticated

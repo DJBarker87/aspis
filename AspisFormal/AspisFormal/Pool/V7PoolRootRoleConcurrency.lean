@@ -613,11 +613,55 @@ def c2BytesPerQuery (columns : Nat) : Nat :=
 def queryBytes (c2Columns : Nat) : Nat :=
   c1BytesPerQuery + c2BytesPerQuery c2Columns + privateSaltBytes
 
-/-- Frozen Tag-73 has 641 fixed QM31 values.  Four new point-claim columns at
-three points add exactly twelve values. -/
+/-- Frozen Tag-73 has 641 fixed QM31 values. The four late QM31 wire lanes are
+row-wise tower packs of sixteen logical M31 trace columns. At a general QM31
+point one packed polynomial evaluation does not expose its four component
+polynomial evaluations, so the semantic terminal carries all sixteen logical
+point claims at each of its three points. -/
 def frozenFixedQM31Values : Nat := 641
+def lateLogicalM31Columns : Nat :=
+  lateAppendQM31Lanes * m31CoordinatesPerQM31
+def stagedLogicalGammaColumns : Nat :=
+  frozenC1Columns + frozenC2Columns + lateLogicalM31Columns
 def stagedFixedQM31Values : Nat :=
-  frozenFixedQM31Values + pointClaimRows * lateAppendQM31Lanes
+  frozenFixedQM31Values + pointClaimRows * lateLogicalM31Columns
+
+/- A packed row is a lossless four-coordinate representation at a Boolean
+row. It does not follow that one packed MLE value at an extension-field point
+determines the four component-polynomial values there. The two-row collision
+below is the smallest exact obstruction: `(row0,row1) = (z,z-1)` and the zero
+table have the same packed claim at `z`, although row zero is nonzero. -/
+
+section PackedPointClaimObstruction
+
+variable {F K : Type*} [Field F] [Field K] [Algebra F K]
+
+open Module
+
+noncomputable def packTower (basis : Basis (Fin 4) F K)
+    (coordinates : Fin 4 → F) : K :=
+  basis.equivFun.symm coordinates
+
+theorem packTower_surjective (basis : Basis (Fin 4) F K) :
+    Function.Surjective (packTower basis) := by
+  intro value
+  exact ⟨basis.equivFun value, by simp [packTower]⟩
+
+def packedTwoRowClaim (row0 row1 z : K) : K :=
+  (1 - z) * row0 + z * row1
+
+theorem one_packed_off_domain_claim_does_not_determine_components
+    (z : K) (zNeZero : z ≠ 0) :
+    let row0 := z
+    let row1 := z - 1
+    packedTwoRowClaim row0 row1 z = packedTwoRowClaim 0 0 z ∧
+      row0 ≠ 0 := by
+  dsimp [packedTwoRowClaim]
+  constructor
+  · ring
+  · exact zNeZero
+
+end PackedPointClaimObstruction
 
 def fixedFieldBytes (values : Nat) : Nat :=
   packedM31Bytes (m31LimbsPerQM31 * values)
@@ -663,15 +707,17 @@ theorem exact_staged_wire_cost_if_four_late_lanes_authenticated :
       c2BytesPerQuery stagedC2Columns = 434 ∧
       queryBytes frozenC2Columns = 621 ∧
       queryBytes stagedC2Columns = 869 ∧
-      stagedFixedQM31Values = 653 ∧
+      lateLogicalM31Columns = 16 ∧
+      stagedLogicalGammaColumns = 45 ∧
+      stagedFixedQM31Values = 689 ∧
       fixedFieldBytes frozenFixedQM31Values = 9936 ∧
-      fixedFieldBytes stagedFixedQM31Values = 10122 ∧
+      fixedFieldBytes stagedFixedQM31Values = 10680 ∧
       bodyWithoutFrontiers frozenFixedQM31Values frozenC2Columns = 19948 ∧
-      bodyWithoutFrontiers stagedFixedQM31Values stagedC2Columns = 24102 ∧
+      bodyWithoutFrontiers stagedFixedQM31Values stagedC2Columns = 24660 ∧
       bothFrontierBytes = 10556 ∧
       frozenMaximumBodyBytes = 30504 ∧
-      stagedMaximumBodyBytes = 34658 ∧
-      stagedMaximumBodyBytes - frozenMaximumBodyBytes = 4154 ∧
+      stagedMaximumBodyBytes = 35216 ∧
+      stagedMaximumBodyBytes - frozenMaximumBodyBytes = 4712 ∧
       uploadChunks frozenMaximumBodyBytes = 32 ∧
       uploadChunks stagedMaximumBodyBytes = 37 := by
   decide
@@ -700,17 +746,17 @@ transaction will share wrapper work and will use the larger staged proof.
 
 def strictTerminalTransactionCULimit : Nat := 1_400_000
 def releaseTerminalTransactionCUTarget : Nat := 1_350_000
-def optimizedDirectVerifierTransactionCU : Nat := 1_395_868
-def proofCarriedSamePageTransportTransactionCU : Nat := 150_223
+def optimizedDirectVerifierTransactionCU : Nat := 1_255_491
+def proofCarriedSamePageTransportTransactionCU : Nat := 81_922
 
 def independentOneTerminalBudgetScreenCU : Nat :=
   optimizedDirectVerifierTransactionCU +
     proofCarriedSamePageTransportTransactionCU
 
 theorem exact_independent_one_terminal_budget_screen :
-    independentOneTerminalBudgetScreenCU = 1_546_091 ∧
-      independentOneTerminalBudgetScreenCU - strictTerminalTransactionCULimit = 146_091 ∧
-      independentOneTerminalBudgetScreenCU - releaseTerminalTransactionCUTarget = 196_091 := by
+    independentOneTerminalBudgetScreenCU = 1_337_413 ∧
+      strictTerminalTransactionCULimit - independentOneTerminalBudgetScreenCU = 62_587 ∧
+      releaseTerminalTransactionCUTarget - independentOneTerminalBudgetScreenCU = 12_587 := by
   decide
 
 /-- Even if a new masking theorem made four total C2 lanes sound, the wire
@@ -815,6 +861,8 @@ theorem exact_semantic_row_owner_cardinalities :
 #print axioms exact_proof_carried_afterstate_wire
 #print axioms exact_stable_pair_wire_screen_keeps_frozen_body_size
 #print axioms exact_staged_c2_leaf_sha_block_increase
+#print axioms packTower_surjective
+#print axioms one_packed_off_domain_claim_does_not_determine_components
 #print axioms exact_independent_one_terminal_budget_screen
 #print axioms exact_hypothetical_four_total_lane_wire_cost
 #print axioms exact_live_dependent_suffix_has_fifteen_steps

@@ -15,7 +15,15 @@ use crate::v7_onefold::{
 pub const V7_STAGED_PAIR_C1_COLUMNS: usize = 26;
 pub const V7_STAGED_PAIR_C2_COLUMNS: usize = 7;
 pub const V7_STAGED_PAIR_LATE_C2_COLUMNS: usize = 4;
-pub const V7_STAGED_PAIR_FIXED_QM31_VALUES: usize = 653;
+/// Four late QM31 wire lanes row-wise pack sixteen logical M31 trace
+/// columns. The semantic terminal opens all sixteen component polynomials at
+/// each of its three points; four packed point claims would not determine
+/// those values at a general QM31 point.
+pub const V7_STAGED_PAIR_LATE_LOGICAL_M31_COLUMNS: usize = 16;
+pub const V7_STAGED_PAIR_LOGICAL_GAMMA_COLUMNS: usize =
+    V7_STAGED_PAIR_C1_COLUMNS + 3 + V7_STAGED_PAIR_LATE_LOGICAL_M31_COLUMNS;
+pub const V7_STAGED_PAIR_GAMMA_DEGREE: usize = V7_STAGED_PAIR_LOGICAL_GAMMA_COLUMNS - 1;
+pub const V7_STAGED_PAIR_FIXED_QM31_VALUES: usize = 689;
 pub const V7_STAGED_PAIR_FIXED_M31_LIMBS: usize = 4 * V7_STAGED_PAIR_FIXED_QM31_VALUES;
 pub const V7_STAGED_PAIR_FIXED_FIELD_BYTES: usize =
     packed_m31_bytes(V7_STAGED_PAIR_FIXED_M31_LIMBS);
@@ -40,7 +48,7 @@ pub const V7_STAGED_PAIR_PROFILE_BINDING: [u8; 32] = [
     b'A', b'V', b'7', b'S', b'P', b'0', b'0', b'1', // magic/version
     26, 7, 10, 16, 0xcb, 0x00, 26, 32, // widths, q, cap203, digest/salt bytes
     27, 4, 6, 35, 31, 34, 0x71, 0xf1, // degree, fibre, work, typed tree tags
-    0x8d, 0x02, 8, 20, 18, 1, 64, 2, // 653 fields, logs, stream/cap, staged rev
+    0xb1, 0x02, 8, 20, 18, 1, 64, 3, // 689 fields, logs, stream/cap, staged rev
 ];
 
 const fn packed_m31_bytes(limbs: usize) -> usize {
@@ -98,7 +106,7 @@ impl<'a> V7StagedPairOneFoldWire<'a> {
         }
 
         let (fixed_fields_packed, rest) = bytes.split_at(V7_STAGED_PAIR_FIXED_FIELD_BYTES);
-        // 2,612 limbs occupy 80,972 bits, leaving the upper four bits zero.
+        // 2,756 limbs occupy 85,436 bits, leaving the upper four bits zero.
         if fixed_fields_packed.last().copied().unwrap_or_default() & 0xf0 != 0 {
             return Err(V6WireError::NonCanonicalM31);
         }
@@ -136,12 +144,15 @@ impl<'a> V7StagedPairOneFoldWire<'a> {
     }
 }
 
-const _: () = assert!(V7_STAGED_PAIR_FIXED_FIELD_BYTES == 10_122);
+const _: () = assert!(V7_STAGED_PAIR_LATE_LOGICAL_M31_COLUMNS == 16);
+const _: () = assert!(V7_STAGED_PAIR_LOGICAL_GAMMA_COLUMNS == 45);
+const _: () = assert!(V7_STAGED_PAIR_GAMMA_DEGREE == 44);
+const _: () = assert!(V7_STAGED_PAIR_FIXED_FIELD_BYTES == 10_680);
 const _: () = assert!(V7_COMPACT_C1_BYTES_PER_QUERY == 403);
 const _: () = assert!(V7_STAGED_PAIR_C2_BYTES_PER_QUERY == 434);
 const _: () = assert!(V7_STAGED_PAIR_QUERY_BYTES == 869);
-const _: () = assert!(V7_STAGED_PAIR_BODY_WITHOUT_FRONTIERS == 24_102);
-const _: () = assert!(V7_STAGED_PAIR_MAX_BODY_BYTES == 34_658);
+const _: () = assert!(V7_STAGED_PAIR_BODY_WITHOUT_FRONTIERS == 24_660);
+const _: () = assert!(V7_STAGED_PAIR_MAX_BODY_BYTES == 35_216);
 
 #[cfg(test)]
 mod tests {
@@ -153,16 +164,19 @@ mod tests {
         assert_eq!(&V7_STAGED_PAIR_PROFILE_BINDING[..8], b"AV7SP001");
         assert_eq!(V7_STAGED_PAIR_C2_COLUMNS, 7);
         assert_eq!(V7_STAGED_PAIR_LATE_C2_COLUMNS, 4);
-        assert_eq!(V7_STAGED_PAIR_FIXED_QM31_VALUES, 653);
-        assert_eq!(V7_STAGED_PAIR_FIXED_FIELD_BYTES, 10_122);
+        assert_eq!(V7_STAGED_PAIR_LATE_LOGICAL_M31_COLUMNS, 16);
+        assert_eq!(V7_STAGED_PAIR_LOGICAL_GAMMA_COLUMNS, 45);
+        assert_eq!(V7_STAGED_PAIR_GAMMA_DEGREE, 44);
+        assert_eq!(V7_STAGED_PAIR_FIXED_QM31_VALUES, 689);
+        assert_eq!(V7_STAGED_PAIR_FIXED_FIELD_BYTES, 10_680);
         assert_eq!(V7_STAGED_PAIR_C2_BYTES_PER_QUERY, 434);
         assert_eq!(V7_STAGED_PAIR_QUERY_BYTES, 869);
-        assert_eq!(V7_STAGED_PAIR_BODY_WITHOUT_FRONTIERS, 24_102);
-        assert_eq!(V7_STAGED_PAIR_MAX_BODY_BYTES, 34_658);
+        assert_eq!(V7_STAGED_PAIR_BODY_WITHOUT_FRONTIERS, 24_660);
+        assert_eq!(V7_STAGED_PAIR_MAX_BODY_BYTES, 35_216);
 
         let body = vec![0u8; V7_STAGED_PAIR_MAX_BODY_BYTES];
         let wire = V7StagedPairOneFoldWire::parse(&body, V7_COMPACT_FRONTIER_CAP_PER_TREE).unwrap();
-        assert_eq!(wire.fixed_fields_packed.len(), 10_122);
+        assert_eq!(wire.fixed_fields_packed.len(), 10_680);
         assert_eq!(wire.query(0).unwrap().c1_packed.len(), 403);
         assert_eq!(wire.query(0).unwrap().c2_packed.len(), 434);
         assert_eq!(wire.query(15).unwrap().salt.len(), 32);

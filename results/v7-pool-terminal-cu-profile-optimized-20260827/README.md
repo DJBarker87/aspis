@@ -21,7 +21,7 @@ upstream commit `c233fc4d404c4d7705671090f65a53fe225338c5`.
 
 This closes the direct single-leaf verifier feasibility question.  It does
 **not** yet prove the final Pool transaction fits: the measured proof is the
-30,192-byte predecessor, not the planned 34,658-byte proof-carried
+30,192-byte predecessor, not the corrected 35,216-byte proof-carried
 pair-afterstate profile, and this transaction invokes only the verifier rather
 than the atomic Pool state mutation.  The 4,132-CU diagnostic margin is too
 small to absorb either unmeasured change by assumption.
@@ -60,7 +60,7 @@ from a second unfactored execution.
 
 ## Remaining one-transaction gates
 
-1. Measure the exact 34,658-byte proof-carried pair-afterstate proof through
+1. Measure the exact 35,216-byte proof-carried pair-afterstate proof through
    this same prefactored verifier.  It adds 64 C2 SHA-256 message blocks across
    q16 and therefore cannot inherit the 30,192-byte result without a run.
 2. Measure the production-inactive-checkpoint-free verifier called from the

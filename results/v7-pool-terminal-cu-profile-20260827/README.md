@@ -14,7 +14,7 @@ authentication began, **1,249,409 CU** had already been consumed and only
 composition, the remaining three relation folds, or the final relation check.
 
 This is the current 30,192-byte single-leaf Pool relation baseline, not the
-planned 34,658-byte proof-carried pair-afterstate profile.  The latter has 64
+corrected 35,216-byte proof-carried pair-afterstate profile. The latter has 64
 additional C2 leaf SHA-256 message blocks across q16, so this result is a lower
 complexity predecessor, not evidence that the staged pair profile fits.
 
