@@ -369,14 +369,15 @@ theorem exact_stageB_lane_expansion :
       stagedPoolStageBQM31Lanes = 7 := by
   decide
 
-/-! ## Primary execution-time append profile
+/-! ## Rejected execution-time append profile
 
-The one-transaction audit found that authenticating the live append columns in
-Stage B is not the minimum wire.  The primary profile proves the stable pair
-relation only and lets the locked Pool execute the deterministic pair append.
-Consequently its transcript has the frozen Tag-73 shape and contains no live
-snapshot.  These are arithmetic/wire design gates, not a claim that the
-production prover and verifier already implement this profile. -/
+This smaller-wire profile proves the stable pair relation only and lets the
+locked Pool execute the deterministic pair append.  Its transcript has the
+frozen Tag-73 shape and contains no live snapshot.  The model is retained as
+negative design evidence: the exact production-function SBF probe measured one
+pair compression plus twenty upper parents at 492,863 CU over its zero-parent
+baseline, so this profile cannot fit beside the frozen verifier and Pool suffix
+under the 1.4M-CU limit. -/
 
 def stablePairPoseidonBlocks : Nat := 34
 def stablePairAuxiliaryBlocks : Nat := 7
@@ -458,6 +459,45 @@ theorem accepted_stable_pair_settlement_uses_execution_state
     settleStablePair append retained statement stableRelation live proof =
       append statement.outputPair live := by
   simp [settleStablePair, accepted]
+
+/-! ## Conservative proof-carried result
+
+The production candidate returns the exact Stage-B result already certified by
+the proof.  The Pool compares the proof's source with the locked live state and
+then byte-writes this result; it does not recompute the append. -/
+
+theorem accepted_settlement_returns_verified_afterstate
+    {Root Frontier Nullifier K StageARoot StageBRoot : Type}
+    [DecidableEq Root] [DecidableEq Frontier]
+    (retained : HistoricalMembershipAnchor Root → Prop)
+    (statement : StableSpendStatement Root Nullifier K)
+    (stableRelation : StableSpendStatement Root Nullifier K → Prop)
+    (transitionValid : PairLeaf K → LiveAppendState Root Frontier →
+      LiveAppendState Root Frontier → Prop)
+    (continuationValid :
+      PreparedStageA (StageARoot := StageARoot) statement stableRelation →
+      LateAppendTail statement.outputPair transitionValid → StageBRoot → Prop)
+    (live : LiveAppendState Root Frontier)
+    (proof : StagedLateBoundSpendProof statement stableRelation transitionValid
+      continuationValid)
+    (accepted : Accepts retained statement stableRelation transitionValid
+      continuationValid live proof) :
+    settle retained statement stableRelation transitionValid continuationValid
+      live proof = some proof.tail.result := by
+  simp [settle, accepted]
+
+def verifierResultEnvelopeBytes : Nat := 8
+def pairIndexBytes : Nat := 8
+def fullDigestBytes : Nat := 32
+def pairFrontierDepth : Nat := 20
+def pairAfterstateBytes : Nat :=
+  pairIndexBytes + fullDigestBytes + pairFrontierDepth * fullDigestBytes
+def stagedVerifierResultBytes : Nat :=
+  verifierResultEnvelopeBytes + pairAfterstateBytes
+
+theorem exact_proof_carried_afterstate_wire :
+    pairAfterstateBytes = 680 ∧ stagedVerifierResultBytes = 688 := by
+  decide
 
 /-! ## Exact unchanged-backend wire consequence
 
@@ -648,6 +688,8 @@ theorem exact_semantic_row_owner_cardinalities :
 #print axioms stable_pair_prefix_keeps_frozen_tag73_order
 #print axioms stable_pair_proof_acceptance_has_no_live_state_dependency
 #print axioms accepted_stable_pair_settlement_uses_execution_state
+#print axioms accepted_settlement_returns_verified_afterstate
+#print axioms exact_proof_carried_afterstate_wire
 #print axioms exact_stable_pair_wire_screen_keeps_frozen_body_size
 #print axioms exact_staged_c2_leaf_sha_block_increase
 #print axioms exact_live_dependent_suffix_has_fifteen_steps

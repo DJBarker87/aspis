@@ -173,10 +173,11 @@ parents. Without it, the Pool must recompress the pair: 34 + 1 + 20 = 55
 blocks across proof and execution. Both runtime variants fail the current CU
 gate by the measurements above.
 
-## The 968-byte result layout
+## Conservative 968-byte layout and minimal 688-byte result
 
-The proposed result is within Solana's 1,024-byte return-data ceiling and has
-56 bytes spare. This exact layout covers every Pool write for Route A:
+The originally audited conservative result is within Solana's 1,024-byte
+return-data ceiling and has 56 bytes spare. This layout covers every Pool write
+and echoes every identity binding for Route A:
 
 | Offset | Bytes | Field |
 | ---: | ---: | --- |
@@ -213,16 +214,38 @@ Required cross-checks are deterministic rather than conventions:
   current root and all twenty source frontier nodes;
 - the returned program id separately equals the registry-selected executable.
 
-Consequently the layout covers the versioned Pool state write, one history
+Consequently that layout covers the versioned Pool state write, one history
 root/header update, nullifier marker, withdrawal authorization, and receipt.
-For Route B most after-state fields are unnecessary because the Pool computes
-them itself; a smaller result should be used rather than carrying 968 bytes.
+It is a conservative audit reference, not the minimum production wire.
+
+The Pool caller already holds the exact statement, live state, selected program,
+proof account, profile and release in a sealed preflight across the immediate
+read-only CPI. History page/slot and the appended pair index are deterministic
+from the old and new indices. Subject to the source theorem that the selected
+handler emits return data only after accepting that exact CPI request and proof
+account, none of those values need to be echoed. The minimum candidate is:
+
+| Bytes | Field |
+| ---: | --- |
+| 8 | magic/version/kind/success/reserved |
+| 8 | next pair index |
+| 32 | verified next pair-tree root |
+| 640 | verified twenty-node next frontier |
+| **688** | **total** |
+
+The raw afterstate is exactly 680 bytes. The Pool must check the immediate
+return-data program id, exact 688-byte length and version, canonical digest
+encodings, exact locked old-state binding in the request, and
+`next_pair_index = old_pair_index + 1` before any write. This removes identity
+echoes, not identity checks. Route B would use a different, smaller result
+because the Pool computes its own afterstate, but Route B is rejected by CU.
 
 ## Solana and security constraints
 
 No account/CPI rule inherently prevents one terminal transaction:
 
-- 968 bytes fits return data;
+- both the conservative 968-byte reference and preferred 688-byte result fit
+  return data;
 - the current 600-byte internal ASVQ plus an 800-byte snapshot would remain
   below the CPI instruction-data limit and is not outer transaction data;
 - the verifier receives only its read-only proof account and executable
