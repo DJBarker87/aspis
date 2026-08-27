@@ -31,7 +31,9 @@ use aspis_core::v6_onefold::{
     V6_RELATION_ROUNDS, V6_RELATION_SENT_VALUES, V6_SEMANTIC_QM31_OFFSET, V6_SEMANTIC_ROUNDS,
     V6_SEMANTIC_SENT_VALUES, V6_TOTAL_COLUMNS,
 };
-use aspis_core::v6_query_batch::{add_v6_final256_query_batch, V6AuthenticatedQueryBatch};
+use aspis_core::v6_query_batch::{
+    add_v6_final256_query_batch, add_v7_final256_query_batch_shifted, V6AuthenticatedQueryBatch,
+};
 use aspis_core::v6_transcript::{
     v6_statement_points, verify_v6_transcript_and_relation,
     verify_v7_compact_transcript_and_relation_prepared,
@@ -1394,16 +1396,26 @@ fn build_onefold_proof_with_pow_mode(
     let query_coordinates = prepare_v6_onefold_coordinates(queries)
         .map_err(|_| V6ProverError::Stage("one-fold query coordinates"))?;
     let query_line_x = query_coordinates.line_x;
-    let query_claim = add_v6_final256_query_batch(
-        &mut weights,
-        &mut running_claim,
-        queries,
-        V6AuthenticatedQueryBatch {
-            values: folded_query_values,
-            line_x: query_line_x,
-        },
-        query_batch_challenge,
-    )
+    let authenticated_query_batch = V6AuthenticatedQueryBatch {
+        values: folded_query_values,
+        line_x: query_line_x,
+    };
+    let query_claim = match profile {
+        OneFoldBuildProfile::V6 => add_v6_final256_query_batch(
+            &mut weights,
+            &mut running_claim,
+            queries,
+            authenticated_query_batch,
+            query_batch_challenge,
+        ),
+        OneFoldBuildProfile::V7Compact => add_v7_final256_query_batch_shifted(
+            &mut weights,
+            &mut running_claim,
+            queries,
+            authenticated_query_batch,
+            query_batch_challenge,
+        ),
+    }
     .map_err(|_| V6ProverError::Stage("V6 query batch relation"))?;
     let mut query_claim_bytes = [0u8; 16];
     query_claim.write_le_bytes(&mut query_claim_bytes);

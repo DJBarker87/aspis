@@ -10,6 +10,7 @@ use crate::sumcheck::WeightAccumulator;
 
 pub const V6_QUERY_BATCH_COUNT: usize = 16;
 pub const V6_QUERY_BATCH_MAX_DEGREE: usize = V6_QUERY_BATCH_COUNT - 1;
+pub const V7_QUERY_BATCH_JOINT_MAX_DEGREE: usize = V6_QUERY_BATCH_COUNT;
 pub const V6_QUERY_BATCH_CIRCLE_DOMAIN_LOG: u32 = 20;
 pub const V6_QUERY_BATCH_LINE_LAYER: u8 = 1;
 pub const V6_QUERY_BATCH_TREE_DEPTH: u8 = 18;
@@ -47,6 +48,49 @@ pub fn add_v6_final256_query_batch(
     authenticated: V6AuthenticatedQueryBatch,
     rho: QM31,
 ) -> Result<QM31, V6QueryBatchError> {
+    add_final256_query_batch_with_initial_scale(
+        weights,
+        running_claim,
+        queries,
+        authenticated,
+        rho,
+        QM31::ONE,
+    )
+}
+
+/// Tag-73 joint query/relation batching. Query ordinal `i` receives scale
+/// `rho^(i+1)`, so the complete post-round-zero discrepancy has the untouched
+/// prior scalar as its constant coefficient. This prevents an ordinal-zero
+/// query error from cancelling that prior scalar for every `rho`.
+///
+/// The wire format and number of field multiplications are unchanged from
+/// V6: seeding with `rho` rather than one still needs exactly fifteen prepared
+/// multiplications to produce all sixteen scales.
+pub fn add_v7_final256_query_batch_shifted(
+    weights: &mut WeightAccumulator,
+    running_claim: &mut QM31,
+    queries: [u32; V6_QUERY_BATCH_COUNT],
+    authenticated: V6AuthenticatedQueryBatch,
+    rho: QM31,
+) -> Result<QM31, V6QueryBatchError> {
+    add_final256_query_batch_with_initial_scale(
+        weights,
+        running_claim,
+        queries,
+        authenticated,
+        rho,
+        rho,
+    )
+}
+
+fn add_final256_query_batch_with_initial_scale(
+    weights: &mut WeightAccumulator,
+    running_claim: &mut QM31,
+    queries: [u32; V6_QUERY_BATCH_COUNT],
+    authenticated: V6AuthenticatedQueryBatch,
+    rho: QM31,
+    initial_scale: QM31,
+) -> Result<QM31, V6QueryBatchError> {
     let mut sorted = queries;
     sorted.sort_unstable();
     if sorted[V6_QUERY_BATCH_COUNT - 1] >= 1u32 << V6_QUERY_BATCH_TREE_DEPTH
@@ -56,7 +100,7 @@ pub fn add_v6_final256_query_batch(
     }
 
     let mut scales = [QM31::ZERO; V6_QUERY_BATCH_COUNT];
-    scales[0] = QM31::ONE;
+    scales[0] = initial_scale;
     let prepared_rho = PreparedQm31Multiplier::new(rho);
     for ordinal in 1..V6_QUERY_BATCH_COUNT {
         scales[ordinal] = prepared_rho.mul(scales[ordinal - 1]);
@@ -67,6 +111,20 @@ pub fn add_v6_final256_query_batch(
     let claim_increment = qm31_dot(&scales, &authenticated.values);
     *running_claim = running_claim.add(claim_increment);
     Ok(claim_increment)
+}
+
+/// Evaluate the Tag-73 shifted residual. Its degree is at most sixteen and it
+/// is exactly `rho` times the frozen V6 residual.
+pub fn v7_final256_query_batch_shifted_residual(
+    expected_values: [QM31; V6_QUERY_BATCH_COUNT],
+    authenticated_values: [QM31; V6_QUERY_BATCH_COUNT],
+    rho: QM31,
+) -> QM31 {
+    rho.mul(v6_final256_query_batch_residual(
+        expected_values,
+        authenticated_values,
+        rho,
+    ))
 }
 
 /// Evaluate the degree-at-most-fifteen error polynomial associated with one
@@ -195,6 +253,10 @@ mod tests {
         result
     }
 
+    fn shifted_rho_sum(values: &[QM31; V6_QUERY_BATCH_COUNT], rho: QM31) -> QM31 {
+        rho.mul(rho_sum(values, rho))
+    }
+
     #[test]
     fn randomized_direct_checks_equal_one_claim_through_all_three_folds() {
         for seed in 1..=24u64 {
@@ -240,6 +302,46 @@ mod tests {
     }
 
     #[test]
+    fn v7_shifted_batch_composes_through_all_three_folds() {
+        for seed in 1..=8u64 {
+            let mut random = Deterministic(0xa076_1d64_78bd_642f ^ seed);
+            let queries = query_schedule(&mut random);
+            let mut coefficients = (0..256).map(|_| random.qm31()).collect::<Vec<_>>();
+            let expected = direct_values(&coefficients, queries);
+            let rho = random.nonzero_qm31();
+
+            let mut weights = WeightAccumulator::empty(8);
+            let base_scale = random.qm31();
+            let base_point = (0..8).map(|_| random.qm31()).collect::<Vec<_>>();
+            weights.add_multilinear(base_scale, base_point).unwrap();
+            let base_claim = weights.dot(&coefficients);
+            let mut running_claim = base_claim;
+            let increment = add_v7_final256_query_batch_shifted(
+                &mut weights,
+                &mut running_claim,
+                queries,
+                authenticated_batch(queries, expected),
+                rho,
+            )
+            .unwrap();
+
+            assert_eq!(increment, shifted_rho_sum(&expected, rho));
+            assert_eq!(running_claim, base_claim.add(increment));
+            assert_eq!(weights.dot(&coefficients), running_claim);
+
+            for _ in 0..3 {
+                let polynomial = polynomial_for_extension(&coefficients, &weights);
+                assert_eq!(boundary_sum(&polynomial), running_claim);
+                let alpha = random.qm31();
+                running_claim = evaluate(&polynomial, alpha);
+                weights.fold_deferred_relation_arity4(alpha);
+                coefficients = fold_arity4(&coefficients, alpha);
+                assert_eq!(weights.dot(&coefficients), running_claim);
+            }
+        }
+    }
+
+    #[test]
     fn each_single_corruption_is_a_nonzero_monomial_of_degree_at_most_fifteen() {
         let expected = [QM31::ZERO; V6_QUERY_BATCH_COUNT];
         let delta = QM31::from_cm31(CM31::from_m31(M31(17)));
@@ -265,6 +367,22 @@ mod tests {
             let at_zero = v6_final256_query_batch_residual(expected, authenticated, QM31::ZERO);
             assert_eq!(at_zero.is_zero(), corrupted_ordinal != 0);
         }
+    }
+
+    #[test]
+    fn v7_shift_moves_ordinal_zero_error_out_of_the_constant_coefficient() {
+        let expected = [QM31::ZERO; V6_QUERY_BATCH_COUNT];
+        let delta = QM31::from_cm31(CM31::from_m31(M31(17)));
+        let mut authenticated = expected;
+        authenticated[0] = delta;
+        let rho = QM31::from_cm31(CM31::from_m31(M31(2)));
+
+        let legacy = v6_final256_query_batch_residual(expected, authenticated, rho);
+        let shifted = v7_final256_query_batch_shifted_residual(expected, authenticated, rho);
+        assert_eq!(legacy, delta.neg());
+        assert_eq!(shifted, rho.mul(delta.neg()));
+        assert_ne!(legacy, shifted);
+        assert_eq!(V7_QUERY_BATCH_JOINT_MAX_DEGREE, 16);
     }
 
     #[test]

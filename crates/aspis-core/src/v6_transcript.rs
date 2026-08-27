@@ -34,7 +34,9 @@ use crate::v6_onefold::{
     V6_QUERY_COUNT, V6_RELATION_ROUNDS, V6_RELATION_SENT_VALUES, V6_SEMANTIC_ROUNDS,
     V6_SEMANTIC_SENT_VALUES, V6_TOTAL_COLUMNS,
 };
-use crate::v6_query_batch::{add_v6_final256_query_batch, V6AuthenticatedQueryBatch};
+use crate::v6_query_batch::{
+    add_v6_final256_query_batch, add_v7_final256_query_batch_shifted, V6AuthenticatedQueryBatch,
+};
 use crate::v7_onefold::{
     derive_first_v7_compact_queries, V7CompactOneFoldWire, V7_COMPACT_BATCH_WORK_BITS,
     V7_COMPACT_FINAL_WORK_BITS, V7_COMPACT_FOLD_WORK_BITS, V7_COMPACT_PROFILE_BINDING,
@@ -612,6 +614,7 @@ fn finish_onefold_relation<QueryFold, DeriveQueries, Trace>(
     selector: u8,
     frontier_node_bytes: usize,
     query_batch_labels: (u8, u8),
+    shift_query_batch_for_tag73: bool,
     expose_final256_to_query_fold: bool,
     derive_queries: DeriveQueries,
     mut fields: V6FixedFieldReader<'_>,
@@ -769,13 +772,23 @@ where
         };
         query_fold(&query_view).map_err(V6TranscriptError::Wire)?
     };
-    let query_claim = add_v6_final256_query_batch(
-        &mut weights,
-        &mut running_claim,
-        queries,
-        authenticated_queries,
-        query_batch_challenge,
-    )
+    let query_claim = if shift_query_batch_for_tag73 {
+        add_v7_final256_query_batch_shifted(
+            &mut weights,
+            &mut running_claim,
+            queries,
+            authenticated_queries,
+            query_batch_challenge,
+        )
+    } else {
+        add_v6_final256_query_batch(
+            &mut weights,
+            &mut running_claim,
+            queries,
+            authenticated_queries,
+            query_batch_challenge,
+        )
+    }
     .map_err(|_| V6TranscriptError::RelationShape)?;
     let mut query_claim_bytes = [0u8; 16];
     query_claim.write_le_bytes(&mut query_claim_bytes);
@@ -867,6 +880,7 @@ where
         32,
         (label::V6_QUERY_BATCH_CHALLENGE, label::V6_QUERY_BATCH_CLAIM),
         false,
+        false,
         |candidate_transcript| derive_first_compact_queries(candidate_transcript, selector),
         fields,
         inactive_row_groups,
@@ -910,6 +924,7 @@ where
         0,
         V7_MERKLE_DIGEST_BYTES,
         (label::V7_QUERY_BATCH_CHALLENGE, label::V7_QUERY_BATCH_CLAIM),
+        true,
         false,
         |candidate_transcript| {
             let schedule = derive_first_v7_compact_queries(candidate_transcript)
