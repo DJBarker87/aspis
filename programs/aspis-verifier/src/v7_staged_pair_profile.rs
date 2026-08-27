@@ -7,9 +7,10 @@
 
 use aspis_core::{v6_onefold::V6WireError, v7_staged_pair::V7StagedPairOneFoldWire};
 use aspis_statement::pool_v1::{
-    decode_pool_v1_pair_live_snapshot_v1, encode_pool_v1_pair_verifier_result_v1,
-    PoolV1PairAfterstateV1, PoolV1PairLiveSnapshotErrorV1, PoolV1PairLiveSnapshotV1,
-    PoolV1PairVerifierResultErrorV1, POOL_V1_PAIR_VERIFIER_RESULT_BYTES,
+    decode_pool_v1_pair_live_snapshot_v1, encode_pool_v1_pair_verified_afterstate_v1,
+    PoolV1PairLiveSnapshotErrorV1, PoolV1PairLiveSnapshotV1,
+    PoolV1PairVerifiedAfterstateV1, PoolV1PairVerifierTransportErrorV1,
+    POOL_V1_PAIR_VERIFIED_AFTERSTATE_BYTES,
 };
 use solana_program::program;
 
@@ -32,7 +33,7 @@ pub const V7_STAGED_PAIR_RELEASE_BINDING: [u8; 32] = [
 pub enum V7StagedPairProfileErrorV1 {
     Wire(V6WireError),
     Snapshot(PoolV1PairLiveSnapshotErrorV1),
-    Result(PoolV1PairVerifierResultErrorV1),
+    Result(PoolV1PairVerifierTransportErrorV1),
     AfterstateIndexMismatch,
 }
 
@@ -48,8 +49,8 @@ impl From<PoolV1PairLiveSnapshotErrorV1> for V7StagedPairProfileErrorV1 {
     }
 }
 
-impl From<PoolV1PairVerifierResultErrorV1> for V7StagedPairProfileErrorV1 {
-    fn from(error: PoolV1PairVerifierResultErrorV1) -> Self {
+impl From<PoolV1PairVerifierTransportErrorV1> for V7StagedPairProfileErrorV1 {
+    fn from(error: PoolV1PairVerifierTransportErrorV1) -> Self {
         Self::Result(error)
     }
 }
@@ -76,7 +77,7 @@ pub fn parse_v7_staged_pair_inputs_v1<'a>(
 /// private prevents a caller outside the verifier crate from manufacturing a
 /// successful 688-byte result.
 pub(crate) struct AcceptedV7StagedPairAfterstateV1 {
-    afterstate: PoolV1PairAfterstateV1,
+    afterstate: PoolV1PairVerifiedAfterstateV1,
 }
 
 /// Final source seam for the future full verifier. It checks the exact
@@ -84,7 +85,7 @@ pub(crate) struct AcceptedV7StagedPairAfterstateV1 {
 /// equation before invoking it.
 pub(crate) fn accept_v7_staged_pair_after_full_verification_v1(
     live_snapshot: &PoolV1PairLiveSnapshotV1,
-    afterstate: PoolV1PairAfterstateV1,
+    afterstate: PoolV1PairVerifiedAfterstateV1,
 ) -> Result<AcceptedV7StagedPairAfterstateV1, V7StagedPairProfileErrorV1> {
     if live_snapshot.next_pair_index.checked_add(1) != Some(afterstate.next_pair_index) {
         return Err(V7StagedPairProfileErrorV1::AfterstateIndexMismatch);
@@ -94,10 +95,8 @@ pub(crate) fn accept_v7_staged_pair_after_full_verification_v1(
 
 pub(crate) fn encode_accepted_v7_staged_pair_result_v1(
     accepted: AcceptedV7StagedPairAfterstateV1,
-) -> Result<[u8; POOL_V1_PAIR_VERIFIER_RESULT_BYTES], V7StagedPairProfileErrorV1> {
-    let mut result = [0u8; POOL_V1_PAIR_VERIFIER_RESULT_BYTES];
-    encode_pool_v1_pair_verifier_result_v1(&accepted.afterstate, &mut result)?;
-    Ok(result)
+) -> Result<[u8; POOL_V1_PAIR_VERIFIED_AFTERSTATE_BYTES], V7StagedPairProfileErrorV1> {
+    Ok(encode_pool_v1_pair_verified_afterstate_v1(&accepted.afterstate)?)
 }
 
 /// The only return-data helper accepts the opaque post-verification token.
@@ -158,17 +157,17 @@ mod tests {
     #[test]
     fn result_capability_requires_exact_one_pair_index_step() {
         let snapshot = snapshot();
-        let afterstate = PoolV1PairAfterstateV1 {
+        let afterstate = PoolV1PairVerifiedAfterstateV1 {
             next_pair_index: 74,
-            root: digest(500),
-            frontier: core::array::from_fn(|level| digest(600 + 10 * level as u32)),
+            next_root: digest(500),
+            next_frontier: core::array::from_fn(|level| digest(600 + 10 * level as u32)),
         };
         let accepted =
             accept_v7_staged_pair_after_full_verification_v1(&snapshot, afterstate).unwrap();
         let encoded = encode_accepted_v7_staged_pair_result_v1(accepted).unwrap();
         assert_eq!(encoded.len(), 688);
 
-        let wrong = PoolV1PairAfterstateV1 {
+        let wrong = PoolV1PairVerifiedAfterstateV1 {
             next_pair_index: 75,
             ..afterstate
         };

@@ -118,13 +118,12 @@ pub use pair_tree_hiding::{
 };
 pub use pair_tree_profile::{
     absorb_pool_v1_pair_live_snapshot_after_lambda_chi_v1, decode_pool_v1_pair_live_snapshot_v1,
-    decode_pool_v1_pair_verifier_result_v1, encode_pool_v1_pair_live_snapshot_v1,
-    encode_pool_v1_pair_verifier_result_v1, pool_v1_pair_path_base_row_v1,
-    pool_v1_pair_poseidon_block_role_v1, PoolV1PairAfterstateV1,
+    encode_pool_v1_pair_live_snapshot_v1, pool_v1_pair_path_base_row_v1,
+    pool_v1_pair_poseidon_block_role_v1,
     PoolV1PairHistoricalMembershipAnchorV1, PoolV1PairLeafErrorV1, PoolV1PairLeafWitnessV1,
     PoolV1PairLiveSnapshotErrorV1, PoolV1PairLiveSnapshotV1, PoolV1PairPoseidonBlockRoleV1,
-    PoolV1PairTranscriptStepV1, PoolV1PairVerifierResultErrorV1, POOL_V1_PAIR_AFTERSTATE_BYTES,
-    POOL_V1_PAIR_ALLOCATED_BLOCKS, POOL_V1_PAIR_ALLOCATED_ROWS, POOL_V1_PAIR_CAPACITY,
+    PoolV1PairTranscriptStepV1, POOL_V1_PAIR_ALLOCATED_BLOCKS, POOL_V1_PAIR_ALLOCATED_ROWS,
+    POOL_V1_PAIR_CAPACITY,
     POOL_V1_PAIR_INPUT_OCCUPANCY_AUX_ROW, POOL_V1_PAIR_INPUT_SELECTED_SIDE_COLUMN,
     POOL_V1_PAIR_LATE_APPEND_POSEIDON_BLOCKS, POOL_V1_PAIR_LIVE_SNAPSHOT_BYTES,
     POOL_V1_PAIR_LIVE_SNAPSHOT_MAGIC, POOL_V1_PAIR_LIVE_SNAPSHOT_TRANSCRIPT_DOMAIN,
@@ -141,9 +140,7 @@ pub use pair_tree_profile::{
     POOL_V1_PAIR_TRACE_BLOCK_ROWS, POOL_V1_PAIR_TRACE_COLUMNS, POOL_V1_PAIR_TRACE_ROWS,
     POOL_V1_PAIR_TREE_DEPTH, POOL_V1_PAIR_TREE_FORMAT_BINDING,
     POOL_V1_PAIR_TREE_STORAGE_FORMAT_VERSION, POOL_V1_PAIR_UNALLOCATED_SEMANTIC_ROWS,
-    POOL_V1_PAIR_VALUE_AUX_ROW_START, POOL_V1_PAIR_VERIFIER_RESULT_BYTES,
-    POOL_V1_PAIR_VERIFIER_RESULT_KIND_AFTERSTATE, POOL_V1_PAIR_VERIFIER_RESULT_MAGIC,
-    POOL_V1_PAIR_VERIFIER_RESULT_SUCCESS, POOL_V1_PAIR_VERIFIER_RESULT_VERSION,
+    POOL_V1_PAIR_VALUE_AUX_ROW_START,
 };
 pub use pair_terminal::{
     decode_pool_v1_pair_verified_afterstate_v1, decode_pool_v1_pair_verifier_request_v1,
