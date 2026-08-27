@@ -100,6 +100,15 @@ range/test-bit frontier representation consumed by the Pool tree/history
 invariant. Open and full results are both covered. All theorem groups report
 exactly `[propext, Classical.choice, Quot.sound]`.
 
+`proof/PoolV1TreeAppendOneCallerBridge.lean` lifts that result through the
+literal translated `ValidatedIncrementalMerkleTreeV1::append_one` caller.
+Successful caller execution now proves the exact cursor increment, retained
+empty-table identity, final concrete frontier, receipt leaf/sequence/root
+identity and the same open/full abstract `appendCarry` result over the
+returned tree's cursor and frontier. The proof follows the actual full and
+non-full branches, array update, root-call result propagation and receipt
+construction. It uses only `[propext, Classical.choice, Quot.sound]`.
+
 The append translation uses the committed Aeneas constructor tool branch at
 `e9d20a64aa4dcbbc20ba8742a6ddf720f0c575cd` (`aeneas
 aspis-v5-constructor-e9d20a64`). That branch contains the already committed
@@ -121,12 +130,12 @@ declarations rather than treating raw JSON byte order as semantics.
 
 ## Remaining implementation boundary
 
-The carry trace and its mathematical representation are complete. The
-smallest next boundary is now the outer translated
-`ValidatedIncrementalMerkleTreeV1::append_one` caller: connect its successful
-branch to the loop capstone, its exact final frontier write, the already
-translated non-full root reconstruction, cursor increment and receipt/root
-history location. After that, the remaining lift is:
+The carry trace, mathematical representation and outer caller's structural
+after-image are complete. The smallest next boundary is the translated
+non-full root reconstruction: prove its returned digest equals the existing
+`reconstructRoot` value under the authenticated empty-root table. The receipt's
+history page/slot must then be identified with exact quotient/remainder.
+After that, the remaining lift is:
 
 1. lift through the literal validation and public
    `append_one_with_empty_roots` wrapper;
