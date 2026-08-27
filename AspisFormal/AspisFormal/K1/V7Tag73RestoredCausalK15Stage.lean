@@ -250,6 +250,17 @@ structure ExactTag73RestoredCausalK15Environment
           (extractedFixedWidth29Candidate context.k14.extraction member))
   pointCompatibleHandoff : ∀ (context : ExactTag73K15Context transitionFuel
       configuration projection fixedInstance decoder decoderBinding),
+      (¬ FixedFamilyK15Failure (terminal context) (sumcheck context)
+        (context.fields operational) context.k14.extraction
+        (fun coordinate => exactOperationalChallenge context.input
+          (.zerocheckPoint coordinate))
+        (context.run operational).point
+        (exactOperationalChallenge context.input .lambda)
+        (exactOperationalChallenge context.input .chi)
+        (exactOperationalChallenge context.input .theta)
+        (exactOperationalChallenge context.input .mu)
+        (exactOperationalChallenge context.input .kappa)
+        (context.material operational).data.execution) →
       HasAcceptedRestoredPointCompatibleK14 decoder context.k12.words
           (context.run operational).point
           (context.fields operational).pointClaim
@@ -354,16 +365,35 @@ noncomputable def exactTag73RestoredCausalK15Classifier
     match baseClassifier.classify sample input k12 k13 k14 with
     | .inl extracted => exact .inl extracted
     | .inr failure =>
-      have reduced := exact_operational_k15_failure_reduces_to_restored_or_fixed
-        (k13 := k13) material
-        (environment.family ⟨sample, input, k12, k13, k14⟩)
-        (environment.familyAvailable ⟨sample, input, k12, k13, k14⟩)
-        (environment.familySelected ⟨sample, input, k12, k13, k14⟩)
-        (environment.terminal ⟨sample, input, k12, k13, k14⟩)
-        (environment.sumcheck ⟨sample, input, k12, k13, k14⟩)
-        (environment.terminalExact ⟨sample, input, k12, k13, k14⟩)
-        (environment.sumcheckCausal ⟨sample, input, k12, k13, k14⟩) failure
-      have result : Nonempty
+      let context : ExactTag73K15Context transitionFuel configuration projection
+          fixedInstance decoder decoderBinding :=
+        ⟨sample, input, k12, k13, k14⟩
+      let fixedFailureProp : Prop :=
+        FixedFamilyK15Failure (environment.terminal context)
+          (environment.sumcheck context)
+          (context.fields environment.operational) context.k14.extraction
+          (fun coordinate => exactOperationalChallenge context.input
+            (.zerocheckPoint coordinate))
+          (context.run environment.operational).point
+          (exactOperationalChallenge context.input .lambda)
+          (exactOperationalChallenge context.input .chi)
+          (exactOperationalChallenge context.input .theta)
+          (exactOperationalChallenge context.input .mu)
+          (exactOperationalChallenge context.input .kappa)
+          (context.material environment.operational).data.execution
+      by_cases anyFixed : fixedFailureProp
+      · exact .inr ⟨Or.inl anyFixed⟩
+      · have reduced :=
+          exact_operational_k15_failure_reduces_to_restored_or_fixed
+            (k13 := k13) material
+            (environment.family context)
+            (environment.familyAvailable context)
+            (environment.familySelected context)
+            (environment.terminal context)
+            (environment.sumcheck context)
+            (environment.terminalExact context)
+            (environment.sumcheckCausal context) failure
+        have result : Nonempty
           (ExactFixedClientExtractionCertificate transitionFuel configuration
               fixedInstance
               (exactTag73SpendRelation (deployedOwner := deployedOwner)
@@ -372,28 +402,28 @@ noncomputable def exactTag73RestoredCausalK15Classifier
                 (deployedNode := deployedNode)) sample ⊕
             ExactTag73RestoredCausalK15Failure environment
               ⟨sample, input, k12, k13, k14⟩) := by
-        rcases reduced with restored | fixed | constrained
-        · exact ⟨.inl (Classical.choice
-            (environment.pointCompatibleHandoff
-              ⟨sample, input, k12, k13, k14⟩ restored))⟩
-        · exact ⟨.inr ⟨Or.inl fixed⟩⟩
-        · by_cases restored : HasAcceptedRestoredPointCompatibleK14 decoder
-              k12.words
-              (operationalAcceptedRun input material.data.decoded
-                material.data.fixedDecode).point
-              (operationalFixedFields material.data.decoded).pointClaim
-              (environment.family ⟨sample, input, k12, k13, k14⟩)
+          rcases reduced with restored | fixed | constrained
           · exact ⟨.inl (Classical.choice
               (environment.pointCompatibleHandoff
-                ⟨sample, input, k12, k13, k14⟩ restored))⟩
-          · have noRestored : ¬ HasAcceptedRestoredPointCompatibleK14 decoder
+                context anyFixed restored))⟩
+          · exact (anyFixed fixed).elim
+          · by_cases restored : HasAcceptedRestoredPointCompatibleK14 decoder
                 k12.words
                 (operationalAcceptedRun input material.data.decoded
                   material.data.fixedDecode).point
                 (operationalFixedFields material.data.decoded).pointClaim
-                (environment.family ⟨sample, input, k12, k13, k14⟩) := restored
-            exact ⟨.inr ⟨Or.inr ⟨⟨failure⟩, noRestored⟩⟩⟩
-      exact Classical.choice result
+                (environment.family ⟨sample, input, k12, k13, k14⟩)
+            · exact ⟨.inl (Classical.choice
+                (environment.pointCompatibleHandoff
+                  context anyFixed restored))⟩
+            · have noRestored : ¬ HasAcceptedRestoredPointCompatibleK14 decoder
+                  k12.words
+                  (operationalAcceptedRun input material.data.decoded
+                    material.data.fixedDecode).point
+                  (operationalFixedFields material.data.decoded).pointClaim
+                  (environment.family ⟨sample, input, k12, k13, k14⟩) := restored
+              exact ⟨.inr ⟨Or.inr ⟨⟨failure⟩, noRestored⟩⟩⟩
+        exact Classical.choice result
 
 #print axioms exactTag73RestoredCausalK15Classifier
 
