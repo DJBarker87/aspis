@@ -15,14 +15,13 @@ use aspis_core::v7_staged_pair::V7_STAGED_PAIR_BODY_WITHOUT_FRONTIERS;
 use aspis_statement::pool_v1::{
     decode_pool_v1_pair_forest_checkpoint_v1, decode_pool_v1_pair_forest_lane_state_v1,
     decode_pool_v1_pair_forest_master_v1, decode_pool_v1_pair_forest_terminal_request_v1,
-    encode_pool_v1_pair_live_snapshot_v1, pool_v1_empty_roots, pool_v1_pair_forest_output_lane_v1,
-    pool_v1_tree_parent, reconstruct_pool_v1_pair_forest_terminal_statement_v1,
-    PoolV1PairForestCheckpointV1, PoolV1PairForestLaneStateV1, PoolV1PairForestMasterV1,
-    PoolV1PairForestTerminalCommonV1, PoolV1PairForestTerminalRequestV1,
-    PoolV1PairForestTerminalStatementV1, PoolV1PairLatePublicStatementV1, PoolV1PairLiveSnapshotV1,
-    POOL_V1_PAIR_FOREST_ALL_LANES_MASK, POOL_V1_PAIR_FOREST_TERMINAL_REQUEST_BYTES,
-    POOL_V1_PAIR_LIVE_SNAPSHOT_BYTES, POOL_V1_PAIR_TREE_DEPTH,
-    POOL_V1_PAIR_VERIFIED_AFTERSTATE_BYTES,
+    encode_pool_v1_pair_live_snapshot_v1, pool_v1_pair_forest_output_lane_v1,
+    reconstruct_pool_v1_pair_forest_terminal_statement_v1, PoolV1PairForestCheckpointV1,
+    PoolV1PairForestLaneStateV1, PoolV1PairForestMasterV1, PoolV1PairForestTerminalCommonV1,
+    PoolV1PairForestTerminalRequestV1, PoolV1PairForestTerminalStatementV1,
+    PoolV1PairLatePublicStatementV1, PoolV1PairLiveSnapshotV1, POOL_V1_PAIR_FOREST_ALL_LANES_MASK,
+    POOL_V1_PAIR_FOREST_TERMINAL_REQUEST_BYTES, POOL_V1_PAIR_LIVE_SNAPSHOT_BYTES,
+    POOL_V1_PAIR_TREE_DEPTH, POOL_V1_PAIR_VERIFIED_AFTERSTATE_BYTES,
 };
 use solana_program::{
     account_info::AccountInfo, entrypoint::ProgramResult, program, program_error::ProgramError,
@@ -31,6 +30,7 @@ use solana_program::{
 
 use crate::{
     lifecycle::{proof_account_finalized, uploaded_proof_bounds},
+    v7_pair_empty_roots::V7_PAIR_EMPTY_ROOTS,
     v7_staged_pair_profile::{
         parse_v7_staged_pair_inputs_v1, V7_STAGED_PAIR_PROFILE_BINDING,
         V7_STAGED_PAIR_RELEASE_BINDING,
@@ -53,20 +53,6 @@ pub struct ValidatedV7PairForestAsq8V1 {
     pub selected_lane: PoolV1PairForestLaneStateV1,
     pub statement: Box<PoolV1PairForestTerminalStatementV1>,
     pub frontier_nodes: usize,
-}
-
-fn pair_empty_roots() -> [aspis_statement::Digest; POOL_V1_PAIR_TREE_DEPTH + 1] {
-    let ordinary = pool_v1_empty_roots();
-    core::array::from_fn(|level| {
-        if level < POOL_V1_PAIR_TREE_DEPTH {
-            ordinary[level + 1]
-        } else {
-            pool_v1_tree_parent(
-                &ordinary[POOL_V1_PAIR_TREE_DEPTH],
-                &ordinary[POOL_V1_PAIR_TREE_DEPTH],
-            )
-        }
-    })
 }
 
 fn frontier_nodes_from_staged_proof_length(length: usize) -> Option<usize> {
@@ -172,7 +158,7 @@ pub fn validate_v7_pair_forest_asq8_request_v1(
         .map_err(|_| ProgramError::InvalidInstructionData)?;
     let selected_lane = decode_pool_v1_pair_forest_lane_state_v1(
         &lane_account.try_borrow_data()?,
-        &pair_empty_roots(),
+        &V7_PAIR_EMPTY_ROOTS,
     )
     .map_err(|_| ProgramError::InvalidAccountData)?;
     if selected_lane.master != master_account.key.to_bytes()
@@ -339,7 +325,7 @@ mod tests {
             &pool_program,
         )
         .0;
-        let empty = pair_empty_roots();
+        let empty = V7_PAIR_EMPTY_ROOTS;
         let lane = PoolV1PairForestLaneStateV1 {
             master: master_key.to_bytes(),
             lane_id,
@@ -559,6 +545,27 @@ mod tests {
 
         let mut fixture = make_fixture();
         fixture.proof_data.push(0);
+        assert!(validate_fixture(&mut fixture).is_err());
+    }
+
+    #[test]
+    fn asq8_rejects_malformed_lane_tree_images() {
+        // Lane header (80 bytes), followed by the tree's explicit root at
+        // tree offset 16.  A sequence-zero lane must use the pinned depth-20
+        // pair root exactly.
+        let mut fixture = make_fixture();
+        fixture.lane_data[80 + 16] ^= 1;
+        assert!(validate_fixture(&mut fixture).is_err());
+
+        // The first frontier node begins at tree offset 48.  It is inactive
+        // at sequence zero and therefore must equal pinned pair level zero.
+        let mut fixture = make_fixture();
+        fixture.lane_data[80 + 48] ^= 1;
+        assert!(validate_fixture(&mut fixture).is_err());
+
+        // Field limbs are canonical M31 encodings, not arbitrary u32 values.
+        let mut fixture = make_fixture();
+        fixture.lane_data[80 + 48..80 + 52].copy_from_slice(&u32::MAX.to_le_bytes());
         assert!(validate_fixture(&mut fixture).is_err());
     }
 
