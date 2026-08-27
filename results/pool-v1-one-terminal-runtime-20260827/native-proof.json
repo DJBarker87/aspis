@@ -1,0 +1,85 @@
+{
+  "schema": "aspis.pool-v1.native-tag73-proof.v1",
+  "proof_bytes": 30192,
+  "proof_sha256": "656f25689041ae7f90c9461f4dbe3336478e01e1970ff00c24d1e7d90ed2e72c",
+  "frontier_nodes_per_tree": 197,
+  "queries": [
+    28575,
+    194624,
+    90784,
+    84424,
+    75307,
+    152634,
+    209176,
+    177342,
+    190596,
+    117955,
+    81827,
+    194625,
+    224312,
+    221789,
+    254174,
+    151897
+  ],
+  "work_nonces": [
+    629060504,
+    329587272,
+    41222128809
+  ],
+  "all_work_checked": true,
+  "pool": "BZRi5jf2SdDMpJBJnLTHhM5EnwyzWLRDJhNYzeosRogf",
+  "verifier_program": "DJEo3okrdH4EPUXNPNNDxKTqRuHdaZxEhGJRcBA2ydhf",
+  "proof_account": "8dqQB2d9phZbmEGMHkrpsvDCawmk7Baf97K9ax4hReSt",
+  "anchor_sequence": 1,
+  "input_note_commitment": [
+    1866996753,
+    1757874442,
+    1952544872,
+    1298715231,
+    76754514,
+    1951759275,
+    1281596930,
+    518888015
+  ],
+  "anchor_root": [
+    766194927,
+    319253357,
+    483837188,
+    750089026,
+    1679703498,
+    510111596,
+    771765104,
+    880349448
+  ],
+  "nullifier": [
+    121900289,
+    1650347144,
+    1405293058,
+    76014243,
+    2100134416,
+    1498813394,
+    365809617,
+    171898071
+  ],
+  "recipient_commitment": [
+    148482930,
+    1116651461,
+    1440257094,
+    1397310823,
+    2023389308,
+    165313146,
+    999662642,
+    1651087734
+  ],
+  "change_commitment": [
+    108389582,
+    1486634559,
+    1090199476,
+    798016186,
+    440188477,
+    695613020,
+    1294030084,
+    809900588
+  ],
+  "statement_digest_hex": "e63c565e9425962f73a68cb07e65836733624b1b474b42310784b6a060e06736"
+}

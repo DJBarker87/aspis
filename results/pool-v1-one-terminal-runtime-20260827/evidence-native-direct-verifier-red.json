@@ -1,0 +1,26 @@
+{
+  "compute_unit_limit": 1400000,
+  "compute_units": 1400000,
+  "execution_error": "InstructionError(1, ProgramFailedToComplete)",
+  "instruction": {
+    "account_metas": 1,
+    "data_bytes": 600,
+    "signer_metas": 0,
+    "writable_metas": 0
+  },
+  "logs": "\u001b[38;5;239mProgram ComputeBudget111111111111111111111111111111 invoke [1]\u001b[0m\n\u001b[38;5;239mProgram ComputeBudget111111111111111111111111111111 success\u001b[0m\n\u001b[38;5;239mProgram DJEo3okrdH4EPUXNPNNDxKTqRuHdaZxEhGJRcBA2ydhf invoke [1]\u001b[0m\n\u001b[38;5;239mProgram DJEo3okrdH4EPUXNPNNDxKTqRuHdaZxEhGJRcBA2ydhf consumed 1399850 of 1399850 compute units\u001b[0m\n\u001b[1;38;5;9mProgram DJEo3okrdH4EPUXNPNNDxKTqRuHdaZxEhGJRcBA2ydhf failed: exceeded CUs meter at BPF instruction\u001b[0m\n",
+  "no_network_send_or_deploy": true,
+  "proof": {
+    "account_bytes": 30232,
+    "bytes": 30192,
+    "sha256": "656f25689041ae7f90c9461f4dbe3336478e01e1970ff00c24d1e7d90ed2e72c"
+  },
+  "return_data_bytes": 0,
+  "schema": "aspis.pool-v1.native-tag73-direct-verifier-red.v1",
+  "simulation_error": "InstructionError(1, ProgramFailedToComplete)",
+  "simulation_metadata_equals_execution": true,
+  "verifier_sbf": {
+    "bytes": 1493504,
+    "sha256": "adef3256d220f45a2bd78013d36db078d4aaca56c94f3b6645db09d51ab76bc5"
+  }
+}
