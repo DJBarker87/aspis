@@ -8,8 +8,10 @@ import AspisFormal.K1.V7Tag73ExactConcreteK13K14Events
 
 This is the final measure glue between the deterministic K1.3/K1.4 error
 reductions and the corrected concrete K1.6 capstone.  K1.3 is covered by the
-q16 compact-schedule event plus the causal one-fold event.  K1.4 is covered by
-one restoration-wide width-29 event.
+q16 compact-schedule event, the causal one-fold event, the repaired joint
+degree-at-most-16 query/relation collision, and the three later degree-six
+relation-alpha repair events.  K1.4 is covered by one restoration-wide
+width-29 event.
 
 No independence is assumed and no proof-of-work normalization is applied.
 -/
@@ -37,9 +39,9 @@ open AspisV5ComponentCQM31TowerExact
 
 noncomputable section
 
-/-- Exact K1.3 measure bound from deterministic coverage by the two genuine
+/-- Exact K1.3 measure bound from deterministic coverage by the four genuine
 raw error events. -/
-theorem k13_error_measure_bound_of_query_onefold_cover
+theorem k13_error_measure_bound_of_query_onefold_joint_later_cover
     {HiddenTape TapeIdentity Observation Statement Proof Payload Witness : Type}
     [Fintype HiddenTape]
     (hiddenLaw : PMF HiddenTape)
@@ -52,26 +54,48 @@ theorem k13_error_measure_bound_of_query_onefold_cover
     {OperationalInput : ExactCompilerSample HiddenTape parameters → Type}
     (stages : ProofRelevantK12ToK15Stages transitionFuel configuration
       fixedInstance relation OperationalInput)
-    (q16Event oneFoldEvent : Set (ExactCompilerSample HiddenTape parameters))
+    (q16Event oneFoldEvent jointBatchEvent laterAlphaEvent :
+      Set (ExactCompilerSample HiddenTape parameters))
     (covered : k13CircleListDecodeErrorEvent stages ⊆
-      q16Event ∪ oneFoldEvent)
+      ((q16Event ∪ oneFoldEvent) ∪ jointBatchEvent) ∪ laterAlphaEvent)
     (q16Bound :
       (exactCompilerJointLaw hiddenLaw parameters).toOuterMeasure q16Event ≤
         exactQ16IdealRawError)
     (oneFoldBound :
       (exactCompilerJointLaw hiddenLaw parameters).toOuterMeasure
-          oneFoldEvent ≤ exactOneFoldIdealRawError) :
+          oneFoldEvent ≤ exactOneFoldIdealRawError)
+    (jointBatchBound :
+      (exactCompilerJointLaw hiddenLaw parameters).toOuterMeasure
+          jointBatchEvent ≤ exactJointQueryBatchIdealRawError)
+    (laterAlphaBound :
+      (exactCompilerJointLaw hiddenLaw parameters).toOuterMeasure
+          laterAlphaEvent ≤ exactLaterRelationAlphaIdealRawError) :
     K13CircleListDecodeErrorMeasureBound hiddenLaw stages
       exactK13IdealRawError := by
   let law := exactCompilerJointLaw hiddenLaw parameters
   calc
     law.toOuterMeasure (k13CircleListDecodeErrorEvent stages) ≤
-        law.toOuterMeasure (q16Event ∪ oneFoldEvent) :=
+        law.toOuterMeasure
+          (((q16Event ∪ oneFoldEvent) ∪ jointBatchEvent) ∪
+            laterAlphaEvent) :=
       law.toOuterMeasure.mono covered
-    _ ≤ law.toOuterMeasure q16Event + law.toOuterMeasure oneFoldEvent :=
+    _ ≤ law.toOuterMeasure ((q16Event ∪ oneFoldEvent) ∪ jointBatchEvent) +
+        law.toOuterMeasure laterAlphaEvent :=
       measure_union_le _ _
-    _ ≤ exactQ16IdealRawError + exactOneFoldIdealRawError :=
-      add_le_add q16Bound oneFoldBound
+    _ ≤ (law.toOuterMeasure (q16Event ∪ oneFoldEvent) +
+          law.toOuterMeasure jointBatchEvent) +
+        law.toOuterMeasure laterAlphaEvent :=
+      add_le_add (measure_union_le _ _) le_rfl
+    _ ≤ ((law.toOuterMeasure q16Event + law.toOuterMeasure oneFoldEvent) +
+          law.toOuterMeasure jointBatchEvent) +
+        law.toOuterMeasure laterAlphaEvent :=
+      add_le_add (add_le_add (measure_union_le _ _) le_rfl) le_rfl
+    _ ≤ ((exactQ16IdealRawError + exactOneFoldIdealRawError) +
+          exactJointQueryBatchIdealRawError) +
+        exactLaterRelationAlphaIdealRawError :=
+      add_le_add
+        (add_le_add (add_le_add q16Bound oneFoldBound) jointBatchBound)
+        laterAlphaBound
     _ = exactK13IdealRawError := rfl
 
 /-- Exact K1.4 measure bound from its single restoration-wide width-29
@@ -101,7 +125,7 @@ theorem k14_error_measure_bound_of_width29_cover
 
 /-! ## Exact assembled-stage specializations -/
 
-/-- Once the two literal source events have their raw probability bounds, the
+/-- Once the three literal source events have their raw probability bounds, the
 concrete K1.3 classifier has exactly the corrected combined error budget.  The
 event cover is proved here from the executable classifier rather than retained
 as a capstone premise. -/
@@ -130,22 +154,36 @@ theorem exact_assembled_k13_error_measure_bound
     (oneFoldBound :
       (exactCompilerJointLaw hiddenLaw parameters).toOuterMeasure
           (exactTag73K13OneFoldEvent transitionFuel configuration projection
-            fixedInstance decoder) ≤ exactOneFoldIdealRawError) :
+            fixedInstance decoder) ≤ exactOneFoldIdealRawError)
+    (jointBatchBound :
+      (exactCompilerJointLaw hiddenLaw parameters).toOuterMeasure
+          (exactTag73K13JointQueryBatchCollisionEvent transitionFuel
+            configuration projection fixedInstance decoder source) ≤
+        exactJointQueryBatchIdealRawError)
+    (laterAlphaBound :
+      (exactCompilerJointLaw hiddenLaw parameters).toOuterMeasure
+          (exactTag73K13LaterRelationAlphaEvent transitionFuel configuration
+            projection fixedInstance decoder source) ≤
+        exactLaterRelationAlphaIdealRawError) :
     K13CircleListDecodeErrorMeasureBound hiddenLaw
       (exactTag73ProofRelevantStages transitionFuel configuration projection
         fixedInstance relation decoder decoderBinding k15)
       exactK13IdealRawError := by
-  exact k13_error_measure_bound_of_query_onefold_cover hiddenLaw
+  exact k13_error_measure_bound_of_query_onefold_joint_later_cover hiddenLaw
     (exactTag73ProofRelevantStages transitionFuel configuration projection
       fixedInstance relation decoder decoderBinding k15)
     (exactTag73K13QueryEvent transitionFuel configuration projection
       fixedInstance decoder)
     (exactTag73K13OneFoldEvent transitionFuel configuration projection
       fixedInstance decoder)
-    (assembled_k13_error_subset_query_union_onefold transitionFuel
+    (exactTag73K13JointQueryBatchCollisionEvent transitionFuel configuration
+      projection fixedInstance decoder source)
+    (exactTag73K13LaterRelationAlphaEvent transitionFuel configuration
+      projection fixedInstance decoder source)
+    (assembled_k13_error_subset_complete transitionFuel
       configuration projection fixedInstance relation decoder decoderBinding
       k15 initialEncoderExact source)
-    q16Bound oneFoldBound
+    q16Bound oneFoldBound jointBatchBound laterAlphaBound
 
 /-- The concrete K1.4 classifier has the exact one-cap width-29 budget as soon
 as its literal operational event has the causal published-theorem bound. -/
@@ -183,7 +221,7 @@ theorem exact_assembled_k14_error_measure_bound
 
 end
 
-#print axioms k13_error_measure_bound_of_query_onefold_cover
+#print axioms k13_error_measure_bound_of_query_onefold_joint_later_cover
 #print axioms k14_error_measure_bound_of_width29_cover
 #print axioms exact_assembled_k13_error_measure_bound
 #print axioms exact_assembled_k14_error_measure_bound

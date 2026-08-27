@@ -1,4 +1,5 @@
 import AspisFormal.V6QueryBatchSoundness
+import AspisFormal.Pool.V7RelationCandidateBinding
 
 /-!
 # Joint Tag-73 round-zero/query-batch soundness
@@ -21,6 +22,7 @@ set_option autoImplicit false
 namespace AspisK1.V7Tag73JointQueryBatchSoundness
 
 open Polynomial
+open AspisPool.V7RelationCandidateBinding
 open AspisV6QueryBatchSoundness
 
 variable {K : Type*} [Field K]
@@ -120,6 +122,46 @@ def jointQueryBatchNonzeroCollisionSet
     jointQueryBatchDiscrepancy preQueryDiscrepancy expected authenticated rho =
       0
 
+/-- Direct constructor for the repaired nonzero collision set.  Keeping this
+generic prevents concrete protocol types from re-elaborating the finite-field
+filter and erase machinery. -/
+theorem mem_jointQueryBatchNonzeroCollisionSet_of_nonzero_of_zero
+    (preQueryDiscrepancy : K)
+    (expected authenticated : QueryVector K) (rho : K)
+    (rhoNonzero : rho ≠ 0)
+    (zero : jointQueryBatchDiscrepancy preQueryDiscrepancy expected
+      authenticated rho = 0) :
+    rho ∈ jointQueryBatchNonzeroCollisionSet preQueryDiscrepancy expected
+      authenticated := by
+  simp only [jointQueryBatchNonzeroCollisionSet, Finset.mem_filter,
+    Finset.mem_erase, Finset.mem_univ, and_true]
+  exact ⟨rhoNonzero, zero⟩
+
+/-- Generic repaired handoff from query injection to the later relation
+rounds.  If the joint discrepancy is not a `rho` root, terminal acceptance
+forces a repair in one of rounds one through three. -/
+theorem joint_collision_or_later_alphaRepair
+    (execution : CandidateExecution K)
+    (preQueryDiscrepancy : K)
+    (expected authenticated : QueryVector K) (rho : K)
+    (rhoNonzero : rho ≠ 0)
+    (different : expected ≠ authenticated)
+    (beforeOneExact : execution.discrepancyTrace.before 1 =
+      jointQueryBatchDiscrepancy preQueryDiscrepancy expected authenticated rho)
+    (terminal : execution.RelationTerminalAccepts) :
+    (expected ≠ authenticated ∧
+        rho ∈ jointQueryBatchNonzeroCollisionSet preQueryDiscrepancy expected
+          authenticated) ∨
+      ∃ round : Fin 4, 0 < round.val ∧
+        execution.discrepancyTrace.AlphaRepair round := by
+  by_cases afterQueryZero : execution.discrepancyTrace.before 1 = 0
+  · exact Or.inl ⟨different,
+      mem_jointQueryBatchNonzeroCollisionSet_of_nonzero_of_zero _ _ _ _
+        rhoNonzero (by rw [← beforeOneExact]; exact afterQueryZero)⟩
+  · exact Or.inr
+      (execution.later_alphaRepair_of_before_one_ne_terminal afterQueryZero
+        terminal)
+
 /-- If the query vectors differ, at most sixteen nonzero challenges can hide
 the combined prior/query discrepancy. -/
 theorem jointQueryBatch_nonzero_collision_card_le_sixteen_of_vectors_ne
@@ -152,19 +194,19 @@ theorem jointQueryBatch_nonzero_collision_card_le_sixteen_of_vectors_ne
 def ordinalZeroOffsetVector (delta : K) : QueryVector K :=
   fun ordinal => if ordinal = 0 then delta else 0
 
-@[simp]
 omit [Fintype K] [DecidableEq K] in
+@[simp]
 theorem queryBatchResidual_ordinalZeroOffset
     (delta rho : K) :
     queryBatchResidual (ordinalZeroOffsetVector delta)
         (0 : QueryVector K) rho = delta := by
   simp [queryBatchResidual, ordinalZeroOffsetVector]
 
+omit [Fintype K] [DecidableEq K] in
 /-- Concrete algebraic counterexample for the old composition: a nonzero
 ordinal-zero error exactly cancels the same pre-query discrepancy for every
 challenge.  This is why the Tag-73 repair cannot retain powers starting at
 one. -/
-omit [Fintype K] [DecidableEq K] in
 theorem legacy_start_at_one_allows_universal_constant_cancellation
     (delta rho : K) :
     delta - queryBatchResidual (ordinalZeroOffsetVector delta)
@@ -177,6 +219,8 @@ end FiniteField
 #print axioms jointQueryBatchPolynomial_ne_zero_of_vectors_ne
 #print axioms jointQueryBatchPolynomial_ne_zero_of_preQuery_ne
 #print axioms jointQueryBatchPolynomial_natDegree_le_sixteen
+#print axioms mem_jointQueryBatchNonzeroCollisionSet_of_nonzero_of_zero
+#print axioms joint_collision_or_later_alphaRepair
 #print axioms jointQueryBatch_nonzero_collision_card_le_sixteen_of_vectors_ne
 #print axioms legacy_start_at_one_allows_universal_constant_cancellation
 
