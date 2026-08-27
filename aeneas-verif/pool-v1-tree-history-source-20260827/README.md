@@ -61,6 +61,34 @@ premise is `ParentCallbackExact`, naming the Poseidon tree-parent boundary
 directly. All three genesis theorem groups report only
 `[propext, Classical.choice, Quot.sound]`; the premise is not a hidden axiom.
 
+## Green checkpoint: production one-append carry step
+
+`generated/PoolV1TreeAppendOne/Funs.lean` is a complete transparent
+translation of the literal `production_tree_append_one` wrapper and its
+production validation, carry loop, root reconstruction and receipt path. The
+focused bridge currently closes the exact three-way semantics of one carry
+loop step:
+
+- `append_loop_body_stops_at_depth` proves the depth-20 terminal case;
+- `append_loop_body_stops_at_zero_bit` proves that a zero cursor bit retains
+  the frontier and current carry;
+- `append_loop_body_carries_at_one_bit` proves that a one cursor bit reads the
+  exact frontier slot, hashes it on the left of the carry, replaces that slot
+  with the authenticated empty root at the same level, and increments the
+  level exactly once.
+
+All three theorems report exactly
+`[propext, Classical.choice, Quot.sound]`. `ParentCallbackExact` is again the
+only semantic premise, and it is used only at the translated production
+Poseidon call.
+
+The append translation uses the committed Aeneas constructor tool branch at
+`e9d20a64aa4dcbbc20ba8742a6ddf720f0c575cd` (`aeneas
+aspis-v5-constructor-e9d20a64`). That branch contains the already committed
+nested-borrow and owned-result preservation fixes needed to translate this
+production loop. The generated proof target is Lean `v4.31.0` and contains no
+translation error or opaque loop declaration.
+
 Pinned extraction tools:
 
 - Charon `cb50ff16b9f1066b8a97dc06da704de2da2fa41c`;
@@ -75,9 +103,10 @@ declarations rather than treating raw JSON byte order as semantics.
 
 ## Remaining implementation boundary
 
-The smallest next boundary is the successful production one-append carry loop:
-connect its concrete cursor-bit/frontier update and reconstructed root to the
-existing `appendCarry` predicate. After that, the work is:
+The smallest next boundary is iteration of the now-proved production carry
+step: prove the generated `loop` reaches the exact first zero cursor bit and
+connect the resulting frontier/carry to the existing `appendCarry` predicate.
+After that, the work is:
 
 1. derive two-append as the exact ordered composition of two successful
    production one-appends;
