@@ -84,19 +84,20 @@ noncomputable def PreAnswerSlotMachine.router
   | slots, residual, state => by
       classical
       by_cases remaining : 0 < slots.card + residual
-      · cases destination : chooseRemainingDestination slots residual remaining
-          (machine.preferredSlot state) with
-        | special chosen =>
-            exact .special chosen fun answer =>
-              machine.router (slots.erase chosen.1) residual
-                (machine.afterAnswer state answer)
-        | residual positive =>
-            cases residual with
-            | zero => omega
-            | succ remainingResidual =>
-                exact .residual fun answer =>
-                  machine.router slots remainingResidual
-                    (machine.afterAnswer state answer)
+      · exact
+          match chooseRemainingDestination slots residual remaining
+              (machine.preferredSlot state) with
+          | .special chosen =>
+              .special chosen fun answer =>
+                machine.router (slots.erase chosen.1) residual
+                  (machine.afterAnswer state answer)
+          | .residual positive => by
+              cases residual with
+              | zero => omega
+              | succ remainingResidual =>
+                  exact .residual fun answer =>
+                    machine.router slots remainingResidual
+                      (machine.afterAnswer state answer)
       · have emptySlots : slots = ∅ := by
           apply Finset.card_eq_zero.mp
           omega

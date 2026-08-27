@@ -79,7 +79,8 @@ inductive CausalSlotRouter (Output Slot : Type) [DecidableEq Slot] :
       (next : Output → CausalSlotRouter Output Slot slots remaining) :
       CausalSlotRouter Output Slot slots (remaining + 1)
 
-private def castFreshAnswerTape
+/-- Transport a length-indexed answer tape across an exact length equality. -/
+def castFreshAnswerTape
     {Output : Type} {source target : Nat} (equal : source = target) :
     FreshAnswerTape Output source ≃ FreshAnswerTape Output target :=
   Equiv.cast (congrArg (FreshAnswerTape Output) equal)
