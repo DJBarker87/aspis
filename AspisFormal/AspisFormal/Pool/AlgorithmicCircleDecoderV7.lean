@@ -9,8 +9,8 @@ Knowledge extraction needs executable finite-list decoders, not existential
 decodability predicates.  This module fixes the two deployed one-fold stages,
 their exact agreement thresholds and their proved list caps.  A concrete
 instantiation carries reviewable GRS conversion data and deterministic
-algorithms; only the Guruswami--Sudan decoder theorem remains a published
-external boundary.
+algorithms.  The exact V7 multiplicity-three Guruswami--Sudan theorems are
+proved separately from this generic interface.
 -/
 
 set_option autoImplicit false
@@ -215,7 +215,6 @@ structure ExactDecoderInstantiation (K : Type*) [Field K] [Fintype K]
     (finalDecode received).length ≤ finalListSizeCap
   initialGrsConversion : ExactGRSConversion 1024 1024 initialEncoder
   finalGrsConversion : ExactGRSConversion 256 255 finalEncoder
-  multiplicityThreeGuruswamiSudanApplicable : Prop
   initialDeterministicPolynomialTime : Prop
   finalDeterministicPolynomialTime : Prop
 
@@ -341,14 +340,6 @@ theorem final_output_at_most_99
     (decoder : ExactDecoderInstantiation K) (received : FinalWord K) :
     (decoder.finalDecode received).length ≤ 99 := by
   simpa [finalListSizeCap] using decoder.finalOutputBound received
-
-/-- Circle/line-to-GRS conversion is now intrinsic checked data.  The only
-remaining published applicability proposition here is the exact
-Guruswami--Sudan decoder theorem. -/
-def ExactDecoderInstantiation.publishedApplicability
-    {K : Type*} [Field K] [Fintype K] [DecidableEq K]
-    (decoder : ExactDecoderInstantiation K) : Prop :=
-  decoder.multiplicityThreeGuruswamiSudanApplicable
 
 #print axioms exact_decoder_parameters
 #print axioms initial_close_iff_published_strict
