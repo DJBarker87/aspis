@@ -304,6 +304,47 @@ structure ExactTag73RestoredCausalK15Environment
             (deployedNullifier := deployedNullifier)
             (deployedNode := deployedNode))
 
+/-- The fixed-family proposition at one exact operational context.  Naming it
+once keeps the corrected residual evidence tied to the same proposition that
+the classifier tests before entering its restoration branch. -/
+def ExactTag73K15Context.fixedFailure
+    {HiddenTape TapeIdentity Observation Payload : Type}
+    {parameters : ExactCompilerResourceParameters}
+    {transitionFuel : Nat}
+    {configuration : ExactPlainRomWitnessConfiguration HiddenTape TapeIdentity
+      Observation V5PublicStatement Tag73K12ParsedProof Payload
+      DecodedSpendWitness parameters}
+    {projection : AcceptedTapeProjection V5PublicStatement Tag73K12ParsedProof
+      Payload}
+    {fixedInstance : PublicInstance V5PublicStatement}
+    {decoder : ExactDecoderInstantiation QM31Exact}
+    {decoderBinding : InitialProjectionBinding decoder}
+    {basis : Basis (Fin 4) F QM31Exact}
+    {rc : RoundConstants}
+    {deployedOwner : Digest → Digest}
+    {deployedNote : Digest → F → F → Digest → Digest}
+    {deployedNullifier : Digest → Digest → Digest}
+    {deployedNode : Digest → Digest → Digest}
+    {poseidon : Poseidon2Faithful rc deployedOwner deployedNote
+      deployedNullifier deployedNode}
+    (context : ExactTag73K15Context transitionFuel configuration projection
+      fixedInstance decoder decoderBinding)
+    (environment : ExactTag73RestoredCausalK15Environment transitionFuel
+      configuration projection fixedInstance decoder decoderBinding basis rc
+      poseidon) : Prop :=
+  FixedFamilyK15Failure (environment.terminal context)
+    (environment.sumcheck context)
+    (context.fields environment.operational) context.k14.extraction
+    (fun coordinate => exactOperationalChallenge context.input
+      (.zerocheckPoint coordinate))
+    (context.run environment.operational).point
+    (exactOperationalChallenge context.input .lambda)
+    (exactOperationalChallenge context.input .chi)
+    (exactOperationalChallenge context.input .theta)
+    (exactOperationalChallenge context.input .mu)
+    (exactOperationalChallenge context.input .kappa)
+    (context.material environment.operational).data.execution
+
 /-- The exact two residual failure shapes after a point-compatible restoration
 has been routed to successful client extraction. -/
 structure ExactTag73RestoredCausalK15Failure
@@ -331,22 +372,10 @@ structure ExactTag73RestoredCausalK15Failure
       poseidon)
     (context : ExactTag73K15Context transitionFuel configuration projection
       fixedInstance decoder decoderBinding) : Type where
-  evidence : FixedFamilyK15Failure
-      (environment.terminal context)
-      (environment.sumcheck context)
-      (context.fields environment.operational)
-      context.k14.extraction
-      (fun coordinate => exactOperationalChallenge context.input
-        (.zerocheckPoint coordinate))
-      (context.run environment.operational).point
-      (exactOperationalChallenge context.input .lambda)
-      (exactOperationalChallenge context.input .chi)
-      (exactOperationalChallenge context.input .theta)
-      (exactOperationalChallenge context.input .mu)
-      (exactOperationalChallenge context.input .kappa)
-      (context.material environment.operational).data.execution ∨
+  evidence : context.fixedFailure environment ∨
     (Nonempty (ExactTag73OperationalK15Failure
         (context.material environment.operational)) ∧
+      ¬ context.fixedFailure environment ∧
       ¬ HasAcceptedRestoredPointCompatibleK14 decoder context.k12.words
           (context.run environment.operational).point
           (context.fields environment.operational).pointClaim
@@ -400,18 +429,7 @@ noncomputable def exactTag73RestoredCausalK15Classifier
           fixedInstance decoder decoderBinding :=
         ⟨sample, input, k12, k13, k14⟩
       let fixedFailureProp : Prop :=
-        FixedFamilyK15Failure (environment.terminal context)
-          (environment.sumcheck context)
-          (context.fields environment.operational) context.k14.extraction
-          (fun coordinate => exactOperationalChallenge context.input
-            (.zerocheckPoint coordinate))
-          (context.run environment.operational).point
-          (exactOperationalChallenge context.input .lambda)
-          (exactOperationalChallenge context.input .chi)
-          (exactOperationalChallenge context.input .theta)
-          (exactOperationalChallenge context.input .mu)
-          (exactOperationalChallenge context.input .kappa)
-          (context.material environment.operational).data.execution
+        context.fixedFailure environment
       by_cases anyFixed : fixedFailureProp
       · exact .inr ⟨Or.inl anyFixed⟩
       · have reduced :=
@@ -432,7 +450,7 @@ noncomputable def exactTag73RestoredCausalK15Classifier
                 (deployedNullifier := deployedNullifier)
                 (deployedNode := deployedNode)) sample ⊕
             ExactTag73RestoredCausalK15Failure environment
-              ⟨sample, input, k12, k13, k14⟩) := by
+              context) := by
           rcases reduced with restored | fixed | constrained
           · let restoredResult := Classical.choice
               (environment.pointCompatibleResult context anyFixed restored)
@@ -443,11 +461,10 @@ noncomputable def exactTag73RestoredCausalK15Classifier
                 restoredResult.relationValid)⟩
           · exact (anyFixed fixed).elim
           · by_cases restored : HasAcceptedRestoredPointCompatibleK14 decoder
-                k12.words
-                (operationalAcceptedRun input material.data.decoded
-                  material.data.fixedDecode).point
-                (operationalFixedFields material.data.decoded).pointClaim
-                (environment.family ⟨sample, input, k12, k13, k14⟩)
+                context.k12.words
+                (context.run environment.operational).point
+                (context.fields environment.operational).pointClaim
+                (environment.family context)
             · let restoredResult := Classical.choice
                 (environment.pointCompatibleResult context anyFixed restored)
               exact ⟨.inl
@@ -457,12 +474,11 @@ noncomputable def exactTag73RestoredCausalK15Classifier
                   restoredResult.extractorReturned
                   restoredResult.relationValid)⟩
             · have noRestored : ¬ HasAcceptedRestoredPointCompatibleK14 decoder
-                  k12.words
-                  (operationalAcceptedRun input material.data.decoded
-                    material.data.fixedDecode).point
-                  (operationalFixedFields material.data.decoded).pointClaim
-                  (environment.family ⟨sample, input, k12, k13, k14⟩) := restored
-              exact ⟨.inr ⟨Or.inr ⟨⟨failure⟩, noRestored⟩⟩⟩
+                  context.k12.words
+                  (context.run environment.operational).point
+                  (context.fields environment.operational).pointClaim
+                  (environment.family context) := restored
+              exact ⟨.inr ⟨Or.inr ⟨⟨failure⟩, anyFixed, noRestored⟩⟩⟩
         exact Classical.choice result
 
 #print axioms exactTag73RestoredCausalK15Classifier
