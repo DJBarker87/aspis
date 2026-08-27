@@ -186,8 +186,12 @@ and verifies that `meta.loadedAddresses` has exactly the writable/readonly
 cardinality implied by those lookups before invoking the indexer. The root-page
 response is associated with the exact planned PDA order and `minContextSlot`;
 missing/null accounts, wrong account space and a request/response plan mismatch
-fail before scan-state mutation. A skipped/null block is returned explicitly
-for the scheduler to retry or record as skipped.
+fail before scan-state mutation. `rpc_json_quorum` exposes a constructor-sealed
+null-slot result only when both startup-pinned providers return null for the
+identical finalized `getBlock(slot)` request; a null/non-null split is provider
+disagreement. A null result alone does not distinguish a skipped slot from
+temporary or archival unavailability. The application owns that retry/skip
+policy and its sequential backfill cursor.
 
 ## Unsigned builders, local spends and relaying
 
@@ -331,9 +335,9 @@ default.
 
 The remaining production integration must also:
 
-- send the exact `rpc_json` request bytes over a hardened HTTP/TLS client and
-  feed each response back with its request object; schedule null/skipped slots,
-  retries and backfill without omitting or reordering transactions;
+- run the supplied pinned, no-proxy, no-redirect HTTPS transport and typed
+  two-provider RPC client; persist a sequential backfill cursor and schedule
+  retries without omitting or reordering blocks or agreed null slots;
 - decide whether one RPC provider is trusted or verify finality, block contents
   and v0 address-table resolution through multiple providers or a ledger/light
   client;

@@ -87,6 +87,62 @@ impl AgreedFinalizedRpcJsonPlanV1 {
     }
 }
 
+/// Two-provider evidence that one exact finalized `getBlock(slot)` request
+/// returned JSON `result: null` at both providers. This authenticates the null
+/// response, but does not by itself distinguish a skipped slot from temporary
+/// or archival unavailability; retry/skip policy stays with the backfill
+/// scheduler. The fields are private so callers cannot manufacture evidence or
+/// associate it with different request bytes.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct AgreedFinalizedNullSlotV1 {
+    provider_ids: [[u8; 32]; 2],
+    provider_set_digest: [u8; 32],
+    startup_receipt_digest: [u8; 32],
+    startup_checkpoint_slot: u64,
+    request_id: u64,
+    slot: u64,
+    block_request_binding_sha256: [u8; 32],
+}
+
+impl AgreedFinalizedNullSlotV1 {
+    pub fn provider_ids(&self) -> &[[u8; 32]; 2] {
+        &self.provider_ids
+    }
+
+    pub fn provider_set_digest(&self) -> &[u8; 32] {
+        &self.provider_set_digest
+    }
+
+    pub fn startup_receipt_digest(&self) -> &[u8; 32] {
+        &self.startup_receipt_digest
+    }
+
+    pub fn startup_checkpoint_slot(&self) -> u64 {
+        self.startup_checkpoint_slot
+    }
+
+    pub fn request_id(&self) -> u64 {
+        self.request_id
+    }
+
+    pub fn slot(&self) -> u64 {
+        self.slot
+    }
+
+    pub fn block_request_binding_sha256(&self) -> &[u8; 32] {
+        &self.block_request_binding_sha256
+    }
+}
+
+/// Complete authenticated outcome of one exact finalized block request.
+/// `Null` is emitted only when both startup-pinned providers independently
+/// decode the same request as JSON `result: null`.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub enum AgreedFinalizedSlotPlanV1 {
+    Block(AgreedFinalizedRpcJsonPlanV1),
+    Null(AgreedFinalizedNullSlotV1),
+}
+
 /// Optional exact two-provider root-page exchange for the bindings derived
 /// from an agreed block plan.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -148,39 +204,82 @@ pub fn agree_finalized_get_block_plan_v1(
     request: FinalizedGetBlockRequestV1,
     exchanges: [ExactProviderRpcExchangeV1<'_>; 2],
 ) -> Result<AgreedFinalizedRpcJsonPlanV1, FinalizedRpcQuorumErrorV1> {
+    match agree_finalized_get_block_outcome_v1(quorum, state, binding, request, exchanges)? {
+        AgreedFinalizedSlotPlanV1::Block(plan) => Ok(plan),
+        AgreedFinalizedSlotPlanV1::Null(_) => Err(FinalizedRpcQuorumErrorV1::ProviderBlock {
+            provider_index: 0,
+            error: RpcJsonErrorV1::SkippedBlock,
+        }),
+    }
+}
+
+/// Agree either a non-null finalized block plan or an authenticated null-slot
+/// result.
+/// A null/non-null split is provider disagreement, never permission to omit a
+/// slot from backfill. Malformed responses remain attributed to the exact
+/// provider index.
+pub fn agree_finalized_get_block_outcome_v1(
+    quorum: &ExactTwoProviderRelayerRpcV1,
+    state: &ScanStateV1,
+    binding: &DepositRpcBindingV1,
+    request: FinalizedGetBlockRequestV1,
+    exchanges: [ExactProviderRpcExchangeV1<'_>; 2],
+) -> Result<AgreedFinalizedSlotPlanV1, FinalizedRpcQuorumErrorV1> {
     if request.slot() < quorum.startup_checkpoint_slot() {
         return Err(FinalizedRpcQuorumErrorV1::BlockBeforeStartupCheckpoint);
     }
     let request_json = request.encode_json_v1();
     validate_exchanges_v1(quorum.provider_ids(), &request_json, &exchanges)?;
     let first =
-        plan_finalized_get_block_json_v1(state, binding, request, exchanges[0].response_json())
-            .map_err(|error| FinalizedRpcQuorumErrorV1::ProviderBlock {
-                provider_index: 0,
-                error,
-            })?;
+        plan_finalized_get_block_json_v1(state, binding, request, exchanges[0].response_json());
     let second =
-        plan_finalized_get_block_json_v1(state, binding, request, exchanges[1].response_json())
-            .map_err(|error| FinalizedRpcQuorumErrorV1::ProviderBlock {
-                provider_index: 1,
-                error,
-            })?;
-    if first != second {
-        return Err(FinalizedRpcQuorumErrorV1::ProviderDisagreement);
+        plan_finalized_get_block_json_v1(state, binding, request, exchanges[1].response_json());
+    let block_request_binding_sha256 = request_binding_digest_v1(
+        GET_BLOCK_ENDPOINT_V1,
+        request.request_id(),
+        request.slot(),
+        &request_json,
+    )?;
+
+    match (first, second) {
+        (Ok(first), Ok(second)) => {
+            if first != second {
+                return Err(FinalizedRpcQuorumErrorV1::ProviderDisagreement);
+            }
+            Ok(AgreedFinalizedSlotPlanV1::Block(
+                AgreedFinalizedRpcJsonPlanV1 {
+                    provider_ids: *quorum.provider_ids(),
+                    provider_set_digest: *quorum.provider_set_digest(),
+                    startup_receipt_digest: *quorum.startup_receipt_digest(),
+                    startup_checkpoint_slot: quorum.startup_checkpoint_slot(),
+                    block_request_binding_sha256,
+                    plan: first,
+                },
+            ))
+        }
+        (Err(RpcJsonErrorV1::SkippedBlock), Err(RpcJsonErrorV1::SkippedBlock)) => {
+            Ok(AgreedFinalizedSlotPlanV1::Null(AgreedFinalizedNullSlotV1 {
+                provider_ids: *quorum.provider_ids(),
+                provider_set_digest: *quorum.provider_set_digest(),
+                startup_receipt_digest: *quorum.startup_receipt_digest(),
+                startup_checkpoint_slot: quorum.startup_checkpoint_slot(),
+                request_id: request.request_id(),
+                slot: request.slot(),
+                block_request_binding_sha256,
+            }))
+        }
+        (Ok(_), Err(RpcJsonErrorV1::SkippedBlock)) | (Err(RpcJsonErrorV1::SkippedBlock), Ok(_)) => {
+            Err(FinalizedRpcQuorumErrorV1::ProviderDisagreement)
+        }
+        (Err(error), _) => Err(FinalizedRpcQuorumErrorV1::ProviderBlock {
+            provider_index: 0,
+            error,
+        }),
+        (_, Err(error)) => Err(FinalizedRpcQuorumErrorV1::ProviderBlock {
+            provider_index: 1,
+            error,
+        }),
     }
-    Ok(AgreedFinalizedRpcJsonPlanV1 {
-        provider_ids: *quorum.provider_ids(),
-        provider_set_digest: *quorum.provider_set_digest(),
-        startup_receipt_digest: *quorum.startup_receipt_digest(),
-        startup_checkpoint_slot: quorum.startup_checkpoint_slot(),
-        block_request_binding_sha256: request_binding_digest_v1(
-            GET_BLOCK_ENDPOINT_V1,
-            request.request_id(),
-            request.slot(),
-            &request_json,
-        )?,
-        plan: first,
-    })
 }
 
 #[allow(clippy::too_many_arguments)]
@@ -447,6 +546,84 @@ mod tests {
                 exchanges(wrong_request, &first, &first),
             ),
             Err(FinalizedRpcQuorumErrorV1::WrongRequestBytes { provider_index: 0 })
+        );
+    }
+
+    #[test]
+    fn finalized_null_slot_requires_two_provider_agreement() {
+        let (state, binding, _, startup) = fixture();
+        let quorum = ExactTwoProviderRelayerRpcV1::new(PROVIDERS, &startup).unwrap();
+        let request = FinalizedGetBlockRequestV1::new(9, STARTUP_SLOT + 3).unwrap();
+        let request_json = request.encode_json_v1();
+        let compact = br#"{"jsonrpc":"2.0","id":9,"result":null}"#;
+        let pretty = br#"{
+          "jsonrpc": "2.0",
+          "id": 9,
+          "result": null
+        }"#;
+
+        let agreed = agree_finalized_get_block_outcome_v1(
+            &quorum,
+            &state,
+            &binding,
+            request,
+            exchanges(&request_json, compact, pretty),
+        )
+        .unwrap();
+        let AgreedFinalizedSlotPlanV1::Null(null) = agreed else {
+            panic!("two null finalized responses must produce a null-slot result")
+        };
+        assert_eq!(null.provider_ids(), &PROVIDERS);
+        assert_eq!(null.provider_set_digest(), startup.provider_set_digest());
+        assert_eq!(null.startup_receipt_digest(), startup.receipt_digest());
+        assert_eq!(null.startup_checkpoint_slot(), STARTUP_SLOT);
+        assert_eq!(null.request_id(), 9);
+        assert_eq!(null.slot(), STARTUP_SLOT + 3);
+        assert_ne!(null.block_request_binding_sha256(), &[0u8; 32]);
+
+        assert_eq!(
+            agree_finalized_get_block_plan_v1(
+                &quorum,
+                &state,
+                &binding,
+                request,
+                exchanges(&request_json, compact, pretty),
+            ),
+            Err(FinalizedRpcQuorumErrorV1::ProviderBlock {
+                provider_index: 0,
+                error: RpcJsonErrorV1::SkippedBlock,
+            })
+        );
+    }
+
+    #[test]
+    fn finalized_null_block_split_is_provider_disagreement() {
+        let (state, binding, _, startup) = fixture();
+        let quorum = ExactTwoProviderRelayerRpcV1::new(PROVIDERS, &startup).unwrap();
+        let request = FinalizedGetBlockRequestV1::new(10, STARTUP_SLOT + 1).unwrap();
+        let request_json = request.encode_json_v1();
+        let skipped = br#"{"jsonrpc":"2.0","id":10,"result":null}"#;
+        let block = empty_block_response(10, [0xa1; 32]);
+
+        assert_eq!(
+            agree_finalized_get_block_outcome_v1(
+                &quorum,
+                &state,
+                &binding,
+                request,
+                exchanges(&request_json, skipped, &block),
+            ),
+            Err(FinalizedRpcQuorumErrorV1::ProviderDisagreement)
+        );
+        assert_eq!(
+            agree_finalized_get_block_outcome_v1(
+                &quorum,
+                &state,
+                &binding,
+                request,
+                exchanges(&request_json, &block, skipped),
+            ),
+            Err(FinalizedRpcQuorumErrorV1::ProviderDisagreement)
         );
     }
 
