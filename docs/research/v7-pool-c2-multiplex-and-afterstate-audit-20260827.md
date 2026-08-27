@@ -3,7 +3,7 @@
 Date: 2026-08-27
 
 Status: the layout-only `7 -> 4` C2 fusion is rejected.  The conservative
-one-terminal design keeps seven C2 lanes, a 34,658-byte proof body, and a
+one-terminal design keeps seven C2 lanes, a 34,658-byte maximum proof body, and a
 minimal 680-byte verified afterstate payload.  No SBF build was run for this
 audit.
 
@@ -51,7 +51,7 @@ C2 columns                         3 -> 7
 C2 bytes per query               186 -> 434
 sixteen query-record delta              3,968
 fixed point-claim delta                    186
-proof body                    30,504 -> 34,658
+maximum proof body            30,504 -> 34,658
 total delta                                4,154
 ```
 
@@ -113,7 +113,7 @@ request and registry policy; they need not be echoed in the result.
    copied into CPI instruction data.
 2. Add the conservative pair Tag-73 proof parser and verifier geometry: seven
    C2 lanes, 653 fixed QM31 values, 869-byte query records and an exact
-   34,658-byte body.
+  34,658-byte maximum body.
 3. On success set exactly the 688-byte `ASJA` result.  On every verifier error,
    return no success data.
 4. In the Pool, replace the execution-time append call with an authenticated
@@ -140,7 +140,7 @@ That work cannot fit inside the 141,987-CU headroom of the current verifier.
   Lean theorem and Rust-to-Lean source bridge;
 - the Pool-side authenticated-afterstate token and byte-only mutation suffix
   still need executable integration;
-- the 34,658-byte verifier CU is unmeasured;
+- honest and accepted maximum-frontier staged-verifier CU are unmeasured;
 - same-page, rollover and withdrawal combined LiteSVM runs remain required.
 
 The current source experiment is therefore not a production authorization

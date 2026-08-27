@@ -38,8 +38,8 @@ cryptographic equivalence and a very large measured speedup before reopening
 it.
 
 The proof-carried append route remains the only evidenced near-term
-one-terminal candidate. It has a 34,658-byte proof, 4,154 bytes more than the
-stable 30,504-byte wire, and adds 64 C2 leaf SHA-256 message blocks. It removes
+one-terminal candidate. Its maximum body is 34,658 bytes, 4,154 bytes more than
+the stable 30,504-byte maximum, and it adds 64 C2 leaf SHA-256 message blocks. It removes
 the native twenty-parent append, but a completed proof is tied to one live
 Pool snapshot. A competing append makes those final bytes stale; only its
 expensive Stage A is reusable. This is optimistic concurrency, not a
@@ -142,7 +142,7 @@ caller-provided booleans or digests.
 
 | Property | A: proof-carried append | B: Pool execution-time append |
 | --- | --- | --- |
-| Proof body | 34,658 bytes | 30,504 bytes |
+| Maximum proof body | 34,658 bytes | 30,504 bytes |
 | Added proof bytes | 4,154 | 0 |
 | C2 leaf SHA work | +64 message blocks | unchanged |
 | Semantic Poseidon schedule | 34 stable + 20 late = 54 blocks | 34 stable blocks |

@@ -33,8 +33,8 @@ terminal suffix only checks and byte-writes that result atomically with history,
 nullifier and custody effects.
 
 This primary route has a measured/formal cost which must be faced explicitly:
-the proof is 34,658 bytes, 4,154 bytes larger than the frozen 30,504-byte V7
-proof, and a completed proof becomes stale after a competing append. It remains
+its maximum proof body is 34,658 bytes, 4,154 bytes larger than the frozen
+30,504-byte maximum, and a completed proof becomes stale after a competing append. It remains
 one terminal transaction; proof-account creation and uploads are preparatory
 data transport, not a separate authorization or settlement transaction.
 
@@ -152,7 +152,7 @@ saving.
 | Nullifier, output commitments, value/custody statement and output pair | Yes | Bound by both the stable proof prefix and the final terminal statement. |
 | Live append root/frontier | No | Captured in the exact 800-byte late snapshot after `lambda, chi` and bound by Stage B. |
 | Stable Stage-A proof prefix | Yes | May be reused while the historical membership root remains retained and the nullifier remains fresh. |
-| Completed 34,658-byte proof | No | Becomes stale after a competing append changes the current pair root/index/frontier. |
+| Completed staged proof (at most 34,658 bytes) | No | Becomes stale after a competing append changes the current pair root/index/frontier. |
 | Late 800-byte snapshot and Stage-B suffix | No | Must be rebuilt from the changed live state after a competing append. |
 | Generic proof-body digest, ASRA and ASPS/ASRS images | Not needed | Deleted from the one-terminal profile. |
 
@@ -209,7 +209,7 @@ degree 27. The source constants are in
 roles and exact 800-byte snapshot are at lines 265-480.
 
 That 48-row result closes the primary staged geometry. The exact Lean wire
-theorem gives 34,658 bytes: four late QM31 C2 lanes add 4,154 bytes, five upload
+theorem gives a 34,658-byte maximum: four late QM31 C2 lanes add 4,154 bytes, five upload
 chunks and 64 C2 leaf SHA message blocks across q16.
 
 A layout-only reduction from seven total C2 lanes to four is not sound in the
@@ -331,7 +331,7 @@ The private-transfer terminal requires, at maximum rollover shape:
 | registry | read-only | 128 |
 | registry entry | read-only | 192 |
 | selected verifier program | read-only, executable | program account |
-| finalized proof | read-only | 40-byte header + 34,658-byte staged pair body |
+| finalized proof | read-only | 40-byte header + staged pair body, at most 34,658 bytes |
 | System Program | read-only, executable | native |
 
 Withdrawal adds the mint, vault, destination, vault authority and original SPL
@@ -380,8 +380,8 @@ runs:
 
 1. prefactorize and measure the current native Pool terminal against the same
    preserved 30,192-byte proof, proving exact equality to its compiled reference;
-2. measure the staged 34,658-byte pair verifier alone, with exact proof and
-   688-byte result;
+2. measure an honest staged pair verifier and separately gate the accepted
+   maximum-frontier/34,658-byte case, with the exact 688-byte result;
 3. measure the byte-only Pool suffix with a verifier transport double;
 4. perform one combined private-transfer same-page run;
 5. perform one combined private-transfer rollover run; and
