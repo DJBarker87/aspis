@@ -15,6 +15,7 @@ pub mod incremental_merkle;
 pub mod nullifier_marker;
 #[cfg(not(target_os = "solana"))]
 pub mod pair_constraint_residuals;
+pub mod pair_forest_accounts;
 #[cfg(not(target_os = "solana"))]
 pub mod pair_forest_constraint_residuals;
 #[cfg(not(target_os = "solana"))]
@@ -129,6 +130,21 @@ pub use pair_constraint_residuals::{
     POOL_V1_PAIR_WITHDRAWAL_PUBLIC_RESIDUAL_COUNT, POOL_V1_PAIR_WITHDRAWAL_SCHEDULE_RESIDUAL_COUNT,
     POOL_V1_PAIR_WITHDRAWAL_TOTAL_RESIDUAL_COUNT, POOL_V1_PAIR_ZEROCHECK_INDIVIDUAL_DEGREE,
     POOL_V1_PAIR_ZERO_PADDING_RESIDUAL_COUNT,
+};
+pub use pair_forest_accounts::{
+    decode_pool_v1_pair_forest_checkpoint_v1, decode_pool_v1_pair_forest_lane_state_v1,
+    decode_pool_v1_pair_forest_master_v1, encode_pool_v1_pair_forest_checkpoint_v1,
+    encode_pool_v1_pair_forest_lane_state_v1, encode_pool_v1_pair_forest_master_v1,
+    plan_pool_v1_pair_forest_checkpoint_v1, pool_v1_pair_forest_deposit_lane_v1,
+    pool_v1_pair_forest_output_lane_v1, PoolV1PairForestAccountErrorV1,
+    PoolV1PairForestCheckpointPlanV1, PoolV1PairForestCheckpointV1, PoolV1PairForestLaneStateV1,
+    PoolV1PairForestMasterV1, POOL_V1_PAIR_FOREST_ACCOUNT_FORMAT_BINDING,
+    POOL_V1_PAIR_FOREST_ALL_LANES_MASK, POOL_V1_PAIR_FOREST_CHECKPOINT_ACCOUNT_BYTES,
+    POOL_V1_PAIR_FOREST_CHECKPOINT_MAGIC, POOL_V1_PAIR_FOREST_CHECKPOINT_VERSION,
+    POOL_V1_PAIR_FOREST_LANE_ACCOUNT_BYTES, POOL_V1_PAIR_FOREST_LANE_COUNT,
+    POOL_V1_PAIR_FOREST_LANE_HEADER_BYTES, POOL_V1_PAIR_FOREST_LANE_MAGIC,
+    POOL_V1_PAIR_FOREST_LANE_VERSION, POOL_V1_PAIR_FOREST_MASTER_ACCOUNT_BYTES,
+    POOL_V1_PAIR_FOREST_MASTER_MAGIC, POOL_V1_PAIR_FOREST_MASTER_VERSION,
 };
 #[cfg(not(target_os = "solana"))]
 pub use pair_forest_hiding::{

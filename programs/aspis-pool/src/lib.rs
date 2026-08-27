@@ -22,6 +22,8 @@ pub mod history;
 pub mod instruction;
 pub mod nullifier;
 pub mod pair_dispatch;
+#[cfg(feature = "pair-forest-account-evidence")]
+pub mod pair_forest;
 pub(crate) mod pair_processor;
 pub mod pair_state;
 pub(crate) mod prepared_settlement;
@@ -73,6 +75,14 @@ pub use nullifier::{
 pub use pair_dispatch::{
     derive_pair_verifier_account_claim_v1, dispatch_pair_verifier_readonly_v1,
     plan_pair_verifier_dispatch_v1, PairVerifierAccountClaimV1, PlannedPairVerifierDispatchV1,
+};
+#[cfg(feature = "pair-forest-account-evidence")]
+pub use pair_forest::{
+    decode_retained_pair_forest_checkpoint_account_v1, plan_pair_forest_checkpoint_accounts_v1,
+    pool_v1_pair_forest_checkpoint_address, pool_v1_pair_forest_lane_address,
+    pool_v1_pair_forest_lane_root_page_address, pool_v1_pair_forest_master_address,
+    PlannedPairForestCheckpointAccountsV1, POOL_V1_PAIR_FOREST_CHECKPOINT_SEED,
+    POOL_V1_PAIR_FOREST_LANE_SEED, POOL_V1_PAIR_FOREST_MASTER_SEED,
 };
 pub use pair_state::{
     pool_v1_pair_state_address, PairAppendReceiptV1, PairPoolStateV1,
