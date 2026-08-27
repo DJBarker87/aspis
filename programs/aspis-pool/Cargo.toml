@@ -16,8 +16,8 @@ no-entrypoint = []
 # the authenticated ASJA result.
 pair-afterstate-evidence = []
 pair-afterstate-profile = ["pair-afterstate-evidence"]
-# Production-inactive account/PDA/checkpoint evidence for the accepted
-# eight-lane forest candidate. No processor dispatch is enabled by this flag.
+# Production-inactive account/PDA/checkpoint/deposit/terminal plumbing for the
+# accepted eight-lane forest candidate. Release builds leave it disabled.
 pair-forest-account-evidence = []
 
 [dependencies]

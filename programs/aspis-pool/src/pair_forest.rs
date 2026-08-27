@@ -3,9 +3,10 @@
 //! This module is compiled only under the explicit
 //! `pair-forest-account-evidence` feature. It defines exact initialization and
 //! permissionless checkpoint instructions plus a vault-backed deterministic
-//! lane deposit, but no spend instruction. The checkpoint reads all eight lane
-//! PDAs in one invocation and computes the seven frozen Pool Poseidon parents
-//! internally.
+//! lane deposit and a compact one-terminal spend caller. The spend caller is
+//! still inactive by default and requires a separately reviewed selected
+//! verifier ASQ8 handler. The checkpoint reads all eight lane PDAs in one
+//! invocation and computes the seven frozen Pool Poseidon parents internally.
 
 extern crate alloc;
 
@@ -14,13 +15,17 @@ use alloc::{boxed::Box, vec::Vec};
 use aspis_statement::{
     pool_v1::{
         decode_pool_v1_pair_forest_checkpoint_v1, decode_pool_v1_pair_forest_lane_state_v1,
-        decode_pool_v1_pair_forest_master_v1, encode_pool_v1_pair_forest_checkpoint_v1,
-        encode_pool_v1_pair_forest_lane_state_v1, encode_pool_v1_pair_forest_master_v1,
+        decode_pool_v1_pair_forest_master_v1, decode_pool_v1_pair_forest_terminal_request_v1,
+        encode_pool_v1_pair_forest_checkpoint_v1, encode_pool_v1_pair_forest_lane_state_v1,
+        encode_pool_v1_pair_forest_master_v1, encode_pool_v1_pair_forest_terminal_result_v1,
         plan_pool_v1_pair_forest_checkpoint_v1, pool_v1_note_commitment,
-        pool_v1_pair_forest_deposit_lane_v1, pool_v1_tree_parent, root_history_location,
-        IncrementalMerkleTreeV1, PoolIdentityV1, PoolV1PairForestCheckpointV1,
-        PoolV1PairForestLaneStateV1, PoolV1PairForestMasterV1, PoolV1PairLeafWitnessV1,
-        POOL_V1_DIGEST_ENCODING_VERSION, POOL_V1_PAIR_CAPACITY,
+        pool_v1_pair_forest_deposit_lane_v1, pool_v1_tree_parent,
+        reconstruct_pool_v1_pair_forest_terminal_statement_v1, root_history_location,
+        validate_pool_v1_pair_forest_terminal_result_against_statement_v1, IncrementalMerkleTreeV1,
+        PoolIdentityV1, PoolV1NullifierMarkerV1, PoolV1PairForestCheckpointV1,
+        PoolV1PairForestLaneStateV1, PoolV1PairForestMasterV1, PoolV1PairForestTerminalCommonV1,
+        PoolV1PairForestTerminalPaymentV1, PoolV1PairForestTerminalRequestV1,
+        PoolV1PairLeafWitnessV1, POOL_V1_DIGEST_ENCODING_VERSION, POOL_V1_PAIR_CAPACITY,
         POOL_V1_PAIR_FOREST_CHECKPOINT_ACCOUNT_BYTES, POOL_V1_PAIR_FOREST_LANE_COUNT,
         POOL_V1_PAIR_FOREST_MASTER_ACCOUNT_BYTES, POOL_V1_PAIR_TREE_DEPTH,
         POOL_V1_ROOT_HISTORY_CAPACITY, POOL_V1_ROOT_HISTORY_PAGE_ACCOUNT_BYTES,
@@ -51,6 +56,10 @@ use crate::{
         PoolInstructionFormatErrorV1, POOL_V1_INITIALIZE_INSTRUCTION_BYTES,
         POOL_V1_INITIALIZE_INSTRUCTION_MAGIC, POOL_V1_INSTRUCTION_VERSION,
     },
+    nullifier::{plan_nullifier_marker_consumption_v1, NullifierMarkerPreparationV1},
+    pair_forest_dispatch::{
+        dispatch_pair_forest_terminal_readonly_v1, AuthenticatedPairForestResultV1,
+    },
     processor::{
         create_or_allocate_pda, initialize_vault_account, plan_fresh_program_pda,
         plan_vault_initialization, require_payer_and_system_program, require_token_program_account,
@@ -58,9 +67,11 @@ use crate::{
     },
     state::PoolInitializationV1,
     vault::{
-        exact_transfer_account_infos_v1, parse_legacy_mint_v1,
-        plan_legacy_deposit_transfer_from_identity_v1, validate_exact_deposit_delta_v1,
-        LEGACY_SPL_TOKEN_MINT_ACCOUNT_BYTES, LEGACY_SPL_TOKEN_PROGRAM_ID,
+        exact_transfer_account_infos_v1, exact_withdrawal_transfer_account_infos_v1,
+        parse_legacy_mint_v1, plan_legacy_deposit_transfer_from_identity_v1,
+        plan_legacy_withdrawal_transfer_from_identity_v1, validate_exact_deposit_delta_v1,
+        validate_exact_withdrawal_delta_v1, LEGACY_SPL_TOKEN_MINT_ACCOUNT_BYTES,
+        LEGACY_SPL_TOKEN_PROGRAM_ID, POOL_V1_VAULT_AUTHORITY_SEED,
     },
 };
 
@@ -711,6 +722,377 @@ pub(crate) fn process_pair_forest_deposit_with_runtime_v1<'info, R: PoolCpiRunti
     Ok(())
 }
 
+#[derive(Clone, Copy)]
+enum PairForestSpendPageV1 {
+    Genesis,
+    SamePage(RootPageHeaderV1),
+    Rollover { next_index: usize, page_number: u64 },
+}
+
+#[derive(Clone, Copy)]
+struct PairForestSpendLayoutV1 {
+    page: PairForestSpendPageV1,
+    marker_index: usize,
+    registry_start: usize,
+    verifier_index: usize,
+    proof_index: usize,
+    token_start: usize,
+}
+
+fn plan_pair_forest_spend_layout_v1(
+    program_id: &Pubkey,
+    accounts: &[AccountInfo<'_>],
+    lane: &PoolV1PairForestLaneStateV1,
+    withdrawal: bool,
+) -> Result<PairForestSpendLayoutV1, ProgramError> {
+    if lane.tree.next_leaf_index >= POOL_V1_PAIR_CAPACITY {
+        return Err(PoolV1ProgramError::TreeFull.into());
+    }
+    let lane_account = accounts.get(2).ok_or(ProgramError::NotEnoughAccountKeys)?;
+    let current = accounts.get(3).ok_or(ProgramError::NotEnoughAccountKeys)?;
+    let current_location = root_history_location(lane.tree.next_leaf_index);
+    let next_location = root_history_location(lane.tree.next_leaf_index + 1);
+    let (page, cursor) = if lane.tree.next_leaf_index == 0
+        && account_is_zeroed_program_page(current, program_id)?
+    {
+        crate::history::require_root_page_address(program_id, lane_account.key, 0, current)?;
+        require_program_account(current, program_id, true)?;
+        (PairForestSpendPageV1::Genesis, 4)
+    } else if current_location.page_number == next_location.page_number {
+        let header = validate_lane_current_page(program_id, lane_account, current, lane, true)?;
+        (PairForestSpendPageV1::SamePage(header), 4)
+    } else {
+        let header = validate_lane_current_page(program_id, lane_account, current, lane, false)?;
+        if usize::from(header.filled) != POOL_V1_ROOT_HISTORY_CAPACITY {
+            return Err(PoolV1ProgramError::StateHistoryMismatch.into());
+        }
+        let next_index = 4;
+        let next = accounts
+            .get(next_index)
+            .ok_or(ProgramError::NotEnoughAccountKeys)?;
+        crate::history::require_root_page_address(
+            program_id,
+            lane_account.key,
+            next_location.page_number,
+            next,
+        )?;
+        if !account_is_zeroed_program_page(next, program_id)? || !next.is_writable {
+            return Err(PoolV1ProgramError::InvalidFreshAccount.into());
+        }
+        (
+            PairForestSpendPageV1::Rollover {
+                next_index,
+                page_number: next_location.page_number,
+            },
+            5,
+        )
+    };
+    let marker_index = cursor;
+    let registry_start = cursor + 1;
+    let verifier_index = cursor + 3;
+    let proof_index = cursor + 4;
+    let token_start: usize = cursor + 5;
+    let expected = token_start
+        .checked_add(if withdrawal { 5 } else { 0 })
+        .ok_or(PoolV1ProgramError::ArithmeticOverflow)?;
+    require_exact_account_count(accounts, expected)?;
+    require_unique_accounts(accounts)?;
+    Ok(PairForestSpendLayoutV1 {
+        page,
+        marker_index,
+        registry_start,
+        verifier_index,
+        proof_index,
+        token_start,
+    })
+}
+
+fn validate_pair_forest_request_accounts_v1(
+    program_id: &Pubkey,
+    master_account: &AccountInfo<'_>,
+    checkpoint_account: &AccountInfo<'_>,
+    lane_account: &AccountInfo<'_>,
+    master: &PoolV1PairForestMasterV1,
+    checkpoint: &PoolV1PairForestCheckpointV1,
+    lane: &PoolV1PairForestLaneStateV1,
+    request: &PoolV1PairForestTerminalRequestV1,
+) -> ProgramResult {
+    if request.pool_program != program_id.to_bytes() {
+        return Err(PoolV1ProgramError::VerifierDispatchIdentityMismatch.into());
+    }
+    let (pool, deployment, anchor_sequence, anchor_root, asset_id, destination) =
+        match request.public {
+            PoolV1PairForestTerminalPaymentV1::PrivateTransfer(public) => (
+                public.pool,
+                public.deployment_domain,
+                public.anchor_sequence,
+                public.anchor_root,
+                public.asset_id,
+                [0u8; 32],
+            ),
+            PoolV1PairForestTerminalPaymentV1::Withdrawal(public) => (
+                public.pool,
+                public.deployment_domain,
+                public.anchor_sequence,
+                public.anchor_root,
+                public.asset_id,
+                public.destination_token_account,
+            ),
+        };
+    let output_lane =
+        aspis_statement::pool_v1::pool_v1_pair_forest_output_lane_v1(request.public.nullifier())
+            .map_err(|_| PoolV1ProgramError::NonCanonicalLeaf)?;
+    if pool != master_account.key.to_bytes()
+        || master.identity.pool != pool
+        || deployment != master.identity.deployment_domain
+        || asset_id != master.identity.asset_id
+        || checkpoint_account.key.to_bytes() == [0u8; 32]
+        || checkpoint.master != pool
+        || checkpoint.deployment_domain != deployment
+        || checkpoint.checkpoint_sequence != anchor_sequence
+        || checkpoint.global_root != anchor_root
+        || lane_account.key
+            != &pool_v1_pair_forest_lane_address(program_id, master_account.key, output_lane)?.0
+        || lane.master != pool
+        || lane.lane_id != output_lane
+        || master.initialized_lane_mask & (1u8 << output_lane) == 0
+        || (request.public.transition_kind()
+            == aspis_statement::pool_v1::PoolV1TransitionKind::Withdrawal
+            && destination == [0u8; 32])
+    {
+        return Err(PoolV1ProgramError::VerifierDispatchIdentityMismatch.into());
+    }
+    Ok(())
+}
+
+fn next_pair_forest_lane_v1(
+    lane: &PoolV1PairForestLaneStateV1,
+    result: &aspis_statement::pool_v1::PoolV1PairForestTerminalResultV1,
+) -> Result<PoolV1PairForestLaneStateV1, ProgramError> {
+    let afterstate = result.verified_afterstate;
+    if lane.tree.next_leaf_index.checked_add(1) != Some(afterstate.next_pair_index) {
+        return Err(PoolV1ProgramError::StateHistoryMismatch.into());
+    }
+    for (level, node) in afterstate.next_frontier.iter().enumerate() {
+        if (afterstate.next_pair_index >> level) & 1 == 0
+            && *node != POOL_V1_PAIR_EMPTY_ROOTS[level]
+        {
+            return Err(PoolV1ProgramError::StateHistoryMismatch.into());
+        }
+    }
+    Ok(PoolV1PairForestLaneStateV1 {
+        master: lane.master,
+        lane_id: lane.lane_id,
+        tree: IncrementalMerkleTreeV1 {
+            next_leaf_index: afterstate.next_pair_index,
+            root: afterstate.next_root,
+            frontier: afterstate.next_frontier,
+        },
+    })
+}
+
+#[allow(clippy::too_many_arguments)]
+pub(crate) fn process_pair_forest_terminal_with_verifier_v1<'info, R, V, S>(
+    program_id: &Pubkey,
+    accounts: &[AccountInfo<'info>],
+    instruction_data: &[u8],
+    current_slot: u64,
+    runtime: &mut R,
+    verify: V,
+    set_return_data: S,
+) -> ProgramResult
+where
+    R: PoolCpiRuntimeV1,
+    V: FnOnce(
+        &Pubkey,
+        &AccountInfo<'info>,
+        &AccountInfo<'info>,
+        &AccountInfo<'info>,
+        &aspis_statement::pool_v1::VerifierPolicyV1,
+        &[AccountInfo<'info>],
+        &AccountInfo<'info>,
+        &AccountInfo<'info>,
+        &PoolV1PairForestTerminalRequestV1,
+        u64,
+    ) -> Result<AuthenticatedPairForestResultV1, ProgramError>,
+    S: FnOnce(&[u8]),
+{
+    let request = decode_pool_v1_pair_forest_terminal_request_v1(instruction_data)
+        .map_err(|_| ProgramError::InvalidInstructionData)?;
+    let master_account = accounts.first().ok_or(ProgramError::NotEnoughAccountKeys)?;
+    let checkpoint_account = accounts.get(1).ok_or(ProgramError::NotEnoughAccountKeys)?;
+    let lane_account = accounts.get(2).ok_or(ProgramError::NotEnoughAccountKeys)?;
+    let master = decode_master_account(program_id, master_account, false)?;
+    let checkpoint = decode_retained_pair_forest_checkpoint_account_v1(
+        program_id,
+        master_account.key,
+        checkpoint_account,
+    )?;
+    let output_lane =
+        aspis_statement::pool_v1::pool_v1_pair_forest_output_lane_v1(request.public.nullifier())
+            .map_err(|_| PoolV1ProgramError::NonCanonicalLeaf)?;
+    let lane = decode_lane_account(
+        program_id,
+        master_account.key,
+        output_lane,
+        lane_account,
+        true,
+    )?;
+    validate_pair_forest_request_accounts_v1(
+        program_id,
+        master_account,
+        checkpoint_account,
+        lane_account,
+        &master,
+        &checkpoint,
+        &lane,
+        &request,
+    )?;
+    let withdrawal = matches!(
+        request.public,
+        PoolV1PairForestTerminalPaymentV1::Withdrawal(_)
+    );
+    let layout = plan_pair_forest_spend_layout_v1(program_id, accounts, &lane, withdrawal)?;
+
+    let marker = &accounts[layout.marker_index];
+    let marker_payload = PoolV1NullifierMarkerV1 {
+        transition_kind: request.public.transition_kind(),
+        pool: master_account.key.to_bytes(),
+        deployment_domain: master.identity.deployment_domain,
+        nullifier: *request.public.nullifier(),
+        retained_anchor_sequence: checkpoint.checkpoint_sequence,
+        retained_anchor_root: checkpoint.global_root,
+        verifier_profile: request.verifier_profile,
+        verifier_release: request.verifier_release,
+    };
+    let planned_marker = plan_nullifier_marker_consumption_v1(program_id, marker, marker_payload)?;
+    if planned_marker.preparation() != NullifierMarkerPreparationV1::PopulateProgramOwnedZeroed {
+        return Err(PoolV1ProgramError::InvalidNullifierMarkerAccount.into());
+    }
+
+    let withdrawal_plan =
+        if let PoolV1PairForestTerminalPaymentV1::Withdrawal(public) = request.public {
+            let token_accounts = &accounts[layout.token_start..layout.token_start + 5];
+            Some(plan_legacy_withdrawal_transfer_from_identity_v1(
+                program_id,
+                master_account.key,
+                &master.identity,
+                token_accounts,
+                &Pubkey::new_from_array(public.destination_token_account),
+                public.amount,
+            )?)
+        } else {
+            None
+        };
+
+    let authenticated = verify(
+        program_id,
+        master_account,
+        checkpoint_account,
+        lane_account,
+        &master.verifier_policy,
+        &accounts[layout.registry_start..layout.registry_start + 2],
+        &accounts[layout.verifier_index],
+        &accounts[layout.proof_index],
+        &request,
+        current_slot,
+    )?;
+    let result = authenticated.value();
+    let common = PoolV1PairForestTerminalCommonV1 {
+        master_account: master_account.key.to_bytes(),
+        checkpoint_account: checkpoint_account.key.to_bytes(),
+        selected_lane_account: lane_account.key.to_bytes(),
+        output_lane,
+        checkpoint_sequence: checkpoint.checkpoint_sequence,
+        historical_global_anchor: checkpoint.global_root,
+        lane_transition: aspis_statement::pool_v1::PoolV1PairLatePublicStatementV1 {
+            live_snapshot: aspis_statement::pool_v1::PoolV1PairLiveSnapshotV1 {
+                pool: master_account.key.to_bytes(),
+                deployment_domain: master.identity.deployment_domain,
+                sequence: lane.tree.next_leaf_index,
+                next_pair_index: lane.tree.next_leaf_index,
+                current_root: lane.tree.root,
+                frontier: lane.tree.frontier,
+            },
+            candidate_afterstate: result.verified_afterstate,
+        },
+    };
+    let statement = reconstruct_pool_v1_pair_forest_terminal_statement_v1(&request, common)
+        .map_err(|_| PoolV1ProgramError::InvalidVerifierReturnData)?;
+    validate_pool_v1_pair_forest_terminal_result_against_statement_v1(&statement, result)
+        .map_err(|_| PoolV1ProgramError::InvalidVerifierReturnData)?;
+    let next_lane = next_pair_forest_lane_v1(&lane, result)?;
+    let next_lane_image =
+        encode_pool_v1_pair_forest_lane_state_v1(&next_lane, &POOL_V1_PAIR_EMPTY_ROOTS)
+            .map_err(|_| PoolV1ProgramError::StateHistoryMismatch)?;
+    let result_bytes = encode_pool_v1_pair_forest_terminal_result_v1(result)
+        .map_err(|_| PoolV1ProgramError::InvalidVerifierReturnData)?;
+
+    let writable_page = match layout.page {
+        PairForestSpendPageV1::Genesis | PairForestSpendPageV1::SamePage(_) => &accounts[3],
+        PairForestSpendPageV1::Rollover { next_index, .. } => &accounts[next_index],
+    };
+    let mut lane_data = lane_account.try_borrow_mut_data()?;
+    let mut page_data = writable_page.try_borrow_mut_data()?;
+    let mut marker_data = marker.try_borrow_mut_data()?;
+    if let Some(plan) = withdrawal_plan {
+        let token_accounts = &accounts[layout.token_start..layout.token_start + 5];
+        let infos = exact_withdrawal_transfer_account_infos_v1(token_accounts)?;
+        let bump = [plan.authority_bump];
+        let seeds: &[&[u8]] = &[
+            POOL_V1_VAULT_AUTHORITY_SEED,
+            master_account.key.as_ref(),
+            &bump,
+        ];
+        runtime.invoke_signed(&plan.instruction, &infos, &[seeds])?;
+        validate_exact_withdrawal_delta_v1(token_accounts, &plan)?;
+    }
+
+    lane_data.copy_from_slice(&next_lane_image);
+    match layout.page {
+        PairForestSpendPageV1::Genesis => write_new_page_unchecked(
+            &mut page_data,
+            lane_account.key,
+            0,
+            0,
+            &[lane.tree.root, result.verified_afterstate.next_root],
+        ),
+        PairForestSpendPageV1::SamePage(header) => append_roots_unchecked(
+            &mut page_data,
+            header,
+            &[result.verified_afterstate.next_root],
+        ),
+        PairForestSpendPageV1::Rollover { page_number, .. } => write_new_page_unchecked(
+            &mut page_data,
+            lane_account.key,
+            page_number,
+            result.verified_afterstate.next_pair_index,
+            &[result.verified_afterstate.next_root],
+        ),
+    }
+    marker_data.copy_from_slice(&planned_marker.encoded_marker());
+    set_return_data(&result_bytes);
+    Ok(())
+}
+
+pub(crate) fn process_pair_forest_terminal_v1<'info, R: PoolCpiRuntimeV1>(
+    program_id: &Pubkey,
+    accounts: &[AccountInfo<'info>],
+    instruction_data: &[u8],
+    current_slot: u64,
+    runtime: &mut R,
+) -> ProgramResult {
+    process_pair_forest_terminal_with_verifier_v1(
+        program_id,
+        accounts,
+        instruction_data,
+        current_slot,
+        runtime,
+        dispatch_pair_forest_terminal_readonly_v1,
+        solana_program::program::set_return_data,
+    )
+}
+
 /// Initialize
 /// `[master, lane_0, ..., lane_7, mint, vault, token_program, payer,
 /// system_program]`.
@@ -965,8 +1347,12 @@ mod tests {
 
     use aspis_core::field::M31;
     use aspis_statement::pool_v1::{
-        encode_pool_v1_pair_forest_lane_state_v1, encode_pool_v1_pair_forest_master_v1,
-        IncrementalMerkleTreeV1, PoolIdentityV1, VerifierPolicyV1,
+        encode_pool_v1_pair_forest_checkpoint_v1, encode_pool_v1_pair_forest_lane_state_v1,
+        encode_pool_v1_pair_forest_master_v1, encode_pool_v1_pair_forest_terminal_request_v1,
+        IncrementalMerkleTreeV1, PoolIdentityV1, PoolV1PairForestTerminalPaymentV1,
+        PoolV1PairForestTerminalRequestV1, PoolV1PairForestTerminalResultV1,
+        PoolV1PairVerifiedAfterstateV1, PoolV1PrivateTransferPublicV1, PoolV1TransitionKind,
+        PoolV1WithdrawalPublicV1, VerifierPolicyV1, POOL_V1_NULLIFIER_MARKER_ACCOUNT_BYTES,
         POOL_V1_PAIR_FOREST_ALL_LANES_MASK, POOL_V1_PAIR_TREE_DEPTH,
     };
     use solana_program::{clock::Epoch, instruction::Instruction};
@@ -2008,5 +2394,251 @@ mod tests {
         .is_err());
         drop((master_info, lane_infos, checkpoint_info));
         assert_eq!(checkpoint.data, before);
+    }
+
+    #[test]
+    fn one_terminal_transfer_updates_only_selected_lane_history_and_marker() {
+        let program_id = Pubkey::new_unique();
+        let mint = Pubkey::new_unique();
+        let (master_key, mut master_state) = master(program_id, mint);
+        master_state.identity.token_program = LEGACY_SPL_TOKEN_PROGRAM_ID.to_bytes();
+        master_state.has_checkpoint = true;
+        master_state.next_checkpoint_sequence = 1;
+        let nullifier = digest(1);
+        let lane_id =
+            aspis_statement::pool_v1::pool_v1_pair_forest_output_lane_v1(&nullifier).unwrap();
+        let lane_key = pool_v1_pair_forest_lane_address(&program_id, &master_key, lane_id)
+            .unwrap()
+            .0;
+        let lane = genesis_lane_state(&master_key, lane_id);
+        let (next_tree, _) = lane
+            .tree
+            .append_one_with_empty_roots(digest(9_000), &POOL_V1_PAIR_EMPTY_ROOTS)
+            .unwrap();
+        let checkpoint = PoolV1PairForestCheckpointV1 {
+            master: master_key.to_bytes(),
+            deployment_domain: master_state.identity.deployment_domain,
+            checkpoint_sequence: 0,
+            global_root: digest(7_000),
+            lane_sequences: [0; 8],
+        };
+        let checkpoint_key = pool_v1_pair_forest_checkpoint_address(&program_id, &master_key, 0).0;
+        let request = PoolV1PairForestTerminalRequestV1 {
+            verifier_profile: [31; 32],
+            verifier_release: [32; 32],
+            pool_program: program_id.to_bytes(),
+            public: PoolV1PairForestTerminalPaymentV1::PrivateTransfer(
+                PoolV1PrivateTransferPublicV1 {
+                    pool: master_key.to_bytes(),
+                    deployment_domain: master_state.identity.deployment_domain,
+                    anchor_sequence: 0,
+                    anchor_root: checkpoint.global_root,
+                    nullifier,
+                    asset_id: master_state.identity.asset_id,
+                    recipient_commitment: digest(100),
+                    change_commitment: digest(200),
+                },
+            ),
+        };
+        let instruction = encode_pool_v1_pair_forest_terminal_request_v1(&request).unwrap();
+        let result = PoolV1PairForestTerminalResultV1 {
+            transition_kind: PoolV1TransitionKind::PrivateTransfer,
+            master_account: master_key.to_bytes(),
+            selected_lane_account: lane_key.to_bytes(),
+            output_lane: lane_id,
+            nullifier,
+            verified_afterstate: PoolV1PairVerifiedAfterstateV1 {
+                next_pair_index: next_tree.next_leaf_index,
+                next_root: next_tree.root,
+                next_frontier: next_tree.frontier,
+            },
+        };
+        let marker_key = crate::pool_v1_nullifier_marker_address(
+            &program_id,
+            &master_key,
+            &aspis_statement::encode_digest_canonical(&nullifier),
+        )
+        .unwrap()
+        .0;
+        let page_key =
+            pool_v1_pair_forest_lane_root_page_address(&program_id, &master_key, lane_id, 0)
+                .unwrap()
+                .0;
+        let mut accounts = vec![
+            TestAccount {
+                key: master_key,
+                owner: program_id,
+                lamports: 1,
+                data: encode_pool_v1_pair_forest_master_v1(&master_state)
+                    .unwrap()
+                    .to_vec(),
+                signer: false,
+                writable: false,
+                executable: false,
+            },
+            TestAccount {
+                key: checkpoint_key,
+                owner: program_id,
+                lamports: 1,
+                data: encode_pool_v1_pair_forest_checkpoint_v1(&checkpoint)
+                    .unwrap()
+                    .to_vec(),
+                signer: false,
+                writable: false,
+                executable: false,
+            },
+            TestAccount {
+                key: lane_key,
+                owner: program_id,
+                lamports: 1,
+                data: encode_pool_v1_pair_forest_lane_state_v1(&lane, &POOL_V1_PAIR_EMPTY_ROOTS)
+                    .unwrap()
+                    .to_vec(),
+                signer: false,
+                writable: true,
+                executable: false,
+            },
+            TestAccount {
+                key: page_key,
+                owner: program_id,
+                lamports: 1,
+                data: vec![0; POOL_V1_ROOT_HISTORY_PAGE_ACCOUNT_BYTES],
+                signer: false,
+                writable: true,
+                executable: false,
+            },
+            TestAccount {
+                key: marker_key,
+                owner: program_id,
+                lamports: 1,
+                data: vec![0; POOL_V1_NULLIFIER_MARKER_ACCOUNT_BYTES],
+                signer: false,
+                writable: true,
+                executable: false,
+            },
+            TestAccount {
+                key: Pubkey::new_unique(),
+                owner: Pubkey::new_unique(),
+                lamports: 1,
+                data: vec![],
+                signer: false,
+                writable: false,
+                executable: false,
+            },
+            TestAccount {
+                key: Pubkey::new_unique(),
+                owner: Pubkey::new_unique(),
+                lamports: 1,
+                data: vec![],
+                signer: false,
+                writable: false,
+                executable: false,
+            },
+            TestAccount {
+                key: Pubkey::new_unique(),
+                owner: bpf_loader::id(),
+                lamports: 1,
+                data: vec![],
+                signer: false,
+                writable: false,
+                executable: true,
+            },
+            TestAccount {
+                key: Pubkey::new_unique(),
+                owner: Pubkey::new_unique(),
+                lamports: 1,
+                data: vec![],
+                signer: false,
+                writable: false,
+                executable: false,
+            },
+        ];
+        let mut bad_requests = Vec::new();
+        let mut wrong = request;
+        wrong.pool_program[0] ^= 1;
+        bad_requests.push(wrong);
+        let mut wrong = request;
+        if let PoolV1PairForestTerminalPaymentV1::PrivateTransfer(public) = &mut wrong.public {
+            public.pool[0] ^= 1;
+        }
+        bad_requests.push(wrong);
+        let mut wrong = request;
+        if let PoolV1PairForestTerminalPaymentV1::PrivateTransfer(public) = &mut wrong.public {
+            public.deployment_domain[0] ^= 1;
+        }
+        bad_requests.push(wrong);
+        let mut wrong = request;
+        if let PoolV1PairForestTerminalPaymentV1::PrivateTransfer(public) = &mut wrong.public {
+            public.anchor_root[0] = public.anchor_root[0].add(M31::ONE);
+        }
+        bad_requests.push(wrong);
+        let mut wrong = request;
+        if let PoolV1PairForestTerminalPaymentV1::PrivateTransfer(public) = &mut wrong.public {
+            public.asset_id = public.asset_id.add(M31::ONE);
+        }
+        bad_requests.push(wrong);
+        for bad in bad_requests {
+            let bad_instruction = encode_pool_v1_pair_forest_terminal_request_v1(&bad).unwrap();
+            let infos: Vec<_> = accounts.iter_mut().map(TestAccount::info).collect();
+            assert!(process_pair_forest_terminal_with_verifier_v1(
+                &program_id,
+                &infos,
+                &bad_instruction,
+                1,
+                &mut NoCpi,
+                |_, _, _, _, _, _, _, _, _, _| panic!("bad request reached verifier"),
+                |_| {},
+            )
+            .is_err());
+        }
+        let infos: Vec<_> = accounts.iter_mut().map(TestAccount::info).collect();
+        let mut no_cpi = NoCpi;
+        process_pair_forest_terminal_with_verifier_v1(
+            &program_id,
+            &infos,
+            &instruction,
+            1,
+            &mut no_cpi,
+            |_, _, _, _, _, _, _, _, got, _| {
+                assert_eq!(got, &request);
+                Ok(AuthenticatedPairForestResultV1::for_test(result))
+            },
+            |_| {},
+        )
+        .unwrap();
+        drop(infos);
+        let written_lane =
+            decode_pool_v1_pair_forest_lane_state_v1(&accounts[2].data, &POOL_V1_PAIR_EMPTY_ROOTS)
+                .unwrap();
+        assert_eq!(written_lane.tree, next_tree);
+        assert!(accounts[4].data.iter().any(|byte| *byte != 0));
+        assert_eq!(
+            decode_pool_v1_pair_forest_master_v1(&accounts[0].data).unwrap(),
+            master_state
+        );
+
+        let before = accounts
+            .iter()
+            .map(|account| account.data.clone())
+            .collect::<Vec<_>>();
+        let infos: Vec<_> = accounts.iter_mut().map(TestAccount::info).collect();
+        assert!(process_pair_forest_terminal_with_verifier_v1(
+            &program_id,
+            &infos,
+            &instruction,
+            2,
+            &mut no_cpi,
+            |_, _, _, _, _, _, _, _, _, _| panic!("stale replay reached verifier"),
+            |_| {},
+        )
+        .is_err());
+        drop(infos);
+        assert_eq!(
+            accounts
+                .iter()
+                .map(|account| account.data.clone())
+                .collect::<Vec<_>>(),
+            before
+        );
     }
 }

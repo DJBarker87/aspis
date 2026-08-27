@@ -118,7 +118,7 @@ use crate::{
 #[cfg(feature = "pair-forest-account-evidence")]
 use crate::pair_forest::{
     process_pair_forest_checkpoint_with_runtime_v1, process_pair_forest_deposit_with_runtime_v1,
-    process_pair_forest_initialize_with_runtime_v1,
+    process_pair_forest_initialize_with_runtime_v1, process_pair_forest_terminal_v1,
 };
 
 const SPL_TOKEN_INITIALIZE_ACCOUNT3_DISCRIMINANT: u8 = 18;
@@ -2316,6 +2316,20 @@ pub fn process_instruction(
                 accounts,
                 instruction_data,
                 &rent,
+                &mut runtime,
+            )
+        }
+        #[cfg(not(feature = "pair-forest-account-evidence"))]
+        unreachable!()
+    } else if cfg!(feature = "pair-forest-account-evidence") && magic == b"ASQ8" {
+        #[cfg(feature = "pair-forest-account-evidence")]
+        {
+            let slot = Clock::get()?.slot;
+            process_pair_forest_terminal_v1(
+                program_id,
+                accounts,
+                instruction_data,
+                slot,
                 &mut runtime,
             )
         }
