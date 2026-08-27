@@ -132,25 +132,33 @@ declarations rather than treating raw JSON byte order as semantics.
 ## Remaining implementation boundary
 
 The carry trace, mathematical representation and outer caller's structural
-after-image are complete. The smallest next boundary is the translated
-non-full root reconstruction: prove its returned digest equals the existing
-`reconstructRoot` value under the authenticated empty-root table.
+after-image are complete. The translated non-full root reconstruction is also
+closed at the exact source boundary:
 `proof/PoolV1TreeReconstructBridge.lean` now proves the literal translated
 range loop equals the existing `reconstructFrom` kernel for its exact suffix,
 and lifts that equality through the production reconstruction wrapper and the
 accepted non-terminal outer append branch. The only remaining mathematical
 step inside one append is the pure lower-empty-prefix/suffix composition from
 that exact `reconstructFrom` suffix to `reconstructRoot` of the full returned
-frontier. After that, the remaining implementation lift is:
+frontier.
 
-1. lift through the literal validation and public
-   `append_one_with_empty_roots` wrapper;
-2. derive two-append as the exact ordered composition of two successful
+`proof/PoolV1TreePublicWrapperBridge.lean` closes the public one-append source
+boundary. From literal `production_tree_append_one` success, it constructs the
+exact successful `ValidatedIncrementalMerkleTreeV1::from_parts` and
+`ValidatedIncrementalMerkleTreeV1::append_one` calls, proves that validation
+preserves the concrete source tree and authenticated empty table, and lifts
+the already-proved abstract `appendCarry` result to the returned public tree.
+Both public-wrapper theorem groups report only
+`[propext, Classical.choice, Quot.sound]`.
+
+The remaining implementation lift is:
+
+1. derive two-append as the exact ordered composition of two successful
    production one-appends;
-3. connect program transition success to the exact tree/account after-images;
-4. prove root-page append persistence and retained-root lookup from literal
+2. connect program transition success to the exact tree/account after-images;
+3. prove root-page append persistence and retained-root lookup from literal
    program source;
-5. carry pool identity, owner, PDA and same-writable-account checks through the
+4. carry pool identity, owner, PDA and same-writable-account checks through the
    successful program path.
 
 The only intended cryptographic semantic boundary is the already-frozen
