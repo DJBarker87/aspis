@@ -1,0 +1,84 @@
+{
+  "schema": "aspis.pool-v1.composed-native-tag73-withdrawal-cu-phase-ledger.v1",
+  "source_evidence": "evidence.json",
+  "compute_unit_limit": 1400000,
+  "total_compute_units": 1352116,
+  "raw_headroom_compute_units": 47884,
+  "phases": [
+    { "name": "transaction_dispatch_before_first_pool_marker", "compute_units": 2484 },
+    {
+      "name": "pool_validation_custody_and_verifier_plan_before_cpi",
+      "compute_units": 80442,
+      "from_remaining": 1397516,
+      "to_remaining": 1317074
+    },
+    {
+      "name": "cpi_entry_to_verifier_entry",
+      "compute_units": 1910,
+      "from_remaining": 1317074,
+      "to_remaining": 1315164
+    },
+    {
+      "name": "measurement_adapter_request_proof_and_native_statement",
+      "compute_units": 22130,
+      "from_remaining": 1315164,
+      "to_remaining": 1293034
+    },
+    {
+      "name": "native_verifier_wire_parse_through_proof_acceptance",
+      "compute_units": 1234844,
+      "from_remaining": 1293034,
+      "to_remaining": 58190
+    },
+    {
+      "name": "asja_return_data",
+      "compute_units": 315,
+      "from_remaining": 58190,
+      "to_remaining": 57875
+    },
+    {
+      "name": "cpi_unwind_to_pool",
+      "compute_units": 2196,
+      "from_remaining": 57875,
+      "to_remaining": 55679
+    },
+    {
+      "name": "pool_authenticate_apply_custody_write_and_return_suffix",
+      "compute_units": 7332,
+      "from_remaining": 55679,
+      "to_remaining": 48347
+    },
+    { "name": "runtime_tail_after_last_marker", "compute_units": 463 }
+  ],
+  "comparison": {
+    "composed_private_transfer_compute_units": 1340241,
+    "composed_withdrawal_increment_compute_units": 11875,
+    "private_transport_double_compute_units": 81922,
+    "withdrawal_transport_double_compute_units": 93818,
+    "transport_double_increment_compute_units": 11896,
+    "combined_increment_minus_transport_increment_compute_units": -21,
+    "direct_native_verifier_compute_units": 1254737,
+    "naive_sum_compute_units": 1348555,
+    "measured_minus_naive_sum_compute_units": 3561
+  },
+  "instrumentation_removal_bound": {
+    "checkpoint_count": 59,
+    "syscalls_per_checkpoint": 2,
+    "minimum_compute_units_per_syscall": 100,
+    "minimum_compute_units_per_checkpoint": 200,
+    "minimum_all_checkpoint_savings_compute_units": 11800,
+    "production_equivalent_upper_bound_compute_units": 1340316,
+    "production_equivalent_minimum_headroom_compute_units": 59684,
+    "minimum_checkpoints_to_remove_for_50000_headroom": 11,
+    "eleven_checkpoint_upper_bound_compute_units": 1349916,
+    "eleven_checkpoint_minimum_headroom_compute_units": 50084
+  },
+  "soundness": {
+    "proof_binds_returned_asja": false,
+    "proof_binds_withdrawal_amount_or_destination": false,
+    "proof_is_native_private_transfer_not_pair_withdrawal": true,
+    "outer_pair_pool_substituted_for_legacy_pool": true,
+    "production_ready": false,
+    "claim": "CU transport, custody and executable capacity only"
+  }
+}

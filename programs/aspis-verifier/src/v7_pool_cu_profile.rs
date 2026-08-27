@@ -5,7 +5,7 @@
 //! bytes nor accepted arithmetic.  The checkpoints exist solely to locate
 //! the one-terminal transaction blocker with one preserved honest proof.
 
-use aspis_core::field::QM31;
+use aspis_core::field::{M31, QM31};
 use aspis_core::state_only_hiding::StateOnlyHidingContext;
 use aspis_core::v6_onefold::{
     fold_v6_onefold_queries, prepare_v6_onefold_coordinates, V6WireError,
@@ -22,7 +22,8 @@ use aspis_core::v7_onefold::{
 };
 use aspis_statement::pool_v1::{
     decode_pool_v1_pair_verified_afterstate_v1, decode_pool_v1_pair_verifier_request_v1,
-    decode_pool_v1_private_transfer_public_v1, encode_pool_v1_private_transfer_public_v1,
+    decode_pool_v1_private_transfer_public_v1, decode_pool_v1_withdrawal_public_v1,
+    encode_pool_v1_private_transfer_public_v1,
     evaluate_pool_v1_private_transfer_selected_masked_terminal_compiled_tag73_v1,
     pool_v1_pair_statement_digest_v1, pool_v1_private_transfer_copy_active_row_masks_compiled_v1,
     verifier_proof_body_digest_v1, verifier_statement_payload_digest_v1,
@@ -54,6 +55,16 @@ const PRESERVED_NATIVE_PROOF_SHA256: [u8; 32] = [
 const PRESERVED_NATIVE_STATEMENT_DIGEST: [u8; 32] = [
     0xe6, 0x3c, 0x56, 0x5e, 0x94, 0x25, 0x96, 0x2f, 0x73, 0xa6, 0x8c, 0xb0, 0x7e, 0x65, 0x83, 0x67,
     0x33, 0x62, 0x4b, 0x1b, 0x47, 0x4b, 0x42, 0x31, 0x07, 0x84, 0xb6, 0xa0, 0x60, 0xe0, 0x67, 0x36,
+];
+const PRESERVED_NATIVE_RECIPIENT_COMMITMENT: [M31; 8] = [
+    M31(148_482_930),
+    M31(1_116_651_461),
+    M31(1_440_257_094),
+    M31(1_397_310_823),
+    M31(2_023_389_308),
+    M31(165_313_146),
+    M31(999_662_642),
+    M31(1_651_087_734),
 ];
 
 #[cfg(not(feature = "no-entrypoint"))]
@@ -248,8 +259,10 @@ fn process_composed_one_terminal_profile(
     }
     let request = decode_pool_v1_pair_verifier_request_v1(instruction_data)
         .map_err(|_| ProgramError::InvalidInstructionData)?;
-    if request.binding.transition_kind != PoolV1TransitionKind::PrivateTransfer
-        || request.binding.verifier_program != program_id.to_bytes()
+    if !matches!(
+        request.binding.transition_kind,
+        PoolV1TransitionKind::PrivateTransfer | PoolV1TransitionKind::Withdrawal
+    ) || request.binding.verifier_program != program_id.to_bytes()
         || request.binding.profile_binding != V7_POOL_NATIVE_TAG73_PROFILE_BINDING
         || request.binding.release_binding != V7_POOL_NATIVE_TAG73_RELEASE_BINDING
         || request.binding.proof_account != proof_account.key.to_bytes()
@@ -260,9 +273,46 @@ fn process_composed_one_terminal_profile(
     {
         return Err(ProgramError::InvalidInstructionData);
     }
-    let outer_statement = decode_pool_v1_private_transfer_public_v1(request.statement_payload)
-        .map_err(|_| ProgramError::InvalidInstructionData)?;
-    if outer_statement.pool != request.binding.pool {
+    let (
+        outer_pool,
+        deployment_domain,
+        anchor_sequence,
+        anchor_root,
+        nullifier,
+        asset_id,
+        recipient_commitment,
+        change_commitment,
+    ) = match request.binding.transition_kind {
+        PoolV1TransitionKind::PrivateTransfer => {
+            let statement = decode_pool_v1_private_transfer_public_v1(request.statement_payload)
+                .map_err(|_| ProgramError::InvalidInstructionData)?;
+            (
+                statement.pool,
+                statement.deployment_domain,
+                statement.anchor_sequence,
+                statement.anchor_root,
+                statement.nullifier,
+                statement.asset_id,
+                statement.recipient_commitment,
+                statement.change_commitment,
+            )
+        }
+        PoolV1TransitionKind::Withdrawal => {
+            let statement = decode_pool_v1_withdrawal_public_v1(request.statement_payload)
+                .map_err(|_| ProgramError::InvalidInstructionData)?;
+            (
+                statement.pool,
+                statement.deployment_domain,
+                statement.anchor_sequence,
+                statement.anchor_root,
+                statement.nullifier,
+                statement.asset_id,
+                PRESERVED_NATIVE_RECIPIENT_COMMITMENT,
+                statement.change_commitment,
+            )
+        }
+    };
+    if outer_pool != request.binding.pool {
         return Err(ProgramError::InvalidInstructionData);
     }
     checkpoint("aspis-v7-profile:composed-request-validated");
@@ -295,13 +345,13 @@ fn process_composed_one_terminal_profile(
     // boundary and must never become a production adapter.
     let native_statement = PoolV1PrivateTransferPublicV1 {
         pool: solana_program::pubkey!("BZRi5jf2SdDMpJBJnLTHhM5EnwyzWLRDJhNYzeosRogf").to_bytes(),
-        deployment_domain: outer_statement.deployment_domain,
-        anchor_sequence: outer_statement.anchor_sequence,
-        anchor_root: outer_statement.anchor_root,
-        nullifier: outer_statement.nullifier,
-        asset_id: outer_statement.asset_id,
-        recipient_commitment: outer_statement.recipient_commitment,
-        change_commitment: outer_statement.change_commitment,
+        deployment_domain,
+        anchor_sequence,
+        anchor_root,
+        nullifier,
+        asset_id,
+        recipient_commitment,
+        change_commitment,
     };
     let native_payload = encode_pool_v1_private_transfer_public_v1(&native_statement)
         .map_err(|_| ProgramError::InvalidInstructionData)?;
