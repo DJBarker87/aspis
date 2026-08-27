@@ -40,13 +40,15 @@ data transport, not a separate authorization or settlement transaction.
 
 ## What the measurements prove
 
-Three measurements answer different questions and must not be presented as a
+These measurements answer different questions and must not be presented as a
 single executable profile.
 
 | Evidence | Exact result | What it proves |
 | --- | ---: | --- |
 | Frozen V7 Tag-73 atomic execution | 1,258,013 CU | The old 30,504-byte proof, all work checks, old 80-byte atomic state and nullifier fit with 141,987 CU below 1.4M. |
 | Current direct Pool private-transfer path with a 485-CU mock verifier | failed after consuming 1,399,850 CU | The current Pool path alone does not fit. The mock verifier is not cryptographic evidence. |
+| Current real native Pool proof, direct verifier only | failed after consuming the full 1,400,000-CU transaction limit | The current 30,192-byte single-leaf Pool relation verifier itself exceeds the limit. This is not the final staged pair profile. |
+| Current real native Pool proof, combined direct Pool call | failed at 1,400,000 CU | The Pool consumed a 585,258-CU prefix, the verifier exhausted all 814,592 CU passed to it, no suffix ran, and Pool/history/vault/nullifier rolled back exactly. |
 | Current prepared Pool lifecycle | 1,256,357 + 643,108 = 1,899,465 CU | Pool append/image preparation and later authenticated settlement each fit separately, but no proof verification is included. |
 | Literal production Pool Poseidon probe | 20 parents: 469,798 CU total; 21 parents: 493,270 CU total | The zero-parent transaction costs 407 CU, so twenty upper parents add 469,391 CU and pair compression plus twenty parents add 492,863 CU. This rejects execution-time append under the present implementation. |
 
@@ -70,9 +72,14 @@ double-counts some small statement/state-wrapper work; it must not be cited as
 an exact combined execution. It does show that ordinary local deduplication
 cannot recover the required margin.
 
-The ASVQ selected-verifier measurement is not available: the one attempted
-profile simulation failed with `UnsupportedProgramId` before entering the
-handler. Any CU claim for that handler is therefore currently unmeasured.
+The native selected-verifier result is frozen in
+`results/pool-v1-one-terminal-runtime-20260827/`. The direct selected verifier
+consumed the entire 1.4M-CU limit and failed before return. The combined call
+therefore has a conservative deficit greater than 585,258 CU before any Pool
+suffix. Its proof is 30,192 bytes with SHA-256
+`656f25689041ae7f90c9461f4dbe3336478e01e1970ff00c24d1e7d90ed2e72c`;
+it is a current single-leaf baseline, not evidence for the unbuilt 34,658-byte
+staged pair verifier.
 
 ## Exact duplicated and removable work
 
@@ -352,6 +359,15 @@ C2 leaf SHA-256 message blocks across q16. It also makes completed proofs stale
 after a competing append. It is nevertheless now the only conservative
 one-terminal candidate which has not been experimentally ruled out.
 
+The current Pool semantic terminal must be prefactorized before the staged
+profile can plausibly pass. Its source evaluator scans the 49 Poseidon blocks
+and 16 lanes repeatedly and evaluates copy endpoints individually, whereas the
+frozen atomic terminal already demonstrates selector-mask and routing
+factorizations for the same multilinear-evaluation pattern. This is an exact
+algebraic optimization target: every factorized evaluator must be proved equal
+to the unfactored compiled reference and must preserve the tuple registry,
+masking rank, degree and transcript. Removing constraints is not an option.
+
 The execution-time alternative is now ruled out by a literal SBF benchmark:
 twenty `pool_v1_tree_parent` calls cost 469,798 CU and twenty-one cost 493,270
 CU.  The production route is consequently the conservative seven-C2-lane,
@@ -362,12 +378,14 @@ envelope; the Pool performs no Poseidon append work.
 The production engineering gate should be split without repeated regression
 runs:
 
-1. measure the staged 34,658-byte pair verifier alone, with exact proof and
+1. prefactorize and measure the current native Pool terminal against the same
+   preserved 30,192-byte proof, proving exact equality to its compiled reference;
+2. measure the staged 34,658-byte pair verifier alone, with exact proof and
    688-byte result;
-2. measure the byte-only Pool suffix with a verifier transport double;
-3. perform one combined private-transfer same-page run;
-4. perform one combined private-transfer rollover run; and
-5. perform one combined withdrawal run with real SPL Token CPI.
+3. measure the byte-only Pool suffix with a verifier transport double;
+4. perform one combined private-transfer same-page run;
+5. perform one combined private-transfer rollover run; and
+6. perform one combined withdrawal run with real SPL Token CPI.
 
 Every final case must be `< 1,400,000 CU`. A practical release target is
 `<= 1,350,000 CU`, preserving at least 50,000 CU against small runtime and
