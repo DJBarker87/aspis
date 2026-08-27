@@ -140,6 +140,8 @@ pub mod v6_transaction;
     test
 ))]
 pub mod v6_verifier;
+#[cfg(any(feature = "v7-pair-forest-asq8", test))]
+pub mod v7_pair_forest_dispatch;
 #[cfg(any(feature = "v7-pool-dispatch-profile", test))]
 pub mod v7_pool_dispatch;
 #[cfg(any(

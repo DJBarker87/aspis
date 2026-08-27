@@ -76,6 +76,20 @@ pub fn process_spend_production_instruction(
     accounts: &[AccountInfo],
     instruction_data: &[u8],
 ) -> ProgramResult {
+    // ASQ8 is a distinct, exact 320-byte compact request.  Its default-off
+    // handler authenticates and reconstructs the full forest statement but
+    // deliberately fails closed until the accepted forest terminal exists.
+    #[cfg(any(feature = "v7-pair-forest-asq8", test))]
+    if instruction_data
+        .starts_with(&aspis_statement::pool_v1::POOL_V1_PAIR_FOREST_TERMINAL_REQUEST_MAGIC)
+    {
+        return crate::v7_pair_forest_dispatch::process_v7_pair_forest_asq8_instruction(
+            program_id,
+            accounts,
+            instruction_data,
+        );
+    }
+
     // A valid ASVQ is at least the 384-byte prefix plus one payload byte. The
     // length gate preserves the historical fixed 169-byte numeric tag-65 wire
     // even in the rare case its first public bytes spell `SVQ`.
