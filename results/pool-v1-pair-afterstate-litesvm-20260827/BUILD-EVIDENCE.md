@@ -35,3 +35,18 @@ frame-clobber diagnostic.
 The two generated keypair files were deleted immediately and are not part of
 the evidence bundle.  The build artifacts are research-only and do not encode
 or imply a deployment identity.
+
+The withdrawal continuation used one changed same-page execution and no
+rollover or second measurement:
+
+```text
+NO_DNA=1 CARGO_BUILD_JOBS=1 cargo-build-sbf --manifest-path programs/aspis-pool/Cargo.toml --features pair-afterstate-profile --sbf-out-dir results/pool-v1-pair-afterstate-litesvm-20260827/artifacts-profiled-withdrawal
+cargo run --quiet --manifest-path results/pool-v1-pair-afterstate-litesvm-20260827/harness/Cargo.toml -- results/pool-v1-pair-afterstate-litesvm-20260827/artifacts-profiled-withdrawal/aspis_pool.so results/pool-v1-pair-afterstate-litesvm-20260827/artifacts-profiled/aspis_pair_afterstate_transport_double.so withdrawal-same-page results/pool-v1-pair-afterstate-litesvm-20260827/evidence-withdrawal-same-page-profiled.json --require-profile
+cargo test -p aspis-pool pair_withdrawal_verifier_or_custody_failure_preserves_every_byte --lib --features pair-afterstate-profile
+cargo test -p aspis-pool pair_ --lib --features pair-afterstate-profile
+cargo check -p aspis-pool
+```
+
+The withdrawal SBF build also emitted no stack-offset or frame-clobber
+diagnostic. Its generated keypair was deleted immediately. Exact custody and
+phase evidence is recorded in `WITHDRAWAL-AUDIT.md`.

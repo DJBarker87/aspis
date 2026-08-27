@@ -53,16 +53,18 @@ pub use error::PoolV1ProgramError;
 pub use history::{pool_v1_root_page_address, RootPageHeaderV1};
 pub use instruction::{
     decode_initialize_instruction_v1, decode_pair_private_transfer_instruction_v1,
-    decode_private_transfer_instruction_v1, decode_withdrawal_instruction_v1,
-    encode_initialize_instruction_v1, encode_pair_private_transfer_instruction_v1,
+    decode_pair_withdrawal_instruction_v1, decode_private_transfer_instruction_v1,
+    decode_withdrawal_instruction_v1, encode_initialize_instruction_v1,
+    encode_pair_private_transfer_instruction_v1, encode_pair_withdrawal_instruction_v1,
     encode_private_transfer_instruction_v1, encode_withdrawal_instruction_v1,
     PoolInstructionFormatErrorV1, PrivateTransferInstructionV1, PrivateTransferStatementV1,
     TransitionReceiptV1, WithdrawalInstructionV1, WithdrawalStatementV1,
     POOL_V1_INITIALIZATION_RECEIPT_BYTES, POOL_V1_INITIALIZE_INSTRUCTION_BYTES,
     POOL_V1_INITIALIZE_INSTRUCTION_MAGIC, POOL_V1_PAIR_PRIVATE_TRANSFER_INSTRUCTION_MAGIC,
-    POOL_V1_PRIVATE_TRANSFER_INSTRUCTION_MAGIC, POOL_V1_SPEND_INSTRUCTION_BYTES,
-    POOL_V1_TRANSITION_RECEIPT_BYTES, POOL_V1_TRANSITION_RECEIPT_MAGIC,
-    POOL_V1_TRANSITION_STATEMENT_BYTES, POOL_V1_WITHDRAWAL_INSTRUCTION_MAGIC,
+    POOL_V1_PAIR_WITHDRAWAL_INSTRUCTION_MAGIC, POOL_V1_PRIVATE_TRANSFER_INSTRUCTION_MAGIC,
+    POOL_V1_SPEND_INSTRUCTION_BYTES, POOL_V1_TRANSITION_RECEIPT_BYTES,
+    POOL_V1_TRANSITION_RECEIPT_MAGIC, POOL_V1_TRANSITION_STATEMENT_BYTES,
+    POOL_V1_WITHDRAWAL_INSTRUCTION_MAGIC,
 };
 pub use nullifier::{
     plan_nullifier_marker_consumption_v1, pool_v1_nullifier_marker_address,

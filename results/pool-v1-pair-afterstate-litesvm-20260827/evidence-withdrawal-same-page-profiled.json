@@ -1,0 +1,202 @@
+{
+  "artifacts": {
+    "pool": {
+      "bytes": 462848,
+      "path": "results/pool-v1-pair-afterstate-litesvm-20260827/artifacts-profiled-withdrawal/aspis_pool.so",
+      "sha256": "7bb438c9038e5c5507b590a8ddd4544bbb841806d5d3596e08f0a853eac43b42"
+    },
+    "verifier_transport_double": {
+      "bytes": 21664,
+      "path": "results/pool-v1-pair-afterstate-litesvm-20260827/artifacts-profiled/aspis_pair_afterstate_transport_double.so",
+      "sha256": "dd7703d9d94a66bfbd7bde17591e2f74176e799c230467fc59af3ae8150231b4"
+    }
+  },
+  "boundaries": [
+    "The selected verifier is a transport double: it performs no cryptographic proof verification and returns the framed ASJA bytes from its verifier-owned proof account.",
+    "This number is the executable Pool suffix plus selected-verifier CPI/688-byte return transport; it must not be added to a verifier reference as if it were a measured combined real-proof execution.",
+    "The pair entrypoint is compiled only with the measurement-only pair-afterstate-evidence feature; the default production entrypoint remains disabled.",
+    "Marker and rollover history accounts are exact pre-created Pool-owned zeroed accounts; System creation cost is excluded.",
+    "This is deterministic LiteSVM execution with no network, deploy, or transaction submission."
+  ],
+  "compute_unit_limit": 1400000,
+  "custody": {
+    "amount": 25000,
+    "destination_after": 32000,
+    "destination_before": 7000,
+    "exact_pre_post_balance_delta_checked_by_pool": true,
+    "pda_authority_signed": true,
+    "real_legacy_spl_token_cpi_executed": true,
+    "transfer_checked": true,
+    "vault_after": 975000,
+    "vault_before": 1000000
+  },
+  "execution": {
+    "account_metas_excluding_compute_budget_and_payer": 12,
+    "compute_units": 93818,
+    "instruction_bytes": 432,
+    "return_bytes": 200,
+    "return_magic": "ASTR",
+    "simulation_equals_execution": true,
+    "transaction_bytes": 1038
+  },
+  "mode": "withdrawal-same-page",
+  "profile_slot": 150,
+  "profiling": {
+    "after_last_marker_to_transaction_end": 463,
+    "before_first_marker_including_transaction_dispatch": 2484,
+    "enabled": true,
+    "marker_calls_are_metered_and_inflate_the_profiled_total": true,
+    "markers": [
+      {
+        "delta_from_previous": null,
+        "label": "handler_entry",
+        "remaining": 1397516
+      },
+      {
+        "delta_from_previous": 7698,
+        "label": "state_and_statement_validated",
+        "remaining": 1389818
+      },
+      {
+        "delta_from_previous": 11663,
+        "label": "layout_validated",
+        "remaining": 1378155
+      },
+      {
+        "delta_from_previous": 38998,
+        "label": "history_validated",
+        "remaining": 1339157
+      },
+      {
+        "delta_from_previous": 6641,
+        "label": "marker_preflight_complete",
+        "remaining": 1332516
+      },
+      {
+        "delta_from_previous": 5808,
+        "label": "custody_plan_complete",
+        "remaining": 1326708
+      },
+      {
+        "delta_from_previous": 255,
+        "label": "verifier_plan_start",
+        "remaining": 1326453
+      },
+      {
+        "delta_from_previous": 7285,
+        "label": "verifier_plan_complete",
+        "remaining": 1319168
+      },
+      {
+        "delta_from_previous": 594,
+        "label": "verifier_cpi_start",
+        "remaining": 1318574
+      },
+      {
+        "delta_from_previous": 1781,
+        "label": "double_entry",
+        "remaining": 1316793
+      },
+      {
+        "delta_from_previous": 306,
+        "label": "double_frame_validated",
+        "remaining": 1316487
+      },
+      {
+        "delta_from_previous": 316,
+        "label": "double_return_set",
+        "remaining": 1316171
+      },
+      {
+        "delta_from_previous": 2194,
+        "label": "verifier_cpi_complete",
+        "remaining": 1313977
+      },
+      {
+        "delta_from_previous": 238,
+        "label": "afterstate_authenticated",
+        "remaining": 1313739
+      },
+      {
+        "delta_from_previous": 1201,
+        "label": "afterstate_applied",
+        "remaining": 1312538
+      },
+      {
+        "delta_from_previous": 1028,
+        "label": "receipt_and_state_image_ready",
+        "remaining": 1311510
+      },
+      {
+        "delta_from_previous": 239,
+        "label": "state_write_borrows_ready",
+        "remaining": 1311271
+      },
+      {
+        "delta_from_previous": 216,
+        "label": "custody_cpi_start",
+        "remaining": 1311055
+      },
+      {
+        "delta_from_previous": 2033,
+        "label": "custody_cpi_complete",
+        "remaining": 1309022
+      },
+      {
+        "delta_from_previous": 1351,
+        "label": "custody_delta_validated",
+        "remaining": 1307671
+      },
+      {
+        "delta_from_previous": 261,
+        "label": "history_written",
+        "remaining": 1307410
+      },
+      {
+        "delta_from_previous": 226,
+        "label": "pool_state_written",
+        "remaining": 1307184
+      },
+      {
+        "delta_from_previous": 227,
+        "label": "marker_written",
+        "remaining": 1306957
+      },
+      {
+        "delta_from_previous": 312,
+        "label": "receipt_returned",
+        "remaining": 1306645
+      }
+    ]
+  },
+  "schema": "aspis.pool-v1.pair-afterstate-runtime-evidence.v1",
+  "state_transition": {
+    "full_prior_page_byte_exact_on_rollover": false,
+    "historical_anchor_value_preserved": true,
+    "history_target_page": 0,
+    "history_target_slot": 101,
+    "membership_anchor_sequence": 50,
+    "next_sequence": 101,
+    "nullifier_marker_created_once": true,
+    "pool_matches_verifier_afterstate": true,
+    "pool_side_poseidon_calls": 0,
+    "source_sequence": 100
+  },
+  "toolchain": {
+    "cargo_build_sbf": "solana-cargo-build-sbf 2.3.0",
+    "host": "macOS 26.5 (25F71), Darwin 25.5.0 arm64",
+    "host_cargo": "1.93.0 (083ac5135 2025-12-15)",
+    "host_rustc": "1.93.0 (254b59607 2026-01-19)",
+    "litesvm": "0.16.0",
+    "platform_tools": "v1.48",
+    "sbf_rustc": "1.84.1"
+  },
+  "transport": {
+    "immediate_return_program_checked": true,
+    "kind": "authenticated selected-verifier CPI transport double",
+    "proof_account_body_bytes": 688,
+    "real_tag73_proof_executed": false,
+    "request_is_registry_and_proof_account_bound": true,
+    "returned_asja_bytes": 688
+  }
+}

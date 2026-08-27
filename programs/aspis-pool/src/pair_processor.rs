@@ -32,12 +32,18 @@ use crate::{
         write_new_page_unchecked, RootPageHeaderV1,
     },
     instruction::{
-        decode_pair_private_transfer_instruction_v1, encode_transition_receipt_v1,
-        TransitionReceiptV1,
+        decode_pair_private_transfer_instruction_v1, decode_pair_withdrawal_instruction_v1,
+        encode_transition_receipt_v1, TransitionReceiptV1,
     },
     nullifier::{plan_nullifier_marker_consumption_v1, NullifierMarkerPreparationV1},
     pair_dispatch::AuthenticatedPairAfterstateV1,
     pair_state::{CanonicalPairPoolStateV1, PairPoolStateV1, POOL_V1_PAIR_STATE_ACCOUNT_BYTES},
+    processor::PoolCpiRuntimeV1,
+    vault::{
+        exact_withdrawal_transfer_account_infos_v1,
+        plan_legacy_withdrawal_transfer_from_identity_v1, validate_exact_withdrawal_delta_v1,
+        POOL_V1_VAULT_AUTHORITY_SEED,
+    },
 };
 
 #[inline(always)]
@@ -90,6 +96,7 @@ fn plan_layout(
     accounts: &[AccountInfo<'_>],
     state: &PairPoolStateV1,
     anchor_sequence: u64,
+    extra_suffix_accounts: usize,
 ) -> Result<PairSpendLayoutV1, ProgramError> {
     if state.current_root_sequence() >= aspis_statement::pool_v1::POOL_V1_PAIR_CAPACITY {
         return Err(PoolV1ProgramError::TreeFull.into());
@@ -156,7 +163,10 @@ fn plan_layout(
         verifier_index: cursor + 3,
         proof_index: cursor + 4,
     };
-    let expected = cursor + 5;
+    let expected = cursor
+        .checked_add(5)
+        .and_then(|value| value.checked_add(extra_suffix_accounts))
+        .ok_or(PoolV1ProgramError::ArithmeticOverflow)?;
     if accounts.len() != expected {
         return Err(if accounts.len() < expected {
             ProgramError::NotEnoughAccountKeys
@@ -306,6 +316,7 @@ where
         accounts,
         &state,
         decoded.statement.anchor_sequence,
+        0,
     )?;
     require_unique(accounts)?;
     pair_cu_checkpoint("aspis-pair-cu:layout_validated");
@@ -397,6 +408,183 @@ where
     Ok(())
 }
 
+/// Measurement-gated pair-withdrawal suffix with real legacy SPL custody.
+///
+/// The transparent proof path supplies the same opaque ASJA afterstate as the
+/// private transfer. The Pool additionally plans and executes one
+/// PDA-authorized `TransferChecked`, verifies the exact vault debit and
+/// destination credit, and only then performs the infallible byte writes.
+#[allow(clippy::too_many_arguments)]
+pub(crate) fn process_pair_withdrawal_with_verifier_v1<'info, R, V, S>(
+    program_id: &Pubkey,
+    accounts: &[AccountInfo<'info>],
+    instruction_data: &[u8],
+    current_slot: u64,
+    hash: HashFn,
+    runtime: &mut R,
+    verify: V,
+    set_return_data: S,
+) -> ProgramResult
+where
+    R: PoolCpiRuntimeV1,
+    V: FnOnce(
+        &Pubkey,
+        &[u8; 32],
+        &aspis_statement::pool_v1::VerifierPolicyV1,
+        &[AccountInfo<'info>],
+        &AccountInfo<'info>,
+        &AccountInfo<'info>,
+        &aspis_statement::pool_v1::HistoricalAnchorEnvelopeV1,
+        &[u8],
+        u64,
+        HashFn,
+    ) -> Result<AuthenticatedPairAfterstateV1, ProgramError>,
+    S: FnOnce(&[u8]),
+{
+    pair_cu_checkpoint("aspis-pair-cu:handler_entry");
+    let decoded = decode_pair_withdrawal_instruction_v1(instruction_data)?;
+    let pool = accounts.first().ok_or(ProgramError::NotEnoughAccountKeys)?;
+    let state = CanonicalPairPoolStateV1::decode_account_from_program_invariant(program_id, pool)?;
+    state.require_same_account(program_id, pool)?;
+    if decoded.statement.pool != pool.key.to_bytes()
+        || decoded.statement.deployment_domain != state.identity.deployment_domain
+        || decoded.statement.asset_id != state.identity.asset_id
+        || decoded.envelope.transition_kind != PoolV1TransitionKind::Withdrawal
+    {
+        return Err(PoolV1ProgramError::VerifierDispatchIdentityMismatch.into());
+    }
+    pair_cu_checkpoint("aspis-pair-cu:state_and_statement_validated");
+    let layout = plan_layout(
+        program_id,
+        accounts,
+        &state,
+        decoded.statement.anchor_sequence,
+        5,
+    )?;
+    require_unique(accounts)?;
+    pair_cu_checkpoint("aspis-pair-cu:layout_validated");
+    let validated_history = validate_history(
+        program_id,
+        accounts,
+        &state,
+        layout,
+        decoded.statement.anchor_sequence,
+        &decoded.statement.anchor_root,
+    )?;
+    pair_cu_checkpoint("aspis-pair-cu:history_validated");
+
+    let marker = &accounts[layout.marker_index];
+    let planned_marker = plan_nullifier_marker_consumption_v1(
+        program_id,
+        marker,
+        PoolV1NullifierMarkerV1::from_historical_anchor(&decoded.envelope),
+    )?;
+    if planned_marker.preparation() != NullifierMarkerPreparationV1::PopulateProgramOwnedZeroed {
+        return Err(PoolV1ProgramError::InvalidNullifierMarkerAccount.into());
+    }
+    pair_cu_checkpoint("aspis-pair-cu:marker_preflight_complete");
+
+    let token_start = layout.proof_index + 1;
+    let token_accounts = &accounts[token_start..token_start + 5];
+    let destination = Pubkey::new_from_array(decoded.statement.destination_token_account);
+    let withdrawal_plan = plan_legacy_withdrawal_transfer_from_identity_v1(
+        program_id,
+        pool.key,
+        &state.identity,
+        token_accounts,
+        &destination,
+        decoded.statement.amount,
+    )?;
+    let transfer_infos = exact_withdrawal_transfer_account_infos_v1(token_accounts)?;
+    pair_cu_checkpoint("aspis-pair-cu:custody_plan_complete");
+
+    let verified_afterstate = verify(
+        pool.key,
+        &state.identity.deployment_domain,
+        &state.verifier_policy,
+        &accounts[layout.registry_start..layout.registry_start + 2],
+        &accounts[layout.verifier_index],
+        &accounts[layout.proof_index],
+        &decoded.envelope,
+        decoded.statement_payload,
+        current_slot,
+        hash,
+    )?;
+    pair_cu_checkpoint("aspis-pair-cu:afterstate_authenticated");
+    let (next_state, append) =
+        state.apply_authenticated_afterstate_from_program_invariant(&verified_afterstate)?;
+    pair_cu_checkpoint("aspis-pair-cu:afterstate_applied");
+
+    let receipt = encode_transition_receipt_v1(&TransitionReceiptV1 {
+        transition_kind: PoolV1TransitionKind::Withdrawal,
+        pool: pool.key.to_bytes(),
+        nullifier: decoded.statement.nullifier,
+        first_output: decoded.statement.change_commitment,
+        second_output_or_destination: decoded.statement.destination_token_account,
+        withdrawal_amount: decoded.statement.amount,
+        first_leaf_index: append.first_note_index,
+        second_leaf_index: 0,
+        root_sequence: append.root_sequence,
+        root: append.root,
+    })?;
+    let next_image: Box<[u8]> = vec![0u8; POOL_V1_PAIR_STATE_ACCOUNT_BYTES].into_boxed_slice();
+    let mut next_image: Box<[u8; POOL_V1_PAIR_STATE_ACCOUNT_BYTES]> = next_image
+        .try_into()
+        .map_err(|_| ProgramError::InvalidAccountData)?;
+    next_state.write_encoding_prevalidated(&mut next_image);
+    let marker_image = planned_marker.encoded_marker();
+    pair_cu_checkpoint("aspis-pair-cu:receipt_and_state_image_ready");
+
+    // Acquire every Pool-owned mutable borrow before custody. After the exact
+    // token delta check succeeds, persistence below contains no fallible
+    // operation. Solana transaction rollback covers a failed token CPI.
+    let mut history_data = if let Some(next_index) = layout.next_index {
+        accounts[next_index].try_borrow_mut_data()?
+    } else {
+        accounts[layout.current_index].try_borrow_mut_data()?
+    };
+    let mut pool_data = pool.try_borrow_mut_data()?;
+    let mut marker_data = marker.try_borrow_mut_data()?;
+    pair_cu_checkpoint("aspis-pair-cu:state_write_borrows_ready");
+
+    let bump_seed = [withdrawal_plan.authority_bump];
+    let authority_seeds: &[&[u8]] = &[POOL_V1_VAULT_AUTHORITY_SEED, pool.key.as_ref(), &bump_seed];
+    pair_cu_checkpoint("aspis-pair-cu:custody_cpi_start");
+    runtime.invoke_signed(
+        &withdrawal_plan.instruction,
+        &transfer_infos,
+        &[authority_seeds],
+    )?;
+    pair_cu_checkpoint("aspis-pair-cu:custody_cpi_complete");
+    validate_exact_withdrawal_delta_v1(token_accounts, &withdrawal_plan)?;
+    pair_cu_checkpoint("aspis-pair-cu:custody_delta_validated");
+
+    if layout.next_index.is_some() {
+        let location = root_history_location(append.root_sequence);
+        write_new_page_unchecked(
+            &mut history_data,
+            pool.key,
+            location.page_number,
+            location.page_number * POOL_V1_ROOT_HISTORY_CAPACITY as u64,
+            &[append.root],
+        );
+    } else {
+        append_roots_unchecked(
+            &mut history_data,
+            validated_history.current_header,
+            &[append.root],
+        );
+    }
+    pair_cu_checkpoint("aspis-pair-cu:history_written");
+    pool_data.copy_from_slice(next_image.as_ref());
+    pair_cu_checkpoint("aspis-pair-cu:pool_state_written");
+    marker_data.copy_from_slice(&marker_image);
+    pair_cu_checkpoint("aspis-pair-cu:marker_written");
+    set_return_data(&receipt);
+    pair_cu_checkpoint("aspis-pair-cu:receipt_returned");
+    Ok(())
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -404,7 +592,7 @@ mod tests {
     use aspis_statement::{
         pool_v1::{
             encode_pool_v1_pair_verified_afterstate_v1, HistoricalAnchorEnvelopeV1,
-            PoolV1PairVerifiedAfterstateV1, VerifierPolicyV1,
+            PoolV1PairLeafWitnessV1, PoolV1PairVerifiedAfterstateV1, VerifierPolicyV1,
             POOL_V1_ROOT_HISTORY_PAGE_ACCOUNT_BYTES,
         },
         poseidon2::Digest,
@@ -414,12 +602,43 @@ mod tests {
     use std::{cell::RefCell, vec::Vec};
 
     use crate::{
-        instruction::{encode_pair_private_transfer_instruction_v1, PrivateTransferStatementV1},
+        instruction::{
+            encode_pair_private_transfer_instruction_v1, encode_pair_withdrawal_instruction_v1,
+            PrivateTransferStatementV1, WithdrawalStatementV1,
+        },
         nullifier::pool_v1_nullifier_marker_address,
         pair_state::{pool_v1_pair_state_address, PairPoolStateV1},
         state::PoolInitializationV1,
-        vault::LEGACY_SPL_TOKEN_PROGRAM_ID,
+        vault::{
+            pool_v1_vault_authority_address, pool_v1_vault_token_account_address,
+            LEGACY_SPL_TOKEN_ACCOUNT_BYTES, LEGACY_SPL_TOKEN_MINT_ACCOUNT_BYTES,
+            LEGACY_SPL_TOKEN_PROGRAM_ID,
+        },
     };
+
+    struct FailingCustodyRuntime {
+        signed_calls: usize,
+    }
+
+    impl PoolCpiRuntimeV1 for FailingCustodyRuntime {
+        fn invoke<'info>(
+            &mut self,
+            _instruction: &solana_program::instruction::Instruction,
+            _account_infos: &[AccountInfo<'info>],
+        ) -> ProgramResult {
+            panic!("unexpected unsigned CPI")
+        }
+
+        fn invoke_signed<'info>(
+            &mut self,
+            _instruction: &solana_program::instruction::Instruction,
+            _account_infos: &[AccountInfo<'info>],
+            _signer_seeds: &[&[&[u8]]],
+        ) -> ProgramResult {
+            self.signed_calls += 1;
+            Err(ProgramError::Custom(0xC057_0001))
+        }
+    }
 
     fn sha256(parts: &[&[u8]]) -> [u8; 32] {
         let mut hash = Sha256::new();
@@ -467,6 +686,27 @@ mod tests {
             executable,
             Epoch::default(),
         )
+    }
+
+    fn mint_image(supply: u64) -> [u8; LEGACY_SPL_TOKEN_MINT_ACCOUNT_BYTES] {
+        let mut data = [0u8; LEGACY_SPL_TOKEN_MINT_ACCOUNT_BYTES];
+        data[36..44].copy_from_slice(&supply.to_le_bytes());
+        data[44] = 6;
+        data[45] = 1;
+        data
+    }
+
+    fn token_image(
+        mint: Pubkey,
+        authority: Pubkey,
+        amount: u64,
+    ) -> [u8; LEGACY_SPL_TOKEN_ACCOUNT_BYTES] {
+        let mut data = [0u8; LEGACY_SPL_TOKEN_ACCOUNT_BYTES];
+        data[..32].copy_from_slice(mint.as_ref());
+        data[32..64].copy_from_slice(authority.as_ref());
+        data[64..72].copy_from_slice(&amount.to_le_bytes());
+        data[108] = 1;
+        data
     }
 
     fn instruction(
@@ -958,5 +1198,364 @@ mod tests {
         assert_eq!(pool_data, pool_before);
         assert_eq!(history_data, history_before);
         assert!(marker_c_data.iter().all(|byte| *byte == 0));
+    }
+
+    #[test]
+    fn pair_withdrawal_verifier_or_custody_failure_preserves_every_byte() {
+        let program_id = Pubkey::new_unique();
+        let mint = Pubkey::new_unique();
+        let pool_key = pool_v1_pair_state_address(&program_id, &mint).0;
+        let domain = [31u8; 32];
+        let verifier_key = Pubkey::new_unique();
+        let policy = VerifierPolicyV1 {
+            flags: 0,
+            registry_program: Pubkey::new_unique().to_bytes(),
+            registry_authority: [32u8; 32],
+            policy_binding: [33u8; 32],
+        };
+        let genesis = PairPoolStateV1::genesis(
+            &pool_key,
+            PoolInitializationV1 {
+                asset_mint: mint.to_bytes(),
+                token_program: LEGACY_SPL_TOKEN_PROGRAM_ID.to_bytes(),
+                asset_id: M31(4),
+                deployment_domain: domain,
+                verifier_policy: policy,
+            },
+        )
+        .unwrap();
+        let change = digest(1_100);
+        let pair_leaf = PoolV1PairLeafWitnessV1::single_output(change)
+            .unwrap()
+            .leaf_digest()
+            .unwrap();
+        let expected = genesis
+            .append_verified_pair_from_program_invariant(pair_leaf)
+            .unwrap()
+            .0;
+        let nullifier = digest(1_200);
+        let destination_key = Pubkey::new_unique();
+        let envelope = HistoricalAnchorEnvelopeV1 {
+            transition_kind: PoolV1TransitionKind::Withdrawal,
+            pool: pool_key.to_bytes(),
+            deployment_domain: domain,
+            anchor_sequence: 0,
+            anchor_root: genesis.tree.root,
+            nullifier,
+            verifier_profile: [34u8; 32],
+            verifier_release: [35u8; 32],
+        };
+        let instruction = encode_pair_withdrawal_instruction_v1(
+            &envelope,
+            &WithdrawalStatementV1 {
+                pool: pool_key.to_bytes(),
+                deployment_domain: domain,
+                anchor_sequence: 0,
+                anchor_root: genesis.tree.root,
+                nullifier,
+                asset_id: M31(4),
+                amount: 25,
+                destination_token_account: destination_key.to_bytes(),
+                change_commitment: change,
+            },
+        )
+        .unwrap();
+
+        let history_key = crate::pool_v1_root_page_address(&program_id, &pool_key, 0).0;
+        let marker_key = pool_v1_nullifier_marker_address(
+            &program_id,
+            &pool_key,
+            &encode_digest_canonical(&nullifier),
+        )
+        .unwrap()
+        .0;
+        let registry_key = Pubkey::new_unique();
+        let entry_key = Pubkey::new_unique();
+        let proof_key = Pubkey::new_unique();
+        let vault_key = pool_v1_vault_token_account_address(&program_id, &pool_key).0;
+        let vault_authority = pool_v1_vault_authority_address(&program_id, &pool_key).0;
+        let destination_authority = Pubkey::new_unique();
+        let loader = solana_sdk_ids::bpf_loader::id();
+        let system = solana_sdk_ids::system_program::id();
+
+        let mut pool_data = genesis.encode().unwrap();
+        let mut history_data = [0u8; POOL_V1_ROOT_HISTORY_PAGE_ACCOUNT_BYTES];
+        write_new_page_unchecked(&mut history_data, &pool_key, 0, 0, &[genesis.tree.root]);
+        let mut marker_data =
+            [0u8; aspis_statement::pool_v1::POOL_V1_NULLIFIER_MARKER_ACCOUNT_BYTES];
+        let mut registry_data = [];
+        let mut entry_data = [];
+        let mut verifier_data = [];
+        let mut proof_data = [];
+        let mut mint_data = mint_image(2_000);
+        let mut vault_data = token_image(mint, vault_authority, 1_000);
+        let mut destination_data = token_image(mint, destination_authority, 100);
+        let mut authority_data = [];
+        let mut token_program_data = [];
+        let mut pool_lamports = 1u64;
+        let mut history_lamports = 1u64;
+        let mut marker_lamports = 1u64;
+        let mut registry_lamports = 1u64;
+        let mut entry_lamports = 1u64;
+        let mut verifier_lamports = 1u64;
+        let mut proof_lamports = 1u64;
+        let mut mint_lamports = 1u64;
+        let mut vault_lamports = 1u64;
+        let mut destination_lamports = 1u64;
+        let mut authority_lamports = 1u64;
+        let mut token_program_lamports = 1u64;
+
+        let pool_before = pool_data;
+        let history_before = history_data;
+        let marker_before = marker_data;
+        let vault_before = vault_data;
+        let destination_before = destination_data;
+
+        // The verifier fails before custody and no byte changes.
+        {
+            let accounts = vec![
+                account(
+                    &pool_key,
+                    &program_id,
+                    &mut pool_lamports,
+                    &mut pool_data,
+                    true,
+                    false,
+                ),
+                account(
+                    &history_key,
+                    &program_id,
+                    &mut history_lamports,
+                    &mut history_data,
+                    true,
+                    false,
+                ),
+                account(
+                    &marker_key,
+                    &program_id,
+                    &mut marker_lamports,
+                    &mut marker_data,
+                    true,
+                    false,
+                ),
+                account(
+                    &registry_key,
+                    &program_id,
+                    &mut registry_lamports,
+                    &mut registry_data,
+                    false,
+                    false,
+                ),
+                account(
+                    &entry_key,
+                    &program_id,
+                    &mut entry_lamports,
+                    &mut entry_data,
+                    false,
+                    false,
+                ),
+                account(
+                    &verifier_key,
+                    &loader,
+                    &mut verifier_lamports,
+                    &mut verifier_data,
+                    false,
+                    true,
+                ),
+                account(
+                    &proof_key,
+                    &verifier_key,
+                    &mut proof_lamports,
+                    &mut proof_data,
+                    false,
+                    false,
+                ),
+                account(
+                    &mint,
+                    &LEGACY_SPL_TOKEN_PROGRAM_ID,
+                    &mut mint_lamports,
+                    &mut mint_data,
+                    false,
+                    false,
+                ),
+                account(
+                    &vault_key,
+                    &LEGACY_SPL_TOKEN_PROGRAM_ID,
+                    &mut vault_lamports,
+                    &mut vault_data,
+                    true,
+                    false,
+                ),
+                account(
+                    &destination_key,
+                    &LEGACY_SPL_TOKEN_PROGRAM_ID,
+                    &mut destination_lamports,
+                    &mut destination_data,
+                    true,
+                    false,
+                ),
+                account(
+                    &vault_authority,
+                    &system,
+                    &mut authority_lamports,
+                    &mut authority_data,
+                    false,
+                    false,
+                ),
+                account(
+                    &LEGACY_SPL_TOKEN_PROGRAM_ID,
+                    &loader,
+                    &mut token_program_lamports,
+                    &mut token_program_data,
+                    false,
+                    true,
+                ),
+            ];
+            let mut runtime = FailingCustodyRuntime { signed_calls: 0 };
+            assert_eq!(
+                process_pair_withdrawal_with_verifier_v1(
+                    &program_id,
+                    &accounts,
+                    &instruction,
+                    40,
+                    sha256,
+                    &mut runtime,
+                    |_, _, _, _, _, _, _, _, _, _| Err(ProgramError::InvalidAccountData),
+                    |_| {},
+                ),
+                Err(ProgramError::InvalidAccountData)
+            );
+            assert_eq!(runtime.signed_calls, 0);
+        }
+        assert_eq!(pool_data, pool_before);
+        assert_eq!(history_data, history_before);
+        assert_eq!(marker_data, marker_before);
+        assert_eq!(vault_data, vault_before);
+        assert_eq!(destination_data, destination_before);
+
+        // A successful verifier followed by a failed custody CPI also leaves
+        // every Pool and token byte exact.
+        {
+            let accounts = vec![
+                account(
+                    &pool_key,
+                    &program_id,
+                    &mut pool_lamports,
+                    &mut pool_data,
+                    true,
+                    false,
+                ),
+                account(
+                    &history_key,
+                    &program_id,
+                    &mut history_lamports,
+                    &mut history_data,
+                    true,
+                    false,
+                ),
+                account(
+                    &marker_key,
+                    &program_id,
+                    &mut marker_lamports,
+                    &mut marker_data,
+                    true,
+                    false,
+                ),
+                account(
+                    &registry_key,
+                    &program_id,
+                    &mut registry_lamports,
+                    &mut registry_data,
+                    false,
+                    false,
+                ),
+                account(
+                    &entry_key,
+                    &program_id,
+                    &mut entry_lamports,
+                    &mut entry_data,
+                    false,
+                    false,
+                ),
+                account(
+                    &verifier_key,
+                    &loader,
+                    &mut verifier_lamports,
+                    &mut verifier_data,
+                    false,
+                    true,
+                ),
+                account(
+                    &proof_key,
+                    &verifier_key,
+                    &mut proof_lamports,
+                    &mut proof_data,
+                    false,
+                    false,
+                ),
+                account(
+                    &mint,
+                    &LEGACY_SPL_TOKEN_PROGRAM_ID,
+                    &mut mint_lamports,
+                    &mut mint_data,
+                    false,
+                    false,
+                ),
+                account(
+                    &vault_key,
+                    &LEGACY_SPL_TOKEN_PROGRAM_ID,
+                    &mut vault_lamports,
+                    &mut vault_data,
+                    true,
+                    false,
+                ),
+                account(
+                    &destination_key,
+                    &LEGACY_SPL_TOKEN_PROGRAM_ID,
+                    &mut destination_lamports,
+                    &mut destination_data,
+                    true,
+                    false,
+                ),
+                account(
+                    &vault_authority,
+                    &system,
+                    &mut authority_lamports,
+                    &mut authority_data,
+                    false,
+                    false,
+                ),
+                account(
+                    &LEGACY_SPL_TOKEN_PROGRAM_ID,
+                    &loader,
+                    &mut token_program_lamports,
+                    &mut token_program_data,
+                    false,
+                    true,
+                ),
+            ];
+            let mut runtime = FailingCustodyRuntime { signed_calls: 0 };
+            assert_eq!(
+                process_pair_withdrawal_with_verifier_v1(
+                    &program_id,
+                    &accounts,
+                    &instruction,
+                    41,
+                    sha256,
+                    &mut runtime,
+                    |_, _, _, _, _, _, _, _, _, _| {
+                        Ok(authenticated_afterstate(&expected, &verifier_key))
+                    },
+                    |_| {},
+                ),
+                Err(ProgramError::Custom(0xC057_0001))
+            );
+            assert_eq!(runtime.signed_calls, 1);
+        }
+        assert_eq!(pool_data, pool_before);
+        assert_eq!(history_data, history_before);
+        assert_eq!(marker_data, marker_before);
+        assert_eq!(vault_data, vault_before);
+        assert_eq!(destination_data, destination_before);
     }
 }
