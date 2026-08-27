@@ -155,7 +155,7 @@ fn write_forest_path_aux(
         columns[1 + lane][base] = current[lane];
         columns[lane][base + 1] = left[lane];
         columns[8 + lane][base + 1] = right[lane];
-        columns[lane][base + 2] = sibling[lane];
+        columns[lane][base ^ 12] = sibling[lane];
     }
     Ok(())
 }

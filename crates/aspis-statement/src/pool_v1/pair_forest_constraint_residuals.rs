@@ -214,7 +214,7 @@ fn project_legacy(trace: &StateOnlyTraceFoundation) -> StateOnlyTraceFoundation 
             projected.c1[column][target + 1] = trace.c1[column][source + 1];
         }
         for column in 0..8 {
-            projected.c1[column][target ^ 12] = trace.c1[column][source + 2];
+            projected.c1[column][target ^ 12] = trace.c1[column][source ^ 12];
         }
     }
     for column in 0..16 {
@@ -332,7 +332,7 @@ fn forest_path_residuals(
             let current = row_cell(trace, base, 1 + lane);
             let left = row_cell(trace, base + 1, lane);
             let right = row_cell(trace, base + 1, RATE + lane);
-            let sibling = row_cell(trace, base + 2, lane);
+            let sibling = row_cell(trace, base ^ 12, lane);
             ordering.push(left.sub(current.add(bit.mul(sibling.sub(current)))));
             ordering.push(right.sub(sibling.add(bit.mul(current.sub(sibling)))));
         }

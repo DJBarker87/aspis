@@ -6,7 +6,11 @@
 //! new parents is raw-opening-rank deficient.  The forest therefore permutes
 //! the same ten-block tail: blocks `54..=56` are the three historical
 //! lane-to-super-root parents, blocks `57..=62` carry all 24 private
-//! directions, and block `63` carries value and occupancy auxiliaries.
+//! directions, and block `63` carries value and occupancy auxiliaries.  Each
+//! direction uses the frozen three-opening geometry: current/bit at `r`,
+//! ordered children at `successor(r)`, and the sibling at `r xor 12`.  Four
+//! paths occupy local base rows `1,3,5,7` in every auxiliary block without
+//! requiring another PCS opening.
 //!
 //! This is a layout gate only.  It does not activate a profile, change the
 //! prover, or claim that the resulting mask map has full rank.  The prover
@@ -42,9 +46,9 @@ pub const POOL_V1_PAIR_FOREST_SEMANTIC_ROW_END_V1: usize = 64 * 16;
 pub const POOL_V1_PAIR_FOREST_COPY_ROW_LINKS_V1: usize = 136;
 pub const POOL_V1_PAIR_FOREST_COPY_ACTIVE_ROWS_V1: usize = 214;
 pub const POOL_V1_PAIR_FOREST_RELATION_FREE_MASK_CELLS_V1: usize = 3_611;
-pub const PINNED_POOL_V1_PAIR_FOREST_COPY_ROW_SCHEDULE_FINGERPRINT_V1: u64 = 0x4808_09b8_3677_8dc6;
-pub const PINNED_POOL_V1_PAIR_FOREST_COPY_ACTIVE_ROWS_FINGERPRINT_V1: u64 = 0xdf39_4a5a_8554_d09c;
-pub const PINNED_POOL_V1_PAIR_FOREST_RELATION_FREE_MASK_FINGERPRINT_V1: u64 = 0x1a13_c450_d356_0861;
+pub const PINNED_POOL_V1_PAIR_FOREST_COPY_ROW_SCHEDULE_FINGERPRINT_V1: u64 = 0xa72b_4d62_8d99_272a;
+pub const PINNED_POOL_V1_PAIR_FOREST_COPY_ACTIVE_ROWS_FINGERPRINT_V1: u64 = 0x39d0_68ba_4bd2_82dc;
+pub const PINNED_POOL_V1_PAIR_FOREST_RELATION_FREE_MASK_FINGERPRINT_V1: u64 = 0xdb7c_1763_368b_af49;
 
 #[inline]
 pub const fn pool_v1_pair_forest_path_base_row_v1(level: usize) -> Option<usize> {
@@ -55,7 +59,7 @@ pub const fn pool_v1_pair_forest_path_base_row_v1(level: usize) -> Option<usize>
         POOL_V1_PAIR_FOREST_PATH_AUX_ROW_START_V1
             + (level / POOL_V1_PAIR_DIRECTIONS_PER_AUX_BLOCK) * POOL_V1_PAIR_TRACE_BLOCK_ROWS
             + 1
-            + 4 * (level % POOL_V1_PAIR_DIRECTIONS_PER_AUX_BLOCK),
+            + 2 * (level % POOL_V1_PAIR_DIRECTIONS_PER_AUX_BLOCK),
     )
 }
 
@@ -191,7 +195,7 @@ fn forest_path_aux_cell_is_used(row: usize, column: usize) -> bool {
         let Some(base) = pool_v1_pair_forest_path_base_row_v1(level) else {
             return false;
         };
-        if (row == base && column <= 8) || row == base + 1 || (row == base + 2 && column < 8) {
+        if (row == base && column <= 8) || row == base + 1 || (row == (base ^ 12) && column < 8) {
             return true;
         }
     }
@@ -333,6 +337,19 @@ mod tests {
     }
 
     #[test]
+    fn every_private_path_uses_the_frozen_three_opening_geometry() {
+        let mut occupied = [false; POOL_V1_PAIR_TRACE_ROWS];
+        for level in 0..POOL_V1_PAIR_FOREST_PRIVATE_DIRECTIONS_V1 {
+            let base = pool_v1_pair_forest_path_base_row_v1(level).unwrap();
+            for row in [base, base + 1, base ^ 12] {
+                assert_eq!(base >> 4, row >> 4);
+                assert!(!occupied[row], "path row collision at {row}");
+                occupied[row] = true;
+            }
+        }
+    }
+
+    #[test]
     fn exact_forest_layout_inventory() {
         let schedule = build_pool_v1_pair_forest_copy_row_schedule_v1().unwrap();
         let active = pool_v1_pair_forest_copy_active_rows_v1().unwrap();
@@ -340,9 +357,9 @@ mod tests {
         assert_eq!(schedule.len(), 136);
         assert_eq!(active.len(), POOL_V1_PAIR_FOREST_COPY_ACTIVE_ROWS_V1);
         assert_eq!(masks.len(), POOL_V1_PAIR_FOREST_RELATION_FREE_MASK_CELLS_V1);
-        assert_eq!(pool_v1_pair_forest_path_base_row_v1(21), Some(997));
-        assert_eq!(pool_v1_pair_forest_path_base_row_v1(22), Some(1001));
-        assert_eq!(pool_v1_pair_forest_path_base_row_v1(23), Some(1005));
+        assert_eq!(pool_v1_pair_forest_path_base_row_v1(21), Some(995));
+        assert_eq!(pool_v1_pair_forest_path_base_row_v1(22), Some(997));
+        assert_eq!(pool_v1_pair_forest_path_base_row_v1(23), Some(999));
         assert_eq!(pool_v1_pair_forest_membership_hash_block_v1(21), Some(54));
         assert_eq!(pool_v1_pair_forest_membership_hash_block_v1(22), Some(55));
         assert_eq!(pool_v1_pair_forest_membership_hash_block_v1(23), Some(56));
