@@ -113,6 +113,9 @@ theorem authorized_compact_transfer_closes_registry_transport_and_custody
       ActiveAt entry slot ∧
       reconstructSemanticStatement request snapshot statement.laneResult =
         reconstructSemanticStatement request snapshot result.candidate ∧
+      snapshot.master = state.pool.checkpointMaster ∧
+      snapshot.checkpoint.globalRoot = statement.membershipAnchor ∧
+      snapshot.lane = state.pool.atomic.lanes statement.outputLane ∧
       ForestOneTransactionPostcondition parent laneOfNullifier state.pool
         statement proof ∧
       VaultConserved reserve
@@ -127,7 +130,9 @@ theorem authorized_compact_transfer_closes_registry_transport_and_custody
     registryExact.2.1.trans accepted.requestProfileExact.symm,
     registryExact.2.2.1.trans accepted.requestReleaseExact.symm,
     registryExact.2.2.2.1, registryExact.2.2.2.2,
-    settlement.1, settlement.2.1, settlement.2.2⟩
+    settlement.1, settlement.2.1, settlement.2.2.1,
+    settlement.2.2.2.1, settlement.2.2.2.2.1,
+    settlement.2.2.2.2.2⟩
 
 theorem authorized_compact_withdrawal_closes_registry_transport_and_custody
     {K Nullifier Payment ProofAccount MasterAccount CheckpointAccount
@@ -161,6 +166,9 @@ theorem authorized_compact_withdrawal_closes_registry_transport_and_custody
       ActiveAt entry slot ∧
       reconstructSemanticStatement request snapshot statement.laneResult =
         reconstructSemanticStatement request snapshot result.candidate ∧
+      snapshot.master = state.pool.checkpointMaster ∧
+      snapshot.checkpoint.globalRoot = statement.membershipAnchor ∧
+      snapshot.lane = state.pool.atomic.lanes statement.outputLane ∧
       ForestOneTransactionPostcondition parent laneOfNullifier state.pool
         statement proof ∧
       VaultConserved reserve
@@ -175,7 +183,9 @@ theorem authorized_compact_withdrawal_closes_registry_transport_and_custody
     registryExact.2.1.trans accepted.requestProfileExact.symm,
     registryExact.2.2.1.trans accepted.requestReleaseExact.symm,
     registryExact.2.2.2.1, registryExact.2.2.2.2,
-    settlement.1, settlement.2.1, settlement.2.2⟩
+    settlement.1, settlement.2.1, settlement.2.2.1,
+    settlement.2.2.2.1, settlement.2.2.2.2.1,
+    settlement.2.2.2.2.2⟩
 
 #print axioms authorized_compact_transfer_closes_registry_transport_and_custody
 #print axioms authorized_compact_withdrawal_closes_registry_transport_and_custody
