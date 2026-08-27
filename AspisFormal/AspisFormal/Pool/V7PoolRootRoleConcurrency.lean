@@ -690,6 +690,29 @@ theorem exact_staged_c2_leaf_sha_block_increase :
             sha256LeafBlocks (c2BytesPerQuery frozenC2Columns)) = 64 := by
   decide
 
+/-! ## Measured one-terminal CU budget screen
+
+These constants deliberately retain the two measurements as independent
+transactions.  Their sum is a conservative engineering screen, not a theorem
+that the real verifier and Pool suffix compose additively: the final integrated
+transaction will share wrapper work and will use the larger staged proof.
+-/
+
+def strictTerminalTransactionCULimit : Nat := 1_400_000
+def releaseTerminalTransactionCUTarget : Nat := 1_350_000
+def optimizedDirectVerifierTransactionCU : Nat := 1_395_868
+def proofCarriedSamePageTransportTransactionCU : Nat := 150_223
+
+def independentOneTerminalBudgetScreenCU : Nat :=
+  optimizedDirectVerifierTransactionCU +
+    proofCarriedSamePageTransportTransactionCU
+
+theorem exact_independent_one_terminal_budget_screen :
+    independentOneTerminalBudgetScreenCU = 1_546_091 ∧
+      independentOneTerminalBudgetScreenCU - strictTerminalTransactionCULimit = 146_091 ∧
+      independentOneTerminalBudgetScreenCU - releaseTerminalTransactionCUTarget = 196_091 := by
+  decide
+
 /-- Even if a new masking theorem made four total C2 lanes sound, the wire
 would still grow: one additional authenticated lane changes all q16 openings
 and adds its claims at all three points. -/
@@ -792,6 +815,7 @@ theorem exact_semantic_row_owner_cardinalities :
 #print axioms exact_proof_carried_afterstate_wire
 #print axioms exact_stable_pair_wire_screen_keeps_frozen_body_size
 #print axioms exact_staged_c2_leaf_sha_block_increase
+#print axioms exact_independent_one_terminal_budget_screen
 #print axioms exact_hypothetical_four_total_lane_wire_cost
 #print axioms exact_live_dependent_suffix_has_fifteen_steps
 #print axioms every_positioned_work_stage_is_live_dependent
