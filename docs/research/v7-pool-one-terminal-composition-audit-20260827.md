@@ -352,6 +352,13 @@ C2 leaf SHA-256 message blocks across q16. It also makes completed proofs stale
 after a competing append. It is nevertheless now the only conservative
 one-terminal candidate which has not been experimentally ruled out.
 
+The execution-time alternative is now ruled out by a literal SBF benchmark:
+twenty `pool_v1_tree_parent` calls cost 469,798 CU and twenty-one cost 493,270
+CU.  The production route is consequently the conservative seven-C2-lane,
+34,658-byte proof-carried append.  Its verifier returns only the 680-byte
+`(next index, next root, next frontier)` payload in an exact 688-byte typed
+envelope; the Pool performs no Poseidon append work.
+
 The production engineering gate should be split without repeated regression
 runs:
 

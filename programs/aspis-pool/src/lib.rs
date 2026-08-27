@@ -21,6 +21,9 @@ pub mod error;
 pub mod history;
 pub mod instruction;
 pub mod nullifier;
+pub mod pair_dispatch;
+pub(crate) mod pair_processor;
+pub mod pair_state;
 pub(crate) mod prepared_settlement;
 pub(crate) mod prepared_settlement_format;
 pub mod prepared_settlement_instruction;
@@ -45,24 +48,34 @@ pub use cancel_prepared_settlement_instruction::{
 };
 pub use deposit::{apply_vault_backed_deposit_v1, DepositRequestV1};
 pub use deposit_transport::process_vault_backed_deposit_instruction_v1;
-pub use empty_roots::POOL_V1_EMPTY_ROOTS;
+pub use empty_roots::{POOL_V1_EMPTY_ROOTS, POOL_V1_PAIR_EMPTY_ROOTS};
 pub use error::PoolV1ProgramError;
 pub use history::{pool_v1_root_page_address, RootPageHeaderV1};
 pub use instruction::{
-    decode_initialize_instruction_v1, decode_private_transfer_instruction_v1,
-    decode_withdrawal_instruction_v1, encode_initialize_instruction_v1,
+    decode_initialize_instruction_v1, decode_pair_private_transfer_instruction_v1,
+    decode_private_transfer_instruction_v1, decode_withdrawal_instruction_v1,
+    encode_initialize_instruction_v1, encode_pair_private_transfer_instruction_v1,
     encode_private_transfer_instruction_v1, encode_withdrawal_instruction_v1,
     PoolInstructionFormatErrorV1, PrivateTransferInstructionV1, PrivateTransferStatementV1,
     TransitionReceiptV1, WithdrawalInstructionV1, WithdrawalStatementV1,
     POOL_V1_INITIALIZATION_RECEIPT_BYTES, POOL_V1_INITIALIZE_INSTRUCTION_BYTES,
-    POOL_V1_INITIALIZE_INSTRUCTION_MAGIC, POOL_V1_PRIVATE_TRANSFER_INSTRUCTION_MAGIC,
-    POOL_V1_SPEND_INSTRUCTION_BYTES, POOL_V1_TRANSITION_RECEIPT_BYTES,
-    POOL_V1_TRANSITION_RECEIPT_MAGIC, POOL_V1_TRANSITION_STATEMENT_BYTES,
-    POOL_V1_WITHDRAWAL_INSTRUCTION_MAGIC,
+    POOL_V1_INITIALIZE_INSTRUCTION_MAGIC, POOL_V1_PAIR_PRIVATE_TRANSFER_INSTRUCTION_MAGIC,
+    POOL_V1_PRIVATE_TRANSFER_INSTRUCTION_MAGIC, POOL_V1_SPEND_INSTRUCTION_BYTES,
+    POOL_V1_TRANSITION_RECEIPT_BYTES, POOL_V1_TRANSITION_RECEIPT_MAGIC,
+    POOL_V1_TRANSITION_STATEMENT_BYTES, POOL_V1_WITHDRAWAL_INSTRUCTION_MAGIC,
 };
 pub use nullifier::{
     plan_nullifier_marker_consumption_v1, pool_v1_nullifier_marker_address,
     NullifierMarkerPreparationV1, PlannedNullifierMarkerV1,
+};
+pub use pair_dispatch::{
+    derive_pair_verifier_account_claim_v1, dispatch_pair_verifier_readonly_v1,
+    plan_pair_verifier_dispatch_v1, PairVerifierAccountClaimV1, PlannedPairVerifierDispatchV1,
+};
+pub use pair_state::{
+    pool_v1_pair_state_address, PairAppendReceiptV1, PairPoolStateV1,
+    PairVerifiedAfterstateReceiptV1, POOL_V1_PAIR_STATE_ACCOUNT_BYTES,
+    POOL_V1_PAIR_STATE_ACCOUNT_MAGIC, POOL_V1_PAIR_STATE_ACCOUNT_VERSION, POOL_V1_PAIR_STATE_SEED,
 };
 pub use prepared_settlement_format::{
     pool_v1_prepared_settlement_plan_address, pool_v1_prepared_settlement_rollover_address,
