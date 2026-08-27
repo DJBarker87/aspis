@@ -13,6 +13,7 @@ pub mod format;
 pub mod historical_anchor;
 pub mod incremental_merkle;
 pub mod nullifier_marker;
+pub mod pair_tree_profile;
 #[cfg(not(target_os = "solana"))]
 pub mod payment_constraint_residuals;
 #[cfg(not(target_os = "solana"))]
@@ -97,6 +98,26 @@ pub use nullifier_marker::{
     validate_pool_v1_nullifier_marker, PoolV1NullifierMarkerFormatError, PoolV1NullifierMarkerV1,
     POOL_V1_NULLIFIER_MARKER_ACCOUNT_BYTES, POOL_V1_NULLIFIER_MARKER_MAGIC,
     POOL_V1_NULLIFIER_MARKER_SEED, POOL_V1_NULLIFIER_MARKER_VERSION,
+};
+pub use pair_tree_profile::{
+    decode_pool_v1_pair_live_snapshot_v1, encode_pool_v1_pair_live_snapshot_v1,
+    pool_v1_pair_path_base_row_v1, pool_v1_pair_poseidon_block_role_v1,
+    PoolV1PairHistoricalMembershipAnchorV1, PoolV1PairLeafErrorV1, PoolV1PairLeafWitnessV1,
+    PoolV1PairLiveSnapshotErrorV1, PoolV1PairLiveSnapshotV1, PoolV1PairPoseidonBlockRoleV1,
+    PoolV1PairTranscriptStepV1, POOL_V1_PAIR_ALLOCATED_BLOCKS, POOL_V1_PAIR_ALLOCATED_ROWS,
+    POOL_V1_PAIR_CAPACITY, POOL_V1_PAIR_LATE_APPEND_POSEIDON_BLOCKS,
+    POOL_V1_PAIR_LIVE_SNAPSHOT_BYTES, POOL_V1_PAIR_LIVE_SNAPSHOT_MAGIC,
+    POOL_V1_PAIR_LIVE_SNAPSHOT_TRANSCRIPT_DOMAIN, POOL_V1_PAIR_LIVE_SNAPSHOT_VERSION,
+    POOL_V1_PAIR_MAX_DEPLOYED_DEGREE, POOL_V1_PAIR_NEW_RESIDUAL_MAX_INTRINSIC_DEGREE,
+    POOL_V1_PAIR_NOTE_DEPTH, POOL_V1_PAIR_NOTE_SLOT_CAPACITY, POOL_V1_PAIR_OCCUPANCY_AUX_ROW,
+    POOL_V1_PAIR_PATH_AUX_BLOCKS, POOL_V1_PAIR_PATH_AUX_ROW_END, POOL_V1_PAIR_PATH_AUX_ROW_START,
+    POOL_V1_PAIR_POSEIDON_BLOCKS, POOL_V1_PAIR_POSEIDON_INTRINSIC_DEGREE,
+    POOL_V1_PAIR_POSEIDON_ROW_END, POOL_V1_PAIR_PRIVATE_DIRECTIONS, POOL_V1_PAIR_SEMANTIC_ROW_END,
+    POOL_V1_PAIR_STABLE_POSEIDON_BLOCKS, POOL_V1_PAIR_STAGED_TRANSCRIPT_PREFIX_V1,
+    POOL_V1_PAIR_TRACE_BLOCK_ROWS, POOL_V1_PAIR_TRACE_COLUMNS, POOL_V1_PAIR_TRACE_ROWS,
+    POOL_V1_PAIR_TREE_DEPTH, POOL_V1_PAIR_TREE_FORMAT_BINDING,
+    POOL_V1_PAIR_TREE_STORAGE_FORMAT_VERSION, POOL_V1_PAIR_UNALLOCATED_SEMANTIC_ROWS,
+    POOL_V1_PAIR_VALUE_AUX_ROW_START,
 };
 #[cfg(not(target_os = "solana"))]
 pub use payment_constraint_residuals::{
