@@ -22,6 +22,10 @@ use super::{
 };
 
 pub const POOL_V1_PAIR_VERIFIER_REQUEST_MAGIC: [u8; 4] = *b"ASJQ";
+/// Conservative one-terminal request.  Unlike `ASJQ`, this request carries
+/// the exact live snapshot constructed from the locked Pool account by the
+/// outer Pool instruction.
+pub const POOL_V1_PAIR_AFTERSTATE_VERIFIER_REQUEST_MAGIC: [u8; 4] = *b"ASJ2";
 pub const POOL_V1_PAIR_VERIFIER_RESULT_MAGIC: [u8; 4] = *b"ASJR";
 pub const POOL_V1_PAIR_VERIFIER_TRANSPORT_VERSION: u8 = 1;
 pub const POOL_V1_PAIR_VERIFIER_SUCCESS_CODE: u32 = 0x4153_4a01;
@@ -61,6 +65,7 @@ pub enum PoolV1PairVerifierTransportErrorV1 {
     ZeroRequiredBinding,
     InvalidProofBodyLength,
     InvalidStatementPayloadLength,
+    InvalidLiveSnapshotPayloadLength,
     NonCanonicalOutputPair,
     InvalidAfterstateIndex,
     NonCanonicalAfterstate,
@@ -82,6 +87,15 @@ pub struct PoolV1PairVerifierBindingV1 {
 pub struct PoolV1PairVerifierRequestV1<'a> {
     pub binding: PoolV1PairVerifierBindingV1,
     pub statement_payload: &'a [u8],
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct PoolV1PairAfterstateVerifierRequestV1<'a> {
+    pub binding: PoolV1PairVerifierBindingV1,
+    pub statement_payload: &'a [u8],
+    /// Exact canonical `ASPLIVE1` bytes derived from the account locked by
+    /// the same outer terminal transaction.
+    pub live_snapshot_payload: &'a [u8],
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -328,6 +342,72 @@ pub fn decode_pool_v1_pair_verifier_request_v1(
     })
 }
 
+pub fn encode_pool_v1_pair_afterstate_verifier_request_v1(
+    request: &PoolV1PairAfterstateVerifierRequestV1<'_>,
+) -> Result<Vec<u8>, PoolV1PairVerifierTransportErrorV1> {
+    if request.statement_payload.is_empty() || request.statement_payload.len() > u32::MAX as usize {
+        return Err(PoolV1PairVerifierTransportErrorV1::InvalidStatementPayloadLength);
+    }
+    if request.live_snapshot_payload.len()
+        != super::pair_tree_profile::POOL_V1_PAIR_LIVE_SNAPSHOT_BYTES
+    {
+        return Err(PoolV1PairVerifierTransportErrorV1::InvalidLiveSnapshotPayloadLength);
+    }
+    // Decode here so malformed account-derived bytes cannot cross the CPI
+    // boundary under the typed request magic.
+    super::pair_tree_profile::decode_pool_v1_pair_live_snapshot_v1(request.live_snapshot_payload)
+        .map_err(|_| PoolV1PairVerifierTransportErrorV1::InvalidLiveSnapshotPayloadLength)?;
+    let header = encode_binding_header(
+        POOL_V1_PAIR_AFTERSTATE_VERIFIER_REQUEST_MAGIC,
+        &request.binding,
+        request.statement_payload.len() as u32,
+    )?;
+    let total = header
+        .len()
+        .checked_add(request.statement_payload.len())
+        .and_then(|length| length.checked_add(request.live_snapshot_payload.len()))
+        .ok_or(PoolV1PairVerifierTransportErrorV1::WrongLength)?;
+    let mut output = vec![0u8; total];
+    let statement_end = header.len() + request.statement_payload.len();
+    output[..header.len()].copy_from_slice(&header);
+    output[header.len()..statement_end].copy_from_slice(request.statement_payload);
+    output[statement_end..].copy_from_slice(request.live_snapshot_payload);
+    Ok(output)
+}
+
+pub fn decode_pool_v1_pair_afterstate_verifier_request_v1(
+    bytes: &[u8],
+) -> Result<PoolV1PairAfterstateVerifierRequestV1<'_>, PoolV1PairVerifierTransportErrorV1> {
+    let minimum = POOL_V1_PAIR_VERIFIER_REQUEST_HEADER_BYTES
+        + 1
+        + super::pair_tree_profile::POOL_V1_PAIR_LIVE_SNAPSHOT_BYTES;
+    if bytes.len() < minimum {
+        return Err(PoolV1PairVerifierTransportErrorV1::WrongLength);
+    }
+    let (binding, statement_length) = decode_binding_header(
+        &bytes[..POOL_V1_PAIR_VERIFIER_REQUEST_HEADER_BYTES],
+        POOL_V1_PAIR_AFTERSTATE_VERIFIER_REQUEST_MAGIC,
+    )?;
+    let statement_length = statement_length as usize;
+    let statement_end = POOL_V1_PAIR_VERIFIER_REQUEST_HEADER_BYTES
+        .checked_add(statement_length)
+        .ok_or(PoolV1PairVerifierTransportErrorV1::WrongLength)?;
+    if statement_length == 0
+        || statement_end.checked_add(super::pair_tree_profile::POOL_V1_PAIR_LIVE_SNAPSHOT_BYTES)
+            != Some(bytes.len())
+    {
+        return Err(PoolV1PairVerifierTransportErrorV1::InvalidStatementPayloadLength);
+    }
+    let live_snapshot_payload = &bytes[statement_end..];
+    super::pair_tree_profile::decode_pool_v1_pair_live_snapshot_v1(live_snapshot_payload)
+        .map_err(|_| PoolV1PairVerifierTransportErrorV1::InvalidLiveSnapshotPayloadLength)?;
+    Ok(PoolV1PairAfterstateVerifierRequestV1 {
+        binding,
+        statement_payload: &bytes[POOL_V1_PAIR_VERIFIER_REQUEST_HEADER_BYTES..statement_end],
+        live_snapshot_payload,
+    })
+}
+
 pub fn encode_pool_v1_pair_verifier_result_v1(
     result: &PoolV1PairVerifierResultV1,
 ) -> Result<[u8; POOL_V1_PAIR_VERIFIER_RESULT_BYTES], PoolV1PairVerifierTransportErrorV1> {
@@ -418,6 +498,52 @@ mod tests {
         assert_eq!(
             decode_pool_v1_pair_verifier_result_v1(&result),
             Ok(expected)
+        );
+    }
+
+    #[test]
+    fn afterstate_request_carries_exact_account_derived_live_snapshot() {
+        let statement = [6u8; 216];
+        let snapshot = super::super::pair_tree_profile::PoolV1PairLiveSnapshotV1 {
+            pool: [4u8; 32],
+            deployment_domain: [7u8; 32],
+            sequence: 19,
+            next_pair_index: 19,
+            current_root: core::array::from_fn(|lane| M31(100 + lane as u32)),
+            frontier: core::array::from_fn(|level| {
+                core::array::from_fn(|lane| M31(1_000 + 8 * level as u32 + lane as u32))
+            }),
+        };
+        let mut live = [0u8; super::super::pair_tree_profile::POOL_V1_PAIR_LIVE_SNAPSHOT_BYTES];
+        super::super::pair_tree_profile::encode_pool_v1_pair_live_snapshot_v1(&snapshot, &mut live)
+            .unwrap();
+        let request = PoolV1PairAfterstateVerifierRequestV1 {
+            binding: binding(),
+            statement_payload: &statement,
+            live_snapshot_payload: &live,
+        };
+        let encoded = encode_pool_v1_pair_afterstate_verifier_request_v1(&request).unwrap();
+        assert_eq!(encoded.len(), 1_256);
+        assert_eq!(
+            decode_pool_v1_pair_afterstate_verifier_request_v1(&encoded),
+            Ok(request)
+        );
+
+        let mut mutated = encoded;
+        let live_start = POOL_V1_PAIR_VERIFIER_REQUEST_HEADER_BYTES + statement.len();
+        mutated[live_start + 128] ^= 1;
+        let decoded = decode_pool_v1_pair_afterstate_verifier_request_v1(&mutated).unwrap();
+        assert_ne!(decoded.live_snapshot_payload, request.live_snapshot_payload);
+
+        let trailing = [request.live_snapshot_payload, &[0u8][..]].concat();
+        assert_eq!(
+            encode_pool_v1_pair_afterstate_verifier_request_v1(
+                &PoolV1PairAfterstateVerifierRequestV1 {
+                    live_snapshot_payload: &trailing,
+                    ..request
+                }
+            ),
+            Err(PoolV1PairVerifierTransportErrorV1::InvalidLiveSnapshotPayloadLength)
         );
     }
 
