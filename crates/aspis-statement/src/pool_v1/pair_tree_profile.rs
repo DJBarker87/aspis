@@ -13,7 +13,10 @@
 //! Nothing in this module adds a dispatch tag, registry release, account
 //! decoder, prover, verifier, or state mutation path.
 
-use aspis_core::field::{M31, P};
+use aspis_core::{
+    field::{M31, P},
+    transcript::{label, Transcript},
+};
 
 use crate::{decode_digest_canonical, encode_digest_canonical, poseidon2::Digest};
 
@@ -478,9 +481,144 @@ pub fn decode_pool_v1_pair_live_snapshot_v1(
     Ok(snapshot)
 }
 
+/// Consume the canonical late snapshot as one transcript record. The caller
+/// is the staged verifier's post-lambda/chi phase; C2 must be absorbed only
+/// after this function returns.
+pub fn absorb_pool_v1_pair_live_snapshot_after_lambda_chi_v1(
+    transcript: &mut Transcript,
+    bytes: &[u8],
+) -> Result<PoolV1PairLiveSnapshotV1, PoolV1PairLiveSnapshotErrorV1> {
+    let snapshot = decode_pool_v1_pair_live_snapshot_v1(bytes)?;
+    transcript.absorb_two(
+        label::V7_PAIR_LIVE_APPEND_SNAPSHOT,
+        POOL_V1_PAIR_LIVE_SNAPSHOT_TRANSCRIPT_DOMAIN,
+        bytes,
+    );
+    Ok(snapshot)
+}
+
+// Canonical accepted afterstate returned by the staged verifier.
+
+pub const POOL_V1_PAIR_AFTERSTATE_BYTES: usize = 8 + 32 + 20 * 32;
+pub const POOL_V1_PAIR_VERIFIER_RESULT_MAGIC: [u8; 4] = *b"A7PR";
+pub const POOL_V1_PAIR_VERIFIER_RESULT_VERSION: u8 = 1;
+pub const POOL_V1_PAIR_VERIFIER_RESULT_KIND_AFTERSTATE: u8 = 1;
+pub const POOL_V1_PAIR_VERIFIER_RESULT_SUCCESS: u8 = 1;
+pub const POOL_V1_PAIR_VERIFIER_RESULT_BYTES: usize = 8 + POOL_V1_PAIR_AFTERSTATE_BYTES;
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct PoolV1PairAfterstateV1 {
+    /// Index after appending exactly one pair leaf.
+    pub next_pair_index: u64,
+    pub root: Digest,
+    pub frontier: [Digest; POOL_V1_PAIR_TREE_DEPTH],
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum PoolV1PairVerifierResultErrorV1 {
+    WrongLength,
+    WrongMagic,
+    WrongVersion,
+    WrongKind,
+    NotSuccessful,
+    NonZeroReserved,
+    InvalidNextPairIndex,
+    NonCanonicalDigest,
+}
+
+fn validate_pool_v1_pair_afterstate_v1(
+    afterstate: &PoolV1PairAfterstateV1,
+) -> Result<(), PoolV1PairVerifierResultErrorV1> {
+    if afterstate.next_pair_index == 0 || afterstate.next_pair_index > POOL_V1_PAIR_CAPACITY {
+        return Err(PoolV1PairVerifierResultErrorV1::InvalidNextPairIndex);
+    }
+    if !digest_is_canonical(&afterstate.root)
+        || afterstate
+            .frontier
+            .iter()
+            .any(|node| !digest_is_canonical(node))
+    {
+        return Err(PoolV1PairVerifierResultErrorV1::NonCanonicalDigest);
+    }
+    Ok(())
+}
+
+pub fn encode_pool_v1_pair_verifier_result_v1(
+    afterstate: &PoolV1PairAfterstateV1,
+    output: &mut [u8],
+) -> Result<(), PoolV1PairVerifierResultErrorV1> {
+    if output.len() != POOL_V1_PAIR_VERIFIER_RESULT_BYTES {
+        return Err(PoolV1PairVerifierResultErrorV1::WrongLength);
+    }
+    validate_pool_v1_pair_afterstate_v1(afterstate)?;
+    output.fill(0);
+    output[..4].copy_from_slice(&POOL_V1_PAIR_VERIFIER_RESULT_MAGIC);
+    output[4] = POOL_V1_PAIR_VERIFIER_RESULT_VERSION;
+    output[5] = POOL_V1_PAIR_VERIFIER_RESULT_KIND_AFTERSTATE;
+    output[6] = POOL_V1_PAIR_VERIFIER_RESULT_SUCCESS;
+    output[8..16].copy_from_slice(&afterstate.next_pair_index.to_le_bytes());
+    output[16..48].copy_from_slice(&encode_digest_canonical(&afterstate.root));
+    for (level, node) in afterstate.frontier.iter().enumerate() {
+        let start = 48 + 32 * level;
+        output[start..start + 32].copy_from_slice(&encode_digest_canonical(node));
+    }
+    Ok(())
+}
+
+pub fn decode_pool_v1_pair_verifier_result_v1(
+    bytes: &[u8],
+) -> Result<PoolV1PairAfterstateV1, PoolV1PairVerifierResultErrorV1> {
+    if bytes.len() != POOL_V1_PAIR_VERIFIER_RESULT_BYTES {
+        return Err(PoolV1PairVerifierResultErrorV1::WrongLength);
+    }
+    if bytes[..4] != POOL_V1_PAIR_VERIFIER_RESULT_MAGIC {
+        return Err(PoolV1PairVerifierResultErrorV1::WrongMagic);
+    }
+    if bytes[4] != POOL_V1_PAIR_VERIFIER_RESULT_VERSION {
+        return Err(PoolV1PairVerifierResultErrorV1::WrongVersion);
+    }
+    if bytes[5] != POOL_V1_PAIR_VERIFIER_RESULT_KIND_AFTERSTATE {
+        return Err(PoolV1PairVerifierResultErrorV1::WrongKind);
+    }
+    if bytes[6] != POOL_V1_PAIR_VERIFIER_RESULT_SUCCESS {
+        return Err(PoolV1PairVerifierResultErrorV1::NotSuccessful);
+    }
+    if bytes[7] != 0 {
+        return Err(PoolV1PairVerifierResultErrorV1::NonZeroReserved);
+    }
+    let root = decode_digest_canonical(bytes[16..48].try_into().unwrap())
+        .map_err(|_| PoolV1PairVerifierResultErrorV1::NonCanonicalDigest)?;
+    let mut frontier = [[M31::ZERO; 8]; POOL_V1_PAIR_TREE_DEPTH];
+    for (level, node) in frontier.iter_mut().enumerate() {
+        let start = 48 + 32 * level;
+        *node = decode_digest_canonical(bytes[start..start + 32].try_into().unwrap())
+            .map_err(|_| PoolV1PairVerifierResultErrorV1::NonCanonicalDigest)?;
+    }
+    let afterstate = PoolV1PairAfterstateV1 {
+        next_pair_index: u64::from_le_bytes(bytes[8..16].try_into().unwrap()),
+        root,
+        frontier,
+    };
+    validate_pool_v1_pair_afterstate_v1(&afterstate)?;
+    Ok(afterstate)
+}
+
+const _: () = assert!(POOL_V1_PAIR_AFTERSTATE_BYTES == 680);
+const _: () = assert!(POOL_V1_PAIR_VERIFIER_RESULT_BYTES == 688);
+
 #[cfg(test)]
 mod tests {
     use super::*;
+    use alloc::vec::Vec;
+    use sha2::{Digest as _, Sha256};
+
+    fn sha256(inputs: &[&[u8]]) -> [u8; 32] {
+        let mut hasher = Sha256::new();
+        for input in inputs {
+            hasher.update(input);
+        }
+        hasher.finalize().into()
+    }
 
     fn digest(seed: u32) -> Digest {
         core::array::from_fn(|lane| M31(seed + lane as u32 + 1))
@@ -591,6 +729,71 @@ mod tests {
         assert_eq!(
             encode_pool_v1_pair_live_snapshot_v1(&stale, &mut encoded),
             Err(PoolV1PairLiveSnapshotErrorV1::SequenceIndexMismatch)
+        );
+    }
+
+    #[test]
+    fn late_snapshot_absorption_is_one_exact_post_challenge_record() {
+        let snapshot = PoolV1PairLiveSnapshotV1 {
+            pool: [1u8; 32],
+            deployment_domain: [2u8; 32],
+            sequence: 73,
+            next_pair_index: 73,
+            current_root: digest(300),
+            frontier: core::array::from_fn(|level| digest(400 + 10 * level as u32)),
+        };
+        let mut encoded = [0u8; POOL_V1_PAIR_LIVE_SNAPSHOT_BYTES];
+        encode_pool_v1_pair_live_snapshot_v1(&snapshot, &mut encoded).unwrap();
+
+        let mut staged = Transcript::new(sha256);
+        staged.absorb(label::PROFILE, b"staged-pair-test");
+        let _lambda = staged.challenge_qm31().unwrap();
+        let _chi = staged.challenge_qm31().unwrap();
+        let mut concatenated = Vec::from(POOL_V1_PAIR_LIVE_SNAPSHOT_TRANSCRIPT_DOMAIN);
+        concatenated.extend_from_slice(&encoded);
+        let mut reference = staged.clone();
+        reference.absorb(label::V7_PAIR_LIVE_APPEND_SNAPSHOT, &concatenated);
+
+        assert_eq!(
+            absorb_pool_v1_pair_live_snapshot_after_lambda_chi_v1(&mut staged, &encoded),
+            Ok(snapshot)
+        );
+        assert_eq!(staged.diagnostic_state(), reference.diagnostic_state());
+    }
+
+    #[test]
+    fn verifier_result_is_exact_canonical_688_byte_afterstate() {
+        let afterstate = PoolV1PairAfterstateV1 {
+            next_pair_index: 74,
+            root: digest(500),
+            frontier: core::array::from_fn(|level| digest(600 + 10 * level as u32)),
+        };
+        let mut encoded = [0u8; POOL_V1_PAIR_VERIFIER_RESULT_BYTES];
+        encode_pool_v1_pair_verifier_result_v1(&afterstate, &mut encoded).unwrap();
+        assert_eq!(POOL_V1_PAIR_AFTERSTATE_BYTES, 680);
+        assert_eq!(encoded.len(), 688);
+        assert_eq!(&encoded[..4], b"A7PR");
+        assert_eq!(&encoded[8..16], &74u64.to_le_bytes());
+        assert_eq!(
+            &encoded[656..688],
+            &encode_digest_canonical(&afterstate.frontier[19])
+        );
+        assert_eq!(
+            decode_pool_v1_pair_verifier_result_v1(&encoded),
+            Ok(afterstate)
+        );
+
+        let mut malformed = encoded;
+        malformed[7] = 1;
+        assert_eq!(
+            decode_pool_v1_pair_verifier_result_v1(&malformed),
+            Err(PoolV1PairVerifierResultErrorV1::NonZeroReserved)
+        );
+        malformed = encoded;
+        malformed[8..16].fill(0);
+        assert_eq!(
+            decode_pool_v1_pair_verifier_result_v1(&malformed),
+            Err(PoolV1PairVerifierResultErrorV1::InvalidNextPairIndex)
         );
     }
 }

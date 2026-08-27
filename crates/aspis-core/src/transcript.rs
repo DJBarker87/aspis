@@ -233,6 +233,10 @@ pub mod label {
     /// V7 program identity and compact-release binding.  This is distinct
     /// from V6 even though the semantic/relation labels remain shared.
     pub const V7_DEPLOYMENT_CONTEXT: u8 = 60;
+    /// Conservative staged-pair profile's canonical live append snapshot.
+    /// The record is absorbed after lambda/chi and before the seven-lane C2
+    /// root; the profile-specific domain string precedes the 800-byte image.
+    pub const V7_PAIR_LIVE_APPEND_SNAPSHOT: u8 = 61;
 }
 
 const DOM_ABSORB: u8 = 0x00;
@@ -324,6 +328,15 @@ impl Transcript {
         } else {
             self.state = (self.hash)(&[&self.state, &[DOM_ABSORB, label], data]);
         }
+    }
+
+    /// Absorb two logical pieces as one transcript record without allocating
+    /// their concatenation. Hash backends implement `hashv` semantics, so this
+    /// is byte-identical to the large-record branch of `absorb(label,
+    /// concat(first, second))`.
+    #[inline(never)]
+    pub fn absorb_two(&mut self, label: u8, first: &[u8], second: &[u8]) {
+        self.state = (self.hash)(&[&self.state, &[DOM_ABSORB, label], first, second]);
     }
 
     /// Internal evidence hook for candidate schedule teeth. This is not a

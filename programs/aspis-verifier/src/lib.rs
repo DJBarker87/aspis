@@ -128,6 +128,7 @@ pub mod v7_pool_dispatch;
 pub mod v7_pool_native_dispatch;
 #[cfg(any(feature = "v7-pool-dispatch-profile", test))]
 pub mod v7_pool_receipt;
+pub mod v7_staged_pair_profile;
 #[cfg(any(feature = "v7-production-tag73", test))]
 pub mod v7_transaction;
 #[cfg(any(feature = "v7-cu-probe", feature = "v7-production-tag73", test))]
