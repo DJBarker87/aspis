@@ -1,4 +1,5 @@
 import AspisFormal.K1.V7Tag73CounterfactualK13Provider
+import AspisFormal.K1.V7Tag73CompleteCausalGammaProbability
 
 /-!
 # Causal probability bound for the exact Tag-73 K1.4 failure
@@ -18,7 +19,7 @@ set_option maxRecDepth 1000000
 namespace AspisK1.V7Tag73CausalK14FailureProbability
 
 open MeasureTheory
-open AspisK1.V7Tag73CausalGammaProbability
+open AspisK1.V7Tag73CompleteCausalGammaProbability
 open AspisK1.V7Tag73CausalRestoredFamily
 open AspisK1.V7Tag73CounterfactualK13Provider
 open AspisK1.V7Tag73EightRetrySamplerLaw
@@ -45,9 +46,9 @@ list-size factor. -/
 noncomputable def causalK14FailureGammaTarget
     {decoder : ExactDecoderInstantiation QM31Exact}
     {words : AspisPool.V7MerkleQueryExtractor.ExtractedWords}
-    (provider : Tag73OuterSamplerSkeleton →
+    (provider : Tag73CompleteSamplerSkeleton →
       RestoredSelectedBranchProvider decoder words)
-    (skeleton : Tag73OuterSamplerSkeleton) : Finset QM31Exact :=
+    (skeleton : Tag73CompleteSamplerSkeleton) : Finset QM31Exact :=
   let family := restoredSelectedChainFamilyOfK13Provider (provider skeleton)
   width29GoodChallenges decoder.initialEncoder
     AspisV6PublishedTheoremInterfaces.initialAgreementThreshold
@@ -58,13 +59,13 @@ noncomputable def causalK14FailureGammaTarget
       (restoredWidth29Strategy decoder (extractedWidth29InitialWords words)
         family.response))
 
-def causalK14FailureRawGammaEvent
+def causalK14FailureDuplexGammaEvent
     {decoder : ExactDecoderInstantiation QM31Exact}
     {words : AspisPool.V7MerkleQueryExtractor.ExtractedWords}
-    (provider : Tag73OuterSamplerSkeleton →
+    (provider : Tag73CompleteSamplerSkeleton →
       RestoredSelectedBranchProvider decoder words) :
-    Set SuccessfulTag73RawNonzeroAttempts :=
-  rawSkeletonDependentGammaEvent (causalK14FailureGammaTarget provider)
+    Set SuccessfulTag73DuplexNonzeroAttempts :=
+  duplexSkeletonDependentGammaEvent (causalK14FailureGammaTarget provider)
 
 /-- Every causal K1.4 target has the single published degree-28 cardinality
 cap. -/
@@ -73,9 +74,9 @@ theorem causal_k14_failure_target_card_le
     (published : PublishedInitialWidth29CurveDecodability
       decoder.initialEncoder)
     {words : AspisPool.V7MerkleQueryExtractor.ExtractedWords}
-    (provider : Tag73OuterSamplerSkeleton →
+    (provider : Tag73CompleteSamplerSkeleton →
       RestoredSelectedBranchProvider decoder words)
-    (skeleton : Tag73OuterSamplerSkeleton) :
+    (skeleton : Tag73CompleteSamplerSkeleton) :
     (causalK14FailureGammaTarget provider skeleton).card ≤
       initialBatchChallengeCap := by
   exact restored_width29_bad_challenges_card_le decoder published words
@@ -85,24 +86,24 @@ theorem causal_k14_failure_target_card_le
 /-- Exact raw-sampler probability bound.  The sampler nuisance may determine
 the whole response strategy, but the returned nonzero gamma remains the sole
 uniform second factor. -/
-theorem causal_k14_failure_raw_gamma_probability_le
+theorem causal_k14_failure_duplex_gamma_probability_le
     {decoder : ExactDecoderInstantiation QM31Exact}
     (published : PublishedInitialWidth29CurveDecodability
       decoder.initialEncoder)
     {words : AspisPool.V7MerkleQueryExtractor.ExtractedWords}
-    (provider : Tag73OuterSamplerSkeleton →
+    (provider : Tag73CompleteSamplerSkeleton →
       RestoredSelectedBranchProvider decoder words) :
-    (PMF.uniformOfFintype SuccessfulTag73RawNonzeroAttempts).toOuterMeasure
-        (causalK14FailureRawGammaEvent provider) ≤
+    (PMF.uniformOfFintype SuccessfulTag73DuplexNonzeroAttempts).toOuterMeasure
+        (causalK14FailureDuplexGammaEvent provider) ≤
       (initialBatchChallengeCap : ENNReal) /
         ((P ^ 4 - 1 : Nat) : ENNReal) := by
-  apply raw_skeleton_dependent_gamma_probability_le
+  apply duplex_skeleton_dependent_gamma_probability_le
   intro skeleton
   exact causal_k14_failure_target_card_le published provider skeleton
 
 end
 
 #print axioms causal_k14_failure_target_card_le
-#print axioms causal_k14_failure_raw_gamma_probability_le
+#print axioms causal_k14_failure_duplex_gamma_probability_le
 
 end AspisK1.V7Tag73CausalK14FailureProbability

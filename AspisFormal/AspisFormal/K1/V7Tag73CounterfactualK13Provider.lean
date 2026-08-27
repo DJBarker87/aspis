@@ -4,8 +4,9 @@ import AspisFormal.K1.V7Tag73CausalRestoredFamily
 # Counterfactual Tag-73 K1.3 response provider
 
 For a fixed hidden prover tape and fixed pre-gamma transcript, the
-future-free machine is a deterministic function of the successful raw gamma
-sampler stream.  The complete nuisance/value factorization therefore turns
+future-free machine is a deterministic function of the successful duplex
+gamma sampler: both squeeze-output blocks and the independent transcript
+advance digests.  The complete nuisance/value factorization therefore turns
 that function into a response provider fixed before the returned gamma.
 
 This file isolates the remaining operational source task in one narrow
@@ -33,26 +34,26 @@ open AspisV5ComponentCQM31TowerExact
 
 noncomputable section
 
-/-- The exact raw sampler execution reconstructed from complete nuisance and
+/-- The exact duplex sampler execution reconstructed from complete nuisance and
 one returned nonzero gamma. -/
-def rawForSkeletonValue
-    (skeleton : Tag73OuterSamplerSkeleton)
-    (value : NonzeroQM31Exact) : SuccessfulTag73RawNonzeroAttempts :=
-  successfulRawNonzeroFactorization.symm (skeleton, value)
+def duplexForSkeletonValue
+    (skeleton : Tag73CompleteSamplerSkeleton)
+    (value : NonzeroQM31Exact) : SuccessfulTag73DuplexNonzeroAttempts :=
+  successfulDuplexNonzeroFactorization.symm (skeleton, value)
 
-@[simp] theorem rawForSkeletonValue_factorization
-    (raw : SuccessfulTag73RawNonzeroAttempts) :
-    rawForSkeletonValue (successfulRawNonzeroFactorization raw).1
-        (successfulRawNonzeroFactorization raw).2 = raw := by
-  exact successfulRawNonzeroFactorization.symm_apply_apply raw
+@[simp] theorem duplexForSkeletonValue_factorization
+    (sample : SuccessfulTag73DuplexNonzeroAttempts) :
+    duplexForSkeletonValue (successfulDuplexNonzeroFactorization sample).1
+        (successfulDuplexNonzeroFactorization sample).2 = sample := by
+  exact successfulDuplexNonzeroFactorization.symm_apply_apply sample
 
-@[simp] theorem rawForSkeletonValue_returns_value
-    (skeleton : Tag73OuterSamplerSkeleton)
+@[simp] theorem duplexForSkeletonValue_returns_value
+    (skeleton : Tag73CompleteSamplerSkeleton)
     (value : NonzeroQM31Exact) :
-    successfulRawNonzeroValue (rawForSkeletonValue skeleton value) = value := by
-  have factorExact := successfulRawNonzeroFactorization.apply_symm_apply
+    successfulDuplexNonzeroValue (duplexForSkeletonValue skeleton value) = value := by
+  have factorExact := successfulDuplexNonzeroFactorization.apply_symm_apply
     (skeleton, value)
-  rw [← successfulRawNonzeroFactorization_value]
+  rw [← successfulDuplexNonzeroFactorization_value]
   exact congrArg Prod.snd factorExact
 
 /-- Minimal future-free execution boundary for one fixed hidden state.  The
@@ -64,10 +65,10 @@ structure CounterfactualParsedK13Oracle
   defaultDisclosedFinal : FinalMessage QM31Exact
   defaultSchedule : AspisPool.V7CoherentTraceExtraction.ExactSchedule
   defaultSelected : ExactCandidatePair
-  proof? : SuccessfulTag73RawNonzeroAttempts → Option Tag73K12ParsedProof
-  proofGammaExact : ∀ raw proof,
-    proof? raw = some proof →
-      proof.gamma = (successfulRawNonzeroValue raw).1
+  proof? : SuccessfulTag73DuplexNonzeroAttempts → Option Tag73K12ParsedProof
+  proofGammaExact : ∀ sample proof,
+    proof? sample = some proof →
+      proof.gamma = (successfulDuplexNonzeroValue sample).1
 
 /-- Classify the counterfactual parsed proof for a single nonzero gamma.  A
 machine rejection or a typed K1.3 error makes that challenge unavailable;
@@ -76,22 +77,22 @@ noncomputable def counterfactualParsedK13Branch?
     {decoder : ExactDecoderInstantiation QM31Exact}
     {words : AspisPool.V7MerkleQueryExtractor.ExtractedWords}
     (oracle : CounterfactualParsedK13Oracle decoder words)
-    (skeleton : Tag73OuterSamplerSkeleton)
+    (skeleton : Tag73CompleteSamplerSkeleton)
     (gamma : QM31Exact) : Option (RestoredSelectedBranch decoder words gamma) := by
   classical
   by_cases nonzero : gamma ≠ 0
   · let value : NonzeroQM31Exact := ⟨gamma, nonzero⟩
-    let raw := rawForSkeletonValue skeleton value
-    match proofEq : oracle.proof? raw with
+    let sample := duplexForSkeletonValue skeleton value
+    match proofEq : oracle.proof? sample with
     | none => exact none
     | some proof =>
         have gammaExact : proof.gamma = gamma := by
           calc
-            proof.gamma = (successfulRawNonzeroValue raw).1 :=
-              oracle.proofGammaExact raw proof proofEq
+            proof.gamma = (successfulDuplexNonzeroValue sample).1 :=
+              oracle.proofGammaExact sample proof proofEq
             _ = gamma := by
-              rw [show raw = rawForSkeletonValue skeleton value by rfl,
-                rawForSkeletonValue_returns_value]
+              rw [show sample = duplexForSkeletonValue skeleton value by rfl,
+                duplexForSkeletonValue_returns_value]
         match classifyParsedK13 decoder words proof with
         | .inr _error => exact none
         | .inl k13 =>
@@ -104,7 +105,7 @@ noncomputable def counterfactualK13Provider
     {decoder : ExactDecoderInstantiation QM31Exact}
     {words : AspisPool.V7MerkleQueryExtractor.ExtractedWords}
     (oracle : CounterfactualParsedK13Oracle decoder words)
-    (skeleton : Tag73OuterSamplerSkeleton) :
+    (skeleton : Tag73CompleteSamplerSkeleton) :
     RestoredSelectedBranchProvider decoder words where
   defaultResponse := oracle.defaultResponse
   defaultDisclosedFinal := oracle.defaultDisclosedFinal
@@ -116,7 +117,7 @@ noncomputable def counterfactualK13Provider
     {decoder : ExactDecoderInstantiation QM31Exact}
     {words : AspisPool.V7MerkleQueryExtractor.ExtractedWords}
     (oracle : CounterfactualParsedK13Oracle decoder words)
-    (skeleton : Tag73OuterSamplerSkeleton) :
+    (skeleton : Tag73CompleteSamplerSkeleton) :
     (counterfactualK13Provider oracle skeleton).branch 0 = none := by
   simp [counterfactualK13Provider, counterfactualParsedK13Branch?]
 
@@ -124,41 +125,41 @@ noncomputable def counterfactualK13Provider
 the future-free machine returned that parsed proof and its exact K1.3
 classifier succeeded.  This is the deterministic identity needed before any
 probability argument is applied. -/
-theorem actual_raw_counterfactual_branch_available
+theorem actual_duplex_counterfactual_branch_available
     {decoder : ExactDecoderInstantiation QM31Exact}
     {words : AspisPool.V7MerkleQueryExtractor.ExtractedWords}
     (oracle : CounterfactualParsedK13Oracle decoder words)
-    (raw : SuccessfulTag73RawNonzeroAttempts)
+    (sample : SuccessfulTag73DuplexNonzeroAttempts)
     (proof : Tag73K12ParsedProof)
-    (proofExact : oracle.proof? raw = some proof)
+    (proofExact : oracle.proof? sample = some proof)
     (k13 : ParsedK13Certificate decoder words proof)
     (k13Exact : classifyParsedK13 decoder words proof = .inl k13) :
     selectedProviderAvailable
-        (counterfactualK13Provider oracle
-          (successfulRawNonzeroFactorization raw).1)
-        (successfulRawNonzeroValue raw).1 := by
+          (counterfactualK13Provider oracle
+          (successfulDuplexNonzeroFactorization sample).1)
+        (successfulDuplexNonzeroValue sample).1 := by
   classical
-  have gammaNonzero : (successfulRawNonzeroValue raw).1 ≠ 0 :=
-    (successfulRawNonzeroValue raw).2
-  have rawExact :
-      rawForSkeletonValue (successfulRawNonzeroFactorization raw).1
-        (successfulRawNonzeroValue raw) = raw := by
-    rw [← successfulRawNonzeroFactorization_value]
-    exact rawForSkeletonValue_factorization raw
+  have gammaNonzero : (successfulDuplexNonzeroValue sample).1 ≠ 0 :=
+    (successfulDuplexNonzeroValue sample).2
+  have sampleExact :
+      duplexForSkeletonValue (successfulDuplexNonzeroFactorization sample).1
+        (successfulDuplexNonzeroValue sample) = sample := by
+    rw [← successfulDuplexNonzeroFactorization_value]
+    exact duplexForSkeletonValue_factorization sample
   unfold selectedProviderAvailable counterfactualK13Provider
   simp only
   unfold counterfactualParsedK13Branch?
   split
   · rename_i h
     have reconstructed :
-        rawForSkeletonValue (successfulRawNonzeroFactorization raw).1
-            ⟨(successfulRawNonzeroValue raw).1, h⟩ = raw := by
-      convert rawExact using 1
+        duplexForSkeletonValue (successfulDuplexNonzeroFactorization sample).1
+            ⟨(successfulDuplexNonzeroValue sample).1, h⟩ = sample := by
+      convert sampleExact using 1
     dsimp only
     have proofExact' :
         oracle.proof?
-            (rawForSkeletonValue (successfulRawNonzeroFactorization raw).1
-              ⟨(successfulRawNonzeroValue raw).1, h⟩) = some proof := by
+            (duplexForSkeletonValue (successfulDuplexNonzeroFactorization sample).1
+              ⟨(successfulDuplexNonzeroValue sample).1, h⟩) = some proof := by
       simpa only [reconstructed] using proofExact
     split
     · rename_i noneExact
@@ -178,11 +179,11 @@ theorem actual_raw_counterfactual_branch_available
 
 end
 
-#print axioms rawForSkeletonValue_factorization
-#print axioms rawForSkeletonValue_returns_value
+#print axioms duplexForSkeletonValue_factorization
+#print axioms duplexForSkeletonValue_returns_value
 #print axioms counterfactualParsedK13Branch?
 #print axioms counterfactualK13Provider
 #print axioms counterfactual_provider_zero_unavailable
-#print axioms actual_raw_counterfactual_branch_available
+#print axioms actual_duplex_counterfactual_branch_available
 
 end AspisK1.V7Tag73CounterfactualK13Provider

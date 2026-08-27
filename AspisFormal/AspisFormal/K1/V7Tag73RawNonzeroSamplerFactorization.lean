@@ -1,4 +1,5 @@
 import AspisFormal.K1.V7Tag73RawNonzeroSamplerLaw
+import AspisFormal.K1.V7Tag73TranscriptSchedule
 
 /-!
 # Nuisance/value factorization of the Tag-73 nonzero sampler
@@ -32,6 +33,7 @@ open AspisK1.V7Tag73RawNonzeroSamplerLaw
 open AspisV5ComponentCRejectionSampler
 open AspisV5ComponentCStoppingTimeSampler
 open AspisV5ComponentCQM31TowerExact
+open AspisK1.V7Tag73TranscriptSchedule
 
 noncomputable section
 
@@ -169,8 +171,11 @@ def successfulNonzeroValueFactorization :
     (Equiv.sigmaEquivProd NonzeroQM31Exact Tag73NonzeroValueSkeleton) |>.trans
     (Equiv.prodComm _ _)
 
-/-- The complete causal nuisance component: raw limb stopping paths plus the
-outer nonzero-attempt pattern and every non-returned value. -/
+/-- Complete nuisance for the squeeze-output-word marginal: raw limb stopping
+paths plus the outer nonzero-attempt pattern and every non-returned value.
+This type deliberately does not include the independent duplex-advance
+answers; actual future-response causality uses
+`Tag73CompleteSamplerSkeleton` below. -/
 abbrev Tag73OuterSamplerSkeleton :=
   Tag73OrdinaryAttemptSkeletons × Tag73NonzeroValueSkeleton
 
@@ -244,6 +249,55 @@ def successfulRawNonzeroFactorization :
     (successfulRawNonzeroFactorization raw).2 = successfulRawNonzeroValue raw := by
   rfl
 
+/-! ## Complete duplex nuisance
+
+Each 256-bit squeeze output has a second, domain-separated SHA-256 answer
+which advances the transcript state.  The word stream above contains the
+complete squeeze outputs, but not those independent advance answers.  A
+future prover can depend on the resulting transcript state, so the causal
+sample space must retain all four possible advance answers for each of the
+three possible outer calls.  Unexecuted suffix coordinates are independent
+ghost randomness used only to obtain a fixed finite product space.
+-/
+
+abbrev Tag73AdvanceDigestGhosts := Fin 3 → Fin 4 → Digest256
+
+instance : Nonempty Tag73AdvanceDigestGhosts := inferInstance
+
+/-- Successful fixed-size sampler data including both squeeze-output words
+and every corresponding independent duplex-advance answer. -/
+abbrev SuccessfulTag73DuplexNonzeroAttempts :=
+  SuccessfulTag73RawNonzeroAttempts × Tag73AdvanceDigestGhosts
+
+/-- The complete pre-value nuisance component used by a causal restored
+prover. -/
+abbrev Tag73CompleteSamplerSkeleton :=
+  Tag73OuterSamplerSkeleton × Tag73AdvanceDigestGhosts
+
+instance : Nonempty Tag73CompleteSamplerSkeleton := inferInstance
+
+def successfulDuplexNonzeroValue
+    (sample : SuccessfulTag73DuplexNonzeroAttempts) : NonzeroQM31Exact :=
+  successfulRawNonzeroValue sample.1
+
+/-- Exact factorization retaining independent duplex-advance answers in the
+nuisance component while isolating only the returned nonzero gamma. -/
+def successfulDuplexNonzeroFactorization :
+    SuccessfulTag73DuplexNonzeroAttempts ≃
+      Tag73CompleteSamplerSkeleton × NonzeroQM31Exact :=
+  (Equiv.prodCongr successfulRawNonzeroFactorization
+      (Equiv.refl Tag73AdvanceDigestGhosts)).trans
+    { toFun := fun pair => ((pair.1.1, pair.2), pair.1.2)
+      invFun := fun pair => ((pair.1.1, pair.2), pair.1.2)
+      left_inv := by intro pair; rfl
+      right_inv := by intro pair; rfl }
+
+@[simp] theorem successfulDuplexNonzeroFactorization_value
+    (sample : SuccessfulTag73DuplexNonzeroAttempts) :
+    (successfulDuplexNonzeroFactorization sample).2 =
+      successfulDuplexNonzeroValue sample := by
+  rfl
+
 end
 
 
@@ -252,5 +306,7 @@ end
 #print axioms successfulNonzeroValueFactorization
 #print axioms successfulRawNonzeroFactorization
 #print axioms successfulRawNonzeroFactorization_value
+#print axioms successfulDuplexNonzeroFactorization
+#print axioms successfulDuplexNonzeroFactorization_value
 
 end AspisK1.V7Tag73RawNonzeroSamplerFactorization

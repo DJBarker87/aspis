@@ -1,13 +1,14 @@
 import AspisFormal.K1.V7Tag73RawNonzeroSamplerFactorization
 
 /-!
-# Causal gamma probability with the complete sampler nuisance retained
+# Output-word marginal gamma probability
 
-This module averages the exact nonzero-QM31 target bound over the complete
-deployed sampler skeleton.  Consequently the target selected by a restored
-prover may depend on rejection positions, discarded high bits, unused words,
-and the independent duplex-advance outputs represented in that skeleton.  It
-may not depend on the independently factored nonzero gamma value itself.
+This module proves the squeeze-output-word marginal.  Its skeleton retains
+rejection positions, discarded high bits, and unused output words, but not
+the independent DOM_ADVANCE digests.  Consequently these theorems must not be
+used for a future-response oracle whose post-gamma transcript depends on the
+advance state.  `V7Tag73CompleteCausalGammaProbability` supplies the causal
+theorem for that application.
 -/
 
 set_option autoImplicit false
@@ -149,9 +150,8 @@ theorem successful_value_slice_probability_le
       (nonzeroTargetEvent (target skeleton)) ≤ _
   exact uniform_nonzero_target_probability_le (target skeleton)
 
-/-- A target family chosen from the complete sampler skeleton has the same
-cap as a single target fixed before gamma.  Averaging over nuisance data costs
-nothing. -/
+/-- A target family chosen from the output-word marginal skeleton has the
+same cap as a single target fixed before gamma. -/
 theorem skeleton_dependent_gamma_probability_le
     (target : Tag73OuterSamplerSkeleton → Finset QM31Exact)
     (cap : Nat)
@@ -180,8 +180,9 @@ theorem skeleton_dependent_gamma_probability_le
     _ = (cap : ENNReal) / ((P ^ 4 - 1 : Nat) : ENNReal) := by
       rw [PMF.tsum_coe, one_mul]
 
-/-- The literal successful raw-word experiment inherits the causal target
-bound through the exact skeleton/value factorization. -/
+/-- The successful output-word marginal inherits the target bound through
+the exact skeleton/value factorization.  This is not the complete duplex
+future-response theorem. -/
 theorem raw_skeleton_dependent_gamma_probability_le
     (target : Tag73OuterSamplerSkeleton → Finset QM31Exact)
     (cap : Nat)
