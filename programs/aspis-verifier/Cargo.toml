@@ -64,6 +64,14 @@ v7-pool-dispatch-profile = [
     "v7-production-tag73",
     "aspis-statement/pool-v1-kernel",
 ]
+# Default-off eight-lane Pool request validator.  The account/PDA/codec and
+# exact ASF8 reconstruction boundary is executable, but the route remains
+# fail-closed until the merged-C1 forest terminal is part of the accepted
+# Tag-73 verifier.
+v7-pair-forest-asq8 = [
+    "v7-production-tag73",
+    "aspis-statement/pool-v1-kernel",
+]
 
 [dependencies]
 aspis-core = { path = "../../crates/aspis-core" }
