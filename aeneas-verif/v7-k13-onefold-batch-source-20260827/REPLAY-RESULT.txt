@@ -1,0 +1,103 @@
+V7 Tag-73 K1.3 shifted query-batch source bridge: PASS
+Date: 2026-08-27T12:17:59Z
+Host: macOS 26.5 (25F71), arm64
+
+Pinned source
+-------------
+Production repair commit:
+  b44fc616098b3018e098572885a688a5935e5b47
+Bundle branch base at final local replay:
+  19c70ac24929ab1170716a0a13c853c068b204b3
+Production Rust changed by this bundle: no
+
+Pinned tools
+------------
+Charon binary SHA-256:
+  d785c5f18053c4d310c7388dfdb0b59adfc9854c28b632a34a8f6301ba1c4b43
+Aeneas version:
+  b59d518
+Aeneas binary SHA-256:
+  fbb8dac1a9a57e635a762e04b95aeb46dbd2dab2be5ed54fa9e0b1321c1962cf
+Lean:
+  4.32.0 arm64-apple-darwin24.6.0
+
+Extraction replay
+-----------------
+Command:
+  CHARON_BIN=/Users/dominic/aeneas-verif/charon/bin/charon \
+  AENEAS_BIN=/Users/dominic/aeneas-verif/aeneas/bin/aeneas ./replay.sh
+Result: exit 0
+Wall: 27.84 s
+Maximum RSS: 716,357,632 bytes
+Swaps: 0
+Log SHA-256:
+  b22ee1e182a840bb2a7aa75b52afe6e950704e1cf9a019990f9dae99eb58f78b
+Normalized fold/residual LLBC SHA-256:
+  4fb9f5fd19f8dcabc5aca5981f51ca2269f86a806e9a6e7814d1666cec28e625
+Normalized shifted-batch LLBC SHA-256:
+  9c90509a20b5b6f601bf0143593dc020d9b9e82589f9cd3f1e46a8862bfd0fde
+
+Focused Aeneas Lean replay
+--------------------------
+Command:
+  AENEAS_LEAN_BACKEND=/Users/dominic/aeneas-verif/aeneas/backends/lean \
+  ./replay-lean.sh
+Result: exit 0
+Wall: 38.00 s
+Maximum RSS: 2,283,438,080 bytes
+Swaps: 0
+Log SHA-256:
+  c9a3f150a7f03a9ff7bf5687baea723fda5f7ae2b2b5964c1ca2bbd38ccbec6d
+
+Compiled source theorems
+------------------------
+  AspisV7K13FoldedValuesTrace.generated_callback_is_sourceFoldAt
+  AspisV7K13FoldedValuesTrace.accepted_fold_exposes_exact_sixteen_values
+  AspisV7K13ShiftedResidualTrace.successful_shifted_residual_exposes_exact_factorization
+  AspisV7K13QueryBatchInsertionTrace.accepted_query_batch_exposes_exact_insertion
+
+Every printed source-theorem axiom set is a subset of:
+  propext
+  Classical.choice
+  Quot.sound
+
+Main-project algebraic handoff
+------------------------------
+Target:
+  AspisFormal/AspisFormal/K1/V7Tag73BatchedQuerySourceBridge.lean
+Result: exit 0
+Wall: 6.11 s
+Maximum RSS: 5,791,776,768 bytes
+Swaps: 0
+Log SHA-256:
+  3587d0ac0de37a3b9030f4bc7310adb9a4fa727248979d58aa60b7eb5a40ca6f
+
+Principal theorem:
+  before_one_eq_joint_discrepancy_of_authenticated_source
+
+It defines the exact pre-query discrepancy and derives the corrected
+degree-at-most-16 joint discrepancy at `execution.discrepancyTrace.before 1`
+from exact shifted source weights and the exact authenticated shifted claim.
+It assumes and concludes neither pointwise query equality nor residual zero.
+
+Every printed main-project theorem axiom set is exactly:
+  propext
+  Classical.choice
+  Quot.sound
+
+Forbidden construct scan
+------------------------
+No compiled generated/proof source contains `sorry`, `admit`, `sorryAx`,
+`native_decide`, a project-specific axiom, or a conclusion-shaped opaque
+interface. One prose comment uses the ordinary English word `opaque` to state
+that the callback result is not hidden behind such a predicate.
+
+Remaining composition boundary
+------------------------------
+The translated source facts end at raw QM31/array equalities. The accepted
+round-tail source bundle already exposes the terminal dot equality and the
+three later challenge/update calls, while the parsed/transcript source binding
+exposes alpha zero. The remaining work is namespace/value projection and
+composition of those existing raw facts into the corrected
+`ExactTag73K13SourceObligations`; it is not a query-consistency or
+cryptographic premise.
