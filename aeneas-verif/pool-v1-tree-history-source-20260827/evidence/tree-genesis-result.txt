@@ -1,0 +1,37 @@
+Pool V1 production tree genesis source bridge: PASS
+
+Source commit base: 1fe2e773
+Charon: cb50ff16b9f1066b8a97dc06da704de2da2fa41c
+Aeneas source: b59d5188c082f704a418c7cb4e52ad69328002d1
+Aeneas Lean-4.32 compatibility patch: repository pinned
+Lean: 4.32.0
+
+production incremental_merkle.rs sha256:
+462fd40e283083bfea19720083d450a815c706fa0da540db25ac84e41ef5aaaf
+
+LLBC sha256:
+ec6f51bc9883b16309fe68a533f9b5eb4f37e015f2e0e80ebf2b66cc62823f95
+
+generated Types.lean sha256:
+c1fea21ed73c9b4d226287c0a42bbf6101b44f70eee3c347ed1e917f4a40b5ce
+
+generated Funs.lean sha256:
+08d3e30ae2eb29e27ac25b24b911de47c53e5b78bdbf7151b0eec539595fb24d
+
+executable FunsExternal.lean sha256:
+8f2d0100cca080dddae1cc48a82992e8f05483b2218ef930a6fe8b174c6891aa
+
+Focused generated Types/FunsExternal/Funs compile: PASS
+Focused production genesis bridge compile: PASS
+
+Strongest theorem:
+PoolV1TreeGenesisSourceBridge.production_tree_genesis_establishes_pool_tree_history
+
+#print axioms for all three production genesis theorem groups:
+[propext, Classical.choice, Quot.sound]
+
+No sorry, admit, sorryAx, native_decide or project-specific axiom occurs in
+the compiled bridge. ParentCallbackExact is the explicit theorem premise for
+the opaque Poseidon tree-parent primitive. Core array construction, constants,
+range iteration, empty-root table construction and the production caller are
+transparent.

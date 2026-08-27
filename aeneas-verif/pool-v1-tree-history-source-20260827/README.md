@@ -42,6 +42,25 @@ The translated root-history function is transparent. There is no cryptographic
 callback or external function in this checkpoint. The remaining trust base is
 the ordinary Rust/Charon/Aeneas/Lean toolchain provenance.
 
+## Green checkpoint: production genesis
+
+`proof/PoolV1TreeGenesisBridge.lean` starts from the literal translation of
+`IncrementalMerkleTreeV1::empty()`. It proves all three implementation facts
+needed at sequence zero:
+
+- the cursor is exactly zero;
+- the explicit root is the depth-20 recursive empty root;
+- the concrete canonical frontier maps to 20 inactive mathematical slots.
+
+The capstone theorem
+`production_tree_genesis_establishes_pool_tree_history` concludes the existing
+`PoolTreeHistoryInvariantV1.PoolTreeHistoryInvariant` predicate, including the
+retained sequence-zero root and exact history length. The empty-root loop and
+the 20-element `core::array::from_fn` call are transparent. The sole semantic
+premise is `ParentCallbackExact`, naming the Poseidon tree-parent boundary
+directly. All three genesis theorem groups report only
+`[propext, Classical.choice, Quot.sound]`; the premise is not a hidden axiom.
+
 Pinned extraction tools:
 
 - Charon `cb50ff16b9f1066b8a97dc06da704de2da2fa41c`;
@@ -56,12 +75,12 @@ declarations rather than treating raw JSON byte order as semantics.
 
 ## Remaining implementation boundary
 
-The smallest next boundary is the transparent production genesis constructor:
-prove that `IncrementalMerkleTreeV1::empty()` constructs the exact empty-root
-frontier consumed by `PoolTreeHistoryInvariantV1`. After that, the work is:
+The smallest next boundary is the successful production one-append carry loop:
+connect its concrete cursor-bit/frontier update and reconstructed root to the
+existing `appendCarry` predicate. After that, the work is:
 
-1. connect successful one-append and two-append translations to the existing
-   incremental-tree step predicates;
+1. derive two-append as the exact ordered composition of two successful
+   production one-appends;
 2. connect program transition success to the exact tree/account after-images;
 3. prove root-page append persistence and retained-root lookup from literal
    program source;
