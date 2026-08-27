@@ -305,6 +305,72 @@ theorem uniform_product_event_probability_le_of_every_slice_le
       exact ENNReal.tsum_mul_right
     _ = bound := by rw [PMF.tsum_coe, one_mul]
 
+/-- Generic residual-dependent conditioning bridge.  A source equivalence
+separates a total raw sampler from the rest of the compiler tape; each
+residual context may choose a different event on the successful subtype. -/
+theorem uniform_tape_dependent_successful_event_probability_le
+    {Tape Total Residual Successful : Type}
+    [Fintype Tape] [Nonempty Tape]
+    [Fintype Total] [Nonempty Total]
+    [Fintype Residual] [Nonempty Residual]
+    [Fintype Successful] [Nonempty Successful]
+    (success : Total → Prop) [DecidablePred success]
+    [Nonempty {a : Total // success a}]
+    (coordinates : Tape ≃ Residual × Total)
+    (successfulCoordinates : {a : Total // success a} ≃ Successful)
+    (successfulEvent : Residual → Set Successful)
+    (bound : ENNReal)
+    (successfulBound : ∀ residual,
+      (PMF.uniformOfFintype Successful).toOuterMeasure
+        (successfulEvent residual) ≤ bound)
+    (event : Set Tape)
+    (covered : event ⊆ coordinates ⁻¹'
+      dependentSuccessfulSubtypeEvent success (fun residual =>
+        successfulCoordinates ⁻¹' successfulEvent residual)) :
+    (PMF.uniformOfFintype Tape).toOuterMeasure event ≤ bound := by
+  let subtypeEvent : Residual → Set {a : Total // success a} :=
+    fun residual => successfulCoordinates ⁻¹' successfulEvent residual
+  let dependentEvent : Set (Residual × Total) :=
+    dependentSuccessfulSubtypeEvent success subtypeEvent
+  calc
+    (PMF.uniformOfFintype Tape).toOuterMeasure event ≤
+        (PMF.uniformOfFintype Tape).toOuterMeasure
+          (coordinates ⁻¹' dependentEvent) :=
+      (PMF.uniformOfFintype Tape).toOuterMeasure.mono covered
+    _ = (PMF.uniformOfFintype (Residual × Total)).toOuterMeasure
+          dependentEvent := by
+      calc
+        _ = ((PMF.uniformOfFintype Tape).map coordinates).toOuterMeasure
+              dependentEvent := by rw [PMF.toOuterMeasure_map_apply]
+        _ = _ := by
+          rw [AspisV5RankOneOpeningHiding.uniform_map_equiv coordinates]
+    _ ≤ _ := by
+      apply uniform_product_event_probability_le_of_every_slice_le
+      intro residual
+      calc
+        (PMF.uniformOfFintype Total).toOuterMeasure
+            (productEventFstSlice dependentEvent residual) =
+          (PMF.uniformOfFintype Total).toOuterMeasure
+            (successfulSubtypeEvent success (subtypeEvent residual)) := by
+              rw [show dependentEvent =
+                dependentSuccessfulSubtypeEvent success subtypeEvent by rfl,
+                productEventFstSlice_dependentSuccessfulSubtypeEvent]
+        _ ≤ (PMF.uniformOfFintype {a : Total // success a}).toOuterMeasure
+              (subtypeEvent residual) :=
+          uniform_successful_subtype_event_probability_le success
+            (subtypeEvent residual)
+        _ = (PMF.uniformOfFintype Successful).toOuterMeasure
+              (successfulEvent residual) := by
+          calc
+            _ = ((PMF.uniformOfFintype {a : Total // success a}).map
+                  successfulCoordinates).toOuterMeasure
+                    (successfulEvent residual) := by
+                rw [PMF.toOuterMeasure_map_apply]
+            _ = _ := by
+              rw [AspisV5RankOneOpeningHiding.uniform_map_equiv
+                successfulCoordinates]
+        _ ≤ bound := successfulBound residual
+
 /-- The actual causal context may depend on every fresh answer outside gamma's
 fixed raw region.  Once a source-level coordinate equivalence separates that
 residual context from the total raw gamma sample, every residual slice is
@@ -435,6 +501,7 @@ end
 #print axioms exact_compiler_k14_event_probability_le
 #print axioms uniformProductJointLaw_eq_uniform
 #print axioms uniform_product_event_probability_le_of_every_slice_le
+#print axioms uniform_tape_dependent_successful_event_probability_le
 #print axioms uniform_tape_dependent_k14_event_probability_le
 #print axioms exact_compiler_dependent_k14_event_probability_le
 
