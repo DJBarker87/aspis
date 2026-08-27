@@ -290,6 +290,28 @@ theorems report exactly `[propext, Classical.choice, Quot.sound,
 history.validate_new_page_account]`; there is no abstract token-construction
 or conclusion-shaped premise.
 
+`proof/PoolV1HistoryResultImagesRoutingBridge.lean` lifts the literal
+production `prepared_settlement::history_result_images_match` checker. From
+successful source execution its capstone
+`history_result_images_success_has_exact_page_route` exposes the exact
+production root-history location, current-page validation, transition root
+count and `checked_history_distribution` result. It then proves the deployed
+option grammar directly from the translated control flow:
+
+- zero rollover roots requires `next_page_address`, the supplied next account
+  image and `next_rollover_page_image` all to be absent; and
+- a nonzero rollover count requires all three values to be present.
+
+The proof also follows the literal current-page after-image computation far
+enough to establish that routing is reached only after successful ordered
+receipt encoding, zero-page allocation, current-page copy/append and exact
+current-image comparison. Its axiom report contains the standard Lean trio,
+the Solana PDA runtime boundary, and the two canonical digest codec names.
+Those codec equations are not open mathematics: they are independently
+source-closed by `PoolV1HistoryCodecRoundTripBridge.lean`. No iterator,
+account-routing, trace-cover or conclusion-shaped axiom appears in the
+capstone.
+
 The retained-root reader passes through Rust's formatting machinery only on
 an impossible `Result::unwrap` failure after a successful fixed-array
 conversion.  Aeneas otherwise exposes its placeholder `core::fmt::Formatter`
@@ -302,21 +324,26 @@ The remaining implementation lift is:
 
 1. lift the now-closed prepared-afterimage validator through the caller that
    constructs it and through the state/root account writes;
-2. connect the direct transition caller's duplicated account-routing control
-   flow to the now-closed pure distribution theorem, including the supplied
-   next-account presence/absence condition;
-3. close the remaining combined `validate_new_page_account` data-borrow,
+2. close the remaining combined `validate_new_page_account` data-borrow,
    fixed-length and all-zero checks.  Its successful result is now connected
    through the exact outer token constructor, so the remaining program lift is
-   non-aliasing and mutable account write-back. Owner, PDA and writable
-   sub-gates themselves are source-closed above.
+   non-aliasing and mutable account write-back. Owner, PDA, writable and
+   supplied-next presence/absence sub-gates themselves are source-closed
+   above; and
+3. connect the already-proved result-image routing and byte-persistence
+   capstones through the literal transition caller's mutable `AccountInfo`
+   borrows, including current-page write-back, optional rollover-page
+   write-back, pool-state root/cursor update and root-history identity
+   preservation.
 
 The full literal transition router has been extracted successfully, but the
-current Aeneas frontend cannot translate its `AccountInfo` borrowing and
-nested `Option`/generic early-return path transparently.  This is now the
-smallest explicit source-to-persistence boundary.  It is a source-tool lift,
-not an unproved root-distribution or byte-persistence equation: both of those
-are independently source-closed above.
+current Aeneas frontend cannot translate its mutable `AccountInfo` borrowing
+path transparently. The nested `Option` routing itself is now closed by the
+literal result-image checker above. Mutable account borrowing, non-aliasing
+and write-back are therefore the smallest explicit source-to-persistence
+boundary. This is a source-tool lift, not an unproved root-distribution,
+option-routing or byte-persistence equation: all three are independently
+source-closed above.
 
 The only intended cryptographic semantic boundary is the already-frozen
 Poseidon tree-parent primitive. Account-runtime behavior remains the ordinary

@@ -1,0 +1,49 @@
+Pool V1 literal history result-image routing source bridge: PASS
+
+Source function:
+  programs/aspis-pool/src/prepared_settlement.rs
+  prepared_settlement::history_result_images_match
+  SHA-256 4b7dfa3741edfdcc2d33a62401fdbe280e332c206a59f6df0ca779dead85e606
+
+Focused Charon LLBC:
+  extraction/PoolV1HistoryResultImages.llbc
+  SHA-256 1c162b71f209e6b9e7185876ac7c36aa80d0ce551685e0516f2d6d61f8174f73
+
+Generated translated functions:
+  generated/PoolV1HistoryResultImages/Funs.lean
+  SHA-256 9ef10f2e0f39c67eeaa723e841523a19df3a81537b58dad630f0034f8579cda5
+
+Focused proof:
+  proof/PoolV1HistoryResultImagesRoutingBridge.lean
+  SHA-256 4d2a356b060e64f71442f25c75b25ea935729c8762231cc1ec46c13208ee1991
+
+Strongest theorem:
+  PoolV1HistoryResultImagesRoutingBridge.
+    history_result_images_success_has_exact_page_route
+
+Result:
+  Successful literal translated execution exposes the exact root-history
+  location, current-page validation, transition root count, and checked
+  current/rollover distribution. A zero rollover requires all next-page
+  values absent. A nonzero rollover requires the page address, supplied page
+  image, and expected rollover after-image all present.
+
+Lean:
+  v4.31.0
+  focused invocation exited 0
+
+#print axioms:
+  [propext,
+   Classical.choice,
+   Quot.sound,
+   aspis_statement.atomic_statement.decode_digest_canonical,
+   aspis_statement.atomic_statement.encode_digest_canonical,
+   solana_pubkey.Pubkey.find_program_address]
+
+The two canonical codec equations are independently source-closed by
+PoolV1HistoryCodecRoundTripBridge.lean. The PDA operation is the explicit
+Solana runtime boundary. There is no sorry, admit, sorryAx, native_decide,
+iterator-routing axiom, account-routing axiom, or conclusion-shaped premise.
+
+NUC usage:
+  none
