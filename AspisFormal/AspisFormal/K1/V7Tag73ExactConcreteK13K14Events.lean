@@ -95,6 +95,71 @@ def exactTag73K13QueryOrOneFoldEvent
       OneFoldReductionFailure (exactK13ParsedProof input).schedule
         (exactK13Encoders decoder) (exactK13Transcript input k12)}
 
+/-- The q16 half of the exact K1.3 residual event.  Keeping this as its own
+set lets the finite first-cap-203 theorem be applied without charging the
+one-fold event a second time. -/
+def exactTag73K13QueryEvent
+    {HiddenTape TapeIdentity Observation Statement Payload Witness : Type}
+    {parameters : ExactCompilerResourceParameters}
+    (transitionFuel : Nat)
+    (configuration : ExactPlainRomWitnessConfiguration HiddenTape TapeIdentity
+      Observation Statement Tag73K12ParsedProof Payload Witness parameters)
+    (projection : AcceptedTapeProjection Statement Tag73K12ParsedProof Payload)
+    (fixedInstance : PublicInstance Statement)
+    (decoder : ExactDecoderInstantiation QM31Exact) :
+    Set (ExactCompilerSample HiddenTape parameters) :=
+  {sample | ∃
+      (input : ExactK12OperationalInput transitionFuel configuration projection
+        fixedInstance sample)
+      (k12 : ExactPrefixK12Certificate input),
+    QueryPhaseFailure (exactK13ParsedProof input).schedule
+      (exactK13Encoders decoder) (exactK13Transcript input k12)
+      (exactK13ParsedProof input).queries}
+
+/-- The published one-fold half of the exact K1.3 residual event. -/
+def exactTag73K13OneFoldEvent
+    {HiddenTape TapeIdentity Observation Statement Payload Witness : Type}
+    {parameters : ExactCompilerResourceParameters}
+    (transitionFuel : Nat)
+    (configuration : ExactPlainRomWitnessConfiguration HiddenTape TapeIdentity
+      Observation Statement Tag73K12ParsedProof Payload Witness parameters)
+    (projection : AcceptedTapeProjection Statement Tag73K12ParsedProof Payload)
+    (fixedInstance : PublicInstance Statement)
+    (decoder : ExactDecoderInstantiation QM31Exact) :
+    Set (ExactCompilerSample HiddenTape parameters) :=
+  {sample | ∃
+      (input : ExactK12OperationalInput transitionFuel configuration projection
+        fixedInstance sample)
+      (k12 : ExactPrefixK12Certificate input),
+    OneFoldReductionFailure (exactK13ParsedProof input).schedule
+      (exactK13Encoders decoder) (exactK13Transcript input k12)}
+
+/-- The executable K1.3 residual splits exactly into the two events to which
+the independent q16 and published one-fold bounds are applied. -/
+theorem exactTag73K13QueryOrOneFoldEvent_eq_union
+    {HiddenTape TapeIdentity Observation Statement Payload Witness : Type}
+    {parameters : ExactCompilerResourceParameters}
+    (transitionFuel : Nat)
+    (configuration : ExactPlainRomWitnessConfiguration HiddenTape TapeIdentity
+      Observation Statement Tag73K12ParsedProof Payload Witness parameters)
+    (projection : AcceptedTapeProjection Statement Tag73K12ParsedProof Payload)
+    (fixedInstance : PublicInstance Statement)
+    (decoder : ExactDecoderInstantiation QM31Exact) :
+    exactTag73K13QueryOrOneFoldEvent transitionFuel configuration projection
+        fixedInstance decoder =
+      exactTag73K13QueryEvent transitionFuel configuration projection
+          fixedInstance decoder ∪
+        exactTag73K13OneFoldEvent transitionFuel configuration projection
+          fixedInstance decoder := by
+  ext sample
+  constructor
+  · rintro ⟨input, k12, query | oneFold⟩
+    · exact Or.inl ⟨input, k12, query⟩
+    · exact Or.inr ⟨input, k12, oneFold⟩
+  · rintro (⟨input, k12, query⟩ | ⟨input, k12, oneFold⟩)
+    · exact ⟨input, k12, Or.inl query⟩
+    · exact ⟨input, k12, Or.inr oneFold⟩
+
 /-- Exact K1.4 residual event exposed directly by its sole classifier error
 constructor. -/
 def exactTag73K14Width29Event
@@ -259,6 +324,37 @@ theorem assembled_k13_error_subset_query_or_onefold
     exact_k13_error_reduces_to_query_or_onefold initialEncoderExact
       (source.idealAccepts sample input k12) error.some⟩
 
+/-- The same deterministic reduction, presented in the exact two-event form
+consumed by the measured K1.3 composition theorem. -/
+theorem assembled_k13_error_subset_query_union_onefold
+    {HiddenTape TapeIdentity Observation Statement Payload Witness : Type}
+    {parameters : ExactCompilerResourceParameters}
+    (transitionFuel : Nat)
+    (configuration : ExactPlainRomWitnessConfiguration HiddenTape TapeIdentity
+      Observation Statement Tag73K12ParsedProof Payload Witness parameters)
+    (projection : AcceptedTapeProjection Statement Tag73K12ParsedProof Payload)
+    (fixedInstance : PublicInstance Statement)
+    (relation : PublicInstance Statement → Witness → Prop)
+    (decoder : ExactDecoderInstantiation QM31Exact)
+    (decoderBinding : InitialProjectionBinding decoder)
+    (k15 : ExactTag73K15Classifier transitionFuel configuration projection
+      fixedInstance relation decoder decoderBinding)
+    (initialEncoderExact : decoder.initialEncoder = exactInitialEncoder)
+    (source : ExactTag73K13SourceObligations transitionFuel configuration
+      projection fixedInstance decoder) :
+    k13CircleListDecodeErrorEvent
+        (exactTag73ProofRelevantStages transitionFuel configuration projection
+          fixedInstance relation decoder decoderBinding k15) ⊆
+      exactTag73K13QueryEvent transitionFuel configuration projection
+          fixedInstance decoder ∪
+        exactTag73K13OneFoldEvent transitionFuel configuration projection
+          fixedInstance decoder := by
+  rw [← exactTag73K13QueryOrOneFoldEvent_eq_union transitionFuel
+    configuration projection fixedInstance decoder]
+  exact assembled_k13_error_subset_query_or_onefold transitionFuel
+    configuration projection fixedInstance relation decoder decoderBinding k15
+    initialEncoderExact source
+
 theorem assembled_k14_error_subset_width29
     {HiddenTape TapeIdentity Observation Statement Payload Witness : Type}
     {parameters : ExactCompilerResourceParameters}
@@ -320,11 +416,13 @@ theorem assembled_k13_k14_error_subset_exact_union
       k15 k14Error)
 
 #print axioms assembled_k13_error_subset_query_or_onefold
+#print axioms assembled_k13_error_subset_query_union_onefold
 #print axioms assembled_k14_error_subset_width29
 #print axioms assembled_k13_k14_error_subset_exact_union
 #print axioms query_phase_failure_is_literal_selected_all_in_bad
 #print axioms query_phase_failure_exposes_literal_q16_bad_set
 #print axioms onefold_failure_exposes_exact_published_bad_set
+#print axioms exactTag73K13QueryOrOneFoldEvent_eq_union
 
 end
 
