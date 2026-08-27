@@ -14,6 +14,8 @@
 pub mod durable_state;
 pub mod durable_witness_state;
 pub mod finalized_indexer;
+#[cfg(feature = "eight-lane-plumbing-v2")]
+pub mod lane_forest_v2;
 pub mod note_store_crypto;
 pub mod operator_execution;
 pub mod operator_startup;
