@@ -165,9 +165,27 @@ deployed quotient/remainder values. Every theorem group reports only
 `[propext, Classical.choice, Quot.sound]`; the two-append decomposition adds no
 semantic premise.
 
+`proof/PoolV1ProgramPreparedAfterimageBridge.lean` begins the literal program
+transition lift. Its capstone
+`production_validate_success_implies_exact_afterimage` starts from successful
+translated execution of production
+`PreparedAuthorizedAppendV1::validate_inherited_state_and_cursor` and proves:
+
+- exact inheritance of pool identity and verifier policy;
+- checked cursor motion by exactly one or two, according to the request;
+- exact one/two receipt cardinality and ordering;
+- exact leaf indices and root sequence numbers; and
+- equality of the terminal receipt root to the returned tree root.
+
+The array-equality callback is given a transparent proof that `true` implies
+actual digest equality. The two structural equality callbacks have transparent
+executable interpretations. The capstone and callback theorems report only
+`[propext, Classical.choice, Quot.sound]`.
+
 The remaining implementation lift is:
 
-1. connect program transition success to the exact tree/account after-images;
+1. lift the now-closed prepared-afterimage validator through the caller that
+   constructs it and through the state/root account writes;
 2. prove root-page append persistence and retained-root lookup from literal
    program source;
 3. carry pool identity, owner, PDA and same-writable-account checks through the

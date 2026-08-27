@@ -1,0 +1,56 @@
+Pool V1 production prepared-afterimage source bridge: PASS
+
+Source commit parent: 9fb8b78b867e802b3babe592ddf2ab1154b66190
+Charon: cb50ff16b9f1066b8a97dc06da704de2da2fa41c
+Aeneas source: e9d20a64aa4dcbbc20ba8742a6ddf720f0c575cd
+Aeneas version: aspis-v5-constructor-e9d20a64
+Lean: 4.31.0
+
+production transition.rs sha256:
+2675ff87332ea201360f0b9fda4641705e5320226198e45e53dc49e4b101ba3b
+
+production state.rs sha256:
+3f789f18f81b614de89d1d27a43b4ccbe754e22c53064c44c570334ab47f869f
+
+LLBC sha256:
+ab93844b427300821a3afb110263ad378d42bc774ca5ff64562101db3ec3b976
+
+generated Types.lean sha256:
+bfd58dd31a506762ae3df68c20bd5404e59e045a75bbbc71650a5be479582ee6
+
+generated Funs.lean sha256:
+ae7df8aaea9213c66f23d18f70690ef3f1167401123ae0a738e5411b645b929d
+
+executable FunsExternal.lean sha256:
+e851b39638037e4327fceef6a5604557ba5ff4cedbd9215a469947621ddb0831
+
+prepared-afterimage bridge sha256:
+7ac7ea921604aa2ae7a8902de387ad897134b481df94efdbd5fc5d43afd5bc20
+
+Focused generated Types/FunsExternal/Funs compile: PASS
+Focused program prepared-afterimage source bridge compile: PASS
+
+Strongest theorem:
+PoolV1ProgramPreparedAfterimageBridge.production_validate_success_implies_exact_afterimage
+
+Supporting theorem group:
+PoolV1ProgramPreparedAfterimageBridge.digest_partial_eq_true_implies_eq
+PoolV1ProgramPreparedAfterimageBridge.identity_partial_eq_false_implies_eq
+PoolV1ProgramPreparedAfterimageBridge.policy_partial_eq_false_implies_eq
+
+#print axioms for every listed theorem:
+[propext, Classical.choice, Quot.sound]
+
+There is no sorry, admit, sorryAx, native_decide or project-specific axiom in
+the compiled strongest theorem. It starts from literal translated production
+`PreparedAuthorizedAppendV1::validate_inherited_state_and_cursor` success and
+proves inherited pool identity and verifier policy, exact checked cursor
+motion for one/two leaves, exact receipt cardinality/order, exact leaf and root
+sequence values, and equality of the receipt's terminal root to the returned
+tree root.
+
+The focused module keeps unrelated preparation/encoding functions opaque only
+to make the generated program crate compile in isolation. The strongest
+theorem does not depend on those declarations. Its remaining semantic lift is
+the caller that constructs the prepared state and the literal account-write
+path that persists its state/root afterimages.
