@@ -72,8 +72,7 @@ use crate::{
         PreparedSettlementApplyContextV1,
     },
     prepared_settlement_format::{
-        decode_prepared_settlement_plan_v1, PreparedSettlementRolloverShardAccountV1,
-        POOL_V1_PREPARED_SETTLEMENT_CORE_ACCOUNT_BYTES,
+        PreparedSettlementRolloverShardAccountV1, POOL_V1_PREPARED_SETTLEMENT_CORE_ACCOUNT_BYTES,
         POOL_V1_PREPARED_SETTLEMENT_ROLLOVER_ACCOUNT_BYTES,
         POOL_V1_PREPARED_SETTLEMENT_ROLLOVER_SEED, POOL_V1_PREPARED_SETTLEMENT_SEED,
     },
@@ -90,8 +89,9 @@ use crate::{
     },
     transition::{
         apply_authorized_append_after_prevalidated_history_v1, apply_authorized_append_after_v1,
-        initialize_pool_accounts_v1, validate_current_history,
+        initialize_pool_accounts_v1, prevalidate_new_history_page_v1, validate_current_history,
         validate_current_history_after_prevalidated_anchor_v1, AuthorizedAppendV1,
+        PrevalidatedNewHistoryPageV1,
     },
     vault::{
         exact_withdrawal_transfer_account_infos_v1, parse_legacy_mint_v1,
@@ -478,12 +478,29 @@ fn require_fresh_rent_exempt_program_pda(
     program_id: &Pubkey,
     expected_address: &Pubkey,
     exact_bytes: usize,
+    preparation: FreshPdaPreparationV1,
     rent: &Rent,
 ) -> ProgramResult {
-    if plan_fresh_program_pda(account, program_id, expected_address, exact_bytes)?
-        != FreshPdaPreparationV1::ProgramOwnedZeroed
-        || !rent.is_exempt(account.lamports(), exact_bytes)
-    {
+    let is_fresh = match preparation {
+        // `plan_fresh_program_pda` already scanned every byte and no CPI was
+        // given this account before this check. Repeating the large zero scan
+        // is redundant, especially for 8.5KB rollover pages/shards.
+        FreshPdaPreparationV1::ProgramOwnedZeroed => {
+            account.key == expected_address
+                && account.owner == program_id
+                && !account.executable
+                && !account.is_signer
+                && account.is_writable
+                && account.data_len() == exact_bytes
+        }
+        // A just-created System account crossed a CPI boundary, so retain one
+        // complete post-CPI owner/shape/zero-state validation.
+        FreshPdaPreparationV1::CreateOrAllocateSystemOwned => {
+            plan_fresh_program_pda(account, program_id, expected_address, exact_bytes)?
+                == FreshPdaPreparationV1::ProgramOwnedZeroed
+        }
+    };
+    if !is_fresh || !rent.is_exempt(account.lamports(), exact_bytes) {
         return Err(PoolV1ProgramError::InvalidFreshAccount.into());
     }
     Ok(())
@@ -980,9 +997,9 @@ fn create_prepare_rollover_page_if_needed<'info, R: PoolCpiRuntimeV1>(
     payer: &AccountInfo<'info>,
     system_program_account: &AccountInfo<'info>,
     rent: &Rent,
-) -> ProgramResult {
+) -> Result<Option<PrevalidatedNewHistoryPageV1>, ProgramError> {
     let Some(next_index) = layout.next_index else {
-        return Ok(());
+        return Ok(None);
     };
     let next_page = &accounts[next_index];
     let page_number = layout
@@ -1020,9 +1037,10 @@ fn create_prepare_rollover_page_if_needed<'info, R: PoolCpiRuntimeV1>(
         program_id,
         &crate::pool_v1_root_page_address(program_id, accounts[1].key, page_number).0,
         POOL_V1_ROOT_HISTORY_PAGE_ACCOUNT_BYTES,
+        preparation,
         rent,
     )?;
-    validate_new_page_account(program_id, accounts[1].key, page_number, next_page)
+    prevalidate_new_history_page_v1(program_id, accounts[1].key, page_number, next_page).map(Some)
 }
 
 /// Prepare the exact state-bound settlement images and persist only their
@@ -1043,7 +1061,11 @@ pub(crate) fn process_prepare_settlement_with_runtime_v1<'info, R: PoolCpiRuntim
     let request = decode_prepare_settlement_request_v1(instruction_data)?;
     let payer = accounts.first().ok_or(ProgramError::NotEnoughAccountKeys)?;
     let pool = accounts.get(1).ok_or(ProgramError::NotEnoughAccountKeys)?;
-    let state = load_canonical_pool_state(program_id, pool)?;
+    // Preparation does not mutate the live Pool. Its source tree relation is
+    // carried by the Pool program's inductive write invariant, so this path
+    // retains every byte/PDA/ownership check while avoiding a redundant
+    // depth-20 Poseidon reconstruction before computing the two new roots.
+    let state = CanonicalPoolStateV1::decode_account_from_program_invariant(program_id, pool)?;
     validate_spend_binding_v1(
         pool,
         &state,
@@ -1081,7 +1103,7 @@ pub(crate) fn process_prepare_settlement_with_runtime_v1<'info, R: PoolCpiRuntim
     // If this transition crosses a history-page boundary, materialize the
     // exact all-zero page before building the plan. Any later failure rolls
     // this CPI back atomically; the builder then validates that exact account.
-    create_prepare_rollover_page_if_needed(
+    let prevalidated_next_page = create_prepare_rollover_page_if_needed(
         runtime,
         program_id,
         accounts,
@@ -1098,6 +1120,7 @@ pub(crate) fn process_prepare_settlement_with_runtime_v1<'info, R: PoolCpiRuntim
         &accounts[layout.anchor_index],
         &accounts[layout.current_index],
         supplied_next_page,
+        prevalidated_next_page,
         &state,
         request.request,
         request.statement_payload,
@@ -1133,29 +1156,17 @@ pub(crate) fn process_prepare_settlement_with_runtime_v1<'info, R: PoolCpiRuntim
         _ => return Err(PoolV1ProgramError::InvalidFreshAccount.into()),
     };
 
-    let virtual_shard =
-        images
-            .rollover_shard
-            .as_ref()
-            .map(|shard| PreparedSettlementRolloverShardAccountV1 {
-                address: &shard.address,
-                owner: program_id,
-                image: shard.image.as_ref(),
-            });
-    let plan = decode_prepared_settlement_plan_v1(
-        &images.core_address,
-        images.core_image.as_ref(),
-        virtual_shard,
-        hash,
-    )
-    .map_err(ProgramError::from)?;
-
-    let source_sequence_bytes = plan.source_sequence.to_le_bytes();
-    let core_bump_seed = [plan.pda_bump];
+    // `images` is returned only by the canonical internal encoder. Carry the
+    // exact seed fields alongside its authenticated bytes rather than hashing
+    // and decoding the just-created 10KB core and optional 8.5KB shard a
+    // second time in the same instruction. Settlement still fully decodes
+    // untrusted persisted plan accounts before applying them.
+    let source_sequence_bytes = images.source_sequence.to_le_bytes();
+    let core_bump_seed = [images.core_pda_bump];
     let core_seeds: &[&[u8]] = &[
         POOL_V1_PREPARED_SETTLEMENT_SEED,
         pool.key.as_ref(),
-        &plan.statement_digest,
+        &images.statement_digest,
         &source_sequence_bytes,
         payer.key.as_ref(),
         &core_bump_seed,
@@ -1197,14 +1208,16 @@ pub(crate) fn process_prepare_settlement_with_runtime_v1<'info, R: PoolCpiRuntim
         program_id,
         &images.core_address,
         POOL_V1_PREPARED_SETTLEMENT_CORE_ACCOUNT_BYTES,
+        core_preparation,
         rent,
     )?;
-    if let Some((account, shard, _)) = shard_preparation {
+    if let Some((account, shard, preparation)) = shard_preparation {
         require_fresh_rent_exempt_program_pda(
             account,
             program_id,
             &shard.address,
             POOL_V1_PREPARED_SETTLEMENT_ROLLOVER_ACCOUNT_BYTES,
+            preparation,
             rent,
         )?;
     }

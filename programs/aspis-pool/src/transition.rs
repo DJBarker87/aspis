@@ -10,11 +10,11 @@ use alloc::boxed::Box;
 
 use aspis_core::field::M31;
 #[cfg(test)]
-use aspis_statement::pool_v1::{IncrementalMerkleTreeV1, POOL_V1_ROOT_HISTORY_PAGE_ACCOUNT_BYTES};
+use aspis_statement::pool_v1::POOL_V1_ROOT_HISTORY_PAGE_ACCOUNT_BYTES;
 use aspis_statement::{
     pool_v1::{
-        root_history_location, AppendOneV1, PoolV1TreeError, POOL_V1_LEAF_CAPACITY,
-        POOL_V1_ROOT_HISTORY_CAPACITY,
+        pool_v1_tree_parent, root_history_location, AppendOneV1, IncrementalMerkleTreeV1,
+        PoolV1TreeError, POOL_V1_LEAF_CAPACITY, POOL_V1_ROOT_HISTORY_CAPACITY,
     },
     poseidon2::{Digest, DIGEST_ELEMS},
 };
@@ -79,6 +79,51 @@ pub(crate) struct PrevalidatedCurrentHistoryV1 {
     sequence: u64,
     root: Digest,
     header: RootPageHeaderV1,
+}
+
+/// Sealed evidence that one exact rollover history PDA is the required
+/// all-zero, rent-exempt Pool-owned page. The preparation processor creates or
+/// validates it once and performs no intervening CPI before plan construction.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub(crate) struct PrevalidatedNewHistoryPageV1 {
+    program_id: Pubkey,
+    pool: Pubkey,
+    page: Pubkey,
+    page_number: u64,
+}
+
+impl PrevalidatedNewHistoryPageV1 {
+    pub(crate) fn require_matches(
+        self,
+        program_id: &Pubkey,
+        pool: &Pubkey,
+        page_number: u64,
+        page: &AccountInfo<'_>,
+    ) -> Result<(), ProgramError> {
+        if self.program_id != *program_id
+            || self.pool != *pool
+            || self.page != *page.key
+            || self.page_number != page_number
+        {
+            return Err(PoolV1ProgramError::StateHistoryMismatch.into());
+        }
+        Ok(())
+    }
+}
+
+pub(crate) fn prevalidate_new_history_page_v1(
+    program_id: &Pubkey,
+    pool: &Pubkey,
+    page_number: u64,
+    page: &AccountInfo<'_>,
+) -> Result<PrevalidatedNewHistoryPageV1, ProgramError> {
+    validate_new_page_account(program_id, pool, page_number, page)?;
+    Ok(PrevalidatedNewHistoryPageV1 {
+        program_id: *program_id,
+        pool: *pool,
+        page: *page.key,
+        page_number,
+    })
 }
 
 impl PrevalidatedCurrentHistoryV1 {
@@ -155,7 +200,7 @@ impl<'a> AuthorizedSourceStateV1<'a> {
     ) -> Result<PreparedAuthorizedAppendV1, ProgramError> {
         let source = self.as_state();
         let prepared = match self {
-            Self::Canonical(state) => prepare_append_from_validated_tree(state, request)?,
+            Self::Canonical(state) => prepare_append_from_canonical_state(state, request)?,
             Self::Standalone(_) => {
                 let prepared = prepare_checked_append(source, request)?;
                 prepared.next_state.validate_encoding()?;
@@ -262,47 +307,130 @@ fn prepare_checked_append(
 }
 
 #[inline(never)]
-fn prepare_append_from_validated_tree(
+fn prepare_append_from_canonical_state(
     state: &CanonicalPoolStateV1,
     request: AuthorizedAppendV1,
 ) -> Result<PreparedAuthorizedAppendV1, ProgramError> {
-    if state.as_state().tree != *state.validated_tree().as_tree() {
-        return Err(ProgramError::InvalidAccountData);
-    }
     let mut next_state = Box::new(*state.as_state());
-    let (tree, receipt) = match request {
-        AuthorizedAppendV1::One(leaf) => {
-            let (tree, receipt) = state
-                .validated_tree()
-                .append_one(leaf)
-                .map_err(map_tree_error)?;
-            (
-                tree.into_inner(),
-                AuthorizedAppendReceiptV1 {
-                    first: receipt,
-                    second: None,
-                },
-            )
+    let (tree, receipt) = match state.reconstructed_tree() {
+        Some(validated) => {
+            if state.as_state().tree != *validated.as_tree() {
+                return Err(ProgramError::InvalidAccountData);
+            }
+            match request {
+                AuthorizedAppendV1::One(leaf) => {
+                    let (tree, receipt) = validated.append_one(leaf).map_err(map_tree_error)?;
+                    (
+                        tree.into_inner(),
+                        AuthorizedAppendReceiptV1 {
+                            first: receipt,
+                            second: None,
+                        },
+                    )
+                }
+                AuthorizedAppendV1::Two(first, second) => {
+                    let (tree, receipts) = validated
+                        .append_two(first, second)
+                        .map_err(map_tree_error)?;
+                    (
+                        tree.into_inner(),
+                        AuthorizedAppendReceiptV1 {
+                            first: receipts.first,
+                            second: Some(receipts.second),
+                        },
+                    )
+                }
+            }
         }
-        AuthorizedAppendV1::Two(first, second) => {
-            let (tree, receipts) = state
-                .validated_tree()
-                .append_two(first, second)
-                .map_err(map_tree_error)?;
-            (
-                tree.into_inner(),
-                AuthorizedAppendReceiptV1 {
-                    first: receipts.first,
-                    second: Some(receipts.second),
-                },
-            )
-        }
+        None => match request {
+            AuthorizedAppendV1::One(leaf) => {
+                let (tree, receipt) = append_one_from_program_invariant(&state.tree, leaf)?;
+                (
+                    tree,
+                    AuthorizedAppendReceiptV1 {
+                        first: receipt,
+                        second: None,
+                    },
+                )
+            }
+            AuthorizedAppendV1::Two(first, second) => {
+                let (after_first, first_receipt) =
+                    append_one_from_program_invariant(&state.tree, first)?;
+                let (after_second, second_receipt) =
+                    append_one_from_program_invariant(&after_first, second)?;
+                (
+                    after_second,
+                    AuthorizedAppendReceiptV1 {
+                        first: first_receipt,
+                        second: Some(second_receipt),
+                    },
+                )
+            }
+        },
     };
     next_state.tree = tree;
     Ok(PreparedAuthorizedAppendV1 {
         next_state,
         receipt,
     })
+}
+
+/// Apply one append to a source whose complete root/frontier relation is
+/// carried by the Pool program's inductive state invariant. The caller's
+/// sealed account token has already checked ownership, canonical PDA, exact
+/// syntax, cursor metadata, canonical field encodings, and inactive slots.
+///
+/// The transition below is the same binary-carry construction as
+/// `ValidatedIncrementalMerkleTreeV1::append_one`. Starting reconstruction at
+/// the carry level skips only recursive empty parents fixed by the pinned
+/// table, keeping the number of Poseidon parents exactly equal to tree depth.
+fn append_one_from_program_invariant(
+    source: &IncrementalMerkleTreeV1,
+    leaf: Digest,
+) -> Result<(IncrementalMerkleTreeV1, AppendOneV1), ProgramError> {
+    if source.next_leaf_index == POOL_V1_LEAF_CAPACITY {
+        return Err(PoolV1ProgramError::TreeFull.into());
+    }
+    let leaf_index = source.next_leaf_index;
+    let mut frontier = source.frontier;
+    let mut carry = leaf;
+    let mut carry_level = 0usize;
+    while carry_level < aspis_statement::pool_v1::POOL_V1_TREE_DEPTH
+        && (leaf_index >> carry_level) & 1 == 1
+    {
+        carry = pool_v1_tree_parent(&frontier[carry_level], &carry);
+        frontier[carry_level] = POOL_V1_EMPTY_ROOTS[carry_level];
+        carry_level += 1;
+    }
+    let next_leaf_index = leaf_index
+        .checked_add(1)
+        .ok_or(PoolV1ProgramError::ArithmeticOverflow)?;
+    let root = if carry_level == aspis_statement::pool_v1::POOL_V1_TREE_DEPTH {
+        carry
+    } else {
+        frontier[carry_level] = carry;
+        let mut node = POOL_V1_EMPTY_ROOTS[carry_level];
+        for level in carry_level..aspis_statement::pool_v1::POOL_V1_TREE_DEPTH {
+            node = if (next_leaf_index >> level) & 1 == 0 {
+                pool_v1_tree_parent(&node, &POOL_V1_EMPTY_ROOTS[level])
+            } else {
+                pool_v1_tree_parent(&frontier[level], &node)
+            };
+        }
+        node
+    };
+    let next = IncrementalMerkleTreeV1 {
+        next_leaf_index,
+        root,
+        frontier,
+    };
+    let receipt = AppendOneV1 {
+        leaf_index,
+        root_sequence: next_leaf_index,
+        root,
+        history: root_history_location(next_leaf_index),
+    };
+    Ok((next, receipt))
 }
 
 /// Produce the exact next Pool image and append receipts from one already
@@ -763,6 +891,25 @@ mod tests {
                 registry_authority: [7u8; 32],
                 policy_binding: [8u8; 32],
             },
+        }
+    }
+
+    #[test]
+    fn program_invariant_append_is_byte_exact_across_carry_boundaries() {
+        let mut source = IncrementalMerkleTreeV1::empty();
+        for index in 0..260u32 {
+            let leaf = digest(90_000 + index);
+            let (expected, expected_receipt) = source
+                .append_one_with_empty_roots(leaf, &POOL_V1_EMPTY_ROOTS)
+                .unwrap();
+            let (actual, actual_receipt) =
+                append_one_from_program_invariant(&source, leaf).unwrap();
+            assert_eq!(actual, expected, "tree mismatch at cursor {index}");
+            assert_eq!(
+                actual_receipt, expected_receipt,
+                "receipt mismatch at cursor {index}"
+            );
+            source = expected;
         }
     }
 

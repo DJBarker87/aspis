@@ -59,7 +59,7 @@ use crate::{
     },
     transition::{
         prepare_authorized_append_images_v1, validate_current_history_after_prevalidated_anchor_v1,
-        AuthorizedAppendReceiptV1, AuthorizedAppendV1,
+        AuthorizedAppendReceiptV1, AuthorizedAppendV1, PrevalidatedNewHistoryPageV1,
     },
 };
 
@@ -459,6 +459,7 @@ pub(crate) fn build_prepared_settlement_plan_v1(
     historical_anchor_page_account: &AccountInfo<'_>,
     current_page_account: &AccountInfo<'_>,
     supplied_next_page: Option<&AccountInfo<'_>>,
+    prevalidated_next_page: Option<PrevalidatedNewHistoryPageV1>,
     state: &CanonicalPoolStateV1,
     request: AuthorizedAppendV1,
     statement_payload: &[u8],
@@ -561,7 +562,7 @@ pub(crate) fn build_prepared_settlement_plan_v1(
     let roots = append_roots(&prepared.receipt)?;
     let (next_page_address, source_next_digest, rollover_page_number, rollover_first_sequence) =
         if roots_in_next == 0 {
-            if supplied_next_page.is_some() {
+            if supplied_next_page.is_some() || prevalidated_next_page.is_some() {
                 return Err(PoolV1ProgramError::UnexpectedRootPage.into());
             }
             (None, None, 0, 0)
@@ -571,7 +572,11 @@ pub(crate) fn build_prepared_settlement_plan_v1(
                 .page_number
                 .checked_add(1)
                 .ok_or(PoolV1ProgramError::ArithmeticOverflow)?;
-            validate_new_page_account(program_id, pool_account.key, page_number, next)?;
+            if let Some(prevalidated) = prevalidated_next_page {
+                prevalidated.require_matches(program_id, pool_account.key, page_number, next)?;
+            } else {
+                validate_new_page_account(program_id, pool_account.key, page_number, next)?;
+            }
             if next.key == pool_account.key || next.key == current_page_account.key {
                 return Err(ProgramError::InvalidAccountData);
             }
@@ -1604,6 +1609,7 @@ mod tests {
                     &current_account,
                     &current_account,
                     Some(&next_account),
+                    None,
                     &state,
                     request,
                     &statement_payload,
@@ -1622,6 +1628,7 @@ mod tests {
                     &pool_account,
                     &current_account,
                     &current_account,
+                    None,
                     None,
                     &state,
                     request,
@@ -1938,6 +1945,7 @@ mod tests {
                 &current_account,
                 &current_account,
                 Some(&next_account),
+                None,
                 &state,
                 request,
                 &fixture.statement_payload,
@@ -1955,6 +1963,7 @@ mod tests {
                 &pool_account,
                 &current_account,
                 &current_account,
+                None,
                 None,
                 &state,
                 request,
@@ -3716,6 +3725,7 @@ mod tests {
             &pool_account,
             &page_account,
             &page_account,
+            None,
             None,
             &state,
             AuthorizedAppendV1::One(statement.change_commitment),

@@ -201,7 +201,12 @@ impl<'a> ValidatedIncrementalMerkleTreeV1<'a> {
                 root: [M31::ZERO; DIGEST_ELEMS],
                 frontier,
             };
-            provisional.reconstruct_nonfull_root(self.empty)?
+            // All lower bits were cleared by the carry, so the subtree below
+            // `carry_level` is exactly the pinned recursive empty root at that
+            // level. Starting there avoids recomputing `carry_level` known
+            // empty parents and makes one append use exactly depth parent
+            // hashes regardless of the cursor's trailing-one count.
+            provisional.reconstruct_nonfull_root_from_level(self.empty, carry_level)?
         };
         let next = Self {
             inner: IncrementalMerkleTreeV1 {
@@ -304,6 +309,18 @@ impl IncrementalMerkleTreeV1 {
                 return Err(PoolV1TreeError::NonCanonicalFrontier);
             }
         }
+        // Sequence zero has one exact canonical image: every frontier slot is
+        // the corresponding pinned recursive empty root (checked above), and
+        // the explicit root is the pinned depth-D empty root.  Recomputing the
+        // same twenty Poseidon parents here proves no additional relation and
+        // is prohibitively expensive in the Pool's preparation instruction.
+        if self.next_leaf_index == 0 {
+            return if self.root == empty[POOL_V1_TREE_DEPTH] {
+                Ok(())
+            } else {
+                Err(PoolV1TreeError::RootMismatch)
+            };
+        }
         // A full tree has carried beyond the last stored frontier slot.  Its
         // canonical frontier is empty and its terminal root remains explicit
         // in `root`; no further append is permitted.  Every non-full state is
@@ -356,11 +373,22 @@ impl IncrementalMerkleTreeV1 {
         &self,
         empty: &[Digest; POOL_V1_TREE_DEPTH + 1],
     ) -> Result<Digest, PoolV1TreeError> {
+        self.reconstruct_nonfull_root_from_level(empty, 0)
+    }
+
+    fn reconstruct_nonfull_root_from_level(
+        &self,
+        empty: &[Digest; POOL_V1_TREE_DEPTH + 1],
+        start_level: usize,
+    ) -> Result<Digest, PoolV1TreeError> {
         if self.next_leaf_index >= POOL_V1_LEAF_CAPACITY {
             return Err(PoolV1TreeError::TreeFull);
         }
-        let mut node = empty[0];
-        for level in 0..POOL_V1_TREE_DEPTH {
+        if start_level > POOL_V1_TREE_DEPTH {
+            return Err(PoolV1TreeError::IndexOutOfRange);
+        }
+        let mut node = empty[start_level];
+        for level in start_level..POOL_V1_TREE_DEPTH {
             node = if (self.next_leaf_index >> level) & 1 == 0 {
                 pool_v1_tree_parent(&node, &empty[level])
             } else {

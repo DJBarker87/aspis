@@ -174,6 +174,9 @@ pub(crate) struct PreparedSettlementRolloverShardImageV1 {
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub(crate) struct PreparedSettlementPlanImagesV1 {
     pub core_address: Pubkey,
+    pub core_pda_bump: u8,
+    pub source_sequence: u64,
+    pub statement_digest: [u8; 32],
     pub core_image: Box<[u8; POOL_V1_PREPARED_SETTLEMENT_CORE_ACCOUNT_BYTES]>,
     pub rollover_shard: Option<PreparedSettlementRolloverShardImageV1>,
 }
@@ -504,6 +507,9 @@ where
     output[CORE_DIGEST_OFFSET..].copy_from_slice(&digest);
     Ok(PreparedSettlementPlanImagesV1 {
         core_address,
+        core_pda_bump: core_bump,
+        source_sequence: fields.source_sequence,
+        statement_digest: fields.statement_digest,
         core_image: output,
         rollover_shard,
     })

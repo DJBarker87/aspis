@@ -8,11 +8,11 @@ use aspis_core::field::M31;
 use aspis_statement::pool_v1::{
     decode_pool_identity_v1, decode_verifier_policy_v1, encode_pool_identity_v1,
     root_history_location, validate_verifier_policy_v1, IncrementalMerkleTreeV1, PoolIdentityV1,
-    ValidatedIncrementalMerkleTreeV1, VerifierPolicyV1, POOL_V1_FORMAT_BINDING,
-    POOL_V1_FORMAT_VERSION, POOL_V1_IDENTITY_BYTES, POOL_V1_ROOT_HISTORY_CAPACITY_LOG2,
-    POOL_V1_TREE_DEPTH, POOL_V1_TREE_HASH_VERSION, POOL_V1_TREE_STATE_ACCOUNT_BYTES,
-    POOL_V1_TREE_STATE_MAGIC, POOL_V1_TREE_STATE_VERSION, POOL_V1_VERIFIER_POLICY_BYTES,
-    POOL_V1_VERIFIER_POLICY_MAGIC, POOL_V1_VERIFIER_POLICY_VERSION,
+    ValidatedIncrementalMerkleTreeV1, VerifierPolicyV1, POOL_V1_DIGEST_ENCODING_VERSION,
+    POOL_V1_FORMAT_BINDING, POOL_V1_FORMAT_VERSION, POOL_V1_IDENTITY_BYTES, POOL_V1_LEAF_CAPACITY,
+    POOL_V1_ROOT_HISTORY_CAPACITY_LOG2, POOL_V1_TREE_DEPTH, POOL_V1_TREE_HASH_VERSION,
+    POOL_V1_TREE_STATE_ACCOUNT_BYTES, POOL_V1_TREE_STATE_MAGIC, POOL_V1_TREE_STATE_VERSION,
+    POOL_V1_VERIFIER_POLICY_BYTES, POOL_V1_VERIFIER_POLICY_MAGIC, POOL_V1_VERIFIER_POLICY_VERSION,
 };
 use solana_program::{program_error::ProgramError, pubkey::Pubkey};
 
@@ -77,7 +77,16 @@ pub(crate) struct CanonicalPoolStateV1 {
     program_id: Pubkey,
     pool: Pubkey,
     state: Box<PoolStateV1>,
-    validated_tree: Box<ValidatedIncrementalMerkleTreeV1<'static>>,
+    tree_evidence: CanonicalTreeEvidenceV1,
+}
+
+enum CanonicalTreeEvidenceV1 {
+    /// The root/frontier relation was recomputed in this instruction.
+    Reconstructed(Box<ValidatedIncrementalMerkleTreeV1<'static>>),
+    /// The exact program-owned PDA image was parsed canonically and its tree
+    /// relation is carried by the Pool program's inductive write invariant.
+    /// Only the prepared-settlement path may mint this cheaper capability.
+    ProgramInvariant,
 }
 
 impl CanonicalPoolStateV1 {
@@ -101,7 +110,39 @@ impl CanonicalPoolStateV1 {
             program_id: *program_id,
             pool: *pool_account.key,
             state,
-            validated_tree,
+            tree_evidence: CanonicalTreeEvidenceV1::Reconstructed(validated_tree),
+        })
+    }
+
+    /// Decode a live Pool-owned state under the program's inductive tree
+    /// invariant, without recomputing its already-persisted depth-20 root.
+    ///
+    /// This remains fail-closed on account ownership, signer/writable shape,
+    /// canonical PDA, every byte-level format rule, field canonicality,
+    /// cursor metadata, inactive frontier slots, and the unique genesis
+    /// image. The omitted relation is exactly the invariant established by
+    /// initialization and preserved by every successful Pool state write.
+    pub(crate) fn decode_account_from_program_invariant(
+        program_id: &Pubkey,
+        pool_account: &solana_program::account_info::AccountInfo<'_>,
+    ) -> Result<Self, ProgramError> {
+        require_program_account(pool_account, program_id, true)?;
+        if pool_account.is_signer {
+            return Err(ProgramError::InvalidAccountData);
+        }
+        let state = PoolStateV1::decode_boxed_from_program_invariant(
+            &pool_account.try_borrow_data()?,
+            pool_account.key,
+        )?;
+        let mint = Pubkey::new_from_array(state.identity.asset_mint);
+        if pool_account.key != &pool_v1_state_address(program_id, &mint).0 {
+            return Err(PoolV1ProgramError::InvalidPoolStateAddress.into());
+        }
+        Ok(Self {
+            program_id: *program_id,
+            pool: *pool_account.key,
+            state,
+            tree_evidence: CanonicalTreeEvidenceV1::ProgramInvariant,
         })
     }
 
@@ -128,8 +169,11 @@ impl CanonicalPoolStateV1 {
         &self.state
     }
 
-    pub(crate) fn validated_tree(&self) -> &ValidatedIncrementalMerkleTreeV1<'static> {
-        &self.validated_tree
+    pub(crate) fn reconstructed_tree(&self) -> Option<&ValidatedIncrementalMerkleTreeV1<'static>> {
+        match &self.tree_evidence {
+            CanonicalTreeEvidenceV1::Reconstructed(tree) => Some(tree),
+            CanonicalTreeEvidenceV1::ProgramInvariant => None,
+        }
     }
 }
 
@@ -205,6 +249,16 @@ impl PoolStateV1 {
     ) -> Result<(Box<Self>, Box<ValidatedIncrementalMerkleTreeV1<'static>>), ProgramError> {
         let (state, validated_tree) = Self::decode_with_validated_tree(data, expected_pool)?;
         Ok((Box::new(state), Box::new(validated_tree)))
+    }
+
+    pub(crate) fn decode_boxed_from_program_invariant(
+        data: &[u8],
+        expected_pool: &Pubkey,
+    ) -> Result<Box<Self>, ProgramError> {
+        Ok(Box::new(Self::decode_from_program_invariant(
+            data,
+            expected_pool,
+        )?))
     }
 
     /// Perform every fallible check required by the canonical encoder.
@@ -346,6 +400,90 @@ impl PoolStateV1 {
         ))
     }
 
+    fn decode_from_program_invariant(
+        data: &[u8],
+        expected_pool: &Pubkey,
+    ) -> Result<Self, ProgramError> {
+        if data.len() != POOL_V1_STATE_ACCOUNT_BYTES
+            || data[..4] != POOL_V1_STATE_ACCOUNT_MAGIC
+            || data[4] != POOL_V1_STATE_ACCOUNT_VERSION
+            || data[5] != POOL_V1_FORMAT_VERSION
+            || data[6] != POOL_V1_TREE_DEPTH as u8
+            || data[7] != POOL_V1_ROOT_HISTORY_CAPACITY_LOG2
+            || data[8..40] != POOL_V1_FORMAT_BINDING
+            || data[58..64] != [0u8; 6]
+        {
+            return Err(PoolV1ProgramError::InvalidAccountType.into());
+        }
+        let identity = decode_pool_identity_v1(
+            &data[POOL_V1_STATE_IDENTITY_OFFSET..POOL_V1_STATE_POLICY_OFFSET],
+        )
+        .map_err(|_| ProgramError::InvalidAccountData)?;
+        if identity.pool != expected_pool.to_bytes() {
+            return Err(PoolV1ProgramError::StateHistoryMismatch.into());
+        }
+        let verifier_policy = decode_verifier_policy_v1(
+            &data[POOL_V1_STATE_POLICY_OFFSET..POOL_V1_STATE_TREE_OFFSET],
+        )
+        .map_err(|_| ProgramError::InvalidAccountData)?;
+        let tree_bytes = &data[POOL_V1_STATE_TREE_OFFSET..];
+        if tree_bytes.len() != POOL_V1_TREE_STATE_ACCOUNT_BYTES
+            || tree_bytes[..4] != POOL_V1_TREE_STATE_MAGIC
+            || tree_bytes[4] != POOL_V1_TREE_STATE_VERSION
+            || tree_bytes[5] != POOL_V1_TREE_DEPTH as u8
+            || tree_bytes[6] != POOL_V1_TREE_HASH_VERSION
+            || tree_bytes[7] != POOL_V1_DIGEST_ENCODING_VERSION
+        {
+            return Err(ProgramError::InvalidAccountData);
+        }
+        let next_leaf_index = u64::from_le_bytes(exact_state_array(&tree_bytes[8..16])?);
+        if next_leaf_index > POOL_V1_LEAF_CAPACITY {
+            return Err(ProgramError::InvalidAccountData);
+        }
+        let root =
+            aspis_statement::decode_digest_canonical(&exact_state_array(&tree_bytes[16..48])?)
+                .map_err(|_| ProgramError::InvalidAccountData)?;
+        let mut frontier =
+            [[M31::ZERO; aspis_statement::poseidon2::DIGEST_ELEMS]; POOL_V1_TREE_DEPTH];
+        for (level, node) in frontier.iter_mut().enumerate() {
+            let start = 48 + level * 32;
+            *node = aspis_statement::decode_digest_canonical(&exact_state_array(
+                &tree_bytes[start..start + 32],
+            )?)
+            .map_err(|_| ProgramError::InvalidAccountData)?;
+            if (next_leaf_index >> level) & 1 == 0 && *node != POOL_V1_EMPTY_ROOTS[level] {
+                return Err(ProgramError::InvalidAccountData);
+            }
+        }
+        if next_leaf_index == 0 && root != POOL_V1_EMPTY_ROOTS[POOL_V1_TREE_DEPTH] {
+            return Err(ProgramError::InvalidAccountData);
+        }
+        let tree = IncrementalMerkleTreeV1 {
+            next_leaf_index,
+            root,
+            frontier,
+        };
+        let sequence = u64::from_le_bytes(exact_state_array(
+            &data[STATE_SEQUENCE_OFFSET..STATE_PAGE_OFFSET],
+        )?);
+        let page_number = u64::from_le_bytes(exact_state_array(
+            &data[STATE_PAGE_OFFSET..STATE_SLOT_OFFSET],
+        )?);
+        let slot = u16::from_le_bytes(exact_state_array(&data[STATE_SLOT_OFFSET..58])?);
+        let expected_location = root_history_location(tree.next_leaf_index);
+        if sequence != tree.next_leaf_index
+            || page_number != expected_location.page_number
+            || slot != expected_location.slot
+        {
+            return Err(PoolV1ProgramError::StateHistoryMismatch.into());
+        }
+        Ok(Self {
+            identity,
+            verifier_policy,
+            tree,
+        })
+    }
+
     pub fn decode(data: &[u8], expected_pool: &Pubkey) -> Result<Self, ProgramError> {
         Self::decode_with_validated_tree(data, expected_pool).map(|(state, _)| state)
     }
@@ -354,6 +492,10 @@ impl PoolStateV1 {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    fn digest(seed: u32) -> aspis_statement::poseidon2::Digest {
+        core::array::from_fn(|index| M31(seed + 101 * index as u32))
+    }
 
     fn initialization() -> PoolInitializationV1 {
         PoolInitializationV1 {
@@ -457,6 +599,56 @@ mod tests {
         assert_eq!(
             corrupt_frontier.validate_encoding(),
             Err(ProgramError::InvalidAccountData)
+        );
+    }
+
+    #[test]
+    fn program_invariant_decoder_has_one_explicit_relation_boundary() {
+        let pool = Pubkey::new_unique();
+        let mut state = PoolStateV1::genesis(&pool, initialization()).unwrap();
+        state.tree = state
+            .tree
+            .append_two_with_empty_roots(digest(100), digest(200), &POOL_V1_EMPTY_ROOTS)
+            .unwrap()
+            .0;
+        let encoded = state.encode().unwrap();
+        assert_eq!(
+            PoolStateV1::decode_from_program_invariant(&encoded, &pool),
+            Ok(state)
+        );
+
+        // The cheaper decoder deliberately does not re-prove the active
+        // frontier/root relation. That relation is the named inductive Pool
+        // write invariant; the generic decoder still rejects its mutation.
+        let mut wrong_root = state;
+        wrong_root.tree.root = digest(300);
+        let mut wrong_root_image = [0u8; POOL_V1_STATE_ACCOUNT_BYTES];
+        wrong_root.write_encoding_prevalidated(&mut wrong_root_image);
+        assert_eq!(
+            PoolStateV1::decode(&wrong_root_image, &pool),
+            Err(ProgramError::InvalidAccountData)
+        );
+        assert_eq!(
+            PoolStateV1::decode_from_program_invariant(&wrong_root_image, &pool),
+            Ok(wrong_root)
+        );
+
+        // Everything outside that single relation remains fail-closed. At
+        // sequence two, level zero is inactive and must be the pinned empty.
+        let mut wrong_inactive = state;
+        wrong_inactive.tree.frontier[0] = digest(400);
+        let mut wrong_inactive_image = [0u8; POOL_V1_STATE_ACCOUNT_BYTES];
+        wrong_inactive.write_encoding_prevalidated(&mut wrong_inactive_image);
+        assert_eq!(
+            PoolStateV1::decode_from_program_invariant(&wrong_inactive_image, &pool),
+            Err(ProgramError::InvalidAccountData)
+        );
+
+        let mut wrong_cursor = encoded;
+        wrong_cursor[STATE_SEQUENCE_OFFSET] ^= 1;
+        assert_eq!(
+            PoolStateV1::decode_from_program_invariant(&wrong_cursor, &pool),
+            Err(PoolV1ProgramError::StateHistoryMismatch.into())
         );
     }
 }

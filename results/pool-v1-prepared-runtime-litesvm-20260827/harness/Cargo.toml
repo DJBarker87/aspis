@@ -1,0 +1,26 @@
+[package]
+name = "aspis-pool-prepared-runtime-evidence"
+version = "0.1.0"
+edition = "2021"
+publish = false
+
+[workspace]
+
+[dependencies]
+anyhow = "1.0.100"
+aspis-core = { path = "../../../crates/aspis-core" }
+aspis-pool = { path = "../../../programs/aspis-pool", features = ["no-entrypoint"] }
+aspis-statement = { path = "../../../crates/aspis-statement", features = ["pool-v1-kernel"] }
+litesvm = "=0.16.0"
+serde_json = "1.0.145"
+sha2 = "0.10.9"
+solana-account = "=4.3.2"
+solana-address = "=2.6.1"
+solana-compute-budget-interface = "=3.0.0"
+solana-instruction = "=3.4.0"
+solana-keypair = "=3.1.2"
+solana-program = "=2.3.0"
+solana-sdk-ids = "=3.1.0"
+solana-signer = "=3.0.1"
+solana-transaction = "=4.1.5"
+wincode = "=0.5.5"
