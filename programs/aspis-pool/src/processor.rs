@@ -117,7 +117,8 @@ use crate::{
 
 #[cfg(feature = "pair-forest-account-evidence")]
 use crate::pair_forest::{
-    process_pair_forest_checkpoint_with_runtime_v1, process_pair_forest_initialize_with_runtime_v1,
+    process_pair_forest_checkpoint_with_runtime_v1, process_pair_forest_deposit_with_runtime_v1,
+    process_pair_forest_initialize_with_runtime_v1,
 };
 
 const SPL_TOKEN_INITIALIZE_ACCOUNT3_DISCRIMINANT: u8 = 18;
@@ -178,7 +179,7 @@ pub(crate) enum FreshPdaPreparationV1 {
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
-enum VaultPreparationV1 {
+pub(crate) enum VaultPreparationV1 {
     CreateAndInitialize,
     InitializedEmpty,
 }
@@ -346,7 +347,7 @@ pub(crate) fn create_or_allocate_pda<'info, R: PoolCpiRuntimeV1>(
     Ok(())
 }
 
-fn require_token_program_account(account: &AccountInfo<'_>) -> ProgramResult {
+pub(crate) fn require_token_program_account(account: &AccountInfo<'_>) -> ProgramResult {
     if account.key != &LEGACY_SPL_TOKEN_PROGRAM_ID
         || !account.executable
         || account.is_signer
@@ -386,7 +387,7 @@ fn require_initialized_empty_vault(
     Ok(())
 }
 
-fn plan_vault_initialization(
+pub(crate) fn plan_vault_initialization(
     program_id: &Pubkey,
     pool: &Pubkey,
     mint: &Pubkey,
@@ -408,7 +409,7 @@ fn plan_vault_initialization(
 }
 
 #[allow(clippy::too_many_arguments)]
-fn initialize_vault_account<'info, R: PoolCpiRuntimeV1>(
+pub(crate) fn initialize_vault_account<'info, R: PoolCpiRuntimeV1>(
     runtime: &mut R,
     program_id: &Pubkey,
     pool: &Pubkey,
@@ -2297,6 +2298,20 @@ pub fn process_instruction(
         {
             let rent = Rent::get()?;
             process_pair_forest_checkpoint_with_runtime_v1(
+                program_id,
+                accounts,
+                instruction_data,
+                &rent,
+                &mut runtime,
+            )
+        }
+        #[cfg(not(feature = "pair-forest-account-evidence"))]
+        unreachable!()
+    } else if cfg!(feature = "pair-forest-account-evidence") && magic == b"AS8D" {
+        #[cfg(feature = "pair-forest-account-evidence")]
+        {
+            let rent = Rent::get()?;
+            process_pair_forest_deposit_with_runtime_v1(
                 program_id,
                 accounts,
                 instruction_data,
