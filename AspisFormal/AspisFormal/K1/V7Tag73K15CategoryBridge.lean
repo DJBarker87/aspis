@@ -170,8 +170,42 @@ theorem fixedFamilyK15Failure_iff_exists_category
   · rintro ⟨category, witness⟩
     exact category_implies_fixedFamilyK15Failure witness
 
+/-- Compose the operational K1.5 reduction's two surrounding K1.4/gamma
+outcomes with the exact eight-category equivalence.  This is the deterministic
+shape consumed by the final measured compiler event. -/
+theorem restored_or_fixed_or_constrained_implies_categorized
+    {Restored Constrained : Prop}
+    {decoder : ExactDecoderInstantiation QM31Exact}
+    {binding : InitialProjectionBinding decoder}
+    {words : AspisPool.V7MerkleQueryExtractor.ExtractedWords}
+    {gamma : QM31Exact} {disclosedFinal : FinalMessage QM31Exact}
+    {schedule : ExactSchedule}
+    {terminal : FixedWidth29TupleCandidate decoder
+      (extractedWidth29InitialWords words) → FixedTerminalAlgebraPlan QM31Exact}
+    {sumcheck : FixedWidth29TupleCandidate decoder
+      (extractedWidth29InitialWords words) → AdaptiveDegree27MessagePlan QM31Exact}
+    {fields : FixedFieldView QM31Exact}
+    {extraction : CoherentTraceExtraction decoder binding words gamma
+      disclosedFinal schedule}
+    {zerocheckPoint point : Fin 10 → QM31Exact}
+    {lambda chi theta mu kappa : QM31Exact}
+    {execution : CandidateExecution QM31Exact}
+    (reduction : Restored ∨
+      FixedFamilyK15Failure terminal sumcheck fields extraction zerocheckPoint
+        point lambda chi theta mu kappa execution ∨ Constrained) :
+    Restored ∨
+      (∃ category, FixedK15CategoryWitness terminal sumcheck fields extraction
+        zerocheckPoint point lambda chi theta mu kappa execution category) ∨
+      Constrained := by
+  rcases reduction with restored | fixed | constrained
+  · exact Or.inl restored
+  · exact Or.inr (Or.inl
+      (fixedFamilyK15Failure_implies_category fixed))
+  · exact Or.inr (Or.inr constrained)
+
 #print axioms fixedFamilyK15Failure_implies_category
 #print axioms category_implies_fixedFamilyK15Failure
 #print axioms fixedFamilyK15Failure_iff_exists_category
+#print axioms restored_or_fixed_or_constrained_implies_categorized
 
 end AspisK1.V7Tag73K15CategoryBridge
