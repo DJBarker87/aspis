@@ -1,0 +1,43 @@
+Pool V1 account gates source bridge: PASS
+
+Frozen production functions:
+  programs/aspis-pool/src/history.rs
+  - require_program_account
+  - require_program_owned
+  - require_root_page_address
+  - pool_v1_root_page_address (dependency)
+
+Focused LLBC:
+  extraction/PoolV1AccountGates.llbc
+  SHA-256 de20b6ef6582702baec53204716055c87a9a08874fb0d500e4804c1d9ada0ba9
+
+Translation:
+  Charon cb50ff16b9f1066b8a97dc06da704de2da2fa41c
+  Aeneas constructor branch e9d20a64aa4dcbbc20ba8742a6ddf720f0c575cd
+  Lean v4.31.0
+
+Strongest theorems:
+  require_program_account_success_exact
+  require_program_owned_success_exact
+  require_root_page_address_success_exact
+
+Exact #print axioms:
+  require_program_account_success_exact:
+    [propext, Classical.choice, Quot.sound]
+  require_program_owned_success_exact:
+    [propext, Classical.choice, Quot.sound]
+  require_root_page_address_success_exact:
+    [propext, Classical.choice, Quot.sound,
+     solana_pubkey.Pubkey.find_program_address]
+
+The Pubkey equality callback is executable list equality over the exact
+32-byte representation. The root-page seed and Pubkey byte view are executable
+and exact. Solana PDA derivation is the sole named runtime primitive boundary.
+There is no sorryAx, sorry, admit, native_decide or conclusion-shaped source
+callback in any theorem.
+
+Remaining direct runtime lift:
+  validate_new_page_account's combined AccountInfo data borrow, 8,256-byte
+  length and all-zero scan; supplied-next presence/absence and non-aliasing;
+  and composition through mutable account write-back. The constituent owner,
+  executable, writable and PDA-key gates are closed here.

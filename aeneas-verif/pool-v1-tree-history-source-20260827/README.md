@@ -264,6 +264,19 @@ transparent.  The capstone
 `[propext, Classical.choice, Quot.sound]`; it has no routing callback,
 trace-cover premise, `sorry`, `admit` or project-specific axiom.
 
+`proof/PoolV1AccountGatesBridge.lean` closes the three literal production
+account-identity helpers in `history.rs`.  Successful
+`require_program_account` now proves exact owner equality, non-executable
+status and the requested writable bit.  Successful `require_program_owned`
+proves exact owner equality and non-executable status.  Successful
+`require_root_page_address` proves that the supplied account key is exactly
+the address returned by the production page-address derivation for the given
+program, pool and page number.  The owner/writable theorem groups report only
+`[propext, Classical.choice, Quot.sound]`.  The address theorem additionally
+reports the deliberately named Solana runtime boundary
+`solana_pubkey.Pubkey.find_program_address`; no other project-specific axiom is
+present.
+
 The retained-root reader passes through Rust's formatting machinery only on
 an impossible `Result::unwrap` failure after a successful fixed-array
 conversion.  Aeneas otherwise exposes its placeholder `core::fmt::Formatter`
@@ -279,9 +292,10 @@ The remaining implementation lift is:
 2. connect the direct transition caller's duplicated account-routing control
    flow to the now-closed pure distribution theorem, including the supplied
    next-account presence/absence condition;
-3. carry pool identity, owner, PDA, writable and non-aliasing checks through
-   the successful program path and compose them with the proved page-byte
-   write-back.
+3. lift the remaining combined `validate_new_page_account` data-borrow,
+   fixed-length and all-zero checks, then carry non-aliasing and account
+   write-back through the successful program path. Owner, PDA and writable
+   sub-gates themselves are now source-closed above.
 
 The full literal transition router has been extracted successfully, but the
 current Aeneas frontend cannot translate its `AccountInfo` borrowing and
