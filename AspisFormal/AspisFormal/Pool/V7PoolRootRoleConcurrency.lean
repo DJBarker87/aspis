@@ -310,6 +310,146 @@ theorem exact_stageB_lane_expansion :
       stagedPoolStageBQM31Lanes = 7 := by
   decide
 
+/-! ## Exact unchanged-backend wire consequence
+
+The four late lanes are QM31 columns, and each authenticated layer-zero query
+opens four circle-fibre slots.  They therefore add sixteen QM31 values, not
+four, to every query record.  The point-claim table also grows by four columns
+at each of its three evaluation points.  These definitions mirror the frozen
+31-bit packing arithmetic and make the cost of the candidate explicit before
+any production source is changed.
+-/
+
+def packedM31Bytes (limbs : Nat) : Nat :=
+  (limbs * 31 + 7) / 8
+
+def frozenC1Columns : Nat := 26
+def frozenC2Columns : Nat := 3
+def stagedC2Columns : Nat := stagedPoolStageBQM31Lanes
+def queryFibreSlots : Nat := 4
+def m31LimbsPerQM31 : Nat := 4
+def pointClaimRows : Nat := 3
+def queryCount : Nat := 16
+def privateSaltBytes : Nat := 32
+def compactDigestBytes : Nat := 26
+def frontierNodesPerTree : Nat := 203
+def workNonceBytes : Nat := 24
+def uploadChunkBytes : Nat := 960
+
+def c1BytesPerQuery : Nat :=
+  packedM31Bytes (m31LimbsPerQM31 * frozenC1Columns)
+
+def c2BytesPerQuery (columns : Nat) : Nat :=
+  packedM31Bytes
+    (m31LimbsPerQM31 * queryFibreSlots * columns)
+
+def queryBytes (c2Columns : Nat) : Nat :=
+  c1BytesPerQuery + c2BytesPerQuery c2Columns + privateSaltBytes
+
+/-- Frozen Tag-73 has 641 fixed QM31 values.  Four new point-claim columns at
+three points add exactly twelve values. -/
+def frozenFixedQM31Values : Nat := 641
+def stagedFixedQM31Values : Nat :=
+  frozenFixedQM31Values + pointClaimRows * lateAppendQM31Lanes
+
+def fixedFieldBytes (values : Nat) : Nat :=
+  packedM31Bytes (m31LimbsPerQM31 * values)
+
+def rootBytes : Nat := 2 * compactDigestBytes
+def bodyWithoutFrontiers (fixedValues c2Columns : Nat) : Nat :=
+  fixedFieldBytes fixedValues + rootBytes + workNonceBytes +
+    queryCount * queryBytes c2Columns
+
+def bothFrontierBytes : Nat :=
+  2 * frontierNodesPerTree * compactDigestBytes
+
+def maximumBodyBytes (fixedValues c2Columns : Nat) : Nat :=
+  bodyWithoutFrontiers fixedValues c2Columns + bothFrontierBytes
+
+def frozenMaximumBodyBytes : Nat :=
+  maximumBodyBytes frozenFixedQM31Values frozenC2Columns
+
+def stagedMaximumBodyBytes : Nat :=
+  maximumBodyBytes stagedFixedQM31Values stagedC2Columns
+
+def uploadChunks (bytes : Nat) : Nat :=
+  (bytes + uploadChunkBytes - 1) / uploadChunkBytes
+
+/-- SHA-256 message blocks for `0x10 || tree_tag || value || salt32`, including
+the `0x80`, length field and padding. -/
+def sha256LeafBlocks (valueBytes : Nat) : Nat :=
+  (2 + valueBytes + privateSaltBytes + 9 + 63) / 64
+
+theorem exact_staged_wire_cost_if_four_late_lanes_authenticated :
+    c1BytesPerQuery = 403 ∧
+      c2BytesPerQuery frozenC2Columns = 186 ∧
+      c2BytesPerQuery stagedC2Columns = 434 ∧
+      queryBytes frozenC2Columns = 621 ∧
+      queryBytes stagedC2Columns = 869 ∧
+      stagedFixedQM31Values = 653 ∧
+      fixedFieldBytes frozenFixedQM31Values = 9936 ∧
+      fixedFieldBytes stagedFixedQM31Values = 10122 ∧
+      bodyWithoutFrontiers frozenFixedQM31Values frozenC2Columns = 19948 ∧
+      bodyWithoutFrontiers stagedFixedQM31Values stagedC2Columns = 24102 ∧
+      bothFrontierBytes = 10556 ∧
+      frozenMaximumBodyBytes = 30504 ∧
+      stagedMaximumBodyBytes = 34658 ∧
+      stagedMaximumBodyBytes - frozenMaximumBodyBytes = 4154 ∧
+      uploadChunks frozenMaximumBodyBytes = 32 ∧
+      uploadChunks stagedMaximumBodyBytes = 37 := by
+  decide
+
+theorem exact_staged_c2_leaf_sha_block_increase :
+    sha256LeafBlocks (c2BytesPerQuery frozenC2Columns) = 4 ∧
+      sha256LeafBlocks (c2BytesPerQuery stagedC2Columns) = 8 ∧
+      queryCount *
+          (sha256LeafBlocks (c2BytesPerQuery stagedC2Columns) -
+            sha256LeafBlocks (c2BytesPerQuery frozenC2Columns)) = 64 := by
+  decide
+
+/-! ## Exact live-dependent suffix
+
+Reading the live append state after `lambda, chi` does not make the completed
+proof rebasable.  Every item below is downstream of the snapshot and must be
+recomputed after a competing append.  In particular all three positioned work
+searches remain downstream; moving them before the live statement would change
+their security meaning.
+-/
+
+inductive LiveDependentSuffixStep where
+  | liveSnapshotAbsorption
+  | stageBRoot
+  | zerocheckChallenges
+  | semanticSumcheck
+  | pointClaims
+  | batchWork
+  | gammaAndKappa
+  | circleSamples
+  | relationRoundZero
+  | foldWork
+  | final256
+  | finalWork
+  | querySchedule
+  | authenticatedOpenings
+  | remainingRelationRounds
+  deriving DecidableEq
+
+def liveDependentSuffix : List LiveDependentSuffixStep :=
+  [.liveSnapshotAbsorption, .stageBRoot, .zerocheckChallenges,
+    .semanticSumcheck, .pointClaims, .batchWork, .gammaAndKappa,
+    .circleSamples, .relationRoundZero, .foldWork, .final256, .finalWork,
+    .querySchedule, .authenticatedOpenings, .remainingRelationRounds]
+
+theorem exact_live_dependent_suffix_has_fifteen_steps :
+    liveDependentSuffix.length = 15 := by
+  decide
+
+theorem every_positioned_work_stage_is_live_dependent :
+    LiveDependentSuffixStep.batchWork ∈ liveDependentSuffix ∧
+      LiveDependentSuffixStep.foldWork ∈ liveDependentSuffix ∧
+      LiveDependentSuffixStep.finalWork ∈ liveDependentSuffix := by
+  decide
+
 inductive SemanticRowOwner where
   | stableStageA
   | liveStageB
@@ -341,6 +481,10 @@ theorem exact_semantic_row_owner_cardinalities :
 #print axioms frozen_tag73_prefix_has_no_late_snapshot
 #print axioms staged_pool_prefix_is_not_the_frozen_tag73_prefix
 #print axioms exact_stageB_lane_expansion
+#print axioms exact_staged_wire_cost_if_four_late_lanes_authenticated
+#print axioms exact_staged_c2_leaf_sha_block_increase
+#print axioms exact_live_dependent_suffix_has_fifteen_steps
+#print axioms every_positioned_work_stage_is_live_dependent
 #print axioms exact_semantic_row_owner_cardinalities
 
 end AspisPool.V7PoolRootRoleConcurrency
