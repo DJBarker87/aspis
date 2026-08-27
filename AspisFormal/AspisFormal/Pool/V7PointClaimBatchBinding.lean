@@ -297,6 +297,34 @@ theorem gamma_point_lane_collision_impossible_of_all_claims_exact
   funext lane
   exact sub_eq_zero.mpr (allExact row lane)
 
+/-- The same all-87-claims certificate also eliminates the degree-two row
+batch collision for every `kappa`: each row discrepancy is already the zero
+vector before the row batching challenge is applied. -/
+theorem kappa_point_row_collision_impossible_of_all_claims_exact
+    {decoder : ExactDecoderInstantiation QM31Exact}
+    {binding : InitialProjectionBinding decoder}
+    {words : V7MerkleQueryExtractor.ExtractedWords}
+    {gamma : QM31Exact} {disclosedFinal : FinalMessage QM31Exact}
+    {schedule : ExactSchedule}
+    (fields : FixedFieldView QM31Exact)
+    (extraction : CoherentTraceExtraction decoder binding words gamma
+      disclosedFinal schedule)
+    (point : Fin 10 → QM31Exact) (kappa : QM31Exact)
+    (allExact : ∀ row lane,
+      fields.pointClaim row lane =
+        componentPointClaim extraction point row lane) :
+    ¬ KappaPointRowCollision fields extraction point kappa := by
+  rintro ⟨rowDiscrepancyNonzero, _batchZero⟩
+  apply rowDiscrepancyNonzero
+  funext row
+  change rowGammaDiscrepancy fields extraction point row = 0
+  unfold rowGammaDiscrepancy pointClaimDiscrepancy width29Batch
+  apply Finset.sum_eq_zero
+  intro lane _member
+  change (fields.pointClaim row lane -
+    componentPointClaim extraction point row lane) * gamma ^ lane.val = 0
+  rw [allExact row lane, sub_self, zero_mul]
+
 /-- Exact aggregate equality and absence of the degree-two `kappa` collision
 force all three row-wise gamma batches to zero.  This is the information a
 restoration-wide point-compatible response needs; it does not yet assert that
@@ -422,6 +450,7 @@ theorem fixed_gamma_collision_set_card_le_twenty_eight
 #print axioms claimedPointBatch_sub_extractedPointBatch
 #print axioms rowGammaDiscrepancy_eq_zero_iff
 #print axioms gamma_point_lane_collision_impossible_of_all_claims_exact
+#print axioms kappa_point_row_collision_impossible_of_all_claims_exact
 #print axioms every_row_gamma_discrepancy_zero_of_aggregate_exact
 #print axioms all_point_claims_exact_outside_collisions
 #print axioms semantic_point_claims_exact_outside_collisions
