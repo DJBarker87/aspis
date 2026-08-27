@@ -18,6 +18,8 @@ pub mod pair_tree_hiding;
 pub mod pair_tree_profile;
 pub mod pair_terminal;
 #[cfg(not(target_os = "solana"))]
+pub mod pair_trace;
+#[cfg(not(target_os = "solana"))]
 pub mod payment_constraint_residuals;
 #[cfg(not(target_os = "solana"))]
 pub mod payment_hiding;
