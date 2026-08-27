@@ -1,0 +1,33 @@
+{
+  "schema": "aspis-poseidon-pair-probe-v1",
+  "date": "2026-08-27",
+  "repository_commit": "200c2eb974b4a66304aee425c2feb599556fd0ab",
+  "execution": "local LiteSVM simulation; no RPC, deployment, signing authority, or network transaction",
+  "host": {
+    "os": "macOS 26.5 (25F71), Darwin 25.5.0 arm64",
+    "rustc": "1.93.0 (254b59607 2026-01-19)",
+    "cargo": "1.93.0 (083ac5135 2025-12-15)",
+    "litesvm": "0.16.0",
+    "agave_runtime_crates": "4.2.1"
+  },
+  "sbf_build": {
+    "cargo_build_sbf": "2.3.0",
+    "platform_tools": "1.48",
+    "rustc": "1.84.1",
+    "artifact_bytes": 34800,
+    "artifact_sha256": "3aa2af4e8bb727c66155346a61c96b06da58bba68cbeef53631b80754b0e1270",
+    "program_source_sha256": "a836dde507abd6be4e6d743daff39f6d605114bdaad943656134f0e83e8f733b"
+  },
+  "harness": {
+    "source_sha256": "cf99315664ee67b72439160694bfbd7fe8e4a6c360b973cbbac8c82f716fee97",
+    "lockfile_sha256": "a0556997a2ac039b44f7050ba009277174ae1c987b6bba2b0a3017c95c5c85a1"
+  },
+  "measurements": [
+    { "parent_count": 0, "transaction_cu": 407, "incremental_cu_over_zero": 0 },
+    { "parent_count": 1, "transaction_cu": 23886, "incremental_cu_over_zero": 23479 },
+    { "parent_count": 20, "transaction_cu": 469798, "incremental_cu_over_zero": 469391 },
+    { "parent_count": 21, "transaction_cu": 493270, "incremental_cu_over_zero": 492863 },
+    { "parent_count": 40, "transaction_cu": 939210, "incremental_cu_over_zero": 938803 }
+  ],
+  "interpretation": "The probe calls the literal production pool_v1_tree_parent in a loop. Differences from the zero-parent transaction isolate the current SBF implementation cost in this small binary. They do not include Pool parsing, CPI, account creation, history, marker, or state serialization."
+}
