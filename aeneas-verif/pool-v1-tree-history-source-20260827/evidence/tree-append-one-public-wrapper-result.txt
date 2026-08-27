@@ -1,0 +1,30 @@
+Pool V1 production public one-append wrapper bridge: PASS
+
+Source commit parent: 0edec33235a3ba8c67e7321e965b7dfa6d75fd9c
+Lean: 4.31.0
+
+Frozen LLBC sha256:
+6c5431df58895d7c9e9137a9e481d02076af6e6b5644bca2da3dff5dc5d3348b
+
+public wrapper bridge sha256:
+a8ec5377fb10148ea3b0e26f917ae9f50a0d7ffaa94445ca4e7d7e868162cb08
+
+Focused reconstruction bridge compile: PASS
+Focused public wrapper bridge compile: PASS
+
+Strongest theorem:
+PoolV1TreePublicWrapperBridge.production_append_one_success_implies_abstract_append_result
+
+Supporting theorem:
+PoolV1TreePublicWrapperBridge.production_append_one_success_factors_exact_calls
+
+#print axioms for both theorem groups:
+[propext, Classical.choice, Quot.sound]
+
+No sorry, admit, sorryAx, native_decide or project-specific axiom occurs in
+the compiled proof. ParentCallbackExact remains the sole cryptographic
+semantic premise at the opaque Poseidon tree-parent primitive. Literal public
+wrapper success is factored into its exact successful validation and sealed
+one-append calls. The proof preserves the concrete source tree, authenticated
+empty-root table and returned inner tree, then lifts the existing abstract
+appendCarry result through the public wrapper.

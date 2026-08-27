@@ -1,0 +1,54 @@
+Pool V1 literal retained-root reader source bridge
+Date: 2026-08-27
+Source base: 1fe2e77323e0e202cb401d73b25ef36801bc4daa
+
+Production history.rs SHA-256:
+  3768e14a8056057036b3631d402f9dedf216442fb21c5c7a19a87440b13a7593
+
+Extraction:
+  Charon start root:
+    aspis_pool::history::read_retained_root
+  Explicit includes:
+    aspis_pool::history
+    aspis_statement::pool_v1::root_history
+    aspis_statement::pool_v1::format
+  LLBC SHA-256:
+    7cae36da75edd0c99134119485467fb4ee3a69973126023e2f8ac931e386a3b5
+
+Focused Lean command:
+  LEAN_PATH=<generated>:<patched Aeneas Lean path> lean \
+    -o /private/tmp/PoolV1HistoryReadBridge.olean \
+    proof/PoolV1HistoryReadBridge.lean
+
+Result: PASS
+
+Theorems and exact #print axioms:
+  range_index_success_exact
+    [propext, Quot.sound]
+  read_retained_root_success_has_exact_source_slice
+    [propext, Classical.choice, Quot.sound]
+
+Coverage:
+  - literal root_history_location call and deployed quotient/remainder result;
+  - exact page-number equality and slot < filled success gate;
+  - checked start = 64 + slot * 32 and finish = start + 32;
+  - exact 32-byte source slice and fixed-array conversion;
+  - exact canonical digest decoder result;
+  - fail-closed source branches remain visible in the translated function.
+
+Toolchain patch:
+  aeneas-patches/0001-model-formatter-as-unobservable-unit-state.patch
+
+The patch makes core::fmt::Formatter an unobservable Unit state. It is the
+same already-committed Aeneas model used by the frozen V5 source replay. The
+production reader reaches Result::unwrap only after TryFrom has succeeded;
+formatter contents cannot affect the successful result, bytes, or control
+flow. Without the patch Aeneas's placeholder Formatter type appears as an
+unrelated tool-model axiom in #print even though the theorem does not inspect
+formatting state.
+
+Audit:
+  No sorry, admit, sorryAx, project-specific axiom, decoder callback, opaque
+  translated production reader, or retained-root semantic premise occurs in
+  the compiled source/proof files. Aeneas template files are archival and are
+  not imported. NUC was not used.

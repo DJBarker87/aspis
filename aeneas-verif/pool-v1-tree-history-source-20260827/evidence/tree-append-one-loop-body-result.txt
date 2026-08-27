@@ -1,0 +1,59 @@
+Pool V1 production one-append carry-step source bridge: PASS
+
+Source commit parent: 32dbbfdca751d473252565a398fed8ecc8abbbd6
+Charon schema version in frozen LLBC: 0.1.223
+Charon extraction preset: Aeneas
+Charon monomorphize_mut: All
+Aeneas source: e9d20a64aa4dcbbc20ba8742a6ddf720f0c575cd
+Aeneas version: aspis-v5-constructor-e9d20a64
+Lean: 4.31.0
+
+production incremental_merkle.rs sha256:
+462fd40e283083bfea19720083d450a815c706fa0da540db25ac84e41ef5aaaf
+
+LLBC sha256:
+6c5431df58895d7c9e9137a9e481d02076af6e6b5644bca2da3dff5dc5d3348b
+
+generated Types.lean sha256:
+b3f898e6d7831e24bf98ad2975a993ef927f851c45f0b67f9523c8796aee2a42
+
+generated Funs.lean sha256:
+55c086f5ac164e100dbd3fb7de6ed82cfa3b97c36682971359179cf3cc3027b7
+
+executable FunsExternal.lean sha256:
+f70b6a9cc70ffda0fe959e3ac9a6b0268b63cf6b099e6c9916827fa180a08187
+
+source trace bridge sha256:
+716c437de14f279746c49fa9b496e40df82c2b17a2d02cec3c7e3239d4aa2320
+
+abstract carry bridge sha256:
+48ab4f1d452f8c3183d08b60fadd0a2b68a5811b8ddb19fb1f6c1ce919bbd0ab
+
+Focused generated Types/FunsExternal/Funs compile: PASS
+Focused production append carry-step bridge compile: PASS
+
+Proved theorem group:
+PoolV1TreeAppendOneSourceBridge.append_loop_body_stops_at_depth
+PoolV1TreeAppendOneSourceBridge.append_loop_body_stops_at_zero_bit
+PoolV1TreeAppendOneSourceBridge.append_loop_body_stops_at_nonone_bit
+PoolV1TreeAppendOneSourceBridge.append_loop_body_carries_at_one_bit
+PoolV1TreeAppendOneSourceBridge.append_loop_has_exact_source_trace
+PoolV1TreeAppendOneSourceBridge.append_loop_has_recursive_source_trace
+PoolV1TreeAppendOneAbstractBridge.appendCarry_modelFrom_exact
+PoolV1TreeAppendOneAbstractBridge.CarryTrace.concreteCarry_exact
+PoolV1TreeAppendOneAbstractBridge.translated_append_loop_implies_modelFrontier_appendCarry
+
+#print axioms for all theorem groups:
+[propext, Classical.choice, Quot.sound]
+
+No sorry, admit, sorryAx, native_decide or project-specific axiom occurs in
+the compiled bridge. ParentCallbackExact is the sole explicit semantic
+premise, exactly at the opaque Poseidon tree-parent primitive. The depth test,
+cursor shift and low-bit test, paired frontier/empty-root indexing, frontier
+replacement and checked level increment are transparent production control
+flow. The recursive source theorem lifts these exact steps through the
+generated loop with measure `20 - carry_level`; it has no abstract loop
+callback, trace-cover premise or termination assumption. The final theorem
+proves that literal loop success is exactly the existing `appendCarry` over
+the depth-20 range/test-bit frontier representation, including the final
+carry-slot write and the full-tree result.

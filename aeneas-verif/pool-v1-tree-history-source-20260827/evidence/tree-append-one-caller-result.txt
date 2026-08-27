@@ -1,0 +1,33 @@
+Pool V1 production outer one-append caller bridge: PASS
+
+Source commit parent: b30960d2
+Lean: 4.31.0
+
+Frozen LLBC sha256:
+6c5431df58895d7c9e9137a9e481d02076af6e6b5644bca2da3dff5dc5d3348b
+
+caller bridge sha256:
+9568ceb2a9b723aa6453da7fd4c68abdedea4881259c44f20a28097fdbb9f429
+
+Focused outer caller bridge compile: PASS
+
+Strongest theorem:
+PoolV1TreeAppendOneCallerBridge.accepted_append_one_implies_abstract_append_result
+
+Supporting theorem group:
+PoolV1TreeAppendOneCallerBridge.accepted_append_one_exposes_loop
+PoolV1TreeAppendOneCallerBridge.generated_root_history_location_exact
+PoolV1TreeAppendOneCallerBridge.CarryTrace.final_level_le_depth
+PoolV1TreeAppendOneCallerBridge.accepted_append_one_exact_structural_afterimage
+
+#print axioms for every listed theorem:
+[propext, Classical.choice, Quot.sound]
+
+No sorry, admit, sorryAx, native_decide or project-specific axiom occurs in
+the compiled proof. ParentCallbackExact remains the sole explicit semantic
+premise, exactly at the opaque Poseidon tree-parent primitive. Literal caller
+success is connected to the exact cursor increment, returned frontier,
+empty-table identity, receipt leaf/sequence/root fields, exact history
+page/slot quotient-remainder, and existing abstract appendCarry result. The
+non-full root digest's equality with mathematical reconstructRoot is the next
+explicit boundary.

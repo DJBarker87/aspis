@@ -1,0 +1,63 @@
+Pool V1 literal history persistence loop-body bridge
+Date: 2026-08-27
+Source base: 1ad2329ff7be270e3c99e4548e2bae5f4d14bd26
+
+Extraction:
+  Charon start roots:
+    aspis_pool::history::write_new_page_unchecked
+    aspis_pool::history::append_roots_unchecked
+  LLBC SHA-256:
+    22247c965e388462748288d8c8880b9b5e5d2c3b5f7379ca024a5ab106b2f3f1
+
+Focused Lean command:
+  LEAN_PATH=<generated>:<Aeneas Lean path> lean \
+    -o /private/tmp/PoolV1HistoryPersistBridge.olean \
+    proof/PoolV1HistoryPersistBridge.lean
+
+Result: PASS
+
+Theorems and exact #print axioms:
+  write_loop_body_done
+    [propext, Classical.choice, Quot.sound]
+  write_loop_body_exact_root_slot
+    [propext, Classical.choice, Quot.sound]
+  append_loop_body_done
+    [propext, Classical.choice, Quot.sound]
+  append_loop_body_exact_root_slot
+    [propext, Classical.choice, Quot.sound]
+  write_loop_success_has_exact_trace
+    [propext, Classical.choice, Quot.sound]
+  append_loop_success_has_exact_trace
+    [propext, Classical.choice, Quot.sound]
+  append_roots_success_has_exact_persistence
+    [propext, Classical.choice, Quot.sound]
+  write_new_page_success_has_exact_persistence
+    [propext, Classical.choice, Quot.sound]
+
+Coverage:
+  - literal translated iterator next result and continuation identity;
+  - checked slot, multiplication, and byte-range arithmetic;
+  - canonical digest encoder success propagated from the source call;
+  - exact 32-byte mutable slice and copy-back behavior;
+  - new-page slot = enumerated ordinal;
+  - append slot = existing filled count + enumerated ordinal;
+  - inactive iterator branch preserves all page bytes.
+  - complete literal new-page and existing-page iterator loop traces;
+  - successful existing-page capacity check;
+  - exact final filled count = old filled count + roots length;
+  - exact little-endian filled-count persistence at offsets 56--57.
+  - complete literal rollover/new-page zero-fill and static header writes;
+  - exact magic, version, capacity-log, encoding-version, pool-key,
+    page-number, first-sequence and initial-filled byte after-images;
+  - ordered new-page root persistence from that exact deployed header.
+
+Focused new-page replay:
+  Result: PASS
+  Wall: 3.04 s
+  Peak RSS: 2,360,639,488 bytes
+
+Audit:
+  No sorry, admit, sorryAx, project-specific axiom, opaque translated function,
+  or byte-write semantic callback occurs in the compiled source/proof files.
+  Template files emitted by Aeneas are archival and are not imported.
+  NUC was not used.

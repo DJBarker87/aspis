@@ -1,0 +1,48 @@
+Pool V1 literal canonical digest encoder/decoder round trip
+Date: 2026-08-27
+Source base: 1fe2e77323e0e202cb401d73b25ef36801bc4daa
+
+Production atomic_statement.rs SHA-256:
+  32c75a198064af1bf7700a3cf92198e6bd01d8655405a55736b37d8302c4dc09
+
+Encoder LLBC SHA-256:
+  22247c965e388462748288d8c8880b9b5e5d2c3b5f7379ca024a5ab106b2f3f1
+Decoder LLBC SHA-256:
+  7cae36da75edd0c99134119485467fb4ee3a69973126023e2f8ac931e386a3b5
+
+Focused Lean command:
+  LEAN_PATH=<generated>:<patched Aeneas Lean path> lean \
+    -o /private/tmp/PoolV1HistoryCodecRoundTripBridge.olean \
+    proof/PoolV1HistoryCodecRoundTripBridge.lean
+
+Result: PASS
+
+Theorems and exact #print axioms:
+  Persist.encode_digest_canonical_loop_exact
+    [propext, Classical.choice, Quot.sound]
+  Persist.encode_digest_canonical_success_exact
+    [propext, Classical.choice, Quot.sound]
+  encodedPrefix_wordAt_exact
+    [propext, Classical.choice, Quot.sound]
+  decodeDigest_encodedPrefix_exact
+    [propext, Classical.choice, Quot.sound]
+  source_encoder_decoder_round_trip
+    [propext, Classical.choice, Quot.sound]
+
+Coverage:
+  - all eight literal production encoder-loop iterations;
+  - exact four-byte little-endian image of each M31 limb;
+  - disjoint ordered setSlice writes into the 32-byte digest image;
+  - exact inverse word reconstruction at all eight positions;
+  - the production canonical-limb check;
+  - exact decoder reconstruction of the original digest.
+
+The strongest theorem starts from literal translated encoder success. Under
+the deployed canonical-limb precondition, the transparent decoder used by the
+literal reader returns exactly the input digest. It does not assume an
+encoder/decoder correspondence callback.
+
+Audit:
+  Exact axiom union is [propext, Classical.choice, Quot.sound]. There is no
+  sorry, admit, sorryAx, project-specific axiom, opaque codec function, or
+  conclusion-shaped premise. NUC was not used.
