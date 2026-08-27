@@ -30,6 +30,17 @@ use crate::{
     registry::{authenticate_verifier_selection_v1, VerifierSelectionV1},
 };
 
+#[inline(always)]
+fn profile_checkpoint(label: &'static str) {
+    #[cfg(feature = "pair-forest-cu-profile")]
+    {
+        solana_program::log::sol_log(label);
+        solana_program::log::sol_log_compute_units();
+    }
+    #[cfg(not(feature = "pair-forest-cu-profile"))]
+    let _ = label;
+}
+
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub(crate) struct AuthenticatedPairForestResultV1(Box<PoolV1PairForestTerminalResultV1>);
 
@@ -87,6 +98,7 @@ pub(crate) fn plan_pair_forest_terminal_dispatch_v1(
     let claim = derive_pair_verifier_account_claim_v1(verifier_program, proof)?;
     let selected = Pubkey::new_from_array(claim.verifier_program);
     require_verifier_program(verifier_program, &selected)?;
+    profile_checkpoint("aspis-forest-pool-profile:verifier-proof-claim");
     let authenticated = authenticate_verifier_selection_v1(
         master.key,
         policy,
@@ -108,6 +120,7 @@ pub(crate) fn plan_pair_forest_terminal_dispatch_v1(
     ) {
         return Err(PoolV1ProgramError::VerifierSelectionMismatch.into());
     }
+    profile_checkpoint("aspis-forest-pool-profile:registry-authenticated");
     let account_keys = [proof.key, master.key, checkpoint.key, lane.key];
     for (index, key) in account_keys.iter().enumerate() {
         if account_keys[..index].iter().any(|previous| previous == key) {
@@ -129,6 +142,7 @@ pub(crate) fn plan_pair_forest_terminal_dispatch_v1(
     let request_bytes = encode_pool_v1_pair_forest_terminal_request_v1(request)
         .map_err(|_| ProgramError::InvalidInstructionData)?
         .to_vec();
+    profile_checkpoint("aspis-forest-pool-profile:asq8-encoded");
     Ok(PlannedPairForestDispatchV1 {
         selected_verifier: selected,
         request_bytes,
@@ -196,6 +210,7 @@ fn invoke_pair_forest_terminal_with_runtime_v1<'info, R: PairForestVerifierRunti
         verifier_program.clone(),
     ];
     runtime.clear_return_data();
+    profile_checkpoint("aspis-forest-pool-profile:cpi-invoke");
     runtime.invoke(&instruction, &infos)?;
     let (returned_program, returned_data) = runtime
         .get_return_data()
@@ -208,6 +223,7 @@ fn invoke_pair_forest_terminal_with_runtime_v1<'info, R: PairForestVerifierRunti
     }
     let result = decode_pool_v1_pair_forest_terminal_result_v1(&returned_data)
         .map_err(|_| PoolV1ProgramError::InvalidVerifierReturnData)?;
+    profile_checkpoint("aspis-forest-pool-profile:asr8-decoded");
     Ok(AuthenticatedPairForestResultV1(Box::new(result)))
 }
 

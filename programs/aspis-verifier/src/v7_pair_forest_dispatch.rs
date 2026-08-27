@@ -23,6 +23,10 @@ use aspis_statement::pool_v1::{
     POOL_V1_PAIR_FOREST_TERMINAL_REQUEST_BYTES, POOL_V1_PAIR_LIVE_SNAPSHOT_BYTES,
     POOL_V1_PAIR_TREE_DEPTH, POOL_V1_PAIR_VERIFIED_AFTERSTATE_BYTES,
 };
+#[cfg(feature = "v7-pair-forest-cu-profile")]
+use aspis_statement::pool_v1::{
+    encode_pool_v1_pair_forest_terminal_result_v1, PoolV1PairForestTerminalResultV1,
+};
 use solana_program::{
     account_info::AccountInfo, entrypoint::ProgramResult, program, program_error::ProgramError,
     pubkey::Pubkey,
@@ -44,6 +48,17 @@ const PAIR_FOREST_CHECKPOINT_SEED: &[u8] = b"aspis-pair-forest-checkpoint-v1";
 /// No successful execution can currently return this error: it is the hard
 /// integration gate after every byte/account/PDA check has passed.
 pub const V7_PAIR_FOREST_ASQ8_CRYPTO_NOT_INTEGRATED: u32 = 0x4153_5138;
+
+#[inline(always)]
+fn profile_checkpoint(label: &'static str) {
+    #[cfg(feature = "v7-pair-forest-cu-profile")]
+    {
+        solana_program::log::sol_log(label);
+        solana_program::log::sol_log_compute_units();
+    }
+    #[cfg(not(feature = "v7-pair-forest-cu-profile"))]
+    let _ = label;
+}
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct ValidatedV7PairForestAsq8V1 {
@@ -119,6 +134,7 @@ pub fn validate_v7_pair_forest_asq8_request_v1(
         checkpoint_account,
         lane_account,
     ])?;
+    profile_checkpoint("aspis-asq8-profile:request-accounts");
 
     let master = decode_pool_v1_pair_forest_master_v1(&master_account.try_borrow_data()?)
         .map_err(|_| ProgramError::InvalidAccountData)?;
@@ -135,6 +151,7 @@ pub fn validate_v7_pair_forest_asq8_request_v1(
     {
         return Err(ProgramError::InvalidAccountData);
     }
+    profile_checkpoint("aspis-asq8-profile:master");
 
     let checkpoint =
         decode_pool_v1_pair_forest_checkpoint_v1(&checkpoint_account.try_borrow_data()?)
@@ -153,6 +170,7 @@ pub fn validate_v7_pair_forest_asq8_request_v1(
     {
         return Err(ProgramError::InvalidAccountData);
     }
+    profile_checkpoint("aspis-asq8-profile:checkpoint");
 
     let output_lane = pool_v1_pair_forest_output_lane_v1(request.public.nullifier())
         .map_err(|_| ProgramError::InvalidInstructionData)?;
@@ -175,6 +193,7 @@ pub fn validate_v7_pair_forest_asq8_request_v1(
     {
         return Err(ProgramError::InvalidAccountData);
     }
+    profile_checkpoint("aspis-asq8-profile:lane");
 
     let data = proof_account.try_borrow_data()?;
     if !proof_account_finalized(&data) {
@@ -190,6 +209,7 @@ pub fn validate_v7_pair_forest_asq8_request_v1(
     let proof_length = payload.len() - POOL_V1_PAIR_VERIFIED_AFTERSTATE_BYTES;
     let frontier_nodes = frontier_nodes_from_staged_proof_length(proof_length)
         .ok_or(ProgramError::InvalidAccountData)?;
+    profile_checkpoint("aspis-asq8-profile:proof-framing");
     let live_snapshot = PoolV1PairLiveSnapshotV1 {
         pool: master_account.key.to_bytes(),
         deployment_domain: master.identity.deployment_domain,
@@ -203,6 +223,7 @@ pub fn validate_v7_pair_forest_asq8_request_v1(
         .map_err(|_| ProgramError::InvalidAccountData)?;
     let parsed = parse_v7_staged_pair_inputs_v1(payload, frontier_nodes, &live_snapshot_bytes)
         .map_err(|_| ProgramError::InvalidAccountData)?;
+    profile_checkpoint("aspis-asq8-profile:staged-codecs");
     let common = PoolV1PairForestTerminalCommonV1 {
         master_account: master_account.key.to_bytes(),
         checkpoint_account: checkpoint_account.key.to_bytes(),
@@ -229,6 +250,7 @@ pub fn validate_v7_pair_forest_asq8_request_v1(
     {
         return Err(ProgramError::InvalidInstructionData);
     }
+    profile_checkpoint("aspis-asq8-profile:asf8-reconstructed");
     Ok(ValidatedV7PairForestAsq8V1 {
         request,
         master,
@@ -251,6 +273,30 @@ where
     clear_return_data();
     let _validated =
         validate_v7_pair_forest_asq8_request_v1(verifier_program, accounts, instruction_data)?;
+    #[cfg(feature = "v7-pair-forest-cu-profile")]
+    {
+        // This is deliberately not an accepted-proof capability.  It exists
+        // only in the mutually exclusive local CU profile so the exact ASR8
+        // serialization and Pool-side validation costs can be measured while
+        // the merged-C1 cryptographic terminal remains absent.
+        let statement = _validated.statement.as_ref();
+        let common = statement.common();
+        let result = PoolV1PairForestTerminalResultV1 {
+            transition_kind: statement.transition_kind(),
+            master_account: common.master_account,
+            selected_lane_account: common.selected_lane_account,
+            output_lane: common.output_lane,
+            nullifier: *statement.nullifier(),
+            verified_afterstate: common.lane_transition.candidate_afterstate,
+        };
+        let encoded = encode_pool_v1_pair_forest_terminal_result_v1(&result)
+            .map_err(|_| ProgramError::InvalidAccountData)?;
+        profile_checkpoint("aspis-asq8-profile:asr8-encoded");
+        program::set_return_data(&encoded);
+        profile_checkpoint("aspis-asq8-profile:asr8-returned");
+        return Ok(());
+    }
+    #[cfg(not(feature = "v7-pair-forest-cu-profile"))]
     Err(ProgramError::Custom(
         V7_PAIR_FOREST_ASQ8_CRYPTO_NOT_INTEGRATED,
     ))

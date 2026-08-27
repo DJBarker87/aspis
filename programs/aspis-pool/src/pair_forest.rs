@@ -86,6 +86,17 @@ pub const POOL_V1_PAIR_FOREST_CHECKPOINT_INSTRUCTION_BYTES: usize = 8;
 pub const POOL_V1_PAIR_FOREST_INITIALIZE_ACCOUNT_COUNT: usize = 14;
 pub const POOL_V1_PAIR_FOREST_CHECKPOINT_ACCOUNT_COUNT: usize = 12;
 
+#[inline(always)]
+fn profile_checkpoint(label: &'static str) {
+    #[cfg(feature = "pair-forest-cu-profile")]
+    {
+        solana_program::log::sol_log(label);
+        solana_program::log::sol_log_compute_units();
+    }
+    #[cfg(not(feature = "pair-forest-cu-profile"))]
+    let _ = label;
+}
+
 const FOREST_MASTER_ACCOUNT_INDEX: usize = 0;
 const FOREST_FIRST_LANE_ACCOUNT_INDEX: usize = 1;
 const FOREST_MINT_OR_CHECKPOINT_ACCOUNT_INDEX: usize = 9;
@@ -891,6 +902,36 @@ fn next_pair_forest_lane_v1(
     })
 }
 
+/// Measurement-only byte image for an afterstate already authenticated by the
+/// verifier transport.  The production-inactive source still uses the strict
+/// encoder below; this profile helper prevents its twenty Poseidon root
+/// reconstruction calls from contaminating the Phase 0/1 non-cryptographic
+/// wrapper measurement.
+#[cfg(feature = "pair-forest-cu-profile")]
+fn encode_profile_verified_lane_image_v1(
+    source_image: &[u8],
+    next_lane: &PoolV1PairForestLaneStateV1,
+) -> Result<Vec<u8>, ProgramError> {
+    const TREE_OFFSET: usize = 80;
+    const TREE_INDEX_OFFSET: usize = TREE_OFFSET + 8;
+    const TREE_ROOT_OFFSET: usize = TREE_OFFSET + 16;
+    const TREE_FRONTIER_OFFSET: usize = TREE_OFFSET + 48;
+    if source_image.len() != aspis_statement::pool_v1::POOL_V1_PAIR_FOREST_LANE_ACCOUNT_BYTES {
+        return Err(ProgramError::InvalidAccountData);
+    }
+    let mut output = source_image.to_vec();
+    output[TREE_INDEX_OFFSET..TREE_ROOT_OFFSET]
+        .copy_from_slice(&next_lane.tree.next_leaf_index.to_le_bytes());
+    output[TREE_ROOT_OFFSET..TREE_FRONTIER_OFFSET].copy_from_slice(
+        &aspis_statement::encode_digest_canonical(&next_lane.tree.root),
+    );
+    for (level, node) in next_lane.tree.frontier.iter().enumerate() {
+        let start = TREE_FRONTIER_OFFSET + level * 32;
+        output[start..start + 32].copy_from_slice(&aspis_statement::encode_digest_canonical(node));
+    }
+    Ok(output)
+}
+
 #[allow(clippy::too_many_arguments)]
 pub(crate) fn process_pair_forest_terminal_with_verifier_v1<'info, R, V, S>(
     program_id: &Pubkey,
@@ -953,6 +994,7 @@ where
         PoolV1PairForestTerminalPaymentV1::Withdrawal(_)
     );
     let layout = plan_pair_forest_spend_layout_v1(program_id, accounts, &lane, withdrawal)?;
+    profile_checkpoint("aspis-forest-pool-profile:preflight");
 
     let marker = &accounts[layout.marker_index];
     let marker_payload = PoolV1NullifierMarkerV1 {
@@ -984,7 +1026,9 @@ where
         } else {
             None
         };
+    profile_checkpoint("aspis-forest-pool-profile:marker-custody-plan");
 
+    profile_checkpoint("aspis-forest-pool-profile:verifier-cpi-start");
     let authenticated = verify(
         program_id,
         master_account,
@@ -997,6 +1041,7 @@ where
         &request,
         current_slot,
     )?;
+    profile_checkpoint("aspis-forest-pool-profile:verifier-cpi-returned");
     let result = authenticated.value();
     let common = PoolV1PairForestTerminalCommonV1 {
         master_account: master_account.key.to_bytes(),
@@ -1022,11 +1067,16 @@ where
     validate_pool_v1_pair_forest_terminal_result_against_statement_v1(&statement, result)
         .map_err(|_| PoolV1ProgramError::InvalidVerifierReturnData)?;
     let next_lane = next_pair_forest_lane_v1(&lane, result)?;
+    #[cfg(not(feature = "pair-forest-cu-profile"))]
     let next_lane_image =
         encode_pool_v1_pair_forest_lane_state_v1(&next_lane, &POOL_V1_PAIR_EMPTY_ROOTS)
             .map_err(|_| PoolV1ProgramError::StateHistoryMismatch)?;
+    #[cfg(feature = "pair-forest-cu-profile")]
+    let next_lane_image =
+        encode_profile_verified_lane_image_v1(&lane_account.try_borrow_data()?, &next_lane)?;
     let result_bytes = encode_pool_v1_pair_forest_terminal_result_v1(result)
         .map_err(|_| PoolV1ProgramError::InvalidVerifierReturnData)?;
+    profile_checkpoint("aspis-forest-pool-profile:asr8-validated");
 
     let writable_page = match layout.page {
         PairForestSpendPageV1::Genesis | PairForestSpendPageV1::SamePage(_) => &accounts[3],
@@ -1047,6 +1097,7 @@ where
         runtime.invoke_signed(&plan.instruction, &infos, &[seeds])?;
         validate_exact_withdrawal_delta_v1(token_accounts, &plan)?;
     }
+    profile_checkpoint("aspis-forest-pool-profile:custody-complete");
 
     lane_data.copy_from_slice(&next_lane_image);
     match layout.page {
@@ -1072,6 +1123,7 @@ where
     }
     marker_data.copy_from_slice(&planned_marker.encoded_marker());
     set_return_data(&result_bytes);
+    profile_checkpoint("aspis-forest-pool-profile:persisted");
     Ok(())
 }
 

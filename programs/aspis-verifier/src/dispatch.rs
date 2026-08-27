@@ -79,7 +79,11 @@ pub fn process_spend_production_instruction(
     // ASQ8 is a distinct, exact 320-byte compact request.  Its default-off
     // handler authenticates and reconstructs the full forest statement but
     // deliberately fails closed until the accepted forest terminal exists.
-    #[cfg(any(feature = "v7-pair-forest-asq8", test))]
+    #[cfg(any(
+        feature = "v7-pair-forest-asq8",
+        feature = "v7-pair-forest-cu-profile",
+        test
+    ))]
     if instruction_data
         .starts_with(&aspis_statement::pool_v1::POOL_V1_PAIR_FOREST_TERMINAL_REQUEST_MAGIC)
     {

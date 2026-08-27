@@ -72,6 +72,11 @@ v7-pair-forest-asq8 = [
     "v7-production-tag73",
     "aspis-statement/pool-v1-kernel",
 ]
+# Measurement-only ASQ8/ASF8/ASR8 transport entrypoint.  It deliberately
+# replaces the missing cryptographic terminal with an explicitly unverified
+# result constructor so only byte/account plumbing can be profiled.  Entrypoint
+# builds are forbidden from combining it with every production switch.
+v7-pair-forest-cu-profile = ["aspis-statement/pool-v1-kernel"]
 
 [dependencies]
 aspis-core = { path = "../../crates/aspis-core" }

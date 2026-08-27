@@ -19,6 +19,9 @@ pair-afterstate-profile = ["pair-afterstate-evidence"]
 # Production-inactive account/PDA/checkpoint/deposit/terminal plumbing for the
 # accepted eight-lane forest candidate. Release builds leave it disabled.
 pair-forest-account-evidence = []
+# Local-only phase logging for the inactive eight-lane one-terminal caller.
+# It changes no wire bytes or state semantics and is never enabled by default.
+pair-forest-cu-profile = ["pair-forest-account-evidence"]
 
 [dependencies]
 aspis-core.workspace = true
