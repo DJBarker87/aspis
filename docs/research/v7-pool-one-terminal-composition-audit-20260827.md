@@ -7,6 +7,17 @@ still production-disabled, but their exact codecs, focused source prototypes,
 and local LiteSVM evidence now exist. No deployment or network transaction was
 performed.
 
+> **Superseding soundness decision (2026-08-27):** the post-`lambda,chi`
+> seven-lane staged candidate described in the historical sections below is
+> rejected as a production route. It places late main-trace values in a
+> commitment made after the randomized copy-compression challenges. The new
+> conservative route merges the disjoint stable and live rows into the same
+> sixteen semantic C1 columns and absorbs the exact live-transition record
+> before the full C1 root. It therefore keeps the frozen 26+3 PCS geometry and
+> 30,504-byte maximum proof. A competing append now requires rebuilding the
+> whole proof; no Stage-A reuse is claimed. The old 35,216-byte arithmetic is
+> retained below only as rejected-design evidence.
+
 ## Decision
 
 The production target is one terminal transaction which both verifies the
@@ -28,16 +39,17 @@ The viable route is deletion rather than moving the prepared work into one
 call. An exact SBF/LiteSVM probe ruled out computing the current append inside
 the Pool suffix: one pair compression plus twenty upper parents costs 492,863
 CU over the zero-parent baseline before Pool parsing, history, marker or
-custody work. The primary candidate therefore carries the live append through
-late Tag-73 Stage B and returns the verified next pair-tree state. The Pool
-terminal suffix only checks and byte-writes that result atomically with history,
-nullifier and custody effects.
+custody work. The primary candidate therefore proves the live append inside
+the complete pre-challenge semantic trace and returns the verified next
+pair-tree state. The Pool terminal suffix only checks and byte-writes that
+result atomically with history, nullifier and custody effects.
 
-This primary route has a measured/formal cost which must be faced explicitly:
-its corrected maximum proof body is 35,216 bytes, 4,712 bytes larger than the frozen
-30,504-byte maximum, and a completed proof becomes stale after a competing append. It remains
-one terminal transaction; proof-account creation and uploads are preparatory
-data transport, not a separate authorization or settlement transaction.
+The unified pre-challenge route retains the 30,504-byte maximum because the
+stable rows and the twenty live append blocks occupy disjoint parts of the
+same sixteen semantic columns. A completed proof becomes stale after a
+competing append and must be rebuilt in full. It remains one terminal
+transaction; proof-account creation and uploads are preparatory data transport,
+not a separate authorization or settlement transaction.
 
 ## What the measurements prove
 

@@ -2,11 +2,14 @@
 
 Date: 2026-08-27
 
-Status: the layout-only `7 -> 4` C2 fusion is rejected. The corrected
-conservative one-terminal design keeps seven physical C2 lanes, forty-five
-logical gamma-batched columns, a 35,216-byte maximum proof body, and a minimal
-680-byte verified afterstate payload. No accepting staged SBF verifier exists
-yet.
+Status: superseded/rejected for production. The layout-only `7 -> 4` C2
+fusion was correctly rejected, but the enclosing seven-lane design is also
+rejected because its late main trace would be committed after `lambda, chi`.
+Its 35,216-byte arithmetic remains useful negative-design evidence. The sound
+conservative route overlays the disjoint stable/live rows in the original
+sixteen semantic C1 columns, commits the full trace before `lambda, chi`, and
+retains the frozen 26+3 / 30,504-byte PCS wire plus the minimal 680-byte
+verified afterstate payload.
 
 ## Result
 
