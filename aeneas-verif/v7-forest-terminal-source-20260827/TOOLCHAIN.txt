@@ -1,0 +1,12 @@
+Source revision: 2ff50df4b1dc58eb33ccb2f34c93e838cb72522c
+Charon version: 0.1.223
+Charon macOS binary SHA-256: d785c5f18053c4d310c7388dfdb0b59adfc9854c28b632a34a8f6301ba1c4b43
+Patched Aeneas revision: d860 (result-aware build)
+Patched Aeneas Linux binary SHA-256: c8dbc1f076bcbacf3493be46f7be669051c60b206ca00a6f0abf6df07b7ce50b
+LLBC normalized SHA-256: f03fd5dcd020851e2a31e6614070f0b92ab5e9b66845ee85dc211f7372f449b0
+
+Pinned source SHA-256:
+  pair_forest_terminal.rs: 880d2d060973bf22d60d24a78df4013709fdd88baa057573a53f9c1ce733a68d
+  pair_forest_constraint_residuals.rs: 0f5596a75d4640528cdf38fc16359ade71164ef36bdf61e8a7eab2ccea967e9b
+  pair_forest_trace.rs: 007614fddd2e418c8f6f64997a7bdc31c34669f0c9e435cbe969d37dfa9790e9
+  pair_forest_accounts.rs: d10c75884cde37792647736ed87d326b8f889ea9a17a363f14efc98b801b7175

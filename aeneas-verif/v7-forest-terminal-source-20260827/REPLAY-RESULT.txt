@@ -1,0 +1,39 @@
+V7 forest terminal Rust-to-Lean source replay: PASS
+
+Date: 2026-08-27
+Source revision: 2ff50df4b1dc58eb33ccb2f34c93e838cb72522c
+NUC host: nuc.local
+Systemd unit: aspis-v7-forest-terminal-final-02
+Invocation: eec6b7f5cdce41389357a55302f3c52c
+MemoryHigh: 22G
+MemoryMax: 28G
+MemorySwapMax: 0
+Exit status: 0
+Wall time: 0:41.52
+User time: 32.54s
+System time: 5.23s
+Peak RSS: 2,607,372 KiB
+Swaps: 0
+
+Compiled in order:
+  V7ForestTerminal/TypesExternal.lean
+  V7ForestTerminal/Types.lean
+  V7ForestTerminal/FunsExternal.lean
+  V7ForestTerminal/Funs.lean
+  V7ForestTerminalLayoutBridge.lean
+  V7ForestTerminalParserBridge.lean
+  V7ForestTerminalCallerBridge.lean
+
+Pinned Aeneas translation also passed under unit
+aspis-v7-forest-terminal-aeneas-05b with zero swap.  Translation wall time was
+3.224s; the separately timed patched-Aeneas run used 213,780 KiB peak RSS.
+
+Focused theorem result:
+  exact ASF8/ASR8 layout: PASS
+  statement decoder fail-closed validator bridge: PASS
+  result decoder fail-closed validator bridge: PASS
+  transfer accepted-caller residual/result contract: PASS
+  withdrawal accepted-caller residual/result contract: PASS
+  forbidden proof construct scan: PASS
+
+Exact theorem axiom output is recorded in AXIOMS.txt.
