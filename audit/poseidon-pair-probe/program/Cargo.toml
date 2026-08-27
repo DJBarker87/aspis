@@ -1,0 +1,13 @@
+[package]
+name = "aspis-poseidon-pair-probe"
+version = "0.1.0"
+edition = "2021"
+publish = false
+
+[lib]
+crate-type = ["cdylib", "lib"]
+
+[dependencies]
+aspis-core.workspace = true
+aspis-statement = { workspace = true, features = ["pool-v1-kernel"] }
+solana-program.workspace = true

@@ -188,6 +188,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "aspis-poseidon-pair-probe"
+version = "0.1.0"
+dependencies = [
+ "aspis-core",
+ "aspis-statement",
+ "solana-program",
+]
+
+[[package]]
 name = "aspis-prover"
 version = "0.1.0"
 dependencies = [
