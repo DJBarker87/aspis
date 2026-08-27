@@ -131,6 +131,104 @@ theorem ExistingPageWriteTrace.length_eq
       rw [ih]
       exact Slice.setSlice!_length _ _ _
 
+def zeroedPage (data : Slice Std.U8) : Slice Std.U8 :=
+  ⟨List.replicate data.length 0#u8, by
+    simpa using Slice.length_ineq data⟩
+
+def newPageHeaderImage
+    (data : Slice Std.U8) (pool : solana_pubkey.Pubkey)
+    (page first : Std.U64) (rootCount : Std.U16) : Slice Std.U8 :=
+  let d0 := zeroedPage data
+  let d1 := d0.setSlice! 0 [65#u8, 83#u8, 80#u8, 82#u8]
+  let d2 := d1.set 4#usize 1#u8
+  let d3 := d2.set 5#usize 8#u8
+  let d4 := d3.set 6#usize
+    aspis_statement.pool_v1.format.POOL_V1_DIGEST_ENCODING_VERSION
+  let d5 := d4.setSlice! 8 pool.val
+  let d6 := d5.setSlice! 40 (core.num.U64.to_le_bytes page).val
+  let d7 := d6.setSlice! 48 (core.num.U64.to_le_bytes first).val
+  d7.setSlice! 56 (core.num.U16.to_le_bytes rootCount).val
+
+theorem exact_range_copy_back
+    {data target copied : Slice Std.U8} {back : Slice Std.U8 → Slice Std.U8}
+    (start finish : Std.Usize) (bytes : Slice Std.U8)
+    (startLeFinish : start ≤ finish) (finishLeData : finish ≤ data.length)
+    (bytesLength : bytes.length = finish.val - start.val)
+    (indexRun :
+      core.slice.index.SliceIndexRangeUsizeSlice.index_mut
+          { start, «end» := finish } data = .ok (target, back))
+    (copyRun :
+      core.slice.Slice.copy_from_slice core.marker.CopyU8 target bytes =
+        .ok copied) :
+    back copied = data.setSlice! start.val bytes.val := by
+  have indexSpec :=
+    core.slice.index.SliceIndexRangeUsizeSlice.index_mut.step_spec
+      { start, «end» := finish } data startLeFinish finishLeData
+  rw [indexRun] at indexSpec
+  simp only [WP.spec_ok] at indexSpec
+  rcases indexSpec with ⟨targetVal, targetLength, backSpec⟩
+  have copySpec := core.slice.Slice.copy_from_slice.step_spec
+    core.marker.CopyU8 target bytes (by omega)
+  rw [copyRun] at copySpec
+  simp only [WP.spec_ok] at copySpec
+  rw [backSpec copied, copySpec]
+
+theorem exact_range_to_copy_back
+    {data target copied : Slice Std.U8} {back : Slice Std.U8 → Slice Std.U8}
+    (finish : Std.Usize) (bytes : Slice Std.U8)
+    (finishLeData : finish ≤ data.length)
+    (bytesLength : bytes.length = finish.val)
+    (indexRun :
+      core.slice.index.SliceIndexRangeToUsizeSlice.index_mut
+          { «end» := finish } data = .ok (target, back))
+    (copyRun :
+      core.slice.Slice.copy_from_slice core.marker.CopyU8 target bytes =
+        .ok copied) :
+    back copied = data.setSlice! 0 bytes.val := by
+  have indexSpec :=
+    core.slice.index.SliceIndexRangeToUsizeSlice.index_mut.step_spec
+      { «end» := finish } data finishLeData
+  rw [indexRun] at indexSpec
+  simp only [WP.spec_ok] at indexSpec
+  rcases indexSpec with ⟨targetVal, targetLength, backSpec⟩
+  have copySpec := core.slice.Slice.copy_from_slice.step_spec
+    core.marker.CopyU8 target bytes (by omega)
+  rw [copyRun] at copySpec
+  simp only [WP.spec_ok] at copySpec
+  apply (Slice.eq_iff _ _).mpr
+  rw [backSpec copied, copySpec]
+  simp only [Slice.setSlice!_val]
+
+structure NewPageHeaderTrace
+    (data : Slice Std.U8) (pool : solana_pubkey.Pubkey)
+    (page first : Std.U64) (rootCount : Std.U16)
+    (headerData : Slice Std.U8) : Type where
+  zeroed : Slice Std.U8
+  magicData : Slice Std.U8
+  versionData : Slice Std.U8
+  logData : Slice Std.U8
+  encodingData : Slice Std.U8
+  poolData : Slice Std.U8
+  pageData : Slice Std.U8
+  firstData : Slice Std.U8
+  zeroedExact : zeroed = zeroedPage data
+  magicExact : magicData = zeroed.setSlice! 0
+    [65#u8, 83#u8, 80#u8, 82#u8]
+  versionExact : versionData = magicData.set 4#usize 1#u8
+  logExact : logData = versionData.set 5#usize 8#u8
+  encodingExact : encodingData = logData.set 6#usize
+    aspis_statement.pool_v1.format.POOL_V1_DIGEST_ENCODING_VERSION
+  poolExact : poolData = encodingData.setSlice!
+    history.PAGE_POOL_OFFSET.val pool.val
+  pageExact : pageData = poolData.setSlice!
+    history.PAGE_NUMBER_OFFSET.val (core.num.U64.to_le_bytes page).val
+  firstExact : firstData = pageData.setSlice!
+    history.PAGE_FIRST_SEQUENCE_OFFSET.val
+    (core.num.U64.to_le_bytes first).val
+  filledExact : headerData = firstData.setSlice!
+    history.PAGE_FILLED_OFFSET.val
+    (core.num.U16.to_le_bytes rootCount).val
+
 theorem write_loop_body_done
     (iter : RootIter) (data : Slice Std.U8)
     (nextRun :
@@ -628,6 +726,507 @@ theorem append_roots_success_has_exact_persistence
       · simp only [totalRun, bind_tc_ok] at run
         simp [massert, withinCapacity] at run
 
+theorem write_new_page_success_has_exact_persistence
+    (data : Slice Std.U8) (pool : solana_pubkey.Pubkey)
+    (page first : Std.U64) (roots : Slice Digest) (final : Slice Std.U8)
+    (dataLength : data.length = 8256)
+    (rootsCapacity : roots.val.length ≤ 256)
+    (run : history.write_new_page_unchecked data pool page first roots = .ok final) :
+    ∃ rootCount : Std.U16, ∃ headerData : Slice Std.U8,
+      rootCount.val = roots.val.length ∧
+      Nonempty (NewPageHeaderTrace data pool page first rootCount headerData) ∧
+      history.write_new_page_unchecked_loop
+          (enumerateSliceAt roots 0#usize) headerData = .ok final ∧
+      NewPageWriteTrace roots 0#usize headerData final := by
+  unfold history.write_new_page_unchecked at run
+  simp [lift, core.slice.Slice.iter,
+    core.iter.traits.iterator.Iterator.enumerate.trait_default,
+    core.iter.traits.iterator.Iterator.enumerate.default,
+    aspis_statement.pool_v1.root_history.POOL_V1_ROOT_HISTORY_PAGE_ACCOUNT_BYTES,
+    aspis_statement.pool_v1.root_history.POOL_V1_ROOT_HISTORY_CAPACITY,
+    aspis_statement.pool_v1.root_history.POOL_V1_ROOT_HISTORY_PAGE_MAGIC,
+    aspis_statement.pool_v1.root_history.POOL_V1_ROOT_HISTORY_PAGE_VERSION,
+    aspis_statement.pool_v1.root_history.POOL_V1_ROOT_HISTORY_CAPACITY_LOG2,
+    solana_pubkey.Pubkey.Insts.CoreConvertAsRefSliceU8.as_ref,
+    rootsCapacity, massert] at run
+  have dataLenScalar : data.len = 8256#usize := by
+    apply UScalar.eq_of_val_eq
+    rw [Slice.len_val, dataLength]
+    scalar_tac
+  simp only [dataLenScalar, if_pos] at run
+  generalize fillRun :
+    core.slice.Slice.fill core.clone.CloneU8 data 0#u8 = fillResult at run
+  cases fillResult with
+  | fail error => simp [fillRun] at run
+  | div => simp [fillRun] at run
+  | ok zeroed =>
+      simp only [bind_tc_ok] at run
+      have fillSpec := core.slice.Slice.fill.spec core.clone.CloneU8 data 0#u8
+        (by simp [core.clone.CloneU8])
+      rw [fillRun] at fillSpec
+      simp only [WP.spec_ok] at fillSpec
+      have zeroedExact : zeroed = zeroedPage data := by
+        apply (Slice.eq_iff _ _).mpr
+        exact fillSpec.2
+      have zeroedLength : zeroed.length = 8256 := by
+        rw [fillSpec.1, dataLength]
+      cases magicIndexRun :
+          core.slice.index.SliceIndexRangeToUsizeSlice.index_mut
+            { «end» := 4#usize } zeroed with
+      | fail error => simp [fillRun, magicIndexRun] at run
+      | div => simp [fillRun, magicIndexRun] at run
+      | ok indexed =>
+          rcases indexed with ⟨magicTarget, magicBack⟩
+          simp only [magicIndexRun, bind_tc_ok] at run
+          let magic := Array.make 4#usize
+            [65#u8, 83#u8, 80#u8, 82#u8]
+            aspis_statement.pool_v1.root_history.POOL_V1_ROOT_HISTORY_PAGE_MAGIC._proof_5
+          cases magicCopyRun :
+              core.slice.Slice.copy_from_slice core.marker.CopyU8 magicTarget
+                (Array.to_slice magic) with
+          | fail error =>
+              simp [fillRun, magicIndexRun, magic, magicCopyRun] at run
+          | div => simp [fillRun, magicIndexRun, magic, magicCopyRun] at run
+          | ok magicCopied =>
+              simp only [magic] at magicCopyRun
+              change (do
+                let s2 ← core.slice.Slice.copy_from_slice core.marker.CopyU8
+                  magicTarget
+                  (Array.make 4#usize [65#u8, 83#u8, 80#u8, 82#u8]
+                    aspis_statement.pool_v1.root_history.POOL_V1_ROOT_HISTORY_PAGE_MAGIC._proof_5).to_slice
+                _) = .ok final at run
+              rw [magicCopyRun] at run
+              simp only [bind_tc_ok] at run
+              have magicFinish : (4#usize : Std.Usize) ≤ zeroed.length := by
+                rw [zeroedLength]
+                scalar_tac
+              have magicBackExact := exact_range_to_copy_back 4#usize
+                (Array.to_slice magic) magicFinish (by scalar_tac)
+                magicIndexRun magicCopyRun
+              let magicData := magicBack magicCopied
+              have magicDataExact :
+                  magicData = (zeroedPage data).setSlice! 0
+                    [65#u8, 83#u8, 80#u8, 82#u8] := by
+                simp only [magicData, magic] at magicBackExact ⊢
+                rw [magicBackExact, zeroedExact]
+                rfl
+              have magicDataLength : magicData.length = 8256 := by
+                rw [magicDataExact, Slice.setSlice!_length]
+                simp only [zeroedPage, Slice.length, List.length_replicate,
+                  dataLength]
+              cases versionRun : magicData.update 4#usize 1#u8 with
+              | fail error =>
+                  simp [fillRun, magicIndexRun, magic, magicCopyRun,
+                    magicData, versionRun] at run
+              | div =>
+                  simp [fillRun, magicIndexRun, magic, magicCopyRun,
+                    magicData, versionRun] at run
+              | ok versionData =>
+                  simp only [magicData] at versionRun
+                  simp only [versionRun, bind_tc_ok] at run
+                  have versionSpec := Slice.update_spec magicData 4#usize 1#u8
+                    (by rw [magicDataLength]; scalar_tac)
+                  rw [versionRun] at versionSpec
+                  simp only [WP.spec_ok] at versionSpec
+                  cases logRun : versionData.update 5#usize 8#u8 with
+                  | fail error =>
+                      simp [fillRun, magicIndexRun, magic, magicCopyRun,
+                        magicData, versionRun, logRun] at run
+                  | div =>
+                      simp [fillRun, magicIndexRun, magic, magicCopyRun,
+                        magicData, versionRun, logRun] at run
+                  | ok logData =>
+                      simp only [logRun, bind_tc_ok] at run
+                      have versionLength : versionData.length = 8256 := by
+                        rw [versionSpec, Slice.set_length, magicDataLength]
+                      have logSpec := Slice.update_spec versionData 5#usize 8#u8
+                        (by rw [versionLength]; scalar_tac)
+                      rw [logRun] at logSpec
+                      simp only [WP.spec_ok] at logSpec
+                      cases encodingRun : logData.update 6#usize
+                          aspis_statement.pool_v1.format.POOL_V1_DIGEST_ENCODING_VERSION with
+                      | fail error =>
+                          simp [fillRun, magicIndexRun, magic, magicCopyRun,
+                            magicData, versionRun, logRun, encodingRun] at run
+                      | div =>
+                          simp [fillRun, magicIndexRun, magic, magicCopyRun,
+                            magicData, versionRun, logRun, encodingRun] at run
+                      | ok encodingData =>
+                          simp only [encodingRun, bind_tc_ok] at run
+                          have logLength : logData.length = 8256 := by
+                            rw [logSpec, Slice.set_length, versionLength]
+                          have encodingSpec := Slice.update_spec logData 6#usize
+                            aspis_statement.pool_v1.format.POOL_V1_DIGEST_ENCODING_VERSION
+                            (by rw [logLength]; scalar_tac)
+                          rw [encodingRun] at encodingSpec
+                          simp only [WP.spec_ok] at encodingSpec
+                          have encodingLength : encodingData.length = 8256 := by
+                            rw [encodingSpec, Slice.set_length, logLength]
+                          cases poolIndexRun :
+                              core.slice.index.SliceIndexRangeUsizeSlice.index_mut
+                                { start := history.PAGE_POOL_OFFSET,
+                                  «end» := history.PAGE_NUMBER_OFFSET }
+                                encodingData with
+                          | fail error =>
+                              simp [fillRun, magicIndexRun, magic, magicCopyRun,
+                                magicData, versionRun, logRun, encodingRun,
+                                poolIndexRun] at run
+                          | div =>
+                              simp [fillRun, magicIndexRun, magic, magicCopyRun,
+                                magicData, versionRun, logRun, encodingRun,
+                                poolIndexRun] at run
+                          | ok poolIndexed =>
+                              rcases poolIndexed with ⟨poolTarget, poolBack⟩
+                              simp only [poolIndexRun, bind_tc_ok] at run
+                              cases poolCopyRun :
+                                  core.slice.Slice.copy_from_slice
+                                    core.marker.CopyU8 poolTarget
+                                    (Array.to_slice pool) with
+                              | fail error =>
+                                  simp [fillRun, magicIndexRun, magic,
+                                    magicCopyRun, magicData, versionRun, logRun,
+                                    encodingRun, poolIndexRun, poolCopyRun] at run
+                              | div =>
+                                  simp [fillRun, magicIndexRun, magic,
+                                    magicCopyRun, magicData, versionRun, logRun,
+                                    encodingRun, poolIndexRun, poolCopyRun] at run
+                              | ok poolCopied =>
+                                  change (do
+                                    let s5 ← core.slice.Slice.copy_from_slice
+                                      core.marker.CopyU8 poolTarget
+                                      (Array.to_slice pool)
+                                    _) = .ok final at run
+                                  rw [poolCopyRun] at run
+                                  simp only [bind_tc_ok] at run
+                                  have poolBackExact := exact_range_copy_back
+                                    history.PAGE_POOL_OFFSET
+                                    history.PAGE_NUMBER_OFFSET
+                                    (Array.to_slice pool) (by
+                                      simp only [history.PAGE_POOL_OFFSET,
+                                        history.PAGE_NUMBER_OFFSET,
+                                        UScalar.le_equiv]
+                                      scalar_tac)
+                                    (by
+                                      rw [encodingLength]
+                                      simp only [history.PAGE_NUMBER_OFFSET]
+                                      scalar_tac)
+                                    (by
+                                      simp only [history.PAGE_POOL_OFFSET,
+                                        history.PAGE_NUMBER_OFFSET]
+                                      scalar_tac)
+                                    poolIndexRun poolCopyRun
+                                  let poolData := poolBack poolCopied
+                                  have poolLength : poolData.length = 8256 := by
+                                    simp only [poolData]
+                                    rw [poolBackExact, Slice.setSlice!_length,
+                                      encodingLength]
+                                  cases pageIndexRun :
+                                      core.slice.index.SliceIndexRangeUsizeSlice.index_mut
+                                        { start := history.PAGE_NUMBER_OFFSET,
+                                          «end» := history.PAGE_FIRST_SEQUENCE_OFFSET }
+                                        poolData with
+                                  | fail error =>
+                                      simp [fillRun, magicIndexRun, magic,
+                                        magicCopyRun, magicData, versionRun,
+                                        logRun, encodingRun, poolIndexRun,
+                                        poolCopyRun, poolData, pageIndexRun] at run
+                                  | div =>
+                                      simp [fillRun, magicIndexRun, magic,
+                                        magicCopyRun, magicData, versionRun,
+                                        logRun, encodingRun, poolIndexRun,
+                                        poolCopyRun, poolData, pageIndexRun] at run
+                                  | ok pageIndexed =>
+                                      rcases pageIndexed with ⟨pageTarget, pageBack⟩
+                                      simp only [poolData] at pageIndexRun
+                                      simp only [pageIndexRun, bind_tc_ok] at run
+                                      cases pageCopyRun :
+                                          core.slice.Slice.copy_from_slice
+                                            core.marker.CopyU8 pageTarget
+                                            (Array.to_slice
+                                              (core.num.U64.to_le_bytes page)) with
+                                      | fail error =>
+                                          simp [fillRun, magicIndexRun, magic,
+                                            magicCopyRun, magicData, versionRun,
+                                            logRun, encodingRun, poolIndexRun,
+                                            poolCopyRun, poolData, pageIndexRun,
+                                            pageCopyRun] at run
+                                      | div =>
+                                          simp [fillRun, magicIndexRun, magic,
+                                            magicCopyRun, magicData, versionRun,
+                                            logRun, encodingRun, poolIndexRun,
+                                            poolCopyRun, poolData, pageIndexRun,
+                                            pageCopyRun] at run
+                                      | ok pageCopied =>
+                                          change (do
+                                            let s8 ← core.slice.Slice.copy_from_slice
+                                              core.marker.CopyU8 pageTarget
+                                              (Array.to_slice
+                                                (core.num.U64.to_le_bytes page))
+                                            _) = .ok final at run
+                                          rw [pageCopyRun] at run
+                                          simp only [bind_tc_ok] at run
+                                          have pageBackExact := exact_range_copy_back
+                                            history.PAGE_NUMBER_OFFSET
+                                            history.PAGE_FIRST_SEQUENCE_OFFSET
+                                            (Array.to_slice
+                                              (core.num.U64.to_le_bytes page))
+                                            (by
+                                              simp only [history.PAGE_NUMBER_OFFSET,
+                                                history.PAGE_FIRST_SEQUENCE_OFFSET,
+                                                UScalar.le_equiv]
+                                              scalar_tac)
+                                            (by
+                                              rw [poolLength]
+                                              simp only [history.PAGE_FIRST_SEQUENCE_OFFSET]
+                                              scalar_tac)
+                                            (by
+                                              simp only [history.PAGE_NUMBER_OFFSET,
+                                                history.PAGE_FIRST_SEQUENCE_OFFSET]
+                                              scalar_tac)
+                                            pageIndexRun pageCopyRun
+                                          let pageData := pageBack pageCopied
+                                          have pageLength : pageData.length = 8256 := by
+                                            simp only [pageData]
+                                            rw [pageBackExact,
+                                              Slice.setSlice!_length, poolLength]
+                                          cases firstIndexRun :
+                                              core.slice.index.SliceIndexRangeUsizeSlice.index_mut
+                                                { start := history.PAGE_FIRST_SEQUENCE_OFFSET,
+                                                  «end» := history.PAGE_FILLED_OFFSET }
+                                                pageData with
+                                          | fail error =>
+                                              simp [fillRun, magicIndexRun,
+                                                magic, magicCopyRun, magicData,
+                                                versionRun, logRun, encodingRun,
+                                                poolIndexRun, poolCopyRun,
+                                                poolData, pageIndexRun,
+                                                pageCopyRun, pageData,
+                                                firstIndexRun] at run
+                                          | div =>
+                                              simp [fillRun, magicIndexRun,
+                                                magic, magicCopyRun, magicData,
+                                                versionRun, logRun, encodingRun,
+                                                poolIndexRun, poolCopyRun,
+                                                poolData, pageIndexRun,
+                                                pageCopyRun, pageData,
+                                                firstIndexRun] at run
+                                          | ok firstIndexed =>
+                                              rcases firstIndexed with
+                                                ⟨firstTarget, firstBack⟩
+                                              simp only [pageData] at firstIndexRun
+                                              simp only [firstIndexRun,
+                                                bind_tc_ok] at run
+                                              cases firstCopyRun :
+                                                  core.slice.Slice.copy_from_slice
+                                                    core.marker.CopyU8 firstTarget
+                                                    (Array.to_slice
+                                                      (core.num.U64.to_le_bytes first)) with
+                                              | fail error =>
+                                                  simp [fillRun, magicIndexRun,
+                                                    magic, magicCopyRun, magicData,
+                                                    versionRun, logRun, encodingRun,
+                                                    poolIndexRun, poolCopyRun,
+                                                    poolData, pageIndexRun,
+                                                    pageCopyRun, pageData,
+                                                    firstIndexRun, firstCopyRun] at run
+                                              | div =>
+                                                  simp [fillRun, magicIndexRun,
+                                                    magic, magicCopyRun, magicData,
+                                                    versionRun, logRun, encodingRun,
+                                                    poolIndexRun, poolCopyRun,
+                                                    poolData, pageIndexRun,
+                                                    pageCopyRun, pageData,
+                                                    firstIndexRun, firstCopyRun] at run
+                                              | ok firstCopied =>
+                                                  change (do
+                                                    let s11 ←
+                                                      core.slice.Slice.copy_from_slice
+                                                        core.marker.CopyU8 firstTarget
+                                                        (Array.to_slice
+                                                          (core.num.U64.to_le_bytes first))
+                                                    _) = .ok final at run
+                                                  rw [firstCopyRun] at run
+                                                  simp only [bind_tc_ok] at run
+                                                  have firstBackExact :=
+                                                    exact_range_copy_back
+                                                      history.PAGE_FIRST_SEQUENCE_OFFSET
+                                                      history.PAGE_FILLED_OFFSET
+                                                      (Array.to_slice
+                                                        (core.num.U64.to_le_bytes first))
+                                                      (by
+                                                        simp only [history.PAGE_FIRST_SEQUENCE_OFFSET,
+                                                          history.PAGE_FILLED_OFFSET,
+                                                          UScalar.le_equiv]
+                                                        scalar_tac)
+                                                      (by
+                                                        rw [pageLength]
+                                                        simp only [history.PAGE_FILLED_OFFSET]
+                                                        scalar_tac)
+                                                      (by
+                                                        simp only [history.PAGE_FIRST_SEQUENCE_OFFSET,
+                                                          history.PAGE_FILLED_OFFSET]
+                                                        scalar_tac)
+                                                      firstIndexRun firstCopyRun
+                                                  let firstData := firstBack firstCopied
+                                                  have firstLength :
+                                                      firstData.length = 8256 := by
+                                                    simp only [firstData]
+                                                    rw [firstBackExact,
+                                                      Slice.setSlice!_length, pageLength]
+                                                  let rootCount : Std.U16 :=
+                                                    UScalar.cast .U16 roots.len
+                                                  have rootCountExact :
+                                                      rootCount.val = roots.val.length := by
+                                                    simp only [rootCount,
+                                                      UScalar.cast_val_eq,
+                                                      UScalarTy.U16_numBits_eq]
+                                                    apply Nat.mod_eq_of_lt
+                                                    change roots.val.length < 2 ^ 16
+                                                    omega
+                                                  cases filledIndexRun :
+                                                      core.slice.index.SliceIndexRangeUsizeSlice.index_mut
+                                                        { start := history.PAGE_FILLED_OFFSET,
+                                                          «end» := 58#usize }
+                                                        firstData with
+                                                  | fail error =>
+                                                      simp [fillRun, magicIndexRun,
+                                                        magic, magicCopyRun,
+                                                        magicData, versionRun,
+                                                        logRun, encodingRun,
+                                                        poolIndexRun, poolCopyRun,
+                                                        poolData, pageIndexRun,
+                                                        pageCopyRun, pageData,
+                                                        firstIndexRun,
+                                                        firstCopyRun, firstData,
+                                                        rootCount, filledIndexRun] at run
+                                                  | div =>
+                                                      simp [fillRun, magicIndexRun,
+                                                        magic, magicCopyRun,
+                                                        magicData, versionRun,
+                                                        logRun, encodingRun,
+                                                        poolIndexRun, poolCopyRun,
+                                                        poolData, pageIndexRun,
+                                                        pageCopyRun, pageData,
+                                                        firstIndexRun,
+                                                        firstCopyRun, firstData,
+                                                        rootCount, filledIndexRun] at run
+                                                  | ok filledIndexed =>
+                                                      rcases filledIndexed with
+                                                        ⟨filledTarget, filledBack⟩
+                                                      simp only [firstData] at filledIndexRun
+                                                      simp only [filledIndexRun,
+                                                        bind_tc_ok] at run
+                                                      cases filledCopyRun :
+                                                          core.slice.Slice.copy_from_slice
+                                                            core.marker.CopyU8
+                                                            filledTarget
+                                                            (Array.to_slice
+                                                              (core.num.U16.to_le_bytes rootCount)) with
+                                                      | fail error =>
+                                                          simp [fillRun,
+                                                            magicIndexRun, magic,
+                                                            magicCopyRun, magicData,
+                                                            versionRun, logRun,
+                                                            encodingRun,
+                                                            poolIndexRun,
+                                                            poolCopyRun, poolData,
+                                                            pageIndexRun,
+                                                            pageCopyRun, pageData,
+                                                            firstIndexRun,
+                                                            firstCopyRun,
+                                                            firstData, rootCount,
+                                                            filledIndexRun,
+                                                            filledCopyRun] at run
+                                                      | div =>
+                                                          simp [fillRun,
+                                                            magicIndexRun, magic,
+                                                            magicCopyRun, magicData,
+                                                            versionRun, logRun,
+                                                            encodingRun,
+                                                            poolIndexRun,
+                                                            poolCopyRun, poolData,
+                                                            pageIndexRun,
+                                                            pageCopyRun, pageData,
+                                                            firstIndexRun,
+                                                            firstCopyRun,
+                                                            firstData, rootCount,
+                                                            filledIndexRun,
+                                                            filledCopyRun] at run
+                                                      | ok filledCopied =>
+                                                          simp only [rootCount] at filledCopyRun
+                                                          change (do
+                                                            let s14 ←
+                                                              core.slice.Slice.copy_from_slice
+                                                                core.marker.CopyU8 filledTarget
+                                                                (Array.to_slice
+                                                                  (core.num.U16.to_le_bytes
+                                                                    rootCount))
+                                                            _) = .ok final at run
+                                                          rw [filledCopyRun] at run
+                                                          simp only [bind_tc_ok] at run
+                                                          have filledBackExact :=
+                                                            exact_range_copy_back
+                                                              history.PAGE_FILLED_OFFSET
+                                                              58#usize
+                                                              (Array.to_slice
+                                                                (core.num.U16.to_le_bytes rootCount))
+                                                              (by
+                                                                simp only [history.PAGE_FILLED_OFFSET,
+                                                                  UScalar.le_equiv]
+                                                                scalar_tac)
+                                                              (by
+                                                                rw [firstLength]
+                                                                scalar_tac)
+                                                              (by
+                                                                simp only [history.PAGE_FILLED_OFFSET]
+                                                                scalar_tac)
+                                                              filledIndexRun
+                                                              filledCopyRun
+                                                          let headerData :=
+                                                            filledBack filledCopied
+                                                          have headerLength :
+                                                              headerData.length = 8256 := by
+                                                            simp only [headerData]
+                                                            rw [filledBackExact,
+                                                              Slice.setSlice!_length,
+                                                              firstLength]
+                                                          have headerTrace :
+                                                              NewPageHeaderTrace data pool page
+                                                                first rootCount headerData := by
+                                                            refine ⟨zeroed, magicData,
+                                                              versionData, logData,
+                                                              encodingData, poolData,
+                                                              pageData, firstData,
+                                                              zeroedExact, ?_,
+                                                              versionSpec, logSpec,
+                                                              encodingSpec, ?_, ?_,
+                                                              ?_, ?_⟩
+                                                            · rw [magicDataExact,
+                                                                zeroedExact]
+                                                            · exact poolBackExact
+                                                            · exact pageBackExact
+                                                            · exact firstBackExact
+                                                            · exact filledBackExact
+                                                          have loopRun :
+                                                              history.write_new_page_unchecked_loop
+                                                                  (enumerateSliceAt roots 0#usize)
+                                                                  headerData = .ok final := by
+                                                            simpa [enumerateSliceAt,
+                                                              headerData] using run
+                                                          have trace :=
+                                                            write_loop_success_has_exact_trace
+                                                              roots 0#usize
+                                                              headerData final
+                                                              (by scalar_tac)
+                                                              rootsCapacity
+                                                              headerLength
+                                                              loopRun
+                                                          exact ⟨rootCount,
+                                                            headerData,
+                                                            rootCountExact,
+                                                            ⟨headerTrace⟩,
+                                                            loopRun, trace⟩
+
 #print axioms write_loop_body_done
 #print axioms write_loop_body_exact_root_slot
 #print axioms write_loop_success_has_exact_trace
@@ -635,5 +1234,6 @@ theorem append_roots_success_has_exact_persistence
 #print axioms append_loop_body_exact_root_slot
 #print axioms append_loop_success_has_exact_trace
 #print axioms append_roots_success_has_exact_persistence
+#print axioms write_new_page_success_has_exact_persistence
 
 end PoolV1HistoryPersistBridge

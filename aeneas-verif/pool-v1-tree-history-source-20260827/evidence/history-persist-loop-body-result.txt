@@ -31,6 +31,8 @@ Theorems and exact #print axioms:
     [propext, Classical.choice, Quot.sound]
   append_roots_success_has_exact_persistence
     [propext, Classical.choice, Quot.sound]
+  write_new_page_success_has_exact_persistence
+    [propext, Classical.choice, Quot.sound]
 
 Coverage:
   - literal translated iterator next result and continuation identity;
@@ -44,6 +46,15 @@ Coverage:
   - successful existing-page capacity check;
   - exact final filled count = old filled count + roots length;
   - exact little-endian filled-count persistence at offsets 56--57.
+  - complete literal rollover/new-page zero-fill and static header writes;
+  - exact magic, version, capacity-log, encoding-version, pool-key,
+    page-number, first-sequence and initial-filled byte after-images;
+  - ordered new-page root persistence from that exact deployed header.
+
+Focused new-page replay:
+  Result: PASS
+  Wall: 3.04 s
+  Peak RSS: 2,360,639,488 bytes
 
 Audit:
   No sorry, admit, sorryAx, project-specific axiom, opaque translated function,

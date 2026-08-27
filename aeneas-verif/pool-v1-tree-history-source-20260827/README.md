@@ -206,12 +206,22 @@ little-endian two-byte write at page offsets 56--57.  These capstones retain
 the same three standard Lean axioms and add no premise beyond the fixed
 8,256-byte account-page length supplied by the caller.
 
+`write_new_page_success_has_exact_persistence` now closes the complete
+rollover/new-page function as well.  Starting from literal translated source
+success, it exposes the exact zero-fill and every static header after-image:
+magic, version, capacity log, digest encoding version, pool public key, page
+number, first sequence and initial filled count.  It then connects that exact
+header to the recursive ordered root-write trace.  Consequently the new-page
+and existing-page persistence functions are both source-closed, including the
+canonical root slots and their deployed byte offsets.  Its `#print axioms`
+result is exactly `[propext, Classical.choice, Quot.sound]`.
+
 The remaining implementation lift is:
 
 1. lift the now-closed prepared-afterimage validator through the caller that
    constructs it and through the state/root account writes;
-2. close the new-page static header construction and prove retained-root
-   lookup (existing-page root writes and `filled` persistence are complete);
+2. prove literal retained-root lookup is a round trip through the now-closed
+   existing-page and rollover/new-page byte after-images;
 3. carry pool identity, owner, PDA and same-writable-account checks through the
    successful program path.
 
