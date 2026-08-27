@@ -377,6 +377,27 @@ onto the 32-byte keys read by production.  Its translated inner-loop theorem
 pair immediately returns `false`, with only the standard Lean trio.  The LLBC
 is `extraction/PoolV1NormalizedUnique.llbc`, SHA-256
 `e48db99a0004f56099de62172c9eed45d02fdcca36688e6697d8855bad95eaef`.
+The completed recursive bridge now proves
+`normalized_unique_success_implies_pairwise_distinct`: literal translated
+success of both nested loops implies pairwise distinctness for every ordered
+in-bounds key pair.  The ordered-lookup corollary constructs the exact
+`PairwiseDistinctPreparedKeys` premise used by the account-store theorem for
+the pool, current page and optional rollover page.  No semantic premise or
+project-specific axiom is used; all five uniqueness capstones report exactly
+`[propext, Classical.choice, Quot.sound]`.
+
+`proof/PoolV1SolanaMutablePersistenceBridge.lean` closes the remaining
+source-proof composition at one deliberately named runtime boundary.
+`SolanaAccountDataBorrow.SuccessfulPreparedHistoryBorrowRelease` is
+definitionally the generic key-indexed store transition for the exact checked
+pool/current/rollover images.  It represents only successful mutable
+`AccountInfo` borrow/copy/release visibility; it contains no Pool condition,
+root equation, option-routing choice or cryptographic premise.  From that
+boundary the capstone proves exact reads of all written accounts and
+preservation of every other account, then composes the stored current and
+rollover arrays with the existing source-proved read-after-write theorems.
+All three persistence/read-after-write capstones report only the standard
+Lean trio.
 
 The retained-root reader passes through Rust's formatting machinery only on
 an impossible `Result::unwrap` failure after a successful fixed-array
@@ -386,16 +407,13 @@ the same formatter-as-`Unit` tool-model patch already used by the frozen V5
 source replay in
 `aeneas-patches/0001-model-formatter-as-unobservable-unit-state.patch`.
 
-The remaining implementation lift is now one narrow caller/runtime
-composition:
-
-1. lift the normalized nested uniqueness loops through completion to the
-   pairwise-distinct-key predicate consumed by the generic store theorem;
-2. connect the literal result-image gates and normalized after-image suffix
-   through the transition caller's mutable `AccountInfo` borrow/release calls,
-   at the named Solana account-data runtime boundary; and
-3. compose the resulting exact store write-back with the current/rollover
-   byte-persistence and read-after-write capstones.
+The implementation refinement is now closed modularly through the named
+Solana mutable account-data boundary: translated uniqueness supplies
+nonaliasing; the literal result-image gates and translated normalized suffix
+supply the exact images; the generic store proof supplies persistence; and the
+history codec/persistence proofs supply read-after-write decoding.  The only
+untranslated operation in this chain is the runtime's successful mutable
+`AccountInfo` borrow/release visibility itself.
 
 The full literal transition router has been extracted successfully, but the
 current Aeneas frontend cannot translate its mutable `AccountInfo` borrowing
@@ -404,7 +422,9 @@ and pure after-image assignments are now all source-closed. Mutable account
 borrowing, non-aliasing and final runtime persistence are therefore the
 smallest explicit source-to-persistence boundary. New-page immutable borrowing
 is isolated at the named Solana byte-slice interface and every subsequent
-check is proved. This is a Solana runtime/source-tool lift, not an unproved
+check is proved. Mutable borrowing is likewise isolated at the exact
+`SuccessfulPreparedHistoryBorrowRelease` store equation, after all identities,
+images and nonaliasing facts have been source-composed. This is a Solana runtime/source-tool lift, not an unproved
 root-distribution, option-routing, root/cursor-image, new-page validation or
 byte-persistence equation: all five are independently source-closed above.
 

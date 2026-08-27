@@ -72,7 +72,39 @@ errors and produced no accepted artifact.
 - Normalized LLBC SHA-256:
   `e48db99a0004f56099de62172c9eed45d02fdcca36688e6697d8855bad95eaef`
 - Inner-loop equal-pair rejection theorem: exit 0, standard Lean trio only
+- Complete nested-loop classification and pairwise-distinctness theorems:
+  exit 0, standard Lean trio only
+- Prepared pool/current/optional-rollover ordered-lookup corollary:
+  exit 0, standard Lean trio only
+- Final focused Lean replay: 4.13 s wall, 2,246,131,712-byte peak RSS
+- Proof SHA-256:
+  `7e385cc7f8fa40c60996e78cfb491cda20dd76964553ae8abe02abef3f8e1a58`
 
 The projection changes only the element type from `AccountInfo` to the exact
 32-byte key field read by the production loop. Its loop bounds, checked
 `left + 1`, equality gate and first-duplicate return are unchanged.
+
+## Mutable persistence and read-after-write closure
+
+- Proof: `proof/PoolV1SolanaMutablePersistenceBridge.lean`
+- Runtime boundary:
+  `SolanaAccountDataBorrow.SuccessfulPreparedHistoryBorrowRelease`
+- Exact persistence capstone:
+  `normalized_source_images_runtime_persist_exactly`
+- Rollover read-after-write capstone:
+  `persisted_rollover_page_selected_root_decodes`
+- Current-page read-after-write capstone:
+  `persisted_writable_current_page_selected_root_decodes`
+- Focused Lean build: exit 0
+- Final focused Lean replay: 1.75 s wall, 2,210,086,912-byte peak RSS
+- Proof SHA-256:
+  `40bd99306bd92336672ecd2e8755e42229b52854e6d1a6a3387b3f7037086e24`
+- Exact axiom report for every capstone:
+  `[propext, Classical.choice, Quot.sound]`
+
+The runtime boundary is a transparent definition equal to the already-proved
+generic key-indexed store transition. It says only that successful Solana
+mutable account-data borrows, fixed-length copies and releases expose those
+bytes in the post-state. Pool routing, result-image selection, option shape,
+account nonaliasing, history writes and decoder correctness remain outside the
+boundary and are separately source-proved. No production Rust was changed.
