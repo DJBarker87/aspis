@@ -72,6 +72,11 @@ v7-pair-forest-asq8 = [
     "v7-production-tag73",
     "aspis-statement/pool-v1-kernel",
 ]
+# Default-off proof-account lifecycle experiment.  The versioned sealed
+# header reuses the former upload-authority bytes for the exact proof-body
+# digest, but no verifier dispatch consumes it until its source/formal bridge
+# and SBF measurement are separately complete.
+sealed-proof-digest-cache-v1 = []
 
 [dependencies]
 aspis-core = { path = "../../crates/aspis-core" }

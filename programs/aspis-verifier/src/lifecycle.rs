@@ -7,6 +7,12 @@
 //! Finalization (tag 62) irreversibly zeroes the upload-authority field; the
 //! production verification tags accept only sealed accounts. Closing
 //! (tag 64) refunds every lamport of a sealed account and tombstones it.
+//!
+//! The default-off `sealed-proof-digest-cache-v1` feature additionally
+//! exposes an inactive versioned lifecycle API. Its sealed `ASD1` header keeps
+//! the same 40-byte layout but replaces the former upload-authority bytes with
+//! raw SHA-256 of the exact proof body. No verifier dispatch consumes this
+//! format in this module.
 
 use solana_program::{
     account_info::{next_account_info, AccountInfo},
@@ -22,6 +28,24 @@ use crate::atomic_payment;
 pub(crate) const PROOF_ACCOUNT_MAGIC: [u8; 4] = *b"ASPU";
 pub const PROOF_ACCOUNT_HEADER_LEN: usize = 40;
 pub(crate) const AUTHORITY_OFFSET: usize = 8;
+
+#[cfg(feature = "sealed-proof-digest-cache-v1")]
+pub(crate) const PROOF_ACCOUNT_SEALED_DIGEST_V1_MAGIC: [u8; 4] = *b"ASD1";
+#[cfg(feature = "sealed-proof-digest-cache-v1")]
+pub(crate) const PROOF_BODY_DIGEST_V1_OFFSET: usize = AUTHORITY_OFFSET;
+
+/// Exact framing returned by the inactive versioned sealed-header validator.
+///
+/// The caller may borrow `body_start..body_end` only after the account has
+/// passed the read-only, owner, length and expected-digest checks performed by
+/// `validate_readonly_sealed_proof_body_digest_v1`.
+#[cfg(feature = "sealed-proof-digest-cache-v1")]
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub(crate) struct ValidatedSealedProofBodyDigestV1 {
+    pub(crate) body_start: usize,
+    pub(crate) body_end: usize,
+    pub(crate) body_digest: [u8; 32],
+}
 
 pub(crate) fn proof_account_initialized(data: &[u8]) -> bool {
     data.len() >= PROOF_ACCOUNT_HEADER_LEN && data[0..4] == PROOF_ACCOUNT_MAGIC
@@ -50,6 +74,93 @@ pub(crate) fn uploaded_proof_bounds(data: &[u8]) -> Result<(usize, usize), Progr
         return Err(ProgramError::InvalidAccountData);
     }
     Ok((PROOF_ACCOUNT_HEADER_LEN, proof_end))
+}
+
+#[cfg(feature = "sealed-proof-digest-cache-v1")]
+fn exact_proof_body_bounds_for_magic(
+    data: &[u8],
+    magic: [u8; 4],
+) -> Result<(usize, usize), ProgramError> {
+    if data.len() < PROOF_ACCOUNT_HEADER_LEN || data[0..4] != magic {
+        return Err(ProgramError::InvalidAccountData);
+    }
+    let body_len = u32::from_le_bytes(data[4..8].try_into().unwrap()) as usize;
+    let body_end = PROOF_ACCOUNT_HEADER_LEN
+        .checked_add(body_len)
+        .ok_or(ProgramError::InvalidAccountData)?;
+    if body_end != data.len() {
+        return Err(ProgramError::InvalidAccountData);
+    }
+    Ok((PROOF_ACCOUNT_HEADER_LEN, body_end))
+}
+
+/// Parse the exact versioned sealed image without rehashing its body.
+///
+/// This byte-level helper deliberately has no account-owner premise. Runtime
+/// consumers must use `validate_readonly_sealed_proof_body_digest_v1` instead.
+#[cfg(feature = "sealed-proof-digest-cache-v1")]
+fn parse_sealed_proof_body_digest_v1(
+    data: &[u8],
+) -> Result<ValidatedSealedProofBodyDigestV1, ProgramError> {
+    let (body_start, body_end) =
+        exact_proof_body_bounds_for_magic(data, PROOF_ACCOUNT_SEALED_DIGEST_V1_MAGIC)?;
+    Ok(ValidatedSealedProofBodyDigestV1 {
+        body_start,
+        body_end,
+        body_digest: data[PROOF_BODY_DIGEST_V1_OFFSET..PROOF_BODY_DIGEST_V1_OFFSET + 32]
+            .try_into()
+            .unwrap(),
+    })
+}
+
+/// Validate the read-only, verifier-owned framing and exact external binding
+/// of a versioned sealed proof account without hashing the proof body again.
+///
+/// The no-rehash result is sound only together with the lifecycle invariant:
+/// this program computed the cached digest while changing `ASPU` to `ASD1`,
+/// and no program mutator accepts `ASD1`. Solana account ownership and
+/// read-only enforcement remain explicit runtime boundaries.
+#[cfg(feature = "sealed-proof-digest-cache-v1")]
+#[cfg_attr(not(test), allow(dead_code))]
+pub(crate) fn validate_readonly_sealed_proof_body_digest_v1(
+    program_id: &Pubkey,
+    proof_account: &AccountInfo,
+    expected_body_len: u32,
+    expected_body_digest: &[u8; 32],
+) -> Result<ValidatedSealedProofBodyDigestV1, ProgramError> {
+    if proof_account.owner != program_id {
+        return Err(ProgramError::IncorrectProgramId);
+    }
+    if proof_account.is_signer || proof_account.is_writable || proof_account.executable {
+        return Err(ProgramError::InvalidAccountData);
+    }
+    let data = proof_account.try_borrow_data()?;
+    let validated = parse_sealed_proof_body_digest_v1(&data)?;
+    if validated.body_end - validated.body_start != expected_body_len as usize
+        || validated.body_digest != *expected_body_digest
+    {
+        return Err(ProgramError::InvalidAccountData);
+    }
+    Ok(validated)
+}
+
+/// Recompute the versioned sealed header's body digest.
+///
+/// This audit helper detects stale body/header images in focused lifecycle and
+/// replay checks. It is intentionally not the hot verifier path because that
+/// would recreate the body-hash cost the cache is intended to move.
+#[cfg(feature = "sealed-proof-digest-cache-v1")]
+#[cfg_attr(not(test), allow(dead_code))]
+pub(crate) fn audit_sealed_proof_body_digest_v1(
+    data: &[u8],
+    hash: aspis_core::transcript::HashFn,
+) -> Result<ValidatedSealedProofBodyDigestV1, ProgramError> {
+    let validated = parse_sealed_proof_body_digest_v1(data)?;
+    let recomputed = hash(&[&data[validated.body_start..validated.body_end]]);
+    if recomputed != validated.body_digest {
+        return Err(ProgramError::InvalidAccountData);
+    }
+    Ok(validated)
 }
 
 pub(crate) fn require_upload_authority(data: &[u8], authority: &AccountInfo) -> ProgramResult {
@@ -168,6 +279,59 @@ pub(crate) fn finalize_proof(program_id: &Pubkey, accounts: &[AccountInfo]) -> P
     let mut data = proof_account.try_borrow_mut_data()?;
     require_upload_authority(&data, authority)?;
     data[AUTHORITY_OFFSET..AUTHORITY_OFFSET + 32].fill(0);
+    Ok(())
+}
+
+#[cfg(feature = "sealed-proof-digest-cache-v1")]
+#[allow(dead_code)]
+fn sbf_proof_body_hash_v1(inputs: &[&[u8]]) -> [u8; 32] {
+    solana_program::hash::hashv(inputs).to_bytes()
+}
+
+/// Inactive versioned finalizer which seals an exact-size `ASPU` upload as an
+/// `ASD1` account and caches raw SHA-256 of its proof body in the 32 bytes
+/// formerly occupied by the upload authority.
+///
+/// No production wire tag calls this API. The explicit hash callback variant
+/// is the source-verification seam; this wrapper fixes it to the Solana
+/// SHA-256 syscall convention used by proof-body request bindings.
+#[cfg(feature = "sealed-proof-digest-cache-v1")]
+#[allow(dead_code)]
+pub(crate) fn finalize_proof_with_body_digest_v1(
+    program_id: &Pubkey,
+    accounts: &[AccountInfo],
+) -> ProgramResult {
+    finalize_proof_with_body_digest_v1_and_hash(program_id, accounts, sbf_proof_body_hash_v1)
+}
+
+/// Callback-explicit source kernel for `finalize_proof_with_body_digest_v1`.
+///
+/// All validation happens before the first write. After the digest is
+/// computed, the only writes are the cached digest and, last, the versioned
+/// magic. No later fallible operation can leave a partially sealed image.
+#[cfg(feature = "sealed-proof-digest-cache-v1")]
+#[cfg_attr(not(test), allow(dead_code))]
+pub(crate) fn finalize_proof_with_body_digest_v1_and_hash(
+    program_id: &Pubkey,
+    accounts: &[AccountInfo],
+    hash: aspis_core::transcript::HashFn,
+) -> ProgramResult {
+    let account_iter = &mut accounts.iter();
+    let proof_account = next_account_info(account_iter)?;
+    let authority = next_account_info(account_iter)?;
+    if proof_account.owner != program_id {
+        return Err(ProgramError::IncorrectProgramId);
+    }
+    if !proof_account.is_writable || proof_account.executable {
+        return Err(ProgramError::InvalidAccountData);
+    }
+    let mut data = proof_account.try_borrow_mut_data()?;
+    require_upload_authority(&data, authority)?;
+    let (body_start, body_end) = exact_proof_body_bounds_for_magic(&data, PROOF_ACCOUNT_MAGIC)?;
+    let body_digest = hash(&[&data[body_start..body_end]]);
+    data[PROOF_BODY_DIGEST_V1_OFFSET..PROOF_BODY_DIGEST_V1_OFFSET + 32]
+        .copy_from_slice(&body_digest);
+    data[0..4].copy_from_slice(&PROOF_ACCOUNT_SEALED_DIGEST_V1_MAGIC);
     Ok(())
 }
 
@@ -592,6 +756,411 @@ mod tests {
                 Err(ProgramError::InvalidAccountData)
             );
         }
+    }
+
+    #[cfg(feature = "sealed-proof-digest-cache-v1")]
+    fn host_hashv(inputs: &[&[u8]]) -> [u8; 32] {
+        solana_program::hash::hashv(inputs).to_bytes()
+    }
+
+    #[cfg(feature = "sealed-proof-digest-cache-v1")]
+    #[test]
+    fn sealed_digest_cache_v1_is_exact_zero_byte_framing() {
+        let program_id = id();
+        let proof_key = Pubkey::new_unique();
+        let authority_key = Pubkey::new_unique();
+        let authority_owner = solana_program::system_program::id();
+        let proof_body = *b"proof-v1";
+        let expected_digest = host_hashv(&[&proof_body]);
+        let mut proof_lamports = 1;
+        let mut authority_lamports = 1;
+        let mut proof_data = [0u8; PROOF_ACCOUNT_HEADER_LEN + 8];
+        let mut authority_data = [];
+        proof_data[..4].copy_from_slice(&PROOF_ACCOUNT_MAGIC);
+        proof_data[4..8].copy_from_slice(&8u32.to_le_bytes());
+        proof_data[AUTHORITY_OFFSET..AUTHORITY_OFFSET + 32].copy_from_slice(authority_key.as_ref());
+        proof_data[PROOF_ACCOUNT_HEADER_LEN..].copy_from_slice(&proof_body);
+
+        {
+            let proof = make_account(
+                &proof_key,
+                &program_id,
+                &mut proof_lamports,
+                &mut proof_data,
+                false,
+                true,
+            );
+            let authority = make_account(
+                &authority_key,
+                &authority_owner,
+                &mut authority_lamports,
+                &mut authority_data,
+                true,
+                false,
+            );
+            assert_eq!(
+                finalize_proof_with_body_digest_v1(&program_id, &[proof, authority]),
+                Ok(())
+            );
+        }
+
+        assert_eq!(
+            proof_data.len(),
+            PROOF_ACCOUNT_HEADER_LEN + proof_body.len()
+        );
+        assert_eq!(proof_data[..4], PROOF_ACCOUNT_SEALED_DIGEST_V1_MAGIC);
+        assert_eq!(u32::from_le_bytes(proof_data[4..8].try_into().unwrap()), 8);
+        assert_eq!(
+            proof_data[PROOF_BODY_DIGEST_V1_OFFSET..PROOF_BODY_DIGEST_V1_OFFSET + 32],
+            expected_digest
+        );
+        assert_eq!(proof_data[PROOF_ACCOUNT_HEADER_LEN..], proof_body);
+        assert_eq!(
+            audit_sealed_proof_body_digest_v1(&proof_data, host_hashv),
+            Ok(ValidatedSealedProofBodyDigestV1 {
+                body_start: PROOF_ACCOUNT_HEADER_LEN,
+                body_end: proof_data.len(),
+                body_digest: expected_digest,
+            })
+        );
+
+        let proof = make_account(
+            &proof_key,
+            &program_id,
+            &mut proof_lamports,
+            &mut proof_data,
+            false,
+            false,
+        );
+        assert_eq!(
+            validate_readonly_sealed_proof_body_digest_v1(
+                &program_id,
+                &proof,
+                proof_body.len() as u32,
+                &expected_digest,
+            ),
+            Ok(ValidatedSealedProofBodyDigestV1 {
+                body_start: PROOF_ACCOUNT_HEADER_LEN,
+                body_end: PROOF_ACCOUNT_HEADER_LEN + proof_body.len(),
+                body_digest: expected_digest,
+            })
+        );
+    }
+
+    #[cfg(feature = "sealed-proof-digest-cache-v1")]
+    #[test]
+    fn sealed_digest_cache_v1_rejects_every_lifecycle_mutator() {
+        let program_id = id();
+        let proof_key = Pubkey::new_unique();
+        let authority_key = Pubkey::new_unique();
+        let authority_owner = solana_program::system_program::id();
+        let mut proof_lamports = 1;
+        let mut authority_lamports = 1;
+        let mut proof_data = [0u8; PROOF_ACCOUNT_HEADER_LEN + 8];
+        let mut authority_data = [];
+        proof_data[..4].copy_from_slice(&PROOF_ACCOUNT_MAGIC);
+        proof_data[4..8].copy_from_slice(&8u32.to_le_bytes());
+        proof_data[AUTHORITY_OFFSET..AUTHORITY_OFFSET + 32].copy_from_slice(authority_key.as_ref());
+        proof_data[PROOF_ACCOUNT_HEADER_LEN..].copy_from_slice(b"proof-v1");
+
+        {
+            let proof = make_account(
+                &proof_key,
+                &program_id,
+                &mut proof_lamports,
+                &mut proof_data,
+                false,
+                true,
+            );
+            let authority = make_account(
+                &authority_key,
+                &authority_owner,
+                &mut authority_lamports,
+                &mut authority_data,
+                true,
+                false,
+            );
+            assert_eq!(
+                finalize_proof_with_body_digest_v1_and_hash(
+                    &program_id,
+                    &[proof, authority],
+                    host_hashv,
+                ),
+                Ok(())
+            );
+        }
+        let sealed = proof_data;
+
+        {
+            let proof = make_account(
+                &proof_key,
+                &program_id,
+                &mut proof_lamports,
+                &mut proof_data,
+                false,
+                true,
+            );
+            let authority = make_account(
+                &authority_key,
+                &authority_owner,
+                &mut authority_lamports,
+                &mut authority_data,
+                true,
+                false,
+            );
+            assert_eq!(
+                upload_chunk(&program_id, &[proof, authority], 0, &[0xff]),
+                Err(ProgramError::InvalidAccountData)
+            );
+        }
+        assert_eq!(proof_data, sealed);
+
+        {
+            let proof = make_account(
+                &proof_key,
+                &program_id,
+                &mut proof_lamports,
+                &mut proof_data,
+                true,
+                true,
+            );
+            let authority = make_account(
+                &authority_key,
+                &authority_owner,
+                &mut authority_lamports,
+                &mut authority_data,
+                true,
+                false,
+            );
+            assert_eq!(
+                init_proof(&program_id, &[proof, authority], 8),
+                Err(ProgramError::InvalidAccountData)
+            );
+        }
+        assert_eq!(proof_data, sealed);
+
+        for versioned in [false, true] {
+            let proof = make_account(
+                &proof_key,
+                &program_id,
+                &mut proof_lamports,
+                &mut proof_data,
+                false,
+                true,
+            );
+            let authority = make_account(
+                &authority_key,
+                &authority_owner,
+                &mut authority_lamports,
+                &mut authority_data,
+                true,
+                false,
+            );
+            let result = if versioned {
+                finalize_proof_with_body_digest_v1_and_hash(
+                    &program_id,
+                    &[proof, authority],
+                    host_hashv,
+                )
+            } else {
+                finalize_proof(&program_id, &[proof, authority])
+            };
+            assert_eq!(result, Err(ProgramError::InvalidAccountData));
+            assert_eq!(proof_data, sealed);
+        }
+    }
+
+    #[cfg(feature = "sealed-proof-digest-cache-v1")]
+    #[test]
+    fn sealed_digest_cache_v1_rejects_malformed_stale_and_unsafe_framing() {
+        let program_id = id();
+        let proof_key = Pubkey::new_unique();
+        let authority_key = Pubkey::new_unique();
+        let authority_owner = solana_program::system_program::id();
+        let proof_body = *b"proof-v1";
+        let expected_digest = host_hashv(&[&proof_body]);
+        let mut exact = [0u8; PROOF_ACCOUNT_HEADER_LEN + 8];
+        exact[..4].copy_from_slice(&PROOF_ACCOUNT_MAGIC);
+        exact[4..8].copy_from_slice(&8u32.to_le_bytes());
+        exact[AUTHORITY_OFFSET..AUTHORITY_OFFSET + 32].copy_from_slice(authority_key.as_ref());
+        exact[PROOF_ACCOUNT_HEADER_LEN..].copy_from_slice(&proof_body);
+
+        for declared_len in [7u32, 9] {
+            let mut proof_lamports = 1;
+            let mut authority_lamports = 1;
+            let mut authority_data = [];
+            let mut malformed = exact;
+            malformed[4..8].copy_from_slice(&declared_len.to_le_bytes());
+            let before = malformed;
+            {
+                let proof = make_account(
+                    &proof_key,
+                    &program_id,
+                    &mut proof_lamports,
+                    &mut malformed,
+                    false,
+                    true,
+                );
+                let authority = make_account(
+                    &authority_key,
+                    &authority_owner,
+                    &mut authority_lamports,
+                    &mut authority_data,
+                    true,
+                    false,
+                );
+                assert_eq!(
+                    finalize_proof_with_body_digest_v1_and_hash(
+                        &program_id,
+                        &[proof, authority],
+                        host_hashv,
+                    ),
+                    Err(ProgramError::InvalidAccountData)
+                );
+            }
+            assert_eq!(malformed, before);
+        }
+
+        let mut proof_lamports = 1;
+        let mut authority_lamports = 1;
+        let mut authority_data = [];
+        {
+            let proof = make_account(
+                &proof_key,
+                &program_id,
+                &mut proof_lamports,
+                &mut exact,
+                false,
+                true,
+            );
+            let authority = make_account(
+                &authority_key,
+                &authority_owner,
+                &mut authority_lamports,
+                &mut authority_data,
+                true,
+                false,
+            );
+            assert_eq!(
+                finalize_proof_with_body_digest_v1_and_hash(
+                    &program_id,
+                    &[proof, authority],
+                    host_hashv,
+                ),
+                Ok(())
+            );
+        }
+
+        let sealed = exact;
+        for (owner, signer, writable, expected_len, digest, expected_error) in [
+            (
+                program_id,
+                false,
+                false,
+                7u32,
+                expected_digest,
+                ProgramError::InvalidAccountData,
+            ),
+            (
+                program_id,
+                false,
+                false,
+                8u32,
+                [0x55; 32],
+                ProgramError::InvalidAccountData,
+            ),
+            (
+                authority_owner,
+                false,
+                false,
+                8u32,
+                expected_digest,
+                ProgramError::IncorrectProgramId,
+            ),
+            (
+                program_id,
+                true,
+                false,
+                8u32,
+                expected_digest,
+                ProgramError::InvalidAccountData,
+            ),
+            (
+                program_id,
+                false,
+                true,
+                8u32,
+                expected_digest,
+                ProgramError::InvalidAccountData,
+            ),
+        ] {
+            let proof = make_account(
+                &proof_key,
+                &owner,
+                &mut proof_lamports,
+                &mut exact,
+                signer,
+                writable,
+            );
+            assert_eq!(
+                validate_readonly_sealed_proof_body_digest_v1(
+                    &program_id,
+                    &proof,
+                    expected_len,
+                    &digest,
+                ),
+                Err(expected_error)
+            );
+            assert_eq!(exact, sealed);
+        }
+
+        {
+            let executable = AccountInfo::new(
+                &proof_key,
+                false,
+                false,
+                &mut proof_lamports,
+                &mut exact,
+                &program_id,
+                true,
+                solana_program::clock::Epoch::default(),
+            );
+            assert_eq!(
+                validate_readonly_sealed_proof_body_digest_v1(
+                    &program_id,
+                    &executable,
+                    8,
+                    &expected_digest,
+                ),
+                Err(ProgramError::InvalidAccountData)
+            );
+        }
+        assert_eq!(exact, sealed);
+
+        let mut stale_body = sealed;
+        stale_body[PROOF_ACCOUNT_HEADER_LEN] ^= 1;
+        assert_eq!(
+            audit_sealed_proof_body_digest_v1(&stale_body, host_hashv),
+            Err(ProgramError::InvalidAccountData)
+        );
+        let mut stale_header = sealed;
+        stale_header[PROOF_BODY_DIGEST_V1_OFFSET] ^= 1;
+        assert_eq!(
+            audit_sealed_proof_body_digest_v1(&stale_header, host_hashv),
+            Err(ProgramError::InvalidAccountData)
+        );
+        let mut trailing = sealed.to_vec();
+        trailing.push(0);
+        assert_eq!(
+            audit_sealed_proof_body_digest_v1(&trailing, host_hashv),
+            Err(ProgramError::InvalidAccountData)
+        );
+        let mut wrong_magic = sealed;
+        wrong_magic[..4].copy_from_slice(&PROOF_ACCOUNT_MAGIC);
+        assert_eq!(
+            audit_sealed_proof_body_digest_v1(&wrong_magic, host_hashv),
+            Err(ProgramError::InvalidAccountData)
+        );
     }
 
     #[test]
