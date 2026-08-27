@@ -21,14 +21,20 @@ use aspis_core::v7_onefold::{
     V7OpeningDiagnosticPhase,
 };
 use aspis_statement::pool_v1::{
+    decode_pool_v1_pair_verified_afterstate_v1, decode_pool_v1_pair_verifier_request_v1,
+    decode_pool_v1_private_transfer_public_v1, encode_pool_v1_private_transfer_public_v1,
     evaluate_pool_v1_private_transfer_selected_masked_terminal_compiled_tag73_v1,
-    pool_v1_private_transfer_copy_active_row_masks_compiled_v1, verifier_proof_body_digest_v1,
+    pool_v1_pair_statement_digest_v1, pool_v1_private_transfer_copy_active_row_masks_compiled_v1,
+    verifier_proof_body_digest_v1, verifier_statement_payload_digest_v1,
+    PoolV1PrivateTransferPublicV1, PoolV1TransitionKind, POOL_V1_HISTORICAL_ANCHOR_VERSION,
+    POOL_V1_PAIR_VERIFIED_AFTERSTATE_BYTES, POOL_V1_PAIR_VERIFIER_REQUEST_MAGIC,
     POOL_V1_PAYMENT_SELECTED_TERMINAL_CLAIMS,
 };
 use solana_program::{
     account_info::AccountInfo,
     entrypoint::ProgramResult,
     log::{sol_log, sol_log_compute_units},
+    program,
     program_error::ProgramError,
     pubkey::Pubkey,
 };
@@ -36,8 +42,19 @@ use solana_program::{
 use crate::lifecycle::{proof_account_finalized, uploaded_proof_bounds};
 use crate::v7_pool_native_dispatch::{
     validate_v7_pool_native_tag73_request_v1, V7PoolNativeTag73StatementV1,
-    V7_POOL_NATIVE_TAG73_RELEASE_BINDING,
+    V7_POOL_NATIVE_TAG73_PROFILE_BINDING, V7_POOL_NATIVE_TAG73_RELEASE_BINDING,
 };
+
+const PRESERVED_NATIVE_PROOF_BYTES: usize = 30_192;
+const PRESERVED_NATIVE_FRONTIER_NODES: usize = 197;
+const PRESERVED_NATIVE_PROOF_SHA256: [u8; 32] = [
+    0x65, 0x6f, 0x25, 0x68, 0x90, 0x41, 0xae, 0x7f, 0x90, 0xc9, 0x46, 0x1f, 0x4d, 0xbe, 0x33, 0x36,
+    0x47, 0x8e, 0x01, 0xe1, 0x97, 0x0f, 0xf0, 0x0c, 0x24, 0xd1, 0xe7, 0xd9, 0x0e, 0xd2, 0xe7, 0x2c,
+];
+const PRESERVED_NATIVE_STATEMENT_DIGEST: [u8; 32] = [
+    0xe6, 0x3c, 0x56, 0x5e, 0x94, 0x25, 0x96, 0x2f, 0x73, 0xa6, 0x8c, 0xb0, 0x7e, 0x65, 0x83, 0x67,
+    0x33, 0x62, 0x4b, 0x1b, 0x47, 0x4b, 0x42, 0x31, 0x07, 0x84, 0xb6, 0xa0, 0x60, 0xe0, 0x67, 0x36,
+];
 
 #[cfg(not(feature = "no-entrypoint"))]
 solana_program::entrypoint!(process_v7_pool_cu_profile_instruction);
@@ -154,12 +171,175 @@ fn authenticate_and_fold_queries(
     })
 }
 
+#[inline(never)]
+fn verify_private_transfer_profile(
+    program_id: &Pubkey,
+    proof_account: &AccountInfo<'_>,
+    proof: &[u8],
+    frontier_nodes: usize,
+    statement: &PoolV1PrivateTransferPublicV1,
+    statement_digest: [u8; 32],
+) -> ProgramResult {
+    let wire = V7CompactOneFoldWire::parse_deferred_canonicality(proof, frontier_nodes)
+        .map_err(|_| ProgramError::InvalidAccountData)?;
+    checkpoint("aspis-v7-profile:wire-parsed");
+    let context = V6TranscriptContext {
+        program_id: program_id.to_bytes(),
+        release_binding: V7_POOL_NATIVE_TAG73_RELEASE_BINDING,
+        statement_digest,
+        attempt_id: proof_account.key.to_bytes(),
+    };
+    let (row_groups, group_masks, group_count) =
+        pool_inactive_schedule(pool_v1_private_transfer_copy_active_row_masks_compiled_v1());
+    checkpoint("aspis-v7-profile:inactive-schedule");
+    let verified =
+        verify_v7_compact_transcript_and_relation_prepared_with_hiding_context_and_diagnostic_trace(
+            crate::verify::sbf_hashv,
+            &wire,
+            &context,
+            StateOnlyHidingContext::pool_v1_private_transfer(
+                statement_digest,
+                proof_account.key.to_bytes(),
+            ),
+            &row_groups,
+            &group_masks[..group_count],
+            true,
+            |view| {
+                evaluate_pool_v1_private_transfer_selected_masked_terminal_compiled_tag73_v1(
+                    statement,
+                    &terminal_claims(view),
+                    &view.point,
+                    view.lambda,
+                    view.chi,
+                    view.batching.theta,
+                    &view.batching.zerocheck_point,
+                    view.batching.mu,
+                    view.eta,
+                )
+                .is_ok_and(|expected| expected == view.terminal_claim)
+            },
+            |view| authenticate_and_fold_queries(&wire, view),
+            log_transcript_phase,
+        )
+        .map_err(|_| ProgramError::InvalidAccountData)?;
+    let _ = verified;
+    Ok(())
+}
+
+/// Measurement-only adapter from the existing honest native proof to the
+/// proof-carried pair afterstate transport. The appended ASJA is deliberately
+/// outside the proof transcript; this path measures composition only and is
+/// unavailable in every production feature set.
+#[inline(never)]
+fn process_composed_one_terminal_profile(
+    program_id: &Pubkey,
+    accounts: &[AccountInfo<'_>],
+    instruction_data: &[u8],
+) -> ProgramResult {
+    let [proof_account] = accounts else {
+        return Err(ProgramError::NotEnoughAccountKeys);
+    };
+    if proof_account.owner != program_id
+        || proof_account.is_signer
+        || proof_account.is_writable
+        || proof_account.executable
+    {
+        return Err(ProgramError::InvalidAccountData);
+    }
+    let request = decode_pool_v1_pair_verifier_request_v1(instruction_data)
+        .map_err(|_| ProgramError::InvalidInstructionData)?;
+    if request.binding.transition_kind != PoolV1TransitionKind::PrivateTransfer
+        || request.binding.verifier_program != program_id.to_bytes()
+        || request.binding.profile_binding != V7_POOL_NATIVE_TAG73_PROFILE_BINDING
+        || request.binding.release_binding != V7_POOL_NATIVE_TAG73_RELEASE_BINDING
+        || request.binding.proof_account != proof_account.key.to_bytes()
+        || request.binding.proof_body_length as usize
+            != PRESERVED_NATIVE_PROOF_BYTES + POOL_V1_PAIR_VERIFIED_AFTERSTATE_BYTES
+        || pool_v1_pair_statement_digest_v1(request.statement_payload, crate::verify::sbf_hashv)
+            != request.binding.statement_digest
+    {
+        return Err(ProgramError::InvalidInstructionData);
+    }
+    let outer_statement = decode_pool_v1_private_transfer_public_v1(request.statement_payload)
+        .map_err(|_| ProgramError::InvalidInstructionData)?;
+    if outer_statement.pool != request.binding.pool {
+        return Err(ProgramError::InvalidInstructionData);
+    }
+    checkpoint("aspis-v7-profile:composed-request-validated");
+
+    let data = proof_account.try_borrow_data()?;
+    if !proof_account_finalized(&data) {
+        return Err(ProgramError::InvalidAccountData);
+    }
+    let (body_start, body_end) = uploaded_proof_bounds(&data)?;
+    if body_end != data.len()
+        || body_end - body_start
+            != PRESERVED_NATIVE_PROOF_BYTES + POOL_V1_PAIR_VERIFIED_AFTERSTATE_BYTES
+    {
+        return Err(ProgramError::InvalidAccountData);
+    }
+    let split = body_start + PRESERVED_NATIVE_PROOF_BYTES;
+    let proof = &data[body_start..split];
+    let afterstate = &data[split..body_end];
+    if verifier_proof_body_digest_v1(proof, crate::verify::sbf_hashv)
+        != PRESERVED_NATIVE_PROOF_SHA256
+        || decode_pool_v1_pair_verified_afterstate_v1(afterstate).is_err()
+    {
+        return Err(ProgramError::InvalidAccountData);
+    }
+    checkpoint("aspis-v7-profile:proof-body-hash");
+
+    // The preserved proof was produced for the legacy single-leaf Pool PDA.
+    // All other public fields are taken from the outer pair instruction. This
+    // one field substitution is part of the explicit unsound measurement
+    // boundary and must never become a production adapter.
+    let native_statement = PoolV1PrivateTransferPublicV1 {
+        pool: solana_program::pubkey!("BZRi5jf2SdDMpJBJnLTHhM5EnwyzWLRDJhNYzeosRogf").to_bytes(),
+        deployment_domain: outer_statement.deployment_domain,
+        anchor_sequence: outer_statement.anchor_sequence,
+        anchor_root: outer_statement.anchor_root,
+        nullifier: outer_statement.nullifier,
+        asset_id: outer_statement.asset_id,
+        recipient_commitment: outer_statement.recipient_commitment,
+        change_commitment: outer_statement.change_commitment,
+    };
+    let native_payload = encode_pool_v1_private_transfer_public_v1(&native_statement)
+        .map_err(|_| ProgramError::InvalidInstructionData)?;
+    let native_statement_digest = verifier_statement_payload_digest_v1(
+        POOL_V1_HISTORICAL_ANCHOR_VERSION,
+        &V7_POOL_NATIVE_TAG73_PROFILE_BINDING,
+        &V7_POOL_NATIVE_TAG73_RELEASE_BINDING,
+        &native_payload,
+        crate::verify::sbf_hashv,
+    )
+    .map_err(|_| ProgramError::InvalidInstructionData)?;
+    if native_statement_digest != PRESERVED_NATIVE_STATEMENT_DIGEST {
+        return Err(ProgramError::InvalidInstructionData);
+    }
+    checkpoint("aspis-v7-profile:native-statement-restored");
+    verify_private_transfer_profile(
+        program_id,
+        proof_account,
+        proof,
+        PRESERVED_NATIVE_FRONTIER_NODES,
+        &native_statement,
+        native_statement_digest,
+    )?;
+    checkpoint("aspis-v7-profile:proof-accepted");
+    program::set_return_data(afterstate);
+    checkpoint("aspis-v7-profile:asja-return-set");
+    Ok(())
+}
+
 pub fn process_v7_pool_cu_profile_instruction(
     program_id: &Pubkey,
     accounts: &[AccountInfo<'_>],
     instruction_data: &[u8],
 ) -> ProgramResult {
     checkpoint("aspis-v7-profile:entry");
+    if instruction_data.get(..4) == Some(&POOL_V1_PAIR_VERIFIER_REQUEST_MAGIC) {
+        return process_composed_one_terminal_profile(program_id, accounts, instruction_data);
+    }
     let [proof_account] = accounts else {
         return Err(ProgramError::NotEnoughAccountKeys);
     };
@@ -196,49 +376,14 @@ pub fn process_v7_pool_cu_profile_instruction(
     let V7PoolNativeTag73StatementV1::PrivateTransfer(statement) = validated.statement else {
         return Err(ProgramError::InvalidInstructionData);
     };
-    let wire = V7CompactOneFoldWire::parse_deferred_canonicality(proof, validated.frontier_nodes)
-        .map_err(|_| ProgramError::InvalidAccountData)?;
-    checkpoint("aspis-v7-profile:wire-parsed");
-    let context = V6TranscriptContext {
-        program_id: program_id.to_bytes(),
-        release_binding: V7_POOL_NATIVE_TAG73_RELEASE_BINDING,
-        statement_digest: validated.request.binding.statement_digest,
-        attempt_id: proof_account.key.to_bytes(),
-    };
-    let (row_groups, group_masks, group_count) =
-        pool_inactive_schedule(pool_v1_private_transfer_copy_active_row_masks_compiled_v1());
-    checkpoint("aspis-v7-profile:inactive-schedule");
-    let verified =
-        verify_v7_compact_transcript_and_relation_prepared_with_hiding_context_and_diagnostic_trace(
-            crate::verify::sbf_hashv,
-            &wire,
-            &context,
-            StateOnlyHidingContext::pool_v1_private_transfer(
-                validated.request.binding.statement_digest,
-                proof_account.key.to_bytes(),
-            ),
-            &row_groups,
-            &group_masks[..group_count],
-            true,
-            |view| {
-                evaluate_pool_v1_private_transfer_selected_masked_terminal_compiled_tag73_v1(
-                    &statement,
-                    &terminal_claims(view),
-                    &view.point,
-                    view.lambda,
-                    view.chi,
-                    view.batching.theta,
-                    &view.batching.zerocheck_point,
-                    view.batching.mu,
-                    view.eta,
-                )
-                .is_ok_and(|expected| expected == view.terminal_claim)
-            },
-            |view| authenticate_and_fold_queries(&wire, view),
-            log_transcript_phase,
-        )
-        .map_err(|_| ProgramError::InvalidAccountData)?;
-    let _ = verified;
+    verify_private_transfer_profile(
+        program_id,
+        proof_account,
+        proof,
+        validated.frontier_nodes,
+        &statement,
+        validated.request.binding.statement_digest,
+    )?;
     checkpoint("aspis-v7-profile:complete");
     Ok(())
 }
