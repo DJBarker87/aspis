@@ -25,6 +25,12 @@ Theorems and exact #print axioms:
     [propext, Classical.choice, Quot.sound]
   append_loop_body_exact_root_slot
     [propext, Classical.choice, Quot.sound]
+  write_loop_success_has_exact_trace
+    [propext, Classical.choice, Quot.sound]
+  append_loop_success_has_exact_trace
+    [propext, Classical.choice, Quot.sound]
+  append_roots_success_has_exact_persistence
+    [propext, Classical.choice, Quot.sound]
 
 Coverage:
   - literal translated iterator next result and continuation identity;
@@ -34,6 +40,10 @@ Coverage:
   - new-page slot = enumerated ordinal;
   - append slot = existing filled count + enumerated ordinal;
   - inactive iterator branch preserves all page bytes.
+  - complete literal new-page and existing-page iterator loop traces;
+  - successful existing-page capacity check;
+  - exact final filled count = old filled count + roots length;
+  - exact little-endian filled-count persistence at offsets 56--57.
 
 Audit:
   No sorry, admit, sorryAx, project-specific axiom, opaque translated function,

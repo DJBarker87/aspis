@@ -194,12 +194,24 @@ to terminate without changing the page bytes.  Every theorem reports only
 `[propext, Classical.choice, Quot.sound]`; there is no byte-write callback or
 semantic persistence premise.
 
+The recursive capstones `write_loop_success_has_exact_trace` and
+`append_loop_success_has_exact_trace` now lift those byte writes through every
+literal iterator step to the source loop's terminal result.  The trace is
+indexed by the actual source slice and enumerated cursor, so it records the
+canonical encoded root and exact page slot for every input root in order.
+`append_roots_success_has_exact_persistence` additionally peels the complete
+existing-page production function: it proves the capacity check, full loop
+trace, exact `filled := old_filled + roots.len()` arithmetic, and the final
+little-endian two-byte write at page offsets 56--57.  These capstones retain
+the same three standard Lean axioms and add no premise beyond the fixed
+8,256-byte account-page length supplied by the caller.
+
 The remaining implementation lift is:
 
 1. lift the now-closed prepared-afterimage validator through the caller that
    constructs it and through the state/root account writes;
-2. lift the now-exact root-slot loop bodies through their complete production
-   loops and page-header writes, then prove retained-root lookup;
+2. close the new-page static header construction and prove retained-root
+   lookup (existing-page root writes and `filled` persistence are complete);
 3. carry pool identity, owner, PDA and same-writable-account checks through the
    successful program path.
 
