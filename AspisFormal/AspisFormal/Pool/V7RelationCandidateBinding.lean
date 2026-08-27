@@ -444,6 +444,36 @@ theorem alphaRepair_mem_relationCollisionSet
     rw [nextZero'] at difference
     simpa [claimedAt, honestAt] using sub_eq_zero.mp difference.symm
 
+/-- The three post-query relation rounds expose their degree-six collision
+sets without assuming either final-vector matching or exact query injection.
+Those two premises are needed only for the round-zero handoff. -/
+theorem later_alphaRepair_mem_relationCollisionSet
+    [Fintype K] [DecidableEq K]
+    (execution : CandidateExecution K)
+    (round : Fin 4) (later : 0 < round.val)
+    (repair : execution.discrepancyTrace.AlphaRepair round) :
+    execution.alpha round ∈ execution.relationCollisionSet round := by
+  rcases repair with ⟨_, nextZero⟩
+  simp only [relationCollisionSet, roundCollisionSet, Finset.mem_filter,
+    Finset.mem_univ, true_and]
+  fin_cases round
+  · simp at later
+  · have difference := execution.nextError_one
+    have nextZero' : execution.discrepancyTrace.before 2 = 0 := by
+      simpa using nextZero
+    rw [nextZero'] at difference
+    simpa [claimedAt, honestAt] using sub_eq_zero.mp difference.symm
+  · have difference := execution.nextError_two
+    have nextZero' : execution.discrepancyTrace.before 3 = 0 := by
+      simpa using nextZero
+    rw [nextZero'] at difference
+    simpa [claimedAt, honestAt] using sub_eq_zero.mp difference.symm
+  · have difference := execution.nextError_three
+    have nextZero' : execution.discrepancyTrace.before 4 = 0 := by
+      simpa using nextZero
+    rw [nextZero'] at difference
+    simpa [claimedAt, honestAt] using sub_eq_zero.mp difference.symm
+
 /-- A wrong incoming scalar has at most six repairing challenges in every
 round. -/
 theorem relationCollisionSet_card_le_six
@@ -492,6 +522,43 @@ theorem terminal_discrepancy_zero (execution : CandidateExecution K)
       candidateClaim execution.weights4 execution.values4 = 0
   rw [← terminal]
   exact sub_self _
+
+/-- If the discrepancy immediately after query injection is nonzero but the
+literal terminal comparison accepts, one of rounds one, two, or three must
+repair it.  No round-zero final-vector or query-exactness premise is used. -/
+theorem later_alphaRepair_of_before_one_ne_terminal
+    (execution : CandidateExecution K)
+    (beforeOne : execution.discrepancyTrace.before 1 ≠ 0)
+    (terminal : execution.RelationTerminalAccepts) :
+    ∃ round : Fin 4, 0 < round.val ∧
+      execution.discrepancyTrace.AlphaRepair round := by
+  have afterOne : execution.discrepancyTrace.afterMix 1 ≠ 0 := by
+    simpa [FourRoundDiscrepancyTrace.afterMix, discrepancyTrace] using
+      beforeOne
+  by_cases beforeTwo : execution.discrepancyTrace.before 2 = 0
+  · exact ⟨1, by decide, afterOne, by simpa using beforeTwo⟩
+  have afterTwo : execution.discrepancyTrace.afterMix 2 ≠ 0 := by
+    simpa [FourRoundDiscrepancyTrace.afterMix, discrepancyTrace] using
+      beforeTwo
+  by_cases beforeThree : execution.discrepancyTrace.before 3 = 0
+  · exact ⟨2, by decide, afterTwo, by simpa using beforeThree⟩
+  have afterThree : execution.discrepancyTrace.afterMix 3 ≠ 0 := by
+    simpa [FourRoundDiscrepancyTrace.afterMix, discrepancyTrace] using
+      beforeThree
+  exact ⟨3, by decide, afterThree, by
+    simpa using execution.terminal_discrepancy_zero terminal⟩
+
+/-- A later repair is membership in one exact degree-six set. -/
+theorem later_alphaRepair_has_degreeSix_bad_set
+    [Fintype K] [DecidableEq K]
+    (execution : CandidateExecution K)
+    (round : Fin 4) (later : 0 < round.val)
+    (repair : execution.discrepancyTrace.AlphaRepair round) :
+    execution.alpha round ∈ execution.relationCollisionSet round ∧
+      (execution.relationCollisionSet round).card ≤ 6 := by
+  exact ⟨execution.later_alphaRepair_mem_relationCollisionSet round later repair,
+    execution.relationCollisionSet_card_le_six round
+      (execution.wrongIncoming_of_alphaRepair round repair)⟩
 
 /-- Outside the exact two-OOD cancellation and all four actual alpha-repair
 events, terminal acceptance forces the initial and both OOD claims to be the
@@ -549,8 +616,11 @@ theorem initial_and_ood_claims_exact_outside_collisions
 #print axioms wrongIncoming_of_alphaRepair
 #print axioms nextError_zero
 #print axioms alphaRepair_mem_relationCollisionSet
+#print axioms later_alphaRepair_mem_relationCollisionSet
 #print axioms relationCollisionSet_card_le_six
 #print axioms alphaRepair_has_degreeSix_bad_set
+#print axioms later_alphaRepair_of_before_one_ne_terminal
+#print axioms later_alphaRepair_has_degreeSix_bad_set
 #print axioms initial_and_ood_claims_exact_outside_collisions
 
 end CandidateExecution
