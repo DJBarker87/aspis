@@ -1151,6 +1151,63 @@ pub fn verify_pool_v1_pair_copy_registry_v1(
         .map_err(|_| PoolV1PairTraceErrorV1::CopyImbalance)
 }
 
+/// Pack the sixteen late physical M31 columns into the four committed C2
+/// lanes at each Boolean row. This is only a row-level transport map.
+pub fn pool_v1_pair_late_c2_messages_v1(
+    trace: &PoolV1PairTraceV1,
+) -> Result<[Vec<QM31>; 4], PoolV1PairTraceErrorV1> {
+    if trace.late.iter().any(|column| column.len() != 1024) {
+        return Err(PoolV1PairTraceErrorV1::Shape);
+    }
+    Ok(core::array::from_fn(|packed| {
+        (0..1024)
+            .map(|row| QM31 {
+                c0: CM31::new(trace.late[4 * packed][row], trace.late[4 * packed + 1][row]),
+                c1: CM31::new(
+                    trace.late[4 * packed + 2][row],
+                    trace.late[4 * packed + 3][row],
+                ),
+            })
+            .collect()
+    }))
+}
+
+fn evaluate_late_component(
+    column: &[M31],
+    point: &[QM31; 10],
+) -> Result<QM31, PoolV1PairTraceErrorV1> {
+    if column.len() != 1024 {
+        return Err(PoolV1PairTraceErrorV1::Shape);
+    }
+    let mut layer = column
+        .iter()
+        .copied()
+        .map(|value| QM31::from_cm31(CM31::from_m31(value)))
+        .collect::<Vec<_>>();
+    for coordinate in point.iter().rev() {
+        let mut next = Vec::with_capacity(layer.len() / 2);
+        for pair in layer.chunks_exact(2) {
+            next.push(pair[0].add(coordinate.mul(pair[1].sub(pair[0]))));
+        }
+        layer = next;
+    }
+    layer.first().copied().ok_or(PoolV1PairTraceErrorV1::Shape)
+}
+
+/// Produce the sixteen independent off-domain component claims required by
+/// the terminal. They must not be replaced by four packed-lane evaluations:
+/// QM31 multilinear evaluation does not preserve tower coordinates.
+pub fn pool_v1_pair_late_component_claims_v1(
+    trace: &PoolV1PairTraceV1,
+    point: &[QM31; 10],
+) -> Result<[QM31; 16], PoolV1PairTraceErrorV1> {
+    let mut claims = [QM31::ZERO; 16];
+    for (column, claim) in trace.late.iter().zip(&mut claims) {
+        *claim = evaluate_late_component(column, point)?;
+    }
+    Ok(claims)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -1333,5 +1390,30 @@ mod tests {
             QM31::from_cm31(CM31::from_m31(M31(31))),
         )
         .unwrap();
+    }
+
+    #[test]
+    fn late_transport_packs_rows_but_opens_sixteen_component_polynomials() {
+        let (public, witness, context, _) = fixture();
+        let snapshot = snapshot_at(public.pool, public.deployment_domain, 13);
+        let trace =
+            build_pool_v1_pair_private_transfer_trace_v1(&public, &witness, context, snapshot)
+                .unwrap();
+        let packed = pool_v1_pair_late_c2_messages_v1(&trace).unwrap();
+        for row in 0..1024 {
+            for lane in 0..4 {
+                assert_eq!(packed[lane][row].c0.a, trace.late[4 * lane][row]);
+                assert_eq!(packed[lane][row].c0.b, trace.late[4 * lane + 1][row]);
+                assert_eq!(packed[lane][row].c1.a, trace.late[4 * lane + 2][row]);
+                assert_eq!(packed[lane][row].c1.b, trace.late[4 * lane + 3][row]);
+            }
+        }
+        let point = core::array::from_fn(|coordinate| QM31 {
+            c0: CM31::new(M31(41 + coordinate as u32), M31(71 + coordinate as u32)),
+            c1: CM31::new(M31(101 + coordinate as u32), M31(131 + coordinate as u32)),
+        });
+        let claims = pool_v1_pair_late_component_claims_v1(&trace, &point).unwrap();
+        assert_eq!(claims.len(), 16);
+        assert!(claims.iter().any(|claim| *claim != QM31::ZERO));
     }
 }
