@@ -83,6 +83,13 @@ v7-pair-forest-cu-return-824 = ["v7-pair-forest-cu-profile"]
 v7-pair-forest-cu-return-856 = ["v7-pair-forest-cu-profile"]
 v7-pair-forest-cu-return-920 = ["v7-pair-forest-cu-profile"]
 v7-pair-forest-cu-return-1024 = ["v7-pair-forest-cu-profile"]
+# Measurement-only Phase-1 decompositions.  Neither feature is an accepting
+# optimization: the deferred scan is sound only if the real terminal later
+# performs the complete canonical decode exactly once, and the typed snapshot
+# route relies on the same account/PDA decoders as the baseline.
+v7-pair-forest-cu-component-baseline = ["v7-pair-forest-cu-profile"]
+v7-pair-forest-cu-wire-deferred = ["v7-pair-forest-cu-profile"]
+v7-pair-forest-cu-snapshot-direct = ["v7-pair-forest-cu-profile"]
 
 [dependencies]
 aspis-core = { path = "../../crates/aspis-core" }

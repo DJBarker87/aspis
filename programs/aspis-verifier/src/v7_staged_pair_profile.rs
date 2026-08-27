@@ -9,13 +9,35 @@ use aspis_core::{
     v6_onefold::V6WireError,
     v7_staged_pair::{V7StagedPairOneFoldWire, V7_STAGED_PAIR_MAX_BODY_BYTES},
 };
+#[cfg(feature = "v7-pair-forest-cu-snapshot-direct")]
+use aspis_statement::pool_v1::validate_pool_v1_pair_live_snapshot_v1;
 use aspis_statement::pool_v1::{
     decode_pool_v1_pair_live_snapshot_v1, decode_pool_v1_pair_verified_afterstate_v1,
     encode_pool_v1_pair_verified_afterstate_v1, PoolV1PairLatePublicStatementErrorV1,
-    PoolV1PairLatePublicStatementV1, PoolV1PairLiveSnapshotErrorV1, PoolV1PairVerifiedAfterstateV1,
-    PoolV1PairVerifierTransportErrorV1, POOL_V1_PAIR_VERIFIED_AFTERSTATE_BYTES,
+    PoolV1PairLatePublicStatementV1, PoolV1PairLiveSnapshotErrorV1, PoolV1PairLiveSnapshotV1,
+    PoolV1PairVerifiedAfterstateV1, PoolV1PairVerifierTransportErrorV1,
+    POOL_V1_PAIR_VERIFIED_AFTERSTATE_BYTES,
 };
 use solana_program::program;
+
+#[inline(always)]
+fn component_checkpoint(label: &'static str) {
+    #[cfg(any(
+        feature = "v7-pair-forest-cu-component-baseline",
+        feature = "v7-pair-forest-cu-wire-deferred",
+        feature = "v7-pair-forest-cu-snapshot-direct"
+    ))]
+    {
+        solana_program::log::sol_log(label);
+        solana_program::log::sol_log_compute_units();
+    }
+    #[cfg(not(any(
+        feature = "v7-pair-forest-cu-component-baseline",
+        feature = "v7-pair-forest-cu-wire-deferred",
+        feature = "v7-pair-forest-cu-snapshot-direct"
+    )))]
+    let _ = label;
+}
 
 pub const V7_STAGED_PAIR_PROFILE_BINDING_PREIMAGE: &[u8] =
     b"aspis:pool-v1:verifier-profile:tag73-pair-merged-c1-pre-root:logical29:proof30504:asja688:v3";
@@ -91,16 +113,93 @@ pub fn parse_v7_staged_pair_inputs_v1<'a>(
     let (candidate_bytes, proof) =
         finalized_upload_payload.split_at(V7_STAGED_PAIR_PROOF_METADATA_BYTES);
     let live_snapshot = decode_pool_v1_pair_live_snapshot_v1(account_derived_live_snapshot)?;
+    component_checkpoint("aspis-asq8-component:snapshot-ready");
     let candidate_afterstate = decode_pool_v1_pair_verified_afterstate_v1(candidate_bytes)?;
+    component_checkpoint("aspis-asq8-component:candidate-ready");
     if live_snapshot.next_pair_index.checked_add(1) != Some(candidate_afterstate.next_pair_index) {
         return Err(V7StagedPairProfileErrorV1::LateStatement(
             PoolV1PairLatePublicStatementErrorV1::AfterstateIndexMismatch,
         ));
     }
+    let wire = V7StagedPairOneFoldWire::parse(proof, frontier_nodes)?;
+    component_checkpoint("aspis-asq8-component:wire-ready");
     Ok(ParsedV7StagedPairInputsV1 {
-        wire: V7StagedPairOneFoldWire::parse(proof, frontier_nodes)?,
+        wire,
         late_statement: PoolV1PairLatePublicStatementV1 {
             live_snapshot,
+            candidate_afterstate,
+        },
+    })
+}
+
+/// Measurement-only decomposition of the exact wire parser. This retains
+/// length, section, frontier-cap, and packed-padding checks but deliberately
+/// defers the complete 4,996-limb canonical scan. It cannot authorize an
+/// accepted proof unless the later real cryptographic path consumes this wire
+/// and canonically decodes every field exactly once.
+#[cfg(feature = "v7-pair-forest-cu-wire-deferred")]
+#[inline(never)]
+pub(crate) fn parse_v7_staged_pair_inputs_deferred_measurement_v1<'a>(
+    finalized_upload_payload: &'a [u8],
+    frontier_nodes: usize,
+    account_derived_live_snapshot: &[u8],
+) -> Result<ParsedV7StagedPairInputsV1<'a>, V7StagedPairProfileErrorV1> {
+    if finalized_upload_payload.len() < V7_STAGED_PAIR_PROOF_METADATA_BYTES {
+        return Err(V7StagedPairProfileErrorV1::Wire(V6WireError::WrongLength));
+    }
+    let (candidate_bytes, proof) =
+        finalized_upload_payload.split_at(V7_STAGED_PAIR_PROOF_METADATA_BYTES);
+    let live_snapshot = decode_pool_v1_pair_live_snapshot_v1(account_derived_live_snapshot)?;
+    component_checkpoint("aspis-asq8-component:snapshot-ready");
+    let candidate_afterstate = decode_pool_v1_pair_verified_afterstate_v1(candidate_bytes)?;
+    component_checkpoint("aspis-asq8-component:candidate-ready");
+    if live_snapshot.next_pair_index.checked_add(1) != Some(candidate_afterstate.next_pair_index) {
+        return Err(V7StagedPairProfileErrorV1::LateStatement(
+            PoolV1PairLatePublicStatementErrorV1::AfterstateIndexMismatch,
+        ));
+    }
+    let wire = V7StagedPairOneFoldWire::parse_deferred_canonicality(proof, frontier_nodes)?;
+    component_checkpoint("aspis-asq8-component:wire-ready");
+    Ok(ParsedV7StagedPairInputsV1 {
+        wire,
+        late_statement: PoolV1PairLatePublicStatementV1 {
+            live_snapshot,
+            candidate_afterstate,
+        },
+    })
+}
+
+/// Measurement-only typed snapshot route. The same semantic snapshot
+/// predicate is applied directly to the object constructed from canonical
+/// Pool account decoders, avoiding only the redundant 800-byte encode/decode
+/// round trip. The full proof-wire canonical scan remains unchanged.
+#[cfg(feature = "v7-pair-forest-cu-snapshot-direct")]
+#[inline(never)]
+pub(crate) fn parse_v7_staged_pair_inputs_typed_snapshot_measurement_v1<'a>(
+    finalized_upload_payload: &'a [u8],
+    frontier_nodes: usize,
+    live_snapshot: &PoolV1PairLiveSnapshotV1,
+) -> Result<ParsedV7StagedPairInputsV1<'a>, V7StagedPairProfileErrorV1> {
+    if finalized_upload_payload.len() < V7_STAGED_PAIR_PROOF_METADATA_BYTES {
+        return Err(V7StagedPairProfileErrorV1::Wire(V6WireError::WrongLength));
+    }
+    validate_pool_v1_pair_live_snapshot_v1(live_snapshot)?;
+    component_checkpoint("aspis-asq8-component:snapshot-ready");
+    let (candidate_bytes, proof) =
+        finalized_upload_payload.split_at(V7_STAGED_PAIR_PROOF_METADATA_BYTES);
+    let candidate_afterstate = decode_pool_v1_pair_verified_afterstate_v1(candidate_bytes)?;
+    component_checkpoint("aspis-asq8-component:candidate-ready");
+    if live_snapshot.next_pair_index.checked_add(1) != Some(candidate_afterstate.next_pair_index) {
+        return Err(V7StagedPairProfileErrorV1::LateStatement(
+            PoolV1PairLatePublicStatementErrorV1::AfterstateIndexMismatch,
+        ));
+    }
+    let wire = V7StagedPairOneFoldWire::parse(proof, frontier_nodes)?;
+    component_checkpoint("aspis-asq8-component:wire-ready");
+    Ok(ParsedV7StagedPairInputsV1 {
+        wire,
+        late_statement: PoolV1PairLatePublicStatementV1 {
+            live_snapshot: *live_snapshot,
             candidate_afterstate,
         },
     })
@@ -242,5 +341,59 @@ mod tests {
         let encoded = encode_accepted_v7_staged_pair_result_v1(accepted).unwrap();
         assert_eq!(encoded.len(), 688);
         assert_eq!(POOL_V1_PAIR_TREE_DEPTH, 20);
+    }
+
+    #[cfg(feature = "v7-pair-forest-cu-wire-deferred")]
+    #[test]
+    fn deferred_probe_preserves_valid_parse_but_does_not_establish_canonicality() {
+        let snapshot = snapshot();
+        let candidate = PoolV1PairVerifiedAfterstateV1 {
+            next_pair_index: 74,
+            next_root: digest(500),
+            next_frontier: core::array::from_fn(|level| digest(600 + 10 * level as u32)),
+        };
+        let mut snapshot_bytes = [0u8; POOL_V1_PAIR_LIVE_SNAPSHOT_BYTES];
+        encode_pool_v1_pair_live_snapshot_v1(&snapshot, &mut snapshot_bytes).unwrap();
+        let mut upload = vec![0u8; V7_STAGED_PAIR_MAX_UPLOAD_PAYLOAD_BYTES];
+        upload[..V7_STAGED_PAIR_PROOF_METADATA_BYTES]
+            .copy_from_slice(&encode_pool_v1_pair_verified_afterstate_v1(&candidate).unwrap());
+        let exact = parse_v7_staged_pair_inputs_v1(&upload, 203, &snapshot_bytes).unwrap();
+        let deferred =
+            parse_v7_staged_pair_inputs_deferred_measurement_v1(&upload, 203, &snapshot_bytes)
+                .unwrap();
+        assert_eq!(deferred.late_statement, exact.late_statement);
+
+        // First packed limb = p, so the complete parser rejects it while the
+        // layout-only probe intentionally leaves that obligation outstanding.
+        let proof = V7_STAGED_PAIR_PROOF_METADATA_BYTES;
+        upload[proof..proof + 3].fill(0xff);
+        upload[proof + 3] = 0x7f;
+        assert!(parse_v7_staged_pair_inputs_v1(&upload, 203, &snapshot_bytes).is_err());
+        assert!(
+            parse_v7_staged_pair_inputs_deferred_measurement_v1(&upload, 203, &snapshot_bytes,)
+                .is_ok()
+        );
+    }
+
+    #[cfg(feature = "v7-pair-forest-cu-snapshot-direct")]
+    #[test]
+    fn typed_snapshot_probe_matches_byte_round_trip_on_canonical_input() {
+        let snapshot = snapshot();
+        let candidate = PoolV1PairVerifiedAfterstateV1 {
+            next_pair_index: 74,
+            next_root: digest(500),
+            next_frontier: core::array::from_fn(|level| digest(600 + 10 * level as u32)),
+        };
+        let mut snapshot_bytes = [0u8; POOL_V1_PAIR_LIVE_SNAPSHOT_BYTES];
+        encode_pool_v1_pair_live_snapshot_v1(&snapshot, &mut snapshot_bytes).unwrap();
+        let mut upload = vec![0u8; V7_STAGED_PAIR_MAX_UPLOAD_PAYLOAD_BYTES];
+        upload[..V7_STAGED_PAIR_PROOF_METADATA_BYTES]
+            .copy_from_slice(&encode_pool_v1_pair_verified_afterstate_v1(&candidate).unwrap());
+        let exact = parse_v7_staged_pair_inputs_v1(&upload, 203, &snapshot_bytes).unwrap();
+        let direct =
+            parse_v7_staged_pair_inputs_typed_snapshot_measurement_v1(&upload, 203, &snapshot)
+                .unwrap();
+        assert_eq!(direct.late_statement, exact.late_statement);
+        assert_eq!(direct.wire, exact.wire);
     }
 }

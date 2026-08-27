@@ -34,6 +34,10 @@ use solana_program::{
     pubkey::Pubkey,
 };
 
+#[cfg(feature = "v7-pair-forest-cu-wire-deferred")]
+use crate::v7_staged_pair_profile::parse_v7_staged_pair_inputs_deferred_measurement_v1;
+#[cfg(feature = "v7-pair-forest-cu-snapshot-direct")]
+use crate::v7_staged_pair_profile::parse_v7_staged_pair_inputs_typed_snapshot_measurement_v1;
 use crate::{
     lifecycle::{proof_account_finalized, uploaded_proof_bounds},
     v7_pair_empty_roots::V7_PAIR_EMPTY_ROOTS,
@@ -126,6 +130,33 @@ fn decode_lane_box(bytes: &[u8]) -> Result<Box<PoolV1PairForestLaneStateV1>, Pro
 }
 
 #[inline(never)]
+fn build_live_snapshot_box(
+    pool: [u8; 32],
+    deployment_domain: [u8; 32],
+    selected_lane: &PoolV1PairForestLaneStateV1,
+) -> Box<PoolV1PairLiveSnapshotV1> {
+    Box::new(PoolV1PairLiveSnapshotV1 {
+        pool,
+        deployment_domain,
+        sequence: selected_lane.tree.next_leaf_index,
+        next_pair_index: selected_lane.tree.next_leaf_index,
+        current_root: selected_lane.tree.root,
+        frontier: selected_lane.tree.frontier,
+    })
+}
+
+#[cfg(not(feature = "v7-pair-forest-cu-snapshot-direct"))]
+#[inline(never)]
+fn encode_live_snapshot_box(
+    live_snapshot: &PoolV1PairLiveSnapshotV1,
+) -> Result<Box<[u8; POOL_V1_PAIR_LIVE_SNAPSHOT_BYTES]>, ProgramError> {
+    let mut bytes = Box::new([0u8; POOL_V1_PAIR_LIVE_SNAPSHOT_BYTES]);
+    encode_pool_v1_pair_live_snapshot_v1(live_snapshot, bytes.as_mut())
+        .map_err(|_| ProgramError::InvalidAccountData)?;
+    Ok(bytes)
+}
+
+#[inline(never)]
 fn parse_staged_late_statement_box<'a>(
     payload: &'a [u8],
     frontier_nodes: usize,
@@ -133,18 +164,35 @@ fn parse_staged_late_statement_box<'a>(
     deployment_domain: [u8; 32],
     selected_lane: &PoolV1PairForestLaneStateV1,
 ) -> Result<Box<PoolV1PairLatePublicStatementV1>, ProgramError> {
-    let live_snapshot = PoolV1PairLiveSnapshotV1 {
-        pool,
-        deployment_domain,
-        sequence: selected_lane.tree.next_leaf_index,
-        next_pair_index: selected_lane.tree.next_leaf_index,
-        current_root: selected_lane.tree.root,
-        frontier: selected_lane.tree.frontier,
-    };
-    let mut live_snapshot_bytes = [0u8; POOL_V1_PAIR_LIVE_SNAPSHOT_BYTES];
-    encode_pool_v1_pair_live_snapshot_v1(&live_snapshot, &mut live_snapshot_bytes)
-        .map_err(|_| ProgramError::InvalidAccountData)?;
-    parse_v7_staged_pair_inputs_v1(payload, frontier_nodes, &live_snapshot_bytes)
+    let live_snapshot = build_live_snapshot_box(pool, deployment_domain, selected_lane);
+    #[cfg(feature = "v7-pair-forest-cu-snapshot-direct")]
+    return parse_v7_staged_pair_inputs_typed_snapshot_measurement_v1(
+        payload,
+        frontier_nodes,
+        live_snapshot.as_ref(),
+    )
+    .map(|parsed| Box::new(parsed.late_statement))
+    .map_err(|_| ProgramError::InvalidAccountData);
+
+    #[cfg(not(feature = "v7-pair-forest-cu-snapshot-direct"))]
+    let live_snapshot_bytes = encode_live_snapshot_box(live_snapshot.as_ref())?;
+    #[cfg(all(
+        not(feature = "v7-pair-forest-cu-snapshot-direct"),
+        feature = "v7-pair-forest-cu-wire-deferred"
+    ))]
+    return parse_v7_staged_pair_inputs_deferred_measurement_v1(
+        payload,
+        frontier_nodes,
+        live_snapshot_bytes.as_ref(),
+    )
+    .map(|parsed| Box::new(parsed.late_statement))
+    .map_err(|_| ProgramError::InvalidAccountData);
+
+    #[cfg(not(any(
+        feature = "v7-pair-forest-cu-snapshot-direct",
+        feature = "v7-pair-forest-cu-wire-deferred"
+    )))]
+    parse_v7_staged_pair_inputs_v1(payload, frontier_nodes, live_snapshot_bytes.as_ref())
         .map(|parsed| Box::new(parsed.late_statement))
         .map_err(|_| ProgramError::InvalidAccountData)
 }

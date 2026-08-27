@@ -438,7 +438,10 @@ pub enum PoolV1PairLiveSnapshotErrorV1 {
     NonCanonicalDigest,
 }
 
-fn validate_pool_v1_pair_live_snapshot_v1(
+/// Validate the semantic live-snapshot object without forcing a byte
+/// encode/decode round trip. Canonical decoders and callers that already hold
+/// the typed object may reuse this exact predicate.
+pub fn validate_pool_v1_pair_live_snapshot_v1(
     snapshot: &PoolV1PairLiveSnapshotV1,
 ) -> Result<(), PoolV1PairLiveSnapshotErrorV1> {
     if snapshot.pool == [0u8; 32] || snapshot.deployment_domain == [0u8; 32] {

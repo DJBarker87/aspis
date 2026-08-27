@@ -126,3 +126,57 @@ reports oversized frames in uncalled deposit/checkpoint/full-dispatch and
 standalone statement-decoder functions compiled into these inactive feature
 artifacts.  No oversized-frame warning remains on the profile entrypoint's
 executed call graph; all five LiteSVM executions completed successfully.
+
+## Phase 1 staged-codec decomposition
+
+Three additional default-off verifier artifacts carry identical matched
+subphase markers. They reuse the same 792-byte Pool artifact and the same
+20,676-byte minimum-frontier fixture.
+
+| Probe | Total CU | Snapshot phase | Candidate decode | Wire phase | Tail |
+|---|---:|---:|---:|---:|---:|
+| Exact component baseline | 635,345 | 3,188 | 1,834 | 515,274 | 299 |
+| Deferred wire canonicality | 120,342 | 3,185 | 1,834 | 274 | 299 |
+| Direct typed snapshot | 633,154 | 979 | 1,834 | 515,274 | 317 |
+
+The component markers and called-path stack-safe boxing add 682 CU to the
+earlier 634,663-CU 792-byte total, so comparisons in this table use the matched
+635,345-CU component baseline.
+
+The complete 4,996-limb packed-M31 canonical scan costs exactly 515,000 CU
+relative to the exact deferred layout/padding parser. Transaction-wide, the
+deferred probe saves 515,003 CU. The deferred parser still checks exact body
+length, section boundaries, frontier cap and lengths, and the fixed packed
+padding bits.
+
+This is **not** an accepting optimization by itself. A focused test sets the
+first packed limb to the field modulus: the exact parser rejects it while the
+deferred measurement parser accepts its layout. The only sound integration is
+for the later real cryptographic verifier to consume the deferred wire and
+canonically decode every one of the 2,564 fixed limbs and every one of the
+`16 * (104 C1 + 48 C2)` query limbs exactly once before acceptance. Running
+the current complete scan and then decoding the fields again would waste the
+measured 515k CU.
+
+The account-derived 800-byte live-snapshot encode/decode round trip costs
+3,188 CU versus 979 CU for direct typed validation: 2,209 CU at the matched
+subphase, or 2,191 CU transaction-wide after code-layout/tail differences.
+The direct route retains the full wire canonical scan and calls the same
+semantic live-snapshot predicate. It is a candidate plumbing optimization,
+conditional on the source bridge preserving that the typed object comes from
+the exact canonical master/lane account decoders and PDA/owner checks.
+
+The candidate-afterstate decode is independently stable at 1,834 CU in all
+three builds.
+
+Final component SBF provenance:
+
+- unit: `aspis-v7-byte-cu-components-04.service`;
+- invocation: `bd27d7c866d242daab2237b3cc220ce8`;
+- limits: `MemoryHigh=6G`, `MemoryMax=8G`, `MemorySwapMax=0`, jobs=1;
+- maximum per-command RSS: 245,404 KiB; swap: zero; all three exits: 0.
+
+The called profile path has no SBF stack-limit warning after boxing the typed
+live snapshot and encoded 800-byte buffer. The build still links the existing
+standalone full terminal-statement decoder and reports its known 6,464-byte
+frame, but this measurement-only dispatch never calls that decoder.

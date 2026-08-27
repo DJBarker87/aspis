@@ -139,7 +139,10 @@ fn phase_ledger(logs: &[String]) -> Vec<serde_json::Value> {
     let mut result = Vec::new();
     for log in logs {
         if let Some((_, label)) = log.split_once("aspis-") {
-            if label.starts_with("forest-pool-profile:") || label.starts_with("asq8-profile:") {
+            if label.starts_with("forest-pool-profile:")
+                || label.starts_with("asq8-profile:")
+                || label.starts_with("asq8-component:")
+            {
                 pending = Some(format!("aspis-{label}"));
             }
             continue;

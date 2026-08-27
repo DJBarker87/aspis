@@ -155,6 +155,37 @@ compile_error!(
 ))]
 compile_error!("V7_PAIR_FOREST_CU_RETURN_SWEEP_REQUIRES_EXACTLY_ONE_SIZE");
 
+#[cfg(all(
+    any(
+        feature = "v7-pair-forest-cu-component-baseline",
+        feature = "v7-pair-forest-cu-wire-deferred",
+        feature = "v7-pair-forest-cu-snapshot-direct"
+    ),
+    any(
+        feature = "v7-pair-forest-cu-return-824",
+        feature = "v7-pair-forest-cu-return-856",
+        feature = "v7-pair-forest-cu-return-920",
+        feature = "v7-pair-forest-cu-return-1024"
+    )
+))]
+compile_error!("V7_PAIR_FOREST_COMPONENT_PROBE_FORBIDS_RETURN_SWEEP");
+
+#[cfg(any(
+    all(
+        feature = "v7-pair-forest-cu-component-baseline",
+        feature = "v7-pair-forest-cu-wire-deferred"
+    ),
+    all(
+        feature = "v7-pair-forest-cu-component-baseline",
+        feature = "v7-pair-forest-cu-snapshot-direct"
+    ),
+    all(
+        feature = "v7-pair-forest-cu-wire-deferred",
+        feature = "v7-pair-forest-cu-snapshot-direct"
+    )
+))]
+compile_error!("V7_PAIR_FOREST_COMPONENT_PROBES_ARE_MUTUALLY_EXCLUSIVE");
+
 pub mod atomic_payment;
 pub mod dispatch;
 pub mod lifecycle;
