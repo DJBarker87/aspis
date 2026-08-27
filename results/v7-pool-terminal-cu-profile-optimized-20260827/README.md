@@ -48,6 +48,16 @@ through program exit consumes 560,003 CU.  The full machine-readable sequence
 is in `phase-ledger.json`; the literal runtime logs are in
 `evidence-profile.json`.
 
+Now that the previously unreachable tail is measured, the exact direct-proof
+prefactorization gate can be stated.  All nonterminal transaction work totals
+987,895 CU, so the terminal had to be at most 412,105 CU.  Starting from the
+821,667-CU baseline, the minimum required terminal saving was therefore
+409,562 CU.  The prefactor saves 413,694 CU and clears that gate by exactly
+4,132 CU.  Equivalently, the unfactored complete path would have cost
+1,809,562 CU if the later phases were held identical; this counterfactual is
+derived from the measured unchanged path plus the exact terminal delta, not
+from a second unfactored execution.
+
 ## Remaining one-transaction gates
 
 1. Measure the exact 34,658-byte proof-carried pair-afterstate proof through

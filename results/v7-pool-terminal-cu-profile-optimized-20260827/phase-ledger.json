@@ -48,6 +48,10 @@
     "optimized_terminal_cu": 407973,
     "terminal_saving_cu": 413694,
     "terminal_reduction_percent": 50.347,
+    "nonterminal_transaction_cu": 987895,
+    "maximum_terminal_cu_to_fit": 412105,
+    "minimum_baseline_terminal_saving_cu_to_fit": 409562,
+    "counterfactual_unfactored_complete_transaction_cu": 1809562,
     "query_authentication_cu": 383343,
     "query_authentication_through_program_exit_cu": 560003
   }
