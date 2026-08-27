@@ -33,6 +33,10 @@ pub mod state_only_zerocheck;
 pub mod v6_onefold_prover;
 pub mod v8_six_mask_hiding_rank;
 
+/// Production-inactive host integration for the eight-lane Pool forest.
+/// This does not select a proof profile or feed the deployed prover.
+pub mod pool_v1_pair_forest_honest;
+
 /// Provisional Aspis v5 masking component (A): the block-form circle mask.
 /// Feature-gated (`v5-mask`, default OFF) and entirely outside the v4 path.
 #[cfg(feature = "v5-mask")]
