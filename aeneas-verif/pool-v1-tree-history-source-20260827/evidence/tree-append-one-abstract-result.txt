@@ -1,0 +1,36 @@
+Pool V1 production one-append carry-to-mathematics bridge: PASS
+
+Source commit parent: 6f32592f5aaf00ef54cdebf69725115f041a7fda
+Lean: 4.31.0
+
+Frozen LLBC sha256:
+6c5431df58895d7c9e9137a9e481d02076af6e6b5644bca2da3dff5dc5d3348b
+
+source trace bridge sha256:
+716c437de14f279746c49fa9b496e40df82c2b17a2d02cec3c7e3239d4aa2320
+
+abstract carry bridge sha256:
+48ab4f1d452f8c3183d08b60fadd0a2b68a5811b8ddb19fb1f6c1ce919bbd0ab
+
+Focused source trace bridge compile: PASS
+Focused abstract carry bridge compile: PASS
+
+Strongest theorem:
+PoolV1TreeAppendOneAbstractBridge.translated_append_loop_implies_modelFrontier_appendCarry
+
+Supporting theorem group:
+PoolV1TreeAppendOneSourceBridge.append_loop_has_recursive_source_trace
+PoolV1TreeAppendOneAbstractBridge.modelFrom_zero_twenty_eq_modelFrontier
+PoolV1TreeAppendOneAbstractBridge.appendCarry_modelFrom_exact
+PoolV1TreeAppendOneAbstractBridge.CarryTrace.concreteCarry_exact
+PoolV1TreeAppendOneAbstractBridge.translated_append_loop_implies_abstract_appendCarry
+
+#print axioms for every listed theorem:
+[propext, Classical.choice, Quot.sound]
+
+No sorry, admit, sorryAx, native_decide or project-specific axiom occurs in
+either compiled proof. ParentCallbackExact remains the sole explicit semantic
+premise, exactly at the opaque Poseidon tree-parent primitive. The deployed
+depth, cursor quotient/low-bit schedule, frontier clearing, parent direction,
+level progression, final carry-slot write and open/full abstract append result
+are kernel checked from literal generated production loop success.

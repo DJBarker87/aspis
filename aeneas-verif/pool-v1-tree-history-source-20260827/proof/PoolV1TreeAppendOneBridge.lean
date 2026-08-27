@@ -29,6 +29,29 @@ def ParentCallbackExact (parent : Digest → Digest → Digest) : Prop :=
     aspis_statement.pool_v1.format.pool_v1_tree_parent left right =
       .ok (parent left right)
 
+theorem carry_bit_one_iff_shifted_quotient_odd
+    (leafIndex shifted : Std.U64) (level : Std.Usize)
+    (hlevel : level.val < 20)
+    (hshift : leafIndex >>> level = .ok shifted) :
+    shifted &&& 1#u64 = 1#u64 ↔
+      (leafIndex.val >>> level.val) % 2 = 1 := by
+  have hspec := Std.U64.ShiftRight_spec leafIndex level (by omega)
+  rw [hshift] at hspec
+  have hshiftVal : shifted.val = leafIndex.val >>> level.val := hspec.1
+  have hand : (shifted &&& 1#u64).val = shifted.val % 2 := by
+    rw [UScalar.val_and]
+    norm_num [Nat.and_one_is_mod]
+  constructor
+  · intro hbit
+    have hval := congrArg UScalar.val hbit
+    rw [hand] at hval
+    norm_num at hval
+    rwa [hshiftVal] at hval
+  · intro hodd
+    apply UScalar.eq_of_val_eq
+    rw [hand, hshiftVal, hodd]
+    norm_num
+
 theorem append_loop_body_stops_at_depth
     (self : GeneratedValidatedTree)
     (leafIndex : Std.U64)
@@ -166,6 +189,29 @@ inductive CarryPrefix (parent : Digest → Digest → Digest)
       CarryStep parent self leafIndex middle finish →
       CarryPrefix parent self leafIndex start finish
 
+inductive CarryTrace (parent : Digest → Digest → Digest)
+    (self : GeneratedValidatedTree) (leafIndex : Std.U64) :
+    CarryState → CarryState → Prop where
+  | terminal {state : CarryState} :
+      CarryTerminal leafIndex state →
+      CarryTrace parent self leafIndex state state
+  | step {before next final : CarryState} :
+      CarryStep parent self leafIndex before next →
+      CarryTrace parent self leafIndex next final →
+      CarryTrace parent self leafIndex before final
+
+theorem CarryPrefix.prependTrace
+    {parent : Digest → Digest → Digest}
+    {self : GeneratedValidatedTree} {leafIndex : Std.U64}
+    {start middle final : CarryState}
+    (path : CarryPrefix parent self leafIndex start middle)
+    (trace : CarryTrace parent self leafIndex middle final) :
+    CarryTrace parent self leafIndex start final := by
+  induction path with
+  | refl => exact trace
+  | snoc path oneStep inductionHypothesis =>
+      exact inductionHypothesis (CarryTrace.step oneStep trace)
+
 private theorem append_loop_body_trace_spec
     (parent : Digest → Digest → Digest)
     (parentExact : ParentCallbackExact parent)
@@ -254,10 +300,26 @@ theorem append_loop_has_exact_source_trace
       (CarryPrefix.refl initialState :
         CarryPrefix parent self leafIndex initialState initialState)
 
+theorem append_loop_has_recursive_source_trace
+    (parent : Digest → Digest → Digest)
+    (parentExact : ParentCallbackExact parent)
+    (self : GeneratedValidatedTree)
+    (leafIndex : Std.U64)
+    (initial : CarryState) :
+    aspis_statement.pool_v1.incremental_merkle.ValidatedIncrementalMerkleTreeV1.append_one_loop
+        self leafIndex initial.1 initial.2.1 initial.2.2
+      ⦃ final => CarryTrace parent self leafIndex initial final ⦄ := by
+  apply WP.spec_mono
+    (append_loop_has_exact_source_trace parent parentExact self leafIndex initial)
+  intro final result
+  exact result.1.prependTrace (CarryTrace.terminal result.2)
+
 #print axioms append_loop_body_stops_at_depth
+#print axioms carry_bit_one_iff_shifted_quotient_odd
 #print axioms append_loop_body_stops_at_zero_bit
 #print axioms append_loop_body_stops_at_nonone_bit
 #print axioms append_loop_body_carries_at_one_bit
 #print axioms append_loop_has_exact_source_trace
+#print axioms append_loop_has_recursive_source_trace
 
 end PoolV1TreeAppendOneSourceBridge

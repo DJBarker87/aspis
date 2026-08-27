@@ -61,12 +61,12 @@ premise is `ParentCallbackExact`, naming the Poseidon tree-parent boundary
 directly. All three genesis theorem groups report only
 `[propext, Classical.choice, Quot.sound]`; the premise is not a hidden axiom.
 
-## Green checkpoint: production one-append carry step
+## Green checkpoint: production one-append carry and abstract frontier
 
 `generated/PoolV1TreeAppendOne/Funs.lean` is a complete transparent
 translation of the literal `production_tree_append_one` wrapper and its
 production validation, carry loop, root reconstruction and receipt path. The
-focused bridge currently closes the exact three-way semantics of one carry
+focused source bridge closes the exact three-way semantics of one carry
 loop step:
 
 - `append_loop_body_stops_at_depth` proves the depth-20 terminal case;
@@ -82,12 +82,23 @@ All three theorems report exactly
 only semantic premise, and it is used only at the translated production
 Poseidon call.
 
-The capstone `append_loop_has_exact_source_trace` lifts those steps through
+The capstone `append_loop_has_recursive_source_trace` lifts those steps through
 the literal generated loop with a decreasing depth measure. Every successful
-loop execution therefore has an explicit finite prefix of exact one-bit carry
-steps and terminates only at depth 20 or at the deployed non-one low-bit
+loop execution therefore has an explicit recursive sequence of exact one-bit
+carry steps and terminates only at depth 20 or at the deployed non-one low-bit
 branch. It reports the same three standard Lean axioms and introduces no
 abstract loop function, trace-cover premise or termination assumption.
+
+`proof/PoolV1TreeAppendOneAbstractBridge.lean` then discharges the complete
+carry representation argument. `appendCarry_modelFrom_exact` proves the pure
+concrete carry is exactly the existing hash-parametric `appendCarry` kernel.
+`CarryTrace.concreteCarry_exact` connects every translated recursive trace to
+that pure carry, including the caller's final carry-slot write. Finally,
+`translated_append_loop_implies_modelFrontier_appendCarry` starts from literal
+translated loop success and concludes `appendCarry` over the exact depth-20
+range/test-bit frontier representation consumed by the Pool tree/history
+invariant. Open and full results are both covered. All theorem groups report
+exactly `[propext, Classical.choice, Quot.sound]`.
 
 The append translation uses the committed Aeneas constructor tool branch at
 `e9d20a64aa4dcbbc20ba8742a6ddf720f0c575cd` (`aeneas
@@ -110,17 +121,21 @@ declarations rather than treating raw JSON byte order as semantics.
 
 ## Remaining implementation boundary
 
-The smallest next boundary is the representation bridge from the now-proved
-finite production carry trace to the existing hash-parametric `appendCarry`
-predicate, including the caller's final carry-slot write.
-After that, the work is:
+The carry trace and its mathematical representation are complete. The
+smallest next boundary is now the outer translated
+`ValidatedIncrementalMerkleTreeV1::append_one` caller: connect its successful
+branch to the loop capstone, its exact final frontier write, the already
+translated non-full root reconstruction, cursor increment and receipt/root
+history location. After that, the remaining lift is:
 
-1. derive two-append as the exact ordered composition of two successful
+1. lift through the literal validation and public
+   `append_one_with_empty_roots` wrapper;
+2. derive two-append as the exact ordered composition of two successful
    production one-appends;
-2. connect program transition success to the exact tree/account after-images;
-3. prove root-page append persistence and retained-root lookup from literal
+3. connect program transition success to the exact tree/account after-images;
+4. prove root-page append persistence and retained-root lookup from literal
    program source;
-4. carry pool identity, owner, PDA and same-writable-account checks through the
+5. carry pool identity, owner, PDA and same-writable-account checks through the
    successful program path.
 
 The only intended cryptographic semantic boundary is the already-frozen
