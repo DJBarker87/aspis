@@ -292,6 +292,81 @@ fn fold_grouped_rows(
     (folded_groups, folded_values)
 }
 
+/// Compose the two high-row arity-four folds of a deferred 64-by-16 mask.
+///
+/// After the two low-mask folds have produced one value per mask group, the
+/// remaining 64 rows are folded first to 16 and then to four.  Tensoring the
+/// two dual coefficient vectors gives the identical arity-16 linear map.  A
+/// group identifier is accumulated once per final 16-row chunk, avoiding the
+/// intermediate tuple registry and allocation without changing any weight.
+#[inline(never)]
+fn fold_grouped_rows_twice(
+    row_groups: &[u8],
+    group_values: &[QM31],
+    first_alpha: QM31,
+    second_alpha: QM31,
+) -> (Vec<u8>, Vec<QM31>) {
+    debug_assert_eq!(row_groups.len(), 64);
+    let first2 = first_alpha.square();
+    let second2 = second_alpha.square();
+    let first = [QM31::ONE, first2.mul(first_alpha), first2, first_alpha];
+    let second = [QM31::ONE, second2.mul(second_alpha), second2, second_alpha];
+    let basis: [QM31; 16] = core::array::from_fn(|slot| {
+        let high = slot >> 2;
+        let low = slot & 3;
+        if high == 0 {
+            first[low]
+        } else if low == 0 {
+            second[high]
+        } else {
+            second[high].mul(first[low])
+        }
+    });
+
+    let mut folded_values = Vec::with_capacity(4);
+    for chunk in row_groups.chunks_exact(16) {
+        let mut unique_groups = [0u8; 16];
+        let mut coefficients = [QM31::ZERO; 16];
+        let mut counts = [0u8; 16];
+        let mut first_slots = [0u8; 16];
+        let mut unique_len = 0usize;
+        let mut slot = 0usize;
+        while slot < 16 {
+            let group = chunk[slot];
+            let mut position = 0usize;
+            while position < unique_len && unique_groups[position] != group {
+                position += 1;
+            }
+            if position == unique_len {
+                unique_groups[unique_len] = group;
+                coefficients[unique_len] = basis[slot];
+                counts[unique_len] = 1;
+                first_slots[unique_len] = slot as u8;
+                unique_len += 1;
+            } else {
+                coefficients[position] = coefficients[position].add(basis[slot]);
+                counts[position] += 1;
+            }
+            slot += 1;
+        }
+
+        let mut value = QM31::ZERO;
+        let mut position = 0usize;
+        while position < unique_len {
+            let group_value = group_values[usize::from(unique_groups[position])];
+            let contribution = if first_slots[position] == 0 && counts[position] == 1 {
+                group_value
+            } else {
+                group_value.mul(coefficients[position])
+            };
+            value = value.add(contribution);
+            position += 1;
+        }
+        folded_values.push(value.half().half().half().half());
+    }
+    (alloc::vec![0, 1, 2, 3], folded_values)
+}
+
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum TensorWeightError {
     /// A multilinear point must have exactly one coordinate per live bit.
@@ -1479,6 +1554,114 @@ impl WeightAccumulator {
         self.log_len -= 2;
     }
 
+    /// Apply the exact three-round Tag-73 relation-weight tail.
+    ///
+    /// Round one remains an ordinary dual arity-four fold and is followed at
+    /// the same semantic point by the checked merge of multilinear
+    /// components zero and two. The last two folds are then traversed once
+    /// per remaining component. Only the deferred 64-row schedule changes
+    /// representation: its two dual maps are tensored into one arity-16 map.
+    /// No transcript challenge, running claim, or terminal weight changes.
+    #[inline(never)]
+    pub fn fold_tag73_relation_tail_arity4(&mut self, alphas: [QM31; 3]) -> bool {
+        if self.log_len != 8 {
+            return false;
+        }
+
+        self.fold_deferred_relation_arity4(alphas[0]);
+        if !self.merge_equal_multilinear_components(0, 2) {
+            return false;
+        }
+
+        let alpha2 = [alphas[1].square(), alphas[2].square()];
+        let prepared_alpha = [
+            PreparedQm31Multiplier::new(alphas[1]),
+            PreparedQm31Multiplier::new(alphas[2]),
+        ];
+        let prepared_alpha2 = [
+            PreparedQm31Multiplier::new(alpha2[0]),
+            PreparedQm31Multiplier::new(alpha2[1]),
+        ];
+        let alpha3 = [
+            prepared_alpha[0].mul(alpha2[0]),
+            prepared_alpha[1].mul(alpha2[1]),
+        ];
+
+        let mut component_index = 0usize;
+        while component_index < self.components.len() {
+            match &mut self.components[component_index] {
+                WeightComponent::Multilinear { scale, point } => {
+                    Self::fold_multilinear_arity4(scale, point, alphas[1], alpha2[0], alpha3[0]);
+                    Self::fold_multilinear_arity4(scale, point, alphas[2], alpha2[1], alpha3[1]);
+                }
+                WeightComponent::Tensor { scale, factors } => {
+                    Self::fold_tensor_arity4(
+                        scale,
+                        factors,
+                        alpha3[0],
+                        prepared_alpha[0],
+                        prepared_alpha2[0],
+                    );
+                    Self::fold_tensor_arity4(
+                        scale,
+                        factors,
+                        alpha3[1],
+                        prepared_alpha[1],
+                        prepared_alpha2[1],
+                    );
+                }
+                WeightComponent::LineM31Tensor { scale, x } => {
+                    Self::fold_line_m31_tensor_arity4(scale, x, alphas[1], alpha2[0], alpha3[0]);
+                    Self::fold_line_m31_tensor_arity4(scale, x, alphas[2], alpha2[1], alpha3[1]);
+                }
+                WeightComponent::LineM31Batch {
+                    scales,
+                    xs,
+                    deferred_halvings,
+                } => {
+                    Self::fold_line_m31_batch_arity4(
+                        scales,
+                        xs,
+                        deferred_halvings,
+                        alphas[1],
+                        alpha2[0],
+                        alpha3[0],
+                    );
+                    Self::fold_line_m31_batch_arity4(
+                        scales,
+                        xs,
+                        deferred_halvings,
+                        alphas[2],
+                        alpha2[1],
+                        alpha3[1],
+                    );
+                }
+                WeightComponent::Dense { values } => {
+                    Self::fold_dense_arity4(values, alphas[1], alpha2[0], alpha3[0]);
+                    Self::fold_dense_arity4(values, alphas[2], alpha2[1], alpha3[1]);
+                }
+                WeightComponent::Grouped64x16BinaryDeferred {
+                    row_groups,
+                    group_masks,
+                    first_alpha,
+                    group_values,
+                } => {
+                    if !group_masks.is_empty() || first_alpha.is_some() || row_groups.len() != 64 {
+                        return false;
+                    }
+                    let (folded_groups, folded_values) =
+                        fold_grouped_rows_twice(row_groups, group_values, alphas[1], alphas[2]);
+                    *row_groups = folded_groups;
+                    *group_values = folded_values;
+                }
+                _ => return false,
+            }
+            component_index += 1;
+        }
+        self.log_len = 2;
+        true
+    }
+
     /// Apply the dual of the arity-4 monomial coefficient fold.
     pub fn fold(&mut self, alpha: QM31) {
         debug_assert!(self.log_len >= 2);
@@ -2154,6 +2337,111 @@ mod tests {
                     "round={round} index={index}"
                 );
             }
+        }
+    }
+
+    #[test]
+    fn composed_grouped_high_rows_match_two_sequential_folds() {
+        let mut state = 0x434f_4d50_4f53_4544u64;
+        for case in 0..64usize {
+            let group_count = 1 + case % 23;
+            let row_groups = (0..64)
+                .map(|row| ((next(&mut state).0 as usize + row * 7 + row / 9) % group_count) as u8)
+                .collect::<Vec<_>>();
+            let group_values = (0..group_count)
+                .map(|_| random_q(&mut state))
+                .collect::<Vec<_>>();
+            let alpha1 = random_q(&mut state);
+            let alpha2 = random_q(&mut state);
+
+            let alpha1_2 = alpha1.square();
+            let alpha2_2 = alpha2.square();
+            let (once_groups, once_values) = fold_grouped_rows(
+                &row_groups,
+                &group_values,
+                alpha1,
+                alpha1_2,
+                alpha1_2.mul(alpha1),
+            );
+            let (sequential_groups, sequential_values) = fold_grouped_rows(
+                &once_groups,
+                &once_values,
+                alpha2,
+                alpha2_2,
+                alpha2_2.mul(alpha2),
+            );
+            let (composed_groups, composed_values) =
+                fold_grouped_rows_twice(&row_groups, &group_values, alpha1, alpha2);
+
+            for index in 0..4usize {
+                assert_eq!(
+                    sequential_values[usize::from(sequential_groups[index])],
+                    composed_values[usize::from(composed_groups[index])],
+                    "case={case} index={index}",
+                );
+            }
+        }
+    }
+
+    #[test]
+    fn tag73_composed_weight_tail_matches_sequential_rounds() {
+        let mut state = 0x5441_4737_3354_4149u64;
+        for case in 0..32usize {
+            let shared_prefix = (0..6).map(|_| random_q(&mut state)).collect::<Vec<_>>();
+            let mut point_zero = shared_prefix.clone();
+            point_zero.extend((0..4).map(|_| random_q(&mut state)));
+            let point_one = (0..10).map(|_| random_q(&mut state)).collect::<Vec<_>>();
+            let mut point_two = shared_prefix;
+            point_two.extend((0..4).map(|_| random_q(&mut state)));
+
+            let mut base = WeightAccumulator::empty(10);
+            base.add_multilinear(random_q(&mut state), point_zero)
+                .unwrap();
+            base.add_multilinear(random_q(&mut state), point_one)
+                .unwrap();
+            base.add_multilinear(random_q(&mut state), point_two)
+                .unwrap();
+            let masks = core::array::from_fn(|row| {
+                let rotation = ((row * 5 + row / 7 + case) & 15) as u32;
+                (next(&mut state).0 as u16).rotate_left(rotation)
+            });
+            base.add_grouped_64x16_binary_masks_deferred(masks).unwrap();
+            for _ in 0..2 {
+                base.add_circle_tensor(
+                    random_q(&mut state),
+                    SecureCirclePoint {
+                        x: random_q(&mut state),
+                        y: random_q(&mut state),
+                    },
+                )
+                .unwrap();
+            }
+
+            let alpha0 = random_q(&mut state);
+            base.fold_deferred_relation_arity4(alpha0);
+            let scales = core::array::from_fn::<_, 16, _>(|_| random_q(&mut state));
+            let xs = core::array::from_fn::<_, 16, _>(|_| next(&mut state));
+            base.add_line_m31_batch(&scales, &xs).unwrap();
+
+            let alphas = core::array::from_fn(|_| random_q(&mut state));
+            let mut sequential = base.clone();
+            sequential.fold_deferred_relation_arity4(alphas[0]);
+            assert!(sequential.merge_equal_multilinear_components(0, 2));
+            sequential.fold_deferred_relation_arity4(alphas[1]);
+            sequential.fold_deferred_relation_arity4(alphas[2]);
+
+            let mut composed = base;
+            assert!(composed.fold_tag73_relation_tail_arity4(alphas));
+            assert_eq!(sequential.log_len, composed.log_len, "case={case}");
+            for index in 0..4u32 {
+                assert_eq!(
+                    sequential.weight_at(index),
+                    composed.weight_at(index),
+                    "case={case} index={index}",
+                );
+            }
+            let terminal = core::array::from_fn::<_, 4, _>(|_| random_q(&mut state));
+            assert_eq!(sequential.dot(&terminal), composed.dot(&terminal));
         }
     }
 
