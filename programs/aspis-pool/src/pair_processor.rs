@@ -1,11 +1,11 @@
-//! Production-inactive one-terminal stable-proof append experiment.
+//! Production-inactive one-terminal proof-carried afterstate prototype.
 //!
 //! There are no prepared authorization or settlement accounts. The selected
-//! verifier authenticates the stable proof and returns its already-proved
-//! output-pair digest. The Pool then computes exactly the 20 live append
-//! parents. Literal SBF measurement showed that those parents cost 469,798
-//! CU, so the production dispatcher deliberately does not expose this route;
-//! it is retained as negative source evidence and a state/concurrency fixture.
+//! verifier authenticates the staged proof and returns the exact next pair
+//! index, root and frontier.  The Pool performs no Poseidon call: it validates
+//! the opaque immediate-CPI result and atomically writes state, history and the
+//! one-shot nullifier marker.  The dispatcher remains disabled until the real
+//! seven-C2-lane verifier constructs this result.
 
 extern crate alloc;
 
@@ -15,8 +15,8 @@ use aspis_core::transcript::HashFn;
 use aspis_statement::{
     encode_digest_canonical,
     pool_v1::{
-        root_history_location, PoolV1NullifierMarkerV1, PoolV1PairVerifierResultV1,
-        PoolV1TransitionKind, POOL_V1_ROOT_HISTORY_CAPACITY,
+        root_history_location, PoolV1NullifierMarkerV1, PoolV1TransitionKind,
+        POOL_V1_ROOT_HISTORY_CAPACITY,
     },
 };
 use solana_program::{
@@ -36,7 +36,7 @@ use crate::{
         TransitionReceiptV1,
     },
     nullifier::{plan_nullifier_marker_consumption_v1, NullifierMarkerPreparationV1},
-    pair_dispatch::dispatch_pair_verifier_readonly_v1,
+    pair_dispatch::AuthenticatedPairAfterstateV1,
     pair_state::{CanonicalPairPoolStateV1, PairPoolStateV1, POOL_V1_PAIR_STATE_ACCOUNT_BYTES},
 };
 
@@ -227,7 +227,7 @@ where
         &[u8],
         u64,
         HashFn,
-    ) -> Result<PoolV1PairVerifierResultV1, ProgramError>,
+    ) -> Result<AuthenticatedPairAfterstateV1, ProgramError>,
     S: FnOnce(&[u8]),
 {
     let decoded = decode_pair_private_transfer_instruction_v1(instruction_data)?;
@@ -267,7 +267,7 @@ where
         return Err(PoolV1ProgramError::InvalidNullifierMarkerAccount.into());
     }
 
-    let verifier_result = verify(
+    let verified_afterstate = verify(
         pool.key,
         &state.identity.deployment_domain,
         &state.verifier_policy,
@@ -280,7 +280,7 @@ where
         hash,
     )?;
     let (next_state, append) =
-        state.append_verified_pair_from_program_invariant(verifier_result.output_pair)?;
+        state.apply_authenticated_afterstate_from_program_invariant(&verified_afterstate)?;
 
     let receipt = encode_transition_receipt_v1(&TransitionReceiptV1 {
         transition_kind: PoolV1TransitionKind::PrivateTransfer,
@@ -326,32 +326,15 @@ where
     Ok(())
 }
 
-pub(crate) fn process_pair_private_transfer_v1(
-    program_id: &Pubkey,
-    accounts: &[AccountInfo<'_>],
-    instruction_data: &[u8],
-    current_slot: u64,
-    hash: HashFn,
-) -> ProgramResult {
-    process_pair_private_transfer_with_verifier_v1(
-        program_id,
-        accounts,
-        instruction_data,
-        current_slot,
-        hash,
-        dispatch_pair_verifier_readonly_v1,
-        solana_program::program::set_return_data,
-    )
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
     use aspis_core::field::M31;
     use aspis_statement::{
         pool_v1::{
-            encode_pool_v1_pair_verifier_result_v1, HistoricalAnchorEnvelopeV1,
-            PoolV1PairVerifierResultV1, VerifierPolicyV1, POOL_V1_ROOT_HISTORY_PAGE_ACCOUNT_BYTES,
+            encode_pool_v1_pair_verified_afterstate_v1, HistoricalAnchorEnvelopeV1,
+            PoolV1PairVerifiedAfterstateV1, VerifierPolicyV1,
+            POOL_V1_ROOT_HISTORY_PAGE_ACCOUNT_BYTES,
         },
         poseidon2::Digest,
     };
@@ -377,6 +360,22 @@ mod tests {
 
     fn digest(seed: u32) -> Digest {
         core::array::from_fn(|lane| M31(seed + 17 * lane as u32 + 1))
+    }
+
+    fn authenticated_afterstate(
+        state: &PairPoolStateV1,
+        verifier: &Pubkey,
+    ) -> AuthenticatedPairAfterstateV1 {
+        let bytes = encode_pool_v1_pair_verified_afterstate_v1(&PoolV1PairVerifiedAfterstateV1 {
+            next_pair_index: state.tree.next_leaf_index,
+            next_root: state.tree.root,
+            next_frontier: state.tree.frontier,
+        })
+        .unwrap();
+        crate::pair_dispatch::authenticate_pair_verified_afterstate_return_v1(
+            verifier, verifier, &bytes,
+        )
+        .unwrap()
     }
 
     fn account<'a>(
@@ -435,7 +434,7 @@ mod tests {
     }
 
     #[test]
-    fn stable_proof_accepts_after_same_page_concurrency_and_replay_or_failure_roll_back() {
+    fn proof_carried_afterstate_updates_bytes_and_stale_replay_or_failure_roll_back() {
         let program_id = Pubkey::new_unique();
         let mint = Pubkey::new_unique();
         let pool_key = pool_v1_pair_state_address(&program_id, &mint).0;
@@ -480,6 +479,11 @@ mod tests {
 
         let first_a = digest(100);
         let second_a = digest(200);
+        let pair_a = aspis_statement::pool_v1::pool_v1_tree_parent(&first_a, &second_a);
+        let expected_a = genesis
+            .append_verified_pair_from_program_invariant(pair_a)
+            .unwrap()
+            .0;
         let nullifier_a = digest(300);
         let instruction_a = instruction(
             pool_key,
@@ -572,11 +576,7 @@ mod tests {
                 20,
                 sha256,
                 |_, _, _, _, _, _, _, _, _, _| {
-                    Ok(PoolV1PairVerifierResultV1 {
-                        output_pair: aspis_statement::pool_v1::pool_v1_tree_parent(
-                            &first_a, &second_a,
-                        ),
-                    })
+                    Ok(authenticated_afterstate(&expected_a, &verifier_key))
                 },
                 |bytes| returned.borrow_mut().extend_from_slice(bytes),
             )
@@ -588,10 +588,16 @@ mod tests {
             PairPoolStateV1::decode_from_program_invariant(&pool_data, &pool_key).unwrap();
         assert_eq!(after_a.current_root_sequence(), 1);
 
-        // The second proof was made against retained genesis, but it executes
-        // after another append. No live root/frontier was baked into it.
+        // Historical membership still uses retained genesis, while the
+        // proof-carried append suffix is completed against the live state
+        // produced by A.  The two root roles remain deliberately distinct.
         let first_b = digest(400);
         let second_b = digest(500);
+        let pair_b = aspis_statement::pool_v1::pool_v1_tree_parent(&first_b, &second_b);
+        let expected_b = expected_a
+            .append_verified_pair_from_program_invariant(pair_b)
+            .unwrap()
+            .0;
         let nullifier_b = digest(600);
         let instruction_b = instruction(
             pool_key,
@@ -683,11 +689,7 @@ mod tests {
                 21,
                 sha256,
                 |_, _, _, _, _, _, _, _, _, _| {
-                    Ok(PoolV1PairVerifierResultV1 {
-                        output_pair: aspis_statement::pool_v1::pool_v1_tree_parent(
-                            &first_b, &second_b,
-                        ),
-                    })
+                    Ok(authenticated_afterstate(&expected_b, &verifier_key))
                 },
                 |_| {},
             )
@@ -781,7 +783,8 @@ mod tests {
         assert_eq!(history_data, history_before);
         assert_eq!(marker_b_data, marker_before);
 
-        // A verifier failure with a fresh marker leaves all state byte-exact.
+        // A stale proof-carried afterstate with a fresh marker leaves all
+        // state byte-exact.
         let nullifier_c = digest(700);
         let instruction_c = instruction(
             pool_key,
@@ -873,24 +876,16 @@ mod tests {
                     &instruction_c,
                     23,
                     sha256,
-                    |_, _, _, _, _, _, _, _, _, _| Err(ProgramError::InvalidAccountData),
+                    |_, _, _, _, _, _, _, _, _, _| {
+                        Ok(authenticated_afterstate(&expected_a, &verifier_key))
+                    },
                     |_| {},
                 ),
-                Err(ProgramError::InvalidAccountData)
+                Err(PoolV1ProgramError::StateHistoryMismatch.into())
             );
         }
         assert_eq!(pool_data, pool_before);
         assert_eq!(history_data, history_before);
         assert!(marker_c_data.iter().all(|byte| *byte == 0));
-
-        // Keep the compact result wire explicitly covered by this lifecycle.
-        assert_eq!(
-            encode_pool_v1_pair_verifier_result_v1(&PoolV1PairVerifierResultV1 {
-                output_pair: digest(1),
-            })
-            .unwrap()
-            .len(),
-            40
-        );
     }
 }
