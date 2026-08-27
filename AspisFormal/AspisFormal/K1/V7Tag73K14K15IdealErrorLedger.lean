@@ -34,9 +34,26 @@ noncomputable section
 def exactK14K15IdealRootNumerator : Nat :=
   initialBatchChallengeCap + 396430
 
+/-- The raw restoration-wide K1.4 term used by the concrete stage bound. -/
+def exactK14IdealRawError : ENNReal :=
+  (initialBatchChallengeCap : ENNReal) /
+    ((P ^ 4 - 1 : Nat) : ENNReal)
+
+/-- The raw fixed-family K1.5 term used by the concrete stage bound. -/
+def exactK15IdealRawError : ENNReal :=
+  (396430 : ENNReal) / ((P ^ 4 - 1 : Nat) : ENNReal)
+
 def exactK14K15IdealRawError : ENNReal :=
   (exactK14K15IdealRootNumerator : ENNReal) /
     ((P ^ 4 - 1 : Nat) : ENNReal)
+
+theorem exact_k14_k15_ideal_raw_error_eq_stage_sum :
+    exactK14K15IdealRawError =
+      exactK14IdealRawError + exactK15IdealRawError := by
+  unfold exactK14K15IdealRawError exactK14K15IdealRootNumerator
+    exactK14IdealRawError exactK15IdealRawError
+  rw [Nat.cast_add, ENNReal.add_div]
+  rfl
 
 theorem exact_k14_k15_ideal_root_numerator_eq :
     exactK14K15IdealRootNumerator = 336869027002169 := by
@@ -74,6 +91,7 @@ end
 
 
 #print axioms exact_k14_k15_ideal_root_numerator_eq
+#print axioms exact_k14_k15_ideal_raw_error_eq_stage_sum
 #print axioms exact_k14_k15_ideal_raw_error_le_two_pow_neg74
 #print axioms exact_k14_k15_work_normalized_error_le_two_pow_neg109
 

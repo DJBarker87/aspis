@@ -1,5 +1,6 @@
 import AspisFormal.K1.V7Tag73ExactConcreteK12Bound
 import AspisFormal.K1.V7Tag73ExactOperationalK15Stage
+import AspisFormal.K1.V7Tag73K14K15IdealErrorLedger
 
 /-!
 # Concrete Tag-73 K1.2--K1.6 assembly
@@ -39,6 +40,7 @@ open AspisK1.V7Tag73ExactFixedK16Closure
 open AspisK1.V7Tag73ExactConcreteStageAssembly
 open AspisK1.V7Tag73ExactConcreteK12Bound
 open AspisK1.V7Tag73ExactOperationalK15Stage
+open AspisK1.V7Tag73K14K15IdealErrorLedger
 open AspisPool.AlgorithmicCircleDecoderV7
 open AspisPool.V7C1SubfieldRecovery
 open AspisPool.V7DeterministicSpendWitness
@@ -174,9 +176,77 @@ theorem exact_tag73_concrete_k16_aok_raw_after_k12
     (exactTag73ConcreteUpstreamTerms configuration k13Term k14Term k15Term)
     k12Bound k13Bound k14Bound k15Bound
 
+/-- The same concrete theorem with the proved raw K1.4 and K1.5 ledger terms
+fixed in its statement.  The remaining premises must prove that the actual
+stage events are bounded by these values; work normalization is not used. -/
+theorem exact_tag73_concrete_k16_aok_raw_with_fixed_k14_k15_terms
+    {HiddenTape TapeIdentity Observation Payload : Type}
+    [Fintype HiddenTape]
+    (hiddenLaw : PMF HiddenTape)
+    {parameters : ExactCompilerResourceParameters}
+    (transitionFuel : Nat)
+    (configuration : ExactPlainRomWitnessConfiguration HiddenTape TapeIdentity
+      Observation V5PublicStatement Tag73K12ParsedProof Payload
+      DecodedSpendWitness parameters)
+    (projection : AcceptedTapeProjection V5PublicStatement Tag73K12ParsedProof
+      Payload)
+    (fixedInstance : PublicInstance V5PublicStatement)
+    (decoder : ExactDecoderInstantiation QM31Exact)
+    (decoderBinding : InitialProjectionBinding decoder)
+    (basis : Basis (Fin 4) F QM31Exact)
+    (rc : RoundConstants)
+    {deployedOwner : Digest → Digest}
+    {deployedNote : Digest → F → F → Digest → Digest}
+    {deployedNullifier : Digest → Digest → Digest}
+    {deployedNode : Digest → Digest → Digest}
+    (poseidon : Poseidon2Faithful rc deployedOwner deployedNote
+      deployedNullifier deployedNode)
+    (environment : ExactTag73OperationalK15Environment transitionFuel
+      configuration projection fixedInstance decoder decoderBinding basis rc
+      poseidon)
+    (k12Source : ExactTag73K12SourceObligations transitionFuel configuration
+      projection fixedInstance)
+    (transitionRoom : 3 ≤ transitionFuel)
+    (driverCoversProtocol :
+      tag73CanonicalDriverFuelCap ≤ configuration.machine.driverFuel)
+    (runtimeReserves : ExactOperationalRuntimeReserves parameters)
+    (cutoffBeyondCap :
+      totalCompilerRuntimeCap parameters < parameters.timeoutCutoff)
+    (k13Term : ENNReal)
+    (k13Bound : K13CircleListDecodeErrorMeasureBound hiddenLaw
+      (exactTag73OperationalStages transitionFuel configuration projection
+        fixedInstance decoder decoderBinding basis rc poseidon environment)
+      k13Term)
+    (k14Bound : K14CoherentChainErrorMeasureBound hiddenLaw
+      (exactTag73OperationalStages transitionFuel configuration projection
+        fixedInstance decoder decoderBinding basis rc poseidon environment)
+      exactK14IdealRawError)
+    (k15Bound : K15SpendWitnessErrorMeasureBound hiddenLaw
+      (exactTag73OperationalStages transitionFuel configuration projection
+        fixedInstance decoder decoderBinding basis rc poseidon environment)
+      exactK15IdealRawError) :
+    (exactCompilerJointLaw hiddenLaw parameters).toOuterMeasure
+        (exactFixedSourceRefinementEvent transitionFuel configuration projection
+          fixedInstance) ≤
+      exactFixedPlainRomValidClientExtractionProbability hiddenLaw
+          transitionFuel configuration fixedInstance
+          (exactTag73SpendRelation (deployedOwner := deployedOwner)
+            (deployedNote := deployedNote)
+            (deployedNullifier := deployedNullifier)
+            (deployedNode := deployedNode)) +
+        exactFixedClosedK16RawError
+          (exactTag73ConcreteUpstreamTerms configuration k13Term
+            exactK14IdealRawError exactK15IdealRawError) parameters := by
+  exact exact_tag73_concrete_k16_aok_raw_after_k12 hiddenLaw transitionFuel
+    configuration projection fixedInstance decoder decoderBinding basis rc
+    poseidon environment k12Source transitionRoom driverCoversProtocol
+    runtimeReserves cutoffBeyondCap k13Term exactK14IdealRawError
+    exactK15IdealRawError k13Bound k14Bound k15Bound
+
 #print axioms exactTag73OperationalStages
 #print axioms exactTag73ConcreteUpstreamTerms
 #print axioms exact_tag73_concrete_k16_aok_raw_after_k12
+#print axioms exact_tag73_concrete_k16_aok_raw_with_fixed_k14_k15_terms
 
 end
 
