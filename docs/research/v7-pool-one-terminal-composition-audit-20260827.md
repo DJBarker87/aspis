@@ -196,9 +196,11 @@ roles and exact 800-byte snapshot are at lines 265-480.
 That 48-row result closes the staged fallback's geometry, but it is not the
 primary wire choice. Omitting the twenty live append blocks from the proof
 leaves the 34 stable Poseidon blocks plus the same seven auxiliary blocks: 656
-allocated rows and 368 unused rows. Its tuple registry, mask rank and generated
-terminal still require a separate exact compilation; this audit does not infer
-them merely by subtracting rows.
+allocated rows and 368 unused rows. Lean checks that arithmetic in
+`exact_stable_pair_row_screen`, checks the absence of a live-snapshot transcript
+step, and checks the unchanged 30,504-byte wire screen. Its tuple registry, mask
+rank and generated terminal still require a separate exact compilation; this
+audit does not infer them merely by subtracting rows.
 
 Private transfer appends `(occupied recipient, occupied change)`. Withdrawal
 appends `(occupied change, algebraically empty second slot)`. Spending a

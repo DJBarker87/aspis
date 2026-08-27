@@ -369,6 +369,37 @@ theorem exact_stageB_lane_expansion :
       stagedPoolStageBQM31Lanes = 7 := by
   decide
 
+/-! ## Primary execution-time append profile
+
+The one-transaction audit found that authenticating the live append columns in
+Stage B is not the minimum wire.  The primary profile proves the stable pair
+relation only and lets the locked Pool execute the deterministic pair append.
+Consequently its transcript has the frozen Tag-73 shape and contains no live
+snapshot.  These are arithmetic/wire design gates, not a claim that the
+production prover and verifier already implement this profile. -/
+
+def stablePairPoseidonBlocks : Nat := 34
+def stablePairAuxiliaryBlocks : Nat := 7
+def stablePairAllocatedRows : Nat :=
+  (stablePairPoseidonBlocks + stablePairAuxiliaryBlocks) * 16
+def stablePairUnusedRows : Nat := traceRows - stablePairAllocatedRows
+
+theorem exact_stable_pair_row_screen :
+    stablePairAllocatedRows = 656 ∧ stablePairUnusedRows = 368 := by
+  decide
+
+def stablePairPrefix : List TranscriptStep := frozenTag73Prefix
+
+theorem stable_pair_prefix_has_no_live_append_snapshot :
+    TranscriptStep.liveAppendSnapshot ∉ stablePairPrefix := by
+  decide
+
+theorem stable_pair_prefix_keeps_frozen_tag73_order :
+    stablePairPrefix =
+      [.stableStatement, .stageARoot, .lambda, .chi, .stageBRoot,
+        .batchingChallenges] := by
+  rfl
+
 /-! ## Exact unchanged-backend wire consequence
 
 The four late lanes are QM31 columns, and each authenticated layer-zero query
@@ -431,6 +462,9 @@ def frozenMaximumBodyBytes : Nat :=
 def stagedMaximumBodyBytes : Nat :=
   maximumBodyBytes stagedFixedQM31Values stagedC2Columns
 
+def stablePairMaximumBodyBytes : Nat :=
+  maximumBodyBytes frozenFixedQM31Values frozenC2Columns
+
 def uploadChunks (bytes : Nat) : Nat :=
   (bytes + uploadChunkBytes - 1) / uploadChunkBytes
 
@@ -456,6 +490,12 @@ theorem exact_staged_wire_cost_if_four_late_lanes_authenticated :
       stagedMaximumBodyBytes - frozenMaximumBodyBytes = 4154 ∧
       uploadChunks frozenMaximumBodyBytes = 32 ∧
       uploadChunks stagedMaximumBodyBytes = 37 := by
+  decide
+
+theorem exact_stable_pair_wire_screen_keeps_frozen_body_size :
+    stablePairMaximumBodyBytes = 30504 ∧
+      stablePairMaximumBodyBytes = frozenMaximumBodyBytes ∧
+      uploadChunks stablePairMaximumBodyBytes = 32 := by
   decide
 
 theorem exact_staged_c2_leaf_sha_block_increase :
@@ -544,6 +584,10 @@ theorem exact_semantic_row_owner_cardinalities :
 #print axioms staged_pool_prefix_is_not_the_frozen_tag73_prefix
 #print axioms exact_stageB_lane_expansion
 #print axioms exact_staged_wire_cost_if_four_late_lanes_authenticated
+#print axioms exact_stable_pair_row_screen
+#print axioms stable_pair_prefix_has_no_live_append_snapshot
+#print axioms stable_pair_prefix_keeps_frozen_tag73_order
+#print axioms exact_stable_pair_wire_screen_keeps_frozen_body_size
 #print axioms exact_staged_c2_leaf_sha_block_increase
 #print axioms exact_live_dependent_suffix_has_fifteen_steps
 #print axioms every_positioned_work_stage_is_live_dependent
