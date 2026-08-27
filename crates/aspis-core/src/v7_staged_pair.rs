@@ -1,10 +1,8 @@
-//! Production-inactive wire slice for the conservative staged Tag-73 pair
-//! profile.
+//! Production-inactive wire slice for the merged-C1 Tag-73 pair profile.
 //!
-//! This module freezes only the changed byte grammar. It deliberately does
-//! not route a production instruction or pretend that the existing 29-column
-//! terminal verifies the new late append lanes. A future verifier must consume
-//! this exact wire through the seven-lane terminal and query authenticator.
+//! The exact live snapshot and candidate afterstate are bound before the C1
+//! root. Stable and append rows share the same sixteen semantic C1 columns,
+//! so the proof retains the frozen 26+3, 641-claim, 30,504-byte grammar.
 
 use crate::v6_onefold::{validate_packed_m31, V6WireError, V6_QUERY_COUNT, V6_WORK_NONCE_BYTES};
 use crate::v7_onefold::{
@@ -13,15 +11,10 @@ use crate::v7_onefold::{
 };
 
 pub const V7_STAGED_PAIR_C1_COLUMNS: usize = 26;
-pub const V7_STAGED_PAIR_C2_COLUMNS: usize = 7;
-pub const V7_STAGED_PAIR_LATE_C2_COLUMNS: usize = 4;
-/// Four row-packed late C2 lanes encode sixteen logical M31 component
-/// columns. The terminal opens every component separately at all three
-/// semantic points; tower packing is not treated as an algebra homomorphism.
-pub const V7_STAGED_PAIR_LATE_LOGICAL_M31_COLUMNS: usize = 16;
-pub const V7_STAGED_PAIR_TOTAL_LOGICAL_GAMMA_COLUMNS: usize = 45;
+pub const V7_STAGED_PAIR_C2_COLUMNS: usize = 3;
+pub const V7_STAGED_PAIR_TOTAL_LOGICAL_GAMMA_COLUMNS: usize = 29;
 pub const V7_STAGED_PAIR_GAMMA_DEGREE: usize = V7_STAGED_PAIR_TOTAL_LOGICAL_GAMMA_COLUMNS - 1;
-pub const V7_STAGED_PAIR_FIXED_QM31_VALUES: usize = 689;
+pub const V7_STAGED_PAIR_FIXED_QM31_VALUES: usize = 641;
 pub const V7_STAGED_PAIR_FIXED_M31_LIMBS: usize = 4 * V7_STAGED_PAIR_FIXED_QM31_VALUES;
 pub const V7_STAGED_PAIR_FIXED_FIELD_BYTES: usize =
     packed_m31_bytes(V7_STAGED_PAIR_FIXED_M31_LIMBS);
@@ -40,13 +33,13 @@ pub const V7_STAGED_PAIR_BODY_WITHOUT_FRONTIERS: usize = V7_STAGED_PAIR_FIXED_FI
 pub const V7_STAGED_PAIR_MAX_BODY_BYTES: usize = V7_STAGED_PAIR_BODY_WITHOUT_FRONTIERS
     + 2 * V7_COMPACT_FRONTIER_CAP_PER_TREE * V7_COMPACT_DIGEST_BYTES;
 
-/// Fresh profile identifier. It is intentionally distinct from both the
-/// frozen 30,504-byte Tag-73 profile and the rejected stable-pair transport.
+/// Fresh profile identifier. It binds the merged-C1 revision while retaining
+/// the selected compact Tag-73 wire widths.
 pub const V7_STAGED_PAIR_PROFILE_BINDING: [u8; 32] = [
     b'A', b'V', b'7', b'S', b'P', b'0', b'0', b'1', // magic/version
-    26, 7, 10, 16, 0xcb, 0x00, 26, 32, // widths, q, cap203, digest/salt bytes
+    26, 3, 10, 16, 0xcb, 0x00, 26, 32, // widths, q, cap203, digest/salt bytes
     27, 4, 6, 35, 31, 34, 0x71, 0xf1, // degree, fibre, work, typed tree tags
-    0xb1, 0x02, 8, 20, 18, 1, 64, 3, // 689 fields, logs, stream/cap, staged rev
+    0x81, 0x02, 8, 20, 18, 1, 64, 4, // 641 fields, logs, stream/cap, merged-C1 rev
 ];
 
 const fn packed_m31_bytes(limbs: usize) -> usize {
@@ -56,7 +49,7 @@ const fn packed_m31_bytes(limbs: usize) -> usize {
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct V7StagedPairQueryRecord<'a> {
     pub c1_packed: &'a [u8],
-    /// Complete helper-major `H1[4] || G[4] || D[4] || late[4][4]` fibre.
+    /// Complete helper-major `H1[4] || G[4] || D[4]` fibre.
     pub c2_packed: &'a [u8],
     pub salt: &'a [u8; V7_COMPACT_PRIVATE_SALT_BYTES],
 }
@@ -104,7 +97,7 @@ impl<'a> V7StagedPairOneFoldWire<'a> {
         }
 
         let (fixed_fields_packed, rest) = bytes.split_at(V7_STAGED_PAIR_FIXED_FIELD_BYTES);
-        // 2,756 limbs occupy 85,436 bits, leaving the upper four bits zero.
+        // 2,564 limbs occupy 79,484 bits, leaving the upper four bits zero.
         if fixed_fields_packed.last().copied().unwrap_or_default() & 0xf0 != 0 {
             return Err(V6WireError::NonCanonicalM31);
         }
@@ -142,12 +135,12 @@ impl<'a> V7StagedPairOneFoldWire<'a> {
     }
 }
 
-const _: () = assert!(V7_STAGED_PAIR_FIXED_FIELD_BYTES == 10_680);
+const _: () = assert!(V7_STAGED_PAIR_FIXED_FIELD_BYTES == 9_936);
 const _: () = assert!(V7_COMPACT_C1_BYTES_PER_QUERY == 403);
-const _: () = assert!(V7_STAGED_PAIR_C2_BYTES_PER_QUERY == 434);
-const _: () = assert!(V7_STAGED_PAIR_QUERY_BYTES == 869);
-const _: () = assert!(V7_STAGED_PAIR_BODY_WITHOUT_FRONTIERS == 24_660);
-const _: () = assert!(V7_STAGED_PAIR_MAX_BODY_BYTES == 35_216);
+const _: () = assert!(V7_STAGED_PAIR_C2_BYTES_PER_QUERY == 186);
+const _: () = assert!(V7_STAGED_PAIR_QUERY_BYTES == 621);
+const _: () = assert!(V7_STAGED_PAIR_BODY_WITHOUT_FRONTIERS == 19_948);
+const _: () = assert!(V7_STAGED_PAIR_MAX_BODY_BYTES == 30_504);
 
 #[cfg(test)]
 mod tests {
@@ -157,23 +150,21 @@ mod tests {
     #[test]
     fn exact_staged_pair_wire_budget_and_sections_are_frozen() {
         assert_eq!(&V7_STAGED_PAIR_PROFILE_BINDING[..8], b"AV7SP001");
-        assert_eq!(V7_STAGED_PAIR_C2_COLUMNS, 7);
-        assert_eq!(V7_STAGED_PAIR_LATE_C2_COLUMNS, 4);
-        assert_eq!(V7_STAGED_PAIR_LATE_LOGICAL_M31_COLUMNS, 16);
-        assert_eq!(V7_STAGED_PAIR_TOTAL_LOGICAL_GAMMA_COLUMNS, 45);
-        assert_eq!(V7_STAGED_PAIR_GAMMA_DEGREE, 44);
-        assert_eq!(V7_STAGED_PAIR_FIXED_QM31_VALUES, 689);
-        assert_eq!(V7_STAGED_PAIR_FIXED_FIELD_BYTES, 10_680);
-        assert_eq!(V7_STAGED_PAIR_C2_BYTES_PER_QUERY, 434);
-        assert_eq!(V7_STAGED_PAIR_QUERY_BYTES, 869);
-        assert_eq!(V7_STAGED_PAIR_BODY_WITHOUT_FRONTIERS, 24_660);
-        assert_eq!(V7_STAGED_PAIR_MAX_BODY_BYTES, 35_216);
+        assert_eq!(V7_STAGED_PAIR_C2_COLUMNS, 3);
+        assert_eq!(V7_STAGED_PAIR_TOTAL_LOGICAL_GAMMA_COLUMNS, 29);
+        assert_eq!(V7_STAGED_PAIR_GAMMA_DEGREE, 28);
+        assert_eq!(V7_STAGED_PAIR_FIXED_QM31_VALUES, 641);
+        assert_eq!(V7_STAGED_PAIR_FIXED_FIELD_BYTES, 9_936);
+        assert_eq!(V7_STAGED_PAIR_C2_BYTES_PER_QUERY, 186);
+        assert_eq!(V7_STAGED_PAIR_QUERY_BYTES, 621);
+        assert_eq!(V7_STAGED_PAIR_BODY_WITHOUT_FRONTIERS, 19_948);
+        assert_eq!(V7_STAGED_PAIR_MAX_BODY_BYTES, 30_504);
 
         let body = vec![0u8; V7_STAGED_PAIR_MAX_BODY_BYTES];
         let wire = V7StagedPairOneFoldWire::parse(&body, V7_COMPACT_FRONTIER_CAP_PER_TREE).unwrap();
-        assert_eq!(wire.fixed_fields_packed.len(), 10_680);
+        assert_eq!(wire.fixed_fields_packed.len(), 9_936);
         assert_eq!(wire.query(0).unwrap().c1_packed.len(), 403);
-        assert_eq!(wire.query(0).unwrap().c2_packed.len(), 434);
+        assert_eq!(wire.query(0).unwrap().c2_packed.len(), 186);
         assert_eq!(wire.query(15).unwrap().salt.len(), 32);
         assert_eq!(wire.c1_frontier.len(), 203 * 26);
         assert_eq!(wire.c2_frontier.len(), 203 * 26);

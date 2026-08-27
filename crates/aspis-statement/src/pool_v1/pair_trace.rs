@@ -1,14 +1,14 @@
 //! Literal two-bank trace compiler for the conservative staged pair profile.
 //!
-//! Rows `0..544` and `864..976` are the pre-snapshot C1 source. Rows
-//! `544..864` are the sixteen physical M31 columns packed into four late C2
-//! QM31 lanes only after the exact live Pool snapshot has been absorbed.
-//! This module deliberately stops at the physical trace/copy-registry
-//! boundary; transcript, PCS and terminal integration live in the prover.
+//! Rows `0..544` and `864..976` are first compiled into the stable buffer;
+//! rows `544..864` are compiled into a separate checked append buffer. The
+//! buffers are overlaid into the same sixteen semantic C1 columns before the
+//! C1 root is committed. Transcript, PCS and terminal integration live in the
+//! prover.
 
 use alloc::{vec, vec::Vec};
 
-use aspis_core::field::{CM31, M31, P, QM31};
+use aspis_core::field::{M31, P, QM31};
 
 use crate::{
     logup::{
@@ -112,8 +112,8 @@ pub enum PoolV1PairTracePublicOutputsV1 {
 pub struct PoolV1PairTraceV1 {
     /// Pre-snapshot bank committed as the 16 semantic C1 columns.
     pub stable: StateOnlyTraceFoundation,
-    /// Post-snapshot physical M31 bank packed four-at-a-time into four C2
-    /// QM31 lanes. Only rows 544..864 may be nonzero before masking.
+    /// Checked append buffer. Only rows 544..864 may be nonzero; the merger
+    /// overlays them into the semantic C1 columns before commitment.
     pub late: [Vec<M31>; POOL_V1_PAIR_TRACE_COLUMNS],
     pub variant: PoolV1PairTraceVariantV1,
     pub private_directions: [M31; POOL_V1_PAIR_PRIVATE_DIRECTIONS],
@@ -146,6 +146,47 @@ pub enum PoolV1PairTraceErrorV1 {
     MetadataMismatch,
     CopyLayout,
     CopyImbalance,
+}
+
+/// Merge the disjoint stable and append banks into the ordinary sixteen
+/// semantic C1 columns. This check is the soundness gate for the pre-root
+/// profile: a caller cannot silently overwrite a stable cell or carry a late
+/// value outside rows 544..864.
+pub fn merge_pool_v1_pair_trace_banks_v1(
+    trace: &PoolV1PairTraceV1,
+) -> Result<StateOnlyTraceFoundation, PoolV1PairTraceErrorV1> {
+    if trace.stable.c1.len() != POOL_V1_PAIR_TRACE_COLUMNS
+        || trace
+            .stable
+            .c1
+            .iter()
+            .any(|column| column.len() != POOL_V1_PAIR_TRACE_ROWS)
+        || trace
+            .late
+            .iter()
+            .any(|column| column.len() != POOL_V1_PAIR_TRACE_ROWS)
+    {
+        return Err(PoolV1PairTraceErrorV1::Shape);
+    }
+    let late_rows = 544..864;
+    for column in 0..POOL_V1_PAIR_TRACE_COLUMNS {
+        if trace.stable.c1[column][late_rows.clone()]
+            .iter()
+            .any(|value| *value != M31::ZERO)
+            || trace.late[column][..late_rows.start]
+                .iter()
+                .chain(&trace.late[column][late_rows.end..])
+                .any(|value| *value != M31::ZERO)
+        {
+            return Err(PoolV1PairTraceErrorV1::Shape);
+        }
+    }
+    let mut merged = trace.stable.clone();
+    for column in 0..POOL_V1_PAIR_TRACE_COLUMNS {
+        merged.c1[column][late_rows.clone()]
+            .copy_from_slice(&trace.late[column][late_rows.clone()]);
+    }
+    Ok(merged)
 }
 
 fn empty_columns() -> [Vec<M31>; POOL_V1_PAIR_TRACE_COLUMNS] {
@@ -1151,67 +1192,11 @@ pub fn verify_pool_v1_pair_copy_registry_v1(
         .map_err(|_| PoolV1PairTraceErrorV1::CopyImbalance)
 }
 
-/// Pack the sixteen late physical M31 columns into the four committed C2
-/// lanes at each Boolean row. This is only a row-level transport map.
-pub fn pool_v1_pair_late_c2_messages_v1(
-    trace: &PoolV1PairTraceV1,
-) -> Result<[Vec<QM31>; 4], PoolV1PairTraceErrorV1> {
-    if trace.late.iter().any(|column| column.len() != 1024) {
-        return Err(PoolV1PairTraceErrorV1::Shape);
-    }
-    Ok(core::array::from_fn(|packed| {
-        (0..1024)
-            .map(|row| QM31 {
-                c0: CM31::new(trace.late[4 * packed][row], trace.late[4 * packed + 1][row]),
-                c1: CM31::new(
-                    trace.late[4 * packed + 2][row],
-                    trace.late[4 * packed + 3][row],
-                ),
-            })
-            .collect()
-    }))
-}
-
-fn evaluate_late_component(
-    column: &[M31],
-    point: &[QM31; 10],
-) -> Result<QM31, PoolV1PairTraceErrorV1> {
-    if column.len() != 1024 {
-        return Err(PoolV1PairTraceErrorV1::Shape);
-    }
-    let mut layer = column
-        .iter()
-        .copied()
-        .map(|value| QM31::from_cm31(CM31::from_m31(value)))
-        .collect::<Vec<_>>();
-    for coordinate in point.iter().rev() {
-        let mut next = Vec::with_capacity(layer.len() / 2);
-        for pair in layer.chunks_exact(2) {
-            next.push(pair[0].add(coordinate.mul(pair[1].sub(pair[0]))));
-        }
-        layer = next;
-    }
-    layer.first().copied().ok_or(PoolV1PairTraceErrorV1::Shape)
-}
-
-/// Produce the sixteen independent off-domain component claims required by
-/// the terminal. They must not be replaced by four packed-lane evaluations:
-/// QM31 multilinear evaluation does not preserve tower coordinates.
-pub fn pool_v1_pair_late_component_claims_v1(
-    trace: &PoolV1PairTraceV1,
-    point: &[QM31; 10],
-) -> Result<[QM31; 16], PoolV1PairTraceErrorV1> {
-    let mut claims = [QM31::ZERO; 16];
-    for (column, claim) in trace.late.iter().zip(&mut claims) {
-        *claim = evaluate_late_component(column, point)?;
-    }
-    Ok(claims)
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
     use crate::derive_owner_key;
+    use aspis_core::field::CM31;
 
     fn digest(seed: u32) -> Digest {
         core::array::from_fn(|lane| M31(seed + lane as u32 + 1))
@@ -1352,6 +1337,33 @@ mod tests {
     }
 
     #[test]
+    fn checked_merge_overlays_only_the_disjoint_late_rows() {
+        let (public, witness, context, snapshot) = fixture();
+        let trace =
+            build_pool_v1_pair_private_transfer_trace_v1(&public, &witness, context, snapshot)
+                .unwrap();
+        let merged = merge_pool_v1_pair_trace_banks_v1(&trace).unwrap();
+        for column in 0..16 {
+            assert_eq!(&merged.c1[column][..544], &trace.stable.c1[column][..544]);
+            assert_eq!(&merged.c1[column][544..864], &trace.late[column][544..864]);
+            assert_eq!(&merged.c1[column][864..], &trace.stable.c1[column][864..]);
+        }
+
+        let mut stable_overlap = trace.clone();
+        stable_overlap.stable.c1[0][544] = M31::ONE;
+        assert_eq!(
+            merge_pool_v1_pair_trace_banks_v1(&stable_overlap).err(),
+            Some(PoolV1PairTraceErrorV1::Shape)
+        );
+        let mut late_escape = trace;
+        late_escape.late[0][543] = M31::ONE;
+        assert_eq!(
+            merge_pool_v1_pair_trace_banks_v1(&late_escape).err(),
+            Some(PoolV1PairTraceErrorV1::Shape)
+        );
+    }
+
+    #[test]
     fn stable_and_late_mutations_fail_closed() {
         let (public, witness, context, snapshot) = fixture();
         let trace =
@@ -1390,30 +1402,5 @@ mod tests {
             QM31::from_cm31(CM31::from_m31(M31(31))),
         )
         .unwrap();
-    }
-
-    #[test]
-    fn late_transport_packs_rows_but_opens_sixteen_component_polynomials() {
-        let (public, witness, context, _) = fixture();
-        let snapshot = snapshot_at(public.pool, public.deployment_domain, 13);
-        let trace =
-            build_pool_v1_pair_private_transfer_trace_v1(&public, &witness, context, snapshot)
-                .unwrap();
-        let packed = pool_v1_pair_late_c2_messages_v1(&trace).unwrap();
-        for row in 0..1024 {
-            for lane in 0..4 {
-                assert_eq!(packed[lane][row].c0.a, trace.late[4 * lane][row]);
-                assert_eq!(packed[lane][row].c0.b, trace.late[4 * lane + 1][row]);
-                assert_eq!(packed[lane][row].c1.a, trace.late[4 * lane + 2][row]);
-                assert_eq!(packed[lane][row].c1.b, trace.late[4 * lane + 3][row]);
-            }
-        }
-        let point = core::array::from_fn(|coordinate| QM31 {
-            c0: CM31::new(M31(41 + coordinate as u32), M31(71 + coordinate as u32)),
-            c1: CM31::new(M31(101 + coordinate as u32), M31(131 + coordinate as u32)),
-        });
-        let claims = pool_v1_pair_late_component_claims_v1(&trace, &point).unwrap();
-        assert_eq!(claims.len(), 16);
-        assert!(claims.iter().any(|claim| *claim != QM31::ZERO));
     }
 }
