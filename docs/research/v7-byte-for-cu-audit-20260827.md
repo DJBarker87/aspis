@@ -158,7 +158,7 @@ algebraic/cryptographic equality which is cheaper than recomputation.
 | Candidate | Extra Tx bytes | Extra proof/account bytes | Candidate CU saving | Evidence now | Security/formal/source cost | Status |
 | --- | ---: | ---: | ---: | --- | --- | --- |
 | Supply full ASF8 and compare it with authenticated reconstruction | +1,560 | 0 | host-negative; real CU unmeasured | exact TxV1 sizes plus default-off authenticated profile `337d6eba` | Must retain master, checkpoint, selected-lane, deployment, profile/release and afterstate checks | unlikely to win; retain only for combined confirmation |
-| Finalization-computed sealed proof-body SHA in the existing 32-byte authority slot | 0 | 0 | one terminal body-hash pass; syscall floor 15,337 CU | default-off `ASD1` implementation at `609e18fc`; executable delta pending | Exact lifecycle/source invariant, cache/request binding and close-path activation proof | benchmark |
+| Finalization-computed sealed proof-body SHA in the existing 32-byte authority slot | 0 | 0 | none on current ASQ8: it performs no terminal body-digest pass | default-off `ASD1` implementation at `609e18fc`; old native dispatch measured 15,597 CU | Exact lifecycle/source invariant, cache/request binding and close-path activation proof | exclude unless final ASQ8 introduces an authenticated body-digest claim |
 | Checked aggregate M31 inverse hint | 0 or +4 | +4 or 0 | one inversion minus equality check; unmeasured | static arithmetic inventory | Prove nonzero/input binding and exact multiplication check | benchmark if SBF delta is material |
 | Two checked QM31 circle-map inverses | 0 or +32 | +32 or 0 | two inversions minus equality checks; unmeasured | static arithmetic inventory | Same relation, new canonical hint framing/source bridge | benchmark |
 | Canonical final-vector representation | 0 | +128 | isolated SBF **+5,802 CU** | default-off Variant B at `f4756ede`; evidence `9d4fb5e8` | Encoding/canonicality bridge, no changed claims | reject |
@@ -180,9 +180,13 @@ feature-gated and inactive. Finalization authenticates the uploader state and
 writes the version magic last; every existing mutator rejects the sealed
 image. The hot validator checks owner, read-only/non-signer/non-executable
 shape, exact framing, expected length and expected digest without rehashing.
-Its focused host tests and minimal feature compile pass. This is not yet a CU
-result and cannot activate until its documented Rust-to-Lean/Aeneas lifecycle
-obligations and close support are discharged.
+Its focused host tests and minimal feature compile pass. The older native Pool
+dispatch measured a 15,597-CU proof-body SHA interval, but compact ASQ8 carries
+and compares no proof-body digest and its current source performs no equivalent
+hash. The cache therefore earns zero CU credit here. It remains lifecycle
+research only if final ASQ8 later introduces an independently authenticated
+body-digest claim; the release must not add such a hash merely to create work
+for the cache to remove.
 
 The proof-account sweep is not restricted to the old 30-KiB grammar boundary.
 The exact requested size points, before any candidate-specific framing, are:
