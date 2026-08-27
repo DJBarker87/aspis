@@ -15,6 +15,8 @@ pub mod incremental_merkle;
 pub mod nullifier_marker;
 #[cfg(not(target_os = "solana"))]
 pub mod pair_constraint_residuals;
+#[cfg(not(target_os = "solana"))]
+pub mod pair_forest_hiding;
 pub mod pair_terminal;
 #[cfg(not(target_os = "solana"))]
 pub mod pair_trace;
@@ -138,6 +140,23 @@ pub use pair_constraint_residuals::{
     POOL_V1_PAIR_WITHDRAWAL_PUBLIC_RESIDUAL_COUNT, POOL_V1_PAIR_WITHDRAWAL_SCHEDULE_RESIDUAL_COUNT,
     POOL_V1_PAIR_WITHDRAWAL_TOTAL_RESIDUAL_COUNT, POOL_V1_PAIR_ZEROCHECK_INDIVIDUAL_DEGREE,
     POOL_V1_PAIR_ZERO_PADDING_RESIDUAL_COUNT,
+};
+#[cfg(not(target_os = "solana"))]
+pub use pair_forest_hiding::{
+    build_pool_v1_pair_forest_copy_row_schedule_v1, pool_v1_pair_forest_copy_active_row_masks_v1,
+    pool_v1_pair_forest_copy_active_rows_fingerprint_v1, pool_v1_pair_forest_copy_active_rows_v1,
+    pool_v1_pair_forest_copy_inactive_row_masks_v1,
+    pool_v1_pair_forest_copy_row_schedule_fingerprint_v1,
+    pool_v1_pair_forest_membership_hash_block_v1, pool_v1_pair_forest_path_base_row_v1,
+    pool_v1_pair_forest_relation_free_mask_cells_v1,
+    pool_v1_pair_forest_relation_free_mask_fingerprint_v1,
+    PINNED_POOL_V1_PAIR_FOREST_COPY_ACTIVE_ROWS_FINGERPRINT_V1,
+    PINNED_POOL_V1_PAIR_FOREST_COPY_ROW_SCHEDULE_FINGERPRINT_V1,
+    PINNED_POOL_V1_PAIR_FOREST_RELATION_FREE_MASK_FINGERPRINT_V1,
+    POOL_V1_PAIR_FOREST_COPY_ACTIVE_ROWS_V1, POOL_V1_PAIR_FOREST_COPY_ROW_LINKS_V1,
+    POOL_V1_PAIR_FOREST_FIRST_SUPER_ROOT_BLOCK_V1, POOL_V1_PAIR_FOREST_LANES_V1,
+    POOL_V1_PAIR_FOREST_POSEIDON_BLOCKS_V1, POOL_V1_PAIR_FOREST_PRIVATE_DIRECTIONS_V1,
+    POOL_V1_PAIR_FOREST_RELATION_FREE_MASK_CELLS_V1, POOL_V1_PAIR_FOREST_SUPER_ROOT_DEPTH_V1,
 };
 #[cfg(not(target_os = "solana"))]
 pub use pair_tree_hiding::{

@@ -38,7 +38,8 @@ use aspis_statement::atomic_state_only_terminal::{
 };
 use aspis_statement::pool_v1::{
     pool_v1_pair_copy_active_rows_v1, pool_v1_pair_copy_inactive_row_masks_v1,
-    pool_v1_pair_relation_free_mask_cells_v1,
+    pool_v1_pair_forest_copy_active_rows_v1, pool_v1_pair_forest_copy_inactive_row_masks_v1,
+    pool_v1_pair_forest_relation_free_mask_cells_v1, pool_v1_pair_relation_free_mask_cells_v1,
 };
 use aspis_statement::{
     binary_successor_point, state_only_copy_active_rows_v4, state_only_copy_inactive_row_masks_v4,
@@ -1050,6 +1051,7 @@ enum RankLayout {
     StateOnlyV4,
     AtomicV3,
     PoolPairV1,
+    PoolPairForestV1,
 }
 
 fn rank_active_rows(layout: RankLayout) -> Vec<u16> {
@@ -1058,6 +1060,8 @@ fn rank_active_rows(layout: RankLayout) -> Vec<u16> {
         RankLayout::AtomicV3 => atomic_state_only_copy_active_rows_v3().to_vec(),
         RankLayout::PoolPairV1 => pool_v1_pair_copy_active_rows_v1()
             .expect("the pinned Pool pair row schedule has bounded endpoints"),
+        RankLayout::PoolPairForestV1 => pool_v1_pair_forest_copy_active_rows_v1()
+            .expect("the pinned Pool pair-forest row schedule has bounded endpoints"),
     }
 }
 
@@ -1067,6 +1071,8 @@ fn rank_inactive_masks(layout: RankLayout) -> [u16; 64] {
         RankLayout::AtomicV3 => atomic_state_only_copy_inactive_row_masks_v3(),
         RankLayout::PoolPairV1 => pool_v1_pair_copy_inactive_row_masks_v1()
             .expect("the pinned Pool pair row schedule has bounded endpoints"),
+        RankLayout::PoolPairForestV1 => pool_v1_pair_forest_copy_inactive_row_masks_v1()
+            .expect("the pinned Pool pair-forest row schedule has bounded endpoints"),
     }
 }
 
@@ -4628,6 +4634,28 @@ pub fn probe_pool_v1_pair_root_message_hiding_rank(
     )
 }
 
+/// Full-view hiding-rank gate for the production-inactive eight-lane pair
+/// forest.  It keeps the same 26+3 PCS and q16 root-message target while
+/// replacing the pair layout by the exact 136-link/214-active-row forest
+/// inventory.  This is a necessary masking gate, not profile activation.
+pub fn probe_pool_v1_pair_forest_root_message_hiding_rank(
+    schedule: &StateOnlyTranscriptScheduleResult,
+) -> Result<StateOnlyHidingRankGateReport, StateOnlyHidingRankGateError> {
+    if schedule.query_count != 16 {
+        return Err(StateOnlyHidingRankGateError::Shape);
+    }
+    check_state_only_complete_hiding_rank_inner_for_layout(
+        schedule,
+        false,
+        FactorSchedule::Production,
+        None,
+        LateSwitchSupport::WitnessDifferenceSuperset,
+        PcsSchedule::RootMessageV6Log20,
+        true,
+        RankLayout::PoolPairForestV1,
+    )
+}
+
 /// Project one concrete atomic-v3 semantic-trace difference and its exact
 /// unmasked degree-27 sumcheck-observation difference through the same frozen
 /// q16 mask quotient used by the conservative witness audit.
@@ -5463,6 +5491,8 @@ fn check_state_only_complete_hiding_rank_inner_for_layout_and_delta_and_projecti
             .map_err(|_| StateOnlyHidingRankGateError::Layout)?,
         RankLayout::PoolPairV1 => pool_v1_pair_relation_free_mask_cells_v1()
             .map_err(|_| StateOnlyHidingRankGateError::Layout)?,
+        RankLayout::PoolPairForestV1 => pool_v1_pair_forest_relation_free_mask_cells_v1()
+            .map_err(|_| StateOnlyHidingRankGateError::Layout)?,
     };
     let mut cells_by_column = vec![Vec::new(); STATE_ONLY_HIDING_C1_COLUMNS];
     for cell in cells {
@@ -5524,6 +5554,32 @@ fn check_state_only_complete_hiding_rank_inner_for_layout_and_delta_and_projecti
         semantic_mask_basis_m31 += column_basis;
         semantic_raw_kernel_m31 += column_basis - raw.rank;
         if raw.rank != c1_raw_m31 {
+            if layout == RankLayout::PoolPairForestV1 {
+                let mut recovery = raw.clone();
+                let mut recovery_rows = Vec::new();
+                for candidate in 57 * 16..TRACE_ROWS {
+                    if cells.contains(&candidate) {
+                        continue;
+                    }
+                    let subtract = (!active[candidate]).then_some(dependent);
+                    if matches!(
+                        recovery.reduce_with_pivot(
+                            c1_raw_difference(&rows, candidate, subtract),
+                            Vec::new(),
+                        ),
+                        CarryReduction::Pivot { .. }
+                    ) {
+                        recovery_rows.push(candidate);
+                    }
+                    if recovery.rank == c1_raw_m31 {
+                        break;
+                    }
+                }
+                eprintln!(
+                    "Pool pair-forest raw-C1 recovery column={column} start={} rows={recovery_rows:?}",
+                    raw.rank,
+                );
+            }
             return Err(StateOnlyHidingRankGateError::RawC1Rank {
                 column,
                 got: raw.rank,
@@ -6191,8 +6247,10 @@ fn check_state_only_complete_hiding_rank_inner_for_layout_and_delta_and_projecti
         witness_difference_probe.then_some(terminal_dependent);
     let mut witness_coupled_terminal_identity_guard = false;
     if witness_difference_probe {
-        if !matches!(layout, RankLayout::AtomicV3 | RankLayout::PoolPairV1)
-            || semantic_raw_echelons.len() != STATE_ONLY_HIDING_C1_COLUMNS
+        if !matches!(
+            layout,
+            RankLayout::AtomicV3 | RankLayout::PoolPairV1 | RankLayout::PoolPairForestV1
+        ) || semantic_raw_echelons.len() != STATE_ONLY_HIDING_C1_COLUMNS
         {
             return Err(StateOnlyHidingRankGateError::Layout);
         }
