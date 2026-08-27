@@ -234,7 +234,16 @@ pub const POOL_V1_PAIR_PATH_AUX_ROW_END: usize =
     POOL_V1_PAIR_PATH_AUX_ROW_START + POOL_V1_PAIR_PATH_AUX_BLOCKS * POOL_V1_PAIR_TRACE_BLOCK_ROWS;
 pub const POOL_V1_PAIR_VALUE_AUX_ROW_START: usize = POOL_V1_PAIR_PATH_AUX_ROW_END;
 pub const POOL_V1_PAIR_SEMANTIC_ROW_END: usize = POOL_V1_PAIR_ALLOCATED_ROWS;
-pub const POOL_V1_PAIR_OCCUPANCY_AUX_ROW: usize = POOL_V1_PAIR_VALUE_AUX_ROW_START + 9;
+/// The historical input pair and newly appended output pair require distinct
+/// occupancy witnesses.  Each row stores `(occupied, inverse, C[0..8])`, so
+/// its zero-test and all eight empty-slot equations are row-local.
+pub const POOL_V1_PAIR_INPUT_OCCUPANCY_AUX_ROW: usize = POOL_V1_PAIR_VALUE_AUX_ROW_START + 9;
+pub const POOL_V1_PAIR_OUTPUT_OCCUPANCY_AUX_ROW: usize = POOL_V1_PAIR_VALUE_AUX_ROW_START + 10;
+pub const POOL_V1_PAIR_OCCUPANCY_BIT_COLUMN: usize = 0;
+pub const POOL_V1_PAIR_OCCUPANCY_INVERSE_COLUMN: usize = 1;
+pub const POOL_V1_PAIR_OCCUPANCY_COMMITMENT_COLUMN_START: usize = 2;
+pub const POOL_V1_PAIR_OCCUPANCY_COMMITMENT_COLUMN_END: usize =
+    POOL_V1_PAIR_OCCUPANCY_COMMITMENT_COLUMN_START + 8;
 
 pub const POOL_V1_PAIR_POSEIDON_INTRINSIC_DEGREE: usize = 25;
 pub const POOL_V1_PAIR_NEW_RESIDUAL_MAX_INTRINSIC_DEGREE: usize = 2;
@@ -332,7 +341,9 @@ const _: () = assert!(POOL_V1_PAIR_ALLOCATED_BLOCKS == 61);
 const _: () = assert!(POOL_V1_PAIR_POSEIDON_ROW_END == 864);
 const _: () = assert!(POOL_V1_PAIR_PATH_AUX_ROW_END == 960);
 const _: () = assert!(POOL_V1_PAIR_VALUE_AUX_ROW_START == 960);
-const _: () = assert!(POOL_V1_PAIR_OCCUPANCY_AUX_ROW == 969);
+const _: () = assert!(POOL_V1_PAIR_INPUT_OCCUPANCY_AUX_ROW == 969);
+const _: () = assert!(POOL_V1_PAIR_OUTPUT_OCCUPANCY_AUX_ROW == 970);
+const _: () = assert!(POOL_V1_PAIR_OCCUPANCY_COMMITMENT_COLUMN_END == 10);
 const _: () = assert!(POOL_V1_PAIR_SEMANTIC_ROW_END == 976);
 const _: () = assert!(POOL_V1_PAIR_UNALLOCATED_SEMANTIC_ROWS == 48);
 const _: () = assert!(POOL_V1_PAIR_NEW_RESIDUAL_MAX_INTRINSIC_DEGREE <= 2);
@@ -526,6 +537,9 @@ mod tests {
         assert_eq!(POOL_V1_PAIR_SEMANTIC_ROW_END, 976);
         assert_eq!(POOL_V1_PAIR_UNALLOCATED_SEMANTIC_ROWS, 48);
         assert_eq!(POOL_V1_PAIR_MAX_DEPLOYED_DEGREE, 27);
+        assert_eq!(POOL_V1_PAIR_INPUT_OCCUPANCY_AUX_ROW, 969);
+        assert_eq!(POOL_V1_PAIR_OUTPUT_OCCUPANCY_AUX_ROW, 970);
+        assert_eq!(POOL_V1_PAIR_OCCUPANCY_COMMITMENT_COLUMN_END, 10);
         assert_eq!(
             POOL_V1_PAIR_STAGED_TRANSCRIPT_PREFIX_V1[4],
             PoolV1PairTranscriptStepV1::LiveAppendSnapshot

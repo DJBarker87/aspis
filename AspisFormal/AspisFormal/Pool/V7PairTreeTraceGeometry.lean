@@ -239,11 +239,21 @@ def valueSuccessorRow (value : Fin 3) : Nat := valueBaseRow value + 1
 def valueSiblingRow (value : Fin 3) : Nat := Nat.xor (valueBaseRow value) 12
 def conservationBaseRow : Nat := valueAuxRowStart + 6
 
-/-- The occupancy bit and sentinel inverse occupy a row unused by the three
-30-bit value views or the two conservation rows. -/
-def occupancyAuxRow : Nat := valueAuxRowStart + 9
-def occupancyBitCell : TraceCell := ⟨occupancyAuxRow, 0⟩
-def occupancyInverseCell : TraceCell := ⟨occupancyAuxRow, 1⟩
+/-- Input membership and output append need separate occupancy certificates.
+Each row contains `(occupied, inverse, secondCommitment[0..8])`, making the
+zero test and all eight empty-slot constraints row-local. -/
+def inputOccupancyAuxRow : Nat := valueAuxRowStart + 9
+def outputOccupancyAuxRow : Nat := valueAuxRowStart + 10
+
+def inputOccupancyBitCell : TraceCell := ⟨inputOccupancyAuxRow, 0⟩
+def inputOccupancyInverseCell : TraceCell := ⟨inputOccupancyAuxRow, 1⟩
+def inputSecondCommitmentCell (lane : Fin 8) : TraceCell :=
+  ⟨inputOccupancyAuxRow, 2 + lane.val⟩
+
+def outputOccupancyBitCell : TraceCell := ⟨outputOccupancyAuxRow, 0⟩
+def outputOccupancyInverseCell : TraceCell := ⟨outputOccupancyAuxRow, 1⟩
+def outputSecondCommitmentCell (lane : Fin 8) : TraceCell :=
+  ⟨outputOccupancyAuxRow, 2 + lane.val⟩
 
 def existingValueAndConservationRows : Finset Nat :=
   ((Finset.univ.image valueBaseRow ∪
@@ -259,11 +269,21 @@ theorem exact_value_and_occupancy_rows_inside_final_aux_block :
       valueSuccessorRow value < valueAuxRowEnd ∧
       valueAuxRowStart ≤ valueSiblingRow value ∧
       valueSiblingRow value < valueAuxRowEnd) ∧
-    valueAuxRowStart ≤ occupancyAuxRow ∧ occupancyAuxRow < valueAuxRowEnd := by
+    valueAuxRowStart ≤ inputOccupancyAuxRow ∧
+      inputOccupancyAuxRow < valueAuxRowEnd ∧
+      valueAuxRowStart ≤ outputOccupancyAuxRow ∧
+      outputOccupancyAuxRow < valueAuxRowEnd := by
   decide
 
-theorem occupancy_auxiliary_does_not_alias_existing_value_rows :
-    occupancyAuxRow ∉ existingValueAndConservationRows := by
+theorem occupancy_auxiliaries_are_distinct_and_do_not_alias_existing_value_rows :
+    inputOccupancyAuxRow ≠ outputOccupancyAuxRow ∧
+      inputOccupancyAuxRow ∉ existingValueAndConservationRows ∧
+      outputOccupancyAuxRow ∉ existingValueAndConservationRows := by
+  decide
+
+theorem occupancy_commitment_cells_are_inside_sixteen_columns :
+    (∀ lane : Fin 8, (inputSecondCommitmentCell lane).column < traceColumns) ∧
+      (∀ lane : Fin 8, (outputSecondCommitmentCell lane).column < traceColumns) := by
   decide
 
 /-! ## Literal polynomial degree of the new constraints -/
