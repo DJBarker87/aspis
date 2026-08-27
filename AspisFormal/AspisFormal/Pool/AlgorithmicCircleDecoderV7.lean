@@ -8,9 +8,9 @@ import AspisFormal.V6PublishedTheoremInterfaces
 Knowledge extraction needs executable finite-list decoders, not existential
 decodability predicates.  This module fixes the two deployed one-fold stages,
 their exact agreement thresholds and their proved list caps.  A concrete
-instantiation must provide deterministic algorithms and the exact S-two
-circle-to-GRS applicability proof; this file does not pretend that a citation
-is executable Lean code.
+instantiation carries reviewable GRS conversion data and deterministic
+algorithms; only the Guruswami--Sudan decoder theorem remains a published
+external boundary.
 -/
 
 set_option autoImplicit false
@@ -18,6 +18,7 @@ set_option autoImplicit false
 namespace AspisPool.AlgorithmicCircleDecoderV7
 
 open AspisPool.KnowledgeExtractorInterface
+open Polynomial
 
 abbrev InitialMessage (K : Type*) := Fin 1024 → K
 abbrev InitialWord (K : Type*) := Fin 1048576 → K
@@ -37,6 +38,117 @@ def closeAtLeast {K Message : Type*} [DecidableEq K] {n : Nat}
     (threshold : Nat) (encoder : Message → Fin n → K)
     (received : Fin n → K) (message : Message) : Prop :=
   threshold ≤ agreementCount received (encoder message)
+
+/-! ## Reviewable generalized Reed--Solomon conversion boundary -/
+
+/-- Conventional generalized Reed--Solomon evaluation with evaluation points
+`aᵢ`, nonzero column multipliers `vᵢ`, and polynomial message `p`:
+the `i`-th symbol is `vᵢ * p(aᵢ)`. -/
+def generalizedReedSolomonEncode {K : Type*} [Field K] {n : Nat}
+    (points multipliers : Fin n → K) (polynomial : K[X]) : Fin n → K :=
+  fun index => multipliers index * polynomial.eval (points index)
+
+/-- Exact mathematical data identifying a released encoder with a
+generalized Reed--Solomon evaluation code of bounded polynomial degree.
+
+The structure contains only conversion data and its algebraic invariants:
+the message-coordinate dimension, points, column multipliers,
+message-to-polynomial map, distinctness, nonvanishing, injectivity, degree
+bound, and the pointwise coordinate identity.  Agreement transport is derived
+below rather than stored as an opaque field.
+
+The separate `messageDimension` and `maximumDegree` parameters matter for the
+initial circle code: its 1024-dimensional message space embeds into the
+degree-at-most-1024 ambient GRS code.  The final line code has 256 message
+coordinates and maximum degree 255. -/
+structure ExactGRSConversion {K Message : Type*} [Field K] {n : Nat}
+    (messageDimension maximumDegree : Nat)
+    (releasedEncoder : Message → Fin n → K) where
+  messageCoordinates : Message ≃ (Fin messageDimension → K)
+  points : Fin n → K
+  multipliers : Fin n → K
+  messagePolynomial : Message → K[X]
+  points_injective : Function.Injective points
+  multipliers_ne_zero : ∀ index, multipliers index ≠ 0
+  messagePolynomial_injective : Function.Injective messagePolynomial
+  messagePolynomial_degree_le : ∀ message,
+    (messagePolynomial message).natDegree ≤ maximumDegree
+  coordinate_identity : ∀ message index,
+    releasedEncoder message index =
+      generalizedReedSolomonEncode points multipliers
+        (messagePolynomial message) index
+
+def ExactGRSConversion.grsEncoder
+    {K Message : Type*} [Field K]
+    {n messageDimension maximumDegree : Nat}
+    {releasedEncoder : Message → Fin n → K}
+    (conversion : ExactGRSConversion messageDimension maximumDegree
+      releasedEncoder) :
+    Message → Fin n → K :=
+  fun message => generalizedReedSolomonEncode conversion.points
+    conversion.multipliers (conversion.messagePolynomial message)
+
+/-- Multiplication by each GRS column multiplier is explicitly invertible.
+This witnesses that the nonzero scaling in the conversion loses no symbol
+information. -/
+def ExactGRSConversion.coordinateScalingEquiv
+    {K Message : Type*} [Field K]
+    {n messageDimension maximumDegree : Nat}
+    {releasedEncoder : Message → Fin n → K}
+    (conversion : ExactGRSConversion messageDimension maximumDegree
+      releasedEncoder)
+    (index : Fin n) : K ≃ K where
+  toFun value := conversion.multipliers index * value
+  invFun value := (conversion.multipliers index)⁻¹ * value
+  left_inv value := by
+    change (conversion.multipliers index)⁻¹ *
+      (conversion.multipliers index * value) = value
+    rw [← mul_assoc, inv_mul_cancel₀ (conversion.multipliers_ne_zero index),
+      one_mul]
+  right_inv value := by
+    change conversion.multipliers index *
+      ((conversion.multipliers index)⁻¹ * value) = value
+    rw [← mul_assoc, mul_inv_cancel₀ (conversion.multipliers_ne_zero index),
+      one_mul]
+
+theorem ExactGRSConversion.releasedEncoder_eq_grsEncoder
+    {K Message : Type*} [Field K]
+    {n messageDimension maximumDegree : Nat}
+    {releasedEncoder : Message → Fin n → K}
+    (conversion : ExactGRSConversion messageDimension maximumDegree
+      releasedEncoder)
+    (message : Message) :
+    releasedEncoder message = conversion.grsEncoder message := by
+  funext index
+  exact conversion.coordinate_identity message index
+
+/-- Exact Hamming-agreement transport.  The concrete V7 conversions index
+their GRS points in the released bit-reversed order, so no coordinate
+permutation or received-word rewrite is necessary. -/
+theorem ExactGRSConversion.agreementCount_eq
+    {K Message : Type*} [Field K] [DecidableEq K]
+    {n messageDimension maximumDegree : Nat}
+    {releasedEncoder : Message → Fin n → K}
+    (conversion : ExactGRSConversion messageDimension maximumDegree
+      releasedEncoder)
+    (received : Fin n → K) (message : Message) :
+    agreementCount received (releasedEncoder message) =
+      agreementCount received (conversion.grsEncoder message) := by
+  rw [conversion.releasedEncoder_eq_grsEncoder]
+
+/-- Every agreement threshold, and in particular the two fixed V7
+thresholds, is preserved as an equivalence rather than merely an inequality. -/
+theorem ExactGRSConversion.closeAtLeast_iff
+    {K Message : Type*} [Field K] [DecidableEq K]
+    {n messageDimension maximumDegree : Nat}
+    {releasedEncoder : Message → Fin n → K}
+    (conversion : ExactGRSConversion messageDimension maximumDegree
+      releasedEncoder)
+    (threshold : Nat) (received : Fin n → K) (message : Message) :
+    closeAtLeast threshold releasedEncoder received message ↔
+      closeAtLeast threshold conversion.grsEncoder received message := by
+  unfold closeAtLeast
+  rw [conversion.agreementCount_eq]
 
 theorem exact_decoder_parameters :
     initialAgreementThreshold = 38230 ∧
@@ -76,9 +188,9 @@ theorem final_close_iff_published_strict
     9557 < agreementCount received (encoder message)
   omega
 
-/-- Exact external algorithm package needed for the two reconstructed V7
-received words.  The conversion and polynomial-time fields are intentionally
-separate: list completeness alone is not an algorithmic theorem. -/
+/-- Exact algorithm package needed for the two reconstructed V7 received
+words.  The conversion fields are mathematical data with checked coordinate
+identities, not opaque applicability propositions. -/
 structure ExactDecoderInstantiation (K : Type*) [Field K] [Fintype K]
     [DecidableEq K] where
   initialEncoder : InitialMessage K → InitialWord K
@@ -101,11 +213,51 @@ structure ExactDecoderInstantiation (K : Type*) [Field K] [Fintype K]
       closeAtLeast finalAgreementThreshold finalEncoder received message
   finalOutputBound : ∀ received,
     (finalDecode received).length ≤ finalListSizeCap
-  exactInitialCircleToGrsConversion : Prop
-  exactFinalLineToGrsConversion : Prop
+  initialGrsConversion : ExactGRSConversion 1024 1024 initialEncoder
+  finalGrsConversion : ExactGRSConversion 256 255 finalEncoder
   multiplicityThreeGuruswamiSudanApplicable : Prop
   initialDeterministicPolynomialTime : Prop
   finalDeterministicPolynomialTime : Prop
+
+theorem ExactDecoderInstantiation.initialAgreementCount_eq_grs
+    {K : Type*} [Field K] [Fintype K] [DecidableEq K]
+    (decoder : ExactDecoderInstantiation K)
+    (received : InitialWord K) (message : InitialMessage K) :
+    agreementCount received (decoder.initialEncoder message) =
+      agreementCount received
+        (decoder.initialGrsConversion.grsEncoder message) :=
+  decoder.initialGrsConversion.agreementCount_eq received message
+
+theorem ExactDecoderInstantiation.finalAgreementCount_eq_grs
+    {K : Type*} [Field K] [Fintype K] [DecidableEq K]
+    (decoder : ExactDecoderInstantiation K)
+    (received : FinalWord K) (message : FinalMessage K) :
+    agreementCount received (decoder.finalEncoder message) =
+      agreementCount received
+        (decoder.finalGrsConversion.grsEncoder message) :=
+  decoder.finalGrsConversion.agreementCount_eq received message
+
+theorem ExactDecoderInstantiation.initialThreshold_transport
+    {K : Type*} [Field K] [Fintype K] [DecidableEq K]
+    (decoder : ExactDecoderInstantiation K)
+    (received : InitialWord K) (message : InitialMessage K) :
+    closeAtLeast initialAgreementThreshold decoder.initialEncoder received
+        message ↔
+      closeAtLeast initialAgreementThreshold
+        decoder.initialGrsConversion.grsEncoder received message :=
+  decoder.initialGrsConversion.closeAtLeast_iff initialAgreementThreshold
+    received message
+
+theorem ExactDecoderInstantiation.finalThreshold_transport
+    {K : Type*} [Field K] [Fintype K] [DecidableEq K]
+    (decoder : ExactDecoderInstantiation K)
+    (received : FinalWord K) (message : FinalMessage K) :
+    closeAtLeast finalAgreementThreshold decoder.finalEncoder received
+        message ↔
+      closeAtLeast finalAgreementThreshold
+        decoder.finalGrsConversion.grsEncoder received message :=
+  decoder.finalGrsConversion.closeAtLeast_iff finalAgreementThreshold received
+    message
 
 /-- Package the exact initial algorithm as the common operational decoder
 interface used by the K1 extraction composition. -/
@@ -190,14 +342,13 @@ theorem final_output_at_most_99
     (decoder.finalDecode received).length ≤ 99 := by
   simpa [finalListSizeCap] using decoder.finalOutputBound received
 
-/-- This conjunction is the exact literature/application boundary that must
-be discharged before the algorithms can be attributed to S-two Theorem 7. -/
+/-- Circle/line-to-GRS conversion is now intrinsic checked data.  The only
+remaining published applicability proposition here is the exact
+Guruswami--Sudan decoder theorem. -/
 def ExactDecoderInstantiation.publishedApplicability
     {K : Type*} [Field K] [Fintype K] [DecidableEq K]
     (decoder : ExactDecoderInstantiation K) : Prop :=
-  decoder.exactInitialCircleToGrsConversion ∧
-    decoder.exactFinalLineToGrsConversion ∧
-    decoder.multiplicityThreeGuruswamiSudanApplicable
+  decoder.multiplicityThreeGuruswamiSudanApplicable
 
 #print axioms exact_decoder_parameters
 #print axioms initial_close_iff_published_strict
@@ -207,5 +358,13 @@ def ExactDecoderInstantiation.publishedApplicability
 #print axioms final_close_candidate_mem_decodeBoth
 #print axioms initial_output_at_most_100
 #print axioms final_output_at_most_99
+#print axioms ExactGRSConversion.coordinateScalingEquiv
+#print axioms ExactGRSConversion.releasedEncoder_eq_grsEncoder
+#print axioms ExactGRSConversion.agreementCount_eq
+#print axioms ExactGRSConversion.closeAtLeast_iff
+#print axioms ExactDecoderInstantiation.initialAgreementCount_eq_grs
+#print axioms ExactDecoderInstantiation.finalAgreementCount_eq_grs
+#print axioms ExactDecoderInstantiation.initialThreshold_transport
+#print axioms ExactDecoderInstantiation.finalThreshold_transport
 
 end AspisPool.AlgorithmicCircleDecoderV7
