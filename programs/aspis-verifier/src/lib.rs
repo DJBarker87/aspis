@@ -99,6 +99,23 @@ compile_error!(
 ))]
 compile_error!("V7_CU_PROBE_FORBIDS_OTHER_PROBES: select exactly one local probe entrypoint");
 
+#[cfg(all(
+    feature = "v7-pool-cu-profile",
+    any(
+        feature = "spend-production",
+        feature = "v5-production-tag67",
+        feature = "v6-production-tag72",
+        feature = "v7-production-tag73",
+        feature = "v5-cu-probe",
+        feature = "v6-cu-probe",
+        feature = "v7-cu-probe"
+    ),
+    not(feature = "no-entrypoint")
+))]
+compile_error!(
+    "V7_POOL_CU_PROFILE_FORBIDS_OTHER_ENTRYPOINTS: select only the local Pool profiler"
+);
+
 pub mod atomic_payment;
 pub mod dispatch;
 pub mod lifecycle;
@@ -119,19 +136,31 @@ pub mod v6_transaction;
     feature = "v6-production-tag72",
     feature = "v7-cu-probe",
     feature = "v7-production-tag73",
+    feature = "v7-pool-cu-profile",
     test
 ))]
 pub mod v6_verifier;
 #[cfg(any(feature = "v7-pool-dispatch-profile", test))]
 pub mod v7_pool_dispatch;
-#[cfg(any(feature = "v7-pool-dispatch-profile", test))]
+#[cfg(any(
+    feature = "v7-pool-dispatch-profile",
+    feature = "v7-pool-cu-profile",
+    test
+))]
 pub mod v7_pool_native_dispatch;
 #[cfg(any(feature = "v7-pool-dispatch-profile", test))]
 pub mod v7_pool_receipt;
 pub mod v7_staged_pair_profile;
 #[cfg(any(feature = "v7-production-tag73", test))]
 pub mod v7_transaction;
-#[cfg(any(feature = "v7-cu-probe", feature = "v7-production-tag73", test))]
+#[cfg(feature = "v7-pool-cu-profile")]
+pub mod v7_pool_cu_profile;
+#[cfg(any(
+    feature = "v7-cu-probe",
+    feature = "v7-production-tag73",
+    feature = "v7-pool-cu-profile",
+    test
+))]
 pub mod v7_verifier;
 pub mod verify;
 pub mod wire;

@@ -37,11 +37,11 @@ use crate::v6_onefold::{
 use crate::v6_query_batch::{
     add_v6_final256_query_batch, add_v7_final256_query_batch_shifted, V6AuthenticatedQueryBatch,
 };
+use crate::v7_merkle208::{V7_C1_TREE_TAG, V7_C2_TREE_TAG, V7_MERKLE_DIGEST_BYTES};
 use crate::v7_onefold::{
     derive_first_v7_compact_queries, V7CompactOneFoldWire, V7_COMPACT_BATCH_WORK_BITS,
     V7_COMPACT_FINAL_WORK_BITS, V7_COMPACT_FOLD_WORK_BITS, V7_COMPACT_PROFILE_BINDING,
 };
-use crate::v7_merkle208::{V7_C1_TREE_TAG, V7_C2_TREE_TAG, V7_MERKLE_DIGEST_BYTES};
 use crate::HashFn;
 
 pub const V6_BATCH_WORK_BITS: u8 = 34;
@@ -106,6 +106,20 @@ pub enum V6RelationDiagnosticPhase {
     RoundThreeWeights,
     RoundThree,
     Terminal,
+}
+
+/// Probe-only checkpoints spanning the compact V7 transcript prefix and the
+/// shared relation tail.  This enum is consumed only by diagnostic verifier
+/// builds; production verification continues to use the uninstrumented
+/// wrapper above.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum V7TranscriptDiagnosticPhase {
+    TranscriptSetup,
+    SemanticSumcheck,
+    PointClaims,
+    TerminalStart,
+    TerminalEnd,
+    Relation(V6RelationDiagnosticPhase),
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -318,7 +332,7 @@ fn begin_v7_compact_transcript_with_hiding_context(
     transcript.absorb(label::V7_DEPLOYMENT_CONTEXT, &deployment);
     transcript.absorb(label::STATEMENT, &context.statement_digest);
     begin_state_only_hiding_precommit(&mut transcript, hiding_context)
-    .map_err(|_| V6TranscriptError::HidingContext)?;
+        .map_err(|_| V6TranscriptError::HidingContext)?;
 
     let c1_salt = v7_public_root_salt(hash, context, V7_C1_TREE_TAG);
     absorb_v7_c1_root(&mut transcript, wire.c1_root, &c1_salt);
@@ -1140,6 +1154,72 @@ where
         &point_claims,
         query_fold,
         |_| {},
+    )
+}
+
+/// Diagnostic twin of
+/// [`verify_v7_compact_transcript_and_relation_prepared_with_hiding_context`].
+/// It executes the same parser, transcript, terminal callback and relation,
+/// but exposes coarse phase boundaries to a local-only CU profiler.  No
+/// production caller references this symbol.
+#[allow(clippy::too_many_arguments)]
+#[inline(never)]
+pub fn verify_v7_compact_transcript_and_relation_prepared_with_hiding_context_and_diagnostic_trace<
+    TerminalCheck,
+    QueryFold,
+    Trace,
+>(
+    hash: HashFn,
+    wire: &V7CompactOneFoldWire<'_>,
+    context: &V6TranscriptContext,
+    hiding_context: StateOnlyHidingContext,
+    inactive_row_groups: &[u8; 64],
+    inactive_group_masks: &[u16],
+    check_pow: bool,
+    terminal_check: TerminalCheck,
+    query_fold: QueryFold,
+    mut trace: Trace,
+) -> Result<V6VerifiedTranscript, V6TranscriptError>
+where
+    TerminalCheck: FnOnce(&V6SemanticView<'_>) -> bool,
+    QueryFold: FnOnce(&V6QueryBatchView<'_>) -> Result<V6AuthenticatedQueryBatch, V6WireError>,
+    Trace: FnMut(V7TranscriptDiagnosticPhase),
+{
+    let mut fields = V6FixedFieldReader::new(wire.fixed_fields_packed)?;
+    let (mut transcript, lambda, chi, batching) =
+        begin_v7_compact_transcript_with_hiding_context(hash, context, wire, hiding_context)?;
+    trace(V7TranscriptDiagnosticPhase::TranscriptSetup);
+    let (eta, semantic_point, semantic_terminal) =
+        verify_compact_semantic_sumcheck(&mut transcript, &mut fields)?;
+    trace(V7TranscriptDiagnosticPhase::SemanticSumcheck);
+    let point_claims = decode_and_absorb_point_claims(&mut transcript, &mut fields)?;
+    trace(V7TranscriptDiagnosticPhase::PointClaims);
+    let semantic_view = V6SemanticView {
+        lambda,
+        chi,
+        batching,
+        eta,
+        point: semantic_point,
+        terminal_claim: semantic_terminal,
+        point_claims: &point_claims,
+    };
+    trace(V7TranscriptDiagnosticPhase::TerminalStart);
+    if !terminal_check(&semantic_view) {
+        return Err(V6TranscriptError::TerminalRejected);
+    }
+    trace(V7TranscriptDiagnosticPhase::TerminalEnd);
+
+    finish_v7_compact_relation(
+        transcript,
+        wire,
+        fields,
+        inactive_row_groups,
+        inactive_group_masks,
+        check_pow,
+        semantic_point,
+        &point_claims,
+        query_fold,
+        |phase| trace(V7TranscriptDiagnosticPhase::Relation(phase)),
     )
 }
 

@@ -1,0 +1,64 @@
+{
+  "schema": "aspis.v7.pool-terminal-cu-profile.phase-ledger.v1",
+  "source_revision": "603c1c86dc4df46d3179eefaddeaac90c35129d5",
+  "compute_unit_limit": 1400000,
+  "program_budget_after_compute_budget_instruction": 1399850,
+  "result": "red",
+  "failure_location": "inside V7 two-tree query authentication, after coordinate preparation and before the query-authentication-gamma checkpoint",
+  "phase_markers": [
+    { "label": "entry", "remaining": 1399359, "delta": 491, "cumulative": 491 },
+    { "label": "request-hashes", "remaining": 1396050, "delta": 3309, "cumulative": 3800 },
+    { "label": "proof-body-hash", "remaining": 1380453, "delta": 15597, "cumulative": 19397 },
+    { "label": "wire-parsed", "remaining": 1380157, "delta": 296, "cumulative": 19693 },
+    { "label": "inactive-schedule", "remaining": 1376174, "delta": 3983, "cumulative": 23676 },
+    { "label": "transcript-setup", "remaining": 1366608, "delta": 9566, "cumulative": 33242 },
+    { "label": "semantic-sumcheck", "remaining": 1172873, "delta": 193735, "cumulative": 226977 },
+    { "label": "point-claims", "remaining": 1145834, "delta": 27039, "cumulative": 254016 },
+    { "label": "terminal-start", "remaining": 1145558, "delta": 276, "cumulative": 254292 },
+    { "label": "terminal-end", "remaining": 323891, "delta": 821667, "cumulative": 1075959 },
+    { "label": "relation-start", "remaining": 323608, "delta": 283, "cumulative": 1076242 },
+    { "label": "relation-prepared-weights", "remaining": 283743, "delta": 39865, "cumulative": 1116107 },
+    { "label": "relation-circle-samples", "remaining": 270812, "delta": 12931, "cumulative": 1129038 },
+    { "label": "relation-fields", "remaining": 263733, "delta": 7079, "cumulative": 1136117 },
+    { "label": "relation-round-zero", "remaining": 252025, "delta": 11708, "cumulative": 1147825 },
+    { "label": "relation-final256", "remaining": 172142, "delta": 79883, "cumulative": 1227708 },
+    { "label": "relation-queries", "remaining": 158356, "delta": 13786, "cumulative": 1241494 },
+    { "label": "query-fold-start", "remaining": 158101, "delta": 255, "cumulative": 1241749 },
+    { "label": "query-coordinates", "remaining": 150441, "delta": 7660, "cumulative": 1249409 },
+    { "label": "query-authentication-exhausted", "remaining": 0, "delta_lower_bound": 150441, "cumulative": 1399850 }
+  ],
+  "exact_grouped_costs": {
+    "transcript_semantic_sumcheck_and_point_claims": 230340,
+    "pool_terminal": 821667,
+    "relation_prefix_after_terminal_through_query_coordinates": 172912,
+    "consumed_before_query_authentication": 1249409,
+    "query_authentication_lower_bound": 150441
+  },
+  "prefactorization_gate": {
+    "current_pool_terminal": 821667,
+    "atomic_terminal_reference": 299489,
+    "required_terminal_saving_target": 522178,
+    "target_pool_terminal_at_most": 299489,
+    "basis": "exact current Pool terminal delta versus the frozen V6 integrated atomic-terminal measurement",
+    "not_a_complete_fit_claim": true
+  },
+  "static_private_transfer_inventory": {
+    "semantic_row_selector_calls": 109,
+    "initial_state_residual_terms": 512,
+    "absorption_zero_residual_terms": 546,
+    "copy_patterns": 13,
+    "copy_pattern_nonzero_limbs": 68,
+    "copy_links": 78,
+    "copy_endpoints": 156,
+    "copy_endpoint_unique_rows": 128,
+    "copy_active_nonzero_high_blocks": 38,
+    "copy_active_boolean_rows": 128
+  },
+  "artifacts": {
+    "proof_bytes": 30192,
+    "proof_sha256": "656f25689041ae7f90c9461f4dbe3336478e01e1970ff00c24d1e7d90ed2e72c",
+    "diagnostic_sbf_bytes": 825528,
+    "diagnostic_sbf_sha256": "ffa7f7cb3de881c07561ad6d25b704659cb3645f2abe0c343bc61d3133bc14c9"
+  },
+  "no_network_send_or_deploy": true
+}
