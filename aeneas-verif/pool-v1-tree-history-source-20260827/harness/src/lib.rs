@@ -3,7 +3,8 @@
 use aspis_statement::{
     pool_v1::{
         root_history_location, AppendOneV1, AppendTwoV1, IncrementalMerkleTreeV1,
-        PoolV1TreeError, RootHistoryLocationV1, POOL_V1_TREE_DEPTH,
+        PoolV1TreeError, RootHistoryLocationV1, POOL_V1_ROOT_HISTORY_PAGE_ACCOUNT_BYTES,
+        POOL_V1_TREE_DEPTH,
     },
     poseidon2::Digest,
 };
@@ -38,4 +39,14 @@ pub fn production_tree_append_two(
 /// root-history persistence.
 pub fn production_root_history_location(sequence: u64) -> RootHistoryLocationV1 {
     root_history_location(sequence)
+}
+
+/// Extraction-only normalization of the pure suffix of
+/// `history::validate_new_page_account` after Solana has successfully returned
+/// the account-data borrow.  The runtime borrow itself deliberately remains a
+/// named interface; the exact fixed length and every-byte-zero test remain
+/// executable source.
+pub fn normalized_validate_new_page_borrowed_data(data: &[u8]) -> bool {
+    data.len() == POOL_V1_ROOT_HISTORY_PAGE_ACCOUNT_BYTES
+        && !data.iter().any(|byte| *byte != 0)
 }

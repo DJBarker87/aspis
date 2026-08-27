@@ -283,12 +283,29 @@ execution is possible only when the combined new-page validator returns
 success, and the private authorization token is proved to contain exactly the
 input program id, pool id, page account key and page number.  The outer
 constructor, `Result` propagation and all four token fields are transparent.
-Current Aeneas cannot translate the validator's `AccountInfo` data borrow,
-fixed-size check and all-zero scan, so that single production function remains
-an explicitly named `history.validate_new_page_account` boundary.  Both token
-theorems report exactly `[propext, Classical.choice, Quot.sound,
-history.validate_new_page_account]`; there is no abstract token-construction
-or conclusion-shaped premise.
+
+The combined validator is now closed by the minimal extraction-only
+normalization permitted at the Solana runtime boundary.  The literal
+production caller composes the already source-closed owner/writable and PDA
+gates with `normalized_validate_new_page_borrowed_data`, extracted from
+`harness/src/lib.rs`.  That Rust function begins at the byte slice returned by
+the borrow and retains the production test verbatim: exact length 8,256 and no
+nonzero byte.  Its bridge proves the whole iterator scan, rather than assuming
+an `all-zero` predicate.
+
+The capstone
+`literal_prevalidate_success_has_exact_gates_borrow_data_and_token` starts from
+literal production caller success and an explicit runtime result
+`SolanaAccountDataBorrow.tryBorrowData page = ok (Ok data)`.  It proves exact
+owner identity, non-executable and writable status, the PDA key returned by the
+named Solana PDA primitive, all 8,256 zero bytes, and all four token identities.
+Its complete axiom report is the standard Lean trio plus only the two ordinary
+Solana runtime interfaces `SolanaAccountDataBorrow.tryBorrowData` and
+`SolanaPdaRuntime.findProgramAddress`.  There is no Pool semantic axiom,
+whole-validator axiom, `sorry`, `admit`, abstract iterator, trace-cover premise
+or conclusion-shaped callback.  The normalized checker LLBC is
+`extraction/PoolV1NormalizedNewPageData.llbc`, SHA-256
+`a7c0cdf0c4582540e842cb415247e6dbde246e7854e4525cf8615876459de0a2`.
 
 `proof/PoolV1HistoryResultImagesRoutingBridge.lean` lifts the literal
 production `prepared_settlement::history_result_images_match` checker. From
@@ -324,13 +341,7 @@ The remaining implementation lift is:
 
 1. lift the now-closed prepared-afterimage validator through the caller that
    constructs it and through the state/root account writes;
-2. close the remaining combined `validate_new_page_account` data-borrow,
-   fixed-length and all-zero checks.  Its successful result is now connected
-   through the exact outer token constructor, so the remaining program lift is
-   non-aliasing and mutable account write-back. Owner, PDA, writable and
-   supplied-next presence/absence sub-gates themselves are source-closed
-   above; and
-3. connect the already-proved result-image routing and byte-persistence
+2. connect the already-proved result-image routing and byte-persistence
    capstones through the literal transition caller's mutable `AccountInfo`
    borrows, including current-page write-back, optional rollover-page
    write-back, pool-state root/cursor update and root-history identity
@@ -341,8 +352,10 @@ current Aeneas frontend cannot translate its mutable `AccountInfo` borrowing
 path transparently. The nested `Option` routing itself is now closed by the
 literal result-image checker above. Mutable account borrowing, non-aliasing
 and write-back are therefore the smallest explicit source-to-persistence
-boundary. This is a source-tool lift, not an unproved root-distribution,
-option-routing or byte-persistence equation: all three are independently
+boundary. New-page immutable borrowing is no longer in that gap: it is isolated
+at the named Solana byte-slice interface and every subsequent check is proved.
+This is a source-tool lift, not an unproved root-distribution, option-routing,
+new-page validation or byte-persistence equation: all four are independently
 source-closed above.
 
 The only intended cryptographic semantic boundary is the already-frozen

@@ -1,43 +1,62 @@
-Pool V1 production new-page prevalidation token bridge: PASS
+Pool V1 production new-page prevalidation source bridge: PASS
 
-Frozen production function:
+Frozen production functions:
   programs/aspis-pool/src/transition.rs
   aspis_pool::transition::prevalidate_new_history_page_v1
+
+  programs/aspis-pool/src/history.rs
+  aspis_pool::history::validate_new_page_account
 
 Focused LLBC:
   extraction/PoolV1PrevalidateNewPage.llbc
   SHA-256 22c36f23b542a85ce1f7d36c3defbe5559afc72d93bfc9e6a2d059ccb8837b43
+
+  extraction/PoolV1NormalizedNewPageData.llbc
+  SHA-256 a7c0cdf0c4582540e842cb415247e6dbde246e7854e4525cf8615876459de0a2
 
 Translation:
   Charon cb50ff16b9f1066b8a97dc06da704de2da2fa41c
   Aeneas constructor branch e9d20a64aa4dcbbc20ba8742a6ddf720f0c575cd
   Lean v4.31.0
 
-Strongest theorems:
-  prevalidate_new_page_success_requires_validator_success
-  prevalidate_new_page_success_exact_token
+Strongest theorem:
+  literal_prevalidate_success_has_exact_gates_borrow_data_and_token
 
 Result:
-  The literal production outer constructor success requires successful
-  execution of the combined new-page validator and returns a token containing
-  exactly the supplied program id, pool id, page key and page number. Result
-  branching, error propagation and token construction are transparent.
+  The literal production outer caller is composed with the exact source-closed
+  owner/writable and PDA gates and an extraction-only normalized byte checker.
+  From caller success and the explicit Solana runtime premise that the account
+  borrow returned the modeled byte slice, the theorem proves:
 
-Exact #print axioms for both theorem groups:
+  - exact Pool program ownership;
+  - non-executable and writable account gates;
+  - exact root-page PDA identity;
+  - exact account-data length 8,256;
+  - every borrowed byte is zero; and
+  - exact program, pool, page-key and page-number token identities.
+
+Exact #print axioms:
   [propext, Classical.choice, Quot.sound,
-   history.validate_new_page_account]
+   SolanaAccountDataBorrow.tryBorrowData,
+   SolanaPdaRuntime.findProgramAddress]
 
-The sole project-specific axiom is the exact named production validator.
-Current Aeneas variants fail with SymbolicToPureValues Unreachable while
-translating its AccountInfo data borrow, exact 8,256-byte length gate and
-all-zero scan. The boundary is therefore explicit and narrower than the outer
-token constructor. There is no sorryAx, sorry, admit, native_decide, abstract
-token constructor, trace-cover premise or conclusion-shaped callback.
+The only project-adjacent premises are ordinary Solana runtime interfaces:
+the byte slice returned by AccountInfo::try_borrow_data and the PDA primitive.
+There is no whole-validator axiom, Pool semantic axiom, sorryAx, sorry, admit,
+native_decide, abstract iterator, trace-cover premise or conclusion-shaped
+callback.
+
+Current Aeneas fails only when it directly lowers the nested RefCell loan in
+AccountInfo::try_borrow_data. The extraction-only Rust normalization begins
+immediately after that runtime borrow; the exact length test and complete
+all-zero iterator scan translate and prove without a semantic callback.
 
 Remaining direct runtime lift:
-  Transparently translate or refine the combined validator; then compose the
-  supplied-next presence/absence and non-aliasing route with mutable AccountInfo
-  write-back. The owner, executable, writable, PDA-key and token-identity gates
-  are already source-closed outside the one named validator boundary.
+  Mutable AccountInfo non-aliasing and write-back through the literal transition
+  caller: current page, optional rollover page, and pool-state root/cursor.
 
-NUC was not used.
+NUC validator extraction evidence:
+  systemd unit aspis-pool-new-page-validator-01.service
+  invocation cea50b40a983480089c2164e551d482c
+  MemoryHigh=20G, MemoryMax=24G, MemorySwapMax=0
+  peak RSS 504,372 KiB; swap 0; exit 0
