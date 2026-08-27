@@ -2,9 +2,10 @@
 //!
 //! This module is compiled only under the explicit
 //! `pair-forest-account-evidence` feature. It defines exact initialization and
-//! permissionless checkpoint instructions, but no spend instruction. The
-//! checkpoint reads all eight lane PDAs in one invocation and computes the
-//! seven frozen Pool Poseidon parents internally.
+//! permissionless checkpoint instructions plus a vault-backed deterministic
+//! lane deposit, but no spend instruction. The checkpoint reads all eight lane
+//! PDAs in one invocation and computes the seven frozen Pool Poseidon parents
+//! internally.
 
 extern crate alloc;
 
@@ -15,11 +16,15 @@ use aspis_statement::{
         decode_pool_v1_pair_forest_checkpoint_v1, decode_pool_v1_pair_forest_lane_state_v1,
         decode_pool_v1_pair_forest_master_v1, encode_pool_v1_pair_forest_checkpoint_v1,
         encode_pool_v1_pair_forest_lane_state_v1, encode_pool_v1_pair_forest_master_v1,
-        plan_pool_v1_pair_forest_checkpoint_v1, pool_v1_tree_parent, IncrementalMerkleTreeV1,
-        PoolIdentityV1, PoolV1PairForestCheckpointV1, PoolV1PairForestLaneStateV1,
-        PoolV1PairForestMasterV1, POOL_V1_DIGEST_ENCODING_VERSION,
+        plan_pool_v1_pair_forest_checkpoint_v1, pool_v1_note_commitment,
+        pool_v1_pair_forest_deposit_lane_v1, pool_v1_tree_parent, root_history_location,
+        IncrementalMerkleTreeV1, PoolIdentityV1, PoolV1PairForestCheckpointV1,
+        PoolV1PairForestLaneStateV1, PoolV1PairForestMasterV1, PoolV1PairLeafWitnessV1,
+        POOL_V1_DIGEST_ENCODING_VERSION, POOL_V1_PAIR_CAPACITY,
         POOL_V1_PAIR_FOREST_CHECKPOINT_ACCOUNT_BYTES, POOL_V1_PAIR_FOREST_LANE_COUNT,
         POOL_V1_PAIR_FOREST_MASTER_ACCOUNT_BYTES, POOL_V1_PAIR_TREE_DEPTH,
+        POOL_V1_ROOT_HISTORY_CAPACITY, POOL_V1_ROOT_HISTORY_PAGE_ACCOUNT_BYTES,
+        POOL_V1_ROOT_HISTORY_PAGE_SEED,
     },
     poseidon2::Digest,
 };
@@ -29,21 +34,33 @@ use solana_program::{
 };
 
 use crate::{
+    deposit::DepositRequestV1,
+    deposit_transport::{
+        decode_deposit_instruction_with_magic_v1, encode_deposit_instruction_v1,
+        DepositInstructionFormatErrorV1,
+    },
     empty_roots::POOL_V1_PAIR_EMPTY_ROOTS,
     error::PoolV1ProgramError,
-    history::{pool_v1_root_page_address, require_program_account},
+    history::{
+        append_roots_unchecked, pool_v1_root_page_address, read_retained_root,
+        require_program_account, validate_root_page_bytes, write_new_page_unchecked,
+        RootPageHeaderV1,
+    },
     instruction::{
         decode_initialize_instruction_v1, encode_initialize_instruction_v1,
         PoolInstructionFormatErrorV1, POOL_V1_INITIALIZE_INSTRUCTION_BYTES,
         POOL_V1_INITIALIZE_INSTRUCTION_MAGIC, POOL_V1_INSTRUCTION_VERSION,
     },
     processor::{
-        create_or_allocate_pda, plan_fresh_program_pda, require_payer_and_system_program,
+        create_or_allocate_pda, initialize_vault_account, plan_fresh_program_pda,
+        plan_vault_initialization, require_payer_and_system_program, require_token_program_account,
         require_unique_accounts, FreshPdaPreparationV1, PoolCpiRuntimeV1,
     },
     state::PoolInitializationV1,
     vault::{
-        parse_legacy_mint_v1, LEGACY_SPL_TOKEN_MINT_ACCOUNT_BYTES, LEGACY_SPL_TOKEN_PROGRAM_ID,
+        exact_transfer_account_infos_v1, parse_legacy_mint_v1,
+        plan_legacy_deposit_transfer_from_identity_v1, validate_exact_deposit_delta_v1,
+        LEGACY_SPL_TOKEN_MINT_ACCOUNT_BYTES, LEGACY_SPL_TOKEN_PROGRAM_ID,
     },
 };
 
@@ -53,15 +70,27 @@ pub const POOL_V1_PAIR_FOREST_CHECKPOINT_SEED: &[u8] = b"aspis-pair-forest-check
 
 pub const POOL_V1_PAIR_FOREST_INITIALIZE_INSTRUCTION_MAGIC: [u8; 4] = *b"AS8I";
 pub const POOL_V1_PAIR_FOREST_CHECKPOINT_INSTRUCTION_MAGIC: [u8; 4] = *b"AS8C";
+pub const POOL_V1_PAIR_FOREST_DEPOSIT_INSTRUCTION_MAGIC: [u8; 4] = *b"AS8D";
 pub const POOL_V1_PAIR_FOREST_CHECKPOINT_INSTRUCTION_BYTES: usize = 8;
-pub const POOL_V1_PAIR_FOREST_INITIALIZE_ACCOUNT_COUNT: usize = 12;
+pub const POOL_V1_PAIR_FOREST_INITIALIZE_ACCOUNT_COUNT: usize = 14;
 pub const POOL_V1_PAIR_FOREST_CHECKPOINT_ACCOUNT_COUNT: usize = 12;
 
 const FOREST_MASTER_ACCOUNT_INDEX: usize = 0;
 const FOREST_FIRST_LANE_ACCOUNT_INDEX: usize = 1;
 const FOREST_MINT_OR_CHECKPOINT_ACCOUNT_INDEX: usize = 9;
-const FOREST_PAYER_ACCOUNT_INDEX: usize = 10;
-const FOREST_SYSTEM_ACCOUNT_INDEX: usize = 11;
+const FOREST_INIT_VAULT_ACCOUNT_INDEX: usize = 10;
+const FOREST_INIT_TOKEN_PROGRAM_ACCOUNT_INDEX: usize = 11;
+const FOREST_INIT_PAYER_ACCOUNT_INDEX: usize = 12;
+const FOREST_INIT_SYSTEM_ACCOUNT_INDEX: usize = 13;
+const FOREST_CHECKPOINT_PAYER_ACCOUNT_INDEX: usize = 10;
+const FOREST_CHECKPOINT_SYSTEM_ACCOUNT_INDEX: usize = 11;
+
+const FOREST_DEPOSIT_MASTER_ACCOUNT_INDEX: usize = 0;
+const FOREST_DEPOSIT_LANE_ACCOUNT_INDEX: usize = 1;
+const FOREST_DEPOSIT_CURRENT_PAGE_ACCOUNT_INDEX: usize = 2;
+const FOREST_DEPOSIT_SAME_PAGE_ACCOUNT_COUNT: usize = 8;
+const FOREST_DEPOSIT_GENESIS_PAGE_ACCOUNT_COUNT: usize = 10;
+const FOREST_DEPOSIT_ROLLOVER_ACCOUNT_COUNT: usize = 11;
 
 pub fn encode_pair_forest_initialize_instruction_v1(
     initialization: &PoolInitializationV1,
@@ -119,6 +148,20 @@ pub fn decode_pair_forest_checkpoint_instruction_v1(bytes: &[u8]) -> ProgramResu
         return Err(ProgramError::InvalidInstructionData);
     }
     Ok(())
+}
+
+pub fn encode_pair_forest_deposit_instruction_v1(
+    request: &DepositRequestV1<'_>,
+) -> Result<Vec<u8>, DepositInstructionFormatErrorV1> {
+    let mut encoded = encode_deposit_instruction_v1(request)?.as_bytes().to_vec();
+    encoded[..4].copy_from_slice(&POOL_V1_PAIR_FOREST_DEPOSIT_INSTRUCTION_MAGIC);
+    Ok(encoded)
+}
+
+pub fn decode_pair_forest_deposit_instruction_v1(
+    bytes: &[u8],
+) -> Result<DepositRequestV1<'_>, DepositInstructionFormatErrorV1> {
+    decode_deposit_instruction_with_magic_v1(bytes, POOL_V1_PAIR_FOREST_DEPOSIT_INSTRUCTION_MAGIC)
 }
 
 /// Exact frozen binary tree over lanes 0 through 7. The order is part of the
@@ -282,8 +325,9 @@ fn decode_lane_account(
     master: &Pubkey,
     expected_lane: u8,
     account: &AccountInfo<'_>,
+    writable: bool,
 ) -> Result<PoolV1PairForestLaneStateV1, ProgramError> {
-    require_program_account(account, program_id, false)?;
+    require_program_account(account, program_id, writable)?;
     if account.is_signer
         || account.key != &pool_v1_pair_forest_lane_address(program_id, master, expected_lane)?.0
     {
@@ -345,6 +389,7 @@ pub fn plan_pair_forest_checkpoint_accounts_v1(
             master_account.key,
             lane as u8,
             &lane_accounts[lane],
+            false,
         )?);
     }
     let lane_states: Box<[PoolV1PairForestLaneStateV1; POOL_V1_PAIR_FOREST_LANE_COUNT]> =
@@ -381,7 +426,294 @@ pub fn plan_pair_forest_checkpoint_accounts_v1(
     })
 }
 
-/// Initialize `[master, lane_0, ..., lane_7, mint, payer, system_program]`.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+enum PairForestDepositPageModeV1 {
+    FreshGenesis {
+        preparation: FreshPdaPreparationV1,
+        bump: u8,
+    },
+    ExistingSamePage {
+        header: RootPageHeaderV1,
+    },
+    FreshRollover {
+        preparation: FreshPdaPreparationV1,
+        next_page_number: u64,
+        bump: u8,
+    },
+}
+
+fn account_is_zeroed_program_page(
+    account: &AccountInfo<'_>,
+    program_id: &Pubkey,
+) -> Result<bool, ProgramError> {
+    if account.owner != program_id || account.data_len() != POOL_V1_ROOT_HISTORY_PAGE_ACCOUNT_BYTES
+    {
+        return Ok(false);
+    }
+    Ok(account.try_borrow_data()?.iter().all(|byte| *byte == 0))
+}
+
+fn validate_lane_current_page(
+    program_id: &Pubkey,
+    lane_account: &AccountInfo<'_>,
+    page: &AccountInfo<'_>,
+    lane: &PoolV1PairForestLaneStateV1,
+    writable: bool,
+) -> Result<RootPageHeaderV1, ProgramError> {
+    let location = root_history_location(lane.tree.next_leaf_index);
+    require_program_account(page, program_id, writable)?;
+    if page.is_signer {
+        return Err(ProgramError::InvalidAccountData);
+    }
+    crate::history::require_root_page_address(
+        program_id,
+        lane_account.key,
+        location.page_number,
+        page,
+    )?;
+    let data = page.try_borrow_data()?;
+    let header = validate_root_page_bytes(&data, lane_account.key, location.page_number)?;
+    if header.filled != location.slot + 1
+        || read_retained_root(&data, header, lane.tree.next_leaf_index)? != lane.tree.root
+    {
+        return Err(PoolV1ProgramError::StateHistoryMismatch.into());
+    }
+    Ok(header)
+}
+
+/// Apply one vault-backed public deposit to its deterministic pair-forest
+/// lane. The first pair slot is the occupied note commitment and the second
+/// slot is the relation's algebraic empty `(occupied = 0, commitment = 0)`.
+///
+/// Existing-page accounts are
+/// `[master, lane, current_page, mint, source, authority, vault, token]`.
+/// A fresh genesis page additionally appends `[payer, system]`. Rollover uses
+/// `[master, lane, current_page, next_page, mint, source, authority, vault,
+/// token, payer, system]`.
+pub(crate) fn process_pair_forest_deposit_with_runtime_v1<'info, R: PoolCpiRuntimeV1>(
+    program_id: &Pubkey,
+    accounts: &[AccountInfo<'info>],
+    instruction_data: &[u8],
+    rent: &Rent,
+    runtime: &mut R,
+) -> ProgramResult {
+    let request = decode_pair_forest_deposit_instruction_v1(instruction_data)
+        .map_err(|_| ProgramError::InvalidInstructionData)?;
+    let master_account = accounts
+        .get(FOREST_DEPOSIT_MASTER_ACCOUNT_INDEX)
+        .ok_or(ProgramError::NotEnoughAccountKeys)?;
+    let lane_account = accounts
+        .get(FOREST_DEPOSIT_LANE_ACCOUNT_INDEX)
+        .ok_or(ProgramError::NotEnoughAccountKeys)?;
+    let current_page = accounts
+        .get(FOREST_DEPOSIT_CURRENT_PAGE_ACCOUNT_INDEX)
+        .ok_or(ProgramError::NotEnoughAccountKeys)?;
+    let master = decode_master_account(program_id, master_account, false)?;
+    let commitment = pool_v1_note_commitment(
+        &request.owner_key,
+        request.amount,
+        master.identity.asset_id,
+        &request.salt,
+    );
+    let lane_id = pool_v1_pair_forest_deposit_lane_v1(&commitment)
+        .map_err(|_| PoolV1ProgramError::NonCanonicalLeaf)?;
+    if master.initialized_lane_mask & (1u8 << lane_id) == 0 {
+        return Err(PoolV1ProgramError::StateHistoryMismatch.into());
+    }
+    let lane = decode_lane_account(program_id, master_account.key, lane_id, lane_account, true)?;
+    if lane.tree.next_leaf_index >= POOL_V1_PAIR_CAPACITY {
+        return Err(PoolV1ProgramError::TreeFull.into());
+    }
+    let pair_leaf = PoolV1PairLeafWitnessV1::single_output(commitment)
+        .and_then(|witness| witness.leaf_digest())
+        .map_err(|_| PoolV1ProgramError::NonCanonicalLeaf)?;
+    let (next_tree, append) = lane
+        .tree
+        .append_one_with_empty_roots(pair_leaf, &POOL_V1_PAIR_EMPTY_ROOTS)
+        .map_err(|_| PoolV1ProgramError::StateHistoryMismatch)?;
+    let next_lane = PoolV1PairForestLaneStateV1 {
+        master: lane.master,
+        lane_id,
+        tree: next_tree,
+    };
+    let next_lane_image =
+        encode_pool_v1_pair_forest_lane_state_v1(&next_lane, &POOL_V1_PAIR_EMPTY_ROOTS)
+            .map_err(|_| PoolV1ProgramError::StateHistoryMismatch)?;
+
+    let current_location = root_history_location(lane.tree.next_leaf_index);
+    let next_location = root_history_location(append.root_sequence);
+    let fresh_genesis = lane.tree.next_leaf_index == 0
+        && ((current_page.owner == &solana_sdk_ids::system_program::id()
+            && current_page.data_is_empty())
+            || account_is_zeroed_program_page(current_page, program_id)?);
+    let (mode, token_start, expected_accounts) = if fresh_genesis {
+        let (expected, bump) = pool_v1_root_page_address(program_id, lane_account.key, 0);
+        let preparation = plan_fresh_program_pda(
+            current_page,
+            program_id,
+            &expected,
+            POOL_V1_ROOT_HISTORY_PAGE_ACCOUNT_BYTES,
+        )?;
+        (
+            PairForestDepositPageModeV1::FreshGenesis { preparation, bump },
+            3,
+            FOREST_DEPOSIT_GENESIS_PAGE_ACCOUNT_COUNT,
+        )
+    } else if next_location.page_number == current_location.page_number {
+        let header =
+            validate_lane_current_page(program_id, lane_account, current_page, &lane, true)?;
+        (
+            PairForestDepositPageModeV1::ExistingSamePage { header },
+            3,
+            FOREST_DEPOSIT_SAME_PAGE_ACCOUNT_COUNT,
+        )
+    } else {
+        let current_header =
+            validate_lane_current_page(program_id, lane_account, current_page, &lane, false)?;
+        if usize::from(current_header.filled) != POOL_V1_ROOT_HISTORY_CAPACITY {
+            return Err(PoolV1ProgramError::StateHistoryMismatch.into());
+        }
+        let next_page = accounts.get(3).ok_or(ProgramError::NotEnoughAccountKeys)?;
+        let (expected, bump) =
+            pool_v1_root_page_address(program_id, lane_account.key, next_location.page_number);
+        let preparation = plan_fresh_program_pda(
+            next_page,
+            program_id,
+            &expected,
+            POOL_V1_ROOT_HISTORY_PAGE_ACCOUNT_BYTES,
+        )?;
+        (
+            PairForestDepositPageModeV1::FreshRollover {
+                preparation,
+                next_page_number: next_location.page_number,
+                bump,
+            },
+            4,
+            FOREST_DEPOSIT_ROLLOVER_ACCOUNT_COUNT,
+        )
+    };
+
+    require_exact_account_count(accounts, expected_accounts)?;
+    require_unique_accounts(accounts)?;
+    let token_accounts = &accounts[token_start..token_start + 5];
+    require_token_program_account(&token_accounts[4])?;
+    let transfer_plan = plan_legacy_deposit_transfer_from_identity_v1(
+        program_id,
+        master_account.key,
+        &master.identity,
+        token_accounts,
+        request.amount,
+    )?;
+    let transfer_infos = exact_transfer_account_infos_v1(token_accounts)?;
+
+    let writable_page = match mode {
+        PairForestDepositPageModeV1::FreshGenesis { preparation, bump } => {
+            let payer = &accounts[8];
+            let system_program = &accounts[9];
+            require_payer_and_system_program(payer, system_program)?;
+            if preparation == FreshPdaPreparationV1::CreateOrAllocateSystemOwned {
+                let page_number = 0u64.to_le_bytes();
+                let bump = [bump];
+                let seeds: &[&[u8]] = &[
+                    POOL_V1_ROOT_HISTORY_PAGE_SEED,
+                    lane_account.key.as_ref(),
+                    &page_number,
+                    &bump,
+                ];
+                create_or_allocate_pda(
+                    runtime,
+                    payer,
+                    current_page,
+                    system_program,
+                    POOL_V1_ROOT_HISTORY_PAGE_ACCOUNT_BYTES,
+                    program_id,
+                    seeds,
+                )?;
+            }
+            require_program_owned_zeroed(
+                current_page,
+                program_id,
+                POOL_V1_ROOT_HISTORY_PAGE_ACCOUNT_BYTES,
+                rent,
+            )?;
+            current_page
+        }
+        PairForestDepositPageModeV1::ExistingSamePage { .. } => current_page,
+        PairForestDepositPageModeV1::FreshRollover {
+            preparation,
+            next_page_number,
+            bump,
+            ..
+        } => {
+            let next_page = &accounts[3];
+            let payer = &accounts[9];
+            let system_program = &accounts[10];
+            require_payer_and_system_program(payer, system_program)?;
+            if preparation == FreshPdaPreparationV1::CreateOrAllocateSystemOwned {
+                let page_number = next_page_number.to_le_bytes();
+                let bump = [bump];
+                let seeds: &[&[u8]] = &[
+                    POOL_V1_ROOT_HISTORY_PAGE_SEED,
+                    lane_account.key.as_ref(),
+                    &page_number,
+                    &bump,
+                ];
+                create_or_allocate_pda(
+                    runtime,
+                    payer,
+                    next_page,
+                    system_program,
+                    POOL_V1_ROOT_HISTORY_PAGE_ACCOUNT_BYTES,
+                    program_id,
+                    seeds,
+                )?;
+            }
+            require_program_owned_zeroed(
+                next_page,
+                program_id,
+                POOL_V1_ROOT_HISTORY_PAGE_ACCOUNT_BYTES,
+                rent,
+            )?;
+            next_page
+        }
+    };
+
+    // Acquire every Pool-owned mutable borrow before the token CPI. A failed
+    // CPI or post-CPI balance check therefore leaves writes to Solana's outer
+    // transaction rollback boundary, with no partial Pool persistence.
+    let mut lane_data = lane_account.try_borrow_mut_data()?;
+    let mut page_data = writable_page.try_borrow_mut_data()?;
+    runtime.invoke(&transfer_plan.instruction, &transfer_infos)?;
+    validate_exact_deposit_delta_v1(token_accounts, &transfer_plan)?;
+
+    lane_data.copy_from_slice(&next_lane_image);
+    match mode {
+        PairForestDepositPageModeV1::FreshGenesis { .. } => write_new_page_unchecked(
+            &mut page_data,
+            lane_account.key,
+            0,
+            0,
+            &[lane.tree.root, append.root],
+        ),
+        PairForestDepositPageModeV1::ExistingSamePage { header } => {
+            append_roots_unchecked(&mut page_data, header, &[append.root]);
+        }
+        PairForestDepositPageModeV1::FreshRollover {
+            next_page_number, ..
+        } => write_new_page_unchecked(
+            &mut page_data,
+            lane_account.key,
+            next_page_number,
+            append.root_sequence,
+            &[append.root],
+        ),
+    }
+    Ok(())
+}
+
+/// Initialize
+/// `[master, lane_0, ..., lane_7, mint, vault, token_program, payer,
+/// system_program]`.
 /// Every program account is either a fresh System account at its canonical PDA
 /// or an exactly sized, zeroed, precreated Pool-owned account.
 pub(crate) fn process_pair_forest_initialize_with_runtime_v1<'info, R: PoolCpiRuntimeV1>(
@@ -398,9 +730,12 @@ pub(crate) fn process_pair_forest_initialize_with_runtime_v1<'info, R: PoolCpiRu
     let lanes = &accounts[FOREST_FIRST_LANE_ACCOUNT_INDEX
         ..FOREST_FIRST_LANE_ACCOUNT_INDEX + POOL_V1_PAIR_FOREST_LANE_COUNT];
     let mint = &accounts[FOREST_MINT_OR_CHECKPOINT_ACCOUNT_INDEX];
-    let payer = &accounts[FOREST_PAYER_ACCOUNT_INDEX];
-    let system_program_account = &accounts[FOREST_SYSTEM_ACCOUNT_INDEX];
+    let vault = &accounts[FOREST_INIT_VAULT_ACCOUNT_INDEX];
+    let token_program = &accounts[FOREST_INIT_TOKEN_PROGRAM_ACCOUNT_INDEX];
+    let payer = &accounts[FOREST_INIT_PAYER_ACCOUNT_INDEX];
+    let system_program_account = &accounts[FOREST_INIT_SYSTEM_ACCOUNT_INDEX];
     require_payer_and_system_program(payer, system_program_account)?;
+    require_token_program_account(token_program)?;
     require_forest_mint_account(&initialization, mint)?;
 
     let (expected_master, master_bump) = pool_v1_pair_forest_master_address(program_id, mint.key);
@@ -410,6 +745,8 @@ pub(crate) fn process_pair_forest_initialize_with_runtime_v1<'info, R: PoolCpiRu
         &expected_master,
         POOL_V1_PAIR_FOREST_MASTER_ACCOUNT_BYTES,
     )?;
+    let vault_preparation =
+        plan_vault_initialization(program_id, &expected_master, mint.key, vault)?;
     let mut lane_preparations =
         [FreshPdaPreparationV1::ProgramOwnedZeroed; POOL_V1_PAIR_FOREST_LANE_COUNT];
     let mut lane_bumps = [0u8; POOL_V1_PAIR_FOREST_LANE_COUNT];
@@ -423,6 +760,34 @@ pub(crate) fn process_pair_forest_initialize_with_runtime_v1<'info, R: PoolCpiRu
             aspis_statement::pool_v1::POOL_V1_PAIR_FOREST_LANE_ACCOUNT_BYTES,
         )?;
         lane_bumps[lane] = bump;
+    }
+
+    // Freeze every program-owned output image before the first CPI.
+    let master_state = PoolV1PairForestMasterV1 {
+        identity: PoolIdentityV1 {
+            pool: expected_master.to_bytes(),
+            asset_mint: initialization.asset_mint,
+            token_program: initialization.token_program,
+            asset_id: initialization.asset_id,
+            deployment_domain: initialization.deployment_domain,
+        },
+        verifier_policy: initialization.verifier_policy,
+        initialized_lane_mask: aspis_statement::pool_v1::POOL_V1_PAIR_FOREST_ALL_LANES_MASK,
+        has_checkpoint: false,
+        next_checkpoint_sequence: 0,
+        last_checkpoint_lane_sequences: [0u64; POOL_V1_PAIR_FOREST_LANE_COUNT],
+    };
+    let master_image = encode_pool_v1_pair_forest_master_v1(&master_state)
+        .map_err(|_| PoolV1ProgramError::StateHistoryMismatch)?;
+    let mut lane_images = Vec::with_capacity(POOL_V1_PAIR_FOREST_LANE_COUNT);
+    for lane in 0..POOL_V1_PAIR_FOREST_LANE_COUNT {
+        lane_images.push(
+            encode_pool_v1_pair_forest_lane_state_v1(
+                &genesis_lane_state(&expected_master, lane as u8),
+                &POOL_V1_PAIR_EMPTY_ROOTS,
+            )
+            .map_err(|_| PoolV1ProgramError::StateHistoryMismatch)?,
+        );
     }
 
     if master_preparation == FreshPdaPreparationV1::CreateOrAllocateSystemOwned {
@@ -459,6 +824,17 @@ pub(crate) fn process_pair_forest_initialize_with_runtime_v1<'info, R: PoolCpiRu
             )?;
         }
     }
+    initialize_vault_account(
+        runtime,
+        program_id,
+        &expected_master,
+        mint,
+        vault,
+        token_program,
+        payer,
+        system_program_account,
+        vault_preparation,
+    )?;
 
     require_program_owned_zeroed(
         master,
@@ -475,23 +851,6 @@ pub(crate) fn process_pair_forest_initialize_with_runtime_v1<'info, R: PoolCpiRu
         )?;
     }
 
-    let master_state = PoolV1PairForestMasterV1 {
-        identity: PoolIdentityV1 {
-            pool: expected_master.to_bytes(),
-            asset_mint: initialization.asset_mint,
-            token_program: initialization.token_program,
-            asset_id: initialization.asset_id,
-            deployment_domain: initialization.deployment_domain,
-        },
-        verifier_policy: initialization.verifier_policy,
-        initialized_lane_mask: aspis_statement::pool_v1::POOL_V1_PAIR_FOREST_ALL_LANES_MASK,
-        has_checkpoint: false,
-        next_checkpoint_sequence: 0,
-        last_checkpoint_lane_sequences: [0u64; POOL_V1_PAIR_FOREST_LANE_COUNT],
-    };
-    let master_image = encode_pool_v1_pair_forest_master_v1(&master_state)
-        .map_err(|_| PoolV1ProgramError::StateHistoryMismatch)?;
-
     // Acquire every mutable borrow before the first write. Runtime rollback
     // remains the outer atomicity boundary for preceding System CPIs.
     let mut master_data = master.try_borrow_mut_data()?;
@@ -501,12 +860,7 @@ pub(crate) fn process_pair_forest_initialize_with_runtime_v1<'info, R: PoolCpiRu
     }
     master_data.copy_from_slice(&master_image);
     for lane in 0..POOL_V1_PAIR_FOREST_LANE_COUNT {
-        let image = encode_pool_v1_pair_forest_lane_state_v1(
-            &genesis_lane_state(&expected_master, lane as u8),
-            &POOL_V1_PAIR_EMPTY_ROOTS,
-        )
-        .map_err(|_| PoolV1ProgramError::StateHistoryMismatch)?;
-        lane_data[lane].copy_from_slice(&image);
+        lane_data[lane].copy_from_slice(&lane_images[lane]);
     }
     Ok(())
 }
@@ -529,8 +883,8 @@ pub(crate) fn process_pair_forest_checkpoint_with_runtime_v1<'info, R: PoolCpiRu
     let lanes = &accounts[FOREST_FIRST_LANE_ACCOUNT_INDEX
         ..FOREST_FIRST_LANE_ACCOUNT_INDEX + POOL_V1_PAIR_FOREST_LANE_COUNT];
     let checkpoint = &accounts[FOREST_MINT_OR_CHECKPOINT_ACCOUNT_INDEX];
-    let payer = &accounts[FOREST_PAYER_ACCOUNT_INDEX];
-    let system_program_account = &accounts[FOREST_SYSTEM_ACCOUNT_INDEX];
+    let payer = &accounts[FOREST_CHECKPOINT_PAYER_ACCOUNT_INDEX];
+    let system_program_account = &accounts[FOREST_CHECKPOINT_SYSTEM_ACCOUNT_INDEX];
     require_payer_and_system_program(payer, system_program_account)?;
 
     let planned = plan_pair_forest_checkpoint_accounts_v1(program_id, master, lanes, checkpoint)?;
@@ -616,7 +970,7 @@ mod tests {
         POOL_V1_PAIR_FOREST_ALL_LANES_MASK, POOL_V1_PAIR_TREE_DEPTH,
     };
     use solana_program::{clock::Epoch, instruction::Instruction};
-    use solana_sdk_ids::{native_loader, system_program};
+    use solana_sdk_ids::{bpf_loader, native_loader, system_program};
 
     use super::*;
 
@@ -651,6 +1005,50 @@ mod tests {
     impl PoolCpiRuntimeV1 for NoCpi {
         fn invoke<'info>(&mut self, _: &Instruction, _: &[AccountInfo<'info>]) -> ProgramResult {
             panic!("unexpected unsigned CPI")
+        }
+
+        fn invoke_signed<'info>(
+            &mut self,
+            _: &Instruction,
+            _: &[AccountInfo<'info>],
+            _: &[&[&[u8]]],
+        ) -> ProgramResult {
+            panic!("unexpected signed CPI")
+        }
+    }
+
+    struct DepositCpi {
+        apply_exact_delta: bool,
+        calls: usize,
+    }
+
+    impl PoolCpiRuntimeV1 for DepositCpi {
+        fn invoke<'info>(
+            &mut self,
+            instruction: &Instruction,
+            infos: &[AccountInfo<'info>],
+        ) -> ProgramResult {
+            assert_eq!(instruction.program_id, LEGACY_SPL_TOKEN_PROGRAM_ID);
+            assert_eq!(instruction.data.len(), 10);
+            assert_eq!(instruction.data[0], 12);
+            assert_eq!(infos.len(), 5);
+            self.calls += 1;
+            if !self.apply_exact_delta {
+                return Ok(());
+            }
+            let amount = u64::from_le_bytes(instruction.data[1..9].try_into().unwrap());
+            let source_before =
+                u64::from_le_bytes(infos[0].try_borrow_data()?[64..72].try_into().unwrap());
+            let vault_before =
+                u64::from_le_bytes(infos[2].try_borrow_data()?[64..72].try_into().unwrap());
+            crate::vault::write_token_amount_for_test(
+                &infos[0],
+                source_before.checked_sub(amount).unwrap(),
+            )?;
+            crate::vault::write_token_amount_for_test(
+                &infos[2],
+                vault_before.checked_add(amount).unwrap(),
+            )
         }
 
         fn invoke_signed<'info>(
@@ -769,6 +1167,15 @@ mod tests {
         data
     }
 
+    fn initialized_token_data(mint: Pubkey, authority: Pubkey, amount: u64) -> Vec<u8> {
+        let mut data = vec![0u8; crate::vault::LEGACY_SPL_TOKEN_ACCOUNT_BYTES];
+        data[..32].copy_from_slice(mint.as_ref());
+        data[32..64].copy_from_slice(authority.as_ref());
+        data[64..72].copy_from_slice(&amount.to_le_bytes());
+        data[108] = 1;
+        data
+    }
+
     fn rent_lamports(bytes: usize) -> u64 {
         Rent::default().minimum_balance(bytes).max(1)
     }
@@ -809,6 +1216,25 @@ mod tests {
             writable: false,
             executable: false,
         });
+        let vault_authority = crate::pool_v1_vault_authority_address(&program_id, &master).0;
+        accounts.push(TestAccount {
+            key: crate::pool_v1_vault_token_account_address(&program_id, &master).0,
+            owner: LEGACY_SPL_TOKEN_PROGRAM_ID,
+            lamports: rent_lamports(crate::vault::LEGACY_SPL_TOKEN_ACCOUNT_BYTES),
+            data: initialized_token_data(mint, vault_authority, 0),
+            signer: false,
+            writable: true,
+            executable: false,
+        });
+        accounts.push(TestAccount {
+            key: LEGACY_SPL_TOKEN_PROGRAM_ID,
+            owner: bpf_loader::id(),
+            lamports: 1,
+            data: Vec::new(),
+            signer: false,
+            writable: false,
+            executable: true,
+        });
         accounts.push(TestAccount {
             key: Pubkey::new_unique(),
             owner: system_program::id(),
@@ -828,6 +1254,87 @@ mod tests {
             executable: true,
         });
         accounts
+    }
+
+    fn genesis_deposit_fixture(
+        program_id: Pubkey,
+        mint: Pubkey,
+    ) -> (Vec<TestAccount>, Vec<u8>, u8, Digest) {
+        let initialization = forest_initialization(mint);
+        let mut initialized = initialization_accounts(program_id, mint);
+        let initialize_instruction =
+            encode_pair_forest_initialize_instruction_v1(&initialization).unwrap();
+        {
+            let infos: Vec<_> = initialized.iter_mut().map(TestAccount::info).collect();
+            process_pair_forest_initialize_with_runtime_v1(
+                &program_id,
+                &infos,
+                &initialize_instruction,
+                &Rent::default(),
+                &mut NoCpi,
+            )
+            .unwrap();
+        }
+        let request = DepositRequestV1 {
+            owner_key: digest(700),
+            amount: 7,
+            salt: digest(900),
+            encrypted_note_payload: b"forest-note",
+        };
+        let commitment = pool_v1_note_commitment(
+            &request.owner_key,
+            request.amount,
+            initialization.asset_id,
+            &request.salt,
+        );
+        let lane_id = pool_v1_pair_forest_deposit_lane_v1(&commitment).unwrap();
+        let instruction = encode_pair_forest_deposit_instruction_v1(&request).unwrap();
+        let master_key = initialized[0].key;
+        let lane_key = initialized[1 + usize::from(lane_id)].key;
+        let source_authority = Pubkey::new_unique();
+        let source = Pubkey::new_unique();
+        let mut master = initialized[0].clone();
+        master.writable = false;
+        let mut lane = initialized[1 + usize::from(lane_id)].clone();
+        lane.writable = true;
+        let accounts = vec![
+            master,
+            lane,
+            TestAccount {
+                key: pool_v1_root_page_address(&program_id, &lane_key, 0).0,
+                owner: program_id,
+                lamports: rent_lamports(POOL_V1_ROOT_HISTORY_PAGE_ACCOUNT_BYTES),
+                data: vec![0u8; POOL_V1_ROOT_HISTORY_PAGE_ACCOUNT_BYTES],
+                signer: false,
+                writable: true,
+                executable: false,
+            },
+            initialized[9].clone(),
+            TestAccount {
+                key: source,
+                owner: LEGACY_SPL_TOKEN_PROGRAM_ID,
+                lamports: 1,
+                data: initialized_token_data(mint, source_authority, 100),
+                signer: false,
+                writable: true,
+                executable: false,
+            },
+            TestAccount {
+                key: source_authority,
+                owner: system_program::id(),
+                lamports: 1,
+                data: Vec::new(),
+                signer: true,
+                writable: false,
+                executable: false,
+            },
+            initialized[10].clone(),
+            initialized[11].clone(),
+            initialized[12].clone(),
+            initialized[13].clone(),
+        ];
+        assert_eq!(accounts[0].key, master_key);
+        (accounts, instruction, lane_id, commitment)
     }
 
     #[test]
@@ -857,6 +1364,25 @@ mod tests {
             decode_pair_forest_checkpoint_instruction_v1(&wrong_version),
             Err(ProgramError::InvalidInstructionData)
         );
+
+        let request = DepositRequestV1 {
+            owner_key: digest(100),
+            amount: 7,
+            salt: digest(200),
+            encrypted_note_payload: b"forest-note",
+        };
+        let deposit = encode_pair_forest_deposit_instruction_v1(&request).unwrap();
+        assert_eq!(&deposit[..4], b"AS8D");
+        assert_eq!(
+            decode_pair_forest_deposit_instruction_v1(&deposit),
+            Ok(request)
+        );
+        let mut wrong_magic = deposit.clone();
+        wrong_magic[..4].copy_from_slice(b"ASDI");
+        assert!(decode_pair_forest_deposit_instruction_v1(&wrong_magic).is_err());
+        let mut deposit_trailing = deposit;
+        deposit_trailing.push(0);
+        assert!(decode_pair_forest_deposit_instruction_v1(&deposit_trailing).is_err());
     }
 
     #[test]
@@ -915,6 +1441,246 @@ mod tests {
             .unwrap();
             assert_eq!(decoded, genesis_lane_state(&accounts[0].key, lane as u8));
         }
+    }
+
+    #[test]
+    fn vault_deposit_routes_one_occupied_empty_pair_and_creates_lane_history() {
+        let program_id = Pubkey::new_unique();
+        let mint = Pubkey::new_unique();
+        let (mut accounts, instruction, lane_id, commitment) =
+            genesis_deposit_fixture(program_id, mint);
+        let source_before = accounts[4].data.clone();
+        let mut runtime = DepositCpi {
+            apply_exact_delta: true,
+            calls: 0,
+        };
+        let infos: Vec<_> = accounts.iter_mut().map(TestAccount::info).collect();
+        process_pair_forest_deposit_with_runtime_v1(
+            &program_id,
+            &infos,
+            &instruction,
+            &Rent::default(),
+            &mut runtime,
+        )
+        .unwrap();
+        drop(infos);
+        assert_eq!(runtime.calls, 1);
+
+        let lane =
+            decode_pool_v1_pair_forest_lane_state_v1(&accounts[1].data, &POOL_V1_PAIR_EMPTY_ROOTS)
+                .unwrap();
+        assert_eq!(lane.lane_id, lane_id);
+        assert_eq!(lane.tree.next_leaf_index, 1);
+        let witness = PoolV1PairLeafWitnessV1::single_output(commitment).unwrap();
+        assert_eq!(witness.second_occupied, M31::ZERO);
+        assert_eq!(witness.second_commitment, [M31::ZERO; 8]);
+        assert_eq!(witness.second_occupancy_inverse, M31::ZERO);
+        let expected = genesis_lane_state(&accounts[0].key, lane_id)
+            .tree
+            .append_one_with_empty_roots(witness.leaf_digest().unwrap(), &POOL_V1_PAIR_EMPTY_ROOTS)
+            .unwrap()
+            .0;
+        assert_eq!(lane.tree, expected);
+
+        let page = validate_root_page_bytes(&accounts[2].data, &accounts[1].key, 0).unwrap();
+        assert_eq!(page.filled, 2);
+        assert_eq!(
+            read_retained_root(&accounts[2].data, page, 0).unwrap(),
+            POOL_V1_PAIR_EMPTY_ROOTS[POOL_V1_PAIR_TREE_DEPTH]
+        );
+        assert_eq!(
+            read_retained_root(&accounts[2].data, page, 1).unwrap(),
+            lane.tree.root
+        );
+        assert_eq!(
+            u64::from_le_bytes(accounts[4].data[64..72].try_into().unwrap()),
+            93
+        );
+        assert_eq!(
+            u64::from_le_bytes(accounts[6].data[64..72].try_into().unwrap()),
+            7
+        );
+        assert_ne!(accounts[4].data, source_before);
+
+        // The next deposit uses the compact existing-page account shape and
+        // appends without rewriting either retained root.
+        accounts.truncate(FOREST_DEPOSIT_SAME_PAGE_ACCOUNT_COUNT);
+        let first_page = accounts[2].data.clone();
+        let infos: Vec<_> = accounts.iter_mut().map(TestAccount::info).collect();
+        process_pair_forest_deposit_with_runtime_v1(
+            &program_id,
+            &infos,
+            &instruction,
+            &Rent::default(),
+            &mut runtime,
+        )
+        .unwrap();
+        drop(infos);
+        assert_eq!(runtime.calls, 2);
+        let lane =
+            decode_pool_v1_pair_forest_lane_state_v1(&accounts[1].data, &POOL_V1_PAIR_EMPTY_ROOTS)
+                .unwrap();
+        assert_eq!(lane.tree.next_leaf_index, 2);
+        let page = validate_root_page_bytes(&accounts[2].data, &accounts[1].key, 0).unwrap();
+        assert_eq!(page.filled, 3);
+        assert_eq!(
+            &accounts[2].data[64..64 + 2 * 32],
+            &first_page[64..64 + 2 * 32]
+        );
+        assert_eq!(
+            read_retained_root(&accounts[2].data, page, 2).unwrap(),
+            lane.tree.root
+        );
+    }
+
+    #[test]
+    fn deposit_alias_or_bad_token_delta_fails_without_pool_writes() {
+        let program_id = Pubkey::new_unique();
+        let mint = Pubkey::new_unique();
+        let (mut bad_delta, instruction, _, _) = genesis_deposit_fixture(program_id, mint);
+        let lane_before = bad_delta[1].data.clone();
+        let page_before = bad_delta[2].data.clone();
+        let infos: Vec<_> = bad_delta.iter_mut().map(TestAccount::info).collect();
+        let mut runtime = DepositCpi {
+            apply_exact_delta: false,
+            calls: 0,
+        };
+        assert_eq!(
+            process_pair_forest_deposit_with_runtime_v1(
+                &program_id,
+                &infos,
+                &instruction,
+                &Rent::default(),
+                &mut runtime,
+            ),
+            Err(PoolV1ProgramError::TokenBalanceDeltaMismatch.into())
+        );
+        drop(infos);
+        assert_eq!(runtime.calls, 1);
+        assert_eq!(bad_delta[1].data, lane_before);
+        assert_eq!(bad_delta[2].data, page_before);
+
+        let (mut aliased, instruction, _, _) = genesis_deposit_fixture(program_id, mint);
+        aliased[4].key = aliased[6].key;
+        let lane_before = aliased[1].data.clone();
+        let page_before = aliased[2].data.clone();
+        let infos: Vec<_> = aliased.iter_mut().map(TestAccount::info).collect();
+        let mut runtime = DepositCpi {
+            apply_exact_delta: true,
+            calls: 0,
+        };
+        assert_eq!(
+            process_pair_forest_deposit_with_runtime_v1(
+                &program_id,
+                &infos,
+                &instruction,
+                &Rent::default(),
+                &mut runtime,
+            ),
+            Err(ProgramError::InvalidArgument)
+        );
+        drop(infos);
+        assert_eq!(runtime.calls, 0);
+        assert_eq!(aliased[1].data, lane_before);
+        assert_eq!(aliased[2].data, page_before);
+
+        let (mut wrong_lane, instruction, lane_id, _) = genesis_deposit_fixture(program_id, mint);
+        wrong_lane[1].key = pool_v1_pair_forest_lane_address(
+            &program_id,
+            &wrong_lane[0].key,
+            lane_id.wrapping_add(1) & 7,
+        )
+        .unwrap()
+        .0;
+        let lane_before = wrong_lane[1].data.clone();
+        let page_before = wrong_lane[2].data.clone();
+        let infos: Vec<_> = wrong_lane.iter_mut().map(TestAccount::info).collect();
+        let mut runtime = DepositCpi {
+            apply_exact_delta: true,
+            calls: 0,
+        };
+        assert!(process_pair_forest_deposit_with_runtime_v1(
+            &program_id,
+            &infos,
+            &instruction,
+            &Rent::default(),
+            &mut runtime,
+        )
+        .is_err());
+        drop(infos);
+        assert_eq!(runtime.calls, 0);
+        assert_eq!(wrong_lane[1].data, lane_before);
+        assert_eq!(wrong_lane[2].data, page_before);
+    }
+
+    #[test]
+    fn vault_deposit_rollover_preserves_full_history_and_starts_next_page() {
+        let program_id = Pubkey::new_unique();
+        let mint = Pubkey::new_unique();
+        let (mut accounts, instruction, lane_id, _) = genesis_deposit_fixture(program_id, mint);
+        let mut lane = genesis_lane_state(&accounts[0].key, lane_id);
+        let mut roots = Vec::with_capacity(POOL_V1_ROOT_HISTORY_CAPACITY);
+        roots.push(lane.tree.root);
+        for index in 0..POOL_V1_ROOT_HISTORY_CAPACITY - 1 {
+            let pair = PoolV1PairLeafWitnessV1::single_output(digest(20_000 + index as u32))
+                .unwrap()
+                .leaf_digest()
+                .unwrap();
+            lane.tree = lane
+                .tree
+                .append_one_with_empty_roots(pair, &POOL_V1_PAIR_EMPTY_ROOTS)
+                .unwrap()
+                .0;
+            roots.push(lane.tree.root);
+        }
+        assert_eq!(lane.tree.next_leaf_index, 255);
+        accounts[1].data =
+            encode_pool_v1_pair_forest_lane_state_v1(&lane, &POOL_V1_PAIR_EMPTY_ROOTS)
+                .unwrap()
+                .to_vec();
+        accounts[2].writable = false;
+        let lane_key = accounts[1].key;
+        write_new_page_unchecked(&mut accounts[2].data, &lane_key, 0, 0, &roots);
+        let current_page_before = accounts[2].data.clone();
+        accounts.insert(
+            3,
+            TestAccount {
+                key: pool_v1_root_page_address(&program_id, &accounts[1].key, 1).0,
+                owner: program_id,
+                lamports: rent_lamports(POOL_V1_ROOT_HISTORY_PAGE_ACCOUNT_BYTES),
+                data: vec![0u8; POOL_V1_ROOT_HISTORY_PAGE_ACCOUNT_BYTES],
+                signer: false,
+                writable: true,
+                executable: false,
+            },
+        );
+        let mut runtime = DepositCpi {
+            apply_exact_delta: true,
+            calls: 0,
+        };
+        let infos: Vec<_> = accounts.iter_mut().map(TestAccount::info).collect();
+        process_pair_forest_deposit_with_runtime_v1(
+            &program_id,
+            &infos,
+            &instruction,
+            &Rent::default(),
+            &mut runtime,
+        )
+        .unwrap();
+        drop(infos);
+        assert_eq!(runtime.calls, 1);
+        assert_eq!(accounts[2].data, current_page_before);
+        let lane =
+            decode_pool_v1_pair_forest_lane_state_v1(&accounts[1].data, &POOL_V1_PAIR_EMPTY_ROOTS)
+                .unwrap();
+        assert_eq!(lane.tree.next_leaf_index, 256);
+        let next_header = validate_root_page_bytes(&accounts[3].data, &accounts[1].key, 1).unwrap();
+        assert_eq!(next_header.first_sequence, 256);
+        assert_eq!(next_header.filled, 1);
+        assert_eq!(
+            read_retained_root(&accounts[3].data, next_header, 256).unwrap(),
+            lane.tree.root
+        );
     }
 
     #[test]
@@ -994,8 +1760,8 @@ mod tests {
             writable: true,
             executable: false,
         });
-        checkpoint_accounts.push(initialized[10].clone());
-        checkpoint_accounts.push(initialized[11].clone());
+        checkpoint_accounts.push(initialized[12].clone());
+        checkpoint_accounts.push(initialized[13].clone());
         let lanes_before: [Vec<u8>; 8] =
             core::array::from_fn(|lane| checkpoint_accounts[1 + lane].data.clone());
         let instruction = encode_pair_forest_checkpoint_instruction_v1();
