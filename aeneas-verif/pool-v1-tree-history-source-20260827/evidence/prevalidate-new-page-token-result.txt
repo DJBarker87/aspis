@@ -1,0 +1,43 @@
+Pool V1 production new-page prevalidation token bridge: PASS
+
+Frozen production function:
+  programs/aspis-pool/src/transition.rs
+  aspis_pool::transition::prevalidate_new_history_page_v1
+
+Focused LLBC:
+  extraction/PoolV1PrevalidateNewPage.llbc
+  SHA-256 22c36f23b542a85ce1f7d36c3defbe5559afc72d93bfc9e6a2d059ccb8837b43
+
+Translation:
+  Charon cb50ff16b9f1066b8a97dc06da704de2da2fa41c
+  Aeneas constructor branch e9d20a64aa4dcbbc20ba8742a6ddf720f0c575cd
+  Lean v4.31.0
+
+Strongest theorems:
+  prevalidate_new_page_success_requires_validator_success
+  prevalidate_new_page_success_exact_token
+
+Result:
+  The literal production outer constructor success requires successful
+  execution of the combined new-page validator and returns a token containing
+  exactly the supplied program id, pool id, page key and page number. Result
+  branching, error propagation and token construction are transparent.
+
+Exact #print axioms for both theorem groups:
+  [propext, Classical.choice, Quot.sound,
+   history.validate_new_page_account]
+
+The sole project-specific axiom is the exact named production validator.
+Current Aeneas variants fail with SymbolicToPureValues Unreachable while
+translating its AccountInfo data borrow, exact 8,256-byte length gate and
+all-zero scan. The boundary is therefore explicit and narrower than the outer
+token constructor. There is no sorryAx, sorry, admit, native_decide, abstract
+token constructor, trace-cover premise or conclusion-shaped callback.
+
+Remaining direct runtime lift:
+  Transparently translate or refine the combined validator; then compose the
+  supplied-next presence/absence and non-aliasing route with mutable AccountInfo
+  write-back. The owner, executable, writable, PDA-key and token-identity gates
+  are already source-closed outside the one named validator boundary.
+
+NUC was not used.

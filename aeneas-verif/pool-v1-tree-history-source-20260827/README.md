@@ -277,6 +277,19 @@ reports the deliberately named Solana runtime boundary
 `solana_pubkey.Pubkey.find_program_address`; no other project-specific axiom is
 present.
 
+`proof/PoolV1PrevalidateNewPageBridge.lean` lifts the literal outer
+`transition::prevalidate_new_history_page_v1` constructor.  Successful source
+execution is possible only when the combined new-page validator returns
+success, and the private authorization token is proved to contain exactly the
+input program id, pool id, page account key and page number.  The outer
+constructor, `Result` propagation and all four token fields are transparent.
+Current Aeneas cannot translate the validator's `AccountInfo` data borrow,
+fixed-size check and all-zero scan, so that single production function remains
+an explicitly named `history.validate_new_page_account` boundary.  Both token
+theorems report exactly `[propext, Classical.choice, Quot.sound,
+history.validate_new_page_account]`; there is no abstract token-construction
+or conclusion-shaped premise.
+
 The retained-root reader passes through Rust's formatting machinery only on
 an impossible `Result::unwrap` failure after a successful fixed-array
 conversion.  Aeneas otherwise exposes its placeholder `core::fmt::Formatter`
@@ -292,10 +305,11 @@ The remaining implementation lift is:
 2. connect the direct transition caller's duplicated account-routing control
    flow to the now-closed pure distribution theorem, including the supplied
    next-account presence/absence condition;
-3. lift the remaining combined `validate_new_page_account` data-borrow,
-   fixed-length and all-zero checks, then carry non-aliasing and account
-   write-back through the successful program path. Owner, PDA and writable
-   sub-gates themselves are now source-closed above.
+3. close the remaining combined `validate_new_page_account` data-borrow,
+   fixed-length and all-zero checks.  Its successful result is now connected
+   through the exact outer token constructor, so the remaining program lift is
+   non-aliasing and mutable account write-back. Owner, PDA and writable
+   sub-gates themselves are source-closed above.
 
 The full literal transition router has been extracted successfully, but the
 current Aeneas frontend cannot translate its `AccountInfo` borrowing and
