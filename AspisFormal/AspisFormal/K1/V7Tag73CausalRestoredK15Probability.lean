@@ -53,6 +53,19 @@ structure RestoredK15PreGammaProvider
   selected : Tag73CompleteSamplerSkeleton →
     RestoredSelectedBranchProvider decoder words
 
+/-- The concrete provider shape induced by one fixed pre-gamma point/claim
+prefix and the existing same-tape counterfactual K1.3 oracle. -/
+def restoredK15PreGammaProviderOfOracle
+    {decoder : ExactDecoderInstantiation QM31Exact}
+    {words : AspisPool.V7MerkleQueryExtractor.ExtractedWords}
+    (oracle : CounterfactualParsedK13Oracle decoder words)
+    (point : Fin 10 → QM31Exact)
+    (claims : Fin 3 → Fin 29 → QM31Exact) :
+    RestoredK15PreGammaProvider decoder words where
+  point := fun _ => point
+  claims := fun _ => claims
+  selected := counterfactualK13Provider oracle
+
 /-- The one constrained gamma target fixed by a complete nuisance skeleton. -/
 noncomputable def causalRestoredK15GammaTarget
     {decoder : ExactDecoderInstantiation QM31Exact}
@@ -63,6 +76,20 @@ noncomputable def causalRestoredK15GammaTarget
     (provider.point skeleton) (provider.claims skeleton)
     (restoredSelectedChainFamilyOfK13Provider
       (provider.selected skeleton))
+
+@[simp] theorem causalRestoredK15GammaTarget_ofOracle
+    {decoder : ExactDecoderInstantiation QM31Exact}
+    {words : AspisPool.V7MerkleQueryExtractor.ExtractedWords}
+    (oracle : CounterfactualParsedK13Oracle decoder words)
+    (point : Fin 10 → QM31Exact)
+    (claims : Fin 3 → Fin 29 → QM31Exact)
+    (skeleton : Tag73CompleteSamplerSkeleton) :
+    causalRestoredK15GammaTarget
+        (restoredK15PreGammaProviderOfOracle oracle point claims) skeleton =
+      acceptedRestoredPointConstrainedGammaSet decoder words point claims
+        (restoredSelectedChainFamilyOfK13Provider
+          (counterfactualK13Provider oracle skeleton)) := by
+  rfl
 
 /-- The exact deployed duplex event for the restoration-aware constrained
 K1.5 branch. -/
@@ -127,10 +154,34 @@ theorem causal_restored_k15_duplex_gamma_probability_le
   exact causal_restored_k15_target_card_le published provider noRestored
     skeleton
 
+/-- Specialized exact bound for the deployed counterfactual K1.3 provider
+and one fixed pre-gamma semantic prefix. -/
+theorem counterfactual_restored_k15_duplex_gamma_probability_le
+    {decoder : ExactDecoderInstantiation QM31Exact}
+    (published : PublishedInitialWidth29CurveDecodability exactInitialEncoder)
+    {words : AspisPool.V7MerkleQueryExtractor.ExtractedWords}
+    (oracle : CounterfactualParsedK13Oracle decoder words)
+    (point : Fin 10 → QM31Exact)
+    (claims : Fin 3 → Fin 29 → QM31Exact)
+    (noRestored : ∀ skeleton,
+      ¬ HasAcceptedRestoredPointCompatibleK14 decoder words point claims
+        (restoredSelectedChainFamilyOfK13Provider
+          (counterfactualK13Provider oracle skeleton))) :
+    (PMF.uniformOfFintype SuccessfulTag73DuplexNonzeroAttempts).toOuterMeasure
+        (causalRestoredK15DuplexGammaEvent
+          (restoredK15PreGammaProviderOfOracle oracle point claims)) ≤
+      (initialBatchChallengeCap : ENNReal) /
+        ((P ^ 4 - 1 : Nat) : ENNReal) := by
+  apply causal_restored_k15_duplex_gamma_probability_le published
+  intro skeleton
+  exact noRestored skeleton
+
 end
 
 #print axioms mem_causalRestoredK15DuplexGammaEvent
+#print axioms causalRestoredK15GammaTarget_ofOracle
 #print axioms causal_restored_k15_target_card_le
 #print axioms causal_restored_k15_duplex_gamma_probability_le
+#print axioms counterfactual_restored_k15_duplex_gamma_probability_le
 
 end AspisK1.V7Tag73CausalRestoredK15Probability
