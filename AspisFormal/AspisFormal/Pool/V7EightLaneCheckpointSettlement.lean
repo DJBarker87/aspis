@@ -239,6 +239,56 @@ theorem distinct_lane_terminal_updates_commute
               · exact Function.update_comm different firstResult secondResult lanes
               · exact (Set.insert_comm firstNullifier secondNullifier nullifiers).symm
 
+/-- Full acceptance, not merely the proof-source equality, survives a prior
+transaction on another output lane when the two public nullifiers are
+distinct.  This is the exact protocol-level concurrency statement: an
+unrelated lane append neither stales the locked source nor consumes the
+pending transaction's replay key. -/
+theorem different_lane_distinct_nullifier_update_preserves_acceptance
+    {K Nullifier : Type} [CommRing K] [DecidableEq Nullifier]
+    (parent : Digest K → Digest K → Digest K)
+    (emptyLeaf : Digest K)
+    (compressPair : PairLeaf K → Digest K)
+    (depth : Nat)
+    (laneOfNullifier : Nullifier → Lane)
+    (retained : Digest K → Prop)
+    (baseRelation :
+      ForestTerminalStatement K Nullifier →
+        ForestTerminalProof K parent → Prop)
+    (state : ForestAtomicState K Nullifier)
+    (landed pending : ForestTerminalStatement K Nullifier)
+    (pendingProof : ForestTerminalProof K parent)
+    (pendingAccepted : ForestAtomicAccepted parent emptyLeaf compressPair depth
+      laneOfNullifier retained baseRelation state pending pendingProof)
+    (differentLane : landed.outputLane ≠ pending.outputLane)
+    (differentNullifier : pending.nullifier ≠ landed.nullifier) :
+    ForestAtomicAccepted parent emptyLeaf compressPair depth laneOfNullifier
+      retained baseRelation (applyAcceptedTerminal state landed) pending
+      pendingProof := by
+  refine ⟨?_, ?_⟩
+  · exact
+      { baseValid := pendingAccepted.terminal.baseValid
+        retainedAnchor := pendingAccepted.terminal.retainedAnchor
+        outputLaneExact := pendingAccepted.terminal.outputLaneExact
+        membershipAnchorExact :=
+          pendingAccepted.terminal.membershipAnchorExact
+        publicSourceExact := pendingAccepted.terminal.publicSourceExact
+        publicResultExact := pendingAccepted.terminal.publicResultExact
+        sourceIsLockedLiveLane := by
+          simpa [applyAcceptedTerminal] using
+            pendingAccepted.terminal.publicSourceExact.symm.trans
+              (other_lane_update_does_not_stale_completed_proof parent emptyLeaf
+                compressPair depth laneOfNullifier retained baseRelation
+                state.lanes pending pendingProof pendingAccepted.terminal
+                landed.outputLane landed.laneResult differentLane)
+        appendExact := pendingAccepted.terminal.appendExact }
+  · change pending.nullifier ∉
+      Set.insert landed.nullifier state.spentNullifiers
+    intro consumed
+    rcases Set.mem_insert_iff.mp consumed with equal | alreadySpent
+    · exact differentNullifier equal
+    · exact pendingAccepted.nullifierFresh alreadySpent
+
 #print axioms checkpoint_retains_exact_observed_global_root
 #print axioms accepted_pool_spend_has_exact_one_transaction_postcondition
 #print axioms checkpoint_preserves_atomic_spend_state
@@ -249,5 +299,6 @@ theorem distinct_lane_terminal_updates_commute
 #print axioms post_terminal_observed_output_lane_root
 #print axioms output_lane_enters_next_global_checkpoint
 #print axioms distinct_lane_terminal_updates_commute
+#print axioms different_lane_distinct_nullifier_update_preserves_acceptance
 
 end AspisPool.V7EightLaneCheckpointSettlement
