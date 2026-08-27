@@ -20,9 +20,10 @@ use crate::{
     rpc_https_transport::{ExactTwoProviderHttpsTransportV1, RpcHttpsQuorumTransportErrorV1},
     rpc_json::FinalizedGetBlockRequestV1,
     rpc_json_quorum::{
-        agree_finalized_get_block_plan_v1, ingest_agreed_finalized_rpc_json_plan_v1,
-        AgreedFinalizedBlockIngestV1, AgreedFinalizedRpcJsonPlanV1,
-        FinalizedRootPagesQuorumInputV1, FinalizedRpcQuorumErrorV1,
+        agree_finalized_get_block_outcome_v1, agree_finalized_get_block_plan_v1,
+        ingest_agreed_finalized_rpc_json_plan_v1, AgreedFinalizedBlockIngestV1,
+        AgreedFinalizedRpcJsonPlanV1, AgreedFinalizedSlotPlanV1, FinalizedRootPagesQuorumInputV1,
+        FinalizedRpcQuorumErrorV1,
     },
     scan_state::{LocalOwnerKeyStoreV1, ScanStateV1},
     ViewingSecretKeyV1,
@@ -187,6 +188,31 @@ impl ExactRelayerHttpsRpcV1 {
             FINALIZED_BLOCK_RESPONSE_MAX_BYTES_V1,
         )?;
         Ok(agree_finalized_get_block_plan_v1(
+            &self.quorum,
+            state,
+            binding,
+            request,
+            responses.exchanges_v1(),
+        )?)
+    }
+
+    /// Fetch one exact finalized slot from both pinned providers and retain a
+    /// constructor-sealed null-slot result when both return JSON null. This
+    /// authenticates provider agreement but does not decide whether to retry
+    /// or classify the slot as skipped.
+    /// This is the preferred entrypoint for sequential backfill; the older
+    /// block-only method keeps mapping skipped slots to its legacy error.
+    pub fn agreed_finalized_slot_plan_v1(
+        &self,
+        state: &ScanStateV1,
+        binding: &DepositRpcBindingV1,
+        request: FinalizedGetBlockRequestV1,
+    ) -> Result<AgreedFinalizedSlotPlanV1, RelayerHttpsRpcErrorV1> {
+        let responses = self.transport.post_both_exact_json_v1(
+            &request.encode_json_v1(),
+            FINALIZED_BLOCK_RESPONSE_MAX_BYTES_V1,
+        )?;
+        Ok(agree_finalized_get_block_outcome_v1(
             &self.quorum,
             state,
             binding,

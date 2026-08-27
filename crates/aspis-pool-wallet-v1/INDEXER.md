@@ -111,10 +111,14 @@ owner-key lookup interface.
 
 ## Remaining production boundaries
 
-- HTTP/TLS transport, retry/backfill policy, null/skipped-slot scheduling and
-  the truth of the RPC provider's finalized response remain in the client.
-  JSON shape, duplicate fields, request IDs and the commitment requested on
-  the wire are enforced by `rpc_json`.
+- Retry/backfill policy, durable sequential scheduling and the truth of the
+  RPC providers' finalized responses remain in the client. The supplied HTTPS
+  transport is pinned, bounded, no-proxy/no-redirect and no-retry; JSON shape,
+  duplicate fields, request IDs and finalized commitment are enforced by
+  `rpc_json`. `rpc_json_quorum` emits authenticated null-slot evidence only
+  after both startup-pinned providers return null for the same exact request;
+  classifying that as a skipped slot requires the application's backfill
+  policy.
 - RPC blockhash/finality and `meta.loadedAddresses` are provider assertions.
   Multi-provider quorum, local address-lookup-table resolution, or a verified
   ledger/light client is required when a single RPC operator is outside the
