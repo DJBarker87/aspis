@@ -116,6 +116,9 @@ theorem compact_transfer_has_exact_atomic_custody_postcondition
     (reserve : Nat) (conserved : VaultConserved reserve state) :
     reconstructSemanticStatement request snapshot statement.laneResult =
         reconstructSemanticStatement request snapshot result.candidate ∧
+      snapshot.master = state.pool.checkpointMaster ∧
+      snapshot.checkpoint.globalRoot = statement.membershipAnchor ∧
+      snapshot.lane = state.pool.atomic.lanes statement.outputLane ∧
       ForestOneTransactionPostcondition parent laneOfNullifier state.pool
         statement proof ∧
       VaultConserved reserve
@@ -123,7 +126,9 @@ theorem compact_transfer_has_exact_atomic_custody_postcondition
           accepted.transferAccepted.relation) := by
   refine ⟨authenticated_result_gives_identical_semantic_reconstruction request
       snapshot statement.nullifier statement.laneResult result
-      accepted.resultAuthenticates, ?_, ?_⟩
+      accepted.resultAuthenticates, accepted.snapshotMatches.masterExact,
+      accepted.snapshotMatches.checkpointAnchorExact,
+      accepted.snapshotMatches.laneExact, ?_, ?_⟩
   · exact accepted_pool_spend_has_exact_one_transaction_postcondition parent
       emptyLeaf compressPair depth laneOfNullifier baseRelation state.pool
       statement proof accepted.transferAccepted.poolAccepted
@@ -158,6 +163,9 @@ theorem compact_withdrawal_has_exact_atomic_custody_postcondition
     (reserve : Nat) (conserved : VaultConserved reserve state) :
     reconstructSemanticStatement request snapshot statement.laneResult =
         reconstructSemanticStatement request snapshot result.candidate ∧
+      snapshot.master = state.pool.checkpointMaster ∧
+      snapshot.checkpoint.globalRoot = statement.membershipAnchor ∧
+      snapshot.lane = state.pool.atomic.lanes statement.outputLane ∧
       ForestOneTransactionPostcondition parent laneOfNullifier state.pool
         statement proof ∧
       VaultConserved reserve
@@ -165,7 +173,9 @@ theorem compact_withdrawal_has_exact_atomic_custody_postcondition
           accepted.withdrawalAccepted.relation) := by
   refine ⟨authenticated_result_gives_identical_semantic_reconstruction request
       snapshot statement.nullifier statement.laneResult result
-      accepted.resultAuthenticates, ?_, ?_⟩
+      accepted.resultAuthenticates, accepted.snapshotMatches.masterExact,
+      accepted.snapshotMatches.checkpointAnchorExact,
+      accepted.snapshotMatches.laneExact, ?_, ?_⟩
   · exact accepted_pool_spend_has_exact_one_transaction_postcondition parent
       emptyLeaf compressPair depth laneOfNullifier baseRelation state.pool
       statement proof accepted.withdrawalAccepted.poolAccepted
