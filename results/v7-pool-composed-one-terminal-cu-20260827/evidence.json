@@ -1,0 +1,356 @@
+{
+  "artifacts": {
+    "pool": {
+      "bytes": 451264,
+      "path": "results/pool-v1-pair-afterstate-litesvm-20260827/artifacts-profiled-header-capability/aspis_pool.so",
+      "sha256": "e022074c5e8e13f3285419511e1793c8b26f3634b48c524fd9d13f0b4229ce4e"
+    },
+    "proof": {
+      "bytes": 30192,
+      "path": "results/pool-v1-one-terminal-runtime-20260827/native-proof.bin",
+      "sha256": "656f25689041ae7f90c9461f4dbe3336478e01e1970ff00c24d1e7d90ed2e72c"
+    },
+    "verifier_diagnostic": {
+      "bytes": 925208,
+      "path": "results/v7-pool-composed-one-terminal-cu-20260827/artifacts/aspis_verifier.so",
+      "sha256": "04a6b3b4263bf83a68bf8b37437286709772e0ca892947138578a4194953e379"
+    }
+  },
+  "boundaries": [
+    "This transaction executes the preserved honest 30,192-byte native Tag-73 proof before returning ASJA, but that proof does not bind the appended 688 ASJA bytes.",
+    "The preserved proof binds the legacy Pool PDA; the measurement adapter substitutes that one pool field while the outer pair Pool uses its distinct PDA. This is not a sound authorization bridge.",
+    "The proof and fixed ASJA are adjacent in the verifier-owned proof account only for this CU transport diagnostic.",
+    "The pair entrypoint is compiled only with the measurement-only pair-afterstate-evidence feature; the default production entrypoint remains disabled.",
+    "The nullifier marker is an exact pre-created Pool-owned zeroed account; System creation cost is excluded.",
+    "Pool source has no state write before verifier success, and Solana transaction atomicity rolls back the Pool/history/marker if the verifier CPI fails; the prior real-verifier red gate separately captured that exact runtime rollback.",
+    "This is deterministic LiteSVM execution with no network, deploy, or transaction submission."
+  ],
+  "compute_unit_limit": 1400000,
+  "execution": {
+    "account_metas_excluding_compute_budget_and_payer": 7,
+    "compute_units": 1340241,
+    "delta_from_naive_sum_cu": 3582,
+    "direct_verifier_baseline_cu": 1254737,
+    "incremental_over_direct_verifier_cu": 85504,
+    "instruction_bytes": 432,
+    "return_bytes": 200,
+    "return_magic": "ASTR",
+    "simulation_equals_execution": true,
+    "transaction_bytes": 873,
+    "transport_double_suffix_baseline_cu": 81922
+  },
+  "mode": "same-page",
+  "profile_slot": 150,
+  "profiling": {
+    "after_last_marker_to_transaction_end": 243,
+    "before_first_marker_including_transaction_dispatch": 1830,
+    "enabled": true,
+    "marker_calls_are_metered_and_inflate_the_profiled_total": true,
+    "markers": [
+      {
+        "delta_from_previous": null,
+        "label": "pool:handler_entry",
+        "remaining": 1398170
+      },
+      {
+        "delta_from_previous": 7754,
+        "label": "pool:state_and_statement_validated",
+        "remaining": 1390416
+      },
+      {
+        "delta_from_previous": 10215,
+        "label": "pool:layout_validated",
+        "remaining": 1380201
+      },
+      {
+        "delta_from_previous": 38999,
+        "label": "pool:history_validated",
+        "remaining": 1341202
+      },
+      {
+        "delta_from_previous": 5141,
+        "label": "pool:marker_preflight_complete",
+        "remaining": 1336061
+      },
+      {
+        "delta_from_previous": 254,
+        "label": "pool:verifier_plan_start",
+        "remaining": 1335807
+      },
+      {
+        "delta_from_previous": 10285,
+        "label": "pool:verifier_plan_complete",
+        "remaining": 1325522
+      },
+      {
+        "delta_from_previous": 594,
+        "label": "pool:verifier_cpi_start",
+        "remaining": 1324928
+      },
+      {
+        "delta_from_previous": 1910,
+        "label": "verifier:entry",
+        "remaining": 1323018
+      },
+      {
+        "delta_from_previous": 1825,
+        "label": "verifier:composed-request-validated",
+        "remaining": 1321193
+      },
+      {
+        "delta_from_previous": 17151,
+        "label": "verifier:proof-body-hash",
+        "remaining": 1304042
+      },
+      {
+        "delta_from_previous": 2878,
+        "label": "verifier:native-statement-restored",
+        "remaining": 1301164
+      },
+      {
+        "delta_from_previous": 298,
+        "label": "verifier:wire-parsed",
+        "remaining": 1300866
+      },
+      {
+        "delta_from_previous": 3968,
+        "label": "verifier:inactive-schedule",
+        "remaining": 1296898
+      },
+      {
+        "delta_from_previous": 9575,
+        "label": "verifier:transcript-setup",
+        "remaining": 1287323
+      },
+      {
+        "delta_from_previous": 193735,
+        "label": "verifier:semantic-sumcheck",
+        "remaining": 1093588
+      },
+      {
+        "delta_from_previous": 27039,
+        "label": "verifier:point-claims",
+        "remaining": 1066549
+      },
+      {
+        "delta_from_previous": 276,
+        "label": "verifier:terminal-start",
+        "remaining": 1066273
+      },
+      {
+        "delta_from_previous": 407973,
+        "label": "verifier:terminal-end",
+        "remaining": 658300
+      },
+      {
+        "delta_from_previous": 283,
+        "label": "verifier:relation-start",
+        "remaining": 658017
+      },
+      {
+        "delta_from_previous": 39865,
+        "label": "verifier:relation-prepared-weights",
+        "remaining": 618152
+      },
+      {
+        "delta_from_previous": 12931,
+        "label": "verifier:relation-circle-samples",
+        "remaining": 605221
+      },
+      {
+        "delta_from_previous": 7079,
+        "label": "verifier:relation-fields",
+        "remaining": 598142
+      },
+      {
+        "delta_from_previous": 11712,
+        "label": "verifier:relation-round-zero",
+        "remaining": 586430
+      },
+      {
+        "delta_from_previous": 79883,
+        "label": "verifier:relation-final256",
+        "remaining": 506547
+      },
+      {
+        "delta_from_previous": 13786,
+        "label": "verifier:relation-queries",
+        "remaining": 492761
+      },
+      {
+        "delta_from_previous": 255,
+        "label": "verifier:query-fold-start",
+        "remaining": 492506
+      },
+      {
+        "delta_from_previous": 7660,
+        "label": "verifier:query-coordinates",
+        "remaining": 484846
+      },
+      {
+        "delta_from_previous": 136824,
+        "label": "verifier:query-gamma-combined",
+        "remaining": 348022
+      },
+      {
+        "delta_from_previous": 11024,
+        "label": "verifier:query-leaves-hashed",
+        "remaining": 336998
+      },
+      {
+        "delta_from_previous": 94845,
+        "label": "verifier:query-merkle-authenticated",
+        "remaining": 242153
+      },
+      {
+        "delta_from_previous": 273,
+        "label": "verifier:query-authentication-gamma",
+        "remaining": 241880
+      },
+      {
+        "delta_from_previous": 20807,
+        "label": "verifier:query-folded",
+        "remaining": 221073
+      },
+      {
+        "delta_from_previous": 10652,
+        "label": "verifier:relation-query-batch",
+        "remaining": 210421
+      },
+      {
+        "delta_from_previous": 3136,
+        "label": "verifier:relation-round-one-polynomial",
+        "remaining": 207285
+      },
+      {
+        "delta_from_previous": 224,
+        "label": "verifier:relation-round-one-weights",
+        "remaining": 207061
+      },
+      {
+        "delta_from_previous": 36454,
+        "label": "verifier:relation-round-one-values",
+        "remaining": 170607
+      },
+      {
+        "delta_from_previous": 3126,
+        "label": "verifier:relation-round-two-polynomial",
+        "remaining": 167481
+      },
+      {
+        "delta_from_previous": 224,
+        "label": "verifier:relation-round-two-weights",
+        "remaining": 167257
+      },
+      {
+        "delta_from_previous": 9820,
+        "label": "verifier:relation-round-two-values",
+        "remaining": 157437
+      },
+      {
+        "delta_from_previous": 3140,
+        "label": "verifier:relation-round-three-polynomial",
+        "remaining": 154297
+      },
+      {
+        "delta_from_previous": 70114,
+        "label": "verifier:relation-round-three-weights",
+        "remaining": 84183
+      },
+      {
+        "delta_from_previous": 3165,
+        "label": "verifier:relation-round-three-values",
+        "remaining": 81018
+      },
+      {
+        "delta_from_previous": 13995,
+        "label": "verifier:relation-terminal",
+        "remaining": 67023
+      },
+      {
+        "delta_from_previous": 1001,
+        "label": "verifier:proof-accepted",
+        "remaining": 66022
+      },
+      {
+        "delta_from_previous": 315,
+        "label": "verifier:asja-return-set",
+        "remaining": 65707
+      },
+      {
+        "delta_from_previous": 2195,
+        "label": "pool:verifier_cpi_complete",
+        "remaining": 63512
+      },
+      {
+        "delta_from_previous": 238,
+        "label": "pool:afterstate_authenticated",
+        "remaining": 63274
+      },
+      {
+        "delta_from_previous": 1202,
+        "label": "pool:afterstate_applied",
+        "remaining": 62072
+      },
+      {
+        "delta_from_previous": 1014,
+        "label": "pool:receipt_and_state_image_ready",
+        "remaining": 61058
+      },
+      {
+        "delta_from_previous": 277,
+        "label": "pool:history_written",
+        "remaining": 60781
+      },
+      {
+        "delta_from_previous": 234,
+        "label": "pool:pool_state_written",
+        "remaining": 60547
+      },
+      {
+        "delta_from_previous": 233,
+        "label": "pool:marker_written",
+        "remaining": 60314
+      },
+      {
+        "delta_from_previous": 312,
+        "label": "pool:receipt_returned",
+        "remaining": 60002
+      }
+    ]
+  },
+  "schema": "aspis.pool-v1.composed-native-tag73-asja-cu-diagnostic.v1",
+  "state_transition": {
+    "full_prior_page_byte_exact_on_rollover": false,
+    "historical_anchor_value_preserved": true,
+    "history_target_page": 0,
+    "history_target_slot": 101,
+    "membership_anchor_sequence": 1,
+    "next_sequence": 101,
+    "nullifier_marker_created_once": true,
+    "pool_matches_verifier_afterstate": true,
+    "pool_side_poseidon_calls": 0,
+    "source_sequence": 100
+  },
+  "toolchain": {
+    "cargo_build_sbf": "solana-cargo-build-sbf 2.3.0",
+    "host": "macOS 26.5 (25F71), Darwin 25.5.0 arm64",
+    "host_cargo": "1.93.0 (083ac5135 2025-12-15)",
+    "host_rustc": "1.93.0 (254b59607 2026-01-19)",
+    "litesvm": "0.16.0",
+    "platform_tools": "v1.48",
+    "sbf_rustc": "1.84.1"
+  },
+  "transport": {
+    "immediate_return_program_checked": true,
+    "kind": "measurement-only real native Tag-73 verifier followed by fixed ASJA transport",
+    "native_proof_bytes": 30192,
+    "native_proof_sha256": "656f25689041ae7f90c9461f4dbe3336478e01e1970ff00c24d1e7d90ed2e72c",
+    "outer_pair_pool_substituted_for_preserved_native_statement_pool": true,
+    "proof_account_body_bytes": 30880,
+    "proof_binds_returned_asja": false,
+    "real_tag73_proof_executed": true,
+    "request_is_registry_and_proof_account_bound": true,
+    "returned_asja_bytes": 688
+  }
+}
