@@ -115,8 +115,23 @@ theorem routedAnswer?_eq_some_coordinate
       exact residual_step_named_slot_receives_tail_answer next tape
         ⟨target, member⟩
 
+/-- Protocol-specific code may prove a lookup equation by following its own
+literal execution trace.  This corollary turns that equation directly into
+the named-coordinate equality needed by the probability bridge. -/
+theorem coordinate_eq_of_causalRoutedAnswer?_eq_some
+    {Output Slot : Type} [DecidableEq Slot]
+    {slots : Finset Slot} {residual : Nat}
+    (router : CausalSlotRouter Output Slot slots residual)
+    (tape : FreshAnswerTape Output (slots.card + residual))
+    (target : Slot) (member : target ∈ slots) (answer : Output)
+    (routed : causalRoutedAnswer? target router tape = some answer) :
+    (router.coordinateEquiv tape).1 ⟨target, member⟩ = answer := by
+  rw [routedAnswer?_eq_some_coordinate router tape target member] at routed
+  exact Option.some.inj routed
+
 #print axioms causalRoutedAnswer?
 #print axioms routedAnswer?_eq_some_coordinate
+#print axioms coordinate_eq_of_causalRoutedAnswer?_eq_some
 
 end
 
