@@ -38,6 +38,10 @@ v6-cu-probe = []
 # complete atomic wrapper while allowing work-hash acceptance to be isolated
 # from the production Tag-73 binary during CU development.
 v7-cu-probe = []
+# Local-only CU profiler for one honest native Pool Tag-73 proof.  It exposes
+# the production cryptographic path behind a distinct entrypoint and logs
+# coarse phase boundaries.  It is deliberately not a production feature.
+v7-pool-cu-profile = ["aspis-statement/pool-v1-kernel"]
 # Frozen production switch. This compiles tag 67 into the minimal production
 # dispatcher and routes it only through the atomic verify-and-apply wrapper.
 # The executable, transcript, formal, and CU gates are recorded in the release
