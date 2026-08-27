@@ -237,11 +237,11 @@ pub fn validate_pool_v1_pair_forest_terminal_statement_v1(
     match statement {
         PoolV1PairForestTerminalStatementV1::PrivateTransfer { public, .. } => {
             encode_pool_v1_private_transfer_public_v1(public)
-                .map_err(PoolV1PairForestTerminalFormatErrorV1::Payment)?;
+                .map_err(|error| PoolV1PairForestTerminalFormatErrorV1::Payment(error))?;
         }
         PoolV1PairForestTerminalStatementV1::Withdrawal { public, .. } => {
             encode_pool_v1_withdrawal_public_v1(public)
-                .map_err(PoolV1PairForestTerminalFormatErrorV1::Payment)?;
+                .map_err(|error| PoolV1PairForestTerminalFormatErrorV1::Payment(error))?;
         }
     }
     let (pool, deployment, anchor_sequence, anchor, nullifier, _) =
@@ -262,13 +262,13 @@ pub fn validate_pool_v1_pair_forest_terminal_statement_v1(
         return Err(PoolV1PairForestTerminalFormatErrorV1::HistoricalAnchorMismatch);
     }
     let expected_lane = pool_v1_pair_forest_output_lane_v1(&nullifier)
-        .map_err(PoolV1PairForestTerminalFormatErrorV1::Account)?;
+        .map_err(|error| PoolV1PairForestTerminalFormatErrorV1::Account(error))?;
     if expected_lane != common.output_lane {
         return Err(PoolV1PairForestTerminalFormatErrorV1::OutputLaneMismatch);
     }
     let mut late_bytes = [0u8; POOL_V1_PAIR_LATE_PUBLIC_STATEMENT_BYTES];
     encode_pool_v1_pair_late_public_statement_v1(&common.lane_transition, &mut late_bytes)
-        .map_err(PoolV1PairForestTerminalFormatErrorV1::LaneTransition)?;
+        .map_err(|error| PoolV1PairForestTerminalFormatErrorV1::LaneTransition(error))?;
     Ok(())
 }
 
@@ -297,7 +297,7 @@ pub fn encode_pool_v1_pair_forest_terminal_statement_v1(
         &common.lane_transition,
         &mut output[LATE_STATEMENT_OFFSET..PAYMENT_STATEMENT_OFFSET],
     )
-    .map_err(PoolV1PairForestTerminalFormatErrorV1::LaneTransition)?;
+    .map_err(|error| PoolV1PairForestTerminalFormatErrorV1::LaneTransition(error))?;
     let payment = match statement {
         PoolV1PairForestTerminalStatementV1::PrivateTransfer { public, .. } => {
             encode_pool_v1_private_transfer_public_v1(public)
@@ -306,7 +306,7 @@ pub fn encode_pool_v1_pair_forest_terminal_statement_v1(
             encode_pool_v1_withdrawal_public_v1(public)
         }
     }
-    .map_err(PoolV1PairForestTerminalFormatErrorV1::Payment)?;
+    .map_err(|error| PoolV1PairForestTerminalFormatErrorV1::Payment(error))?;
     output[PAYMENT_STATEMENT_OFFSET..].copy_from_slice(&payment);
     Ok(output)
 }
@@ -353,7 +353,7 @@ pub fn decode_pool_v1_pair_forest_terminal_statement_v1(
         lane_transition: decode_pool_v1_pair_late_public_statement_v1(
             &bytes[LATE_STATEMENT_OFFSET..PAYMENT_STATEMENT_OFFSET],
         )
-        .map_err(PoolV1PairForestTerminalFormatErrorV1::LaneTransition)?,
+        .map_err(|error| PoolV1PairForestTerminalFormatErrorV1::LaneTransition(error))?,
     };
     let statement = match kind {
         PoolV1TransitionKind::PrivateTransfer => {
@@ -362,13 +362,13 @@ pub fn decode_pool_v1_pair_forest_terminal_statement_v1(
                 public: decode_pool_v1_private_transfer_public_v1(
                     &bytes[PAYMENT_STATEMENT_OFFSET..],
                 )
-                .map_err(PoolV1PairForestTerminalFormatErrorV1::Payment)?,
+                .map_err(|error| PoolV1PairForestTerminalFormatErrorV1::Payment(error))?,
             }
         }
         PoolV1TransitionKind::Withdrawal => PoolV1PairForestTerminalStatementV1::Withdrawal {
             common,
             public: decode_pool_v1_withdrawal_public_v1(&bytes[PAYMENT_STATEMENT_OFFSET..])
-                .map_err(PoolV1PairForestTerminalFormatErrorV1::Payment)?,
+                .map_err(|error| PoolV1PairForestTerminalFormatErrorV1::Payment(error))?,
         },
     };
     validate_pool_v1_pair_forest_terminal_statement_v1(&statement)?;
@@ -487,12 +487,12 @@ fn validate_result(
         return Err(PoolV1PairForestTerminalFormatErrorV1::NonZeroBinding);
     }
     let expected = pool_v1_pair_forest_output_lane_v1(&result.nullifier)
-        .map_err(PoolV1PairForestTerminalFormatErrorV1::Account)?;
+        .map_err(|error| PoolV1PairForestTerminalFormatErrorV1::Account(error))?;
     if result.output_lane != expected {
         return Err(PoolV1PairForestTerminalFormatErrorV1::OutputLaneMismatch);
     }
     encode_pool_v1_pair_verified_afterstate_v1(&result.verified_afterstate)
-        .map_err(PoolV1PairForestTerminalFormatErrorV1::Afterstate)?;
+        .map_err(|error| PoolV1PairForestTerminalFormatErrorV1::Afterstate(error))?;
     Ok(())
 }
 
@@ -538,7 +538,7 @@ pub fn encode_pool_v1_pair_forest_terminal_result_v1(
         .copy_from_slice(&encode_digest_canonical(&result.nullifier));
     output[RESULT_AFTERSTATE_OFFSET..].copy_from_slice(
         &encode_pool_v1_pair_verified_afterstate_v1(&result.verified_afterstate)
-            .map_err(PoolV1PairForestTerminalFormatErrorV1::Afterstate)?,
+            .map_err(|error| PoolV1PairForestTerminalFormatErrorV1::Afterstate(error))?,
     );
     Ok(output)
 }
@@ -577,7 +577,7 @@ pub fn decode_pool_v1_pair_forest_terminal_result_v1(
         verified_afterstate: decode_pool_v1_pair_verified_afterstate_v1(
             &bytes[RESULT_AFTERSTATE_OFFSET..],
         )
-        .map_err(PoolV1PairForestTerminalFormatErrorV1::Afterstate)?,
+        .map_err(|error| PoolV1PairForestTerminalFormatErrorV1::Afterstate(error))?,
     };
     validate_result(&result)?;
     Ok(result)
