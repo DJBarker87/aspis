@@ -1,4 +1,5 @@
 import AspisFormal.K1.V7Tag73ExactOperationalK15Stage
+import AspisFormal.K1.V7Tag73BatchedQuerySourceBridge
 import AspisFormal.K1.V7Tag73RestoredPointCompatibleK14
 import AspisFormal.Pool.V7K15FixedFamilyCausalCover
 
@@ -42,6 +43,7 @@ open AspisK1.V7Tag73ExactFixedK13K14FailureReduction
 open AspisK1.V7Tag73ExactParsedProofSourceBinding
 open AspisK1.V7Tag73OperationalK15Classifier
 open AspisK1.V7Tag73OperationalRelationSourceFacts
+open AspisK1.V7Tag73BatchedQuerySourceBridge
 open AspisK1.V7Tag73ExactOperationalK15Stage
 open AspisK1.V7Tag73RestoredPointCompatibleK14
 open AspisPool.AlgorithmicCircleDecoderV7
@@ -301,7 +303,7 @@ theorem exact_operational_k15_failure_reduces_to_restored_or_fixed
       exact noKappaEvent
     have positive := positive_relation_facts_of_exact_source_bindings
       material.source.sourceBinding material.source.finalSource
-      material.source.querySource
+      material.source.querySource.toOperationalSourceBinding
       (material.authenticatedQueryValuesExact k13)
       material.data.terminalSource
     have aggregateExact :
