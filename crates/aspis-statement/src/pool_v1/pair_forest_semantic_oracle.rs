@@ -12,10 +12,112 @@ use crate::{constraints_v4::multilinear_evaluate, logup::build_copy_logup_helper
 
 use super::{
     pair_forest_hiding::pool_v1_pair_forest_copy_active_rows_v1,
-    pair_forest_trace::{pool_v1_pair_forest_copy_rows_v1, PoolV1PairForestTraceV1},
-    pair_trace::PoolV1PairTraceErrorV1,
+    pair_forest_trace::{
+        build_pool_v1_pair_forest_copy_registry_v1, pool_v1_pair_forest_copy_rows_v1,
+        PoolV1PairForestTraceV1,
+    },
+    pair_trace::{
+        PoolV1PairCopyTupleV1, PoolV1PairCopyWeightV1, PoolV1PairTraceErrorV1,
+        PoolV1PairTraceVariantV1, PoolV1PairTupleLimbV1,
+    },
     pair_tree_profile::POOL_V1_PAIR_TRACE_ROWS,
 };
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct PoolV1PairForestCopyTerminalV1 {
+    pub residual: QM31,
+    pub active: QM31,
+}
+
+#[derive(Clone, Copy)]
+struct CopyRowExtensionV1 {
+    producer_values: [QM31; 2],
+    producer_weights: [QM31; 2],
+    consumer_values: [QM31; 2],
+    consumer_weights: [QM31; 2],
+}
+
+#[inline]
+fn lift(value: M31) -> QM31 {
+    QM31::from_cm31(aspis_core::field::CM31::from_m31(value))
+}
+
+#[inline]
+fn eq_row(point: &[QM31; 10], row: usize) -> QM31 {
+    point
+        .iter()
+        .enumerate()
+        .fold(QM31::ONE, |weight, (coordinate, value)| {
+            let bit = (row >> (point.len() - 1 - coordinate)) & 1;
+            weight.mul(if bit == 0 {
+                QM31::ONE.sub(*value)
+            } else {
+                *value
+            })
+        })
+}
+
+fn copy_weight(
+    weight: PoolV1PairCopyWeightV1,
+    append_index: u64,
+    variant: PoolV1PairTraceVariantV1,
+) -> M31 {
+    match weight {
+        PoolV1PairCopyWeightV1::One => M31::ONE,
+        PoolV1PairCopyWeightV1::PrivateTransferOnly => M31(u32::from(
+            variant == PoolV1PairTraceVariantV1::PrivateTransfer,
+        )),
+        PoolV1PairCopyWeightV1::WithdrawalOnly => {
+            M31(u32::from(variant == PoolV1PairTraceVariantV1::Withdrawal))
+        }
+        PoolV1PairCopyWeightV1::AppendCurrentLeft { level } => {
+            M31(1 - ((append_index >> level) & 1) as u32)
+        }
+        PoolV1PairCopyWeightV1::AppendCurrentRight { level } => {
+            M31(((append_index >> level) & 1) as u32)
+        }
+    }
+}
+
+fn compressed_opened_tuple(
+    tuple: PoolV1PairCopyTupleV1,
+    tag: M31,
+    selector: QM31,
+    openings: &[QM31; 16],
+    powers: &[QM31; 16],
+) -> QM31 {
+    let mut value = selector.mul_m31(tag);
+    for (limb, power) in tuple.limbs.into_iter().zip(powers) {
+        let opened = match limb {
+            PoolV1PairTupleLimbV1::Zero => QM31::ZERO,
+            PoolV1PairTupleLimbV1::Cell { source, offset } => {
+                openings[usize::from(source.cell.column)].add(lift(offset))
+            }
+        };
+        value = value.add(selector.mul(opened).mul(*power));
+    }
+    value
+}
+
+fn copy_residual(row: CopyRowExtensionV1, helper: QM31, chi: QM31) -> QM31 {
+    let denominator = [
+        chi.sub(row.producer_values[0]),
+        chi.sub(row.producer_values[1]),
+        chi.sub(row.consumer_values[0]),
+        chi.sub(row.consumer_values[1]),
+    ];
+    let producer_denominator = denominator[0].mul(denominator[1]);
+    let consumer_denominator = denominator[2].mul(denominator[3]);
+    let producer_numerator = row.producer_weights[0]
+        .mul(denominator[1])
+        .add(row.producer_weights[1].mul(denominator[0]));
+    let consumer_numerator = row.consumer_weights[0]
+        .mul(denominator[3])
+        .add(row.consumer_weights[1].mul(denominator[2]));
+    producer_denominator
+        .mul(helper.mul(consumer_denominator).add(consumer_numerator))
+        .sub(consumer_denominator.mul(producer_numerator))
+}
 
 /// Construct the unique forest LogUp helper from the literal typed copy
 /// registry.  The append index remains an explicit input because append-side
@@ -28,6 +130,76 @@ pub fn build_pool_v1_pair_forest_copy_helper_v1(
 ) -> Result<Vec<QM31>, PoolV1PairTraceErrorV1> {
     let rows = pool_v1_pair_forest_copy_rows_v1(trace, append_index, lambda)?;
     build_copy_logup_helper(&rows, chi).map_err(|_| PoolV1PairTraceErrorV1::CopyImbalance)
+}
+
+/// Evaluate the exact forest copy lane from the sixteen merged-C1 openings
+/// and one H1 opening used by the selected Tag-73 terminal.  Stable and late
+/// banks intentionally share the same opening vector: bank disjointness is
+/// checked before C1 commitment by the merged-trace compiler.
+pub fn evaluate_pool_v1_pair_forest_copy_terminal_v1(
+    openings: &[QM31; 16],
+    h1_z: QM31,
+    point: &[QM31; 10],
+    lambda: QM31,
+    chi: QM31,
+    append_index: u64,
+    variant: PoolV1PairTraceVariantV1,
+) -> Result<PoolV1PairForestCopyTerminalV1, PoolV1PairTraceErrorV1> {
+    let registry = build_pool_v1_pair_forest_copy_registry_v1()?;
+    let mut powers = [QM31::ZERO; 16];
+    let mut power = lambda;
+    for output in &mut powers {
+        *output = power;
+        power = power.mul(lambda);
+    }
+    let mut row = CopyRowExtensionV1 {
+        producer_values: [QM31::ZERO; 2],
+        producer_weights: [QM31::ZERO; 2],
+        consumer_values: [QM31::ZERO; 2],
+        consumer_weights: [QM31::ZERO; 2],
+    };
+    let mut producer_arity = [0u8; POOL_V1_PAIR_TRACE_ROWS];
+    let mut consumer_arity = [0u8; POOL_V1_PAIR_TRACE_ROWS];
+    let mut active_rows = [false; POOL_V1_PAIR_TRACE_ROWS];
+    for link in registry {
+        let weight = copy_weight(link.weight, append_index, variant);
+        for (tuple, arity, values, weights) in [
+            (
+                link.producer,
+                &mut producer_arity,
+                &mut row.producer_values,
+                &mut row.producer_weights,
+            ),
+            (
+                link.consumer,
+                &mut consumer_arity,
+                &mut row.consumer_values,
+                &mut row.consumer_weights,
+            ),
+        ] {
+            let endpoint_row = usize::from(tuple.row);
+            let slot = usize::from(arity[endpoint_row]);
+            if slot >= 2 {
+                return Err(PoolV1PairTraceErrorV1::CopyLayout);
+            }
+            arity[endpoint_row] += 1;
+            active_rows[endpoint_row] = true;
+            let selector = eq_row(point, endpoint_row);
+            weights[slot] = weights[slot].add(selector.mul_m31(weight));
+            values[slot] = values[slot].add(compressed_opened_tuple(
+                tuple, link.tag, selector, openings, &powers,
+            ));
+        }
+    }
+    let active = active_rows
+        .into_iter()
+        .enumerate()
+        .filter(|(_, active)| *active)
+        .fold(QM31::ZERO, |sum, (row, _)| sum.add(eq_row(point, row)));
+    Ok(PoolV1PairForestCopyTerminalV1 {
+        residual: active.mul(copy_residual(row, h1_z, chi)),
+        active,
+    })
 }
 
 /// Evaluate the exact multilinear indicator of rows carrying at least one
@@ -53,6 +225,10 @@ pub fn pool_v1_pair_forest_copy_helper_sum_v1(h1: &[QM31]) -> Option<QM31> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    fn q(value: u32) -> QM31 {
+        lift(M31(value))
+    }
 
     #[test]
     fn forest_active_indicator_is_boolean_on_every_domain_row() {
@@ -80,5 +256,52 @@ mod tests {
             pool_v1_pair_forest_copy_helper_sum_v1(&vec![QM31::ZERO; 1025]),
             None
         );
+    }
+
+    #[test]
+    fn compiled_copy_terminal_uses_the_exact_active_polynomial_and_append_bits() {
+        let point: [QM31; 10] = core::array::from_fn(|index| q(2 + index as u32));
+        let openings: [QM31; 16] = core::array::from_fn(|index| q(100 + index as u32));
+        let active = pool_v1_pair_forest_copy_active_at_point_v1(&point).unwrap();
+        let even = evaluate_pool_v1_pair_forest_copy_terminal_v1(
+            &openings,
+            q(313),
+            &point,
+            q(17),
+            q(29),
+            0,
+            PoolV1PairTraceVariantV1::PrivateTransfer,
+        )
+        .unwrap();
+        let odd = evaluate_pool_v1_pair_forest_copy_terminal_v1(
+            &openings,
+            q(313),
+            &point,
+            q(17),
+            q(29),
+            1,
+            PoolV1PairTraceVariantV1::PrivateTransfer,
+        )
+        .unwrap();
+        assert_eq!(even.active, active);
+        assert_eq!(odd.active, active);
+        assert_ne!(even.residual, odd.residual);
+    }
+
+    #[test]
+    fn active_polynomial_is_exact_on_boolean_rows() {
+        let active = pool_v1_pair_forest_copy_active_rows_v1().unwrap();
+        for row in [0usize, 11, 864, 876, 997, 1023] {
+            let point: [QM31; 10] =
+                core::array::from_fn(|coordinate| q(((row >> (9 - coordinate)) & 1) as u32));
+            let expected = QM31::from_cm31(aspis_core::field::CM31::from_m31(M31(u32::from(
+                active.binary_search(&(row as u16)).is_ok(),
+            ))));
+            assert_eq!(
+                pool_v1_pair_forest_copy_active_at_point_v1(&point).unwrap(),
+                expected,
+                "row {row}"
+            );
+        }
     }
 }
