@@ -1,6 +1,7 @@
 import AspisFormal.K1.V7Tag73K13IdealErrorLedger
 import AspisFormal.K1.V7Tag73K14K15IdealErrorLedger
 import AspisFormal.K1.V7Tag73ProofRelevantUpstreamInterface
+import AspisFormal.K1.V7Tag73ExactConcreteK13K14Events
 
 /-!
 # Exact measured composition of Tag-73 K1.3 and K1.4
@@ -25,6 +26,14 @@ open AspisK1.V7Tag73K13IdealErrorLedger
 open AspisK1.V7Tag73K14K15IdealErrorLedger
 open AspisK1.V7Tag73ProofRelevantUpstreamInterface
 open AspisK1.V7FsAokExperiment
+open AspisK1.V7Tag73ExactConcreteK13K14Events
+open AspisK1.V7Tag73ExactConcreteStageAssembly
+open AspisK1.V7Tag73ExactFixedK12MerkleClassifier
+open AspisK1.V7Tag73ExactSourceAcceptanceModel
+open AspisPool.AlgorithmicCircleDecoderV7
+open AspisPool.V7C1ConcreteProjectionBinding
+open AspisPool.V7C1SubfieldRecovery
+open AspisV5ComponentCQM31TowerExact
 
 noncomputable section
 
@@ -90,9 +99,93 @@ theorem k14_error_measure_bound_of_width29_cover
   exact (exactCompilerJointLaw hiddenLaw parameters).toOuterMeasure.mono
     covered |>.trans width29Bound
 
+/-! ## Exact assembled-stage specializations -/
+
+/-- Once the two literal source events have their raw probability bounds, the
+concrete K1.3 classifier has exactly the corrected combined error budget.  The
+event cover is proved here from the executable classifier rather than retained
+as a capstone premise. -/
+theorem exact_assembled_k13_error_measure_bound
+    {HiddenTape TapeIdentity Observation Statement Payload Witness : Type}
+    [Fintype HiddenTape]
+    (hiddenLaw : PMF HiddenTape)
+    {parameters : ExactCompilerResourceParameters}
+    (transitionFuel : Nat)
+    (configuration : ExactPlainRomWitnessConfiguration HiddenTape TapeIdentity
+      Observation Statement Tag73K12ParsedProof Payload Witness parameters)
+    (projection : AcceptedTapeProjection Statement Tag73K12ParsedProof Payload)
+    (fixedInstance : PublicInstance Statement)
+    (relation : PublicInstance Statement → Witness → Prop)
+    (decoder : ExactDecoderInstantiation QM31Exact)
+    (decoderBinding : InitialProjectionBinding decoder)
+    (k15 : ExactTag73K15Classifier transitionFuel configuration projection
+      fixedInstance relation decoder decoderBinding)
+    (initialEncoderExact : decoder.initialEncoder = exactInitialEncoder)
+    (source : ExactTag73K13SourceObligations transitionFuel configuration
+      projection fixedInstance decoder)
+    (q16Bound :
+      (exactCompilerJointLaw hiddenLaw parameters).toOuterMeasure
+          (exactTag73K13QueryEvent transitionFuel configuration projection
+            fixedInstance decoder) ≤ exactQ16IdealRawError)
+    (oneFoldBound :
+      (exactCompilerJointLaw hiddenLaw parameters).toOuterMeasure
+          (exactTag73K13OneFoldEvent transitionFuel configuration projection
+            fixedInstance decoder) ≤ exactOneFoldIdealRawError) :
+    K13CircleListDecodeErrorMeasureBound hiddenLaw
+      (exactTag73ProofRelevantStages transitionFuel configuration projection
+        fixedInstance relation decoder decoderBinding k15)
+      exactK13IdealRawError := by
+  exact k13_error_measure_bound_of_query_onefold_cover hiddenLaw
+    (exactTag73ProofRelevantStages transitionFuel configuration projection
+      fixedInstance relation decoder decoderBinding k15)
+    (exactTag73K13QueryEvent transitionFuel configuration projection
+      fixedInstance decoder)
+    (exactTag73K13OneFoldEvent transitionFuel configuration projection
+      fixedInstance decoder)
+    (assembled_k13_error_subset_query_union_onefold transitionFuel
+      configuration projection fixedInstance relation decoder decoderBinding
+      k15 initialEncoderExact source)
+    q16Bound oneFoldBound
+
+/-- The concrete K1.4 classifier has the exact one-cap width-29 budget as soon
+as its literal operational event has the causal published-theorem bound. -/
+theorem exact_assembled_k14_error_measure_bound
+    {HiddenTape TapeIdentity Observation Statement Payload Witness : Type}
+    [Fintype HiddenTape]
+    (hiddenLaw : PMF HiddenTape)
+    {parameters : ExactCompilerResourceParameters}
+    (transitionFuel : Nat)
+    (configuration : ExactPlainRomWitnessConfiguration HiddenTape TapeIdentity
+      Observation Statement Tag73K12ParsedProof Payload Witness parameters)
+    (projection : AcceptedTapeProjection Statement Tag73K12ParsedProof Payload)
+    (fixedInstance : PublicInstance Statement)
+    (relation : PublicInstance Statement → Witness → Prop)
+    (decoder : ExactDecoderInstantiation QM31Exact)
+    (decoderBinding : InitialProjectionBinding decoder)
+    (k15 : ExactTag73K15Classifier transitionFuel configuration projection
+      fixedInstance relation decoder decoderBinding)
+    (width29Bound :
+      (exactCompilerJointLaw hiddenLaw parameters).toOuterMeasure
+          (exactTag73K14Width29Event transitionFuel configuration projection
+            fixedInstance decoder) ≤ exactK14IdealRawError) :
+    K14CoherentChainErrorMeasureBound hiddenLaw
+      (exactTag73ProofRelevantStages transitionFuel configuration projection
+        fixedInstance relation decoder decoderBinding k15)
+      exactK14IdealRawError := by
+  exact k14_error_measure_bound_of_width29_cover hiddenLaw
+    (exactTag73ProofRelevantStages transitionFuel configuration projection
+      fixedInstance relation decoder decoderBinding k15)
+    (exactTag73K14Width29Event transitionFuel configuration projection
+      fixedInstance decoder)
+    (assembled_k14_error_subset_width29 transitionFuel configuration projection
+      fixedInstance relation decoder decoderBinding k15)
+    width29Bound
+
 end
 
 #print axioms k13_error_measure_bound_of_query_onefold_cover
 #print axioms k14_error_measure_bound_of_width29_cover
+#print axioms exact_assembled_k13_error_measure_bound
+#print axioms exact_assembled_k14_error_measure_bound
 
 end AspisK1.V7Tag73K13K14EventComposition
