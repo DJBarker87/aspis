@@ -24,10 +24,36 @@ abbrev GeneratedValidatedTree :=
   aspis_statement.pool_v1.incremental_merkle.ValidatedIncrementalMerkleTreeV1
 abbrev GeneratedReceipt :=
   aspis_statement.pool_v1.incremental_merkle.AppendOneV1
+abbrev GeneratedLocation :=
+  aspis_statement.pool_v1.root_history.RootHistoryLocationV1
 
 private theorem leafCapacity_eval :
     (1#u64 <<< 20#usize) = (.ok 1048576#u64 : Result Std.U64) := by
   rfl
+
+theorem generated_root_history_location_exact
+    (sequence : Std.U64) (location : GeneratedLocation)
+    (run :
+      aspis_statement.pool_v1.root_history.root_history_location sequence =
+        .ok location) :
+    location.page_number.val = sequence.val / 256 ∧
+      location.slot.val = sequence.val % 256 := by
+  have specification :
+      aspis_statement.pool_v1.root_history.root_history_location sequence
+        ⦃ result =>
+          result.page_number.val = sequence.val / 256 ∧
+            result.slot.val = sequence.val % 256 ⦄ := by
+    unfold aspis_statement.pool_v1.root_history.root_history_location
+    unfold aspis_statement.pool_v1.root_history.POOL_V1_ROOT_HISTORY_CAPACITY
+    unfold
+      aspis_statement.pool_v1.root_history.POOL_V1_ROOT_HISTORY_CAPACITY_LOG2
+    repeat' step
+    all_goals simp_all
+    all_goals cases System.Platform.numBits_eq <;>
+      simp [Usize.size, Usize.numBits, UScalarTy.numBits, *]
+    all_goals omega
+  rw [run] at specification
+  exact specification
 
 theorem accepted_append_one_exposes_loop
     (self next : GeneratedValidatedTree)
@@ -97,7 +123,10 @@ theorem accepted_append_one_exact_structural_afterimage
       next.inner.frontier = finalizedCallerFrontier final ∧
       receipt.leaf_index = self.inner.next_leaf_index ∧
       receipt.root_sequence = next.inner.next_leaf_index ∧
-      receipt.root = next.inner.root := by
+      receipt.root = next.inner.root ∧
+      receipt.history.page_number.val =
+        next.inner.next_leaf_index.val / 256 ∧
+      receipt.history.slot.val = next.inner.next_leaf_index.val % 256 := by
   obtain ⟨final, loopRun⟩ :=
     accepted_append_one_exposes_loop self next leaf receipt run
   refine ⟨final, loopRun, ?_⟩
@@ -136,11 +165,14 @@ theorem accepted_append_one_exact_structural_afterimage
           | fail error => simp [historyResult] at run
           | div => simp [historyResult] at run
           | ok history =>
+              have historyExact := generated_root_history_location_exact
+                nextIndex history historyResult
               simp [historyResult] at run
               rcases run with ⟨nextEq, receiptEq⟩
               subst next
               subst receipt
-              simp [finalizedCallerFrontier, terminal, nextIndexVal]
+              simp [finalizedCallerFrontier, terminal, nextIndexVal,
+                historyExact]
         · simp only [addResult, bind_tc_ok] at run
           cases updateResult : finalFrontier.update finalLevel finalRoot with
           | fail error => simp [terminal, updateResult] at run
@@ -196,6 +228,9 @@ theorem accepted_append_one_exact_structural_afterimage
                                 core.result.Result.Insts.CoreOpsTry.branch]
                                 at run
                           | ok history =>
+                              have historyExact :=
+                                generated_root_history_location_exact
+                                  nextIndex history historyResult
                               simp [updateResult, zeroResult, rootResult,
                                 historyResult, terminal,
                                 core.result.Result.Insts.CoreOpsTry.branch]
@@ -204,7 +239,7 @@ theorem accepted_append_one_exact_structural_afterimage
                               subst next
                               subst receipt
                               simp [finalizedCallerFrontier, terminal,
-                                nextIndexVal, updateSpec]
+                                nextIndexVal, updateSpec, historyExact]
 
 /-- Successful translated outer-caller execution refines the same abstract
 append result as the carry loop, using the returned tree's exact cursor and
@@ -233,7 +268,8 @@ theorem accepted_append_one_implies_abstract_append_result
               (modelFrontier self.inner.next_leaf_index.val
                 self.inner.frontier.val) = .full root := by
   obtain ⟨final, loopRun, emptyEq, nextIndexVal, nextFrontierEq,
-      receiptLeafEq, receiptSequenceEq, receiptRootEq⟩ :=
+      receiptLeafEq, receiptSequenceEq, receiptRootEq,
+      receiptPageEq, receiptSlotEq⟩ :=
     accepted_append_one_exact_structural_afterimage parent parentExact
       self next leaf receipt run
   refine ⟨final, loopRun, ?_⟩
@@ -259,6 +295,7 @@ theorem accepted_append_one_implies_abstract_append_result
     simpa [Array.set_val_eq] using abstractResult
 
 #print axioms accepted_append_one_exposes_loop
+#print axioms generated_root_history_location_exact
 #print axioms CarryTrace.final_level_le_depth
 #print axioms accepted_append_one_exact_structural_afterimage
 #print axioms accepted_append_one_implies_abstract_append_result

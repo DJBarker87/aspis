@@ -104,7 +104,8 @@ exactly `[propext, Classical.choice, Quot.sound]`.
 literal translated `ValidatedIncrementalMerkleTreeV1::append_one` caller.
 Successful caller execution now proves the exact cursor increment, retained
 empty-table identity, final concrete frontier, receipt leaf/sequence/root
-identity and the same open/full abstract `appendCarry` result over the
+identity, exact history page/slot quotient-remainder and the same open/full
+abstract `appendCarry` result over the
 returned tree's cursor and frontier. The proof follows the actual full and
 non-full branches, array update, root-call result propagation and receipt
 construction. It uses only `[propext, Classical.choice, Quot.sound]`.
@@ -133,9 +134,14 @@ declarations rather than treating raw JSON byte order as semantics.
 The carry trace, mathematical representation and outer caller's structural
 after-image are complete. The smallest next boundary is the translated
 non-full root reconstruction: prove its returned digest equals the existing
-`reconstructRoot` value under the authenticated empty-root table. The receipt's
-history page/slot must then be identified with exact quotient/remainder.
-After that, the remaining lift is:
+`reconstructRoot` value under the authenticated empty-root table.
+`proof/PoolV1TreeReconstructBridge.lean` now proves the literal translated
+range loop equals the existing `reconstructFrom` kernel for its exact suffix,
+and lifts that equality through the production reconstruction wrapper and the
+accepted non-terminal outer append branch. The only remaining mathematical
+step inside one append is the pure lower-empty-prefix/suffix composition from
+that exact `reconstructFrom` suffix to `reconstructRoot` of the full returned
+frontier. After that, the remaining implementation lift is:
 
 1. lift through the literal validation and public
    `append_one_with_empty_roots` wrapper;

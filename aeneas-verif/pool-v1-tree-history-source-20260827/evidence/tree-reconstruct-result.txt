@@ -1,0 +1,35 @@
+Pool V1 production root reconstruction source bridge: PASS
+
+Source commit parent: 32089221
+Lean: 4.31.0
+
+Frozen LLBC sha256:
+6c5431df58895d7c9e9137a9e481d02076af6e6b5644bca2da3dff5dc5d3348b
+
+reconstruction bridge sha256:
+c65fe53e29c310edf76fcf24cc4cc7071279e4b6a8a03b7da3e16b07fe850ec3
+
+Focused caller bridge compile: PASS
+Focused reconstruction bridge compile: PASS
+
+Strongest theorem:
+PoolV1TreeReconstructBridge.accepted_append_one_nonterminal_root_suffix_exact
+
+Supporting theorem group:
+PoolV1TreeReconstructBridge.shifted_low_bit_value
+PoolV1TreeReconstructBridge.reconstructConcrete_eq_reconstructFrom
+PoolV1TreeReconstructBridge.production_reconstruct_loop_source_exact
+PoolV1TreeReconstructBridge.production_reconstruct_from_level_source_exact
+
+#print axioms for every listed theorem:
+[propext, Classical.choice, Quot.sound]
+
+No sorry, admit, sorryAx, native_decide or project-specific axiom occurs in
+the compiled proof. ParentCallbackExact is the sole cryptographic semantic
+premise. EmptyTableExact explicitly binds every consumed empty-table entry to
+the recursive empty root. Literal range iteration, cursor bit selection,
+frontier/empty indexing, parent direction, wrapper guards and accepted caller
+result propagation are transparent. The returned non-terminal digest equals
+the existing reconstructFrom value for the exact returned suffix. Converting
+that suffix to reconstructRoot of the full frontier is now a pure mathematical
+prefix-composition lemma, not a Rust/source boundary.
