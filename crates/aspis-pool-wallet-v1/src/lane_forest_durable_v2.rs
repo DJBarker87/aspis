@@ -50,6 +50,7 @@ pub const LANE_FOREST_EVENT_VERSION_V2: u8 = 2;
 pub const LANE_FOREST_EVENT_HEADER_BYTES_V2: usize = 1184;
 pub const LANE_FOREST_EVENT_DEPOSIT: u8 = 1;
 pub const LANE_FOREST_EVENT_PRIVATE_TRANSFER: u8 = 2;
+pub const LANE_FOREST_EVENT_WITHDRAWAL: u8 = 3;
 
 pub const LANE_FOREST_DURABLE_MAGIC_V2: [u8; 4] = *b"ASD8";
 pub const LANE_FOREST_DURABLE_VERSION_V2: u8 = 2;
@@ -291,6 +292,14 @@ pub enum ForestFinalizedAppendKindV2 {
         recipient_encrypted_note: Option<[u8; POOL_V1_NOTE_ENCRYPTED_PAYLOAD_BYTES]>,
         change_encrypted_note: Option<[u8; POOL_V1_NOTE_ENCRYPTED_PAYLOAD_BYTES]>,
     },
+    Withdrawal {
+        event_id: DepositEventIdV1,
+        nullifier: [u8; 32],
+        change_commitment: [u8; 32],
+        destination_token_account: [u8; 32],
+        amount: u32,
+        encrypted_note: Option<[u8; POOL_V1_NOTE_ENCRYPTED_PAYLOAD_BYTES]>,
+    },
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -311,6 +320,7 @@ impl ForestFinalizedAppendEventV2 {
             ForestFinalizedAppendKindV2::PrivateTransfer {
                 recipient_event_id, ..
             } => recipient_event_id.point(),
+            ForestFinalizedAppendKindV2::Withdrawal { event_id, .. } => event_id.point(),
         }
     }
 
@@ -322,6 +332,7 @@ impl ForestFinalizedAppendEventV2 {
                 change_event_id,
                 ..
             } => (recipient_event_id, Some(change_event_id)),
+            ForestFinalizedAppendKindV2::Withdrawal { event_id, .. } => (event_id, None),
         }
     }
 }
@@ -390,7 +401,8 @@ fn validate_forest_append_event_semantics_v2(
     }
     let route_digest = match &event.kind {
         ForestFinalizedAppendKindV2::Deposit { commitment, .. } => commitment,
-        ForestFinalizedAppendKindV2::PrivateTransfer { nullifier, .. } => nullifier,
+        ForestFinalizedAppendKindV2::PrivateTransfer { nullifier, .. }
+        | ForestFinalizedAppendKindV2::Withdrawal { nullifier, .. } => nullifier,
     };
     let route_digest = decode_digest_canonical(route_digest)
         .map_err(|_| LaneForestDurableErrorV2::InvalidEvent)?;
@@ -453,11 +465,35 @@ pub fn encode_forest_finalized_append_event_v2(
                 change_encrypted_note.as_ref(),
             )
         }
+        ForestFinalizedAppendKindV2::Withdrawal {
+            event_id,
+            nullifier,
+            change_commitment,
+            destination_token_account,
+            amount,
+            encrypted_note,
+        } => {
+            if *amount == 0 || *destination_token_account == [0u8; 32] {
+                return Err(LaneForestDurableErrorV2::InvalidEvent);
+            }
+            (
+                LANE_FOREST_EVENT_WITHDRAWAL,
+                *event_id,
+                None,
+                *nullifier,
+                *change_commitment,
+                *destination_token_account,
+                encrypted_note.as_ref(),
+                None,
+            )
+        }
     };
     decode_digest_canonical(&first_commitment)
         .map_err(|_| LaneForestDurableErrorV2::InvalidEvent)?;
-    if kind == LANE_FOREST_EVENT_PRIVATE_TRANSFER {
+    if kind != LANE_FOREST_EVENT_DEPOSIT {
         decode_digest_canonical(&nullifier).map_err(|_| LaneForestDurableErrorV2::InvalidEvent)?;
+    }
+    if kind == LANE_FOREST_EVENT_PRIVATE_TRANSFER {
         decode_digest_canonical(&second_commitment)
             .map_err(|_| LaneForestDurableErrorV2::InvalidEvent)?;
     }
@@ -491,6 +527,9 @@ pub fn encode_forest_finalized_append_event_v2(
     output[1170..1172].copy_from_slice(
         &(second_payload.map_or(0, |_| POOL_V1_NOTE_ENCRYPTED_PAYLOAD_BYTES as u16)).to_le_bytes(),
     );
+    if let ForestFinalizedAppendKindV2::Withdrawal { amount, .. } = &event.kind {
+        output[1172..1176].copy_from_slice(&amount.to_le_bytes());
+    }
     let mut offset = LANE_FOREST_EVENT_HEADER_BYTES_V2;
     if let Some(payload) = first_payload {
         output[offset..offset + payload.len()].copy_from_slice(payload);
@@ -514,13 +553,16 @@ pub fn decode_forest_finalized_append_event_v2(
     if bytes[4] != LANE_FOREST_EVENT_VERSION_V2 {
         return Err(LaneForestDurableErrorV2::WrongVersion);
     }
-    if bytes[1172..LANE_FOREST_EVENT_HEADER_BYTES_V2]
+    if bytes[1176..LANE_FOREST_EVENT_HEADER_BYTES_V2]
         .iter()
         .any(|byte| *byte != 0)
     {
         return Err(LaneForestDurableErrorV2::NonZeroReserved);
     }
     let kind = bytes[5];
+    if kind != LANE_FOREST_EVENT_WITHDRAWAL && bytes[1172..1176] != [0u8; 4] {
+        return Err(LaneForestDurableErrorV2::NonZeroReserved);
+    }
     let lane_id = LaneIdV2::new(bytes[6]).map_err(|_| LaneForestDurableErrorV2::InvalidEvent)?;
     let flags = bytes[7];
     if flags & !3 != 0 {
@@ -585,6 +627,19 @@ pub fn decode_forest_finalized_append_event_v2(
                 change_commitment: second_commitment,
                 recipient_encrypted_note: first_payload,
                 change_encrypted_note: second_payload,
+            }
+        }
+        LANE_FOREST_EVENT_WITHDRAWAL => {
+            if second_id_bytes.iter().any(|byte| *byte != 0) || second_payload.is_some() {
+                return Err(LaneForestDurableErrorV2::InvalidEvent);
+            }
+            ForestFinalizedAppendKindV2::Withdrawal {
+                event_id: first_id,
+                nullifier,
+                change_commitment: first_commitment,
+                destination_token_account: second_commitment,
+                amount: u32::from_le_bytes(bytes[1172..1176].try_into().unwrap()),
+                encrypted_note: first_payload,
             }
         }
         _ => return Err(LaneForestDurableErrorV2::InvalidEvent),
@@ -770,6 +825,7 @@ pub struct LaneForestDurableStateV2 {
     program_id: [u8; 32],
     core: ForestCoreV2,
     checkpoints: Vec<ForestCheckpointSnapshotV2>,
+    finalized_head: Option<FinalizedChainPointV1>,
 }
 
 pub enum ForestNoteAssociationOutcomeV2 {
@@ -850,6 +906,7 @@ impl LaneForestDurableStateV2 {
             program_id,
             core,
             checkpoints: Vec::new(),
+            finalized_head: None,
         };
         match (result.core.master.value.has_checkpoint, retained_checkpoint) {
             (false, None) => {}
@@ -900,6 +957,13 @@ impl LaneForestDurableStateV2 {
         &self.core.lanes[lane_id.index()].tracked_outputs
     }
 
+    pub fn contains_event_id_v2(&self, event_id: DepositEventIdV1) -> bool {
+        self.core.events.iter().any(|event| {
+            let (first, second) = event.event_ids();
+            first == event_id || second == Some(event_id)
+        })
+    }
+
     pub fn lane_page_cursors_v2(
         &self,
     ) -> Result<[LaneRootPageCursorV2; POOL_V1_LANE_COUNT_V2], LaneForestDurableErrorV2> {
@@ -920,6 +984,55 @@ impl LaneForestDurableStateV2 {
 
     pub fn checkpoint_count(&self) -> usize {
         self.checkpoints.len()
+    }
+
+    pub fn finalized_head_v2(&self) -> Option<FinalizedChainPointV1> {
+        self.finalized_head
+    }
+
+    pub fn retained_checkpoint_sequence_at_point_v2(
+        &self,
+        point: FinalizedChainPointV1,
+    ) -> Option<u64> {
+        self.checkpoints.iter().find_map(|snapshot| {
+            (snapshot.point == point).then_some(snapshot.checkpoint.value.checkpoint_sequence)
+        })
+    }
+
+    pub fn validate_current_account_snapshot_v2(
+        &self,
+        master_address: [u8; 32],
+        master_image: &[u8],
+        lane_accounts: &[([u8; 32], Vec<u8>)],
+    ) -> Result<(), LaneForestDurableErrorV2> {
+        let master =
+            authenticate_forest_master_account_v2(self.program_id, master_address, master_image)?;
+        if master != self.core.master || lane_accounts.len() != POOL_V1_LANE_COUNT_V2 {
+            return Err(LaneForestDurableErrorV2::LaneStateMismatch);
+        }
+        let mut seen = HashSet::new();
+        for (index, (address, image)) in lane_accounts.iter().enumerate() {
+            if !seen.insert(*address) {
+                return Err(LaneForestDurableErrorV2::LaneAlias);
+            }
+            let lane_id = LaneIdV2::new(index as u8)
+                .map_err(|_| LaneForestDurableErrorV2::LaneOrderMismatch)?;
+            let lane = authenticate_forest_lane_account_v2(
+                self.program_id,
+                self.core.master.address,
+                lane_id,
+                *address,
+                image,
+            )?;
+            if lane != self.core.lanes[index].account {
+                return Err(LaneForestDurableErrorV2::LaneStateMismatch);
+            }
+        }
+        Ok(())
+    }
+
+    pub(crate) fn set_finalized_head_v2(&mut self, point: FinalizedChainPointV1) {
+        self.finalized_head = Some(point);
     }
 
     pub fn ingest_finalized_append_v2(
@@ -1026,6 +1139,33 @@ impl LaneForestDurableStateV2 {
                             change_encrypted_note.as_ref(),
                         ),
                     ],
+                )
+            }
+            ForestFinalizedAppendKindV2::Withdrawal {
+                event_id,
+                nullifier,
+                change_commitment,
+                encrypted_note,
+                ..
+            } => {
+                let nullifier_digest = decode_digest_canonical(nullifier)
+                    .map_err(|_| LaneForestDurableErrorV2::InvalidEvent)?;
+                let expected_lane =
+                    LaneIdV2::new(encode_digest_canonical(&nullifier_digest)[0] & 7)
+                        .map_err(|_| LaneForestDurableErrorV2::WrongRoutedLane)?;
+                if expected_lane != event.lane_id {
+                    return Err(LaneForestDurableErrorV2::WrongRoutedLane);
+                }
+                let change = decode_digest_canonical(change_commitment)
+                    .map_err(|_| LaneForestDurableErrorV2::InvalidEvent)?;
+                (
+                    PoolV1PairLeafWitnessV1::single_output(change)?.leaf_digest()?,
+                    vec![(
+                        *event_id,
+                        PairSlotV2::First,
+                        *change_commitment,
+                        encrypted_note.as_ref(),
+                    )],
                 )
             }
         };
@@ -1200,6 +1340,7 @@ impl LaneForestDurableStateV2 {
             return Err(LaneForestDurableErrorV2::CountOverflow);
         }
         self.core = core;
+        self.finalized_head = Some(point);
         Ok(())
     }
 
@@ -1241,6 +1382,7 @@ impl LaneForestDurableStateV2 {
             })
             .ok_or(LaneForestDurableErrorV2::InvalidRollback)?;
         self.core = self.checkpoints[index].core.clone();
+        self.finalized_head = Some(self.checkpoints[index].point);
         self.checkpoints.truncate(index + 1);
         Ok(())
     }
@@ -1249,6 +1391,7 @@ impl LaneForestDurableStateV2 {
 #[derive(Clone, Debug, Serialize, Deserialize)]
 struct DurableImageV2 {
     program_id: Vec<u8>,
+    finalized_head: Option<Vec<u8>>,
     core: CoreImageV2,
     checkpoints: Vec<CheckpointSnapshotImageV2>,
 }
@@ -1520,6 +1663,7 @@ pub fn encode_lane_forest_durable_state_v2(
 ) -> Result<Vec<u8>, LaneForestDurableErrorV2> {
     let image = DurableImageV2 {
         program_id: state.program_id.to_vec(),
+        finalized_head: state.finalized_head.map(encode_point_v2),
         core: core_to_image_v2(&state.core)?,
         checkpoints: state
             .checkpoints
@@ -1597,6 +1741,11 @@ pub fn decode_lane_forest_durable_state_v2(
         return Err(LaneForestDurableErrorV2::InvalidDurableImage);
     }
     let program_id = exact_array(&image.program_id)?;
+    let finalized_head = image
+        .finalized_head
+        .as_deref()
+        .map(decode_point_v2)
+        .transpose()?;
     let core = core_from_image_v2(program_id, image.core)?;
     let mut checkpoints = Vec::with_capacity(image.checkpoints.len());
     let mut previous_sequence = None;
@@ -1635,6 +1784,7 @@ pub fn decode_lane_forest_durable_state_v2(
             program_id,
             core: snapshot_core.clone(),
             checkpoints: Vec::new(),
+            finalized_head: Some(point),
         };
         snapshot_state.validate_checkpoint_matches_current_v2(&checkpoint)?;
         previous_sequence = Some(checkpoint.value.checkpoint_sequence);
@@ -1664,6 +1814,7 @@ pub fn decode_lane_forest_durable_state_v2(
         program_id,
         core,
         checkpoints,
+        finalized_head,
     })
 }
 
