@@ -1,0 +1,50 @@
+Pool V1 production ordered two-append source bridge: PASS
+
+Source commit parent: cb59ddc6336d778cc058d244d96194986f87bab4
+Charon: cb50ff16b9f1066b8a97dc06da704de2da2fa41c
+Aeneas source: e9d20a64aa4dcbbc20ba8742a6ddf720f0c575cd
+Aeneas version: aspis-v5-constructor-e9d20a64
+Lean: 4.31.0
+
+production incremental_merkle.rs sha256:
+462fd40e283083bfea19720083d450a815c706fa0da540db25ac84e41ef5aaaf
+
+LLBC sha256:
+cd70a1bea44804c765c790ca27e7c0ec3ea7c3d58c5941cf21b9cf4ea3029e3b
+
+generated Types.lean sha256:
+39fc4939e8c4869f9501175fe4d36976b3599975cf5e562abde9e70a9a2f93c0
+
+generated Funs.lean sha256:
+50e5451384b95e3a44422e9081c1c56d5675ae2eaeb2a99ae8f2c0240a9699cf
+
+executable FunsExternal.lean sha256:
+20b1b1793d72b033db50b17a24d25e337bd76819d8f42bb6bae614501ac9d6ac
+
+ordered two-append bridge sha256:
+50bfe4d7abbbe0e6049d0e2c080c75e7279d42e38f1c64366619117c76cbe326
+
+Focused generated Types/FunsExternal/Funs compile: PASS
+Focused ordered two-append source bridge compile: PASS
+
+Strongest theorem:
+PoolV1TreeAppendTwoBridge.production_append_two_success_exact_receipt_afterimage
+
+Supporting theorem group:
+PoolV1TreeAppendTwoBridge.generated_root_history_location_exact
+PoolV1TreeAppendTwoBridge.append_one_success_exact_receipt_afterimage
+PoolV1TreeAppendTwoBridge.validated_append_two_success_is_exact_ordered_composition
+PoolV1TreeAppendTwoBridge.production_append_two_success_factors_exact_calls
+PoolV1TreeAppendTwoBridge.production_append_two_success_is_exact_ordered_composition
+
+#print axioms for every listed theorem:
+[propext, Classical.choice, Quot.sound]
+
+No sorry, admit, sorryAx, native_decide or project-specific axiom occurs in
+the compiled proof or executable generated source. Literal public two-append
+success is factored into the exact validation call and the exact two ordered
+production one-append calls. The returned cursor is source plus two; receipts
+retain first/second order, adjacent sequence identity, returned second root and
+exact history page/slot. The generated Option::ok_or, Result::map, scalar
+equality, zero and depth models are transparent. Poseidon remains the sole
+deliberately opaque semantic boundary inherited by the append-one root path.

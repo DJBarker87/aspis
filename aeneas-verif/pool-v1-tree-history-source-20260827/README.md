@@ -151,14 +151,26 @@ the already-proved abstract `appendCarry` result to the returned public tree.
 Both public-wrapper theorem groups report only
 `[propext, Classical.choice, Quot.sound]`.
 
+`proof/PoolV1TreeAppendTwoBridge.lean` closes the ordered two-append kernel and
+public-wrapper source boundary. The new focused extraction begins at literal
+`production_tree_append_two`; the translated `append_two` first performs its
+capacity check, then calls the same production `append_one` exactly twice.
+Successful public execution is proved to factor into validation, the first
+append, the second append from the first returned tree, and the public inner
+tree conversion. Receipt order is exact: the first receipt binds the first
+leaf and intermediate sequence, the second begins at that intermediate
+sequence and binds the returned tree root/sequence. The returned cursor is the
+source cursor plus exactly two, and both receipt history locations are the
+deployed quotient/remainder values. Every theorem group reports only
+`[propext, Classical.choice, Quot.sound]`; the two-append decomposition adds no
+semantic premise.
+
 The remaining implementation lift is:
 
-1. derive two-append as the exact ordered composition of two successful
-   production one-appends;
-2. connect program transition success to the exact tree/account after-images;
-3. prove root-page append persistence and retained-root lookup from literal
+1. connect program transition success to the exact tree/account after-images;
+2. prove root-page append persistence and retained-root lookup from literal
    program source;
-4. carry pool identity, owner, PDA and same-writable-account checks through the
+3. carry pool identity, owner, PDA and same-writable-account checks through the
    successful program path.
 
 The only intended cryptographic semantic boundary is the already-frozen
