@@ -1,0 +1,42 @@
+{
+  "schema": "aspis.v7.pool-composed-weight-cu-ledger.v1",
+  "baseline_commit": "2586d6244553720596c9f6192c6059b01c2d9d46",
+  "proof": {
+    "bytes": 30192,
+    "sha256": "656f25689041ae7f90c9461f4dbe3336478e01e1970ff00c24d1e7d90ed2e72c"
+  },
+  "baseline": {
+    "compute_units": 1255491,
+    "weight_regions": {
+      "round_one": 25859,
+      "round_two": 25475,
+      "round_three": 19999,
+      "total": 71333
+    }
+  },
+  "composed": {
+    "compute_units": 1254737,
+    "headroom_under_1400000": 145263,
+    "weight_regions": {
+      "round_one_checkpoint_only": 224,
+      "round_two_checkpoint_only": 224,
+      "round_three_all_three_folds": 70114,
+      "total": 70562
+    }
+  },
+  "deltas": {
+    "complete_verifier_saved": 754,
+    "weight_regions_saved": 771,
+    "other_measured_offsets": -17
+  },
+  "sbf": {
+    "bytes": 911280,
+    "baseline_bytes": 876240,
+    "byte_growth": 35040,
+    "sha256": "e53b42cf14cae4dd849e55708b2f4d9043a270df18c31fb9474b0846fad70694"
+  },
+  "outcome": "accepted",
+  "simulation_metadata_equals_execution": true,
+  "changed_litesvm_measurements": 1,
+  "network_activity": false
+}

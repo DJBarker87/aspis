@@ -821,8 +821,13 @@ where
             2 => V6RelationDiagnosticPhase::RoundTwoPolynomial,
             _ => V6RelationDiagnosticPhase::RoundThreePolynomial,
         });
-        weights.fold_deferred_relation_arity4(alpha[round]);
-        if round == 1 && !weights.merge_equal_multilinear_components(0, 2) {
+        // Relation weights do not influence the transcript or the running
+        // claim between rounds. Collect all three challenges, then apply the
+        // exact structured tail once. The kernel still performs round one's
+        // checked multilinear merge before either later dual fold.
+        if round == V6_RELATION_ROUNDS - 1
+            && !weights.fold_tag73_relation_tail_arity4([alpha[1], alpha[2], alpha[3]])
+        {
             return Err(V6TranscriptError::RelationShape);
         }
         trace(match round {
