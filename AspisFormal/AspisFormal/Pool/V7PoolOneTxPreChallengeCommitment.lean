@@ -116,11 +116,18 @@ def queryBytes : Nat := c1BytesPerQuery + c2BytesPerQuery + 32
 def bodyWithoutFrontiers : Nat :=
   fixedFieldBytes + 2 * 26 + 24 + 16 * queryBytes
 def maximumBodyBytes : Nat := bodyWithoutFrontiers + 2 * 203 * 26
+def candidateAfterstateMetadataBytes : Nat := 688
+def maximumFinalizedProfileBodyBytes : Nat :=
+  candidateAfterstateMetadataBytes + maximumBodyBytes
 
 theorem exact_unified_route_keeps_frozen_wire :
     fixedFieldBytes = 9936 ∧ c1BytesPerQuery = 403 ∧
       c2BytesPerQuery = 186 ∧ queryBytes = 621 ∧
       bodyWithoutFrontiers = 19948 ∧ maximumBodyBytes = 30504 := by
+  decide
+
+theorem exact_profile_account_body_includes_public_candidate :
+    maximumFinalizedProfileBodyBytes = 31192 := by
   decide
 
 /-! Pair indices count pair leaves.  Each private transfer pair leaf contains
@@ -142,6 +149,7 @@ theorem one_pair_append_adds_two_occupied_commitment_slots :
 #print axioms exact_unified_frozen_column_geometry
 #print axioms exact_late_transition_record_wire
 #print axioms exact_unified_route_keeps_frozen_wire
+#print axioms exact_profile_account_body_includes_public_candidate
 #print axioms one_pair_append_adds_two_occupied_commitment_slots
 
 end AspisPool.V7PoolOneTxPreChallengeCommitment

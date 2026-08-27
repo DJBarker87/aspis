@@ -28,6 +28,13 @@ that old snapshot into that candidate afterstate. The verifier exposes the
 atomically writes the state/history/nullifier/custody effects in the same
 terminal transaction.
 
+The 1,520-byte record is not terminal instruction data. The verifier derives
+the old snapshot from the locked Pool account passed read-only and reads the
+canonical candidate `ASJA` as profile-specific public metadata in the
+finalized verifier-owned proof account. It constructs the typed record in
+memory. The maximum cryptographic proof remains 30,504 bytes; the maximum
+profile account body is therefore 688 + 30,504 = 31,192 bytes.
+
 ## Why the post-challenge staged route is rejected
 
 The earlier candidate put sixteen late main-trace columns beside `H1/G/D` in
@@ -52,6 +59,7 @@ helper C2 columns                 3
 gamma width                      29
 fixed QM31 claims               641
 maximum proof body           30,504 bytes
+maximum profile account body 31,192 bytes
 allocated semantic rows         976
 unused rows                      48
 ```
