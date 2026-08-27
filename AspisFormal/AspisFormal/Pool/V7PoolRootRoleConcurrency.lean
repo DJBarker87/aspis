@@ -506,6 +506,64 @@ theorem accepted_settlement_returns_verified_afterstate
       live proof = some proof.tail.result := by
   simp [settle, accepted]
 
+def PairAppendIndicesValid
+    {Root Frontier : Type}
+    (source result : LiveAppendState Root Frontier) : Prop :=
+  result.sequence = source.sequence + 1 ∧
+    result.nextPairIndex = source.nextPairIndex + 1
+
+theorem accepted_proof_carried_afterstate_increments_once
+    {Root Frontier Nullifier K StageARoot StageBRoot : Type}
+    [DecidableEq Root] [DecidableEq Frontier]
+    (retained : HistoricalMembershipAnchor Root → Prop)
+    (statement : StableSpendStatement Root Nullifier K)
+    (stableRelation : StableSpendStatement Root Nullifier K → Prop)
+    (transitionValid : PairLeaf K → LiveAppendState Root Frontier →
+      LiveAppendState Root Frontier → Prop)
+    (continuationValid :
+      PreparedStageA (StageARoot := StageARoot) statement stableRelation →
+      LateAppendTail statement.outputPair transitionValid → StageBRoot → Prop)
+    (live : LiveAppendState Root Frontier)
+    (proof : StagedLateBoundSpendProof statement stableRelation transitionValid
+      continuationValid)
+    (transitionIndices : ∀ output source result,
+      transitionValid output source result →
+        PairAppendIndicesValid source result)
+    (accepted : Accepts retained statement stableRelation transitionValid
+      continuationValid live proof) :
+    proof.tail.result.sequence = live.sequence + 1 ∧
+      proof.tail.result.nextPairIndex = live.nextPairIndex + 1 := by
+  have indices := transitionIndices statement.outputPair proof.tail.source
+    proof.tail.result proof.tail.valid
+  simpa [PairAppendIndicesValid, accepted.2] using indices
+
+theorem accepted_afterstate_preserves_sequence_index_alignment
+    {Root Frontier Nullifier K StageARoot StageBRoot : Type}
+    [DecidableEq Root] [DecidableEq Frontier]
+    (retained : HistoricalMembershipAnchor Root → Prop)
+    (statement : StableSpendStatement Root Nullifier K)
+    (stableRelation : StableSpendStatement Root Nullifier K → Prop)
+    (transitionValid : PairLeaf K → LiveAppendState Root Frontier →
+      LiveAppendState Root Frontier → Prop)
+    (continuationValid :
+      PreparedStageA (StageARoot := StageARoot) statement stableRelation →
+      LateAppendTail statement.outputPair transitionValid → StageBRoot → Prop)
+    (live : LiveAppendState Root Frontier)
+    (proof : StagedLateBoundSpendProof statement stableRelation transitionValid
+      continuationValid)
+    (transitionIndices : ∀ output source result,
+      transitionValid output source result →
+        PairAppendIndicesValid source result)
+    (aligned : live.sequence = live.nextPairIndex)
+    (accepted : Accepts retained statement stableRelation transitionValid
+      continuationValid live proof) :
+    proof.tail.result.sequence = proof.tail.result.nextPairIndex := by
+  obtain ⟨sequence, index⟩ :=
+    accepted_proof_carried_afterstate_increments_once retained statement
+      stableRelation transitionValid continuationValid live proof
+      transitionIndices accepted
+  omega
+
 def verifierResultEnvelopeBytes : Nat := 8
 def pairIndexBytes : Nat := 8
 def fullDigestBytes : Nat := 32
@@ -729,6 +787,8 @@ theorem exact_semantic_row_owner_cardinalities :
 #print axioms stable_pair_proof_acceptance_has_no_live_state_dependency
 #print axioms accepted_stable_pair_settlement_uses_execution_state
 #print axioms accepted_settlement_returns_verified_afterstate
+#print axioms accepted_proof_carried_afterstate_increments_once
+#print axioms accepted_afterstate_preserves_sequence_index_alignment
 #print axioms exact_proof_carried_afterstate_wire
 #print axioms exact_stable_pair_wire_screen_keeps_frozen_body_size
 #print axioms exact_staged_c2_leaf_sha_block_increase
