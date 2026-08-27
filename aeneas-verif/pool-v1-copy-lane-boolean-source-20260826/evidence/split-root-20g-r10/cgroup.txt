@@ -1,0 +1,11 @@
+memory.high=19327352832
+memory.max=21474836480
+memory.swap.max=0
+memory.peak=779870208
+memory.swap.current=0
+low 0
+high 0
+max 0
+oom 0
+oom_kill 0
+oom_group_kill 0

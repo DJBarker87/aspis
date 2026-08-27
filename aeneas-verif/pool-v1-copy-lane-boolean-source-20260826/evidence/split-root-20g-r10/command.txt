@@ -1,0 +1,2 @@
+cwd=/home/dombarker/project-offloads/pool-copy-lane-aeneas-20260826-work/aeneas-verif/pool-v1-copy-lane-boolean-source-20260826-splitfix
+command= ./check-focused-lean.sh

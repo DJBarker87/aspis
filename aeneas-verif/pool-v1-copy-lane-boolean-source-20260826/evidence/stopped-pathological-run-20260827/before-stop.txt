@@ -1,0 +1,18 @@
+2026-08-27T09:04:24+00:00
+    PID    PPID STAT   RSS     ELAPSED     TIME COMMAND
+2689509 2689340 Sl   24315452 22:50:20 06:07:53 /home/dombarker/.elan/toolchains/leanprover--lean4---v4.32.0/bin/lean -o /home/dombarker/project-offloads/copy-lane-lean.j3hPWY/PoolV1CopyLaneBooleanGenerated/Funs.olean /home/dombarker/project-offloads/pool-copy-lane-aeneas-20260826-work/aeneas-verif/pool-v1-copy-lane-boolean-source-20260826/generated/PoolV1CopyLaneBooleanGenerated/Funs.lean
+0::/user.slice/user-1000.slice/user@1000.service/app.slice/run-r87a5fe7dede7485ca91ebb1cd43b839b.scope
+MemoryCurrent=25021911040
+MemoryPeak=25024077824
+MemorySwapCurrent=0
+CPUUsageNSec=22075108752000
+MemoryHigh=24696061952
+MemoryMax=25769803776
+ActiveState=active
+SubState=running
+low 0
+high 90398497
+max 0
+oom 0
+oom_kill 0
+oom_group_kill 0
