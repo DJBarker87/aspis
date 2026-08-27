@@ -40,6 +40,17 @@ use crate::{
     pair_state::{CanonicalPairPoolStateV1, PairPoolStateV1, POOL_V1_PAIR_STATE_ACCOUNT_BYTES},
 };
 
+#[inline(always)]
+fn pair_cu_checkpoint(label: &str) {
+    #[cfg(feature = "pair-afterstate-profile")]
+    {
+        solana_program::log::sol_log(label);
+        solana_program::log::sol_log_compute_units();
+    }
+    #[cfg(not(feature = "pair-afterstate-profile"))]
+    let _ = label;
+}
+
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 struct PairSpendLayoutV1 {
     anchor_index: usize,
@@ -155,6 +166,42 @@ fn validate_history(
 ) -> ProgramResult {
     let pool = &accounts[0];
     let anchor = &accounts[layout.anchor_index];
+    let current_location = root_history_location(state.current_root_sequence());
+    let current_writable = layout.next_index.is_none();
+
+    // The historical membership anchor and live append root often occupy the
+    // same chronological page.  Parse that canonical page once and check both
+    // slots under the stricter live-page mutability rule.  This removes a full
+    // duplicate 8,256-byte page scan without weakening either root role.
+    if layout.anchor_index == layout.current_index {
+        require_program_account(anchor, program_id, current_writable)?;
+        if anchor.is_signer {
+            return Err(ProgramError::InvalidAccountData);
+        }
+        require_root_page_address(program_id, pool.key, current_location.page_number, anchor)?;
+        let data = anchor.try_borrow_data()?;
+        let header = validate_root_page_bytes(&data, pool.key, current_location.page_number)?;
+        if read_retained_root(&data, header, anchor_sequence)? != *anchor_root
+            || header.filled != current_location.slot + 1
+            || read_retained_root(&data, header, state.current_root_sequence())? != state.tree.root
+            || (layout.next_index.is_some()
+                && usize::from(header.filled) != POOL_V1_ROOT_HISTORY_CAPACITY)
+        {
+            return Err(PoolV1ProgramError::StateHistoryMismatch.into());
+        }
+        drop(data);
+        if let Some(next_index) = layout.next_index {
+            let next_location = root_history_location(state.current_root_sequence() + 1);
+            validate_new_page_account(
+                program_id,
+                pool.key,
+                next_location.page_number,
+                &accounts[next_index],
+            )?;
+        }
+        return Ok(());
+    }
+
     require_program_owned(anchor, program_id)?;
     if anchor.is_signer {
         return Err(ProgramError::InvalidAccountData);
@@ -170,8 +217,6 @@ fn validate_history(
     drop(anchor_data);
 
     let current = &accounts[layout.current_index];
-    let current_location = root_history_location(state.current_root_sequence());
-    let current_writable = layout.next_index.is_none();
     require_program_account(current, program_id, current_writable)?;
     if current.is_signer {
         return Err(ProgramError::InvalidAccountData);
@@ -230,6 +275,7 @@ where
     ) -> Result<AuthenticatedPairAfterstateV1, ProgramError>,
     S: FnOnce(&[u8]),
 {
+    pair_cu_checkpoint("aspis-pair-cu:handler_entry");
     let decoded = decode_pair_private_transfer_instruction_v1(instruction_data)?;
     let pool = accounts.first().ok_or(ProgramError::NotEnoughAccountKeys)?;
     let state = CanonicalPairPoolStateV1::decode_account_from_program_invariant(program_id, pool)?;
@@ -241,6 +287,7 @@ where
     {
         return Err(PoolV1ProgramError::VerifierDispatchIdentityMismatch.into());
     }
+    pair_cu_checkpoint("aspis-pair-cu:state_and_statement_validated");
     let layout = plan_layout(
         program_id,
         accounts,
@@ -248,6 +295,7 @@ where
         decoded.statement.anchor_sequence,
     )?;
     require_unique(accounts)?;
+    pair_cu_checkpoint("aspis-pair-cu:layout_validated");
     validate_history(
         program_id,
         accounts,
@@ -256,6 +304,7 @@ where
         decoded.statement.anchor_sequence,
         &decoded.statement.anchor_root,
     )?;
+    pair_cu_checkpoint("aspis-pair-cu:history_validated");
 
     let marker = &accounts[layout.marker_index];
     let planned_marker = plan_nullifier_marker_consumption_v1(
@@ -266,6 +315,7 @@ where
     if planned_marker.preparation() != NullifierMarkerPreparationV1::PopulateProgramOwnedZeroed {
         return Err(PoolV1ProgramError::InvalidNullifierMarkerAccount.into());
     }
+    pair_cu_checkpoint("aspis-pair-cu:marker_preflight_complete");
 
     let verified_afterstate = verify(
         pool.key,
@@ -279,8 +329,10 @@ where
         current_slot,
         hash,
     )?;
+    pair_cu_checkpoint("aspis-pair-cu:afterstate_authenticated");
     let (next_state, append) =
         state.apply_authenticated_afterstate_from_program_invariant(&verified_afterstate)?;
+    pair_cu_checkpoint("aspis-pair-cu:afterstate_applied");
 
     let receipt = encode_transition_receipt_v1(&TransitionReceiptV1 {
         transition_kind: PoolV1TransitionKind::PrivateTransfer,
@@ -299,6 +351,7 @@ where
         .try_into()
         .map_err(|_| ProgramError::InvalidAccountData)?;
     next_state.write_encoding_prevalidated(&mut next_image);
+    pair_cu_checkpoint("aspis-pair-cu:receipt_and_state_image_ready");
 
     if let Some(next_index) = layout.next_index {
         let location = root_history_location(append.root_sequence);
@@ -317,12 +370,16 @@ where
             validate_root_page_bytes(&current_data, pool.key, current_location.page_number)?;
         append_roots_unchecked(&mut current_data, header, &[append.root]);
     }
+    pair_cu_checkpoint("aspis-pair-cu:history_written");
     pool.try_borrow_mut_data()?
         .copy_from_slice(next_image.as_ref());
+    pair_cu_checkpoint("aspis-pair-cu:pool_state_written");
     marker
         .try_borrow_mut_data()?
         .copy_from_slice(&planned_marker.encoded_marker());
+    pair_cu_checkpoint("aspis-pair-cu:marker_written");
     set_return_data(&receipt);
+    pair_cu_checkpoint("aspis-pair-cu:receipt_returned");
     Ok(())
 }
 

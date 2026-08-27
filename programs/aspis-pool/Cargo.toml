@@ -15,6 +15,7 @@ no-entrypoint = []
 # builds do not enable this feature until the real seven-C2-lane verifier emits
 # the authenticated ASJA result.
 pair-afterstate-evidence = []
+pair-afterstate-profile = ["pair-afterstate-evidence"]
 
 [dependencies]
 aspis-core.workspace = true

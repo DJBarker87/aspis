@@ -4,8 +4,8 @@ use anyhow::{anyhow, bail, ensure, Context, Result};
 use aspis_core::field::M31;
 use aspis_pool::{
     encode_pair_private_transfer_instruction_v1, pool_v1_nullifier_marker_address,
-    pool_v1_pair_state_address, pool_v1_root_page_address, PairPoolStateV1,
-    PoolInitializationV1, PrivateTransferStatementV1, POOL_V1_PAIR_STATE_ACCOUNT_BYTES,
+    pool_v1_pair_state_address, pool_v1_root_page_address, PairPoolStateV1, PoolInitializationV1,
+    PrivateTransferStatementV1, POOL_V1_PAIR_STATE_ACCOUNT_BYTES,
 };
 use aspis_statement::{
     encode_digest_canonical,
@@ -13,8 +13,8 @@ use aspis_statement::{
         decode_pool_v1_nullifier_marker, encode_pool_v1_pair_verified_afterstate_v1,
         encode_verifier_registry_entry_v1, encode_verifier_registry_v1, root_history_location,
         HistoricalAnchorEnvelopeV1, PoolV1PairVerifiedAfterstateV1, PoolV1TransitionKind,
-        RootHistoryPageV1, VerifierEntryStatusV1, VerifierPolicyV1,
-        VerifierRegistryEntryV1, VerifierRegistryV1, POOL_V1_NULLIFIER_MARKER_ACCOUNT_BYTES,
+        RootHistoryPageV1, VerifierEntryStatusV1, VerifierPolicyV1, VerifierRegistryEntryV1,
+        VerifierRegistryV1, POOL_V1_NULLIFIER_MARKER_ACCOUNT_BYTES,
         POOL_V1_PAIR_VERIFIED_AFTERSTATE_BYTES, POOL_V1_ROOT_HISTORY_PAGE_ACCOUNT_BYTES,
         POOL_V1_VERIFIER_ENTRY_NO_RETIREMENT_SLOT, POOL_V1_VERIFIER_PROOF_ACCOUNT_HEADER_BYTES,
         POOL_V1_VERIFIER_PROOF_ACCOUNT_MAGIC,
@@ -48,6 +48,45 @@ const DEPLOYMENT_DOMAIN_BYTES: [u8; 32] = [0x4C; 32];
 enum Mode {
     SamePage,
     Rollover,
+}
+
+#[derive(Debug)]
+struct CuMarker {
+    label: String,
+    remaining: u64,
+    delta_from_previous: Option<i64>,
+}
+
+fn parse_cu_markers(logs: &[String]) -> Vec<CuMarker> {
+    let mut pending = None;
+    let mut previous = None;
+    let mut markers = Vec::new();
+    for log in logs {
+        if let Some((_, suffix)) = log.split_once("aspis-pair-cu:") {
+            pending = Some(suffix.trim().to_string());
+            continue;
+        }
+        let Some((_, rest)) = log.split_once("Program consumption:") else {
+            continue;
+        };
+        let Some(label) = pending.take() else {
+            continue;
+        };
+        let Some(remaining) = rest
+            .split_whitespace()
+            .find_map(|token| token.parse::<u64>().ok())
+        else {
+            continue;
+        };
+        let delta_from_previous = previous.map(|prior| prior as i64 - remaining as i64);
+        previous = Some(remaining);
+        markers.push(CuMarker {
+            label,
+            remaining,
+            delta_from_previous,
+        });
+    }
+    markers
 }
 
 impl Mode {
@@ -169,22 +208,24 @@ fn run_success(
     Ok(executed)
 }
 
-fn parse_args() -> Result<(PathBuf, PathBuf, Mode, PathBuf)> {
+fn parse_args() -> Result<(PathBuf, PathBuf, Mode, PathBuf, bool)> {
     let args = env::args().skip(1).collect::<Vec<_>>();
     ensure!(
-        args.len() == 4,
-        "usage: harness <aspis_pool.so> <verifier_double.so> <same-page|rollover> <evidence.json>"
+        args.len() == 4 || (args.len() == 5 && args[4] == "--require-profile"),
+        "usage: harness <aspis_pool.so> <verifier_double.so> <same-page|rollover> <evidence.json> [--require-profile]"
     );
     Ok((
         PathBuf::from(&args[0]),
         PathBuf::from(&args[1]),
         Mode::parse(&args[2])?,
         PathBuf::from(&args[3]),
+        args.len() == 5,
     ))
 }
 
 fn main() -> Result<()> {
-    let (pool_artifact_path, verifier_artifact_path, mode, output_path) = parse_args()?;
+    let (pool_artifact_path, verifier_artifact_path, mode, output_path, require_profile) =
+        parse_args()?;
     ensure!(
         !output_path.exists(),
         "refusing to overwrite {}",
@@ -217,8 +258,8 @@ fn main() -> Result<()> {
     let mut page = RootHistoryPageV1::genesis(pool.to_bytes(), state.tree.root);
     let mut membership_anchor_root = None;
     for index in 0..mode.source_sequence() {
-        let (next, receipt) = state
-            .append_verified_pair_from_program_invariant(digest(10_000 + index as u32))?;
+        let (next, receipt) =
+            state.append_verified_pair_from_program_invariant(digest(10_000 + index as u32))?;
         page.push(receipt.root_sequence, receipt.root)
             .map_err(|error| anyhow!("seed root page: {error:?}"))?;
         if receipt.root_sequence == MEMBERSHIP_ANCHOR_SEQUENCE {
@@ -237,15 +278,13 @@ fn main() -> Result<()> {
     let nullifier = digest(30_000 + mode.source_sequence() as u32);
     let recipient = digest(31_000 + mode.source_sequence() as u32);
     let change = digest(32_000 + mode.source_sequence() as u32);
-    let (expected_state, expected_append) = state
-        .append_occupied_pair_from_program_invariant(recipient, change)?;
-    let afterstate = encode_pool_v1_pair_verified_afterstate_v1(
-        &PoolV1PairVerifiedAfterstateV1 {
-            next_pair_index: expected_state.tree.next_leaf_index,
-            next_root: expected_state.tree.root,
-            next_frontier: expected_state.tree.frontier,
-        },
-    )
+    let (expected_state, expected_append) =
+        state.append_occupied_pair_from_program_invariant(recipient, change)?;
+    let afterstate = encode_pool_v1_pair_verified_afterstate_v1(&PoolV1PairVerifiedAfterstateV1 {
+        next_pair_index: expected_state.tree.next_leaf_index,
+        next_root: expected_state.tree.root,
+        next_frontier: expected_state.tree.frontier,
+    })
     .map_err(|error| anyhow!("encode ASJA: {error:?}"))?;
     ensure!(afterstate.len() == POOL_V1_PAIR_VERIFIED_AFTERSTATE_BYTES);
     let envelope = HistoricalAnchorEnvelopeV1 {
@@ -343,7 +382,12 @@ fn main() -> Result<()> {
         pool_program,
         vec![0u8; POOL_V1_NULLIFIER_MARKER_ACCOUNT_BYTES],
     )?;
-    put_account(&mut svm, registry, registry_program, registry_image.to_vec())?;
+    put_account(
+        &mut svm,
+        registry,
+        registry_program,
+        registry_image.to_vec(),
+    )?;
     put_account(&mut svm, entry, registry_program, entry_image.to_vec())?;
     put_account(&mut svm, proof, verifier_program, proof_image)?;
 
@@ -375,8 +419,42 @@ fn main() -> Result<()> {
         instruction,
     )?;
     ensure!(executed.compute_units_consumed < COMPUTE_UNIT_LIMIT as u64);
+    let cu_markers = parse_cu_markers(&executed.logs);
+    if require_profile {
+        const EXPECTED_MARKERS: [&str; 19] = [
+            "handler_entry",
+            "state_and_statement_validated",
+            "layout_validated",
+            "history_validated",
+            "marker_preflight_complete",
+            "verifier_plan_start",
+            "verifier_plan_complete",
+            "verifier_cpi_start",
+            "double_entry",
+            "double_frame_validated",
+            "double_return_set",
+            "verifier_cpi_complete",
+            "afterstate_authenticated",
+            "afterstate_applied",
+            "receipt_and_state_image_ready",
+            "history_written",
+            "pool_state_written",
+            "marker_written",
+            "receipt_returned",
+        ];
+        ensure!(
+            cu_markers
+                .iter()
+                .map(|marker| marker.label.as_str())
+                .eq(EXPECTED_MARKERS),
+            "profile marker sequence mismatch: {:?}",
+            cu_markers
+        );
+    }
 
-    let pool_after_account = svm.get_account(&address(&pool)).context("pool missing after")?;
+    let pool_after_account = svm
+        .get_account(&address(&pool))
+        .context("pool missing after")?;
     ensure!(pool_after_account.data.len() == POOL_V1_PAIR_STATE_ACCOUNT_BYTES);
     ensure!(
         pool_after_account.data == expected_state.encode()?.to_vec(),
@@ -391,7 +469,11 @@ fn main() -> Result<()> {
     ensure!(marker_decoded.retained_anchor_sequence == MEMBERSHIP_ANCHOR_SEQUENCE);
     ensure!(marker_decoded.retained_anchor_root == membership_anchor_root);
 
-    let target_page = if mode == Mode::SamePage { page_zero } else { page_one };
+    let target_page = if mode == Mode::SamePage {
+        page_zero
+    } else {
+        page_one
+    };
     let target_after = svm
         .get_account(&address(&target_page))
         .context("target history page missing after")?;
@@ -412,9 +494,30 @@ fn main() -> Result<()> {
     .map_err(|error| anyhow!("read membership anchor after: {error:?}"))?;
     ensure!(anchor_after == membership_anchor_root);
     if mode == Mode::Rollover {
-        ensure!(page_zero_after == page_zero_before, "rollover mutated full prior page");
+        ensure!(
+            page_zero_after == page_zero_before,
+            "rollover mutated full prior page"
+        );
     }
 
+    let cu_marker_json = cu_markers
+        .iter()
+        .map(|marker| {
+            serde_json::json!({
+                "label": marker.label,
+                "remaining": marker.remaining,
+                "delta_from_previous": marker.delta_from_previous,
+            })
+        })
+        .collect::<Vec<_>>();
+    let first_marker_consumed = cu_markers
+        .first()
+        .map(|marker| u64::from(COMPUTE_UNIT_LIMIT) - marker.remaining);
+    let last_marker_to_transaction_end = cu_markers.last().map(|marker| {
+        executed
+            .compute_units_consumed
+            .saturating_sub(u64::from(COMPUTE_UNIT_LIMIT) - marker.remaining)
+    });
     let evidence = serde_json::json!({
         "schema": "aspis.pool-v1.pair-afterstate-runtime-evidence.v1",
         "mode": mode.label(),
@@ -428,6 +531,13 @@ fn main() -> Result<()> {
             "simulation_equals_execution": true,
             "return_magic": "ASTR",
             "return_bytes": 200
+        },
+        "profiling": {
+            "enabled": !cu_markers.is_empty(),
+            "marker_calls_are_metered_and_inflate_the_profiled_total": !cu_markers.is_empty(),
+            "before_first_marker_including_transaction_dispatch": first_marker_consumed,
+            "after_last_marker_to_transaction_end": last_marker_to_transaction_end,
+            "markers": cu_marker_json
         },
         "state_transition": {
             "membership_anchor_sequence": MEMBERSHIP_ANCHOR_SEQUENCE,

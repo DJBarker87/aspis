@@ -13,6 +13,17 @@ const PROOF_MAGIC: [u8; 4] = *b"ASPU";
 const PROOF_HEADER_BYTES: usize = 40;
 const ASJA_BYTES: usize = 688;
 
+#[inline(always)]
+fn checkpoint(label: &str) {
+    #[cfg(feature = "profile")]
+    {
+        solana_program::log::sol_log(label);
+        solana_program::log::sol_log_compute_units();
+    }
+    #[cfg(not(feature = "profile"))]
+    let _ = label;
+}
+
 solana_program::entrypoint!(process_instruction);
 
 /// Measurement-only selected-verifier transport double.  It exercises a real
@@ -23,6 +34,7 @@ pub fn process_instruction(
     accounts: &[AccountInfo<'_>],
     _instruction_data: &[u8],
 ) -> ProgramResult {
+    checkpoint("aspis-pair-cu:double_entry");
     let [proof] = accounts else {
         return Err(ProgramError::NotEnoughAccountKeys);
     };
@@ -37,6 +49,8 @@ pub fn process_instruction(
     {
         return Err(ProgramError::InvalidAccountData);
     }
+    checkpoint("aspis-pair-cu:double_frame_validated");
     program::set_return_data(&data[PROOF_HEADER_BYTES..]);
+    checkpoint("aspis-pair-cu:double_return_set");
     Ok(())
 }
