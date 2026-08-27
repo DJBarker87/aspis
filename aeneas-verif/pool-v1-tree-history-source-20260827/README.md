@@ -182,12 +182,24 @@ actual digest equality. The two structural equality callbacks have transparent
 executable interpretations. The capstone and callback theorems report only
 `[propext, Classical.choice, Quot.sound]`.
 
+`proof/PoolV1HistoryPersistBridge.lean` now starts the literal byte-persistence
+lift from the two production loops in `programs/aspis-pool/src/history.rs`.
+The focused Charon/Aeneas translation keeps both loop bodies and both outer
+functions transparent.  For every successful active loop-body execution,
+`write_loop_body_exact_root_slot` and
+`append_loop_body_exact_root_slot` prove that the canonical 32-byte digest is
+written at exactly `64 + slot * 32`; the append form proves the slot is
+exactly `header.filled + enumerated_offset`.  The inactive branches are proved
+to terminate without changing the page bytes.  Every theorem reports only
+`[propext, Classical.choice, Quot.sound]`; there is no byte-write callback or
+semantic persistence premise.
+
 The remaining implementation lift is:
 
 1. lift the now-closed prepared-afterimage validator through the caller that
    constructs it and through the state/root account writes;
-2. prove root-page append persistence and retained-root lookup from literal
-   program source;
+2. lift the now-exact root-slot loop bodies through their complete production
+   loops and page-header writes, then prove retained-root lookup;
 3. carry pool identity, owner, PDA and same-writable-account checks through the
    successful program path.
 
