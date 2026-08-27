@@ -72,6 +72,12 @@ v7-pair-forest-asq8 = [
     "v7-production-tag73",
     "aspis-statement/pool-v1-kernel",
 ]
+# SBF/host audit-only compilation lane for the full 1,880-byte ASF8 streaming
+# validator. It adds no dispatcher arm and remains unreachable in production.
+v7-pair-forest-asf8-audit = [
+    "v7-production-tag73",
+    "aspis-statement/pool-v1-kernel",
+]
 
 [dependencies]
 aspis-core = { path = "../../crates/aspis-core" }
