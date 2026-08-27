@@ -400,6 +400,65 @@ theorem stable_pair_prefix_keeps_frozen_tag73_order :
         .batchingChallenges] := by
   rfl
 
+/-- A completed primary-profile proof contains only the stable relation.  Its
+type has no live root, sequence, cursor or frontier field. -/
+structure StablePairSpendProof
+    {Root Nullifier K : Type}
+    (statement : StableSpendStatement Root Nullifier K)
+    (stableRelation : StableSpendStatement Root Nullifier K → Prop) : Type where
+  valid : stableRelation statement
+
+def StablePairProofAccepts
+    {Root Nullifier K : Type}
+    (retained : HistoricalMembershipAnchor Root → Prop)
+    (statement : StableSpendStatement Root Nullifier K)
+    (stableRelation : StableSpendStatement Root Nullifier K → Prop)
+    (_proof : StablePairSpendProof statement stableRelation) : Prop :=
+  retained statement.membershipAnchor ∧ stableRelation statement
+
+/-- Settlement applies the verified public output pair to the state locked at
+execution.  `append = none` represents an ordinary state-side rejection such as
+a full tree; it is not proof staleness. -/
+noncomputable def settleStablePair
+    {Root Frontier Nullifier K : Type}
+    (append : PairLeaf K → LiveAppendState Root Frontier →
+      Option (LiveAppendState Root Frontier))
+    (retained : HistoricalMembershipAnchor Root → Prop)
+    (statement : StableSpendStatement Root Nullifier K)
+    (stableRelation : StableSpendStatement Root Nullifier K → Prop)
+    (live : LiveAppendState Root Frontier)
+    (proof : StablePairSpendProof statement stableRelation) :
+    Option (LiveAppendState Root Frontier) := by
+  classical
+  exact if StablePairProofAccepts retained statement stableRelation proof then
+    append statement.outputPair live
+  else none
+
+theorem stable_pair_proof_acceptance_has_no_live_state_dependency
+    {Root Frontier Nullifier K : Type}
+    (retained : HistoricalMembershipAnchor Root → Prop)
+    (statement : StableSpendStatement Root Nullifier K)
+    (stableRelation : StableSpendStatement Root Nullifier K → Prop)
+    (proof : StablePairSpendProof statement stableRelation)
+    (_before _after : LiveAppendState Root Frontier) :
+    StablePairProofAccepts retained statement stableRelation proof ↔
+      StablePairProofAccepts retained statement stableRelation proof :=
+  Iff.rfl
+
+theorem accepted_stable_pair_settlement_uses_execution_state
+    {Root Frontier Nullifier K : Type}
+    (append : PairLeaf K → LiveAppendState Root Frontier →
+      Option (LiveAppendState Root Frontier))
+    (retained : HistoricalMembershipAnchor Root → Prop)
+    (statement : StableSpendStatement Root Nullifier K)
+    (stableRelation : StableSpendStatement Root Nullifier K → Prop)
+    (live : LiveAppendState Root Frontier)
+    (proof : StablePairSpendProof statement stableRelation)
+    (accepted : StablePairProofAccepts retained statement stableRelation proof) :
+    settleStablePair append retained statement stableRelation live proof =
+      append statement.outputPair live := by
+  simp [settleStablePair, accepted]
+
 /-! ## Exact unchanged-backend wire consequence
 
 The four late lanes are QM31 columns, and each authenticated layer-zero query
@@ -587,6 +646,8 @@ theorem exact_semantic_row_owner_cardinalities :
 #print axioms exact_stable_pair_row_screen
 #print axioms stable_pair_prefix_has_no_live_append_snapshot
 #print axioms stable_pair_prefix_keeps_frozen_tag73_order
+#print axioms stable_pair_proof_acceptance_has_no_live_state_dependency
+#print axioms accepted_stable_pair_settlement_uses_execution_state
 #print axioms exact_stable_pair_wire_screen_keeps_frozen_body_size
 #print axioms exact_staged_c2_leaf_sha_block_increase
 #print axioms exact_live_dependent_suffix_has_fifteen_steps
