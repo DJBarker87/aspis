@@ -1,0 +1,39 @@
+Pool V1 checked history distribution source bridge: PASS
+
+Frozen production function:
+  programs/aspis-pool/src/prepared_settlement.rs
+  aspis_pool::prepared_settlement::checked_history_distribution
+
+Focused LLBC:
+  extraction/PoolV1CheckedHistoryDistribution.llbc
+  SHA-256 2d36756c8d15b37fdb0a1d131442f6bfdca7d50f7efced49691defbcfd56c102
+
+Translation:
+  Charon cb50ff16b9f1066b8a97dc06da704de2da2fa41c
+  Aeneas constructor branch e9d20a64aa4dcbbc20ba8742a6ddf720f0c575cd
+  Lean v4.31.0
+
+Strongest theorem:
+  PoolV1CheckedHistoryDistributionBridge.checked_history_distribution_success_exact
+
+Result:
+  The literal production helper success exposes both checked sequence additions,
+  both exact root_history_location calls, the exact nested current-page split,
+  next = count - current, the one-page rollover bound, and the <= 256 current-page
+  capacity gate.
+
+#print axioms:
+  [propext, Classical.choice, Quot.sound]
+
+There is no sorryAx, sorry, admit, native_decide, project-specific axiom,
+routing callback, or trace-cover premise in the compiled theorem.
+
+Direct-router boundary:
+  Focused Charon extraction of
+  aspis_pool::transition::apply_authorized_append_after_checked_state_v1
+  succeeded (LLBC SHA-256
+  49fb139084e6b2509d90fd39a09edbf443bc6354774b38255ed1e89977ac7e67),
+  but current Aeneas translation fails on the AccountInfo borrow plus nested
+  Option/generic early-return route. The 80 MiB diagnostic LLBC is deliberately
+  not committed. The remaining lift is to connect that literal account router
+  to the closed distribution and byte-persistence theorems.

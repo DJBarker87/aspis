@@ -243,6 +243,27 @@ persistence success and conclude that every selected stored root decodes to
 exactly its original digest.  Their axiom union is exactly
 `[propext, Classical.choice, Quot.sound]`.
 
+`proof/PoolV1CheckedHistoryDistributionBridge.lean` closes the pure production
+current-page/rollover distribution gate used by prepared settlement planning
+and replay.  It begins at the literal translated
+`prepared_settlement::checked_history_distribution` source function, including
+both checked sequence additions and both calls to the deployed
+`root_history_location`.  Successful execution proves:
+
+- the first and final retained sequences are exactly `source + 1` and
+  `source + count`;
+- the first root cannot precede the current page and the final root cannot
+  exceed the immediately following page;
+- the current-page count is exactly the source's nested page-equality split;
+- the next-page count is exactly `count - current`; and
+- `header.filled + current <= 256`, from the literal source capacity gate.
+
+The generated helper and its `root_history_location` dependency are fully
+transparent.  The capstone
+`checked_history_distribution_success_exact` reports exactly
+`[propext, Classical.choice, Quot.sound]`; it has no routing callback,
+trace-cover premise, `sorry`, `admit` or project-specific axiom.
+
 The retained-root reader passes through Rust's formatting machinery only on
 an impossible `Result::unwrap` failure after a successful fixed-array
 conversion.  Aeneas otherwise exposes its placeholder `core::fmt::Formatter`
@@ -255,10 +276,19 @@ The remaining implementation lift is:
 
 1. lift the now-closed prepared-afterimage validator through the caller that
    constructs it and through the state/root account writes;
-2. close current-page versus rollover routing, including the exact root split,
-   page number, first sequence and supplied-next-account condition;
-3. carry pool identity, owner, PDA and same-writable-account checks through the
-   successful program path.
+2. connect the direct transition caller's duplicated account-routing control
+   flow to the now-closed pure distribution theorem, including the supplied
+   next-account presence/absence condition;
+3. carry pool identity, owner, PDA, writable and non-aliasing checks through
+   the successful program path and compose them with the proved page-byte
+   write-back.
+
+The full literal transition router has been extracted successfully, but the
+current Aeneas frontend cannot translate its `AccountInfo` borrowing and
+nested `Option`/generic early-return path transparently.  This is now the
+smallest explicit source-to-persistence boundary.  It is a source-tool lift,
+not an unproved root-distribution or byte-persistence equation: both of those
+are independently source-closed above.
 
 The only intended cryptographic semantic boundary is the already-frozen
 Poseidon tree-parent primitive. Account-runtime behavior remains the ordinary
