@@ -172,6 +172,56 @@ theorem acceptance_binds_exact_live_append_state
       continuationValid live proof) : proof.tail.source = live :=
   accepted.2
 
+/-- A completed proof is pinned to exactly one live append snapshot.  It
+cannot be accepted against two distinct `(sequence, nextPairIndex, root,
+frontier)` states. -/
+theorem completed_proof_accepts_at_most_one_live_state
+    {Root Frontier Nullifier K StageARoot StageBRoot : Type}
+    [DecidableEq Root] [DecidableEq Frontier]
+    {retained : HistoricalMembershipAnchor Root → Prop}
+    {statement : StableSpendStatement Root Nullifier K}
+    {stableRelation : StableSpendStatement Root Nullifier K → Prop}
+    {transitionValid : PairLeaf K → LiveAppendState Root Frontier →
+      LiveAppendState Root Frontier → Prop}
+    {continuationValid :
+      PreparedStageA (StageARoot := StageARoot) statement stableRelation →
+      LateAppendTail statement.outputPair transitionValid → StageBRoot → Prop}
+    {left right : LiveAppendState Root Frontier}
+    {proof : StagedLateBoundSpendProof statement stableRelation transitionValid
+      continuationValid}
+    (acceptedLeft : Accepts retained statement stableRelation transitionValid
+      continuationValid left proof)
+    (acceptedRight : Accepts retained statement stableRelation transitionValid
+      continuationValid right proof) :
+    left = right := by
+  exact acceptedLeft.2.symm.trans acceptedRight.2
+
+/-- If another append changes any live snapshot component after a completed
+proof was made, those same final proof bytes reject.  Reusing Stage A still
+requires `recomplete` with a fresh tail and fresh suffix. -/
+theorem competing_append_invalidates_completed_proof
+    {Root Frontier Nullifier K StageARoot StageBRoot : Type}
+    [DecidableEq Root] [DecidableEq Frontier]
+    {retained : HistoricalMembershipAnchor Root → Prop}
+    {statement : StableSpendStatement Root Nullifier K}
+    {stableRelation : StableSpendStatement Root Nullifier K → Prop}
+    {transitionValid : PairLeaf K → LiveAppendState Root Frontier →
+      LiveAppendState Root Frontier → Prop}
+    {continuationValid :
+      PreparedStageA (StageARoot := StageARoot) statement stableRelation →
+      LateAppendTail statement.outputPair transitionValid → StageBRoot → Prop}
+    {before after : LiveAppendState Root Frontier}
+    {proof : StagedLateBoundSpendProof statement stableRelation transitionValid
+      continuationValid}
+    (acceptedBefore : Accepts retained statement stableRelation transitionValid
+      continuationValid before proof)
+    (changed : before ≠ after) :
+    ¬ Accepts retained statement stableRelation transitionValid
+      continuationValid after proof := by
+  intro acceptedAfter
+  exact changed
+    (completed_proof_accepts_at_most_one_live_state acceptedBefore acceptedAfter)
+
 theorem stale_source_rejected
     {Root Frontier Nullifier K StageARoot StageBRoot : Type}
     [DecidableEq Root] [DecidableEq Frontier]
@@ -287,6 +337,15 @@ theorem staged_pool_prefix_fixes_live_snapshot_after_stageA_before_stageB :
       [.stableStatement, .stageARoot, .lambda, .chi, .liveAppendSnapshot,
         .stageBRoot, .batchingChallenges] :=
   rfl
+
+theorem exact_staged_pool_prefix_positions :
+    stagedPoolPrefix.idxOf .stageARoot = 1 ∧
+      stagedPoolPrefix.idxOf .lambda = 2 ∧
+      stagedPoolPrefix.idxOf .chi = 3 ∧
+      stagedPoolPrefix.idxOf .liveAppendSnapshot = 4 ∧
+      stagedPoolPrefix.idxOf .stageBRoot = 5 ∧
+      stagedPoolPrefix.idxOf .batchingChallenges = 6 := by
+  decide
 
 theorem frozen_tag73_prefix_has_no_late_snapshot :
     TranscriptStep.liveAppendSnapshot ∉ frozenTag73Prefix := by
@@ -476,8 +535,11 @@ theorem exact_semantic_row_owner_cardinalities :
 
 #print axioms stale_source_rejected
 #print axioms stale_source_settlement_returns_none
+#print axioms completed_proof_accepts_at_most_one_live_state
+#print axioms competing_append_invalidates_completed_proof
 #print axioms recomplete_preserves_stageA_exactly
 #print axioms recomplete_uses_fresh_append_source
+#print axioms exact_staged_pool_prefix_positions
 #print axioms frozen_tag73_prefix_has_no_late_snapshot
 #print axioms staged_pool_prefix_is_not_the_frozen_tag73_prefix
 #print axioms exact_stageB_lane_expansion
