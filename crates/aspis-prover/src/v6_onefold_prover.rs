@@ -504,7 +504,7 @@ fn begin_v7_transcript_and_precommit(
     transcript.absorb(label::V7_DEPLOYMENT_CONTEXT, &deployment);
     transcript.absorb(label::STATEMENT, &context.statement_digest);
     let binding = begin_state_only_hiding_precommit(&mut transcript, hiding_context)
-        .map_err(|_| V6ProverError::Stage("V7 hiding precommit"))?;
+    .map_err(|_| V6ProverError::Stage("V7 hiding precommit"))?;
     Ok((transcript, binding))
 }
 
@@ -989,7 +989,7 @@ fn build_onefold_proof_with_pow_mode(
                 nonce_store,
             ),
     }
-    .map_err(|_| V6ProverError::Stage("V6 mask reservation"))?;
+        .map_err(|_| V6ProverError::Stage("V6 mask reservation"))?;
     let d = match relation {
         OneFoldRelation::Atomic { .. } => reserved.derive_spend_zero_factor_d(hash, hiding_context),
         OneFoldRelation::PoolPrivateTransfer { .. } => {
@@ -999,11 +999,11 @@ fn build_onefold_proof_with_pow_mode(
             reserved.derive_pool_v1_withdrawal_zero_factor_d(hash, hiding_context)
         }
     }
-    .map_err(|_| V6ProverError::Stage("V6 D derivation"))?;
+        .map_err(|_| V6ProverError::Stage("V6 D derivation"))?;
     let mut trace = match relation {
         OneFoldRelation::Atomic { statement, witness } => {
-            let mut atomic = build_atomic_state_only_trace_v3(statement, witness)
-                .map_err(|_| V6ProverError::Stage("V6 atomic trace"))?;
+    let mut atomic = build_atomic_state_only_trace_v3(statement, witness)
+        .map_err(|_| V6ProverError::Stage("V6 atomic trace"))?;
             core::mem::take(&mut atomic.trace)
         }
         OneFoldRelation::PoolPrivateTransfer {
@@ -1038,7 +1038,7 @@ fn build_onefold_proof_with_pow_mode(
             apply_pool_v1_withdrawal_mask_material_v1(&mut trace, mask_material)
         }
     }
-    .map_err(|_| V6ProverError::Stage("V6 mask application"))?;
+        .map_err(|_| V6ProverError::Stage("V6 mask application"))?;
 
     let selected_c1 = trace
         .c1
@@ -1099,7 +1099,7 @@ fn build_onefold_proof_with_pow_mode(
     };
     match relation {
         OneFoldRelation::Atomic { .. } => {
-            apply_atomic_state_only_h1_padding_mask_v3(&mut h1, &applied.h1_padding)
+    apply_atomic_state_only_h1_padding_mask_v3(&mut h1, &applied.h1_padding)
         }
         OneFoldRelation::PoolPrivateTransfer { .. } => {
             apply_pool_v1_private_transfer_h1_padding_mask_v1(&mut h1, &applied.h1_padding)
@@ -1108,7 +1108,7 @@ fn build_onefold_proof_with_pow_mode(
             apply_pool_v1_withdrawal_h1_padding_mask_v1(&mut h1, &applied.h1_padding)
         }
     }
-    .map_err(|_| V6ProverError::Stage("V6 H padding mask"))?;
+        .map_err(|_| V6ProverError::Stage("V6 H padding mask"))?;
     if state_only_copy_helper_sum(&h1) != Some(QM31::ZERO) {
         return Err(V6ProverError::Stage("V6 H sum"));
     }
@@ -1156,31 +1156,31 @@ fn build_onefold_proof_with_pow_mode(
             .map_err(|_| V6ProverError::Stage("V6 semantic claims"))?;
         let original = match relation {
             OneFoldRelation::Atomic { statement, .. } => match profile {
-                OneFoldBuildProfile::V6 => {
-                    atomic_state_only_selected_unmasked_terminal_value_compiled_v3(
-                        statement,
-                        &claims,
-                        point,
-                        lambda,
-                        chi,
-                        batching.theta,
-                        &batching.zerocheck_point,
-                        batching.mu,
-                    )
-                }
+            OneFoldBuildProfile::V6 => {
+                atomic_state_only_selected_unmasked_terminal_value_compiled_v3(
+            statement,
+            &claims,
+            point,
+            lambda,
+            chi,
+            batching.theta,
+            &batching.zerocheck_point,
+            batching.mu,
+        )
+            }
                 .map_err(|_| ()),
-                OneFoldBuildProfile::V7Compact => {
-                    atomic_state_only_selected_unmasked_terminal_value_compiled_tag73(
-                        statement,
-                        &claims,
-                        point,
-                        lambda,
-                        chi,
-                        batching.theta,
-                        &batching.zerocheck_point,
-                        batching.mu,
-                    )
-                }
+            OneFoldBuildProfile::V7Compact => {
+                atomic_state_only_selected_unmasked_terminal_value_compiled_tag73(
+                    statement,
+                    &claims,
+                    point,
+                    lambda,
+                    chi,
+                    batching.theta,
+                    &batching.zerocheck_point,
+                    batching.mu,
+                )
+            }
                 .map_err(|_| ()),
             },
             OneFoldRelation::PoolPrivateTransfer { public, .. } => {
@@ -1663,7 +1663,7 @@ pub fn build_v7_pool_withdrawal_onefold_proof_production(
     build_onefold_proof_with_pow_mode(
         OneFoldRelation::PoolWithdrawal {
             public,
-            witness,
+        witness,
             context: relation_context,
             statement_digest,
         },
