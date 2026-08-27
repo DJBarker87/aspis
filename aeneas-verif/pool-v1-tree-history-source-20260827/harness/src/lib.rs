@@ -50,3 +50,41 @@ pub fn normalized_validate_new_page_borrowed_data(data: &[u8]) -> bool {
     data.len() == POOL_V1_ROOT_HISTORY_PAGE_ACCOUNT_BYTES
         && !data.iter().any(|byte| *byte != 0)
 }
+
+/// Exact after-image tuple of the prepared-settlement Pool/history writes.
+/// The fixed arrays begin after all mutable Solana borrows and length checks
+/// have succeeded, so assignment is the semantic normalization of
+/// `copy_from_slice` on equal-sized buffers.
+pub struct NormalizedPreparedHistoryWritebackV1 {
+    pub pool: [u8; 1000],
+    pub current: [u8; POOL_V1_ROOT_HISTORY_PAGE_ACCOUNT_BYTES],
+    pub rollover: Option<[u8; POOL_V1_ROOT_HISTORY_PAGE_ACCOUNT_BYTES]>,
+}
+
+/// Normalize the three production account copies after successful mutable
+/// borrows.  `None` is exactly the production mismatched rollover-option
+/// branch, whose transaction is rolled back by Solana.
+pub fn normalized_prepared_history_writeback(
+    source_current: [u8; POOL_V1_ROOT_HISTORY_PAGE_ACCOUNT_BYTES],
+    source_rollover: Option<[u8; POOL_V1_ROOT_HISTORY_PAGE_ACCOUNT_BYTES]>,
+    next_pool_image: [u8; 1000],
+    next_current_page_image: [u8; POOL_V1_ROOT_HISTORY_PAGE_ACCOUNT_BYTES],
+    next_rollover_page_image: Option<[u8; POOL_V1_ROOT_HISTORY_PAGE_ACCOUNT_BYTES]>,
+    current_writable: bool,
+) -> Option<NormalizedPreparedHistoryWritebackV1> {
+    let current = if current_writable {
+        next_current_page_image
+    } else {
+        source_current
+    };
+    let rollover = match (source_rollover, next_rollover_page_image) {
+        (Some(_), Some(image)) => Some(image),
+        (None, None) => None,
+        _ => return None,
+    };
+    Some(NormalizedPreparedHistoryWritebackV1 {
+        pool: next_pool_image,
+        current,
+        rollover,
+    })
+}

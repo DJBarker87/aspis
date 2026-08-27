@@ -329,6 +329,36 @@ source-closed by `PoolV1HistoryCodecRoundTripBridge.lean`. No iterator,
 account-routing, trace-cover or conclusion-shaped axiom appears in the
 capstone.
 
+`proof/PoolV1SourceStateResultImageBridge.lean` closes the other production
+result-image gate, literal
+`prepared_settlement::source_state_and_result_image_match`.  Its capstone
+`literal_source_state_result_image_success_has_exact_checks` follows the
+deployed caller from both source sequence decoders through the transition
+count, checked final sequence, last receipt selection and exact history
+location.  It exposes successful byte comparisons for the canonical source
+root and every persisted field in `next_pool_image`: state sequence, retained
+page number, retained slot, tree sequence, final tree root and pool identity.
+Thus the planned pool-state root/cursor bytes are pinned by translated
+production control flow.  The only named premise is the canonical digest
+encoder, already source-closed by the codec bridge; `#print axioms` reports
+the standard Lean trio plus that one encoder name.  The focused production
+LLBC is `extraction/PoolV1SourceStateResultImage.llbc`, SHA-256
+`0c9b56696bd96173f7f601ced1f61d47d0c28c892a7a5b30d4f95855b81d1f3b`.
+
+`proof/PoolV1NormalizedPreparedWritebackBridge.lean` closes the pure suffix
+after successful fixed-length mutable Solana account-data borrows.  The
+extracted Rust normalization retains the exact production after-image
+assignment and option grammar: the pool receives `next_pool_image`; a writable
+current page receives `next_current_page_image` and an immutable current page
+is unchanged; and source/result rollover presence must match exactly or the
+call fails.  The capstone
+`checked_history_images_have_exact_normalized_writeback` composes that suffix
+with the literal result-image routing theorem, so no Pool routing or image
+selection is hidden behind a runtime premise.  The normalization itself has
+only the standard Lean trio.  Its LLBC is
+`extraction/PoolV1NormalizedPreparedWriteback.llbc`, SHA-256
+`cc3f38b1ae7d35e9cab94910f9fd64af9ec93eed7931f68110d03dde90961090`.
+
 The retained-root reader passes through Rust's formatting machinery only on
 an impossible `Result::unwrap` failure after a successful fixed-array
 conversion.  Aeneas otherwise exposes its placeholder `core::fmt::Formatter`
@@ -337,26 +367,26 @@ the same formatter-as-`Unit` tool-model patch already used by the frozen V5
 source replay in
 `aeneas-patches/0001-model-formatter-as-unobservable-unit-state.patch`.
 
-The remaining implementation lift is:
+The remaining implementation lift is now one runtime-composition theorem:
 
-1. lift the now-closed prepared-afterimage validator through the caller that
-   constructs it and through the state/root account writes;
-2. connect the already-proved result-image routing and byte-persistence
-   capstones through the literal transition caller's mutable `AccountInfo`
-   borrows, including current-page write-back, optional rollover-page
-   write-back, pool-state root/cursor update and root-history identity
-   preservation.
+1. connect the literal result-image gates and the normalized after-image suffix
+   through the transition caller's three mutable `AccountInfo` borrows;
+2. prove the accounts are pairwise non-aliasing under the caller's already
+   checked account identities, and that successful Solana borrow/release
+   operations persist the exact fixed arrays supplied to them; and
+3. compose that write-back with the existing current-page/rollover
+   byte-persistence and read-after-write capstones.
 
 The full literal transition router has been extracted successfully, but the
 current Aeneas frontend cannot translate its mutable `AccountInfo` borrowing
-path transparently. The nested `Option` routing itself is now closed by the
-literal result-image checker above. Mutable account borrowing, non-aliasing
-and write-back are therefore the smallest explicit source-to-persistence
-boundary. New-page immutable borrowing is no longer in that gap: it is isolated
-at the named Solana byte-slice interface and every subsequent check is proved.
-This is a source-tool lift, not an unproved root-distribution, option-routing,
-new-page validation or byte-persistence equation: all four are independently
-source-closed above.
+path transparently. The nested `Option` routing, exact pool root/cursor image
+and pure after-image assignments are now all source-closed. Mutable account
+borrowing, non-aliasing and final runtime persistence are therefore the
+smallest explicit source-to-persistence boundary. New-page immutable borrowing
+is isolated at the named Solana byte-slice interface and every subsequent
+check is proved. This is a Solana runtime/source-tool lift, not an unproved
+root-distribution, option-routing, root/cursor-image, new-page validation or
+byte-persistence equation: all five are independently source-closed above.
 
 The only intended cryptographic semantic boundary is the already-frozen
 Poseidon tree-parent primitive. Account-runtime behavior remains the ordinary
