@@ -191,8 +191,9 @@ pub use pair_forest_hiding::{
 #[cfg(not(target_os = "solana"))]
 pub use pair_forest_semantic_oracle::{
     build_pool_v1_pair_forest_copy_helper_v1, evaluate_pool_v1_pair_forest_copy_terminal_v1,
+    evaluate_pool_v1_pair_forest_path_terminal_v1,
     pool_v1_pair_forest_copy_active_at_point_v1, pool_v1_pair_forest_copy_helper_sum_v1,
-    PoolV1PairForestCopyTerminalV1,
+    PoolV1PairForestCopyTerminalV1, PoolV1PairForestPathTerminalV1,
 };
 pub use pair_terminal::{
     decode_pool_v1_pair_afterstate_verifier_request_v1, decode_pool_v1_pair_verified_afterstate_v1,

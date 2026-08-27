@@ -8,10 +8,14 @@ use alloc::{vec, vec::Vec};
 
 use aspis_core::field::{M31, QM31};
 
+use crate::state_only_poseidon::StateOnlyPoseidonOpenings;
 use crate::{constraints_v4::multilinear_evaluate, logup::build_copy_logup_helper};
 
 use super::{
     pair_forest_hiding::pool_v1_pair_forest_copy_active_rows_v1,
+    pair_forest_hiding::{
+        pool_v1_pair_forest_path_base_row_v1, POOL_V1_PAIR_FOREST_PRIVATE_DIRECTIONS_V1,
+    },
     pair_forest_trace::{
         build_pool_v1_pair_forest_copy_registry_v1, pool_v1_pair_forest_copy_rows_v1,
         PoolV1PairForestTraceV1,
@@ -27,6 +31,15 @@ use super::{
 pub struct PoolV1PairForestCopyTerminalV1 {
     pub residual: QM31,
     pub active: QM31,
+}
+
+/// The 17 non-Poseidon lanes for all 24 private membership directions.  The
+/// row selector aggregates the same equation over every path slot, matching
+/// the legacy payment terminal without adding a claim.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct PoolV1PairForestPathTerminalV1 {
+    pub direction_booleanity: QM31,
+    pub ordered_children: [QM31; 16],
 }
 
 #[derive(Clone, Copy)]
@@ -55,6 +68,38 @@ fn eq_row(point: &[QM31; 10], row: usize) -> QM31 {
                 *value
             })
         })
+}
+
+/// Evaluate all 24 private path ordering equations from the frozen
+/// `(z, successor(z), xor12(z))` opening geometry.  This is intentionally a
+/// separate cheap source-layout gate as well as a component of the compiled
+/// forest terminal: a trace layout that places siblings anywhere other than
+/// `base xor 12` cannot be accepted by the unchanged 30,504-byte proof wire.
+pub fn evaluate_pool_v1_pair_forest_path_terminal_v1(
+    openings: &StateOnlyPoseidonOpenings,
+    point: &[QM31; 10],
+) -> Result<PoolV1PairForestPathTerminalV1, PoolV1PairTraceErrorV1> {
+    let selector =
+        (0..POOL_V1_PAIR_FOREST_PRIVATE_DIRECTIONS_V1).try_fold(QM31::ZERO, |sum, level| {
+            pool_v1_pair_forest_path_base_row_v1(level)
+                .map(|row| sum.add(eq_row(point, row)))
+                .ok_or(PoolV1PairTraceErrorV1::Shape)
+        })?;
+    let bit = openings.z[0];
+    let mut ordered_children = [QM31::ZERO; 16];
+    for lane in 0..8 {
+        let current = openings.z[1 + lane];
+        let sibling = openings.xor12_z[lane];
+        let delta = sibling.sub(current);
+        ordered_children[lane] =
+            selector.mul(openings.succ_z[lane].sub(current.add(bit.mul(delta))));
+        ordered_children[8 + lane] =
+            selector.mul(openings.succ_z[8 + lane].sub(sibling.sub(bit.mul(delta))));
+    }
+    Ok(PoolV1PairForestPathTerminalV1 {
+        direction_booleanity: selector.mul(bit.mul(bit.sub(QM31::ONE))),
+        ordered_children,
+    })
 }
 
 fn copy_weight(
@@ -228,6 +273,53 @@ mod tests {
 
     fn q(value: u32) -> QM31 {
         lift(M31(value))
+    }
+
+    fn boolean_point(row: usize) -> [QM31; 10] {
+        core::array::from_fn(|coordinate| q(((row >> (9 - coordinate)) & 1) as u32))
+    }
+
+    #[test]
+    fn path_terminal_is_exact_on_each_authenticated_path_slot() {
+        for level in 0..POOL_V1_PAIR_FOREST_PRIVATE_DIRECTIONS_V1 {
+            let base = pool_v1_pair_forest_path_base_row_v1(level).unwrap();
+            let current: [QM31; 8] = core::array::from_fn(|lane| q(10 + lane as u32));
+            let sibling: [QM31; 8] = core::array::from_fn(|lane| q(30 + lane as u32));
+            for bit in [QM31::ZERO, QM31::ONE] {
+                let mut openings = StateOnlyPoseidonOpenings {
+                    z: [QM31::ZERO; 16],
+                    succ_z: [QM31::ZERO; 16],
+                    xor12_z: [QM31::ZERO; 16],
+                };
+                openings.z[0] = bit;
+                openings.z[1..9].copy_from_slice(&current);
+                openings.xor12_z[..8].copy_from_slice(&sibling);
+                for lane in 0..8 {
+                    if bit == QM31::ZERO {
+                        openings.succ_z[lane] = current[lane];
+                        openings.succ_z[8 + lane] = sibling[lane];
+                    } else {
+                        openings.succ_z[lane] = sibling[lane];
+                        openings.succ_z[8 + lane] = current[lane];
+                    }
+                }
+                let terminal =
+                    evaluate_pool_v1_pair_forest_path_terminal_v1(&openings, &boolean_point(base))
+                        .unwrap();
+                assert_eq!(terminal.direction_booleanity, QM31::ZERO);
+                assert!(terminal
+                    .ordered_children
+                    .into_iter()
+                    .all(|residual| residual == QM31::ZERO));
+                openings.succ_z[0] = openings.succ_z[0].add(QM31::ONE);
+                assert_ne!(
+                    evaluate_pool_v1_pair_forest_path_terminal_v1(&openings, &boolean_point(base),)
+                        .unwrap()
+                        .ordered_children[0],
+                    QM31::ZERO
+                );
+            }
+        }
     }
 
     #[test]
