@@ -8,6 +8,10 @@ license = "MIT OR Apache-2.0"
 publish = false
 description = "Isolated Pool V1 encrypted-note envelope, recipient scanner and durable cursor"
 
+[features]
+default = []
+eight-lane-plumbing-v2 = []
+
 [dependencies]
 aspis-core = { path = "../aspis-core" }
 aspis-pool = { path = "../../programs/aspis-pool", default-features = false, features = ["no-entrypoint"] }
