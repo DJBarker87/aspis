@@ -1,44 +1,64 @@
-//! Production-inactive verifier seam for the conservative staged pair route.
+//! Production-inactive verifier seam for the merged-C1 pair route.
 //!
 //! The byte parser and accepted-result transport are complete. The actual
-//! seven-lane semantic terminal, Merkle authentication, and one-fold relation
+//! pair semantic terminal, Merkle authentication, and one-fold relation
 //! are intentionally not stubbed: until they exist, no dispatch instruction
 //! can construct `AcceptedV7StagedPairAfterstateV1` or emit return data.
 
-use aspis_core::{v6_onefold::V6WireError, v7_staged_pair::V7StagedPairOneFoldWire};
+use aspis_core::{
+    v6_onefold::V6WireError,
+    v7_staged_pair::{V7StagedPairOneFoldWire, V7_STAGED_PAIR_MAX_BODY_BYTES},
+};
 use aspis_statement::pool_v1::{
-    decode_pool_v1_pair_live_snapshot_v1, encode_pool_v1_pair_verified_afterstate_v1,
-    PoolV1PairLiveSnapshotErrorV1, PoolV1PairLiveSnapshotV1, PoolV1PairVerifiedAfterstateV1,
+    decode_pool_v1_pair_live_snapshot_v1, decode_pool_v1_pair_verified_afterstate_v1,
+    encode_pool_v1_pair_verified_afterstate_v1, PoolV1PairLatePublicStatementErrorV1,
+    PoolV1PairLatePublicStatementV1, PoolV1PairLiveSnapshotErrorV1, PoolV1PairVerifiedAfterstateV1,
     PoolV1PairVerifierTransportErrorV1, POOL_V1_PAIR_VERIFIED_AFTERSTATE_BYTES,
 };
 use solana_program::program;
 
 pub const V7_STAGED_PAIR_PROFILE_BINDING_PREIMAGE: &[u8] =
-    b"aspis:pool-v1:verifier-profile:tag73-staged-pair-seven-c2-logical45-late-snapshot:asvq-v2";
+    b"aspis:pool-v1:verifier-profile:tag73-pair-merged-c1-pre-root:logical29:proof30504:asja688:v3";
 /// SHA-256 of `V7_STAGED_PAIR_PROFILE_BINDING_PREIMAGE`.
 pub const V7_STAGED_PAIR_PROFILE_BINDING: [u8; 32] = [
-    0xc0, 0x70, 0x53, 0xc4, 0x3e, 0xf5, 0xd2, 0x14, 0x6e, 0xda, 0xc6, 0x1a, 0x71, 0xe9, 0x20, 0xd4,
-    0xd5, 0xa0, 0xd0, 0x70, 0x72, 0xca, 0xa0, 0x5e, 0x11, 0x9a, 0xb5, 0x18, 0x6e, 0x7d, 0x3f, 0x97,
+    0xfd, 0x74, 0x55, 0xc8, 0xd1, 0x05, 0x7e, 0x3e, 0xe0, 0x86, 0x6c, 0x01, 0x4e, 0xf4, 0x23, 0xba,
+    0xe9, 0xde, 0x18, 0x9d, 0x55, 0x3a, 0x3d, 0xd4, 0xdd, 0xcb, 0x45, 0xf9, 0x58, 0xe7, 0x6f, 0xa9,
 ];
 pub const V7_STAGED_PAIR_RELEASE_BINDING_PREIMAGE: &[u8] =
-    b"aspis:verifier:v7:tag73:staged-pair:seven-c2:logical45:late-snapshot:proof35216:result688:v2";
+    b"aspis:verifier:v7:tag73:pair-merged-c1:pre-root-public-statement:logical29:proof30504:result688:v3";
 /// SHA-256 of `V7_STAGED_PAIR_RELEASE_BINDING_PREIMAGE`.
 pub const V7_STAGED_PAIR_RELEASE_BINDING: [u8; 32] = [
-    0x26, 0xdd, 0x7f, 0xc2, 0xff, 0x25, 0xc2, 0x4f, 0x23, 0x71, 0xbd, 0xc9, 0xc0, 0x6e, 0x6d, 0xc9,
-    0xd0, 0xd6, 0x95, 0xca, 0xf3, 0xff, 0xad, 0xe5, 0xd2, 0xf3, 0xf9, 0x24, 0x06, 0xb5, 0xd5, 0x49,
+    0x58, 0x3c, 0x24, 0x1a, 0x62, 0x89, 0xb0, 0x9c, 0x93, 0x60, 0xc4, 0xdc, 0x5e, 0x93, 0xf0, 0x07,
+    0xb5, 0x2c, 0x06, 0x4b, 0x4b, 0x8d, 0xe8, 0xac, 0x90, 0x16, 0x35, 0xdd, 0x85, 0x62, 0x0e, 0x12,
 ];
+
+/// Profile-specific bytes stored before the compact proof in the finalized
+/// verifier-owned upload payload. The generic 40-byte ASPU header is unchanged.
+pub const V7_STAGED_PAIR_PROOF_METADATA_BYTES: usize = POOL_V1_PAIR_VERIFIED_AFTERSTATE_BYTES;
+pub const V7_STAGED_PAIR_MAX_UPLOAD_PAYLOAD_BYTES: usize =
+    V7_STAGED_PAIR_PROOF_METADATA_BYTES + V7_STAGED_PAIR_MAX_BODY_BYTES;
+pub const V7_STAGED_PAIR_MAX_PROOF_ACCOUNT_BYTES: usize =
+    crate::lifecycle::PROOF_ACCOUNT_HEADER_LEN + V7_STAGED_PAIR_MAX_UPLOAD_PAYLOAD_BYTES;
+/// The terminal instruction carries no copy of the old snapshot or ASJA.
+pub const V7_STAGED_PAIR_TERMINAL_INSTRUCTION_METADATA_BYTES: usize = 0;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum V7StagedPairProfileErrorV1 {
     Wire(V6WireError),
     Snapshot(PoolV1PairLiveSnapshotErrorV1),
+    LateStatement(PoolV1PairLatePublicStatementErrorV1),
     Result(PoolV1PairVerifierTransportErrorV1),
-    AfterstateIndexMismatch,
 }
 
 impl From<V6WireError> for V7StagedPairProfileErrorV1 {
     fn from(error: V6WireError) -> Self {
         Self::Wire(error)
+    }
+}
+
+impl From<PoolV1PairLatePublicStatementErrorV1> for V7StagedPairProfileErrorV1 {
+    fn from(error: PoolV1PairLatePublicStatementErrorV1) -> Self {
+        Self::LateStatement(error)
     }
 }
 
@@ -57,17 +77,32 @@ impl From<PoolV1PairVerifierTransportErrorV1> for V7StagedPairProfileErrorV1 {
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct ParsedV7StagedPairInputsV1<'a> {
     pub wire: V7StagedPairOneFoldWire<'a>,
-    pub live_snapshot: PoolV1PairLiveSnapshotV1,
+    pub late_statement: PoolV1PairLatePublicStatementV1,
 }
 
 pub fn parse_v7_staged_pair_inputs_v1<'a>(
-    proof: &'a [u8],
+    finalized_upload_payload: &'a [u8],
     frontier_nodes: usize,
-    live_snapshot: &[u8],
+    account_derived_live_snapshot: &[u8],
 ) -> Result<ParsedV7StagedPairInputsV1<'a>, V7StagedPairProfileErrorV1> {
+    if finalized_upload_payload.len() < V7_STAGED_PAIR_PROOF_METADATA_BYTES {
+        return Err(V7StagedPairProfileErrorV1::Wire(V6WireError::WrongLength));
+    }
+    let (candidate_bytes, proof) =
+        finalized_upload_payload.split_at(V7_STAGED_PAIR_PROOF_METADATA_BYTES);
+    let live_snapshot = decode_pool_v1_pair_live_snapshot_v1(account_derived_live_snapshot)?;
+    let candidate_afterstate = decode_pool_v1_pair_verified_afterstate_v1(candidate_bytes)?;
+    if live_snapshot.next_pair_index.checked_add(1) != Some(candidate_afterstate.next_pair_index) {
+        return Err(V7StagedPairProfileErrorV1::LateStatement(
+            PoolV1PairLatePublicStatementErrorV1::AfterstateIndexMismatch,
+        ));
+    }
     Ok(ParsedV7StagedPairInputsV1 {
         wire: V7StagedPairOneFoldWire::parse(proof, frontier_nodes)?,
-        live_snapshot: decode_pool_v1_pair_live_snapshot_v1(live_snapshot)?,
+        late_statement: PoolV1PairLatePublicStatementV1 {
+            live_snapshot,
+            candidate_afterstate,
+        },
     })
 }
 
@@ -80,16 +115,15 @@ pub(crate) struct AcceptedV7StagedPairAfterstateV1 {
 }
 
 /// Final source seam for the future full verifier. It checks the exact
-/// one-pair index transition; the caller must have checked every cryptographic
-/// equation before invoking it.
+/// public candidate bound before the C1 root; the caller must have checked every
+/// cryptographic equation before invoking it. One pair index step represents
+/// two commitment slots for a private transfer.
 pub(crate) fn accept_v7_staged_pair_after_full_verification_v1(
-    live_snapshot: &PoolV1PairLiveSnapshotV1,
-    afterstate: PoolV1PairVerifiedAfterstateV1,
-) -> Result<AcceptedV7StagedPairAfterstateV1, V7StagedPairProfileErrorV1> {
-    if live_snapshot.next_pair_index.checked_add(1) != Some(afterstate.next_pair_index) {
-        return Err(V7StagedPairProfileErrorV1::AfterstateIndexMismatch);
+    late_statement: &PoolV1PairLatePublicStatementV1,
+) -> AcceptedV7StagedPairAfterstateV1 {
+    AcceptedV7StagedPairAfterstateV1 {
+        afterstate: late_statement.candidate_afterstate,
     }
-    Ok(AcceptedV7StagedPairAfterstateV1 { afterstate })
 }
 
 pub(crate) fn encode_accepted_v7_staged_pair_result_v1(
@@ -101,7 +135,7 @@ pub(crate) fn encode_accepted_v7_staged_pair_result_v1(
 }
 
 /// The only return-data helper accepts the opaque post-verification token.
-/// No current instruction reaches it because the seven-lane verifier is not
+/// No current instruction reaches it because the merged-C1 pair verifier is not
 /// yet complete or registered.
 pub(crate) fn emit_accepted_v7_staged_pair_result_v1(
     accepted: AcceptedV7StagedPairAfterstateV1,
@@ -114,10 +148,10 @@ pub(crate) fn emit_accepted_v7_staged_pair_result_v1(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use aspis_core::{field::M31, v7_staged_pair::V7_STAGED_PAIR_MAX_BODY_BYTES};
+    use aspis_core::field::M31;
     use aspis_statement::pool_v1::{
-        encode_pool_v1_pair_live_snapshot_v1, POOL_V1_PAIR_LIVE_SNAPSHOT_BYTES,
-        POOL_V1_PAIR_TREE_DEPTH,
+        encode_pool_v1_pair_live_snapshot_v1, PoolV1PairLiveSnapshotV1,
+        POOL_V1_PAIR_LIVE_SNAPSHOT_BYTES, POOL_V1_PAIR_TREE_DEPTH,
     };
     use std::vec;
 
@@ -138,6 +172,14 @@ mod tests {
 
     #[test]
     fn staged_profile_is_fresh_and_parses_exact_maximum_grammar() {
+        assert_eq!(
+            solana_program::hash::hash(V7_STAGED_PAIR_PROFILE_BINDING_PREIMAGE).to_bytes(),
+            V7_STAGED_PAIR_PROFILE_BINDING
+        );
+        assert_eq!(
+            solana_program::hash::hash(V7_STAGED_PAIR_RELEASE_BINDING_PREIMAGE).to_bytes(),
+            V7_STAGED_PAIR_RELEASE_BINDING
+        );
         assert_ne!(
             V7_STAGED_PAIR_PROFILE_BINDING,
             crate::v7_pool_dispatch::V7_POOL_TAG73_PROFILE_BINDING
@@ -147,35 +189,58 @@ mod tests {
             crate::v7_transaction::V7_RELEASE_BINDING
         );
         let snapshot = snapshot();
+        let candidate_afterstate = PoolV1PairVerifiedAfterstateV1 {
+            next_pair_index: 74,
+            next_root: digest(500),
+            next_frontier: core::array::from_fn(|level| digest(600 + 10 * level as u32)),
+        };
+        let statement = PoolV1PairLatePublicStatementV1 {
+            live_snapshot: snapshot,
+            candidate_afterstate,
+        };
         let mut snapshot_bytes = [0u8; POOL_V1_PAIR_LIVE_SNAPSHOT_BYTES];
         encode_pool_v1_pair_live_snapshot_v1(&snapshot, &mut snapshot_bytes).unwrap();
-        let proof = vec![0u8; V7_STAGED_PAIR_MAX_BODY_BYTES];
-        let parsed = parse_v7_staged_pair_inputs_v1(&proof, 203, &snapshot_bytes).unwrap();
-        assert_eq!(parsed.live_snapshot, snapshot);
-        assert_eq!(parsed.wire.query(0).unwrap().c2_packed.len(), 434);
+        let mut upload = vec![0u8; V7_STAGED_PAIR_MAX_UPLOAD_PAYLOAD_BYTES];
+        upload[..V7_STAGED_PAIR_PROOF_METADATA_BYTES].copy_from_slice(
+            &encode_pool_v1_pair_verified_afterstate_v1(&candidate_afterstate).unwrap(),
+        );
+        let parsed = parse_v7_staged_pair_inputs_v1(&upload, 203, &snapshot_bytes).unwrap();
+        assert_eq!(parsed.late_statement, statement);
+        assert_eq!(parsed.wire.query(0).unwrap().c2_packed.len(), 186);
+
+        let accepted = accept_v7_staged_pair_after_full_verification_v1(&parsed.late_statement);
+        let encoded = encode_accepted_v7_staged_pair_result_v1(accepted).unwrap();
+        assert_eq!(encoded.len(), POOL_V1_PAIR_VERIFIED_AFTERSTATE_BYTES);
+        assert_eq!(&encoded[..], &upload[..V7_STAGED_PAIR_PROOF_METADATA_BYTES]);
+        assert_eq!(V7_STAGED_PAIR_MAX_UPLOAD_PAYLOAD_BYTES, 31_192);
+        assert_eq!(V7_STAGED_PAIR_MAX_PROOF_ACCOUNT_BYTES, 31_232);
+        assert_eq!(V7_STAGED_PAIR_TERMINAL_INSTRUCTION_METADATA_BYTES, 0);
+
+        let mut wrong_index = upload;
+        wrong_index[8..16].copy_from_slice(&75u64.to_le_bytes());
+        assert_eq!(
+            parse_v7_staged_pair_inputs_v1(&wrong_index, 203, &snapshot_bytes).err(),
+            Some(V7StagedPairProfileErrorV1::LateStatement(
+                PoolV1PairLatePublicStatementErrorV1::AfterstateIndexMismatch
+            ))
+        );
     }
 
     #[test]
-    fn result_capability_requires_exact_one_pair_index_step() {
+    fn result_capability_echoes_only_the_pre_root_candidate() {
         let snapshot = snapshot();
         let afterstate = PoolV1PairVerifiedAfterstateV1 {
             next_pair_index: 74,
             next_root: digest(500),
             next_frontier: core::array::from_fn(|level| digest(600 + 10 * level as u32)),
         };
-        let accepted =
-            accept_v7_staged_pair_after_full_verification_v1(&snapshot, afterstate).unwrap();
+        let statement = PoolV1PairLatePublicStatementV1 {
+            live_snapshot: snapshot,
+            candidate_afterstate: afterstate,
+        };
+        let accepted = accept_v7_staged_pair_after_full_verification_v1(&statement);
         let encoded = encode_accepted_v7_staged_pair_result_v1(accepted).unwrap();
         assert_eq!(encoded.len(), 688);
-
-        let wrong = PoolV1PairVerifiedAfterstateV1 {
-            next_pair_index: 75,
-            ..afterstate
-        };
-        assert_eq!(
-            accept_v7_staged_pair_after_full_verification_v1(&snapshot, wrong).err(),
-            Some(V7StagedPairProfileErrorV1::AfterstateIndexMismatch)
-        );
         assert_eq!(POOL_V1_PAIR_TREE_DEPTH, 20);
     }
 }

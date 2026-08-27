@@ -5,8 +5,8 @@
 //!
 //! * an empty second slot is algebraically distinguished from an occupied one;
 //! * the historical membership anchor is separate from the exact live append
-//!   snapshot, whose complete account-derived image is absorbed after the
-//!   Stage-A challenges; and
+//!   snapshot, whose complete account-derived image and candidate afterstate
+//!   are absorbed before the C1 root and batching challenges; and
 //! * the 1,024-row trace allocates exactly 976 semantic rows and retains the
 //!   deployed degree-27 cap.
 //!
@@ -20,6 +20,11 @@ use aspis_core::{
 
 use crate::{decode_digest_canonical, encode_digest_canonical, poseidon2::Digest};
 
+use super::{
+    decode_pool_v1_pair_verified_afterstate_v1, encode_pool_v1_pair_verified_afterstate_v1,
+    PoolV1PairVerifiedAfterstateV1, PoolV1PairVerifierTransportErrorV1,
+    POOL_V1_PAIR_VERIFIED_AFTERSTATE_BYTES,
+};
 use super::{pool_v1_tree_parent, POOL_V1_TREE_DEPTH};
 
 pub const POOL_V1_PAIR_TREE_STORAGE_FORMAT_VERSION: u8 = 1;
@@ -369,8 +374,22 @@ const _: () = assert!(POOL_V1_PAIR_MAX_DEPLOYED_DEGREE == 27);
 pub const POOL_V1_PAIR_LIVE_SNAPSHOT_MAGIC: [u8; 8] = *b"ASPLIVE1";
 pub const POOL_V1_PAIR_LIVE_SNAPSHOT_VERSION: u8 = 1;
 pub const POOL_V1_PAIR_LIVE_SNAPSHOT_BYTES: usize = 800;
-pub const POOL_V1_PAIR_LIVE_SNAPSHOT_TRANSCRIPT_DOMAIN: &[u8] =
-    b"aspis:pool-v1:pair-tree:late-live-snapshot:after-lambda-chi:v1";
+/// One canonical public record for the merged-bank pair profile. The old
+/// account image and candidate ASJA afterstate are bound before the C1 root
+/// and therefore before the copy-compression challenges.
+pub const POOL_V1_PAIR_LATE_PUBLIC_STATEMENT_MAGIC: [u8; 8] = *b"ASPLATE1";
+pub const POOL_V1_PAIR_LATE_PUBLIC_STATEMENT_VERSION: u8 = 1;
+pub const POOL_V1_PAIR_LATE_PUBLIC_STATEMENT_ITEM_COUNT: u8 = 2;
+pub const POOL_V1_PAIR_LATE_PUBLIC_STATEMENT_HEADER_BYTES: usize = 32;
+pub const POOL_V1_PAIR_LATE_PUBLIC_STATEMENT_BYTES: usize =
+    POOL_V1_PAIR_LATE_PUBLIC_STATEMENT_HEADER_BYTES
+        + POOL_V1_PAIR_LIVE_SNAPSHOT_BYTES
+        + POOL_V1_PAIR_VERIFIED_AFTERSTATE_BYTES;
+pub const POOL_V1_PAIR_PUBLIC_STATEMENT_TRANSCRIPT_DOMAIN: &[u8] =
+    b"aspis:pool-v1:pair-tree:public-statement:merged-c1:logical29:proof30504:pre-c1-root:v3";
+
+const _: () = assert!(POOL_V1_PAIR_VERIFIED_AFTERSTATE_BYTES == 688);
+const _: () = assert!(POOL_V1_PAIR_LATE_PUBLIC_STATEMENT_BYTES == 1_520);
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct PoolV1PairLiveSnapshotV1 {
@@ -380,6 +399,30 @@ pub struct PoolV1PairLiveSnapshotV1 {
     pub next_pair_index: u64,
     pub current_root: Digest,
     pub frontier: [Digest; POOL_V1_PAIR_TREE_DEPTH],
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct PoolV1PairLatePublicStatementV1 {
+    pub live_snapshot: PoolV1PairLiveSnapshotV1,
+    /// One appended pair advances the pair index by one even though a private
+    /// transfer fills two commitment slots (note indices `2i` and `2i+1`).
+    pub candidate_afterstate: PoolV1PairVerifiedAfterstateV1,
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum PoolV1PairLatePublicStatementErrorV1 {
+    WrongLength,
+    WrongMagic,
+    WrongVersion,
+    WrongItemCount,
+    WrongHeaderLength,
+    WrongSnapshotLength,
+    WrongAfterstateLength,
+    WrongTotalLength,
+    NonZeroReserved,
+    Snapshot(PoolV1PairLiveSnapshotErrorV1),
+    Afterstate(PoolV1PairVerifierTransportErrorV1),
+    AfterstateIndexMismatch,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -481,26 +524,112 @@ pub fn decode_pool_v1_pair_live_snapshot_v1(
     Ok(snapshot)
 }
 
-/// Consume the canonical late snapshot as one transcript record. The caller
-/// is the staged verifier's post-lambda/chi phase; C2 must be absorbed only
-/// after this function returns.
-pub fn absorb_pool_v1_pair_live_snapshot_after_lambda_chi_v1(
+pub fn encode_pool_v1_pair_late_public_statement_v1(
+    statement: &PoolV1PairLatePublicStatementV1,
+    output: &mut [u8],
+) -> Result<(), PoolV1PairLatePublicStatementErrorV1> {
+    if output.len() != POOL_V1_PAIR_LATE_PUBLIC_STATEMENT_BYTES {
+        return Err(PoolV1PairLatePublicStatementErrorV1::WrongLength);
+    }
+    if statement.live_snapshot.next_pair_index.checked_add(1)
+        != Some(statement.candidate_afterstate.next_pair_index)
+    {
+        return Err(PoolV1PairLatePublicStatementErrorV1::AfterstateIndexMismatch);
+    }
+    output.fill(0);
+    output[..8].copy_from_slice(&POOL_V1_PAIR_LATE_PUBLIC_STATEMENT_MAGIC);
+    output[8] = POOL_V1_PAIR_LATE_PUBLIC_STATEMENT_VERSION;
+    output[9] = POOL_V1_PAIR_LATE_PUBLIC_STATEMENT_ITEM_COUNT;
+    output[10..12]
+        .copy_from_slice(&(POOL_V1_PAIR_LATE_PUBLIC_STATEMENT_HEADER_BYTES as u16).to_le_bytes());
+    output[12..16].copy_from_slice(&(POOL_V1_PAIR_LIVE_SNAPSHOT_BYTES as u32).to_le_bytes());
+    output[16..20].copy_from_slice(&(POOL_V1_PAIR_VERIFIED_AFTERSTATE_BYTES as u32).to_le_bytes());
+    output[20..24]
+        .copy_from_slice(&(POOL_V1_PAIR_LATE_PUBLIC_STATEMENT_BYTES as u32).to_le_bytes());
+    encode_pool_v1_pair_live_snapshot_v1(
+        &statement.live_snapshot,
+        &mut output[32..32 + POOL_V1_PAIR_LIVE_SNAPSHOT_BYTES],
+    )
+    .map_err(PoolV1PairLatePublicStatementErrorV1::Snapshot)?;
+    let encoded_afterstate =
+        encode_pool_v1_pair_verified_afterstate_v1(&statement.candidate_afterstate)
+            .map_err(PoolV1PairLatePublicStatementErrorV1::Afterstate)?;
+    output[32 + POOL_V1_PAIR_LIVE_SNAPSHOT_BYTES..].copy_from_slice(&encoded_afterstate);
+    Ok(())
+}
+
+pub fn decode_pool_v1_pair_late_public_statement_v1(
+    bytes: &[u8],
+) -> Result<PoolV1PairLatePublicStatementV1, PoolV1PairLatePublicStatementErrorV1> {
+    if bytes.len() != POOL_V1_PAIR_LATE_PUBLIC_STATEMENT_BYTES {
+        return Err(PoolV1PairLatePublicStatementErrorV1::WrongLength);
+    }
+    if bytes[..8] != POOL_V1_PAIR_LATE_PUBLIC_STATEMENT_MAGIC {
+        return Err(PoolV1PairLatePublicStatementErrorV1::WrongMagic);
+    }
+    if bytes[8] != POOL_V1_PAIR_LATE_PUBLIC_STATEMENT_VERSION {
+        return Err(PoolV1PairLatePublicStatementErrorV1::WrongVersion);
+    }
+    if bytes[9] != POOL_V1_PAIR_LATE_PUBLIC_STATEMENT_ITEM_COUNT {
+        return Err(PoolV1PairLatePublicStatementErrorV1::WrongItemCount);
+    }
+    if u16::from_le_bytes(bytes[10..12].try_into().unwrap()) as usize
+        != POOL_V1_PAIR_LATE_PUBLIC_STATEMENT_HEADER_BYTES
+    {
+        return Err(PoolV1PairLatePublicStatementErrorV1::WrongHeaderLength);
+    }
+    if u32::from_le_bytes(bytes[12..16].try_into().unwrap()) as usize
+        != POOL_V1_PAIR_LIVE_SNAPSHOT_BYTES
+    {
+        return Err(PoolV1PairLatePublicStatementErrorV1::WrongSnapshotLength);
+    }
+    if u32::from_le_bytes(bytes[16..20].try_into().unwrap()) as usize
+        != POOL_V1_PAIR_VERIFIED_AFTERSTATE_BYTES
+    {
+        return Err(PoolV1PairLatePublicStatementErrorV1::WrongAfterstateLength);
+    }
+    if u32::from_le_bytes(bytes[20..24].try_into().unwrap()) as usize
+        != POOL_V1_PAIR_LATE_PUBLIC_STATEMENT_BYTES
+    {
+        return Err(PoolV1PairLatePublicStatementErrorV1::WrongTotalLength);
+    }
+    if bytes[24..32].iter().any(|byte| *byte != 0) {
+        return Err(PoolV1PairLatePublicStatementErrorV1::NonZeroReserved);
+    }
+    let live_snapshot =
+        decode_pool_v1_pair_live_snapshot_v1(&bytes[32..32 + POOL_V1_PAIR_LIVE_SNAPSHOT_BYTES])
+            .map_err(PoolV1PairLatePublicStatementErrorV1::Snapshot)?;
+    let candidate_afterstate =
+        decode_pool_v1_pair_verified_afterstate_v1(&bytes[32 + POOL_V1_PAIR_LIVE_SNAPSHOT_BYTES..])
+            .map_err(PoolV1PairLatePublicStatementErrorV1::Afterstate)?;
+    if live_snapshot.next_pair_index.checked_add(1) != Some(candidate_afterstate.next_pair_index) {
+        return Err(PoolV1PairLatePublicStatementErrorV1::AfterstateIndexMismatch);
+    }
+    Ok(PoolV1PairLatePublicStatementV1 {
+        live_snapshot,
+        candidate_afterstate,
+    })
+}
+
+/// Bind one complete framed statement before the C1 root and before lambda
+/// and chi. No late trace commitment may be selected between this call and
+/// those challenges in the merged-bank profile.
+pub fn absorb_pool_v1_pair_public_statement_before_c1_root_v1(
     transcript: &mut Transcript,
     bytes: &[u8],
-) -> Result<PoolV1PairLiveSnapshotV1, PoolV1PairLiveSnapshotErrorV1> {
-    let snapshot = decode_pool_v1_pair_live_snapshot_v1(bytes)?;
+) -> Result<PoolV1PairLatePublicStatementV1, PoolV1PairLatePublicStatementErrorV1> {
+    let statement = decode_pool_v1_pair_late_public_statement_v1(bytes)?;
     transcript.absorb_two(
         label::V7_PAIR_LIVE_APPEND_SNAPSHOT,
-        POOL_V1_PAIR_LIVE_SNAPSHOT_TRANSCRIPT_DOMAIN,
+        POOL_V1_PAIR_PUBLIC_STATEMENT_TRANSCRIPT_DOMAIN,
         bytes,
     );
-    Ok(snapshot)
+    Ok(statement)
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use alloc::vec::Vec;
     use sha2::{Digest as _, Sha256};
 
     fn sha256(inputs: &[&[u8]]) -> [u8; 32] {
@@ -623,33 +752,93 @@ mod tests {
         );
     }
 
-    #[test]
-    fn late_snapshot_absorption_is_one_exact_post_challenge_record() {
-        let snapshot = PoolV1PairLiveSnapshotV1 {
-            pool: [1u8; 32],
-            deployment_domain: [2u8; 32],
-            sequence: 73,
-            next_pair_index: 73,
-            current_root: digest(300),
-            frontier: core::array::from_fn(|level| digest(400 + 10 * level as u32)),
-        };
-        let mut encoded = [0u8; POOL_V1_PAIR_LIVE_SNAPSHOT_BYTES];
-        encode_pool_v1_pair_live_snapshot_v1(&snapshot, &mut encoded).unwrap();
-
-        let mut staged = Transcript::new(sha256);
-        staged.absorb(label::PROFILE, b"staged-pair-test");
-        let _lambda = staged.challenge_qm31().unwrap();
-        let _chi = staged.challenge_qm31().unwrap();
-        let mut concatenated = Vec::from(POOL_V1_PAIR_LIVE_SNAPSHOT_TRANSCRIPT_DOMAIN);
-        concatenated.extend_from_slice(&encoded);
-        let mut reference = staged.clone();
-        reference.absorb(label::V7_PAIR_LIVE_APPEND_SNAPSHOT, &concatenated);
-
-        assert_eq!(
-            absorb_pool_v1_pair_live_snapshot_after_lambda_chi_v1(&mut staged, &encoded),
-            Ok(snapshot)
-        );
-        assert_eq!(staged.diagnostic_state(), reference.diagnostic_state());
+    fn late_statement() -> PoolV1PairLatePublicStatementV1 {
+        PoolV1PairLatePublicStatementV1 {
+            live_snapshot: PoolV1PairLiveSnapshotV1 {
+                pool: [1u8; 32],
+                deployment_domain: [2u8; 32],
+                sequence: 73,
+                next_pair_index: 73,
+                current_root: digest(300),
+                frontier: core::array::from_fn(|level| digest(400 + 10 * level as u32)),
+            },
+            candidate_afterstate: PoolV1PairVerifiedAfterstateV1 {
+                next_pair_index: 74,
+                next_root: digest(700),
+                next_frontier: core::array::from_fn(|level| digest(800 + 10 * level as u32)),
+            },
+        }
     }
 
+    fn merged_c1_transcript(bytes: &[u8]) -> [u8; 32] {
+        let mut transcript = Transcript::new(sha256);
+        transcript.absorb(label::PROFILE, b"merged-c1-pair-public-statement-kat");
+        absorb_pool_v1_pair_public_statement_before_c1_root_v1(&mut transcript, bytes).unwrap();
+        transcript.absorb(label::ROOT, &[0x51; 26]);
+        let _lambda = transcript.challenge_qm31().unwrap();
+        let _chi = transcript.challenge_qm31().unwrap();
+        transcript.diagnostic_state()
+    }
+
+    #[test]
+    fn pair_public_statement_layout_roundtrip_and_pre_root_transcript_kat() {
+        let statement = late_statement();
+        let mut encoded = [0u8; POOL_V1_PAIR_LATE_PUBLIC_STATEMENT_BYTES];
+        encode_pool_v1_pair_late_public_statement_v1(&statement, &mut encoded).unwrap();
+        assert_eq!(&encoded[..8], b"ASPLATE1");
+        assert_eq!(encoded[8], 1);
+        assert_eq!(encoded[9], 2);
+        assert_eq!(u16::from_le_bytes(encoded[10..12].try_into().unwrap()), 32);
+        assert_eq!(u32::from_le_bytes(encoded[12..16].try_into().unwrap()), 800);
+        assert_eq!(u32::from_le_bytes(encoded[16..20].try_into().unwrap()), 688);
+        assert_eq!(
+            u32::from_le_bytes(encoded[20..24].try_into().unwrap()),
+            1_520
+        );
+        assert_eq!(&encoded[32..40], b"ASPLIVE1");
+        assert_eq!(&encoded[832..836], b"ASJA");
+        assert_eq!(
+            decode_pool_v1_pair_late_public_statement_v1(&encoded),
+            Ok(statement)
+        );
+        assert_eq!(
+            merged_c1_transcript(&encoded),
+            [
+                0x79, 0x1c, 0x2c, 0x21, 0x1e, 0x9d, 0x84, 0x07, 0x39, 0x24, 0x95, 0xbc, 0xf1, 0x56,
+                0xc3, 0xad, 0x4b, 0x73, 0x32, 0x84, 0x49, 0xd2, 0xbb, 0xbe, 0x2a, 0xb4, 0x37, 0x04,
+                0xfc, 0x1b, 0x45, 0x66,
+            ],
+        );
+    }
+
+    #[test]
+    fn late_public_statement_single_byte_mutations_are_rejected_or_rebound() {
+        let mut encoded = [0u8; POOL_V1_PAIR_LATE_PUBLIC_STATEMENT_BYTES];
+        encode_pool_v1_pair_late_public_statement_v1(&late_statement(), &mut encoded).unwrap();
+        let baseline = merged_c1_transcript(&encoded);
+
+        let mut header = encoded;
+        header[0] ^= 1;
+        assert_eq!(
+            decode_pool_v1_pair_late_public_statement_v1(&header),
+            Err(PoolV1PairLatePublicStatementErrorV1::WrongMagic)
+        );
+
+        let mut old_snapshot = encoded;
+        old_snapshot[32 + 48] ^= 1;
+        assert!(decode_pool_v1_pair_late_public_statement_v1(&old_snapshot).is_ok());
+        assert_ne!(merged_c1_transcript(&old_snapshot), baseline);
+
+        let mut afterstate = encoded;
+        afterstate[832 + 16] ^= 1;
+        assert!(decode_pool_v1_pair_late_public_statement_v1(&afterstate).is_ok());
+        assert_ne!(merged_c1_transcript(&afterstate), baseline);
+
+        let mut afterstate_envelope = encoded;
+        afterstate_envelope[832] ^= 1;
+        assert!(matches!(
+            decode_pool_v1_pair_late_public_statement_v1(&afterstate_envelope),
+            Err(PoolV1PairLatePublicStatementErrorV1::Afterstate(_))
+        ));
+    }
 }

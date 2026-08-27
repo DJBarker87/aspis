@@ -233,9 +233,9 @@ pub mod label {
     /// V7 program identity and compact-release binding.  This is distinct
     /// from V6 even though the semantic/relation labels remain shared.
     pub const V7_DEPLOYMENT_CONTEXT: u8 = 60;
-    /// Conservative staged-pair profile's canonical live append snapshot.
-    /// The record is absorbed after lambda/chi and before the seven-lane C2
-    /// root; the profile-specific domain string precedes the 800-byte image.
+    /// Merged-C1 pair profile's canonical old-snapshot and candidate-ASJA
+    /// record. The profile-specific domain and complete 1,520-byte record are
+    /// absorbed before the C1 root and before lambda/chi.
     pub const V7_PAIR_LIVE_APPEND_SNAPSHOT: u8 = 61;
 }
 
