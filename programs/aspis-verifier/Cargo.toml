@@ -92,6 +92,13 @@ v7-pair-forest-fixed-canonical-exact-once-audit = [
     "v7-pair-forest-fixed-canonical-audit",
     "aspis-core/v7-fixed-canonical-exact-once-audit",
 ]
+# Audit-only exact linear factoring inside the selected semantic terminal.
+# Four digest residual lanes are packed before their shared row selector is
+# applied. Wire bytes, transcript order, theta lanes, and relation parameters
+# are unchanged; released/default builds do not enable this experiment.
+v7-pair-forest-packed-digest-audit = [
+    "aspis-statement/pool-v1-pair-forest-packed-digest-audit",
+]
 # Adds compute-unit checkpoints to the selected pair-forest verifier without
 # changing its wire, transcript, arithmetic, work, q16, or Merkle schedule.
 # Use only for matched diagnostic builds; marker calls inflate total CU.
