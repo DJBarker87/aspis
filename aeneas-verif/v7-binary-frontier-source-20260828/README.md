@@ -239,6 +239,17 @@ at 6,912,424 KiB RSS, used zero swap, and reported only the standard axiom set.
 The intentionally unclaimed next step remains the recursive translated-wrapper
 composition using this current-local equality.
 
+`V7FirstCompactSamplerNativeBlockBridge` closes the underlying dependent-array
+type seam without coercing or assuming equality between separately elaborated
+length proofs. It extracts the exact 32-byte block type from the translated
+production transcript field, constructs its literal four-byte chunks, and
+proves the resulting little-endian words, 18-bit q16 candidates, eight-word
+candidate list, and iterator validity equal the K1.3 definitions. Focused NUC
+unit `aspis-v7-q16-native-block-09` exited 0 in 2.92 seconds, peaked at
+6,873,344 KiB RSS, and used zero swap. Every printed endpoint depends only on
+`propext`, `Classical.choice`, and `Quot.sound`; no `sorryAx` or project axiom
+is present. Recursive outer-loop composition remains the next unclaimed step.
+
 ## Digests
 
 ```text
@@ -265,6 +276,7 @@ f21af0ef7f2362c62acb2dfa992c29d31f006aa5b13d788b64752b95d2f033bf  caller/proof/V
 128ac3fb23f46ae234b6472c78c27b938b458933d102cdc9be1c5cab8dbb85f4  caller/proof/V7FirstCompactSamplerInnerBridge.lean
 38a125601298e71ccb2c28f16a9ab222ce377f606f24e3ddfd84b30c040d0e20  caller/proof/V7FirstCompactSamplerLoop16Bridge.lean
 92accefcb0d123584e5007b45427eb44c6e31ad65e314a0b1c3d76e0d5cfbea5  caller/proof/V7FirstCompactSamplerOuterBridge.lean
+193449a7a8bcd5b94cf094879f8e9be3307719f67d7b772441d7b0580b7c515a  caller/proof/V7FirstCompactSamplerNativeBlockBridge.lean
 6abb0376100611c5553258062480777187785579f402c9c1d3ce72379518258f  ../../crates/aspis-core/src/v7_onefold.rs
 ```
 
