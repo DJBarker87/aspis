@@ -183,13 +183,47 @@ exact_operational_root_has_q16_history_alignment
 exact_operational_verifier_history_is_table_covered
 ```
 
-The focused NUC replay passed 9,000 jobs in 6.17 seconds with 6,912,168 KiB
-maximum RSS, zero swap and the standard axiom union only. Thus the generic
-history-coverage premise is discharged for the actual projected root. What
-remains is occurrence/routing: literal candidate and squeeze pairs must be
-located in that history, and an adversary-first query followed by a verifier
-cache hit must be handled by the source-anchored cached-coordinate replay. It
-would be unsound to classify that cache hit as a fresh verifier answer.
+The adversary-first cache obstruction is now closed at the executable
+coordinate layer. `V7Tag73ExactCompilerQ16CoordinateStep` proves that the q16
+and gamma replay cursors are losslessly isomorphic and transports the already
+proved source-anchored cache-or-future theorem to q16:
+
+```text
+consume_q16_coordinate_ok_iff_gamma
+exact_compiler_actual_q16_coordinate_step
+```
+
+A q16 value created first by the adversary is therefore consumed as an
+immutable cache hit. It is not relabelled as a fresh verifier query and no
+freshness probability is charged.
+
+`V7Tag73ActualQ16InitialDigest` now also retains the exact ledger inclusion of
+the chosen candidate execution. Using that fact,
+`V7Tag73ExactCompilerQ16BranchCoordinates` derives, for every candidate through
+the selected counter, the literal output and advance halves, their exact table
+recurrence, deployed block count and checked decoder result. Its strongest
+endpoint is:
+
+```text
+exact_operational_q16_branch_coordinates_exist
+```
+
+The focused NUC replay passed under a 12/16 GiB no-swap cgroup:
+
+```text
+unit: aspis-v7-q16-branch-coordinates-04
+invocation: ea4b15cc79444923a39a1de6ed10a10b
+result: PASS (9,035 jobs; dependencies cached)
+wall: 8.51 seconds
+maximum RSS: 6,940,704 KiB
+swap: 0
+axiom union: propext, Classical.choice, Quot.sound
+```
+
+The remaining K1.3 step is now composition rather than source causality:
+induct the coordinate theorem across the exact branch list, identify its
+output rectangle with the successful q16 forest and instantiate the existing
+q16 measure bound.
 
 ## K1.5 gamma actual-source alignment
 
@@ -208,9 +242,10 @@ inclusion remain explicit gates.
 
 ## Remaining end-to-end proof gates
 
-1. K1.3: compose the literal q16 callback history with the online routed forest
-   and discharge the causal `covered` inclusion; then close the one-fold,
-   joint-query batch and later-alpha actual-law inequalities.
+1. K1.3: induct the source-anchored coordinate step across the exact q16 branch
+   list, identify the resulting output rectangle with the successful forest,
+   and close the one-fold, joint-query batch and later-alpha actual-law
+   inequalities.
 2. K1.4: instantiate the width-29 variable-prefix causal law on the exact
    compiler/source execution.
 3. K1.5: instantiate the eight fixed event inclusions and the restored-gamma

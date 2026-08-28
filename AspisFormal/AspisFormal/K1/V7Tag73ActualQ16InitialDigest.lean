@@ -45,6 +45,34 @@ theorem run_discarded_candidates_exposes_member_execution
         exact ⟨state, afterHead, headRun⟩
       · exact ih (state := restoreDigest base afterHead) restRun tailMember
 
+/-- The exposed discarded-branch result is retained in the completed q16
+prefix.  This strengthens the execution witness without changing the
+production run or selecting a second candidate occurrence. -/
+theorem run_discarded_candidates_exposes_member_execution_included
+    (table : FixedOracleTable) (base : Digest256)
+    (specs : List CandidateSpec) (state final : EvalState)
+    (run : runDiscardedCandidates table base specs state = some final)
+    (spec : CandidateSpec) (member : spec ∈ specs) :
+    ∃ before after,
+      runCandidate table before spec = some after ∧
+      CandidatesIncluded after final := by
+  induction specs generalizing state with
+  | nil => simp at member
+  | cons head rest ih =>
+      rw [runDiscardedCandidates] at run
+      obtain ⟨afterHead, headRun, restRun⟩ :=
+        Option.bind_eq_some_iff.mp run
+      rcases List.mem_cons.mp member with equal | tailMember
+      · subst spec
+        refine ⟨state, afterHead, headRun, ?_⟩
+        have included := run_discarded_candidates_preserves_prior_candidates
+          table base rest (restoreDigest base afterHead) final restRun
+        intro record recordMember
+        exact included record (by
+          change record ∈ afterHead.candidates
+          exact recordMember)
+      · exact ih (state := restoreDigest base afterHead) restRun tailMember
+
 /-- Membership in the complete q16 plan exposes the corresponding literal
 candidate execution, whether discarded or selected. -/
 theorem run_q16_exposes_member_execution
@@ -63,15 +91,41 @@ theorem run_q16_exposes_member_execution
     subst spec
     exact ⟨beforeSelected, final, selectedRun⟩
 
+/-- The literal member execution also carries its exact candidate ledger into
+the completed q16 state. -/
+theorem run_q16_exposes_member_execution_included
+    (table : FixedOracleTable) (state final : EvalState) (tape : Q16Tape)
+    (run : runQ16 table state tape = some final)
+    (spec : CandidateSpec) (member : spec ∈ tape.earlier ++ [tape.selected]) :
+    ∃ before after,
+      runCandidate table before spec = some after ∧
+      CandidatesIncluded after final := by
+  rw [runQ16] at run
+  obtain ⟨beforeSelected, earlierRun, selectedRun⟩ :=
+    Option.bind_eq_some_iff.mp run
+  rcases List.mem_append.mp member with earlierMember | selectedMember
+  · obtain ⟨before, after, candidateRun, includedEarlier⟩ :=
+      run_discarded_candidates_exposes_member_execution_included table
+        state.digest tape.earlier state beforeSelected earlierRun spec
+        earlierMember
+    have includedSelected := run_candidate_preserves_prior_candidates table
+      beforeSelected final tape.selected selectedRun
+    exact ⟨before, after, candidateRun, fun record recordMember =>
+      includedSelected record (includedEarlier record recordMember)⟩
+  · have equal : spec = tape.selected := by simpa using selectedMember
+    subst spec
+    exact ⟨beforeSelected, final, selectedRun, fun _ member => member⟩
+
 /-- Literal production evidence for one source q16 branch. -/
 structure ActualQ16InitialDigestWitness
     (table : FixedOracleTable) (counter : Fin 64)
-    (outcome : CandidateOutcome) where
+    (outcome : CandidateOutcome) (afterQ16 : EvalState) where
   before : EvalState
   after : EvalState
   afterCounter : EvalState
   candidateRun : runCandidate table before
     { counter := counter, outcome := outcome } = some after
+  afterIncluded : CandidatesIncluded after afterQ16
   absorbRun : absorbStep table before (.queryCandidate counter) =
     some afterCounter
   firstAnswer : Digest256
@@ -88,15 +142,15 @@ theorem accepted_q16_run_exposes_initial_digest
     (counter : Fin 64)
     (beforeSelected : counter.val ≤ search.selectedCounter.val) :
     Nonempty (ActualQ16InitialDigestWitness table counter
-      (search.outcome counter)) := by
+      (search.outcome counter) afterQ16) := by
   let spec : CandidateSpec :=
     { counter := counter, outcome := search.outcome counter }
   have member : spec ∈
       (q16TapeOfSearch search).earlier ++ [(q16TapeOfSearch search).selected] := by
     simpa [spec, q16SpecsOfSearch, q16TapeOfSearch] using
       source_spec_mem_q16_plan search counter beforeSelected
-  obtain ⟨before, after, candidateRun⟩ :=
-    run_q16_exposes_member_execution table state afterQ16
+  obtain ⟨before, after, candidateRun, afterIncluded⟩ :=
+    run_q16_exposes_member_execution_included table state afterQ16
       (q16TapeOfSearch search) run spec member
   obtain ⟨afterCounter, blocks, afterBlocks, absorbRun, squeezeRun,
       _afterExact, _lengthExact, _recordMember⟩ :=
@@ -110,6 +164,7 @@ theorem accepted_q16_run_exposes_initial_digest
     after := after
     afterCounter := afterCounter
     candidateRun := by simpa [spec] using candidateRun
+    afterIncluded := afterIncluded
     absorbRun := by simpa [spec] using absorbRun
     firstAnswer := answer
     firstOutputLookup := by simpa [q16OutputInput] using found }⟩
@@ -169,7 +224,9 @@ theorem accepted_q16_initial_digest_first_output_lookup
   exact ⟨witness.firstAnswer, witness.firstOutputLookup⟩
 
 #print axioms run_discarded_candidates_exposes_member_execution
+#print axioms run_discarded_candidates_exposes_member_execution_included
 #print axioms run_q16_exposes_member_execution
+#print axioms run_q16_exposes_member_execution_included
 #print axioms accepted_q16_run_exposes_initial_digest
 #print axioms accepted_q16_initial_digest_has_literal_candidate_run
 #print axioms accepted_q16_initial_digest_first_output_lookup
