@@ -244,7 +244,8 @@ theorem exact_compiler_constructs_successful_gamma_prefix_coordinates
       fixedInstance sample) :
     ∃ (beforeGamma afterBlocks : EvalState)
       (outputs advances : List Digest256)
-      (flat : SuccessfulGammaPrefixTape) (decoded : OrdinaryPrefixDecode),
+      (flat : SuccessfulGammaPrefixTape) (decoded consumedDecoded : OrdinaryPrefixDecode)
+      (consumedValue : QM31Exact),
       outputs.length =
           ((exactOperationalTape input).messages.challengeUse .gamma).blocksUsed ∧
       advances.length = outputs.length ∧
@@ -256,6 +257,10 @@ theorem exact_compiler_constructs_successful_gamma_prefix_coordinates
           outputs advances ∧
       (gammaOutputBlocks flat.1).take outputs.length = outputs ∧
       (List.ofFn flat.1.2).take advances.length = advances ∧
+      decodeNonzeroPrefix 3 outputs = some consumedDecoded ∧
+      decodeTagQM31ExactLE consumedDecoded.value = some consumedValue ∧
+      consumedDecoded.value =
+        (exactOperationalTape input).messages.challengeValue .gamma ∧
       runGammaPrefix flat.1 = some decoded ∧
       decoded.value =
         (exactOperationalTape input).messages.challengeValue .gamma ∧
@@ -402,10 +407,12 @@ theorem exact_compiler_constructs_successful_gamma_prefix_coordinates
     rw [← routedDecode]
     simpa [appendOrdinaryRemaining, decodedValue] using exactDecode
   refine ⟨beforeGamma, afterBlocks, outputs, advances, flat,
-    appendOrdinaryRemaining decoded unreadOutputs, outputsLength,
-    advancesLength, coordinates, callsExact, outputPrefix, ?_, flatRun, ?_, ?_⟩
+    appendOrdinaryRemaining decoded unreadOutputs, decoded, exactValue,
+    outputsLength, advancesLength, coordinates, callsExact, outputPrefix, ?_,
+    prefixRun, ?_, decodedValue, flatRun, ?_, ?_⟩
   · exact total_gamma_tape_advance_prefix outputs advances (zeroBytes 32)
       (zeroBytes 32) advancesWithin
+  · simpa [decodedValue] using exactDecode
   · simpa [appendOrdinaryRemaining] using decodedValue
   · exact operationalValue.trans routedValue.symm
 
@@ -437,9 +444,11 @@ theorem exact_compiler_consumed_gamma_coordinates_occur
             (.machineFresh actor target answer : UnifiedExposureRecord) ∈
               (runExactPlainRom transitionFuel configuration sample).trace := by
   obtain ⟨beforeGamma, afterBlocks, outputs, advances, flat, decoded,
+      consumedDecoded, consumedValue,
       outputsLength,
       advancesLength, coordinates, callsExact, outputPrefix, advancePrefix,
-      flatRun, decodedValue, routedValue⟩ :=
+      consumedRun, consumedValueRun, consumedDecodedValue, flatRun,
+      decodedValue, routedValue⟩ :=
     exact_compiler_constructs_successful_gamma_prefix_coordinates input
   refine ⟨beforeGamma.digest, outputs, advances, coordinates, outputsLength,
     ?_⟩
@@ -480,9 +489,11 @@ theorem exact_compiler_constructs_routed_gamma_with_first_pause
       exactCompilerFullTargetScan input (gammaOutputInput initialDigest) =
         .paused pause := by
   obtain ⟨beforeGamma, afterBlocks, outputs, advances, flat, decoded,
+      consumedDecoded, consumedValue,
       outputsLength,
       advancesLength, coordinates, callsExact, outputPrefix, advancePrefix,
-      flatRun, decodedValue, routedValue⟩ :=
+      consumedRun, consumedValueRun, consumedDecodedValue, flatRun,
+      decodedValue, routedValue⟩ :=
     exact_compiler_constructs_successful_gamma_prefix_coordinates input
   have outputsPositive : 0 < outputs.length := by
     rw [outputsLength]
