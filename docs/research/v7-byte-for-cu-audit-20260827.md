@@ -7,21 +7,28 @@ proof-system security parameter, or network state has been changed.
 
 ## Decision status
 
-**NO DECISION — NEED REAL COMBINED CU FIRST**
+**SPEND PROOF BYTES FOR CU**
 
 This is an interim status, not the final recommendation. The masking-rank gate
 has passed and the frozen strict-work host KAT now proves
 `ASQ8 -> ASF8 -> Tag-73 -> ASR8` using an honest 30,400-byte proof with exact
 35/31/34-bit work checks and a 792-byte ASR8. A real
-combined SBF harness also now executes Pool pre-CPI validation and enters the
-selected verifier. It does **not** yet complete: a populated 13-pair selected
-lane leaves exactly 845,470 CU at selected-verifier entry and exhausts the
-exact 1,400,000-CU transaction cap with rollback. A populated zero/min-frontier
-proof control enters with 845,508 CU and also exhausts exactly 1,400,000 CU,
-locating the immediate blocker before proof-length-dependent work. Empty-lane
-entry leaves 1,317,507 CU. Until populated-state Pool work is reduced and the
-complete transaction lands, no success CU or Variant 0/1/C Pareto winner
-exists.
+combined SBF harness now completes the entire true-TxV1 Pool-to-verifier path,
+returns and validates the exact 792-byte ASR8, mutates the selected lane and
+nullifier atomically, and checks byte-exact readonly preservation.  On the
+same executable path the unchanged verifier costs 3,008,600 CU; the two
+source-backed Pool invariant fast paths reduce that to 2,069,373 CU.  The
+corrected exact-once canonical fixed-section representation then reduces the
+same strict transaction to 1,912,443 CU using a 30,720-byte proof. Full ASF8
+has been measured independently and is strictly dominated. The selected
+source-invariant and exact-arithmetic stack now completes the entire strict
+transaction at **1,376,652 CU under the exact 1,400,000-CU limit**, leaving
+23,348 CU. The harness true-TxV1 packet is 799 bytes, the exact ASR8 is 792
+bytes, and all 35/31/34-bit work checks execute. This selects proof bytes, not
+transaction or return-data bytes. Production activation remains blocked on
+immutable mainnet Pool/registry/policy constants and the new source/formal
+bridges; withdrawal, rollover, adversarial lifecycle and devnet are separate
+release gates.
 
 ## 1. Frozen baseline
 
@@ -125,32 +132,47 @@ Evidence classes used throughout this audit:
 | Empty-lane combined Pool -> selected verifier entry | MEASURED REAL CU (incomplete) | 82,493 CU before CPI; 1,317,507 remaining | Real combined SBF transaction and account path. It establishes entry budget, not acceptance or total successful CU. |
 | Populated 13-pair honest lane combined attempt | MEASURED REAL CU (failed/rollback) | 554,530 CU before CPI; exactly 1,400,000 exhausted | Real 30,140-byte honest unmined proof under strict production `check_work=true`; selected verifier entered with 845,470 CU, no result returned, exact rollback. Logs do not identify a later verifier phase. |
 | Populated 13-pair zero/min-frontier control | MEASURED REAL CU (failed/rollback) | 554,492 CU before CPI; exactly 1,400,000 exhausted | Selected verifier entered with 845,508 CU and exhausted. This pins the populated prefix independently of proof length/content; it is not cryptographic acceptance. |
+| Fair complete Variant 0 | MEASURED REAL CU | 3,008,600 | One true-TxV1 transaction completes compact ASQ8, strict Tag-73 verification, exact ASR8 validation, selected-lane/history/nullifier settlement and readonly checks. This measurement uses the same revision and harness as the variants below. |
+| Source invariant decoder | MEASURED REAL CU | 2,538,942 | Same complete transaction; removes only redundant active root reconstruction from a fresh initialized Pool-owned lane image. Saves 469,658 CU. |
+| Source + authenticated-result invariant encoder | MEASURED REAL CU | 2,069,373 | Same complete transaction; additionally avoids reconstructing the verifier-authenticated result root a second time. Saves 939,227 CU from Variant 0. |
+| Corrected exact-once canonical fixed section | MEASURED REAL CU | **1,912,443** | Same source/result invariant path and exact settlement, with 641 fixed QM31 values canonical in the proof. Fixed limbs are consumed once by the canonical reader and query limbs once by the opening decoder. Proof is 30,720 B (+320); transaction is unchanged; saves 156,930 CU from the invariant Variant 0. |
+| Full authenticated ASF8 | MEASURED REAL CU | 2,082,274 | Same strict source/result-invariant path and 30,400-byte proof; complete authenticated fieldwise equality, verifier, 792-byte ASR8 and exact settlement. Verifier CPI is 1,975,765 CU and the harness true-TxV1 packet is 2,359 B. This is +12,901 total CU, +5,179 verifier CU and +1,560 Tx bytes versus matched ASQ8. |
+| Hardened verifier lane invariant | MEASURED REAL CU | 1,452,893 | Six-account CPI independently authenticates the pinned Pool/registry/policy release root and canonical entry before consuming the fresh-PDA lane invariant. Saves 459,550 CU from 1,912,443. Current pinned IDs are audit fixtures, not production activation. |
+| Packed public-digest selectors | MEASURED REAL CU | 1,409,554 | Exact linear factorization packs four digest differences before multiplying by their shared selector. Same relation, transcript and wire; saves 43,339 CU. |
+| Direct canonical ASR8 reuse | MEASURED REAL CU | 1,400,108 | Pool reuses verifier-authenticated canonical result bytes and checks the same fieldwise binding instead of rebuilding the encoding; saves 9,446 CU. |
+| Binary copy weights | MEASURED REAL CU | **1,386,744** | Generated copy weights are proved to be exactly 0/1; the accumulator skips/adds while values remain accumulated unconditionally. Saves 13,364 CU. Exact strict 1.4M execution succeeds with 13,256 CU headroom. |
+| Endpoint selector cache | MEASURED REAL CU | **1,376,652** | Exact-tag common-subexpression cache replaces 56 of 272 endpoint selector recomputations; collisions miss and recompute. Saves another 10,092 CU, with the same 799-byte TxV1 harness packet, 30,720-byte proof and 792-byte ASR8. Exact strict 1.4M execution succeeds with 23,348 CU headroom. |
 
-The 1,255,491 and 81,922 results must not be added and presented as exact
-combined CU. The new failed combined attempt is more informative: its
-populated-lane pre-CPI path consumes 554,530 CU. Byte-for-CU work
-must first target that state-dependent Pool path, because ASQ8/ASF8 codec
-micro-optimisation cannot rescue a transaction that reaches the verifier with
-only 845,470 CU.
+The 1,255,491 and 81,922 historical component results must not be added and
+presented as exact combined CU.  The new 3,008,600 / 2,538,942 / 2,069,373 /
+1,912,443 figures are different: each is a complete matched executable path.
+They supersede the earlier failed-entry measurements for Pareto decisions.
 
 ## 4. Instrumented one-terminal CU breakdown
 
-This table is populated only with executable checkpoints. Forest-specific
-transport instrumentation is default-off and cannot be called cryptographic
-acceptance until the real ASQ8 handler exists.
+This table is populated only with executable checkpoints. The corrected-VC
+strict profiler measured 1,921,654 CU versus 1,912,443 uninstrumented, so the
+checkpoint overhead is 9,211 CU; phase deltas below are used for attribution,
+while release totals use uninstrumented binaries.
 
 | Category | Current evidence | Classification | Variant deltas |
 | --- | ---: | --- | ---: |
 | ASQ8 parse | included before first marker | MEASURED COMPONENT CU | no material byte-for-CU candidate identified; deprioritized behind populated-lane pre-CPI work |
-| account/registry authentication | registry 7,598; master 7,123; checkpoint 2,154; lane 5,803 | MEASURED COMPONENT CU | pending |
+| pre-verifier dispatch/account reconstruction/digests | 494,414 | MEASURED REAL CU (instrumented) | hardened six-account verifier invariant reduces total by 459,550 CU after paying the independent registry gate |
 | ASF8 reconstruction | 3,011 | MEASURED COMPONENT CU | pending |
 | canonical codecs/copies/comparisons | exact wire phase 515,274; 4,996-limb canonical scan alone 515,000 | MEASURED COMPONENT CU | direct typed snapshot saves 2,191 CU transaction-wide; deferred canonicality saves 515,003 CU but is measurement-only until the real crypto path canonically consumes every limb exactly once |
-| transcript absorption | pending | — | pending |
-| SHA/Merkle authentication | 105,869 CU within query-opening profile | MEASURED COMPONENT CU | pending |
-| field decode/gamma arithmetic | 136,824 CU within query-opening profile | MEASURED COMPONENT CU | pending |
-| terminal/prefactorised semantic checks | pending exact current split | MEASURED COMPONENT CU | pending |
-| ASR8 construction/validation | encode 2,487; set-return phase 360; Pool get/decode 3,512; validate/apply-byte prep 4,663 | MEASURED COMPONENT CU | 792--1,024 B sweep complete; every expansion costs CU and deletes no safe work |
-| populated selected-lane pre-CPI validation | 554,530 before verifier entry at 13 existing pairs; empty-lane entry consumes 82,493 | MEASURED REAL CU (incomplete transaction) | immediate Pareto blocker; exact phase split pending |
+| semantic sumcheck | 119,854 | MEASURED REAL CU (instrumented) | unchanged |
+| gamma combine | 136,982 | MEASURED REAL CU (instrumented) | unchanged |
+| paired Merkle authentication | 96,525 | MEASURED REAL CU (instrumented) | unchanged |
+| terminal/prefactorised semantic checks | 627,529 | MEASURED REAL CU (instrumented) | packed digest selectors save 43,339 total CU; binary copy weights save another 13,364 total CU |
+| relation round-3 weights | 69,662 | MEASURED REAL CU (instrumented) | pending additional margin audit |
+| relation prepared weights | 39,131 | MEASURED REAL CU (instrumented) | pending additional margin audit |
+| relation round-1 values | 36,466 | MEASURED REAL CU (instrumented) | unchanged |
+| q16 schedule | 29,389 | MEASURED REAL CU (instrumented) | unchanged |
+| final256 | 26,866 | MEASURED REAL CU (instrumented) | unchanged |
+| query fold | 20,877 | MEASURED REAL CU (instrumented) | unchanged |
+| ASR8 construction/validation | encode 2,487; set-return phase 360; Pool get/decode 3,512; validate/apply-byte prep 4,663 | MEASURED COMPONENT CU | expansion rejected; direct authenticated canonical reuse saves 9,446 total CU |
+| populated selected-lane pre-CPI validation | redundant source and result reconstruction removed by separate source invariants | MEASURED REAL CU | -469,658 CU source decoder; -469,569 CU result encoder; -939,227 CU combined |
 | selected-lane/history/nullifier writes | final persistence marker delta 517; earlier planning is included in preflight/custody-plan | MEASURED COMPONENT CU | full split pending |
 | withdrawal SPL CPI/rollback | pending | — | pending |
 | wrapper/account overhead | pending | — | pending |
@@ -180,13 +202,18 @@ algebraic/cryptographic equality which is cheaper than recomputation.
 | --- | ---: | ---: | ---: | --- | --- | --- |
 | Replace repeated populated-lane root reconstruction with authenticated Pool-owned lane-state provenance | 0 | 0 | potentially the observed roughly 472k empty-to-13-pair pre-CPI delta; exact phase probe pending | real combined entry budget plus source audit: nonempty `decode_with_empty_roots` executes `reconstruct_nonfull_root`, twenty Poseidon parents | This is a zero-byte CU optimisation, not a byte trade. Must prove the Pool-owned lane PDA is an inductive invariant: every initializer/deposit/settlement writer stores an exact root/frontier pair, no alternate writer exists, and owner/PDA/version/index/inactive-frontier checks remain fail-closed. Activation requires newly initialized PDAs or a strict one-time migration boundary | **highest priority** |
 | Supply a populated-root/frontier certificate in Tx/proof bytes | pending | pending | only viable if checking is cheaper than twenty Poseidon parents | no measurement yet | Untrusted bytes cannot replace account provenance; either verify a cryptographic certificate under an already authenticated commitment or reject | inventory only; do not trust raw hint |
-| Supply full ASF8 and compare it with authenticated reconstruction | +1,560 | 0 | host-negative; real CU unmeasured | exact TxV1 sizes plus default-off authenticated profile `337d6eba` | Must retain master, checkpoint, selected-lane, deployment, profile/release and afterstate checks | unlikely to win; retain only for combined confirmation |
+| Supply full ASF8 and compare it with authenticated reconstruction | +1,560 | 0 | **+12,901 CU regression** | complete matched strict path: 2,082,274 versus ASQ8 2,069,373 | Exact fieldwise comparison retains master, checkpoint, selected-lane, deployment, profile/release and afterstate checks | **reject: strictly dominated** |
 | Finalization-computed sealed proof-body SHA in the existing 32-byte authority slot | 0 | 0 | none on current ASQ8: it performs no terminal body-digest pass | default-off `ASD1` implementation at `609e18fc`; old native dispatch measured 15,597 CU | Exact lifecycle/source invariant, cache/request binding and close-path activation proof | exclude unless final ASQ8 introduces an authenticated body-digest claim |
 | Checked aggregate M31 inverse hint | 0 or +4 | +4 or 0 | one inversion minus equality check; unmeasured | static arithmetic inventory | Prove nonzero/input binding and exact multiplication check | benchmark if SBF delta is material |
 | Two checked QM31 circle-map inverses | 0 or +32 | +32 or 0 | two inversions minus equality checks; unmeasured | static arithmetic inventory | Same relation, new canonical hint framing/source bridge | benchmark |
 | Canonical final-vector representation | 0 | +128 | isolated SBF **+5,802 CU** | default-off Variant B at `f4756ede`; evidence `9d4fb5e8` | Encoding/canonicality bridge, no changed claims | reject |
 | Canonical fixed-prefix representation | 0 | +192 | isolated SBF **-35,620 CU** | default-off Variant A at `f4756ede`; evidence `9d4fb5e8` | Encoding/canonicality bridge, no changed claims | retain only as fallback |
-| Canonical complete 641-QM31 fixed section | 0 | +320 | isolated SBF **-117,790 CU** | isolated Variant C at `f4756ede`; same-binary default-off verifier route prepared in this audit | Fresh production profile/release, transcript-reader equivalence and source bridge; no changed claims | leading proof-byte candidate after populated-lane fix |
+| Canonical complete 641-QM31 fixed section | 0 | +320 | complete transaction **-156,930 CU** | corrected exact-once implementation at `aeaa0840`; strict combined 1,912,443 versus invariant baseline 2,069,373 | Fresh production profile/release, transcript-reader equivalence and source bridge; no changed claims | **measured Pareto winner; about 490 CU saved per added byte** |
+| Verifier-side fresh-PDA lane invariant | 0 | 0 | **-459,550 CU** after independent registry hardening | hardened six-account path `e86d48cc`: 1,912,443 to 1,452,893 | Immutable selected-release Pool/registry/policy root plus fresh-PDA source theorem; fake Pool+fake registry fail closed | select after production constants/source bridge |
+| Pack public digest differences before shared selector | 0 | 0 | **-43,339 CU** | `efc928fc`: 1,452,893 to 1,409,554 | Exact QM31 linear identity; no relation/wire/transcript change | select |
+| Reuse authenticated canonical ASR8 bytes | 0 | 0 | **-9,446 CU** | `d14ea1b1`: 1,409,554 to 1,400,108 | Fieldwise equivalence and exact verifier-result provenance | select pending source bridge |
+| Specialize generated binary copy weights | 0 | 0 | **-13,364 CU** | `6045276e`: 1,400,108 to 1,386,744 | Generated weights remain exactly 0/1; unconditional value accumulation preserved | select pending source bridge |
+| Cache exact-tag endpoint selectors | 0 | 0 | **-10,092 CU** | `b6760f7d` / harness `8178d3de`: 1,386,744 to 1,376,652 | Exact-key hits only; collisions miss and recompute; 1,024 Boolean and 64 off-domain equality cases pass | select pending source bridge |
 | Expand ASR8 within the 1,024-byte return-data cap | 0 | 0 | none; measured gross cost is +38 to +58 CU | five distinct LiteSVM component executions | Every added field must be verifier-derived and immediately bound to the selected program/profile/release/statement/accounts | reject: keep 792 B |
 | Remove live-snapshot encode/decode round trip | 0 | 0 | **-2,191 CU** in matched component transaction | default-off direct-typed probe at `f8804061` | Source bridge from exact canonical master/lane PDA+owner decoders to the unchanged snapshot predicate | retain for production integration |
 | Defer standalone 4,996-limb canonical scan and consume canonically inside real crypto | 0 | 0 | potential **-515,003 CU of duplicate work**; not a standalone saving claim | default-off measurement probe at `f8804061` | Must prove every fixed/query limb is canonically decoded exactly once before acceptance; no field may escape the crypto consumer | mandatory integration discipline, not an independently activatable variant |
@@ -290,8 +317,8 @@ bridge proving provenance from the canonical authenticated Pool accounts.
 
 | Variant | Transport | Proof/account representation | State |
 | --- | --- | --- | --- |
-| 0 — current | compact ASQ8 | current sealed proof | positive host path; populated combined transaction exhausts 1.4M |
-| 1 — fat semantic request | full ASF8, equality-checked against authenticated state | unchanged | Tx size and host component measured; real CU pending |
+| 0 — current | compact ASQ8 | current sealed proof | complete fair path measured at 3,008,600 CU; source-invariant form 2,069,373 CU |
+| 1 — fat semantic request | full ASF8, equality-checked against authenticated state | unchanged | measured 2,082,274 CU; strictly dominated and rejected |
 | 2 — best safe Tx hints | selected only after isolated measurements | unchanged | pending |
 | 3 — best safe proof hints | ASQ8 | selected only after isolated measurements | pending |
 | 4 — combined best | independently winning Tx and proof candidates | independently winning candidates | pending |
@@ -299,21 +326,35 @@ bridge proving provenance from the canonical authenticated Pool accounts.
 
 ## 7. Pareto frontier
 
-No candidate enters the production Pareto frontier until its real combined CU
-is measured against Variant 0 in the same executable path. The immediate
-frontier is dominated by populated-lane pre-CPI validation, not by ASQ8/ASF8
-transport or fixed-field decoding.
+The corrected canonical fixed-section candidate is the measured Pareto
+winner: it was measured against Variant 0 in the same complete executable
+path, while full ASF8 is worse in both bytes and CU and ASR8 expansion is also
+strictly worse. The selected configuration now fits the exact 1.4M-CU limit
+for both same-page and rollover private transfers; withdrawal and adversarial
+rollback measurements remain in progress.
 
 | Variant | Tx bytes | Proof max | Transfer CU | Withdrawal CU | Delta CU | Delta bytes | Security/formal cost |
 | --- | ---: | ---: | ---: | ---: | ---: | ---: | --- |
-| 0 — compact ASQ8 | 811 / 844 | 30,504 max; 30,400 strict KAT | >1.4M at populated 13-pair lane (rollback) | pending | baseline | 0 | existing boundaries |
-| 1 — full ASF8 | 2,371 / 2,404 | 30,504 | pending | pending | pending | +1,560 Tx | authenticated equality/source bridge |
+| 0 — compact ASQ8, source/result invariant | 811 / 844 | 30,504 max; 30,400 strict KAT | 2,069,373 | pending | baseline after source-safe zero-byte work | 0 | inductive fresh-PDA lane-state provenance |
+| 1 — full ASF8 | 2,371 / 2,404 | 30,504 | 2,082,274 (2,359-B harness packet) | pending | +12,901 | +1,560 Tx | exact authenticated equality; rejected |
 | 2 — safe Tx hints | pending | 30,504 | pending | pending | pending | pending | pending |
-| 3 — safe proof hints | 811 / 844 | pending | pending | pending | pending | pending | pending |
-| 4 — combined | pending | pending | pending | pending | pending | pending | pending |
+| 3 — canonical fixed section + selected zero-byte stack | 811 / 844 wallet; 799 / 832 strict harness | 30,824 max; 30,720 strict KAT | **1,376,652 same-page; 1,385,365 rollover** | **1,593,988 same-page; 1,487,132 rollover — both over limit** | **-692,721** same-page from invariant Variant 0 | +320 proof | exact-once canonical reader, hardened fresh-PDA invariant, arithmetic/source equivalences and exact-tag endpoint cache; withdrawal remains blocked |
+| 4 — combined Tx/proof bytes | not selected | not selected | full ASF8 combination not run because ASF8 is independently dominated | pending | — | — | rejected by decision rule |
 
-Withdrawal TxV1 values are 976/1,009 bytes for Variant 0 and 2,536/2,569
-bytes for Variant 1. They will receive their own CU rows once executable.
+The selected strict-harness withdrawal packets are 964 bytes same-page and
+997 bytes rollover; both remain well below 4,096 bytes. Diagnostic runs above
+the release ceiling accept at 1,593,988 and 1,487,132 CU respectively, perform
+the exact SPL `TransferChecked`, and settle Pool state atomically. Runs at the
+exact 1.4M limit exhaust CU and roll back every Pool and token account
+byte-for-byte. The rollover being 106,856 CU cheaper despite its larger packet
+and proof shows that withdrawal selector/index geometry, not transport, is the
+dominant unresolved cost.
+
+The strict rollover fixture advances pair index 255 to 256 using a fresh
+statement-specific 35/31/34-bit-work proof. It leaves the full current page
+readonly and byte-exact, writes the exact new root to page 1, and atomically
+settles the lane, history and nullifier. At 1,385,365 CU it retains 14,635 CU
+under the exact limit.
 
 ### Isolated proof-codec frontier (not combined CU)
 
@@ -346,16 +387,16 @@ afterstate; and then fail-closes without ASR8 or dispatch. On a 30,504-byte
 proof, 256 release-host iterations measured 31,738 ns for full ASF8 versus
 31,260 ns for compact ASQ8. Parsing ASF8 was 483 ns and the exact statement
 comparison 43 ns. These are **host timings, not CU**. The dedicated streaming
-SBF profile compiles without an oversized called frame, but has not executed
-in LiteSVM. The current audit branch additionally prepares a real default-off
-`ASF8` dispatcher which requires exact equality with independently
-reconstructed authenticated state and then invokes the same verifier with
-production `check_work=true`. Its Pool route forwards the same exact 1,880
-bytes under the same nine account metas and preserves registry, ASR8 and
-settlement semantics. This support is prepared, not measured. Combined with
-the measured 3,011-CU ASF8 reconstruction cost, current evidence gives no
-positive reason to spend 1,560 TxV1 bytes; Variant 1 is deferred until the
-populated-lane pre-CPI blocker is removed.
+SBF profile compiles without an oversized called frame. The current audit
+branch additionally implements a real default-off `ASF8` dispatcher which
+requires exhaustive fieldwise equality with independently reconstructed
+authenticated state and then invokes the same verifier with production
+`check_work=true`. Its Pool route forwards the same exact 1,880 bytes under
+the same nine account metas and preserves registry, ASR8 and settlement
+semantics. The matched complete run measured 2,082,274 CU and a 2,359-byte
+harness TxV1 packet, versus 2,069,373 CU and 799 bytes for compact ASQ8.
+Therefore the +1,560-byte transport is rejected without combining it with
+Variant C.
 
 ### ASR8 return-data sweep
 
@@ -492,7 +533,7 @@ CARGO_BUILD_JOBS=2 cargo run --quiet \
 This remains a **MEASURED COMPONENT CU** replay, not an honest Tag-73 or
 combined one-terminal transaction.
 
-### Current combined populated-lane blocker
+### Historical populated-lane blocker (superseded)
 
 The current combined-harness source is based on harness branch commit
 `b0be5240` (itself based on verifier integration `b996eeff`). The exact SBF
@@ -513,7 +554,11 @@ before proof completion. It enters the verifier with 845,470 CU and exhausts
 exactly 1,400,000 CU. A zero/min-frontier control under the same populated lane
 enters with 845,508 CU and exhausts the same cap. No result is returned and all
 Pool writes roll back. Phase instrumentation and an over-budget positive path
-are still required before attributing any later verifier subphase.
+were still required at that point. These failed-entry runs are retained as
+provenance only: the later strict complete paths at 3,008,600, 2,538,942,
+2,069,373 and 1,912,443 CU supersede them. Phase instrumentation is now
+complete, and the selected hardened stack subsequently reaches 1,376,652 CU
+under the exact 1.4M limit.
 
 ### Full-ASF8 authenticated component
 
