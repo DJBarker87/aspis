@@ -11,6 +11,7 @@ use alloc::{boxed::Box, vec, vec::Vec};
 
 use aspis_statement::pool_v1::{
     decode_pool_v1_pair_forest_terminal_result_v1, encode_pool_v1_pair_forest_terminal_request_v1,
+    encode_pool_v1_pair_forest_terminal_result_v1,
     PoolV1PairForestTerminalRequestV1, PoolV1PairForestTerminalResultV1,
     POOL_V1_PAIR_FOREST_TERMINAL_RESULT_BYTES, POOL_V1_PAIR_FOREST_TERMINAL_VERSION,
 };

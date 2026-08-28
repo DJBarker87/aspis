@@ -3,7 +3,8 @@
 This focused bundle records the exact source boundary for the default-off
 eight-lane Pool CU experiment introduced at production source commit
 `86d072be`, extended by the authenticated verifier-side source port
-`a789a9c6`.  It exists because the optimized terminal path removes two
+`a789a9c6`, and extended again by the default-off selected terminal cuts at
+`2dae6bea`, `d49af9e3` and `37c6ea1f`.  It exists because the optimized terminal path removes two
 duplicate 20-level Poseidon reconstructions from Pool code:
 
 1. decoding the selected live lane before verifier CPI; and
@@ -99,6 +100,32 @@ The verifier composition is stricter still:
 proved to reject when the separate lane capability is absent.  The current
 verifier source does not expose a migration activation path.
 
+## Selected terminal cuts
+
+Three additional CU cuts have separate translated/source boundaries:
+
+- direct ASR8 reuse occurs only after the exact selected verifier program has
+  returned exactly 792 bytes and the canonical ASR8 decoder has accepted them;
+  `translated_direct_result_success_has_exact_gate` proves that the direct
+  path retains all four upstream authentication/canonicality facts and the
+  same six material result equalities as statement reconstruction;
+- packed public-digest accumulation receives the identical selector and four
+  residuals, while `selector_mul_symbolicPack4` proves the exact commutative-
+  ring factoring identity used to move one selector multiplication outside
+  the fixed four-term pack; and
+- binary Copy weights retain every generated endpoint and its order.  The
+  translated consumer accepts only exact zero/keep or one/add cases, and
+  `specialized_binary_weight_eq_literal` proves skip/add equals the original
+  multiplication by a binary weight.  The focused Rust test visits every
+  checked-in generated link across both variants and representative full
+  20-bit append indices.
+
+The source-shaped harness translates the gates and schedules rather than the
+full QM31 terminal evaluator.  The hash-pinned production files and focused
+equivalence tests bind those projections to deployed control flow; the
+generic Lean ring equalities discharge the arithmetic rewrites.  No cut
+changes a transcript, constraint, endpoint, result field or byte codec.
+
 ## Source relationship and trust boundary
 
 `harness/src/lib.rs` is a pure, fixed-width accepted-source projection of the
@@ -136,6 +163,12 @@ instantiate for genesis and both production mutations.
 - `direct_asq8_lane_read_success_has_exact_gate_and_capability`
 - `translated_direct_asq8_reader_consumes_fresh_pool_invariant`
 - `exact_release_authentication_without_lane_invariant_rejected`
+- `translated_direct_result_binding_eq_reconstructed`
+- `translated_direct_result_success_has_exact_gate`
+- `translated_digest_factoring_preserves_exact_schedule`
+- `selector_mul_symbolicPack4`
+- `translated_link_then_action_success_is_exact`
+- `specialized_binary_weight_eq_literal`
 
 Every printed axiom set is a subset of `propext`, `Classical.choice` and
 `Quot.sound`.  There is no `sorry`, `admit`, `native_decide`, project-specific

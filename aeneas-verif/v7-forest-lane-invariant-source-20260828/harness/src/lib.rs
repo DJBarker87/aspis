@@ -46,6 +46,7 @@ pub enum LaneSourceError {
     MissingProgramOwnedInvariant,
     MissingExactVerifierReleaseAuthentication,
     InvalidWriterTransition,
+    InvalidSelectedTerminalCut,
 }
 
 /// Pure source projection of the caller-side facts checked by the direct
@@ -67,6 +68,155 @@ pub struct DirectAsq8ReleaseAuthentication {
     pub entry_pda_codec_and_active_slot: bool,
     pub entry_exact_pool_verifier_profile_release_version: bool,
     pub selected_lane_pda_master_and_lane: bool,
+}
+
+/// Preconditions established outside the direct ASR8 comparison itself.
+/// Canonical decode includes the exact 792-byte length and all field codecs;
+/// the accepted next-lane encoder validates the complete candidate afterstate.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct DirectResultPrerequisites {
+    pub request_master_checkpoint_lane_authenticated: bool,
+    pub exact_asr8_decoded_canonical: bool,
+    pub next_lane_encoder_accepted: bool,
+    pub returned_program_is_selected_verifier: bool,
+}
+
+/// The six equalities retained by the field-wise result binding. The final
+/// index relation is the statement-validity check whose value is not already
+/// a literal result echo.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct DirectResultBindings {
+    pub transition_kind_exact: bool,
+    pub master_account_exact: bool,
+    pub selected_lane_account_exact: bool,
+    pub output_lane_exact: bool,
+    pub nullifier_exact: bool,
+    pub next_pair_index_exact: bool,
+}
+
+/// Source-shaped accepted-path projection of the former reconstructed-ASF8
+/// result validation. The statement candidate is constructed from the same
+/// decoded result, so its candidate equality is definitional on this path.
+pub fn reconstructed_statement_result_binding_projected(
+    prerequisites: DirectResultPrerequisites,
+    bindings: DirectResultBindings,
+) -> Result<(), LaneSourceError> {
+    if !prerequisites.request_master_checkpoint_lane_authenticated
+        || !prerequisites.exact_asr8_decoded_canonical
+        || !prerequisites.next_lane_encoder_accepted
+        || !prerequisites.returned_program_is_selected_verifier
+        || !bindings.transition_kind_exact
+        || !bindings.master_account_exact
+        || !bindings.selected_lane_account_exact
+        || !bindings.output_lane_exact
+        || !bindings.nullifier_exact
+        || !bindings.next_pair_index_exact
+    {
+        return Err(LaneSourceError::InvalidSelectedTerminalCut);
+    }
+    Ok(())
+}
+
+/// Exact field-wise direct-ASR8 comparison. It consumes the same upstream
+/// authentication/canonicality and the same six material equalities as the
+/// reconstructed-statement path, but retains the already authenticated bytes.
+pub fn direct_result_binding_projected(
+    prerequisites: DirectResultPrerequisites,
+    bindings: DirectResultBindings,
+) -> Result<(), LaneSourceError> {
+    if !prerequisites.request_master_checkpoint_lane_authenticated
+        || !prerequisites.exact_asr8_decoded_canonical
+        || !prerequisites.next_lane_encoder_accepted
+        || !prerequisites.returned_program_is_selected_verifier
+        || !bindings.transition_kind_exact
+        || !bindings.master_account_exact
+        || !bindings.selected_lane_account_exact
+        || !bindings.output_lane_exact
+        || !bindings.nullifier_exact
+        || !bindings.next_pair_index_exact
+    {
+        return Err(LaneSourceError::InvalidSelectedTerminalCut);
+    }
+    Ok(())
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum CopyVariantProjection {
+    PrivateTransfer,
+    Withdrawal,
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum BinaryWeightActionProjection {
+    Keep,
+    AddSelector,
+}
+
+/// Pure projection of the generated Copy `link_weight` decision tree. The
+/// checked-in grammar uses only kinds 0..4 and levels 0..19.
+pub fn binary_link_weight_projected(
+    weight_kind: u8,
+    weight_level: u8,
+    append_index: u64,
+    variant: CopyVariantProjection,
+) -> Result<u8, LaneSourceError> {
+    if usize::from(weight_level) >= TREE_DEPTH {
+        return Err(LaneSourceError::InvalidSelectedTerminalCut);
+    }
+    match weight_kind {
+        0 => Ok(1),
+        1 => Ok(u8::from(variant == CopyVariantProjection::PrivateTransfer)),
+        2 => Ok(u8::from(variant == CopyVariantProjection::Withdrawal)),
+        3 => {
+            if ((append_index >> weight_level) & 1) == 0 {
+                Ok(1)
+            } else {
+                Ok(0)
+            }
+        }
+        4 => {
+            if ((append_index >> weight_level) & 1) == 0 {
+                Ok(0)
+            } else {
+                Ok(1)
+            }
+        }
+        _ => Err(LaneSourceError::InvalidSelectedTerminalCut),
+    }
+}
+
+/// Pure projection of the selected skip/add specialization. No endpoint is
+/// removed: this function chooses only the arithmetic action for its already
+/// computed generated weight.
+pub fn binary_weight_action_projected(
+    weight: u8,
+) -> Result<BinaryWeightActionProjection, LaneSourceError> {
+    match weight {
+        0 => Ok(BinaryWeightActionProjection::Keep),
+        1 => Ok(BinaryWeightActionProjection::AddSelector),
+        _ => Err(LaneSourceError::InvalidSelectedTerminalCut),
+    }
+}
+
+/// Exact symbolic input to one four-residual digest group. The two Rust paths
+/// differ only in whether selector multiplication is performed before or
+/// after the fixed linear pack; they must consume this same schedule.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct DigestBindingScheduleProjection {
+    pub selector_tag: u16,
+    pub residual_tags: [u16; 4],
+}
+
+pub fn literal_digest_schedule_projected(
+    schedule: DigestBindingScheduleProjection,
+) -> DigestBindingScheduleProjection {
+    schedule
+}
+
+pub fn factored_digest_schedule_projected(
+    schedule: DigestBindingScheduleProjection,
+) -> DigestBindingScheduleProjection {
+    schedule
 }
 
 fn read_u32_le(bytes: &[u8], start: usize) -> u32 {

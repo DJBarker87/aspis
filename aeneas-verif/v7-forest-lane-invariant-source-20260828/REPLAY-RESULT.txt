@@ -4,19 +4,27 @@ Date: 2026-08-28
 Pinned production source
 ------------------------
 Fast-path source commit:
-  a789a9c6ff1f0a879e4f7396377e9c39df445974
+  37c6ea1f (selected source stack; descendant of a789a9c6)
 Pair-forest source SHA-256:
-  3016a0cabe44dd7d3994aaac1d949195d480a4ac609e914cc4adbd3ea15ae71a
+  4702885ad27659b99ea72dbbb3b96945411616d63392f7d4f9a93cae986085e1
 Processor dispatch source SHA-256:
   84b6dbfa9ec12d56184bb0c1e250ed731af83fa44c91fbd05505c38ae356c995
 Pool manifest SHA-256:
-  448bdca453f0ceb0769b8e87bde7f8866ef648d161cb04e1031c58e8cc12f87c
+  f5b42a59c788694ce6a0eba02b193e50f9c58028e1ba55bd8827118656f9aa2e
 Pool verifier-dispatch source SHA-256:
-  cdf8a64ddbc700606b4396be9ce46a21c854c18e085a7cf802f306c36fac93eb
+  95281016c34355c7f5bbb5e8ac31cacfa9c743699ecfeb1c8ddbae2cc1a3afc8
 Verifier manifest SHA-256:
-  446dae08bef0cbb3ccba8220134defcfe933e3ab359a91c2cf41a171b50ba89e
+  184cc29baeeb8992bd887ed73e7d56a0aaaa8666e313148909b64988a06e6424
 Verifier ASQ8 reader source SHA-256:
   276c3eb0d157408e2f132e69001e77c32f306baa86450f1e8fab9cdcb8fbadbb
+Statement manifest SHA-256:
+  28bbb0e1fa4fd6b692a4223b7d3ed99cfd3b827d9f1a8090e1d1845fbcb2f2b8
+Packed semantic-terminal source SHA-256:
+  0f3cbc9aead222e49ffaaa678e5f952a52c5f93aa28f5de802a3390993157edd
+Binary Copy-terminal source SHA-256:
+  d88b7d1677ecb64a321f0ff8edb2e2a2f382f2d28a8b9e9c3a982346ad355b93
+Generated Copy constants SHA-256:
+  bc4d72deed0c4b17cefa5092aa05bbc5587c76123df69bd4b4e1187f46280cf6
 
 Pinned tools
 ------------
@@ -30,16 +38,16 @@ Aeneas binary SHA-256:
 Extraction replay
 -----------------
 Harness source SHA-256:
-  3d50bea7bc9284ae1e353a7b25d0331600ec5701c88b9e9c7886c123ebc7334a
+  3fa20721e9d498fcb57f0f00e13f7b8b6353bf41f0d401506e22c39c4e3f13e9
 Stored LLBC SHA-256:
-  4a5cbc8f16dbd5019eb37b9dd86e488cbb25f490d76b31074a3e03b4e967f90e
+  f7952d23c077ae917c8759a2804dacf8f65aee6f5443d38f1b217dfde2b2dd2d
 The raw LLBC records its temporary destination and unordered serialized maps,
 so replay acceptance is exact equality of the generated Types/Funs/template
 rather than a misleading raw-LLBC hash equality.
 Types.lean SHA-256:
-  87d8149a182a6b4426b61a7e1fb5411f42f91687e9487e9f9f6019678b9f3acf
+  9876e3db2c1ad20b70c08b901950e6d9bef23a07e0e73e5c834c450ca80e0b84
 Funs.lean SHA-256:
-  ae2bb04bb8a9d20fa2c14dc19db8b79995c1af9092a24daf787a67f9732b0acb
+  919a0fc9d1e3238a5705eb4d825eaca5bd5f23a1134587e04a8b2eb84ef7d92c
 Transparent FunsExternal.lean SHA-256:
   0a3c1f2c456d4051e23c27c469da218c3b1b2c55251a6cf2ea5afc514643156d
 
@@ -53,10 +61,18 @@ Pool six-account invariant feature check:
   passed
 Verifier immutable-release lane-reader feature check:
   passed
+packed_public_digest_matches_all_transfer_and_withdrawal_bindings:
+  1 passed; 0 failed
+every_generated_copy_weight_is_binary_and_skip_add_is_exact:
+  1 passed; 0 failed
+Direct-result exact terminal transfer:
+  1 passed; 0 failed
+Selected Pool/verifier feature composition checks:
+  passed
 
 Focused Lean result
 -------------------
-All five source-proof modules compile.  Principal results:
+All six source-proof modules compile.  Principal results:
   valid_strict_encoder_bytes_equal_fast_encoder_bytes
   hot_decode_success_requires_capability_and_exact_length
   initialization_success_has_exact_source_relation
@@ -69,6 +85,12 @@ All five source-proof modules compile.  Principal results:
   direct_asq8_lane_read_success_has_exact_gate_and_capability
   translated_direct_asq8_reader_consumes_fresh_pool_invariant
   exact_release_authentication_without_lane_invariant_rejected
+  translated_direct_result_binding_eq_reconstructed
+  translated_direct_result_success_has_exact_gate
+  translated_digest_factoring_preserves_exact_schedule
+  selector_mul_symbolicPack4
+  translated_link_then_action_success_is_exact
+  specialized_binary_weight_eq_literal
 
 Every printed theorem axiom set is a subset of:
   propext
