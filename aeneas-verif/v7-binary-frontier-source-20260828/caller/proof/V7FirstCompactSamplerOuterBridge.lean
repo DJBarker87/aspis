@@ -65,6 +65,33 @@ theorem exactSqueezeTrace_append_one
       simp only [List.cons_append, generatedCandidateBlocks_cons, ih,
         List.cons_append]
 
+/-- Re-elaborated in the current Tag-73 source environment so the dependent
+`Array.to_slice` length witness is definitionally aligned with the translated
+caller rather than imported from the older V5 module proof term. -/
+theorem current_chunks_exact_block_is_blockChunks (block : QueryBlock) :
+    core.slice.Slice.chunks_exact (Array.to_slice block) 4#usize =
+      .ok (V5QuerySamplerGeneratedSemantics.blockChunks block) := by
+  unfold core.slice.Slice.chunks_exact
+    V5QuerySamplerGeneratedSemantics.blockChunks
+    V5QuerySamplerGeneratedSemantics.wordSlice
+  simp only [show (4#usize : Std.Usize).val > 0 by decide, ↓reduceDIte,
+    Array.to_slice]
+  simp only [Result.ok.injEq]
+  apply V5QuerySamplerGeneratedSemantics.chunksExact_ext
+  · simp only
+    apply List.ext_get
+    · simp [List.toChunksExact, block.property]
+    · intro i hleft hright
+      simp [List.toChunksExact, block.property] at hleft hright
+      interval_cases i <;> simp [List.toChunksExact, block.property] <;>
+        apply Subtype.ext <;>
+        apply List.ext_get
+      all_goals try simp [block.property]
+      all_goals
+        intro n hn
+        interval_cases n <;> simp
+  · simp [List.toChunksExact, block.property]
+
 /-- The exact source `chunks_exact(4)` iterator contains only four-byte words,
 which is the structural premise consumed by the current inner-loop theorem. -/
 theorem validWordIterator_blockChunks (block : QueryBlock) :
@@ -78,6 +105,7 @@ theorem validWordIterator_blockChunks (block : QueryBlock) :
 
 #print axioms exactSqueezeTrace_append_one
 #print axioms generatedCandidateBlocks_append
+#print axioms current_chunks_exact_block_is_blockChunks
 #print axioms validWordIterator_blockChunks
 
 end V7FirstCompactSamplerOuterBridge
