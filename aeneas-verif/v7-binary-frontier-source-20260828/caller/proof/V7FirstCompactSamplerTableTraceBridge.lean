@@ -49,15 +49,35 @@ theorem fixed_table_hash_oracle_answer_of_lookup
 def nativeTranscriptDigest (self : Transcript) : Digest256 :=
   nativeSourceDigest (sourceSqueezeBytes self.state)
 
-/-- Exact operational scheduler/source coherence: every successful callback
-run is present at the same concatenated input and output in the fixed ROM
-table.  This is a runtime alignment property, not a cryptographic premise. -/
-def HashCallbackRecordedInFixedTable
-    (table : FixedOracleTable)
-    (hash : Slice (Slice Std.U8) → Result SourceSqueezeBlock) : Prop :=
-  ∀ input output, hash input = .ok output →
-    tableLookup table (nativeHashInputBytes input) =
-      some (nativeSourceDigest (sourceSqueezeBytes output))
+/-- Exact operational scheduler/source coherence restricted to the finite
+callback inputs actually exercised by the extracted trace.  Every constructor
+records the output and advance lookup for one literal successful source
+`squeeze_block`; requiring callback coverage globally would be impossible for
+a total SHA callback and a finite table. -/
+inductive HashCallbackRecordedInFixedTable (table : FixedOracleTable) :
+    {initial : Transcript} → {blocks : List SourceSqueezeBlock} →
+      {final : Transcript} →
+      NativeExactSqueezeTrace initial blocks final → Prop
+  | nil (self : Transcript) :
+      HashCallbackRecordedInFixedTable table
+        (NativeExactSqueezeTrace.nil self)
+  | cons (self next final : Transcript) (block : SourceSqueezeBlock)
+      (blocks : List SourceSqueezeBlock)
+      (sourceRun :
+        transcript.Transcript.squeeze_block self = .ok (block, next))
+      (tail : NativeExactSqueezeTrace next blocks final)
+      (outputLookup :
+        tableLookup table
+            (nativeHashInputBytes (taggedHashInput self 1#u8)) =
+          some (nativeSourceDigest (sourceSqueezeBytes block)))
+      (advanceLookup :
+        tableLookup table
+            (nativeHashInputBytes (taggedHashInput self 2#u8)) =
+          some (nativeSourceDigest (sourceSqueezeBytes next.state)))
+      (tailRecorded : HashCallbackRecordedInFixedTable table tail) :
+      HashCallbackRecordedInFixedTable table
+        (NativeExactSqueezeTrace.cons self next final block blocks sourceRun
+          tail)
 
 /-- A literal translated squeeze trace whose two hashes are present in the
 same fixed oracle table used by the Tag-73 scheduler. -/
@@ -128,22 +148,15 @@ theorem source_squeeze_runtime_reflection_of_recorded_callback
     {table : FixedOracleTable} {initial final : Transcript}
     {blocks : List SourceSqueezeBlock}
     (trace : NativeExactSqueezeTrace initial blocks final)
-    (recorded : HashCallbackRecordedInFixedTable table initial.hash) :
+    (recorded : HashCallbackRecordedInFixedTable table trace) :
     SourceSqueezeRuntimeReflection table trace := by
-  induction trace with
+  induction recorded with
   | nil self => exact SourceSqueezeRuntimeReflection.nil self
-  | cons self next final block blocks sourceRun tail ih =>
-      have runs := successful_squeeze_exposes_hash_runs self next block sourceRun
-      have outputLookup := recorded _ _ runs.1
-      have advanceLookup := recorded _ _ runs.2
+  | cons self next final block blocks sourceRun tail outputLookup
+      advanceLookup tailRecorded ih =>
       rw [native_hash_input_bytes_tagged] at outputLookup advanceLookup
-      have callbackExact := successful_squeeze_preserves_hash
-        self next block sourceRun
-      have tailRecorded :
-          HashCallbackRecordedInFixedTable table next.hash := by
-        simpa [callbackExact] using recorded
       refine SourceSqueezeRuntimeReflection.cons self next final block blocks
-        sourceRun tail ?_ ?_ (ih tailRecorded)
+        sourceRun tail ?_ ?_ ih
       · simpa [nativeTranscriptDigest, domSqueeze] using outputLookup
       · simpa [nativeTranscriptDigest, domAdvance] using advanceLookup
 
@@ -151,7 +164,7 @@ theorem native_table_squeeze_trace_of_recorded_callback
     {table : FixedOracleTable} {initial final : Transcript}
     {blocks : List SourceSqueezeBlock}
     (trace : NativeExactSqueezeTrace initial blocks final)
-    (recorded : HashCallbackRecordedInFixedTable table initial.hash) :
+    (recorded : HashCallbackRecordedInFixedTable table trace) :
     NativeTableSqueezeTrace table initial blocks final :=
   native_table_squeeze_trace_of_runtime_reflection
     (source_squeeze_runtime_reflection_of_recorded_callback trace recorded)
@@ -213,7 +226,7 @@ theorem native_source_trace_matches_semantic_of_recorded_callback
     {table : FixedOracleTable} {initial final : Transcript}
     {blocks : List SourceSqueezeBlock}
     (trace : NativeExactSqueezeTrace initial blocks final)
-    (recorded : HashCallbackRecordedInFixedTable table initial.hash)
+    (recorded : HashCallbackRecordedInFixedTable table trace)
     (machine : MachineState)
     (aligned : machine.digest = nativeTranscriptDigest initial) :
     (squeezeBlocks (fixedTableHashOracle table) blocks.length machine).1 =
