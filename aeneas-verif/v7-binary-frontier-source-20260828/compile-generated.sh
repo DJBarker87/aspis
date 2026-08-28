@@ -3,11 +3,19 @@ set -euo pipefail
 
 readonly lean_root="${1:?pass the generated Lean module root}"
 readonly aeneas_backend="${2:?pass the pinned Aeneas Lean backend}"
+readonly aspis_formal_project="${3:-}"
 readonly lake_bin="${LAKE_BIN:-/home/dombarker/.elan/bin/lake}"
 
 cd "$aeneas_backend"
 readonly backend_path="$($lake_bin env printenv LEAN_PATH)"
-export LEAN_PATH="$lean_root:$backend_path"
+if [[ -n "$aspis_formal_project" ]]; then
+  test -f "$aspis_formal_project/lakefile.toml"
+  cd "$aspis_formal_project"
+  readonly aspis_path="$($lake_bin env printenv LEAN_PATH)"
+  export LEAN_PATH="$lean_root:$aspis_path:$backend_path"
+else
+  export LEAN_PATH="$lean_root:$backend_path"
+fi
 readonly lean_bin="$HOME/.elan/toolchains/leanprover--lean4---v4.31.0/bin/lean"
 cd "$lean_root"
 
@@ -34,4 +42,9 @@ fi
 if [[ -f V7BinaryFrontierSortSourceBridge.lean ]]; then
   "$lean_bin" -o V7BinaryFrontierSortSourceBridge.olean \
     V7BinaryFrontierSortSourceBridge.lean
+fi
+if [[ -f V7BinaryFrontierK13Integration.lean ]]; then
+  test -n "$aspis_formal_project"
+  "$lean_bin" -o V7BinaryFrontierK13Integration.olean \
+    V7BinaryFrontierK13Integration.lean
 fi

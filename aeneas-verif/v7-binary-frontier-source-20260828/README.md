@@ -53,16 +53,26 @@ the checked `usize` addition. The loop theorem then follows every translated
 `windows(2)` transition and checked addition. There is no arithmetic callback
 or conclusion-shaped source premise.
 
-The insertion-sort closure has also reached a source-backed checkpoint:
+The insertion-sort and fixed-q16 closures are source-backed:
 
 - `V7BinaryFrontierSortModel.bubbleLeft_sorted_prefix` and
   `bubbleLeft_perm` prove the pure adjacent-swap insertion mathematics; and
 - `V7BinaryFrontierSortSourceBridge.translated_inner_insertion_exact` proves
   that the literal translated predecessor-shift loop, followed by writing its
-  saved key at the returned cursor, is exactly that `bubbleLeft` operation.
+  saved key at the returned cursor, is exactly that `bubbleLeft` operation;
+- `translated_outer_insertion_sort_exact` and `translated_sort_from_one`
+  prove that production's complete outer loop returns a sorted permutation;
+- `translated_duplicate_scan_accepts` proves literal adjacent duplicate
+  validation accepts every pairwise-distinct sorted schedule; and
+- `translated_binary_frontier_q16_exact` starts from the complete production
+  helper at `q = 16`, depth 18 and proves its exact checked return formula.
 
-The source theorem includes the returned-cursor bound needed by production's
-outer array write. It does not assume that the translated result is sorted.
+`V7BinaryFrontierK13Integration.translated_frontier_nodes_eq_semantic` then
+constructs the operational Rust `u32[16]` from the Tag-73 query injection and
+proves that the translated helper returns exactly
+`semanticFrontierNodes schedule.positions`. This discharges the former
+pointwise frontier-mathematics input when the accepted tape is instantiated
+with the production helper.
 
 ## Replay
 
@@ -89,6 +99,17 @@ The focused sort-source replay used unit
 `aspis-v7-frontier-sort-source-07`; it exited 0 in 14.692 seconds with zero
 swap and reported the same exact axiom set.
 
+The full fixed-q16 replay used unit
+`aspis-v7-frontier-full-q16-final`; it exited 0 in 15.194 seconds with zero
+swap. The K1.3 integration can be included by supplying a Lean-4.31
+AspisFormal project containing the focused semantic frontier build:
+
+```text
+./compile-generated.sh <generated-lean-root> \
+  /path/to/aeneas/backends/lean \
+  /path/to/aspis-formal-project
+```
+
 ## Digests
 
 ```text
@@ -97,12 +118,15 @@ swap and reported the same exact axiom set.
 29b8692b94e73d1c0d59ab27dbdf5160e285636585add7dbadaba50f631a467f  proof/V7BinaryFrontierBodyBridge.lean
 3911bf62d05373ce65cc2d0bcb0996dab4551445c76ca06e8e905c5e9c73e65a  proof/V7BinaryFrontierLoopBridge.lean
 a47f9642deb9f233a5c6c8b00a18fdeec4e1dc272e3a1e506120fc5e8cea714b  proof/V7BinaryFrontierSortModel.lean
-4195bbfe023fb0711fc3285b0237254584e796bffd5b228472ae78f8a17840c6  proof/V7BinaryFrontierSortSourceBridge.lean
+7ee9f9775b7b3e6f2d1ea8533e91b72cecbdb3948bdd5e3595c5ccc5e652fb66  proof/V7BinaryFrontierSortSourceBridge.lean
+ec384cb07f8f830dd34791c46cbcbda0cd48d5f8581047a9637cf8a032bc7a38  proof/V7BinaryFrontierK13Integration.lean
+a1dfd24d8b17997dd53afd4f90701c67da4be4f0088b867aeb2f36aa56d8f537  compile-generated.sh
 ```
 
 ## Remaining source closure
 
-The next proof lifts the inner insertion theorem through production's outer
-`1..Q` loop. After that, the duplicate/range validation and full return value
-must be connected to the already kernel-checked canonical adjacent-XOR q16
-frontier formula.
+The frontier mathematics and literal helper are closed. The remaining source
+step is the enclosing first-cap-203 caller/tape construction: show that the
+accepted operational tape uses this translated helper for every scanned
+candidate. That is a caller control-flow/source-alignment theorem, not an
+additional frontier formula or probability premise.
