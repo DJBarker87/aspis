@@ -188,6 +188,208 @@ theorem range_next_some_is_exact_successor
     exact canonicalEnd
   · exact active
 
+/-- The translated `?` residual conversion can propagate only an error.  Its
+target type is syntactically broad enough to contain a schedule, so this
+small inversion is needed before a successful outer wrapper can be traced
+back through the loop. -/
+theorem residual_conversion_never_returns_schedule
+    (residual : core.result.Result core.convert.Infallible v6_onefold.V6WireError)
+    (schedule : v7_onefold.V7CompactQuerySchedule)
+    (run : core.result.Result.Insts.CoreOpsTryTraitFromResidualResultInfallible.from_residual
+      v7_onefold.V7CompactQuerySchedule
+        (core.convert.FromSame v6_onefold.V6WireError) residual =
+      .ok (.Ok schedule)) : False := by
+  cases residual with
+  | Ok impossible => cases impossible
+  | Err error =>
+      simp [core.result.Result.Insts.CoreOpsTryTraitFromResidualResultInfallible.from_residual] at run
+
+/-- No generated loop-body error continuation can carry a successful compact
+schedule.  This rules out the only syntactic false-positive path when
+inverting `derive_first_v7_compact_queries` from its public success result. -/
+theorem first_success_body_failure_never_carries_schedule
+    (inputTranscript : transcript.Transcript) (iter : core.ops.range.Range Std.U8)
+    (accepted : Option v7_onefold.V7CompactQuerySchedule)
+    (schedule : v7_onefold.V7CompactQuerySchedule)
+    (run : v7_onefold.derive_first_v7_compact_queries_loop.body
+      inputTranscript iter = .ok (.done (accepted, some (.Ok schedule)))) : False := by
+  unfold v7_onefold.derive_first_v7_compact_queries_loop.body at run
+  generalize nextRun :
+      core.iter.range.IteratorRange.next core.iter.range.StepU8 iter =
+        nextResult at run
+  cases nextResult with
+  | fail error => simp [Bind.bind, Aeneas.Std.bind] at run
+  | div => simp [Bind.bind, Aeneas.Std.bind] at run
+  | ok result =>
+      rcases result with ⟨next, returnedIter⟩
+      cases next with
+      | none => simp [Bind.bind, Aeneas.Std.bind] at run
+      | some counter =>
+          simp only [bind_tc_ok] at run
+          generalize candidateRun :
+              v7_onefold.derive_v7_compact_candidate inputTranscript counter =
+                candidateResult at run
+          cases candidateResult with
+          | fail error => simp [Bind.bind, Aeneas.Std.bind, candidateRun] at run
+          | div => simp [Bind.bind, Aeneas.Std.bind, candidateRun] at run
+          | ok candidate =>
+              cases candidate with
+              | Err error =>
+                  simp [core.result.Result.Insts.CoreOpsTry.branch,
+                    core.result.Result.Insts.CoreOpsTryTraitFromResidualResultInfallible.from_residual,
+                    candidateRun] at run
+              | Ok candidate =>
+                  cases candidate <;>
+                    simp [core.result.Result.Insts.CoreOpsTry.branch,
+                      candidateRun] at run
+
+/-- A successful-looking pending result cannot emerge from any finite
+execution of the generated first-success loop.  The recursive case merely
+passes through a literal `continue`; the terminal case is discharged by the
+body inversion above. -/
+theorem first_success_loop_failure_never_carries_schedule
+    (inputTranscript : transcript.Transcript) (iter : core.ops.range.Range Std.U8)
+    (accepted : Option v7_onefold.V7CompactQuerySchedule)
+    (schedule : v7_onefold.V7CompactQuerySchedule)
+    (run : v7_onefold.derive_first_v7_compact_queries_loop iter
+      inputTranscript = .ok (accepted, some (.Ok schedule))) : False := by
+  unfold v7_onefold.derive_first_v7_compact_queries_loop at run
+  rw [loop.eq_def] at run
+  generalize bodyRun :
+      v7_onefold.derive_first_v7_compact_queries_loop.body inputTranscript
+        iter = bodyResult at run
+  cases bodyResult with
+  | fail error => simp at run
+  | div => simp at run
+  | ok control =>
+      cases control with
+      | cont nextIter =>
+          simp at run
+          obtain ⟨current, currentNext, currentRun⟩ :=
+            first_success_body_continue_inverts inputTranscript iter nextIter
+              bodyRun
+          obtain ⟨currentExact, nextStart, nextEnd, active⟩ :=
+            range_next_some_is_exact_successor iter nextIter current currentNext
+          exact first_success_loop_failure_never_carries_schedule
+            inputTranscript nextIter accepted schedule run
+      | done result =>
+          rcases result with ⟨bodyAccepted, pending⟩
+          cases pending with
+          | none => simp at run
+          | some failure =>
+              cases failure with
+              | Err error => simp at run
+              | Ok returnedSchedule =>
+                  simp at run
+                  rcases run with ⟨acceptedExact, scheduleExact⟩
+                  rw [acceptedExact, scheduleExact] at bodyRun
+                  exact first_success_body_failure_never_carries_schedule
+                    inputTranscript iter accepted schedule bodyRun
+termination_by iter.end.val - iter.start.val
+decreasing_by
+  rw [nextEnd, nextStart]
+  omega
+
+/-- Literal success of the public production wrapper exposes the exact
+successful initial range-loop result.  The generated error channel is handled
+above rather than assumed to be well typed by convention. -/
+theorem translated_wrapper_success_exposes_initial_loop
+    (inputTranscript : transcript.Transcript)
+    (schedule : v7_onefold.V7CompactQuerySchedule)
+    (run : v7_onefold.derive_first_v7_compact_queries inputTranscript =
+      .ok (.Ok schedule)) :
+    v7_onefold.derive_first_v7_compact_queries_loop
+        { start := 0#u8, «end» := 64#u8 } inputTranscript =
+      .ok (some schedule, none) := by
+  have castExact :
+      UScalar.cast .U8 v7_onefold.V7_COMPACT_QUERY_CANDIDATES = 64#u8 := by
+    unfold v7_onefold.V7_COMPACT_QUERY_CANDIDATES
+    apply UScalar.eq_of_val_eq
+    norm_num [UScalar.cast_val_eq]
+  unfold v7_onefold.derive_first_v7_compact_queries at run
+  rw [castExact] at run
+  simp only [lift, bind_tc_ok] at run
+  generalize loopRun :
+      v7_onefold.derive_first_v7_compact_queries_loop
+          { start := 0#u8, «end» := 64#u8 } inputTranscript = loopResult at run
+  cases loopResult with
+  | fail error => simp at run
+  | div => simp at run
+  | ok result =>
+      rcases result with ⟨accepted, pending⟩
+      cases pending with
+      | none =>
+          cases accepted with
+          | none => simp at run
+          | some returnedSchedule =>
+              have scheduleExact : returnedSchedule = schedule := by
+                simpa [loopRun] using run
+              subst returnedSchedule
+              rfl
+      | some failure =>
+          cases failure with
+          | Err error => simp at run
+          | Ok returnedSchedule =>
+              have scheduleExact : returnedSchedule = schedule := by
+                simpa [loopRun] using run
+              subst returnedSchedule
+              exact False.elim
+                (first_success_loop_failure_never_carries_schedule
+                  inputTranscript { start := 0#u8, «end» := 64#u8 }
+                  accepted schedule loopRun)
+
+/-- The schedule returned by a literal successful search is the successful
+production candidate at its embedded counter. -/
+theorem first_success_loop_selected_candidate_succeeds
+    (inputTranscript : transcript.Transcript)
+    (iter : core.ops.range.Range Std.U8)
+    (schedule : v7_onefold.V7CompactQuerySchedule)
+    (run : v7_onefold.derive_first_v7_compact_queries_loop iter
+      inputTranscript = .ok (some schedule, none)) :
+    v7_onefold.derive_v7_compact_candidate inputTranscript schedule.counter =
+      .ok (.Ok (some schedule)) := by
+  unfold v7_onefold.derive_first_v7_compact_queries_loop at run
+  rw [loop.eq_def] at run
+  generalize bodyRun :
+      v7_onefold.derive_first_v7_compact_queries_loop.body inputTranscript
+        iter = bodyResult at run
+  cases bodyResult with
+  | fail error => simp at run
+  | div => simp at run
+  | ok control =>
+      cases control with
+      | cont nextIter =>
+          simp at run
+          obtain ⟨current, currentNext, currentRun⟩ :=
+            first_success_body_continue_inverts inputTranscript iter nextIter
+              bodyRun
+          obtain ⟨currentExact, nextStart, nextEnd, active⟩ :=
+            range_next_some_is_exact_successor iter nextIter current currentNext
+          exact first_success_loop_selected_candidate_succeeds
+            inputTranscript nextIter schedule run
+      | done result =>
+          rcases result with ⟨accepted, pending⟩
+          cases pending with
+          | some failure => simp at run
+          | none =>
+              cases accepted with
+              | none => simp at run
+              | some returnedSchedule =>
+                  obtain ⟨counter, nextIter, nextRun, candidateRun⟩ :=
+                    first_success_body_select_inverts inputTranscript iter
+                      returnedSchedule bodyRun
+                  have scheduleExact : returnedSchedule = schedule := by
+                    simpa [bodyRun] using run
+                  subst returnedSchedule
+                  have counterExact := candidate_success_some_retains_counter
+                    inputTranscript counter schedule candidateRun
+                  rw [← counterExact] at candidateRun
+                  exact candidateRun
+termination_by iter.end.val - iter.start.val
+decreasing_by
+  rw [nextEnd, nextStart]
+  omega
+
 /-- A successful literal first-compact search returns a counter inside the
 actual translated range being searched.  This follows from the loop and
 iterator executions themselves; it is not a separately trusted `cap 64`
@@ -401,12 +603,49 @@ decreasing_by
   rw [nextStart]
   omega
 
+/-- Complete literal first-success certificate for the public production
+wrapper: its selected candidate is accepted, every smaller counter was
+rejected, and the selected counter is in the fixed `0..64` scan. -/
+theorem translated_wrapper_success_has_source_first_certificate
+    (inputTranscript : transcript.Transcript)
+    (schedule : v7_onefold.V7CompactQuerySchedule)
+    (run : v7_onefold.derive_first_v7_compact_queries inputTranscript =
+      .ok (.Ok schedule)) :
+    schedule.counter.val < 64 ∧
+      v7_onefold.derive_v7_compact_candidate inputTranscript schedule.counter =
+        .ok (.Ok (some schedule)) ∧
+      ∀ counter : Std.U8, counter.val < schedule.counter.val →
+        v7_onefold.derive_v7_compact_candidate inputTranscript counter =
+          .ok (.Ok none) := by
+  let initial : core.ops.range.Range Std.U8 :=
+    { start := 0#u8, «end» := 64#u8 }
+  have loopRun := translated_wrapper_success_exposes_initial_loop
+    inputTranscript schedule run
+  have selectedRange := first_success_loop_selected_counter_in_range
+    inputTranscript initial schedule.counter schedule rfl (by simpa [initial] using loopRun)
+  have selectedLt : schedule.counter.val < 64 := by
+    simpa [initial] using selectedRange.2
+  have selectedRun := first_success_loop_selected_candidate_succeeds
+    inputTranscript initial schedule (by simpa [initial] using loopRun)
+  refine ⟨selectedLt, selectedRun, ?_⟩
+  intro counter counterEarlier
+  exact first_success_loop_exposes_all_prior_none inputTranscript initial
+    schedule.counter schedule rfl (by simp [initial]) (Nat.zero_le _)
+    selectedLt (by simpa [initial] using loopRun) counter (Nat.zero_le _)
+    counterEarlier
+
 #print axioms first_success_body_continue_inverts
 #print axioms first_success_body_select_inverts
 #print axioms range_next_some_is_exact_successor
+#print axioms residual_conversion_never_returns_schedule
+#print axioms first_success_body_failure_never_carries_schedule
+#print axioms first_success_loop_failure_never_carries_schedule
+#print axioms translated_wrapper_success_exposes_initial_loop
+#print axioms first_success_loop_selected_candidate_succeeds
 #print axioms first_success_loop_selected_counter_in_range
 #print axioms first_success_loop_at_earlier_start_continues
 #print axioms first_success_loop_exposes_all_prior_none
 #print axioms candidate_success_some_retains_counter
+#print axioms translated_wrapper_success_has_source_first_certificate
 
 end V7FirstCompactLoopInverseBridge
