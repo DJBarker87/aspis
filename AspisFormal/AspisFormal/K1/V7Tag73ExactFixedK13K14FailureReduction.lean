@@ -225,7 +225,7 @@ theorem exact_k14_failure_mem_width29_bad_challenges
       (exactK13ParsedProof input).schedule selected selectedEq,
       noMatching⟩
 
-/-- For every fixed selected response, the exact published theorem gives the
+/-- For every fixed selected response, the supplied curve-decodability theorem gives the
 degree-28 target cap.  A later restoration-strategy module will assemble the
 single challenge-indexed response strategy without a list-size union. -/
 theorem fixed_selected_width29_bad_challenges_card_le
@@ -351,7 +351,7 @@ theorem fixed_selected_bad_mem_restored_width29_bad_challenges
       exact onCurve
   exact ⟨fixedMember.1, restoredValid, restoredNoMatching⟩
 
-/-- The one restoration-wide bad set has the published degree-28 cap directly;
+/-- The one restoration-wide bad set has the release degree-28 cap directly;
 there is no factor 100 or 9,900 from unioning independently selected lists. -/
 theorem restored_width29_bad_challenges_card_le
     (decoder : ExactDecoderInstantiation QM31Exact)

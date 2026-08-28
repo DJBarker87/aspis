@@ -118,9 +118,8 @@ theorem uniform_tape_k14_event_probability_le
       {a : Total // success a} ≃ SuccessfulTag73DuplexNonzeroAttempts)
     {decoder : AspisPool.AlgorithmicCircleDecoderV7.ExactDecoderInstantiation
       AspisV5ComponentCQM31TowerExact.QM31Exact}
-    (published :
-      AspisV6PublishedTheoremInterfaces.PublishedInitialWidth29CurveDecodability
-        decoder.initialEncoder)
+    (initialEncoderExact : decoder.initialEncoder =
+      AspisPool.V7C1ConcreteProjectionBinding.exactInitialEncoder)
     {words : AspisPool.V7MerkleQueryExtractor.ExtractedWords}
     (provider : AspisK1.V7Tag73RawNonzeroSamplerFactorization.Tag73CompleteSamplerSkeleton →
       AspisK1.V7Tag73CausalRestoredFamily.RestoredSelectedBranchProvider
@@ -151,7 +150,8 @@ theorem uniform_tape_k14_event_probability_le
         _ = _ := by
           rw [AspisV5RankOneOpeningHiding.uniform_map_equiv
             successfulCoordinates]
-    _ ≤ _ := causal_k14_failure_duplex_gamma_probability_le published provider
+    _ ≤ _ := causal_k14_failure_duplex_gamma_probability_le
+      initialEncoderExact provider
 
 /-- Average the source-provided fixed-hidden coordinate/inclusion bridges over
 the exact compiler's arbitrary hidden-tape law. -/
@@ -170,9 +170,8 @@ theorem exact_compiler_k14_event_probability_le
       {a : Total // success a} ≃ SuccessfulTag73DuplexNonzeroAttempts)
     {decoder : AspisPool.AlgorithmicCircleDecoderV7.ExactDecoderInstantiation
       AspisV5ComponentCQM31TowerExact.QM31Exact}
-    (published :
-      AspisV6PublishedTheoremInterfaces.PublishedInitialWidth29CurveDecodability
-        decoder.initialEncoder)
+    (initialEncoderExact : decoder.initialEncoder =
+      AspisPool.V7C1ConcreteProjectionBinding.exactInitialEncoder)
     {words : AspisPool.V7MerkleQueryExtractor.ExtractedWords}
     (provider : HiddenTape →
       AspisK1.V7Tag73RawNonzeroSamplerFactorization.Tag73CompleteSamplerSkeleton →
@@ -193,7 +192,7 @@ theorem exact_compiler_k14_event_probability_le
   apply joint_event_probability_le_of_every_slice_le
   intro hidden
   exact uniform_tape_k14_event_probability_le success (coordinates hidden)
-    successfulCoordinates published (provider hidden)
+    successfulCoordinates initialEncoderExact (provider hidden)
     (jointEventSlice event hidden) (covered hidden)
 
 /-! ## Residual-dependent causal contexts -/
@@ -387,9 +386,8 @@ theorem uniform_tape_dependent_k14_event_probability_le
       {a : Total // success a} ≃ SuccessfulTag73DuplexNonzeroAttempts)
     {decoder : AspisPool.AlgorithmicCircleDecoderV7.ExactDecoderInstantiation
       AspisV5ComponentCQM31TowerExact.QM31Exact}
-    (published :
-      AspisV6PublishedTheoremInterfaces.PublishedInitialWidth29CurveDecodability
-        decoder.initialEncoder)
+    (initialEncoderExact : decoder.initialEncoder =
+      AspisPool.V7C1ConcreteProjectionBinding.exactInitialEncoder)
     (words : Residual → AspisPool.V7MerkleQueryExtractor.ExtractedWords)
     (provider : ∀ residual,
       AspisK1.V7Tag73RawNonzeroSamplerFactorization.Tag73CompleteSamplerSkeleton →
@@ -447,8 +445,8 @@ theorem uniform_tape_dependent_k14_event_probability_le
             _ = _ := by
               rw [AspisV5RankOneOpeningHiding.uniform_map_equiv
                 successfulCoordinates]
-        _ ≤ _ := causal_k14_failure_duplex_gamma_probability_le published
-          (provider residual)
+        _ ≤ _ := causal_k14_failure_duplex_gamma_probability_le
+          initialEncoderExact (provider residual)
 
 /-- Hidden-tape averaging of the residual-dependent source bridge. -/
 theorem exact_compiler_dependent_k14_event_probability_le
@@ -466,9 +464,8 @@ theorem exact_compiler_dependent_k14_event_probability_le
       {a : Total // success a} ≃ SuccessfulTag73DuplexNonzeroAttempts)
     {decoder : AspisPool.AlgorithmicCircleDecoderV7.ExactDecoderInstantiation
       AspisV5ComponentCQM31TowerExact.QM31Exact}
-    (published :
-      AspisV6PublishedTheoremInterfaces.PublishedInitialWidth29CurveDecodability
-        decoder.initialEncoder)
+    (initialEncoderExact : decoder.initialEncoder =
+      AspisPool.V7C1ConcreteProjectionBinding.exactInitialEncoder)
     (words : HiddenTape → Residual →
       AspisPool.V7MerkleQueryExtractor.ExtractedWords)
     (provider : ∀ hidden residual,
@@ -490,7 +487,7 @@ theorem exact_compiler_dependent_k14_event_probability_le
   apply joint_event_probability_le_of_every_slice_le
   intro hidden
   exact uniform_tape_dependent_k14_event_probability_le success
-    (coordinates hidden) successfulCoordinates published (words hidden)
+    (coordinates hidden) successfulCoordinates initialEncoderExact (words hidden)
     (provider hidden) (jointEventSlice event hidden) (covered hidden)
 
 end

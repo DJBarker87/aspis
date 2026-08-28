@@ -3,6 +3,7 @@ import AspisFormal.K1.V7Tag73ExactFixedK13K14FailureReduction
 import AspisFormal.K1.V7Tag73ExactParsedProofSourceBinding
 import AspisFormal.K1.V7Tag73ExactOneFoldEncoderBinding
 import AspisFormal.K1.V7Tag73ExactOneFoldRestorationStrategy
+import AspisFormal.K1.V7ExactCorrelatedAgreementTerminal
 import AspisFormal.K1.V7Tag73JointQueryBatchSoundness
 import AspisFormal.K1.V7Tag73Q16FirstCompactUniformity
 import AspisFormal.Pool.V7RelationCandidateBinding
@@ -39,6 +40,7 @@ open AspisK1.V7Tag73ExactFixedK13K14Classifier
 open AspisK1.V7Tag73ExactFixedK13K14FailureReduction
 open AspisK1.V7Tag73ExactOneFoldEncoderBinding
 open AspisK1.V7Tag73ExactOneFoldRestorationStrategy
+open AspisK1.V7ExactCorrelatedAgreementTerminal
 open AspisK1.V7Tag73JointQueryBatchSoundness
 open AspisK1.V7Tag73ExactParsedProofSourceBinding
 open AspisK1.V7Tag73OperationalSemanticReplay
@@ -439,10 +441,10 @@ theorem query_phase_failure_exposes_literal_q16_bad_set
       (exactK13Encoders decoder) (exactK13Transcript input k12), failure.2,
     query_phase_failure_is_literal_selected_all_in_bad source failure⟩
 
-/-! ## Exact one-fold published-theorem target -/
+/-! ## Exact internally proved one-fold target -/
 
 /-- A concrete K1.3 one-fold failure is charged to one fixed pre-alpha bad
-set of size at most the published degree-three cap.  The sampled alpha is
+set of size at most the release degree-three cap.  The sampled alpha is
 also identified with the literal operational transcript challenge. -/
 theorem onefold_failure_exposes_exact_published_bad_set
     {HiddenTape TapeIdentity Observation Statement Payload Result : Type}
@@ -461,7 +463,6 @@ theorem onefold_failure_exposes_exact_published_bad_set
     (source : ExactParsedProofSourceBinding input decoded)
     (initialEncoderExact : decoder.initialEncoder = exactInitialEncoder)
     (finalEncoderExact : decoder.finalEncoder = exactFinalEncoder)
-    (published : PublishedOneFoldCurveDecodability exactFinalLinear)
     (failure : OneFoldReductionFailure (exactK13ParsedProof input).schedule
       (exactK13Encoders decoder) (exactK13Transcript input k12)) :
     let binding := exactOneFoldAlgebraBinding
@@ -482,7 +483,7 @@ theorem onefold_failure_exposes_exact_published_bad_set
         (exactK13Encoders decoder) initialEncoderExact finalEncoderExact
         source.inverseTablesExact).finalLinear := by
     change PublishedOneFoldCurveDecodability exactFinalLinear
-    exact published
+    exact exactV7FinalPublishedOneFoldCurveDecodability
   exact oneFoldReductionFailure_has_published_cap
     (exactK13ParsedProof input).schedule (exactK13Encoders decoder)
     (exactOneFoldAlgebraBinding (exactK13ParsedProof input).schedule

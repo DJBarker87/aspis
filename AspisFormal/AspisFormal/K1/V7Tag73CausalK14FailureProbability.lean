@@ -1,6 +1,7 @@
 import AspisFormal.K1.V7Tag73CounterfactualK13Provider
 import AspisFormal.K1.V7Tag73CounterfactualK14Membership
 import AspisFormal.K1.V7Tag73CompleteCausalGammaProbability
+import AspisFormal.K1.V7ExactCorrelatedAgreementInitial
 
 /-!
 # Causal probability bound for the exact Tag-73 K1.4 failure
@@ -20,6 +21,7 @@ set_option maxRecDepth 1000000
 namespace AspisK1.V7Tag73CausalK14FailureProbability
 
 open MeasureTheory
+open AspisK1.V7ExactCorrelatedAgreementTerminal
 open AspisK1.V7Tag73CompleteCausalGammaProbability
 open AspisK1.V7Tag73CausalRestoredFamily
 open AspisK1.V7Tag73CounterfactualK13Provider
@@ -82,18 +84,22 @@ abbrev causalK14FailureDuplexGammaEvent
   exact mem_duplexSkeletonDependentGammaEvent
     (causalK14FailureGammaTarget provider) sample
 
-/-- Every causal K1.4 target has the single published degree-28 cardinality
+/-- Every causal K1.4 target has the internally proved degree-28 cardinality
 cap. -/
 theorem causal_k14_failure_target_card_le
     {decoder : ExactDecoderInstantiation QM31Exact}
-    (published : PublishedInitialWidth29CurveDecodability
-      decoder.initialEncoder)
+    (initialEncoderExact : decoder.initialEncoder =
+      AspisPool.V7C1ConcreteProjectionBinding.exactInitialEncoder)
     {words : AspisPool.V7MerkleQueryExtractor.ExtractedWords}
     (provider : Tag73CompleteSamplerSkeleton →
       RestoredSelectedBranchProvider decoder words)
     (skeleton : Tag73CompleteSamplerSkeleton) :
     (causalK14FailureGammaTarget provider skeleton).card ≤
       initialBatchChallengeCap := by
+  have published : PublishedInitialWidth29CurveDecodability
+      decoder.initialEncoder := by
+    rw [initialEncoderExact]
+    exact exactV7InitialPublishedWidth29CurveDecodability
   exact restored_width29_bad_challenges_card_le decoder published words
     (restoredSelectedChainFamilyOfK13Provider
       (provider skeleton)).response
@@ -103,8 +109,8 @@ the whole response strategy, but the returned nonzero gamma remains the sole
 uniform second factor. -/
 theorem causal_k14_failure_duplex_gamma_probability_le
     {decoder : ExactDecoderInstantiation QM31Exact}
-    (published : PublishedInitialWidth29CurveDecodability
-      decoder.initialEncoder)
+    (initialEncoderExact : decoder.initialEncoder =
+      AspisPool.V7C1ConcreteProjectionBinding.exactInitialEncoder)
     {words : AspisPool.V7MerkleQueryExtractor.ExtractedWords}
     (provider : Tag73CompleteSamplerSkeleton →
       RestoredSelectedBranchProvider decoder words) :
@@ -114,7 +120,7 @@ theorem causal_k14_failure_duplex_gamma_probability_le
         ((P ^ 4 - 1 : Nat) : ENNReal) := by
   apply duplex_skeleton_dependent_gamma_probability_le
   intro skeleton
-  exact causal_k14_failure_target_card_le published provider skeleton
+  exact causal_k14_failure_target_card_le initialEncoderExact provider skeleton
 
 set_option maxHeartbeats 1000000 in
 -- Normalize the complete dependent parser/provider event without changing it.
