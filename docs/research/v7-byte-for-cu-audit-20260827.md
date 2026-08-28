@@ -2,40 +2,45 @@
 
 Date: 2026-08-28
 
-Status: active measurement audit. No production profile, deployed program,
-proof-system security parameter, or network state has been changed.
+Status: CU configuration locked on the research branch. No deployed program,
+proof-system security parameter, terminal transport, or network
+state has been changed. Sections 3--10 retain the measurement chronology that
+led to the final result; this section supersedes their earlier blocker status.
 
 ## Decision status
 
 **SPEND PROOF BYTES FOR CU**
 
-This is an interim status, not the final recommendation. The masking-rank gate
-has passed and the frozen strict-work host KAT now proves
-`ASQ8 -> ASF8 -> Tag-73 -> ASR8` using an honest 30,400-byte proof with exact
-35/31/34-bit work checks and a 792-byte ASR8. A real
-combined SBF harness now completes the entire true-TxV1 Pool-to-verifier path,
-returns and validates the exact 792-byte ASR8, mutates the selected lane and
-nullifier atomically, and checks byte-exact readonly preservation.  On the
-same executable path the unchanged verifier costs 3,008,600 CU; the two
-source-backed Pool invariant fast paths reduce that to 2,069,373 CU.  The
-corrected exact-once canonical fixed-section representation then reduces the
-same strict transaction to 1,912,443 CU using a 30,720-byte proof. Full ASF8
-has been measured independently and is strictly dominated. The selected
-source-invariant and exact-arithmetic stack now completes the entire strict
-transfer transaction at **1,376,652 CU under the exact 1,400,000-CU limit**,
-leaving 23,348 CU. The harness true-TxV1 packet is 799 bytes, the exact ASR8 is
-792 bytes, and all 35/31/34-bit work checks execute. This selects proof bytes,
-not transaction or return-data bytes.
+The final configuration combines the previously measured +320-byte canonical
+fixed-field proof representation with zero-byte sparsity/basis refactorings.
+It completes the real combined
+`TxV1 -> Pool -> Tag-73 verifier -> ASR8 -> atomic settlement` path for all
+four selected transfer/withdrawal and same-page/rollover shapes. It keeps the
+320-byte ASQ8 and 792-byte ASR8. The account-backed proof maximum is 30,824
+bytes rather than the compact baseline's 30,504 bytes; the four honest strict
+fixtures range from 30,720 to 30,824 bytes. No transaction-carried hint or
+other fatter-proof hint was selected.
 
-An additional prover-work experiment finds an already-valid final nonce whose
-unchanged first-cap-203 verifier scan succeeds at counter zero. With no verifier,
-wire, relation or transaction change, exact one-transaction withdrawals then
-accept at **1,367,025 CU same-page** and **1,395,583 CU rollover**. This is not a
-byte-for-CU trade and is not selected for release yet: rollover has only 4,417
-CU headroom, and the honest nonce-selection distribution still needs the
-explicit K1.6/grinding and hiding review. Production activation also remains
-blocked on immutable mainnet Pool/registry/policy constants, final source/formal
-composition, adversarial lifecycle, reproducible builds and devnet evidence.
+| Operation | History path | Real combined CU | TxV1 bytes | Headroom to 1.3M CU | Headroom to 4,096 B |
+| --- | --- | ---: | ---: | ---: | ---: |
+| Private transfer | same page | 1,145,926 | 799 | 154,074 | 3,297 |
+| Private transfer | rollover | 1,191,499 | 832 | 108,501 | 3,264 |
+| Withdrawal | same page | 1,136,171 | 964 | 163,829 | 3,132 |
+| Withdrawal | rollover | 1,201,754 | 997 | 98,246 | 3,099 |
+
+Every row is **MEASURED REAL CU** from a successful strict-work LiteSVM
+transaction at the deployable 1,400,000-CU runtime limit. The proof performs
+the exact 35/31/34-bit work checks. Simulation and execution agree. The worst
+case is 1,754 CU above the preferred 1.2M target and 98,246 CU below the hard
+1.3M release gate. Further speculative CU work is deferred; formal/source
+closure and TxV1 devnet lifecycle evidence now have higher release value.
+
+The locked verifier binary is 1,968,872 bytes with SHA-256
+`ad84706b714dedfe89e5f3ebcf91dff8ab300ab3dfe3eb2d7d846e1bf0c635d4`.
+The unchanged Pool binary is 526,656 bytes with SHA-256
+`f3ae8d96164189bec2e134b659e4fc5bd39a6b16488cde1bbd23f278a9369c76`.
+The exact optimisation/equivalence record is
+`docs/research/v7-cu-sparsity-lock-20260828.md`.
 
 ## 1. Frozen baseline
 
@@ -685,5 +690,10 @@ unless full ASF8 or checked Tx-carried hints produce a material same-binary CU
 reduction while every affected TxV1 shape remains comfortably below 4,096
 bytes.
 
-The final report will replace the interim decision at the top with exactly one
-of the required production choices after the real combined frontier exists.
+The real combined frontier now exists. The selected production direction is
+**SPEND PROOF BYTES FOR CU**: retain the compact 320-byte ASQ8 and 792-byte
+ASR8, but use the +320-byte canonical fixed-field proof representation with a
+30,824-byte maximum body. The later sparsity/basis gains are exact zero-byte
+evaluator refactorings. Activation remains gated on the corresponding
+Lean/Aeneas/source closure and the finalized TxV1 devnet lifecycle; this audit
+alone is not a mainnet authorization.

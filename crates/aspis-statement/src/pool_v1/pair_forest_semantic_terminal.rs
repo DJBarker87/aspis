@@ -44,7 +44,12 @@ pub const POOL_V1_PAIR_FOREST_THETA_COLLISION_DEGREE_V1: usize =
 pub const POOL_V1_PAIR_FOREST_SEMANTIC_ORACLE_INDIVIDUAL_DEGREE_V1: usize = 26;
 pub const POOL_V1_PAIR_FOREST_SEMANTIC_ZEROCHECK_INDIVIDUAL_DEGREE_V1: usize = 27;
 pub const POOL_V1_PAIR_FOREST_MASKED_TERMINAL_DEGREE_V1: usize = 27;
-pub const POOL_V1_PAIR_FOREST_TERMINAL_FIXED_HEAP_ALLOCATIONS_V1: usize = 1;
+pub const POOL_V1_PAIR_FOREST_TERMINAL_FIXED_HEAP_ALLOCATIONS_V1: usize =
+    if cfg!(feature = "pool-v1-pair-forest-copy-selector-tensor-basis-audit") {
+        2
+    } else {
+        1
+    };
 pub const POOL_V1_PAIR_FOREST_TERMINAL_SELECTOR_HEAP_BYTES_V1: usize =
     core::mem::size_of::<Selectors>();
 
@@ -115,6 +120,36 @@ fn add_preweighted<const N: usize>(
             }
         });
         packed[group] = packed[group].add(qm31_pack_base4(&lanes));
+    }
+}
+
+/// Exact linear factoring for a contiguous source-lane interval with one
+/// common selector:
+///
+/// `pack(s*r0, ..., s*r3) = s*pack(r0, ..., r3)`.
+///
+/// The global source offset may be unaligned, so the first and last groups
+/// retain the same zero padding as `add_preweighted`.
+#[inline(always)]
+#[cfg(any(test, feature = "pool-v1-pair-forest-packed-range-audit"))]
+fn add_preweighted_shared_selector<const N: usize>(
+    packed: &mut [QM31; POOL_V1_PAIR_FOREST_PACKED_SEMANTIC_LANES_V1],
+    start: usize,
+    values: &[QM31; N],
+    selector: QM31,
+) {
+    let first = start / 4;
+    let last = (start + N - 1) / 4;
+    for group in first..=last {
+        let lanes: [QM31; 4] = core::array::from_fn(|slot| {
+            let source = 4 * group + slot;
+            if source >= start && source < start + N {
+                values[source - start]
+            } else {
+                QM31::ZERO
+            }
+        });
+        packed[group] = packed[group].add(selector.mul(qm31_pack_base4(&lanes)));
     }
 }
 
@@ -405,16 +440,24 @@ fn add_value_lanes(
     let mut range = [QM31::ZERO; 33];
     for (view, values) in views.into_iter().zip(range[..30].chunks_mut(10)) {
         for index in 0..10 {
-            values[index] = range_selector.mul(view[index].square().sub(view[index]));
+            values[index] = view[index].square().sub(view[index]);
         }
     }
     let reconstructed = reconstruct_10(&openings.z)
         .add(reconstruct_10(&openings.succ_z).mul_m31(M31(1 << 10)))
         .add(reconstruct_10(&openings.xor12_z).mul_m31(M31(1 << 20)));
-    range[30] = range_selector.mul(openings.z[10].sub(reconstructed));
-    range[31] = range_selector.mul(openings.succ_z[10]);
-    range[32] = range_selector.mul(openings.xor12_z[10]);
-    add_preweighted(packed, 49, &range);
+    range[30] = openings.z[10].sub(reconstructed);
+    range[31] = openings.succ_z[10];
+    range[32] = openings.xor12_z[10];
+    #[cfg(not(feature = "pool-v1-pair-forest-packed-range-audit"))]
+    {
+        for residual in &mut range {
+            *residual = range_selector.mul(*residual);
+        }
+        add_preweighted(packed, 49, &range);
+    }
+    #[cfg(feature = "pool-v1-pair-forest-packed-range-audit")]
+    add_preweighted_shared_selector(packed, 49, &range, range_selector);
 
     let conservation_selector = selectors.row(16 * VALUE_AUXILIARY_BLOCK + 6);
     let conservation = [
@@ -623,9 +666,15 @@ fn add_digest_binding_packed(
     }
 }
 
-#[cfg(any(test, feature = "pool-v1-pair-forest-packed-digest-audit"))]
+#[cfg(any(
+    test,
+    all(
+        feature = "pool-v1-pair-forest-packed-digest-audit",
+        not(feature = "pool-v1-pair-forest-packed-digest-selector-tensor-audit")
+    )
+))]
 #[inline(never)]
-fn public_digest_packed(
+fn public_digest_packed_row_major(
     public: SemanticPublic<'_>,
     openings: &StateOnlyPoseidonOpenings,
     selectors: &Selectors,
@@ -710,6 +759,127 @@ fn public_digest_packed(
         );
     }
     digests
+}
+
+#[cfg(any(
+    test,
+    feature = "pool-v1-pair-forest-packed-digest-selector-tensor-audit"
+))]
+#[inline(always)]
+fn add_digest_binding_packed_selector_tensor(
+    local_sums: &mut [[QM31; DIGEST_ELEMS / 4]; 3],
+    selectors: &Selectors,
+    row: usize,
+    opened: &[QM31; POSEIDON2_WIDTH],
+    start: usize,
+    expected: &Digest,
+    right_tweak: bool,
+) {
+    let local_coordinate = match row & 15 {
+        0 => 0,
+        11 => 1,
+        12 => 2,
+        _ => unreachable!("frozen public-digest binding local coordinate"),
+    };
+    let high = PreparedQm31Multiplier::new(selectors.high[row >> 4]);
+    for group in 0..DIGEST_ELEMS / 4 {
+        let residuals: [QM31; 4] = core::array::from_fn(|slot| {
+            let lane = 4 * group + slot;
+            let mut target = expected[lane];
+            if right_tweak && lane + 1 == DIGEST_ELEMS {
+                target = target.add(MERKLE_NODE_COMPRESSION_V3_TWEAK);
+            }
+            opened[start + lane].sub(lift(target))
+        });
+        local_sums[local_coordinate][group] =
+            local_sums[local_coordinate][group].add(high.mul(qm31_pack_base4(&residuals)));
+    }
+}
+
+/// Exact selector-tensor form of the packed public digest constraints:
+///
+/// `sum_e high[b_e] * low[l_e] * residual_e`
+///
+/// is contracted as
+///
+/// `sum_l low[l] * (sum_{e:l_e=l} high[b_e] * residual_e)`.
+///
+/// The frozen binding grammar uses only locals 0, 11 and 12. No row,
+/// expected digest, tweak, semantic lane or transcript value changes.
+#[cfg(any(
+    test,
+    feature = "pool-v1-pair-forest-packed-digest-selector-tensor-audit"
+))]
+#[inline(never)]
+fn public_digest_packed_selector_tensor(
+    public: SemanticPublic<'_>,
+    openings: &StateOnlyPoseidonOpenings,
+    selectors: &Selectors,
+) -> [QM31; DIGEST_ELEMS / 4] {
+    let mut local_sums = [[QM31::ZERO; DIGEST_ELEMS / 4]; 3];
+    macro_rules! add {
+        ($row:expr, $start:expr, $expected:expr, $right_tweak:expr $(,)?) => {
+            add_digest_binding_packed_selector_tensor(
+                &mut local_sums,
+                selectors,
+                $row,
+                &openings.z,
+                $start,
+                $expected,
+                $right_tweak,
+            )
+        };
+    }
+    add!(56 * 16 + 11, 0, &public.anchor, false);
+    add!(26 * 16 + 11, 0, &public.nullifier, false);
+    if let Some(recipient) = public.recipient {
+        add!(29 * 16 + 11, 0, &recipient, false);
+    }
+    add!(32 * 16 + 11, 0, &public.change, false);
+
+    let source = public.transition.live_snapshot;
+    let after = public.transition.candidate_afterstate;
+    for level in 0..20 {
+        let block = 34 + level;
+        if ((source.next_pair_index >> level) & 1) == 0 {
+            add!(block * 16, RATE, &empty_root(level), true);
+        } else {
+            add!(block * 16 + 12, 0, &source.frontier[level], false);
+        }
+    }
+    add!(53 * 16 + 11, 0, &after.next_root, false);
+    let carry = core::cmp::min(source.next_pair_index.trailing_ones() as usize, 20);
+    if carry < 20 {
+        add!(
+            (33 + carry) * 16 + 11,
+            0,
+            &after.next_frontier[carry],
+            false,
+        );
+    }
+
+    let locals = [0usize, 11, 12];
+    let mut output = [QM31::ZERO; DIGEST_ELEMS / 4];
+    for coordinate in 0..locals.len() {
+        let low = PreparedQm31Multiplier::new(selectors.low[locals[coordinate]]);
+        for group in 0..DIGEST_ELEMS / 4 {
+            output[group] = output[group].add(low.mul(local_sums[coordinate][group]));
+        }
+    }
+    output
+}
+
+#[cfg(any(test, feature = "pool-v1-pair-forest-packed-digest-audit"))]
+#[inline(always)]
+fn public_digest_packed(
+    public: SemanticPublic<'_>,
+    openings: &StateOnlyPoseidonOpenings,
+    selectors: &Selectors,
+) -> [QM31; DIGEST_ELEMS / 4] {
+    #[cfg(not(feature = "pool-v1-pair-forest-packed-digest-selector-tensor-audit"))]
+    return public_digest_packed_row_major(public, openings, selectors);
+    #[cfg(feature = "pool-v1-pair-forest-packed-digest-selector-tensor-audit")]
+    return public_digest_packed_selector_tensor(public, openings, selectors);
 }
 
 #[inline(never)]
@@ -1351,6 +1521,24 @@ mod tests {
                     &openings.z,
                 ),
                 "occupancy mismatch at sample {sample}",
+            );
+        }
+    }
+
+    #[test]
+    fn packed_range_shared_selector_equals_literal_off_domain() {
+        let mut state = 0x7261_6e67_655f_7631u64;
+        for sample in 0..128 {
+            let selector = next_test_qm31(&mut state);
+            let residuals: [QM31; 33] = core::array::from_fn(|_| next_test_qm31(&mut state));
+            let selected = residuals.map(|residual| selector.mul(residual));
+            let mut literal = [QM31::ZERO; POOL_V1_PAIR_FOREST_PACKED_SEMANTIC_LANES_V1];
+            let mut factored = literal;
+            add_preweighted(&mut literal, 49, &selected);
+            add_preweighted_shared_selector(&mut factored, 49, &residuals, selector);
+            assert_eq!(
+                factored, literal,
+                "packed range mismatch at off-domain sample {sample}"
             );
         }
     }

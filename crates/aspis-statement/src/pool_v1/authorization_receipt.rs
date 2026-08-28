@@ -25,10 +25,9 @@ pub const POOL_V1_AUTHORIZATION_RECEIPT_DIGEST_DOMAIN: &[u8] =
     b"aspis/pool-v1/authorization-receipt/v1";
 pub const POOL_V1_AUTHORIZATION_RECEIPT_PREFIX_BYTES: usize = 16;
 pub const POOL_V1_AUTHORIZATION_RECEIPT_DIGEST_BYTES: usize = 32;
-pub const POOL_V1_AUTHORIZATION_RECEIPT_BYTES: usize =
-    POOL_V1_AUTHORIZATION_RECEIPT_PREFIX_BYTES
-        + POOL_V1_VERIFIER_DISPATCH_RESULT_BYTES
-        + POOL_V1_AUTHORIZATION_RECEIPT_DIGEST_BYTES;
+pub const POOL_V1_AUTHORIZATION_RECEIPT_BYTES: usize = POOL_V1_AUTHORIZATION_RECEIPT_PREFIX_BYTES
+    + POOL_V1_VERIFIER_DISPATCH_RESULT_BYTES
+    + POOL_V1_AUTHORIZATION_RECEIPT_DIGEST_BYTES;
 
 const RESULT_OFFSET: usize = POOL_V1_AUTHORIZATION_RECEIPT_PREFIX_BYTES;
 const DIGEST_OFFSET: usize = RESULT_OFFSET + POOL_V1_VERIFIER_DISPATCH_RESULT_BYTES;
@@ -142,10 +141,7 @@ mod tests {
     use sha2::{Digest as _, Sha256};
 
     use super::*;
-    use crate::{
-        pool_v1::PoolV1TransitionKind,
-        poseidon2::Digest,
-    };
+    use crate::{pool_v1::PoolV1TransitionKind, poseidon2::Digest};
     use aspis_core::field::M31;
 
     fn sha256(inputs: &[&[u8]]) -> [u8; 32] {

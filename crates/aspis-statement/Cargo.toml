@@ -21,6 +21,12 @@ pool-v1-kernel = []
 # It packs each four-lane residual before applying its common selector; the
 # default and released terminal retain the literal lane-by-lane evaluator.
 pool-v1-pair-forest-packed-digest-audit = []
+# Audit-only selector-tensor continuation of packed digest binding. Each
+# binding keeps its two packed residuals, while `high[block] * low[local]` is
+# contracted as three exact local-coordinate sums.
+pool-v1-pair-forest-packed-digest-selector-tensor-audit = [
+    "pool-v1-pair-forest-packed-digest-audit",
+]
 # Audit-only exact `{0,1}` specialization for generated pair-forest Copy
 # weights. The literal QM31-by-M31 multiplication remains the default.
 pool-v1-pair-forest-binary-copy-weights-audit = []
@@ -32,6 +38,28 @@ pool-v1-pair-forest-endpoint-selector-cache-audit = []
 pool-v1-pair-forest-semantic-factor-audit = []
 # Audit-only exact CSE for the fourteen generated Copy tuple patterns.
 pool-v1-pair-forest-pattern-window-audit = []
+# Audit-only exact change of basis for the compiled Copy values.  Endpoint
+# selectors are accumulated by their fixed tuple-pattern coordinate before
+# the dynamic pattern values are multiplied, replacing 272 repeated QM31
+# products by the 26 nonzero coordinates of the frozen four-by-fourteen
+# support matrix.  Tags remain included through exact M31 multiplication.
+pool-v1-pair-forest-copy-pattern-basis-audit = []
+pool-v1-pair-forest-packed-range-audit = []
+pool-v1-pair-forest-active-mask-basis-audit = []
+pool-v1-pair-forest-copy-selector-tensor-basis-audit = [
+    "pool-v1-pair-forest-copy-pattern-basis-audit",
+]
+# Audit-only lazy-reduction dot kernel for the generated Copy tags. Endpoint
+# products are regrouped by the exact `(side, slot, local)` tensor coordinate
+# and reduced in batches of at most four M31 products.
+pool-v1-pair-forest-copy-tag-dot-basis-audit = [
+    "pool-v1-pair-forest-copy-selector-tensor-basis-audit",
+]
+# Audit-only four-product contraction of the tag/low and weight/low tensor
+# coordinates after exact endpoint collection.
+pool-v1-pair-forest-copy-finish-dot-basis-audit = [
+    "pool-v1-pair-forest-copy-selector-tensor-basis-audit",
+]
 
 [dependencies]
 aspis-core.workspace = true

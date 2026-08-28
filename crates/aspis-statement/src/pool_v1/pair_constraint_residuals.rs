@@ -1118,11 +1118,8 @@ mod tests {
     fn output_occupancy_is_exactly_the_payment_variant() {
         let (public, honest) = transfer_at(0);
         let mut forged_single = honest.clone();
-        for column in
-            0..POOL_V1_PAIR_OCCUPANCY_COMMITMENT_COLUMN_START + DIGEST_ELEMS
-        {
-            forged_single.semantic_c1.c1[column][POOL_V1_PAIR_OUTPUT_OCCUPANCY_AUX_ROW] =
-                M31::ZERO;
+        for column in 0..POOL_V1_PAIR_OCCUPANCY_COMMITMENT_COLUMN_START + DIGEST_ELEMS {
+            forged_single.semantic_c1.c1[column][POOL_V1_PAIR_OUTPUT_OCCUPANCY_AUX_ROW] = M31::ZERO;
         }
         let residuals = transfer_residuals(&public, &forged_single);
         assert!(residuals.occupancy[..23]

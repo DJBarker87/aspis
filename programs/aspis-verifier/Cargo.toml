@@ -92,12 +92,24 @@ v7-pair-forest-fixed-canonical-exact-once-audit = [
     "v7-pair-forest-fixed-canonical-audit",
     "aspis-core/v7-fixed-canonical-exact-once-audit",
 ]
+# Audit-only loop interchange in the q16 C1 gamma combination. The same
+# canonical 31-bit limbs and exact prepared power table are consumed, but each
+# power row is loaded once for all four output slots.
+v7-gamma-four-slot-block-audit = [
+    "aspis-core/v7-gamma-four-slot-block-audit",
+]
 # Audit-only exact linear factoring inside the selected semantic terminal.
 # Four digest residual lanes are packed before their shared row selector is
 # applied. Wire bytes, transcript order, theta lanes, and relation parameters
 # are unchanged; released/default builds do not enable this experiment.
 v7-pair-forest-packed-digest-audit = [
     "aspis-statement/pool-v1-pair-forest-packed-digest-audit",
+]
+# Audit-only tensor contraction for the packed public-digest selectors. The
+# same rows, expected digests, tweaks and two theta lanes are enforced.
+v7-pair-forest-packed-digest-selector-tensor-audit = [
+    "v7-pair-forest-packed-digest-audit",
+    "aspis-statement/pool-v1-pair-forest-packed-digest-selector-tensor-audit",
 ]
 # Audit-only specialization of generated Copy weights, all of which are
 # exactly zero or one after variant/index selection. Values are still
@@ -128,18 +140,59 @@ v7-pair-forest-semantic-factor-audit = [
 v7-pair-forest-pattern-window-audit = [
     "aspis-statement/pool-v1-pair-forest-pattern-window-audit",
 ]
+# Audit-only exact linear change of basis for the generated Copy endpoint
+# values.  This does not alter the Copy tuples, weights, challenges, residual,
+# wire, transcript, or accepted language.
+v7-pair-forest-copy-pattern-basis-audit = [
+    "aspis-statement/pool-v1-pair-forest-copy-pattern-basis-audit",
+]
+# Audit-only exact linear factoring of the 33 direct-range residuals.  The
+# shared row selector is applied after base-4 packing, reducing 33 extension
+# products to nine while preserving the same 24 semantic theta lanes.
+v7-pair-forest-packed-range-audit = [
+    "aspis-statement/pool-v1-pair-forest-packed-range-audit",
+]
+# Audit-only basis reduction for the Copy-active selector.  The frozen 64
+# block masks have exactly seven distinct values, so equal masks are grouped
+# before their high/low selector product is evaluated.
+v7-pair-forest-active-mask-basis-audit = [
+    "aspis-statement/pool-v1-pair-forest-active-mask-basis-audit",
+]
+# Audit-only tensor-basis evaluation of the frozen Copy endpoint selectors.
+# It groups high-coordinate coefficients by the exact live `(group, pattern,
+# local)` support before multiplying by the low selector coordinate.
+v7-pair-forest-copy-selector-tensor-basis-audit = [
+    "v7-pair-forest-copy-pattern-basis-audit",
+    "aspis-statement/pool-v1-pair-forest-copy-selector-tensor-basis-audit",
+]
+# Audit-only lazy-reduction basis for the frozen Copy tag dot products. The
+# same 272 selector/tag products are retained and merely reduced four at once.
+v7-pair-forest-copy-tag-dot-basis-audit = [
+    "v7-pair-forest-copy-selector-tensor-basis-audit",
+    "aspis-statement/pool-v1-pair-forest-copy-tag-dot-basis-audit",
+]
+# Audit-only four-product contraction at the Copy tensor output boundary.
+v7-pair-forest-copy-finish-dot-basis-audit = [
+    "v7-pair-forest-copy-selector-tensor-basis-audit",
+    "aspis-statement/pool-v1-pair-forest-copy-finish-dot-basis-audit",
+]
 # Exact one-transaction eight-lane release-candidate verifier selected by the
-# combined TxV1 measurements.  The alias prevents accidental omission of a CU
-# optimisation or account invariant.  It remains default-off until the named
+# combined TxV1 measurements. The alias prevents accidental omission of a CU
+# optimisation or account invariant. It remains default-off until the named
 # source/formal and correlated-grinding gates are closed.
 v7-pair-forest-one-tx-candidate = [
     "v7-pair-forest-fixed-canonical-exact-once-audit",
     "v7-pair-forest-lane-invariant-audit",
-    "v7-pair-forest-packed-digest-audit",
+    "v7-pair-forest-packed-digest-selector-tensor-audit",
     "v7-pair-forest-binary-copy-weights-audit",
     "v7-pair-forest-endpoint-selector-cache-audit",
     "v7-pair-forest-semantic-factor-audit",
     "v7-pair-forest-pattern-window-audit",
+    "v7-pair-forest-copy-tag-dot-basis-audit",
+    "v7-pair-forest-copy-finish-dot-basis-audit",
+    "v7-pair-forest-packed-range-audit",
+    "v7-pair-forest-active-mask-basis-audit",
+    "v7-gamma-four-slot-block-audit",
 ]
 # Adds compute-unit checkpoints to the selected pair-forest verifier without
 # changing its wire, transcript, arithmetic, work, q16, or Merkle schedule.

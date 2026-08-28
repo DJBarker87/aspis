@@ -621,6 +621,36 @@ pub fn gamma_combine_v6_packed_layer0(
     }
 
     let c1 = decode_packed_m31_eight_aligned::<V6_C1_LIMBS_PER_QUERY>(c1_packed)?;
+    #[cfg(not(feature = "v7-gamma-four-slot-block-audit"))]
+    let mut combined = gamma_combine_v6_c1_slot_major(&c1, powers);
+    #[cfg(feature = "v7-gamma-four-slot-block-audit")]
+    let mut combined = gamma_combine_v6_c1_four_slot_block(&c1, powers);
+
+    let helper_powers = [powers.base.helpers[0], powers.base.helpers[1], powers.d];
+    let c2 = decode_packed_m31_eight_aligned::<V6_C2_LIMBS_PER_QUERY>(c2_packed)?;
+    let mut helpers = [[QM31::ZERO; 4]; V6_C2_COLUMNS];
+    for (helper, values) in helpers.iter_mut().enumerate() {
+        for (slot, value) in values.iter_mut().enumerate() {
+            let limb = 4 * (helper * 4 + slot);
+            *value = QM31 {
+                c0: CM31::new(M31(c2[limb]), M31(c2[limb + 1])),
+                c1: CM31::new(M31(c2[limb + 2]), M31(c2[limb + 3])),
+            };
+        }
+    }
+    for (slot, output) in combined.iter_mut().enumerate() {
+        let values = [helpers[0][slot], helpers[1][slot], helpers[2][slot]];
+        *output = output.add(qm31_sum_products3_prepared(&helper_powers, &values));
+    }
+    Ok(combined)
+}
+
+#[cfg(any(test, not(feature = "v7-gamma-four-slot-block-audit")))]
+#[inline(never)]
+fn gamma_combine_v6_c1_slot_major(
+    c1: &[u32; V6_C1_LIMBS_PER_QUERY],
+    powers: &StateOnlySpendQueryPowers,
+) -> [QM31; 4] {
     let mut combined = [QM31::ZERO; 4];
     for (slot, output) in combined.iter_mut().enumerate() {
         let mut sums = [0u64; 4];
@@ -655,24 +685,66 @@ pub fn gamma_combine_v6_packed_layer0(
             c1: CM31::new(M31::reduce_u64(sums[2]), M31::reduce_u64(sums[3])),
         };
     }
+    combined
+}
 
-    let helper_powers = [powers.base.helpers[0], powers.base.helpers[1], powers.d];
-    let c2 = decode_packed_m31_eight_aligned::<V6_C2_LIMBS_PER_QUERY>(c2_packed)?;
-    let mut helpers = [[QM31::ZERO; 4]; V6_C2_COLUMNS];
-    for (helper, values) in helpers.iter_mut().enumerate() {
-        for (slot, value) in values.iter_mut().enumerate() {
-            let limb = 4 * (helper * 4 + slot);
-            *value = QM31 {
-                c0: CM31::new(M31(c2[limb]), M31(c2[limb + 1])),
-                c1: CM31::new(M31(c2[limb + 2]), M31(c2[limb + 3])),
-            };
+/// Exact loop-interchanged twin of `gamma_combine_v6_c1_slot_major`.
+///
+/// The fixed 26-column power row is consumed once for all four slots.  Every
+/// block uses the same four-term integer dot products and the same M31
+/// reduction boundaries as the literal slot-major evaluator, so this changes
+/// neither the field expression nor its reduction order within any output.
+#[cfg(any(test, feature = "v7-gamma-four-slot-block-audit"))]
+#[inline(never)]
+fn gamma_combine_v6_c1_four_slot_block(
+    c1: &[u32; V6_C1_LIMBS_PER_QUERY],
+    powers: &StateOnlySpendQueryPowers,
+) -> [QM31; 4] {
+    let mut sums = [[0u64; 4]; 4];
+    for block in 0..(V6_C1_COLUMNS / 4) {
+        let mut raw = [[0u64; 4]; 4];
+        for column in block * 4..block * 4 + 4 {
+            let limbs = powers.base.c1_limbs[column];
+            for slot in 0..4 {
+                let value = u64::from(c1[slot * V6_C1_COLUMNS + column]);
+                for limb in 0..4 {
+                    raw[slot][limb] += u64::from(limbs[limb]) * value;
+                }
+            }
+        }
+        for slot in 0..4 {
+            for limb in 0..4 {
+                sums[slot][limb] += u64::from(M31::reduce_u64(raw[slot][limb]).0);
+            }
         }
     }
-    for (slot, output) in combined.iter_mut().enumerate() {
-        let values = [helpers[0][slot], helpers[1][slot], helpers[2][slot]];
-        *output = output.add(qm31_sum_products3_prepared(&helper_powers, &values));
+
+    let mut raw = [[0u64; 4]; 4];
+    for column in V6_C1_COLUMNS - 2..V6_C1_COLUMNS {
+        let limbs = powers.base.c1_limbs[column];
+        for slot in 0..4 {
+            let value = u64::from(c1[slot * V6_C1_COLUMNS + column]);
+            for limb in 0..4 {
+                raw[slot][limb] += u64::from(limbs[limb]) * value;
+            }
+        }
     }
-    Ok(combined)
+    for slot in 0..4 {
+        for limb in 0..4 {
+            sums[slot][limb] += u64::from(M31::reduce_u64(raw[slot][limb]).0);
+        }
+    }
+
+    core::array::from_fn(|slot| QM31 {
+        c0: CM31::new(
+            M31::reduce_u64(sums[slot][0]),
+            M31::reduce_u64(sums[slot][1]),
+        ),
+        c1: CM31::new(
+            M31::reduce_u64(sums[slot][2]),
+            M31::reduce_u64(sums[slot][3]),
+        ),
+    })
 }
 
 fn natural_line_weights_256(mut point: M31) -> [M31; V6_FINAL_QM31_VALUES] {
@@ -1448,6 +1520,29 @@ mod tests {
             gamma_combine_state_only_spend_layer0_prepared(&c1_unpacked, &c2_unpacked, &powers)
                 .unwrap()
         );
+    }
+
+    #[test]
+    fn four_slot_block_gamma_equals_slot_major_off_domain() {
+        let mut state = 0xd1b5_4a32_d192_ed03u64;
+        for _case in 0..96 {
+            let mut next = || {
+                state ^= state >> 12;
+                state ^= state << 25;
+                state ^= state >> 27;
+                (state.wrapping_mul(0x2545_f491_4f6c_dd1d) as u32) % P
+            };
+            let gamma = QM31 {
+                c0: CM31::new(M31(next()), M31(next())),
+                c1: CM31::new(M31(next()), M31(next())),
+            };
+            let powers = StateOnlySpendQueryPowers::new(gamma);
+            let c1: [u32; V6_C1_LIMBS_PER_QUERY] = core::array::from_fn(|_| next());
+            assert_eq!(
+                gamma_combine_v6_c1_four_slot_block(&c1, &powers),
+                gamma_combine_v6_c1_slot_major(&c1, &powers),
+            );
+        }
     }
 
     #[test]

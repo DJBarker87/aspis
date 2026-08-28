@@ -28,12 +28,7 @@ pub fn truncate_sha256_v7(digest: [u8; 32]) -> V7Digest {
 }
 
 #[inline]
-pub fn private_leaf_hash_v7(
-    hash: HashFn,
-    tree_tag: u8,
-    value: &[u8],
-    salt: &[u8; 32],
-) -> V7Digest {
+pub fn private_leaf_hash_v7(hash: HashFn, tree_tag: u8, value: &[u8], salt: &[u8; 32]) -> V7Digest {
     truncate_sha256_v7(private_leaf_hash(hash, tree_tag, value, salt))
 }
 

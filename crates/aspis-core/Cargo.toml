@@ -23,6 +23,11 @@ v7-fixed-canonical-audit = []
 # are checked only by the gamma/opening consumer that already decodes all of
 # them.  This removes the audit parser's duplicate query-wide canonical scan.
 v7-fixed-canonical-exact-once-audit = ["v7-fixed-canonical-audit"]
+# Audit-only loop interchange for the fixed four-slot C1 gamma dot product.
+# The packed bytes, canonical decoder, powers, and resulting four QM31 values
+# are unchanged; only the order in which the same scalar products are summed
+# is specialized to reuse each 26-column power row across all four slots.
+v7-gamma-four-slot-block-audit = []
 
 [dependencies]
 
