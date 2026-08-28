@@ -27,3 +27,11 @@ if [[ -f V7BinaryFrontierLoopBridge.lean ]]; then
   "$lean_bin" -o V7BinaryFrontierLoopBridge.olean \
     V7BinaryFrontierLoopBridge.lean
 fi
+if [[ -f V7BinaryFrontierSortModel.lean ]]; then
+  "$lean_bin" -o V7BinaryFrontierSortModel.olean \
+    V7BinaryFrontierSortModel.lean
+fi
+if [[ -f V7BinaryFrontierSortSourceBridge.lean ]]; then
+  "$lean_bin" -o V7BinaryFrontierSortSourceBridge.olean \
+    V7BinaryFrontierSortSourceBridge.lean
+fi
