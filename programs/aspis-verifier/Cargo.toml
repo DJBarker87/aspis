@@ -85,6 +85,11 @@ v7-pair-forest-fixed-canonical-audit = [
     "aspis-statement/pool-v1-kernel",
     "aspis-core/v7-fixed-canonical-audit",
 ]
+# Audit-only hot decoder for selected lane PDAs owned by the exact Pool
+# release. It keeps every canonical/account/PDA check and omits only the
+# persisted active root/frontier Poseidon reconstruction, which is an
+# inductive invariant of Pool constructors and writers.
+v7-pair-forest-lane-invariant-audit = []
 
 [dependencies]
 aspis-core = { path = "../../crates/aspis-core" }
