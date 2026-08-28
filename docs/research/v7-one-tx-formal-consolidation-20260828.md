@@ -175,6 +175,22 @@ and use them to identify the online routed forest with the canonical accepted
 forest. Those membership/`covered` facts remain visible; they have not been
 replaced by freshness, independence, or a conclusion-shaped premise.
 
+The first exact-root part of that composition is now kernel checked in
+`V7Tag73ExactCompilerQ16HistoryCoverage`:
+
+```text
+exact_operational_root_has_q16_history_alignment
+exact_operational_verifier_history_is_table_covered
+```
+
+The focused NUC replay passed 9,000 jobs in 6.17 seconds with 6,912,168 KiB
+maximum RSS, zero swap and the standard axiom union only. Thus the generic
+history-coverage premise is discharged for the actual projected root. What
+remains is occurrence/routing: literal candidate and squeeze pairs must be
+located in that history, and an adversary-first query followed by a verifier
+cache hit must be handled by the source-anchored cached-coordinate replay. It
+would be unsound to classify that cache hit as a fresh verifier answer.
+
 ## K1.5 gamma actual-source alignment
 
 The scheduler-native gamma replay and source alignment are integrated through
