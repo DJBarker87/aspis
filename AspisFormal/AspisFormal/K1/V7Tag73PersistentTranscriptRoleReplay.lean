@@ -32,6 +32,7 @@ open AspisK1.V7Tag73ExactRestoredConcreteK16Assembly
 open AspisK1.V7Tag73CurrentSourceDecodeBridge
 open AspisK1.V7Tag73FirstExposureRoleClassification
 open AspisK1.V7Tag73AdversaryPrequeryRouterGap
+open AspisK1.V7Tag73SchedulerNativeGammaReplay
 
 #print axioms
   AspisK1.V7Tag73PersistentTranscriptRoles.guarded_install_success_binds_exact_input
@@ -74,6 +75,12 @@ open AspisK1.V7Tag73AdversaryPrequeryRouterGap
 #print axioms
   existing_verifier_origin_routers_do_not_label_adversary_first_exposure
 #print axioms adversary_first_then_verifier_cached_has_one_fresh_answer
+#print axioms consume_scheduler_native_gamma_cached_is_inert
+#print axioms
+  consume_scheduler_native_gamma_fresh_uses_exact_pause_actor
+#print axioms replay_scheduler_native_occurrence_returned_gamma_exact
+#print axioms
+  replay_scheduler_native_occurrence_independent_of_target_answer
 #print axioms
   current_source_fixed_field_projection_iff_decode
 #print axioms

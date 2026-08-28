@@ -6,11 +6,13 @@ import AspisFormal.K1.V7Tag73VariablePrefixGammaSampler
 
 This module runs the variable-prefix gamma sampler directly inside the
 result-carrying scheduler.  It begins at the executable first-target scan from
-`V7Tag73SchedulerNativeTargetPause`.  At each sampler coordinate it replaces
-only the selected fresh answer, then scans the ordinary scheduler over the
-untouched master-tape suffix until the dynamically computed next input is
-reached.  Thus arbitrary machine and atomic-fork activity between gamma
-queries is executed by the production scheduler rather than skipped.
+`V7Tag73SchedulerNativeTargetPause`.  At each sampler coordinate it reuses an
+already fixed table entry without consuming a master-tape answer, or replaces
+the answer only at a genuine fresh scheduler pause.  It then scans the
+ordinary scheduler over the untouched master-tape suffix until the dynamically
+computed next input is reached.  Thus actor changes, arbitrary machine work,
+cache hits, and atomic-fork activity between gamma queries are handled without
+changing the production scheduler.
 
 The driver stops at the first successful `decodeNonzeroPrefix`; unread duplex
 coordinates and the unread master-tape suffix are not executed.  The absent
@@ -31,6 +33,7 @@ open AspisK1.V7Tag73EightRetrySamplerLaw
 open AspisK1.V7Tag73VariablePrefixGammaSampler
 open AspisK1.V7Tag73AdaptiveLazyOracle
 open AspisK1.V7Tag73OperationalOracleExposure
+open AspisK1.V7Tag73OperationalCausalInjection
 open AspisK1.V7Tag73AtomicForkUniformScheduler
 open AspisK1.V7Tag73SchedulerNativeResult
 open AspisK1.V7Tag73SchedulerTraceFactorization
@@ -52,7 +55,7 @@ inductive SchedulerNativeGammaQueryKind where
 inductive SchedulerNativeGammaReplayFailure where
   | samplerTapeExhausted
   | expectedQueryAbsent (kind : SchedulerNativeGammaQueryKind)
-  | queryActorMismatch (kind : SchedulerNativeGammaQueryKind)
+  | cachedAnswerMismatch (kind : SchedulerNativeGammaQueryKind)
   | decodedValueInvalid
   | gammaMismatch
   deriving DecidableEq
@@ -92,16 +95,77 @@ def machineFreshRecord
     (answer : Digest256) : UnifiedExposureRecord :=
   .machineFresh pause.actor pause.input answer
 
-def prependDecodedTrace {Result : Type u}
-    (tracePrefix : List UnifiedExposureRecord)
-    (decoded : DecodedSchedulerNativeGammaResponse Result) :
-    DecodedSchedulerNativeGammaResponse Result :=
-  { decoded with
-    response :=
-      { decoded.response with
-        run :=
-          { terminal := decoded.response.run.terminal
-            trace := tracePrefix ++ decoded.response.run.trace } } }
+/-- Scheduler state retained between gamma duplex coordinates.  `oracle` is
+the table state at the last fresh pause (or immediately after installing its
+answer).  It is used only to recognize coordinates that were already fixed;
+cached recognition consumes no master-tape answer and does not mutate the
+production cursor. -/
+structure SchedulerNativeGammaCursor
+    (globalOracleCalls : Nat) (Result : Type u) where
+  cursor : SchedulerNativeCursor globalOracleCalls Result
+  remainingAnswers : List Digest256
+  oracle : OracleState
+  tracePrefix : List UnifiedExposureRecord
+
+/-- Consume one expected gamma coordinate.  A value already in the retained
+table is immutable nuisance and must agree with the routed tape.  Otherwise
+the production scheduler is scanned to a genuine fresh pause and only that
+fresh answer is replaced.  The actor is whatever the actual pause reports. -/
+def consumeSchedulerNativeGammaCoordinate
+    {globalOracleCalls : Nat} {Result : Type u}
+    (transitionFuel : Nat) (kind : SchedulerNativeGammaQueryKind)
+    (expectedInput : ShaInput) (expectedAnswer : Digest256)
+    (state : SchedulerNativeGammaCursor globalOracleCalls Result) :
+    Except SchedulerNativeGammaReplayFailure
+      (SchedulerNativeGammaCursor globalOracleCalls Result) :=
+  match lookupEntry state.oracle expectedInput with
+  | some entry =>
+      if entry.output = expectedAnswer then .ok state
+      else .error (.cachedAnswerMismatch kind)
+  | none =>
+      match scanSchedulerNativeToInput transitionFuel expectedInput
+          state.cursor state.remainingAnswers with
+      | .absent _ => .error (.expectedQueryAbsent kind)
+      | .paused pause =>
+          .ok
+            { cursor := pause.resumeCursorWith expectedAnswer
+              remainingAnswers := pause.remainingAnswers
+              oracle := freshQueryState pause.actor pause.requestState
+                pause.input expectedAnswer
+              tracePrefix := state.tracePrefix ++ pause.consumedTrace ++
+                [machineFreshRecord pause expectedAnswer] }
+
+theorem consume_scheduler_native_gamma_cached_is_inert
+    {globalOracleCalls : Nat} {Result : Type u}
+    (transitionFuel : Nat) (kind : SchedulerNativeGammaQueryKind)
+    (expectedInput : ShaInput) (expectedAnswer : Digest256)
+    (state : SchedulerNativeGammaCursor globalOracleCalls Result)
+    (entry : TableEntry)
+    (found : lookupEntry state.oracle expectedInput = some entry)
+    (answerExact : entry.output = expectedAnswer) :
+    consumeSchedulerNativeGammaCoordinate transitionFuel kind expectedInput
+        expectedAnswer state = .ok state := by
+  simp [consumeSchedulerNativeGammaCoordinate, found, answerExact]
+
+theorem consume_scheduler_native_gamma_fresh_uses_exact_pause_actor
+    {globalOracleCalls : Nat} {Result : Type u}
+    (transitionFuel : Nat) (kind : SchedulerNativeGammaQueryKind)
+    (expectedInput : ShaInput) (expectedAnswer : Digest256)
+    (state : SchedulerNativeGammaCursor globalOracleCalls Result)
+    (missing : lookupEntry state.oracle expectedInput = none)
+    (pause : SchedulerNativeFreshPause globalOracleCalls Result expectedInput)
+    (paused : scanSchedulerNativeToInput transitionFuel expectedInput
+      state.cursor state.remainingAnswers = .paused pause) :
+    consumeSchedulerNativeGammaCoordinate transitionFuel kind expectedInput
+        expectedAnswer state =
+      .ok
+        { cursor := pause.resumeCursorWith expectedAnswer
+          remainingAnswers := pause.remainingAnswers
+          oracle := freshQueryState pause.actor pause.requestState pause.input
+            expectedAnswer
+          tracePrefix := state.tracePrefix ++ pause.consumedTrace ++
+            [machineFreshRecord pause expectedAnswer] } := by
+  simp [consumeSchedulerNativeGammaCoordinate, missing, paused]
 
 /-- Execute the sampler from a pause at its next output query.  The two scans
 in each iteration consume arbitrary intervening scheduler coordinates from
@@ -109,65 +173,97 @@ the retained master-tape suffix.  Only the selected output and advance fresh
 answers are replaced by the corresponding fixed duplex coordinates. -/
 def runSchedulerNativeGammaPrefix
     {globalOracleCalls : Nat} {Result : Type u}
-    (transitionFuel : Nat) (expectedActor : QueryActor) :
+    (transitionFuel : Nat) :
     (pairs : List (Digest256 × Digest256)) →
       (consumedBlocks : Nat) → (digest : Digest256) →
       (outputs : List Digest256) →
-      SchedulerNativeFreshPause globalOracleCalls Result
-        (gammaOutputInput digest) →
+      SchedulerNativeGammaCursor globalOracleCalls Result →
       Except SchedulerNativeGammaReplayFailure
         (DecodedSchedulerNativeGammaResponse Result)
   | [], _, _, _, _ => .error .samplerTapeExhausted
-  | (output, advanced) :: rest, consumedBlocks, digest, outputs, outputPause =>
-      if _outputActor : outputPause.actor = expectedActor then
-        let afterOutputCursor := outputPause.resumeCursorWith output
-        let afterOutputAnswers := outputPause.remainingAnswers
-        match _advanceScan : scanSchedulerNativeToInput transitionFuel
-            (gammaAdvanceInput digest) afterOutputCursor afterOutputAnswers with
-        | .absent _ => .error (.expectedQueryAbsent .advance)
-        | .paused advancePause =>
-            if _advanceActor : advancePause.actor = expectedActor then
-              let afterAdvanceCursor := advancePause.resumeCursorWith advanced
-              let afterAdvanceAnswers := advancePause.remainingAnswers
-              let nextOutputs := outputs ++ [output]
-              let tracePrefix := outputPause.consumedTrace ++
-                machineFreshRecord outputPause output ::
-                advancePause.consumedTrace ++
-                [machineFreshRecord advancePause advanced]
-              match _decodedRun : decodeNonzeroPrefix 3 nextOutputs with
-              | some decoded =>
-                  match valueRun : decodeTagQM31ExactLE decoded.value with
-                  | none => .error .decodedValueInvalid
-                  | some value =>
-                      let tail := runSchedulerNativeListRun transitionFuel
-                        afterAdvanceCursor afterAdvanceAnswers
-                      .ok
-                        { response :=
-                            { run :=
-                                { terminal := tail.terminal
-                                  trace := tracePrefix ++ tail.trace }
-                              consumedBlocks := consumedBlocks + 1
-                              returnedGamma := some value
-                              decodedBytes := some decoded.value
-                              remainingAnswers := afterAdvanceAnswers }
-                          decoded := decoded
-                          value := value
-                          valueExact := valueRun
-                          responseBytesExact := rfl }
-              | none =>
-                  match _outputScan : scanSchedulerNativeToInput transitionFuel
-                      (gammaOutputInput advanced) afterAdvanceCursor
-                      afterAdvanceAnswers with
-                  | .absent _ => .error (.expectedQueryAbsent .output)
-                  | .paused nextOutputPause =>
-                      (runSchedulerNativeGammaPrefix transitionFuel
-                        expectedActor rest (consumedBlocks + 1) advanced
-                        nextOutputs nextOutputPause).map
-                          (prependDecodedTrace tracePrefix)
-            else
-              .error (.queryActorMismatch .advance)
-      else
-        .error (.queryActorMismatch .output)
+  | (output, advanced) :: rest, consumedBlocks, digest, outputs, state =>
+      match consumeSchedulerNativeGammaCoordinate transitionFuel .output
+          (gammaOutputInput digest) output state with
+      | .error failure => .error failure
+      | .ok afterOutput =>
+        match consumeSchedulerNativeGammaCoordinate transitionFuel .advance
+            (gammaAdvanceInput digest) advanced afterOutput with
+        | .error failure => .error failure
+        | .ok afterAdvance =>
+          let nextOutputs := outputs ++ [output]
+          match _decodedRun : decodeNonzeroPrefix 3 nextOutputs with
+          | some decoded =>
+              match valueRun : decodeTagQM31ExactLE decoded.value with
+              | none => .error .decodedValueInvalid
+              | some value =>
+                  let tail := runSchedulerNativeListRun transitionFuel
+                    afterAdvance.cursor afterAdvance.remainingAnswers
+                  .ok
+                    { response :=
+                        { run :=
+                            { terminal := tail.terminal
+                              trace := afterAdvance.tracePrefix ++ tail.trace }
+                          consumedBlocks := consumedBlocks + 1
+                          returnedGamma := some value
+                          decodedBytes := some decoded.value
+                          remainingAnswers := afterAdvance.remainingAnswers }
+                      decoded := decoded
+                      value := value
+                      valueExact := valueRun
+                      responseBytesExact := rfl }
+          | none =>
+              runSchedulerNativeGammaPrefix transitionFuel rest
+                (consumedBlocks + 1) advanced nextOutputs afterAdvance
+
+/-- First iteration specialized to the already-proved source pause.  The
+routed output is installed directly into the pending fresh request, so the
+retained realized `targetAnswer` is never read.  Later coordinates use the
+cache/fresh consumer above. -/
+def runSchedulerNativeGammaFromFirstPause
+    {globalOracleCalls : Nat} {Result : Type u}
+    (transitionFuel : Nat) {initialDigest : Digest256}
+    (firstPause : SchedulerNativeFreshPause globalOracleCalls Result
+      (gammaOutputInput initialDigest)) :
+    (pairs : List (Digest256 × Digest256)) →
+      Except SchedulerNativeGammaReplayFailure
+        (DecodedSchedulerNativeGammaResponse Result)
+  | [] => .error .samplerTapeExhausted
+  | (output, advanced) :: rest =>
+      let afterOutput : SchedulerNativeGammaCursor globalOracleCalls Result :=
+        { cursor := firstPause.resumeCursorWith output
+          remainingAnswers := firstPause.remainingAnswers
+          oracle := freshQueryState firstPause.actor firstPause.requestState
+            firstPause.input output
+          tracePrefix := firstPause.consumedTrace ++
+            [machineFreshRecord firstPause output] }
+      match consumeSchedulerNativeGammaCoordinate transitionFuel .advance
+          (gammaAdvanceInput initialDigest) advanced afterOutput with
+      | .error failure => .error failure
+      | .ok afterAdvance =>
+          let outputs := [output]
+          match _decodedRun : decodeNonzeroPrefix 3 outputs with
+          | some decoded =>
+              match valueRun : decodeTagQM31ExactLE decoded.value with
+              | none => .error .decodedValueInvalid
+              | some value =>
+                  let tail := runSchedulerNativeListRun transitionFuel
+                    afterAdvance.cursor afterAdvance.remainingAnswers
+                  .ok
+                    { response :=
+                        { run :=
+                            { terminal := tail.terminal
+                              trace := afterAdvance.tracePrefix ++ tail.trace }
+                          consumedBlocks := 1
+                          returnedGamma := some value
+                          decodedBytes := some decoded.value
+                          remainingAnswers := afterAdvance.remainingAnswers }
+                      decoded := decoded
+                      value := value
+                      valueExact := valueRun
+                      responseBytesExact := rfl }
+          | none =>
+              runSchedulerNativeGammaPrefix transitionFuel rest 1 advanced
+                outputs afterAdvance
 
 /-- Occurrence replay.  The complete possible duplex tape is fixed before
 the supplied gamma, while execution consumes only its successful prefix. -/
@@ -179,14 +275,30 @@ def replaySchedulerNativeOccurrenceAtGamma
     (tape : TotalGammaDuplexTape) (gamma : NonzeroQM31Exact) :
     Except SchedulerNativeGammaReplayFailure
       (SchedulerNativeGammaResponse Result) :=
-  match runSchedulerNativeGammaPrefix transitionFuel firstPause.actor
-      (gammaDuplexPairs tape) 0 initialDigest [] firstPause with
+  match runSchedulerNativeGammaFromFirstPause transitionFuel firstPause
+      (gammaDuplexPairs tape) with
   | .error failure => .error failure
   | .ok decoded =>
       if decoded.value = gamma.1 then
         .ok { decoded.response with returnedGamma := some gamma.1 }
       else
         .error .gammaMismatch
+
+/-- The counterfactual family does not inspect the realized answer retained
+by the source scan.  Replacing only that bookkeeping field leaves every
+branch definitionally unchanged; the routed tape supplies the first output. -/
+@[simp] theorem replay_scheduler_native_occurrence_independent_of_target_answer
+    {globalOracleCalls : Nat} {Result : Type u}
+    (transitionFuel : Nat) {initialDigest : Digest256}
+    (firstPause : SchedulerNativeFreshPause globalOracleCalls Result
+      (gammaOutputInput initialDigest))
+    (replacement : Digest256)
+    (tape : TotalGammaDuplexTape) (gamma : NonzeroQM31Exact) :
+    replaySchedulerNativeOccurrenceAtGamma transitionFuel
+        { firstPause with targetAnswer := replacement } tape gamma =
+      replaySchedulerNativeOccurrenceAtGamma transitionFuel firstPause tape
+        gamma := by
+  rfl
 
 /-- The total driver starts from the actual scheduler-native first-output
 scan.  An absent scan is a gamma-independent completed run. -/
@@ -222,8 +334,9 @@ theorem replay_scheduler_native_occurrence_returned_gamma_exact
       tape gamma = .ok response) :
     response.returnedGamma = some gamma.1 := by
   unfold replaySchedulerNativeOccurrenceAtGamma at run
-  cases prefixRun : runSchedulerNativeGammaPrefix transitionFuel
-      firstPause.actor (gammaDuplexPairs tape) 0 initialDigest [] firstPause with
+  dsimp only at run
+  cases prefixRun : runSchedulerNativeGammaFromFirstPause transitionFuel
+      firstPause (gammaDuplexPairs tape) with
   | error failure =>
       simp [prefixRun] at run
   | ok decoded =>
@@ -248,8 +361,9 @@ theorem replay_scheduler_native_occurrence_decoded_gamma_exact
       response.decodedBytes = some encoded ∧
       decodeTagQM31ExactLE encoded = some gamma.1 := by
   unfold replaySchedulerNativeOccurrenceAtGamma at run
-  cases prefixRun : runSchedulerNativeGammaPrefix transitionFuel
-      firstPause.actor (gammaDuplexPairs tape) 0 initialDigest [] firstPause with
+  dsimp only at run
+  cases prefixRun : runSchedulerNativeGammaFromFirstPause transitionFuel
+      firstPause (gammaDuplexPairs tape) with
   | error failure =>
       simp [prefixRun] at run
   | ok decoded =>
@@ -335,6 +449,11 @@ theorem replay_scheduler_native_absent_constant
 
 #print axioms replay_scheduler_native_occurrence_returned_gamma_exact
 #print axioms replay_scheduler_native_occurrence_decoded_gamma_exact
+#print axioms
+  replay_scheduler_native_occurrence_independent_of_target_answer
+#print axioms consume_scheduler_native_gamma_cached_is_inert
+#print axioms
+  consume_scheduler_native_gamma_fresh_uses_exact_pause_actor
 #print axioms scheduler_native_pause_actual_answer_reconstructs
 #print axioms scheduler_native_pause_actual_answers_split
 #print axioms replay_scheduler_native_absent_returns_actual

@@ -250,6 +250,35 @@ The last theorem records that the adversary creates the sole fresh answer and
 the later verifier record is cached.  A fresh-exposure router therefore has no
 later coordinate on which it can repair the missing label.
 
+The scheduler-native counterfactual path has now been strengthened instead of
+trying to relabel that original exposure.  `runSchedulerNativeGammaPrefix`
+no longer requires a common actor across the pair: an adversary-created output
+may be followed by a verifier-created advance.  Its retained state is:
+
+```lean
+structure SchedulerNativeGammaCursor
+    (globalOracleCalls : Nat) (Result : Type u) where
+  cursor : SchedulerNativeCursor globalOracleCalls Result
+  remainingAnswers : List Digest256
+  oracle : OracleState
+  tracePrefix : List UnifiedExposureRecord
+```
+
+`consumeSchedulerNativeGammaCoordinate` first checks the already-fixed table.
+A cache hit is inert and consumes no master-tape coordinate; a missing entry
+is replaced only at a real `SchedulerNativeFreshPause`, using that pause's
+actual actor.  The kernel endpoints are:
+
+- `consume_scheduler_native_gamma_cached_is_inert`;
+- `consume_scheduler_native_gamma_fresh_uses_exact_pause_actor`;
+- `replay_scheduler_native_occurrence_independent_of_target_answer`;
+- `replay_scheduler_native_occurrence_returned_gamma_exact`.
+
+The third theorem is the key nonanticipation regression: changing only the
+actual answer retained by the source scan leaves the whole counterfactual
+family definitionally unchanged.  The first routed tape value, not that
+retained answer, is installed at the first output coordinate.
+
 The smallest honest semantic addition is therefore not a stronger raw-input
 classifier.  It is an open, stepwise adversary/prover continuation interface
 from the original occurrence, sufficient for the restoration compiler to run
@@ -268,16 +297,48 @@ structure OpenTag73TailBlackBox
   start : HiddenTape -> Observation -> OpenTag73TailProgram Result
 ```
 
-What is missing is a current-source/semantic erasure theorem connecting such
-an open program to the production arbitrary adversary and then to each
-restoration child.  `SameTapeBlackBox` exposes only a final parsed proof.
-`same_hidden_tape_return_can_change_an_earlier_field` proves why a returned
-whole proof cannot be reused as the required post-checkpoint continuation.
-This interface should be shared by K1.3 q16, K1.4 width-29 and K1.5; three
-bespoke post-hoc routers would not solve the causal issue.
+The result-carrying scheduler now supplies the executable open continuation
+needed for the gamma path, including cross-actor and cached-coordinate cases.
+The smallest remaining semantic theorem is its actual-source alignment:
+the source-derived `GammaTableCoordinateChain` must drive the cache/fresh
+dichotomy in `consumeSchedulerNativeGammaCoordinate`, in chain order, so the
+routed actual tape returns the literal `runExactPlainRom` result.  In exact
+form the missing endpoint is:
+
+```lean
+theorem exact_compiler_actual_gamma_replay_closure
+    {HiddenTape TapeIdentity Observation Statement Payload Result : Type}
+    {parameters : ExactCompilerResourceParameters}
+    {transitionFuel : Nat}
+    {configuration : ExactPlainRomConfiguration HiddenTape TapeIdentity
+      Observation Statement Tag73K12ParsedProof Payload Result parameters}
+    {projection : AcceptedTapeProjection Statement Tag73K12ParsedProof Payload}
+    {fixedInstance : PublicInstance Statement}
+    {compilerSample : ExactCompilerSample HiddenTape parameters}
+    (input : ExactK12OperationalInput transitionFuel configuration projection
+      fixedInstance compilerSample) :
+    ∃ initialDigest flat response,
+      exactOperationalChallenge input .gamma =
+          (routedSuccessfulGammaValue
+            (successfulGammaPrefixFlatRoutingEquiv flat)).1 ∧
+      exactCompilerRoutedGammaReplay input initialDigest
+          (successfulGammaPrefixFlatRoutingEquiv flat) = .ok response ∧
+      response.run =
+        runExactPlainRom transitionFuel configuration compilerSample
+```
+
+No new probability fact is needed for this endpoint.  The data already exist
+as `exact_compiler_constructs_successful_gamma_prefix_coordinates`,
+`exact_compiler_consumed_gamma_coordinates_occur`, and the full target-pause
+reconstruction theorem; the missing work is the ordered table/remaining-trace
+induction connecting those facts to the new executable consumer.  For the
+generic post-checkpoint prover-message path, `OpenTag73TailProgram` remains
+the smallest model shape; `same_hidden_tape_return_can_change_an_earlier_field`
+still prevents splicing a returned whole proof as an earlier prefix.
 
 This refines the classification to **D: a causal adversarial-prequery replay
-is required**, with a **semantic-model deficiency** as the immediate blocker.
+is required**, with a **semantic-model/source-alignment deficiency** as the
+immediate blocker.
 The prequery's mere occurrence is not a sound small-probability event.  No
 protocol limitation has been established, and the audited Rust verifier call
 sites still fix their own roles before consuming answers.
@@ -378,6 +439,17 @@ lake env lean AspisFormal/K1/V7Tag73PersistentTranscriptRoleReplay.lean
 lake env lean AspisFormal/K1/V7Tag73AdversaryPrequeryRouterGap.lean
   wall:     4.06 s
   peak RSS: 5,641,207,808 bytes
+  swaps:    0
+
+lake env lean AspisFormal/K1/V7Tag73SchedulerNativeGammaReplay.lean
+  wall:     32.70 s
+  peak RSS: 5,603,688,448 bytes
+  swaps:    0
+
+lake build AspisFormal.K1.V7Tag73ExactCompilerPreGammaSelectedBinding \
+           AspisFormal.K1.V7Tag73PersistentTranscriptRoleReplay
+  wall:     152.44 s
+  peak RSS: 6,385,532,928 bytes
   swaps:    0
 ```
 
