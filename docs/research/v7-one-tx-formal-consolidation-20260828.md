@@ -119,11 +119,82 @@ control flow are pinned, but this is not yet presented as a theorem from the
 full Solana `AccountInfo` implementation. It remains a release gate under the
 end-to-end objective.
 
+## K1.3 q16 source/scheduler integration
+
+The complete current q16 chain is now integrated through commit `2d32d47e`.
+It covers the literal Rust decoder and first-cap-203 loop, exact two-query
+duplex blocks (including the sixteenth-draw extra-block boundary), native
+block/chunk codecs, fixed-table callbacks, initial digests, scheduler replay,
+the `64 × 8` forest, exact consumed prefixes, and the authenticated binary
+frontier recurrence.
+
+The strongest maintained endpoints include:
+
+```text
+strict_checked_refinement_exposes_exact_q16_decoder_prefixes
+exact_compiler_trace_contains_each_q16_initial_output
+exact_operational_q16_pointwise_implies_successful_forest
+exact_operational_q16_output_forest_succeeds
+```
+
+The integrated maintained Lean 4.32 replay passed:
+
+```text
+unit: aspis-v7-one-tx-k13-q16-integrated-01
+invocation: b4f4f174cb1f40ea96a8e573cf2a2e58
+result: PASS (9,015 jobs)
+wall: 20:02.56
+/usr/time maximum RSS: 39,075,116 KiB
+cgroup memory peak: 31.8 GiB
+swap: 0
+axiom union: propext, Classical.choice, Quot.sound
+```
+
+The large peak came from the pre-existing
+`V7ExactCorrelatedAgreementInitialCurveBranch` dependency. The q16 targets
+themselves completed in 2.6--2.8 seconds after that object existed. The live
+cgroup was raised, without restarting the build, from 28 GiB to the authorized
+48 GiB high/55 GiB maximum and retained zero swap.
+
+The final Aeneas operational source bridge also passed under Lean 4.31:
+
+```text
+unit: aspis-v7-one-tx-q16-operational-source-02
+invocation: 2f439cea7d6944e988fcba03f0738222
+result: PASS
+wall: 3.69 seconds
+maximum RSS: 6,848,876 KiB
+swap: 0
+```
+
+Its endpoint `raw_candidate_entry_and_trace_match_history_coverage` proves
+literal translated candidate/squeeze execution from chronological ROM-history
+coverage. The smallest remaining q16 composition lemma must construct the
+candidate and squeeze membership facts from the actual exact-compiler history
+and use them to identify the online routed forest with the canonical accepted
+forest. Those membership/`covered` facts remain visible; they have not been
+replaced by freshness, independence, or a conclusion-shaped premise.
+
+## K1.5 gamma actual-source alignment
+
+The scheduler-native gamma replay and source alignment are integrated through
+commit `14a718cd`. The cache/prequery case, cursor-relative continuation, and
+actual-answer replay close without treating an adversary prequery as a rare
+event. The integrated target
+`AspisFormal.K1.V7Tag73ExactCompilerActualGammaReplayClosure` passed on the
+NUC in 6:35.41 with a 2.1 GiB cgroup peak and zero swap. Its strongest endpoint
+is `exact_compiler_actual_gamma_replay_closure`; the exact K1.5 raw value
+remains `336869027002169 / (P^4 - 1)`.
+
+This closes gamma source alignment, not all K1.5 probability accounting. The
+eight fixed-category event inclusions and the restored residual-event measure
+inclusion remain explicit gates.
+
 ## Remaining end-to-end proof gates
 
-1. K1.3: finish the current-source q16 scheduler/decoder event inclusion,
-   one-fold published-theorem instantiation, joint-query batch and later-alpha
-   actual-law composition.
+1. K1.3: compose the literal q16 callback history with the online routed forest
+   and discharge the causal `covered` inclusion; then close the one-fold,
+   joint-query batch and later-alpha actual-law inequalities.
 2. K1.4: instantiate the width-29 variable-prefix causal law on the exact
    compiler/source execution.
 3. K1.5: instantiate the eight fixed event inclusions and the restored-gamma
@@ -138,4 +209,3 @@ end-to-end objective.
 7. Run the same finalized one-transaction lifecycle on public devnet once its
    TxV1 execution feature is active. No transaction is signed or submitted by
    this evidence phase.
-

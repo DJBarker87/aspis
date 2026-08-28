@@ -19,6 +19,27 @@ The unmined-work proof rejects after 61,309 CU. All transaction accounts remain 
 
 The selected verifier saves 158,752--158,889 CU per complete transaction. It preserves the same expressions while exploiting the frozen basis and support: 14 Copy patterns, seven active masks, tensorized endpoint and digest selectors, grouped tag/finish dot products, packed range residuals, and four-slot gamma loop interchange. The worst case is 1,718 CU above the preferred 1.2M target and 98,282 CU below the hard 1.3M gate.
 
+### Post-lock q16 source-refinement check
+
+The Aeneas q16 caller bridge requires the source-shaped helper/control-flow
+refactor now present at commit `2d32d47e`. Because that production Rust edit
+landed after the four-case CU lock, it was not accepted on semantic inspection
+alone. The verifier was rebuilt and the single worst release-relevant shape was
+remeasured against the unchanged frozen Pool binary and exact proof fixture:
+
+| Shape | Previous CU | Refactored CU | Delta | Headroom to 1.3M | TxV1 bytes |
+|---|---:|---:|---:|---:|---:|
+| Withdrawal, rollover, 255 populated pairs | 1,201,718 | 1,201,757 | +39 | 98,243 | 997 |
+
+This is a real combined LiteSVM execution, not a component sum. The evidence is
+`results/v7-q16-source-refactor-cu-check-20260828/withdrawal-rollover-counter0.json`.
+The rebuilt verifier is 1,703,976 bytes with SHA-256
+`125bba2ebe121d1bda87ba90943904ed866ba02502fc011f7156246ebb871a77`.
+The build completed on `nuc.local` in 30.98 seconds with 550,488 KiB maximum
+RSS, zero swap and exit status zero. The 39-CU movement is immaterial, so the
+source-refinement refactor is retained and the hard sub-1.3M runtime gate
+remains locked. No broad regression replay was performed for this decision.
+
 The accepted transitions also check that the checkpoint, proof, registry, and master accounts remain unchanged; the selected lane and nullifier marker change exactly; the correct history page changes; and withdrawal moves exactly 250 tokens from the vault to the bound destination without changing the mint.
 
 ## Frozen source and artifacts

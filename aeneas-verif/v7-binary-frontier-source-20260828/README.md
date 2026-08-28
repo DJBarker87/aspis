@@ -402,10 +402,13 @@ frontier or first-selection control-flow premise.
 
 The recursive proof now uses totality of only the installed production hash
 callback, and the deterministic source trace is connected to the fixed-table
-semantic duplex. The remaining system-level obligation is operational lookup
-provenance: show that every actual callback result in the accepted translated
-trace is the corresponding entry in the exact scheduler table. The semantic
-decoder result and `raw_queries_eq_decoded_schedule` then close the ordered
-array. Array conversion, the `2^18` constant, frontier semantics, cap selection,
-all five returned fields, and the outer first-success loop are theorem
-consequences rather than premises.
+semantic duplex. `raw_candidate_entry_and_trace_match_history_coverage` further
+derives the exact scheduler-table entries from chronological ROM-history
+coverage. The remaining system-level obligation is now narrower: construct
+the literal candidate-absorb and squeeze-pair membership facts from the actual
+exact-compiler history, then identify those source blocks with the online q16
+router's forest. The semantic decoder result and
+`raw_queries_eq_decoded_schedule` then close the ordered array. Array
+conversion, the `2^18` constant, frontier semantics, cap selection, all five
+returned fields, and the outer first-success loop are theorem consequences
+rather than premises.
