@@ -47,10 +47,11 @@ impl AuthenticatedPairForestResultV1 {
 
     #[cfg(test)]
     pub(crate) fn for_test(value: PoolV1PairForestTerminalResultV1) -> Self {
-        let exact_bytes = encode_pool_v1_pair_forest_terminal_result_v1(&value)
-            .expect("test result must be canonical")
-            .to_vec()
-            .into_boxed_slice();
+        let exact_bytes =
+            aspis_statement::pool_v1::encode_pool_v1_pair_forest_terminal_result_v1(&value)
+                .expect("test result must be canonical")
+                .to_vec()
+                .into_boxed_slice();
         Self {
             value: Box::new(value),
             exact_bytes,

@@ -33,6 +33,7 @@ pair-forest-verifier-lane-invariant-audit = ["pair-forest-account-evidence"]
 pair-forest-direct-result-audit = ["pair-forest-account-evidence"]
 # Instrumented local phase ledger. Logging changes total CU.
 pair-forest-cu-profile-audit = ["pair-forest-account-evidence"]
+pair-forest-history-page-invariant-audit = ["pair-forest-account-evidence"]
 # Audit-only full 1,880-byte ASF8 top-level transport. It shares the exact
 # account order, registry authentication, ASR8 validation, and settlement path
 # with `pair-forest-account-evidence`.

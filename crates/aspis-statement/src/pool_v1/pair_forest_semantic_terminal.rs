@@ -240,7 +240,37 @@ fn semantic_initial_and_absorption(
         chunk_eight = chunk_eight.add(selectors.high[27]).add(selectors.high[28]);
         chunk_two = chunk_two.add(selectors.high[29]);
     }
-    let absorption = core::array::from_fn(|lane| {
+    #[cfg(not(feature = "pool-v1-pair-forest-semantic-factor-audit"))]
+    let absorption = absorption_lanes_literal(
+        selectors.low[12],
+        fixed,
+        chunk_two,
+        chunk_eight,
+        nodes,
+        &openings.z,
+    );
+    #[cfg(feature = "pool-v1-pair-forest-semantic-factor-audit")]
+    let absorption = absorption_lanes_factored(
+        selectors.low[12],
+        fixed,
+        chunk_two,
+        chunk_eight,
+        nodes,
+        &openings.z,
+    );
+    (initial, absorption)
+}
+
+#[cfg(any(test, not(feature = "pool-v1-pair-forest-semantic-factor-audit")))]
+fn absorption_lanes_literal(
+    low: QM31,
+    fixed: QM31,
+    chunk_two: QM31,
+    chunk_eight: QM31,
+    nodes: QM31,
+    openings: &[QM31; 16],
+) -> [QM31; 16] {
+    core::array::from_fn(|lane| {
         let blocks = if lane < 2 {
             fixed
         } else if lane < RATE {
@@ -248,9 +278,34 @@ fn semantic_initial_and_absorption(
         } else {
             fixed.add(chunk_two).add(chunk_eight).add(nodes)
         };
-        selectors.low[12].mul(blocks).mul(openings.z[lane])
-    });
-    (initial, absorption)
+        low.mul(blocks).mul(openings[lane])
+    })
+}
+
+#[cfg(any(test, feature = "pool-v1-pair-forest-semantic-factor-audit"))]
+fn absorption_lanes_factored(
+    low: QM31,
+    fixed: QM31,
+    chunk_two: QM31,
+    chunk_eight: QM31,
+    nodes: QM31,
+    openings: &[QM31; 16],
+) -> [QM31; 16] {
+    let scales = [
+        PreparedQm31Multiplier::new(low.mul(fixed)),
+        PreparedQm31Multiplier::new(low.mul(fixed.add(chunk_two))),
+        PreparedQm31Multiplier::new(low.mul(fixed.add(chunk_two).add(chunk_eight).add(nodes))),
+    ];
+    core::array::from_fn(|lane| {
+        let scale = if lane < 2 {
+            scales[0]
+        } else if lane < RATE {
+            scales[1]
+        } else {
+            scales[2]
+        };
+        scale.mul(openings[lane])
+    })
 }
 
 #[inline(always)]
@@ -296,6 +351,15 @@ fn add_path_lanes(
             .add(selectors.low[9])
             .add(selectors.low[13]),
     );
+    #[cfg(not(feature = "pool-v1-pair-forest-semantic-factor-audit"))]
+    let path = path_lanes_literal(path_selector, openings);
+    #[cfg(feature = "pool-v1-pair-forest-semantic-factor-audit")]
+    let path = path_lanes_factored(path_selector, openings);
+    add_preweighted(packed, 32, &path);
+}
+
+#[cfg(any(test, not(feature = "pool-v1-pair-forest-semantic-factor-audit")))]
+fn path_lanes_literal(path_selector: QM31, openings: &StateOnlyPoseidonOpenings) -> [QM31; 17] {
     let bit = openings.z[0];
     let mut path = [QM31::ZERO; 17];
     path[0] = path_selector.mul(bit.mul(bit.sub(QM31::ONE)));
@@ -308,7 +372,24 @@ fn add_path_lanes(
             .mul(bit)
             .mul(openings.succ_z[RATE + lane].sub(current));
     }
-    add_preweighted(packed, 32, &path);
+    path
+}
+
+#[cfg(any(test, feature = "pool-v1-pair-forest-semantic-factor-audit"))]
+fn path_lanes_factored(path_selector: QM31, openings: &StateOnlyPoseidonOpenings) -> [QM31; 17] {
+    let bit = openings.z[0];
+    let selected_bit = path_selector.mul(bit);
+    let selected_empty = path_selector.sub(selected_bit);
+    let left = PreparedQm31Multiplier::new(selected_empty);
+    let right = PreparedQm31Multiplier::new(selected_bit);
+    let mut path = [QM31::ZERO; 17];
+    path[0] = selected_bit.mul(bit.sub(QM31::ONE));
+    for lane in 0..DIGEST_ELEMS {
+        let current = openings.z[1 + lane];
+        path[1 + lane] = left.mul(openings.succ_z[lane].sub(current));
+        path[1 + DIGEST_ELEMS + lane] = right.mul(openings.succ_z[RATE + lane].sub(current));
+    }
+    path
 }
 
 #[inline(never)]
@@ -352,24 +433,75 @@ fn add_occupancy_lanes(
 ) {
     let input_occupancy = selectors.row(INPUT_OCCUPANCY_ROW);
     let output_occupancy = selectors.row(OUTPUT_OCCUPANCY_ROW);
-    let occupied = openings.z[0];
-    let inverse = openings.z[1];
+    let expected_output = M31(u32::from(
+        public.variant == CompiledVariant::PrivateTransfer,
+    ));
+    #[cfg(not(feature = "pool-v1-pair-forest-semantic-factor-audit"))]
+    let occupancy = occupancy_lanes_literal(
+        input_occupancy,
+        output_occupancy,
+        expected_output,
+        &openings.z,
+    );
+    #[cfg(feature = "pool-v1-pair-forest-semantic-factor-audit")]
+    let occupancy = occupancy_lanes_factored(
+        input_occupancy,
+        output_occupancy,
+        expected_output,
+        &openings.z,
+    );
+    add_preweighted(packed, 0, &occupancy);
+}
+
+#[cfg(any(test, not(feature = "pool-v1-pair-forest-semantic-factor-audit")))]
+fn occupancy_lanes_literal(
+    input_occupancy: QM31,
+    output_occupancy: QM31,
+    expected_output: M31,
+    opened: &[QM31; 16],
+) -> [QM31; 12] {
+    let occupied = opened[0];
+    let inverse = opened[1];
     let one_minus = QM31::ONE.sub(occupied);
     let mut occupancy = [QM31::ZERO; 12];
     let both = input_occupancy.add(output_occupancy);
     occupancy[0] = both.mul(occupied.mul(occupied.sub(QM31::ONE)));
-    occupancy[1] = both.mul(openings.z[9].mul(inverse).sub(occupied));
+    occupancy[1] = both.mul(opened[9].mul(inverse).sub(occupied));
     occupancy[2] = both.mul(one_minus.mul(inverse));
     for lane in 0..DIGEST_ELEMS {
-        occupancy[3 + lane] = both.mul(one_minus.mul(openings.z[2 + lane]));
+        occupancy[3 + lane] = both.mul(one_minus.mul(opened[2 + lane]));
     }
-    let expected_output = M31(u32::from(
-        public.variant == CompiledVariant::PrivateTransfer,
-    ));
     occupancy[11] = input_occupancy
-        .mul(openings.z[10].mul(one_minus))
+        .mul(opened[10].mul(one_minus))
         .add(output_occupancy.mul(occupied.sub(lift(expected_output))));
-    add_preweighted(packed, 0, &occupancy);
+    occupancy
+}
+
+#[cfg(any(test, feature = "pool-v1-pair-forest-semantic-factor-audit"))]
+fn occupancy_lanes_factored(
+    input_occupancy: QM31,
+    output_occupancy: QM31,
+    expected_output: M31,
+    opened: &[QM31; 16],
+) -> [QM31; 12] {
+    let occupied = opened[0];
+    let inverse = opened[1];
+    let one_minus = QM31::ONE.sub(occupied);
+    let both = input_occupancy.add(output_occupancy);
+    let occupied_selector = both.mul(occupied);
+    let empty_selector = both.sub(occupied_selector);
+    let empty = PreparedQm31Multiplier::new(empty_selector);
+    let mut occupancy = [QM31::ZERO; 12];
+    occupancy[0] = occupied_selector.mul(occupied.sub(QM31::ONE));
+    occupancy[1] = both.mul(opened[9].mul(inverse).sub(occupied));
+    occupancy[2] = empty.mul(inverse);
+    for lane in 0..DIGEST_ELEMS {
+        occupancy[3 + lane] = empty.mul(opened[2 + lane]);
+    }
+    occupancy[11] = input_occupancy
+        .mul(opened[10].mul(one_minus))
+        .add(output_occupancy.mul(occupied.sub(lift(expected_output))));
+    occupancy
 }
 
 #[inline(never)]
@@ -1174,6 +1306,52 @@ mod tests {
                 a: next_test_m31(state),
                 b: next_test_m31(state),
             },
+        }
+    }
+
+    #[test]
+    fn semantic_common_factor_kernels_equal_literal_off_domain() {
+        let mut state = 0x6661_6374_6f72_7631u64;
+        for sample in 0..128 {
+            let low = next_test_qm31(&mut state);
+            let fixed = next_test_qm31(&mut state);
+            let chunk_two = next_test_qm31(&mut state);
+            let chunk_eight = next_test_qm31(&mut state);
+            let nodes = next_test_qm31(&mut state);
+            let openings = StateOnlyPoseidonOpenings {
+                z: core::array::from_fn(|_| next_test_qm31(&mut state)),
+                succ_z: core::array::from_fn(|_| next_test_qm31(&mut state)),
+                xor12_z: core::array::from_fn(|_| next_test_qm31(&mut state)),
+            };
+            assert_eq!(
+                absorption_lanes_factored(low, fixed, chunk_two, chunk_eight, nodes, &openings.z,),
+                absorption_lanes_literal(low, fixed, chunk_two, chunk_eight, nodes, &openings.z,),
+                "absorption mismatch at sample {sample}",
+            );
+            let path_selector = next_test_qm31(&mut state);
+            assert_eq!(
+                path_lanes_factored(path_selector, &openings),
+                path_lanes_literal(path_selector, &openings),
+                "path mismatch at sample {sample}",
+            );
+            let input_selector = next_test_qm31(&mut state);
+            let output_selector = next_test_qm31(&mut state);
+            let expected_output = M31((sample & 1) as u32);
+            assert_eq!(
+                occupancy_lanes_factored(
+                    input_selector,
+                    output_selector,
+                    expected_output,
+                    &openings.z,
+                ),
+                occupancy_lanes_literal(
+                    input_selector,
+                    output_selector,
+                    expected_output,
+                    &openings.z,
+                ),
+                "occupancy mismatch at sample {sample}",
+            );
         }
     }
 

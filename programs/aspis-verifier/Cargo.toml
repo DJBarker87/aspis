@@ -111,6 +111,18 @@ v7-pair-forest-binary-copy-weights-audit = [
 v7-pair-forest-endpoint-selector-cache-audit = [
     "aspis-statement/pool-v1-pair-forest-endpoint-selector-cache-audit",
 ]
+# Audit-only common-factor extraction in schedule, path, and occupancy
+# residuals. The wire, transcript, semantic relation, and theta packing do not
+# change; focused off-domain tests compare the literal and factored kernels.
+v7-pair-forest-semantic-factor-audit = [
+    "aspis-statement/pool-v1-pair-forest-semantic-factor-audit",
+]
+# Audit-only CSE for the frozen generated Copy pattern table. Four overlapping
+# eight-limb windows are evaluated once and exact subwindows are derived by
+# subtraction; terminal equations and tuple bytes are unchanged.
+v7-pair-forest-pattern-window-audit = [
+    "aspis-statement/pool-v1-pair-forest-pattern-window-audit",
+]
 # Adds compute-unit checkpoints to the selected pair-forest verifier without
 # changing its wire, transcript, arithmetic, work, q16, or Merkle schedule.
 # Use only for matched diagnostic builds; marker calls inflate total CU.

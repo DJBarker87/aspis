@@ -60,6 +60,8 @@ combined evidence files are:
 - `evidence/withdrawal-rollover-counter0-selected-txv1-1400000.json`
 - `evidence/profile-selected-*-runtime3000000.json`
 
-The rollover margin is too small for release even if the conditioning is
-proved sound. A separate security-equivalent CU cut and its own source/invariant
-proof are still required.
+At this checkpoint the rollover margin was too small for release even if the
+conditioning were proved sound. The subsequent exact field-factor and Pool
+history-invariant measurements are frozen in
+`ROLLOVER-CU-MARGIN-EVIDENCE.md`; they reduce rollover to 1,360,640 CU while
+leaving the counter-zero K1.6 question explicit and unresolved.
