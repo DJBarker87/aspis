@@ -20,12 +20,12 @@ use aspis_statement::{
         encode_pool_v1_pair_forest_master_v1, encode_pool_v1_pair_forest_terminal_result_v1,
         plan_pool_v1_pair_forest_checkpoint_v1, pool_v1_note_commitment,
         pool_v1_pair_forest_deposit_lane_v1, pool_v1_tree_parent, root_history_location,
-        validate_pool_v1_pair_forest_terminal_result_against_statement_v1, IncrementalMerkleTreeV1,
-        PoolIdentityV1, PoolV1NullifierMarkerV1, PoolV1PairForestCheckpointV1,
-        PoolV1PairForestLaneStateV1, PoolV1PairForestMasterV1, PoolV1PairForestTerminalCommonV1,
-        PoolV1PairForestTerminalPaymentV1, PoolV1PairForestTerminalRequestV1,
-        PoolV1PairForestTerminalStatementV1, PoolV1PairLeafWitnessV1,
-        POOL_V1_DIGEST_ENCODING_VERSION, POOL_V1_PAIR_CAPACITY,
+        validate_pool_v1_pair_forest_terminal_result_against_statement_v1, AppendOneV1,
+        IncrementalMerkleTreeV1, PoolIdentityV1, PoolV1NullifierMarkerV1,
+        PoolV1PairForestCheckpointV1, PoolV1PairForestLaneStateV1, PoolV1PairForestMasterV1,
+        PoolV1PairForestTerminalCommonV1, PoolV1PairForestTerminalPaymentV1,
+        PoolV1PairForestTerminalRequestV1, PoolV1PairForestTerminalStatementV1,
+        PoolV1PairLeafWitnessV1, POOL_V1_DIGEST_ENCODING_VERSION, POOL_V1_PAIR_CAPACITY,
         POOL_V1_PAIR_FOREST_CHECKPOINT_ACCOUNT_BYTES, POOL_V1_PAIR_FOREST_LANE_ACCOUNT_BYTES,
         POOL_V1_PAIR_FOREST_LANE_COUNT, POOL_V1_PAIR_FOREST_MASTER_ACCOUNT_BYTES,
         POOL_V1_PAIR_FOREST_TERMINAL_RESULT_BYTES, POOL_V1_PAIR_TREE_DEPTH,
@@ -377,6 +377,18 @@ fn require_alias_free(
     Ok(())
 }
 
+#[inline(never)]
+fn decode_checkpoint_master_box_v1(
+    program_id: &Pubkey,
+    master_account: &AccountInfo<'_>,
+) -> Result<Box<PoolV1PairForestMasterV1>, ProgramError> {
+    Ok(Box::new(decode_master_account(
+        program_id,
+        master_account,
+        true,
+    )?))
+}
+
 /// Authenticate the exact fixed-order account snapshot and prepare, without
 /// mutation, one master update plus one immutable checkpoint image.
 pub fn plan_pair_forest_checkpoint_accounts_v1(
@@ -393,7 +405,7 @@ pub fn plan_pair_forest_checkpoint_accounts_v1(
         });
     }
     require_alias_free(master_account, lane_accounts, checkpoint_account)?;
-    let master = decode_master_account(program_id, master_account, true)?;
+    let master = decode_checkpoint_master_box_v1(program_id, master_account)?;
     let mut lane_states = Vec::with_capacity(POOL_V1_PAIR_FOREST_LANE_COUNT);
     for lane in 0..POOL_V1_PAIR_FOREST_LANE_COUNT {
         lane_states.push(decode_lane_account(
@@ -493,6 +505,34 @@ fn validate_lane_current_page(
     Ok(header)
 }
 
+#[inline(never)]
+fn prepare_deposit_append_v1(
+    lane: &PoolV1PairForestLaneStateV1,
+    lane_id: u8,
+    pair_leaf: Digest,
+) -> Result<
+    (
+        AppendOneV1,
+        Box<[u8; POOL_V1_PAIR_FOREST_LANE_ACCOUNT_BYTES]>,
+    ),
+    ProgramError,
+> {
+    let (next_tree, append) = lane
+        .tree
+        .append_one_with_empty_roots(pair_leaf, &POOL_V1_PAIR_EMPTY_ROOTS)
+        .map_err(|_| PoolV1ProgramError::StateHistoryMismatch)?;
+    let next_lane = Box::new(PoolV1PairForestLaneStateV1 {
+        master: lane.master,
+        lane_id,
+        tree: next_tree,
+    });
+    let next_lane_image = Box::new(
+        encode_pool_v1_pair_forest_lane_state_v1(&next_lane, &POOL_V1_PAIR_EMPTY_ROOTS)
+            .map_err(|_| PoolV1ProgramError::StateHistoryMismatch)?,
+    );
+    Ok((append, next_lane_image))
+}
+
 /// Apply one vault-backed public deposit to its deterministic pair-forest
 /// lane. The first pair slot is the occupied note commitment and the second
 /// slot is the relation's algebraic empty `(occupied = 0, commitment = 0)`.
@@ -520,7 +560,7 @@ pub(crate) fn process_pair_forest_deposit_with_runtime_v1<'info, R: PoolCpiRunti
     let current_page = accounts
         .get(FOREST_DEPOSIT_CURRENT_PAGE_ACCOUNT_INDEX)
         .ok_or(ProgramError::NotEnoughAccountKeys)?;
-    let master = decode_master_account(program_id, master_account, false)?;
+    let master = decode_terminal_master_box_v1(program_id, master_account)?;
     let commitment = pool_v1_note_commitment(
         &request.owner_key,
         request.amount,
@@ -532,25 +572,14 @@ pub(crate) fn process_pair_forest_deposit_with_runtime_v1<'info, R: PoolCpiRunti
     if master.initialized_lane_mask & (1u8 << lane_id) == 0 {
         return Err(PoolV1ProgramError::StateHistoryMismatch.into());
     }
-    let lane = decode_lane_account(program_id, master_account.key, lane_id, lane_account, true)?;
+    let lane = decode_terminal_lane_box_v1(program_id, master_account.key, lane_id, lane_account)?;
     if lane.tree.next_leaf_index >= POOL_V1_PAIR_CAPACITY {
         return Err(PoolV1ProgramError::TreeFull.into());
     }
     let pair_leaf = PoolV1PairLeafWitnessV1::single_output(commitment)
         .and_then(|witness| witness.leaf_digest())
         .map_err(|_| PoolV1ProgramError::NonCanonicalLeaf)?;
-    let (next_tree, append) = lane
-        .tree
-        .append_one_with_empty_roots(pair_leaf, &POOL_V1_PAIR_EMPTY_ROOTS)
-        .map_err(|_| PoolV1ProgramError::StateHistoryMismatch)?;
-    let next_lane = PoolV1PairForestLaneStateV1 {
-        master: lane.master,
-        lane_id,
-        tree: next_tree,
-    };
-    let next_lane_image =
-        encode_pool_v1_pair_forest_lane_state_v1(&next_lane, &POOL_V1_PAIR_EMPTY_ROOTS)
-            .map_err(|_| PoolV1ProgramError::StateHistoryMismatch)?;
+    let (append, next_lane_image) = prepare_deposit_append_v1(&lane, lane_id, pair_leaf)?;
 
     let current_location = root_history_location(lane.tree.next_leaf_index);
     let next_location = root_history_location(append.root_sequence);
@@ -698,7 +727,7 @@ pub(crate) fn process_pair_forest_deposit_with_runtime_v1<'info, R: PoolCpiRunti
     runtime.invoke(&transfer_plan.instruction, &transfer_infos)?;
     validate_exact_deposit_delta_v1(token_accounts, &transfer_plan)?;
 
-    lane_data.copy_from_slice(&next_lane_image);
+    lane_data.copy_from_slice(next_lane_image.as_ref());
     match mode {
         PairForestDepositPageModeV1::FreshGenesis { .. } => write_new_page_unchecked(
             &mut page_data,
@@ -1230,6 +1259,52 @@ pub(crate) fn process_pair_forest_terminal_v1<'info, R: PoolCpiRuntimeV1>(
     )
 }
 
+#[inline(never)]
+fn decode_forest_initialization_box_v1(
+    instruction_data: &[u8],
+) -> Result<Box<PoolInitializationV1>, ProgramError> {
+    Ok(Box::new(decode_pair_forest_initialize_instruction_v1(
+        instruction_data,
+    )?))
+}
+
+#[inline(never)]
+fn forest_master_image_box_v1(
+    expected_master: &Pubkey,
+    initialization: &PoolInitializationV1,
+) -> Result<Box<[u8; POOL_V1_PAIR_FOREST_MASTER_ACCOUNT_BYTES]>, ProgramError> {
+    let master_state = Box::new(PoolV1PairForestMasterV1 {
+        identity: PoolIdentityV1 {
+            pool: expected_master.to_bytes(),
+            asset_mint: initialization.asset_mint,
+            token_program: initialization.token_program,
+            asset_id: initialization.asset_id,
+            deployment_domain: initialization.deployment_domain,
+        },
+        verifier_policy: initialization.verifier_policy,
+        initialized_lane_mask: aspis_statement::pool_v1::POOL_V1_PAIR_FOREST_ALL_LANES_MASK,
+        has_checkpoint: false,
+        next_checkpoint_sequence: 0,
+        last_checkpoint_lane_sequences: [0u64; POOL_V1_PAIR_FOREST_LANE_COUNT],
+    });
+    Ok(Box::new(
+        encode_pool_v1_pair_forest_master_v1(&master_state)
+            .map_err(|_| PoolV1ProgramError::StateHistoryMismatch)?,
+    ))
+}
+
+#[inline(never)]
+fn genesis_lane_image_box_v1(
+    expected_master: &Pubkey,
+    lane_id: u8,
+) -> Result<Box<[u8; POOL_V1_PAIR_FOREST_LANE_ACCOUNT_BYTES]>, ProgramError> {
+    let lane = Box::new(genesis_lane_state(expected_master, lane_id));
+    Ok(Box::new(
+        encode_pool_v1_pair_forest_lane_state_v1(&lane, &POOL_V1_PAIR_EMPTY_ROOTS)
+            .map_err(|_| PoolV1ProgramError::StateHistoryMismatch)?,
+    ))
+}
+
 /// Initialize
 /// `[master, lane_0, ..., lane_7, mint, vault, token_program, payer,
 /// system_program]`.
@@ -1244,7 +1319,7 @@ pub(crate) fn process_pair_forest_initialize_with_runtime_v1<'info, R: PoolCpiRu
 ) -> ProgramResult {
     require_exact_account_count(accounts, POOL_V1_PAIR_FOREST_INITIALIZE_ACCOUNT_COUNT)?;
     require_unique_accounts(accounts)?;
-    let initialization = decode_pair_forest_initialize_instruction_v1(instruction_data)?;
+    let initialization = decode_forest_initialization_box_v1(instruction_data)?;
     let master = &accounts[FOREST_MASTER_ACCOUNT_INDEX];
     let lanes = &accounts[FOREST_FIRST_LANE_ACCOUNT_INDEX
         ..FOREST_FIRST_LANE_ACCOUNT_INDEX + POOL_V1_PAIR_FOREST_LANE_COUNT];
@@ -1282,31 +1357,10 @@ pub(crate) fn process_pair_forest_initialize_with_runtime_v1<'info, R: PoolCpiRu
     }
 
     // Freeze every program-owned output image before the first CPI.
-    let master_state = PoolV1PairForestMasterV1 {
-        identity: PoolIdentityV1 {
-            pool: expected_master.to_bytes(),
-            asset_mint: initialization.asset_mint,
-            token_program: initialization.token_program,
-            asset_id: initialization.asset_id,
-            deployment_domain: initialization.deployment_domain,
-        },
-        verifier_policy: initialization.verifier_policy,
-        initialized_lane_mask: aspis_statement::pool_v1::POOL_V1_PAIR_FOREST_ALL_LANES_MASK,
-        has_checkpoint: false,
-        next_checkpoint_sequence: 0,
-        last_checkpoint_lane_sequences: [0u64; POOL_V1_PAIR_FOREST_LANE_COUNT],
-    };
-    let master_image = encode_pool_v1_pair_forest_master_v1(&master_state)
-        .map_err(|_| PoolV1ProgramError::StateHistoryMismatch)?;
+    let master_image = forest_master_image_box_v1(&expected_master, &initialization)?;
     let mut lane_images = Vec::with_capacity(POOL_V1_PAIR_FOREST_LANE_COUNT);
     for lane in 0..POOL_V1_PAIR_FOREST_LANE_COUNT {
-        lane_images.push(
-            encode_pool_v1_pair_forest_lane_state_v1(
-                &genesis_lane_state(&expected_master, lane as u8),
-                &POOL_V1_PAIR_EMPTY_ROOTS,
-            )
-            .map_err(|_| PoolV1ProgramError::StateHistoryMismatch)?,
-        );
+        lane_images.push(genesis_lane_image_box_v1(&expected_master, lane as u8)?);
     }
 
     if master_preparation == FreshPdaPreparationV1::CreateOrAllocateSystemOwned {
@@ -1377,9 +1431,9 @@ pub(crate) fn process_pair_forest_initialize_with_runtime_v1<'info, R: PoolCpiRu
     for lane in lanes {
         lane_data.push(lane.try_borrow_mut_data()?);
     }
-    master_data.copy_from_slice(&master_image);
+    master_data.copy_from_slice(master_image.as_ref());
     for lane in 0..POOL_V1_PAIR_FOREST_LANE_COUNT {
-        lane_data[lane].copy_from_slice(&lane_images[lane]);
+        lane_data[lane].copy_from_slice(lane_images[lane].as_ref());
     }
     Ok(())
 }

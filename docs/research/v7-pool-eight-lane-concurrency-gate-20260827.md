@@ -104,6 +104,17 @@ no stack-offset diagnostic, exited zero in 3.76 seconds from the warm cache,
 peaked at 271,932 KiB RSS, and used zero swap. This is a build/stack gate, not
 yet an on-chain acceptance or CU measurement.
 
+The paired Pool feature `pair-forest-account-evidence` is also stack-clean for
+SBF. The first audit found four oversized forest frames: terminal 12,800
+bytes, deposit 5,952 bytes, initialize 5,952 bytes and checkpoint planning
+4,224 bytes. Request/state/result images and lifecycle output images were
+split into heap-backed non-inlined phases. The final build emits no stack
+offset diagnostic for any forest entrypoint. Focused initialize, genesis and
+rollover deposit, checkpoint, transfer and withdrawal tests pass. The warm
+feature build exited zero in 3.01 seconds, peaked at 267,036 KiB RSS and used
+zero swap. This remains a build gate; positive Pool-to-verifier CPI execution
+and combined CU are the next runtime gates.
+
 ## State and transaction model
 
 The master Pool owns eight lane PDAs. Each lane stores its own root, append
