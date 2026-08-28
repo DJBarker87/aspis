@@ -92,6 +92,10 @@ v7-pair-forest-fixed-canonical-exact-once-audit = [
     "v7-pair-forest-fixed-canonical-audit",
     "aspis-core/v7-fixed-canonical-exact-once-audit",
 ]
+# Adds compute-unit checkpoints to the selected pair-forest verifier without
+# changing its wire, transcript, arithmetic, work, q16, or Merkle schedule.
+# Use only for matched diagnostic builds; marker calls inflate total CU.
+v7-pair-forest-verifier-cu-profile = []
 
 [dependencies]
 aspis-core = { path = "../../crates/aspis-core" }

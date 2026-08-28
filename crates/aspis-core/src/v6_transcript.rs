@@ -91,11 +91,16 @@ pub enum V6WorkStage {
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum V6RelationDiagnosticPhase {
     Start,
+    BatchWork,
     PreparedWeights,
     CircleSamples,
     RelationFields,
+    FoldPolynomial,
+    FoldWork,
     RoundZero,
     Final256,
+    FinalWork,
+    Q16Schedule,
     Queries,
     QueryBatch,
     RoundOnePolynomial,
@@ -704,6 +709,7 @@ where
         V6WorkStage::Batch,
         check_pow,
     )?;
+    trace(V6RelationDiagnosticPhase::BatchWork);
     let gamma = transcript
         .challenge_nonzero_qm31()
         .map_err(|_| V6TranscriptError::ChallengeSampling)?;
@@ -761,6 +767,7 @@ where
     let mut alpha = [QM31::ZERO; V6_RELATION_ROUNDS];
     let first = decode_compact_relation_polynomial(&relation_fields[0], running_claim);
     absorb_compact_relation_polynomial(&mut transcript, 0, &first);
+    trace(V6RelationDiagnosticPhase::FoldPolynomial);
     check_and_absorb_work(
         &mut transcript,
         work_nonce_bytes(work_nonces, V6WorkStage::Fold),
@@ -768,6 +775,7 @@ where
         V6WorkStage::Fold,
         check_pow,
     )?;
+    trace(V6RelationDiagnosticPhase::FoldWork);
     alpha[0] = transcript
         .challenge_qm31()
         .map_err(|_| V6TranscriptError::ChallengeSampling)?;
@@ -786,6 +794,7 @@ where
         V6WorkStage::Final,
         check_pow,
     )?;
+    trace(V6RelationDiagnosticPhase::FinalWork);
     let (
         queries,
         compact_counter,
@@ -809,6 +818,7 @@ where
             c2: c2_nodes,
         });
     }
+    trace(V6RelationDiagnosticPhase::Q16Schedule);
     transcript.absorb(query_batch_labels.0, &[]);
     let query_batch_challenge = transcript
         .challenge_nonzero_qm31()
@@ -1289,6 +1299,95 @@ where
 }
 
 /// Diagnostic twin of
+/// [`verify_v7_canonical_transcript_and_relation_prepared_with_hiding_context`].
+/// It is reachable only from an explicitly instrumented verifier build and
+/// does not change transcript bytes, field consumption, or acceptance.
+#[cfg(feature = "v7-fixed-canonical-audit")]
+#[allow(clippy::too_many_arguments)]
+#[inline(never)]
+pub fn verify_v7_canonical_transcript_and_relation_prepared_with_hiding_context_and_diagnostic_trace<
+    TerminalCheck,
+    QueryFold,
+    Trace,
+>(
+    hash: HashFn,
+    wire: &V7CanonicalOneFoldWire<'_>,
+    context: &V6TranscriptContext,
+    hiding_context: StateOnlyHidingContext,
+    inactive_row_groups: &[u8; 64],
+    inactive_group_masks: &[u16],
+    check_pow: bool,
+    terminal_check: TerminalCheck,
+    query_fold: QueryFold,
+    mut trace: Trace,
+) -> Result<V6VerifiedTranscript, V6TranscriptError>
+where
+    TerminalCheck: FnOnce(&V6SemanticView<'_>) -> bool,
+    QueryFold: FnOnce(&V6QueryBatchView<'_>) -> Result<V6AuthenticatedQueryBatch, V6WireError>,
+    Trace: FnMut(V7TranscriptDiagnosticPhase),
+{
+    let mut fields = wire.fixed_reader()?;
+    let (mut transcript, lambda, chi, batching) =
+        begin_v7_canonical_transcript_with_hiding_context(hash, context, wire, hiding_context)?;
+    trace(V7TranscriptDiagnosticPhase::TranscriptSetup);
+    let (eta, semantic_point, semantic_terminal) =
+        verify_compact_semantic_sumcheck(&mut transcript, &mut fields)?;
+    trace(V7TranscriptDiagnosticPhase::SemanticSumcheck);
+    let point_claims = decode_and_absorb_point_claims(&mut transcript, &mut fields)?;
+    trace(V7TranscriptDiagnosticPhase::PointClaims);
+    let semantic_view = V6SemanticView {
+        lambda,
+        chi,
+        batching,
+        eta,
+        point: semantic_point,
+        terminal_claim: semantic_terminal,
+        point_claims: &point_claims,
+    };
+    trace(V7TranscriptDiagnosticPhase::TerminalStart);
+    if !terminal_check(&semantic_view) {
+        return Err(V6TranscriptError::TerminalRejected);
+    }
+    trace(V7TranscriptDiagnosticPhase::TerminalEnd);
+
+    finish_onefold_relation(
+        transcript,
+        wire.work_nonces,
+        wire.c1_frontier,
+        wire.c2_frontier,
+        [
+            V7_COMPACT_BATCH_WORK_BITS,
+            V7_COMPACT_FOLD_WORK_BITS,
+            V7_COMPACT_FINAL_WORK_BITS,
+        ],
+        0,
+        V7_MERKLE_DIGEST_BYTES,
+        (label::V7_QUERY_BATCH_CHALLENGE, label::V7_QUERY_BATCH_CLAIM),
+        true,
+        false,
+        |candidate_transcript| {
+            let schedule = derive_first_v7_compact_queries(candidate_transcript)
+                .map_err(V6TranscriptError::Wire)?;
+            Ok((
+                schedule.queries,
+                schedule.counter,
+                schedule.frontier_nodes,
+                schedule.transcript_state,
+                schedule.accepted_transcript,
+            ))
+        },
+        fields,
+        inactive_row_groups,
+        inactive_group_masks,
+        check_pow,
+        semantic_point,
+        &point_claims,
+        query_fold,
+        |phase| trace(V7TranscriptDiagnosticPhase::Relation(phase)),
+    )
+}
+
+/// Diagnostic twin of
 /// [`verify_v7_compact_transcript_and_relation_prepared_with_hiding_context`].
 /// It executes the same parser, transcript, terminal callback and relation,
 /// but exposes coarse phase boundaries to a local-only CU profiler.  No
@@ -1446,6 +1545,26 @@ mod tests {
             values: [QM31::ZERO; V6_QUERY_COUNT],
             line_x: [crate::field::M31::ZERO; V6_QUERY_COUNT],
         }
+    }
+
+    fn assert_verified_transcripts_equal(
+        left: &V6VerifiedTranscript,
+        right: &V6VerifiedTranscript,
+    ) {
+        assert_eq!(left.gamma, right.gamma);
+        assert_eq!(left.kappa, right.kappa);
+        assert_eq!(left.alpha, right.alpha);
+        assert_eq!(left.queries, right.queries);
+        assert_eq!(left.selector, right.selector);
+        assert_eq!(left.compact_counter, right.compact_counter);
+        assert_eq!(left.frontier_nodes, right.frontier_nodes);
+        assert_eq!(left.semantic_point, right.semantic_point);
+        assert_eq!(left.query_batch_challenge, right.query_batch_challenge);
+        assert_eq!(left.folded_query_sum, right.folded_query_sum);
+        assert_eq!(
+            left.transcript_state_after_queries,
+            right.transcript_state_after_queries,
+        );
     }
 
     fn v7_zero_body(frontier: usize) -> Vec<u8> {
@@ -1685,6 +1804,122 @@ mod tests {
             first.transcript_state_after_queries,
             second.transcript_state_after_queries
         );
+    }
+
+    #[test]
+    fn v7_diagnostic_twins_preserve_outputs_and_phase_order() {
+        let hiding_context = StateOnlyHidingContext::atomic_spend_v3(
+            context().statement_digest,
+            context().attempt_id,
+        );
+        let frontier = expected_v7_frontier().unwrap();
+        let body = v7_zero_body(frontier);
+        let wire = V7CompactOneFoldWire::parse(&body, frontier).unwrap();
+        let expected = verify_v7_compact_transcript_and_relation_prepared_with_hiding_context(
+            test_hash,
+            &wire,
+            &context(),
+            hiding_context,
+            &[0u8; 64],
+            &[u16::MAX],
+            false,
+            |_| true,
+            |_| Ok(zero_query_batch()),
+        )
+        .unwrap();
+        let mut compact_phases = Vec::new();
+        let observed =
+            verify_v7_compact_transcript_and_relation_prepared_with_hiding_context_and_diagnostic_trace(
+                test_hash,
+                &wire,
+                &context(),
+                hiding_context,
+                &[0u8; 64],
+                &[u16::MAX],
+                false,
+                |_| true,
+                |_| Ok(zero_query_batch()),
+                |phase| compact_phases.push(phase),
+            )
+            .unwrap();
+        assert_verified_transcripts_equal(&expected, &observed);
+        assert_eq!(
+            compact_phases,
+            vec![
+                V7TranscriptDiagnosticPhase::TranscriptSetup,
+                V7TranscriptDiagnosticPhase::SemanticSumcheck,
+                V7TranscriptDiagnosticPhase::PointClaims,
+                V7TranscriptDiagnosticPhase::TerminalStart,
+                V7TranscriptDiagnosticPhase::TerminalEnd,
+                V7TranscriptDiagnosticPhase::Relation(V6RelationDiagnosticPhase::Start),
+                V7TranscriptDiagnosticPhase::Relation(V6RelationDiagnosticPhase::BatchWork),
+                V7TranscriptDiagnosticPhase::Relation(V6RelationDiagnosticPhase::PreparedWeights,),
+                V7TranscriptDiagnosticPhase::Relation(V6RelationDiagnosticPhase::CircleSamples),
+                V7TranscriptDiagnosticPhase::Relation(V6RelationDiagnosticPhase::RelationFields),
+                V7TranscriptDiagnosticPhase::Relation(V6RelationDiagnosticPhase::FoldPolynomial),
+                V7TranscriptDiagnosticPhase::Relation(V6RelationDiagnosticPhase::FoldWork),
+                V7TranscriptDiagnosticPhase::Relation(V6RelationDiagnosticPhase::RoundZero),
+                V7TranscriptDiagnosticPhase::Relation(V6RelationDiagnosticPhase::Final256),
+                V7TranscriptDiagnosticPhase::Relation(V6RelationDiagnosticPhase::FinalWork),
+                V7TranscriptDiagnosticPhase::Relation(V6RelationDiagnosticPhase::Q16Schedule),
+                V7TranscriptDiagnosticPhase::Relation(V6RelationDiagnosticPhase::Queries),
+                V7TranscriptDiagnosticPhase::Relation(V6RelationDiagnosticPhase::QueryBatch),
+                V7TranscriptDiagnosticPhase::Relation(
+                    V6RelationDiagnosticPhase::RoundOnePolynomial,
+                ),
+                V7TranscriptDiagnosticPhase::Relation(V6RelationDiagnosticPhase::RoundOneWeights),
+                V7TranscriptDiagnosticPhase::Relation(V6RelationDiagnosticPhase::RoundOne),
+                V7TranscriptDiagnosticPhase::Relation(
+                    V6RelationDiagnosticPhase::RoundTwoPolynomial,
+                ),
+                V7TranscriptDiagnosticPhase::Relation(V6RelationDiagnosticPhase::RoundTwoWeights),
+                V7TranscriptDiagnosticPhase::Relation(V6RelationDiagnosticPhase::RoundTwo),
+                V7TranscriptDiagnosticPhase::Relation(
+                    V6RelationDiagnosticPhase::RoundThreePolynomial,
+                ),
+                V7TranscriptDiagnosticPhase::Relation(V6RelationDiagnosticPhase::RoundThreeWeights,),
+                V7TranscriptDiagnosticPhase::Relation(V6RelationDiagnosticPhase::RoundThree),
+                V7TranscriptDiagnosticPhase::Relation(V6RelationDiagnosticPhase::Terminal),
+            ]
+        );
+
+        #[cfg(feature = "v7-fixed-canonical-audit")]
+        {
+            let canonical = crate::v7_fixed_canonical_audit::transcode_tag73_to_canonical_fixed(
+                &body, frontier,
+            )
+            .unwrap();
+            let canonical_wire = V7CanonicalOneFoldWire::parse(&canonical, frontier).unwrap();
+            let expected =
+                verify_v7_canonical_transcript_and_relation_prepared_with_hiding_context(
+                    test_hash,
+                    &canonical_wire,
+                    &context(),
+                    hiding_context,
+                    &[0u8; 64],
+                    &[u16::MAX],
+                    false,
+                    |_| true,
+                    |_| Ok(zero_query_batch()),
+                )
+                .unwrap();
+            let mut canonical_phases = Vec::new();
+            let observed = verify_v7_canonical_transcript_and_relation_prepared_with_hiding_context_and_diagnostic_trace(
+                test_hash,
+                &canonical_wire,
+                &context(),
+                hiding_context,
+                &[0u8; 64],
+                &[u16::MAX],
+                false,
+                |_| true,
+                |_| Ok(zero_query_batch()),
+                |phase| canonical_phases.push(phase),
+            )
+            .unwrap();
+            assert_verified_transcripts_equal(&expected, &observed);
+            assert_eq!(canonical_phases, compact_phases);
+        }
     }
 
     #[test]

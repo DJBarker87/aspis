@@ -114,13 +114,18 @@ fn log_transcript_phase(phase: V7TranscriptDiagnosticPhase) {
         V7TranscriptDiagnosticPhase::TerminalEnd => "aspis-v7-profile:terminal-end",
         V7TranscriptDiagnosticPhase::Relation(relation) => match relation {
             V6RelationDiagnosticPhase::Start => "aspis-v7-profile:relation-start",
+            V6RelationDiagnosticPhase::BatchWork => "aspis-v7-profile:work-batch",
             V6RelationDiagnosticPhase::PreparedWeights => {
                 "aspis-v7-profile:relation-prepared-weights"
             }
             V6RelationDiagnosticPhase::CircleSamples => "aspis-v7-profile:relation-circle-samples",
             V6RelationDiagnosticPhase::RelationFields => "aspis-v7-profile:relation-fields",
+            V6RelationDiagnosticPhase::FoldPolynomial => "aspis-v7-profile:work-fold-polynomial",
+            V6RelationDiagnosticPhase::FoldWork => "aspis-v7-profile:work-fold",
             V6RelationDiagnosticPhase::RoundZero => "aspis-v7-profile:relation-round-zero",
             V6RelationDiagnosticPhase::Final256 => "aspis-v7-profile:relation-final256",
+            V6RelationDiagnosticPhase::FinalWork => "aspis-v7-profile:work-final",
+            V6RelationDiagnosticPhase::Q16Schedule => "aspis-v7-profile:q16-schedule",
             V6RelationDiagnosticPhase::Queries => "aspis-v7-profile:relation-queries",
             V6RelationDiagnosticPhase::QueryBatch => "aspis-v7-profile:relation-query-batch",
             V6RelationDiagnosticPhase::RoundOnePolynomial => {
