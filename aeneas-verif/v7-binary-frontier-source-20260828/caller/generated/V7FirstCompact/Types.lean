@@ -52,14 +52,14 @@ structure v7_onefold.V7CompactQuerySchedule where
   transcript_state : Array Std.U8 32#usize
   accepted_transcript : transcript.Transcript
 
-/-- [aspis_core::v7_onefold::derive_first_v7_compact_queries::closure#1]
-    Source: 'crates/aspis-core/src/v7_onefold.rs', lines 85:21-85:58 -/
+/-- [aspis_core::v7_onefold::derive_v7_compact_candidate::closure#1]
+    Source: 'crates/aspis-core/src/v7_onefold.rs', lines 85:17-85:54 -/
 @[reducible]
-def v7_onefold.derive_first_v7_compact_queries.closure_1 := Unit
+def v7_onefold.derive_v7_compact_candidate.closure_1 := Unit
 
-/-- [aspis_core::v7_onefold::derive_first_v7_compact_queries::closure]
-    Source: 'crates/aspis-core/src/v7_onefold.rs', lines 82:21-82:58 -/
+/-- [aspis_core::v7_onefold::derive_v7_compact_candidate::closure]
+    Source: 'crates/aspis-core/src/v7_onefold.rs', lines 82:17-82:54 -/
 @[reducible]
-def v7_onefold.derive_first_v7_compact_queries.closure := Unit
+def v7_onefold.derive_v7_compact_candidate.closure := Unit
 
 end V7FirstCompactSource

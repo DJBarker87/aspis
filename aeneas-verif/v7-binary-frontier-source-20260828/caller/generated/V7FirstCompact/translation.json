@@ -4,7 +4,7 @@
   "crate": "aspis_core",
   "functions": [
     {
-      "def_id": 140,
+      "def_id": 174,
       "lean_name": "V7FirstCompactSource.core.num.U32.checked_shl",
       "lean_file": "FunsExternal_Template.lean",
       "rust_name": "core::num::{u32}::checked_shl",
@@ -21,7 +21,7 @@
       "reducible": false
     },
     {
-      "def_id": 118,
+      "def_id": 154,
       "lean_name": "V7FirstCompactSource.core.num.U32.is_power_of_two",
       "lean_file": "FunsExternal_Template.lean",
       "rust_name": "core::num::{u32}::is_power_of_two",
@@ -38,7 +38,7 @@
       "reducible": false
     },
     {
-      "def_id": 141,
+      "def_id": 175,
       "lean_name": "V7FirstCompactSource.core.option.Option.ok_or",
       "lean_file": "FunsExternal_Template.lean",
       "rust_name": "core::option::{core::option::Option<T>}::ok_or",
@@ -55,7 +55,7 @@
       "reducible": false
     },
     {
-      "def_id": 6,
+      "def_id": 106,
       "lean_name": "V7FirstCompactSource.core.result.Result.map_err",
       "lean_file": "FunsExternal_Template.lean",
       "rust_name": "core::result::{core::result::Result<T, E>}::map_err",
@@ -72,7 +72,7 @@
       "reducible": false
     },
     {
-      "def_id": 144,
+      "def_id": 178,
       "lean_name": "V7FirstCompactSource.core.slice.iter.Windows.Insts.CoreIterTraitsIteratorIteratorSharedASlice.next",
       "lean_file": "FunsExternal_Template.lean",
       "rust_name": "core::slice::iter::{impl core::iter::traits::iterator::Iterator<&'a [T]> for core::slice::iter::Windows<'a, T>}::next",
@@ -89,7 +89,7 @@
       "reducible": false
     },
     {
-      "def_id": 143,
+      "def_id": 177,
       "lean_name": "V7FirstCompactSource.core.slice.Slice.windows",
       "lean_file": "FunsExternal_Template.lean",
       "rust_name": "core::slice::{[T]}::windows",
@@ -106,7 +106,7 @@
       "reducible": false
     },
     {
-      "def_id": 137,
+      "def_id": 171,
       "lean_name": "V7FirstCompactSource.Array.Insts.CoreConvertTryFromVecVec.try_from",
       "lean_file": "FunsExternal_Template.lean",
       "rust_name": "alloc::vec::{impl core::convert::TryFrom<alloc::vec::Vec<T>, alloc::vec::Vec<T>> for [T; N]}::try_from",
@@ -123,7 +123,7 @@
       "reducible": false
     },
     {
-      "def_id": 3,
+      "def_id": 103,
       "lean_name": "V7FirstCompactSource.transcript.Transcript.Insts.CoreCloneClone.clone",
       "lean_file": "Funs.lean",
       "rust_name": "aspis_core::transcript::{impl core::clone::Clone for aspis_core::transcript::Transcript}::clone",
@@ -140,7 +140,7 @@
       "reducible": false
     },
     {
-      "def_id": 4,
+      "def_id": 104,
       "lean_name": "V7FirstCompactSource.transcript.Transcript.absorb",
       "lean_file": "Funs.lean",
       "rust_name": "aspis_core::transcript::{aspis_core::transcript::Transcript}::absorb",
@@ -157,7 +157,7 @@
       "reducible": false
     },
     {
-      "def_id": 11,
+      "def_id": 109,
       "lean_name": "V7FirstCompactSource.transcript.Transcript.diagnostic_state",
       "lean_file": "Funs.lean",
       "rust_name": "aspis_core::transcript::{aspis_core::transcript::Transcript}::diagnostic_state",
@@ -174,7 +174,7 @@
       "reducible": false
     },
     {
-      "def_id": 121,
+      "def_id": 157,
       "lean_name": "V7FirstCompactSource.transcript.Transcript.squeeze_block",
       "lean_file": "Funs.lean",
       "rust_name": "aspis_core::transcript::{aspis_core::transcript::Transcript}::squeeze_block",
@@ -191,7 +191,7 @@
       "reducible": false
     },
     {
-      "def_id": 5,
+      "def_id": 105,
       "lean_name": "V7FirstCompactSource.transcript.Transcript.challenge_queries_without_replacement_loop0_loop0.body",
       "lean_file": "Funs.lean",
       "rust_name": "aspis_core::transcript::{aspis_core::transcript::Transcript}::challenge_queries_without_replacement",
@@ -210,7 +210,7 @@
       "parent_lean_name": "V7FirstCompactSource.transcript.Transcript.challenge_queries_without_replacement"
     },
     {
-      "def_id": 5,
+      "def_id": 105,
       "lean_name": "V7FirstCompactSource.transcript.Transcript.challenge_queries_without_replacement_loop0_loop0",
       "lean_file": "Funs.lean",
       "rust_name": "aspis_core::transcript::{aspis_core::transcript::Transcript}::challenge_queries_without_replacement",
@@ -229,7 +229,7 @@
       "parent_lean_name": "V7FirstCompactSource.transcript.Transcript.challenge_queries_without_replacement"
     },
     {
-      "def_id": 5,
+      "def_id": 105,
       "lean_name": "V7FirstCompactSource.transcript.Transcript.challenge_queries_without_replacement_loop0.body",
       "lean_file": "Funs.lean",
       "rust_name": "aspis_core::transcript::{aspis_core::transcript::Transcript}::challenge_queries_without_replacement",
@@ -248,7 +248,7 @@
       "parent_lean_name": "V7FirstCompactSource.transcript.Transcript.challenge_queries_without_replacement"
     },
     {
-      "def_id": 5,
+      "def_id": 105,
       "lean_name": "V7FirstCompactSource.transcript.Transcript.challenge_queries_without_replacement_loop0",
       "lean_file": "Funs.lean",
       "rust_name": "aspis_core::transcript::{aspis_core::transcript::Transcript}::challenge_queries_without_replacement",
@@ -267,7 +267,7 @@
       "parent_lean_name": "V7FirstCompactSource.transcript.Transcript.challenge_queries_without_replacement"
     },
     {
-      "def_id": 5,
+      "def_id": 105,
       "lean_name": "V7FirstCompactSource.transcript.Transcript.challenge_queries_without_replacement",
       "lean_file": "Funs.lean",
       "rust_name": "aspis_core::transcript::{aspis_core::transcript::Transcript}::challenge_queries_without_replacement",
@@ -284,7 +284,7 @@
       "reducible": false
     },
     {
-      "def_id": 10,
+      "def_id": 108,
       "lean_name": "V7FirstCompactSource.v6_onefold.binary_frontier_nodes_loop0_loop0.body",
       "lean_file": "Funs.lean",
       "rust_name": "aspis_core::v6_onefold::binary_frontier_nodes",
@@ -303,7 +303,7 @@
       "parent_lean_name": "V7FirstCompactSource.v6_onefold.binary_frontier_nodes"
     },
     {
-      "def_id": 10,
+      "def_id": 108,
       "lean_name": "V7FirstCompactSource.v6_onefold.binary_frontier_nodes_loop0_loop0",
       "lean_file": "Funs.lean",
       "rust_name": "aspis_core::v6_onefold::binary_frontier_nodes",
@@ -322,7 +322,7 @@
       "parent_lean_name": "V7FirstCompactSource.v6_onefold.binary_frontier_nodes"
     },
     {
-      "def_id": 10,
+      "def_id": 108,
       "lean_name": "V7FirstCompactSource.v6_onefold.binary_frontier_nodes_loop0.body",
       "lean_file": "Funs.lean",
       "rust_name": "aspis_core::v6_onefold::binary_frontier_nodes",
@@ -341,7 +341,7 @@
       "parent_lean_name": "V7FirstCompactSource.v6_onefold.binary_frontier_nodes"
     },
     {
-      "def_id": 10,
+      "def_id": 108,
       "lean_name": "V7FirstCompactSource.v6_onefold.binary_frontier_nodes_loop0",
       "lean_file": "Funs.lean",
       "rust_name": "aspis_core::v6_onefold::binary_frontier_nodes",
@@ -360,7 +360,7 @@
       "parent_lean_name": "V7FirstCompactSource.v6_onefold.binary_frontier_nodes"
     },
     {
-      "def_id": 10,
+      "def_id": 108,
       "lean_name": "V7FirstCompactSource.v6_onefold.binary_frontier_nodes_loop1.body",
       "lean_file": "Funs.lean",
       "rust_name": "aspis_core::v6_onefold::binary_frontier_nodes",
@@ -379,7 +379,7 @@
       "parent_lean_name": "V7FirstCompactSource.v6_onefold.binary_frontier_nodes"
     },
     {
-      "def_id": 10,
+      "def_id": 108,
       "lean_name": "V7FirstCompactSource.v6_onefold.binary_frontier_nodes_loop1",
       "lean_file": "Funs.lean",
       "rust_name": "aspis_core::v6_onefold::binary_frontier_nodes",
@@ -398,7 +398,7 @@
       "parent_lean_name": "V7FirstCompactSource.v6_onefold.binary_frontier_nodes"
     },
     {
-      "def_id": 10,
+      "def_id": 108,
       "lean_name": "V7FirstCompactSource.v6_onefold.binary_frontier_nodes_loop2.body",
       "lean_file": "Funs.lean",
       "rust_name": "aspis_core::v6_onefold::binary_frontier_nodes",
@@ -417,7 +417,7 @@
       "parent_lean_name": "V7FirstCompactSource.v6_onefold.binary_frontier_nodes"
     },
     {
-      "def_id": 10,
+      "def_id": 108,
       "lean_name": "V7FirstCompactSource.v6_onefold.binary_frontier_nodes_loop2",
       "lean_file": "Funs.lean",
       "rust_name": "aspis_core::v6_onefold::binary_frontier_nodes",
@@ -436,7 +436,7 @@
       "parent_lean_name": "V7FirstCompactSource.v6_onefold.binary_frontier_nodes"
     },
     {
-      "def_id": 10,
+      "def_id": 108,
       "lean_name": "V7FirstCompactSource.v6_onefold.binary_frontier_nodes",
       "lean_file": "Funs.lean",
       "rust_name": "aspis_core::v6_onefold::binary_frontier_nodes",
@@ -453,10 +453,10 @@
       "reducible": false
     },
     {
-      "def_id": 13,
-      "lean_name": "V7FirstCompactSource.v7_onefold.derive_first_v7_compact_queries.closure_1.Insts.CoreOpsFunctionFnOnceTupleVecU32V6WireError.call_once",
+      "def_id": 147,
+      "lean_name": "V7FirstCompactSource.v7_onefold.derive_v7_compact_candidate.closure_1.Insts.CoreOpsFunctionFnOnceTupleVecU32V6WireError.call_once",
       "lean_file": "Funs.lean",
-      "rust_name": "aspis_core::v7_onefold::derive_first_v7_compact_queries::{impl core::ops::function::FnOnce<(alloc::vec::Vec<u32>,), aspis_core::v6_onefold::V6WireError> for aspis_core::v7_onefold::derive_first_v7_compact_queries::closure#1}::call_once",
+      "rust_name": "aspis_core::v7_onefold::derive_v7_compact_candidate::{impl core::ops::function::FnOnce<(alloc::vec::Vec<u32>,), aspis_core::v6_onefold::V6WireError> for aspis_core::v7_onefold::derive_v7_compact_candidate::closure#1}::call_once",
       "is_local": true,
       "source": {
         "file": "crates/aspis-core/src/v7_onefold.rs",
@@ -470,10 +470,10 @@
       "reducible": false
     },
     {
-      "def_id": 12,
-      "lean_name": "V7FirstCompactSource.v7_onefold.derive_first_v7_compact_queries.closure.Insts.CoreOpsFunctionFnOnceTupleQuerySampleErrorV6WireError.call_once",
+      "def_id": 146,
+      "lean_name": "V7FirstCompactSource.v7_onefold.derive_v7_compact_candidate.closure.Insts.CoreOpsFunctionFnOnceTupleQuerySampleErrorV6WireError.call_once",
       "lean_file": "Funs.lean",
-      "rust_name": "aspis_core::v7_onefold::derive_first_v7_compact_queries::{impl core::ops::function::FnOnce<(aspis_core::transcript::QuerySampleError,), aspis_core::v6_onefold::V6WireError> for aspis_core::v7_onefold::derive_first_v7_compact_queries::closure}::call_once",
+      "rust_name": "aspis_core::v7_onefold::derive_v7_compact_candidate::{impl core::ops::function::FnOnce<(aspis_core::transcript::QuerySampleError,), aspis_core::v6_onefold::V6WireError> for aspis_core::v7_onefold::derive_v7_compact_candidate::closure}::call_once",
       "is_local": true,
       "source": {
         "file": "crates/aspis-core/src/v7_onefold.rs",
@@ -487,6 +487,23 @@
       "reducible": false
     },
     {
+      "def_id": 3,
+      "lean_name": "V7FirstCompactSource.v7_onefold.derive_v7_compact_candidate",
+      "lean_file": "Funs.lean",
+      "rust_name": "aspis_core::v7_onefold::derive_v7_compact_candidate",
+      "is_local": true,
+      "source": {
+        "file": "crates/aspis-core/src/v7_onefold.rs",
+        "begin_line": 74,
+        "end_line": 98
+      },
+      "is_opaque": false,
+      "can_fail": true,
+      "can_diverge": true,
+      "is_rec": false,
+      "reducible": false
+    },
+    {
       "def_id": 0,
       "lean_name": "V7FirstCompactSource.v7_onefold.derive_first_v7_compact_queries_loop.body",
       "lean_file": "Funs.lean",
@@ -494,8 +511,8 @@
       "is_local": true,
       "source": {
         "file": "crates/aspis-core/src/v7_onefold.rs",
-        "begin_line": 77,
-        "end_line": 98
+        "begin_line": 108,
+        "end_line": 118
       },
       "is_opaque": false,
       "can_fail": true,
@@ -513,8 +530,8 @@
       "is_local": true,
       "source": {
         "file": "crates/aspis-core/src/v7_onefold.rs",
-        "begin_line": 77,
-        "end_line": 98
+        "begin_line": 108,
+        "end_line": 118
       },
       "is_opaque": false,
       "can_fail": true,
@@ -532,8 +549,8 @@
       "is_local": true,
       "source": {
         "file": "crates/aspis-core/src/v7_onefold.rs",
-        "begin_line": 74,
-        "end_line": 98
+        "begin_line": 101,
+        "end_line": 118
       },
       "is_opaque": false,
       "can_fail": true,
@@ -544,7 +561,7 @@
   ],
   "types": [
     {
-      "def_id": 47,
+      "def_id": 54,
       "lean_name": "V7FirstCompactSource.core.slice.iter.Windows",
       "lean_file": "TypesExternal_Template.lean",
       "rust_name": "core::slice::iter::Windows",
@@ -556,7 +573,7 @@
       }
     },
     {
-      "def_id": 10,
+      "def_id": 40,
       "lean_name": "V7FirstCompactSource.transcript.QuerySampleError",
       "lean_file": "Types.lean",
       "rust_name": "aspis_core::transcript::QuerySampleError",
@@ -604,10 +621,10 @@
       }
     },
     {
-      "def_id": 12,
-      "lean_name": "V7FirstCompactSource.v7_onefold.derive_first_v7_compact_queries.closure_1",
+      "def_id": 42,
+      "lean_name": "V7FirstCompactSource.v7_onefold.derive_v7_compact_candidate.closure_1",
       "lean_file": "Types.lean",
-      "rust_name": "aspis_core::v7_onefold::derive_first_v7_compact_queries::closure#1",
+      "rust_name": "aspis_core::v7_onefold::derive_v7_compact_candidate::closure#1",
       "is_local": true,
       "source": {
         "file": "crates/aspis-core/src/v7_onefold.rs",
@@ -616,10 +633,10 @@
       }
     },
     {
-      "def_id": 11,
-      "lean_name": "V7FirstCompactSource.v7_onefold.derive_first_v7_compact_queries.closure",
+      "def_id": 41,
+      "lean_name": "V7FirstCompactSource.v7_onefold.derive_v7_compact_candidate.closure",
       "lean_file": "Types.lean",
-      "rust_name": "aspis_core::v7_onefold::derive_first_v7_compact_queries::closure",
+      "rust_name": "aspis_core::v7_onefold::derive_v7_compact_candidate::closure",
       "is_local": true,
       "source": {
         "file": "crates/aspis-core/src/v7_onefold.rs",
@@ -630,7 +647,7 @@
   ],
   "globals": [
     {
-      "def_id": 1,
+      "def_id": 3,
       "lean_name": "V7FirstCompactSource.transcript.label.V7_QUERY_CANDIDATE",
       "lean_file": "Funs.lean",
       "rust_name": "aspis_core::transcript::label::V7_QUERY_CANDIDATE",
@@ -643,7 +660,7 @@
       "can_fail": false
     },
     {
-      "def_id": 7,
+      "def_id": 8,
       "lean_name": "V7FirstCompactSource.transcript.DOM_ABSORB",
       "lean_file": "Funs.lean",
       "rust_name": "aspis_core::transcript::DOM_ABSORB",
@@ -656,7 +673,7 @@
       "can_fail": false
     },
     {
-      "def_id": 16,
+      "def_id": 18,
       "lean_name": "V7FirstCompactSource.transcript.DOM_SQUEEZE",
       "lean_file": "Funs.lean",
       "rust_name": "aspis_core::transcript::DOM_SQUEEZE",
@@ -669,7 +686,7 @@
       "can_fail": false
     },
     {
-      "def_id": 17,
+      "def_id": 19,
       "lean_name": "V7FirstCompactSource.transcript.DOM_ADVANCE",
       "lean_file": "Funs.lean",
       "rust_name": "aspis_core::transcript::DOM_ADVANCE",
@@ -682,7 +699,7 @@
       "can_fail": false
     },
     {
-      "def_id": 6,
+      "def_id": 7,
       "lean_name": "V7FirstCompactSource.transcript.Transcript.absorb.PACKED_ABSORB_BYTES",
       "lean_file": "Funs.lean",
       "rust_name": "aspis_core::transcript::{aspis_core::transcript::Transcript}::absorb::PACKED_ABSORB_BYTES",
@@ -695,7 +712,7 @@
       "can_fail": false
     },
     {
-      "def_id": 2,
+      "def_id": 4,
       "lean_name": "V7FirstCompactSource.v6_onefold.V6_QUERY_COUNT",
       "lean_file": "Funs.lean",
       "rust_name": "aspis_core::v6_onefold::V6_QUERY_COUNT",
@@ -708,7 +725,7 @@
       "can_fail": false
     },
     {
-      "def_id": 3,
+      "def_id": 5,
       "lean_name": "V7FirstCompactSource.v7_onefold.V7_COMPACT_FRONTIER_CAP_PER_TREE",
       "lean_file": "Funs.lean",
       "rust_name": "aspis_core::v7_onefold::V7_COMPACT_FRONTIER_CAP_PER_TREE",
@@ -737,32 +754,32 @@
   "trait_decls": [],
   "trait_impls": [
     {
-      "def_id": 1,
-      "lean_name": "V7FirstCompactSource.v7_onefold.derive_first_v7_compact_queries.closure_1.Insts.CoreOpsFunctionFnOnceTupleVecU32V6WireError",
+      "def_id": 10,
+      "lean_name": "V7FirstCompactSource.v7_onefold.derive_v7_compact_candidate.closure_1.Insts.CoreOpsFunctionFnOnceTupleVecU32V6WireError",
       "lean_file": "Funs.lean",
-      "rust_name": "aspis_core::v7_onefold::derive_first_v7_compact_queries::{impl core::ops::function::FnOnce<(alloc::vec::Vec<u32>,), aspis_core::v6_onefold::V6WireError> for aspis_core::v7_onefold::derive_first_v7_compact_queries::closure#1}",
+      "rust_name": "aspis_core::v7_onefold::derive_v7_compact_candidate::{impl core::ops::function::FnOnce<(alloc::vec::Vec<u32>,), aspis_core::v6_onefold::V6WireError> for aspis_core::v7_onefold::derive_v7_compact_candidate::closure#1}",
       "is_local": true,
       "source": {
         "file": "crates/aspis-core/src/v7_onefold.rs",
         "begin_line": 85,
         "end_line": 85
       },
-      "impl_trait_def_id": 2,
+      "impl_trait_def_id": 8,
       "impl_trait_rust_name": "core::ops::function::FnOnce",
       "impl_trait_is_builtin": true
     },
     {
-      "def_id": 0,
-      "lean_name": "V7FirstCompactSource.v7_onefold.derive_first_v7_compact_queries.closure.Insts.CoreOpsFunctionFnOnceTupleQuerySampleErrorV6WireError",
+      "def_id": 9,
+      "lean_name": "V7FirstCompactSource.v7_onefold.derive_v7_compact_candidate.closure.Insts.CoreOpsFunctionFnOnceTupleQuerySampleErrorV6WireError",
       "lean_file": "Funs.lean",
-      "rust_name": "aspis_core::v7_onefold::derive_first_v7_compact_queries::{impl core::ops::function::FnOnce<(aspis_core::transcript::QuerySampleError,), aspis_core::v6_onefold::V6WireError> for aspis_core::v7_onefold::derive_first_v7_compact_queries::closure}",
+      "rust_name": "aspis_core::v7_onefold::derive_v7_compact_candidate::{impl core::ops::function::FnOnce<(aspis_core::transcript::QuerySampleError,), aspis_core::v6_onefold::V6WireError> for aspis_core::v7_onefold::derive_v7_compact_candidate::closure}",
       "is_local": true,
       "source": {
         "file": "crates/aspis-core/src/v7_onefold.rs",
         "begin_line": 82,
         "end_line": 82
       },
-      "impl_trait_def_id": 2,
+      "impl_trait_def_id": 8,
       "impl_trait_rust_name": "core::ops::function::FnOnce",
       "impl_trait_is_builtin": true
     }

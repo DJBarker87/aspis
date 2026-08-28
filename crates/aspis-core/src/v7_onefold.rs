@@ -70,31 +70,51 @@ pub struct V7CompactQuerySchedule {
     pub accepted_transcript: Transcript,
 }
 
+/// Derive one counter candidate without hiding it inside loop control flow.
+fn derive_v7_compact_candidate(
+    transcript: &Transcript,
+    counter: u8,
+) -> Result<Option<V7CompactQuerySchedule>, V6WireError> {
+    let mut candidate_transcript = transcript.clone();
+    candidate_transcript.absorb(label::V7_QUERY_CANDIDATE, &[counter]);
+    let candidate = candidate_transcript
+        .challenge_queries_without_replacement(V6_QUERY_COUNT, 1 << 18, 64)
+        .map_err(|_| V6WireError::InvalidQuerySchedule)?;
+    let queries: [u32; V6_QUERY_COUNT] = candidate
+        .try_into()
+        .map_err(|_| V6WireError::InvalidQuerySchedule)?;
+    let frontier_nodes = binary_frontier_nodes(queries, 18)?;
+    if frontier_nodes <= V7_COMPACT_FRONTIER_CAP_PER_TREE {
+        Ok(Some(V7CompactQuerySchedule {
+            queries,
+            counter,
+            frontier_nodes,
+            transcript_state: candidate_transcript.diagnostic_state(),
+            accepted_transcript: candidate_transcript,
+        }))
+    } else {
+        Ok(None)
+    }
+}
+
 /// Derive the first cap-203 schedule in the sole V7 counter stream.
 pub fn derive_first_v7_compact_queries(
     transcript: &Transcript,
 ) -> Result<V7CompactQuerySchedule, V6WireError> {
+    // Keep the accepted schedule as loop state instead of returning from the
+    // loop body. This is equivalent Rust control flow, and it lets Charon /
+    // Aeneas preserve the complete five-field return value.
+    let mut accepted = None;
     for counter in 0..V7_COMPACT_QUERY_CANDIDATES as u8 {
-        let mut candidate_transcript = transcript.clone();
-        candidate_transcript.absorb(label::V7_QUERY_CANDIDATE, &[counter]);
-        let candidate = candidate_transcript
-            .challenge_queries_without_replacement(V6_QUERY_COUNT, 1 << 18, 64)
-            .map_err(|_| V6WireError::InvalidQuerySchedule)?;
-        let queries: [u32; V6_QUERY_COUNT] = candidate
-            .try_into()
-            .map_err(|_| V6WireError::InvalidQuerySchedule)?;
-        let frontier_nodes = binary_frontier_nodes(queries, 18)?;
-        if frontier_nodes <= V7_COMPACT_FRONTIER_CAP_PER_TREE {
-            return Ok(V7CompactQuerySchedule {
-                queries,
-                counter,
-                frontier_nodes,
-                transcript_state: candidate_transcript.diagnostic_state(),
-                accepted_transcript: candidate_transcript,
-            });
+        if let Some(schedule) = derive_v7_compact_candidate(transcript, counter)? {
+            accepted = Some(schedule);
+            break;
         }
     }
-    Err(V6WireError::InvalidQuerySchedule)
+    match accepted {
+        Some(schedule) => Ok(schedule),
+        None => Err(V6WireError::InvalidQuerySchedule),
+    }
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -307,6 +327,15 @@ where
 mod tests {
     use super::*;
     use alloc::vec;
+    use sha2::{Digest, Sha256};
+
+    fn test_hash(inputs: &[&[u8]]) -> [u8; 32] {
+        let mut hasher = Sha256::new();
+        for input in inputs {
+            hasher.update(input);
+        }
+        hasher.finalize().into()
+    }
 
     #[test]
     fn exact_v7_wire_budget_is_below_thirty_kib() {
@@ -329,5 +358,31 @@ mod tests {
         assert_eq!(wire.query(0).unwrap().c1_packed.len(), 403);
         assert_eq!(wire.query(0).unwrap().c2_packed.len(), 186);
         assert_eq!(wire.query(15).unwrap().salt.len(), 32);
+    }
+
+    #[test]
+    fn compact_query_schedule_is_first_admitted_candidate() {
+        let mut transcript = Transcript::new(test_hash);
+        transcript.absorb(label::PROFILE, b"aspis-v7-onefold-query-kat-r0");
+        transcript.absorb(label::STATEMENT, &[0x73; 32]);
+        let selected = derive_first_v7_compact_queries(&transcript).unwrap();
+        assert!(selected.frontier_nodes <= V7_COMPACT_FRONTIER_CAP_PER_TREE);
+        assert_eq!(
+            selected.transcript_state,
+            selected.accepted_transcript.diagnostic_state()
+        );
+        for counter in 0..selected.counter {
+            let mut earlier = transcript.clone();
+            earlier.absorb(label::V7_QUERY_CANDIDATE, &[counter]);
+            let queries: [u32; V6_QUERY_COUNT] = earlier
+                .challenge_queries_without_replacement(V6_QUERY_COUNT, 1 << 18, 64)
+                .unwrap()
+                .try_into()
+                .unwrap();
+            assert!(
+                binary_frontier_nodes(queries, 18).unwrap()
+                    > V7_COMPACT_FRONTIER_CAP_PER_TREE
+            );
+        }
     }
 }

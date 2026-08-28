@@ -5,9 +5,10 @@ This bundle extracts the literal production
 the arithmetic performed by each adjacent-window body and the complete
 translated windows loop.
 
-The source revision used for extraction was
-`eb3497af8a191e1fd9310bc3e0e0c7a446a3e41e` on
-`research/v7-q16-scheduler-replay-20260828`.
+The source tree used for the final caller extraction was based on
+`8faea1a6578ea4c903fb7c145679780157dd8a21` on
+`research/v7-q16-scheduler-replay-20260828`, with the control-flow-only caller
+refactor recorded in the same checkpoint as this bundle.
 
 ## Extraction
 
@@ -83,10 +84,22 @@ integration bridges under `caller/proof/`. In particular,
 proves that the literal helper's cap-203 decision is equivalent to the frozen
 K1.3 semantic admission predicate.
 
-The caller extraction required only transparent generated-code repairs: avoid
-the `transcript` parameter/name-space shadow, reuse the already generated
-frontier types and foreign definitions, and supply the literal extra `u32`,
-`Result.map_err`, and `Vec -> Array` operations. No production Rust changed.
+`V7FirstCompactCallerBridge.source_candidate_reduces` now follows the complete
+loop-free production candidate helper from transcript clone through query
+sampling, exact `u32[16]` conversion, the source-backed frontier calculation
+and its cap decision. Its two public consequences prove that a semantically
+admitted candidate returns all five exact schedule fields and that a
+non-admitted candidate returns `none`.
+
+The caller extraction required transparent generated-code repairs: avoid the
+`transcript` parameter/name-space shadow, reuse the already generated frontier
+types and foreign definitions, and supply the literal extra `u32`,
+`Result.map_err`, and `Vec -> Array` operations. Production Rust received one
+control-flow-only refactor: a loop-free candidate helper returns the same five
+field schedule, while the outer loop records the first successful helper result
+before breaking. The proof relation, transcript, cap, wire format and
+cryptographic parameters are unchanged. A focused Rust test checks that the
+outer API still selects the first admitted candidate.
 
 ## Replay
 
@@ -124,8 +137,15 @@ AspisFormal project containing the focused semantic frontier build:
   /path/to/aspis-formal-project
 ```
 
-The caller extraction and all four caller frontier bridges were also compiled
-with the same Lean 4.31/AspisFormal path and zero swap.
+The caller extraction, four caller frontier bridges and exact candidate-return
+bridge were also compiled with the same Lean 4.31/AspisFormal path and zero
+swap. The focused final candidate-return replay used unit
+`aspis-v7-helper-caller-return-bridge-09`; it exited 0 in 3.797 seconds. GNU
+`time -v` measured 6,806,380 KiB peak RSS and reported zero swaps.
+The complete narrow bundle replay used unit
+`aspis-v7-caller-helper-full-replay-01`; it exited 0 in 39.181 seconds, peaked
+at 6,849,076 KiB RSS and reported zero swaps. Every printed theorem remained a
+subset of `propext`, `Classical.choice` and `Quot.sound`.
 
 ## Digests
 
@@ -137,25 +157,30 @@ with the same Lean 4.31/AspisFormal path and zero swap.
 a47f9642deb9f233a5c6c8b00a18fdeec4e1dc272e3a1e506120fc5e8cea714b  proof/V7BinaryFrontierSortModel.lean
 7ee9f9775b7b3e6f2d1ea8533e91b72cecbdb3948bdd5e3595c5ccc5e652fb66  proof/V7BinaryFrontierSortSourceBridge.lean
 ec384cb07f8f830dd34791c46cbcbda0cd48d5f8581047a9637cf8a032bc7a38  proof/V7BinaryFrontierK13Integration.lean
-9b4d98e15af61a82c3f0112a40608acc3fa346a6ba29c8a02478d226d1a24157  compile-generated.sh
-acff57d54c85fdab875f42d6ce2da8390179ca424f8e087afa7a53d58383a086  caller/V7FirstCompact.llbc
-d83c41b859860d34e12f5f9e34082d28b84d08e73d6055c56e3b1d4a08a5b14d  caller/generated/V7FirstCompact/Funs.lean
+cf7c4c975eef3465d25cfb0b0fbc312c15cf42803b28ecf03a5912fb9ead74a3  compile-generated.sh
+2ec6131a1c77c21fbc92f36e718de75218337a767b31786eda6f7076e8ddd51d  caller/V7FirstCompact.llbc
+1d7688f9495ace79397fe4265b11cd6be4be9fdf1ec38257211b2b2e558df190  caller/generated/V7FirstCompact/Funs.lean
 69f6b6130cf9f72d574b96a3e5bf1304426f6d9fd9768dd80a75fbec8575eac4  caller/generated/V7FirstCompact/FunsExternal.lean
-a85832837449b806c730dabaedb802eb997892bd09b4ed77d27b246aebfe7834  caller/generated/V7FirstCompact/Types.lean
+ad7c4abebd7f93332e65b97a858e36956ed79bfd75cf6630e88cfe31e5490d23  caller/generated/V7FirstCompact/Types.lean
 9c573383d5b50dced1cd948f6886ac640cf03c375dacd0e8dfeabde699630aed  caller/generated/V7FirstCompact/TypesExternal.lean
-f69d1a816e14e3ecce85026d1b162c726a0b41ec0070d7d12626dabe8b09dea4  caller/generated/V7FirstCompact/translation.json
+f710b3691d4c4b6439386d8d456f90b37aec406ecbad3b0be8d76cf8f12e3f85  caller/generated/V7FirstCompact/translation.json
 401c01f6295e20ba034480e95200b7acb860db9a00168c43e3a9cd13f9e637aa  caller/proof/V7FirstCompactFrontierBodyBridge.lean
 b71fa9e8fc7bef1544ec981092de9370c4b45d4ed059f30989d7bef988932468  caller/proof/V7FirstCompactFrontierLoopBridge.lean
 809eb566103b0a2355adaf530f78383dae45ac51d05ddf8fe4779b42b9e3a9bf  caller/proof/V7FirstCompactFrontierSortSourceBridge.lean
 c72e3c80fcfd46ce032d834d00b209316608f2cb1b39840dbabdec8180e3aaa6  caller/proof/V7FirstCompactFrontierK13Integration.lean
+fc3afed19a8c03eb49d03608eef78b8337132e1f1f8bbcf4e6b11ca879625af9  caller/proof/V7FirstCompactCallerBridge.lean
+6abb0376100611c5553258062480777187785579f402c9c1d3ce72379518258f  ../../crates/aspis-core/src/v7_onefold.rs
 ```
 
 ## Remaining source closure
 
-The frontier mathematics, literal helper, caller-local helper, and cap-203
-semantic equivalence are closed. The remaining step is the outer returned
-schedule/tape construction. The current Aeneas translation emits `done none`
-on the accepted branch even though the Rust source returns the constructed
-schedule, so that wrapper cannot honestly be used as a returned-value theorem.
-This is now isolated as a source-tool translation repair/re-extraction task;
-it is not an additional frontier formula or probability premise.
+The frontier mathematics, literal helper, caller-local helper, cap-203 semantic
+equivalence, and exact per-candidate returned schedule are closed. The Aeneas
+early-return loss is removed by the source refactor and fresh extraction.
+
+The remaining caller-local step is a theorem over the translated outer range
+loop: every earlier counter returns `none`, the selected counter returns the
+proved exact schedule, and therefore the wrapper returns that first schedule.
+This is a finite first-success recurrence/source-control-flow obligation. It is
+not an additional frontier formula, cryptographic assumption or probability
+premise.

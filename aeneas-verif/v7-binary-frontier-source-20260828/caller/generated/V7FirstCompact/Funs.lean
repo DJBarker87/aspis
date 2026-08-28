@@ -478,128 +478,149 @@ def v7_onefold.V7_COMPACT_FRONTIER_CAP_PER_TREE : Std.Usize := 203#usize
 @[global_simps, irreducible]
 def v7_onefold.V7_COMPACT_QUERY_CANDIDATES : Std.Usize := 64#usize
 
-/-- [aspis_core::v7_onefold::derive_first_v7_compact_queries::{impl core::ops::function::FnOnce<(alloc::vec::Vec<u32>,), aspis_core::v6_onefold::V6WireError> for aspis_core::v7_onefold::derive_first_v7_compact_queries::closure#1}::call_once]:
-    Source: 'crates/aspis-core/src/v7_onefold.rs', lines 85:21-85:58 -/
+/-- [aspis_core::v7_onefold::derive_v7_compact_candidate::{impl core::ops::function::FnOnce<(alloc::vec::Vec<u32>,), aspis_core::v6_onefold::V6WireError> for aspis_core::v7_onefold::derive_v7_compact_candidate::closure#1}::call_once]:
+    Source: 'crates/aspis-core/src/v7_onefold.rs', lines 85:17-85:54 -/
 def
-  v7_onefold.derive_first_v7_compact_queries.closure_1.Insts.CoreOpsFunctionFnOnceTupleVecU32V6WireError.call_once
-  (c : v7_onefold.derive_first_v7_compact_queries.closure_1)
+  v7_onefold.derive_v7_compact_candidate.closure_1.Insts.CoreOpsFunctionFnOnceTupleVecU32V6WireError.call_once
+  (c : v7_onefold.derive_v7_compact_candidate.closure_1)
   (tupled_args : alloc.vec.Vec Std.U32) :
   Result v6_onefold.V6WireError
   := do
   ok v6_onefold.V6WireError.InvalidQuerySchedule
 
-/-- Trait implementation: [aspis_core::v7_onefold::derive_first_v7_compact_queries::{impl core::ops::function::FnOnce<(alloc::vec::Vec<u32>,), aspis_core::v6_onefold::V6WireError> for aspis_core::v7_onefold::derive_first_v7_compact_queries::closure#1}]
-    Source: 'crates/aspis-core/src/v7_onefold.rs', lines 85:21-85:58 -/
+/-- Trait implementation: [aspis_core::v7_onefold::derive_v7_compact_candidate::{impl core::ops::function::FnOnce<(alloc::vec::Vec<u32>,), aspis_core::v6_onefold::V6WireError> for aspis_core::v7_onefold::derive_v7_compact_candidate::closure#1}]
+    Source: 'crates/aspis-core/src/v7_onefold.rs', lines 85:17-85:54 -/
 @[reducible]
 def
-  v7_onefold.derive_first_v7_compact_queries.closure_1.Insts.CoreOpsFunctionFnOnceTupleVecU32V6WireError
-  : core.ops.function.FnOnce
-  v7_onefold.derive_first_v7_compact_queries.closure_1 (alloc.vec.Vec Std.U32)
-  v6_onefold.V6WireError := {
+  v7_onefold.derive_v7_compact_candidate.closure_1.Insts.CoreOpsFunctionFnOnceTupleVecU32V6WireError
+  : core.ops.function.FnOnce v7_onefold.derive_v7_compact_candidate.closure_1
+  (alloc.vec.Vec Std.U32) v6_onefold.V6WireError := {
   call_once :=
-    v7_onefold.derive_first_v7_compact_queries.closure_1.Insts.CoreOpsFunctionFnOnceTupleVecU32V6WireError.call_once
+    v7_onefold.derive_v7_compact_candidate.closure_1.Insts.CoreOpsFunctionFnOnceTupleVecU32V6WireError.call_once
 }
 
-/-- [aspis_core::v7_onefold::derive_first_v7_compact_queries::{impl core::ops::function::FnOnce<(aspis_core::transcript::QuerySampleError,), aspis_core::v6_onefold::V6WireError> for aspis_core::v7_onefold::derive_first_v7_compact_queries::closure}::call_once]:
-    Source: 'crates/aspis-core/src/v7_onefold.rs', lines 82:21-82:58 -/
+/-- [aspis_core::v7_onefold::derive_v7_compact_candidate::{impl core::ops::function::FnOnce<(aspis_core::transcript::QuerySampleError,), aspis_core::v6_onefold::V6WireError> for aspis_core::v7_onefold::derive_v7_compact_candidate::closure}::call_once]:
+    Source: 'crates/aspis-core/src/v7_onefold.rs', lines 82:17-82:54 -/
 def
-  v7_onefold.derive_first_v7_compact_queries.closure.Insts.CoreOpsFunctionFnOnceTupleQuerySampleErrorV6WireError.call_once
-  (c : v7_onefold.derive_first_v7_compact_queries.closure)
+  v7_onefold.derive_v7_compact_candidate.closure.Insts.CoreOpsFunctionFnOnceTupleQuerySampleErrorV6WireError.call_once
+  (c : v7_onefold.derive_v7_compact_candidate.closure)
   (tupled_args : transcript.QuerySampleError) :
   Result v6_onefold.V6WireError
   := do
   ok v6_onefold.V6WireError.InvalidQuerySchedule
 
-/-- Trait implementation: [aspis_core::v7_onefold::derive_first_v7_compact_queries::{impl core::ops::function::FnOnce<(aspis_core::transcript::QuerySampleError,), aspis_core::v6_onefold::V6WireError> for aspis_core::v7_onefold::derive_first_v7_compact_queries::closure}]
-    Source: 'crates/aspis-core/src/v7_onefold.rs', lines 82:21-82:58 -/
+/-- Trait implementation: [aspis_core::v7_onefold::derive_v7_compact_candidate::{impl core::ops::function::FnOnce<(aspis_core::transcript::QuerySampleError,), aspis_core::v6_onefold::V6WireError> for aspis_core::v7_onefold::derive_v7_compact_candidate::closure}]
+    Source: 'crates/aspis-core/src/v7_onefold.rs', lines 82:17-82:54 -/
 @[reducible]
 def
-  v7_onefold.derive_first_v7_compact_queries.closure.Insts.CoreOpsFunctionFnOnceTupleQuerySampleErrorV6WireError
-  : core.ops.function.FnOnce v7_onefold.derive_first_v7_compact_queries.closure
+  v7_onefold.derive_v7_compact_candidate.closure.Insts.CoreOpsFunctionFnOnceTupleQuerySampleErrorV6WireError
+  : core.ops.function.FnOnce v7_onefold.derive_v7_compact_candidate.closure
   transcript.QuerySampleError v6_onefold.V6WireError := {
   call_once :=
-    v7_onefold.derive_first_v7_compact_queries.closure.Insts.CoreOpsFunctionFnOnceTupleQuerySampleErrorV6WireError.call_once
+    v7_onefold.derive_v7_compact_candidate.closure.Insts.CoreOpsFunctionFnOnceTupleQuerySampleErrorV6WireError.call_once
 }
 
+/-- [aspis_core::v7_onefold::derive_v7_compact_candidate]:
+    Source: 'crates/aspis-core/src/v7_onefold.rs', lines 74:0-98:1 -/
+def v7_onefold.derive_v7_compact_candidate
+  (inputTranscript : transcript.Transcript) (counter : Std.U8) :
+  Result (core.result.Result (Option v7_onefold.V7CompactQuerySchedule)
+    v6_onefold.V6WireError)
+  := do
+  let candidate_transcript ←
+    transcript.Transcript.Insts.CoreCloneClone.clone inputTranscript
+  let s ← lift (Array.to_slice (Array.make 1#usize [ counter ]))
+  let candidate_transcript1 ←
+    transcript.Transcript.absorb candidate_transcript
+      transcript.label.V7_QUERY_CANDIDATE s
+  let i ← 1#u32 <<< 18#i32
+  let (r, candidate_transcript2) ←
+    transcript.Transcript.challenge_queries_without_replacement
+      candidate_transcript1 v6_onefold.V6_QUERY_COUNT i 64#usize
+  let r1 ←
+    core.result.Result.map_err
+      v7_onefold.derive_v7_compact_candidate.closure.Insts.CoreOpsFunctionFnOnceTupleQuerySampleErrorV6WireError
+      r ()
+  let cf ← core.result.Result.Insts.CoreOpsTry.branch r1
+  match cf with
+  | core.ops.control_flow.ControlFlow.Continue val =>
+    let r2 ←
+      Array.Insts.CoreConvertTryFromVecVec.try_from Global 16#usize val
+    let r3 ←
+      core.result.Result.map_err
+        v7_onefold.derive_v7_compact_candidate.closure_1.Insts.CoreOpsFunctionFnOnceTupleVecU32V6WireError
+        r2 ()
+    let cf1 ← core.result.Result.Insts.CoreOpsTry.branch r3
+    match cf1 with
+    | core.ops.control_flow.ControlFlow.Continue val1 =>
+      let r4 ← v6_onefold.binary_frontier_nodes val1 18#u8
+      let cf2 ← core.result.Result.Insts.CoreOpsTry.branch r4
+      match cf2 with
+      | core.ops.control_flow.ControlFlow.Continue val2 =>
+        if val2 <= v7_onefold.V7_COMPACT_FRONTIER_CAP_PER_TREE
+        then
+          let a ←
+            transcript.Transcript.diagnostic_state candidate_transcript2
+          ok (core.result.Result.Ok (some
+            {
+              queries := val1,
+              counter,
+              frontier_nodes := val2,
+              transcript_state := a,
+              accepted_transcript := candidate_transcript2
+            }))
+        else ok (core.result.Result.Ok none)
+      | core.ops.control_flow.ControlFlow.Break residual =>
+        core.result.Result.Insts.CoreOpsTryTraitFromResidualResultInfallible.from_residual
+          (Option v7_onefold.V7CompactQuerySchedule) (core.convert.FromSame
+          v6_onefold.V6WireError) residual
+    | core.ops.control_flow.ControlFlow.Break residual =>
+      core.result.Result.Insts.CoreOpsTryTraitFromResidualResultInfallible.from_residual
+        (Option v7_onefold.V7CompactQuerySchedule) (core.convert.FromSame
+        v6_onefold.V6WireError) residual
+  | core.ops.control_flow.ControlFlow.Break residual =>
+    core.result.Result.Insts.CoreOpsTryTraitFromResidualResultInfallible.from_residual
+      (Option v7_onefold.V7CompactQuerySchedule) (core.convert.FromSame
+      v6_onefold.V6WireError) residual
+
 /-- [aspis_core::v7_onefold::derive_first_v7_compact_queries]: loop body 0:
-    Source: 'crates/aspis-core/src/v7_onefold.rs', lines 77:4-98:1
+    Source: 'crates/aspis-core/src/v7_onefold.rs', lines 108:4-118:1
     Visibility: public -/
 @[rust_loop_body]
 def v7_onefold.derive_first_v7_compact_queries_loop.body
   (inputTranscript : transcript.Transcript) (iter : core.ops.range.Range Std.U8) :
-  Result (ControlFlow (core.ops.range.Range Std.U8) (Option (core.result.Result
-    v7_onefold.V7CompactQuerySchedule v6_onefold.V6WireError)))
+  Result (ControlFlow (core.ops.range.Range Std.U8) ((Option
+    v7_onefold.V7CompactQuerySchedule) × (Option (core.result.Result
+    v7_onefold.V7CompactQuerySchedule v6_onefold.V6WireError))))
   := do
   let (o, iter1) ←
     core.iter.range.IteratorRange.next core.iter.range.StepU8 iter
   match o with
-  | none =>
-    ok (done (some (core.result.Result.Err
-      v6_onefold.V6WireError.InvalidQuerySchedule)))
+  | none => ok (done (none, none))
   | some counter =>
-    let candidate_transcript ←
-      transcript.Transcript.Insts.CoreCloneClone.clone inputTranscript
-    let s ← lift (Array.to_slice (Array.make 1#usize [ counter ]))
-    let candidate_transcript1 ←
-      transcript.Transcript.absorb candidate_transcript
-        transcript.label.V7_QUERY_CANDIDATE s
-    let i ← 1#u32 <<< 18#i32
-    let (r, candidate_transcript2) ←
-      transcript.Transcript.challenge_queries_without_replacement
-        candidate_transcript1 v6_onefold.V6_QUERY_COUNT i 64#usize
-    let r1 ←
-      core.result.Result.map_err
-        v7_onefold.derive_first_v7_compact_queries.closure.Insts.CoreOpsFunctionFnOnceTupleQuerySampleErrorV6WireError
-        r ()
-    let cf ← core.result.Result.Insts.CoreOpsTry.branch r1
+    let r ← v7_onefold.derive_v7_compact_candidate inputTranscript counter
+    let cf ← core.result.Result.Insts.CoreOpsTry.branch r
     match cf with
     | core.ops.control_flow.ControlFlow.Continue val =>
-      let r2 ←
-        Array.Insts.CoreConvertTryFromVecVec.try_from Global 16#usize val
-      let r3 ←
-        core.result.Result.map_err
-          v7_onefold.derive_first_v7_compact_queries.closure_1.Insts.CoreOpsFunctionFnOnceTupleVecU32V6WireError
-          r2 ()
-      let cf1 ← core.result.Result.Insts.CoreOpsTry.branch r3
-      match cf1 with
-      | core.ops.control_flow.ControlFlow.Continue val1 =>
-        let r4 ← v6_onefold.binary_frontier_nodes val1 18#u8
-        let cf2 ← core.result.Result.Insts.CoreOpsTry.branch r4
-        match cf2 with
-        | core.ops.control_flow.ControlFlow.Continue val2 =>
-          if val2 <= v7_onefold.V7_COMPACT_FRONTIER_CAP_PER_TREE
-          then
-            let _ ←
-              transcript.Transcript.diagnostic_state candidate_transcript2
-            ok (done none)
-          else ok (cont iter1)
-        | core.ops.control_flow.ControlFlow.Break residual =>
-          let _ ←
-            core.result.Result.Insts.CoreOpsTryTraitFromResidualResultInfallible.from_residual
-              v7_onefold.V7CompactQuerySchedule (core.convert.FromSame
-              v6_onefold.V6WireError) residual
-          ok (done none)
-      | core.ops.control_flow.ControlFlow.Break residual =>
-        let _ ←
-          core.result.Result.Insts.CoreOpsTryTraitFromResidualResultInfallible.from_residual
-            v7_onefold.V7CompactQuerySchedule (core.convert.FromSame
-            v6_onefold.V6WireError) residual
-        ok (done none)
+      match val with
+      | none => ok (cont iter1)
+      | some _ => ok (done (val, none))
     | core.ops.control_flow.ControlFlow.Break residual =>
-      let _ ←
+      let r1 ←
         core.result.Result.Insts.CoreOpsTryTraitFromResidualResultInfallible.from_residual
           v7_onefold.V7CompactQuerySchedule (core.convert.FromSame
           v6_onefold.V6WireError) residual
-      ok (done none)
+      ok (done (none, some r1))
 
 /-- [aspis_core::v7_onefold::derive_first_v7_compact_queries]: loop 0:
-    Source: 'crates/aspis-core/src/v7_onefold.rs', lines 77:4-98:1
+    Source: 'crates/aspis-core/src/v7_onefold.rs', lines 108:4-118:1
     Visibility: public -/
 @[rust_loop]
 def v7_onefold.derive_first_v7_compact_queries_loop
   (iter : core.ops.range.Range Std.U8) (inputTranscript : transcript.Transcript) :
-  Result (Option (core.result.Result v7_onefold.V7CompactQuerySchedule
-    v6_onefold.V6WireError))
+  Result ((Option v7_onefold.V7CompactQuerySchedule) × (Option
+    (core.result.Result v7_onefold.V7CompactQuerySchedule
+    v6_onefold.V6WireError)))
   := do
   loop
     (fun iter1 => v7_onefold.derive_first_v7_compact_queries_loop.body
@@ -607,7 +628,7 @@ def v7_onefold.derive_first_v7_compact_queries_loop
     iter
 
 /-- [aspis_core::v7_onefold::derive_first_v7_compact_queries]:
-    Source: 'crates/aspis-core/src/v7_onefold.rs', lines 74:0-98:1
+    Source: 'crates/aspis-core/src/v7_onefold.rs', lines 101:0-118:1
     Visibility: public -/
 def v7_onefold.derive_first_v7_compact_queries
   (inputTranscript : transcript.Transcript) :
@@ -615,11 +636,15 @@ def v7_onefold.derive_first_v7_compact_queries
     v6_onefold.V6WireError)
   := do
   let i ← lift (UScalar.cast .U8 v7_onefold.V7_COMPACT_QUERY_CANDIDATES)
-  let pending_return ←
+  let (accepted, pending_return) ←
     v7_onefold.derive_first_v7_compact_queries_loop
       { start := 0#u8, «end» := i } inputTranscript
   match pending_return with
-  | none => fail panic
+  | none =>
+    match accepted with
+    | none =>
+      ok (core.result.Result.Err v6_onefold.V6WireError.InvalidQuerySchedule)
+    | some schedule => ok (core.result.Result.Ok schedule)
   | some r => ok r
 
 end V7FirstCompactSource
