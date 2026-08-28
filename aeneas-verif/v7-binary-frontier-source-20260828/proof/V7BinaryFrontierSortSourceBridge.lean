@@ -385,6 +385,132 @@ theorem translated_outer_insertion_sort_exact
       · exact currentPerm
   · exact invariant
 
+/-- Production's `1..Q` sort entry point returns a sorted permutation for
+every nonempty fixed-size query array. -/
+theorem translated_sort_from_one
+    {Q : Std.Usize} (queries : Array Std.U32 Q) (positive : 0 < Q.val) :
+    ∃ output : Array Std.U32 Q,
+      v6_onefold.binary_frontier_nodes_loop0
+          { start := 1#usize, «end» := Q } queries = .ok output ∧
+      OuterSortPost queries.val output := by
+  have initialPrefix :
+      (queries.val.take (1#usize).val).Pairwise (· ≤ ·) := by
+    cases queries.val <;> simp
+  have initialInvariant : OuterSortInvariant queries.val
+      ({ start := 1#usize, «end» := Q }, queries) := by
+    refine ⟨?_, ?_, List.Perm.refl _, initialPrefix⟩
+    · exact queries.property.symm
+    · change (1#usize).val ≤ Q.val
+      have oneValue : (1#usize).val = 1 := rfl
+      rw [oneValue]
+      omega
+  exact WP.spec_imp_exists
+    (translated_outer_insertion_sort_exact queries.val
+      { start := 1#usize, «end» := Q } queries initialInvariant)
+
+private theorem nodup_pairwise_val_ne (values : List Std.U32)
+    (nodup : values.Nodup) :
+    values.Pairwise (fun left right => left.val ≠ right.val) := by
+  rw [List.pairwise_iff_getElem]
+  intro left right leftBound rightBound leftRight valueEqual
+  have elementEqual : values[left] = values[right] :=
+    UScalar.eq_of_val_eq valueEqual
+  have indexEqual : left = right := nodup.getElem_inj_iff.mp elementEqual
+  omega
+
+/-- A sorted permutation of a duplicate-free input has exactly the
+pairwise-distinct property consumed by the translated validation loop. -/
+theorem sorted_output_pairwise_distinct
+    {Q : Std.Usize} (input output : Array Std.U32 Q)
+    (inputNodup : input.val.Nodup)
+    (permutation : output.val.Perm input.val) :
+    output.val.Pairwise (fun left right => left.val ≠ right.val) := by
+  apply nodup_pairwise_val_ne output.val
+  exact permutation.nodup_iff.mpr inputNodup
+
+theorem sorted_output_preserves_bound
+    {Q : Std.Usize} (input output : Array Std.U32 Q) (limit : Nat)
+    (inputBound : ∀ value ∈ input.val, value.val < limit)
+    (permutation : output.val.Perm input.val) :
+    ∀ value ∈ output.val, value.val < limit := by
+  intro value member
+  exact inputBound value (permutation.mem_iff.mp member)
+
+private theorem u32_xor_log2_le_31 (left right : Std.U32) :
+    Nat.log2 (Nat.xor left.val right.val) ≤ 31 := by
+  by_cases xorZero : Nat.xor left.val right.val = 0
+  · rw [xorZero]
+    exact Nat.zero_le _
+  · have xorLt : Nat.xor left.val right.val < 2 ^ 32 := by
+      apply Nat.xor_lt_two_pow
+      · simpa using left.hBounds
+      · simpa using right.hBounds
+    have logLt : Nat.log2 (Nat.xor left.val right.val) < 32 :=
+      (Nat.log2_lt xorZero).2 xorLt
+    omega
+
+theorem adjacentXorLogSum_le_length (values : List Std.U32) :
+    V7BinaryFrontierLoopBridge.adjacentXorLogSum values ≤
+      31 * (values.length - 1) := by
+  induction values with
+  | nil => simp [V7BinaryFrontierLoopBridge.adjacentXorLogSum]
+  | cons left tail ih =>
+      cases tail with
+      | nil => simp [V7BinaryFrontierLoopBridge.adjacentXorLogSum]
+      | cons right rest =>
+          have headBound := u32_xor_log2_le_31 left right
+          simp only [V7BinaryFrontierLoopBridge.adjacentXorLogSum,
+            List.length_cons] at ih ⊢
+          omega
+
+private theorem usize_max_gt_512 : 512 < Std.Usize.max := by
+  rw [Std.Usize.max, Std.Usize.numBits, UScalarTy.Usize_numBits_eq]
+  rcases System.Platform.numBits_eq with bits | bits <;>
+    rw [bits] <;> norm_num
+
+private theorem q16_leaf_count_exists :
+    ∃ leafCount : Std.U32,
+      core.num.U32.checked_shl 1#u32
+          (core.convert.num.FromU32U8.from 18#u8) =
+        .ok (some leafCount) ∧
+      leafCount.val = 2 ^ 18 := by
+  let depth := core.convert.num.FromU32U8.from 18#u8
+  have depthValue : depth.val = 18 := by simp [depth]
+  obtain ⟨shifted, shiftRun, shiftSpec⟩ := WP.spec_imp_exists
+    (Std.U32.ShiftLeft_spec 1#u32 depth (by omega))
+  have shiftedValue : shifted.val = 2 ^ 18 := by
+    rw [shiftSpec.1, depthValue, Std.U32.size, Std.U32.numBits,
+      UScalarTy.U32_numBits_eq]
+    norm_num [Nat.shiftLeft_eq]
+  have checkedRun :
+      core.num.U32.checked_shl 1#u32 depth = .ok (some shifted) := by
+    unfold core.num.U32.checked_shl
+    rw [if_pos (by omega)]
+    congr 2
+    apply Std.U32.bv_eq_imp_eq
+    exact shiftSpec.2.symm
+  exact ⟨shifted, checkedRun, shiftedValue⟩
+
+private theorem q16_depth_to_usize :
+    core.convert.num.FromUsizeU8.from 18#u8 = 18#usize := by
+  apply UScalar.eq_of_val_eq
+  rw [core.convert.num.FromUsizeU8.from_val_eq]
+  rfl
+
+private theorem q16_expanded_start_run :
+    (18#usize : Std.Usize) + 1#usize =
+      (.ok 19#usize : Result Std.Usize) := by
+  obtain ⟨output, run, outputValue⟩ := WP.spec_imp_exists
+    (Std.Usize.add_spec (x := 18#usize) (y := 1#usize) (by
+      have room := usize_max_gt_512
+      norm_num at room ⊢
+      omega))
+  have outputExact : output = 19#usize := by
+    apply UScalar.eq_of_val_eq
+    norm_num at outputValue ⊢
+    exact outputValue
+  simpa only [outputExact] using run
+
 structure DuplicateScanInvariant {Q : Std.Usize}
     (queries : Array Std.U32 Q)
     (iter : core.ops.range.Range Std.Usize) : Prop where
@@ -472,8 +598,135 @@ theorem translated_duplicate_scan_accepts
       simp only [WP.spec, WP.theta, WP.wp_return]
   · exact invariant
 
+/-- End-to-end source theorem for the deployed q16/depth-18 frontier helper.
+It starts at the literal translated production function and returns the exact
+sorted adjacent-XOR formula, with range and duplicate rejection discharged
+from the decoder's native q16 invariants. -/
+theorem translated_binary_frontier_q16_exact
+    (queries : Array Std.U32 16#usize)
+    (nodup : queries.val.Nodup)
+    (bounded : ∀ value ∈ queries.val, value.val < 2 ^ 18) :
+    ∃ sorted : Array Std.U32 16#usize, ∃ output : Std.Usize,
+      v6_onefold.binary_frontier_nodes queries 18#u8 =
+        .ok (.Ok output) ∧
+      OuterSortPost queries.val sorted ∧
+      output.val = 19 +
+        V7BinaryFrontierLoopBridge.adjacentXorLogSum sorted.val - 16 := by
+  have qValue : (16#usize).val = 16 := rfl
+  have qPositive : 0 < (16#usize).val := by rw [qValue]; omega
+  obtain ⟨sorted, sortRun, sortPost⟩ :=
+    translated_sort_from_one queries qPositive
+  have sortedDistinct := sorted_output_pairwise_distinct queries sorted nodup
+    sortPost.perm
+  have sortedBound := sorted_output_preserves_bound queries sorted (2 ^ 18)
+    bounded sortPost.perm
+  have duplicateInvariant : DuplicateScanInvariant sorted
+      { start := 1#usize, «end» := 16#usize } := by
+    refine ⟨?_, ?_, ?_⟩
+    · norm_num
+    · change (16#usize).val = sorted.val.length
+      exact sorted.property.symm
+    · norm_num
+  obtain ⟨pending, duplicateRun, pendingExact⟩ := WP.spec_imp_exists
+    (translated_duplicate_scan_accepts sorted
+      { start := 1#usize, «end» := 16#usize }
+      sortedDistinct duplicateInvariant)
+  subst pending
+  obtain ⟨leafCount, leafRun, leafValue⟩ := q16_leaf_count_exists
+  obtain ⟨lastIndex, lastIndexRun, lastIndexSpec⟩ := WP.spec_imp_exists
+    (Std.Usize.sub_spec (x := 16#usize) (y := 1#usize) (by norm_num))
+  have lastIndexValue : lastIndex.val = 15 := by
+    have exactValue := lastIndexSpec.1
+    norm_num at exactValue ⊢
+    exact exactValue
+  have lastIndexBound : lastIndex.val < sorted.val.length := by
+    rw [lastIndexValue, sorted.property, qValue]
+    omega
+  obtain ⟨lastValue, lastReadRun, lastReadExact⟩ := WP.spec_imp_exists
+    (Array.index_usize_spec sorted lastIndex lastIndexBound)
+  have lastMember : lastValue ∈ sorted.val := by
+    rw [lastReadExact]
+    exact List.getElem_mem lastIndexBound
+  have lastBelowLeaf : lastValue.val < leafCount.val := by
+    rw [leafValue]
+    exact sortedBound lastValue lastMember
+  have expandedStartRun :
+      (core.convert.num.FromUsizeU8.from 18#u8) + 1#usize =
+        (.ok 19#usize : Result Std.Usize) := by
+    rw [q16_depth_to_usize]
+    exact q16_expanded_start_run
+  let sortedSlice : Slice Std.U32 := Array.to_slice sorted
+  let iterator : core.slice.iter.Windows Std.U32 :=
+    { slice := sortedSlice, width := 2#usize, index := 0 }
+  have windowsRun :
+      core.slice.Slice.windows sortedSlice 2#usize = .ok iterator := by
+    have widthNonzero : (2#usize : Std.Usize) ≠ 0#usize := by
+      intro equality
+      have valueEquality := congrArg
+        (fun value : Std.Usize => value.val) equality
+      norm_num at valueEquality
+    simp [core.slice.Slice.windows, widthNonzero, iterator]
+  have iteratorWidth : iterator.width.val = 2 := by rfl
+  have iteratorRemaining :
+      iterator.slice.val.drop iterator.index = sorted.val := by
+    simp [iterator, sortedSlice, Array.to_slice]
+  have sumBound := adjacentXorLogSum_le_length sorted.val
+  have sortedLength : sorted.val.length = 16 := by
+    rw [sorted.property, qValue]
+  have loopHeadroom :
+      (19#usize).val +
+          V7BinaryFrontierLoopBridge.adjacentXorLogSum sorted.val ≤
+        Std.Usize.max := by
+    have maxRoom := usize_max_gt_512
+    norm_num at maxRoom ⊢
+    rw [sortedLength] at sumBound
+    omega
+  obtain ⟨expandedOutput, windowsLoopRun, expandedValue⟩ :=
+    V7BinaryFrontierLoopBridge.translated_windows_loop_exact sorted.val
+      iterator 19#usize iteratorWidth iteratorRemaining sortedDistinct
+      loopHeadroom
+  have qLeExpanded : (16#usize).val ≤ expandedOutput.val := by
+    rw [expandedValue]
+    have sumNonnegative := Nat.zero_le
+      (V7BinaryFrontierLoopBridge.adjacentXorLogSum sorted.val)
+    norm_num at sumNonnegative ⊢
+    omega
+  obtain ⟨finalOutput, finalSubRun, finalSubSpec⟩ := WP.spec_imp_exists
+    (Std.Usize.sub_spec (x := expandedOutput) (y := 16#usize) qLeExpanded)
+  have checkedFinal :
+      Std.Usize.checked_sub expandedOutput 16#usize = some finalOutput := by
+    unfold Std.Usize.checked_sub core.num.checked_sub_UScalar
+    rw [finalSubRun]
+    rfl
+  have finalValue : finalOutput.val = 19 +
+      V7BinaryFrontierLoopBridge.adjacentXorLogSum sorted.val - 16 := by
+    calc
+      finalOutput.val = expandedOutput.val - (16#usize).val := finalSubSpec.1
+      _ = ((19#usize).val +
+          V7BinaryFrontierLoopBridge.adjacentXorLogSum sorted.val) -
+            (16#usize).val := by rw [expandedValue]
+      _ = 19 + V7BinaryFrontierLoopBridge.adjacentXorLogSum sorted.val - 16 := by
+        norm_num
+  have sourceRun :
+      v6_onefold.binary_frontier_nodes queries 18#u8 =
+        .ok (.Ok finalOutput) := by
+    unfold v6_onefold.binary_frontier_nodes
+    simp [sortRun, lastIndexRun, lastReadRun, duplicateRun]
+    simp only [lift, bind_tc_ok]
+    rw [leafRun]
+    simp [core.option.Option.ok_or,
+      core.result.Result.Insts.CoreOpsTry.branch,
+      expandedStartRun, sortedSlice, windowsRun, windowsLoopRun, checkedFinal]
+    exact lastBelowLeaf
+  exact ⟨sorted, finalOutput, sourceRun, sortPost, finalValue⟩
+
 #print axioms translated_inner_insertion_exact
 #print axioms translated_outer_insertion_sort_exact
+#print axioms translated_sort_from_one
+#print axioms sorted_output_pairwise_distinct
+#print axioms sorted_output_preserves_bound
+#print axioms adjacentXorLogSum_le_length
 #print axioms translated_duplicate_scan_accepts
+#print axioms translated_binary_frontier_q16_exact
 
 end V7BinaryFrontierSortSourceBridge
