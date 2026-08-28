@@ -152,9 +152,9 @@ sorted SHA-256 manifest has SHA-256
 `50d80211b272a638f15cd14feef5ee1d61f1aca572fbc95d1ded287a43ac4883`.
 Those files were checked byte-for-byte equal between the local branch and the
 NUC workspace before the run.  They are based on
-`e1add10ea5782ecbf517f8ec3124d6fa6373818b`; the proof-source commit created
-after this replay is recorded in the final branch history without changing
-those source bytes.
+`e1add10ea5782ecbf517f8ec3124d6fa6373818b` and were committed, without any
+post-replay proof-source change, as
+`620fe61e453dedb9353b8965bfe8e83ed6747d7f`.
 
 The release command was equivalent to:
 
