@@ -1,0 +1,102 @@
+V7 Pool one-terminal caller Rust-to-Lean bridge: PASS
+Date: 2026-08-28
+
+Pinned revision and provenance
+------------------------------
+Base:
+  b76fee418079aaa244cbca4b3ffb26d8a4808192
+Branch:
+  research/v7-pool-caller-source-bridge-20260828
+Production source hashes:
+  evidence/source-sha256.txt
+Charon:
+  0.1.223, commit 6bd9163653707dcb07b0e78e8f694d0de448d69c
+Aeneas:
+  b59d518, commit b59d5188c082f704a418c7cb4e52ad69328002d1
+Lean:
+  4.31.0, commit 68218e876d2a38b1985b8590fff244a83c321783
+
+Local focused replay
+--------------------
+Production source/control-flow audit:
+  PASS
+Projected Rust tests:
+  3 passed; 0 failed
+  all four transfer/withdrawal x same-page/rollover success paths pass
+  all focused runtime/source rejection cases roll back exactly
+Clean Charon/Aeneas extraction:
+  PASS
+  exact equality of generated Types.lean, Funs.lean,
+  FunsExternal_Template.lean and translation.json
+Lean source proof:
+  PASS
+  strongest theorem at proof/V7PoolOneTerminalCallerSourceBridge.lean:888
+  rejected-prestate theorem at proof/V7PoolOneTerminalCallerSourceBridge.lean:848
+Compiled forbidden-construct scan:
+  PASS
+
+Final NUC replay
+----------------
+Host:
+  nuc, Linux 6.8.0-110-generic x86_64
+Unit:
+  aspis-v7-pool-caller-source-final-01
+Invocation:
+  01c7ca0977994b6abc7f78f53952745a
+Limits supplied to systemd-run:
+  MemoryHigh=22G
+  MemoryMax=28G
+  MemorySwapMax=0
+Jobs/threads:
+  CARGO_BUILD_JOBS=1
+  LEAN_NUM_THREADS=1
+Result:
+  success; exit status 0
+Wall time:
+  21.69 seconds
+Peak RSS reported by /usr/bin/time:
+  2,639,852 KiB
+Swaps:
+  0
+
+NUC replay scope:
+  replay-rust.sh
+  replay-lean.sh
+
+The exact clean Charon/Aeneas extraction replay ran locally with the pinned
+macOS binaries because the NUC does not contain byte-identical x86_64 builds
+of those two pinned executables. Generated output equality is architecture-
+independent evidence; the NUC independently compiled every generated/proof
+module with the pinned Lean 4.31 backend.
+
+Principal theorem results
+-------------------------
+  translated_authentication_success_is_exact
+  translated_result_success_is_exact
+  translated_marker_success_is_exact
+  translated_prepare_success_is_exact
+  translated_finalize_success_is_exact
+  translated_withdrawal_apply_success_is_exact
+  translated_apply_prepared_success_is_exact
+  translated_rejected_atomic_transaction_is_exact_prestate
+  translated_accepted_caller_has_exact_writeback
+  translated_accepted_atomic_transaction_has_exact_writeback
+
+The complete printed axiom union is exactly:
+  propext
+  Classical.choice
+  Quot.sound
+
+There is no sorry, admit, sorryAx, native_decide, project-specific axiom or
+conclusion-shaped premise in compiled generated/proof source.
+
+Explicit remaining boundaries
+-----------------------------
+  SHA-256/Poseidon/Tag-73 cryptographic semantics
+  Charon/Aeneas/compiler and fixed-width projection correspondence
+  Solana PDA/ownership/CPI/return-data/borrow/atomic rollback semantics
+  SPL Token withdrawal-CPI behavior
+  immutable production deployment IDs
+
+No production Rust, cryptographic relation, wire format or deployment state
+was changed. Nothing was pushed, merged, deployed, signed or submitted.

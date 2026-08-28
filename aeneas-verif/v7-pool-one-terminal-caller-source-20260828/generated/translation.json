@@ -1,0 +1,564 @@
+{
+  "aeneas_version": "b59d518",
+  "charon_version": "0.1.223",
+  "crate": "v7_pool_one_terminal_caller_source",
+  "functions": [
+    {
+      "def_id": 27,
+      "lean_name": "V7PoolOneTerminalCallerGenerated.core.option.Option.Insts.CoreCmpPartialEqOption.eq",
+      "lean_file": "V7PoolOneTerminalCaller/FunsExternal_Template.lean",
+      "rust_name": "core::option::{impl core::cmp::PartialEq<core::option::Option<T>> for core::option::Option<T>}::eq",
+      "is_local": false,
+      "source": {
+        "file": "/rustc/library/core/src/option.rs",
+        "begin_line": 2440,
+        "end_line": 2440
+      },
+      "is_opaque": true,
+      "can_fail": true,
+      "can_diverge": false,
+      "is_rec": false,
+      "reducible": false
+    },
+    {
+      "def_id": 26,
+      "lean_name": "V7PoolOneTerminalCallerGenerated.PaymentKind.Insts.CoreCmpPartialEqPaymentKind.eq",
+      "lean_file": "V7PoolOneTerminalCaller/Funs.lean",
+      "rust_name": "v7_pool_one_terminal_caller_source::{impl core::cmp::PartialEq<v7_pool_one_terminal_caller_source::PaymentKind> for v7_pool_one_terminal_caller_source::PaymentKind}::eq",
+      "is_local": true,
+      "source": { "file": "src/lib.rs", "begin_line": 8, "end_line": 8 },
+      "is_opaque": false,
+      "can_fail": true,
+      "can_diverge": false,
+      "is_rec": false,
+      "reducible": false
+    },
+    {
+      "def_id": 33,
+      "lean_name": "V7PoolOneTerminalCallerGenerated.exact_cpi_accounts",
+      "lean_file": "V7PoolOneTerminalCaller/Funs.lean",
+      "rust_name": "v7_pool_one_terminal_caller_source::exact_cpi_accounts",
+      "is_local": true,
+      "source": { "file": "src/lib.rs", "begin_line": 290, "end_line": 323 },
+      "is_opaque": false,
+      "can_fail": true,
+      "can_diverge": false,
+      "is_rec": false,
+      "reducible": false
+    },
+    {
+      "def_id": 14,
+      "lean_name": "V7PoolOneTerminalCallerGenerated.authenticate_request",
+      "lean_file": "V7PoolOneTerminalCaller/Funs.lean",
+      "rust_name": "v7_pool_one_terminal_caller_source::authenticate_request",
+      "is_local": true,
+      "source": { "file": "src/lib.rs", "begin_line": 325, "end_line": 340 },
+      "is_opaque": false,
+      "can_fail": true,
+      "can_diverge": false,
+      "is_rec": false,
+      "reducible": false
+    },
+    {
+      "def_id": 15,
+      "lean_name": "V7PoolOneTerminalCallerGenerated.authenticate_pool_accounts",
+      "lean_file": "V7PoolOneTerminalCaller/Funs.lean",
+      "rust_name": "v7_pool_one_terminal_caller_source::authenticate_pool_accounts",
+      "is_local": true,
+      "source": { "file": "src/lib.rs", "begin_line": 342, "end_line": 360 },
+      "is_opaque": false,
+      "can_fail": true,
+      "can_diverge": false,
+      "is_rec": false,
+      "reducible": false
+    },
+    {
+      "def_id": 16,
+      "lean_name": "V7PoolOneTerminalCallerGenerated.authenticate_registry",
+      "lean_file": "V7PoolOneTerminalCaller/Funs.lean",
+      "rust_name": "v7_pool_one_terminal_caller_source::authenticate_registry",
+      "is_local": true,
+      "source": { "file": "src/lib.rs", "begin_line": 362, "end_line": 389 },
+      "is_opaque": false,
+      "can_fail": true,
+      "can_diverge": false,
+      "is_rec": false,
+      "reducible": false
+    },
+    {
+      "def_id": 17,
+      "lean_name": "V7PoolOneTerminalCallerGenerated.authenticate_selected_verifier",
+      "lean_file": "V7PoolOneTerminalCaller/Funs.lean",
+      "rust_name": "v7_pool_one_terminal_caller_source::authenticate_selected_verifier",
+      "is_local": true,
+      "source": { "file": "src/lib.rs", "begin_line": 391, "end_line": 408 },
+      "is_opaque": false,
+      "can_fail": true,
+      "can_diverge": false,
+      "is_rec": false,
+      "reducible": false
+    },
+    {
+      "def_id": 18,
+      "lean_name": "V7PoolOneTerminalCallerGenerated.authenticate_distinct_cpi_accounts",
+      "lean_file": "V7PoolOneTerminalCaller/Funs.lean",
+      "rust_name": "v7_pool_one_terminal_caller_source::authenticate_distinct_cpi_accounts",
+      "is_local": true,
+      "source": { "file": "src/lib.rs", "begin_line": 410, "end_line": 436 },
+      "is_opaque": false,
+      "can_fail": true,
+      "can_diverge": false,
+      "is_rec": false,
+      "reducible": false
+    },
+    {
+      "def_id": 6,
+      "lean_name": "V7PoolOneTerminalCallerGenerated.authenticate_accounts_and_release",
+      "lean_file": "V7PoolOneTerminalCaller/Funs.lean",
+      "rust_name": "v7_pool_one_terminal_caller_source::authenticate_accounts_and_release",
+      "is_local": true,
+      "source": { "file": "src/lib.rs", "begin_line": 438, "end_line": 445 },
+      "is_opaque": false,
+      "can_fail": true,
+      "can_diverge": false,
+      "is_rec": false,
+      "reducible": false
+    },
+    {
+      "def_id": 9,
+      "lean_name": "V7PoolOneTerminalCallerGenerated.select_history_route",
+      "lean_file": "V7PoolOneTerminalCaller/Funs.lean",
+      "rust_name": "v7_pool_one_terminal_caller_source::select_history_route",
+      "is_local": true,
+      "source": { "file": "src/lib.rs", "begin_line": 447, "end_line": 488 },
+      "is_opaque": false,
+      "can_fail": true,
+      "can_diverge": false,
+      "is_rec": false,
+      "reducible": false
+    },
+    {
+      "def_id": 8,
+      "lean_name": "V7PoolOneTerminalCallerGenerated.authenticate_result",
+      "lean_file": "V7PoolOneTerminalCaller/Funs.lean",
+      "rust_name": "v7_pool_one_terminal_caller_source::authenticate_result",
+      "is_local": true,
+      "source": { "file": "src/lib.rs", "begin_line": 490, "end_line": 516 },
+      "is_opaque": false,
+      "can_fail": true,
+      "can_diverge": false,
+      "is_rec": false,
+      "reducible": false
+    },
+    {
+      "def_id": 7,
+      "lean_name": "V7PoolOneTerminalCallerGenerated.exact_marker",
+      "lean_file": "V7PoolOneTerminalCaller/Funs.lean",
+      "rust_name": "v7_pool_one_terminal_caller_source::exact_marker",
+      "is_local": true,
+      "source": { "file": "src/lib.rs", "begin_line": 518, "end_line": 536 },
+      "is_opaque": false,
+      "can_fail": true,
+      "can_diverge": false,
+      "is_rec": false,
+      "reducible": false
+    },
+    {
+      "def_id": 23,
+      "lean_name": "V7PoolOneTerminalCallerGenerated.apply_withdrawal",
+      "lean_file": "V7PoolOneTerminalCaller/Funs.lean",
+      "rust_name": "v7_pool_one_terminal_caller_source::apply_withdrawal",
+      "is_local": true,
+      "source": { "file": "src/lib.rs", "begin_line": 538, "end_line": 561 },
+      "is_opaque": false,
+      "can_fail": true,
+      "can_diverge": false,
+      "is_rec": false,
+      "reducible": false
+    },
+    {
+      "def_id": 2,
+      "lean_name": "V7PoolOneTerminalCallerGenerated.prepare_terminal",
+      "lean_file": "V7PoolOneTerminalCaller/Funs.lean",
+      "rust_name": "v7_pool_one_terminal_caller_source::prepare_terminal",
+      "is_local": true,
+      "source": { "file": "src/lib.rs", "begin_line": 563, "end_line": 575 },
+      "is_opaque": false,
+      "can_fail": true,
+      "can_diverge": false,
+      "is_rec": false,
+      "reducible": false
+    },
+    {
+      "def_id": 24,
+      "lean_name": "V7PoolOneTerminalCallerGenerated.finalize_prepared_terminal",
+      "lean_file": "V7PoolOneTerminalCaller/Funs.lean",
+      "rust_name": "v7_pool_one_terminal_caller_source::finalize_prepared_terminal",
+      "is_local": true,
+      "source": { "file": "src/lib.rs", "begin_line": 577, "end_line": 618 },
+      "is_opaque": false,
+      "can_fail": true,
+      "can_diverge": false,
+      "is_rec": false,
+      "reducible": false
+    },
+    {
+      "def_id": 12,
+      "lean_name": "V7PoolOneTerminalCallerGenerated.apply_transfer_prepared",
+      "lean_file": "V7PoolOneTerminalCaller/Funs.lean",
+      "rust_name": "v7_pool_one_terminal_caller_source::apply_transfer_prepared",
+      "is_local": true,
+      "source": { "file": "src/lib.rs", "begin_line": 620, "end_line": 626 },
+      "is_opaque": false,
+      "can_fail": true,
+      "can_diverge": false,
+      "is_rec": false,
+      "reducible": false
+    },
+    {
+      "def_id": 11,
+      "lean_name": "V7PoolOneTerminalCallerGenerated.apply_withdrawal_prepared",
+      "lean_file": "V7PoolOneTerminalCaller/Funs.lean",
+      "rust_name": "v7_pool_one_terminal_caller_source::apply_withdrawal_prepared",
+      "is_local": true,
+      "source": { "file": "src/lib.rs", "begin_line": 628, "end_line": 636 },
+      "is_opaque": false,
+      "can_fail": true,
+      "can_diverge": false,
+      "is_rec": false,
+      "reducible": false
+    },
+    {
+      "def_id": 4,
+      "lean_name": "V7PoolOneTerminalCallerGenerated.apply_prepared_terminal",
+      "lean_file": "V7PoolOneTerminalCaller/Funs.lean",
+      "rust_name": "v7_pool_one_terminal_caller_source::apply_prepared_terminal",
+      "is_local": true,
+      "source": { "file": "src/lib.rs", "begin_line": 638, "end_line": 653 },
+      "is_opaque": false,
+      "can_fail": true,
+      "can_diverge": false,
+      "is_rec": false,
+      "reducible": false
+    },
+    {
+      "def_id": 1,
+      "lean_name": "V7PoolOneTerminalCallerGenerated.execute_terminal_caller",
+      "lean_file": "V7PoolOneTerminalCaller/Funs.lean",
+      "rust_name": "v7_pool_one_terminal_caller_source::execute_terminal_caller",
+      "is_local": true,
+      "source": { "file": "src/lib.rs", "begin_line": 655, "end_line": 661 },
+      "is_opaque": false,
+      "can_fail": true,
+      "can_diverge": false,
+      "is_rec": false,
+      "reducible": false
+    },
+    {
+      "def_id": 0,
+      "lean_name": "V7PoolOneTerminalCallerGenerated.execute_atomic_transaction",
+      "lean_file": "V7PoolOneTerminalCaller/Funs.lean",
+      "rust_name": "v7_pool_one_terminal_caller_source::execute_atomic_transaction",
+      "is_local": true,
+      "source": { "file": "src/lib.rs", "begin_line": 667, "end_line": 682 },
+      "is_opaque": false,
+      "can_fail": true,
+      "can_diverge": false,
+      "is_rec": false,
+      "reducible": false
+    }
+  ],
+  "types": [
+    {
+      "def_id": 24,
+      "lean_name": "V7PoolOneTerminalCallerGenerated.PaymentKind",
+      "lean_file": "V7PoolOneTerminalCaller/Types.lean",
+      "rust_name": "v7_pool_one_terminal_caller_source::PaymentKind",
+      "is_local": true,
+      "source": { "file": "src/lib.rs", "begin_line": 9, "end_line": 12 }
+    },
+    {
+      "def_id": 25,
+      "lean_name": "V7PoolOneTerminalCallerGenerated.PageRoute",
+      "lean_file": "V7PoolOneTerminalCaller/Types.lean",
+      "rust_name": "v7_pool_one_terminal_caller_source::PageRoute",
+      "is_local": true,
+      "source": { "file": "src/lib.rs", "begin_line": 15, "end_line": 18 }
+    },
+    {
+      "def_id": 5,
+      "lean_name": "V7PoolOneTerminalCallerGenerated.CallerError",
+      "lean_file": "V7PoolOneTerminalCaller/Types.lean",
+      "rust_name": "v7_pool_one_terminal_caller_source::CallerError",
+      "is_local": true,
+      "source": { "file": "src/lib.rs", "begin_line": 21, "end_line": 36 }
+    },
+    {
+      "def_id": 15,
+      "lean_name": "V7PoolOneTerminalCallerGenerated.AccountView",
+      "lean_file": "V7PoolOneTerminalCaller/Types.lean",
+      "rust_name": "v7_pool_one_terminal_caller_source::AccountView",
+      "is_local": true,
+      "source": { "file": "src/lib.rs", "begin_line": 39, "end_line": 45 }
+    },
+    {
+      "def_id": 8,
+      "lean_name": "V7PoolOneTerminalCallerGenerated.SelectedRelease",
+      "lean_file": "V7PoolOneTerminalCaller/Types.lean",
+      "rust_name": "v7_pool_one_terminal_caller_source::SelectedRelease",
+      "is_local": true,
+      "source": { "file": "src/lib.rs", "begin_line": 48, "end_line": 56 }
+    },
+    {
+      "def_id": 31,
+      "lean_name": "V7PoolOneTerminalCallerGenerated.VerifierPolicy",
+      "lean_file": "V7PoolOneTerminalCaller/Types.lean",
+      "rust_name": "v7_pool_one_terminal_caller_source::VerifierPolicy",
+      "is_local": true,
+      "source": { "file": "src/lib.rs", "begin_line": 59, "end_line": 63 }
+    },
+    {
+      "def_id": 10,
+      "lean_name": "V7PoolOneTerminalCallerGenerated.MasterState",
+      "lean_file": "V7PoolOneTerminalCaller/Types.lean",
+      "rust_name": "v7_pool_one_terminal_caller_source::MasterState",
+      "is_local": true,
+      "source": { "file": "src/lib.rs", "begin_line": 66, "end_line": 70 }
+    },
+    {
+      "def_id": 11,
+      "lean_name": "V7PoolOneTerminalCallerGenerated.CheckpointState",
+      "lean_file": "V7PoolOneTerminalCaller/Types.lean",
+      "rust_name": "v7_pool_one_terminal_caller_source::CheckpointState",
+      "is_local": true,
+      "source": { "file": "src/lib.rs", "begin_line": 73, "end_line": 78 }
+    },
+    {
+      "def_id": 12,
+      "lean_name": "V7PoolOneTerminalCallerGenerated.LaneState",
+      "lean_file": "V7PoolOneTerminalCaller/Types.lean",
+      "rust_name": "v7_pool_one_terminal_caller_source::LaneState",
+      "is_local": true,
+      "source": { "file": "src/lib.rs", "begin_line": 81, "end_line": 89 }
+    },
+    {
+      "def_id": 13,
+      "lean_name": "V7PoolOneTerminalCallerGenerated.RegistryState",
+      "lean_file": "V7PoolOneTerminalCaller/Types.lean",
+      "rust_name": "v7_pool_one_terminal_caller_source::RegistryState",
+      "is_local": true,
+      "source": { "file": "src/lib.rs", "begin_line": 92, "end_line": 99 }
+    },
+    {
+      "def_id": 14,
+      "lean_name": "V7PoolOneTerminalCallerGenerated.RegistryEntry",
+      "lean_file": "V7PoolOneTerminalCaller/Types.lean",
+      "rust_name": "v7_pool_one_terminal_caller_source::RegistryEntry",
+      "is_local": true,
+      "source": { "file": "src/lib.rs", "begin_line": 102, "end_line": 112 }
+    },
+    {
+      "def_id": 9,
+      "lean_name": "V7PoolOneTerminalCallerGenerated.Request",
+      "lean_file": "V7PoolOneTerminalCaller/Types.lean",
+      "rust_name": "v7_pool_one_terminal_caller_source::Request",
+      "is_local": true,
+      "source": { "file": "src/lib.rs", "begin_line": 115, "end_line": 128 }
+    },
+    {
+      "def_id": 16,
+      "lean_name": "V7PoolOneTerminalCallerGenerated.ProofState",
+      "lean_file": "V7PoolOneTerminalCaller/Types.lean",
+      "rust_name": "v7_pool_one_terminal_caller_source::ProofState",
+      "is_local": true,
+      "source": { "file": "src/lib.rs", "begin_line": 131, "end_line": 136 }
+    },
+    {
+      "def_id": 23,
+      "lean_name": "V7PoolOneTerminalCallerGenerated.ReturnedResult",
+      "lean_file": "V7PoolOneTerminalCaller/Types.lean",
+      "rust_name": "v7_pool_one_terminal_caller_source::ReturnedResult",
+      "is_local": true,
+      "source": { "file": "src/lib.rs", "begin_line": 139, "end_line": 151 }
+    },
+    {
+      "def_id": 20,
+      "lean_name": "V7PoolOneTerminalCallerGenerated.VerifierReturn",
+      "lean_file": "V7PoolOneTerminalCaller/Types.lean",
+      "rust_name": "v7_pool_one_terminal_caller_source::VerifierReturn",
+      "is_local": true,
+      "source": { "file": "src/lib.rs", "begin_line": 154, "end_line": 158 }
+    },
+    {
+      "def_id": 17,
+      "lean_name": "V7PoolOneTerminalCallerGenerated.PageInput",
+      "lean_file": "V7PoolOneTerminalCaller/Types.lean",
+      "rust_name": "v7_pool_one_terminal_caller_source::PageInput",
+      "is_local": true,
+      "source": { "file": "src/lib.rs", "begin_line": 161, "end_line": 168 }
+    },
+    {
+      "def_id": 18,
+      "lean_name": "V7PoolOneTerminalCallerGenerated.MarkerInput",
+      "lean_file": "V7PoolOneTerminalCaller/Types.lean",
+      "rust_name": "v7_pool_one_terminal_caller_source::MarkerInput",
+      "is_local": true,
+      "source": { "file": "src/lib.rs", "begin_line": 171, "end_line": 175 }
+    },
+    {
+      "def_id": 19,
+      "lean_name": "V7PoolOneTerminalCallerGenerated.TokenInput",
+      "lean_file": "V7PoolOneTerminalCaller/Types.lean",
+      "rust_name": "v7_pool_one_terminal_caller_source::TokenInput",
+      "is_local": true,
+      "source": { "file": "src/lib.rs", "begin_line": 178, "end_line": 188 }
+    },
+    {
+      "def_id": 21,
+      "lean_name": "V7PoolOneTerminalCallerGenerated.RuntimeOutcomes",
+      "lean_file": "V7PoolOneTerminalCaller/Types.lean",
+      "rust_name": "v7_pool_one_terminal_caller_source::RuntimeOutcomes",
+      "is_local": true,
+      "source": { "file": "src/lib.rs", "begin_line": 191, "end_line": 197 }
+    },
+    {
+      "def_id": 0,
+      "lean_name": "V7PoolOneTerminalCallerGenerated.CallerInput",
+      "lean_file": "V7PoolOneTerminalCaller/Types.lean",
+      "rust_name": "v7_pool_one_terminal_caller_source::CallerInput",
+      "is_local": true,
+      "source": { "file": "src/lib.rs", "begin_line": 200, "end_line": 217 }
+    },
+    {
+      "def_id": 22,
+      "lean_name": "V7PoolOneTerminalCallerGenerated.MarkerImage",
+      "lean_file": "V7PoolOneTerminalCaller/Types.lean",
+      "rust_name": "v7_pool_one_terminal_caller_source::MarkerImage",
+      "is_local": true,
+      "source": { "file": "src/lib.rs", "begin_line": 220, "end_line": 228 }
+    },
+    {
+      "def_id": 27,
+      "lean_name": "V7PoolOneTerminalCallerGenerated.HistoryWrite",
+      "lean_file": "V7PoolOneTerminalCaller/Types.lean",
+      "rust_name": "v7_pool_one_terminal_caller_source::HistoryWrite",
+      "is_local": true,
+      "source": { "file": "src/lib.rs", "begin_line": 231, "end_line": 236 }
+    },
+    {
+      "def_id": 26,
+      "lean_name": "V7PoolOneTerminalCallerGenerated.CpiMeta",
+      "lean_file": "V7PoolOneTerminalCaller/Types.lean",
+      "rust_name": "v7_pool_one_terminal_caller_source::CpiMeta",
+      "is_local": true,
+      "source": { "file": "src/lib.rs", "begin_line": 239, "end_line": 243 }
+    },
+    {
+      "def_id": 1,
+      "lean_name": "V7PoolOneTerminalCallerGenerated.PoolImages",
+      "lean_file": "V7PoolOneTerminalCaller/Types.lean",
+      "rust_name": "v7_pool_one_terminal_caller_source::PoolImages",
+      "is_local": true,
+      "source": { "file": "src/lib.rs", "begin_line": 246, "end_line": 257 }
+    },
+    {
+      "def_id": 7,
+      "lean_name": "V7PoolOneTerminalCallerGenerated.AcceptanceCertificate",
+      "lean_file": "V7PoolOneTerminalCaller/Types.lean",
+      "rust_name": "v7_pool_one_terminal_caller_source::AcceptanceCertificate",
+      "is_local": true,
+      "source": { "file": "src/lib.rs", "begin_line": 260, "end_line": 267 }
+    },
+    {
+      "def_id": 4,
+      "lean_name": "V7PoolOneTerminalCallerGenerated.AcceptedExecution",
+      "lean_file": "V7PoolOneTerminalCaller/Types.lean",
+      "rust_name": "v7_pool_one_terminal_caller_source::AcceptedExecution",
+      "is_local": true,
+      "source": { "file": "src/lib.rs", "begin_line": 270, "end_line": 273 }
+    },
+    {
+      "def_id": 28,
+      "lean_name": "V7PoolOneTerminalCallerGenerated.PreparedTerminal",
+      "lean_file": "V7PoolOneTerminalCaller/Types.lean",
+      "rust_name": "v7_pool_one_terminal_caller_source::PreparedTerminal",
+      "is_local": true,
+      "source": { "file": "src/lib.rs", "begin_line": 276, "end_line": 280 }
+    },
+    {
+      "def_id": 2,
+      "lean_name": "V7PoolOneTerminalCallerGenerated.TransactionOutcome",
+      "lean_file": "V7PoolOneTerminalCaller/Types.lean",
+      "rust_name": "v7_pool_one_terminal_caller_source::TransactionOutcome",
+      "is_local": true,
+      "source": { "file": "src/lib.rs", "begin_line": 283, "end_line": 288 }
+    }
+  ],
+  "globals": [
+    {
+      "def_id": 2,
+      "lean_name": "V7PoolOneTerminalCallerGenerated.ASQ8_BYTES",
+      "lean_file": "V7PoolOneTerminalCaller/Funs.lean",
+      "rust_name": "v7_pool_one_terminal_caller_source::ASQ8_BYTES",
+      "is_local": true,
+      "source": { "file": "src/lib.rs", "begin_line": 3, "end_line": 3 },
+      "can_fail": false
+    },
+    {
+      "def_id": 0,
+      "lean_name": "V7PoolOneTerminalCallerGenerated.ASR8_BYTES",
+      "lean_file": "V7PoolOneTerminalCaller/Funs.lean",
+      "rust_name": "v7_pool_one_terminal_caller_source::ASR8_BYTES",
+      "is_local": true,
+      "source": { "file": "src/lib.rs", "begin_line": 4, "end_line": 4 },
+      "can_fail": false
+    },
+    {
+      "def_id": 1,
+      "lean_name": "V7PoolOneTerminalCallerGenerated.ROOT_HISTORY_CAPACITY",
+      "lean_file": "V7PoolOneTerminalCaller/Funs.lean",
+      "rust_name": "v7_pool_one_terminal_caller_source::ROOT_HISTORY_CAPACITY",
+      "is_local": true,
+      "source": { "file": "src/lib.rs", "begin_line": 5, "end_line": 5 },
+      "can_fail": false
+    },
+    {
+      "def_id": 3,
+      "lean_name": "V7PoolOneTerminalCallerGenerated.STATEMENT_VERSION",
+      "lean_file": "V7PoolOneTerminalCaller/Funs.lean",
+      "rust_name": "v7_pool_one_terminal_caller_source::STATEMENT_VERSION",
+      "is_local": true,
+      "source": { "file": "src/lib.rs", "begin_line": 6, "end_line": 6 },
+      "can_fail": false
+    }
+  ],
+  "trait_decls": [],
+  "trait_impls": [
+    {
+      "def_id": 5,
+      "lean_name": "V7PoolOneTerminalCallerGenerated.core.option.Option.Insts.CoreCmpPartialEqOption",
+      "lean_file": "V7PoolOneTerminalCaller/Funs.lean",
+      "rust_name": "core::option::{impl core::cmp::PartialEq<core::option::Option<T>> for core::option::Option<T>}",
+      "is_local": false,
+      "source": {
+        "file": "/rustc/library/core/src/option.rs",
+        "begin_line": 2438,
+        "end_line": 2438
+      },
+      "impl_trait_def_id": 4,
+      "impl_trait_rust_name": "core::cmp::PartialEq",
+      "impl_trait_is_builtin": true
+    },
+    {
+      "def_id": 4,
+      "lean_name": "V7PoolOneTerminalCallerGenerated.PaymentKind.Insts.CoreCmpPartialEqPaymentKind",
+      "lean_file": "V7PoolOneTerminalCaller/Funs.lean",
+      "rust_name": "v7_pool_one_terminal_caller_source::{impl core::cmp::PartialEq<v7_pool_one_terminal_caller_source::PaymentKind> for v7_pool_one_terminal_caller_source::PaymentKind}",
+      "is_local": true,
+      "source": { "file": "src/lib.rs", "begin_line": 8, "end_line": 8 },
+      "impl_trait_def_id": 4,
+      "impl_trait_rust_name": "core::cmp::PartialEq",
+      "impl_trait_is_builtin": true
+    }
+  ]
+}

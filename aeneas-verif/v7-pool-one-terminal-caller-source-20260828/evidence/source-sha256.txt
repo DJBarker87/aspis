@@ -1,0 +1,32 @@
+Pinned base:
+  b76fee418079aaa244cbca4b3ffb26d8a4808192
+
+Production source:
+  7f58b1bb8464195bdd94d849283e5d093a4d40289be93e2dc43a9ffe5d57c0cf  programs/aspis-pool/src/pair_forest.rs
+  08b9b563118e8fd9d0d43d2d36d1824e2e984a96610ed0fcb846835866e9f02e  programs/aspis-pool/src/pair_forest_dispatch.rs
+  ef68bfef98e6885167119ff6cb947f116177c0648f3aec4941893ac774079017  programs/aspis-pool/src/registry.rs
+  7d754900fecb4d6ba4511029a3617e90f91c697fc415fabd8aa4b2c0c519107a  programs/aspis-pool/src/history.rs
+  274398d59536f19fa25dd11269945893fe02a03e5668655244b7be2f32e26c6f  programs/aspis-pool/src/nullifier.rs
+  d7889cbdec8c3987cfa5aaad3984475e18e390c84712826847de611680d90463  programs/aspis-pool/src/vault.rs
+  ce73a104777a6d1f7b0086853e6d504f67f1d5ba6f0fb8a89cfc52e5d1eeb4d3  programs/aspis-pool/src/processor.rs
+  af12779379545b6253ab4919ae5ed2447c49d6cbdaef9f41888cfd034fb2e529  programs/aspis-verifier/src/v7_pair_forest_dispatch.rs
+  d10c75884cde37792647736ed87d326b8f889ea9a17a363f14efc98b801b7175  crates/aspis-statement/src/pool_v1/pair_forest_accounts.rs
+  820710b2284ea967bb4b9a6d2ceb6cb171ac185b01df816db99db6ea78e629a3  crates/aspis-statement/src/pool_v1/pair_terminal.rs
+
+Tools:
+  d785c5f18053c4d310c7388dfdb0b59adfc9854c28b632a34a8f6301ba1c4b43  Charon 0.1.223 (commit 6bd9163653707dcb07b0e78e8f694d0de448d69c)
+  fbb8dac1a9a57e635a762e04b95aeb46dbd2dab2be5ed54fa9e0b1321c1962cf  Aeneas b59d518 (commit b59d5188c082f704a418c7cb4e52ad69328002d1)
+
+Focused source/artifacts:
+  4241ec046513873a7e0c491d0a864eda4373414a31a0e7552a7044a0e318bf4e  harness/src/lib.rs
+  ffeaee2edc057fb1a127813b116843e5ad75831cf11dd83b830027fbce213a1d  extraction/V7PoolOneTerminalCaller.llbc
+  7e35b99e2c2eac49aadbecaa5bbfa48b9dfdc6d789c7e23620464f403a6845ef  generated/V7PoolOneTerminalCaller/Types.lean
+  15f92f66ca3989a68944dd939dad675994c39abe27bc825e88984e1609b0cef2  generated/V7PoolOneTerminalCaller/Funs.lean
+  5eccaec896f848b33661ca70afd611da9436a6ff4148e7795ca376d1e11b14af  generated/V7PoolOneTerminalCaller/FunsExternal.lean
+  bfb18eaa162f97fe91e4f92be1f7cbf042858f36c9802f57e18a9a17b34ebbbd  generated/V7PoolOneTerminalCaller/FunsExternal_Template.lean
+  d6a90d1ee4311a55e486739e926b59ae72c59a7d08ec380559c615b8d9f569f4  generated/translation.json
+  2735a01ae1a358bfde879d118cbe8ddbb93b502ff1bc4e38c2bc4f7b2833177b  proof/V7PoolOneTerminalCallerSourceBridge.lean
+
+Raw LLBC serialization embeds its destination and unordered maps, so replay
+acceptance uses exact equality of Types/Funs/template/translation output rather
+than claiming cross-directory LLBC byte equality.
