@@ -90,6 +90,33 @@ def q16BranchDuplexPairs (branch : SchedulerNativeQ16Branch)
     (q16BranchDuplexPairs branch forest).length = branch.blocksUsed := by
   simp [q16BranchDuplexPairs]
 
+/-- The output halves consumed by the production candidate decoder. -/
+def q16BranchOutputBlocks (branch : SchedulerNativeQ16Branch)
+    (forest : TotalQ16DuplexForest) : List Digest256 :=
+  (q16BranchDuplexPairs branch forest).map Prod.fst
+
+@[simp] theorem q16_branch_output_blocks_length
+    (branch : SchedulerNativeQ16Branch)
+    (forest : TotalQ16DuplexForest) :
+    (q16BranchOutputBlocks branch forest).length = branch.blocksUsed := by
+  simp [q16BranchOutputBlocks]
+
+/-- A replay branch consumes exactly the corresponding prefix of its full
+eight-block candidate tape. -/
+theorem q16_branch_output_blocks_eq_take
+    (branch : SchedulerNativeQ16Branch)
+    (forest : TotalQ16DuplexForest) :
+    q16BranchOutputBlocks branch forest =
+      (List.ofFn (forest.1 branch.counter)).take branch.blocksUsed := by
+  apply List.ext_getElem
+  · simp [q16BranchOutputBlocks, branch.blocksCap]
+  · intro index leftBound rightBound
+    unfold q16BranchOutputBlocks
+    rw [List.getElem_map]
+    unfold q16BranchDuplexPairs
+    rw [List.getElem_ofFn]
+    rw [List.getElem_take, List.getElem_ofFn]
+
 theorem q16_branch_duplex_pairs_nonempty
     (branch : SchedulerNativeQ16Branch)
     (forest : TotalQ16DuplexForest) :
@@ -342,6 +369,7 @@ theorem run_scheduler_native_q16_branch_ne_empty_failure
               transitionFuel rest pair.2 afterAdvance
 
 #print axioms q16_branch_duplex_pairs_length
+#print axioms q16_branch_output_blocks_eq_take
 #print axioms q16_branch_duplex_pairs_nonempty
 #print axioms consume_scheduler_native_q16_cached_is_inert
 #print axioms consume_scheduler_native_q16_fresh_uses_exact_pause_actor

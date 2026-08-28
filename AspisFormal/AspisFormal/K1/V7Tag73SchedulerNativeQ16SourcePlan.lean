@@ -1,5 +1,6 @@
 import AspisFormal.K1.V7Tag73SchedulerNativeQ16ForestReplay
 import AspisFormal.K1.V7Tag73DeterministicRefinement
+import AspisFormal.K1.V7Tag73Q16DeployedDecoderPrefixBridge
 
 /-!
 # Exact accepting-source branch plan for scheduler-native q16 replay
@@ -23,6 +24,10 @@ namespace AspisK1.V7Tag73SchedulerNativeQ16SourcePlan
 open AspisK1.V7Tag73TranscriptSchedule
 open AspisK1.V7Tag73DeterministicRefinement
 open AspisK1.V7Tag73SchedulerNativeQ16Replay
+open AspisK1.V7Tag73Q16DigestDrawReindex
+open AspisK1.V7Tag73Q16DeployedDecoderPrefixBridge
+open AspisK1.V7Tag73SamplerDecoder
+open AspisK1.V7Tag73Q16FirstCompactUniformity
 
 noncomputable section
 
@@ -149,6 +154,35 @@ theorem q16_specs_of_search_selected_exact
       frontierNodes search.selectedSchedule <= 203 :=
   ⟨search.selectedOutcome, search.selectedCompact⟩
 
+/-- Once the literal selected prefix decodes as the source schedule, the
+complete routed output tape returns exactly that ideal q16 schedule.  Unread
+blocks remain arbitrary nuisance coordinates. -/
+theorem scheduler_native_q16_selected_prefix_to_ideal_output
+    {frontierNodes : QuerySchedule -> Nat}
+    (initialDigest : Fin 64 -> Digest256)
+    (search : FirstCap203Search frontierNodes)
+    (forest : TotalQ16DuplexForest)
+    (decoded :
+      decodeCandidateOutcome search.selectedCounter
+          (q16BranchOutputBlocks
+            (schedulerNativeQ16BranchOfSpec initialDigest
+              { counter := search.selectedCounter
+                outcome := .schedule search.selectedSchedule }) forest) =
+        some (.schedule search.selectedSchedule)) :
+    q16CandidateOutput
+        (deployedQ16DrawTape (forest.1 search.selectedCounter)) =
+      some search.selectedSchedule.positions := by
+  let selectedBranch := schedulerNativeQ16BranchOfSpec initialDigest
+    { counter := search.selectedCounter
+      outcome := .schedule search.selectedSchedule }
+  apply decodeCandidateOutcome_schedule_to_q16CandidateOutput
+    search.selectedCounter (forest.1 search.selectedCounter)
+    (q16BranchOutputBlocks selectedBranch forest) search.selectedSchedule
+  · simpa [selectedBranch, schedulerNativeQ16BranchOfSpec,
+      CandidateOutcome.blocksUsed] using
+      q16_branch_output_blocks_eq_take selectedBranch forest
+  · simpa [selectedBranch] using decoded
+
 #print axioms candidate_outcome_blocks_positive
 #print axioms candidate_outcome_blocks_cap
 #print axioms scheduler_native_q16_branches_getLast_selected
@@ -156,6 +190,7 @@ theorem q16_specs_of_search_selected_exact
 #print axioms scheduler_native_q16_selected_blocks_exact
 #print axioms q16_specs_of_search_earlier_noncompact
 #print axioms q16_specs_of_search_selected_exact
+#print axioms scheduler_native_q16_selected_prefix_to_ideal_output
 
 end
 
