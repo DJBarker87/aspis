@@ -50,6 +50,15 @@ theorem exact_k15_restored_causal_raw_error_eq_ratio :
   rw [Nat.cast_add, ENNReal.add_div]
   rfl
 
+/-- The restoration-aware K1.5 numerator in literal decimal form.  This is
+the unchanged raw numerator: no grinding-work normalization is applied. -/
+theorem exact_k15_restored_causal_raw_error_eq_literal_ratio :
+    exactK15RestoredCausalRawError =
+      (336869027002169 : ENNReal) /
+        ((P ^ 4 - 1 : Nat) : ENNReal) := by
+  rw [exact_k15_restored_causal_raw_error_eq_ratio]
+  norm_num [initialBatchChallengeCap]
+
 theorem exact_k14_k15_operational_root_numerator_eq :
     exactK14K15OperationalRootNumerator = 673738053607908 := by
   norm_num [exactK14K15OperationalRootNumerator, initialBatchChallengeCap]
@@ -105,6 +114,7 @@ theorem exact_k14_k15_operational_work_normalized_error_le_two_pow_neg109 :
 end
 
 #print axioms exact_k15_restored_causal_raw_error_eq_ratio
+#print axioms exact_k15_restored_causal_raw_error_eq_literal_ratio
 #print axioms exact_k14_k15_operational_root_numerator_eq
 #print axioms exact_k14_k15_operational_raw_error_eq_stage_sum
 #print axioms exact_k14_k15_operational_raw_error_le_two_pow_neg74
