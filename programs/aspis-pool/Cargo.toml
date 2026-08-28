@@ -30,6 +30,16 @@ pair-forest-direct-result-audit = ["pair-forest-account-evidence"]
 # Instrumented local phase ledger. Logging changes total CU.
 pair-forest-cu-profile-audit = ["pair-forest-account-evidence"]
 pair-forest-history-page-invariant-audit = ["pair-forest-account-evidence"]
+# Exact one-transaction eight-lane release-candidate path measured by the
+# TxV1 combined harness.  This aggregate switch keeps the selected feature
+# set reproducible while the named Rust-to-Lean/Aeneas release gates remain
+# explicit; it is intentionally not part of `default`.
+v7-pair-forest-one-tx-candidate = [
+    "pair-forest-source-result-invariant-audit",
+    "pair-forest-verifier-lane-invariant-audit",
+    "pair-forest-direct-result-audit",
+    "pair-forest-history-page-invariant-audit",
+]
 # Audit-only full 1,880-byte ASF8 top-level transport. It shares the exact
 # account order, registry authentication, ASR8 validation, and settlement path
 # with `pair-forest-account-evidence`.

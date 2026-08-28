@@ -128,6 +128,19 @@ v7-pair-forest-semantic-factor-audit = [
 v7-pair-forest-pattern-window-audit = [
     "aspis-statement/pool-v1-pair-forest-pattern-window-audit",
 ]
+# Exact one-transaction eight-lane release-candidate verifier selected by the
+# combined TxV1 measurements.  The alias prevents accidental omission of a CU
+# optimisation or account invariant.  It remains default-off until the named
+# source/formal and correlated-grinding gates are closed.
+v7-pair-forest-one-tx-candidate = [
+    "v7-pair-forest-fixed-canonical-exact-once-audit",
+    "v7-pair-forest-lane-invariant-audit",
+    "v7-pair-forest-packed-digest-audit",
+    "v7-pair-forest-binary-copy-weights-audit",
+    "v7-pair-forest-endpoint-selector-cache-audit",
+    "v7-pair-forest-semantic-factor-audit",
+    "v7-pair-forest-pattern-window-audit",
+]
 # Adds compute-unit checkpoints to the selected pair-forest verifier without
 # changing its wire, transcript, arithmetic, work, q16, or Merkle schedule.
 # Use only for matched diagnostic builds; marker calls inflate total CU.

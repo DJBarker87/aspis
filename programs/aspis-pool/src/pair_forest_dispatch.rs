@@ -185,7 +185,7 @@ trait PairForestVerifierRuntimeV1 {
     fn invoke(
         &mut self,
         instruction: &Instruction,
-        account_infos: &[AccountInfo<'_>; 5],
+        account_infos: &[AccountInfo<'_>],
     ) -> ProgramResult;
     fn get_return_data(&mut self) -> Option<(Pubkey, Vec<u8>)>;
 }
@@ -200,9 +200,9 @@ impl PairForestVerifierRuntimeV1 for SolanaPairForestVerifierRuntimeV1 {
     fn invoke(
         &mut self,
         instruction: &Instruction,
-        account_infos: &[AccountInfo<'_>; 5],
+        account_infos: &[AccountInfo<'_>],
     ) -> ProgramResult {
-        program::invoke(instruction, account_infos.as_slice())
+        program::invoke(instruction, account_infos)
     }
 
     fn get_return_data(&mut self) -> Option<(Pubkey, Vec<u8>)> {
@@ -427,7 +427,7 @@ mod tests {
             self.returned = None;
         }
 
-        fn invoke(&mut self, instruction: &Instruction, _: &[AccountInfo<'_>; 5]) -> ProgramResult {
+        fn invoke(&mut self, instruction: &Instruction, _: &[AccountInfo<'_>]) -> ProgramResult {
             self.invoked = Some(instruction.clone());
             let result = PoolV1PairForestTerminalResultV1 {
                 transition_kind: PoolV1TransitionKind::PrivateTransfer,
