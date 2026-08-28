@@ -220,10 +220,40 @@ swap: 0
 axiom union: propext, Classical.choice, Quot.sound
 ```
 
-The remaining K1.3 step is now composition rather than source causality:
-induct the coordinate theorem across the exact branch list, identify its
-output rectangle with the successful q16 forest and instantiate the existing
-q16 measure bound.
+The q16 composition step is now kernel checked as well. The new modules
+`V7Tag73ExactCompilerQ16BranchReplayLift`,
+`V7Tag73ExactCompilerQ16DuplexForest`, and
+`V7Tag73ExactCompilerQ16ForestReplayClosure` prove:
+
+```text
+run_scheduler_native_q16_branch_from_cursor_actual_chain
+exact_operational_q16_duplex_forest_succeeds
+exact_compiler_actual_q16_forest_replay
+exact_compiler_actual_q16_forest_closure
+```
+
+The last theorem executes the complete literal source branch list from the
+exact compiler root, retains the chronological cache-or-future alignment,
+constructs the exact successful 64-by-8 duplex forest, and reconstructs the
+ordinary production run. Adversary-first coordinates remain immutable cache
+hits throughout the list induction.
+
+The focused NUC check passed under the authorized 44/55 GiB no-swap cgroup:
+
+```text
+unit: aspis-v7-q16-milestone-final-01
+invocation: cbfa76aa79f4439387999678fdb0558c
+result: PASS
+wall: 11.91 seconds (four focused targets)
+maximum RSS: 6,908,572 KiB
+swap: 0
+axiom union: propext, Classical.choice, Quot.sound
+```
+
+The remaining K1.3 work is now probabilistic event inclusion: identify the
+actual K1.3 query-failure slice with the already-proved successful-forest bad
+set and instantiate the existing dependent q16 measure theorem, then close the
+one-fold, joint-query-batch and later-alpha inequalities.
 
 ## K1.5 gamma actual-source alignment
 
@@ -242,10 +272,9 @@ inclusion remain explicit gates.
 
 ## Remaining end-to-end proof gates
 
-1. K1.3: induct the source-anchored coordinate step across the exact q16 branch
-   list, identify the resulting output rectangle with the successful forest,
-   and close the one-fold, joint-query batch and later-alpha actual-law
-   inequalities.
+1. K1.3: instantiate the dependent successful-forest q16 measure theorem for
+   the actual query-failure event, then close the one-fold, joint-query-batch
+   and later-alpha actual-law inequalities.
 2. K1.4: instantiate the width-29 variable-prefix causal law on the exact
    compiler/source execution.
 3. K1.5: instantiate the eight fixed event inclusions and the restored-gamma

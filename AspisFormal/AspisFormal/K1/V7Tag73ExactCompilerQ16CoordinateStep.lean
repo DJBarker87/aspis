@@ -128,6 +128,39 @@ def ExactCompilerRootQ16CursorAligned
         Tag73K12ParsedProof Payload Result)) : Type :=
   ExactCompilerRootGammaCursorAligned input (q16CursorToGamma state)
 
+/-- Production q16 cursor at the exact compiler root. -/
+def exactCompilerInitialQ16Cursor
+    {HiddenTape TapeIdentity Observation Statement Payload Result : Type}
+    {parameters : ExactCompilerResourceParameters}
+    {transitionFuel : Nat}
+    {configuration : ExactPlainRomConfiguration HiddenTape TapeIdentity
+      Observation Statement Tag73K12ParsedProof Payload Result parameters}
+    {projection : AcceptedTapeProjection Statement Tag73K12ParsedProof Payload}
+    {fixedInstance : PublicInstance Statement}
+    {sample : ExactCompilerSample HiddenTape parameters}
+    (input : ExactK12OperationalInput transitionFuel configuration projection
+      fixedInstance sample) :
+    SchedulerNativeQ16Cursor (globalFull256OracleCallCap parameters)
+      (SchedulerNativePlainRomResult TapeIdentity Statement Tag73K12ParsedProof
+        Payload Result) :=
+  gammaCursorToQ16 (exactCompilerInitialGammaCursor input)
+
+def exactCompilerInitialQ16CursorAlignment
+    {HiddenTape TapeIdentity Observation Statement Payload Result : Type}
+    {parameters : ExactCompilerResourceParameters}
+    {transitionFuel : Nat}
+    {configuration : ExactPlainRomConfiguration HiddenTape TapeIdentity
+      Observation Statement Tag73K12ParsedProof Payload Result parameters}
+    {projection : AcceptedTapeProjection Statement Tag73K12ParsedProof Payload}
+    {fixedInstance : PublicInstance Statement}
+    {sample : ExactCompilerSample HiddenTape parameters}
+    (input : ExactK12OperationalInput transitionFuel configuration projection
+      fixedInstance sample) :
+    ExactCompilerRootQ16CursorAligned input
+      (exactCompilerInitialQ16Cursor input) := by
+  simpa [ExactCompilerRootQ16CursorAligned, exactCompilerInitialQ16Cursor]
+    using exactCompilerInitialGammaCursorAlignment input
+
 /-- Minimal one-coordinate q16 interface used by branch/forest induction. -/
 def ExactCompilerQ16CoordinateStep
     {HiddenTape TapeIdentity Observation Statement Payload Result : Type}
@@ -184,6 +217,7 @@ theorem exact_compiler_actual_q16_coordinate_step
       gammaAligned⟩
 
 #print axioms consume_q16_coordinate_ok_iff_gamma
+#print axioms exactCompilerInitialQ16CursorAlignment
 #print axioms exact_compiler_actual_q16_coordinate_step
 
 end
