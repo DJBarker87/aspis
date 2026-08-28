@@ -33,8 +33,9 @@ pub mod state_only_zerocheck;
 pub mod v6_onefold_prover;
 pub mod v8_six_mask_hiding_rank;
 
-/// Deterministic, unmined eight-lane fixture shared by host integration
-/// tests.  This module cannot be linked by an ordinary prover build.
+/// Deterministic eight-lane fixture shared by host integration tests.  Its
+/// reproducible unmined/mined builders cannot be linked by an ordinary
+/// prover build.
 #[cfg(any(test, feature = "insecure-spend-fixture"))]
 pub mod v7_pair_forest_fixture;
 
