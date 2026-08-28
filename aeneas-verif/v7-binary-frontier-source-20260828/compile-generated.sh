@@ -23,3 +23,7 @@ if [[ -f V7BinaryFrontierBodyBridge.lean ]]; then
   "$lean_bin" -o V7BinaryFrontierBodyBridge.olean \
     V7BinaryFrontierBodyBridge.lean
 fi
+if [[ -f V7BinaryFrontierLoopBridge.lean ]]; then
+  "$lean_bin" -o V7BinaryFrontierLoopBridge.olean \
+    V7BinaryFrontierLoopBridge.lean
+fi
