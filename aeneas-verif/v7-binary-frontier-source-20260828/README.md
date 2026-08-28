@@ -96,10 +96,20 @@ The reverse direction is now source-backed as well.
 translated candidate call into its actual clone, one-byte counter absorb,
 checked shift, sampler, `Vec -> u32[16]`, frontier and exact return stages.
 `raw_execution_to_candidate_prefix` then reduces the K1.3 semantic handoff to
-two narrow equalities: the checked shift result is `2^18`, and the returned raw
-array is `queryScheduleArray schedule`.  In particular, the remaining
+one narrow equality: the returned raw array is
+`queryScheduleArray schedule`.  The checked shift result is proved internally
+to be exactly `2^18` by `raw_candidate_bound_exact`.  In particular, the remaining
 digest-block/decoder alignment no longer assumes the translated source control
 flow, frontier result, or candidate return.
+
+`V7FirstCompactK13RawScheduleBridge.raw_queries_eq_decoded_schedule` closes the
+array/decoder half of that equality.  Given equality between the translated
+sampler's ordered values and the existing deployed decoder's consumed-block
+scan, it proves exact `u32[16]` array equality.  The complete wrapper theorem
+`translated_wrapper_returns_first_semantic_candidate_of_raw_runs` therefore
+needs no `CandidatePrefixRuns` inputs: literal candidate calls plus this ordered
+sampler-value alignment determine every earlier rejection and the selected
+five-field return.
 
 The caller extraction required transparent generated-code repairs: avoid the
 `transcript` parameter/name-space shadow, reuse the already generated frontier
@@ -168,6 +178,12 @@ The final complete narrow replay used unit
 `aspis-v7-caller-first-success-full-replay-02`; it exited 0 in 39.291 seconds,
 peaked at 6,852,016 KiB RSS and reported zero swaps.
 
+The focused raw schedule bridge replay used units
+`aspis-v7-wrapper-raw-runs-03` and `aspis-v7-raw-schedule-bridge-04`; both
+exited 0.  The latter took 3.84 seconds.  The matching deployed-decoder module
+was built once in unit `aspis-v7-decoder-prefix-build-fast-01` (8,630 jobs,
+1:17.75 wall, 7,102,848 KiB peak RSS, zero swaps).
+
 ## Digests
 
 ```text
@@ -178,7 +194,7 @@ peaked at 6,852,016 KiB RSS and reported zero swaps.
 a47f9642deb9f233a5c6c8b00a18fdeec4e1dc272e3a1e506120fc5e8cea714b  proof/V7BinaryFrontierSortModel.lean
 7ee9f9775b7b3e6f2d1ea8533e91b72cecbdb3948bdd5e3595c5ccc5e652fb66  proof/V7BinaryFrontierSortSourceBridge.lean
 ec384cb07f8f830dd34791c46cbcbda0cd48d5f8581047a9637cf8a032bc7a38  proof/V7BinaryFrontierK13Integration.lean
-cf7c4c975eef3465d25cfb0b0fbc312c15cf42803b28ecf03a5912fb9ead74a3  compile-generated.sh
+562db62ed82b781748516ec5ffba155a5126922108f7251e9aa04e8c36baa78c  compile-generated.sh
 2ec6131a1c77c21fbc92f36e718de75218337a767b31786eda6f7076e8ddd51d  caller/V7FirstCompact.llbc
 1d7688f9495ace79397fe4265b11cd6be4be9fdf1ec38257211b2b2e558df190  caller/generated/V7FirstCompact/Funs.lean
 69f6b6130cf9f72d574b96a3e5bf1304426f6d9fd9768dd80a75fbec8575eac4  caller/generated/V7FirstCompact/FunsExternal.lean
@@ -189,7 +205,8 @@ f710b3691d4c4b6439386d8d456f90b37aec406ecbad3b0be8d76cf8f12e3f85  caller/generat
 b71fa9e8fc7bef1544ec981092de9370c4b45d4ed059f30989d7bef988932468  caller/proof/V7FirstCompactFrontierLoopBridge.lean
 809eb566103b0a2355adaf530f78383dae45ac51d05ddf8fe4779b42b9e3a9bf  caller/proof/V7FirstCompactFrontierSortSourceBridge.lean
 c72e3c80fcfd46ce032d834d00b209316608f2cb1b39840dbabdec8180e3aaa6  caller/proof/V7FirstCompactFrontierK13Integration.lean
-182fdb32c73599137a141ad4c3d97495ecb82cebb54fd7e061885fa3d50bf482  caller/proof/V7FirstCompactCallerBridge.lean
+38968fe0e71d83e4971bef2b26012fa7a52d1244b541564253d24db413eed85d  caller/proof/V7FirstCompactCallerBridge.lean
+f21af0ef7f2362c62acb2dfa992c29d31f006aa5b13d788b64752b95d2f033bf  caller/proof/V7FirstCompactK13RawScheduleBridge.lean
 6abb0376100611c5553258062480777187785579f402c9c1d3ce72379518258f  ../../crates/aspis-core/src/v7_onefold.rs
 ```
 
@@ -201,8 +218,10 @@ and complete wrapper return are closed. The Aeneas early-return loss is removed
 by the source refactor and fresh extraction. There is no remaining caller-local
 frontier or first-selection control-flow premise.
 
-The next system-level integration obligation is to construct the theorem's
-exact `CandidatePrefixRuns` witnesses for the selected and preceding counters
-from the accepted production transcript/tape projection used by K1.3. That is
-the current-source decoder/operational-tape bridge; it is not an unproved
-property of the translated wrapper itself.
+The remaining system-level integration obligation is now the exact ordered
+sampler-value alignment: for every scanned counter, show that the current
+translated sampler's successful `Vec<u32>` is the first-unique 18-bit scan of
+the same digest blocks already extracted by the accepted K1.3 evaluator and
+scheduler router.  Array conversion, the `2^18` constant, frontier semantics,
+cap selection, all five returned fields, and the outer first-success loop are
+then theorem consequences rather than premises.

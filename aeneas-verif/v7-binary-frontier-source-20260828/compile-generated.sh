@@ -65,7 +65,8 @@ for caller_bridge in \
   V7FirstCompactFrontierLoopBridge \
   V7FirstCompactFrontierSortSourceBridge \
   V7FirstCompactFrontierK13Integration \
-  V7FirstCompactCallerBridge
+  V7FirstCompactCallerBridge \
+  V7FirstCompactK13RawScheduleBridge
 do
   if [[ -f "$caller_bridge.lean" ]]; then
     test -n "$aspis_formal_project"

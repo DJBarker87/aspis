@@ -285,6 +285,104 @@ def candidate_success_exposes_raw_execution
                       · rw [if_neg admitted] at success ⊢
                         simpa using success.symm
 
+private theorem u32_shift_one_by_18 :
+    (1#u32 <<< 18#i32 : Result Std.U32) = .ok 262144#u32 := by
+  change UScalar.shiftLeft_IScalar 1#u32 18#i32 = .ok 262144#u32
+  have h18 : (18#i32).val = 18 := by scalar_tac
+  simp [UScalar.shiftLeft_IScalar, UScalar.shiftLeft, h18]
+  apply UScalar.eq_of_val_eq
+  simp [UScalar.val]
+
+/-- The raw checked-shift witness is definitionally the deployed `2^18`
+query domain; callers do not have to assume this arithmetic constant. -/
+theorem raw_candidate_bound_exact
+    (inputTranscript : transcript.Transcript) (counter : Std.U8)
+    (output : Option v7_onefold.V7CompactQuerySchedule)
+    (raw : RawCandidateExecution inputTranscript counter output) :
+    raw.bound = 262144#u32 := by
+  have shiftRun := raw.shiftRun
+  rw [u32_shift_one_by_18] at shiftRun
+  exact (Result.ok.inj shiftRun).symm
+
+/-- Successful `Vec -> u32[16]` conversion preserves the exact ordered source
+sampler list. -/
+theorem raw_candidate_queries_values_exact
+    (inputTranscript : transcript.Transcript) (counter : Std.U8)
+    (output : Option v7_onefold.V7CompactQuerySchedule)
+    (raw : RawCandidateExecution inputTranscript counter output) :
+    raw.queries.val = raw.sampled.val := by
+  have arrayRun := raw.arrayRun
+  simp only [Array.Insts.CoreConvertTryFromVecVec.try_from] at arrayRun
+  split at arrayRun
+  next lengthExact =>
+    have checkedExact := Result.ok.inj arrayRun
+    have arrayExact := core.result.Result.Ok.inj checkedExact
+    exact (congrArg Subtype.val arrayExact).symm
+  next wrongLength => simp at arrayRun
+
+/-- Identifying only the returned raw array identifies the translated
+frontier result with the frozen K1.3 semantic recurrence. -/
+theorem raw_candidate_frontier_matches_semantic
+    (inputTranscript : transcript.Transcript) (counter : Std.U8)
+    (output : Option v7_onefold.V7CompactQuerySchedule)
+    (raw : RawCandidateExecution inputTranscript counter output)
+    (schedule : QuerySchedule)
+    (queriesExact : raw.queries = queryScheduleArray schedule) :
+    raw.frontier.val = semanticFrontierNodes schedule.positions := by
+  obtain ⟨semanticFrontier, semanticRun, semanticValue⟩ :=
+    translated_frontier_run_semantic_exact schedule
+  have rawRun := raw.frontierRun
+  rw [queriesExact, semanticRun] at rawRun
+  have checkedExact := Result.ok.inj rawRun
+  have frontierExact := core.result.Result.Ok.inj checkedExact
+  rw [← frontierExact]
+  exact semanticValue
+
+/-- A literal successful candidate plus raw-array equality fixes its complete
+semantic return.  This removes the former package of source-prefix equations
+from the operational K1.3 handoff. -/
+theorem candidate_success_output_matches_semantic
+    (inputTranscript : transcript.Transcript) (counter : Std.U8)
+    (output : Option v7_onefold.V7CompactQuerySchedule)
+    (success :
+      v7_onefold.derive_v7_compact_candidate inputTranscript counter =
+        .ok (.Ok output))
+    (schedule : QuerySchedule)
+    (queriesExact :
+      (candidate_success_exposes_raw_execution inputTranscript counter output
+        success).queries = queryScheduleArray schedule) :
+    let raw := candidate_success_exposes_raw_execution inputTranscript counter
+      output success
+    (SemanticCap203Admitted schedule.positions →
+      output = some (returnedSchedule schedule counter raw.frontier
+        raw.sampledTranscript)) ∧
+    (¬ SemanticCap203Admitted schedule.positions → output = none) := by
+  let raw := candidate_success_exposes_raw_execution inputTranscript counter
+    output success
+  have frontierValue := raw_candidate_frontier_matches_semantic
+    inputTranscript counter output raw schedule queriesExact
+  have capIff :
+      raw.frontier ≤ v7_onefold.V7_COMPACT_FRONTIER_CAP_PER_TREE ↔
+        SemanticCap203Admitted schedule.positions := by
+    unfold SemanticCap203Admitted
+    unfold v7_onefold.V7_COMPACT_FRONTIER_CAP_PER_TREE
+    change raw.frontier.val ≤ 203 ↔
+      semanticFrontierNodes schedule.positions ≤ 203
+    rw [frontierValue]
+  constructor
+  · intro admitted
+    have outputExact := raw.outputExact
+    rw [if_pos (capIff.mpr admitted)] at outputExact
+    have queriesExactRaw : raw.queries = queryScheduleArray schedule :=
+      queriesExact
+    rw [queriesExactRaw] at outputExact
+    simpa [returnedSchedule] using outputExact
+  · intro nonadmitted
+    have outputExact := raw.outputExact
+    rw [if_neg (fun compact => nonadmitted (capIff.mp compact))]
+      at outputExact
+    exact outputExact
+
 /-- Once the raw source array is identified with a semantic schedule, the raw
 execution supplies the older forward bridge's complete prefix certificate. -/
 theorem raw_execution_to_candidate_prefix
@@ -292,10 +390,10 @@ theorem raw_execution_to_candidate_prefix
     (output : Option v7_onefold.V7CompactQuerySchedule)
     (raw : RawCandidateExecution inputTranscript counter output)
     (schedule : QuerySchedule)
-    (boundExact : raw.bound = 262144#u32)
     (queriesExact : raw.queries = queryScheduleArray schedule) :
     CandidatePrefixRuns inputTranscript raw.cloned raw.absorbed
       raw.sampledTranscript raw.counterData counter raw.sampled schedule := by
+  have boundExact := raw_candidate_bound_exact inputTranscript counter output raw
   refine {
     cloneRun := raw.cloneRun
     sliceRun := raw.sliceRun
@@ -579,14 +677,81 @@ theorem translated_wrapper_returns_first_semantic_candidate
       (returnedSchedule selectedSchedule selected frontier
         selectedSampledTranscript) selectedLt earlierRun selectedRun⟩
 
+/-- Operational form of the complete wrapper theorem.  Each examined
+candidate is supplied only by its literal translated successful call and the
+equality between the returned raw array and the deterministic K1.3 decoder
+schedule.  All internal source-prefix equations are recovered by inversion. -/
+theorem translated_wrapper_returns_first_semantic_candidate_of_raw_runs
+    (inputTranscript : transcript.Transcript)
+    (selected : Std.U8)
+    (selectedOutput : Option v7_onefold.V7CompactQuerySchedule)
+    (selectedRun :
+      v7_onefold.derive_v7_compact_candidate inputTranscript selected =
+        .ok (.Ok selectedOutput))
+    (selectedSchedule : QuerySchedule)
+    (selectedQueriesExact :
+      (candidate_success_exposes_raw_execution inputTranscript selected
+        selectedOutput selectedRun).queries =
+          queryScheduleArray selectedSchedule)
+    (selectedLt : selected.val < 64)
+    (selectedAdmitted :
+      SemanticCap203Admitted selectedSchedule.positions)
+    (earlier : ∀ counter : Std.U8, counter.val < selected.val →
+      ∃ output,
+        ∃ run :
+          v7_onefold.derive_v7_compact_candidate inputTranscript counter =
+            .ok (.Ok output),
+        ∃ schedule,
+        (candidate_success_exposes_raw_execution inputTranscript counter
+          output run).queries = queryScheduleArray schedule ∧
+        ¬ SemanticCap203Admitted schedule.positions) :
+    let selectedRaw := candidate_success_exposes_raw_execution inputTranscript
+      selected selectedOutput selectedRun
+    v7_onefold.derive_first_v7_compact_queries inputTranscript =
+      .ok (.Ok (returnedSchedule selectedSchedule selected
+        selectedRaw.frontier selectedRaw.sampledTranscript)) := by
+  let selectedRaw := candidate_success_exposes_raw_execution inputTranscript
+    selected selectedOutput selectedRun
+  have selectedOutputExact :
+      selectedOutput = some (returnedSchedule selectedSchedule selected
+        selectedRaw.frontier selectedRaw.sampledTranscript) :=
+    (candidate_success_output_matches_semantic inputTranscript selected
+      selectedOutput selectedRun selectedSchedule selectedQueriesExact).1
+        selectedAdmitted
+  have selectedRunExact :
+      v7_onefold.derive_v7_compact_candidate inputTranscript selected =
+        .ok (.Ok (some (returnedSchedule selectedSchedule selected
+          selectedRaw.frontier selectedRaw.sampledTranscript))) := by
+    calc
+      _ = .ok (.Ok selectedOutput) := selectedRun
+      _ = _ := by simpa only [selectedOutputExact]
+  have earlierRun : ∀ counter : Std.U8, counter.val < selected.val →
+      v7_onefold.derive_v7_compact_candidate inputTranscript counter =
+        .ok (.Ok none) := by
+    intro counter counterLt
+    obtain ⟨output, sourceRun, schedule, queriesExact, nonadmitted⟩ :=
+      earlier counter counterLt
+    have outputExact :=
+      (candidate_success_output_matches_semantic inputTranscript counter output
+        sourceRun schedule queriesExact).2 nonadmitted
+    rw [sourceRun, outputExact]
+  exact translated_first_v7_compact_queries_exact inputTranscript selected
+    (returnedSchedule selectedSchedule selected selectedRaw.frontier
+      selectedRaw.sampledTranscript) selectedLt earlierRun selectedRunExact
+
 #print axioms source_candidate_reduces
 #print axioms candidate_success_exposes_raw_execution
+#print axioms raw_candidate_bound_exact
+#print axioms raw_candidate_queries_values_exact
+#print axioms raw_candidate_frontier_matches_semantic
+#print axioms candidate_success_output_matches_semantic
 #print axioms raw_execution_to_candidate_prefix
 #print axioms translated_candidate_returns_on_semantic_compact
 #print axioms translated_candidate_skips_on_semantic_noncompact
 #print axioms translated_first_success_loop_exact
 #print axioms translated_first_v7_compact_queries_exact
 #print axioms translated_wrapper_returns_first_semantic_candidate
+#print axioms translated_wrapper_returns_first_semantic_candidate_of_raw_runs
 
 end
 
