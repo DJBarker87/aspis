@@ -574,9 +574,12 @@ mod tests {
     use aspis_core::field::{M31, P};
     use aspis_prover::v7_pair_forest_fixture::{
         build_v7_pair_forest_transfer_fixture_unmined_v1,
+        build_v7_pair_forest_withdrawal_fixture_unmined_v1,
         deterministic_v7_pair_forest_transfer_nullifier_v1,
+        deterministic_v7_pair_forest_withdrawal_nullifier_v1,
     };
     use aspis_statement::pool_v1::{
+        decode_pool_v1_pair_forest_terminal_request_v1,
         decode_pool_v1_pair_forest_terminal_result_v1, encode_pool_v1_pair_forest_checkpoint_v1,
         encode_pool_v1_pair_forest_lane_state_v1, encode_pool_v1_pair_forest_master_v1,
         encode_pool_v1_pair_forest_terminal_request_v1, encode_pool_v1_pair_verified_afterstate_v1,
@@ -935,6 +938,169 @@ mod tests {
         }
     }
 
+    fn make_honest_withdrawal_fixture() -> HonestFixture {
+        let verifier = crate::id();
+        let pool_program = Pubkey::new_unique();
+        let mint = Pubkey::new_unique();
+        let token_program = Pubkey::new_unique();
+        let destination_token_account = Pubkey::new_unique();
+        let master_key =
+            Pubkey::find_program_address(&[PAIR_FOREST_MASTER_SEED, mint.as_ref()], &pool_program)
+                .0;
+        let nullifier = deterministic_v7_pair_forest_withdrawal_nullifier_v1();
+        let lane_id = pool_v1_pair_forest_output_lane_v1(&nullifier).unwrap();
+        let lane_key = Pubkey::find_program_address(
+            &[PAIR_FOREST_LANE_SEED, master_key.as_ref(), &[lane_id]],
+            &pool_program,
+        )
+        .0;
+        let checkpoint_sequence = 42u64;
+        let checkpoint_key = Pubkey::find_program_address(
+            &[
+                PAIR_FOREST_CHECKPOINT_SEED,
+                master_key.as_ref(),
+                &checkpoint_sequence.to_le_bytes(),
+            ],
+            &pool_program,
+        )
+        .0;
+        let proof_key = Pubkey::new_unique();
+        let deployment_domain = [6; 32];
+        let empty = V7_PAIR_EMPTY_ROOTS;
+        let mut tree = IncrementalMerkleTreeV1::from_parts_with_empty_roots(
+            0,
+            empty[POOL_V1_PAIR_TREE_DEPTH],
+            core::array::from_fn(|level| empty[level]),
+            &empty,
+        )
+        .unwrap();
+        for leaf in 0..13u32 {
+            tree = tree
+                .append_one_with_empty_roots(digest(30_000 + 32 * leaf), &empty)
+                .unwrap()
+                .0;
+        }
+        let lane = PoolV1PairForestLaneStateV1 {
+            master: master_key.to_bytes(),
+            lane_id,
+            tree,
+        };
+        let snapshot = PoolV1PairLiveSnapshotV1 {
+            pool: master_key.to_bytes(),
+            deployment_domain,
+            sequence: tree.next_leaf_index,
+            next_pair_index: tree.next_leaf_index,
+            current_root: tree.root,
+            frontier: tree.frontier,
+        };
+        let built = build_v7_pair_forest_withdrawal_fixture_unmined_v1(
+            verifier.to_bytes(),
+            proof_key.to_bytes(),
+            master_key.to_bytes(),
+            checkpoint_key.to_bytes(),
+            lane_key.to_bytes(),
+            checkpoint_sequence,
+            deployment_domain,
+            destination_token_account.to_bytes(),
+            snapshot,
+        )
+        .unwrap();
+        assert_eq!(built.public.nullifier, nullifier);
+        assert_eq!(built.public.pool, master_key.to_bytes());
+        assert_eq!(
+            built.public.destination_token_account,
+            destination_token_account.to_bytes()
+        );
+        assert_eq!(built.public.amount, 250);
+        assert_eq!(built.witness.input.pair.value, 1_000);
+        assert_eq!(built.witness.change.value + built.public.amount, 1_000);
+        assert_eq!(built.transition.live_snapshot, snapshot);
+
+        let master = PoolV1PairForestMasterV1 {
+            identity: PoolIdentityV1 {
+                pool: master_key.to_bytes(),
+                asset_mint: mint.to_bytes(),
+                token_program: token_program.to_bytes(),
+                asset_id: built.public.asset_id,
+                deployment_domain,
+            },
+            verifier_policy: VerifierPolicyV1 {
+                flags: 1,
+                registry_program: Pubkey::new_unique().to_bytes(),
+                registry_authority: [0; 32],
+                policy_binding: [8; 32],
+            },
+            initialized_lane_mask: POOL_V1_PAIR_FOREST_ALL_LANES_MASK,
+            has_checkpoint: true,
+            next_checkpoint_sequence: checkpoint_sequence + 1,
+            last_checkpoint_lane_sequences: [0; 8],
+        };
+        let checkpoint = PoolV1PairForestCheckpointV1 {
+            master: master_key.to_bytes(),
+            deployment_domain,
+            checkpoint_sequence,
+            global_root: built.public.anchor_root,
+            lane_sequences: [0; 8],
+        };
+        let request = PoolV1PairForestTerminalRequestV1 {
+            verifier_profile: V7_POOL_PAIR_FOREST_TAG73_PROFILE_BINDING,
+            verifier_release: V7_POOL_PAIR_FOREST_TAG73_RELEASE_BINDING,
+            pool_program: pool_program.to_bytes(),
+            public: PoolV1PairForestTerminalPaymentV1::Withdrawal(built.public),
+        };
+        let candidate = built.transition.candidate_afterstate;
+        let payload_len = POOL_V1_PAIR_VERIFIED_AFTERSTATE_BYTES + built.proof.bytes.len();
+        let mut proof_data = vec![0u8; crate::PROOF_ACCOUNT_HEADER_LEN + payload_len];
+        proof_data[..4].copy_from_slice(b"ASPU");
+        proof_data[4..8].copy_from_slice(&(payload_len as u32).to_le_bytes());
+        let candidate_start = crate::PROOF_ACCOUNT_HEADER_LEN;
+        let proof_start = candidate_start + POOL_V1_PAIR_VERIFIED_AFTERSTATE_BYTES;
+        proof_data[candidate_start..proof_start]
+            .copy_from_slice(&encode_pool_v1_pair_verified_afterstate_v1(&candidate).unwrap());
+        proof_data[proof_start..].copy_from_slice(&built.proof.bytes);
+
+        let expected_result = PoolV1PairForestTerminalResultV1 {
+            transition_kind: built.statement.transition_kind(),
+            master_account: master_key.to_bytes(),
+            selected_lane_account: lane_key.to_bytes(),
+            output_lane: lane_id,
+            nullifier,
+            verified_afterstate: candidate,
+        };
+        let proof_bytes = built.proof.bytes.len();
+        let frontier_nodes = built.proof.frontier_nodes;
+        HonestFixture {
+            accounts: Fixture {
+                verifier,
+                proof_owner: verifier,
+                master_owner: pool_program,
+                checkpoint_owner: pool_program,
+                lane_owner: pool_program,
+                proof_key,
+                master_key,
+                checkpoint_key,
+                lane_key,
+                proof_data,
+                master_data: encode_pool_v1_pair_forest_master_v1(&master)
+                    .unwrap()
+                    .to_vec(),
+                checkpoint_data: encode_pool_v1_pair_forest_checkpoint_v1(&checkpoint)
+                    .unwrap()
+                    .to_vec(),
+                lane_data: encode_pool_v1_pair_forest_lane_state_v1(&lane, &empty)
+                    .unwrap()
+                    .to_vec(),
+                request: encode_pool_v1_pair_forest_terminal_request_v1(&request)
+                    .unwrap()
+                    .to_vec(),
+            },
+            statement: built.statement,
+            expected_result,
+            proof_bytes,
+            frontier_nodes,
+        }
+    }
+
     fn with_fixture_accounts<T>(
         fixture: &mut Fixture,
         use_accounts: impl FnOnce(&[AccountInfo<'_>]) -> T,
@@ -1152,6 +1318,106 @@ mod tests {
             honest.proof_bytes,
             honest.frontier_nodes,
             returned.len(),
+        );
+    }
+
+    #[test]
+    #[ignore = "RAM-intensive eight-lane withdrawal proof generation; run --release on the NUC"]
+    fn honest_withdrawal_dispatches_canonical_asf8_to_exact_asr8_and_public_mutations_reject() {
+        let mut honest = make_honest_withdrawal_fixture();
+        let validated = validate_fixture(&mut honest.accounts).unwrap();
+        assert_eq!(*validated.statement, honest.statement);
+        assert_eq!(validated.frontier_nodes, honest.frontier_nodes);
+        assert_eq!(validated.proof_length, honest.proof_bytes);
+
+        let withdrawal_public = match honest.statement {
+            PoolV1PairForestTerminalStatementV1::Withdrawal { public, .. } => public,
+            PoolV1PairForestTerminalStatementV1::PrivateTransfer { .. } => {
+                panic!("withdrawal fixture reconstructed the wrong transition kind")
+            }
+        };
+        let master = decode_pool_v1_pair_forest_master_v1(&honest.accounts.master_data).unwrap();
+        assert_eq!(master.identity.pool, withdrawal_public.pool);
+        assert_eq!(master.identity.asset_id, withdrawal_public.asset_id);
+        assert_ne!(master.identity.asset_mint, [0; 32]);
+        assert_ne!(master.identity.token_program, [0; 32]);
+        assert_ne!(withdrawal_public.destination_token_account, [0; 32]);
+        assert_eq!(withdrawal_public.amount, 250);
+
+        let (_return_data_guard, return_data) = capture_return_data();
+        let verifier = honest.accounts.verifier;
+        let request = honest.accounts.request.clone();
+        assert_eq!(
+            with_fixture_accounts(&mut honest.accounts, |accounts| {
+                process_without_work_for_test_v1(&verifier, accounts, &request)
+            }),
+            Ok(()),
+        );
+        let returned = return_data.lock().unwrap().clone();
+        assert_eq!(returned.len(), POOL_V1_PAIR_FOREST_TERMINAL_RESULT_BYTES);
+        assert_eq!(
+            decode_pool_v1_pair_forest_terminal_result_v1(&returned).unwrap(),
+            honest.expected_result,
+        );
+
+        // The exact destination is inside the canonical withdrawal payment
+        // payload absorbed by ASF8. A different valid pubkey must reconstruct
+        // a different statement and fail against the existing proof.
+        let mut wrong_destination = honest.accounts.clone();
+        let mut request =
+            decode_pool_v1_pair_forest_terminal_request_v1(&wrong_destination.request).unwrap();
+        let mut public = match request.public {
+            PoolV1PairForestTerminalPaymentV1::Withdrawal(public) => public,
+            PoolV1PairForestTerminalPaymentV1::PrivateTransfer(_) => unreachable!(),
+        };
+        public.destination_token_account[0] ^= 1;
+        request.public = PoolV1PairForestTerminalPaymentV1::Withdrawal(public);
+        wrong_destination.request = encode_pool_v1_pair_forest_terminal_request_v1(&request)
+            .unwrap()
+            .to_vec();
+        let changed = validate_fixture(&mut wrong_destination).unwrap();
+        assert_ne!(*changed.statement, honest.statement);
+        let wrong_request = wrong_destination.request.clone();
+        assert_eq!(
+            with_fixture_accounts(&mut wrong_destination, |accounts| {
+                process_without_work_for_test_v1(&verifier, accounts, &wrong_request)
+            }),
+            Err(ProgramError::InvalidAccountData),
+        );
+        assert!(return_data.lock().unwrap().is_empty());
+
+        // The amount is both transcript-bound and checked against the private
+        // input/change conservation relation. A canonical nonzero amount one
+        // unit larger cannot reuse the accepted proof.
+        let mut wrong_amount = honest.accounts.clone();
+        let mut request =
+            decode_pool_v1_pair_forest_terminal_request_v1(&wrong_amount.request).unwrap();
+        let mut public = match request.public {
+            PoolV1PairForestTerminalPaymentV1::Withdrawal(public) => public,
+            PoolV1PairForestTerminalPaymentV1::PrivateTransfer(_) => unreachable!(),
+        };
+        public.amount += 1;
+        request.public = PoolV1PairForestTerminalPaymentV1::Withdrawal(public);
+        wrong_amount.request = encode_pool_v1_pair_forest_terminal_request_v1(&request)
+            .unwrap()
+            .to_vec();
+        let changed = validate_fixture(&mut wrong_amount).unwrap();
+        assert_ne!(*changed.statement, honest.statement);
+        let wrong_request = wrong_amount.request.clone();
+        assert_eq!(
+            with_fixture_accounts(&mut wrong_amount, |accounts| {
+                process_without_work_for_test_v1(&verifier, accounts, &wrong_request)
+            }),
+            Err(ProgramError::InvalidAccountData),
+        );
+        assert!(return_data.lock().unwrap().is_empty());
+
+        eprintln!(
+            "V7 pair-forest withdrawal dispatch: proof_bytes={} frontier_nodes={} return_bytes={} amount={}",
+            honest.proof_bytes,
+            honest.frontier_nodes,
+            returned.len(),
+            withdrawal_public.amount,
         );
     }
 }

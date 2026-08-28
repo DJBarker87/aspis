@@ -9,16 +9,18 @@ use aspis_statement::{
     derive_owner_key,
     pool_v1::{
         compile_pool_v1_pair_forest_private_transfer_merged_c1_v1,
+        compile_pool_v1_pair_forest_withdrawal_merged_c1_v1,
         encode_pool_v1_pair_forest_terminal_statement_v1,
         pair_trace::{PoolV1PairInputNoteWitnessV1, PoolV1PairTraceErrorV1},
         pool_v1_note_commitment, pool_v1_nullifier, pool_v1_pair_forest_output_lane_v1,
         pool_v1_tree_parent, PoolV1MembershipWitnessV1, PoolV1OutputNoteWitnessV1,
         PoolV1PairForestInputNoteWitnessV1, PoolV1PairForestPrivateTransferWitnessV1,
         PoolV1PairForestTerminalCommonV1, PoolV1PairForestTerminalFormatErrorV1,
-        PoolV1PairForestTerminalStatementV1, PoolV1PairLatePublicStatementV1,
-        PoolV1PairLeafErrorV1, PoolV1PairLeafWitnessV1, PoolV1PairLiveSnapshotV1,
-        PoolV1PaymentRelationContextV1, PoolV1PaymentRuntimeBindingV1,
-        PoolV1PrivateTransferPublicV1, V7_POOL_PAIR_FOREST_TAG73_RELEASE_BINDING,
+        PoolV1PairForestTerminalStatementV1, PoolV1PairForestWithdrawalWitnessV1,
+        PoolV1PairLatePublicStatementV1, PoolV1PairLeafErrorV1, PoolV1PairLeafWitnessV1,
+        PoolV1PairLiveSnapshotV1, PoolV1PaymentRelationContextV1, PoolV1PaymentRuntimeBindingV1,
+        PoolV1PrivateTransferPublicV1, PoolV1WithdrawalPublicV1,
+        V7_POOL_PAIR_FOREST_TAG73_RELEASE_BINDING,
     },
     poseidon2::Digest,
 };
@@ -28,7 +30,8 @@ use crate::{
     state_only_entropy::StateOnlyAttemptSecrets,
     state_only_hiding::InMemoryStateOnlyMaskNonceStore,
     v6_onefold_prover::{
-        build_v7_pool_pair_forest_private_transfer_onefold_proof, BuiltV7CompactOneFoldProof,
+        build_v7_pool_pair_forest_private_transfer_onefold_proof,
+        build_v7_pool_pair_forest_withdrawal_onefold_proof, BuiltV7CompactOneFoldProof,
         V6ProverError, V7ProverContext,
     },
     HOST_HASH,
@@ -70,6 +73,16 @@ impl From<V6ProverError> for V7PairForestFixtureErrorV1 {
 pub struct BuiltV7PairForestTransferFixtureV1 {
     pub public: PoolV1PrivateTransferPublicV1,
     pub witness: PoolV1PairForestPrivateTransferWitnessV1,
+    pub transition: PoolV1PairLatePublicStatementV1,
+    pub statement: PoolV1PairForestTerminalStatementV1,
+    pub statement_digest: [u8; 32],
+    pub proof: BuiltV7CompactOneFoldProof,
+}
+
+#[derive(Clone, Debug)]
+pub struct BuiltV7PairForestWithdrawalFixtureV1 {
+    pub public: PoolV1WithdrawalPublicV1,
+    pub witness: PoolV1PairForestWithdrawalWitnessV1,
     pub transition: PoolV1PairLatePublicStatementV1,
     pub statement: PoolV1PairForestTerminalStatementV1,
     pub statement_digest: [u8; 32],
@@ -133,6 +146,13 @@ pub fn deterministic_v7_pair_forest_transfer_nullifier_v1() -> Digest {
     let nullifier_key = digest(10);
     let salt = digest(100);
     pool_v1_nullifier(&nullifier_key, &salt)
+}
+
+/// Withdrawal counterpart. Both fixtures intentionally spend the same
+/// deterministic input note but use distinct output witnesses and attempt
+/// entropy.
+pub fn deterministic_v7_pair_forest_withdrawal_nullifier_v1() -> Digest {
+    deterministic_v7_pair_forest_transfer_nullifier_v1()
 }
 
 #[allow(clippy::too_many_arguments)]
@@ -240,6 +260,108 @@ pub fn build_v7_pair_forest_transfer_fixture_unmined_v1(
         StateOnlyPowMode::UnminedZero,
     )?;
     Ok(BuiltV7PairForestTransferFixtureV1 {
+        public,
+        witness,
+        transition: compiled.public_statement,
+        statement,
+        statement_digest,
+        proof,
+    })
+}
+
+#[allow(clippy::too_many_arguments)]
+pub fn build_v7_pair_forest_withdrawal_fixture_unmined_v1(
+    program_id: [u8; 32],
+    attempt_id: [u8; 32],
+    master_account: [u8; 32],
+    checkpoint_account: [u8; 32],
+    selected_lane_account: [u8; 32],
+    checkpoint_sequence: u64,
+    deployment_domain: [u8; 32],
+    destination_token_account: [u8; 32],
+    output_lane_snapshot: PoolV1PairLiveSnapshotV1,
+) -> Result<BuiltV7PairForestWithdrawalFixtureV1, V7PairForestFixtureErrorV1> {
+    let input = deterministic_input_witness_v1()?;
+    let change = PoolV1OutputNoteWitnessV1 {
+        owner_key: digest(700),
+        salt: digest(800),
+        value: 750,
+    };
+    let asset_id = M31(77);
+    let anchor_root = global_anchor_v1(&input)?;
+    let witness = PoolV1PairForestWithdrawalWitnessV1 { input, change };
+    let public = PoolV1WithdrawalPublicV1 {
+        pool: master_account,
+        deployment_domain,
+        anchor_sequence: checkpoint_sequence,
+        anchor_root,
+        nullifier: deterministic_v7_pair_forest_withdrawal_nullifier_v1(),
+        asset_id,
+        amount: 250,
+        destination_token_account,
+        change_commitment: pool_v1_note_commitment(
+            &change.owner_key,
+            change.value,
+            asset_id,
+            &change.salt,
+        ),
+    };
+    let relation_context = PoolV1PaymentRelationContextV1 {
+        runtime_binding: PoolV1PaymentRuntimeBindingV1 {
+            pool: master_account,
+            deployment_domain,
+            anchor_sequence: checkpoint_sequence,
+            anchor_root,
+            asset_id,
+        },
+        spent_nullifiers: &[],
+    };
+    let compiled = compile_pool_v1_pair_forest_withdrawal_merged_c1_v1(
+        &public,
+        &witness,
+        relation_context,
+        output_lane_snapshot,
+    )?;
+    let output_lane = pool_v1_pair_forest_output_lane_v1(&public.nullifier)
+        .map_err(|_| V7PairForestFixtureErrorV1::Trace(PoolV1PairTraceErrorV1::MetadataMismatch))?;
+    let statement = PoolV1PairForestTerminalStatementV1::Withdrawal {
+        common: PoolV1PairForestTerminalCommonV1 {
+            master_account,
+            checkpoint_account,
+            selected_lane_account,
+            output_lane,
+            checkpoint_sequence,
+            historical_global_anchor: anchor_root,
+            lane_transition: compiled.public_statement,
+        },
+        public,
+    };
+    let statement_bytes = encode_pool_v1_pair_forest_terminal_statement_v1(&statement)?;
+    let statement_digest = aspis_statement::pool_v1::v7_pool_pair_forest_tag73_statement_digest_v1(
+        &statement_bytes,
+        HOST_HASH,
+    );
+    let context = V7ProverContext {
+        program_id,
+        release_binding: V7_POOL_PAIR_FOREST_TAG73_RELEASE_BINDING,
+        attempt_id,
+    };
+    let attempt =
+        StateOnlyAttemptSecrets::deterministic_spend_fixture(attempt_id, [0x4c; 32], [0x6e; 32]);
+    let mut nonce_store = InMemoryStateOnlyMaskNonceStore::default();
+    let proof = build_v7_pool_pair_forest_withdrawal_onefold_proof(
+        &public,
+        &witness,
+        relation_context,
+        &compiled.public_statement,
+        statement_digest,
+        context,
+        attempt,
+        &mut nonce_store,
+        HOST_HASH,
+        StateOnlyPowMode::UnminedZero,
+    )?;
+    Ok(BuiltV7PairForestWithdrawalFixtureV1 {
         public,
         witness,
         transition: compiled.public_statement,
