@@ -43,6 +43,9 @@ open AspisK1.V7Tag73SourceAnchoredSchedulerCut
 open AspisK1.V7Tag73ExactCompilerGammaPrefixCoordinates
 open AspisK1.V7Tag73ExactCompilerGammaTraceOccurrence
 open AspisK1.V7Tag73SchedulerNativeTargetPause
+open AspisK1.V7Tag73SchedulerNativeGammaReplay
+open AspisK1.V7Tag73SchedulerNativeResult
+open AspisK1.V7Tag73SchedulerNativePrefixTraversal
 open AspisK1.V7Tag73ExactCompilerSchedulerPauseBinding
 open AspisK1.V7Tag73ExactFixedFullRunFactorization
 open AspisK1.V7Tag73ExactFixedOperationalStateMap
@@ -93,6 +96,104 @@ def exactCompilerRootSourceAnchoredCut
           configuration.machine.driverFuel)))
     prefixes.adversary.remaining prefixes.verifier
   exact SourceAnchoredSequentialCut.mk first second rfl
+
+/-- Exact alignment of an evolving gamma replay cursor with one chronological
+split of the deployed adversary/verifier fresh-coordinate list.  Every field
+is an equality to executable production data; no lookup dichotomy, replay
+conclusion, role classifier, or probability statement is stored here. -/
+structure ExactCompilerRootGammaCursorAligned
+    {HiddenTape TapeIdentity Observation Statement Payload Result : Type}
+    {parameters : ExactCompilerResourceParameters}
+    {transitionFuel : Nat}
+    {configuration : ExactPlainRomConfiguration HiddenTape TapeIdentity
+      Observation Statement Tag73K12ParsedProof Payload Result parameters}
+    {projection : AcceptedTapeProjection Statement Tag73K12ParsedProof Payload}
+    {fixedInstance : PublicInstance Statement}
+    {sample : ExactCompilerSample HiddenTape parameters}
+    (input : ExactK12OperationalInput transitionFuel configuration projection
+      fixedInstance sample)
+    (state : SchedulerNativeGammaCursor
+      (globalFull256OracleCallCap parameters)
+      (SchedulerNativePlainRomResult TapeIdentity Statement
+        Tag73K12ParsedProof Payload Result)) where
+  consumed : List (ShaInput × Digest256)
+  future : List (ShaInput × Digest256)
+  rootSplit :
+    input.package.root.full.projection.rootPrefixes.adversary.freshQueries ++
+        input.package.root.full.projection.rootPrefixes.verifier.freshQueries =
+      consumed ++ future
+  cursorExact :
+    state.cursor = schedulerNativePrefixCursor transitionFuel
+      (exactPlainRomCursor configuration sample.1) (consumed.map Prod.snd)
+  answersExact :
+    state.remainingAnswers = future.map Prod.snd ++
+      input.package.root.full.projection.rootPrefixes.verifier.remaining
+  tableExact : state.oracle.table = consumed.map projectedFreshEntry
+  traceExact : state.tracePrefix = schedulerNativePrefixRecords transitionFuel
+    (exactPlainRomCursor configuration sample.1) (consumed.map Prod.snd)
+
+/-- Production cursor before any root fresh answer has been consumed. -/
+def exactCompilerInitialGammaCursor
+    {HiddenTape TapeIdentity Observation Statement Payload Result : Type}
+    {parameters : ExactCompilerResourceParameters}
+    {transitionFuel : Nat}
+    {configuration : ExactPlainRomConfiguration HiddenTape TapeIdentity
+      Observation Statement Tag73K12ParsedProof Payload Result parameters}
+    {projection : AcceptedTapeProjection Statement Tag73K12ParsedProof Payload}
+    {fixedInstance : PublicInstance Statement}
+    {sample : ExactCompilerSample HiddenTape parameters}
+    (_input : ExactK12OperationalInput transitionFuel configuration projection
+      fixedInstance sample) :
+    SchedulerNativeGammaCursor (globalFull256OracleCallCap parameters)
+      (SchedulerNativePlainRomResult TapeIdentity Statement Tag73K12ParsedProof
+        Payload Result) :=
+  { cursor := exactPlainRomCursor configuration sample.1
+    remainingAnswers := freshAnswerTapeToList sample.2
+    oracle := emptyOracle
+    tracePrefix := [] }
+
+/-- The evolving-cursor invariant is actually inhabited at the exact compiler
+root.  Its future suffix is constructed from the two production prefix
+certificates and their literal untouched master-tape equations. -/
+def exactCompilerInitialGammaCursorAlignment
+    {HiddenTape TapeIdentity Observation Statement Payload Result : Type}
+    {parameters : ExactCompilerResourceParameters}
+    {transitionFuel : Nat}
+    {configuration : ExactPlainRomConfiguration HiddenTape TapeIdentity
+      Observation Statement Tag73K12ParsedProof Payload Result parameters}
+    {projection : AcceptedTapeProjection Statement Tag73K12ParsedProof Payload}
+    {fixedInstance : PublicInstance Statement}
+    {sample : ExactCompilerSample HiddenTape parameters}
+    (input : ExactK12OperationalInput transitionFuel configuration projection
+      fixedInstance sample) :
+    ExactCompilerRootGammaCursorAligned input
+      (exactCompilerInitialGammaCursor input) := by
+  let prefixes := input.package.root.full.projection.rootPrefixes
+  refine {
+    consumed := []
+    future := prefixes.adversary.freshQueries ++
+      prefixes.verifier.freshQueries
+    rootSplit := by simp [prefixes]
+    cursorExact := rfl
+    answersExact := ?_
+    tableExact := rfl
+    traceExact := rfl }
+  change freshAnswerTapeToList sample.2 =
+    (prefixes.adversary.freshQueries ++ prefixes.verifier.freshQueries).map
+        Prod.snd ++ prefixes.verifier.remaining
+  calc
+    freshAnswerTapeToList sample.2 =
+        prefixes.adversary.freshQueries.map Prod.snd ++
+          prefixes.adversary.remaining := prefixes.adversary.availableExact
+    _ = prefixes.adversary.freshQueries.map Prod.snd ++
+        (prefixes.verifier.freshQueries.map Prod.snd ++
+          prefixes.verifier.remaining) := congrArg
+            (List.append (prefixes.adversary.freshQueries.map Prod.snd))
+            prefixes.verifier.availableExact
+    _ = (prefixes.adversary.freshQueries ++
+        prefixes.verifier.freshQueries).map Prod.snd ++
+          prefixes.verifier.remaining := by
+      rw [List.map_append, List.append_assoc]
 
 @[simp] theorem exact_compiler_root_source_anchored_cut_first_state
     {HiddenTape TapeIdentity Observation Statement Payload Result : Type}
@@ -284,6 +385,7 @@ theorem exact_compiler_final_lookup_has_full_target_pause
 #print axioms exact_compiler_final_lookup_in_ordered_root_suffix
 #print axioms exact_compiler_consumed_gamma_coordinates_ordered_root
 #print axioms exact_compiler_final_lookup_has_full_target_pause
+#print axioms exactCompilerInitialGammaCursorAlignment
 
 end
 

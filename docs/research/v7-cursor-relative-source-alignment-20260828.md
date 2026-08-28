@@ -59,9 +59,11 @@ routing, scanner reachability, exact paused answer, or one-machine residual-cut
 preservation.  It is the lift of the joined root certificate through each
 evolving `SchedulerNativeGammaCursor`.
 
-The smallest useful next semantic object is an exact-production alignment
-between a gamma cursor and a split of the concatenated adversary/verifier fresh
-coordinate list.  It must derive, rather than assume:
+`ExactCompilerRootGammaCursorAligned` now defines the exact-production
+alignment between a gamma cursor and a split of the concatenated
+adversary/verifier fresh-coordinate list.  It stores only executable source
+equalities, and `exactCompilerInitialGammaCursorAlignment` constructs it at the
+production root from the two literal `availableExact` equations:
 
 ```lean
 structure ExactCompilerRootGammaCursorAligned
@@ -86,9 +88,13 @@ structure ExactCompilerRootGammaCursorAligned
       future.map Prod.snd ++ prefixes.verifier.remaining
   tableExact :
     state.oracle.table = consumed.map projectedFreshEntry
+  traceExact :
+    state.tracePrefix = schedulerNativePrefixRecords transitionFuel
+      (exactPlainRomCursor configuration sample.1)
+      (consumed.map Prod.snd)
 ```
 
-The decisive preservation theorem then has the following shape:
+The remaining decisive preservation theorem has the following exact shape:
 
 ```lean
 theorem exact_compiler_actual_gamma_coordinate_step
