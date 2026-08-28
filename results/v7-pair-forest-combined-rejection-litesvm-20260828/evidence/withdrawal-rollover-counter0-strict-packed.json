@@ -1,0 +1,30 @@
+{
+  "attempt_id": "5fQPsn8hoaVddFG26cWQ5QFdqxWtUPNaZ9zH2E6LYzFn",
+  "checkpoint": "EDfQpAnRQVqFmGZuY2ocZoX7gBp5H1N3MWWMLmuWTmD6",
+  "compact_counter": 0,
+  "expected_asr8_bytes": 792,
+  "expected_asr8_sha256": "bc8dd50e47737b65cb8e91509ec60f4371ce0d26921cd1ae79468e8121f670f9",
+  "frontier_nodes": 202,
+  "kind": "withdrawal",
+  "master": "3Hrd4YKTTF2eaoWjdwzBwagmH9SeuenwiVyQajm72C8N",
+  "output_lane": 3,
+  "payload_bytes": 31140,
+  "payload_sha256": "bc7cc3ea3427051016925c3bbbebf6dad52119fdf3424b823024a5ba2c521171",
+  "pool_program": "5PjDJaGfSPJj4tFzMRCiuuAasKg5n8dJKXKenhuwZexx",
+  "populated_lane_pairs": 255,
+  "pow_valid": true,
+  "program_id": "7Q2nGsPg8rbjdxKHK4jxTgEWLTyd9o1X4KMSjCieRmue",
+  "proof_bytes": 30452,
+  "proof_sha256": "bb67d92caf00da1f6e91bb85e7b020ad2f111cdf34ea3ce09c783388995e93e5",
+  "request_bytes": 320,
+  "request_sha256": "2dbdca31c277338fc7c26d4c32270e39ce36132573d416fe3421907bb22b5f3f",
+  "schema": "aspis.v7-pair-forest.strict-work-fixture.v1",
+  "security_boundary": "deterministic public KAT generated through the production prover with all work stages mined and independently checked",
+  "selected_lane": "3B3QhxztFR6kSo3m3kpTaU9JsQyJH6ScoT94gwnFXQYj",
+  "statement_digest": "560e8c3e8f712ae8beff2347e25bacc8258e217887b0e8c2dc682487d89f1821",
+  "work_nonces": [
+    42599638741,
+    3702027332,
+    64566732197
+  ]
+}

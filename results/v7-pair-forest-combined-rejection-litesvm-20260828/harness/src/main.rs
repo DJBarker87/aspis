@@ -5,10 +5,11 @@ use aspis_core::field::{M31, P};
 use aspis_pool::{
     pool_v1_nullifier_marker_address, pool_v1_pair_forest_checkpoint_address,
     pool_v1_pair_forest_lane_address, pool_v1_pair_forest_master_address,
-    pool_v1_root_page_address, POOL_V1_PAIR_EMPTY_ROOTS,
+    pool_v1_root_page_address, pool_v1_vault_authority_address,
+    pool_v1_vault_token_account_address, POOL_V1_PAIR_EMPTY_ROOTS,
 };
 use aspis_statement::pool_v1::root_history::{
-    append_root_history_page_bytes_v1, initialize_root_history_page_bytes_v1,
+    append_root_history_page_bytes_v1, initialize_root_history_page_bytes_v1, root_history_location,
 };
 use aspis_statement::{
     derive_owner_key, encode_digest_canonical,
@@ -27,13 +28,14 @@ use aspis_statement::{
         PoolV1PairForestTerminalPaymentV1, PoolV1PairForestTerminalRequestV1,
         PoolV1PairForestTerminalResultV1, PoolV1PairForestTerminalStatementV1,
         PoolV1PairLatePublicStatementV1, PoolV1PairLeafWitnessV1, PoolV1PairLiveSnapshotV1,
-        PoolV1PairVerifiedAfterstateV1, PoolV1PrivateTransferPublicV1, VerifierEntryStatusV1,
-        VerifierPolicyV1, VerifierRegistryEntryV1, VerifierRegistryV1,
+        PoolV1PairVerifiedAfterstateV1, PoolV1PrivateTransferPublicV1, PoolV1WithdrawalPublicV1,
+        VerifierEntryStatusV1, VerifierPolicyV1, VerifierRegistryEntryV1, VerifierRegistryV1,
         POOL_V1_NULLIFIER_MARKER_ACCOUNT_BYTES, POOL_V1_PAIR_FOREST_TERMINAL_REQUEST_BYTES,
         POOL_V1_PAIR_TREE_DEPTH, POOL_V1_PAIR_VERIFIED_AFTERSTATE_BYTES,
-        POOL_V1_ROOT_HISTORY_PAGE_ACCOUNT_BYTES, POOL_V1_VERIFIER_ENTRY_NO_RETIREMENT_SLOT,
-        POOL_V1_VERIFIER_PROOF_ACCOUNT_HEADER_BYTES, POOL_V1_VERIFIER_PROOF_ACCOUNT_MAGIC,
-        V7_POOL_PAIR_FOREST_TAG73_PROFILE_BINDING, V7_POOL_PAIR_FOREST_TAG73_RELEASE_BINDING,
+        POOL_V1_ROOT_HISTORY_CAPACITY, POOL_V1_ROOT_HISTORY_PAGE_ACCOUNT_BYTES,
+        POOL_V1_VERIFIER_ENTRY_NO_RETIREMENT_SLOT, POOL_V1_VERIFIER_PROOF_ACCOUNT_HEADER_BYTES,
+        POOL_V1_VERIFIER_PROOF_ACCOUNT_MAGIC, V7_POOL_PAIR_FOREST_TAG73_PROFILE_BINDING,
+        V7_POOL_PAIR_FOREST_TAG73_RELEASE_BINDING,
     },
     poseidon2::Digest,
 };
@@ -62,6 +64,14 @@ const REGISTRY_AUTHORITY_BYTES: [u8; 32] = [0; 32];
 const POLICY_BINDING_BYTES: [u8; 32] = [7; 32];
 const DEPLOYMENT_DOMAIN_BYTES: [u8; 32] = [5; 32];
 const PROOF_ACCOUNT_BYTES: [u8; 32] = [0x45; 32];
+const DESTINATION_TOKEN_ACCOUNT_BYTES: [u8; 32] = [0x49; 32];
+const DESTINATION_TOKEN_OWNER_BYTES: [u8; 32] = [0x4a; 32];
+const LEGACY_SPL_TOKEN_PROGRAM_ID: &str = "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA";
+const LEGACY_SPL_TOKEN_MINT_ACCOUNT_BYTES: usize = 82;
+const LEGACY_SPL_TOKEN_ACCOUNT_BYTES: usize = 165;
+const WITHDRAWAL_AMOUNT: u64 = 250;
+const VAULT_BALANCE_BEFORE: u64 = 10_000;
+const DESTINATION_BALANCE_BEFORE: u64 = 17;
 
 struct Args {
     pool_program: PathBuf,
@@ -71,6 +81,8 @@ struct Args {
     expect_success: bool,
     runtime_compute_limit: u64,
     transport: Transport,
+    populated_pairs: u32,
+    operation: Operation,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -79,13 +91,19 @@ enum Transport {
     Asf8,
 }
 
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+enum Operation {
+    Transfer,
+    Withdrawal,
+}
+
 fn parse_args() -> Result<Args> {
     let args = env::args().skip(1).collect::<Vec<_>>();
     ensure!(
-        (5..=7).contains(&args.len()),
+        (5..=9).contains(&args.len()),
         "usage: aspis-v7-pair-forest-combined <aspis_pool.so> <aspis_verifier.so> \
          <evidence.json> <proof-body-or-payload.bin> <success|failure> \
-         [runtime-compute-limit] [asq8|asf8]"
+         [runtime-compute-limit] [asq8|asf8] [populated-pairs] [transfer|withdrawal]"
     );
     let expect_success = match args[4].as_str() {
         "success" => true,
@@ -103,6 +121,17 @@ fn parse_args() -> Result<Args> {
         "asf8" => Transport::Asf8,
         _ => bail!("transport must be asq8 or asf8"),
     };
+    let populated_pairs = args
+        .get(7)
+        .map(|value| value.parse::<u32>())
+        .transpose()
+        .context("parse populated pairs")?
+        .unwrap_or(13);
+    let operation = match args.get(8).map(String::as_str).unwrap_or("transfer") {
+        "transfer" => Operation::Transfer,
+        "withdrawal" => Operation::Withdrawal,
+        _ => bail!("operation must be transfer or withdrawal"),
+    };
     Ok(Args {
         pool_program: PathBuf::from(&args[0]),
         verifier_program: PathBuf::from(&args[1]),
@@ -111,6 +140,8 @@ fn parse_args() -> Result<Args> {
         expect_success,
         runtime_compute_limit,
         transport,
+        populated_pairs,
+        operation,
     })
 }
 
@@ -165,6 +196,31 @@ fn deterministic_anchor_and_nullifier() -> Result<(Digest, Digest)> {
 fn sha256_hex(bytes: &[u8]) -> String {
     let digest: [u8; 32] = Sha256::digest(bytes).into();
     digest.iter().map(|byte| format!("{byte:02x}")).collect()
+}
+
+fn initialized_mint_data(supply: u64, decimals: u8) -> Vec<u8> {
+    let mut data = vec![0u8; LEGACY_SPL_TOKEN_MINT_ACCOUNT_BYTES];
+    data[36..44].copy_from_slice(&supply.to_le_bytes());
+    data[44] = decimals;
+    data[45] = 1;
+    data
+}
+
+fn initialized_token_data(mint: LegacyPubkey, owner: LegacyPubkey, amount: u64) -> Vec<u8> {
+    let mut data = vec![0u8; LEGACY_SPL_TOKEN_ACCOUNT_BYTES];
+    data[..32].copy_from_slice(&mint.to_bytes());
+    data[32..64].copy_from_slice(&owner.to_bytes());
+    data[64..72].copy_from_slice(&amount.to_le_bytes());
+    data[108] = 1;
+    data
+}
+
+fn token_amount(account: &Account) -> Result<u64> {
+    ensure!(
+        account.data.len() == LEGACY_SPL_TOKEN_ACCOUNT_BYTES,
+        "wrong legacy token account length"
+    );
+    Ok(u64::from_le_bytes(account.data[64..72].try_into()?))
 }
 
 fn put_account(
@@ -283,7 +339,7 @@ fn main() -> Result<()> {
         identity: PoolIdentityV1 {
             pool: master_key.to_bytes(),
             asset_mint: mint.to_bytes(),
-            token_program: [0x43; 32],
+            token_program: LegacyPubkey::from_str(LEGACY_SPL_TOKEN_PROGRAM_ID)?.to_bytes(),
             asset_id: M31(77),
             deployment_domain: DEPLOYMENT_DOMAIN_BYTES,
         },
@@ -302,8 +358,8 @@ fn main() -> Result<()> {
         root: POOL_V1_PAIR_EMPTY_ROOTS[POOL_V1_PAIR_TREE_DEPTH],
         frontier: core::array::from_fn(|level| POOL_V1_PAIR_EMPTY_ROOTS[level]),
     };
-    let mut historical_lane_roots = vec![tree.root];
-    for leaf in 0..13u32 {
+    let mut all_lane_roots = vec![tree.root];
+    for leaf in 0..args.populated_pairs {
         tree = tree
             .append_one_with_empty_roots(
                 strict_lane_digest(20_000 + 32 * leaf),
@@ -311,7 +367,7 @@ fn main() -> Result<()> {
             )
             .map_err(|error| anyhow!("populate deterministic output lane: {error:?}"))?
             .0;
-        historical_lane_roots.push(tree.root);
+        all_lane_roots.push(tree.root);
     }
     let lane = PoolV1PairForestLaneStateV1 {
         master: master_key.to_bytes(),
@@ -333,7 +389,7 @@ fn main() -> Result<()> {
     let asset_id = M31(77);
     let recipient = pool_v1_note_commitment(&digest(300), 600, asset_id, &digest(400));
     let change = pool_v1_note_commitment(&digest(500), 400, asset_id, &digest(600));
-    let public = PoolV1PrivateTransferPublicV1 {
+    let transfer_public = PoolV1PrivateTransferPublicV1 {
         pool: master_key.to_bytes(),
         deployment_domain: DEPLOYMENT_DOMAIN_BYTES,
         anchor_sequence: checkpoint_sequence,
@@ -343,17 +399,37 @@ fn main() -> Result<()> {
         recipient_commitment: recipient,
         change_commitment: change,
     };
+    let withdrawal_change = pool_v1_note_commitment(&digest(700), 750, asset_id, &digest(800));
+    let withdrawal_public = PoolV1WithdrawalPublicV1 {
+        pool: master_key.to_bytes(),
+        deployment_domain: DEPLOYMENT_DOMAIN_BYTES,
+        anchor_sequence: checkpoint_sequence,
+        anchor_root: checkpoint.global_root,
+        nullifier,
+        asset_id,
+        amount: WITHDRAWAL_AMOUNT as u32,
+        destination_token_account: DESTINATION_TOKEN_ACCOUNT_BYTES,
+        change_commitment: withdrawal_change,
+    };
+    let payment = match args.operation {
+        Operation::Transfer => PoolV1PairForestTerminalPaymentV1::PrivateTransfer(transfer_public),
+        Operation::Withdrawal => PoolV1PairForestTerminalPaymentV1::Withdrawal(withdrawal_public),
+    };
     let request = PoolV1PairForestTerminalRequestV1 {
         verifier_profile: V7_POOL_PAIR_FOREST_TAG73_PROFILE_BINDING,
         verifier_release: V7_POOL_PAIR_FOREST_TAG73_RELEASE_BINDING,
         pool_program: pool_program.to_bytes(),
-        public: PoolV1PairForestTerminalPaymentV1::PrivateTransfer(public),
+        public: payment,
     };
 
     // The candidate afterstate is validly encoded and exactly matches the
     // selected lane's one-pair transition.
-    let output_pair_leaf = PoolV1PairLeafWitnessV1::two_outputs(recipient, change)
-        .map_err(|error| anyhow!("construct deterministic output pair: {error:?}"))?
+    let output_pair = match args.operation {
+        Operation::Transfer => PoolV1PairLeafWitnessV1::two_outputs(recipient, change),
+        Operation::Withdrawal => PoolV1PairLeafWitnessV1::single_output(withdrawal_change),
+    }
+    .map_err(|error| anyhow!("construct deterministic output pair: {error:?}"))?;
+    let output_pair_leaf = output_pair
         .leaf_digest()
         .map_err(|error| anyhow!("hash deterministic output pair: {error:?}"))?;
     let next_tree = lane
@@ -377,27 +453,34 @@ fn main() -> Result<()> {
             bytes.to_vec()
         }
         Transport::Asf8 => {
-            let statement = PoolV1PairForestTerminalStatementV1::PrivateTransfer {
-                common: PoolV1PairForestTerminalCommonV1 {
-                    master_account: master_key.to_bytes(),
-                    checkpoint_account: checkpoint_key.to_bytes(),
-                    selected_lane_account: lane_key.to_bytes(),
-                    output_lane,
-                    checkpoint_sequence,
-                    historical_global_anchor,
-                    lane_transition: PoolV1PairLatePublicStatementV1 {
-                        live_snapshot: PoolV1PairLiveSnapshotV1 {
-                            pool: master_key.to_bytes(),
-                            deployment_domain: DEPLOYMENT_DOMAIN_BYTES,
-                            sequence: lane.tree.next_leaf_index,
-                            next_pair_index: lane.tree.next_leaf_index,
-                            current_root: lane.tree.root,
-                            frontier: lane.tree.frontier,
-                        },
-                        candidate_afterstate,
+            let common = PoolV1PairForestTerminalCommonV1 {
+                master_account: master_key.to_bytes(),
+                checkpoint_account: checkpoint_key.to_bytes(),
+                selected_lane_account: lane_key.to_bytes(),
+                output_lane,
+                checkpoint_sequence,
+                historical_global_anchor,
+                lane_transition: PoolV1PairLatePublicStatementV1 {
+                    live_snapshot: PoolV1PairLiveSnapshotV1 {
+                        pool: master_key.to_bytes(),
+                        deployment_domain: DEPLOYMENT_DOMAIN_BYTES,
+                        sequence: lane.tree.next_leaf_index,
+                        next_pair_index: lane.tree.next_leaf_index,
+                        current_root: lane.tree.root,
+                        frontier: lane.tree.frontier,
                     },
+                    candidate_afterstate,
                 },
-                public,
+            };
+            let statement = match args.operation {
+                Operation::Transfer => PoolV1PairForestTerminalStatementV1::PrivateTransfer {
+                    common,
+                    public: transfer_public,
+                },
+                Operation::Withdrawal => PoolV1PairForestTerminalStatementV1::Withdrawal {
+                    common,
+                    public: withdrawal_public,
+                },
             };
             encode_pool_v1_pair_forest_terminal_statement_v1(&statement)
                 .map_err(|error| anyhow!("encode ASF8: {error:?}"))?
@@ -417,7 +500,18 @@ fn main() -> Result<()> {
     proof_image[POOL_V1_VERIFIER_PROOF_ACCOUNT_HEADER_BYTES..].copy_from_slice(&payload);
     let proof_key = legacy(PROOF_ACCOUNT_BYTES);
 
-    let page_key = pool_v1_root_page_address(&pool_program, &lane_key, 0).0;
+    let current_history_location = root_history_location(lane.tree.next_leaf_index);
+    let next_history_location = root_history_location(lane.tree.next_leaf_index + 1);
+    let rollover = current_history_location.page_number != next_history_location.page_number;
+    let page_key = pool_v1_root_page_address(
+        &pool_program,
+        &lane_key,
+        current_history_location.page_number,
+    )
+    .0;
+    let next_page_key = rollover.then(|| {
+        pool_v1_root_page_address(&pool_program, &lane_key, next_history_location.page_number).0
+    });
     let marker_key = pool_v1_nullifier_marker_address(
         &pool_program,
         &master_key,
@@ -467,25 +561,41 @@ fn main() -> Result<()> {
     svm.warp_to_slot(PROFILE_SLOT);
     svm.airdrop(&payer.pubkey(), 10_000_000_000)
         .map_err(|failed| anyhow!("fund payer: {:?}", failed.err))?;
+    let current_page_first =
+        current_history_location.page_number * POOL_V1_ROOT_HISTORY_CAPACITY as u64;
+    let current_roots = &all_lane_roots[current_page_first as usize..];
     let mut history_image = vec![0u8; POOL_V1_ROOT_HISTORY_PAGE_ACCOUNT_BYTES];
     initialize_root_history_page_bytes_v1(
         &mut history_image,
         lane_key.to_bytes(),
-        0,
-        &historical_lane_roots,
+        current_history_location.page_number,
+        current_roots,
     )
     .map_err(|error| anyhow!("initialize populated lane history: {error:?}"))?;
     ensure!(
-        historical_lane_roots.len() == lane.tree.next_leaf_index as usize + 1,
+        all_lane_roots.len() == lane.tree.next_leaf_index as usize + 1,
         "deterministic history/root sequence mismatch"
     );
     let mut history_probe = history_image.clone();
-    append_root_history_page_bytes_v1(
-        &mut history_probe,
-        candidate_afterstate.next_pair_index,
-        candidate_afterstate.next_root,
-    )
-    .map_err(|error| anyhow!("candidate does not extend current history page: {error:?}"))?;
+    let mut next_history_probe = None;
+    if rollover {
+        let mut next = vec![0u8; POOL_V1_ROOT_HISTORY_PAGE_ACCOUNT_BYTES];
+        initialize_root_history_page_bytes_v1(
+            &mut next,
+            lane_key.to_bytes(),
+            next_history_location.page_number,
+            &[candidate_afterstate.next_root],
+        )
+        .map_err(|error| anyhow!("initialize expected rollover page: {error:?}"))?;
+        next_history_probe = Some(next);
+    } else {
+        append_root_history_page_bytes_v1(
+            &mut history_probe,
+            candidate_afterstate.next_pair_index,
+            candidate_afterstate.next_root,
+        )
+        .map_err(|error| anyhow!("candidate does not extend current history page: {error:?}"))?;
+    }
     put_account(
         &mut svm,
         master_key,
@@ -511,6 +621,14 @@ fn main() -> Result<()> {
             .to_vec(),
     )?;
     put_account(&mut svm, page_key, pool_program, history_image)?;
+    if let Some(next_page_key) = next_page_key {
+        put_account(
+            &mut svm,
+            next_page_key,
+            pool_program,
+            vec![0u8; POOL_V1_ROOT_HISTORY_PAGE_ACCOUNT_BYTES],
+        )?;
+    }
     put_account(
         &mut svm,
         marker_key,
@@ -526,30 +644,83 @@ fn main() -> Result<()> {
     put_account(&mut svm, entry_key, registry_program, entry_image.to_vec())?;
     put_account(&mut svm, proof_key, verifier_program, proof_image)?;
 
-    let protected_keys = [
-        master_key,
-        checkpoint_key,
-        lane_key,
-        page_key,
-        marker_key,
-        registry_key,
-        entry_key,
-        proof_key,
-    ];
+    let token_program = LegacyPubkey::from_str(LEGACY_SPL_TOKEN_PROGRAM_ID)?;
+    let vault_authority = pool_v1_vault_authority_address(&pool_program, &master_key).0;
+    let vault_key = pool_v1_vault_token_account_address(&pool_program, &master_key).0;
+    let destination_key = legacy(DESTINATION_TOKEN_ACCOUNT_BYTES);
+    if args.operation == Operation::Withdrawal {
+        put_account(
+            &mut svm,
+            mint,
+            token_program,
+            initialized_mint_data(1_000_000, 6),
+        )?;
+        put_account(
+            &mut svm,
+            vault_key,
+            token_program,
+            initialized_token_data(mint, vault_authority, VAULT_BALANCE_BEFORE),
+        )?;
+        put_account(
+            &mut svm,
+            destination_key,
+            token_program,
+            initialized_token_data(
+                mint,
+                legacy(DESTINATION_TOKEN_OWNER_BYTES),
+                DESTINATION_BALANCE_BEFORE,
+            ),
+        )?;
+        put_account(
+            &mut svm,
+            vault_authority,
+            LegacyPubkey::default(),
+            Vec::new(),
+        )?;
+    }
+
+    let mut protected_keys = vec![master_key, checkpoint_key, lane_key, page_key];
+    if let Some(next_page_key) = next_page_key {
+        protected_keys.push(next_page_key);
+    }
+    let marker_snapshot_index = protected_keys.len();
+    protected_keys.extend([marker_key, registry_key, entry_key, proof_key]);
+    let registry_snapshot_index = marker_snapshot_index + 1;
+    let entry_snapshot_index = marker_snapshot_index + 2;
+    let proof_snapshot_index = marker_snapshot_index + 3;
+    let token_snapshot_index = protected_keys.len();
+    if args.operation == Operation::Withdrawal {
+        protected_keys.extend([mint, vault_key, destination_key, vault_authority]);
+    }
     let before = snapshot(&svm, &protected_keys)?;
+    let mut instruction_accounts = vec![
+        meta(master_key, false),
+        meta(checkpoint_key, false),
+        meta(lane_key, true),
+        meta(page_key, !rollover),
+    ];
+    if let Some(next_page_key) = next_page_key {
+        instruction_accounts.push(meta(next_page_key, true));
+    }
+    instruction_accounts.extend([
+        meta(marker_key, true),
+        meta(registry_key, false),
+        meta(entry_key, false),
+        meta(verifier_program, false),
+        meta(proof_key, false),
+    ]);
+    if args.operation == Operation::Withdrawal {
+        instruction_accounts.extend([
+            meta(mint, false),
+            meta(vault_key, true),
+            meta(destination_key, true),
+            meta(vault_authority, false),
+            meta(token_program, false),
+        ]);
+    }
     let instruction = Instruction {
         program_id: address(&pool_program),
-        accounts: vec![
-            meta(master_key, false),
-            meta(checkpoint_key, false),
-            meta(lane_key, true),
-            meta(page_key, true),
-            meta(marker_key, true),
-            meta(registry_key, false),
-            meta(entry_key, false),
-            meta(verifier_program, false),
-            meta(proof_key, false),
-        ],
+        accounts: instruction_accounts,
         data: instruction_data.to_vec(),
     };
     let tx = transaction_v1(&svm, &payer, instruction)?;
@@ -651,18 +822,43 @@ fn main() -> Result<()> {
         ensure!(
             before[0] == after[0]
                 && before[1] == after[1]
-                && before[5] == after[5]
-                && before[6] == after[6]
-                && before[7] == after[7],
+                && before[registry_snapshot_index] == after[registry_snapshot_index]
+                && before[entry_snapshot_index] == after[entry_snapshot_index]
+                && before[proof_snapshot_index] == after[proof_snapshot_index],
             "successful terminal mutated a read-only authenticated account"
         );
+        if args.operation == Operation::Withdrawal {
+            ensure!(
+                before[token_snapshot_index] == after[token_snapshot_index]
+                    && before[token_snapshot_index + 3] == after[token_snapshot_index + 3],
+                "successful withdrawal mutated mint or vault authority"
+            );
+            ensure!(
+                token_amount(&before[token_snapshot_index + 1])? == VAULT_BALANCE_BEFORE
+                    && token_amount(&after[token_snapshot_index + 1])?
+                        == VAULT_BALANCE_BEFORE - WITHDRAWAL_AMOUNT,
+                "withdrawal vault delta was not exact"
+            );
+            ensure!(
+                token_amount(&before[token_snapshot_index + 2])? == DESTINATION_BALANCE_BEFORE
+                    && token_amount(&after[token_snapshot_index + 2])?
+                        == DESTINATION_BALANCE_BEFORE + WITHDRAWAL_AMOUNT,
+                "withdrawal destination delta was not exact"
+            );
+        }
         ensure!(
             after[2].data == expected_lane_image,
             "wrong next lane image"
         );
-        ensure!(after[3].data == history_probe, "wrong next history image");
         ensure!(
-            after[4].data == expected_marker_image,
+            after[3].data == history_probe,
+            "wrong current history image"
+        );
+        if let Some(expected) = &next_history_probe {
+            ensure!(after[4].data == *expected, "wrong rollover history image");
+        }
+        ensure!(
+            after[marker_snapshot_index].data == expected_marker_image,
             "wrong nullifier marker image"
         );
         ensure!(
@@ -673,7 +869,7 @@ fn main() -> Result<()> {
             "settled lane did not decode to the exact candidate tree"
         );
         ensure!(
-            decode_pool_v1_nullifier_marker(&after[4].data)
+            decode_pool_v1_nullifier_marker(&after[marker_snapshot_index].data)
                 .map_err(|error| anyhow!("decode settled marker: {error:?}"))?
                 == marker_payload,
             "settled marker did not decode to the exact nullifier payload"
@@ -721,12 +917,13 @@ fn main() -> Result<()> {
             "serialized_transaction_bytes": tx_bytes,
             "txv1_4096_target_headroom_bytes": TXV1_TARGET_BYTES - tx_bytes,
             "instruction_bytes": instruction_data.len(),
-            "account_metas_excluding_payer": 9,
+            "account_metas_excluding_payer": 9 + usize::from(rollover) + if args.operation == Operation::Withdrawal { 5 } else { 0 },
             "txv1_declared_compute_unit_limit": COMPUTE_UNIT_LIMIT,
             "runtime_compute_limit": args.runtime_compute_limit,
             "runtime_limit_is_diagnostic_override": args.runtime_compute_limit != u64::from(COMPUTE_UNIT_LIMIT),
             "compute_units": compute_units,
             "outcome": if args.expect_success { "accepted" } else { "rejected" },
+            "operation": match args.operation { Operation::Transfer => "private-transfer", Operation::Withdrawal => "withdrawal" },
             "simulation_equals_execution": true,
             "error": execution_error,
             "selected_verifier_cpi_observed_in_logs": invoked_verifier,
@@ -744,6 +941,8 @@ fn main() -> Result<()> {
             "selected_output_lane": output_lane,
             "selected_lane": lane_key.to_string(),
             "history_page": page_key.to_string(),
+            "rollover_history_page": next_page_key.map(|key| key.to_string()),
+            "history_mode": if rollover { "rollover" } else { "same-page" },
             "nullifier_marker": marker_key.to_string(),
             "proof_account": proof_key.to_string(),
             "registry_profile_and_release_exact": true,
@@ -751,20 +950,31 @@ fn main() -> Result<()> {
             "proof_owner_is_selected_verifier": true,
             "candidate_afterstate_matches_deterministic_lane_transition": true,
             "populated_lane_pairs_before": lane.tree.next_leaf_index,
-            "history_roots_before": historical_lane_roots.len()
+            "history_roots_before": current_roots.len()
         },
         "atomicity": {
             "master_unchanged": before[0] == after[0],
             "checkpoint_unchanged": before[1] == after[1],
             "lane_changed_exactly_on_success": (before[2] != after[2]) == args.expect_success,
             "history_changed_exactly_on_success": (before[3] != after[3]) == args.expect_success,
-            "nullifier_marker_changed_exactly_on_success": (before[4] != after[4]) == args.expect_success,
-            "registry_unchanged": before[5] == after[5],
-            "entry_unchanged": before[6] == after[6],
-            "proof_unchanged": before[7] == after[7],
+            "rollover_page_changed_exactly_on_success": next_page_key.map(|_| (before[4] != after[4]) == args.expect_success),
+            "nullifier_marker_changed_exactly_on_success": (before[marker_snapshot_index] != after[marker_snapshot_index]) == args.expect_success,
+            "registry_unchanged": before[registry_snapshot_index] == after[registry_snapshot_index],
+            "entry_unchanged": before[entry_snapshot_index] == after[entry_snapshot_index],
+            "proof_unchanged": before[proof_snapshot_index] == after[proof_snapshot_index],
+            "withdrawal_mint_unchanged": if args.operation == Operation::Withdrawal {
+                Some(before[token_snapshot_index] == after[token_snapshot_index])
+            } else {
+                None
+            },
+            "withdrawal_vault_amount_before": (args.operation == Operation::Withdrawal).then(|| token_amount(&before[token_snapshot_index + 1])).transpose()?,
+            "withdrawal_vault_amount_after": (args.operation == Operation::Withdrawal).then(|| token_amount(&after[token_snapshot_index + 1])).transpose()?,
+            "withdrawal_destination_amount_before": (args.operation == Operation::Withdrawal).then(|| token_amount(&before[token_snapshot_index + 2])).transpose()?,
+            "withdrawal_destination_amount_after": (args.operation == Operation::Withdrawal).then(|| token_amount(&after[token_snapshot_index + 2])).transpose()?,
             "settled_lane_equals_candidate": after[2].data == expected_lane_image,
             "settled_history_equals_expected": after[3].data == history_probe,
-            "settled_marker_equals_expected": after[4].data == expected_marker_image,
+            "settled_rollover_page_equals_expected": next_history_probe.as_ref().map(|expected| after[4].data == *expected),
+            "settled_marker_equals_expected": after[marker_snapshot_index].data == expected_marker_image,
             "failure_all_accounts_byte_exact": !args.expect_success && before == after
         },
         "artifacts": {

@@ -155,6 +155,59 @@ pub fn find_grinding_nonce_unpublished(
     find_grinding_nonce_cpu_parallel_quiet(transcript, bits)
 }
 
+/// Experimental host-only continuation of the unpublished-attempt search.
+///
+/// This is used only by release-evidence experiments which measure the cost
+/// of conditioning an already-valid final work nonce on a later public
+/// transcript property. It is deliberately not part of verifier consensus.
+/// The configured external miner must return the minimum valid nonce at or
+/// above `start`.
+pub fn find_grinding_nonce_unpublished_from(
+    transcript: &Transcript,
+    bits: u8,
+    start: u64,
+) -> Result<u64, UnpublishedPowError> {
+    if bits > 63 {
+        return Err(UnpublishedPowError::Difficulty);
+    }
+    if bits == 0 {
+        return Ok(start);
+    }
+    if let Some(miner) = std::env::var_os("ASPIS_POW_MINER") {
+        let state = transcript.diagnostic_state();
+        let output = Command::new(miner)
+            .arg("--state")
+            .arg(hex(&state))
+            .arg("--bits")
+            .arg(bits.to_string())
+            .arg("--start")
+            .arg(start.to_string())
+            .stderr(Stdio::null())
+            .output()
+            .map_err(|_| UnpublishedPowError::Spawn)?;
+        if !output.status.success() {
+            return Err(UnpublishedPowError::ProcessFailed);
+        }
+        let stdout = String::from_utf8(output.stdout).map_err(|_| UnpublishedPowError::Utf8)?;
+        let nonce = stdout
+            .lines()
+            .find_map(|line| line.strip_prefix("nonce="))
+            .ok_or(UnpublishedPowError::MissingNonce)?
+            .parse::<u64>()
+            .map_err(|_| UnpublishedPowError::InvalidNonce)?;
+        if nonce < start {
+            return Err(UnpublishedPowError::InvalidNonce);
+        }
+        if !transcript.grinding_ok(nonce, bits) {
+            return Err(UnpublishedPowError::NonceRejected);
+        }
+        return Ok(nonce);
+    }
+    (start..)
+        .find(|nonce| transcript.grinding_ok(*nonce, bits))
+        .ok_or(UnpublishedPowError::Exhausted)
+}
+
 fn find_grinding_nonce_cpu_parallel_quiet(
     transcript: &Transcript,
     bits: u8,

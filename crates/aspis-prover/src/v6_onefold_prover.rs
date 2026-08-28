@@ -736,6 +736,33 @@ fn work_nonce(
     }
 }
 
+fn experimental_v7_counter0_final_nonce(
+    transcript: &Transcript,
+    bits: u8,
+) -> Result<u64, V6ProverError> {
+    let mut start = 0u64;
+    let mut valid_work_candidates = 0u64;
+    loop {
+        let nonce = crate::pow::find_grinding_nonce_unpublished_from(transcript, bits, start)
+            .map_err(|_| V6ProverError::Stage("V7 counter-0 final work mining"))?;
+        valid_work_candidates += 1;
+        let mut candidate = transcript.clone();
+        absorb_work(&mut candidate, 2, nonce);
+        if let Ok(schedule) = derive_first_v7_compact_queries(&candidate) {
+            if schedule.counter == 0 {
+                eprintln!(
+                    "aspis-v7-counter0-final-work: nonce={nonce} valid_work_candidates={valid_work_candidates} frontier_nodes={}",
+                    schedule.frontier_nodes
+                );
+                return Ok(nonce);
+            }
+        }
+        start = nonce
+            .checked_add(1)
+            .ok_or(V6ProverError::Stage("V7 counter-0 final work exhausted"))?;
+    }
+}
+
 fn inactive_claim(values: &[QM31], masks: [u16; 64]) -> Result<QM31, V6ProverError> {
     if values.len() != 1 << 10 {
         return Err(V6ProverError::Stage("V6 inactive claim shape"));
@@ -1502,7 +1529,14 @@ fn build_onefold_proof_with_pow_mode(
     }
     absorb_final256(&mut transcript, &mut fields, &relation_values);
 
-    let final_nonce = work_nonce(&transcript, work_bits[2], pow_mode)?;
+    let final_nonce = if profile == OneFoldBuildProfile::V7Compact
+        && pow_mode == StateOnlyPowMode::Mine
+        && std::env::var_os("ASPIS_V7_EXPERIMENTAL_COUNTER0_FINAL_NONCE").is_some()
+    {
+        experimental_v7_counter0_final_nonce(&transcript, work_bits[2])?
+    } else {
+        work_nonce(&transcript, work_bits[2], pow_mode)?
+    };
     pow_valid &= transcript.grinding_ok(final_nonce, work_bits[2]);
     absorb_work(&mut transcript, 2, final_nonce);
     let (
