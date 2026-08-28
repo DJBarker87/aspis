@@ -438,6 +438,16 @@ separate Pareto axis. The required sweep points are:
 | 920 | 128 | 206 | 634,718 | +55 | 0 |
 | 1,024 | 232 | 208 | 634,721 | +58 | 0 |
 
+These 634k values are **not** semantic-terminal measurements and do not undo
+the earlier 413,694-CU prefactorisation saving.  That earlier matched profile
+reduced the old single-leaf semantic terminal from 821,667 to 407,973 CU.  The
+return sweep instead measures a transport/component harness whose dominant
+work is the roughly 515k-CU canonical proof-wire scan, plus Pool-to-verifier
+CPI, registry/account checks, ASF8 reconstruction, return-data handling and
+atomic byte writes; it deliberately executes no Tag-73 equations or Pool
+Poseidon.  The selected complete one-transaction totals remain 1,376,652 CU
+for transfer and 1,295,086 / 1,360,640 CU for same-page / rollover withdrawal.
+
 The five measurements include runtime return-data copy, Pool tail checking,
 decoding and canonical validation. The final Pool result is still the canonical
 792-byte ASR8. The synthetic verifier extension repeats a deterministic prefix
