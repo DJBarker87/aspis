@@ -252,6 +252,38 @@ fn add_binary_weight(sum: QM31, selector: QM31, weight: M31) -> QM31 {
     }
 }
 
+/// Small direct-mapped memo for the checked-in generated endpoint stream.
+/// The row tag makes collision behavior purely a performance concern: a
+/// collision always recomputes the literal selector before replacing a slot.
+#[cfg(any(test, feature = "pool-v1-pair-forest-endpoint-selector-cache-audit"))]
+struct EndpointSelectorCache {
+    rows: [u16; 32],
+    values: [QM31; 32],
+}
+
+#[cfg(any(test, feature = "pool-v1-pair-forest-endpoint-selector-cache-audit"))]
+impl EndpointSelectorCache {
+    fn new() -> Self {
+        Self {
+            rows: [u16::MAX; 32],
+            values: [QM31::ZERO; 32],
+        }
+    }
+
+    #[inline(always)]
+    fn selector(&mut self, row: u16, selectors: &Selectors) -> QM31 {
+        let slot = usize::from(row) & (self.rows.len() - 1);
+        if self.rows[slot] == row {
+            self.values[slot]
+        } else {
+            let value = selectors.row(usize::from(row));
+            self.rows[slot] = row;
+            self.values[slot] = value;
+            value
+        }
+    }
+}
+
 fn accumulate_endpoint(
     values: &mut [QM31; 2],
     weights: &mut [QM31; 2],
@@ -260,8 +292,13 @@ fn accumulate_endpoint(
     weight: M31,
     patterns: &[QM31; POOL_V1_PAIR_FOREST_COPY_TERMINAL_PATTERNS_V1],
     selectors: &Selectors,
+    #[cfg(feature = "pool-v1-pair-forest-endpoint-selector-cache-audit")]
+    selector_cache: &mut EndpointSelectorCache,
 ) {
+    #[cfg(not(feature = "pool-v1-pair-forest-endpoint-selector-cache-audit"))]
     let selector = selectors.row(usize::from(endpoint.row));
+    #[cfg(feature = "pool-v1-pair-forest-endpoint-selector-cache-audit")]
+    let selector = selector_cache.selector(endpoint.row, selectors);
     let slot = usize::from(endpoint.slot);
     #[cfg(not(feature = "pool-v1-pair-forest-binary-copy-weights-audit"))]
     {
@@ -291,28 +328,56 @@ pub(crate) fn evaluate_with_selectors(
         consumer_values: [QM31::ZERO; 2],
         consumer_weights: [QM31::ZERO; 2],
     };
+    #[cfg(feature = "pool-v1-pair-forest-endpoint-selector-cache-audit")]
+    let mut selector_cache = EndpointSelectorCache::new();
     let mut link_index = 0usize;
     while link_index < POOL_V1_PAIR_FOREST_COPY_TERMINAL_LINKS_V1 {
         let link = constants::COPY_LINKS[link_index];
         let weight = link_weight(link, append_index, variant);
-        accumulate_endpoint(
-            &mut row.producer_values,
-            &mut row.producer_weights,
-            link.producer,
-            link.tag,
-            weight,
-            &patterns,
-            selectors,
-        );
-        accumulate_endpoint(
-            &mut row.consumer_values,
-            &mut row.consumer_weights,
-            link.consumer,
-            link.tag,
-            weight,
-            &patterns,
-            selectors,
-        );
+        #[cfg(not(feature = "pool-v1-pair-forest-endpoint-selector-cache-audit"))]
+        {
+            accumulate_endpoint(
+                &mut row.producer_values,
+                &mut row.producer_weights,
+                link.producer,
+                link.tag,
+                weight,
+                &patterns,
+                selectors,
+            );
+            accumulate_endpoint(
+                &mut row.consumer_values,
+                &mut row.consumer_weights,
+                link.consumer,
+                link.tag,
+                weight,
+                &patterns,
+                selectors,
+            );
+        }
+        #[cfg(feature = "pool-v1-pair-forest-endpoint-selector-cache-audit")]
+        {
+            accumulate_endpoint(
+                &mut row.producer_values,
+                &mut row.producer_weights,
+                link.producer,
+                link.tag,
+                weight,
+                &patterns,
+                selectors,
+                &mut selector_cache,
+            );
+            accumulate_endpoint(
+                &mut row.consumer_values,
+                &mut row.consumer_weights,
+                link.consumer,
+                link.tag,
+                weight,
+                &patterns,
+                selectors,
+                &mut selector_cache,
+            );
+        }
         link_index += 1;
     }
     let active = selectors.active();
@@ -537,6 +602,49 @@ mod tests {
                     );
                 }
             }
+        }
+    }
+
+    fn assert_endpoint_selector_cache_matches_literal(selectors: &Selectors) {
+        let mut cache = EndpointSelectorCache::new();
+        for link in constants::COPY_LINKS {
+            for endpoint in [link.producer, link.consumer] {
+                assert_eq!(
+                    cache.selector(endpoint.row, selectors),
+                    selectors.row(usize::from(endpoint.row)),
+                );
+            }
+        }
+    }
+
+    #[test]
+    fn endpoint_selector_cache_matches_every_generated_endpoint_exactly() {
+        let mut expected_hits = 0usize;
+        let mut row_tags = [u16::MAX; 32];
+        for link in constants::COPY_LINKS {
+            for endpoint in [link.producer, link.consumer] {
+                let slot = usize::from(endpoint.row) & (row_tags.len() - 1);
+                if row_tags[slot] == endpoint.row {
+                    expected_hits += 1;
+                } else {
+                    row_tags[slot] = endpoint.row;
+                }
+            }
+        }
+        assert_eq!(expected_hits, 56);
+
+        for selected_row in 0..POOL_V1_PAIR_FOREST_COPY_TERMINAL_ROWS_V1 {
+            let mut high = [QM31::ZERO; 64];
+            let mut low = [QM31::ZERO; 16];
+            high[selected_row >> 4] = QM31::ONE;
+            low[selected_row & 15] = QM31::ONE;
+            assert_endpoint_selector_cache_matches_literal(&Selectors { high, low });
+        }
+
+        let mut rng = Rng(0x7365_6c65_6374_6f72);
+        for _ in 0..64 {
+            let point = core::array::from_fn(|_| rng.qm31());
+            assert_endpoint_selector_cache_matches_literal(&Selectors::at_point(&point));
         }
     }
 
