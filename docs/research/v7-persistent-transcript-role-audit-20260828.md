@@ -11,8 +11,60 @@ returned proof.  The current pre-answer state does not distinguish those
 continuations, and a completed-proof lookup cannot be used to label the older
 coordinate retroactively.
 
+Inspection of the current Rust answers the implementation fork positively for
+every production-controlled call: the control site knows the challenge kind,
+round/attempt/block, transcript state, and query bytes before invoking the
+hash callback.  No Rust scheduler refactor is needed.  This positive result
+does not cover a coordinate first exposed by the arbitrary adversary before
+the verifier reaches that control site.
+
 No protocol, transcript byte, proof byte, challenge sampler, verifier result,
 CU behavior, or cryptographic assumption was changed.
+
+## Current Rust pre-answer ordering audit
+
+The current production source fixes the role before the answer at these call
+sites:
+
+- lambda and chi in `v6_transcript.rs` immediately after C1 absorption;
+- theta, zerocheck coordinates 0--9, and mu in
+  `state_only_sumcheck.rs::begin_state_only_zerocheck`;
+- eta in `state_only_hiding.rs::begin_state_only_masked_sumcheck`;
+- semantic round challenges inside the round-indexed loop in
+  `verify_compact_semantic_sumcheck`;
+- gamma, kappa, both secure-circle points, and both OOD mixes in
+  `finish_onefold_relation`;
+- relation alpha 0 before the final-256 boundary and alpha 1--3 in the
+  explicit relation-round loop;
+- q16 candidate counter and decoder block in
+  `v7_onefold.rs::derive_first_v7_compact_queries`;
+- the query-batch challenge after the accepted q16 branch is installed.
+
+For a variable-prefix sampler, each attempt/block has a pre-answer role.  The
+post-answer fact is only whether that attempt stops the sampler.  Likewise a
+q16 candidate is labelled by `(counter, block)` before decoding; `selected`
+and `frontier_nodes` are deliberately not pre-answer labels.
+
+`verifierActionPreAnswerRoles` is the executable Lean projection of this
+control boundary.  Its theorem
+`verifier_action_preanswer_roles_inputs_exact` proves that erasing the roles
+is exactly `verifierIssuedInputs`; historical grinding evidence maps to the
+empty verifier-query list.  The existing verifier program is consequently
+proved to query those same inputs by
+`verifier_action_program_uses_preanswer_role_inputs`.
+
+The audited current source identities are:
+
+```text
+transcript.rs                 be036d144b9fe0c8119d9f6fdd8ca2167d1379f7d1d785fa2f197200b9f7d119
+state_only_sumcheck.rs        5458d3134a3123b8b02bef0374ccbf96a05461974d7e274966c6a3f0d2d496f9
+state_only_hiding.rs          38cb7244635968d331c056ab3eaf468c5a377c4d7efc97855083293b9f2de39a
+v6_transcript.rs              f866e94e3b22ce3ab2c636423dfb9191fb1dd30f452b9134a02044b109a85f2d
+v7_onefold.rs                 c89c85c7027b63bac93d4ca07284ee336b6a78a0428831287a93593c629e0dff
+v6_onefold.rs                 8a97d99aa4c49293cdada6edd9caf07fec602d5a996b655b18272e4485739438
+v6_onefold_prover.rs          6b394c31bc55da32fd116a90c159a897160a99d5d4843cd5b7ee05e9876a850d
+programs/.../v7_verifier.rs   4de89a2d0f01b2463fb0fad9112234ddded774ffe27cb5c4e8c7d478275c3200
+```
 
 ## Why retrospective cache provenance is insufficient
 
@@ -80,6 +132,20 @@ The principal erasure theorems are:
 - `query_oracle_with_preanswer_roles_erases`;
 - `program_oracle_with_preanswer_roles_erases`.
 
+The semantic cache view adds:
+
+- `persistent_role_cache_erases`;
+- `lookup_persistent_role_cache_erases`;
+- `successful_cached_query_preserves_persistent_role_cache`;
+- `successful_cached_query_reads_original_tagged_entry`;
+- `successful_fresh_query_appends_preanswer_tagged_entry`;
+- `successful_program_appends_preanswer_tagged_entry`;
+- `tagged_exact_fixed_root_records_erase`.
+
+Thus a later cache hit inherits the tag and `TableSource` of the original
+fresh/programmed installation, while erasure is exactly `OracleState.table`
+and `exactFixedRootRecords`.
+
 They erase definitionally to the existing `queryOracle` and `programOracle`.
 Thus query order, answers, table lookup, cache behavior, programming history,
 and abort behavior are unchanged.
@@ -102,10 +168,11 @@ with the current scheduler fork.
 
 ### Root verifier fresh exposure
 
-The role is pre-answer data.  Existing classifiers cover semantic sequential,
-relation-alpha, and q16 calls from verifier history/control.  Gamma needs the
-analogous variable-prefix history automaton, but its role is observable in
-principle.
+The role is pre-answer data, and the exact action/input projection is now
+proved in Lean.  Existing classifiers cover semantic sequential,
+relation-alpha, q16, and the exact variable-prefix gamma calls from
+verifier history/control.  A current-revision Aeneas replay connecting the
+Rust call sites to this action projection is still absent.
 
 ### Prepared restoration fork
 
@@ -191,18 +258,48 @@ with no grinding normalization or independence assumption.
 
 ## Remaining source/Aeneas obligations
 
-The current-revision source bridge still needs at least:
+The current fixed-field reader consumes exactly 641 QM31 values and
+`finish_onefold_relation` calls `fields.finish()` before returning.  The new
+bridge reduces the required current-source theorem to the coordinatewise
+reader projection:
 
 ```lean
 ∃ decoded : Fin 641 → QM31Exact,
-  FixedFieldDecodeExact (fixedTapeRawMessages fixed.base.tape) decoded
+  CurrentSourceFixedFieldProjection
+    fixed.base.runtime.adversaryValue.rawMessages decoded
 ```
 
-plus wire-opening projection and the current-revision equality connecting
-Rust transcript/parser results to the derived K1.3 view.  Rust does not expose
-a pre-answer role trace or total Lean `ExactSchedule`; the canonical schedule
-is constructed mathematically instead.  The stale translated Aeneas bundle is
-not imported.
+`current_source_fixed_field_projection_iff_decode` proves this is exactly
+equivalent to `FixedFieldDecodeExact`, and
+`fixed_clean_root_has_exact_fixed_field_decode_of_current_source` transports
+it through the existing raw-message equality.  This is a minimized source
+obligation, not a theorem currently supplied by Aeneas.
+
+The remaining parsed-wire equality is exactly:
+
+```lean
+ExactOperationalParsedWireProjection input decoded
+```
+
+meaning:
+
+```lean
+exactK13ParsedProof input =
+  derivedK13View input decoded (exactK13ParsedProof input).openings
+```
+
+That equality constructs `ExactParsedProofSourceBinding`; its inverse-table
+field is already discharged by the canonical schedule theorem.  Preferably,
+downstream classifiers should consume `derivedK13View` directly, removing
+this legacy opaque-`rawProof` equality.
+
+The archived accepted-source bundle predates the current transcript/parser
+implementation and leaves the transcript/relation call opaque.  The 20260827
+K1.3 bundle is pinned to `b44fc616` and covers the batch helper, not q16 or the
+packed reader.  Neither is imported as a current-source proof.  A new
+current-revision extraction must cover the sampler methods, transcript prefix
+helpers, semantic/relation loops, q16 scheduler, deferred parser,
+`V6FixedFieldReader::{new,next_qm31,finish}`, and the V7 verifier entrypoint.
 
 If a source trace is added, its minimal ghost output is the existing
 `RawQueryRole` (owner, block, output/advance half), before-state digest, exact
@@ -212,12 +309,28 @@ source/Aeneas observation theorem, not a wire or protocol change.
 
 ## Blocker classification
 
-- Semantic-model deficiency: arbitrary-adversary selected-role discovery and
-  loss of restoration owner/block at scheduler erasure.
-- Source/Aeneas deficiency: current fixed-field/parser/wire equality and role
-  trace are absent.
+- Semantic-model deficiency: arbitrary-adversary selected-role discovery.
+  Prepared restoration owner/block is recoverable by the ghost projection,
+  but the erased scheduler still does not carry it directly.
+- Source/Aeneas deficiency: the current fixed-field/parser/wire equality and
+  the current Rust-to-`VerifierAction` pre-answer role trace are absent.
 - Probability-mathematics deficiency: none identified in the retained K1.5
   numerator/cardinality/sampler results.
 - Genuine protocol limitation: none established; the arbitrary-adversary
   selection issue needs either a stronger counterfactual discovery theorem or
   an explicitly accounted adaptive-query loss, not an assumed role label.
+
+## Focused verification
+
+All timings use `/usr/bin/time -l`; swap was zero for every build.
+
+| Target | Wall | Peak RSS |
+| --- | ---: | ---: |
+| `V7Tag73VerifierActionPreAnswerRoles` | 5.75 s | 5,665,734,656 bytes |
+| `V7Tag73PersistentRoleCacheErasure` | 2.57 s | 798,556,160 bytes |
+| `V7Tag73CurrentSourceDecodeBridge` | 2.63 s | 800,030,720 bytes |
+| `V7Tag73PersistentTranscriptRoleReplay` | 5.46 s | 5,664,931,840 bytes |
+
+The replay prints axioms for every principal theorem.  The complete union is
+`propext`, `Classical.choice`, and `Quot.sound`.  The forbidden-construct scan
+and `git diff --check` are clean.

@@ -1,6 +1,9 @@
 import AspisFormal.K1.V7Tag73PersistentTranscriptRoles
 import AspisFormal.K1.V7Tag73PersistentRoleSelectionObstruction
 import AspisFormal.K1.V7Tag73PreparedRestorationRoles
+import AspisFormal.K1.V7Tag73PersistentRoleCacheErasure
+import AspisFormal.K1.V7Tag73VerifierActionPreAnswerRoles
+import AspisFormal.K1.V7Tag73CurrentSourceDecodeBridge
 import AspisFormal.K1.V7Tag73ExactOperationalHistoryRawCallsAudit
 import AspisFormal.K1.V7Tag73K15CachedCoordinateProvenance
 import AspisFormal.K1.V7Tag73K15FixedCategoryCoordinateInclusions
@@ -24,6 +27,7 @@ namespace AspisK1.V7Tag73PersistentTranscriptRoleReplay
 open AspisK1.V7Tag73PersistentRoleSelectionObstruction
 open AspisK1.V7Tag73ExactOperationalHistoryRawCallsAudit
 open AspisK1.V7Tag73ExactRestoredConcreteK16Assembly
+open AspisK1.V7Tag73CurrentSourceDecodeBridge
 
 #print axioms
   AspisK1.V7Tag73PersistentTranscriptRoles.guarded_install_success_binds_exact_input
@@ -41,6 +45,28 @@ open AspisK1.V7Tag73ExactRestoredConcreteK16Assembly
   AspisK1.V7Tag73PreparedRestorationRoles.ready_preparation_has_pair_role
 #print axioms
   AspisK1.V7Tag73PreparedRestorationRoles.dispatch_prepared_restoration_emits_role_erased_fork
+#print axioms
+  AspisK1.V7Tag73PersistentRoleCacheErasure.successful_cached_query_reads_original_tagged_entry
+#print axioms
+  AspisK1.V7Tag73PersistentRoleCacheErasure.successful_fresh_query_appends_preanswer_tagged_entry
+#print axioms
+  AspisK1.V7Tag73PersistentRoleCacheErasure.successful_program_appends_preanswer_tagged_entry
+#print axioms
+  AspisK1.V7Tag73PersistentRoleCacheErasure.tagged_exact_fixed_root_records_erase
+#print axioms
+  AspisK1.V7Tag73VerifierActionPreAnswerRoles.verifier_action_preanswer_roles_inputs_exact
+#print axioms
+  AspisK1.V7Tag73VerifierActionPreAnswerRoles.verifier_action_program_uses_preanswer_role_inputs
+#print axioms
+  AspisK1.V7Tag73VerifierActionPreAnswerRoles.challenge_sampler_pair_roles_are_preanswer
+#print axioms
+  AspisK1.V7Tag73VerifierActionPreAnswerRoles.q16_sampler_pair_roles_are_preanswer
+#print axioms
+  current_source_fixed_field_projection_iff_decode
+#print axioms
+  fixed_clean_root_has_exact_fixed_field_decode_of_current_source
+#print axioms
+  exact_parsed_proof_source_binding_of_operational_projection
 #print axioms
   exact_operational_verifier_history_eq_canonical_pairs
 #print axioms
