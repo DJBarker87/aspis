@@ -85,6 +85,13 @@ v7-pair-forest-fixed-canonical-audit = [
     "aspis-statement/pool-v1-kernel",
     "aspis-core/v7-fixed-canonical-audit",
 ]
+# Audit-only exact linear factoring inside the selected semantic terminal.
+# Four digest residual lanes are packed before their shared row selector is
+# applied. Wire bytes, transcript order, theta lanes, and relation parameters
+# are unchanged; released/default builds do not enable this experiment.
+v7-pair-forest-packed-digest-audit = [
+    "aspis-statement/pool-v1-pair-forest-packed-digest-audit",
+]
 # Audit-only hot decoder for selected lane PDAs owned by the exact Pool
 # release. It keeps every canonical/account/PDA check and omits only the
 # persisted active root/frontier Poseidon reconstruction, which is an
