@@ -136,6 +136,58 @@ theorem first_success_body_select_inverts
                       cases run
                       exact ⟨counter, returnedIter, rfl, candidateRun⟩
 
+/-- An actual successful range `next` call exposes its current counter and
+the exact successor range.  This is an inversion of translated iterator
+control flow, not an arithmetic convention about loop indices. -/
+theorem range_next_some_is_exact_successor
+    (iter nextIter : core.ops.range.Range Std.U8) (counter : Std.U8)
+    (run : core.iter.range.IteratorRange.next core.iter.range.StepU8 iter =
+      .ok (some counter, nextIter)) :
+    counter = iter.start ∧
+      nextIter.start.val = iter.start.val + 1 ∧
+      nextIter.end = iter.end ∧
+      iter.start.val < iter.end.val := by
+  have active : iter.start.val < iter.end.val := by
+    by_contra inactive
+    have endLeStart : iter.end.val ≤ iter.start.val := by omega
+    obtain ⟨⟨option, noNext⟩, noRun, optionExact, nextExact⟩ :=
+      WP.spec_imp_exists
+        (core.iter.range.IteratorRange.next_UScalar_none_spec
+          (ty := .U8)
+          (partialOrdInst := core.cmp.PartialOrdU8)
+          (by intro left right; rfl) iter endLeStart)
+    rw [optionExact, nextExact] at noRun
+    rw [noRun] at run
+    simp only [Result.ok.injEq] at run
+    have differentOptions : (none : Option Std.U8) = some counter :=
+      congrArg Prod.fst run
+    cases differentOptions
+  obtain ⟨⟨option, canonicalNext⟩, canonicalRun, optionExact,
+    canonicalStart, canonicalEnd⟩ :=
+    WP.spec_imp_exists
+      (core.iter.range.IteratorRange.next_UScalar_some_spec
+        (ty := .U8)
+        (cloneInst := core.clone.CloneU8)
+        (partialOrdInst := core.cmp.PartialOrdU8)
+        (by intro value; rfl)
+        (by intro left right; rfl)
+        iter active)
+  rw [optionExact] at canonicalRun
+  have exact : (some counter, nextIter) =
+      (some iter.start, canonicalNext) := by
+    exact Result.ok.inj (run.symm.trans canonicalRun)
+  constructor
+  · exact Option.some.inj (congrArg Prod.fst exact)
+  constructor
+  · have nextExact : nextIter = canonicalNext := congrArg Prod.snd exact
+    rw [nextExact]
+    exact canonicalStart
+  constructor
+  · have nextExact : nextIter = canonicalNext := congrArg Prod.snd exact
+    rw [nextExact]
+    exact canonicalEnd
+  · exact active
+
 /-- If the loop ultimately returns a schedule whose embedded counter is later
 than the current range start, the current literal body must have continued.
 It cannot have selected a different candidate first. -/
@@ -284,6 +336,7 @@ decreasing_by
 
 #print axioms first_success_body_continue_inverts
 #print axioms first_success_body_select_inverts
+#print axioms range_next_some_is_exact_successor
 #print axioms first_success_loop_at_earlier_start_continues
 #print axioms first_success_loop_exposes_all_prior_none
 #print axioms candidate_success_some_retains_counter
