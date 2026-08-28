@@ -448,6 +448,9 @@ pub fn verify_v7_pool_pair_forest_private_transfer_canonical_with_statement_dige
     statement_digest: [u8; 32],
     check_pow: bool,
 ) -> Result<VerifiedV7ReadOnly, V7VerifyError> {
+    #[cfg(feature = "v7-pair-forest-fixed-canonical-exact-once-audit")]
+    let wire = V7CanonicalOneFoldWire::parse_deferred_query_canonicality(proof, frontier_nodes)?;
+    #[cfg(not(feature = "v7-pair-forest-fixed-canonical-exact-once-audit"))]
     let wire = V7CanonicalOneFoldWire::parse(proof, frontier_nodes)?;
     let context = V6TranscriptContext {
         program_id: program_id.to_bytes(),
@@ -488,6 +491,9 @@ pub fn verify_v7_pool_pair_forest_withdrawal_canonical_with_statement_digest(
     statement_digest: [u8; 32],
     check_pow: bool,
 ) -> Result<VerifiedV7ReadOnly, V7VerifyError> {
+    #[cfg(feature = "v7-pair-forest-fixed-canonical-exact-once-audit")]
+    let wire = V7CanonicalOneFoldWire::parse_deferred_query_canonicality(proof, frontier_nodes)?;
+    #[cfg(not(feature = "v7-pair-forest-fixed-canonical-exact-once-audit"))]
     let wire = V7CanonicalOneFoldWire::parse(proof, frontier_nodes)?;
     let context = V6TranscriptContext {
         program_id: program_id.to_bytes(),

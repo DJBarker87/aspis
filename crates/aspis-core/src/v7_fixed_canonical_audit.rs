@@ -12,8 +12,8 @@ use crate::state_only_spend_query::StateOnlySpendQueryPowers;
 use crate::v6_onefold::{
     gamma_combine_v6_packed_layer0, validate_packed_m31, V6FixedFieldStream, V6WireError,
     V6_C1_LIMBS_PER_QUERY, V6_C1_PACKED_BYTES_PER_QUERY, V6_C2_LIMBS_PER_QUERY,
-    V6_C2_PACKED_BYTES_PER_QUERY, V6_FIXED_PACKED_FIELD_BYTES, V6_FIXED_QM31_VALUES,
-    V6_QUERY_COUNT, V6_WORK_NONCE_BYTES,
+    V6_C2_PACKED_BYTES_PER_QUERY, V6_FIXED_M31_LIMBS, V6_FIXED_PACKED_FIELD_BYTES,
+    V6_FIXED_QM31_VALUES, V6_QUERY_COUNT, V6_WORK_NONCE_BYTES,
 };
 use crate::v7_merkle208::{
     private_leaf_hash_v7, verify_two_minimal_subtrees_v7_bytes, V7Digest, V7_C1_TREE_TAG,
@@ -32,6 +32,9 @@ pub const V7_CANONICAL_BODY_WITHOUT_FRONTIERS: usize = V7_CANONICAL_FIXED_BYTES
     + 2 * V7_COMPACT_DIGEST_BYTES
     + V6_WORK_NONCE_BYTES
     + V7_COMPACT_QUERY_SECTION_BYTES;
+pub const V7_CANONICAL_QUERY_M31_LIMBS: usize =
+    V6_QUERY_COUNT * (V6_C1_LIMBS_PER_QUERY + V6_C2_LIMBS_PER_QUERY);
+pub const V7_CANONICAL_TOTAL_M31_LIMBS: usize = V6_FIXED_M31_LIMBS + V7_CANONICAL_QUERY_M31_LIMBS;
 
 #[derive(Clone, Copy)]
 pub(crate) struct V7CanonicalFixedFieldReader<'a> {
@@ -90,6 +93,30 @@ pub struct V7CanonicalOneFoldWire<'a> {
 
 impl<'a> V7CanonicalOneFoldWire<'a> {
     pub fn parse(bytes: &'a [u8], frontier_nodes: usize) -> Result<Self, V6WireError> {
+        let wire = Self::parse_deferred_query_canonicality(bytes, frontier_nodes)?;
+        for ordinal in 0..V6_QUERY_COUNT {
+            let record = wire
+                .query(ordinal)
+                .ok_or(V6WireError::InvalidQuerySchedule)?;
+            validate_packed_m31(record.c1_packed, V6_C1_LIMBS_PER_QUERY)?;
+            validate_packed_m31(record.c2_packed, V6_C2_LIMBS_PER_QUERY)?;
+        }
+        Ok(wire)
+    }
+
+    /// Parse exact section boundaries for the +320-byte fixed-field audit
+    /// grammar while deferring packed-query canonicality to the sole consumer
+    /// that decodes and gamma-combines every query record.
+    ///
+    /// This is not a permissive parser: the fixed reader checks all 2,564
+    /// fixed limbs before `finish`, and `gamma_combine_v6_packed_layer0`
+    /// checks all 2,432 query limbs before an opening can authenticate.  The
+    /// full [`Self::parse`] remains available to standalone callers that do
+    /// not promise complete proof consumption.
+    pub fn parse_deferred_query_canonicality(
+        bytes: &'a [u8],
+        frontier_nodes: usize,
+    ) -> Result<Self, V6WireError> {
         if frontier_nodes > V7_COMPACT_FRONTIER_CAP_PER_TREE {
             return Err(V6WireError::FrontierTooLarge);
         }
@@ -108,13 +135,6 @@ impl<'a> V7CanonicalOneFoldWire<'a> {
         let (work_nonces, rest) = rest.split_at(V6_WORK_NONCE_BYTES);
         let (query_section, rest) = rest.split_at(V7_COMPACT_QUERY_SECTION_BYTES);
         let (c1_frontier, c2_frontier) = rest.split_at(frontier_bytes);
-        for ordinal in 0..V6_QUERY_COUNT {
-            let start = ordinal * V7_COMPACT_QUERY_BYTES;
-            let c1_end = start + V6_C1_PACKED_BYTES_PER_QUERY;
-            let c2_end = c1_end + V6_C2_PACKED_BYTES_PER_QUERY;
-            validate_packed_m31(&query_section[start..c1_end], V6_C1_LIMBS_PER_QUERY)?;
-            validate_packed_m31(&query_section[c1_end..c2_end], V6_C2_LIMBS_PER_QUERY)?;
-        }
         // Canonicality is checked lazily by the one-pass transcript reader;
         // every one of the 641 records is consumed before acceptance.
         V7CanonicalFixedFieldReader::new(fixed_fields)?;
@@ -218,11 +238,107 @@ pub fn transcode_tag73_to_canonical_fixed(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::field::P;
+    use alloc::vec;
+
+    fn overwrite_packed_m31(bytes: &mut [u8], limb: usize, value: u32) {
+        let bit_start = 31 * limb;
+        for bit in 0..31 {
+            let output = bit_start + bit;
+            let mask = 1u8 << (output % 8);
+            if (value >> bit) & 1 == 0 {
+                bytes[output / 8] &= !mask;
+            } else {
+                bytes[output / 8] |= mask;
+            }
+        }
+    }
 
     #[test]
     fn canonical_fixed_delta_is_exactly_320_bytes() {
         assert_eq!(V6_FIXED_PACKED_FIELD_BYTES, 9_936);
         assert_eq!(V7_CANONICAL_FIXED_BYTES, 10_256);
         assert_eq!(V7_CANONICAL_FIXED_DELTA_BYTES, 320);
+        assert_eq!(V6_FIXED_M31_LIMBS, 2_564);
+        assert_eq!(V7_CANONICAL_QUERY_M31_LIMBS, 2_432);
+        assert_eq!(V7_CANONICAL_TOTAL_M31_LIMBS, 4_996);
+    }
+
+    #[test]
+    fn exact_once_fixed_reader_rejects_each_of_2564_noncanonical_limbs() {
+        let mut fixed = vec![0u8; V7_CANONICAL_FIXED_BYTES];
+        for ordinal in 0..V6_FIXED_QM31_VALUES {
+            for limb in 0..4 {
+                fixed[16 * ordinal + 4 * limb..16 * ordinal + 4 * limb + 4]
+                    .copy_from_slice(&P.to_le_bytes());
+                let mut reader = V7CanonicalFixedFieldReader::new(&fixed).unwrap();
+                for _ in 0..ordinal {
+                    reader.next_qm31().unwrap();
+                }
+                assert_eq!(reader.next_qm31(), Err(V6WireError::NonCanonicalM31));
+                fixed[16 * ordinal + 4 * limb..16 * ordinal + 4 * limb + 4].fill(0);
+            }
+        }
+    }
+
+    #[test]
+    fn deferred_query_parser_leaves_all_2432_limbs_to_checked_gamma_consumer() {
+        let mut proof = vec![0u8; V7_CANONICAL_BODY_WITHOUT_FRONTIERS];
+        let query_start =
+            V7_CANONICAL_FIXED_BYTES + 2 * V7_COMPACT_DIGEST_BYTES + V6_WORK_NONCE_BYTES;
+        let powers = StateOnlySpendQueryPowers::new(QM31::ONE);
+        for ordinal in 0..V6_QUERY_COUNT {
+            let record_start = query_start + ordinal * V7_COMPACT_QUERY_BYTES;
+            for limb in 0..V6_C1_LIMBS_PER_QUERY + V6_C2_LIMBS_PER_QUERY {
+                let (section_start, section_limb) = if limb < V6_C1_LIMBS_PER_QUERY {
+                    (record_start, limb)
+                } else {
+                    (
+                        record_start + V6_C1_PACKED_BYTES_PER_QUERY,
+                        limb - V6_C1_LIMBS_PER_QUERY,
+                    )
+                };
+                let section_len = if limb < V6_C1_LIMBS_PER_QUERY {
+                    V6_C1_PACKED_BYTES_PER_QUERY
+                } else {
+                    V6_C2_PACKED_BYTES_PER_QUERY
+                };
+                overwrite_packed_m31(
+                    &mut proof[section_start..section_start + section_len],
+                    section_limb,
+                    P,
+                );
+                let wire =
+                    V7CanonicalOneFoldWire::parse_deferred_query_canonicality(&proof, 0).unwrap();
+                let record = wire.query(ordinal).unwrap();
+                assert_eq!(
+                    gamma_combine_v6_packed_layer0(record.c1_packed, record.c2_packed, &powers,),
+                    Err(V6WireError::NonCanonicalM31),
+                    "ordinal {ordinal} limb {limb}",
+                );
+                overwrite_packed_m31(
+                    &mut proof[section_start..section_start + section_len],
+                    section_limb,
+                    0,
+                );
+            }
+        }
+    }
+
+    #[test]
+    fn standalone_parser_keeps_eager_query_teeth() {
+        let mut proof = vec![0u8; V7_CANONICAL_BODY_WITHOUT_FRONTIERS];
+        let query_start =
+            V7_CANONICAL_FIXED_BYTES + 2 * V7_COMPACT_DIGEST_BYTES + V6_WORK_NONCE_BYTES;
+        overwrite_packed_m31(
+            &mut proof[query_start..query_start + V6_C1_PACKED_BYTES_PER_QUERY],
+            0,
+            P,
+        );
+        assert!(V7CanonicalOneFoldWire::parse_deferred_query_canonicality(&proof, 0).is_ok());
+        assert_eq!(
+            V7CanonicalOneFoldWire::parse(&proof, 0),
+            Err(V6WireError::NonCanonicalM31)
+        );
     }
 }
