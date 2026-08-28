@@ -20,6 +20,7 @@ open AspisV5QuerySamplerControl
 open AspisK1.V7Tag73TranscriptSchedule
 open AspisK1.V7Tag73SamplerDecoder
 open AspisK1.V7Tag73Q16DeployedDecoderPrefixBridge
+open AspisK1.V7Tag73Q16SemanticFrontierBridge
 
 abbrev Transcript := transcript.Transcript
 
@@ -609,11 +610,43 @@ theorem raw_candidate_constructs_exact_decoded_schedule
   · exact raw_queries_eq_decoded_schedule inputTranscript sourceCounter
       output raw counter digests schedule decoded sampledValues
 
+/-- Candidate-level caller closure with no assumed raw-array/schedule
+equality.  Literal translated success constructs the decoded schedule and
+therefore fixes the translated frontier to the semantic recurrence. -/
+theorem candidate_success_constructs_exact_decoded_frontier
+    (inputTranscript : Transcript) (sourceCounter : Std.U8)
+    (output : Option v7_onefold.V7CompactQuerySchedule)
+    (success :
+      v7_onefold.derive_v7_compact_candidate inputTranscript sourceCounter =
+        .ok (.Ok output))
+    (counterBound : sourceCounter.val < 64)
+    (hashSucceeds :
+      V7FirstCompactSqueezeSourceBridge.HashCallbackAlwaysSucceeds
+        (candidate_success_exposes_raw_execution inputTranscript sourceCounter
+          output success).absorbed.hash) :
+    let raw := candidate_success_exposes_raw_execution inputTranscript
+      sourceCounter output success
+    ∃ (blocks : List SourceSqueezeBlock) (schedule : QuerySchedule),
+      NativeExactSqueezeTrace raw.absorbed blocks raw.sampledTranscript ∧
+      decodeCandidateOutcome ⟨sourceCounter.val, counterBound⟩
+          (sourceTraceDigests blocks) = some (.schedule schedule) ∧
+      raw.queries = queryScheduleArray schedule ∧
+      raw.frontier.val = semanticFrontierNodes schedule.positions := by
+  let raw := candidate_success_exposes_raw_execution inputTranscript
+    sourceCounter output success
+  obtain ⟨blocks, schedule, trace, decoded, queriesExact⟩ :=
+    raw_candidate_constructs_exact_decoded_schedule inputTranscript
+      sourceCounter output raw hashSucceeds ⟨sourceCounter.val, counterBound⟩
+  have frontierExact := raw_candidate_frontier_matches_semantic
+    inputTranscript sourceCounter output raw schedule queriesExact
+  exact ⟨blocks, schedule, trace, decoded, queriesExact, frontierExact⟩
+
 #print axioms nativeCandidateBlocks_flatten_eq_trace_words
 #print axioms scanBlocks_success_accepted_eq_scanUntil_take_flatten
 #print axioms successful_native_block_scan_eq_scanQ16
 #print axioms successful_native_block_scan_draws_eq_scanQ16
 #print axioms raw_candidate_sampled_eq_trace_scanQ16
 #print axioms raw_candidate_constructs_exact_decoded_schedule
+#print axioms candidate_success_constructs_exact_decoded_frontier
 
 end V7FirstCompactSamplerK13PositionBridge
