@@ -1,0 +1,16 @@
+Focused compiled-source scan: PASS
+
+Scanned:
+  generated/V7ForestLaneInvariant/Types.lean
+  generated/V7ForestLaneInvariant/Funs.lean
+  generated/V7ForestLaneInvariant/FunsExternal.lean
+  proof/*.lean
+
+Forbidden constructs absent:
+  sorry
+  admit
+  native_decide
+  axiom declarations
+
+The generated FunsExternal_Template.lean is archived extraction evidence, is
+not imported, and is excluded from the compiled-source claim.

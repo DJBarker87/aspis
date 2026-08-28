@@ -3,8 +3,9 @@
 Date: 2026-08-27
 
 Status: production-inactive candidate. The exact arithmetic/layout gate is
-Lean-checked. The complete-view masking-rank gate is still required before
-this design may enter the prover or verifier.
+Lean-checked and the exact complete-view masking-rank gate passed on the NUC.
+Honest proof replay, feature-enabled SBF build/CU, source bridges and final
+activation are still required.
 
 ## Decision target
 
@@ -62,8 +63,57 @@ ten-block physical tail:
 Within every direction block, base rows are local rows 1, 5, 9 and 13;
 successor rows are 2, 6, 10 and 14; sibling rows are 3, 7, 11 and 15. This
 leaves complete local rows 0, 4, 8 and 12 available to the mask inventory.
-The exact candidate contains 136 copy links, 214 copy-active rows and 3,611
+The exact candidate contains 136 copy links, 214 copy-active rows and 3,803
 relation-free mask cells.
+
+The frozen layout bindings are:
+
+- active-row fingerprint `0xdf394a5a8554d09c`;
+- copy-schedule fingerprint `0x480809b836778dc6`;
+- relation-free-mask fingerprint `0xf9daf3d54f4285d1`.
+
+The optimized exact NUC gate
+`pool_pair_forest_exact_layout_spans_complete_root_message_view` passed on
+2026-08-28. It used q16 and the frozen V6 log-20 root/message opening sequence,
+reported sumcheck rank `1080/1084`, joint PCS rank `4092/4360`, ambient deficit
+268, and returned `Some(true)` for physical, legal and helper witness
+containment. The test body took 1,187.279 seconds; the cgroup recorded 1.2 GiB
+peak memory and zero swap. This is the exact fixed-schedule masking gate. It is
+not a replacement for the separate random-schedule bad-event theorem.
+
+The focused Lean target `AspisFormal.V7PairForestGatedMerkle` also passed on
+the NUC. It proves that each Boolean-gated selected child is exactly the
+running digest, the other node child is an existential sibling, and the
+resulting block is one ordinary typed Merkle `Parent` step. Both exported
+theorems report only `propext`, `Classical.choice`, and `Quot.sound`; there is
+no project axiom or `sorry`. The cached focused build took 17.30 seconds,
+peaked at 6,430,728 KiB RSS, and used zero swap.
+
+The first honest eight-lane private-transfer proof also passed generation and
+host-verifier replay on the exact profile. Its compact body is 30,348 bytes
+with 200 nodes in each shared-topology frontier, 156 bytes below the frozen
+30,504-byte maximum. The focused release test body took 15.67 seconds; the
+complete cached Cargo invocation took 1:45.90, peaked at 471,696 KiB RSS, and
+used zero swap.
+
+The default-off verifier feature `v7-pair-forest-asq8` now builds for SBF with
+the pinned Solana 3.1.12 toolchain. The original composed validator exposed a
+9,344-byte frame; account images, the live snapshot and statement construction
+were split across heap-backed non-inlined phases. The final feature build emits
+no stack-offset diagnostic, exited zero in 3.76 seconds from the warm cache,
+peaked at 271,932 KiB RSS, and used zero swap. This is a build/stack gate, not
+yet an on-chain acceptance or CU measurement.
+
+The paired Pool feature `pair-forest-account-evidence` is also stack-clean for
+SBF. The first audit found four oversized forest frames: terminal 12,800
+bytes, deposit 5,952 bytes, initialize 5,952 bytes and checkpoint planning
+4,224 bytes. Request/state/result images and lifecycle output images were
+split into heap-backed non-inlined phases. The final build emits no stack
+offset diagnostic for any forest entrypoint. Focused initialize, genesis and
+rollover deposit, checkpoint, transfer and withdrawal tests pass. The warm
+feature build exited zero in 3.01 seconds, peaked at 267,036 KiB RSS and used
+zero swap. This remains a build gate; positive Pool-to-verifier CPI execution
+and combined CU are the next runtime gates.
 
 ## State and transaction model
 
@@ -142,7 +192,7 @@ expensive preconstructed proof to be regenerated.
 
 ## Required gates
 
-1. Complete-view masking rank for the exact physical layout.
+1. **Passed:** complete-view masking rank for the exact physical layout.
 2. Exact three-parent Poseidon relation and copy-registry integration using
    the frozen `merkle_node_compress_v3` parent byte-for-byte, with fixed lane
    ordering and layer roles proved at the statement boundary.
@@ -153,7 +203,9 @@ expensive preconstructed proof to be regenerated.
 5. Source checks that a checkpoint reads the eight canonical lane PDAs in one
    instruction, fixes their order, recomputes all seven parents and updates
    global history monotonically and idempotently.
-6. Honest prover/verifier round trip, same-lane stale rejection,
+6. **Partially passed:** honest prover/direct-verifier round trip and
+   feature-enabled stack-clean SBF build. Still required: positive ASQ8/ASR8
+   SBF execution, same-lane stale rejection,
    different-lane survival, global nullifier replay rejection, rollback on
    every late failure, and one-terminal SBF CU measurement.
 7. Aeneas caller bridges and the end-to-end K1.2--K1.6 composition.

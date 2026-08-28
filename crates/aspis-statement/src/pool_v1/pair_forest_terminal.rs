@@ -4,10 +4,13 @@
 //! independently of the legacy single-tree Pool terminal. No verifier tag,
 //! proof profile, dispatch entry, account mutation, or CPI path consumes them.
 
+use alloc::boxed::Box;
+
 use aspis_core::field::{M31, P};
 
 use crate::{decode_digest_canonical, encode_digest_canonical, poseidon2::Digest};
 
+use super::pair_tree_profile::decode_pool_v1_pair_late_public_statement_boxed_v1;
 use super::{
     decode_pool_v1_pair_late_public_statement_v1, decode_pool_v1_pair_verified_afterstate_v1,
     decode_pool_v1_private_transfer_public_v1, decode_pool_v1_withdrawal_public_v1,
@@ -311,29 +314,27 @@ pub fn encode_pool_v1_pair_forest_terminal_statement_v1(
     Ok(output)
 }
 
-pub fn decode_pool_v1_pair_forest_terminal_statement_v1(
+#[inline(never)]
+fn decode_lane_transition_boxed_v1(
     bytes: &[u8],
-) -> Result<PoolV1PairForestTerminalStatementV1, PoolV1PairForestTerminalFormatErrorV1> {
-    if bytes.len() != POOL_V1_PAIR_FOREST_TERMINAL_STATEMENT_BYTES {
-        return Err(PoolV1PairForestTerminalFormatErrorV1::WrongLength);
-    }
-    if bytes[..4] != POOL_V1_PAIR_FOREST_TERMINAL_STATEMENT_MAGIC {
-        return Err(PoolV1PairForestTerminalFormatErrorV1::WrongMagic);
-    }
-    if bytes[4] != POOL_V1_PAIR_FOREST_TERMINAL_VERSION {
-        return Err(PoolV1PairForestTerminalFormatErrorV1::WrongVersion);
-    }
-    let kind = transition_kind(bytes[5])?;
-    if bytes[6] != POOL_V1_DIGEST_ENCODING_VERSION {
-        return Err(PoolV1PairForestTerminalFormatErrorV1::WrongDigestEncoding);
-    }
+) -> Result<Box<PoolV1PairLatePublicStatementV1>, PoolV1PairForestTerminalFormatErrorV1> {
+    decode_pool_v1_pair_late_public_statement_boxed_v1(bytes)
+        .map_err(PoolV1PairForestTerminalFormatErrorV1::LaneTransition)
+}
+
+#[inline(never)]
+fn decode_terminal_common_boxed_v1(
+    bytes: &[u8],
+) -> Result<Box<PoolV1PairForestTerminalCommonV1>, PoolV1PairForestTerminalFormatErrorV1> {
     let historical_global_anchor = decode_digest_canonical(
         bytes[HISTORICAL_ANCHOR_OFFSET..LATE_STATEMENT_OFFSET]
             .try_into()
             .map_err(|_| PoolV1PairForestTerminalFormatErrorV1::WrongLength)?,
     )
     .map_err(|_| PoolV1PairForestTerminalFormatErrorV1::NonCanonicalDigest)?;
-    let common = PoolV1PairForestTerminalCommonV1 {
+    let lane_transition =
+        decode_lane_transition_boxed_v1(&bytes[LATE_STATEMENT_OFFSET..PAYMENT_STATEMENT_OFFSET])?;
+    Ok(Box::new(PoolV1PairForestTerminalCommonV1 {
         master_account: bytes[MASTER_OFFSET..CHECKPOINT_ACCOUNT_OFFSET]
             .try_into()
             .map_err(|_| PoolV1PairForestTerminalFormatErrorV1::WrongLength)?,
@@ -350,29 +351,68 @@ pub fn decode_pool_v1_pair_forest_terminal_statement_v1(
                 .map_err(|_| PoolV1PairForestTerminalFormatErrorV1::WrongLength)?,
         ),
         historical_global_anchor,
-        lane_transition: decode_pool_v1_pair_late_public_statement_v1(
-            &bytes[LATE_STATEMENT_OFFSET..PAYMENT_STATEMENT_OFFSET],
-        )
-        .map_err(|error| PoolV1PairForestTerminalFormatErrorV1::LaneTransition(error))?,
-    };
+        lane_transition: *lane_transition,
+    }))
+}
+
+#[inline(never)]
+fn decode_transfer_statement_boxed_v1(
+    common: Box<PoolV1PairForestTerminalCommonV1>,
+    payment: &[u8],
+) -> Result<Box<PoolV1PairForestTerminalStatementV1>, PoolV1PairForestTerminalFormatErrorV1> {
+    let public = decode_pool_v1_private_transfer_public_v1(payment)
+        .map_err(PoolV1PairForestTerminalFormatErrorV1::Payment)?;
+    Ok(Box::new(
+        PoolV1PairForestTerminalStatementV1::PrivateTransfer {
+            common: *common,
+            public,
+        },
+    ))
+}
+
+#[inline(never)]
+fn decode_withdrawal_statement_boxed_v1(
+    common: Box<PoolV1PairForestTerminalCommonV1>,
+    payment: &[u8],
+) -> Result<Box<PoolV1PairForestTerminalStatementV1>, PoolV1PairForestTerminalFormatErrorV1> {
+    let public = decode_pool_v1_withdrawal_public_v1(payment)
+        .map_err(PoolV1PairForestTerminalFormatErrorV1::Payment)?;
+    Ok(Box::new(PoolV1PairForestTerminalStatementV1::Withdrawal {
+        common: *common,
+        public,
+    }))
+}
+
+pub fn decode_pool_v1_pair_forest_terminal_statement_v1(
+    bytes: &[u8],
+) -> Result<PoolV1PairForestTerminalStatementV1, PoolV1PairForestTerminalFormatErrorV1> {
+    if bytes.len() != POOL_V1_PAIR_FOREST_TERMINAL_STATEMENT_BYTES {
+        return Err(PoolV1PairForestTerminalFormatErrorV1::WrongLength);
+    }
+    if bytes[..4] != POOL_V1_PAIR_FOREST_TERMINAL_STATEMENT_MAGIC {
+        return Err(PoolV1PairForestTerminalFormatErrorV1::WrongMagic);
+    }
+    if bytes[4] != POOL_V1_PAIR_FOREST_TERMINAL_VERSION {
+        return Err(PoolV1PairForestTerminalFormatErrorV1::WrongVersion);
+    }
+    let kind = transition_kind(bytes[5])?;
+    if bytes[6] != POOL_V1_DIGEST_ENCODING_VERSION {
+        return Err(PoolV1PairForestTerminalFormatErrorV1::WrongDigestEncoding);
+    }
+    // Decode each large layer behind a no-inline heap boundary. This keeps
+    // the full ASF8 fallback available on SBF without overlapping the late
+    // transition, common object and final enum in one 4-KiB frame.
+    let common = decode_terminal_common_boxed_v1(bytes)?;
     let statement = match kind {
         PoolV1TransitionKind::PrivateTransfer => {
-            PoolV1PairForestTerminalStatementV1::PrivateTransfer {
-                common,
-                public: decode_pool_v1_private_transfer_public_v1(
-                    &bytes[PAYMENT_STATEMENT_OFFSET..],
-                )
-                .map_err(|error| PoolV1PairForestTerminalFormatErrorV1::Payment(error))?,
-            }
+            decode_transfer_statement_boxed_v1(common, &bytes[PAYMENT_STATEMENT_OFFSET..])?
         }
-        PoolV1TransitionKind::Withdrawal => PoolV1PairForestTerminalStatementV1::Withdrawal {
-            common,
-            public: decode_pool_v1_withdrawal_public_v1(&bytes[PAYMENT_STATEMENT_OFFSET..])
-                .map_err(|error| PoolV1PairForestTerminalFormatErrorV1::Payment(error))?,
-        },
+        PoolV1TransitionKind::Withdrawal => {
+            decode_withdrawal_statement_boxed_v1(common, &bytes[PAYMENT_STATEMENT_OFFSET..])?
+        }
     };
     validate_pool_v1_pair_forest_terminal_statement_v1(&statement)?;
-    Ok(statement)
+    Ok(*statement)
 }
 
 pub fn encode_pool_v1_pair_forest_terminal_request_v1(

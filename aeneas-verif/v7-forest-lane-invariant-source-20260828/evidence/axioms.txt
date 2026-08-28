@@ -1,0 +1,15 @@
+Every focused #print axioms result is a subset of:
+
+  propext
+  Classical.choice
+  Quot.sound
+
+The strongest caller theorems report exactly that set:
+
+  V7ForestLaneInvariantGenerated.translated_hot_decode_has_complete_activation_boundary
+  V7ForestLaneInvariantGenerated.translated_write_to_fast_decode_activation
+
+No project-specific axiom occurs in any compiled generated/proof source.
+The archived, unimported Aeneas FunsExternal_Template.lean contains only its
+standard Option equality template; imported FunsExternal.lean implements that
+operation transparently.

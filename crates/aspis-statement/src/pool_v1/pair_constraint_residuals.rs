@@ -64,7 +64,7 @@ pub const POOL_V1_PAIR_PATH_ORDERING_RESIDUAL_COUNT: usize =
     POOL_V1_PAIR_PRIVATE_DIRECTIONS * DIGEST_ELEMS * 2;
 pub const POOL_V1_PAIR_VALUE_BOOLEAN_RESIDUAL_COUNT: usize =
     POOL_V1_PAIR_VALUE_COUNT * POOL_V1_PAIR_VALUE_BITS;
-pub const POOL_V1_PAIR_OCCUPANCY_RESIDUAL_COUNT: usize = 23;
+pub const POOL_V1_PAIR_OCCUPANCY_RESIDUAL_COUNT: usize = 24;
 pub const POOL_V1_PAIR_TRANSFER_PUBLIC_RESIDUAL_COUNT: usize = 4 * DIGEST_ELEMS + 3;
 pub const POOL_V1_PAIR_WITHDRAWAL_PUBLIC_RESIDUAL_COUNT: usize = 3 * DIGEST_ELEMS + 3;
 pub const POOL_V1_PAIR_APPEND_PATH_RESIDUAL_COUNT: usize =
@@ -75,8 +75,8 @@ pub const POOL_V1_PAIR_CANDIDATE_FRONTIER_RESIDUAL_COUNT: usize =
 pub const POOL_V1_PAIR_INDEX_SEQUENCE_RESIDUAL_COUNT: usize = 2;
 pub const POOL_V1_PAIR_ZERO_PADDING_RESIDUAL_COUNT: usize =
     POOL_V1_PAIR_RELATION_FREE_MASK_CELLS_V1;
-pub const POOL_V1_PAIR_TRANSFER_TOTAL_RESIDUAL_COUNT: usize = 17_848;
-pub const POOL_V1_PAIR_WITHDRAWAL_TOTAL_RESIDUAL_COUNT: usize = 17_858;
+pub const POOL_V1_PAIR_TRANSFER_TOTAL_RESIDUAL_COUNT: usize = 17_849;
+pub const POOL_V1_PAIR_WITHDRAWAL_TOTAL_RESIDUAL_COUNT: usize = 17_859;
 
 const _: () = assert!(POOL_V1_PAIR_TWO_ROUND_INTRINSIC_DEGREE == 25);
 const _: () = assert!(POOL_V1_PAIR_MAX_INTRINSIC_DEGREE == 25);
@@ -519,7 +519,11 @@ fn append_one_occupancy_row(trace: &StateOnlyTraceFoundation, row: usize, output
     }
 }
 
-fn append_occupancy_residuals(trace: &StateOnlyTraceFoundation, output: &mut Vec<M31>) {
+fn append_occupancy_residuals(
+    trace: &StateOnlyTraceFoundation,
+    variant: PairVariant,
+    output: &mut Vec<M31>,
+) {
     append_one_occupancy_row(trace, POOL_V1_PAIR_INPUT_OCCUPANCY_AUX_ROW, output);
     append_one_occupancy_row(trace, POOL_V1_PAIR_OUTPUT_OCCUPANCY_AUX_ROW, output);
     let input_occupied = row_cell(trace, POOL_V1_PAIR_INPUT_OCCUPANCY_AUX_ROW, 0);
@@ -529,6 +533,12 @@ fn append_occupancy_residuals(trace: &StateOnlyTraceFoundation, output: &mut Vec
         POOL_V1_PAIR_INPUT_SELECTED_SIDE_COLUMN,
     );
     output.push(selected.mul(M31::ONE.sub(input_occupied)));
+    let output_occupied = row_cell(trace, POOL_V1_PAIR_OUTPUT_OCCUPANCY_AUX_ROW, 0);
+    let expected = M31(u32::from(variant == PairVariant::PrivateTransfer));
+    // This variant gate is essential: a withdrawal appends exactly one note,
+    // while a private transfer appends exactly two. Occupancy validity alone
+    // would otherwise permit an unaccounted spendable second withdrawal note.
+    output.push(output_occupied.sub(expected));
 }
 
 fn append_public_binding_residuals(
@@ -701,7 +711,7 @@ fn evaluate_pair_constraint_residuals(
     append_path_residuals(trace, &mut direction_booleanity, &mut path_ordering);
     let (value_booleanity, value_recomposition, conservation) = evaluate_value_residuals(trace);
     let mut occupancy = Vec::with_capacity(POOL_V1_PAIR_OCCUPANCY_RESIDUAL_COUNT);
-    append_occupancy_residuals(trace, &mut occupancy);
+    append_occupancy_residuals(trace, public.variant, &mut occupancy);
     let expected_public = match public.variant {
         PairVariant::PrivateTransfer => POOL_V1_PAIR_TRANSFER_PUBLIC_RESIDUAL_COUNT,
         PairVariant::Withdrawal => POOL_V1_PAIR_WITHDRAWAL_PUBLIC_RESIDUAL_COUNT,
@@ -1036,7 +1046,7 @@ mod tests {
             assert_eq!(residuals.schedule.len(), 978);
             assert_eq!(residuals.copy_aliases.len(), 2_032);
             assert_eq!(residuals.path_ordering.len(), 336);
-            assert_eq!(residuals.occupancy.len(), 23);
+            assert_eq!(residuals.occupancy.len(), 24);
             assert_eq!(residuals.public_bindings.len(), 35);
             assert_eq!(residuals.append_path_bindings.len(), 320);
             assert_eq!(residuals.candidate_frontier.len(), 160);
@@ -1102,6 +1112,42 @@ mod tests {
         )
         .unwrap();
         assert_nonzero(&changed, PoolV1PairResidualClassV1::PublicBindings);
+    }
+
+    #[test]
+    fn output_occupancy_is_exactly_the_payment_variant() {
+        let (public, honest) = transfer_at(0);
+        let mut forged_single = honest.clone();
+        for column in
+            0..POOL_V1_PAIR_OCCUPANCY_COMMITMENT_COLUMN_START + DIGEST_ELEMS
+        {
+            forged_single.semantic_c1.c1[column][POOL_V1_PAIR_OUTPUT_OCCUPANCY_AUX_ROW] =
+                M31::ZERO;
+        }
+        let residuals = transfer_residuals(&public, &forged_single);
+        assert!(residuals.occupancy[..23]
+            .iter()
+            .all(|value| *value == M31::ZERO));
+        assert_ne!(residuals.occupancy[23], M31::ZERO);
+
+        let (public, honest) = withdrawal_at(0);
+        let mut forged_second = honest.clone();
+        forged_second.semantic_c1.c1[0][POOL_V1_PAIR_OUTPUT_OCCUPANCY_AUX_ROW] = M31::ONE;
+        forged_second.semantic_c1.c1[POOL_V1_PAIR_OCCUPANCY_INVERSE_COLUMN]
+            [POOL_V1_PAIR_OUTPUT_OCCUPANCY_AUX_ROW] = M31::ONE;
+        forged_second.semantic_c1.c1
+            [POOL_V1_PAIR_OCCUPANCY_COMMITMENT_COLUMN_START + DIGEST_ELEMS - 1]
+            [POOL_V1_PAIR_OUTPUT_OCCUPANCY_AUX_ROW] = M31::ONE;
+        let residuals = evaluate_pool_v1_pair_withdrawal_constraint_residuals_v1(
+            &public,
+            &forged_second.public_statement,
+            &forged_second.semantic_c1,
+        )
+        .unwrap();
+        assert!(residuals.occupancy[..23]
+            .iter()
+            .all(|value| *value == M31::ZERO));
+        assert_ne!(residuals.occupancy[23], M31::ZERO);
     }
 
     #[test]

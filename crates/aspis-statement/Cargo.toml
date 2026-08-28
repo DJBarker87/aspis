@@ -17,6 +17,21 @@ spend-dynamic-rate512 = []
 # Host by default; the separate Pool V1 program enables this explicitly for
 # SBF. Frozen verifier builds do not enable it.
 pool-v1-kernel = []
+# Audit-only algebraic rewrite for the pair-forest public-digest constraints.
+# It packs each four-lane residual before applying its common selector; the
+# default and released terminal retain the literal lane-by-lane evaluator.
+pool-v1-pair-forest-packed-digest-audit = []
+# Audit-only exact `{0,1}` specialization for generated pair-forest Copy
+# weights. The literal QM31-by-M31 multiplication remains the default.
+pool-v1-pair-forest-binary-copy-weights-audit = []
+# Audit-only memoization of generated Copy endpoint row selectors. The cache
+# never supplies a value unless its stored row tag matches exactly.
+pool-v1-pair-forest-endpoint-selector-cache-audit = []
+# Audit-only exact common-factor extraction in the selected semantic lanes.
+# It preserves all 94 source residuals and their 24 packed theta lanes.
+pool-v1-pair-forest-semantic-factor-audit = []
+# Audit-only exact CSE for the fourteen generated Copy tuple patterns.
+pool-v1-pair-forest-pattern-window-audit = []
 
 [dependencies]
 aspis-core.workspace = true

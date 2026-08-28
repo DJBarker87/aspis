@@ -1,0 +1,20 @@
+{
+  "selected_revision": "8178d3de1d24d7a3a0102739cb63aca8d7a125a8",
+  "selected_sources": {
+    "crates/aspis-core/src/v6_onefold.rs": "cd652c0fafb7d9a1e0f218e249fa1eea2b4bf6e8f3690053741dd1b005d4c0a8",
+    "crates/aspis-core/src/v7_fixed_canonical_audit.rs": "bf68694e592b0a1f5cd92c341cb1a6a6bb14bdda8726c99168b645d4d7aed608",
+    "programs/aspis-verifier/src/v7_verifier.rs": "dd2f2334ef40be1a3a4648274f23b8ea250c50f08bb06a5e0157f2d941aa5096"
+  },
+  "tools": {
+    "charon_version": "0.1.223",
+    "charon_sha256": "b2b0961a3c55aca64752b2fa4a4701ba0c06b860236979e5727c07de8ac2310c",
+    "aeneas_reported_version": "unknown",
+    "aeneas_sha256": "c8dbc1f076bcbacf3493be46f7be669051c60b206ca00a6f0abf6df07b7ce50b"
+  },
+  "llbc": {
+    "direct": "cf453969d79a026cbc0e14f27807ee9d86040bad27a925ebb07eceabea0f74b5",
+    "normalized": "dc8107d4125bef04e1d2d390473b4eeda9864ef912e4437cb1c97626d43de142",
+    "parser": "cead19ea307a6206adff11c2aa5714665bbf01a891fa4c19f3cd8ff9309fc399"
+  },
+  "normalized_v6_onefold_source_sha256": "840bac1f349692ced41a01dbb8ce757ca429c384d8dbbf9eaa7858a11be8551c"
+}

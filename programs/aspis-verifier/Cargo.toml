@@ -72,6 +72,66 @@ v7-pair-forest-asq8 = [
     "v7-production-tag73",
     "aspis-statement/pool-v1-kernel",
 ]
+# Audit-only full-statement transport. It invokes the same cryptographic path
+# after independently authenticating the supplied 1,880-byte ASF8.
+v7-pair-forest-asf8-audit = [
+    "v7-production-tag73",
+    "aspis-statement/pool-v1-kernel",
+]
+# Audit-only +320-byte canonical fixed-field proof grammar. The ASQ8 account
+# transport and every semantic/work/Merkle check remain unchanged.
+v7-pair-forest-fixed-canonical-audit = [
+    "v7-production-tag73",
+    "aspis-statement/pool-v1-kernel",
+    "aspis-core/v7-fixed-canonical-audit",
+]
+# Audit-only exact-once consumer for the +320-byte canonical fixed grammar.
+# It changes no bytes: only the redundant eager scan of the still-packed query
+# section is removed, and the gamma consumer retains every canonicality check.
+v7-pair-forest-fixed-canonical-exact-once-audit = [
+    "v7-pair-forest-fixed-canonical-audit",
+    "aspis-core/v7-fixed-canonical-exact-once-audit",
+]
+# Audit-only exact linear factoring inside the selected semantic terminal.
+# Four digest residual lanes are packed before their shared row selector is
+# applied. Wire bytes, transcript order, theta lanes, and relation parameters
+# are unchanged; released/default builds do not enable this experiment.
+v7-pair-forest-packed-digest-audit = [
+    "aspis-statement/pool-v1-pair-forest-packed-digest-audit",
+]
+# Audit-only specialization of generated Copy weights, all of which are
+# exactly zero or one after variant/index selection. Values are still
+# accumulated for every endpoint; only `selector * {0,1}` becomes skip/add.
+v7-pair-forest-binary-copy-weights-audit = [
+    "aspis-statement/pool-v1-pair-forest-binary-copy-weights-audit",
+]
+# Audit-only hot decoder for selected lane PDAs owned by the exact Pool
+# release. It keeps every canonical/account/PDA check and omits only the
+# persisted active root/frontier Poseidon reconstruction, which is an
+# inductive invariant of Pool constructors and writers.
+v7-pair-forest-lane-invariant-audit = []
+# Audit-only cache for repeated generated Copy endpoint rows. A cached row
+# selector is consumed only after an exact row-tag match; misses use the
+# unchanged high[row>>4] * low[row&15] computation.
+v7-pair-forest-endpoint-selector-cache-audit = [
+    "aspis-statement/pool-v1-pair-forest-endpoint-selector-cache-audit",
+]
+# Audit-only common-factor extraction in schedule, path, and occupancy
+# residuals. The wire, transcript, semantic relation, and theta packing do not
+# change; focused off-domain tests compare the literal and factored kernels.
+v7-pair-forest-semantic-factor-audit = [
+    "aspis-statement/pool-v1-pair-forest-semantic-factor-audit",
+]
+# Audit-only CSE for the frozen generated Copy pattern table. Four overlapping
+# eight-limb windows are evaluated once and exact subwindows are derived by
+# subtraction; terminal equations and tuple bytes are unchanged.
+v7-pair-forest-pattern-window-audit = [
+    "aspis-statement/pool-v1-pair-forest-pattern-window-audit",
+]
+# Adds compute-unit checkpoints to the selected pair-forest verifier without
+# changing its wire, transcript, arithmetic, work, q16, or Merkle schedule.
+# Use only for matched diagnostic builds; marker calls inflate total CU.
+v7-pair-forest-verifier-cu-profile = []
 
 [dependencies]
 aspis-core = { path = "../../crates/aspis-core" }
@@ -80,6 +140,7 @@ borsh.workspace = true
 solana-program.workspace = true
 
 [dev-dependencies]
+aspis-prover = { path = "../../crates/aspis-prover", features = ["insecure-spend-fixture"] }
 # Dispatch/lifecycle attack-surface fuzzing via proptest on the pinned stable
 # toolchain (cargo-fuzz's nightly requirement would break the stable pin).
 proptest = "1"

@@ -69,6 +69,12 @@ pub const PINNED_POOL_V1_WITHDRAWAL_ORDINARY_HG_LAYOUT_FACTOR_FINGERPRINT: u64 =
 pub const PINNED_POOL_V1_PRIVATE_TRANSFER_HIDING_LAYOUT_FACTOR_FINGERPRINT: u64 =
     0x2945_d091_b802_310b;
 pub const PINNED_POOL_V1_WITHDRAWAL_HIDING_LAYOUT_FACTOR_FINGERPRINT: u64 = 0x1805_e618_9f33_8346;
+pub const PINNED_POOL_V1_PAIR_FOREST_RELATION_FREE_MASK_FINGERPRINT_V1: u64 = 0xf9da_f3d5_4f42_85d1;
+pub const PINNED_POOL_V1_PAIR_FOREST_COPY_ACTIVE_ROWS_FINGERPRINT_V1: u64 = 0xdf39_4a5a_8554_d09c;
+pub const PINNED_POOL_V1_PAIR_FOREST_ORDINARY_HG_LAYOUT_FACTOR_FINGERPRINT_V1: u64 =
+    0x74d8_a1f8_9edd_5006;
+pub const PINNED_POOL_V1_PAIR_FOREST_HIDING_LAYOUT_FACTOR_FINGERPRINT_V1: u64 =
+    0x698b_cded_ff44_a4db;
 pub const POOL_V1_TAG73_TOTAL_GENERATOR_WIDTH: usize = 29;
 pub const POOL_V1_TAG73_C2_COLUMNS: usize = 3;
 pub const POOL_V1_TAG73_H_GENERATOR_INDEX: usize = 26;
@@ -141,6 +147,19 @@ impl StateOnlyHidingContext {
         }
     }
 
+    /// Inactive eight-lane pair-forest profile. Transfer and withdrawal use
+    /// the same merged-C1 mask/copy registry; the statement digest binds the
+    /// payment variant and exact public statement separately.
+    pub const fn pool_v1_pair_forest_v1(statement_digest: [u8; 32], mask_nonce: [u8; 32]) -> Self {
+        Self {
+            statement_digest,
+            mask_nonce,
+            mask_layout_fingerprint: PINNED_POOL_V1_PAIR_FOREST_RELATION_FREE_MASK_FINGERPRINT_V1,
+            layout_factor_fingerprint:
+                PINNED_POOL_V1_PAIR_FOREST_HIDING_LAYOUT_FACTOR_FINGERPRINT_V1,
+        }
+    }
+
     /// Nondefault spend context.  The semantic masks and H oracle remain
     /// atomic-v3; only the committed zero-factor D tail and query-selection
     /// envelope are new.
@@ -210,6 +229,15 @@ pub fn begin_state_only_hiding_precommit(
             } else {
                 return Err(StateOnlyHidingScheduleError::LayoutFactorFingerprint);
             }
+        } else if context.mask_layout_fingerprint
+            == PINNED_POOL_V1_PAIR_FOREST_RELATION_FREE_MASK_FINGERPRINT_V1
+        {
+            if context.layout_factor_fingerprint
+                != PINNED_POOL_V1_PAIR_FOREST_HIDING_LAYOUT_FACTOR_FINGERPRINT_V1
+            {
+                return Err(StateOnlyHidingScheduleError::LayoutFactorFingerprint);
+            }
+            PINNED_POOL_V1_PAIR_FOREST_COPY_ACTIVE_ROWS_FINGERPRINT_V1
         } else {
             return Err(StateOnlyHidingScheduleError::MaskLayoutFingerprint);
         };
@@ -222,8 +250,10 @@ pub fn begin_state_only_hiding_precommit(
         == PINNED_ATOMIC_STATE_ONLY_RELATION_FREE_MASK_FINGERPRINT_V3
         && context.layout_factor_fingerprint
             == state_only_spend_hiding_layout_factor_fingerprint_v3();
-    let pool_factor = context.mask_layout_fingerprint
+    let pool_factor = (context.mask_layout_fingerprint
         == PINNED_POOL_V1_PAYMENT_RELATION_FREE_MASK_FINGERPRINT
+        || context.mask_layout_fingerprint
+            == PINNED_POOL_V1_PAIR_FOREST_RELATION_FREE_MASK_FINGERPRINT_V1)
         && context.layout_factor_fingerprint
             == state_only_pool_v1_tag73_hiding_layout_factor_fingerprint(
                 context.mask_layout_fingerprint,
@@ -244,6 +274,10 @@ pub fn begin_state_only_hiding_precommit(
                 != PINNED_POOL_V1_PRIVATE_TRANSFER_HIDING_LAYOUT_FACTOR_FINGERPRINT
             && context.layout_factor_fingerprint
                 != PINNED_POOL_V1_WITHDRAWAL_HIDING_LAYOUT_FACTOR_FINGERPRINT)
+        || (context.mask_layout_fingerprint
+            == PINNED_POOL_V1_PAIR_FOREST_RELATION_FREE_MASK_FINGERPRINT_V1
+            && context.layout_factor_fingerprint
+                != PINNED_POOL_V1_PAIR_FOREST_HIDING_LAYOUT_FACTOR_FINGERPRINT_V1)
     {
         return Err(StateOnlyHidingScheduleError::LayoutFactorFingerprint);
     }
@@ -1026,6 +1060,21 @@ mod tests {
                 PINNED_POOL_V1_WITHDRAWAL_COPY_ACTIVE_ROWS_FINGERPRINT,
             ),
         );
+        assert_eq!(
+            PINNED_POOL_V1_PAIR_FOREST_ORDINARY_HG_LAYOUT_FACTOR_FINGERPRINT_V1,
+            state_only_hiding_layout_factor_fingerprint_for_registry(
+                PINNED_POOL_V1_PAIR_FOREST_RELATION_FREE_MASK_FINGERPRINT_V1,
+                PINNED_POOL_V1_PAIR_FOREST_COPY_ACTIVE_ROWS_FINGERPRINT_V1,
+                true,
+            ),
+        );
+        assert_eq!(
+            PINNED_POOL_V1_PAIR_FOREST_HIDING_LAYOUT_FACTOR_FINGERPRINT_V1,
+            state_only_pool_v1_tag73_hiding_layout_factor_fingerprint(
+                PINNED_POOL_V1_PAIR_FOREST_RELATION_FREE_MASK_FINGERPRINT_V1,
+                PINNED_POOL_V1_PAIR_FOREST_COPY_ACTIVE_ROWS_FINGERPRINT_V1,
+            ),
+        );
     }
 
     #[test]
@@ -1105,6 +1154,29 @@ mod tests {
         assert_eq!(
             begin_state_only_hiding_precommit(&mut transcript, crossed),
             Err(StateOnlyHidingScheduleError::LayoutFactorFingerprint),
+        );
+    }
+
+    #[test]
+    fn pair_forest_context_binds_exact_mask_copy_and_tag73_profile() {
+        let context = StateOnlyHidingContext::pool_v1_pair_forest_v1([0x73; 32], [0x48; 32]);
+        assert_eq!(
+            context.mask_layout_fingerprint,
+            PINNED_POOL_V1_PAIR_FOREST_RELATION_FREE_MASK_FINGERPRINT_V1
+        );
+        assert_eq!(
+            context.layout_factor_fingerprint,
+            PINNED_POOL_V1_PAIR_FOREST_HIDING_LAYOUT_FACTOR_FINGERPRINT_V1
+        );
+        let mut transcript = Transcript::new(host_hash);
+        assert!(begin_state_only_hiding_precommit(&mut transcript, context).is_ok());
+
+        let mut crossed = context;
+        crossed.mask_layout_fingerprint = PINNED_POOL_V1_PAYMENT_RELATION_FREE_MASK_FINGERPRINT;
+        let mut transcript = Transcript::new(host_hash);
+        assert_eq!(
+            begin_state_only_hiding_precommit(&mut transcript, crossed),
+            Err(StateOnlyHidingScheduleError::LayoutFactorFingerprint)
         );
     }
 }

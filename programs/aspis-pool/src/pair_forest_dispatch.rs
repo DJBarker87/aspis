@@ -11,6 +11,7 @@ use alloc::{boxed::Box, vec, vec::Vec};
 
 use aspis_statement::pool_v1::{
     decode_pool_v1_pair_forest_terminal_result_v1, encode_pool_v1_pair_forest_terminal_request_v1,
+    encode_pool_v1_pair_forest_terminal_result_v1,
     PoolV1PairForestTerminalRequestV1, PoolV1PairForestTerminalResultV1,
     POOL_V1_PAIR_FOREST_TERMINAL_RESULT_BYTES, POOL_V1_PAIR_FOREST_TERMINAL_VERSION,
 };
@@ -31,16 +32,31 @@ use crate::{
 };
 
 #[derive(Clone, Debug, PartialEq, Eq)]
-pub(crate) struct AuthenticatedPairForestResultV1(Box<PoolV1PairForestTerminalResultV1>);
+pub(crate) struct AuthenticatedPairForestResultV1 {
+    value: Box<PoolV1PairForestTerminalResultV1>,
+    exact_bytes: Box<[u8]>,
+}
 
 impl AuthenticatedPairForestResultV1 {
     pub(crate) fn value(&self) -> &PoolV1PairForestTerminalResultV1 {
-        &self.0
+        &self.value
+    }
+
+    pub(crate) fn exact_bytes(&self) -> &[u8] {
+        &self.exact_bytes
     }
 
     #[cfg(test)]
     pub(crate) fn for_test(value: PoolV1PairForestTerminalResultV1) -> Self {
-        Self(Box::new(value))
+        let exact_bytes =
+            aspis_statement::pool_v1::encode_pool_v1_pair_forest_terminal_result_v1(&value)
+                .expect("test result must be canonical")
+                .to_vec()
+                .into_boxed_slice();
+        Self {
+            value: Box::new(value),
+            exact_bytes,
+        }
     }
 }
 
@@ -80,6 +96,38 @@ pub(crate) fn plan_pair_forest_terminal_dispatch_v1(
     proof: &AccountInfo<'_>,
     request: &PoolV1PairForestTerminalRequestV1,
     current_slot: u64,
+) -> Result<PlannedPairForestDispatchV1, ProgramError> {
+    let request_bytes = encode_pool_v1_pair_forest_terminal_request_v1(request)
+        .map_err(|_| ProgramError::InvalidInstructionData)?
+        .to_vec();
+    plan_pair_forest_terminal_dispatch_with_bytes_v1(
+        pool_program,
+        master,
+        checkpoint,
+        lane,
+        policy,
+        registry_accounts,
+        verifier_program,
+        proof,
+        request,
+        current_slot,
+        request_bytes,
+    )
+}
+
+#[allow(clippy::too_many_arguments)]
+fn plan_pair_forest_terminal_dispatch_with_bytes_v1(
+    pool_program: &Pubkey,
+    master: &AccountInfo<'_>,
+    checkpoint: &AccountInfo<'_>,
+    lane: &AccountInfo<'_>,
+    policy: &aspis_statement::pool_v1::VerifierPolicyV1,
+    registry_accounts: &[AccountInfo<'_>],
+    verifier_program: &AccountInfo<'_>,
+    proof: &AccountInfo<'_>,
+    request: &PoolV1PairForestTerminalRequestV1,
+    current_slot: u64,
+    request_bytes: Vec<u8>,
 ) -> Result<PlannedPairForestDispatchV1, ProgramError> {
     if request.pool_program != pool_program.to_bytes() {
         return Err(PoolV1ProgramError::VerifierDispatchIdentityMismatch.into());
@@ -126,9 +174,6 @@ pub(crate) fn plan_pair_forest_terminal_dispatch_v1(
     {
         return Err(ProgramError::InvalidAccountData);
     }
-    let request_bytes = encode_pool_v1_pair_forest_terminal_request_v1(request)
-        .map_err(|_| ProgramError::InvalidInstructionData)?
-        .to_vec();
     Ok(PlannedPairForestDispatchV1 {
         selected_verifier: selected,
         request_bytes,
@@ -171,6 +216,7 @@ fn invoke_pair_forest_terminal_with_runtime_v1<'info, R: PairForestVerifierRunti
     master: &AccountInfo<'info>,
     checkpoint: &AccountInfo<'info>,
     lane: &AccountInfo<'info>,
+    registry_accounts: &[AccountInfo<'info>],
     verifier_program: &AccountInfo<'info>,
     runtime: &mut R,
 ) -> Result<AuthenticatedPairForestResultV1, ProgramError> {
@@ -178,16 +224,47 @@ fn invoke_pair_forest_terminal_with_runtime_v1<'info, R: PairForestVerifierRunti
     if proof.owner != &plan.selected_verifier || proof.is_writable || proof.is_signer {
         return Err(PoolV1ProgramError::InvalidVerifierProofAccount.into());
     }
+    #[cfg(feature = "pair-forest-verifier-lane-invariant-audit")]
+    let [registry, entry] = registry_accounts
+    else {
+        return Err(if registry_accounts.len() < 2 {
+            ProgramError::NotEnoughAccountKeys
+        } else {
+            ProgramError::InvalidArgument
+        });
+    };
+    #[cfg(feature = "pair-forest-verifier-lane-invariant-audit")]
+    let cpi_accounts = vec![
+        AccountMeta::new_readonly(*proof.key, false),
+        AccountMeta::new_readonly(*master.key, false),
+        AccountMeta::new_readonly(*checkpoint.key, false),
+        AccountMeta::new_readonly(*lane.key, false),
+        AccountMeta::new_readonly(*registry.key, false),
+        AccountMeta::new_readonly(*entry.key, false),
+    ];
+    #[cfg(not(feature = "pair-forest-verifier-lane-invariant-audit"))]
+    let cpi_accounts = vec![
+        AccountMeta::new_readonly(*proof.key, false),
+        AccountMeta::new_readonly(*master.key, false),
+        AccountMeta::new_readonly(*checkpoint.key, false),
+        AccountMeta::new_readonly(*lane.key, false),
+    ];
     let instruction = Instruction {
         program_id: plan.selected_verifier,
-        accounts: vec![
-            AccountMeta::new_readonly(*proof.key, false),
-            AccountMeta::new_readonly(*master.key, false),
-            AccountMeta::new_readonly(*checkpoint.key, false),
-            AccountMeta::new_readonly(*lane.key, false),
-        ],
+        accounts: cpi_accounts,
         data: plan.request_bytes,
     };
+    #[cfg(feature = "pair-forest-verifier-lane-invariant-audit")]
+    let infos = [
+        proof.clone(),
+        master.clone(),
+        checkpoint.clone(),
+        lane.clone(),
+        registry.clone(),
+        entry.clone(),
+        verifier_program.clone(),
+    ];
+    #[cfg(not(feature = "pair-forest-verifier-lane-invariant-audit"))]
     let infos = [
         proof.clone(),
         master.clone(),
@@ -208,7 +285,10 @@ fn invoke_pair_forest_terminal_with_runtime_v1<'info, R: PairForestVerifierRunti
     }
     let result = decode_pool_v1_pair_forest_terminal_result_v1(&returned_data)
         .map_err(|_| PoolV1ProgramError::InvalidVerifierReturnData)?;
-    Ok(AuthenticatedPairForestResultV1(Box::new(result)))
+    Ok(AuthenticatedPairForestResultV1 {
+        value: Box::new(result),
+        exact_bytes: returned_data.into_boxed_slice(),
+    })
 }
 
 #[allow(clippy::too_many_arguments)]
@@ -243,6 +323,58 @@ pub(crate) fn dispatch_pair_forest_terminal_readonly_v1<'info>(
         master,
         checkpoint,
         lane,
+        registry_accounts,
+        verifier_program,
+        &mut runtime,
+    )
+}
+
+/// Audit-only full-statement CPI transport. Registry/profile/release and all
+/// account checks are identical to ASQ8; only the exact verifier instruction
+/// bytes differ.
+#[cfg(feature = "pair-forest-full-asf8-audit")]
+#[allow(clippy::too_many_arguments)]
+pub(crate) fn dispatch_pair_forest_terminal_full_asf8_readonly_v1<'info>(
+    pool_program: &Pubkey,
+    master: &AccountInfo<'info>,
+    checkpoint: &AccountInfo<'info>,
+    lane: &AccountInfo<'info>,
+    policy: &aspis_statement::pool_v1::VerifierPolicyV1,
+    registry_accounts: &[AccountInfo<'info>],
+    verifier_program: &AccountInfo<'info>,
+    proof: &AccountInfo<'info>,
+    request: &PoolV1PairForestTerminalRequestV1,
+    current_slot: u64,
+    statement_bytes: &[u8],
+) -> Result<AuthenticatedPairForestResultV1, ProgramError> {
+    if statement_bytes.len()
+        != aspis_statement::pool_v1::POOL_V1_PAIR_FOREST_TERMINAL_STATEMENT_BYTES
+        || !statement_bytes
+            .starts_with(&aspis_statement::pool_v1::POOL_V1_PAIR_FOREST_TERMINAL_STATEMENT_MAGIC)
+    {
+        return Err(ProgramError::InvalidInstructionData);
+    }
+    let plan = plan_pair_forest_terminal_dispatch_with_bytes_v1(
+        pool_program,
+        master,
+        checkpoint,
+        lane,
+        policy,
+        registry_accounts,
+        verifier_program,
+        proof,
+        request,
+        current_slot,
+        statement_bytes.to_vec(),
+    )?;
+    let mut runtime = SolanaPairForestVerifierRuntimeV1;
+    invoke_pair_forest_terminal_with_runtime_v1(
+        plan,
+        proof,
+        master,
+        checkpoint,
+        lane,
+        registry_accounts,
         verifier_program,
         &mut runtime,
     )
@@ -479,12 +611,16 @@ mod tests {
             &master,
             &checkpoint,
             &lane,
+            &[registry.clone(), entry.clone()],
             &verifier,
             &mut runtime,
         )
         .unwrap();
         assert_eq!(authenticated.value().master_account, master_key.to_bytes());
         let invoked = runtime.invoked.unwrap();
+        #[cfg(feature = "pair-forest-verifier-lane-invariant-audit")]
+        assert_eq!(invoked.accounts.len(), 6);
+        #[cfg(not(feature = "pair-forest-verifier-lane-invariant-audit"))]
         assert_eq!(invoked.accounts.len(), 4);
         assert!(invoked
             .accounts

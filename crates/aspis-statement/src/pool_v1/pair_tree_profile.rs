@@ -13,6 +13,8 @@
 //! Nothing in this module adds a dispatch tag, registry release, account
 //! decoder, prover, verifier, or state mutation path.
 
+use alloc::boxed::Box;
+
 use aspis_core::{
     field::{M31, P},
     transcript::{label, Transcript},
@@ -558,9 +560,29 @@ pub fn encode_pool_v1_pair_late_public_statement_v1(
     Ok(())
 }
 
-pub fn decode_pool_v1_pair_late_public_statement_v1(
+#[inline(never)]
+fn decode_pair_live_snapshot_boxed_v1(
     bytes: &[u8],
-) -> Result<PoolV1PairLatePublicStatementV1, PoolV1PairLatePublicStatementErrorV1> {
+) -> Result<Box<PoolV1PairLiveSnapshotV1>, PoolV1PairLatePublicStatementErrorV1> {
+    Ok(Box::new(
+        decode_pool_v1_pair_live_snapshot_v1(bytes)
+            .map_err(PoolV1PairLatePublicStatementErrorV1::Snapshot)?,
+    ))
+}
+
+#[inline(never)]
+fn decode_pair_afterstate_boxed_v1(
+    bytes: &[u8],
+) -> Result<Box<PoolV1PairVerifiedAfterstateV1>, PoolV1PairLatePublicStatementErrorV1> {
+    Ok(Box::new(
+        decode_pool_v1_pair_verified_afterstate_v1(bytes)
+            .map_err(PoolV1PairLatePublicStatementErrorV1::Afterstate)?,
+    ))
+}
+
+pub(crate) fn decode_pool_v1_pair_late_public_statement_boxed_v1(
+    bytes: &[u8],
+) -> Result<Box<PoolV1PairLatePublicStatementV1>, PoolV1PairLatePublicStatementErrorV1> {
     if bytes.len() != POOL_V1_PAIR_LATE_PUBLIC_STATEMENT_BYTES {
         return Err(PoolV1PairLatePublicStatementErrorV1::WrongLength);
     }
@@ -597,18 +619,22 @@ pub fn decode_pool_v1_pair_late_public_statement_v1(
         return Err(PoolV1PairLatePublicStatementErrorV1::NonZeroReserved);
     }
     let live_snapshot =
-        decode_pool_v1_pair_live_snapshot_v1(&bytes[32..32 + POOL_V1_PAIR_LIVE_SNAPSHOT_BYTES])
-            .map_err(PoolV1PairLatePublicStatementErrorV1::Snapshot)?;
+        decode_pair_live_snapshot_boxed_v1(&bytes[32..32 + POOL_V1_PAIR_LIVE_SNAPSHOT_BYTES])?;
     let candidate_afterstate =
-        decode_pool_v1_pair_verified_afterstate_v1(&bytes[32 + POOL_V1_PAIR_LIVE_SNAPSHOT_BYTES..])
-            .map_err(PoolV1PairLatePublicStatementErrorV1::Afterstate)?;
+        decode_pair_afterstate_boxed_v1(&bytes[32 + POOL_V1_PAIR_LIVE_SNAPSHOT_BYTES..])?;
     if live_snapshot.next_pair_index.checked_add(1) != Some(candidate_afterstate.next_pair_index) {
         return Err(PoolV1PairLatePublicStatementErrorV1::AfterstateIndexMismatch);
     }
-    Ok(PoolV1PairLatePublicStatementV1 {
-        live_snapshot,
-        candidate_afterstate,
-    })
+    Ok(Box::new(PoolV1PairLatePublicStatementV1 {
+        live_snapshot: *live_snapshot,
+        candidate_afterstate: *candidate_afterstate,
+    }))
+}
+
+pub fn decode_pool_v1_pair_late_public_statement_v1(
+    bytes: &[u8],
+) -> Result<PoolV1PairLatePublicStatementV1, PoolV1PairLatePublicStatementErrorV1> {
+    Ok(*decode_pool_v1_pair_late_public_statement_boxed_v1(bytes)?)
 }
 
 /// Bind one complete framed statement before the C1 root and before lambda

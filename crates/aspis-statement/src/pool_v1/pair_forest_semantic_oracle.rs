@@ -71,10 +71,11 @@ fn eq_row(point: &[QM31; 10], row: usize) -> QM31 {
 }
 
 /// Evaluate all 24 private path ordering equations from the frozen
-/// `(z, successor(z), xor12(z))` opening geometry.  This is intentionally a
-/// separate cheap source-layout gate as well as a component of the compiled
-/// forest terminal: a trace layout that places siblings anywhere other than
-/// `base xor 12` cannot be accepted by the unchanged 30,504-byte proof wire.
+/// `(z, successor(z))` subset of the frozen three-opening geometry. This is
+/// intentionally a separate cheap source-layout gate as well as a component
+/// of the compiled forest terminal: the unselected child is the sibling
+/// witness itself, so no redundant sibling copy or extra PCS opening is
+/// required.
 pub fn evaluate_pool_v1_pair_forest_path_terminal_v1(
     openings: &StateOnlyPoseidonOpenings,
     point: &[QM31; 10],
@@ -89,12 +90,12 @@ pub fn evaluate_pool_v1_pair_forest_path_terminal_v1(
     let mut ordered_children = [QM31::ZERO; 16];
     for lane in 0..8 {
         let current = openings.z[1 + lane];
-        let sibling = openings.xor12_z[lane];
-        let delta = sibling.sub(current);
-        ordered_children[lane] =
-            selector.mul(openings.succ_z[lane].sub(current.add(bit.mul(delta))));
-        ordered_children[8 + lane] =
-            selector.mul(openings.succ_z[8 + lane].sub(sibling.sub(bit.mul(delta))));
+        ordered_children[lane] = selector
+            .mul(QM31::ONE.sub(bit))
+            .mul(openings.succ_z[lane].sub(current));
+        ordered_children[8 + lane] = selector
+            .mul(bit)
+            .mul(openings.succ_z[8 + lane].sub(current));
     }
     Ok(PoolV1PairForestPathTerminalV1 {
         direction_booleanity: selector.mul(bit.mul(bit.sub(QM31::ONE))),
@@ -311,11 +312,12 @@ mod tests {
                     .ordered_children
                     .into_iter()
                     .all(|residual| residual == QM31::ZERO));
-                openings.succ_z[0] = openings.succ_z[0].add(QM31::ONE);
+                let selected_lane = if bit == QM31::ZERO { 0 } else { 8 };
+                openings.succ_z[selected_lane] = openings.succ_z[selected_lane].add(QM31::ONE);
                 assert_ne!(
                     evaluate_pool_v1_pair_forest_path_terminal_v1(&openings, &boolean_point(base),)
                         .unwrap()
-                        .ordered_children[0],
+                        .ordered_children[selected_lane],
                     QM31::ZERO
                 );
             }
