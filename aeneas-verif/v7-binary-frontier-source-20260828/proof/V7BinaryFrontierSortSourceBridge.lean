@@ -247,6 +247,145 @@ theorem translated_inner_insertion_exact
       exact ⟨positionBound, by simpa only [zero, bubbleLeft] using model⟩
   · exact ⟨cursorBound, rfl⟩
 
+private theorem placedValues_original_at_saved_key
+    {Q : Std.Usize} (queries : Array Std.U32 Q) (cursor : Std.Usize)
+    (bound : cursor.val < queries.val.length) :
+    placedValues queries cursor queries.val[cursor.val]! = queries.val := by
+  unfold placedValues
+  rw [Array.set_val_eq]
+  have bangExact :
+      queries.val[cursor.val]! = queries.val[cursor.val]'bound := by
+    apply List.getElem!_of_getElem?
+    exact List.getElem?_eq_getElem bound
+  rw [bangExact, List.set_getElem_self bound]
+
+structure OuterSortInvariant {Q : Std.Usize} (original : List Std.U32)
+    (state : core.ops.range.Range Std.Usize × Array Std.U32 Q) : Prop where
+  endLength : state.1.end.val = state.2.val.length
+  startEnd : state.1.start.val ≤ state.1.end.val
+  currentPerm : state.2.val.Perm original
+  currentPrefix :
+    (state.2.val.take state.1.start.val).Pairwise (· ≤ ·)
+
+structure OuterSortPost {Q : Std.Usize} (original : List Std.U32)
+    (output : Array Std.U32 Q) : Prop where
+  sorted : output.val.Pairwise (· ≤ ·)
+  perm : output.val.Perm original
+
+/-- The complete translated production insertion-sort loop preserves the
+input multiset and returns it in nondecreasing order. -/
+theorem translated_outer_insertion_sort_exact
+    {Q : Std.Usize} (original : List Std.U32)
+    (iter : core.ops.range.Range Std.Usize) (queries : Array Std.U32 Q)
+    (invariant : OuterSortInvariant original (iter, queries)) :
+    v6_onefold.binary_frontier_nodes_loop0 iter queries
+      ⦃ output => OuterSortPost original output ⦄ := by
+  simp only [v6_onefold.binary_frontier_nodes_loop0]
+  apply loop.spec_decr_nat
+    (fun state : core.ops.range.Range Std.Usize × Array Std.U32 Q =>
+      state.1.end.val - state.1.start.val)
+    (OuterSortInvariant original)
+    (OuterSortPost original)
+  · rintro ⟨currentIter, current⟩ currentInvariant
+    change OuterSortInvariant original (currentIter, current) at currentInvariant
+    rcases currentInvariant with
+      ⟨endLength, startEnd, currentPerm, currentPrefix⟩
+    simp only [Prod.fst, Prod.snd] at endLength startEnd currentPerm currentPrefix
+    simp only [Prod.fst, Prod.snd]
+    by_cases active : currentIter.start.val < currentIter.end.val
+    · obtain ⟨⟨option, nextIter⟩, nextRun, optionExact, nextStart,
+          nextEnd⟩ := WP.spec_imp_exists
+        (core.iter.range.IteratorRange.next_Usize_some_spec currentIter active)
+      rw [optionExact] at nextRun
+      have indexBound : currentIter.start.val < current.val.length := by
+        rw [← endLength]
+        exact active
+      have readRun := array_index_run current currentIter.start indexBound
+      let saved := current.val[currentIter.start.val]!
+      have readRunSaved :
+          Array.index_usize current currentIter.start = .ok saved := by
+        simpa only [saved] using readRun
+      obtain ⟨⟨innerQueries, innerCursor⟩, innerRun, innerPost⟩ :=
+        WP.spec_imp_exists
+        (translated_inner_insertion_exact current saved currentIter.start
+          indexBound)
+      obtain ⟨nextQueries, updateRun, updateExact⟩ := WP.spec_imp_exists
+        (Array.update_spec innerQueries innerCursor saved innerPost.1)
+      have stepRun :
+          v6_onefold.binary_frontier_nodes_loop0.body currentIter current =
+            .ok (.cont (nextIter, nextQueries)) := by
+        unfold v6_onefold.binary_frontier_nodes_loop0.body
+        simp [nextRun, readRunSaved, innerRun, updateRun]
+      rw [stepRun]
+      simp only [WP.spec, WP.theta, WP.wp_return]
+      change OuterSortInvariant original (nextIter, nextQueries) ∧
+        nextIter.end.val - nextIter.start.val <
+          currentIter.end.val - currentIter.start.val
+      have savedExact : saved = current.val[currentIter.start.val]! := rfl
+      have initialPlaced :
+          placedValues current currentIter.start saved = current.val := by
+        simpa only [savedExact] using
+          placedValues_original_at_saved_key current currentIter.start indexBound
+      have nextValues :
+          nextQueries.val = bubbleLeft current.val currentIter.start.val := by
+        have updateValue :
+            nextQueries.val =
+              placedValues innerQueries innerCursor saved := by
+          rw [updateExact]
+          rfl
+        rw [updateValue, innerPost.2, initialPlaced]
+      have nextSorted :
+          (nextQueries.val.take (currentIter.start.val + 1)).Pairwise
+            (· ≤ ·) := by
+        rw [nextValues]
+        exact bubbleLeft_sorted_prefix current.val currentIter.start.val
+          indexBound currentPrefix
+      have nextPermCurrent : nextQueries.val.Perm current.val := by
+        rw [nextValues]
+        exact bubbleLeft_perm current.val currentIter.start.val indexBound
+          currentPrefix
+      refine ⟨⟨?_, ?_, ?_, ?_⟩, ?_⟩
+      · have nextEndVal := congrArg (fun value : Std.Usize => value.val)
+          nextEnd
+        rw [nextEndVal, endLength]
+        exact current.property.trans nextQueries.property.symm
+      · have nextStartVal := nextStart
+        have nextEndVal := congrArg (fun value : Std.Usize => value.val)
+          nextEnd
+        change nextIter.start.val ≤ nextIter.end.val
+        omega
+      · exact nextPermCurrent.trans currentPerm
+      · have nextStartVal := nextStart
+        simpa only [nextStartVal] using nextSorted
+      · have nextStartVal := nextStart
+        have nextEndVal := congrArg (fun value : Std.Usize => value.val)
+          nextEnd
+        change nextIter.end.val - nextIter.start.val <
+          currentIter.end.val - currentIter.start.val
+        omega
+    · obtain ⟨⟨option, nextIter⟩, nextRun, optionExact, nextExact⟩ :=
+        WP.spec_imp_exists
+          (core.iter.range.IteratorRange.next_Usize_none_spec currentIter
+            (by omega))
+      rw [optionExact, nextExact] at nextRun
+      have stepRun :
+          v6_onefold.binary_frontier_nodes_loop0.body currentIter current =
+            .ok (.done current) := by
+        unfold v6_onefold.binary_frontier_nodes_loop0.body
+        simp [nextRun]
+      rw [stepRun]
+      simp only [WP.spec, WP.theta, WP.wp_return]
+      change OuterSortPost original current
+      constructor
+      · have startLength : currentIter.start.val = current.val.length := by
+          calc
+            currentIter.start.val = currentIter.end.val := by omega
+            _ = current.val.length := endLength
+        simpa only [startLength, List.take_length] using currentPrefix
+      · exact currentPerm
+  · exact invariant
+
 #print axioms translated_inner_insertion_exact
+#print axioms translated_outer_insertion_sort_exact
 
 end V7BinaryFrontierSortSourceBridge
