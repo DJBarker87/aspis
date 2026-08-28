@@ -25,9 +25,11 @@ open V7FirstCompactSamplerK13PositionBridge
 open V7FirstCompactSamplerTableTraceBridge
 open V7FixedTableOracleStateBridge
 open AspisK1.V7FsAokExperiment
+open AspisK1.V7FsStateRestorationCoupling
 open AspisK1.V7Tag73TranscriptSchedule
 open AspisK1.V7Tag73CoupledReplayAlignment
 open AspisK1.V7Tag73DeterministicRefinement
+open AspisK1.V7Tag73ReturnedPlanSemantics
 
 noncomputable section
 
@@ -80,7 +82,56 @@ theorem raw_candidate_entry_and_trace_match_operational_table
     inputTranscript sourceCounter output raw machine counter counterExact
     baseAligned trace ordered candidateCovered traceCovered
 
+/-- History-facing form of the source replay.  The restoration model already
+proves fixed-table coverage of a completed verifier query trace; an Aeneas
+root bridge need only establish that the literal source candidate pairs occur
+in that trace.  This theorem deliberately never upgrades occurrence to
+freshness or a q16 role. -/
+theorem raw_candidate_entry_and_trace_match_history_coverage
+    (state : OracleState) (history : List QueryRecord)
+    (inputTranscript : transcript.Transcript) (sourceCounter : Std.U8)
+    (output : Option v7_onefold.V7CompactQuerySchedule)
+    (raw : RawCandidateExecution inputTranscript sourceCounter output)
+    (machine : MachineState) (counter : Fin 64)
+    (counterExact : sourceCounter.val = counter.val)
+    (baseAligned : machine.digest = nativeTranscriptDigest inputTranscript)
+    {blocks : List SourceSqueezeBlock} {pairs : List (ShaInput × ShaOutput)}
+    (trace : NativeExactSqueezeTrace raw.absorbed blocks raw.sampledTranscript)
+    (ordered : NativeSqueezeTraceQueryPairs trace pairs)
+    (historyCovered : ∀ pair ∈ queryAnswerTrace history,
+      tableLookup (fixedTableOfOracleState state) pair.1 = some pair.2)
+    (candidateInHistory :
+      (nativeHashInputBytes
+        (candidateAbsorbHashInput inputTranscript sourceCounter),
+        nativeTranscriptDigest raw.absorbed) ∈ queryAnswerTrace history)
+    (squeezeInHistory : ∀ pair ∈ pairs, pair ∈ queryAnswerTrace history) :
+    inputTranscript.hash
+        (candidateAbsorbHashInput inputTranscript sourceCounter) =
+      .ok raw.absorbed.state ∧
+    (squeezeBlocks (fixedTableHashOracle (fixedTableOfOracleState state))
+      blocks.length
+      (absorb (fixedTableHashOracle (fixedTableOfOracleState state)) machine
+        (.queryCandidate counter))).1 = sourceTraceDigests blocks ∧
+    (squeezeBlocks (fixedTableHashOracle (fixedTableOfOracleState state))
+      blocks.length
+      (absorb (fixedTableHashOracle (fixedTableOfOracleState state)) machine
+        (.queryCandidate counter))).2.digest =
+      nativeTranscriptDigest raw.sampledTranscript := by
+  have candidateCovered : tableLookup (fixedTableOfOracleState state)
+      (nativeHashInputBytes
+        (candidateAbsorbHashInput inputTranscript sourceCounter)) =
+      some (nativeTranscriptDigest raw.absorbed) :=
+    historyCovered _ candidateInHistory
+  have squeezeCovered : QueryPairsCoveredByTable
+      (fixedTableOfOracleState state) pairs := by
+    intro pair member
+    exact historyCovered pair (squeezeInHistory pair member)
+  exact raw_candidate_entry_and_trace_match_semantic
+    inputTranscript sourceCounter output raw machine counter counterExact
+    baseAligned trace ordered candidateCovered squeezeCovered
+
 #print axioms raw_candidate_entry_and_trace_match_operational_table
+#print axioms raw_candidate_entry_and_trace_match_history_coverage
 
 end
 
