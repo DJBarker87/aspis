@@ -17,6 +17,7 @@ pub mod nullifier_marker;
 pub mod pair_constraint_residuals;
 pub mod pair_forest_accounts;
 pub mod pair_forest_copy_terminal;
+pub mod pair_forest_semantic_terminal;
 #[cfg(not(target_os = "solana"))]
 pub mod pair_forest_constraint_residuals;
 #[cfg(not(target_os = "solana"))]
@@ -161,6 +162,27 @@ pub use pair_forest_copy_terminal::{
     POOL_V1_PAIR_FOREST_COPY_TERMINAL_LINKS_V1, POOL_V1_PAIR_FOREST_COPY_TERMINAL_PATTERNS_V1,
     POOL_V1_PAIR_FOREST_COPY_TERMINAL_ROWS_V1,
     POOL_V1_PAIR_FOREST_COPY_TERMINAL_SELECTOR_HEAP_BYTES_V1,
+};
+pub use pair_forest_semantic_terminal::{
+    evaluate_pool_v1_pair_forest_private_transfer_selected_constraint_composition_compiled_v1,
+    evaluate_pool_v1_pair_forest_private_transfer_selected_masked_terminal_compiled_tag73_v1,
+    evaluate_pool_v1_pair_forest_private_transfer_selected_unmasked_terminal_compiled_tag73_v1,
+    evaluate_pool_v1_pair_forest_withdrawal_selected_constraint_composition_compiled_v1,
+    evaluate_pool_v1_pair_forest_withdrawal_selected_masked_terminal_compiled_tag73_v1,
+    evaluate_pool_v1_pair_forest_withdrawal_selected_unmasked_terminal_compiled_tag73_v1,
+    PoolV1PairForestSemanticTerminalErrorV1,
+    POOL_V1_PAIR_FOREST_COPY_LANES_V1, POOL_V1_PAIR_FOREST_MASKED_TERMINAL_DEGREE_V1,
+    POOL_V1_PAIR_FOREST_PACKED_SEMANTIC_LANES_V1, POOL_V1_PAIR_FOREST_POSEIDON_LANES_V1,
+    POOL_V1_PAIR_FOREST_SELECTED_TERMINAL_CLAIMS_V1,
+    POOL_V1_PAIR_FOREST_SELECTED_TERMINAL_COLUMNS_V1,
+    POOL_V1_PAIR_FOREST_SEMANTIC_ORACLE_INDIVIDUAL_DEGREE_V1,
+    POOL_V1_PAIR_FOREST_SEMANTIC_ZEROCHECK_INDIVIDUAL_DEGREE_V1,
+    POOL_V1_PAIR_FOREST_SOURCE_SEMANTIC_LANES_V1,
+    POOL_V1_PAIR_FOREST_TERMINAL_C1_COLUMNS_V1,
+    POOL_V1_PAIR_FOREST_TERMINAL_FIXED_HEAP_ALLOCATIONS_V1,
+    POOL_V1_PAIR_FOREST_TERMINAL_POINTS_V1, POOL_V1_PAIR_FOREST_TERMINAL_ROWS_V1,
+    POOL_V1_PAIR_FOREST_TERMINAL_SELECTOR_HEAP_BYTES_V1,
+    POOL_V1_PAIR_FOREST_THETA_COLLISION_DEGREE_V1, POOL_V1_PAIR_FOREST_THETA_LANES_V1,
 };
 pub use pair_forest_terminal::{
     decode_pool_v1_pair_forest_terminal_request_v1,

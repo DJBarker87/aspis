@@ -98,9 +98,9 @@ fn selector_mask_sum_16(values: &[QM31; 16], mut mask: u16) -> QM31 {
 }
 
 #[derive(Clone, Copy)]
-struct Selectors {
-    high: [QM31; 64],
-    low: [QM31; 16],
+pub(crate) struct Selectors {
+    pub(crate) high: [QM31; 64],
+    pub(crate) low: [QM31; 16],
 }
 
 impl Selectors {
@@ -121,7 +121,7 @@ impl Selectors {
         weights
     }
 
-    fn at_point(point: &[QM31; 10]) -> Self {
+    pub(crate) fn at_point(point: &[QM31; 10]) -> Self {
         Self {
             high: Self::expand(&point[..6]),
             low: Self::expand(&point[6..]),
@@ -129,12 +129,12 @@ impl Selectors {
     }
 
     #[inline(never)]
-    fn boxed_at_point(point: &[QM31; 10]) -> Box<Self> {
+    pub(crate) fn boxed_at_point(point: &[QM31; 10]) -> Box<Self> {
         Box::new(Self::at_point(point))
     }
 
     #[inline(always)]
-    fn row(&self, row: usize) -> QM31 {
+    pub(crate) fn row(&self, row: usize) -> QM31 {
         debug_assert!(row < POOL_V1_PAIR_FOREST_COPY_TERMINAL_ROWS_V1);
         self.high[row >> 4].mul(self.low[row & 15])
     }
@@ -249,7 +249,7 @@ fn accumulate_endpoint(
     values[slot] = values[slot].add(selector.mul(compressed));
 }
 
-fn evaluate_with_selectors(
+pub(crate) fn evaluate_with_selectors(
     openings: &[QM31; POSEIDON2_WIDTH],
     h1_z: QM31,
     selectors: &Selectors,
