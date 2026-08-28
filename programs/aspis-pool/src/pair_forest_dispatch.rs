@@ -200,6 +200,7 @@ fn invoke_pair_forest_terminal_with_runtime_v1<'info, R: PairForestVerifierRunti
     master: &AccountInfo<'info>,
     checkpoint: &AccountInfo<'info>,
     lane: &AccountInfo<'info>,
+    registry_accounts: &[AccountInfo<'info>],
     verifier_program: &AccountInfo<'info>,
     runtime: &mut R,
 ) -> Result<AuthenticatedPairForestResultV1, ProgramError> {
@@ -207,16 +208,47 @@ fn invoke_pair_forest_terminal_with_runtime_v1<'info, R: PairForestVerifierRunti
     if proof.owner != &plan.selected_verifier || proof.is_writable || proof.is_signer {
         return Err(PoolV1ProgramError::InvalidVerifierProofAccount.into());
     }
+    #[cfg(feature = "pair-forest-verifier-lane-invariant-audit")]
+    let [registry, entry] = registry_accounts
+    else {
+        return Err(if registry_accounts.len() < 2 {
+            ProgramError::NotEnoughAccountKeys
+        } else {
+            ProgramError::InvalidArgument
+        });
+    };
+    #[cfg(feature = "pair-forest-verifier-lane-invariant-audit")]
+    let cpi_accounts = vec![
+        AccountMeta::new_readonly(*proof.key, false),
+        AccountMeta::new_readonly(*master.key, false),
+        AccountMeta::new_readonly(*checkpoint.key, false),
+        AccountMeta::new_readonly(*lane.key, false),
+        AccountMeta::new_readonly(*registry.key, false),
+        AccountMeta::new_readonly(*entry.key, false),
+    ];
+    #[cfg(not(feature = "pair-forest-verifier-lane-invariant-audit"))]
+    let cpi_accounts = vec![
+        AccountMeta::new_readonly(*proof.key, false),
+        AccountMeta::new_readonly(*master.key, false),
+        AccountMeta::new_readonly(*checkpoint.key, false),
+        AccountMeta::new_readonly(*lane.key, false),
+    ];
     let instruction = Instruction {
         program_id: plan.selected_verifier,
-        accounts: vec![
-            AccountMeta::new_readonly(*proof.key, false),
-            AccountMeta::new_readonly(*master.key, false),
-            AccountMeta::new_readonly(*checkpoint.key, false),
-            AccountMeta::new_readonly(*lane.key, false),
-        ],
+        accounts: cpi_accounts,
         data: plan.request_bytes,
     };
+    #[cfg(feature = "pair-forest-verifier-lane-invariant-audit")]
+    let infos = [
+        proof.clone(),
+        master.clone(),
+        checkpoint.clone(),
+        lane.clone(),
+        registry.clone(),
+        entry.clone(),
+        verifier_program.clone(),
+    ];
+    #[cfg(not(feature = "pair-forest-verifier-lane-invariant-audit"))]
     let infos = [
         proof.clone(),
         master.clone(),
@@ -272,6 +304,7 @@ pub(crate) fn dispatch_pair_forest_terminal_readonly_v1<'info>(
         master,
         checkpoint,
         lane,
+        registry_accounts,
         verifier_program,
         &mut runtime,
     )
@@ -322,6 +355,7 @@ pub(crate) fn dispatch_pair_forest_terminal_full_asf8_readonly_v1<'info>(
         master,
         checkpoint,
         lane,
+        registry_accounts,
         verifier_program,
         &mut runtime,
     )
@@ -558,12 +592,16 @@ mod tests {
             &master,
             &checkpoint,
             &lane,
+            &[registry.clone(), entry.clone()],
             &verifier,
             &mut runtime,
         )
         .unwrap();
         assert_eq!(authenticated.value().master_account, master_key.to_bytes());
         let invoked = runtime.invoked.unwrap();
+        #[cfg(feature = "pair-forest-verifier-lane-invariant-audit")]
+        assert_eq!(invoked.accounts.len(), 6);
+        #[cfg(not(feature = "pair-forest-verifier-lane-invariant-audit"))]
         assert_eq!(invoked.accounts.len(), 4);
         assert!(invoked
             .accounts

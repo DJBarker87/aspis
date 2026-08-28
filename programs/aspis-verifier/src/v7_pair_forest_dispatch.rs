@@ -10,9 +10,13 @@ extern crate alloc;
 
 use alloc::boxed::Box;
 
+#[cfg(feature = "v7-pair-forest-lane-invariant-audit")]
+use aspis_core::field::M31;
 use aspis_core::v7_onefold::{
     V7_COMPACT_BODY_WITHOUT_FRONTIERS, V7_COMPACT_DIGEST_BYTES, V7_COMPACT_FRONTIER_CAP_PER_TREE,
 };
+#[cfg(feature = "v7-pair-forest-lane-invariant-audit")]
+use aspis_statement::decode_digest_canonical;
 use aspis_statement::pool_v1::{
     decode_pool_v1_pair_forest_checkpoint_v1, decode_pool_v1_pair_forest_lane_state_v1,
     decode_pool_v1_pair_forest_master_v1, decode_pool_v1_pair_forest_terminal_request_v1,
@@ -30,10 +34,23 @@ use aspis_statement::pool_v1::{
     V7_POOL_NATIVE_TAG73_MIN_FRONTIER_NODES, V7_POOL_PAIR_FOREST_TAG73_PROFILE_BINDING,
     V7_POOL_PAIR_FOREST_TAG73_RELEASE_BINDING,
 };
+#[cfg(feature = "v7-pair-forest-lane-invariant-audit")]
+use aspis_statement::pool_v1::{
+    decode_verifier_registry_entry_v1, decode_verifier_registry_v1, validate_verifier_policy_v1,
+    IncrementalMerkleTreeV1, POOL_V1_DIGEST_ENCODING_VERSION, POOL_V1_PAIR_CAPACITY,
+    POOL_V1_PAIR_FOREST_ACCOUNT_FORMAT_BINDING, POOL_V1_PAIR_FOREST_LANE_ACCOUNT_BYTES,
+    POOL_V1_PAIR_FOREST_LANE_COUNT, POOL_V1_PAIR_FOREST_LANE_HEADER_BYTES,
+    POOL_V1_PAIR_FOREST_LANE_MAGIC, POOL_V1_PAIR_FOREST_LANE_VERSION,
+    POOL_V1_PAIR_FOREST_TERMINAL_VERSION, POOL_V1_PAIR_TREE_DEPTH, POOL_V1_TREE_HASH_VERSION,
+    POOL_V1_TREE_STATE_MAGIC, POOL_V1_TREE_STATE_VERSION,
+    POOL_V1_VERIFIER_POLICY_FLAG_IMMUTABLE_REGISTRY,
+};
 use solana_program::{
     account_info::AccountInfo, entrypoint::ProgramResult, program, program_error::ProgramError,
     pubkey::Pubkey,
 };
+#[cfg(feature = "v7-pair-forest-lane-invariant-audit")]
+use solana_program::{clock::Clock, sysvar::Sysvar};
 
 use crate::{
     lifecycle::{proof_account_finalized, uploaded_proof_bounds},
@@ -43,6 +60,22 @@ use crate::{
 const PAIR_FOREST_MASTER_SEED: &[u8] = b"aspis-pair-forest-master-v1";
 const PAIR_FOREST_LANE_SEED: &[u8] = b"aspis-pair-forest-lane-v1";
 const PAIR_FOREST_CHECKPOINT_SEED: &[u8] = b"aspis-pair-forest-checkpoint-v1";
+#[cfg(feature = "v7-pair-forest-lane-invariant-audit")]
+const VERIFIER_REGISTRY_SEED: &[u8] = b"aspis-verifier-registry-v1";
+#[cfg(feature = "v7-pair-forest-lane-invariant-audit")]
+const VERIFIER_ENTRY_SEED: &[u8] = b"aspis-verifier-entry-v1";
+
+// Explicit audit-build release capability. These values match the frozen
+// deterministic TxV1 fixture. Production activation remains blocked until
+// generated mainnet Pool/registry/policy constants replace them in release
+// evidence; accepting values named by the request/master would be forgeable
+// under direct verifier invocation.
+#[cfg(feature = "v7-pair-forest-lane-invariant-audit")]
+const PAIR_FOREST_INVARIANT_POOL_PROGRAM_AUDIT_V1: [u8; 32] = [0x41; 32];
+#[cfg(feature = "v7-pair-forest-lane-invariant-audit")]
+const PAIR_FOREST_INVARIANT_REGISTRY_PROGRAM_AUDIT_V1: [u8; 32] = [0x44; 32];
+#[cfg(feature = "v7-pair-forest-lane-invariant-audit")]
+const PAIR_FOREST_INVARIANT_POLICY_BINDING_AUDIT_V1: [u8; 32] = [7; 32];
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct ValidatedV7PairForestAsq8V1 {
@@ -90,7 +123,7 @@ fn require_readonly_account(account: &AccountInfo<'_>, owner: &Pubkey) -> Progra
     Ok(())
 }
 
-fn require_distinct_accounts(accounts: &[&AccountInfo<'_>; 4]) -> ProgramResult {
+fn require_distinct_accounts<const N: usize>(accounts: &[&AccountInfo<'_>; N]) -> ProgramResult {
     for (index, account) in accounts.iter().enumerate() {
         if accounts[..index]
             .iter()
@@ -98,6 +131,78 @@ fn require_distinct_accounts(accounts: &[&AccountInfo<'_>; 4]) -> ProgramResult 
         {
             return Err(ProgramError::InvalidArgument);
         }
+    }
+    Ok(())
+}
+
+#[cfg(feature = "v7-pair-forest-lane-invariant-audit")]
+#[inline(never)]
+fn authenticate_invariant_release_registry_v1(
+    verifier_program: &Pubkey,
+    pool_program: &Pubkey,
+    master_account: &AccountInfo<'_>,
+    master: &PoolV1PairForestMasterV1,
+    registry_account: &AccountInfo<'_>,
+    entry_account: &AccountInfo<'_>,
+) -> ProgramResult {
+    if pool_program.to_bytes() != PAIR_FOREST_INVARIANT_POOL_PROGRAM_AUDIT_V1
+        || master.verifier_policy.flags != POOL_V1_VERIFIER_POLICY_FLAG_IMMUTABLE_REGISTRY
+        || master.verifier_policy.registry_program
+            != PAIR_FOREST_INVARIANT_REGISTRY_PROGRAM_AUDIT_V1
+        || master.verifier_policy.registry_authority != [0u8; 32]
+        || master.verifier_policy.policy_binding != PAIR_FOREST_INVARIANT_POLICY_BINDING_AUDIT_V1
+    {
+        return Err(ProgramError::InvalidAccountData);
+    }
+    validate_verifier_policy_v1(&master.verifier_policy)
+        .map_err(|_| ProgramError::InvalidAccountData)?;
+    let registry_program = Pubkey::new_from_array(PAIR_FOREST_INVARIANT_REGISTRY_PROGRAM_AUDIT_V1);
+    require_readonly_account(registry_account, &registry_program)?;
+    let expected_registry = Pubkey::find_program_address(
+        &[VERIFIER_REGISTRY_SEED, master_account.key.as_ref()],
+        &registry_program,
+    )
+    .0;
+    if registry_account.key != &expected_registry {
+        return Err(ProgramError::InvalidAccountData);
+    }
+    let registry = decode_verifier_registry_v1(&registry_account.try_borrow_data()?)
+        .map_err(|_| ProgramError::InvalidAccountData)?;
+    if registry.pool != master_account.key.to_bytes()
+        || registry.authority != master.verifier_policy.registry_authority
+        || registry.policy_binding != master.verifier_policy.policy_binding
+        || !registry.is_immutable()
+        || registry.is_paused()
+    {
+        return Err(ProgramError::InvalidAccountData);
+    }
+
+    require_readonly_account(entry_account, &registry_program)?;
+    let expected_entry = Pubkey::find_program_address(
+        &[
+            VERIFIER_ENTRY_SEED,
+            master_account.key.as_ref(),
+            &V7_POOL_PAIR_FOREST_TAG73_PROFILE_BINDING,
+            &V7_POOL_PAIR_FOREST_TAG73_RELEASE_BINDING,
+        ],
+        &registry_program,
+    )
+    .0;
+    if entry_account.key != &expected_entry {
+        return Err(ProgramError::InvalidAccountData);
+    }
+    let entry = decode_verifier_registry_entry_v1(&entry_account.try_borrow_data()?)
+        .map_err(|_| ProgramError::InvalidAccountData)?;
+    let current_slot = Clock::get()?.slot;
+    if entry.pool != master_account.key.to_bytes()
+        || entry.policy_binding != PAIR_FOREST_INVARIANT_POLICY_BINDING_AUDIT_V1
+        || entry.verifier_program != verifier_program.to_bytes()
+        || entry.profile_binding != V7_POOL_PAIR_FOREST_TAG73_PROFILE_BINDING
+        || entry.release_binding != V7_POOL_PAIR_FOREST_TAG73_RELEASE_BINDING
+        || entry.statement_version != POOL_V1_PAIR_FOREST_TERMINAL_VERSION
+        || !entry.is_active_at(current_slot)
+    {
+        return Err(ProgramError::InvalidAccountData);
     }
     Ok(())
 }
@@ -120,10 +225,93 @@ fn decode_checkpoint_box(bytes: &[u8]) -> Result<Box<PoolV1PairForestCheckpointV
 
 #[inline(never)]
 fn decode_lane_box(bytes: &[u8]) -> Result<Box<PoolV1PairForestLaneStateV1>, ProgramError> {
+    #[cfg(feature = "v7-pair-forest-lane-invariant-audit")]
+    return decode_lane_from_pool_release_invariant_box_v1(bytes);
+    #[cfg(not(feature = "v7-pair-forest-lane-invariant-audit"))]
     Ok(Box::new(
         decode_pool_v1_pair_forest_lane_state_v1(bytes, &V7_PAIR_EMPTY_ROOTS)
             .map_err(|_| ProgramError::InvalidAccountData)?,
     ))
+}
+
+/// Decode the complete canonical Pool lane image while relying only on the
+/// active persisted root/frontier relation as an inductive invariant of the
+/// exact Pool release. The caller still authenticates owner, read-only mode,
+/// PDA, master and lane identity. This gate is valid only for lane PDAs
+/// initialized by that release, or for a one-time strictly validated
+/// migration; the generic decoder remains the default for every other use.
+#[cfg(feature = "v7-pair-forest-lane-invariant-audit")]
+#[inline(never)]
+fn decode_lane_from_pool_release_invariant_box_v1(
+    bytes: &[u8],
+) -> Result<Box<PoolV1PairForestLaneStateV1>, ProgramError> {
+    if bytes.len() != POOL_V1_PAIR_FOREST_LANE_ACCOUNT_BYTES
+        || bytes[..4] != POOL_V1_PAIR_FOREST_LANE_MAGIC
+        || bytes[4] != POOL_V1_PAIR_FOREST_LANE_VERSION
+        || usize::from(bytes[5]) >= POOL_V1_PAIR_FOREST_LANE_COUNT
+        || bytes[6] != POOL_V1_PAIR_FOREST_LANE_COUNT as u8
+        || bytes[7] != POOL_V1_PAIR_TREE_DEPTH as u8
+        || bytes[8..40] != POOL_V1_PAIR_FOREST_ACCOUNT_FORMAT_BINDING
+        || bytes[72..POOL_V1_PAIR_FOREST_LANE_HEADER_BYTES]
+            .iter()
+            .any(|byte| *byte != 0)
+    {
+        return Err(ProgramError::InvalidAccountData);
+    }
+    let master: [u8; 32] = bytes[40..72]
+        .try_into()
+        .map_err(|_| ProgramError::InvalidAccountData)?;
+    if master == [0u8; 32] {
+        return Err(ProgramError::InvalidAccountData);
+    }
+    let tree = &bytes[POOL_V1_PAIR_FOREST_LANE_HEADER_BYTES..];
+    if tree[..4] != POOL_V1_TREE_STATE_MAGIC
+        || tree[4] != POOL_V1_TREE_STATE_VERSION
+        || tree[5] != POOL_V1_PAIR_TREE_DEPTH as u8
+        || tree[6] != POOL_V1_TREE_HASH_VERSION
+        || tree[7] != POOL_V1_DIGEST_ENCODING_VERSION
+    {
+        return Err(ProgramError::InvalidAccountData);
+    }
+    let next_leaf_index = u64::from_le_bytes(
+        tree[8..16]
+            .try_into()
+            .map_err(|_| ProgramError::InvalidAccountData)?,
+    );
+    if next_leaf_index > POOL_V1_PAIR_CAPACITY {
+        return Err(ProgramError::InvalidAccountData);
+    }
+    let root = decode_digest_canonical(
+        tree[16..48]
+            .try_into()
+            .map_err(|_| ProgramError::InvalidAccountData)?,
+    )
+    .map_err(|_| ProgramError::InvalidAccountData)?;
+    let mut frontier = [[M31::ZERO; 8]; POOL_V1_PAIR_TREE_DEPTH];
+    for (level, node) in frontier.iter_mut().enumerate() {
+        let start = 48 + 32 * level;
+        *node = decode_digest_canonical(
+            tree[start..start + 32]
+                .try_into()
+                .map_err(|_| ProgramError::InvalidAccountData)?,
+        )
+        .map_err(|_| ProgramError::InvalidAccountData)?;
+        if (next_leaf_index >> level) & 1 == 0 && *node != V7_PAIR_EMPTY_ROOTS[level] {
+            return Err(ProgramError::InvalidAccountData);
+        }
+    }
+    if next_leaf_index == 0 && root != V7_PAIR_EMPTY_ROOTS[POOL_V1_PAIR_TREE_DEPTH] {
+        return Err(ProgramError::InvalidAccountData);
+    }
+    Ok(Box::new(PoolV1PairForestLaneStateV1 {
+        master,
+        lane_id: bytes[5],
+        tree: IncrementalMerkleTreeV1 {
+            next_leaf_index,
+            root,
+            frontier,
+        },
+    }))
 }
 
 #[inline(never)]
@@ -149,7 +337,19 @@ fn authenticate_asq8_accounts_v1(
     pool_program: &Pubkey,
     output_lane: u8,
 ) -> Result<AuthenticatedV7PairForestAsq8AccountsV1, ProgramError> {
-    let [proof_account, master_account, checkpoint_account, lane_account] = accounts else {
+    #[cfg(feature = "v7-pair-forest-lane-invariant-audit")]
+    let [proof_account, master_account, checkpoint_account, lane_account, registry_account, entry_account] =
+        accounts
+    else {
+        return Err(if accounts.len() < 6 {
+            ProgramError::NotEnoughAccountKeys
+        } else {
+            ProgramError::InvalidArgument
+        });
+    };
+    #[cfg(not(feature = "v7-pair-forest-lane-invariant-audit"))]
+    let [proof_account, master_account, checkpoint_account, lane_account] = accounts
+    else {
         return Err(if accounts.len() < 4 {
             ProgramError::NotEnoughAccountKeys
         } else {
@@ -160,6 +360,16 @@ fn authenticate_asq8_accounts_v1(
     require_readonly_account(master_account, pool_program)?;
     require_readonly_account(checkpoint_account, pool_program)?;
     require_readonly_account(lane_account, pool_program)?;
+    #[cfg(feature = "v7-pair-forest-lane-invariant-audit")]
+    require_distinct_accounts(&[
+        proof_account,
+        master_account,
+        checkpoint_account,
+        lane_account,
+        registry_account,
+        entry_account,
+    ])?;
+    #[cfg(not(feature = "v7-pair-forest-lane-invariant-audit"))]
     require_distinct_accounts(&[
         proof_account,
         master_account,
@@ -181,6 +391,15 @@ fn authenticate_asq8_accounts_v1(
     {
         return Err(ProgramError::InvalidAccountData);
     }
+    #[cfg(feature = "v7-pair-forest-lane-invariant-audit")]
+    authenticate_invariant_release_registry_v1(
+        verifier_program,
+        pool_program,
+        master_account,
+        &master,
+        registry_account,
+        entry_account,
+    )?;
 
     let checkpoint = decode_checkpoint_box(&checkpoint_account.try_borrow_data()?)?;
     if checkpoint.master != master_account.key.to_bytes()
@@ -373,6 +592,18 @@ pub fn validate_v7_pair_forest_asq8_request_v1(
 }
 
 #[cfg(any(feature = "v7-pair-forest-asf8-audit", test))]
+#[inline(never)]
+fn decode_asf8_statement_box_v1(
+    instruction_data: &[u8],
+) -> Result<Box<PoolV1PairForestTerminalStatementV1>, ProgramError> {
+    Ok(Box::new(
+        decode_pool_v1_pair_forest_terminal_statement_v1(instruction_data)
+            .map_err(|_| ProgramError::InvalidInstructionData)?,
+    ))
+}
+
+#[cfg(any(feature = "v7-pair-forest-asf8-audit", test))]
+#[inline(never)]
 fn request_from_asf8_statement_v1(
     statement: &PoolV1PairForestTerminalStatementV1,
     pool_program: [u8; 32],
@@ -393,6 +624,45 @@ fn request_from_asf8_statement_v1(
     }
 }
 
+/// Check the supplied canonical statement against the exact authenticated
+/// values that ASQ8 would use to construct it.  Keeping this as a field-wise
+/// comparison avoids allocating a second 1,880-byte statement in the SBF bump
+/// heap; the supplied statement has already passed the canonical decoder and
+/// complete statement validator.
+#[cfg(any(feature = "v7-pair-forest-asf8-audit", test))]
+#[inline(never)]
+fn authenticate_supplied_asf8_statement_v1(
+    supplied: &PoolV1PairForestTerminalStatementV1,
+    request: &PoolV1PairForestTerminalRequestV1,
+    authenticated: &AuthenticatedV7PairForestAsq8AccountsV1,
+    candidate_afterstate: &aspis_statement::pool_v1::PoolV1PairVerifiedAfterstateV1,
+) -> ProgramResult {
+    let common = supplied.common();
+    if authenticated.live_snapshot.next_pair_index.checked_add(1)
+        != Some(candidate_afterstate.next_pair_index)
+        || authenticated.master.identity.asset_id
+            != match request.public {
+                aspis_statement::pool_v1::PoolV1PairForestTerminalPaymentV1::PrivateTransfer(
+                    public,
+                ) => public.asset_id,
+                aspis_statement::pool_v1::PoolV1PairForestTerminalPaymentV1::Withdrawal(public) => {
+                    public.asset_id
+                }
+            }
+        || common.master_account != authenticated.master_account
+        || common.checkpoint_account != authenticated.checkpoint_account
+        || common.selected_lane_account != authenticated.selected_lane_account
+        || common.output_lane != authenticated.selected_lane.lane_id
+        || common.checkpoint_sequence != authenticated.checkpoint.checkpoint_sequence
+        || common.historical_global_anchor != authenticated.checkpoint.global_root
+        || &common.lane_transition.live_snapshot != authenticated.live_snapshot.as_ref()
+        || &common.lane_transition.candidate_afterstate != candidate_afterstate
+    {
+        return Err(ProgramError::InvalidInstructionData);
+    }
+    Ok(())
+}
+
 /// Authenticate a caller-supplied canonical ASF8 against exactly the same
 /// four read-only accounts and proof-carried ASJA candidate as ASQ8. The
 /// supplied statement is never trusted: the independently reconstructed
@@ -406,10 +676,7 @@ pub fn validate_v7_pair_forest_asf8_request_v1(
     if instruction_data.len() != POOL_V1_PAIR_FOREST_TERMINAL_STATEMENT_BYTES {
         return Err(ProgramError::InvalidInstructionData);
     }
-    let supplied = Box::new(
-        decode_pool_v1_pair_forest_terminal_statement_v1(instruction_data)
-            .map_err(|_| ProgramError::InvalidInstructionData)?,
-    );
+    let supplied = decode_asf8_statement_box_v1(instruction_data)?;
     let master_account = accounts.get(1).ok_or(ProgramError::NotEnoughAccountKeys)?;
     let pool_program = *master_account.owner;
     let request = request_from_asf8_statement_v1(&supplied, pool_program.to_bytes());
@@ -419,11 +686,12 @@ pub fn validate_v7_pair_forest_asf8_request_v1(
         authenticate_asq8_accounts_v1(verifier_program, accounts, &pool_program, output_lane)?;
     let proof_account = accounts.first().ok_or(ProgramError::NotEnoughAccountKeys)?;
     let scanned = scan_asq8_proof_v1(proof_account)?;
-    let reconstructed =
-        reconstruct_asq8_statement_box_v1(&request, &authenticated, &scanned.candidate_afterstate)?;
-    if reconstructed.as_ref() != supplied.as_ref() {
-        return Err(ProgramError::InvalidInstructionData);
-    }
+    authenticate_supplied_asf8_statement_v1(
+        &supplied,
+        &request,
+        &authenticated,
+        &scanned.candidate_afterstate,
+    )?;
     Ok(ValidatedV7PairForestAsq8V1 {
         statement: supplied,
         frontier_nodes: scanned.frontier_nodes,
