@@ -155,6 +155,8 @@ Evidence classes used throughout this audit:
 | Withdrawal rollover, unconstrained honest q16 counter | MEASURED REAL CU (diagnostic limit) | 1,487,132 | Exact SPL and rollover settlement succeed only above the deployable limit; exact 1.4M run rejects and rolls back. The q16 scan alone costs 95,549 CU. |
 | Withdrawal same-page, accepted counter-zero honest proof | MEASURED REAL CU | **1,367,025** | Unchanged strict verifier, 964-byte true-TxV1 packet, 30,824-byte proof, frontier 203, exact SPL and Pool settlement; 32,975 CU headroom. Measurement-only pending nonce-selection cryptographic review. |
 | Withdrawal rollover, accepted counter-zero honest proof | MEASURED REAL CU | **1,395,583** | Unchanged strict verifier, 997-byte true-TxV1 packet, 30,772-byte proof, frontier 202, exact SPL and rollover settlement; only 4,417 CU headroom. Measurement-only and below desired release margin. |
+| Withdrawal same-page, selected CU stack | MEASURED REAL CU | **1,295,086** | Same strict counter-zero proof and 964-byte TxV1 packet after the Pool history invariant, exact semantic common factoring and frozen Copy-pattern CSE; exact SPL/Pool atomic settlement and all three work checks pass. 104,914 CU headroom, but activation remains source/formal gated. |
+| Withdrawal rollover, selected CU stack | MEASURED REAL CU | **1,360,640** | Same strict counter-zero proof and 997-byte TxV1 packet; exact rollover settlement passes with 39,360 CU headroom. Relation, transcript, proof, wire and ASR8 are unchanged. Counter-zero conditioning and history-writer provenance remain release gates. |
 
 The 1,255,491 and 81,922 historical component results must not be added and
 presented as exact combined CU.  The new 3,008,600 / 2,538,942 / 2,069,373 /
@@ -173,7 +175,7 @@ while release totals use uninstrumented binaries.
 | ASQ8 parse | included before first marker | MEASURED COMPONENT CU | no material byte-for-CU candidate identified; deprioritized behind populated-lane pre-CPI work |
 | pre-verifier dispatch/account reconstruction/digests | 494,414 | MEASURED REAL CU (instrumented) | hardened six-account verifier invariant reduces total by 459,550 CU after paying the independent registry gate |
 | ASF8 reconstruction | 3,011 | MEASURED COMPONENT CU | pending |
-| canonical codecs/copies/comparisons | exact wire phase 515,274; 4,996-limb canonical scan alone 515,000 | MEASURED COMPONENT CU | direct typed snapshot saves 2,191 CU transaction-wide; deferred canonicality saves 515,003 CU but is measurement-only until the real crypto path canonically consumes every limb exactly once |
+| canonical codecs/copies/comparisons | exact wire phase 515,274; 4,996-limb canonical scan alone 515,000 | MEASURED COMPONENT CU | direct typed snapshot saves 2,191 CU transaction-wide; the exact-once production reader is integrated and its Rust-to-Lean/Aeneas bridge proves 2,564 fixed plus 2,432 query limbs are consumed exactly once |
 | semantic sumcheck | 119,854 | MEASURED REAL CU (instrumented) | unchanged |
 | gamma combine | 136,982 | MEASURED REAL CU (instrumented) | unchanged |
 | paired Merkle authentication | 96,525 | MEASURED REAL CU (instrumented) | unchanged |
@@ -187,7 +189,7 @@ while release totals use uninstrumented binaries.
 | ASR8 construction/validation | encode 2,487; set-return phase 360; Pool get/decode 3,512; validate/apply-byte prep 4,663 | MEASURED COMPONENT CU | expansion rejected; direct authenticated canonical reuse saves 9,446 total CU |
 | populated selected-lane pre-CPI validation | redundant source and result reconstruction removed by separate source invariants | MEASURED REAL CU | -469,658 CU source decoder; -469,569 CU result encoder; -939,227 CU combined |
 | selected-lane/history/nullifier writes | final persistence marker delta 517; earlier planning is included in preflight/custody-plan | MEASURED COMPONENT CU | full split pending |
-| withdrawal SPL CPI/rollback | exact SPL and atomic settlement pass for both counter-zero withdrawal shapes; unconstrained fixtures above 1.4M and their deployable-limit rollback controls are also measured | MEASURED REAL CU | same-page 1,367,025; rollover 1,395,583, with additional release margin still required |
+| withdrawal SPL CPI/rollback | exact SPL and atomic settlement pass for both counter-zero withdrawal shapes; unconstrained fixtures above 1.4M and their deployable-limit rollback controls are also measured | MEASURED REAL CU | selected stack: same-page 1,295,086; rollover 1,360,640, leaving 104,914 / 39,360 CU; still formal/source gated |
 | wrapper/account overhead | pending | — | pending |
 
 The 635,345-CU matched-marker profile uses the deliberately small but valid 14-node-per-tree
@@ -221,16 +223,19 @@ algebraic/cryptographic equality which is cheaper than recomputation.
 | Two checked QM31 circle-map inverses | 0 or +32 | +32 or 0 | two inversions minus equality checks; unmeasured | static arithmetic inventory | Same relation, new canonical hint framing/source bridge | benchmark |
 | Canonical final-vector representation | 0 | +128 | isolated SBF **+5,802 CU** | default-off Variant B at `f4756ede`; evidence `9d4fb5e8` | Encoding/canonicality bridge, no changed claims | reject |
 | Canonical fixed-prefix representation | 0 | +192 | isolated SBF **-35,620 CU** | default-off Variant A at `f4756ede`; evidence `9d4fb5e8` | Encoding/canonicality bridge, no changed claims | retain only as fallback |
-| Canonical complete 641-QM31 fixed section | 0 | +320 | complete transaction **-156,930 CU** | corrected exact-once implementation at `aeaa0840`; strict combined 1,912,443 versus invariant baseline 2,069,373 | Fresh production profile/release, transcript-reader equivalence and source bridge; no changed claims | **measured Pareto winner; about 490 CU saved per added byte** |
+| Canonical complete 641-QM31 fixed section | 0 | +320 | complete transaction **-156,930 CU** | corrected exact-once implementation integrated at `356734cf`; strict combined 1,912,443 versus invariant baseline 2,069,373 | Exact transcript-reader equivalence and all-4,996-limb coverage are bridged at `6c2d085c`; fresh production profile/release still required | **measured Pareto winner; about 490 CU saved per added byte** |
 | Verifier-side fresh-PDA lane invariant | 0 | 0 | **-459,550 CU** after independent registry hardening | hardened six-account path `e86d48cc`: 1,912,443 to 1,452,893 | Immutable selected-release Pool/registry/policy root plus fresh-PDA source theorem; fake Pool+fake registry fail closed | source bridge integrated; activation still needs production constants |
 | Pack public digest differences before shared selector | 0 | 0 | **-43,339 CU** | `efc928fc`: 1,452,893 to 1,409,554 | Exact QM31 linear identity; no relation/wire/transcript change | select |
 | Reuse authenticated canonical ASR8 bytes | 0 | 0 | **-9,446 CU** | `d14ea1b1`: 1,409,554 to 1,400,108 | Fieldwise equivalence and exact verifier-result provenance | selected; source bridge integrated at `17a83e1f` |
 | Specialize generated binary copy weights | 0 | 0 | **-13,364 CU** | `6045276e`: 1,400,108 to 1,386,744 | Generated weights remain exactly 0/1; unconditional value accumulation preserved | selected; source bridge integrated at `17a83e1f` |
 | Cache exact-tag endpoint selectors | 0 | 0 | **-10,092 CU** | `b6760f7d` / harness `8178d3de`: 1,386,744 to 1,376,652 | Exact-key hits only; collisions miss and recompute; 1,024 Boolean and 64 off-domain equality cases pass | selected; source bridge integrated at `572b8211` |
-| Honest final-nonce search for an already-accepted counter-zero compact schedule | 0 | 0 | **-226,963 CU same-page withdrawal; -91,549 CU rollover withdrawal** | real strict unchanged-verifier transactions at 1,367,025 / 1,395,583 CU | Accepted language is unchanged; Lean `compact_candidate_zero_is_first` proves the deterministic first-compact fact. Must still close honest search distribution against K1.6/grinding and pointwise hiding, record prover cost, and recover rollover release margin | measurement-only; promising operational trade, not a byte trade |
+| Factor exact semantic common terms | 0 | 0 | **-5,722 CU** on rollover | selected strict withdrawal comparison frozen in `ROLLOVER-CU-MARGIN-EVIDENCE.md` | Exact algebraic common-factor identities; 128 off-domain semantic and all-1,024 honest-terminal cases pass; production activation needs the corresponding Lean/source bridge | measured, source/formal gated |
+| Cache frozen Copy-pattern windows | 0 | 0 | **-19,191 CU** on rollover | selected strict withdrawal comparison frozen in `ROLLOVER-CU-MARGIN-EVIDENCE.md` | Exact overlapping-window subtraction under the frozen generated Copy table; 256 pattern and typed Copy-reference cases pass; production activation needs the generated-table/source bridge | measured, source/formal gated |
+| Use the authenticated history-page writer invariant | 0 | 0 | **-47,056 CU same-page; -10,030 CU rollover** | exact strict Pool/withdrawal transactions | Must prove every initializer/writer maintains the canonical page image and that the fresh rollover page has no alternate writer | measured, source/Aeneas gated |
+| Honest final-nonce search for an already-accepted counter-zero compact schedule | 0 | 0 | **-226,963 CU same-page withdrawal; -91,549 CU rollover withdrawal** before the later zero-byte cuts | real strict unchanged-verifier transactions; selected stack reaches 1,295,086 / 1,360,640 CU | Accepted language is unchanged; Lean `compact_candidate_zero_is_first` proves the deterministic first-compact fact. Must still close honest search distribution against K1.6/grinding and pointwise hiding and record prover cost | measurement-only; release margin recovered, cryptographic review remains |
 | Expand ASR8 within the 1,024-byte return-data cap | 0 | 0 | none; measured gross cost is +38 to +58 CU | five distinct LiteSVM component executions | Every added field must be verifier-derived and immediately bound to the selected program/profile/release/statement/accounts | reject: keep 792 B |
 | Remove live-snapshot encode/decode round trip | 0 | 0 | **-2,191 CU** in matched component transaction | default-off direct-typed probe at `f8804061` | Source bridge from exact canonical master/lane PDA+owner decoders to the unchanged snapshot predicate | retain for production integration |
-| Defer standalone 4,996-limb canonical scan and consume canonically inside real crypto | 0 | 0 | potential **-515,003 CU of duplicate work**; not a standalone saving claim | default-off measurement probe at `f8804061` | Must prove every fixed/query limb is canonically decoded exactly once before acceptance; no field may escape the crypto consumer | mandatory integration discipline, not an independently activatable variant |
+| Defer standalone 4,996-limb canonical scan and consume canonically inside real crypto | 0 | 0 | the duplicate scan removal is already reflected in the selected exact-once representation | runtime integration `356734cf`; Lean/Aeneas bridge `6c2d085c` | Proven coverage is 2,564 fixed plus 2,432 query limbs with truncation, trailing, oversized and noncanonical rejection and unchanged transcript observations | integrated discipline, not an independent variant |
 
 The populated-lane source audit explains why bytes are not automatically the
 right answer. The selected lane account already contains root, index and
@@ -335,7 +340,7 @@ bridge proving provenance from the canonical authenticated Pool accounts.
 | 1 — fat semantic request | full ASF8, equality-checked against authenticated state | unchanged | measured 2,082,274 CU; strictly dominated and rejected |
 | 2 — best safe Tx hints | selected only after isolated measurements | unchanged | pending |
 | 3 — best safe proof hints | ASQ8 | selected only after isolated measurements | pending |
-| 4 — combined best | compact ASQ8 | +320-byte canonical fixed section plus selected zero-byte cuts | measured for transfer; counter-zero withdrawal measurements fit but await cryptographic review and more rollover margin |
+| 4 — combined best | compact ASQ8 | +320-byte canonical fixed section plus selected zero-byte cuts | transfer and both counter-zero withdrawal shapes fit; worst-case withdrawal is 1,360,640 CU, pending cryptographic and source/formal closure |
 | 5 — ASR8 return sweep | compact ASQ8 | unchanged | measured and rejected: extra bytes add CU and delete no safe work |
 
 ## 7. Pareto frontier
@@ -345,16 +350,17 @@ winner: it was measured against Variant 0 in the same complete executable
 path, while full ASF8 is worse in both bytes and CU and ASR8 expansion is also
 strictly worse. The selected configuration fits the exact 1.4M-CU limit for
 both transfer shapes. Both withdrawal shapes also fit when the honest prover
-finds an already-valid counter-zero schedule, but that operational trade is a
-separate provisional frontier pending its formal distribution audit and more
-rollover CU margin.
+finds an already-valid counter-zero schedule. The selected zero-byte stack now
+leaves 39,360 CU on rollover, but remains a provisional frontier pending the
+counter-zero distribution audit and the history/semantic-pattern source and
+formal bridges.
 
 | Variant | Tx bytes | Proof max | Transfer CU | Withdrawal CU | Delta CU | Delta bytes | Security/formal cost |
 | --- | ---: | ---: | ---: | ---: | ---: | ---: | --- |
 | 0 — compact ASQ8, source/result invariant | 811 / 844 | 30,504 max; 30,400 strict KAT | 2,069,373 | pending | baseline after source-safe zero-byte work | 0 | inductive fresh-PDA lane-state provenance |
 | 1 — full ASF8 | 2,371 / 2,404 | 30,504 | 2,082,274 (2,359-B harness packet) | pending | +12,901 | +1,560 Tx | exact authenticated equality; rejected |
 | 2 — safe Tx hints | pending | 30,504 | pending | pending | pending | pending | pending |
-| 3 — canonical fixed section + selected zero-byte stack | 811 / 844 wallet; 799 / 832 strict harness | 30,824 max; 30,720 strict KAT | **1,376,652 same-page; 1,385,365 rollover** | unconstrained-counter: 1,593,988 / 1,487,132; counter-zero: **1,367,025 / 1,395,583** | **-692,721** same-page transfer from invariant Variant 0 | +320 proof | exact-once canonical reader, hardened fresh-PDA invariant, arithmetic/source equivalences and exact-tag endpoint cache; counter-zero withdrawal is provisional |
+| 3 — canonical fixed section + selected zero-byte stack | 811 / 844 wallet; 799 / 832 strict harness; withdrawal 964 / 997 | 30,824 max; 30,720 strict KAT | **1,376,652 same-page; 1,385,365 rollover** | unconstrained-counter: 1,593,988 / 1,487,132; selected counter-zero: **1,295,086 / 1,360,640** | **-692,721** same-page transfer from invariant Variant 0 | +320 proof | exact-once canonical reader and source bridge are integrated; counter-zero, history writer invariant and latest semantic-pattern cuts remain formal/source gated |
 | 4 — combined Tx/proof bytes | not selected | not selected | full ASF8 combination not run because ASF8 is independently dominated | pending | — | — | rejected by decision rule |
 
 The selected strict-harness withdrawal packets are 964 bytes same-page and
@@ -364,9 +370,11 @@ perform the exact SPL `TransferChecked`, and settle Pool state atomically. Their
 exact-1.4M controls exhaust CU and roll back every Pool and token account
 byte-for-byte. Matched profiling identifies the data-dependent q16 scan as the
 dominant delta, not transport or the semantic terminal. Already-valid
-counter-zero honest proofs reduce the same exact operations to 1,367,025 and
-1,395,583 CU without changing verifier acceptance. The latter is still too
-close to the ceiling for release.
+counter-zero honest proofs initially reduced the same exact operations to
+1,367,025 and 1,395,583 CU without changing verifier acceptance. The selected
+history and terminal cuts reduce those totals to 1,295,086 and 1,360,640 CU.
+That is adequate measured margin, but it is not release-selected until the
+explicit cryptographic and source/formal gates above are discharged.
 
 The strict rollover fixture advances pair index 255 to 256 using a fresh
 statement-specific 35/31/34-bit-work proof. It leaves the full current page
