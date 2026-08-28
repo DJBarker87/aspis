@@ -79,6 +79,77 @@ inductive HashCallbackRecordedInFixedTable (table : FixedOracleTable) :
         (NativeExactSqueezeTrace.cons self next final block blocks sourceRun
           tail)
 
+/-- Scheduler-facing form of finite source/table coherence.  It asks only that
+the fixed table contain SHA-256 at the two exact inputs exercised by each
+source squeeze.  The production callback equality is kept in the permitted
+SHA-256 source boundary and discharged separately below. -/
+inductive ShaTraceInputsRecordedInFixedTable (table : FixedOracleTable)
+    (sha256 : ByteString → Digest256) :
+    {initial : Transcript} → {blocks : List SourceSqueezeBlock} →
+      {final : Transcript} →
+      NativeExactSqueezeTrace initial blocks final → Prop
+  | nil (self : Transcript) :
+      ShaTraceInputsRecordedInFixedTable table sha256
+        (NativeExactSqueezeTrace.nil self)
+  | cons (self next final : Transcript) (block : SourceSqueezeBlock)
+      (blocks : List SourceSqueezeBlock)
+      (sourceRun :
+        transcript.Transcript.squeeze_block self = .ok (block, next))
+      (tail : NativeExactSqueezeTrace next blocks final)
+      (outputLookup :
+        tableLookup table
+            (nativeHashInputBytes (taggedHashInput self 1#u8)) =
+          some (sha256 (nativeHashInputBytes (taggedHashInput self 1#u8))))
+      (advanceLookup :
+        tableLookup table
+            (nativeHashInputBytes (taggedHashInput self 2#u8)) =
+          some (sha256 (nativeHashInputBytes (taggedHashInput self 2#u8))))
+      (tailRecorded : ShaTraceInputsRecordedInFixedTable table sha256 tail) :
+      ShaTraceInputsRecordedInFixedTable table sha256
+        (NativeExactSqueezeTrace.cons self next final block blocks sourceRun
+          tail)
+
+/-- Literal production SHA semantics turns finite scheduler table coverage into
+the exact source-output lookup facts used by the deterministic replay. -/
+theorem hash_callback_recorded_of_sha_trace_inputs
+    {table : FixedOracleTable} {sha256 : ByteString → Digest256}
+    {initial final : Transcript} {blocks : List SourceSqueezeBlock}
+    (trace : NativeExactSqueezeTrace initial blocks final)
+    (shaSemantics : HashCallbackReturnsSha256 sha256 initial.hash)
+    (recorded : ShaTraceInputsRecordedInFixedTable table sha256 trace) :
+    HashCallbackRecordedInFixedTable table trace := by
+  revert shaSemantics
+  induction recorded with
+  | nil self =>
+      intro _
+      exact HashCallbackRecordedInFixedTable.nil self
+  | cons self next final block blocks sourceRun tail outputLookup
+      advanceLookup tailRecorded ih =>
+      intro shaSemantics
+      have runs := successful_squeeze_exposes_hash_runs self next block sourceRun
+      obtain ⟨output, outputRun, outputSha⟩ :=
+        shaSemantics (taggedHashInput self 1#u8)
+      obtain ⟨nextState, advanceRun, advanceSha⟩ :=
+        shaSemantics (taggedHashInput self 2#u8)
+      rw [runs.1] at outputRun
+      rw [runs.2] at advanceRun
+      have outputExact : output = block := by
+        exact (Result.ok.inj outputRun).symm
+      have advanceExact : nextState = next.state := by
+        exact (Result.ok.inj advanceRun).symm
+      subst output
+      subst nextState
+      have callbackExact := successful_squeeze_preserves_hash
+        self next block sourceRun
+      have tailSha : HashCallbackReturnsSha256 sha256 next.hash := by
+        simpa only [callbackExact] using shaSemantics
+      refine HashCallbackRecordedInFixedTable.cons self next final block blocks
+        sourceRun tail ?_ ?_ (ih tailSha)
+      · rw [outputSha]
+        exact outputLookup
+      · rw [advanceSha]
+        exact advanceLookup
+
 /-- A literal translated squeeze trace whose two hashes are present in the
 same fixed oracle table used by the Tag-73 scheduler. -/
 inductive NativeTableSqueezeTrace (table : FixedOracleTable) :
@@ -237,12 +308,33 @@ theorem native_source_trace_matches_semantic_of_recorded_callback
     (native_table_squeeze_trace_of_recorded_callback trace recorded)
     machine aligned
 
+/-- Release-facing deterministic replay from only the permitted production
+SHA-256 callback boundary and finite scheduler-table coverage of the q16 trace.
+No global callback/table agreement premise survives. -/
+theorem native_source_trace_matches_semantic_of_sha256_coverage
+    {table : FixedOracleTable} {sha256 : ByteString → Digest256}
+    {initial final : Transcript} {blocks : List SourceSqueezeBlock}
+    (trace : NativeExactSqueezeTrace initial blocks final)
+    (shaSemantics : HashCallbackReturnsSha256 sha256 initial.hash)
+    (recorded : ShaTraceInputsRecordedInFixedTable table sha256 trace)
+    (machine : MachineState)
+    (aligned : machine.digest = nativeTranscriptDigest initial) :
+    (squeezeBlocks (fixedTableHashOracle table) blocks.length machine).1 =
+        sourceTraceDigests blocks ∧
+      (squeezeBlocks (fixedTableHashOracle table)
+        blocks.length machine).2.digest = nativeTranscriptDigest final := by
+  exact native_source_trace_matches_semantic_of_recorded_callback trace
+    (hash_callback_recorded_of_sha_trace_inputs trace shaSemantics recorded)
+    machine aligned
+
 #print axioms fixed_table_hash_oracle_answer_of_lookup
+#print axioms hash_callback_recorded_of_sha_trace_inputs
 #print axioms native_table_squeeze_trace_of_runtime_reflection
 #print axioms source_squeeze_runtime_reflection_of_recorded_callback
 #print axioms native_table_squeeze_trace_of_recorded_callback
 #print axioms native_table_squeeze_trace_to_source_trace
 #print axioms native_table_squeeze_trace_matches_semantic
 #print axioms native_source_trace_matches_semantic_of_recorded_callback
+#print axioms native_source_trace_matches_semantic_of_sha256_coverage
 
 end V7FirstCompactSamplerTableTraceBridge
