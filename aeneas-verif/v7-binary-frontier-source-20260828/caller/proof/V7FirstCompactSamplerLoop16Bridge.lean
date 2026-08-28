@@ -8,6 +8,8 @@ set_option maxHeartbeats 4000000
 namespace V7FirstCompactSamplerLoop16Bridge
 
 open AspisV5QuerySamplerControl
+open AspisK1.V7Tag73TranscriptSchedule
+open AspisK1.V7Tag73SamplerDecoder
 
 def q16Count : Std.Usize := 16#usize
 def q16MaxDraws : Std.Usize := 64#usize
@@ -15,6 +17,49 @@ def q16Mask : Std.U32 := 262143#u32
 
 @[simp] theorem q16Count_val : q16Count.val = 16 := by rfl
 @[simp] theorem q16MaxDraws_val : q16MaxDraws.val = 64 := by rfl
+
+/-- The exact K1.3 byte view of one current translated 32-byte squeeze block. -/
+def sourceDigest (block : Array Std.U8 32#usize) : Digest256 :=
+  fun index => UInt8.ofNat
+    (block.val[index.val]'(by
+      have hindex := index.isLt
+      simpa [block.property] using hindex)).val
+
+@[simp] theorem sourceDigest_toNat
+    (block : Array Std.U8 32#usize) (index : Fin 32) :
+    (sourceDigest block index).toNat =
+      (block.val[index.val]'(by
+        have hindex := index.isLt
+        simpa [block.property] using hindex)).val := by
+  simp [sourceDigest]
+
+/-- Aeneas' literal four-byte decoder equals K1.3's mathematical little-endian
+word on the corresponding source block. -/
+theorem generated_word_value_eq_k13
+    (block : Array Std.U8 32#usize) (word : Fin 8) :
+    (core.num.U32.from_le_bytes
+      (V5QuerySamplerGeneratedSemantics.wordArray block word)).val =
+      littleEndianWord (sourceDigest block) word := by
+  rw [V5QuerySamplerGeneratedSemantics.generated_word_value_eq_u32LE]
+  simp [AspisV5TranscriptConnection.u32LE,
+    AspisV5TranscriptConnection.blockByte,
+    V5TranscriptPrimitivesProof.arrayDigest,
+    V5TranscriptPrimitivesProof.toByte,
+    littleEndianWord, sourceDigest]
+
+/-- The literal decoded-and-masked source word is exactly K1.3's q16
+candidate for that block position. -/
+theorem generated_candidate_eq_k13
+    (block : Array Std.U8 32#usize) (word : Fin 8) :
+    ((core.num.U32.from_le_bytes
+      (V5QuerySamplerGeneratedSemantics.wordArray block word)) &&&
+        q16Mask).val =
+      q16Candidate (littleEndianWord (sourceDigest block) word) := by
+  change ((core.num.U32.from_le_bytes
+    (V5QuerySamplerGeneratedSemantics.wordArray block word)) &&&
+      262143#u32).val = _
+  rw [V7FirstCompactSamplerInnerBridge.current_q16_mask_is_exact]
+  exact congrArg q16Candidate (generated_word_value_eq_k13 block word)
 
 def candidateOfSlice (word : Slice Std.U8) : Nat :=
   if h : word.val.length = 4 then
@@ -25,6 +70,27 @@ def candidateOfSlice (word : Slice Std.U8) : Nat :=
 
 def iteratorCandidates (iter : core.slice.iter.ChunksExact Std.U8) :
     List Nat := iter.chunks.map candidateOfSlice
+
+theorem candidateOfSlice_wordSlice
+    (block : Array Std.U8 32#usize) (word : Fin 8) :
+    candidateOfSlice
+        (V5QuerySamplerGeneratedSemantics.wordSlice block word) =
+      q16Candidate (littleEndianWord (sourceDigest block) word) := by
+  unfold candidateOfSlice
+  simp only [V5QuerySamplerGeneratedSemantics.wordSlice, List.length_ofFn,
+    ↓reduceDIte]
+  rw [← generated_candidate_eq_k13 block word]
+  rfl
+
+/-- One literal `chunks_exact(4)` block yields exactly K1.3's eight q16
+candidates in chronological order. -/
+theorem iteratorCandidates_blockChunks
+    (block : Array Std.U8 32#usize) :
+    iteratorCandidates
+        (V5QuerySamplerGeneratedSemantics.blockChunks block) =
+      (blockWords (sourceDigest block)).map q16Candidate := by
+  simp [iteratorCandidates, V5QuerySamplerGeneratedSemantics.blockChunks,
+    blockWords, candidateOfSlice_wordSlice]
 
 def vecNats (values : alloc.vec.Vec Std.U32) : List Nat :=
   values.val.map UScalar.val
@@ -333,5 +399,8 @@ theorem generated_inner_loop_matches_scanWords
     rfl
 
 #print axioms generated_inner_loop_matches_scanWords
+#print axioms generated_word_value_eq_k13
+#print axioms generated_candidate_eq_k13
+#print axioms iteratorCandidates_blockChunks
 
 end V7FirstCompactSamplerLoop16Bridge

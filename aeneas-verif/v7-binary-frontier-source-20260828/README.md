@@ -212,6 +212,14 @@ rewritten through the preceding equivalence inside the proof. Focused unit
 and used zero swap; the theorem reports only `propext`, `Classical.choice`, and
 `Quot.sound`.
 
+The same module now closes the byte-to-K1.3 seam for every squeeze block:
+Aeneas four-byte decoding equals K1.3 `littleEndianWord`, the masked value is
+exactly `q16Candidate`, and the literal `chunks_exact(4)` iterator yields the
+eight K1.3 candidates in chronological order. Focused unit
+`aspis-v7-q16-codec-final-01` exited 0 in 3.77 seconds, peaked at 6,920,272 KiB
+RSS, used zero swap, and all four printed endpoints have the same standard
+axiom set.
+
 ## Digests
 
 ```text
@@ -236,7 +244,7 @@ c72e3c80fcfd46ce032d834d00b209316608f2cb1b39840dbabdec8180e3aaa6  caller/proof/V
 38968fe0e71d83e4971bef2b26012fa7a52d1244b541564253d24db413eed85d  caller/proof/V7FirstCompactCallerBridge.lean
 f21af0ef7f2362c62acb2dfa992c29d31f006aa5b13d788b64752b95d2f033bf  caller/proof/V7FirstCompactK13RawScheduleBridge.lean
 128ac3fb23f46ae234b6472c78c27b938b458933d102cdc9be1c5cab8dbb85f4  caller/proof/V7FirstCompactSamplerInnerBridge.lean
-0ceb6d0ce14feabe8aa97edf0638fed71b86641372481b6185cf1dbd5773d265  caller/proof/V7FirstCompactSamplerLoop16Bridge.lean
+38a125601298e71ccb2c28f16a9ab222ce377f606f24e3ddfd84b30c040d0e20  caller/proof/V7FirstCompactSamplerLoop16Bridge.lean
 6abb0376100611c5553258062480777187785579f402c9c1d3ce72379518258f  ../../crates/aspis-core/src/v7_onefold.rs
 ```
 
