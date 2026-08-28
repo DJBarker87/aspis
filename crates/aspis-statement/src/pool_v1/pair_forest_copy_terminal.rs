@@ -239,6 +239,19 @@ fn link_weight(
     }
 }
 
+/// Exact specialization of `sum + selector * weight` for the generated Copy
+/// grammar. `link_weight` has image `{0,1}` for every variant and append
+/// index; focused tests bind that image to every checked-in generated link.
+#[cfg(any(test, feature = "pool-v1-pair-forest-binary-copy-weights-audit"))]
+#[inline(always)]
+fn add_binary_weight(sum: QM31, selector: QM31, weight: M31) -> QM31 {
+    match weight.0 {
+        0 => sum,
+        1 => sum.add(selector),
+        _ => unreachable!("generated Pool V1 pair-forest Copy weight is not binary"),
+    }
+}
+
 fn accumulate_endpoint(
     values: &mut [QM31; 2],
     weights: &mut [QM31; 2],
@@ -250,7 +263,14 @@ fn accumulate_endpoint(
 ) {
     let selector = selectors.row(usize::from(endpoint.row));
     let slot = usize::from(endpoint.slot);
-    weights[slot] = weights[slot].add(selector.mul_m31(weight));
+    #[cfg(not(feature = "pool-v1-pair-forest-binary-copy-weights-audit"))]
+    {
+        weights[slot] = weights[slot].add(selector.mul_m31(weight));
+    }
+    #[cfg(feature = "pool-v1-pair-forest-binary-copy-weights-audit")]
+    {
+        weights[slot] = add_binary_weight(weights[slot], selector, weight);
+    }
     let compressed = lift(M31(tag)).add(patterns[usize::from(endpoint.pattern)]);
     values[slot] = values[slot].add(selector.mul(compressed));
 }
@@ -496,6 +516,28 @@ mod tests {
             PINNED_POOL_V1_PAIR_FOREST_COPY_TERMINAL_ACTIVE_ROWS_FINGERPRINT_V1,
             0xdf39_4a5a_8554_d09c,
         );
+    }
+
+    #[test]
+    fn every_generated_copy_weight_is_binary_and_skip_add_is_exact() {
+        let mut rng = Rng(0x6269_6e61_7279_7731);
+        for variant in [
+            PoolV1PairForestCompiledVariantV1::PrivateTransfer,
+            PoolV1PairForestCompiledVariantV1::Withdrawal,
+        ] {
+            for append_index in [0, 13, 0x5_5555, 0xa_aaaa, (1 << 20) - 1] {
+                for link in constants::COPY_LINKS {
+                    let weight = link_weight(link, append_index, variant);
+                    assert!(weight == M31::ZERO || weight == M31::ONE);
+                    let sum = rng.qm31();
+                    let selector = rng.qm31();
+                    assert_eq!(
+                        add_binary_weight(sum, selector, weight),
+                        sum.add(selector.mul_m31(weight)),
+                    );
+                }
+            }
+        }
     }
 
     #[test]

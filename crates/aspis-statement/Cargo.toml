@@ -21,6 +21,9 @@ pool-v1-kernel = []
 # It packs each four-lane residual before applying its common selector; the
 # default and released terminal retain the literal lane-by-lane evaluator.
 pool-v1-pair-forest-packed-digest-audit = []
+# Audit-only exact `{0,1}` specialization for generated pair-forest Copy
+# weights. The literal QM31-by-M31 multiplication remains the default.
+pool-v1-pair-forest-binary-copy-weights-audit = []
 
 [dependencies]
 aspis-core.workspace = true
