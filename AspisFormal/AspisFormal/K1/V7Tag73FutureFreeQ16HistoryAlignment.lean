@@ -401,6 +401,28 @@ theorem q16_sample_reply_preserves_history_alignment
           nextSnapshot, processed, processFutureFreeCandidateBlock, decoded,
           belowCap']
 
+/-- A live bounded q16 sampler state and its proved chronological history
+alignment determine the exact pre-answer slot used by the deployed history
+router.  The fresh output is not an argument: only the completed history and
+the literal squeeze input select `(counter, outputs.length)`. -/
+theorem history_aligned_q16_sample_has_exact_preferred_slot
+    (state : FutureFreeVerifierState)
+    (history : List QueryRecord)
+    (base digest : Digest256) (counter : Fin 64)
+    (outputs : List Digest256) (remaining : List FutureFreeSlot)
+    (controlExact : state.current.control =
+      .q16Sample base counter outputs remaining)
+    (aligned : FutureFreeQ16HistoryAligned state history)
+    (bounded : outputs.length < 8) :
+    rootQ16PreferredSlotFromHistory history
+        (bytes digest ++ [domSqueeze]) =
+      some (counter, ⟨outputs.length, bounded⟩) := by
+  have phaseExact : rootQ16HistoryPhase history =
+      .ready counter outputs.length := by
+    simpa [FutureFreeQ16HistoryAligned, controlExact] using aligned
+  exact root_q16_preferred_slot_of_ready_phase history counter outputs.length
+    digest phaseExact bounded
+
 /-! ## One complete operational microstep -/
 
 /-- Controls other than `q16Sample` impose no history-alignment obligation. -/
@@ -632,6 +654,7 @@ theorem future_free_operational_trace_preserves_q16_history_alignment
 #print axioms submit_next_raw_message_preserves_q16_history_alignment
 #print axioms q16_absorb_reply_aligns_history
 #print axioms q16_sample_reply_preserves_history_alignment
+#print axioms history_aligned_q16_sample_has_exact_preferred_slot
 #print axioms future_free_operational_step_preserves_q16_history_alignment
 #print axioms future_free_operational_trace_preserves_q16_history_alignment
 
