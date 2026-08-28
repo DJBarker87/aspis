@@ -1,5 +1,6 @@
 import AspisFormal.K1.V7Tag73ParsedK13K14Classifier
 import AspisFormal.K1.V7Tag73ConcreteRestorationClient
+import AspisFormal.K1.V7Tag73Q16FirstCompactUniformity
 
 /-!
 # Restoration-node K1.2/K1.3 classifier for Tag-73
@@ -16,7 +17,7 @@ typed extraction, or K1.3 failure that occurred.
 -/
 
 set_option autoImplicit false
-set_option maxRecDepth 100000
+set_option maxRecDepth 1000000
 
 namespace AspisK1.V7Tag73RestoredNodeK13Classifier
 
@@ -35,6 +36,10 @@ open AspisK1.V7Tag73ParsedK13K14Classifier
 open AspisPool.V7MerkleQueryGrammar
 open AspisPool.V7MerkleQueryExtractor
 open AspisPool.AlgorithmicCircleDecoderV7
+open AspisPool.V7CoherentTraceExtraction
+open AspisV5WithoutReplacementQuerySoundness
+open AspisV6OneFoldCandidateExtraction
+open AspisK1.V7Tag73Q16FirstCompactUniformity
 open AspisV5ComponentCQM31TowerExact
 
 noncomputable section
@@ -175,6 +180,78 @@ theorem restoredNodeK13_error_is_exact_stage_failure
   | k12 error => exact .inl ⟨error⟩
   | k13 words error => exact .inr ⟨words, ⟨error⟩⟩
 
+/-- Proposition-level error inventory for a restored child.  This is the
+event language used by the probability layer; every disjunct is an existing
+K1.2/K1.3 mathematical failure, rather than an opaque classifier result. -/
+def RestoredNodeK13FailureEvent
+    {Statement Payload : Type*}
+    (decoder : ExactDecoderInstantiation QM31Exact)
+    (node : RestoredK13Node Statement Payload) : Prop :=
+  (¬ accepted_two_tree_openings (restoredNodeK12Truncate node)
+      (restoredNodeK12Roots node) (restoredNodeK12Openings node)) ∨
+  V7MerkleExtractionFailure (restoredNodeK12Truncate node)
+      (restoredNodeK12Roots node) (restoredNodeK12Openings node)
+      (restoredNodeK12OrderedQueries node) ∨
+  ∃ words : ExtractedWords,
+    (¬ IdealAccepts (restoredNodeK12Proof node).schedule
+      (decoderCodeEncoders decoder)
+      (parsedK13Transcript words (restoredNodeK12Proof node))
+      (restoredNodeK12Proof node).queries) ∨
+    QueryPhaseFailure (restoredNodeK12Proof node).schedule
+      (decoderCodeEncoders decoder)
+      (parsedK13Transcript words (restoredNodeK12Proof node))
+      (restoredNodeK12Proof node).queries ∨
+    OneFoldReductionFailure (restoredNodeK12Proof node).schedule
+      (decoderCodeEncoders decoder)
+      (parsedK13Transcript words (restoredNodeK12Proof node)) ∨
+    InitialListCapFailure (decoderCodeEncoders decoder)
+      (parsedK13Transcript words (restoredNodeK12Proof node))
+
+theorem restoredNodeK13_error_implies_failure_event
+    {Statement Payload : Type*}
+    {decoder : ExactDecoderInstantiation QM31Exact}
+    {node : RestoredK13Node Statement Payload}
+    (error : RestoredNodeK13Error decoder node) :
+    RestoredNodeK13FailureEvent decoder node := by
+  cases error with
+  | k12 error =>
+      cases error with
+      | openingAuthenticationRejected rejected => exact .inl rejected
+      | extractionFailure reason failed => exact .inr (.inl ⟨reason, failed⟩)
+  | k13 words error =>
+      refine .inr (.inr ⟨words, ?_⟩)
+      cases error with
+      | idealRejected rejected => exact .inl rejected
+      | queryPhaseFailure failure => exact .inr (.inl failure)
+      | oneFoldReductionFailure failure => exact .inr (.inr (.inl failure))
+      | initialListCapFailure failure => exact .inr (.inr (.inr failure))
+
+/-- A restored-node q16 failure exposes exactly one consistency set with the
+deployed cardinality cap, and every query position encoded by that child lies
+in it.  The later operational bridge only has to identify those positions
+with the child's restored first-cap-203 search. -/
+theorem restored_query_phase_failure_exposes_q16_bad_set
+    {Statement Payload : Type*}
+    {decoder : ExactDecoderInstantiation QM31Exact}
+    {node : RestoredK13Node Statement Payload}
+    (k12 : RestoredNodeK12Certificate node)
+    (failure : QueryPhaseFailure (restoredNodeK12Proof node).schedule
+      (decoderCodeEncoders decoder)
+      (parsedK13Transcript k12.words (restoredNodeK12Proof node))
+      (restoredNodeK12Proof node).queries) :
+    ∃ bad : Finset (Fin 262144),
+      bad.card ≤ 9557 ∧
+        AllInBad bad (restoredNodeK12Proof node).queries := by
+  refine ⟨consistencySet (restoredNodeK12Proof node).schedule
+      (decoderCodeEncoders decoder)
+      (parsedK13Transcript k12.words (restoredNodeK12Proof node)),
+    failure.2, ?_⟩
+  intro ordinal
+  exact accepted_queries_mem_consistencySet
+    (restoredNodeK12Proof node).schedule (decoderCodeEncoders decoder)
+    (parsedK13Transcript k12.words (restoredNodeK12Proof node))
+    (restoredNodeK12Proof node).queries failure.1 ordinal
+
 /-! ## Literal K1.6 accumulator handoff -/
 
 def exactRestorationAccumulator
@@ -234,6 +311,8 @@ noncomputable def exact_operational_stored_node_has_k13_classification
     classified := classifyRestoredNodeK13 decoder node }
 
 #print axioms restoredNodeK13_error_is_exact_stage_failure
+#print axioms restoredNodeK13_error_implies_failure_event
+#print axioms restored_query_phase_failure_exposes_q16_bad_set
 #print axioms exact_operational_stored_node_has_k13_classification
 
 end
