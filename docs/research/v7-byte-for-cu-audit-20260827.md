@@ -7,21 +7,26 @@ proof-system security parameter, or network state has been changed.
 
 ## Decision status
 
-**NO DECISION — NEED REAL COMBINED CU FIRST**
+**SPEND PROOF BYTES FOR CU**
 
-This is an interim status, not the final recommendation. The masking-rank gate
-has passed and the frozen strict-work host KAT now proves
-`ASQ8 -> ASF8 -> Tag-73 -> ASR8` using an honest 30,400-byte proof with exact
-35/31/34-bit work checks and a 792-byte ASR8. A real
-combined SBF harness also now executes Pool pre-CPI validation and enters the
-selected verifier. It does **not** yet complete: a populated 13-pair selected
-lane leaves exactly 845,470 CU at selected-verifier entry and exhausts the
-exact 1,400,000-CU transaction cap with rollback. A populated zero/min-frontier
-proof control enters with 845,508 CU and also exhausts exactly 1,400,000 CU,
-locating the immediate blocker before proof-length-dependent work. Empty-lane
-entry leaves 1,317,507 CU. Until populated-state Pool work is reduced and the
-complete transaction lands, no success CU or Variant 0/1/C Pareto winner
-exists.
+The measured selected frontier keeps compact 320-byte ASQ8, spends exactly
+320 proof-account bytes on the canonical fixed section, keeps ASR8 at 792
+bytes, and composes the separately gated state/source optimisations. The real
+strict-work true-TxV1 transfer succeeds atomically at **1,376,652 CU**, with
+**23,348 CU headroom** under the 1.4M limit. Its exact sizes are 799 transaction
+bytes, 30,720 honest proof bytes and 792 return-data bytes. The selected
+verifier CPI consumes 1,286,678 CU.
+
+This is a Pareto decision, not production activation. The selected route is
+still default-off and requires generated production Pool/registry/release
+identities, fresh initialized lane PDAs, reproducible selected binaries,
+integrated source/formal evidence, and the remaining withdrawal-CU and
+adversarial lifecycle gates. Transfer rollover already accepts at 1,385,365 CU,
+but withdrawals still exceed 1.4M (1,593,988 same-page and 1,487,132 rollover
+under diagnostic limits), so this selected configuration is not yet a complete
+Pool release. Full ASF8 is measured and strictly dominated:
+it adds 1,560 transaction bytes and 12,901 CU. Expanding ASR8 adds 38--58 CU
+and deletes no safe work.
 
 ## 1. Frozen baseline
 
@@ -31,6 +36,14 @@ The positive-path integration base is:
 e4c317fe4fa420c8d2aab613d400abc3607b45db
 test: freeze strict-work forest dispatch KAT
 ```
+
+The selected default-off measurement stack additionally contains the
+authenticated fresh-PDA lane invariant, immutable six-account verifier release
+gate, +320-byte canonical fixed section, packed digest selector, direct
+canonical ASR8 reuse, binary Copy weights and exact-tag endpoint selector
+cache. The source experiments are pinned at `e86d48cc`, `efc928fc`,
+`d14ea1b1`, `6045276e` and `b6760f7d`; the focused source/Aeneas bridge ports
+are recorded separately and do not change the measured binaries.
 
 The relevant path revisions present in that tree are:
 
@@ -120,18 +133,28 @@ Evidence classes used throughout this audit:
 | Byte-only Pool same-page terminal | MEASURED COMPONENT CU | 81,922 | Authenticated verifier transport double plus Pool writes; no cryptographic verifier. |
 | Byte-only Pool rollover baseline | MEASURED COMPONENT CU | 119,206 | Earlier isolated rollover plumbing; no cryptographic verifier. |
 | Instrumented ASQ8/ASF8/ASR8 + byte-only forest transfer | MEASURED COMPONENT CU | 635,345 | Matched-marker baseline: real Pool-to-verifier CPI, account/PDA/registry checks, canonical proof-wire scan, ASF8 reconstruction, 792-byte ASR8 return and atomic byte writes; no Tag-73 equations and no Pool Poseidon. The 827-byte harness transaction is not the wallet TxV1 shape. The earlier return sweep used the same path without three decomposition markers and measured 634,663 CU. |
-| Historical full-ASF8 authenticated component | HOST TIMING (NOT CU) | not applicable | On a 30,504-byte wire, 256 native release iterations measured 31,738 ns full ASF8 versus 31,260 ns compact ASQ8. That pinned source profile had no dispatcher arm and emitted no ASR8. The new real audit route is prepared but not yet measured. |
+| Historical full-ASF8 authenticated component | HOST TIMING (NOT CU) | not applicable | On a 30,504-byte wire, 256 native release iterations measured 31,738 ns full ASF8 versus 31,260 ns compact ASQ8. That historical profile had no dispatcher arm and emitted no ASR8; the later real combined ASF8 row is classified separately. |
 | Honest ASQ8 -> Tag-73 -> ASR8 strict-work host KAT | HOST ACCEPTANCE (NOT CU) | not applicable | Exact 30,400-byte proof, 201 frontier nodes, exact 35/31/34-bit work, complete semantic terminal/relation/openings and exact 792-byte ASR8 all pass through the production dispatcher. |
 | Empty-lane combined Pool -> selected verifier entry | MEASURED REAL CU (incomplete) | 82,493 CU before CPI; 1,317,507 remaining | Real combined SBF transaction and account path. It establishes entry budget, not acceptance or total successful CU. |
 | Populated 13-pair honest lane combined attempt | MEASURED REAL CU (failed/rollback) | 554,530 CU before CPI; exactly 1,400,000 exhausted | Real 30,140-byte honest unmined proof under strict production `check_work=true`; selected verifier entered with 845,470 CU, no result returned, exact rollback. Logs do not identify a later verifier phase. |
 | Populated 13-pair zero/min-frontier control | MEASURED REAL CU (failed/rollback) | 554,492 CU before CPI; exactly 1,400,000 exhausted | Selected verifier entered with 845,508 CU and exhausted. This pins the populated prefix independently of proof length/content; it is not cryptographic acceptance. |
+| Strict compact ASQ8 with Pool source+result invariant | MEASURED REAL CU | 2,069,373 total; 1,970,586 verifier CPI | True TxV1, exact settlement, 799-byte transaction, 30,400-byte honest proof and 792-byte ASR8. This is the fair compact baseline after removing duplicate Pool root provenance work. |
+| Strict full ASF8 with the same invariants | MEASURED REAL CU | 2,082,274 total; 1,975,765 verifier CPI | 2,359-byte true TxV1; same proof/result and settlement. Delta versus compact is **+12,901 CU and +1,560 Tx bytes**, so full ASF8 is dominated. |
+| Strict compact ASQ8 + canonical fixed section (Variant C) | MEASURED REAL CU | 1,912,443 total; 1,813,655 verifier CPI | Exact 30,720-byte proof (+320), 799-byte true TxV1, exact 792-byte result and settlement; saves 156,930 CU versus its fair 2,069,373-CU compact baseline. |
+| Variant C + hardened six-account verifier lane invariant | MEASURED REAL CU | 1,452,893 total; 1,353,473 verifier CPI | Independently authenticates immutable registry root, Pool/verifier/profile/release/version and active slot. Audit fixture identities are not production identities. |
+| Variant C + hardened lane invariant + direct ASR8 + binary Copy weights | MEASURED REAL CU | 1,386,744 total; 1,296,770 verifier CPI | First strict true-TxV1 atomic success below 1.4M; exact lane/history/nullifier settlement. |
+| Selected stack + exact-tag endpoint selector cache | MEASURED REAL CU | **1,376,652 total; 1,286,678 verifier CPI** | Current best real Pareto point: 799-byte true TxV1, 30,720-byte proof, 792-byte ASR8, 23,348 CU headroom and exact atomic settlement. |
+| Selected stack, transfer rollover | MEASURED REAL CU | **1,385,365 total; 1,266,387 verifier CPI** | Accepted at the real 1.4M limit, 832-byte true TxV1, 14,635 CU headroom and exact rollover settlement. |
+| Selected stack, withdrawal same-page | MEASURED REAL CU (over-limit diagnostic plus 1.4M rollback) | 1,593,988 total at 1.6M; exactly 1,400,000 rejected at deployable limit | 964-byte true TxV1; diagnostic success includes exact SPL CPI and settlement but is not deployability evidence. |
+| Selected stack, withdrawal rollover | MEASURED REAL CU (over-limit diagnostic plus 1.4M rollback) | 1,487,132 total at 1.65M; exactly 1,400,000 rejected at deployable limit | 997-byte true TxV1; diagnostic success includes exact SPL CPI and rollover settlement but is not deployability evidence. |
 
-The 1,255,491 and 81,922 results must not be added and presented as exact
-combined CU. The new failed combined attempt is more informative: its
-populated-lane pre-CPI path consumes 554,530 CU. Byte-for-CU work
-must first target that state-dependent Pool path, because ASQ8/ASF8 codec
-micro-optimisation cannot rescue a transaction that reaches the verifier with
-only 845,470 CU.
+The 1,255,491 and 81,922 component results must not be added and presented as
+exact combined CU. The later rows are actual complete transactions and replace
+that old inference. The populated-lane blocker was duplicate 20-Poseidon
+provenance reconstruction, not missing transaction bytes. Its source/result
+invariant removal saved 939,227 CU in the matched strict run. Variant C then
+bought another 156,930 CU for 320 account-backed proof bytes; full ASF8 bought
+nothing and is rejected.
 
 ## 4. Instrumented one-terminal CU breakdown
 
@@ -150,9 +173,10 @@ acceptance until the real ASQ8 handler exists.
 | field decode/gamma arithmetic | 136,824 CU within query-opening profile | MEASURED COMPONENT CU | pending |
 | terminal/prefactorised semantic checks | pending exact current split | MEASURED COMPONENT CU | pending |
 | ASR8 construction/validation | encode 2,487; set-return phase 360; Pool get/decode 3,512; validate/apply-byte prep 4,663 | MEASURED COMPONENT CU | 792--1,024 B sweep complete; every expansion costs CU and deletes no safe work |
-| populated selected-lane pre-CPI validation | 554,530 before verifier entry at 13 existing pairs; empty-lane entry consumes 82,493 | MEASURED REAL CU (incomplete transaction) | immediate Pareto blocker; exact phase split pending |
+| populated selected-lane pre-CPI validation | legacy strict path 554,530 before verifier entry; selected invariant path reduces complete Pool pre/post-CPI overhead to 89,974 around a 1,286,678-CU verifier CPI | MEASURED REAL CU | duplicate root provenance reconstruction removed under the explicit fresh-PDA/program-writer invariant; all owner/PDA/version/index/canonical inactive-frontier checks retained |
+| selected complete verifier CPI | 1,286,678 | MEASURED REAL CU | includes Variant C, authenticated verifier lane invariant, packed digest selector, binary Copy weight specialization and exact-tag endpoint selector cache |
 | selected-lane/history/nullifier writes | final persistence marker delta 517; earlier planning is included in preflight/custody-plan | MEASURED COMPONENT CU | full split pending |
-| withdrawal SPL CPI/rollback | pending | — | pending |
+| withdrawal SPL CPI/rollback | selected same-page and rollover diagnostic successes execute exact SPL CPI and settlement; both deployable-limit replays reject at exactly 1.4M and roll back | MEASURED REAL CU | total selected withdrawal CU remains 1,593,988 / 1,487,132, so further verifier/withdrawal work is mandatory |
 | wrapper/account overhead | pending | — | pending |
 
 The 635,345-CU matched-marker profile uses the deliberately small but valid 14-node-per-tree
@@ -178,18 +202,20 @@ algebraic/cryptographic equality which is cheaper than recomputation.
 
 | Candidate | Extra Tx bytes | Extra proof/account bytes | Candidate CU saving | Evidence now | Security/formal/source cost | Status |
 | --- | ---: | ---: | ---: | --- | --- | --- |
-| Replace repeated populated-lane root reconstruction with authenticated Pool-owned lane-state provenance | 0 | 0 | potentially the observed roughly 472k empty-to-13-pair pre-CPI delta; exact phase probe pending | real combined entry budget plus source audit: nonempty `decode_with_empty_roots` executes `reconstruct_nonfull_root`, twenty Poseidon parents | This is a zero-byte CU optimisation, not a byte trade. Must prove the Pool-owned lane PDA is an inductive invariant: every initializer/deposit/settlement writer stores an exact root/frontier pair, no alternate writer exists, and owner/PDA/version/index/inactive-frontier checks remain fail-closed. Activation requires newly initialized PDAs or a strict one-time migration boundary | **highest priority** |
+| Replace repeated populated-lane root reconstruction with authenticated Pool-owned lane-state provenance | 0 | 0 | **-939,227 CU** for source+result invariant in matched strict real transaction | complete executable TxV1 plus focused exhaustive writer/source/Aeneas bridge | Zero-byte CU optimisation. Fresh initialized release PDAs only; owner/PDA alone is insufficient. Every initializer/deposit/settlement writer preserves the exact active root/frontier invariant and all retained codec/account checks remain fail-closed | **selected prerequisite** |
 | Supply a populated-root/frontier certificate in Tx/proof bytes | pending | pending | only viable if checking is cheaper than twenty Poseidon parents | no measurement yet | Untrusted bytes cannot replace account provenance; either verify a cryptographic certificate under an already authenticated commitment or reject | inventory only; do not trust raw hint |
-| Supply full ASF8 and compare it with authenticated reconstruction | +1,560 | 0 | host-negative; real CU unmeasured | exact TxV1 sizes plus default-off authenticated profile `337d6eba` | Must retain master, checkpoint, selected-lane, deployment, profile/release and afterstate checks | unlikely to win; retain only for combined confirmation |
+| Supply full ASF8 and compare it with authenticated reconstruction | +1,560 | 0 | **+12,901 CU** (worse) | real strict combined 2,082,274 versus compact 2,069,373 | All master, checkpoint, selected-lane, deployment, profile/release and afterstate checks retained | **reject: strictly dominated** |
 | Finalization-computed sealed proof-body SHA in the existing 32-byte authority slot | 0 | 0 | none on current ASQ8: it performs no terminal body-digest pass | default-off `ASD1` implementation at `609e18fc`; old native dispatch measured 15,597 CU | Exact lifecycle/source invariant, cache/request binding and close-path activation proof | exclude unless final ASQ8 introduces an authenticated body-digest claim |
 | Checked aggregate M31 inverse hint | 0 or +4 | +4 or 0 | one inversion minus equality check; unmeasured | static arithmetic inventory | Prove nonzero/input binding and exact multiplication check | benchmark if SBF delta is material |
 | Two checked QM31 circle-map inverses | 0 or +32 | +32 or 0 | two inversions minus equality checks; unmeasured | static arithmetic inventory | Same relation, new canonical hint framing/source bridge | benchmark |
 | Canonical final-vector representation | 0 | +128 | isolated SBF **+5,802 CU** | default-off Variant B at `f4756ede`; evidence `9d4fb5e8` | Encoding/canonicality bridge, no changed claims | reject |
 | Canonical fixed-prefix representation | 0 | +192 | isolated SBF **-35,620 CU** | default-off Variant A at `f4756ede`; evidence `9d4fb5e8` | Encoding/canonicality bridge, no changed claims | retain only as fallback |
-| Canonical complete 641-QM31 fixed section | 0 | +320 | isolated SBF **-117,790 CU** | isolated Variant C at `f4756ede`; same-binary default-off verifier route prepared in this audit | Fresh production profile/release, transcript-reader equivalence and source bridge; no changed claims | leading proof-byte candidate after populated-lane fix |
+| Canonical complete 641-QM31 fixed section | 0 | +320 | **-156,930 CU real combined** | 1,912,443 versus fair 2,069,373 compact baseline; isolated decoder also saved 117,790 | Fresh production profile/release and exact transcript-reader/source bridge; no changed claims | **selected proof-byte trade** |
 | Expand ASR8 within the 1,024-byte return-data cap | 0 | 0 | none; measured gross cost is +38 to +58 CU | five distinct LiteSVM component executions | Every added field must be verifier-derived and immediately bound to the selected program/profile/release/statement/accounts | reject: keep 792 B |
 | Remove live-snapshot encode/decode round trip | 0 | 0 | **-2,191 CU** in matched component transaction | default-off direct-typed probe at `f8804061` | Source bridge from exact canonical master/lane PDA+owner decoders to the unchanged snapshot predicate | retain for production integration |
 | Defer standalone 4,996-limb canonical scan and consume canonically inside real crypto | 0 | 0 | potential **-515,003 CU of duplicate work**; not a standalone saving claim | default-off measurement probe at `f8804061` | Must prove every fixed/query limb is canonically decoded exactly once before acceptance; no field may escape the crypto consumer | mandatory integration discipline, not an independently activatable variant |
+| Reuse canonical decoded ASR8 bytes after exact selected-program authentication | 0 | 0 | **-9,446 CU** at the selected integration step | real strict combined measurement plus translated exact 4-prerequisite/6-binding gate | Raw return bytes are never trusted; exact 792-byte canonical decode and selected return program precede reuse | selected |
+| Packed digest selector + binary Copy weights + endpoint selector cache | 0 | 0 | binary step reaches 1,386,744; cache reaches **1,376,652** (-10,092 further) | real strict combined selected stack; focused source/Aeneas algebra/tag/order bridges | Same residual schedule, all endpoints preserved in order, weights exact {0,1}; cache hits require complete row-tag equality and collisions recompute | selected |
 
 The populated-lane source audit explains why bytes are not automatically the
 right answer. The selected lane account already contains root, index and
@@ -290,30 +316,32 @@ bridge proving provenance from the canonical authenticated Pool accounts.
 
 | Variant | Transport | Proof/account representation | State |
 | --- | --- | --- | --- |
-| 0 — current | compact ASQ8 | current sealed proof | positive host path; populated combined transaction exhausts 1.4M |
-| 1 — fat semantic request | full ASF8, equality-checked against authenticated state | unchanged | Tx size and host component measured; real CU pending |
+| 0 — current | compact ASQ8 | current sealed proof | real fair invariant baseline 2,069,373 CU |
+| 1 — fat semantic request | full ASF8, equality-checked against authenticated state | unchanged | real 2,082,274 CU; rejected as dominated |
 | 2 — best safe Tx hints | selected only after isolated measurements | unchanged | pending |
-| 3 — best safe proof hints | ASQ8 | selected only after isolated measurements | pending |
-| 4 — combined best | independently winning Tx and proof candidates | independently winning candidates | pending |
+| 3 — best safe proof hints | ASQ8 | +320-byte canonical fixed section | selected; real 1,912,443 CU before the remaining zero-byte cuts |
+| 4 — combined best | compact ASQ8 | Variant C plus selected zero-byte invariant/arithmetic/cache cuts | real strict success at 1,376,652 CU |
 | 5 — ASR8 return sweep | compact ASQ8 | unchanged | measured and rejected: extra bytes add CU and delete no safe work |
 
 ## 7. Pareto frontier
 
-No candidate enters the production Pareto frontier until its real combined CU
-is measured against Variant 0 in the same executable path. The immediate
-frontier is dominated by populated-lane pre-CPI validation, not by ASQ8/ASF8
-transport or fixed-field decoding.
+The current measured frontier selects compact ASQ8 plus the +320-byte
+account-backed fixed section. Zero-byte state/source and algebraic cuts are
+required alongside it, but are not themselves byte trades. Full ASF8 is
+strictly dominated.
 
 | Variant | Tx bytes | Proof max | Transfer CU | Withdrawal CU | Delta CU | Delta bytes | Security/formal cost |
 | --- | ---: | ---: | ---: | ---: | ---: | ---: | --- |
-| 0 — compact ASQ8 | 811 / 844 | 30,504 max; 30,400 strict KAT | >1.4M at populated 13-pair lane (rollback) | pending | baseline | 0 | existing boundaries |
-| 1 — full ASF8 | 2,371 / 2,404 | 30,504 | pending | pending | pending | +1,560 Tx | authenticated equality/source bridge |
+| 0 — compact ASQ8 invariant baseline | 799 measured harness; 811 / 844 wallet shapes | 30,504 max; 30,400 honest | 2,069,373 | pending | baseline | 0 | fresh-PDA invariant/release authentication |
+| 1 — full ASF8 | 2,359 measured harness; 2,371 / 2,404 wallet shapes | 30,504 | 2,082,274 | pending | +12,901 | +1,560 Tx | authenticated equality/source bridge; dominated |
 | 2 — safe Tx hints | pending | 30,504 | pending | pending | pending | pending | pending |
-| 3 — safe proof hints | 811 / 844 | pending | pending | pending | pending | pending | pending |
-| 4 — combined | pending | pending | pending | pending | pending | pending | pending |
+| 3 — Variant C only | 799 measured harness; 811 / 844 wallet shapes | 30,824 max; 30,720 honest | 1,912,443 | pending | -156,930 | +320 proof | canonical fixed-section transcript/source bridge |
+| 4 — selected combined | 799 same-page / 832 rollover measured harness; 811 / 844 wallet shapes | 30,824 max; 30,720 honest | **1,376,652 same-page; 1,385,365 rollover** | 1,593,988 same-page; 1,487,132 rollover (**both over 1.4M**) | **-692,721** vs fair V0 transfer | +320 proof | selected source/formal stack; fresh IDs/build/lifecycle activation and withdrawal CU reduction still required |
 
-Withdrawal TxV1 values are 976/1,009 bytes for Variant 0 and 2,536/2,569
-bytes for Variant 1. They will receive their own CU rows once executable.
+The selected harness withdrawal packets are 964/997 bytes; the broader wallet
+matrix values are 976/1,009 for Variant 0 and 2,536/2,569 for Variant 1. Both
+selected withdrawals currently reject at 1.4M, so the transfer Pareto win does
+not close the release CU gate by itself.
 
 ### Isolated proof-codec frontier (not combined CU)
 
@@ -346,16 +374,14 @@ afterstate; and then fail-closes without ASR8 or dispatch. On a 30,504-byte
 proof, 256 release-host iterations measured 31,738 ns for full ASF8 versus
 31,260 ns for compact ASQ8. Parsing ASF8 was 483 ns and the exact statement
 comparison 43 ns. These are **host timings, not CU**. The dedicated streaming
-SBF profile compiles without an oversized called frame, but has not executed
-in LiteSVM. The current audit branch additionally prepares a real default-off
+SBF profile compiles without an oversized called frame. The current audit branch additionally provides a real default-off
 `ASF8` dispatcher which requires exact equality with independently
 reconstructed authenticated state and then invokes the same verifier with
 production `check_work=true`. Its Pool route forwards the same exact 1,880
 bytes under the same nine account metas and preserves registry, ASR8 and
-settlement semantics. This support is prepared, not measured. Combined with
-the measured 3,011-CU ASF8 reconstruction cost, current evidence gives no
-positive reason to spend 1,560 TxV1 bytes; Variant 1 is deferred until the
-populated-lane pre-CPI blocker is removed.
+settlement semantics. The real strict run consumes 2,082,274 CU and 2,359
+true-TxV1 bytes versus 2,069,373 CU and 799 bytes for compact ASQ8. Variant 1
+is therefore rejected: +1,560 bytes buys **negative** CU savings.
 
 ### ASR8 return-data sweep
 
@@ -512,8 +538,53 @@ accept even with more CU. The measurement is used only to locate compute
 before proof completion. It enters the verifier with 845,470 CU and exhausts
 exactly 1,400,000 CU. A zero/min-frontier control under the same populated lane
 enters with 845,508 CU and exhausts the same cap. No result is returned and all
-Pool writes roll back. Phase instrumentation and an over-budget positive path
-are still required before attributing any later verifier subphase.
+Pool writes roll back. That historical failure only located the blocker; the
+later strict positive path reported above supplies the complete combined CU
+and exact atomic settlement evidence.
+
+### Selected combined strict replay
+
+The selected combined harness source ends at `8178d3de`. The exact accepted
+same-page evidence is
+`results/v7-pair-forest-combined-rejection-litesvm-20260828/evidence/strict-selected-endpoint-cache-txv1-runtime1400000.json`.
+It records Pool SBF SHA-256
+`62509dd10f735bdd207370813352b62d02cb0e02b80eae5640bee7c2282826b5`,
+verifier SBF SHA-256
+`206658aa7205fae6a7e0de5368f90000d6f1904c1eda788fb8d9c994a6136003`,
+and strict canonical proof SHA-256
+`ce2aa9bcb2fa4eed70f0f1f09befd656e5146e2208bd590c07c348d7dff2cfe3`.
+
+The selected programs are built with:
+
+```bash
+cargo build-sbf --manifest-path programs/aspis-pool/Cargo.toml \
+  --features pair-forest-source-result-invariant-audit,pair-forest-verifier-lane-invariant-audit,pair-forest-direct-result-audit \
+  --sbf-out-dir "$artifact_dir"
+
+cargo build-sbf --manifest-path programs/aspis-verifier/Cargo.toml \
+  --features v7-pair-forest-fixed-canonical-exact-once-audit,v7-pair-forest-lane-invariant-audit,v7-pair-forest-packed-digest-audit,v7-pair-forest-binary-copy-weights-audit,v7-pair-forest-endpoint-selector-cache-audit \
+  --sbf-out-dir "$artifact_dir"
+```
+
+The exact deployable-limit replay shape is:
+
+```bash
+cargo run --release \
+  --manifest-path results/v7-pair-forest-combined-rejection-litesvm-20260828/harness/Cargo.toml -- \
+  "$artifact_dir/aspis_pool.so" \
+  "$artifact_dir/aspis_verifier.so" \
+  "$evidence_path" \
+  results/v7-pair-forest-combined-rejection-litesvm-20260828/evidence/v7-pair-forest-transfer-strict-work-canonical-fixed.bin \
+  success 1400000 asq8
+```
+
+The transaction matrix evidence files are
+`transfer-same-page-selected-txv1-1400000.json`,
+`transfer-rollover-selected-txv1-1400000.json`,
+`withdrawal-same-page-selected-txv1-1400000-ooc.json` and
+`withdrawal-rollover-selected-txv1-1400000-ooc.json`. The two withdrawal
+success totals come only from explicitly over-limit local diagnostic runs;
+they are not deployability claims.
 
 ### Full-ASF8 authenticated component
 
@@ -539,9 +610,10 @@ CARGO_BUILD_JOBS=2 cargo test --release -p aspis-verifier \
 The exact phase means retained from that run are ASF8 parse 483 ns,
 account/PDA authentication 14,926 ns, exact statement comparison 43 ns,
 canonical 30,504-byte proof-wire scan 16,029 ns, full ASF8 composition
-31,738 ns, and compact ASQ8 composition 31,260 ns. These numbers are host
-wall-clock observations only. No LiteSVM transaction, real verifier CU, or
-combined one-terminal CU is attributed to this experiment.
+31,738 ns, and compact ASQ8 composition 31,260 ns. Those numbers remain host
+wall-clock observations only. Separately, the later real combined strict
+measurement is 2,082,274 total / 1,975,765 verifier CPI / 2,359 true-TxV1
+bytes, against 2,069,373 / 1,970,586 / 799 for compact ASQ8.
 
 The current paired audit routes are compiled independently so one SBF binary
 contains exactly one grammar:
@@ -575,18 +647,19 @@ cargo test -p aspis-core --features v7-fixed-canonical-audit \
   -- --exact
 ```
 
-The exact SBF/LiteSVM/Agave replay commands and artifact hashes will be added
-with the real combined measurements. Solana CLI use must set `NO_DNA=1`; no
-network signing or submission is part of this audit.
+The exact selected SBF/LiteSVM command and hashes are recorded above. Solana
+CLI use must set `NO_DNA=1`; no network signing or submission is part of this
+audit.
 
 ## 11. Release decision rule
 
-Keep the 30,504-byte proof frozen unless a fatter account-backed representation
-produces a material, repeatable combined-CU reduction after its verification,
-upload, rent, wallet, formal, and source-bridge costs are included. Keep ASQ8
-unless full ASF8 or checked Tx-carried hints produce a material same-binary CU
-reduction while every affected TxV1 shape remains comfortably below 4,096
-bytes.
+Adopt the +320-byte canonical fixed section for the selected release profile:
+it saves 156,930 real combined CU and the complete selected stack lands at
+1,376,652 CU. Keep compact ASQ8 because full ASF8 adds both bytes and CU. Keep
+ASR8 at 792 bytes because every larger measured point is dominated.
 
-The final report will replace the interim decision at the top with exactly one
-of the required production choices after the real combined frontier exists.
+The 30,504-byte original proof ceiling therefore becomes a 30,824-byte ceiling
+for this fresh profile; the measured honest selected proof is 30,720 bytes.
+This decision does not authorize production activation until the fresh-PDA,
+generated release identities, reproducible build, formal/source composition
+and remaining lifecycle matrix are all green.
