@@ -99,6 +99,12 @@ v7-pair-forest-fixed-canonical-exact-once-audit = [
 v7-pair-forest-packed-digest-audit = [
     "aspis-statement/pool-v1-pair-forest-packed-digest-audit",
 ]
+# Audit-only specialization of generated Copy weights, all of which are
+# exactly zero or one after variant/index selection. Values are still
+# accumulated for every endpoint; only `selector * {0,1}` becomes skip/add.
+v7-pair-forest-binary-copy-weights-audit = [
+    "aspis-statement/pool-v1-pair-forest-binary-copy-weights-audit",
+]
 # Adds compute-unit checkpoints to the selected pair-forest verifier without
 # changing its wire, transcript, arithmetic, work, q16, or Merkle schedule.
 # Use only for matched diagnostic builds; marker calls inflate total CU.
