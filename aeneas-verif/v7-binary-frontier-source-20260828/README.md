@@ -74,6 +74,20 @@ proves that the translated helper returns exactly
 pointwise frontier-mathematics input when the accepted tape is instantiated
 with the production helper.
 
+The enclosing production
+`aspis_core::v7_onefold::derive_first_v7_compact_queries` caller has also been
+extracted from the same source revision. Its generated helper namespace is
+replayed independently through the body, loop, insertion-sort and K1.3
+integration bridges under `caller/proof/`. In particular,
+`V7FirstCompactFrontierK13Integration.translated_frontier_compact_iff_semantic`
+proves that the literal helper's cap-203 decision is equivalent to the frozen
+K1.3 semantic admission predicate.
+
+The caller extraction required only transparent generated-code repairs: avoid
+the `transcript` parameter/name-space shadow, reuse the already generated
+frontier types and foreign definitions, and supply the literal extra `u32`,
+`Result.map_err`, and `Vec -> Array` operations. No production Rust changed.
+
 ## Replay
 
 On `nuc.local`, with pinned Aeneas Lean backend and Lean 4.31:
@@ -110,6 +124,9 @@ AspisFormal project containing the focused semantic frontier build:
   /path/to/aspis-formal-project
 ```
 
+The caller extraction and all four caller frontier bridges were also compiled
+with the same Lean 4.31/AspisFormal path and zero swap.
+
 ## Digests
 
 ```text
@@ -120,13 +137,25 @@ AspisFormal project containing the focused semantic frontier build:
 a47f9642deb9f233a5c6c8b00a18fdeec4e1dc272e3a1e506120fc5e8cea714b  proof/V7BinaryFrontierSortModel.lean
 7ee9f9775b7b3e6f2d1ea8533e91b72cecbdb3948bdd5e3595c5ccc5e652fb66  proof/V7BinaryFrontierSortSourceBridge.lean
 ec384cb07f8f830dd34791c46cbcbda0cd48d5f8581047a9637cf8a032bc7a38  proof/V7BinaryFrontierK13Integration.lean
-a1dfd24d8b17997dd53afd4f90701c67da4be4f0088b867aeb2f36aa56d8f537  compile-generated.sh
+9b4d98e15af61a82c3f0112a40608acc3fa346a6ba29c8a02478d226d1a24157  compile-generated.sh
+acff57d54c85fdab875f42d6ce2da8390179ca424f8e087afa7a53d58383a086  caller/V7FirstCompact.llbc
+d83c41b859860d34e12f5f9e34082d28b84d08e73d6055c56e3b1d4a08a5b14d  caller/generated/V7FirstCompact/Funs.lean
+69f6b6130cf9f72d574b96a3e5bf1304426f6d9fd9768dd80a75fbec8575eac4  caller/generated/V7FirstCompact/FunsExternal.lean
+a85832837449b806c730dabaedb802eb997892bd09b4ed77d27b246aebfe7834  caller/generated/V7FirstCompact/Types.lean
+9c573383d5b50dced1cd948f6886ac640cf03c375dacd0e8dfeabde699630aed  caller/generated/V7FirstCompact/TypesExternal.lean
+f69d1a816e14e3ecce85026d1b162c726a0b41ec0070d7d12626dabe8b09dea4  caller/generated/V7FirstCompact/translation.json
+401c01f6295e20ba034480e95200b7acb860db9a00168c43e3a9cd13f9e637aa  caller/proof/V7FirstCompactFrontierBodyBridge.lean
+b71fa9e8fc7bef1544ec981092de9370c4b45d4ed059f30989d7bef988932468  caller/proof/V7FirstCompactFrontierLoopBridge.lean
+809eb566103b0a2355adaf530f78383dae45ac51d05ddf8fe4779b42b9e3a9bf  caller/proof/V7FirstCompactFrontierSortSourceBridge.lean
+c72e3c80fcfd46ce032d834d00b209316608f2cb1b39840dbabdec8180e3aaa6  caller/proof/V7FirstCompactFrontierK13Integration.lean
 ```
 
 ## Remaining source closure
 
-The frontier mathematics and literal helper are closed. The remaining source
-step is the enclosing first-cap-203 caller/tape construction: show that the
-accepted operational tape uses this translated helper for every scanned
-candidate. That is a caller control-flow/source-alignment theorem, not an
-additional frontier formula or probability premise.
+The frontier mathematics, literal helper, caller-local helper, and cap-203
+semantic equivalence are closed. The remaining step is the outer returned
+schedule/tape construction. The current Aeneas translation emits `done none`
+on the accepted branch even though the Rust source returns the constructed
+schedule, so that wrapper cannot honestly be used as a returned-value theorem.
+This is now isolated as a source-tool translation repair/re-extraction task;
+it is not an additional frontier formula or probability premise.
