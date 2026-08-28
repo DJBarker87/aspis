@@ -8,14 +8,16 @@ The complete eight-lane Pool path is executable as one TxV1 transaction:
 
 These are real combined LiteSVM measurements at an exact 1,400,000-CU runtime limit. They are not sums of component measurements. Simulation and execution agree in every case.
 
-| Operation | History case | CU | CU headroom | TxV1 bytes | 4,096-byte headroom | Evidence |
+| Operation | History case | CU | Headroom to 1.3M | TxV1 bytes | 4,096-byte headroom | Evidence |
 |---|---:|---:|---:|---:|---:|---|
-| Private transfer | Same page | 1,304,642 | 95,358 | 799 | 3,297 | `results/v7-one-tx-activation-20260828/transfer-same-page.json` |
-| Private transfer | Rollover | 1,350,384 | 49,616 | 832 | 3,264 | `results/v7-one-tx-activation-20260828/transfer-rollover.json` |
-| Withdrawal | Same page | 1,295,050 | 104,950 | 964 | 3,132 | `results/v7-one-tx-activation-20260828/withdrawal-same-page-counter0.json` |
-| Withdrawal | Rollover | 1,360,604 | 39,396 | 997 | 3,099 | `results/v7-one-tx-activation-20260828/withdrawal-rollover-counter0.json` |
+| Private transfer | Same page | 1,145,890 | 154,110 | 799 | 3,297 | `results/v7-one-tx-sparsity-current-20260828/transfer-same-page.json` |
+| Private transfer | Rollover | 1,191,463 | 108,537 | 832 | 3,264 | `results/v7-one-tx-sparsity-current-20260828/transfer-rollover.json` |
+| Withdrawal | Same page | 1,136,135 | 163,865 | 964 | 3,132 | `results/v7-one-tx-sparsity-current-20260828/withdrawal-same-page-counter0.json` |
+| Withdrawal | Rollover | 1,201,718 | 98,282 | 997 | 3,099 | `results/v7-one-tx-sparsity-current-20260828/withdrawal-rollover-counter0.json` |
 
-The unmined-work proof rejects after 61,309 CU. All transaction accounts remain byte-exact and return data is empty: `results/v7-one-tx-activation-20260828/unmined-proof-rollback.json`.
+The unmined-work proof rejects after 61,309 CU. All transaction accounts remain byte-exact and return data is empty: `results/v7-one-tx-sparsity-current-20260828/unmined-proof-rollback.json`.
+
+The selected verifier saves 158,752--158,889 CU per complete transaction. It preserves the same expressions while exploiting the frozen basis and support: 14 Copy patterns, seven active masks, tensorized endpoint and digest selectors, grouped tag/finish dot products, packed range residuals, and four-slot gamma loop interchange. The worst case is 1,718 CU above the preferred 1.2M target and 98,282 CU below the hard 1.3M gate.
 
 The accepted transitions also check that the checkpoint, proof, registry, and master accounts remain unchanged; the selected lane and nullifier marker change exactly; the correct history page changes; and withdrawal moves exactly 250 tokens from the vault to the bound destination without changing the mint.
 
@@ -24,7 +26,7 @@ The accepted transitions also check that the checkpoint, proof, registry, and ma
 - Base revision: `df22542fe58e536b890cfc7f81250609d5829368`
 - Activation branch: `research/v7-one-tx-activate-20260828`
 - Pool SBF: 524,328 bytes, SHA-256 `61f80ab33bff36b38716df944d7851a473be0ed065b2d57864082fd966ec8810`
-- Verifier SBF: 1,673,288 bytes, SHA-256 `3c77bad385518fac4c7aea3695081eaaad5dfa710a09339510665b1b6c93bac6`
+- Verifier SBF: 1,703,624 bytes, SHA-256 `fc830df85f25d4bae02138cf82a31273eda8e46b56fbfa51c00959ba26c968db`
 
 The build uses one explicit default-off feature on each program: `v7-pair-forest-one-tx-candidate`. Each aggregate feature selects the exact audited eight-lane optimization set. Production defaults remain unchanged until the remaining formal/source gates close.
 
@@ -32,15 +34,15 @@ Activation exposed and fixed a real integration defect: the Pool verifier-CPI ru
 
 ## Reproduction
 
-The SBF binaries were built on `nuc.local` under `MemoryHigh=22G`, `MemoryMax=28G`, and `MemorySwapMax=0`:
+The selected SBF binaries were rebuilt independently on `nuc.local` under `MemoryHigh=4G`, `MemoryMax=6G`, and `MemorySwapMax=0`:
 
 ```sh
 NO_DNA=1 cargo build-sbf --manifest-path programs/aspis-pool/Cargo.toml \
   --no-default-features --features v7-pair-forest-one-tx-candidate \
-  --sbf-out-dir results/v7-one-tx-candidate-build/pool
+  --sbf-out-dir results/v7-one-tx-sparsity-build/pool
 NO_DNA=1 cargo build-sbf --manifest-path programs/aspis-verifier/Cargo.toml \
   --no-default-features --features v7-pair-forest-one-tx-candidate \
-  --sbf-out-dir results/v7-one-tx-candidate-build/verifier
+  --sbf-out-dir results/v7-one-tx-sparsity-build/verifier
 ```
 
 The measurement harness is built from this branch:

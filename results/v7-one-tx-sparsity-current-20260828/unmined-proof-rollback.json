@@ -1,0 +1,111 @@
+{
+  "artifacts": {
+    "pool": {
+      "bytes": 524328,
+      "path": "target/v7-one-tx-sparsity/aspis_pool.so",
+      "sha256": "61f80ab33bff36b38716df944d7851a473be0ed065b2d57864082fd966ec8810"
+    },
+    "verifier": {
+      "bytes": 1703624,
+      "path": "target/v7-one-tx-sparsity/aspis_verifier.so",
+      "sha256": "fc830df85f25d4bae02138cf82a31273eda8e46b56fbfa51c00959ba26c968db"
+    }
+  },
+  "atomicity": {
+    "checkpoint_unchanged": true,
+    "entry_unchanged": true,
+    "failure_all_accounts_byte_exact": true,
+    "history_changed_exactly_on_success": true,
+    "lane_changed_exactly_on_success": true,
+    "master_unchanged": true,
+    "nullifier_marker_changed_exactly_on_success": true,
+    "proof_unchanged": true,
+    "registry_unchanged": true,
+    "rollover_page_changed_exactly_on_success": null,
+    "settled_history_equals_expected": false,
+    "settled_lane_equals_candidate": false,
+    "settled_marker_equals_expected": false,
+    "settled_rollover_page_equals_expected": null,
+    "withdrawal_destination_amount_after": null,
+    "withdrawal_destination_amount_before": null,
+    "withdrawal_mint_unchanged": null,
+    "withdrawal_vault_amount_after": null,
+    "withdrawal_vault_amount_before": null
+  },
+  "authenticated_path": {
+    "candidate_afterstate_matches_deterministic_lane_transition": true,
+    "checkpoint": "EDfQpAnRQVqFmGZuY2ocZoX7gBp5H1N3MWWMLmuWTmD6",
+    "history_mode": "same-page",
+    "history_page": "DEozmkY3H2YccnEAqHyENJp2Hs1HAFjBq6xqdJDFeZk9",
+    "history_roots_before": 14,
+    "master": "3Hrd4YKTTF2eaoWjdwzBwagmH9SeuenwiVyQajm72C8N",
+    "nullifier_marker": "7YvvqJNdXZt3aNMkCebG4To2f1VJe1TbxHBtY41D4Jy2",
+    "pool_program": "5PjDJaGfSPJj4tFzMRCiuuAasKg5n8dJKXKenhuwZexx",
+    "populated_lane_pairs_before": 13,
+    "proof_account": "5fQPsn8hoaVddFG26cWQ5QFdqxWtUPNaZ9zH2E6LYzFn",
+    "proof_owner_is_selected_verifier": true,
+    "registry_entry_active_at_slot": 150,
+    "registry_profile_and_release_exact": true,
+    "registry_program": "5bV6jUfhDHCQVA1WfKBUnXUsboJgoKgkzkKcxr3joew5",
+    "rollover_history_page": null,
+    "selected_lane": "3B3QhxztFR6kSo3m3kpTaU9JsQyJH6ScoT94gwnFXQYj",
+    "selected_output_lane": 3,
+    "verifier_program": "7Q2nGsPg8rbjdxKHK4jxTgEWLTyd9o1X4KMSjCieRmue"
+  },
+  "boundaries": [
+    "This is deterministic local LiteSVM evidence. No devnet, mainnet, signing service, or RPC is used.",
+    "The transaction is a real TxV1 message with its 1.4M compute limit in TransactionConfig.",
+    "A runtime limit above 1.4M is an explicit local diagnostic override and is not deployable evidence.",
+    "The strict frozen proof executes all 35/31/34-bit work checks; there is no threshold bypass."
+  ],
+  "classification": "REAL COMBINED STRICT-WORK REJECTION CU",
+  "execution": {
+    "account_metas_excluding_payer": 9,
+    "compute_units": 61309,
+    "error": "InstructionError(0, InvalidAccountData)",
+    "instruction_bytes": 320,
+    "logs": [
+      "Program 5PjDJaGfSPJj4tFzMRCiuuAasKg5n8dJKXKenhuwZexx invoke [1]",
+      "Program 7Q2nGsPg8rbjdxKHK4jxTgEWLTyd9o1X4KMSjCieRmue invoke [2]",
+      "Program 7Q2nGsPg8rbjdxKHK4jxTgEWLTyd9o1X4KMSjCieRmue consumed 25045 of 1363736 compute units",
+      "Program 7Q2nGsPg8rbjdxKHK4jxTgEWLTyd9o1X4KMSjCieRmue failed: invalid account data for instruction",
+      "Program 5PjDJaGfSPJj4tFzMRCiuuAasKg5n8dJKXKenhuwZexx consumed 61309 of 1400000 compute units",
+      "Program 5PjDJaGfSPJj4tFzMRCiuuAasKg5n8dJKXKenhuwZexx failed: invalid account data for instruction"
+    ],
+    "network": "none",
+    "operation": "private-transfer",
+    "outcome": "rejected",
+    "return_data_bytes": 0,
+    "return_data_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "return_program": "7Q2nGsPg8rbjdxKHK4jxTgEWLTyd9o1X4KMSjCieRmue",
+    "runtime": "LiteSVM 0.16.0",
+    "runtime_compute_limit": 1400000,
+    "runtime_limit_is_diagnostic_override": false,
+    "selected_verifier_cpi_observed_in_logs": true,
+    "serialized_transaction_bytes": 799,
+    "simulation_equals_execution": true,
+    "terminal_transport": "ASQ8 / 320-byte compact request",
+    "transaction_format": "true Solana TxV1 / VersionedMessage::V1",
+    "txv1_4096_target_headroom_bytes": 3297,
+    "txv1_declared_compute_unit_limit": 1400000
+  },
+  "fixture": {
+    "candidate_afterstate_bytes": 688,
+    "external_path": "results/v7-pair-forest-combined-rejection-litesvm-20260828/evidence/honest-unmined-payload.bin",
+    "kind": "compact-proof-body",
+    "payload_bytes": 31516,
+    "payload_sha256": "868bc184cc328e694fd9313b21b8fcd4f7edd3305b23823738e45b7577ec53d6",
+    "proof_bytes": 30828,
+    "proof_sha256": "5fcb5668677b6b4eb81c0d964f84961576c3c05be55958fc4b495fea7f983645",
+    "strict_work_expected": true
+  },
+  "honest_fixture_contract": {
+    "argument": "fourth argument is either compact proof body or complete payload, excluding the 40-byte ASPU header",
+    "fixed_pool_master": "3Hrd4YKTTF2eaoWjdwzBwagmH9SeuenwiVyQajm72C8N",
+    "fixed_proof_account": "5fQPsn8hoaVddFG26cWQ5QFdqxWtUPNaZ9zH2E6LYzFn",
+    "fixed_verifier_program": "7Q2nGsPg8rbjdxKHK4jxTgEWLTyd9o1X4KMSjCieRmue",
+    "payload_layout": "688-byte encoded candidate afterstate followed by compact Tag-73 proof",
+    "requirement": "the fixture must be generated for the deterministic public statement and identities recorded above"
+  },
+  "schema": "aspis.v7-pair-forest.combined-litesvm.v2"
+}
