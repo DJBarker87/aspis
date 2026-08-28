@@ -71,7 +71,31 @@ theorem current_outer_body_eq_native
           exact source_chunks_bind_q16_continuation block next out draws
   · rw [if_neg houter, if_neg houter]
 
+def nativeQ16OuterLoop
+    (self : Transcript) (out : alloc.vec.Vec Std.U32) (draws : Std.Usize) :
+    Result (Transcript × alloc.vec.Vec Std.U32) := do
+  loop
+    (fun (self1, out1, draws1) =>
+      nativeQ16OuterBody self1 out1 draws1)
+    (self, out, draws)
+
+/-- The complete translated recursive outer loop equals the stable native
+refinement, not merely one generated loop body. -/
+theorem current_outer_loop_eq_native
+    (self : Transcript) (out : alloc.vec.Vec Std.U32) (draws : Std.Usize) :
+    V7FirstCompactSource.transcript.Transcript.challenge_queries_without_replacement_loop0
+        self q16Count q16MaxDraws q16Mask out draws =
+      nativeQ16OuterLoop self out draws := by
+  unfold
+    V7FirstCompactSource.transcript.Transcript.challenge_queries_without_replacement_loop0
+    nativeQ16OuterLoop
+  apply congrArg (fun body => loop body (self, out, draws))
+  funext state
+  rcases state with ⟨current, values, currentDraws⟩
+  exact current_outer_body_eq_native current values currentDraws
+
 #print axioms source_chunks_bind_q16_continuation
 #print axioms current_outer_body_eq_native
+#print axioms current_outer_loop_eq_native
 
 end V7FirstCompactSamplerOuterBodyBridge

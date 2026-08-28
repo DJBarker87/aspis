@@ -276,7 +276,13 @@ is equal to the stable native refinement for every transcript, output vector,
 and draw count. Focused unit `aspis-v7-q16-outer-congruence-02` exited 0 in
 3.01 seconds, peaked at 6,835,488 KiB RSS, and used zero swap. Both printed
 endpoints report only `propext`, `Classical.choice`, and `Quot.sound`. The next
-step is the recursive WP composition over this now-exact body equality.
+step is the recursive WP composition over this now-exact body equality. The
+same module now proves `current_outer_loop_eq_native`, lifting that body
+equality through Aeneas' complete recursive `loop` and replacing the literal
+translated q16 outer loop with the stable native refinement. Focused NUC unit
+`aspis-v7-q16-outer-loop-03` exited 0 in 2.98 seconds, peaked at 6,831,428 KiB
+RSS, and used zero swap. The new endpoint again reports exactly `propext`,
+`Classical.choice`, and `Quot.sound`.
 
 ## Digests
 
@@ -305,7 +311,7 @@ f21af0ef7f2362c62acb2dfa992c29d31f006aa5b13d788b64752b95d2f033bf  caller/proof/V
 38a125601298e71ccb2c28f16a9ab222ce377f606f24e3ddfd84b30c040d0e20  caller/proof/V7FirstCompactSamplerLoop16Bridge.lean
 92accefcb0d123584e5007b45427eb44c6e31ad65e314a0b1c3d76e0d5cfbea5  caller/proof/V7FirstCompactSamplerOuterBridge.lean
 6da8875b86b2b2b912a1736408bdca6d22cd74187f9b2670de9edb0199cd8d75  caller/proof/V7FirstCompactSamplerNativeBlockBridge.lean
-929ca1a34b7d063fa44e7429a079418133b13a93eca3ef8399f1fd2279babf45  caller/proof/V7FirstCompactSamplerOuterBodyBridge.lean
+9a0f680b6e93be014c37f7a5bc5be2454262bbb9eaedec5a8c1104436f5d8516  caller/proof/V7FirstCompactSamplerOuterBodyBridge.lean
 6abb0376100611c5553258062480777187785579f402c9c1d3ce72379518258f  ../../crates/aspis-core/src/v7_onefold.rs
 ```
 
