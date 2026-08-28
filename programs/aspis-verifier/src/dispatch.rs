@@ -79,11 +79,29 @@ pub fn process_spend_production_instruction(
     // ASQ8 is a distinct, exact 320-byte compact request. Its default-off
     // handler authenticates the Pool accounts, reconstructs exact ASF8, and
     // emits ASR8 only after the eight-lane Tag-73 verifier accepts.
-    #[cfg(any(feature = "v7-pair-forest-asq8", test))]
+    #[cfg(any(
+        feature = "v7-pair-forest-asq8",
+        feature = "v7-pair-forest-fixed-canonical-audit",
+        test
+    ))]
     if instruction_data
         .starts_with(&aspis_statement::pool_v1::POOL_V1_PAIR_FOREST_TERMINAL_REQUEST_MAGIC)
     {
         return crate::v7_pair_forest_dispatch::process_v7_pair_forest_asq8_instruction(
+            program_id,
+            accounts,
+            instruction_data,
+        );
+    }
+
+    // Audit-only full ASF8 transport. The handler independently reconstructs
+    // ASF8 from authenticated Pool/proof state and requires exact equality;
+    // the caller-supplied statement is not trusted.
+    #[cfg(any(feature = "v7-pair-forest-asf8-audit", test))]
+    if instruction_data
+        .starts_with(&aspis_statement::pool_v1::POOL_V1_PAIR_FOREST_TERMINAL_STATEMENT_MAGIC)
+    {
+        return crate::v7_pair_forest_dispatch::process_v7_pair_forest_asf8_instruction(
             program_id,
             accounts,
             instruction_data,

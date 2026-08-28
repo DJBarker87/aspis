@@ -16,12 +16,13 @@ use aspis_statement::{
     pool_v1::{
         decode_pool_v1_pair_forest_checkpoint_v1, decode_pool_v1_pair_forest_lane_state_v1,
         decode_pool_v1_pair_forest_master_v1, decode_pool_v1_pair_forest_terminal_request_v1,
-        encode_pool_v1_pair_forest_checkpoint_v1, encode_pool_v1_pair_forest_lane_state_v1,
-        encode_pool_v1_pair_forest_master_v1, encode_pool_v1_pair_forest_terminal_result_v1,
-        plan_pool_v1_pair_forest_checkpoint_v1, pool_v1_note_commitment,
-        pool_v1_pair_forest_deposit_lane_v1, pool_v1_tree_parent, root_history_location,
-        validate_pool_v1_pair_forest_terminal_result_against_statement_v1, AppendOneV1,
-        IncrementalMerkleTreeV1, PoolIdentityV1, PoolV1NullifierMarkerV1,
+        decode_pool_v1_pair_forest_terminal_statement_v1, encode_pool_v1_pair_forest_checkpoint_v1,
+        encode_pool_v1_pair_forest_lane_state_v1, encode_pool_v1_pair_forest_master_v1,
+        encode_pool_v1_pair_forest_terminal_request_v1,
+        encode_pool_v1_pair_forest_terminal_result_v1, plan_pool_v1_pair_forest_checkpoint_v1,
+        pool_v1_note_commitment, pool_v1_pair_forest_deposit_lane_v1, pool_v1_tree_parent,
+        root_history_location, validate_pool_v1_pair_forest_terminal_result_against_statement_v1,
+        AppendOneV1, IncrementalMerkleTreeV1, PoolIdentityV1, PoolV1NullifierMarkerV1,
         PoolV1PairForestCheckpointV1, PoolV1PairForestLaneStateV1, PoolV1PairForestMasterV1,
         PoolV1PairForestTerminalCommonV1, PoolV1PairForestTerminalPaymentV1,
         PoolV1PairForestTerminalRequestV1, PoolV1PairForestTerminalStatementV1,
@@ -1255,6 +1256,71 @@ pub(crate) fn process_pair_forest_terminal_v1<'info, R: PoolCpiRuntimeV1>(
         current_slot,
         runtime,
         dispatch_pair_forest_terminal_readonly_v1,
+        solana_program::program::set_return_data,
+    )
+}
+
+/// Audit-only Pool top-level ASF8 route. The supplied statement is decoded
+/// canonically to recover the compact registry/payment request, while the
+/// exact original 1,880 bytes are forwarded to the selected verifier. The
+/// selected verifier independently authenticates and reconstructs ASF8 before
+/// running the same proof and returning the same exact ASR8 settlement token.
+#[cfg(feature = "pair-forest-full-asf8-audit")]
+pub(crate) fn process_pair_forest_terminal_full_asf8_v1<'info, R: PoolCpiRuntimeV1>(
+    program_id: &Pubkey,
+    accounts: &[AccountInfo<'info>],
+    instruction_data: &[u8],
+    current_slot: u64,
+    runtime: &mut R,
+) -> ProgramResult {
+    let statement = decode_pool_v1_pair_forest_terminal_statement_v1(instruction_data)
+        .map_err(|_| ProgramError::InvalidInstructionData)?;
+    let public = match statement {
+        PoolV1PairForestTerminalStatementV1::PrivateTransfer { public, .. } => {
+            PoolV1PairForestTerminalPaymentV1::PrivateTransfer(public)
+        }
+        PoolV1PairForestTerminalStatementV1::Withdrawal { public, .. } => {
+            PoolV1PairForestTerminalPaymentV1::Withdrawal(public)
+        }
+    };
+    let request = PoolV1PairForestTerminalRequestV1 {
+        verifier_profile: aspis_statement::pool_v1::V7_POOL_PAIR_FOREST_TAG73_PROFILE_BINDING,
+        verifier_release: aspis_statement::pool_v1::V7_POOL_PAIR_FOREST_TAG73_RELEASE_BINDING,
+        pool_program: program_id.to_bytes(),
+        public,
+    };
+    let compact = encode_pool_v1_pair_forest_terminal_request_v1(&request)
+        .map_err(|_| ProgramError::InvalidInstructionData)?;
+    process_pair_forest_terminal_with_verifier_v1(
+        program_id,
+        accounts,
+        &compact,
+        current_slot,
+        runtime,
+        |pool_program,
+         master,
+         checkpoint,
+         lane,
+         policy,
+         registry_accounts,
+         verifier_program,
+         proof,
+         request,
+         slot| {
+            crate::pair_forest_dispatch::dispatch_pair_forest_terminal_full_asf8_readonly_v1(
+                pool_program,
+                master,
+                checkpoint,
+                lane,
+                policy,
+                registry_accounts,
+                verifier_program,
+                proof,
+                request,
+                slot,
+                instruction_data,
+            )
+        },
         solana_program::program::set_return_data,
     )
 }
