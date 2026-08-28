@@ -331,6 +331,14 @@ premise over arbitrary transcripts. Focused NUC unit
 peaked at 6,875,636 KiB RSS, and used zero swap. All endpoints report subsets
 of `propext`, `Classical.choice`, and `Quot.sound`.
 
+`V7FirstCompactSamplerTableTraceBridge` closes the deterministic fixed-table
+part of the source/scheduler seam. A table-aligned literal translated squeeze
+trace is proved to return exactly the semantic Tag-73 duplex blocks and final
+digest, and forgetting table alignment recovers the existing source trace.
+Focused NUC unit `aspis-v7-q16-table-trace-05` exited 0 in 2.78 seconds, peaked
+at 6,843,764 KiB RSS, and used zero swap. Its endpoints report subsets of
+`propext`, `Classical.choice`, and `Quot.sound`.
+
 ## Digests
 
 ```text
@@ -363,6 +371,7 @@ d71bbd19f44d407846820acb8bbe167f953925d819ef0313bf2e591cd1a7d888  caller/proof/V
 5a1f6a37166be553c5305d31ce097c884aabed56b0a1820d91c8f98f03e0ed63  caller/proof/V7FirstCompactSamplerWrapperBridge.lean
 5ea4cdf362d9db303aeb1d510ab9c0a47ce48dfc9956f5b462e6c1c0d39ad222  caller/proof/V7FirstCompactSamplerK13PositionBridge.lean
 0caaeb316b41ff595566a4eba00a4c13c1ee98ed7e6f55936e7e5765e0c5045e  caller/proof/V7FirstCompactSqueezeSourceBridge.lean
+e93e8caf53bf94bfd943167af4e21dda62eef4ad0263966944bccb7611eae903  caller/proof/V7FirstCompactSamplerTableTraceBridge.lean
 6abb0376100611c5553258062480777187785579f402c9c1d3ce72379518258f  ../../crates/aspis-core/src/v7_onefold.rs
 ```
 
@@ -374,11 +383,12 @@ and complete wrapper return are closed. The Aeneas early-return loss is removed
 by the source refactor and fresh extraction. There is no remaining caller-local
 frontier or first-selection control-flow premise.
 
-The remaining system-level integration obligation is now only the external
-digest-trace alignment: identify the proved exact source squeeze trace with
-the accepted K1.3 evaluator/router blocks and replace the recursive proof's
-legacy global success premise with totality of the one installed production
-hash callback. `raw_queries_eq_decoded_schedule` then
-closes the ordered array. Array conversion, the `2^18` constant, frontier
-semantics, cap selection, all five returned fields, and the outer first-success
-loop are theorem consequences rather than premises.
+The recursive proof now uses totality of only the installed production hash
+callback, and the deterministic source trace is connected to the fixed-table
+semantic duplex. The remaining system-level obligation is operational lookup
+provenance: show that every actual callback result in the accepted translated
+trace is the corresponding entry in the exact scheduler table. The semantic
+decoder result and `raw_queries_eq_decoded_schedule` then close the ordered
+array. Array conversion, the `2^18` constant, frontier semantics, cap selection,
+all five returned fields, and the outer first-success loop are theorem
+consequences rather than premises.
