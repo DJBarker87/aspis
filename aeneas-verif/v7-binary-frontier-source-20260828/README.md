@@ -313,6 +313,15 @@ unit `aspis-v7-q16-k13-position-03` exited 0 in 2.82 seconds, peaked at
 6,868,440 KiB RSS, and used zero swap. All endpoints report subsets of
 `propext`, `Classical.choice`, and `Quot.sound`.
 
+`V7FirstCompactSqueezeSourceBridge` makes the remaining SHA boundary exact at
+literal source level. It proves that current `squeeze_block` hashes precisely
+the 33-byte inputs `state || 1` and `state || 2`, that totality of the specific
+installed callback implies squeeze success, and that successful squeezing
+preserves that callback. Focused NUC unit
+`aspis-v7-q16-squeeze-source-01` exited 0 in 3.41 seconds, peaked at
+6,865,936 KiB RSS, and used zero swap. All endpoints report exactly
+`propext`, `Classical.choice`, and `Quot.sound`.
+
 ## Digests
 
 ```text
@@ -344,6 +353,7 @@ f21af0ef7f2362c62acb2dfa992c29d31f006aa5b13d788b64752b95d2f033bf  caller/proof/V
 6c0a2f9233be8c2a56e71157e9ea595e033affd9767f3123e4aa4557b87a3e13  caller/proof/V7FirstCompactSamplerOuterLoopBridge.lean
 91d11a0151df104c8b337bf49878c5c8dc15df02b76f978ea168a45d2920dbdb  caller/proof/V7FirstCompactSamplerWrapperBridge.lean
 d10dbbcd30f510b46905c48adebd61950dc1a391bf26c833193b2d78c1ed98fd  caller/proof/V7FirstCompactSamplerK13PositionBridge.lean
+0caaeb316b41ff595566a4eba00a4c13c1ee98ed7e6f55936e7e5765e0c5045e  caller/proof/V7FirstCompactSqueezeSourceBridge.lean
 6abb0376100611c5553258062480777187785579f402c9c1d3ce72379518258f  ../../crates/aspis-core/src/v7_onefold.rs
 ```
 
@@ -357,8 +367,9 @@ frontier or first-selection control-flow premise.
 
 The remaining system-level integration obligation is now only the external
 digest-trace alignment: identify the proved exact source squeeze trace with
-the accepted K1.3 evaluator/router blocks and discharge source squeeze success
-from the production hash callback. `raw_queries_eq_decoded_schedule` then
+the accepted K1.3 evaluator/router blocks and replace the recursive proof's
+legacy global success premise with totality of the one installed production
+hash callback. `raw_queries_eq_decoded_schedule` then
 closes the ordered array. Array conversion, the `2^18` constant, frontier
 semantics, cap selection, all five returned fields, and the outer first-success
 loop are theorem consequences rather than premises.
