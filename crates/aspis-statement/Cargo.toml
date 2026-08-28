@@ -24,6 +24,9 @@ pool-v1-pair-forest-packed-digest-audit = []
 # Audit-only exact `{0,1}` specialization for generated pair-forest Copy
 # weights. The literal QM31-by-M31 multiplication remains the default.
 pool-v1-pair-forest-binary-copy-weights-audit = []
+# Audit-only memoization of generated Copy endpoint row selectors. The cache
+# never supplies a value unless its stored row tag matches exactly.
+pool-v1-pair-forest-endpoint-selector-cache-audit = []
 
 [dependencies]
 aspis-core.workspace = true
