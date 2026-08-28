@@ -4,9 +4,9 @@ Date: 2026-08-28
 Pinned revision and provenance
 ------------------------------
 Base:
-  b76fee418079aaa244cbca4b3ffb26d8a4808192
+  d0bfca5c6e7218caa25c261584bc0ca65ed80021
 Branch:
-  research/v7-pool-caller-source-bridge-20260828
+  research/v7-one-tx-activate-20260828
 Production source hashes:
   evidence/source-sha256.txt
 Charon:
@@ -40,9 +40,9 @@ Final NUC replay
 Host:
   nuc, Linux 6.8.0-110-generic x86_64
 Unit:
-  aspis-v7-pool-caller-source-final-01
+  aspis-v7-one-tx-pool-caller-lean-01
 Invocation:
-  01c7ca0977994b6abc7f78f53952745a
+  f2fb324535194ccba3c43a84ebc61a33
 Limits supplied to systemd-run:
   MemoryHigh=22G
   MemoryMax=28G
@@ -53,14 +53,14 @@ Jobs/threads:
 Result:
   success; exit status 0
 Wall time:
-  21.69 seconds
+  21.28 seconds
 Peak RSS reported by /usr/bin/time:
-  2,639,852 KiB
+  2,640,900 KiB
 Swaps:
   0
 
 NUC replay scope:
-  replay-rust.sh
+  source-audit.sh (activated source hashes/control flow)
   replay-lean.sh
 
 The exact clean Charon/Aeneas extraction replay ran locally with the pinned

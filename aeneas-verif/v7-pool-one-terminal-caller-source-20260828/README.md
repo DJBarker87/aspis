@@ -1,11 +1,13 @@
 # V7 one-transaction Pool caller Rust-to-Lean bridge
 
-This focused bundle pins the selected eight-lane Pool terminal caller at base
-`b76fee418079aaa244cbca4b3ffb26d8a4808192`. It adds no production semantic
+This focused bundle pins the selected eight-lane Pool terminal caller at the
+activated one-transaction base
+`d0bfca5c6e7218caa25c261584bc0ca65ed80021`. It adds no production semantic
 change. Charon/Aeneas translates a fixed-width operational projection of the
 successful and failing caller control flow; `source-audit.sh` separately pins
-the literal production files, six-account CPI construction and persistence
-order byte-for-byte.
+the literal activated production files, six-account CPI construction and
+persistence order byte-for-byte. The refreshed pin includes the final
+stack-safe helper factoring and selected Tag-73 basis/sparsity dispatcher.
 
 The projected caller follows the production order:
 
