@@ -19,15 +19,16 @@ use aspis_statement::{
         encode_pool_v1_pair_forest_checkpoint_v1, encode_pool_v1_pair_forest_lane_state_v1,
         encode_pool_v1_pair_forest_master_v1, encode_pool_v1_pair_forest_terminal_result_v1,
         plan_pool_v1_pair_forest_checkpoint_v1, pool_v1_note_commitment,
-        pool_v1_pair_forest_deposit_lane_v1, pool_v1_tree_parent,
-        reconstruct_pool_v1_pair_forest_terminal_statement_v1, root_history_location,
+        pool_v1_pair_forest_deposit_lane_v1, pool_v1_tree_parent, root_history_location,
         validate_pool_v1_pair_forest_terminal_result_against_statement_v1, IncrementalMerkleTreeV1,
         PoolIdentityV1, PoolV1NullifierMarkerV1, PoolV1PairForestCheckpointV1,
         PoolV1PairForestLaneStateV1, PoolV1PairForestMasterV1, PoolV1PairForestTerminalCommonV1,
         PoolV1PairForestTerminalPaymentV1, PoolV1PairForestTerminalRequestV1,
-        PoolV1PairLeafWitnessV1, POOL_V1_DIGEST_ENCODING_VERSION, POOL_V1_PAIR_CAPACITY,
-        POOL_V1_PAIR_FOREST_CHECKPOINT_ACCOUNT_BYTES, POOL_V1_PAIR_FOREST_LANE_COUNT,
-        POOL_V1_PAIR_FOREST_MASTER_ACCOUNT_BYTES, POOL_V1_PAIR_TREE_DEPTH,
+        PoolV1PairForestTerminalStatementV1, PoolV1PairLeafWitnessV1,
+        POOL_V1_DIGEST_ENCODING_VERSION, POOL_V1_PAIR_CAPACITY,
+        POOL_V1_PAIR_FOREST_CHECKPOINT_ACCOUNT_BYTES, POOL_V1_PAIR_FOREST_LANE_ACCOUNT_BYTES,
+        POOL_V1_PAIR_FOREST_LANE_COUNT, POOL_V1_PAIR_FOREST_MASTER_ACCOUNT_BYTES,
+        POOL_V1_PAIR_FOREST_TERMINAL_RESULT_BYTES, POOL_V1_PAIR_TREE_DEPTH,
         POOL_V1_ROOT_HISTORY_CAPACITY, POOL_V1_ROOT_HISTORY_PAGE_ACCOUNT_BYTES,
         POOL_V1_ROOT_HISTORY_PAGE_SEED,
     },
@@ -891,6 +892,167 @@ fn next_pair_forest_lane_v1(
     })
 }
 
+#[inline(never)]
+fn decode_terminal_request_box_v1(
+    instruction_data: &[u8],
+) -> Result<Box<PoolV1PairForestTerminalRequestV1>, ProgramError> {
+    Ok(Box::new(
+        decode_pool_v1_pair_forest_terminal_request_v1(instruction_data)
+            .map_err(|_| ProgramError::InvalidInstructionData)?,
+    ))
+}
+
+#[inline(never)]
+fn decode_terminal_master_box_v1(
+    program_id: &Pubkey,
+    master_account: &AccountInfo<'_>,
+) -> Result<Box<PoolV1PairForestMasterV1>, ProgramError> {
+    Ok(Box::new(decode_master_account(
+        program_id,
+        master_account,
+        false,
+    )?))
+}
+
+#[inline(never)]
+fn decode_terminal_checkpoint_box_v1(
+    program_id: &Pubkey,
+    master: &Pubkey,
+    checkpoint_account: &AccountInfo<'_>,
+) -> Result<Box<PoolV1PairForestCheckpointV1>, ProgramError> {
+    Ok(Box::new(decode_retained_pair_forest_checkpoint_account_v1(
+        program_id,
+        master,
+        checkpoint_account,
+    )?))
+}
+
+#[inline(never)]
+fn decode_terminal_lane_box_v1(
+    program_id: &Pubkey,
+    master: &Pubkey,
+    lane_id: u8,
+    lane_account: &AccountInfo<'_>,
+) -> Result<Box<PoolV1PairForestLaneStateV1>, ProgramError> {
+    Ok(Box::new(decode_lane_account(
+        program_id,
+        master,
+        lane_id,
+        lane_account,
+        true,
+    )?))
+}
+
+#[inline(never)]
+fn terminal_common_box_v1(
+    master_account: &Pubkey,
+    checkpoint_account: &Pubkey,
+    lane_account: &Pubkey,
+    master: &PoolV1PairForestMasterV1,
+    checkpoint: &PoolV1PairForestCheckpointV1,
+    lane: &PoolV1PairForestLaneStateV1,
+    output_lane: u8,
+    result: &aspis_statement::pool_v1::PoolV1PairForestTerminalResultV1,
+) -> Box<PoolV1PairForestTerminalCommonV1> {
+    Box::new(PoolV1PairForestTerminalCommonV1 {
+        master_account: master_account.to_bytes(),
+        checkpoint_account: checkpoint_account.to_bytes(),
+        selected_lane_account: lane_account.to_bytes(),
+        output_lane,
+        checkpoint_sequence: checkpoint.checkpoint_sequence,
+        historical_global_anchor: checkpoint.global_root,
+        lane_transition: aspis_statement::pool_v1::PoolV1PairLatePublicStatementV1 {
+            live_snapshot: aspis_statement::pool_v1::PoolV1PairLiveSnapshotV1 {
+                pool: master_account.to_bytes(),
+                deployment_domain: master.identity.deployment_domain,
+                sequence: lane.tree.next_leaf_index,
+                next_pair_index: lane.tree.next_leaf_index,
+                current_root: lane.tree.root,
+                frontier: lane.tree.frontier,
+            },
+            candidate_afterstate: result.verified_afterstate,
+        },
+    })
+}
+
+#[inline(never)]
+fn transfer_terminal_statement_box_v1(
+    common: Box<PoolV1PairForestTerminalCommonV1>,
+    public: aspis_statement::pool_v1::PoolV1PrivateTransferPublicV1,
+) -> Box<PoolV1PairForestTerminalStatementV1> {
+    Box::new(PoolV1PairForestTerminalStatementV1::PrivateTransfer {
+        common: *common,
+        public,
+    })
+}
+
+#[inline(never)]
+fn withdrawal_terminal_statement_box_v1(
+    common: Box<PoolV1PairForestTerminalCommonV1>,
+    public: aspis_statement::pool_v1::PoolV1WithdrawalPublicV1,
+) -> Box<PoolV1PairForestTerminalStatementV1> {
+    Box::new(PoolV1PairForestTerminalStatementV1::Withdrawal {
+        common: *common,
+        public,
+    })
+}
+
+#[inline(never)]
+fn validate_authenticated_terminal_result_v1(
+    master_account: &Pubkey,
+    checkpoint_account: &Pubkey,
+    lane_account: &Pubkey,
+    master: &PoolV1PairForestMasterV1,
+    checkpoint: &PoolV1PairForestCheckpointV1,
+    lane: &PoolV1PairForestLaneStateV1,
+    output_lane: u8,
+    request: &PoolV1PairForestTerminalRequestV1,
+    result: &aspis_statement::pool_v1::PoolV1PairForestTerminalResultV1,
+) -> ProgramResult {
+    let common = terminal_common_box_v1(
+        master_account,
+        checkpoint_account,
+        lane_account,
+        master,
+        checkpoint,
+        lane,
+        output_lane,
+        result,
+    );
+    let statement = match request.public {
+        PoolV1PairForestTerminalPaymentV1::PrivateTransfer(public) => {
+            transfer_terminal_statement_box_v1(common, public)
+        }
+        PoolV1PairForestTerminalPaymentV1::Withdrawal(public) => {
+            withdrawal_terminal_statement_box_v1(common, public)
+        }
+    };
+    validate_pool_v1_pair_forest_terminal_result_against_statement_v1(&statement, result)
+        .map_err(|_| PoolV1ProgramError::InvalidVerifierReturnData.into())
+}
+
+#[inline(never)]
+fn next_lane_image_box_v1(
+    lane: &PoolV1PairForestLaneStateV1,
+    result: &aspis_statement::pool_v1::PoolV1PairForestTerminalResultV1,
+) -> Result<Box<[u8; POOL_V1_PAIR_FOREST_LANE_ACCOUNT_BYTES]>, ProgramError> {
+    let next_lane = Box::new(next_pair_forest_lane_v1(lane, result)?);
+    Ok(Box::new(
+        encode_pool_v1_pair_forest_lane_state_v1(&next_lane, &POOL_V1_PAIR_EMPTY_ROOTS)
+            .map_err(|_| PoolV1ProgramError::StateHistoryMismatch)?,
+    ))
+}
+
+#[inline(never)]
+fn terminal_result_bytes_box_v1(
+    result: &aspis_statement::pool_v1::PoolV1PairForestTerminalResultV1,
+) -> Result<Box<[u8; POOL_V1_PAIR_FOREST_TERMINAL_RESULT_BYTES]>, ProgramError> {
+    Ok(Box::new(
+        encode_pool_v1_pair_forest_terminal_result_v1(result)
+            .map_err(|_| PoolV1ProgramError::InvalidVerifierReturnData)?,
+    ))
+}
+
 #[allow(clippy::too_many_arguments)]
 pub(crate) fn process_pair_forest_terminal_with_verifier_v1<'info, R, V, S>(
     program_id: &Pubkey,
@@ -917,27 +1079,18 @@ where
     ) -> Result<AuthenticatedPairForestResultV1, ProgramError>,
     S: FnOnce(&[u8]),
 {
-    let request = decode_pool_v1_pair_forest_terminal_request_v1(instruction_data)
-        .map_err(|_| ProgramError::InvalidInstructionData)?;
+    let request = decode_terminal_request_box_v1(instruction_data)?;
     let master_account = accounts.first().ok_or(ProgramError::NotEnoughAccountKeys)?;
     let checkpoint_account = accounts.get(1).ok_or(ProgramError::NotEnoughAccountKeys)?;
     let lane_account = accounts.get(2).ok_or(ProgramError::NotEnoughAccountKeys)?;
-    let master = decode_master_account(program_id, master_account, false)?;
-    let checkpoint = decode_retained_pair_forest_checkpoint_account_v1(
-        program_id,
-        master_account.key,
-        checkpoint_account,
-    )?;
+    let master = decode_terminal_master_box_v1(program_id, master_account)?;
+    let checkpoint =
+        decode_terminal_checkpoint_box_v1(program_id, master_account.key, checkpoint_account)?;
     let output_lane =
         aspis_statement::pool_v1::pool_v1_pair_forest_output_lane_v1(request.public.nullifier())
             .map_err(|_| PoolV1ProgramError::NonCanonicalLeaf)?;
-    let lane = decode_lane_account(
-        program_id,
-        master_account.key,
-        output_lane,
-        lane_account,
-        true,
-    )?;
+    let lane =
+        decode_terminal_lane_box_v1(program_id, master_account.key, output_lane, lane_account)?;
     validate_pair_forest_request_accounts_v1(
         program_id,
         master_account,
@@ -998,35 +1151,19 @@ where
         current_slot,
     )?;
     let result = authenticated.value();
-    let common = PoolV1PairForestTerminalCommonV1 {
-        master_account: master_account.key.to_bytes(),
-        checkpoint_account: checkpoint_account.key.to_bytes(),
-        selected_lane_account: lane_account.key.to_bytes(),
+    validate_authenticated_terminal_result_v1(
+        master_account.key,
+        checkpoint_account.key,
+        lane_account.key,
+        &master,
+        &checkpoint,
+        &lane,
         output_lane,
-        checkpoint_sequence: checkpoint.checkpoint_sequence,
-        historical_global_anchor: checkpoint.global_root,
-        lane_transition: aspis_statement::pool_v1::PoolV1PairLatePublicStatementV1 {
-            live_snapshot: aspis_statement::pool_v1::PoolV1PairLiveSnapshotV1 {
-                pool: master_account.key.to_bytes(),
-                deployment_domain: master.identity.deployment_domain,
-                sequence: lane.tree.next_leaf_index,
-                next_pair_index: lane.tree.next_leaf_index,
-                current_root: lane.tree.root,
-                frontier: lane.tree.frontier,
-            },
-            candidate_afterstate: result.verified_afterstate,
-        },
-    };
-    let statement = reconstruct_pool_v1_pair_forest_terminal_statement_v1(&request, common)
-        .map_err(|_| PoolV1ProgramError::InvalidVerifierReturnData)?;
-    validate_pool_v1_pair_forest_terminal_result_against_statement_v1(&statement, result)
-        .map_err(|_| PoolV1ProgramError::InvalidVerifierReturnData)?;
-    let next_lane = next_pair_forest_lane_v1(&lane, result)?;
-    let next_lane_image =
-        encode_pool_v1_pair_forest_lane_state_v1(&next_lane, &POOL_V1_PAIR_EMPTY_ROOTS)
-            .map_err(|_| PoolV1ProgramError::StateHistoryMismatch)?;
-    let result_bytes = encode_pool_v1_pair_forest_terminal_result_v1(result)
-        .map_err(|_| PoolV1ProgramError::InvalidVerifierReturnData)?;
+        &request,
+        result,
+    )?;
+    let next_lane_image = next_lane_image_box_v1(&lane, result)?;
+    let result_bytes = terminal_result_bytes_box_v1(result)?;
 
     let writable_page = match layout.page {
         PairForestSpendPageV1::Genesis | PairForestSpendPageV1::SamePage(_) => &accounts[3],
@@ -1048,7 +1185,7 @@ where
         validate_exact_withdrawal_delta_v1(token_accounts, &plan)?;
     }
 
-    lane_data.copy_from_slice(&next_lane_image);
+    lane_data.copy_from_slice(next_lane_image.as_ref());
     match layout.page {
         PairForestSpendPageV1::Genesis => write_new_page_unchecked(
             &mut page_data,
@@ -1071,7 +1208,7 @@ where
         ),
     }
     marker_data.copy_from_slice(&planned_marker.encoded_marker());
-    set_return_data(&result_bytes);
+    set_return_data(result_bytes.as_ref());
     Ok(())
 }
 
