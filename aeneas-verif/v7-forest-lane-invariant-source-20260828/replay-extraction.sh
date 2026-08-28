@@ -43,6 +43,7 @@ llbc="$replay_tmp/V7ForestLaneInvariant.llbc"
     --start-from v7_forest_lane_invariant_source::hot_decode_projected \
     --start-from v7_forest_lane_invariant_source::fast_encode_projected \
     --start-from v7_forest_lane_invariant_source::strict_encode_projected \
+    --start-from v7_forest_lane_invariant_source::direct_asq8_lane_read_projected \
     --start-from v7_forest_lane_invariant_source::apply_production_lane_write \
     --dest-file "$llbc" -- --lib
 )

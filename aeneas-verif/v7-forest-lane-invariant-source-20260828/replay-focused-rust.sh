@@ -15,6 +15,10 @@ export RUSTFLAGS=${RUSTFLAGS:--Awarnings}
   cargo test -p aspis-pool --no-default-features \
     --features pair-forest-source-result-invariant-audit \
     authenticated_result_encoder_is_byte_exact_for_valid_lanes
+  cargo check -p aspis-pool --no-default-features \
+    --features pair-forest-verifier-lane-invariant-audit,pair-forest-source-result-invariant-audit
+  cargo check -p aspis-verifier --no-default-features \
+    --features v7-pair-forest-lane-invariant-audit
 )
 
 echo 'V7 forest lane invariant focused Rust replay: PASS'

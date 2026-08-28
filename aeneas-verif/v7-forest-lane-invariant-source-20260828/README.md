@@ -2,7 +2,8 @@
 
 This focused bundle records the exact source boundary for the default-off
 eight-lane Pool CU experiment introduced at production source commit
-`86d072be`.  It exists because the optimized terminal path removes two
+`86d072be`, extended by the authenticated verifier-side source port
+`a789a9c6`.  It exists because the optimized terminal path removes two
 duplicate 20-level Poseidon reconstructions from Pool code:
 
 1. decoding the selected live lane before verifier CPI; and
@@ -33,6 +34,21 @@ The Solana owner, writable, signer and lane-PDA checks occur in the production
 caller around the pure decoder.  They remain explicit as
 `CallerSideSolanaLaneChecks`; this bundle does not misattribute them to the
 extracted pure projection.
+
+The verifier-side feature gate additionally requires exactly six distinct,
+read-only CPI accounts.  It authenticates the proof under the exact verifier,
+the master/checkpoint/lane under the exact Pool, their canonical PDAs and
+identities, and the registry/entry under an immutable verifier-release root.
+The entry must select the exact Pool, verifier, Tag-73 forest profile, release,
+statement version and an active slot.  These checks are represented in the
+translated source by `ExactDirectAsq8ReleaseAuthentication`; none of them is
+treated as a substitute for the lane invariant capability.
+
+The pinned constants are deliberately audit-fixture values: Pool program
+`[0x41; 32]`, registry program `[0x44; 32]`, immutable policy flag one, zero
+registry authority and policy binding `[7; 32]`.  They are not mainnet release
+identities.  Production activation remains blocked until generated deployment
+constants replace them and are pinned by reproducible release evidence.
 
 `valid_strict_encoder_bytes_equal_fast_encoder_bytes` and its converse show
 that a valid strict lane and the invariant fast encoder produce the same
@@ -76,14 +92,23 @@ route.  A release must either use fresh PDAs or first implement, audit and
 prove the separately specified one-time migration.  Existing ownership alone
 does not enable the fast path.
 
+The verifier composition is stricter still:
+`translated_direct_asq8_reader_consumes_fresh_pool_invariant` accepts only a
+`FreshInitializedVerifierLaneCapability` whose boundary is exactly
+`newlyInitializedPda`.  Even complete released Pool/registry authentication is
+proved to reject when the separate lane capability is absent.  The current
+verifier source does not expose a migration activation path.
+
 ## Source relationship and trust boundary
 
 `harness/src/lib.rs` is a pure, fixed-width accepted-source projection of the
-hash-pinned production codec and writer decision tree, suitable for Charon and
-Aeneas.  `source-audit.sh` pins the relevant production Rust files and audits
-the exact three lane-write sites and dispatch routes.  This is not a claim
-that Aeneas translated Solana `AccountInfo` or CPI behavior; those caller-side
-facts remain outside this focused extraction.
+hash-pinned production codec, writer decision tree and verifier release gate,
+suitable for Charon and Aeneas.  `source-audit.sh` pins the relevant Pool and
+verifier Rust files, the exact three lane-write sites, six-account forwarding,
+release constants and dispatch routes.  This is not a claim that Aeneas
+translated Solana `AccountInfo`, PDA derivation, `Clock` or CPI behavior; those
+runtime facts remain outside this focused extraction and are pinned by the
+production source audit.
 
 The generated Lean code is transparent except for the standard Rust
 `Option<T>` equality template.  The imported `FunsExternal.lean` implements
@@ -108,6 +133,9 @@ instantiate for genesis and both production mutations.
 - `translated_write_renews_activation`
 - `translated_hot_decode_has_complete_activation_boundary`
 - `translated_write_to_fast_decode_activation`
+- `direct_asq8_lane_read_success_has_exact_gate_and_capability`
+- `translated_direct_asq8_reader_consumes_fresh_pool_invariant`
+- `exact_release_authentication_without_lane_invariant_rejected`
 
 Every printed axiom set is a subset of `propext`, `Classical.choice` and
 `Quot.sound`.  There is no `sorry`, `admit`, `native_decide`, project-specific
