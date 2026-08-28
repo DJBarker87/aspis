@@ -254,6 +254,7 @@ fn semantic_initial_and_absorption(
 }
 
 #[inline(always)]
+#[cfg(any(test, not(feature = "pool-v1-pair-forest-packed-digest-audit")))]
 fn add_digest_binding(
     output: &mut [QM31; DIGEST_ELEMS],
     selector: QM31,
@@ -372,6 +373,7 @@ fn add_occupancy_lanes(
 }
 
 #[inline(never)]
+#[cfg(any(test, not(feature = "pool-v1-pair-forest-packed-digest-audit")))]
 fn public_digest_lanes(
     public: SemanticPublic<'_>,
     openings: &StateOnlyPoseidonOpenings,
@@ -459,6 +461,125 @@ fn public_digest_lanes(
     digests
 }
 
+/// Audit-only form of `public_digest_lanes` after applying the exact identity
+///
+/// `pack(s * d0, ..., s * d3) = s * pack(d0, ..., d3)`.
+///
+/// The two outputs are the unchanged semantic theta lanes 21 and 22.  Keeping
+/// the literal evaluator above available to tests makes the source-level
+/// equivalence executable for both variants and every selector point.
+#[cfg(any(test, feature = "pool-v1-pair-forest-packed-digest-audit"))]
+#[inline(always)]
+fn add_digest_binding_packed(
+    output: &mut [QM31; DIGEST_ELEMS / 4],
+    selector: QM31,
+    opened: &[QM31; POSEIDON2_WIDTH],
+    start: usize,
+    expected: &Digest,
+    right_tweak: bool,
+) {
+    for group in 0..DIGEST_ELEMS / 4 {
+        let residuals: [QM31; 4] = core::array::from_fn(|slot| {
+            let lane = 4 * group + slot;
+            let mut target = expected[lane];
+            if right_tweak && lane + 1 == DIGEST_ELEMS {
+                target = target.add(MERKLE_NODE_COMPRESSION_V3_TWEAK);
+            }
+            opened[start + lane].sub(lift(target))
+        });
+        output[group] = output[group].add(selector.mul(qm31_pack_base4(&residuals)));
+    }
+}
+
+#[cfg(any(test, feature = "pool-v1-pair-forest-packed-digest-audit"))]
+#[inline(never)]
+fn public_digest_packed(
+    public: SemanticPublic<'_>,
+    openings: &StateOnlyPoseidonOpenings,
+    selectors: &Selectors,
+) -> [QM31; DIGEST_ELEMS / 4] {
+    let mut digests = [QM31::ZERO; DIGEST_ELEMS / 4];
+    add_digest_binding_packed(
+        &mut digests,
+        selectors.row(56 * 16 + 11),
+        &openings.z,
+        0,
+        &public.anchor,
+        false,
+    );
+    add_digest_binding_packed(
+        &mut digests,
+        selectors.row(26 * 16 + 11),
+        &openings.z,
+        0,
+        &public.nullifier,
+        false,
+    );
+    if let Some(recipient) = public.recipient {
+        add_digest_binding_packed(
+            &mut digests,
+            selectors.row(29 * 16 + 11),
+            &openings.z,
+            0,
+            &recipient,
+            false,
+        );
+    }
+    add_digest_binding_packed(
+        &mut digests,
+        selectors.row(32 * 16 + 11),
+        &openings.z,
+        0,
+        &public.change,
+        false,
+    );
+
+    let source = public.transition.live_snapshot;
+    let after = public.transition.candidate_afterstate;
+    for level in 0..20 {
+        let block = 34 + level;
+        if ((source.next_pair_index >> level) & 1) == 0 {
+            add_digest_binding_packed(
+                &mut digests,
+                selectors.row(block * 16),
+                &openings.z,
+                RATE,
+                &empty_root(level),
+                true,
+            );
+        } else {
+            add_digest_binding_packed(
+                &mut digests,
+                selectors.row(block * 16 + 12),
+                &openings.z,
+                0,
+                &source.frontier[level],
+                false,
+            );
+        }
+    }
+    add_digest_binding_packed(
+        &mut digests,
+        selectors.row(53 * 16 + 11),
+        &openings.z,
+        0,
+        &after.next_root,
+        false,
+    );
+    let carry = core::cmp::min(source.next_pair_index.trailing_ones() as usize, 20);
+    if carry < 20 {
+        add_digest_binding_packed(
+            &mut digests,
+            selectors.row((33 + carry) * 16 + 11),
+            &openings.z,
+            0,
+            &after.next_frontier[carry],
+            false,
+        );
+    }
+    digests
+}
+
 #[inline(never)]
 fn add_scalar_lanes(
     packed: &mut [QM31; POOL_V1_PAIR_FOREST_PACKED_SEMANTIC_LANES_V1],
@@ -500,11 +621,18 @@ fn semantic_packed(
     add_path_lanes(&mut packed, openings, selectors);
     add_value_lanes(&mut packed, openings, selectors);
     add_occupancy_lanes(&mut packed, public, openings, selectors);
+    #[cfg(not(feature = "pool-v1-pair-forest-packed-digest-audit"))]
     add_preweighted(
         &mut packed,
         84,
         &public_digest_lanes(public, openings, selectors),
     );
+    #[cfg(feature = "pool-v1-pair-forest-packed-digest-audit")]
+    {
+        let digests = public_digest_packed(public, openings, selectors);
+        packed[84 / 4] = packed[84 / 4].add(digests[0]);
+        packed[84 / 4 + 1] = packed[84 / 4 + 1].add(digests[1]);
+    }
     add_scalar_lanes(&mut packed, public, openings, selectors);
     packed
 }
@@ -992,6 +1120,81 @@ mod tests {
         core::array::from_fn(|coordinate| lift(M31(((row >> (9 - coordinate)) & 1) as u32)))
     }
 
+    fn compiled_openings_at(
+        compiled: &PoolV1PairForestMergedC1CompilationV1,
+        row: usize,
+    ) -> StateOnlyPoseidonOpenings {
+        let rows = [row, (row + 1) & 1023, row ^ 12];
+        StateOnlyPoseidonOpenings {
+            z: core::array::from_fn(|column| lift(compiled.semantic_c1.c1[column][rows[0]])),
+            succ_z: core::array::from_fn(|column| lift(compiled.semantic_c1.c1[column][rows[1]])),
+            xor12_z: core::array::from_fn(|column| lift(compiled.semantic_c1.c1[column][rows[2]])),
+        }
+    }
+
+    fn literal_public_digest_packed(
+        public: SemanticPublic<'_>,
+        openings: &StateOnlyPoseidonOpenings,
+        selectors: &Selectors,
+    ) -> [QM31; DIGEST_ELEMS / 4] {
+        let lanes = public_digest_lanes(public, openings, selectors);
+        core::array::from_fn(|group| qm31_pack_base4(&lanes[4 * group..4 * group + 4]))
+    }
+
+    fn assert_public_digest_factoring_on_every_boolean_row(
+        public: SemanticPublic<'_>,
+        compiled: &PoolV1PairForestMergedC1CompilationV1,
+        variant: &str,
+    ) {
+        for row in 0..POOL_V1_PAIR_FOREST_TERMINAL_ROWS_V1 {
+            let selectors = Selectors::boxed_at_point(&boolean_point(row));
+            let openings = compiled_openings_at(compiled, row);
+            assert_eq!(
+                public_digest_packed(public, &openings, &selectors),
+                literal_public_digest_packed(public, &openings, &selectors),
+                "{variant} public-digest factoring mismatch at Boolean row {row}"
+            );
+        }
+    }
+
+    fn next_test_m31(state: &mut u64) -> M31 {
+        *state = state
+            .wrapping_mul(6_364_136_223_846_793_005)
+            .wrapping_add(1_442_695_040_888_963_407);
+        M31(((*state >> 32) as u32) % 2_147_483_647)
+    }
+
+    fn next_test_qm31(state: &mut u64) -> QM31 {
+        QM31 {
+            c0: CM31 {
+                a: next_test_m31(state),
+                b: next_test_m31(state),
+            },
+            c1: CM31 {
+                a: next_test_m31(state),
+                b: next_test_m31(state),
+            },
+        }
+    }
+
+    fn assert_public_digest_factoring_off_domain(public: SemanticPublic<'_>, variant: &str) {
+        let mut state = 0x51ec_70a5_d163_357bu64;
+        for sample in 0..64 {
+            let point = core::array::from_fn(|_| next_test_qm31(&mut state));
+            let selectors = Selectors::boxed_at_point(&point);
+            let openings = StateOnlyPoseidonOpenings {
+                z: core::array::from_fn(|_| next_test_qm31(&mut state)),
+                succ_z: core::array::from_fn(|_| next_test_qm31(&mut state)),
+                xor12_z: core::array::from_fn(|_| next_test_qm31(&mut state)),
+            };
+            assert_eq!(
+                public_digest_packed(public, &openings, &selectors),
+                literal_public_digest_packed(public, &openings, &selectors),
+                "{variant} public-digest factoring mismatch at off-domain sample {sample}"
+            );
+        }
+    }
+
     fn claims_at(
         compiled: &PoolV1PairForestMergedC1CompilationV1,
         helper: &[QM31],
@@ -1074,6 +1277,35 @@ mod tests {
         assert_honest_transfer_rows(&transfer_public, &transfer);
         let (withdrawal_public, withdrawal) = withdrawal_at(13);
         assert_honest_withdrawal_rows(&withdrawal_public, &withdrawal);
+    }
+
+    #[test]
+    fn packed_public_digest_matches_all_transfer_and_withdrawal_bindings() {
+        let (transfer_public, transfer) = transfer_at(13);
+        for index in [0, 13, 0x5_5555, 0xa_aaaa, (1 << 20) - 1] {
+            let mut transition = transfer.public_statement;
+            transition.live_snapshot.next_pair_index = index;
+            let transfer_semantic = private_public(&transfer_public, &transition);
+            assert_public_digest_factoring_on_every_boolean_row(
+                transfer_semantic,
+                &transfer,
+                "transfer",
+            );
+            assert_public_digest_factoring_off_domain(transfer_semantic, "transfer");
+        }
+
+        let (withdrawal_request, withdrawal) = withdrawal_at(13);
+        for index in [0, 13, 0x5_5555, 0xa_aaaa, (1 << 20) - 1] {
+            let mut transition = withdrawal.public_statement;
+            transition.live_snapshot.next_pair_index = index;
+            let withdrawal_semantic = withdrawal_public(&withdrawal_request, &transition);
+            assert_public_digest_factoring_on_every_boolean_row(
+                withdrawal_semantic,
+                &withdrawal,
+                "withdrawal",
+            );
+            assert_public_digest_factoring_off_domain(withdrawal_semantic, "withdrawal");
+        }
     }
 
     #[test]

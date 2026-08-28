@@ -17,6 +17,10 @@ spend-dynamic-rate512 = []
 # Host by default; the separate Pool V1 program enables this explicitly for
 # SBF. Frozen verifier builds do not enable it.
 pool-v1-kernel = []
+# Audit-only algebraic rewrite for the pair-forest public-digest constraints.
+# It packs each four-lane residual before applying its common selector; the
+# default and released terminal retain the literal lane-by-lane evaluator.
+pool-v1-pair-forest-packed-digest-audit = []
 
 [dependencies]
 aspis-core.workspace = true
