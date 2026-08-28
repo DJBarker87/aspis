@@ -111,11 +111,85 @@ def q16BranchOracleCalls
   Finset.univ.sum fun index : Fin (search.selectedCounter.val + 1) =>
     1 + 2 * (search.outcome (selectedPrefixCounter search index)).blocksUsed
 
+/-- The q16 output halves that carry the `64 × 8` candidate-digest
+coordinates.  Candidate absorbs and the corresponding advance halves are
+deliberately excluded. -/
+def q16NamedDigestOracleCalls
+    {frontierNodes : QuerySchedule → Nat}
+    (search : FirstCap203Search frontierNodes) : Nat :=
+  Finset.univ.sum fun index : Fin (search.selectedCounter.val + 1) =>
+    (search.outcome (selectedPrefixCounter search index)).blocksUsed
+
+/-- Every q16 full-output call that is not a candidate-digest coordinate:
+one candidate absorb plus one advance half for every consumed block. -/
+def q16ResidualOracleCalls
+    {frontierNodes : QuerySchedule → Nat}
+    (search : FirstCap203Search frontierNodes) : Nat :=
+  Finset.univ.sum fun index : Fin (search.selectedCounter.val + 1) =>
+    1 + (search.outcome (selectedPrefixCounter search index)).blocksUsed
+
+theorem q16_branch_calls_split_named_and_residual
+    {frontierNodes : QuerySchedule → Nat}
+    (search : FirstCap203Search frontierNodes) :
+    q16BranchOracleCalls search =
+      q16ResidualOracleCalls search + q16NamedDigestOracleCalls search := by
+  unfold q16BranchOracleCalls q16ResidualOracleCalls
+    q16NamedDigestOracleCalls
+  rw [← Finset.sum_add_distrib]
+  apply Finset.sum_congr rfl
+  intro index _member
+  omega
+
 theorem selected_q16_candidate_count_le_64
     {frontierNodes : QuerySchedule → Nat}
     (search : FirstCap203Search frontierNodes) :
     search.selectedCounter.val + 1 ≤ 64 := by
   omega
+
+/-- At most eight digest coordinates are exposed by each of at most sixty-four
+candidate branches. -/
+theorem q16_named_digest_oracle_calls_le_512
+    {frontierNodes : QuerySchedule → Nat}
+    (search : FirstCap203Search frontierNodes) :
+    q16NamedDigestOracleCalls search ≤ 512 := by
+  have each : ∀ index : Fin (search.selectedCounter.val + 1),
+      (search.outcome
+        (selectedPrefixCounter search index)).blocksUsed ≤ 8 := by
+    intro index
+    exact candidate_outcome_blocks_le_eight
+      (search.outcome (selectedPrefixCounter search index))
+  calc
+    q16NamedDigestOracleCalls search ≤
+        ∑ _index : Fin (search.selectedCounter.val + 1), 8 := by
+      unfold q16NamedDigestOracleCalls
+      exact Finset.sum_le_sum fun index _ => each index
+    _ = (search.selectedCounter.val + 1) * 8 := by simp
+    _ ≤ 64 * 8 := Nat.mul_le_mul_right 8
+      (selected_q16_candidate_count_le_64 search)
+    _ = 512 := by norm_num
+
+/-- The non-coordinate half of the complete q16 forest is bounded by
+`64 * (one absorb + eight advances) = 576` calls. -/
+theorem q16_residual_oracle_calls_le_576
+    {frontierNodes : QuerySchedule → Nat}
+    (search : FirstCap203Search frontierNodes) :
+    q16ResidualOracleCalls search ≤ 576 := by
+  have each : ∀ index : Fin (search.selectedCounter.val + 1),
+      1 + (search.outcome
+        (selectedPrefixCounter search index)).blocksUsed ≤ 9 := by
+    intro index
+    have cap := candidate_outcome_blocks_le_eight
+      (search.outcome (selectedPrefixCounter search index))
+    omega
+  calc
+    q16ResidualOracleCalls search ≤
+        ∑ _index : Fin (search.selectedCounter.val + 1), 9 := by
+      unfold q16ResidualOracleCalls
+      exact Finset.sum_le_sum fun index _ => each index
+    _ = (search.selectedCounter.val + 1) * 9 := by simp
+    _ ≤ 64 * 9 := Nat.mul_le_mul_right 9
+      (selected_q16_candidate_count_le_64 search)
+    _ = 576 := by norm_num
 
 /-- The full 64-branch forest costs at most `64 * (1 + 2*8) = 1088`
 full-output SHA calls.  No independence and no first-success assumption beyond
@@ -260,6 +334,48 @@ def tag73Full256VerifierOracleCalls
   2 * challengeBlocksUsed messages +
   selectedWorkVerifierOracleCalls +
   q16BranchOracleCalls search
+
+/-- All deployed full-256 verifier calls other than the q16 output halves that
+carry candidate-digest coordinates.  This is the exact reserve consumed by
+the causal q16 router before padding begins. -/
+def tag73Full256NonQ16OracleCalls
+    (messages : Messages)
+    {frontierNodes : QuerySchedule → Nat}
+    (search : FirstCap203Search frontierNodes) : Nat :=
+  publicRootSaltOracleCalls +
+  acceptedLinearAbsorbOracleCalls +
+  2 * challengeBlocksUsed messages +
+  selectedWorkVerifierOracleCalls +
+  q16ResidualOracleCalls search
+
+/-- Exact partition of the verifier's full-width oracle calls into the 512
+potential q16 digest coordinates and every residual call. -/
+theorem full256_verifier_calls_split_non_q16_and_named_q16
+    (messages : Messages)
+    {frontierNodes : QuerySchedule → Nat}
+    (search : FirstCap203Search frontierNodes) :
+    tag73Full256VerifierOracleCalls messages search =
+      tag73Full256NonQ16OracleCalls messages search +
+        q16NamedDigestOracleCalls search := by
+  rw [tag73Full256VerifierOracleCalls,
+    tag73Full256NonQ16OracleCalls,
+    q16_branch_calls_split_named_and_residual]
+  omega
+
+/-- The exact deployed reserve is `423 + 576 = 999`: at most 423 full-width
+calls outside q16, plus at most 576 candidate-absorb/advance calls inside the
+q16 forest.  In particular the separate 512-coordinate allowance in the
+1511-call verifier cap is not double-counted. -/
+theorem tag73_full256_non_q16_oracle_calls_le_999
+    (messages : Messages)
+    {frontierNodes : QuerySchedule → Nat}
+    (search : FirstCap203Search frontierNodes) :
+    tag73Full256NonQ16OracleCalls messages search ≤ 999 := by
+  have challengeCap := challenge_blocks_used_le_192 messages
+  have q16ResidualCap := q16_residual_oracle_calls_le_576 search
+  unfold tag73Full256NonQ16OracleCalls publicRootSaltOracleCalls
+    acceptedLinearAbsorbOracleCalls selectedWorkVerifierOracleCalls
+  omega
 
 /-- Exact additive split.  This is accounting only; proving that the two
 input grammars inhabit disjoint lazy-oracle domains is a separate compiler
@@ -761,8 +877,13 @@ theorem strict_timeout_probability_le_expected_div
 #print axioms deployed_challenge_occurrence_count
 #print axioms deployed_challenge_block_cap_exact
 #print axioms challenge_blocks_used_le_192
+#print axioms q16_branch_calls_split_named_and_residual
+#print axioms q16_named_digest_oracle_calls_le_512
+#print axioms q16_residual_oracle_calls_le_576
 #print axioms q16_branch_oracle_calls_le_1088
 #print axioms two_tree_authentication_calls_le_468
+#print axioms full256_verifier_calls_split_non_q16_and_named_q16
+#print axioms tag73_full256_non_q16_oracle_calls_le_999
 #print axioms tag73_verifier_oracle_calls_le
 #print axioms strict_resource_ledger_within_envelope
 #print axioms programming_conflict_has_previously_defined_input

@@ -297,6 +297,41 @@ theorem exact_compiler_target_caps_length
       unifiedFull256ExposureCap parameters := by
   exact operational_caps_from_one_length _ _
 
+/-- Removing the 512 named q16 digest coordinates from the exact master tape
+leaves precisely the first-run adversary allowance, the 999 non-q16 verifier
+allowance, every replay machine block, and both programmed coordinates per
+fork. -/
+theorem exact_compiler_q16_residual_length_expanded
+    (parameters : ExactCompilerResourceParameters) :
+    (exactCompilerTargetCaps parameters).length - 512 =
+      parameters.q1ShaCallCap + 999 +
+        parameters.forkRequestCap *
+          (parameters.q1ShaCallCap + 1511) +
+        2 * parameters.forkRequestCap := by
+  rw [exact_compiler_target_caps_length]
+  unfold unifiedFull256ExposureCap full256MachineFreshCap sameTapeStartCap
+    deployedFull256VerifierCallCap
+  omega
+
+/-- Concrete reserve inequality for any deployed accepted search.  All
+initial-adversary calls, every non-q16 verifier call, and the complete
+replay/fork allowance fit in the router residual without consuming a named
+q16 coordinate. -/
+theorem exact_compiler_q16_residual_covers_non_q16_execution
+    (parameters : ExactCompilerResourceParameters)
+    (messages : Messages)
+    {frontierNodes : QuerySchedule → Nat}
+    (search : FirstCap203Search frontierNodes) :
+    parameters.q1ShaCallCap +
+        tag73Full256NonQ16OracleCalls messages search +
+        parameters.forkRequestCap *
+          (parameters.q1ShaCallCap + 1511) +
+        2 * parameters.forkRequestCap ≤
+      (exactCompilerTargetCaps parameters).length - 512 := by
+  rw [exact_compiler_q16_residual_length_expanded]
+  have reserve := tag73_full256_non_q16_oracle_calls_le_999 messages search
+  omega
+
 theorem exact_compiler_target_caps_sum
     (parameters : ExactCompilerResourceParameters) :
     (exactCompilerTargetCaps parameters).sum =
@@ -502,6 +537,8 @@ theorem exact_compiler_positive_error_expanded
 #print axioms exact_compiler_timeout_probability_le_expected_div
 #print axioms exact_compiler_timeout_event_empty_of_hard_runtime_cap
 #print axioms exact_compiler_target_caps_length
+#print axioms exact_compiler_q16_residual_length_expanded
+#print axioms exact_compiler_q16_residual_covers_non_q16_execution
 #print axioms exact_compiler_target_caps_sum
 #print axioms exact_compiler_target_coefficient_expanded
 #print axioms exact_compiler_exact_count_error_expanded
