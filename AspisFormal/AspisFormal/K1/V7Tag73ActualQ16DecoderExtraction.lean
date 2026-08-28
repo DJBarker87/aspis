@@ -26,6 +26,7 @@ open AspisK1.V7Tag73TranscriptSchedule
 open AspisK1.V7Tag73DeterministicRefinement
 open AspisK1.V7Tag73SamplerDecoder
 open AspisK1.V7Tag73SecureCircleMap
+open AspisK1.V7Tag73RefinementExecutionBridge
 open AspisK1.V7Tag73CheckedRefinementFullFutureFreePath
 open AspisK1.V7Tag73SchedulerNativeQ16SourcePlan
 
@@ -279,6 +280,52 @@ theorem accepted_q16_run_and_routed_bytes_realize_successful_forest
   exact accepted_q16_candidate_blocks_decode table state afterQ16 search run
     decodedState counter beforeSelected
 
+/-- Strict deployed checked refinement exposes the complete evaluator and the
+exact decoded q16 prefix at every scanned counter.  This is the source-facing
+form used by `RootHasStrictSourceRefinement`: no separately supplied q16 run
+or decoder certificate remains. -/
+theorem strict_checked_refinement_exposes_exact_q16_decoder_prefixes
+    (table : FixedOracleTable) (tape : DeployedFixedTape)
+    (rawTrace : InteractiveRawTrace)
+    (strictRun : checkedRefine table exactDeterministicDecoders tape =
+      some rawTrace) :
+    ∀ counter : Fin 64,
+      counter.val ≤ tape.search.selectedCounter.val →
+        ∃ blocks : List Digest256,
+          blocks.length = (tape.search.outcome counter).blocksUsed ∧
+          decodeCandidateOutcome counter blocks =
+            some (tape.search.outcome counter) := by
+  have erasedChecked :
+      checkedRefineWorkErased table exactDeterministicDecoders tape =
+        some rawTrace :=
+    checked_refinement_success_survives_work_erasure table
+      exactDeterministicDecoders tape rawTrace strictRun
+  have erasedRun : refineWorkErased table tape = some rawTrace :=
+    checked_refine_work_erased_forgets_check table exactDeterministicDecoders
+      tape rawTrace erasedChecked
+  obtain ⟨evaluator⟩ :=
+    refine_work_erased_exposes_complete_evaluator_run table tape rawTrace
+      erasedRun
+  have wellFormed :
+      TraceWellFormed table exactDeterministicDecoders tape rawTrace :=
+    checked_work_erased_refinement_is_well_formed table tape rawTrace
+      erasedChecked
+  have finalDecoded : StateCandidatesDecodeAs evaluator.finalState :=
+    complete_evaluator_final_candidates_decode table tape rawTrace wellFormed
+      evaluator
+  have suffixIncluded : CandidatesIncluded evaluator.afterQ16
+      evaluator.finalState :=
+    machine_events_work_erased_candidates_included table
+      (afterAcceptedQueryScan tape.messages) evaluator.afterQ16
+      evaluator.finalState evaluator.afterQ16Run
+  have afterQ16Decoded : StateCandidatesDecodeAs evaluator.afterQ16 :=
+    state_candidates_decode_of_included evaluator.afterQ16 evaluator.finalState
+      suffixIncluded finalDecoded
+  intro counter beforeSelected
+  exact accepted_q16_run_exposes_exact_decoder_prefix table
+    evaluator.prefixState evaluator.afterQ16 tape.search evaluator.q16Run
+    afterQ16Decoded counter beforeSelected
+
 #print axioms run_discarded_candidates_exposes_member_record
 #print axioms run_q16_exposes_member_record
 #print axioms source_spec_mem_q16_plan
@@ -286,6 +333,7 @@ theorem accepted_q16_run_and_routed_bytes_realize_successful_forest
 #print axioms accepted_q16_candidate_blocks_length
 #print axioms accepted_q16_candidate_blocks_decode
 #print axioms accepted_q16_run_and_routed_bytes_realize_successful_forest
+#print axioms strict_checked_refinement_exposes_exact_q16_decoder_prefixes
 
 end
 
