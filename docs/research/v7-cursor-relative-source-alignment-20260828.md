@@ -21,12 +21,17 @@ The main chain is:
 5. `source_anchored_machine_cut_advance_first_fresh` constructs the residual
    cut after one literal fresh step.  Cached normalization is table-inert and
    the actual head entry is appended exactly.
+   `source_anchored_machine_cut_advance_prefix` iterates this over an arbitrary
+   consumed prefix, and `source_anchored_machine_cut_residual_after_future`
+   constructs the exact residual cut after a named future coordinate.
 6. `projected_fresh_trace_scan_pauses_at_exact_future_answer` proves that the
    executable native scanner reaches a future coordinate and that the saved
    `pause.targetAnswer` is the exact actual answer.  It consumes no extra answer
    for cached calls.
 7. `source_anchored_machine_cut_lookup_or_scan_pause` combines the table and
    scanner results into a reusable one-coordinate theorem.
+   `source_anchored_machine_cut_lookup_or_pause_with_residual` additionally
+   returns the exact residual cut after the paused actual answer.
 8. `SourceAnchoredSequentialCut` joins two actual machine cuts at an exact
    intermediate oracle state.  Its ordered theorem routes a final answer to
    cache, the first actor suffix, or the second actor suffix.
@@ -101,7 +106,8 @@ theorem exact_compiler_actual_gamma_coordinate_step
 This theorem must handle a target already behind the cursor as cached, later in
 the current actor suffix, or later across the adversary-to-verifier transition.
 Whole-run membership alone cannot distinguish those cases.  The new exact
-paused-answer and residual-cut theorems discharge the one-machine part; the
+paused-answer and arbitrary-prefix residual-cut theorems discharge the
+one-machine part; the
 joined-prefix-to-evolving-gamma-cursor preservation is still missing.
 
 This is a **semantic-model/source-alignment deficiency**.  No probability,

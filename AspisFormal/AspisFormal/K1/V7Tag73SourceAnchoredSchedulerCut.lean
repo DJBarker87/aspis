@@ -291,6 +291,59 @@ theorem source_anchored_machine_cut_advance_first_fresh
         trace := tail }, rfl, ?_⟩
       simp [freshQueryState, projectedFreshEntry, prefixTable]
 
+/-- Iterating the executable first-fresh step preserves the cut and appends
+exactly the consumed chronological prefix to the immutable table. -/
+theorem source_anchored_machine_cut_advance_prefix
+    {Result : Type u} {limits : OracleLimits} {actor : QueryActor}
+    {finalState : OracleState} {result : Result}
+    (cut : SourceAnchoredMachineCut limits actor finalState result) :
+    ∀ (consumedPrefix suffix : List (ShaInput × Digest256)),
+      cut.remainingFresh = consumedPrefix ++ suffix ->
+      ∃ nextCut : SourceAnchoredMachineCut limits actor finalState result,
+        nextCut.remainingFresh = suffix ∧
+        nextCut.state.table =
+          cut.state.table ++ consumedPrefix.map projectedFreshEntry := by
+  intro consumedPrefix
+  induction consumedPrefix generalizing cut with
+  | nil =>
+      intro suffix remainingExact
+      refine ⟨cut, ?_, ?_⟩
+      · simpa using remainingExact
+      · simp
+  | cons head rest ih =>
+      intro suffix remainingExact
+      have headExact : cut.remainingFresh = head :: (rest ++ suffix) := by
+        simpa [List.cons_append] using remainingExact
+      obtain ⟨afterHead, afterHeadRemaining, afterHeadTable⟩ :=
+        source_anchored_machine_cut_advance_first_fresh cut head
+          (rest ++ suffix) headExact
+      obtain ⟨afterPrefix, afterPrefixRemaining, afterPrefixTable⟩ :=
+        ih afterHead suffix afterHeadRemaining
+      refine ⟨afterPrefix, afterPrefixRemaining, ?_⟩
+      rw [afterPrefixTable, afterHeadTable]
+      simp [List.map_cons, List.append_assoc]
+
+/-- A named future coordinate splits the ordered suffix and constructs the
+residual source cut immediately after consuming its exact actual answer. -/
+theorem source_anchored_machine_cut_residual_after_future
+    {Result : Type u} {limits : OracleLimits} {actor : QueryActor}
+    {finalState : OracleState} {result : Result}
+    (cut : SourceAnchoredMachineCut limits actor finalState result)
+    (input : ShaInput) (answer : Digest256)
+    (future : (input, answer) ∈ cut.remainingFresh) :
+    ∃ (prior later : List (ShaInput × Digest256))
+      (nextCut : SourceAnchoredMachineCut limits actor finalState result),
+      cut.remainingFresh = prior ++ (input, answer) :: later ∧
+      nextCut.remainingFresh = later ∧
+      nextCut.state.table = cut.state.table ++
+        (prior ++ [(input, answer)]).map projectedFreshEntry := by
+  obtain ⟨prior, later, decomposition⟩ := (List.mem_iff_append).mp future
+  obtain ⟨nextCut, remainingExact, tableExact⟩ :=
+    source_anchored_machine_cut_advance_prefix cut
+      (prior ++ [(input, answer)]) later (by
+        simpa [List.append_assoc] using decomposition)
+  exact ⟨prior, later, nextCut, decomposition, remainingExact, tableExact⟩
+
 private theorem future_fresh_pair_has_projected_record
     (actor : QueryActor) (queries : List (ShaInput × Digest256))
     (input : ShaInput) (answer : Digest256)
@@ -532,15 +585,64 @@ theorem source_anchored_machine_cut_lookup_or_scan_pause
         positive limits limitBound actor onReturned coherent cut.trace suffix
         input answer future)
 
+/-- Strong one-coordinate form: the future-fresh branch returns both the
+exact executable pause and the source-anchored residual cut after the actual
+answer.  The remaining cursor-equality lift across an actor callback is kept
+out of this machine-local statement. -/
+theorem source_anchored_machine_cut_lookup_or_pause_with_residual
+    {globalOracleCalls : Nat} {Final MachineResult : Type}
+    (transitionFuel : Nat) (positive : 0 < transitionFuel)
+    (limits : OracleLimits)
+    (limitBound : limits.totalCalls ≤ globalOracleCalls)
+    (actor : QueryActor)
+    (onReturned : (result : MachineResult) -> (state : OracleState) ->
+      HistoryTotalCoherent state ->
+        SchedulerNativeCursor globalOracleCalls Final)
+    {finalState : OracleState} {result : MachineResult}
+    (cut : SourceAnchoredMachineCut limits actor finalState result)
+    (coherent : HistoryTotalCoherent cut.state)
+    (suffix : List Digest256) (input : ShaInput) (answer : Digest256)
+    (found : (lookupEntry finalState input).map TableEntry.output =
+      some answer) :
+    (exists entry,
+        lookupEntry cut.state input = some entry /\ entry.output = answer) \/
+      ∃ (prior later : List (ShaInput × Digest256))
+        (pause : SchedulerNativeFreshPause globalOracleCalls Final input)
+        (nextCut : SourceAnchoredMachineCut limits actor finalState result),
+        cut.remainingFresh = prior ++ (input, answer) :: later ∧
+        scanSchedulerNativeToInput transitionFuel input
+            (.machine limits limitBound actor cut.state cut.program cut.fuel
+              coherent onReturned)
+            (cut.remainingFresh.map Prod.snd ++ suffix) = .paused pause ∧
+        pause.targetAnswer = answer ∧
+        nextCut.remainingFresh = later ∧
+        nextCut.state.table = cut.state.table ++
+          (prior ++ [(input, answer)]).map projectedFreshEntry := by
+  rcases source_anchored_machine_cut_lookup_or_future_fresh cut input answer
+      found with cached | future
+  · exact Or.inl cached
+  · obtain ⟨pause, paused, answerExact⟩ :=
+      projected_fresh_trace_scan_pauses_at_exact_future_answer transitionFuel
+        positive limits limitBound actor onReturned coherent cut.trace suffix
+        input answer future
+    obtain ⟨prior, later, nextCut, decomposition, remainingExact,
+        tableExact⟩ :=
+      source_anchored_machine_cut_residual_after_future cut input answer future
+    exact Or.inr ⟨prior, later, pause, nextCut, decomposition, paused,
+      answerExact, remainingExact, tableExact⟩
+
 #print axioms projected_fresh_returned_trace_future_input_missing
 #print axioms projected_fresh_trace_scan_pauses_at_exact_future_answer
 #print axioms projected_fresh_trace_scan_pauses_at_future_input
 #print axioms source_anchored_machine_cut_lookup_or_scan_pause
+#print axioms source_anchored_machine_cut_lookup_or_pause_with_residual
 
 #print axioms projected_fresh_returned_trace_table_exact
 #print axioms SourceAnchoredMachineCut.table_exact
 #print axioms source_anchored_machine_cut_lookup_or_future_fresh
 #print axioms source_anchored_machine_cut_advance_first_fresh
+#print axioms source_anchored_machine_cut_advance_prefix
+#print axioms source_anchored_machine_cut_residual_after_future
 #print axioms source_anchored_machine_cut_future_fresh_record
 #print axioms source_anchored_sequential_cut_lookup_or_ordered_future_fresh
 
