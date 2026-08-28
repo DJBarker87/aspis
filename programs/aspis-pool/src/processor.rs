@@ -121,6 +121,9 @@ use crate::pair_forest::{
     process_pair_forest_initialize_with_runtime_v1, process_pair_forest_terminal_v1,
 };
 
+#[cfg(feature = "pair-forest-full-asf8-audit")]
+use crate::pair_forest::process_pair_forest_terminal_full_asf8_v1;
+
 const SPL_TOKEN_INITIALIZE_ACCOUNT3_DISCRIMINANT: u8 = 18;
 
 #[cfg(not(feature = "no-entrypoint"))]
@@ -2330,6 +2333,24 @@ fn process_pair_forest_terminal_top_level_v1(
     process_pair_forest_terminal_v1(program_id, accounts, instruction_data, slot, &mut runtime)
 }
 
+#[cfg(feature = "pair-forest-full-asf8-audit")]
+#[inline(never)]
+fn process_pair_forest_terminal_full_asf8_top_level_v1(
+    program_id: &Pubkey,
+    accounts: &[AccountInfo<'_>],
+    instruction_data: &[u8],
+) -> ProgramResult {
+    let slot = Clock::get()?.slot;
+    let mut runtime = SolanaPoolCpiRuntimeV1;
+    process_pair_forest_terminal_full_asf8_v1(
+        program_id,
+        accounts,
+        instruction_data,
+        slot,
+        &mut runtime,
+    )
+}
+
 #[cfg(feature = "pair-forest-account-evidence")]
 #[inline(never)]
 fn dispatch_pair_forest_top_level_v1(
@@ -2355,6 +2376,12 @@ fn dispatch_pair_forest_top_level_v1(
             instruction_data,
         )),
         b"ASQ8" => Some(process_pair_forest_terminal_top_level_v1(
+            program_id,
+            accounts,
+            instruction_data,
+        )),
+        #[cfg(feature = "pair-forest-full-asf8-audit")]
+        b"ASF8" => Some(process_pair_forest_terminal_full_asf8_top_level_v1(
             program_id,
             accounts,
             instruction_data,

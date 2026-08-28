@@ -16,7 +16,8 @@ use aspis_core::v7_onefold::{
 use aspis_statement::pool_v1::{
     decode_pool_v1_pair_forest_checkpoint_v1, decode_pool_v1_pair_forest_lane_state_v1,
     decode_pool_v1_pair_forest_master_v1, decode_pool_v1_pair_forest_terminal_request_v1,
-    decode_pool_v1_pair_verified_afterstate_v1, encode_pool_v1_pair_forest_terminal_result_v1,
+    decode_pool_v1_pair_forest_terminal_statement_v1, decode_pool_v1_pair_verified_afterstate_v1,
+    encode_pool_v1_pair_forest_terminal_result_v1,
     encode_pool_v1_pair_forest_terminal_statement_v1, pool_v1_pair_forest_output_lane_v1,
     v7_pool_pair_forest_tag73_statement_digest_v1,
     validate_pool_v1_pair_forest_terminal_result_against_statement_v1,
@@ -25,8 +26,9 @@ use aspis_statement::pool_v1::{
     PoolV1PairForestTerminalRequestV1, PoolV1PairForestTerminalResultV1,
     PoolV1PairForestTerminalStatementV1, PoolV1PairLatePublicStatementV1, PoolV1PairLiveSnapshotV1,
     POOL_V1_PAIR_FOREST_ALL_LANES_MASK, POOL_V1_PAIR_FOREST_TERMINAL_REQUEST_BYTES,
-    POOL_V1_PAIR_VERIFIED_AFTERSTATE_BYTES, V7_POOL_NATIVE_TAG73_MIN_FRONTIER_NODES,
-    V7_POOL_PAIR_FOREST_TAG73_PROFILE_BINDING, V7_POOL_PAIR_FOREST_TAG73_RELEASE_BINDING,
+    POOL_V1_PAIR_FOREST_TERMINAL_STATEMENT_BYTES, POOL_V1_PAIR_VERIFIED_AFTERSTATE_BYTES,
+    V7_POOL_NATIVE_TAG73_MIN_FRONTIER_NODES, V7_POOL_PAIR_FOREST_TAG73_PROFILE_BINDING,
+    V7_POOL_PAIR_FOREST_TAG73_RELEASE_BINDING,
 };
 use solana_program::{
     account_info::AccountInfo, entrypoint::ProgramResult, program, program_error::ProgramError,
@@ -66,7 +68,12 @@ struct ScannedV7PairForestAsq8ProofV1 {
 }
 
 fn frontier_nodes_from_proof_length(length: usize) -> Option<usize> {
-    let frontier_bytes = length.checked_sub(V7_COMPACT_BODY_WITHOUT_FRONTIERS)?;
+    #[cfg(feature = "v7-pair-forest-fixed-canonical-audit")]
+    let body_without_frontiers =
+        aspis_core::v7_fixed_canonical_audit::V7_CANONICAL_BODY_WITHOUT_FRONTIERS;
+    #[cfg(not(feature = "v7-pair-forest-fixed-canonical-audit"))]
+    let body_without_frontiers = V7_COMPACT_BODY_WITHOUT_FRONTIERS;
+    let frontier_bytes = length.checked_sub(body_without_frontiers)?;
     let both_tree_node_bytes = 2usize.checked_mul(V7_COMPACT_DIGEST_BYTES)?;
     if frontier_bytes % both_tree_node_bytes != 0 {
         return None;
@@ -365,6 +372,65 @@ pub fn validate_v7_pair_forest_asq8_request_v1(
     })
 }
 
+#[cfg(any(feature = "v7-pair-forest-asf8-audit", test))]
+fn request_from_asf8_statement_v1(
+    statement: &PoolV1PairForestTerminalStatementV1,
+    pool_program: [u8; 32],
+) -> PoolV1PairForestTerminalRequestV1 {
+    let public = match statement {
+        PoolV1PairForestTerminalStatementV1::PrivateTransfer { public, .. } => {
+            aspis_statement::pool_v1::PoolV1PairForestTerminalPaymentV1::PrivateTransfer(*public)
+        }
+        PoolV1PairForestTerminalStatementV1::Withdrawal { public, .. } => {
+            aspis_statement::pool_v1::PoolV1PairForestTerminalPaymentV1::Withdrawal(*public)
+        }
+    };
+    PoolV1PairForestTerminalRequestV1 {
+        verifier_profile: V7_POOL_PAIR_FOREST_TAG73_PROFILE_BINDING,
+        verifier_release: V7_POOL_PAIR_FOREST_TAG73_RELEASE_BINDING,
+        pool_program,
+        public,
+    }
+}
+
+/// Authenticate a caller-supplied canonical ASF8 against exactly the same
+/// four read-only accounts and proof-carried ASJA candidate as ASQ8. The
+/// supplied statement is never trusted: the independently reconstructed
+/// statement must be byte/field identical before cryptographic verification.
+#[cfg(any(feature = "v7-pair-forest-asf8-audit", test))]
+pub fn validate_v7_pair_forest_asf8_request_v1(
+    verifier_program: &Pubkey,
+    accounts: &[AccountInfo<'_>],
+    instruction_data: &[u8],
+) -> Result<ValidatedV7PairForestAsq8V1, ProgramError> {
+    if instruction_data.len() != POOL_V1_PAIR_FOREST_TERMINAL_STATEMENT_BYTES {
+        return Err(ProgramError::InvalidInstructionData);
+    }
+    let supplied = Box::new(
+        decode_pool_v1_pair_forest_terminal_statement_v1(instruction_data)
+            .map_err(|_| ProgramError::InvalidInstructionData)?,
+    );
+    let master_account = accounts.get(1).ok_or(ProgramError::NotEnoughAccountKeys)?;
+    let pool_program = *master_account.owner;
+    let request = request_from_asf8_statement_v1(&supplied, pool_program.to_bytes());
+    let output_lane = pool_v1_pair_forest_output_lane_v1(request.public.nullifier())
+        .map_err(|_| ProgramError::InvalidInstructionData)?;
+    let authenticated =
+        authenticate_asq8_accounts_v1(verifier_program, accounts, &pool_program, output_lane)?;
+    let proof_account = accounts.first().ok_or(ProgramError::NotEnoughAccountKeys)?;
+    let scanned = scan_asq8_proof_v1(proof_account)?;
+    let reconstructed =
+        reconstruct_asq8_statement_box_v1(&request, &authenticated, &scanned.candidate_afterstate)?;
+    if reconstructed.as_ref() != supplied.as_ref() {
+        return Err(ProgramError::InvalidInstructionData);
+    }
+    Ok(ValidatedV7PairForestAsq8V1 {
+        statement: supplied,
+        frontier_nodes: scanned.frontier_nodes,
+        proof_length: scanned.proof_length,
+    })
+}
+
 #[inline(never)]
 fn statement_digest_v1(
     statement: &PoolV1PairForestTerminalStatementV1,
@@ -387,7 +453,35 @@ fn verify_statement_v1(
     statement_digest: [u8; 32],
 ) -> ProgramResult {
     let transition = &statement.common().lane_transition;
-    match statement {
+    #[cfg(feature = "v7-pair-forest-fixed-canonical-audit")]
+    let verified = match statement {
+        PoolV1PairForestTerminalStatementV1::PrivateTransfer { public, .. } => crate::v7_verifier::verify_v7_pool_pair_forest_private_transfer_canonical_with_statement_digest(
+            crate::verify::sbf_hashv,
+            proof,
+            frontier_nodes,
+            verifier_program,
+            V7_POOL_PAIR_FOREST_TAG73_RELEASE_BINDING,
+            proof_account.key,
+            public,
+            transition,
+            statement_digest,
+            true,
+        ),
+        PoolV1PairForestTerminalStatementV1::Withdrawal { public, .. } => crate::v7_verifier::verify_v7_pool_pair_forest_withdrawal_canonical_with_statement_digest(
+            crate::verify::sbf_hashv,
+            proof,
+            frontier_nodes,
+            verifier_program,
+            V7_POOL_PAIR_FOREST_TAG73_RELEASE_BINDING,
+            proof_account.key,
+            public,
+            transition,
+            statement_digest,
+            true,
+        ),
+    };
+    #[cfg(not(feature = "v7-pair-forest-fixed-canonical-audit"))]
+    let verified = match statement {
         PoolV1PairForestTerminalStatementV1::PrivateTransfer { public, .. } => {
             crate::v7_verifier::verify_v7_pool_pair_forest_private_transfer_with_statement_digest(
                 crate::verify::sbf_hashv,
@@ -416,9 +510,10 @@ fn verify_statement_v1(
                 true,
             )
         }
-    }
-    .map(|_| ())
-    .map_err(|_| ProgramError::InvalidAccountData)
+    };
+    verified
+        .map(|_| ())
+        .map_err(|_| ProgramError::InvalidAccountData)
 }
 
 /// Unmined-proof counterpart used only by the host integration test.  The
@@ -524,6 +619,43 @@ where
     emit_result_v1(&validated.statement)
 }
 
+#[cfg(any(feature = "v7-pair-forest-asf8-audit", test))]
+fn process_asf8_with_clear_return_data<F>(
+    verifier_program: &Pubkey,
+    accounts: &[AccountInfo<'_>],
+    instruction_data: &[u8],
+    clear_return_data: F,
+) -> ProgramResult
+where
+    F: FnOnce(),
+{
+    clear_return_data();
+    let validated =
+        validate_v7_pair_forest_asf8_request_v1(verifier_program, accounts, instruction_data)?;
+    let proof_account = &accounts[0];
+    let data = proof_account.try_borrow_data()?;
+    let (payload_start, payload_end) = uploaded_proof_bounds(&data)?;
+    if payload_end != data.len() {
+        return Err(ProgramError::InvalidAccountData);
+    }
+    let proof = data[payload_start..payload_end]
+        .get(POOL_V1_PAIR_VERIFIED_AFTERSTATE_BYTES..)
+        .ok_or(ProgramError::InvalidAccountData)?;
+    if proof.len() != validated.proof_length {
+        return Err(ProgramError::InvalidAccountData);
+    }
+    let statement_digest = statement_digest_v1(&validated.statement)?;
+    verify_statement_v1(
+        verifier_program,
+        proof_account,
+        proof,
+        validated.frontier_nodes,
+        &validated.statement,
+        statement_digest,
+    )?;
+    emit_result_v1(&validated.statement)
+}
+
 #[cfg(test)]
 fn process_without_work_for_test_v1(
     verifier_program: &Pubkey,
@@ -564,6 +696,17 @@ pub fn process_v7_pair_forest_asq8_instruction(
     instruction_data: &[u8],
 ) -> ProgramResult {
     process_with_clear_return_data(verifier_program, accounts, instruction_data, || {
+        program::set_return_data(&[])
+    })
+}
+
+#[cfg(any(feature = "v7-pair-forest-asf8-audit", test))]
+pub fn process_v7_pair_forest_asf8_instruction(
+    verifier_program: &Pubkey,
+    accounts: &[AccountInfo<'_>],
+    instruction_data: &[u8],
+) -> ProgramResult {
+    process_asf8_with_clear_return_data(verifier_program, accounts, instruction_data, || {
         program::set_return_data(&[])
     })
 }
@@ -1229,6 +1372,34 @@ mod tests {
         });
         assert!(cleared);
         assert_eq!(result, Err(ProgramError::InvalidAccountData));
+    }
+
+    #[test]
+    fn full_asf8_is_authenticated_against_the_same_accounts_and_asja() {
+        let mut fixture = make_fixture();
+        let compact = validate_fixture(&mut fixture).unwrap();
+        let statement_bytes =
+            encode_pool_v1_pair_forest_terminal_statement_v1(&compact.statement).unwrap();
+        let verifier = fixture.verifier;
+        let full = with_fixture_accounts(&mut fixture, |accounts| {
+            validate_v7_pair_forest_asf8_request_v1(&verifier, accounts, &statement_bytes)
+        })
+        .unwrap();
+        assert_eq!(full, compact);
+
+        let mut changed = statement_bytes;
+        changed[112] ^= 1;
+        assert!(with_fixture_accounts(&mut fixture, |accounts| {
+            validate_v7_pair_forest_asf8_request_v1(&verifier, accounts, &changed)
+        })
+        .is_err());
+
+        let candidate_start = crate::PROOF_ACCOUNT_HEADER_LEN;
+        fixture.proof_data[candidate_start + 16] ^= 1;
+        assert!(with_fixture_accounts(&mut fixture, |accounts| {
+            validate_v7_pair_forest_asf8_request_v1(&verifier, accounts, &statement_bytes)
+        })
+        .is_err());
     }
 
     #[test]

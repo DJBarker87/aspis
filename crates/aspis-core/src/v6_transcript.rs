@@ -29,14 +29,16 @@ use crate::statement_sumcheck::PaymentConstraintChallenges;
 use crate::sumcheck::{boundary_sum, evaluate, SumcheckPolynomial, WeightAccumulator};
 use crate::transcript::{label, Transcript};
 use crate::v6_onefold::{
-    binary_frontier_nodes, V6FixedFieldReader, V6OneFoldWire, V6WireError, V6_C1_TREE_TAG,
-    V6_C2_TREE_TAG, V6_FINAL_QM31_VALUES, V6_FRONTIER_CAP_PER_TREE, V6_POINT_CLAIM_ROWS,
-    V6_QUERY_COUNT, V6_RELATION_ROUNDS, V6_RELATION_SENT_VALUES, V6_SEMANTIC_ROUNDS,
-    V6_SEMANTIC_SENT_VALUES, V6_TOTAL_COLUMNS,
+    binary_frontier_nodes, V6FixedFieldReader, V6FixedFieldStream, V6OneFoldWire, V6WireError,
+    V6_C1_TREE_TAG, V6_C2_TREE_TAG, V6_FINAL_QM31_VALUES, V6_FRONTIER_CAP_PER_TREE,
+    V6_POINT_CLAIM_ROWS, V6_QUERY_COUNT, V6_RELATION_ROUNDS, V6_RELATION_SENT_VALUES,
+    V6_SEMANTIC_ROUNDS, V6_SEMANTIC_SENT_VALUES, V6_TOTAL_COLUMNS,
 };
 use crate::v6_query_batch::{
     add_v6_final256_query_batch, add_v7_final256_query_batch_shifted, V6AuthenticatedQueryBatch,
 };
+#[cfg(feature = "v7-fixed-canonical-audit")]
+use crate::v7_fixed_canonical_audit::V7CanonicalOneFoldWire;
 use crate::v7_merkle208::{V7_C1_TREE_TAG, V7_C2_TREE_TAG, V7_MERKLE_DIGEST_BYTES};
 use crate::v7_onefold::{
     derive_first_v7_compact_queries, V7CompactOneFoldWire, V7_COMPACT_BATCH_WORK_BITS,
@@ -350,10 +352,53 @@ fn begin_v7_compact_transcript_with_hiding_context(
     Ok((transcript, lambda, chi, batching))
 }
 
+#[cfg(feature = "v7-fixed-canonical-audit")]
 #[inline(never)]
-fn verify_compact_semantic_sumcheck(
+fn begin_v7_canonical_transcript_with_hiding_context(
+    hash: HashFn,
+    context: &V6TranscriptContext,
+    wire: &V7CanonicalOneFoldWire<'_>,
+    hiding_context: StateOnlyHidingContext,
+) -> Result<(Transcript, QM31, QM31, PaymentConstraintChallenges), V6TranscriptError> {
+    if hiding_context.statement_digest != context.statement_digest
+        || hiding_context.mask_nonce != context.attempt_id
+    {
+        return Err(V6TranscriptError::HidingContext);
+    }
+    // This measurement grammar deliberately reproduces the exact Tag-73
+    // transcript field image. The distinct SBF feature/registry program is
+    // the audit isolation boundary; production adoption requires a separately
+    // frozen release binding and source/formal closure.
+    let mut transcript = Transcript::new(hash);
+    transcript.absorb(label::PROFILE, &V7_COMPACT_PROFILE_BINDING);
+    transcript.absorb(label::M31_CIRCLE_BASIS, M31_CIRCLE_BASIS_DISCRIMINATOR);
+    let mut deployment = [0u8; 64];
+    deployment[..32].copy_from_slice(&context.program_id);
+    deployment[32..].copy_from_slice(&context.release_binding);
+    transcript.absorb(label::V7_DEPLOYMENT_CONTEXT, &deployment);
+    transcript.absorb(label::STATEMENT, &context.statement_digest);
+    begin_state_only_hiding_precommit(&mut transcript, hiding_context)
+        .map_err(|_| V6TranscriptError::HidingContext)?;
+
+    let c1_salt = v7_public_root_salt(hash, context, V7_C1_TREE_TAG);
+    absorb_v7_c1_root(&mut transcript, wire.c1_root, &c1_salt);
+    let lambda = transcript
+        .challenge_qm31()
+        .map_err(|_| V6TranscriptError::ChallengeSampling)?;
+    let chi = transcript
+        .challenge_qm31()
+        .map_err(|_| V6TranscriptError::ChallengeSampling)?;
+    let c2_salt = v7_public_root_salt(hash, context, V7_C2_TREE_TAG);
+    absorb_v7_c2_root(&mut transcript, wire.c2_root, &c2_salt);
+    let batching = begin_state_only_zerocheck(&mut transcript)
+        .map_err(|_| V6TranscriptError::ChallengeSampling)?;
+    Ok((transcript, lambda, chi, batching))
+}
+
+#[inline(never)]
+fn verify_compact_semantic_sumcheck<Fields: V6FixedFieldStream>(
     transcript: &mut Transcript,
-    fields: &mut V6FixedFieldReader<'_>,
+    fields: &mut Fields,
 ) -> Result<(QM31, [QM31; V6_SEMANTIC_ROUNDS], QM31), V6TranscriptError> {
     let initial_claim = fields.next_qm31()?;
     let eta = begin_state_only_masked_sumcheck(transcript, initial_claim)
@@ -414,9 +459,9 @@ fn verify_compact_semantic_sumcheck(
 }
 
 #[inline(never)]
-fn decode_and_absorb_point_claims(
+fn decode_and_absorb_point_claims<Fields: V6FixedFieldStream>(
     transcript: &mut Transcript,
-    fields: &mut V6FixedFieldReader<'_>,
+    fields: &mut Fields,
 ) -> Result<Box<[[QM31; V6_TOTAL_COLUMNS]; V6_POINT_CLAIM_ROWS]>, V6TranscriptError> {
     let mut claims = Box::new([[QM31::ZERO; V6_TOTAL_COLUMNS]; V6_POINT_CLAIM_ROWS]);
     let mut encoded = vec![0u8; V6_POINT_CLAIM_ROWS * V6_TOTAL_COLUMNS * 16];
@@ -518,8 +563,8 @@ fn decode_compact_relation_polynomial(
 }
 
 #[inline(never)]
-fn decode_compact_relation_fields(
-    fields: &mut V6FixedFieldReader<'_>,
+fn decode_compact_relation_fields<Fields: V6FixedFieldStream>(
+    fields: &mut Fields,
 ) -> Result<Box<[[QM31; V6_RELATION_SENT_VALUES]; V6_RELATION_ROUNDS]>, V6TranscriptError> {
     let mut decoded = Box::new([[QM31::ZERO; V6_RELATION_SENT_VALUES]; V6_RELATION_ROUNDS]);
     for round in decoded.iter_mut() {
@@ -564,9 +609,9 @@ fn fold_values_prefix<const INPUT: usize>(values: &mut [QM31; V6_FINAL_QM31_VALU
 }
 
 #[inline(never)]
-fn decode_and_absorb_final256(
+fn decode_and_absorb_final256<Fields: V6FixedFieldStream>(
     transcript: &mut Transcript,
-    fields: &mut V6FixedFieldReader<'_>,
+    fields: &mut Fields,
 ) -> Result<Box<[QM31; V6_FINAL_QM31_VALUES]>, V6TranscriptError> {
     let mut decoded = Vec::with_capacity(V6_FINAL_QM31_VALUES);
     let mut encoded = vec![0u8; V6_FINAL_QM31_VALUES * 16];
@@ -619,7 +664,7 @@ fn derive_first_compact_queries(
 
 #[allow(clippy::too_many_arguments)]
 #[inline(never)]
-fn finish_onefold_relation<QueryFold, DeriveQueries, Trace>(
+fn finish_onefold_relation<QueryFold, DeriveQueries, Trace, Fields>(
     mut transcript: Transcript,
     work_nonces: &[u8; 24],
     c1_frontier: &[u8],
@@ -631,7 +676,7 @@ fn finish_onefold_relation<QueryFold, DeriveQueries, Trace>(
     shift_query_batch_for_tag73: bool,
     expose_final256_to_query_fold: bool,
     derive_queries: DeriveQueries,
-    mut fields: V6FixedFieldReader<'_>,
+    mut fields: Fields,
     inactive_row_groups: &[u8; 64],
     inactive_group_masks: &[u16],
     check_pow: bool,
@@ -649,6 +694,7 @@ where
         V6TranscriptError,
     >,
     Trace: FnMut(V6RelationDiagnosticPhase),
+    Fields: V6FixedFieldStream,
 {
     trace(V6RelationDiagnosticPhase::Start);
     check_and_absorb_work(
@@ -1151,6 +1197,86 @@ where
     finish_v7_compact_relation(
         transcript,
         wire,
+        fields,
+        inactive_row_groups,
+        inactive_group_masks,
+        check_pow,
+        semantic_point,
+        &point_claims,
+        query_fold,
+        |_| {},
+    )
+}
+
+/// Measurement-only twin of the accepted V7 transcript using canonical
+/// 16-byte records for the complete 641-QM31 fixed section. It absorbs the
+/// same canonical field image and retains every work/Merkle/query check.
+#[cfg(feature = "v7-fixed-canonical-audit")]
+#[allow(clippy::too_many_arguments)]
+#[inline(never)]
+pub fn verify_v7_canonical_transcript_and_relation_prepared_with_hiding_context<
+    TerminalCheck,
+    QueryFold,
+>(
+    hash: HashFn,
+    wire: &V7CanonicalOneFoldWire<'_>,
+    context: &V6TranscriptContext,
+    hiding_context: StateOnlyHidingContext,
+    inactive_row_groups: &[u8; 64],
+    inactive_group_masks: &[u16],
+    check_pow: bool,
+    terminal_check: TerminalCheck,
+    query_fold: QueryFold,
+) -> Result<V6VerifiedTranscript, V6TranscriptError>
+where
+    TerminalCheck: FnOnce(&V6SemanticView<'_>) -> bool,
+    QueryFold: FnOnce(&V6QueryBatchView<'_>) -> Result<V6AuthenticatedQueryBatch, V6WireError>,
+{
+    let mut fields = wire.fixed_reader()?;
+    let (mut transcript, lambda, chi, batching) =
+        begin_v7_canonical_transcript_with_hiding_context(hash, context, wire, hiding_context)?;
+    let (eta, semantic_point, semantic_terminal) =
+        verify_compact_semantic_sumcheck(&mut transcript, &mut fields)?;
+    let point_claims = decode_and_absorb_point_claims(&mut transcript, &mut fields)?;
+    let semantic_view = V6SemanticView {
+        lambda,
+        chi,
+        batching,
+        eta,
+        point: semantic_point,
+        terminal_claim: semantic_terminal,
+        point_claims: &point_claims,
+    };
+    if !terminal_check(&semantic_view) {
+        return Err(V6TranscriptError::TerminalRejected);
+    }
+
+    finish_onefold_relation(
+        transcript,
+        wire.work_nonces,
+        wire.c1_frontier,
+        wire.c2_frontier,
+        [
+            V7_COMPACT_BATCH_WORK_BITS,
+            V7_COMPACT_FOLD_WORK_BITS,
+            V7_COMPACT_FINAL_WORK_BITS,
+        ],
+        0,
+        V7_MERKLE_DIGEST_BYTES,
+        (label::V7_QUERY_BATCH_CHALLENGE, label::V7_QUERY_BATCH_CLAIM),
+        true,
+        false,
+        |candidate_transcript| {
+            let schedule = derive_first_v7_compact_queries(candidate_transcript)
+                .map_err(V6TranscriptError::Wire)?;
+            Ok((
+                schedule.queries,
+                schedule.counter,
+                schedule.frontier_nodes,
+                schedule.transcript_state,
+                schedule.accepted_transcript,
+            ))
+        },
         fields,
         inactive_row_groups,
         inactive_group_masks,

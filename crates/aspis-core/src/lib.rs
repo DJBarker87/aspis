@@ -50,6 +50,8 @@ pub mod v6_query_batch;
 pub mod v6_transcript;
 pub mod v7_code_switch;
 pub mod v7_compact_onefold;
+#[cfg(feature = "v7-fixed-canonical-audit")]
+pub mod v7_fixed_canonical_audit;
 pub mod v7_lane_zeta;
 pub mod v7_merkle;
 pub mod v7_merkle208;

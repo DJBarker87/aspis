@@ -72,6 +72,19 @@ v7-pair-forest-asq8 = [
     "v7-production-tag73",
     "aspis-statement/pool-v1-kernel",
 ]
+# Audit-only full-statement transport. It invokes the same cryptographic path
+# after independently authenticating the supplied 1,880-byte ASF8.
+v7-pair-forest-asf8-audit = [
+    "v7-production-tag73",
+    "aspis-statement/pool-v1-kernel",
+]
+# Audit-only +320-byte canonical fixed-field proof grammar. The ASQ8 account
+# transport and every semantic/work/Merkle check remain unchanged.
+v7-pair-forest-fixed-canonical-audit = [
+    "v7-production-tag73",
+    "aspis-statement/pool-v1-kernel",
+    "aspis-core/v7-fixed-canonical-audit",
+]
 
 [dependencies]
 aspis-core = { path = "../../crates/aspis-core" }

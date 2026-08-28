@@ -81,6 +81,38 @@ pub(crate) fn plan_pair_forest_terminal_dispatch_v1(
     request: &PoolV1PairForestTerminalRequestV1,
     current_slot: u64,
 ) -> Result<PlannedPairForestDispatchV1, ProgramError> {
+    let request_bytes = encode_pool_v1_pair_forest_terminal_request_v1(request)
+        .map_err(|_| ProgramError::InvalidInstructionData)?
+        .to_vec();
+    plan_pair_forest_terminal_dispatch_with_bytes_v1(
+        pool_program,
+        master,
+        checkpoint,
+        lane,
+        policy,
+        registry_accounts,
+        verifier_program,
+        proof,
+        request,
+        current_slot,
+        request_bytes,
+    )
+}
+
+#[allow(clippy::too_many_arguments)]
+fn plan_pair_forest_terminal_dispatch_with_bytes_v1(
+    pool_program: &Pubkey,
+    master: &AccountInfo<'_>,
+    checkpoint: &AccountInfo<'_>,
+    lane: &AccountInfo<'_>,
+    policy: &aspis_statement::pool_v1::VerifierPolicyV1,
+    registry_accounts: &[AccountInfo<'_>],
+    verifier_program: &AccountInfo<'_>,
+    proof: &AccountInfo<'_>,
+    request: &PoolV1PairForestTerminalRequestV1,
+    current_slot: u64,
+    request_bytes: Vec<u8>,
+) -> Result<PlannedPairForestDispatchV1, ProgramError> {
     if request.pool_program != pool_program.to_bytes() {
         return Err(PoolV1ProgramError::VerifierDispatchIdentityMismatch.into());
     }
@@ -126,9 +158,6 @@ pub(crate) fn plan_pair_forest_terminal_dispatch_v1(
     {
         return Err(ProgramError::InvalidAccountData);
     }
-    let request_bytes = encode_pool_v1_pair_forest_terminal_request_v1(request)
-        .map_err(|_| ProgramError::InvalidInstructionData)?
-        .to_vec();
     Ok(PlannedPairForestDispatchV1 {
         selected_verifier: selected,
         request_bytes,
@@ -235,6 +264,56 @@ pub(crate) fn dispatch_pair_forest_terminal_readonly_v1<'info>(
         proof,
         request,
         current_slot,
+    )?;
+    let mut runtime = SolanaPairForestVerifierRuntimeV1;
+    invoke_pair_forest_terminal_with_runtime_v1(
+        plan,
+        proof,
+        master,
+        checkpoint,
+        lane,
+        verifier_program,
+        &mut runtime,
+    )
+}
+
+/// Audit-only full-statement CPI transport. Registry/profile/release and all
+/// account checks are identical to ASQ8; only the exact verifier instruction
+/// bytes differ.
+#[cfg(feature = "pair-forest-full-asf8-audit")]
+#[allow(clippy::too_many_arguments)]
+pub(crate) fn dispatch_pair_forest_terminal_full_asf8_readonly_v1<'info>(
+    pool_program: &Pubkey,
+    master: &AccountInfo<'info>,
+    checkpoint: &AccountInfo<'info>,
+    lane: &AccountInfo<'info>,
+    policy: &aspis_statement::pool_v1::VerifierPolicyV1,
+    registry_accounts: &[AccountInfo<'info>],
+    verifier_program: &AccountInfo<'info>,
+    proof: &AccountInfo<'info>,
+    request: &PoolV1PairForestTerminalRequestV1,
+    current_slot: u64,
+    statement_bytes: &[u8],
+) -> Result<AuthenticatedPairForestResultV1, ProgramError> {
+    if statement_bytes.len()
+        != aspis_statement::pool_v1::POOL_V1_PAIR_FOREST_TERMINAL_STATEMENT_BYTES
+        || !statement_bytes
+            .starts_with(&aspis_statement::pool_v1::POOL_V1_PAIR_FOREST_TERMINAL_STATEMENT_MAGIC)
+    {
+        return Err(ProgramError::InvalidInstructionData);
+    }
+    let plan = plan_pair_forest_terminal_dispatch_with_bytes_v1(
+        pool_program,
+        master,
+        checkpoint,
+        lane,
+        policy,
+        registry_accounts,
+        verifier_program,
+        proof,
+        request,
+        current_slot,
+        statement_bytes.to_vec(),
     )?;
     let mut runtime = SolanaPairForestVerifierRuntimeV1;
     invoke_pair_forest_terminal_with_runtime_v1(
