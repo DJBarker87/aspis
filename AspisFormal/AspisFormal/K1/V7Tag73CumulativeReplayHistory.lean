@@ -486,7 +486,10 @@ private theorem returned_run_replays_recorded_prefix_to_pause_aux
     ∃ pendingContinuation,
       replay.halt = .paused (.query chosen.input pendingContinuation) ∧
       queryAnswerTrace (historySince state replay.oracle) =
-        queryAnswerTrace remaining := by
+        queryAnswerTrace remaining ∧
+      (runMachine controller limits actor (fuel - remaining.length)
+        replay.oracle (.query chosen.input pendingContinuation)).halt =
+          .returned result := by
   induction remaining generalizing consumed state fuel program with
   | nil =>
       cases fuel with
@@ -530,9 +533,10 @@ private theorem returned_run_replays_recorded_prefix_to_pause_aux
                     (List.cons.inj exactDecomposition).1
                   have inputEquality : input = chosen.input :=
                     congrArg QueryRecord.input recordEquality
-                  refine ⟨next, ?_, ?_⟩
-                  · simpa [runPrefix, inputEquality]
+                  refine ⟨next, ?_, ?_, ?_⟩
+                  · simp [runPrefix, inputEquality]
                   · simp [runPrefix, historySince, queryAnswerTrace]
+                  · simpa [runPrefix, inputEquality] using returned
   | cons head tail inductionHypothesis =>
       cases fuel with
       | zero =>
@@ -608,7 +612,8 @@ private theorem returned_run_replays_recorded_prefix_to_pause_aux
                     simp only [List.length_append, List.length_singleton]
                     rw [stateLength]
                     omega
-                  obtain ⟨pendingContinuation, tailPaused, tailTrace⟩ :=
+                  obtain ⟨pendingContinuation, tailPaused, tailTrace,
+                      tailResumes⟩ :=
                     inductionHypothesis (consumed ++ [head]) nextState fuel
                       (next output) recursiveRecorded nextLength tailReturned
                         tailDecomposition
@@ -637,7 +642,7 @@ private theorem returned_run_replays_recorded_prefix_to_pause_aux
                           replayTail.oracle := by
                     simp [replayController, replayTail, runPrefix,
                       replayQueried]
-                  refine ⟨pendingContinuation, ?_, ?_⟩
+                  refine ⟨pendingContinuation, ?_, ?_, ?_⟩
                   · simpa [replayController, replayTail, runPrefix,
                       replayQueried] using tailPaused
                   · rw [replayOuterOracle, replayDelta]
@@ -648,6 +653,8 @@ private theorem returned_run_replays_recorded_prefix_to_pause_aux
                     simpa [firstRecord] using congrArg
                       (fun record : QueryRecord => (record.input, record.output))
                       firstRecordEquality
+                  · simpa [replayController, replayTail, runPrefix,
+                      replayQueried] using tailResumes
 
 /-- A normal returned run and an exact chronological occurrence split are
 sufficient to recover the actual pending query by same-state, same-program
@@ -673,13 +680,45 @@ theorem returned_run_first_occurrence_replays_to_exact_pause
       pendingInput = occurrence.chosen.input ∧
       queryAnswerTrace (historySince state replay.oracle) =
         queryAnswerTrace occurrence.before := by
-  obtain ⟨pendingContinuation, paused, trace⟩ :=
+  obtain ⟨pendingContinuation, paused, trace, _resumes⟩ :=
     returned_run_replays_recorded_prefix_to_pause_aux controller limits actor
       state.history.length occurrence.before [] occurrence.before state fuel
       program result occurrence.chosen occurrence.after (by simp) (by simp)
       returned decomposition
   exact ⟨.query occurrence.chosen.input pendingContinuation,
     occurrence.chosen.input, pendingContinuation, paused, rfl, rfl, trace⟩
+
+/-- The prefix inversion also retains an exact executable resumption fact.
+Running the original controller from the reconstructed pause, with exactly
+the unused fuel, returns the original result. -/
+theorem returned_run_first_occurrence_replays_to_exact_pause_and_resume
+    {Result : Type*}
+    (controller : AdaptiveController) (limits : OracleLimits)
+    (actor : QueryActor) (fuel : Nat) (state : OracleState)
+    (program : OracleMachine Result) (result : Result)
+    (occurrence : PairOccurrenceSplit)
+    (returned : (runMachine controller limits actor fuel state program).halt =
+      .returned result)
+    (decomposition :
+      historySince state
+          (runMachine controller limits actor fuel state program).oracle =
+        occurrence.before ++ occurrence.chosen :: occurrence.after) :
+    let replay := runPrefix
+      (recordedPrefixController state.history.length occurrence.before)
+      limits actor occurrence.before.length state program
+    ∃ pendingContinuation,
+      replay.halt =
+        .paused (.query occurrence.chosen.input pendingContinuation) ∧
+      queryAnswerTrace (historySince state replay.oracle) =
+        queryAnswerTrace occurrence.before ∧
+      (runMachine controller limits actor
+        (fuel - occurrence.before.length) replay.oracle
+        (.query occurrence.chosen.input pendingContinuation)).halt =
+          .returned result := by
+  exact returned_run_replays_recorded_prefix_to_pause_aux controller limits
+    actor state.history.length occurrence.before [] occurrence.before state
+    fuel program result occurrence.chosen occurrence.after (by simp) (by simp)
+    returned decomposition
 
 /-! ## Segmented root-to-node histories
 
@@ -903,6 +942,7 @@ theorem first_either_input_occurrence_in_root_path_global_split
 #print axioms first_either_prover_input_occurrence_since_spec
 #print axioms first_either_prover_input_occurrence_in_run_has_exact_actor
 #print axioms returned_run_first_occurrence_replays_to_exact_pause
+#print axioms returned_run_first_occurrence_replays_to_exact_pause_and_resume
 #print axioms first_either_input_occurrence_in_segments_spec
 #print axioms first_either_input_occurrence_in_segments_global_split
 #print axioms first_either_input_occurrence_in_root_path_global_split
