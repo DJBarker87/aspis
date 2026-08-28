@@ -111,8 +111,30 @@ structure DigestBindingScheduleProjection where
   selector_tag : Std.U16
   residual_tags : Array Std.U16 4#usize
 
+/-- [v7_forest_lane_invariant_source::EndpointSelectorCacheSlotProjection]
+    Source: 'src/lib.rs', lines 226:0-229:1
+    Visibility: public -/
+structure EndpointSelectorCacheSlotProjection where
+  row_tag : Std.U16
+  value_tag : Std.U64
+
+/-- [v7_forest_lane_invariant_source::EndpointSelectorLookupProjection]
+    Source: 'src/lib.rs', lines 232:0-236:1
+    Visibility: public -/
+structure EndpointSelectorLookupProjection where
+  next_slot : EndpointSelectorCacheSlotProjection
+  returned_value_tag : Std.U64
+  exact_tag_hit : Bool
+
+/-- [v7_forest_lane_invariant_source::EndpointOrderProjection]
+    Source: 'src/lib.rs', lines 266:0-269:1
+    Visibility: public -/
+structure EndpointOrderProjection where
+  producer_row : Std.U16
+  consumer_row : Std.U16
+
 /-- [v7_forest_lane_invariant_source::ProductionLaneWrite]
-    Source: 'src/lib.rs', lines 569:0-584:1
+    Source: 'src/lib.rs', lines 624:0-639:1
     Visibility: public -/
 @[discriminant isize]
 inductive ProductionLaneWrite where
