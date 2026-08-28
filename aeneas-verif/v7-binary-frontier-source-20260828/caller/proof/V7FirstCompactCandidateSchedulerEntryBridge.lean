@@ -18,9 +18,14 @@ namespace V7FirstCompactCandidateSchedulerEntryBridge
 open V7FirstCompactSource
 open V7FirstCompactCallerBridge
 open V7FirstCompactSamplerNativeBlockBridge
+open V7FirstCompactSamplerK13PositionBridge
+open V7FirstCompactSamplerOuterLoopBridge
 open V7FirstCompactSqueezeSourceBridge
 open V7FirstCompactSamplerTableTraceBridge
 open AspisK1.V7Tag73TranscriptSchedule
+open AspisK1.V7Tag73DeterministicRefinement
+open AspisK1.V7Tag73ReturnedPlanSemantics
+open AspisK1.V7FsAokExperiment
 
 abbrev Transcript := transcript.Transcript
 
@@ -366,6 +371,90 @@ theorem raw_candidate_absorb_exposes_exact_hash_run
   exact successful_source_candidate_absorb_exposes_hash_run
     inputTranscript raw.absorbed counter absorbRun
 
+/-- The literal candidate absorb input is the scheduler's candidate-input
+grammar once the pre-candidate source digest is aligned with the scheduler
+state. -/
+theorem candidate_absorb_input_matches_source
+    (inputTranscript : Transcript) (sourceCounter : Std.U8)
+    (machine : MachineState) (counter : Fin 64)
+    (counterExact : sourceCounter.val = counter.val)
+    (aligned : machine.digest = nativeTranscriptDigest inputTranscript) :
+    candidateAbsorbInput machine counter =
+      nativeHashInputBytes
+        (candidateAbsorbHashInput inputTranscript sourceCounter) := by
+  rw [native_candidate_absorb_hash_input_bytes]
+  simp [candidateAbsorbInput, aligned, nativeTranscriptDigest, counterExact]
+
+/-- The candidate callback from a literal successful source run and the
+scheduler's fixed-table absorb are the same one-query transition.  The table
+coverage is path-specific: it names this exact source input and output only. -/
+theorem raw_candidate_absorb_matches_semantic_table
+    {table : FixedOracleTable}
+    (inputTranscript : Transcript) (sourceCounter : Std.U8)
+    (output : Option v7_onefold.V7CompactQuerySchedule)
+    (raw : RawCandidateExecution inputTranscript sourceCounter output)
+    (machine : MachineState) (counter : Fin 64)
+    (counterExact : sourceCounter.val = counter.val)
+    (aligned : machine.digest = nativeTranscriptDigest inputTranscript)
+    (covered : tableLookup table
+      (nativeHashInputBytes
+        (candidateAbsorbHashInput inputTranscript sourceCounter)) =
+        some (nativeTranscriptDigest raw.absorbed)) :
+    inputTranscript.hash
+        (candidateAbsorbHashInput inputTranscript sourceCounter) =
+      .ok raw.absorbed.state ∧
+    (absorb (fixedTableHashOracle table) machine
+      (.queryCandidate counter)).digest =
+      nativeTranscriptDigest raw.absorbed := by
+  constructor
+  · exact (raw_candidate_absorb_exposes_exact_hash_run
+      inputTranscript sourceCounter output raw).1
+  · change (fixedTableHashOracle table).answer
+        (candidateAbsorbInput machine counter) =
+      nativeTranscriptDigest raw.absorbed
+    rw [candidate_absorb_input_matches_source inputTranscript sourceCounter
+      machine counter counterExact aligned]
+    exact fixed_table_hash_oracle_answer_of_lookup table _ _ covered
+
+/-- Complete selected-candidate entry replay: the translated candidate absorb
+and its subsequent literal source squeeze pairs replay under the same semantic
+fixed table.  This is the q16 source/scheduler seam used before decoder and
+frontier reasoning. -/
+theorem raw_candidate_entry_and_trace_match_semantic
+    {table : FixedOracleTable}
+    (inputTranscript : Transcript) (sourceCounter : Std.U8)
+    (output : Option v7_onefold.V7CompactQuerySchedule)
+    (raw : RawCandidateExecution inputTranscript sourceCounter output)
+    (machine : MachineState) (counter : Fin 64)
+    (counterExact : sourceCounter.val = counter.val)
+    (baseAligned : machine.digest = nativeTranscriptDigest inputTranscript)
+    {blocks : List SourceSqueezeBlock} {pairs : List (ShaInput × ShaOutput)}
+    (trace : NativeExactSqueezeTrace raw.absorbed blocks raw.sampledTranscript)
+    (ordered : NativeSqueezeTraceQueryPairs trace pairs)
+    (candidateCovered : tableLookup table
+      (nativeHashInputBytes
+        (candidateAbsorbHashInput inputTranscript sourceCounter)) =
+        some (nativeTranscriptDigest raw.absorbed))
+    (squeezeCovered : QueryPairsCoveredByTable table pairs) :
+    inputTranscript.hash
+        (candidateAbsorbHashInput inputTranscript sourceCounter) =
+      .ok raw.absorbed.state ∧
+    (squeezeBlocks (fixedTableHashOracle table) blocks.length
+      (absorb (fixedTableHashOracle table) machine
+        (.queryCandidate counter))).1 = sourceTraceDigests blocks ∧
+    (squeezeBlocks (fixedTableHashOracle table) blocks.length
+      (absorb (fixedTableHashOracle table) machine
+        (.queryCandidate counter))).2.digest =
+      nativeTranscriptDigest raw.sampledTranscript := by
+  have entry := raw_candidate_absorb_matches_semantic_table (table := table)
+    inputTranscript sourceCounter output raw machine counter counterExact
+    baseAligned candidateCovered
+  have replay := native_source_trace_matches_semantic_of_exact_pair_coverage
+    trace ordered squeezeCovered
+    (absorb (fixedTableHashOracle table) machine
+      (.queryCandidate counter)) entry.2
+  exact ⟨entry.1, replay.1, replay.2⟩
+
 #print axioms native_candidate_absorb_hash_input_bytes
 #print axioms source_candidate_clone_run_is_exact
 #print axioms successful_source_candidate_absorb_exposes_hash_run
@@ -374,5 +463,8 @@ theorem raw_candidate_absorb_exposes_exact_hash_run
 #print axioms raw_candidate_counter_data_exact
 #print axioms raw_candidate_counter_slice_exact
 #print axioms raw_candidate_absorb_exposes_exact_hash_run
+#print axioms candidate_absorb_input_matches_source
+#print axioms raw_candidate_absorb_matches_semantic_table
+#print axioms raw_candidate_entry_and_trace_match_semantic
 
 end V7FirstCompactCandidateSchedulerEntryBridge
