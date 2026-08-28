@@ -27,6 +27,11 @@ pool-v1-pair-forest-binary-copy-weights-audit = []
 # Audit-only memoization of generated Copy endpoint row selectors. The cache
 # never supplies a value unless its stored row tag matches exactly.
 pool-v1-pair-forest-endpoint-selector-cache-audit = []
+# Audit-only exact common-factor extraction in the selected semantic lanes.
+# It preserves all 94 source residuals and their 24 packed theta lanes.
+pool-v1-pair-forest-semantic-factor-audit = []
+# Audit-only exact CSE for the fourteen generated Copy tuple patterns.
+pool-v1-pair-forest-pattern-window-audit = []
 
 [dependencies]
 aspis-core.workspace = true

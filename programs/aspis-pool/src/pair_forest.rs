@@ -627,7 +627,14 @@ fn validate_lane_current_page(
         page,
     )?;
     let data = page.try_borrow_data()?;
+    #[cfg(not(feature = "pair-forest-history-page-invariant-audit"))]
     let header = validate_root_page_bytes(&data, lane_account.key, location.page_number)?;
+    #[cfg(feature = "pair-forest-history-page-invariant-audit")]
+    let header = crate::history::validate_root_page_bytes_from_program_invariant(
+        &data,
+        lane_account.key,
+        location.page_number,
+    )?;
     if header.filled != location.slot + 1
         || read_retained_root(&data, header, lane.tree.next_leaf_index)? != lane.tree.root
     {

@@ -147,6 +147,62 @@ pub(crate) fn validate_root_page_bytes(
     })
 }
 
+/// Audit-only hot decoder for a root page created and exclusively extended by
+/// this Pool release. The ordinary decoder above remains mandatory for
+/// untrusted/migration inputs. This retains the complete header/canonical
+/// current-root checks at the caller; it omits only rescanning prior roots and
+/// untouched zero capacity, which are inductive properties of the Pool's
+/// initialize/append writers.
+#[cfg(feature = "pair-forest-history-page-invariant-audit")]
+pub(crate) fn validate_root_page_bytes_from_program_invariant(
+    data: &[u8],
+    expected_pool: &Pubkey,
+    expected_page_number: u64,
+) -> Result<RootPageHeaderV1, ProgramError> {
+    if data.len() != POOL_V1_ROOT_HISTORY_PAGE_ACCOUNT_BYTES
+        || data[..4] != POOL_V1_ROOT_HISTORY_PAGE_MAGIC
+        || data[4] != POOL_V1_ROOT_HISTORY_PAGE_VERSION
+        || data[5] != POOL_V1_ROOT_HISTORY_CAPACITY_LOG2
+        || data[6] != POOL_V1_DIGEST_ENCODING_VERSION
+        || data[7] != 0
+        || data[58..64] != [0u8; 6]
+    {
+        return Err(PoolV1ProgramError::InvalidAccountType.into());
+    }
+    let pool = Pubkey::new_from_array(
+        data[PAGE_POOL_OFFSET..PAGE_NUMBER_OFFSET]
+            .try_into()
+            .unwrap(),
+    );
+    let page_number = u64::from_le_bytes(
+        data[PAGE_NUMBER_OFFSET..PAGE_FIRST_SEQUENCE_OFFSET]
+            .try_into()
+            .unwrap(),
+    );
+    let first_sequence = u64::from_le_bytes(
+        data[PAGE_FIRST_SEQUENCE_OFFSET..PAGE_FILLED_OFFSET]
+            .try_into()
+            .unwrap(),
+    );
+    let filled = u16::from_le_bytes(data[PAGE_FILLED_OFFSET..58].try_into().unwrap());
+    let expected_first = page_number
+        .checked_mul(POOL_V1_ROOT_HISTORY_CAPACITY as u64)
+        .ok_or(PoolV1ProgramError::ArithmeticOverflow)?;
+    if pool != *expected_pool
+        || page_number != expected_page_number
+        || first_sequence != expected_first
+        || usize::from(filled) > POOL_V1_ROOT_HISTORY_CAPACITY
+    {
+        return Err(PoolV1ProgramError::StateHistoryMismatch.into());
+    }
+    Ok(RootPageHeaderV1 {
+        pool,
+        page_number,
+        first_sequence,
+        filled,
+    })
+}
+
 pub(crate) fn read_retained_root(
     data: &[u8],
     header: RootPageHeaderV1,
@@ -211,4 +267,53 @@ pub(crate) fn validate_new_page_account(
         return Err(ProgramError::InvalidAccountData);
     }
     Ok(())
+}
+
+#[cfg(all(test, feature = "pair-forest-history-page-invariant-audit"))]
+mod invariant_tests {
+    use super::*;
+    use aspis_core::field::{M31, P};
+    use aspis_statement::pool_v1::root_history::initialize_root_history_page_bytes_v1;
+    use std::vec;
+    use std::vec::Vec;
+
+    fn root(seed: u32) -> Digest {
+        core::array::from_fn(|index| M31(seed + index as u32))
+    }
+
+    #[test]
+    fn invariant_header_matches_strict_writer_image_and_retains_current_root_teeth() {
+        let pool = Pubkey::new_unique();
+        let roots = (0..POOL_V1_ROOT_HISTORY_CAPACITY)
+            .map(|index| root(100 + index as u32))
+            .collect::<Vec<_>>();
+        let mut data = vec![0u8; POOL_V1_ROOT_HISTORY_PAGE_ACCOUNT_BYTES];
+        initialize_root_history_page_bytes_v1(&mut data, pool.to_bytes(), 0, &roots).unwrap();
+        let strict = validate_root_page_bytes(&data, &pool, 0).unwrap();
+        let hot = validate_root_page_bytes_from_program_invariant(&data, &pool, 0).unwrap();
+        assert_eq!(hot, strict);
+        assert_eq!(read_retained_root(&data, hot, 255).unwrap(), roots[255]);
+
+        let current = PAGE_ROOTS_OFFSET + 255 * 32;
+        data[current..current + 4].copy_from_slice(&P.to_le_bytes());
+        assert_eq!(
+            read_retained_root(&data, hot, 255),
+            Err(ProgramError::InvalidAccountData)
+        );
+    }
+
+    #[test]
+    fn invariant_decoder_boundary_is_prior_writer_history() {
+        let pool = Pubkey::new_unique();
+        let roots = [root(200), root(300)];
+        let mut data = vec![0u8; POOL_V1_ROOT_HISTORY_PAGE_ACCOUNT_BYTES];
+        initialize_root_history_page_bytes_v1(&mut data, pool.to_bytes(), 0, &roots).unwrap();
+        let prior = PAGE_ROOTS_OFFSET;
+        data[prior..prior + 4].copy_from_slice(&P.to_le_bytes());
+        assert!(validate_root_page_bytes(&data, &pool, 0).is_err());
+        assert!(validate_root_page_bytes_from_program_invariant(&data, &pool, 0).is_ok());
+
+        data[4] ^= 1;
+        assert!(validate_root_page_bytes_from_program_invariant(&data, &pool, 0).is_err());
+    }
 }
