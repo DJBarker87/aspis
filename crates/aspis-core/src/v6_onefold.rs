@@ -259,6 +259,11 @@ struct PackedM31Reader<'a> {
 /// bit buffer across fields avoids recomputing 2,564 limb offsets and loading
 /// overlapping five-byte windows, while returning the same canonical QM31
 /// values as [`packed_qm31_at`].
+pub(crate) trait V6FixedFieldStream {
+    fn next_qm31(&mut self) -> Result<QM31, V6WireError>;
+    fn finish(self) -> Result<(), V6WireError>;
+}
+
 pub(crate) struct V6FixedFieldReader<'a> {
     packed: PackedM31Reader<'a>,
     remaining: usize,
@@ -292,6 +297,17 @@ impl<'a> V6FixedFieldReader<'a> {
         } else {
             Err(V6WireError::WrongLength)
         }
+    }
+}
+
+impl V6FixedFieldStream for V6FixedFieldReader<'_> {
+    #[inline(always)]
+    fn next_qm31(&mut self) -> Result<QM31, V6WireError> {
+        V6FixedFieldReader::next_qm31(self)
+    }
+
+    fn finish(self) -> Result<(), V6WireError> {
+        V6FixedFieldReader::finish(self)
     }
 }
 
