@@ -23,6 +23,10 @@ pair-forest-account-evidence = []
 # account order, registry authentication, ASR8 validation, and settlement path
 # with `pair-forest-account-evidence`.
 pair-forest-full-asf8-audit = ["pair-forest-account-evidence"]
+# Default-off local CU variants backed by the named inductive Pool-write
+# invariant. They are not release features until Rust-to-Lean/Aeneas closure.
+pair-forest-source-invariant-audit = ["pair-forest-account-evidence"]
+pair-forest-source-result-invariant-audit = ["pair-forest-source-invariant-audit"]
 
 [dependencies]
 aspis-core.workspace = true
