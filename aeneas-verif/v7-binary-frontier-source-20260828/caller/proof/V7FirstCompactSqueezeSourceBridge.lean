@@ -56,6 +56,22 @@ def nativeHashInputBytes (inputs : Slice (Slice Std.U8)) : ByteString :=
   (inputs.val.flatMap fun input => input.val).map
     (fun byte => UInt8.ofNat byte.val)
 
+theorem bytes_native_source_digest (block : NativeQueryBlock) :
+    bytes (nativeSourceDigest block) =
+      block.val.map (fun byte => UInt8.ofNat byte.val) := by
+  unfold bytes nativeSourceDigest
+  simpa using List.ofFn_getElem_eq_map block.val
+    (fun byte => UInt8.ofNat byte.val)
+
+theorem native_hash_input_bytes_tagged
+    (self : Transcript) (domain : Std.U8) :
+    nativeHashInputBytes (taggedHashInput self domain) =
+      bytes (nativeSourceDigest (sourceSqueezeBytes self.state)) ++
+        [UInt8.ofNat domain.val] := by
+  rw [bytes_native_source_digest]
+  simp [nativeHashInputBytes, taggedHashInput, taggedBytes,
+    sourceSqueezeBytes]
+
 /-- The permitted SHA-256 source boundary.  It includes totality and states
 that the successful callback output is SHA-256 of the exact concatenated
 source slices; no generic fallibility premise survives above this interface. -/
@@ -88,6 +104,34 @@ theorem hash_callback_total_implies_squeeze_success
   rw [source_squeeze_block_run_is_exact]
   simp [exactSqueezeRun, outputRun, advanceRun]
 
+/-- A successful translated squeeze exposes its two literal callback runs.
+This is path-specific and introduces no callback totality assumption. -/
+theorem successful_squeeze_exposes_hash_runs
+    (self next : Transcript) (block : SourceSqueezeBlock)
+    (run : transcript.Transcript.squeeze_block self = .ok (block, next)) :
+    self.hash (taggedHashInput self 1#u8) = .ok block ∧
+      self.hash (taggedHashInput self 2#u8) = .ok next.state := by
+  rw [source_squeeze_block_run_is_exact] at run
+  unfold exactSqueezeRun at run
+  generalize outputRun : self.hash (taggedHashInput self 1#u8) = outputResult
+    at run
+  cases outputResult with
+  | fail error => simp [Bind.bind, Aeneas.Std.bind] at run
+  | div => simp [Bind.bind, Aeneas.Std.bind] at run
+  | ok output =>
+      simp only [bind_tc_ok] at run
+      generalize advanceRun : self.hash (taggedHashInput self 2#u8) =
+        advanceResult at run
+      cases advanceResult with
+      | fail error => simp [Bind.bind, Aeneas.Std.bind] at run
+      | div => simp [Bind.bind, Aeneas.Std.bind] at run
+      | ok nextState =>
+          simp only [bind_tc_ok, Result.ok.injEq, Prod.mk.injEq] at run
+          rcases run with ⟨blockExact, nextExact⟩
+          subst block
+          subst next
+          exact ⟨rfl, rfl⟩
+
 /-- Successful source squeezing never changes the installed hash callback. -/
 theorem successful_squeeze_preserves_hash
     (self next : Transcript) (block : SourceSqueezeBlock)
@@ -114,8 +158,10 @@ theorem successful_squeeze_preserves_hash
           rfl
 
 #print axioms source_squeeze_block_run_is_exact
+#print axioms native_hash_input_bytes_tagged
 #print axioms hash_callback_sha256_implies_total
 #print axioms hash_callback_total_implies_squeeze_success
+#print axioms successful_squeeze_exposes_hash_runs
 #print axioms successful_squeeze_preserves_hash
 
 end V7FirstCompactSqueezeSourceBridge
