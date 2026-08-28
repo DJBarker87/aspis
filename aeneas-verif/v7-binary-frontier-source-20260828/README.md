@@ -91,6 +91,16 @@ and its cap decision. Its two public consequences prove that a semantically
 admitted candidate returns all five exact schedule fields and that a
 non-admitted candidate returns `none`.
 
+The reverse direction is now source-backed as well.
+`candidate_success_exposes_raw_execution` inverts a literal successful
+translated candidate call into its actual clone, one-byte counter absorb,
+checked shift, sampler, `Vec -> u32[16]`, frontier and exact return stages.
+`raw_execution_to_candidate_prefix` then reduces the K1.3 semantic handoff to
+two narrow equalities: the checked shift result is `2^18`, and the returned raw
+array is `queryScheduleArray schedule`.  In particular, the remaining
+digest-block/decoder alignment no longer assumes the translated source control
+flow, frontier result, or candidate return.
+
 The caller extraction required transparent generated-code repairs: avoid the
 `transcript` parameter/name-space shadow, reuse the already generated frontier
 types and foreign definitions, and supply the literal extra `u32`,
@@ -179,7 +189,7 @@ f710b3691d4c4b6439386d8d456f90b37aec406ecbad3b0be8d76cf8f12e3f85  caller/generat
 b71fa9e8fc7bef1544ec981092de9370c4b45d4ed059f30989d7bef988932468  caller/proof/V7FirstCompactFrontierLoopBridge.lean
 809eb566103b0a2355adaf530f78383dae45ac51d05ddf8fe4779b42b9e3a9bf  caller/proof/V7FirstCompactFrontierSortSourceBridge.lean
 c72e3c80fcfd46ce032d834d00b209316608f2cb1b39840dbabdec8180e3aaa6  caller/proof/V7FirstCompactFrontierK13Integration.lean
-280439487cbe37a6f45a3be8ffe108e2ddce728360801635b4b70a258fb0703c  caller/proof/V7FirstCompactCallerBridge.lean
+182fdb32c73599137a141ad4c3d97495ecb82cebb54fd7e061885fa3d50bf482  caller/proof/V7FirstCompactCallerBridge.lean
 6abb0376100611c5553258062480777187785579f402c9c1d3ce72379518258f  ../../crates/aspis-core/src/v7_onefold.rs
 ```
 

@@ -100,6 +100,212 @@ private def candidateAfterSample
       (Option v7_onefold.V7CompactQuerySchedule)
       (core.convert.FromSame v6_onefold.V6WireError) residual
 
+/-! ## Successful-candidate inversion
+
+The forward bridge below is convenient when a semantic schedule is already in
+hand, but its `CandidatePrefixRuns` input packages every source-control-flow
+equation.  The following raw execution certificate is extracted from a literal
+successful translated call.  Consequently the K1.3 handoff only has to identify
+the returned `u32[16]` with the semantic decoder schedule; it does not have to
+postulate clone, absorb, sampler, conversion, frontier, or return behavior.
+-/
+
+/-- Every source-visible intermediate on a successful candidate path. -/
+structure RawCandidateExecution
+    (inputTranscript : transcript.Transcript) (counter : Std.U8)
+    (output : Option v7_onefold.V7CompactQuerySchedule) where
+  cloned : transcript.Transcript
+  absorbed : transcript.Transcript
+  sampledTranscript : transcript.Transcript
+  counterData : Slice Std.U8
+  sampled : alloc.vec.Vec Std.U32
+  bound : Std.U32
+  queries : Array Std.U32 16#usize
+  frontier : Std.Usize
+  cloneRun :
+    transcript.Transcript.Insts.CoreCloneClone.clone inputTranscript =
+      .ok cloned
+  sliceRun :
+    lift (Array.to_slice (Array.make 1#usize [counter])) =
+      (.ok counterData : Result (Slice Std.U8))
+  absorbRun :
+    transcript.Transcript.absorb cloned
+        transcript.label.V7_QUERY_CANDIDATE counterData =
+      .ok absorbed
+  shiftRun :
+    (1#u32 <<< 18#i32) = (.ok bound : Result Std.U32)
+  samplerRun :
+    transcript.Transcript.challenge_queries_without_replacement absorbed
+        16#usize bound 64#usize =
+      .ok (.Ok sampled, sampledTranscript)
+  arrayRun :
+    Array.Insts.CoreConvertTryFromVecVec.try_from Global 16#usize sampled =
+      .ok (.Ok queries)
+  frontierRun :
+    v6_onefold.binary_frontier_nodes queries 18#u8 = .ok (.Ok frontier)
+  outputExact :
+    output =
+      if frontier ≤ v7_onefold.V7_COMPACT_FRONTIER_CAP_PER_TREE then
+        some {
+          queries := queries
+          counter := counter
+          frontier_nodes := frontier
+          transcript_state := sampledTranscript.state
+          accepted_transcript := sampledTranscript
+        }
+      else none
+
+/-- Literal successful translated execution exposes every raw intermediate.
+No semantic schedule or transcript-model correspondence is assumed. -/
+def candidate_success_exposes_raw_execution
+    (inputTranscript : transcript.Transcript) (counter : Std.U8)
+    (output : Option v7_onefold.V7CompactQuerySchedule)
+    (success :
+      v7_onefold.derive_v7_compact_candidate inputTranscript counter =
+        .ok (.Ok output)) :
+    RawCandidateExecution inputTranscript counter output := by
+  unfold v7_onefold.derive_v7_compact_candidate at success
+  generalize hclone :
+    transcript.Transcript.Insts.CoreCloneClone.clone inputTranscript =
+      cloneResult at success
+  cases cloneResult with
+  | fail error => simp [Bind.bind, Aeneas.Std.bind] at success
+  | div => simp [Bind.bind, Aeneas.Std.bind] at success
+  | ok cloned =>
+    simp only [bind_tc_ok] at success
+    generalize hslice :
+      lift (Array.to_slice (Array.make 1#usize [counter])) = sliceResult
+        at success
+    cases sliceResult with
+    | fail error => simp [Bind.bind, Aeneas.Std.bind] at success
+    | div => simp [Bind.bind, Aeneas.Std.bind] at success
+    | ok counterData =>
+      simp only [bind_tc_ok] at success
+      generalize habsorb :
+        transcript.Transcript.absorb cloned
+          transcript.label.V7_QUERY_CANDIDATE counterData = absorbResult
+          at success
+      cases absorbResult with
+      | fail error => simp [Bind.bind, Aeneas.Std.bind] at success
+      | div => simp [Bind.bind, Aeneas.Std.bind] at success
+      | ok absorbed =>
+        simp only [bind_tc_ok] at success
+        norm_num [v6_onefold.V6_QUERY_COUNT] at success
+        generalize hshift : (1#u32 <<< 18#i32) = shiftResult at success
+        cases shiftResult with
+        | fail error => simp [Bind.bind, Aeneas.Std.bind] at success
+        | div => simp [Bind.bind, Aeneas.Std.bind] at success
+        | ok bound =>
+          simp only [bind_tc_ok] at success
+          generalize hsample :
+            transcript.Transcript.challenge_queries_without_replacement absorbed
+              16#usize bound 64#usize = sampleResult at success
+          cases sampleResult with
+          | fail error => simp [Bind.bind, Aeneas.Std.bind] at success
+          | div => simp [Bind.bind, Aeneas.Std.bind] at success
+          | ok samplePair =>
+            rcases samplePair with ⟨sampledResult, sampledTranscript⟩
+            cases sampledResult with
+            | Err error =>
+              simp [core.result.Result.map_err,
+                core.result.Result.Insts.CoreOpsTry.branch,
+                v7_onefold.derive_v7_compact_candidate.closure.Insts.CoreOpsFunctionFnOnceTupleQuerySampleErrorV6WireError.call_once,
+                core.result.Result.Insts.CoreOpsTryTraitFromResidualResultInfallible.from_residual,
+                core.convert.FromSame, core.convert.FromSame.from] at success
+            | Ok sampled =>
+              simp only [bind_tc_ok, core.result.Result.map_err,
+                core.result.Result.Insts.CoreOpsTry.branch,
+                v7_onefold.derive_v7_compact_candidate.closure.Insts.CoreOpsFunctionFnOnceTupleQuerySampleErrorV6WireError.call_once]
+                at success
+              change candidateAfterSample sampledTranscript counter sampled =
+                .ok (.Ok output) at success
+              unfold candidateAfterSample at success
+              generalize harray :
+                Array.Insts.CoreConvertTryFromVecVec.try_from Global 16#usize
+                  sampled = arrayResult at success
+              cases arrayResult with
+              | fail error =>
+                simp [harray, Bind.bind, Aeneas.Std.bind] at success
+              | div =>
+                simp [harray, Bind.bind, Aeneas.Std.bind] at success
+              | ok converted =>
+                cases converted with
+                | Err error =>
+                  simp [harray, core.result.Result.map_err,
+                    core.result.Result.Insts.CoreOpsTry.branch,
+                    v7_onefold.derive_v7_compact_candidate.closure_1.Insts.CoreOpsFunctionFnOnceTupleVecU32V6WireError.call_once,
+                    core.result.Result.Insts.CoreOpsTryTraitFromResidualResultInfallible.from_residual,
+                    core.convert.FromSame, core.convert.FromSame.from] at success
+                | Ok queries =>
+                  simp only [harray, bind_tc_ok, core.result.Result.map_err,
+                    core.result.Result.Insts.CoreOpsTry.branch,
+                    v7_onefold.derive_v7_compact_candidate.closure_1.Insts.CoreOpsFunctionFnOnceTupleVecU32V6WireError.call_once]
+                      at success
+                  generalize hfrontier :
+                    v6_onefold.binary_frontier_nodes queries 18#u8 =
+                      frontierResult at success
+                  cases frontierResult with
+                  | fail error =>
+                    simp [hfrontier, Bind.bind, Aeneas.Std.bind] at success
+                  | div =>
+                    simp [hfrontier, Bind.bind, Aeneas.Std.bind] at success
+                  | ok checkedFrontier =>
+                    cases checkedFrontier with
+                    | Err error =>
+                      simp [hfrontier,
+                        core.result.Result.Insts.CoreOpsTry.branch,
+                        core.result.Result.Insts.CoreOpsTryTraitFromResidualResultInfallible.from_residual,
+                        core.convert.FromSame, core.convert.FromSame.from] at success
+                    | Ok frontier =>
+                      simp only [hfrontier, bind_tc_ok,
+                        core.result.Result.Insts.CoreOpsTry.branch] at success
+                      refine {
+                        cloned := cloned
+                        absorbed := absorbed
+                        sampledTranscript := sampledTranscript
+                        counterData := counterData
+                        sampled := sampled
+                        bound := bound
+                        queries := queries
+                        frontier := frontier
+                        cloneRun := hclone
+                        sliceRun := hslice
+                        absorbRun := habsorb
+                        shiftRun := hshift
+                        samplerRun := hsample
+                        arrayRun := harray
+                        frontierRun := hfrontier
+                        outputExact := ?_
+                      }
+                      by_cases admitted :
+                          frontier ≤ v7_onefold.V7_COMPACT_FRONTIER_CAP_PER_TREE
+                      · rw [if_pos admitted] at success ⊢
+                        simpa [transcript.Transcript.diagnostic_state] using
+                          success.symm
+                      · rw [if_neg admitted] at success ⊢
+                        simpa using success.symm
+
+/-- Once the raw source array is identified with a semantic schedule, the raw
+execution supplies the older forward bridge's complete prefix certificate. -/
+theorem raw_execution_to_candidate_prefix
+    (inputTranscript : transcript.Transcript) (counter : Std.U8)
+    (output : Option v7_onefold.V7CompactQuerySchedule)
+    (raw : RawCandidateExecution inputTranscript counter output)
+    (schedule : QuerySchedule)
+    (boundExact : raw.bound = 262144#u32)
+    (queriesExact : raw.queries = queryScheduleArray schedule) :
+    CandidatePrefixRuns inputTranscript raw.cloned raw.absorbed
+      raw.sampledTranscript raw.counterData counter raw.sampled schedule := by
+  refine {
+    cloneRun := raw.cloneRun
+    sliceRun := raw.sliceRun
+    absorbRun := raw.absorbRun
+    shiftRun := by simpa [boundExact] using raw.shiftRun
+    samplerRun := by simpa [boundExact] using raw.samplerRun
+    arrayRun := ?_
+  }
+  simpa [queriesExact] using raw.arrayRun
+
 private theorem source_candidate_reduces
     (inputTranscript cloned absorbed sampledTranscript : transcript.Transcript)
     (counterData : Slice Std.U8)
@@ -374,6 +580,8 @@ theorem translated_wrapper_returns_first_semantic_candidate
         selectedSampledTranscript) selectedLt earlierRun selectedRun⟩
 
 #print axioms source_candidate_reduces
+#print axioms candidate_success_exposes_raw_execution
+#print axioms raw_execution_to_candidate_prefix
 #print axioms translated_candidate_returns_on_semantic_compact
 #print axioms translated_candidate_skips_on_semantic_noncompact
 #print axioms translated_first_success_loop_exact
