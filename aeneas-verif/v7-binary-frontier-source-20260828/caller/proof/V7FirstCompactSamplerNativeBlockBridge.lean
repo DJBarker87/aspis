@@ -14,10 +14,27 @@ universe u v
 
 abbrev FunctionCodomain {α : Sort u} {β : Sort v} (_ : α → β) : Sort v := β
 
-/-- Exact block type from the translated Tag-73 transcript field; this avoids
-re-elaborating Aeneas' proof-carrying `32#usize` literal. -/
-abbrev NativeQueryBlock : Type :=
-  FunctionCodomain V7FirstCompactSource.transcript.Transcript.state
+/-- Stable byte view of a translated 32-byte squeeze block. The source array's
+proof-carrying scalar length is deliberately erased after its byte length is
+proved, so no re-elaborated scalar proof enters the semantic codec boundary. -/
+def NativeQueryBlock : Type := { bytes : List Std.U8 // bytes.length = 32 }
+
+abbrev SuccessfulFirstOfResultFunction
+    {input first second : Type}
+    (_ : input → Result (first × second)) : Type := first
+
+/-- Literal array type returned by the translated production squeeze. -/
+abbrev SourceSqueezeBlock : Type :=
+  SuccessfulFirstOfResultFunction
+    V7FirstCompactSource.transcript.Transcript.squeeze_block
+
+def sourceSqueezeBytes (block : SourceSqueezeBlock) : NativeQueryBlock :=
+  ⟨block.val, by simpa using block.property⟩
+
+def nativeSourceSlice (block : NativeQueryBlock) : Slice Std.U8 :=
+  ⟨block.val, by
+    rw [block.property]
+    scalar_tac⟩
 
 def nativeWordSlice (block : NativeQueryBlock) (word : Fin 8) :
     Slice Std.U8 :=
@@ -133,11 +150,12 @@ theorem native_validWordIterator_blockChunks (block : NativeQueryBlock) :
 returns the production-native iterator used by the codec theorems above. -/
 theorem native_chunks_exact_block_is_nativeBlockChunks
     (block : NativeQueryBlock) :
-    core.slice.Slice.chunks_exact (Array.to_slice block) 4#usize =
+    core.slice.Slice.chunks_exact (nativeSourceSlice block) 4#usize =
       .ok (nativeBlockChunks block) := by
-  unfold core.slice.Slice.chunks_exact nativeBlockChunks nativeWordSlice
+  unfold core.slice.Slice.chunks_exact nativeSourceSlice nativeBlockChunks
+    nativeWordSlice
   simp only [show (4#usize : Std.Usize).val > 0 by decide, ↓reduceDIte,
-    Array.to_slice]
+    block.property]
   simp only [Result.ok.injEq]
   apply V5QuerySamplerGeneratedSemantics.chunksExact_ext
   · simp only
@@ -154,10 +172,33 @@ theorem native_chunks_exact_block_is_nativeBlockChunks
         interval_cases n <;> simp
   · simp [List.toChunksExact, block.property]
 
+@[simp] theorem sourceSqueezeBytes_value (block : SourceSqueezeBlock) :
+    (sourceSqueezeBytes block).val = block.val := rfl
+
+/-- The stable byte slice is byte-for-byte the literal translated source
+array slice; only the proof-carrying scalar length witness is erased. -/
+theorem sourceSqueezeSlice_eq_nativeSourceSlice
+    (block : SourceSqueezeBlock) :
+    Array.to_slice block = nativeSourceSlice (sourceSqueezeBytes block) := by
+  apply Subtype.ext
+  rfl
+
+/-- Exact source-facing chunks endpoint, stated with the literal squeeze return
+type rather than a separately elaborated `Array U8 32#usize`. -/
+theorem sourceSqueeze_chunks_exact_is_nativeBlockChunks
+    (block : SourceSqueezeBlock) :
+    core.slice.Slice.chunks_exact (Array.to_slice block) 4#usize =
+      .ok (nativeBlockChunks (sourceSqueezeBytes block)) := by
+  rw [sourceSqueezeSlice_eq_nativeSourceSlice block]
+  exact native_chunks_exact_block_is_nativeBlockChunks
+    (sourceSqueezeBytes block)
+
 #print axioms native_word_value_eq_k13
 #print axioms native_candidate_eq_k13
 #print axioms native_iteratorCandidates_blockChunks
 #print axioms native_validWordIterator_blockChunks
 #print axioms native_chunks_exact_block_is_nativeBlockChunks
+#print axioms sourceSqueezeSlice_eq_nativeSourceSlice
+#print axioms sourceSqueeze_chunks_exact_is_nativeBlockChunks
 
 end V7FirstCompactSamplerNativeBlockBridge

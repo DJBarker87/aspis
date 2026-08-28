@@ -255,6 +255,19 @@ Focused unit `aspis-v7-q16-native-chunks-01` exited 0 in 9.16 seconds, peaked
 at 6,931,784 KiB RSS, and used zero swap. Recursive outer-loop composition
 remains the next unclaimed step.
 
+The source-facing block boundary is now strengthened further: the semantic
+codec uses a stable list-of-bytes subtype with an exact length-32 proof, while
+`SourceSqueezeBlock` is extracted from the literal translated squeeze return.
+`sourceSqueezeSlice_eq_nativeSourceSlice` proves byte-for-byte equality after
+erasing only Aeneas' proof-carrying scalar witness, and
+`sourceSqueeze_chunks_exact_is_nativeBlockChunks` proves the literal source
+slice/chunks call returns the exact K1.3-connected iterator. Focused unit
+`aspis-v7-q16-source-slice-01` exited 0 in 9.10 seconds, peaked at 6,942,216
+KiB RSS, and used zero swap. Both endpoints report only `propext`,
+`Classical.choice`, and `Quot.sound`. The remaining recursive body proof must
+avoid unfolding the generated scalar witness at Lean's `instances`
+transparency; no byte or sampler semantic premise remains at this seam.
+
 ## Digests
 
 ```text
@@ -281,7 +294,7 @@ f21af0ef7f2362c62acb2dfa992c29d31f006aa5b13d788b64752b95d2f033bf  caller/proof/V
 128ac3fb23f46ae234b6472c78c27b938b458933d102cdc9be1c5cab8dbb85f4  caller/proof/V7FirstCompactSamplerInnerBridge.lean
 38a125601298e71ccb2c28f16a9ab222ce377f606f24e3ddfd84b30c040d0e20  caller/proof/V7FirstCompactSamplerLoop16Bridge.lean
 92accefcb0d123584e5007b45427eb44c6e31ad65e314a0b1c3d76e0d5cfbea5  caller/proof/V7FirstCompactSamplerOuterBridge.lean
-ae75d3bf03a284261363c35886666884c2deb1c2d35fa4dbcfb0ec8942ad0f4b  caller/proof/V7FirstCompactSamplerNativeBlockBridge.lean
+6da8875b86b2b2b912a1736408bdca6d22cd74187f9b2670de9edb0199cd8d75  caller/proof/V7FirstCompactSamplerNativeBlockBridge.lean
 6abb0376100611c5553258062480777187785579f402c9c1d3ce72379518258f  ../../crates/aspis-core/src/v7_onefold.rs
 ```
 
