@@ -322,6 +322,15 @@ preserves that callback. Focused NUC unit
 6,865,936 KiB RSS, and used zero swap. All endpoints report exactly
 `propext`, `Classical.choice`, and `Quot.sound`.
 
+The recursive outer-loop, wrapper, and K1.3 position bridges now use that exact
+source boundary directly: their only operational premise is totality of the
+callback installed in the accepted transcript.  The loop invariant proves the
+same callback is preserved across every squeeze, eliminating the former global
+premise over arbitrary transcripts. Focused NUC unit
+`aspis-v7-q16-callback-thread-06` exited 0; the final target took 2.83 seconds,
+peaked at 6,875,636 KiB RSS, and used zero swap. All endpoints report subsets
+of `propext`, `Classical.choice`, and `Quot.sound`.
+
 ## Digests
 
 ```text
@@ -350,9 +359,9 @@ f21af0ef7f2362c62acb2dfa992c29d31f006aa5b13d788b64752b95d2f033bf  caller/proof/V
 92accefcb0d123584e5007b45427eb44c6e31ad65e314a0b1c3d76e0d5cfbea5  caller/proof/V7FirstCompactSamplerOuterBridge.lean
 6da8875b86b2b2b912a1736408bdca6d22cd74187f9b2670de9edb0199cd8d75  caller/proof/V7FirstCompactSamplerNativeBlockBridge.lean
 9a0f680b6e93be014c37f7a5bc5be2454262bbb9eaedec5a8c1104436f5d8516  caller/proof/V7FirstCompactSamplerOuterBodyBridge.lean
-6c0a2f9233be8c2a56e71157e9ea595e033affd9767f3123e4aa4557b87a3e13  caller/proof/V7FirstCompactSamplerOuterLoopBridge.lean
-91d11a0151df104c8b337bf49878c5c8dc15df02b76f978ea168a45d2920dbdb  caller/proof/V7FirstCompactSamplerWrapperBridge.lean
-d10dbbcd30f510b46905c48adebd61950dc1a391bf26c833193b2d78c1ed98fd  caller/proof/V7FirstCompactSamplerK13PositionBridge.lean
+d71bbd19f44d407846820acb8bbe167f953925d819ef0313bf2e591cd1a7d888  caller/proof/V7FirstCompactSamplerOuterLoopBridge.lean
+5a1f6a37166be553c5305d31ce097c884aabed56b0a1820d91c8f98f03e0ed63  caller/proof/V7FirstCompactSamplerWrapperBridge.lean
+5ea4cdf362d9db303aeb1d510ab9c0a47ce48dfc9956f5b462e6c1c0d39ad222  caller/proof/V7FirstCompactSamplerK13PositionBridge.lean
 0caaeb316b41ff595566a4eba00a4c13c1ee98ed7e6f55936e7e5765e0c5045e  caller/proof/V7FirstCompactSqueezeSourceBridge.lean
 6abb0376100611c5553258062480777187785579f402c9c1d3ce72379518258f  ../../crates/aspis-core/src/v7_onefold.rs
 ```

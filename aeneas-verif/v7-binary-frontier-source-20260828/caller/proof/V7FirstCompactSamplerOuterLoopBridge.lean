@@ -1,4 +1,5 @@
 import V7FirstCompactSamplerOuterBodyBridge
+import V7FirstCompactSqueezeSourceBridge
 
 open Aeneas Aeneas.Std Result ControlFlow Error
 set_option autoImplicit false
@@ -66,19 +67,12 @@ theorem nativeExactSqueezeTrace_append_one
       exact NativeExactSqueezeTrace.cons self middle next headBlock
         (priorBlocks ++ [block]) head (ih hsqueeze)
 
-/-- Operational SHA/source boundary for the total-WP loop theorem.  The final
-caller bridge must discharge it from the production hash callback; it is not
-a cryptographic or scan-semantics assumption. -/
-def EverySqueezeSucceeds : Prop :=
-  ∀ current : Transcript, ∃ block next,
-    V7FirstCompactSource.transcript.Transcript.squeeze_block current =
-      .ok (block, next)
-
 def OuterSamplerInvariant
     (initialSelf : Transcript) (initialOut : alloc.vec.Vec Std.U32)
     (initialDraws : Std.Usize) (initialConsumedBlocks : Nat)
     (current : Transcript × alloc.vec.Vec Std.U32 × Std.Usize) : Prop :=
-  current.2.1.val.length ≤ 16 ∧ current.2.2.val ≤ 64 ∧
+  current.1.hash = initialSelf.hash ∧
+    current.2.1.val.length ≤ 16 ∧ current.2.2.val ≤ 64 ∧
     ∃ blocks : List SourceSqueezeBlock,
       NativeExactSqueezeTrace initialSelf blocks current.1 ∧
       ∀ suffix : List (List Nat),
@@ -135,7 +129,8 @@ Every continuation consumes all eight chronological words from one block. -/
 theorem generated_outer_loop_matches_scanBlocks
     (self : Transcript) (out : alloc.vec.Vec Std.U32)
     (draws : Std.Usize) (consumedBlocks : Nat)
-    (squeezeSucceeds : EverySqueezeSucceeds)
+    (hashSucceeds :
+      V7FirstCompactSqueezeSourceBridge.HashCallbackAlwaysSucceeds self.hash)
     (hout : out.val.length ≤ 16) (hdraws : draws.val ≤ 64) :
     V7FirstCompactSource.transcript.Transcript.challenge_queries_without_replacement_loop0
         self q16Count q16MaxDraws q16Mask out draws
@@ -148,12 +143,24 @@ theorem generated_outer_loop_matches_scanBlocks
     (OuterSamplerPost self out draws consumedBlocks)
   · rintro ⟨currentSelf, currentOut, currentDraws⟩ hinvariant
     rcases hinvariant with
-      ⟨hcurrentOut, hcurrentDraws, blocks, htrace, happend⟩
+      ⟨hcurrentHash, hcurrentOut, hcurrentDraws, blocks, htrace, happend⟩
     dsimp only at hcurrentOut hcurrentDraws happend ⊢
     by_cases hactive : currentDraws.val < 64
     · have hactiveScalar : currentDraws < q16MaxDraws := by
         simpa [q16MaxDraws] using hactive
-      obtain ⟨block, nextSelf, hsqueeze⟩ := squeezeSucceeds currentSelf
+      have currentHashSucceeds :
+          V7FirstCompactSqueezeSourceBridge.HashCallbackAlwaysSucceeds
+            currentSelf.hash := by
+        rw [hcurrentHash]
+        exact hashSucceeds
+      obtain ⟨block, nextSelf, hsqueeze⟩ :=
+        V7FirstCompactSqueezeSourceBridge.hash_callback_total_implies_squeeze_success
+          currentSelf
+          currentHashSucceeds
+      have hnextHash : nextSelf.hash = self.hash :=
+        (V7FirstCompactSqueezeSourceBridge.successful_squeeze_preserves_hash
+          currentSelf nextSelf block hsqueeze).trans
+          hcurrentHash
       rw [active_outer_body_is_normalized currentSelf nextSelf currentOut
         currentDraws block hactiveScalar hsqueeze]
       have hinner := generated_inner_loop_matches_scanWords
@@ -223,7 +230,7 @@ theorem generated_outer_loop_matches_scanBlocks
         let nextBlocks := blocks ++ [block]
         have hnextTrace : NativeExactSqueezeTrace self nextBlocks nextSelf := by
           exact nativeExactSqueezeTrace_append_one htrace hsqueeze
-        refine ⟨⟨hnextOut, hnextDrawsLe, nextBlocks, hnextTrace, ?_⟩, ?_⟩
+        refine ⟨⟨hnextHash, hnextOut, hnextDrawsLe, nextBlocks, hnextTrace, ?_⟩, ?_⟩
         · intro suffix
           have hold := happend
             ((blockWords (nativeSourceDigest (sourceSqueezeBytes block))).map q16Candidate :: suffix)
@@ -281,7 +288,7 @@ theorem generated_outer_loop_matches_scanBlocks
         hcurrentOut, ?_⟩
       have hold := happend []
       simpa [scanBlocks] using hold
-  · refine ⟨hout, hdraws, [], NativeExactSqueezeTrace.nil self, ?_⟩
+  · refine ⟨rfl, hout, hdraws, [], NativeExactSqueezeTrace.nil self, ?_⟩
     intro suffix
     rfl
 

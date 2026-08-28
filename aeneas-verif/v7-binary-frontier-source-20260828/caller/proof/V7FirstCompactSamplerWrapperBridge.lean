@@ -137,11 +137,13 @@ theorem raw_candidate_has_exact_outer_model
     (inputTranscript : Transcript) (sourceCounter : Std.U8)
     (output : Option v7_onefold.V7CompactQuerySchedule)
     (raw : RawCandidateExecution inputTranscript sourceCounter output)
-    (squeezeSucceeds : EverySqueezeSucceeds) :
+    (hashSucceeds :
+      V7FirstCompactSqueezeSourceBridge.HashCallbackAlwaysSucceeds
+        raw.absorbed.hash) :
     OuterSamplerPost raw.absorbed initialQ16Output 0#usize 0
       (raw.sampledTranscript, raw.sampled) := by
   have model := generated_outer_loop_matches_scanBlocks
-    raw.absorbed initialQ16Output 0#usize 0 squeezeSucceeds
+    raw.absorbed initialQ16Output 0#usize 0 hashSucceeds
       (by simp [initialQ16Output, alloc.vec.Vec.with_capacity,
         alloc.vec.Vec.new])
       (by scalar_tac)

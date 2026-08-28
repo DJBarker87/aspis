@@ -195,13 +195,15 @@ theorem raw_candidate_sampled_eq_trace_scanQ16
     (inputTranscript : Transcript) (sourceCounter : Std.U8)
     (output : Option v7_onefold.V7CompactQuerySchedule)
     (raw : RawCandidateExecution inputTranscript sourceCounter output)
-    (squeezeSucceeds : EverySqueezeSucceeds) :
+    (hashSucceeds :
+      V7FirstCompactSqueezeSourceBridge.HashCallbackAlwaysSucceeds
+        raw.absorbed.hash) :
     ∃ blocks : List SourceSqueezeBlock,
       NativeExactSqueezeTrace raw.absorbed blocks raw.sampledTranscript ∧
       raw.sampled.val.map UScalar.val =
         (scanQ16 (sourceTraceDigests blocks)).positions := by
   have model := raw_candidate_has_exact_outer_model inputTranscript
-    sourceCounter output raw squeezeSucceeds
+    sourceCounter output raw hashSucceeds
   rcases model with
     ⟨blocks, finalDraws, trace, drawsBound, outputBound, modelExact⟩
   have sampledLength : raw.sampled.val.length = 16 := by
