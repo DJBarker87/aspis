@@ -201,6 +201,17 @@ per-word scan proof with Tag-73's `(count, bound, mask) = (16, 2^18,
 the already proved `raw_queries_eq_decoded_schedule`.  No additional Rust
 sampler behavior remains unidentified.
 
+That per-word replay is now kernel checked in
+`V7FirstCompactSamplerLoop16Bridge.generated_inner_loop_matches_scanWords`.
+It inducts over the literal current Aeneas `chunks_exact(4)` loop, proves exact
+draw-before-decode ordering, little-endian decoding, 18-bit masking, first-only
+duplicate handling, push order, count/draw stopping, and the labelled outer
+marker for `(count, maxDraws) = (16, 64)`. The current checked increment is
+rewritten through the preceding equivalence inside the proof. Focused unit
+`aspis-v7-q16-loop16-03` exited 0 in 3.72 seconds, peaked at 6,897,860 KiB RSS,
+and used zero swap; the theorem reports only `propext`, `Classical.choice`, and
+`Quot.sound`.
+
 ## Digests
 
 ```text
@@ -225,6 +236,7 @@ c72e3c80fcfd46ce032d834d00b209316608f2cb1b39840dbabdec8180e3aaa6  caller/proof/V
 38968fe0e71d83e4971bef2b26012fa7a52d1244b541564253d24db413eed85d  caller/proof/V7FirstCompactCallerBridge.lean
 f21af0ef7f2362c62acb2dfa992c29d31f006aa5b13d788b64752b95d2f033bf  caller/proof/V7FirstCompactK13RawScheduleBridge.lean
 128ac3fb23f46ae234b6472c78c27b938b458933d102cdc9be1c5cab8dbb85f4  caller/proof/V7FirstCompactSamplerInnerBridge.lean
+0ceb6d0ce14feabe8aa97edf0638fed71b86641372481b6185cf1dbd5773d265  caller/proof/V7FirstCompactSamplerLoop16Bridge.lean
 6abb0376100611c5553258062480777187785579f402c9c1d3ce72379518258f  ../../crates/aspis-core/src/v7_onefold.rs
 ```
 
@@ -236,11 +248,10 @@ and complete wrapper return are closed. The Aeneas early-return loss is removed
 by the source refactor and fresh extraction. There is no remaining caller-local
 frontier or first-selection control-flow premise.
 
-The remaining system-level integration obligation is now the exact ordered
-sampler-value alignment: specialize the shared per-word scan argument to 16
-values and an 18-bit mask, using the proved checked-increment equivalence, then
-show that the successful `Vec<u32>` scans the same digest blocks already
-extracted by the accepted K1.3 evaluator and scheduler router. Array conversion,
-the `2^18` constant, frontier semantics, cap selection, all five returned
-fields, and the outer first-success loop are theorem consequences rather than
-premises.
+The remaining system-level integration obligation is now the outer sampler and
+digest-trace alignment: lift the proved per-word loop through exact squeeze
+blocks and the successful fixed wrapper, then identify those blocks with the
+accepted K1.3 evaluator/router blocks. `raw_queries_eq_decoded_schedule` then
+closes the ordered array. Array conversion, the `2^18` constant, frontier
+semantics, cap selection, all five returned fields, and the outer first-success
+loop are theorem consequences rather than premises.
