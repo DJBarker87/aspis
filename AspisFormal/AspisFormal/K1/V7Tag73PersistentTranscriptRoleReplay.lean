@@ -3,6 +3,7 @@ import AspisFormal.K1.V7Tag73PersistentRoleSelectionObstruction
 import AspisFormal.K1.V7Tag73PreparedRestorationRoles
 import AspisFormal.K1.V7Tag73PersistentRoleCacheErasure
 import AspisFormal.K1.V7Tag73VerifierActionPreAnswerRoles
+import AspisFormal.K1.V7Tag73FirstExposureRoleClassification
 import AspisFormal.K1.V7Tag73CurrentSourceDecodeBridge
 import AspisFormal.K1.V7Tag73ExactOperationalHistoryRawCallsAudit
 import AspisFormal.K1.V7Tag73K15CachedCoordinateProvenance
@@ -28,6 +29,7 @@ open AspisK1.V7Tag73PersistentRoleSelectionObstruction
 open AspisK1.V7Tag73ExactOperationalHistoryRawCallsAudit
 open AspisK1.V7Tag73ExactRestoredConcreteK16Assembly
 open AspisK1.V7Tag73CurrentSourceDecodeBridge
+open AspisK1.V7Tag73FirstExposureRoleClassification
 
 #print axioms
   AspisK1.V7Tag73PersistentTranscriptRoles.guarded_install_success_binds_exact_input
@@ -61,6 +63,12 @@ open AspisK1.V7Tag73CurrentSourceDecodeBridge
   AspisK1.V7Tag73VerifierActionPreAnswerRoles.challenge_sampler_pair_roles_are_preanswer
 #print axioms
   AspisK1.V7Tag73VerifierActionPreAnswerRoles.q16_sampler_pair_roles_are_preanswer
+#print axioms squeeze_output_coordinate_forgets_owner_and_block
+#print axioms no_raw_coordinate_classifier_classifies_lambda_and_gamma
+#print axioms no_history_input_classifier_classifies_lambda_and_gamma
+#print axioms same_preanswer_coordinate_can_have_distinct_future_roles
+#print axioms prior_output_coordinate_for_later_fresh_state_hits_target
+#print axioms target_clean_fresh_state_was_not_prequeried_as_output_coordinate
 #print axioms
   current_source_fixed_field_projection_iff_decode
 #print axioms
