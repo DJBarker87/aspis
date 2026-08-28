@@ -322,8 +322,40 @@ def factored_digest_schedule_projected
   := do
   ok schedule
 
+/-- [v7_forest_lane_invariant_source::endpoint_selector_cache_lookup_projected]:
+    Source: 'src/lib.rs', lines 241:0-262:1
+    Visibility: public -/
+def endpoint_selector_cache_lookup_projected
+  (slot : EndpointSelectorCacheSlotProjection) (requested_row : Std.U16)
+  (literal_selector_value_tag : Std.U64) :
+  Result EndpointSelectorLookupProjection
+  := do
+  if slot.row_tag = requested_row
+  then
+    ok
+      {
+        next_slot := slot,
+        returned_value_tag := slot.value_tag,
+        exact_tag_hit := true
+      }
+  else
+    ok
+      {
+        next_slot :=
+          { row_tag := requested_row, value_tag := literal_selector_value_tag },
+        returned_value_tag := literal_selector_value_tag,
+        exact_tag_hit := false
+      }
+
+/-- [v7_forest_lane_invariant_source::endpoint_order_projected]:
+    Source: 'src/lib.rs', lines 271:0-275:1
+    Visibility: public -/
+def endpoint_order_projected
+  (link : EndpointOrderProjection) : Result (Array Std.U16 2#usize) := do
+  ok (Array.make 2#usize [ link.producer_row, link.consumer_row ])
+
 /-- [v7_forest_lane_invariant_source::read_u32_le]:
-    Source: 'src/lib.rs', lines 222:0-229:1 -/
+    Source: 'src/lib.rs', lines 277:0-284:1 -/
 def read_u32_le
   (bytes : Slice Std.U8) (start : Std.Usize) : Result Std.U32 := do
   let i ← Slice.index_usize bytes start
@@ -336,7 +368,7 @@ def read_u32_le
   ok (core.num.U32.from_le_bytes (Array.make 4#usize [ i, i2, i4, i6 ]))
 
 /-- [v7_forest_lane_invariant_source::read_u64_le]:
-    Source: 'src/lib.rs', lines 231:0-242:1 -/
+    Source: 'src/lib.rs', lines 286:0-297:1 -/
 def read_u64_le
   (bytes : Slice Std.U8) (start : Std.Usize) : Result Std.U64 := do
   let i ← Slice.index_usize bytes start
@@ -358,7 +390,7 @@ def read_u64_le
     (Array.make 8#usize [ i, i2, i4, i6, i8, i10, i12, i14 ]))
 
 /-- [v7_forest_lane_invariant_source::decode_digest]: loop body 0:
-    Source: 'src/lib.rs', lines 248:4-255:5 -/
+    Source: 'src/lib.rs', lines 303:4-310:5 -/
 @[rust_loop_body]
 def decode_digest_loop.body
   (bytes : Slice Std.U8) (start : Std.Usize) (limbs : Array Std.U32 8#usize)
@@ -380,7 +412,7 @@ def decode_digest_loop.body
   else ok (done (limbs, canonical))
 
 /-- [v7_forest_lane_invariant_source::decode_digest]: loop 0:
-    Source: 'src/lib.rs', lines 248:4-255:5 -/
+    Source: 'src/lib.rs', lines 303:4-310:5 -/
 @[rust_loop]
 def decode_digest_loop
   (bytes : Slice Std.U8) (start : Std.Usize) (limbs : Array Std.U32 8#usize)
@@ -393,7 +425,7 @@ def decode_digest_loop
     (limbs, index, canonical)
 
 /-- [v7_forest_lane_invariant_source::decode_digest]:
-    Source: 'src/lib.rs', lines 244:0-261:1 -/
+    Source: 'src/lib.rs', lines 299:0-316:1 -/
 def decode_digest
   (bytes : Slice Std.U8) (start : Std.Usize) :
   Result (core.result.Result Digest LaneSourceError)
@@ -405,7 +437,7 @@ def decode_digest
   else ok (core.result.Result.Err LaneSourceError.NonCanonicalDigest)
 
 /-- [v7_forest_lane_invariant_source::digest_is_canonical]: loop body 0:
-    Source: 'src/lib.rs', lines 266:4-271:5 -/
+    Source: 'src/lib.rs', lines 321:4-326:5 -/
 @[rust_loop_body]
 def digest_is_canonical_loop.body
   (digest : Digest) (index : Std.Usize) (canonical : Bool) :
@@ -422,7 +454,7 @@ def digest_is_canonical_loop.body
   else ok (done canonical)
 
 /-- [v7_forest_lane_invariant_source::digest_is_canonical]: loop 0:
-    Source: 'src/lib.rs', lines 266:4-271:5 -/
+    Source: 'src/lib.rs', lines 321:4-326:5 -/
 @[rust_loop]
 def digest_is_canonical_loop
   (digest : Digest) (index : Std.Usize) (canonical : Bool) : Result Bool := do
@@ -432,13 +464,13 @@ def digest_is_canonical_loop
     (digest, index, canonical)
 
 /-- [v7_forest_lane_invariant_source::digest_is_canonical]:
-    Source: 'src/lib.rs', lines 263:0-273:1 -/
+    Source: 'src/lib.rs', lines 318:0-328:1 -/
 @[reducible]
 def digest_is_canonical (digest : Digest) : Result Bool := do
   digest_is_canonical_loop digest 0#usize true
 
 /-- [v7_forest_lane_invariant_source::write_digest]: loop body 0:
-    Source: 'src/lib.rs', lines 277:4-285:5 -/
+    Source: 'src/lib.rs', lines 332:4-340:5 -/
 @[rust_loop_body]
 def write_digest_loop.body
   (start : Std.Usize) (output : Array Std.U8 768#usize) (digest : Digest)
@@ -468,7 +500,7 @@ def write_digest_loop.body
   else ok (done output)
 
 /-- [v7_forest_lane_invariant_source::write_digest]: loop 0:
-    Source: 'src/lib.rs', lines 277:4-285:5 -/
+    Source: 'src/lib.rs', lines 332:4-340:5 -/
 @[rust_loop]
 def write_digest_loop
   (output : Array Std.U8 768#usize) (start : Std.Usize) (digest : Digest)
@@ -481,7 +513,7 @@ def write_digest_loop
     (output, digest, index)
 
 /-- [v7_forest_lane_invariant_source::write_digest]:
-    Source: 'src/lib.rs', lines 275:0-286:1 -/
+    Source: 'src/lib.rs', lines 330:0-341:1 -/
 @[reducible]
 def write_digest
   (output : Array Std.U8 768#usize) (start : Std.Usize) (digest : Digest) :
@@ -490,7 +522,7 @@ def write_digest
   write_digest_loop output start digest 0#usize
 
 /-- [v7_forest_lane_invariant_source::bytes32_nonzero]: loop body 0:
-    Source: 'src/lib.rs', lines 291:4-296:5 -/
+    Source: 'src/lib.rs', lines 346:4-351:5 -/
 @[rust_loop_body]
 def bytes32_nonzero_loop.body
   (bytes : Array Std.U8 32#usize) (index : Std.Usize) (nonzero : Bool) :
@@ -507,7 +539,7 @@ def bytes32_nonzero_loop.body
   else ok (done nonzero)
 
 /-- [v7_forest_lane_invariant_source::bytes32_nonzero]: loop 0:
-    Source: 'src/lib.rs', lines 291:4-296:5 -/
+    Source: 'src/lib.rs', lines 346:4-351:5 -/
 @[rust_loop]
 def bytes32_nonzero_loop
   (bytes : Array Std.U8 32#usize) (index : Std.Usize) (nonzero : Bool) :
@@ -518,13 +550,13 @@ def bytes32_nonzero_loop
     (index, nonzero)
 
 /-- [v7_forest_lane_invariant_source::bytes32_nonzero]:
-    Source: 'src/lib.rs', lines 288:0-298:1 -/
+    Source: 'src/lib.rs', lines 343:0-353:1 -/
 @[reducible]
 def bytes32_nonzero (bytes : Array Std.U8 32#usize) : Result Bool := do
   bytes32_nonzero_loop bytes 0#usize false
 
 /-- [v7_forest_lane_invariant_source::binding_matches]: loop body 0:
-    Source: 'src/lib.rs', lines 303:4-308:5 -/
+    Source: 'src/lib.rs', lines 358:4-363:5 -/
 @[rust_loop_body]
 def binding_matches_loop.body
   (bytes : Slice Std.U8) (index : Std.Usize) (is_match : Bool) :
@@ -543,7 +575,7 @@ def binding_matches_loop.body
   else ok (done is_match)
 
 /-- [v7_forest_lane_invariant_source::binding_matches]: loop 0:
-    Source: 'src/lib.rs', lines 303:4-308:5 -/
+    Source: 'src/lib.rs', lines 358:4-363:5 -/
 @[rust_loop]
 def binding_matches_loop
   (bytes : Slice Std.U8) (index : Std.Usize) (is_match : Bool) :
@@ -555,13 +587,13 @@ def binding_matches_loop
     (index, is_match)
 
 /-- [v7_forest_lane_invariant_source::binding_matches]:
-    Source: 'src/lib.rs', lines 300:0-310:1 -/
+    Source: 'src/lib.rs', lines 355:0-365:1 -/
 @[reducible]
 def binding_matches (bytes : Slice Std.U8) : Result Bool := do
   binding_matches_loop bytes 0#usize true
 
 /-- [v7_forest_lane_invariant_source::reserved_header_is_zero]: loop body 0:
-    Source: 'src/lib.rs', lines 315:4-320:5 -/
+    Source: 'src/lib.rs', lines 370:4-375:5 -/
 @[rust_loop_body]
 def reserved_header_is_zero_loop.body
   (bytes : Slice Std.U8) (index : Std.Usize) (zero : Bool) :
@@ -578,7 +610,7 @@ def reserved_header_is_zero_loop.body
   else ok (done zero)
 
 /-- [v7_forest_lane_invariant_source::reserved_header_is_zero]: loop 0:
-    Source: 'src/lib.rs', lines 315:4-320:5 -/
+    Source: 'src/lib.rs', lines 370:4-375:5 -/
 @[rust_loop]
 def reserved_header_is_zero_loop
   (bytes : Slice Std.U8) (index : Std.Usize) (zero : Bool) : Result Bool := do
@@ -588,13 +620,13 @@ def reserved_header_is_zero_loop
     (index, zero)
 
 /-- [v7_forest_lane_invariant_source::reserved_header_is_zero]:
-    Source: 'src/lib.rs', lines 312:0-322:1 -/
+    Source: 'src/lib.rs', lines 367:0-377:1 -/
 @[reducible]
 def reserved_header_is_zero (bytes : Slice Std.U8) : Result Bool := do
   reserved_header_is_zero_loop bytes 72#usize true
 
 /-- [v7_forest_lane_invariant_source::decode_frontier]: loop body 0:
-    Source: 'src/lib.rs', lines 328:4-336:5 -/
+    Source: 'src/lib.rs', lines 383:4-391:5 -/
 @[rust_loop_body]
 def decode_frontier_loop.body
   (bytes : Slice Std.U8) (tree : Std.Usize) (frontier : Array Digest 20#usize)
@@ -620,7 +652,7 @@ def decode_frontier_loop.body
   else ok (done (frontier, failure))
 
 /-- [v7_forest_lane_invariant_source::decode_frontier]: loop 0:
-    Source: 'src/lib.rs', lines 328:4-336:5 -/
+    Source: 'src/lib.rs', lines 383:4-391:5 -/
 @[rust_loop]
 def decode_frontier_loop
   (bytes : Slice Std.U8) (tree : Std.Usize) (frontier : Array Digest 20#usize)
@@ -633,7 +665,7 @@ def decode_frontier_loop
     (frontier, level, failure)
 
 /-- [v7_forest_lane_invariant_source::decode_frontier]:
-    Source: 'src/lib.rs', lines 324:0-341:1 -/
+    Source: 'src/lib.rs', lines 379:0-396:1 -/
 def decode_frontier
   (bytes : Slice Std.U8) (tree : Std.Usize) :
   Result (core.result.Result (Array Digest 20#usize) LaneSourceError)
@@ -647,7 +679,7 @@ def decode_frontier
   | some error => ok (core.result.Result.Err error)
 
 /-- [v7_forest_lane_invariant_source::validate_frontier]: loop body 0:
-    Source: 'src/lib.rs', lines 1:0-359:5 -/
+    Source: 'src/lib.rs', lines 1:0-414:5 -/
 @[rust_loop_body]
 def validate_frontier_loop.body
   (frontier : Array Digest 20#usize) (next_leaf_index : Std.U64)
@@ -681,7 +713,7 @@ def validate_frontier_loop.body
   else ok (done (canonical, inactive_valid))
 
 /-- [v7_forest_lane_invariant_source::validate_frontier]: loop 0:
-    Source: 'src/lib.rs', lines 1:0-359:5 -/
+    Source: 'src/lib.rs', lines 1:0-414:5 -/
 @[rust_loop]
 def validate_frontier_loop
   (frontier : Array Digest 20#usize) (next_leaf_index : Std.U64)
@@ -695,7 +727,7 @@ def validate_frontier_loop
     (level, canonical, inactive_valid)
 
 /-- [v7_forest_lane_invariant_source::validate_frontier]:
-    Source: 'src/lib.rs', lines 343:0-367:1 -/
+    Source: 'src/lib.rs', lines 398:0-422:1 -/
 def validate_frontier
   (frontier : Array Digest 20#usize) (next_leaf_index : Std.U64)
   (empty_roots : Array Digest 21#usize) :
@@ -712,7 +744,7 @@ def validate_frontier
   else ok (core.result.Result.Err LaneSourceError.NonCanonicalDigest)
 
 /-- [v7_forest_lane_invariant_source::hot_decode_projected]: loop body 0:
-    Source: 'src/lib.rs', lines 402:4-405:5
+    Source: 'src/lib.rs', lines 457:4-460:5
     Visibility: public -/
 @[rust_loop_body]
 def hot_decode_projected_loop.body
@@ -731,7 +763,7 @@ def hot_decode_projected_loop.body
   else ok (done master)
 
 /-- [v7_forest_lane_invariant_source::hot_decode_projected]: loop 0:
-    Source: 'src/lib.rs', lines 402:4-405:5
+    Source: 'src/lib.rs', lines 457:4-460:5
     Visibility: public -/
 @[rust_loop]
 def hot_decode_projected_loop
@@ -745,7 +777,7 @@ def hot_decode_projected_loop
     (master, master_index)
 
 /-- [v7_forest_lane_invariant_source::hot_decode_projected]:
-    Source: 'src/lib.rs', lines 373:0-447:1
+    Source: 'src/lib.rs', lines 428:0-502:1
     Visibility: public -/
 def hot_decode_projected
   (bytes : Slice Std.U8) (expected_master : Array Std.U8 32#usize)
@@ -1027,7 +1059,7 @@ def hot_decode_projected
   else ok (core.result.Result.Err LaneSourceError.MissingProgramOwnedInvariant)
 
 /-- [v7_forest_lane_invariant_source::fast_encode_projected]: loop body 0:
-    Source: 'src/lib.rs', lines 487:4-491:5
+    Source: 'src/lib.rs', lines 542:4-546:5
     Visibility: public -/
 @[rust_loop_body]
 def fast_encode_projected_loop0.body
@@ -1049,7 +1081,7 @@ def fast_encode_projected_loop0.body
   else ok (done output)
 
 /-- [v7_forest_lane_invariant_source::fast_encode_projected]: loop 0:
-    Source: 'src/lib.rs', lines 487:4-491:5
+    Source: 'src/lib.rs', lines 542:4-546:5
     Visibility: public -/
 @[rust_loop]
 def fast_encode_projected_loop0
@@ -1063,7 +1095,7 @@ def fast_encode_projected_loop0
     (output, binding_index)
 
 /-- [v7_forest_lane_invariant_source::fast_encode_projected]: loop body 1:
-    Source: 'src/lib.rs', lines 503:4-506:5
+    Source: 'src/lib.rs', lines 558:4-561:5
     Visibility: public -/
 @[rust_loop_body]
 def fast_encode_projected_loop1.body
@@ -1083,7 +1115,7 @@ def fast_encode_projected_loop1.body
   else ok (done output)
 
 /-- [v7_forest_lane_invariant_source::fast_encode_projected]: loop 1:
-    Source: 'src/lib.rs', lines 503:4-506:5
+    Source: 'src/lib.rs', lines 558:4-561:5
     Visibility: public -/
 @[rust_loop]
 def fast_encode_projected_loop1
@@ -1097,7 +1129,7 @@ def fast_encode_projected_loop1
     (output, byte_index)
 
 /-- [v7_forest_lane_invariant_source::fast_encode_projected]: loop body 2:
-    Source: 'src/lib.rs', lines 509:4-512:5
+    Source: 'src/lib.rs', lines 564:4-567:5
     Visibility: public -/
 @[rust_loop_body]
 def fast_encode_projected_loop2.body
@@ -1118,7 +1150,7 @@ def fast_encode_projected_loop2.body
   else ok (done output)
 
 /-- [v7_forest_lane_invariant_source::fast_encode_projected]: loop 2:
-    Source: 'src/lib.rs', lines 509:4-512:5
+    Source: 'src/lib.rs', lines 564:4-567:5
     Visibility: public -/
 @[rust_loop]
 def fast_encode_projected_loop2
@@ -1132,7 +1164,7 @@ def fast_encode_projected_loop2
     (output, level)
 
 /-- [v7_forest_lane_invariant_source::fast_encode_projected]: loop body 3:
-    Source: 'src/lib.rs', lines 487:4-491:5
+    Source: 'src/lib.rs', lines 542:4-546:5
     Visibility: public -/
 @[rust_loop_body]
 def fast_encode_projected_loop3.body
@@ -1154,7 +1186,7 @@ def fast_encode_projected_loop3.body
   else ok (done output)
 
 /-- [v7_forest_lane_invariant_source::fast_encode_projected]: loop 3:
-    Source: 'src/lib.rs', lines 487:4-491:5
+    Source: 'src/lib.rs', lines 542:4-546:5
     Visibility: public -/
 @[rust_loop]
 def fast_encode_projected_loop3
@@ -1168,7 +1200,7 @@ def fast_encode_projected_loop3
     (output, binding_index)
 
 /-- [v7_forest_lane_invariant_source::fast_encode_projected]: loop body 4:
-    Source: 'src/lib.rs', lines 503:4-506:5
+    Source: 'src/lib.rs', lines 558:4-561:5
     Visibility: public -/
 @[rust_loop_body]
 def fast_encode_projected_loop4.body
@@ -1188,7 +1220,7 @@ def fast_encode_projected_loop4.body
   else ok (done output)
 
 /-- [v7_forest_lane_invariant_source::fast_encode_projected]: loop 4:
-    Source: 'src/lib.rs', lines 503:4-506:5
+    Source: 'src/lib.rs', lines 558:4-561:5
     Visibility: public -/
 @[rust_loop]
 def fast_encode_projected_loop4
@@ -1202,7 +1234,7 @@ def fast_encode_projected_loop4
     (output, byte_index)
 
 /-- [v7_forest_lane_invariant_source::fast_encode_projected]: loop body 5:
-    Source: 'src/lib.rs', lines 509:4-512:5
+    Source: 'src/lib.rs', lines 564:4-567:5
     Visibility: public -/
 @[rust_loop_body]
 def fast_encode_projected_loop5.body
@@ -1223,7 +1255,7 @@ def fast_encode_projected_loop5.body
   else ok (done output)
 
 /-- [v7_forest_lane_invariant_source::fast_encode_projected]: loop 5:
-    Source: 'src/lib.rs', lines 509:4-512:5
+    Source: 'src/lib.rs', lines 564:4-567:5
     Visibility: public -/
 @[rust_loop]
 def fast_encode_projected_loop5
@@ -1237,7 +1269,7 @@ def fast_encode_projected_loop5
     (output, level)
 
 /-- [v7_forest_lane_invariant_source::fast_encode_projected]:
-    Source: 'src/lib.rs', lines 452:0-514:1
+    Source: 'src/lib.rs', lines 507:0-569:1
     Visibility: public -/
 def fast_encode_projected
   (lane : LaneState) (empty_roots : Array Digest 21#usize)
@@ -1380,7 +1412,7 @@ def fast_encode_projected
   else ok (core.result.Result.Err LaneSourceError.MissingProgramOwnedInvariant)
 
 /-- [v7_forest_lane_invariant_source::strict_encode_projected]:
-    Source: 'src/lib.rs', lines 519:0-528:1
+    Source: 'src/lib.rs', lines 574:0-583:1
     Visibility: public -/
 def strict_encode_projected
   (lane : LaneState) (empty_roots : Array Digest 21#usize)
@@ -1392,7 +1424,7 @@ def strict_encode_projected
   else ok (core.result.Result.Err LaneSourceError.MissingProgramOwnedInvariant)
 
 /-- [v7_forest_lane_invariant_source::direct_asq8_lane_read_projected]:
-    Source: 'src/lib.rs', lines 535:0-566:1
+    Source: 'src/lib.rs', lines 590:0-621:1
     Visibility: public -/
 def direct_asq8_lane_read_projected
   (authentication : DirectAsq8ReleaseAuthentication) (bytes : Slice Std.U8)
@@ -1473,7 +1505,7 @@ def direct_asq8_lane_read_projected
       LaneSourceError.MissingExactVerifierReleaseAuthentication)
 
 /-- [v7_forest_lane_invariant_source::genesis_frontier]:
-    Source: 'src/lib.rs', lines 586:0-609:1 -/
+    Source: 'src/lib.rs', lines 641:0-664:1 -/
 def genesis_frontier
   (empty_roots : Array Digest 21#usize) : Result (Array Digest 20#usize) := do
   let d ← Array.index_usize empty_roots 0#usize
@@ -1503,7 +1535,7 @@ def genesis_frontier
       ])
 
 /-- [v7_forest_lane_invariant_source::apply_production_lane_write]:
-    Source: 'src/lib.rs', lines 613:0-662:1
+    Source: 'src/lib.rs', lines 668:0-717:1
     Visibility: public -/
 def apply_production_lane_write
   (write : ProductionLaneWrite) (empty_roots : Array Digest 21#usize) :

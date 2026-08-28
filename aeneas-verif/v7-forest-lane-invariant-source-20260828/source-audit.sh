@@ -22,6 +22,7 @@ git -C "$repo_root" merge-base --is-ancestor \
 git -C "$repo_root" merge-base --is-ancestor 2dae6bea HEAD
 git -C "$repo_root" merge-base --is-ancestor d49af9e3 HEAD
 git -C "$repo_root" merge-base --is-ancestor 37c6ea1f HEAD
+git -C "$repo_root" merge-base --is-ancestor eb3fbcde HEAD
 
 test "$(shasum -a 256 "$pair_source" | awk '{print $1}')" = \
   4702885ad27659b99ea72dbbb3b96945411616d63392f7d4f9a93cae986085e1
@@ -32,15 +33,15 @@ test "$(shasum -a 256 "$manifest" | awk '{print $1}')" = \
 test "$(shasum -a 256 "$pool_verifier_dispatch" | awk '{print $1}')" = \
   95281016c34355c7f5bbb5e8ac31cacfa9c743699ecfeb1c8ddbae2cc1a3afc8
 test "$(shasum -a 256 "$verifier_manifest" | awk '{print $1}')" = \
-  184cc29baeeb8992bd887ed73e7d56a0aaaa8666e313148909b64988a06e6424
+  e563f04f7871c25b0d3d43094ce61a7f39143508c5193d53e14991013ea4a428
 test "$(shasum -a 256 "$verifier_reader" | awk '{print $1}')" = \
   276c3eb0d157408e2f132e69001e77c32f306baa86450f1e8fab9cdcb8fbadbb
 test "$(shasum -a 256 "$statement_manifest" | awk '{print $1}')" = \
-  28bbb0e1fa4fd6b692a4223b7d3ed99cfd3b827d9f1a8090e1d1845fbcb2f2b8
+  f268aa7a85b32969f57b3a21fcefffd5310c98b522bf467b151232e91e2d537a
 test "$(shasum -a 256 "$semantic_terminal" | awk '{print $1}')" = \
   0f3cbc9aead222e49ffaaa678e5f952a52c5f93aa28f5de802a3390993157edd
 test "$(shasum -a 256 "$copy_terminal" | awk '{print $1}')" = \
-  d88b7d1677ecb64a321f0ff8edb2e2a2f382f2d28a8b9e9c3a982346ad355b93
+  f6f8018ed3e3ae2a29ec21d12c9ac1b7ffb93024d73d188c66ea514e05c05d86
 test "$(shasum -a 256 "$copy_constants" | awk '{print $1}')" = \
   bc4d72deed0c4b17cefa5092aa05bbc5587c76123df69bd4b4e1187f46280cf6
 
@@ -116,6 +117,19 @@ rg -q 'let result_bytes = authenticated\.exact_bytes\(\);' "$pair_source"
 rg -q '^pool-v1-pair-forest-packed-digest-audit = \[\]' "$statement_manifest"
 rg -q '^pool-v1-pair-forest-binary-copy-weights-audit = \[\]' "$statement_manifest"
 rg -q '^pair-forest-direct-result-audit = ' "$manifest"
+
+# The endpoint-selector memo is keyed by the complete generated row tag. A
+# direct-map collision cannot return a cached value: it takes the unchanged
+# literal selector computation, stores the exact requested row/value, and
+# keeps producer-then-consumer visitation in the hash-pinned source.
+rg -q '^struct EndpointSelectorCache \{' "$copy_terminal"
+rg -q 'if self\.rows\[slot\] == row \{' "$copy_terminal"
+rg -q 'let value = selectors\.row\(usize::from\(row\)\);' "$copy_terminal"
+rg -q 'self\.rows\[slot\] = row;' "$copy_terminal"
+rg -q 'self\.values\[slot\] = value;' "$copy_terminal"
+rg -q '^pool-v1-pair-forest-endpoint-selector-cache-audit = \[\]' \
+  "$statement_manifest"
+rg -q '^v7-pair-forest-endpoint-selector-cache-audit = \[' "$verifier_manifest"
 
 # No production migration route exists at this revision.  A future migration
 # must be implemented, made one-shot, and added to this exhaustive audit.

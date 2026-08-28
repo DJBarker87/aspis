@@ -4,7 +4,7 @@ This focused bundle records the exact source boundary for the default-off
 eight-lane Pool CU experiment introduced at production source commit
 `86d072be`, extended by the authenticated verifier-side source port
 `a789a9c6`, and extended again by the default-off selected terminal cuts at
-`2dae6bea`, `d49af9e3` and `37c6ea1f`.  It exists because the optimized terminal path removes two
+`2dae6bea`, `d49af9e3`, `37c6ea1f` and `eb3fbcde`.  It exists because the optimized terminal path removes two
 duplicate 20-level Poseidon reconstructions from Pool code:
 
 1. decoding the selected live lane before verifier CPI; and
@@ -118,7 +118,13 @@ Three additional CU cuts have separate translated/source boundaries:
   `specialized_binary_weight_eq_literal` proves skip/add equals the original
   multiplication by a binary weight.  The focused Rust test visits every
   checked-in generated link across both variants and representative full
-  20-bit append indices.
+  20-bit append indices; and
+- endpoint-selector memoization reuses a value only after exact equality of
+  the complete stored and requested row tags.  The translated cache theorem
+  proves that a collision can only miss, literally recompute and replace the
+  slot; a separate translated theorem fixes generated visitation as producer
+  first and consumer second.  A focused full Copy evaluator test with both
+  the binary and cache features still matches the host reference off-domain.
 
 The source-shaped harness translates the gates and schedules rather than the
 full QM31 terminal evaluator.  The hash-pinned production files and focused
@@ -169,6 +175,10 @@ instantiate for genesis and both production mutations.
 - `selector_mul_symbolicPack4`
 - `translated_link_then_action_success_is_exact`
 - `specialized_binary_weight_eq_literal`
+- `translated_cache_lookup_returns_literal`
+- `translated_cache_collision_is_literal_miss`
+- `translated_cache_hit_requires_exact_row_tag`
+- `translated_endpoint_order_is_unchanged`
 
 Every printed axiom set is a subset of `propext`, `Classical.choice` and
 `Quot.sound`.  There is no `sorry`, `admit`, `native_decide`, project-specific

@@ -32,7 +32,7 @@ trap cleanup EXIT
 cp -R "$script_dir/harness" "$replay_tmp/harness"
 rm -rf -- "$replay_tmp/harness/target"
 test "$(shasum -a 256 "$replay_tmp/harness/src/lib.rs" | awk '{print $1}')" = \
-  3fa20721e9d498fcb57f0f00e13f7b8b6353bf41f0d401506e22c39c4e3f13e9
+  444e98ddaba75c5a0e7aac15abcf9c208a2e82e4aa8ed686ac668c97b5db0b64
 
 export CARGO_BUILD_JOBS=1
 export CARGO_TARGET_DIR="$replay_tmp/target"
@@ -50,6 +50,8 @@ llbc="$replay_tmp/V7ForestLaneInvariant.llbc"
     --start-from v7_forest_lane_invariant_source::binary_weight_action_projected \
     --start-from v7_forest_lane_invariant_source::literal_digest_schedule_projected \
     --start-from v7_forest_lane_invariant_source::factored_digest_schedule_projected \
+    --start-from v7_forest_lane_invariant_source::endpoint_selector_cache_lookup_projected \
+    --start-from v7_forest_lane_invariant_source::endpoint_order_projected \
     --start-from v7_forest_lane_invariant_source::apply_production_lane_write \
     --dest-file "$llbc" -- --lib
 )

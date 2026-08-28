@@ -219,6 +219,61 @@ pub fn factored_digest_schedule_projected(
     schedule
 }
 
+/// One direct-mapped cache slot from the endpoint-selector optimization.  The
+/// value is abstract here: the bridge needs only exact row-tag provenance and
+/// equality with the literal selector on a miss.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct EndpointSelectorCacheSlotProjection {
+    pub row_tag: u16,
+    pub value_tag: u64,
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct EndpointSelectorLookupProjection {
+    pub next_slot: EndpointSelectorCacheSlotProjection,
+    pub returned_value_tag: u64,
+    pub exact_tag_hit: bool,
+}
+
+/// Exact hit/miss decision of `EndpointSelectorCache::selector`. A collision
+/// can only take the miss arm, recompute the literal selector and replace the
+/// slot with the requested row/value pair.
+pub fn endpoint_selector_cache_lookup_projected(
+    slot: EndpointSelectorCacheSlotProjection,
+    requested_row: u16,
+    literal_selector_value_tag: u64,
+) -> EndpointSelectorLookupProjection {
+    if slot.row_tag == requested_row {
+        EndpointSelectorLookupProjection {
+            next_slot: slot,
+            returned_value_tag: slot.value_tag,
+            exact_tag_hit: true,
+        }
+    } else {
+        EndpointSelectorLookupProjection {
+            next_slot: EndpointSelectorCacheSlotProjection {
+                row_tag: requested_row,
+                value_tag: literal_selector_value_tag,
+            },
+            returned_value_tag: literal_selector_value_tag,
+            exact_tag_hit: false,
+        }
+    }
+}
+
+/// One generated Copy link is still visited producer first, then consumer.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct EndpointOrderProjection {
+    pub producer_row: u16,
+    pub consumer_row: u16,
+}
+
+pub fn endpoint_order_projected(
+    link: EndpointOrderProjection,
+) -> [u16; 2] {
+    [link.producer_row, link.consumer_row]
+}
+
 fn read_u32_le(bytes: &[u8], start: usize) -> u32 {
     u32::from_le_bytes([
         bytes[start],
