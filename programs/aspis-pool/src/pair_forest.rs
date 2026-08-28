@@ -1377,21 +1377,31 @@ pub(crate) fn process_pair_forest_terminal_v1<'info, R: PoolCpiRuntimeV1>(
 /// selected verifier independently authenticates and reconstructs ASF8 before
 /// running the same proof and returning the same exact ASR8 settlement token.
 #[cfg(feature = "pair-forest-full-asf8-audit")]
-pub(crate) fn process_pair_forest_terminal_full_asf8_v1<'info, R: PoolCpiRuntimeV1>(
-    program_id: &Pubkey,
-    accounts: &[AccountInfo<'info>],
+#[inline(never)]
+fn decode_terminal_statement_box_v1(
     instruction_data: &[u8],
-    current_slot: u64,
-    runtime: &mut R,
-) -> ProgramResult {
-    let statement = decode_pool_v1_pair_forest_terminal_statement_v1(instruction_data)
-        .map_err(|_| ProgramError::InvalidInstructionData)?;
+) -> Result<Box<PoolV1PairForestTerminalStatementV1>, ProgramError> {
+    Ok(Box::new(
+        decode_pool_v1_pair_forest_terminal_statement_v1(instruction_data)
+            .map_err(|_| ProgramError::InvalidInstructionData)?,
+    ))
+}
+
+#[cfg(feature = "pair-forest-full-asf8-audit")]
+#[inline(never)]
+fn compact_request_from_terminal_statement_box_v1(
+    program_id: &Pubkey,
+    statement: &PoolV1PairForestTerminalStatementV1,
+) -> Result<
+    Box<[u8; aspis_statement::pool_v1::POOL_V1_PAIR_FOREST_TERMINAL_REQUEST_BYTES]>,
+    ProgramError,
+> {
     let public = match statement {
         PoolV1PairForestTerminalStatementV1::PrivateTransfer { public, .. } => {
-            PoolV1PairForestTerminalPaymentV1::PrivateTransfer(public)
+            PoolV1PairForestTerminalPaymentV1::PrivateTransfer(*public)
         }
         PoolV1PairForestTerminalStatementV1::Withdrawal { public, .. } => {
-            PoolV1PairForestTerminalPaymentV1::Withdrawal(public)
+            PoolV1PairForestTerminalPaymentV1::Withdrawal(*public)
         }
     };
     let request = PoolV1PairForestTerminalRequestV1 {
@@ -1400,12 +1410,27 @@ pub(crate) fn process_pair_forest_terminal_full_asf8_v1<'info, R: PoolCpiRuntime
         pool_program: program_id.to_bytes(),
         public,
     };
-    let compact = encode_pool_v1_pair_forest_terminal_request_v1(&request)
-        .map_err(|_| ProgramError::InvalidInstructionData)?;
+    Ok(Box::new(
+        encode_pool_v1_pair_forest_terminal_request_v1(&request)
+            .map_err(|_| ProgramError::InvalidInstructionData)?,
+    ))
+}
+
+#[cfg(feature = "pair-forest-full-asf8-audit")]
+#[inline(never)]
+pub(crate) fn process_pair_forest_terminal_full_asf8_v1<'info, R: PoolCpiRuntimeV1>(
+    program_id: &Pubkey,
+    accounts: &[AccountInfo<'info>],
+    instruction_data: &[u8],
+    current_slot: u64,
+    runtime: &mut R,
+) -> ProgramResult {
+    let statement = decode_terminal_statement_box_v1(instruction_data)?;
+    let compact = compact_request_from_terminal_statement_box_v1(program_id, &statement)?;
     process_pair_forest_terminal_with_verifier_v1(
         program_id,
         accounts,
-        &compact,
+        compact.as_ref(),
         current_slot,
         runtime,
         |pool_program,

@@ -23,6 +23,10 @@ pair-forest-account-evidence = []
 # invariant. They are not release features until Rust-to-Lean/Aeneas closure.
 pair-forest-source-invariant-audit = ["pair-forest-account-evidence"]
 pair-forest-source-result-invariant-audit = ["pair-forest-source-invariant-audit"]
+# Forward the already authenticated registry and entry through the verifier
+# CPI so an audit-only verifier lane-invariant reader can independently root
+# its capability in immutable selected-release configuration.
+pair-forest-verifier-lane-invariant-audit = ["pair-forest-account-evidence"]
 # Instrumented local phase ledger. Logging changes total CU.
 pair-forest-cu-profile-audit = ["pair-forest-account-evidence"]
 # Audit-only full 1,880-byte ASF8 top-level transport. It shares the exact
