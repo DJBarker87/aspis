@@ -96,8 +96,10 @@ Evidence classes used throughout this audit:
   component(s).
 - **MEASURED COMPONENT CU**: an executable isolated component or transport
   double, not a complete eight-lane transaction.
+- **HOST TIMING (NOT CU)**: native wall-clock measurement used only to compare
+  codec/control-flow shapes; it cannot be converted into Solana CU.
 - **STATIC/INSTRUMENTED ESTIMATE**: instruction counts, runtime cost formulae,
-  host timings, or sums that did not execute as one transaction.
+  or sums that did not execute as one transaction.
 
 | Evidence | Classification | CU | Scope and limitation |
 | --- | --- | ---: | --- |
@@ -107,6 +109,7 @@ Evidence classes used throughout this audit:
 | Byte-only Pool same-page terminal | MEASURED COMPONENT CU | 81,922 | Authenticated verifier transport double plus Pool writes; no cryptographic verifier. |
 | Byte-only Pool rollover baseline | MEASURED COMPONENT CU | 119,206 | Earlier isolated rollover plumbing; no cryptographic verifier. |
 | Instrumented ASQ8/ASF8/ASR8 + byte-only forest transfer | MEASURED COMPONENT CU | 635,345 | Matched-marker baseline: real Pool-to-verifier CPI, account/PDA/registry checks, canonical proof-wire scan, ASF8 reconstruction, 792-byte ASR8 return and atomic byte writes; no Tag-73 equations and no Pool Poseidon. The 827-byte harness transaction is not the wallet TxV1 shape. The earlier return sweep used the same path without three decomposition markers and measured 634,663 CU. |
+| Full-ASF8 authenticated component | HOST TIMING (NOT CU) | not applicable | On a 30,504-byte wire, 256 native release iterations measured 31,738 ns full ASF8 versus 31,260 ns compact ASQ8. This profile has no dispatcher arm, emits no ASR8, and has not executed in LiteSVM. |
 | Complete ASQ8 + Tag-73 + Pool transaction | unavailable | unavailable | No active ASQ8 cryptographic handler exists at the frozen base. |
 
 The 1,255,491 and 81,922 results must not be added and presented as exact
@@ -288,7 +291,8 @@ Pareto table.
 
 ### Full-ASF8 host component evidence
 
-The default-off full-ASF8 profile independently authenticates the proof,
+The default-off full-ASF8 profile from source experiment
+`337d6ebaab3fb8feb613a5d7a06f0dfb2f90c0db` independently authenticates the proof,
 master, checkpoint and selected-lane accounts; rederives their PDAs; derives
 the Pool program from account ownership; uses compiled profile/release
 bindings; compares the complete account-derived live snapshot and candidate
@@ -418,6 +422,51 @@ peak RSS:     245,404 KiB
 
 The exact source/evidence commit is
 `f880406169e9145aca4ff929864a5e8abf157c64`.
+
+A focused post-integration replay of the checked-in direct-typed artifact
+reproduced 633,154 CU and 827 transaction bytes, with
+`cryptographic_tag73_executed=false` and exact 792-byte verifier and final
+Pool return data:
+
+```bash
+replay_dir=$(mktemp -d /tmp/aspis-bytecu-replay.XXXXXX)
+CARGO_BUILD_JOBS=2 cargo run --quiet \
+  --manifest-path results/v7-pair-forest-byte-cu-20260827/harness/Cargo.toml -- \
+  results/v7-pair-forest-byte-cu-20260827/artifacts/components/snapshot-direct/aspis_pool.so \
+  results/v7-pair-forest-byte-cu-20260827/artifacts/components/snapshot-direct/aspis_verifier.so \
+  "$replay_dir/evidence.json" 792
+```
+
+This remains a **MEASURED COMPONENT CU** replay, not an honest Tag-73 or
+combined one-terminal transaction.
+
+### Full-ASF8 authenticated component
+
+The integrated source experiment is
+`337d6ebaab3fb8feb613a5d7a06f0dfb2f90c0db`. Its focused authentication and
+fail-closed tests are:
+
+```bash
+CARGO_BUILD_JOBS=2 cargo test -p aspis-verifier asf8 -- --nocapture
+CARGO_BUILD_JOBS=2 cargo check -p aspis-verifier --no-default-features \
+  --features v7-pair-forest-asf8-audit
+```
+
+The original 256-iteration native timing replay, which is deliberately not a
+CU measurement, is:
+
+```bash
+CARGO_BUILD_JOBS=2 cargo test --release -p aspis-verifier \
+  asf8_host_component_measurement_separates_all_three_phases \
+  -- --ignored --nocapture
+```
+
+The exact phase means retained from that run are ASF8 parse 483 ns,
+account/PDA authentication 14,926 ns, exact statement comparison 43 ns,
+canonical 30,504-byte proof-wire scan 16,029 ns, full ASF8 composition
+31,738 ns, and compact ASQ8 composition 31,260 ns. These numbers are host
+wall-clock observations only. No LiteSVM transaction, real verifier CU, or
+combined one-terminal CU is attributed to this experiment.
 
 The exact SBF/LiteSVM/Agave replay commands and artifact hashes will be added
 with the real combined measurements. Solana CLI use must set `NO_DNA=1`; no

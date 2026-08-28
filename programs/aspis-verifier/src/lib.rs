@@ -213,12 +213,14 @@ pub mod v6_verifier;
 #[cfg(any(
     feature = "v7-pair-forest-asq8",
     feature = "v7-pair-forest-cu-profile",
+    feature = "v7-pair-forest-asf8-audit",
     test
 ))]
 pub mod v7_pair_empty_roots;
 #[cfg(any(
     feature = "v7-pair-forest-asq8",
     feature = "v7-pair-forest-cu-profile",
+    feature = "v7-pair-forest-asf8-audit",
     test
 ))]
 pub mod v7_pair_forest_dispatch;

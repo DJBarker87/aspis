@@ -90,6 +90,12 @@ v7-pair-forest-cu-return-1024 = ["v7-pair-forest-cu-profile"]
 v7-pair-forest-cu-component-baseline = ["v7-pair-forest-cu-profile"]
 v7-pair-forest-cu-wire-deferred = ["v7-pair-forest-cu-profile"]
 v7-pair-forest-cu-snapshot-direct = ["v7-pair-forest-cu-profile"]
+# SBF/host audit-only compilation lane for the full 1,880-byte ASF8 streaming
+# validator. It adds no dispatcher arm and remains unreachable in production.
+v7-pair-forest-asf8-audit = [
+    "v7-production-tag73",
+    "aspis-statement/pool-v1-kernel",
+]
 
 [dependencies]
 aspis-core = { path = "../../crates/aspis-core" }
