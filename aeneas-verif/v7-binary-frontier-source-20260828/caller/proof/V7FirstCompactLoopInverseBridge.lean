@@ -188,6 +188,73 @@ theorem range_next_some_is_exact_successor
     exact canonicalEnd
   · exact active
 
+/-- A successful literal first-compact search returns a counter inside the
+actual translated range being searched.  This follows from the loop and
+iterator executions themselves; it is not a separately trusted `cap 64`
+side condition. -/
+theorem first_success_loop_selected_counter_in_range
+    (inputTranscript : transcript.Transcript)
+    (iter : core.ops.range.Range Std.U8)
+    (selected : Std.U8) (schedule : v7_onefold.V7CompactQuerySchedule)
+    (scheduleCounter : schedule.counter = selected)
+    (run : v7_onefold.derive_first_v7_compact_queries_loop iter
+      inputTranscript = .ok (some schedule, none)) :
+    iter.start.val ≤ selected.val ∧ selected.val < iter.end.val := by
+  unfold v7_onefold.derive_first_v7_compact_queries_loop at run
+  rw [loop.eq_def] at run
+  generalize bodyRun :
+      v7_onefold.derive_first_v7_compact_queries_loop.body inputTranscript
+        iter = bodyResult at run
+  cases bodyResult with
+  | fail error => simp at run
+  | div => simp at run
+  | ok control =>
+      cases control with
+      | cont nextIter =>
+          simp at run
+          obtain ⟨current, currentNext, currentRun⟩ :=
+            first_success_body_continue_inverts inputTranscript iter nextIter
+              bodyRun
+          obtain ⟨currentExact, nextStart, nextEnd, active⟩ :=
+            range_next_some_is_exact_successor iter nextIter current currentNext
+          obtain ⟨nextLower, nextUpper⟩ :=
+            first_success_loop_selected_counter_in_range inputTranscript
+              nextIter selected schedule scheduleCounter run
+          constructor
+          · rw [nextStart] at nextLower
+            omega
+          · rw [nextEnd] at nextUpper
+            exact nextUpper
+      | done result =>
+          rcases result with ⟨accepted, pending⟩
+          cases pending with
+          | some failure => simp at run
+          | none =>
+              cases accepted with
+              | none => simp at run
+              | some returnedSchedule =>
+                  obtain ⟨counter, nextIter, nextRun, candidateRun⟩ :=
+                    first_success_body_select_inverts inputTranscript iter
+                      returnedSchedule bodyRun
+                  have returnedCounter := candidate_success_some_retains_counter
+                    inputTranscript counter returnedSchedule candidateRun
+                  have scheduleExact : returnedSchedule = schedule := by
+                    simpa [bodyRun] using run
+                  rw [scheduleExact, scheduleCounter] at returnedCounter
+                  obtain ⟨counterExact, nextStart, nextEnd, active⟩ :=
+                    range_next_some_is_exact_successor iter nextIter counter nextRun
+                  have selectedValue : selected.val = counter.val :=
+                    congrArg UScalar.val returnedCounter
+                  have counterValue : counter.val = iter.start.val := by
+                    rw [counterExact]
+                  have selectedAtStart : selected.val = iter.start.val :=
+                    selectedValue.trans counterValue
+                  constructor <;> omega
+termination_by iter.end.val - iter.start.val
+decreasing_by
+  rw [nextEnd, nextStart]
+  omega
+
 /-- If the loop ultimately returns a schedule whose embedded counter is later
 than the current range start, the current literal body must have continued.
 It cannot have selected a different candidate first. -/
@@ -337,6 +404,7 @@ decreasing_by
 #print axioms first_success_body_continue_inverts
 #print axioms first_success_body_select_inverts
 #print axioms range_next_some_is_exact_successor
+#print axioms first_success_loop_selected_counter_in_range
 #print axioms first_success_loop_at_earlier_start_continues
 #print axioms first_success_loop_exposes_all_prior_none
 #print axioms candidate_success_some_retains_counter
