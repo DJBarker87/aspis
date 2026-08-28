@@ -21,6 +21,7 @@ open AspisK1.V7Tag73ExactClientKnowledgeComposition
 open AspisK1.V7Tag73ExactCompilerResources
 open AspisK1.V7Tag73ExactPlainRomRun
 open AspisK1.V7Tag73ExactSourceAcceptanceModel
+open AspisK1.V7Tag73FutureFreeFullControl
 open AspisK1.V7Tag73ExactFixedK12MerkleClassifier
 open AspisK1.V7Tag73RestoredNodeK13Classifier
 open AspisK1.V7Tag73ParsedK13K14Classifier
@@ -50,6 +51,7 @@ def exactTag73RestoredK13QueryEvent
         fixedInstance sample)
       (node : RestoredK13Node Statement Payload),
     node ∈ (exactRestorationAccumulator input).nodes ∧
+      node.verifierFinalState.current.control = .done ∧
       ∃ k12 : RestoredNodeK12Certificate node,
         QueryPhaseFailure (restoredNodeK12Proof node).schedule
           (decoderCodeEncoders decoder)
@@ -73,6 +75,7 @@ def exactTag73RestoredK13OneFoldEvent
         fixedInstance sample)
       (node : RestoredK13Node Statement Payload),
     node ∈ (exactRestorationAccumulator input).nodes ∧
+      node.verifierFinalState.current.control = .done ∧
       ∃ k12 : RestoredNodeK12Certificate node,
         OneFoldReductionFailure (restoredNodeK12Proof node).schedule
           (decoderCodeEncoders decoder)
@@ -95,6 +98,7 @@ def exactTag73RestoredK13QueryOrOneFoldEvent
         fixedInstance sample)
       (node : RestoredK13Node Statement Payload),
     node ∈ (exactRestorationAccumulator input).nodes ∧
+      node.verifierFinalState.current.control = .done ∧
       ∃ k12 : RestoredNodeK12Certificate node,
         QueryPhaseFailure (restoredNodeK12Proof node).schedule
             (decoderCodeEncoders decoder)
@@ -121,13 +125,13 @@ theorem exactTag73RestoredK13QueryOrOneFoldEvent_eq_union
           projection fixedInstance decoder := by
   ext sample
   constructor
-  · rintro ⟨input, node, member, k12, query | oneFold⟩
-    · exact Or.inl ⟨input, node, member, k12, query⟩
-    · exact Or.inr ⟨input, node, member, k12, oneFold⟩
-  · rintro (⟨input, node, member, k12, query⟩ |
-      ⟨input, node, member, k12, oneFold⟩)
-    · exact ⟨input, node, member, k12, Or.inl query⟩
-    · exact ⟨input, node, member, k12, Or.inr oneFold⟩
+  · rintro ⟨input, node, member, accepted, k12, query | oneFold⟩
+    · exact Or.inl ⟨input, node, member, accepted, k12, query⟩
+    · exact Or.inr ⟨input, node, member, accepted, k12, oneFold⟩
+  · rintro (⟨input, node, member, accepted, k12, query⟩ |
+      ⟨input, node, member, accepted, k12, oneFold⟩)
+    · exact ⟨input, node, member, accepted, k12, Or.inl query⟩
+    · exact ⟨input, node, member, accepted, k12, Or.inr oneFold⟩
 
 /-- Pointwise semantic handoff for the restoration-wide q16 event.  It
 retains the literal node and accumulator membership needed by the operational
@@ -150,12 +154,13 @@ theorem restored_query_event_exposes_node_and_capped_bad_set
         (k12 : RestoredNodeK12Certificate node)
         (bad : Finset (Fin 262144)),
       node ∈ (exactRestorationAccumulator input).nodes ∧
+        node.verifierFinalState.current.control = .done ∧
         bad.card ≤ 9557 ∧
         AllInBad bad (restoredNodeK12Proof node).queries := by
-  rcases member with ⟨input, node, nodeMember, k12, failure⟩
+  rcases member with ⟨input, node, nodeMember, accepted, k12, failure⟩
   obtain ⟨bad, badCard, allBad⟩ :=
     restored_query_phase_failure_exposes_q16_bad_set k12 failure
-  exact ⟨input, node, k12, bad, nodeMember, badCard, allBad⟩
+  exact ⟨input, node, k12, bad, nodeMember, accepted, badCard, allBad⟩
 
 #print axioms exactTag73RestoredK13QueryOrOneFoldEvent_eq_union
 #print axioms restored_query_event_exposes_node_and_capped_bad_set
