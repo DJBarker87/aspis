@@ -9,25 +9,40 @@ manifest="$repo_root/programs/aspis-pool/Cargo.toml"
 pool_verifier_dispatch="$repo_root/programs/aspis-pool/src/pair_forest_dispatch.rs"
 verifier_manifest="$repo_root/programs/aspis-verifier/Cargo.toml"
 verifier_reader="$repo_root/programs/aspis-verifier/src/v7_pair_forest_dispatch.rs"
+statement_manifest="$repo_root/crates/aspis-statement/Cargo.toml"
+semantic_terminal="$repo_root/crates/aspis-statement/src/pool_v1/pair_forest_semantic_terminal.rs"
+copy_terminal="$repo_root/crates/aspis-statement/src/pool_v1/pair_forest_copy_terminal.rs"
+copy_constants="$repo_root/crates/aspis-statement/src/pool_v1/pair_forest_copy_terminal_constants.rs"
 
 # Production source contains the committed default-off fast-path port and the
 # six-account immutable-release authentication gate.  The bundle commit is a
 # descendant; exact hashes below fail closed on any later source drift.
 git -C "$repo_root" merge-base --is-ancestor \
   a789a9c6ff1f0a879e4f7396377e9c39df445974 HEAD
+git -C "$repo_root" merge-base --is-ancestor 2dae6bea HEAD
+git -C "$repo_root" merge-base --is-ancestor d49af9e3 HEAD
+git -C "$repo_root" merge-base --is-ancestor 37c6ea1f HEAD
 
 test "$(shasum -a 256 "$pair_source" | awk '{print $1}')" = \
-  3016a0cabe44dd7d3994aaac1d949195d480a4ac609e914cc4adbd3ea15ae71a
+  4702885ad27659b99ea72dbbb3b96945411616d63392f7d4f9a93cae986085e1
 test "$(shasum -a 256 "$dispatch_source" | awk '{print $1}')" = \
   84b6dbfa9ec12d56184bb0c1e250ed731af83fa44c91fbd05505c38ae356c995
 test "$(shasum -a 256 "$manifest" | awk '{print $1}')" = \
-  448bdca453f0ceb0769b8e87bde7f8866ef648d161cb04e1031c58e8cc12f87c
+  f5b42a59c788694ce6a0eba02b193e50f9c58028e1ba55bd8827118656f9aa2e
 test "$(shasum -a 256 "$pool_verifier_dispatch" | awk '{print $1}')" = \
-  cdf8a64ddbc700606b4396be9ce46a21c854c18e085a7cf802f306c36fac93eb
+  95281016c34355c7f5bbb5e8ac31cacfa9c743699ecfeb1c8ddbae2cc1a3afc8
 test "$(shasum -a 256 "$verifier_manifest" | awk '{print $1}')" = \
-  446dae08bef0cbb3ccba8220134defcfe933e3ab359a91c2cf41a171b50ba89e
+  184cc29baeeb8992bd887ed73e7d56a0aaaa8666e313148909b64988a06e6424
 test "$(shasum -a 256 "$verifier_reader" | awk '{print $1}')" = \
   276c3eb0d157408e2f132e69001e77c32f306baa86450f1e8fab9cdcb8fbadbb
+test "$(shasum -a 256 "$statement_manifest" | awk '{print $1}')" = \
+  28bbb0e1fa4fd6b692a4223b7d3ed99cfd3b827d9f1a8090e1d1845fbcb2f2b8
+test "$(shasum -a 256 "$semantic_terminal" | awk '{print $1}')" = \
+  0f3cbc9aead222e49ffaaa678e5f952a52c5f93aa28f5de802a3390993157edd
+test "$(shasum -a 256 "$copy_terminal" | awk '{print $1}')" = \
+  d88b7d1677ecb64a321f0ff8edb2e2a2f382f2d28a8b9e9c3a982346ad355b93
+test "$(shasum -a 256 "$copy_constants" | awk '{print $1}')" = \
+  bc4d72deed0c4b17cefa5092aa05bbc5587c76123df69bd4b4e1187f46280cf6
 
 # Exact lane-account mutation inventory: deposit, authenticated terminal, and
 # the eight-lane initialization loop.  Any fourth byte write fails this audit.
@@ -36,8 +51,8 @@ lane_writes=$(rg -n \
   "$pair_source")
 test "$(printf '%s\n' "$lane_writes" | wc -l | tr -d ' ')" = 3
 printf '%s\n' "$lane_writes" | rg -q '^861:'
-printf '%s\n' "$lane_writes" | rg -q '^1362:'
-printf '%s\n' "$lane_writes" | rg -q '^1671:'
+printf '%s\n' "$lane_writes" | rg -q '^1403:'
+printf '%s\n' "$lane_writes" | rg -q '^1712:'
 
 # Pin the functions that construct each image and the terminal feature routes.
 rg -q '^fn prepare_deposit_append_v1\(' "$pair_source"
@@ -81,6 +96,26 @@ rg -q 'freshly initialized by that release' "$verifier_reader"
 rg -q 'let \[registry, entry\] = registry_accounts' "$pool_verifier_dispatch"
 rg -q 'AccountMeta::new_readonly\(\*registry\.key, false\)' "$pool_verifier_dispatch"
 rg -q 'AccountMeta::new_readonly\(\*entry\.key, false\)' "$pool_verifier_dispatch"
+
+# The three selected terminal arithmetic/result cuts retain their exact input
+# schedules and fail-closed authentication boundaries.  These are feature
+# gated experiments, not alternate proof relations.
+rg -q '^fn add_digest_binding_packed\(' "$semantic_terminal"
+rg -q '^fn public_digest_packed\(' "$semantic_terminal"
+rg -q 'selector\.mul\(qm31_pack_base4\(&residuals\)\)' "$semantic_terminal"
+rg -q '^fn add_binary_weight\(' "$copy_terminal"
+rg -q '0 => sum,' "$copy_terminal"
+rg -q '1 => sum\.add\(selector\),' "$copy_terminal"
+rg -q 'unreachable!\("generated Pool V1 pair-forest Copy weight is not binary"\)' \
+  "$copy_terminal"
+rg -q '^fn validate_pair_forest_terminal_result_direct_v1\(' "$pair_source"
+rg -q 'let result = decode_pool_v1_pair_forest_terminal_result_v1\(&returned_data\)' \
+  "$pool_verifier_dispatch"
+rg -q 'exact_bytes: returned_data\.into_boxed_slice\(\)' "$pool_verifier_dispatch"
+rg -q 'let result_bytes = authenticated\.exact_bytes\(\);' "$pair_source"
+rg -q '^pool-v1-pair-forest-packed-digest-audit = \[\]' "$statement_manifest"
+rg -q '^pool-v1-pair-forest-binary-copy-weights-audit = \[\]' "$statement_manifest"
+rg -q '^pair-forest-direct-result-audit = ' "$manifest"
 
 # No production migration route exists at this revision.  A future migration
 # must be implemented, made one-shot, and added to this exhaustive audit.

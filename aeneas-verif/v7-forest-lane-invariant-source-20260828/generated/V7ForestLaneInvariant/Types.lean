@@ -31,7 +31,7 @@ structure LaneState where
   frontier : Array Digest 20#usize
 
 /-- [v7_forest_lane_invariant_source::LaneSourceError]
-    Source: 'src/lib.rs', lines 35:0-49:1
+    Source: 'src/lib.rs', lines 35:0-50:1
     Visibility: public -/
 @[discriminant isize]
 inductive LaneSourceError where
@@ -48,9 +48,10 @@ inductive LaneSourceError where
 | MissingProgramOwnedInvariant : LaneSourceError
 | MissingExactVerifierReleaseAuthentication : LaneSourceError
 | InvalidWriterTransition : LaneSourceError
+| InvalidSelectedTerminalCut : LaneSourceError
 
 /-- [v7_forest_lane_invariant_source::DirectAsq8ReleaseAuthentication]
-    Source: 'src/lib.rs', lines 56:0-70:1
+    Source: 'src/lib.rs', lines 57:0-71:1
     Visibility: public -/
 structure DirectAsq8ReleaseAuthentication where
   exact_six_accounts : Bool
@@ -67,8 +68,51 @@ structure DirectAsq8ReleaseAuthentication where
   entry_exact_pool_verifier_profile_release_version : Bool
   selected_lane_pda_master_and_lane : Bool
 
+/-- [v7_forest_lane_invariant_source::DirectResultPrerequisites]
+    Source: 'src/lib.rs', lines 77:0-82:1
+    Visibility: public -/
+structure DirectResultPrerequisites where
+  request_master_checkpoint_lane_authenticated : Bool
+  exact_asr8_decoded_canonical : Bool
+  next_lane_encoder_accepted : Bool
+  returned_program_is_selected_verifier : Bool
+
+/-- [v7_forest_lane_invariant_source::DirectResultBindings]
+    Source: 'src/lib.rs', lines 88:0-95:1
+    Visibility: public -/
+structure DirectResultBindings where
+  transition_kind_exact : Bool
+  master_account_exact : Bool
+  selected_lane_account_exact : Bool
+  output_lane_exact : Bool
+  nullifier_exact : Bool
+  next_pair_index_exact : Bool
+
+/-- [v7_forest_lane_invariant_source::CopyVariantProjection]
+    Source: 'src/lib.rs', lines 144:0-147:1
+    Visibility: public -/
+@[discriminant isize]
+inductive CopyVariantProjection where
+| PrivateTransfer : CopyVariantProjection
+| Withdrawal : CopyVariantProjection
+
+/-- [v7_forest_lane_invariant_source::BinaryWeightActionProjection]
+    Source: 'src/lib.rs', lines 150:0-153:1
+    Visibility: public -/
+@[discriminant isize]
+inductive BinaryWeightActionProjection where
+| Keep : BinaryWeightActionProjection
+| AddSelector : BinaryWeightActionProjection
+
+/-- [v7_forest_lane_invariant_source::DigestBindingScheduleProjection]
+    Source: 'src/lib.rs', lines 205:0-208:1
+    Visibility: public -/
+structure DigestBindingScheduleProjection where
+  selector_tag : Std.U16
+  residual_tags : Array Std.U16 4#usize
+
 /-- [v7_forest_lane_invariant_source::ProductionLaneWrite]
-    Source: 'src/lib.rs', lines 419:0-434:1
+    Source: 'src/lib.rs', lines 569:0-584:1
     Visibility: public -/
 @[discriminant isize]
 inductive ProductionLaneWrite where

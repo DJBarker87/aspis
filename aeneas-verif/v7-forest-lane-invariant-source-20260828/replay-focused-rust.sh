@@ -15,10 +15,19 @@ export RUSTFLAGS=${RUSTFLAGS:--Awarnings}
   cargo test -p aspis-pool --no-default-features \
     --features pair-forest-source-result-invariant-audit \
     authenticated_result_encoder_is_byte_exact_for_valid_lanes
+  cargo test -p aspis-statement --no-default-features \
+    --features pool-v1-pair-forest-packed-digest-audit \
+    packed_public_digest_matches_all_transfer_and_withdrawal_bindings
+  cargo test -p aspis-statement --no-default-features \
+    --features pool-v1-pair-forest-binary-copy-weights-audit \
+    every_generated_copy_weight_is_binary_and_skip_add_is_exact
+  cargo test -p aspis-pool --no-default-features \
+    --features pair-forest-verifier-lane-invariant-audit,pair-forest-source-result-invariant-audit,pair-forest-direct-result-audit \
+    one_terminal_transfer_updates_only_selected_lane_history_and_marker
   cargo check -p aspis-pool --no-default-features \
-    --features pair-forest-verifier-lane-invariant-audit,pair-forest-source-result-invariant-audit
+    --features pair-forest-verifier-lane-invariant-audit,pair-forest-source-result-invariant-audit,pair-forest-direct-result-audit
   cargo check -p aspis-verifier --no-default-features \
-    --features v7-pair-forest-lane-invariant-audit
+    --features v7-pair-forest-lane-invariant-audit,v7-pair-forest-fixed-canonical-audit,v7-pair-forest-packed-digest-audit,v7-pair-forest-binary-copy-weights-audit
 )
 
 echo 'V7 forest lane invariant focused Rust replay: PASS'

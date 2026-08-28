@@ -131,8 +131,199 @@ impl_def Digest.Insts.CoreCmpPartialEqDigest : core.cmp.PartialEq Digest Digest
   ne := core.cmp.PartialEq.ne.trait_default Digest.Insts.CoreCmpPartialEqDigest
 }
 
+/-- [v7_forest_lane_invariant_source::reconstructed_statement_result_binding_projected]:
+    Source: 'src/lib.rs', lines 100:0-118:1
+    Visibility: public -/
+def reconstructed_statement_result_binding_projected
+  (prerequisites : DirectResultPrerequisites) (bindings : DirectResultBindings)
+  :
+  Result (core.result.Result Unit LaneSourceError)
+  := do
+  if prerequisites.request_master_checkpoint_lane_authenticated
+  then
+    if prerequisites.exact_asr8_decoded_canonical
+    then
+      if prerequisites.next_lane_encoder_accepted
+      then
+        if prerequisites.returned_program_is_selected_verifier
+        then
+          if bindings.transition_kind_exact
+          then
+            if bindings.master_account_exact
+            then
+              if bindings.selected_lane_account_exact
+              then
+                if bindings.output_lane_exact
+                then
+                  if bindings.nullifier_exact
+                  then
+                    if bindings.next_pair_index_exact
+                    then ok (core.result.Result.Ok ())
+                    else
+                      ok (core.result.Result.Err
+                        LaneSourceError.InvalidSelectedTerminalCut)
+                  else
+                    ok (core.result.Result.Err
+                      LaneSourceError.InvalidSelectedTerminalCut)
+                else
+                  ok (core.result.Result.Err
+                    LaneSourceError.InvalidSelectedTerminalCut)
+              else
+                ok (core.result.Result.Err
+                  LaneSourceError.InvalidSelectedTerminalCut)
+            else
+              ok (core.result.Result.Err
+                LaneSourceError.InvalidSelectedTerminalCut)
+          else
+            ok (core.result.Result.Err
+              LaneSourceError.InvalidSelectedTerminalCut)
+        else
+          ok (core.result.Result.Err
+            LaneSourceError.InvalidSelectedTerminalCut)
+      else
+        ok (core.result.Result.Err LaneSourceError.InvalidSelectedTerminalCut)
+    else ok (core.result.Result.Err LaneSourceError.InvalidSelectedTerminalCut)
+  else ok (core.result.Result.Err LaneSourceError.InvalidSelectedTerminalCut)
+
+/-- [v7_forest_lane_invariant_source::direct_result_binding_projected]:
+    Source: 'src/lib.rs', lines 123:0-141:1
+    Visibility: public -/
+def direct_result_binding_projected
+  (prerequisites : DirectResultPrerequisites) (bindings : DirectResultBindings)
+  :
+  Result (core.result.Result Unit LaneSourceError)
+  := do
+  if prerequisites.request_master_checkpoint_lane_authenticated
+  then
+    if prerequisites.exact_asr8_decoded_canonical
+    then
+      if prerequisites.next_lane_encoder_accepted
+      then
+        if prerequisites.returned_program_is_selected_verifier
+        then
+          if bindings.transition_kind_exact
+          then
+            if bindings.master_account_exact
+            then
+              if bindings.selected_lane_account_exact
+              then
+                if bindings.output_lane_exact
+                then
+                  if bindings.nullifier_exact
+                  then
+                    if bindings.next_pair_index_exact
+                    then ok (core.result.Result.Ok ())
+                    else
+                      ok (core.result.Result.Err
+                        LaneSourceError.InvalidSelectedTerminalCut)
+                  else
+                    ok (core.result.Result.Err
+                      LaneSourceError.InvalidSelectedTerminalCut)
+                else
+                  ok (core.result.Result.Err
+                    LaneSourceError.InvalidSelectedTerminalCut)
+              else
+                ok (core.result.Result.Err
+                  LaneSourceError.InvalidSelectedTerminalCut)
+            else
+              ok (core.result.Result.Err
+                LaneSourceError.InvalidSelectedTerminalCut)
+          else
+            ok (core.result.Result.Err
+              LaneSourceError.InvalidSelectedTerminalCut)
+        else
+          ok (core.result.Result.Err
+            LaneSourceError.InvalidSelectedTerminalCut)
+      else
+        ok (core.result.Result.Err LaneSourceError.InvalidSelectedTerminalCut)
+    else ok (core.result.Result.Err LaneSourceError.InvalidSelectedTerminalCut)
+  else ok (core.result.Result.Err LaneSourceError.InvalidSelectedTerminalCut)
+
+/-- [v7_forest_lane_invariant_source::{impl core::cmp::PartialEq<v7_forest_lane_invariant_source::CopyVariantProjection> for v7_forest_lane_invariant_source::CopyVariantProjection}::eq]:
+    Source: 'src/lib.rs', lines 143:29-143:38
+    Visibility: public -/
+def CopyVariantProjection.Insts.CoreCmpPartialEqCopyVariantProjection.eq
+  (self : CopyVariantProjection) (other : CopyVariantProjection) :
+  Result Bool
+  := do
+  let self1 := read_discriminant self
+  let other1 := read_discriminant other
+  ok (self1 = other1)
+
+/-- [v7_forest_lane_invariant_source::binary_link_weight_projected]:
+    Source: 'src/lib.rs', lines 157:0-186:1
+    Visibility: public -/
+def binary_link_weight_projected
+  (weight_kind : Std.U8) (weight_level : Std.U8) (append_index : Std.U64)
+  (variant : CopyVariantProjection) :
+  Result (core.result.Result Std.U8 LaneSourceError)
+  := do
+  let i ← lift (core.convert.num.FromUsizeU8.from weight_level)
+  if i >= TREE_DEPTH
+  then ok (core.result.Result.Err LaneSourceError.InvalidSelectedTerminalCut)
+  else
+    match weight_kind with
+    | 0#uscalar => ok (core.result.Result.Ok 1#u8)
+    | 1#uscalar =>
+      let b ←
+        CopyVariantProjection.Insts.CoreCmpPartialEqCopyVariantProjection.eq
+          variant CopyVariantProjection.PrivateTransfer
+      let i1 ← lift (core.convert.num.FromU8Bool.from b)
+      ok (core.result.Result.Ok i1)
+    | 2#uscalar =>
+      let b ←
+        CopyVariantProjection.Insts.CoreCmpPartialEqCopyVariantProjection.eq
+          variant CopyVariantProjection.Withdrawal
+      let i1 ← lift (core.convert.num.FromU8Bool.from b)
+      ok (core.result.Result.Ok i1)
+    | 3#uscalar =>
+      let i1 ← append_index >>> weight_level
+      let i2 ← lift (i1 &&& 1#u64)
+      if i2 = 0#u64
+      then ok (core.result.Result.Ok 1#u8)
+      else ok (core.result.Result.Ok 0#u8)
+    | 4#uscalar =>
+      let i1 ← append_index >>> weight_level
+      let i2 ← lift (i1 &&& 1#u64)
+      if i2 = 0#u64
+      then ok (core.result.Result.Ok 0#u8)
+      else ok (core.result.Result.Ok 1#u8)
+    | _ =>
+      ok (core.result.Result.Err LaneSourceError.InvalidSelectedTerminalCut)
+
+/-- [v7_forest_lane_invariant_source::binary_weight_action_projected]:
+    Source: 'src/lib.rs', lines 191:0-199:1
+    Visibility: public -/
+def binary_weight_action_projected
+  (weight : Std.U8) :
+  Result (core.result.Result BinaryWeightActionProjection LaneSourceError)
+  := do
+  match weight with
+  | 0#uscalar => ok (core.result.Result.Ok BinaryWeightActionProjection.Keep)
+  | 1#uscalar =>
+    ok (core.result.Result.Ok BinaryWeightActionProjection.AddSelector)
+  | _ => ok (core.result.Result.Err LaneSourceError.InvalidSelectedTerminalCut)
+
+/-- [v7_forest_lane_invariant_source::literal_digest_schedule_projected]:
+    Source: 'src/lib.rs', lines 210:0-214:1
+    Visibility: public -/
+def literal_digest_schedule_projected
+  (schedule : DigestBindingScheduleProjection) :
+  Result DigestBindingScheduleProjection
+  := do
+  ok schedule
+
+/-- [v7_forest_lane_invariant_source::factored_digest_schedule_projected]:
+    Source: 'src/lib.rs', lines 216:0-220:1
+    Visibility: public -/
+def factored_digest_schedule_projected
+  (schedule : DigestBindingScheduleProjection) :
+  Result DigestBindingScheduleProjection
+  := do
+  ok schedule
+
 /-- [v7_forest_lane_invariant_source::read_u32_le]:
-    Source: 'src/lib.rs', lines 72:0-79:1 -/
+    Source: 'src/lib.rs', lines 222:0-229:1 -/
 def read_u32_le
   (bytes : Slice Std.U8) (start : Std.Usize) : Result Std.U32 := do
   let i ← Slice.index_usize bytes start
@@ -145,7 +336,7 @@ def read_u32_le
   ok (core.num.U32.from_le_bytes (Array.make 4#usize [ i, i2, i4, i6 ]))
 
 /-- [v7_forest_lane_invariant_source::read_u64_le]:
-    Source: 'src/lib.rs', lines 81:0-92:1 -/
+    Source: 'src/lib.rs', lines 231:0-242:1 -/
 def read_u64_le
   (bytes : Slice Std.U8) (start : Std.Usize) : Result Std.U64 := do
   let i ← Slice.index_usize bytes start
@@ -167,7 +358,7 @@ def read_u64_le
     (Array.make 8#usize [ i, i2, i4, i6, i8, i10, i12, i14 ]))
 
 /-- [v7_forest_lane_invariant_source::decode_digest]: loop body 0:
-    Source: 'src/lib.rs', lines 98:4-105:5 -/
+    Source: 'src/lib.rs', lines 248:4-255:5 -/
 @[rust_loop_body]
 def decode_digest_loop.body
   (bytes : Slice Std.U8) (start : Std.Usize) (limbs : Array Std.U32 8#usize)
@@ -189,7 +380,7 @@ def decode_digest_loop.body
   else ok (done (limbs, canonical))
 
 /-- [v7_forest_lane_invariant_source::decode_digest]: loop 0:
-    Source: 'src/lib.rs', lines 98:4-105:5 -/
+    Source: 'src/lib.rs', lines 248:4-255:5 -/
 @[rust_loop]
 def decode_digest_loop
   (bytes : Slice Std.U8) (start : Std.Usize) (limbs : Array Std.U32 8#usize)
@@ -202,7 +393,7 @@ def decode_digest_loop
     (limbs, index, canonical)
 
 /-- [v7_forest_lane_invariant_source::decode_digest]:
-    Source: 'src/lib.rs', lines 94:0-111:1 -/
+    Source: 'src/lib.rs', lines 244:0-261:1 -/
 def decode_digest
   (bytes : Slice Std.U8) (start : Std.Usize) :
   Result (core.result.Result Digest LaneSourceError)
@@ -214,7 +405,7 @@ def decode_digest
   else ok (core.result.Result.Err LaneSourceError.NonCanonicalDigest)
 
 /-- [v7_forest_lane_invariant_source::digest_is_canonical]: loop body 0:
-    Source: 'src/lib.rs', lines 116:4-121:5 -/
+    Source: 'src/lib.rs', lines 266:4-271:5 -/
 @[rust_loop_body]
 def digest_is_canonical_loop.body
   (digest : Digest) (index : Std.Usize) (canonical : Bool) :
@@ -231,7 +422,7 @@ def digest_is_canonical_loop.body
   else ok (done canonical)
 
 /-- [v7_forest_lane_invariant_source::digest_is_canonical]: loop 0:
-    Source: 'src/lib.rs', lines 116:4-121:5 -/
+    Source: 'src/lib.rs', lines 266:4-271:5 -/
 @[rust_loop]
 def digest_is_canonical_loop
   (digest : Digest) (index : Std.Usize) (canonical : Bool) : Result Bool := do
@@ -241,13 +432,13 @@ def digest_is_canonical_loop
     (digest, index, canonical)
 
 /-- [v7_forest_lane_invariant_source::digest_is_canonical]:
-    Source: 'src/lib.rs', lines 113:0-123:1 -/
+    Source: 'src/lib.rs', lines 263:0-273:1 -/
 @[reducible]
 def digest_is_canonical (digest : Digest) : Result Bool := do
   digest_is_canonical_loop digest 0#usize true
 
 /-- [v7_forest_lane_invariant_source::write_digest]: loop body 0:
-    Source: 'src/lib.rs', lines 127:4-135:5 -/
+    Source: 'src/lib.rs', lines 277:4-285:5 -/
 @[rust_loop_body]
 def write_digest_loop.body
   (start : Std.Usize) (output : Array Std.U8 768#usize) (digest : Digest)
@@ -277,7 +468,7 @@ def write_digest_loop.body
   else ok (done output)
 
 /-- [v7_forest_lane_invariant_source::write_digest]: loop 0:
-    Source: 'src/lib.rs', lines 127:4-135:5 -/
+    Source: 'src/lib.rs', lines 277:4-285:5 -/
 @[rust_loop]
 def write_digest_loop
   (output : Array Std.U8 768#usize) (start : Std.Usize) (digest : Digest)
@@ -290,7 +481,7 @@ def write_digest_loop
     (output, digest, index)
 
 /-- [v7_forest_lane_invariant_source::write_digest]:
-    Source: 'src/lib.rs', lines 125:0-136:1 -/
+    Source: 'src/lib.rs', lines 275:0-286:1 -/
 @[reducible]
 def write_digest
   (output : Array Std.U8 768#usize) (start : Std.Usize) (digest : Digest) :
@@ -299,7 +490,7 @@ def write_digest
   write_digest_loop output start digest 0#usize
 
 /-- [v7_forest_lane_invariant_source::bytes32_nonzero]: loop body 0:
-    Source: 'src/lib.rs', lines 141:4-146:5 -/
+    Source: 'src/lib.rs', lines 291:4-296:5 -/
 @[rust_loop_body]
 def bytes32_nonzero_loop.body
   (bytes : Array Std.U8 32#usize) (index : Std.Usize) (nonzero : Bool) :
@@ -316,7 +507,7 @@ def bytes32_nonzero_loop.body
   else ok (done nonzero)
 
 /-- [v7_forest_lane_invariant_source::bytes32_nonzero]: loop 0:
-    Source: 'src/lib.rs', lines 141:4-146:5 -/
+    Source: 'src/lib.rs', lines 291:4-296:5 -/
 @[rust_loop]
 def bytes32_nonzero_loop
   (bytes : Array Std.U8 32#usize) (index : Std.Usize) (nonzero : Bool) :
@@ -327,13 +518,13 @@ def bytes32_nonzero_loop
     (index, nonzero)
 
 /-- [v7_forest_lane_invariant_source::bytes32_nonzero]:
-    Source: 'src/lib.rs', lines 138:0-148:1 -/
+    Source: 'src/lib.rs', lines 288:0-298:1 -/
 @[reducible]
 def bytes32_nonzero (bytes : Array Std.U8 32#usize) : Result Bool := do
   bytes32_nonzero_loop bytes 0#usize false
 
 /-- [v7_forest_lane_invariant_source::binding_matches]: loop body 0:
-    Source: 'src/lib.rs', lines 153:4-158:5 -/
+    Source: 'src/lib.rs', lines 303:4-308:5 -/
 @[rust_loop_body]
 def binding_matches_loop.body
   (bytes : Slice Std.U8) (index : Std.Usize) (is_match : Bool) :
@@ -352,7 +543,7 @@ def binding_matches_loop.body
   else ok (done is_match)
 
 /-- [v7_forest_lane_invariant_source::binding_matches]: loop 0:
-    Source: 'src/lib.rs', lines 153:4-158:5 -/
+    Source: 'src/lib.rs', lines 303:4-308:5 -/
 @[rust_loop]
 def binding_matches_loop
   (bytes : Slice Std.U8) (index : Std.Usize) (is_match : Bool) :
@@ -364,13 +555,13 @@ def binding_matches_loop
     (index, is_match)
 
 /-- [v7_forest_lane_invariant_source::binding_matches]:
-    Source: 'src/lib.rs', lines 150:0-160:1 -/
+    Source: 'src/lib.rs', lines 300:0-310:1 -/
 @[reducible]
 def binding_matches (bytes : Slice Std.U8) : Result Bool := do
   binding_matches_loop bytes 0#usize true
 
 /-- [v7_forest_lane_invariant_source::reserved_header_is_zero]: loop body 0:
-    Source: 'src/lib.rs', lines 165:4-170:5 -/
+    Source: 'src/lib.rs', lines 315:4-320:5 -/
 @[rust_loop_body]
 def reserved_header_is_zero_loop.body
   (bytes : Slice Std.U8) (index : Std.Usize) (zero : Bool) :
@@ -387,7 +578,7 @@ def reserved_header_is_zero_loop.body
   else ok (done zero)
 
 /-- [v7_forest_lane_invariant_source::reserved_header_is_zero]: loop 0:
-    Source: 'src/lib.rs', lines 165:4-170:5 -/
+    Source: 'src/lib.rs', lines 315:4-320:5 -/
 @[rust_loop]
 def reserved_header_is_zero_loop
   (bytes : Slice Std.U8) (index : Std.Usize) (zero : Bool) : Result Bool := do
@@ -397,13 +588,13 @@ def reserved_header_is_zero_loop
     (index, zero)
 
 /-- [v7_forest_lane_invariant_source::reserved_header_is_zero]:
-    Source: 'src/lib.rs', lines 162:0-172:1 -/
+    Source: 'src/lib.rs', lines 312:0-322:1 -/
 @[reducible]
 def reserved_header_is_zero (bytes : Slice Std.U8) : Result Bool := do
   reserved_header_is_zero_loop bytes 72#usize true
 
 /-- [v7_forest_lane_invariant_source::decode_frontier]: loop body 0:
-    Source: 'src/lib.rs', lines 178:4-186:5 -/
+    Source: 'src/lib.rs', lines 328:4-336:5 -/
 @[rust_loop_body]
 def decode_frontier_loop.body
   (bytes : Slice Std.U8) (tree : Std.Usize) (frontier : Array Digest 20#usize)
@@ -429,7 +620,7 @@ def decode_frontier_loop.body
   else ok (done (frontier, failure))
 
 /-- [v7_forest_lane_invariant_source::decode_frontier]: loop 0:
-    Source: 'src/lib.rs', lines 178:4-186:5 -/
+    Source: 'src/lib.rs', lines 328:4-336:5 -/
 @[rust_loop]
 def decode_frontier_loop
   (bytes : Slice Std.U8) (tree : Std.Usize) (frontier : Array Digest 20#usize)
@@ -442,7 +633,7 @@ def decode_frontier_loop
     (frontier, level, failure)
 
 /-- [v7_forest_lane_invariant_source::decode_frontier]:
-    Source: 'src/lib.rs', lines 174:0-191:1 -/
+    Source: 'src/lib.rs', lines 324:0-341:1 -/
 def decode_frontier
   (bytes : Slice Std.U8) (tree : Std.Usize) :
   Result (core.result.Result (Array Digest 20#usize) LaneSourceError)
@@ -456,7 +647,7 @@ def decode_frontier
   | some error => ok (core.result.Result.Err error)
 
 /-- [v7_forest_lane_invariant_source::validate_frontier]: loop body 0:
-    Source: 'src/lib.rs', lines 1:0-209:5 -/
+    Source: 'src/lib.rs', lines 1:0-359:5 -/
 @[rust_loop_body]
 def validate_frontier_loop.body
   (frontier : Array Digest 20#usize) (next_leaf_index : Std.U64)
@@ -490,7 +681,7 @@ def validate_frontier_loop.body
   else ok (done (canonical, inactive_valid))
 
 /-- [v7_forest_lane_invariant_source::validate_frontier]: loop 0:
-    Source: 'src/lib.rs', lines 1:0-209:5 -/
+    Source: 'src/lib.rs', lines 1:0-359:5 -/
 @[rust_loop]
 def validate_frontier_loop
   (frontier : Array Digest 20#usize) (next_leaf_index : Std.U64)
@@ -504,7 +695,7 @@ def validate_frontier_loop
     (level, canonical, inactive_valid)
 
 /-- [v7_forest_lane_invariant_source::validate_frontier]:
-    Source: 'src/lib.rs', lines 193:0-217:1 -/
+    Source: 'src/lib.rs', lines 343:0-367:1 -/
 def validate_frontier
   (frontier : Array Digest 20#usize) (next_leaf_index : Std.U64)
   (empty_roots : Array Digest 21#usize) :
@@ -521,7 +712,7 @@ def validate_frontier
   else ok (core.result.Result.Err LaneSourceError.NonCanonicalDigest)
 
 /-- [v7_forest_lane_invariant_source::hot_decode_projected]: loop body 0:
-    Source: 'src/lib.rs', lines 252:4-255:5
+    Source: 'src/lib.rs', lines 402:4-405:5
     Visibility: public -/
 @[rust_loop_body]
 def hot_decode_projected_loop.body
@@ -540,7 +731,7 @@ def hot_decode_projected_loop.body
   else ok (done master)
 
 /-- [v7_forest_lane_invariant_source::hot_decode_projected]: loop 0:
-    Source: 'src/lib.rs', lines 252:4-255:5
+    Source: 'src/lib.rs', lines 402:4-405:5
     Visibility: public -/
 @[rust_loop]
 def hot_decode_projected_loop
@@ -554,7 +745,7 @@ def hot_decode_projected_loop
     (master, master_index)
 
 /-- [v7_forest_lane_invariant_source::hot_decode_projected]:
-    Source: 'src/lib.rs', lines 223:0-297:1
+    Source: 'src/lib.rs', lines 373:0-447:1
     Visibility: public -/
 def hot_decode_projected
   (bytes : Slice Std.U8) (expected_master : Array Std.U8 32#usize)
@@ -836,7 +1027,7 @@ def hot_decode_projected
   else ok (core.result.Result.Err LaneSourceError.MissingProgramOwnedInvariant)
 
 /-- [v7_forest_lane_invariant_source::fast_encode_projected]: loop body 0:
-    Source: 'src/lib.rs', lines 337:4-341:5
+    Source: 'src/lib.rs', lines 487:4-491:5
     Visibility: public -/
 @[rust_loop_body]
 def fast_encode_projected_loop0.body
@@ -858,7 +1049,7 @@ def fast_encode_projected_loop0.body
   else ok (done output)
 
 /-- [v7_forest_lane_invariant_source::fast_encode_projected]: loop 0:
-    Source: 'src/lib.rs', lines 337:4-341:5
+    Source: 'src/lib.rs', lines 487:4-491:5
     Visibility: public -/
 @[rust_loop]
 def fast_encode_projected_loop0
@@ -872,7 +1063,7 @@ def fast_encode_projected_loop0
     (output, binding_index)
 
 /-- [v7_forest_lane_invariant_source::fast_encode_projected]: loop body 1:
-    Source: 'src/lib.rs', lines 353:4-356:5
+    Source: 'src/lib.rs', lines 503:4-506:5
     Visibility: public -/
 @[rust_loop_body]
 def fast_encode_projected_loop1.body
@@ -892,7 +1083,7 @@ def fast_encode_projected_loop1.body
   else ok (done output)
 
 /-- [v7_forest_lane_invariant_source::fast_encode_projected]: loop 1:
-    Source: 'src/lib.rs', lines 353:4-356:5
+    Source: 'src/lib.rs', lines 503:4-506:5
     Visibility: public -/
 @[rust_loop]
 def fast_encode_projected_loop1
@@ -906,7 +1097,7 @@ def fast_encode_projected_loop1
     (output, byte_index)
 
 /-- [v7_forest_lane_invariant_source::fast_encode_projected]: loop body 2:
-    Source: 'src/lib.rs', lines 359:4-362:5
+    Source: 'src/lib.rs', lines 509:4-512:5
     Visibility: public -/
 @[rust_loop_body]
 def fast_encode_projected_loop2.body
@@ -927,7 +1118,7 @@ def fast_encode_projected_loop2.body
   else ok (done output)
 
 /-- [v7_forest_lane_invariant_source::fast_encode_projected]: loop 2:
-    Source: 'src/lib.rs', lines 359:4-362:5
+    Source: 'src/lib.rs', lines 509:4-512:5
     Visibility: public -/
 @[rust_loop]
 def fast_encode_projected_loop2
@@ -941,7 +1132,7 @@ def fast_encode_projected_loop2
     (output, level)
 
 /-- [v7_forest_lane_invariant_source::fast_encode_projected]: loop body 3:
-    Source: 'src/lib.rs', lines 337:4-341:5
+    Source: 'src/lib.rs', lines 487:4-491:5
     Visibility: public -/
 @[rust_loop_body]
 def fast_encode_projected_loop3.body
@@ -963,7 +1154,7 @@ def fast_encode_projected_loop3.body
   else ok (done output)
 
 /-- [v7_forest_lane_invariant_source::fast_encode_projected]: loop 3:
-    Source: 'src/lib.rs', lines 337:4-341:5
+    Source: 'src/lib.rs', lines 487:4-491:5
     Visibility: public -/
 @[rust_loop]
 def fast_encode_projected_loop3
@@ -977,7 +1168,7 @@ def fast_encode_projected_loop3
     (output, binding_index)
 
 /-- [v7_forest_lane_invariant_source::fast_encode_projected]: loop body 4:
-    Source: 'src/lib.rs', lines 353:4-356:5
+    Source: 'src/lib.rs', lines 503:4-506:5
     Visibility: public -/
 @[rust_loop_body]
 def fast_encode_projected_loop4.body
@@ -997,7 +1188,7 @@ def fast_encode_projected_loop4.body
   else ok (done output)
 
 /-- [v7_forest_lane_invariant_source::fast_encode_projected]: loop 4:
-    Source: 'src/lib.rs', lines 353:4-356:5
+    Source: 'src/lib.rs', lines 503:4-506:5
     Visibility: public -/
 @[rust_loop]
 def fast_encode_projected_loop4
@@ -1011,7 +1202,7 @@ def fast_encode_projected_loop4
     (output, byte_index)
 
 /-- [v7_forest_lane_invariant_source::fast_encode_projected]: loop body 5:
-    Source: 'src/lib.rs', lines 359:4-362:5
+    Source: 'src/lib.rs', lines 509:4-512:5
     Visibility: public -/
 @[rust_loop_body]
 def fast_encode_projected_loop5.body
@@ -1032,7 +1223,7 @@ def fast_encode_projected_loop5.body
   else ok (done output)
 
 /-- [v7_forest_lane_invariant_source::fast_encode_projected]: loop 5:
-    Source: 'src/lib.rs', lines 359:4-362:5
+    Source: 'src/lib.rs', lines 509:4-512:5
     Visibility: public -/
 @[rust_loop]
 def fast_encode_projected_loop5
@@ -1046,7 +1237,7 @@ def fast_encode_projected_loop5
     (output, level)
 
 /-- [v7_forest_lane_invariant_source::fast_encode_projected]:
-    Source: 'src/lib.rs', lines 302:0-364:1
+    Source: 'src/lib.rs', lines 452:0-514:1
     Visibility: public -/
 def fast_encode_projected
   (lane : LaneState) (empty_roots : Array Digest 21#usize)
@@ -1189,7 +1380,7 @@ def fast_encode_projected
   else ok (core.result.Result.Err LaneSourceError.MissingProgramOwnedInvariant)
 
 /-- [v7_forest_lane_invariant_source::strict_encode_projected]:
-    Source: 'src/lib.rs', lines 369:0-378:1
+    Source: 'src/lib.rs', lines 519:0-528:1
     Visibility: public -/
 def strict_encode_projected
   (lane : LaneState) (empty_roots : Array Digest 21#usize)
@@ -1201,7 +1392,7 @@ def strict_encode_projected
   else ok (core.result.Result.Err LaneSourceError.MissingProgramOwnedInvariant)
 
 /-- [v7_forest_lane_invariant_source::direct_asq8_lane_read_projected]:
-    Source: 'src/lib.rs', lines 385:0-416:1
+    Source: 'src/lib.rs', lines 535:0-566:1
     Visibility: public -/
 def direct_asq8_lane_read_projected
   (authentication : DirectAsq8ReleaseAuthentication) (bytes : Slice Std.U8)
@@ -1282,7 +1473,7 @@ def direct_asq8_lane_read_projected
       LaneSourceError.MissingExactVerifierReleaseAuthentication)
 
 /-- [v7_forest_lane_invariant_source::genesis_frontier]:
-    Source: 'src/lib.rs', lines 436:0-459:1 -/
+    Source: 'src/lib.rs', lines 586:0-609:1 -/
 def genesis_frontier
   (empty_roots : Array Digest 21#usize) : Result (Array Digest 20#usize) := do
   let d ← Array.index_usize empty_roots 0#usize
@@ -1312,7 +1503,7 @@ def genesis_frontier
       ])
 
 /-- [v7_forest_lane_invariant_source::apply_production_lane_write]:
-    Source: 'src/lib.rs', lines 463:0-512:1
+    Source: 'src/lib.rs', lines 613:0-662:1
     Visibility: public -/
 def apply_production_lane_write
   (write : ProductionLaneWrite) (empty_roots : Array Digest 21#usize) :
