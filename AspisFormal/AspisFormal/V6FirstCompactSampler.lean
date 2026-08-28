@@ -64,6 +64,35 @@ theorem firstCompactResult_unique
       exact hrightCompact
     exact False.elim (hleftEarlier rightPosition hgt hcompactAtRight)
 
+/-- If candidate zero is compact, it is necessarily the selected result of
+the existing first-compact rule.  This is the deterministic fact needed by an
+honest prover that searches for a transcript whose first candidate is already
+compact: the verifier rule and accepted language are unchanged, and no later
+candidate is skipped.  This theorem deliberately makes no probabilistic or
+zero-knowledge claim about how such a transcript is found. -/
+theorem compact_candidate_zero_is_first
+    [NeZero attempts]
+    (compact : Schedule → Prop)
+    (candidates : Fin attempts → Schedule)
+    (hzero : compact (candidates 0)) :
+    FirstCompactResult compact candidates (candidates 0) := by
+  refine ⟨0, rfl, hzero, ?_⟩
+  intro earlier hearlier
+  change earlier.val < 0 at hearlier
+  omega
+
+/-- A first-compact result cannot differ from compact candidate zero. -/
+theorem firstCompactResult_eq_candidate_zero_of_compact
+    [NeZero attempts]
+    (compact : Schedule → Prop)
+    (candidates : Fin attempts → Schedule)
+    (selected : Schedule)
+    (hzero : compact (candidates 0))
+    (hselected : FirstCompactResult compact candidates selected) :
+    selected = candidates 0 := by
+  exact firstCompactResult_unique compact candidates hselected
+    (compact_candidate_zero_is_first compact candidates hzero)
+
 /-- Applying the same compactness-preserving permutation to every candidate
 also applies it to the unique selected result. This is the symmetry used by
 the uniform-conditioned-on-compact argument. -/
@@ -95,6 +124,8 @@ theorem no_firstCompactResult_of_all_noncompact
   exact hcompact
 
 #print axioms firstCompactResult_unique
+#print axioms compact_candidate_zero_is_first
+#print axioms firstCompactResult_eq_candidate_zero_of_compact
 #print axioms firstCompactResult_equivariant
 #print axioms no_firstCompactResult_of_all_noncompact
 
