@@ -199,6 +199,20 @@ was isolated into the `InitialRoot`, `InitialBranch`, `InitialSelection`,
 `InitialCurveBranch`, `InitialCurve`, and `Initial` modules.  The successful
 cold and final replays above cover that refactored proof.
 
+Before promotion to `main`, current `origin/main` at
+`0ad65eb6708d83e78282c304d8ec3dd9350c197d` was merged without conflict as
+`835c71adc0d7fda4db320b4f67638077a58e9e1b`.  The checksum-synchronized merged
+source tree was then replayed again in
+`aspis-v7-correlated-main-merge-replay-20260828-r1.scope`, under the same
+34/40-GiB no-swap limits.  That post-merge replay passed in 8:29.32, with
+`/usr/bin/time` peak RSS 38,999,324 KiB, sampled cgroup peak
+36,040,204,288 bytes, zero swaps, and exit status 0.  Its log is
+`/home/dombarker/project-offloads/aspis-v7-exact-correlated-agreement-20260828/replay-main-merge-20260828-r1/lean432.log`,
+SHA-256
+`8093ae6686422a44983c5520c13a6f237f4ee1d6c748e690abebb2e18fa6d60c`.
+The log again contains all four terminal axiom reports with only `propext`,
+`Classical.choice`, and `Quot.sound`.
+
 ## Boundaries that remain
 
 This change proves mathematical curve decodability/correlated agreement.  It
