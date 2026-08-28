@@ -1,9 +1,15 @@
 # V7 selected evaluator CU-lock source bridge
 
-This bundle pins the selected evaluator sparsity implementation at
+This bundle pins the selected evaluator sparsity implementation introduced at
 `cee5947cbd5929a2be96d8f7ec29728afec2d3dd` and connects its literal source
 schedules to
 `AspisFormal/Pool/V7SelectedEvaluatorSparsitySourceBridge.lean`.
+
+The authoritative one-transaction activation branch wraps those identical
+source leaves in `v7-pair-forest-one-tx-candidate`. `verify-pins.sh` therefore
+pins every evaluator source/table hash and the exact aggregate feature list,
+without requiring unrelated Pool and formal-evidence paths to remain identical
+to the historical research commit.
 
 Nothing in `crates/`, `programs/`, the relation, the wire grammar, or the
 transcript was changed.  The bundle is evidence and replay machinery only.
