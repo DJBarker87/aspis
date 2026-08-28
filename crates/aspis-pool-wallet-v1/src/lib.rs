@@ -25,6 +25,8 @@ pub mod lane_forest_rpc_v2;
 #[cfg(feature = "eight-lane-plumbing-v2")]
 pub mod lane_forest_transaction_v1;
 #[cfg(feature = "eight-lane-plumbing-v2")]
+pub mod lane_forest_tx_v1_simulation_v2;
+#[cfg(feature = "eight-lane-plumbing-v2")]
 pub mod lane_forest_v2;
 pub mod note_store_crypto;
 pub mod operator_execution;

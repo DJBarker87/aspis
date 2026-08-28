@@ -7,10 +7,15 @@ use aspis_pool_wallet_v1::lane_forest_transaction_v1::probe_public_devnet_tx_v1_
 fn main() {
     match probe_public_devnet_tx_v1_capability_v2() {
         Ok(capability) => {
-            println!("{capability:#?}");
+            let execution_activated = capability.execution_activated_v2();
             println!(
-                "execution_activated={}",
-                capability.execution_activated_v2()
+                "{}",
+                serde_json::to_string_pretty(&serde_json::json!({
+                    "schema": "aspis.v7.public-devnet-txv1-capability.v1",
+                    "capability": capability,
+                    "executionActivated": execution_activated,
+                }))
+                .expect("fixed capability JSON")
             );
         }
         Err(error) => {

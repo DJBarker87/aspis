@@ -169,7 +169,7 @@ pub enum TxV1CapabilityProbeErrorV2 {
     WrongFeatureData,
 }
 
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq, Eq, serde::Serialize)]
 pub struct PublicDevnetTxV1CapabilityV2 {
     pub genesis_hash: String,
     pub solana_core: String,
@@ -531,7 +531,7 @@ pub fn build_pair_forest_terminal_instruction_v1_4k_v2(
     })
 }
 
-fn to_v1_instruction_v2(
+pub(crate) fn to_v1_instruction_v2(
     instruction: &Instruction,
 ) -> Result<V1Instruction, PairForestTransactionV1ErrorV2> {
     if instruction.data.len() > usize::from(u16::MAX) {
