@@ -44,7 +44,29 @@ pub enum LaneSourceError {
     InactiveFrontier,
     WrongGenesis,
     MissingProgramOwnedInvariant,
+    MissingExactVerifierReleaseAuthentication,
     InvalidWriterTransition,
+}
+
+/// Pure source projection of the caller-side facts checked by the direct
+/// six-account ASQ8 verifier route before it uses the invariant lane decoder.
+/// Each field names one exact production check group rather than treating
+/// owner or `request.pool_program` as an authorization capability.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct DirectAsq8ReleaseAuthentication {
+    pub exact_six_accounts: bool,
+    pub all_accounts_distinct: bool,
+    pub proof_exact_verifier_owned_readonly: bool,
+    pub pool_accounts_exact_release_owned_readonly: bool,
+    pub pool_program_matches_immutable_release: bool,
+    pub master_codec_identity_pda_and_all_lanes: bool,
+    pub checkpoint_codec_pda_and_deployment: bool,
+    pub policy_matches_immutable_registry_root: bool,
+    pub registry_accounts_exact_program_owned_readonly: bool,
+    pub registry_pda_codec_policy_immutable_unpaused: bool,
+    pub entry_pda_codec_and_active_slot: bool,
+    pub entry_exact_pool_verifier_profile_release_version: bool,
+    pub selected_lane_pda_master_and_lane: bool,
 }
 
 fn read_u32_le(bytes: &[u8], start: usize) -> u32 {
@@ -353,6 +375,44 @@ pub fn strict_encode_projected(
         return Err(LaneSourceError::MissingProgramOwnedInvariant);
     }
     fast_encode_projected(lane, empty_roots, true)
+}
+
+/// Exact pure control-flow projection of the default-off verifier-side ASQ8
+/// invariant reader. The production caller establishes every authentication
+/// field from six read-only accounts and immutable audit-release constants.
+/// The final boolean is not derived from ownership: it is the explicit formal
+/// capability that the fresh-PDA writer invariant supplies.
+pub fn direct_asq8_lane_read_projected(
+    authentication: DirectAsq8ReleaseAuthentication,
+    bytes: &[u8],
+    expected_master: [u8; 32],
+    expected_lane: u8,
+    empty_roots: [Digest; TREE_DEPTH + 1],
+    program_owned_lane_invariant: bool,
+) -> Result<LaneState, LaneSourceError> {
+    if !authentication.exact_six_accounts
+        || !authentication.all_accounts_distinct
+        || !authentication.proof_exact_verifier_owned_readonly
+        || !authentication.pool_accounts_exact_release_owned_readonly
+        || !authentication.pool_program_matches_immutable_release
+        || !authentication.master_codec_identity_pda_and_all_lanes
+        || !authentication.checkpoint_codec_pda_and_deployment
+        || !authentication.policy_matches_immutable_registry_root
+        || !authentication.registry_accounts_exact_program_owned_readonly
+        || !authentication.registry_pda_codec_policy_immutable_unpaused
+        || !authentication.entry_pda_codec_and_active_slot
+        || !authentication.entry_exact_pool_verifier_profile_release_version
+        || !authentication.selected_lane_pda_master_and_lane
+    {
+        return Err(LaneSourceError::MissingExactVerifierReleaseAuthentication);
+    }
+    hot_decode_projected(
+        bytes,
+        expected_master,
+        expected_lane,
+        empty_roots,
+        program_owned_lane_invariant,
+    )
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]

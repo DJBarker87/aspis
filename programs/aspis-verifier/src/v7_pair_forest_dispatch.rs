@@ -238,8 +238,8 @@ fn decode_lane_box(bytes: &[u8]) -> Result<Box<PoolV1PairForestLaneStateV1>, Pro
 /// active persisted root/frontier relation as an inductive invariant of the
 /// exact Pool release. The caller still authenticates owner, read-only mode,
 /// PDA, master and lane identity. This gate is valid only for lane PDAs
-/// initialized by that release, or for a one-time strictly validated
-/// migration; the generic decoder remains the default for every other use.
+/// freshly initialized by that release. This source has no migration route;
+/// the generic decoder remains the default for every legacy or other use.
 #[cfg(feature = "v7-pair-forest-lane-invariant-audit")]
 #[inline(never)]
 fn decode_lane_from_pool_release_invariant_box_v1(

@@ -31,7 +31,7 @@ structure LaneState where
   frontier : Array Digest 20#usize
 
 /-- [v7_forest_lane_invariant_source::LaneSourceError]
-    Source: 'src/lib.rs', lines 35:0-48:1
+    Source: 'src/lib.rs', lines 35:0-49:1
     Visibility: public -/
 @[discriminant isize]
 inductive LaneSourceError where
@@ -46,10 +46,29 @@ inductive LaneSourceError where
 | InactiveFrontier : LaneSourceError
 | WrongGenesis : LaneSourceError
 | MissingProgramOwnedInvariant : LaneSourceError
+| MissingExactVerifierReleaseAuthentication : LaneSourceError
 | InvalidWriterTransition : LaneSourceError
 
+/-- [v7_forest_lane_invariant_source::DirectAsq8ReleaseAuthentication]
+    Source: 'src/lib.rs', lines 56:0-70:1
+    Visibility: public -/
+structure DirectAsq8ReleaseAuthentication where
+  exact_six_accounts : Bool
+  all_accounts_distinct : Bool
+  proof_exact_verifier_owned_readonly : Bool
+  pool_accounts_exact_release_owned_readonly : Bool
+  pool_program_matches_immutable_release : Bool
+  master_codec_identity_pda_and_all_lanes : Bool
+  checkpoint_codec_pda_and_deployment : Bool
+  policy_matches_immutable_registry_root : Bool
+  registry_accounts_exact_program_owned_readonly : Bool
+  registry_pda_codec_policy_immutable_unpaused : Bool
+  entry_pda_codec_and_active_slot : Bool
+  entry_exact_pool_verifier_profile_release_version : Bool
+  selected_lane_pda_master_and_lane : Bool
+
 /-- [v7_forest_lane_invariant_source::ProductionLaneWrite]
-    Source: 'src/lib.rs', lines 359:0-374:1
+    Source: 'src/lib.rs', lines 419:0-434:1
     Visibility: public -/
 @[discriminant isize]
 inductive ProductionLaneWrite where
