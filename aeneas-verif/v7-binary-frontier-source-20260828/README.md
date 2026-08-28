@@ -147,6 +147,17 @@ The complete narrow bundle replay used unit
 at 6,849,076 KiB RSS and reported zero swaps. Every printed theorem remained a
 subset of `propext`, `Classical.choice` and `Quot.sound`.
 
+The subsequent outer-loop closure used focused unit
+`aspis-v7-first-success-loop-04`; it exited 0 in 3.731 seconds, peaked at
+6,825,212 KiB RSS and reported zero swaps. Its strongest theorem,
+`translated_wrapper_returns_first_semantic_candidate`, follows the literal
+`u8` range iterator, rejects every preceding semantic non-candidate, selects
+the first cap-203 candidate, and returns its exact five-field schedule through
+the complete translated wrapper.
+The final complete narrow replay used unit
+`aspis-v7-caller-first-success-full-replay-02`; it exited 0 in 39.291 seconds,
+peaked at 6,852,016 KiB RSS and reported zero swaps.
+
 ## Digests
 
 ```text
@@ -168,19 +179,20 @@ f710b3691d4c4b6439386d8d456f90b37aec406ecbad3b0be8d76cf8f12e3f85  caller/generat
 b71fa9e8fc7bef1544ec981092de9370c4b45d4ed059f30989d7bef988932468  caller/proof/V7FirstCompactFrontierLoopBridge.lean
 809eb566103b0a2355adaf530f78383dae45ac51d05ddf8fe4779b42b9e3a9bf  caller/proof/V7FirstCompactFrontierSortSourceBridge.lean
 c72e3c80fcfd46ce032d834d00b209316608f2cb1b39840dbabdec8180e3aaa6  caller/proof/V7FirstCompactFrontierK13Integration.lean
-fc3afed19a8c03eb49d03608eef78b8337132e1f1f8bbcf4e6b11ca879625af9  caller/proof/V7FirstCompactCallerBridge.lean
+280439487cbe37a6f45a3be8ffe108e2ddce728360801635b4b70a258fb0703c  caller/proof/V7FirstCompactCallerBridge.lean
 6abb0376100611c5553258062480777187785579f402c9c1d3ce72379518258f  ../../crates/aspis-core/src/v7_onefold.rs
 ```
 
 ## Remaining source closure
 
 The frontier mathematics, literal helper, caller-local helper, cap-203 semantic
-equivalence, and exact per-candidate returned schedule are closed. The Aeneas
-early-return loss is removed by the source refactor and fresh extraction.
+equivalence, exact per-candidate schedule, translated first-success range loop,
+and complete wrapper return are closed. The Aeneas early-return loss is removed
+by the source refactor and fresh extraction. There is no remaining caller-local
+frontier or first-selection control-flow premise.
 
-The remaining caller-local step is a theorem over the translated outer range
-loop: every earlier counter returns `none`, the selected counter returns the
-proved exact schedule, and therefore the wrapper returns that first schedule.
-This is a finite first-success recurrence/source-control-flow obligation. It is
-not an additional frontier formula, cryptographic assumption or probability
-premise.
+The next system-level integration obligation is to construct the theorem's
+exact `CandidatePrefixRuns` witnesses for the selected and preceding counters
+from the accepted production transcript/tape projection used by K1.3. That is
+the current-source decoder/operational-tape bridge; it is not an unproved
+property of the translated wrapper itself.

@@ -184,9 +184,201 @@ theorem translated_candidate_skips_on_semantic_noncompact
     simpa [v7_onefold.V7_COMPACT_FRONTIER_CAP_PER_TREE] using
       fun compact => noncompact (compactIff.mp compact))]
 
+/-! ## Exact first-success outer loop -/
+
+/-- Exact generated continuation after the range iterator yields one counter. -/
+private def firstSuccessAfterNext
+    (inputTranscript : transcript.Transcript) (counter : Std.U8)
+    (nextIter : core.ops.range.Range Std.U8) :
+    Result (ControlFlow (core.ops.range.Range Std.U8) ((Option
+      v7_onefold.V7CompactQuerySchedule) × (Option (core.result.Result
+      v7_onefold.V7CompactQuerySchedule v6_onefold.V6WireError)))) := do
+  let r ← v7_onefold.derive_v7_compact_candidate inputTranscript counter
+  let cf ← core.result.Result.Insts.CoreOpsTry.branch r
+  match cf with
+  | core.ops.control_flow.ControlFlow.Continue val =>
+    match val with
+    | none => .ok (.cont nextIter)
+    | some _ => .ok (.done (val, none))
+  | core.ops.control_flow.ControlFlow.Break residual =>
+    let r1 ←
+      core.result.Result.Insts.CoreOpsTryTraitFromResidualResultInfallible.from_residual
+        v7_onefold.V7CompactQuerySchedule
+        (core.convert.FromSame v6_onefold.V6WireError) residual
+    .ok (.done (none, some r1))
+
+private theorem first_success_body_skips
+    (inputTranscript : transcript.Transcript)
+    (iter nextIter : core.ops.range.Range Std.U8) (counter : Std.U8)
+    (nextRun :
+      core.iter.range.IteratorRange.next core.iter.range.StepU8 iter =
+        .ok (some counter, nextIter))
+    (candidateRun :
+      v7_onefold.derive_v7_compact_candidate inputTranscript counter =
+        .ok (.Ok none)) :
+    v7_onefold.derive_first_v7_compact_queries_loop.body
+        inputTranscript iter = .ok (.cont nextIter) := by
+  unfold v7_onefold.derive_first_v7_compact_queries_loop.body
+  rw [nextRun]
+  simp only [bind_tc_ok]
+  change firstSuccessAfterNext inputTranscript counter nextIter = _
+  unfold firstSuccessAfterNext
+  rw [candidateRun]
+  rfl
+
+private theorem first_success_body_selects
+    (inputTranscript : transcript.Transcript)
+    (iter nextIter : core.ops.range.Range Std.U8) (counter : Std.U8)
+    (schedule : v7_onefold.V7CompactQuerySchedule)
+    (nextRun :
+      core.iter.range.IteratorRange.next core.iter.range.StepU8 iter =
+        .ok (some counter, nextIter))
+    (candidateRun :
+      v7_onefold.derive_v7_compact_candidate inputTranscript counter =
+        .ok (.Ok (some schedule))) :
+    v7_onefold.derive_first_v7_compact_queries_loop.body
+        inputTranscript iter = .ok (.done (some schedule, none)) := by
+  unfold v7_onefold.derive_first_v7_compact_queries_loop.body
+  rw [nextRun]
+  simp only [bind_tc_ok]
+  change firstSuccessAfterNext inputTranscript counter nextIter = _
+  unfold firstSuccessAfterNext
+  rw [candidateRun]
+  rfl
+
+/-- The translated range loop returns the selected schedule when every earlier
+candidate returns `none` and the selected candidate returns that schedule.  The
+proof follows the literal `u8` range iterator and its first-success control
+flow; it does not assume the loop result. -/
+theorem translated_first_success_loop_exact
+    (inputTranscript : transcript.Transcript)
+    (selected : Std.U8) (schedule : v7_onefold.V7CompactQuerySchedule)
+    (iter : core.ops.range.Range Std.U8)
+    (endExact : iter.end.val = 64)
+    (startLe : iter.start.val ≤ selected.val)
+    (selectedLt : selected.val < 64)
+    (earlierRun : ∀ counter : Std.U8, counter.val < selected.val →
+      v7_onefold.derive_v7_compact_candidate inputTranscript counter =
+        .ok (.Ok none))
+    (selectedRun :
+      v7_onefold.derive_v7_compact_candidate inputTranscript selected =
+        .ok (.Ok (some schedule))) :
+    v7_onefold.derive_first_v7_compact_queries_loop iter inputTranscript =
+      .ok (some schedule, none) := by
+  have active : iter.start.val < iter.end.val := by omega
+  obtain ⟨⟨option, nextIter⟩, nextRun, optionExact, nextStart, nextEnd⟩ :=
+    WP.spec_imp_exists
+      (core.iter.range.IteratorRange.next_UScalar_some_spec
+        (ty := .U8)
+        (cloneInst := core.clone.CloneU8)
+        (partialOrdInst := core.cmp.PartialOrdU8)
+        (by intro value; rfl)
+        (by intro left right; rfl)
+        iter active)
+  rw [optionExact] at nextRun
+  by_cases earlier : iter.start.val < selected.val
+  · have bodyRun := first_success_body_skips inputTranscript iter nextIter
+      iter.start nextRun (earlierRun iter.start earlier)
+    have nextEndExact : nextIter.end.val = 64 := by
+      rw [nextEnd, endExact]
+    have nextStartLe : nextIter.start.val ≤ selected.val := by omega
+    have recursiveRun := translated_first_success_loop_exact inputTranscript
+      selected schedule
+      nextIter nextEndExact nextStartLe selectedLt earlierRun selectedRun
+    unfold v7_onefold.derive_first_v7_compact_queries_loop
+    rw [loop.eq_def, bodyRun]
+    exact recursiveRun
+  · have startValue : iter.start.val = selected.val := by omega
+    have startExact : iter.start = selected :=
+      UScalar.eq_of_val_eq startValue
+    have bodyRun := first_success_body_selects inputTranscript iter nextIter
+      selected schedule (by simpa only [startExact] using nextRun) selectedRun
+    unfold v7_onefold.derive_first_v7_compact_queries_loop
+    rw [loop.eq_def, bodyRun]
+termination_by selected.val - iter.start.val
+decreasing_by omega
+
+/-- The complete translated production wrapper returns the exact first
+successful candidate selected from counters `0..64`. -/
+theorem translated_first_v7_compact_queries_exact
+    (inputTranscript : transcript.Transcript)
+    (selected : Std.U8) (schedule : v7_onefold.V7CompactQuerySchedule)
+    (selectedLt : selected.val < 64)
+    (earlierRun : ∀ counter : Std.U8, counter.val < selected.val →
+      v7_onefold.derive_v7_compact_candidate inputTranscript counter =
+        .ok (.Ok none))
+    (selectedRun :
+      v7_onefold.derive_v7_compact_candidate inputTranscript selected =
+        .ok (.Ok (some schedule))) :
+    v7_onefold.derive_first_v7_compact_queries inputTranscript =
+      .ok (.Ok schedule) := by
+  have initialStartLe :
+      ({ start := 0#u8, «end» := 64#u8 } :
+        core.ops.range.Range Std.U8).start.val ≤ selected.val :=
+    Nat.zero_le selected.val
+  have loopRun := translated_first_success_loop_exact inputTranscript selected
+    schedule { start := 0#u8, «end» := 64#u8 } rfl initialStartLe
+    selectedLt earlierRun selectedRun
+  have castExact :
+      UScalar.cast .U8 v7_onefold.V7_COMPACT_QUERY_CANDIDATES = 64#u8 := by
+    unfold v7_onefold.V7_COMPACT_QUERY_CANDIDATES
+    apply UScalar.eq_of_val_eq
+    norm_num [UScalar.cast_val_eq]
+  unfold v7_onefold.derive_first_v7_compact_queries
+  rw [castExact]
+  simp only [lift, bind_tc_ok]
+  rw [loopRun]
+  rfl
+
+/-- Semantic first-cap-203 evidence for every examined candidate composes with
+the literal translated candidate helper and outer loop to return the selected
+five-field schedule from the production wrapper. -/
+theorem translated_wrapper_returns_first_semantic_candidate
+    (inputTranscript selectedCloned selectedAbsorbed
+      selectedSampledTranscript : transcript.Transcript)
+    (selectedCounterData : Slice Std.U8)
+    (selected : Std.U8) (selectedSampled : alloc.vec.Vec Std.U32)
+    (selectedSchedule : QuerySchedule)
+    (selectedRuns : CandidatePrefixRuns inputTranscript selectedCloned
+      selectedAbsorbed selectedSampledTranscript selectedCounterData selected
+      selectedSampled selectedSchedule)
+    (selectedLt : selected.val < 64)
+    (selectedAdmitted :
+      SemanticCap203Admitted selectedSchedule.positions)
+    (earlier : ∀ counter : Std.U8, counter.val < selected.val →
+      ∃ cloned absorbed sampledTranscript counterData sampled schedule,
+        CandidatePrefixRuns inputTranscript cloned absorbed sampledTranscript
+          counterData counter sampled schedule ∧
+        ¬ SemanticCap203Admitted schedule.positions) :
+    ∃ frontier,
+      v7_onefold.derive_first_v7_compact_queries inputTranscript =
+        .ok (.Ok (returnedSchedule selectedSchedule selected frontier
+          selectedSampledTranscript)) := by
+  obtain ⟨frontier, selectedRun⟩ :=
+    translated_candidate_returns_on_semantic_compact inputTranscript
+      selectedCloned selectedAbsorbed selectedSampledTranscript
+      selectedCounterData selected selectedSampled selectedSchedule
+      selectedRuns selectedAdmitted
+  have earlierRun : ∀ counter : Std.U8, counter.val < selected.val →
+      v7_onefold.derive_v7_compact_candidate inputTranscript counter =
+        .ok (.Ok none) := by
+    intro counter counterLt
+    obtain ⟨cloned, absorbed, sampledTranscript, counterData, sampled,
+      schedule, runs, noncompact⟩ := earlier counter counterLt
+    exact translated_candidate_skips_on_semantic_noncompact inputTranscript
+      cloned absorbed sampledTranscript counterData counter sampled schedule
+      runs noncompact
+  exact ⟨frontier,
+    translated_first_v7_compact_queries_exact inputTranscript selected
+      (returnedSchedule selectedSchedule selected frontier
+        selectedSampledTranscript) selectedLt earlierRun selectedRun⟩
+
 #print axioms source_candidate_reduces
 #print axioms translated_candidate_returns_on_semantic_compact
 #print axioms translated_candidate_skips_on_semantic_noncompact
+#print axioms translated_first_success_loop_exact
+#print axioms translated_first_v7_compact_queries_exact
+#print axioms translated_wrapper_returns_first_semantic_candidate
 
 end
 
