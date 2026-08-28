@@ -103,6 +103,12 @@ v7-pair-forest-binary-copy-weights-audit = [
 # persisted active root/frontier Poseidon reconstruction, which is an
 # inductive invariant of Pool constructors and writers.
 v7-pair-forest-lane-invariant-audit = []
+# Audit-only cache for repeated generated Copy endpoint rows. A cached row
+# selector is consumed only after an exact row-tag match; misses use the
+# unchanged high[row>>4] * low[row&15] computation.
+v7-pair-forest-endpoint-selector-cache-audit = [
+    "aspis-statement/pool-v1-pair-forest-endpoint-selector-cache-audit",
+]
 
 [dependencies]
 aspis-core = { path = "../../crates/aspis-core" }
