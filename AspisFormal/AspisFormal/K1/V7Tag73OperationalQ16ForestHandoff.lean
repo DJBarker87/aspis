@@ -1,4 +1,5 @@
 import AspisFormal.K1.V7Tag73Q16SuccessfulForestBridge
+import AspisFormal.K1.V7Tag73Q16DigestCodecBridge
 import AspisFormal.K1.V7Tag73TranscriptSchedule
 
 /-!
@@ -21,10 +22,12 @@ set_option maxRecDepth 100000
 namespace AspisK1.V7Tag73OperationalQ16ForestHandoff
 
 open AspisK1.V7Tag73Q16DigestDrawReindex
+open AspisK1.V7Tag73Q16DigestCodecBridge
 open AspisK1.V7Tag73Q16FirstCompactUniformity
 open AspisK1.V7Tag73Q16RawENNRealProbability
 open AspisK1.V7Tag73Q16SemanticFrontierBridge
 open AspisK1.V7Tag73Q16SuccessfulForestBridge
+open AspisK1.V7Tag73SamplerDecoder
 open AspisK1.V7Tag73TranscriptSchedule
 
 noncomputable section
@@ -52,6 +55,48 @@ structure OperationalQ16ForestRealization
     search.outcome counter = .schedule schedule →
     semanticFrontierNodes (semanticScheduleOfOperational schedule) =
       frontierNodes schedule
+
+/-- Concrete source-facing data from the incremental q16 execution.  The
+production decoder records only the exact prefix it consumed; the causal
+router supplies the remaining digest blocks of that candidate.  No output or
+probability conclusion is stored in this certificate. -/
+structure OperationalQ16DigestPrefixFacts
+    (frontierNodes : QuerySchedule → Nat)
+    (search : FirstCap203Search frontierNodes)
+    (forest : Q16CandidateDigestForest) where
+  candidateBlocks : Fin 64 → List Digest256
+  candidatePrefix : ∀ counter,
+    counter.val ≤ search.selectedCounter.val →
+    ∃ suffix,
+      candidateBlocks counter ++ suffix = List.ofFn (forest counter)
+  outcomeDecoded : ∀ counter,
+    counter.val ≤ search.selectedCounter.val →
+    decodeCandidateOutcome counter (candidateBlocks counter) =
+      some (search.outcome counter)
+  frontierExact : ∀ counter schedule,
+    counter.val ≤ search.selectedCounter.val →
+    search.outcome counter = .schedule schedule →
+    semanticFrontierNodes (semanticScheduleOfOperational schedule) =
+      frontierNodes schedule
+
+/-- The exact digest-prefix codec theorem discharges the semantic output
+field of `OperationalQ16ForestRealization`.  Thus the remaining production
+bridge needs only expose the consumed blocks, their routed completion, the
+literal decoder result, and the already-authenticated frontier recurrence. -/
+theorem operationalQ16ForestRealizationOfDigestPrefixes
+    {frontierNodes : QuerySchedule → Nat}
+    {search : FirstCap203Search frontierNodes}
+    {forest : Q16CandidateDigestForest}
+    (facts : OperationalQ16DigestPrefixFacts frontierNodes search forest) :
+    OperationalQ16ForestRealization frontierNodes search forest where
+  decodedExact counter schedule beforeSelected decoded := by
+    obtain ⟨suffix, prefixExact⟩ :=
+      facts.candidatePrefix counter beforeSelected
+    apply decoded_extension_realizes_ideal_output counter
+      (facts.candidateBlocks counter) suffix (forest counter) schedule
+      prefixExact
+    rw [facts.outcomeDecoded counter beforeSelected, decoded]
+  frontierExact := facts.frontierExact
 
 /-- The operationally selected schedule is semantically admitted. -/
 theorem selected_semantic_schedule_admitted
@@ -163,6 +208,7 @@ theorem operational_all_in_bad_implies_successful_coordinate_bad
 end
 
 #print axioms selected_semantic_schedule_admitted
+#print axioms operationalQ16ForestRealizationOfDigestPrefixes
 #print axioms earlier_operational_candidate_rejects_every_admitted
 #print axioms operationalFirstAdmittedSample
 #print axioms operational_realization_implies_q16_digest_forest_succeeds
