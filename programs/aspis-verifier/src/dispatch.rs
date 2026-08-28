@@ -76,9 +76,9 @@ pub fn process_spend_production_instruction(
     accounts: &[AccountInfo],
     instruction_data: &[u8],
 ) -> ProgramResult {
-    // ASQ8 is a distinct, exact 320-byte compact request.  Its default-off
-    // handler authenticates and reconstructs the full forest statement but
-    // deliberately fails closed until the accepted forest terminal exists.
+    // ASQ8 is a distinct, exact 320-byte compact request. Its default-off
+    // handler authenticates the Pool accounts, reconstructs exact ASF8, and
+    // emits ASR8 only after the eight-lane Tag-73 verifier accepts.
     #[cfg(any(feature = "v7-pair-forest-asq8", test))]
     if instruction_data
         .starts_with(&aspis_statement::pool_v1::POOL_V1_PAIR_FOREST_TERMINAL_REQUEST_MAGIC)

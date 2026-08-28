@@ -144,7 +144,6 @@ fn write_forest_path_aux(
     level: usize,
     bit: M31,
     current: Digest,
-    sibling: Digest,
     left: Digest,
     right: Digest,
 ) -> Result<(), PoolV1PairTraceErrorV1> {
@@ -155,7 +154,6 @@ fn write_forest_path_aux(
         columns[1 + lane][base] = current[lane];
         columns[lane][base + 1] = left[lane];
         columns[8 + lane][base + 1] = right[lane];
-        columns[lane][base ^ 12] = sibling[lane];
     }
     Ok(())
 }
@@ -222,16 +220,7 @@ fn relocate_and_extend(
         let left = node_left(&old, target);
         let right = node_right(&old, target);
         let bit = directions[level];
-        let sibling = if bit == M31::ZERO { right } else { left };
-        write_forest_path_aux(
-            &mut legacy.stable.c1,
-            level,
-            bit,
-            current,
-            sibling,
-            left,
-            right,
-        )?;
+        write_forest_path_aux(&mut legacy.stable.c1, level, bit, current, left, right)?;
     }
     for column in 0..16 {
         legacy.stable.c1[column][1008..1024].copy_from_slice(&old[column][960..976]);
@@ -246,15 +235,7 @@ fn relocate_and_extend(
         } else {
             (sibling, current)
         };
-        write_forest_path_aux(
-            &mut legacy.stable.c1,
-            21 + level,
-            bit,
-            current,
-            sibling,
-            left,
-            right,
-        )?;
+        write_forest_path_aux(&mut legacy.stable.c1, 21 + level, bit, current, left, right)?;
         current = write_forest_node(&mut legacy.stable.c1, 54 + level, left, right)?;
     }
     if current != expected_global_anchor {

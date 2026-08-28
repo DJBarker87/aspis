@@ -32,6 +32,9 @@ small symbolic facts.
 1. Use the local workstation for source inspection, editing, and focused jobs
    expected to remain below 8 GiB.  Send generated-certificate aggregation,
    Aeneas replay, SBF rebuilds, and other RAM-intensive work to `nuc.local`.
+   A cold Lean dependency build is not a focused local job: monitor aggregate
+   child-process RSS and stop/move it to the NUC as soon as it approaches
+   8 GiB rather than waiting for the parent process to report completion.
 2. Every NUC job must run in its own systemd/cgroup scope with
    `MemorySwapMax=0`.  Set explicit `MemoryHigh` and `MemoryMax`; never run an
    uncapped Lean, Aeneas, Rust, or linker job.
@@ -47,6 +50,16 @@ small symbolic facts.
 6. Reuse a pinned NUC workspace and compiled cache between focused dependent
    targets.  Do not rebuild thousands of unchanged modules merely to test the
    next bridge.
+7. Execute dense finite-field elimination, rank probes, large proof generation,
+   and other arithmetic release gates with an optimized Rust binary
+   (`cargo test --release` or an explicitly optimized profile). A debug build
+   may be used for type-checking or a tiny preflight only; it must not become
+   the long-running NUC job.
+8. Before launching a heavy Rust gate, record whether time is expected in
+   compilation, proof generation, or one named aggregation/elimination step.
+   If an unoptimized process is discovered doing the heavy step, stop it and
+   replace it with the optimized, identically scoped command instead of waiting
+   for sunk time to justify more sunk time.
 
 ## Generated-certificate preflight
 

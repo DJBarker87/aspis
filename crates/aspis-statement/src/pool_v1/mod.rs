@@ -16,14 +16,14 @@ pub mod nullifier_marker;
 #[cfg(not(target_os = "solana"))]
 pub mod pair_constraint_residuals;
 pub mod pair_forest_accounts;
-pub mod pair_forest_copy_terminal;
-pub mod pair_forest_semantic_terminal;
 #[cfg(not(target_os = "solana"))]
 pub mod pair_forest_constraint_residuals;
+pub mod pair_forest_copy_terminal;
 #[cfg(not(target_os = "solana"))]
 pub mod pair_forest_hiding;
 #[cfg(not(target_os = "solana"))]
 pub mod pair_forest_semantic_oracle;
+pub mod pair_forest_semantic_terminal;
 pub mod pair_forest_terminal;
 #[cfg(not(target_os = "solana"))]
 pub mod pair_forest_trace;
@@ -47,6 +47,7 @@ pub mod payment_semantic_terminal;
 pub mod payment_trace;
 pub mod root_history;
 pub mod tag73_native_profile;
+pub mod tag73_pair_forest_profile;
 pub mod verifier_dispatch;
 pub mod verifier_registry;
 
@@ -154,6 +155,7 @@ pub use pair_forest_accounts::{
 pub use pair_forest_copy_terminal::{
     evaluate_pool_v1_pair_forest_copy_terminal_compiled_v1,
     pool_v1_pair_forest_copy_active_at_point_compiled_v1,
+    pool_v1_pair_forest_copy_active_row_masks_compiled_v1,
     pool_v1_pair_forest_copy_lane_boolean_extraction_v1, PoolV1PairForestCompiledCopyTerminalV1,
     PoolV1PairForestCompiledVariantV1,
     PINNED_POOL_V1_PAIR_FOREST_COPY_TERMINAL_ACTIVE_ROWS_FINGERPRINT_V1,
@@ -162,49 +164,6 @@ pub use pair_forest_copy_terminal::{
     POOL_V1_PAIR_FOREST_COPY_TERMINAL_LINKS_V1, POOL_V1_PAIR_FOREST_COPY_TERMINAL_PATTERNS_V1,
     POOL_V1_PAIR_FOREST_COPY_TERMINAL_ROWS_V1,
     POOL_V1_PAIR_FOREST_COPY_TERMINAL_SELECTOR_HEAP_BYTES_V1,
-};
-pub use pair_forest_semantic_terminal::{
-    evaluate_pool_v1_pair_forest_private_transfer_selected_constraint_composition_compiled_v1,
-    evaluate_pool_v1_pair_forest_private_transfer_selected_masked_terminal_compiled_tag73_v1,
-    evaluate_pool_v1_pair_forest_private_transfer_selected_unmasked_terminal_compiled_tag73_v1,
-    evaluate_pool_v1_pair_forest_withdrawal_selected_constraint_composition_compiled_v1,
-    evaluate_pool_v1_pair_forest_withdrawal_selected_masked_terminal_compiled_tag73_v1,
-    evaluate_pool_v1_pair_forest_withdrawal_selected_unmasked_terminal_compiled_tag73_v1,
-    PoolV1PairForestSemanticTerminalErrorV1,
-    POOL_V1_PAIR_FOREST_COPY_LANES_V1, POOL_V1_PAIR_FOREST_MASKED_TERMINAL_DEGREE_V1,
-    POOL_V1_PAIR_FOREST_PACKED_SEMANTIC_LANES_V1, POOL_V1_PAIR_FOREST_POSEIDON_LANES_V1,
-    POOL_V1_PAIR_FOREST_SELECTED_TERMINAL_CLAIMS_V1,
-    POOL_V1_PAIR_FOREST_SELECTED_TERMINAL_COLUMNS_V1,
-    POOL_V1_PAIR_FOREST_SEMANTIC_ORACLE_INDIVIDUAL_DEGREE_V1,
-    POOL_V1_PAIR_FOREST_SEMANTIC_ZEROCHECK_INDIVIDUAL_DEGREE_V1,
-    POOL_V1_PAIR_FOREST_SOURCE_SEMANTIC_LANES_V1,
-    POOL_V1_PAIR_FOREST_TERMINAL_C1_COLUMNS_V1,
-    POOL_V1_PAIR_FOREST_TERMINAL_FIXED_HEAP_ALLOCATIONS_V1,
-    POOL_V1_PAIR_FOREST_TERMINAL_POINTS_V1, POOL_V1_PAIR_FOREST_TERMINAL_ROWS_V1,
-    POOL_V1_PAIR_FOREST_TERMINAL_SELECTOR_HEAP_BYTES_V1,
-    POOL_V1_PAIR_FOREST_THETA_COLLISION_DEGREE_V1, POOL_V1_PAIR_FOREST_THETA_LANES_V1,
-};
-pub use pair_forest_terminal::{
-    decode_pool_v1_pair_forest_terminal_request_v1,
-    decode_pool_v1_pair_forest_terminal_result_v1,
-    decode_pool_v1_pair_forest_terminal_statement_v1,
-    encode_pool_v1_pair_forest_terminal_request_v1,
-    encode_pool_v1_pair_forest_terminal_result_v1,
-    encode_pool_v1_pair_forest_terminal_statement_v1,
-    reconstruct_pool_v1_pair_forest_terminal_statement_v1,
-    validate_pool_v1_pair_forest_terminal_result_against_statement_v1,
-    validate_pool_v1_pair_forest_terminal_statement_v1, PoolV1PairForestTerminalAccountsV1,
-    PoolV1PairForestTerminalCommonV1, PoolV1PairForestTerminalFormatErrorV1,
-    PoolV1PairForestTerminalPaymentV1, PoolV1PairForestTerminalRequestV1,
-    PoolV1PairForestTerminalResultV1, PoolV1PairForestTerminalStatementV1,
-    POOL_V1_PAIR_FOREST_TERMINAL_REQUEST_BYTES, POOL_V1_PAIR_FOREST_TERMINAL_REQUEST_MAGIC,
-    POOL_V1_PAIR_FOREST_TERMINAL_RESULT_BYTES, POOL_V1_PAIR_FOREST_TERMINAL_RESULT_MAGIC,
-    POOL_V1_PAIR_FOREST_TERMINAL_STATEMENT_BYTES, POOL_V1_PAIR_FOREST_TERMINAL_STATEMENT_MAGIC,
-    POOL_V1_PAIR_FOREST_TERMINAL_VERSION,
-};
-#[cfg(not(target_os = "solana"))]
-pub use pair_forest_terminal::{
-    verify_pool_v1_pair_forest_terminal_inactive_v1, PoolV1PairForestTerminalHostErrorV1,
 };
 #[cfg(not(target_os = "solana"))]
 pub use pair_forest_hiding::{
@@ -226,9 +185,55 @@ pub use pair_forest_hiding::{
 #[cfg(not(target_os = "solana"))]
 pub use pair_forest_semantic_oracle::{
     build_pool_v1_pair_forest_copy_helper_v1, evaluate_pool_v1_pair_forest_copy_terminal_v1,
-    evaluate_pool_v1_pair_forest_path_terminal_v1,
-    pool_v1_pair_forest_copy_active_at_point_v1, pool_v1_pair_forest_copy_helper_sum_v1,
-    PoolV1PairForestCopyTerminalV1, PoolV1PairForestPathTerminalV1,
+    evaluate_pool_v1_pair_forest_path_terminal_v1, pool_v1_pair_forest_copy_active_at_point_v1,
+    pool_v1_pair_forest_copy_helper_sum_v1, PoolV1PairForestCopyTerminalV1,
+    PoolV1PairForestPathTerminalV1,
+};
+pub use pair_forest_semantic_terminal::{
+    evaluate_pool_v1_pair_forest_private_transfer_selected_constraint_composition_compiled_v1,
+    evaluate_pool_v1_pair_forest_private_transfer_selected_masked_terminal_compiled_tag73_v1,
+    evaluate_pool_v1_pair_forest_private_transfer_selected_unmasked_terminal_compiled_tag73_v1,
+    evaluate_pool_v1_pair_forest_withdrawal_selected_constraint_composition_compiled_v1,
+    evaluate_pool_v1_pair_forest_withdrawal_selected_masked_terminal_compiled_tag73_v1,
+    evaluate_pool_v1_pair_forest_withdrawal_selected_unmasked_terminal_compiled_tag73_v1,
+    PoolV1PairForestSemanticTerminalErrorV1, POOL_V1_PAIR_FOREST_COPY_LANES_V1,
+    POOL_V1_PAIR_FOREST_MASKED_TERMINAL_DEGREE_V1, POOL_V1_PAIR_FOREST_PACKED_SEMANTIC_LANES_V1,
+    POOL_V1_PAIR_FOREST_POSEIDON_LANES_V1, POOL_V1_PAIR_FOREST_SELECTED_TERMINAL_CLAIMS_V1,
+    POOL_V1_PAIR_FOREST_SELECTED_TERMINAL_COLUMNS_V1,
+    POOL_V1_PAIR_FOREST_SEMANTIC_ORACLE_INDIVIDUAL_DEGREE_V1,
+    POOL_V1_PAIR_FOREST_SEMANTIC_ZEROCHECK_INDIVIDUAL_DEGREE_V1,
+    POOL_V1_PAIR_FOREST_SOURCE_SEMANTIC_LANES_V1, POOL_V1_PAIR_FOREST_TERMINAL_C1_COLUMNS_V1,
+    POOL_V1_PAIR_FOREST_TERMINAL_FIXED_HEAP_ALLOCATIONS_V1, POOL_V1_PAIR_FOREST_TERMINAL_POINTS_V1,
+    POOL_V1_PAIR_FOREST_TERMINAL_ROWS_V1, POOL_V1_PAIR_FOREST_TERMINAL_SELECTOR_HEAP_BYTES_V1,
+    POOL_V1_PAIR_FOREST_THETA_COLLISION_DEGREE_V1, POOL_V1_PAIR_FOREST_THETA_LANES_V1,
+};
+pub use pair_forest_terminal::{
+    decode_pool_v1_pair_forest_terminal_request_v1, decode_pool_v1_pair_forest_terminal_result_v1,
+    decode_pool_v1_pair_forest_terminal_statement_v1,
+    encode_pool_v1_pair_forest_terminal_request_v1, encode_pool_v1_pair_forest_terminal_result_v1,
+    encode_pool_v1_pair_forest_terminal_statement_v1,
+    reconstruct_pool_v1_pair_forest_terminal_statement_v1,
+    validate_pool_v1_pair_forest_terminal_result_against_statement_v1,
+    validate_pool_v1_pair_forest_terminal_statement_v1, PoolV1PairForestTerminalAccountsV1,
+    PoolV1PairForestTerminalCommonV1, PoolV1PairForestTerminalFormatErrorV1,
+    PoolV1PairForestTerminalPaymentV1, PoolV1PairForestTerminalRequestV1,
+    PoolV1PairForestTerminalResultV1, PoolV1PairForestTerminalStatementV1,
+    POOL_V1_PAIR_FOREST_TERMINAL_REQUEST_BYTES, POOL_V1_PAIR_FOREST_TERMINAL_REQUEST_MAGIC,
+    POOL_V1_PAIR_FOREST_TERMINAL_RESULT_BYTES, POOL_V1_PAIR_FOREST_TERMINAL_RESULT_MAGIC,
+    POOL_V1_PAIR_FOREST_TERMINAL_STATEMENT_BYTES, POOL_V1_PAIR_FOREST_TERMINAL_STATEMENT_MAGIC,
+    POOL_V1_PAIR_FOREST_TERMINAL_VERSION,
+};
+#[cfg(not(target_os = "solana"))]
+pub use pair_forest_terminal::{
+    verify_pool_v1_pair_forest_terminal_inactive_v1, PoolV1PairForestTerminalHostErrorV1,
+};
+#[cfg(not(target_os = "solana"))]
+pub use pair_forest_trace::{
+    compile_pool_v1_pair_forest_private_transfer_merged_c1_v1,
+    compile_pool_v1_pair_forest_withdrawal_merged_c1_v1, merge_pool_v1_pair_forest_trace_banks_v1,
+    PoolV1PairForestInputNoteWitnessV1, PoolV1PairForestMergedC1CompilationV1,
+    PoolV1PairForestPrivateTransferWitnessV1, PoolV1PairForestTraceV1,
+    PoolV1PairForestWithdrawalWitnessV1,
 };
 pub use pair_terminal::{
     decode_pool_v1_pair_afterstate_verifier_request_v1, decode_pool_v1_pair_verified_afterstate_v1,
@@ -371,6 +376,12 @@ pub use tag73_native_profile::{
     V7_POOL_NATIVE_TAG73_PROFILE_BINDING, V7_POOL_NATIVE_TAG73_PROFILE_BINDING_PREIMAGE,
     V7_POOL_NATIVE_TAG73_RELEASE_BINDING, V7_POOL_NATIVE_TAG73_RELEASE_BINDING_PREIMAGE,
     V7_POOL_NATIVE_TAG73_REQUEST_BYTES,
+};
+pub use tag73_pair_forest_profile::{
+    v7_pool_pair_forest_tag73_statement_digest_v1, V7_POOL_PAIR_FOREST_TAG73_PROFILE_BINDING,
+    V7_POOL_PAIR_FOREST_TAG73_PROFILE_BINDING_PREIMAGE, V7_POOL_PAIR_FOREST_TAG73_RELEASE_BINDING,
+    V7_POOL_PAIR_FOREST_TAG73_RELEASE_BINDING_PREIMAGE,
+    V7_POOL_PAIR_FOREST_TAG73_STATEMENT_DIGEST_DOMAIN,
 };
 pub use verifier_dispatch::{
     decode_verifier_dispatch_request_v1, decode_verifier_dispatch_result_v1,

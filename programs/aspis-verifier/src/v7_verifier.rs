@@ -24,11 +24,14 @@ use aspis_statement::atomic_state_only_terminal::{
 use aspis_statement::{
     atomic_payment_statement_digest_v4,
     pool_v1::{
+        evaluate_pool_v1_pair_forest_private_transfer_selected_masked_terminal_compiled_tag73_v1,
+        evaluate_pool_v1_pair_forest_withdrawal_selected_masked_terminal_compiled_tag73_v1,
         evaluate_pool_v1_private_transfer_selected_masked_terminal_compiled_tag73_v1,
         evaluate_pool_v1_withdrawal_selected_masked_terminal_compiled_tag73_v1,
+        pool_v1_pair_forest_copy_active_row_masks_compiled_v1,
         pool_v1_private_transfer_copy_active_row_masks_compiled_v1,
-        pool_v1_withdrawal_copy_active_row_masks_compiled_v1, PoolV1PrivateTransferPublicV1,
-        PoolV1WithdrawalPublicV1,
+        pool_v1_withdrawal_copy_active_row_masks_compiled_v1, PoolV1PairLatePublicStatementV1,
+        PoolV1PrivateTransferPublicV1, PoolV1WithdrawalPublicV1,
     },
     AtomicPaymentStatementV4,
 };
@@ -122,6 +125,46 @@ fn pool_withdrawal_terminal_matches(
 ) -> bool {
     evaluate_pool_v1_withdrawal_selected_masked_terminal_compiled_tag73_v1(
         statement,
+        &crate::v6_verifier::terminal_claims(view),
+        &view.point,
+        view.lambda,
+        view.chi,
+        view.batching.theta,
+        &view.batching.zerocheck_point,
+        view.batching.mu,
+        view.eta,
+    )
+    .is_ok_and(|expected| expected == view.terminal_claim)
+}
+
+fn pool_pair_forest_private_transfer_terminal_matches(
+    statement: &PoolV1PrivateTransferPublicV1,
+    transition: &PoolV1PairLatePublicStatementV1,
+    view: &V6SemanticView<'_>,
+) -> bool {
+    evaluate_pool_v1_pair_forest_private_transfer_selected_masked_terminal_compiled_tag73_v1(
+        statement,
+        transition,
+        &crate::v6_verifier::terminal_claims(view),
+        &view.point,
+        view.lambda,
+        view.chi,
+        view.batching.theta,
+        &view.batching.zerocheck_point,
+        view.batching.mu,
+        view.eta,
+    )
+    .is_ok_and(|expected| expected == view.terminal_claim)
+}
+
+fn pool_pair_forest_withdrawal_terminal_matches(
+    statement: &PoolV1WithdrawalPublicV1,
+    transition: &PoolV1PairLatePublicStatementV1,
+    view: &V6SemanticView<'_>,
+) -> bool {
+    evaluate_pool_v1_pair_forest_withdrawal_selected_masked_terminal_compiled_tag73_v1(
+        statement,
+        transition,
         &crate::v6_verifier::terminal_claims(view),
         &view.point,
         view.lambda,
@@ -287,6 +330,84 @@ pub fn verify_v7_pool_withdrawal_with_statement_digest(
     })
 }
 
+#[allow(clippy::too_many_arguments)]
+pub fn verify_v7_pool_pair_forest_private_transfer_with_statement_digest(
+    hash: HashFn,
+    proof: &[u8],
+    frontier_nodes: usize,
+    program_id: &Pubkey,
+    release_binding: [u8; 32],
+    attempt_id: &Pubkey,
+    statement: &PoolV1PrivateTransferPublicV1,
+    transition: &PoolV1PairLatePublicStatementV1,
+    statement_digest: [u8; 32],
+    check_pow: bool,
+) -> Result<VerifiedV7ReadOnly, V7VerifyError> {
+    let wire = V7CompactOneFoldWire::parse_deferred_canonicality(proof, frontier_nodes)?;
+    let context = V6TranscriptContext {
+        program_id: program_id.to_bytes(),
+        release_binding,
+        statement_digest,
+        attempt_id: attempt_id.to_bytes(),
+    };
+    let (row_groups, group_masks, group_count) =
+        pool_inactive_schedule(pool_v1_pair_forest_copy_active_row_masks_compiled_v1());
+    let transcript = verify_v7_compact_transcript_and_relation_prepared_with_hiding_context(
+        hash,
+        &wire,
+        &context,
+        StateOnlyHidingContext::pool_v1_pair_forest_v1(statement_digest, attempt_id.to_bytes()),
+        &row_groups,
+        &group_masks[..group_count],
+        check_pow,
+        |view| pool_pair_forest_private_transfer_terminal_matches(statement, transition, view),
+        |view| authenticate_and_fold_queries(hash, &wire, view),
+    )?;
+    Ok(VerifiedV7ReadOnly {
+        folded_query_sum: transcript.folded_query_sum,
+        transcript,
+    })
+}
+
+#[allow(clippy::too_many_arguments)]
+pub fn verify_v7_pool_pair_forest_withdrawal_with_statement_digest(
+    hash: HashFn,
+    proof: &[u8],
+    frontier_nodes: usize,
+    program_id: &Pubkey,
+    release_binding: [u8; 32],
+    attempt_id: &Pubkey,
+    statement: &PoolV1WithdrawalPublicV1,
+    transition: &PoolV1PairLatePublicStatementV1,
+    statement_digest: [u8; 32],
+    check_pow: bool,
+) -> Result<VerifiedV7ReadOnly, V7VerifyError> {
+    let wire = V7CompactOneFoldWire::parse_deferred_canonicality(proof, frontier_nodes)?;
+    let context = V6TranscriptContext {
+        program_id: program_id.to_bytes(),
+        release_binding,
+        statement_digest,
+        attempt_id: attempt_id.to_bytes(),
+    };
+    let (row_groups, group_masks, group_count) =
+        pool_inactive_schedule(pool_v1_pair_forest_copy_active_row_masks_compiled_v1());
+    let transcript = verify_v7_compact_transcript_and_relation_prepared_with_hiding_context(
+        hash,
+        &wire,
+        &context,
+        StateOnlyHidingContext::pool_v1_pair_forest_v1(statement_digest, attempt_id.to_bytes()),
+        &row_groups,
+        &group_masks[..group_count],
+        check_pow,
+        |view| pool_pair_forest_withdrawal_terminal_matches(statement, transition, view),
+        |view| authenticate_and_fold_queries(hash, &wire, view),
+    )?;
+    Ok(VerifiedV7ReadOnly {
+        folded_query_sum: transcript.folded_query_sum,
+        transcript,
+    })
+}
+
 #[cfg(test)]
 mod pool_tests {
     use super::*;
@@ -296,6 +417,7 @@ mod pool_tests {
         for active in [
             pool_v1_private_transfer_copy_active_row_masks_compiled_v1(),
             pool_v1_withdrawal_copy_active_row_masks_compiled_v1(),
+            pool_v1_pair_forest_copy_active_row_masks_compiled_v1(),
         ] {
             let (groups, masks, count) = pool_inactive_schedule(active);
             assert!(count > 0 && count <= 64);

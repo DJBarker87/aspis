@@ -21,6 +21,12 @@ pub const POOL_V1_PAIR_FOREST_COPY_TERMINAL_SELECTOR_HEAP_BYTES_V1: usize =
 pub const PINNED_POOL_V1_PAIR_FOREST_COPY_TERMINAL_ACTIVE_ROWS_FINGERPRINT_V1: u64 =
     constants::ACTIVE_ROWS_FINGERPRINT;
 
+/// Exact SBF-safe active-row schedule consumed by the selected verifier.
+/// Host generation tests independently replay it from the typed tuple registry.
+pub fn pool_v1_pair_forest_copy_active_row_masks_compiled_v1() -> &'static [u16; 64] {
+    &constants::ACTIVE_ROW_MASKS
+}
+
 const _: () = assert!(POSEIDON2_WIDTH == POOL_V1_PAIR_FOREST_COPY_TERMINAL_COLUMNS_V1);
 const _: () = assert!(constants::COPY_LINKS.len() == POOL_V1_PAIR_FOREST_COPY_TERMINAL_LINKS_V1);
 const _: () =
