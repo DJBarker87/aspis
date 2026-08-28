@@ -1,0 +1,83 @@
+V7 eight-lane Pool invariant fast-path source bridge: PASS
+Date: 2026-08-28
+
+Pinned production source
+------------------------
+Fast-path source commit:
+  86d072be958bed4b6817b6cdc1fb5eb4f0c65ac7
+Pair-forest source SHA-256:
+  94cc57ee00d5a134141b994ed2a27c962d5a132f49fd6b97cc503377e6922e91
+Processor dispatch source SHA-256:
+  84b6dbfa9ec12d56184bb0c1e250ed731af83fa44c91fbd05505c38ae356c995
+Pool manifest SHA-256:
+  c3c634e11e9cac3159eba3048b5d3659f94d4eb275e70cdd54cc10776a627461
+
+Pinned tools
+------------
+Charon: 0.1.223
+Charon binary SHA-256:
+  d785c5f18053c4d310c7388dfdb0b59adfc9854c28b632a34a8f6301ba1c4b43
+Aeneas: b59d518
+Aeneas binary SHA-256:
+  fbb8dac1a9a57e635a762e04b95aeb46dbd2dab2be5ed54fa9e0b1321c1962cf
+
+Extraction replay
+-----------------
+Harness source SHA-256:
+  7f3a70095742cfe00eb84f47ed5890557b6ab7b60fda03c5b235cc3d00fbc0a9
+Stored LLBC SHA-256:
+  6326b18efb5f4527bdbd70313f4d16769df65554f53821dc5fdbf3c8741cd61d
+The raw LLBC records its temporary destination and unordered serialized maps,
+so replay acceptance is exact equality of the generated Types/Funs/template
+rather than a misleading raw-LLBC hash equality.
+Types.lean SHA-256:
+  fd6e27503d33e39b98d4dbecd112ecb16b6ea7d84c41d54307e7e1a8bbd4f5c7
+Funs.lean SHA-256:
+  0b1ac2ca70dfc34f328abe539e7d61a4bc6c6e6a07a296d130b46934785a0014
+Transparent FunsExternal.lean SHA-256:
+  0a3c1f2c456d4051e23c27c469da218c3b1b2c55251a6cf2ea5afc514643156d
+
+Focused production Rust tests
+-----------------------------
+terminal_program_invariant_lane_decoder_keeps_exact_boundary:
+  1 passed; 0 failed
+authenticated_result_encoder_is_byte_exact_for_valid_lanes:
+  1 passed; 0 failed
+
+Focused Lean result
+-------------------
+All four source-proof modules compile.  Principal results:
+  valid_strict_encoder_bytes_equal_fast_encoder_bytes
+  hot_decode_success_requires_capability_and_exact_length
+  initialization_success_has_exact_source_relation
+  checked_deposit_success_has_exact_source_relation
+  authenticated_settlement_success_has_exact_source_relation
+  translated_production_lane_write_preserves_program_owned_invariant
+  translated_write_renews_activation
+  translated_hot_decode_has_complete_activation_boundary
+  translated_write_to_fast_decode_activation
+
+Every printed theorem axiom set is a subset of:
+  propext
+  Classical.choice
+  Quot.sound
+
+There is no sorry, admit, native_decide, project-specific axiom or
+conclusion-shaped restore function in compiled generated/proof source.
+
+Exact activation result
+-----------------------
+Fresh translated initialization creates only newlyInitializedPda activation.
+Deposit and authenticated-ASR8 settlement consume an activated predecessor
+and preserve its origin.  Pool ownership alone does not activate the fast
+path.  A checked one-time migration remains an explicit certificate boundary;
+there is no such instruction in the pinned production source.  Therefore the
+current release route requires freshly initialized canonical lane PDAs.
+
+Explicit remaining mathematical boundary
+----------------------------------------
+ProgramOwnedLaneInvariantCapability.Holds is the single omitted active
+root-to-frontier reconstruction fact.  The main Lean mathematics must supply
+genesis, checked-deposit and authenticated-settlement preservation.  This
+focused source bundle deliberately does not replace that fact with ownership
+or an unverified hint.
