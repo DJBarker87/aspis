@@ -105,6 +105,12 @@ v7-pair-forest-packed-digest-audit = [
 v7-pair-forest-binary-copy-weights-audit = [
     "aspis-statement/pool-v1-pair-forest-binary-copy-weights-audit",
 ]
+# Audit-only cache for repeated generated Copy endpoint rows. A cached row
+# selector is consumed only after an exact row-tag match; misses use the
+# unchanged high[row>>4] * low[row&15] computation.
+v7-pair-forest-endpoint-selector-cache-audit = [
+    "aspis-statement/pool-v1-pair-forest-endpoint-selector-cache-audit",
+]
 # Adds compute-unit checkpoints to the selected pair-forest verifier without
 # changing its wire, transcript, arithmetic, work, q16, or Merkle schedule.
 # Use only for matched diagnostic builds; marker calls inflate total CU.
