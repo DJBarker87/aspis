@@ -1,0 +1,20 @@
+Final kernel replay unit: aspis-v7-cu-lock-lean-source-08.scope
+Invocation ID: a9bfcde4316c4394bbb9aa85c8409329
+Command: lake env lean AspisFormal/Pool/V7SelectedEvaluatorSparsitySourceBridge.lean
+Wall: 9.18 s
+Peak RSS: 6,708,668 KiB
+Swaps: 0
+Exit status: 0
+
+Generic prerequisite build unit: aspis-v7-cu-lock-lean-generic-01.scope
+Command: lake build AspisFormal.Pool.V7SelectedEvaluatorSparsityEquivalence
+Wall: 8.55 s
+Peak RSS: 6,590,220 KiB
+Swaps: 0
+Exit status: 0
+
+Focused extraction maxima (all swaps 0):
+- gamma Charon: 644,648 KiB; 5.80 s
+- range Charon+Aeneas: 759,500 KiB; 13.38 s
+- active public Charon+Aeneas: 718,616 KiB; 13.63 s
+- Copy core Charon+Aeneas: 713,568 KiB; 15.76 s

@@ -1,0 +1,24 @@
+AspisPool.V7SelectedEvaluatorSparsitySourceBridge.selectedVerifierFeatures_count:
+  none
+AspisPool.V7SelectedEvaluatorSparsitySourceBridge.packedRange_exact_source_interval:
+  none
+AspisPool.V7SelectedEvaluatorSparsitySourceBridge.digestBindingSchedule_uses_exact_locals:
+  propext, Quot.sound
+AspisPool.V7SelectedEvaluatorSparsitySourceBridge.activeRowMask_eq_basis:
+  propext, Quot.sound
+AspisPool.V7SelectedEvaluatorSparsitySourceBridge.copyFinishWidths_exact:
+  propext, Quot.sound
+AspisPool.V7SelectedEvaluatorSparsitySourceBridge.gammaSchedule_exact:
+  propext, Quot.sound
+AspisPool.V7SelectedEvaluatorSparsitySourceBridge.copyEndpointSchedule_count:
+  none
+AspisPool.V7SelectedEvaluatorSparsitySourceBridge.copyTagFourProductDot_lt_u64:
+  propext, Classical.choice, Quot.sound
+AspisPool.V7SelectedEvaluatorSparsitySourceBridge.copyTagFourProductDot_reduce_exact:
+  propext, Classical.choice, Quot.sound
+AspisPool.V7SelectedEvaluatorSparsitySourceBridge.selectedPieces_eq_literalPieces:
+  propext, Classical.choice, Quot.sound
+AspisPool.V7SelectedEvaluatorSparsitySourceBridge.selected_preserves_literal_evaluator_result:
+  propext, Classical.choice, Quot.sound
+
+No sorryAx and no project-specific axiom.
