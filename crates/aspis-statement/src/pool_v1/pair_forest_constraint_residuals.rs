@@ -90,8 +90,8 @@ const _: () = assert!(POOL_V1_PAIR_FOREST_COPY_ALIAS_RESIDUAL_COUNT == 2_176);
 const _: () = assert!(POOL_V1_PAIR_FOREST_PATH_ORDERING_RESIDUAL_COUNT == 384);
 const _: () = assert!(POOL_V1_PAIR_FOREST_TRANSFER_SCHEDULE_RESIDUAL_COUNT == 1_026);
 const _: () = assert!(POOL_V1_PAIR_FOREST_WITHDRAWAL_SCHEDULE_RESIDUAL_COUNT == 1_044);
-const _: () = assert!(POOL_V1_PAIR_FOREST_TRANSFER_TOTAL_RESIDUAL_COUNT == 17_896);
-const _: () = assert!(POOL_V1_PAIR_FOREST_WITHDRAWAL_TOTAL_RESIDUAL_COUNT == 17_906);
+const _: () = assert!(POOL_V1_PAIR_FOREST_TRANSFER_TOTAL_RESIDUAL_COUNT == 18_089);
+const _: () = assert!(POOL_V1_PAIR_FOREST_WITHDRAWAL_TOTAL_RESIDUAL_COUNT == 18_099);
 const _: () = assert!(POOL_V1_PAIR_MAX_INTRINSIC_DEGREE == 25);
 const _: () = assert!(POOL_V1_PAIR_SELECTED_ORACLE_INDIVIDUAL_DEGREE == 26);
 const _: () = assert!(POOL_V1_PAIR_ZEROCHECK_INDIVIDUAL_DEGREE == 27);
@@ -213,8 +213,11 @@ fn project_legacy(trace: &StateOnlyTraceFoundation) -> StateOnlyTraceFoundation 
         for column in 0..16 {
             projected.c1[column][target + 1] = trace.c1[column][source + 1];
         }
+        let bit = trace.c1[0][source];
         for column in 0..8 {
-            projected.c1[column][target ^ 12] = trace.c1[column][source ^ 12];
+            let left = trace.c1[column][source + 1];
+            let right = trace.c1[8 + column][source + 1];
+            projected.c1[column][target ^ 12] = if bit == M31::ZERO { right } else { left };
         }
     }
     for column in 0..16 {
@@ -332,9 +335,8 @@ fn forest_path_residuals(
             let current = row_cell(trace, base, 1 + lane);
             let left = row_cell(trace, base + 1, lane);
             let right = row_cell(trace, base + 1, RATE + lane);
-            let sibling = row_cell(trace, base ^ 12, lane);
-            ordering.push(left.sub(current.add(bit.mul(sibling.sub(current)))));
-            ordering.push(right.sub(sibling.add(bit.mul(current.sub(sibling)))));
+            ordering.push(M31::ONE.sub(bit).mul(left.sub(current)));
+            ordering.push(bit.mul(right.sub(current)));
         }
     }
     (booleanity, ordering)
@@ -501,7 +503,7 @@ const _: () = assert!(POOL_V1_PAIR_AFFINE_INTRINSIC_DEGREE == 1);
 const _: () = assert!(POOL_V1_PAIR_BOOLEAN_INTRINSIC_DEGREE == 2);
 const _: () = assert!(POOL_V1_PAIR_POSEIDON_SBOX_DEGREE == 5);
 const _: () = assert!(POOL_V1_PAIR_TWO_ROUND_INTRINSIC_DEGREE == 25);
-const _: () = assert!(POOL_V1_PAIR_OCCUPANCY_RESIDUAL_COUNT == 23);
+const _: () = assert!(POOL_V1_PAIR_OCCUPANCY_RESIDUAL_COUNT == 24);
 const _: () = assert!(POOL_V1_PAIR_APPEND_PATH_RESIDUAL_COUNT == 320);
 const _: () = assert!(POOL_V1_PAIR_CANDIDATE_ROOT_RESIDUAL_COUNT == 8);
 const _: () = assert!(POOL_V1_PAIR_CANDIDATE_FRONTIER_RESIDUAL_COUNT == 160);
@@ -775,7 +777,10 @@ mod tests {
         assert_eq!(transfer_residuals.copy_aliases.len(), 136 * 16);
         assert_eq!(transfer_residuals.direction_booleanity.len(), 24);
         assert_eq!(transfer_residuals.path_ordering.len(), 24 * 8 * 2);
-        assert_eq!(transfer_residuals.zero_padding.len(), 3_611);
+        assert_eq!(
+            transfer_residuals.zero_padding.len(),
+            POOL_V1_PAIR_FOREST_RELATION_FREE_MASK_CELLS_V1
+        );
         assert_eq!(
             trace_digest(&transfer.semantic_c1, 56),
             transfer_public.anchor_root
