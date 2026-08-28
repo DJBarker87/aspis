@@ -1,0 +1,76 @@
+V7 TAG-73 LITERAL MERKLE CALLER -> MAINTAINED EXACT K1.2
+Date: 2026-08-28
+
+Base:
+  b76fee418079aaa244cbca4b3ffb26d8a4808192
+
+Existing literal caller/source bridge ancestor:
+  9d77e385504370ba763867985e65f12ce1cdbc47
+
+Strongest theorem:
+  AspisV7MerkleK12ExactK12Integration.
+    literal_production_callers_construct_exact_tag73_k12_source_obligations
+
+Conclusion:
+  ExactTag73K12SourceObligations, including both
+    openingsAccepted
+    suppliedCovered / ExactPrefixK12SuppliedCoverage
+
+Only runtime/effect semantic boundary:
+  SourceOpeningRuntimeReflection
+
+This is a per-literal-callback bridge from the pure translated GeneratedHash
+call to the separately modeled final shared-ROM table/history.  It contains
+exact 208-bit leaf/node digest equality and exact serialized input membership.
+It does not contain accepted_two_tree_openings, TraceIncludedInLog,
+ExactPrefixK12SuppliedCoverage, extraction, or probability conclusions.
+
+Transparent source-to-model projection fields:
+  rootsExact
+  openingsExact
+
+These equate the generated wire/caller values to the maintained post-parser
+values.  They are not acceptance, coverage, extraction, or probability fields.
+
+Clean NUC replay:
+  unit: aspis-v7-k12-source-integration-final-01
+  invocation: 4fc7830d823547368d3abbbf5878a895
+  result: PASS
+  exit: 0
+  wall: 1:43.84
+  maximum RSS: 6,957,656 KiB
+  process swaps: 0
+  MemoryHigh: 22G
+  MemoryMax: 28G
+  MemorySwapMax: 0
+  Lean: 4.31.0
+  LEAN_NUM_THREADS: 1
+
+Native maintained-model compatibility target:
+  unit: aspis-v7-k12-source-native-03
+  invocation: 634a0e779d65417cba399af11a182ddc
+  target: AspisFormal.K1.V7Tag73ReplayWorkEvidenceBridge
+  result: PASS
+  exit: 0
+  wall: 1:53.16
+  maximum RSS: 6,822,924 KiB
+  process swaps: 0
+  Lean: 4.32.0
+
+Exact #print axioms union:
+  propext
+  Classical.choice
+  Quot.sound
+
+Forbidden-term scan:
+  no sorry
+  no admit
+  no sorryAx
+  no native_decide
+  no explicit project axiom
+
+Replay command (inside the required cgroup):
+  AENEAS_LEAN_BACKEND=/absolute/pinned/aeneas/backends/lean \
+  ASPIS_EXACT_K12_OLEAN_ROOT=/absolute/exact-k12/build/lib/lean \
+  aeneas-verif/v7-merkle-k12-accepted-source-20260825/\
+    replay-exact-k12-integration.sh

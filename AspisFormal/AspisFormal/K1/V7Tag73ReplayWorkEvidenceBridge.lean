@@ -190,21 +190,33 @@ private theorem find_prover_eq_find_adversary_of_no_replay
     (records.filter fun record => record.actor = .adversary).find?
       (adversaryEvidenceCandidate evidence input) := by
   rw [find_filtered_adversary_eq_find_conjoined]
-  apply List.find?_congr
-  intro record member
-  have notReplay := noReplay record member
-  cases actorEq : record.actor with
-  | adversary =>
-      simp [proverEvidenceCandidate, adversaryEvidenceCandidate,
-        IsProverHistoryActor, actorEq]
-  | simulator =>
-      simp [proverEvidenceCandidate, adversaryEvidenceCandidate,
-        IsProverHistoryActor, actorEq]
-  | verifier =>
-      simp [proverEvidenceCandidate, adversaryEvidenceCandidate,
-        IsProverHistoryActor, actorEq]
-  | extractorReplay =>
-      exact False.elim (notReplay actorEq)
+  induction records with
+  | nil => rfl
+  | cons record rest inductionHypothesis =>
+      have recordNotReplay : record.actor ≠ .extractorReplay :=
+        noReplay record (by simp)
+      have restNoReplay : ∀ item ∈ rest,
+          item.actor ≠ .extractorReplay := by
+        intro item member
+        exact noReplay item (by simp [member])
+      have atRecord :
+          proverEvidenceCandidate evidence input record =
+            (decide (record.actor = .adversary) &&
+              adversaryEvidenceCandidate evidence input record) := by
+        cases actorEq : record.actor with
+        | adversary =>
+            simp [proverEvidenceCandidate, adversaryEvidenceCandidate,
+              IsProverHistoryActor, actorEq]
+        | simulator =>
+            simp [proverEvidenceCandidate, adversaryEvidenceCandidate,
+              IsProverHistoryActor, actorEq]
+        | verifier =>
+            simp [proverEvidenceCandidate, adversaryEvidenceCandidate,
+              IsProverHistoryActor, actorEq]
+        | extractorReplay =>
+            exact False.elim (recordNotReplay actorEq)
+      simp only [List.find?]
+      rw [atRecord, inductionHypothesis restNoReplay]
 
 /-- On histories containing no replay calls, the union selector is exactly
 the old adversary-Q1 selector. -/
