@@ -1,0 +1,273 @@
+{
+  "aeneas_version": "unknown",
+  "charon_version": "0.1.223",
+  "crate": "aspis_core",
+  "functions": [
+    {
+      "def_id": 2,
+      "lean_name": "V7BinaryFrontierSource.core.num.U32.checked_shl",
+      "lean_file": "FunsExternal_Template.lean",
+      "rust_name": "core::num::{u32}::checked_shl",
+      "is_local": false,
+      "source": {
+        "file": "/rustc/library/core/src/num/uint_macros.rs",
+        "begin_line": 1975,
+        "end_line": 1975
+      },
+      "is_opaque": true,
+      "can_fail": true,
+      "can_diverge": false,
+      "is_rec": false,
+      "reducible": false
+    },
+    {
+      "def_id": 3,
+      "lean_name": "V7BinaryFrontierSource.core.option.Option.ok_or",
+      "lean_file": "FunsExternal_Template.lean",
+      "rust_name": "core::option::{core::option::Option<T>}::ok_or",
+      "is_local": false,
+      "source": {
+        "file": "/rustc/library/core/src/option.rs",
+        "begin_line": 1334,
+        "end_line": 1334
+      },
+      "is_opaque": true,
+      "can_fail": true,
+      "can_diverge": false,
+      "is_rec": false,
+      "reducible": false
+    },
+    {
+      "def_id": 10,
+      "lean_name": "V7BinaryFrontierSource.core.slice.iter.Windows.Insts.CoreIterTraitsIteratorIteratorSharedASlice.next",
+      "lean_file": "FunsExternal_Template.lean",
+      "rust_name": "core::slice::iter::{impl core::iter::traits::iterator::Iterator<&'a [T]> for core::slice::iter::Windows<'a, T>}::next",
+      "is_local": false,
+      "source": {
+        "file": "/rustc/library/core/src/slice/iter.rs",
+        "begin_line": 1354,
+        "end_line": 1354
+      },
+      "is_opaque": true,
+      "can_fail": true,
+      "can_diverge": false,
+      "is_rec": false,
+      "reducible": false
+    },
+    {
+      "def_id": 9,
+      "lean_name": "V7BinaryFrontierSource.core.slice.Slice.windows",
+      "lean_file": "FunsExternal_Template.lean",
+      "rust_name": "core::slice::{[T]}::windows",
+      "is_local": false,
+      "source": {
+        "file": "/rustc/library/core/src/slice/mod.rs",
+        "begin_line": 1116,
+        "end_line": 1116
+      },
+      "is_opaque": true,
+      "can_fail": true,
+      "can_diverge": false,
+      "is_rec": false,
+      "reducible": false
+    },
+    {
+      "def_id": 0,
+      "lean_name": "V7BinaryFrontierSource.v6_onefold.binary_frontier_nodes_loop0_loop0.body",
+      "lean_file": "Funs.lean",
+      "rust_name": "aspis_core::v6_onefold::binary_frontier_nodes",
+      "is_local": true,
+      "source": {
+        "file": "crates/aspis-core/src/v6_onefold.rs",
+        "begin_line": 449,
+        "end_line": 452
+      },
+      "is_opaque": false,
+      "can_fail": true,
+      "can_diverge": true,
+      "is_rec": false,
+      "reducible": false,
+      "loop": { "id": 1, "pos": [ 0, 0 ], "is_body": true },
+      "parent_lean_name": "V7BinaryFrontierSource.v6_onefold.binary_frontier_nodes"
+    },
+    {
+      "def_id": 0,
+      "lean_name": "V7BinaryFrontierSource.v6_onefold.binary_frontier_nodes_loop0_loop0",
+      "lean_file": "Funs.lean",
+      "rust_name": "aspis_core::v6_onefold::binary_frontier_nodes",
+      "is_local": true,
+      "source": {
+        "file": "crates/aspis-core/src/v6_onefold.rs",
+        "begin_line": 449,
+        "end_line": 452
+      },
+      "is_opaque": false,
+      "can_fail": true,
+      "can_diverge": true,
+      "is_rec": false,
+      "reducible": false,
+      "loop": { "id": 1, "pos": [ 0, 0 ], "is_body": false },
+      "parent_lean_name": "V7BinaryFrontierSource.v6_onefold.binary_frontier_nodes"
+    },
+    {
+      "def_id": 0,
+      "lean_name": "V7BinaryFrontierSource.v6_onefold.binary_frontier_nodes_loop0.body",
+      "lean_file": "Funs.lean",
+      "rust_name": "aspis_core::v6_onefold::binary_frontier_nodes",
+      "is_local": true,
+      "source": {
+        "file": "crates/aspis-core/src/v6_onefold.rs",
+        "begin_line": 446,
+        "end_line": 454
+      },
+      "is_opaque": false,
+      "can_fail": true,
+      "can_diverge": true,
+      "is_rec": false,
+      "reducible": false,
+      "loop": { "id": 0, "pos": [ 0 ], "is_body": true },
+      "parent_lean_name": "V7BinaryFrontierSource.v6_onefold.binary_frontier_nodes"
+    },
+    {
+      "def_id": 0,
+      "lean_name": "V7BinaryFrontierSource.v6_onefold.binary_frontier_nodes_loop0",
+      "lean_file": "Funs.lean",
+      "rust_name": "aspis_core::v6_onefold::binary_frontier_nodes",
+      "is_local": true,
+      "source": {
+        "file": "crates/aspis-core/src/v6_onefold.rs",
+        "begin_line": 446,
+        "end_line": 454
+      },
+      "is_opaque": false,
+      "can_fail": true,
+      "can_diverge": true,
+      "is_rec": false,
+      "reducible": false,
+      "loop": { "id": 0, "pos": [ 0 ], "is_body": false },
+      "parent_lean_name": "V7BinaryFrontierSource.v6_onefold.binary_frontier_nodes"
+    },
+    {
+      "def_id": 0,
+      "lean_name": "V7BinaryFrontierSource.v6_onefold.binary_frontier_nodes_loop1.body",
+      "lean_file": "Funs.lean",
+      "rust_name": "aspis_core::v6_onefold::binary_frontier_nodes",
+      "is_local": true,
+      "source": {
+        "file": "crates/aspis-core/src/v6_onefold.rs",
+        "begin_line": 458,
+        "end_line": 473
+      },
+      "is_opaque": false,
+      "can_fail": true,
+      "can_diverge": true,
+      "is_rec": false,
+      "reducible": false,
+      "loop": { "id": 2, "pos": [ 1 ], "is_body": true },
+      "parent_lean_name": "V7BinaryFrontierSource.v6_onefold.binary_frontier_nodes"
+    },
+    {
+      "def_id": 0,
+      "lean_name": "V7BinaryFrontierSource.v6_onefold.binary_frontier_nodes_loop1",
+      "lean_file": "Funs.lean",
+      "rust_name": "aspis_core::v6_onefold::binary_frontier_nodes",
+      "is_local": true,
+      "source": {
+        "file": "crates/aspis-core/src/v6_onefold.rs",
+        "begin_line": 458,
+        "end_line": 473
+      },
+      "is_opaque": false,
+      "can_fail": true,
+      "can_diverge": true,
+      "is_rec": false,
+      "reducible": false,
+      "loop": { "id": 2, "pos": [ 1 ], "is_body": false },
+      "parent_lean_name": "V7BinaryFrontierSource.v6_onefold.binary_frontier_nodes"
+    },
+    {
+      "def_id": 0,
+      "lean_name": "V7BinaryFrontierSource.v6_onefold.binary_frontier_nodes_loop2.body",
+      "lean_file": "Funs.lean",
+      "rust_name": "aspis_core::v6_onefold::binary_frontier_nodes",
+      "is_local": true,
+      "source": {
+        "file": "crates/aspis-core/src/v6_onefold.rs",
+        "begin_line": 465,
+        "end_line": 466
+      },
+      "is_opaque": false,
+      "can_fail": true,
+      "can_diverge": true,
+      "is_rec": false,
+      "reducible": false,
+      "loop": { "id": 3, "pos": [ 2 ], "is_body": true },
+      "parent_lean_name": "V7BinaryFrontierSource.v6_onefold.binary_frontier_nodes"
+    },
+    {
+      "def_id": 0,
+      "lean_name": "V7BinaryFrontierSource.v6_onefold.binary_frontier_nodes_loop2",
+      "lean_file": "Funs.lean",
+      "rust_name": "aspis_core::v6_onefold::binary_frontier_nodes",
+      "is_local": true,
+      "source": {
+        "file": "crates/aspis-core/src/v6_onefold.rs",
+        "begin_line": 465,
+        "end_line": 466
+      },
+      "is_opaque": false,
+      "can_fail": true,
+      "can_diverge": true,
+      "is_rec": false,
+      "reducible": false,
+      "loop": { "id": 3, "pos": [ 2 ], "is_body": false },
+      "parent_lean_name": "V7BinaryFrontierSource.v6_onefold.binary_frontier_nodes"
+    },
+    {
+      "def_id": 0,
+      "lean_name": "V7BinaryFrontierSource.v6_onefold.binary_frontier_nodes",
+      "lean_file": "Funs.lean",
+      "rust_name": "aspis_core::v6_onefold::binary_frontier_nodes",
+      "is_local": true,
+      "source": {
+        "file": "crates/aspis-core/src/v6_onefold.rs",
+        "begin_line": 435,
+        "end_line": 473
+      },
+      "is_opaque": false,
+      "can_fail": true,
+      "can_diverge": true,
+      "is_rec": false,
+      "reducible": false
+    }
+  ],
+  "types": [
+    {
+      "def_id": 6,
+      "lean_name": "V7BinaryFrontierSource.core.slice.iter.Windows",
+      "lean_file": "TypesExternal_Template.lean",
+      "rust_name": "core::slice::iter::Windows",
+      "is_local": false,
+      "source": {
+        "file": "/rustc/library/core/src/slice/iter.rs",
+        "begin_line": 1329,
+        "end_line": 1329
+      }
+    },
+    {
+      "def_id": 1,
+      "lean_name": "V7BinaryFrontierSource.v6_onefold.V6WireError",
+      "lean_file": "Types.lean",
+      "rust_name": "aspis_core::v6_onefold::V6WireError",
+      "is_local": true,
+      "source": {
+        "file": "crates/aspis-core/src/v6_onefold.rs",
+        "begin_line": 73,
+        "end_line": 80
+      }
+    }
+  ],
+  "globals": [],
+  "trait_decls": [],
+  "trait_impls": []
+}
