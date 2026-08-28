@@ -284,6 +284,17 @@ translated q16 outer loop with the stable native refinement. Focused NUC unit
 RSS, and used zero swap. The new endpoint again reports exactly `propext`,
 `Classical.choice`, and `Quot.sound`.
 
+`V7FirstCompactSamplerOuterLoopBridge` now proves the recursive operational
+step as well. `generated_outer_loop_matches_scanBlocks` starts from the literal
+translated q16 outer loop, records the exact successful source squeeze trace,
+and proves that every returned vector and draw count implements the fixed
+K1.3 `scanBlocks 16 64` model in chronological word order. Its only explicit
+operational premise is that the source squeeze calls used by this total-WP run
+succeed; no byte-codec or sampler-semantics equality is assumed. Focused NUC
+unit `aspis-v7-q16-outer-wp-02` exited 0 in 3.32 seconds, peaked at 6,879,120
+KiB RSS, and used zero swap. The endpoint reports exactly `propext`,
+`Classical.choice`, and `Quot.sound`, with no `sorryAx` or project axiom.
+
 ## Digests
 
 ```text
@@ -312,6 +323,7 @@ f21af0ef7f2362c62acb2dfa992c29d31f006aa5b13d788b64752b95d2f033bf  caller/proof/V
 92accefcb0d123584e5007b45427eb44c6e31ad65e314a0b1c3d76e0d5cfbea5  caller/proof/V7FirstCompactSamplerOuterBridge.lean
 6da8875b86b2b2b912a1736408bdca6d22cd74187f9b2670de9edb0199cd8d75  caller/proof/V7FirstCompactSamplerNativeBlockBridge.lean
 9a0f680b6e93be014c37f7a5bc5be2454262bbb9eaedec5a8c1104436f5d8516  caller/proof/V7FirstCompactSamplerOuterBodyBridge.lean
+6c0a2f9233be8c2a56e71157e9ea595e033affd9767f3123e4aa4557b87a3e13  caller/proof/V7FirstCompactSamplerOuterLoopBridge.lean
 6abb0376100611c5553258062480777187785579f402c9c1d3ce72379518258f  ../../crates/aspis-core/src/v7_onefold.rs
 ```
 
@@ -323,10 +335,10 @@ and complete wrapper return are closed. The Aeneas early-return loss is removed
 by the source refactor and fresh extraction. There is no remaining caller-local
 frontier or first-selection control-flow premise.
 
-The remaining system-level integration obligation is now the outer sampler and
-digest-trace alignment: lift the proved per-word loop through exact squeeze
-blocks and the successful fixed wrapper, then identify those blocks with the
-accepted K1.3 evaluator/router blocks. `raw_queries_eq_decoded_schedule` then
+The remaining system-level integration obligation is now the digest-trace and
+successful-wrapper alignment: identify the proved exact source squeeze trace
+with the accepted K1.3 evaluator/router blocks and discharge source squeeze
+success from the actual caller run. `raw_queries_eq_decoded_schedule` then
 closes the ordered array. Array conversion, the `2^18` constant, frontier
 semantics, cap selection, all five returned fields, and the outer first-success
 loop are theorem consequences rather than premises.

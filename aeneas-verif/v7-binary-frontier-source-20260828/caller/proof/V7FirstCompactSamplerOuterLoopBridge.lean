@@ -1,0 +1,290 @@
+import V7FirstCompactSamplerOuterBodyBridge
+
+open Aeneas Aeneas.Std Result ControlFlow Error
+set_option autoImplicit false
+set_option maxRecDepth 10000
+set_option maxHeartbeats 4000000
+
+namespace V7FirstCompactSamplerOuterLoopBridge
+
+open V7FirstCompactSamplerLoop16Bridge
+open V7FirstCompactSamplerNativeBlockBridge
+open V7FirstCompactSamplerOuterBodyBridge
+open AspisV5QuerySamplerControl
+open AspisK1.V7Tag73SamplerDecoder
+
+inductive NativeExactSqueezeTrace :
+    Transcript → List SourceSqueezeBlock → Transcript → Prop
+  | nil (self : Transcript) : NativeExactSqueezeTrace self [] self
+  | cons (self next final : Transcript) (block : SourceSqueezeBlock)
+      (blocks : List SourceSqueezeBlock)
+      (head :
+        V7FirstCompactSource.transcript.Transcript.squeeze_block self =
+          .ok (block, next))
+      (tail : NativeExactSqueezeTrace next blocks final) :
+      NativeExactSqueezeTrace self (block :: blocks) final
+
+def nativeGeneratedCandidateBlocks
+    (blocks : List SourceSqueezeBlock) : List (List Nat) :=
+  blocks.map (fun block =>
+    (blockWords (nativeSourceDigest (sourceSqueezeBytes block))).map q16Candidate)
+
+@[simp] theorem nativeGeneratedCandidateBlocks_nil :
+    nativeGeneratedCandidateBlocks [] = [] := rfl
+
+@[simp] theorem nativeGeneratedCandidateBlocks_cons
+    (block : SourceSqueezeBlock) (blocks : List SourceSqueezeBlock) :
+    nativeGeneratedCandidateBlocks (block :: blocks) =
+      (blockWords (nativeSourceDigest (sourceSqueezeBytes block))).map q16Candidate ::
+        nativeGeneratedCandidateBlocks blocks := rfl
+
+@[simp] theorem nativeGeneratedCandidateBlocks_append
+    (left right : List SourceSqueezeBlock) :
+    nativeGeneratedCandidateBlocks (left ++ right) =
+      nativeGeneratedCandidateBlocks left ++
+        nativeGeneratedCandidateBlocks right := by
+  induction left with
+  | nil => rfl
+  | cons head tail ih =>
+      simp only [List.cons_append, nativeGeneratedCandidateBlocks_cons, ih,
+        List.cons_append]
+
+theorem nativeExactSqueezeTrace_append_one
+    {initial current next : Transcript}
+    {blocks : List SourceSqueezeBlock} {block : SourceSqueezeBlock}
+    (htrace : NativeExactSqueezeTrace initial blocks current)
+    (hsqueeze :
+      V7FirstCompactSource.transcript.Transcript.squeeze_block current =
+        .ok (block, next)) :
+    NativeExactSqueezeTrace initial (blocks ++ [block]) next := by
+  induction htrace generalizing next block with
+  | nil traceSelf =>
+      simpa using NativeExactSqueezeTrace.cons traceSelf next next block []
+        hsqueeze (NativeExactSqueezeTrace.nil next)
+  | cons self middle final headBlock priorBlocks head tail ih =>
+      rw [List.cons_append]
+      exact NativeExactSqueezeTrace.cons self middle next headBlock
+        (priorBlocks ++ [block]) head (ih hsqueeze)
+
+/-- Operational SHA/source boundary for the total-WP loop theorem.  The final
+caller bridge must discharge it from the production hash callback; it is not
+a cryptographic or scan-semantics assumption. -/
+def EverySqueezeSucceeds : Prop :=
+  ∀ current : Transcript, ∃ block next,
+    V7FirstCompactSource.transcript.Transcript.squeeze_block current =
+      .ok (block, next)
+
+def OuterSamplerInvariant
+    (initialSelf : Transcript) (initialOut : alloc.vec.Vec Std.U32)
+    (initialDraws : Std.Usize) (initialConsumedBlocks : Nat)
+    (current : Transcript × alloc.vec.Vec Std.U32 × Std.Usize) : Prop :=
+  current.2.1.val.length ≤ 16 ∧ current.2.2.val ≤ 64 ∧
+    ∃ blocks : List SourceSqueezeBlock,
+      NativeExactSqueezeTrace initialSelf blocks current.1 ∧
+      ∀ suffix : List (List Nat),
+        scanBlocks 16 64
+            (generatedBlockScanState initialOut initialDraws
+              initialConsumedBlocks)
+            (nativeGeneratedCandidateBlocks blocks ++ suffix) =
+          scanBlocks 16 64
+            (generatedBlockScanState current.2.1 current.2.2
+              (initialConsumedBlocks + blocks.length)) suffix
+
+def OuterSamplerPost
+    (initialSelf : Transcript) (initialOut : alloc.vec.Vec Std.U32)
+    (initialDraws : Std.Usize) (initialConsumedBlocks : Nat)
+    (result : Transcript × alloc.vec.Vec Std.U32) : Prop :=
+  ∃ (blocks : List SourceSqueezeBlock) (finalDraws : Std.Usize),
+    NativeExactSqueezeTrace initialSelf blocks result.1 ∧
+    finalDraws.val ≤ 64 ∧ result.2.val.length ≤ 16 ∧
+    scanBlocks 16 64
+        (generatedBlockScanState initialOut initialDraws initialConsumedBlocks)
+        (nativeGeneratedCandidateBlocks blocks) =
+      generatedBlockScanState result.2 finalDraws
+        (initialConsumedBlocks + blocks.length)
+
+/-- Normalize one active translated outer-loop body before entering WP.  Doing
+this through the already proved stable native body keeps Aeneas' dependent
+slice-length witness out of the postcondition elaboration. -/
+theorem active_outer_body_is_normalized
+    (self next : Transcript) (out : alloc.vec.Vec Std.U32)
+    (draws : Std.Usize) (block : SourceSqueezeBlock)
+    (hactive : draws < q16MaxDraws)
+    (hsqueeze :
+      V7FirstCompactSource.transcript.Transcript.squeeze_block self =
+        .ok (block, next)) :
+    V7FirstCompactSource.transcript.Transcript.challenge_queries_without_replacement_loop0.body
+        q16Count q16MaxDraws q16Mask self out draws =
+      (do
+        let (nextOut, nextDraws, marker) ←
+          V7FirstCompactSource.transcript.Transcript.challenge_queries_without_replacement_loop0_loop0
+            (nativeBlockChunks (sourceSqueezeBytes block))
+            q16Count q16MaxDraws q16Mask out draws
+        match marker with
+        | 1#uscalar => .ok (.cont (next, nextOut, nextDraws))
+        | _ => .ok (.done (next, nextOut))) := by
+  rw [current_outer_body_eq_native]
+  unfold nativeQ16OuterBody q16OuterContinuation
+  rw [if_pos hactive, hsqueeze]
+  rfl
+
+/-! The translated outer loop consumes exactly the successful squeeze blocks
+recorded in `NativeExactSqueezeTrace` and implements the fixed K1.3
+`scanBlocks`.
+Every continuation consumes all eight chronological words from one block. -/
+theorem generated_outer_loop_matches_scanBlocks
+    (self : Transcript) (out : alloc.vec.Vec Std.U32)
+    (draws : Std.Usize) (consumedBlocks : Nat)
+    (squeezeSucceeds : EverySqueezeSucceeds)
+    (hout : out.val.length ≤ 16) (hdraws : draws.val ≤ 64) :
+    V7FirstCompactSource.transcript.Transcript.challenge_queries_without_replacement_loop0
+        self q16Count q16MaxDraws q16Mask out draws
+      ⦃ result => OuterSamplerPost self out draws consumedBlocks result ⦄ := by
+  simp only [V7FirstCompactSource.transcript.Transcript.challenge_queries_without_replacement_loop0]
+  apply loop.spec_decr_nat
+    (fun state : Transcript × alloc.vec.Vec Std.U32 × Std.Usize =>
+      64 - state.2.2.val)
+    (OuterSamplerInvariant self out draws consumedBlocks)
+    (OuterSamplerPost self out draws consumedBlocks)
+  · rintro ⟨currentSelf, currentOut, currentDraws⟩ hinvariant
+    rcases hinvariant with
+      ⟨hcurrentOut, hcurrentDraws, blocks, htrace, happend⟩
+    dsimp only at hcurrentOut hcurrentDraws happend ⊢
+    by_cases hactive : currentDraws.val < 64
+    · have hactiveScalar : currentDraws < q16MaxDraws := by
+        simpa [q16MaxDraws] using hactive
+      obtain ⟨block, nextSelf, hsqueeze⟩ := squeezeSucceeds currentSelf
+      rw [active_outer_body_is_normalized currentSelf nextSelf currentOut
+        currentDraws block hactiveScalar hsqueeze]
+      have hinner := generated_inner_loop_matches_scanWords
+        (nativeBlockChunks (sourceSqueezeBytes block))
+        currentOut currentDraws (consumedBlocks + blocks.length + 1)
+        (native_validWordIterator_blockChunks (sourceSqueezeBytes block))
+        hcurrentOut hcurrentDraws
+      obtain ⟨innerResult, hinnerRun, hinnerPost⟩ :=
+        Aeneas.Std.WP.spec_imp_exists hinner
+      rcases innerResult with ⟨nextOut, nextDraws, marker⟩
+      rw [hinnerRun]
+      simp only [bind_tc_ok]
+      let bumped : BlockScanState :=
+        generatedBlockScanState currentOut currentDraws
+          (consumedBlocks + blocks.length + 1)
+      let scanned : WordScanResult :=
+        scanWords 16 64 bumped
+          ((blockWords (nativeSourceDigest (sourceSqueezeBytes block))).map q16Candidate)
+      have hinnerState :
+          generatedBlockScanState nextOut nextDraws
+              (consumedBlocks + blocks.length + 1) = scanned.state := by
+        exact hinnerPost.1.trans (by
+          simp only [scanned, bumped]
+          rw [native_iteratorCandidates_blockChunks])
+      have hmarker : marker.val = wordScanMarker scanned := by
+        simpa only [scanned, bumped, native_iteratorCandidates_blockChunks] using
+          hinnerPost.2
+      have hnextOut : nextOut.val.length ≤ 16 := by
+        have hmodel := scanWords_accepted_length_le 16 64 bumped
+              ((blockWords (nativeSourceDigest (sourceSqueezeBytes block))).map q16Candidate) (by
+                simpa [bumped] using hcurrentOut)
+        have haccepted := congrArg
+          (fun state : BlockScanState => state.accepted.length) hinnerState
+        simp only [generatedBlockScanState_accepted] at haccepted
+        rw [← vecNats_length nextOut]
+        rw [haccepted]
+        exact hmodel
+      have hnextDrawsLe : nextDraws.val ≤ 64 := by
+        have hmodel := scanWords_draws_le 16 64 bumped
+          ((blockWords (nativeSourceDigest (sourceSqueezeBytes block))).map q16Candidate)
+          (by simpa [bumped] using hcurrentDraws)
+        have hdrawEq := congrArg BlockScanState.draws hinnerState
+        simp only [generatedBlockScanState_draws] at hdrawEq
+        rw [hdrawEq]
+        exact hmodel
+      by_cases hcontinue : marker = 1#u32
+      · subst marker
+        simp_scalar
+        have hnotStopped : scanned.stopOuter = false := by
+          cases hstop : scanned.stopOuter <;>
+            simp [wordScanMarker, hstop] at hmarker ⊢
+        have hnextDraws : nextDraws.val = currentDraws.val + 8 := by
+          have hmodel :=
+            V5QuerySamplerGeneratedSemantics.scanWords_draws_of_not_stopped
+              16 64 bumped
+                ((blockWords (nativeSourceDigest (sourceSqueezeBytes block))).map q16Candidate)
+                hnotStopped
+          calc
+            nextDraws.val = scanned.state.draws := by
+              simpa [generatedBlockScanState] using
+                congrArg BlockScanState.draws hinnerState
+            _ = bumped.draws +
+                ((blockWords (nativeSourceDigest (sourceSqueezeBytes block))).map q16Candidate).length :=
+              hmodel
+            _ = currentDraws.val + 8 := by
+              simp [bumped, blockWords]
+        let nextBlocks := blocks ++ [block]
+        have hnextTrace : NativeExactSqueezeTrace self nextBlocks nextSelf := by
+          exact nativeExactSqueezeTrace_append_one htrace hsqueeze
+        refine ⟨⟨hnextOut, hnextDrawsLe, nextBlocks, hnextTrace, ?_⟩, ?_⟩
+        · intro suffix
+          have hold := happend
+            ((blockWords (nativeSourceDigest (sourceSqueezeBytes block))).map q16Candidate :: suffix)
+          simp only [nextBlocks, nativeGeneratedCandidateBlocks_append,
+            nativeGeneratedCandidateBlocks_cons,
+            nativeGeneratedCandidateBlocks_nil,
+            List.append_nil, List.append_assoc, List.singleton_append]
+          rw [hold]
+          rw [scanBlocks]
+          simp only [generatedBlockScanState_draws, if_pos hactive]
+          change (if scanned.stopOuter = true then scanned.state else
+            scanBlocks 16 64 scanned.state suffix) = _
+          simp only [hnotStopped, Bool.false_eq_true, ↓reduceIte]
+          rw [← hinnerState]
+          simpa [nextBlocks, generatedBlockScanState, Nat.add_assoc]
+        · rw [hnextDraws]
+          omega
+      · have hstopped : scanned.stopOuter = true := by
+          cases hstop : scanned.stopOuter
+          · exfalso
+            apply hcontinue
+            apply UScalar.eq_of_val_eq
+            simpa [wordScanMarker, hstop] using hmarker
+          · rfl
+        have hzero : marker = 0#u32 := by
+          apply UScalar.eq_of_val_eq
+          simpa [wordScanMarker, hstopped] using hmarker
+        subst marker
+        simp_scalar
+        let finalBlocks := blocks ++ [block]
+        refine ⟨finalBlocks, nextDraws,
+          nativeExactSqueezeTrace_append_one htrace hsqueeze,
+          hnextDrawsLe, hnextOut, ?_⟩
+        have hold := happend
+          [(blockWords (nativeSourceDigest (sourceSqueezeBytes block))).map q16Candidate]
+        simp only [finalBlocks, nativeGeneratedCandidateBlocks_append,
+          nativeGeneratedCandidateBlocks_cons,
+          nativeGeneratedCandidateBlocks_nil,
+          List.append_nil, List.append_assoc, List.singleton_append]
+        rw [hold]
+        rw [scanBlocks]
+        simp only [generatedBlockScanState_draws, if_pos hactive]
+        change (if scanned.stopOuter = true then scanned.state else
+          scanBlocks 16 64 scanned.state []) = _
+        simp only [hstopped, ↓reduceIte]
+        rw [← hinnerState]
+        simpa [finalBlocks, generatedBlockScanState, Nat.add_assoc]
+    · have hdrawsEq : currentDraws.val = 64 := by omega
+      have hinactiveScalar : ¬ currentDraws < q16MaxDraws := by
+        simpa [q16MaxDraws] using hactive
+      unfold V7FirstCompactSource.transcript.Transcript.challenge_queries_without_replacement_loop0.body
+      rw [if_neg hinactiveScalar]
+      simp only [Aeneas.Std.WP.spec_ok]
+      refine ⟨blocks, currentDraws, htrace, hcurrentDraws,
+        hcurrentOut, ?_⟩
+      have hold := happend []
+      simpa [scanBlocks] using hold
+  · refine ⟨hout, hdraws, [], NativeExactSqueezeTrace.nil self, ?_⟩
+    intro suffix
+    rfl
+
+#print axioms generated_outer_loop_matches_scanBlocks
+
+end V7FirstCompactSamplerOuterLoopBridge
