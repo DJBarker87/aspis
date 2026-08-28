@@ -18,6 +18,11 @@ formal-verification = []
 # Default-off byte-for-CU experiment. This changes only the fixed-field wire
 # representation and is never enabled by a selected production build.
 v7-fixed-canonical-audit = []
+# Follow-up to the canonical fixed-field experiment.  The fixed records are
+# still checked by their one-pass transcript reader, while packed query limbs
+# are checked only by the gamma/opening consumer that already decodes all of
+# them.  This removes the audit parser's duplicate query-wide canonical scan.
+v7-fixed-canonical-exact-once-audit = ["v7-fixed-canonical-audit"]
 
 [dependencies]
 

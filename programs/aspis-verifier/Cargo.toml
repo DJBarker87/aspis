@@ -85,6 +85,13 @@ v7-pair-forest-fixed-canonical-audit = [
     "aspis-statement/pool-v1-kernel",
     "aspis-core/v7-fixed-canonical-audit",
 ]
+# Audit-only exact-once consumer for the +320-byte canonical fixed grammar.
+# It changes no bytes: only the redundant eager scan of the still-packed query
+# section is removed, and the gamma consumer retains every canonicality check.
+v7-pair-forest-fixed-canonical-exact-once-audit = [
+    "v7-pair-forest-fixed-canonical-audit",
+    "aspis-core/v7-fixed-canonical-exact-once-audit",
+]
 # Audit-only exact linear factoring inside the selected semantic terminal.
 # Four digest residual lanes are packed before their shared row selector is
 # applied. Wire bytes, transcript order, theta lanes, and relation parameters
