@@ -1,0 +1,10 @@
+[package]
+name = "v7-tag73-exact-once-query-source"
+version = "0.1.0"
+edition = "2021"
+publish = false
+
+[dependencies]
+aspis-core = { path = "../../../crates/aspis-core", default-features = false, features = ["v7-fixed-canonical-exact-once-audit"] }
+
+[workspace]
