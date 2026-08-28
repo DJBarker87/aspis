@@ -141,6 +141,83 @@ inductive NativeSqueezeTraceShaQueryPairs
             sha256 (nativeHashInputBytes (taggedHashInput self 2#u8))) ::
           tailPairs)
 
+/-- Exact chronological query pairs with the literal translated callback
+outputs, rather than only their decoded q16 positions.  Retaining both the
+output and advance digest is essential: decoder equality does not identify a
+unique transcript. -/
+inductive NativeSqueezeTraceQueryPairs :
+    {initial : Transcript} → {blocks : List SourceSqueezeBlock} →
+      {final : Transcript} →
+      NativeExactSqueezeTrace initial blocks final →
+      List (ShaInput × ShaOutput) → Prop
+  | nil (self : Transcript) :
+      NativeSqueezeTraceQueryPairs (NativeExactSqueezeTrace.nil self) []
+  | cons (self next final : Transcript) (block : SourceSqueezeBlock)
+      (blocks : List SourceSqueezeBlock)
+      (sourceRun :
+        transcript.Transcript.squeeze_block self = .ok (block, next))
+      (tail : NativeExactSqueezeTrace next blocks final)
+      (tailPairs : List (ShaInput × ShaOutput))
+      (tailExact : NativeSqueezeTraceQueryPairs tail tailPairs) :
+      NativeSqueezeTraceQueryPairs
+        (NativeExactSqueezeTrace.cons self next final block blocks sourceRun
+          tail)
+        ((nativeHashInputBytes (taggedHashInput self 1#u8),
+            nativeSourceDigest (sourceSqueezeBytes block)) ::
+          (nativeHashInputBytes (taggedHashInput self 2#u8),
+            nativeSourceDigest (sourceSqueezeBytes next.state)) ::
+          tailPairs)
+
+/-- Every finite translated source trace has a canonical literal ordered pair
+sequence, even though the proof-valued trace cannot be eliminated directly
+into data. -/
+theorem native_squeeze_trace_has_exact_query_pairs
+    {initial final : Transcript} {blocks : List SourceSqueezeBlock}
+    (trace : NativeExactSqueezeTrace initial blocks final) :
+    ∃ pairs : List (ShaInput × ShaOutput),
+      NativeSqueezeTraceQueryPairs trace pairs := by
+  induction trace with
+  | nil self => exact ⟨[], NativeSqueezeTraceQueryPairs.nil self⟩
+  | cons self next final block blocks sourceRun tail ih =>
+      obtain ⟨tailPairs, tailExact⟩ := ih
+      exact ⟨
+        (nativeHashInputBytes (taggedHashInput self 1#u8),
+            nativeSourceDigest (sourceSqueezeBytes block)) ::
+          (nativeHashInputBytes (taggedHashInput self 2#u8),
+            nativeSourceDigest (sourceSqueezeBytes next.state)) ::
+          tailPairs,
+        NativeSqueezeTraceQueryPairs.cons self next final block blocks
+          sourceRun tail tailPairs tailExact⟩
+
+/-- Final-table coverage of the literal source pair sequence constructs the
+exact path-specific callback/table coherence predicate. -/
+theorem hash_callback_recorded_of_exact_query_pairs
+    {table : FixedOracleTable} {initial final : Transcript}
+    {blocks : List SourceSqueezeBlock}
+    {pairs : List (ShaInput × ShaOutput)}
+    {trace : NativeExactSqueezeTrace initial blocks final}
+    (ordered : NativeSqueezeTraceQueryPairs trace pairs)
+    (covered : QueryPairsCoveredByTable table pairs) :
+    HashCallbackRecordedInFixedTable table trace := by
+  revert covered
+  induction ordered with
+  | nil self =>
+      intro _
+      exact HashCallbackRecordedInFixedTable.nil self
+  | cons self next final block blocks sourceRun tail tailPairs tailExact ih =>
+      intro covered
+      have outputLookup := covered
+        (nativeHashInputBytes (taggedHashInput self 1#u8),
+          nativeSourceDigest (sourceSqueezeBytes block)) (by simp)
+      have advanceLookup := covered
+        (nativeHashInputBytes (taggedHashInput self 2#u8),
+          nativeSourceDigest (sourceSqueezeBytes next.state)) (by simp)
+      have tailCovered : QueryPairsCoveredByTable table tailPairs := by
+        intro pair member
+        exact covered pair (by simp [member])
+      exact HashCallbackRecordedInFixedTable.cons self next final block blocks
+        sourceRun tail outputLookup advanceLookup (ih tailCovered)
+
 /-- Existing scheduler pair coverage discharges every lookup in the finite
 source trace once the scheduler's chronological pair list is identified with
 the literal source squeeze order. -/
@@ -411,7 +488,29 @@ theorem native_source_trace_matches_semantic_of_query_pair_coverage
     (sha_trace_inputs_recorded_of_query_pairs ordered covered)
     machine aligned
 
+/-- Strongest pair-level endpoint: literal source output/advance pairs covered
+by the scheduler table imply byte-exact semantic replay.  No decoded-schedule
+equality is used as a substitute for transcript equality. -/
+theorem native_source_trace_matches_semantic_of_exact_pair_coverage
+    {table : FixedOracleTable} {initial final : Transcript}
+    {blocks : List SourceSqueezeBlock}
+    {pairs : List (ShaInput × ShaOutput)}
+    (trace : NativeExactSqueezeTrace initial blocks final)
+    (ordered : NativeSqueezeTraceQueryPairs trace pairs)
+    (covered : QueryPairsCoveredByTable table pairs)
+    (machine : MachineState)
+    (aligned : machine.digest = nativeTranscriptDigest initial) :
+    (squeezeBlocks (fixedTableHashOracle table) blocks.length machine).1 =
+        sourceTraceDigests blocks ∧
+      (squeezeBlocks (fixedTableHashOracle table)
+        blocks.length machine).2.digest = nativeTranscriptDigest final := by
+  exact native_source_trace_matches_semantic_of_recorded_callback trace
+    (hash_callback_recorded_of_exact_query_pairs ordered covered)
+    machine aligned
+
 #print axioms fixed_table_hash_oracle_answer_of_lookup
+#print axioms native_squeeze_trace_has_exact_query_pairs
+#print axioms hash_callback_recorded_of_exact_query_pairs
 #print axioms sha_trace_inputs_recorded_of_query_pairs
 #print axioms hash_callback_recorded_of_sha_trace_inputs
 #print axioms native_table_squeeze_trace_of_runtime_reflection
@@ -422,5 +521,6 @@ theorem native_source_trace_matches_semantic_of_query_pair_coverage
 #print axioms native_source_trace_matches_semantic_of_recorded_callback
 #print axioms native_source_trace_matches_semantic_of_sha256_coverage
 #print axioms native_source_trace_matches_semantic_of_query_pair_coverage
+#print axioms native_source_trace_matches_semantic_of_exact_pair_coverage
 
 end V7FirstCompactSamplerTableTraceBridge
