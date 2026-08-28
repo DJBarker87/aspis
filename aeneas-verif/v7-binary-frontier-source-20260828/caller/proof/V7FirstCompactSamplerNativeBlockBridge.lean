@@ -129,9 +129,35 @@ theorem native_validWordIterator_blockChunks (block : NativeQueryBlock) :
   rcases hword with ⟨index, rfl⟩
   simp [nativeWordSlice]
 
+/-- The literal current-source `Array.to_slice(...).chunks_exact(4)` call
+returns the production-native iterator used by the codec theorems above. -/
+theorem native_chunks_exact_block_is_nativeBlockChunks
+    (block : NativeQueryBlock) :
+    core.slice.Slice.chunks_exact (Array.to_slice block) 4#usize =
+      .ok (nativeBlockChunks block) := by
+  unfold core.slice.Slice.chunks_exact nativeBlockChunks nativeWordSlice
+  simp only [show (4#usize : Std.Usize).val > 0 by decide, ↓reduceDIte,
+    Array.to_slice]
+  simp only [Result.ok.injEq]
+  apply V5QuerySamplerGeneratedSemantics.chunksExact_ext
+  · simp only
+    apply List.ext_get
+    · simp [List.toChunksExact, block.property]
+    · intro i hleft hright
+      simp [List.toChunksExact, block.property] at hleft hright
+      interval_cases i <;> simp [List.toChunksExact, block.property] <;>
+        apply Subtype.ext <;>
+        apply List.ext_get
+      all_goals try simp [block.property]
+      all_goals
+        intro n hn
+        interval_cases n <;> simp
+  · simp [List.toChunksExact, block.property]
+
 #print axioms native_word_value_eq_k13
 #print axioms native_candidate_eq_k13
 #print axioms native_iteratorCandidates_blockChunks
 #print axioms native_validWordIterator_blockChunks
+#print axioms native_chunks_exact_block_is_nativeBlockChunks
 
 end V7FirstCompactSamplerNativeBlockBridge
