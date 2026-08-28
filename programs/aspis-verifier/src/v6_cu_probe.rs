@@ -172,6 +172,7 @@ fn log_terminal_phase(phase: StateOnlyTerminalDiagnosticPhase) {
 fn log_relation_phase(phase: V6RelationDiagnosticPhase) {
     match phase {
         V6RelationDiagnosticPhase::Start => msg!("aspis-v6-integrated:relation-start"),
+        V6RelationDiagnosticPhase::BatchWork => msg!("aspis-v6-integrated:work-batch"),
         V6RelationDiagnosticPhase::PreparedWeights => {
             msg!("aspis-v6-integrated:relation-prepared-weights")
         }
@@ -181,10 +182,16 @@ fn log_relation_phase(phase: V6RelationDiagnosticPhase) {
         V6RelationDiagnosticPhase::RelationFields => {
             msg!("aspis-v6-integrated:relation-fields")
         }
+        V6RelationDiagnosticPhase::FoldPolynomial => {
+            msg!("aspis-v6-integrated:work-fold-polynomial")
+        }
+        V6RelationDiagnosticPhase::FoldWork => msg!("aspis-v6-integrated:work-fold"),
         V6RelationDiagnosticPhase::RoundZero => {
             msg!("aspis-v6-integrated:relation-round-zero")
         }
         V6RelationDiagnosticPhase::Final256 => msg!("aspis-v6-integrated:relation-final256"),
+        V6RelationDiagnosticPhase::FinalWork => msg!("aspis-v6-integrated:work-final"),
+        V6RelationDiagnosticPhase::Q16Schedule => msg!("aspis-v6-integrated:q16-schedule"),
         V6RelationDiagnosticPhase::Queries => msg!("aspis-v6-integrated:relation-queries"),
         V6RelationDiagnosticPhase::QueryBatch => {
             msg!("aspis-v6-integrated:relation-query-batch")

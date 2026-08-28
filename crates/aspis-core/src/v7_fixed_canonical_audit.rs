@@ -20,8 +20,9 @@ use crate::v7_merkle208::{
     V7_C2_TREE_TAG,
 };
 use crate::v7_onefold::{
-    V7CompactOneFoldWire, V7_COMPACT_DIGEST_BYTES, V7_COMPACT_FRONTIER_CAP_PER_TREE,
-    V7_COMPACT_PRIVATE_SALT_BYTES, V7_COMPACT_QUERY_BYTES, V7_COMPACT_QUERY_SECTION_BYTES,
+    V7CompactOneFoldWire, V7OpeningDiagnosticPhase, V7_COMPACT_DIGEST_BYTES,
+    V7_COMPACT_FRONTIER_CAP_PER_TREE, V7_COMPACT_PRIVATE_SALT_BYTES, V7_COMPACT_QUERY_BYTES,
+    V7_COMPACT_QUERY_SECTION_BYTES,
 };
 use crate::HashFn;
 
@@ -211,6 +212,69 @@ pub fn verify_and_gamma_combine_v7_canonical_openings(
     ) {
         return Err(V6WireError::MerkleMismatch);
     }
+    Ok(combined)
+}
+
+/// Diagnostic twin of
+/// [`verify_and_gamma_combine_v7_canonical_openings`]. It preserves the exact
+/// checked decoder and two-tree authentication while exposing three coarse
+/// CU boundaries to an explicitly instrumented verifier build.
+#[inline(never)]
+pub fn verify_and_gamma_combine_v7_canonical_openings_with_diagnostic_trace<Trace>(
+    hash: HashFn,
+    wire: &V7CanonicalOneFoldWire<'_>,
+    queries: [u32; V6_QUERY_COUNT],
+    powers: &StateOnlySpendQueryPowers,
+    mut trace: Trace,
+) -> Result<[[QM31; 4]; V6_QUERY_COUNT], V6WireError>
+where
+    Trace: FnMut(V7OpeningDiagnosticPhase),
+{
+    let mut order: [(u32, usize); V6_QUERY_COUNT] =
+        core::array::from_fn(|ordinal| (queries[ordinal], ordinal));
+    order.sort_unstable_by_key(|entry| entry.0);
+    if order[V6_QUERY_COUNT - 1].0 >= 1 << 18 || order.windows(2).any(|pair| pair[0].0 == pair[1].0)
+    {
+        return Err(V6WireError::InvalidQuerySchedule);
+    }
+
+    let mut combined = [[QM31::ZERO; 4]; V6_QUERY_COUNT];
+    for (_, ordinal) in order {
+        let record = wire
+            .query(ordinal)
+            .ok_or(V6WireError::InvalidQuerySchedule)?;
+        combined[ordinal] =
+            gamma_combine_v6_packed_layer0(record.c1_packed, record.c2_packed, powers)?;
+    }
+    trace(V7OpeningDiagnosticPhase::GammaCombined);
+
+    let mut entries = Vec::with_capacity(V6_QUERY_COUNT);
+    for (query, ordinal) in order {
+        let record = wire
+            .query(ordinal)
+            .ok_or(V6WireError::InvalidQuerySchedule)?;
+        entries.push((
+            query,
+            private_leaf_hash_v7(hash, V7_C1_TREE_TAG, record.c1_packed, record.salt),
+            private_leaf_hash_v7(hash, V7_C2_TREE_TAG, record.c2_packed, record.salt),
+        ));
+    }
+    trace(V7OpeningDiagnosticPhase::LeavesHashed);
+
+    let mut level = Vec::with_capacity(V6_QUERY_COUNT);
+    let mut next = Vec::with_capacity(V6_QUERY_COUNT);
+    if !verify_two_minimal_subtrees_v7_bytes(
+        hash,
+        (wire.c1_root, wire.c2_root),
+        18,
+        &entries,
+        (wire.c1_frontier, wire.c2_frontier),
+        &mut level,
+        &mut next,
+    ) {
+        return Err(V6WireError::MerkleMismatch);
+    }
+    trace(V7OpeningDiagnosticPhase::MerkleAuthenticated);
     Ok(combined)
 }
 

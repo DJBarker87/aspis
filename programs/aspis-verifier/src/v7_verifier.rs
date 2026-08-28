@@ -10,18 +10,45 @@ use aspis_core::v6_onefold::{
     fold_v6_onefold_queries, prepare_v6_onefold_coordinates, V6WireError,
 };
 use aspis_core::v6_query_batch::V6AuthenticatedQueryBatch;
-#[cfg(feature = "v7-pair-forest-fixed-canonical-audit")]
+#[cfg(all(
+    feature = "v7-pair-forest-fixed-canonical-audit",
+    not(feature = "v7-pair-forest-verifier-cu-profile")
+))]
 use aspis_core::v6_transcript::verify_v7_canonical_transcript_and_relation_prepared_with_hiding_context;
+#[cfg(all(
+    feature = "v7-pair-forest-fixed-canonical-audit",
+    feature = "v7-pair-forest-verifier-cu-profile"
+))]
+use aspis_core::v6_transcript::verify_v7_canonical_transcript_and_relation_prepared_with_hiding_context_and_diagnostic_trace;
 use aspis_core::v6_transcript::{
     verify_v7_compact_transcript_and_relation_prepared,
     verify_v7_compact_transcript_and_relation_prepared_with_hiding_context, V6QueryBatchView,
     V6SemanticView, V6TranscriptContext, V6TranscriptError, V6VerifiedTranscript,
 };
-#[cfg(feature = "v7-pair-forest-fixed-canonical-audit")]
-use aspis_core::v7_fixed_canonical_audit::{
-    verify_and_gamma_combine_v7_canonical_openings, V7CanonicalOneFoldWire,
+#[cfg(feature = "v7-pair-forest-verifier-cu-profile")]
+use aspis_core::v6_transcript::{
+    verify_v7_compact_transcript_and_relation_prepared_with_hiding_context_and_diagnostic_trace,
+    V6RelationDiagnosticPhase, V7TranscriptDiagnosticPhase,
 };
-use aspis_core::v7_onefold::{verify_and_gamma_combine_v7_openings, V7CompactOneFoldWire};
+#[cfg(all(
+    feature = "v7-pair-forest-fixed-canonical-audit",
+    not(feature = "v7-pair-forest-verifier-cu-profile")
+))]
+use aspis_core::v7_fixed_canonical_audit::verify_and_gamma_combine_v7_canonical_openings;
+#[cfg(all(
+    feature = "v7-pair-forest-fixed-canonical-audit",
+    feature = "v7-pair-forest-verifier-cu-profile"
+))]
+use aspis_core::v7_fixed_canonical_audit::verify_and_gamma_combine_v7_canonical_openings_with_diagnostic_trace;
+#[cfg(feature = "v7-pair-forest-fixed-canonical-audit")]
+use aspis_core::v7_fixed_canonical_audit::V7CanonicalOneFoldWire;
+#[cfg(not(feature = "v7-pair-forest-verifier-cu-profile"))]
+use aspis_core::v7_onefold::verify_and_gamma_combine_v7_openings;
+use aspis_core::v7_onefold::V7CompactOneFoldWire;
+#[cfg(feature = "v7-pair-forest-verifier-cu-profile")]
+use aspis_core::v7_onefold::{
+    verify_and_gamma_combine_v7_openings_with_diagnostic_trace, V7OpeningDiagnosticPhase,
+};
 use aspis_core::{state_only_hiding::StateOnlyHidingContext, HashFn};
 use aspis_statement::atomic_state_only_terminal::{
     atomic_state_only_copy_inactive_group_masks_v3, atomic_state_only_copy_inactive_row_groups_v3,
@@ -41,6 +68,8 @@ use aspis_statement::{
     },
     AtomicPaymentStatementV4,
 };
+#[cfg(feature = "v7-pair-forest-verifier-cu-profile")]
+use solana_program::log::{sol_log, sol_log_compute_units};
 use solana_program::pubkey::Pubkey;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -66,6 +95,80 @@ impl From<V6WireError> for V7VerifyError {
 pub struct VerifiedV7ReadOnly {
     pub transcript: V6VerifiedTranscript,
     pub folded_query_sum: QM31,
+}
+
+#[cfg(feature = "v7-pair-forest-verifier-cu-profile")]
+#[inline(never)]
+fn verifier_cu_checkpoint(label: &'static str) {
+    sol_log(label);
+    sol_log_compute_units();
+}
+
+#[cfg(feature = "v7-pair-forest-verifier-cu-profile")]
+#[inline(never)]
+fn verifier_cu_transcript_phase(phase: V7TranscriptDiagnosticPhase) {
+    let label = match phase {
+        V7TranscriptDiagnosticPhase::TranscriptSetup => "aspis-v7-forest-cu:transcript-setup",
+        V7TranscriptDiagnosticPhase::SemanticSumcheck => "aspis-v7-forest-cu:semantic-sumcheck",
+        V7TranscriptDiagnosticPhase::PointClaims => "aspis-v7-forest-cu:point-claims",
+        V7TranscriptDiagnosticPhase::TerminalStart => "aspis-v7-forest-cu:terminal-start",
+        V7TranscriptDiagnosticPhase::TerminalEnd => "aspis-v7-forest-cu:terminal-end",
+        V7TranscriptDiagnosticPhase::Relation(relation) => match relation {
+            V6RelationDiagnosticPhase::Start => "aspis-v7-forest-cu:relation-start",
+            V6RelationDiagnosticPhase::BatchWork => "aspis-v7-forest-cu:work-batch",
+            V6RelationDiagnosticPhase::PreparedWeights => {
+                "aspis-v7-forest-cu:relation-prepared-weights"
+            }
+            V6RelationDiagnosticPhase::CircleSamples => {
+                "aspis-v7-forest-cu:relation-circle-samples"
+            }
+            V6RelationDiagnosticPhase::RelationFields => "aspis-v7-forest-cu:relation-fields",
+            V6RelationDiagnosticPhase::FoldPolynomial => "aspis-v7-forest-cu:work-fold-polynomial",
+            V6RelationDiagnosticPhase::FoldWork => "aspis-v7-forest-cu:work-fold",
+            V6RelationDiagnosticPhase::RoundZero => "aspis-v7-forest-cu:relation-round-zero",
+            V6RelationDiagnosticPhase::Final256 => "aspis-v7-forest-cu:relation-final256",
+            V6RelationDiagnosticPhase::FinalWork => "aspis-v7-forest-cu:work-final",
+            V6RelationDiagnosticPhase::Q16Schedule => "aspis-v7-forest-cu:q16-schedule",
+            V6RelationDiagnosticPhase::Queries => "aspis-v7-forest-cu:relation-queries",
+            V6RelationDiagnosticPhase::QueryBatch => "aspis-v7-forest-cu:relation-query-batch",
+            V6RelationDiagnosticPhase::RoundOnePolynomial => {
+                "aspis-v7-forest-cu:relation-round-one-polynomial"
+            }
+            V6RelationDiagnosticPhase::RoundOneWeights => {
+                "aspis-v7-forest-cu:relation-round-one-weights"
+            }
+            V6RelationDiagnosticPhase::RoundOne => "aspis-v7-forest-cu:relation-round-one-values",
+            V6RelationDiagnosticPhase::RoundTwoPolynomial => {
+                "aspis-v7-forest-cu:relation-round-two-polynomial"
+            }
+            V6RelationDiagnosticPhase::RoundTwoWeights => {
+                "aspis-v7-forest-cu:relation-round-two-weights"
+            }
+            V6RelationDiagnosticPhase::RoundTwo => "aspis-v7-forest-cu:relation-round-two-values",
+            V6RelationDiagnosticPhase::RoundThreePolynomial => {
+                "aspis-v7-forest-cu:relation-round-three-polynomial"
+            }
+            V6RelationDiagnosticPhase::RoundThreeWeights => {
+                "aspis-v7-forest-cu:relation-round-three-weights"
+            }
+            V6RelationDiagnosticPhase::RoundThree => {
+                "aspis-v7-forest-cu:relation-round-three-values"
+            }
+            V6RelationDiagnosticPhase::Terminal => "aspis-v7-forest-cu:relation-final-residual",
+        },
+    };
+    verifier_cu_checkpoint(label);
+}
+
+#[cfg(feature = "v7-pair-forest-verifier-cu-profile")]
+fn verifier_cu_opening_phase(phase: V7OpeningDiagnosticPhase) {
+    verifier_cu_checkpoint(match phase {
+        V7OpeningDiagnosticPhase::GammaCombined => "aspis-v7-forest-cu:query-gamma-combined",
+        V7OpeningDiagnosticPhase::LeavesHashed => "aspis-v7-forest-cu:query-leaves-hashed",
+        V7OpeningDiagnosticPhase::MerkleAuthenticated => {
+            "aspis-v7-forest-cu:query-merkle-authenticated"
+        }
+    });
 }
 
 fn terminal_matches(statement: &AtomicPaymentStatementV4, view: &V6SemanticView<'_>) -> bool {
@@ -189,11 +292,27 @@ fn authenticate_and_fold_queries(
     wire: &V7CompactOneFoldWire<'_>,
     view: &V6QueryBatchView<'_>,
 ) -> Result<V6AuthenticatedQueryBatch, V6WireError> {
+    #[cfg(feature = "v7-pair-forest-verifier-cu-profile")]
+    verifier_cu_checkpoint("aspis-v7-forest-cu:query-fold-start");
     let coordinates = prepare_v6_onefold_coordinates(view.queries)?;
+    #[cfg(feature = "v7-pair-forest-verifier-cu-profile")]
+    verifier_cu_checkpoint("aspis-v7-forest-cu:query-coordinates");
+    #[cfg(feature = "v7-pair-forest-verifier-cu-profile")]
+    let combined = verify_and_gamma_combine_v7_openings_with_diagnostic_trace(
+        hash,
+        wire,
+        view.queries,
+        view.gamma_powers,
+        verifier_cu_opening_phase,
+    )?;
+    #[cfg(not(feature = "v7-pair-forest-verifier-cu-profile"))]
     let combined =
         verify_and_gamma_combine_v7_openings(hash, wire, view.queries, view.gamma_powers)?;
+    let values = fold_v6_onefold_queries(&combined, &coordinates, view.alpha0);
+    #[cfg(feature = "v7-pair-forest-verifier-cu-profile")]
+    verifier_cu_checkpoint("aspis-v7-forest-cu:query-folded");
     Ok(V6AuthenticatedQueryBatch {
-        values: fold_v6_onefold_queries(&combined, &coordinates, view.alpha0),
+        values,
         line_x: coordinates.line_x,
     })
 }
@@ -205,15 +324,31 @@ fn authenticate_and_fold_canonical_queries(
     wire: &V7CanonicalOneFoldWire<'_>,
     view: &V6QueryBatchView<'_>,
 ) -> Result<V6AuthenticatedQueryBatch, V6WireError> {
+    #[cfg(feature = "v7-pair-forest-verifier-cu-profile")]
+    verifier_cu_checkpoint("aspis-v7-forest-cu:query-fold-start");
     let coordinates = prepare_v6_onefold_coordinates(view.queries)?;
+    #[cfg(feature = "v7-pair-forest-verifier-cu-profile")]
+    verifier_cu_checkpoint("aspis-v7-forest-cu:query-coordinates");
+    #[cfg(feature = "v7-pair-forest-verifier-cu-profile")]
+    let combined = verify_and_gamma_combine_v7_canonical_openings_with_diagnostic_trace(
+        hash,
+        wire,
+        view.queries,
+        view.gamma_powers,
+        verifier_cu_opening_phase,
+    )?;
+    #[cfg(not(feature = "v7-pair-forest-verifier-cu-profile"))]
     let combined = verify_and_gamma_combine_v7_canonical_openings(
         hash,
         wire,
         view.queries,
         view.gamma_powers,
     )?;
+    let values = fold_v6_onefold_queries(&combined, &coordinates, view.alpha0);
+    #[cfg(feature = "v7-pair-forest-verifier-cu-profile")]
+    verifier_cu_checkpoint("aspis-v7-forest-cu:query-folded");
     Ok(V6AuthenticatedQueryBatch {
-        values: fold_v6_onefold_queries(&combined, &coordinates, view.alpha0),
+        values,
         line_x: coordinates.line_x,
     })
 }
@@ -369,7 +504,11 @@ pub fn verify_v7_pool_pair_forest_private_transfer_with_statement_digest(
     statement_digest: [u8; 32],
     check_pow: bool,
 ) -> Result<VerifiedV7ReadOnly, V7VerifyError> {
+    #[cfg(feature = "v7-pair-forest-verifier-cu-profile")]
+    verifier_cu_checkpoint("aspis-v7-forest-cu:verifier-start");
     let wire = V7CompactOneFoldWire::parse_deferred_canonicality(proof, frontier_nodes)?;
+    #[cfg(feature = "v7-pair-forest-verifier-cu-profile")]
+    verifier_cu_checkpoint("aspis-v7-forest-cu:wire-parsed");
     let context = V6TranscriptContext {
         program_id: program_id.to_bytes(),
         release_binding,
@@ -378,6 +517,26 @@ pub fn verify_v7_pool_pair_forest_private_transfer_with_statement_digest(
     };
     let (row_groups, group_masks, group_count) =
         pool_inactive_schedule(pool_v1_pair_forest_copy_active_row_masks_compiled_v1());
+    #[cfg(feature = "v7-pair-forest-verifier-cu-profile")]
+    verifier_cu_checkpoint("aspis-v7-forest-cu:inactive-schedule");
+    #[cfg(feature = "v7-pair-forest-verifier-cu-profile")]
+    let transcript =
+        verify_v7_compact_transcript_and_relation_prepared_with_hiding_context_and_diagnostic_trace(
+            hash,
+            &wire,
+            &context,
+            StateOnlyHidingContext::pool_v1_pair_forest_v1(
+                statement_digest,
+                attempt_id.to_bytes(),
+            ),
+            &row_groups,
+            &group_masks[..group_count],
+            check_pow,
+            |view| pool_pair_forest_private_transfer_terminal_matches(statement, transition, view),
+            |view| authenticate_and_fold_queries(hash, &wire, view),
+            verifier_cu_transcript_phase,
+        )?;
+    #[cfg(not(feature = "v7-pair-forest-verifier-cu-profile"))]
     let transcript = verify_v7_compact_transcript_and_relation_prepared_with_hiding_context(
         hash,
         &wire,
@@ -389,6 +548,8 @@ pub fn verify_v7_pool_pair_forest_private_transfer_with_statement_digest(
         |view| pool_pair_forest_private_transfer_terminal_matches(statement, transition, view),
         |view| authenticate_and_fold_queries(hash, &wire, view),
     )?;
+    #[cfg(feature = "v7-pair-forest-verifier-cu-profile")]
+    verifier_cu_checkpoint("aspis-v7-forest-cu:verifier-accepted");
     Ok(VerifiedV7ReadOnly {
         folded_query_sum: transcript.folded_query_sum,
         transcript,
@@ -408,7 +569,11 @@ pub fn verify_v7_pool_pair_forest_withdrawal_with_statement_digest(
     statement_digest: [u8; 32],
     check_pow: bool,
 ) -> Result<VerifiedV7ReadOnly, V7VerifyError> {
+    #[cfg(feature = "v7-pair-forest-verifier-cu-profile")]
+    verifier_cu_checkpoint("aspis-v7-forest-cu:verifier-start");
     let wire = V7CompactOneFoldWire::parse_deferred_canonicality(proof, frontier_nodes)?;
+    #[cfg(feature = "v7-pair-forest-verifier-cu-profile")]
+    verifier_cu_checkpoint("aspis-v7-forest-cu:wire-parsed");
     let context = V6TranscriptContext {
         program_id: program_id.to_bytes(),
         release_binding,
@@ -417,6 +582,26 @@ pub fn verify_v7_pool_pair_forest_withdrawal_with_statement_digest(
     };
     let (row_groups, group_masks, group_count) =
         pool_inactive_schedule(pool_v1_pair_forest_copy_active_row_masks_compiled_v1());
+    #[cfg(feature = "v7-pair-forest-verifier-cu-profile")]
+    verifier_cu_checkpoint("aspis-v7-forest-cu:inactive-schedule");
+    #[cfg(feature = "v7-pair-forest-verifier-cu-profile")]
+    let transcript =
+        verify_v7_compact_transcript_and_relation_prepared_with_hiding_context_and_diagnostic_trace(
+            hash,
+            &wire,
+            &context,
+            StateOnlyHidingContext::pool_v1_pair_forest_v1(
+                statement_digest,
+                attempt_id.to_bytes(),
+            ),
+            &row_groups,
+            &group_masks[..group_count],
+            check_pow,
+            |view| pool_pair_forest_withdrawal_terminal_matches(statement, transition, view),
+            |view| authenticate_and_fold_queries(hash, &wire, view),
+            verifier_cu_transcript_phase,
+        )?;
+    #[cfg(not(feature = "v7-pair-forest-verifier-cu-profile"))]
     let transcript = verify_v7_compact_transcript_and_relation_prepared_with_hiding_context(
         hash,
         &wire,
@@ -428,6 +613,8 @@ pub fn verify_v7_pool_pair_forest_withdrawal_with_statement_digest(
         |view| pool_pair_forest_withdrawal_terminal_matches(statement, transition, view),
         |view| authenticate_and_fold_queries(hash, &wire, view),
     )?;
+    #[cfg(feature = "v7-pair-forest-verifier-cu-profile")]
+    verifier_cu_checkpoint("aspis-v7-forest-cu:verifier-accepted");
     Ok(VerifiedV7ReadOnly {
         folded_query_sum: transcript.folded_query_sum,
         transcript,
@@ -448,10 +635,14 @@ pub fn verify_v7_pool_pair_forest_private_transfer_canonical_with_statement_dige
     statement_digest: [u8; 32],
     check_pow: bool,
 ) -> Result<VerifiedV7ReadOnly, V7VerifyError> {
+    #[cfg(feature = "v7-pair-forest-verifier-cu-profile")]
+    verifier_cu_checkpoint("aspis-v7-forest-cu:verifier-start");
     #[cfg(feature = "v7-pair-forest-fixed-canonical-exact-once-audit")]
     let wire = V7CanonicalOneFoldWire::parse_deferred_query_canonicality(proof, frontier_nodes)?;
     #[cfg(not(feature = "v7-pair-forest-fixed-canonical-exact-once-audit"))]
     let wire = V7CanonicalOneFoldWire::parse(proof, frontier_nodes)?;
+    #[cfg(feature = "v7-pair-forest-verifier-cu-profile")]
+    verifier_cu_checkpoint("aspis-v7-forest-cu:wire-parsed");
     let context = V6TranscriptContext {
         program_id: program_id.to_bytes(),
         release_binding,
@@ -460,6 +651,22 @@ pub fn verify_v7_pool_pair_forest_private_transfer_canonical_with_statement_dige
     };
     let (row_groups, group_masks, group_count) =
         pool_inactive_schedule(pool_v1_pair_forest_copy_active_row_masks_compiled_v1());
+    #[cfg(feature = "v7-pair-forest-verifier-cu-profile")]
+    verifier_cu_checkpoint("aspis-v7-forest-cu:inactive-schedule");
+    #[cfg(feature = "v7-pair-forest-verifier-cu-profile")]
+    let transcript = verify_v7_canonical_transcript_and_relation_prepared_with_hiding_context_and_diagnostic_trace(
+        hash,
+        &wire,
+        &context,
+        StateOnlyHidingContext::pool_v1_pair_forest_v1(statement_digest, attempt_id.to_bytes()),
+        &row_groups,
+        &group_masks[..group_count],
+        check_pow,
+        |view| pool_pair_forest_private_transfer_terminal_matches(statement, transition, view),
+        |view| authenticate_and_fold_canonical_queries(hash, &wire, view),
+        verifier_cu_transcript_phase,
+    )?;
+    #[cfg(not(feature = "v7-pair-forest-verifier-cu-profile"))]
     let transcript = verify_v7_canonical_transcript_and_relation_prepared_with_hiding_context(
         hash,
         &wire,
@@ -471,6 +678,8 @@ pub fn verify_v7_pool_pair_forest_private_transfer_canonical_with_statement_dige
         |view| pool_pair_forest_private_transfer_terminal_matches(statement, transition, view),
         |view| authenticate_and_fold_canonical_queries(hash, &wire, view),
     )?;
+    #[cfg(feature = "v7-pair-forest-verifier-cu-profile")]
+    verifier_cu_checkpoint("aspis-v7-forest-cu:verifier-accepted");
     Ok(VerifiedV7ReadOnly {
         folded_query_sum: transcript.folded_query_sum,
         transcript,
@@ -491,10 +700,14 @@ pub fn verify_v7_pool_pair_forest_withdrawal_canonical_with_statement_digest(
     statement_digest: [u8; 32],
     check_pow: bool,
 ) -> Result<VerifiedV7ReadOnly, V7VerifyError> {
+    #[cfg(feature = "v7-pair-forest-verifier-cu-profile")]
+    verifier_cu_checkpoint("aspis-v7-forest-cu:verifier-start");
     #[cfg(feature = "v7-pair-forest-fixed-canonical-exact-once-audit")]
     let wire = V7CanonicalOneFoldWire::parse_deferred_query_canonicality(proof, frontier_nodes)?;
     #[cfg(not(feature = "v7-pair-forest-fixed-canonical-exact-once-audit"))]
     let wire = V7CanonicalOneFoldWire::parse(proof, frontier_nodes)?;
+    #[cfg(feature = "v7-pair-forest-verifier-cu-profile")]
+    verifier_cu_checkpoint("aspis-v7-forest-cu:wire-parsed");
     let context = V6TranscriptContext {
         program_id: program_id.to_bytes(),
         release_binding,
@@ -503,6 +716,22 @@ pub fn verify_v7_pool_pair_forest_withdrawal_canonical_with_statement_digest(
     };
     let (row_groups, group_masks, group_count) =
         pool_inactive_schedule(pool_v1_pair_forest_copy_active_row_masks_compiled_v1());
+    #[cfg(feature = "v7-pair-forest-verifier-cu-profile")]
+    verifier_cu_checkpoint("aspis-v7-forest-cu:inactive-schedule");
+    #[cfg(feature = "v7-pair-forest-verifier-cu-profile")]
+    let transcript = verify_v7_canonical_transcript_and_relation_prepared_with_hiding_context_and_diagnostic_trace(
+        hash,
+        &wire,
+        &context,
+        StateOnlyHidingContext::pool_v1_pair_forest_v1(statement_digest, attempt_id.to_bytes()),
+        &row_groups,
+        &group_masks[..group_count],
+        check_pow,
+        |view| pool_pair_forest_withdrawal_terminal_matches(statement, transition, view),
+        |view| authenticate_and_fold_canonical_queries(hash, &wire, view),
+        verifier_cu_transcript_phase,
+    )?;
+    #[cfg(not(feature = "v7-pair-forest-verifier-cu-profile"))]
     let transcript = verify_v7_canonical_transcript_and_relation_prepared_with_hiding_context(
         hash,
         &wire,
@@ -514,6 +743,8 @@ pub fn verify_v7_pool_pair_forest_withdrawal_canonical_with_statement_digest(
         |view| pool_pair_forest_withdrawal_terminal_matches(statement, transition, view),
         |view| authenticate_and_fold_canonical_queries(hash, &wire, view),
     )?;
+    #[cfg(feature = "v7-pair-forest-verifier-cu-profile")]
+    verifier_cu_checkpoint("aspis-v7-forest-cu:verifier-accepted");
     Ok(VerifiedV7ReadOnly {
         folded_query_sum: transcript.folded_query_sum,
         transcript,
