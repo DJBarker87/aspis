@@ -334,7 +334,11 @@ of `propext`, `Classical.choice`, and `Quot.sound`.
 `V7FirstCompactSamplerTableTraceBridge` closes the deterministic fixed-table
 part of the source/scheduler seam. A table-aligned literal translated squeeze
 trace is proved to return exactly the semantic Tag-73 duplex blocks and final
-digest, and forgetting table alignment recovers the existing source trace.
+digest, and forgetting table alignment recovers the existing source trace. Its
+`SourceSqueezeRuntimeReflection` is the minimal effectful boundary: recursively
+it contains only the two exact table lookups corresponding to each already
+proved successful translated callback pair, and kernel code constructs the
+table-aligned trace from it.
 Focused NUC unit `aspis-v7-q16-table-trace-05` exited 0 in 2.78 seconds, peaked
 at 6,843,764 KiB RSS, and used zero swap. Its endpoints report subsets of
 `propext`, `Classical.choice`, and `Quot.sound`.
@@ -371,7 +375,7 @@ d71bbd19f44d407846820acb8bbe167f953925d819ef0313bf2e591cd1a7d888  caller/proof/V
 5a1f6a37166be553c5305d31ce097c884aabed56b0a1820d91c8f98f03e0ed63  caller/proof/V7FirstCompactSamplerWrapperBridge.lean
 5ea4cdf362d9db303aeb1d510ab9c0a47ce48dfc9956f5b462e6c1c0d39ad222  caller/proof/V7FirstCompactSamplerK13PositionBridge.lean
 0caaeb316b41ff595566a4eba00a4c13c1ee98ed7e6f55936e7e5765e0c5045e  caller/proof/V7FirstCompactSqueezeSourceBridge.lean
-e93e8caf53bf94bfd943167af4e21dda62eef4ad0263966944bccb7611eae903  caller/proof/V7FirstCompactSamplerTableTraceBridge.lean
+7328ec04446908cf5eddf3a709b7893f02687275e70c911cf75fb0fcf4a8c877  caller/proof/V7FirstCompactSamplerTableTraceBridge.lean
 6abb0376100611c5553258062480777187785579f402c9c1d3ce72379518258f  ../../crates/aspis-core/src/v7_onefold.rs
 ```
 

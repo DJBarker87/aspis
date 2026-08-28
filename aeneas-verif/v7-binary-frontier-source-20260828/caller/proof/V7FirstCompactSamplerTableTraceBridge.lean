@@ -68,6 +68,48 @@ inductive NativeTableSqueezeTrace (table : FixedOracleTable) :
       (tail : NativeTableSqueezeTrace table next blocks final) :
       NativeTableSqueezeTrace table self (block :: blocks) final
 
+/-- Minimal effectful-runtime reflection for an already proved translated
+source trace.  It contains only the two fixed-table lookup facts corresponding
+to each literal successful callback pair. -/
+inductive SourceSqueezeRuntimeReflection (table : FixedOracleTable) :
+    {initial : Transcript} → {blocks : List SourceSqueezeBlock} →
+      {final : Transcript} →
+      NativeExactSqueezeTrace initial blocks final → Prop
+  | nil (self : Transcript) :
+      SourceSqueezeRuntimeReflection table (NativeExactSqueezeTrace.nil self)
+  | cons (self next final : Transcript) (block : SourceSqueezeBlock)
+      (blocks : List SourceSqueezeBlock)
+      (sourceRun :
+        transcript.Transcript.squeeze_block self = .ok (block, next))
+      (tail : NativeExactSqueezeTrace next blocks final)
+      (outputLookup :
+        tableLookup table
+            (bytes (nativeTranscriptDigest self) ++ [domSqueeze]) =
+          some (nativeSourceDigest (sourceSqueezeBytes block)))
+      (advanceLookup :
+        tableLookup table
+            (bytes (nativeTranscriptDigest self) ++ [domAdvance]) =
+          some (nativeTranscriptDigest next))
+      (tailReflected : SourceSqueezeRuntimeReflection table tail) :
+      SourceSqueezeRuntimeReflection table
+        (NativeExactSqueezeTrace.cons self next final block blocks sourceRun
+          tail)
+
+/-- Runtime reflection supplies exactly the lookup fields required to align
+the translated source trace with the scheduler's fixed-table duplex. -/
+theorem native_table_squeeze_trace_of_runtime_reflection
+    {table : FixedOracleTable} {initial final : Transcript}
+    {blocks : List SourceSqueezeBlock}
+    {trace : NativeExactSqueezeTrace initial blocks final}
+    (reflected : SourceSqueezeRuntimeReflection table trace) :
+    NativeTableSqueezeTrace table initial blocks final := by
+  induction reflected with
+  | nil self => exact NativeTableSqueezeTrace.nil self
+  | cons self next final block blocks sourceRun tail outputLookup
+      advanceLookup tailReflected ih =>
+      exact NativeTableSqueezeTrace.cons self next final block blocks sourceRun
+        outputLookup advanceLookup ih
+
 /-- Forgetting table alignment recovers the exact translated source trace. -/
 theorem native_table_squeeze_trace_to_source_trace
     {table : FixedOracleTable} {initial final : Transcript}
@@ -120,6 +162,7 @@ theorem native_table_squeeze_trace_matches_semantic
         exact rest.2
 
 #print axioms fixed_table_hash_oracle_answer_of_lookup
+#print axioms native_table_squeeze_trace_of_runtime_reflection
 #print axioms native_table_squeeze_trace_to_source_trace
 #print axioms native_table_squeeze_trace_matches_semantic
 
