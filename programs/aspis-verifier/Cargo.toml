@@ -80,6 +80,7 @@ borsh.workspace = true
 solana-program.workspace = true
 
 [dev-dependencies]
+aspis-prover = { path = "../../crates/aspis-prover", features = ["insecure-spend-fixture"] }
 # Dispatch/lifecycle attack-surface fuzzing via proptest on the pinned stable
 # toolchain (cargo-fuzz's nightly requirement would break the stable pin).
 proptest = "1"
