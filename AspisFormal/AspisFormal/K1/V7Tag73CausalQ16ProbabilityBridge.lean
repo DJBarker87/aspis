@@ -1,4 +1,5 @@
 import AspisFormal.K1.V7Tag73CausalQ16CoordinateRouter
+import AspisFormal.K1.V7Tag73OperationalQ16ForestHandoff
 import AspisFormal.K1.V7Tag73Q16SuccessfulForestBridge
 
 /-!
@@ -18,7 +19,7 @@ the semantic compact-frontier count to the frozen release integer.
 -/
 
 set_option autoImplicit false
-set_option maxRecDepth 100000
+set_option maxRecDepth 1000000
 
 namespace AspisK1.V7Tag73CausalQ16ProbabilityBridge
 
@@ -30,6 +31,7 @@ open AspisK1.V7Tag73Q16CompilerTapeCoordinates
 open AspisK1.V7Tag73CausalQ16CoordinateRouter
 open AspisK1.V7Tag73Q16DigestDrawReindex
 open AspisK1.V7Tag73Q16FirstCompactUniformity
+open AspisK1.V7Tag73OperationalQ16ForestHandoff
 open AspisK1.V7Tag73Q16RawENNRealProbability
 open AspisK1.V7Tag73Q16SemanticFrontierBridge
 open AspisK1.V7Tag73Q16SuccessfulForestBridge
@@ -68,6 +70,34 @@ def exactCompilerCausalQ16Coordinates
         (Equiv.prodComm Q16CandidateDigestForest
           (ExactCompilerQ16Residual parameters)))
 
+/-- Pointwise deterministic cover used to discharge the probabilistic
+theorem's `covered` premise.  Once the routed forest realizes the literal
+first-cap-203 search and its selected schedule lies in the residual-dependent
+bad set, the exact compiler coordinate pair is in the corresponding
+successful-subtype event. -/
+theorem operational_realization_covers_dependent_bad_coordinate
+    (parameters : ExactCompilerResourceParameters)
+    (router : ExactCompilerCausalQ16Router parameters)
+    (tape : FreshAnswerTape Digest256
+      (exactCompilerTargetCaps parameters).length)
+    {frontierNodes : QuerySchedule → Nat}
+    (search : FirstCap203Search frontierNodes)
+    (bad : Finset (Fin 262144))
+    (realized : OperationalQ16ForestRealization frontierNodes search
+      (exactCompilerCausalQ16Coordinates parameters router tape).2)
+    (allBad : AllInBad bad
+      (semanticScheduleOfOperational search.selectedSchedule)) :
+    exactCompilerCausalQ16Coordinates parameters router tape ∈
+      dependentSuccessfulSubtypeEvent q16DigestForestSucceeds
+        (fun _residual =>
+          successfulQ16DigestForestEquiv ⁻¹'
+            q16SuccessfulCoordinatesBadEvent bad) := by
+  let succeeds :=
+    operational_realization_implies_q16_digest_forest_succeeds realized
+  refine ⟨succeeds, ?_⟩
+  exact operational_all_in_bad_implies_successful_coordinate_bad realized
+    bad allBad
+
 /-- Hidden-tape averaged q16 bound for any literal scheduler router.  The bad
 set may depend on the hidden adversary tape and every non-q16 oracle answer.
 The `covered` premise is intentionally the sole protocol-specific gap: it
@@ -103,6 +133,7 @@ theorem exact_compiler_causal_q16_event_probability_le_semantic
         bad badCard reference traceExists event covered
 
 #print axioms exactCompilerCausalQ16Coordinates
+#print axioms operational_realization_covers_dependent_bad_coordinate
 #print axioms exact_compiler_causal_q16_event_probability_le_semantic
 
 end
