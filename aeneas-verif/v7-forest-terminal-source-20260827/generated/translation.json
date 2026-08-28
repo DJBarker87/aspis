@@ -1,0 +1,3231 @@
+{
+  "aeneas_version": "unknown",
+  "charon_version": "0.1.223",
+  "crate": "aspis_statement",
+  "functions": [
+    {
+      "def_id": 5,
+      "lean_name": "V7ForestTerminalGenerated.Slice.Insts.CoreCmpPartialEqArray.ne",
+      "lean_file": "V7ForestTerminal/FunsExternal_Template.lean",
+      "rust_name": "core::array::equality::{impl core::cmp::PartialEq<[U; N]> for [T]}::ne",
+      "is_local": false,
+      "source": {
+        "file": "/rustc/library/core/src/array/equality.rs",
+        "begin_line": 55,
+        "end_line": 55
+      },
+      "is_opaque": true,
+      "can_fail": true,
+      "can_diverge": false,
+      "is_rec": false,
+      "reducible": false
+    },
+    {
+      "def_id": 247,
+      "lean_name": "V7ForestTerminalGenerated.core.slice.iter.Iter.Insts.CoreIterTraitsIteratorIteratorSharedAT.all",
+      "lean_file": "V7ForestTerminal/FunsExternal_Template.lean",
+      "rust_name": "core::slice::iter::{impl core::iter::traits::iterator::Iterator<&'a T> for core::slice::iter::Iter<'a, T>}::all",
+      "is_local": false,
+      "source": {
+        "file": "/rustc/library/core/src/slice/iter/macros.rs",
+        "begin_line": 309,
+        "end_line": 312
+      },
+      "is_opaque": true,
+      "can_fail": true,
+      "can_diverge": false,
+      "is_rec": false,
+      "reducible": false
+    },
+    {
+      "def_id": 133,
+      "lean_name": "V7ForestTerminalGenerated.core.iter.traits.iterator.Iterator.flatten.default",
+      "lean_file": "V7ForestTerminal/FunsExternal_Template.lean",
+      "rust_name": "core::iter::traits::iterator::Iterator::flatten",
+      "is_local": false,
+      "source": {
+        "file": "/rustc/library/core/src/iter/traits/iterator.rs",
+        "begin_line": 1617,
+        "end_line": 1620
+      },
+      "is_opaque": true,
+      "can_fail": true,
+      "can_diverge": false,
+      "is_rec": false,
+      "reducible": false
+    },
+    {
+      "def_id": 132,
+      "lean_name": "V7ForestTerminalGenerated.core.iter.traits.iterator.Iterator.chain.default",
+      "lean_file": "V7ForestTerminal/FunsExternal_Template.lean",
+      "rust_name": "core::iter::traits::iterator::Iterator::chain",
+      "is_local": false,
+      "source": {
+        "file": "/rustc/library/core/src/iter/traits/iterator.rs",
+        "begin_line": 510,
+        "end_line": 513
+      },
+      "is_opaque": true,
+      "can_fail": true,
+      "can_diverge": false,
+      "is_rec": false,
+      "reducible": false
+    },
+    {
+      "def_id": 134,
+      "lean_name": "V7ForestTerminalGenerated.core.iter.traits.iterator.Iterator.all.default",
+      "lean_file": "V7ForestTerminal/FunsExternal_Template.lean",
+      "rust_name": "core::iter::traits::iterator::Iterator::all",
+      "is_local": false,
+      "source": {
+        "file": "/rustc/library/core/src/iter/traits/iterator.rs",
+        "begin_line": 2831,
+        "end_line": 2834
+      },
+      "is_opaque": true,
+      "can_fail": true,
+      "can_diverge": false,
+      "is_rec": false,
+      "reducible": false
+    },
+    {
+      "def_id": 259,
+      "lean_name": "V7ForestTerminalGenerated.core.iter.adapters.chain.Chain.Insts.CoreIterTraitsIteratorIterator.next",
+      "lean_file": "V7ForestTerminal/FunsExternal_Template.lean",
+      "rust_name": "core::iter::adapters::chain::{impl core::iter::traits::iterator::Iterator<Clause0_Item> for core::iter::adapters::chain::Chain<A, B>}::next",
+      "is_local": false,
+      "source": {
+        "file": "/rustc/library/core/src/iter/adapters/chain.rs",
+        "begin_line": 81,
+        "end_line": 81
+      },
+      "is_opaque": true,
+      "can_fail": true,
+      "can_diverge": false,
+      "is_rec": false,
+      "reducible": false
+    },
+    {
+      "def_id": 269,
+      "lean_name": "V7ForestTerminalGenerated.core.iter.adapters.flatten.Flatten.Insts.CoreIterTraitsIteratorIterator.next",
+      "lean_file": "V7ForestTerminal/FunsExternal_Template.lean",
+      "rust_name": "core::iter::adapters::flatten::{impl core::iter::traits::iterator::Iterator<Clause2_Item> for core::iter::adapters::flatten::Flatten<I, Clause0_Item, Clause2_Item, U>}::next",
+      "is_local": false,
+      "source": {
+        "file": "/rustc/library/core/src/iter/adapters/flatten.rs",
+        "begin_line": 226,
+        "end_line": 226
+      },
+      "is_opaque": true,
+      "can_fail": true,
+      "can_diverge": false,
+      "is_rec": false,
+      "reducible": false
+    },
+    {
+      "def_id": 10,
+      "lean_name": "V7ForestTerminalGenerated.core.result.Result.map_err",
+      "lean_file": "V7ForestTerminal/FunsExternal_Template.lean",
+      "rust_name": "core::result::{core::result::Result<T, E>}::map_err",
+      "is_local": false,
+      "source": {
+        "file": "/rustc/library/core/src/result.rs",
+        "begin_line": 962,
+        "end_line": 964
+      },
+      "is_opaque": true,
+      "can_fail": true,
+      "can_diverge": false,
+      "is_rec": false,
+      "reducible": false
+    },
+    {
+      "def_id": 258,
+      "lean_name": "V7ForestTerminalGenerated.SharedAVec.Insts.CoreIterTraitsCollectIntoIteratorSharedATIter.into_iter",
+      "lean_file": "V7ForestTerminal/FunsExternal_Template.lean",
+      "rust_name": "alloc::vec::{impl core::iter::traits::collect::IntoIterator<&'a T, core::slice::iter::Iter<'a, T>> for &'a alloc::vec::Vec<T>}::into_iter",
+      "is_local": false,
+      "source": {
+        "file": "/rustc/library/alloc/src/vec/mod.rs",
+        "begin_line": 3981,
+        "end_line": 3981
+      },
+      "is_opaque": true,
+      "can_fail": true,
+      "can_diverge": false,
+      "is_rec": false,
+      "reducible": false
+    },
+    {
+      "def_id": 147,
+      "lean_name": "V7ForestTerminalGenerated.aspis_core.field.M31.Insts.CoreCmpPartialEqM31.eq",
+      "lean_file": "V7ForestTerminal/FunsExternal_Template.lean",
+      "rust_name": "aspis_core::field::{impl core::cmp::PartialEq<aspis_core::field::M31> for aspis_core::field::M31}::eq",
+      "is_local": false,
+      "source": {
+        "file": "crates/aspis-core/src/field.rs",
+        "begin_line": 19,
+        "end_line": 19
+      },
+      "is_opaque": true,
+      "can_fail": true,
+      "can_diverge": false,
+      "is_rec": false,
+      "reducible": false
+    },
+    {
+      "def_id": 11,
+      "lean_name": "V7ForestTerminalGenerated.atomic_statement.decode_digest_canonical",
+      "lean_file": "V7ForestTerminal/FunsExternal_Template.lean",
+      "rust_name": "aspis_statement::atomic_statement::decode_digest_canonical",
+      "is_local": true,
+      "source": {
+        "file": "crates/aspis-statement/src/atomic_statement.rs",
+        "begin_line": 81,
+        "end_line": 88
+      },
+      "is_opaque": true,
+      "can_fail": true,
+      "can_diverge": false,
+      "is_rec": false,
+      "reducible": false
+    },
+    {
+      "def_id": 90,
+      "lean_name": "V7ForestTerminalGenerated.pool_v1.pair_forest_accounts.pool_v1_pair_forest_output_lane_v1",
+      "lean_file": "V7ForestTerminal/FunsExternal_Template.lean",
+      "rust_name": "aspis_statement::pool_v1::pair_forest_accounts::pool_v1_pair_forest_output_lane_v1",
+      "is_local": true,
+      "source": {
+        "file": "crates/aspis-statement/src/pool_v1/pair_forest_accounts.rs",
+        "begin_line": 171,
+        "end_line": 178
+      },
+      "is_opaque": true,
+      "can_fail": true,
+      "can_diverge": false,
+      "is_rec": false,
+      "reducible": false
+    },
+    {
+      "def_id": 111,
+      "lean_name": "V7ForestTerminalGenerated.pool_v1.pair_forest_accounts.encode_pool_v1_pair_forest_master_v1",
+      "lean_file": "V7ForestTerminal/FunsExternal_Template.lean",
+      "rust_name": "aspis_statement::pool_v1::pair_forest_accounts::encode_pool_v1_pair_forest_master_v1",
+      "is_local": true,
+      "source": {
+        "file": "crates/aspis-statement/src/pool_v1/pair_forest_accounts.rs",
+        "begin_line": 220,
+        "end_line": 245
+      },
+      "is_opaque": true,
+      "can_fail": true,
+      "can_diverge": false,
+      "is_rec": false,
+      "reducible": false
+    },
+    {
+      "def_id": 114,
+      "lean_name": "V7ForestTerminalGenerated.pool_v1.pair_forest_accounts.encode_pool_v1_pair_forest_lane_state_v1",
+      "lean_file": "V7ForestTerminal/FunsExternal_Template.lean",
+      "rust_name": "aspis_statement::pool_v1::pair_forest_accounts::encode_pool_v1_pair_forest_lane_state_v1",
+      "is_local": true,
+      "source": {
+        "file": "crates/aspis-statement/src/pool_v1/pair_forest_accounts.rs",
+        "begin_line": 301,
+        "end_line": 325
+      },
+      "is_opaque": true,
+      "can_fail": true,
+      "can_diverge": false,
+      "is_rec": false,
+      "reducible": false
+    },
+    {
+      "def_id": 112,
+      "lean_name": "V7ForestTerminalGenerated.pool_v1.pair_forest_accounts.encode_pool_v1_pair_forest_checkpoint_v1",
+      "lean_file": "V7ForestTerminal/FunsExternal_Template.lean",
+      "rust_name": "aspis_statement::pool_v1::pair_forest_accounts::encode_pool_v1_pair_forest_checkpoint_v1",
+      "is_local": true,
+      "source": {
+        "file": "crates/aspis-statement/src/pool_v1/pair_forest_accounts.rs",
+        "begin_line": 373,
+        "end_line": 406
+      },
+      "is_opaque": true,
+      "can_fail": true,
+      "can_diverge": false,
+      "is_rec": false,
+      "reducible": false
+    },
+    {
+      "def_id": 24,
+      "lean_name": "V7ForestTerminalGenerated.pool_v1.pair_forest_constraint_residuals.evaluate_pool_v1_pair_forest_private_transfer_constraint_residuals_v1",
+      "lean_file": "V7ForestTerminal/FunsExternal_Template.lean",
+      "rust_name": "aspis_statement::pool_v1::pair_forest_constraint_residuals::evaluate_pool_v1_pair_forest_private_transfer_constraint_residuals_v1",
+      "is_local": true,
+      "source": {
+        "file": "crates/aspis-statement/src/pool_v1/pair_forest_constraint_residuals.rs",
+        "begin_line": 410,
+        "end_line": 453
+      },
+      "is_opaque": true,
+      "can_fail": true,
+      "can_diverge": false,
+      "is_rec": false,
+      "reducible": false
+    },
+    {
+      "def_id": 23,
+      "lean_name": "V7ForestTerminalGenerated.pool_v1.pair_forest_constraint_residuals.evaluate_pool_v1_pair_forest_withdrawal_constraint_residuals_v1",
+      "lean_file": "V7ForestTerminal/FunsExternal_Template.lean",
+      "rust_name": "aspis_statement::pool_v1::pair_forest_constraint_residuals::evaluate_pool_v1_pair_forest_withdrawal_constraint_residuals_v1",
+      "is_local": true,
+      "source": {
+        "file": "crates/aspis-statement/src/pool_v1/pair_forest_constraint_residuals.rs",
+        "begin_line": 455,
+        "end_line": 498
+      },
+      "is_opaque": true,
+      "can_fail": true,
+      "can_diverge": false,
+      "is_rec": false,
+      "reducible": false
+    },
+    {
+      "def_id": 86,
+      "lean_name": "V7ForestTerminalGenerated.pool_v1.payment_relation.encode_pool_v1_withdrawal_public_v1",
+      "lean_file": "V7ForestTerminal/FunsExternal_Template.lean",
+      "rust_name": "aspis_statement::pool_v1::payment_relation::encode_pool_v1_withdrawal_public_v1",
+      "is_local": true,
+      "source": {
+        "file": "crates/aspis-statement/src/pool_v1/payment_relation.rs",
+        "begin_line": 294,
+        "end_line": 312
+      },
+      "is_opaque": true,
+      "can_fail": true,
+      "can_diverge": false,
+      "is_rec": false,
+      "reducible": false
+    },
+    {
+      "def_id": 87,
+      "lean_name": "V7ForestTerminalGenerated.pool_v1.payment_relation.encode_pool_v1_private_transfer_public_v1",
+      "lean_file": "V7ForestTerminal/FunsExternal_Template.lean",
+      "rust_name": "aspis_statement::pool_v1::payment_relation::encode_pool_v1_private_transfer_public_v1",
+      "is_local": true,
+      "source": {
+        "file": "crates/aspis-statement/src/pool_v1/payment_relation.rs",
+        "begin_line": 271,
+        "end_line": 292
+      },
+      "is_opaque": true,
+      "can_fail": true,
+      "can_diverge": false,
+      "is_rec": false,
+      "reducible": false
+    },
+    {
+      "def_id": 91,
+      "lean_name": "V7ForestTerminalGenerated.pool_v1.pair_tree_profile.encode_pool_v1_pair_late_public_statement_v1",
+      "lean_file": "V7ForestTerminal/FunsExternal_Template.lean",
+      "rust_name": "aspis_statement::pool_v1::pair_tree_profile::encode_pool_v1_pair_late_public_statement_v1",
+      "is_local": true,
+      "source": {
+        "file": "crates/aspis-statement/src/pool_v1/pair_tree_profile.rs",
+        "begin_line": 527,
+        "end_line": 559
+      },
+      "is_opaque": true,
+      "can_fail": true,
+      "can_diverge": false,
+      "is_rec": false,
+      "reducible": false
+    },
+    {
+      "def_id": 14,
+      "lean_name": "V7ForestTerminalGenerated.pool_v1.payment_relation.decode_pool_v1_withdrawal_public_v1",
+      "lean_file": "V7ForestTerminal/FunsExternal_Template.lean",
+      "rust_name": "aspis_statement::pool_v1::payment_relation::decode_pool_v1_withdrawal_public_v1",
+      "is_local": true,
+      "source": {
+        "file": "crates/aspis-statement/src/pool_v1/payment_relation.rs",
+        "begin_line": 415,
+        "end_line": 449
+      },
+      "is_opaque": true,
+      "can_fail": true,
+      "can_diverge": false,
+      "is_rec": false,
+      "reducible": false
+    },
+    {
+      "def_id": 15,
+      "lean_name": "V7ForestTerminalGenerated.pool_v1.payment_relation.decode_pool_v1_private_transfer_public_v1",
+      "lean_file": "V7ForestTerminal/FunsExternal_Template.lean",
+      "rust_name": "aspis_statement::pool_v1::payment_relation::decode_pool_v1_private_transfer_public_v1",
+      "is_local": true,
+      "source": {
+        "file": "crates/aspis-statement/src/pool_v1/payment_relation.rs",
+        "begin_line": 376,
+        "end_line": 413
+      },
+      "is_opaque": true,
+      "can_fail": true,
+      "can_diverge": false,
+      "is_rec": false,
+      "reducible": false
+    },
+    {
+      "def_id": 13,
+      "lean_name": "V7ForestTerminalGenerated.pool_v1.pair_tree_profile.decode_pool_v1_pair_late_public_statement_v1",
+      "lean_file": "V7ForestTerminal/FunsExternal_Template.lean",
+      "rust_name": "aspis_statement::pool_v1::pair_tree_profile::decode_pool_v1_pair_late_public_statement_v1",
+      "is_local": true,
+      "source": {
+        "file": "crates/aspis-statement/src/pool_v1/pair_tree_profile.rs",
+        "begin_line": 561,
+        "end_line": 612
+      },
+      "is_opaque": true,
+      "can_fail": true,
+      "can_diverge": false,
+      "is_rec": false,
+      "reducible": false
+    },
+    {
+      "def_id": 108,
+      "lean_name": "V7ForestTerminalGenerated.pool_v1.pair_terminal.encode_pool_v1_pair_verified_afterstate_v1",
+      "lean_file": "V7ForestTerminal/FunsExternal_Template.lean",
+      "rust_name": "aspis_statement::pool_v1::pair_terminal::encode_pool_v1_pair_verified_afterstate_v1",
+      "is_local": true,
+      "source": {
+        "file": "crates/aspis-statement/src/pool_v1/pair_terminal.rs",
+        "begin_line": 141,
+        "end_line": 158
+      },
+      "is_opaque": true,
+      "can_fail": true,
+      "can_diverge": false,
+      "is_rec": false,
+      "reducible": false
+    },
+    {
+      "def_id": 17,
+      "lean_name": "V7ForestTerminalGenerated.pool_v1.pair_terminal.decode_pool_v1_pair_verified_afterstate_v1",
+      "lean_file": "V7ForestTerminal/FunsExternal_Template.lean",
+      "rust_name": "aspis_statement::pool_v1::pair_terminal::decode_pool_v1_pair_verified_afterstate_v1",
+      "is_local": true,
+      "source": {
+        "file": "crates/aspis-statement/src/pool_v1/pair_terminal.rs",
+        "begin_line": 160,
+        "end_line": 196
+      },
+      "is_opaque": true,
+      "can_fail": true,
+      "can_diverge": false,
+      "is_rec": false,
+      "reducible": false
+    },
+    {
+      "def_id": 113,
+      "lean_name": "V7ForestTerminalGenerated.pool_v1.pair_forest_terminal.host.pair_empty_roots",
+      "lean_file": "V7ForestTerminal/FunsExternal_Template.lean",
+      "rust_name": "aspis_statement::pool_v1::pair_forest_terminal::host::pair_empty_roots",
+      "is_local": true,
+      "source": {
+        "file": "crates/aspis-statement/src/pool_v1/pair_forest_terminal.rs",
+        "begin_line": 457,
+        "end_line": 469
+      },
+      "is_opaque": true,
+      "can_fail": true,
+      "can_diverge": false,
+      "is_rec": false,
+      "reducible": false
+    },
+    {
+      "def_id": 276,
+      "lean_name": "V7ForestTerminalGenerated.pool_v1.historical_anchor.PoolV1TransitionKind.Insts.CoreCmpPartialEqPoolV1TransitionKind.eq",
+      "lean_file": "V7ForestTerminal/Funs.lean",
+      "rust_name": "aspis_statement::pool_v1::historical_anchor::{impl core::cmp::PartialEq<aspis_statement::pool_v1::historical_anchor::PoolV1TransitionKind> for aspis_statement::pool_v1::historical_anchor::PoolV1TransitionKind}::eq",
+      "is_local": true,
+      "source": {
+        "file": "crates/aspis-statement/src/pool_v1/historical_anchor.rs",
+        "begin_line": 30,
+        "end_line": 30
+      },
+      "is_opaque": false,
+      "can_fail": true,
+      "can_diverge": false,
+      "is_rec": false,
+      "reducible": false
+    },
+    {
+      "def_id": 257,
+      "lean_name": "V7ForestTerminalGenerated.pool_v1.pair_forest_constraint_residuals.PoolV1PairForestConstraintResidualsV1.all_zero.closure.Insts.CoreOpsFunctionFnMutTupleSharedM31Bool.call_mut",
+      "lean_file": "V7ForestTerminal/Funs.lean",
+      "rust_name": "aspis_statement::pool_v1::pair_forest_constraint_residuals::{aspis_statement::pool_v1::pair_forest_constraint_residuals::PoolV1PairForestConstraintResidualsV1}::all_zero::{impl core::ops::function::FnMut<(&'_ aspis_core::field::M31,), bool> for aspis_statement::pool_v1::pair_forest_constraint_residuals::{aspis_statement::pool_v1::pair_forest_constraint_residuals::PoolV1PairForestConstraintResidualsV1}::all_zero::closure}::call_mut",
+      "is_local": true,
+      "source": {
+        "file": "crates/aspis-statement/src/pool_v1/pair_forest_constraint_residuals.rs",
+        "begin_line": 166,
+        "end_line": 166
+      },
+      "is_opaque": false,
+      "can_fail": true,
+      "can_diverge": false,
+      "is_rec": false,
+      "reducible": false
+    },
+    {
+      "def_id": 256,
+      "lean_name": "V7ForestTerminalGenerated.pool_v1.pair_forest_constraint_residuals.PoolV1PairForestConstraintResidualsV1.all_zero.closure.Insts.CoreOpsFunctionFnOnceTupleSharedM31Bool.call_once",
+      "lean_file": "V7ForestTerminal/Funs.lean",
+      "rust_name": "aspis_statement::pool_v1::pair_forest_constraint_residuals::{aspis_statement::pool_v1::pair_forest_constraint_residuals::PoolV1PairForestConstraintResidualsV1}::all_zero::{impl core::ops::function::FnOnce<(&'_ aspis_core::field::M31,), bool> for aspis_statement::pool_v1::pair_forest_constraint_residuals::{aspis_statement::pool_v1::pair_forest_constraint_residuals::PoolV1PairForestConstraintResidualsV1}::all_zero::closure}::call_once",
+      "is_local": true,
+      "source": {
+        "file": "crates/aspis-statement/src/pool_v1/pair_forest_constraint_residuals.rs",
+        "begin_line": 166,
+        "end_line": 166
+      },
+      "is_opaque": false,
+      "can_fail": true,
+      "can_diverge": false,
+      "is_rec": false,
+      "reducible": false
+    },
+    {
+      "def_id": 26,
+      "lean_name": "V7ForestTerminalGenerated.pool_v1.pair_forest_constraint_residuals.PoolV1PairForestConstraintResidualsV1.all_zero",
+      "lean_file": "V7ForestTerminal/Funs.lean",
+      "rust_name": "aspis_statement::pool_v1::pair_forest_constraint_residuals::{aspis_statement::pool_v1::pair_forest_constraint_residuals::PoolV1PairForestConstraintResidualsV1}::all_zero",
+      "is_local": true,
+      "source": {
+        "file": "crates/aspis-statement/src/pool_v1/pair_forest_constraint_residuals.rs",
+        "begin_line": 149,
+        "end_line": 167
+      },
+      "is_opaque": false,
+      "can_fail": true,
+      "can_diverge": false,
+      "is_rec": false,
+      "reducible": false
+    },
+    {
+      "def_id": 25,
+      "lean_name": "V7ForestTerminalGenerated.pool_v1.pair_forest_constraint_residuals.PoolV1PairForestConstraintResidualsV1.residual_count",
+      "lean_file": "V7ForestTerminal/Funs.lean",
+      "rust_name": "aspis_statement::pool_v1::pair_forest_constraint_residuals::{aspis_statement::pool_v1::pair_forest_constraint_residuals::PoolV1PairForestConstraintResidualsV1}::residual_count",
+      "is_local": true,
+      "source": {
+        "file": "crates/aspis-statement/src/pool_v1/pair_forest_constraint_residuals.rs",
+        "begin_line": 169,
+        "end_line": 185
+      },
+      "is_opaque": false,
+      "can_fail": true,
+      "can_diverge": false,
+      "is_rec": false,
+      "reducible": false
+    },
+    {
+      "def_id": 20,
+      "lean_name": "V7ForestTerminalGenerated.pool_v1.pair_forest_terminal.PoolV1PairForestTerminalStatementV1.common",
+      "lean_file": "V7ForestTerminal/Funs.lean",
+      "rust_name": "aspis_statement::pool_v1::pair_forest_terminal::{aspis_statement::pool_v1::pair_forest_terminal::PoolV1PairForestTerminalStatementV1}::common",
+      "is_local": true,
+      "source": {
+        "file": "crates/aspis-statement/src/pool_v1/pair_forest_terminal.rs",
+        "begin_line": 75,
+        "end_line": 79
+      },
+      "is_opaque": false,
+      "can_fail": true,
+      "can_diverge": false,
+      "is_rec": false,
+      "reducible": false
+    },
+    {
+      "def_id": 27,
+      "lean_name": "V7ForestTerminalGenerated.pool_v1.pair_forest_terminal.PoolV1PairForestTerminalStatementV1.transition_kind",
+      "lean_file": "V7ForestTerminal/Funs.lean",
+      "rust_name": "aspis_statement::pool_v1::pair_forest_terminal::{aspis_statement::pool_v1::pair_forest_terminal::PoolV1PairForestTerminalStatementV1}::transition_kind",
+      "is_local": true,
+      "source": {
+        "file": "crates/aspis-statement/src/pool_v1/pair_forest_terminal.rs",
+        "begin_line": 82,
+        "end_line": 87
+      },
+      "is_opaque": false,
+      "can_fail": true,
+      "can_diverge": false,
+      "is_rec": false,
+      "reducible": false
+    },
+    {
+      "def_id": 28,
+      "lean_name": "V7ForestTerminalGenerated.pool_v1.pair_forest_terminal.PoolV1PairForestTerminalStatementV1.nullifier",
+      "lean_file": "V7ForestTerminal/Funs.lean",
+      "rust_name": "aspis_statement::pool_v1::pair_forest_terminal::{aspis_statement::pool_v1::pair_forest_terminal::PoolV1PairForestTerminalStatementV1}::nullifier",
+      "is_local": true,
+      "source": {
+        "file": "crates/aspis-statement/src/pool_v1/pair_forest_terminal.rs",
+        "begin_line": 90,
+        "end_line": 95
+      },
+      "is_opaque": false,
+      "can_fail": true,
+      "can_diverge": false,
+      "is_rec": false,
+      "reducible": false
+    },
+    {
+      "def_id": 6,
+      "lean_name": "V7ForestTerminalGenerated.pool_v1.pair_forest_terminal.transition_kind",
+      "lean_file": "V7ForestTerminal/Funs.lean",
+      "rust_name": "aspis_statement::pool_v1::pair_forest_terminal::transition_kind",
+      "is_local": true,
+      "source": {
+        "file": "crates/aspis-statement/src/pool_v1/pair_forest_terminal.rs",
+        "begin_line": 146,
+        "end_line": 158
+      },
+      "is_opaque": false,
+      "can_fail": true,
+      "can_diverge": false,
+      "is_rec": false,
+      "reducible": false
+    },
+    {
+      "def_id": 88,
+      "lean_name": "V7ForestTerminalGenerated.pool_v1.pair_forest_terminal.statement_public_common",
+      "lean_file": "V7ForestTerminal/Funs.lean",
+      "rust_name": "aspis_statement::pool_v1::pair_forest_terminal::statement_public_common",
+      "is_local": true,
+      "source": {
+        "file": "crates/aspis-statement/src/pool_v1/pair_forest_terminal.rs",
+        "begin_line": 160,
+        "end_line": 181
+      },
+      "is_opaque": false,
+      "can_fail": true,
+      "can_diverge": false,
+      "is_rec": false,
+      "reducible": false
+    },
+    {
+      "def_id": 140,
+      "lean_name": "V7ForestTerminalGenerated.pool_v1.pair_forest_terminal.validate_pool_v1_pair_forest_terminal_statement_v1.closure_3.Insts.CoreOpsFunctionFnOnceTuplePoolV1PairLatePublicStatementErrorV1PoolV1PairForestTerminalFormatErrorV1.call_once",
+      "lean_file": "V7ForestTerminal/Funs.lean",
+      "rust_name": "aspis_statement::pool_v1::pair_forest_terminal::validate_pool_v1_pair_forest_terminal_statement_v1::{impl core::ops::function::FnOnce<(aspis_statement::pool_v1::pair_tree_profile::PoolV1PairLatePublicStatementErrorV1,), aspis_statement::pool_v1::pair_forest_terminal::PoolV1PairForestTerminalFormatErrorV1> for aspis_statement::pool_v1::pair_forest_terminal::validate_pool_v1_pair_forest_terminal_statement_v1::closure#3}::call_once",
+      "is_local": true,
+      "source": {
+        "file": "crates/aspis-statement/src/pool_v1/pair_forest_terminal.rs",
+        "begin_line": 230,
+        "end_line": 230
+      },
+      "is_opaque": false,
+      "can_fail": true,
+      "can_diverge": false,
+      "is_rec": false,
+      "reducible": false
+    },
+    {
+      "def_id": 139,
+      "lean_name": "V7ForestTerminalGenerated.pool_v1.pair_forest_terminal.validate_pool_v1_pair_forest_terminal_statement_v1.closure_2.Insts.CoreOpsFunctionFnOnceTuplePoolV1PairForestAccountErrorV1PoolV1PairForestTerminalFormatErrorV1.call_once",
+      "lean_file": "V7ForestTerminal/Funs.lean",
+      "rust_name": "aspis_statement::pool_v1::pair_forest_terminal::validate_pool_v1_pair_forest_terminal_statement_v1::{impl core::ops::function::FnOnce<(aspis_statement::pool_v1::pair_forest_accounts::PoolV1PairForestAccountErrorV1,), aspis_statement::pool_v1::pair_forest_terminal::PoolV1PairForestTerminalFormatErrorV1> for aspis_statement::pool_v1::pair_forest_terminal::validate_pool_v1_pair_forest_terminal_statement_v1::closure#2}::call_once",
+      "is_local": true,
+      "source": {
+        "file": "crates/aspis-statement/src/pool_v1/pair_forest_terminal.rs",
+        "begin_line": 224,
+        "end_line": 224
+      },
+      "is_opaque": false,
+      "can_fail": true,
+      "can_diverge": false,
+      "is_rec": false,
+      "reducible": false
+    },
+    {
+      "def_id": 138,
+      "lean_name": "V7ForestTerminalGenerated.pool_v1.pair_forest_terminal.validate_pool_v1_pair_forest_terminal_statement_v1.closure_1.Insts.CoreOpsFunctionFnOnceTuplePoolV1PaymentStatementFormatErrorPoolV1PairForestTerminalFormatErrorV1.call_once",
+      "lean_file": "V7ForestTerminal/Funs.lean",
+      "rust_name": "aspis_statement::pool_v1::pair_forest_terminal::validate_pool_v1_pair_forest_terminal_statement_v1::{impl core::ops::function::FnOnce<(aspis_statement::pool_v1::payment_relation::PoolV1PaymentStatementFormatError,), aspis_statement::pool_v1::pair_forest_terminal::PoolV1PairForestTerminalFormatErrorV1> for aspis_statement::pool_v1::pair_forest_terminal::validate_pool_v1_pair_forest_terminal_statement_v1::closure#1}::call_once",
+      "is_local": true,
+      "source": {
+        "file": "crates/aspis-statement/src/pool_v1/pair_forest_terminal.rs",
+        "begin_line": 203,
+        "end_line": 203
+      },
+      "is_opaque": false,
+      "can_fail": true,
+      "can_diverge": false,
+      "is_rec": false,
+      "reducible": false
+    },
+    {
+      "def_id": 137,
+      "lean_name": "V7ForestTerminalGenerated.pool_v1.pair_forest_terminal.validate_pool_v1_pair_forest_terminal_statement_v1.closure.Insts.CoreOpsFunctionFnOnceTuplePoolV1PaymentStatementFormatErrorPoolV1PairForestTerminalFormatErrorV1.call_once",
+      "lean_file": "V7ForestTerminal/Funs.lean",
+      "rust_name": "aspis_statement::pool_v1::pair_forest_terminal::validate_pool_v1_pair_forest_terminal_statement_v1::{impl core::ops::function::FnOnce<(aspis_statement::pool_v1::payment_relation::PoolV1PaymentStatementFormatError,), aspis_statement::pool_v1::pair_forest_terminal::PoolV1PairForestTerminalFormatErrorV1> for aspis_statement::pool_v1::pair_forest_terminal::validate_pool_v1_pair_forest_terminal_statement_v1::closure}::call_once",
+      "is_local": true,
+      "source": {
+        "file": "crates/aspis-statement/src/pool_v1/pair_forest_terminal.rs",
+        "begin_line": 199,
+        "end_line": 199
+      },
+      "is_opaque": false,
+      "can_fail": true,
+      "can_diverge": false,
+      "is_rec": false,
+      "reducible": false
+    },
+    {
+      "def_id": 16,
+      "lean_name": "V7ForestTerminalGenerated.pool_v1.pair_forest_terminal.validate_pool_v1_pair_forest_terminal_statement_v1",
+      "lean_file": "V7ForestTerminal/Funs.lean",
+      "rust_name": "aspis_statement::pool_v1::pair_forest_terminal::validate_pool_v1_pair_forest_terminal_statement_v1",
+      "is_local": true,
+      "source": {
+        "file": "crates/aspis-statement/src/pool_v1/pair_forest_terminal.rs",
+        "begin_line": 183,
+        "end_line": 232
+      },
+      "is_opaque": false,
+      "can_fail": true,
+      "can_diverge": false,
+      "is_rec": false,
+      "reducible": false
+    },
+    {
+      "def_id": 38,
+      "lean_name": "V7ForestTerminalGenerated.pool_v1.pair_forest_terminal.decode_pool_v1_pair_forest_terminal_statement_v1.closure_8.Insts.CoreOpsFunctionFnOnceTuplePoolV1PaymentStatementFormatErrorPoolV1PairForestTerminalFormatErrorV1.call_once",
+      "lean_file": "V7ForestTerminal/Funs.lean",
+      "rust_name": "aspis_statement::pool_v1::pair_forest_terminal::decode_pool_v1_pair_forest_terminal_statement_v1::{impl core::ops::function::FnOnce<(aspis_statement::pool_v1::payment_relation::PoolV1PaymentStatementFormatError,), aspis_statement::pool_v1::pair_forest_terminal::PoolV1PairForestTerminalFormatErrorV1> for aspis_statement::pool_v1::pair_forest_terminal::decode_pool_v1_pair_forest_terminal_statement_v1::closure#8}::call_once",
+      "is_local": true,
+      "source": {
+        "file": "crates/aspis-statement/src/pool_v1/pair_forest_terminal.rs",
+        "begin_line": 330,
+        "end_line": 330
+      },
+      "is_opaque": false,
+      "can_fail": true,
+      "can_diverge": false,
+      "is_rec": false,
+      "reducible": false
+    },
+    {
+      "def_id": 37,
+      "lean_name": "V7ForestTerminalGenerated.pool_v1.pair_forest_terminal.decode_pool_v1_pair_forest_terminal_statement_v1.closure_7.Insts.CoreOpsFunctionFnOnceTuplePoolV1PaymentStatementFormatErrorPoolV1PairForestTerminalFormatErrorV1.call_once",
+      "lean_file": "V7ForestTerminal/Funs.lean",
+      "rust_name": "aspis_statement::pool_v1::pair_forest_terminal::decode_pool_v1_pair_forest_terminal_statement_v1::{impl core::ops::function::FnOnce<(aspis_statement::pool_v1::payment_relation::PoolV1PaymentStatementFormatError,), aspis_statement::pool_v1::pair_forest_terminal::PoolV1PairForestTerminalFormatErrorV1> for aspis_statement::pool_v1::pair_forest_terminal::decode_pool_v1_pair_forest_terminal_statement_v1::closure#7}::call_once",
+      "is_local": true,
+      "source": {
+        "file": "crates/aspis-statement/src/pool_v1/pair_forest_terminal.rs",
+        "begin_line": 324,
+        "end_line": 324
+      },
+      "is_opaque": false,
+      "can_fail": true,
+      "can_diverge": false,
+      "is_rec": false,
+      "reducible": false
+    },
+    {
+      "def_id": 36,
+      "lean_name": "V7ForestTerminalGenerated.pool_v1.pair_forest_terminal.decode_pool_v1_pair_forest_terminal_statement_v1.closure_6.Insts.CoreOpsFunctionFnOnceTuplePoolV1PairLatePublicStatementErrorV1PoolV1PairForestTerminalFormatErrorV1.call_once",
+      "lean_file": "V7ForestTerminal/Funs.lean",
+      "rust_name": "aspis_statement::pool_v1::pair_forest_terminal::decode_pool_v1_pair_forest_terminal_statement_v1::{impl core::ops::function::FnOnce<(aspis_statement::pool_v1::pair_tree_profile::PoolV1PairLatePublicStatementErrorV1,), aspis_statement::pool_v1::pair_forest_terminal::PoolV1PairForestTerminalFormatErrorV1> for aspis_statement::pool_v1::pair_forest_terminal::decode_pool_v1_pair_forest_terminal_statement_v1::closure#6}::call_once",
+      "is_local": true,
+      "source": {
+        "file": "crates/aspis-statement/src/pool_v1/pair_forest_terminal.rs",
+        "begin_line": 315,
+        "end_line": 315
+      },
+      "is_opaque": false,
+      "can_fail": true,
+      "can_diverge": false,
+      "is_rec": false,
+      "reducible": false
+    },
+    {
+      "def_id": 35,
+      "lean_name": "V7ForestTerminalGenerated.pool_v1.pair_forest_terminal.decode_pool_v1_pair_forest_terminal_statement_v1.closure_5.Insts.CoreOpsFunctionFnOnceTupleTryFromSliceErrorPoolV1PairForestTerminalFormatErrorV1.call_once",
+      "lean_file": "V7ForestTerminal/Funs.lean",
+      "rust_name": "aspis_statement::pool_v1::pair_forest_terminal::decode_pool_v1_pair_forest_terminal_statement_v1::{impl core::ops::function::FnOnce<(core::array::TryFromSliceError,), aspis_statement::pool_v1::pair_forest_terminal::PoolV1PairForestTerminalFormatErrorV1> for aspis_statement::pool_v1::pair_forest_terminal::decode_pool_v1_pair_forest_terminal_statement_v1::closure#5}::call_once",
+      "is_local": true,
+      "source": {
+        "file": "crates/aspis-statement/src/pool_v1/pair_forest_terminal.rs",
+        "begin_line": 309,
+        "end_line": 309
+      },
+      "is_opaque": false,
+      "can_fail": true,
+      "can_diverge": false,
+      "is_rec": false,
+      "reducible": false
+    },
+    {
+      "def_id": 34,
+      "lean_name": "V7ForestTerminalGenerated.pool_v1.pair_forest_terminal.decode_pool_v1_pair_forest_terminal_statement_v1.closure_4.Insts.CoreOpsFunctionFnOnceTupleTryFromSliceErrorPoolV1PairForestTerminalFormatErrorV1.call_once",
+      "lean_file": "V7ForestTerminal/Funs.lean",
+      "rust_name": "aspis_statement::pool_v1::pair_forest_terminal::decode_pool_v1_pair_forest_terminal_statement_v1::{impl core::ops::function::FnOnce<(core::array::TryFromSliceError,), aspis_statement::pool_v1::pair_forest_terminal::PoolV1PairForestTerminalFormatErrorV1> for aspis_statement::pool_v1::pair_forest_terminal::decode_pool_v1_pair_forest_terminal_statement_v1::closure#4}::call_once",
+      "is_local": true,
+      "source": {
+        "file": "crates/aspis-statement/src/pool_v1/pair_forest_terminal.rs",
+        "begin_line": 304,
+        "end_line": 304
+      },
+      "is_opaque": false,
+      "can_fail": true,
+      "can_diverge": false,
+      "is_rec": false,
+      "reducible": false
+    },
+    {
+      "def_id": 33,
+      "lean_name": "V7ForestTerminalGenerated.pool_v1.pair_forest_terminal.decode_pool_v1_pair_forest_terminal_statement_v1.closure_3.Insts.CoreOpsFunctionFnOnceTupleTryFromSliceErrorPoolV1PairForestTerminalFormatErrorV1.call_once",
+      "lean_file": "V7ForestTerminal/Funs.lean",
+      "rust_name": "aspis_statement::pool_v1::pair_forest_terminal::decode_pool_v1_pair_forest_terminal_statement_v1::{impl core::ops::function::FnOnce<(core::array::TryFromSliceError,), aspis_statement::pool_v1::pair_forest_terminal::PoolV1PairForestTerminalFormatErrorV1> for aspis_statement::pool_v1::pair_forest_terminal::decode_pool_v1_pair_forest_terminal_statement_v1::closure#3}::call_once",
+      "is_local": true,
+      "source": {
+        "file": "crates/aspis-statement/src/pool_v1/pair_forest_terminal.rs",
+        "begin_line": 301,
+        "end_line": 301
+      },
+      "is_opaque": false,
+      "can_fail": true,
+      "can_diverge": false,
+      "is_rec": false,
+      "reducible": false
+    },
+    {
+      "def_id": 32,
+      "lean_name": "V7ForestTerminalGenerated.pool_v1.pair_forest_terminal.decode_pool_v1_pair_forest_terminal_statement_v1.closure_2.Insts.CoreOpsFunctionFnOnceTupleTryFromSliceErrorPoolV1PairForestTerminalFormatErrorV1.call_once",
+      "lean_file": "V7ForestTerminal/Funs.lean",
+      "rust_name": "aspis_statement::pool_v1::pair_forest_terminal::decode_pool_v1_pair_forest_terminal_statement_v1::{impl core::ops::function::FnOnce<(core::array::TryFromSliceError,), aspis_statement::pool_v1::pair_forest_terminal::PoolV1PairForestTerminalFormatErrorV1> for aspis_statement::pool_v1::pair_forest_terminal::decode_pool_v1_pair_forest_terminal_statement_v1::closure#2}::call_once",
+      "is_local": true,
+      "source": {
+        "file": "crates/aspis-statement/src/pool_v1/pair_forest_terminal.rs",
+        "begin_line": 298,
+        "end_line": 298
+      },
+      "is_opaque": false,
+      "can_fail": true,
+      "can_diverge": false,
+      "is_rec": false,
+      "reducible": false
+    },
+    {
+      "def_id": 31,
+      "lean_name": "V7ForestTerminalGenerated.pool_v1.pair_forest_terminal.decode_pool_v1_pair_forest_terminal_statement_v1.closure_1.Insts.CoreOpsFunctionFnOnceTupleAtomicStatementErrorPoolV1PairForestTerminalFormatErrorV1.call_once",
+      "lean_file": "V7ForestTerminal/Funs.lean",
+      "rust_name": "aspis_statement::pool_v1::pair_forest_terminal::decode_pool_v1_pair_forest_terminal_statement_v1::{impl core::ops::function::FnOnce<(aspis_statement::atomic_statement::AtomicStatementError,), aspis_statement::pool_v1::pair_forest_terminal::PoolV1PairForestTerminalFormatErrorV1> for aspis_statement::pool_v1::pair_forest_terminal::decode_pool_v1_pair_forest_terminal_statement_v1::closure#1}::call_once",
+      "is_local": true,
+      "source": {
+        "file": "crates/aspis-statement/src/pool_v1/pair_forest_terminal.rs",
+        "begin_line": 294,
+        "end_line": 294
+      },
+      "is_opaque": false,
+      "can_fail": true,
+      "can_diverge": false,
+      "is_rec": false,
+      "reducible": false
+    },
+    {
+      "def_id": 30,
+      "lean_name": "V7ForestTerminalGenerated.pool_v1.pair_forest_terminal.decode_pool_v1_pair_forest_terminal_statement_v1.closure.Insts.CoreOpsFunctionFnOnceTupleTryFromSliceErrorPoolV1PairForestTerminalFormatErrorV1.call_once",
+      "lean_file": "V7ForestTerminal/Funs.lean",
+      "rust_name": "aspis_statement::pool_v1::pair_forest_terminal::decode_pool_v1_pair_forest_terminal_statement_v1::{impl core::ops::function::FnOnce<(core::array::TryFromSliceError,), aspis_statement::pool_v1::pair_forest_terminal::PoolV1PairForestTerminalFormatErrorV1> for aspis_statement::pool_v1::pair_forest_terminal::decode_pool_v1_pair_forest_terminal_statement_v1::closure}::call_once",
+      "is_local": true,
+      "source": {
+        "file": "crates/aspis-statement/src/pool_v1/pair_forest_terminal.rs",
+        "begin_line": 292,
+        "end_line": 292
+      },
+      "is_opaque": false,
+      "can_fail": true,
+      "can_diverge": false,
+      "is_rec": false,
+      "reducible": false
+    },
+    {
+      "def_id": 0,
+      "lean_name": "V7ForestTerminalGenerated.pool_v1.pair_forest_terminal.decode_pool_v1_pair_forest_terminal_statement_v1",
+      "lean_file": "V7ForestTerminal/Funs.lean",
+      "rust_name": "aspis_statement::pool_v1::pair_forest_terminal::decode_pool_v1_pair_forest_terminal_statement_v1",
+      "is_local": true,
+      "source": {
+        "file": "crates/aspis-statement/src/pool_v1/pair_forest_terminal.rs",
+        "begin_line": 273,
+        "end_line": 335
+      },
+      "is_opaque": false,
+      "can_fail": true,
+      "can_diverge": false,
+      "is_rec": false,
+      "reducible": false
+    },
+    {
+      "def_id": 151,
+      "lean_name": "V7ForestTerminalGenerated.pool_v1.pair_forest_terminal.validate_result.closure_1.Insts.CoreOpsFunctionFnOnceTuplePoolV1PairVerifierTransportErrorV1PoolV1PairForestTerminalFormatErrorV1.call_once",
+      "lean_file": "V7ForestTerminal/Funs.lean",
+      "rust_name": "aspis_statement::pool_v1::pair_forest_terminal::validate_result::{impl core::ops::function::FnOnce<(aspis_statement::pool_v1::pair_terminal::PoolV1PairVerifierTransportErrorV1,), aspis_statement::pool_v1::pair_forest_terminal::PoolV1PairForestTerminalFormatErrorV1> for aspis_statement::pool_v1::pair_forest_terminal::validate_result::closure#1}::call_once",
+      "is_local": true,
+      "source": {
+        "file": "crates/aspis-statement/src/pool_v1/pair_forest_terminal.rs",
+        "begin_line": 349,
+        "end_line": 349
+      },
+      "is_opaque": false,
+      "can_fail": true,
+      "can_diverge": false,
+      "is_rec": false,
+      "reducible": false
+    },
+    {
+      "def_id": 150,
+      "lean_name": "V7ForestTerminalGenerated.pool_v1.pair_forest_terminal.validate_result.closure.Insts.CoreOpsFunctionFnOnceTuplePoolV1PairForestAccountErrorV1PoolV1PairForestTerminalFormatErrorV1.call_once",
+      "lean_file": "V7ForestTerminal/Funs.lean",
+      "rust_name": "aspis_statement::pool_v1::pair_forest_terminal::validate_result::{impl core::ops::function::FnOnce<(aspis_statement::pool_v1::pair_forest_accounts::PoolV1PairForestAccountErrorV1,), aspis_statement::pool_v1::pair_forest_terminal::PoolV1PairForestTerminalFormatErrorV1> for aspis_statement::pool_v1::pair_forest_terminal::validate_result::closure}::call_once",
+      "is_local": true,
+      "source": {
+        "file": "crates/aspis-statement/src/pool_v1/pair_forest_terminal.rs",
+        "begin_line": 344,
+        "end_line": 344
+      },
+      "is_opaque": false,
+      "can_fail": true,
+      "can_diverge": false,
+      "is_rec": false,
+      "reducible": false
+    },
+    {
+      "def_id": 18,
+      "lean_name": "V7ForestTerminalGenerated.pool_v1.pair_forest_terminal.validate_result",
+      "lean_file": "V7ForestTerminal/Funs.lean",
+      "rust_name": "aspis_statement::pool_v1::pair_forest_terminal::validate_result",
+      "is_local": true,
+      "source": {
+        "file": "crates/aspis-statement/src/pool_v1/pair_forest_terminal.rs",
+        "begin_line": 337,
+        "end_line": 351
+      },
+      "is_opaque": false,
+      "can_fail": true,
+      "can_diverge": false,
+      "is_rec": false,
+      "reducible": false
+    },
+    {
+      "def_id": 116,
+      "lean_name": "V7ForestTerminalGenerated.pool_v1.pair_terminal.PoolV1PairVerifiedAfterstateV1.Insts.CoreCmpPartialEqPoolV1PairVerifiedAfterstateV1.eq",
+      "lean_file": "V7ForestTerminal/Funs.lean",
+      "rust_name": "aspis_statement::pool_v1::pair_terminal::{impl core::cmp::PartialEq<aspis_statement::pool_v1::pair_terminal::PoolV1PairVerifiedAfterstateV1> for aspis_statement::pool_v1::pair_terminal::PoolV1PairVerifiedAfterstateV1}::eq",
+      "is_local": true,
+      "source": {
+        "file": "crates/aspis-statement/src/pool_v1/pair_terminal.rs",
+        "begin_line": 115,
+        "end_line": 115
+      },
+      "is_opaque": false,
+      "can_fail": true,
+      "can_diverge": false,
+      "is_rec": false,
+      "reducible": false
+    },
+    {
+      "def_id": 29,
+      "lean_name": "V7ForestTerminalGenerated.pool_v1.pair_forest_terminal.validate_pool_v1_pair_forest_terminal_result_against_statement_v1",
+      "lean_file": "V7ForestTerminal/Funs.lean",
+      "rust_name": "aspis_statement::pool_v1::pair_forest_terminal::validate_pool_v1_pair_forest_terminal_result_against_statement_v1",
+      "is_local": true,
+      "source": {
+        "file": "crates/aspis-statement/src/pool_v1/pair_forest_terminal.rs",
+        "begin_line": 357,
+        "end_line": 374
+      },
+      "is_opaque": false,
+      "can_fail": true,
+      "can_diverge": false,
+      "is_rec": false,
+      "reducible": false
+    },
+    {
+      "def_id": 96,
+      "lean_name": "V7ForestTerminalGenerated.pool_v1.pair_forest_terminal.decode_pool_v1_pair_forest_terminal_result_v1.closure_4.Insts.CoreOpsFunctionFnOnceTuplePoolV1PairVerifierTransportErrorV1PoolV1PairForestTerminalFormatErrorV1.call_once",
+      "lean_file": "V7ForestTerminal/Funs.lean",
+      "rust_name": "aspis_statement::pool_v1::pair_forest_terminal::decode_pool_v1_pair_forest_terminal_result_v1::{impl core::ops::function::FnOnce<(aspis_statement::pool_v1::pair_terminal::PoolV1PairVerifierTransportErrorV1,), aspis_statement::pool_v1::pair_forest_terminal::PoolV1PairForestTerminalFormatErrorV1> for aspis_statement::pool_v1::pair_forest_terminal::decode_pool_v1_pair_forest_terminal_result_v1::closure#4}::call_once",
+      "is_local": true,
+      "source": {
+        "file": "crates/aspis-statement/src/pool_v1/pair_forest_terminal.rs",
+        "begin_line": 434,
+        "end_line": 434
+      },
+      "is_opaque": false,
+      "can_fail": true,
+      "can_diverge": false,
+      "is_rec": false,
+      "reducible": false
+    },
+    {
+      "def_id": 95,
+      "lean_name": "V7ForestTerminalGenerated.pool_v1.pair_forest_terminal.decode_pool_v1_pair_forest_terminal_result_v1.closure_3.Insts.CoreOpsFunctionFnOnceTupleAtomicStatementErrorPoolV1PairForestTerminalFormatErrorV1.call_once",
+      "lean_file": "V7ForestTerminal/Funs.lean",
+      "rust_name": "aspis_statement::pool_v1::pair_forest_terminal::decode_pool_v1_pair_forest_terminal_result_v1::{impl core::ops::function::FnOnce<(aspis_statement::atomic_statement::AtomicStatementError,), aspis_statement::pool_v1::pair_forest_terminal::PoolV1PairForestTerminalFormatErrorV1> for aspis_statement::pool_v1::pair_forest_terminal::decode_pool_v1_pair_forest_terminal_result_v1::closure#3}::call_once",
+      "is_local": true,
+      "source": {
+        "file": "crates/aspis-statement/src/pool_v1/pair_forest_terminal.rs",
+        "begin_line": 430,
+        "end_line": 430
+      },
+      "is_opaque": false,
+      "can_fail": true,
+      "can_diverge": false,
+      "is_rec": false,
+      "reducible": false
+    },
+    {
+      "def_id": 94,
+      "lean_name": "V7ForestTerminalGenerated.pool_v1.pair_forest_terminal.decode_pool_v1_pair_forest_terminal_result_v1.closure_2.Insts.CoreOpsFunctionFnOnceTupleTryFromSliceErrorPoolV1PairForestTerminalFormatErrorV1.call_once",
+      "lean_file": "V7ForestTerminal/Funs.lean",
+      "rust_name": "aspis_statement::pool_v1::pair_forest_terminal::decode_pool_v1_pair_forest_terminal_result_v1::{impl core::ops::function::FnOnce<(core::array::TryFromSliceError,), aspis_statement::pool_v1::pair_forest_terminal::PoolV1PairForestTerminalFormatErrorV1> for aspis_statement::pool_v1::pair_forest_terminal::decode_pool_v1_pair_forest_terminal_result_v1::closure#2}::call_once",
+      "is_local": true,
+      "source": {
+        "file": "crates/aspis-statement/src/pool_v1/pair_forest_terminal.rs",
+        "begin_line": 428,
+        "end_line": 428
+      },
+      "is_opaque": false,
+      "can_fail": true,
+      "can_diverge": false,
+      "is_rec": false,
+      "reducible": false
+    },
+    {
+      "def_id": 93,
+      "lean_name": "V7ForestTerminalGenerated.pool_v1.pair_forest_terminal.decode_pool_v1_pair_forest_terminal_result_v1.closure_1.Insts.CoreOpsFunctionFnOnceTupleTryFromSliceErrorPoolV1PairForestTerminalFormatErrorV1.call_once",
+      "lean_file": "V7ForestTerminal/Funs.lean",
+      "rust_name": "aspis_statement::pool_v1::pair_forest_terminal::decode_pool_v1_pair_forest_terminal_result_v1::{impl core::ops::function::FnOnce<(core::array::TryFromSliceError,), aspis_statement::pool_v1::pair_forest_terminal::PoolV1PairForestTerminalFormatErrorV1> for aspis_statement::pool_v1::pair_forest_terminal::decode_pool_v1_pair_forest_terminal_result_v1::closure#1}::call_once",
+      "is_local": true,
+      "source": {
+        "file": "crates/aspis-statement/src/pool_v1/pair_forest_terminal.rs",
+        "begin_line": 423,
+        "end_line": 423
+      },
+      "is_opaque": false,
+      "can_fail": true,
+      "can_diverge": false,
+      "is_rec": false,
+      "reducible": false
+    },
+    {
+      "def_id": 92,
+      "lean_name": "V7ForestTerminalGenerated.pool_v1.pair_forest_terminal.decode_pool_v1_pair_forest_terminal_result_v1.closure.Insts.CoreOpsFunctionFnOnceTupleTryFromSliceErrorPoolV1PairForestTerminalFormatErrorV1.call_once",
+      "lean_file": "V7ForestTerminal/Funs.lean",
+      "rust_name": "aspis_statement::pool_v1::pair_forest_terminal::decode_pool_v1_pair_forest_terminal_result_v1::{impl core::ops::function::FnOnce<(core::array::TryFromSliceError,), aspis_statement::pool_v1::pair_forest_terminal::PoolV1PairForestTerminalFormatErrorV1> for aspis_statement::pool_v1::pair_forest_terminal::decode_pool_v1_pair_forest_terminal_result_v1::closure}::call_once",
+      "is_local": true,
+      "source": {
+        "file": "crates/aspis-statement/src/pool_v1/pair_forest_terminal.rs",
+        "begin_line": 420,
+        "end_line": 420
+      },
+      "is_opaque": false,
+      "can_fail": true,
+      "can_diverge": false,
+      "is_rec": false,
+      "reducible": false
+    },
+    {
+      "def_id": 1,
+      "lean_name": "V7ForestTerminalGenerated.pool_v1.pair_forest_terminal.decode_pool_v1_pair_forest_terminal_result_v1",
+      "lean_file": "V7ForestTerminal/Funs.lean",
+      "rust_name": "aspis_statement::pool_v1::pair_forest_terminal::decode_pool_v1_pair_forest_terminal_result_v1",
+      "is_local": true,
+      "source": {
+        "file": "crates/aspis-statement/src/pool_v1/pair_forest_terminal.rs",
+        "begin_line": 400,
+        "end_line": 438
+      },
+      "is_opaque": false,
+      "can_fail": true,
+      "can_diverge": false,
+      "is_rec": false,
+      "reducible": false
+    },
+    {
+      "def_id": 117,
+      "lean_name": "V7ForestTerminalGenerated.pool_v1.pair_forest_terminal.host.PoolV1PairForestTerminalHostErrorV1.Insts.CoreConvertFromPoolV1PairForestTerminalFormatErrorV1.from",
+      "lean_file": "V7ForestTerminal/Funs.lean",
+      "rust_name": "aspis_statement::pool_v1::pair_forest_terminal::host::{impl core::convert::From<aspis_statement::pool_v1::pair_forest_terminal::PoolV1PairForestTerminalFormatErrorV1> for aspis_statement::pool_v1::pair_forest_terminal::host::PoolV1PairForestTerminalHostErrorV1}::from",
+      "is_local": true,
+      "source": {
+        "file": "crates/aspis-statement/src/pool_v1/pair_forest_terminal.rs",
+        "begin_line": 480,
+        "end_line": 482
+      },
+      "is_opaque": false,
+      "can_fail": true,
+      "can_diverge": false,
+      "is_rec": false,
+      "reducible": false
+    },
+    {
+      "def_id": 158,
+      "lean_name": "V7ForestTerminalGenerated.pool_v1.pair_forest_terminal.host.validate_accounts.closure_2.Insts.CoreOpsFunctionFnOnceTuplePoolV1PairForestAccountErrorV1PoolV1PairForestTerminalFormatErrorV1.call_once",
+      "lean_file": "V7ForestTerminal/Funs.lean",
+      "rust_name": "aspis_statement::pool_v1::pair_forest_terminal::host::validate_accounts::{impl core::ops::function::FnOnce<(aspis_statement::pool_v1::pair_forest_accounts::PoolV1PairForestAccountErrorV1,), aspis_statement::pool_v1::pair_forest_terminal::PoolV1PairForestTerminalFormatErrorV1> for aspis_statement::pool_v1::pair_forest_terminal::host::validate_accounts::closure#2}::call_once",
+      "is_local": true,
+      "source": {
+        "file": "crates/aspis-statement/src/pool_v1/pair_forest_terminal.rs",
+        "begin_line": 495,
+        "end_line": 495
+      },
+      "is_opaque": false,
+      "can_fail": true,
+      "can_diverge": false,
+      "is_rec": false,
+      "reducible": false
+    },
+    {
+      "def_id": 157,
+      "lean_name": "V7ForestTerminalGenerated.pool_v1.pair_forest_terminal.host.validate_accounts.closure_1.Insts.CoreOpsFunctionFnOnceTuplePoolV1PairForestAccountErrorV1PoolV1PairForestTerminalFormatErrorV1.call_once",
+      "lean_file": "V7ForestTerminal/Funs.lean",
+      "rust_name": "aspis_statement::pool_v1::pair_forest_terminal::host::validate_accounts::{impl core::ops::function::FnOnce<(aspis_statement::pool_v1::pair_forest_accounts::PoolV1PairForestAccountErrorV1,), aspis_statement::pool_v1::pair_forest_terminal::PoolV1PairForestTerminalFormatErrorV1> for aspis_statement::pool_v1::pair_forest_terminal::host::validate_accounts::closure#1}::call_once",
+      "is_local": true,
+      "source": {
+        "file": "crates/aspis-statement/src/pool_v1/pair_forest_terminal.rs",
+        "begin_line": 493,
+        "end_line": 493
+      },
+      "is_opaque": false,
+      "can_fail": true,
+      "can_diverge": false,
+      "is_rec": false,
+      "reducible": false
+    },
+    {
+      "def_id": 156,
+      "lean_name": "V7ForestTerminalGenerated.pool_v1.pair_forest_terminal.host.validate_accounts.closure.Insts.CoreOpsFunctionFnOnceTuplePoolV1PairForestAccountErrorV1PoolV1PairForestTerminalFormatErrorV1.call_once",
+      "lean_file": "V7ForestTerminal/Funs.lean",
+      "rust_name": "aspis_statement::pool_v1::pair_forest_terminal::host::validate_accounts::{impl core::ops::function::FnOnce<(aspis_statement::pool_v1::pair_forest_accounts::PoolV1PairForestAccountErrorV1,), aspis_statement::pool_v1::pair_forest_terminal::PoolV1PairForestTerminalFormatErrorV1> for aspis_statement::pool_v1::pair_forest_terminal::host::validate_accounts::closure}::call_once",
+      "is_local": true,
+      "source": {
+        "file": "crates/aspis-statement/src/pool_v1/pair_forest_terminal.rs",
+        "begin_line": 491,
+        "end_line": 491
+      },
+      "is_opaque": false,
+      "can_fail": true,
+      "can_diverge": false,
+      "is_rec": false,
+      "reducible": false
+    },
+    {
+      "def_id": 19,
+      "lean_name": "V7ForestTerminalGenerated.pool_v1.pair_forest_terminal.host.validate_accounts",
+      "lean_file": "V7ForestTerminal/Funs.lean",
+      "rust_name": "aspis_statement::pool_v1::pair_forest_terminal::host::validate_accounts",
+      "is_local": true,
+      "source": {
+        "file": "crates/aspis-statement/src/pool_v1/pair_forest_terminal.rs",
+        "begin_line": 485,
+        "end_line": 548
+      },
+      "is_opaque": false,
+      "can_fail": true,
+      "can_diverge": false,
+      "is_rec": false,
+      "reducible": false
+    },
+    {
+      "def_id": 162,
+      "lean_name": "V7ForestTerminalGenerated.pool_v1.pair_tree_profile.PoolV1PairLiveSnapshotV1.Insts.CoreCmpPartialEqPoolV1PairLiveSnapshotV1.eq",
+      "lean_file": "V7ForestTerminal/Funs.lean",
+      "rust_name": "aspis_statement::pool_v1::pair_tree_profile::{impl core::cmp::PartialEq<aspis_statement::pool_v1::pair_tree_profile::PoolV1PairLiveSnapshotV1> for aspis_statement::pool_v1::pair_tree_profile::PoolV1PairLiveSnapshotV1}::eq",
+      "is_local": true,
+      "source": {
+        "file": "crates/aspis-statement/src/pool_v1/pair_tree_profile.rs",
+        "begin_line": 394,
+        "end_line": 394
+      },
+      "is_opaque": false,
+      "can_fail": true,
+      "can_diverge": false,
+      "is_rec": false,
+      "reducible": false
+    },
+    {
+      "def_id": 115,
+      "lean_name": "V7ForestTerminalGenerated.pool_v1.pair_tree_profile.PoolV1PairLatePublicStatementV1.Insts.CoreCmpPartialEqPoolV1PairLatePublicStatementV1.eq",
+      "lean_file": "V7ForestTerminal/Funs.lean",
+      "rust_name": "aspis_statement::pool_v1::pair_tree_profile::{impl core::cmp::PartialEq<aspis_statement::pool_v1::pair_tree_profile::PoolV1PairLatePublicStatementV1> for aspis_statement::pool_v1::pair_tree_profile::PoolV1PairLatePublicStatementV1}::eq",
+      "is_local": true,
+      "source": {
+        "file": "crates/aspis-statement/src/pool_v1/pair_tree_profile.rs",
+        "begin_line": 404,
+        "end_line": 404
+      },
+      "is_opaque": false,
+      "can_fail": true,
+      "can_diverge": false,
+      "is_rec": false,
+      "reducible": false
+    },
+    {
+      "def_id": 119,
+      "lean_name": "V7ForestTerminalGenerated.pool_v1.pair_trace.PoolV1PairTraceVariantV1.Insts.CoreCmpPartialEqPoolV1PairTraceVariantV1.eq",
+      "lean_file": "V7ForestTerminal/Funs.lean",
+      "rust_name": "aspis_statement::pool_v1::pair_trace::{impl core::cmp::PartialEq<aspis_statement::pool_v1::pair_trace::PoolV1PairTraceVariantV1> for aspis_statement::pool_v1::pair_trace::PoolV1PairTraceVariantV1}::eq",
+      "is_local": true,
+      "source": {
+        "file": "crates/aspis-statement/src/pool_v1/pair_trace.rs",
+        "begin_line": 63,
+        "end_line": 63
+      },
+      "is_opaque": false,
+      "can_fail": true,
+      "can_diverge": false,
+      "is_rec": false,
+      "reducible": false
+    },
+    {
+      "def_id": 110,
+      "lean_name": "V7ForestTerminalGenerated.pool_v1.pair_forest_terminal.host.verify_pool_v1_pair_forest_terminal_inactive_v1.closure_1.Insts.CoreOpsFunctionFnOnceTuplePoolV1PairConstraintResidualErrorV1PoolV1PairForestTerminalHostErrorV1.call_once",
+      "lean_file": "V7ForestTerminal/Funs.lean",
+      "rust_name": "aspis_statement::pool_v1::pair_forest_terminal::host::verify_pool_v1_pair_forest_terminal_inactive_v1::{impl core::ops::function::FnOnce<(aspis_statement::pool_v1::pair_constraint_residuals::PoolV1PairConstraintResidualErrorV1,), aspis_statement::pool_v1::pair_forest_terminal::host::PoolV1PairForestTerminalHostErrorV1> for aspis_statement::pool_v1::pair_forest_terminal::host::verify_pool_v1_pair_forest_terminal_inactive_v1::closure#1}::call_once",
+      "is_local": true,
+      "source": {
+        "file": "crates/aspis-statement/src/pool_v1/pair_forest_terminal.rs",
+        "begin_line": 588,
+        "end_line": 588
+      },
+      "is_opaque": false,
+      "can_fail": true,
+      "can_diverge": false,
+      "is_rec": false,
+      "reducible": false
+    },
+    {
+      "def_id": 109,
+      "lean_name": "V7ForestTerminalGenerated.pool_v1.pair_forest_terminal.host.verify_pool_v1_pair_forest_terminal_inactive_v1.closure.Insts.CoreOpsFunctionFnOnceTuplePoolV1PairConstraintResidualErrorV1PoolV1PairForestTerminalHostErrorV1.call_once",
+      "lean_file": "V7ForestTerminal/Funs.lean",
+      "rust_name": "aspis_statement::pool_v1::pair_forest_terminal::host::verify_pool_v1_pair_forest_terminal_inactive_v1::{impl core::ops::function::FnOnce<(aspis_statement::pool_v1::pair_constraint_residuals::PoolV1PairConstraintResidualErrorV1,), aspis_statement::pool_v1::pair_forest_terminal::host::PoolV1PairForestTerminalHostErrorV1> for aspis_statement::pool_v1::pair_forest_terminal::host::verify_pool_v1_pair_forest_terminal_inactive_v1::closure}::call_once",
+      "is_local": true,
+      "source": {
+        "file": "crates/aspis-statement/src/pool_v1/pair_forest_terminal.rs",
+        "begin_line": 574,
+        "end_line": 574
+      },
+      "is_opaque": false,
+      "can_fail": true,
+      "can_diverge": false,
+      "is_rec": false,
+      "reducible": false
+    },
+    {
+      "def_id": 2,
+      "lean_name": "V7ForestTerminalGenerated.pool_v1.pair_forest_terminal.host.verify_pool_v1_pair_forest_terminal_inactive_v1",
+      "lean_file": "V7ForestTerminal/Funs.lean",
+      "rust_name": "aspis_statement::pool_v1::pair_forest_terminal::host::verify_pool_v1_pair_forest_terminal_inactive_v1",
+      "is_local": true,
+      "source": {
+        "file": "crates/aspis-statement/src/pool_v1/pair_forest_terminal.rs",
+        "begin_line": 550,
+        "end_line": 612
+      },
+      "is_opaque": false,
+      "can_fail": true,
+      "can_diverge": false,
+      "is_rec": false,
+      "reducible": false
+    }
+  ],
+  "types": [
+    {
+      "def_id": 71,
+      "lean_name": "V7ForestTerminalGenerated.core.iter.adapters.flatten.Flatten",
+      "lean_file": "V7ForestTerminal/TypesExternal_Template.lean",
+      "rust_name": "core::iter::adapters::flatten::Flatten",
+      "is_local": false,
+      "source": {
+        "file": "/rustc/library/core/src/iter/adapters/flatten.rs",
+        "begin_line": 184,
+        "end_line": 184
+      }
+    },
+    {
+      "def_id": 69,
+      "lean_name": "V7ForestTerminalGenerated.core.iter.adapters.chain.Chain",
+      "lean_file": "V7ForestTerminal/TypesExternal_Template.lean",
+      "rust_name": "core::iter::adapters::chain::Chain",
+      "is_local": false,
+      "source": {
+        "file": "/rustc/library/core/src/iter/adapters/chain.rs",
+        "begin_line": 23,
+        "end_line": 23
+      }
+    },
+    {
+      "def_id": 7,
+      "lean_name": "V7ForestTerminalGenerated.aspis_core.field.M31",
+      "lean_file": "V7ForestTerminal/Types.lean",
+      "rust_name": "aspis_core::field::M31",
+      "is_local": false,
+      "source": {
+        "file": "crates/aspis-core/src/field.rs",
+        "begin_line": 20,
+        "end_line": 20
+      }
+    },
+    {
+      "def_id": 8,
+      "lean_name": "V7ForestTerminalGenerated.atomic_statement.AtomicStatementError",
+      "lean_file": "V7ForestTerminal/Types.lean",
+      "rust_name": "aspis_statement::atomic_statement::AtomicStatementError",
+      "is_local": true,
+      "source": {
+        "file": "crates/aspis-statement/src/atomic_statement.rs",
+        "begin_line": 62,
+        "end_line": 70
+      }
+    },
+    {
+      "def_id": 66,
+      "lean_name": "V7ForestTerminalGenerated.pool_v1.format.PoolIdentityV1",
+      "lean_file": "V7ForestTerminal/Types.lean",
+      "rust_name": "aspis_statement::pool_v1::format::PoolIdentityV1",
+      "is_local": true,
+      "source": {
+        "file": "crates/aspis-statement/src/pool_v1/format.rs",
+        "begin_line": 102,
+        "end_line": 108
+      }
+    },
+    {
+      "def_id": 76,
+      "lean_name": "V7ForestTerminalGenerated.pool_v1.format.VerifierPolicyV1",
+      "lean_file": "V7ForestTerminal/Types.lean",
+      "rust_name": "aspis_statement::pool_v1::format::VerifierPolicyV1",
+      "is_local": true,
+      "source": {
+        "file": "crates/aspis-statement/src/pool_v1/format.rs",
+        "begin_line": 117,
+        "end_line": 122
+      }
+    },
+    {
+      "def_id": 4,
+      "lean_name": "V7ForestTerminalGenerated.pool_v1.historical_anchor.PoolV1TransitionKind",
+      "lean_file": "V7ForestTerminal/Types.lean",
+      "rust_name": "aspis_statement::pool_v1::historical_anchor::PoolV1TransitionKind",
+      "is_local": true,
+      "source": {
+        "file": "crates/aspis-statement/src/pool_v1/historical_anchor.rs",
+        "begin_line": 32,
+        "end_line": 35
+      }
+    },
+    {
+      "def_id": 73,
+      "lean_name": "V7ForestTerminalGenerated.pool_v1.incremental_merkle.PoolV1TreeError",
+      "lean_file": "V7ForestTerminal/Types.lean",
+      "rust_name": "aspis_statement::pool_v1::incremental_merkle::PoolV1TreeError",
+      "is_local": true,
+      "source": {
+        "file": "crates/aspis-statement/src/pool_v1/incremental_merkle.rs",
+        "begin_line": 32,
+        "end_line": 46
+      }
+    },
+    {
+      "def_id": 67,
+      "lean_name": "V7ForestTerminalGenerated.pool_v1.incremental_merkle.IncrementalMerkleTreeV1",
+      "lean_file": "V7ForestTerminal/Types.lean",
+      "rust_name": "aspis_statement::pool_v1::incremental_merkle::IncrementalMerkleTreeV1",
+      "is_local": true,
+      "source": {
+        "file": "crates/aspis-statement/src/pool_v1/incremental_merkle.rs",
+        "begin_line": 64,
+        "end_line": 68
+      }
+    },
+    {
+      "def_id": 40,
+      "lean_name": "V7ForestTerminalGenerated.pool_v1.pair_constraint_residuals.PoolV1PairConstraintResidualErrorV1",
+      "lean_file": "V7ForestTerminal/Types.lean",
+      "rust_name": "aspis_statement::pool_v1::pair_constraint_residuals::PoolV1PairConstraintResidualErrorV1",
+      "is_local": true,
+      "source": {
+        "file": "crates/aspis-statement/src/pool_v1/pair_constraint_residuals.rs",
+        "begin_line": 201,
+        "end_line": 206
+      }
+    },
+    {
+      "def_id": 45,
+      "lean_name": "V7ForestTerminalGenerated.pool_v1.pair_forest_accounts.PoolV1PairForestAccountErrorV1",
+      "lean_file": "V7ForestTerminal/Types.lean",
+      "rust_name": "aspis_statement::pool_v1::pair_forest_accounts::PoolV1PairForestAccountErrorV1",
+      "is_local": true,
+      "source": {
+        "file": "crates/aspis-statement/src/pool_v1/pair_forest_accounts.rs",
+        "begin_line": 96,
+        "end_line": 118
+      }
+    },
+    {
+      "def_id": 58,
+      "lean_name": "V7ForestTerminalGenerated.pool_v1.pair_forest_accounts.PoolV1PairForestMasterV1",
+      "lean_file": "V7ForestTerminal/Types.lean",
+      "rust_name": "aspis_statement::pool_v1::pair_forest_accounts::PoolV1PairForestMasterV1",
+      "is_local": true,
+      "source": {
+        "file": "crates/aspis-statement/src/pool_v1/pair_forest_accounts.rs",
+        "begin_line": 127,
+        "end_line": 135
+      }
+    },
+    {
+      "def_id": 60,
+      "lean_name": "V7ForestTerminalGenerated.pool_v1.pair_forest_accounts.PoolV1PairForestLaneStateV1",
+      "lean_file": "V7ForestTerminal/Types.lean",
+      "rust_name": "aspis_statement::pool_v1::pair_forest_accounts::PoolV1PairForestLaneStateV1",
+      "is_local": true,
+      "source": {
+        "file": "crates/aspis-statement/src/pool_v1/pair_forest_accounts.rs",
+        "begin_line": 138,
+        "end_line": 142
+      }
+    },
+    {
+      "def_id": 59,
+      "lean_name": "V7ForestTerminalGenerated.pool_v1.pair_forest_accounts.PoolV1PairForestCheckpointV1",
+      "lean_file": "V7ForestTerminal/Types.lean",
+      "rust_name": "aspis_statement::pool_v1::pair_forest_accounts::PoolV1PairForestCheckpointV1",
+      "is_local": true,
+      "source": {
+        "file": "crates/aspis-statement/src/pool_v1/pair_forest_accounts.rs",
+        "begin_line": 145,
+        "end_line": 151
+      }
+    },
+    {
+      "def_id": 38,
+      "lean_name": "V7ForestTerminalGenerated.pool_v1.pair_forest_constraint_residuals.PoolV1PairForestConstraintResidualsV1",
+      "lean_file": "V7ForestTerminal/Types.lean",
+      "rust_name": "aspis_statement::pool_v1::pair_forest_constraint_residuals::PoolV1PairForestConstraintResidualsV1",
+      "is_local": true,
+      "source": {
+        "file": "crates/aspis-statement/src/pool_v1/pair_forest_constraint_residuals.rs",
+        "begin_line": 100,
+        "end_line": 116
+      }
+    },
+    {
+      "def_id": 72,
+      "lean_name": "V7ForestTerminalGenerated.pool_v1.pair_forest_constraint_residuals.PoolV1PairForestConstraintResidualsV1.all_zero.closure",
+      "lean_file": "V7ForestTerminal/Types.lean",
+      "rust_name": "aspis_statement::pool_v1::pair_forest_constraint_residuals::{aspis_statement::pool_v1::pair_forest_constraint_residuals::PoolV1PairForestConstraintResidualsV1}::all_zero::closure",
+      "is_local": true,
+      "source": {
+        "file": "crates/aspis-statement/src/pool_v1/pair_forest_constraint_residuals.rs",
+        "begin_line": 166,
+        "end_line": 166
+      }
+    },
+    {
+      "def_id": 41,
+      "lean_name": "V7ForestTerminalGenerated.state_only_trace.StateOnlyTraceFoundation",
+      "lean_file": "V7ForestTerminal/Types.lean",
+      "rust_name": "aspis_statement::state_only_trace::StateOnlyTraceFoundation",
+      "is_local": true,
+      "source": {
+        "file": "crates/aspis-statement/src/state_only_trace.rs",
+        "begin_line": 75,
+        "end_line": 80
+      }
+    },
+    {
+      "def_id": 21,
+      "lean_name": "V7ForestTerminalGenerated.pool_v1.payment_relation.PoolV1PrivateTransferPublicV1",
+      "lean_file": "V7ForestTerminal/Types.lean",
+      "rust_name": "aspis_statement::pool_v1::payment_relation::PoolV1PrivateTransferPublicV1",
+      "is_local": true,
+      "source": {
+        "file": "crates/aspis-statement/src/pool_v1/payment_relation.rs",
+        "begin_line": 46,
+        "end_line": 55
+      }
+    },
+    {
+      "def_id": 46,
+      "lean_name": "V7ForestTerminalGenerated.pool_v1.pair_tree_profile.PoolV1PairLiveSnapshotV1",
+      "lean_file": "V7ForestTerminal/Types.lean",
+      "rust_name": "aspis_statement::pool_v1::pair_tree_profile::PoolV1PairLiveSnapshotV1",
+      "is_local": true,
+      "source": {
+        "file": "crates/aspis-statement/src/pool_v1/pair_tree_profile.rs",
+        "begin_line": 395,
+        "end_line": 402
+      }
+    },
+    {
+      "def_id": 32,
+      "lean_name": "V7ForestTerminalGenerated.pool_v1.pair_terminal.PoolV1PairVerifiedAfterstateV1",
+      "lean_file": "V7ForestTerminal/Types.lean",
+      "rust_name": "aspis_statement::pool_v1::pair_terminal::PoolV1PairVerifiedAfterstateV1",
+      "is_local": true,
+      "source": {
+        "file": "crates/aspis-statement/src/pool_v1/pair_terminal.rs",
+        "begin_line": 116,
+        "end_line": 120
+      }
+    },
+    {
+      "def_id": 18,
+      "lean_name": "V7ForestTerminalGenerated.pool_v1.pair_tree_profile.PoolV1PairLatePublicStatementV1",
+      "lean_file": "V7ForestTerminal/Types.lean",
+      "rust_name": "aspis_statement::pool_v1::pair_tree_profile::PoolV1PairLatePublicStatementV1",
+      "is_local": true,
+      "source": {
+        "file": "crates/aspis-statement/src/pool_v1/pair_tree_profile.rs",
+        "begin_line": 405,
+        "end_line": 410
+      }
+    },
+    {
+      "def_id": 25,
+      "lean_name": "V7ForestTerminalGenerated.pool_v1.payment_relation.PoolV1WithdrawalPublicV1",
+      "lean_file": "V7ForestTerminal/Types.lean",
+      "rust_name": "aspis_statement::pool_v1::payment_relation::PoolV1WithdrawalPublicV1",
+      "is_local": true,
+      "source": {
+        "file": "crates/aspis-statement/src/pool_v1/payment_relation.rs",
+        "begin_line": 58,
+        "end_line": 68
+      }
+    },
+    {
+      "def_id": 13,
+      "lean_name": "V7ForestTerminalGenerated.pool_v1.pair_forest_terminal.PoolV1PairForestTerminalCommonV1",
+      "lean_file": "V7ForestTerminal/Types.lean",
+      "rust_name": "aspis_statement::pool_v1::pair_forest_terminal::PoolV1PairForestTerminalCommonV1",
+      "is_local": true,
+      "source": {
+        "file": "crates/aspis-statement/src/pool_v1/pair_forest_terminal.rs",
+        "begin_line": 49,
+        "end_line": 59
+      }
+    },
+    {
+      "def_id": 1,
+      "lean_name": "V7ForestTerminalGenerated.pool_v1.pair_forest_terminal.PoolV1PairForestTerminalStatementV1",
+      "lean_file": "V7ForestTerminal/Types.lean",
+      "rust_name": "aspis_statement::pool_v1::pair_forest_terminal::PoolV1PairForestTerminalStatementV1",
+      "is_local": true,
+      "source": {
+        "file": "crates/aspis-statement/src/pool_v1/pair_forest_terminal.rs",
+        "begin_line": 62,
+        "end_line": 71
+      }
+    },
+    {
+      "def_id": 35,
+      "lean_name": "V7ForestTerminalGenerated.pool_v1.pair_forest_terminal.PoolV1PairForestTerminalAccountsV1",
+      "lean_file": "V7ForestTerminal/Types.lean",
+      "rust_name": "aspis_statement::pool_v1::pair_forest_terminal::PoolV1PairForestTerminalAccountsV1",
+      "is_local": true,
+      "source": {
+        "file": "crates/aspis-statement/src/pool_v1/pair_forest_terminal.rs",
+        "begin_line": 99,
+        "end_line": 108
+      }
+    },
+    {
+      "def_id": 27,
+      "lean_name": "V7ForestTerminalGenerated.pool_v1.pair_forest_terminal.PoolV1PairForestTerminalResultV1",
+      "lean_file": "V7ForestTerminal/Types.lean",
+      "rust_name": "aspis_statement::pool_v1::pair_forest_terminal::PoolV1PairForestTerminalResultV1",
+      "is_local": true,
+      "source": {
+        "file": "crates/aspis-statement/src/pool_v1/pair_forest_terminal.rs",
+        "begin_line": 111,
+        "end_line": 118
+      }
+    },
+    {
+      "def_id": 22,
+      "lean_name": "V7ForestTerminalGenerated.pool_v1.payment_relation.PoolV1PaymentStatementFormatError",
+      "lean_file": "V7ForestTerminal/Types.lean",
+      "rust_name": "aspis_statement::pool_v1::payment_relation::PoolV1PaymentStatementFormatError",
+      "is_local": true,
+      "source": {
+        "file": "crates/aspis-statement/src/pool_v1/payment_relation.rs",
+        "begin_line": 128,
+        "end_line": 143
+      }
+    },
+    {
+      "def_id": 47,
+      "lean_name": "V7ForestTerminalGenerated.pool_v1.pair_tree_profile.PoolV1PairLiveSnapshotErrorV1",
+      "lean_file": "V7ForestTerminal/Types.lean",
+      "rust_name": "aspis_statement::pool_v1::pair_tree_profile::PoolV1PairLiveSnapshotErrorV1",
+      "is_local": true,
+      "source": {
+        "file": "crates/aspis-statement/src/pool_v1/pair_tree_profile.rs",
+        "begin_line": 429,
+        "end_line": 439
+      }
+    },
+    {
+      "def_id": 33,
+      "lean_name": "V7ForestTerminalGenerated.pool_v1.pair_terminal.PoolV1PairVerifierTransportErrorV1",
+      "lean_file": "V7ForestTerminal/Types.lean",
+      "rust_name": "aspis_statement::pool_v1::pair_terminal::PoolV1PairVerifierTransportErrorV1",
+      "is_local": true,
+      "source": {
+        "file": "crates/aspis-statement/src/pool_v1/pair_terminal.rs",
+        "begin_line": 56,
+        "end_line": 72
+      }
+    },
+    {
+      "def_id": 19,
+      "lean_name": "V7ForestTerminalGenerated.pool_v1.pair_tree_profile.PoolV1PairLatePublicStatementErrorV1",
+      "lean_file": "V7ForestTerminal/Types.lean",
+      "rust_name": "aspis_statement::pool_v1::pair_tree_profile::PoolV1PairLatePublicStatementErrorV1",
+      "is_local": true,
+      "source": {
+        "file": "crates/aspis-statement/src/pool_v1/pair_tree_profile.rs",
+        "begin_line": 413,
+        "end_line": 426
+      }
+    },
+    {
+      "def_id": 2,
+      "lean_name": "V7ForestTerminalGenerated.pool_v1.pair_forest_terminal.PoolV1PairForestTerminalFormatErrorV1",
+      "lean_file": "V7ForestTerminal/Types.lean",
+      "rust_name": "aspis_statement::pool_v1::pair_forest_terminal::PoolV1PairForestTerminalFormatErrorV1",
+      "is_local": true,
+      "source": {
+        "file": "crates/aspis-statement/src/pool_v1/pair_forest_terminal.rs",
+        "begin_line": 121,
+        "end_line": 144
+      }
+    },
+    {
+      "def_id": 55,
+      "lean_name": "V7ForestTerminalGenerated.pool_v1.pair_forest_terminal.validate_pool_v1_pair_forest_terminal_statement_v1.closure_3",
+      "lean_file": "V7ForestTerminal/Types.lean",
+      "rust_name": "aspis_statement::pool_v1::pair_forest_terminal::validate_pool_v1_pair_forest_terminal_statement_v1::closure#3",
+      "is_local": true,
+      "source": {
+        "file": "crates/aspis-statement/src/pool_v1/pair_forest_terminal.rs",
+        "begin_line": 230,
+        "end_line": 230
+      }
+    },
+    {
+      "def_id": 54,
+      "lean_name": "V7ForestTerminalGenerated.pool_v1.pair_forest_terminal.validate_pool_v1_pair_forest_terminal_statement_v1.closure_2",
+      "lean_file": "V7ForestTerminal/Types.lean",
+      "rust_name": "aspis_statement::pool_v1::pair_forest_terminal::validate_pool_v1_pair_forest_terminal_statement_v1::closure#2",
+      "is_local": true,
+      "source": {
+        "file": "crates/aspis-statement/src/pool_v1/pair_forest_terminal.rs",
+        "begin_line": 224,
+        "end_line": 224
+      }
+    },
+    {
+      "def_id": 53,
+      "lean_name": "V7ForestTerminalGenerated.pool_v1.pair_forest_terminal.validate_pool_v1_pair_forest_terminal_statement_v1.closure_1",
+      "lean_file": "V7ForestTerminal/Types.lean",
+      "rust_name": "aspis_statement::pool_v1::pair_forest_terminal::validate_pool_v1_pair_forest_terminal_statement_v1::closure#1",
+      "is_local": true,
+      "source": {
+        "file": "crates/aspis-statement/src/pool_v1/pair_forest_terminal.rs",
+        "begin_line": 203,
+        "end_line": 203
+      }
+    },
+    {
+      "def_id": 52,
+      "lean_name": "V7ForestTerminalGenerated.pool_v1.pair_forest_terminal.validate_pool_v1_pair_forest_terminal_statement_v1.closure",
+      "lean_file": "V7ForestTerminal/Types.lean",
+      "rust_name": "aspis_statement::pool_v1::pair_forest_terminal::validate_pool_v1_pair_forest_terminal_statement_v1::closure",
+      "is_local": true,
+      "source": {
+        "file": "crates/aspis-statement/src/pool_v1/pair_forest_terminal.rs",
+        "begin_line": 199,
+        "end_line": 199
+      }
+    },
+    {
+      "def_id": 26,
+      "lean_name": "V7ForestTerminalGenerated.pool_v1.pair_forest_terminal.decode_pool_v1_pair_forest_terminal_statement_v1.closure_8",
+      "lean_file": "V7ForestTerminal/Types.lean",
+      "rust_name": "aspis_statement::pool_v1::pair_forest_terminal::decode_pool_v1_pair_forest_terminal_statement_v1::closure#8",
+      "is_local": true,
+      "source": {
+        "file": "crates/aspis-statement/src/pool_v1/pair_forest_terminal.rs",
+        "begin_line": 330,
+        "end_line": 330
+      }
+    },
+    {
+      "def_id": 24,
+      "lean_name": "V7ForestTerminalGenerated.pool_v1.pair_forest_terminal.decode_pool_v1_pair_forest_terminal_statement_v1.closure_7",
+      "lean_file": "V7ForestTerminal/Types.lean",
+      "rust_name": "aspis_statement::pool_v1::pair_forest_terminal::decode_pool_v1_pair_forest_terminal_statement_v1::closure#7",
+      "is_local": true,
+      "source": {
+        "file": "crates/aspis-statement/src/pool_v1/pair_forest_terminal.rs",
+        "begin_line": 324,
+        "end_line": 324
+      }
+    },
+    {
+      "def_id": 20,
+      "lean_name": "V7ForestTerminalGenerated.pool_v1.pair_forest_terminal.decode_pool_v1_pair_forest_terminal_statement_v1.closure_6",
+      "lean_file": "V7ForestTerminal/Types.lean",
+      "rust_name": "aspis_statement::pool_v1::pair_forest_terminal::decode_pool_v1_pair_forest_terminal_statement_v1::closure#6",
+      "is_local": true,
+      "source": {
+        "file": "crates/aspis-statement/src/pool_v1/pair_forest_terminal.rs",
+        "begin_line": 315,
+        "end_line": 315
+      }
+    },
+    {
+      "def_id": 17,
+      "lean_name": "V7ForestTerminalGenerated.pool_v1.pair_forest_terminal.decode_pool_v1_pair_forest_terminal_statement_v1.closure_5",
+      "lean_file": "V7ForestTerminal/Types.lean",
+      "rust_name": "aspis_statement::pool_v1::pair_forest_terminal::decode_pool_v1_pair_forest_terminal_statement_v1::closure#5",
+      "is_local": true,
+      "source": {
+        "file": "crates/aspis-statement/src/pool_v1/pair_forest_terminal.rs",
+        "begin_line": 309,
+        "end_line": 309
+      }
+    },
+    {
+      "def_id": 16,
+      "lean_name": "V7ForestTerminalGenerated.pool_v1.pair_forest_terminal.decode_pool_v1_pair_forest_terminal_statement_v1.closure_4",
+      "lean_file": "V7ForestTerminal/Types.lean",
+      "rust_name": "aspis_statement::pool_v1::pair_forest_terminal::decode_pool_v1_pair_forest_terminal_statement_v1::closure#4",
+      "is_local": true,
+      "source": {
+        "file": "crates/aspis-statement/src/pool_v1/pair_forest_terminal.rs",
+        "begin_line": 304,
+        "end_line": 304
+      }
+    },
+    {
+      "def_id": 15,
+      "lean_name": "V7ForestTerminalGenerated.pool_v1.pair_forest_terminal.decode_pool_v1_pair_forest_terminal_statement_v1.closure_3",
+      "lean_file": "V7ForestTerminal/Types.lean",
+      "rust_name": "aspis_statement::pool_v1::pair_forest_terminal::decode_pool_v1_pair_forest_terminal_statement_v1::closure#3",
+      "is_local": true,
+      "source": {
+        "file": "crates/aspis-statement/src/pool_v1/pair_forest_terminal.rs",
+        "begin_line": 301,
+        "end_line": 301
+      }
+    },
+    {
+      "def_id": 14,
+      "lean_name": "V7ForestTerminalGenerated.pool_v1.pair_forest_terminal.decode_pool_v1_pair_forest_terminal_statement_v1.closure_2",
+      "lean_file": "V7ForestTerminal/Types.lean",
+      "rust_name": "aspis_statement::pool_v1::pair_forest_terminal::decode_pool_v1_pair_forest_terminal_statement_v1::closure#2",
+      "is_local": true,
+      "source": {
+        "file": "crates/aspis-statement/src/pool_v1/pair_forest_terminal.rs",
+        "begin_line": 298,
+        "end_line": 298
+      }
+    },
+    {
+      "def_id": 12,
+      "lean_name": "V7ForestTerminalGenerated.pool_v1.pair_forest_terminal.decode_pool_v1_pair_forest_terminal_statement_v1.closure_1",
+      "lean_file": "V7ForestTerminal/Types.lean",
+      "rust_name": "aspis_statement::pool_v1::pair_forest_terminal::decode_pool_v1_pair_forest_terminal_statement_v1::closure#1",
+      "is_local": true,
+      "source": {
+        "file": "crates/aspis-statement/src/pool_v1/pair_forest_terminal.rs",
+        "begin_line": 294,
+        "end_line": 294
+      }
+    },
+    {
+      "def_id": 11,
+      "lean_name": "V7ForestTerminalGenerated.pool_v1.pair_forest_terminal.decode_pool_v1_pair_forest_terminal_statement_v1.closure",
+      "lean_file": "V7ForestTerminal/Types.lean",
+      "rust_name": "aspis_statement::pool_v1::pair_forest_terminal::decode_pool_v1_pair_forest_terminal_statement_v1::closure",
+      "is_local": true,
+      "source": {
+        "file": "crates/aspis-statement/src/pool_v1/pair_forest_terminal.rs",
+        "begin_line": 292,
+        "end_line": 292
+      }
+    },
+    {
+      "def_id": 57,
+      "lean_name": "V7ForestTerminalGenerated.pool_v1.pair_forest_terminal.validate_result.closure_1",
+      "lean_file": "V7ForestTerminal/Types.lean",
+      "rust_name": "aspis_statement::pool_v1::pair_forest_terminal::validate_result::closure#1",
+      "is_local": true,
+      "source": {
+        "file": "crates/aspis-statement/src/pool_v1/pair_forest_terminal.rs",
+        "begin_line": 349,
+        "end_line": 349
+      }
+    },
+    {
+      "def_id": 56,
+      "lean_name": "V7ForestTerminalGenerated.pool_v1.pair_forest_terminal.validate_result.closure",
+      "lean_file": "V7ForestTerminal/Types.lean",
+      "rust_name": "aspis_statement::pool_v1::pair_forest_terminal::validate_result::closure",
+      "is_local": true,
+      "source": {
+        "file": "crates/aspis-statement/src/pool_v1/pair_forest_terminal.rs",
+        "begin_line": 344,
+        "end_line": 344
+      }
+    },
+    {
+      "def_id": 34,
+      "lean_name": "V7ForestTerminalGenerated.pool_v1.pair_forest_terminal.decode_pool_v1_pair_forest_terminal_result_v1.closure_4",
+      "lean_file": "V7ForestTerminal/Types.lean",
+      "rust_name": "aspis_statement::pool_v1::pair_forest_terminal::decode_pool_v1_pair_forest_terminal_result_v1::closure#4",
+      "is_local": true,
+      "source": {
+        "file": "crates/aspis-statement/src/pool_v1/pair_forest_terminal.rs",
+        "begin_line": 434,
+        "end_line": 434
+      }
+    },
+    {
+      "def_id": 31,
+      "lean_name": "V7ForestTerminalGenerated.pool_v1.pair_forest_terminal.decode_pool_v1_pair_forest_terminal_result_v1.closure_3",
+      "lean_file": "V7ForestTerminal/Types.lean",
+      "rust_name": "aspis_statement::pool_v1::pair_forest_terminal::decode_pool_v1_pair_forest_terminal_result_v1::closure#3",
+      "is_local": true,
+      "source": {
+        "file": "crates/aspis-statement/src/pool_v1/pair_forest_terminal.rs",
+        "begin_line": 430,
+        "end_line": 430
+      }
+    },
+    {
+      "def_id": 30,
+      "lean_name": "V7ForestTerminalGenerated.pool_v1.pair_forest_terminal.decode_pool_v1_pair_forest_terminal_result_v1.closure_2",
+      "lean_file": "V7ForestTerminal/Types.lean",
+      "rust_name": "aspis_statement::pool_v1::pair_forest_terminal::decode_pool_v1_pair_forest_terminal_result_v1::closure#2",
+      "is_local": true,
+      "source": {
+        "file": "crates/aspis-statement/src/pool_v1/pair_forest_terminal.rs",
+        "begin_line": 428,
+        "end_line": 428
+      }
+    },
+    {
+      "def_id": 29,
+      "lean_name": "V7ForestTerminalGenerated.pool_v1.pair_forest_terminal.decode_pool_v1_pair_forest_terminal_result_v1.closure_1",
+      "lean_file": "V7ForestTerminal/Types.lean",
+      "rust_name": "aspis_statement::pool_v1::pair_forest_terminal::decode_pool_v1_pair_forest_terminal_result_v1::closure#1",
+      "is_local": true,
+      "source": {
+        "file": "crates/aspis-statement/src/pool_v1/pair_forest_terminal.rs",
+        "begin_line": 423,
+        "end_line": 423
+      }
+    },
+    {
+      "def_id": 28,
+      "lean_name": "V7ForestTerminalGenerated.pool_v1.pair_forest_terminal.decode_pool_v1_pair_forest_terminal_result_v1.closure",
+      "lean_file": "V7ForestTerminal/Types.lean",
+      "rust_name": "aspis_statement::pool_v1::pair_forest_terminal::decode_pool_v1_pair_forest_terminal_result_v1::closure",
+      "is_local": true,
+      "source": {
+        "file": "crates/aspis-statement/src/pool_v1/pair_forest_terminal.rs",
+        "begin_line": 420,
+        "end_line": 420
+      }
+    },
+    {
+      "def_id": 37,
+      "lean_name": "V7ForestTerminalGenerated.pool_v1.pair_forest_terminal.host.PoolV1PairForestTerminalHostErrorV1",
+      "lean_file": "V7ForestTerminal/Types.lean",
+      "rust_name": "aspis_statement::pool_v1::pair_forest_terminal::host::PoolV1PairForestTerminalHostErrorV1",
+      "is_local": true,
+      "source": {
+        "file": "crates/aspis-statement/src/pool_v1/pair_forest_terminal.rs",
+        "begin_line": 472,
+        "end_line": 477
+      }
+    },
+    {
+      "def_id": 65,
+      "lean_name": "V7ForestTerminalGenerated.pool_v1.pair_forest_terminal.host.validate_accounts.closure_2",
+      "lean_file": "V7ForestTerminal/Types.lean",
+      "rust_name": "aspis_statement::pool_v1::pair_forest_terminal::host::validate_accounts::closure#2",
+      "is_local": true,
+      "source": {
+        "file": "crates/aspis-statement/src/pool_v1/pair_forest_terminal.rs",
+        "begin_line": 495,
+        "end_line": 495
+      }
+    },
+    {
+      "def_id": 64,
+      "lean_name": "V7ForestTerminalGenerated.pool_v1.pair_forest_terminal.host.validate_accounts.closure_1",
+      "lean_file": "V7ForestTerminal/Types.lean",
+      "rust_name": "aspis_statement::pool_v1::pair_forest_terminal::host::validate_accounts::closure#1",
+      "is_local": true,
+      "source": {
+        "file": "crates/aspis-statement/src/pool_v1/pair_forest_terminal.rs",
+        "begin_line": 493,
+        "end_line": 493
+      }
+    },
+    {
+      "def_id": 63,
+      "lean_name": "V7ForestTerminalGenerated.pool_v1.pair_forest_terminal.host.validate_accounts.closure",
+      "lean_file": "V7ForestTerminal/Types.lean",
+      "rust_name": "aspis_statement::pool_v1::pair_forest_terminal::host::validate_accounts::closure",
+      "is_local": true,
+      "source": {
+        "file": "crates/aspis-statement/src/pool_v1/pair_forest_terminal.rs",
+        "begin_line": 491,
+        "end_line": 491
+      }
+    },
+    {
+      "def_id": 39,
+      "lean_name": "V7ForestTerminalGenerated.pool_v1.pair_trace.PoolV1PairTraceVariantV1",
+      "lean_file": "V7ForestTerminal/Types.lean",
+      "rust_name": "aspis_statement::pool_v1::pair_trace::PoolV1PairTraceVariantV1",
+      "is_local": true,
+      "source": {
+        "file": "crates/aspis-statement/src/pool_v1/pair_trace.rs",
+        "begin_line": 64,
+        "end_line": 67
+      }
+    },
+    {
+      "def_id": 68,
+      "lean_name": "V7ForestTerminalGenerated.pool_v1.pair_trace.PoolV1PairTracePublicOutputsV1",
+      "lean_file": "V7ForestTerminal/Types.lean",
+      "rust_name": "aspis_statement::pool_v1::pair_trace::PoolV1PairTracePublicOutputsV1",
+      "is_local": true,
+      "source": {
+        "file": "crates/aspis-statement/src/pool_v1/pair_trace.rs",
+        "begin_line": 95,
+        "end_line": 109
+      }
+    },
+    {
+      "def_id": 44,
+      "lean_name": "V7ForestTerminalGenerated.pool_v1.pair_forest_trace.PoolV1PairForestTraceV1",
+      "lean_file": "V7ForestTerminal/Types.lean",
+      "rust_name": "aspis_statement::pool_v1::pair_forest_trace::PoolV1PairForestTraceV1",
+      "is_local": true,
+      "source": {
+        "file": "crates/aspis-statement/src/pool_v1/pair_forest_trace.rs",
+        "begin_line": 74,
+        "end_line": 82
+      }
+    },
+    {
+      "def_id": 36,
+      "lean_name": "V7ForestTerminalGenerated.pool_v1.pair_forest_trace.PoolV1PairForestMergedC1CompilationV1",
+      "lean_file": "V7ForestTerminal/Types.lean",
+      "rust_name": "aspis_statement::pool_v1::pair_forest_trace::PoolV1PairForestMergedC1CompilationV1",
+      "is_local": true,
+      "source": {
+        "file": "crates/aspis-statement/src/pool_v1/pair_forest_trace.rs",
+        "begin_line": 85,
+        "end_line": 89
+      }
+    },
+    {
+      "def_id": 43,
+      "lean_name": "V7ForestTerminalGenerated.pool_v1.pair_forest_terminal.host.verify_pool_v1_pair_forest_terminal_inactive_v1.closure_1",
+      "lean_file": "V7ForestTerminal/Types.lean",
+      "rust_name": "aspis_statement::pool_v1::pair_forest_terminal::host::verify_pool_v1_pair_forest_terminal_inactive_v1::closure#1",
+      "is_local": true,
+      "source": {
+        "file": "crates/aspis-statement/src/pool_v1/pair_forest_terminal.rs",
+        "begin_line": 588,
+        "end_line": 588
+      }
+    },
+    {
+      "def_id": 42,
+      "lean_name": "V7ForestTerminalGenerated.pool_v1.pair_forest_terminal.host.verify_pool_v1_pair_forest_terminal_inactive_v1.closure",
+      "lean_file": "V7ForestTerminal/Types.lean",
+      "rust_name": "aspis_statement::pool_v1::pair_forest_terminal::host::verify_pool_v1_pair_forest_terminal_inactive_v1::closure",
+      "is_local": true,
+      "source": {
+        "file": "crates/aspis-statement/src/pool_v1/pair_forest_terminal.rs",
+        "begin_line": 574,
+        "end_line": 574
+      }
+    }
+  ],
+  "globals": [
+    {
+      "def_id": 82,
+      "lean_name": "V7ForestTerminalGenerated.aspis_core.field.M31.ZERO",
+      "lean_file": "V7ForestTerminal/FunsExternal_Template.lean",
+      "rust_name": "aspis_core::field::{aspis_core::field::M31}::ZERO",
+      "is_local": false,
+      "source": {
+        "file": "crates/aspis-core/src/field.rs",
+        "begin_line": 52,
+        "end_line": 52
+      },
+      "can_fail": true
+    },
+    {
+      "def_id": 3,
+      "lean_name": "V7ForestTerminalGenerated.pool_v1.format.POOL_V1_DIGEST_ENCODING_VERSION",
+      "lean_file": "V7ForestTerminal/Funs.lean",
+      "rust_name": "aspis_statement::pool_v1::format::POOL_V1_DIGEST_ENCODING_VERSION",
+      "is_local": true,
+      "source": {
+        "file": "crates/aspis-statement/src/pool_v1/format.rs",
+        "begin_line": 27,
+        "end_line": 27
+      },
+      "can_fail": false
+    },
+    {
+      "def_id": 86,
+      "lean_name": "V7ForestTerminalGenerated.pool_v1.format.POOL_V1_TREE_DEPTH",
+      "lean_file": "V7ForestTerminal/Funs.lean",
+      "rust_name": "aspis_statement::pool_v1::format::POOL_V1_TREE_DEPTH",
+      "is_local": true,
+      "source": {
+        "file": "crates/aspis-statement/src/pool_v1/format.rs",
+        "begin_line": 28,
+        "end_line": 28
+      },
+      "can_fail": false
+    },
+    {
+      "def_id": 80,
+      "lean_name": "V7ForestTerminalGenerated.pool_v1.pair_constraint_residuals.POOL_V1_PAIR_TRANSFER_SCHEDULE_RESIDUAL_COUNT",
+      "lean_file": "V7ForestTerminal/Funs.lean",
+      "rust_name": "aspis_statement::pool_v1::pair_constraint_residuals::POOL_V1_PAIR_TRANSFER_SCHEDULE_RESIDUAL_COUNT",
+      "is_local": true,
+      "source": {
+        "file": "crates/aspis-statement/src/pool_v1/pair_constraint_residuals.rs",
+        "begin_line": 59,
+        "end_line": 59
+      },
+      "can_fail": false
+    },
+    {
+      "def_id": 78,
+      "lean_name": "V7ForestTerminalGenerated.pool_v1.pair_constraint_residuals.POOL_V1_PAIR_WITHDRAWAL_SCHEDULE_RESIDUAL_COUNT",
+      "lean_file": "V7ForestTerminal/Funs.lean",
+      "rust_name": "aspis_statement::pool_v1::pair_constraint_residuals::POOL_V1_PAIR_WITHDRAWAL_SCHEDULE_RESIDUAL_COUNT",
+      "is_local": true,
+      "source": {
+        "file": "crates/aspis-statement/src/pool_v1/pair_constraint_residuals.rs",
+        "begin_line": 60,
+        "end_line": 60
+      },
+      "can_fail": false
+    },
+    {
+      "def_id": 61,
+      "lean_name": "V7ForestTerminalGenerated.pool_v1.pair_trace.POOL_V1_PAIR_VALUE_COUNT",
+      "lean_file": "V7ForestTerminal/Funs.lean",
+      "rust_name": "aspis_statement::pool_v1::pair_trace::POOL_V1_PAIR_VALUE_COUNT",
+      "is_local": true,
+      "source": {
+        "file": "crates/aspis-statement/src/pool_v1/pair_trace.rs",
+        "begin_line": 54,
+        "end_line": 54
+      },
+      "can_fail": false
+    },
+    {
+      "def_id": 62,
+      "lean_name": "V7ForestTerminalGenerated.pool_v1.pair_trace.POOL_V1_PAIR_VALUE_BITS",
+      "lean_file": "V7ForestTerminal/Funs.lean",
+      "rust_name": "aspis_statement::pool_v1::pair_trace::POOL_V1_PAIR_VALUE_BITS",
+      "is_local": true,
+      "source": {
+        "file": "crates/aspis-statement/src/pool_v1/pair_trace.rs",
+        "begin_line": 53,
+        "end_line": 53
+      },
+      "can_fail": false
+    },
+    {
+      "def_id": 36,
+      "lean_name": "V7ForestTerminalGenerated.pool_v1.pair_constraint_residuals.POOL_V1_PAIR_VALUE_BOOLEAN_RESIDUAL_COUNT",
+      "lean_file": "V7ForestTerminal/Funs.lean",
+      "rust_name": "aspis_statement::pool_v1::pair_constraint_residuals::POOL_V1_PAIR_VALUE_BOOLEAN_RESIDUAL_COUNT",
+      "is_local": true,
+      "source": {
+        "file": "crates/aspis-statement/src/pool_v1/pair_constraint_residuals.rs",
+        "begin_line": 65,
+        "end_line": 66
+      },
+      "can_fail": true
+    },
+    {
+      "def_id": 71,
+      "lean_name": "V7ForestTerminalGenerated.pool_v1.pair_constraint_residuals.POOL_V1_PAIR_OCCUPANCY_RESIDUAL_COUNT",
+      "lean_file": "V7ForestTerminal/Funs.lean",
+      "rust_name": "aspis_statement::pool_v1::pair_constraint_residuals::POOL_V1_PAIR_OCCUPANCY_RESIDUAL_COUNT",
+      "is_local": true,
+      "source": {
+        "file": "crates/aspis-statement/src/pool_v1/pair_constraint_residuals.rs",
+        "begin_line": 67,
+        "end_line": 67
+      },
+      "can_fail": false
+    },
+    {
+      "def_id": 79,
+      "lean_name": "V7ForestTerminalGenerated.poseidon2.DIGEST_ELEMS",
+      "lean_file": "V7ForestTerminal/Funs.lean",
+      "rust_name": "aspis_statement::poseidon2::DIGEST_ELEMS",
+      "is_local": true,
+      "source": {
+        "file": "crates/aspis-statement/src/poseidon2.rs",
+        "begin_line": 58,
+        "end_line": 58
+      },
+      "can_fail": false
+    },
+    {
+      "def_id": 84,
+      "lean_name": "V7ForestTerminalGenerated.pool_v1.pair_tree_profile.POOL_V1_PAIR_TREE_DEPTH",
+      "lean_file": "V7ForestTerminal/Funs.lean",
+      "rust_name": "aspis_statement::pool_v1::pair_tree_profile::POOL_V1_PAIR_TREE_DEPTH",
+      "is_local": true,
+      "source": {
+        "file": "crates/aspis-statement/src/pool_v1/pair_tree_profile.rs",
+        "begin_line": 31,
+        "end_line": 31
+      },
+      "can_fail": false
+    },
+    {
+      "def_id": 72,
+      "lean_name": "V7ForestTerminalGenerated.pool_v1.pair_constraint_residuals.POOL_V1_PAIR_APPEND_PATH_RESIDUAL_COUNT",
+      "lean_file": "V7ForestTerminal/Funs.lean",
+      "rust_name": "aspis_statement::pool_v1::pair_constraint_residuals::POOL_V1_PAIR_APPEND_PATH_RESIDUAL_COUNT",
+      "is_local": true,
+      "source": {
+        "file": "crates/aspis-statement/src/pool_v1/pair_constraint_residuals.rs",
+        "begin_line": 70,
+        "end_line": 71
+      },
+      "can_fail": true
+    },
+    {
+      "def_id": 73,
+      "lean_name": "V7ForestTerminalGenerated.pool_v1.pair_constraint_residuals.POOL_V1_PAIR_CANDIDATE_ROOT_RESIDUAL_COUNT",
+      "lean_file": "V7ForestTerminal/Funs.lean",
+      "rust_name": "aspis_statement::pool_v1::pair_constraint_residuals::POOL_V1_PAIR_CANDIDATE_ROOT_RESIDUAL_COUNT",
+      "is_local": true,
+      "source": {
+        "file": "crates/aspis-statement/src/pool_v1/pair_constraint_residuals.rs",
+        "begin_line": 72,
+        "end_line": 72
+      },
+      "can_fail": false
+    },
+    {
+      "def_id": 74,
+      "lean_name": "V7ForestTerminalGenerated.pool_v1.pair_constraint_residuals.POOL_V1_PAIR_CANDIDATE_FRONTIER_RESIDUAL_COUNT",
+      "lean_file": "V7ForestTerminal/Funs.lean",
+      "rust_name": "aspis_statement::pool_v1::pair_constraint_residuals::POOL_V1_PAIR_CANDIDATE_FRONTIER_RESIDUAL_COUNT",
+      "is_local": true,
+      "source": {
+        "file": "crates/aspis-statement/src/pool_v1/pair_constraint_residuals.rs",
+        "begin_line": 73,
+        "end_line": 74
+      },
+      "can_fail": true
+    },
+    {
+      "def_id": 75,
+      "lean_name": "V7ForestTerminalGenerated.pool_v1.pair_constraint_residuals.POOL_V1_PAIR_INDEX_SEQUENCE_RESIDUAL_COUNT",
+      "lean_file": "V7ForestTerminal/Funs.lean",
+      "rust_name": "aspis_statement::pool_v1::pair_constraint_residuals::POOL_V1_PAIR_INDEX_SEQUENCE_RESIDUAL_COUNT",
+      "is_local": true,
+      "source": {
+        "file": "crates/aspis-statement/src/pool_v1/pair_constraint_residuals.rs",
+        "begin_line": 75,
+        "end_line": 75
+      },
+      "can_fail": false
+    },
+    {
+      "def_id": 30,
+      "lean_name": "V7ForestTerminalGenerated.pool_v1.pair_forest_accounts.POOL_V1_PAIR_FOREST_LANE_COUNT",
+      "lean_file": "V7ForestTerminal/Funs.lean",
+      "rust_name": "aspis_statement::pool_v1::pair_forest_accounts::POOL_V1_PAIR_FOREST_LANE_COUNT",
+      "is_local": true,
+      "source": {
+        "file": "crates/aspis-statement/src/pool_v1/pair_forest_accounts.rs",
+        "begin_line": 21,
+        "end_line": 21
+      },
+      "can_fail": false
+    },
+    {
+      "def_id": 77,
+      "lean_name": "V7ForestTerminalGenerated.poseidon2.POSEIDON2_WIDTH",
+      "lean_file": "V7ForestTerminal/Funs.lean",
+      "rust_name": "aspis_statement::poseidon2::POSEIDON2_WIDTH",
+      "is_local": true,
+      "source": {
+        "file": "crates/aspis-statement/src/poseidon2.rs",
+        "begin_line": 56,
+        "end_line": 56
+      },
+      "can_fail": false
+    },
+    {
+      "def_id": 67,
+      "lean_name": "V7ForestTerminalGenerated.pool_v1.pair_forest_constraint_residuals.POOL_V1_PAIR_FOREST_POSEIDON_RESIDUAL_COUNT",
+      "lean_file": "V7ForestTerminal/Funs.lean",
+      "rust_name": "aspis_statement::pool_v1::pair_forest_constraint_residuals::POOL_V1_PAIR_FOREST_POSEIDON_RESIDUAL_COUNT",
+      "is_local": true,
+      "source": {
+        "file": "crates/aspis-statement/src/pool_v1/pair_forest_constraint_residuals.rs",
+        "begin_line": 52,
+        "end_line": 52
+      },
+      "can_fail": true
+    },
+    {
+      "def_id": 50,
+      "lean_name": "V7ForestTerminalGenerated.pool_v1.pair_forest_constraint_residuals.POOL_V1_PAIR_FOREST_TRANSFER_SCHEDULE_RESIDUAL_COUNT",
+      "lean_file": "V7ForestTerminal/Funs.lean",
+      "rust_name": "aspis_statement::pool_v1::pair_forest_constraint_residuals::POOL_V1_PAIR_FOREST_TRANSFER_SCHEDULE_RESIDUAL_COUNT",
+      "is_local": true,
+      "source": {
+        "file": "crates/aspis-statement/src/pool_v1/pair_forest_constraint_residuals.rs",
+        "begin_line": 53,
+        "end_line": 54
+      },
+      "can_fail": true
+    },
+    {
+      "def_id": 48,
+      "lean_name": "V7ForestTerminalGenerated.pool_v1.pair_forest_constraint_residuals.POOL_V1_PAIR_FOREST_WITHDRAWAL_SCHEDULE_RESIDUAL_COUNT",
+      "lean_file": "V7ForestTerminal/Funs.lean",
+      "rust_name": "aspis_statement::pool_v1::pair_forest_constraint_residuals::POOL_V1_PAIR_FOREST_WITHDRAWAL_SCHEDULE_RESIDUAL_COUNT",
+      "is_local": true,
+      "source": {
+        "file": "crates/aspis-statement/src/pool_v1/pair_forest_constraint_residuals.rs",
+        "begin_line": 55,
+        "end_line": 56
+      },
+      "can_fail": true
+    },
+    {
+      "def_id": 83,
+      "lean_name": "V7ForestTerminalGenerated.pool_v1.pair_forest_hiding.POOL_V1_PAIR_FOREST_COPY_ROW_LINKS_V1",
+      "lean_file": "V7ForestTerminal/Funs.lean",
+      "rust_name": "aspis_statement::pool_v1::pair_forest_hiding::POOL_V1_PAIR_FOREST_COPY_ROW_LINKS_V1",
+      "is_local": true,
+      "source": {
+        "file": "crates/aspis-statement/src/pool_v1/pair_forest_hiding.rs",
+        "begin_line": 42,
+        "end_line": 42
+      },
+      "can_fail": false
+    },
+    {
+      "def_id": 68,
+      "lean_name": "V7ForestTerminalGenerated.pool_v1.pair_forest_constraint_residuals.POOL_V1_PAIR_FOREST_COPY_ALIAS_RESIDUAL_COUNT",
+      "lean_file": "V7ForestTerminal/Funs.lean",
+      "rust_name": "aspis_statement::pool_v1::pair_forest_constraint_residuals::POOL_V1_PAIR_FOREST_COPY_ALIAS_RESIDUAL_COUNT",
+      "is_local": true,
+      "source": {
+        "file": "crates/aspis-statement/src/pool_v1/pair_forest_constraint_residuals.rs",
+        "begin_line": 57,
+        "end_line": 58
+      },
+      "can_fail": true
+    },
+    {
+      "def_id": 69,
+      "lean_name": "V7ForestTerminalGenerated.pool_v1.pair_forest_hiding.POOL_V1_PAIR_FOREST_PRIVATE_DIRECTIONS_V1",
+      "lean_file": "V7ForestTerminal/Funs.lean",
+      "rust_name": "aspis_statement::pool_v1::pair_forest_hiding::POOL_V1_PAIR_FOREST_PRIVATE_DIRECTIONS_V1",
+      "is_local": true,
+      "source": {
+        "file": "crates/aspis-statement/src/pool_v1/pair_forest_hiding.rs",
+        "begin_line": 33,
+        "end_line": 33
+      },
+      "can_fail": false
+    },
+    {
+      "def_id": 70,
+      "lean_name": "V7ForestTerminalGenerated.pool_v1.pair_forest_constraint_residuals.POOL_V1_PAIR_FOREST_PATH_ORDERING_RESIDUAL_COUNT",
+      "lean_file": "V7ForestTerminal/Funs.lean",
+      "rust_name": "aspis_statement::pool_v1::pair_forest_constraint_residuals::POOL_V1_PAIR_FOREST_PATH_ORDERING_RESIDUAL_COUNT",
+      "is_local": true,
+      "source": {
+        "file": "crates/aspis-statement/src/pool_v1/pair_forest_constraint_residuals.rs",
+        "begin_line": 59,
+        "end_line": 60
+      },
+      "can_fail": true
+    },
+    {
+      "def_id": 51,
+      "lean_name": "V7ForestTerminalGenerated.pool_v1.pair_forest_constraint_residuals.POOL_V1_PAIR_FOREST_TRANSFER_PUBLIC_RESIDUAL_COUNT",
+      "lean_file": "V7ForestTerminal/Funs.lean",
+      "rust_name": "aspis_statement::pool_v1::pair_forest_constraint_residuals::POOL_V1_PAIR_FOREST_TRANSFER_PUBLIC_RESIDUAL_COUNT",
+      "is_local": true,
+      "source": {
+        "file": "crates/aspis-statement/src/pool_v1/pair_forest_constraint_residuals.rs",
+        "begin_line": 61,
+        "end_line": 61
+      },
+      "can_fail": true
+    },
+    {
+      "def_id": 49,
+      "lean_name": "V7ForestTerminalGenerated.pool_v1.pair_forest_constraint_residuals.POOL_V1_PAIR_FOREST_WITHDRAWAL_PUBLIC_RESIDUAL_COUNT",
+      "lean_file": "V7ForestTerminal/Funs.lean",
+      "rust_name": "aspis_statement::pool_v1::pair_forest_constraint_residuals::POOL_V1_PAIR_FOREST_WITHDRAWAL_PUBLIC_RESIDUAL_COUNT",
+      "is_local": true,
+      "source": {
+        "file": "crates/aspis-statement/src/pool_v1/pair_forest_constraint_residuals.rs",
+        "begin_line": 62,
+        "end_line": 62
+      },
+      "can_fail": true
+    },
+    {
+      "def_id": 85,
+      "lean_name": "V7ForestTerminalGenerated.pool_v1.pair_forest_hiding.POOL_V1_PAIR_FOREST_RELATION_FREE_MASK_CELLS_V1",
+      "lean_file": "V7ForestTerminal/Funs.lean",
+      "rust_name": "aspis_statement::pool_v1::pair_forest_hiding::POOL_V1_PAIR_FOREST_RELATION_FREE_MASK_CELLS_V1",
+      "is_local": true,
+      "source": {
+        "file": "crates/aspis-statement/src/pool_v1/pair_forest_hiding.rs",
+        "begin_line": 44,
+        "end_line": 44
+      },
+      "can_fail": false
+    },
+    {
+      "def_id": 76,
+      "lean_name": "V7ForestTerminalGenerated.pool_v1.pair_forest_constraint_residuals.POOL_V1_PAIR_FOREST_ZERO_PADDING_RESIDUAL_COUNT",
+      "lean_file": "V7ForestTerminal/Funs.lean",
+      "rust_name": "aspis_statement::pool_v1::pair_forest_constraint_residuals::POOL_V1_PAIR_FOREST_ZERO_PADDING_RESIDUAL_COUNT",
+      "is_local": true,
+      "source": {
+        "file": "crates/aspis-statement/src/pool_v1/pair_forest_constraint_residuals.rs",
+        "begin_line": 63,
+        "end_line": 64
+      },
+      "can_fail": false
+    },
+    {
+      "def_id": 47,
+      "lean_name": "V7ForestTerminalGenerated.pool_v1.pair_forest_constraint_residuals.POOL_V1_PAIR_FOREST_COMMON_NON_PUBLIC_RESIDUAL_COUNT",
+      "lean_file": "V7ForestTerminal/Funs.lean",
+      "rust_name": "aspis_statement::pool_v1::pair_forest_constraint_residuals::POOL_V1_PAIR_FOREST_COMMON_NON_PUBLIC_RESIDUAL_COUNT",
+      "is_local": true,
+      "source": {
+        "file": "crates/aspis-statement/src/pool_v1/pair_forest_constraint_residuals.rs",
+        "begin_line": 65,
+        "end_line": 78
+      },
+      "can_fail": true
+    },
+    {
+      "def_id": 20,
+      "lean_name": "V7ForestTerminalGenerated.pool_v1.pair_forest_constraint_residuals.POOL_V1_PAIR_FOREST_TRANSFER_TOTAL_RESIDUAL_COUNT",
+      "lean_file": "V7ForestTerminal/Funs.lean",
+      "rust_name": "aspis_statement::pool_v1::pair_forest_constraint_residuals::POOL_V1_PAIR_FOREST_TRANSFER_TOTAL_RESIDUAL_COUNT",
+      "is_local": true,
+      "source": {
+        "file": "crates/aspis-statement/src/pool_v1/pair_forest_constraint_residuals.rs",
+        "begin_line": 79,
+        "end_line": 82
+      },
+      "can_fail": true
+    },
+    {
+      "def_id": 19,
+      "lean_name": "V7ForestTerminalGenerated.pool_v1.pair_forest_constraint_residuals.POOL_V1_PAIR_FOREST_WITHDRAWAL_TOTAL_RESIDUAL_COUNT",
+      "lean_file": "V7ForestTerminal/Funs.lean",
+      "rust_name": "aspis_statement::pool_v1::pair_forest_constraint_residuals::POOL_V1_PAIR_FOREST_WITHDRAWAL_TOTAL_RESIDUAL_COUNT",
+      "is_local": true,
+      "source": {
+        "file": "crates/aspis-statement/src/pool_v1/pair_forest_constraint_residuals.rs",
+        "begin_line": 83,
+        "end_line": 86
+      },
+      "can_fail": true
+    },
+    {
+      "def_id": 40,
+      "lean_name": "V7ForestTerminalGenerated.pool_v1.pair_forest_terminal.POOL_V1_PAIR_FOREST_TERMINAL_STATEMENT_MAGIC",
+      "lean_file": "V7ForestTerminal/Funs.lean",
+      "rust_name": "aspis_statement::pool_v1::pair_forest_terminal::POOL_V1_PAIR_FOREST_TERMINAL_STATEMENT_MAGIC",
+      "is_local": true,
+      "source": {
+        "file": "crates/aspis-statement/src/pool_v1/pair_forest_terminal.rs",
+        "begin_line": 26,
+        "end_line": 26
+      },
+      "can_fail": false
+    },
+    {
+      "def_id": 46,
+      "lean_name": "V7ForestTerminalGenerated.pool_v1.pair_forest_terminal.POOL_V1_PAIR_FOREST_TERMINAL_RESULT_MAGIC",
+      "lean_file": "V7ForestTerminal/Funs.lean",
+      "rust_name": "aspis_statement::pool_v1::pair_forest_terminal::POOL_V1_PAIR_FOREST_TERMINAL_RESULT_MAGIC",
+      "is_local": true,
+      "source": {
+        "file": "crates/aspis-statement/src/pool_v1/pair_forest_terminal.rs",
+        "begin_line": 27,
+        "end_line": 27
+      },
+      "can_fail": false
+    },
+    {
+      "def_id": 2,
+      "lean_name": "V7ForestTerminalGenerated.pool_v1.pair_forest_terminal.POOL_V1_PAIR_FOREST_TERMINAL_VERSION",
+      "lean_file": "V7ForestTerminal/Funs.lean",
+      "rust_name": "aspis_statement::pool_v1::pair_forest_terminal::POOL_V1_PAIR_FOREST_TERMINAL_VERSION",
+      "is_local": true,
+      "source": {
+        "file": "crates/aspis-statement/src/pool_v1/pair_forest_terminal.rs",
+        "begin_line": 28,
+        "end_line": 28
+      },
+      "can_fail": false
+    },
+    {
+      "def_id": 38,
+      "lean_name": "V7ForestTerminalGenerated.pool_v1.payment_relation.POOL_V1_PAYMENT_STATEMENT_BYTES",
+      "lean_file": "V7ForestTerminal/Funs.lean",
+      "rust_name": "aspis_statement::pool_v1::payment_relation::POOL_V1_PAYMENT_STATEMENT_BYTES",
+      "is_local": true,
+      "source": {
+        "file": "crates/aspis-statement/src/pool_v1/payment_relation.rs",
+        "begin_line": 28,
+        "end_line": 28
+      },
+      "can_fail": false
+    },
+    {
+      "def_id": 64,
+      "lean_name": "V7ForestTerminalGenerated.pool_v1.pair_tree_profile.POOL_V1_PAIR_LATE_PUBLIC_STATEMENT_HEADER_BYTES",
+      "lean_file": "V7ForestTerminal/Funs.lean",
+      "rust_name": "aspis_statement::pool_v1::pair_tree_profile::POOL_V1_PAIR_LATE_PUBLIC_STATEMENT_HEADER_BYTES",
+      "is_local": true,
+      "source": {
+        "file": "crates/aspis-statement/src/pool_v1/pair_tree_profile.rs",
+        "begin_line": 383,
+        "end_line": 383
+      },
+      "can_fail": false
+    },
+    {
+      "def_id": 65,
+      "lean_name": "V7ForestTerminalGenerated.pool_v1.pair_tree_profile.POOL_V1_PAIR_LIVE_SNAPSHOT_BYTES",
+      "lean_file": "V7ForestTerminal/Funs.lean",
+      "rust_name": "aspis_statement::pool_v1::pair_tree_profile::POOL_V1_PAIR_LIVE_SNAPSHOT_BYTES",
+      "is_local": true,
+      "source": {
+        "file": "crates/aspis-statement/src/pool_v1/pair_tree_profile.rs",
+        "begin_line": 376,
+        "end_line": 376
+      },
+      "can_fail": false
+    },
+    {
+      "def_id": 66,
+      "lean_name": "V7ForestTerminalGenerated.pool_v1.pair_terminal.POOL_V1_PAIR_VERIFIED_AFTERSTATE_PAYLOAD_BYTES",
+      "lean_file": "V7ForestTerminal/Funs.lean",
+      "rust_name": "aspis_statement::pool_v1::pair_terminal::POOL_V1_PAIR_VERIFIED_AFTERSTATE_PAYLOAD_BYTES",
+      "is_local": true,
+      "source": {
+        "file": "crates/aspis-statement/src/pool_v1/pair_terminal.rs",
+        "begin_line": 37,
+        "end_line": 37
+      },
+      "can_fail": false
+    },
+    {
+      "def_id": 45,
+      "lean_name": "V7ForestTerminalGenerated.pool_v1.pair_terminal.POOL_V1_PAIR_VERIFIED_AFTERSTATE_BYTES",
+      "lean_file": "V7ForestTerminal/Funs.lean",
+      "rust_name": "aspis_statement::pool_v1::pair_terminal::POOL_V1_PAIR_VERIFIED_AFTERSTATE_BYTES",
+      "is_local": true,
+      "source": {
+        "file": "crates/aspis-statement/src/pool_v1/pair_terminal.rs",
+        "begin_line": 39,
+        "end_line": 40
+      },
+      "can_fail": true
+    },
+    {
+      "def_id": 37,
+      "lean_name": "V7ForestTerminalGenerated.pool_v1.pair_tree_profile.POOL_V1_PAIR_LATE_PUBLIC_STATEMENT_BYTES",
+      "lean_file": "V7ForestTerminal/Funs.lean",
+      "rust_name": "aspis_statement::pool_v1::pair_tree_profile::POOL_V1_PAIR_LATE_PUBLIC_STATEMENT_BYTES",
+      "is_local": true,
+      "source": {
+        "file": "crates/aspis-statement/src/pool_v1/pair_tree_profile.rs",
+        "begin_line": 384,
+        "end_line": 387
+      },
+      "can_fail": true
+    },
+    {
+      "def_id": 0,
+      "lean_name": "V7ForestTerminalGenerated.pool_v1.pair_forest_terminal.POOL_V1_PAIR_FOREST_TERMINAL_STATEMENT_BYTES",
+      "lean_file": "V7ForestTerminal/Funs.lean",
+      "rust_name": "aspis_statement::pool_v1::pair_forest_terminal::POOL_V1_PAIR_FOREST_TERMINAL_STATEMENT_BYTES",
+      "is_local": true,
+      "source": {
+        "file": "crates/aspis-statement/src/pool_v1/pair_forest_terminal.rs",
+        "begin_line": 29,
+        "end_line": 30
+      },
+      "can_fail": true
+    },
+    {
+      "def_id": 11,
+      "lean_name": "V7ForestTerminalGenerated.pool_v1.pair_forest_terminal.POOL_V1_PAIR_FOREST_TERMINAL_RESULT_BYTES",
+      "lean_file": "V7ForestTerminal/Funs.lean",
+      "rust_name": "aspis_statement::pool_v1::pair_forest_terminal::POOL_V1_PAIR_FOREST_TERMINAL_RESULT_BYTES",
+      "is_local": true,
+      "source": {
+        "file": "crates/aspis-statement/src/pool_v1/pair_forest_terminal.rs",
+        "begin_line": 31,
+        "end_line": 32
+      },
+      "can_fail": true
+    },
+    {
+      "def_id": 6,
+      "lean_name": "V7ForestTerminalGenerated.pool_v1.pair_forest_terminal.MASTER_OFFSET",
+      "lean_file": "V7ForestTerminal/Funs.lean",
+      "rust_name": "aspis_statement::pool_v1::pair_forest_terminal::MASTER_OFFSET",
+      "is_local": true,
+      "source": {
+        "file": "crates/aspis-statement/src/pool_v1/pair_forest_terminal.rs",
+        "begin_line": 34,
+        "end_line": 34
+      },
+      "can_fail": false
+    },
+    {
+      "def_id": 7,
+      "lean_name": "V7ForestTerminalGenerated.pool_v1.pair_forest_terminal.CHECKPOINT_ACCOUNT_OFFSET",
+      "lean_file": "V7ForestTerminal/Funs.lean",
+      "rust_name": "aspis_statement::pool_v1::pair_forest_terminal::CHECKPOINT_ACCOUNT_OFFSET",
+      "is_local": true,
+      "source": {
+        "file": "crates/aspis-statement/src/pool_v1/pair_forest_terminal.rs",
+        "begin_line": 35,
+        "end_line": 35
+      },
+      "can_fail": false
+    },
+    {
+      "def_id": 8,
+      "lean_name": "V7ForestTerminalGenerated.pool_v1.pair_forest_terminal.SELECTED_LANE_ACCOUNT_OFFSET",
+      "lean_file": "V7ForestTerminal/Funs.lean",
+      "rust_name": "aspis_statement::pool_v1::pair_forest_terminal::SELECTED_LANE_ACCOUNT_OFFSET",
+      "is_local": true,
+      "source": {
+        "file": "crates/aspis-statement/src/pool_v1/pair_forest_terminal.rs",
+        "begin_line": 36,
+        "end_line": 36
+      },
+      "can_fail": false
+    },
+    {
+      "def_id": 9,
+      "lean_name": "V7ForestTerminalGenerated.pool_v1.pair_forest_terminal.CHECKPOINT_SEQUENCE_OFFSET",
+      "lean_file": "V7ForestTerminal/Funs.lean",
+      "rust_name": "aspis_statement::pool_v1::pair_forest_terminal::CHECKPOINT_SEQUENCE_OFFSET",
+      "is_local": true,
+      "source": {
+        "file": "crates/aspis-statement/src/pool_v1/pair_forest_terminal.rs",
+        "begin_line": 37,
+        "end_line": 37
+      },
+      "can_fail": false
+    },
+    {
+      "def_id": 4,
+      "lean_name": "V7ForestTerminalGenerated.pool_v1.pair_forest_terminal.HISTORICAL_ANCHOR_OFFSET",
+      "lean_file": "V7ForestTerminal/Funs.lean",
+      "rust_name": "aspis_statement::pool_v1::pair_forest_terminal::HISTORICAL_ANCHOR_OFFSET",
+      "is_local": true,
+      "source": {
+        "file": "crates/aspis-statement/src/pool_v1/pair_forest_terminal.rs",
+        "begin_line": 38,
+        "end_line": 38
+      },
+      "can_fail": false
+    },
+    {
+      "def_id": 5,
+      "lean_name": "V7ForestTerminalGenerated.pool_v1.pair_forest_terminal.LATE_STATEMENT_OFFSET",
+      "lean_file": "V7ForestTerminal/Funs.lean",
+      "rust_name": "aspis_statement::pool_v1::pair_forest_terminal::LATE_STATEMENT_OFFSET",
+      "is_local": true,
+      "source": {
+        "file": "crates/aspis-statement/src/pool_v1/pair_forest_terminal.rs",
+        "begin_line": 39,
+        "end_line": 39
+      },
+      "can_fail": false
+    },
+    {
+      "def_id": 10,
+      "lean_name": "V7ForestTerminalGenerated.pool_v1.pair_forest_terminal.PAYMENT_STATEMENT_OFFSET",
+      "lean_file": "V7ForestTerminal/Funs.lean",
+      "rust_name": "aspis_statement::pool_v1::pair_forest_terminal::PAYMENT_STATEMENT_OFFSET",
+      "is_local": true,
+      "source": {
+        "file": "crates/aspis-statement/src/pool_v1/pair_forest_terminal.rs",
+        "begin_line": 40,
+        "end_line": 41
+      },
+      "can_fail": true
+    },
+    {
+      "def_id": 13,
+      "lean_name": "V7ForestTerminalGenerated.pool_v1.pair_forest_terminal.RESULT_MASTER_OFFSET",
+      "lean_file": "V7ForestTerminal/Funs.lean",
+      "rust_name": "aspis_statement::pool_v1::pair_forest_terminal::RESULT_MASTER_OFFSET",
+      "is_local": true,
+      "source": {
+        "file": "crates/aspis-statement/src/pool_v1/pair_forest_terminal.rs",
+        "begin_line": 43,
+        "end_line": 43
+      },
+      "can_fail": false
+    },
+    {
+      "def_id": 14,
+      "lean_name": "V7ForestTerminalGenerated.pool_v1.pair_forest_terminal.RESULT_SELECTED_LANE_OFFSET",
+      "lean_file": "V7ForestTerminal/Funs.lean",
+      "rust_name": "aspis_statement::pool_v1::pair_forest_terminal::RESULT_SELECTED_LANE_OFFSET",
+      "is_local": true,
+      "source": {
+        "file": "crates/aspis-statement/src/pool_v1/pair_forest_terminal.rs",
+        "begin_line": 44,
+        "end_line": 44
+      },
+      "can_fail": false
+    },
+    {
+      "def_id": 15,
+      "lean_name": "V7ForestTerminalGenerated.pool_v1.pair_forest_terminal.RESULT_NULLIFIER_OFFSET",
+      "lean_file": "V7ForestTerminal/Funs.lean",
+      "rust_name": "aspis_statement::pool_v1::pair_forest_terminal::RESULT_NULLIFIER_OFFSET",
+      "is_local": true,
+      "source": {
+        "file": "crates/aspis-statement/src/pool_v1/pair_forest_terminal.rs",
+        "begin_line": 45,
+        "end_line": 45
+      },
+      "can_fail": false
+    },
+    {
+      "def_id": 16,
+      "lean_name": "V7ForestTerminalGenerated.pool_v1.pair_forest_terminal.RESULT_AFTERSTATE_OFFSET",
+      "lean_file": "V7ForestTerminal/Funs.lean",
+      "rust_name": "aspis_statement::pool_v1::pair_forest_terminal::RESULT_AFTERSTATE_OFFSET",
+      "is_local": true,
+      "source": {
+        "file": "crates/aspis-statement/src/pool_v1/pair_forest_terminal.rs",
+        "begin_line": 46,
+        "end_line": 46
+      },
+      "can_fail": false
+    }
+  ],
+  "trait_decls": [],
+  "trait_impls": [
+    {
+      "def_id": 63,
+      "lean_name": "V7ForestTerminalGenerated.Array.Insts.CoreCmpPartialEqArray",
+      "lean_file": "V7ForestTerminal/Funs.lean",
+      "rust_name": "core::array::equality::{impl core::cmp::PartialEq<[U; N]> for [T; N]}",
+      "is_local": false,
+      "source": {
+        "file": "/rustc/library/core/src/array/equality.rs",
+        "begin_line": 5,
+        "end_line": 7
+      },
+      "impl_trait_def_id": 1,
+      "impl_trait_rust_name": "core::cmp::PartialEq",
+      "impl_trait_is_builtin": true
+    },
+    {
+      "def_id": 86,
+      "lean_name": "V7ForestTerminalGenerated.core.iter.adapters.chain.Chain.Insts.CoreIterTraitsIteratorIterator",
+      "lean_file": "V7ForestTerminal/Funs.lean",
+      "rust_name": "core::iter::adapters::chain::{impl core::iter::traits::iterator::Iterator<Clause0_Item> for core::iter::adapters::chain::Chain<A, B>}",
+      "is_local": false,
+      "source": {
+        "file": "/rustc/library/core/src/iter/adapters/chain.rs",
+        "begin_line": 73,
+        "end_line": 76
+      },
+      "impl_trait_def_id": 15,
+      "impl_trait_rust_name": "core::iter::traits::iterator::Iterator",
+      "impl_trait_is_builtin": true
+    },
+    {
+      "def_id": 88,
+      "lean_name": "V7ForestTerminalGenerated.core.iter.adapters.flatten.Flatten.Insts.CoreIterTraitsIteratorIterator",
+      "lean_file": "V7ForestTerminal/Funs.lean",
+      "rust_name": "core::iter::adapters::flatten::{impl core::iter::traits::iterator::Iterator<Clause2_Item> for core::iter::adapters::flatten::Flatten<I, Clause0_Item, Clause2_Item, U>}",
+      "is_local": false,
+      "source": {
+        "file": "/rustc/library/core/src/iter/adapters/flatten.rs",
+        "begin_line": 218,
+        "end_line": 221
+      },
+      "impl_trait_def_id": 15,
+      "impl_trait_rust_name": "core::iter::traits::iterator::Iterator",
+      "impl_trait_is_builtin": true
+    },
+    {
+      "def_id": 85,
+      "lean_name": "V7ForestTerminalGenerated.SharedAVec.Insts.CoreIterTraitsCollectIntoIteratorSharedATIter",
+      "lean_file": "V7ForestTerminal/Funs.lean",
+      "rust_name": "alloc::vec::{impl core::iter::traits::collect::IntoIterator<&'a T, core::slice::iter::Iter<'a, T>> for &'a alloc::vec::Vec<T>}",
+      "is_local": false,
+      "source": {
+        "file": "/rustc/library/alloc/src/vec/mod.rs",
+        "begin_line": 3977,
+        "end_line": 3977
+      },
+      "impl_trait_def_id": 16,
+      "impl_trait_rust_name": "core::iter::traits::collect::IntoIterator",
+      "impl_trait_is_builtin": true
+    },
+    {
+      "def_id": 67,
+      "lean_name": "V7ForestTerminalGenerated.aspis_core.field.M31.Insts.CoreCmpPartialEqM31",
+      "lean_file": "V7ForestTerminal/Funs.lean",
+      "rust_name": "aspis_core::field::{impl core::cmp::PartialEq<aspis_core::field::M31> for aspis_core::field::M31}",
+      "is_local": false,
+      "source": {
+        "file": "crates/aspis-core/src/field.rs",
+        "begin_line": 19,
+        "end_line": 19
+      },
+      "impl_trait_def_id": 1,
+      "impl_trait_rust_name": "core::cmp::PartialEq",
+      "impl_trait_is_builtin": true
+    },
+    {
+      "def_id": 89,
+      "lean_name": "V7ForestTerminalGenerated.pool_v1.historical_anchor.PoolV1TransitionKind.Insts.CoreCmpPartialEqPoolV1TransitionKind",
+      "lean_file": "V7ForestTerminal/Funs.lean",
+      "rust_name": "aspis_statement::pool_v1::historical_anchor::{impl core::cmp::PartialEq<aspis_statement::pool_v1::historical_anchor::PoolV1TransitionKind> for aspis_statement::pool_v1::historical_anchor::PoolV1TransitionKind}",
+      "is_local": true,
+      "source": {
+        "file": "crates/aspis-statement/src/pool_v1/historical_anchor.rs",
+        "begin_line": 30,
+        "end_line": 30
+      },
+      "impl_trait_def_id": 1,
+      "impl_trait_rust_name": "core::cmp::PartialEq",
+      "impl_trait_is_builtin": true
+    },
+    {
+      "def_id": 82,
+      "lean_name": "V7ForestTerminalGenerated.pool_v1.pair_forest_constraint_residuals.PoolV1PairForestConstraintResidualsV1.all_zero.closure.Insts.CoreOpsFunctionFnOnceTupleSharedM31Bool",
+      "lean_file": "V7ForestTerminal/Funs.lean",
+      "rust_name": "aspis_statement::pool_v1::pair_forest_constraint_residuals::{aspis_statement::pool_v1::pair_forest_constraint_residuals::PoolV1PairForestConstraintResidualsV1}::all_zero::{impl core::ops::function::FnOnce<(&'_ aspis_core::field::M31,), bool> for aspis_statement::pool_v1::pair_forest_constraint_residuals::{aspis_statement::pool_v1::pair_forest_constraint_residuals::PoolV1PairForestConstraintResidualsV1}::all_zero::closure}",
+      "is_local": true,
+      "source": {
+        "file": "crates/aspis-statement/src/pool_v1/pair_forest_constraint_residuals.rs",
+        "begin_line": 166,
+        "end_line": 166
+      },
+      "impl_trait_def_id": 4,
+      "impl_trait_rust_name": "core::ops::function::FnOnce",
+      "impl_trait_is_builtin": true
+    },
+    {
+      "def_id": 83,
+      "lean_name": "V7ForestTerminalGenerated.pool_v1.pair_forest_constraint_residuals.PoolV1PairForestConstraintResidualsV1.all_zero.closure.Insts.CoreOpsFunctionFnMutTupleSharedM31Bool",
+      "lean_file": "V7ForestTerminal/Funs.lean",
+      "rust_name": "aspis_statement::pool_v1::pair_forest_constraint_residuals::{aspis_statement::pool_v1::pair_forest_constraint_residuals::PoolV1PairForestConstraintResidualsV1}::all_zero::{impl core::ops::function::FnMut<(&'_ aspis_core::field::M31,), bool> for aspis_statement::pool_v1::pair_forest_constraint_residuals::{aspis_statement::pool_v1::pair_forest_constraint_residuals::PoolV1PairForestConstraintResidualsV1}::all_zero::closure}",
+      "is_local": true,
+      "source": {
+        "file": "crates/aspis-statement/src/pool_v1/pair_forest_constraint_residuals.rs",
+        "begin_line": 166,
+        "end_line": 166
+      },
+      "impl_trait_def_id": 17,
+      "impl_trait_rust_name": "core::ops::function::FnMut",
+      "impl_trait_is_builtin": true
+    },
+    {
+      "def_id": 62,
+      "lean_name": "V7ForestTerminalGenerated.pool_v1.pair_forest_terminal.validate_pool_v1_pair_forest_terminal_statement_v1.closure_3.Insts.CoreOpsFunctionFnOnceTuplePoolV1PairLatePublicStatementErrorV1PoolV1PairForestTerminalFormatErrorV1",
+      "lean_file": "V7ForestTerminal/Funs.lean",
+      "rust_name": "aspis_statement::pool_v1::pair_forest_terminal::validate_pool_v1_pair_forest_terminal_statement_v1::{impl core::ops::function::FnOnce<(aspis_statement::pool_v1::pair_tree_profile::PoolV1PairLatePublicStatementErrorV1,), aspis_statement::pool_v1::pair_forest_terminal::PoolV1PairForestTerminalFormatErrorV1> for aspis_statement::pool_v1::pair_forest_terminal::validate_pool_v1_pair_forest_terminal_statement_v1::closure#3}",
+      "is_local": true,
+      "source": {
+        "file": "crates/aspis-statement/src/pool_v1/pair_forest_terminal.rs",
+        "begin_line": 230,
+        "end_line": 230
+      },
+      "impl_trait_def_id": 4,
+      "impl_trait_rust_name": "core::ops::function::FnOnce",
+      "impl_trait_is_builtin": true
+    },
+    {
+      "def_id": 61,
+      "lean_name": "V7ForestTerminalGenerated.pool_v1.pair_forest_terminal.validate_pool_v1_pair_forest_terminal_statement_v1.closure_2.Insts.CoreOpsFunctionFnOnceTuplePoolV1PairForestAccountErrorV1PoolV1PairForestTerminalFormatErrorV1",
+      "lean_file": "V7ForestTerminal/Funs.lean",
+      "rust_name": "aspis_statement::pool_v1::pair_forest_terminal::validate_pool_v1_pair_forest_terminal_statement_v1::{impl core::ops::function::FnOnce<(aspis_statement::pool_v1::pair_forest_accounts::PoolV1PairForestAccountErrorV1,), aspis_statement::pool_v1::pair_forest_terminal::PoolV1PairForestTerminalFormatErrorV1> for aspis_statement::pool_v1::pair_forest_terminal::validate_pool_v1_pair_forest_terminal_statement_v1::closure#2}",
+      "is_local": true,
+      "source": {
+        "file": "crates/aspis-statement/src/pool_v1/pair_forest_terminal.rs",
+        "begin_line": 224,
+        "end_line": 224
+      },
+      "impl_trait_def_id": 4,
+      "impl_trait_rust_name": "core::ops::function::FnOnce",
+      "impl_trait_is_builtin": true
+    },
+    {
+      "def_id": 60,
+      "lean_name": "V7ForestTerminalGenerated.pool_v1.pair_forest_terminal.validate_pool_v1_pair_forest_terminal_statement_v1.closure_1.Insts.CoreOpsFunctionFnOnceTuplePoolV1PaymentStatementFormatErrorPoolV1PairForestTerminalFormatErrorV1",
+      "lean_file": "V7ForestTerminal/Funs.lean",
+      "rust_name": "aspis_statement::pool_v1::pair_forest_terminal::validate_pool_v1_pair_forest_terminal_statement_v1::{impl core::ops::function::FnOnce<(aspis_statement::pool_v1::payment_relation::PoolV1PaymentStatementFormatError,), aspis_statement::pool_v1::pair_forest_terminal::PoolV1PairForestTerminalFormatErrorV1> for aspis_statement::pool_v1::pair_forest_terminal::validate_pool_v1_pair_forest_terminal_statement_v1::closure#1}",
+      "is_local": true,
+      "source": {
+        "file": "crates/aspis-statement/src/pool_v1/pair_forest_terminal.rs",
+        "begin_line": 203,
+        "end_line": 203
+      },
+      "impl_trait_def_id": 4,
+      "impl_trait_rust_name": "core::ops::function::FnOnce",
+      "impl_trait_is_builtin": true
+    },
+    {
+      "def_id": 59,
+      "lean_name": "V7ForestTerminalGenerated.pool_v1.pair_forest_terminal.validate_pool_v1_pair_forest_terminal_statement_v1.closure.Insts.CoreOpsFunctionFnOnceTuplePoolV1PaymentStatementFormatErrorPoolV1PairForestTerminalFormatErrorV1",
+      "lean_file": "V7ForestTerminal/Funs.lean",
+      "rust_name": "aspis_statement::pool_v1::pair_forest_terminal::validate_pool_v1_pair_forest_terminal_statement_v1::{impl core::ops::function::FnOnce<(aspis_statement::pool_v1::payment_relation::PoolV1PaymentStatementFormatError,), aspis_statement::pool_v1::pair_forest_terminal::PoolV1PairForestTerminalFormatErrorV1> for aspis_statement::pool_v1::pair_forest_terminal::validate_pool_v1_pair_forest_terminal_statement_v1::closure}",
+      "is_local": true,
+      "source": {
+        "file": "crates/aspis-statement/src/pool_v1/pair_forest_terminal.rs",
+        "begin_line": 199,
+        "end_line": 199
+      },
+      "impl_trait_def_id": 4,
+      "impl_trait_rust_name": "core::ops::function::FnOnce",
+      "impl_trait_is_builtin": true
+    },
+    {
+      "def_id": 8,
+      "lean_name": "V7ForestTerminalGenerated.pool_v1.pair_forest_terminal.decode_pool_v1_pair_forest_terminal_statement_v1.closure_8.Insts.CoreOpsFunctionFnOnceTuplePoolV1PaymentStatementFormatErrorPoolV1PairForestTerminalFormatErrorV1",
+      "lean_file": "V7ForestTerminal/Funs.lean",
+      "rust_name": "aspis_statement::pool_v1::pair_forest_terminal::decode_pool_v1_pair_forest_terminal_statement_v1::{impl core::ops::function::FnOnce<(aspis_statement::pool_v1::payment_relation::PoolV1PaymentStatementFormatError,), aspis_statement::pool_v1::pair_forest_terminal::PoolV1PairForestTerminalFormatErrorV1> for aspis_statement::pool_v1::pair_forest_terminal::decode_pool_v1_pair_forest_terminal_statement_v1::closure#8}",
+      "is_local": true,
+      "source": {
+        "file": "crates/aspis-statement/src/pool_v1/pair_forest_terminal.rs",
+        "begin_line": 330,
+        "end_line": 330
+      },
+      "impl_trait_def_id": 4,
+      "impl_trait_rust_name": "core::ops::function::FnOnce",
+      "impl_trait_is_builtin": true
+    },
+    {
+      "def_id": 7,
+      "lean_name": "V7ForestTerminalGenerated.pool_v1.pair_forest_terminal.decode_pool_v1_pair_forest_terminal_statement_v1.closure_7.Insts.CoreOpsFunctionFnOnceTuplePoolV1PaymentStatementFormatErrorPoolV1PairForestTerminalFormatErrorV1",
+      "lean_file": "V7ForestTerminal/Funs.lean",
+      "rust_name": "aspis_statement::pool_v1::pair_forest_terminal::decode_pool_v1_pair_forest_terminal_statement_v1::{impl core::ops::function::FnOnce<(aspis_statement::pool_v1::payment_relation::PoolV1PaymentStatementFormatError,), aspis_statement::pool_v1::pair_forest_terminal::PoolV1PairForestTerminalFormatErrorV1> for aspis_statement::pool_v1::pair_forest_terminal::decode_pool_v1_pair_forest_terminal_statement_v1::closure#7}",
+      "is_local": true,
+      "source": {
+        "file": "crates/aspis-statement/src/pool_v1/pair_forest_terminal.rs",
+        "begin_line": 324,
+        "end_line": 324
+      },
+      "impl_trait_def_id": 4,
+      "impl_trait_rust_name": "core::ops::function::FnOnce",
+      "impl_trait_is_builtin": true
+    },
+    {
+      "def_id": 6,
+      "lean_name": "V7ForestTerminalGenerated.pool_v1.pair_forest_terminal.decode_pool_v1_pair_forest_terminal_statement_v1.closure_6.Insts.CoreOpsFunctionFnOnceTuplePoolV1PairLatePublicStatementErrorV1PoolV1PairForestTerminalFormatErrorV1",
+      "lean_file": "V7ForestTerminal/Funs.lean",
+      "rust_name": "aspis_statement::pool_v1::pair_forest_terminal::decode_pool_v1_pair_forest_terminal_statement_v1::{impl core::ops::function::FnOnce<(aspis_statement::pool_v1::pair_tree_profile::PoolV1PairLatePublicStatementErrorV1,), aspis_statement::pool_v1::pair_forest_terminal::PoolV1PairForestTerminalFormatErrorV1> for aspis_statement::pool_v1::pair_forest_terminal::decode_pool_v1_pair_forest_terminal_statement_v1::closure#6}",
+      "is_local": true,
+      "source": {
+        "file": "crates/aspis-statement/src/pool_v1/pair_forest_terminal.rs",
+        "begin_line": 315,
+        "end_line": 315
+      },
+      "impl_trait_def_id": 4,
+      "impl_trait_rust_name": "core::ops::function::FnOnce",
+      "impl_trait_is_builtin": true
+    },
+    {
+      "def_id": 5,
+      "lean_name": "V7ForestTerminalGenerated.pool_v1.pair_forest_terminal.decode_pool_v1_pair_forest_terminal_statement_v1.closure_5.Insts.CoreOpsFunctionFnOnceTupleTryFromSliceErrorPoolV1PairForestTerminalFormatErrorV1",
+      "lean_file": "V7ForestTerminal/Funs.lean",
+      "rust_name": "aspis_statement::pool_v1::pair_forest_terminal::decode_pool_v1_pair_forest_terminal_statement_v1::{impl core::ops::function::FnOnce<(core::array::TryFromSliceError,), aspis_statement::pool_v1::pair_forest_terminal::PoolV1PairForestTerminalFormatErrorV1> for aspis_statement::pool_v1::pair_forest_terminal::decode_pool_v1_pair_forest_terminal_statement_v1::closure#5}",
+      "is_local": true,
+      "source": {
+        "file": "crates/aspis-statement/src/pool_v1/pair_forest_terminal.rs",
+        "begin_line": 309,
+        "end_line": 309
+      },
+      "impl_trait_def_id": 4,
+      "impl_trait_rust_name": "core::ops::function::FnOnce",
+      "impl_trait_is_builtin": true
+    },
+    {
+      "def_id": 4,
+      "lean_name": "V7ForestTerminalGenerated.pool_v1.pair_forest_terminal.decode_pool_v1_pair_forest_terminal_statement_v1.closure_4.Insts.CoreOpsFunctionFnOnceTupleTryFromSliceErrorPoolV1PairForestTerminalFormatErrorV1",
+      "lean_file": "V7ForestTerminal/Funs.lean",
+      "rust_name": "aspis_statement::pool_v1::pair_forest_terminal::decode_pool_v1_pair_forest_terminal_statement_v1::{impl core::ops::function::FnOnce<(core::array::TryFromSliceError,), aspis_statement::pool_v1::pair_forest_terminal::PoolV1PairForestTerminalFormatErrorV1> for aspis_statement::pool_v1::pair_forest_terminal::decode_pool_v1_pair_forest_terminal_statement_v1::closure#4}",
+      "is_local": true,
+      "source": {
+        "file": "crates/aspis-statement/src/pool_v1/pair_forest_terminal.rs",
+        "begin_line": 304,
+        "end_line": 304
+      },
+      "impl_trait_def_id": 4,
+      "impl_trait_rust_name": "core::ops::function::FnOnce",
+      "impl_trait_is_builtin": true
+    },
+    {
+      "def_id": 3,
+      "lean_name": "V7ForestTerminalGenerated.pool_v1.pair_forest_terminal.decode_pool_v1_pair_forest_terminal_statement_v1.closure_3.Insts.CoreOpsFunctionFnOnceTupleTryFromSliceErrorPoolV1PairForestTerminalFormatErrorV1",
+      "lean_file": "V7ForestTerminal/Funs.lean",
+      "rust_name": "aspis_statement::pool_v1::pair_forest_terminal::decode_pool_v1_pair_forest_terminal_statement_v1::{impl core::ops::function::FnOnce<(core::array::TryFromSliceError,), aspis_statement::pool_v1::pair_forest_terminal::PoolV1PairForestTerminalFormatErrorV1> for aspis_statement::pool_v1::pair_forest_terminal::decode_pool_v1_pair_forest_terminal_statement_v1::closure#3}",
+      "is_local": true,
+      "source": {
+        "file": "crates/aspis-statement/src/pool_v1/pair_forest_terminal.rs",
+        "begin_line": 301,
+        "end_line": 301
+      },
+      "impl_trait_def_id": 4,
+      "impl_trait_rust_name": "core::ops::function::FnOnce",
+      "impl_trait_is_builtin": true
+    },
+    {
+      "def_id": 2,
+      "lean_name": "V7ForestTerminalGenerated.pool_v1.pair_forest_terminal.decode_pool_v1_pair_forest_terminal_statement_v1.closure_2.Insts.CoreOpsFunctionFnOnceTupleTryFromSliceErrorPoolV1PairForestTerminalFormatErrorV1",
+      "lean_file": "V7ForestTerminal/Funs.lean",
+      "rust_name": "aspis_statement::pool_v1::pair_forest_terminal::decode_pool_v1_pair_forest_terminal_statement_v1::{impl core::ops::function::FnOnce<(core::array::TryFromSliceError,), aspis_statement::pool_v1::pair_forest_terminal::PoolV1PairForestTerminalFormatErrorV1> for aspis_statement::pool_v1::pair_forest_terminal::decode_pool_v1_pair_forest_terminal_statement_v1::closure#2}",
+      "is_local": true,
+      "source": {
+        "file": "crates/aspis-statement/src/pool_v1/pair_forest_terminal.rs",
+        "begin_line": 298,
+        "end_line": 298
+      },
+      "impl_trait_def_id": 4,
+      "impl_trait_rust_name": "core::ops::function::FnOnce",
+      "impl_trait_is_builtin": true
+    },
+    {
+      "def_id": 1,
+      "lean_name": "V7ForestTerminalGenerated.pool_v1.pair_forest_terminal.decode_pool_v1_pair_forest_terminal_statement_v1.closure_1.Insts.CoreOpsFunctionFnOnceTupleAtomicStatementErrorPoolV1PairForestTerminalFormatErrorV1",
+      "lean_file": "V7ForestTerminal/Funs.lean",
+      "rust_name": "aspis_statement::pool_v1::pair_forest_terminal::decode_pool_v1_pair_forest_terminal_statement_v1::{impl core::ops::function::FnOnce<(aspis_statement::atomic_statement::AtomicStatementError,), aspis_statement::pool_v1::pair_forest_terminal::PoolV1PairForestTerminalFormatErrorV1> for aspis_statement::pool_v1::pair_forest_terminal::decode_pool_v1_pair_forest_terminal_statement_v1::closure#1}",
+      "is_local": true,
+      "source": {
+        "file": "crates/aspis-statement/src/pool_v1/pair_forest_terminal.rs",
+        "begin_line": 294,
+        "end_line": 294
+      },
+      "impl_trait_def_id": 4,
+      "impl_trait_rust_name": "core::ops::function::FnOnce",
+      "impl_trait_is_builtin": true
+    },
+    {
+      "def_id": 0,
+      "lean_name": "V7ForestTerminalGenerated.pool_v1.pair_forest_terminal.decode_pool_v1_pair_forest_terminal_statement_v1.closure.Insts.CoreOpsFunctionFnOnceTupleTryFromSliceErrorPoolV1PairForestTerminalFormatErrorV1",
+      "lean_file": "V7ForestTerminal/Funs.lean",
+      "rust_name": "aspis_statement::pool_v1::pair_forest_terminal::decode_pool_v1_pair_forest_terminal_statement_v1::{impl core::ops::function::FnOnce<(core::array::TryFromSliceError,), aspis_statement::pool_v1::pair_forest_terminal::PoolV1PairForestTerminalFormatErrorV1> for aspis_statement::pool_v1::pair_forest_terminal::decode_pool_v1_pair_forest_terminal_statement_v1::closure}",
+      "is_local": true,
+      "source": {
+        "file": "crates/aspis-statement/src/pool_v1/pair_forest_terminal.rs",
+        "begin_line": 292,
+        "end_line": 292
+      },
+      "impl_trait_def_id": 4,
+      "impl_trait_rust_name": "core::ops::function::FnOnce",
+      "impl_trait_is_builtin": true
+    },
+    {
+      "def_id": 71,
+      "lean_name": "V7ForestTerminalGenerated.pool_v1.pair_forest_terminal.validate_result.closure_1.Insts.CoreOpsFunctionFnOnceTuplePoolV1PairVerifierTransportErrorV1PoolV1PairForestTerminalFormatErrorV1",
+      "lean_file": "V7ForestTerminal/Funs.lean",
+      "rust_name": "aspis_statement::pool_v1::pair_forest_terminal::validate_result::{impl core::ops::function::FnOnce<(aspis_statement::pool_v1::pair_terminal::PoolV1PairVerifierTransportErrorV1,), aspis_statement::pool_v1::pair_forest_terminal::PoolV1PairForestTerminalFormatErrorV1> for aspis_statement::pool_v1::pair_forest_terminal::validate_result::closure#1}",
+      "is_local": true,
+      "source": {
+        "file": "crates/aspis-statement/src/pool_v1/pair_forest_terminal.rs",
+        "begin_line": 349,
+        "end_line": 349
+      },
+      "impl_trait_def_id": 4,
+      "impl_trait_rust_name": "core::ops::function::FnOnce",
+      "impl_trait_is_builtin": true
+    },
+    {
+      "def_id": 70,
+      "lean_name": "V7ForestTerminalGenerated.pool_v1.pair_forest_terminal.validate_result.closure.Insts.CoreOpsFunctionFnOnceTuplePoolV1PairForestAccountErrorV1PoolV1PairForestTerminalFormatErrorV1",
+      "lean_file": "V7ForestTerminal/Funs.lean",
+      "rust_name": "aspis_statement::pool_v1::pair_forest_terminal::validate_result::{impl core::ops::function::FnOnce<(aspis_statement::pool_v1::pair_forest_accounts::PoolV1PairForestAccountErrorV1,), aspis_statement::pool_v1::pair_forest_terminal::PoolV1PairForestTerminalFormatErrorV1> for aspis_statement::pool_v1::pair_forest_terminal::validate_result::closure}",
+      "is_local": true,
+      "source": {
+        "file": "crates/aspis-statement/src/pool_v1/pair_forest_terminal.rs",
+        "begin_line": 344,
+        "end_line": 344
+      },
+      "impl_trait_def_id": 4,
+      "impl_trait_rust_name": "core::ops::function::FnOnce",
+      "impl_trait_is_builtin": true
+    },
+    {
+      "def_id": 44,
+      "lean_name": "V7ForestTerminalGenerated.pool_v1.pair_terminal.PoolV1PairVerifiedAfterstateV1.Insts.CoreCmpPartialEqPoolV1PairVerifiedAfterstateV1",
+      "lean_file": "V7ForestTerminal/Funs.lean",
+      "rust_name": "aspis_statement::pool_v1::pair_terminal::{impl core::cmp::PartialEq<aspis_statement::pool_v1::pair_terminal::PoolV1PairVerifiedAfterstateV1> for aspis_statement::pool_v1::pair_terminal::PoolV1PairVerifiedAfterstateV1}",
+      "is_local": true,
+      "source": {
+        "file": "crates/aspis-statement/src/pool_v1/pair_terminal.rs",
+        "begin_line": 115,
+        "end_line": 115
+      },
+      "impl_trait_def_id": 1,
+      "impl_trait_rust_name": "core::cmp::PartialEq",
+      "impl_trait_is_builtin": true
+    },
+    {
+      "def_id": 35,
+      "lean_name": "V7ForestTerminalGenerated.pool_v1.pair_forest_terminal.decode_pool_v1_pair_forest_terminal_result_v1.closure_4.Insts.CoreOpsFunctionFnOnceTuplePoolV1PairVerifierTransportErrorV1PoolV1PairForestTerminalFormatErrorV1",
+      "lean_file": "V7ForestTerminal/Funs.lean",
+      "rust_name": "aspis_statement::pool_v1::pair_forest_terminal::decode_pool_v1_pair_forest_terminal_result_v1::{impl core::ops::function::FnOnce<(aspis_statement::pool_v1::pair_terminal::PoolV1PairVerifierTransportErrorV1,), aspis_statement::pool_v1::pair_forest_terminal::PoolV1PairForestTerminalFormatErrorV1> for aspis_statement::pool_v1::pair_forest_terminal::decode_pool_v1_pair_forest_terminal_result_v1::closure#4}",
+      "is_local": true,
+      "source": {
+        "file": "crates/aspis-statement/src/pool_v1/pair_forest_terminal.rs",
+        "begin_line": 434,
+        "end_line": 434
+      },
+      "impl_trait_def_id": 4,
+      "impl_trait_rust_name": "core::ops::function::FnOnce",
+      "impl_trait_is_builtin": true
+    },
+    {
+      "def_id": 34,
+      "lean_name": "V7ForestTerminalGenerated.pool_v1.pair_forest_terminal.decode_pool_v1_pair_forest_terminal_result_v1.closure_3.Insts.CoreOpsFunctionFnOnceTupleAtomicStatementErrorPoolV1PairForestTerminalFormatErrorV1",
+      "lean_file": "V7ForestTerminal/Funs.lean",
+      "rust_name": "aspis_statement::pool_v1::pair_forest_terminal::decode_pool_v1_pair_forest_terminal_result_v1::{impl core::ops::function::FnOnce<(aspis_statement::atomic_statement::AtomicStatementError,), aspis_statement::pool_v1::pair_forest_terminal::PoolV1PairForestTerminalFormatErrorV1> for aspis_statement::pool_v1::pair_forest_terminal::decode_pool_v1_pair_forest_terminal_result_v1::closure#3}",
+      "is_local": true,
+      "source": {
+        "file": "crates/aspis-statement/src/pool_v1/pair_forest_terminal.rs",
+        "begin_line": 430,
+        "end_line": 430
+      },
+      "impl_trait_def_id": 4,
+      "impl_trait_rust_name": "core::ops::function::FnOnce",
+      "impl_trait_is_builtin": true
+    },
+    {
+      "def_id": 33,
+      "lean_name": "V7ForestTerminalGenerated.pool_v1.pair_forest_terminal.decode_pool_v1_pair_forest_terminal_result_v1.closure_2.Insts.CoreOpsFunctionFnOnceTupleTryFromSliceErrorPoolV1PairForestTerminalFormatErrorV1",
+      "lean_file": "V7ForestTerminal/Funs.lean",
+      "rust_name": "aspis_statement::pool_v1::pair_forest_terminal::decode_pool_v1_pair_forest_terminal_result_v1::{impl core::ops::function::FnOnce<(core::array::TryFromSliceError,), aspis_statement::pool_v1::pair_forest_terminal::PoolV1PairForestTerminalFormatErrorV1> for aspis_statement::pool_v1::pair_forest_terminal::decode_pool_v1_pair_forest_terminal_result_v1::closure#2}",
+      "is_local": true,
+      "source": {
+        "file": "crates/aspis-statement/src/pool_v1/pair_forest_terminal.rs",
+        "begin_line": 428,
+        "end_line": 428
+      },
+      "impl_trait_def_id": 4,
+      "impl_trait_rust_name": "core::ops::function::FnOnce",
+      "impl_trait_is_builtin": true
+    },
+    {
+      "def_id": 32,
+      "lean_name": "V7ForestTerminalGenerated.pool_v1.pair_forest_terminal.decode_pool_v1_pair_forest_terminal_result_v1.closure_1.Insts.CoreOpsFunctionFnOnceTupleTryFromSliceErrorPoolV1PairForestTerminalFormatErrorV1",
+      "lean_file": "V7ForestTerminal/Funs.lean",
+      "rust_name": "aspis_statement::pool_v1::pair_forest_terminal::decode_pool_v1_pair_forest_terminal_result_v1::{impl core::ops::function::FnOnce<(core::array::TryFromSliceError,), aspis_statement::pool_v1::pair_forest_terminal::PoolV1PairForestTerminalFormatErrorV1> for aspis_statement::pool_v1::pair_forest_terminal::decode_pool_v1_pair_forest_terminal_result_v1::closure#1}",
+      "is_local": true,
+      "source": {
+        "file": "crates/aspis-statement/src/pool_v1/pair_forest_terminal.rs",
+        "begin_line": 423,
+        "end_line": 423
+      },
+      "impl_trait_def_id": 4,
+      "impl_trait_rust_name": "core::ops::function::FnOnce",
+      "impl_trait_is_builtin": true
+    },
+    {
+      "def_id": 31,
+      "lean_name": "V7ForestTerminalGenerated.pool_v1.pair_forest_terminal.decode_pool_v1_pair_forest_terminal_result_v1.closure.Insts.CoreOpsFunctionFnOnceTupleTryFromSliceErrorPoolV1PairForestTerminalFormatErrorV1",
+      "lean_file": "V7ForestTerminal/Funs.lean",
+      "rust_name": "aspis_statement::pool_v1::pair_forest_terminal::decode_pool_v1_pair_forest_terminal_result_v1::{impl core::ops::function::FnOnce<(core::array::TryFromSliceError,), aspis_statement::pool_v1::pair_forest_terminal::PoolV1PairForestTerminalFormatErrorV1> for aspis_statement::pool_v1::pair_forest_terminal::decode_pool_v1_pair_forest_terminal_result_v1::closure}",
+      "is_local": true,
+      "source": {
+        "file": "crates/aspis-statement/src/pool_v1/pair_forest_terminal.rs",
+        "begin_line": 420,
+        "end_line": 420
+      },
+      "impl_trait_def_id": 4,
+      "impl_trait_rust_name": "core::ops::function::FnOnce",
+      "impl_trait_is_builtin": true
+    },
+    {
+      "def_id": 46,
+      "lean_name": "V7ForestTerminalGenerated.pool_v1.pair_forest_terminal.host.PoolV1PairForestTerminalHostErrorV1.Insts.CoreConvertFromPoolV1PairForestTerminalFormatErrorV1",
+      "lean_file": "V7ForestTerminal/Funs.lean",
+      "rust_name": "aspis_statement::pool_v1::pair_forest_terminal::host::{impl core::convert::From<aspis_statement::pool_v1::pair_forest_terminal::PoolV1PairForestTerminalFormatErrorV1> for aspis_statement::pool_v1::pair_forest_terminal::host::PoolV1PairForestTerminalHostErrorV1}",
+      "is_local": true,
+      "source": {
+        "file": "crates/aspis-statement/src/pool_v1/pair_forest_terminal.rs",
+        "begin_line": 479,
+        "end_line": 483
+      },
+      "impl_trait_def_id": 2,
+      "impl_trait_rust_name": "core::convert::From",
+      "impl_trait_is_builtin": true
+    },
+    {
+      "def_id": 76,
+      "lean_name": "V7ForestTerminalGenerated.pool_v1.pair_forest_terminal.host.validate_accounts.closure_2.Insts.CoreOpsFunctionFnOnceTuplePoolV1PairForestAccountErrorV1PoolV1PairForestTerminalFormatErrorV1",
+      "lean_file": "V7ForestTerminal/Funs.lean",
+      "rust_name": "aspis_statement::pool_v1::pair_forest_terminal::host::validate_accounts::{impl core::ops::function::FnOnce<(aspis_statement::pool_v1::pair_forest_accounts::PoolV1PairForestAccountErrorV1,), aspis_statement::pool_v1::pair_forest_terminal::PoolV1PairForestTerminalFormatErrorV1> for aspis_statement::pool_v1::pair_forest_terminal::host::validate_accounts::closure#2}",
+      "is_local": true,
+      "source": {
+        "file": "crates/aspis-statement/src/pool_v1/pair_forest_terminal.rs",
+        "begin_line": 495,
+        "end_line": 495
+      },
+      "impl_trait_def_id": 4,
+      "impl_trait_rust_name": "core::ops::function::FnOnce",
+      "impl_trait_is_builtin": true
+    },
+    {
+      "def_id": 75,
+      "lean_name": "V7ForestTerminalGenerated.pool_v1.pair_forest_terminal.host.validate_accounts.closure_1.Insts.CoreOpsFunctionFnOnceTuplePoolV1PairForestAccountErrorV1PoolV1PairForestTerminalFormatErrorV1",
+      "lean_file": "V7ForestTerminal/Funs.lean",
+      "rust_name": "aspis_statement::pool_v1::pair_forest_terminal::host::validate_accounts::{impl core::ops::function::FnOnce<(aspis_statement::pool_v1::pair_forest_accounts::PoolV1PairForestAccountErrorV1,), aspis_statement::pool_v1::pair_forest_terminal::PoolV1PairForestTerminalFormatErrorV1> for aspis_statement::pool_v1::pair_forest_terminal::host::validate_accounts::closure#1}",
+      "is_local": true,
+      "source": {
+        "file": "crates/aspis-statement/src/pool_v1/pair_forest_terminal.rs",
+        "begin_line": 493,
+        "end_line": 493
+      },
+      "impl_trait_def_id": 4,
+      "impl_trait_rust_name": "core::ops::function::FnOnce",
+      "impl_trait_is_builtin": true
+    },
+    {
+      "def_id": 74,
+      "lean_name": "V7ForestTerminalGenerated.pool_v1.pair_forest_terminal.host.validate_accounts.closure.Insts.CoreOpsFunctionFnOnceTuplePoolV1PairForestAccountErrorV1PoolV1PairForestTerminalFormatErrorV1",
+      "lean_file": "V7ForestTerminal/Funs.lean",
+      "rust_name": "aspis_statement::pool_v1::pair_forest_terminal::host::validate_accounts::{impl core::ops::function::FnOnce<(aspis_statement::pool_v1::pair_forest_accounts::PoolV1PairForestAccountErrorV1,), aspis_statement::pool_v1::pair_forest_terminal::PoolV1PairForestTerminalFormatErrorV1> for aspis_statement::pool_v1::pair_forest_terminal::host::validate_accounts::closure}",
+      "is_local": true,
+      "source": {
+        "file": "crates/aspis-statement/src/pool_v1/pair_forest_terminal.rs",
+        "begin_line": 491,
+        "end_line": 491
+      },
+      "impl_trait_def_id": 4,
+      "impl_trait_rust_name": "core::ops::function::FnOnce",
+      "impl_trait_is_builtin": true
+    },
+    {
+      "def_id": 43,
+      "lean_name": "V7ForestTerminalGenerated.pool_v1.pair_tree_profile.PoolV1PairLatePublicStatementV1.Insts.CoreCmpPartialEqPoolV1PairLatePublicStatementV1",
+      "lean_file": "V7ForestTerminal/Funs.lean",
+      "rust_name": "aspis_statement::pool_v1::pair_tree_profile::{impl core::cmp::PartialEq<aspis_statement::pool_v1::pair_tree_profile::PoolV1PairLatePublicStatementV1> for aspis_statement::pool_v1::pair_tree_profile::PoolV1PairLatePublicStatementV1}",
+      "is_local": true,
+      "source": {
+        "file": "crates/aspis-statement/src/pool_v1/pair_tree_profile.rs",
+        "begin_line": 404,
+        "end_line": 404
+      },
+      "impl_trait_def_id": 1,
+      "impl_trait_rust_name": "core::cmp::PartialEq",
+      "impl_trait_is_builtin": true
+    },
+    {
+      "def_id": 47,
+      "lean_name": "V7ForestTerminalGenerated.pool_v1.pair_trace.PoolV1PairTraceVariantV1.Insts.CoreCmpPartialEqPoolV1PairTraceVariantV1",
+      "lean_file": "V7ForestTerminal/Funs.lean",
+      "rust_name": "aspis_statement::pool_v1::pair_trace::{impl core::cmp::PartialEq<aspis_statement::pool_v1::pair_trace::PoolV1PairTraceVariantV1> for aspis_statement::pool_v1::pair_trace::PoolV1PairTraceVariantV1}",
+      "is_local": true,
+      "source": {
+        "file": "crates/aspis-statement/src/pool_v1/pair_trace.rs",
+        "begin_line": 63,
+        "end_line": 63
+      },
+      "impl_trait_def_id": 1,
+      "impl_trait_rust_name": "core::cmp::PartialEq",
+      "impl_trait_is_builtin": true
+    },
+    {
+      "def_id": 42,
+      "lean_name": "V7ForestTerminalGenerated.pool_v1.pair_forest_terminal.host.verify_pool_v1_pair_forest_terminal_inactive_v1.closure_1.Insts.CoreOpsFunctionFnOnceTuplePoolV1PairConstraintResidualErrorV1PoolV1PairForestTerminalHostErrorV1",
+      "lean_file": "V7ForestTerminal/Funs.lean",
+      "rust_name": "aspis_statement::pool_v1::pair_forest_terminal::host::verify_pool_v1_pair_forest_terminal_inactive_v1::{impl core::ops::function::FnOnce<(aspis_statement::pool_v1::pair_constraint_residuals::PoolV1PairConstraintResidualErrorV1,), aspis_statement::pool_v1::pair_forest_terminal::host::PoolV1PairForestTerminalHostErrorV1> for aspis_statement::pool_v1::pair_forest_terminal::host::verify_pool_v1_pair_forest_terminal_inactive_v1::closure#1}",
+      "is_local": true,
+      "source": {
+        "file": "crates/aspis-statement/src/pool_v1/pair_forest_terminal.rs",
+        "begin_line": 588,
+        "end_line": 588
+      },
+      "impl_trait_def_id": 4,
+      "impl_trait_rust_name": "core::ops::function::FnOnce",
+      "impl_trait_is_builtin": true
+    },
+    {
+      "def_id": 41,
+      "lean_name": "V7ForestTerminalGenerated.pool_v1.pair_forest_terminal.host.verify_pool_v1_pair_forest_terminal_inactive_v1.closure.Insts.CoreOpsFunctionFnOnceTuplePoolV1PairConstraintResidualErrorV1PoolV1PairForestTerminalHostErrorV1",
+      "lean_file": "V7ForestTerminal/Funs.lean",
+      "rust_name": "aspis_statement::pool_v1::pair_forest_terminal::host::verify_pool_v1_pair_forest_terminal_inactive_v1::{impl core::ops::function::FnOnce<(aspis_statement::pool_v1::pair_constraint_residuals::PoolV1PairConstraintResidualErrorV1,), aspis_statement::pool_v1::pair_forest_terminal::host::PoolV1PairForestTerminalHostErrorV1> for aspis_statement::pool_v1::pair_forest_terminal::host::verify_pool_v1_pair_forest_terminal_inactive_v1::closure}",
+      "is_local": true,
+      "source": {
+        "file": "crates/aspis-statement/src/pool_v1/pair_forest_terminal.rs",
+        "begin_line": 574,
+        "end_line": 574
+      },
+      "impl_trait_def_id": 4,
+      "impl_trait_rust_name": "core::ops::function::FnOnce",
+      "impl_trait_is_builtin": true
+    }
+  ]
+}

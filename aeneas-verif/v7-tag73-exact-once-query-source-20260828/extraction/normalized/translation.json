@@ -1,0 +1,1033 @@
+{
+  "aeneas_version": "unknown",
+  "charon_version": "0.1.223",
+  "crate": "aspis_core",
+  "functions": [
+    {
+      "def_id": 6,
+      "lean_name": "V7CanonicalConsumerNormalizedGenerated.Array.Insts.CoreIterTraitsCollectIntoIteratorTIntoIter.into_iter",
+      "lean_file": "V7CanonicalConsumerNormalized/FunsExternal_Template.lean",
+      "rust_name": "core::array::iter::{impl core::iter::traits::collect::IntoIterator<T, core::array::iter::IntoIter<T, N>> for [T; N]}::into_iter",
+      "is_local": false,
+      "source": {
+        "file": "/rustc/library/core/src/array/iter.rs",
+        "begin_line": 56,
+        "end_line": 56
+      },
+      "is_opaque": true,
+      "can_fail": true,
+      "can_diverge": false,
+      "is_rec": false,
+      "reducible": false
+    },
+    {
+      "def_id": 7,
+      "lean_name": "V7CanonicalConsumerNormalizedGenerated.core.array.iter.IntoIter.Insts.CoreIterTraitsIteratorIterator.next",
+      "lean_file": "V7CanonicalConsumerNormalized/FunsExternal_Template.lean",
+      "rust_name": "core::array::iter::{impl core::iter::traits::iterator::Iterator<T> for core::array::iter::IntoIter<T, N>}::next",
+      "is_local": false,
+      "source": {
+        "file": "/rustc/library/core/src/array/iter.rs",
+        "begin_line": 242,
+        "end_line": 242
+      },
+      "is_opaque": true,
+      "can_fail": true,
+      "can_diverge": false,
+      "is_rec": false,
+      "reducible": false
+    },
+    {
+      "def_id": 1,
+      "lean_name": "V7CanonicalConsumerNormalizedGenerated.core.array.from_fn",
+      "lean_file": "V7CanonicalConsumerNormalized/FunsExternal_Template.lean",
+      "rust_name": "core::array::from_fn",
+      "is_local": false,
+      "source": {
+        "file": "/rustc/library/core/src/array/mod.rs",
+        "begin_line": 110,
+        "end_line": 112
+      },
+      "is_opaque": true,
+      "can_fail": true,
+      "can_diverge": false,
+      "is_rec": false,
+      "reducible": false
+    },
+    {
+      "def_id": 4,
+      "lean_name": "V7CanonicalConsumerNormalizedGenerated.core.iter.traits.iterator.Iterator.any.default",
+      "lean_file": "V7CanonicalConsumerNormalized/FunsExternal_Template.lean",
+      "rust_name": "core::iter::traits::iterator::Iterator::any",
+      "is_local": false,
+      "source": {
+        "file": "/rustc/library/core/src/iter/traits/iterator.rs",
+        "begin_line": 2885,
+        "end_line": 2888
+      },
+      "is_opaque": true,
+      "can_fail": true,
+      "can_diverge": false,
+      "is_rec": false,
+      "reducible": false
+    },
+    {
+      "def_id": 9,
+      "lean_name": "V7CanonicalConsumerNormalizedGenerated.core.option.Option.ok_or",
+      "lean_file": "V7CanonicalConsumerNormalized/FunsExternal_Template.lean",
+      "rust_name": "core::option::{core::option::Option<T>}::ok_or",
+      "is_local": false,
+      "source": {
+        "file": "/rustc/library/core/src/option.rs",
+        "begin_line": 1334,
+        "end_line": 1334
+      },
+      "is_opaque": true,
+      "can_fail": true,
+      "can_diverge": false,
+      "is_rec": false,
+      "reducible": false
+    },
+    {
+      "def_id": 125,
+      "lean_name": "V7CanonicalConsumerNormalizedGenerated.core.option.Option.Insts.CoreOpsTry_traitTry.branch",
+      "lean_file": "V7CanonicalConsumerNormalized/FunsExternal_Template.lean",
+      "rust_name": "core::option::{impl core::ops::try_trait::Try for core::option::Option<T>}::branch",
+      "is_local": false,
+      "source": {
+        "file": "/rustc/library/core/src/option.rs",
+        "begin_line": 2779,
+        "end_line": 2779
+      },
+      "is_opaque": true,
+      "can_fail": true,
+      "can_diverge": false,
+      "is_rec": false,
+      "reducible": false
+    },
+    {
+      "def_id": 126,
+      "lean_name": "V7CanonicalConsumerNormalizedGenerated.core.option.Option.Insts.CoreOpsTry_traitFromResidualOptionInfallible.from_residual",
+      "lean_file": "V7CanonicalConsumerNormalized/FunsExternal_Template.lean",
+      "rust_name": "core::option::{impl core::ops::try_trait::FromResidual<core::option::Option<core::convert::Infallible>> for core::option::Option<T>}::from_residual",
+      "is_local": false,
+      "source": {
+        "file": "/rustc/library/core/src/option.rs",
+        "begin_line": 2793,
+        "end_line": 2793
+      },
+      "is_opaque": true,
+      "can_fail": true,
+      "can_diverge": false,
+      "is_rec": false,
+      "reducible": false
+    },
+    {
+      "def_id": 124,
+      "lean_name": "V7CanonicalConsumerNormalizedGenerated.core.result.Result.ok",
+      "lean_file": "V7CanonicalConsumerNormalized/FunsExternal_Template.lean",
+      "rust_name": "core::result::{core::result::Result<T, E>}::ok",
+      "is_local": false,
+      "source": {
+        "file": "/rustc/library/core/src/result.rs",
+        "begin_line": 708,
+        "end_line": 711
+      },
+      "is_opaque": true,
+      "can_fail": true,
+      "can_diverge": false,
+      "is_rec": false,
+      "reducible": false
+    },
+    {
+      "def_id": 106,
+      "lean_name": "V7CanonicalConsumerNormalizedGenerated.core.slice.iter.Windows.Insts.CoreIterTraitsIteratorIteratorSharedASlice.next",
+      "lean_file": "V7CanonicalConsumerNormalized/FunsExternal_Template.lean",
+      "rust_name": "core::slice::iter::{impl core::iter::traits::iterator::Iterator<&'a [T]> for core::slice::iter::Windows<'a, T>}::next",
+      "is_local": false,
+      "source": {
+        "file": "/rustc/library/core/src/slice/iter.rs",
+        "begin_line": 1354,
+        "end_line": 1354
+      },
+      "is_opaque": true,
+      "can_fail": true,
+      "can_diverge": false,
+      "is_rec": false,
+      "reducible": false
+    },
+    {
+      "def_id": 3,
+      "lean_name": "V7CanonicalConsumerNormalizedGenerated.core.slice.Slice.windows",
+      "lean_file": "V7CanonicalConsumerNormalized/FunsExternal_Template.lean",
+      "rust_name": "core::slice::{[T]}::windows",
+      "is_local": false,
+      "source": {
+        "file": "/rustc/library/core/src/slice/mod.rs",
+        "begin_line": 1116,
+        "end_line": 1116
+      },
+      "is_opaque": true,
+      "can_fail": true,
+      "can_diverge": false,
+      "is_rec": false,
+      "reducible": false
+    },
+    {
+      "def_id": 2,
+      "lean_name": "V7CanonicalConsumerNormalizedGenerated.core.slice.Slice.sort_unstable_by_key",
+      "lean_file": "V7CanonicalConsumerNormalized/FunsExternal_Template.lean",
+      "rust_name": "core::slice::{[T]}::sort_unstable_by_key",
+      "is_local": false,
+      "source": {
+        "file": "/rustc/library/core/src/slice/mod.rs",
+        "begin_line": 3241,
+        "end_line": 3244
+      },
+      "is_opaque": true,
+      "can_fail": true,
+      "can_diverge": false,
+      "is_rec": false,
+      "reducible": false
+    },
+    {
+      "def_id": 14,
+      "lean_name": "V7CanonicalConsumerNormalizedGenerated.v7_merkle208.verify_two_minimal_subtrees_v7_bytes",
+      "lean_file": "V7CanonicalConsumerNormalized/FunsExternal_Template.lean",
+      "rust_name": "aspis_core::v7_merkle208::verify_two_minimal_subtrees_v7_bytes",
+      "is_local": true,
+      "source": {
+        "file": "crates/aspis-core/src/v7_merkle208.rs",
+        "begin_line": 51,
+        "end_line": 128
+      },
+      "is_opaque": true,
+      "can_fail": true,
+      "can_diverge": false,
+      "is_rec": false,
+      "reducible": false
+    },
+    {
+      "def_id": 15,
+      "lean_name": "V7CanonicalConsumerNormalizedGenerated.v7_merkle208.private_leaf_hash_v7",
+      "lean_file": "V7CanonicalConsumerNormalized/FunsExternal_Template.lean",
+      "rust_name": "aspis_core::v7_merkle208::private_leaf_hash_v7",
+      "is_local": true,
+      "source": {
+        "file": "crates/aspis-core/src/v7_merkle208.rs",
+        "begin_line": 31,
+        "end_line": 38
+      },
+      "is_opaque": true,
+      "can_fail": true,
+      "can_diverge": false,
+      "is_rec": false,
+      "reducible": false
+    },
+    {
+      "def_id": 191,
+      "lean_name": "V7CanonicalConsumerNormalizedGenerated.v6_onefold.packed_bytes",
+      "lean_file": "V7CanonicalConsumerNormalized/Funs.lean",
+      "rust_name": "aspis_core::v6_onefold::packed_bytes",
+      "is_local": true,
+      "source": {
+        "file": "crates/aspis-core/src/v6_onefold.rs",
+        "begin_line": 68,
+        "end_line": 70
+      },
+      "is_opaque": false,
+      "can_fail": true,
+      "can_diverge": false,
+      "is_rec": false,
+      "reducible": false
+    },
+    {
+      "def_id": 194,
+      "lean_name": "V7CanonicalConsumerNormalizedGenerated.v6_onefold.decode_packed_m31_eight_aligned.closure.Insts.CoreOpsFunctionFnTupleUsizeU64.call",
+      "lean_file": "V7CanonicalConsumerNormalized/Funs.lean",
+      "rust_name": "aspis_core::v6_onefold::decode_packed_m31_eight_aligned::{impl core::ops::function::Fn<(usize,), u64> for aspis_core::v6_onefold::decode_packed_m31_eight_aligned::closure<'_0, N>}::call",
+      "is_local": true,
+      "source": {
+        "file": "crates/aspis-core/src/v6_onefold.rs",
+        "begin_line": 367,
+        "end_line": 367
+      },
+      "is_opaque": false,
+      "can_fail": true,
+      "can_diverge": false,
+      "is_rec": false,
+      "reducible": false
+    },
+    {
+      "def_id": 130,
+      "lean_name": "V7CanonicalConsumerNormalizedGenerated.v6_onefold.decode_packed_m31_eight_aligned_loop0_loop0.body",
+      "lean_file": "V7CanonicalConsumerNormalized/Funs.lean",
+      "rust_name": "aspis_core::v6_onefold::decode_packed_m31_eight_aligned",
+      "is_local": true,
+      "source": {
+        "file": "crates/aspis-core/src/v6_onefold.rs",
+        "begin_line": 377,
+        "end_line": 379
+      },
+      "is_opaque": false,
+      "can_fail": true,
+      "can_diverge": true,
+      "is_rec": false,
+      "reducible": false,
+      "loop": { "id": 1, "pos": [ 0, 0 ], "is_body": true },
+      "parent_lean_name": "V7CanonicalConsumerNormalizedGenerated.v6_onefold.decode_packed_m31_eight_aligned"
+    },
+    {
+      "def_id": 130,
+      "lean_name": "V7CanonicalConsumerNormalizedGenerated.v6_onefold.decode_packed_m31_eight_aligned_loop0_loop0",
+      "lean_file": "V7CanonicalConsumerNormalized/Funs.lean",
+      "rust_name": "aspis_core::v6_onefold::decode_packed_m31_eight_aligned",
+      "is_local": true,
+      "source": {
+        "file": "crates/aspis-core/src/v6_onefold.rs",
+        "begin_line": 377,
+        "end_line": 379
+      },
+      "is_opaque": false,
+      "can_fail": true,
+      "can_diverge": true,
+      "is_rec": false,
+      "reducible": false,
+      "loop": { "id": 1, "pos": [ 0, 0 ], "is_body": false },
+      "parent_lean_name": "V7CanonicalConsumerNormalizedGenerated.v6_onefold.decode_packed_m31_eight_aligned"
+    },
+    {
+      "def_id": 130,
+      "lean_name": "V7CanonicalConsumerNormalizedGenerated.v6_onefold.decode_packed_m31_eight_aligned_loop0.body",
+      "lean_file": "V7CanonicalConsumerNormalized/Funs.lean",
+      "rust_name": "aspis_core::v6_onefold::decode_packed_m31_eight_aligned",
+      "is_local": true,
+      "source": {
+        "file": "crates/aspis-core/src/v6_onefold.rs",
+        "begin_line": 363,
+        "end_line": 381
+      },
+      "is_opaque": false,
+      "can_fail": true,
+      "can_diverge": true,
+      "is_rec": false,
+      "reducible": false,
+      "loop": { "id": 0, "pos": [ 0 ], "is_body": true },
+      "parent_lean_name": "V7CanonicalConsumerNormalizedGenerated.v6_onefold.decode_packed_m31_eight_aligned"
+    },
+    {
+      "def_id": 130,
+      "lean_name": "V7CanonicalConsumerNormalizedGenerated.v6_onefold.decode_packed_m31_eight_aligned_loop0",
+      "lean_file": "V7CanonicalConsumerNormalized/Funs.lean",
+      "rust_name": "aspis_core::v6_onefold::decode_packed_m31_eight_aligned",
+      "is_local": true,
+      "source": {
+        "file": "crates/aspis-core/src/v6_onefold.rs",
+        "begin_line": 363,
+        "end_line": 381
+      },
+      "is_opaque": false,
+      "can_fail": true,
+      "can_diverge": true,
+      "is_rec": false,
+      "reducible": false,
+      "loop": { "id": 0, "pos": [ 0 ], "is_body": false },
+      "parent_lean_name": "V7CanonicalConsumerNormalizedGenerated.v6_onefold.decode_packed_m31_eight_aligned"
+    },
+    {
+      "def_id": 130,
+      "lean_name": "V7CanonicalConsumerNormalizedGenerated.v6_onefold.decode_packed_m31_eight_aligned",
+      "lean_file": "V7CanonicalConsumerNormalized/Funs.lean",
+      "rust_name": "aspis_core::v6_onefold::decode_packed_m31_eight_aligned",
+      "is_local": true,
+      "source": {
+        "file": "crates/aspis-core/src/v6_onefold.rs",
+        "begin_line": 356,
+        "end_line": 387
+      },
+      "is_opaque": false,
+      "can_fail": true,
+      "can_diverge": true,
+      "is_rec": false,
+      "reducible": false
+    },
+    {
+      "def_id": 11,
+      "lean_name": "V7CanonicalConsumerNormalizedGenerated.v6_onefold.gamma_combine_v6_packed_layer0",
+      "lean_file": "V7CanonicalConsumerNormalized/Funs.lean",
+      "rust_name": "aspis_core::v6_onefold::gamma_combine_v6_packed_layer0",
+      "is_local": true,
+      "source": {
+        "file": "crates/aspis-core/src/v6_onefold.rs",
+        "begin_line": 612,
+        "end_line": 626
+      },
+      "is_opaque": false,
+      "can_fail": true,
+      "can_diverge": true,
+      "is_rec": false,
+      "reducible": false
+    },
+    {
+      "def_id": 8,
+      "lean_name": "V7CanonicalConsumerNormalizedGenerated.v7_fixed_canonical_audit.V7CanonicalOneFoldWire.query",
+      "lean_file": "V7CanonicalConsumerNormalized/Funs.lean",
+      "rust_name": "aspis_core::v7_fixed_canonical_audit::{aspis_core::v7_fixed_canonical_audit::V7CanonicalOneFoldWire<'a>}::query",
+      "is_local": true,
+      "source": {
+        "file": "crates/aspis-core/src/v7_fixed_canonical_audit.rs",
+        "begin_line": 159,
+        "end_line": 172
+      },
+      "is_opaque": false,
+      "can_fail": true,
+      "can_diverge": false,
+      "is_rec": false,
+      "reducible": false
+    },
+    {
+      "def_id": 22,
+      "lean_name": "V7CanonicalConsumerNormalizedGenerated.v7_fixed_canonical_audit.verify_and_gamma_combine_v7_canonical_openings.closure_2.Insts.CoreOpsFunctionFnMutTupleSharedSlicePairU32UsizeBool.call_mut",
+      "lean_file": "V7CanonicalConsumerNormalized/Funs.lean",
+      "rust_name": "aspis_core::v7_fixed_canonical_audit::verify_and_gamma_combine_v7_canonical_openings::{impl core::ops::function::FnMut<(&'_ [(u32, usize)],), bool> for aspis_core::v7_fixed_canonical_audit::verify_and_gamma_combine_v7_canonical_openings::closure#2}::call_mut",
+      "is_local": true,
+      "source": {
+        "file": "crates/aspis-core/src/v7_fixed_canonical_audit.rs",
+        "begin_line": 184,
+        "end_line": 184
+      },
+      "is_opaque": false,
+      "can_fail": true,
+      "can_diverge": false,
+      "is_rec": false,
+      "reducible": false
+    },
+    {
+      "def_id": 21,
+      "lean_name": "V7CanonicalConsumerNormalizedGenerated.v7_fixed_canonical_audit.verify_and_gamma_combine_v7_canonical_openings.closure_2.Insts.CoreOpsFunctionFnOnceTupleSharedSlicePairU32UsizeBool.call_once",
+      "lean_file": "V7CanonicalConsumerNormalized/Funs.lean",
+      "rust_name": "aspis_core::v7_fixed_canonical_audit::verify_and_gamma_combine_v7_canonical_openings::{impl core::ops::function::FnOnce<(&'_ [(u32, usize)],), bool> for aspis_core::v7_fixed_canonical_audit::verify_and_gamma_combine_v7_canonical_openings::closure#2}::call_once",
+      "is_local": true,
+      "source": {
+        "file": "crates/aspis-core/src/v7_fixed_canonical_audit.rs",
+        "begin_line": 184,
+        "end_line": 184
+      },
+      "is_opaque": false,
+      "can_fail": true,
+      "can_diverge": false,
+      "is_rec": false,
+      "reducible": false
+    },
+    {
+      "def_id": 20,
+      "lean_name": "V7CanonicalConsumerNormalizedGenerated.v7_fixed_canonical_audit.verify_and_gamma_combine_v7_canonical_openings.closure_1.Insts.CoreOpsFunctionFnMutTupleSharedPairU32UsizeU32.call_mut",
+      "lean_file": "V7CanonicalConsumerNormalized/Funs.lean",
+      "rust_name": "aspis_core::v7_fixed_canonical_audit::verify_and_gamma_combine_v7_canonical_openings::{impl core::ops::function::FnMut<(&'_ (u32, usize),), u32> for aspis_core::v7_fixed_canonical_audit::verify_and_gamma_combine_v7_canonical_openings::closure#1}::call_mut",
+      "is_local": true,
+      "source": {
+        "file": "crates/aspis-core/src/v7_fixed_canonical_audit.rs",
+        "begin_line": 183,
+        "end_line": 183
+      },
+      "is_opaque": false,
+      "can_fail": true,
+      "can_diverge": false,
+      "is_rec": false,
+      "reducible": false
+    },
+    {
+      "def_id": 19,
+      "lean_name": "V7CanonicalConsumerNormalizedGenerated.v7_fixed_canonical_audit.verify_and_gamma_combine_v7_canonical_openings.closure_1.Insts.CoreOpsFunctionFnOnceTupleSharedPairU32UsizeU32.call_once",
+      "lean_file": "V7CanonicalConsumerNormalized/Funs.lean",
+      "rust_name": "aspis_core::v7_fixed_canonical_audit::verify_and_gamma_combine_v7_canonical_openings::{impl core::ops::function::FnOnce<(&'_ (u32, usize),), u32> for aspis_core::v7_fixed_canonical_audit::verify_and_gamma_combine_v7_canonical_openings::closure#1}::call_once",
+      "is_local": true,
+      "source": {
+        "file": "crates/aspis-core/src/v7_fixed_canonical_audit.rs",
+        "begin_line": 183,
+        "end_line": 183
+      },
+      "is_opaque": false,
+      "can_fail": true,
+      "can_diverge": false,
+      "is_rec": false,
+      "reducible": false
+    },
+    {
+      "def_id": 18,
+      "lean_name": "V7CanonicalConsumerNormalizedGenerated.v7_fixed_canonical_audit.verify_and_gamma_combine_v7_canonical_openings.closure.Insts.CoreOpsFunctionFnMutTupleUsizePairU32Usize.call_mut",
+      "lean_file": "V7CanonicalConsumerNormalized/Funs.lean",
+      "rust_name": "aspis_core::v7_fixed_canonical_audit::verify_and_gamma_combine_v7_canonical_openings::{impl core::ops::function::FnMut<(usize,), (u32, usize)> for aspis_core::v7_fixed_canonical_audit::verify_and_gamma_combine_v7_canonical_openings::closure<'_0>}::call_mut",
+      "is_local": true,
+      "source": {
+        "file": "crates/aspis-core/src/v7_fixed_canonical_audit.rs",
+        "begin_line": 182,
+        "end_line": 182
+      },
+      "is_opaque": false,
+      "can_fail": true,
+      "can_diverge": false,
+      "is_rec": false,
+      "reducible": false
+    },
+    {
+      "def_id": 17,
+      "lean_name": "V7CanonicalConsumerNormalizedGenerated.v7_fixed_canonical_audit.verify_and_gamma_combine_v7_canonical_openings.closure.Insts.CoreOpsFunctionFnOnceTupleUsizePairU32Usize.call_once",
+      "lean_file": "V7CanonicalConsumerNormalized/Funs.lean",
+      "rust_name": "aspis_core::v7_fixed_canonical_audit::verify_and_gamma_combine_v7_canonical_openings::{impl core::ops::function::FnOnce<(usize,), (u32, usize)> for aspis_core::v7_fixed_canonical_audit::verify_and_gamma_combine_v7_canonical_openings::closure<'_0>}::call_once",
+      "is_local": true,
+      "source": {
+        "file": "crates/aspis-core/src/v7_fixed_canonical_audit.rs",
+        "begin_line": 182,
+        "end_line": 182
+      },
+      "is_opaque": false,
+      "can_fail": true,
+      "can_diverge": false,
+      "is_rec": false,
+      "reducible": false
+    },
+    {
+      "def_id": 0,
+      "lean_name": "V7CanonicalConsumerNormalizedGenerated.v7_fixed_canonical_audit.verify_and_gamma_combine_v7_canonical_openings_loop.body",
+      "lean_file": "V7CanonicalConsumerNormalized/Funs.lean",
+      "rust_name": "aspis_core::v7_fixed_canonical_audit::verify_and_gamma_combine_v7_canonical_openings",
+      "is_local": true,
+      "source": {
+        "file": "crates/aspis-core/src/v7_fixed_canonical_audit.rs",
+        "begin_line": 190,
+        "end_line": 216
+      },
+      "is_opaque": false,
+      "can_fail": true,
+      "can_diverge": true,
+      "is_rec": false,
+      "reducible": false,
+      "loop": { "id": 0, "pos": [ 0 ], "is_body": true },
+      "parent_lean_name": "V7CanonicalConsumerNormalizedGenerated.v7_fixed_canonical_audit.verify_and_gamma_combine_v7_canonical_openings"
+    },
+    {
+      "def_id": 0,
+      "lean_name": "V7CanonicalConsumerNormalizedGenerated.v7_fixed_canonical_audit.verify_and_gamma_combine_v7_canonical_openings_loop",
+      "lean_file": "V7CanonicalConsumerNormalized/Funs.lean",
+      "rust_name": "aspis_core::v7_fixed_canonical_audit::verify_and_gamma_combine_v7_canonical_openings",
+      "is_local": true,
+      "source": {
+        "file": "crates/aspis-core/src/v7_fixed_canonical_audit.rs",
+        "begin_line": 190,
+        "end_line": 216
+      },
+      "is_opaque": false,
+      "can_fail": true,
+      "can_diverge": true,
+      "is_rec": false,
+      "reducible": false,
+      "loop": { "id": 0, "pos": [ 0 ], "is_body": false },
+      "parent_lean_name": "V7CanonicalConsumerNormalizedGenerated.v7_fixed_canonical_audit.verify_and_gamma_combine_v7_canonical_openings"
+    },
+    {
+      "def_id": 0,
+      "lean_name": "V7CanonicalConsumerNormalizedGenerated.v7_fixed_canonical_audit.verify_and_gamma_combine_v7_canonical_openings",
+      "lean_file": "V7CanonicalConsumerNormalized/Funs.lean",
+      "rust_name": "aspis_core::v7_fixed_canonical_audit::verify_and_gamma_combine_v7_canonical_openings",
+      "is_local": true,
+      "source": {
+        "file": "crates/aspis-core/src/v7_fixed_canonical_audit.rs",
+        "begin_line": 175,
+        "end_line": 216
+      },
+      "is_opaque": false,
+      "can_fail": true,
+      "can_diverge": true,
+      "is_rec": false,
+      "reducible": false
+    }
+  ],
+  "types": [
+    {
+      "def_id": 11,
+      "lean_name": "V7CanonicalConsumerNormalizedGenerated.core.array.iter.IntoIter",
+      "lean_file": "V7CanonicalConsumerNormalized/TypesExternal_Template.lean",
+      "rust_name": "core::array::iter::IntoIter",
+      "is_local": false,
+      "source": {
+        "file": "/rustc/library/core/src/array/iter.rs",
+        "begin_line": 20,
+        "end_line": 20
+      }
+    },
+    {
+      "def_id": 7,
+      "lean_name": "V7CanonicalConsumerNormalizedGenerated.core.slice.iter.Windows",
+      "lean_file": "V7CanonicalConsumerNormalized/TypesExternal_Template.lean",
+      "rust_name": "core::slice::iter::Windows",
+      "is_local": false,
+      "source": {
+        "file": "/rustc/library/core/src/slice/iter.rs",
+        "begin_line": 1329,
+        "end_line": 1329
+      }
+    },
+    {
+      "def_id": 17,
+      "lean_name": "V7CanonicalConsumerNormalizedGenerated.field.PreparedQm31Multiplier",
+      "lean_file": "V7CanonicalConsumerNormalized/TypesExternal_Template.lean",
+      "rust_name": "aspis_core::field::PreparedQm31Multiplier",
+      "is_local": true,
+      "source": {
+        "file": "crates/aspis-core/src/field.rs",
+        "begin_line": 370,
+        "end_line": 372
+      }
+    },
+    {
+      "def_id": 51,
+      "lean_name": "V7CanonicalConsumerNormalizedGenerated.field.M31",
+      "lean_file": "V7CanonicalConsumerNormalized/Types.lean",
+      "rust_name": "aspis_core::field::M31",
+      "is_local": true,
+      "source": {
+        "file": "crates/aspis-core/src/field.rs",
+        "begin_line": 20,
+        "end_line": 20
+      }
+    },
+    {
+      "def_id": 18,
+      "lean_name": "V7CanonicalConsumerNormalizedGenerated.field.CM31",
+      "lean_file": "V7CanonicalConsumerNormalized/Types.lean",
+      "rust_name": "aspis_core::field::CM31",
+      "is_local": true,
+      "source": {
+        "file": "crates/aspis-core/src/field.rs",
+        "begin_line": 191,
+        "end_line": 194
+      }
+    },
+    {
+      "def_id": 3,
+      "lean_name": "V7CanonicalConsumerNormalizedGenerated.field.QM31",
+      "lean_file": "V7CanonicalConsumerNormalized/Types.lean",
+      "rust_name": "aspis_core::field::QM31",
+      "is_local": true,
+      "source": {
+        "file": "crates/aspis-core/src/field.rs",
+        "begin_line": 360,
+        "end_line": 363
+      }
+    },
+    {
+      "def_id": 16,
+      "lean_name": "V7CanonicalConsumerNormalizedGenerated.state_only_query.StateOnlyQueryPowers",
+      "lean_file": "V7CanonicalConsumerNormalized/Types.lean",
+      "rust_name": "aspis_core::state_only_query::StateOnlyQueryPowers",
+      "is_local": true,
+      "source": {
+        "file": "crates/aspis-core/src/state_only_query.rs",
+        "begin_line": 27,
+        "end_line": 30
+      }
+    },
+    {
+      "def_id": 1,
+      "lean_name": "V7CanonicalConsumerNormalizedGenerated.state_only_spend_query.StateOnlySpendQueryPowers",
+      "lean_file": "V7CanonicalConsumerNormalized/Types.lean",
+      "rust_name": "aspis_core::state_only_spend_query::StateOnlySpendQueryPowers",
+      "is_local": true,
+      "source": {
+        "file": "crates/aspis-core/src/state_only_spend_query.rs",
+        "begin_line": 22,
+        "end_line": 25
+      }
+    },
+    {
+      "def_id": 4,
+      "lean_name": "V7CanonicalConsumerNormalizedGenerated.v6_onefold.V6WireError",
+      "lean_file": "V7CanonicalConsumerNormalized/Types.lean",
+      "rust_name": "aspis_core::v6_onefold::V6WireError",
+      "is_local": true,
+      "source": {
+        "file": "crates/aspis-core/src/v6_onefold.rs",
+        "begin_line": 73,
+        "end_line": 80
+      }
+    },
+    {
+      "def_id": 60,
+      "lean_name": "V7CanonicalConsumerNormalizedGenerated.v6_onefold.decode_packed_m31_eight_aligned.closure",
+      "lean_file": "V7CanonicalConsumerNormalized/Types.lean",
+      "rust_name": "aspis_core::v6_onefold::decode_packed_m31_eight_aligned::closure",
+      "is_local": true,
+      "source": {
+        "file": "crates/aspis-core/src/v6_onefold.rs",
+        "begin_line": 367,
+        "end_line": 367
+      }
+    },
+    {
+      "def_id": 13,
+      "lean_name": "V7CanonicalConsumerNormalizedGenerated.v7_fixed_canonical_audit.V7CanonicalQueryRecord",
+      "lean_file": "V7CanonicalConsumerNormalized/Types.lean",
+      "rust_name": "aspis_core::v7_fixed_canonical_audit::V7CanonicalQueryRecord",
+      "is_local": true,
+      "source": {
+        "file": "crates/aspis-core/src/v7_fixed_canonical_audit.rs",
+        "begin_line": 78,
+        "end_line": 82
+      }
+    },
+    {
+      "def_id": 0,
+      "lean_name": "V7CanonicalConsumerNormalizedGenerated.v7_fixed_canonical_audit.V7CanonicalOneFoldWire",
+      "lean_file": "V7CanonicalConsumerNormalized/Types.lean",
+      "rust_name": "aspis_core::v7_fixed_canonical_audit::V7CanonicalOneFoldWire",
+      "is_local": true,
+      "source": {
+        "file": "crates/aspis-core/src/v7_fixed_canonical_audit.rs",
+        "begin_line": 85,
+        "end_line": 93
+      }
+    },
+    {
+      "def_id": 8,
+      "lean_name": "V7CanonicalConsumerNormalizedGenerated.v7_fixed_canonical_audit.verify_and_gamma_combine_v7_canonical_openings.closure_2",
+      "lean_file": "V7CanonicalConsumerNormalized/Types.lean",
+      "rust_name": "aspis_core::v7_fixed_canonical_audit::verify_and_gamma_combine_v7_canonical_openings::closure#2",
+      "is_local": true,
+      "source": {
+        "file": "crates/aspis-core/src/v7_fixed_canonical_audit.rs",
+        "begin_line": 184,
+        "end_line": 184
+      }
+    },
+    {
+      "def_id": 6,
+      "lean_name": "V7CanonicalConsumerNormalizedGenerated.v7_fixed_canonical_audit.verify_and_gamma_combine_v7_canonical_openings.closure_1",
+      "lean_file": "V7CanonicalConsumerNormalized/Types.lean",
+      "rust_name": "aspis_core::v7_fixed_canonical_audit::verify_and_gamma_combine_v7_canonical_openings::closure#1",
+      "is_local": true,
+      "source": {
+        "file": "crates/aspis-core/src/v7_fixed_canonical_audit.rs",
+        "begin_line": 183,
+        "end_line": 183
+      }
+    },
+    {
+      "def_id": 5,
+      "lean_name": "V7CanonicalConsumerNormalizedGenerated.v7_fixed_canonical_audit.verify_and_gamma_combine_v7_canonical_openings.closure",
+      "lean_file": "V7CanonicalConsumerNormalized/Types.lean",
+      "rust_name": "aspis_core::v7_fixed_canonical_audit::verify_and_gamma_combine_v7_canonical_openings::closure",
+      "is_local": true,
+      "source": {
+        "file": "crates/aspis-core/src/v7_fixed_canonical_audit.rs",
+        "begin_line": 182,
+        "end_line": 182
+      }
+    }
+  ],
+  "globals": [
+    {
+      "def_id": 15,
+      "lean_name": "V7CanonicalConsumerNormalizedGenerated.field.P",
+      "lean_file": "V7CanonicalConsumerNormalized/FunsExternal_Template.lean",
+      "rust_name": "aspis_core::field::P",
+      "is_local": true,
+      "source": {
+        "file": "crates/aspis-core/src/field.rs",
+        "begin_line": 16,
+        "end_line": 16
+      },
+      "can_fail": true
+    },
+    {
+      "def_id": 1,
+      "lean_name": "V7CanonicalConsumerNormalizedGenerated.field.QM31.ZERO",
+      "lean_file": "V7CanonicalConsumerNormalized/FunsExternal_Template.lean",
+      "rust_name": "aspis_core::field::{aspis_core::field::QM31}::ZERO",
+      "is_local": true,
+      "source": {
+        "file": "crates/aspis-core/src/field.rs",
+        "begin_line": 797,
+        "end_line": 806
+      },
+      "can_fail": true
+    },
+    {
+      "def_id": 27,
+      "lean_name": "V7CanonicalConsumerNormalizedGenerated.v6_onefold.V6_C1_COLUMNS",
+      "lean_file": "V7CanonicalConsumerNormalized/Funs.lean",
+      "rust_name": "aspis_core::v6_onefold::V6_C1_COLUMNS",
+      "is_local": true,
+      "source": {
+        "file": "crates/aspis-core/src/v6_onefold.rs",
+        "begin_line": 22,
+        "end_line": 22
+      },
+      "can_fail": false
+    },
+    {
+      "def_id": 28,
+      "lean_name": "V7CanonicalConsumerNormalizedGenerated.v6_onefold.V6_C2_COLUMNS",
+      "lean_file": "V7CanonicalConsumerNormalized/Funs.lean",
+      "rust_name": "aspis_core::v6_onefold::V6_C2_COLUMNS",
+      "is_local": true,
+      "source": {
+        "file": "crates/aspis-core/src/v6_onefold.rs",
+        "begin_line": 23,
+        "end_line": 23
+      },
+      "can_fail": false
+    },
+    {
+      "def_id": 0,
+      "lean_name": "V7CanonicalConsumerNormalizedGenerated.v6_onefold.V6_QUERY_COUNT",
+      "lean_file": "V7CanonicalConsumerNormalized/Funs.lean",
+      "rust_name": "aspis_core::v6_onefold::V6_QUERY_COUNT",
+      "is_local": true,
+      "source": {
+        "file": "crates/aspis-core/src/v6_onefold.rs",
+        "begin_line": 25,
+        "end_line": 25
+      },
+      "can_fail": false
+    },
+    {
+      "def_id": 20,
+      "lean_name": "V7CanonicalConsumerNormalizedGenerated.v6_onefold.V6_C1_LIMBS_PER_QUERY",
+      "lean_file": "V7CanonicalConsumerNormalized/Funs.lean",
+      "rust_name": "aspis_core::v6_onefold::V6_C1_LIMBS_PER_QUERY",
+      "is_local": true,
+      "source": {
+        "file": "crates/aspis-core/src/v6_onefold.rs",
+        "begin_line": 54,
+        "end_line": 54
+      },
+      "can_fail": true
+    },
+    {
+      "def_id": 21,
+      "lean_name": "V7CanonicalConsumerNormalizedGenerated.v6_onefold.V6_C2_LIMBS_PER_QUERY",
+      "lean_file": "V7CanonicalConsumerNormalized/Funs.lean",
+      "rust_name": "aspis_core::v6_onefold::V6_C2_LIMBS_PER_QUERY",
+      "is_local": true,
+      "source": {
+        "file": "crates/aspis-core/src/v6_onefold.rs",
+        "begin_line": 55,
+        "end_line": 55
+      },
+      "can_fail": true
+    },
+    {
+      "def_id": 8,
+      "lean_name": "V7CanonicalConsumerNormalizedGenerated.v6_onefold.V6_C1_PACKED_BYTES_PER_QUERY",
+      "lean_file": "V7CanonicalConsumerNormalized/Funs.lean",
+      "rust_name": "aspis_core::v6_onefold::V6_C1_PACKED_BYTES_PER_QUERY",
+      "is_local": true,
+      "source": {
+        "file": "crates/aspis-core/src/v6_onefold.rs",
+        "begin_line": 56,
+        "end_line": 56
+      },
+      "can_fail": true
+    },
+    {
+      "def_id": 9,
+      "lean_name": "V7CanonicalConsumerNormalizedGenerated.v6_onefold.V6_C2_PACKED_BYTES_PER_QUERY",
+      "lean_file": "V7CanonicalConsumerNormalized/Funs.lean",
+      "rust_name": "aspis_core::v6_onefold::V6_C2_PACKED_BYTES_PER_QUERY",
+      "is_local": true,
+      "source": {
+        "file": "crates/aspis-core/src/v6_onefold.rs",
+        "begin_line": 57,
+        "end_line": 57
+      },
+      "can_fail": true
+    },
+    {
+      "def_id": 19,
+      "lean_name": "V7CanonicalConsumerNormalizedGenerated.v7_onefold.V7_COMPACT_C2_BYTES_PER_QUERY",
+      "lean_file": "V7CanonicalConsumerNormalized/Funs.lean",
+      "rust_name": "aspis_core::v7_onefold::V7_COMPACT_C2_BYTES_PER_QUERY",
+      "is_local": true,
+      "source": {
+        "file": "crates/aspis-core/src/v7_onefold.rs",
+        "begin_line": 50,
+        "end_line": 50
+      },
+      "can_fail": true
+    },
+    {
+      "def_id": 18,
+      "lean_name": "V7CanonicalConsumerNormalizedGenerated.v7_onefold.V7_COMPACT_C1_BYTES_PER_QUERY",
+      "lean_file": "V7CanonicalConsumerNormalized/Funs.lean",
+      "rust_name": "aspis_core::v7_onefold::V7_COMPACT_C1_BYTES_PER_QUERY",
+      "is_local": true,
+      "source": {
+        "file": "crates/aspis-core/src/v7_onefold.rs",
+        "begin_line": 49,
+        "end_line": 49
+      },
+      "can_fail": true
+    },
+    {
+      "def_id": 10,
+      "lean_name": "V7CanonicalConsumerNormalizedGenerated.v7_onefold.V7_COMPACT_PRIVATE_SALT_BYTES",
+      "lean_file": "V7CanonicalConsumerNormalized/Funs.lean",
+      "rust_name": "aspis_core::v7_onefold::V7_COMPACT_PRIVATE_SALT_BYTES",
+      "is_local": true,
+      "source": {
+        "file": "crates/aspis-core/src/v7_onefold.rs",
+        "begin_line": 47,
+        "end_line": 47
+      },
+      "can_fail": false
+    },
+    {
+      "def_id": 7,
+      "lean_name": "V7CanonicalConsumerNormalizedGenerated.v7_onefold.V7_COMPACT_QUERY_BYTES",
+      "lean_file": "V7CanonicalConsumerNormalized/Funs.lean",
+      "rust_name": "aspis_core::v7_onefold::V7_COMPACT_QUERY_BYTES",
+      "is_local": true,
+      "source": {
+        "file": "crates/aspis-core/src/v7_onefold.rs",
+        "begin_line": 51,
+        "end_line": 52
+      },
+      "can_fail": true
+    },
+    {
+      "def_id": 3,
+      "lean_name": "V7CanonicalConsumerNormalizedGenerated.v7_merkle208.V7_C2_TREE_TAG",
+      "lean_file": "V7CanonicalConsumerNormalized/Funs.lean",
+      "rust_name": "aspis_core::v7_merkle208::V7_C2_TREE_TAG",
+      "is_local": true,
+      "source": {
+        "file": "crates/aspis-core/src/v7_merkle208.rs",
+        "begin_line": 17,
+        "end_line": 17
+      },
+      "can_fail": false
+    },
+    {
+      "def_id": 2,
+      "lean_name": "V7CanonicalConsumerNormalizedGenerated.v7_merkle208.V7_C1_TREE_TAG",
+      "lean_file": "V7CanonicalConsumerNormalized/Funs.lean",
+      "rust_name": "aspis_core::v7_merkle208::V7_C1_TREE_TAG",
+      "is_local": true,
+      "source": {
+        "file": "crates/aspis-core/src/v7_merkle208.rs",
+        "begin_line": 16,
+        "end_line": 16
+      },
+      "can_fail": false
+    }
+  ],
+  "trait_decls": [],
+  "trait_impls": [
+    {
+      "def_id": 9,
+      "lean_name": "V7CanonicalConsumerNormalizedGenerated.core.slice.iter.Windows.Insts.CoreIterTraitsIteratorIteratorSharedASlice",
+      "lean_file": "V7CanonicalConsumerNormalized/Funs.lean",
+      "rust_name": "core::slice::iter::{impl core::iter::traits::iterator::Iterator<&'a [T]> for core::slice::iter::Windows<'a, T>}",
+      "is_local": false,
+      "source": {
+        "file": "/rustc/library/core/src/slice/iter.rs",
+        "begin_line": 1350,
+        "end_line": 1350
+      },
+      "impl_trait_def_id": 3,
+      "impl_trait_rust_name": "core::iter::traits::iterator::Iterator",
+      "impl_trait_is_builtin": true
+    },
+    {
+      "def_id": 4,
+      "lean_name": "V7CanonicalConsumerNormalizedGenerated.v7_fixed_canonical_audit.verify_and_gamma_combine_v7_canonical_openings.closure_2.Insts.CoreOpsFunctionFnOnceTupleSharedSlicePairU32UsizeBool",
+      "lean_file": "V7CanonicalConsumerNormalized/Funs.lean",
+      "rust_name": "aspis_core::v7_fixed_canonical_audit::verify_and_gamma_combine_v7_canonical_openings::{impl core::ops::function::FnOnce<(&'_ [(u32, usize)],), bool> for aspis_core::v7_fixed_canonical_audit::verify_and_gamma_combine_v7_canonical_openings::closure#2}",
+      "is_local": true,
+      "source": {
+        "file": "crates/aspis-core/src/v7_fixed_canonical_audit.rs",
+        "begin_line": 184,
+        "end_line": 184
+      },
+      "impl_trait_def_id": 5,
+      "impl_trait_rust_name": "core::ops::function::FnOnce",
+      "impl_trait_is_builtin": true
+    },
+    {
+      "def_id": 5,
+      "lean_name": "V7CanonicalConsumerNormalizedGenerated.v7_fixed_canonical_audit.verify_and_gamma_combine_v7_canonical_openings.closure_2.Insts.CoreOpsFunctionFnMutTupleSharedSlicePairU32UsizeBool",
+      "lean_file": "V7CanonicalConsumerNormalized/Funs.lean",
+      "rust_name": "aspis_core::v7_fixed_canonical_audit::verify_and_gamma_combine_v7_canonical_openings::{impl core::ops::function::FnMut<(&'_ [(u32, usize)],), bool> for aspis_core::v7_fixed_canonical_audit::verify_and_gamma_combine_v7_canonical_openings::closure#2}",
+      "is_local": true,
+      "source": {
+        "file": "crates/aspis-core/src/v7_fixed_canonical_audit.rs",
+        "begin_line": 184,
+        "end_line": 184
+      },
+      "impl_trait_def_id": 1,
+      "impl_trait_rust_name": "core::ops::function::FnMut",
+      "impl_trait_is_builtin": true
+    },
+    {
+      "def_id": 2,
+      "lean_name": "V7CanonicalConsumerNormalizedGenerated.v7_fixed_canonical_audit.verify_and_gamma_combine_v7_canonical_openings.closure_1.Insts.CoreOpsFunctionFnOnceTupleSharedPairU32UsizeU32",
+      "lean_file": "V7CanonicalConsumerNormalized/Funs.lean",
+      "rust_name": "aspis_core::v7_fixed_canonical_audit::verify_and_gamma_combine_v7_canonical_openings::{impl core::ops::function::FnOnce<(&'_ (u32, usize),), u32> for aspis_core::v7_fixed_canonical_audit::verify_and_gamma_combine_v7_canonical_openings::closure#1}",
+      "is_local": true,
+      "source": {
+        "file": "crates/aspis-core/src/v7_fixed_canonical_audit.rs",
+        "begin_line": 183,
+        "end_line": 183
+      },
+      "impl_trait_def_id": 5,
+      "impl_trait_rust_name": "core::ops::function::FnOnce",
+      "impl_trait_is_builtin": true
+    },
+    {
+      "def_id": 3,
+      "lean_name": "V7CanonicalConsumerNormalizedGenerated.v7_fixed_canonical_audit.verify_and_gamma_combine_v7_canonical_openings.closure_1.Insts.CoreOpsFunctionFnMutTupleSharedPairU32UsizeU32",
+      "lean_file": "V7CanonicalConsumerNormalized/Funs.lean",
+      "rust_name": "aspis_core::v7_fixed_canonical_audit::verify_and_gamma_combine_v7_canonical_openings::{impl core::ops::function::FnMut<(&'_ (u32, usize),), u32> for aspis_core::v7_fixed_canonical_audit::verify_and_gamma_combine_v7_canonical_openings::closure#1}",
+      "is_local": true,
+      "source": {
+        "file": "crates/aspis-core/src/v7_fixed_canonical_audit.rs",
+        "begin_line": 183,
+        "end_line": 183
+      },
+      "impl_trait_def_id": 1,
+      "impl_trait_rust_name": "core::ops::function::FnMut",
+      "impl_trait_is_builtin": true
+    },
+    {
+      "def_id": 0,
+      "lean_name": "V7CanonicalConsumerNormalizedGenerated.v7_fixed_canonical_audit.verify_and_gamma_combine_v7_canonical_openings.closure.Insts.CoreOpsFunctionFnOnceTupleUsizePairU32Usize",
+      "lean_file": "V7CanonicalConsumerNormalized/Funs.lean",
+      "rust_name": "aspis_core::v7_fixed_canonical_audit::verify_and_gamma_combine_v7_canonical_openings::{impl core::ops::function::FnOnce<(usize,), (u32, usize)> for aspis_core::v7_fixed_canonical_audit::verify_and_gamma_combine_v7_canonical_openings::closure<'_0>}",
+      "is_local": true,
+      "source": {
+        "file": "crates/aspis-core/src/v7_fixed_canonical_audit.rs",
+        "begin_line": 182,
+        "end_line": 182
+      },
+      "impl_trait_def_id": 5,
+      "impl_trait_rust_name": "core::ops::function::FnOnce",
+      "impl_trait_is_builtin": true
+    },
+    {
+      "def_id": 1,
+      "lean_name": "V7CanonicalConsumerNormalizedGenerated.v7_fixed_canonical_audit.verify_and_gamma_combine_v7_canonical_openings.closure.Insts.CoreOpsFunctionFnMutTupleUsizePairU32Usize",
+      "lean_file": "V7CanonicalConsumerNormalized/Funs.lean",
+      "rust_name": "aspis_core::v7_fixed_canonical_audit::verify_and_gamma_combine_v7_canonical_openings::{impl core::ops::function::FnMut<(usize,), (u32, usize)> for aspis_core::v7_fixed_canonical_audit::verify_and_gamma_combine_v7_canonical_openings::closure<'_0>}",
+      "is_local": true,
+      "source": {
+        "file": "crates/aspis-core/src/v7_fixed_canonical_audit.rs",
+        "begin_line": 182,
+        "end_line": 182
+      },
+      "impl_trait_def_id": 1,
+      "impl_trait_rust_name": "core::ops::function::FnMut",
+      "impl_trait_is_builtin": true
+    }
+  ]
+}

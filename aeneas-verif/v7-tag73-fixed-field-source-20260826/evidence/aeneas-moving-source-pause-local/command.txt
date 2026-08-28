@@ -1,0 +1,1 @@
+/usr/bin/time -lp /tmp/v7-aeneas-audit.22bvvn/aeneas/src/_build/default/main.exe -sequential -no-progress-bar -abort-on-error -backend lean -namespace V7Tag73FixedFieldProductionGenerated -dest /tmp/v7-aeneas-audit.22bvvn/min-fixedborrow-out -subdir V7Tag73FixedFieldProduction -split-files -emit-json /tmp/v7-charon-min.I5RxNF/combined.llbc

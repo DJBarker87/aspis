@@ -1,0 +1,84 @@
+{
+  "agave_runtime_version": "4.2.1",
+  "artifacts": [
+    {
+      "bytes": 415776,
+      "path": "results/pool-v1-one-terminal-runtime-20260827/artifacts/pool/aspis_pool.so",
+      "sha256": "c883c62d57d979c0ea3d4159cc591496579c50e6cf42417d84f216b03c19123c"
+    },
+    {
+      "bytes": 1493504,
+      "path": "results/pool-v1-one-terminal-runtime-20260827/artifacts/verifier/aspis_verifier.so",
+      "sha256": "adef3256d220f45a2bd78013d36db078d4aaca56c94f3b6645db09d51ab76bc5"
+    },
+    {
+      "bytes": 30192,
+      "path": "results/pool-v1-one-terminal-runtime-20260827/native-proof.bin",
+      "sha256": "656f25689041ae7f90c9461f4dbe3336478e01e1970ff00c24d1e7d90ed2e72c"
+    }
+  ],
+  "assertions": {
+    "failed_transaction_pool_history_marker_and_vault_rollback": true,
+    "no_network_send_or_deploy": true,
+    "real_native_tag73_proof_account_supplied": true,
+    "return_data_empty_after_failure": true,
+    "simulation_metadata_equals_execution": true,
+    "strict_1400000_cu_limit": true,
+    "v0_alt_fits_1232": true
+  },
+  "compute_unit_limit": 1400000,
+  "harness_version": "pool-v1-litesvm-evidence-v1",
+  "litesvm_version": "0.16.0",
+  "pool_program_id": "C9cmcgqgaD1P1wGjyHpc1SLsHCiD8VHJCKyGciPrGyDe",
+  "private_transfer": {
+    "anchor_sequence": 1,
+    "compute_units": 1400000,
+    "execution_error": "InstructionError(1, ProgramFailedToComplete)",
+    "logs": "\u001b[38;5;239mProgram ComputeBudget111111111111111111111111111111 invoke [1]\u001b[0m\n\u001b[38;5;239mProgram ComputeBudget111111111111111111111111111111 success\u001b[0m\n\u001b[38;5;239mProgram C9cmcgqgaD1P1wGjyHpc1SLsHCiD8VHJCKyGciPrGyDe invoke [1]\u001b[0m\n\u001b[38;5;239mProgram DJEo3okrdH4EPUXNPNNDxKTqRuHdaZxEhGJRcBA2ydhf invoke [2]\u001b[0m\n\u001b[38;5;239mProgram DJEo3okrdH4EPUXNPNNDxKTqRuHdaZxEhGJRcBA2ydhf consumed 814592 of 814592 compute units\u001b[0m\n\u001b[1;38;5;9mProgram DJEo3okrdH4EPUXNPNNDxKTqRuHdaZxEhGJRcBA2ydhf failed: exceeded CUs meter at BPF instruction\u001b[0m\n\u001b[38;5;239mProgram C9cmcgqgaD1P1wGjyHpc1SLsHCiD8VHJCKyGciPrGyDe consumed 1399850 of 1399850 compute units\u001b[0m\n\u001b[1;38;5;9mProgram C9cmcgqgaD1P1wGjyHpc1SLsHCiD8VHJCKyGciPrGyDe failed: Program failed to complete\u001b[0m\n",
+    "nullifier_marker_exists_after_failure": false,
+    "proof_body_bytes": 30192,
+    "return_data_bytes": 0,
+    "sequence_after": 1,
+    "sequence_before": 1,
+    "simulation_error": "InstructionError(1, ProgramFailedToComplete)",
+    "transaction_size": {
+      "account_metas": 9,
+      "instruction": "ASPT",
+      "instruction_data_bytes": 432,
+      "legacy_fits_1232": true,
+      "legacy_transaction_bytes": 907,
+      "signer_metas": 1,
+      "v0_alt_fits_1232": true,
+      "v0_alt_transaction_bytes": 695,
+      "writable_metas": 4
+    }
+  },
+  "program_id_status": "deterministic test-only runtime address; production Pool has no declare_id and no release deployment id is selected",
+  "result": "RED: the current one-terminal Pool implementation plus the real native Tag-73 selected verifier does not fit the 1.4M-CU transaction cap.",
+  "schema": "aspis.pool-v1.one-terminal-real-tag73-red-gate.v1",
+  "selected_verifier_program_id": "DJEo3okrdH4EPUXNPNNDxKTqRuHdaZxEhGJRcBA2ydhf",
+  "steps": [
+    {
+      "compute_units": 108407,
+      "error": null,
+      "fee_lamports": 5000,
+      "name": "initialize",
+      "outcome": "success",
+      "return_bytes": 104,
+      "return_magic": "ASIR",
+      "return_program": "C9cmcgqgaD1P1wGjyHpc1SLsHCiD8VHJCKyGciPrGyDe",
+      "simulation_matches_execution": true
+    },
+    {
+      "compute_units": 619574,
+      "error": null,
+      "fee_lamports": 10000,
+      "name": "deposit_max_payload",
+      "outcome": "success",
+      "return_bytes": 736,
+      "return_magic": "ASPD",
+      "return_program": "C9cmcgqgaD1P1wGjyHpc1SLsHCiD8VHJCKyGciPrGyDe",
+      "simulation_matches_execution": true
+    }
+  ]
+}

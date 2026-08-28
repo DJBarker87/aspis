@@ -1,0 +1,11 @@
+/home/dombarker/project-offloads/pool-copy-lane-aeneas-20260826-work/aeneas-verif/pool-v1-copy-lane-boolean-source-20260826-splitfix/proof/PoolV1CopyLaneBooleanRoot.lean:84:29: warning: This simp argument is unused:
+  successfulOption
+
+Hint: Omit it from the simp argument list.
+  simp_all ̵[̵s̵u̵c̵c̵e̵s̵s̵f̵u̵l̵O̵p̵t̵i̵o̵n̵]̵
+
+Note: This linter can be disabled with `set_option linter.unusedSimpArgs false`
+'AspisPoolV1CopyLaneBooleanRoot.generatedEvaluate_success_iff' depends on axioms: [propext,
+ Classical.choice,
+ Quot.sound]
+native Pool V1 Boolean Copy-lane focused Lean target 'root': PASS

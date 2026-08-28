@@ -14,6 +14,23 @@ pub mod historical_anchor;
 pub mod incremental_merkle;
 pub mod nullifier_marker;
 #[cfg(not(target_os = "solana"))]
+pub mod pair_constraint_residuals;
+pub mod pair_forest_accounts;
+#[cfg(not(target_os = "solana"))]
+pub mod pair_forest_constraint_residuals;
+pub mod pair_forest_copy_terminal;
+#[cfg(not(target_os = "solana"))]
+pub mod pair_forest_hiding;
+#[cfg(not(target_os = "solana"))]
+pub mod pair_forest_semantic_oracle;
+pub mod pair_forest_semantic_terminal;
+pub mod pair_forest_terminal;
+#[cfg(not(target_os = "solana"))]
+pub mod pair_forest_trace;
+pub mod pair_terminal;
+#[cfg(not(target_os = "solana"))]
+pub mod pair_trace;
+#[cfg(not(target_os = "solana"))]
 pub mod pair_tree_hiding;
 pub mod pair_tree_profile;
 #[cfg(not(target_os = "solana"))]
@@ -30,6 +47,7 @@ pub mod payment_semantic_terminal;
 pub mod payment_trace;
 pub mod root_history;
 pub mod tag73_native_profile;
+pub mod tag73_pair_forest_profile;
 pub mod verifier_dispatch;
 pub mod verifier_registry;
 
@@ -102,6 +120,137 @@ pub use nullifier_marker::{
     POOL_V1_NULLIFIER_MARKER_SEED, POOL_V1_NULLIFIER_MARKER_VERSION,
 };
 #[cfg(not(target_os = "solana"))]
+pub use pair_constraint_residuals::{
+    evaluate_pool_v1_pair_private_transfer_constraint_residuals_v1,
+    evaluate_pool_v1_pair_withdrawal_constraint_residuals_v1, PoolV1PairConstraintResidualErrorV1,
+    PoolV1PairConstraintResidualsV1, PoolV1PairResidualClassV1,
+    POOL_V1_PAIR_AFFINE_INTRINSIC_DEGREE, POOL_V1_PAIR_APPEND_PATH_RESIDUAL_COUNT,
+    POOL_V1_PAIR_BOOLEAN_INTRINSIC_DEGREE, POOL_V1_PAIR_CANDIDATE_FRONTIER_RESIDUAL_COUNT,
+    POOL_V1_PAIR_CANDIDATE_ROOT_RESIDUAL_COUNT, POOL_V1_PAIR_COPY_ALIAS_RESIDUAL_COUNT,
+    POOL_V1_PAIR_INDEX_SEQUENCE_RESIDUAL_COUNT, POOL_V1_PAIR_MAX_INTRINSIC_DEGREE,
+    POOL_V1_PAIR_OCCUPANCY_RESIDUAL_COUNT, POOL_V1_PAIR_PATH_ORDERING_RESIDUAL_COUNT,
+    POOL_V1_PAIR_POSEIDON_RESIDUAL_COUNT, POOL_V1_PAIR_POSEIDON_SBOX_DEGREE,
+    POOL_V1_PAIR_SELECTED_ORACLE_INDIVIDUAL_DEGREE, POOL_V1_PAIR_TRANSFER_PUBLIC_RESIDUAL_COUNT,
+    POOL_V1_PAIR_TRANSFER_SCHEDULE_RESIDUAL_COUNT, POOL_V1_PAIR_TRANSFER_TOTAL_RESIDUAL_COUNT,
+    POOL_V1_PAIR_TWO_ROUND_INTRINSIC_DEGREE, POOL_V1_PAIR_VALUE_BOOLEAN_RESIDUAL_COUNT,
+    POOL_V1_PAIR_WITHDRAWAL_PUBLIC_RESIDUAL_COUNT, POOL_V1_PAIR_WITHDRAWAL_SCHEDULE_RESIDUAL_COUNT,
+    POOL_V1_PAIR_WITHDRAWAL_TOTAL_RESIDUAL_COUNT, POOL_V1_PAIR_ZEROCHECK_INDIVIDUAL_DEGREE,
+    POOL_V1_PAIR_ZERO_PADDING_RESIDUAL_COUNT,
+};
+pub use pair_forest_accounts::{
+    decode_pool_v1_pair_forest_checkpoint_v1, decode_pool_v1_pair_forest_lane_state_v1,
+    decode_pool_v1_pair_forest_master_v1, encode_pool_v1_pair_forest_checkpoint_v1,
+    encode_pool_v1_pair_forest_lane_state_v1, encode_pool_v1_pair_forest_master_v1,
+    plan_pool_v1_pair_forest_checkpoint_v1, pool_v1_pair_forest_deposit_lane_v1,
+    pool_v1_pair_forest_output_lane_v1, PoolV1PairForestAccountErrorV1,
+    PoolV1PairForestCheckpointPlanV1, PoolV1PairForestCheckpointV1, PoolV1PairForestLaneStateV1,
+    PoolV1PairForestMasterV1, POOL_V1_PAIR_FOREST_ACCOUNT_FORMAT_BINDING,
+    POOL_V1_PAIR_FOREST_ALL_LANES_MASK, POOL_V1_PAIR_FOREST_CHECKPOINT_ACCOUNT_BYTES,
+    POOL_V1_PAIR_FOREST_CHECKPOINT_MAGIC, POOL_V1_PAIR_FOREST_CHECKPOINT_VERSION,
+    POOL_V1_PAIR_FOREST_LANE_ACCOUNT_BYTES, POOL_V1_PAIR_FOREST_LANE_COUNT,
+    POOL_V1_PAIR_FOREST_LANE_HEADER_BYTES, POOL_V1_PAIR_FOREST_LANE_MAGIC,
+    POOL_V1_PAIR_FOREST_LANE_VERSION, POOL_V1_PAIR_FOREST_MASTER_ACCOUNT_BYTES,
+    POOL_V1_PAIR_FOREST_MASTER_MAGIC, POOL_V1_PAIR_FOREST_MASTER_VERSION,
+};
+pub use pair_forest_copy_terminal::{
+    evaluate_pool_v1_pair_forest_copy_terminal_compiled_v1,
+    pool_v1_pair_forest_copy_active_at_point_compiled_v1,
+    pool_v1_pair_forest_copy_active_row_masks_compiled_v1,
+    pool_v1_pair_forest_copy_lane_boolean_extraction_v1, PoolV1PairForestCompiledCopyTerminalV1,
+    PoolV1PairForestCompiledVariantV1,
+    PINNED_POOL_V1_PAIR_FOREST_COPY_TERMINAL_ACTIVE_ROWS_FINGERPRINT_V1,
+    POOL_V1_PAIR_FOREST_COPY_TERMINAL_COLUMNS_V1,
+    POOL_V1_PAIR_FOREST_COPY_TERMINAL_FIXED_HEAP_ALLOCATIONS_V1,
+    POOL_V1_PAIR_FOREST_COPY_TERMINAL_LINKS_V1, POOL_V1_PAIR_FOREST_COPY_TERMINAL_PATTERNS_V1,
+    POOL_V1_PAIR_FOREST_COPY_TERMINAL_ROWS_V1,
+    POOL_V1_PAIR_FOREST_COPY_TERMINAL_SELECTOR_HEAP_BYTES_V1,
+};
+#[cfg(not(target_os = "solana"))]
+pub use pair_forest_hiding::{
+    build_pool_v1_pair_forest_copy_row_schedule_v1, pool_v1_pair_forest_copy_active_row_masks_v1,
+    pool_v1_pair_forest_copy_active_rows_fingerprint_v1, pool_v1_pair_forest_copy_active_rows_v1,
+    pool_v1_pair_forest_copy_inactive_row_masks_v1,
+    pool_v1_pair_forest_copy_row_schedule_fingerprint_v1,
+    pool_v1_pair_forest_membership_hash_block_v1, pool_v1_pair_forest_path_base_row_v1,
+    pool_v1_pair_forest_relation_free_mask_cells_v1,
+    pool_v1_pair_forest_relation_free_mask_fingerprint_v1,
+    PINNED_POOL_V1_PAIR_FOREST_COPY_ACTIVE_ROWS_FINGERPRINT_V1,
+    PINNED_POOL_V1_PAIR_FOREST_COPY_ROW_SCHEDULE_FINGERPRINT_V1,
+    PINNED_POOL_V1_PAIR_FOREST_RELATION_FREE_MASK_FINGERPRINT_V1,
+    POOL_V1_PAIR_FOREST_COPY_ACTIVE_ROWS_V1, POOL_V1_PAIR_FOREST_COPY_ROW_LINKS_V1,
+    POOL_V1_PAIR_FOREST_FIRST_SUPER_ROOT_BLOCK_V1, POOL_V1_PAIR_FOREST_LANES_V1,
+    POOL_V1_PAIR_FOREST_POSEIDON_BLOCKS_V1, POOL_V1_PAIR_FOREST_PRIVATE_DIRECTIONS_V1,
+    POOL_V1_PAIR_FOREST_RELATION_FREE_MASK_CELLS_V1, POOL_V1_PAIR_FOREST_SUPER_ROOT_DEPTH_V1,
+};
+#[cfg(not(target_os = "solana"))]
+pub use pair_forest_semantic_oracle::{
+    build_pool_v1_pair_forest_copy_helper_v1, evaluate_pool_v1_pair_forest_copy_terminal_v1,
+    evaluate_pool_v1_pair_forest_path_terminal_v1, pool_v1_pair_forest_copy_active_at_point_v1,
+    pool_v1_pair_forest_copy_helper_sum_v1, PoolV1PairForestCopyTerminalV1,
+    PoolV1PairForestPathTerminalV1,
+};
+pub use pair_forest_semantic_terminal::{
+    evaluate_pool_v1_pair_forest_private_transfer_selected_constraint_composition_compiled_v1,
+    evaluate_pool_v1_pair_forest_private_transfer_selected_masked_terminal_compiled_tag73_v1,
+    evaluate_pool_v1_pair_forest_private_transfer_selected_unmasked_terminal_compiled_tag73_v1,
+    evaluate_pool_v1_pair_forest_withdrawal_selected_constraint_composition_compiled_v1,
+    evaluate_pool_v1_pair_forest_withdrawal_selected_masked_terminal_compiled_tag73_v1,
+    evaluate_pool_v1_pair_forest_withdrawal_selected_unmasked_terminal_compiled_tag73_v1,
+    PoolV1PairForestSemanticTerminalErrorV1, POOL_V1_PAIR_FOREST_COPY_LANES_V1,
+    POOL_V1_PAIR_FOREST_MASKED_TERMINAL_DEGREE_V1, POOL_V1_PAIR_FOREST_PACKED_SEMANTIC_LANES_V1,
+    POOL_V1_PAIR_FOREST_POSEIDON_LANES_V1, POOL_V1_PAIR_FOREST_SELECTED_TERMINAL_CLAIMS_V1,
+    POOL_V1_PAIR_FOREST_SELECTED_TERMINAL_COLUMNS_V1,
+    POOL_V1_PAIR_FOREST_SEMANTIC_ORACLE_INDIVIDUAL_DEGREE_V1,
+    POOL_V1_PAIR_FOREST_SEMANTIC_ZEROCHECK_INDIVIDUAL_DEGREE_V1,
+    POOL_V1_PAIR_FOREST_SOURCE_SEMANTIC_LANES_V1, POOL_V1_PAIR_FOREST_TERMINAL_C1_COLUMNS_V1,
+    POOL_V1_PAIR_FOREST_TERMINAL_FIXED_HEAP_ALLOCATIONS_V1, POOL_V1_PAIR_FOREST_TERMINAL_POINTS_V1,
+    POOL_V1_PAIR_FOREST_TERMINAL_ROWS_V1, POOL_V1_PAIR_FOREST_TERMINAL_SELECTOR_HEAP_BYTES_V1,
+    POOL_V1_PAIR_FOREST_THETA_COLLISION_DEGREE_V1, POOL_V1_PAIR_FOREST_THETA_LANES_V1,
+};
+pub use pair_forest_terminal::{
+    decode_pool_v1_pair_forest_terminal_request_v1, decode_pool_v1_pair_forest_terminal_result_v1,
+    decode_pool_v1_pair_forest_terminal_statement_v1,
+    encode_pool_v1_pair_forest_terminal_request_v1, encode_pool_v1_pair_forest_terminal_result_v1,
+    encode_pool_v1_pair_forest_terminal_statement_v1,
+    reconstruct_pool_v1_pair_forest_terminal_statement_v1,
+    validate_pool_v1_pair_forest_terminal_result_against_statement_v1,
+    validate_pool_v1_pair_forest_terminal_statement_v1, PoolV1PairForestTerminalAccountsV1,
+    PoolV1PairForestTerminalCommonV1, PoolV1PairForestTerminalFormatErrorV1,
+    PoolV1PairForestTerminalPaymentV1, PoolV1PairForestTerminalRequestV1,
+    PoolV1PairForestTerminalResultV1, PoolV1PairForestTerminalStatementV1,
+    POOL_V1_PAIR_FOREST_TERMINAL_REQUEST_BYTES, POOL_V1_PAIR_FOREST_TERMINAL_REQUEST_MAGIC,
+    POOL_V1_PAIR_FOREST_TERMINAL_RESULT_BYTES, POOL_V1_PAIR_FOREST_TERMINAL_RESULT_MAGIC,
+    POOL_V1_PAIR_FOREST_TERMINAL_STATEMENT_BYTES, POOL_V1_PAIR_FOREST_TERMINAL_STATEMENT_MAGIC,
+    POOL_V1_PAIR_FOREST_TERMINAL_VERSION,
+};
+#[cfg(not(target_os = "solana"))]
+pub use pair_forest_terminal::{
+    verify_pool_v1_pair_forest_terminal_inactive_v1, PoolV1PairForestTerminalHostErrorV1,
+};
+#[cfg(not(target_os = "solana"))]
+pub use pair_forest_trace::{
+    compile_pool_v1_pair_forest_private_transfer_merged_c1_v1,
+    compile_pool_v1_pair_forest_withdrawal_merged_c1_v1, merge_pool_v1_pair_forest_trace_banks_v1,
+    PoolV1PairForestInputNoteWitnessV1, PoolV1PairForestMergedC1CompilationV1,
+    PoolV1PairForestPrivateTransferWitnessV1, PoolV1PairForestTraceV1,
+    PoolV1PairForestWithdrawalWitnessV1,
+};
+pub use pair_terminal::{
+    decode_pool_v1_pair_afterstate_verifier_request_v1, decode_pool_v1_pair_verified_afterstate_v1,
+    decode_pool_v1_pair_verifier_request_v1, decode_pool_v1_pair_verifier_result_v1,
+    encode_pool_v1_pair_afterstate_verifier_request_v1, encode_pool_v1_pair_verified_afterstate_v1,
+    encode_pool_v1_pair_verifier_request_v1, encode_pool_v1_pair_verifier_result_v1,
+    pool_v1_pair_statement_digest_v1, validate_pool_v1_pair_verifier_binding_v1,
+    PoolV1PairAfterstateVerifierRequestV1, PoolV1PairVerifiedAfterstateV1,
+    PoolV1PairVerifierBindingV1, PoolV1PairVerifierRequestV1, PoolV1PairVerifierResultV1,
+    PoolV1PairVerifierTransportErrorV1, POOL_V1_PAIR_AFTERSTATE_VERIFIER_REQUEST_MAGIC,
+    POOL_V1_PAIR_STATEMENT_BINDING_DOMAIN, POOL_V1_PAIR_VERIFIED_AFTERSTATE_BYTES,
+    POOL_V1_PAIR_VERIFIED_AFTERSTATE_MAGIC, POOL_V1_PAIR_VERIFIED_AFTERSTATE_PAYLOAD_BYTES,
+    POOL_V1_PAIR_VERIFIER_REQUEST_HEADER_BYTES, POOL_V1_PAIR_VERIFIER_REQUEST_MAGIC,
+    POOL_V1_PAIR_VERIFIER_RESULT_BYTES, POOL_V1_PAIR_VERIFIER_RESULT_MAGIC,
+    POOL_V1_PAIR_VERIFIER_SUCCESS_CODE, POOL_V1_PAIR_VERIFIER_TRANSPORT_VERSION,
+};
+#[cfg(not(target_os = "solana"))]
 pub use pair_tree_hiding::{
     build_pool_v1_pair_copy_row_schedule_v1, pool_v1_pair_aux_cell_is_relation_used_v1,
     pool_v1_pair_copy_active_row_masks_v1, pool_v1_pair_copy_active_rows_fingerprint_v1,
@@ -116,15 +265,20 @@ pub use pair_tree_hiding::{
     POOL_V1_PAIR_RELATION_FREE_PADDING_LOCAL_ROW_START_V1,
 };
 pub use pair_tree_profile::{
-    decode_pool_v1_pair_live_snapshot_v1, encode_pool_v1_pair_live_snapshot_v1,
+    absorb_pool_v1_pair_public_statement_before_c1_root_v1,
+    decode_pool_v1_pair_late_public_statement_v1, decode_pool_v1_pair_live_snapshot_v1,
+    encode_pool_v1_pair_late_public_statement_v1, encode_pool_v1_pair_live_snapshot_v1,
     pool_v1_pair_path_base_row_v1, pool_v1_pair_poseidon_block_role_v1,
-    PoolV1PairHistoricalMembershipAnchorV1, PoolV1PairLeafErrorV1, PoolV1PairLeafWitnessV1,
+    PoolV1PairHistoricalMembershipAnchorV1, PoolV1PairLatePublicStatementErrorV1,
+    PoolV1PairLatePublicStatementV1, PoolV1PairLeafErrorV1, PoolV1PairLeafWitnessV1,
     PoolV1PairLiveSnapshotErrorV1, PoolV1PairLiveSnapshotV1, PoolV1PairPoseidonBlockRoleV1,
     PoolV1PairTranscriptStepV1, POOL_V1_PAIR_ALLOCATED_BLOCKS, POOL_V1_PAIR_ALLOCATED_ROWS,
     POOL_V1_PAIR_CAPACITY, POOL_V1_PAIR_INPUT_OCCUPANCY_AUX_ROW,
     POOL_V1_PAIR_INPUT_SELECTED_SIDE_COLUMN, POOL_V1_PAIR_LATE_APPEND_POSEIDON_BLOCKS,
-    POOL_V1_PAIR_LIVE_SNAPSHOT_BYTES, POOL_V1_PAIR_LIVE_SNAPSHOT_MAGIC,
-    POOL_V1_PAIR_LIVE_SNAPSHOT_TRANSCRIPT_DOMAIN, POOL_V1_PAIR_LIVE_SNAPSHOT_VERSION,
+    POOL_V1_PAIR_LATE_PUBLIC_STATEMENT_BYTES, POOL_V1_PAIR_LATE_PUBLIC_STATEMENT_HEADER_BYTES,
+    POOL_V1_PAIR_LATE_PUBLIC_STATEMENT_ITEM_COUNT, POOL_V1_PAIR_LATE_PUBLIC_STATEMENT_MAGIC,
+    POOL_V1_PAIR_LATE_PUBLIC_STATEMENT_VERSION, POOL_V1_PAIR_LIVE_SNAPSHOT_BYTES,
+    POOL_V1_PAIR_LIVE_SNAPSHOT_MAGIC, POOL_V1_PAIR_LIVE_SNAPSHOT_VERSION,
     POOL_V1_PAIR_MAX_DEPLOYED_DEGREE, POOL_V1_PAIR_NEW_RESIDUAL_MAX_INTRINSIC_DEGREE,
     POOL_V1_PAIR_NOTE_DEPTH, POOL_V1_PAIR_NOTE_SLOT_CAPACITY, POOL_V1_PAIR_OCCUPANCY_BIT_COLUMN,
     POOL_V1_PAIR_OCCUPANCY_COMMITMENT_COLUMN_END, POOL_V1_PAIR_OCCUPANCY_COMMITMENT_COLUMN_START,
@@ -132,12 +286,12 @@ pub use pair_tree_profile::{
     POOL_V1_PAIR_PATH_AUX_BLOCKS, POOL_V1_PAIR_PATH_AUX_ROW_END, POOL_V1_PAIR_PATH_AUX_ROW_START,
     POOL_V1_PAIR_PATH_LOCAL_ROW_OFFSET, POOL_V1_PAIR_POSEIDON_BLOCKS,
     POOL_V1_PAIR_POSEIDON_INTRINSIC_DEGREE, POOL_V1_PAIR_POSEIDON_ROW_END,
-    POOL_V1_PAIR_PRIVATE_DIRECTIONS, POOL_V1_PAIR_SEMANTIC_ROW_END,
-    POOL_V1_PAIR_STABLE_POSEIDON_BLOCKS, POOL_V1_PAIR_STAGED_TRANSCRIPT_PREFIX_V1,
-    POOL_V1_PAIR_TRACE_BLOCK_ROWS, POOL_V1_PAIR_TRACE_COLUMNS, POOL_V1_PAIR_TRACE_ROWS,
-    POOL_V1_PAIR_TREE_DEPTH, POOL_V1_PAIR_TREE_FORMAT_BINDING,
-    POOL_V1_PAIR_TREE_STORAGE_FORMAT_VERSION, POOL_V1_PAIR_UNALLOCATED_SEMANTIC_ROWS,
-    POOL_V1_PAIR_VALUE_AUX_ROW_START,
+    POOL_V1_PAIR_PRIVATE_DIRECTIONS, POOL_V1_PAIR_PUBLIC_STATEMENT_TRANSCRIPT_DOMAIN,
+    POOL_V1_PAIR_SEMANTIC_ROW_END, POOL_V1_PAIR_STABLE_POSEIDON_BLOCKS,
+    POOL_V1_PAIR_STAGED_TRANSCRIPT_PREFIX_V1, POOL_V1_PAIR_TRACE_BLOCK_ROWS,
+    POOL_V1_PAIR_TRACE_COLUMNS, POOL_V1_PAIR_TRACE_ROWS, POOL_V1_PAIR_TREE_DEPTH,
+    POOL_V1_PAIR_TREE_FORMAT_BINDING, POOL_V1_PAIR_TREE_STORAGE_FORMAT_VERSION,
+    POOL_V1_PAIR_UNALLOCATED_SEMANTIC_ROWS, POOL_V1_PAIR_VALUE_AUX_ROW_START,
 };
 #[cfg(not(target_os = "solana"))]
 pub use payment_constraint_residuals::{
@@ -222,6 +376,12 @@ pub use tag73_native_profile::{
     V7_POOL_NATIVE_TAG73_PROFILE_BINDING, V7_POOL_NATIVE_TAG73_PROFILE_BINDING_PREIMAGE,
     V7_POOL_NATIVE_TAG73_RELEASE_BINDING, V7_POOL_NATIVE_TAG73_RELEASE_BINDING_PREIMAGE,
     V7_POOL_NATIVE_TAG73_REQUEST_BYTES,
+};
+pub use tag73_pair_forest_profile::{
+    v7_pool_pair_forest_tag73_statement_digest_v1, V7_POOL_PAIR_FOREST_TAG73_PROFILE_BINDING,
+    V7_POOL_PAIR_FOREST_TAG73_PROFILE_BINDING_PREIMAGE, V7_POOL_PAIR_FOREST_TAG73_RELEASE_BINDING,
+    V7_POOL_PAIR_FOREST_TAG73_RELEASE_BINDING_PREIMAGE,
+    V7_POOL_PAIR_FOREST_TAG73_STATEMENT_DIGEST_DOMAIN,
 };
 pub use verifier_dispatch::{
     decode_verifier_dispatch_request_v1, decode_verifier_dispatch_result_v1,

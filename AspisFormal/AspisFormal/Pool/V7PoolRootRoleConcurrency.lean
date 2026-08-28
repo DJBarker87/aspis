@@ -369,6 +369,26 @@ theorem exact_stageB_lane_expansion :
       stagedPoolStageBQM31Lanes = 7 := by
   decide
 
+/-! The current H1/G/D helpers and the late append values coexist on the late
+rows.  Once that source-level density premise is established, this dimension
+count rules out a layout-only packing into four total QM31 lanes: those lanes
+carry sixteen M31 coordinates, while the simultaneous values require twenty
+eight.  It does not rule out a new masking protocol with a separately proved
+rank theorem. -/
+
+def existingHelperM31Coordinates : Nat :=
+  existingStageBHelperQM31Lanes * m31CoordinatesPerQM31
+def simultaneousLateRowM31Coordinates : Nat :=
+  existingHelperM31Coordinates + lateAppendM31Columns
+def fourQM31LaneM31Capacity : Nat := 4 * m31CoordinatesPerQM31
+
+theorem exact_four_lane_layout_capacity_shortfall :
+    existingHelperM31Coordinates = 12 ∧
+      simultaneousLateRowM31Coordinates = 28 ∧
+      fourQM31LaneM31Capacity = 16 ∧
+      fourQM31LaneM31Capacity < simultaneousLateRowM31Coordinates := by
+  decide
+
 /-! ## Rejected execution-time append profile
 
 This smaller-wire profile proves the stable pair relation only and lets the
@@ -486,6 +506,64 @@ theorem accepted_settlement_returns_verified_afterstate
       live proof = some proof.tail.result := by
   simp [settle, accepted]
 
+def PairAppendIndicesValid
+    {Root Frontier : Type}
+    (source result : LiveAppendState Root Frontier) : Prop :=
+  result.sequence = source.sequence + 1 ∧
+    result.nextPairIndex = source.nextPairIndex + 1
+
+theorem accepted_proof_carried_afterstate_increments_once
+    {Root Frontier Nullifier K StageARoot StageBRoot : Type}
+    [DecidableEq Root] [DecidableEq Frontier]
+    (retained : HistoricalMembershipAnchor Root → Prop)
+    (statement : StableSpendStatement Root Nullifier K)
+    (stableRelation : StableSpendStatement Root Nullifier K → Prop)
+    (transitionValid : PairLeaf K → LiveAppendState Root Frontier →
+      LiveAppendState Root Frontier → Prop)
+    (continuationValid :
+      PreparedStageA (StageARoot := StageARoot) statement stableRelation →
+      LateAppendTail statement.outputPair transitionValid → StageBRoot → Prop)
+    (live : LiveAppendState Root Frontier)
+    (proof : StagedLateBoundSpendProof statement stableRelation transitionValid
+      continuationValid)
+    (transitionIndices : ∀ output source result,
+      transitionValid output source result →
+        PairAppendIndicesValid source result)
+    (accepted : Accepts retained statement stableRelation transitionValid
+      continuationValid live proof) :
+    proof.tail.result.sequence = live.sequence + 1 ∧
+      proof.tail.result.nextPairIndex = live.nextPairIndex + 1 := by
+  have indices := transitionIndices statement.outputPair proof.tail.source
+    proof.tail.result proof.tail.valid
+  simpa [PairAppendIndicesValid, accepted.2] using indices
+
+theorem accepted_afterstate_preserves_sequence_index_alignment
+    {Root Frontier Nullifier K StageARoot StageBRoot : Type}
+    [DecidableEq Root] [DecidableEq Frontier]
+    (retained : HistoricalMembershipAnchor Root → Prop)
+    (statement : StableSpendStatement Root Nullifier K)
+    (stableRelation : StableSpendStatement Root Nullifier K → Prop)
+    (transitionValid : PairLeaf K → LiveAppendState Root Frontier →
+      LiveAppendState Root Frontier → Prop)
+    (continuationValid :
+      PreparedStageA (StageARoot := StageARoot) statement stableRelation →
+      LateAppendTail statement.outputPair transitionValid → StageBRoot → Prop)
+    (live : LiveAppendState Root Frontier)
+    (proof : StagedLateBoundSpendProof statement stableRelation transitionValid
+      continuationValid)
+    (transitionIndices : ∀ output source result,
+      transitionValid output source result →
+        PairAppendIndicesValid source result)
+    (aligned : live.sequence = live.nextPairIndex)
+    (accepted : Accepts retained statement stableRelation transitionValid
+      continuationValid live proof) :
+    proof.tail.result.sequence = proof.tail.result.nextPairIndex := by
+  obtain ⟨sequence, index⟩ :=
+    accepted_proof_carried_afterstate_increments_once retained statement
+      stableRelation transitionValid continuationValid live proof
+      transitionIndices accepted
+  omega
+
 def verifierResultEnvelopeBytes : Nat := 8
 def pairIndexBytes : Nat := 8
 def fullDigestBytes : Nat := 32
@@ -535,11 +613,55 @@ def c2BytesPerQuery (columns : Nat) : Nat :=
 def queryBytes (c2Columns : Nat) : Nat :=
   c1BytesPerQuery + c2BytesPerQuery c2Columns + privateSaltBytes
 
-/-- Frozen Tag-73 has 641 fixed QM31 values.  Four new point-claim columns at
-three points add exactly twelve values. -/
+/-- Frozen Tag-73 has 641 fixed QM31 values. The four late QM31 wire lanes are
+row-wise tower packs of sixteen logical M31 trace columns. At a general QM31
+point one packed polynomial evaluation does not expose its four component
+polynomial evaluations, so the semantic terminal carries all sixteen logical
+point claims at each of its three points. -/
 def frozenFixedQM31Values : Nat := 641
+def lateLogicalM31Columns : Nat :=
+  lateAppendQM31Lanes * m31CoordinatesPerQM31
+def stagedLogicalGammaColumns : Nat :=
+  frozenC1Columns + frozenC2Columns + lateLogicalM31Columns
 def stagedFixedQM31Values : Nat :=
-  frozenFixedQM31Values + pointClaimRows * lateAppendQM31Lanes
+  frozenFixedQM31Values + pointClaimRows * lateLogicalM31Columns
+
+/- A packed row is a lossless four-coordinate representation at a Boolean
+row. It does not follow that one packed MLE value at an extension-field point
+determines the four component-polynomial values there. The two-row collision
+below is the smallest exact obstruction: `(row0,row1) = (z,z-1)` and the zero
+table have the same packed claim at `z`, although row zero is nonzero. -/
+
+section PackedPointClaimObstruction
+
+variable {F K : Type*} [Field F] [Field K] [Algebra F K]
+
+open Module
+
+noncomputable def packTower (basis : Basis (Fin 4) F K)
+    (coordinates : Fin 4 → F) : K :=
+  basis.equivFun.symm coordinates
+
+theorem packTower_surjective (basis : Basis (Fin 4) F K) :
+    Function.Surjective (packTower basis) := by
+  intro value
+  exact ⟨basis.equivFun value, by simp [packTower]⟩
+
+def packedTwoRowClaim (row0 row1 z : K) : K :=
+  (1 - z) * row0 + z * row1
+
+theorem one_packed_off_domain_claim_does_not_determine_components
+    (z : K) (zNeZero : z ≠ 0) :
+    let row0 := z
+    let row1 := z - 1
+    packedTwoRowClaim row0 row1 z = packedTwoRowClaim 0 0 z ∧
+      row0 ≠ 0 := by
+  dsimp [packedTwoRowClaim]
+  constructor
+  · ring
+  · exact zNeZero
+
+end PackedPointClaimObstruction
 
 def fixedFieldBytes (values : Nat) : Nat :=
   packedM31Bytes (m31LimbsPerQM31 * values)
@@ -561,6 +683,13 @@ def frozenMaximumBodyBytes : Nat :=
 def stagedMaximumBodyBytes : Nat :=
   maximumBodyBytes stagedFixedQM31Values stagedC2Columns
 
+def hypotheticalFusedC2Columns : Nat := 4
+def hypotheticalFusedFixedQM31Values : Nat :=
+  frozenFixedQM31Values +
+    pointClaimRows * (hypotheticalFusedC2Columns - frozenC2Columns)
+def hypotheticalFusedMaximumBodyBytes : Nat :=
+  maximumBodyBytes hypotheticalFusedFixedQM31Values hypotheticalFusedC2Columns
+
 def stablePairMaximumBodyBytes : Nat :=
   maximumBodyBytes frozenFixedQM31Values frozenC2Columns
 
@@ -578,15 +707,17 @@ theorem exact_staged_wire_cost_if_four_late_lanes_authenticated :
       c2BytesPerQuery stagedC2Columns = 434 ∧
       queryBytes frozenC2Columns = 621 ∧
       queryBytes stagedC2Columns = 869 ∧
-      stagedFixedQM31Values = 653 ∧
+      lateLogicalM31Columns = 16 ∧
+      stagedLogicalGammaColumns = 45 ∧
+      stagedFixedQM31Values = 689 ∧
       fixedFieldBytes frozenFixedQM31Values = 9936 ∧
-      fixedFieldBytes stagedFixedQM31Values = 10122 ∧
+      fixedFieldBytes stagedFixedQM31Values = 10680 ∧
       bodyWithoutFrontiers frozenFixedQM31Values frozenC2Columns = 19948 ∧
-      bodyWithoutFrontiers stagedFixedQM31Values stagedC2Columns = 24102 ∧
+      bodyWithoutFrontiers stagedFixedQM31Values stagedC2Columns = 24660 ∧
       bothFrontierBytes = 10556 ∧
       frozenMaximumBodyBytes = 30504 ∧
-      stagedMaximumBodyBytes = 34658 ∧
-      stagedMaximumBodyBytes - frozenMaximumBodyBytes = 4154 ∧
+      stagedMaximumBodyBytes = 35216 ∧
+      stagedMaximumBodyBytes - frozenMaximumBodyBytes = 4712 ∧
       uploadChunks frozenMaximumBodyBytes = 32 ∧
       uploadChunks stagedMaximumBodyBytes = 37 := by
   decide
@@ -603,6 +734,41 @@ theorem exact_staged_c2_leaf_sha_block_increase :
       queryCount *
           (sha256LeafBlocks (c2BytesPerQuery stagedC2Columns) -
             sha256LeafBlocks (c2BytesPerQuery frozenC2Columns)) = 64 := by
+  decide
+
+/-! ## Measured one-terminal CU budget screen
+
+These constants deliberately retain the two measurements as independent
+transactions.  Their sum is a conservative engineering screen, not a theorem
+that the real verifier and Pool suffix compose additively: the final integrated
+transaction will share wrapper work and will use the larger staged proof.
+-/
+
+def strictTerminalTransactionCULimit : Nat := 1_400_000
+def releaseTerminalTransactionCUTarget : Nat := 1_350_000
+def optimizedDirectVerifierTransactionCU : Nat := 1_255_491
+def proofCarriedSamePageTransportTransactionCU : Nat := 81_922
+
+def independentOneTerminalBudgetScreenCU : Nat :=
+  optimizedDirectVerifierTransactionCU +
+    proofCarriedSamePageTransportTransactionCU
+
+theorem exact_independent_one_terminal_budget_screen :
+    independentOneTerminalBudgetScreenCU = 1_337_413 ∧
+      strictTerminalTransactionCULimit - independentOneTerminalBudgetScreenCU = 62_587 ∧
+      releaseTerminalTransactionCUTarget - independentOneTerminalBudgetScreenCU = 12_587 := by
+  decide
+
+/-- Even if a new masking theorem made four total C2 lanes sound, the wire
+would still grow: one additional authenticated lane changes all q16 openings
+and adds its claims at all three points. -/
+theorem exact_hypothetical_four_total_lane_wire_cost :
+    hypotheticalFusedFixedQM31Values = 644 ∧
+      c2BytesPerQuery hypotheticalFusedC2Columns = 248 ∧
+      queryBytes hypotheticalFusedC2Columns = 683 ∧
+      fixedFieldBytes hypotheticalFusedFixedQM31Values = 9982 ∧
+      hypotheticalFusedMaximumBodyBytes = 31542 ∧
+      hypotheticalFusedMaximumBodyBytes - frozenMaximumBodyBytes = 1038 := by
   decide
 
 /-! ## Exact live-dependent suffix
@@ -682,6 +848,7 @@ theorem exact_semantic_row_owner_cardinalities :
 #print axioms frozen_tag73_prefix_has_no_late_snapshot
 #print axioms staged_pool_prefix_is_not_the_frozen_tag73_prefix
 #print axioms exact_stageB_lane_expansion
+#print axioms exact_four_lane_layout_capacity_shortfall
 #print axioms exact_staged_wire_cost_if_four_late_lanes_authenticated
 #print axioms exact_stable_pair_row_screen
 #print axioms stable_pair_prefix_has_no_live_append_snapshot
@@ -689,9 +856,15 @@ theorem exact_semantic_row_owner_cardinalities :
 #print axioms stable_pair_proof_acceptance_has_no_live_state_dependency
 #print axioms accepted_stable_pair_settlement_uses_execution_state
 #print axioms accepted_settlement_returns_verified_afterstate
+#print axioms accepted_proof_carried_afterstate_increments_once
+#print axioms accepted_afterstate_preserves_sequence_index_alignment
 #print axioms exact_proof_carried_afterstate_wire
 #print axioms exact_stable_pair_wire_screen_keeps_frozen_body_size
 #print axioms exact_staged_c2_leaf_sha_block_increase
+#print axioms packTower_surjective
+#print axioms one_packed_off_domain_claim_does_not_determine_components
+#print axioms exact_independent_one_terminal_budget_screen
+#print axioms exact_hypothetical_four_total_lane_wire_cost
 #print axioms exact_live_dependent_suffix_has_fifteen_steps
 #print axioms every_positioned_work_stage_is_live_dependent
 #print axioms exact_semantic_row_owner_cardinalities

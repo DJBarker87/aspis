@@ -1,0 +1,396 @@
+{
+  "artifacts": {
+    "pool": {
+      "bytes": 462848,
+      "path": "results/pool-v1-pair-afterstate-litesvm-20260827/artifacts-profiled-withdrawal/aspis_pool.so",
+      "sha256": "7bb438c9038e5c5507b590a8ddd4544bbb841806d5d3596e08f0a853eac43b42"
+    },
+    "proof": {
+      "bytes": 30192,
+      "path": "results/pool-v1-one-terminal-runtime-20260827/native-proof.bin",
+      "sha256": "656f25689041ae7f90c9461f4dbe3336478e01e1970ff00c24d1e7d90ed2e72c"
+    },
+    "verifier_diagnostic": {
+      "bytes": 925944,
+      "path": "results/v7-pool-composed-one-terminal-withdrawal-cu-20260827/artifacts/aspis_verifier.so",
+      "sha256": "8a15a567dde126f2bbe30d4b6e442f965f7082952195a2e0eeff548d6151ed6c"
+    }
+  },
+  "boundaries": [
+    "This transaction executes the preserved honest 30,192-byte native Tag-73 proof before returning ASJA, but that proof does not bind the appended 688 ASJA bytes.",
+    "The preserved proof binds the legacy Pool PDA; the measurement adapter substitutes that one pool field while the outer pair Pool uses its distinct PDA. This is not a sound authorization bridge.",
+    "The preserved proof is a private-transfer proof, not a withdrawal proof. The diagnostic reconstructs its fixed recipient while the outer instruction independently supplies withdrawal amount and destination; neither is authenticated by this proof.",
+    "The proof and fixed ASJA are adjacent in the verifier-owned proof account only for this CU transport diagnostic.",
+    "The pair entrypoint is compiled only with the measurement-only pair-afterstate-evidence feature; the default production entrypoint remains disabled.",
+    "The nullifier marker is an exact pre-created Pool-owned zeroed account; System creation cost is excluded. Custody uses a real legacy SPL Token TransferChecked CPI with pre-created accounts.",
+    "Pool source has no state write before verifier success, and Solana transaction atomicity rolls back the Pool/history/marker if the verifier CPI fails; the prior real-verifier red gate separately captured that exact runtime rollback.",
+    "This is deterministic LiteSVM execution with no network, deploy, or transaction submission."
+  ],
+  "compute_unit_limit": 1400000,
+  "custody": {
+    "amount": 25000,
+    "destination_after": 32000,
+    "destination_before": 7000,
+    "exact_pre_post_balance_delta_checked_by_pool": true,
+    "pda_authority_signed": true,
+    "real_legacy_spl_token_cpi_executed": true,
+    "transfer_checked": true,
+    "vault_after": 975000,
+    "vault_before": 1000000
+  },
+  "execution": {
+    "account_metas_excluding_compute_budget_and_payer": 12,
+    "compute_units": 1352116,
+    "delta_from_naive_sum_cu": 3561,
+    "direct_verifier_baseline_cu": 1254737,
+    "headroom_cu": 47884,
+    "incremental_over_direct_verifier_cu": 97379,
+    "instruction_bytes": 432,
+    "return_bytes": 200,
+    "return_magic": "ASTR",
+    "simulation_equals_execution": true,
+    "transaction_bytes": 1038,
+    "transport_double_suffix_baseline_cu": 93818
+  },
+  "mode": "withdrawal-same-page",
+  "profile_slot": 150,
+  "profiling": {
+    "after_last_marker_to_transaction_end": 463,
+    "before_first_marker_including_transaction_dispatch": 2484,
+    "enabled": true,
+    "marker_calls_are_metered_and_inflate_the_profiled_total": true,
+    "markers": [
+      {
+        "delta_from_previous": null,
+        "label": "pool:handler_entry",
+        "remaining": 1397516
+      },
+      {
+        "delta_from_previous": 7698,
+        "label": "pool:state_and_statement_validated",
+        "remaining": 1389818
+      },
+      {
+        "delta_from_previous": 11663,
+        "label": "pool:layout_validated",
+        "remaining": 1378155
+      },
+      {
+        "delta_from_previous": 38998,
+        "label": "pool:history_validated",
+        "remaining": 1339157
+      },
+      {
+        "delta_from_previous": 5141,
+        "label": "pool:marker_preflight_complete",
+        "remaining": 1334016
+      },
+      {
+        "delta_from_previous": 5808,
+        "label": "pool:custody_plan_complete",
+        "remaining": 1328208
+      },
+      {
+        "delta_from_previous": 255,
+        "label": "pool:verifier_plan_start",
+        "remaining": 1327953
+      },
+      {
+        "delta_from_previous": 10285,
+        "label": "pool:verifier_plan_complete",
+        "remaining": 1317668
+      },
+      {
+        "delta_from_previous": 594,
+        "label": "pool:verifier_cpi_start",
+        "remaining": 1317074
+      },
+      {
+        "delta_from_previous": 1910,
+        "label": "verifier:entry",
+        "remaining": 1315164
+      },
+      {
+        "delta_from_previous": 1802,
+        "label": "verifier:composed-request-validated",
+        "remaining": 1313362
+      },
+      {
+        "delta_from_previous": 17153,
+        "label": "verifier:proof-body-hash",
+        "remaining": 1296209
+      },
+      {
+        "delta_from_previous": 2877,
+        "label": "verifier:native-statement-restored",
+        "remaining": 1293332
+      },
+      {
+        "delta_from_previous": 298,
+        "label": "verifier:wire-parsed",
+        "remaining": 1293034
+      },
+      {
+        "delta_from_previous": 3968,
+        "label": "verifier:inactive-schedule",
+        "remaining": 1289066
+      },
+      {
+        "delta_from_previous": 9575,
+        "label": "verifier:transcript-setup",
+        "remaining": 1279491
+      },
+      {
+        "delta_from_previous": 193735,
+        "label": "verifier:semantic-sumcheck",
+        "remaining": 1085756
+      },
+      {
+        "delta_from_previous": 27039,
+        "label": "verifier:point-claims",
+        "remaining": 1058717
+      },
+      {
+        "delta_from_previous": 276,
+        "label": "verifier:terminal-start",
+        "remaining": 1058441
+      },
+      {
+        "delta_from_previous": 407973,
+        "label": "verifier:terminal-end",
+        "remaining": 650468
+      },
+      {
+        "delta_from_previous": 283,
+        "label": "verifier:relation-start",
+        "remaining": 650185
+      },
+      {
+        "delta_from_previous": 39865,
+        "label": "verifier:relation-prepared-weights",
+        "remaining": 610320
+      },
+      {
+        "delta_from_previous": 12931,
+        "label": "verifier:relation-circle-samples",
+        "remaining": 597389
+      },
+      {
+        "delta_from_previous": 7079,
+        "label": "verifier:relation-fields",
+        "remaining": 590310
+      },
+      {
+        "delta_from_previous": 11712,
+        "label": "verifier:relation-round-zero",
+        "remaining": 578598
+      },
+      {
+        "delta_from_previous": 79883,
+        "label": "verifier:relation-final256",
+        "remaining": 498715
+      },
+      {
+        "delta_from_previous": 13786,
+        "label": "verifier:relation-queries",
+        "remaining": 484929
+      },
+      {
+        "delta_from_previous": 255,
+        "label": "verifier:query-fold-start",
+        "remaining": 484674
+      },
+      {
+        "delta_from_previous": 7660,
+        "label": "verifier:query-coordinates",
+        "remaining": 477014
+      },
+      {
+        "delta_from_previous": 136824,
+        "label": "verifier:query-gamma-combined",
+        "remaining": 340190
+      },
+      {
+        "delta_from_previous": 11024,
+        "label": "verifier:query-leaves-hashed",
+        "remaining": 329166
+      },
+      {
+        "delta_from_previous": 94845,
+        "label": "verifier:query-merkle-authenticated",
+        "remaining": 234321
+      },
+      {
+        "delta_from_previous": 273,
+        "label": "verifier:query-authentication-gamma",
+        "remaining": 234048
+      },
+      {
+        "delta_from_previous": 20807,
+        "label": "verifier:query-folded",
+        "remaining": 213241
+      },
+      {
+        "delta_from_previous": 10652,
+        "label": "verifier:relation-query-batch",
+        "remaining": 202589
+      },
+      {
+        "delta_from_previous": 3136,
+        "label": "verifier:relation-round-one-polynomial",
+        "remaining": 199453
+      },
+      {
+        "delta_from_previous": 224,
+        "label": "verifier:relation-round-one-weights",
+        "remaining": 199229
+      },
+      {
+        "delta_from_previous": 36454,
+        "label": "verifier:relation-round-one-values",
+        "remaining": 162775
+      },
+      {
+        "delta_from_previous": 3126,
+        "label": "verifier:relation-round-two-polynomial",
+        "remaining": 159649
+      },
+      {
+        "delta_from_previous": 224,
+        "label": "verifier:relation-round-two-weights",
+        "remaining": 159425
+      },
+      {
+        "delta_from_previous": 9820,
+        "label": "verifier:relation-round-two-values",
+        "remaining": 149605
+      },
+      {
+        "delta_from_previous": 3140,
+        "label": "verifier:relation-round-three-polynomial",
+        "remaining": 146465
+      },
+      {
+        "delta_from_previous": 70114,
+        "label": "verifier:relation-round-three-weights",
+        "remaining": 76351
+      },
+      {
+        "delta_from_previous": 3165,
+        "label": "verifier:relation-round-three-values",
+        "remaining": 73186
+      },
+      {
+        "delta_from_previous": 13995,
+        "label": "verifier:relation-terminal",
+        "remaining": 59191
+      },
+      {
+        "delta_from_previous": 1001,
+        "label": "verifier:proof-accepted",
+        "remaining": 58190
+      },
+      {
+        "delta_from_previous": 315,
+        "label": "verifier:asja-return-set",
+        "remaining": 57875
+      },
+      {
+        "delta_from_previous": 2196,
+        "label": "pool:verifier_cpi_complete",
+        "remaining": 55679
+      },
+      {
+        "delta_from_previous": 238,
+        "label": "pool:afterstate_authenticated",
+        "remaining": 55441
+      },
+      {
+        "delta_from_previous": 1201,
+        "label": "pool:afterstate_applied",
+        "remaining": 54240
+      },
+      {
+        "delta_from_previous": 1028,
+        "label": "pool:receipt_and_state_image_ready",
+        "remaining": 53212
+      },
+      {
+        "delta_from_previous": 239,
+        "label": "pool:state_write_borrows_ready",
+        "remaining": 52973
+      },
+      {
+        "delta_from_previous": 216,
+        "label": "pool:custody_cpi_start",
+        "remaining": 52757
+      },
+      {
+        "delta_from_previous": 2033,
+        "label": "pool:custody_cpi_complete",
+        "remaining": 50724
+      },
+      {
+        "delta_from_previous": 1351,
+        "label": "pool:custody_delta_validated",
+        "remaining": 49373
+      },
+      {
+        "delta_from_previous": 261,
+        "label": "pool:history_written",
+        "remaining": 49112
+      },
+      {
+        "delta_from_previous": 226,
+        "label": "pool:pool_state_written",
+        "remaining": 48886
+      },
+      {
+        "delta_from_previous": 227,
+        "label": "pool:marker_written",
+        "remaining": 48659
+      },
+      {
+        "delta_from_previous": 312,
+        "label": "pool:receipt_returned",
+        "remaining": 48347
+      }
+    ]
+  },
+  "schema": "aspis.pool-v1.composed-native-tag73-withdrawal-cu-diagnostic.v1",
+  "state_transition": {
+    "full_prior_page_byte_exact_on_rollover": false,
+    "historical_anchor_value_preserved": true,
+    "history_target_page": 0,
+    "history_target_slot": 101,
+    "membership_anchor_sequence": 1,
+    "next_sequence": 101,
+    "nullifier_marker_created_once": true,
+    "pool_matches_verifier_afterstate": true,
+    "pool_side_poseidon_calls": 0,
+    "source_sequence": 100
+  },
+  "toolchain": {
+    "cargo_build_sbf": "solana-cargo-build-sbf 2.3.0",
+    "host": "macOS 26.5 (25F71), Darwin 25.5.0 arm64",
+    "host_cargo": "1.93.0 (083ac5135 2025-12-15)",
+    "host_rustc": "1.93.0 (254b59607 2026-01-19)",
+    "litesvm": "0.16.0",
+    "platform_tools": "v1.48",
+    "sbf_rustc": "1.84.1"
+  },
+  "transport": {
+    "immediate_return_program_checked": true,
+    "kind": "measurement-only real native Tag-73 verifier followed by fixed withdrawal ASJA transport and custody CPI",
+    "native_proof_bytes": 30192,
+    "native_proof_sha256": "656f25689041ae7f90c9461f4dbe3336478e01e1970ff00c24d1e7d90ed2e72c",
+    "outer_pair_pool_substituted_for_preserved_native_statement_pool": true,
+    "outer_withdrawal_reinterpreted_as_preserved_native_private_transfer": true,
+    "proof_account_body_bytes": 30880,
+    "proof_binds_returned_asja": false,
+    "proof_binds_withdrawal_amount_or_destination": false,
+    "real_tag73_proof_executed": true,
+    "request_is_registry_and_proof_account_bound": true,
+    "returned_asja_bytes": 688
+  }
+}

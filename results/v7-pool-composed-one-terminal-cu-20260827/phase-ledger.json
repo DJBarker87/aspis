@@ -1,0 +1,73 @@
+{
+  "schema": "aspis.pool-v1.composed-native-tag73-cu-phase-ledger.v1",
+  "source_evidence": "evidence.json",
+  "compute_unit_limit": 1400000,
+  "total_compute_units": 1340241,
+  "headroom_compute_units": 59759,
+  "simulation_equals_execution": true,
+  "phases": [
+    {
+      "name": "transaction_dispatch_before_first_pool_marker",
+      "compute_units": 1830
+    },
+    {
+      "name": "pool_validation_and_plan_before_verifier_cpi",
+      "compute_units": 73242,
+      "from_remaining": 1398170,
+      "to_remaining": 1324928
+    },
+    {
+      "name": "cpi_entry_to_verifier_entry",
+      "compute_units": 1910,
+      "from_remaining": 1324928,
+      "to_remaining": 1323018
+    },
+    {
+      "name": "measurement_adapter_request_proof_and_native_statement",
+      "compute_units": 22152,
+      "from_remaining": 1323018,
+      "to_remaining": 1300866
+    },
+    {
+      "name": "native_verifier_wire_parse_through_proof_acceptance",
+      "compute_units": 1234844,
+      "from_remaining": 1300866,
+      "to_remaining": 66022
+    },
+    {
+      "name": "asja_return_data",
+      "compute_units": 315,
+      "from_remaining": 66022,
+      "to_remaining": 65707
+    },
+    {
+      "name": "cpi_unwind_to_pool",
+      "compute_units": 2195,
+      "from_remaining": 65707,
+      "to_remaining": 63512
+    },
+    {
+      "name": "pool_authenticate_apply_write_and_return_suffix",
+      "compute_units": 3510,
+      "from_remaining": 63512,
+      "to_remaining": 60002
+    },
+    {
+      "name": "runtime_tail_after_last_marker",
+      "compute_units": 243
+    }
+  ],
+  "baseline_comparison": {
+    "direct_native_verifier_compute_units": 1254737,
+    "incremental_over_direct_native_verifier": 85504,
+    "transport_only_same_page_compute_units": 81922,
+    "naive_sum_compute_units": 1336659,
+    "measured_minus_naive_sum_compute_units": 3582
+  },
+  "soundness": {
+    "proof_binds_returned_asja": false,
+    "outer_pair_pool_substituted_for_legacy_pool": true,
+    "production_ready": false,
+    "claim": "CU transport and executable capacity only"
+  }
+}

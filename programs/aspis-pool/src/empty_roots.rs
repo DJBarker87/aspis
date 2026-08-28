@@ -212,6 +212,43 @@ pub const POOL_V1_EMPTY_ROOTS: [Digest; POOL_V1_TREE_DEPTH + 1] = [
     ],
 ];
 
+/// Recursive empty roots for the distinct pair-leaf storage format.  A pair
+/// leaf's canonical empty value is `H(0, 0)`, hence levels 0 through 19 are
+/// exactly ordinary-tree levels 1 through 20.  The last entry is the frozen
+/// ordinary level-21 root.
+pub const POOL_V1_PAIR_EMPTY_ROOTS: [Digest; POOL_V1_TREE_DEPTH + 1] = [
+    POOL_V1_EMPTY_ROOTS[1],
+    POOL_V1_EMPTY_ROOTS[2],
+    POOL_V1_EMPTY_ROOTS[3],
+    POOL_V1_EMPTY_ROOTS[4],
+    POOL_V1_EMPTY_ROOTS[5],
+    POOL_V1_EMPTY_ROOTS[6],
+    POOL_V1_EMPTY_ROOTS[7],
+    POOL_V1_EMPTY_ROOTS[8],
+    POOL_V1_EMPTY_ROOTS[9],
+    POOL_V1_EMPTY_ROOTS[10],
+    POOL_V1_EMPTY_ROOTS[11],
+    POOL_V1_EMPTY_ROOTS[12],
+    POOL_V1_EMPTY_ROOTS[13],
+    POOL_V1_EMPTY_ROOTS[14],
+    POOL_V1_EMPTY_ROOTS[15],
+    POOL_V1_EMPTY_ROOTS[16],
+    POOL_V1_EMPTY_ROOTS[17],
+    POOL_V1_EMPTY_ROOTS[18],
+    POOL_V1_EMPTY_ROOTS[19],
+    POOL_V1_EMPTY_ROOTS[20],
+    [
+        M31(1201428963),
+        M31(1296676114),
+        M31(441891487),
+        M31(1910121140),
+        M31(602621674),
+        M31(1294160489),
+        M31(1878016864),
+        M31(855887413),
+    ],
+];
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -222,5 +259,19 @@ mod tests {
             POOL_V1_EMPTY_ROOTS,
             aspis_statement::pool_v1::pool_v1_empty_roots()
         );
+    }
+
+    #[test]
+    fn pair_table_is_exact_shifted_recursive_poseidon_v3_construction() {
+        assert_eq!(POOL_V1_PAIR_EMPTY_ROOTS[0], POOL_V1_EMPTY_ROOTS[1]);
+        for level in 0..POOL_V1_TREE_DEPTH {
+            assert_eq!(
+                POOL_V1_PAIR_EMPTY_ROOTS[level + 1],
+                aspis_statement::pool_v1::pool_v1_tree_parent(
+                    &POOL_V1_PAIR_EMPTY_ROOTS[level],
+                    &POOL_V1_PAIR_EMPTY_ROOTS[level],
+                )
+            );
+        }
     }
 }

@@ -10,10 +10,16 @@ use aspis_core::v6_onefold::{
     fold_v6_onefold_queries, prepare_v6_onefold_coordinates, V6WireError,
 };
 use aspis_core::v6_query_batch::V6AuthenticatedQueryBatch;
+#[cfg(feature = "v7-pair-forest-fixed-canonical-audit")]
+use aspis_core::v6_transcript::verify_v7_canonical_transcript_and_relation_prepared_with_hiding_context;
 use aspis_core::v6_transcript::{
     verify_v7_compact_transcript_and_relation_prepared,
     verify_v7_compact_transcript_and_relation_prepared_with_hiding_context, V6QueryBatchView,
     V6SemanticView, V6TranscriptContext, V6TranscriptError, V6VerifiedTranscript,
+};
+#[cfg(feature = "v7-pair-forest-fixed-canonical-audit")]
+use aspis_core::v7_fixed_canonical_audit::{
+    verify_and_gamma_combine_v7_canonical_openings, V7CanonicalOneFoldWire,
 };
 use aspis_core::v7_onefold::{verify_and_gamma_combine_v7_openings, V7CompactOneFoldWire};
 use aspis_core::{state_only_hiding::StateOnlyHidingContext, HashFn};
@@ -24,11 +30,14 @@ use aspis_statement::atomic_state_only_terminal::{
 use aspis_statement::{
     atomic_payment_statement_digest_v4,
     pool_v1::{
+        evaluate_pool_v1_pair_forest_private_transfer_selected_masked_terminal_compiled_tag73_v1,
+        evaluate_pool_v1_pair_forest_withdrawal_selected_masked_terminal_compiled_tag73_v1,
         evaluate_pool_v1_private_transfer_selected_masked_terminal_compiled_tag73_v1,
         evaluate_pool_v1_withdrawal_selected_masked_terminal_compiled_tag73_v1,
+        pool_v1_pair_forest_copy_active_row_masks_compiled_v1,
         pool_v1_private_transfer_copy_active_row_masks_compiled_v1,
-        pool_v1_withdrawal_copy_active_row_masks_compiled_v1, PoolV1PrivateTransferPublicV1,
-        PoolV1WithdrawalPublicV1,
+        pool_v1_withdrawal_copy_active_row_masks_compiled_v1, PoolV1PairLatePublicStatementV1,
+        PoolV1PrivateTransferPublicV1, PoolV1WithdrawalPublicV1,
     },
     AtomicPaymentStatementV4,
 };
@@ -134,6 +143,46 @@ fn pool_withdrawal_terminal_matches(
     .is_ok_and(|expected| expected == view.terminal_claim)
 }
 
+fn pool_pair_forest_private_transfer_terminal_matches(
+    statement: &PoolV1PrivateTransferPublicV1,
+    transition: &PoolV1PairLatePublicStatementV1,
+    view: &V6SemanticView<'_>,
+) -> bool {
+    evaluate_pool_v1_pair_forest_private_transfer_selected_masked_terminal_compiled_tag73_v1(
+        statement,
+        transition,
+        &crate::v6_verifier::terminal_claims(view),
+        &view.point,
+        view.lambda,
+        view.chi,
+        view.batching.theta,
+        &view.batching.zerocheck_point,
+        view.batching.mu,
+        view.eta,
+    )
+    .is_ok_and(|expected| expected == view.terminal_claim)
+}
+
+fn pool_pair_forest_withdrawal_terminal_matches(
+    statement: &PoolV1WithdrawalPublicV1,
+    transition: &PoolV1PairLatePublicStatementV1,
+    view: &V6SemanticView<'_>,
+) -> bool {
+    evaluate_pool_v1_pair_forest_withdrawal_selected_masked_terminal_compiled_tag73_v1(
+        statement,
+        transition,
+        &crate::v6_verifier::terminal_claims(view),
+        &view.point,
+        view.lambda,
+        view.chi,
+        view.batching.theta,
+        &view.batching.zerocheck_point,
+        view.batching.mu,
+        view.eta,
+    )
+    .is_ok_and(|expected| expected == view.terminal_claim)
+}
+
 #[inline(never)]
 fn authenticate_and_fold_queries(
     hash: HashFn,
@@ -143,6 +192,26 @@ fn authenticate_and_fold_queries(
     let coordinates = prepare_v6_onefold_coordinates(view.queries)?;
     let combined =
         verify_and_gamma_combine_v7_openings(hash, wire, view.queries, view.gamma_powers)?;
+    Ok(V6AuthenticatedQueryBatch {
+        values: fold_v6_onefold_queries(&combined, &coordinates, view.alpha0),
+        line_x: coordinates.line_x,
+    })
+}
+
+#[cfg(feature = "v7-pair-forest-fixed-canonical-audit")]
+#[inline(never)]
+fn authenticate_and_fold_canonical_queries(
+    hash: HashFn,
+    wire: &V7CanonicalOneFoldWire<'_>,
+    view: &V6QueryBatchView<'_>,
+) -> Result<V6AuthenticatedQueryBatch, V6WireError> {
+    let coordinates = prepare_v6_onefold_coordinates(view.queries)?;
+    let combined = verify_and_gamma_combine_v7_canonical_openings(
+        hash,
+        wire,
+        view.queries,
+        view.gamma_powers,
+    )?;
     Ok(V6AuthenticatedQueryBatch {
         values: fold_v6_onefold_queries(&combined, &coordinates, view.alpha0),
         line_x: coordinates.line_x,
@@ -287,6 +356,170 @@ pub fn verify_v7_pool_withdrawal_with_statement_digest(
     })
 }
 
+#[allow(clippy::too_many_arguments)]
+pub fn verify_v7_pool_pair_forest_private_transfer_with_statement_digest(
+    hash: HashFn,
+    proof: &[u8],
+    frontier_nodes: usize,
+    program_id: &Pubkey,
+    release_binding: [u8; 32],
+    attempt_id: &Pubkey,
+    statement: &PoolV1PrivateTransferPublicV1,
+    transition: &PoolV1PairLatePublicStatementV1,
+    statement_digest: [u8; 32],
+    check_pow: bool,
+) -> Result<VerifiedV7ReadOnly, V7VerifyError> {
+    let wire = V7CompactOneFoldWire::parse_deferred_canonicality(proof, frontier_nodes)?;
+    let context = V6TranscriptContext {
+        program_id: program_id.to_bytes(),
+        release_binding,
+        statement_digest,
+        attempt_id: attempt_id.to_bytes(),
+    };
+    let (row_groups, group_masks, group_count) =
+        pool_inactive_schedule(pool_v1_pair_forest_copy_active_row_masks_compiled_v1());
+    let transcript = verify_v7_compact_transcript_and_relation_prepared_with_hiding_context(
+        hash,
+        &wire,
+        &context,
+        StateOnlyHidingContext::pool_v1_pair_forest_v1(statement_digest, attempt_id.to_bytes()),
+        &row_groups,
+        &group_masks[..group_count],
+        check_pow,
+        |view| pool_pair_forest_private_transfer_terminal_matches(statement, transition, view),
+        |view| authenticate_and_fold_queries(hash, &wire, view),
+    )?;
+    Ok(VerifiedV7ReadOnly {
+        folded_query_sum: transcript.folded_query_sum,
+        transcript,
+    })
+}
+
+#[allow(clippy::too_many_arguments)]
+pub fn verify_v7_pool_pair_forest_withdrawal_with_statement_digest(
+    hash: HashFn,
+    proof: &[u8],
+    frontier_nodes: usize,
+    program_id: &Pubkey,
+    release_binding: [u8; 32],
+    attempt_id: &Pubkey,
+    statement: &PoolV1WithdrawalPublicV1,
+    transition: &PoolV1PairLatePublicStatementV1,
+    statement_digest: [u8; 32],
+    check_pow: bool,
+) -> Result<VerifiedV7ReadOnly, V7VerifyError> {
+    let wire = V7CompactOneFoldWire::parse_deferred_canonicality(proof, frontier_nodes)?;
+    let context = V6TranscriptContext {
+        program_id: program_id.to_bytes(),
+        release_binding,
+        statement_digest,
+        attempt_id: attempt_id.to_bytes(),
+    };
+    let (row_groups, group_masks, group_count) =
+        pool_inactive_schedule(pool_v1_pair_forest_copy_active_row_masks_compiled_v1());
+    let transcript = verify_v7_compact_transcript_and_relation_prepared_with_hiding_context(
+        hash,
+        &wire,
+        &context,
+        StateOnlyHidingContext::pool_v1_pair_forest_v1(statement_digest, attempt_id.to_bytes()),
+        &row_groups,
+        &group_masks[..group_count],
+        check_pow,
+        |view| pool_pair_forest_withdrawal_terminal_matches(statement, transition, view),
+        |view| authenticate_and_fold_queries(hash, &wire, view),
+    )?;
+    Ok(VerifiedV7ReadOnly {
+        folded_query_sum: transcript.folded_query_sum,
+        transcript,
+    })
+}
+
+#[cfg(feature = "v7-pair-forest-fixed-canonical-audit")]
+#[allow(clippy::too_many_arguments)]
+pub fn verify_v7_pool_pair_forest_private_transfer_canonical_with_statement_digest(
+    hash: HashFn,
+    proof: &[u8],
+    frontier_nodes: usize,
+    program_id: &Pubkey,
+    release_binding: [u8; 32],
+    attempt_id: &Pubkey,
+    statement: &PoolV1PrivateTransferPublicV1,
+    transition: &PoolV1PairLatePublicStatementV1,
+    statement_digest: [u8; 32],
+    check_pow: bool,
+) -> Result<VerifiedV7ReadOnly, V7VerifyError> {
+    #[cfg(feature = "v7-pair-forest-fixed-canonical-exact-once-audit")]
+    let wire = V7CanonicalOneFoldWire::parse_deferred_query_canonicality(proof, frontier_nodes)?;
+    #[cfg(not(feature = "v7-pair-forest-fixed-canonical-exact-once-audit"))]
+    let wire = V7CanonicalOneFoldWire::parse(proof, frontier_nodes)?;
+    let context = V6TranscriptContext {
+        program_id: program_id.to_bytes(),
+        release_binding,
+        statement_digest,
+        attempt_id: attempt_id.to_bytes(),
+    };
+    let (row_groups, group_masks, group_count) =
+        pool_inactive_schedule(pool_v1_pair_forest_copy_active_row_masks_compiled_v1());
+    let transcript = verify_v7_canonical_transcript_and_relation_prepared_with_hiding_context(
+        hash,
+        &wire,
+        &context,
+        StateOnlyHidingContext::pool_v1_pair_forest_v1(statement_digest, attempt_id.to_bytes()),
+        &row_groups,
+        &group_masks[..group_count],
+        check_pow,
+        |view| pool_pair_forest_private_transfer_terminal_matches(statement, transition, view),
+        |view| authenticate_and_fold_canonical_queries(hash, &wire, view),
+    )?;
+    Ok(VerifiedV7ReadOnly {
+        folded_query_sum: transcript.folded_query_sum,
+        transcript,
+    })
+}
+
+#[cfg(feature = "v7-pair-forest-fixed-canonical-audit")]
+#[allow(clippy::too_many_arguments)]
+pub fn verify_v7_pool_pair_forest_withdrawal_canonical_with_statement_digest(
+    hash: HashFn,
+    proof: &[u8],
+    frontier_nodes: usize,
+    program_id: &Pubkey,
+    release_binding: [u8; 32],
+    attempt_id: &Pubkey,
+    statement: &PoolV1WithdrawalPublicV1,
+    transition: &PoolV1PairLatePublicStatementV1,
+    statement_digest: [u8; 32],
+    check_pow: bool,
+) -> Result<VerifiedV7ReadOnly, V7VerifyError> {
+    #[cfg(feature = "v7-pair-forest-fixed-canonical-exact-once-audit")]
+    let wire = V7CanonicalOneFoldWire::parse_deferred_query_canonicality(proof, frontier_nodes)?;
+    #[cfg(not(feature = "v7-pair-forest-fixed-canonical-exact-once-audit"))]
+    let wire = V7CanonicalOneFoldWire::parse(proof, frontier_nodes)?;
+    let context = V6TranscriptContext {
+        program_id: program_id.to_bytes(),
+        release_binding,
+        statement_digest,
+        attempt_id: attempt_id.to_bytes(),
+    };
+    let (row_groups, group_masks, group_count) =
+        pool_inactive_schedule(pool_v1_pair_forest_copy_active_row_masks_compiled_v1());
+    let transcript = verify_v7_canonical_transcript_and_relation_prepared_with_hiding_context(
+        hash,
+        &wire,
+        &context,
+        StateOnlyHidingContext::pool_v1_pair_forest_v1(statement_digest, attempt_id.to_bytes()),
+        &row_groups,
+        &group_masks[..group_count],
+        check_pow,
+        |view| pool_pair_forest_withdrawal_terminal_matches(statement, transition, view),
+        |view| authenticate_and_fold_canonical_queries(hash, &wire, view),
+    )?;
+    Ok(VerifiedV7ReadOnly {
+        folded_query_sum: transcript.folded_query_sum,
+        transcript,
+    })
+}
+
 #[cfg(test)]
 mod pool_tests {
     use super::*;
@@ -296,6 +529,7 @@ mod pool_tests {
         for active in [
             pool_v1_private_transfer_copy_active_row_masks_compiled_v1(),
             pool_v1_withdrawal_copy_active_row_masks_compiled_v1(),
+            pool_v1_pair_forest_copy_active_row_masks_compiled_v1(),
         ] {
             let (groups, masks, count) = pool_inactive_schedule(active);
             assert!(count > 0 && count <= 64);

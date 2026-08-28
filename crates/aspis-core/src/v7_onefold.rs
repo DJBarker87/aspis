@@ -14,8 +14,8 @@ use crate::transcript::{label, Transcript};
 use crate::v6_onefold::{
     binary_frontier_nodes, gamma_combine_v6_packed_layer0, validate_packed_m31, V6WireError,
     V6_C1_LIMBS_PER_QUERY, V6_C1_PACKED_BYTES_PER_QUERY, V6_C2_LIMBS_PER_QUERY,
-    V6_C2_PACKED_BYTES_PER_QUERY, V6_FIXED_M31_LIMBS, V6_FIXED_PACKED_FIELD_BYTES,
-    V6_QUERY_COUNT, V6_WORK_NONCE_BYTES,
+    V6_C2_PACKED_BYTES_PER_QUERY, V6_FIXED_M31_LIMBS, V6_FIXED_PACKED_FIELD_BYTES, V6_QUERY_COUNT,
+    V6_WORK_NONCE_BYTES,
 };
 use crate::v7_merkle208::{
     private_leaf_hash_v7, verify_two_minimal_subtrees_v7_bytes, V7Digest, V7_C1_TREE_TAG,
@@ -120,7 +120,9 @@ impl<'a> V7CompactOneFoldWire<'a> {
         let wire = Self::parse_deferred_canonicality(bytes, frontier_nodes)?;
         validate_packed_m31(wire.fixed_fields_packed, V6_FIXED_M31_LIMBS)?;
         for ordinal in 0..V6_QUERY_COUNT {
-            let query = wire.query(ordinal).ok_or(V6WireError::InvalidQuerySchedule)?;
+            let query = wire
+                .query(ordinal)
+                .ok_or(V6WireError::InvalidQuerySchedule)?;
             validate_packed_m31(query.c1_packed, V6_C1_LIMBS_PER_QUERY)?;
             validate_packed_m31(query.c2_packed, V7_COMPACT_C2_LIMBS_PER_QUERY)?;
         }
@@ -156,7 +158,9 @@ impl<'a> V7CompactOneFoldWire<'a> {
             fixed_fields_packed,
             c1_root: c1_root.try_into().map_err(|_| V6WireError::WrongLength)?,
             c2_root: c2_root.try_into().map_err(|_| V6WireError::WrongLength)?,
-            work_nonces: work_nonces.try_into().map_err(|_| V6WireError::WrongLength)?,
+            work_nonces: work_nonces
+                .try_into()
+                .map_err(|_| V6WireError::WrongLength)?,
             query_section,
             c1_frontier,
             c2_frontier,
@@ -189,8 +193,7 @@ pub fn verify_and_gamma_combine_v7_openings(
     let mut order: [(u32, usize); V6_QUERY_COUNT] =
         core::array::from_fn(|ordinal| (queries[ordinal], ordinal));
     order.sort_unstable_by_key(|entry| entry.0);
-    if order[V6_QUERY_COUNT - 1].0 >= 1 << 18
-        || order.windows(2).any(|pair| pair[0].0 == pair[1].0)
+    if order[V6_QUERY_COUNT - 1].0 >= 1 << 18 || order.windows(2).any(|pair| pair[0].0 == pair[1].0)
     {
         return Err(V6WireError::InvalidQuerySchedule);
     }
@@ -198,7 +201,9 @@ pub fn verify_and_gamma_combine_v7_openings(
     let mut combined = [[QM31::ZERO; 4]; V6_QUERY_COUNT];
     let mut entries = Vec::with_capacity(V6_QUERY_COUNT);
     for (query, ordinal) in order {
-        let record = wire.query(ordinal).ok_or(V6WireError::InvalidQuerySchedule)?;
+        let record = wire
+            .query(ordinal)
+            .ok_or(V6WireError::InvalidQuerySchedule)?;
         combined[ordinal] =
             gamma_combine_v6_packed_layer0(record.c1_packed, record.c2_packed, powers)?;
         entries.push((
@@ -221,6 +226,80 @@ pub fn verify_and_gamma_combine_v7_openings(
     ) {
         return Err(V6WireError::MerkleMismatch);
     }
+    Ok(combined)
+}
+
+/// Production-inactive checkpoints for the local V7 opening profiler.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum V7OpeningDiagnosticPhase {
+    GammaCombined,
+    LeavesHashed,
+    MerkleAuthenticated,
+}
+
+/// Diagnostic twin of [`verify_and_gamma_combine_v7_openings`].
+///
+/// This deliberately separates the packed gamma dot, private-leaf hashes and
+/// paired minimal-subtree walk so the local SBF profiler can attribute the
+/// fused opening cost.  It consumes the same bytes and applies the same
+/// canonicality, typed SHA-256 and root checks; production callers retain the
+/// fused one-pass wrapper above.
+#[inline(never)]
+pub fn verify_and_gamma_combine_v7_openings_with_diagnostic_trace<Trace>(
+    hash: HashFn,
+    wire: &V7CompactOneFoldWire<'_>,
+    queries: [u32; V6_QUERY_COUNT],
+    powers: &StateOnlySpendQueryPowers,
+    mut trace: Trace,
+) -> Result<[[QM31; 4]; V6_QUERY_COUNT], V6WireError>
+where
+    Trace: FnMut(V7OpeningDiagnosticPhase),
+{
+    let mut order: [(u32, usize); V6_QUERY_COUNT] =
+        core::array::from_fn(|ordinal| (queries[ordinal], ordinal));
+    order.sort_unstable_by_key(|entry| entry.0);
+    if order[V6_QUERY_COUNT - 1].0 >= 1 << 18 || order.windows(2).any(|pair| pair[0].0 == pair[1].0)
+    {
+        return Err(V6WireError::InvalidQuerySchedule);
+    }
+
+    let mut combined = [[QM31::ZERO; 4]; V6_QUERY_COUNT];
+    for (_, ordinal) in order {
+        let record = wire
+            .query(ordinal)
+            .ok_or(V6WireError::InvalidQuerySchedule)?;
+        combined[ordinal] =
+            gamma_combine_v6_packed_layer0(record.c1_packed, record.c2_packed, powers)?;
+    }
+    trace(V7OpeningDiagnosticPhase::GammaCombined);
+
+    let mut entries = Vec::with_capacity(V6_QUERY_COUNT);
+    for (query, ordinal) in order {
+        let record = wire
+            .query(ordinal)
+            .ok_or(V6WireError::InvalidQuerySchedule)?;
+        entries.push((
+            query,
+            private_leaf_hash_v7(hash, V7_C1_TREE_TAG, record.c1_packed, record.salt),
+            private_leaf_hash_v7(hash, V7_C2_TREE_TAG, record.c2_packed, record.salt),
+        ));
+    }
+    trace(V7OpeningDiagnosticPhase::LeavesHashed);
+
+    let mut level = Vec::with_capacity(V6_QUERY_COUNT);
+    let mut next = Vec::with_capacity(V6_QUERY_COUNT);
+    if !verify_two_minimal_subtrees_v7_bytes(
+        hash,
+        (wire.c1_root, wire.c2_root),
+        18,
+        &entries,
+        (wire.c1_frontier, wire.c2_frontier),
+        &mut level,
+        &mut next,
+    ) {
+        return Err(V6WireError::MerkleMismatch);
+    }
+    trace(V7OpeningDiagnosticPhase::MerkleAuthenticated);
     Ok(combined)
 }
 

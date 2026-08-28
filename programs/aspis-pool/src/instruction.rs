@@ -29,6 +29,8 @@ use crate::{
 
 pub const POOL_V1_INITIALIZE_INSTRUCTION_MAGIC: [u8; 4] = *b"ASIN";
 pub const POOL_V1_PRIVATE_TRANSFER_INSTRUCTION_MAGIC: [u8; 4] = *b"ASPT";
+pub const POOL_V1_PAIR_PRIVATE_TRANSFER_INSTRUCTION_MAGIC: [u8; 4] = *b"ASJP";
+pub const POOL_V1_PAIR_WITHDRAWAL_INSTRUCTION_MAGIC: [u8; 4] = *b"ASJW";
 pub const POOL_V1_WITHDRAWAL_INSTRUCTION_MAGIC: [u8; 4] = *b"ASWD";
 pub const POOL_V1_INSTRUCTION_VERSION: u8 = 1;
 
@@ -400,17 +402,35 @@ pub fn encode_private_transfer_instruction_v1(
     Ok(bytes)
 }
 
+pub fn encode_pair_private_transfer_instruction_v1(
+    envelope: &HistoricalAnchorEnvelopeV1,
+    statement: &PrivateTransferStatementV1,
+) -> Result<[u8; POOL_V1_SPEND_INSTRUCTION_BYTES], PoolInstructionFormatErrorV1> {
+    let mut bytes = encode_private_transfer_instruction_v1(envelope, statement)?;
+    bytes[..4].copy_from_slice(&POOL_V1_PAIR_PRIVATE_TRANSFER_INSTRUCTION_MAGIC);
+    Ok(bytes)
+}
+
 pub fn decode_private_transfer_instruction_v1(
     bytes: &[u8],
 ) -> Result<PrivateTransferInstructionV1<'_>, PoolInstructionFormatErrorV1> {
+    decode_private_transfer_with_magic_v1(bytes, &POOL_V1_PRIVATE_TRANSFER_INSTRUCTION_MAGIC)
+}
+
+pub fn decode_pair_private_transfer_instruction_v1(
+    bytes: &[u8],
+) -> Result<PrivateTransferInstructionV1<'_>, PoolInstructionFormatErrorV1> {
+    decode_private_transfer_with_magic_v1(bytes, &POOL_V1_PAIR_PRIVATE_TRANSFER_INSTRUCTION_MAGIC)
+}
+
+fn decode_private_transfer_with_magic_v1<'a>(
+    bytes: &'a [u8],
+    magic: &[u8; 4],
+) -> Result<PrivateTransferInstructionV1<'a>, PoolInstructionFormatErrorV1> {
     if bytes.len() != POOL_V1_SPEND_INSTRUCTION_BYTES {
         return Err(PoolInstructionFormatErrorV1::WrongLength);
     }
-    require_exact_header(
-        bytes,
-        &POOL_V1_PRIVATE_TRANSFER_INSTRUCTION_MAGIC,
-        PoolV1TransitionKind::PrivateTransfer,
-    )?;
+    require_exact_header(bytes, magic, PoolV1TransitionKind::PrivateTransfer)?;
     let envelope =
         decode_historical_anchor_envelope_v1(&bytes[SPEND_ENVELOPE_OFFSET..SPEND_STATEMENT_OFFSET])
             .map_err(|_| PoolInstructionFormatErrorV1::InvalidEnvelope)?;
@@ -509,17 +529,35 @@ pub fn encode_withdrawal_instruction_v1(
     Ok(bytes)
 }
 
+pub fn encode_pair_withdrawal_instruction_v1(
+    envelope: &HistoricalAnchorEnvelopeV1,
+    statement: &WithdrawalStatementV1,
+) -> Result<[u8; POOL_V1_SPEND_INSTRUCTION_BYTES], PoolInstructionFormatErrorV1> {
+    let mut bytes = encode_withdrawal_instruction_v1(envelope, statement)?;
+    bytes[..4].copy_from_slice(&POOL_V1_PAIR_WITHDRAWAL_INSTRUCTION_MAGIC);
+    Ok(bytes)
+}
+
 pub fn decode_withdrawal_instruction_v1(
     bytes: &[u8],
 ) -> Result<WithdrawalInstructionV1<'_>, PoolInstructionFormatErrorV1> {
+    decode_withdrawal_with_magic_v1(bytes, &POOL_V1_WITHDRAWAL_INSTRUCTION_MAGIC)
+}
+
+pub fn decode_pair_withdrawal_instruction_v1(
+    bytes: &[u8],
+) -> Result<WithdrawalInstructionV1<'_>, PoolInstructionFormatErrorV1> {
+    decode_withdrawal_with_magic_v1(bytes, &POOL_V1_PAIR_WITHDRAWAL_INSTRUCTION_MAGIC)
+}
+
+fn decode_withdrawal_with_magic_v1<'a>(
+    bytes: &'a [u8],
+    magic: &[u8; 4],
+) -> Result<WithdrawalInstructionV1<'a>, PoolInstructionFormatErrorV1> {
     if bytes.len() != POOL_V1_SPEND_INSTRUCTION_BYTES {
         return Err(PoolInstructionFormatErrorV1::WrongLength);
     }
-    require_exact_header(
-        bytes,
-        &POOL_V1_WITHDRAWAL_INSTRUCTION_MAGIC,
-        PoolV1TransitionKind::Withdrawal,
-    )?;
+    require_exact_header(bytes, magic, PoolV1TransitionKind::Withdrawal)?;
     let envelope =
         decode_historical_anchor_envelope_v1(&bytes[SPEND_ENVELOPE_OFFSET..SPEND_STATEMENT_OFFSET])
             .map_err(|_| PoolInstructionFormatErrorV1::InvalidEnvelope)?;

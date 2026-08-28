@@ -33,6 +33,16 @@ pub mod state_only_zerocheck;
 pub mod v6_onefold_prover;
 pub mod v8_six_mask_hiding_rank;
 
+/// Deterministic eight-lane fixture shared by host integration tests.  Its
+/// reproducible unmined/mined builders cannot be linked by an ordinary
+/// prover build.
+#[cfg(any(test, feature = "insecure-spend-fixture"))]
+pub mod v7_pair_forest_fixture;
+
+/// Production-inactive host integration for the eight-lane Pool forest.
+/// This does not select a proof profile or feed the deployed prover.
+pub mod pool_v1_pair_forest_honest;
+
 /// Provisional Aspis v5 masking component (A): the block-form circle mask.
 /// Feature-gated (`v5-mask`, default OFF) and entirely outside the v4 path.
 #[cfg(feature = "v5-mask")]

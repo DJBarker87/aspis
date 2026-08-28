@@ -29,6 +29,19 @@
 // check-cfg list does not know that SBF target even though cargo-build-sbf does.
 #![allow(unexpected_cfgs)]
 
+#[cfg(any(
+    all(feature = "v7-pair-forest-asq8", feature = "v7-pair-forest-asf8-audit"),
+    all(
+        feature = "v7-pair-forest-asq8",
+        feature = "v7-pair-forest-fixed-canonical-audit"
+    ),
+    all(
+        feature = "v7-pair-forest-asf8-audit",
+        feature = "v7-pair-forest-fixed-canonical-audit"
+    )
+))]
+compile_error!("select exactly one pair-forest byte/CU verifier grammar");
+
 #[cfg(all(feature = "spend-minimal-dispatch", not(feature = "spend-production")))]
 compile_error!(
     "SPEND_MINIMAL_DISPATCH_REQUIRES_PRODUCTION: the minimal wire surface is valid only for spend-production"
@@ -99,6 +112,21 @@ compile_error!(
 ))]
 compile_error!("V7_CU_PROBE_FORBIDS_OTHER_PROBES: select exactly one local probe entrypoint");
 
+#[cfg(all(
+    feature = "v7-pool-cu-profile",
+    any(
+        feature = "spend-production",
+        feature = "v5-production-tag67",
+        feature = "v6-production-tag72",
+        feature = "v7-production-tag73",
+        feature = "v5-cu-probe",
+        feature = "v6-cu-probe",
+        feature = "v7-cu-probe"
+    ),
+    not(feature = "no-entrypoint")
+))]
+compile_error!("V7_POOL_CU_PROFILE_FORBIDS_OTHER_ENTRYPOINTS: select only the local Pool profiler");
+
 pub mod atomic_payment;
 pub mod dispatch;
 pub mod lifecycle;
@@ -119,18 +147,45 @@ pub mod v6_transaction;
     feature = "v6-production-tag72",
     feature = "v7-cu-probe",
     feature = "v7-production-tag73",
+    feature = "v7-pool-cu-profile",
     test
 ))]
 pub mod v6_verifier;
+#[cfg(any(
+    feature = "v7-pair-forest-asq8",
+    feature = "v7-pair-forest-asf8-audit",
+    feature = "v7-pair-forest-fixed-canonical-audit",
+    test
+))]
+pub mod v7_pair_empty_roots;
+#[cfg(any(
+    feature = "v7-pair-forest-asq8",
+    feature = "v7-pair-forest-asf8-audit",
+    feature = "v7-pair-forest-fixed-canonical-audit",
+    test
+))]
+pub mod v7_pair_forest_dispatch;
+#[cfg(feature = "v7-pool-cu-profile")]
+pub mod v7_pool_cu_profile;
 #[cfg(any(feature = "v7-pool-dispatch-profile", test))]
 pub mod v7_pool_dispatch;
-#[cfg(any(feature = "v7-pool-dispatch-profile", test))]
+#[cfg(any(
+    feature = "v7-pool-dispatch-profile",
+    feature = "v7-pool-cu-profile",
+    test
+))]
 pub mod v7_pool_native_dispatch;
 #[cfg(any(feature = "v7-pool-dispatch-profile", test))]
 pub mod v7_pool_receipt;
+pub mod v7_staged_pair_profile;
 #[cfg(any(feature = "v7-production-tag73", test))]
 pub mod v7_transaction;
-#[cfg(any(feature = "v7-cu-probe", feature = "v7-production-tag73", test))]
+#[cfg(any(
+    feature = "v7-cu-probe",
+    feature = "v7-production-tag73",
+    feature = "v7-pool-cu-profile",
+    test
+))]
 pub mod v7_verifier;
 pub mod verify;
 pub mod wire;

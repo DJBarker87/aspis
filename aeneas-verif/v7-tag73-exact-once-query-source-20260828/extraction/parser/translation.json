@@ -1,0 +1,354 @@
+{
+  "aeneas_version": "unknown",
+  "charon_version": "0.1.223",
+  "crate": "v7_tag73_exact_once_query_source",
+  "functions": [
+    {
+      "def_id": 3,
+      "lean_name": "V7CanonicalDeferredParserGenerated.core.option.Option.ok_or",
+      "lean_file": "V7CanonicalDeferredParser/FunsExternal_Template.lean",
+      "rust_name": "core::option::{core::option::Option<T>}::ok_or",
+      "is_local": false,
+      "source": {
+        "file": "/rustc/library/core/src/option.rs",
+        "begin_line": 1334,
+        "end_line": 1334
+      },
+      "is_opaque": true,
+      "can_fail": true,
+      "can_diverge": false,
+      "is_rec": false,
+      "reducible": false
+    },
+    {
+      "def_id": 11,
+      "lean_name": "V7CanonicalDeferredParserGenerated.core.result.Result.map_err",
+      "lean_file": "V7CanonicalDeferredParser/FunsExternal_Template.lean",
+      "rust_name": "core::result::{core::result::Result<T, E>}::map_err",
+      "is_local": false,
+      "source": {
+        "file": "/rustc/library/core/src/result.rs",
+        "begin_line": 962,
+        "end_line": 964
+      },
+      "is_opaque": true,
+      "can_fail": true,
+      "can_diverge": false,
+      "is_rec": false,
+      "reducible": false
+    },
+    {
+      "def_id": 9,
+      "lean_name": "V7CanonicalDeferredParserGenerated.aspis_core.v7_fixed_canonical_audit.V7CanonicalFixedFieldReader.new",
+      "lean_file": "V7CanonicalDeferredParser/Funs.lean",
+      "rust_name": "aspis_core::v7_fixed_canonical_audit::{aspis_core::v7_fixed_canonical_audit::V7CanonicalFixedFieldReader<'a>}::new",
+      "is_local": false,
+      "source": {
+        "file": "/home/dombarker/project-offloads/ZK-v7-tag73-exact-once-formal-20260828/crates/aspis-core/src/v7_fixed_canonical_audit.rs",
+        "begin_line": 47,
+        "end_line": 47
+      },
+      "is_opaque": false,
+      "can_fail": true,
+      "can_diverge": false,
+      "is_rec": false,
+      "reducible": false
+    },
+    {
+      "def_id": 14,
+      "lean_name": "V7CanonicalDeferredParserGenerated.aspis_core.v7_fixed_canonical_audit.V7CanonicalOneFoldWire.parse_deferred_query_canonicality.closure_2.Insts.CoreOpsFunctionFnOnceTupleTryFromSliceErrorV6WireError.call_once",
+      "lean_file": "V7CanonicalDeferredParser/Funs.lean",
+      "rust_name": "aspis_core::v7_fixed_canonical_audit::{aspis_core::v7_fixed_canonical_audit::V7CanonicalOneFoldWire<'a>}::parse_deferred_query_canonicality::{impl core::ops::function::FnOnce<(core::array::TryFromSliceError,), aspis_core::v6_onefold::V6WireError> for aspis_core::v7_fixed_canonical_audit::{aspis_core::v7_fixed_canonical_audit::V7CanonicalOneFoldWire<'a>}::parse_deferred_query_canonicality::closure#2<'a>}::call_once",
+      "is_local": false,
+      "source": {
+        "file": "/home/dombarker/project-offloads/ZK-v7-tag73-exact-once-formal-20260828/crates/aspis-core/src/v7_fixed_canonical_audit.rs",
+        "begin_line": 148,
+        "end_line": 148
+      },
+      "is_opaque": false,
+      "can_fail": true,
+      "can_diverge": false,
+      "is_rec": false,
+      "reducible": false
+    },
+    {
+      "def_id": 13,
+      "lean_name": "V7CanonicalDeferredParserGenerated.aspis_core.v7_fixed_canonical_audit.V7CanonicalOneFoldWire.parse_deferred_query_canonicality.closure_1.Insts.CoreOpsFunctionFnOnceTupleTryFromSliceErrorV6WireError.call_once",
+      "lean_file": "V7CanonicalDeferredParser/Funs.lean",
+      "rust_name": "aspis_core::v7_fixed_canonical_audit::{aspis_core::v7_fixed_canonical_audit::V7CanonicalOneFoldWire<'a>}::parse_deferred_query_canonicality::{impl core::ops::function::FnOnce<(core::array::TryFromSliceError,), aspis_core::v6_onefold::V6WireError> for aspis_core::v7_fixed_canonical_audit::{aspis_core::v7_fixed_canonical_audit::V7CanonicalOneFoldWire<'a>}::parse_deferred_query_canonicality::closure#1<'a>}::call_once",
+      "is_local": false,
+      "source": {
+        "file": "/home/dombarker/project-offloads/ZK-v7-tag73-exact-once-formal-20260828/crates/aspis-core/src/v7_fixed_canonical_audit.rs",
+        "begin_line": 145,
+        "end_line": 145
+      },
+      "is_opaque": false,
+      "can_fail": true,
+      "can_diverge": false,
+      "is_rec": false,
+      "reducible": false
+    },
+    {
+      "def_id": 12,
+      "lean_name": "V7CanonicalDeferredParserGenerated.aspis_core.v7_fixed_canonical_audit.V7CanonicalOneFoldWire.parse_deferred_query_canonicality.closure.Insts.CoreOpsFunctionFnOnceTupleTryFromSliceErrorV6WireError.call_once",
+      "lean_file": "V7CanonicalDeferredParser/Funs.lean",
+      "rust_name": "aspis_core::v7_fixed_canonical_audit::{aspis_core::v7_fixed_canonical_audit::V7CanonicalOneFoldWire<'a>}::parse_deferred_query_canonicality::{impl core::ops::function::FnOnce<(core::array::TryFromSliceError,), aspis_core::v6_onefold::V6WireError> for aspis_core::v7_fixed_canonical_audit::{aspis_core::v7_fixed_canonical_audit::V7CanonicalOneFoldWire<'a>}::parse_deferred_query_canonicality::closure<'a>}::call_once",
+      "is_local": false,
+      "source": {
+        "file": "/home/dombarker/project-offloads/ZK-v7-tag73-exact-once-formal-20260828/crates/aspis-core/src/v7_fixed_canonical_audit.rs",
+        "begin_line": 144,
+        "end_line": 144
+      },
+      "is_opaque": false,
+      "can_fail": true,
+      "can_diverge": false,
+      "is_rec": false,
+      "reducible": false
+    },
+    {
+      "def_id": 1,
+      "lean_name": "V7CanonicalDeferredParserGenerated.aspis_core.v7_fixed_canonical_audit.V7CanonicalOneFoldWire.parse_deferred_query_canonicality",
+      "lean_file": "V7CanonicalDeferredParser/Funs.lean",
+      "rust_name": "aspis_core::v7_fixed_canonical_audit::{aspis_core::v7_fixed_canonical_audit::V7CanonicalOneFoldWire<'a>}::parse_deferred_query_canonicality",
+      "is_local": false,
+      "source": {
+        "file": "/home/dombarker/project-offloads/ZK-v7-tag73-exact-once-formal-20260828/crates/aspis-core/src/v7_fixed_canonical_audit.rs",
+        "begin_line": 117,
+        "end_line": 120
+      },
+      "is_opaque": false,
+      "can_fail": true,
+      "can_diverge": false,
+      "is_rec": false,
+      "reducible": false
+    },
+    {
+      "def_id": 0,
+      "lean_name": "V7CanonicalDeferredParserGenerated.parse_v7_canonical_deferred",
+      "lean_file": "V7CanonicalDeferredParser/Funs.lean",
+      "rust_name": "v7_tag73_exact_once_query_source::parse_v7_canonical_deferred",
+      "is_local": true,
+      "source": { "file": "src/lib.rs", "begin_line": 6, "end_line": 11 },
+      "is_opaque": false,
+      "can_fail": true,
+      "can_diverge": false,
+      "is_rec": false,
+      "reducible": false
+    }
+  ],
+  "types": [
+    {
+      "def_id": 2,
+      "lean_name": "V7CanonicalDeferredParserGenerated.aspis_core.v6_onefold.V6WireError",
+      "lean_file": "V7CanonicalDeferredParser/Types.lean",
+      "rust_name": "aspis_core::v6_onefold::V6WireError",
+      "is_local": false,
+      "source": {
+        "file": "/home/dombarker/project-offloads/ZK-v7-tag73-exact-once-formal-20260828/crates/aspis-core/src/v6_onefold.rs",
+        "begin_line": 73,
+        "end_line": 73
+      }
+    },
+    {
+      "def_id": 6,
+      "lean_name": "V7CanonicalDeferredParserGenerated.aspis_core.v7_fixed_canonical_audit.V7CanonicalFixedFieldReader",
+      "lean_file": "V7CanonicalDeferredParser/Types.lean",
+      "rust_name": "aspis_core::v7_fixed_canonical_audit::V7CanonicalFixedFieldReader",
+      "is_local": false,
+      "source": {
+        "file": "/home/dombarker/project-offloads/ZK-v7-tag73-exact-once-formal-20260828/crates/aspis-core/src/v7_fixed_canonical_audit.rs",
+        "begin_line": 41,
+        "end_line": 41
+      }
+    },
+    {
+      "def_id": 1,
+      "lean_name": "V7CanonicalDeferredParserGenerated.aspis_core.v7_fixed_canonical_audit.V7CanonicalOneFoldWire",
+      "lean_file": "V7CanonicalDeferredParser/Types.lean",
+      "rust_name": "aspis_core::v7_fixed_canonical_audit::V7CanonicalOneFoldWire",
+      "is_local": false,
+      "source": {
+        "file": "/home/dombarker/project-offloads/ZK-v7-tag73-exact-once-formal-20260828/crates/aspis-core/src/v7_fixed_canonical_audit.rs",
+        "begin_line": 85,
+        "end_line": 85
+      }
+    },
+    {
+      "def_id": 10,
+      "lean_name": "V7CanonicalDeferredParserGenerated.aspis_core.v7_fixed_canonical_audit.V7CanonicalOneFoldWire.parse_deferred_query_canonicality.closure_2",
+      "lean_file": "V7CanonicalDeferredParser/Types.lean",
+      "rust_name": "aspis_core::v7_fixed_canonical_audit::{aspis_core::v7_fixed_canonical_audit::V7CanonicalOneFoldWire<'a>}::parse_deferred_query_canonicality::closure#2",
+      "is_local": false,
+      "source": {
+        "file": "/home/dombarker/project-offloads/ZK-v7-tag73-exact-once-formal-20260828/crates/aspis-core/src/v7_fixed_canonical_audit.rs",
+        "begin_line": 148,
+        "end_line": 148
+      }
+    },
+    {
+      "def_id": 9,
+      "lean_name": "V7CanonicalDeferredParserGenerated.aspis_core.v7_fixed_canonical_audit.V7CanonicalOneFoldWire.parse_deferred_query_canonicality.closure_1",
+      "lean_file": "V7CanonicalDeferredParser/Types.lean",
+      "rust_name": "aspis_core::v7_fixed_canonical_audit::{aspis_core::v7_fixed_canonical_audit::V7CanonicalOneFoldWire<'a>}::parse_deferred_query_canonicality::closure#1",
+      "is_local": false,
+      "source": {
+        "file": "/home/dombarker/project-offloads/ZK-v7-tag73-exact-once-formal-20260828/crates/aspis-core/src/v7_fixed_canonical_audit.rs",
+        "begin_line": 145,
+        "end_line": 145
+      }
+    },
+    {
+      "def_id": 8,
+      "lean_name": "V7CanonicalDeferredParserGenerated.aspis_core.v7_fixed_canonical_audit.V7CanonicalOneFoldWire.parse_deferred_query_canonicality.closure",
+      "lean_file": "V7CanonicalDeferredParser/Types.lean",
+      "rust_name": "aspis_core::v7_fixed_canonical_audit::{aspis_core::v7_fixed_canonical_audit::V7CanonicalOneFoldWire<'a>}::parse_deferred_query_canonicality::closure",
+      "is_local": false,
+      "source": {
+        "file": "/home/dombarker/project-offloads/ZK-v7-tag73-exact-once-formal-20260828/crates/aspis-core/src/v7_fixed_canonical_audit.rs",
+        "begin_line": 144,
+        "end_line": 144
+      }
+    }
+  ],
+  "globals": [
+    {
+      "def_id": 6,
+      "lean_name": "V7CanonicalDeferredParserGenerated.aspis_core.v6_onefold.V6_FIXED_QM31_VALUES",
+      "lean_file": "V7CanonicalDeferredParser/FunsExternal_Template.lean",
+      "rust_name": "aspis_core::v6_onefold::V6_FIXED_QM31_VALUES",
+      "is_local": false,
+      "source": {
+        "file": "/home/dombarker/project-offloads/ZK-v7-tag73-exact-once-formal-20260828/crates/aspis-core/src/v6_onefold.rs",
+        "begin_line": 47,
+        "end_line": 47
+      },
+      "can_fail": true
+    },
+    {
+      "def_id": 4,
+      "lean_name": "V7CanonicalDeferredParserGenerated.aspis_core.v6_onefold.V6_WORK_NONCE_BYTES",
+      "lean_file": "V7CanonicalDeferredParser/FunsExternal_Template.lean",
+      "rust_name": "aspis_core::v6_onefold::V6_WORK_NONCE_BYTES",
+      "is_local": false,
+      "source": {
+        "file": "/home/dombarker/project-offloads/ZK-v7-tag73-exact-once-formal-20260828/crates/aspis-core/src/v6_onefold.rs",
+        "begin_line": 51,
+        "end_line": 51
+      },
+      "can_fail": true
+    },
+    {
+      "def_id": 5,
+      "lean_name": "V7CanonicalDeferredParserGenerated.aspis_core.v7_onefold.V7_COMPACT_QUERY_SECTION_BYTES",
+      "lean_file": "V7CanonicalDeferredParser/FunsExternal_Template.lean",
+      "rust_name": "aspis_core::v7_onefold::V7_COMPACT_QUERY_SECTION_BYTES",
+      "is_local": false,
+      "source": {
+        "file": "/home/dombarker/project-offloads/ZK-v7-tag73-exact-once-formal-20260828/crates/aspis-core/src/v7_onefold.rs",
+        "begin_line": 53,
+        "end_line": 53
+      },
+      "can_fail": true
+    },
+    {
+      "def_id": 1,
+      "lean_name": "V7CanonicalDeferredParserGenerated.aspis_core.v7_onefold.V7_COMPACT_DIGEST_BYTES",
+      "lean_file": "V7CanonicalDeferredParser/FunsExternal_Template.lean",
+      "rust_name": "aspis_core::v7_onefold::V7_COMPACT_DIGEST_BYTES",
+      "is_local": false,
+      "source": {
+        "file": "/home/dombarker/project-offloads/ZK-v7-tag73-exact-once-formal-20260828/crates/aspis-core/src/v7_onefold.rs",
+        "begin_line": 26,
+        "end_line": 26
+      },
+      "can_fail": true
+    },
+    {
+      "def_id": 0,
+      "lean_name": "V7CanonicalDeferredParserGenerated.aspis_core.v7_onefold.V7_COMPACT_FRONTIER_CAP_PER_TREE",
+      "lean_file": "V7CanonicalDeferredParser/FunsExternal_Template.lean",
+      "rust_name": "aspis_core::v7_onefold::V7_COMPACT_FRONTIER_CAP_PER_TREE",
+      "is_local": false,
+      "source": {
+        "file": "/home/dombarker/project-offloads/ZK-v7-tag73-exact-once-formal-20260828/crates/aspis-core/src/v7_onefold.rs",
+        "begin_line": 29,
+        "end_line": 29
+      },
+      "can_fail": true
+    },
+    {
+      "def_id": 3,
+      "lean_name": "V7CanonicalDeferredParserGenerated.aspis_core.v7_fixed_canonical_audit.V7_CANONICAL_FIXED_BYTES",
+      "lean_file": "V7CanonicalDeferredParser/Funs.lean",
+      "rust_name": "aspis_core::v7_fixed_canonical_audit::V7_CANONICAL_FIXED_BYTES",
+      "is_local": false,
+      "source": {
+        "file": "/home/dombarker/project-offloads/ZK-v7-tag73-exact-once-formal-20260828/crates/aspis-core/src/v7_fixed_canonical_audit.rs",
+        "begin_line": 29,
+        "end_line": 29
+      },
+      "can_fail": true
+    },
+    {
+      "def_id": 2,
+      "lean_name": "V7CanonicalDeferredParserGenerated.aspis_core.v7_fixed_canonical_audit.V7_CANONICAL_BODY_WITHOUT_FRONTIERS",
+      "lean_file": "V7CanonicalDeferredParser/Funs.lean",
+      "rust_name": "aspis_core::v7_fixed_canonical_audit::V7_CANONICAL_BODY_WITHOUT_FRONTIERS",
+      "is_local": false,
+      "source": {
+        "file": "/home/dombarker/project-offloads/ZK-v7-tag73-exact-once-formal-20260828/crates/aspis-core/src/v7_fixed_canonical_audit.rs",
+        "begin_line": 32,
+        "end_line": 32
+      },
+      "can_fail": true
+    }
+  ],
+  "trait_decls": [],
+  "trait_impls": [
+    {
+      "def_id": 2,
+      "lean_name": "V7CanonicalDeferredParserGenerated.aspis_core.v7_fixed_canonical_audit.V7CanonicalOneFoldWire.parse_deferred_query_canonicality.closure_2.Insts.CoreOpsFunctionFnOnceTupleTryFromSliceErrorV6WireError",
+      "lean_file": "V7CanonicalDeferredParser/Funs.lean",
+      "rust_name": "aspis_core::v7_fixed_canonical_audit::{aspis_core::v7_fixed_canonical_audit::V7CanonicalOneFoldWire<'a>}::parse_deferred_query_canonicality::{impl core::ops::function::FnOnce<(core::array::TryFromSliceError,), aspis_core::v6_onefold::V6WireError> for aspis_core::v7_fixed_canonical_audit::{aspis_core::v7_fixed_canonical_audit::V7CanonicalOneFoldWire<'a>}::parse_deferred_query_canonicality::closure#2<'a>}",
+      "is_local": false,
+      "source": {
+        "file": "/home/dombarker/project-offloads/ZK-v7-tag73-exact-once-formal-20260828/crates/aspis-core/src/v7_fixed_canonical_audit.rs",
+        "begin_line": 148,
+        "end_line": 148
+      },
+      "impl_trait_def_id": 3,
+      "impl_trait_rust_name": "core::ops::function::FnOnce",
+      "impl_trait_is_builtin": true
+    },
+    {
+      "def_id": 1,
+      "lean_name": "V7CanonicalDeferredParserGenerated.aspis_core.v7_fixed_canonical_audit.V7CanonicalOneFoldWire.parse_deferred_query_canonicality.closure_1.Insts.CoreOpsFunctionFnOnceTupleTryFromSliceErrorV6WireError",
+      "lean_file": "V7CanonicalDeferredParser/Funs.lean",
+      "rust_name": "aspis_core::v7_fixed_canonical_audit::{aspis_core::v7_fixed_canonical_audit::V7CanonicalOneFoldWire<'a>}::parse_deferred_query_canonicality::{impl core::ops::function::FnOnce<(core::array::TryFromSliceError,), aspis_core::v6_onefold::V6WireError> for aspis_core::v7_fixed_canonical_audit::{aspis_core::v7_fixed_canonical_audit::V7CanonicalOneFoldWire<'a>}::parse_deferred_query_canonicality::closure#1<'a>}",
+      "is_local": false,
+      "source": {
+        "file": "/home/dombarker/project-offloads/ZK-v7-tag73-exact-once-formal-20260828/crates/aspis-core/src/v7_fixed_canonical_audit.rs",
+        "begin_line": 145,
+        "end_line": 145
+      },
+      "impl_trait_def_id": 3,
+      "impl_trait_rust_name": "core::ops::function::FnOnce",
+      "impl_trait_is_builtin": true
+    },
+    {
+      "def_id": 0,
+      "lean_name": "V7CanonicalDeferredParserGenerated.aspis_core.v7_fixed_canonical_audit.V7CanonicalOneFoldWire.parse_deferred_query_canonicality.closure.Insts.CoreOpsFunctionFnOnceTupleTryFromSliceErrorV6WireError",
+      "lean_file": "V7CanonicalDeferredParser/Funs.lean",
+      "rust_name": "aspis_core::v7_fixed_canonical_audit::{aspis_core::v7_fixed_canonical_audit::V7CanonicalOneFoldWire<'a>}::parse_deferred_query_canonicality::{impl core::ops::function::FnOnce<(core::array::TryFromSliceError,), aspis_core::v6_onefold::V6WireError> for aspis_core::v7_fixed_canonical_audit::{aspis_core::v7_fixed_canonical_audit::V7CanonicalOneFoldWire<'a>}::parse_deferred_query_canonicality::closure<'a>}",
+      "is_local": false,
+      "source": {
+        "file": "/home/dombarker/project-offloads/ZK-v7-tag73-exact-once-formal-20260828/crates/aspis-core/src/v7_fixed_canonical_audit.rs",
+        "begin_line": 144,
+        "end_line": 144
+      },
+      "impl_trait_def_id": 3,
+      "impl_trait_rust_name": "core::ops::function::FnOnce",
+      "impl_trait_is_builtin": true
+    }
+  ]
+}

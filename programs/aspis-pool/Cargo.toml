@@ -11,6 +11,33 @@ crate-type = ["cdylib", "lib"]
 [features]
 default = []
 no-entrypoint = []
+# Measurement-only entrypoint for the proof-carried pair afterstate.  Release
+# builds do not enable this feature until the real merged 26-C1/3-C2 verifier emits
+# the authenticated ASJA result.
+pair-afterstate-evidence = []
+pair-afterstate-profile = ["pair-afterstate-evidence"]
+# Production-inactive account/PDA/checkpoint/deposit/terminal plumbing for the
+# accepted eight-lane forest candidate. Release builds leave it disabled.
+pair-forest-account-evidence = []
+# Forward the already authenticated registry and entry through the verifier
+# CPI so an audit-only verifier lane-invariant reader can independently root
+# its capability in immutable selected-release configuration.
+pair-forest-verifier-lane-invariant-audit = ["pair-forest-account-evidence"]
+# Audit-only direct consumer for a canonical ASR8 already decoded and bound to
+# the selected verifier return program. It avoids reconstructing ASF8 and
+# re-encoding the same ASR8 bytes after the exact field checks.
+pair-forest-direct-result-audit = ["pair-forest-account-evidence"]
+# Instrumented local phase ledger. Logging changes total CU.
+pair-forest-cu-profile-audit = ["pair-forest-account-evidence"]
+pair-forest-history-page-invariant-audit = ["pair-forest-account-evidence"]
+# Audit-only full 1,880-byte ASF8 top-level transport. It shares the exact
+# account order, registry authentication, ASR8 validation, and settlement path
+# with `pair-forest-account-evidence`.
+pair-forest-full-asf8-audit = ["pair-forest-account-evidence"]
+# Default-off local CU variants backed by the named inductive Pool-write
+# invariant. They are not release features until Rust-to-Lean/Aeneas closure.
+pair-forest-source-invariant-audit = ["pair-forest-account-evidence"]
+pair-forest-source-result-invariant-audit = ["pair-forest-source-invariant-audit"]
 
 [dependencies]
 aspis-core.workspace = true

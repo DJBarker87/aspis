@@ -101,6 +101,30 @@ def causalRestoredK15DuplexGammaEvent
   duplexSkeletonDependentGammaEvent
     (causalRestoredK15GammaTarget provider)
 
+/-- Restoration-aware target used by the actual residual event.  A skeleton
+that already admits a point-compatible restored K1.4 certificate contributes
+the empty set; otherwise it contributes the constrained width-29 target. -/
+noncomputable def causalRestoredK15ResidualGammaTarget
+    {decoder : ExactDecoderInstantiation QM31Exact}
+    {words : AspisPool.V7MerkleQueryExtractor.ExtractedWords}
+    (provider : RestoredK15PreGammaProvider decoder words)
+    (skeleton : Tag73CompleteSamplerSkeleton) : Finset QM31Exact := by
+  classical
+  exact (causalRestoredK15GammaTarget provider skeleton).filter fun _ =>
+    ¬ HasAcceptedRestoredPointCompatibleK14 decoder words
+      (provider.point skeleton) (provider.claims skeleton)
+      (restoredSelectedChainFamilyOfK13Provider
+        (provider.selected skeleton))
+
+/-- Complete duplex event for the gated restoration-aware residual. -/
+def causalRestoredK15ResidualDuplexGammaEvent
+    {decoder : ExactDecoderInstantiation QM31Exact}
+    {words : AspisPool.V7MerkleQueryExtractor.ExtractedWords}
+    (provider : RestoredK15PreGammaProvider decoder words) :
+    Set SuccessfulTag73DuplexNonzeroAttempts :=
+  duplexSkeletonDependentGammaEvent
+    (causalRestoredK15ResidualGammaTarget provider)
+
 @[simp] theorem mem_causalRestoredK15DuplexGammaEvent
     {decoder : ExactDecoderInstantiation QM31Exact}
     {words : AspisPool.V7MerkleQueryExtractor.ExtractedWords}
@@ -112,6 +136,26 @@ def causalRestoredK15DuplexGammaEvent
           (successfulDuplexNonzeroFactorization sample).1 := by
   exact mem_duplexSkeletonDependentGammaEvent
     (causalRestoredK15GammaTarget provider) sample
+
+@[simp] theorem mem_causalRestoredK15ResidualDuplexGammaEvent
+    {decoder : ExactDecoderInstantiation QM31Exact}
+    {words : AspisPool.V7MerkleQueryExtractor.ExtractedWords}
+    (provider : RestoredK15PreGammaProvider decoder words)
+    (sample : SuccessfulTag73DuplexNonzeroAttempts) :
+    sample ∈ causalRestoredK15ResidualDuplexGammaEvent provider ↔
+      (successfulDuplexNonzeroFactorization sample).2.1 ∈
+          causalRestoredK15GammaTarget provider
+            (successfulDuplexNonzeroFactorization sample).1 ∧
+        ¬ HasAcceptedRestoredPointCompatibleK14 decoder words
+          (provider.point (successfulDuplexNonzeroFactorization sample).1)
+          (provider.claims (successfulDuplexNonzeroFactorization sample).1)
+          (restoredSelectedChainFamilyOfK13Provider
+            (provider.selected
+              (successfulDuplexNonzeroFactorization sample).1)) := by
+  rw [causalRestoredK15ResidualDuplexGammaEvent,
+    mem_duplexSkeletonDependentGammaEvent]
+  classical
+  exact Finset.mem_filter
 
 /-- Every nuisance slice has the published width-29 cap once usable restored
 K1.4 certificates have been routed out of the error event. -/
@@ -133,6 +177,35 @@ theorem causal_restored_k15_target_card_le
     (restoredSelectedChainFamilyOfK13Provider
       (provider.selected skeleton)) (noRestored skeleton)
 
+/-- Every gated residual target has the published width-29 cap without a
+global no-restoration premise. -/
+theorem causal_restored_k15_residual_target_card_le
+    {decoder : ExactDecoderInstantiation QM31Exact}
+    (published : PublishedInitialWidth29CurveDecodability exactInitialEncoder)
+    {words : AspisPool.V7MerkleQueryExtractor.ExtractedWords}
+    (provider : RestoredK15PreGammaProvider decoder words)
+    (skeleton : Tag73CompleteSamplerSkeleton) :
+    (causalRestoredK15ResidualGammaTarget provider skeleton).card ≤
+      initialBatchChallengeCap := by
+  classical
+  by_cases restored : HasAcceptedRestoredPointCompatibleK14 decoder words
+      (provider.point skeleton) (provider.claims skeleton)
+      (restoredSelectedChainFamilyOfK13Provider
+        (provider.selected skeleton))
+  · have cardZero :
+        (causalRestoredK15ResidualGammaTarget provider skeleton).card = 0 := by
+      rw [causalRestoredK15ResidualGammaTarget, Finset.card_eq_zero,
+        Finset.filter_eq_empty_iff]
+      intro gamma _member noRestored
+      exact noRestored restored
+    rw [cardZero]
+    exact Nat.zero_le initialBatchChallengeCap
+  · exact (Finset.card_le_card (Finset.filter_subset _ _)).trans
+      (no_accepted_restored_point_compatible_k14_card_le decoder published
+        words (provider.point skeleton) (provider.claims skeleton)
+        (restoredSelectedChainFamilyOfK13Provider
+          (provider.selected skeleton)) restored)
+
 /-- Exact raw causal probability of the restoration-aware K1.5 constrained
 event.  No work factor is divided out. -/
 theorem causal_restored_k15_duplex_gamma_probability_le
@@ -153,6 +226,22 @@ theorem causal_restored_k15_duplex_gamma_probability_le
   intro skeleton
   exact causal_restored_k15_target_card_le published provider noRestored
     skeleton
+
+/-- Exact raw causal probability of the gated restoration-aware residual.
+Restorable skeletons contribute no error mass; every remaining slice uses the
+published width-29 cardinality theorem. -/
+theorem causal_restored_k15_residual_duplex_gamma_probability_le
+    {decoder : ExactDecoderInstantiation QM31Exact}
+    (published : PublishedInitialWidth29CurveDecodability exactInitialEncoder)
+    {words : AspisPool.V7MerkleQueryExtractor.ExtractedWords}
+    (provider : RestoredK15PreGammaProvider decoder words) :
+    (PMF.uniformOfFintype SuccessfulTag73DuplexNonzeroAttempts).toOuterMeasure
+        (causalRestoredK15ResidualDuplexGammaEvent provider) ≤
+      (initialBatchChallengeCap : ENNReal) /
+        ((P ^ 4 - 1 : Nat) : ENNReal) := by
+  apply duplex_skeleton_dependent_gamma_probability_le
+  intro skeleton
+  exact causal_restored_k15_residual_target_card_le published provider skeleton
 
 /-- Specialized exact bound for the deployed counterfactual K1.3 provider
 and one fixed pre-gamma semantic prefix. -/
@@ -180,8 +269,11 @@ end
 
 #print axioms mem_causalRestoredK15DuplexGammaEvent
 #print axioms causalRestoredK15GammaTarget_ofOracle
+#print axioms mem_causalRestoredK15ResidualDuplexGammaEvent
 #print axioms causal_restored_k15_target_card_le
+#print axioms causal_restored_k15_residual_target_card_le
 #print axioms causal_restored_k15_duplex_gamma_probability_le
+#print axioms causal_restored_k15_residual_duplex_gamma_probability_le
 #print axioms counterfactual_restored_k15_duplex_gamma_probability_le
 
 end AspisK1.V7Tag73CausalRestoredK15Probability

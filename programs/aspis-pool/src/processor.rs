@@ -107,6 +107,23 @@ use crate::{
     },
 };
 
+#[cfg(feature = "pair-afterstate-evidence")]
+use crate::{
+    pair_dispatch::dispatch_pair_verified_afterstate_readonly_v1,
+    pair_processor::{
+        process_pair_private_transfer_with_verifier_v1, process_pair_withdrawal_with_verifier_v1,
+    },
+};
+
+#[cfg(feature = "pair-forest-account-evidence")]
+use crate::pair_forest::{
+    process_pair_forest_checkpoint_with_runtime_v1, process_pair_forest_deposit_with_runtime_v1,
+    process_pair_forest_initialize_with_runtime_v1, process_pair_forest_terminal_v1,
+};
+
+#[cfg(feature = "pair-forest-full-asf8-audit")]
+use crate::pair_forest::process_pair_forest_terminal_full_asf8_v1;
+
 const SPL_TOKEN_INITIALIZE_ACCOUNT3_DISCRIMINANT: u8 = 18;
 
 #[cfg(not(feature = "no-entrypoint"))]
@@ -159,13 +176,13 @@ impl PoolCpiRuntimeV1 for SolanaPoolCpiRuntimeV1 {
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
-enum FreshPdaPreparationV1 {
+pub(crate) enum FreshPdaPreparationV1 {
     CreateOrAllocateSystemOwned,
     ProgramOwnedZeroed,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
-enum VaultPreparationV1 {
+pub(crate) enum VaultPreparationV1 {
     CreateAndInitialize,
     InitializedEmpty,
 }
@@ -180,7 +197,7 @@ fn supported_program_loader(owner: &Pubkey) -> bool {
         || owner == &loader_v4::id()
 }
 
-fn require_unique_accounts(accounts: &[AccountInfo<'_>]) -> ProgramResult {
+pub(crate) fn require_unique_accounts(accounts: &[AccountInfo<'_>]) -> ProgramResult {
     for left in 0..accounts.len() {
         for right in left + 1..accounts.len() {
             if accounts[left].key == accounts[right].key {
@@ -191,7 +208,7 @@ fn require_unique_accounts(accounts: &[AccountInfo<'_>]) -> ProgramResult {
     Ok(())
 }
 
-fn require_payer_and_system_program(
+pub(crate) fn require_payer_and_system_program(
     payer: &AccountInfo<'_>,
     system_program_account: &AccountInfo<'_>,
 ) -> ProgramResult {
@@ -253,7 +270,7 @@ fn close_program_account_v1(
     Ok(())
 }
 
-fn plan_fresh_program_pda(
+pub(crate) fn plan_fresh_program_pda(
     account: &AccountInfo<'_>,
     program_id: &Pubkey,
     expected_address: &Pubkey,
@@ -279,7 +296,7 @@ fn plan_fresh_program_pda(
     }
 }
 
-fn create_or_allocate_pda<'info, R: PoolCpiRuntimeV1>(
+pub(crate) fn create_or_allocate_pda<'info, R: PoolCpiRuntimeV1>(
     runtime: &mut R,
     payer: &AccountInfo<'info>,
     account: &AccountInfo<'info>,
@@ -333,7 +350,7 @@ fn create_or_allocate_pda<'info, R: PoolCpiRuntimeV1>(
     Ok(())
 }
 
-fn require_token_program_account(account: &AccountInfo<'_>) -> ProgramResult {
+pub(crate) fn require_token_program_account(account: &AccountInfo<'_>) -> ProgramResult {
     if account.key != &LEGACY_SPL_TOKEN_PROGRAM_ID
         || !account.executable
         || account.is_signer
@@ -373,7 +390,7 @@ fn require_initialized_empty_vault(
     Ok(())
 }
 
-fn plan_vault_initialization(
+pub(crate) fn plan_vault_initialization(
     program_id: &Pubkey,
     pool: &Pubkey,
     mint: &Pubkey,
@@ -395,7 +412,7 @@ fn plan_vault_initialization(
 }
 
 #[allow(clippy::too_many_arguments)]
-fn initialize_vault_account<'info, R: PoolCpiRuntimeV1>(
+pub(crate) fn initialize_vault_account<'info, R: PoolCpiRuntimeV1>(
     runtime: &mut R,
     program_id: &Pubkey,
     pool: &Pubkey,
@@ -2265,7 +2282,77 @@ pub fn process_instruction(
         .get(..4)
         .ok_or(ProgramError::InvalidInstructionData)?;
     let mut runtime = SolanaPoolCpiRuntimeV1;
-    let result = if magic == POOL_V1_INITIALIZE_INSTRUCTION_MAGIC {
+    let result = if cfg!(feature = "pair-forest-account-evidence") && magic == b"AS8I" {
+        #[cfg(feature = "pair-forest-account-evidence")]
+        {
+            let rent = Rent::get()?;
+            process_pair_forest_initialize_with_runtime_v1(
+                program_id,
+                accounts,
+                instruction_data,
+                &rent,
+                &mut runtime,
+            )
+        }
+        #[cfg(not(feature = "pair-forest-account-evidence"))]
+        unreachable!()
+    } else if cfg!(feature = "pair-forest-account-evidence") && magic == b"AS8C" {
+        #[cfg(feature = "pair-forest-account-evidence")]
+        {
+            let rent = Rent::get()?;
+            process_pair_forest_checkpoint_with_runtime_v1(
+                program_id,
+                accounts,
+                instruction_data,
+                &rent,
+                &mut runtime,
+            )
+        }
+        #[cfg(not(feature = "pair-forest-account-evidence"))]
+        unreachable!()
+    } else if cfg!(feature = "pair-forest-account-evidence") && magic == b"AS8D" {
+        #[cfg(feature = "pair-forest-account-evidence")]
+        {
+            let rent = Rent::get()?;
+            process_pair_forest_deposit_with_runtime_v1(
+                program_id,
+                accounts,
+                instruction_data,
+                &rent,
+                &mut runtime,
+            )
+        }
+        #[cfg(not(feature = "pair-forest-account-evidence"))]
+        unreachable!()
+    } else if cfg!(feature = "pair-forest-account-evidence") && magic == b"ASQ8" {
+        #[cfg(feature = "pair-forest-account-evidence")]
+        {
+            let slot = Clock::get()?.slot;
+            process_pair_forest_terminal_v1(
+                program_id,
+                accounts,
+                instruction_data,
+                slot,
+                &mut runtime,
+            )
+        }
+        #[cfg(not(feature = "pair-forest-account-evidence"))]
+        unreachable!()
+    } else if cfg!(feature = "pair-forest-full-asf8-audit") && magic == b"ASF8" {
+        #[cfg(feature = "pair-forest-full-asf8-audit")]
+        {
+            let slot = Clock::get()?.slot;
+            process_pair_forest_terminal_full_asf8_v1(
+                program_id,
+                accounts,
+                instruction_data,
+                slot,
+                &mut runtime,
+            )
+        }
+        #[cfg(not(feature = "pair-forest-full-asf8-audit"))]
+        unreachable!()
+    } else if magic == POOL_V1_INITIALIZE_INSTRUCTION_MAGIC {
         process_initialize_with_runtime_v1(
             program_id,
             accounts,
@@ -2309,6 +2396,43 @@ pub fn process_instruction(
             &mut runtime,
             program::set_return_data,
         )
+    } else if cfg!(feature = "pair-afterstate-evidence")
+        && magic == crate::instruction::POOL_V1_PAIR_PRIVATE_TRANSFER_INSTRUCTION_MAGIC
+    {
+        #[cfg(feature = "pair-afterstate-evidence")]
+        {
+            let slot = Clock::get()?.slot;
+            process_pair_private_transfer_with_verifier_v1(
+                program_id,
+                accounts,
+                instruction_data,
+                slot,
+                solana_sha256,
+                dispatch_pair_verified_afterstate_readonly_v1,
+                program::set_return_data,
+            )
+        }
+        #[cfg(not(feature = "pair-afterstate-evidence"))]
+        unreachable!()
+    } else if cfg!(feature = "pair-afterstate-evidence")
+        && magic == crate::instruction::POOL_V1_PAIR_WITHDRAWAL_INSTRUCTION_MAGIC
+    {
+        #[cfg(feature = "pair-afterstate-evidence")]
+        {
+            let slot = Clock::get()?.slot;
+            process_pair_withdrawal_with_verifier_v1(
+                program_id,
+                accounts,
+                instruction_data,
+                slot,
+                solana_sha256,
+                &mut runtime,
+                dispatch_pair_verified_afterstate_readonly_v1,
+                program::set_return_data,
+            )
+        }
+        #[cfg(not(feature = "pair-afterstate-evidence"))]
+        unreachable!()
     } else if magic == POOL_V1_PRIVATE_TRANSFER_INSTRUCTION_MAGIC {
         let slot = Clock::get()?.slot;
         process_private_transfer_with_runtime_v1(

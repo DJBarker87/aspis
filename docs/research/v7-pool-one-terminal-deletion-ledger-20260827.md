@@ -38,8 +38,10 @@ cryptographic equivalence and a very large measured speedup before reopening
 it.
 
 The proof-carried append route remains the only evidenced near-term
-one-terminal candidate. It has a 34,658-byte proof, 4,154 bytes more than the
-stable 30,504-byte wire, and adds 64 C2 leaf SHA-256 message blocks. It removes
+one-terminal candidate. Its corrected maximum body is 35,216 bytes, 4,712
+bytes more than the stable 30,504-byte maximum, and it adds 64 C2 leaf SHA-256
+message blocks. The correction retains four packed late QM31 wire lanes but
+opens and gamma-binds all sixteen underlying logical M31 trace columns. It removes
 the native twenty-parent append, but a completed proof is tied to one live
 Pool snapshot. A competing append makes those final bytes stale; only its
 expensive Stage A is reusable. This is optimistic concurrency, not a
@@ -142,8 +144,8 @@ caller-provided booleans or digests.
 
 | Property | A: proof-carried append | B: Pool execution-time append |
 | --- | --- | --- |
-| Proof body | 34,658 bytes | 30,504 bytes |
-| Added proof bytes | 4,154 | 0 |
+| Maximum proof body | 35,216 bytes | 30,504 bytes |
+| Added proof bytes | 4,712 | 0 |
 | C2 leaf SHA work | +64 message blocks | unchanged |
 | Semantic Poseidon schedule | 34 stable + 20 late = 54 blocks | 34 stable blocks |
 | Pool-native tree work | 0 parents after verified after-state | 20 if pair digest returned; 21 if Pool recompresses |
@@ -151,7 +153,7 @@ caller-provided booleans or digests.
 | Completed-proof concurrency | pinned to one live snapshot; stale after competing append | append uses the current locked state; no proof staleness |
 | State trust | proof checks source-to-afterstate | program-owned inductive root/frontier invariant plus runtime append |
 
-The exact Lean wire arithmetic for A proves 30,504 -> 34,658 bytes, 32 -> 37
+The exact Lean wire arithmetic for A proves 30,504 -> 35,216 bytes, 32 -> 37
 960-byte upload chunks, and the additional 64 C2 leaf SHA blocks. It also
 proves that one completed proof cannot accept against two different live
 snapshots. The late snapshot does not solve completed-proof staleness.

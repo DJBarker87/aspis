@@ -14,7 +14,9 @@ use aspis_core::state_only_hiding::{
 };
 use aspis_core::state_only_hiding::{
     begin_state_only_masked_sumcheck, state_only_selected_mask_value, StateOnlyHidingContext,
-    StateOnlyHidingScheduleError, PINNED_POOL_V1_PAYMENT_RELATION_FREE_MASK_FINGERPRINT,
+    StateOnlyHidingScheduleError, PINNED_POOL_V1_PAIR_FOREST_HIDING_LAYOUT_FACTOR_FINGERPRINT_V1,
+    PINNED_POOL_V1_PAIR_FOREST_RELATION_FREE_MASK_FINGERPRINT_V1,
+    PINNED_POOL_V1_PAYMENT_RELATION_FREE_MASK_FINGERPRINT,
     PINNED_POOL_V1_PRIVATE_TRANSFER_HIDING_LAYOUT_FACTOR_FINGERPRINT,
     PINNED_POOL_V1_WITHDRAWAL_HIDING_LAYOUT_FACTOR_FINGERPRINT, STATE_ONLY_H1_PADDING_MASK_END,
     STATE_ONLY_H1_PADDING_MASK_START, STATE_ONLY_HIDING_C1_COLUMNS,
@@ -26,6 +28,7 @@ use aspis_statement::{
     atomic_state_only_registry::atomic_state_only_relation_free_mask_cells_v3,
     atomic_state_only_terminal::atomic_state_only_copy_active_rows_v3,
     pool_v1::{
+        pool_v1_pair_forest_copy_active_rows_v1, pool_v1_pair_forest_relation_free_mask_cells_v1,
         pool_v1_payment_relation_free_mask_cells_v1,
         pool_v1_private_transfer_copy_active_row_masks_compiled_v1,
         pool_v1_withdrawal_copy_active_row_masks_compiled_v1,
@@ -148,6 +151,13 @@ fn pool_v1_private_transfer_copy_active_rows() -> [bool; STATE_ONLY_POSEIDON_TRA
 
 fn pool_v1_withdrawal_copy_active_rows() -> [bool; STATE_ONLY_POSEIDON_TRACE_ROWS] {
     active_rows_from_masks(pool_v1_withdrawal_copy_active_row_masks_compiled_v1())
+}
+
+fn pool_v1_pair_forest_copy_active_rows(
+) -> Result<[bool; STATE_ONLY_POSEIDON_TRACE_ROWS], StateOnlyMaskBuildError> {
+    pool_v1_pair_forest_copy_active_rows_v1()
+        .map(|rows| active_rows(&rows))
+        .map_err(|_| StateOnlyMaskBuildError::Layout)
 }
 
 fn first_inactive_row(active: &[bool; STATE_ONLY_POSEIDON_TRACE_ROWS]) -> usize {
@@ -282,6 +292,13 @@ pub fn apply_pool_v1_withdrawal_h1_padding_mask_v1(
     padding: &[QM31],
 ) -> Result<(), StateOnlyMaskBuildError> {
     apply_h1_padding_mask_for_active(h1, padding, &pool_v1_withdrawal_copy_active_rows())
+}
+
+pub fn apply_pool_v1_pair_forest_h1_padding_mask_v1(
+    h1: &mut [QM31],
+    padding: &[QM31],
+) -> Result<(), StateOnlyMaskBuildError> {
+    apply_h1_padding_mask_for_active(h1, padding, &pool_v1_pair_forest_copy_active_rows()?)
 }
 
 struct SeedExpander {
@@ -591,6 +608,51 @@ pub fn build_pool_v1_withdrawal_mask_material_v1(
     result
 }
 
+pub(crate) fn build_pool_v1_pair_forest_mask_material_v1_from_entropy_ref(
+    hash: HashFn,
+    precommit_binding: [u8; 32],
+    context: StateOnlyHidingContext,
+    private_entropy: &[u8; 32],
+    nonce_store: &mut impl StateOnlyMaskNonceStore,
+) -> Result<StateOnlyMaskMaterial, StateOnlyMaskBuildError> {
+    if context.mask_layout_fingerprint
+        != PINNED_POOL_V1_PAIR_FOREST_RELATION_FREE_MASK_FINGERPRINT_V1
+        || context.layout_factor_fingerprint
+            != PINNED_POOL_V1_PAIR_FOREST_HIDING_LAYOUT_FACTOR_FINGERPRINT_V1
+    {
+        return Err(StateOnlyMaskBuildError::Layout);
+    }
+    let cells = pool_v1_pair_forest_relation_free_mask_cells_v1()
+        .map_err(|_| StateOnlyMaskBuildError::Layout)?;
+    build_mask_material_for_layout(
+        hash,
+        precommit_binding,
+        context,
+        private_entropy,
+        nonce_store,
+        &cells,
+        &pool_v1_pair_forest_copy_active_rows()?,
+    )
+}
+
+pub fn build_pool_v1_pair_forest_mask_material_v1(
+    hash: HashFn,
+    precommit_binding: [u8; 32],
+    context: StateOnlyHidingContext,
+    mut private_entropy: [u8; 32],
+    nonce_store: &mut impl StateOnlyMaskNonceStore,
+) -> Result<StateOnlyMaskMaterial, StateOnlyMaskBuildError> {
+    let result = build_pool_v1_pair_forest_mask_material_v1_from_entropy_ref(
+        hash,
+        precommit_binding,
+        context,
+        &private_entropy,
+        nonce_store,
+    );
+    private_entropy.zeroize();
+    result
+}
+
 /// Consume the one-time material while applying it, making accidental reuse
 /// through this API impossible without reconstructing material from a reused
 /// nonce (which the nonce store rejects).
@@ -686,6 +748,20 @@ pub fn apply_pool_v1_withdrawal_mask_material_v1(
         material,
         &cells,
         &pool_v1_withdrawal_copy_active_rows(),
+    )
+}
+
+pub fn apply_pool_v1_pair_forest_mask_material_v1(
+    trace: &mut StateOnlyTraceFoundation,
+    material: StateOnlyMaskMaterial,
+) -> Result<AppliedStateOnlyMasks, StateOnlyMaskBuildError> {
+    let cells = pool_v1_pair_forest_relation_free_mask_cells_v1()
+        .map_err(|_| StateOnlyMaskBuildError::Layout)?;
+    apply_mask_material_for_layout(
+        trace,
+        material,
+        &cells,
+        &pool_v1_pair_forest_copy_active_rows()?,
     )
 }
 
@@ -1060,6 +1136,42 @@ mod tests {
             )
             .err(),
             Some(StateOnlyMaskBuildError::Layout),
+        );
+    }
+
+    #[test]
+    fn pair_forest_material_uses_exact_ranked_layout_and_copy_registry() {
+        let context = StateOnlyHidingContext::pool_v1_pair_forest_v1([0x73; 32], [0x48; 32]);
+        let (binding, _) = precommit(context);
+        let mut store = InMemoryStateOnlyMaskNonceStore::default();
+        let material = build_pool_v1_pair_forest_mask_material_v1(
+            HOST_HASH, binding, context, [0x38; 32], &mut store,
+        )
+        .unwrap();
+        assert_eq!(material.c1.len(), 3_803);
+
+        let mut trace = zero_trace();
+        let applied = apply_pool_v1_pair_forest_mask_material_v1(&mut trace, material).unwrap();
+        let active = pool_v1_pair_forest_copy_active_rows().unwrap();
+        assert!(trace
+            .c1
+            .iter()
+            .all(|column| inactive_m31_sum(column, &active) == M31::ZERO));
+        let mut h1 = vec![QM31::ZERO; STATE_ONLY_POSEIDON_TRACE_ROWS];
+        apply_pool_v1_pair_forest_h1_padding_mask_v1(&mut h1, &applied.h1_padding).unwrap();
+        assert_eq!(h1, applied.h1_padding);
+
+        let mut wrong_store = InMemoryStateOnlyMaskNonceStore::default();
+        assert_eq!(
+            build_pool_v1_pair_forest_mask_material_v1(
+                HOST_HASH,
+                binding,
+                StateOnlyHidingContext::pool_v1_private_transfer([0x73; 32], [0x49; 32]),
+                [0x39; 32],
+                &mut wrong_store,
+            )
+            .err(),
+            Some(StateOnlyMaskBuildError::Layout)
         );
     }
 

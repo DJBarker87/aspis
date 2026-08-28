@@ -1,0 +1,65 @@
+Focused `#print axioms` audit, 2026-08-27
+
+V7ForestTerminalLayoutBridge.exact_statement_and_result_sizes
+V7ForestTerminalLayoutBridge.exact_statement_offsets
+V7ForestTerminalLayoutBridge.exact_result_offsets
+  propext
+  Classical.choice
+  Quot.sound
+
+V7ForestTerminalParserBridge.statement_decode_success_implies_validation_success
+  propext
+  Classical.choice
+  Quot.sound
+  atomic_statement.decode_digest_canonical
+  pool_v1.pair_forest_accounts.pool_v1_pair_forest_output_lane_v1
+  pool_v1.pair_tree_profile.decode_pool_v1_pair_late_public_statement_v1
+  pool_v1.pair_tree_profile.encode_pool_v1_pair_late_public_statement_v1
+  pool_v1.payment_relation.decode_pool_v1_private_transfer_public_v1
+  pool_v1.payment_relation.decode_pool_v1_withdrawal_public_v1
+  pool_v1.payment_relation.encode_pool_v1_private_transfer_public_v1
+  pool_v1.payment_relation.encode_pool_v1_withdrawal_public_v1
+  Slice.Insts.CoreCmpPartialEqArray.ne
+  aspis_core.field.M31.Insts.CoreCmpPartialEqM31.eq
+
+V7ForestTerminalParserBridge.result_decode_success_implies_validation_success
+  propext
+  Classical.choice
+  Quot.sound
+  atomic_statement.decode_digest_canonical
+  pool_v1.pair_forest_accounts.pool_v1_pair_forest_output_lane_v1
+  pool_v1.pair_terminal.decode_pool_v1_pair_verified_afterstate_v1
+  pool_v1.pair_terminal.encode_pool_v1_pair_verified_afterstate_v1
+  Slice.Insts.CoreCmpPartialEqArray.ne
+
+V7ForestTerminalCallerBridge.accepted_transfer_source_has_exact_contract
+V7ForestTerminalCallerBridge.accepted_withdrawal_source_has_exact_contract
+  propext
+  Classical.choice
+  Quot.sound
+  pool_v1.pair_forest_accounts.encode_pool_v1_pair_forest_checkpoint_v1
+  pool_v1.pair_forest_accounts.encode_pool_v1_pair_forest_lane_state_v1
+  pool_v1.pair_forest_accounts.encode_pool_v1_pair_forest_master_v1
+  pool_v1.pair_forest_accounts.pool_v1_pair_forest_output_lane_v1
+  pool_v1.pair_forest_constraint_residuals.evaluate_pool_v1_pair_forest_private_transfer_constraint_residuals_v1
+  pool_v1.pair_forest_constraint_residuals.evaluate_pool_v1_pair_forest_withdrawal_constraint_residuals_v1
+  pool_v1.pair_terminal.encode_pool_v1_pair_verified_afterstate_v1
+  pool_v1.pair_tree_profile.encode_pool_v1_pair_late_public_statement_v1
+  pool_v1.payment_relation.encode_pool_v1_private_transfer_public_v1
+  pool_v1.payment_relation.encode_pool_v1_withdrawal_public_v1
+  SharedAVec.Insts.CoreIterTraitsCollectIntoIteratorSharedATIter.into_iter
+  aspis_core.field.M31.ZERO
+  pool_v1.pair_forest_terminal.host.pair_empty_roots
+  core.iter.adapters.chain.Chain
+  core.iter.adapters.flatten.Flatten
+  aspis_core.field.M31.Insts.CoreCmpPartialEqM31.eq
+  core.iter.traits.iterator.Iterator.all.default
+  core.iter.traits.iterator.Iterator.chain.default
+  core.iter.traits.iterator.Iterator.flatten.default
+  core.iter.adapters.chain.Chain.Insts.CoreIterTraitsIteratorIterator.next
+  core.iter.adapters.flatten.Flatten.Insts.CoreIterTraitsIteratorIterator.next
+
+No theorem reports `sorryAx`.  No compiled Lean source contains `sorry`,
+`admit`, or `native_decide`.  Every project-specific item above is a named
+source callback/interface listed in `SOURCE-BOUNDARY.md`; none states the
+theorem conclusion.

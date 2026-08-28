@@ -1,0 +1,135 @@
+V7 eight-lane Pool invariant fast-path source bridge: PASS
+Date: 2026-08-28
+
+Pinned production source
+------------------------
+Fast-path source commit:
+  eb3fbcde (selected source stack; descendant of a789a9c6)
+Pair-forest source SHA-256:
+  4702885ad27659b99ea72dbbb3b96945411616d63392f7d4f9a93cae986085e1
+Processor dispatch source SHA-256:
+  84b6dbfa9ec12d56184bb0c1e250ed731af83fa44c91fbd05505c38ae356c995
+Pool manifest SHA-256:
+  f5b42a59c788694ce6a0eba02b193e50f9c58028e1ba55bd8827118656f9aa2e
+Pool verifier-dispatch source SHA-256:
+  95281016c34355c7f5bbb5e8ac31cacfa9c743699ecfeb1c8ddbae2cc1a3afc8
+Verifier manifest SHA-256:
+  e563f04f7871c25b0d3d43094ce61a7f39143508c5193d53e14991013ea4a428
+Verifier ASQ8 reader source SHA-256:
+  276c3eb0d157408e2f132e69001e77c32f306baa86450f1e8fab9cdcb8fbadbb
+Statement manifest SHA-256:
+  f268aa7a85b32969f57b3a21fcefffd5310c98b522bf467b151232e91e2d537a
+Packed semantic-terminal source SHA-256:
+  0f3cbc9aead222e49ffaaa678e5f952a52c5f93aa28f5de802a3390993157edd
+Binary Copy-terminal source SHA-256:
+  f6f8018ed3e3ae2a29ec21d12c9ac1b7ffb93024d73d188c66ea514e05c05d86
+Generated Copy constants SHA-256:
+  bc4d72deed0c4b17cefa5092aa05bbc5587c76123df69bd4b4e1187f46280cf6
+
+Pinned tools
+------------
+Charon: 0.1.223
+Charon binary SHA-256:
+  d785c5f18053c4d310c7388dfdb0b59adfc9854c28b632a34a8f6301ba1c4b43
+Aeneas: b59d518
+Aeneas binary SHA-256:
+  fbb8dac1a9a57e635a762e04b95aeb46dbd2dab2be5ed54fa9e0b1321c1962cf
+
+Extraction replay
+-----------------
+Harness source SHA-256:
+  444e98ddaba75c5a0e7aac15abcf9c208a2e82e4aa8ed686ac668c97b5db0b64
+Stored LLBC SHA-256:
+  fe7c383af2d2d8857227188d942cf7fe419be15e7617b25e75fad4515f706086
+The raw LLBC records its temporary destination and unordered serialized maps,
+so replay acceptance is exact equality of the generated Types/Funs/template
+rather than a misleading raw-LLBC hash equality.
+Types.lean SHA-256:
+  58f7dfee9926dff0d11eb0440e7de56330ea12f964d9ec0fdcb97b80ac07d12b
+Funs.lean SHA-256:
+  9e1752cfa345c0d2d8bd3ae2a02202aaf48cd289d049422c4b01801ade775388
+Transparent FunsExternal.lean SHA-256:
+  0a3c1f2c456d4051e23c27c469da218c3b1b2c55251a6cf2ea5afc514643156d
+
+Focused production Rust tests
+-----------------------------
+terminal_program_invariant_lane_decoder_keeps_exact_boundary:
+  1 passed; 0 failed
+authenticated_result_encoder_is_byte_exact_for_valid_lanes:
+  1 passed; 0 failed
+Pool six-account invariant feature check:
+  passed
+Verifier immutable-release lane-reader feature check:
+  passed
+packed_public_digest_matches_all_transfer_and_withdrawal_bindings:
+  1 passed; 0 failed
+every_generated_copy_weight_is_binary_and_skip_add_is_exact:
+  1 passed; 0 failed
+Direct-result exact terminal transfer:
+  1 passed; 0 failed
+Selected Pool/verifier feature composition checks:
+  passed
+endpoint_selector_cache_matches_every_generated_endpoint_exactly:
+  1 passed; 0 failed
+Binary-weight + selector-cache full Copy evaluator against host reference:
+  1 passed; 0 failed
+
+Focused Lean result
+-------------------
+All seven source-proof modules compile.  Principal results:
+  valid_strict_encoder_bytes_equal_fast_encoder_bytes
+  hot_decode_success_requires_capability_and_exact_length
+  initialization_success_has_exact_source_relation
+  checked_deposit_success_has_exact_source_relation
+  authenticated_settlement_success_has_exact_source_relation
+  translated_production_lane_write_preserves_program_owned_invariant
+  translated_write_renews_activation
+  translated_hot_decode_has_complete_activation_boundary
+  translated_write_to_fast_decode_activation
+  direct_asq8_lane_read_success_has_exact_gate_and_capability
+  translated_direct_asq8_reader_consumes_fresh_pool_invariant
+  exact_release_authentication_without_lane_invariant_rejected
+  translated_direct_result_binding_eq_reconstructed
+  translated_direct_result_success_has_exact_gate
+  translated_digest_factoring_preserves_exact_schedule
+  selector_mul_symbolicPack4
+  translated_link_then_action_success_is_exact
+  specialized_binary_weight_eq_literal
+  translated_cache_lookup_returns_literal
+  translated_cache_collision_is_literal_miss
+  translated_cache_hit_requires_exact_row_tag
+  translated_endpoint_order_is_unchanged
+
+Every printed theorem axiom set is a subset of:
+  propext
+  Classical.choice
+  Quot.sound
+
+There is no sorry, admit, native_decide, project-specific axiom or
+conclusion-shaped restore function in compiled generated/proof source.
+
+Exact activation result
+-----------------------
+Fresh translated initialization creates only newlyInitializedPda activation.
+Deposit and authenticated-ASR8 settlement consume an activated predecessor
+and preserve its origin.  Pool ownership alone does not activate the fast
+path.  A checked one-time migration remains an explicit certificate boundary;
+there is no such instruction in the pinned production source.  Therefore the
+current release route requires freshly initialized canonical lane PDAs.
+
+The direct verifier reader additionally authenticates the exact six-account
+Pool/registry universe against the immutable audit release root.  That release
+authentication does not imply the invariant: the translated reader consumes a
+separate fresh-initialization capability, and full authentication with the
+capability set false is proved to reject.  The pinned `[0x41; 32]` Pool,
+`[0x44; 32]` registry and `[7; 32]` policy binding are fixture constants only;
+generated production identities and release evidence remain mandatory before
+activation.
+
+Explicit remaining mathematical boundary
+----------------------------------------
+ProgramOwnedLaneInvariantCapability.Holds is the single omitted active
+root-to-frontier reconstruction fact.  The main Lean mathematics must supply
+genesis, checked-deposit and authenticated-settlement preservation.  This
+focused source bundle deliberately does not replace that fact with ownership
+or an unverified hint.

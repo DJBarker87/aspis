@@ -2,9 +2,21 @@
 
 Date: 2026-08-27
 
-Status: read-only source/CU audit. No production Rust, verifier profile,
-dispatch entrypoint, account format, deployment, or transaction was changed by
-this checkpoint.
+Status: active source/CU audit. The pair-afterstate profile and Pool route are
+still production-disabled, but their exact codecs, focused source prototypes,
+and local LiteSVM evidence now exist. No deployment or network transaction was
+performed.
+
+> **Superseding soundness decision (2026-08-27):** the post-`lambda,chi`
+> seven-lane staged candidate described in the historical sections below is
+> rejected as a production route. It places late main-trace values in a
+> commitment made after the randomized copy-compression challenges. The new
+> conservative route merges the disjoint stable and live rows into the same
+> sixteen semantic C1 columns and absorbs the exact live-transition record
+> before the full C1 root. It therefore keeps the frozen 26+3 PCS geometry and
+> 30,504-byte maximum proof. A competing append now requires rebuilding the
+> whole proof; no Stage-A reuse is claimed. The old 35,216-byte arithmetic is
+> retained below only as rejected-design evidence.
 
 ## Decision
 
@@ -27,28 +39,33 @@ The viable route is deletion rather than moving the prepared work into one
 call. An exact SBF/LiteSVM probe ruled out computing the current append inside
 the Pool suffix: one pair compression plus twenty upper parents costs 492,863
 CU over the zero-parent baseline before Pool parsing, history, marker or
-custody work. The primary candidate therefore carries the live append through
-late Tag-73 Stage B and returns the verified next pair-tree state. The Pool
-terminal suffix only checks and byte-writes that result atomically with history,
-nullifier and custody effects.
+custody work. The primary candidate therefore proves the live append inside
+the complete pre-challenge semantic trace and returns the verified next
+pair-tree state. The Pool terminal suffix only checks and byte-writes that
+result atomically with history, nullifier and custody effects.
 
-This primary route has a measured/formal cost which must be faced explicitly:
-the proof is 34,658 bytes, 4,154 bytes larger than the frozen 30,504-byte V7
-proof, and a completed proof becomes stale after a competing append. It remains
-one terminal transaction; proof-account creation and uploads are preparatory
-data transport, not a separate authorization or settlement transaction.
+The unified pre-challenge route retains the 30,504-byte maximum because the
+stable rows and the twenty live append blocks occupy disjoint parts of the
+same sixteen semantic columns. A completed proof becomes stale after a
+competing append and must be rebuilt in full. It remains one terminal
+transaction; proof-account creation and uploads are preparatory data transport,
+not a separate authorization or settlement transaction.
 
 ## What the measurements prove
 
-Three measurements answer different questions and must not be presented as a
+These measurements answer different questions and must not be presented as a
 single executable profile.
 
 | Evidence | Exact result | What it proves |
 | --- | ---: | --- |
 | Frozen V7 Tag-73 atomic execution | 1,258,013 CU | The old 30,504-byte proof, all work checks, old 80-byte atomic state and nullifier fit with 141,987 CU below 1.4M. |
 | Current direct Pool private-transfer path with a 485-CU mock verifier | failed after consuming 1,399,850 CU | The current Pool path alone does not fit. The mock verifier is not cryptographic evidence. |
+| Current real native Pool proof, direct verifier only | failed after consuming the full 1,400,000-CU transaction limit | The current 30,192-byte single-leaf Pool relation verifier itself exceeds the limit. This is not the final staged pair profile. |
+| Same proof after semantic-terminal prefactorization and fixed-width packed query decoding | **1,255,491 CU accepted** | The terminal first fell from 821,667 to 407,973 CU; the exact packed decoder then cut query openings from 383,343 to 242,966 CU. Total measured saving is 554,071 CU without changing proof bytes, transcript, constraints, hashes, or cryptography. This is not the final pair/Pool lifecycle. |
+| Current real native Pool proof, combined direct Pool call | failed at 1,400,000 CU | The Pool consumed a 585,258-CU prefix, the verifier exhausted all 814,592 CU passed to it, no suffix ran, and Pool/history/vault/nullifier rolled back exactly. |
 | Current prepared Pool lifecycle | 1,256,357 + 643,108 = 1,899,465 CU | Pool append/image preparation and later authenticated settlement each fit separately, but no proof verification is included. |
 | Literal production Pool Poseidon probe | 20 parents: 469,798 CU total; 21 parents: 493,270 CU total | The zero-parent transaction costs 407 CU, so twenty upper parents add 469,391 CU and pair compression plus twenty parents add 492,863 CU. This rejects execution-time append under the present implementation. |
+| Proof-carried byte-only Pool path with authenticated verifier transport double | **81,922 CU same-page; 119,206 CU earlier rollover baseline** | Parse-once state/history capabilities, registry selection, CPI/688-byte result transport, exact state/history/marker persistence, and return fit with zero Pool Poseidon. This is isolated private-transfer plumbing evidence, not a combined real-verifier or withdrawal-custody measurement. |
 
 The direct-path red gate records 846,646 CU remaining when the mock verifier is
 entered. Therefore the exact pre-verifier Pool prefix consumes:
@@ -70,9 +87,39 @@ double-counts some small statement/state-wrapper work; it must not be cited as
 an exact combined execution. It does show that ordinary local deduplication
 cannot recover the required margin.
 
-The ASVQ selected-verifier measurement is not available: the one attempted
-profile simulation failed with `UnsupportedProgramId` before entering the
-handler. Any CU claim for that handler is therefore currently unmeasured.
+The native selected-verifier result is frozen in
+`results/pool-v1-one-terminal-runtime-20260827/`. The direct selected verifier
+consumed the entire 1.4M-CU limit and failed before return. The combined call
+therefore has a conservative deficit greater than 585,258 CU before any Pool
+suffix. Its proof is 30,192 bytes with SHA-256
+`656f25689041ae7f90c9461f4dbe3336478e01e1970ff00c24d1e7d90ed2e72c`;
+it is a current single-leaf baseline, not evidence for the unbuilt 35,216-byte
+staged pair verifier.
+
+The post-prefactor phase ledger is frozen in
+`results/v7-pool-terminal-cu-profile-optimized-20260827/`; the subsequent
+fixed-width decoder measurement is frozen in
+`results/v7-pool-nonterminal-cu-profile-20260827/`. The identical 30,192-byte
+proof now completes at 1,255,491 CU, leaving 144,509 CU. Query openings fell
+from 383,343 to 242,966 CU: 136,824 CU decode/gamma, 11,024 CU private leaf
+hashes, 94,845 CU paired Merkle walk, and 273 CU checkpoint overhead. The
+static authentication inventory remains 456 SHA calls/600 message blocks, so
+another six-figure saving cannot be attributed to Merkle without changing the
+cryptography.
+
+The byte-only Pool evidence is frozen in
+`results/pool-v1-pair-afterstate-litesvm-20260827/`. Its optimized same-page
+path is 81,922 CU after retaining validated state and history capabilities
+across the read-only CPI. Adding that independent number to the optimized
+direct transaction is only a budgeting screen, because it
+double-counts transaction/wrapper work and substitutes a transport double for
+the real verifier. The updated screen is 1,337,413 CU: 62,587 below the strict
+1.4M ceiling and 12,587 below the 1.35M release target. This is encouraging but
+does not yet pay for the corrected 35,216-byte logical-width-45 pair proof,
+withdrawal custody, or integration variance. The next exact target is the
+71,333-CU structured weight-fold sequence, followed by one real integrated
+measurement; no independent totals will be presented as proof that the
+lifecycle fits.
 
 ## Exact duplicated and removable work
 
@@ -145,7 +192,7 @@ saving.
 | Nullifier, output commitments, value/custody statement and output pair | Yes | Bound by both the stable proof prefix and the final terminal statement. |
 | Live append root/frontier | No | Captured in the exact 800-byte late snapshot after `lambda, chi` and bound by Stage B. |
 | Stable Stage-A proof prefix | Yes | May be reused while the historical membership root remains retained and the nullifier remains fresh. |
-| Completed 34,658-byte proof | No | Becomes stale after a competing append changes the current pair root/index/frontier. |
+| Completed staged proof (at most 35,216 bytes) | No | Becomes stale after a competing append changes the current pair root/index/frontier. |
 | Late 800-byte snapshot and Stage-B suffix | No | Must be rebuilt from the changed live state after a competing append. |
 | Generic proof-body digest, ASRA and ASPS/ASRS images | Not needed | Deleted from the one-terminal profile. |
 
@@ -201,9 +248,12 @@ degree 27. The source constants are in
 `crates/aspis-statement/src/pool_v1/pair_tree_profile.rs:216-263`; the root
 roles and exact 800-byte snapshot are at lines 265-480.
 
-That 48-row result closes the primary staged geometry. The exact Lean wire
-theorem gives 34,658 bytes: four late QM31 C2 lanes add 4,154 bytes, five upload
-chunks and 64 C2 leaf SHA message blocks across q16.
+That 48-row result closes the primary staged geometry. The corrected Lean wire
+theorem gives a 35,216-byte maximum. Four late QM31 C2 wire lanes row-wise pack
+sixteen logical M31 trace columns. Those components require 48 fixed point
+claims across the three semantic points, rather than twelve packed claims;
+gamma/query batching binds 45 logical columns. The profile adds 4,712 bytes,
+five upload chunks and 64 C2 leaf SHA message blocks across q16.
 
 A layout-only reduction from seven total C2 lanes to four is not sound in the
 current protocol. The existing lanes are H1, G and D. G and D are independently
@@ -242,7 +292,7 @@ The minimum code changes are:
    late current-append blocks, occupancy residuals and exact old/new pair-tree
    binding into the proven 54-block/976-row geometry. Preserve q16, digest-208,
    work 35/31/34, degree 27 and the existing one-fold backend. Freeze the
-   conservative seven-lane C2 wire at 34,658 bytes before considering any new
+   conservative seven-lane C2 wire at 35,216 bytes before considering any new
    masking construction.
 3. **Digest-free sealed-proof dispatch.** Replace the generic proof-body-digest
    ASVQ path for this profile by exact finalized account identity/length and
@@ -324,7 +374,7 @@ The private-transfer terminal requires, at maximum rollover shape:
 | registry | read-only | 128 |
 | registry entry | read-only | 192 |
 | selected verifier program | read-only, executable | program account |
-| finalized proof | read-only | 40-byte header + 34,658-byte staged pair body |
+| finalized proof | read-only | 40-byte header + staged pair body, at most 35,216 bytes |
 | System Program | read-only, executable | native |
 
 Withdrawal adds the mint, vault, destination, vault authority and original SPL
@@ -347,20 +397,38 @@ rejected under the present Poseidon implementation.
 
 The staged proof-carried candidate is not a 30,504-byte proof. The exact Lean
 wire theorem `exact_staged_wire_cost_if_four_late_lanes_authenticated` gives
-34,658 bytes: 4,154 bytes more, five additional upload chunks, and 64 additional
+35,216 bytes: 4,712 bytes more, five additional upload chunks, and 64 additional
 C2 leaf SHA-256 message blocks across q16. It also makes completed proofs stale
 after a competing append. It is nevertheless now the only conservative
 one-terminal candidate which has not been experimentally ruled out.
 
+The current Pool semantic terminal must be prefactorized before the staged
+profile can plausibly pass. Its source evaluator scans the 49 Poseidon blocks
+and 16 lanes repeatedly and evaluates copy endpoints individually, whereas the
+frozen atomic terminal already demonstrates selector-mask and routing
+factorizations for the same multilinear-evaluation pattern. This is an exact
+algebraic optimization target: every factorized evaluator must be proved equal
+to the unfactored compiled reference and must preserve the tuple registry,
+masking rank, degree and transcript. Removing constraints is not an option.
+
+The execution-time alternative is now ruled out by a literal SBF benchmark:
+twenty `pool_v1_tree_parent` calls cost 469,798 CU and twenty-one cost 493,270
+CU.  The production route is consequently the conservative seven-C2-lane,
+35,216-byte proof-carried append. Its verifier returns only the 680-byte
+`(next index, next root, next frontier)` payload in an exact 688-byte typed
+envelope; the Pool performs no Poseidon append work.
+
 The production engineering gate should be split without repeated regression
 runs:
 
-1. measure the staged 34,658-byte pair verifier alone, with exact proof and
-   688-byte result;
-2. measure the byte-only Pool suffix with a verifier transport double;
-3. perform one combined private-transfer same-page run;
-4. perform one combined private-transfer rollover run; and
-5. perform one combined withdrawal run with real SPL Token CPI.
+1. prefactorize and measure the current native Pool terminal against the same
+   preserved 30,192-byte proof, proving exact equality to its compiled reference;
+2. measure an honest staged pair verifier and separately gate the accepted
+   maximum-frontier/35,216-byte case, with the exact 688-byte result;
+3. measure the byte-only Pool suffix with a verifier transport double;
+4. perform one combined private-transfer same-page run;
+5. perform one combined private-transfer rollover run; and
+6. perform one combined withdrawal run with real SPL Token CPI.
 
 Every final case must be `< 1,400,000 CU`. A practical release target is
 `<= 1,350,000 CU`, preserving at least 50,000 CU against small runtime and
@@ -373,7 +441,7 @@ Already kernel checked or source-closed:
 
 - algebraic occupied/empty slot semantics and spendability;
 - historical-membership versus live-append root roles;
-- exact staged 54-block/976-row/48-row/degree-27 geometry and exact 4,154-byte
+- exact staged 54-block/976-row/48-row/degree-27 geometry and exact 4,712-byte
   staged wire penalty;
 - ordinary Pool tree append, chronological root-history routing, page rollover,
   byte codec and mutable-store source bridges;
