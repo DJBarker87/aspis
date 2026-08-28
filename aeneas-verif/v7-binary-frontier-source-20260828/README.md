@@ -220,6 +220,21 @@ eight K1.3 candidates in chronological order. Focused unit
 RSS, used zero swap, and all four printed endpoints have the same standard
 axiom set.
 
+`V7FirstCompactSamplerOuterBridge` now adds the kernel-checked outer trace
+foundation: it records only literal successful translated `squeeze_block`
+calls, maps every returned block through the exact K1.3 byte/word/q16 codec,
+proves trace and candidate-block append composition, and proves that each
+literal `chunks_exact(4)` block satisfies the current inner-loop structural
+premise. Focused unit `aspis-v7-q16-outer-trace-final-01` exited 0 in 2.72
+seconds, peaked at 6,829,848 KiB RSS, and used zero swap. All three printed
+endpoints depend only on `propext`, `Classical.choice`, and `Quot.sound`.
+
+The intentionally unclaimed next step is the recursive translated-wrapper
+composition. Its first attempted proof exposed a dependent-array proof-term
+normalization seam between the Aeneas `Array.to_slice` result and the reused
+`chunks_exact` model. This is a Lean/source-alignment issue, not a q16 semantic
+or cryptographic assumption; no theorem was admitted to bypass it.
+
 ## Digests
 
 ```text
@@ -245,6 +260,7 @@ c72e3c80fcfd46ce032d834d00b209316608f2cb1b39840dbabdec8180e3aaa6  caller/proof/V
 f21af0ef7f2362c62acb2dfa992c29d31f006aa5b13d788b64752b95d2f033bf  caller/proof/V7FirstCompactK13RawScheduleBridge.lean
 128ac3fb23f46ae234b6472c78c27b938b458933d102cdc9be1c5cab8dbb85f4  caller/proof/V7FirstCompactSamplerInnerBridge.lean
 38a125601298e71ccb2c28f16a9ab222ce377f606f24e3ddfd84b30c040d0e20  caller/proof/V7FirstCompactSamplerLoop16Bridge.lean
+e118828b048eaadf5bd43946549ff893e122e541f79d183d2ef850d8bac47a0c  caller/proof/V7FirstCompactSamplerOuterBridge.lean
 6abb0376100611c5553258062480777187785579f402c9c1d3ce72379518258f  ../../crates/aspis-core/src/v7_onefold.rs
 ```
 
