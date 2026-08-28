@@ -4,6 +4,7 @@ import AspisFormal.K1.V7Tag73PreparedRestorationRoles
 import AspisFormal.K1.V7Tag73PersistentRoleCacheErasure
 import AspisFormal.K1.V7Tag73VerifierActionPreAnswerRoles
 import AspisFormal.K1.V7Tag73FirstExposureRoleClassification
+import AspisFormal.K1.V7Tag73AdversaryPrequeryRouterGap
 import AspisFormal.K1.V7Tag73CurrentSourceDecodeBridge
 import AspisFormal.K1.V7Tag73ExactOperationalHistoryRawCallsAudit
 import AspisFormal.K1.V7Tag73K15CachedCoordinateProvenance
@@ -30,6 +31,7 @@ open AspisK1.V7Tag73ExactOperationalHistoryRawCallsAudit
 open AspisK1.V7Tag73ExactRestoredConcreteK16Assembly
 open AspisK1.V7Tag73CurrentSourceDecodeBridge
 open AspisK1.V7Tag73FirstExposureRoleClassification
+open AspisK1.V7Tag73AdversaryPrequeryRouterGap
 
 #print axioms
   AspisK1.V7Tag73PersistentTranscriptRoles.guarded_install_success_binds_exact_input
@@ -69,6 +71,9 @@ open AspisK1.V7Tag73FirstExposureRoleClassification
 #print axioms same_preanswer_coordinate_can_have_distinct_future_roles
 #print axioms prior_output_coordinate_for_later_fresh_state_hits_target
 #print axioms target_clean_fresh_state_was_not_prequeried_as_output_coordinate
+#print axioms
+  existing_verifier_origin_routers_do_not_label_adversary_first_exposure
+#print axioms adversary_first_then_verifier_cached_has_one_fresh_answer
 #print axioms
   current_source_fixed_field_projection_iff_decode
 #print axioms

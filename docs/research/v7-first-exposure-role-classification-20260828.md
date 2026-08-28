@@ -215,15 +215,15 @@ ignore unrelated adversary calls, and use source-visible transcript phase and
 counter markers.  It may not inspect the fresh answer, completed proof,
 future verifier action, acceptance, or the later cache-hit tag.
 
-The corresponding causal bad event is exactly the left branch: an eventual
-verifier coordinate was prequeried without a unique canonical role prefix.
-Before assigning it a new numerator, the required proof is that this event is
-included in the existing target event.  The future-state subcase is now
-proved at the operational request level; the known-state/multiple-lineage
-subcase still needs the canonical transcript-DAG/source bridge.  If that
-inclusion fails, only then would a separate exact prequery probability term be
-required, and its numerator impact would have to be calculated before any K1
-accounting change.
+The corresponding causal bad event can only be the left branch if it is rare.
+The future-state subcase is included in the existing target event.  The
+known-state subcase is different: after `S` is public, an adversary can query
+`S || domain` deliberately, so occurrence of that query can have probability
+one.  It cannot honestly be assigned a small prequery numerator.  The
+remaining reduction must instead fork/replay from that original occurrence
+and construct the whole response family, or expose a source/model restriction
+that rules the execution out.  The current arbitrary-adversary model supplies
+no such restriction.
 
 ## Existing routers and why they are not yet the missing classifier
 
@@ -238,10 +238,49 @@ These are all valid.  None selects, before an arbitrary adversary answer, the
 unique canonical Tag-73 transcript lineage among interleaved adversary calls.
 Extending them by reading the completed proof would be anticipatory.
 
-The smallest honest semantic addition is therefore a source-backed canonical
-transcript-lineage parser over the pre-answer cursor, together with the
-partition theorem above.  It should be shared by K1.3 q16, K1.4 width-29 and
-K1.5; three bespoke post-hoc routers would not solve the causal issue.
+This limitation is now kernel-checked directly by:
+
+- `scheduler_semantic_label_of_adversary_fresh_is_none`;
+- `scheduler_relation_alpha_label_of_adversary_fresh_is_none`;
+- `scheduler_q16_label_of_adversary_fresh_is_none`;
+- `existing_verifier_origin_routers_do_not_label_adversary_first_exposure`;
+- `adversary_first_then_verifier_cached_has_one_fresh_answer`.
+
+The last theorem records that the adversary creates the sole fresh answer and
+the later verifier record is cached.  A fresh-exposure router therefore has no
+later coordinate on which it can repair the missing label.
+
+The smallest honest semantic addition is therefore not a stronger raw-input
+classifier.  It is an open, stepwise adversary/prover continuation interface
+from the original occurrence, sufficient for the restoration compiler to run
+every counterfactual answer and recompute all later verifier challenges.  The
+repository already contains the intended executable shape:
+
+```lean
+inductive OpenTag73TailProgram (Result : Type*) where
+  | returned (result : Result)
+  | rejected
+  | step (action : VerifierAction)
+      (next : VerifierReply -> OpenTag73TailProgram Result)
+
+structure OpenTag73TailBlackBox
+    (HiddenTape Observation Result : Type*) where
+  start : HiddenTape -> Observation -> OpenTag73TailProgram Result
+```
+
+What is missing is a current-source/semantic erasure theorem connecting such
+an open program to the production arbitrary adversary and then to each
+restoration child.  `SameTapeBlackBox` exposes only a final parsed proof.
+`same_hidden_tape_return_can_change_an_earlier_field` proves why a returned
+whole proof cannot be reused as the required post-checkpoint continuation.
+This interface should be shared by K1.3 q16, K1.4 width-29 and K1.5; three
+bespoke post-hoc routers would not solve the causal issue.
+
+This refines the classification to **D: a causal adversarial-prequery replay
+is required**, with a **semantic-model deficiency** as the immediate blocker.
+The prequery's mere occurrence is not a sound small-probability event.  No
+protocol limitation has been established, and the audited Rust verifier call
+sites still fix their own roles before consuming answers.
 
 ## Source/Aeneas boundary
 
@@ -332,8 +371,13 @@ lake build AspisFormal.K1.V7Tag73FirstExposureRoleClassification \
   swaps:    0
 
 lake env lean AspisFormal/K1/V7Tag73PersistentTranscriptRoleReplay.lean
-  wall:     3.89 s
-  peak RSS: 5,646,106,624 bytes
+  wall:     4.03 s
+  peak RSS: 5,647,859,712 bytes
+  swaps:    0
+
+lake env lean AspisFormal/K1/V7Tag73AdversaryPrequeryRouterGap.lean
+  wall:     4.06 s
+  peak RSS: 5,641,207,808 bytes
   swaps:    0
 ```
 
