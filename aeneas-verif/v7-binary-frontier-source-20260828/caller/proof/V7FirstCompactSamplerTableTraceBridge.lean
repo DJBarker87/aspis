@@ -1,5 +1,6 @@
 import V7FirstCompactSamplerK13PositionBridge
 import AspisFormal.K1.V7Tag73DeterministicRefinement
+import AspisFormal.K1.V7Tag73ReturnedPlanSemantics
 
 /-!
 # Translated q16 squeeze trace to the fixed Tag-73 oracle table
@@ -30,6 +31,8 @@ open V7FirstCompactSamplerOuterLoopBridge
 open V7FirstCompactSamplerK13PositionBridge
 open AspisK1.V7Tag73TranscriptSchedule
 open AspisK1.V7Tag73DeterministicRefinement
+open AspisK1.V7Tag73ReturnedPlanSemantics
+open AspisK1.V7FsAokExperiment
 
 abbrev Transcript := transcript.Transcript
 
@@ -108,6 +111,65 @@ inductive ShaTraceInputsRecordedInFixedTable (table : FixedOracleTable)
       ShaTraceInputsRecordedInFixedTable table sha256
         (NativeExactSqueezeTrace.cons self next final block blocks sourceRun
           tail)
+
+/-- Exact chronological scheduler query-pair representation of a translated
+q16 source trace.  Each source squeeze contributes its output query followed
+by its advance query, with the permitted SHA-256 function fixing both answers.
+This is the precise ordering consumed by `QueryPairsCoveredByTable`. -/
+inductive NativeSqueezeTraceShaQueryPairs
+    (sha256 : ByteString → Digest256) :
+    {initial : Transcript} → {blocks : List SourceSqueezeBlock} →
+      {final : Transcript} →
+      NativeExactSqueezeTrace initial blocks final →
+      List (ShaInput × ShaOutput) → Prop
+  | nil (self : Transcript) :
+      NativeSqueezeTraceShaQueryPairs sha256
+        (NativeExactSqueezeTrace.nil self) []
+  | cons (self next final : Transcript) (block : SourceSqueezeBlock)
+      (blocks : List SourceSqueezeBlock)
+      (sourceRun :
+        transcript.Transcript.squeeze_block self = .ok (block, next))
+      (tail : NativeExactSqueezeTrace next blocks final)
+      (tailPairs : List (ShaInput × ShaOutput))
+      (tailExact : NativeSqueezeTraceShaQueryPairs sha256 tail tailPairs) :
+      NativeSqueezeTraceShaQueryPairs sha256
+        (NativeExactSqueezeTrace.cons self next final block blocks sourceRun
+          tail)
+        ((nativeHashInputBytes (taggedHashInput self 1#u8),
+            sha256 (nativeHashInputBytes (taggedHashInput self 1#u8))) ::
+          (nativeHashInputBytes (taggedHashInput self 2#u8),
+            sha256 (nativeHashInputBytes (taggedHashInput self 2#u8))) ::
+          tailPairs)
+
+/-- Existing scheduler pair coverage discharges every lookup in the finite
+source trace once the scheduler's chronological pair list is identified with
+the literal source squeeze order. -/
+theorem sha_trace_inputs_recorded_of_query_pairs
+    {table : FixedOracleTable} {sha256 : ByteString → Digest256}
+    {initial final : Transcript} {blocks : List SourceSqueezeBlock}
+    {pairs : List (ShaInput × ShaOutput)}
+    {trace : NativeExactSqueezeTrace initial blocks final}
+    (ordered : NativeSqueezeTraceShaQueryPairs sha256 trace pairs)
+    (covered : QueryPairsCoveredByTable table pairs) :
+    ShaTraceInputsRecordedInFixedTable table sha256 trace := by
+  revert covered
+  induction ordered with
+  | nil self =>
+      intro _
+      exact ShaTraceInputsRecordedInFixedTable.nil self
+  | cons self next final block blocks sourceRun tail tailPairs tailExact ih =>
+      intro covered
+      have outputLookup := covered
+        (nativeHashInputBytes (taggedHashInput self 1#u8),
+          sha256 (nativeHashInputBytes (taggedHashInput self 1#u8))) (by simp)
+      have advanceLookup := covered
+        (nativeHashInputBytes (taggedHashInput self 2#u8),
+          sha256 (nativeHashInputBytes (taggedHashInput self 2#u8))) (by simp)
+      have tailCovered : QueryPairsCoveredByTable table tailPairs := by
+        intro pair member
+        exact covered pair (by simp [member])
+      exact ShaTraceInputsRecordedInFixedTable.cons self next final block blocks
+        sourceRun tail outputLookup advanceLookup (ih tailCovered)
 
 /-- Literal production SHA semantics turns finite scheduler table coverage into
 the exact source-output lookup facts used by the deterministic replay. -/
@@ -327,7 +389,30 @@ theorem native_source_trace_matches_semantic_of_sha256_coverage
     (hash_callback_recorded_of_sha_trace_inputs trace shaSemantics recorded)
     machine aligned
 
+/-- Scheduler-facing release endpoint.  A literal ordered q16 query path and
+the scheduler's already proved final-table coverage suffice, together with the
+permitted production SHA callback boundary, for byte-exact semantic replay. -/
+theorem native_source_trace_matches_semantic_of_query_pair_coverage
+    {table : FixedOracleTable} {sha256 : ByteString → Digest256}
+    {initial final : Transcript} {blocks : List SourceSqueezeBlock}
+    {pairs : List (ShaInput × ShaOutput)}
+    (trace : NativeExactSqueezeTrace initial blocks final)
+    (ordered : NativeSqueezeTraceShaQueryPairs sha256 trace pairs)
+    (covered : QueryPairsCoveredByTable table pairs)
+    (shaSemantics : HashCallbackReturnsSha256 sha256 initial.hash)
+    (machine : MachineState)
+    (aligned : machine.digest = nativeTranscriptDigest initial) :
+    (squeezeBlocks (fixedTableHashOracle table) blocks.length machine).1 =
+        sourceTraceDigests blocks ∧
+      (squeezeBlocks (fixedTableHashOracle table)
+        blocks.length machine).2.digest = nativeTranscriptDigest final := by
+  exact native_source_trace_matches_semantic_of_sha256_coverage trace
+    shaSemantics
+    (sha_trace_inputs_recorded_of_query_pairs ordered covered)
+    machine aligned
+
 #print axioms fixed_table_hash_oracle_answer_of_lookup
+#print axioms sha_trace_inputs_recorded_of_query_pairs
 #print axioms hash_callback_recorded_of_sha_trace_inputs
 #print axioms native_table_squeeze_trace_of_runtime_reflection
 #print axioms source_squeeze_runtime_reflection_of_recorded_callback
@@ -336,5 +421,6 @@ theorem native_source_trace_matches_semantic_of_sha256_coverage
 #print axioms native_table_squeeze_trace_matches_semantic
 #print axioms native_source_trace_matches_semantic_of_recorded_callback
 #print axioms native_source_trace_matches_semantic_of_sha256_coverage
+#print axioms native_source_trace_matches_semantic_of_query_pair_coverage
 
 end V7FirstCompactSamplerTableTraceBridge
