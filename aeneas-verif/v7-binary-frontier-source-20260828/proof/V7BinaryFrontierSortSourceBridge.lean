@@ -385,7 +385,95 @@ theorem translated_outer_insertion_sort_exact
       · exact currentPerm
   · exact invariant
 
+structure DuplicateScanInvariant {Q : Std.Usize}
+    (queries : Array Std.U32 Q)
+    (iter : core.ops.range.Range Std.Usize) : Prop where
+  startPositive : 1 ≤ iter.start.val
+  endLength : iter.end.val = queries.val.length
+  startEnd : iter.start.val ≤ iter.end.val
+
+/-- On a pairwise-distinct array, the literal translated adjacent-duplicate
+scan completes normally and returns no pending error. -/
+theorem translated_duplicate_scan_accepts
+    {Q : Std.Usize} (queries : Array Std.U32 Q)
+    (iter : core.ops.range.Range Std.Usize)
+    (distinct : queries.val.Pairwise
+      (fun left right => left.val ≠ right.val))
+    (invariant : DuplicateScanInvariant queries iter) :
+    v6_onefold.binary_frontier_nodes_loop1 iter queries
+      ⦃ output => output = none ⦄ := by
+  simp only [v6_onefold.binary_frontier_nodes_loop1]
+  apply loop.spec_decr_nat
+    (fun state : core.ops.range.Range Std.Usize =>
+      state.end.val - state.start.val)
+    (DuplicateScanInvariant queries)
+    (fun output : Option
+      (core.result.Result Std.Usize v6_onefold.V6WireError) => output = none)
+  · intro currentIter currentInvariant
+    rcases currentInvariant with
+      ⟨startPositive, endLength, startEnd⟩
+    by_cases active : currentIter.start.val < currentIter.end.val
+    · obtain ⟨⟨option, nextIter⟩, nextRun, optionExact, nextStart,
+          nextEnd⟩ := WP.spec_imp_exists
+        (core.iter.range.IteratorRange.next_Usize_some_spec currentIter active)
+      rw [optionExact] at nextRun
+      obtain ⟨previous, previousRun, previousExact⟩ := WP.spec_imp_exists
+        (Std.Usize.sub_spec (x := currentIter.start) (y := 1#usize) (by
+          simpa using startPositive))
+      have previousValue : previous.val = currentIter.start.val - 1 :=
+        previousExact.1
+      have currentBound : currentIter.start.val < queries.val.length := by
+        rw [← endLength]
+        exact active
+      have previousBound : previous.val < queries.val.length := by
+        omega
+      have previousRead := array_index_run queries previous previousBound
+      have currentRead := array_index_run queries currentIter.start currentBound
+      have relation := (List.pairwise_iff_getElem.mp distinct)
+        previous.val currentIter.start.val previousBound currentBound (by omega)
+      have stepRun :
+          v6_onefold.binary_frontier_nodes_loop1.body queries currentIter =
+            .ok (.cont nextIter) := by
+        unfold v6_onefold.binary_frontier_nodes_loop1.body
+        simp [nextRun, previousRun, previousRead, currentRead]
+        rw [List.getElem?_eq_getElem previousBound,
+          List.getElem?_eq_getElem currentBound]
+        exact relation
+      rw [stepRun]
+      simp only [WP.spec, WP.theta, WP.wp_return]
+      constructor
+      · refine ⟨?_, ?_, ?_⟩
+        · omega
+        · have nextEndValue := congrArg
+            (fun value : Std.Usize => value.val) nextEnd
+          omega
+        · have nextStartValue := nextStart
+          have nextEndValue := congrArg
+            (fun value : Std.Usize => value.val) nextEnd
+          change nextIter.start.val ≤ nextIter.end.val
+          omega
+      · have nextEndValue := congrArg
+          (fun value : Std.Usize => value.val) nextEnd
+        have nextStartValue := nextStart
+        change nextIter.end.val - nextIter.start.val <
+          currentIter.end.val - currentIter.start.val
+        omega
+    · obtain ⟨⟨option, nextIter⟩, nextRun, optionExact, nextExact⟩ :=
+        WP.spec_imp_exists
+          (core.iter.range.IteratorRange.next_Usize_none_spec currentIter
+            (by omega))
+      rw [optionExact, nextExact] at nextRun
+      have stepRun :
+          v6_onefold.binary_frontier_nodes_loop1.body queries currentIter =
+            .ok (.done none) := by
+        unfold v6_onefold.binary_frontier_nodes_loop1.body
+        simp [nextRun]
+      rw [stepRun]
+      simp only [WP.spec, WP.theta, WP.wp_return]
+  · exact invariant
+
 #print axioms translated_inner_insertion_exact
 #print axioms translated_outer_insertion_sort_exact
+#print axioms translated_duplicate_scan_accepts
 
 end V7BinaryFrontierSortSourceBridge
