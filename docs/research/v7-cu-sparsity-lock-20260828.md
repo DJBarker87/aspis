@@ -100,6 +100,23 @@ Boolean binding row and randomized off-domain points for transfer and
 withdrawal. The honest relation vanishes on all 1,024 Boolean rows for both
 operations.
 
+### Lean algebraic closure
+
+`AspisFormal/Pool/V7SelectedEvaluatorSparsityEquivalence.lean` now proves the
+generic commutative-ring identities for the selected selector factoring,
+three-local digest tensor, seven-mask active basis, Copy tag/pattern split,
+pattern grouping, four-output gamma loop interchange, and the exact
+9/6/11/4 Copy-finish dot chunkings. It also proves
+`4 * (P - 1)^2 < 2^64` and that reducing each four-product tag channel gives
+the ordinary M31 dot.
+
+Focused NUC replay `aspis-v7-sparsity-lean-05` exited 0 in 2.94 seconds with
+maximum RSS 6,543,976 KiB and zero swap. The printed axiom union is exactly
+`propext`, `Classical.choice`, and `Quot.sound`; there is no `sorryAx` or
+project-specific axiom. The remaining obligation is source correspondence:
+pin the exact Rust tables, indices, feature selection, and loop/control flow
+to these identities through Charon/Aeneas.
+
 ## Selected build
 
 The selected verifier feature set is:
