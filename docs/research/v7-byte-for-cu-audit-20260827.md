@@ -524,10 +524,12 @@ cargo test -q -p aspis-statement \
 
 ### Matched parser/snapshot SBF component probes
 
-The checked-in artifacts and phase ledgers are under
-`results/v7-pair-forest-byte-cu-20260827/artifacts/components/` and
-`evidence-{component-baseline,wire-deferred,snapshot-direct}.json`. They were
-built in:
+The frozen artifacts and phase ledgers are retained on the dedicated audit
+branch `research/v7-byte-cu-audit-20260827` under
+`results/v7-pair-forest-byte-cu-20260827/`.  The five ASR8 sweep points and
+their executable evidence are pinned by `4d4d87f4`; the later component
+decomposition is pinned by `f8804061`.  They are not silently attributed to
+the current production branch.  The artifacts were built in:
 
 ```text
 systemd unit: aspis-v7-byte-cu-components-04.service
@@ -541,6 +543,20 @@ peak RSS:     245,404 KiB
 
 The exact source/evidence commit is
 `f880406169e9145aca4ff929864a5e8abf157c64`.
+
+The exact return-data sweep can be replayed from that audit worktree with:
+
+```bash
+audit_root=/Users/dominic/ZK-v7-byte-cu-audit
+for asr8_bytes in 792 824 856 920 1024; do
+  replay_dir=$(mktemp -d "/tmp/aspis-asr8-${asr8_bytes}.XXXXXX")
+  CARGO_BUILD_JOBS=2 cargo run --quiet \
+    --manifest-path "$audit_root/results/v7-pair-forest-byte-cu-20260827/harness/Cargo.toml" -- \
+    "$audit_root/results/v7-pair-forest-byte-cu-20260827/artifacts/${asr8_bytes}/aspis_pool.so" \
+    "$audit_root/results/v7-pair-forest-byte-cu-20260827/artifacts/${asr8_bytes}/aspis_verifier.so" \
+    "$replay_dir/evidence.json" "$asr8_bytes"
+done
+```
 
 A focused post-integration replay of the checked-in direct-typed artifact
 reproduced 633,154 CU and 827 transaction bytes, with
