@@ -421,6 +421,54 @@ fn verify_statement_v1(
     .map_err(|_| ProgramError::InvalidAccountData)
 }
 
+/// Unmined-proof counterpart used only by the host integration test.  The
+/// production verifier above has no work-check argument and always supplies
+/// `true`; this symbol does not exist outside `cfg(test)`.
+#[cfg(test)]
+#[inline(never)]
+fn verify_statement_without_work_for_test_v1(
+    verifier_program: &Pubkey,
+    proof_account: &AccountInfo<'_>,
+    proof: &[u8],
+    frontier_nodes: usize,
+    statement: &PoolV1PairForestTerminalStatementV1,
+    statement_digest: [u8; 32],
+) -> ProgramResult {
+    let transition = &statement.common().lane_transition;
+    match statement {
+        PoolV1PairForestTerminalStatementV1::PrivateTransfer { public, .. } => {
+            crate::v7_verifier::verify_v7_pool_pair_forest_private_transfer_with_statement_digest(
+                crate::verify::sbf_hashv,
+                proof,
+                frontier_nodes,
+                verifier_program,
+                V7_POOL_PAIR_FOREST_TAG73_RELEASE_BINDING,
+                proof_account.key,
+                public,
+                transition,
+                statement_digest,
+                false,
+            )
+        }
+        PoolV1PairForestTerminalStatementV1::Withdrawal { public, .. } => {
+            crate::v7_verifier::verify_v7_pool_pair_forest_withdrawal_with_statement_digest(
+                crate::verify::sbf_hashv,
+                proof,
+                frontier_nodes,
+                verifier_program,
+                V7_POOL_PAIR_FOREST_TAG73_RELEASE_BINDING,
+                proof_account.key,
+                public,
+                transition,
+                statement_digest,
+                false,
+            )
+        }
+    }
+    .map(|_| ())
+    .map_err(|_| ProgramError::InvalidAccountData)
+}
+
 #[inline(never)]
 fn emit_result_v1(statement: &PoolV1PairForestTerminalStatementV1) -> ProgramResult {
     let result = PoolV1PairForestTerminalResultV1 {
@@ -476,6 +524,40 @@ where
     emit_result_v1(&validated.statement)
 }
 
+#[cfg(test)]
+fn process_without_work_for_test_v1(
+    verifier_program: &Pubkey,
+    accounts: &[AccountInfo<'_>],
+    instruction_data: &[u8],
+) -> ProgramResult {
+    program::set_return_data(&[]);
+    let validated =
+        validate_v7_pair_forest_asq8_request_v1(verifier_program, accounts, instruction_data)?;
+    let proof_account = &accounts[0];
+    let data = proof_account.try_borrow_data()?;
+    let (payload_start, payload_end) = uploaded_proof_bounds(&data)?;
+    if payload_end != data.len() {
+        return Err(ProgramError::InvalidAccountData);
+    }
+    let payload = &data[payload_start..payload_end];
+    let proof = payload
+        .get(POOL_V1_PAIR_VERIFIED_AFTERSTATE_BYTES..)
+        .ok_or(ProgramError::InvalidAccountData)?;
+    if proof.len() != validated.proof_length {
+        return Err(ProgramError::InvalidAccountData);
+    }
+    let statement_digest = statement_digest_v1(&validated.statement)?;
+    verify_statement_without_work_for_test_v1(
+        verifier_program,
+        proof_account,
+        proof,
+        validated.frontier_nodes,
+        &validated.statement,
+        statement_digest,
+    )?;
+    emit_result_v1(&validated.statement)
+}
+
 pub fn process_v7_pair_forest_asq8_instruction(
     verifier_program: &Pubkey,
     accounts: &[AccountInfo<'_>],
@@ -489,22 +571,32 @@ pub fn process_v7_pair_forest_asq8_instruction(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use aspis_core::field::M31;
-    use aspis_statement::pool_v1::{
-        encode_pool_v1_pair_forest_checkpoint_v1, encode_pool_v1_pair_forest_lane_state_v1,
-        encode_pool_v1_pair_forest_master_v1, encode_pool_v1_pair_forest_terminal_request_v1,
-        encode_pool_v1_pair_verified_afterstate_v1, IncrementalMerkleTreeV1, PoolIdentityV1,
-        PoolV1PairForestCheckpointV1, PoolV1PairForestLaneStateV1, PoolV1PairForestMasterV1,
-        PoolV1PairForestTerminalPaymentV1, PoolV1PairForestTerminalRequestV1,
-        PoolV1PairVerifiedAfterstateV1, PoolV1PrivateTransferPublicV1, VerifierPolicyV1,
-        POOL_V1_PAIR_TREE_DEPTH,
+    use aspis_core::field::{M31, P};
+    use aspis_prover::v7_pair_forest_fixture::{
+        build_v7_pair_forest_transfer_fixture_unmined_v1,
+        deterministic_v7_pair_forest_transfer_nullifier_v1,
     };
-    use solana_program::clock::Epoch;
+    use aspis_statement::pool_v1::{
+        decode_pool_v1_pair_forest_terminal_result_v1, encode_pool_v1_pair_forest_checkpoint_v1,
+        encode_pool_v1_pair_forest_lane_state_v1, encode_pool_v1_pair_forest_master_v1,
+        encode_pool_v1_pair_forest_terminal_request_v1, encode_pool_v1_pair_verified_afterstate_v1,
+        IncrementalMerkleTreeV1, PoolIdentityV1, PoolV1PairForestCheckpointV1,
+        PoolV1PairForestLaneStateV1, PoolV1PairForestMasterV1, PoolV1PairForestTerminalPaymentV1,
+        PoolV1PairForestTerminalRequestV1, PoolV1PairForestTerminalResultV1,
+        PoolV1PairVerifiedAfterstateV1, PoolV1PrivateTransferPublicV1, VerifierPolicyV1,
+        POOL_V1_PAIR_FOREST_TERMINAL_RESULT_BYTES, POOL_V1_PAIR_TREE_DEPTH,
+    };
+    use solana_program::{
+        clock::Epoch,
+        program_stubs::{self, SyscallStubs},
+    };
+    use std::sync::{Arc, Mutex};
 
     fn digest(seed: u32) -> aspis_statement::Digest {
         core::array::from_fn(|index| M31(seed + 17 * index as u32))
     }
 
+    #[derive(Clone)]
     struct Fixture {
         verifier: Pubkey,
         proof_owner: Pubkey,
@@ -520,6 +612,51 @@ mod tests {
         checkpoint_data: Vec<u8>,
         lane_data: Vec<u8>,
         request: Vec<u8>,
+    }
+
+    struct HonestFixture {
+        accounts: Fixture,
+        statement: PoolV1PairForestTerminalStatementV1,
+        expected_result: PoolV1PairForestTerminalResultV1,
+        proof_bytes: usize,
+        frontier_nodes: usize,
+    }
+
+    #[derive(Clone)]
+    struct ReturnDataStub {
+        bytes: Arc<Mutex<Vec<u8>>>,
+    }
+
+    impl SyscallStubs for ReturnDataStub {
+        fn sol_set_return_data(&self, data: &[u8]) {
+            let mut bytes = self.bytes.lock().unwrap();
+            bytes.clear();
+            bytes.extend_from_slice(data);
+        }
+    }
+
+    struct ReturnDataStubGuard {
+        previous: Option<Box<dyn SyscallStubs>>,
+    }
+
+    impl Drop for ReturnDataStubGuard {
+        fn drop(&mut self) {
+            let previous = self.previous.take().unwrap();
+            let _ = program_stubs::set_syscall_stubs(previous);
+        }
+    }
+
+    fn capture_return_data() -> (ReturnDataStubGuard, Arc<Mutex<Vec<u8>>>) {
+        let bytes = Arc::new(Mutex::new(Vec::new()));
+        let previous = program_stubs::set_syscall_stubs(Box::new(ReturnDataStub {
+            bytes: Arc::clone(&bytes),
+        }));
+        (
+            ReturnDataStubGuard {
+                previous: Some(previous),
+            },
+            bytes,
+        )
     }
 
     fn make_fixture() -> Fixture {
@@ -645,6 +782,159 @@ mod tests {
         }
     }
 
+    fn make_honest_fixture() -> HonestFixture {
+        let verifier = crate::id();
+        let pool_program = Pubkey::new_unique();
+        let mint = Pubkey::new_unique();
+        let master_key =
+            Pubkey::find_program_address(&[PAIR_FOREST_MASTER_SEED, mint.as_ref()], &pool_program)
+                .0;
+        let nullifier = deterministic_v7_pair_forest_transfer_nullifier_v1();
+        let lane_id = pool_v1_pair_forest_output_lane_v1(&nullifier).unwrap();
+        let lane_key = Pubkey::find_program_address(
+            &[PAIR_FOREST_LANE_SEED, master_key.as_ref(), &[lane_id]],
+            &pool_program,
+        )
+        .0;
+        let checkpoint_sequence = 42u64;
+        let checkpoint_key = Pubkey::find_program_address(
+            &[
+                PAIR_FOREST_CHECKPOINT_SEED,
+                master_key.as_ref(),
+                &checkpoint_sequence.to_le_bytes(),
+            ],
+            &pool_program,
+        )
+        .0;
+        let proof_key = Pubkey::new_unique();
+        let deployment_domain = [5; 32];
+        let empty = V7_PAIR_EMPTY_ROOTS;
+        let mut tree = IncrementalMerkleTreeV1::from_parts_with_empty_roots(
+            0,
+            empty[POOL_V1_PAIR_TREE_DEPTH],
+            core::array::from_fn(|level| empty[level]),
+            &empty,
+        )
+        .unwrap();
+        for leaf in 0..13u32 {
+            tree = tree
+                .append_one_with_empty_roots(digest(20_000 + 32 * leaf), &empty)
+                .unwrap()
+                .0;
+        }
+        let lane = PoolV1PairForestLaneStateV1 {
+            master: master_key.to_bytes(),
+            lane_id,
+            tree,
+        };
+        let snapshot = PoolV1PairLiveSnapshotV1 {
+            pool: master_key.to_bytes(),
+            deployment_domain,
+            sequence: tree.next_leaf_index,
+            next_pair_index: tree.next_leaf_index,
+            current_root: tree.root,
+            frontier: tree.frontier,
+        };
+        let built = build_v7_pair_forest_transfer_fixture_unmined_v1(
+            verifier.to_bytes(),
+            proof_key.to_bytes(),
+            master_key.to_bytes(),
+            checkpoint_key.to_bytes(),
+            lane_key.to_bytes(),
+            checkpoint_sequence,
+            deployment_domain,
+            snapshot,
+        )
+        .unwrap();
+        assert_eq!(built.public.nullifier, nullifier);
+        assert_eq!(built.public.pool, master_key.to_bytes());
+        assert_eq!(built.transition.live_snapshot, snapshot);
+
+        let master = PoolV1PairForestMasterV1 {
+            identity: PoolIdentityV1 {
+                pool: master_key.to_bytes(),
+                asset_mint: mint.to_bytes(),
+                token_program: Pubkey::new_unique().to_bytes(),
+                asset_id: built.public.asset_id,
+                deployment_domain,
+            },
+            verifier_policy: VerifierPolicyV1 {
+                flags: 1,
+                registry_program: Pubkey::new_unique().to_bytes(),
+                registry_authority: [0; 32],
+                policy_binding: [7; 32],
+            },
+            initialized_lane_mask: POOL_V1_PAIR_FOREST_ALL_LANES_MASK,
+            has_checkpoint: true,
+            next_checkpoint_sequence: checkpoint_sequence + 1,
+            last_checkpoint_lane_sequences: [0; 8],
+        };
+        let checkpoint = PoolV1PairForestCheckpointV1 {
+            master: master_key.to_bytes(),
+            deployment_domain,
+            checkpoint_sequence,
+            global_root: built.public.anchor_root,
+            lane_sequences: [0; 8],
+        };
+        let request = PoolV1PairForestTerminalRequestV1 {
+            verifier_profile: V7_POOL_PAIR_FOREST_TAG73_PROFILE_BINDING,
+            verifier_release: V7_POOL_PAIR_FOREST_TAG73_RELEASE_BINDING,
+            pool_program: pool_program.to_bytes(),
+            public: PoolV1PairForestTerminalPaymentV1::PrivateTransfer(built.public),
+        };
+        let candidate = built.transition.candidate_afterstate;
+        let payload_len = POOL_V1_PAIR_VERIFIED_AFTERSTATE_BYTES + built.proof.bytes.len();
+        let mut proof_data = vec![0u8; crate::PROOF_ACCOUNT_HEADER_LEN + payload_len];
+        proof_data[..4].copy_from_slice(b"ASPU");
+        proof_data[4..8].copy_from_slice(&(payload_len as u32).to_le_bytes());
+        let candidate_start = crate::PROOF_ACCOUNT_HEADER_LEN;
+        let proof_start = candidate_start + POOL_V1_PAIR_VERIFIED_AFTERSTATE_BYTES;
+        proof_data[candidate_start..proof_start]
+            .copy_from_slice(&encode_pool_v1_pair_verified_afterstate_v1(&candidate).unwrap());
+        proof_data[proof_start..].copy_from_slice(&built.proof.bytes);
+
+        let expected_result = PoolV1PairForestTerminalResultV1 {
+            transition_kind: built.statement.transition_kind(),
+            master_account: master_key.to_bytes(),
+            selected_lane_account: lane_key.to_bytes(),
+            output_lane: lane_id,
+            nullifier,
+            verified_afterstate: candidate,
+        };
+        let proof_bytes = built.proof.bytes.len();
+        let frontier_nodes = built.proof.frontier_nodes;
+        HonestFixture {
+            accounts: Fixture {
+                verifier,
+                proof_owner: verifier,
+                master_owner: pool_program,
+                checkpoint_owner: pool_program,
+                lane_owner: pool_program,
+                proof_key,
+                master_key,
+                checkpoint_key,
+                lane_key,
+                proof_data,
+                master_data: encode_pool_v1_pair_forest_master_v1(&master)
+                    .unwrap()
+                    .to_vec(),
+                checkpoint_data: encode_pool_v1_pair_forest_checkpoint_v1(&checkpoint)
+                    .unwrap()
+                    .to_vec(),
+                lane_data: encode_pool_v1_pair_forest_lane_state_v1(&lane, &empty)
+                    .unwrap()
+                    .to_vec(),
+                request: encode_pool_v1_pair_forest_terminal_request_v1(&request)
+                    .unwrap()
+                    .to_vec(),
+            },
+            statement: built.statement,
+            expected_result,
+            proof_bytes,
+            frontier_nodes,
+        }
+    }
+
     fn with_fixture_accounts<T>(
         fixture: &mut Fixture,
         use_accounts: impl FnOnce(&[AccountInfo<'_>]) -> T,
@@ -723,9 +1013,7 @@ mod tests {
         let request = fixture.request.clone();
         let mut cleared = false;
         let result = with_fixture_accounts(&mut fixture, |accounts| {
-            process_with_clear_return_data(&verifier, accounts, &request, || {
-                cleared = true;
-            })
+            process_with_clear_return_data(&verifier, accounts, &request, || cleared = true)
         });
         assert!(cleared);
         assert_eq!(result, Err(ProgramError::InvalidAccountData));
@@ -800,5 +1088,70 @@ mod tests {
         let mut fixture = make_fixture();
         fixture.lane_key = fixture.checkpoint_key;
         assert!(validate_fixture(&mut fixture).is_err());
+    }
+
+    #[test]
+    #[ignore = "RAM-intensive eight-lane proof generation; run --release on the NUC"]
+    fn honest_transfer_dispatches_asq8_to_exact_asr8_and_mutations_reject() {
+        let mut honest = make_honest_fixture();
+        let validated = validate_fixture(&mut honest.accounts).unwrap();
+        assert_eq!(*validated.statement, honest.statement);
+        assert_eq!(validated.frontier_nodes, honest.frontier_nodes);
+        assert_eq!(validated.proof_length, honest.proof_bytes);
+
+        let (_return_data_guard, return_data) = capture_return_data();
+        let verifier = honest.accounts.verifier;
+        let request = honest.accounts.request.clone();
+        let accepted = with_fixture_accounts(&mut honest.accounts, |accounts| {
+            process_without_work_for_test_v1(&verifier, accounts, &request)
+        });
+        assert_eq!(accepted, Ok(()));
+        let returned = return_data.lock().unwrap().clone();
+        assert_eq!(returned.len(), POOL_V1_PAIR_FOREST_TERMINAL_RESULT_BYTES);
+        assert_eq!(
+            decode_pool_v1_pair_forest_terminal_result_v1(&returned).unwrap(),
+            honest.expected_result,
+        );
+
+        // The proof-account candidate afterstate is part of the reconstructed
+        // ASF8 digest.  This remains a canonical ASJA encoding but must no
+        // longer verify against the already generated proof.
+        let mut wrong_asja = honest.accounts.clone();
+        let mut candidate = honest.expected_result.verified_afterstate;
+        candidate.next_root[0] = M31((candidate.next_root[0].0 + 1) % P);
+        let start = crate::PROOF_ACCOUNT_HEADER_LEN;
+        wrong_asja.proof_data[start..start + POOL_V1_PAIR_VERIFIED_AFTERSTATE_BYTES]
+            .copy_from_slice(&encode_pool_v1_pair_verified_afterstate_v1(&candidate).unwrap());
+        let changed = validate_fixture(&mut wrong_asja).unwrap();
+        assert_ne!(*changed.statement, honest.statement);
+        let wrong_request = wrong_asja.request.clone();
+        assert_eq!(
+            with_fixture_accounts(&mut wrong_asja, |accounts| {
+                process_without_work_for_test_v1(&verifier, accounts, &wrong_request)
+            }),
+            Err(ProgramError::InvalidAccountData),
+        );
+        assert!(return_data.lock().unwrap().is_empty());
+
+        // ASQ8 selects the lane from the nullifier.  Supplying the same lane
+        // bytes under a non-canonical account key fails the PDA binding before
+        // the proof can authorize any result.
+        let mut wrong_lane_account = honest.accounts.clone();
+        wrong_lane_account.lane_key = Pubkey::new_unique();
+        let wrong_lane_request = wrong_lane_account.request.clone();
+        assert_eq!(
+            with_fixture_accounts(&mut wrong_lane_account, |accounts| {
+                process_without_work_for_test_v1(&verifier, accounts, &wrong_lane_request)
+            }),
+            Err(ProgramError::InvalidAccountData),
+        );
+        assert!(return_data.lock().unwrap().is_empty());
+
+        eprintln!(
+            "V7 pair-forest positive dispatch: proof_bytes={} frontier_nodes={} return_bytes={}",
+            honest.proof_bytes,
+            honest.frontier_nodes,
+            returned.len(),
+        );
     }
 }

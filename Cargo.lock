@@ -233,6 +233,7 @@ name = "aspis-verifier"
 version = "0.1.0"
 dependencies = [
  "aspis-core",
+ "aspis-prover",
  "aspis-statement",
  "borsh 1.5.7",
  "proptest",
