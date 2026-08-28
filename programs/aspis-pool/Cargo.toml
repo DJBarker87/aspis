@@ -27,6 +27,10 @@ pair-forest-source-result-invariant-audit = ["pair-forest-source-invariant-audit
 # CPI so an audit-only verifier lane-invariant reader can independently root
 # its capability in immutable selected-release configuration.
 pair-forest-verifier-lane-invariant-audit = ["pair-forest-account-evidence"]
+# Audit-only direct consumer for a canonical ASR8 already decoded and bound to
+# the selected verifier return program. It avoids reconstructing ASF8 and
+# re-encoding the same ASR8 bytes after the exact field checks.
+pair-forest-direct-result-audit = ["pair-forest-account-evidence"]
 # Instrumented local phase ledger. Logging changes total CU.
 pair-forest-cu-profile-audit = ["pair-forest-account-evidence"]
 # Audit-only full 1,880-byte ASF8 top-level transport. It shares the exact

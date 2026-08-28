@@ -1139,6 +1139,34 @@ fn validate_pair_forest_terminal_result_boxed_v1(
         .map_err(|_| PoolV1ProgramError::InvalidVerifierReturnData.into())
 }
 
+/// Exact field-wise form of the same result/statement binding after the Pool
+/// has authenticated the request, master, checkpoint, lane, verifier release
+/// and canonical ASR8 return bytes. It avoids allocating and validating a
+/// second ASF8 object while retaining every equality used by
+/// `validate_pool_v1_pair_forest_terminal_result_against_statement_v1`.
+#[cfg(feature = "pair-forest-direct-result-audit")]
+#[inline(never)]
+fn validate_pair_forest_terminal_result_direct_v1(
+    request: &PoolV1PairForestTerminalRequestV1,
+    master_account: &Pubkey,
+    lane_account: &Pubkey,
+    output_lane: u8,
+    lane: &PoolV1PairForestLaneStateV1,
+    result: &aspis_statement::pool_v1::PoolV1PairForestTerminalResultV1,
+) -> ProgramResult {
+    if result.transition_kind != request.public.transition_kind()
+        || result.master_account != master_account.to_bytes()
+        || result.selected_lane_account != lane_account.to_bytes()
+        || result.output_lane != output_lane
+        || result.nullifier != *request.public.nullifier()
+        || lane.tree.next_leaf_index.checked_add(1)
+            != Some(result.verified_afterstate.next_pair_index)
+    {
+        return Err(PoolV1ProgramError::InvalidVerifierReturnData.into());
+    }
+    Ok(())
+}
+
 #[inline(never)]
 fn encode_next_pair_forest_lane_boxed_v1(
     lane: &PoolV1PairForestLaneStateV1,
@@ -1288,6 +1316,7 @@ where
     )?;
     pair_forest_cu_checkpoint_v1("ASQ8_AFTER_VERIFIER_CPI");
     let result = authenticated.value();
+    #[cfg(not(feature = "pair-forest-direct-result-audit"))]
     let common = pair_forest_terminal_common_boxed_v1(
         master_account.key,
         checkpoint_account.key,
@@ -1298,11 +1327,24 @@ where
         &lane,
         result,
     );
+    #[cfg(not(feature = "pair-forest-direct-result-audit"))]
     validate_pair_forest_terminal_result_boxed_v1(&request, common, result)?;
+    #[cfg(feature = "pair-forest-direct-result-audit")]
+    validate_pair_forest_terminal_result_direct_v1(
+        &request,
+        master_account.key,
+        lane_account.key,
+        output_lane,
+        &lane,
+        result,
+    )?;
     pair_forest_cu_checkpoint_v1("ASQ8_RESULT_BOUND");
     let (_next_lane, next_lane_image) = encode_next_pair_forest_lane_boxed_v1(&lane, result)?;
     pair_forest_cu_checkpoint_v1("ASQ8_NEXT_LANE_ENCODED");
+    #[cfg(not(feature = "pair-forest-direct-result-audit"))]
     let result_bytes = encode_pair_forest_result_boxed_v1(result)?;
+    #[cfg(feature = "pair-forest-direct-result-audit")]
+    let result_bytes = authenticated.exact_bytes();
     pair_forest_cu_checkpoint_v1("ASQ8_RESULT_ENCODED");
 
     let writable_page = match layout.page {

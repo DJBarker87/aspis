@@ -31,16 +31,30 @@ use crate::{
 };
 
 #[derive(Clone, Debug, PartialEq, Eq)]
-pub(crate) struct AuthenticatedPairForestResultV1(Box<PoolV1PairForestTerminalResultV1>);
+pub(crate) struct AuthenticatedPairForestResultV1 {
+    value: Box<PoolV1PairForestTerminalResultV1>,
+    exact_bytes: Box<[u8]>,
+}
 
 impl AuthenticatedPairForestResultV1 {
     pub(crate) fn value(&self) -> &PoolV1PairForestTerminalResultV1 {
-        &self.0
+        &self.value
+    }
+
+    pub(crate) fn exact_bytes(&self) -> &[u8] {
+        &self.exact_bytes
     }
 
     #[cfg(test)]
     pub(crate) fn for_test(value: PoolV1PairForestTerminalResultV1) -> Self {
-        Self(Box::new(value))
+        let exact_bytes = encode_pool_v1_pair_forest_terminal_result_v1(&value)
+            .expect("test result must be canonical")
+            .to_vec()
+            .into_boxed_slice();
+        Self {
+            value: Box::new(value),
+            exact_bytes,
+        }
     }
 }
 
@@ -269,7 +283,10 @@ fn invoke_pair_forest_terminal_with_runtime_v1<'info, R: PairForestVerifierRunti
     }
     let result = decode_pool_v1_pair_forest_terminal_result_v1(&returned_data)
         .map_err(|_| PoolV1ProgramError::InvalidVerifierReturnData)?;
-    Ok(AuthenticatedPairForestResultV1(Box::new(result)))
+    Ok(AuthenticatedPairForestResultV1 {
+        value: Box::new(result),
+        exact_bytes: returned_data.into_boxed_slice(),
+    })
 }
 
 #[allow(clippy::too_many_arguments)]
