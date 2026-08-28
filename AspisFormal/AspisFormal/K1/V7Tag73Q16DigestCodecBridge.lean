@@ -103,6 +103,23 @@ theorem decoded_schedule_positions_are_scan_positions
           next notAbort => simp at detailedEq
       next beyondCap => simp at detailedEq
 
+/-- Pointwise equality of every consumed digest with its routed candidate
+coordinate is enough to recover the exact list-prefix equation used by the
+incremental decoder bridge. -/
+theorem candidate_blocks_prefix_of_pointwise
+    (blocks : List Digest256) (full : CandidateDigestBlocks)
+    (lengthCap : blocks.length ≤ 8)
+    (pointwise : ∀ index (inBlocks : index < blocks.length),
+      blocks[index] = full ⟨index, Nat.lt_of_lt_of_le inBlocks lengthCap⟩) :
+    ∃ suffix, blocks ++ suffix = List.ofFn full := by
+  apply List.prefix_iff_exists_append_eq.mp
+  apply List.prefix_iff_getElem.mpr
+  refine ⟨?_, ?_⟩
+  · simpa using lengthCap
+  · intro index inBlocks
+    rw [List.getElem_ofFn]
+    exact pointwise index inBlocks
+
 /-- A production decoder may stop after the first exact block prefix that
 contains sixteen distinct positions.  Extending that prefix to the candidate's
 full eight-block digest table leaves the completed scan unchanged, so the
@@ -141,6 +158,7 @@ end
 #print axioms deployed_digest_scan_eq_ideal_outputList
 #print axioms positionsEmbedding_ofFn_values
 #print axioms decoded_schedule_positions_are_scan_positions
+#print axioms candidate_blocks_prefix_of_pointwise
 #print axioms decoded_extension_realizes_ideal_output
 
 end AspisK1.V7Tag73Q16DigestCodecBridge

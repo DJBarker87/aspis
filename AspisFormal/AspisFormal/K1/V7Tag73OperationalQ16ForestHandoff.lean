@@ -79,6 +79,49 @@ structure OperationalQ16DigestPrefixFacts
     semanticFrontierNodes (semanticScheduleOfOperational schedule) =
       frontierNodes schedule
 
+/-- Pointwise form naturally emitted by the causal router: each consumed
+block is the digest stored at the corresponding candidate coordinate. -/
+structure OperationalQ16DigestPointwiseFacts
+    (frontierNodes : QuerySchedule → Nat)
+    (search : FirstCap203Search frontierNodes)
+    (forest : Q16CandidateDigestForest) where
+  candidateBlocks : Fin 64 → List Digest256
+  candidateLengthCap : ∀ counter,
+    counter.val ≤ search.selectedCounter.val →
+    (candidateBlocks counter).length ≤ 8
+  candidateBlockExact : ∀ counter
+    (beforeSelected : counter.val ≤ search.selectedCounter.val),
+    ∀ index (inBlocks : index < (candidateBlocks counter).length),
+      (candidateBlocks counter)[index] =
+        forest counter
+          ⟨index, Nat.lt_of_lt_of_le inBlocks
+            (candidateLengthCap counter beforeSelected)⟩
+  outcomeDecoded : ∀ counter,
+    counter.val ≤ search.selectedCounter.val →
+    decodeCandidateOutcome counter (candidateBlocks counter) =
+      some (search.outcome counter)
+  frontierExact : ∀ counter schedule,
+    counter.val ≤ search.selectedCounter.val →
+    search.outcome counter = .schedule schedule →
+    semanticFrontierNodes (semanticScheduleOfOperational schedule) =
+      frontierNodes schedule
+
+/-- Convert the router's per-block equalities into the exact prefix
+certificate consumed by the ideal-output bridge. -/
+def OperationalQ16DigestPointwiseFacts.toPrefixFacts
+    {frontierNodes : QuerySchedule → Nat}
+    {search : FirstCap203Search frontierNodes}
+    {forest : Q16CandidateDigestForest}
+    (facts : OperationalQ16DigestPointwiseFacts frontierNodes search forest) :
+    OperationalQ16DigestPrefixFacts frontierNodes search forest where
+  candidateBlocks := facts.candidateBlocks
+  candidatePrefix counter beforeSelected :=
+    candidate_blocks_prefix_of_pointwise (facts.candidateBlocks counter)
+      (forest counter) (facts.candidateLengthCap counter beforeSelected)
+      (facts.candidateBlockExact counter beforeSelected)
+  outcomeDecoded := facts.outcomeDecoded
+  frontierExact := facts.frontierExact
+
 /-- The exact digest-prefix codec theorem discharges the semantic output
 field of `OperationalQ16ForestRealization`.  Thus the remaining production
 bridge needs only expose the consumed blocks, their routed completion, the
@@ -97,6 +140,16 @@ theorem operationalQ16ForestRealizationOfDigestPrefixes
       prefixExact
     rw [facts.outcomeDecoded counter beforeSelected, decoded]
   frontierExact := facts.frontierExact
+
+/-- Final pointwise source handoff.  This is the form directly discharged by
+iterating `scheduler_history_label_receives_current_answer`. -/
+theorem operationalQ16ForestRealizationOfDigestPointwise
+    {frontierNodes : QuerySchedule → Nat}
+    {search : FirstCap203Search frontierNodes}
+    {forest : Q16CandidateDigestForest}
+    (facts : OperationalQ16DigestPointwiseFacts frontierNodes search forest) :
+    OperationalQ16ForestRealization frontierNodes search forest :=
+  operationalQ16ForestRealizationOfDigestPrefixes facts.toPrefixFacts
 
 /-- The operationally selected schedule is semantically admitted. -/
 theorem selected_semantic_schedule_admitted
@@ -209,6 +262,7 @@ end
 
 #print axioms selected_semantic_schedule_admitted
 #print axioms operationalQ16ForestRealizationOfDigestPrefixes
+#print axioms operationalQ16ForestRealizationOfDigestPointwise
 #print axioms earlier_operational_candidate_rejects_every_admitted
 #print axioms operationalFirstAdmittedSample
 #print axioms operational_realization_implies_q16_digest_forest_succeeds
