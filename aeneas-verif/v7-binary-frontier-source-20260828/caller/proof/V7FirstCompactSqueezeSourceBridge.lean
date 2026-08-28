@@ -9,6 +9,7 @@ namespace V7FirstCompactSqueezeSourceBridge
 
 open V7FirstCompactSource
 open V7FirstCompactSamplerNativeBlockBridge
+open AspisK1.V7Tag73TranscriptSchedule
 
 abbrev Transcript := transcript.Transcript
 
@@ -49,6 +50,32 @@ def HashCallbackAlwaysSucceeds
     (hash : Slice (Slice Std.U8) → Result SourceSqueezeBlock) : Prop :=
   ∀ input, ∃ output, hash input = .ok output
 
+/-- Exact mathematical bytes passed to the installed production hash
+callback: concatenate the supplied slices in source order. -/
+def nativeHashInputBytes (inputs : Slice (Slice Std.U8)) : ByteString :=
+  (inputs.val.flatMap fun input => input.val).map
+    (fun byte => UInt8.ofNat byte.val)
+
+/-- The permitted SHA-256 source boundary.  It includes totality and states
+that the successful callback output is SHA-256 of the exact concatenated
+source slices; no generic fallibility premise survives above this interface. -/
+def HashCallbackReturnsSha256
+    (sha256 : ByteString → Digest256)
+    (hash : Slice (Slice Std.U8) → Result SourceSqueezeBlock) : Prop :=
+  ∀ input, ∃ output,
+    hash input = .ok output ∧
+    nativeSourceDigest (sourceSqueezeBytes output) =
+      sha256 (nativeHashInputBytes input)
+
+theorem hash_callback_sha256_implies_total
+    (sha256 : ByteString → Digest256)
+    (hash : Slice (Slice Std.U8) → Result SourceSqueezeBlock)
+    (semantics : HashCallbackReturnsSha256 sha256 hash) :
+    HashCallbackAlwaysSucceeds hash := by
+  intro input
+  obtain ⟨output, run, _⟩ := semantics input
+  exact ⟨output, run⟩
+
 /-- Totality of the one production hash callback is sufficient for every
 squeeze reachable from a transcript carrying that callback. -/
 theorem hash_callback_total_implies_squeeze_success
@@ -87,6 +114,7 @@ theorem successful_squeeze_preserves_hash
           rfl
 
 #print axioms source_squeeze_block_run_is_exact
+#print axioms hash_callback_sha256_implies_total
 #print axioms hash_callback_total_implies_squeeze_success
 #print axioms successful_squeeze_preserves_hash
 

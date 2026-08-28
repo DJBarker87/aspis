@@ -610,6 +610,28 @@ theorem raw_candidate_constructs_exact_decoded_schedule
   · exact raw_queries_eq_decoded_schedule inputTranscript sourceCounter
       output raw counter digests schedule decoded sampledValues
 
+/-- Release-facing form of the source-to-decoder theorem: its only hash
+premise is the explicit permitted SHA-256 callback interface. -/
+theorem raw_candidate_constructs_exact_decoded_schedule_of_sha256
+    (inputTranscript : Transcript) (sourceCounter : Std.U8)
+    (output : Option v7_onefold.V7CompactQuerySchedule)
+    (raw : RawCandidateExecution inputTranscript sourceCounter output)
+    (sha256 : ByteString → Digest256)
+    (hashSemantics :
+      V7FirstCompactSqueezeSourceBridge.HashCallbackReturnsSha256 sha256
+        raw.absorbed.hash)
+    (counter : Fin 64) :
+    ∃ (blocks : List SourceSqueezeBlock) (schedule : QuerySchedule),
+      NativeExactSqueezeTrace raw.absorbed blocks raw.sampledTranscript ∧
+      decodeCandidateOutcome counter (sourceTraceDigests blocks) =
+        some (.schedule schedule) ∧
+      raw.queries = queryScheduleArray schedule := by
+  exact raw_candidate_constructs_exact_decoded_schedule inputTranscript
+    sourceCounter output raw
+    (V7FirstCompactSqueezeSourceBridge.hash_callback_sha256_implies_total
+      sha256 raw.absorbed.hash hashSemantics)
+    counter
+
 /-- Candidate-level caller closure with no assumed raw-array/schedule
 equality.  Literal translated success constructs the decoded schedule and
 therefore fixes the translated frontier to the semantic recurrence. -/
@@ -641,12 +663,41 @@ theorem candidate_success_constructs_exact_decoded_frontier
     inputTranscript sourceCounter output raw schedule queriesExact
   exact ⟨blocks, schedule, trace, decoded, queriesExact, frontierExact⟩
 
+/-- Release-facing candidate closure under precisely the allowed SHA-256
+source boundary. -/
+theorem candidate_success_constructs_exact_decoded_frontier_of_sha256
+    (inputTranscript : Transcript) (sourceCounter : Std.U8)
+    (output : Option v7_onefold.V7CompactQuerySchedule)
+    (success :
+      v7_onefold.derive_v7_compact_candidate inputTranscript sourceCounter =
+        .ok (.Ok output))
+    (counterBound : sourceCounter.val < 64)
+    (sha256 : ByteString → Digest256)
+    (hashSemantics :
+      V7FirstCompactSqueezeSourceBridge.HashCallbackReturnsSha256 sha256
+        (candidate_success_exposes_raw_execution inputTranscript sourceCounter
+          output success).absorbed.hash) :
+    let raw := candidate_success_exposes_raw_execution inputTranscript
+      sourceCounter output success
+    ∃ (blocks : List SourceSqueezeBlock) (schedule : QuerySchedule),
+      NativeExactSqueezeTrace raw.absorbed blocks raw.sampledTranscript ∧
+      decodeCandidateOutcome ⟨sourceCounter.val, counterBound⟩
+          (sourceTraceDigests blocks) = some (.schedule schedule) ∧
+      raw.queries = queryScheduleArray schedule ∧
+      raw.frontier.val = semanticFrontierNodes schedule.positions := by
+  apply candidate_success_constructs_exact_decoded_frontier
+    inputTranscript sourceCounter output success counterBound
+  exact V7FirstCompactSqueezeSourceBridge.hash_callback_sha256_implies_total
+    sha256 _ hashSemantics
+
 #print axioms nativeCandidateBlocks_flatten_eq_trace_words
 #print axioms scanBlocks_success_accepted_eq_scanUntil_take_flatten
 #print axioms successful_native_block_scan_eq_scanQ16
 #print axioms successful_native_block_scan_draws_eq_scanQ16
 #print axioms raw_candidate_sampled_eq_trace_scanQ16
 #print axioms raw_candidate_constructs_exact_decoded_schedule
+#print axioms raw_candidate_constructs_exact_decoded_schedule_of_sha256
 #print axioms candidate_success_constructs_exact_decoded_frontier
+#print axioms candidate_success_constructs_exact_decoded_frontier_of_sha256
 
 end V7FirstCompactSamplerK13PositionBridge
