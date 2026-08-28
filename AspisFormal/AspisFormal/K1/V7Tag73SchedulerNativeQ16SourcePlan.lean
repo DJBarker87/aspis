@@ -1,6 +1,7 @@
 import AspisFormal.K1.V7Tag73SchedulerNativeQ16ForestReplay
 import AspisFormal.K1.V7Tag73DeterministicRefinement
 import AspisFormal.K1.V7Tag73Q16DeployedDecoderPrefixBridge
+import AspisFormal.K1.V7Tag73Q16SuccessfulForestBridge
 
 /-!
 # Exact accepting-source branch plan for scheduler-native q16 replay
@@ -28,6 +29,8 @@ open AspisK1.V7Tag73Q16DigestDrawReindex
 open AspisK1.V7Tag73Q16DeployedDecoderPrefixBridge
 open AspisK1.V7Tag73SamplerDecoder
 open AspisK1.V7Tag73Q16FirstCompactUniformity
+open AspisK1.V7Tag73Q16SemanticFrontierBridge
+open AspisK1.V7Tag73Q16SuccessfulForestBridge
 
 noncomputable section
 
@@ -183,6 +186,91 @@ theorem scheduler_native_q16_selected_prefix_to_ideal_output
       q16_branch_output_blocks_eq_take selectedBranch forest
   · simpa [selectedBranch] using decoded
 
+/-- If every source branch through the selected counter decodes from its
+routed prefix, the complete output forest is exactly a successful first-
+cap-203 forest.  This is the deterministic event-cover statement consumed by
+the finite q16 probability theorem. -/
+theorem scheduler_native_q16_source_plan_realizes_successful_forest
+    {frontierNodes : QuerySchedule -> Nat}
+    (initialDigest : Fin 64 -> Digest256)
+    (search : FirstCap203Search frontierNodes)
+    (forest : TotalQ16DuplexForest)
+    (frontierExact : forall schedule,
+      frontierNodes schedule = semanticFrontierNodes schedule.positions)
+    (decoded : forall counter,
+      counter.val <= search.selectedCounter.val ->
+        decodeCandidateOutcome counter
+            (q16BranchOutputBlocks
+              (schedulerNativeQ16BranchOfSpec initialDigest
+                { counter := counter
+                  outcome := search.outcome counter }) forest) =
+          some (search.outcome counter)) :
+    q16DigestForestSucceeds forest.1 := by
+  have selectedAdmitted :
+      SemanticCap203Admitted search.selectedSchedule.positions := by
+    unfold SemanticCap203Admitted
+    rw [← frontierExact search.selectedSchedule]
+    exact search.selectedCompact
+  have selectedOutput :
+      q16CandidateOutput
+          (deployedQ16DrawTape (forest.1 search.selectedCounter)) =
+        some search.selectedSchedule.positions := by
+    have selectedDecoded := decoded search.selectedCounter (by omega)
+    rw [search.selectedOutcome] at selectedDecoded
+    exact scheduler_native_q16_selected_prefix_to_ideal_output
+      initialDigest search forest selectedDecoded
+  have deployedForestAt : forall counter,
+      deployedQ16DrawForest forest.1 counter =
+        deployedQ16DrawTape (forest.1 counter) := by
+    intro counter
+    rfl
+  have firstAt :
+      FirstAdmittedAt q16CandidateOutput SemanticCap203Admitted 64
+        search.selectedSchedule.positions
+        (search.selectedCounter, deployedQ16DrawForest forest.1) := by
+    constructor
+    · intro counter earlier result resultAdmitted
+      obtain ⟨schedule, outcomeExact, noncompact⟩ :=
+        search.everyEarlierSampledAndNoncompact counter earlier
+      have counterDecoded := decoded counter (Nat.le_of_lt earlier)
+      rw [outcomeExact] at counterDecoded
+      let branch := schedulerNativeQ16BranchOfSpec initialDigest
+        { counter := counter
+          outcome := .schedule schedule }
+      have prefixExact :
+          q16BranchOutputBlocks branch forest =
+            (List.ofFn (forest.1 counter)).take schedule.blocksUsed := by
+        simpa [branch, schedulerNativeQ16BranchOfSpec,
+          CandidateOutcome.blocksUsed] using
+            q16_branch_output_blocks_eq_take branch forest
+      have earlierOutput :
+          q16CandidateOutput (deployedQ16DrawTape (forest.1 counter)) =
+            some schedule.positions := by
+        exact decodeCandidateOutcome_schedule_to_q16CandidateOutput counter
+          (forest.1 counter) (q16BranchOutputBlocks branch forest) schedule
+          prefixExact (by simpa [branch] using counterDecoded)
+      intro outputEqual
+      change q16CandidateOutput (deployedQ16DrawForest forest.1 counter) =
+        some result at outputEqual
+      rw [deployedForestAt counter] at outputEqual
+      have positionsEqual : schedule.positions = result := by
+        rw [earlierOutput] at outputEqual
+        exact Option.some.inj outputEqual
+      rw [frontierExact schedule] at noncompact
+      unfold SemanticCap203Admitted at resultAdmitted
+      rw [positionsEqual] at noncompact
+      exact (Nat.not_lt_of_ge resultAdmitted) noncompact
+    · change q16CandidateOutput
+          (deployedQ16DrawForest forest.1 search.selectedCounter) =
+        some search.selectedSchedule.positions
+      rw [deployedForestAt search.selectedCounter]
+      exact selectedOutput
+  let sample :
+      FirstAdmittedSample q16CandidateOutput SemanticCap203Admitted 64 :=
+    ⟨⟨search.selectedSchedule.positions, selectedAdmitted⟩,
+      ⟨(search.selectedCounter, deployedQ16DrawForest forest.1), firstAt⟩⟩
+  exact ⟨sample, rfl⟩
+
 #print axioms candidate_outcome_blocks_positive
 #print axioms candidate_outcome_blocks_cap
 #print axioms scheduler_native_q16_branches_getLast_selected
@@ -191,6 +279,7 @@ theorem scheduler_native_q16_selected_prefix_to_ideal_output
 #print axioms q16_specs_of_search_earlier_noncompact
 #print axioms q16_specs_of_search_selected_exact
 #print axioms scheduler_native_q16_selected_prefix_to_ideal_output
+#print axioms scheduler_native_q16_source_plan_realizes_successful_forest
 
 end
 
