@@ -422,7 +422,7 @@ theorem decodeCandidateDetailed_schedule_exact_length (counter : Fin 64)
     (schedule : QuerySchedule)
     (run : decodeCandidateDetailed counter blocks = some decoded)
     (outcome : decoded.outcome = .schedule schedule) :
-    blocks.length = blocksNeededForWords (scanQ16 blocks).drawsUsed := by
+    blocks.length = q16BlocksNeededForDraws (scanQ16 blocks).drawsUsed := by
   unfold decodeCandidateDetailed at run
   split at run
   next blockCap =>
@@ -496,7 +496,7 @@ theorem decodeCandidateOutcome_accepted_prefix_suffix_nil
                 decodeCandidateDetailed_schedule_scan_complete counter blocks
                   prefixDecoded schedule prefixRun prefixOutcome
               have prefixLength : blocks.length =
-                  blocksNeededForWords (scanQ16 blocks).drawsUsed :=
+                  q16BlocksNeededForDraws (scanQ16 blocks).drawsUsed :=
                 decodeCandidateDetailed_schedule_exact_length counter blocks
                   prefixDecoded schedule prefixRun prefixOutcome
               have scanStable := scanQ16_append_of_complete blocks suffix
@@ -512,7 +512,7 @@ theorem decodeCandidateOutcome_accepted_prefix_suffix_nil
                       extensionOutcome extensionComplete)
               | schedule extensionSchedule =>
                   have extensionLength : (blocks ++ suffix).length =
-                      blocksNeededForWords
+                      q16BlocksNeededForDraws
                         (scanQ16 (blocks ++ suffix)).drawsUsed :=
                     decodeCandidateDetailed_schedule_exact_length counter
                       (blocks ++ suffix) extensionDecoded extensionSchedule

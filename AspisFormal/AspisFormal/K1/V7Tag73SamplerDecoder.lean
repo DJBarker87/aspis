@@ -15,8 +15,8 @@ This module implements the bounded samplers in
   of at most three outer attempts, discarding unused words in the last block
   of the preceding attempt exactly as Rust does; and
 * q16 masks to 18 bits, keeps first occurrences, consumes at most 64 words,
-  and succeeds exactly when the sixteenth distinct position first appears in
-  the last supplied block.
+  and models the production detection block squeezed when the sixteenth
+  distinct position lands exactly on a pre-cap block boundary.
 
 The secure-circle rational map is deliberately a parameter of type
 `SecureCircleParameterMap`.  This file does not fake QM31 arithmetic.  The
@@ -134,6 +134,26 @@ def encodeQm31Limbs (limbs : List Nat) : Qm31Bytes := fun index =>
 
 def blocksNeededForWords (wordsUsed : Nat) : Nat :=
   (wordsUsed + 7) / 8
+
+/-- Exact q16 transcript block count of the production outer loop after a
+successful scan.  If completion occurs on the final word of a block before
+the 64-draw cap, Rust enters the outer loop once more, squeezes an additional
+block, and only then notices completion at the first inner-loop guard.  At
+draw 64 the outer draw guard stops first, so no ninth block is consumed. -/
+def q16BlocksNeededForDraws (drawsUsed : Nat) : Nat :=
+  if drawsUsed < 64 ∧ drawsUsed % 8 = 0 then
+    drawsUsed / 8 + 1
+  else
+    blocksNeededForWords drawsUsed
+
+@[simp] theorem q16_blocks_needed_draw16 :
+    q16BlocksNeededForDraws 16 = 3 := by decide
+
+@[simp] theorem q16_blocks_needed_draw56 :
+    q16BlocksNeededForDraws 56 = 8 := by decide
+
+@[simp] theorem q16_blocks_needed_draw64 :
+    q16BlocksNeededForDraws 64 = 8 := by decide
 
 structure OrdinaryPrefixDecode where
   value : Qm31Bytes
@@ -419,7 +439,7 @@ def decodeCandidateDetailed (_counter : Fin 64) (blocks : List Digest256) :
     if lengthExact : scan.positions.length = 16 then
       let nodup := scanQ16_positions_nodup blocks
       let bounded := scanQ16_positions_bounded blocks
-      if exactUse : blocks.length = blocksNeededForWords scan.drawsUsed then
+      if exactUse : blocks.length = q16BlocksNeededForDraws scan.drawsUsed then
         if atLeastTwo : 2 ≤ blocks.length then
           let schedule : QuerySchedule :=
             { positions := positionsEmbedding scan.positions lengthExact nodup bounded

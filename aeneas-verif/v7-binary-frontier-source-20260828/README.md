@@ -343,6 +343,17 @@ Focused NUC unit `aspis-v7-q16-table-trace-05` exited 0 in 2.78 seconds, peaked
 at 6,843,764 KiB RSS, and used zero swap. Its endpoints report subsets of
 `propext`, `Classical.choice`, and `Quot.sound`.
 
+The source audit also exposed and corrected a non-negligible boundary case in
+the formal decoder. When the sixteenth distinct query arrives on word 8, 16,
+..., or 56, production Rust squeezes one additional block before its next
+inner-loop guard detects completion. `q16BlocksNeededForDraws` now models that
+exact transcript advancement (`16 -> 3`, `56 -> 8`, while `64 -> 8` because
+the outer cap stops first). No Rust, wire, query, digest, or cryptographic
+parameter changed. Focused NUC unit `aspis-v7-q16-detection-block-01` rebuilt
+the decoder, incremental prefix proof, deployed-prefix bridge, translated raw
+schedule bridge, position bridge, and fixed-table bridge successfully in 26.77
+seconds with zero swap; the final target peaked at 6,843,612 KiB RSS.
+
 ## Digests
 
 ```text
@@ -376,6 +387,8 @@ d71bbd19f44d407846820acb8bbe167f953925d819ef0313bf2e591cd1a7d888  caller/proof/V
 5ea4cdf362d9db303aeb1d510ab9c0a47ce48dfc9956f5b462e6c1c0d39ad222  caller/proof/V7FirstCompactSamplerK13PositionBridge.lean
 0caaeb316b41ff595566a4eba00a4c13c1ee98ed7e6f55936e7e5765e0c5045e  caller/proof/V7FirstCompactSqueezeSourceBridge.lean
 7328ec04446908cf5eddf3a709b7893f02687275e70c911cf75fb0fcf4a8c877  caller/proof/V7FirstCompactSamplerTableTraceBridge.lean
+e5bdf7fb6513decec05bdeb54789f1ab35541c2389aab2f9ec0339f2dc14aa14  ../../AspisFormal/AspisFormal/K1/V7Tag73SamplerDecoder.lean
+d9ba0ee0fbbc4e22b84b84bc117b3521104b4cf56b9a969d7a0d87605ec6c6a6  ../../AspisFormal/AspisFormal/K1/V7Tag73IncrementalSamplerControl.lean
 6abb0376100611c5553258062480777187785579f402c9c1d3ce72379518258f  ../../crates/aspis-core/src/v7_onefold.rs
 ```
 
