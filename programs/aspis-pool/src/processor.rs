@@ -2258,6 +2258,111 @@ fn dispatch_selected_verifier_v1<'info>(
     Ok(())
 }
 
+// Keep each eight-lane top-level operation behind its own SBF frame.  A single
+// dispatcher frame that contains the Rent/Clock setup for initialize,
+// checkpoint, deposit, and terminal causes LLVM to reserve enough spill space
+// for every arm at once.  That is both unnecessary and unsafe on the 4-KiB SBF
+// stack.  These wrappers do not change validation or state-transition order;
+// they only make the control-flow boundary explicit to the compiler.
+#[cfg(feature = "pair-forest-account-evidence")]
+#[inline(never)]
+fn process_pair_forest_initialize_top_level_v1(
+    program_id: &Pubkey,
+    accounts: &[AccountInfo<'_>],
+    instruction_data: &[u8],
+) -> ProgramResult {
+    let rent = Rent::get()?;
+    let mut runtime = SolanaPoolCpiRuntimeV1;
+    process_pair_forest_initialize_with_runtime_v1(
+        program_id,
+        accounts,
+        instruction_data,
+        &rent,
+        &mut runtime,
+    )
+}
+
+#[cfg(feature = "pair-forest-account-evidence")]
+#[inline(never)]
+fn process_pair_forest_checkpoint_top_level_v1(
+    program_id: &Pubkey,
+    accounts: &[AccountInfo<'_>],
+    instruction_data: &[u8],
+) -> ProgramResult {
+    let rent = Rent::get()?;
+    let mut runtime = SolanaPoolCpiRuntimeV1;
+    process_pair_forest_checkpoint_with_runtime_v1(
+        program_id,
+        accounts,
+        instruction_data,
+        &rent,
+        &mut runtime,
+    )
+}
+
+#[cfg(feature = "pair-forest-account-evidence")]
+#[inline(never)]
+fn process_pair_forest_deposit_top_level_v1(
+    program_id: &Pubkey,
+    accounts: &[AccountInfo<'_>],
+    instruction_data: &[u8],
+) -> ProgramResult {
+    let rent = Rent::get()?;
+    let mut runtime = SolanaPoolCpiRuntimeV1;
+    process_pair_forest_deposit_with_runtime_v1(
+        program_id,
+        accounts,
+        instruction_data,
+        &rent,
+        &mut runtime,
+    )
+}
+
+#[cfg(feature = "pair-forest-account-evidence")]
+#[inline(never)]
+fn process_pair_forest_terminal_top_level_v1(
+    program_id: &Pubkey,
+    accounts: &[AccountInfo<'_>],
+    instruction_data: &[u8],
+) -> ProgramResult {
+    let slot = Clock::get()?.slot;
+    let mut runtime = SolanaPoolCpiRuntimeV1;
+    process_pair_forest_terminal_v1(program_id, accounts, instruction_data, slot, &mut runtime)
+}
+
+#[cfg(feature = "pair-forest-account-evidence")]
+#[inline(never)]
+fn dispatch_pair_forest_top_level_v1(
+    program_id: &Pubkey,
+    accounts: &[AccountInfo<'_>],
+    instruction_data: &[u8],
+    magic: &[u8],
+) -> Option<ProgramResult> {
+    match magic {
+        b"AS8I" => Some(process_pair_forest_initialize_top_level_v1(
+            program_id,
+            accounts,
+            instruction_data,
+        )),
+        b"AS8C" => Some(process_pair_forest_checkpoint_top_level_v1(
+            program_id,
+            accounts,
+            instruction_data,
+        )),
+        b"AS8D" => Some(process_pair_forest_deposit_top_level_v1(
+            program_id,
+            accounts,
+            instruction_data,
+        )),
+        b"ASQ8" => Some(process_pair_forest_terminal_top_level_v1(
+            program_id,
+            accounts,
+            instruction_data,
+        )),
+        _ => None,
+    }
+}
+
 /// Exact native Pool dispatcher. Return data is cleared at entry and again on
 /// every error, so an accepted verifier's intermediate `ASVS` cannot escape a
 /// later failed marker/tree/vault transition.
@@ -2278,64 +2383,19 @@ pub fn process_instruction(
     let magic = instruction_data
         .get(..4)
         .ok_or(ProgramError::InvalidInstructionData)?;
+
+    #[cfg(feature = "pair-forest-account-evidence")]
+    if let Some(result) =
+        dispatch_pair_forest_top_level_v1(program_id, accounts, instruction_data, magic)
+    {
+        if result.is_err() {
+            program::set_return_data(&[]);
+        }
+        return result;
+    }
+
     let mut runtime = SolanaPoolCpiRuntimeV1;
-    let result = if cfg!(feature = "pair-forest-account-evidence") && magic == b"AS8I" {
-        #[cfg(feature = "pair-forest-account-evidence")]
-        {
-            let rent = Rent::get()?;
-            process_pair_forest_initialize_with_runtime_v1(
-                program_id,
-                accounts,
-                instruction_data,
-                &rent,
-                &mut runtime,
-            )
-        }
-        #[cfg(not(feature = "pair-forest-account-evidence"))]
-        unreachable!()
-    } else if cfg!(feature = "pair-forest-account-evidence") && magic == b"AS8C" {
-        #[cfg(feature = "pair-forest-account-evidence")]
-        {
-            let rent = Rent::get()?;
-            process_pair_forest_checkpoint_with_runtime_v1(
-                program_id,
-                accounts,
-                instruction_data,
-                &rent,
-                &mut runtime,
-            )
-        }
-        #[cfg(not(feature = "pair-forest-account-evidence"))]
-        unreachable!()
-    } else if cfg!(feature = "pair-forest-account-evidence") && magic == b"AS8D" {
-        #[cfg(feature = "pair-forest-account-evidence")]
-        {
-            let rent = Rent::get()?;
-            process_pair_forest_deposit_with_runtime_v1(
-                program_id,
-                accounts,
-                instruction_data,
-                &rent,
-                &mut runtime,
-            )
-        }
-        #[cfg(not(feature = "pair-forest-account-evidence"))]
-        unreachable!()
-    } else if cfg!(feature = "pair-forest-account-evidence") && magic == b"ASQ8" {
-        #[cfg(feature = "pair-forest-account-evidence")]
-        {
-            let slot = Clock::get()?.slot;
-            process_pair_forest_terminal_v1(
-                program_id,
-                accounts,
-                instruction_data,
-                slot,
-                &mut runtime,
-            )
-        }
-        #[cfg(not(feature = "pair-forest-account-evidence"))]
-        unreachable!()
-    } else if magic == POOL_V1_INITIALIZE_INSTRUCTION_MAGIC {
+    let result = if magic == POOL_V1_INITIALIZE_INSTRUCTION_MAGIC {
         process_initialize_with_runtime_v1(
             program_id,
             accounts,
