@@ -1,0 +1,61 @@
+import AspisFormal.K1.V7Tag73PersistentTranscriptRoles
+import AspisFormal.K1.V7Tag73PersistentRoleSelectionObstruction
+import AspisFormal.K1.V7Tag73PreparedRestorationRoles
+import AspisFormal.K1.V7Tag73ExactOperationalHistoryRawCallsAudit
+import AspisFormal.K1.V7Tag73K15CachedCoordinateProvenance
+import AspisFormal.K1.V7Tag73K15FixedCategoryCoordinateInclusions
+import AspisFormal.K1.V7Tag73K15SemanticSequentialRouter
+import AspisFormal.K1.V7Tag73K15RelationAlphaPreAnswerRouters
+import AspisFormal.K1.V7Tag73ExactRestoredK15MeasuredAssembly
+import AspisFormal.K1.V7Tag73ExactRestoredConcreteK16Assembly
+
+/-!
+# Focused replay for persistent Tag-73 transcript roles
+
+This import-only replay keeps the new conservative role instrumentation next
+to the existing fixed-category routers, corrected trace audit, measured K1.5
+assembly, and restoration-aware K1.6 capstone.  It deliberately does not add
+an unconditional K1.5 theorem: the arbitrary-adversary first-exposure
+selection obstruction remains explicit.
+-/
+
+namespace AspisK1.V7Tag73PersistentTranscriptRoleReplay
+
+open AspisK1.V7Tag73PersistentRoleSelectionObstruction
+open AspisK1.V7Tag73ExactOperationalHistoryRawCallsAudit
+open AspisK1.V7Tag73ExactRestoredConcreteK16Assembly
+
+#print axioms
+  AspisK1.V7Tag73PersistentTranscriptRoles.guarded_install_success_binds_exact_input
+#print axioms
+  AspisK1.V7Tag73PersistentTranscriptRoles.query_oracle_with_executable_roles_erases
+#print axioms
+  AspisK1.V7Tag73PersistentTranscriptRoles.program_oracle_with_executable_roles_erases
+#print axioms
+  AspisK1.V7Tag73PersistentTranscriptRoles.cached_unbound_query_remains_unbound
+#print axioms
+  AspisK1.V7Tag73PersistentTranscriptRoles.executable_cached_observation_was_previously_bound
+#print axioms
+  same_preanswer_query_has_distinct_eventual_dispositions
+#print axioms
+  AspisK1.V7Tag73PreparedRestorationRoles.ready_preparation_has_pair_role
+#print axioms
+  AspisK1.V7Tag73PreparedRestorationRoles.dispatch_prepared_restoration_emits_role_erased_fork
+#print axioms
+  exact_operational_verifier_history_eq_canonical_pairs
+#print axioms
+  exact_operational_verifier_history_eq_raw_calls_iff
+#print axioms
+  run_grinding_choice_work_erased_calls_length
+#print axioms
+  AspisK1.V7Tag73K15SemanticSequentialRouter.exactPlainRomSemanticSequentialCoordinates
+#print axioms
+  AspisK1.V7Tag73K15RelationAlphaPreAnswerRouters.exactPlainRomRelationAlphaSamplerCoordinates
+#print axioms
+  AspisK1.V7Tag73K15CachedCoordinateProvenance.source_aware_cached_record_master_tape_or_programmed
+#print axioms
+  AspisK1.V7Tag73ExactRestoredK15MeasuredAssembly.exact_restored_k15_error_measure_bound
+#print axioms
+  exact_tag73_restored_concrete_k16_aok_raw_with_all_stage_terms_fixed
+
+end AspisK1.V7Tag73PersistentTranscriptRoleReplay
