@@ -255,6 +255,38 @@ actual K1.3 query-failure slice with the already-proved successful-forest bad
 set and instantiate the existing dependent q16 measure theorem, then close the
 one-fold, joint-query-batch and later-alpha inequalities.
 
+The deterministic half of that event inclusion is now closed in
+`V7Tag73ExactCompilerQ16EventHandoff`. In particular:
+
+```text
+exact_query_phase_failure_selected_all_in_bad
+exact_operational_q16_duplex_forest_realizes_search
+exact_query_phase_failure_implies_q16_successful_bad_event
+```
+
+These theorems identify the accepted production queries with the K1.3
+consistency set, prove that the canonical source-derived duplex forest realizes
+the literal first-cap-203 search, and map every concrete query-phase failure to
+the exact finite successful-forest bad event. The theorem deliberately stops
+before a random-oracle measure claim: adversary-first cache hits cannot be
+classified by the verifier-only history router. The remaining probability
+lemma must derive a causal all-actor lineage from the unambiguous 35-byte q16
+candidate absorb and its subsequent squeeze/advance chain, or otherwise prove
+an equivalent measure-preserving factorization. It may not assume that the
+verifier exposed the coordinate first.
+
+The focused NUC check passed under the authorized 44/55 GiB no-swap cgroup:
+
+```text
+unit: aspis-v7-q16-event-handoff-05
+invocation: 79bf3cda76504e87a73f05b7ec80b17d
+result: PASS
+wall: 3.11 seconds
+maximum RSS: 6,908,744 KiB
+swap: 0
+axiom union: propext, Classical.choice, Quot.sound
+```
+
 ## K1.5 gamma actual-source alignment
 
 The scheduler-native gamma replay and source alignment are integrated through
