@@ -304,6 +304,15 @@ NUC unit `aspis-v7-q16-wrapper-08` exited 0 in 2.91 seconds, peaked at
 6,865,028 KiB RSS, and used zero swap. All three source endpoints report
 exactly `propext`, `Classical.choice`, and `Quot.sound`.
 
+`V7FirstCompactSamplerK13PositionBridge` closes the remaining deterministic
+sampler mathematics. It proves that the exact source squeeze trace flattens to
+the chronological K1.3 digest words, that a successful `scanBlocks 16 64`
+result equals `scanQ16` on those digests, and that the raw production
+candidate's sampled vector is exactly that ordered position list. Focused NUC
+unit `aspis-v7-q16-k13-position-03` exited 0 in 2.82 seconds, peaked at
+6,868,440 KiB RSS, and used zero swap. All endpoints report subsets of
+`propext`, `Classical.choice`, and `Quot.sound`.
+
 ## Digests
 
 ```text
@@ -334,6 +343,7 @@ f21af0ef7f2362c62acb2dfa992c29d31f006aa5b13d788b64752b95d2f033bf  caller/proof/V
 9a0f680b6e93be014c37f7a5bc5be2454262bbb9eaedec5a8c1104436f5d8516  caller/proof/V7FirstCompactSamplerOuterBodyBridge.lean
 6c0a2f9233be8c2a56e71157e9ea595e033affd9767f3123e4aa4557b87a3e13  caller/proof/V7FirstCompactSamplerOuterLoopBridge.lean
 91d11a0151df104c8b337bf49878c5c8dc15df02b76f978ea168a45d2920dbdb  caller/proof/V7FirstCompactSamplerWrapperBridge.lean
+d10dbbcd30f510b46905c48adebd61950dc1a391bf26c833193b2d78c1ed98fd  caller/proof/V7FirstCompactSamplerK13PositionBridge.lean
 6abb0376100611c5553258062480777187785579f402c9c1d3ce72379518258f  ../../crates/aspis-core/src/v7_onefold.rs
 ```
 
@@ -345,11 +355,10 @@ and complete wrapper return are closed. The Aeneas early-return loss is removed
 by the source refactor and fresh extraction. There is no remaining caller-local
 frontier or first-selection control-flow premise.
 
-The remaining system-level integration obligation is now the digest-trace
-alignment: identify the proved exact source squeeze trace with the accepted
-K1.3 evaluator/router blocks, discharge source squeeze success from the
-production hash callback, and prove the pure `scanBlocks` accepted list equals
-the corresponding `scanQ16` positions. `raw_queries_eq_decoded_schedule` then
+The remaining system-level integration obligation is now only the external
+digest-trace alignment: identify the proved exact source squeeze trace with
+the accepted K1.3 evaluator/router blocks and discharge source squeeze success
+from the production hash callback. `raw_queries_eq_decoded_schedule` then
 closes the ordered array. Array conversion, the `2^18` constant, frontier
 semantics, cap selection, all five returned fields, and the outer first-success
 loop are theorem consequences rather than premises.
