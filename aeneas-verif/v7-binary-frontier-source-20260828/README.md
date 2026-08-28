@@ -184,6 +184,22 @@ exited 0.  The latter took 3.84 seconds.  The matching deployed-decoder module
 was built once in unit `aspis-v7-decoder-prefix-build-fast-01` (8,630 jobs,
 1:17.75 wall, 7,102,848 KiB peak RSS, zero swaps).
 
+The next current-source checkpoint isolates the sole control-flow difference
+between the older verified per-word sampler and the current Tag-73 extraction:
+current Rust checked-adds the draw counter, while the older extraction lifted
+wrapping addition.  `V7FirstCompactSamplerInnerBridge` proves that below the
+literal 64-draw gate the checked increment cannot fail, increments exactly,
+and equals the older wrapping value.  Focused unit
+`aspis-v7-q16-increment-final-01` exited 0 in 2.96 seconds, peaked at
+6,878,828 KiB RSS, and used zero swap.  Both printed theorems depend only on
+`propext`, `Classical.choice`, and `Quot.sound`.
+
+Consequently the remaining sampler lemma is now precisely to replay the shared
+per-word scan proof with Tag-73's `(count, bound, mask) = (16, 2^18,
+2^18-1)`, using this checked-increment equivalence, and then compose it with
+the already proved `raw_queries_eq_decoded_schedule`.  No additional Rust
+sampler behavior remains unidentified.
+
 ## Digests
 
 ```text
@@ -207,6 +223,7 @@ b71fa9e8fc7bef1544ec981092de9370c4b45d4ed059f30989d7bef988932468  caller/proof/V
 c72e3c80fcfd46ce032d834d00b209316608f2cb1b39840dbabdec8180e3aaa6  caller/proof/V7FirstCompactFrontierK13Integration.lean
 38968fe0e71d83e4971bef2b26012fa7a52d1244b541564253d24db413eed85d  caller/proof/V7FirstCompactCallerBridge.lean
 f21af0ef7f2362c62acb2dfa992c29d31f006aa5b13d788b64752b95d2f033bf  caller/proof/V7FirstCompactK13RawScheduleBridge.lean
+2eaf491956e5300e01f18fe5e7fd84e6366e91ebf2eac750a3106c530cf56751  caller/proof/V7FirstCompactSamplerInnerBridge.lean
 6abb0376100611c5553258062480777187785579f402c9c1d3ce72379518258f  ../../crates/aspis-core/src/v7_onefold.rs
 ```
 
@@ -219,9 +236,10 @@ by the source refactor and fresh extraction. There is no remaining caller-local
 frontier or first-selection control-flow premise.
 
 The remaining system-level integration obligation is now the exact ordered
-sampler-value alignment: for every scanned counter, show that the current
-translated sampler's successful `Vec<u32>` is the first-unique 18-bit scan of
-the same digest blocks already extracted by the accepted K1.3 evaluator and
-scheduler router.  Array conversion, the `2^18` constant, frontier semantics,
-cap selection, all five returned fields, and the outer first-success loop are
-then theorem consequences rather than premises.
+sampler-value alignment: specialize the shared per-word scan argument to 16
+values and an 18-bit mask, using the proved checked-increment equivalence, then
+show that the successful `Vec<u32>` scans the same digest blocks already
+extracted by the accepted K1.3 evaluator and scheduler router. Array conversion,
+the `2^18` constant, frontier semantics, cap selection, all five returned
+fields, and the outer first-success loop are theorem consequences rather than
+premises.
