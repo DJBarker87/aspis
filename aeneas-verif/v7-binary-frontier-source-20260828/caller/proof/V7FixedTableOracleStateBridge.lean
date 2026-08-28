@@ -1,4 +1,5 @@
 import AspisFormal.K1.V7Tag73CoupledReplayAlignment
+import AspisFormal.K1.V7Tag73ReturnedPlanSemantics
 
 /-!
 # Operational-oracle table to fixed-table lookup bridge
@@ -47,7 +48,24 @@ theorem fixed_table_of_oracle_state_lookup_of_lookupEntry
   unfold fixedTableOfOracleState
   exact mapped_first_lookup_preserves_output state.table input entry found
 
+/-- Finite source callback coverage stated against the operational ROM table
+immediately yields the exact `QueryPairsCoveredByTable` predicate consumed by
+the translated q16 trace replay.  The premise is intentionally pair-level:
+it neither assumes every SHA input is in the finite table nor attributes the
+first insertion to a verifier role. -/
+theorem operational_pair_coverage_implies_fixed_table_coverage
+    (state : OracleState) (pairs : List (ShaInput × ShaOutput))
+    (covered : ∀ pair ∈ pairs, ∃ entry : AspisK1.V7FsAokExperiment.TableEntry,
+      lookupEntry state pair.1 = some entry ∧ entry.output = pair.2) :
+    AspisK1.V7Tag73ReturnedPlanSemantics.QueryPairsCoveredByTable
+      (fixedTableOfOracleState state) pairs := by
+  intro pair member
+  obtain ⟨entry, found, outputExact⟩ := covered pair member
+  rw [← outputExact]
+  exact fixed_table_of_oracle_state_lookup_of_lookupEntry state pair.1 entry found
+
 #print axioms mapped_first_lookup_preserves_output
 #print axioms fixed_table_of_oracle_state_lookup_of_lookupEntry
+#print axioms operational_pair_coverage_implies_fixed_table_coverage
 
 end V7FixedTableOracleStateBridge
