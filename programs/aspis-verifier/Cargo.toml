@@ -92,6 +92,12 @@ v7-pair-forest-fixed-canonical-audit = [
 v7-pair-forest-packed-digest-audit = [
     "aspis-statement/pool-v1-pair-forest-packed-digest-audit",
 ]
+# Audit-only specialization of generated Copy weights, all of which are
+# exactly zero or one after variant/index selection. Values are still
+# accumulated for every endpoint; only `selector * {0,1}` becomes skip/add.
+v7-pair-forest-binary-copy-weights-audit = [
+    "aspis-statement/pool-v1-pair-forest-binary-copy-weights-audit",
+]
 # Audit-only hot decoder for selected lane PDAs owned by the exact Pool
 # release. It keeps every canonical/account/PDA check and omits only the
 # persisted active root/frontier Poseidon reconstruction, which is an
