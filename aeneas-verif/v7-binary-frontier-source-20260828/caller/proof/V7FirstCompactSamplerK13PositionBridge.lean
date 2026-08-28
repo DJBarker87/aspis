@@ -205,7 +205,8 @@ theorem raw_candidate_sampled_eq_trace_scanQ16
   have model := raw_candidate_has_exact_outer_model inputTranscript
     sourceCounter output raw hashSucceeds
   rcases model with
-    ⟨blocks, finalDraws, trace, drawsBound, outputBound, modelExact⟩
+    ⟨blocks, finalDraws, trace, drawsBound, outputBound, blocksExact,
+      modelExact⟩
   have sampledLength : raw.sampled.val.length = 16 := by
     have values := raw_candidate_queries_values_exact inputTranscript
       sourceCounter output raw

@@ -67,6 +67,43 @@ theorem nativeExactSqueezeTrace_append_one
       exact NativeExactSqueezeTrace.cons self middle next headBlock
         (priorBlocks ++ [block]) head (ih hsqueeze)
 
+theorem scanWords_draws_mono
+    (count maxDraws : Nat) (state : BlockScanState) (words : List Nat) :
+    state.draws ≤ (scanWords count maxDraws state words).state.draws := by
+  induction words generalizing state with
+  | nil => rfl
+  | cons value remaining ih =>
+      rw [scanWords]
+      split
+      · rfl
+      · have next := ih
+          { state with
+              accepted := keepIfNew state.accepted value
+              draws := state.draws + 1 }
+        dsimp only at next
+        omega
+
+theorem scanWords_draws_lt_add_length_of_stopped
+    (count maxDraws : Nat) (state : BlockScanState) (words : List Nat)
+    (stopped : (scanWords count maxDraws state words).stopOuter = true) :
+    (scanWords count maxDraws state words).state.draws <
+      state.draws + words.length := by
+  induction words generalizing state with
+  | nil => simp [scanWords] at stopped
+  | cons value remaining ih =>
+      by_cases hstop :
+          state.accepted.length = count || state.draws = maxDraws
+      · rw [scanWords, if_pos hstop] at stopped ⊢
+        simp
+      · rw [scanWords, if_neg hstop] at stopped ⊢
+        have bound := ih
+          { state with
+              accepted := keepIfNew state.accepted value
+              draws := state.draws + 1 } stopped
+        dsimp only at bound
+        simp only [List.length_cons]
+        omega
+
 def OuterSamplerInvariant
     (initialSelf : Transcript) (initialOut : alloc.vec.Vec Std.U32)
     (initialDraws : Std.Usize) (initialConsumedBlocks : Nat)
@@ -75,6 +112,7 @@ def OuterSamplerInvariant
     current.2.1.val.length ≤ 16 ∧ current.2.2.val ≤ 64 ∧
     ∃ blocks : List SourceSqueezeBlock,
       NativeExactSqueezeTrace initialSelf blocks current.1 ∧
+      current.2.2.val = initialDraws.val + 8 * blocks.length ∧
       ∀ suffix : List (List Nat),
         scanBlocks 16 64
             (generatedBlockScanState initialOut initialDraws
@@ -91,6 +129,8 @@ def OuterSamplerPost
   ∃ (blocks : List SourceSqueezeBlock) (finalDraws : Std.Usize),
     NativeExactSqueezeTrace initialSelf blocks result.1 ∧
     finalDraws.val ≤ 64 ∧ result.2.val.length ≤ 16 ∧
+    (initialDraws.val = 0 →
+      blocks.length = q16BlocksNeededForDraws finalDraws.val) ∧
     scanBlocks 16 64
         (generatedBlockScanState initialOut initialDraws initialConsumedBlocks)
         (nativeGeneratedCandidateBlocks blocks) =
@@ -143,8 +183,9 @@ theorem generated_outer_loop_matches_scanBlocks
     (OuterSamplerPost self out draws consumedBlocks)
   · rintro ⟨currentSelf, currentOut, currentDraws⟩ hinvariant
     rcases hinvariant with
-      ⟨hcurrentHash, hcurrentOut, hcurrentDraws, blocks, htrace, happend⟩
-    dsimp only at hcurrentOut hcurrentDraws happend ⊢
+      ⟨hcurrentHash, hcurrentOut, hcurrentDraws, blocks, htrace,
+        hdrawAccounting, happend⟩
+    dsimp only at hcurrentOut hcurrentDraws hdrawAccounting happend ⊢
     by_cases hactive : currentDraws.val < 64
     · have hactiveScalar : currentDraws < q16MaxDraws := by
         simpa [q16MaxDraws] using hactive
@@ -230,7 +271,10 @@ theorem generated_outer_loop_matches_scanBlocks
         let nextBlocks := blocks ++ [block]
         have hnextTrace : NativeExactSqueezeTrace self nextBlocks nextSelf := by
           exact nativeExactSqueezeTrace_append_one htrace hsqueeze
-        refine ⟨⟨hnextHash, hnextOut, hnextDrawsLe, nextBlocks, hnextTrace, ?_⟩, ?_⟩
+        refine ⟨⟨hnextHash, hnextOut, hnextDrawsLe, nextBlocks, hnextTrace,
+          ?_, ?_⟩, ?_⟩
+        · simp only [nextBlocks, List.length_append, List.length_singleton]
+          omega
         · intro suffix
           have hold := happend
             ((blockWords (nativeSourceDigest (sourceSqueezeBytes block))).map q16Candidate :: suffix)
@@ -263,21 +307,45 @@ theorem generated_outer_loop_matches_scanBlocks
         let finalBlocks := blocks ++ [block]
         refine ⟨finalBlocks, nextDraws,
           nativeExactSqueezeTrace_append_one htrace hsqueeze,
-          hnextDrawsLe, hnextOut, ?_⟩
-        have hold := happend
-          [(blockWords (nativeSourceDigest (sourceSqueezeBytes block))).map q16Candidate]
-        simp only [finalBlocks, nativeGeneratedCandidateBlocks_append,
-          nativeGeneratedCandidateBlocks_cons,
-          nativeGeneratedCandidateBlocks_nil,
-          List.append_nil, List.append_assoc, List.singleton_append]
-        rw [hold]
-        rw [scanBlocks]
-        simp only [generatedBlockScanState_draws, if_pos hactive]
-        change (if scanned.stopOuter = true then scanned.state else
-          scanBlocks 16 64 scanned.state []) = _
-        simp only [hstopped, ↓reduceIte]
-        rw [← hinnerState]
-        simpa [finalBlocks, generatedBlockScanState, Nat.add_assoc]
+          hnextDrawsLe, hnextOut, ?_, ?_⟩
+        · intro initialZero
+          have currentExact : currentDraws.val = 8 * blocks.length := by
+            omega
+          have nextMono : currentDraws.val ≤ nextDraws.val := by
+            have mono := scanWords_draws_mono 16 64 bumped
+              ((blockWords
+                (nativeSourceDigest (sourceSqueezeBytes block))).map
+                  q16Candidate)
+            rw [← hinnerState] at mono
+            simpa [bumped, generatedBlockScanState] using mono
+          have nextStrict : nextDraws.val < currentDraws.val + 8 := by
+            have strict := scanWords_draws_lt_add_length_of_stopped 16 64
+              bumped
+              ((blockWords
+                (nativeSourceDigest (sourceSqueezeBytes block))).map
+                  q16Candidate) hstopped
+            rw [← hinnerState] at strict
+            simpa [bumped, generatedBlockScanState, blockWords] using strict
+          simp only [finalBlocks, List.length_append, List.length_singleton]
+          unfold q16BlocksNeededForDraws blocksNeededForWords
+          split
+          · omega
+          · omega
+        · have hold := happend
+            [(blockWords
+              (nativeSourceDigest (sourceSqueezeBytes block))).map q16Candidate]
+          simp only [finalBlocks, nativeGeneratedCandidateBlocks_append,
+            nativeGeneratedCandidateBlocks_cons,
+            nativeGeneratedCandidateBlocks_nil,
+            List.append_nil, List.append_assoc, List.singleton_append]
+          rw [hold]
+          rw [scanBlocks]
+          simp only [generatedBlockScanState_draws, if_pos hactive]
+          change (if scanned.stopOuter = true then scanned.state else
+            scanBlocks 16 64 scanned.state []) = _
+          simp only [hstopped, ↓reduceIte]
+          rw [← hinnerState]
+          simpa [finalBlocks, generatedBlockScanState, Nat.add_assoc]
     · have hdrawsEq : currentDraws.val = 64 := by omega
       have hinactiveScalar : ¬ currentDraws < q16MaxDraws := by
         simpa [q16MaxDraws] using hactive
@@ -285,12 +353,20 @@ theorem generated_outer_loop_matches_scanBlocks
       rw [if_neg hinactiveScalar]
       simp only [Aeneas.Std.WP.spec_ok]
       refine ⟨blocks, currentDraws, htrace, hcurrentDraws,
-        hcurrentOut, ?_⟩
-      have hold := happend []
-      simpa [scanBlocks] using hold
-  · refine ⟨rfl, hout, hdraws, [], NativeExactSqueezeTrace.nil self, ?_⟩
-    intro suffix
-    rfl
+        hcurrentOut, ?_, ?_⟩
+      · intro initialZero
+        have currentExact : currentDraws.val = 8 * blocks.length := by
+          omega
+        have currentCap : currentDraws.val = 64 := by omega
+        rw [currentCap]
+        norm_num [q16BlocksNeededForDraws, blocksNeededForWords]
+        omega
+      · have hold := happend []
+        simpa [scanBlocks] using hold
+  · refine ⟨rfl, hout, hdraws, [], NativeExactSqueezeTrace.nil self, ?_, ?_⟩
+    · simp
+    · intro suffix
+      rfl
 
 #print axioms generated_outer_loop_matches_scanBlocks
 
