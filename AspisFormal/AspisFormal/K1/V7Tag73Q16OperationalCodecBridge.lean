@@ -152,19 +152,20 @@ theorem idealDrawWords_length (draws : Q16DrawTape) :
     (idealDrawWords draws).length = 64 := by
   simp [idealDrawWords]
 
+theorem idealDrawWords_map_q16Candidate (draws : Q16DrawTape) :
+    (idealDrawWords draws).map q16Candidate = idealDrawWords draws := by
+  unfold idealDrawWords
+  simp only [List.map_map]
+  apply List.map_congr_left
+  intro value _
+  simp [q16Candidate, q16Bound, Nat.mod_eq_of_lt value.isLt]
+
 theorem ideal_scan_positions_eq_outputList_values (draws : Q16DrawTape) :
     (scanUniqueUntil 16 64 (idealDrawWords draws) []).positions =
       (outputList 16 draws).map Fin.val := by
   rw [scanUniqueUntil_positions_eq_scanUntil 16 64
     (idealDrawWords draws) [] (by simp [idealDrawWords]) (by simp)]
-  have q16Identity :
-      (idealDrawWords draws).map q16Candidate = idealDrawWords draws := by
-    unfold idealDrawWords
-    simp only [List.map_map]
-    apply List.map_congr_left
-    intro value _
-    simp [q16Candidate, q16Bound, Nat.mod_eq_of_lt value.isLt]
-  rw [q16Identity]
+  rw [idealDrawWords_map_q16Candidate]
   rw [AspisV5QuerySamplerControl.scanUntil_eq_take_firstUnique]
   unfold idealDrawWords
   rw [firstUnique_map_val_eq_firstOccurrences]
@@ -179,6 +180,7 @@ end
 #print axioms foldl_keepIfNew_map_val
 #print axioms firstUnique_map_val_eq_firstOccurrences
 #print axioms scanUniqueUntil_positions_eq_scanUntil
+#print axioms idealDrawWords_map_q16Candidate
 #print axioms ideal_scan_positions_eq_outputList_values
 
 end AspisK1.V7Tag73Q16OperationalCodecBridge
