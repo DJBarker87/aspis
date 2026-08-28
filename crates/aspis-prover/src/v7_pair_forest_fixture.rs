@@ -31,6 +31,7 @@ use crate::{
     state_only_hiding::InMemoryStateOnlyMaskNonceStore,
     v6_onefold_prover::{
         build_v7_pool_pair_forest_private_transfer_onefold_proof,
+        build_v7_pool_pair_forest_private_transfer_onefold_proof_production,
         build_v7_pool_pair_forest_withdrawal_onefold_proof, BuiltV7CompactOneFoldProof,
         V6ProverError, V7ProverContext,
     },
@@ -77,6 +78,15 @@ pub struct BuiltV7PairForestTransferFixtureV1 {
     pub statement: PoolV1PairForestTerminalStatementV1,
     pub statement_digest: [u8; 32],
     pub proof: BuiltV7CompactOneFoldProof,
+}
+
+#[derive(Clone, Debug)]
+pub struct PreparedV7PairForestTransferFixtureV1 {
+    pub public: PoolV1PrivateTransferPublicV1,
+    pub witness: PoolV1PairForestPrivateTransferWitnessV1,
+    pub transition: PoolV1PairLatePublicStatementV1,
+    pub statement: PoolV1PairForestTerminalStatementV1,
+    pub statement_digest: [u8; 32],
 }
 
 #[derive(Clone, Debug)]
@@ -156,16 +166,14 @@ pub fn deterministic_v7_pair_forest_withdrawal_nullifier_v1() -> Digest {
 }
 
 #[allow(clippy::too_many_arguments)]
-pub fn build_v7_pair_forest_transfer_fixture_unmined_v1(
-    program_id: [u8; 32],
-    attempt_id: [u8; 32],
+pub fn prepare_v7_pair_forest_transfer_fixture_v1(
     master_account: [u8; 32],
     checkpoint_account: [u8; 32],
     selected_lane_account: [u8; 32],
     checkpoint_sequence: u64,
     deployment_domain: [u8; 32],
     output_lane_snapshot: PoolV1PairLiveSnapshotV1,
-) -> Result<BuiltV7PairForestTransferFixtureV1, V7PairForestFixtureErrorV1> {
+) -> Result<PreparedV7PairForestTransferFixtureV1, V7PairForestFixtureErrorV1> {
     let input = deterministic_input_witness_v1()?;
     let recipient = PoolV1OutputNoteWitnessV1 {
         owner_key: digest(300),
@@ -239,6 +247,49 @@ pub fn build_v7_pair_forest_transfer_fixture_unmined_v1(
         &statement_bytes,
         HOST_HASH,
     );
+    Ok(PreparedV7PairForestTransferFixtureV1 {
+        public,
+        witness,
+        transition: compiled.public_statement,
+        statement,
+        statement_digest,
+    })
+}
+
+fn transfer_relation_context_v1(
+    prepared: &PreparedV7PairForestTransferFixtureV1,
+) -> PoolV1PaymentRelationContextV1<'static> {
+    PoolV1PaymentRelationContextV1 {
+        runtime_binding: PoolV1PaymentRuntimeBindingV1 {
+            pool: prepared.public.pool,
+            deployment_domain: prepared.public.deployment_domain,
+            anchor_sequence: prepared.public.anchor_sequence,
+            anchor_root: prepared.public.anchor_root,
+            asset_id: prepared.public.asset_id,
+        },
+        spent_nullifiers: &[],
+    }
+}
+
+#[allow(clippy::too_many_arguments)]
+pub fn build_v7_pair_forest_transfer_fixture_unmined_v1(
+    program_id: [u8; 32],
+    attempt_id: [u8; 32],
+    master_account: [u8; 32],
+    checkpoint_account: [u8; 32],
+    selected_lane_account: [u8; 32],
+    checkpoint_sequence: u64,
+    deployment_domain: [u8; 32],
+    output_lane_snapshot: PoolV1PairLiveSnapshotV1,
+) -> Result<BuiltV7PairForestTransferFixtureV1, V7PairForestFixtureErrorV1> {
+    let prepared = prepare_v7_pair_forest_transfer_fixture_v1(
+        master_account,
+        checkpoint_account,
+        selected_lane_account,
+        checkpoint_sequence,
+        deployment_domain,
+        output_lane_snapshot,
+    )?;
     let context = V7ProverContext {
         program_id,
         release_binding: V7_POOL_PAIR_FOREST_TAG73_RELEASE_BINDING,
@@ -248,11 +299,11 @@ pub fn build_v7_pair_forest_transfer_fixture_unmined_v1(
         StateOnlyAttemptSecrets::deterministic_spend_fixture(attempt_id, [0x4b; 32], [0x6d; 32]);
     let mut nonce_store = InMemoryStateOnlyMaskNonceStore::default();
     let proof = build_v7_pool_pair_forest_private_transfer_onefold_proof(
-        &public,
-        &witness,
-        relation_context,
-        &compiled.public_statement,
-        statement_digest,
+        &prepared.public,
+        &prepared.witness,
+        transfer_relation_context_v1(&prepared),
+        &prepared.transition,
+        prepared.statement_digest,
         context,
         attempt,
         &mut nonce_store,
@@ -260,11 +311,62 @@ pub fn build_v7_pair_forest_transfer_fixture_unmined_v1(
         StateOnlyPowMode::UnminedZero,
     )?;
     Ok(BuiltV7PairForestTransferFixtureV1 {
-        public,
-        witness,
-        transition: compiled.public_statement,
-        statement,
-        statement_digest,
+        public: prepared.public,
+        witness: prepared.witness,
+        transition: prepared.transition,
+        statement: prepared.statement,
+        statement_digest: prepared.statement_digest,
+        proof,
+    })
+}
+
+/// Reproducible strict-work KAT builder. This calls the same production proof
+/// entry point as an honest wallet; the containing module's fixture gate is
+/// the only reason deterministic attempt entropy is available here.
+#[allow(clippy::too_many_arguments)]
+pub fn build_v7_pair_forest_transfer_fixture_mined_v1(
+    program_id: [u8; 32],
+    attempt_id: [u8; 32],
+    master_account: [u8; 32],
+    checkpoint_account: [u8; 32],
+    selected_lane_account: [u8; 32],
+    checkpoint_sequence: u64,
+    deployment_domain: [u8; 32],
+    output_lane_snapshot: PoolV1PairLiveSnapshotV1,
+) -> Result<BuiltV7PairForestTransferFixtureV1, V7PairForestFixtureErrorV1> {
+    let prepared = prepare_v7_pair_forest_transfer_fixture_v1(
+        master_account,
+        checkpoint_account,
+        selected_lane_account,
+        checkpoint_sequence,
+        deployment_domain,
+        output_lane_snapshot,
+    )?;
+    let context = V7ProverContext {
+        program_id,
+        release_binding: V7_POOL_PAIR_FOREST_TAG73_RELEASE_BINDING,
+        attempt_id,
+    };
+    let attempt =
+        StateOnlyAttemptSecrets::deterministic_spend_fixture(attempt_id, [0x4b; 32], [0x6d; 32]);
+    let mut nonce_store = InMemoryStateOnlyMaskNonceStore::default();
+    let proof = build_v7_pool_pair_forest_private_transfer_onefold_proof_production(
+        &prepared.public,
+        &prepared.witness,
+        transfer_relation_context_v1(&prepared),
+        &prepared.transition,
+        prepared.statement_digest,
+        context,
+        attempt,
+        &mut nonce_store,
+        HOST_HASH,
+    )?;
+    Ok(BuiltV7PairForestTransferFixtureV1 {
+        public: prepared.public,
+        witness: prepared.witness,
+        transition: prepared.transition,
+        statement: prepared.statement,
+        statement_digest: prepared.statement_digest,
         proof,
     })
 }
