@@ -16,6 +16,7 @@ pub mod nullifier_marker;
 #[cfg(not(target_os = "solana"))]
 pub mod pair_constraint_residuals;
 pub mod pair_forest_accounts;
+pub mod pair_forest_copy_terminal;
 #[cfg(not(target_os = "solana"))]
 pub mod pair_forest_constraint_residuals;
 #[cfg(not(target_os = "solana"))]
@@ -148,6 +149,18 @@ pub use pair_forest_accounts::{
     POOL_V1_PAIR_FOREST_LANE_HEADER_BYTES, POOL_V1_PAIR_FOREST_LANE_MAGIC,
     POOL_V1_PAIR_FOREST_LANE_VERSION, POOL_V1_PAIR_FOREST_MASTER_ACCOUNT_BYTES,
     POOL_V1_PAIR_FOREST_MASTER_MAGIC, POOL_V1_PAIR_FOREST_MASTER_VERSION,
+};
+pub use pair_forest_copy_terminal::{
+    evaluate_pool_v1_pair_forest_copy_terminal_compiled_v1,
+    pool_v1_pair_forest_copy_active_at_point_compiled_v1,
+    pool_v1_pair_forest_copy_lane_boolean_extraction_v1, PoolV1PairForestCompiledCopyTerminalV1,
+    PoolV1PairForestCompiledVariantV1,
+    PINNED_POOL_V1_PAIR_FOREST_COPY_TERMINAL_ACTIVE_ROWS_FINGERPRINT_V1,
+    POOL_V1_PAIR_FOREST_COPY_TERMINAL_COLUMNS_V1,
+    POOL_V1_PAIR_FOREST_COPY_TERMINAL_FIXED_HEAP_ALLOCATIONS_V1,
+    POOL_V1_PAIR_FOREST_COPY_TERMINAL_LINKS_V1, POOL_V1_PAIR_FOREST_COPY_TERMINAL_PATTERNS_V1,
+    POOL_V1_PAIR_FOREST_COPY_TERMINAL_ROWS_V1,
+    POOL_V1_PAIR_FOREST_COPY_TERMINAL_SELECTOR_HEAP_BYTES_V1,
 };
 pub use pair_forest_terminal::{
     decode_pool_v1_pair_forest_terminal_request_v1,
