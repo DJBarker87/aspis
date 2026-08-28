@@ -19,6 +19,12 @@ pair-afterstate-profile = ["pair-afterstate-evidence"]
 # Production-inactive account/PDA/checkpoint/deposit/terminal plumbing for the
 # accepted eight-lane forest candidate. Release builds leave it disabled.
 pair-forest-account-evidence = []
+# Default-off local CU variants backed by the named inductive Pool-write
+# invariant. They are not release features until Rust-to-Lean/Aeneas closure.
+pair-forest-source-invariant-audit = ["pair-forest-account-evidence"]
+pair-forest-source-result-invariant-audit = ["pair-forest-source-invariant-audit"]
+# Instrumented local phase ledger. Logging changes total CU.
+pair-forest-cu-profile-audit = ["pair-forest-account-evidence"]
 
 [dependencies]
 aspis-core.workspace = true

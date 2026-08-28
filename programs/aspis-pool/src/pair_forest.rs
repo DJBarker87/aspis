@@ -11,8 +11,10 @@
 extern crate alloc;
 
 use alloc::{boxed::Box, vec::Vec};
+use aspis_core::field::M31;
 
 use aspis_statement::{
+    decode_digest_canonical, encode_digest_canonical,
     pool_v1::{
         decode_pool_v1_pair_forest_checkpoint_v1, decode_pool_v1_pair_forest_lane_state_v1,
         decode_pool_v1_pair_forest_master_v1, decode_pool_v1_pair_forest_terminal_request_v1,
@@ -26,10 +28,13 @@ use aspis_statement::{
         PoolV1PairForestLaneStateV1, PoolV1PairForestMasterV1, PoolV1PairForestTerminalCommonV1,
         PoolV1PairForestTerminalPaymentV1, PoolV1PairForestTerminalRequestV1,
         PoolV1PairLeafWitnessV1, POOL_V1_DIGEST_ENCODING_VERSION, POOL_V1_PAIR_CAPACITY,
-        POOL_V1_PAIR_FOREST_CHECKPOINT_ACCOUNT_BYTES, POOL_V1_PAIR_FOREST_LANE_COUNT,
-        POOL_V1_PAIR_FOREST_MASTER_ACCOUNT_BYTES, POOL_V1_PAIR_TREE_DEPTH,
-        POOL_V1_ROOT_HISTORY_CAPACITY, POOL_V1_ROOT_HISTORY_PAGE_ACCOUNT_BYTES,
-        POOL_V1_ROOT_HISTORY_PAGE_SEED,
+        POOL_V1_PAIR_FOREST_ACCOUNT_FORMAT_BINDING, POOL_V1_PAIR_FOREST_CHECKPOINT_ACCOUNT_BYTES,
+        POOL_V1_PAIR_FOREST_LANE_ACCOUNT_BYTES, POOL_V1_PAIR_FOREST_LANE_COUNT,
+        POOL_V1_PAIR_FOREST_LANE_HEADER_BYTES, POOL_V1_PAIR_FOREST_LANE_MAGIC,
+        POOL_V1_PAIR_FOREST_LANE_VERSION, POOL_V1_PAIR_FOREST_MASTER_ACCOUNT_BYTES,
+        POOL_V1_PAIR_TREE_DEPTH, POOL_V1_ROOT_HISTORY_CAPACITY,
+        POOL_V1_ROOT_HISTORY_PAGE_ACCOUNT_BYTES, POOL_V1_ROOT_HISTORY_PAGE_SEED,
+        POOL_V1_TREE_HASH_VERSION, POOL_V1_TREE_STATE_MAGIC, POOL_V1_TREE_STATE_VERSION,
     },
     poseidon2::Digest,
 };
@@ -102,6 +107,17 @@ const FOREST_DEPOSIT_CURRENT_PAGE_ACCOUNT_INDEX: usize = 2;
 const FOREST_DEPOSIT_SAME_PAGE_ACCOUNT_COUNT: usize = 8;
 const FOREST_DEPOSIT_GENESIS_PAGE_ACCOUNT_COUNT: usize = 10;
 const FOREST_DEPOSIT_ROLLOVER_ACCOUNT_COUNT: usize = 11;
+
+#[cfg(feature = "pair-forest-cu-profile-audit")]
+#[inline(never)]
+fn pair_forest_cu_checkpoint_v1(label: &'static str) {
+    solana_program::msg!(label);
+    solana_program::log::sol_log_compute_units();
+}
+
+#[cfg(not(feature = "pair-forest-cu-profile-audit"))]
+#[inline(always)]
+fn pair_forest_cu_checkpoint_v1(_label: &'static str) {}
 
 pub fn encode_pair_forest_initialize_instruction_v1(
     initialization: &PoolInitializationV1,
@@ -353,6 +369,131 @@ fn decode_lane_account(
         return Err(PoolV1ProgramError::StateHistoryMismatch.into());
     }
     Ok(lane)
+}
+
+/// Decode the complete canonical lane byte image while treating only the
+/// persisted active root/frontier relation as an inductive Pool-owned state
+/// invariant. This remains private and is used only by the named default-off
+/// terminal CU feature; checkpoint and deposit keep the generic strict codec.
+#[cfg(feature = "pair-forest-source-invariant-audit")]
+fn decode_lane_account_from_program_invariant_v1(
+    program_id: &Pubkey,
+    master: &Pubkey,
+    expected_lane: u8,
+    account: &AccountInfo<'_>,
+    writable: bool,
+) -> Result<PoolV1PairForestLaneStateV1, ProgramError> {
+    require_program_account(account, program_id, writable)?;
+    if account.is_signer
+        || account.key != &pool_v1_pair_forest_lane_address(program_id, master, expected_lane)?.0
+    {
+        return Err(PoolV1ProgramError::InvalidPoolStateAddress.into());
+    }
+    let data = account.try_borrow_data()?;
+    if data.len() != POOL_V1_PAIR_FOREST_LANE_ACCOUNT_BYTES
+        || data[..4] != POOL_V1_PAIR_FOREST_LANE_MAGIC
+        || data[4] != POOL_V1_PAIR_FOREST_LANE_VERSION
+        || usize::from(data[5]) >= POOL_V1_PAIR_FOREST_LANE_COUNT
+        || data[6] != POOL_V1_PAIR_FOREST_LANE_COUNT as u8
+        || data[7] != POOL_V1_PAIR_TREE_DEPTH as u8
+        || data[8..40] != POOL_V1_PAIR_FOREST_ACCOUNT_FORMAT_BINDING
+        || data[72..POOL_V1_PAIR_FOREST_LANE_HEADER_BYTES]
+            .iter()
+            .any(|byte| *byte != 0)
+    {
+        return Err(PoolV1ProgramError::InvalidAccountType.into());
+    }
+    let encoded_master: [u8; 32] = data[40..72].try_into().unwrap();
+    if encoded_master == [0u8; 32]
+        || encoded_master != master.to_bytes()
+        || data[5] != expected_lane
+    {
+        return Err(PoolV1ProgramError::StateHistoryMismatch.into());
+    }
+    let tree = &data[POOL_V1_PAIR_FOREST_LANE_HEADER_BYTES..];
+    if tree[..4] != POOL_V1_TREE_STATE_MAGIC
+        || tree[4] != POOL_V1_TREE_STATE_VERSION
+        || tree[5] != POOL_V1_PAIR_TREE_DEPTH as u8
+        || tree[6] != POOL_V1_TREE_HASH_VERSION
+        || tree[7] != POOL_V1_DIGEST_ENCODING_VERSION
+    {
+        return Err(PoolV1ProgramError::InvalidAccountType.into());
+    }
+    let next_leaf_index = u64::from_le_bytes(tree[8..16].try_into().unwrap());
+    if next_leaf_index > POOL_V1_PAIR_CAPACITY {
+        return Err(PoolV1ProgramError::InvalidAccountType.into());
+    }
+    let root = decode_digest_canonical(tree[16..48].try_into().unwrap())
+        .map_err(|_| PoolV1ProgramError::InvalidAccountType)?;
+    let mut frontier = [[M31::ZERO; 8]; POOL_V1_PAIR_TREE_DEPTH];
+    for (level, node) in frontier.iter_mut().enumerate() {
+        let start = 48 + 32 * level;
+        *node = decode_digest_canonical(tree[start..start + 32].try_into().unwrap())
+            .map_err(|_| PoolV1ProgramError::InvalidAccountType)?;
+        if (next_leaf_index >> level) & 1 == 0 && *node != POOL_V1_PAIR_EMPTY_ROOTS[level] {
+            return Err(PoolV1ProgramError::StateHistoryMismatch.into());
+        }
+    }
+    if next_leaf_index == 0 && root != POOL_V1_PAIR_EMPTY_ROOTS[POOL_V1_PAIR_TREE_DEPTH] {
+        return Err(PoolV1ProgramError::StateHistoryMismatch.into());
+    }
+    Ok(PoolV1PairForestLaneStateV1 {
+        master: encoded_master,
+        lane_id: expected_lane,
+        tree: IncrementalMerkleTreeV1 {
+            next_leaf_index,
+            root,
+            frontier,
+        },
+    })
+}
+
+/// Byte-exact encoder for a verifier-authenticated next lane. It retains all
+/// canonical field, capacity, inactive-frontier and genesis checks, omitting
+/// only a second root/frontier Poseidon reconstruction already enforced by
+/// the selected verifier relation.
+#[cfg(feature = "pair-forest-source-result-invariant-audit")]
+fn encode_lane_from_authenticated_result_v1(
+    lane: &PoolV1PairForestLaneStateV1,
+) -> Result<[u8; POOL_V1_PAIR_FOREST_LANE_ACCOUNT_BYTES], ProgramError> {
+    if usize::from(lane.lane_id) >= POOL_V1_PAIR_FOREST_LANE_COUNT
+        || lane.master == [0u8; 32]
+        || lane.tree.next_leaf_index > POOL_V1_PAIR_CAPACITY
+    {
+        return Err(PoolV1ProgramError::StateHistoryMismatch.into());
+    }
+    for (level, node) in lane.tree.frontier.iter().enumerate() {
+        if (lane.tree.next_leaf_index >> level) & 1 == 0 && *node != POOL_V1_PAIR_EMPTY_ROOTS[level]
+        {
+            return Err(PoolV1ProgramError::StateHistoryMismatch.into());
+        }
+    }
+    if lane.tree.next_leaf_index == 0
+        && lane.tree.root != POOL_V1_PAIR_EMPTY_ROOTS[POOL_V1_PAIR_TREE_DEPTH]
+    {
+        return Err(PoolV1ProgramError::StateHistoryMismatch.into());
+    }
+    let mut output = [0u8; POOL_V1_PAIR_FOREST_LANE_ACCOUNT_BYTES];
+    output[..4].copy_from_slice(&POOL_V1_PAIR_FOREST_LANE_MAGIC);
+    output[4] = POOL_V1_PAIR_FOREST_LANE_VERSION;
+    output[5] = lane.lane_id;
+    output[6] = POOL_V1_PAIR_FOREST_LANE_COUNT as u8;
+    output[7] = POOL_V1_PAIR_TREE_DEPTH as u8;
+    output[8..40].copy_from_slice(&POOL_V1_PAIR_FOREST_ACCOUNT_FORMAT_BINDING);
+    output[40..72].copy_from_slice(&lane.master);
+    let tree = &mut output[POOL_V1_PAIR_FOREST_LANE_HEADER_BYTES..];
+    tree[..4].copy_from_slice(&POOL_V1_TREE_STATE_MAGIC);
+    tree[4] = POOL_V1_TREE_STATE_VERSION;
+    tree[5] = POOL_V1_PAIR_TREE_DEPTH as u8;
+    tree[6] = POOL_V1_TREE_HASH_VERSION;
+    tree[7] = POOL_V1_DIGEST_ENCODING_VERSION;
+    tree[8..16].copy_from_slice(&lane.tree.next_leaf_index.to_le_bytes());
+    tree[16..48].copy_from_slice(&encode_digest_canonical(&lane.tree.root));
+    for (level, node) in lane.tree.frontier.iter().enumerate() {
+        let start = 48 + 32 * level;
+        tree[start..start + 32].copy_from_slice(&encode_digest_canonical(node));
+    }
+    Ok(output)
 }
 
 fn require_alias_free(
@@ -931,6 +1072,16 @@ fn decode_pair_forest_lane_boxed_v1(
     output_lane: u8,
     account: &AccountInfo<'_>,
 ) -> Result<Box<PoolV1PairForestLaneStateV1>, ProgramError> {
+    #[cfg(feature = "pair-forest-source-invariant-audit")]
+    return Ok(Box::new(decode_lane_account_from_program_invariant_v1(
+        program_id,
+        master,
+        output_lane,
+        account,
+        true,
+    )?));
+
+    #[cfg(not(feature = "pair-forest-source-invariant-audit"))]
     Ok(Box::new(decode_lane_account(
         program_id,
         master,
@@ -998,6 +1149,9 @@ fn encode_next_pair_forest_lane_boxed_v1(
     ProgramError,
 > {
     let next_lane = Box::new(next_pair_forest_lane_v1(lane, result)?);
+    #[cfg(feature = "pair-forest-source-result-invariant-audit")]
+    let image = Box::new(encode_lane_from_authenticated_result_v1(&next_lane)?);
+    #[cfg(not(feature = "pair-forest-source-result-invariant-audit"))]
     let image = Box::new(
         encode_pool_v1_pair_forest_lane_state_v1(&next_lane, &POOL_V1_PAIR_EMPTY_ROOTS)
             .map_err(|_| PoolV1ProgramError::StateHistoryMismatch)?,
@@ -1045,13 +1199,17 @@ where
     ) -> Result<AuthenticatedPairForestResultV1, ProgramError>,
     S: FnOnce(&[u8]),
 {
+    pair_forest_cu_checkpoint_v1("ASQ8_POOL_ENTER");
     let request = decode_pair_forest_terminal_request_boxed_v1(instruction_data)?;
+    pair_forest_cu_checkpoint_v1("ASQ8_REQUEST_DECODED");
     let master_account = accounts.first().ok_or(ProgramError::NotEnoughAccountKeys)?;
     let checkpoint_account = accounts.get(1).ok_or(ProgramError::NotEnoughAccountKeys)?;
     let lane_account = accounts.get(2).ok_or(ProgramError::NotEnoughAccountKeys)?;
     let master = decode_pair_forest_master_boxed_v1(program_id, master_account)?;
+    pair_forest_cu_checkpoint_v1("ASQ8_MASTER_DECODED");
     let checkpoint =
         decode_pair_forest_checkpoint_boxed_v1(program_id, master_account.key, checkpoint_account)?;
+    pair_forest_cu_checkpoint_v1("ASQ8_CHECKPOINT_DECODED");
     let output_lane =
         aspis_statement::pool_v1::pool_v1_pair_forest_output_lane_v1(request.public.nullifier())
             .map_err(|_| PoolV1ProgramError::NonCanonicalLeaf)?;
@@ -1061,6 +1219,7 @@ where
         output_lane,
         lane_account,
     )?;
+    pair_forest_cu_checkpoint_v1("ASQ8_LANE_DECODED");
     validate_pair_forest_request_accounts_v1(
         program_id,
         master_account,
@@ -1071,11 +1230,13 @@ where
         lane.as_ref(),
         request.as_ref(),
     )?;
+    pair_forest_cu_checkpoint_v1("ASQ8_REQUEST_BOUND");
     let withdrawal = matches!(
         request.public,
         PoolV1PairForestTerminalPaymentV1::Withdrawal(_)
     );
     let layout = plan_pair_forest_spend_layout_v1(program_id, accounts, &lane, withdrawal)?;
+    pair_forest_cu_checkpoint_v1("ASQ8_LAYOUT_AND_HISTORY_BOUND");
 
     let marker = &accounts[layout.marker_index];
     let marker_payload = PoolV1NullifierMarkerV1 {
@@ -1092,6 +1253,7 @@ where
     if planned_marker.preparation() != NullifierMarkerPreparationV1::PopulateProgramOwnedZeroed {
         return Err(PoolV1ProgramError::InvalidNullifierMarkerAccount.into());
     }
+    pair_forest_cu_checkpoint_v1("ASQ8_MARKER_PLANNED");
 
     let withdrawal_plan =
         if let PoolV1PairForestTerminalPaymentV1::Withdrawal(public) = request.public {
@@ -1107,7 +1269,9 @@ where
         } else {
             None
         };
+    pair_forest_cu_checkpoint_v1("ASQ8_WITHDRAWAL_PLAN_DONE");
 
+    pair_forest_cu_checkpoint_v1("ASQ8_BEFORE_VERIFIER_CPI");
     let authenticated = verify(
         program_id,
         master_account,
@@ -1120,6 +1284,7 @@ where
         request.as_ref(),
         current_slot,
     )?;
+    pair_forest_cu_checkpoint_v1("ASQ8_AFTER_VERIFIER_CPI");
     let result = authenticated.value();
     let common = pair_forest_terminal_common_boxed_v1(
         master_account.key,
@@ -1132,8 +1297,11 @@ where
         result,
     );
     validate_pair_forest_terminal_result_boxed_v1(&request, common, result)?;
+    pair_forest_cu_checkpoint_v1("ASQ8_RESULT_BOUND");
     let (_next_lane, next_lane_image) = encode_next_pair_forest_lane_boxed_v1(&lane, result)?;
+    pair_forest_cu_checkpoint_v1("ASQ8_NEXT_LANE_ENCODED");
     let result_bytes = encode_pair_forest_result_boxed_v1(result)?;
+    pair_forest_cu_checkpoint_v1("ASQ8_RESULT_ENCODED");
 
     let writable_page = match layout.page {
         PairForestSpendPageV1::Genesis | PairForestSpendPageV1::SamePage(_) => &accounts[3],
@@ -1179,6 +1347,7 @@ where
     }
     marker_data.copy_from_slice(&planned_marker.encoded_marker());
     set_return_data(result_bytes.as_ref());
+    pair_forest_cu_checkpoint_v1("ASQ8_POOL_DONE");
     Ok(())
 }
 
@@ -1644,6 +1813,101 @@ mod tests {
                 frontier: core::array::from_fn(|level| POOL_V1_PAIR_EMPTY_ROOTS[level]),
             },
         }
+    }
+
+    #[cfg(feature = "pair-forest-source-invariant-audit")]
+    #[test]
+    fn terminal_program_invariant_lane_decoder_keeps_exact_boundary() {
+        let program_id = Pubkey::new_unique();
+        let master = Pubkey::new_unique();
+        let lane_id = 3;
+        let mut lane = lane_state(master, lane_id);
+        for leaf in 0..13 {
+            lane.tree = lane
+                .tree
+                .append_one_with_empty_roots(digest(20_000 + leaf), &POOL_V1_PAIR_EMPTY_ROOTS)
+                .unwrap()
+                .0;
+        }
+        let canonical =
+            encode_pool_v1_pair_forest_lane_state_v1(&lane, &POOL_V1_PAIR_EMPTY_ROOTS).unwrap();
+        let lane_key = pool_v1_pair_forest_lane_address(&program_id, &master, lane_id)
+            .unwrap()
+            .0;
+        let mut account = TestAccount {
+            key: lane_key,
+            owner: program_id,
+            lamports: 1,
+            data: canonical.to_vec(),
+            signer: false,
+            writable: true,
+            executable: false,
+        };
+        assert_eq!(
+            decode_lane_account_from_program_invariant_v1(
+                &program_id,
+                &master,
+                lane_id,
+                &account.info(),
+                true,
+            )
+            .unwrap(),
+            lane,
+        );
+
+        // The one explicit boundary is real: a canonical but inconsistent
+        // active root is accepted here and rejected by the generic codec.
+        // The terminal path additionally binds this root to the Pool-owned
+        // current history entry before CPI.
+        let root_start = POOL_V1_PAIR_FOREST_LANE_HEADER_BYTES + 16;
+        account.data[root_start..root_start + 32]
+            .copy_from_slice(&encode_digest_canonical(&digest(90_000)));
+        assert!(
+            decode_pool_v1_pair_forest_lane_state_v1(&account.data, &POOL_V1_PAIR_EMPTY_ROOTS,)
+                .is_err()
+        );
+        assert!(decode_lane_account_from_program_invariant_v1(
+            &program_id,
+            &master,
+            lane_id,
+            &account.info(),
+            true,
+        )
+        .is_ok());
+
+        // Canonical inactive frontier slots are still enforced exactly.
+        let inactive_level = 1usize;
+        let inactive_start = POOL_V1_PAIR_FOREST_LANE_HEADER_BYTES + 48 + 32 * inactive_level;
+        account.data[inactive_start..inactive_start + 32]
+            .copy_from_slice(&encode_digest_canonical(&digest(91_000)));
+        assert!(decode_lane_account_from_program_invariant_v1(
+            &program_id,
+            &master,
+            lane_id,
+            &account.info(),
+            true,
+        )
+        .is_err());
+    }
+
+    #[cfg(feature = "pair-forest-source-result-invariant-audit")]
+    #[test]
+    fn authenticated_result_encoder_is_byte_exact_for_valid_lanes() {
+        let master = Pubkey::new_unique();
+        let mut lane = lane_state(master, 4);
+        for leaf in 0..14 {
+            lane.tree = lane
+                .tree
+                .append_one_with_empty_roots(digest(30_000 + leaf), &POOL_V1_PAIR_EMPTY_ROOTS)
+                .unwrap()
+                .0;
+        }
+        assert_eq!(
+            encode_lane_from_authenticated_result_v1(&lane).unwrap(),
+            encode_pool_v1_pair_forest_lane_state_v1(&lane, &POOL_V1_PAIR_EMPTY_ROOTS).unwrap(),
+        );
+        lane.tree.frontier[0] = digest(99_000);
+        assert!(encode_lane_from_authenticated_result_v1(&lane).is_err());
     }
 
     fn fixtures(program_id: Pubkey) -> (TestAccount, [TestAccount; 8], TestAccount, Pubkey) {
