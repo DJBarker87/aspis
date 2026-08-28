@@ -189,10 +189,11 @@ between the older verified per-word sampler and the current Tag-73 extraction:
 current Rust checked-adds the draw counter, while the older extraction lifted
 wrapping addition.  `V7FirstCompactSamplerInnerBridge` proves that below the
 literal 64-draw gate the checked increment cannot fail, increments exactly,
-and equals the older wrapping value.  Focused unit
-`aspis-v7-q16-increment-final-01` exited 0 in 2.96 seconds, peaked at
-6,878,828 KiB RSS, and used zero swap.  Both printed theorems depend only on
-`propext`, `Classical.choice`, and `Quot.sound`.
+and equals the older wrapping value. It also proves the literal Rust mask
+`0x3ffff` is exactly K1.3's `q16Candidate = word mod 2^18`, with no signedness
+or codec premise. Focused unit `aspis-v7-q16-mask-01` exited 0 in 2.99 seconds,
+peaked at 6,875,804 KiB RSS, and used zero swap. All three printed theorems
+depend only on `propext`, `Classical.choice`, and `Quot.sound`.
 
 Consequently the remaining sampler lemma is now precisely to replay the shared
 per-word scan proof with Tag-73's `(count, bound, mask) = (16, 2^18,
@@ -223,7 +224,7 @@ b71fa9e8fc7bef1544ec981092de9370c4b45d4ed059f30989d7bef988932468  caller/proof/V
 c72e3c80fcfd46ce032d834d00b209316608f2cb1b39840dbabdec8180e3aaa6  caller/proof/V7FirstCompactFrontierK13Integration.lean
 38968fe0e71d83e4971bef2b26012fa7a52d1244b541564253d24db413eed85d  caller/proof/V7FirstCompactCallerBridge.lean
 f21af0ef7f2362c62acb2dfa992c29d31f006aa5b13d788b64752b95d2f033bf  caller/proof/V7FirstCompactK13RawScheduleBridge.lean
-2eaf491956e5300e01f18fe5e7fd84e6366e91ebf2eac750a3106c530cf56751  caller/proof/V7FirstCompactSamplerInnerBridge.lean
+128ac3fb23f46ae234b6472c78c27b938b458933d102cdc9be1c5cab8dbb85f4  caller/proof/V7FirstCompactSamplerInnerBridge.lean
 6abb0376100611c5553258062480777187785579f402c9c1d3ce72379518258f  ../../crates/aspis-core/src/v7_onefold.rs
 ```
 
