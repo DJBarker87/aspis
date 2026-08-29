@@ -7,8 +7,7 @@ set_option autoImplicit false
 
 namespace AspisV6CompactFrontierTailCertificate
 
-attribute [-simp] certificate_0_1_0 certificate_0_2_0 certificate_0_3_0 certificate_0_4_0
-attribute [simp] certificate_1_1_0 certificate_1_1_1 certificate_1_2_0 certificate_1_2_1 certificate_1_2_2 certificate_1_3_0 certificate_1_3_1 certificate_1_3_2
-attribute [simp] certificate_1_3_3 certificate_1_4_0 certificate_1_4_1 certificate_1_4_2 certificate_1_4_3 certificate_1_4_4
+attribute [-simp] certificate_0_1_0
+attribute [simp] certificate_1_1_0 certificate_1_1_1 certificate_1_2_0 certificate_1_2_1
 
 end AspisV6CompactFrontierTailCertificate

@@ -1,19 +1,26 @@
 #!/usr/bin/env python3
 """Generate the ordinary-kernel V6 frontier-tail certificate.
 
-The certificate contains 4,999 recurrence cells. Keeping every cell in one
-Lean environment used more than 40 GiB while serialising the final module, so
+The tight-support certificate contains 753 recurrence cells. Keeping every
+historical cell or every final zero coefficient in one normalization used more
+than 40 GiB while serialising the final module, so
 the generated source is deliberately a DAG:
 
-* every depth is divided into bounded chunks;
+* generic Lean theorems prove the exact recursive support envelope and filter
+  each convolution to its resulting closed interval;
+* cells and convolution terms outside that envelope are discharged without
+  unfolding recurrence;
+* every remaining depth is divided into bounded chunks;
 * a chunk imports only the previous-depth aggregator;
 * an aggregator imports its depth's chunks, removes the preceding depth from
   the simp set, and adds the current depth; and
-* the historical public module is a small wrapper over the depth-18
-  aggregator.
+* the final weighted sum normalizes only its 15 nonzero coefficients; and
+* the historical public module proves the remaining 64 coefficients vanish
+  from the generic exact-support theorem.
 
-All public theorem names and statements are unchanged. The generator remains
-untrusted: Lean reconstructs every coefficient with ``norm_num``;
+All release-facing theorem names and statements are unchanged. The generator remains
+untrusted: Lean proves the support envelope, the sparse-convolution equality,
+and every retained coefficient with ``norm_num``;
 ``native_decide``, ``sorry``, and ``admit`` are never emitted.
 
 Normal generation replaces the complete generated set deterministically and
@@ -27,6 +34,7 @@ import argparse
 import hashlib
 import json
 from collections import defaultdict
+from functools import cache
 from pathlib import Path
 
 
@@ -41,6 +49,28 @@ GENERATED_HEADER = (
     "do not edit."
 )
 MODULE_PREFIX = "AspisFormal.V6CompactFrontierTailCertificate"
+
+
+@cache
+def support_max(depth: int, selected: int) -> int:
+    """Exact recursively proved support envelope used by Lean."""
+    if depth == 0:
+        return 0
+    previous = depth - 1
+    one_child = support_max(previous, selected) + 1
+    both_children = max(
+        (
+            support_max(previous, left)
+            + support_max(previous, selected - left)
+            for left in range(1, selected)
+        ),
+        default=0,
+    )
+    return max(one_child, both_children)
+
+
+def cell_within_proved_support(depth: int, selected: int, frontier: int) -> bool:
+    return selected <= 2**depth and frontier <= support_max(depth, selected)
 
 
 def coefficient_tables() -> list[dict[int, dict[int, int]]]:
@@ -68,27 +98,86 @@ def coefficient_tables() -> list[dict[int, dict[int, int]]]:
     return result
 
 
-def dependencies(
+def recurrence_inputs(
     depth: int, selected: int, frontier: int
 ) -> set[tuple[int, int, int]]:
-    """Exact previous-depth cells exposed by one unfolded recurrence."""
+    """Every unique previous-depth cell exposed by one unfolded recurrence."""
     if depth == 0:
         return set()
     previous_depth = depth - 1
     result: set[tuple[int, int, int]] = set()
-    if frontier > 0 and frontier - 1 <= selected * previous_depth:
+    if frontier > 0:
         result.add((previous_depth, selected, frontier - 1))
     for left_selected in range(1, selected):
         right_selected = selected - left_selected
         for left_frontier in range(frontier + 1):
             right_frontier = frontier - left_frontier
-            if (
-                left_frontier <= left_selected * previous_depth
-                and right_frontier <= right_selected * previous_depth
+            result.add((previous_depth, left_selected, left_frontier))
+            result.add((previous_depth, right_selected, right_frontier))
+    return result
+
+
+def dependencies(
+    depth: int, selected: int, frontier: int
+) -> set[tuple[int, int, int]]:
+    """Previous-depth cells occurring in products not killed by support."""
+    if depth == 0:
+        return set()
+    previous_depth = depth - 1
+    result: set[tuple[int, int, int]] = set()
+    if frontier > 0 and cell_within_proved_support(
+        previous_depth, selected, frontier - 1
+    ):
+        result.add((previous_depth, selected, frontier - 1))
+    for left_selected in range(1, selected):
+        right_selected = selected - left_selected
+        for left_frontier in range(frontier + 1):
+            right_frontier = frontier - left_frontier
+            if cell_within_proved_support(
+                previous_depth, left_selected, left_frontier
+            ) and cell_within_proved_support(
+                previous_depth, right_selected, right_frontier
             ):
                 result.add((previous_depth, left_selected, left_frontier))
                 result.add((previous_depth, right_selected, right_frontier))
     return result
+
+
+def recurrence_rewrites(
+    depth: int, selected: int, frontier: int
+) -> set[tuple[int, int, int]]:
+    """Small rewrite cover for every term in one unfolded recurrence.
+
+    A live product references both certified inputs.  A product outside the
+    proved support references just one zero input, which is sufficient to
+    kill it without simplifying the other factor.
+    """
+    if depth == 0:
+        return set()
+    previous_depth = depth - 1
+    result: set[tuple[int, int, int]] = set()
+    if frontier > 0:
+        result.add((previous_depth, selected, frontier - 1))
+    for left_selected in range(1, selected):
+        right_selected = selected - left_selected
+        for left_frontier in range(frontier + 1):
+            right_frontier = frontier - left_frontier
+            left = (previous_depth, left_selected, left_frontier)
+            right = (previous_depth, right_selected, right_frontier)
+            left_live = cell_within_proved_support(*left)
+            right_live = cell_within_proved_support(*right)
+            if left_live and right_live:
+                result.add(left)
+                result.add(right)
+            elif not left_live:
+                result.add(left)
+            else:
+                result.add(right)
+    return result
+
+
+def local_zero_name(depth: int, selected: int, frontier: int) -> str:
+    return f"zero_{depth}_{selected}_{frontier}"
 
 
 def dependency_closure() -> set[tuple[int, int, int]]:
@@ -108,6 +197,10 @@ def dependency_closure() -> set[tuple[int, int, int]]:
 
 def theorem_name(depth: int, selected: int, frontier: int) -> str:
     return f"certificate_{depth}_{selected}_{frontier}"
+
+
+def weighted_theorem_name(depth: int, selected: int, frontier: int) -> str:
+    return f"weighted_certificate_{depth}_{selected}_{frontier}"
 
 
 def depth_name(depth: int) -> str:
@@ -176,8 +269,104 @@ def lean_prelude(import_name: str) -> list[str]:
         "namespace AspisV6CompactFrontierTailCertificate",
         "",
         "open AspisV6CompactFrontierRecurrence",
+        "open AspisV6CompactFrontierSupport",
         "",
     ]
+
+
+def generate_support_certificate() -> str:
+    lines = lean_prelude("AspisFormal.V6CompactFrontierSupport")
+    lines.extend(
+        [
+            "/-- Kernel-checked dynamic-programming values for the tight",
+            "frontier support envelope used by every generated chunk. -/",
+            "",
+        ]
+    )
+    for depth in range(DEPTH + 1):
+        names: list[str] = []
+        for selected in range(1, SELECTED + 1):
+            name = f"support_{depth}_{selected}"
+            names.append(name)
+            lines.extend(
+                [
+                    f"theorem {name} :",
+                    f"    frontierSupportMax {depth} {selected} = "
+                    f"{support_max(depth, selected)} := by",
+                ]
+            )
+            if depth == 0:
+                lines.append("  rfl")
+            else:
+                previous = depth - 1
+                one_value = support_max(previous, selected) + 1
+                split_values = [
+                    (
+                        left - 1,
+                        support_max(previous, left)
+                        + support_max(previous, selected - left),
+                    )
+                    for left in range(1, selected)
+                ]
+                split_value = max(
+                    (value for _offset, value in split_values), default=0
+                )
+                lines.extend(
+                    [
+                        "  rw [frontierSupportMax_succ]",
+                        "  apply le_antisymm",
+                        "  · apply max_le",
+                        "    · norm_num",
+                        "    · apply Finset.sup_le",
+                        "      intro candidate candidate_member",
+                        "      have candidate_bound := "
+                        "Finset.mem_range.mp candidate_member",
+                        "      interval_cases candidate <;> simp",
+                    ]
+                )
+                if one_value >= split_value:
+                    lines.extend(
+                        [
+                            "  · simpa using",
+                            "      (le_max_left "
+                            "(frontierSupportMax "
+                            f"{previous} {selected} + 1) "
+                            f"(splitSupportMax {previous} {selected}))",
+                        ]
+                    )
+                else:
+                    best_offset = next(
+                        offset
+                        for offset, value in split_values
+                        if value == split_value
+                    )
+                    lines.extend(
+                        [
+                            f"  · have member : {best_offset} ∈ "
+                            f"Finset.range ({selected} - 1) := by norm_num",
+                            "    have term := Finset.le_sup (f := fun candidate =>",
+                            "      frontierSupportMax "
+                            f"{previous} (candidate + 1) +",
+                            "        frontierSupportMax "
+                            f"{previous} ({selected} - (candidate + 1))) member",
+                            f"    have termBound : {split_value} ≤ "
+                            f"splitSupportMax {previous} {selected} := by",
+                            "      simpa [splitSupportMax] using term",
+                            "    exact termBound.trans (le_max_right _ _)",
+                        ]
+                    )
+            lines.append("")
+        lines.extend(attribute_lines("simp", names))
+        lines.append("")
+    lines.extend(
+        [
+            "#print axioms support_18_16",
+            "",
+            "end AspisV6CompactFrontierTailCertificate",
+            "",
+        ]
+    )
+    return "\n".join(lines)
 
 
 def depth_states(
@@ -190,6 +379,38 @@ def depth_states(
     )
 
 
+def finset_literal(values: list[int]) -> str:
+    """Lean notation for a concrete finite set of naturals."""
+    if not values:
+        return "∅"
+    return "{" + ", ".join(str(value) for value in values) + "}"
+
+
+def if_chain(variable: str, values: list[tuple[int, int]]) -> str:
+    """A concrete lookup whose domain is subsequently proved finite."""
+    result = "0"
+    for key, value in reversed(values):
+        result = f"if {variable} = {key} then {value} else {result}"
+    return result
+
+
+def supported_frontiers(
+    depth: int, left_selected: int, right_selected: int, frontier: int
+) -> list[int]:
+    """The exact interval denoted by ``supportedSplitFrontiers``."""
+    lower = max(0, frontier - support_max(depth, right_selected))
+    upper = min(frontier, support_max(depth, left_selected))
+    if lower > upper:
+        return []
+    return list(range(lower, upper + 1))
+
+
+def membership_cases(values: list[int]) -> str:
+    if len(values) == 1:
+        return "rfl"
+    return "(" + " | ".join("rfl" for _ in values) + ")"
+
+
 def generate_chunk(
     depth: int,
     chunk: int,
@@ -199,11 +420,12 @@ def generate_chunk(
     tables: list[dict[int, dict[int, int]]],
 ) -> str:
     import_name = (
-        "AspisFormal.V6CompactFrontierRecurrence"
+        f"{MODULE_PREFIX}.Support"
         if depth == 0
         else f"{MODULE_PREFIX}.{depth_name(depth - 1)}"
     )
     lines = lean_prelude(import_name)
+    lines.insert(1, "import AspisFormal.V6CompactFrontierSparseSupport")
     lines.extend(
         [
             f"/-! ## Depth {depth}, chunk {chunk}",
@@ -221,14 +443,255 @@ def generate_chunk(
                 f"    frontierCoeff {depth} {selected} {frontier} = {value} := by",
             ]
         )
-        if depth == 0:
-            lines.append("  norm_num [frontierCoeff]")
-        else:
+        if selected > 2**depth:
             lines.extend(
                 [
-                    "  rw [frontierCoeff]",
-                    "  norm_num [Finset.sum_range_succ,",
-                    "    frontierCoeff_eq_zero_of_frontier_gt_mul]",
+                    "  apply frontierCoeff_eq_zero_of_selected_gt_pow",
+                    "  norm_num",
+                ]
+            )
+        elif frontier > support_max(depth, selected):
+            lines.extend(
+                [
+                    "  apply frontierCoeff_eq_zero_of_frontier_gt_support",
+                    "  norm_num",
+                ]
+            )
+        elif depth == 0:
+            lines.append("  norm_num [frontierCoeff]")
+        else:
+            previous = depth - 1
+            previous_name: str | None = None
+            if frontier > 0 and not cell_within_proved_support(
+                previous, selected, frontier - 1
+            ):
+                zero_name = local_zero_name(previous, selected, frontier - 1)
+                previous_name = zero_name
+                lines.extend(
+                    [
+                        f"  have {zero_name} :",
+                        "      frontierCoeff "
+                        f"{previous} {selected} {frontier - 1} = 0 := by",
+                    ]
+                )
+                if selected > 2**previous:
+                    lines.extend(
+                        [
+                            "    apply frontierCoeff_eq_zero_of_selected_gt_pow",
+                            "    norm_num",
+                        ]
+                    )
+                else:
+                    lines.extend(
+                        [
+                            "    apply frontierCoeff_eq_zero_of_frontier_gt_support",
+                            "    norm_num",
+                        ]
+                    )
+            elif frontier > 0:
+                previous_name = theorem_name(
+                    previous, selected, frontier - 1
+                )
+
+            split_names: list[str] = []
+            split_values: list[tuple[int, int]] = []
+            for offset in range(selected - 1):
+                left_selected = offset + 1
+                right_selected = selected - left_selected
+                live = supported_frontiers(
+                    previous, left_selected, right_selected, frontier
+                )
+                split_name = f"split{offset}"
+                split_names.append(split_name)
+                products = [
+                    (
+                        left_frontier,
+                        tables[previous]
+                        .get(left_selected, {})
+                        .get(left_frontier, 0)
+                        * tables[previous]
+                        .get(right_selected, {})
+                        .get(frontier - left_frontier, 0),
+                    )
+                    for left_frontier in live
+                ]
+                subtotal = sum(product for _left, product in products)
+                split_values.append((offset, subtotal))
+                lines.extend(
+                    [
+                        f"  have {split_name} :",
+                        "      (∑ leftFrontier ∈ supportedSplitFrontiers "
+                        f"{previous} {left_selected} {right_selected} "
+                        f"{frontier},",
+                        "        frontierCoeff "
+                        f"{previous} {left_selected} leftFrontier *",
+                        "          frontierCoeff "
+                        f"{previous} {right_selected} "
+                        f"({frontier} - leftFrontier)) = {subtotal} := by",
+                    ]
+                )
+                support_names = sorted(
+                    {
+                        f"support_{previous}_{left_selected}",
+                        f"support_{previous}_{right_selected}",
+                    }
+                )
+                live_literal = finset_literal(live)
+                lines.extend(
+                    [
+                        f"    have live{offset} : supportedSplitFrontiers "
+                        f"{previous} {left_selected} {right_selected} "
+                        f"{frontier} = {live_literal} := by",
+                        "      rw [supportedSplitFrontiers_eq_Icc, "
+                        + ", ".join(support_names)
+                        + "]",
+                        "      ext value",
+                        "      simp <;> omega",
+                        f"    rw [live{offset}]",
+                    ]
+                )
+                if not live:
+                    lines.append("    simp")
+                    continue
+
+                term_names = sorted(
+                    {
+                        theorem_name(previous, left_selected, left_frontier)
+                        for left_frontier in live
+                    }
+                    | {
+                        theorem_name(
+                            previous,
+                            right_selected,
+                            frontier - left_frontier,
+                        )
+                        for left_frontier in live
+                    }
+                )
+                lookup = if_chain("leftFrontier", products)
+                lines.extend(
+                    [
+                        "    calc",
+                        f"      (∑ leftFrontier ∈ {live_literal},",
+                        "          frontierCoeff "
+                        f"{previous} {left_selected} leftFrontier *",
+                        "            frontierCoeff "
+                        f"{previous} {right_selected} "
+                        f"({frontier} - leftFrontier)) =",
+                        f"          ∑ leftFrontier ∈ {live_literal},",
+                        f"            {lookup} := by",
+                        "        apply Finset.sum_congr rfl",
+                        "        intro leftFrontier member",
+                    ]
+                )
+                if len(live) == 1:
+                    lines.append(
+                        "        simp only [Finset.mem_singleton] at member"
+                    )
+                else:
+                    lines.append(
+                        "        simp only [Finset.mem_insert, "
+                        "Finset.mem_singleton] at member"
+                    )
+                lines.append(
+                    f"        rcases member with {membership_cases(live)} <;>"
+                )
+                for start in range(0, len(term_names), 6):
+                    prefix = "          norm_num only [" if start == 0 else "            "
+                    suffix = "," if start + 6 < len(term_names) else "] <;> simp"
+                    lines.append(
+                        prefix
+                        + ", ".join(term_names[start : start + 6])
+                        + suffix
+                    )
+                lines.append(f"      _ = {subtotal} := by norm_num")
+
+            outer_total = sum(subtotal for _offset, subtotal in split_values)
+            lines.extend(
+                [
+                    "  have outer :",
+                    f"      (∑ offset ∈ Finset.range ({selected} - 1),",
+                    "        ∑ leftFrontier ∈ supportedSplitFrontiers "
+                    f"{previous} (offset + 1)",
+                    f"            ({selected} - (offset + 1)) {frontier},",
+                    "          frontierCoeff "
+                    f"{previous} (offset + 1) leftFrontier *",
+                    "            frontierCoeff "
+                    f"{previous} ({selected} - (offset + 1))",
+                    f"              ({frontier} - leftFrontier)) = "
+                    f"{outer_total} := by",
+                ]
+            )
+            offsets = list(range(selected - 1))
+            if not offsets:
+                lines.append("    simp")
+            else:
+                offsets_literal = finset_literal(offsets)
+                lines.extend(
+                    [
+                        f"    have offsets : Finset.range ({selected} - 1) = "
+                        f"{offsets_literal} := by decide",
+                        "    rw [offsets]",
+                        "    calc",
+                        f"      (∑ offset ∈ {offsets_literal},",
+                        "          ∑ leftFrontier ∈ supportedSplitFrontiers "
+                        f"{previous} (offset + 1)",
+                        f"              ({selected} - (offset + 1)) "
+                        f"{frontier},",
+                        "            frontierCoeff "
+                        f"{previous} (offset + 1) leftFrontier *",
+                        "              frontierCoeff "
+                        f"{previous} ({selected} - (offset + 1))",
+                        f"                ({frontier} - leftFrontier)) =",
+                        f"          ∑ offset ∈ {offsets_literal},",
+                        f"            {if_chain('offset', split_values)} := by",
+                        "        apply Finset.sum_congr rfl",
+                        "        intro offset member",
+                    ]
+                )
+                if len(offsets) == 1:
+                    lines.append(
+                        "        simp only [Finset.mem_singleton] at member"
+                    )
+                else:
+                    lines.append(
+                        "        simp only [Finset.mem_insert, "
+                        "Finset.mem_singleton] at member"
+                    )
+                lines.append(
+                    f"        rcases member with {membership_cases(offsets)} <;>"
+                )
+                for start in range(0, len(split_names), 6):
+                    prefix = "          norm_num only [" if start == 0 else "            "
+                    suffix = "," if start + 6 < len(split_names) else "] <;> simp"
+                    lines.append(
+                        prefix
+                        + ", ".join(split_names[start : start + 6])
+                        + suffix
+                    )
+                lines.append(f"      _ = {outer_total} := by norm_num")
+            lines.extend(
+                [
+                    "  rw [frontierCoeff_succ_eq_supported]",
+                    "  norm_num only [outer"
+                    + (f", {previous_name}" if previous_name else "")
+                    + "] <;> simp",
+                ]
+            )
+        if (
+            depth == DEPTH
+            and selected == SELECTED
+            and CAP < frontier <= support_max(DEPTH, SELECTED)
+        ):
+            weighted = value * (1 << frontier)
+            lines.extend(
+                [
+                    "",
+                    f"theorem {weighted_theorem_name(depth, selected, frontier)} :",
+                    "    concreteFrontierCount "
+                    f"{depth} {selected} {frontier} = {weighted} := by",
+                    f"  rw [concreteFrontierCount, {name}]",
+                    "  norm_num",
                 ]
             )
         lines.append("")
@@ -274,8 +737,125 @@ def generate_depth_aggregator(
     return "\n".join(lines)
 
 
-def generate_wrapper(tail: int) -> str:
-    lines = lean_prelude(f"{MODULE_PREFIX}.{depth_name(DEPTH)}")
+def generate_tail_sum_support() -> str:
+    lines = [
+        "import AspisFormal.V6CompactFrontierSparseSupport",
+        "",
+        GENERATED_HEADER,
+        "This support theorem splits one concrete interval without expanding",
+        "the large arithmetic certificate stored at either child. -/",
+        "",
+        "set_option autoImplicit false",
+        "",
+        "namespace AspisV6CompactFrontierTailCertificate",
+        "",
+        "theorem sum_Icc_split_at",
+        "    (f : Nat → Nat) (a b c : Nat)",
+        "    (hab : a ≤ b) (hbc : b < c) :",
+        "    (∑ value ∈ Finset.Icc a c, f value) =",
+        "      (∑ value ∈ Finset.Icc a b, f value) +",
+        "        ∑ value ∈ Finset.Icc (b + 1) c, f value := by",
+        "  have union_eq :",
+        "      Finset.Icc a c = Finset.Icc a b ∪ Finset.Icc (b + 1) c := by",
+        "    ext value",
+        "    simp only [Finset.mem_Icc, Finset.mem_union]",
+        "    omega",
+        "  have disjoint :",
+        "      Disjoint (Finset.Icc a b) (Finset.Icc (b + 1) c) := by",
+        "    rw [Finset.disjoint_left]",
+        "    intro value left right",
+        "    simp only [Finset.mem_Icc] at left right",
+        "    omega",
+        "  rw [union_eq, Finset.sum_union disjoint]",
+        "",
+        "#print axioms sum_Icc_split_at",
+        "",
+        "end AspisV6CompactFrontierTailCertificate",
+        "",
+    ]
+    return "\n".join(lines)
+
+
+def generate_tail_sum_live(final_row: dict[int, int]) -> str:
+    live_max = support_max(DEPTH, SELECTED)
+    assert live_max == 224
+    imports = [
+        f"import {MODULE_PREFIX}.{chunk_name(DEPTH, frontier - (CAP + 1))}"
+        for frontier in range(CAP + 1, live_max + 1)
+    ]
+    expected = sum(
+        final_row.get(frontier, 0) * (1 << frontier)
+        for frontier in range(CAP + 1, live_max + 1)
+    )
+    certificates = [
+        weighted_theorem_name(DEPTH, SELECTED, frontier)
+        for frontier in range(CAP + 1, live_max + 1)
+    ]
+    lines = [
+        *imports,
+        f"import {MODULE_PREFIX}.TailSumSupport",
+        "",
+        GENERATED_HEADER,
+        "Only the exact nonzero support is normalized here; the wrapper proves",
+        "all later coefficients vanish from the generic support theorem. -/",
+        "",
+        "set_option autoImplicit false",
+        "set_option maxRecDepth 1000000",
+        "set_option maxHeartbeats 0",
+        "",
+        "namespace AspisV6CompactFrontierTailCertificate",
+        "",
+        "open AspisV6CompactFrontierRecurrence",
+        "",
+        "theorem tailLive_eq_expected :",
+        f"    (∑ frontier ∈ Finset.Icc {CAP + 1} {live_max},",
+        f"      concreteFrontierCount {DEPTH} {SELECTED} frontier) = {expected} := by",
+        "  norm_num only [Finset.sum_Icc_succ_top,",
+        *(
+            f"    {name}{',' if index + 1 < len(certificates) else ''}"
+            for index, name in enumerate(certificates)
+        ),
+        "  ]",
+        "  rw [Finset.Icc_eq_empty_of_lt (by omega), Finset.sum_empty]",
+        "",
+        "#print axioms tailLive_eq_expected",
+        "",
+        "end AspisV6CompactFrontierTailCertificate",
+        "",
+    ]
+    return "\n".join(lines)
+
+
+def generate_tail_sum_zero() -> str:
+    live_max = support_max(DEPTH, SELECTED)
+    lines = lean_prelude(f"{MODULE_PREFIX}.Support")
+    lines.extend(
+        [
+            "theorem tailAboveSupport_eq_zero :",
+            f"    (∑ frontier ∈ Finset.Icc {live_max + 1} {LOOSE_MAX},",
+            f"      concreteFrontierCount {DEPTH} {SELECTED} frontier) = 0 := by",
+            "  apply Finset.sum_eq_zero",
+            "  intro frontier member",
+            "  simp only [Finset.mem_Icc] at member",
+            "  simp only [concreteFrontierCount]",
+            "  rw [frontierCoeff_eq_zero_of_frontier_gt_support]",
+            "  · simp",
+            f"  · rw [support_{DEPTH}_{SELECTED}]",
+            "    omega",
+            "",
+            "#print axioms tailAboveSupport_eq_zero",
+            "",
+            "end AspisV6CompactFrontierTailCertificate",
+            "",
+        ]
+    )
+    return "\n".join(lines)
+
+
+def generate_tail_sum_combine(tail: int) -> str:
+    live_max = support_max(DEPTH, SELECTED)
+    lines = lean_prelude(f"{MODULE_PREFIX}.TailSumLive")
+    lines.insert(1, f"import {MODULE_PREFIX}.TailSumZero")
     lines.extend(
         [
             "/-- Exact count of schedules rejected solely because their compact",
@@ -290,8 +870,12 @@ def generate_wrapper(tail: int) -> str:
             "",
             "theorem compactTail_eq_expected :",
             "    compactTail = expectedCompactTail := by",
-            "  norm_num [compactTail, concreteFrontierCount,",
-            "    Finset.sum_Icc_succ_top]",
+            "  unfold compactTail",
+            "  rw [sum_Icc_split_at",
+            f"    (fun frontier => concreteFrontierCount {DEPTH} {SELECTED} frontier)",
+            f"    {CAP + 1} {live_max} {LOOSE_MAX} (by omega) (by omega)]",
+            "  rw [tailLive_eq_expected, tailAboveSupport_eq_zero]",
+            "  norm_num [expectedCompactTail]",
             "",
             "#print axioms compactTail_eq_expected",
             "",
@@ -302,10 +886,21 @@ def generate_wrapper(tail: int) -> str:
     return "\n".join(lines)
 
 
+def generate_wrapper() -> str:
+    lines = [
+        f"import {MODULE_PREFIX}.TailSumCombine",
+        "",
+        GENERATED_HEADER,
+        "The historical public module re-exports the bounded final sum. -/",
+        "",
+    ]
+    return "\n".join(lines)
+
+
 def generated_files(output: Path) -> dict[Path, str]:
     tables = coefficient_tables()
     needed = dependency_closure()
-    assert len(needed) == 4999
+    assert len(needed) == 753
     final_row = tables[DEPTH][SELECTED]
     tail = sum(
         final_row.get(frontier, 0) * (1 << frontier)
@@ -318,6 +913,7 @@ def generated_files(output: Path) -> dict[Path, str]:
 
     generated_dir = output.with_suffix("")
     files: dict[Path, str] = {}
+    files[generated_dir / "Support.lean"] = generate_support_certificate()
     previous_names: list[str] = []
     manifest_depths: list[dict[str, int]] = []
     for depth in range(DEPTH + 1):
@@ -351,7 +947,12 @@ def generated_files(output: Path) -> dict[Path, str]:
         )
         previous_names = current_names
 
-    files[output] = generate_wrapper(tail)
+    files[generated_dir / "TailSumSupport.lean"] = generate_tail_sum_support()
+    files[generated_dir / "TailSumLive.lean"] = generate_tail_sum_live(final_row)
+    files[generated_dir / "TailSumZero.lean"] = generate_tail_sum_zero()
+    files[generated_dir / "TailSumCombine.lean"] = generate_tail_sum_combine(tail)
+
+    files[output] = generate_wrapper()
     canonical_surface = "".join(
         f"{theorem_name(depth, selected, frontier)}|"
         f"    frontierCoeff {depth} {selected} {frontier} = "
@@ -366,10 +967,14 @@ def generated_files(output: Path) -> dict[Path, str]:
         for path, content in sorted(files.items(), key=lambda item: str(item[0]))
     }
     manifest = {
-        "schema": "aspis-v6-compact-frontier-tail-split-v1",
+        "schema": "aspis-v6-compact-frontier-tail-tight-support-v2",
         "generator": "tools/generate_v6_compact_frontier_tail.py",
         "chunk_size": CHUNK_SIZE,
         "chunk_cost_budget": CHUNK_COST,
+        "tail_sum_live_cells": support_max(DEPTH, SELECTED) - CAP,
+        "tail_sum_zero_cells_discharged_by_support": (
+            LOOSE_MAX - support_max(DEPTH, SELECTED)
+        ),
         "ordinary_recurrence_cells": len(needed),
         "canonical_theorem_surface_sha256": hashlib.sha256(
             canonical_surface.encode("utf-8")
@@ -415,7 +1020,7 @@ def check(output: Path) -> None:
         raise SystemExit("generated certificate check failed:\n" + "\n".join(problems))
     print(
         f"V6 split certificate: PASS ({len(expected) - 1} generated parts, "
-        "4,999 recurrence cells)"
+        "753 recurrence cells)"
     )
 
 
