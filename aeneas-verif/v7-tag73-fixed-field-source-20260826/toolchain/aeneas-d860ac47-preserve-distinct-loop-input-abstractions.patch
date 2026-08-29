@@ -1,0 +1,31 @@
+diff --git a/src/interp/InterpJoin.ml b/src/interp/InterpJoin.ml
+index 6a07c9e..f6a33ac 100644
+--- a/src/interp/InterpJoin.ml
++++ b/src/interp/InterpJoin.ml
+@@ -1563,9 +1563,24 @@ let match_ctx_with_target (config : config) (span : Meta.span)
+         joined_symbolic_to_tgt_value];
+ 
+   (* Apply the sequence of merges to the projected context *)
++  let projected_merge_seq =
++    List.filter
++      (fun (aid0, aid1, _) ->
++        (* Distinct fixed-point abstractions are distinct recursive inputs.
++           The unprojected join may merge their left/right branch copies in
++           order to erase projection markers, but replaying a same-branch
++           merge after projection would collapse two independent inputs into
++           one abstraction.  The context matcher cannot then recover the two
++           backward interfaces.  Preserve such direct input/input pairs; any
++           later merge which names their absent synthetic result becomes a
++           no-op under [collapse_ctx_following_sequence], as intended. *)
++        not
++          (AbsId.Set.mem aid0 fixed_aids && AbsId.Set.mem aid1 fixed_aids))
++      merge_seq
++  in
+   let joined_ctx =
+-    collapse_ctx_no_markers_following_sequence span merge_seq add_borrows_seq
+-      ~with_abs_conts:true fresh_abs_kind joined_ctx
++    collapse_ctx_no_markers_following_sequence span projected_merge_seq
++      add_borrows_seq ~with_abs_conts:true fresh_abs_kind joined_ctx
+   in
+   [%ltrace
+     "After collapsing the context: joined_ctx:\n"

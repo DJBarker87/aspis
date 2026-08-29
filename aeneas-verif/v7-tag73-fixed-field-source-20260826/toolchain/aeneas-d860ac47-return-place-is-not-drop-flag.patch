@@ -1,0 +1,35 @@
+diff --git a/src/PrePasses.ml b/src/PrePasses.ml
+index 5478670..0000000 100644
+--- a/src/PrePasses.ml
++++ b/src/PrePasses.ml
+@@ -766,13 +766,13 @@ let restore_structured_nested_returns (_crate : crate) (f : fun_decl) : fun_decl
+               | ( {
+                     kind =
+                       Assign
+-                        ( { kind = PlaceLocal _; _ },
++                        ( { kind = PlaceLocal local; _ },
+                           Use
+                             (Constant { kind = CLiteral (VBool _); _ }, _) );
+                     _;
+                   } as cleanup )
+                 :: tail
+-                when !Config.drop_as_no_op ->
++                when !Config.drop_as_no_op && local <> return_local ->
+                   take_cleanup (cleanup :: reversed) tail
+               | ( {
+                     kind =
+@@ -1128,12 +1128,12 @@ let lower_nested_loop_returns (crate : crate) (f : fun_decl) : fun_decl =
+           | ( {
+                 kind =
+                   Assign
+-                    ( { kind = PlaceLocal _; _ },
++                    ( { kind = PlaceLocal local; _ },
+                       Use (Constant { kind = CLiteral (VBool _); _ }, _) );
+                 _;
+               } as cleanup )
+             :: rest
+-            when !Config.drop_as_no_op ->
++            when !Config.drop_as_no_op && local <> return_local.index ->
+               take_return_cleanup (cleanup :: reversed) rest
+           | ( {
+                 kind =
