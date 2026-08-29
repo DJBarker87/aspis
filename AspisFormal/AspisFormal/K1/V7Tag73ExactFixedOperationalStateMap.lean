@@ -46,6 +46,7 @@ open AspisK1.V7Tag73ActualRestorationStateMap
 open AspisK1.V7Tag73ExactOperationalResourceCertificate
 open AspisK1.V7Tag73Q16ControlInvariant
 open AspisK1.V7Tag73Q16LedgerCertificate
+open AspisK1.V7Tag73Q16LedgerControlInvariant
 
 noncomputable section
 
@@ -134,6 +135,38 @@ theorem exact_fixed_package_root_q16_slot_invariant
   rw [← projected.finalStateExact]
   exact invariant
 
+/-- The same literal root execution establishes the stronger ledger-phase
+invariant at every retained restoration snapshot. -/
+theorem exact_fixed_package_root_q16_ledger_invariant
+    {HiddenTape TapeIdentity Observation Statement Proof Payload Result : Type}
+    {parameters : ExactCompilerResourceParameters}
+    {transitionFuel : Nat}
+    {configuration : ExactPlainRomConfiguration HiddenTape TapeIdentity
+      Observation Statement Proof Payload Result parameters}
+    {projection : AcceptedTapeProjection Statement Proof Payload}
+    {fixedInstance : PublicInstance Statement}
+    {sample : ExactCompilerSample HiddenTape parameters}
+    (package : ExactFixedCleanFullRunFactorizationPackage transitionFuel
+      configuration projection fixedInstance sample) :
+    FutureFreeQ16LedgerInvariant configuration.machine.environment
+      package.root.fixedRoot.base.runtime.node.verifierFinalState := by
+  let projected := package.root.fixedRoot.base.projected
+  obtain ⟨pairs, _history, operational⟩ :=
+    raw_verifier_execution_has_operational_trace projected.execution
+  have invariant :=
+    future_free_operational_trace_preserves_q16_ledger_invariant
+      projected.execution.environment
+      projected.execution.adversaryValue.rawMessages _ _ pairs operational
+      (initial_future_free_q16_ledger_invariant
+        projected.execution.environment
+        (FixedBindings.ofContext
+          projected.execution.adversaryValue.rawMessages.context))
+  rw [projected.environmentExact] at invariant
+  change FutureFreeQ16LedgerInvariant configuration.machine.environment
+    package.root.fixedRoot.base.runtime.verifierFinalState
+  rw [← projected.finalStateExact]
+  exact invariant
+
 /-- The fixed operational package retains the stronger selected-ledger
 certificate constructed by the strict source replay, not merely the local
 q16 sampler block-cap invariant. -/
@@ -208,6 +241,7 @@ theorem exact_fixed_completed_package_has_operational_state_map
     ActualRestorationStateMapInvariant
       (configuration.machine.blackBox.start sample.1
         configuration.machine.observation)
+      configuration.machine.environment
       configuration.restorationConfiguration
       (runExactPlainRom transitionFuel configuration sample).trace
       package.root.full.clientRun.accumulator := by
@@ -221,6 +255,7 @@ theorem exact_fixed_completed_package_has_operational_state_map
     configuration.client (exactFixedRootRecords package.root)
     (exact_fixed_package_root_history_closed package)
     (exact_fixed_package_root_q16_slot_invariant package)
+    (exact_fixed_package_root_q16_ledger_invariant package)
     (full_projected_root_records_have_no_fork_advance
       package.root.full.projection.rootPrefixes)
     package.root.full.projection.rootPrefixes.verifier.remaining
@@ -231,11 +266,37 @@ theorem exact_fixed_completed_package_has_operational_state_map
   change ActualRestorationStateMapInvariant
     (configuration.machine.blackBox.start sample.1
       configuration.machine.observation)
+    configuration.machine.environment
     configuration.restorationConfiguration
     (exactFixedOperationalStateMapTrace transitionFuel configuration sample
       package)
     package.root.full.clientRun.accumulator at mapped
   exact mapped
+
+/-- Every accepting node in the literal returned accumulator—not just the
+root—retains an exact first-cap-203 q16 ledger certificate. -/
+theorem exact_fixed_completed_stored_done_node_has_selected_q16_ledger
+    {HiddenTape TapeIdentity Observation Statement Proof Payload Result : Type}
+    {parameters : ExactCompilerResourceParameters}
+    (transitionFuel : Nat) (positive : 0 < transitionFuel)
+    (configuration : ExactPlainRomConfiguration HiddenTape TapeIdentity
+      Observation Statement Proof Payload Result parameters)
+    (projection : AcceptedTapeProjection Statement Proof Payload)
+    (fixedInstance : PublicInstance Statement)
+    (sample : ExactCompilerSample HiddenTape parameters)
+    (package : ExactFixedCleanFullRunFactorizationPackage transitionFuel
+      configuration projection fixedInstance sample)
+    (node : ConcreteRestorationNode Statement Proof Payload)
+    (member : node ∈ package.root.full.clientRun.accumulator.nodes)
+    (done : node.verifierFinalState.current.control = .done) :
+    Nonempty (SelectedQ16LedgerCertificate configuration.machine.environment
+      node.verifierFinalState.current) := by
+  have stateMap := exact_fixed_completed_package_has_operational_state_map
+    transitionFuel positive configuration projection fixedInstance sample
+      package
+  have invariant := stateMap.everyNodeQ16LedgerInvariant node member
+  exact done_state_has_selected_q16_ledger configuration.machine.environment
+    node.verifierFinalState invariant done
 
 /-- Proof-relevant operational input constructed from the fixed clean event.
 It contains the completed-root/full-run factorization and the proved state map;
@@ -254,6 +315,7 @@ structure ExactFixedOperationalStateRestorationInput
   stateMap : ActualRestorationStateMapInvariant
     (configuration.machine.blackBox.start sample.1
       configuration.machine.observation)
+    configuration.machine.environment
     configuration.restorationConfiguration
     (runExactPlainRom transitionFuel configuration sample).trace
     package.root.full.clientRun.accumulator
@@ -298,9 +360,11 @@ theorem fixed_legal_member_has_operational_state_restoration_input
 #print axioms full_projected_root_records_have_no_fork_advance
 #print axioms exact_fixed_package_root_history_closed
 #print axioms exact_fixed_package_root_q16_slot_invariant
+#print axioms exact_fixed_package_root_q16_ledger_invariant
 #print axioms exact_fixed_package_root_selected_q16_ledger
 #print axioms exact_fixed_operational_state_map_trace_is_full_trace
 #print axioms exact_fixed_completed_package_has_operational_state_map
+#print axioms exact_fixed_completed_stored_done_node_has_selected_q16_ledger
 #print axioms fixed_legal_member_has_operational_state_restoration_input
 
 end

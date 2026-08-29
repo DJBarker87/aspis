@@ -43,6 +43,7 @@ open AspisK1.V7Tag73ConcreteRestorationTraceInduction
 open AspisK1.V7Tag73CompletedFullRunProjection
 open AspisK1.V7Tag73ActualNodeCausalProvenance
 open AspisK1.V7Tag73Q16ControlInvariant
+open AspisK1.V7Tag73Q16LedgerControlInvariant
 
 noncomputable section
 
@@ -64,9 +65,10 @@ theorem dispatch_one_concrete_restoration_preserves_restoration_state_map
         SchedulerNativeCursor globalOracleCalls
           (ConcreteRestorationClientRun Statement Proof Payload Result))
     (continuations : ∀ reply nextAccumulator,
-      ConcreteClientPreservesRestorationStateMap startProgram configuration
-        nextAccumulator (resume reply nextAccumulator)) :
-    ConcreteClientPreservesRestorationStateMap startProgram configuration
+      ConcreteClientPreservesRestorationStateMap startProgram environment
+        configuration nextAccumulator (resume reply nextAccumulator)) :
+    ConcreteClientPreservesRestorationStateMap startProgram environment
+      configuration
       accumulator
       (dispatchOneConcreteRestoration startProgram environment configuration
         accumulator request resume) := by
@@ -81,11 +83,11 @@ theorem dispatch_one_concrete_restoration_preserves_restoration_state_map
         (trace ++ suffix) →
       SchedulerNativeCursorAllProjectedTracedReturned
         (fun run later => ActualRestorationStateMapInvariant startProgram
-          configuration (trace ++ suffix ++ later) run.accumulator)
+          environment configuration (trace ++ suffix ++ later) run.accumulator)
         (resume reply nextAccumulator) := by
     intro suffix reply nextAccumulator nodesExact pairsCovered
     exact unchanged_continuation_preserves_restoration_state_map startProgram
-      configuration resume continuations trace suffix accumulator
+      environment configuration resume continuations trace suffix accumulator
         nextAccumulator reply nodesExact pairsCovered invariant
   generalize preparationExact :
     prepareConcreteRestorationFromStartProgram startProgram configuration
@@ -488,11 +490,11 @@ theorem dispatch_one_concrete_restoration_preserves_restoration_state_map
                                         .verifier verifierPrefix.freshQueries
                                 have chargedInvariant :
                                     ActualRestorationStateMapInvariant
-                                      startProgram configuration verifierTrace
-                                        charged := by
+                                      startProgram environment configuration
+                                        verifierTrace charged := by
                                   have transported :=
                                     restoration_state_map_of_nodes_eq startProgram
-                                      configuration trace
+                                      environment configuration trace
                                       (scheduledPairRecords scheduled ++
                                         proverRecords ++ verifierRecords)
                                       accumulator charged rfl
@@ -504,8 +506,8 @@ theorem dispatch_one_concrete_restoration_preserves_restoration_state_map
                                     List.append_assoc] using transported
                                 have addedInvariant :
                                     ActualRestorationStateMapInvariant
-                                      startProgram configuration verifierTrace
-                                        added.2 := by
+                                      startProgram environment configuration
+                                        verifierTrace added.2 := by
                                   have parentMember :
                                       prepared.parentNode ∈ accumulator.nodes :=
                                     (ready_preparation_parent_is_stored
@@ -515,6 +517,11 @@ theorem dispatch_one_concrete_restoration_preserves_restoration_state_map
                                   have parentQ16 : FutureFreeQ16SlotInvariant
                                       prepared.parentNode.verifierFinalState :=
                                     invariant.everyNodeQ16SlotInvariant
+                                      prepared.parentNode parentMember
+                                  have parentQ16Ledger :
+                                      FutureFreeQ16LedgerInvariant environment
+                                        prepared.parentNode.verifierFinalState :=
+                                    invariant.everyNodeQ16LedgerInvariant
                                       prepared.parentNode parentMember
                                   have parentClosed : FutureFreeHistoryClosed
                                       prepared.parentNode.verifierFinalState :=
@@ -539,12 +546,22 @@ theorem dispatch_one_concrete_restoration_preserves_restoration_state_map
                                         childExecution
                                     · simpa [childExecution] using parentQ16
                                     · simpa [childExecution] using beforeSeen
+                                  have childQ16Ledger :
+                                      FutureFreeQ16LedgerInvariant environment
+                                        node.verifierFinalState := by
+                                    apply
+                                      projected_restoration_child_q16_ledger_invariant
+                                        childExecution
+                                    · simpa [childExecution] using parentQ16Ledger
+                                    · simpa [childExecution] using beforeSeen
                                   simpa [added] using
                                     (restoration_state_map_add_child startProgram
-                                      configuration verifierTrace [] charged node
+                                      environment configuration verifierTrace []
+                                        charged node
                                         (projected_restoration_child_history_closed
                                           childExecution)
                                         childQ16
+                                        childQ16Ledger
                                         (by simpa using verifierCovered)
                                         chargedInvariant)
                                 change SchedulerNativeCursorAllProjectedTracedReturned _
@@ -634,7 +651,8 @@ theorem concrete_restoration_client_preserves_restoration_state_map
     (configuration : ConcreteRestorationConfiguration)
     (restorationFuel : Nat)
     (client : ConcreteRestorationClient Result) :
-    ConcreteClientPreservesRestorationStateMap startProgram configuration
+    ConcreteClientPreservesRestorationStateMap startProgram environment
+      configuration
       (initialRestorationAccumulatorFromRoot root)
       (startConcreteRestorationClientFromRoot
         (globalOracleCalls := globalOracleCalls) startProgram environment root
@@ -644,7 +662,8 @@ theorem concrete_restoration_client_preserves_restoration_state_map
       (_residualClient : ConcreteRestorationClient Result)
       (cursor : SchedulerNativeCursor globalOracleCalls
         (ConcreteRestorationClientRun Statement Proof Payload Result)) =>
-      ConcreteClientPreservesRestorationStateMap startProgram configuration
+      ConcreteClientPreservesRestorationStateMap startProgram environment
+        configuration
         accumulator cursor
   have induction :=
     start_concrete_restoration_client_from_root_dependent_induction
@@ -654,7 +673,8 @@ theorem concrete_restoration_client_preserves_restoration_state_map
         intro fuel accumulator result trace invariant
         apply SchedulerNativeCursorAllProjectedTracedReturned.returned
         intro answers
-        exact restoration_state_map_of_nodes_eq startProgram configuration
+        exact restoration_state_map_of_nodes_eq startProgram environment
+          configuration
           trace (paddingRecords answers) accumulator accumulator rfl
             (every_emitted_pair_append_without_fork_advance startProgram
               configuration trace (paddingRecords answers)
@@ -665,7 +685,8 @@ theorem concrete_restoration_client_preserves_restoration_state_map
         intro accumulator request next trace invariant
         apply SchedulerNativeCursorAllProjectedTracedReturned.returned
         intro answers
-        exact restoration_state_map_of_nodes_eq startProgram configuration
+        exact restoration_state_map_of_nodes_eq startProgram environment
+          configuration
           trace (paddingRecords answers) accumulator
             (accumulator.addFailure request .restorationFuelExhausted) rfl
             (every_emitted_pair_append_without_fork_advance startProgram
@@ -699,6 +720,8 @@ theorem returned_concrete_restoration_client_has_exact_state_map
     (rootTrace : List UnifiedExposureRecord)
     (rootClosed : FutureFreeHistoryClosed root.verifierFinalState)
     (rootQ16 : FutureFreeQ16SlotInvariant root.verifierFinalState)
+    (rootQ16Ledger : FutureFreeQ16LedgerInvariant environment
+      root.verifierFinalState)
     (rootTraceHasNoAdvance : ∀ scheduled,
       (.forkAdvance scheduled : UnifiedExposureRecord) ∉ rootTrace)
     (answers : List Digest256)
@@ -709,7 +732,7 @@ theorem returned_concrete_restoration_client_has_exact_state_map
           (globalOracleCalls := globalOracleCalls) startProgram environment root
           configuration restorationFuel client)
         answers = .returned run) :
-    ActualRestorationStateMapInvariant startProgram configuration
+    ActualRestorationStateMapInvariant startProgram environment configuration
       (rootTrace ++
         (runSchedulerNativeListRunFrom transitionFuel currentTransitionFuel
           (startConcreteRestorationClientFromRoot
@@ -728,11 +751,11 @@ theorem returned_concrete_restoration_client_has_exact_state_map
       (globalOracleCalls := globalOracleCalls) startProgram environment root
         configuration restorationFuel client
   have traced := safe rootTrace
-    (initial_restoration_state_map startProgram configuration root rootTrace
-      rootClosed rootQ16 rootTraceHasNoAdvance)
+    (initial_restoration_state_map startProgram environment configuration root
+      rootTrace rootClosed rootQ16 rootQ16Ledger rootTraceHasNoAdvance)
   apply run_scheduler_native_list_run_respects_projected_traced_returned
     (fun result suffix => ActualRestorationStateMapInvariant startProgram
-      configuration (rootTrace ++ suffix) result.accumulator)
+      environment configuration (rootTrace ++ suffix) result.accumulator)
     transitionFuel positive cursor traced currentTransitionFuel currentPositive
       answers run
   rw [run_scheduler_native_list_run_terminal]

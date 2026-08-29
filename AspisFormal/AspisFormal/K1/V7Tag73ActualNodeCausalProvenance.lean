@@ -15,6 +15,7 @@ import AspisFormal.K1.V7Tag73CoupledReplayAlignment
 import AspisFormal.K1.V7Tag73AtomicPairFork
 import AspisFormal.K1.V7Tag73PrefixTableProvenance
 import AspisFormal.K1.V7Tag73Q16ControlInvariant
+import AspisFormal.K1.V7Tag73Q16LedgerControlInvariant
 
 /-!
 # Actual-node causal provenance for the concrete Tag-73 restoration client
@@ -73,6 +74,7 @@ open AspisK1.V7Tag73AtomicPairFork
 open AspisK1.V7Tag73PrefixTableProvenance
 open AspisK1.V7Tag73CompletedFullRunProjection
 open AspisK1.V7Tag73Q16ControlInvariant
+open AspisK1.V7Tag73Q16LedgerControlInvariant
 
 noncomputable section
 
@@ -1267,6 +1269,46 @@ def EveryStoredNodeQ16SlotInvariant
     Prop :=
   ∀ node ∈ accumulator.nodes,
     FutureFreeQ16SlotInvariant node.verifierFinalState
+
+/-- Every stored verifier run carries the stronger phase/certificate
+invariant at its live snapshot and every snapshot available to restoration. -/
+def EveryStoredNodeQ16LedgerInvariant
+    {Statement Proof Payload : Type u}
+    (environment : FutureFreeEnvironment)
+    (accumulator : ConcreteRestorationAccumulator Statement Proof Payload) :
+    Prop :=
+  ∀ node ∈ accumulator.nodes,
+    FutureFreeQ16LedgerInvariant environment node.verifierFinalState
+
+theorem every_stored_node_q16_ledger_invariant_of_nodes_eq
+    {Statement Proof Payload : Type u}
+    (environment : FutureFreeEnvironment)
+    (oldAccumulator newAccumulator :
+      ConcreteRestorationAccumulator Statement Proof Payload)
+    (nodesExact : newAccumulator.nodes = oldAccumulator.nodes)
+    (invariant : EveryStoredNodeQ16LedgerInvariant environment oldAccumulator) :
+    EveryStoredNodeQ16LedgerInvariant environment newAccumulator := by
+  intro node member
+  apply invariant node
+  rw [← nodesExact]
+  exact member
+
+theorem every_stored_node_q16_ledger_invariant_add_child
+    {Statement Proof Payload : Type u}
+    (environment : FutureFreeEnvironment)
+    (accumulator : ConcreteRestorationAccumulator Statement Proof Payload)
+    (child : ConcreteRestorationNode Statement Proof Payload)
+    (invariant : EveryStoredNodeQ16LedgerInvariant environment accumulator)
+    (childInvariant : FutureFreeQ16LedgerInvariant environment
+      child.verifierFinalState) :
+    EveryStoredNodeQ16LedgerInvariant environment
+      (accumulator.addNode child).2 := by
+  intro candidate member
+  simp only [ConcreteRestorationAccumulator.addNode, List.mem_append,
+    List.mem_singleton] at member
+  rcases member with old | rfl
+  · exact invariant candidate old
+  · exact childInvariant
 
 theorem every_stored_node_q16_slot_invariant_of_nodes_eq
     {Statement Proof Payload : Type u}
@@ -2970,6 +3012,50 @@ theorem projected_restoration_child_q16_slot_invariant
     projected_restoration_node_verifier_has_operational_trace base
   exact future_free_operational_trace_preserves_q16_slot_invariant environment
     child.adversaryValue.rawMessages operational entryInvariant
+
+/-- The stronger ledger certificate follows the identical concrete restore
+and literal raw-driver path.  No root-only fixed-tape argument is used. -/
+theorem projected_restoration_child_q16_ledger_invariant
+    {Statement Proof Payload Final : Type u}
+    {startProgram : OracleMachine
+      (CheckedRawTag73AdversaryReturnedValue Statement Proof Payload)}
+    {environment : FutureFreeEnvironment}
+    {configuration : ConcreteRestorationConfiguration}
+    {fullTrace : List UnifiedExposureRecord}
+    {accumulator : ConcreteRestorationAccumulator Statement Proof Payload}
+    {child : ConcreteRestorationNode Statement Proof Payload}
+    (base : ProjectedRestorationNodeExecution
+      (Final := Final) startProgram environment configuration fullTrace
+        accumulator child)
+    (parentInvariant : FutureFreeQ16LedgerInvariant environment
+      base.prepared.parentNode.verifierFinalState)
+    (beforeSeen : base.prepared.transition.before ∈
+      base.prepared.parentNode.verifierFinalState.seen) :
+    FutureFreeQ16LedgerInvariant environment child.verifierFinalState := by
+  have selection := prepare_concrete_restoration_ready_selection_exact
+    startProgram configuration accumulator base.prepared.request base.prepared
+      base.preparationExact
+  have beforeInvariant : SnapshotQ16LedgerInvariant environment
+      base.prepared.transition.before :=
+    parentInvariant.2 base.prepared.transition.before beforeSeen
+  have restoredInvariant : FutureFreeQ16LedgerInvariant environment
+      base.prepared.restoredState := by
+    rw [selection.2.2.2]
+    constructor
+    · exact beforeInvariant
+    · intro snapshot member
+      simp only [restoreIndexedTransition, List.mem_singleton] at member
+      subst snapshot
+      exact beforeInvariant
+  have entryInvariant : FutureFreeQ16LedgerInvariant environment
+      child.verifierEntryState := by
+    rw [base.restoredEntryExact]
+    exact restoredInvariant
+  obtain ⟨pairs, _path, _historyExact, operational, _tableAnswers⟩ :=
+    projected_restoration_node_verifier_has_operational_trace base
+  exact future_free_operational_trace_preserves_q16_ledger_invariant
+    environment child.adversaryValue.rawMessages child.verifierEntryState
+      child.verifierFinalState pairs operational entryInvariant
 
 /-- Historical programming-ledger constructor factored ahead of the global
 transition/table constructor.  Factoring it here keeps the dependency order
@@ -5217,12 +5303,15 @@ structure ActualRestorationStateMapInvariant
     {Statement Proof Payload : Type u}
     (startProgram : OracleMachine
       (CheckedRawTag73AdversaryReturnedValue Statement Proof Payload))
+    (environment : FutureFreeEnvironment)
     (configuration : ConcreteRestorationConfiguration)
     (trace : List UnifiedExposureRecord)
     (accumulator : ConcreteRestorationAccumulator Statement Proof Payload) :
     Prop where
   everyNodeHistoryClosed : EveryStoredNodeHistoryClosed accumulator
   everyNodeQ16SlotInvariant : EveryStoredNodeQ16SlotInvariant accumulator
+  everyNodeQ16LedgerInvariant :
+    EveryStoredNodeQ16LedgerInvariant environment accumulator
   everyEmittedPairRestored : EveryEmittedPairHasConcreteRestoration
     startProgram configuration trace
 
@@ -5232,16 +5321,17 @@ def ConcreteClientPreservesRestorationStateMap
     {Statement Proof Payload Result : Type u} {globalOracleCalls : Nat}
     (startProgram : OracleMachine
       (CheckedRawTag73AdversaryReturnedValue Statement Proof Payload))
+    (environment : FutureFreeEnvironment)
     (configuration : ConcreteRestorationConfiguration)
     (accumulator : ConcreteRestorationAccumulator Statement Proof Payload)
     (cursor : SchedulerNativeCursor globalOracleCalls
       (ConcreteRestorationClientRun Statement Proof Payload Result)) : Prop :=
   ∀ trace,
-    ActualRestorationStateMapInvariant startProgram configuration trace
+    ActualRestorationStateMapInvariant startProgram environment configuration trace
         accumulator →
       SchedulerNativeCursorAllProjectedTracedReturned
         (fun run suffix => ActualRestorationStateMapInvariant startProgram
-          configuration (trace ++ suffix) run.accumulator)
+          environment configuration (trace ++ suffix) run.accumulator)
         cursor
 
 /-- Store-preserving bookkeeping and an explicitly certified trace suffix
@@ -5250,6 +5340,7 @@ theorem restoration_state_map_of_nodes_eq
     {Statement Proof Payload : Type u}
     (startProgram : OracleMachine
       (CheckedRawTag73AdversaryReturnedValue Statement Proof Payload))
+    (environment : FutureFreeEnvironment)
     (configuration : ConcreteRestorationConfiguration)
     (trace suffix : List UnifiedExposureRecord)
     (oldAccumulator newAccumulator :
@@ -5257,9 +5348,9 @@ theorem restoration_state_map_of_nodes_eq
     (nodesExact : newAccumulator.nodes = oldAccumulator.nodes)
     (pairsCovered : EveryEmittedPairHasConcreteRestoration startProgram
       configuration (trace ++ suffix))
-    (invariant : ActualRestorationStateMapInvariant startProgram configuration
-      trace oldAccumulator) :
-    ActualRestorationStateMapInvariant startProgram configuration
+    (invariant : ActualRestorationStateMapInvariant startProgram environment
+      configuration trace oldAccumulator) :
+    ActualRestorationStateMapInvariant startProgram environment configuration
       (trace ++ suffix) newAccumulator :=
   { everyNodeHistoryClosed :=
       every_stored_node_history_closed_of_nodes_eq oldAccumulator
@@ -5267,6 +5358,10 @@ theorem restoration_state_map_of_nodes_eq
     everyNodeQ16SlotInvariant :=
       every_stored_node_q16_slot_invariant_of_nodes_eq oldAccumulator
         newAccumulator nodesExact invariant.everyNodeQ16SlotInvariant
+    everyNodeQ16LedgerInvariant :=
+      every_stored_node_q16_ledger_invariant_of_nodes_eq environment
+        oldAccumulator newAccumulator nodesExact
+          invariant.everyNodeQ16LedgerInvariant
     everyEmittedPairRestored := pairsCovered }
 
 /-- Appending one actually returned child preserves closed histories and the
@@ -5275,17 +5370,20 @@ theorem restoration_state_map_add_child
     {Statement Proof Payload : Type u}
     (startProgram : OracleMachine
       (CheckedRawTag73AdversaryReturnedValue Statement Proof Payload))
+    (environment : FutureFreeEnvironment)
     (configuration : ConcreteRestorationConfiguration)
     (trace suffix : List UnifiedExposureRecord)
     (accumulator : ConcreteRestorationAccumulator Statement Proof Payload)
     (child : ConcreteRestorationNode Statement Proof Payload)
     (childClosed : FutureFreeHistoryClosed child.verifierFinalState)
     (childQ16 : FutureFreeQ16SlotInvariant child.verifierFinalState)
+    (childQ16Ledger : FutureFreeQ16LedgerInvariant environment
+      child.verifierFinalState)
     (pairsCovered : EveryEmittedPairHasConcreteRestoration startProgram
       configuration (trace ++ suffix))
-    (invariant : ActualRestorationStateMapInvariant startProgram configuration
-      trace accumulator) :
-    ActualRestorationStateMapInvariant startProgram configuration
+    (invariant : ActualRestorationStateMapInvariant startProgram environment
+      configuration trace accumulator) :
+    ActualRestorationStateMapInvariant startProgram environment configuration
       (trace ++ suffix) (accumulator.addNode child).2 :=
   { everyNodeHistoryClosed :=
       every_stored_node_history_closed_add_child accumulator child
@@ -5293,6 +5391,9 @@ theorem restoration_state_map_add_child
     everyNodeQ16SlotInvariant :=
       every_stored_node_q16_slot_invariant_add_child accumulator child
         invariant.everyNodeQ16SlotInvariant childQ16
+    everyNodeQ16LedgerInvariant :=
+      every_stored_node_q16_ledger_invariant_add_child environment accumulator
+        child invariant.everyNodeQ16LedgerInvariant childQ16Ledger
     everyEmittedPairRestored := pairsCovered }
 
 /-- The singleton root initializes the map on any fork-free root prefix. -/
@@ -5300,14 +5401,17 @@ theorem initial_restoration_state_map
     {Statement Proof Payload : Type u}
     (startProgram : OracleMachine
       (CheckedRawTag73AdversaryReturnedValue Statement Proof Payload))
+    (environment : FutureFreeEnvironment)
     (configuration : ConcreteRestorationConfiguration)
     (root : ConcreteRestorationNode Statement Proof Payload)
     (trace : List UnifiedExposureRecord)
     (rootClosed : FutureFreeHistoryClosed root.verifierFinalState)
     (rootQ16 : FutureFreeQ16SlotInvariant root.verifierFinalState)
+    (rootQ16Ledger : FutureFreeQ16LedgerInvariant environment
+      root.verifierFinalState)
     (noAdvance : ∀ scheduled,
       (.forkAdvance scheduled : UnifiedExposureRecord) ∉ trace) :
-    ActualRestorationStateMapInvariant startProgram configuration trace
+    ActualRestorationStateMapInvariant startProgram environment configuration trace
       (initialRestorationAccumulatorFromRoot root) :=
   { everyNodeHistoryClosed := by
       intro node member
@@ -5321,6 +5425,12 @@ theorem initial_restoration_state_map
         simpa [initialRestorationAccumulatorFromRoot] using member
       subst node
       exact rootQ16
+    everyNodeQ16LedgerInvariant := by
+      intro node member
+      have nodeExact : node = root := by
+        simpa [initialRestorationAccumulatorFromRoot] using member
+      subst node
+      exact rootQ16Ledger
     everyEmittedPairRestored :=
       every_emitted_pair_of_no_fork_advance startProgram configuration trace
         noAdvance }
@@ -5331,14 +5441,15 @@ theorem unchanged_continuation_preserves_restoration_state_map
     {Statement Proof Payload Result : Type u} {globalOracleCalls : Nat}
     (startProgram : OracleMachine
       (CheckedRawTag73AdversaryReturnedValue Statement Proof Payload))
+    (environment : FutureFreeEnvironment)
     (configuration : ConcreteRestorationConfiguration)
     (resume : ConcreteRestorationReply →
       ConcreteRestorationAccumulator Statement Proof Payload →
         SchedulerNativeCursor globalOracleCalls
           (ConcreteRestorationClientRun Statement Proof Payload Result))
     (continuations : ∀ reply nextAccumulator,
-      ConcreteClientPreservesRestorationStateMap startProgram configuration
-        nextAccumulator (resume reply nextAccumulator))
+      ConcreteClientPreservesRestorationStateMap startProgram environment
+        configuration nextAccumulator (resume reply nextAccumulator))
     (trace suffix : List UnifiedExposureRecord)
     (accumulator nextAccumulator :
       ConcreteRestorationAccumulator Statement Proof Payload)
@@ -5346,15 +5457,15 @@ theorem unchanged_continuation_preserves_restoration_state_map
     (nodesExact : nextAccumulator.nodes = accumulator.nodes)
     (pairsCovered : EveryEmittedPairHasConcreteRestoration startProgram
       configuration (trace ++ suffix))
-    (invariant : ActualRestorationStateMapInvariant startProgram configuration
-      trace accumulator) :
+    (invariant : ActualRestorationStateMapInvariant startProgram environment
+      configuration trace accumulator) :
     SchedulerNativeCursorAllProjectedTracedReturned
       (fun run later => ActualRestorationStateMapInvariant startProgram
-        configuration (trace ++ suffix ++ later) run.accumulator)
+        environment configuration (trace ++ suffix ++ later) run.accumulator)
       (resume reply nextAccumulator) := by
   apply continuations reply nextAccumulator (trace ++ suffix)
-  exact restoration_state_map_of_nodes_eq startProgram configuration trace
-    suffix accumulator nextAccumulator nodesExact pairsCovered invariant
+  exact restoration_state_map_of_nodes_eq startProgram environment configuration
+    trace suffix accumulator nextAccumulator nodesExact pairsCovered invariant
 
 #print axioms ready_preparation_is_functional
 #print axioms ready_preparation_restored_state_is_functional
