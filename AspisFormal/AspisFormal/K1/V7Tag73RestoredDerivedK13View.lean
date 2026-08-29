@@ -1,0 +1,253 @@
+import AspisFormal.K1.V7Tag73RestoredNodeK13Classifier
+import AspisFormal.K1.V7Tag73CanonicalOneFoldSchedule
+import AspisFormal.K1.V7Tag73FixedFieldMessageBridge
+import AspisFormal.K1.V7Tag73ExactParsedProofSourceBinding
+
+/-!
+# Verifier-derived K1.3 view for restored Tag-73 nodes
+
+An adversarial restored child may put arbitrary values in the opaque parsed
+`gamma`, `schedule`, and `queries` fields returned by the black-box prover.
+Those fields therefore cannot be the knowledge-soundness input.  The live
+future-free verifier derives gamma, alpha zero, and the selected q16 schedule
+from its own random-oracle execution.
+
+This module defines the corrected restored-node view.  Only the Merkle
+openings and the 641 canonical fixed-field encodings remain prover/parser
+owned.  The q16 query vector is definitionally the positions of an actually
+executed `.q16Selected` transition.  Thus the K1.3 query event no longer needs
+an equality premise relating an adversarial opaque field to verifier state.
+-/
+
+set_option autoImplicit false
+set_option maxRecDepth 1000000
+
+namespace AspisK1.V7Tag73RestoredDerivedK13View
+
+open AspisK1.V7Tag73TranscriptSchedule
+open AspisK1.V7Tag73FutureFreeFullControl
+open AspisK1.V7Tag73CanonicalOneFoldSchedule
+open AspisK1.V7Tag73FixedFieldMessageBridge
+open AspisK1.V7Tag73ExactParsedProofSourceBinding
+open AspisK1.V7Tag73SecureCircleMap
+open AspisK1.V7Tag73Q16FirstCompactUniformity
+open AspisK1.V7Tag73ExactFixedK12MerkleClassifier
+open AspisK1.V7Tag73ParsedK13K14Classifier
+open AspisK1.V7Tag73ConcreteRestorationClient
+open AspisK1.V7Tag73RestoredNodeK13Classifier
+open AspisPool.AlgorithmicCircleDecoderV7
+open AspisPool.V7CoherentTraceExtraction
+open AspisPool.V7MerkleQueryExtractor
+open AspisV5ComponentCQM31TowerExact
+open AspisV5WithoutReplacementQuerySoundness
+open AspisV6OneFoldCandidateExtraction
+open AspisV6AcceptedPathObligations
+
+noncomputable section
+
+/-- Exact verifier-owned K1.3 data for one restored execution.  The first
+three fields are canonical decoding of prover bytes.  Gamma, alpha zero, and
+q16 selection are tied to literal records/transitions retained by the actual
+future-free verifier state. -/
+structure RestoredOperationalK13Data
+    {Statement Payload : Type*}
+    (node : RestoredK13Node Statement Payload) where
+  decoded : Fin 641 → QM31Exact
+  fixedDecode : FixedFieldDecodeExact node.adversaryValue.rawMessages decoded
+  gamma : QM31Exact
+  gammaBytes : Qm31Bytes
+  gammaRecorded :
+    { id := ChallengeId.gamma, value := gammaBytes } ∈
+      node.verifierFinalState.current.decodedChallenges
+  gammaDecoded : decodeTagQM31ExactLE gammaBytes = some gamma
+  alphaZero : QM31Exact
+  alphaZeroBytes : Qm31Bytes
+  alphaZeroRecorded :
+    { id := ChallengeId.alpha 0, value := alphaZeroBytes } ∈
+      node.verifierFinalState.current.decodedChallenges
+  alphaZeroDecoded : decodeTagQM31ExactLE alphaZeroBytes = some alphaZero
+  selectedBase : Digest256
+  selectedCounter : Fin 64
+  selectedSchedule : AspisK1.V7Tag73TranscriptSchedule.QuerySchedule
+  selectedRemaining : List FutureFreeSlot
+  selectedTransition : FutureFreeTransition
+  selectedTransitionMember :
+    selectedTransition ∈ node.verifierFinalState.transitions
+  selectedControlExact : selectedTransition.before.control =
+    .q16Selected selectedBase selectedCounter selectedSchedule
+      selectedRemaining
+
+/-- The corrected proof view: parser-owned openings, canonically decoded
+fixed fields, and verifier-owned challenge/query data. -/
+def restoredOperationalK13View
+    {Statement Payload : Type*}
+    {node : RestoredK13Node Statement Payload}
+    (data : RestoredOperationalK13Data node) : Tag73K12ParsedProof :=
+  { openings := (restoredNodeK12Proof node).openings
+    gamma := data.gamma
+    disclosedFinal := decodedFinalMessage data.decoded
+    schedule := canonicalOneFoldSchedule data.alphaZero
+    queries := data.selectedSchedule.positions }
+
+@[simp] theorem restored_operational_view_openings
+    {Statement Payload : Type*}
+    {node : RestoredK13Node Statement Payload}
+    (data : RestoredOperationalK13Data node) :
+    (restoredOperationalK13View data).openings =
+      (restoredNodeK12Proof node).openings := by
+  rfl
+
+@[simp] theorem restored_operational_view_gamma
+    {Statement Payload : Type*}
+    {node : RestoredK13Node Statement Payload}
+    (data : RestoredOperationalK13Data node) :
+    (restoredOperationalK13View data).gamma = data.gamma := by
+  rfl
+
+@[simp] theorem restored_operational_view_alpha_zero
+    {Statement Payload : Type*}
+    {node : RestoredK13Node Statement Payload}
+    (data : RestoredOperationalK13Data node) :
+    (restoredOperationalK13View data).schedule.alpha = data.alphaZero := by
+  rfl
+
+@[simp] theorem restored_operational_view_queries
+    {Statement Payload : Type*}
+    {node : RestoredK13Node Statement Payload}
+    (data : RestoredOperationalK13Data node) :
+    (restoredOperationalK13View data).queries =
+      data.selectedSchedule.positions := by
+  rfl
+
+@[simp] theorem restored_operational_view_final_coefficient
+    {Statement Payload : Type*}
+    {node : RestoredK13Node Statement Payload}
+    (data : RestoredOperationalK13Data node) (coefficient : Fin 256) :
+    (restoredOperationalK13View data).disclosedFinal coefficient =
+      (decodedFixedFieldView data.decoded).finalCoefficient coefficient := by
+  rfl
+
+/-- K1.2 authentication is unchanged; only the downstream algebraic view is
+repaired to use verifier-derived data. -/
+structure RestoredOperationalK13Certificate
+    {Statement Payload : Type*}
+    (decoder : ExactDecoderInstantiation QM31Exact)
+    (node : RestoredK13Node Statement Payload)
+    (data : RestoredOperationalK13Data node) where
+  k12 : RestoredNodeK12Certificate node
+  k13 : ParsedK13Certificate decoder k12.words
+    (restoredOperationalK13View data)
+
+inductive RestoredOperationalK13Error
+    {Statement Payload : Type*}
+    (decoder : ExactDecoderInstantiation QM31Exact)
+    (node : RestoredK13Node Statement Payload)
+    (data : RestoredOperationalK13Data node) : Type
+  | k12 (error : RestoredNodeK12Error node)
+  | k13 (words : ExtractedWords)
+      (error : ParsedK13Error decoder words
+        (restoredOperationalK13View data))
+
+/-- Total restored-node K1.3 classifier over the corrected operational view. -/
+noncomputable def classifyRestoredOperationalK13
+    {Statement Payload : Type*}
+    (decoder : ExactDecoderInstantiation QM31Exact)
+    (node : RestoredK13Node Statement Payload)
+    (data : RestoredOperationalK13Data node) :
+    RestoredOperationalK13Certificate decoder node data ⊕
+      RestoredOperationalK13Error decoder node data :=
+  match classifyRestoredNodeK12 node with
+  | .inr error => .inr (.k12 error)
+  | .inl k12 =>
+      match classifyParsedK13 decoder k12.words
+          (restoredOperationalK13View data) with
+      | .inl k13 => .inl ⟨k12, k13⟩
+      | .inr error => .inr (.k13 k12.words error)
+
+/-- A q16 failure for the corrected view is attached to the exact selected
+transition with no parsed-query/source-equality premise. -/
+theorem restored_operational_query_failure_selected_all_in_bad
+    {Statement Payload : Type*}
+    {decoder : ExactDecoderInstantiation QM31Exact}
+    {node : RestoredK13Node Statement Payload}
+    (data : RestoredOperationalK13Data node)
+    (k12 : RestoredNodeK12Certificate node)
+    (failure : QueryPhaseFailure
+      (restoredOperationalK13View data).schedule
+      (decoderCodeEncoders decoder)
+      (parsedK13Transcript k12.words (restoredOperationalK13View data))
+      (restoredOperationalK13View data).queries) :
+    ∃ bad : Finset (Fin 262144),
+      bad.card ≤ 9557 ∧
+      data.selectedTransition ∈ node.verifierFinalState.transitions ∧
+      data.selectedTransition.before.control =
+        .q16Selected data.selectedBase data.selectedCounter
+          data.selectedSchedule data.selectedRemaining ∧
+      AllInBad bad data.selectedSchedule.positions := by
+  let bad := consistencySet (restoredOperationalK13View data).schedule
+    (decoderCodeEncoders decoder)
+    (parsedK13Transcript k12.words (restoredOperationalK13View data))
+  refine ⟨bad, failure.2, data.selectedTransitionMember,
+    data.selectedControlExact, ?_⟩
+  intro ordinal
+  have member := accepted_queries_mem_consistencySet
+    (restoredOperationalK13View data).schedule
+    (decoderCodeEncoders decoder)
+    (parsedK13Transcript k12.words (restoredOperationalK13View data))
+    (restoredOperationalK13View data).queries failure.1 ordinal
+  simpa [bad, restoredOperationalK13View] using member
+
+/-! ## Restoration-wide corrected q16 event -/
+
+/-- The exact q16 failure event over a completed restoration accumulator,
+using only verifier-derived challenge/query data.  Requiring the retained
+node to be `.done` excludes normally returned verifier rejections. -/
+def RestoredOperationalK13QueryEvent
+    {Statement Payload : Type*}
+    (decoder : ExactDecoderInstantiation QM31Exact)
+    (accumulator : ConcreteRestorationAccumulator Statement
+      Tag73K12ParsedProof Payload) : Prop :=
+  ∃ (node : RestoredK13Node Statement Payload),
+    node ∈ accumulator.nodes ∧
+    node.verifierFinalState.current.control = .done ∧
+    ∃ (data : RestoredOperationalK13Data node)
+      (k12 : RestoredNodeK12Certificate node),
+      QueryPhaseFailure (restoredOperationalK13View data).schedule
+        (decoderCodeEncoders decoder)
+        (parsedK13Transcript k12.words (restoredOperationalK13View data))
+        (restoredOperationalK13View data).queries
+
+/-- Membership in the corrected restoration-wide event exposes the exact
+accepted stored node and an actually executed selected q16 transition whose
+sixteen positions all lie in one set of size at most 9557. -/
+theorem restored_operational_query_event_exposes_selected_bad_set
+    {Statement Payload : Type*}
+    {decoder : ExactDecoderInstantiation QM31Exact}
+    {accumulator : ConcreteRestorationAccumulator Statement
+      Tag73K12ParsedProof Payload}
+    (event : RestoredOperationalK13QueryEvent decoder accumulator) :
+    ∃ (node : RestoredK13Node Statement Payload)
+        (data : RestoredOperationalK13Data node)
+        (bad : Finset (Fin 262144)),
+      node ∈ accumulator.nodes ∧
+      node.verifierFinalState.current.control = .done ∧
+      bad.card ≤ 9557 ∧
+      data.selectedTransition ∈ node.verifierFinalState.transitions ∧
+      data.selectedTransition.before.control =
+        .q16Selected data.selectedBase data.selectedCounter
+          data.selectedSchedule data.selectedRemaining ∧
+      AllInBad bad data.selectedSchedule.positions := by
+  rcases event with ⟨node, member, done, data, k12, failure⟩
+  obtain ⟨bad, badCard, transitionMember, controlExact, allBad⟩ :=
+    restored_operational_query_failure_selected_all_in_bad data k12 failure
+  exact ⟨node, data, bad, member, done, badCard, transitionMember,
+    controlExact, allBad⟩
+
+#print axioms restored_operational_view_queries
+#print axioms classifyRestoredOperationalK13
+#print axioms restored_operational_query_failure_selected_all_in_bad
+#print axioms restored_operational_query_event_exposes_selected_bad_set
+
+end
+
+end AspisK1.V7Tag73RestoredDerivedK13View
