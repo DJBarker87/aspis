@@ -1,0 +1,21 @@
+diff --git a/src/PrePasses.ml b/src/PrePasses.ml
+index d6ecefb..f70bd92 100644
+--- a/src/PrePasses.ml
++++ b/src/PrePasses.ml
+@@ -991,6 +991,16 @@ let lower_nested_loop_returns (crate : crate) (f : fun_decl) : fun_decl =
+           | ({ kind = Drop _; _ } as cleanup) :: rest
+             when !Config.drop_as_no_op ->
+               take_return_cleanup (cleanup :: reversed) rest
++          | ( {
++                kind =
++                  Assign
++                    ( { kind = PlaceLocal _; _ },
++                      Use (Constant { kind = CLiteral (VBool _); _ }, _) );
++                _;
++              } as cleanup )
++            :: rest
++            when !Config.drop_as_no_op ->
++              take_return_cleanup (cleanup :: reversed) rest
+           | rest -> (List.rev reversed, rest)
+         in
+         (* Charon can encode the normal exit from a reconstructed [for] loop

@@ -1,0 +1,14 @@
+hostname=nuc
+charon_binary=/home/dombarker/project-offloads/ZK-v5-formal/toolchains/charon/bin/charon
+charon_binary_sha256=b2b0961a3c55aca64752b2fa4a4701ba0c06b860236979e5727c07de8ac2310c
+charon_source_commit=cb50ff16b9f1066b8a97dc06da704de2da2fa41c
+charon_version=0.1.223
+charon_rust_toolchain=nightly-2026-06-01
+charon_rust_toolchain_path=/home/dombarker/.rustup/toolchains/nightly-2026-06-01-x86_64-unknown-linux-gnu
+rustc=rustc 1.98.0-nightly (14210df0e 2026-05-31)
+rustc_commit=14210df0e27ccd7d9e6a05b8085cbd438e4bbc65
+rustc_llvm=22.1.6
+cargo=cargo 1.98.0-nightly (fbb61be30 2026-05-26)
+lean=Lean (version 4.32.0, x86_64-unknown-linux-gnu, commit 8c9756b28d64dab099da31a4c09229a9e6a2ef35, Release)
+opam_image=ocaml/opam@sha256:42f6e13e9aceedc701eefdb89fca9fd1868c8cadd1144b334ca799474eadb702
+opam_image_id=sha256:98cb533c50c4dc82763cdf80920b3d4ba3fb7ac73f814e1193a817110d80d6ce
