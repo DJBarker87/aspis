@@ -3507,7 +3507,8 @@ theorem terminal_slot_gives_schedule_exhaustion
       MachineQueryPath (rawFutureFreeMicrostep environment raw state) [] final ∧
       PathUsesFixedTable table [] ∧
       FutureFreeScheduleExhausted final.current ∧
-      final.current.core = state.current.core := by
+      final.current.core = state.current.core ∧
+      final.current.q16Candidates = state.current.q16Candidates := by
   let action := VerifierAction.terminal
   let nextSnapshot : FutureFreeSnapshot :=
     { state.current with control := .done }
@@ -3541,7 +3542,7 @@ theorem terminal_slot_gives_schedule_exhaustion
   have microstep : MachineQueryPath
       (rawFutureFreeMicrostep environment raw state) [] final := by
     simpa [rawFutureFreeMicrostep, noSubmission] using runner
-  exact ⟨final, microstep, path_uses_fixed_table_nil table, rfl, rfl⟩
+  exact ⟨final, microstep, path_uses_fixed_table_nil table, rfl, rfl, rfl⟩
 
 /-! ## One exact evaluator decomposition -/
 
@@ -3857,6 +3858,8 @@ does not assert any semantic, Merkle, or terminal acceptance predicate. -/
 structure CanonicalCheckedFutureFreeConstruction
     (table : FixedOracleTable) (tape : DeployedFixedTape) where
   complete : CompleteCheckedFutureFreePath table tape
+  selectedQ16 : SelectedQ16LedgerCertificate
+    (fixedTapeFutureFreeEnvironment tape) complete.final.current
   adaptiveSteps : Nat
   beforeQ16Steps : Nat
   q16Steps : Nat
@@ -4018,15 +4021,20 @@ theorem checked_work_erased_refinement_constructs_canonical_future_free_path
     rw [fixed_tape_after_q16_events_are_exact_accepted_suffix]
     exact evaluator.afterQ16Run
   obtain ⟨afterSteps, afterPairs, beforeTerminal, afterTrace, afterTable,
-      terminalControl, terminalSame, _afterCandidates, afterFuel⟩ :=
+      terminalControl, terminalSame, afterCandidates, afterFuel⟩ :=
     fixed_tape_linear_region_gives_future_free_trace table tape rawTrace
       wellFormed afterQ16State evaluator.afterQ16 evaluator.finalState
       afterQ16PreterminalSlots [.fixed .terminal] afterControl q16SameFinal
       afterRun finalSamples secureAll
       after_q16_preterminal_slots_are_supported (by simp)
-  obtain ⟨final, terminalPath, terminalTable, exhausted, _terminalCore⟩ :=
+  obtain ⟨final, terminalPath, terminalTable, exhausted, _terminalCore,
+      terminalCandidates⟩ :=
     terminal_slot_gives_schedule_exhaustion table environment raw beforeTerminal
       (by simpa [environment, raw] using terminalControl)
+  let finalQ16Certificate : SelectedQ16LedgerCertificate environment
+      final.current :=
+    q16Certificate.transport
+      (terminalCandidates.trans afterCandidates)
 
   have prefixAdaptive := nonterminal_raw_driver_trace_append environment raw
     (initialFutureFreeVerifierState bindings) c1State afterC2State 6
@@ -4105,6 +4113,8 @@ theorem checked_work_erased_refinement_constructs_canonical_future_free_path
     rfl
   exact ⟨
     { complete := complete
+      selectedQ16 := by
+        simpa [environment] using finalQ16Certificate
       adaptiveSteps := adaptiveSteps
       beforeQ16Steps := beforeSteps
       q16Steps := q16Steps

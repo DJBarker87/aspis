@@ -41,6 +41,7 @@ open AspisK1.V7Tag73CheckedRefinementFullFutureFreePath
 open AspisK1.V7Tag73CheckedPathActualRunAlignment
 open AspisK1.V7Tag73FutureFreeCheckedRefinementBisimulation
 open AspisK1.V7Tag73SecureCircleMap
+open AspisK1.V7Tag73Q16LedgerCertificate
 
 noncomputable section
 
@@ -132,6 +133,28 @@ structure ExactCleanSourceRootProjection
   targetClean : ExactCompilerTargetClean parameters transitionFuel
     (exactPlainRomCursor configuration sample.1) sample.2
 
+/-- The canonical checked path's first-cap-203 certificate lives on the
+literal scheduler root after actual-run alignment. -/
+def ExactCleanSourceRootProjection.selectedQ16Ledger
+    {HiddenTape TapeIdentity Observation Statement Proof Payload Result : Type}
+    {parameters : ExactCompilerResourceParameters}
+    {transitionFuel : Nat}
+    {configuration : ExactPlainRomConfiguration HiddenTape TapeIdentity
+      Observation Statement Proof Payload Result parameters}
+    {projection : AcceptedTapeProjection Statement Proof Payload}
+    {sample : ExactCompilerSample HiddenTape parameters}
+    (root : ExactCleanSourceRootProjection transitionFuel configuration
+      projection sample) :
+    SelectedQ16LedgerCertificate configuration.machine.environment
+      root.runtime.verifierFinalState.current := by
+  have certificate := root.canonical.construction.selectedQ16
+  have finalStateExact : root.canonical.construction.complete.final =
+      root.runtime.verifierFinalState :=
+    root.actualPathAlignment.finalStateExact.symm.trans
+      root.projected.finalStateExact
+  rw [root.environmentExact, finalStateExact] at certificate
+  exact certificate
+
 /-- Membership in the concrete clean-source event proves that an exact
 ROM-free root certificate is inhabited.  `Nonempty` is essential here: the
 source event is proposition-valued, so Lean may eliminate its existential
@@ -197,6 +220,7 @@ noncomputable def legal_same_tape_event_constructs_exact_clean_root
 #print axioms exact_source_event_subset_legal_union_target
 #print axioms legal_same_tape_event_has_exact_clean_root
 #print axioms legal_same_tape_event_constructs_exact_clean_root
+#print axioms ExactCleanSourceRootProjection.selectedQ16Ledger
 
 end
 

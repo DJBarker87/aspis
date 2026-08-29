@@ -45,6 +45,7 @@ open AspisK1.V7Tag73ActualNodeCausalProvenance
 open AspisK1.V7Tag73ActualRestorationStateMap
 open AspisK1.V7Tag73ExactOperationalResourceCertificate
 open AspisK1.V7Tag73Q16ControlInvariant
+open AspisK1.V7Tag73Q16LedgerCertificate
 
 noncomputable section
 
@@ -132,6 +133,24 @@ theorem exact_fixed_package_root_q16_slot_invariant
     package.root.fixedRoot.base.runtime.verifierFinalState
   rw [← projected.finalStateExact]
   exact invariant
+
+/-- The fixed operational package retains the stronger selected-ledger
+certificate constructed by the strict source replay, not merely the local
+q16 sampler block-cap invariant. -/
+def exact_fixed_package_root_selected_q16_ledger
+    {HiddenTape TapeIdentity Observation Statement Proof Payload Result : Type}
+    {parameters : ExactCompilerResourceParameters}
+    {transitionFuel : Nat}
+    {configuration : ExactPlainRomConfiguration HiddenTape TapeIdentity
+      Observation Statement Proof Payload Result parameters}
+    {projection : AcceptedTapeProjection Statement Proof Payload}
+    {fixedInstance : PublicInstance Statement}
+    {sample : ExactCompilerSample HiddenTape parameters}
+    (package : ExactFixedCleanFullRunFactorizationPackage transitionFuel
+      configuration projection fixedInstance sample) :
+    SelectedQ16LedgerCertificate configuration.machine.environment
+      package.root.fixedRoot.base.runtime.node.verifierFinalState.current := by
+  exact package.root.fixedRoot.base.selectedQ16Ledger
 
 /-- Canonical chronological trace used by the operational state map. -/
 def exactFixedOperationalStateMapTrace
@@ -279,6 +298,7 @@ theorem fixed_legal_member_has_operational_state_restoration_input
 #print axioms full_projected_root_records_have_no_fork_advance
 #print axioms exact_fixed_package_root_history_closed
 #print axioms exact_fixed_package_root_q16_slot_invariant
+#print axioms exact_fixed_package_root_selected_q16_ledger
 #print axioms exact_fixed_operational_state_map_trace_is_full_trace
 #print axioms exact_fixed_completed_package_has_operational_state_map
 #print axioms fixed_legal_member_has_operational_state_restoration_input

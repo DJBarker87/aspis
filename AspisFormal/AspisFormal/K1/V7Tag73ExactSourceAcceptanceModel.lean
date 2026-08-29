@@ -47,6 +47,7 @@ open AspisK1.V7Tag73CheckedRefinementFullFutureFreePath
 open AspisK1.V7Tag73CanonicalFutureFreeFuel
 open AspisK1.V7Tag73RawVerifierExecution
 open AspisK1.V7Tag73CheckedPathActualRunAlignment
+open AspisK1.V7Tag73Q16LedgerCertificate
 
 noncomputable section
 
@@ -368,12 +369,48 @@ theorem exact_source_refinement_event_aligns_actual_root
   exact ⟨runtime, clientRun, tape, raw, completed, projectedTape, rawExact,
     environmentExact, refined, projected, canonical, aligned⟩
 
+/-- The strict source refinement does not merely identify the final verifier
+state: its canonical path carries the complete first-cap-203 q16 ledger
+certificate, and actual-run alignment transports that certificate onto the
+literal scheduler root.  No parser query field or additional source premise
+is used. -/
+theorem exact_source_refinement_event_actual_root_has_selected_q16_ledger
+    {HiddenTape TapeIdentity Observation Statement Proof Payload Result :
+      Type}
+    {parameters : ExactCompilerResourceParameters}
+    (transitionFuel : Nat) (positive : 0 < transitionFuel)
+    (configuration : ExactPlainRomConfiguration HiddenTape TapeIdentity
+      Observation Statement Proof Payload Result parameters)
+    (projection : AcceptedTapeProjection Statement Proof Payload)
+    (driverCoversProtocol :
+      tag73CanonicalDriverFuelCap ≤ configuration.machine.driverFuel)
+    (sample : ExactCompilerSample HiddenTape parameters)
+    (member : sample ∈ exactSourceRefinementEvent transitionFuel configuration
+      projection) :
+    ∃ runtime clientRun tape,
+      (runExactPlainRomRoot transitionFuel configuration sample).terminal =
+          .returned (.completed runtime clientRun) ∧
+      projection runtime.adversaryValue = some tape ∧
+      Nonempty (SelectedQ16LedgerCertificate configuration.machine.environment
+        runtime.verifierFinalState.current) := by
+  rcases exact_source_refinement_event_aligns_actual_root transitionFuel
+      positive configuration projection driverCoversProtocol sample member with
+    ⟨runtime, clientRun, tape, _raw, completed, projectedTape, _rawExact,
+      environmentExact, _refined, projected, canonical, aligned⟩
+  have finalStateExact :
+      canonical.construction.complete.final = runtime.verifierFinalState :=
+    aligned.finalStateExact.symm.trans projected.finalStateExact
+  have certificate := canonical.construction.selectedQ16
+  rw [environmentExact, finalStateExact] at certificate
+  exact ⟨runtime, clientRun, tape, completed, projectedTape, ⟨certificate⟩⟩
+
 #print axioms root_projected_runs_construct_exact_execution
 #print axioms mem_exact_source_refinement_event_iff
 #print axioms exact_source_refinement_event_has_root_invariant
 #print axioms exact_source_refinement_event_preserves_public_bindings
 #print axioms exact_source_refinement_event_constructs_complete_checked_path
 #print axioms exact_source_refinement_event_aligns_actual_root
+#print axioms exact_source_refinement_event_actual_root_has_selected_q16_ledger
 
 end
 
