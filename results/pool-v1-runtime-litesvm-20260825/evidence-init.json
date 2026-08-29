@@ -1,0 +1,57 @@
+{
+  "accounts": {
+    "pool_state": {
+      "bytes": 1000,
+      "lamports": 7850880,
+      "owner": "C9cmcgqgaD1P1wGjyHpc1SLsHCiD8VHJCKyGciPrGyDe"
+    },
+    "root_page_zero": {
+      "bytes": 8256,
+      "lamports": 58352640,
+      "owner": "C9cmcgqgaD1P1wGjyHpc1SLsHCiD8VHJCKyGciPrGyDe"
+    },
+    "vault_token_account": {
+      "bytes": 165,
+      "lamports": 2039280,
+      "owner": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
+    }
+  },
+  "agave_runtime_version": "4.2.1",
+  "assertions": {
+    "all_three_accounts_exact_size_owner_and_rent": true,
+    "asir_exact_104_bytes": true,
+    "no_network_send_or_deploy": true,
+    "payer_delta_equals_rent_plus_fee": true,
+    "simulation_metadata_equals_execution": true,
+    "strict_1400000_cu_limit": true
+  },
+  "compute_unit_limit": 1400000,
+  "harness_version": "pool-v1-litesvm-evidence-v1",
+  "litesvm_version": "0.16.0",
+  "pool_artifact": {
+    "bytes": 284752,
+    "path": "results/pool-v1-runtime-litesvm-20260825/artifacts/aspis_pool.so",
+    "sha256": "6d6b50b4c2e1913da7cf62654c250999dbb7b2c3bba94a947aae0610cf77563b"
+  },
+  "pool_program_id": "C9cmcgqgaD1P1wGjyHpc1SLsHCiD8VHJCKyGciPrGyDe",
+  "program_id_status": "deterministic test-only runtime address; production Pool has no declare_id and no release deployment id is selected",
+  "rent": {
+    "expected_rent_plus_fee": 68247800,
+    "payer_delta": 68247800,
+    "pool_state": 7850880,
+    "root_page": 58352640,
+    "vault_token_account": 2039280
+  },
+  "schema": "aspis.pool-v1.init-runtime-evidence.v1",
+  "step": {
+    "compute_units": 108300,
+    "error": null,
+    "fee_lamports": 5000,
+    "name": "initialize",
+    "outcome": "success",
+    "return_bytes": 104,
+    "return_magic": "ASIR",
+    "return_program": "C9cmcgqgaD1P1wGjyHpc1SLsHCiD8VHJCKyGciPrGyDe",
+    "simulation_matches_execution": true
+  }
+}

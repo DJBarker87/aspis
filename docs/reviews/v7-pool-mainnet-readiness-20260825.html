@@ -1,0 +1,101 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Aspis V7 / Pool V1 mainnet-readiness review</title>
+  <style>
+    :root { color-scheme: light dark; font-family: ui-sans-serif, system-ui, sans-serif; }
+    body { max-width: 980px; margin: 0 auto; padding: 32px 20px 64px; line-height: 1.5; }
+    h1, h2 { line-height: 1.2; }
+    .status { border: 2px solid #d97706; border-radius: 10px; padding: 14px 18px; }
+    table { width: 100%; border-collapse: collapse; margin: 16px 0 28px; }
+    th, td { border: 1px solid #7777; padding: 9px; text-align: left; vertical-align: top; }
+    th { background: #7772; }
+    .critical { color: #dc2626; font-weight: 700; }
+    .high { color: #d97706; font-weight: 700; }
+    .complete { color: #15803d; font-weight: 700; }
+    code { font-family: ui-monospace, SFMono-Regular, monospace; }
+  </style>
+</head>
+<body>
+  <h1>Aspis V7 / Pool V1 mainnet-readiness review</h1>
+  <p>Review date: 25 August 2026. This is a live gate report and will be
+  updated as the remaining proofs and Pool phases close.</p>
+
+  <div class="status">
+    <strong>Outcome: not ready for mainnet custody.</strong>
+    The frozen V7 verifier has strong devnet and source-translation evidence,
+    but the end-to-end Lean replay, knowledge/theft extractor and useful Pool
+    custody transitions are not all closed.
+  </div>
+
+  <h2>Current scores</h2>
+  <table>
+    <thead><tr><th>Dimension</th><th>Grade</th><th>Reason</th></tr></thead>
+    <tbody>
+      <tr><td>Security</td><td>C</td><td>A critical custody premise remains open; no known arithmetic-verifier exploit is asserted.</td></tr>
+      <tr><td>Correctness</td><td>B</td><td>V7 lifecycle evidence is strong; Pool P1 and later economic transitions are incomplete.</td></tr>
+      <tr><td>Error handling</td><td>B</td><td>The exact deployed verifier result flow is fail-closed; the Pool instruction layer does not yet exist.</td></tr>
+      <tr><td>Testing</td><td>B</td><td>V7 has devnet and adversarial evidence; Pool integration/devnet/fuzz coverage remains pending.</td></tr>
+      <tr><td>Organization</td><td>B</td><td>Verifier, Pool kernel and formal modules are separated; verifier-registry policy is being corrected before freeze.</td></tr>
+      <tr><td>Documentation</td><td>A</td><td>Exact gates, artifacts, assumptions and rejected routes are recorded.</td></tr>
+    </tbody>
+  </table>
+
+  <h2>Evidence already accepted</h2>
+  <ul>
+    <li>30,504-byte frozen V7 proof.</li>
+    <li>1,257,959-CU finalized devnet atomic transition, with exact duplicate rollback.</li>
+    <li>4,020 rejected adversarial mutations.</li>
+    <li>Exact unmodified deployed-root Charon/Aeneas translation and one serialized replay.</li>
+    <li>Direct Lean success, parser-rejection and transcript-rejection result-flow theorems.</li>
+    <li>No production Rust, proof, SBF or deployed state changed to obtain the source bridge.</li>
+  </ul>
+
+  <h2>Blocking findings</h2>
+  <table>
+    <thead><tr><th>Severity</th><th>Finding</th><th>Required fix</th></tr></thead>
+    <tbody>
+      <tr>
+        <td class="critical">Critical</td>
+        <td>Conditional argument soundness is not yet an exact proof that an accepted spender knows the victim note opening.</td>
+        <td>Close K1.2–K1.6: shared-log Merkle extraction, algorithmic circle decoding, one candidate chain, trace-to-witness and observed-proof extraction; otherwise retain explicit experimental value/TVL caps.</td>
+      </tr>
+      <tr>
+        <td class="critical">Critical</td>
+        <td>There is no deployable backed deposit/vault, 1-to-2 spend, withdrawal, wallet delivery or relayer flow.</td>
+        <td>Complete and source-bridge Pool phases P2–P7 with vault conservation and no raw-append path.</td>
+      </tr>
+      <tr>
+        <td class="high">High</td>
+        <td>The draft Pool state binds one exact verifier release and would impede a shared pool across proof versions.</td>
+        <td>Freeze the canonical registry-policy and per-profile/release entry design before P1 is accepted.</td>
+      </tr>
+      <tr>
+        <td class="high">High</td>
+        <td>The first append proof placed the desired continuation equality inside its invariant.</td>
+        <td>Derive append/root correctness from chronological perfect-block witnesses and prove genesis plus preservation.</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h2>Release gates</h2>
+  <table>
+    <thead><tr><th>Gate</th><th>Status</th></tr></thead>
+    <tbody>
+      <tr><td>F1 — focused end-to-end Lean release replay</td><td>In progress on a memory-bounded NUC DAG</td></tr>
+      <tr><td>F2 — exact deployed Rust-to-Lean source bridge</td><td class="complete">Complete</td></tr>
+      <tr><td>K1 — knowledge/theft extraction</td><td>Open</td></tr>
+      <tr><td>P0/P1 — stable formats, append-only tree and history</td><td>In review</td></tr>
+      <tr><td>P2–P7 — useful custody product</td><td>Not started or incomplete</td></tr>
+      <tr><td>R1 — two isolated final SBF reproductions</td><td>Pending final release tree</td></tr>
+      <tr><td>R2 — explicit operator approval</td><td>No mainnet authorization given</td></tr>
+    </tbody>
+  </table>
+
+  <p><strong>Deployment rule:</strong> no mainnet transaction may be signed or
+  submitted until the technical gates pass and the user gives a fresh explicit
+  approval after reviewing the transaction and authority plan.</p>
+</body>
+</html>

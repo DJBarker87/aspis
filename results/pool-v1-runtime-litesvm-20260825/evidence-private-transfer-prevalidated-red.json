@@ -1,0 +1,49 @@
+{
+  "schema": "aspis.pool-v1.private-transfer-runtime-red-gate.v1",
+  "date": "2026-08-25",
+  "base_commit": "4c75221974a81452e36d74718ea55ff48ca8abbe",
+  "compute_unit_limit": 1400000,
+  "program_meter_available_after_compute_budget_instruction": 1399850,
+  "pool_artifact": {
+    "path": "results/pool-v1-runtime-litesvm-20260825/artifacts/private-transfer-prevalidated/aspis_pool.so",
+    "bytes": 294592,
+    "sha256": "6b59b27c37918546b7400077b7ed9c5676eb6c1e9169bee764a24f7307e3f46d"
+  },
+  "mock_verifier_artifact": {
+    "path": "results/pool-v1-runtime-litesvm-20260825/artifacts/aspis_pool_runtime_mock_verifier.so",
+    "bytes": 20072,
+    "sha256": "a5fb8219ac4971063c26ca226111c9237ac9b92bd124f6377ea1563c74b4289f"
+  },
+  "measurement": {
+    "mode": "--private-transfer-slice",
+    "simulation_outcome": "ProgramFailedToComplete",
+    "pool_compute_units_consumed": 1399850,
+    "mock_verifier_compute_units_consumed": 485,
+    "mock_verifier_returned_successfully": true,
+    "execution_submitted": false,
+    "reason_execution_not_submitted": "The deterministic harness stops when strict-cap simulation fails."
+  },
+  "implemented_optimization": {
+    "description": "The real private-transfer 1-to-2 processor reuses the already decoded CanonicalPoolStateV1 for append instead of entering the standalone decode/validate path.",
+    "cryptographic_semantics_changed": false,
+    "chronological_roots_removed": false
+  },
+  "focused_host_gates": [
+    {
+      "test": "transition::tests::prevalidated_append_is_byte_exact_and_rejects_pool_substitution_before_callback",
+      "outcome": "PASS",
+      "coverage": "Two-leaf prevalidated transition is byte-for-byte and receipt-for-receipt identical to the standalone checked transition; substituted Pool identity fails before callback."
+    },
+    {
+      "test": "processor::tests::private_transfer_failure_alias_rejection_then_success_is_exactly_one_to_two",
+      "outcome": "PASS",
+      "coverage": "Verifier failure and account aliasing are atomic; verifier acceptance consumes the marker, appends two ordered leaves, and emits exact ASTR return data."
+    }
+  ],
+  "remaining_static_hotspot": {
+    "duplicate_pool_decode": "authenticate_historical_anchor_v1 independently reloads and reconstructs the depth-20 Pool tree after the processor already produced CanonicalPoolStateV1.",
+    "duplicate_history_scans": "For the normal latest-root case, the same 8,256-byte root page is fully validated three times: historical-anchor authentication, current-history preflight, and append preflight.",
+    "required_work": "The sealed append_two retains both chronological roots and therefore still performs the two required output-root paths; neither may be deleted."
+  },
+  "smallest_next_gate": "Introduce a private sealed anchor/current-history token constructed from the existing CanonicalPoolStateV1 and one complete root-page validation, then consume that token in append. Prove byte-exact equivalence and fail-closed substitution before any further SBF build."
+}

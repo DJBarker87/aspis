@@ -1,0 +1,119 @@
+{
+  "artifact": "aspis_v7_pool_dispatch_profile_p3f_svm_attempt",
+  "schema_version": 1,
+  "generated_at_utc": "2026-08-25T16:55:07Z",
+  "scope": "one isolated local-validator simulateTransaction attempt of the opt-in ASVQ selected-verifier handler over the frozen honest Tag-73 proof; no Pool CPI or state semantics",
+  "status": "FAILED_BEFORE_HANDLER_EXECUTION",
+  "measurement_count": 1,
+  "cluster": "isolated solana-test-validator",
+  "no_send_transaction": true,
+  "no_deploy_rpc": true,
+  "program_preloaded_with_bpf_program": true,
+  "build_command": "NO_DNA=1 CARGO_BUILD_JOBS=2 cargo-build-sbf --manifest-path programs/aspis-verifier/Cargo.toml --no-default-features --features v7-pool-dispatch-profile --sbf-out-dir target/p3f-svm-deploy",
+  "measurement_command": "NO_DNA=1 CARGO_BUILD_JOBS=2 cargo run -p aspis-xtask --bin aspis-xtask -- v7-pool-dispatch-simulate --sbf /Users/dominic/ZK-v7/target/p3f-svm-deploy/aspis_verifier.so --proof /Users/dominic/ZK-v7/results/spend/v7-devnet-20260825-fullc2/v7-proof.bin --statement /Users/dominic/ZK-v7/results/spend/v7-devnet-20260825-fullc2/v7-statement.json --metadata /Users/dominic/ZK-v7/results/spend/v7-devnet-20260825-fullc2/v7-honest-proof.json --out /Users/dominic/ZK-v7/results/spend/v7-devnet-20260825-fullc2/v7-pool-dispatch-profile-p3f-svm.json",
+  "toolchain": {
+    "solana_test_validator": "solana-test-validator 2.3.0 (src:a2e21dda; feat:3640012085, client:Agave)",
+    "solana_cli": "solana-cli 2.3.0 (src:a2e21dda; feat:3640012085, client:Agave)",
+    "cargo_build_sbf": "solana-cargo-build-sbf 2.3.0; platform-tools v1.48; rustc 1.84.1",
+    "host_rustc": "rustc 1.93.0 (254b59607 2026-01-19)",
+    "host_cargo": "cargo 1.93.0 (083ac5135 2025-12-15)",
+    "host": "Darwin Dominics-Laptop.local 25.5.0 Darwin Kernel Version 25.5.0: Mon Apr 27 20:41:19 PDT 2026; root:xnu-12377.121.6~2/RELEASE_ARM64_T8122 arm64"
+  },
+  "source": {
+    "git_head": "9ee9b12b949177d1b383f79f9efcf3e1c85b8b5f",
+    "branch": "v7/split-tensor",
+    "dirty_worktree_preserved": true
+  },
+  "sbf": {
+    "path": "/Users/dominic/ZK-v7/target/p3f-svm-deploy/aspis_verifier.so",
+    "bytes": 1170000,
+    "sha256": "d5839866851171c0dfcca2b016b33a6fabf5ca13f8d32cd220f24338d138c6c3",
+    "feature": "v7-pool-dispatch-profile",
+    "build_exit_code": 0,
+    "build_stack_diagnostics_present": true,
+    "build_stack_diagnostics": [
+      "aspis_statement::pool_v1::root_history::RootHistoryPageV1::new: estimated frame 16448 bytes; stack offset 8192 exceeded 4096",
+      "aspis_statement::pool_v1::root_history::RootHistoryPageV1::genesis: estimated frame 16512 bytes; stack offset 8200 exceeded 4096",
+      "aspis_statement::pool_v1::root_history::RootHistoryPageV1::encode: estimated frame 8320 bytes; stack offset 8224 exceeded 4096",
+      "aspis_statement::pool_v1::root_history::RootHistoryPageV1::decode: estimated frame 16640 bytes; stack offset 16592 exceeded 4096"
+    ]
+  },
+  "inputs": {
+    "proof_path": "/Users/dominic/ZK-v7/results/spend/v7-devnet-20260825-fullc2/v7-proof.bin",
+    "proof_bytes": 30504,
+    "proof_sha256": "e8e15ce268447b92ac1344292bc879dcb0bf7534621ce077d8790097975dcecb",
+    "statement_path": "/Users/dominic/ZK-v7/results/spend/v7-devnet-20260825-fullc2/v7-statement.json",
+    "statement_sha256": "7dd15bd17b8f052d540d0187caf4f1d616f4220e66a14be78b56f9c736a5a375",
+    "metadata_path": "/Users/dominic/ZK-v7/results/spend/v7-devnet-20260825-fullc2/v7-honest-proof.json",
+    "metadata_sha256": "fa5a49b2b029432ba1af8bb8c185650ee21f4c716fd548842c7f21f41f35e3cd",
+    "host_frozen_proof_replay_before_svm": true,
+    "profile_payload_bytes": 392,
+    "asvq_bytes": 776,
+    "sealed_proof_account": "97dyPnMkxRwsS2X8rBdosa7q35fXmMAyCMffhCuvao31",
+    "sealed_proof_account_owner": "7Q2nGsPg8rbjdxKHK4jxTgEWLTyd9o1X4KMSjCieRmue",
+    "sealed_proof_account_bytes": 30544,
+    "sealed_proof_account_sha256": "3b3bc53211a8af5c594bec5496bf046a6e0deae56ee9fca3e352dea5700cf709",
+    "sealed_proof_account_preload_check_passed": true,
+    "instruction_meta_readonly": true,
+    "instruction_meta_nonsigner": true
+  },
+  "genesis_audit": {
+    "ledger_genesis_sha256": "0afaad7257dba80fd3ab92dd75382dd9e16be78697d8abef57430497e108b9f9",
+    "program_account_present": true,
+    "program_account": "7Q2nGsPg8rbjdxKHK4jxTgEWLTyd9o1X4KMSjCieRmue",
+    "program_account_owner": "BPFLoaderUpgradeab1e11111111111111111111111",
+    "program_account_executable": true,
+    "program_data_account": "cdRqe7MGCEJ2Z6iZfWuXtuymRiAhXtyfDgT47sKZr69",
+    "program_data_bytes": 1170045
+  },
+  "result": {
+    "simulation_rpc_called": true,
+    "simulation_success": false,
+    "instruction_error": {
+      "instruction_index": 2,
+      "error": "UnsupportedProgramId"
+    },
+    "handler_entered": false,
+    "transaction_units_consumed": null,
+    "outer_handler_program_compute_units": null,
+    "preferred_limit": 1300000,
+    "preferred_limit_gate": "NOT_MEASURED",
+    "hard_transaction_limit": 1400000,
+    "hard_limit_gate": "NOT_MEASURED",
+    "return_data_present": false,
+    "asvs_success": false,
+    "post_simulation_proof_snapshot_captured": false,
+    "program_logs": [
+      "Program ComputeBudget111111111111111111111111111111 invoke [1]",
+      "Program ComputeBudget111111111111111111111111111111 success",
+      "Program ComputeBudget111111111111111111111111111111 invoke [1]",
+      "Program ComputeBudget111111111111111111111111111111 success",
+      "Program 7Q2nGsPg8rbjdxKHK4jxTgEWLTyd9o1X4KMSjCieRmue invoke [1]",
+      "Program is not deployed",
+      "Program 7Q2nGsPg8rbjdxKHK4jxTgEWLTyd9o1X4KMSjCieRmue failed: Unsupported program id"
+    ]
+  },
+  "baseline": {
+    "same_environment_baseline_measured": false,
+    "same_environment_delta": null,
+    "reason": "Exactly one SVM simulation was authorized and consumed by this failed attempt."
+  },
+  "diagnosis": {
+    "exact_observation": "The upgradeable-loader program and 1,170,045-byte ProgramData account exist in genesis, but the runtime program-cache entry produced Program is not deployed before the handler ran.",
+    "runtime_ambiguity": "Agave 2.3 emits this same message for FailedVerification, Closed, or DelayVisibility cache entries; this attempt did not instrument the runtime to distinguish them.",
+    "strongest_local_evidence": "cargo-build-sbf emitted four over-4096-byte stack diagnostics for Pool root-history constructors linked by the opt-in feature. Failed verification is therefore the leading diagnosis, but it is not claimed as uniquely proven by the runtime log.",
+    "optimization_attempted_after_result": false,
+    "rerun_performed": false
+  },
+  "validator_log": {
+    "path": "/Users/dominic/ZK-v7/.spend-validator/validator.log",
+    "sha256": "891f9b281bb30ecde91cbda4fc25b9f57515b88ef8e4723d862d74de8aedf660"
+  },
+  "limitations": [
+    "No CU number exists because execution stopped at loader/program-cache dispatch before the selected-verifier handler.",
+    "No ASVS return data or successful post-simulation proof-account snapshot exists for the same reason.",
+    "This does not measure the Pool P3e CPI caller, a Pool atomic transition, historical-anchor semantics, devnet, or deployment.",
+    "No transaction was submitted and no state was committed; the only SVM operation was simulateTransaction.",
+    "The failed attempt was not retried, averaged, optimized, or replaced."
+  ]
+}

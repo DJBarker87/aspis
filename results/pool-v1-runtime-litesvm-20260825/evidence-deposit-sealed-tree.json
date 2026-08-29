@@ -1,0 +1,93 @@
+{
+  "agave_runtime_version": "4.2.1",
+  "assertions": {
+    "deposit_creates_no_new_rent_account": true,
+    "deposit_note_commitment_exact": true,
+    "deposit_receipt_and_payload_exact": true,
+    "deposit_root_equals_sequence_one_history": true,
+    "failed_transaction_return_data_empty": true,
+    "initialization_exact": true,
+    "invalid_batch_rolls_back_successful_pool_and_spl_cpi": true,
+    "no_network_send_or_deploy": true,
+    "simulation_metadata_equals_execution_for_all_steps": true,
+    "strict_1400000_cu_limit": true,
+    "token_delta_exact": true
+  },
+  "compute_unit_limit": 1400000,
+  "deposit": {
+    "amount": 1000,
+    "encrypted_payload_bytes": 512,
+    "expected_fee_only_delta": 10000,
+    "leaf_index": 0,
+    "note_commitment": "[M31(929896361), M31(1319236741), M31(1579471224), M31(1389432804), M31(182756040), M31(503858335), M31(2039478078), M31(850896836)]",
+    "payer_delta": 10000,
+    "pool_state_bytes": 1000,
+    "return_bytes": 736,
+    "return_magic": "ASPD",
+    "root": "[M31(1896870001), M31(726609786), M31(153016872), M31(33360930), M31(2140844439), M31(1476438945), M31(974367241), M31(576103010)]",
+    "root_page_bytes": 8256,
+    "root_page_lamports": 58352640,
+    "root_sequence": 1,
+    "source_after": 9000,
+    "source_before": 10000,
+    "vault_after": 1000,
+    "vault_before": 0
+  },
+  "harness_version": "pool-v1-litesvm-evidence-v1",
+  "initialization": {
+    "expected_rent_plus_fee": 68247800,
+    "payer_delta": 68247800,
+    "return_bytes": 104,
+    "return_magic": "ASIR"
+  },
+  "invalid_deposit_rollback": {
+    "all_pool_and_token_accounts_byte_exact_after_failure": true,
+    "error": "InstructionError(2, InvalidInstructionData)",
+    "return_data_empty": true,
+    "shape": "valid seven-unit deposit followed by an invalid Pool instruction in the same transaction"
+  },
+  "litesvm_version": "0.16.0",
+  "pool_artifact": {
+    "bytes": 294904,
+    "path": "results/pool-v1-runtime-litesvm-20260825/artifacts/aspis_pool_sealed_tree.so",
+    "sha256": "881f1efb5c13cf02774f5e018630903063a231583d41b625e6178e91a5b77643"
+  },
+  "pool_program_id": "C9cmcgqgaD1P1wGjyHpc1SLsHCiD8VHJCKyGciPrGyDe",
+  "program_id_status": "deterministic test-only runtime address; production Pool has no declare_id and no release deployment id is selected",
+  "schema": "aspis.pool-v1.deposit-runtime-evidence.v1",
+  "steps": [
+    {
+      "compute_units": 108300,
+      "error": null,
+      "fee_lamports": 5000,
+      "name": "initialize",
+      "outcome": "success",
+      "return_bytes": 104,
+      "return_magic": "ASIR",
+      "return_program": "C9cmcgqgaD1P1wGjyHpc1SLsHCiD8VHJCKyGciPrGyDe",
+      "simulation_matches_execution": true
+    },
+    {
+      "compute_units": 1088882,
+      "error": null,
+      "fee_lamports": 10000,
+      "name": "deposit_max_payload",
+      "outcome": "success",
+      "return_bytes": 736,
+      "return_magic": "ASPD",
+      "return_program": "C9cmcgqgaD1P1wGjyHpc1SLsHCiD8VHJCKyGciPrGyDe",
+      "simulation_matches_execution": true
+    },
+    {
+      "compute_units": 1112606,
+      "error": "InstructionError(2, InvalidInstructionData)",
+      "fee_lamports": 10000,
+      "name": "transaction_rollback_after_successful_pool_and_token_cpi",
+      "outcome": "rejected",
+      "return_bytes": 0,
+      "return_magic": "",
+      "return_program": "C9cmcgqgaD1P1wGjyHpc1SLsHCiD8VHJCKyGciPrGyDe",
+      "simulation_matches_execution": true
+    }
+  ]
+}

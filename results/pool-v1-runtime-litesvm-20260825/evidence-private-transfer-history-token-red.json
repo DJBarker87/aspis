@@ -1,0 +1,60 @@
+{
+  "schema": "aspis.pool-v1.private-transfer-runtime-red-gate.v2",
+  "date": "2026-08-25",
+  "compute_unit_limit": 1400000,
+  "program_meter_available_after_compute_budget_instruction": 1399850,
+  "build": {
+    "host": "nuc.local",
+    "isolated_source": "/home/dombarker/project-offloads/aspis-pool-prevalidated-history-20260825-a1",
+    "systemd_unit": "aspis-pool-history-sbf-20260825-a1.scope",
+    "invocation_id": "2bc7c6c6e7de41b28fbb0d7ebc59ceff",
+    "memory_high": "5G",
+    "memory_max": "6G",
+    "memory_swap_max": 0,
+    "maximum_rss_kib": 559136,
+    "swaps": 0,
+    "no_dna": 1,
+    "cargo_build_jobs": 1,
+    "exit_status": 0
+  },
+  "source_hashes": {
+    "programs/aspis-pool/src/anchor.rs": "1f1831ad8bada557ae9f2391cbb923cbba955f456750cafd277468d83f477135",
+    "programs/aspis-pool/src/transition.rs": "a18001e103834bf27ec9c736a2dc44062c5f08816d6dd38f1ba838a011aa55f0",
+    "programs/aspis-pool/src/processor.rs": "701582355c8b6773781e4be4db7da2a21fd7ecdbfe99aebb7343f9245abc5859",
+    "Cargo.toml": "d451a45ef3fbb9d6375b55e162dce187ac9d2817978211614775674744d5ed4b",
+    "Cargo.lock": "db312ff57e06c44a6f178a244dd5710326fd25e56790f8092200410f1a0ef757"
+  },
+  "pool_artifact": {
+    "path": "results/pool-v1-runtime-litesvm-20260825/artifacts/private-transfer-history-token/aspis_pool.so",
+    "bytes": 301912,
+    "sha256": "773e5a9a06b50f443b1350042c348d336c80d3516942441255ae1850de1d0935"
+  },
+  "mock_verifier_artifact": {
+    "path": "results/pool-v1-runtime-litesvm-20260825/artifacts/aspis_pool_runtime_mock_verifier.so",
+    "bytes": 20072,
+    "sha256": "a5fb8219ac4971063c26ca226111c9237ac9b92bd124f6377ea1563c74b4289f"
+  },
+  "measurement": {
+    "mode": "--private-transfer-slice",
+    "simulation_outcome": "ProgramFailedToComplete",
+    "pool_compute_units_consumed": 1399850,
+    "mock_verifier_compute_units_consumed": 485,
+    "remaining_compute_units_at_mock_verifier_entry": 846646,
+    "remaining_compute_units_after_mock_verifier": 846161,
+    "mock_verifier_returned_successfully": true,
+    "execution_submitted": false,
+    "retry_performed": false
+  },
+  "comparison_to_pre_token_measurement": {
+    "prior_remaining_compute_units_at_mock_verifier_entry": 323023,
+    "current_remaining_compute_units_at_mock_verifier_entry": 846646,
+    "exact_pre_verifier_compute_units_saved": 523623
+  },
+  "preserved_semantics": {
+    "chronological_output_roots": 2,
+    "tree_depth": 20,
+    "poseidon_tree_hash_version_changed": false,
+    "state_or_history_validation_weakened": false
+  },
+  "remaining_gate": "The post-verifier append, marker creation and persistence path still exceeds the 846,161 CU remaining after the successful mock verifier. No second measurement was made."
+}

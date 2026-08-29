@@ -1,0 +1,51 @@
+{
+  "artifact": {
+    "bytes": 414864,
+    "path": "target/deploy/aspis_pool.so",
+    "sha256": "76d197aa24fafd7ff0a30502474c3e6203440b4fbb942168040ba244fc2b7c85",
+    "source_note": "focused current-worktree profile; reproducible clean-source release build remains a later gate"
+  },
+  "assertions": {
+    "both_transactions_fit_1232_bytes": true,
+    "no_network_send_or_deploy": true,
+    "preparation_is_not_a_state_transition": true,
+    "prepare_under_1400000_cu": true,
+    "settle_under_1400000_cu": true,
+    "settlement_is_atomic_and_one_shot": true,
+    "simulation_equals_execution_for_successes_and_replay": true
+  },
+  "boundaries": [
+    "The finalized authorization receipt is injected as a canonical verifier-owned account image; this profile isolates Pool preparation and settlement rather than re-running Tag-73 verification.",
+    "The plan PDA is preallocated as an exact rent-exempt all-zero Pool account to measure plan construction separately from System account creation.",
+    "This is deterministic LiteSVM execution, not finalized devnet evidence.",
+    "The profiled SBF was built from the current worktree; clean-source reproducibility is a separate release gate."
+  ],
+  "compute_unit_limit": 1400000,
+  "prepare": {
+    "compute_units": 1158523,
+    "core_plan_bytes": 10000,
+    "core_plan_owner_exact": true,
+    "live_pool_and_history_unchanged": true,
+    "profile_plan_account_preallocated": true,
+    "transaction_bytes": 898
+  },
+  "profile_slot": 150,
+  "replay": {
+    "compute_units": 481954,
+    "error": "InstructionError(1, InvalidAccountData)",
+    "outcome": "rejected",
+    "pool_history_marker_byte_exact": true
+  },
+  "schema": "aspis.pool-v1.prepared-runtime-evidence.v1",
+  "settle": {
+    "compute_units": 598794,
+    "nullifier_marker_exact": true,
+    "plan_closed_and_refunded": true,
+    "return_bytes": 200,
+    "return_magic": "ASTR",
+    "sequence_after": 4,
+    "sequence_before": 2,
+    "transaction_bytes": 699,
+    "two_ordered_outputs": true
+  }
+}

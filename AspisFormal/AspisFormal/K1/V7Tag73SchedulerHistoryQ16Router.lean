@@ -22,6 +22,7 @@ namespace AspisK1.V7Tag73SchedulerHistoryQ16Router
 open AspisK1.V7FsAokExperiment
 open AspisK1.V7Tag73TranscriptSchedule
 open AspisK1.V7Tag73AdaptiveLazyOracle
+open AspisK1.V7Tag73AtomicPairReplay
 open AspisK1.V7Tag73AtomicForkUniformScheduler
 open AspisK1.V7Tag73CausalQ16CoordinateRouter
 open AspisK1.V7Tag73CausalQ16ProbabilityBridge
@@ -208,7 +209,29 @@ def schedulerHistoryQ16Label
         rootQ16PreferredSlotFromHistory state.history input
       else
         none
-  | .halted | .transitionLimit | .forkOutput .. | .forkAdvance .. => none
+  | .forkOutput frozenHistory _pairRoom outputInput _advanceInput _template
+      _next =>
+      rootQ16PreferredSlotFromHistory frozenHistory outputInput
+  | .halted | .transitionLimit | .forkAdvance .. => none
+
+/-- A restoration-programmed output half is labelled from the exact frozen
+pre-fork history and concrete output input. Both are fixed before the fresh
+fork answer is exposed. This is essential for q16 calls that were cached in
+the root verifier and become fresh only in a state-restoration branch. -/
+theorem scheduler_history_q16_label_at_fork_output
+    {globalOracleCalls : Nat}
+    (transitionFuel : Nat)
+    (frozenHistory : List QueryRecord)
+    (pairRoom : frozenHistory.length + 2 ≤ globalOracleCalls)
+    (outputInput advanceInput : ShaInput)
+    (template : AtomicPairReplayConfiguration)
+    (next : AtomicPairReplayConfiguration →
+      UnifiedExposureCursor globalOracleCalls) :
+    schedulerHistoryQ16Label (transitionFuel + 1)
+        (.forkPair frozenHistory pairRoom outputInput advanceInput template
+          next) =
+      rootQ16PreferredSlotFromHistory frozenHistory outputInput := by
+  rfl
 
 /-- Concrete adaptive q16 router for the exact deployed plain-ROM cursor.
 There is no caller-supplied labelling function in this specialization. -/
@@ -244,6 +267,7 @@ def exactPlainRomHistoryQ16Coordinates
 #print axioms rootQ16HistoryPhase
 #print axioms rootQ16PreferredSlotFromHistory
 #print axioms schedulerHistoryQ16Label
+#print axioms scheduler_history_q16_label_at_fork_output
 #print axioms exactPlainRomHistoryQ16Router
 #print axioms exactPlainRomHistoryQ16Coordinates
 
