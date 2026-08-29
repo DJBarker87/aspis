@@ -1,5 +1,6 @@
 import AspisFormal.K1.V7Tag73ExactFixedOperationalStateMap
 import AspisFormal.K1.V7Tag73RestoredDerivedK13View
+import AspisFormal.K1.V7Tag73RestoredQ16LedgerInvariant
 
 /-!
 # Exact restoration-wide operational K1.3 classifier
@@ -36,11 +37,139 @@ open AspisK1.V7Tag73ExactFixedOperationalStateMap
 open AspisK1.V7Tag73ExactFixedK12MerkleClassifier
 open AspisK1.V7Tag73RestoredNodeK13Classifier
 open AspisK1.V7Tag73RestoredDerivedK13View
+open AspisK1.V7Tag73RestoredQ16LedgerInvariant
 open AspisK1.V7Tag73ConcreteRestorationClient
+open AspisK1.V7Tag73FutureFreeFullControl
+open AspisK1.V7Tag73FixedFieldMessageBridge
+open AspisK1.V7Tag73Q16LedgerCertificate
+open AspisK1.V7Tag73Q16LedgerControlInvariant
+open AspisK1.V7Tag73SecureCircleMap
 open AspisPool.AlgorithmicCircleDecoderV7
 open AspisV5ComponentCQM31TowerExact
 
 noncomputable section
+
+/-! ## Operational nonvacuity and verifier-owned q16 data -/
+
+/-- The literal accepted root remains node zero in the completed append-only
+store.  This is recovered from the completed full-run projection rather than
+assumed by the K1.3 data provider. -/
+theorem exact_restoration_accumulator_contains_root
+    {HiddenTape TapeIdentity Observation Statement Payload Result : Type}
+    {parameters : ExactCompilerResourceParameters}
+    {transitionFuel : Nat}
+    {configuration : ExactPlainRomConfiguration HiddenTape TapeIdentity
+      Observation Statement Tag73K12ParsedProof Payload Result parameters}
+    {projection : AcceptedTapeProjection Statement Tag73K12ParsedProof Payload}
+    {fixedInstance : PublicInstance Statement}
+    {sample : ExactCompilerSample HiddenTape parameters}
+    (input : ExactK12OperationalInput transitionFuel configuration projection
+      fixedInstance sample) :
+    input.package.root.fixedRoot.base.runtime.node ∈
+      (exactRestorationAccumulator input).nodes := by
+  have lookup :=
+    input.package.root.full.projection.nodeStoreInvariant.1
+  change (exactRestorationAccumulator input).nodes[0]? =
+    some input.package.root.fixedRoot.base.runtime.node at lookup
+  rw [List.getElem?_eq_some_iff] at lookup
+  rcases lookup with ⟨within, valueExact⟩
+  have member := List.getElem_mem within
+  rw [valueExact] at member
+  exact member
+
+/-- Strict checked-source acceptance and actual-run alignment force the
+stored root to be schedule-exhausted.  Hence restoration-wide K1.3 failure
+can never become vacuous merely because the client produced no children. -/
+theorem exact_restoration_accumulator_root_is_done
+    {HiddenTape TapeIdentity Observation Statement Payload Result : Type}
+    {parameters : ExactCompilerResourceParameters}
+    {transitionFuel : Nat}
+    {configuration : ExactPlainRomConfiguration HiddenTape TapeIdentity
+      Observation Statement Tag73K12ParsedProof Payload Result parameters}
+    {projection : AcceptedTapeProjection Statement Tag73K12ParsedProof Payload}
+    {fixedInstance : PublicInstance Statement}
+    {sample : ExactCompilerSample HiddenTape parameters}
+    (input : ExactK12OperationalInput transitionFuel configuration projection
+      fixedInstance sample) :
+    input.package.root.fixedRoot.base.runtime.node.verifierFinalState.current.control =
+      .done := by
+  have exhausted :=
+    input.package.root.fixedRoot.base.actualPathAlignment.scheduleExhausted
+  unfold FutureFreeScheduleExhausted at exhausted
+  rw [input.package.root.fixedRoot.base.projected.finalStateExact] at exhausted
+  change input.package.root.fixedRoot.base.runtime.verifierFinalState.current.control =
+    .done
+  exact exhausted
+
+/-- Every accepting node in the actual returned store has its exact
+first-cap-203 verifier ledger.  The q16 schedule is therefore no longer a
+source/parser obligation. -/
+noncomputable def exact_restored_done_node_selected_q16_ledger
+    {HiddenTape TapeIdentity Observation Statement Payload Result : Type}
+    {parameters : ExactCompilerResourceParameters}
+    {transitionFuel : Nat}
+    {configuration : ExactPlainRomConfiguration HiddenTape TapeIdentity
+      Observation Statement Tag73K12ParsedProof Payload Result parameters}
+    {projection : AcceptedTapeProjection Statement Tag73K12ParsedProof Payload}
+    {fixedInstance : PublicInstance Statement}
+    {sample : ExactCompilerSample HiddenTape parameters}
+    (input : ExactK12OperationalInput transitionFuel configuration projection
+      fixedInstance sample)
+    (node : RestoredK13Node Statement Payload)
+    (member : node ∈ (exactRestorationAccumulator input).nodes)
+    (done : node.verifierFinalState.current.control = .done) :
+    SelectedQ16LedgerCertificate configuration.machine.environment
+      node.verifierFinalState.current := by
+  exact Classical.choice
+    (done_state_has_selected_q16_ledger configuration.machine.environment
+      node.verifierFinalState
+      (input.stateMap.everyNodeQ16LedgerInvariant node member) done)
+
+/-- The only per-node K1.3 data not already forced by the operational state
+map: canonical fixed-field decoding and the two verifier challenge records.
+There is intentionally no q16 schedule field here. -/
+structure ExactRestoredOperationalK13SourceNodeData
+    {Statement Payload : Type*}
+    (node : RestoredK13Node Statement Payload) where
+  decoded : Fin 641 → QM31Exact
+  fixedDecode : FixedFieldDecodeExact node.adversaryValue.rawMessages decoded
+  gamma : QM31Exact
+  gammaBytes : Qm31Bytes
+  gammaRecorded :
+    { id := ChallengeId.gamma, value := gammaBytes } ∈
+      node.verifierFinalState.current.decodedChallenges
+  gammaDecoded : decodeTagQM31ExactLE gammaBytes = some gamma
+  alphaZero : QM31Exact
+  alphaZeroBytes : Qm31Bytes
+  alphaZeroRecorded :
+    { id := ChallengeId.alpha 0, value := alphaZeroBytes } ∈
+      node.verifierFinalState.current.decodedChallenges
+  alphaZeroDecoded : decodeTagQM31ExactLE alphaZeroBytes = some alphaZero
+
+/-- Operational state supplies q16; the source node data supplies only the
+canonical field/challenge bytes.  Their composition is the corrected K1.3
+view consumed by the total classifier. -/
+noncomputable def exact_restored_operational_k13_data_of_source_node
+    {HiddenTape TapeIdentity Observation Statement Payload Result : Type}
+    {parameters : ExactCompilerResourceParameters}
+    {transitionFuel : Nat}
+    {configuration : ExactPlainRomConfiguration HiddenTape TapeIdentity
+      Observation Statement Tag73K12ParsedProof Payload Result parameters}
+    {projection : AcceptedTapeProjection Statement Tag73K12ParsedProof Payload}
+    {fixedInstance : PublicInstance Statement}
+    {sample : ExactCompilerSample HiddenTape parameters}
+    (input : ExactK12OperationalInput transitionFuel configuration projection
+      fixedInstance sample)
+    (node : RestoredK13Node Statement Payload)
+    (member : node ∈ (exactRestorationAccumulator input).nodes)
+    (done : node.verifierFinalState.current.control = .done)
+    (source : ExactRestoredOperationalK13SourceNodeData node) :
+    RestoredOperationalK13Data configuration.machine.environment node :=
+  restored_operational_k13_data_of_selected_ledger source.decoded
+    source.fixedDecode source.gamma source.gammaBytes source.gammaRecorded
+    source.gammaDecoded source.alphaZero source.alphaZeroBytes
+    source.alphaZeroRecorded source.alphaZeroDecoded
+    (exact_restored_done_node_selected_q16_ledger input node member done)
 
 /-- Source-facing material for the corrected restoration-wide classifier.
 
@@ -67,6 +196,33 @@ structure ExactRestoredOperationalK13DataProvider
     node ∈ (exactRestorationAccumulator input).nodes →
     node.verifierFinalState.current.control = .done →
       RestoredOperationalK13Data configuration.machine.environment node
+
+/-- Construct the complete provider from the exact remaining per-node source
+facts.  Nonvacuity comes from the stored accepted root, and q16 data comes
+from the verifier-owned ledger invariant. -/
+noncomputable def exact_restored_operational_k13_provider_of_source
+    {HiddenTape TapeIdentity Observation Statement Payload Result : Type}
+    {parameters : ExactCompilerResourceParameters}
+    {transitionFuel : Nat}
+    {configuration : ExactPlainRomConfiguration HiddenTape TapeIdentity
+      Observation Statement Tag73K12ParsedProof Payload Result parameters}
+    {projection : AcceptedTapeProjection Statement Tag73K12ParsedProof Payload}
+    {fixedInstance : PublicInstance Statement}
+    {sample : ExactCompilerSample HiddenTape parameters}
+    (input : ExactK12OperationalInput transitionFuel configuration projection
+      fixedInstance sample)
+    (source : (node : RestoredK13Node Statement Payload) →
+      node ∈ (exactRestorationAccumulator input).nodes →
+      node.verifierFinalState.current.control = .done →
+        ExactRestoredOperationalK13SourceNodeData node) :
+    ExactRestoredOperationalK13DataProvider input where
+  hasDone := ⟨
+    ⟨input.package.root.fixedRoot.base.runtime.node,
+      exact_restoration_accumulator_contains_root input,
+      exact_restoration_accumulator_root_is_done input⟩⟩
+  data := fun node member done =>
+    exact_restored_operational_k13_data_of_source_node input node member done
+      (source node member done)
 
 /-- Successful restoration-wide K1.3 classification chooses one literal
 accepting node from the returned accumulator and retains its exact corrected
@@ -191,6 +347,11 @@ theorem exact_restored_operational_k13_certificate_has_literal_node
   exact ⟨certificate.member, certificate.done⟩
 
 #print axioms classifyExactRestoredOperationalK13
+#print axioms exact_restoration_accumulator_contains_root
+#print axioms exact_restoration_accumulator_root_is_done
+#print axioms exact_restored_done_node_selected_q16_ledger
+#print axioms exact_restored_operational_k13_data_of_source_node
+#print axioms exact_restored_operational_k13_provider_of_source
 #print axioms exact_restored_operational_k13_error_exposes_done_failure
 #print axioms exact_restored_operational_k13_certificate_has_literal_node
 
