@@ -1,4 +1,5 @@
 import AspisFormal.K1.V7Tag73ExactFixedOperationalStateMap
+import AspisFormal.K1.V7Tag73CurrentSourceDecodeBridge
 import AspisFormal.K1.V7Tag73RestoredDerivedK13View
 import AspisFormal.K1.V7Tag73RestoredQ16LedgerInvariant
 
@@ -33,6 +34,7 @@ open AspisK1.V7Tag73ExactCompilerResources
 open AspisK1.V7Tag73ExactPlainRomRun
 open AspisK1.V7Tag73ExactSourceAcceptanceModel
 open AspisK1.V7Tag73ExactFixedOperationalStateMap
+open AspisK1.V7Tag73CurrentSourceDecodeBridge
 open AspisK1.V7Tag73ExactFixedK12MerkleClassifier
 open AspisK1.V7Tag73RestoredNodeK13Classifier
 open AspisK1.V7Tag73RestoredDerivedK13View
@@ -132,7 +134,8 @@ structure ExactRestoredOperationalK13SourceNodeData
     {Statement Payload : Type*}
     (node : RestoredK13Node Statement Payload) where
   decoded : Fin 641 → QM31Exact
-  fixedDecode : FixedFieldDecodeExact node.adversaryValue.rawMessages decoded
+  fixedFields : CurrentSourceFixedFieldProjection
+    node.adversaryValue.rawMessages decoded
 
 /-- Operational state supplies q16; the source node data supplies only the
 canonical field/challenge bytes.  Their composition is the corrected K1.3
@@ -167,7 +170,8 @@ noncomputable def exact_restored_operational_k13_data_of_source_node
   let alphaZero := Classical.choose alphaZeroValueExists
   have alphaZeroFacts := Classical.choose_spec alphaZeroValueExists
   exact restored_operational_k13_data_of_selected_ledger source.decoded
-    source.fixedDecode gamma gammaBytes gammaFacts.1 gammaFacts.2 alphaZero
+    (current_source_fixed_field_projection_implies_decode source.fixedFields)
+    gamma gammaBytes gammaFacts.1 gammaFacts.2 alphaZero
     alphaZeroBytes alphaZeroFacts.1 alphaZeroFacts.2
     (exact_restored_done_node_selected_q16_ledger input node member done)
 
