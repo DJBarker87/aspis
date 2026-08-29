@@ -16,6 +16,7 @@ import AspisFormal.K1.V7Tag73AtomicPairFork
 import AspisFormal.K1.V7Tag73PrefixTableProvenance
 import AspisFormal.K1.V7Tag73Q16ControlInvariant
 import AspisFormal.K1.V7Tag73Q16LedgerControlInvariant
+import AspisFormal.K1.V7Tag73ChallengeRecordControlInvariant
 
 /-!
 # Actual-node causal provenance for the concrete Tag-73 restoration client
@@ -75,6 +76,7 @@ open AspisK1.V7Tag73PrefixTableProvenance
 open AspisK1.V7Tag73CompletedFullRunProjection
 open AspisK1.V7Tag73Q16ControlInvariant
 open AspisK1.V7Tag73Q16LedgerControlInvariant
+open AspisK1.V7Tag73ChallengeRecordControlInvariant
 
 noncomputable section
 
@@ -1279,6 +1281,42 @@ def EveryStoredNodeQ16LedgerInvariant
     Prop :=
   ∀ node ∈ accumulator.nodes,
     FutureFreeQ16LedgerInvariant environment node.verifierFinalState
+
+/-- Every stored verifier run retains exact gamma and alpha-zero records at
+every snapshot where the corresponding schedule slots have been consumed. -/
+def EveryStoredNodeK13ChallengeInvariant
+    {Statement Proof Payload : Type u}
+    (accumulator : ConcreteRestorationAccumulator Statement Proof Payload) :
+    Prop :=
+  ∀ node ∈ accumulator.nodes,
+    FutureFreeK13ChallengeInvariant node.verifierFinalState
+
+theorem every_stored_node_k13_challenge_invariant_of_nodes_eq
+    {Statement Proof Payload : Type u}
+    (oldAccumulator newAccumulator :
+      ConcreteRestorationAccumulator Statement Proof Payload)
+    (nodesExact : newAccumulator.nodes = oldAccumulator.nodes)
+    (invariant : EveryStoredNodeK13ChallengeInvariant oldAccumulator) :
+    EveryStoredNodeK13ChallengeInvariant newAccumulator := by
+  intro node member
+  apply invariant node
+  rw [← nodesExact]
+  exact member
+
+theorem every_stored_node_k13_challenge_invariant_add_child
+    {Statement Proof Payload : Type u}
+    (accumulator : ConcreteRestorationAccumulator Statement Proof Payload)
+    (child : ConcreteRestorationNode Statement Proof Payload)
+    (invariant : EveryStoredNodeK13ChallengeInvariant accumulator)
+    (childInvariant : FutureFreeK13ChallengeInvariant
+      child.verifierFinalState) :
+    EveryStoredNodeK13ChallengeInvariant (accumulator.addNode child).2 := by
+  intro candidate member
+  simp only [ConcreteRestorationAccumulator.addNode, List.mem_append,
+    List.mem_singleton] at member
+  rcases member with old | rfl
+  · exact invariant candidate old
+  · exact childInvariant
 
 theorem every_stored_node_q16_ledger_invariant_of_nodes_eq
     {Statement Proof Payload : Type u}
@@ -3054,6 +3092,51 @@ theorem projected_restoration_child_q16_ledger_invariant
   obtain ⟨pairs, _path, _historyExact, operational, _tableAnswers⟩ :=
     projected_restoration_node_verifier_has_operational_trace base
   exact future_free_operational_trace_preserves_q16_ledger_invariant
+    environment child.adversaryValue.rawMessages child.verifierEntryState
+      child.verifierFinalState pairs operational entryInvariant
+
+/-- Gamma and alpha-zero records follow the same literal restore and
+future-free verifier path.  They are verifier-owned sampler outputs, not
+fields supplied by the restored adversary. -/
+theorem projected_restoration_child_k13_challenge_invariant
+    {Statement Proof Payload Final : Type u}
+    {startProgram : OracleMachine
+      (CheckedRawTag73AdversaryReturnedValue Statement Proof Payload)}
+    {environment : FutureFreeEnvironment}
+    {configuration : ConcreteRestorationConfiguration}
+    {fullTrace : List UnifiedExposureRecord}
+    {accumulator : ConcreteRestorationAccumulator Statement Proof Payload}
+    {child : ConcreteRestorationNode Statement Proof Payload}
+    (base : ProjectedRestorationNodeExecution
+      (Final := Final) startProgram environment configuration fullTrace
+        accumulator child)
+    (parentInvariant : FutureFreeK13ChallengeInvariant
+      base.prepared.parentNode.verifierFinalState)
+    (beforeSeen : base.prepared.transition.before ∈
+      base.prepared.parentNode.verifierFinalState.seen) :
+    FutureFreeK13ChallengeInvariant child.verifierFinalState := by
+  have selection := prepare_concrete_restoration_ready_selection_exact
+    startProgram configuration accumulator base.prepared.request base.prepared
+      base.preparationExact
+  have beforeInvariant : SnapshotK13ChallengeInvariant
+      base.prepared.transition.before :=
+    parentInvariant.2 base.prepared.transition.before beforeSeen
+  have restoredInvariant : FutureFreeK13ChallengeInvariant
+      base.prepared.restoredState := by
+    rw [selection.2.2.2]
+    constructor
+    · exact beforeInvariant
+    · intro snapshot member
+      simp only [restoreIndexedTransition, List.mem_singleton] at member
+      subst snapshot
+      exact beforeInvariant
+  have entryInvariant : FutureFreeK13ChallengeInvariant
+      child.verifierEntryState := by
+    rw [base.restoredEntryExact]
+    exact restoredInvariant
+  obtain ⟨pairs, _path, _historyExact, operational, _tableAnswers⟩ :=
+    projected_restoration_node_verifier_has_operational_trace base
+  exact future_free_operational_trace_preserves_k13_challenge_invariant
     environment child.adversaryValue.rawMessages child.verifierEntryState
       child.verifierFinalState pairs operational entryInvariant
 
@@ -5312,6 +5395,8 @@ structure ActualRestorationStateMapInvariant
   everyNodeQ16SlotInvariant : EveryStoredNodeQ16SlotInvariant accumulator
   everyNodeQ16LedgerInvariant :
     EveryStoredNodeQ16LedgerInvariant environment accumulator
+  everyNodeK13ChallengeInvariant :
+    EveryStoredNodeK13ChallengeInvariant accumulator
   everyEmittedPairRestored : EveryEmittedPairHasConcreteRestoration
     startProgram configuration trace
 
@@ -5362,6 +5447,9 @@ theorem restoration_state_map_of_nodes_eq
       every_stored_node_q16_ledger_invariant_of_nodes_eq environment
         oldAccumulator newAccumulator nodesExact
           invariant.everyNodeQ16LedgerInvariant
+    everyNodeK13ChallengeInvariant :=
+      every_stored_node_k13_challenge_invariant_of_nodes_eq oldAccumulator
+        newAccumulator nodesExact invariant.everyNodeK13ChallengeInvariant
     everyEmittedPairRestored := pairsCovered }
 
 /-- Appending one actually returned child preserves closed histories and the
@@ -5379,6 +5467,8 @@ theorem restoration_state_map_add_child
     (childQ16 : FutureFreeQ16SlotInvariant child.verifierFinalState)
     (childQ16Ledger : FutureFreeQ16LedgerInvariant environment
       child.verifierFinalState)
+    (childK13Challenges : FutureFreeK13ChallengeInvariant
+      child.verifierFinalState)
     (pairsCovered : EveryEmittedPairHasConcreteRestoration startProgram
       configuration (trace ++ suffix))
     (invariant : ActualRestorationStateMapInvariant startProgram environment
@@ -5394,6 +5484,9 @@ theorem restoration_state_map_add_child
     everyNodeQ16LedgerInvariant :=
       every_stored_node_q16_ledger_invariant_add_child environment accumulator
         child invariant.everyNodeQ16LedgerInvariant childQ16Ledger
+    everyNodeK13ChallengeInvariant :=
+      every_stored_node_k13_challenge_invariant_add_child accumulator child
+        invariant.everyNodeK13ChallengeInvariant childK13Challenges
     everyEmittedPairRestored := pairsCovered }
 
 /-- The singleton root initializes the map on any fork-free root prefix. -/
@@ -5408,6 +5501,8 @@ theorem initial_restoration_state_map
     (rootClosed : FutureFreeHistoryClosed root.verifierFinalState)
     (rootQ16 : FutureFreeQ16SlotInvariant root.verifierFinalState)
     (rootQ16Ledger : FutureFreeQ16LedgerInvariant environment
+      root.verifierFinalState)
+    (rootK13Challenges : FutureFreeK13ChallengeInvariant
       root.verifierFinalState)
     (noAdvance : ∀ scheduled,
       (.forkAdvance scheduled : UnifiedExposureRecord) ∉ trace) :
@@ -5431,6 +5526,12 @@ theorem initial_restoration_state_map
         simpa [initialRestorationAccumulatorFromRoot] using member
       subst node
       exact rootQ16Ledger
+    everyNodeK13ChallengeInvariant := by
+      intro node member
+      have nodeExact : node = root := by
+        simpa [initialRestorationAccumulatorFromRoot] using member
+      subst node
+      exact rootK13Challenges
     everyEmittedPairRestored :=
       every_emitted_pair_of_no_fork_advance startProgram configuration trace
         noAdvance }

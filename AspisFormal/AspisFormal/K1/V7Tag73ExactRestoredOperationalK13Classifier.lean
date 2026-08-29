@@ -12,10 +12,9 @@ execution, and a future q16 coordinate may first have been queried by the
 adversary.
 
 This leaf makes the corrected endpoint proof relevant.  A source provider
-supplies only the canonically decoded fixed fields and verifier-recorded
-challenge data for every stored accepting node.  Its q16 schedule is already
-part of `RestoredOperationalK13Data`, hence is the selected record of the
-retained verifier ledger rather than the opaque parsed query vector.
+supplies only the canonically decoded fixed fields for every stored accepting
+node.  Gamma, alpha zero, and q16 are derived from the retained executable
+verifier state rather than opaque parsed fields.
 
 The total classifier returns either one actual stored-node K1.3 certificate or
 an exact typed K1.3 error for every stored accepting node.  It contains no
@@ -43,6 +42,7 @@ open AspisK1.V7Tag73FutureFreeFullControl
 open AspisK1.V7Tag73FixedFieldMessageBridge
 open AspisK1.V7Tag73Q16LedgerCertificate
 open AspisK1.V7Tag73Q16LedgerControlInvariant
+open AspisK1.V7Tag73ChallengeRecordControlInvariant
 open AspisK1.V7Tag73SecureCircleMap
 open AspisPool.AlgorithmicCircleDecoderV7
 open AspisV5ComponentCQM31TowerExact
@@ -126,25 +126,13 @@ noncomputable def exact_restored_done_node_selected_q16_ledger
       (input.stateMap.everyNodeQ16LedgerInvariant node member) done)
 
 /-- The only per-node K1.3 data not already forced by the operational state
-map: canonical fixed-field decoding and the two verifier challenge records.
-There is intentionally no q16 schedule field here. -/
+map is canonical fixed-field decoding.  Gamma, alpha zero, and q16 are all
+verifier-owned consequences of the exact restored controller trace. -/
 structure ExactRestoredOperationalK13SourceNodeData
     {Statement Payload : Type*}
     (node : RestoredK13Node Statement Payload) where
   decoded : Fin 641 → QM31Exact
   fixedDecode : FixedFieldDecodeExact node.adversaryValue.rawMessages decoded
-  gamma : QM31Exact
-  gammaBytes : Qm31Bytes
-  gammaRecorded :
-    { id := ChallengeId.gamma, value := gammaBytes } ∈
-      node.verifierFinalState.current.decodedChallenges
-  gammaDecoded : decodeTagQM31ExactLE gammaBytes = some gamma
-  alphaZero : QM31Exact
-  alphaZeroBytes : Qm31Bytes
-  alphaZeroRecorded :
-    { id := ChallengeId.alpha 0, value := alphaZeroBytes } ∈
-      node.verifierFinalState.current.decodedChallenges
-  alphaZeroDecoded : decodeTagQM31ExactLE alphaZeroBytes = some alphaZero
 
 /-- Operational state supplies q16; the source node data supplies only the
 canonical field/challenge bytes.  Their composition is the corrected K1.3
@@ -164,11 +152,23 @@ noncomputable def exact_restored_operational_k13_data_of_source_node
     (member : node ∈ (exactRestorationAccumulator input).nodes)
     (done : node.verifierFinalState.current.control = .done)
     (source : ExactRestoredOperationalK13SourceNodeData node) :
-    RestoredOperationalK13Data configuration.machine.environment node :=
-  restored_operational_k13_data_of_selected_ledger source.decoded
-    source.fixedDecode source.gamma source.gammaBytes source.gammaRecorded
-    source.gammaDecoded source.alphaZero source.alphaZeroBytes
-    source.alphaZeroRecorded source.alphaZeroDecoded
+    RestoredOperationalK13Data configuration.machine.environment node := by
+  have challengeInvariant :=
+    input.stateMap.everyNodeK13ChallengeInvariant node member
+  obtain ⟨gammaExact, alphaZeroExact⟩ :=
+    done_state_has_exact_gamma_alpha_zero node.verifierFinalState
+      challengeInvariant done
+  let gammaBytes := Classical.choose gammaExact
+  have gammaValueExists := Classical.choose_spec gammaExact
+  let gamma := Classical.choose gammaValueExists
+  have gammaFacts := Classical.choose_spec gammaValueExists
+  let alphaZeroBytes := Classical.choose alphaZeroExact
+  have alphaZeroValueExists := Classical.choose_spec alphaZeroExact
+  let alphaZero := Classical.choose alphaZeroValueExists
+  have alphaZeroFacts := Classical.choose_spec alphaZeroValueExists
+  exact restored_operational_k13_data_of_selected_ledger source.decoded
+    source.fixedDecode gamma gammaBytes gammaFacts.1 gammaFacts.2 alphaZero
+    alphaZeroBytes alphaZeroFacts.1 alphaZeroFacts.2
     (exact_restored_done_node_selected_q16_ledger input node member done)
 
 /-- Source-facing material for the corrected restoration-wide classifier.
