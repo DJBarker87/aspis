@@ -6,8 +6,14 @@ bundle_dir=$(CDPATH= cd -- "$script_dir/.." && pwd)
 
 readonly aeneas_commit=d860ac47ed548d3da6d799afc013779ce470516c
 readonly charon_commit=cb50ff16b9f1066b8a97dc06da704de2da2fa41c
-readonly patched_tree=de8340302a8a14448e47e2a878ac726ed29228b2
+readonly patched_tree=${AENEAS_PATCHED_TREE:-de8340302a8a14448e47e2a878ac726ed29228b2}
 readonly image=ocaml/opam@sha256:42f6e13e9aceedc701eefdb89fca9fd1868c8cadd1144b334ca799474eadb702
+readonly version_tag=${AENEAS_VERSION_TAG:-d860ac47-tag73-fixed-field}
+readonly extra_patch=${AENEAS_EXTRA_PATCH:-}
+readonly extra_patch_two=${AENEAS_EXTRA_PATCH_TWO:-}
+readonly extra_patch_three=${AENEAS_EXTRA_PATCH_THREE:-}
+readonly extra_patch_four=${AENEAS_EXTRA_PATCH_FOUR:-}
+readonly extra_patch_five=${AENEAS_EXTRA_PATCH_FIVE:-}
 
 aeneas_source=${AENEAS_SOURCE_ROOT:-/home/dombarker/project-offloads/aeneas-d860-v6-src}
 charon_source=${CHARON_SOURCE_ROOT:-/home/dombarker/project-offloads/ZK-v5-formal/toolchains/charon}
@@ -24,6 +30,41 @@ test "$(tr -d '\n' < "/sys/fs/cgroup$cgroup_path/memory.swap.max")" = 0
 test "$(git -C "$aeneas_source" rev-parse "$aeneas_commit^{commit}")" = "$aeneas_commit"
 test "$(git -C "$charon_source" rev-parse "$charon_commit^{commit}")" = "$charon_commit"
 (cd "$bundle_dir" && sha256sum -c toolchain/PATCHES.sha256)
+if test -n "$extra_patch"; then
+  case "$extra_patch" in
+    "$script_dir"/*.patch) ;;
+    *) echo "refusing extra patch outside the frozen toolchain directory" >&2; exit 2 ;;
+  esac
+  test -f "$extra_patch"
+fi
+if test -n "$extra_patch_two"; then
+  case "$extra_patch_two" in
+    "$script_dir"/*.patch) ;;
+    *) echo "refusing second extra patch outside the frozen toolchain directory" >&2; exit 2 ;;
+  esac
+  test -f "$extra_patch_two"
+fi
+if test -n "$extra_patch_three"; then
+  case "$extra_patch_three" in
+    "$script_dir"/*.patch) ;;
+    *) echo "refusing third extra patch outside the frozen toolchain directory" >&2; exit 2 ;;
+  esac
+  test -f "$extra_patch_three"
+fi
+if test -n "$extra_patch_four"; then
+  case "$extra_patch_four" in
+    "$script_dir"/*.patch) ;;
+    *) echo "refusing fourth extra patch outside the frozen toolchain directory" >&2; exit 2 ;;
+  esac
+  test -f "$extra_patch_four"
+fi
+if test -n "$extra_patch_five"; then
+  case "$extra_patch_five" in
+    "$script_dir"/*.patch) ;;
+    *) echo "refusing fifth extra patch outside the frozen toolchain directory" >&2; exit 2 ;;
+  esac
+  test -f "$extra_patch_five"
+fi
 
 build_root=$(mktemp -d /home/dombarker/project-offloads/v7-tag73-aeneas-build.XXXXXX)
 container_id=
@@ -63,6 +104,26 @@ do
   git -C "$build_root/aeneas" apply --check "$patch_file"
   git -C "$build_root/aeneas" apply "$patch_file"
 done
+if test -n "$extra_patch"; then
+  git -C "$build_root/aeneas" apply --check "$extra_patch"
+  git -C "$build_root/aeneas" apply "$extra_patch"
+fi
+if test -n "$extra_patch_two"; then
+  git -C "$build_root/aeneas" apply --check "$extra_patch_two"
+  git -C "$build_root/aeneas" apply "$extra_patch_two"
+fi
+if test -n "$extra_patch_three"; then
+  git -C "$build_root/aeneas" apply --check "$extra_patch_three"
+  git -C "$build_root/aeneas" apply "$extra_patch_three"
+fi
+if test -n "$extra_patch_four"; then
+  git -C "$build_root/aeneas" apply --check "$extra_patch_four"
+  git -C "$build_root/aeneas" apply "$extra_patch_four"
+fi
+if test -n "$extra_patch_five"; then
+  git -C "$build_root/aeneas" apply --check "$extra_patch_five"
+  git -C "$build_root/aeneas" apply "$extra_patch_five"
+fi
 git -C "$build_root/aeneas" diff --check
 git -C "$build_root/aeneas" add -A
 test "$(git -C "$build_root/aeneas" write-tree)" = "$patched_tree"
@@ -74,6 +135,7 @@ git -C "$charon_source" archive "$charon_commit" | tar -x -C "$build_root/charon
 docker run --platform linux/amd64 \
   --cidfile "$build_root/container.cid" \
   --memory-reservation=18g --memory=20g --memory-swap=20g \
+  -e AENEAS_BUILD_VERSION="$version_tag" \
   -v "$build_root:/work" "$image" bash -lc '
     set -euo pipefail
     export OPAMJOBS=2 DUNEJOBS=2
@@ -89,7 +151,7 @@ docker run --platform linux/amd64 \
       opam exec -- dune build @install --profile release -j 2
       opam exec -- dune install --prefix "$(opam var prefix)"
       cd /work/aeneas/src
-      AENEAS_VERSION=d860ac47-tag73-fixed-field \
+      AENEAS_VERSION="$AENEAS_BUILD_VERSION" \
         OCAMLPARAM=_,ccopt=-static \
         opam exec -- dune build main.exe --profile release -j 2
       cp _build/default/main.exe \
@@ -109,6 +171,6 @@ cp "$build_root/output/docker-build.time" "$output_dir/"
 cp "$build_root/output/docker-cgroup.txt" "$output_dir/"
 chmod 0755 "$output_bin"
 file "$output_bin" | rg 'ELF 64-bit.*x86-64.*statically linked'
-test "$("$output_bin" -version)" = 'aeneas d860ac47-tag73-fixed-field'
+test "$("$output_bin" -version)" = "aeneas $version_tag"
 sha256sum "$output_bin" | tee "$output_dir/binary.sha256"
 printf 'isolated patched Aeneas build: PASS\n'
