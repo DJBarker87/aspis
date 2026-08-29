@@ -1,0 +1,28 @@
+diff --git a/src/interp/InterpMatchCtxs.ml b/src/interp/InterpMatchCtxs.ml
+index ae28b0a..215bb8d 100644
+--- a/src/interp/InterpMatchCtxs.ml
++++ b/src/interp/InterpMatchCtxs.ml
+@@ -1977,8 +1977,23 @@ struct
+   (** *)
+   let match_etys (_ : eval_ctx) (_ : eval_ctx) ty0 ty1 =
+     if phys_neq ty0 ty1 then raise (Distinct "match_etys") else ty0
+ 
+   let match_rtys (ctx0 : eval_ctx) (ctx1 : eval_ctx) ty0 ty1 =
++    (* Fixed-point equivalence is insensitive to the partition of free
++       lifetimes inside types which cannot carry mutable write-back state.
++       Iterator advancement may legitimately refresh those shared-only
++       lifetimes while preserving the same value and loan graph.  Compare
++       such types after erasing only free regions; static and bound regions
++       remain exact.  Non-equivalence matching and every type containing a
++       mutable borrow retain the injective region map below. *)
++    if
++      S.check_equiv
++      && not (ty_has_mut_borrows ctx0.type_ctx.type_infos ty0)
++      && not (ty_has_mut_borrows ctx1.type_ctx.type_infos ty1)
++      && normalize_proj_ty RegionId.Set.empty ty0
++         = normalize_proj_ty RegionId.Set.empty ty1
++    then ty1
++    else
+     let match_distinct_types ty0 ty1 =
+       raise
+         (Distinct

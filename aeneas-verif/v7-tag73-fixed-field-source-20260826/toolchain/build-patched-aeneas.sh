@@ -14,6 +14,9 @@ readonly extra_patch_two=${AENEAS_EXTRA_PATCH_TWO:-}
 readonly extra_patch_three=${AENEAS_EXTRA_PATCH_THREE:-}
 readonly extra_patch_four=${AENEAS_EXTRA_PATCH_FOUR:-}
 readonly extra_patch_five=${AENEAS_EXTRA_PATCH_FIVE:-}
+readonly extra_patch_six=${AENEAS_EXTRA_PATCH_SIX:-}
+readonly extra_patch_seven=${AENEAS_EXTRA_PATCH_SEVEN:-}
+readonly extra_patch_eight=${AENEAS_EXTRA_PATCH_EIGHT:-}
 
 aeneas_source=${AENEAS_SOURCE_ROOT:-/home/dombarker/project-offloads/aeneas-d860-v6-src}
 charon_source=${CHARON_SOURCE_ROOT:-/home/dombarker/project-offloads/ZK-v5-formal/toolchains/charon}
@@ -64,6 +67,27 @@ if test -n "$extra_patch_five"; then
     *) echo "refusing fifth extra patch outside the frozen toolchain directory" >&2; exit 2 ;;
   esac
   test -f "$extra_patch_five"
+fi
+if test -n "$extra_patch_six"; then
+  case "$extra_patch_six" in
+    "$script_dir"/*.patch) ;;
+    *) echo "refusing sixth extra patch outside the frozen toolchain directory" >&2; exit 2 ;;
+  esac
+  test -f "$extra_patch_six"
+fi
+if test -n "$extra_patch_seven"; then
+  case "$extra_patch_seven" in
+    "$script_dir"/*.patch) ;;
+    *) echo "refusing seventh extra patch outside the frozen toolchain directory" >&2; exit 2 ;;
+  esac
+  test -f "$extra_patch_seven"
+fi
+if test -n "$extra_patch_eight"; then
+  case "$extra_patch_eight" in
+    "$script_dir"/*.patch) ;;
+    *) echo "refusing eighth extra patch outside the frozen toolchain directory" >&2; exit 2 ;;
+  esac
+  test -f "$extra_patch_eight"
 fi
 
 build_root=$(mktemp -d /home/dombarker/project-offloads/v7-tag73-aeneas-build.XXXXXX)
@@ -123,6 +147,18 @@ fi
 if test -n "$extra_patch_five"; then
   git -C "$build_root/aeneas" apply --check "$extra_patch_five"
   git -C "$build_root/aeneas" apply "$extra_patch_five"
+fi
+if test -n "$extra_patch_six"; then
+  git -C "$build_root/aeneas" apply --check "$extra_patch_six"
+  git -C "$build_root/aeneas" apply "$extra_patch_six"
+fi
+if test -n "$extra_patch_seven"; then
+  git -C "$build_root/aeneas" apply --check "$extra_patch_seven"
+  git -C "$build_root/aeneas" apply "$extra_patch_seven"
+fi
+if test -n "$extra_patch_eight"; then
+  git -C "$build_root/aeneas" apply --check "$extra_patch_eight"
+  git -C "$build_root/aeneas" apply "$extra_patch_eight"
 fi
 git -C "$build_root/aeneas" diff --check
 git -C "$build_root/aeneas" add -A
