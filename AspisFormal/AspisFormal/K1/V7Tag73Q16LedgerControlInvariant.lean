@@ -24,10 +24,13 @@ set_option maxRecDepth 1000000
 
 namespace AspisK1.V7Tag73Q16LedgerControlInvariant
 
+open AspisK1.V7FsAokExperiment
 open AspisK1.V7Tag73TranscriptSchedule
 open AspisK1.V7Tag73InteractiveAncestor
 open AspisK1.V7Tag73FutureFreeFullControl
 open AspisK1.V7Tag73Q16LedgerCertificate
+open AspisK1.V7Tag73RawProverMessages
+open AspisK1.V7Tag73RawSameTapeSource
 open AspisK1.V7Tag73RawFutureFreeDriver
 open AspisK1.V7Tag73ConcreteRestorationClient
 
@@ -237,6 +240,301 @@ theorem selected_marker_preserves_q16_ledger_invariant
   | nil => exact ⟨transported⟩
   | cons head tail => exact Or.inr ⟨noRemainingMarker, ⟨transported⟩⟩
 
+/-- Returning to the ordinary schedule preserves the exact before/after-q16
+phase.  In the empty-tail case the pre-q16 alternative is impossible, so
+completion necessarily retains a selected certificate. -/
+theorem linear_or_done_preserves_normal_q16_ledger_phase
+    (environment : FutureFreeEnvironment) (snapshot : FutureFreeSnapshot)
+    (remaining : List FutureFreeSlot)
+    (phase : NormalQ16LedgerPhase environment remaining snapshot) :
+    SnapshotQ16LedgerInvariant environment
+      { snapshot with control := linearOrDone remaining } := by
+  cases remaining with
+  | nil =>
+      rcases phase with ⟨markerCount, _empty⟩ |
+        ⟨_markerCount, ⟨certificate⟩⟩
+      · simp [remainingQ16MarkerCount] at markerCount
+      · exact ⟨certificate.transport rfl⟩
+  | cons head tail =>
+      exact normal_q16_ledger_phase_transport
+        (before := snapshot)
+        (after := { snapshot with control := linearOrDone (head :: tail) })
+        rfl phase
+
+theorem complete_challenge_preserves_q16_ledger_invariant
+    (environment : FutureFreeEnvironment) (snapshot : FutureFreeSnapshot)
+    (id : ChallengeId) (value : Qm31Bytes)
+    (remaining : List FutureFreeSlot) (nextCore : RuntimeCore)
+    (phase : NormalQ16LedgerPhase environment remaining snapshot) :
+    SnapshotQ16LedgerInvariant environment
+      (completeFutureFreeChallenge environment snapshot id value remaining
+        nextCore) := by
+  have ordinary :=
+    linear_or_done_preserves_normal_q16_ledger_phase environment snapshot
+      remaining phase
+  cases id <;> simp only [completeFutureFreeChallenge]
+  all_goals try
+    exact snapshot_q16_ledger_invariant_transport
+      (before := { snapshot with control := linearOrDone remaining })
+      rfl rfl ordinary
+  case circlePoint sample =>
+    split
+    · simp [SnapshotQ16LedgerInvariant]
+    · exact snapshot_q16_ledger_invariant_transport
+        (before := { snapshot with control := linearOrDone remaining })
+        rfl rfl ordinary
+
+/-- Challenge rejection sampling never changes the q16 ledger or skips the
+unique q16 marker. -/
+theorem process_challenge_block_preserves_q16_ledger_invariant
+    (environment : FutureFreeEnvironment) (snapshot : FutureFreeSnapshot)
+    (id : ChallengeId) (outputs : List Digest256)
+    (remaining : List FutureFreeSlot) (output : Digest256)
+    (nextCore : RuntimeCore)
+    (phase : NormalQ16LedgerPhase environment remaining snapshot) :
+    SnapshotQ16LedgerInvariant environment
+      (processFutureFreeChallengeBlock environment snapshot id outputs
+        remaining output nextCore) := by
+  simp only [processFutureFreeChallengeBlock]
+  split
+  next value decoded =>
+    exact complete_challenge_preserves_q16_ledger_invariant environment
+      snapshot id value remaining nextCore phase
+  next noValue =>
+    split
+    · exact normal_q16_ledger_phase_transport
+        (before := snapshot) rfl phase
+    · simp [SnapshotQ16LedgerInvariant]
+
+/-- Consuming the unique q16 marker enters counter zero with the literal empty
+candidate history. -/
+theorem begin_q16_starts_empty_ledger_history
+    (environment : FutureFreeEnvironment) (snapshot : FutureFreeSnapshot)
+    (remaining : List FutureFreeSlot) (base : Digest256)
+    (nextCore : RuntimeCore)
+    (phase : NormalQ16LedgerPhase environment
+      (.beginQ16 :: remaining) snapshot) :
+    SnapshotQ16LedgerInvariant environment
+      { snapshot with
+        control := .q16Absorb base 0 remaining
+        core := nextCore } := by
+  rcases phase with ⟨markerCount, empty⟩ |
+    ⟨markerCount, _certificate⟩
+  · have noRemainingMarker : remainingQ16MarkerCount remaining = 0 := by
+      simp [remainingQ16MarkerCount] at markerCount
+      omega
+    rw [SnapshotQ16LedgerInvariant, empty]
+    exact ⟨noRemainingMarker, .start⟩
+  · simp [remainingQ16MarkerCount] at markerCount
+
+/-- A successful raw verifier reply preserves the proof-relevant q16 ledger
+phase for every control constructor. -/
+theorem after_verifier_reply_preserves_snapshot_q16_ledger
+    (environment : FutureFreeEnvironment) (snapshot next : FutureFreeSnapshot)
+    (reply : VerifierReply) (nextCore : RuntimeCore)
+    (invariant : SnapshotQ16LedgerInvariant environment snapshot)
+    (run : afterFutureFreeVerifierReply environment snapshot reply nextCore =
+      some next) :
+    SnapshotQ16LedgerInvariant environment next := by
+  cases controlExact : snapshot.control
+  case adaptive control =>
+    have empty : snapshot.q16Candidates = [] := by
+      simpa [SnapshotQ16LedgerInvariant, controlExact] using invariant
+    cases nextAdaptiveExact :
+        control.afterVerifierReply environment.decoders reply with
+    | none =>
+        simp [afterFutureFreeVerifierReply, rawAfterFutureFreeVerifierReply,
+          controlExact, nextAdaptiveExact] at run
+    | some nextAdaptive =>
+        simp [afterFutureFreeVerifierReply, rawAfterFutureFreeVerifierReply,
+          controlExact, nextAdaptiveExact] at run
+        subst next
+        cases nextAdaptive <;>
+          simp [SnapshotQ16LedgerInvariant, NormalQ16LedgerPhase,
+            remainingQ16MarkerCount, fullFutureFreeSlots, empty]
+        exact Or.inl (by decide)
+  case linear remaining =>
+    have phase : NormalQ16LedgerPhase environment remaining snapshot := by
+      simpa [SnapshotQ16LedgerInvariant, controlExact] using invariant
+    cases remaining with
+    | nil =>
+        cases reply <;>
+          simp [afterFutureFreeVerifierReply, rawAfterFutureFreeVerifierReply,
+            controlExact] at run
+    | cons slot remaining =>
+        cases slot <;> cases reply <;>
+          simp [afterFutureFreeVerifierReply, rawAfterFutureFreeVerifierReply,
+            controlExact] at run
+        case fixed.none site =>
+          subst next
+          have tailPhase : NormalQ16LedgerPhase environment remaining
+              snapshot := by
+            simpa [NormalQ16LedgerPhase, remainingQ16MarkerCount] using phase
+          have ordinary :=
+            linear_or_done_preserves_normal_q16_ledger_phase environment
+              snapshot remaining tailPhase
+          exact snapshot_q16_ledger_invariant_transport
+            (before := { snapshot with control := linearOrDone remaining })
+            rfl rfl ordinary
+        case fixed.single site output =>
+          subst next
+          have tailPhase : NormalQ16LedgerPhase environment remaining
+              snapshot := by
+            simpa [NormalQ16LedgerPhase, remainingQ16MarkerCount] using phase
+          have ordinary :=
+            linear_or_done_preserves_normal_q16_ledger_phase environment
+              snapshot remaining tailPhase
+          exact snapshot_q16_ledger_invariant_transport
+            (before := { snapshot with control := linearOrDone remaining })
+            rfl rfl ordinary
+        case fixed.squeeze site output advance =>
+          subst next
+          have tailPhase : NormalQ16LedgerPhase environment remaining
+              snapshot := by
+            simpa [NormalQ16LedgerPhase, remainingQ16MarkerCount] using phase
+          have ordinary :=
+            linear_or_done_preserves_normal_q16_ledger_phase environment
+              snapshot remaining tailPhase
+          exact snapshot_q16_ledger_invariant_transport
+            (before := { snapshot with control := linearOrDone remaining })
+            rfl rfl ordinary
+        case challenge.squeeze id output advance =>
+          subst next
+          have tailPhase : NormalQ16LedgerPhase environment remaining
+              snapshot := by
+            simpa [NormalQ16LedgerPhase, remainingQ16MarkerCount] using phase
+          have processed :=
+            process_challenge_block_preserves_q16_ledger_invariant
+              environment snapshot id [] remaining output nextCore tailPhase
+          exact snapshot_q16_ledger_invariant_transport
+            (before := processFutureFreeChallengeBlock environment snapshot id
+              [] remaining output nextCore) rfl rfl processed
+        case beginQ16.none =>
+          subst next
+          exact begin_q16_starts_empty_ledger_history environment snapshot
+            remaining nextCore.digest nextCore phase
+  case absorbPayload payload remaining =>
+    have phase : NormalQ16LedgerPhase environment remaining snapshot := by
+      simpa [SnapshotQ16LedgerInvariant, controlExact] using invariant
+    cases reply <;>
+      simp [afterFutureFreeVerifierReply, rawAfterFutureFreeVerifierReply,
+        controlExact] at run
+    case single output =>
+      subst next
+      have ordinary :=
+        linear_or_done_preserves_normal_q16_ledger_phase environment snapshot
+          remaining phase
+      exact snapshot_q16_ledger_invariant_transport
+        (before := { snapshot with control := linearOrDone remaining })
+        rfl rfl ordinary
+  case workCheck stage nonce remaining =>
+    have phase : NormalQ16LedgerPhase environment remaining snapshot := by
+      simpa [SnapshotQ16LedgerInvariant, controlExact] using invariant
+    cases reply <;>
+      simp [afterFutureFreeVerifierReply, rawAfterFutureFreeVerifierReply,
+        controlExact] at run
+    case single output =>
+      subst next
+      exact normal_q16_ledger_phase_transport
+        (before := snapshot) rfl phase
+  case workCheckpoint stage nonce remaining =>
+    have phase : NormalQ16LedgerPhase environment remaining snapshot := by
+      simpa [SnapshotQ16LedgerInvariant, controlExact] using invariant
+    cases reply <;>
+      simp [afterFutureFreeVerifierReply, rawAfterFutureFreeVerifierReply,
+        controlExact] at run
+    case none =>
+      subst next
+      exact normal_q16_ledger_phase_transport
+        (before := snapshot) rfl phase
+  case workAbsorb stage nonce remaining =>
+    have phase : NormalQ16LedgerPhase environment remaining snapshot := by
+      simpa [SnapshotQ16LedgerInvariant, controlExact] using invariant
+    cases reply <;>
+      simp [afterFutureFreeVerifierReply, rawAfterFutureFreeVerifierReply,
+        controlExact] at run
+    case single output =>
+      subst next
+      have ordinary :=
+        linear_or_done_preserves_normal_q16_ledger_phase environment snapshot
+          remaining phase
+      exact snapshot_q16_ledger_invariant_transport
+        (before := { snapshot with control := linearOrDone remaining })
+        rfl rfl ordinary
+  case sampleChallenge id outputs remaining =>
+    have phase : NormalQ16LedgerPhase environment remaining snapshot := by
+      simpa [SnapshotQ16LedgerInvariant, controlExact] using invariant
+    cases reply <;>
+      simp [afterFutureFreeVerifierReply, rawAfterFutureFreeVerifierReply,
+        controlExact] at run
+    case squeeze output advance =>
+      subst next
+      have processed := process_challenge_block_preserves_q16_ledger_invariant
+        environment snapshot id outputs remaining output nextCore phase
+      exact snapshot_q16_ledger_invariant_transport
+        (before := processFutureFreeChallengeBlock environment snapshot id
+          outputs remaining output nextCore) rfl rfl processed
+  case q16Absorb base counter remaining =>
+    have phase : remainingQ16MarkerCount remaining = 0 ∧
+        Q16PriorNoncompactHistory environment counter
+          snapshot.q16Candidates := by
+      simpa [SnapshotQ16LedgerInvariant, controlExact] using invariant
+    cases reply <;>
+      simp [afterFutureFreeVerifierReply, rawAfterFutureFreeVerifierReply,
+        controlExact] at run
+    case single output => subst next; exact phase
+  case q16Sample base counter outputs remaining =>
+    have phase : remainingQ16MarkerCount remaining = 0 ∧
+        Q16PriorNoncompactHistory environment counter
+          snapshot.q16Candidates := by
+      simpa [SnapshotQ16LedgerInvariant, controlExact] using invariant
+    cases reply <;>
+      simp [afterFutureFreeVerifierReply, rawAfterFutureFreeVerifierReply,
+        controlExact] at run
+    case squeeze output advance =>
+      let processed := processFutureFreeCandidateBlock environment snapshot
+        base counter outputs remaining output nextCore
+      have processedInvariant :
+          SnapshotQ16LedgerInvariant environment processed :=
+        process_candidate_block_preserves_q16_ledger_invariant environment
+          snapshot base counter outputs remaining output nextCore phase.1 phase.2
+      subst next
+      exact snapshot_q16_ledger_invariant_transport
+        (before := processed) rfl rfl processedInvariant
+  case q16Restore base counter nextCounter remaining =>
+    cases reply <;>
+      simp [afterFutureFreeVerifierReply, rawAfterFutureFreeVerifierReply,
+        controlExact] at run
+    case none =>
+      cases nextCounter with
+      | none =>
+          subst next
+          trivial
+      | some nextCounter =>
+          have phase : remainingQ16MarkerCount remaining = 0 ∧
+              Q16PriorNoncompactHistory environment nextCounter
+                snapshot.q16Candidates := by
+            simpa [SnapshotQ16LedgerInvariant, controlExact] using invariant
+          subst next
+          exact phase
+  case q16Selected base counter schedule remaining =>
+    cases reply <;>
+      simp [afterFutureFreeVerifierReply, rawAfterFutureFreeVerifierReply,
+        controlExact] at run
+    case none =>
+      have phaseInvariant :=
+        selected_marker_preserves_q16_ledger_invariant environment snapshot
+          base counter schedule remaining controlExact invariant
+      subst next
+      exact snapshot_q16_ledger_invariant_transport
+        (before := { snapshot with control := linearOrDone remaining })
+        rfl rfl phaseInvariant
+  all_goals
+    cases reply <;>
+      simp [afterFutureFreeVerifierReply, rawAfterFutureFreeVerifierReply,
+        controlExact, SnapshotQ16LedgerInvariant] at run ⊢
+    all_goals subst next <;> trivial
+
 /-! ## Literal q16 verifier replies -/
 
 theorem q16_absorb_reply_preserves_snapshot_q16_ledger
@@ -373,6 +671,149 @@ theorem append_future_free_snapshot_preserves_q16_ledger_invariant
     · exact invariant.2 snapshot old
     · exact nextInvariant
 
+/-- Every literal raw prover submission preserves the ledger phase.  Payload
+and work submissions merely expose the next non-q16 control and cannot alter
+the candidate ledger. -/
+theorem submit_next_raw_message_preserves_q16_ledger_invariant
+    (environment : FutureFreeEnvironment) (raw : RawTag73ProverMessages)
+    (state next : FutureFreeVerifierState)
+    (invariant : FutureFreeQ16LedgerInvariant environment state)
+    (submitted : submitNextRawMessage raw state = some next) :
+    FutureFreeQ16LedgerInvariant environment next := by
+  unfold submitNextRawMessage at submitted
+  split at submitted
+  next controlExact =>
+    unfold submitFutureFreeC1 at submitted
+    split at submitted
+    next =>
+      have nextExact := Option.some.inj submitted
+      rw [← nextExact]
+      apply append_future_free_snapshot_preserves_q16_ledger_invariant
+        environment state _ _ invariant
+      have empty : state.current.q16Candidates = [] := by
+        simpa [SnapshotQ16LedgerInvariant, controlExact] using invariant.1
+      simpa [SnapshotQ16LedgerInvariant, empty]
+    all_goals simp at submitted
+  next lambda chi controlExact =>
+    have nextExact := Option.some.inj submitted
+    rw [← nextExact]
+    apply append_future_free_snapshot_preserves_q16_ledger_invariant
+      environment state _ _ invariant
+    have empty : state.current.q16Candidates = [] := by
+      simpa [SnapshotQ16LedgerInvariant, controlExact] using invariant.1
+    simpa [submitFutureFreeC2, SnapshotQ16LedgerInvariant, empty]
+  next site remaining controlExact =>
+    unfold submitFutureFreePayload at submitted
+    split at submitted
+    next _control site' remaining' controlExact' =>
+      split at submitted
+      next =>
+        have branchExact : site = site' ∧ remaining = remaining' := by
+          have controlsEqual := controlExact.symm.trans controlExact'
+          simpa using controlsEqual
+        rcases branchExact with ⟨rfl, rfl⟩
+        have nextExact := Option.some.inj submitted
+        rw [← nextExact]
+        apply append_future_free_snapshot_preserves_q16_ledger_invariant
+          environment state _ _ invariant
+        have phase : NormalQ16LedgerPhase environment
+            (.payload site :: remaining) state.current := by
+          simpa [SnapshotQ16LedgerInvariant, controlExact] using invariant.1
+        simpa [SnapshotQ16LedgerInvariant] using
+          (normal_q16_ledger_phase_transport
+            (environment := environment)
+            (before := state.current)
+            (after := { state.current with
+              control := .absorbPayload (rawPayloadAt raw site) remaining
+              receivedPayloads := state.current.receivedPayloads ++
+                [rawPayloadAt raw site] })
+            rfl (by
+              simpa [NormalQ16LedgerPhase, remainingQ16MarkerCount] using
+                phase))
+      next => simp at submitted
+    all_goals simp at submitted
+  next stage remaining controlExact =>
+    unfold submitFutureFreeWorkNonce at submitted
+    split at submitted
+    next _control stage' remaining' controlExact' =>
+      have branchExact : stage = stage' ∧ remaining = remaining' := by
+        have controlsEqual := controlExact.symm.trans controlExact'
+        simpa using controlsEqual
+      rcases branchExact with ⟨rfl, rfl⟩
+      have nextExact := Option.some.inj submitted
+      rw [← nextExact]
+      apply append_future_free_snapshot_preserves_q16_ledger_invariant
+        environment state _ _ invariant
+      have phase : NormalQ16LedgerPhase environment
+          (.work stage :: remaining) state.current := by
+        simpa [SnapshotQ16LedgerInvariant, controlExact] using invariant.1
+      simpa [SnapshotQ16LedgerInvariant] using
+        (normal_q16_ledger_phase_transport
+          (environment := environment)
+          (before := state.current)
+          (after := { state.current with
+            control := .workCheck stage (rawWorkNonceAt raw stage) remaining })
+          rfl (by
+            simpa [NormalQ16LedgerPhase, remainingQ16MarkerCount] using phase))
+    all_goals simp at submitted
+  all_goals simp at submitted
+
+/-- A successful complete verifier advance appends a locally valid snapshot,
+so both the live state and retained restoration history remain valid. -/
+theorem advance_future_free_verifier_preserves_q16_ledger_invariant
+    (environment : FutureFreeEnvironment)
+    (state next : FutureFreeVerifierState) (reply : VerifierReply)
+    (invariant : FutureFreeQ16LedgerInvariant environment state)
+    (run : advanceFutureFreeVerifier environment state reply = some next) :
+    FutureFreeQ16LedgerInvariant environment next := by
+  rw [advanceFutureFreeVerifier] at run
+  obtain ⟨action, _actionExact, run⟩ := Option.bind_eq_some_iff.mp run
+  obtain ⟨nextCore, _coreExact, run⟩ := Option.bind_eq_some_iff.mp run
+  obtain ⟨nextSnapshot, snapshotExact, finalExact⟩ :=
+    Option.bind_eq_some_iff.mp run
+  have nextSnapshotInvariant :=
+    after_verifier_reply_preserves_snapshot_q16_ledger environment
+      state.current nextSnapshot reply nextCore invariant.1 snapshotExact
+  have nextExact := Option.some.inj finalExact
+  subst next
+  exact append_future_free_snapshot_preserves_q16_ledger_invariant
+    environment state (.verifier action reply) nextSnapshot invariant
+      nextSnapshotInvariant
+
+/-- One literal driver microstep preserves the complete q16 ledger
+invariant, independently of how many oracle pairs the verifier action uses. -/
+theorem future_free_operational_step_preserves_q16_ledger_invariant
+    (environment : FutureFreeEnvironment) (raw : RawTag73ProverMessages)
+    (state next : FutureFreeVerifierState)
+    (pairs : List (ShaInput × ShaOutput))
+    (step : FutureFreeOperationalStep environment raw state pairs next)
+    (invariant : FutureFreeQ16LedgerInvariant environment state) :
+    FutureFreeQ16LedgerInvariant environment next := by
+  cases step with
+  | prover submitted event snapshot appendExact =>
+      exact submit_next_raw_message_preserves_q16_ledger_invariant
+        environment raw state next invariant submitted
+  | verifier forced replyPath advanced =>
+      exact advance_future_free_verifier_preserves_q16_ledger_invariant
+        environment state next _ invariant advanced
+  | stutter noSubmission noAction => exact invariant
+
+/-- The invariant therefore holds across an arbitrary finite literal
+future-free execution. -/
+theorem future_free_operational_trace_preserves_q16_ledger_invariant
+    (environment : FutureFreeEnvironment) (raw : RawTag73ProverMessages)
+    (state final : FutureFreeVerifierState)
+    (pairs : List (ShaInput × ShaOutput))
+    (trace : FutureFreeOperationalTrace environment raw state pairs final)
+    (invariant : FutureFreeQ16LedgerInvariant environment state) :
+    FutureFreeQ16LedgerInvariant environment final := by
+  induction trace with
+  | stop current => exact invariant
+  | next step rest inductionHypothesis =>
+      exact inductionHypothesis
+        (future_free_operational_step_preserves_q16_ledger_invariant
+          environment raw _ _ _ step invariant)
+
 /-- Restoring a literal transition keeps the exact phase stored on its
 previously-seen `before` snapshot. -/
 theorem restore_indexed_transition_preserves_q16_ledger_invariant
@@ -413,6 +854,10 @@ theorem done_state_has_selected_q16_ledger
 #print axioms q16_selected_reply_preserves_snapshot_q16_ledger
 #print axioms initial_future_free_q16_ledger_invariant
 #print axioms append_future_free_snapshot_preserves_q16_ledger_invariant
+#print axioms submit_next_raw_message_preserves_q16_ledger_invariant
+#print axioms advance_future_free_verifier_preserves_q16_ledger_invariant
+#print axioms future_free_operational_step_preserves_q16_ledger_invariant
+#print axioms future_free_operational_trace_preserves_q16_ledger_invariant
 #print axioms restore_indexed_transition_preserves_q16_ledger_invariant
 #print axioms done_state_has_selected_q16_ledger
 
