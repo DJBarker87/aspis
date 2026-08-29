@@ -1,4 +1,5 @@
 import AspisFormal.K1.V7Tag73CheckedRefinementFutureFreePath
+import AspisFormal.K1.V7Tag73Q16LedgerCertificate
 
 /-!
 # A complete checked-refinement path through the future-free Tag-73 verifier
@@ -23,6 +24,7 @@ namespace AspisK1.V7Tag73CheckedRefinementFullFutureFreePath
 open AspisK1.V7Tag73TranscriptSchedule
 open AspisK1.V7Tag73DeterministicRefinement
 open AspisK1.V7Tag73InteractiveAncestor
+open AspisK1.V7Tag73Q16LedgerCertificate
 open AspisK1.V7Tag73InteractiveExecution
 open AspisK1.V7Tag73RefinementExecutionBridge
 open AspisK1.V7Tag73ResumeDerivedReplayNode
@@ -2413,6 +2415,7 @@ theorem begin_q16_marks_one_live_base
       PathUsesFixedTable table [] ∧
       next.current.control =
         .q16Absorb state.current.core.digest 0 remaining ∧
+      next.current.q16Candidates = state.current.q16Candidates ∧
       next.current.core.digest = state.current.core.digest ∧
       next.current.core.q16Base = some state.current.core.digest := by
   let action := VerifierAction.markQ16Base
@@ -2459,7 +2462,7 @@ theorem begin_q16_marks_one_live_base
   have trace : NonterminalRawDriverTrace environment raw state 1 [] next := by
     simpa using NonterminalRawDriverTrace.next microstep nonterminal
       (NonterminalRawDriverTrace.stop next)
-  exact ⟨next, trace, path_uses_fixed_table_nil table, rfl, rfl, rfl⟩
+  exact ⟨next, trace, path_uses_fixed_table_nil table, rfl, rfl, rfl, rfl⟩
 
 theorem q16_candidate_absorb_run_gives_future_free_step
     (table : FixedOracleTable) (environment : FutureFreeEnvironment)
@@ -2474,6 +2477,7 @@ theorem q16_candidate_absorb_run_gives_future_free_step
       NonterminalRawDriverTrace environment raw state 1 pairs next ∧
       PathUsesFixedTable table pairs ∧
       next.current.control = .q16Sample base counter [] remaining ∧
+      next.current.q16Candidates = state.current.q16Candidates ∧
       next.current.core =
         { state.current.core with digest := after.digest } ∧
       next.current.core.q16Base = some base ∧
@@ -2541,7 +2545,7 @@ theorem q16_candidate_absorb_run_gives_future_free_step
     fixed_table_action_gives_one_nonterminal_trace table environment raw state
       next (.absorb (.queryCandidate counter)) (.single after.digest)
       noSubmission forced derived advanced nonterminal
-  refine ⟨pairs, next, trace, supported, rfl, rfl, ?_, rfl⟩
+  refine ⟨pairs, next, trace, supported, rfl, rfl, rfl, ?_, rfl⟩
   change state.current.core.q16Base = some base
   exact saved
 
@@ -2602,6 +2606,10 @@ theorem q16_candidate_squeeze_run_gives_future_free_step
         (processFutureFreeCandidateBlock environment state.current base counter
           outputs remaining output
           { state.current.core with digest := after.digest }).control ∧
+      next.current.q16Candidates =
+        (processFutureFreeCandidateBlock environment state.current base counter
+          outputs remaining output
+          { state.current.core with digest := after.digest }).q16Candidates ∧
       next.current.core =
         { state.current.core with digest := after.digest } ∧
       next.current.core.q16Base = some base ∧
@@ -2648,7 +2656,7 @@ theorem q16_candidate_squeeze_run_gives_future_free_step
       next (.squeezePair (.queryCandidate counter) block)
       (.squeeze output after.digest) noSubmission forced derived advanced
       nonterminal
-  refine ⟨pairs, next, trace, supported, nextControl, nextCoreEq, ?_, ?_⟩
+  refine ⟨pairs, next, trace, supported, nextControl, rfl, nextCoreEq, ?_, ?_⟩
   · rw [nextCoreEq]
     change state.current.core.q16Base = some base
     exact saved
@@ -2690,6 +2698,8 @@ theorem evaluator_candidate_chain_gives_future_free_trace
       PathUsesFixedTable table pairs ∧
       final.current.control =
         decodedCandidateControl environment base counter outcome remaining ∧
+      final.current.q16Candidates = state.current.q16Candidates ++
+        [{ counter := counter, outcome := outcome }] ∧
       final.current.core.q16Base = some base ∧
       SameDigest final.current.core after := by
   obtain ⟨schedule, outcomeEq⟩ := sampled
@@ -2725,27 +2735,30 @@ theorem evaluator_candidate_chain_gives_future_free_trace
                 output { state.current.core with digest := middle.digest }
                 schedule decodedLast noncompact]
               rfl
-          obtain ⟨pairs, final, trace, supported, finalControl, _finalCore,
-              finalSaved, finalSame⟩ :=
+          obtain ⟨pairs, final, trace, supported, finalControl,
+              finalCandidates, _finalCore, finalSaved, finalSame⟩ :=
             q16_candidate_squeeze_run_gives_future_free_step table environment
               raw state before middle base counter already remaining first
               output atControl firstIndex saved same head processedNonterminal
-          refine ⟨pairs, final, by simpa using trace, supported, ?_,
+          refine ⟨pairs, final, by simpa using trace, supported, ?_, ?_,
             finalSaved, finalSame⟩
-          rw [finalControl]
-          by_cases compact : environment.frontierNodes schedule ≤ 203
-          · rw [compact_candidate_block_forces_selection environment
-              state.current base counter already remaining output
-              { state.current.core with digest := middle.digest } schedule
-              decodedLast compact]
-            simp [decodedCandidateControl, compact]
-          · have noncompact : 203 < environment.frontierNodes schedule := by
-              omega
-            rw [noncompact_candidate_block_forces_protocol_restore environment
-              state.current base counter already remaining output
-              { state.current.core with digest := middle.digest } schedule
-              decodedLast noncompact]
-            simp [decodedCandidateControl, compact]
+          · rw [finalControl]
+            by_cases compact : environment.frontierNodes schedule ≤ 203
+            · rw [compact_candidate_block_forces_selection environment
+                state.current base counter already remaining output
+                { state.current.core with digest := middle.digest } schedule
+                decodedLast compact]
+              simp [decodedCandidateControl, compact]
+            · have noncompact : 203 < environment.frontierNodes schedule := by
+                omega
+              rw [noncompact_candidate_block_forces_protocol_restore
+                environment state.current base counter already remaining output
+                { state.current.core with digest := middle.digest } schedule
+                decodedLast noncompact]
+              simp [decodedCandidateControl, compact]
+          · rw [finalCandidates]
+            simp only [processFutureFreeCandidateBlock, decodedLast]
+            split <;> rfl
       | cons nextOutput restOutputs =>
           let accumulated := already ++ [output]
           have totalEq : already ++ output :: nextOutput :: restOutputs =
@@ -2785,7 +2798,7 @@ theorem evaluator_candidate_chain_gives_future_free_trace
             rw [processContinues]
             rfl
           obtain ⟨headPairs, nextState, headTrace, headSupported,
-              nextControl, _nextCore, nextSaved, nextSame⟩ :=
+              nextControl, nextCandidates, _nextCore, nextSaved, nextSame⟩ :=
             q16_candidate_squeeze_run_gives_future_free_step table environment
               raw state before middle base counter already remaining first
               output atControl firstIndex saved same head processedNonterminal
@@ -2804,11 +2817,11 @@ theorem evaluator_candidate_chain_gives_future_free_trace
             rw [← totalEq]
             exact accepted
           obtain ⟨tailPairs, final, tailTrace, tailSupported, finalControl,
-              finalSaved, finalSame⟩ :=
+              finalCandidates, finalSaved, finalSame⟩ :=
             ih (state := nextState) (already := accumulated) nextAtControl
               nextFirstIndex nextSaved nextSame tailWithinCap
               (by simp) tailAccepted
-          refine ⟨headPairs ++ tailPairs, final, ?_, ?_, ?_, finalSaved,
+          refine ⟨headPairs ++ tailPairs, final, ?_, ?_, ?_, ?_, finalSaved,
             finalSame⟩
           · have combined := nonterminal_raw_driver_trace_append environment raw
               state nextState final 1 (nextOutput :: restOutputs).length
@@ -2818,6 +2831,13 @@ theorem evaluator_candidate_chain_gives_future_free_trace
           · exact path_uses_fixed_table_append table headPairs tailPairs
               headSupported tailSupported
           · exact finalControl
+          · have undecoded' :
+                environment.decoders.candidate counter (already ++ [output]) =
+                  none := by
+              simpa [accumulated] using undecoded
+            rw [finalCandidates, nextCandidates]
+            simp only [processFutureFreeCandidateBlock, undecoded']
+            split <;> rfl
 
 theorem q16_candidate_run_gives_future_free_trace
     (table : FixedOracleTable) (environment : FutureFreeEnvironment)
@@ -2837,6 +2857,8 @@ theorem q16_candidate_run_gives_future_free_trace
       PathUsesFixedTable table pairs ∧
       final.current.control = decodedCandidateControl environment base
         spec.counter spec.outcome remaining ∧
+      final.current.q16Candidates = state.current.q16Candidates ++
+        [{ counter := spec.counter, outcome := spec.outcome }] ∧
       final.current.core.q16Base = some base ∧
       SameDigest final.current.core finalEval ∧
       steps = 1 + spec.outcome.blocksUsed := by
@@ -2871,7 +2893,7 @@ theorem q16_candidate_run_gives_future_free_trace
     rw [blocksLength] at lengthZero
     omega
   obtain ⟨absorbPairs, afterAbsorbState, absorbTrace, absorbTable,
-      absorbControl, _absorbCore, absorbSaved, absorbSame⟩ :=
+      absorbControl, absorbCandidates, _absorbCore, absorbSaved, absorbSame⟩ :=
     q16_candidate_absorb_run_gives_future_free_step table environment raw state
       before afterCounter base spec.counter remaining atControl saved same
       absorbRun
@@ -2881,7 +2903,7 @@ theorem q16_candidate_run_gives_future_free_trace
       spec.outcome.blocksUsed afterCounter afterBlocks blocks
       (by simpa [squeezeMany] using squeezeRun)
   obtain ⟨squeezePairs, final, squeezeTrace, squeezeTable, finalControl,
-      finalSaved, finalSame⟩ :=
+      finalCandidates, finalSaved, finalSame⟩ :=
     evaluator_candidate_chain_gives_future_free_trace table environment raw
       afterAbsorbState afterCounter afterBlocks base spec.counter [] blocks
       remaining 0 spec.outcome chain absorbControl rfl absorbSaved absorbSame
@@ -2892,7 +2914,8 @@ theorem q16_candidate_run_gives_future_free_trace
     squeezeTrace
   refine ⟨1 + blocks.length, absorbPairs ++ squeezePairs, final, combined,
     path_uses_fixed_table_append table absorbPairs squeezePairs absorbTable
-      squeezeTable, finalControl, finalSaved, ?_, ?_⟩
+      squeezeTable, finalControl, ?_, finalSaved, ?_, ?_⟩
+  · rw [finalCandidates, absorbCandidates]
   · have digestEq : afterBlocks.digest = finalEval.digest := by
       rw [finalEvalEq]
     exact finalSame.trans digestEq
@@ -2910,6 +2933,7 @@ theorem q16_restore_to_successor_gives_future_free_step
       NonterminalRawDriverTrace environment raw state 1 [] next ∧
       PathUsesFixedTable table [] ∧
       next.current.control = .q16Absorb base nextCounter remaining ∧
+      next.current.q16Candidates = state.current.q16Candidates ∧
       next.current.core.digest = base ∧
       next.current.core.q16Base = some base := by
   let action := VerifierAction.q16Restore counter
@@ -2956,7 +2980,7 @@ theorem q16_restore_to_successor_gives_future_free_step
   have trace : NonterminalRawDriverTrace environment raw state 1 [] next := by
     simpa using NonterminalRawDriverTrace.next microstep nonterminal
       (NonterminalRawDriverTrace.stop next)
-  refine ⟨next, trace, path_uses_fixed_table_nil table, rfl, rfl, ?_⟩
+  refine ⟨next, trace, path_uses_fixed_table_nil table, rfl, rfl, rfl, ?_⟩
   change state.current.core.q16Base = some base
   exact saved
 
@@ -2972,6 +2996,7 @@ theorem q16_selected_marker_gives_future_free_step
       NonterminalRawDriverTrace environment raw state 1 [] next ∧
       PathUsesFixedTable table [] ∧
       next.current.control = .linear remaining ∧
+      next.current.q16Candidates = state.current.q16Candidates ∧
       next.current.core = state.current.core := by
   let action := VerifierAction.q16Selected counter
   let nextSnapshot : FutureFreeSnapshot :=
@@ -3012,7 +3037,7 @@ theorem q16_selected_marker_gives_future_free_step
   have trace : NonterminalRawDriverTrace environment raw state 1 [] next := by
     simpa using NonterminalRawDriverTrace.next microstep nonterminal
       (NonterminalRawDriverTrace.stop next)
-  exact ⟨next, trace, path_uses_fixed_table_nil table, rfl, rfl⟩
+  exact ⟨next, trace, path_uses_fixed_table_nil table, rfl, rfl, rfl⟩
 
 inductive ExactDiscardedQ16Plan (environment : FutureFreeEnvironment) :
     Fin 64 → List CandidateSpec → Fin 64 → Prop where
@@ -3147,8 +3172,8 @@ theorem discarded_q16_plan_gives_future_free_trace
       let spec : CandidateSpec :=
         { counter := counter, outcome := .schedule schedule }
       obtain ⟨candidateSteps, candidatePairs, afterCandidate,
-          candidateTrace, candidateTable, candidateControl, candidateSaved,
-          candidateSame, candidateFuel⟩ :=
+          candidateTrace, candidateTable, candidateControl, _candidateLedger,
+          candidateSaved, candidateSame, candidateFuel⟩ :=
         q16_candidate_run_gives_future_free_trace table environment raw state
           before branch base spec remaining atControl saved same branchRun
           ⟨schedule, rfl⟩ decoderEq branchDecoded
@@ -3158,7 +3183,7 @@ theorem discarded_q16_plan_gives_future_free_trace
         simp [decodedCandidateControl, spec, noncompact, successor,
           Nat.not_le.mpr noncompact]
       obtain ⟨restored, restoreTrace, restoreTable, restoredControl,
-          restoredDigest, restoredSaved⟩ :=
+          _restoredCandidates, restoredDigest, restoredSaved⟩ :=
         q16_restore_to_successor_gives_future_free_step table environment raw
           afterCandidate base counter next remaining candidateControl'
           candidateSaved
@@ -3211,8 +3236,8 @@ theorem accepting_q16_run_gives_future_free_trace
   rw [runQ16] at q16Run
   obtain ⟨beforeSelected, earlierRun, selectedRun⟩ :=
     Option.bind_eq_some_iff.mp q16Run
-  obtain ⟨marked, markTrace, markTable, markControl, markDigest,
-      markSaved⟩ :=
+  obtain ⟨marked, markTrace, markTable, markControl, markCandidates,
+      markDigest, markSaved⟩ :=
     begin_q16_marks_one_live_base table (fixedTapeFutureFreeEnvironment tape)
       (fixedTapeRawMessages tape) state remaining atControl
   have baseEq : state.current.core.digest = baseState.digest := same
@@ -3239,8 +3264,8 @@ theorem accepting_q16_run_gives_future_free_trace
       (q16TapeOfSearch tape.search).earlier remaining plan markControl'
       markedSaved markedSame rfl earlierRun (by rfl) earlierDecoded
   obtain ⟨selectedSteps, selectedPairs, selectedState, selectedTrace,
-      selectedTable, decodedControl, selectedBaseSaved, selectedFinalSame,
-      selectedFuelEq⟩ :=
+      selectedTable, decodedControl, selectedLedger, selectedBaseSaved,
+      selectedFinalSame, selectedFuelEq⟩ :=
     q16_candidate_run_gives_future_free_trace table
       (fixedTapeFutureFreeEnvironment tape) (fixedTapeRawMessages tape)
       beforeSelectedState beforeSelected afterQ16 baseState.digest
@@ -3254,7 +3279,7 @@ theorem accepting_q16_run_gives_future_free_trace
     simp [decodedCandidateControl, fixedTapeFutureFreeEnvironment,
       q16TapeOfSearch, tape.search.selectedCompact]
   obtain ⟨afterMarker, markerTrace, markerTable, finalControl,
-      markerCore⟩ :=
+      markerCandidates, markerCore⟩ :=
     q16_selected_marker_gives_future_free_step table
       (fixedTapeFutureFreeEnvironment tape) (fixedTapeRawMessages tape)
       selectedState baseState.digest tape.search.selectedCounter
