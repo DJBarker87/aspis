@@ -46,11 +46,12 @@ open AspisV6AcceptedPathObligations
 noncomputable section
 
 /-- Exact verifier-owned K1.3 data for one restored execution.  The first
-three fields are canonical decoding of prover bytes.  Gamma, alpha zero, and
-q16 selection are tied to literal records/transitions retained by the actual
-future-free verifier state. -/
+fields canonically decode prover bytes.  Gamma and alpha zero are tied to
+literal verifier records, while q16 selection is tied to the complete
+first-cap-203 ledger retained by the final snapshot. -/
 structure RestoredOperationalK13Data
     {Statement Payload : Type*}
+    (environment : FutureFreeEnvironment)
     (node : RestoredK13Node Statement Payload) where
   decoded : Fin 641 → QM31Exact
   fixedDecode : FixedFieldDecodeExact node.adversaryValue.rawMessages decoded
@@ -66,23 +67,24 @@ structure RestoredOperationalK13Data
     { id := ChallengeId.alpha 0, value := alphaZeroBytes } ∈
       node.verifierFinalState.current.decodedChallenges
   alphaZeroDecoded : decodeTagQM31ExactLE alphaZeroBytes = some alphaZero
-  selectedBase : Digest256
+  priorCandidates : List DecodedQ16Candidate
   selectedCounter : Fin 64
   selectedSchedule : AspisK1.V7Tag73TranscriptSchedule.QuerySchedule
-  selectedRemaining : List FutureFreeSlot
-  selectedTransition : FutureFreeTransition
-  selectedTransitionMember :
-    selectedTransition ∈ node.verifierFinalState.transitions
-  selectedControlExact : selectedTransition.before.control =
-    .q16Selected selectedBase selectedCounter selectedSchedule
-      selectedRemaining
+  priorHistory : Q16PriorNoncompactHistory environment selectedCounter
+    priorCandidates
+  selectedCompact : environment.frontierNodes selectedSchedule ≤ 203
+  candidateLedgerExact :
+    node.verifierFinalState.current.q16Candidates =
+      priorCandidates ++
+        [decodedScheduleRecord selectedCounter selectedSchedule]
 
 /-- The corrected proof view: parser-owned openings, canonically decoded
 fixed fields, and verifier-owned challenge/query data. -/
 def restoredOperationalK13View
     {Statement Payload : Type*}
     {node : RestoredK13Node Statement Payload}
-    (data : RestoredOperationalK13Data node) : Tag73K12ParsedProof :=
+    {environment : FutureFreeEnvironment}
+    (data : RestoredOperationalK13Data environment node) : Tag73K12ParsedProof :=
   { openings := (restoredNodeK12Proof node).openings
     gamma := data.gamma
     disclosedFinal := decodedFinalMessage data.decoded
@@ -92,7 +94,8 @@ def restoredOperationalK13View
 @[simp] theorem restored_operational_view_openings
     {Statement Payload : Type*}
     {node : RestoredK13Node Statement Payload}
-    (data : RestoredOperationalK13Data node) :
+    {environment : FutureFreeEnvironment}
+    (data : RestoredOperationalK13Data environment node) :
     (restoredOperationalK13View data).openings =
       (restoredNodeK12Proof node).openings := by
   rfl
@@ -100,21 +103,24 @@ def restoredOperationalK13View
 @[simp] theorem restored_operational_view_gamma
     {Statement Payload : Type*}
     {node : RestoredK13Node Statement Payload}
-    (data : RestoredOperationalK13Data node) :
+    {environment : FutureFreeEnvironment}
+    (data : RestoredOperationalK13Data environment node) :
     (restoredOperationalK13View data).gamma = data.gamma := by
   rfl
 
 @[simp] theorem restored_operational_view_alpha_zero
     {Statement Payload : Type*}
     {node : RestoredK13Node Statement Payload}
-    (data : RestoredOperationalK13Data node) :
+    {environment : FutureFreeEnvironment}
+    (data : RestoredOperationalK13Data environment node) :
     (restoredOperationalK13View data).schedule.alpha = data.alphaZero := by
   rfl
 
 @[simp] theorem restored_operational_view_queries
     {Statement Payload : Type*}
     {node : RestoredK13Node Statement Payload}
-    (data : RestoredOperationalK13Data node) :
+    {environment : FutureFreeEnvironment}
+    (data : RestoredOperationalK13Data environment node) :
     (restoredOperationalK13View data).queries =
       data.selectedSchedule.positions := by
   rfl
@@ -122,7 +128,9 @@ def restoredOperationalK13View
 @[simp] theorem restored_operational_view_final_coefficient
     {Statement Payload : Type*}
     {node : RestoredK13Node Statement Payload}
-    (data : RestoredOperationalK13Data node) (coefficient : Fin 256) :
+    {environment : FutureFreeEnvironment}
+    (data : RestoredOperationalK13Data environment node)
+    (coefficient : Fin 256) :
     (restoredOperationalK13View data).disclosedFinal coefficient =
       (decodedFixedFieldView data.decoded).finalCoefficient coefficient := by
   rfl
@@ -131,18 +139,20 @@ def restoredOperationalK13View
 repaired to use verifier-derived data. -/
 structure RestoredOperationalK13Certificate
     {Statement Payload : Type*}
+    {environment : FutureFreeEnvironment}
     (decoder : ExactDecoderInstantiation QM31Exact)
     (node : RestoredK13Node Statement Payload)
-    (data : RestoredOperationalK13Data node) where
+    (data : RestoredOperationalK13Data environment node) where
   k12 : RestoredNodeK12Certificate node
   k13 : ParsedK13Certificate decoder k12.words
     (restoredOperationalK13View data)
 
 inductive RestoredOperationalK13Error
     {Statement Payload : Type*}
+    {environment : FutureFreeEnvironment}
     (decoder : ExactDecoderInstantiation QM31Exact)
     (node : RestoredK13Node Statement Payload)
-    (data : RestoredOperationalK13Data node) : Type
+    (data : RestoredOperationalK13Data environment node) : Type
   | k12 (error : RestoredNodeK12Error node)
   | k13 (words : ExtractedWords)
       (error : ParsedK13Error decoder words
@@ -151,9 +161,10 @@ inductive RestoredOperationalK13Error
 /-- Total restored-node K1.3 classifier over the corrected operational view. -/
 noncomputable def classifyRestoredOperationalK13
     {Statement Payload : Type*}
+    {environment : FutureFreeEnvironment}
     (decoder : ExactDecoderInstantiation QM31Exact)
     (node : RestoredK13Node Statement Payload)
-    (data : RestoredOperationalK13Data node) :
+    (data : RestoredOperationalK13Data environment node) :
     RestoredOperationalK13Certificate decoder node data ⊕
       RestoredOperationalK13Error decoder node data :=
   match classifyRestoredNodeK12 node with
@@ -164,13 +175,15 @@ noncomputable def classifyRestoredOperationalK13
       | .inl k13 => .inl ⟨k12, k13⟩
       | .inr error => .inr (.k13 k12.words error)
 
-/-- A q16 failure for the corrected view is attached to the exact selected
-transition with no parsed-query/source-equality premise. -/
+/-- A q16 failure for the corrected view is attached to the selected record
+of the exact retained first-cap-203 ledger, with no parsed-query equality
+premise. -/
 theorem restored_operational_query_failure_selected_all_in_bad
     {Statement Payload : Type*}
+    {environment : FutureFreeEnvironment}
     {decoder : ExactDecoderInstantiation QM31Exact}
     {node : RestoredK13Node Statement Payload}
-    (data : RestoredOperationalK13Data node)
+    (data : RestoredOperationalK13Data environment node)
     (k12 : RestoredNodeK12Certificate node)
     (failure : QueryPhaseFailure
       (restoredOperationalK13View data).schedule
@@ -179,16 +192,19 @@ theorem restored_operational_query_failure_selected_all_in_bad
       (restoredOperationalK13View data).queries) :
     ∃ bad : Finset (Fin 262144),
       bad.card ≤ 9557 ∧
-      data.selectedTransition ∈ node.verifierFinalState.transitions ∧
-      data.selectedTransition.before.control =
-        .q16Selected data.selectedBase data.selectedCounter
-          data.selectedSchedule data.selectedRemaining ∧
+      node.verifierFinalState.current.q16Candidates =
+        data.priorCandidates ++
+          [decodedScheduleRecord data.selectedCounter
+            data.selectedSchedule] ∧
+      decodedScheduleRecord data.selectedCounter data.selectedSchedule ∈
+        node.verifierFinalState.current.q16Candidates ∧
       AllInBad bad data.selectedSchedule.positions := by
   let bad := consistencySet (restoredOperationalK13View data).schedule
     (decoderCodeEncoders decoder)
     (parsedK13Transcript k12.words (restoredOperationalK13View data))
-  refine ⟨bad, failure.2, data.selectedTransitionMember,
-    data.selectedControlExact, ?_⟩
+  refine ⟨bad, failure.2, data.candidateLedgerExact, ?_, ?_⟩
+  · rw [data.candidateLedgerExact]
+    simp
   intro ordinal
   have member := accepted_queries_mem_consistencySet
     (restoredOperationalK13View data).schedule
@@ -205,12 +221,13 @@ node to be `.done` excludes normally returned verifier rejections. -/
 def RestoredOperationalK13QueryEvent
     {Statement Payload : Type*}
     (decoder : ExactDecoderInstantiation QM31Exact)
+    (environment : FutureFreeEnvironment)
     (accumulator : ConcreteRestorationAccumulator Statement
       Tag73K12ParsedProof Payload) : Prop :=
   ∃ (node : RestoredK13Node Statement Payload),
     node ∈ accumulator.nodes ∧
     node.verifierFinalState.current.control = .done ∧
-    ∃ (data : RestoredOperationalK13Data node)
+    ∃ (data : RestoredOperationalK13Data environment node)
       (k12 : RestoredNodeK12Certificate node),
       QueryPhaseFailure (restoredOperationalK13View data).schedule
         (decoderCodeEncoders decoder)
@@ -218,30 +235,33 @@ def RestoredOperationalK13QueryEvent
         (restoredOperationalK13View data).queries
 
 /-- Membership in the corrected restoration-wide event exposes the exact
-accepted stored node and an actually executed selected q16 transition whose
-sixteen positions all lie in one set of size at most 9557. -/
+accepted stored node and its retained selected q16 record, whose sixteen
+positions all lie in one set of size at most 9557. -/
 theorem restored_operational_query_event_exposes_selected_bad_set
     {Statement Payload : Type*}
+    {environment : FutureFreeEnvironment}
     {decoder : ExactDecoderInstantiation QM31Exact}
     {accumulator : ConcreteRestorationAccumulator Statement
       Tag73K12ParsedProof Payload}
-    (event : RestoredOperationalK13QueryEvent decoder accumulator) :
+    (event : RestoredOperationalK13QueryEvent decoder environment accumulator) :
     ∃ (node : RestoredK13Node Statement Payload)
-        (data : RestoredOperationalK13Data node)
+        (data : RestoredOperationalK13Data environment node)
         (bad : Finset (Fin 262144)),
       node ∈ accumulator.nodes ∧
       node.verifierFinalState.current.control = .done ∧
       bad.card ≤ 9557 ∧
-      data.selectedTransition ∈ node.verifierFinalState.transitions ∧
-      data.selectedTransition.before.control =
-        .q16Selected data.selectedBase data.selectedCounter
-          data.selectedSchedule data.selectedRemaining ∧
+      node.verifierFinalState.current.q16Candidates =
+        data.priorCandidates ++
+          [decodedScheduleRecord data.selectedCounter
+            data.selectedSchedule] ∧
+      decodedScheduleRecord data.selectedCounter data.selectedSchedule ∈
+        node.verifierFinalState.current.q16Candidates ∧
       AllInBad bad data.selectedSchedule.positions := by
   rcases event with ⟨node, member, done, data, k12, failure⟩
-  obtain ⟨bad, badCard, transitionMember, controlExact, allBad⟩ :=
+  obtain ⟨bad, badCard, ledgerExact, selectedMember, allBad⟩ :=
     restored_operational_query_failure_selected_all_in_bad data k12 failure
-  exact ⟨node, data, bad, member, done, badCard, transitionMember,
-    controlExact, allBad⟩
+  exact ⟨node, data, bad, member, done, badCard, ledgerExact,
+    selectedMember, allBad⟩
 
 #print axioms restored_operational_view_queries
 #print axioms classifyRestoredOperationalK13
