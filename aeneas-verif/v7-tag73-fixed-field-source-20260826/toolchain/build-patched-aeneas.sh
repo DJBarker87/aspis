@@ -17,6 +17,8 @@ readonly extra_patch_five=${AENEAS_EXTRA_PATCH_FIVE:-}
 readonly extra_patch_six=${AENEAS_EXTRA_PATCH_SIX:-}
 readonly extra_patch_seven=${AENEAS_EXTRA_PATCH_SEVEN:-}
 readonly extra_patch_eight=${AENEAS_EXTRA_PATCH_EIGHT:-}
+readonly extra_patch_nine=${AENEAS_EXTRA_PATCH_NINE:-}
+readonly extra_patch_ten=${AENEAS_EXTRA_PATCH_TEN:-}
 
 aeneas_source=${AENEAS_SOURCE_ROOT:-/home/dombarker/project-offloads/aeneas-d860-v6-src}
 charon_source=${CHARON_SOURCE_ROOT:-/home/dombarker/project-offloads/ZK-v5-formal/toolchains/charon}
@@ -89,6 +91,20 @@ if test -n "$extra_patch_eight"; then
   esac
   test -f "$extra_patch_eight"
 fi
+if test -n "$extra_patch_nine"; then
+  case "$extra_patch_nine" in
+    "$script_dir"/*.patch) ;;
+    *) echo "refusing ninth extra patch outside the frozen toolchain directory" >&2; exit 2 ;;
+  esac
+  test -f "$extra_patch_nine"
+fi
+if test -n "$extra_patch_ten"; then
+  case "$extra_patch_ten" in
+    "$script_dir"/*.patch) ;;
+    *) echo "refusing tenth extra patch outside the frozen toolchain directory" >&2; exit 2 ;;
+  esac
+  test -f "$extra_patch_ten"
+fi
 
 build_root=$(mktemp -d /home/dombarker/project-offloads/v7-tag73-aeneas-build.XXXXXX)
 container_id=
@@ -159,6 +175,14 @@ fi
 if test -n "$extra_patch_eight"; then
   git -C "$build_root/aeneas" apply --check "$extra_patch_eight"
   git -C "$build_root/aeneas" apply "$extra_patch_eight"
+fi
+if test -n "$extra_patch_nine"; then
+  git -C "$build_root/aeneas" apply --check "$extra_patch_nine"
+  git -C "$build_root/aeneas" apply "$extra_patch_nine"
+fi
+if test -n "$extra_patch_ten"; then
+  git -C "$build_root/aeneas" apply --check "$extra_patch_ten"
+  git -C "$build_root/aeneas" apply "$extra_patch_ten"
 fi
 git -C "$build_root/aeneas" diff --check
 git -C "$build_root/aeneas" add -A

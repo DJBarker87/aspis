@@ -41,6 +41,8 @@ has no mutable write-back path:
 6. immutable parentless abstraction groups are canonicalized before matching;
 7. equivalent groups are ordered by stable borrow/loan ids rather than
    alpha-renamed abstraction ids.
+8. flattening an immutable nested shared loan preserves the symbolic identity
+   of a value once the remaining value contains no borrow.
 
 All changes are comparison/translation changes.  Mutable references, static
 lifetimes, bound lifetimes, normal non-equivalence matching, actual execution
@@ -63,7 +65,7 @@ version before accepting an output.
 
 ## Current checkpoint
 
-The exact patched tree under final focused evaluation is:
+The earlier symbolic-execution checkpoint tree was:
 
 ```text
 4e2776773a3df1163bc7f4bb6d89cf94ec2ffb73
@@ -85,21 +87,33 @@ multilinear iterator, nested `LineM31Batch` bit loop, deferred-bit loop, every
 abstraction groups.  The focused run took 8.59 seconds, peaked at 259,024 KiB,
 and used no swap.
 
-The remaining failure occurs later, in Pure/Lean generation:
+The Pure/Lean failure at that checkpoint was:
 
 ```text
 Could not find var for symbolic value: 4764
 symbolic/SymbolicToPureCore.ml:520
 ```
 
-This is no longer an interpreter or Rust control-flow mismatch.  It is a
-Pure-backend loop-input registration issue: a shared-only input normalized by
-the symbolic fixed point still appears in the translated loop input inventory
-without a registered Pure variable.  The next focused gate is to connect that
-input to its existing Pure value, or prove that it is definitionally
-reconstructed and remove it from the loop input inventory.
+The value was an immutable, borrow-free `Vec<WeightComponent>` freshened while
+flattening a nested shared loan. The final focused patch preserves its existing
+symbolic identity only after loan removal and only when the remaining value has
+no borrow. The frozen caller now completes Pure/Lean generation in 9.48 seconds
+at 295,772 KiB peak RSS with zero swap. Its generated `Types`, `FunsExternal`
+and `Funs` modules compile with Lean 4.31.0 against the pinned Aeneas runtime.
 
-The full generic verifier LLBC has deliberately not been translated with this
-candidate yet.  The tiny source-equivalent gate must first complete Pure/Lean
-generation; otherwise a generic run would only consume memory and reproduce the
-same backend defect.
+No production Rust or cryptographic statement changed.
+
+The complete 34 MiB generic verifier LLBC subsequently completed Aeneas
+translation and Lean source generation in 360.28 seconds at 2,707,180 KiB peak
+RSS with zero swap. The exact patched source tree for that run is:
+
+```text
+958a3350ff74aa0863d07f00a6061d0397bc94f1
+```
+
+The generated `TypesExternal`, `Types` and `FunsExternal` modules compile. The
+complete generated `Funs` module now reaches two separate Aeneas Lean-runtime
+integration issues: the mutable-slice iterator model and a local `transcript`
+value shadowing the generated `transcript` namespace. Those are backend binding
+work; the production Rust graph and the formerly failing fixed-field Pure path
+both generate successfully.
