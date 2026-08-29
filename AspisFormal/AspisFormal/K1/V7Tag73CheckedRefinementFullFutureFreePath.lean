@@ -679,7 +679,8 @@ theorem linear_challenge_squeeze_run_gives_future_free_step
           { state.current.core with digest := after.digest }).control ∧
       next.current.core =
         { state.current.core with digest := after.digest } ∧
-      SameDigest next.current.core after := by
+      SameDigest next.current.core after ∧
+      next.current.q16Candidates = state.current.q16Candidates := by
   have noSubmission : submitNextRawMessage raw state = none := by
     cases outputs with
     | nil => simp [submitNextRawMessage, atControl]
@@ -728,9 +729,16 @@ theorem linear_challenge_squeeze_run_gives_future_free_step
       state next (.squeezePair (.challenge id) block)
       (.squeeze output after.digest) noSubmission forced derived advanced
       nonterminal
-  refine ⟨pairs, next, trace, supported, nextControl, nextCoreEq, ?_⟩
-  rw [nextCoreEq]
-  rfl
+  refine ⟨pairs, next, trace, supported, nextControl, nextCoreEq, ?_, ?_⟩
+  · rw [nextCoreEq]
+    rfl
+  · change processed.q16Candidates = state.current.q16Candidates
+    unfold processed processFutureFreeChallengeBlock
+    dsimp only
+    split
+    · rename_i value decoded
+      cases id <;> simp [completeFutureFreeChallenge] <;> split <;> rfl
+    · split <;> rfl
 
 /-- A complete exact evaluator squeeze chain is replayed incrementally.  Exact
 decoder prefix-minimality forces every proper prefix to continue and the last
@@ -758,7 +766,8 @@ theorem evaluator_challenge_chain_gives_future_free_trace
       NonterminalRawDriverTrace environment raw state fresh.length pairs final ∧
       PathUsesFixedTable table pairs ∧
       final.current.control = .linear remaining ∧
-      SameDigest final.current.core after := by
+      SameDigest final.current.core after ∧
+      final.current.q16Candidates = state.current.q16Candidates := by
   induction chain generalizing state already with
   | done first before =>
       exact False.elim (freshNonempty rfl)
@@ -785,11 +794,11 @@ theorem evaluator_challenge_chain_gives_future_free_trace
           | nil => exact False.elim (remainingNonempty rfl)
           | cons slot rest => rfl
         obtain ⟨pairs, final, trace, supported, finalControl, _finalCore,
-            finalSame⟩ :=
+            finalSame, finalCandidates⟩ :=
           linear_challenge_squeeze_run_gives_future_free_step table environment
             raw state before middle id already remaining first output atControl
             firstIndex same head resultNonterminal
-        refine ⟨pairs, final, ?_, supported, ?_, ?_⟩
+        refine ⟨pairs, final, ?_, supported, ?_, ?_, finalCandidates⟩
         · simpa using trace
         · rw [finalControl, completes]
           cases remaining with
@@ -834,7 +843,7 @@ theorem evaluator_challenge_chain_gives_future_free_trace
           rw [continues]
           rfl
         obtain ⟨headPairs, nextState, headTrace, headSupported, nextControl,
-            _nextCore, nextSame⟩ :=
+            _nextCore, nextSame, nextCandidates⟩ :=
           linear_challenge_squeeze_run_gives_future_free_step table environment
             raw state before middle id already remaining first output atControl
             firstIndex same head resultNonterminal
@@ -854,11 +863,11 @@ theorem evaluator_challenge_chain_gives_future_free_trace
           rw [← totalEq]
           exact withinCap
         obtain ⟨tailPairs, final, tailTrace, tailSupported, finalControl,
-            finalSame⟩ :=
+            finalSame, finalCandidates⟩ :=
           ih (state := nextState) (already := accumulated) nextAtControl
             nextFirstIndex nextSame tailAccepted tailWithinCap (by simp)
         refine ⟨headPairs ++ tailPairs, final, ?_, ?_, finalControl,
-          finalSame⟩
+          finalSame, ?_⟩
         · have combined := nonterminal_raw_driver_trace_append environment raw
             state nextState final 1 (nextOutput :: restOutputs).length
             headPairs tailPairs headTrace tailTrace
@@ -866,6 +875,7 @@ theorem evaluator_challenge_chain_gives_future_free_trace
             Nat.add_left_comm] using combined
         · exact path_uses_fixed_table_append table headPairs tailPairs
             headSupported tailSupported
+        · exact finalCandidates.trans nextCandidates
 
 /-! ## Exact lambda/chi incremental chains -/
 
@@ -985,7 +995,8 @@ theorem evaluator_early_adaptive_chain_gives_future_free_trace
       NonterminalRawDriverTrace environment raw state fresh.length pairs final ∧
       PathUsesFixedTable table pairs ∧
       final.current.control = .adaptive (site.finished value) ∧
-      SameDigest final.current.core after := by
+      SameDigest final.current.core after ∧
+      final.current.q16Candidates = state.current.q16Candidates := by
   induction chain generalizing state already with
   | done first before =>
       exact False.elim (freshNonempty rfl)
@@ -1008,13 +1019,14 @@ theorem evaluator_early_adaptive_chain_gives_future_free_trace
             rw [early_adaptive_finished_remains_adaptive]
             cases site <;> rfl
           obtain ⟨pairs, final, trace, supported, finalControl, _finalCore,
-              finalSame⟩ :=
+              finalSame, finalCandidates⟩ :=
             open_adaptive_squeeze_run_gives_future_free_step table environment
               raw state before middle (site.control already)
               (site.finished value) (.challenge site.challengeId) first output
               atControl (by simpa [firstIndex]) same head noSubmission
               decodedControl nextNonterminal
-          refine ⟨pairs, final, ?_, supported, ?_, finalSame⟩
+          refine ⟨pairs, final, ?_, supported, ?_, finalSame,
+            finalCandidates⟩
           · simpa using trace
           · rw [finalControl, early_adaptive_finished_remains_adaptive]
       | cons nextOutput restOutputs =>
@@ -1052,7 +1064,7 @@ theorem evaluator_early_adaptive_chain_gives_future_free_trace
             rw [early_adaptive_accumulator_remains_adaptive]
             cases site <;> rfl
           obtain ⟨headPairs, nextState, headTrace, headSupported,
-              nextControl, _nextCore, nextSame⟩ :=
+              nextControl, _nextCore, nextSame, nextCandidates⟩ :=
             open_adaptive_squeeze_run_gives_future_free_step table environment
               raw state before middle (site.control already)
               (site.control accumulated) (.challenge site.challengeId) first
@@ -1074,11 +1086,11 @@ theorem evaluator_early_adaptive_chain_gives_future_free_trace
             rw [← totalEq]
             exact withinCap
           obtain ⟨tailPairs, final, tailTrace, tailSupported, finalControl,
-              finalSame⟩ :=
+              finalSame, finalCandidates⟩ :=
             ih (state := nextState) (already := accumulated) nextAtControl
               nextFirstIndex nextSame tailAccepted tailWithinCap (by simp)
           refine ⟨headPairs ++ tailPairs, final, ?_, ?_, finalControl,
-            finalSame⟩
+            finalSame, ?_⟩
           · have combined := nonterminal_raw_driver_trace_append environment raw
               state nextState final 1 (nextOutput :: restOutputs).length
               headPairs tailPairs headTrace tailTrace
@@ -1086,6 +1098,7 @@ theorem evaluator_early_adaptive_chain_gives_future_free_trace
               Nat.add_left_comm] using combined
           · exact path_uses_fixed_table_append table headPairs tailPairs
               headSupported tailSupported
+          · exact finalCandidates.trans nextCandidates
 
 /-- A successful evaluator challenge event contains the exact block list
 recorded by the checked refinement.  When that record is decoder-valid, the
@@ -1109,7 +1122,8 @@ theorem early_challenge_event_run_gives_future_free_trace
       PathUsesFixedTable table pairs ∧
       final.current.control =
         .adaptive (site.finished (messages.challengeValue site.challengeId)) ∧
-      SameDigest final.current.core eventAfter := by
+      SameDigest final.current.core eventAfter ∧
+      final.current.q16Candidates = state.current.q16Candidates := by
   have normalizedRun : runMachineEventWorkErased table before
       (.challenge site.challengeId (messages.challengeUse site.challengeId)) =
         some eventAfter := by
@@ -1140,13 +1154,14 @@ theorem early_challenge_event_run_gives_future_free_trace
     exact evaluator_squeeze_chain_of_run table (.challenge site.challengeId) 0
       (messages.challengeUse site.challengeId).blocksUsed before afterBlocks
       blocks (by simpa [squeezeMany] using squeezeRun)
-  obtain ⟨pairs, final, trace, supported, finalControl, finalSame⟩ :=
+  obtain ⟨pairs, final, trace, supported, finalControl, finalSame,
+      finalCandidates⟩ :=
     evaluator_early_adaptive_chain_gives_future_free_trace table environment
       raw state before afterBlocks site [] blocks 0
       (messages.challengeValue site.challengeId) chain atControl rfl same
       (by simpa using accepted) (by simpa using withinCap) blocksNonempty
   refine ⟨blocks, pairs, final, blocksLength, trace, supported, finalControl,
-    ?_⟩
+    ?_, finalCandidates⟩
   have digestEq : afterBlocks.digest = eventAfter.digest := by
     rw [eventAfterEq]
   exact finalSame.trans digestEq
@@ -1176,7 +1191,8 @@ theorem linear_challenge_event_run_gives_future_free_trace
       NonterminalRawDriverTrace environment raw state blocks.length pairs final ∧
       PathUsesFixedTable table pairs ∧
       final.current.control = .linear remaining ∧
-      SameDigest final.current.core eventAfter := by
+      SameDigest final.current.core eventAfter ∧
+      final.current.q16Candidates = state.current.q16Candidates := by
   have normalizedRun : runMachineEventWorkErased table before
       (.challenge id (messages.challengeUse id)) = some eventAfter := by
     simpa [challengeEvent] using eventRun
@@ -1205,14 +1221,15 @@ theorem linear_challenge_event_run_gives_future_free_trace
     exact evaluator_squeeze_chain_of_run table (.challenge id) 0
       (messages.challengeUse id).blocksUsed before afterBlocks blocks
       (by simpa [squeezeMany] using squeezeRun)
-  obtain ⟨pairs, final, trace, supported, finalControl, finalSame⟩ :=
+  obtain ⟨pairs, final, trace, supported, finalControl, finalSame,
+      finalCandidates⟩ :=
     evaluator_challenge_chain_gives_future_free_trace table environment raw
       state before afterBlocks id [] blocks remaining 0
       (messages.challengeValue id) chain atControl rfl same
       (by simpa using accepted) (by simpa using withinCap) blocksNonempty
       remainingNonempty secure
   refine ⟨blocks, pairs, final, blocksLength, trace, supported, finalControl,
-    ?_⟩
+    ?_, finalCandidates⟩
   have digestEq : afterBlocks.digest = eventAfter.digest := by
     rw [eventAfterEq]
   exact finalSame.trans digestEq
@@ -1234,7 +1251,8 @@ theorem awaiting_c2_submits_live_raw_commitment
         (.requestC2Salt lambda chi (raw.c2Commitment lambda chi)) ∧
       next.current.c2Root = some raw.c2Root ∧
       next.current.core = state.current.core ∧
-      next.current.bindings = state.current.bindings := by
+      next.current.bindings = state.current.bindings ∧
+      next.current.q16Candidates = state.current.q16Candidates := by
   let commitment := raw.c2Commitment lambda chi
   let next := submitFutureFreeC2 state lambda chi commitment atC2
   have submitted : submitNextRawMessage raw state = some next := by
@@ -1250,7 +1268,7 @@ theorem awaiting_c2_submits_live_raw_commitment
   obtain ⟨trace, supported⟩ :=
     raw_submission_gives_one_nonterminal_trace table environment raw state next
       submitted nonterminal
-  exact ⟨next, trace, supported, rfl, rfl, rfl, rfl⟩
+  exact ⟨next, trace, supported, rfl, rfl, rfl, rfl, rfl⟩
 
 /-- The folded-C2 salt is queried from the same fixed context, does not advance
 the duplex digest, and is saved only for the immediately following live C2
@@ -1273,7 +1291,8 @@ theorem c2_root_salt_run_gives_future_free_step
         (.absorbC2 lambda chi (raw.c2Commitment lambda chi)) ∧
       next.current.core =
         { state.current.core with c2Salt := some salt } ∧
-      SameDigest next.current.core withSalt := by
+      SameDigest next.current.core withSalt ∧
+      next.current.q16Candidates = state.current.q16Candidates := by
   obtain ⟨lookup, _calls, digest⟩ := query_step_appends_one table before
     withSalt (.publicRootSalt raw.context c2TreeTag) salt run
   have normalized : tableLookup table
@@ -1319,7 +1338,7 @@ theorem c2_root_salt_run_gives_future_free_step
     fixed_table_action_gives_one_nonterminal_trace table environment raw state
       next (.requestRootSalt .foldedC2) (.single salt) noSubmission forced
       derived advanced nonterminal
-  refine ⟨pairs, next, trace, supported, rfl, rfl, ?_⟩
+  refine ⟨pairs, next, trace, supported, rfl, rfl, ?_, rfl⟩
   change state.current.core.digest = withSalt.digest
   have unchanged : withSalt.digest = before.digest := by
     simpa only [RawQueryRole.nextDigest] using digest
@@ -1344,7 +1363,8 @@ theorem c2_absorb_run_gives_future_free_step
       next.current.control = .linear fullFutureFreeSlots ∧
       next.current.core =
         { state.current.core with digest := after.digest } ∧
-      SameDigest next.current.core after := by
+      SameDigest next.current.core after ∧
+      next.current.q16Candidates = state.current.q16Candidates := by
   rw [absorbStep] at run
   obtain ⟨queryResult, queryRun, result⟩ := Option.bind_eq_some_iff.mp run
   rcases queryResult with ⟨output, stepped⟩
@@ -1403,7 +1423,7 @@ theorem c2_absorb_run_gives_future_free_step
     fixed_table_action_gives_one_nonterminal_trace table environment raw state
       next (.absorbC2 lambda chi (raw.c2Commitment lambda chi))
       (.single after.digest) noSubmission forced derived advanced nonterminal
-  exact ⟨pairs, next, trace, supported, rfl, rfl, rfl⟩
+  exact ⟨pairs, next, trace, supported, rfl, rfl, rfl, rfl⟩
 
 /-- The complete adaptive C2 message/salt/absorb round uses the commitment
 indexed by the just-decoded lambda and chi and ends at the first linear slot. -/
@@ -1423,9 +1443,11 @@ theorem c2_round_run_gives_future_free_trace
       NonterminalRawDriverTrace environment raw state 3 pairs final ∧
       PathUsesFixedTable table pairs ∧
       final.current.control = .linear fullFutureFreeSlots ∧
-      SameDigest final.current.core after := by
+      SameDigest final.current.core after ∧
+      final.current.q16Candidates = state.current.q16Candidates := by
   obtain ⟨submitted, submissionTrace, submissionSupported,
-      submittedControl, _submittedRoot, submittedCore, submittedBindings⟩ :=
+      submittedControl, _submittedRoot, submittedCore, submittedBindings,
+      submittedCandidates⟩ :=
     awaiting_c2_submits_live_raw_commitment table environment raw state lambda
       chi atC2
   have submittedBinding : submitted.current.bindings =
@@ -1434,14 +1456,14 @@ theorem c2_round_run_gives_future_free_trace
     rw [submittedCore]
     exact same
   obtain ⟨saltPairs, salted, saltTrace, saltSupported, saltedControl,
-      saltedCore, saltedSame⟩ :=
+      saltedCore, saltedSame, saltedCandidates⟩ :=
     c2_root_salt_run_gives_future_free_step table environment raw submitted
       before withSalt salt lambda chi submittedControl submittedBinding
       submittedSame saltRun
   have saltedSaved : salted.current.core.c2Salt = some salt := by
     rw [saltedCore]
   obtain ⟨absorbPairs, final, absorbTrace, absorbSupported, finalControl,
-      _finalCore, finalSame⟩ :=
+      _finalCore, finalSame, finalCandidates⟩ :=
     c2_absorb_run_gives_future_free_step table environment raw salted withSalt
       after salt lambda chi saltedControl saltedSaved saltedSame absorbRun
   have firstTwo : NonterminalRawDriverTrace environment raw state 2
@@ -1453,10 +1475,11 @@ theorem c2_round_run_gives_future_free_trace
     simpa using nonterminal_raw_driver_trace_append environment raw state
       salted final 2 1 ([] ++ saltPairs) absorbPairs firstTwo absorbTrace
   refine ⟨([] ++ saltPairs) ++ absorbPairs, final, allThree, ?_,
-    finalControl, finalSame⟩
-  exact path_uses_fixed_table_append table ([] ++ saltPairs) absorbPairs
-    (path_uses_fixed_table_append table [] saltPairs submissionSupported
-      saltSupported) absorbSupported
+    finalControl, finalSame, ?_⟩
+  · exact path_uses_fixed_table_append table ([] ++ saltPairs) absorbPairs
+      (path_uses_fixed_table_append table [] saltPairs submissionSupported
+        saltSupported) absorbSupported
+  · rw [finalCandidates, saltedCandidates, submittedCandidates]
 
 /-- Composition of the complete adaptive segment.  The evaluator may carry a
 completed proof record, but only the exact squeeze blocks and raw C1/C2 bytes
@@ -1491,13 +1514,14 @@ theorem adaptive_c1_through_c2_run_gives_future_free_trace
       PathUsesFixedTable table pairs ∧
       final.current.control = .linear fullFutureFreeSlots ∧
       SameDigest final.current.core afterC2 ∧
+      final.current.q16Candidates = state.current.q16Candidates ∧
       steps = 6 +
         (tape.messages.challengeUse .lambda).blocksUsed +
         (tape.messages.challengeUse .chi).blocksUsed := by
   let environment := fixedTapeFutureFreeEnvironment tape
   let raw := fixedTapeRawMessages tape
   obtain ⟨c1Pairs, afterC1State, c1Trace, c1Supported, c1Control,
-      c1Same⟩ :=
+      c1Same, c1Candidates⟩ :=
     c1_round_run_gives_future_free_trace table environment raw state beforeC1
       withC1Salt afterC1 c1Salt atC1 fixed.1 same
       (by simpa [raw] using c1SaltRun)
@@ -1518,7 +1542,8 @@ theorem adaptive_c1_through_c2_run_gives_future_free_trace
     state_samples_decode_of_included tape.messages afterLambda
       afterPhaseChallenges lambdaSamplesIncluded phaseDecoded
   obtain ⟨lambdaBlocks, lambdaPairs, afterLambdaState, lambdaLength,
-      lambdaTrace, lambdaSupported, lambdaControl, lambdaSame⟩ :=
+      lambdaTrace, lambdaSupported, lambdaControl, lambdaSame,
+      lambdaCandidates⟩ :=
     early_challenge_event_run_gives_future_free_trace table environment
       tape.messages raw afterC1State afterC1 afterLambda
       .lambda c1Control c1Same (by rfl) lambdaRun lambdaDecoded
@@ -1529,7 +1554,7 @@ theorem adaptive_c1_through_c2_run_gives_future_free_trace
         (tape.messages.challengeValue ChallengeId.lambda) []) at lambdaControl
     exact lambdaControl
   obtain ⟨chiBlocks, chiPairs, afterChiState, chiLength, chiTrace,
-      chiSupported, chiControl, chiSame⟩ :=
+      chiSupported, chiControl, chiSame, chiCandidates⟩ :=
     early_challenge_event_run_gives_future_free_trace table environment
       tape.messages raw afterLambdaState afterLambda afterPhaseChallenges
       (.chiAfter (tape.messages.challengeValue .lambda)) lambdaControl'
@@ -1554,7 +1579,7 @@ theorem adaptive_c1_through_c2_run_gives_future_free_trace
       afterLambdaState afterChiState chiBlocks.length chiPairs
       afterLambdaFixed chiTrace
   obtain ⟨c2Pairs, final, c2Trace, c2Supported, finalControl,
-      finalSame⟩ :=
+      finalSame, finalCandidates⟩ :=
     c2_round_run_gives_future_free_trace table environment raw afterChiState
       afterPhaseChallenges withC2Salt afterC2 c2Salt
       (tape.messages.challengeValue .lambda)
@@ -1576,12 +1601,14 @@ theorem adaptive_c1_through_c2_run_gives_future_free_trace
     ((c1Pairs ++ lambdaPairs) ++ chiPairs) c2Pairs throughChi c2Trace
   refine ⟨((3 + lambdaBlocks.length) + chiBlocks.length) + 3,
     ((c1Pairs ++ lambdaPairs) ++ chiPairs) ++ c2Pairs, final, allTrace,
-    ?_, finalControl, finalSame, ?_⟩
+    ?_, finalControl, finalSame, ?_, ?_⟩
   · exact path_uses_fixed_table_append table
       ((c1Pairs ++ lambdaPairs) ++ chiPairs) c2Pairs
       (path_uses_fixed_table_append table (c1Pairs ++ lambdaPairs) chiPairs
         (path_uses_fixed_table_append table c1Pairs lambdaPairs c1Supported
           lambdaSupported) chiSupported) c2Supported
+  · exact finalCandidates.trans
+      (chiCandidates.trans (lambdaCandidates.trans c1Candidates))
   · change lambdaBlocks.length =
         (tape.messages.challengeUse ChallengeId.lambda).blocksUsed at lambdaLength
     change chiBlocks.length =
@@ -1609,7 +1636,8 @@ theorem linear_fixed_action_run_gives_future_free_step
       NonterminalRawDriverTrace environment raw state 1 pairs next ∧
       PathUsesFixedTable table pairs ∧
       next.current.control = .linear remaining ∧
-      next.current.core = nextCore := by
+      next.current.core = nextCore ∧
+      next.current.q16Candidates = state.current.q16Candidates := by
   rw [runActionCore] at run
   obtain ⟨reply, derived, applied⟩ := Option.bind_eq_some_iff.mp run
   have noSubmission : submitNextRawMessage raw state = none := by
@@ -1640,7 +1668,7 @@ theorem linear_fixed_action_run_gives_future_free_step
   obtain ⟨pairs, trace, supported⟩ :=
     fixed_table_action_gives_one_nonterminal_trace table environment raw state
       next action reply noSubmission forced derivedState advanced nonterminal
-  exact ⟨pairs, next, trace, supported, rfl, rfl⟩
+  exact ⟨pairs, next, trace, supported, rfl, rfl, rfl⟩
 
 /-- A raw prover payload is submitted first and then absorbed by exactly one
 fixed-table query.  The site predicate is evaluated by the controller, so a
@@ -1659,7 +1687,8 @@ theorem linear_payload_run_gives_future_free_trace
       NonterminalRawDriverTrace environment raw state 2 pairs final ∧
       PathUsesFixedTable table pairs ∧
       final.current.control = .linear remaining ∧
-      SameDigest final.current.core after := by
+      SameDigest final.current.core after ∧
+      final.current.q16Candidates = state.current.q16Candidates := by
   let payload := rawPayloadAt raw site
   let submittedSnapshot : FutureFreeSnapshot :=
     { state.current with
@@ -1732,7 +1761,7 @@ theorem linear_payload_run_gives_future_free_trace
       forced derived advanced finalNonterminal
   have trace := nonterminal_raw_driver_trace_append environment raw state
     submitted final 1 1 [] absorbPairs submissionTrace absorbTrace
-  refine ⟨[] ++ absorbPairs, final, by simpa using trace, ?_, rfl, ?_⟩
+  refine ⟨[] ++ absorbPairs, final, by simpa using trace, ?_, rfl, ?_, rfl⟩
   · exact path_uses_fixed_table_append table [] absorbPairs
       submissionSupported absorbSupported
   · rfl
@@ -1754,7 +1783,8 @@ theorem selected_work_choice_run_gives_future_free_step
       PathUsesFixedTable table pairs ∧
       next.current.control = .workCheckpoint stage choice.selected remaining ∧
       next.current.core = state.current.core ∧
-      SameDigest next.current.core after := by
+      SameDigest next.current.core after ∧
+      next.current.q16Candidates = state.current.q16Candidates := by
   rw [runGrindingChoiceWorkErased] at run
   obtain ⟨queried, probesRun, run⟩ := Option.bind_eq_some_iff.mp run
   obtain ⟨selectedPair, selectedRun, result⟩ :=
@@ -1821,7 +1851,7 @@ theorem selected_work_choice_run_gives_future_free_step
     fixed_table_action_gives_one_nonterminal_trace table environment raw state
       next (.workProbe stage choice.selected .verifierSelected)
       (.single selectedOutput) noSubmission forced derived advanced nonterminal
-  refine ⟨pairs, next, trace, supported, rfl, rfl, ?_⟩
+  refine ⟨pairs, next, trace, supported, rfl, rfl, ?_, rfl⟩
   change state.current.core.digest = after.digest
   change state.current.core.digest = before.digest at same
   exact same.trans afterDigest.symm
@@ -1839,7 +1869,8 @@ theorem work_checkpoint_gives_future_free_step
       NonterminalRawDriverTrace environment raw state 1 pairs next ∧
       PathUsesFixedTable table pairs ∧
       next.current.control = .workAbsorb stage nonce remaining ∧
-      next.current.core = state.current.core := by
+      next.current.core = state.current.core ∧
+      next.current.q16Candidates = state.current.q16Candidates := by
   let action := VerifierAction.checkpoint (checkpointOfWorkStage stage)
   have noSubmission : submitNextRawMessage raw state = none := by
     simp [submitNextRawMessage, atControl]
@@ -1867,7 +1898,7 @@ theorem work_checkpoint_gives_future_free_step
   obtain ⟨pairs, trace, supported⟩ :=
     fixed_table_action_gives_one_nonterminal_trace table environment raw state
       next action .none noSubmission forced derived advanced nonterminal
-  exact ⟨pairs, next, trace, supported, rfl, rfl⟩
+  exact ⟨pairs, next, trace, supported, rfl, rfl, rfl⟩
 
 /-- Absorbing the selected work nonce is the only duplex update associated
 with that stage after its verifier query and checkpoint. -/
@@ -1884,7 +1915,8 @@ theorem work_nonce_absorb_run_gives_future_free_step
       NonterminalRawDriverTrace environment raw state 1 pairs next ∧
       PathUsesFixedTable table pairs ∧
       next.current.control = .linear remaining ∧
-      SameDigest next.current.core after := by
+      SameDigest next.current.core after ∧
+      next.current.q16Candidates = state.current.q16Candidates := by
   let payload := workNoncePayload stage nonce
   rw [absorbStep] at run
   obtain ⟨queryPair, queryRun, result⟩ := Option.bind_eq_some_iff.mp run
@@ -1936,7 +1968,7 @@ theorem work_nonce_absorb_run_gives_future_free_step
     fixed_table_action_gives_one_nonterminal_trace table environment raw state
       next (.absorb payload) (.single after.digest) noSubmission forced derived
       advanced nonterminal
-  exact ⟨pairs, next, trace, supported, rfl, rfl⟩
+  exact ⟨pairs, next, trace, supported, rfl, rfl, rfl⟩
 
 /-- One work slot consists of exactly four verifier-machine microsteps: raw
 nonce submission, the one verifier-visible selected query, its stage-specific
@@ -1959,7 +1991,8 @@ theorem linear_work_slot_run_gives_future_free_trace
       NonterminalRawDriverTrace environment raw state 4 pairs final ∧
       PathUsesFixedTable table pairs ∧
       final.current.control = .linear remaining ∧
-      SameDigest final.current.core afterAbsorb := by
+      SameDigest final.current.core afterAbsorb ∧
+      final.current.q16Candidates = state.current.q16Candidates := by
   let nonce := rawWorkNonceAt raw stage
   let submittedSnapshot : FutureFreeSnapshot :=
     { state.current with control := .workCheck stage nonce remaining }
@@ -1983,19 +2016,20 @@ theorem linear_work_slot_run_gives_future_free_trace
     change state.current.core.digest = before.digest
     exact same
   obtain ⟨workPairs, checked, workTrace, workSupported, checkedControl,
-      _checkedCore, checkedSame⟩ :=
+      _checkedCore, checkedSame, checkedCandidates⟩ :=
     selected_work_choice_run_gives_future_free_step table environment raw
       submitted before afterGrind stage choice remaining submittedControl
       submittedSame grindRun
   obtain ⟨checkpointPairs, checkpointed, checkpointTrace,
-      checkpointSupported, checkpointControl, checkpointCore⟩ :=
+      checkpointSupported, checkpointControl, checkpointCore,
+      checkpointCandidates⟩ :=
     work_checkpoint_gives_future_free_step table environment raw checked stage
       choice.selected remaining checkedControl
   have checkpointSame : SameDigest checkpointed.current.core afterGrind := by
     rw [checkpointCore]
     exact checkedSame
   obtain ⟨absorbPairs, final, absorbTrace, absorbSupported, finalControl,
-      finalSame⟩ :=
+      finalSame, finalCandidates⟩ :=
     work_nonce_absorb_run_gives_future_free_step table environment raw
       checkpointed afterGrind afterAbsorb stage choice.selected remaining
       checkpointControl checkpointSame absorbRun remainingNonempty
@@ -2008,12 +2042,14 @@ theorem linear_work_slot_run_gives_future_free_trace
     checkpointed final 3 1 (([] ++ workPairs) ++ checkpointPairs) absorbPairs
     firstThree absorbTrace
   refine ⟨(([] ++ workPairs) ++ checkpointPairs) ++ absorbPairs, final,
-    by simpa using allFour, ?_, finalControl, finalSame⟩
-  exact path_uses_fixed_table_append table
-    (([] ++ workPairs) ++ checkpointPairs) absorbPairs
-    (path_uses_fixed_table_append table ([] ++ workPairs) checkpointPairs
-      (path_uses_fixed_table_append table [] workPairs submissionSupported
-        workSupported) checkpointSupported) absorbSupported
+    by simpa using allFour, ?_, finalControl, finalSame, ?_⟩
+  · exact path_uses_fixed_table_append table
+      (([] ++ workPairs) ++ checkpointPairs) absorbPairs
+      (path_uses_fixed_table_append table ([] ++ workPairs) checkpointPairs
+        (path_uses_fixed_table_append table [] workPairs submissionSupported
+          workSupported) checkpointSupported) absorbSupported
+  · exact finalCandidates.trans
+      (checkpointCandidates.trans checkedCandidates)
 
 /-! ## A single induction for every non-q16 linear region -/
 
@@ -2169,6 +2205,7 @@ theorem fixed_tape_linear_region_gives_future_free_trace
       PathUsesFixedTable table pairs ∧
       final.current.control = .linear tail ∧
       SameDigest final.current.core after ∧
+      final.current.q16Candidates = state.current.q16Candidates ∧
       steps = fixedTapeLinearFuels tape slots := by
   induction slots generalizing state before with
   | nil =>
@@ -2177,7 +2214,7 @@ theorem fixed_tape_linear_region_gives_future_free_trace
           Option.some.inj run
       subst after
       refine ⟨0, [], state, .stop state, path_uses_fixed_table_nil table,
-        ?_, same, rfl⟩
+        ?_, same, rfl, rfl⟩
       simpa using atControl
   | cons slot rest ih =>
       rw [fixed_tape_linear_events_cons] at run
@@ -2218,7 +2255,7 @@ theorem fixed_tape_linear_region_gives_future_free_trace
                   state.current.core (.absorb payload) = some nextCore := by
                 simpa [eventActions, runActionCores] using actionsRun
               obtain ⟨headPairs, next, headTrace, headTable, nextControl,
-                  nextCoreEq⟩ :=
+                  nextCoreEq, nextCandidates⟩ :=
                 linear_fixed_action_run_gives_future_free_step table
                   (fixedTapeFutureFreeEnvironment tape)
                   (fixedTapeRawMessages tape) state (.absorb payload)
@@ -2228,7 +2265,7 @@ theorem fixed_tape_linear_region_gives_future_free_trace
                 rw [nextCoreEq]
                 exact nextSame
               obtain ⟨tailSteps, tailPairs, final, tailTrace, tailTable,
-                  finalControl, finalSame, tailFuel⟩ :=
+                  finalControl, finalSame, finalCandidates, tailFuel⟩ :=
                 ih next middle nextControl nextSame' restRun restSupported
               refine ⟨1 + tailSteps, headPairs ++ tailPairs, final,
                 nonterminal_raw_driver_trace_append
@@ -2236,8 +2273,9 @@ theorem fixed_tape_linear_region_gives_future_free_trace
                   (fixedTapeRawMessages tape) state next final 1 tailSteps
                   headPairs tailPairs headTrace tailTrace,
                 path_uses_fixed_table_append table headPairs tailPairs headTable
-                  tailTable, finalControl, finalSame, ?_⟩
-              simp [fixedTapeLinearFuels, fixedTapeLinearFuel, tailFuel]
+                  tailTable, finalControl, finalSame, ?_, ?_⟩
+              · exact finalCandidates.trans nextCandidates
+              · simp [fixedTapeLinearFuels, fixedTapeLinearFuel, tailFuel]
           ·
               have eventRun : runMachineEventWorkErased table before
                   (.check checkpoint) = some middle := by
@@ -2252,7 +2290,7 @@ theorem fixed_tape_linear_region_gives_future_free_trace
                     some nextCore := by
                 simpa [eventActions, runActionCores] using actionsRun
               obtain ⟨headPairs, next, headTrace, headTable, nextControl,
-                  nextCoreEq⟩ :=
+                  nextCoreEq, nextCandidates⟩ :=
                 linear_fixed_action_run_gives_future_free_step table
                   (fixedTapeFutureFreeEnvironment tape)
                   (fixedTapeRawMessages tape) state (.checkpoint checkpoint)
@@ -2262,7 +2300,7 @@ theorem fixed_tape_linear_region_gives_future_free_trace
                 rw [nextCoreEq]
                 exact nextSame
               obtain ⟨tailSteps, tailPairs, final, tailTrace, tailTable,
-                  finalControl, finalSame, tailFuel⟩ :=
+                  finalControl, finalSame, finalCandidates, tailFuel⟩ :=
                 ih next middle nextControl nextSame' restRun restSupported
               refine ⟨1 + tailSteps, headPairs ++ tailPairs, final,
                 nonterminal_raw_driver_trace_append
@@ -2270,22 +2308,23 @@ theorem fixed_tape_linear_region_gives_future_free_trace
                   (fixedTapeRawMessages tape) state next final 1 tailSteps
                   headPairs tailPairs headTrace tailTrace,
                 path_uses_fixed_table_append table headPairs tailPairs headTable
-                  tailTable, finalControl, finalSame, ?_⟩
-              simp [fixedTapeLinearFuels, fixedTapeLinearFuel, tailFuel]
+                  tailTable, finalControl, finalSame, ?_, ?_⟩
+              · exact finalCandidates.trans nextCandidates
+              · simp [fixedTapeLinearFuels, fixedTapeLinearFuel, tailFuel]
       | challenge id =>
           have eventRun : runMachineEventWorkErased table before
               (challengeEvent tape.messages id) = some middle := by
             simpa [fixedTapeLinearSlotEvents, runMachineEventsWorkErased] using
               headRun
           obtain ⟨blocks, headPairs, next, blocksLength, headTrace,
-              headTable, nextControl, nextSame⟩ :=
+              headTable, nextControl, nextSame, nextCandidates⟩ :=
             linear_challenge_event_run_gives_future_free_trace table
               (fixedTapeFutureFreeEnvironment tape) tape.messages
               (fixedTapeRawMessages tape) state before middle id
               (rest ++ tail) headControl same (by rfl) eventRun middleDecoded
               (secureAll id) remainingNonempty
           obtain ⟨tailSteps, tailPairs, final, tailTrace, tailTable,
-              finalControl, finalSame, tailFuel⟩ :=
+              finalControl, finalSame, finalCandidates, tailFuel⟩ :=
             ih next middle nextControl nextSame restRun restSupported
           refine ⟨blocks.length + tailSteps, headPairs ++ tailPairs, final,
             nonterminal_raw_driver_trace_append
@@ -2293,22 +2332,23 @@ theorem fixed_tape_linear_region_gives_future_free_trace
               (fixedTapeRawMessages tape) state next final blocks.length
               tailSteps headPairs tailPairs headTrace tailTrace,
             path_uses_fixed_table_append table headPairs tailPairs headTable
-              tailTable, finalControl, finalSame, ?_⟩
-          simp [fixedTapeLinearFuels, fixedTapeLinearFuel, blocksLength,
-            tailFuel]
+              tailTable, finalControl, finalSame, ?_, ?_⟩
+          · exact finalCandidates.trans nextCandidates
+          · simp [fixedTapeLinearFuels, fixedTapeLinearFuel, blocksLength,
+              tailFuel]
       | payload site =>
           have eventRun : absorbStep table before
               (rawPayloadAt (fixedTapeRawMessages tape) site) = some middle := by
             simpa [fixedTapeLinearSlotEvents, runMachineEventsWorkErased,
               runMachineEventWorkErased] using headRun
           obtain ⟨headPairs, next, headTrace, headTable, nextControl,
-              nextSame⟩ :=
+              nextSame, nextCandidates⟩ :=
             linear_payload_run_gives_future_free_trace table
               (fixedTapeFutureFreeEnvironment tape)
               (fixedTapeRawMessages tape) state before middle site
               (rest ++ tail) headControl same eventRun remainingNonempty
           obtain ⟨tailSteps, tailPairs, final, tailTrace, tailTable,
-              finalControl, finalSame, tailFuel⟩ :=
+              finalControl, finalSame, finalCandidates, tailFuel⟩ :=
             ih next middle nextControl nextSame restRun restSupported
           refine ⟨2 + tailSteps, headPairs ++ tailPairs, final,
             nonterminal_raw_driver_trace_append
@@ -2316,8 +2356,9 @@ theorem fixed_tape_linear_region_gives_future_free_trace
               (fixedTapeRawMessages tape) state next final 2 tailSteps
               headPairs tailPairs headTrace tailTrace,
             path_uses_fixed_table_append table headPairs tailPairs headTable
-              tailTable, finalControl, finalSame, ?_⟩
-          simp [fixedTapeLinearFuels, fixedTapeLinearFuel, tailFuel]
+              tailTable, finalControl, finalSame, ?_, ?_⟩
+          · exact finalCandidates.trans nextCandidates
+          · simp [fixedTapeLinearFuels, fixedTapeLinearFuel, tailFuel]
       | work stage =>
           obtain ⟨afterGrind, grindRun, absorbRun⟩ :=
             work_slot_event_run_exposes table tape stage before middle headRun
@@ -2326,14 +2367,14 @@ theorem fixed_tape_linear_region_gives_future_free_trace
               rawWorkNonceAt (fixedTapeRawMessages tape) stage := by
             cases stage <;> rfl
           obtain ⟨headPairs, next, headTrace, headTable, nextControl,
-              nextSame⟩ :=
+              nextSame, nextCandidates⟩ :=
             linear_work_slot_run_gives_future_free_trace table
               (fixedTapeFutureFreeEnvironment tape)
               (fixedTapeRawMessages tape) state before afterGrind middle stage
               choice (rest ++ tail) headControl same selectedIsRaw grindRun
               absorbRun remainingNonempty
           obtain ⟨tailSteps, tailPairs, final, tailTrace, tailTable,
-              finalControl, finalSame, tailFuel⟩ :=
+              finalControl, finalSame, finalCandidates, tailFuel⟩ :=
             ih next middle nextControl nextSame restRun restSupported
           refine ⟨4 + tailSteps, headPairs ++ tailPairs, final,
             nonterminal_raw_driver_trace_append
@@ -2341,8 +2382,9 @@ theorem fixed_tape_linear_region_gives_future_free_trace
               (fixedTapeRawMessages tape) state next final 4 tailSteps
               headPairs tailPairs headTrace tailTrace,
             path_uses_fixed_table_append table headPairs tailPairs headTable
-              tailTable, finalControl, finalSame, ?_⟩
-          simp [fixedTapeLinearFuels, fixedTapeLinearFuel, tailFuel]
+              tailTable, finalControl, finalSame, ?_, ?_⟩
+          · exact finalCandidates.trans nextCandidates
+          · simp [fixedTapeLinearFuels, fixedTapeLinearFuel, tailFuel]
       | beginQ16 =>
           simp [linearSlotSupported] at headSupported
 
@@ -3663,11 +3705,12 @@ theorem fixed_prefix_table_trace_gives_exact_step_count
       PathUsesFixedTable table pairs ∧
       final.current.control = .adaptive .awaitingC1 ∧
       final.current.bindings = bindings ∧
-      final.current.core = tableExecutionLastCore trace := by
+      final.current.core = tableExecutionLastCore trace ∧
+      final.current.q16Candidates = state.current.q16Candidates := by
   induction trace generalizing state with
   | done core =>
       refine ⟨[], state, .stop state, path_uses_fixed_table_nil table,
-        ?_, stateBindings, ?_⟩
+        ?_, stateBindings, ?_, rfl⟩
       · simpa using control
       · simpa [tableExecutionLastCore] using stateCore
   | @step core next action rest reply derived applied tail ih =>
@@ -3715,7 +3758,7 @@ theorem fixed_prefix_table_trace_gives_exact_step_count
           stateBindings]
       have nextCore : nextState.current.core = next := by rfl
       obtain ⟨tailPairs, final, tailTrace, tailSupported, finalControl,
-          finalBindings, finalCore⟩ :=
+          finalBindings, finalCore, finalCandidates⟩ :=
         ih nextState nextControl nextBindings nextCore
       have nextNonterminal : isDriverHalt nextState.current.control = false := by
         rw [nextControl]
@@ -3723,10 +3766,12 @@ theorem fixed_prefix_table_trace_gives_exact_step_count
       refine ⟨headPairs ++ tailPairs, final, ?_,
         path_uses_fixed_table_append table headPairs tailPairs headSupported
           tailSupported,
-        finalControl, finalBindings, ?_⟩
+        finalControl, finalBindings, ?_, ?_⟩
       · simpa using
           (NonterminalRawDriverTrace.next headPath nextNonterminal tailTrace)
       · simpa [tableExecutionLastCore] using finalCore
+      · rw [finalCandidates]
+        rfl
 
 /-- The literal deployed pre-C1 schedule contains exactly six actions. -/
 theorem prefix_before_c1_run_gives_exact_six_step_trace
@@ -3745,7 +3790,8 @@ theorem prefix_before_c1_run_gives_exact_six_step_trace
       SameDigest final.current.core beforeC1 ∧
       final.current.core.c1Salt = none ∧
       final.current.core.c2Salt = none ∧
-      final.current.core.q16Base = none := by
+      final.current.core.q16Base = none ∧
+      final.current.q16Candidates = [] := by
   let bindings := FixedBindings.ofContext tape.messages.context
   obtain ⟨beforeCore, actionRun, same, c1Salt, c2Salt, q16Base⟩ :=
     machine_events_actions_agree table bindings
@@ -3765,7 +3811,7 @@ theorem prefix_before_c1_run_gives_exact_six_step_trace
       fixedPrefixBoundaryControl, openFixedPrefixActions, prefixBeforeC1,
       eventsToActions, eventActions] <;> rfl
   obtain ⟨pairs, final, trace, supported, finalControl, _finalBindings,
-      finalCore⟩ :=
+      finalCore, finalCandidates⟩ :=
     fixed_prefix_table_trace_gives_exact_step_count table
       (fixedTapeFutureFreeEnvironment tape) (fixedTapeRawMessages tape)
       bindings initialCore (eventsToActions (prefixBeforeC1 tape.messages))
@@ -3774,7 +3820,8 @@ theorem prefix_before_c1_run_gives_exact_six_step_trace
       (fixedTapeFutureFreeEnvironment tape) (fixedTapeRawMessages tape)
       initial 6 pairs final := by
     simpa [prefixBeforeC1, eventsToActions, eventActions] using trace
-  refine ⟨pairs, final, exactTrace, supported, finalControl, ?_, ?_, ?_, ?_⟩
+  refine ⟨pairs, final, exactTrace, supported, finalControl, ?_, ?_, ?_,
+    ?_, ?_⟩
   · rw [finalCore, lastCore]
     exact same
   · rw [finalCore, lastCore]
@@ -3783,6 +3830,8 @@ theorem prefix_before_c1_run_gives_exact_six_step_trace
     exact c2Salt.trans rfl
   · rw [finalCore, lastCore]
     exact q16Base.trans rfl
+  · simpa [initial, initialFutureFreeVerifierState,
+      initialFutureFreeSnapshot] using finalCandidates
 
 /-! ## The final result type keeps acceptance outside the compiler bridge -/
 
@@ -3913,7 +3962,8 @@ theorem checked_work_erased_refinement_constructs_canonical_future_free_path
         wellFormed
 
   obtain ⟨prefixPairs, c1State, prefixTrace, prefixTable,
-      c1Control, c1Same, _c1SaltEmpty, _c2SaltEmpty, _q16BaseEmpty⟩ :=
+      c1Control, c1Same, _c1SaltEmpty, _c2SaltEmpty, _q16BaseEmpty,
+      c1CandidatesEmpty⟩ :=
     prefix_before_c1_run_gives_exact_six_step_trace table tape
       evaluator.beforeC1 evaluator.beforeC1Run
   have c1Fixed : FutureFreeBindingsFixed bindings c1State := by
@@ -3923,7 +3973,8 @@ theorem checked_work_erased_refinement_constructs_canonical_future_free_path
     · simpa [environment, raw, bindings] using prefixTrace
 
   obtain ⟨adaptiveSteps, adaptivePairs, afterC2State, adaptiveTrace,
-      adaptiveTable, adaptiveControl, adaptiveSame, adaptiveFuel⟩ :=
+      adaptiveTable, adaptiveControl, adaptiveSame, adaptiveCandidates,
+      adaptiveFuel⟩ :=
     adaptive_c1_through_c2_run_gives_future_free_trace table tape c1State
       evaluator.beforeC1 evaluator.withC1Salt evaluator.afterC1
       evaluator.afterLambda evaluator.afterPhaseChallenges
@@ -3940,19 +3991,23 @@ theorem checked_work_erased_refinement_constructs_canonical_future_free_path
     rw [fixed_tape_before_q16_events_are_exact_prefix_after_c2]
     exact evaluator.beforeQ16Run
   obtain ⟨beforeSteps, beforePairs, q16State, beforeTrace, beforeTable,
-      q16Control, q16Same, beforeFuel⟩ :=
+      q16Control, q16Same, beforeCandidates, beforeFuel⟩ :=
     fixed_tape_linear_region_gives_future_free_trace table tape rawTrace
       wellFormed afterC2State evaluator.afterC2 evaluator.prefixState
       beforeQ16Slots (.beginQ16 :: afterQ16Slots) beforeControl adaptiveSame
       beforeRun prefixDecoded secureAll before_q16_slots_are_supported
       (by simp)
 
+  have q16CandidatesEmpty : q16State.current.q16Candidates = [] :=
+    beforeCandidates.trans (adaptiveCandidates.trans c1CandidatesEmpty)
+
   have q16Plan := exact_discarded_q16_plan_of_first_cap_search tape
-  obtain ⟨q16Steps, q16Pairs, afterQ16State, q16Trace, q16Table,
-      afterQ16Control, _q16Candidates, q16SameFinal, q16Fuel⟩ :=
-    accepting_q16_run_gives_future_free_trace table tape rawTrace q16State
-      evaluator.prefixState evaluator.afterQ16 afterQ16Slots q16Control
-      q16Same evaluator.q16Run q16Plan afterQ16Decoded (by decide)
+  obtain ⟨q16Steps, q16Pairs, afterQ16State, q16Certificate, q16Trace,
+      q16Table, afterQ16Control, q16SameFinal, q16Fuel⟩ :=
+    accepting_q16_run_gives_selected_ledger_certificate table tape rawTrace
+      q16State evaluator.prefixState evaluator.afterQ16 afterQ16Slots
+      q16Control q16CandidatesEmpty q16Same evaluator.q16Run q16Plan
+      afterQ16Decoded (by decide)
   have afterControl : afterQ16State.current.control =
       .linear (afterQ16PreterminalSlots ++ [.fixed .terminal]) := by
     rw [← after_q16_slots_split_terminal]
@@ -3963,7 +4018,7 @@ theorem checked_work_erased_refinement_constructs_canonical_future_free_path
     rw [fixed_tape_after_q16_events_are_exact_accepted_suffix]
     exact evaluator.afterQ16Run
   obtain ⟨afterSteps, afterPairs, beforeTerminal, afterTrace, afterTable,
-      terminalControl, terminalSame, afterFuel⟩ :=
+      terminalControl, terminalSame, _afterCandidates, afterFuel⟩ :=
     fixed_tape_linear_region_gives_future_free_trace table tape rawTrace
       wellFormed afterQ16State evaluator.afterQ16 evaluator.finalState
       afterQ16PreterminalSlots [.fixed .terminal] afterControl q16SameFinal

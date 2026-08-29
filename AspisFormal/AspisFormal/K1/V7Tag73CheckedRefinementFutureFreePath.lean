@@ -871,7 +871,8 @@ theorem awaiting_c1_submits_exact_raw_root
       next.current.control =
         .adaptive (.requestC1Salt (rawC1Root raw)) ∧
       next.current.core = state.current.core ∧
-      next.current.bindings = state.current.bindings := by
+      next.current.bindings = state.current.bindings ∧
+      next.current.q16Candidates = state.current.q16Candidates := by
   let snapshot : FutureFreeSnapshot :=
     { state.current with
       control := .adaptive (.requestC1Salt (rawC1Root raw))
@@ -885,7 +886,7 @@ theorem awaiting_c1_submits_exact_raw_root
   obtain ⟨trace, supported⟩ :=
     raw_submission_gives_one_nonterminal_trace table environment raw state next
       submitted nonterminal
-  exact ⟨next, trace, supported, rfl, rfl, rfl⟩
+  exact ⟨next, trace, supported, rfl, rfl, rfl, rfl⟩
 
 /-- The C1 salt request is the literal public-root-salt table call.  It does
 not advance the duplex digest and moves the controller only to the C1 absorb
@@ -906,7 +907,8 @@ theorem c1_root_salt_run_gives_future_free_step
       next.current.control = .adaptive (.absorbC1 (rawC1Root raw)) ∧
       next.current.core =
         { state.current.core with c1Salt := some salt } ∧
-      SameDigest next.current.core withSalt := by
+      SameDigest next.current.core withSalt ∧
+      next.current.q16Candidates = state.current.q16Candidates := by
   obtain ⟨lookup, _calls, digest⟩ := query_step_appends_one table before
     withSalt (.publicRootSalt raw.context c1TreeTag) salt run
   have normalized : tableLookup table
@@ -951,7 +953,7 @@ theorem c1_root_salt_run_gives_future_free_step
     fixed_table_action_gives_one_nonterminal_trace table environment raw state
       next (.requestRootSalt .initialC1) (.single salt) noSubmission forced
       derived advanced nonterminal
-  refine ⟨pairs, next, trace, supported, rfl, rfl, ?_⟩
+  refine ⟨pairs, next, trace, supported, rfl, rfl, ?_, rfl⟩
   change state.current.core.digest = withSalt.digest
   have unchanged : withSalt.digest = before.digest := by
     simpa only [RawQueryRole.nextDigest] using digest
@@ -975,7 +977,8 @@ theorem c1_absorb_run_gives_future_free_step
       next.current.control = .adaptive (.sampleLambda []) ∧
       next.current.core =
         { state.current.core with digest := after.digest } ∧
-      SameDigest next.current.core after := by
+      SameDigest next.current.core after ∧
+      next.current.q16Candidates = state.current.q16Candidates := by
   rw [absorbStep] at run
   obtain ⟨queryResult, queryRun, result⟩ := Option.bind_eq_some_iff.mp run
   rcases queryResult with ⟨output, stepped⟩
@@ -1031,7 +1034,7 @@ theorem c1_absorb_run_gives_future_free_step
     fixed_table_action_gives_one_nonterminal_trace table environment raw state
       next (.absorbC1 (rawC1Root raw)) (.single after.digest) noSubmission
       forced derived advanced nonterminal
-  exact ⟨pairs, next, trace, supported, rfl, rfl, rfl⟩
+  exact ⟨pairs, next, trace, supported, rfl, rfl, rfl, rfl⟩
 
 /-- An evaluator squeeze supplies exactly the future-free atomic reply: the
 returned block comes from `S || 01`, while the installed digest and second
@@ -1130,7 +1133,8 @@ theorem open_adaptive_squeeze_run_gives_future_free_step
       next.current.control = controlAfterOpenAdaptiveReply nextControl ∧
       next.current.core =
         { state.current.core with digest := after.digest } ∧
-      SameDigest next.current.core after := by
+      SameDigest next.current.core after ∧
+      next.current.q16Candidates = state.current.q16Candidates := by
   obtain ⟨derived, applied, _pairs, _replyPath, _supported⟩ :=
     evaluator_squeeze_derives_exact_future_free_reply table state before after
       owner block output same run
@@ -1169,7 +1173,7 @@ theorem open_adaptive_squeeze_run_gives_future_free_step
       next (.squeezePair owner block) (.squeeze output after.digest)
       noSubmission forced derived advanced
       nextNonterminal
-  exact ⟨pairs, next, trace, supported, rfl, rfl, rfl⟩
+  exact ⟨pairs, next, trace, supported, rfl, rfl, rfl, rfl⟩
 
 /-- The whole adaptive C1 message/salt/absorb round is three raw-driver
 microsteps and ends exactly at the empty lambda accumulator. -/
@@ -1188,9 +1192,11 @@ theorem c1_round_run_gives_future_free_trace
       NonterminalRawDriverTrace environment raw state 3 pairs final ∧
       PathUsesFixedTable table pairs ∧
       final.current.control = .adaptive (.sampleLambda []) ∧
-      SameDigest final.current.core after := by
+      SameDigest final.current.core after ∧
+      final.current.q16Candidates = state.current.q16Candidates := by
   obtain ⟨submitted, submissionTrace, submissionSupported,
-      submittedControl, submittedCore, submittedBindings⟩ :=
+      submittedControl, submittedCore, submittedBindings,
+      submittedCandidates⟩ :=
     awaiting_c1_submits_exact_raw_root table environment raw state atC1
   have submittedBinding : submitted.current.bindings =
       FixedBindings.ofContext raw.context := submittedBindings.trans bindings
@@ -1198,14 +1204,14 @@ theorem c1_round_run_gives_future_free_trace
     rw [submittedCore]
     exact same
   obtain ⟨saltPairs, salted, saltTrace, saltSupported, saltedControl,
-      saltedCore, saltedSame⟩ :=
+      saltedCore, saltedSame, saltedCandidates⟩ :=
     c1_root_salt_run_gives_future_free_step table environment raw submitted
       before withSalt salt submittedControl submittedBinding submittedSame
       saltRun
   have saltedSaved : salted.current.core.c1Salt = some salt := by
     rw [saltedCore]
   obtain ⟨absorbPairs, final, absorbTrace, absorbSupported, finalControl,
-      _finalCore, finalSame⟩ :=
+      _finalCore, finalSame, finalCandidates⟩ :=
     c1_absorb_run_gives_future_free_step table environment raw salted withSalt
       after salt saltedControl saltedSaved saltedSame absorbRun
   have firstTwo : NonterminalRawDriverTrace environment raw state 2
@@ -1217,10 +1223,11 @@ theorem c1_round_run_gives_future_free_trace
     simpa using nonterminal_raw_driver_trace_append environment raw state
       salted final 2 1 ([] ++ saltPairs) absorbPairs firstTwo absorbTrace
   refine ⟨([] ++ saltPairs) ++ absorbPairs, final, allThree, ?_,
-    finalControl, finalSame⟩
-  exact path_uses_fixed_table_append table ([] ++ saltPairs) absorbPairs
-    (path_uses_fixed_table_append table [] saltPairs submissionSupported
-      saltSupported) absorbSupported
+    finalControl, finalSame, ?_⟩
+  · exact path_uses_fixed_table_append table ([] ++ saltPairs) absorbPairs
+      (path_uses_fixed_table_append table [] saltPairs submissionSupported
+        saltSupported) absorbSupported
+  · rw [finalCandidates, saltedCandidates, submittedCandidates]
 
 /-! The protocol-specific checked-refinement construction follows below. -/
 
