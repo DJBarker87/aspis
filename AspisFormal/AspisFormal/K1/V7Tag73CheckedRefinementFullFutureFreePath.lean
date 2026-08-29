@@ -3126,6 +3126,11 @@ def discardedQ16Fuel : List CandidateSpec → Nat
   | [] => 0
   | spec :: rest => 2 + spec.outcome.blocksUsed + discardedQ16Fuel rest
 
+def decodedCandidatesOfSpecs (specs : List CandidateSpec) :
+    List DecodedQ16Candidate :=
+  specs.map fun spec =>
+    { counter := spec.counter, outcome := spec.outcome }
+
 theorem discarded_q16_plan_gives_future_free_trace
     (table : FixedOracleTable) (environment : FutureFreeEnvironment)
     (raw : RawTag73ProverMessages) (state : FutureFreeVerifierState)
@@ -3144,6 +3149,8 @@ theorem discarded_q16_plan_gives_future_free_trace
       NonterminalRawDriverTrace environment raw state steps pairs final ∧
       PathUsesFixedTable table pairs ∧
       final.current.control = .q16Absorb base finalCounter remaining ∧
+      final.current.q16Candidates = state.current.q16Candidates ++
+        decodedCandidatesOfSpecs specs ∧
       final.current.core.q16Base = some base ∧
       SameDigest final.current.core finalEval ∧
       steps = discardedQ16Fuel specs := by
@@ -3153,7 +3160,7 @@ theorem discarded_q16_plan_gives_future_free_trace
       have equal : before = finalEval := Option.some.inj run
       subst finalEval
       exact ⟨0, [], state, .stop state, path_uses_fixed_table_nil table,
-        atControl, saved, same, rfl⟩
+        atControl, by simp [decodedCandidatesOfSpecs], saved, same, rfl⟩
   | @step counter next finalCounter schedule rest noncompact successor
       tailPlan ih =>
       rw [runDiscardedCandidates] at run
@@ -3192,7 +3199,7 @@ theorem discarded_q16_plan_gives_future_free_trace
         change restored.current.core.digest = base
         exact restoredDigest
       obtain ⟨tailSteps, tailPairs, final, tailTrace, tailTable,
-          finalControl, finalSaved, finalSame, tailFuel⟩ :=
+          finalControl, finalCandidates, finalSaved, finalSame, tailFuel⟩ :=
         ih restored (restoreDigest base branch) restoredControl restoredSaved
           restoredSame rfl restRun
       have throughRestore := nonterminal_raw_driver_trace_append environment raw
@@ -3206,9 +3213,65 @@ theorem discarded_q16_plan_gives_future_free_trace
         path_uses_fixed_table_append table (candidatePairs ++ []) tailPairs
           (path_uses_fixed_table_append table candidatePairs [] candidateTable
             restoreTable) tailTable,
-        finalControl, finalSaved, finalSame, ?_⟩
-      simp [discardedQ16Fuel, spec, candidateFuel, tailFuel]
-      omega
+        finalControl, ?_, finalSaved, finalSame, ?_⟩
+      · rw [finalCandidates, _restoredCandidates, _candidateLedger]
+        simp [decodedCandidatesOfSpecs, spec, List.append_assoc]
+      · simp [discardedQ16Fuel, spec, candidateFuel, tailFuel]
+        omega
+
+/-- The semantic discarded-candidate run advances the exact first-compact
+history by precisely the records named by the control-flow plan.  This is
+independent of the future-free state ledger; the two equalities are composed
+only at the accepted-run boundary. -/
+theorem discarded_q16_plan_advances_prior_history
+    (table : FixedOracleTable) (environment : FutureFreeEnvironment)
+    (before finalEval : EvalState) (base : Digest256)
+    (counter finalCounter : Fin 64) (specs : List CandidateSpec)
+    (plan : ExactDiscardedQ16Plan environment counter specs finalCounter)
+    (run : runDiscardedCandidates table base specs before = some finalEval)
+    (decoderEq : environment.decoders = exactDeterministicDecoders)
+    (decodedState : StateCandidatesDecodeAs finalEval)
+    (records : List DecodedQ16Candidate)
+    (prior : Q16PriorNoncompactHistory environment counter records) :
+    Q16PriorNoncompactHistory environment finalCounter
+      (records ++ decodedCandidatesOfSpecs specs) := by
+  induction plan generalizing before records with
+  | done counter =>
+      simpa [decodedCandidatesOfSpecs] using prior
+  | @step counter next finalCounter schedule rest noncompact successor
+      tailPlan ih =>
+      rw [runDiscardedCandidates] at run
+      obtain ⟨branch, branchRun, restRun⟩ := Option.bind_eq_some_iff.mp run
+      have restIncluded : CandidatesIncluded (restoreDigest base branch)
+          finalEval :=
+        run_discarded_candidates_preserves_prior_candidates table base rest
+          (restoreDigest base branch) finalEval restRun
+      have branchDecoded : StateCandidatesDecodeAs branch := by
+        apply state_candidates_decode_of_included branch finalEval
+        · intro record member
+          exact restIncluded record (by
+            change record ∈ branch.candidates
+            exact member)
+        · exact decodedState
+      let spec : CandidateSpec :=
+        { counter := counter, outcome := .schedule schedule }
+      obtain ⟨_afterCounter, blocks, _afterBlocks, _absorbRun, _squeezeRun,
+          _branchExact, _blocksLength, recordMember⟩ :=
+        run_candidate_exposes_exact_record table before branch spec branchRun
+      have exactDecode := branchDecoded _ recordMember
+      have environmentDecode :
+          environment.decoders.candidate counter blocks =
+            some (.schedule schedule) := by
+        rw [decoderEq]
+        simpa [spec] using exactDecode
+      have nextHistory : Q16PriorNoncompactHistory environment next
+          (records ++ [decodedScheduleRecord counter schedule]) :=
+        Q16PriorNoncompactHistory.step blocks schedule prior environmentDecode
+          noncompact successor
+      have tailHistory := ih (restoreDigest base branch) restRun
+        (records ++ [decodedScheduleRecord counter schedule]) nextHistory
+      simpa [decodedCandidatesOfSpecs, spec, decodedScheduleRecord,
+        List.append_assoc] using tailHistory
 
 theorem accepting_q16_run_gives_future_free_trace
     (table : FixedOracleTable) (tape : DeployedFixedTape)
@@ -3229,6 +3292,10 @@ theorem accepting_q16_run_gives_future_free_trace
         (fixedTapeRawMessages tape) state steps pairs final ∧
       PathUsesFixedTable table pairs ∧
       final.current.control = .linear remaining ∧
+      final.current.q16Candidates = state.current.q16Candidates ++
+        decodedCandidatesOfSpecs (q16TapeOfSearch tape.search).earlier ++
+          [decodedScheduleRecord tape.search.selectedCounter
+            tape.search.selectedSchedule] ∧
       SameDigest final.current.core afterQ16 ∧
       steps = 2 + discardedQ16Fuel
           (q16TapeOfSearch tape.search).earlier +
@@ -3256,8 +3323,8 @@ theorem accepting_q16_run_gives_future_free_trace
     state_candidates_decode_of_included beforeSelected afterQ16
       selectedIncluded decodedState
   obtain ⟨discardedSteps, discardedPairs, beforeSelectedState,
-      discardedTrace, discardedTable, selectedControl, selectedSaved,
-      selectedSame, discardedFuelEq⟩ :=
+      discardedTrace, discardedTable, selectedControl, discardedCandidates,
+      selectedSaved, selectedSame, discardedFuelEq⟩ :=
     discarded_q16_plan_gives_future_free_trace table
       (fixedTapeFutureFreeEnvironment tape) (fixedTapeRawMessages tape) marked
       baseState beforeSelected baseState.digest 0 tape.search.selectedCounter
@@ -3307,9 +3374,88 @@ theorem accepting_q16_run_gives_future_free_trace
       (path_uses_fixed_table_append table ([] ++ discardedPairs) selectedPairs
         (path_uses_fixed_table_append table [] discardedPairs markTable
           discardedTable) selectedTable) markerTable,
-    finalControl, markerSame, ?_⟩
-  rw [discardedFuelEq, selectedFuelEq]
-  omega
+    finalControl, ?_, markerSame, ?_⟩
+  · rw [markerCandidates, selectedLedger, discardedCandidates,
+      markCandidates]
+    rfl
+  · rw [discardedFuelEq, selectedFuelEq]
+    omega
+
+/-- If the verifier reaches its unique q16 scan with an empty candidate
+ledger, the accepted run returns the complete restoration-stable certificate:
+all earlier records are exact noncompact successors and the final record is
+the first compact selection. -/
+theorem accepting_q16_run_gives_selected_ledger_certificate
+    (table : FixedOracleTable) (tape : DeployedFixedTape)
+    (rawTrace : InteractiveRawTrace)
+    (state : FutureFreeVerifierState) (baseState afterQ16 : EvalState)
+    (remaining : List FutureFreeSlot)
+    (atControl : state.current.control =
+      .linear (.beginQ16 :: remaining))
+    (initialCandidates : state.current.q16Candidates = [])
+    (same : SameDigest state.current.core baseState)
+    (q16Run : runQ16 table baseState (q16TapeOfSearch tape.search) =
+      some afterQ16)
+    (plan : ExactDiscardedQ16Plan (fixedTapeFutureFreeEnvironment tape) 0
+      (q16TapeOfSearch tape.search).earlier tape.search.selectedCounter)
+    (decodedState : StateCandidatesDecodeAs afterQ16)
+    (remainingNonempty : remaining ≠ []) :
+    ∃ steps pairs final,
+      ∃ certificate : SelectedQ16LedgerCertificate
+          (fixedTapeFutureFreeEnvironment tape) final.current,
+      NonterminalRawDriverTrace (fixedTapeFutureFreeEnvironment tape)
+        (fixedTapeRawMessages tape) state steps pairs final ∧
+      PathUsesFixedTable table pairs ∧
+      final.current.control = .linear remaining ∧
+      SameDigest final.current.core afterQ16 ∧
+      steps = 2 + discardedQ16Fuel
+          (q16TapeOfSearch tape.search).earlier +
+        (1 + (q16TapeOfSearch tape.search).selected.outcome.blocksUsed) := by
+  have q16RunParts := q16Run
+  rw [runQ16] at q16RunParts
+  obtain ⟨beforeSelected, earlierRun, selectedRun⟩ :=
+    Option.bind_eq_some_iff.mp q16RunParts
+  have selectedIncluded : CandidatesIncluded beforeSelected afterQ16 :=
+    run_candidate_preserves_prior_candidates table beforeSelected afterQ16
+      (q16TapeOfSearch tape.search).selected selectedRun
+  have earlierDecoded : StateCandidatesDecodeAs beforeSelected :=
+    state_candidates_decode_of_included beforeSelected afterQ16
+      selectedIncluded decodedState
+  have priorHistory : Q16PriorNoncompactHistory
+      (fixedTapeFutureFreeEnvironment tape) tape.search.selectedCounter
+      (decodedCandidatesOfSpecs (q16TapeOfSearch tape.search).earlier) := by
+    simpa using
+      (discarded_q16_plan_advances_prior_history table
+        (fixedTapeFutureFreeEnvironment tape) baseState beforeSelected
+        baseState.digest 0 tape.search.selectedCounter
+        (q16TapeOfSearch tape.search).earlier plan earlierRun (by rfl)
+        earlierDecoded []
+        (Q16PriorNoncompactHistory.start
+          (environment := fixedTapeFutureFreeEnvironment tape)))
+  obtain ⟨steps, pairs, final, trace, supported, finalControl,
+      ledgerExact, finalSame, fuelExact⟩ :=
+    accepting_q16_run_gives_future_free_trace table tape rawTrace state
+      baseState afterQ16 remaining atControl same q16Run plan decodedState
+      remainingNonempty
+  have ledgerExact' : final.current.q16Candidates =
+      decodedCandidatesOfSpecs (q16TapeOfSearch tape.search).earlier ++
+        [decodedScheduleRecord tape.search.selectedCounter
+          tape.search.selectedSchedule] := by
+    rw [ledgerExact, initialCandidates]
+    simp
+  let certificate : SelectedQ16LedgerCertificate
+      (fixedTapeFutureFreeEnvironment tape) final.current :=
+    { priorCandidates :=
+        decodedCandidatesOfSpecs (q16TapeOfSearch tape.search).earlier
+      selectedCounter := tape.search.selectedCounter
+      selectedSchedule := tape.search.selectedSchedule
+      priorHistory := priorHistory
+      selectedCompact := by
+        simpa [fixedTapeFutureFreeEnvironment] using
+          tape.search.selectedCompact
+      ledgerExact := ledgerExact' }
+  exact ⟨steps, pairs, final, certificate, trace, supported, finalControl,
+    finalSame, fuelExact⟩
 
 theorem terminal_slot_gives_schedule_exhaustion
     (table : FixedOracleTable) (environment : FutureFreeEnvironment)
@@ -3803,7 +3949,7 @@ theorem checked_work_erased_refinement_constructs_canonical_future_free_path
 
   have q16Plan := exact_discarded_q16_plan_of_first_cap_search tape
   obtain ⟨q16Steps, q16Pairs, afterQ16State, q16Trace, q16Table,
-      afterQ16Control, q16SameFinal, q16Fuel⟩ :=
+      afterQ16Control, _q16Candidates, q16SameFinal, q16Fuel⟩ :=
     accepting_q16_run_gives_future_free_trace table tape rawTrace q16State
       evaluator.prefixState evaluator.afterQ16 afterQ16Slots q16Control
       q16Same evaluator.q16Run q16Plan afterQ16Decoded (by decide)
@@ -3942,6 +4088,9 @@ theorem strict_checked_refinement_constructs_complete_future_free_path
         exactDeterministicDecoders tape rawTrace run)
 
 #print axioms refine_work_erased_exposes_complete_evaluator_run
+#print axioms discarded_q16_plan_gives_future_free_trace
+#print axioms discarded_q16_plan_advances_prior_history
+#print axioms accepting_q16_run_gives_selected_ledger_certificate
 #print axioms checked_work_erased_refinement_constructs_canonical_future_free_path
 #print axioms checked_work_erased_refinement_constructs_complete_future_free_path
 #print axioms strict_checked_refinement_constructs_complete_future_free_path
