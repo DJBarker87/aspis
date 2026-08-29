@@ -26,6 +26,8 @@ set_option autoImplicit false
 
 namespace AspisV7Tag73FixedFieldSourceCapstone
 
+open AspisK1.V7Tag73DeterministicRefinement
+open AspisK1.V7Tag73CurrentSourceDecodeBridge
 open AspisK1.V7Tag73FixedFieldMessageBridge
 open AspisK1.V7Tag73RawProverMessages
 open AspisK1.V7Tag73SecureCircleMap
@@ -76,6 +78,10 @@ def ExactSourceFixedFieldConclusion
     (tape : DeployedFixedTape) : Prop :=
   ∃ trace : ExactSourceFixedFieldTrace proofBytes frontierNodes,
     ∃ decoded : Fin 641 → QM31Exact,
+      CurrentSourceFixedFieldProjection
+          (rawOfMessages
+            (tapeWithPackedFixedFields tape trace.packed).messages)
+          decoded ∧
       FixedFieldDecodeExact
         (rawOfMessages
           (tapeWithPackedFixedFields tape trace.packed).messages)
@@ -97,7 +103,9 @@ theorem exactSourceFixedFieldTrace_constructs_capstone
   obtain ⟨decoded, decodeExact, viewExact, paddingExact⟩ :=
     exactCanonicalPackedSection_constructs_projected_decode_and_view
       tape trace.packed trace.exact
-  refine ⟨trace, decoded, decodeExact, viewExact, paddingExact, ?_⟩
+  refine ⟨trace, decoded,
+    fixed_field_decode_implies_current_source_projection decodeExact,
+    decodeExact, viewExact, paddingExact, ?_⟩
   calc
     trace.stored = decodedFixedFieldView trace.decoded :=
       storedFixedFieldViewExact_eq_decodedFixedFieldView trace.storedExact
@@ -116,6 +124,7 @@ theorem exactSourceFixedFieldTrace_constructs_supplied_tape
     (trace : ExactSourceFixedFieldTrace proofBytes frontierNodes)
     (messages : PackedFixedMessagesMatch tape trace.packed) :
     ∃ decoded : Fin 641 → QM31Exact,
+      CurrentSourceFixedFieldProjection (rawOfMessages tape.messages) decoded ∧
       FixedFieldDecodeExact (rawOfMessages tape.messages) decoded ∧
       packedFixedFieldView trace.packed trace.exact.canonical =
         decodedFixedFieldView decoded ∧
@@ -125,7 +134,9 @@ theorem exactSourceFixedFieldTrace_constructs_supplied_tape
   obtain ⟨decoded, decodeExact, viewExact, paddingExact⟩ :=
     packedFixedMessagesMatch_constructs_exact_decode_and_canonical_view
       messages trace.exact
-  refine ⟨decoded, decodeExact, viewExact, paddingExact, ?_⟩
+  refine ⟨decoded,
+    fixed_field_decode_implies_current_source_projection decodeExact,
+    decodeExact, viewExact, paddingExact, ?_⟩
   calc
     trace.stored = decodedFixedFieldView trace.decoded :=
       storedFixedFieldViewExact_eq_decodedFixedFieldView trace.storedExact

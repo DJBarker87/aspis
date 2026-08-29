@@ -1,4 +1,5 @@
 import AspisFormal.K1.V7Tag73DeterministicRefinement
+import AspisFormal.K1.V7Tag73CurrentSourceDecodeBridge
 import AspisFormal.K1.V7Tag73FixedFieldMessageBridge
 
 /-!
@@ -21,6 +22,7 @@ set_option maxRecDepth 20000
 namespace AspisV7Tag73FixedFieldLayoutModel
 
 open AspisK1.V7Tag73DeterministicRefinement
+open AspisK1.V7Tag73CurrentSourceDecodeBridge
 open AspisK1.V7Tag73FixedFieldMessageBridge
 open AspisK1.V7Tag73RawProverMessages
 open AspisK1.V7Tag73SecureCircleMap
@@ -585,6 +587,14 @@ def TapeCarriesDecodedFixedFields
     rawFixedFieldBytes (rawOfMessages tape.messages) index =
       encodeTagQM31ExactLE (decoded index)
 
+/-- The source bundle's primitive tape relation is definitionally the exact
+coordinate projection consumed by the restoration-wide K1.3 classifier. -/
+theorem tapeCarriesDecodedFixedFields_currentSourceProjection
+    {tape : DeployedFixedTape} {decoded : DecodedFixedFields}
+    (binding : TapeCarriesDecodedFixedFields tape decoded) :
+    CurrentSourceFixedFieldProjection (rawOfMessages tape.messages) decoded := by
+  exact binding
+
 theorem packedFixedMessagesMatch_tapeCarriesDecodedFixedFields
     {tape : DeployedFixedTape} {packed : PackedFixedSection}
     (messages : PackedFixedMessagesMatch tape packed)
@@ -624,6 +634,19 @@ theorem packedFixedMessagesMatch_constructs_exact_decode
     ∃ decoded : Fin 641 → QM31Exact,
       FixedFieldDecodeExact (rawOfMessages tape.messages) decoded := by
   exact tapeCarriesDecodedFixedFields_constructs_exact_decode
+    (packedFixedMessagesMatch_tapeCarriesDecodedFixedFields messages canonical)
+
+/-- Parser-section byte identity and the reader's strict limb comparisons
+construct the precise source-shaped endpoint, without routing through an
+abstract decoder premise. -/
+theorem packedFixedMessagesMatch_constructs_currentSourceProjection
+    {tape : DeployedFixedTape} {packed : PackedFixedSection}
+    (messages : PackedFixedMessagesMatch tape packed)
+    (canonical : PackedFixedSectionCanonical packed) :
+    ∃ decoded : Fin 641 → QM31Exact,
+      CurrentSourceFixedFieldProjection (rawOfMessages tape.messages) decoded := by
+  refine ⟨decodedPackedFields packed canonical, ?_⟩
+  exact tapeCarriesDecodedFixedFields_currentSourceProjection
     (packedFixedMessagesMatch_tapeCarriesDecodedFixedFields messages canonical)
 
 /-- Once translated production success supplies the strict limb comparisons,
@@ -784,9 +807,11 @@ theorem packedFixedMessagesMatch_constructs_exact_decode_and_view
 #print axioms rawWithPackedFixedFields_fixedFieldDecodeExact
 #print axioms exactCanonicalPackedSection_constructs_raw_decode_and_view
 #print axioms packedFixedMessagesMatch_tapeCarriesDecodedFixedFields
+#print axioms tapeCarriesDecodedFixedFields_currentSourceProjection
 #print axioms tapeCarriesDecodedFixedFields_fixedFieldDecodeExact
 #print axioms tapeCarriesDecodedFixedFields_constructs_exact_decode
 #print axioms packedFixedMessagesMatch_constructs_exact_decode
+#print axioms packedFixedMessagesMatch_constructs_currentSourceProjection
 #print axioms tapeWithPackedFixedFields_constructs_exact_decode
 #print axioms exactCanonicalPackedSection_constructs_projected_decode_and_view
 #print axioms packedFixedMessagesMatch_constructs_exact_decode_and_canonical_view
