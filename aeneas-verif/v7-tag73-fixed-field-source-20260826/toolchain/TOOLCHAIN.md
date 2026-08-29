@@ -73,3 +73,13 @@ in `LOOP-RETURN-DROP-SWITCH-FIX.md`.
 The tenth patch is the source-faithful terminal return-capture fix documented
 in `TERMINAL-RETURN-CAPTURE-FIX.md`. It preserves moves through a fresh capture
 local and never synthesizes `Copy` for a non-`Copy` production return value.
+
+The focused compatibility series additionally includes the borrow-free
+shared-value destructuring fix documented in
+`BORROW-FREE-SHARED-DESTRUCTURE-FIX.md`. It preserves identity only after
+nested loans have been removed and the remaining value contains no borrow.
+
+The first-class variant-function naming fix is documented in
+`FIRST-CLASS-VARIANT-FUNCTION-NAME-FIX.md`. It adds `_fn` only when a Charon
+function declaration would otherwise collide with an already registered enum
+variant constructor.
