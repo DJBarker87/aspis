@@ -59,3 +59,28 @@ NUC replay:
   propext
   Classical.choice
   Quot.sound
+
+Eight-slot bit-vector identity:
+  slot_refill_low31_and_residual_exact
+
+For each of the eight possible packed-reader bit alignments, the theorem
+proves that the translated refill buffer's low 31 bits equal the corresponding
+five-byte little-endian window and that the post-read residual buffer is exact.
+The proof expands all 64 output bits in the Lean kernel; it deliberately does
+not use bv_decide or native_decide.
+
+NUC replay:
+  systemd unit: aspis-v7-packed-reader-try47.scope
+  invocation: f3f8ea18bbc1461b88ee04928c3d5308
+  MemoryHigh: 12G
+  MemoryMax: 16G
+  MemorySwapMax: 0
+  exit status: 0
+  wall: 58.80 seconds
+  peak RSS: 7,516,756 KiB
+  swaps: 0
+
+#print axioms:
+  propext
+  Classical.choice
+  Quot.sound

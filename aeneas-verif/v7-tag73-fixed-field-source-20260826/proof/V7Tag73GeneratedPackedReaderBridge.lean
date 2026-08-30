@@ -591,6 +591,92 @@ theorem packed_next_success_preserves_reader_geometry
     rw [geometry.2] at countExact refillBitsExact
     omega
 
+/-! ## Eight-slot bit-vector identity -/
+
+private def widenByte (byte : BitVec 8) : BitVec 64 :=
+  byte.setWidth 64
+
+private def packedFiveByteWindowBv
+    (window : Fin 5 → BitVec 8) : BitVec 64 :=
+  widenByte (window 0) |||
+    (widenByte (window 1) <<< 8) |||
+    (widenByte (window 2) <<< 16) |||
+    (widenByte (window 3) <<< 24) |||
+    (widenByte (window 4) <<< 32)
+
+private def slotByteShift (slot : Nat) : Nat :=
+  if slot = 0 then 0 else 8 - slot
+
+private def slotRefillBv (slot : Nat)
+    (window : Fin 5 → BitVec 8) : BitVec 64 :=
+  match slot with
+  | 0 => widenByte (window 0) |||
+      (widenByte (window 1) <<< 8) |||
+      (widenByte (window 2) <<< 16) |||
+      (widenByte (window 3) <<< 24)
+  | 1 => (widenByte (window 0) >>> 7) |||
+      (widenByte (window 1) <<< 1) |||
+      (widenByte (window 2) <<< 9) |||
+      (widenByte (window 3) <<< 17) |||
+      (widenByte (window 4) <<< 25)
+  | 2 => (widenByte (window 0) >>> 6) |||
+      (widenByte (window 1) <<< 2) |||
+      (widenByte (window 2) <<< 10) |||
+      (widenByte (window 3) <<< 18) |||
+      (widenByte (window 4) <<< 26)
+  | 3 => (widenByte (window 0) >>> 5) |||
+      (widenByte (window 1) <<< 3) |||
+      (widenByte (window 2) <<< 11) |||
+      (widenByte (window 3) <<< 19) |||
+      (widenByte (window 4) <<< 27)
+  | 4 => (widenByte (window 0) >>> 4) |||
+      (widenByte (window 1) <<< 4) |||
+      (widenByte (window 2) <<< 12) |||
+      (widenByte (window 3) <<< 20) |||
+      (widenByte (window 4) <<< 28)
+  | 5 => (widenByte (window 0) >>> 3) |||
+      (widenByte (window 1) <<< 5) |||
+      (widenByte (window 2) <<< 13) |||
+      (widenByte (window 3) <<< 21) |||
+      (widenByte (window 4) <<< 29)
+  | 6 => (widenByte (window 0) >>> 2) |||
+      (widenByte (window 1) <<< 6) |||
+      (widenByte (window 2) <<< 14) |||
+      (widenByte (window 3) <<< 22) |||
+      (widenByte (window 4) <<< 30)
+  | _ => (widenByte (window 0) >>> 1) |||
+      (widenByte (window 1) <<< 7) |||
+      (widenByte (window 2) <<< 15) |||
+      (widenByte (window 3) <<< 23)
+
+private def slotPostResidualBv (slot : Nat)
+    (window : Fin 5 → BitVec 8) : BitVec 64 :=
+  match slot with
+  | 0 => widenByte (window 3) >>> 7
+  | 1 => widenByte (window 4) >>> 6
+  | 2 => widenByte (window 4) >>> 5
+  | 3 => widenByte (window 4) >>> 4
+  | 4 => widenByte (window 4) >>> 3
+  | 5 => widenByte (window 4) >>> 2
+  | 6 => widenByte (window 4) >>> 1
+  | _ => 0
+
+set_option maxHeartbeats 1000000 in
+private theorem slot_refill_low31_and_residual_exact
+    (slot : Nat) (slotLt : slot < 8)
+    (window : Fin 5 → BitVec 8) :
+    (slotRefillBv slot window &&& (2147483647 : BitVec 64)) =
+        ((packedFiveByteWindowBv window >>> slotByteShift slot) &&&
+          (2147483647 : BitVec 64)) ∧
+      (slotRefillBv slot window >>> 31) =
+        slotPostResidualBv slot window := by
+  interval_cases slot <;>
+    simp [slotRefillBv, slotPostResidualBv, packedFiveByteWindowBv,
+      slotByteShift, widenByte] <;>
+    constructor <;>
+    apply BitVec.eq_of_getLsbD_eq <;> intro index indexLt <;>
+    interval_cases index <;> simp
+
 #print axioms new_success_exposes_padding_validation
 #print axioms padding_validation_success_last_byte_lt_16
 #print axioms new_success_packed_section_padding_zero
@@ -604,5 +690,6 @@ theorem packed_next_success_preserves_reader_geometry
 #print axioms packed_next_success_exposes_exact_refill
 #print axioms new_success_has_initial_packed_reader_geometry
 #print axioms packed_next_success_preserves_reader_geometry
+#print axioms slot_refill_low31_and_residual_exact
 
 end AspisV7Tag73GeneratedPackedReaderBridge
