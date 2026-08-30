@@ -83,3 +83,18 @@ The first-class variant-function naming fix is documented in
 `FIRST-CLASS-VARIANT-FUNCTION-NAME-FIX.md`. It adds `_fn` only when a Charon
 function declaration would otherwise collide with an already registered enum
 variant constructor.
+
+The Lean namespace-shadow fix makes a local basename collide when a registered
+global Lean name begins with that basename plus `.`. Thus a Rust local called
+`transcript` becomes `transcript1` when the generated module also contains the
+global `transcript.*` namespace. The rule changes names only, and only for the
+Lean backend. The complete focused series, including this patch, has Git tree
+`8819b20bdc1713f7acd15e770caf0b955d3d677c`.
+
+`stage-generated-lean432.sh` preserves raw Aeneas output and creates a separate
+Lean-4.32 staging tree. It uses the same executable mutable-iterator model as
+the frozen V5 and V7 Merkle source bridges, decides sixteen stored Rust Boolean
+equalities, uncurries one two-argument `QM31::add` function item, and returns
+Rust unit with the unchanged state of one no-op `FnMut`. Every rewrite has an
+exact expected occurrence count and fails closed if the generated shape
+changes. `GENERATED-LEAN432.sha256` authenticates the staging script and helper.

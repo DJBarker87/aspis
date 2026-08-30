@@ -117,3 +117,56 @@ integration issues: the mutable-slice iterator model and a local `transcript`
 value shadowing the generated `transcript` namespace. Those are backend binding
 work; the production Rust graph and the formerly failing fixed-field Pure path
 both generate successfully.
+
+## 2026-08-30 production-module closure
+
+Both generated-module integration issues are now closed without changing
+production Rust or the cryptographic relation.
+
+The Lean-only namespace collision is fixed at Aeneas name generation. A local
+basename now counts as a collision when it would shadow a registered Lean
+namespace prefix. The complete patched translator tree is:
+
+```text
+8819b20bdc1713f7acd15e770caf0b955d3d677c
+```
+
+The incremental test binary has SHA-256:
+
+```text
+017fc5685a79d4aa3aa19f9529d57fdf167c1387c9b1fee63a254994f5ff9d5a
+```
+
+This is test evidence, not yet the final isolated wrapper-built release binary.
+It replayed the same 34 MiB production LLBC to complete Lean source in 6:38.396,
+with GNU-time peak RSS 2,691,724 KiB and zero swap. Every formerly shadowing
+local is emitted as `transcript1`.
+
+The exact authenticated Lean-4.32 runtime dependency lock is
+`5d15524cf34ff705bebbd037e80baec63683d5d5a3a37a539a62f17405a2fc62`.
+Its documented scoped runtime closure built successfully in 4:22.465 under a
+20 GiB maximum, with a 6.2 GiB cgroup peak and zero swap.
+
+The raw output was staged separately with the already established executable
+mutable-iterator model and four shape-checked Lean compatibility rewrites:
+
+1. sixteen stored Rust equality results are materialized as executable `Bool`
+   values with `decide`;
+2. the `QM31::add` function item is uncurried for its tupled `FnMut` ABI;
+3. the no-op diagnostic `FnMut` returns Rust unit with unchanged closure state;
+4. generated imports use the exact scoped Aeneas runtime plus discriminant and
+   Rust-attribute modules.
+
+The complete staged production module then compiled with Lean 4.32 in 30.266
+seconds. `Funs.lean` itself compiled in 23.57 seconds at 3,282,612 KiB peak RSS.
+All five focused compilation commands exited zero and used zero swap. There are
+no generated `sorry` warnings or errors; the only warning is the pre-existing
+duplicated `enumerate` namespace name in the compatibility helper.
+
+Important scope boundary: `FunsExternal` is still the generated external
+template. This milestone proves that the literal production Rust control flow
+now generates and kernel-compiles as one module; final end-to-end closure still
+requires replacing reached non-cryptographic external templates with exact
+models, retaining only the permitted SHA/runtime boundaries, and composing
+production success into `CurrentSourceFixedFieldProjection` and the restored
+K1.3 input.

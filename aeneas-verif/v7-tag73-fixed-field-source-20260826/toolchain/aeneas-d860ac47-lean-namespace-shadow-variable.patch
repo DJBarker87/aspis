@@ -1,0 +1,27 @@
+diff --git a/src/extract/ExtractBase.ml b/src/extract/ExtractBase.ml
+--- a/src/extract/ExtractBase.ml
++++ b/src/extract/ExtractBase.ml
+@@ -2201,11 +2201,23 @@ let name_append_index (basename : string) (i : int) : string =
+ 
+ let basename_to_unique (ctx : extraction_ctx) (name : string) =
+   let collision s =
++    let shadows_lean_namespace =
++      if backend () <> Lean then false
++      else
++        let prefix = s ^ "." in
++        let prefix_len = String.length prefix in
++        StringSet.exists
++          (fun global_name ->
++            String.length global_name >= prefix_len
++            && String.sub global_name 0 prefix_len = prefix)
++          ctx.names_maps.names_map.names_set
++    in
+     (* Note that we ignore the "unsafe" names which contain in particular
+        field names: we want to allow using field names for variables if
+        the backend allows such collisions *)
+     StringSet.mem s ctx.names_maps.names_map.names_set
+     || StringSet.mem s ctx.names_maps.strict_names_map.names_set
++    || shadows_lean_namespace
+   in
+ 
+   basename_to_unique_aux collision name_append_index name
