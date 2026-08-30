@@ -56,8 +56,15 @@ theorem compactTail_eq_recurrence :
     compactTail =
       ∑ frontier ∈ Finset.Icc 210 288,
         concreteFrontierCount 18 16 frontier := by
-  simpa [compactTail, AspisV6CompactFrontierTailCertificate.compactTail] using
-    compactTail_eq_expected.symm
+  calc
+    compactTail =
+        AspisV6CompactFrontierTailCertificate.expectedCompactTail := rfl
+    _ = AspisV6CompactFrontierTailCertificate.compactTailFor
+          AspisV6CompactFrontierTailCertificate.finalFrontierCount :=
+      AspisV6CompactFrontierTailCertificate.compactTailFor_final_eq_expected.symm
+    _ = ∑ frontier ∈ Finset.Icc 210 288,
+          concreteFrontierCount 18 16 frontier :=
+      AspisV6CompactFrontierTailCertificate.compactTailFor_final_eq_recurrence
 
 /-- Schedules admitted by the release cap. Defining this by subtraction
 makes the recurrence tail, rather than a separately trusted integer, its
@@ -94,7 +101,7 @@ theorem compactFavourable_eq_recurrence :
       ∑ frontier ∈ Finset.range 289, frontierCount frontier := by
     rw [← intervals]
     exact Finset.sum_range_add_sum_Ico frontierCount (by norm_num)
-  apply Nat.add_right_cancel (n := compactTail)
+  apply Nat.add_right_cancel (m := compactTail)
   calc
     compactFavourable + compactTail = compactTotal :=
       compact_partition_exact
