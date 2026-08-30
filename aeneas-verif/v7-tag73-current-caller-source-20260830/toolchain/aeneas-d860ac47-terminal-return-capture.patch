@@ -1,0 +1,207 @@
+diff --git a/src/PrePasses.ml b/src/PrePasses.ml
+index 93f3b4c..5478670 100644
+--- a/src/PrePasses.ml
++++ b/src/PrePasses.ml
+@@ -729,9 +729,87 @@ let restore_structured_nested_returns (_crate : crate) (f : fun_decl) : fun_decl
+       and transform_statements depth = function
+         | (write : statement) :: rest
+           when depth > 0 && writes_return_place write -> (
++            let drop_noop_cleanup_block (block : block) : bool * bool =
++              List.fold_left
++                (fun (valid, saw_drop) (st : statement) ->
++                  match st.kind with
++                  | StorageDead _ | Nop -> (valid, saw_drop)
++                  | Drop _ -> (valid, true)
++                  | _ -> (false, saw_drop))
++                (true, false) block.statements
++            in
++            let is_drop_noop_switch then_block else_block =
++              let then_valid, then_drop =
++                drop_noop_cleanup_block then_block
++              in
++              let else_valid, else_drop =
++                drop_noop_cleanup_block else_block
++              in
++              then_valid && else_valid && (then_drop || else_drop)
++            in
++            let is_cleanup_then_return (block : block) =
++              match List.rev block.statements with
++              | { kind = Return; _ } :: reversed_cleanup ->
++                  reversed_cleanup <> []
++                  && fst
++                       (drop_noop_cleanup_block
++                          { block with statements = List.rev reversed_cleanup })
++              | _ -> false
++            in
++            let is_split_drop_return then_block else_block =
++              (then_block.statements = []
++              && is_cleanup_then_return else_block)
++              || (else_block.statements = []
++                 && is_cleanup_then_return then_block)
++            in
++            let is_empty_match branches otherwise =
++              match (branches, otherwise) with
++              | [ (_, ({ statements = []; _ } : block)) ],
++                Some ({ statements = []; _ } : block) ->
++                  true
++              | _ -> false
++            in
+             let rec take_cleanup reversed = function
+               | ({ kind = StorageDead _ | Nop; _ } as cleanup) :: tail ->
+                   take_cleanup (cleanup :: reversed) tail
++              | ({ kind = Drop _; _ } as cleanup) :: tail
++                when !Config.drop_as_no_op ->
++                  take_cleanup (cleanup :: reversed) tail
++              | ( {
++                    kind =
++                      Assign
++                        ( { kind = PlaceLocal _; _ },
++                          Use
++                            (Constant { kind = CLiteral (VBool _); _ }, _) );
++                    _;
++                  } as cleanup )
++                :: tail
++                when !Config.drop_as_no_op ->
++                  take_cleanup (cleanup :: reversed) tail
++              | ( {
++                    kind =
++                      Switch
++                        (If
++                          ( Copy { kind = PlaceLocal _; _ }, then_block,
++                            else_block ));
++                    _;
++                  } as cleanup )
++                :: tail
++                when !Config.drop_as_no_op
++                     && (is_drop_noop_switch then_block else_block
++                        || is_split_drop_return then_block else_block) ->
++                  take_cleanup (cleanup :: reversed) tail
++              | ( {
++                    kind =
++                      Switch
++                        (Match
++                          ( { kind = PlaceLocal _; _ }, branches,
++                            otherwise ));
++                    _;
++                  } as cleanup )
++                :: tail
++                when is_empty_match branches otherwise ->
++                  take_cleanup (cleanup :: reversed) tail
+               | tail -> (List.rev reversed, tail)
+             in
+             let cleanup, tail = take_cleanup [] rest in
+@@ -865,6 +943,17 @@ let lower_nested_loop_returns (crate : crate) (f : fun_decl) : fun_decl =
+         let pending_place : place =
+           { kind = PlaceLocal pending_local.index; ty = pending_ty }
+         in
++        let capture_local : local =
++          {
++            index = gen ();
++            local_ty = return_ty;
++            name = Some "return_capture";
++            span = f.item_meta.span;
++          }
++        in
++        let capture_place : place =
++          { kind = PlaceLocal capture_local.index; ty = return_ty }
++        in
+         let return_place : place =
+           { kind = PlaceLocal return_local.index; ty = return_ty }
+         in
+@@ -876,6 +965,18 @@ let lower_nested_loop_returns (crate : crate) (f : fun_decl) : fun_decl =
+               local = return_local.index
+           | _ -> false
+         in
++        let retarget_return_write (st : statement) : statement =
++          match st.kind with
++          | Assign ({ kind = PlaceLocal local; _ }, rv)
++            when local = return_local.index ->
++              { st with kind = Assign (capture_place, rv) }
++          | Call
++              ( ({ dest = { kind = PlaceLocal local; _ }; _ } as call),
++                on_unwind )
++            when local = return_local.index ->
++              { st with kind = Call ({ call with dest = capture_place }, on_unwind) }
++          | _ -> [%internal_error] st.span
++        in
+         let mk_statement ?(comments_before = []) span kind : statement =
+           { span; statement_id = StatementId.zero; kind; comments_before }
+         in
+@@ -1012,6 +1113,13 @@ let lower_nested_loop_returns (crate : crate) (f : fun_decl) : fun_decl =
+           (then_block.statements = [] && is_cleanup_then_return else_block)
+           || (else_block.statements = [] && is_cleanup_then_return then_block)
+         in
++        let is_empty_match branches otherwise =
++          match (branches, otherwise) with
++          | [ (_, ({ statements = []; _ } : block)) ],
++            Some ({ statements = []; _ } : block) ->
++              true
++          | _ -> false
++        in
+         let rec take_return_cleanup reversed = function
+           | ({ kind = StorageDead _ | Nop; _ } as cleanup) :: rest ->
+               take_return_cleanup (cleanup :: reversed) rest
+@@ -1041,6 +1149,16 @@ let lower_nested_loop_returns (crate : crate) (f : fun_decl) : fun_decl =
+                  && (is_drop_noop_switch then_block else_block
+                     || is_split_drop_return then_block else_block) ->
+               take_return_cleanup (cleanup :: reversed) rest
++          | ( {
++                kind =
++                  Switch
++                    (Match
++                      ( { kind = PlaceLocal _; _ }, branches, otherwise ));
++                _;
++              } as cleanup )
++            :: rest
++            when is_empty_match branches otherwise ->
++              take_return_cleanup (cleanup :: reversed) rest
+           | rest -> (List.rev reversed, rest)
+         in
+         (* Charon can encode the normal exit from a reconstructed [for] loop
+@@ -1133,6 +1251,34 @@ let lower_nested_loop_returns (crate : crate) (f : fun_decl) : fun_decl =
+         and transform_statements depth loop_exit_cleanup outer_fallthrough
+             return_written = function
+           | [] -> []
++          | (write : statement) :: statements
++            when depth > 0 && writes_return_place write -> (
++              let cleanup, rest = take_return_cleanup [] statements in
++              match rest with
++              | ({ kind = Return; _ } as return_st) :: tail ->
++                  let child_fallthrough =
++                    cleanup_falls_through_to_return outer_fallthrough statements
++                  in
++                  let transformed_write =
++                    transform_statement depth loop_exit_cleanup
++                      child_fallthrough (retarget_return_write write)
++                  in
++                  let assignment =
++                    mk_pending_assignment
++                      ~comments_before:return_st.comments_before return_st.span
++                      Types.option_some_id [ Move capture_place ]
++                  in
++                  let leave =
++                    { return_st with kind = Break 0; comments_before = [] }
++                  in
++                  transformed_write
++                  @ fresh_cleanup loop_exit_cleanup
++                  @ [ assignment; leave ]
++                  @ transform_statements depth loop_exit_cleanup
++                      outer_fallthrough return_written tail
++              | _ ->
++                  transform_noncleanup_statement depth loop_exit_cleanup
++                    outer_fallthrough return_written (write :: statements))
+           | statements when depth > 0 -> (
+               let cleanup, rest = take_return_cleanup [] statements in
+               match (cleanup, rest) with
+@@ -1233,7 +1379,10 @@ let lower_nested_loop_returns (crate : crate) (f : fun_decl) : fun_decl =
+           { body_body with statements = initialization :: body_body.statements }
+         in
+         let locals =
+-          { body.locals with locals = body.locals.locals @ [ pending_local ] }
++          {
++            body.locals with
++            locals = body.locals.locals @ [ pending_local; capture_local ];
++          }
+         in
+         { f with body = StructuredBody { body with body = body_body; locals } }
+   | _ -> f

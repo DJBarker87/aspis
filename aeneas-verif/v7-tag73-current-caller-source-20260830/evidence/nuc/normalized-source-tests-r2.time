@@ -1,0 +1,23 @@
+	Command being timed: "bash -lc set -e; cargo test --release --locked --package aspis-core composed_grouped_high_rows_match_two_sequential_folds -- --nocapture; cargo test --release --locked --package aspis-core tag73_composed_weight_tail_matches_sequential_rounds -- --nocapture; cargo test --release --locked --package aspis-core fingerprint_has_layout_factor_and_basis_teeth -- --nocapture; cargo test --release --locked --package aspis-core spend_zero_factor_fingerprint_is_hard_pinned -- --nocapture"
+	User time (seconds): 57.16
+	System time (seconds): 2.94
+	Percent of CPU this job got: 100%
+	Elapsed (wall clock) time (h:mm:ss or m:ss): 0:59.96
+	Average shared text size (kbytes): 0
+	Average unshared data size (kbytes): 0
+	Average stack size (kbytes): 0
+	Average total size (kbytes): 0
+	Maximum resident set size (kbytes): 568556
+	Average resident set size (kbytes): 0
+	Major (requiring I/O) page faults: 350
+	Minor (reclaiming a frame) page faults: 1537502
+	Voluntary context switches: 10492
+	Involuntary context switches: 1132
+	Swaps: 0
+	File system inputs: 44400
+	File system outputs: 420328
+	Socket messages sent: 0
+	Socket messages received: 0
+	Signals delivered: 0
+	Page size (bytes): 4096
+	Exit status: 0

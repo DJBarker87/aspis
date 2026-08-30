@@ -1,0 +1,58 @@
+diff --git a/src/PrePasses.ml b/src/PrePasses.ml
+index ba90cf7..93f3b4c 100644
+--- a/src/PrePasses.ml
++++ b/src/PrePasses.ml
+@@ -988,6 +988,33 @@ let lower_nested_loop_returns (crate : crate) (f : fun_decl) : fun_decl =
+            no-ops, so replace the complete drop/dead sequence with the cleanup
+            for a normal exit from the current loop.  Keep explicit drops when
+            [-eval-drops] requests their semantics. *)
++        let drop_noop_cleanup_block (block : block) : bool * bool =
++          List.fold_left
++            (fun (valid, saw_drop) (st : statement) ->
++              match st.kind with
++              | StorageDead _ | Nop -> (valid, saw_drop)
++              | Drop _ -> (valid, true)
++              | _ -> (false, saw_drop))
++            (true, false) block.statements
++        in
++        let is_drop_noop_switch then_block else_block =
++          let then_valid, then_drop = drop_noop_cleanup_block then_block in
++          let else_valid, else_drop = drop_noop_cleanup_block else_block in
++          then_valid && else_valid && (then_drop || else_drop)
++        in
++        let is_cleanup_then_return (block : block) =
++          match List.rev block.statements with
++          | { kind = Return; _ } :: reversed_cleanup ->
++              reversed_cleanup <> []
++              && fst
++                   (drop_noop_cleanup_block
++                      { block with statements = List.rev reversed_cleanup })
++          | _ -> false
++        in
++        let is_split_drop_return then_block else_block =
++          (then_block.statements = [] && is_cleanup_then_return else_block)
++          || (else_block.statements = [] && is_cleanup_then_return then_block)
++        in
+         let rec take_return_cleanup reversed = function
+           | ({ kind = StorageDead _ | Nop; _ } as cleanup) :: rest ->
+               take_return_cleanup (cleanup :: reversed) rest
+@@ -1005,6 +1032,19 @@ let lower_nested_loop_returns (crate : crate) (f : fun_decl) : fun_decl =
+             :: rest
+             when !Config.drop_as_no_op ->
+               take_return_cleanup (cleanup :: reversed) rest
++          | ( {
++                kind =
++                  Switch
++                    (If
++                      ( Copy { kind = PlaceLocal _; _ }, then_block,
++                        else_block ));
++                _;
++              } as cleanup )
++            :: rest
++            when !Config.drop_as_no_op
++                 && (is_drop_noop_switch then_block else_block
++                    || is_split_drop_return then_block else_block) ->
++              take_return_cleanup (cleanup :: reversed) rest
+           | rest -> (List.rev reversed, rest)
+         in
+         (* Charon can encode the normal exit from a reconstructed [for] loop

@@ -1,0 +1,24 @@
+Command exited with non-zero status 2
+	Command being timed: "/bin/bash -lc set -o pipefail; task=/home/dombarker/project-offloads/aspis-v7-aeneas-source-unblock-20260830; /home/dombarker/project-offloads/v7-pure-debug-build-output-r2/aeneas-borrowfree-variantfn-namespace-arrayfix-r1 -sequential -no-progress-bar -abort-on-error -backend lean -namespace V7Tag73CurrentGammaOpaque -dest \/home/dombarker/project-offloads/aspis-v7-aeneas-source-unblock-20260830/generated-current-gammaopaque-latest-r1 -subdir V7Tag73CurrentGammaOpaque -split-files -emit-json \/home/dombarker/project-offloads/aspis-v7-aeneas-source-unblock-20260830/extraction/V7Tag73CurrentGammaOpaque.llbc >\/home/dombarker/project-offloads/aspis-v7-aeneas-source-unblock-20260830/logs/current-gammaopaque-latest-r1.log 2>&1"
+	User time (seconds): 1202.82
+	System time (seconds): 0.91
+	Percent of CPU this job got: 99%
+	Elapsed (wall clock) time (h:mm:ss or m:ss): 20:03.88
+	Average shared text size (kbytes): 0
+	Average unshared data size (kbytes): 0
+	Average stack size (kbytes): 0
+	Average total size (kbytes): 0
+	Maximum resident set size (kbytes): 2124668
+	Average resident set size (kbytes): 0
+	Major (requiring I/O) page faults: 0
+	Minor (reclaiming a frame) page faults: 733808
+	Voluntary context switches: 249
+	Involuntary context switches: 6312
+	Swaps: 0
+	File system inputs: 0
+	File system outputs: 112
+	Socket messages sent: 0
+	Socket messages received: 0
+	Signals delivered: 0
+	Page size (bytes): 4096
+	Exit status: 2

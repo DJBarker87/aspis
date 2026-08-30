@@ -1,0 +1,22 @@
+diff --git a/src/interp/InterpExpressions.ml b/src/interp/InterpExpressions.ml
+index 6a94cec8..00000000 100644
+--- a/src/interp/InterpExpressions.ml
++++ b/src/interp/InterpExpressions.ml
+@@ -189,8 +189,15 @@ let rec copy_value (span : Meta.span) (allow_adt_copy : bool) (config : config)
+   | VAdt av ->
+       (* Sanity check *)
+       (match v.ty with
+-      | TAdt { id = TBuiltin TBox; _ } ->
+-          [%craise] span "Can't copy an builtin value other than Option"
++      | TAdt
++          {
++            id = TBuiltin TBox;
++            generics = { types = [ boxed_ty ]; _ };
++          } ->
++          [%cassert] span (ty_is_copyable boxed_ty)
++            "The compiler-generated shared Box dereference is not copyable";
++          [%cassert] span (not (tvalue_has_borrows (Some span) ctx v))
++            "The compiler-generated shared Box dereference contains borrows"
+       | TAdt { id = TAdtId _; _ } as ty ->
+           [%sanity_check] span (allow_adt_copy || ty_is_copyable ty)
+       | TAdt { id = TTuple; _ } -> () (* Ok *)

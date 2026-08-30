@@ -1,0 +1,284 @@
+diff --git a/crates/aspis-core/src/state_only_hiding.rs b/crates/aspis-core/src/state_only_hiding.rs
+index 5ee8ad8..eeb59b9 100644
+--- a/crates/aspis-core/src/state_only_hiding.rs
++++ b/crates/aspis-core/src/state_only_hiding.rs
+@@ -285,15 +285,17 @@ pub fn begin_state_only_hiding_precommit(
+     Ok(transcript.diagnostic_state())
+ }
+ 
++#[inline(always)]
++fn aeneas_normalized_fingerprint_absorb(hash: &mut u64, byte: u8) {
++    *hash ^= u64::from(byte);
++    *hash = hash.wrapping_mul(0x0000_0100_0000_01b3);
++}
++
+ /// Fingerprint the spend-only commitment/generator extension without
+ /// pretending that D participates in the H mask oracle.  The final byte is
+ /// the exact candidate count, so q3 and the retired q4 draft cannot collide.
+ pub fn state_only_spend_hiding_layout_factor_fingerprint_v3() -> u64 {
+     let mut hash = 0xcbf2_9ce4_8422_2325u64;
+-    let mut absorb = |byte: u8| {
+-        hash ^= u64::from(byte);
+-        hash = hash.wrapping_mul(0x0000_0100_0000_01b3);
+-    };
+     // Frozen consensus bytes: this domain separator feeds the pinned layout
+     // factor fingerprint checked fail-closed by the verifying schedule. The
+     // aspis-spend release proofs are ground against exactly these bytes.
+     for byte in b"aspis-state-only-spend-zero-factor-d-v1" {
+-        absorb(*byte);
++        aeneas_normalized_fingerprint_absorb(&mut hash, *byte);
+     }
+     for value in [
+         PINNED_ATOMIC_STATE_ONLY_RELATION_FREE_MASK_FINGERPRINT_V3,
+@@ -301,7 +303,7 @@ pub fn state_only_spend_hiding_layout_factor_fingerprint_v3() -> u64 {
+         PINNED_ATOMIC_STATE_ONLY_HIDING_LAYOUT_FACTOR_FINGERPRINT_V3,
+     ] {
+         for byte in value.to_le_bytes() {
+-            absorb(byte);
++            aeneas_normalized_fingerprint_absorb(&mut hash, byte);
+         }
+     }
+     for byte in [
+@@ -318,7 +320,7 @@ pub fn state_only_spend_hiding_layout_factor_fingerprint_v3() -> u64 {
+         STATE_ONLY_SPEND_D_FACTOR_IDENTIFIER,
+         STATE_ONLY_SPEND_QUERY_CANDIDATES as u8,
+     ] {
+-        absorb(byte);
++        aeneas_normalized_fingerprint_absorb(&mut hash, byte);
+     }
+     hash
+ }
+@@ -337,11 +339,7 @@ pub fn state_only_pool_v1_tag73_hiding_layout_factor_fingerprint(
+         true,
+     );
+     let mut hash = 0xcbf2_9ce4_8422_2325u64;
+-    let mut absorb = |byte: u8| {
+-        hash ^= u64::from(byte);
+-        hash = hash.wrapping_mul(0x0000_0100_0000_01b3);
+-    };
+     for byte in b"aspis-state-only-pool-v1-tag73-zero-factor-d-v1" {
+-        absorb(*byte);
++        aeneas_normalized_fingerprint_absorb(&mut hash, *byte);
+     }
+     for value in [
+         mask_layout_fingerprint,
+@@ -349,11 +347,11 @@ pub fn state_only_pool_v1_tag73_hiding_layout_factor_fingerprint(
+         ordinary,
+     ] {
+         for byte in value.to_le_bytes() {
+-            absorb(byte);
++            aeneas_normalized_fingerprint_absorb(&mut hash, byte);
+         }
+     }
+     for byte in b"tag73-q16-first-cap203-v1" {
+-        absorb(*byte);
++        aeneas_normalized_fingerprint_absorb(&mut hash, *byte);
+     }
+     for byte in [
+         POOL_V1_TAG73_TOTAL_GENERATOR_WIDTH as u8,
+@@ -364,10 +362,10 @@ pub fn state_only_pool_v1_tag73_hiding_layout_factor_fingerprint(
+         POOL_V1_TAG73_D_FACTOR_IDENTIFIER,
+         POOL_V1_TAG73_QUERY_COUNT as u8,
+     ] {
+-        absorb(byte);
++        aeneas_normalized_fingerprint_absorb(&mut hash, byte);
+     }
+     for byte in (POOL_V1_TAG73_FIRST_QUERY_CAP as u16).to_le_bytes() {
+-        absorb(byte);
++        aeneas_normalized_fingerprint_absorb(&mut hash, byte);
+     }
+     hash
+ }
+@@ -693,15 +691,11 @@ pub fn state_only_hiding_layout_factor_fingerprint_for_registry(
+     has_copy_inactive_zero_claim: bool,
+ ) -> u64 {
+     let mut hash = 0xcbf2_9ce4_8422_2325u64;
+-    let mut absorb = |byte: u8| {
+-        hash ^= u64::from(byte);
+-        hash = hash.wrapping_mul(0x0000_0100_0000_01b3);
+-    };
+     for byte in b"aspis-state-only-hiding-v2-shared-powers" {
+-        absorb(*byte);
++        aeneas_normalized_fingerprint_absorb(&mut hash, *byte);
+     }
+     for byte in mask_layout_fingerprint.to_le_bytes() {
+-        absorb(byte);
++        aeneas_normalized_fingerprint_absorb(&mut hash, byte);
+     }
+     for byte in b"copy-inactive-dense-zero-claim-v1" {
+-        absorb(*byte);
++        aeneas_normalized_fingerprint_absorb(&mut hash, *byte);
+     }
+     for byte in copy_active_rows_fingerprint.to_le_bytes() {
+-        absorb(byte);
++        aeneas_normalized_fingerprint_absorb(&mut hash, byte);
+     }
+-    absorb(u8::from(has_copy_inactive_zero_claim));
++    aeneas_normalized_fingerprint_absorb(&mut hash, u8::from(has_copy_inactive_zero_claim));
+     for value in [
+         STATE_ONLY_HIDING_C1_COLUMNS as u16,
+         STATE_ONLY_HIDING_MASK_ONLY_C1_COLUMNS as u16,
+@@ -723,25 +717,25 @@ pub fn state_only_hiding_layout_factor_fingerprint_for_registry(
+         STATE_ONLY_HIDING_TERMINAL_POINTS as u16,
+     ] {
+         for byte in value.to_le_bytes() {
+-            absorb(byte);
++            aeneas_normalized_fingerprint_absorb(&mut hash, byte);
+         }
+     }
+     for column in 0..STATE_ONLY_HIDING_C1_COLUMNS {
+-        absorb(column as u8);
+-        absorb((column & 3) as u8);
+-        absorb(FACTOR_FAMILIES[column]);
+-        absorb(FACTOR_EXPONENTS[column]);
++        aeneas_normalized_fingerprint_absorb(&mut hash, column as u8);
++        aeneas_normalized_fingerprint_absorb(&mut hash, (column & 3) as u8);
++        aeneas_normalized_fingerprint_absorb(&mut hash, FACTOR_FAMILIES[column]);
++        aeneas_normalized_fingerprint_absorb(&mut hash, FACTOR_EXPONENTS[column]);
+     }
+     for column in 0..STATE_ONLY_HIDING_MASK_ONLY_C1_COLUMNS {
+-        absorb(0xfe); // Full-domain shared-power mask-only C1 namespace.
+-        absorb(column as u8);
+-        absorb(MASK_ONLY_FACTOR_EXPONENTS[column]);
+-        absorb((column & 3) as u8);
++        aeneas_normalized_fingerprint_absorb(&mut hash, 0xfe); // Full-domain shared-power mask-only C1 namespace.
++        aeneas_normalized_fingerprint_absorb(&mut hash, column as u8);
++        aeneas_normalized_fingerprint_absorb(&mut hash, MASK_ONLY_FACTOR_EXPONENTS[column]);
++        aeneas_normalized_fingerprint_absorb(&mut hash, (column & 3) as u8);
+     }
+-    absorb(0xff); // Explicit G is not one of the sixteen C1 columns.
+-    absorb(0x45); // Even-coefficient-interval schedule marker.
+-    absorb(EXPLICIT_FACTOR_EXPONENT as u8);
+-    absorb(EXPLICIT_FACTOR_FAMILY as u8);
++    aeneas_normalized_fingerprint_absorb(&mut hash, 0xff); // Explicit G is not one of the sixteen C1 columns.
++    aeneas_normalized_fingerprint_absorb(&mut hash, 0x45); // Even-coefficient-interval schedule marker.
++    aeneas_normalized_fingerprint_absorb(&mut hash, EXPLICIT_FACTOR_EXPONENT as u8);
++    aeneas_normalized_fingerprint_absorb(&mut hash, EXPLICIT_FACTOR_FAMILY as u8);
+     hash
+ }
+diff --git a/crates/aspis-core/src/sumcheck.rs b/crates/aspis-core/src/sumcheck.rs
+index 921de19..b90adb2 100644
+--- a/crates/aspis-core/src/sumcheck.rs
++++ b/crates/aspis-core/src/sumcheck.rs
+@@ -364,7 +364,12 @@ fn fold_grouped_rows_twice(
+         }
+         folded_values.push(value.half().half().half().half());
+     }
+-    (alloc::vec![0, 1, 2, 3], folded_values)
++    let mut folded_groups = Vec::with_capacity(4);
++    folded_groups.push(0);
++    folded_groups.push(1);
++    folded_groups.push(2);
++    folded_groups.push(3);
++    (folded_groups, folded_values)
+ }
+ 
+ #[derive(Clone, Copy, Debug, PartialEq, Eq)]
+@@ -1214,6 +1219,46 @@ impl WeightAccumulator {
+         x.mul(x).double().sub(M31::ONE)
+     }
+ 
++    #[allow(clippy::too_many_arguments)]
++    fn aeneas_normalized_accumulate_line(
++        line_deferred_halvings: u8,
++        line_count: &mut usize,
++        line_constant_limbs: &mut [M31; 4],
++        line_raw: &mut [[u64; 4]; 3],
++        line_sums: &mut [[M31; 4]; 3],
++        mut scale: QM31,
++        x: M31,
++        mut halvings: u8,
++    ) {
++        while halvings < line_deferred_halvings {
++            scale = scale.add(scale);
++            halvings += 1;
++        }
++        let high = Self::double_x_m31(x);
++        let factors = [x, high, x.mul(high)];
++        let limbs = [scale.c0.a.0, scale.c0.b.0, scale.c1.a.0, scale.c1.b.0];
++        for limb in 0..4 {
++            line_constant_limbs[limb] = line_constant_limbs[limb].add(M31(limbs[limb]));
++            for slot in 0..3 {
++                line_raw[slot][limb] += u64::from(limbs[limb]) * u64::from(factors[slot].0);
++            }
++        }
++        *line_count += 1;
++        if *line_count % 4 == 0 {
++            for slot in 0..3 {
++                for limb in 0..4 {
++                    line_sums[slot][limb] =
++                        line_sums[slot][limb].add(M31::reduce_u64(line_raw[slot][limb]));
++                    line_raw[slot][limb] = 0;
++                }
++            }
++        }
++    }
++
+     #[inline(always)]
+     fn halve_qm31(mut value: QM31, count: u8) -> QM31 {
+         let mut index = 0u8;
+@@ -1767,35 +1812,6 @@ impl WeightAccumulator {
+             let mut line_raw = [[0u64; 4]; 3];
+             let mut line_sums = [[M31::ZERO; 4]; 3];
+             for component in &self.components {
+-                let mut accumulate_line = |mut scale: QM31, x: M31, mut halvings: u8| {
+-                    while halvings < line_deferred_halvings {
+-                        scale = scale.add(scale);
+-                        halvings += 1;
+-                    }
+-                    let high = Self::double_x_m31(x);
+-                    let factors = [x, high, x.mul(high)];
+-                    let limbs = [scale.c0.a.0, scale.c0.b.0, scale.c1.a.0, scale.c1.b.0];
+-                    for limb in 0..4 {
+-                        line_constant_limbs[limb] = line_constant_limbs[limb].add(M31(limbs[limb]));
+-                        for slot in 0..3 {
+-                            line_raw[slot][limb] +=
+-                                u64::from(limbs[limb]) * u64::from(factors[slot].0);
+-                        }
+-                    }
+-                    line_count += 1;
+-                    if line_count % 4 == 0 {
+-                        for slot in 0..3 {
+-                            for limb in 0..4 {
+-                                line_sums[slot][limb] = line_sums[slot][limb]
+-                                    .add(M31::reduce_u64(line_raw[slot][limb]));
+-                                line_raw[slot][limb] = 0;
+-                            }
+-                        }
+-                    }
+-                };
+                 match component {
+-                    WeightComponent::LineM31Tensor { scale, x } => accumulate_line(*scale, *x, 0),
++                    WeightComponent::LineM31Tensor { scale, x } => {
++                        Self::aeneas_normalized_accumulate_line(
++                            line_deferred_halvings,
++                            &mut line_count,
++                            &mut line_constant_limbs,
++                            &mut line_raw,
++                            &mut line_sums,
++                            *scale,
++                            *x,
++                            0,
++                        )
++                    }
+                     WeightComponent::LineM31Batch {
+                         scales,
+                         xs,
+@@ -1804,7 +1820,17 @@ impl WeightAccumulator {
+                         deferred_halvings,
+                     } => {
+                         for (&scale, &x) in scales.iter().zip(xs) {
+-                            accumulate_line(scale, x, *deferred_halvings);
++                            Self::aeneas_normalized_accumulate_line(
++                                line_deferred_halvings,
++                                &mut line_count,
++                                &mut line_constant_limbs,
++                                &mut line_raw,
++                                &mut line_sums,
++                                scale,
++                                x,
++                                *deferred_halvings,
++                            );
+                         }
+                     }
+                     _ => {}

@@ -1,0 +1,23 @@
+	Command being timed: "/home/dombarker/project-offloads/v7-pure-debug-build-output-r2/aeneas-borrowfree-variantfn-namespace-arrayfix-r1 -sequential -no-progress-bar -abort-on-error -backend lean -namespace V7Qm31Dot3Reduced -dest /home/dombarker/project-offloads/aspis-v7-aeneas-source-unblock-20260830/qm31-dot3-reduced-r1/generated-r1 -subdir V7Qm31Dot3Reduced -split-files -emit-json /home/dombarker/project-offloads/aspis-v7-aeneas-source-unblock-20260830/qm31-dot3-reduced-r1/extraction/V7Qm31Dot3.llbc"
+	User time (seconds): 108.95
+	System time (seconds): 0.16
+	Percent of CPU this job got: 99%
+	Elapsed (wall clock) time (h:mm:ss or m:ss): 1:49.23
+	Average shared text size (kbytes): 0
+	Average unshared data size (kbytes): 0
+	Average stack size (kbytes): 0
+	Average total size (kbytes): 0
+	Maximum resident set size (kbytes): 390056
+	Average resident set size (kbytes): 0
+	Major (requiring I/O) page faults: 0
+	Minor (reclaiming a frame) page faults: 100358
+	Voluntary context switches: 180
+	Involuntary context switches: 1282
+	Swaps: 0
+	File system inputs: 0
+	File system outputs: 152
+	Socket messages sent: 0
+	Socket messages received: 0
+	Signals delivered: 0
+	Page size (bytes): 4096
+	Exit status: 0

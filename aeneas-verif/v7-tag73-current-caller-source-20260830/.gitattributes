@@ -1,0 +1,8 @@
+# These files are byte-exact tool outputs or patch evidence.  Preserve their
+# recorded bytes rather than rewriting tool-emitted blank/trailing lines.
+evidence/** -whitespace
+generated/** -whitespace
+generated-current/** -whitespace
+generated-focus/** -whitespace
+proof/**/*_Template.lean -whitespace
+toolchain/*.patch -whitespace

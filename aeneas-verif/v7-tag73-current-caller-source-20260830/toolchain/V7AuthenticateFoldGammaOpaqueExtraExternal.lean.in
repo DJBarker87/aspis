@@ -1,0 +1,78 @@
+/- Exact executable models for the five Rust-library operations which the
+focused Tag-73 caller keeps external but the frozen generic support file does
+not define.  These are ordinary structural interpretations of the Rust
+operations; none is a cryptographic premise. -/
+
+@[rust_fun "core::num::{usize}::reverse_bits"]
+def core.num.Usize.reverse_bits (value : Std.Usize) : Result Std.Usize :=
+  .ok ⟨value.bv.reverse⟩
+
+@[rust_fun "core::num::{usize}::checked_shl"]
+def core.num.Usize.checked_shl
+    (value : Std.Usize) (shift : Std.U32) : Result (Option Std.Usize) :=
+  if shift.val < System.Platform.numBits then
+    .ok (some ⟨value.bv.shiftLeft shift.val⟩)
+  else
+    .ok none
+
+@[rust_fun
+  "core::option::{core::ops::try_trait::Try<core::option::Option<@T>>}::branch"]
+def core.option.Option.Insts.CoreOpsTry_traitTry.branch {T : Type} :
+    Option T → Result
+      (core.ops.control_flow.ControlFlow (Option core.convert.Infallible) T)
+  | some value => .ok (.Continue value)
+  | none => .ok (.Break none)
+
+@[rust_fun
+  "core::option::{core::ops::try_trait::FromResidual<core::option::Option<@T>, core::option::Option<core::convert::Infallible>>}::from_residual"]
+def core.option.Option.Insts.CoreOpsTry_traitFromResidualOptionInfallible.from_residual
+    (T : Type) : Option core.convert.Infallible → Result (Option T)
+  | none => .ok none
+  | some impossible => nomatch impossible
+
+@[rust_fun "core::result::{core::result::Result<@T, @E>}::ok"]
+def core.result.Result.ok {T E : Type} :
+    core.result.Result T E → Result (Option T)
+  | .Ok value => .ok (some value)
+  | .Err _ => .ok none
+
+namespace @MODULE@External
+
+def insertByKey
+    {T K F : Type} (fnMut : core.ops.function.FnMut F T K)
+    (ord : core.cmp.Ord K) (value : T) :
+    List T → F → Result (List T × F)
+  | [], closure => .ok ([value], closure)
+  | head :: tail, closure => do
+      let (valueKey, closure) ← fnMut.call_mut closure value
+      let (headKey, closure) ← fnMut.call_mut closure head
+      let ordering ← ord.cmp valueKey headKey
+      match ordering with
+      | .lt => .ok (value :: head :: tail, closure)
+      | .eq =>
+          let (rest, closure) ← insertByKey fnMut ord value tail closure
+          .ok (head :: rest, closure)
+      | .gt =>
+          let (rest, closure) ← insertByKey fnMut ord value tail closure
+          .ok (head :: rest, closure)
+
+def sortListByKey
+    {T K F : Type} (fnMut : core.ops.function.FnMut F T K)
+    (ord : core.cmp.Ord K) : List T → F → Result (List T × F)
+  | [], closure => .ok ([], closure)
+  | head :: tail, closure => do
+      let (sortedTail, closure) ← sortListByKey fnMut ord tail closure
+      insertByKey fnMut ord head sortedTail closure
+
+end @MODULE@External
+
+@[rust_fun "core::slice::{[@T]}::sort_unstable_by_key"]
+def core.slice.Slice.sort_unstable_by_key
+    {T K F : Type} (fnMut : core.ops.function.FnMut F T K)
+    (ord : core.cmp.Ord K) : Slice T → F → Result (Slice T)
+  | slice, closure => do
+      let (values, _) ←
+        @MODULE@External.sortListByKey fnMut ord slice.val closure
+      dite (values.length ≤ Usize.max)
+        (fun h => .ok ⟨values, h⟩)
+        (fun _ => .fail .panic)

@@ -1,0 +1,29 @@
+diff --git a/src/PrePasses.ml b/src/PrePasses.ml
+index f70bd92..ba90cf7 100644
+--- a/src/PrePasses.ml
++++ b/src/PrePasses.ml
+@@ -1138,11 +1138,22 @@ let lower_nested_loop_returns (crate : crate) (f : fun_decl) : fun_decl =
+                 :: transform_statements depth loop_exit_cleanup
+                      outer_fallthrough return_written tail
+               else
+-                let loop = transform_block (depth + 1) [] false loop in
++                (* A loop without a nested return still needs its immediate
++                   post-loop lifetime cleanup on every break.  Otherwise a
++                   mutable iterator handback can escape into loop synthesis
++                   even though the corresponding Rust temporary is dead on
++                   every path which leaves the loop. *)
++                let cleanup, tail = take_cleanup [] rest in
++                let loop_cleanup =
++                  Option.value ~default:cleanup (loop_normal_exit_cleanup loop)
++                in
++                let loop =
++                  transform_block (depth + 1) loop_cleanup false loop
++                in
+                 let loop_st = { st with kind = Loop loop } in
+                 loop_st
+                 :: transform_statements depth loop_exit_cleanup
+-                     outer_fallthrough return_written rest
++                     outer_fallthrough return_written tail
+           | (st : statement) :: rest ->
+               let child_fallthrough =
+                 cleanup_falls_through_to_return outer_fallthrough rest
