@@ -192,6 +192,125 @@ def deployedRootSweepClient {Result : Type u} (rounds : Nat)
     (result : Result) : ConcreteRestorationClient Result :=
   repeatRootTransitionSweep 1511 rounds (.pure result)
 
+/-! ## Exact all-reply request coverage -/
+
+/-- One possible request path through an ordinary adaptive client.  Unlike
+`ExactRequestCount`, this retains the literal request values. -/
+inductive ConcreteRequestPath {Result : Type u} :
+    ConcreteRestorationClient Result →
+      List ConcreteRestorationRequest → Prop where
+  | pure (result : Result) : ConcreteRequestPath (.pure result) []
+  | restore
+      {request : ConcreteRestorationRequest}
+      {next : ConcreteRestorationReply → ConcreteRestorationClient Result}
+      (reply : ConcreteRestorationReply)
+      {tail : List ConcreteRestorationRequest}
+      (tailPath : ConcreteRequestPath (next reply) tail) :
+      ConcreteRequestPath (.restore request next) (request :: tail)
+
+/-- Literal request list emitted by one half-open root interval. -/
+def rootTransitionRequests : Nat → Nat → List ConcreteRestorationRequest
+  | _start, 0 => []
+  | start, count + 1 =>
+      { nodeId := 0, verifierTransitionIndex := start } ::
+        rootTransitionRequests (start + 1) count
+
+/-- Literal request list emitted by repeated complete root sweeps. -/
+def repeatedRootTransitionRequests (transitionCount : Nat) :
+    Nat → List ConcreteRestorationRequest
+  | 0 => []
+  | rounds + 1 =>
+      rootTransitionRequests 0 transitionCount ++
+        repeatedRootTransitionRequests transitionCount rounds
+
+/-- Every adaptive reply path through a prepended interval decomposes into
+the fixed literal interval and one genuine path through the supplied tail. -/
+theorem prepend_root_transition_sweep_request_path_decompose
+    {Result : Type u} {tail : ConcreteRestorationClient Result}
+    (start count : Nat) {requests : List ConcreteRestorationRequest}
+    (path : ConcreteRequestPath
+      (prependRootTransitionSweep start count tail) requests) :
+    ∃ tailRequests,
+      ConcreteRequestPath tail tailRequests ∧
+        requests = rootTransitionRequests start count ++ tailRequests := by
+  induction count generalizing start requests with
+  | zero =>
+      exact ⟨requests, by simpa using path,
+        by simp [rootTransitionRequests]⟩
+  | succ count ih =>
+      rw [prependRootTransitionSweep_succ] at path
+      cases path with
+      | restore reply nextPath =>
+          obtain ⟨tailRequests, tailPath, exact⟩ :=
+            ih (start + 1) nextPath
+          exact ⟨tailRequests, tailPath, by
+            simp only [rootTransitionRequests, List.cons_append]
+            rw [exact]⟩
+
+/-- Every adaptive reply path through repeated sweeps is the same repeated
+literal root-transition list. -/
+theorem repeat_root_transition_sweep_request_path_exact
+    {Result : Type u} (transitionCount rounds : Nat) (result : Result)
+    {requests : List ConcreteRestorationRequest}
+    (path : ConcreteRequestPath
+      (repeatRootTransitionSweep transitionCount rounds (.pure result))
+      requests) :
+    requests = repeatedRootTransitionRequests transitionCount rounds := by
+  induction rounds generalizing requests with
+  | zero =>
+      cases path
+      rfl
+  | succ rounds ih =>
+      rw [repeatRootTransitionSweep_succ] at path
+      obtain ⟨tailRequests, tailPath, exact⟩ :=
+        prepend_root_transition_sweep_request_path_decompose
+          0 transitionCount path
+      rw [exact, ih tailPath]
+      rfl
+
+/-- One interval contains every root request whose index is in its half-open
+range. -/
+theorem root_transition_request_mem
+    (start count index : Nat) (lower : start ≤ index)
+    (upper : index < start + count) :
+    { nodeId := 0, verifierTransitionIndex := index } ∈
+      rootTransitionRequests start count := by
+  induction count generalizing start with
+  | zero => omega
+  | succ count ih =>
+      simp only [rootTransitionRequests, List.mem_cons]
+      by_cases exact : index = start
+      · exact Or.inl (by cases exact; rfl)
+      · exact Or.inr (ih (start + 1) (by omega) (by omega))
+
+/-- A nonempty repeated sweep includes every in-range root transition. -/
+theorem root_transition_request_mem_repeated
+    (transitionCount rounds index : Nat) (roundsPositive : 0 < rounds)
+    (indexWithin : index < transitionCount) :
+    { nodeId := 0, verifierTransitionIndex := index } ∈
+      repeatedRootTransitionRequests transitionCount rounds := by
+  cases rounds with
+  | zero => omega
+  | succ rounds =>
+      simp only [repeatedRootTransitionRequests, List.mem_append]
+      exact Or.inl (root_transition_request_mem 0 transitionCount index
+        (Nat.zero_le index) (by simpa using indexWithin))
+
+/-- Production coverage certificate: on every possible adaptive reply path,
+each deployed root transition below 1511 is requested at least once whenever
+the extractor asks for a positive number of rounds. -/
+theorem deployed_root_sweep_every_path_covers_transition
+    {Result : Type u} (rounds : Nat) (result : Result)
+    {requests : List ConcreteRestorationRequest}
+    (path : ConcreteRequestPath (deployedRootSweepClient rounds result)
+      requests)
+    (roundsPositive : 0 < rounds) (transitionIndex : Nat)
+    (transitionWithin : transitionIndex < 1511) :
+    { nodeId := 0, verifierTransitionIndex := transitionIndex } ∈ requests := by
+  rw [repeat_root_transition_sweep_request_path_exact 1511 rounds result path]
+  exact root_transition_request_mem_repeated 1511 rounds transitionIndex
+    roundsPositive transitionWithin
+
 theorem deployed_root_sweep_client_exact_request_count
     {Result : Type u} (rounds : Nat) (result : Result) :
     ExactRequestCount result (rounds * 1511)
@@ -558,6 +677,10 @@ theorem completed_exact_root_sweep_returns_extractor
 #print axioms repeat_root_transition_sweep_replay_base_safe
 #print axioms deployed_root_sweep_client_exact_request_count
 #print axioms deployed_root_sweep_client_replay_base_safe
+#print axioms prepend_root_transition_sweep_request_path_decompose
+#print axioms repeat_root_transition_sweep_request_path_exact
+#print axioms root_transition_request_mem_repeated
+#print axioms deployed_root_sweep_every_path_covers_transition
 #print axioms dispatch_one_concrete_restoration_preserves_all_returned
 #print axioms exact_request_count_prevents_fuel_exhaustion
 #print axioms deployed_root_sweep_client_returns
