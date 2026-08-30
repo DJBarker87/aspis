@@ -344,6 +344,27 @@ noncomputable def classifyExactRestoredOperationalK13
             classified := certificate }⟩).elim
     | inr error => exact error
 
+/-- Source-closed restoration-wide classifier used by the concrete stage
+assembly.  The provider is the intrinsic checked-parser provider above, so
+this entrypoint has no caller-supplied field decoder or per-node source map. -/
+noncomputable def classifyExactRestoredOperationalK13Checked
+    {HiddenTape TapeIdentity Observation Statement Payload Result : Type}
+    {parameters : ExactCompilerResourceParameters}
+    {transitionFuel : Nat}
+    {configuration : ExactPlainRomConfiguration HiddenTape TapeIdentity
+      Observation Statement Tag73K12ParsedProof Payload Result parameters}
+    {projection : AcceptedTapeProjection Statement Tag73K12ParsedProof Payload}
+    {fixedInstance : PublicInstance Statement}
+    {sample : ExactCompilerSample HiddenTape parameters}
+    (decoder : ExactDecoderInstantiation QM31Exact)
+    (input : ExactK12OperationalInput transitionFuel configuration projection
+      fixedInstance sample) :
+    ExactRestoredOperationalK13Certificate decoder input ⊕
+      ExactRestoredOperationalK13Error decoder input
+        (exact_restored_operational_k13_provider input) :=
+  classifyExactRestoredOperationalK13 decoder input
+    (exact_restored_operational_k13_provider input)
+
 /-- The failure branch exposes an actual accepting stored node and its typed
 corrected K1.3 error.  This is the nonvacuous event witness consumed by the
 subsequent probability decomposition. -/
@@ -369,6 +390,52 @@ theorem exact_restored_operational_k13_error_exposes_done_failure
   rcases provider.hasDone with ⟨⟨node, member, done⟩⟩
   exact ⟨node, member, done, ⟨failure.everyDoneFailed node member done⟩⟩
 
+/-- Exact sample event for failure of the source-closed restoration-wide
+K1.3 classifier.  Its witness is the operational input constructed from that
+same sample; no caller-selected event or alternate accumulator appears. -/
+def exactTag73RestoredOperationalK13FailureEvent
+    {HiddenTape TapeIdentity Observation Statement Payload Result : Type}
+    {parameters : ExactCompilerResourceParameters}
+    (transitionFuel : Nat)
+    (configuration : ExactPlainRomConfiguration HiddenTape TapeIdentity
+      Observation Statement Tag73K12ParsedProof Payload Result parameters)
+    (projection : AcceptedTapeProjection Statement Tag73K12ParsedProof Payload)
+    (fixedInstance : PublicInstance Statement)
+    (decoder : ExactDecoderInstantiation QM31Exact) :
+    Set (ExactCompilerSample HiddenTape parameters) :=
+  {sample | ∃ input : ExactK12OperationalInput transitionFuel configuration
+      projection fixedInstance sample,
+    Nonempty (ExactRestoredOperationalK13Error decoder input
+      (exact_restored_operational_k13_provider input))}
+
+/-- Membership in the exact source-closed failure event exposes one literal
+done node and one of the explicit K1.2/K1.3 mathematical failure families. -/
+theorem exact_restored_operational_k13_failure_event_exposes_node_failure
+    {HiddenTape TapeIdentity Observation Statement Payload Result : Type}
+    {parameters : ExactCompilerResourceParameters}
+    {transitionFuel : Nat}
+    {configuration : ExactPlainRomConfiguration HiddenTape TapeIdentity
+      Observation Statement Tag73K12ParsedProof Payload Result parameters}
+    {projection : AcceptedTapeProjection Statement Tag73K12ParsedProof Payload}
+    {fixedInstance : PublicInstance Statement}
+    {decoder : ExactDecoderInstantiation QM31Exact}
+    {sample : ExactCompilerSample HiddenTape parameters}
+    (member : sample ∈ exactTag73RestoredOperationalK13FailureEvent
+      transitionFuel configuration projection fixedInstance decoder) :
+    ∃ (input : ExactK12OperationalInput transitionFuel configuration projection
+          fixedInstance sample)
+        (node : RestoredK13Node Statement Payload)
+        (nodeMember : node ∈ (exactRestorationAccumulator input).nodes)
+        (done : node.verifierFinalState.current.control = .done),
+      RestoredOperationalK13FailureEvent decoder node
+        ((exact_restored_operational_k13_provider input).data node nodeMember
+          done) := by
+  rcases member with ⟨input, ⟨failure⟩⟩
+  obtain ⟨node, nodeMember, done, ⟨nodeFailure⟩⟩ :=
+    exact_restored_operational_k13_error_exposes_done_failure failure
+  exact ⟨input, node, nodeMember, done,
+    restored_operational_k13_error_implies_failure_event nodeFailure⟩
+
 /-- Conversely, a success is tied definitionally to one node in the literal
 returned accumulator and never to the opaque root-only parser view. -/
 theorem exact_restored_operational_k13_certificate_has_literal_node
@@ -389,6 +456,7 @@ theorem exact_restored_operational_k13_certificate_has_literal_node
   exact ⟨certificate.member, certificate.done⟩
 
 #print axioms classifyExactRestoredOperationalK13
+#print axioms classifyExactRestoredOperationalK13Checked
 #print axioms exact_restoration_accumulator_contains_root
 #print axioms exact_restoration_accumulator_root_is_done
 #print axioms exact_restored_done_node_selected_q16_ledger
@@ -397,6 +465,8 @@ theorem exact_restored_operational_k13_certificate_has_literal_node
 #print axioms exact_restored_operational_k13_provider_of_source
 #print axioms exact_restored_operational_k13_provider
 #print axioms exact_restored_operational_k13_error_exposes_done_failure
+#print axioms
+  exact_restored_operational_k13_failure_event_exposes_node_failure
 #print axioms exact_restored_operational_k13_certificate_has_literal_node
 
 end

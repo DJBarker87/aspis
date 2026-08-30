@@ -158,6 +158,58 @@ inductive RestoredOperationalK13Error
       (error : ParsedK13Error decoder words
         (restoredOperationalK13View data))
 
+/-- Proposition-level inventory for the corrected restored-node classifier.
+Every disjunct is an existing K1.2 or K1.3 mathematical failure evaluated on
+the verifier-derived view; no opaque classifier-result event is introduced. -/
+def RestoredOperationalK13FailureEvent
+    {Statement Payload : Type*}
+    {environment : FutureFreeEnvironment}
+    (decoder : ExactDecoderInstantiation QM31Exact)
+    (node : RestoredK13Node Statement Payload)
+    (data : RestoredOperationalK13Data environment node) : Prop :=
+  (¬ accepted_two_tree_openings (restoredNodeK12Truncate node)
+      (restoredNodeK12Roots node) (restoredNodeK12Openings node)) ∨
+  V7MerkleExtractionFailure (restoredNodeK12Truncate node)
+      (restoredNodeK12Roots node) (restoredNodeK12Openings node)
+      (restoredNodeK12OrderedQueries node) ∨
+  ∃ words : ExtractedWords,
+    (¬ IdealAccepts (restoredOperationalK13View data).schedule
+      (decoderCodeEncoders decoder)
+      (parsedK13Transcript words (restoredOperationalK13View data))
+      (restoredOperationalK13View data).queries) ∨
+    QueryPhaseFailure (restoredOperationalK13View data).schedule
+      (decoderCodeEncoders decoder)
+      (parsedK13Transcript words (restoredOperationalK13View data))
+      (restoredOperationalK13View data).queries ∨
+    OneFoldReductionFailure (restoredOperationalK13View data).schedule
+      (decoderCodeEncoders decoder)
+      (parsedK13Transcript words (restoredOperationalK13View data)) ∨
+    InitialListCapFailure (decoderCodeEncoders decoder)
+      (parsedK13Transcript words (restoredOperationalK13View data))
+
+/-- A returned corrected classifier error always inhabits exactly one of the
+explicit mathematical failure families above. -/
+theorem restored_operational_k13_error_implies_failure_event
+    {Statement Payload : Type*}
+    {environment : FutureFreeEnvironment}
+    {decoder : ExactDecoderInstantiation QM31Exact}
+    {node : RestoredK13Node Statement Payload}
+    {data : RestoredOperationalK13Data environment node}
+    (error : RestoredOperationalK13Error decoder node data) :
+    RestoredOperationalK13FailureEvent decoder node data := by
+  cases error with
+  | k12 error =>
+      cases error with
+      | openingAuthenticationRejected rejected => exact .inl rejected
+      | extractionFailure reason failed => exact .inr (.inl ⟨reason, failed⟩)
+  | k13 words error =>
+      refine .inr (.inr ⟨words, ?_⟩)
+      cases error with
+      | idealRejected rejected => exact .inl rejected
+      | queryPhaseFailure failure => exact .inr (.inl failure)
+      | oneFoldReductionFailure failure => exact .inr (.inr (.inl failure))
+      | initialListCapFailure failure => exact .inr (.inr (.inr failure))
+
 /-- Total restored-node K1.3 classifier over the corrected operational view. -/
 noncomputable def classifyRestoredOperationalK13
     {Statement Payload : Type*}
@@ -265,6 +317,7 @@ theorem restored_operational_query_event_exposes_selected_bad_set
 
 #print axioms restored_operational_view_queries
 #print axioms classifyRestoredOperationalK13
+#print axioms restored_operational_k13_error_implies_failure_event
 #print axioms restored_operational_query_failure_selected_all_in_bad
 #print axioms restored_operational_query_event_exposes_selected_bad_set
 
