@@ -1,0 +1,66 @@
+{
+  "schema": "aspis.v7.one-tx-candidate-input-audit.v2",
+  "sourceCommit": "da77d5f5a22681200cceec8e90fc69ac2cc81ad8",
+  "sourceTree": "aee02a157b9866a4eaada912fe7ca8976ae51fce",
+  "frozenSourceFileHashesMatch": true,
+  "frozenReleaseHarnessHashesMatch": true,
+  "frozenToolchainInventoryMatches": true,
+  "programFeatureManifestsMatch": true,
+  "verifierLinuxReference": {
+    "bytes": 1812264,
+    "sha256": "c43960303f2d67606362dc09d74f3a7983dcfcbe0665984a385a0efa7ddc5e47"
+  },
+  "verifierHistoricalDarwinReference": {
+    "bytes": 1700384,
+    "sha256": "4ee9b4789533e049e2d9e1f43c84fa97f745a98151f9477ebd828de742b75e5c"
+  },
+  "poolReference": {
+    "bytes": 525888,
+    "sha256": "82606a25f00fd683b06186cdaae519b52c793d9a2f16f9d3f7c40c2b241685c2",
+    "status": "DERIVED_BY_BYTE_IDENTICAL_DA77_DUAL_LINUX_BUILD"
+  },
+  "deterministicCaseBundle": {
+    "cases": 11,
+    "successCases": 4,
+    "rollbackCases": 7,
+    "allNegativeCasesRequireRollback": true,
+    "bundleSha256": "5768416d9f720a93749408763ab72131cba7cf52ae77d1b739d1f2cfb68f289d",
+    "inventorySha256": "5086e0c3da9e4eda6c6111ee8a2a0ee25a745c66f8d011d21ef1fe1df1621341",
+    "offlineAuditSha256": "61b20e8171d6b81f772fc24907bed0a71ab3e8ef881f6b0e8077ab6b6655a6f9",
+    "independentGenerationsByteIdentical": true,
+    "walletPreflightsPassed": 11,
+    "sbfMaterialized": false,
+    "agaveExecuted": false
+  },
+  "derivationDualBuildExecuted": true,
+  "provenanceCompleteConfirmationReplayExecuted": false,
+  "disposableAgaveSuiteExecuted": false,
+  "publicDevnetTransactionSigned": false,
+  "publicDevnetTransactionSubmitted": false,
+  "releaseReady": false,
+  "remainingGates": [
+    "one provenance-complete capped Linux confirmation replay against both frozen Cargo registry namespaces",
+    "execute all eleven cases on a disposable Agave 4.2+ validator",
+    "measure fresh combined CU for all four honest paths and enforce rollback for all seven failures",
+    "public-devnet TxV1 execution activation before any public RPC simulation"
+  ],
+  "toolchainInventorySha256": "2bcdd08e9c26f5cd1743a07cfb8aae341dc278e9d4e33eed512b746bc365d61c",
+  "offlineCargoCache": {
+    "provenanceSha256": "f5e43356be7aef8abd7adc6ca5909c2a957ed3b53842caf15055166f522bb49e",
+    "packageInventorySha256": "3e40be42d1794e8a0d3c853a4f4af74803b46de724c320d9683f8e72f783e370",
+    "indexInventorySha256": "5b40d7284d0aceaa502e6f4c4b8bf2a2a2827a8c6e60217bd93f02b1d73600ef",
+    "packages": 428,
+    "indexEntries": 395,
+    "cargoPlusSolana": {
+      "provenanceSha256": "edbad6e67e209ce4d24f8a6608e9349e1ab2266a98ff87a72be73ff1b74fab5a",
+      "packageInventorySha256": "165e0a7f107dedc16083216b39f6216fad2ba4fa1977ceb7b6c36d4771f19255",
+      "indexInventorySha256": "464035cef039e2384ebe8ec7093d6ac4527fe24a08a734f7684315d983bafc58",
+      "packages": 186,
+      "indexEntries": 399
+    },
+    "buildTimeByteVerificationRequired": true
+  },
+  "signed": false,
+  "submitted": false,
+  "deployed": false
+}

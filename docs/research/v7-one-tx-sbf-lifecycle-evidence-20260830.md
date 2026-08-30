@@ -16,7 +16,9 @@
 
 > **Later Linux derivation:** capped two-copy builds at `da77d5f5` produced
 > byte-identical Linux Pool `82606a25...` (525,888 bytes) and verifier
-> `c4396030...` (1,812,264 bytes). The active status is in
+> `c4396030...` (1,812,264 bytes), and the provenance-complete confirmation
+> replay passed. It also found the Pool checkpoint planner over the SBF stack
+> limit, so the Pool artifact is not mainnet-ready. The active status is in
 > `v7-one-tx-agave-fixture-freeze-20260830.md`; the `4ee9...` verifier below is
 > preserved only as the historical Darwin/runtime baseline.
 

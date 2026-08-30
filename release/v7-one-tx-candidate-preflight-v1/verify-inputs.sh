@@ -33,7 +33,7 @@ git -C "$ROOT" rev-parse --git-dir >/dev/null 2>&1 \
 
 jq -e '
   .schema == "aspis.v7.one-tx-candidate-preflight.v1" and
-  .status == "ATOMIC_MARKER_LINUX_SBF_IDENTITIES_FROZEN_AGAVE_PENDING" and
+  .status == "LINUX_REPRODUCIBLE_SBF_GREEN_AGAVE_AND_POOL_STACK_PENDING" and
   .authorization.build == true and
   .authorization.localSimulationOnly == true and
   .authorization.publicDevnetReadOnlyProbe == true and
@@ -56,6 +56,7 @@ jq -e '
   (.txv1Lifecycle.requiredCases | unique | length) == 11 and
   .txv1Lifecycle.caseBundleIncluded == true and
   .txv1Lifecycle.caseBundlePoolSbfBindingComplete == false and
+  .txv1Lifecycle.materializedCaseBundleIncluded == true and
   .txv1Lifecycle.walletPreflightsExecuted == 11 and
   .txv1Lifecycle.agave42AvailableInRecordedLocalEnvironment == false and
   .txv1Lifecycle.suiteExecutedForThisFreeze == false and
@@ -260,6 +261,39 @@ readonly HISTORICAL_VERIFIER_BYTES=$(jq -er '.programs[] | select(.name == "aspi
 [[ "$(git -C "$ROOT" cat-file -s "$SOURCE_COMMIT:$HISTORICAL_VERIFIER_ARTIFACT")" == "$HISTORICAL_VERIFIER_BYTES" ]] \
   || fail "historical Darwin verifier artifact length changed"
 
+while IFS=$'\t' read -r name artifact expected_bytes expected_sha checked_in; do
+  [[ "$checked_in" == "true" && -f "$ROOT/$artifact" ]] \
+    || fail "Linux SBF reference artifact is not checked in: $name"
+  [[ "$(wc -c <"$ROOT/$artifact" | tr -d ' ')" == "$expected_bytes" ]] \
+    || fail "Linux SBF reference artifact length changed: $name"
+  [[ "$(sha_file "$ROOT/$artifact")" == "$expected_sha" ]] \
+    || fail "Linux SBF reference artifact hash changed: $name"
+done < <(jq -r '.programs[] | [.name, .referenceArtifact, .expectedBytes, .expectedSha256,
+  .referenceArtifactCheckedIn] | @tsv' "$MANIFEST")
+
+readonly REPRODUCIBLE_SBF_RECORD="$ROOT/$(jq -er '.linuxSbfConfirmation.reproducibleSbfRecord' "$MANIFEST")"
+[[ -f "$REPRODUCIBLE_SBF_RECORD" ]] || fail "reproducible SBF record is missing"
+[[ "$(sha_file "$REPRODUCIBLE_SBF_RECORD")" == "$(jq -er '.linuxSbfConfirmation.reproducibleSbfRecordSha256' "$MANIFEST")" ]] \
+  || fail "reproducible SBF record hash changed"
+jq -e \
+  --arg sourceCommit "$SOURCE_COMMIT" \
+  --arg poolSha "$(jq -er '.programs[] | select(.name == "aspis-pool") | .expectedSha256' "$MANIFEST")" \
+  --arg verifierSha "$VERIFIER_SHA" \
+  --arg hostCache "$(jq -er '.toolchain.offlineCargoCache.provenanceSha256' "$MANIFEST")" \
+  --arg sbfCache "$(jq -er '.toolchain.offlineCargoCache.sbfProvenanceSha256' "$MANIFEST")" '
+  .schema == "aspis.v7.one-tx-reproducible-sbf.v2" and
+  .source.commit == $sourceCommit and .source.independentCopies == 2 and
+  .source.archivesByteIdentical == true and
+  .builder.offlineCargoCacheProvenanceSha256 == $hostCache and
+  .builder.offlineCargoCacheVerifiedBeforeAndAfter == true and
+  .builder.offlineSbfCargoCacheProvenanceSha256 == $sbfCache and
+  .builder.offlineSbfCargoCacheVerifiedBeforeAndAfter == true and
+  .builder.memorySwapMaxBytes == 0 and
+  .programs.pool.sha256 == $poolSha and .programs.pool.buildsByteIdentical == true and
+  .programs.verifier.sha256 == $verifierSha and .programs.verifier.buildsByteIdentical == true and
+  .signed == false and .submitted == false and .deployed == false
+' "$REPRODUCIBLE_SBF_RECORD" >/dev/null || fail "reproducible SBF record contents changed"
+
 readonly CASE_BUNDLE_RELATIVE=$(jq -er '.txv1Lifecycle.caseBundle' "$MANIFEST")
 readonly CASE_BUNDLE="$ROOT/$CASE_BUNDLE_RELATIVE"
 readonly CASE_BUNDLE_SHA=$(jq -er '.txv1Lifecycle.caseBundleSha256' "$MANIFEST")
@@ -305,6 +339,26 @@ jq -e \
   .agaveExecutionPerformed == false and
   .signed == false and .submitted == false and .deployed == false
 ' <<<"$bundle_audit" >/dev/null || fail "offline bundle validator did not reproduce the frozen result"
+
+readonly MATERIALIZED_BUNDLE_RELATIVE=$(jq -er '.txv1Lifecycle.materializedCaseBundle' "$MANIFEST")
+readonly MATERIALIZED_BUNDLE="$ROOT/$MATERIALIZED_BUNDLE_RELATIVE"
+[[ -d "$MATERIALIZED_BUNDLE" ]] || fail "materialized eleven-case bundle is missing"
+[[ "$(sha_file "$MATERIALIZED_BUNDLE/bundle.json")" == "$(jq -er '.txv1Lifecycle.materializedCaseBundleSha256' "$MANIFEST")" ]] \
+  || fail "materialized bundle hash changed"
+[[ "$(sha_file "$MATERIALIZED_BUNDLE/TEMPLATE-SHA256SUMS")" == "$(jq -er '.txv1Lifecycle.materializedCaseBundleInventorySha256' "$MANIFEST")" ]] \
+  || fail "materialized bundle inventory hash changed"
+materialized_bundle_audit=$($BUNDLE_VERIFY "$MATERIALIZED_BUNDLE" --materialized)
+[[ "$(sha_stdin <<<"$materialized_bundle_audit")" == "$(jq -er '.txv1Lifecycle.materializedCaseBundleOfflineAuditSha256' "$MANIFEST")" ]] \
+  || fail "materialized bundle audit hash changed"
+jq -e '
+  .schema == "aspis.v7.deterministic-agave-bundle-offline-audit.v1" and
+  .cases == 11 and .exactRequiredCaseSet == true and
+  .allNegativeCasesRequireRollback == true and
+  .hashesAndLengthsMatch == true and .canonicalAsq8InputsMatch == true and
+  .deterministicTokenFailureTestDoublePinned == true and
+  .sbfMaterializedAndMatched == true and .agaveExecutionPerformed == false and
+  .signed == false and .submitted == false and .deployed == false
+' <<<"$materialized_bundle_audit" >/dev/null || fail "materialized bundle validation changed"
 
 jq -e \
   --arg sourceCommit "$SOURCE_COMMIT" \
@@ -380,17 +434,26 @@ jq -n \
       offlineAuditSha256: $offlineAuditSha256,
       independentGenerationsByteIdentical: true,
       walletPreflightsPassed: 11,
-      sbfMaterialized: false,
+      sbfMaterialized: true,
+      materializedBundleSha256: "b4ca543d65a3f12abff72aa412bcad77acb7fb335692c045db2356f4230eda7f",
+      materializedBundleAuditSha256: "206e1237b8a49725ea6ad03b1878e3604ef460c3a9f0477d4c91f65e861a1569",
       agaveExecuted: false
     },
     derivationDualBuildExecuted: true,
-    provenanceCompleteConfirmationReplayExecuted: false,
+    provenanceCompleteConfirmationReplayExecuted: true,
+    reproducibleSbfRecordSha256: "1b66865f8b7f9a9ec7158b92fc0e526f7ac37713282c28a82f2452fe23596aab",
+    poolCheckpointStackGate: {
+      status: "MAINNET_BLOCKER",
+      function: "aspis_pool::pair_forest::plan_pair_forest_checkpoint_accounts_v1",
+      stackOffsetBytes: 4368,
+      maximumOffsetBytes: 4096
+    },
     disposableAgaveSuiteExecuted: false,
     publicDevnetTransactionSigned: false,
     publicDevnetTransactionSubmitted: false,
     releaseReady: false,
     remainingGates: [
-      "one provenance-complete capped Linux confirmation replay against both frozen Cargo registry namespaces",
+      "reduce the production permissionless-checkpoint SBF stack frame below 4096 bytes and refresh the Pool SBF evidence",
       "execute all eleven cases on a disposable Agave 4.2+ validator",
       "measure fresh combined CU for all four honest paths and enforce rollback for all seven failures",
       "public-devnet TxV1 execution activation before any public RPC simulation"

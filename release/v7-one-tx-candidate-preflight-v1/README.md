@@ -50,11 +50,16 @@ The Pool SBF identity is not inherited from the superseded pre-marker
 candidate. A capped two-copy Linux derivation produced byte-identical Pool and
 verifier outputs: `82606a25...` (525,888 bytes) and `c4396030...` (1,812,264
 bytes). The older `4ee9...` verifier remains a historical Darwin artifact and
-is not relabelled as a Linux reproduction. One provenance-complete confirmation
-replay is required against the now-frozen two Cargo namespaces. Both modes
-validate the fixture offline and require all seven negative cases to assert
-exact protected-account rollback. Agave execution and fresh combined CU remain
-open until `build-and-simulate` succeeds with an actual Agave 4.2+ binary set.
+is not relabelled as a Linux reproduction. The provenance-complete `r6` replay
+verified both Cargo namespaces before and after building, reproduced both
+identities from both source copies, and materialized the eleven-case bundle.
+All seven negative cases still require exact protected-account rollback.
+
+The build also exposes a separate mainnet blocker: the production
+permissionless-checkpoint planner has a 4,368-byte SBF stack offset, 272 bytes
+above the 4,096-byte limit. That Pool frame must be restructured and the Pool
+artifact refreshed. Agave execution and fresh combined CU also remain open
+until `build-and-simulate` succeeds with an actual Agave 4.2+ binary set.
 
 All paths are fail-closed. No command in this preflight signs, submits, deploys
 or mutates a public cluster.

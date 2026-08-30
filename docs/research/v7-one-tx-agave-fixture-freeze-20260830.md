@@ -2,8 +2,8 @@
 
 Date: 2026-08-30
 
-Status: **offline fixture closure and platform-specific Linux SBF derivation
-pass; one provenance-complete confirmation build and Agave execution remain
+Status: **offline fixture closure and the provenance-complete dual Linux SBF
+replay pass; the Pool checkpoint stack repair and Agave execution remain
 open**. No transaction was signed, submitted or deployed.
 
 ## Outcome
@@ -133,6 +133,22 @@ sets before and after compilation:
 It keeps `--offline --locked` and does not download into or clean the shared
 cache.
 
+The corrected `r6` replay then exited zero. It reproduced the Pool and
+verifier identities from both independent source copies, authenticated both
+Cargo namespaces before and after the build, and materialized the exact
+eleven-case bundle. The reproducible-SBF record is SHA-256 `1b66865f...`; the
+materialized bundle and its offline audit are `b4ca543d...` and `206e1237...`.
+The capped service took 9:49.19, peaked at 2,094,817,280 bytes, and used zero
+swap.
+
+The Pool build simultaneously exposed a genuine ecosystem release blocker:
+`plan_pair_forest_checkpoint_accounts_v1`, used by the production
+permissionless-checkpoint instruction, has SBF stack offset 4,368 bytes—272
+bytes over the 4,096-byte limit—with an estimated 4,544-byte frame. The
+one-terminal spend function is not the flagged function, but the Pool is not
+mainnet-ready until this checkpoint frame is reduced and the Pool SBF/runtime
+evidence is refreshed.
+
 ## Determinism and offline verification
 
 Two independent optimized runs produced byte-identical outputs:
@@ -177,13 +193,14 @@ NO_DNA=1 cargo run --release --quiet \
 
 ## Exact remaining runtime prerequisite
 
-The next permitted build-host run must:
+After the checkpoint source repair, the next release replay must:
 
-1. export `da77d5f5` twice into isolated Linux source copies;
+1. freeze the new Pool source commit and export it twice into isolated Linux
+   source copies;
 2. use the frozen v1.48 SBF toolchain under a capped cgroup with no swap;
 3. verify both Cargo registry namespaces before and after compilation;
-4. reproduce the frozen Linux Pool `82606a25...` and verifier `c4396030...`
-   identities from both copies;
+4. require a clean Pool stack report, byte-identical new Pool outputs, and the
+   unchanged Linux verifier `c4396030...` from both copies;
 5. materialize those exact SBFs and pass the offline validator in
    `--materialized` mode;
 6. run the eleven-case suite under Agave 4.2+, reporting actual CU and exact

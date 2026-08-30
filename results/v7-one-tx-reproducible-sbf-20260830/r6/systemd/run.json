@@ -1,0 +1,32 @@
+{
+  "schema": "aspis.v7.one-tx-capped-sbf-replay-systemd.v1",
+  "unit": "aspis-v7-one-tx-dual-sbf-20260830-r6.service",
+  "invocationId": "db1e20a369e54bbf849440c33230dae1",
+  "sourceHarnessCommit": "2acd8a0c4f68b71ecb89dec2cc7128f93e646fff",
+  "startedAtUtc": "2026-08-30T18:12:34Z",
+  "finishedAtUtc": "2026-08-30T18:22:23Z",
+  "wallSeconds": 589.19,
+  "cpuSeconds": 642.764,
+  "memoryHighBytes": 9663676416,
+  "memoryMaxBytes": 12884901888,
+  "memorySwapMaxBytes": 0,
+  "observedMemoryPeakBytes": 2094817280,
+  "journalRoundedMemoryPeak": "1.9G",
+  "memorySwapPeakBytes": 0,
+  "exitStatus": 0,
+  "reproducibleSbf": "PASS",
+  "materializedElevenCaseBundle": "PASS_OFFLINE_ONLY",
+  "agaveElevenCaseExecution": "UNAVAILABLE_NOT_EXECUTED",
+  "poolStackAnalyzer": {
+    "status": "MAINNET_BLOCKER",
+    "function": "aspis_pool::pair_forest::plan_pair_forest_checkpoint_accounts_v1",
+    "stackOffsetBytes": 4368,
+    "maximumOffsetBytes": 4096,
+    "excessBytes": 272,
+    "estimatedFrameBytes": 4544,
+    "scope": "permissionless checkpoint production path"
+  },
+  "signed": false,
+  "submitted": false,
+  "deployed": false
+}

@@ -1,6 +1,6 @@
 {
   "schema": "aspis.v7.one-tx-candidate-preflight.v1",
-  "status": "ATOMIC_MARKER_LINUX_SBF_IDENTITIES_FROZEN_AGAVE_PENDING",
+  "status": "LINUX_REPRODUCIBLE_SBF_GREEN_AGAVE_AND_POOL_STACK_PENDING",
   "authorization": {
     "build": true,
     "localSimulationOnly": true,
@@ -72,8 +72,9 @@
       "expectedBytes": 525888,
       "expectedSha256": "82606a25f00fd683b06186cdaae519b52c793d9a2f16f9d3f7c40c2b241685c2",
       "bindingStatus": "DERIVED_BY_BYTE_IDENTICAL_DA77_DUAL_LINUX_BUILD",
-      "referenceEvidence": "aspis-v7-one-tx-dual-sbf-20260830-r5.service",
-      "referenceArtifactCheckedIn": false
+      "referenceEvidence": "results/v7-one-tx-reproducible-sbf-20260830/r6/reproducible-sbf.json",
+      "referenceArtifact": "results/v7-one-tx-reproducible-sbf-20260830/r6/sbf/aspis_pool.so",
+      "referenceArtifactCheckedIn": true
     },
     {
       "name": "aspis-verifier",
@@ -85,8 +86,9 @@
       "expectedBytes": 1812264,
       "expectedSha256": "c43960303f2d67606362dc09d74f3a7983dcfcbe0665984a385a0efa7ddc5e47",
       "bindingStatus": "DERIVED_BY_BYTE_IDENTICAL_DA77_DUAL_LINUX_BUILD",
-      "referenceEvidence": "aspis-v7-one-tx-dual-sbf-20260830-r5.service",
-      "referenceArtifactCheckedIn": false,
+      "referenceEvidence": "results/v7-one-tx-reproducible-sbf-20260830/r6/reproducible-sbf.json",
+      "referenceArtifact": "results/v7-one-tx-reproducible-sbf-20260830/r6/sbf/aspis_verifier.so",
+      "referenceArtifactCheckedIn": true,
       "historicalDarwinReference": {
         "bytes": 1700384,
         "sha256": "4ee9b4789533e049e2d9e1f43c84fa97f745a98151f9477ebd828de742b75e5c",
@@ -231,6 +233,32 @@
     "finalHarnessStatus": "FAILED_ONLY_AT_HISTORICAL_DARWIN_VERIFIER_REFERENCE_GATE",
     "purpose": "derive the platform-specific Linux output identities before the provenance-complete confirmation replay"
   },
+  "linuxSbfConfirmation": {
+    "unit": "aspis-v7-one-tx-dual-sbf-20260830-r6.service",
+    "invocationId": "db1e20a369e54bbf849440c33230dae1",
+    "harnessCommit": "2acd8a0c4f68b71ecb89dec2cc7128f93e646fff",
+    "sourceCommit": "da77d5f5a22681200cceec8e90fc69ac2cc81ad8",
+    "independentSourceCopies": 2,
+    "allFourBuildCommandsExitedZero": true,
+    "poolAAndBByteIdentical": true,
+    "verifierAAndBByteIdentical": true,
+    "bothCargoRegistryNamespacesVerifiedBeforeAndAfter": true,
+    "reproducibleSbfRecord": "results/v7-one-tx-reproducible-sbf-20260830/r6/reproducible-sbf.json",
+    "reproducibleSbfRecordSha256": "1b66865f8b7f9a9ec7158b92fc0e526f7ac37713282c28a82f2452fe23596aab",
+    "materializedBundleSha256": "b4ca543d65a3f12abff72aa412bcad77acb7fb335692c045db2356f4230eda7f",
+    "materializedBundleAuditSha256": "206e1237b8a49725ea6ad03b1878e3604ef460c3a9f0477d4c91f65e861a1569",
+    "memoryPeakBytes": 2094817280,
+    "memorySwapPeakBytes": 0,
+    "wallSeconds": 589.19,
+    "exitStatus": 0,
+    "agaveSuiteExecuted": false,
+    "poolCheckpointStackGate": {
+      "function": "aspis_pool::pair_forest::plan_pair_forest_checkpoint_accounts_v1",
+      "stackOffsetBytes": 4368,
+      "maximumOffsetBytes": 4096,
+      "status": "MAINNET_BLOCKER"
+    }
+  },
   "priorMeasuredCombinedCase": {
     "classification": "REAL_COMBINED_LITESVM_BCD03B12_PRE_MARKER_CREATION_CHRONOLOGY_ONLY",
     "path": "results/v7-static-schedule-cu-check-20260830/withdrawal-rollover-counter0.json",
@@ -248,7 +276,7 @@
     "executed": false,
     "computeUnits": null,
     "transactionBytes": 1031,
-    "reason": "byte-identical Linux SBFs are frozen; disposable Agave 4.2+ runtime replay remains pending"
+    "reason": "byte-identical Linux SBFs are frozen; checkpoint stack repair and disposable Agave 4.2+ runtime replay remain pending"
   },
   "txv1Lifecycle": {
     "authoritativePreflightCommit": "c403c2f95734b271c3f5e0cae50d2a770640941a",
@@ -304,6 +332,11 @@
       }
     ],
     "caseBundlePoolSbfBindingComplete": false,
+    "materializedCaseBundleIncluded": true,
+    "materializedCaseBundle": "results/v7-one-tx-reproducible-sbf-20260830/r6/materialized-eleven-case-bundle",
+    "materializedCaseBundleSha256": "b4ca543d65a3f12abff72aa412bcad77acb7fb335692c045db2356f4230eda7f",
+    "materializedCaseBundleInventorySha256": "aa287b62b3c67ca05206c935feb08e62708db558457f09eea89776e2b5f01f52",
+    "materializedCaseBundleOfflineAuditSha256": "206e1237b8a49725ea6ad03b1878e3604ef460c3a9f0477d4c91f65e861a1569",
     "agave42AvailableInRecordedLocalEnvironment": false,
     "suiteExecutedForThisFreeze": false,
     "publicDevnetExecutionActivationRequired": true,
