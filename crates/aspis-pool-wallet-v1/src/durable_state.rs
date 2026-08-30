@@ -129,6 +129,17 @@ pub(crate) struct AtomicStateFileV1 {
     _lock: File,
 }
 
+/// Testable boundaries inside one atomic same-directory replacement. A hook
+/// error means the target may already have changed; callers must discard any
+/// cached state, reopen the file, and run format-specific recovery.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub(crate) enum AtomicReplaceBoundaryV1 {
+    TemporaryWrite,
+    TemporaryFileSync,
+    TargetRename,
+    ParentDirectorySync,
+}
+
 impl AtomicStateFileV1 {
     pub(crate) fn acquire(path: &Path) -> Result<Self, DurableStateErrorV1> {
         let file_name = path.file_name().ok_or(DurableStateErrorV1::InvalidPath)?;
@@ -187,6 +198,17 @@ impl AtomicStateFileV1 {
     }
 
     pub(crate) fn replace(&self, bytes: &[u8]) -> Result<(), DurableStateErrorV1> {
+        self.replace_with_fault_v1(bytes, |_| Ok(()))
+    }
+
+    pub(crate) fn replace_with_fault_v1<F>(
+        &self,
+        bytes: &[u8],
+        mut after_boundary: F,
+    ) -> Result<(), DurableStateErrorV1>
+    where
+        F: FnMut(AtomicReplaceBoundaryV1) -> Result<(), DurableStateErrorV1>,
+    {
         if bytes.len() > MAX_DURABLE_IMAGE_BYTES {
             return Err(DurableStateErrorV1::ImageTooLarge);
         }
@@ -202,11 +224,15 @@ impl AtomicStateFileV1 {
         let mut file = options.open(&temporary)?;
         set_private_permissions_v1(&file)?;
         file.write_all(bytes)?;
+        after_boundary(AtomicReplaceBoundaryV1::TemporaryWrite)?;
         file.sync_all()?;
+        after_boundary(AtomicReplaceBoundaryV1::TemporaryFileSync)?;
         drop(file);
         fs::rename(&temporary, &self.path)?;
+        after_boundary(AtomicReplaceBoundaryV1::TargetRename)?;
         validate_regular_private_file_v1(&self.path, false)?;
         File::open(self.path.parent().ok_or(DurableStateErrorV1::InvalidPath)?)?.sync_all()?;
+        after_boundary(AtomicReplaceBoundaryV1::ParentDirectorySync)?;
         Ok(())
     }
 }
@@ -446,6 +472,13 @@ impl DurableWalletStateV1 {
     /// `ASPX`. All fields are public account/reconciliation metadata.
     pub fn active_prepared_plans(&self) -> &[AuthenticatedPreparedSettlementV1] {
         &self.active_prepared_plans
+    }
+
+    /// Activation gates must reject closed as well as active plan history;
+    /// neither the base records nor their finalized lifecycle may be silently
+    /// dropped when moving to a different authoritative wallet format.
+    pub fn has_prepared_plan_history_v1(&self) -> bool {
+        !self.base_prepared_plans.is_empty() || !self.prepared_plan_lifecycle.is_empty()
     }
 
     /// Advance the rollback anchor and durably commit it without deleting

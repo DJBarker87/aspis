@@ -16,7 +16,7 @@ use aspis_pool::POOL_V1_PAIR_EMPTY_ROOTS;
 use aspis_statement::{
     decode_digest_canonical, encode_digest_canonical,
     pool_v1::{
-        encode_pool_v1_pair_forest_lane_state_v1,
+        decode_pool_v1_pair_forest_lane_state_v1, encode_pool_v1_pair_forest_lane_state_v1,
         root_history::{read_root_history_page_root_v1, validate_root_history_page_bytes_v1},
         PoolV1PairForestLaneStateV1, PoolV1PairLeafWitnessV1, PoolV1RootHistoryError,
         POOL_V1_PAIR_CAPACITY, POOL_V1_PAIR_FOREST_CHECKPOINT_ACCOUNT_BYTES,
@@ -64,6 +64,7 @@ pub enum LaneForestRpcErrorV2 {
     EventPointMismatch,
     ReplayMismatch,
     InvalidChainLink,
+    FinalizedRollback,
     UnretainedFork,
     MissingCheckpoint,
     UnexpectedCheckpoint,
@@ -559,6 +560,73 @@ fn durable_event_from_program_v2(
     ))
 }
 
+fn retained_event_matches_program_v2(
+    retained: &ForestFinalizedAppendEventV2,
+    event_id: DepositEventIdV1,
+    event: &PairForestProgramEventV2,
+) -> Result<bool, LaneForestRpcErrorV2> {
+    let (first_id, second_id) = retained.event_ids();
+    if first_id != event_id
+        || matches!(
+            event.kind,
+            PairForestProgramEventKindV2::PrivateTransfer { .. }
+        ) && second_id != Some(second_event_id_v2(event_id)?)
+    {
+        return Ok(false);
+    }
+    let after = decode_pool_v1_pair_forest_lane_state_v1(
+        &retained.after_lane_image,
+        &POOL_V1_PAIR_EMPTY_ROOTS,
+    )
+    .map_err(LaneForestDurableErrorV2::from)?;
+    let retained_kind = match &retained.kind {
+        ForestFinalizedAppendKindV2::Deposit {
+            commitment,
+            encrypted_note,
+            ..
+        } => PairForestProgramEventKindV2::Deposit {
+            commitment: *commitment,
+            encrypted_note: *encrypted_note,
+        },
+        ForestFinalizedAppendKindV2::PrivateTransfer {
+            nullifier,
+            recipient_commitment,
+            change_commitment,
+            recipient_encrypted_note,
+            change_encrypted_note,
+            ..
+        } => PairForestProgramEventKindV2::PrivateTransfer {
+            nullifier: *nullifier,
+            recipient_commitment: *recipient_commitment,
+            change_commitment: *change_commitment,
+            recipient_encrypted_note: *recipient_encrypted_note,
+            change_encrypted_note: *change_encrypted_note,
+        },
+        ForestFinalizedAppendKindV2::Withdrawal {
+            nullifier,
+            change_commitment,
+            destination_token_account,
+            amount,
+            encrypted_note,
+            ..
+        } => PairForestProgramEventKindV2::Withdrawal {
+            nullifier: *nullifier,
+            change_commitment: *change_commitment,
+            destination_token_account: *destination_token_account,
+            amount: *amount,
+            encrypted_note: *encrypted_note,
+        },
+    };
+    Ok(event
+        == &PairForestProgramEventV2 {
+            master: retained.master,
+            pair_leaf_index: retained.pair_leaf_index,
+            root_sequence: retained.root_sequence,
+            after_lane_root: encode_digest_canonical(&after.tree.root),
+            kind: retained_kind,
+        })
+}
+
 fn validate_root_pages_v2(
     state: &LaneForestDurableStateV2,
     snapshot: &FinalizedForestAccountSnapshotV2,
@@ -642,15 +710,15 @@ pub fn ingest_finalized_forest_rpc_batch_v2(
     let program_id = *wallet.state().program_id();
     let replay = wallet.state().finalized_head_v2() == Some(batch.point);
     let mut candidate = wallet.state().clone();
-    let mut rolled_back_checkpoint_sequence = None;
     if !replay {
         if let Some(head) = candidate.finalized_head_v2() {
             if batch.parent != head {
-                let checkpoint_sequence = candidate
-                    .retained_checkpoint_sequence_at_point_v2(batch.parent)
-                    .ok_or(LaneForestRpcErrorV2::UnretainedFork)?;
-                candidate.rollback_to_finalized_checkpoint_v2(checkpoint_sequence)?;
-                rolled_back_checkpoint_sequence = Some(checkpoint_sequence);
+                // Every event retained by this adapter was admitted only at
+                // finalized commitment. Rewinding it would lose finalized
+                // notes and could resurrect finalized spends in a companion
+                // store. Tentative confirmed observations belong in the V2
+                // transaction coordinator and may be reorged there instead.
+                return Err(LaneForestRpcErrorV2::FinalizedRollback);
             }
         }
     }
@@ -678,12 +746,10 @@ pub fn ingest_finalized_forest_rpc_batch_v2(
     }
     if replay {
         for (event_id, event) in &decoded {
-            if !candidate.contains_event_id_v2(*event_id)
-                || matches!(
-                    event.kind,
-                    PairForestProgramEventKindV2::PrivateTransfer { .. }
-                ) && !candidate.contains_event_id_v2(second_event_id_v2(*event_id)?)
-            {
+            let Some(retained) = candidate.retained_event_v2(*event_id) else {
+                return Err(LaneForestRpcErrorV2::ReplayMismatch);
+            };
+            if !retained_event_matches_program_v2(retained, *event_id, event)? {
                 return Err(LaneForestRpcErrorV2::ReplayMismatch);
             }
         }
@@ -740,7 +806,7 @@ pub fn ingest_finalized_forest_rpc_batch_v2(
     wallet.replace_state_v2(candidate)?;
     Ok(FinalizedForestIngestResultV2 {
         status: FinalizedForestIngestStatusV2::Advanced,
-        rolled_back_checkpoint_sequence,
+        rolled_back_checkpoint_sequence: None,
         note_associations,
         withdrawals,
     })
@@ -1152,6 +1218,20 @@ mod tests {
                 FinalizedForestIngestStatusV2::Replayed
             );
             let before = wallet.state().clone();
+            let mut conflicting_replay = batch.clone();
+            let mut conflicting_event = event.clone();
+            conflicting_event.kind = PairForestProgramEventKindV2::Deposit {
+                commitment: encode_digest_canonical(&digest(81)),
+                encrypted_note: None,
+            };
+            conflicting_replay.observations[0].event_bytes =
+                encode_pair_forest_program_event_v2(&conflicting_event).unwrap();
+            assert!(matches!(
+                ingest_finalized_forest_rpc_batch_v2(&mut wallet, &conflicting_replay, None,),
+                Err(LaneForestRpcErrorV2::ReplayMismatch)
+            ));
+            assert_eq!(wallet.state(), &before);
+
             let mut untrusted = batch.clone();
             untrusted.observations[0].emitting_program = [0x55; 32];
             assert!(matches!(
@@ -1258,7 +1338,7 @@ mod tests {
     }
 
     #[test]
-    fn retained_checkpoint_fork_rolls_back_all_lanes_before_new_branch() {
+    fn retained_checkpoint_fork_cannot_rollback_finalized_lanes() {
         let (program, initial) = fixture();
         let first_point = point(30);
         let first_id = event_id(first_point, 31);
@@ -1356,10 +1436,11 @@ mod tests {
             ingest_finalized_forest_rpc_batch_v2(&mut wallet, &first_batch, None).unwrap();
             ingest_finalized_forest_rpc_batch_v2(&mut wallet, &checkpoint_batch, None).unwrap();
             ingest_finalized_forest_rpc_batch_v2(&mut wallet, &stale_batch, None).unwrap();
-            let result =
-                ingest_finalized_forest_rpc_batch_v2(&mut wallet, &fork_batch, None).unwrap();
-            assert_eq!(result.rolled_back_checkpoint_sequence, Some(0));
-            assert_eq!(wallet.state(), &fork_state);
+            assert!(matches!(
+                ingest_finalized_forest_rpc_batch_v2(&mut wallet, &fork_batch, None),
+                Err(LaneForestRpcErrorV2::FinalizedRollback)
+            ));
+            assert_eq!(wallet.state(), &stale_state);
             assert_eq!(
                 wallet
                     .state()
@@ -1368,7 +1449,7 @@ mod tests {
                     .value
                     .tree
                     .next_leaf_index,
-                0
+                1
             );
         }
         cleanup(&path);

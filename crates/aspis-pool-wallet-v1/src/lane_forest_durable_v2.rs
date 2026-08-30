@@ -324,7 +324,7 @@ impl ForestFinalizedAppendEventV2 {
         }
     }
 
-    fn event_ids(&self) -> (DepositEventIdV1, Option<DepositEventIdV1>) {
+    pub(crate) fn event_ids(&self) -> (DepositEventIdV1, Option<DepositEventIdV1>) {
         match self.kind {
             ForestFinalizedAppendKindV2::Deposit { event_id, .. } => (event_id, None),
             ForestFinalizedAppendKindV2::PrivateTransfer {
@@ -958,7 +958,14 @@ impl LaneForestDurableStateV2 {
     }
 
     pub fn contains_event_id_v2(&self, event_id: DepositEventIdV1) -> bool {
-        self.core.events.iter().any(|event| {
+        self.retained_event_v2(event_id).is_some()
+    }
+
+    pub(crate) fn retained_event_v2(
+        &self,
+        event_id: DepositEventIdV1,
+    ) -> Option<&ForestFinalizedAppendEventV2> {
+        self.core.events.iter().find(|event| {
             let (first, second) = event.event_ids();
             first == event_id || second == Some(event_id)
         })
@@ -984,6 +991,10 @@ impl LaneForestDurableStateV2 {
 
     pub fn checkpoint_count(&self) -> usize {
         self.checkpoints.len()
+    }
+
+    pub fn retained_event_count_v2(&self) -> usize {
+        self.core.events.len()
     }
 
     pub fn finalized_head_v2(&self) -> Option<FinalizedChainPointV1> {
@@ -1042,12 +1053,44 @@ impl LaneForestDurableStateV2 {
         event: ForestFinalizedAppendEventV2,
         viewing_secret: Option<&ViewingSecretKeyV1>,
     ) -> Result<Vec<ForestNoteAssociationV2>, LaneForestDurableErrorV2> {
+        self.ingest_finalized_append_inner_v2(event, viewing_secret, None)
+    }
+
+    /// Apply an append whose selected outputs were already authenticated by
+    /// the authoritative local-note envelope. This keeps witness selection in
+    /// the same atomic candidate without requiring the HPKE viewing key again.
+    pub(crate) fn ingest_finalized_append_preselected_v2(
+        &mut self,
+        event: ForestFinalizedAppendEventV2,
+        selected_output_ids: &[DepositEventIdV1],
+    ) -> Result<(), LaneForestDurableErrorV2> {
+        let selected = selected_output_ids.iter().copied().collect::<HashSet<_>>();
+        if selected.len() != selected_output_ids.len() {
+            return Err(LaneForestDurableErrorV2::DuplicateEvent);
+        }
+        self.ingest_finalized_append_inner_v2(event, None, Some(&selected))?;
+        Ok(())
+    }
+
+    fn ingest_finalized_append_inner_v2(
+        &mut self,
+        event: ForestFinalizedAppendEventV2,
+        viewing_secret: Option<&ViewingSecretKeyV1>,
+        preselected: Option<&HashSet<DepositEventIdV1>>,
+    ) -> Result<Vec<ForestNoteAssociationV2>, LaneForestDurableErrorV2> {
         if event.master != self.core.master.address {
             return Err(LaneForestDurableErrorV2::MasterMismatch);
         }
         let event_wire = encode_forest_finalized_append_event_v2(&event)?;
         let event = decode_forest_finalized_append_event_v2(&event_wire)?;
         let (first_id, second_id) = event.event_ids();
+        if preselected.is_some_and(|selected| {
+            selected
+                .iter()
+                .any(|event_id| *event_id != first_id && Some(*event_id) != second_id)
+        }) {
+            return Err(LaneForestDurableErrorV2::InvalidEvent);
+        }
         if let Some(previous) = self.core.events.iter().find(|previous| {
             let (previous_first, previous_second) = previous.event_ids();
             previous_first == first_id
@@ -1060,11 +1103,21 @@ impl LaneForestDurableStateV2 {
             // so an empty vector is an unambiguous exact-replay no-op.  Any
             // reuse of either stable output identity with different canonical
             // event data remains a fail-closed conflict.
-            return if previous == &event {
-                Ok(Vec::new())
-            } else {
-                Err(LaneForestDurableErrorV2::DuplicateEvent)
-            };
+            if previous != &event {
+                return Err(LaneForestDurableErrorV2::DuplicateEvent);
+            }
+            if let Some(selected) = preselected {
+                let retained = self.core.lanes[event.lane_id.index()]
+                    .tracked_outputs
+                    .iter()
+                    .filter(|output| output.witness_event_id == first_id)
+                    .map(|output| output.output_event_id)
+                    .collect::<HashSet<_>>();
+                if &retained != selected {
+                    return Err(LaneForestDurableErrorV2::DuplicateEvent);
+                }
+            }
+            return Ok(Vec::new());
         }
         if self
             .core
@@ -1215,9 +1268,9 @@ impl LaneForestDurableStateV2 {
                     }
                 }
             };
-            track.push(matches!(
-                outcome,
-                ForestNoteAssociationOutcomeV2::Recovered(_)
+            track.push(preselected.map_or_else(
+                || matches!(outcome, ForestNoteAssociationOutcomeV2::Recovered(_)),
+                |selected| selected.contains(&event_id),
             ));
             associations.push(ForestNoteAssociationV2 {
                 output_event_id: event_id,
@@ -1384,17 +1437,18 @@ impl LaneForestDurableStateV2 {
         &mut self,
         checkpoint_sequence: u64,
     ) -> Result<(), LaneForestDurableErrorV2> {
-        let index = self
+        if !self
             .checkpoints
             .iter()
-            .position(|snapshot| {
-                snapshot.checkpoint.value.checkpoint_sequence == checkpoint_sequence
-            })
-            .ok_or(LaneForestDurableErrorV2::InvalidRollback)?;
-        self.core = self.checkpoints[index].core.clone();
-        self.finalized_head = Some(self.checkpoints[index].point);
-        self.checkpoints.truncate(index + 1);
-        Ok(())
+            .any(|snapshot| snapshot.checkpoint.value.checkpoint_sequence == checkpoint_sequence)
+        {
+            return Err(LaneForestDurableErrorV2::InvalidRollback);
+        }
+        // This state retains finalized events only. Removing any suffix could
+        // lose a finalized note or resurrect a spend in the authoritative V2
+        // wallet envelope. Confirmed/tentative observations are reorged by the
+        // coordinator without mutating this finalized forest.
+        Err(LaneForestDurableErrorV2::InvalidRollback)
     }
 }
 
@@ -2227,6 +2281,40 @@ mod tests {
     }
 
     #[test]
+    fn preauthenticated_local_note_selection_updates_the_same_witness_candidate() {
+        let (_, _, _, _, mut state) = fixtures();
+        let output_id = event(19, 1, 0);
+        let append = deposit_event(
+            &state,
+            output_id,
+            encode_digest_canonical(&digest(49)),
+            None,
+        );
+        let lane_id = append.lane_id;
+        let before = state.clone();
+        assert_eq!(
+            state.ingest_finalized_append_preselected_v2(append.clone(), &[event(19, 2, 0)],),
+            Err(LaneForestDurableErrorV2::InvalidEvent)
+        );
+        assert_eq!(state, before);
+
+        state
+            .ingest_finalized_append_preselected_v2(append.clone(), &[output_id])
+            .unwrap();
+        assert_eq!(state.tracked_outputs(lane_id).len(), 1);
+        assert_eq!(state.lane(lane_id).1.tracked().len(), 1);
+        state
+            .ingest_finalized_append_preselected_v2(append.clone(), &[output_id])
+            .unwrap();
+        assert_eq!(state.tracked_outputs(lane_id).len(), 1);
+        assert_eq!(
+            state.ingest_finalized_append_preselected_v2(append, &[]),
+            Err(LaneForestDurableErrorV2::DuplicateEvent)
+        );
+        assert_eq!(state.tracked_outputs(lane_id).len(), 1);
+    }
+
+    #[test]
     fn encrypted_deposit_hook_tracks_pair_witness_and_private_transfer_is_one_append() {
         let (_, _, _, _, mut state) = fixtures();
         let (secret, public) = derive_viewing_keypair_v1(&[0x42; 32]).unwrap();
@@ -2305,7 +2393,7 @@ mod tests {
     }
 
     #[test]
-    fn checkpoint_durable_roundtrip_and_all_lane_rollback_are_atomic() {
+    fn checkpoint_durable_roundtrip_and_finalized_rollback_is_rejected() {
         let (_, _, _, _, mut state) = fixtures();
         let first = deposit_event(
             &state,
@@ -2346,8 +2434,13 @@ mod tests {
             None,
         );
         state.ingest_finalized_append_v2(second, None).unwrap();
-        state.rollback_to_finalized_checkpoint_v2(0).unwrap();
-        assert_eq!(state, at_checkpoint);
+        let after_second = state.clone();
+        assert_eq!(
+            state.rollback_to_finalized_checkpoint_v2(0),
+            Err(LaneForestDurableErrorV2::InvalidRollback)
+        );
+        assert_eq!(state, after_second);
+        assert_ne!(state, at_checkpoint);
     }
 
     #[test]
