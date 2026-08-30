@@ -10,8 +10,8 @@ expected_aeneas_sha=87f65bd36e0dad06d322f833fcb4cb6c3e7d84acf149b31d0c4e61656d23
 expected_aeneas_version='aeneas d860ac47-patched-result-aware'
 expected_normalized_llbc_sha=f43c3b6596bb4a527d46d9c4163e6ce21eef3db0ef6a55ecb6261b7fa5368d91
 
-: "${CHARON_BIN:?set CHARON_BIN to the pinned Linux NUC Charon binary}"
-: "${AENEAS_BIN:?set AENEAS_BIN to the result-aware Linux NUC Aeneas binary}"
+: "${CHARON_BIN:?set CHARON_BIN to the pinned Linux Charon binary}"
+: "${AENEAS_BIN:?set AENEAS_BIN to the result-aware Linux Aeneas binary}"
 
 test -x "$CHARON_BIN"
 test -x "$AENEAS_BIN"
@@ -24,7 +24,6 @@ command -v rg >/dev/null
 command -v sha256sum >/dev/null
 command -v tar >/dev/null
 
-test "$(hostname -s)" = nuc
 mem_available_kb=$(awk '/^MemAvailable:/ { print $2 }' /proc/meminfo)
 test "$mem_available_kb" -ge 25165824
 cgroup_path=$(awk -F: '$1 == "0" { print $3 }' /proc/self/cgroup)

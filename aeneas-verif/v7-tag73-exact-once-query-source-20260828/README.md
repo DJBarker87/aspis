@@ -84,12 +84,12 @@ Aeneas was the pinned `aeneas-d860-v6-linux` binary (reported version
 Run proof compilation only on the NUC under a task-owned cgroup, for example:
 
 ```sh
-ssh dombarker@nuc.local "systemd-run --user --scope \
+ssh <build-host> "systemd-run --user --scope \
   --unit=aspis-v7-exact-once-replay.scope \
   -p MemoryMax=10G -p MemorySwapMax=0 -p TasksMax=256 \
   /usr/bin/time -v /path/to/replay-proofs.sh \
   /path/to/pinned/repo \
-  /home/dombarker/project-offloads/aeneas-d860-v6/backends/lean"
+  <build-root>/backends/lean"
 ```
 
 The replay script verifies the revision and selected source hashes, compiles

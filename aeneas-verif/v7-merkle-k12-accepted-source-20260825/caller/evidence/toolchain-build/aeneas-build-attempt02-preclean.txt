@@ -1,3 +1,0 @@
-state=exited
-rootfs=/home/dombarker/project-offloads/aspis-v7-k12-merkle-source-20260826/toolchain-result-aware-d860ac47/docker-data/vfs/dir/6fc8e235a9d5e41c718544bbb3081ac1623a7c5e7a7fcf92ef2a2a904ff4af38
-target=/home/dombarker/project-offloads/aspis-v7-k12-merkle-source-20260826/toolchain-result-aware-d860ac47/docker-data/vfs/dir/6fc8e235a9d5e41c718544bbb3081ac1623a7c5e7a7fcf92ef2a2a904ff4af38/work/aeneas

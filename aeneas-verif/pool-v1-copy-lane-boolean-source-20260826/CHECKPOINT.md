@@ -90,7 +90,7 @@ PoolV1CopyLaneBooleanRoot.lean
 ```
 
 Only after that target is green should the field-semantics module run. Heavy
-Lean replay uses `LEAN_NUM_THREADS=1` in a NUC user cgroup with
+Lean replay uses `LEAN_NUM_THREADS=1` in a dedicated build-host cgroup with
 `MemoryHigh=18G`, `MemoryMax=20G`, and `MemorySwapMax=0`. The full source bridge
 is not part of either small target.
 
@@ -101,8 +101,9 @@ both with zero swaps. Generated `Types.lean` compiled in 1.21 seconds at
 
 The original monolithic `Funs.lean` process was stopped after 22:50:20 wall
 time, 24,315,452 KiB resident memory, and 90,398,497 `memory.high` events; it
-had produced no `Funs.olean`. Exact before/after/journal evidence is under
-`evidence/stopped-pathological-run-20260827/`.
+had produced no `Funs.olean`. The retained proof uses the smaller symbolic
+split described above; raw process and journal snapshots are intentionally
+omitted.
 
 The clean split-generated replay passes all 111 modules plus the `Funs.lean`
 facade in 2:37.79 wall time at 2,635,008 KiB maximum RSS with zero swaps. The
@@ -114,6 +115,5 @@ output for `generatedEvaluate_success_iff` is:
 [propext, Classical.choice, Quot.sound]
 ```
 
-Both clean runs used the 18/20 GiB, zero-swap NUC policy. The generated replay
-evidence is `evidence/split-generated-20g-r6/`; the final root replay evidence
-is `evidence/split-root-20g-r10/`.
+Both clean runs used an 18/20 GiB, zero-swap cgroup. The figures above and the
+printed axiom set are the retained replay record.

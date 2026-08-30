@@ -35,7 +35,7 @@ This is a real combined LiteSVM execution, not a component sum. The evidence is
 `results/v7-q16-source-refactor-cu-check-20260828/withdrawal-rollover-counter0.json`.
 The rebuilt verifier is 1,703,976 bytes with SHA-256
 `125bba2ebe121d1bda87ba90943904ed866ba02502fc011f7156246ebb871a77`.
-The build completed on `nuc.local` in 30.98 seconds with 550,488 KiB maximum
+The build completed on the dedicated Linux build host in 30.98 seconds with 550,488 KiB maximum
 RSS, zero swap and exit status zero. The 39-CU movement is immaterial, so the
 source-refinement refactor is retained and the hard sub-1.3M runtime gate
 remains locked. No broad regression replay was performed for this decision.
@@ -55,7 +55,7 @@ Activation exposed and fixed a real integration defect: the Pool verifier-CPI ru
 
 ## Reproduction
 
-The selected SBF binaries were rebuilt independently on `nuc.local` under `MemoryHigh=4G`, `MemoryMax=6G`, and `MemorySwapMax=0`:
+The selected SBF binaries were rebuilt independently on the dedicated Linux build host under `MemoryHigh=4G`, `MemoryMax=6G`, and `MemorySwapMax=0`:
 
 ```sh
 NO_DNA=1 cargo build-sbf --manifest-path programs/aspis-pool/Cargo.toml \

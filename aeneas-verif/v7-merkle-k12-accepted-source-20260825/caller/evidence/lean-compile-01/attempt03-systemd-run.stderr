@@ -1,7 +1,0 @@
-Running as unit: aspis-v7-caller-lean-compile-03.service; invocation ID: 4a2e19edeaba4b579e3227d3203e7945
-Finished with result: exit-code
-Main processes terminated with: code=exited/status=1
-Service runtime: 14.318s
-CPU time consumed: 14.475s
-Memory peak: 256.0K
-Memory swap peak: 0B

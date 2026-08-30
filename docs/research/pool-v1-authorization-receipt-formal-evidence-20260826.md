@@ -19,8 +19,8 @@ files and Mathlib revision `81a5d257...`. The measured command was:
 
 ```sh
 /usr/bin/time -v env LEAN_NUM_THREADS=1 \
-  /home/dombarker/.elan/bin/lake env lean \
-  -o /home/dombarker/project-offloads/aspis-pool-auth-receipt-20260825-a2/output/AuthorizationReceiptV1.olean \
+  <lean-toolchain>/bin/lake env lean \
+  -o <build-root>/output/AuthorizationReceiptV1.olean \
   AspisFormal/Pool/AuthorizationReceiptV1.lean
 ```
 

@@ -2,7 +2,7 @@ V7 forest terminal Rust-to-Lean source replay: PASS
 
 Date: 2026-08-27
 Source revision: 2ff50df4b1dc58eb33ccb2f34c93e838cb72522c
-NUC host: nuc.local
+Host class: dedicated Linux build host
 Systemd unit: aspis-v7-forest-terminal-final-02
 Invocation: eec6b7f5cdce41389357a55302f3c52c
 MemoryHigh: 22G

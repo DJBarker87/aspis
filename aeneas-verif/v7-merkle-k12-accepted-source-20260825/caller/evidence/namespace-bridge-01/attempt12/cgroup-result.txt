@@ -1,6 +1,0 @@
-Result=success
-ExecMainCode=0
-ExecMainStatus=0
-MemoryPeak=[not set]
-MemorySwapPeak=[not set]
-InvocationID=

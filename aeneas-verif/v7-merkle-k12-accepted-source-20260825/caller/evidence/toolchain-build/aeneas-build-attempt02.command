@@ -1,1 +1,0 @@
-DOCKER_HOST=unix:///tmp/av7d.sock /usr/bin/time -v -o /home/dombarker/project-offloads/aspis-v7-k12-merkle-source-20260826/toolchain-result-aware-d860ac47/evidence/aeneas-build-attempt02.time docker start -a aspis-v7-result-aware-aeneas-build

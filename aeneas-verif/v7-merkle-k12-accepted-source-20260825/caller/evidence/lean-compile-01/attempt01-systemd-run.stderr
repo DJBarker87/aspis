@@ -1,8 +1,0 @@
-Running as unit: aspis-v7-caller-lean-compile-01.service; invocation ID: a3b4186a4d624aa28af94496132cf757
-/home/dombarker/project-offloads/aspis-v7-k12-merkle-source-20260826/caller-lean-compile-01/compile.sh: line 9: lake: command not found
-Finished with result: exit-code
-Main processes terminated with: code=exited/status=127
-Service runtime: 3ms
-CPU time consumed: 3ms
-Memory peak: 256.0K
-Memory swap peak: 0B

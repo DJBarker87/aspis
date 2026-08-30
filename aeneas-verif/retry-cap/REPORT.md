@@ -38,13 +38,13 @@ theorems have axiom closure exactly within
 Extraction command:
 
 ```sh
-cd /Users/dominic/ZK/crates/aspis-prover
-CARGO_TARGET_DIR=/Users/dominic/ZK/aeneas-verif/retry-good/cargo-target \
+cd <repo>/crates/aspis-prover
+CARGO_TARGET_DIR=<repo>/aeneas-verif/retry-good/cargo-target \
 RUSTUP_TOOLCHAIN=nightly-2026-06-01 \
-  /private/tmp/aspis-aeneas-tools.aTcyie/charon/bin/charon cargo \
+  "$CHARON_BIN" cargo \
     --preset=aeneas \
     --start-from='crate::v5_mask::real_host_proof::V5_REAL_HOST_GOOD_RETRY_CAP' \
-    --dest-file='/Users/dominic/ZK/aeneas-verif/retry-good/llbc/retry_cap.llbc' \
+    --dest-file='<repo>/aeneas-verif/retry-good/llbc/retry_cap.llbc' \
     -- --release --locked -p aspis-prover --features v5-mask
 ```
 

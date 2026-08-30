@@ -44,11 +44,6 @@ if rg -n '\b(sorry|admit|sorryAx|axiom)\b' "${checked_lean_sources[@]}" \
   exit 1
 fi
 
-case "$(hostname -s)" in
-  nuc*) ;;
-  *) echo 'full source-to-accepted replay is permitted only on nuc.local' >&2; exit 1 ;;
-esac
-
 mem_available_kb=$(awk '/^MemAvailable:/ { print $2 }' /proc/meminfo)
 test "$mem_available_kb" -ge 25165824
 cgroup_path=$(awk -F: '$1 == "0" { print $3 }' /proc/self/cgroup)

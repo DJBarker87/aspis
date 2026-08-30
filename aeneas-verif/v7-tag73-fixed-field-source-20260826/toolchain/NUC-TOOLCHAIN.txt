@@ -1,10 +1,10 @@
 hostname=nuc
-charon_binary=/home/dombarker/project-offloads/ZK-v5-formal/toolchains/charon/bin/charon
+charon_binary=<build-root>/toolchains/charon/bin/charon
 charon_binary_sha256=b2b0961a3c55aca64752b2fa4a4701ba0c06b860236979e5727c07de8ac2310c
 charon_source_commit=cb50ff16b9f1066b8a97dc06da704de2da2fa41c
 charon_version=0.1.223
 charon_rust_toolchain=nightly-2026-06-01
-charon_rust_toolchain_path=/home/dombarker/.rustup/toolchains/nightly-2026-06-01-x86_64-unknown-linux-gnu
+charon_rust_toolchain_path=<build-path>/toolchains/nightly-2026-06-01-x86_64-unknown-linux-gnu
 rustc=rustc 1.98.0-nightly (14210df0e 2026-05-31)
 rustc_commit=14210df0e27ccd7d9e6a05b8085cbd438e4bbc65
 rustc_llvm=22.1.6

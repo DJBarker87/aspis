@@ -3,9 +3,9 @@ Date: 2026-08-25 Europe/London
 Exit status: 0
 Result: V7 exact deployed-root accepted-source replay: PASS (no source-overlay equivalence boundary)
 
-Command (from /Users/dominic/ZK-v7):
+Command (from <repo>):
 
-  CHARON_BIN=/Users/dominic/charon-cb50-metadata/bin/charon \
+  CHARON_BIN=<local-tool>/bin/charon \
   AENEAS_BIN=/private/tmp/aspis-v6-aeneas-result-aware.UcbEt6/aeneas/src/_build/default/main.exe \
   AENEAS_LEAN_BACKEND=/private/tmp/aspis-v6-aeneas-result-aware.UcbEt6/aeneas/backends/lean \
   bash aeneas-verif/v7-onefold-accepted-source-20260825/replay.sh

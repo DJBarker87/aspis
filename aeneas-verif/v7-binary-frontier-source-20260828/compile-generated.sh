@@ -4,7 +4,7 @@ set -euo pipefail
 readonly lean_root="${1:?pass the generated Lean module root}"
 readonly aeneas_backend="${2:?pass the pinned Aeneas Lean backend}"
 readonly aspis_formal_project="${3:-}"
-readonly lake_bin="${LAKE_BIN:-/home/dombarker/.elan/bin/lake}"
+readonly lake_bin="${LAKE_BIN:-$(command -v lake)}"
 
 cd "$aeneas_backend"
 readonly backend_path="$($lake_bin env printenv LEAN_PATH)"
@@ -16,7 +16,7 @@ if [[ -n "$aspis_formal_project" ]]; then
 else
   export LEAN_PATH="$lean_root:$backend_path"
 fi
-readonly lean_bin="$HOME/.elan/toolchains/leanprover--lean4---v4.31.0/bin/lean"
+readonly lean_bin="${LEAN_BIN:-$(command -v lean)}"
 cd "$lean_root"
 
 "$lean_bin" -o V7BinaryFrontier/TypesExternal.olean \

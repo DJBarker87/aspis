@@ -4,7 +4,7 @@
   `aarch64-apple-darwin`, LLVM 21.1.8; Cargo
   `1.93.0 (083ac5135 2025-12-15)`.
 - Charon extraction Rust: the tool's pinned `nightly-2026-06-01` toolchain at
-  `/home/dombarker/.rustup/toolchains/nightly-2026-06-01-x86_64-unknown-linux-gnu`,
+  `<build-path>/toolchains/nightly-2026-06-01-x86_64-unknown-linux-gnu`,
   reporting `rustc 1.98.0-nightly (14210df0e 2026-05-31)`, LLVM 22.1.6,
   and Cargo `1.98.0-nightly (fbb61be30 2026-05-26)` on
   `x86_64-unknown-linux-gnu`.  The NUC's default stable Rust 1.94.1 is not the

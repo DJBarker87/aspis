@@ -30,7 +30,7 @@ source-schedule bridge. Commit `760d2473` refreshes the source manifest for the
 aggregate activated feature without broadening the pinned source leaves.
 
 The source pin replay passes on the activated branch. The focused Lean source
-bridge passed on `nuc.local`:
+bridge passed on the dedicated Linux build host:
 
 ```text
 unit: aspis-v7-one-tx-formal-consolidation-03

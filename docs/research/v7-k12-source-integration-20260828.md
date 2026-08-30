@@ -80,7 +80,7 @@ The same file also passed its native Lean 4.32 target build.
 
 ## Focused replay evidence
 
-The clean source/integration replay ran on `nuc.local` under:
+The clean source/integration replay ran on the dedicated Linux build host under:
 
 ```text
 MemoryHigh=22G

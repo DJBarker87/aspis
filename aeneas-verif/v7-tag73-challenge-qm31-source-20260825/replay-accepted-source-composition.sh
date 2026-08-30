@@ -23,14 +23,18 @@ readonly expected_aspis_manifest_sha=65c23cce5c1bab2ba00affdff53fe52b67388cf2491
 
 compact_bundle=${COMPACT_BUNDLE_ROOT:-$repo_root/aeneas-verif/v7-tag73-compact-semantic-source-20260825/generated-full/V7CompactSemanticChallengeOpaqueNoDedup}
 bridge_source=${COMPACT_SOURCE_BRIDGE:-$repo_root/aeneas-verif/v7-tag73-compact-semantic-source-20260825/proof/V7CompactSemanticSourceBridge.lean}
-replacement_root=${REPLACEMENT_OLEAN_ROOT:-/home/dombarker/project-offloads/v7-tag73-challenge-qm31-source-20260825-work/replacement-olean}
-compact_root=${COMPACT_OLEAN_ROOT:-/home/dombarker/project-offloads/v7-tag73-challenge-qm31-source-20260825-work/root-olean}
-certificate_root=${CERTIFICATE_OLEAN_ROOT:-/home/dombarker/project-offloads/v7-tag73-challenge-qm31-source-20260825-work/proof-olean}
-source_olean_root=${SOURCE_OLEAN_ROOT:-/home/dombarker/project-offloads/v7-tag73-challenge-qm31-source-20260825-work/olean}
-aeneas_lean_root=${AENEAS_LEAN_ROOT:-/home/dombarker/project-offloads/ZK-v5-formal/aeneas-lean}
-aspis_formal_root=${ASPIS_FORMAL_ROOT:-/home/dombarker/project-offloads/aspis-v7-accepted-semantic-relation-20260825-agent/AspisFormal}
-lean_bin=${LEAN_BIN:-/home/dombarker/.elan/toolchains/leanprover--lean4---v4.32.0/bin/lean}
-export PATH="${LEAN_LAUNCHER_DIR:-/home/dombarker/.elan/bin}:${RUST_BIN_DIR:-/home/dombarker/.cargo/bin}:$PATH"
+: "${REPLACEMENT_OLEAN_ROOT:?set REPLACEMENT_OLEAN_ROOT}"
+: "${COMPACT_OLEAN_ROOT:?set COMPACT_OLEAN_ROOT}"
+: "${CERTIFICATE_OLEAN_ROOT:?set CERTIFICATE_OLEAN_ROOT}"
+: "${SOURCE_OLEAN_ROOT:?set SOURCE_OLEAN_ROOT}"
+: "${AENEAS_LEAN_ROOT:?set AENEAS_LEAN_ROOT}"
+replacement_root=$REPLACEMENT_OLEAN_ROOT
+compact_root=$COMPACT_OLEAN_ROOT
+certificate_root=$CERTIFICATE_OLEAN_ROOT
+source_olean_root=$SOURCE_OLEAN_ROOT
+aeneas_lean_root=$AENEAS_LEAN_ROOT
+aspis_formal_root=${ASPIS_FORMAL_ROOT:-$repo_root/AspisFormal}
+lean_bin=${LEAN_BIN:-$(command -v lean || true)}
 export LEAN_NUM_THREADS=1
 
 echo "$expected_bridge_sha  $bridge_source" | sha256sum -c -

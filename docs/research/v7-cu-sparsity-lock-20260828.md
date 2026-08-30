@@ -143,7 +143,7 @@ Artifacts:
 | verifier | 1,968,872 | `ad84706b714dedfe89e5f3ebcf91dff8ab300ab3dfe3eb2d7d846e1bf0c635d4` |
 | Pool | 526,656 | `f3ae8d96164189bec2e134b659e4fc5bd39a6b16488cde1bbd23f278a9369c76` |
 
-The verifier build ran on `nuc.local` inside a systemd cgroup with
+The verifier build ran on the dedicated Linux build host inside a systemd cgroup with
 `MemoryHigh=4G`, `MemoryMax=6G`, `MemorySwapMax=0`, and exited successfully.
 
 ## Evidence and replay

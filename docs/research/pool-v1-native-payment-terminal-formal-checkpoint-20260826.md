@@ -74,8 +74,8 @@ checkpoint.
 
 ## Focused build evidence
 
-The focused module was built on `nuc.local` from the isolated offload
-`/home/dombarker/project-offloads/aspis-native-payment-terminal-20260826` with:
+The focused module was built on the dedicated Linux build host from the isolated offload
+`<build-root>` with:
 
 ```text
 systemd-run --user --scope --quiet \

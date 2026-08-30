@@ -101,8 +101,8 @@ already-proved relation/MLE chain.
 Clean command:
 
 ```sh
-AENEAS432_BACKEND=/private/tmp/aspis-aeneas-lean432-check.p116iK/aeneas/backends/lean \
-COMPONENT_B_PIPELINE_REPLAY_OUT=/private/tmp/component-b-pipeline-clean-final \
+AENEAS432_BACKEND=$AENEAS_LEAN_BACKEND \
+COMPONENT_B_PIPELINE_REPLAY_OUT=<temporary> \
   aeneas-verif/component-b-mask/deterministic-pipeline-current-20260722/replay-lean432.sh
 ```
 

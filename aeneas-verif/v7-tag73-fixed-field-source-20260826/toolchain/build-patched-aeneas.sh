@@ -21,12 +21,14 @@ readonly extra_patch_nine=${AENEAS_EXTRA_PATCH_NINE:-}
 readonly extra_patch_ten=${AENEAS_EXTRA_PATCH_TEN:-}
 readonly extra_patch_eleven=${AENEAS_EXTRA_PATCH_ELEVEN:-}
 
-aeneas_source=${AENEAS_SOURCE_ROOT:-/home/dombarker/project-offloads/aeneas-d860-v6-src}
-charon_source=${CHARON_SOURCE_ROOT:-/home/dombarker/project-offloads/ZK-v5-formal/toolchains/charon}
-output_dir=${OUTPUT_DIR:-/home/dombarker/project-offloads/v7-tag73-fixed-field-source-20260826-toolchain}
+: "${AENEAS_SOURCE_ROOT:?set AENEAS_SOURCE_ROOT to the pinned Aeneas checkout}"
+: "${CHARON_SOURCE_ROOT:?set CHARON_SOURCE_ROOT to the pinned Charon checkout}"
+: "${OUTPUT_DIR:?set OUTPUT_DIR for the built toolchain}"
+aeneas_source=$AENEAS_SOURCE_ROOT
+charon_source=$CHARON_SOURCE_ROOT
+output_dir=$OUTPUT_DIR
 output_bin="$output_dir/aeneas-d860ac47-tag73-fixed-field"
 
-test "$(hostname -s)" = nuc
 available_kib=$(awk '/^MemAvailable:/ { print $2 }' /proc/meminfo)
 test "$available_kib" -ge $((24 * 1024 * 1024))
 cgroup_path=$(awk -F: '$1 == "0" { print $3 }' /proc/self/cgroup)
@@ -114,7 +116,9 @@ if test -n "$extra_patch_eleven"; then
   test -f "$extra_patch_eleven"
 fi
 
-build_root=$(mktemp -d /home/dombarker/project-offloads/v7-tag73-aeneas-build.XXXXXX)
+build_base=${BUILD_TMP_ROOT:-${TMPDIR:-/tmp}}
+build_base=${build_base%/}
+build_root=$(mktemp -d "$build_base/v7-tag73-aeneas-build.XXXXXX")
 container_id=
 cleanup() {
   if test -n "$container_id"; then
@@ -123,7 +127,7 @@ cleanup() {
     docker rm -f "$(cat "$build_root/container.cid")" >/dev/null 2>&1 || true
   fi
   case "$build_root" in
-    /home/dombarker/project-offloads/v7-tag73-aeneas-build.*)
+    "$build_base"/v7-tag73-aeneas-build.*)
       rm -rf -- "$build_root" ;;
     *)
       echo "refusing unsafe cleanup target: $build_root" >&2 ;;
@@ -135,7 +139,7 @@ mkdir -p "$build_root/aeneas"
 git -C "$aeneas_source" archive "$aeneas_commit" | tar -x -C "$build_root/aeneas"
 git -C "$build_root/aeneas" init -q
 git -C "$build_root/aeneas" add -A
-git -C "$build_root/aeneas" -c user.name=Codex -c user.email=codex@local \
+git -C "$build_root/aeneas" -c user.name='Aeneas replay' -c user.email=replay@localhost \
   commit -qm baseline
 for patch_file in \
   "$script_dir/aeneas-d860ac47-ocaml52-exhaustive-match.patch" \

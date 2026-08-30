@@ -70,7 +70,7 @@ The source trace proves those site projections in the frozen global order;
 extensional theorem identifies them with `decodedFixedFieldView`.
 
 `replay.sh` is intentionally memory-gated.  Charon, Aeneas, and generated
-Lean compilation may run only on `nuc.local`, only when `MemAvailable` is at
+Lean compilation may run only on the dedicated Linux build host, only when `MemAvailable` is at
 least 24 GiB, and under the user-authorized parallel-lane envelope
 `MemoryHigh=18G`, `MemoryMax=20G`, and `MemorySwapMax=0`.  Focused static
 checks remain safe locally.

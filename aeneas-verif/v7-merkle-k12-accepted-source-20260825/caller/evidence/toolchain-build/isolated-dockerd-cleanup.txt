@@ -1,8 +1,0 @@
-removed=/home/dombarker/project-offloads/aspis-v7-k12-merkle-source-20260826/toolchain-result-aware-d860ac47/docker-data
-removed=/tmp/av7d-exec
-removed=/tmp/av7d.sock
-removed=/tmp/av7d.pid
-active=inactive
-owned-dockerd-processes=0
-owned-containerd-processes=0
-owned-mounts=0

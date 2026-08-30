@@ -53,5 +53,6 @@ __pycache__/
 /.superstack/
 
 # Lean build artifacts (mathlib cache is multi-GB; keep only sources)
+*.olean
 AspisFormal/.lake/
 AspisFormal/lake-packages/

@@ -1,5 +1,0 @@
-MemoryPeak=14775996416
-MemorySwapPeak=0
-MemoryHigh=23622320128
-MemoryMax=30064771072
-MemorySwapMax=0

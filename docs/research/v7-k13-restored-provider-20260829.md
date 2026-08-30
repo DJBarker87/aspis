@@ -24,7 +24,7 @@ The strongest new constructor is
 
 - Parent revision: `b13dd614`
 - NUC workspace:
-  `/home/dombarker/project-offloads/ZK-v7-one-tx-formal-consolidation-20260828`
+  `<build-root>`
 - systemd unit: `aspis-v7-k13-provider-20260829-r5.scope`
 - target:
   `AspisFormal.K1.V7Tag73ExactRestoredOperationalK13Classifier`

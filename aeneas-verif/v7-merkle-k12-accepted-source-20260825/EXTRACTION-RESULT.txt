@@ -34,7 +34,7 @@ Fresh Aeneas equality:
 Focused commands (run from a disposable git archive of the exact commit):
 
   env CARGO_BUILD_JOBS=1 CARGO_TARGET_DIR=<temporary>/cargo-target \
-    /usr/bin/time -l /Users/dominic/charon-cb50-metadata/bin/charon cargo \
+    /usr/bin/time -l <local-tool>/bin/charon cargo \
     --preset aeneas --mir built --sysroot default \
     --start-from crate::v7_merkle208::truncate_sha256_v7 \
     --start-from crate::v7_merkle208::private_leaf_hash_v7 \
@@ -57,7 +57,7 @@ Resource evidence:
 
 Chronology and memory policy:
   This focused local replay completed before the later instruction to move all
-  further Charon/Aeneas work to nuc.local. No further local extraction or
+  further Charon/Aeneas work to the dedicated Linux build host. No further local extraction or
   translation was started. A later NUC availability check reported
   MemAvailable=23,572,412 kB with swap full, below the required 24 GiB gate,
   so no NUC job was started. Future replay must wait for MemAvailable >=24 GiB

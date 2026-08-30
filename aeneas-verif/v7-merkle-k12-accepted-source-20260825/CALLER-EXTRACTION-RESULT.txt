@@ -1,9 +1,8 @@
 V7 TAG-73 TRANSPARENT PRODUCTION CALLER EXTRACTION
 =================================================
 
-Status: PASS (attempt 02)
+Status: PASS
 Date: 2026-08-26
-Host: nuc.local
 Production commit: 01f5f4f722cfdf6bc29c157fc3db6ff5ab5e413a
 Production tree: f634f5d7d8ff6606f1a9db40771111e49f5f7e53
 Rust toolchain: nightly-2026-06-01
@@ -12,10 +11,9 @@ cargo: 1.98.0-nightly (fbb61be30 2026-05-26)
 Charon binary SHA-256:
   b2b0961a3c55aca64752b2fa4a4701ba0c06b860236979e5727c07de8ac2310c
 
-Exact timed Charon payload (attempt 02):
+Exact Charon payload:
 
-  /home/dombarker/.cargo/bin/rustup run nightly-2026-06-01 \
-    /home/dombarker/project-offloads/ZK-v5-formal/toolchains/charon/bin/charon cargo \
+  rustup run nightly-2026-06-01 "$CHARON_BIN" cargo \
     --preset aeneas --mir built --sysroot default \
     --start-from crate::v7_onefold::verify_and_gamma_combine_v7_openings \
     --include aspis_core::v7_onefold \
@@ -23,11 +21,10 @@ Exact timed Charon payload (attempt 02):
     --include aspis_core::state_only_private_merkle \
     --include aspis_core::v6_onefold::gamma_combine_v6_packed_layer0 \
     --include aspis_core::field \
-    --dest-file /home/dombarker/project-offloads/aspis-v7-k12-merkle-source-20260826/caller-extraction-02/output/V7MerkleCaller.llbc \
+    --dest-file <temporary>/V7MerkleCaller.llbc \
     -- --package aspis-core --lib
 
-The timed payload ran with its working directory set to the disposable exact
-commit archive at caller-extraction-02/source.  It ran in the established
+The payload ran from a disposable archive of the exact production commit, in a
 cgroup with:
 
   MemoryHigh=22G
@@ -35,7 +32,7 @@ cgroup with:
   MemorySwapMax=0
   TasksMax=64
 
-Attempt 02 resource result:
+Resource result:
 
   exit status: 0
   wall time: 0:06.19
@@ -45,9 +42,6 @@ Attempt 02 resource result:
   /usr/bin/time swaps: 0
   cgroup memory.peak: 1057210368 bytes
   cgroup memory.swap.current: 0
-  host MemAvailable before: 30320172 kB
-  host MemAvailable after: 30035916 kB
-  host SwapFree before/after: 2674128 kB / 2674128 kB
 
 Frozen LLBC:
 
@@ -73,13 +67,6 @@ Principal transparent definitions and source spans:
   def 157 state_only_private_merkle::private_leaf_hash       state_only_private_merkle.rs:28-35
   def 158 truncate_sha256_v7                                v7_merkle208.rs:24-28
 
-Failed attempt chronology:
-
-Attempt 01 used the same timed Charon payload and cgroup but omitted the
-working-directory change before invoking Cargo.  It failed before compilation
-with `could not find Cargo.toml`, exit 101, wall time 0:00.15, maximum RSS
-32208 KiB, zero /usr/bin/time swaps, and cgroup peak 210292736 bytes.  Its logs
-are preserved under caller/evidence/extraction-01 and were not overwritten.
-
-The successful attempt-02 logs are preserved byte-for-byte under
-caller/evidence/extraction-02.
+`replay-caller-extraction.sh` checks the pinned source and tool hashes,
+recreates this extraction, normalizes only nondeterministic metadata, and
+compares the result with the frozen LLBC and generated Lean sources.

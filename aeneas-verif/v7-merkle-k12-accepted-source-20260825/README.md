@@ -141,7 +141,7 @@ AENEAS_BIN=/path/to/patched/pinned/aeneas \
 bash aeneas-verif/v7-merkle-k12-accepted-source-20260825/replay-extraction.sh
 ```
 
-Under the current memory policy this command must be run on `nuc.local` only
+Under the current memory policy this command must run on a compatible Linux build host
 after `MemAvailable` is at least 24 GiB, inside the established 22/28 GiB
 cgroup (`MemoryHigh=22G`, `MemoryMax=28G`, `MemorySwapMax=0`). It forces one
 Cargo job and sequential Aeneas translation.
@@ -179,9 +179,7 @@ AENEAS_LEAN_BACKEND=/path/to/aeneas/backends/lean \
 bash aeneas-verif/v7-merkle-k12-accepted-source-20260825/replay-caller-namespace-bridge.sh
 ```
 
-The final namespace replay passed in unit
-`aspis-v7-caller-namespace-12`, invocation
-`f0abe441f3674d20b8f1edd446abfaa6`: exit 0, 23.69 s wall,
+The final namespace replay passed with exit 0 in 23.69 seconds,
 2,612,928 KiB maximum RSS, and zero swaps.
 
 Before compiling the deferred parser, the replay applies the frozen
@@ -198,10 +196,9 @@ success of the translated production
 `verify_and_gamma_combine_v7_openings`, and its conclusion is the existing
 `accepted_two_tree_openings (frozenTruncate sha256)` predicate.
 
-`REPLAY-RESULT.txt` records the successful serialized NUC replay of the
-integrated parser-through-caller theorem chain. The exact command, memory gate,
-resource record, and complete 118-entry `#print axioms` output are frozen under
-`evidence/full-replay-candidate-04/`.
+`REPLAY-RESULT.txt` records the successful serialized replay of the integrated
+parser-through-caller theorem chain. The complete 118-entry `#print axioms`
+output is retained under `evidence/full-replay-candidate-04/`.
 
 ## Axiom inventory
 

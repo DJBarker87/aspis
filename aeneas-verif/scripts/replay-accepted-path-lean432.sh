@@ -3,7 +3,7 @@ set -euo pipefail
 
 # Rebuild the tracked accepted-path Charon/Aeneas proof closure without using
 # any pre-existing object directory under aeneas-verif, /private/tmp, or a
-# development NUC.  The target stays configurable for focused diagnostics,
+# dedicated build host. The target stays configurable for focused diagnostics,
 # while the default is the final selected accepted-callback theorem.
 
 readonly script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd -P)"

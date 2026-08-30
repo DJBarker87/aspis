@@ -8,7 +8,7 @@ Pinned production source:
 
 Integrated command:
   See evidence/full-replay-candidate-04/command.txt for the exact command.
-  It invoked replay.sh on nuc.local as dombarker under:
+  It invoked replay.sh on a dedicated Linux build host under:
     MemoryHigh=22G
     MemoryMax=28G
     MemorySwapMax=0
@@ -102,12 +102,11 @@ Focused NUC evidence:
   caller bridge:
     exit 0; wall 9.03 s; max RSS 7,092,336 KiB; swaps 0
 
-All heavy work above ran on nuc.local after MemAvailable >= 24 GiB and under
-the established 22/28 GiB, zero-swap policy. Exact extraction commands and
-resource records are in EXTRACTION-RESULT.txt, CALLER-EXTRACTION-RESULT.txt,
-CALLER-TRANSLATION-RESULT.txt, and caller/evidence/. Focused Lean commands are
-the module-specific lake env lean -j1 invocations recorded in their evidence;
-the integrated exact command is frozen in the evidence path above.
+All heavy work above ran under the established 22/28 GiB, zero-swap policy.
+Exact extraction commands and resource records are in EXTRACTION-RESULT.txt,
+CALLER-EXTRACTION-RESULT.txt, and CALLER-TRANSLATION-RESULT.txt. Focused Lean
+commands are the module-specific `lake env lean -j1` invocations; the
+integrated command is recorded above.
 
 Smallest remaining source boundary:
   SHA-256 primitive semantics itself, represented only by the explicit
@@ -115,5 +114,4 @@ Smallest remaining source boundary:
   part of the source-tool trust base, not a theorem premise. Solana runtime
   behavior and the excluded K1.2 cryptographic mathematics are outside scope.
 
-No production Rust was modified. Nothing was pushed, merged, deployed, signed,
-or submitted.
+No production Rust was modified by this replay.

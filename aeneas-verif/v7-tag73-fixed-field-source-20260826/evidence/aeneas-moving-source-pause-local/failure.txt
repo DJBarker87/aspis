@@ -1,9 +1,0 @@
-Aeneas context match failure
-
-Production source: crates/aspis-core/src/sumcheck.rs, lines 727:20-734:21
-Aeneas source: interp/InterpJoin.ml, line 2006
-
-Source retains endable abstractions abs1 and abs3. The projected target retains
-one endable abs40 combining their WeightAccumulator/WeightComponent shared-loan
-state. This is distinct from the earlier sumcheck.rs:1620 singleton shared
-borrow mismatch, which the candidate compatibility patch passed.

@@ -1,23 +1,0 @@
-[[92mInfo[39m ] Imported: /private/tmp/aspis-v7-source-extract.IJVHAH/V7ProductionRootExact.llbc
-[?25lApplied prepasses:  [--------------------------------------------------]  0/31 ⠋Applied prepasses:  [#-------------------------------------------------]  1/31 ⠋Applied prepasses:  [##################################################] 31/31 ✔️
-[?25h[?25lTranslated globals:  [---------------------------------------------------] 0/0 ⠋Translated globals:  [---------------------------------------------------] 0/0 ✔️
-[?25h[?25lTranslated opaque functions:  [----------------------------------------]  0/15 ⠋Translated opaque functions:  [########################################] 15/15 ✔️
-[?25h[?25lTranslated transparent functions:  [-----------------------------------]  0/11 ⠋Translated transparent functions:  [###--------------------------------]  1/11 ⠙Translated transparent functions:  [#########--------------------------]  3/11 ⠹[[91mError[39m] Unreachable
-Source: 'programs/aspis-verifier/src/v7_verifier.rs', lines 120:8-120:55
-[[93mWarn[39m ] Could not translate the body of function 'aspis_verifier::v7_verifier::verify_v7_read_only_with_statement_digest because of previous error
-Name pattern: 'aspis_verifier::v7_verifier::verify_v7_read_only_with_statement_digest'
-Definition span: 'programs/aspis-verifier/src/v7_verifier.rs', lines 98:0-131:1
-Source: 'programs/aspis-verifier/src/v7_verifier.rs', lines 120:8-120:55
-Compiler source: interp/Interp.ml, line 619
-
-Translated transparent functions:  [###############################----] 10/11 ⠹Translated transparent functions:  [###################################] 11/11 ⠹Translated transparent functions:  [###################################] 11/11 ✔️
-[?25h[?25lTranslated trait declarations:  [----------------------------------------] 0/7 ⠋Translated trait declarations:  [#################-----------------------] 3/7 ✔️
-[?25h[?25lTranslated trait impls:  [---------------------------------------------]  0/12 ⠋Translated trait impls:  [##############################---------------]  8/12 ✔️
-[?25h[?25lPost-processed translated opaque functions:  [-------------------------]  0/15 ⠋Post-processed translated opaque functions:  [#------------------------]  1/15 ⠙Post-processed translated opaque functions:  [#########################] 15/15 ✔️
-[?25h[?25lPost-processed translated transparent functions:  [--------------------]  0/11 ⠋Post-processed translated transparent functions:  [#-------------------]  1/11 ⠙Post-processed translated transparent functions:  [##################--] 10/11 ⠙Post-processed translated transparent functions:  [####################] 11/11 ✔️
-[?25h[[92mInfo[39m ] Generated the partial file (because of 1 errors, including 1 unique errors): /private/tmp/aspis-v7-source-extract.IJVHAH/production-root-generated/V7ProductionRoot/TypesExternal_Template.lean
-[[92mInfo[39m ] Generated the partial file (because of 1 errors, including 1 unique errors): /private/tmp/aspis-v7-source-extract.IJVHAH/production-root-generated/V7ProductionRoot/Types.lean
-[[92mInfo[39m ] Generated the partial file (because of 1 errors, including 1 unique errors): /private/tmp/aspis-v7-source-extract.IJVHAH/production-root-generated/V7ProductionRoot/FunsExternal_Template.lean
-[[92mInfo[39m ] Generated the partial file (because of 1 errors, including 1 unique errors): /private/tmp/aspis-v7-source-extract.IJVHAH/production-root-generated/V7ProductionRoot/Funs.lean
-[[92mInfo[39m ] Generated: /private/tmp/aspis-v7-source-extract.IJVHAH/production-root-generated/translation.json
-[[92mInfo[39m ] Total execution time: 0.838277 seconds

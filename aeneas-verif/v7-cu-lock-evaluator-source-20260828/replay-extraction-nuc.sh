@@ -9,8 +9,10 @@ case "$output_root" in
   *) echo "output must be an explicit /tmp/v7-cu-lock-* path" >&2; exit 2 ;;
 esac
 
-charon=/home/dombarker/project-offloads/ZK-v5-formal/toolchains/charon/bin/charon
-aeneas=/home/dombarker/project-offloads/aeneas-d860-v6-linux/bin/aeneas
+: "${CHARON_BIN:?set CHARON_BIN to the pinned Charon binary}"
+: "${AENEAS_BIN:?set AENEAS_BIN to the pinned Aeneas binary}"
+charon=$CHARON_BIN
+aeneas=$AENEAS_BIN
 
 test "$(git -C "$source_root" rev-parse HEAD)" = \
   cee5947cbd5929a2be96d8f7ec29728afec2d3dd

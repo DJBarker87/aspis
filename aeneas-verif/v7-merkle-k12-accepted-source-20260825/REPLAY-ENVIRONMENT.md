@@ -3,7 +3,7 @@
 ## Rejected cached backend
 
 The first packaged replay was invoked against
-`/Users/dominic/ZK-aeneas-v5-outer/backends/lean`. All package, deployed-source,
+`<repo>/backends/lean`. All package, deployed-source,
 and manifest checks passed. Compilation stopped at the first generated module,
 before any bundle theorem was checked, with:
 
@@ -19,7 +19,7 @@ No dependency rebuild or broad Lake build was attempted.
 ## Accepted retry backend
 
 The authorized single retry uses
-`/Users/dominic/aeneas-v7-k12-replay-backend`, a byte-preserving filesystem
+`<local-tool>`, a byte-preserving filesystem
 clone of the already-passing pinned d860 Aeneas Lean backend. It is outside any
 ephemeral extraction directory.
 
@@ -50,7 +50,7 @@ repository regression suite. In dependency order it stages and compiles only:
 ## NUC memory and serialization policy
 
 Any Charon/Aeneas regeneration or genuinely memory-intensive Lean replay must
-run on `nuc.local`. Immediately before launch, `/proc/meminfo` must report
+run on the dedicated Linux build host. Immediately before launch, `/proc/meminfo` must report
 `MemAvailable >= 25165824 kB` (24 GiB). The workload must use the established
 cgroup limits:
 
@@ -65,15 +65,11 @@ otherwise interfere with unrelated NUC processes. Each final run records the
 exact command, wall time, user/system time, maximum RSS or cgroup peak, swap,
 exit status, cgroup identity, and MemAvailable gate.
 
-The standalone caller namespace bridge passed under this policy in unit
-`aspis-v7-caller-namespace-12`, invocation
-`f0abe441f3674d20b8f1edd446abfaa6`: exit 0, 23.69 seconds wall,
+The standalone caller namespace bridge passed under this policy with exit 0 in
+23.69 seconds,
 2,612,928 KiB maximum RSS, and zero swaps.
 
-The complete serialized parser-through-caller replay passed in unit
-`aspis-v7-k12-full-candidate-04`, invocation
-`11ea48dcf29c4311a384c96b8db6f9de`: exit 0, 1:46.57 wall,
-7,097,940 KiB maximum RSS, and zero swaps. MemAvailable was 32,292,552 kB
-before launch. `REPLAY-RESULT.txt` and
-`evidence/full-replay-candidate-04/` contain the exact command, resource
-record, and complete 118-entry axiom output.
+The complete serialized parser-through-caller replay passed with exit 0 in
+1:46.57, at 7,097,940 KiB maximum RSS and zero swaps. `REPLAY-RESULT.txt`
+contains the resource record, and `evidence/full-replay-candidate-04/axioms.txt`
+contains the complete 118-entry axiom output.

@@ -1,1 +1,0 @@
-systemd-run --user --scope MemoryHigh=18G MemoryMax=20G MemorySwapMax=0 check-focused-lean target=generated

@@ -10,11 +10,6 @@ command -v lake >/dev/null
 command -v mktemp >/dev/null
 command -v patch >/dev/null
 
-case "$(hostname -s)" in
-  nuc*) ;;
-  *) echo 'caller namespace bridge replay is permitted only on nuc.local' >&2; exit 1 ;;
-esac
-
 mem_available_kb=$(awk '/^MemAvailable:/ { print $2 }' /proc/meminfo)
 test "$mem_available_kb" -ge 25165824
 cgroup_path=$(awk -F: '$1 == "0" { print $3 }' /proc/self/cgroup)

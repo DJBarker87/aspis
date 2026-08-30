@@ -56,7 +56,7 @@ axiom.  Its `#print axioms` output is only `propext`, `Classical.choice`, and
 
 ## Replay
 
-From a clean checkout at the pinned commit on `dombarker@nuc.local`:
+From a clean checkout at the pinned commit on <build-host>:
 
 ```bash
 systemd-run --user --scope --collect \

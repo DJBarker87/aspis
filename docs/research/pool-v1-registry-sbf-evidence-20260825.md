@@ -11,7 +11,7 @@ passed, and the Solana autofixer reported zero issues and zero suggestions.
 
 The first SBF attempt stopped at a `no_std` macro import error. The only source
 change was a Solana-target-gated `alloc::format` import. The authorized retry
-ran on `nuc.local` as systemd unit
+ran on the dedicated Linux build host as systemd unit
 `aspis-registry-sbf-20260825-a2.scope` with `MemoryMax=6G`,
 `MemorySwapMax=0`, `NO_DNA=1`, and `CARGO_BUILD_JOBS=1`.
 
@@ -28,7 +28,7 @@ ran on `nuc.local` as systemd unit
   `f0cecfa2666185a8a98ed87478b9393511a78aabe00aa69833ee3f299c9b3a85`
 
 The artifact remains in the isolated NUC build copy at
-`/home/dombarker/project-offloads/aspis-registry-v1-20260825-a1/target/deploy/aspis_registry.so`.
+`<build-root>/target/deploy/aspis_registry.so`.
 It has not been deployed or submitted to any cluster.
 
 Remaining registry gates are the exact runtime lifecycle/System-CPI rollback

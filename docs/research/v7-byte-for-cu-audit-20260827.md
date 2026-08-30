@@ -562,7 +562,7 @@ The exact source/evidence commit is
 The exact return-data sweep can be replayed from that audit worktree with:
 
 ```bash
-audit_root=/Users/dominic/ZK-v7-byte-cu-audit
+audit_root=<repo>
 for asr8_bytes in 792 824 856 920 1024; do
   replay_dir=$(mktemp -d "/tmp/aspis-asr8-${asr8_bytes}.XXXXXX")
   CARGO_BUILD_JOBS=2 cargo run --quiet \

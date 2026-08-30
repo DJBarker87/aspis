@@ -27,11 +27,6 @@ command -v rg >/dev/null
 command -v sha256sum >/dev/null
 command -v tar >/dev/null
 
-case "$(hostname -s)" in
-  nuc*) ;;
-  *) echo 'caller extraction replay is permitted only on nuc.local' >&2; exit 1 ;;
-esac
-
 mem_available_kb=$(awk '/^MemAvailable:/ { print $2 }' /proc/meminfo)
 test "$mem_available_kb" -ge 25165824
 cgroup_path=$(awk -F: '$1 == "0" { print $3 }' /proc/self/cgroup)
@@ -48,7 +43,6 @@ test "$(git -C "$repo_root" rev-parse "$production_commit^{tree}")" = "$producti
 (
   cd "$repo_root"
   sha256sum -c "$script_dir/CALLER-GENERATED.sha256"
-  sha256sum -c "$script_dir/CALLER-EVIDENCE.sha256"
 )
 
 replay_base=${TMPDIR:-/tmp}

@@ -1,7 +1,0 @@
-Running as unit: aspis-v7-caller-namespace-06.service; invocation ID: 6a42a3dddce34f938ae8189807a38ec6
-Finished with result: exit-code
-Main processes terminated with: code=exited/status=1
-Service runtime: 23.240s
-CPU time consumed: 23.489s
-Memory peak: 288.0K
-Memory swap peak: 0B

@@ -97,15 +97,15 @@ dirty file is part of this checkpoint.
 
 ## Focused NUC evidence
 
-Only the new target was built on `nuc.local` in
-`/home/dombarker/project-offloads/aspis-native-payment-terminal-20260826`,
+Only the new target was built on the dedicated Linux build host in
+`<build-root>`,
 under the established bounded zero-swap scope:
 
 ```text
 systemd-run --user --scope --quiet \
   -p MemoryHigh=20G -p MemoryMax=24G -p MemorySwapMax=0 \
   /usr/bin/time -v env LEAN_NUM_THREADS=1 \
-  /home/dombarker/.elan/bin/lake -Kjobs=1 build \
+  <lean-toolchain>/bin/lake -Kjobs=1 build \
   AspisFormal.Pool.NativePaymentCompiledActiveExecutableV1
 ```
 

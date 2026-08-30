@@ -1,6 +1,0 @@
-patching file V7MerkleCaller/Funs.lean
-Hunk #1 succeeded at 28 (offset 2 lines).
-Hunk #2 succeeded at 907 (offset 1 line).
-Hunk #3 succeeded at 1016 (offset 1 line).
-Hunk #5 succeeded at 1114 with fuzz 2.
-patching file V7DeferredParser/FunsExternal.lean

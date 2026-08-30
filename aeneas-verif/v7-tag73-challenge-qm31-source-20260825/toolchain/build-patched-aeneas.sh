@@ -12,9 +12,12 @@ readonly expected_patch_sha=5abaafc2d345511dda0eb96cd40154daff137f79dc4bcfa8247a
 readonly expected_tree=5a843e70672e4139232b2fdcb52a0c1fbd4b1619
 readonly expected_binary_sha=4632746db1bf6c3953f2971078965a2a5a8ad6cf5f75636b46b397bc50c550b5
 
-aeneas_source=${AENEAS_SOURCE_ROOT:-/home/dombarker/project-offloads/aeneas-d860-v6-src}
-charon_source=${CHARON_SOURCE_ROOT:-/home/dombarker/project-offloads/ZK-v5-formal/toolchains/charon}
-output_dir=${OUTPUT_DIR:-/home/dombarker/project-offloads/v7-tag73-challenge-qm31-source-20260825-toolchain}
+: "${AENEAS_SOURCE_ROOT:?set AENEAS_SOURCE_ROOT to the pinned Aeneas checkout}"
+: "${CHARON_SOURCE_ROOT:?set CHARON_SOURCE_ROOT to the pinned Charon checkout}"
+: "${OUTPUT_DIR:?set OUTPUT_DIR for the built toolchain}"
+aeneas_source=$AENEAS_SOURCE_ROOT
+charon_source=$CHARON_SOURCE_ROOT
+output_dir=$OUTPUT_DIR
 output_bin="$output_dir/aeneas-b59d5188-lean432-extended-static"
 patch_file="$repo_root/aeneas-verif/lean432/aeneas-b59d5188-lean432.patch"
 
@@ -64,4 +67,3 @@ echo "$expected_binary_sha  $output_bin" | sha256sum -c -
 file "$output_bin" | rg 'ELF 64-bit.*x86-64.*statically linked'
 [[ $("$output_bin" -version) == 'aeneas b59d5188-lean432-extended' ]]
 echo "isolated patched static Aeneas build: PASS"
-

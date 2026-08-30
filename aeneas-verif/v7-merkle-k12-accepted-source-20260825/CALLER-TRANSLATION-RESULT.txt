@@ -3,7 +3,6 @@ V7 TAG-73 TRANSPARENT PRODUCTION CALLER AENEAS TRANSLATION
 
 Status: FINAL RESULT-AWARE TRANSLATION PASS
 Date: 2026-08-26
-Host: nuc.local
 
 Input and tool identity
 -----------------------
@@ -36,22 +35,15 @@ Built binary SHA-256:
 Binary format:
   ELF 64-bit LSB executable, x86-64, statically linked, not stripped
 
-Build chronology and resources
-------------------------------
+Build resources
+---------------
 
 The build used the pinned `nixos/nix:2.24.11` image digest
 `sha256:4bfe741027f0bfbef745862cbf3b5f424ee99801c04138146c0000a28759636d`
 inside an isolated dockerd. The workload used a 22 GiB memory-high,
 28 GiB memory-max, and zero-swap cgroup.
 
-Attempt 01 reached the Charon test suite but its container PID limit of 512
-caused 22 `EAGAIN` thread-creation failures (393 tests passed, 2 ignored).
-It was not an OOM and it did not reveal a semantic test mismatch. Exit was 1
-after 19:15.17 wall time. The complete Charon log is preserved.
-
-For attempt 02, only the owned container's PID ceiling was raised to 4096;
-the exact source, Nix store, and memory/swap limits were unchanged. Charon's
-tests and the static Aeneas build passed:
+Charon's tests and the static Aeneas build passed:
 
   exit status: 0
   wall time after the cached retry: 2:44.12
@@ -60,20 +52,17 @@ tests and the static Aeneas build passed:
   workload cgroup pids.peak: 735
   OOM / OOM-kill events: 0 / 0
 
-`/usr/bin/time` measured the Docker client rather than the container workload;
-the workload figures above are the direct container cgroup readings. Exact
-commands, source/patch hashes, Docker identity, stdout, time data, cgroup data,
-and both build attempts are under `caller/evidence/toolchain-build/`.
+The workload figures above are direct container cgroup readings.
 
 Exact final Aeneas command
 --------------------------
 
-  /home/dombarker/project-offloads/aspis-v7-k12-merkle-source-20260826/toolchain-result-aware-d860ac47/output/aeneas-d860ac47-result-aware-linux-x86_64 \
+  "$AENEAS_BIN" \
     -sequential -no-progress-bar -abort-on-error -backend lean \
     -namespace V7MerkleCallerGenerated \
-    -dest /home/dombarker/project-offloads/aspis-v7-k12-merkle-source-20260826/caller-translation-02/generated \
+    -dest <temporary>/generated \
     -subdir V7MerkleCaller -split-files -emit-json \
-    /home/dombarker/project-offloads/aspis-v7-k12-merkle-source-20260826/caller-extraction-02/output/V7MerkleCaller.llbc
+    caller/extraction/V7MerkleCaller.llbc
 
 The payload ran in the transient unit
 `aspis-v7-caller-aeneas-result-aware-20260826` with
@@ -81,15 +70,12 @@ The payload ran in the transient unit
 
 Translation resource result:
 
-  invocation ID: c106cb692eca41c0aa79dd3741695561
   systemd result / exit: success / 0
   wall time: 0:48.27
   Aeneas reported time: 48.141457 s
   user / system time: 47.81 s / 0.45 s
   maximum RSS: 538900 KiB
   /usr/bin/time swaps: 0
-  host MemAvailable before / after: 32526640 / 32535428 kB
-  host SwapFree before / after: 244 / 248 kB
 
 Final raw generated artifacts
 -----------------------------
@@ -128,11 +114,6 @@ for `private_leaf_hash`, `private_leaf_hash_v7`, `node_hash_v7`,
 hash ...`), so hash failure remains visible to translated production control
 flow. This is the same convention as the four-root V7 Merkle translation.
 
-The prior pure-callback diagnostic translation is retained, but cannot be
-mistaken for the final artifact: its raw files are quarantined under
-`caller/evidence/translation-01/generated/`, and its remaining execution
-evidence stays under `caller/evidence/translation-01/`.
-
 Combined Lean import
 --------------------
 
@@ -141,34 +122,15 @@ definitions, the shared V7 Merkle external definitions, and the deterministic
 generated compatibility overlay documented in `CALLER-EXTERNAL-INVENTORY.md`.
 The final focused compile was:
 
-  unit: aspis-v7-caller-lean-compile-05
-  invocation ID: 5997e62169f44c6da0b4d75e2e826472
   exit status: 0
   wall / user / system: 14.38 / 9.91 / 4.61 s
   maximum RSS: 2611984 KiB
   swaps: 0
-  MemAvailable gate: 32518596 kB
+The standalone namespace-bridge replay extends this compile with the exact
+deferred-parser extraction and the proof that duplicate Merkle bodies and wire
+fields agree.
 
-`caller/evidence/lean-compile-01/` retains the exact final command, source and
-patch hashes, stdout/stderr, time output, and the four preceding focused
-interface diagnostics.  The standalone namespace-bridge replay extends this
-compile with the exact deferred-parser extraction and the proof that duplicate
-Merkle bodies and wire fields agree.
-
-The final combined namespace replay passed in unit
-`aspis-v7-caller-namespace-12`, invocation
-`f0abe441f3674d20b8f1edd446abfaa6`: exit 0, 23.69 seconds wall,
-2,612,928 KiB maximum RSS, and zero swaps. Its complete stdout records that
-all seven printed equality/wire/query theorems depend on exactly
-`[propext, Classical.choice, Quot.sound]`. Evidence, including the preceding
-focused import and proof diagnostics, is under
-`caller/evidence/namespace-bridge-01/`.
-
-Isolation cleanup
------------------
-
-After the build and final translation, the isolated dockerd and containerd
-were stopped. Their owned Docker data root, exec root, socket, PID file, and
-residual namespace mount were removed. Evidence confirms zero owned daemon
-processes and mounts. The built binary, patched source, and evidence remain
-on nuc.local. No system Docker unit was restored by this lane.
+The final combined namespace replay passed with exit 0 in 23.69 seconds,
+2,612,928 KiB maximum RSS, and zero swaps. All seven printed
+equality/wire/query theorems depend exactly on
+`[propext, Classical.choice, Quot.sound]`.

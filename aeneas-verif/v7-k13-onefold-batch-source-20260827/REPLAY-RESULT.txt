@@ -24,8 +24,8 @@ Lean:
 Extraction replay
 -----------------
 Command:
-  CHARON_BIN=/Users/dominic/aeneas-verif/charon/bin/charon \
-  AENEAS_BIN=/Users/dominic/aeneas-verif/aeneas/bin/aeneas ./replay.sh
+  CHARON_BIN=<local-tool>/charon/bin/charon \
+  AENEAS_BIN=<local-tool>/aeneas/bin/aeneas ./replay.sh
 Result: exit 0
 Wall: 27.84 s
 Maximum RSS: 716,357,632 bytes
@@ -40,7 +40,7 @@ Normalized shifted-batch LLBC SHA-256:
 Focused Aeneas Lean replay
 --------------------------
 Command:
-  AENEAS_LEAN_BACKEND=/Users/dominic/aeneas-verif/aeneas/backends/lean \
+  AENEAS_LEAN_BACKEND=<local-tool>/aeneas/backends/lean \
   ./replay-lean.sh
 Result: exit 0
 Wall: 38.00 s

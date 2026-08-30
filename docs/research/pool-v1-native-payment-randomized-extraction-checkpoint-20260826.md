@@ -98,8 +98,8 @@ checkpoint.
 
 ## Focused NUC evidence
 
-The target was built only on `nuc.local`, in
-`/home/dombarker/project-offloads/aspis-native-payment-terminal-20260826`, with:
+The target was built only on the dedicated Linux build host, in
+`<build-root>`, with:
 
 ```text
 systemd-run --user --scope --quiet \

@@ -9,9 +9,11 @@ readonly charon_commit=cb50ff16b9f1066b8a97dc06da704de2da2fa41c
 readonly patched_tree=de8340302a8a14448e47e2a878ac726ed29228b2
 readonly aeneas_archive_sha=472d499c25a7e944f6754126df51de758cd8a5733f5a6ec2ce653c652cb65722
 
-aeneas_source=${AENEAS_SOURCE_ROOT:-/Users/dominic/aeneas-verif/aeneas}
+: "${AENEAS_SOURCE_ROOT:?set AENEAS_SOURCE_ROOT to the pinned Aeneas checkout}"
+: "${CHARON_SOURCE_ROOT:?set CHARON_SOURCE_ROOT to the pinned Charon checkout}"
+aeneas_source=$AENEAS_SOURCE_ROOT
 aeneas_archive=${AENEAS_SOURCE_ARCHIVE:-}
-charon_source=${CHARON_SOURCE_ROOT:-/Users/dominic/charon-cb50-metadata/charon}
+charon_source=$CHARON_SOURCE_ROOT
 output_dir=${OUTPUT_DIR:-$bundle_dir/evidence/toolchain-build-terminalcapture-local-output}
 output_bin="$output_dir/aeneas-d860ac47-tag73-fixed-field"
 
@@ -43,7 +45,7 @@ fi
 git -C "$charon_source" archive "$charon_commit" | tar -x -C "$build_root/charon"
 git -C "$build_root/aeneas" init -q
 git -C "$build_root/aeneas" add -A
-git -C "$build_root/aeneas" -c user.name=Codex -c user.email=codex@local \
+git -C "$build_root/aeneas" -c user.name='Aeneas replay' -c user.email=replay@localhost \
   commit -qm baseline
 for patch_file in \
   "$script_dir/aeneas-d860ac47-ocaml52-exhaustive-match.patch" \

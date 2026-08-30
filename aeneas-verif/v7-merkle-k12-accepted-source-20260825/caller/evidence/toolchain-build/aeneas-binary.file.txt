@@ -1,1 +1,0 @@
-/home/dombarker/project-offloads/aspis-v7-k12-merkle-source-20260826/toolchain-result-aware-d860ac47/output/aeneas-d860ac47-result-aware-linux-x86_64: ELF 64-bit LSB executable, x86-64, version 1 (SYSV), statically linked, not stripped

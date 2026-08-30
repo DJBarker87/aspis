@@ -15,7 +15,7 @@ refactor recorded in the same checkpoint as this bundle.
 The pinned Linux Charon command was:
 
 ```text
-/home/dombarker/project-offloads/ZK-v5-formal/toolchains/charon/bin/charon cargo \
+<build-root>/toolchains/charon/bin/charon cargo \
   --preset aeneas \
   --start-from crate::v6_onefold::binary_frontier_nodes \
   --dest-file frontier-extraction/V7BinaryFrontier.llbc \
@@ -25,7 +25,7 @@ The pinned Linux Charon command was:
 The pinned Aeneas command was:
 
 ```text
-/home/dombarker/project-offloads/aeneas-d860-v6-linux/bin/aeneas \
+<build-root>/bin/aeneas \
   -backend lean -split-files -emit-json \
   -namespace V7BinaryFrontierSource \
   -dest frontier-extraction/generated \
@@ -123,14 +123,14 @@ outer API still selects the first admitted candidate.
 
 ## Replay
 
-On `nuc.local`, with pinned Aeneas Lean backend and Lean 4.31:
+On the dedicated Linux build host, with pinned Aeneas Lean backend and Lean 4.31:
 
 ```text
 systemd-run --user --wait --collect \
   --unit=aspis-v7-frontier-loop-06 \
   -p MemoryHigh=22G -p MemoryMax=28G -p MemorySwapMax=0 \
   ./compile-generated.sh <generated-lean-root> \
-  /home/dombarker/project-offloads/aeneas-d860-v6/backends/lean
+  <build-root>/backends/lean
 ```
 
 Result: exit 0, 11.699 seconds service runtime, zero swap. `#print axioms`

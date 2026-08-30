@@ -64,12 +64,8 @@ The overlay changes no production branch, constant, hash call, query slice, or
 Merkle operation.  It is checksum-covered and is replayed only after the raw
 generated file has been compared with the archived Aeneas output.
 
-The focused combined compile passed on nuc.local in transient unit
-`aspis-v7-caller-lean-compile-05` (invocation
-`5997e62169f44c6da0b4d75e2e826472`): exit 0, 14.38 s wall,
-2,611,984 KiB maximum RSS, and zero swaps.  Exact commands and all failed
-interface-diagnostic attempts are retained under
-`caller/evidence/lean-compile-01/`.
+The focused combined compile passed with exit 0 in 14.38 seconds,
+2,611,984 KiB maximum RSS, and zero swaps.
 
 ## Production relevance
 
@@ -108,7 +104,6 @@ generated Merkle, caller, and deferred-parser modules in one environment,
 applies both deterministic overlays, and checks the cross-namespace theorem
 file `caller/proof/V7MerkleCallerNamespaceBridge.lean`.
 
-Its final run, unit `aspis-v7-caller-namespace-12` and invocation
-`f0abe441f3674d20b8f1edd446abfaa6`, passed in 23.69 seconds with
+Its final run passed in 23.69 seconds with
 2,612,928 KiB maximum RSS and zero swaps. Every printed namespace/wire theorem
 uses exactly `[propext, Classical.choice, Quot.sound]`.

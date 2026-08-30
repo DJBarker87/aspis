@@ -79,7 +79,7 @@ exactly 0 CU improvement and is not retained in source.
 | final history-invariant Pool | 526,656 | `f3ae8d96164189bec2e134b659e4fc5bd39a6b16488cde1bbd23f278a9369c76` |
 | final semantic + pattern-factor verifier | 1,938,536 | `b5ee420e63aafd35d3b60a1577d740ef84be005a2bd6bee05da4ab7f485e3d87` |
 
-SBF builds ran on `nuc.local` under `MemoryHigh=4G`, `MemoryMax=6G`, and
+SBF builds ran on the dedicated Linux build host under `MemoryHigh=4G`, `MemoryMax=6G`, and
 `MemorySwapMax=0`. No devnet, signing, deployment, or push was performed.
 
 ## Exact evidence

@@ -101,7 +101,7 @@ authenticates the pinned base Lean 4.32 Aeneas work tree.  A previously
 authenticated retained tree can be supplied for a fast replay:
 
 ```sh
-ASPIS_AENEAS_432_WORK=/private/tmp/aspis-aeneas-lean432-check.example \
+ASPIS_AENEAS_432_WORK=<temporary> \
   ../check-arithmetic-lean432.sh
 ```
 

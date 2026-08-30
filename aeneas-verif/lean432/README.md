@@ -70,7 +70,7 @@ An agent can also request the path in a file:
 
 ```sh
 ASPIS_KEEP_LEAN432_WORK=1 \
-ASPIS_LEAN432_PATH_FILE=/private/tmp/aspis-lean432-path \
+ASPIS_LEAN432_PATH_FILE=<temporary> \
   aeneas-verif/scripts/check-cm31-inverse-lean432.sh
 ```
 
@@ -146,7 +146,7 @@ scripts must use that binary rather than an untracked local checkout.
 
 A clean run from the official Aeneas HTTPS repository at the pinned commit
 completed in the retained directory
-`/private/tmp/aspis-aeneas-lean432-check.p116iK`. During that run the initial
+`<temporary>`. During that run the initial
 scoped Aeneas build exposed that direct Mathlib objects also had to be named;
 after building the exact five targets listed above in the same clean checkout,
 all eleven modules compiled and all 30 axiom reports parsed to exactly

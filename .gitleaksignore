@@ -10,3 +10,10 @@
 859d8588d2761fac6714226877c9317f7d697a03:aeneas-verif/tag67-work-wire-correspondence/llbc/tag67_work_wire.llbc:generic-api-key:1
 859d8588d2761fac6714226877c9317f7d697a03:aeneas-verif/tag67-work-wire-correspondence/llbc/tag67_grinding_only.llbc:generic-api-key:1
 d0d7605e99a110e7aa54ac500617d95bd89740a7:third_party/solana-pqzk-fullchain/third-party/slh-dsa/tests/pkcs8.rs:private-key:20
+09b51a23ac2d781f3da44018e948eb703d9fb99d:aeneas-verif/v5-fri-caller-exact-20260821/extraction/V5FriCallerPatchedAllTypes.llbc:generic-api-key:1
+a5454d4ab048739ee6d7d8d954b1ca847872b80c:aeneas-verif/v5-fri-caller-exact-20260821/extraction/V5FriCallerPatchedAllTypes.llbc:generic-api-key:1
+06bdf01c6d7f9e0e871e9ff5de04ebc04e9c6989:aeneas-verif/v5-atomic-terminal-source-20260821/extraction/V5AtomicTerminalPrefixWrapperComplete.llbc:generic-api-key:1
+v5_cu_probe.rs:generic-api-key:3463
+V5FriCallerPatchedAllTypes.llbc:generic-api-key:1
+V5AtomicTerminalPrefixWrapperComplete.llbc:generic-api-key:1
+v5_cu_probe.rs:generic-api-key:3486

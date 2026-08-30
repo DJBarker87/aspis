@@ -64,7 +64,7 @@ Proof20 exact accepted round-tail trace:
 - source SHA-256: 1b78e19706c7788da7ac2d13a837ebf910ba15abdc1065ef853a1a6990ff4f86
 - olean SHA-256: de16f2f19a13bd1a0d8b7ed873648e471fb026142bc577f777a2aeaf373cc8b5
 - log SHA-256: bf5ee34608398a861e4ac005c4246654bfe625ec09edd77c1b29314638589b3c
-- exact command: systemd-run --user --scope --unit=aspis-tag73-round-tail-trace-proof20 -p MemoryMax=12G -p MemorySwapMax=0 -p TasksMax=64 bash -lc 'cd /home/dombarker/project-offloads/aeneas-d860-v6-src/backends/lean/aspis-tag73-finish-staged-20260825a && ./nuc-check-round-tail-trace.sh'
+- exact command: systemd-run --user --scope --unit=aspis-tag73-round-tail-trace-proof20 -p MemoryMax=12G -p MemorySwapMax=0 -p TasksMax=64 bash -lc 'cd <build-root>/backends/lean/aspis-tag73-finish-staged-20260825a && ./nuc-check-round-tail-trace.sh'
 
 Proof20 axiom inventory:
 - propext
@@ -97,8 +97,8 @@ Frozen-original to staged accepted-control bridge: PASS
 - exact command: systemd-run --user --scope
   --unit=aspis-tag73-frozen-staged-bridge-proof02 -p MemoryMax=12G
   -p MemorySwapMax=0 -p TasksMax=64 bash -lc
-  'cd /home/dombarker/project-offloads/aeneas-d860-v6-src/backends/lean/aspis-tag73-finish-staged-20260825a &&
-  FOCUSED_LOG=/home/dombarker/project-offloads/aeneas-d860-v6-src/backends/lean/aspis-tag73-finish-staged-20260825a/frozen-staged-bridge-proof02.log
+  'cd <build-root>/backends/lean/aspis-tag73-finish-staged-20260825a &&
+  FOCUSED_LOG=<build-root>/backends/lean/aspis-tag73-finish-staged-20260825a/frozen-staged-bridge-proof02.log
   ./nuc-check-frozen-staged-bridge.sh'
 
 The principal bridge theorem prints only `propext` and `Quot.sound`. It has no

@@ -5,7 +5,7 @@ bundle=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
 root=$(CDPATH= cd -- "$bundle/../.." && pwd)
 generated="$bundle/replay/runtime_schedule/RuntimeSchedule.lean"
 proof="$bundle/proof/RuntimeQueryIndexDerivation.lean"
-lean_bin=${LEAN432_BIN:-/Users/dominic/.elan/toolchains/leanprover--lean4---v4.32.0/bin/lean}
+lean_bin=${LEAN432_BIN:-$(command -v lean || true)}
 aeneas_lib=${AENEAS_LEAN_LIB:-$root/aeneas-verif/component-a-encoder-eval-residual/capstone/.lake/build/lib/lean}
 
 if [ ! -x "$lean_bin" ]; then

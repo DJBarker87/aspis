@@ -42,7 +42,5 @@ All nine printed public read-schedule theorems depend exactly on Lean's
 `propext`, `Classical.choice`, and `Quot.sound`.  The passing log contains no
 `sorryAx` and no project-specific axiom.
 
-`read-schedule-proof02.log` is retained as failure provenance: the first real
-compile exposed three local proof-shape errors.  Those were repaired without
-changing any statement.  The earlier cache-header probe is omitted because it
-never elaborated this theorem.
+The initial compile exposed three local proof-shape errors. Those were repaired
+without changing any statement. Only the passing replay log is retained.

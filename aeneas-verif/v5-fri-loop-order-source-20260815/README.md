@@ -83,10 +83,10 @@ The paths below match the pinned local tool builds used for this release. They
 may be replaced by equivalent paths to the same commits and Lean library.
 
 ```sh
-LEAN432_BIN=/Users/dominic/.elan/toolchains/leanprover--lean4---v4.32.0/bin/lean \
-AENEAS_LEAN_LIB=/private/tmp/aspis-aeneas-lean432-check.ZOGKhi/aeneas/backends/lean/.lake/build/lib/lean \
-ASPIS_CHARON_REPO=/private/tmp/aspis-transcript-aeneas-20260814/charon \
-ASPIS_AENEAS_REPO=/private/tmp/aspis-transcript-aeneas-20260814/aeneas \
+LEAN432_BIN=<local-tool>/toolchains/leanprover--lean4---v4.32.0/bin/lean \
+AENEAS_LEAN_LIB=$AENEAS_LEAN_BACKEND/.lake/build/lib/lean \
+ASPIS_CHARON_REPO=<temporary> \
+ASPIS_AENEAS_REPO=<temporary> \
 ./aeneas-verif/v5-fri-loop-order-source-20260815/replay-lean432.sh
 ```
 

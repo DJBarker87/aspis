@@ -24,16 +24,20 @@ readonly expected_llbc_sha=0c9f44a7a426b7efd1404e8776795958d89f203eca2915994d013
 readonly expected_types_canonical_sha=2beae4347eb134ccfa73f56b471d278bbdfbcb2b56d14a10c6ac8976240d8e8c
 readonly expected_funs_canonical_sha=2406554baf66146eb9d0434fdd65fbf78dad177e63f538e660f449e9c4c4b884
 
-charon_bin=${CHARON_BIN:-/home/dombarker/project-offloads/ZK-v5-formal/toolchains/charon/charon/target/release/charon}
-charon_root=${CHARON_ROOT:-/home/dombarker/project-offloads/ZK-v5-formal/toolchains/charon}
-aeneas_bin=${AENEAS_BIN:-/home/dombarker/project-offloads/v7-tag73-challenge-qm31-source-20260825-work/toolchain/output/aeneas-b59d5188-lean432-extended-static}
-aeneas_source_root=${AENEAS_SOURCE_ROOT:-/home/dombarker/project-offloads/aeneas-d860-v6-src}
-aeneas_lean_root=${AENEAS_LEAN_ROOT:-/home/dombarker/project-offloads/ZK-v5-formal/aeneas-lean}
-aspis_formal_root=${ASPIS_FORMAL_ROOT:-/home/dombarker/project-offloads/aspis-v7-accepted-semantic-relation-20260825-agent/AspisFormal}
-lean_bin=${LEAN_BIN:-/home/dombarker/.elan/toolchains/leanprover--lean4---v4.32.0/bin/lean}
+: "${CHARON_BIN:?set CHARON_BIN to the pinned Charon binary}"
+: "${CHARON_ROOT:?set CHARON_ROOT to the pinned Charon checkout}"
+: "${AENEAS_BIN:?set AENEAS_BIN to the pinned Aeneas binary}"
+: "${AENEAS_SOURCE_ROOT:?set AENEAS_SOURCE_ROOT to the pinned Aeneas checkout}"
+: "${AENEAS_LEAN_ROOT:?set AENEAS_LEAN_ROOT to the pinned Aeneas Lean backend}"
+charon_bin=$CHARON_BIN
+charon_root=$CHARON_ROOT
+aeneas_bin=$AENEAS_BIN
+aeneas_source_root=$AENEAS_SOURCE_ROOT
+aeneas_lean_root=$AENEAS_LEAN_ROOT
+aspis_formal_root=${ASPIS_FORMAL_ROOT:-$repo_root/AspisFormal}
+lean_bin=${LEAN_BIN:-$(command -v lean || true)}
 compact_bundle=${COMPACT_BUNDLE_ROOT:-$repo_root/aeneas-verif/v7-tag73-compact-semantic-source-20260825/generated-full/V7CompactSemanticChallengeOpaqueNoDedup}
 formal_k1=${FORMAL_K1_ROOT:-$repo_root/AspisFormal/AspisFormal/K1}
-export PATH="${RUST_BIN_DIR:-/home/dombarker/.cargo/bin}:${LEAN_LAUNCHER_DIR:-/home/dombarker/.elan/bin}:$PATH"
 export CARGO_BUILD_JOBS=1
 export LEAN_NUM_THREADS=1
 

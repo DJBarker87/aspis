@@ -143,7 +143,7 @@ The focused replay is:
 tools/replay_v7_exact_correlated_agreement.sh
 ```
 
-For high-memory release evidence it is run on `nuc.local` in a dedicated
+For high-memory release evidence it is run on the dedicated Linux build host in a dedicated
 workspace and a one-worker systemd scope with explicit `MemoryHigh`,
 `MemoryMax`, and `MemorySwapMax=0`.
 
@@ -163,8 +163,8 @@ systemd-run --user --scope --collect \
   --unit=aspis-v7-correlated-final-replay-20260828-r2 \
   -p MemoryHigh=34G -p MemoryMax=40G -p MemorySwapMax=0 \
   /usr/bin/time -v env \
-    PATH=/home/dombarker/.elan/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin \
-    V7_EXACT_CORRELATED_REPLAY_OUT=/home/dombarker/project-offloads/aspis-v7-exact-correlated-agreement-20260828/replay-final-20260828-r2 \
+    PATH=<lean-toolchain>/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin \
+    V7_EXACT_CORRELATED_REPLAY_OUT=<build-root>/replay-final-20260828-r2 \
     ./tools/replay_v7_exact_correlated_agreement.sh
 ```
 
@@ -178,7 +178,7 @@ It passed with exit status 0 in 45.38 seconds, maximum resident set size
 | direct initial terminal replay | 2.97 s | 6,653,424 KiB | 0 | 0 |
 
 The replay log is
-`/home/dombarker/project-offloads/aspis-v7-exact-correlated-agreement-20260828/replay-final-20260828-r2/lean432.log`,
+`<build-root>/replay-final-20260828-r2/lean432.log`,
 with SHA-256
 `240df1a6bd429bfb3d9c3a961536a789bfb3bee4e36225210ed85989f527340a`.
 It contains all four terminal axiom reports and the final line
@@ -207,7 +207,7 @@ source tree was then replayed again in
 34/40-GiB no-swap limits.  That post-merge replay passed in 8:29.32, with
 `/usr/bin/time` peak RSS 38,999,324 KiB, sampled cgroup peak
 36,040,204,288 bytes, zero swaps, and exit status 0.  Its log is
-`/home/dombarker/project-offloads/aspis-v7-exact-correlated-agreement-20260828/replay-main-merge-20260828-r1/lean432.log`,
+`<build-root>/replay-main-merge-20260828-r1/lean432.log`,
 SHA-256
 `8093ae6686422a44983c5520c13a6f237f4ee1d6c748e690abebb2e18fa6d60c`.
 The log again contains all four terminal axiom reports with only `propext`,

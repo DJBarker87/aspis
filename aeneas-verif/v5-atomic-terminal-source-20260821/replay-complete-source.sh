@@ -2,11 +2,14 @@
 set -euo pipefail
 
 package_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-charon_bin="${ASPIS_CHARON_BIN:-/Users/dominic/charon-cb50-metadata/bin/charon}"
-aeneas_bin="${ASPIS_AENEAS_BIN:-/Users/dominic/aeneas-aspis-v5-final/src/_build/default/main.exe}"
-target_dir="$(mktemp -d /private/tmp/v5-atomic-terminal-complete-target.XXXXXX)"
-output_dir="$(mktemp -d /private/tmp/v5-atomic-terminal-complete-lean.XXXXXX)"
-llbc_file="$(mktemp /private/tmp/V5AtomicTerminalCompleteSource.XXXXXX.llbc)"
+: "${ASPIS_CHARON_BIN:?set ASPIS_CHARON_BIN to the pinned Charon binary}"
+: "${ASPIS_AENEAS_BIN:?set ASPIS_AENEAS_BIN to the pinned Aeneas binary}"
+charon_bin="$ASPIS_CHARON_BIN"
+aeneas_bin="$ASPIS_AENEAS_BIN"
+temp_root=${TMPDIR:-/tmp}
+target_dir="$(mktemp -d "$temp_root/v5-atomic-terminal-complete-target.XXXXXX")"
+output_dir="$(mktemp -d "$temp_root/v5-atomic-terminal-complete-lean.XXXXXX")"
+llbc_file="$(mktemp "$temp_root/V5AtomicTerminalCompleteSource.XXXXXX.llbc")"
 
 cd "$package_dir/harness"
 CARGO_TARGET_DIR="$target_dir" "$charon_bin" cargo \

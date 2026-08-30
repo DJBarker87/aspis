@@ -189,11 +189,11 @@ axiom or conclusion-shaped restore function in any compiled source/proof file.
 ```sh
 ./source-audit.sh
 
-CHARON_BIN=/Users/dominic/aeneas-verif/charon/bin/charon \
-AENEAS_BIN=/Users/dominic/aeneas-verif/aeneas/bin/aeneas \
+CHARON_BIN=<local-tool>/charon/bin/charon \
+AENEAS_BIN=<local-tool>/aeneas/bin/aeneas \
 ./replay-extraction.sh
 
-AENEAS_LEAN_BACKEND=/Users/dominic/aeneas-verif/aeneas/backends/lean \
+AENEAS_LEAN_BACKEND=<local-tool>/aeneas/backends/lean \
 ./replay-lean.sh
 
 ./replay-focused-rust.sh

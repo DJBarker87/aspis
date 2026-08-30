@@ -1,6 +1,0 @@
-Result=exit-code
-ExecMainCode=1
-ExecMainStatus=1
-MemoryPeak=262144
-MemorySwapPeak=0
-InvocationID=47554a2b697c45f1a6cc4b6f39d607f5

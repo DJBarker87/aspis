@@ -41,5 +41,5 @@ Rust, LLBC values, mutable join rules, or context-match permissiveness.
 The diagnostic used unchanged LLBC SHA-256
 `d05f26ee7b8bbd4f16c3bccd50348b129d1c25dd51a950730141a9e418d479e3`.
 The unrelated dirty mutable-iterator worktree at
-`/Users/dominic/ZK-aeneas-v5-outer` was inspected read-only and no change from
+`<repo>` was inspected read-only and no change from
 it is included here.

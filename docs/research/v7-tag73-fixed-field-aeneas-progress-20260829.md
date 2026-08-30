@@ -50,7 +50,7 @@ contexts and generated continuations keep their original rules.
 
 ## Isolated build policy
 
-Every candidate toolchain build runs on `nuc.local` with:
+Every candidate toolchain build runs on the dedicated Linux build host with:
 
 ```text
 MemoryHigh=18G

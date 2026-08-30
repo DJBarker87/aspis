@@ -1,5 +1,0 @@
-MainPID=2853518
-MemoryPeak=14775996416
-MemorySwapPeak=0
-ActiveState=active
-SubState=running

@@ -4,7 +4,7 @@ set -euo pipefail
 # Build the generated compact-frontier certificate without allowing Lake's
 # dependency scheduler to launch every same-depth chunk at once.  Individual
 # chunks can require several GiB while kernel-checking arithmetic, so a bounded
-# batch is the reproducible release shape on a 64-GiB NUC.
+# batch is the reproducible release shape on a 64-GiB build host.
 
 certificate_root=${1:-$(pwd)}
 # Concrete-support generation keeps the formerly pathological depth-13 fringe

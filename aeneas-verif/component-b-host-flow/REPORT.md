@@ -148,7 +148,7 @@ Counterexample theorems include:
 Lean 4.32 unified replay:
 
 ```sh
-AENEAS432_BACKEND=/private/tmp/aspis-aeneas-lean432-check.p116iK/aeneas/backends/lean \
+AENEAS432_BACKEND=$AENEAS_LEAN_BACKEND \
   aeneas-verif/component-b-host-flow/replay-lean432.sh
 ```
 
@@ -156,7 +156,7 @@ Rust checks:
 
 ```sh
 cargo fmt --all -- --check
-CARGO_TARGET_DIR=/private/tmp/component-b-host-flow-rust \
+CARGO_TARGET_DIR=<temporary> \
   rustup run nightly-2026-06-01 cargo test --release --locked \
     -p aspis-prover --lib --features v5-mask \
     bound_sumcheck_mask_roles_are_pointer_identical -- --nocapture

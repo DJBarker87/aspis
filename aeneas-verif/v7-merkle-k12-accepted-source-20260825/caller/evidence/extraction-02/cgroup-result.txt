@@ -1,6 +1,0 @@
-memory.high=23622320128
-memory.max=30064771072
-memory.swap.max=0
-memory.current=516292608
-memory.peak=1057210368
-memory.swap.current=0

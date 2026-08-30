@@ -29,17 +29,18 @@ small symbolic facts.
 
 ## Resource policy
 
-1. Use the local workstation for source inspection, editing, and focused jobs
-   expected to remain below 8 GiB.  Send generated-certificate aggregation,
-   Aeneas replay, SBF rebuilds, and other RAM-intensive work to `nuc.local`.
+1. Use an ordinary development machine for source inspection, editing, and
+   focused jobs expected to remain below 8 GiB. Send generated-certificate
+   aggregation, Aeneas replay, SBF rebuilds, and other RAM-intensive work to a
+   dedicated Linux build host.
    A cold Lean dependency build is not a focused local job: monitor aggregate
-   child-process RSS and stop/move it to the NUC as soon as it approaches
+   child-process RSS and stop or move it to the build host as soon as it approaches
    8 GiB rather than waiting for the parent process to report completion.
-2. Every NUC job must run in its own systemd/cgroup scope with
+2. Every large build must run in its own systemd/cgroup scope with
    `MemorySwapMax=0`.  Set explicit `MemoryHigh` and `MemoryMax`; never run an
    uncapped Lean, Aeneas, Rust, or linker job.
-3. Keep the sum of simultaneous NUC `MemoryMax` values at or below 55 GiB.
-   Reserve the remaining memory for the OS and SSH control path.
+3. Keep the sum of simultaneous `MemoryMax` values below the host's safe
+   working limit. Reserve enough memory for the OS and remote control path.
 4. Crossing 24 GiB RSS, or spending ten minutes without a new compiled target,
    is a mandatory review point.  Stop or pause before raising the cap unless a
    focused predecessor already proved that the remaining work is legitimate
@@ -47,14 +48,14 @@ small symbolic facts.
 5. A job killed by memory pressure must not be rerun unchanged with a larger
    cap.  First isolate the declaration/cell, inspect its reduction shape, and
    change the proof or generator.  Record the old failure and the replacement.
-6. Reuse a pinned NUC workspace and compiled cache between focused dependent
+6. Reuse a pinned build workspace and compiled cache between focused dependent
    targets.  Do not rebuild thousands of unchanged modules merely to test the
    next bridge.
 7. Execute dense finite-field elimination, rank probes, large proof generation,
    and other arithmetic release gates with an optimized Rust binary
    (`cargo test --release` or an explicitly optimized profile). A debug build
    may be used for type-checking or a tiny preflight only; it must not become
-   the long-running NUC job.
+   the long-running build-host job.
 8. Before launching a heavy Rust gate, record whether time is expected in
    compilation, proof generation, or one named aggregation/elimination step.
    If an unoptimized process is discovered doing the heavy step, stop it and
@@ -70,7 +71,7 @@ Before starting a full certificate build:
 - compile each exceptional generated chunk independently;
 - search changed chunks for broad unfolding or large `norm_num`/`decide`
   proofs;
-- confirm the cgroup cap and current aggregate NUC reservation;
+- confirm the cgroup cap and current aggregate build-host reservation;
 - identify the exact next theorem that consumes the certificate.
 
 If a concrete cell becomes fast only after a symbolic lemma, add that cell

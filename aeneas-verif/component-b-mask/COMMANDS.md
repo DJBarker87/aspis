@@ -1,6 +1,6 @@
 # Component-B evaluator commands
 
-All commands ran from `/Users/dominic/ZK` unless a `cd` is shown.
+All commands ran from `<repo>` unless a `cd` is shown.
 
 ## Rust tests
 
@@ -13,15 +13,15 @@ cargo +nightly-2026-06-01 test --release --locked -p aspis-core --lib
 ## Owning-crate extraction
 
 ```sh
-cd /Users/dominic/ZK/crates/aspis-prover
-CARGO_TARGET_DIR=/Users/dominic/ZK/aeneas-verif/component-b-mask/target-v5-combined-20260720c \
-  /private/tmp/aspis-aeneas-tools.aTcyie/charon/bin/charon cargo \
+cd <repo>/crates/aspis-prover
+CARGO_TARGET_DIR=<repo>/aeneas-verif/component-b-mask/target-v5-combined-20260720c \
+  "$CHARON_BIN" cargo \
     --preset=aeneas --abort-on-error \
     --start-from='aspis_prover::v5_sumcheck_mask::_::evaluate' \
     --include='aspis_core::field' \
     --include='aspis_core::state_only_sumcheck::evaluate_state_only_polynomial' \
     --include='aspis_core::state_only_sumcheck::STATE_ONLY_SUMCHECK_ROUNDS' \
-    --dest-file='/Users/dominic/ZK/aeneas-verif/component-b-mask/llbc/component_b_v5_evaluate_including_core.llbc' \
+    --dest-file='<repo>/aeneas-verif/component-b-mask/llbc/component_b_v5_evaluate_including_core.llbc' \
     -- --release --locked -p aspis-prover --features v5-mask
 ```
 
@@ -30,10 +30,10 @@ The successful start matcher is exactly
 the generated round-count include are part of the successful command.
 
 ```sh
-/private/tmp/aspis-aeneas-tools.aTcyie/aeneas/bin/aeneas \
+"$AENEAS_BIN" \
   -backend lean \
-  /Users/dominic/ZK/aeneas-verif/component-b-mask/llbc/component_b_v5_evaluate_including_core.llbc \
-  -dest /Users/dominic/ZK/aeneas-verif/component-b-mask/generated/v5-evaluate-including-core \
+  <repo>/aeneas-verif/component-b-mask/llbc/component_b_v5_evaluate_including_core.llbc \
+  -dest <repo>/aeneas-verif/component-b-mask/generated/v5-evaluate-including-core \
   -max-heartbeats 200000 -max-recdepth 1000 -abort-on-error \
   -warnings-as-errors -no-progress-bar
 ```
@@ -50,9 +50,9 @@ lane and its authenticated arithmetic bundle. The durable gate is
 ## 2026-07-22 authoritative current-source extraction
 
 ```sh
-cd /Users/dominic/ZK/crates/aspis-prover
-CARGO_TARGET_DIR=/Users/dominic/ZK/aeneas-verif/component-b-mask/target-v5-current-evaluate-20260722 \
-  /private/tmp/aspis-aeneas-tools.aTcyie/charon/bin/charon cargo \
+cd <repo>/crates/aspis-prover
+CARGO_TARGET_DIR=<repo>/aeneas-verif/component-b-mask/target-v5-current-evaluate-20260722 \
+  "$CHARON_BIN" cargo \
     --preset=aeneas --abort-on-error \
     --start-from='aspis_prover::v5_sumcheck_mask::_::evaluate' \
     --include='aspis_core::field' \
@@ -61,13 +61,13 @@ CARGO_TARGET_DIR=/Users/dominic/ZK/aeneas-verif/component-b-mask/target-v5-curre
     --include='aspis_core::state_only_sumcheck::STATE_ONLY_SUMCHECK_ROUNDS' \
     --include='aspis_core::state_only_sumcheck::STATE_ONLY_SUMCHECK_DEGREE' \
     --include='aspis_core::state_only_sumcheck::STATE_ONLY_SUMCHECK_COEFFICIENTS' \
-    --dest-file='/Users/dominic/ZK/aeneas-verif/component-b-mask/llbc/component_b_v5_evaluate_current_20260722.llbc' \
+    --dest-file='<repo>/aeneas-verif/component-b-mask/llbc/component_b_v5_evaluate_current_20260722.llbc' \
     -- --release --locked -p aspis-prover --features v5-mask
 
-/private/tmp/aspis-aeneas-tools.aTcyie/aeneas/bin/aeneas \
+"$AENEAS_BIN" \
   -backend lean \
-  /Users/dominic/ZK/aeneas-verif/component-b-mask/llbc/component_b_v5_evaluate_current_20260722.llbc \
-  -dest /private/tmp/component-b-current-evaluate-split-20260722a \
+  <repo>/aeneas-verif/component-b-mask/llbc/component_b_v5_evaluate_current_20260722.llbc \
+  -dest <temporary> \
   -namespace ComponentBV5EvaluateCurrent20260722 \
   -split-files \
   -max-heartbeats 200000 -max-recdepth 1000 \
@@ -87,8 +87,8 @@ The durable all-proof gate compiles 81 exported sampler/evaluator/terminal
 theorems with 81 matching `#print axioms` commands:
 
 ```sh
-cd /Users/dominic/ZK/aeneas-verif/component-b-mask
-AENEAS432_BACKEND=/private/tmp/aspis-aeneas-lean432-check.p116iK/aeneas/backends/lean \
+cd <repo>/aeneas-verif/component-b-mask
+AENEAS432_BACKEND=$AENEAS_LEAN_BACKEND \
   ./replay-lean432.sh
 ```
 
@@ -104,9 +104,9 @@ The source-authentic sampler LLBC used by the integration theorem was produced f
 owning crate by:
 
 ```sh
-cd /Users/dominic/ZK/crates/aspis-prover
-CARGO_TARGET_DIR=/Users/dominic/ZK/aeneas-verif/component-b-mask/target-v5-sampler-current-20260722 \
-  /private/tmp/aspis-aeneas-tools.aTcyie/charon/bin/charon cargo \
+cd <repo>/crates/aspis-prover
+CARGO_TARGET_DIR=<repo>/aeneas-verif/component-b-mask/target-v5-sampler-current-20260722 \
+  "$CHARON_BIN" cargo \
     --preset=aeneas --abort-on-error \
     --start-from='aspis_prover::v5_sumcheck_mask::_::sample' \
     --include='aspis_core::field' \
@@ -114,13 +114,13 @@ CARGO_TARGET_DIR=/Users/dominic/ZK/aeneas-verif/component-b-mask/target-v5-sampl
     --include='aspis_core::state_only_sumcheck::STATE_ONLY_SUMCHECK_DEGREE' \
     --include='aspis_core::state_only_sumcheck::STATE_ONLY_SUMCHECK_COEFFICIENTS' \
     --include='aspis_core::state_only_sumcheck::state_only_boundary_sum' \
-    --dest-file='/Users/dominic/ZK/aeneas-verif/component-b-mask/llbc/component_b_v5_sampler_current_20260722.llbc' \
+    --dest-file='<repo>/aeneas-verif/component-b-mask/llbc/component_b_v5_sampler_current_20260722.llbc' \
     -- --release --locked -p aspis-prover --features v5-mask
 
-/private/tmp/aspis-aeneas-tools.aTcyie/aeneas/bin/aeneas \
+"$AENEAS_BIN" \
   -backend lean \
-  /Users/dominic/ZK/aeneas-verif/component-b-mask/llbc/component_b_v5_sampler_current_20260722.llbc \
-  -dest /private/tmp/ComponentBV5SamplerCurrent20260722 \
+  <repo>/aeneas-verif/component-b-mask/llbc/component_b_v5_sampler_current_20260722.llbc \
+  -dest <temporary> \
   -split-files \
   -max-heartbeats 200000 -max-recdepth 1000 \
   -abort-on-error -warnings-as-errors -no-progress-bar

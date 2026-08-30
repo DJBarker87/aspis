@@ -97,7 +97,7 @@ ordinary-codec parameter ranges:
 The exact primary commands and pinned tool versions were:
 
 ```sh
-proof=/Users/dominic/ZK-v7/results/spend/v7-devnet-20260825-fullc2/v7-proof.bin
+proof=<repo>/results/spend/v7-devnet-20260825-fullc2/v7-proof.bin
 
 # brotli 1.2.0; exhaustive-matrix best, tied with finalized q1
 brotli -q 0 -w 15 -c "$proof" > output.br       # 30,508 bytes

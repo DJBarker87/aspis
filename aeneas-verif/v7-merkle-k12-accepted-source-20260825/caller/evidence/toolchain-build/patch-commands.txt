@@ -1,3 +1,0 @@
-patch --batch --forward -p1 < /home/dombarker/project-offloads/aspis-v7-k12-merkle-source-20260826/toolchain-result-aware-d860ac47/patches/aeneas-d860ac47-ocaml52-exhaustive-match.patch
-patch --batch --forward -p1 < /home/dombarker/project-offloads/aspis-v7-k12-merkle-source-20260826/toolchain-result-aware-d860ac47/patches/aeneas-d860ac47-static-return-loan.patch
-patch --batch --forward -p1 < /home/dombarker/project-offloads/aspis-v7-k12-merkle-source-20260826/toolchain-result-aware-d860ac47/patches/aeneas-d860ac47-v6-result-flow.patch

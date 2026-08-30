@@ -1,9 +1,0 @@
-/home/dombarker/project-offloads/aspis-v7-k12-merkle-source-20260826/caller-lean-compile-01/workspace/V7MerkleCaller/Funs.lean:1117:34: error: Application type mismatch: The argument
-  back2
-has type
-  core.iter.adapters.enumerate.Enumerate (core.slice.iter.IterMut field.QM31) →
-    core.iter.adapters.enumerate.Enumerate (core.slice.iter.IterMut field.QM31)
-but is expected to have type
-  core.iter.adapters.enumerate.Enumerate (core.slice.iter.IterMut field.QM31)
-in the application
-  enumerate_back back2
