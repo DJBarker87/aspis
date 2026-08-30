@@ -1,13 +1,13 @@
 V7 Tag-73 literal generated-reader bridge
 Date: 2026-08-30
 Host: nuc.local
-Unit: aspis-v7-final256-reader-trace-final
+Unit: aspis-v7-final256-production-close-final
 MemoryHigh: 12G
 MemoryMax: 16G
 MemorySwapMax: 0
 Result: PASS
-Wall: 3.20 s
-Peak RSS: 2,576,324 KiB
+Wall: 3.21 s
+Peak RSS: 2,579,256 KiB
 Swaps: 0
 
 Principal theorems:
@@ -24,6 +24,8 @@ final256_exact_loop_trace_without_pending_has_successful_reads
 final256_exact_loop_trace_without_pending_cont_count
 final256_loop_success_without_pending_has_successful_reads
 generated_final256_success_reads_exactly_256_canonical_values
+final256_exact_loop_trace_never_returns_pending_success
+generated_decode_and_absorb_final256_success_reads_exactly_256
 
 Every printed theorem depends on exactly:
 propext
