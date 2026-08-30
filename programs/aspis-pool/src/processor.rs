@@ -305,11 +305,34 @@ pub(crate) fn create_or_allocate_pda<'info, R: PoolCpiRuntimeV1>(
     owner: &Pubkey,
     signer_seeds: &[&[u8]],
 ) -> ProgramResult {
+    let rent = Rent::get()?;
+    create_or_allocate_pda_with_rent(
+        runtime,
+        payer,
+        account,
+        system_program_account,
+        exact_bytes,
+        owner,
+        signer_seeds,
+        &rent,
+    )
+}
+
+pub(crate) fn create_or_allocate_pda_with_rent<'info, R: PoolCpiRuntimeV1>(
+    runtime: &mut R,
+    payer: &AccountInfo<'info>,
+    account: &AccountInfo<'info>,
+    system_program_account: &AccountInfo<'info>,
+    exact_bytes: usize,
+    owner: &Pubkey,
+    signer_seeds: &[&[u8]],
+    rent: &Rent,
+) -> ProgramResult {
     require_payer_and_system_program(payer, system_program_account)?;
     if account.owner != &system_program::id() || !account.data_is_empty() {
         return Err(PoolV1ProgramError::InvalidFreshAccount.into());
     }
-    let required_lamports = Rent::get()?.minimum_balance(exact_bytes).max(1);
+    let required_lamports = rent.minimum_balance(exact_bytes).max(1);
     let infos = [
         payer.clone(),
         account.clone(),
@@ -1479,7 +1502,7 @@ where
 }
 
 #[allow(clippy::too_many_arguments)]
-fn create_prepared_marker_if_needed_v1<'info, R: PoolCpiRuntimeV1>(
+pub(crate) fn create_nullifier_marker_if_needed_v1<'info, R: PoolCpiRuntimeV1>(
     runtime: &mut R,
     program_id: &Pubkey,
     pool: &Pubkey,
@@ -1498,7 +1521,7 @@ fn create_prepared_marker_if_needed_v1<'info, R: PoolCpiRuntimeV1>(
             &nullifier_bytes,
             &bump_seed,
         ];
-        create_or_allocate_pda(
+        create_or_allocate_pda_with_rent(
             runtime,
             payer,
             marker_account,
@@ -1506,6 +1529,7 @@ fn create_prepared_marker_if_needed_v1<'info, R: PoolCpiRuntimeV1>(
             POOL_V1_NULLIFIER_MARKER_ACCOUNT_BYTES,
             program_id,
             seeds,
+            rent,
         )?;
     }
     let ready = plan_nullifier_marker_consumption_v1(program_id, marker_account, planned.marker())?;
@@ -1706,7 +1730,7 @@ where
     drop(source_current_data);
     drop(source_pool_data);
 
-    let ready_marker = create_prepared_marker_if_needed_v1(
+    let ready_marker = create_nullifier_marker_if_needed_v1(
         runtime,
         program_id,
         pool.key,
@@ -2328,11 +2352,13 @@ pub fn process_instruction(
         #[cfg(feature = "pair-forest-account-evidence")]
         {
             let slot = Clock::get()?.slot;
+            let rent = Rent::get()?;
             process_pair_forest_terminal_v1(
                 program_id,
                 accounts,
                 instruction_data,
                 slot,
+                &rent,
                 &mut runtime,
             )
         }
@@ -2342,11 +2368,13 @@ pub fn process_instruction(
         #[cfg(feature = "pair-forest-full-asf8-audit")]
         {
             let slot = Clock::get()?.slot;
+            let rent = Rent::get()?;
             process_pair_forest_terminal_full_asf8_v1(
                 program_id,
                 accounts,
                 instruction_data,
                 slot,
+                &rent,
                 &mut runtime,
             )
         }

@@ -35,6 +35,7 @@ use solana_program::{
     instruction::{AccountMeta, Instruction},
     pubkey::Pubkey,
 };
+use solana_sdk_ids::system_program;
 use solana_signature_v1::Signature as V1Signature;
 use solana_transaction::versioned::VersionedTransaction as LegacyVersionedTransaction;
 use solana_transaction_v1::versioned::VersionedTransaction as V1VersionedTransaction;
@@ -377,21 +378,28 @@ fn terminal_request_identity_v2(
 
 /// Build the exact one-terminal `ASQ8` top-level Pool instruction.
 ///
-/// Same-page/genesis transfer: 9 accounts. Rollover transfer: 10.
-/// Withdrawal appends the exact five legacy SPL custody accounts: 14 or 15.
+/// Same-page/genesis transfer: 11 accounts. Rollover transfer: 12.
+/// Withdrawal appends the exact five legacy SPL custody accounts: 16 or 17.
+/// The marker payer is normally also the transaction fee payer; it remains an
+/// explicit writable signer because the Pool atomically creates the canonical
+/// nullifier PDA immediately before verifier CPI.
 #[allow(clippy::too_many_arguments)]
 pub fn build_pair_forest_terminal_instruction_v1_4k_v2(
     pool_program: Pubkey,
     master: &PoolV1PairForestMasterV1,
     lane: &PoolV1PairForestLaneStateV1,
     profile: PairForestSpendProfileSelectionV2,
+    marker_payer: Pubkey,
     proof_account: Pubkey,
     request: &PoolV1PairForestTerminalRequestV1,
 ) -> Result<Instruction, PairForestTransactionV1ErrorV2> {
     if pool_program == Pubkey::default() {
         return Err(PairForestTransactionV1ErrorV2::UnpinnedProgram);
     }
-    if proof_account == Pubkey::default() || profile.verifier_program == [0u8; 32] {
+    if marker_payer == Pubkey::default()
+        || proof_account == Pubkey::default()
+        || profile.verifier_program == [0u8; 32]
+    {
         return Err(PairForestTransactionV1ErrorV2::ZeroAccount);
     }
     let mint = Pubkey::new_from_array(master.identity.asset_mint);
@@ -501,6 +509,8 @@ pub fn build_pair_forest_terminal_instruction_v1_4k_v2(
     }
     accounts.extend([
         AccountMeta::new(marker, false),
+        AccountMeta::new(marker_payer, true),
+        AccountMeta::new_readonly(system_program::id(), false),
         AccountMeta::new_readonly(registry_address, false),
         AccountMeta::new_readonly(entry_address, false),
         AccountMeta::new_readonly(Pubkey::new_from_array(profile.verifier_program), false),
@@ -784,6 +794,7 @@ mod tests {
 
     fn terminal_fixture(
         withdrawal: bool,
+        rollover: bool,
     ) -> (
         Pubkey,
         PoolV1PairForestMasterV1,
@@ -826,7 +837,11 @@ mod tests {
         (
             program,
             master,
-            lane(&master, lane_id, rollover_sequence()),
+            lane(
+                &master,
+                lane_id,
+                if rollover { rollover_sequence() } else { 0 },
+            ),
             profile(&master, registry_program, profile_binding, release_binding),
             PoolV1PairForestTerminalRequestV1 {
                 verifier_profile: profile_binding,
@@ -839,16 +854,28 @@ mod tests {
 
     #[test]
     fn max_shape_terminal_wires_are_tx_v1_and_never_embed_the_proof() {
-        for (withdrawal, expected_accounts, expected_v1, expected_v0, expected_addresses) in
-            [(false, 10, 844, 822, 12), (true, 15, 1_009, 987, 17)]
-        {
-            let (program, master, lane, profile, request) = terminal_fixture(withdrawal);
+        for (
+            withdrawal,
+            rollover,
+            expected_accounts,
+            expected_v1,
+            expected_v0,
+            expected_addresses,
+        ) in [
+            (false, false, 11, 845, 823, 12),
+            (false, true, 12, 878, 856, 13),
+            (true, false, 16, 1_010, 988, 17),
+            (true, true, 17, 1_043, 1_021, 18),
+        ] {
+            let (program, master, lane, profile, request) = terminal_fixture(withdrawal, rollover);
             let proof_account = key(21);
+            let marker_payer = key(22);
             let instruction = build_pair_forest_terminal_instruction_v1_4k_v2(
                 program,
                 &master,
                 &lane,
                 profile,
+                marker_payer,
                 proof_account,
                 &request,
             )
@@ -857,7 +884,7 @@ mod tests {
             assert_eq!(instruction.data.len(), 320);
             let transaction = build_exact_pair_forest_v1_transaction_v2(
                 &instruction,
-                key(22),
+                marker_payer,
                 [23; 32],
                 config(),
                 &[],
@@ -872,7 +899,8 @@ mod tests {
                 .windows(64)
                 .any(|window| window == [0x5a; 64]));
             let v0 =
-                compare_exact_pair_forest_v0_size_v2(&instruction, key(22), [23; 32], &[]).unwrap();
+                compare_exact_pair_forest_v0_size_v2(&instruction, marker_payer, [23; 32], &[])
+                    .unwrap();
             assert_eq!(v0.serialized_wire_bytes, expected_v0);
             assert!(!v0.eligible_for_four_kib);
         }
@@ -954,12 +982,13 @@ mod tests {
             Err(PairForestTransactionV1ErrorV2::ComputeBudgetInstructionForbidden)
         );
 
-        let (program, master, lane, profile, request) = terminal_fixture(false);
+        let (program, master, lane, profile, request) = terminal_fixture(false, false);
         let instruction = build_pair_forest_terminal_instruction_v1_4k_v2(
             program,
             &master,
             &lane,
             profile,
+            key(55),
             key(52),
             &request,
         )

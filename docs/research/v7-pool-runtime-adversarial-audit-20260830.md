@@ -1,5 +1,12 @@
 # V7 Pool runtime adversarial audit — 2026-08-30
 
+> **Follow-on status:** the nullifier-marker blocker recorded below was closed
+> after `eb405a0` by adding atomic Pool-side PDA creation plus exact payer and
+> System Program accounts. The selected design, packet sizes, adversarial
+> coverage and remaining runtime/source gates are recorded in
+> `v7-pool-nullifier-marker-atomic-lifecycle-20260830.md`. The blocker section
+> below is retained as the audit trail that led to that change.
+
 ## Frozen scope
 
 This focused audit starts from
@@ -54,7 +61,7 @@ balance deltas followed by lane/history/nullifier writes.
 | Terminal private transfer | exact master/checkpoint/live-lane/request binding; registry/verifier/proof binding; verified afterstate; lane/history/nullifier borrows acquired before writes; replay rejection | no additional Rust gap found in the host path |
 | Terminal withdrawal | all private-transfer bindings plus destination, mint, vault, authority, token program, exact custody delta, and rollback ordering | supported-loader gap fixed |
 
-## Hard activation blocker: no canonical nullifier-marker provisioning path
+## Blocker found at `eb405a0`: no canonical nullifier-marker provisioning path
 
 The current one-terminal source requires a marker state that a normal client
 cannot create through any dispatched eight-lane Pool instruction.
@@ -105,10 +112,10 @@ blocker and must not be hidden by preloaded host fixtures.
    and introduces a cross-program/source interface. It must not be treated as
    an implicit capability of the current proof upload path.
 
-No option was implemented in this branch because each changes lifecycle,
-accounts, wire/CU, or another program boundary. The production design must
-select one explicitly and then add real validator rollback and rent-exemption
-evidence.
+No option was implemented in the initial `eb405a0` audit milestone because
+each changes lifecycle, accounts, wire/CU, or another program boundary. The
+follow-on milestone selected option 1 and implemented it; real validator
+rollback and CU evidence remain release gates.
 
 ## Focused verification
 
@@ -143,8 +150,9 @@ them. No unchanged project-wide regression is justified by this audit.
 
 ## Release conclusion
 
-The loader-owner inconsistency is closed without changing cryptography, wire
+The loader-owner inconsistency was closed without changing cryptography, wire
 formats, or wallet behavior. The reviewed registry, vault, lane/history, and
-atomic write ordering expose no second concrete Rust defect in this focused
-pass. Mainnet activation remains blocked until canonical nullifier-marker
-creation is implemented and demonstrated through the real runtime lifecycle.
+atomic write ordering exposed no second concrete Rust defect in this focused
+pass. The follow-on milestone implements canonical nullifier-marker creation;
+mainnet activation still requires its fresh SBF/runtime rollback and CU
+evidence.
