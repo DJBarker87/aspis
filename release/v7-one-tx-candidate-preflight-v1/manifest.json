@@ -170,7 +170,7 @@
     },
     {
       "path": "scripts/v7_txv1_disposable_agave_simulate.sh",
-      "sha256": "de81a29e2cb865776d822c46e0a7d472af613fd5b41753f274a90ee3b1b70673"
+      "sha256": "9cea4796a8d4092a25f16dbd5ca7a9d6ee789302fd62f36b631ff9b621bffbbc"
     },
     {
       "path": "scripts/v7_one_tx_release_replay.sh",

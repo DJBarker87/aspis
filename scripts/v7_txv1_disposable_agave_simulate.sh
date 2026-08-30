@@ -159,6 +159,8 @@ run_case() {
   local send_response signature status_response confirmation_status landed_error transaction_response
   local after_json simulation_units landed_units return_data_length expected_log
   local rollback_equal actual_matches_expected simulation_matches_expected actual_state_changed
+  local actual_exact_matches_expected simulation_exact_matches_expected
+  local actual_runtime_metadata_valid simulation_runtime_metadata_valid
   local task_poll
 
   jq -e --arg name "$case_name" '.cases[] | select(.name == $name)' \
@@ -300,28 +302,57 @@ run_case() {
     expected_file_relative=$(jq -er '.expectedSimulationAccountsFile' "$case_json")
     validate_bundle_relative_path "$expected_file_relative"
     expected_file="$BUNDLE_DIR/$expected_file_relative"
-    simulation_matches_expected=$(jq -n \
+    simulation_exact_matches_expected=$(jq -n \
       --argjson actual "$(jq '.result.value.accounts' <<<"$simulation_response")" \
       --argjson expected "$(jq . "$expected_file")" '$actual == $expected')
-    actual_matches_expected=$(jq -n \
+    actual_exact_matches_expected=$(jq -n \
       --argjson actual "$(jq '.result.value' <<<"$after_json")" \
       --argjson expected "$(jq . "$expected_file")" '$actual == $expected')
+    simulation_matches_expected=$(jq -n \
+      --argjson actual "$(jq '.result.value.accounts' <<<"$simulation_response")" \
+      --argjson expected "$(jq . "$expected_file")" '
+      def program_state: map(if . == null then null else del(.rentEpoch) end);
+      ($actual | program_state) == ($expected | program_state)')
+    actual_matches_expected=$(jq -n \
+      --argjson actual "$(jq '.result.value' <<<"$after_json")" \
+      --argjson expected "$(jq . "$expected_file")" '
+      def program_state: map(if . == null then null else del(.rentEpoch) end);
+      ($actual | program_state) == ($expected | program_state)')
+    simulation_runtime_metadata_valid=$(jq -n \
+      --argjson actual "$(jq '.result.value.accounts' <<<"$simulation_response")" '
+      all($actual[]; . == null or .rentEpoch == 0 or .rentEpoch == 18446744073709551615)')
+    actual_runtime_metadata_valid=$(jq -n \
+      --argjson actual "$(jq '.result.value' <<<"$after_json")" '
+      all($actual[]; . == null or .rentEpoch == 0 or .rentEpoch == 18446744073709551615)')
     jq -n \
       --arg case "$case_name" \
       --argjson simulationActual "$(jq '.result.value.accounts' <<<"$simulation_response")" \
       --argjson landedActual "$(jq '.result.value' <<<"$after_json")" \
       --argjson expected "$(jq . "$expected_file")" '
+      def program_state: map(if . == null then null else del(.rentEpoch) end);
       {
-        schema: "aspis.v7.disposable-agave-state-comparison.v1",
+        schema: "aspis.v7.disposable-agave-state-comparison.v2",
         case: $case,
-        simulationMatchesFrozenExpected: ($simulationActual == $expected),
-        landedMatchesFrozenExpected: ($landedActual == $expected),
+        simulationMatchesFrozenExpectedExactly: ($simulationActual == $expected),
+        landedMatchesFrozenExpectedExactly: ($landedActual == $expected),
+        simulationMatchesFrozenExpectedProgramState:
+          (($simulationActual | program_state) == ($expected | program_state)),
+        landedMatchesFrozenExpectedProgramState:
+          (($landedActual | program_state) == ($expected | program_state)),
+        programStateComparisonExcludesRuntimeMetadata: ["rentEpoch"],
+        acceptedRuntimeRentEpochValues: [0, 18446744073709551615],
+        simulationRuntimeMetadataValid:
+          (all($simulationActual[]; . == null or .rentEpoch == 0 or .rentEpoch == 18446744073709551615)),
+        landedRuntimeMetadataValid:
+          (all($landedActual[]; . == null or .rentEpoch == 0 or .rentEpoch == 18446744073709551615)),
         simulationActual: $simulationActual,
         landedActual: $landedActual,
         frozenExpected: $expected
       }' >"$EVIDENCE_DIR/$case_name.state-comparison.json"
-    [[ "$simulation_matches_expected" == "true" && "$actual_matches_expected" == "true" ]] \
-      || fail "honest protected post-state differs from the frozen expectation"
+    [[ "$simulation_matches_expected" == "true" && "$actual_matches_expected" == "true" \
+        && "$simulation_runtime_metadata_valid" == "true" \
+        && "$actual_runtime_metadata_valid" == "true" ]] \
+      || fail "honest program-controlled post-state differs from the frozen expectation"
     [[ "$rollback_equal" == "false" ]] || fail "honest transaction did not change protected state"
     jq -e --arg pool "$POOL_PROGRAM" '.result.meta.returnData.programId == $pool' \
       <<<"$transaction_response" >/dev/null
@@ -333,6 +364,10 @@ run_case() {
     [[ "$rollback_equal" == "true" ]] || fail "negative transaction changed protected state"
     simulation_matches_expected=null
     actual_matches_expected=null
+    simulation_exact_matches_expected=null
+    actual_exact_matches_expected=null
+    simulation_runtime_metadata_valid=null
+    actual_runtime_metadata_valid=null
     actual_state_changed=false
   fi
 
@@ -346,9 +381,13 @@ run_case() {
     --argjson landedUnits "$landed_units" --argjson rollbackPreserved "$rollback_equal" \
     --argjson actualStateChanged "$actual_state_changed" \
     --argjson simulationMatchesExpected "$simulation_matches_expected" \
-    --argjson actualMatchesExpected "$actual_matches_expected" '
+    --argjson actualMatchesExpected "$actual_matches_expected" \
+    --argjson simulationExactMatchesExpected "$simulation_exact_matches_expected" \
+    --argjson actualExactMatchesExpected "$actual_exact_matches_expected" \
+    --argjson simulationRuntimeMetadataValid "$simulation_runtime_metadata_valid" \
+    --argjson actualRuntimeMetadataValid "$actual_runtime_metadata_valid" '
     {
-      schema: "aspis.v7.disposable-agave-txv1-finalized-case.v1",
+      schema: "aspis.v7.disposable-agave-txv1-finalized-case.v2",
       case: $case,
       expectedOutcome: $expected,
       agave: $version,
@@ -365,8 +404,14 @@ run_case() {
       landedUnitsConsumed: $landedUnits,
       protectedStateRollbackPreserved: $rollbackPreserved,
       protectedStateChangedOnSuccess: $actualStateChanged,
-      simulationMatchesFrozenExpectedState: $simulationMatchesExpected,
-      landedStateMatchesFrozenExpectedState: $actualMatchesExpected,
+      simulationMatchesFrozenExpectedExactly: $simulationExactMatchesExpected,
+      landedMatchesFrozenExpectedExactly: $actualExactMatchesExpected,
+      simulationMatchesFrozenExpectedProgramState: $simulationMatchesExpected,
+      landedMatchesFrozenExpectedProgramState: $actualMatchesExpected,
+      programStateComparisonExcludesRuntimeMetadata: ["rentEpoch"],
+      acceptedRuntimeRentEpochValues: [0, 18446744073709551615],
+      simulationRuntimeMetadataValid: $simulationRuntimeMetadataValid,
+      landedRuntimeMetadataValid: $actualRuntimeMetadataValid,
       signedRequest: $signedRequest,
       simulationResponse: $simulation,
       sendResponse: $send,
@@ -395,7 +440,7 @@ jq -n \
   --arg bundleSha256 "$(shasum -a 256 "$BUNDLE_MANIFEST" | awk '{print $1}')" \
   --argjson warpSlot "$WARP_SLOT" --slurpfile cases <(jq -s '.' "${case_files[@]}") '
   {
-    schema: "aspis.v7.disposable-agave-txv1-finalized-suite.v1",
+    schema: "aspis.v7.disposable-agave-txv1-finalized-suite.v2",
     agave: $version,
     cluster: "disposable-local-validator",
     localTestPayer: $localTestPayer,
@@ -412,7 +457,9 @@ jq -n \
     allPacketsUnder4096: ($cases[0] | all(.packetBytes < 4096)),
     allLandedComputeUnder1300000: ($cases[0] | all(.landedUnitsConsumed <= 1300000)),
     allNegativeCasesRolledBack: ($cases[0] | map(select(.expectedOutcome == "failure")) | all(.protectedStateRollbackPreserved == true)),
-    allHonestCasesMatchFrozenState: ($cases[0] | map(select(.expectedOutcome == "success")) | all(.landedStateMatchesFrozenExpectedState == true)),
+    allHonestCasesMatchFrozenProgramState: ($cases[0] | map(select(.expectedOutcome == "success")) | all(.landedMatchesFrozenExpectedProgramState == true)),
+    allHonestRuntimeMetadataValid: ($cases[0] | map(select(.expectedOutcome == "success")) | all(.simulationRuntimeMetadataValid == true and .landedRuntimeMetadataValid == true)),
+    programStateComparisonExcludesRuntimeMetadata: ["rentEpoch"],
     publicClusterUsed: false,
     deployed: false
   }' >"$EVIDENCE_DIR/suite.json"
@@ -420,7 +467,8 @@ jq -n \
 jq -e '
   (.cases | length) == 11 and .allCasesSigned and .allCasesSubmitted and
   .allCasesFinalized and .allPacketsUnder4096 and .allLandedComputeUnder1300000 and
-  .allNegativeCasesRolledBack and .allHonestCasesMatchFrozenState and
+  .allNegativeCasesRolledBack and .allHonestCasesMatchFrozenProgramState and
+  .allHonestRuntimeMetadataValid and
   (.publicClusterUsed | not) and (.deployed | not)
 ' "$EVIDENCE_DIR/suite.json" >/dev/null || fail "final suite summary did not close"
 
