@@ -265,6 +265,22 @@ theorem complete_successful_trace_has_exact_641_canonical_values
   exact ⟨initialFacts.1, by omega,
     successful_trace_values_canonical trace⟩
 
+theorem successful_generated_read_trace_is_fixed_reader_trace
+    {first final : v6_onefold.V6FixedFieldReader}
+    {values : List field.QM31}
+    (trace : SuccessfulReadTrace
+      v6_onefold.V6FixedFieldReader.Insts.Aspis_coreV6_onefoldV6FixedFieldStream.next_qm31
+      first values final) :
+    SuccessfulFixedReaderTrace first values final := by
+  induction trace with
+  | nil => exact .nil _
+  | cons read rest inductionHypothesis =>
+    apply SuccessfulFixedReaderTrace.cons
+    · simpa [
+        v6_onefold.V6FixedFieldReader.Insts.Aspis_coreV6_onefoldV6FixedFieldStream.next_qm31]
+        using read
+    · exact inductionHypothesis
+
 theorem production_root_success_exposes_exact_fixed_reader
     {TerminalCheck QueryFold : Type}
     (terminalCheckInst : core.ops.function.FnOnce TerminalCheck
@@ -331,10 +347,10 @@ def final256DecodeBody (state : Final256DecodeState) :
 def final256DecodeMeasure (state : Final256DecodeState) : Nat :=
   state.1.end.val - state.1.start.val
 
-theorem final256_decode_body_cont_decreases
+theorem final256_decode_body_cont_measure_exact
     (state next : Final256DecodeState)
     (run : final256DecodeBody state = .ok (.cont next)) :
-    final256DecodeMeasure next < final256DecodeMeasure state := by
+    final256DecodeMeasure next + 1 = final256DecodeMeasure state := by
   unfold final256DecodeBody at run
   unfold v6_transcript.decode_and_absorb_final256_loop.body at run
   generalize rangeRun :
@@ -425,6 +441,13 @@ theorem final256_decode_body_cont_decreases
                     rw [endExact, startExact]
                     omega
 
+theorem final256_decode_body_cont_decreases
+    (state next : Final256DecodeState)
+    (run : final256DecodeBody state = .ok (.cont next)) :
+    final256DecodeMeasure next < final256DecodeMeasure state := by
+  have exactStep := final256_decode_body_cont_measure_exact state next run
+  omega
+
 theorem final256_loop_success_has_exact_trace
     (state : Final256DecodeState)
     (output : v6_onefold.V6FixedFieldReader × alloc.vec.Vec field.QM31 ×
@@ -440,6 +463,289 @@ theorem final256_loop_success_has_exact_trace
     final256_decode_body_cont_decreases state output
   exact run
 
+theorem final256_decode_body_cont_has_successful_read
+    (state next : Final256DecodeState)
+    (run : final256DecodeBody state = .ok (.cont next)) :
+    ∃ value,
+      v6_onefold.V6FixedFieldReader.Insts.Aspis_coreV6_onefoldV6FixedFieldStream.next_qm31
+          state.2.1 = .ok (.Ok value, next.2.1) := by
+  unfold final256DecodeBody at run
+  unfold v6_transcript.decode_and_absorb_final256_loop.body at run
+  generalize rangeRun :
+      core.iter.range.IteratorRange.next core.iter.range.StepUsize state.1 =
+        rangeResult at run
+  cases rangeResult with
+  | fail error => simp at run
+  | div => simp at run
+  | ok rangePair =>
+    rcases rangePair with ⟨item, rangeAfter⟩
+    cases item with
+    | none => simp at run
+    | some index =>
+      simp only [bind_tc_ok] at run
+      generalize readRun :
+          v6_onefold.V6FixedFieldReader.Insts.Aspis_coreV6_onefoldV6FixedFieldStream.next_qm31
+            state.2.1 = readResult at run
+      cases readResult with
+      | fail error => simp at run
+      | div => simp at run
+      | ok readPair =>
+        rcases readPair with ⟨fixedResult, readerAfter⟩
+        cases fixedResult with
+        | Err error =>
+          simp [core.result.Result.Insts.CoreOpsTry.branch,
+            core.result.Result.Insts.CoreOpsTryTraitFromResidualResultInfallible.from_residual,
+            v6_transcript.V6TranscriptError.Insts.CoreConvertFromV6WireError.from]
+            at run
+        | Ok value =>
+          simp only [core.result.Result.Insts.CoreOpsTry.branch, bind_tc_ok] at run
+          generalize pushRun : state.2.2.1.push value = pushResult at run
+          cases pushResult with
+          | fail error => simp at run
+          | div => simp at run
+          | ok decodedAfter =>
+            simp only [bind_tc_ok] at run
+            generalize offsetRun : index * 16#usize = offsetResult at run
+            cases offsetResult with
+            | fail error => simp at run
+            | div => simp at run
+            | ok offset =>
+              simp only [bind_tc_ok] at run
+              generalize outerIndexRun :
+                  alloc.vec.Vec.index_mut
+                    (core.slice.index.SliceIndexRangeFromUsizeSlice Std.U8)
+                    state.2.2.2 { start := offset } = outerIndexResult at run
+              cases outerIndexResult with
+              | fail error => simp at run
+              | div => simp at run
+              | ok outerPair =>
+                rcases outerPair with ⟨outerSlice, outerBack⟩
+                simp only [bind_tc_ok] at run
+                generalize innerIndexRun :
+                    core.slice.index.Slice.index_mut
+                      (core.slice.index.SliceIndexRangeToUsizeSlice Std.U8)
+                      outerSlice { «end» := 16#usize } =
+                        innerIndexResult at run
+                cases innerIndexResult with
+                | fail error => simp at run
+                | div => simp at run
+                | ok innerPair =>
+                  rcases innerPair with ⟨innerSlice, innerBack⟩
+                  simp only [bind_tc_ok] at run
+                  generalize writeRun :
+                      field.QM31.write_le_bytes value innerSlice =
+                        writeResult at run
+                  cases writeResult with
+                  | fail error => simp at run
+                  | div => simp at run
+                  | ok written =>
+                    simp at run
+                    subst next
+                    exact ⟨value, by simpa using readRun⟩
+
+theorem final256_decode_body_done_without_pending_exact
+    (state : Final256DecodeState)
+    (output : v6_onefold.V6FixedFieldReader × alloc.vec.Vec field.QM31 ×
+      alloc.vec.Vec Std.U8 ×
+      Option (core.result.Result (Array field.QM31 256#usize)
+        v6_transcript.V6TranscriptError))
+    (run : final256DecodeBody state = .ok (.done output))
+    (noPending : output.2.2.2 = none) :
+    output.1 = state.2.1 ∧ final256DecodeMeasure state = 0 := by
+  unfold final256DecodeBody at run
+  unfold v6_transcript.decode_and_absorb_final256_loop.body at run
+  generalize rangeRun :
+      core.iter.range.IteratorRange.next core.iter.range.StepUsize state.1 =
+        rangeResult at run
+  cases rangeResult with
+  | fail error => simp at run
+  | div => simp at run
+  | ok rangePair =>
+    rcases rangePair with ⟨item, rangeAfter⟩
+    cases item with
+    | none =>
+      have rangeSpec :=
+        core.iter.range.IteratorRange.next_UScalar_spec
+          (ty := .Usize) (cloneInst := core.clone.CloneUsize)
+          (partialOrdInst := core.cmp.PartialOrdUsize)
+          (by intro value; rfl)
+          (by intro left right; rfl) state.1
+      rw [rangeRun] at rangeSpec
+      simp only [WP.spec_ok] at rangeSpec
+      rcases rangeSpec with ⟨conditional, endExact⟩
+      have notBefore : ¬ state.1.start.val < state.1.end.val := by
+        intro startsBefore
+        simp [startsBefore] at conditional
+      simp at run
+      subst output
+      constructor
+      · rfl
+      · unfold final256DecodeMeasure
+        omega
+    | some index =>
+      simp only [bind_tc_ok] at run
+      generalize readRun :
+          v6_onefold.V6FixedFieldReader.Insts.Aspis_coreV6_onefoldV6FixedFieldStream.next_qm31
+            state.2.1 = readResult at run
+      cases readResult with
+      | fail error => simp at run
+      | div => simp at run
+      | ok readPair =>
+        rcases readPair with ⟨fixedResult, readerAfter⟩
+        cases fixedResult with
+        | Err error =>
+          simp [core.result.Result.Insts.CoreOpsTry.branch,
+            core.result.Result.Insts.CoreOpsTryTraitFromResidualResultInfallible.from_residual,
+            v6_transcript.V6TranscriptError.Insts.CoreConvertFromV6WireError.from]
+            at run
+          subst output
+          simp at noPending
+        | Ok value =>
+          simp only [core.result.Result.Insts.CoreOpsTry.branch, bind_tc_ok] at run
+          generalize pushRun : state.2.2.1.push value = pushResult at run
+          cases pushResult with
+          | fail error => simp at run
+          | div => simp at run
+          | ok decodedAfter =>
+            simp only [bind_tc_ok] at run
+            generalize offsetRun : index * 16#usize = offsetResult at run
+            cases offsetResult with
+            | fail error => simp at run
+            | div => simp at run
+            | ok offset =>
+              simp only [bind_tc_ok] at run
+              generalize outerIndexRun :
+                  alloc.vec.Vec.index_mut
+                    (core.slice.index.SliceIndexRangeFromUsizeSlice Std.U8)
+                    state.2.2.2 { start := offset } = outerIndexResult at run
+              cases outerIndexResult with
+              | fail error => simp at run
+              | div => simp at run
+              | ok outerPair =>
+                rcases outerPair with ⟨outerSlice, outerBack⟩
+                simp only [bind_tc_ok] at run
+                generalize innerIndexRun :
+                    core.slice.index.Slice.index_mut
+                      (core.slice.index.SliceIndexRangeToUsizeSlice Std.U8)
+                      outerSlice { «end» := 16#usize } =
+                        innerIndexResult at run
+                cases innerIndexResult with
+                | fail error => simp at run
+                | div => simp at run
+                | ok innerPair =>
+                  rcases innerPair with ⟨innerSlice, innerBack⟩
+                  simp only [bind_tc_ok] at run
+                  generalize writeRun :
+                      field.QM31.write_le_bytes value innerSlice =
+                        writeResult at run
+                  cases writeResult with
+                  | fail error => simp at run
+                  | div => simp at run
+                  | ok written => simp at run
+
+theorem final256_exact_loop_trace_without_pending_has_successful_reads
+    {state : Final256DecodeState}
+    {output : v6_onefold.V6FixedFieldReader × alloc.vec.Vec field.QM31 ×
+      alloc.vec.Vec Std.U8 ×
+      Option (core.result.Result (Array field.QM31 256#usize)
+        v6_transcript.V6TranscriptError)}
+    (trace : ExactLoopTrace final256DecodeBody state output)
+    (noPending : output.2.2.2 = none) :
+    ∃ values,
+      SuccessfulReadTrace
+        v6_onefold.V6FixedFieldReader.Insts.Aspis_coreV6_onefoldV6FixedFieldStream.next_qm31
+        state.2.1 values output.1 ∧
+      values.length = trace.contCount := by
+  induction trace with
+  | done equation =>
+    have doneExact :=
+      final256_decode_body_done_without_pending_exact
+        _ _ equation noPending
+    rw [doneExact.1]
+    exact ⟨[], .nil _, rfl⟩
+  | cont equation tail inductionHypothesis =>
+    obtain ⟨value, read⟩ :=
+      final256_decode_body_cont_has_successful_read _ _ equation
+    obtain ⟨values, rest, lengthExact⟩ := inductionHypothesis noPending
+    refine ⟨value :: values, .cons read rest, ?_⟩
+    change values.length + 1 = tail.contCount + 1
+    omega
+
+theorem final256_exact_loop_trace_without_pending_cont_count
+    {state : Final256DecodeState}
+    {output : v6_onefold.V6FixedFieldReader × alloc.vec.Vec field.QM31 ×
+      alloc.vec.Vec Std.U8 ×
+      Option (core.result.Result (Array field.QM31 256#usize)
+        v6_transcript.V6TranscriptError)}
+    (trace : ExactLoopTrace final256DecodeBody state output)
+    (noPending : output.2.2.2 = none) :
+    trace.contCount = final256DecodeMeasure state := by
+  induction trace with
+  | done equation =>
+    have doneExact :=
+      final256_decode_body_done_without_pending_exact
+        _ _ equation noPending
+    simp [ExactLoopTrace.contCount, doneExact.2]
+  | cont equation tail inductionHypothesis =>
+    have stepExact :=
+      final256_decode_body_cont_measure_exact _ _ equation
+    simp only [ExactLoopTrace.contCount]
+    rw [inductionHypothesis noPending]
+    omega
+
+theorem final256_loop_success_without_pending_has_successful_reads
+    (state : Final256DecodeState)
+    (output : v6_onefold.V6FixedFieldReader × alloc.vec.Vec field.QM31 ×
+      alloc.vec.Vec Std.U8 ×
+      Option (core.result.Result (Array field.QM31 256#usize)
+        v6_transcript.V6TranscriptError))
+    (run :
+      v6_transcript.decode_and_absorb_final256_loop
+        v6_onefold.V6FixedFieldReader.Insts.Aspis_coreV6_onefoldV6FixedFieldStream
+        state.1 state.2.1 state.2.2.1 state.2.2.2 = .ok output)
+    (noPending : output.2.2.2 = none) :
+    ∃ values,
+      SuccessfulReadTrace
+        v6_onefold.V6FixedFieldReader.Insts.Aspis_coreV6_onefoldV6FixedFieldStream.next_qm31
+        state.2.1 values output.1 ∧
+      values.length = final256DecodeMeasure state := by
+  obtain ⟨trace⟩ := final256_loop_success_has_exact_trace state output run
+  obtain ⟨values, reads, lengthExact⟩ :=
+    final256_exact_loop_trace_without_pending_has_successful_reads
+      trace noPending
+  refine ⟨values, reads, ?_⟩
+  rw [lengthExact,
+    final256_exact_loop_trace_without_pending_cont_count trace noPending]
+
+theorem generated_final256_success_reads_exactly_256_canonical_values
+    (reader : v6_onefold.V6FixedFieldReader)
+    (decoded : alloc.vec.Vec field.QM31)
+    (encoded : alloc.vec.Vec Std.U8)
+    (output : v6_onefold.V6FixedFieldReader × alloc.vec.Vec field.QM31 ×
+      alloc.vec.Vec Std.U8 ×
+      Option (core.result.Result (Array field.QM31 256#usize)
+        v6_transcript.V6TranscriptError))
+    (run :
+      v6_transcript.decode_and_absorb_final256_loop
+        v6_onefold.V6FixedFieldReader.Insts.Aspis_coreV6_onefoldV6FixedFieldStream
+        { start := 0#usize, «end» := v6_onefold.V6_FINAL_QM31_VALUES }
+        reader decoded encoded = .ok output)
+    (noPending : output.2.2.2 = none) :
+    ∃ values,
+      SuccessfulFixedReaderTrace reader values output.1 ∧
+      values.length = 256 ∧
+      ∀ value ∈ values, CanonicalGeneratedQM31 value := by
+  let state : Final256DecodeState :=
+    ({ start := 0#usize, «end» := v6_onefold.V6_FINAL_QM31_VALUES },
+      reader, decoded, encoded)
+  obtain ⟨values, reads, lengthExact⟩ :=
+    final256_loop_success_without_pending_has_successful_reads
+      state output run noPending
+  have fixedReads := successful_generated_read_trace_is_fixed_reader_trace reads
+  refine ⟨values, fixedReads, ?_, successful_trace_values_canonical fixedReads⟩
+  simpa [state, final256DecodeMeasure, v6_onefold.V6_FINAL_QM31_VALUES]
+    using lengthExact
+
 #print axioms next_qm31_success_remaining_and_canonical
 #print axioms fixed_qm31_values_exact
 #print axioms fixed_m31_limbs_exact
@@ -450,9 +756,17 @@ theorem final256_loop_success_has_exact_trace
 #print axioms successful_trace_length_measure
 #print axioms successful_trace_values_canonical
 #print axioms complete_successful_trace_has_exact_641_canonical_values
+#print axioms successful_generated_read_trace_is_fixed_reader_trace
 #print axioms production_root_success_exposes_exact_fixed_reader
+#print axioms final256_decode_body_cont_measure_exact
 #print axioms final256_decode_body_cont_decreases
 #print axioms final256_loop_success_has_exact_trace
+#print axioms final256_decode_body_cont_has_successful_read
+#print axioms final256_decode_body_done_without_pending_exact
+#print axioms final256_exact_loop_trace_without_pending_has_successful_reads
+#print axioms final256_exact_loop_trace_without_pending_cont_count
+#print axioms final256_loop_success_without_pending_has_successful_reads
+#print axioms generated_final256_success_reads_exactly_256_canonical_values
 #print axioms final256_decode_body_cont_decreases
 
 end AspisV7Tag73GeneratedReaderBridge
