@@ -97,17 +97,33 @@ readonly TOOLCHAIN_PROVENANCE=$(jq -er '.toolchain.frozenInventory.path' "$MANIF
 readonly TOOLCHAIN_PROVENANCE_SHA=$(jq -er '.toolchain.frozenInventory.sha256' "$MANIFEST")
 readonly TOOLCHAIN_FILE_COUNT=$(jq -er '.toolchain.frozenInventory.toolchainFileCount' "$MANIFEST")
 readonly CARGO_BUILD_SBF_SHA=$(jq -er '.toolchain.frozenInventory.cargoBuildSbfSha256' "$MANIFEST")
-toolchain_actual=$(git -C "$ROOT" show "$SOURCE_COMMIT:$TOOLCHAIN_PROVENANCE" | sha_stdin)
+[[ -f "$ROOT/$TOOLCHAIN_PROVENANCE" ]] \
+  || fail "platform-specific frozen toolchain inventory is missing"
+toolchain_actual=$(sha_file "$ROOT/$TOOLCHAIN_PROVENANCE")
 [[ "$toolchain_actual" == "$TOOLCHAIN_PROVENANCE_SHA" ]] \
   || fail "frozen toolchain inventory hash changed"
 jq -e \
   --argjson count "$TOOLCHAIN_FILE_COUNT" \
   --arg cargoBuildSbfSha256 "$CARGO_BUILD_SBF_SHA" '
+  .schema == "aspis.v7.linux-x86_64-sbf-toolchain-inventory.v1" and
+  .host == "Linux x86_64" and
   (.toolchain_files | length) == $count and
+  (.toolchain_files | map(.path) | unique | length) == $count and
+  (.toolchain_files | all(
+    (.path | type == "string") and
+    (.path | startswith("/") | not) and
+    (.path | contains("..") | not) and
+    (.bytes | type == "number") and .bytes >= 0 and
+    (.sha256 | test("^[0-9a-f]{64}$")))) and
+  .selection.total == $count and
+  .selection.explicit_platform_binaries_and_archives == 11 and
+  .selection.complete_sbpf_rust_sysroot_rlibs == 25 and
+  .selection.direct_sbf_sdk_release_files == 55 and
   .cargo_build_sbf_sha256 == $cargoBuildSbfSha256 and
   .platform_tools_version == "v1.48" and
+  .platform_rustc_version == "rustc 1.84.1-dev" and
   (.cargo_build_sbf_version | startswith("solana-cargo-build-sbf 2.3.0\nplatform-tools v1.48"))
-' < <(git -C "$ROOT" show "$SOURCE_COMMIT:$TOOLCHAIN_PROVENANCE") >/dev/null \
+' "$ROOT/$TOOLCHAIN_PROVENANCE" >/dev/null \
   || fail "frozen toolchain inventory contents changed"
 
 while IFS=$'\t' read -r path expected; do

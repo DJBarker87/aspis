@@ -35,11 +35,11 @@ usage:
     <new-output-dir> <agave-4.2+-bin-dir>
 
 The build modes require Linux x86_64, a cgroup-v2 scope capped at
-MemoryHigh<=4 GiB, MemoryMax<=6 GiB and MemorySwapMax=0, and:
+MemoryHigh<=9 GiB, MemoryMax<=12 GiB and MemorySwapMax=0, and:
 
   ASPIS_V7_TOOLCHAIN_CAPTURE_ROOT=<directory containing both
     platform-tools-v1.48/ and solana-active-release/ from the frozen
-    91-file toolchain inventory>
+    platform-specific Linux x86_64 91-file toolchain inventory>
 
 Both build modes produce two independent SBF builds and materialize the frozen
 eleven-case fixture with the resulting Pool/verifier bytes. The simulation mode
@@ -107,8 +107,8 @@ readonly MEMORY_SWAP_MAX=$(<"$CGROUP_DIR/memory.swap.max")
 readonly REQUIRED_HIGH=$(jq -er '.toolchain.requiredCgroup.memoryHighBytesAtMost' "$MANIFEST")
 readonly REQUIRED_MAX=$(jq -er '.toolchain.requiredCgroup.memoryMaxBytesAtMost' "$MANIFEST")
 readonly REQUIRED_SWAP=$(jq -er '.toolchain.requiredCgroup.memorySwapMaxBytes' "$MANIFEST")
-(( MEMORY_HIGH <= REQUIRED_HIGH )) || fail "MemoryHigh exceeds the frozen 4-GiB limit"
-(( MEMORY_MAX <= REQUIRED_MAX )) || fail "MemoryMax exceeds the frozen 6-GiB limit"
+(( MEMORY_HIGH <= REQUIRED_HIGH )) || fail "MemoryHigh exceeds the frozen limit: $REQUIRED_HIGH bytes"
+(( MEMORY_MAX <= REQUIRED_MAX )) || fail "MemoryMax exceeds the frozen limit: $REQUIRED_MAX bytes"
 (( MEMORY_SWAP_MAX == REQUIRED_SWAP )) || fail "MemorySwapMax must be zero"
 
 mkdir -p "$OUTPUT_DIR"

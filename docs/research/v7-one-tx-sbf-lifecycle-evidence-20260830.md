@@ -8,6 +8,12 @@
 > documented in `v7-one-tx-agave-fixture-freeze-20260830.md`. This file is
 > retained as chronology, not as the active release candidate.
 
+> **Toolchain provenance correction (2026-08-30):** the V5 91-file inventory
+> cited below is a Darwin arm64 capture and cannot authenticate Linux builder
+> bytes. It remains immutable historical evidence. The active `da77d5f5`
+> replay uses the separate Linux x86_64 inventory frozen in
+> `release/v7-one-tx-candidate-preflight-v1/`.
+
 Date: 2026-08-30
 
 Status: reproducibility inputs frozen and replay rail implemented; Linux dual

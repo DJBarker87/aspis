@@ -24,6 +24,15 @@ runtime bytes, so the earlier `61f80a...` Pool artifact is not reused or
 misrepresented as current evidence. The executable runner requires a non-null
 fresh binding and therefore fails closed on the checked-in template.
 
+The build preflight now pins the dedicated builder's exact Linux x86_64
+platform-tools v1.48 bytes in
+`release/v7-one-tx-candidate-preflight-v1/linux-x86_64-sbf-toolchain-v1.48.json`
+(SHA-256 `2bcdd08e9c26f5cd1743a07cfb8aae341dc278e9d4e33eed512b746bc365d61c`).
+An earlier preflight revision incorrectly reused the platform-specific Darwin
+arm64 V5 inventory while labelling the required host Linux; the byte gate
+caught that mismatch before any release build. The historical V5 inventory is
+unchanged and is no longer selected by this replay.
+
 ## Exact fixture coverage
 
 The generated bundle contains exactly:
@@ -135,7 +144,7 @@ The next permitted build-host run must:
 7. run the eleven-case suite under Agave 4.2+, reporting actual CU and exact
    success/rollback states.
 
-Agave 4.2+ was unavailable locally and the dedicated Linux build host was
-reserved by Aeneas work. Consequently none of those runtime results is
-claimed here. LiteSVM and sums of earlier component measurements are not
-substituted.
+Agave 4.2+ remains unavailable in the inspected local and dedicated-builder
+assets. Consequently no Agave runtime result is claimed here until a prebuilt
+Linux Agave 4.2+ binary directory is supplied. LiteSVM and sums of earlier
+component measurements are not substituted.

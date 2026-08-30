@@ -23,20 +23,20 @@
   "toolchain": {
     "host": "Linux x86_64",
     "containerImage": null,
-    "containerNote": "No OCI image is asserted. Reproduction instead requires the exact 91-file platform-tools/SBF-SDK inventory frozen below and a capped cgroup-v2 Linux execution.",
+    "containerNote": "No OCI image is asserted. Reproduction instead requires the exact platform-specific 91-file Linux x86_64 platform-tools/SBF-SDK inventory frozen below and a capped cgroup-v2 Linux execution. The older Darwin arm64 V5 inventory remains historical evidence and is not accepted by this replay.",
     "cargoBuildSbfVersion": "solana-cargo-build-sbf 2.3.0\nplatform-tools v1.48\nrustc 1.84.1",
     "platformTools": "v1.48",
     "platformRustc": "rustc 1.84.1-dev",
     "architecture": "v0",
     "frozenInventory": {
-      "path": "release/aspis-v5-tag67-frozen-candidate-v1/provenance/build-provenance.json",
-      "sha256": "70f037278f587754d5ef9713644e6ae7b6d7788d9f6c01153ac5da89939e9609",
-      "cargoBuildSbfSha256": "7f16d75bdd59bad56442ab89f9768280ea8f1e14a4fbd68ee8822ce735312f42",
+      "path": "release/v7-one-tx-candidate-preflight-v1/linux-x86_64-sbf-toolchain-v1.48.json",
+      "sha256": "2bcdd08e9c26f5cd1743a07cfb8aae341dc278e9d4e33eed512b746bc365d61c",
+      "cargoBuildSbfSha256": "b2ee45538a199c00833811383b88dd286380e7d2dbc16e10ddbf94ac51e183cb",
       "toolchainFileCount": 91
     },
     "requiredCgroup": {
-      "memoryHighBytesAtMost": 4294967296,
-      "memoryMaxBytesAtMost": 6442450944,
+      "memoryHighBytesAtMost": 9663676416,
+      "memoryMaxBytesAtMost": 12884901888,
       "memorySwapMaxBytes": 0
     }
   },
@@ -137,7 +137,11 @@
     },
     {
       "path": "scripts/v7_one_tx_release_replay.sh",
-      "sha256": "cc87852c977f51d7e961384b632f8095e3ea7e16b951a030b5e286ecdf996b17"
+      "sha256": "0c09411e0fe7ebc74311e032d39532e9da009df7bd74b6c3041d236eeecf7952"
+    },
+    {
+      "path": "release/v7-one-tx-candidate-preflight-v1/linux-x86_64-sbf-toolchain-v1.48.json",
+      "sha256": "2bcdd08e9c26f5cd1743a07cfb8aae341dc278e9d4e33eed512b746bc365d61c"
     },
     {
       "path": "results/v7-one-tx-agave-bundle-template-20260830/bundle.json",

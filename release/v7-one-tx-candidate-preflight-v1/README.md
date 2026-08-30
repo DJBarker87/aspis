@@ -19,6 +19,11 @@ ASPIS_V7_TOOLCHAIN_CAPTURE_ROOT=<frozen-toolchain-capture> \
   scripts/v7_one_tx_release_replay.sh build <new-output-directory>
 ```
 
+The capture must match the platform-specific Linux x86_64 v1.48 inventory in
+`linux-x86_64-sbf-toolchain-v1.48.json` byte for byte. The historical V5
+Darwin arm64 inventory is preserved in its original release directory but is
+not a valid input to this Linux replay.
+
 The exact eleven-case Agave suite additionally requires an Agave 4.2+ binary
 directory. The replay materializes the committed fixture template against the
 fresh byte-identical SBFs before execution:
