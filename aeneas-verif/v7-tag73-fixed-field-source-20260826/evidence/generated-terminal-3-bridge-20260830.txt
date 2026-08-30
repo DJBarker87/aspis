@@ -37,3 +37,26 @@ or source-agreement premise is present in the compiled theorem.
 Together with the committed semantic (271), point-claims (87),
 relation-fields (24), and final256 (256) bridges, direct literal production
 fixed-field coverage is now 641/641.
+
+Follow-on ordered-tail closure (same source file):
+
+Final unit: aspis-v7-terminal-283-final-20260830
+Final invocation: cb5cd0a0259f4aa2987f9b6ce7f738fb
+Result: PASS
+Wall: 14.35 s
+Peak RSS: 2,747,004 KiB
+Swaps: 0
+
+Principal theorem:
+generated_terminal_success_reads_exactly_283_and_finishes
+
+This stronger theorem follows the accepted terminal path through the nested
+relation-field and final256 decoders. It constructs one ordered trace of
+exactly 283 canonical values:
+
+  1 inactive claim + 2 circle-OOD claims + 24 relation fields + 256 final256
+
+and proves that the translated production reader's final `finish` call
+succeeds. This removes the prior composition ambiguity between the three
+direct terminal reads and the 280 fields consumed inside its accepted done
+edge.

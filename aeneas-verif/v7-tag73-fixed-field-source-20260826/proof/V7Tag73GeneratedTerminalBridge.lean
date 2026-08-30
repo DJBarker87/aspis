@@ -1,4 +1,5 @@
 import V7Tag73GeneratedReaderBridge
+import V7Tag73GeneratedRelationFieldsBridge
 
 /-!
 # Literal generated terminal fixed-field bridge
@@ -18,6 +19,7 @@ namespace AspisV7Tag73GeneratedTerminalBridge
 open V7Tag73FixedFieldGenericNamespaceR1Generated
 open AspisV7Tag73AeneasExactLoopTrace
 open AspisV7Tag73GeneratedReaderBridge
+open AspisV7Tag73GeneratedRelationFieldsBridge
 
 theorem iterator_range_next_i32_some_spec
     (range : core.ops.range.Range Std.I32)
@@ -266,6 +268,176 @@ theorem terminal_read_body_done_ok_measure_zero
           v6_transcript.V6TranscriptError.Insts.CoreConvertFromV6WireError.from]
       all_goals simp at *
 
+set_option maxHeartbeats 600000 in
+theorem terminal_read_body_done_ok_exposes_fixed_tail
+    {QueryFold DeriveQueries Trace : Type}
+    (environment : TerminalReadEnvironment QueryFold DeriveQueries Trace)
+    (state : TerminalReadState)
+    (verified : v6_transcript.V6VerifiedTranscript)
+    (run : terminalReadBody environment state =
+      .ok (.done (some (.Ok verified)))) :
+    ∃ relationFields readerAfterRelation final256,
+      ∃ transcriptBeforeFinal transcriptAfterFinal : transcript.Transcript,
+      ∃ readerAfterFinal,
+      v6_transcript.decode_compact_relation_fields
+          v6_onefold.V6FixedFieldReader.Insts.Aspis_coreV6_onefoldV6FixedFieldStream
+          state.2.2.1 = .ok (.Ok relationFields, readerAfterRelation) ∧
+      v6_transcript.decode_and_absorb_final256
+          v6_onefold.V6FixedFieldReader.Insts.Aspis_coreV6_onefoldV6FixedFieldStream
+          transcriptBeforeFinal readerAfterRelation =
+            .ok (.Ok final256, transcriptAfterFinal, readerAfterFinal) ∧
+      v6_onefold.V6FixedFieldReader.finish readerAfterFinal = .ok (.Ok ()) := by
+  have exhausted :=
+    terminal_read_body_done_ok_measure_zero environment state verified run
+  have notBefore : ¬ state.1.start.val < state.1.end.val := by
+    unfold terminalReadMeasure at exhausted
+    omega
+  have rangeSpec := iterator_range_next_i32_none_spec state.1 notBefore
+  obtain ⟨rangePair, rangeRun, itemExact, rangeAfterExact⟩ :=
+    WP.spec_imp_exists rangeSpec
+  rcases rangePair with ⟨item, rangeAfter⟩
+  have itemExact' : item = none := by simpa using itemExact
+  have rangeAfterExact' : rangeAfter = state.1 := by
+    simpa using rangeAfterExact
+  rw [itemExact', rangeAfterExact'] at rangeRun
+  unfold terminalReadBody at run
+  unfold v6_transcript.finish_onefold_relation_loop0_loop0.body at run
+  rw [rangeRun] at run
+  simp only [bind_tc_ok] at run
+  rw [AspisV7Tag73AeneasExactLoopTrace.bind_eq_ok_iff] at run
+  rcases run with ⟨circleTracePair, circleTraceRun, run⟩
+  rcases circleTracePair with ⟨_, traceAfterCircle⟩
+  rw [AspisV7Tag73AeneasExactLoopTrace.bind_eq_ok_iff] at run
+  rcases run with ⟨relationPair, relationRun, run⟩
+  rcases relationPair with ⟨relationOutcome, readerAfterRelation⟩
+  rw [AspisV7Tag73AeneasExactLoopTrace.bind_eq_ok_iff] at run
+  rcases run with ⟨relationFlow, relationFlowRun, run⟩
+  cases relationFlow with
+  | Break residual =>
+    cases residual with
+    | Ok impossible => cases impossible
+    | Err error =>
+      simp [
+        core.result.Result.Insts.CoreOpsTryTraitFromResidualResultInfallible.from_residual,
+        core.convert.FromSame.from] at run
+  | Continue relationFields =>
+    have relationOutcomeExact : relationOutcome = .Ok relationFields := by
+      cases relationOutcome with
+      | Err wireError =>
+        simp [core.result.Result.Insts.CoreOpsTry.branch] at relationFlowRun
+      | Ok actual =>
+        simp [core.result.Result.Insts.CoreOpsTry.branch] at relationFlowRun
+        subst actual
+        rfl
+    simp only [bind_tc_ok] at run
+    rw [AspisV7Tag73AeneasExactLoopTrace.bind_eq_ok_iff] at run
+    rcases run with ⟨relationTracePair, relationTraceRun, run⟩
+    rcases relationTracePair with ⟨_, traceAfterRelation⟩
+    rw [AspisV7Tag73AeneasExactLoopTrace.bind_eq_ok_iff] at run
+    rcases run with ⟨firstCoefficient, firstCoefficientRun, run⟩
+    rw [AspisV7Tag73AeneasExactLoopTrace.bind_eq_ok_iff] at run
+    rcases run with ⟨firstPolynomial, firstPolynomialRun, run⟩
+    rw [AspisV7Tag73AeneasExactLoopTrace.bind_eq_ok_iff] at run
+    rcases run with ⟨transcriptAfterPolynomial, polynomialAbsorbRun, run⟩
+    rw [AspisV7Tag73AeneasExactLoopTrace.bind_eq_ok_iff] at run
+    rcases run with ⟨foldNonce, foldNonceRun, run⟩
+    rw [AspisV7Tag73AeneasExactLoopTrace.bind_eq_ok_iff] at run
+    rcases run with ⟨foldWorkBits, foldWorkBitsRun, run⟩
+    rw [AspisV7Tag73AeneasExactLoopTrace.bind_eq_ok_iff] at run
+    rcases run with ⟨foldWorkPair, foldWorkRun, run⟩
+    rcases foldWorkPair with ⟨foldWorkOutcome, transcriptAfterFoldWork⟩
+    rw [AspisV7Tag73AeneasExactLoopTrace.bind_eq_ok_iff] at run
+    rcases run with ⟨foldWorkFlow, foldWorkFlowRun, run⟩
+    cases foldWorkFlow with
+    | Break residual =>
+      cases residual with
+      | Ok impossible => cases impossible
+      | Err error =>
+        simp [
+          core.result.Result.Insts.CoreOpsTryTraitFromResidualResultInfallible.from_residual,
+          core.convert.FromSame.from] at run
+    | Continue foldWorkValue =>
+      simp only [bind_tc_ok] at run
+      rw [AspisV7Tag73AeneasExactLoopTrace.bind_eq_ok_iff] at run
+      rcases run with ⟨alphaPair, alphaRun, run⟩
+      rcases alphaPair with ⟨alphaOutcome, transcriptAfterAlpha⟩
+      rw [AspisV7Tag73AeneasExactLoopTrace.bind_eq_ok_iff] at run
+      rcases run with ⟨mappedAlpha, mappedAlphaRun, run⟩
+      rw [AspisV7Tag73AeneasExactLoopTrace.bind_eq_ok_iff] at run
+      rcases run with ⟨alphaFlow, alphaFlowRun, run⟩
+      cases alphaFlow with
+      | Break residual =>
+        cases residual with
+        | Ok impossible => cases impossible
+        | Err error =>
+          simp [
+            core.result.Result.Insts.CoreOpsTryTraitFromResidualResultInfallible.from_residual,
+            core.convert.FromSame.from] at run
+      | Continue alpha0 =>
+        simp only [bind_tc_ok] at run
+        rw [AspisV7Tag73AeneasExactLoopTrace.bind_eq_ok_iff] at run
+        rcases run with ⟨alpha, alphaUpdateRun, run⟩
+        rw [AspisV7Tag73AeneasExactLoopTrace.bind_eq_ok_iff] at run
+        rcases run with ⟨q, qRun, run⟩
+        rw [AspisV7Tag73AeneasExactLoopTrace.bind_eq_ok_iff] at run
+        rcases run with ⟨runningClaimAfterFold, evaluateRun, run⟩
+        rw [AspisV7Tag73AeneasExactLoopTrace.bind_eq_ok_iff] at run
+        rcases run with ⟨weightsAfterFold, weightsFoldRun, run⟩
+        rw [AspisV7Tag73AeneasExactLoopTrace.bind_eq_ok_iff] at run
+        rcases run with ⟨roundTracePair, roundTraceRun, run⟩
+        rcases roundTracePair with ⟨_, traceAfterRoundZero⟩
+        rw [AspisV7Tag73AeneasExactLoopTrace.bind_eq_ok_iff] at run
+        rcases run with ⟨finalPair, finalRun, run⟩
+        rcases finalPair with
+          ⟨finalOutcome, transcriptAfterFinal, readerAfterFinal⟩
+        rw [AspisV7Tag73AeneasExactLoopTrace.bind_eq_ok_iff] at run
+        rcases run with ⟨finalFlow, finalFlowRun, run⟩
+        cases finalFlow with
+        | Break residual =>
+          cases residual with
+          | Ok impossible => cases impossible
+          | Err error =>
+            simp [
+              core.result.Result.Insts.CoreOpsTryTraitFromResidualResultInfallible.from_residual,
+              core.convert.FromSame.from] at run
+        | Continue final256 =>
+          have finalOutcomeExact : finalOutcome = .Ok final256 := by
+            cases finalOutcome with
+            | Err transcriptError =>
+              simp [core.result.Result.Insts.CoreOpsTry.branch] at finalFlowRun
+            | Ok actual =>
+              simp [core.result.Result.Insts.CoreOpsTry.branch] at finalFlowRun
+              subst actual
+              rfl
+          simp only [bind_tc_ok] at run
+          rw [AspisV7Tag73AeneasExactLoopTrace.bind_eq_ok_iff] at run
+          rcases run with ⟨finishOutcome, finishRun, run⟩
+          rw [AspisV7Tag73AeneasExactLoopTrace.bind_eq_ok_iff] at run
+          rcases run with ⟨finishFlow, finishFlowRun, run⟩
+          cases finishFlow with
+          | Break residual =>
+            cases residual with
+            | Ok impossible => cases impossible
+            | Err error =>
+              simp [
+                core.result.Result.Insts.CoreOpsTryTraitFromResidualResultInfallible.from_residual,
+                v6_transcript.V6TranscriptError.Insts.CoreConvertFromV6WireError.from]
+                at run
+          | Continue finishUnit =>
+            have finishOutcomeExact : finishOutcome = .Ok () := by
+              cases finishOutcome with
+              | Err wireError =>
+                simp [core.result.Result.Insts.CoreOpsTry.branch] at finishFlowRun
+              | Ok actual =>
+                cases actual
+                rfl
+            rw [relationOutcomeExact] at relationRun
+            rw [finalOutcomeExact] at finalRun
+            rw [finishOutcomeExact] at finishRun
+            exact ⟨relationFields, readerAfterRelation, final256,
+              transcriptAfterAlpha, transcriptAfterFinal, readerAfterFinal,
+              relationRun, finalRun, finishRun⟩
+
 theorem terminal_read_body_cont_decreases
     {QueryFold DeriveQueries Trace : Type}
     (environment : TerminalReadEnvironment QueryFold DeriveQueries Trace)
@@ -332,6 +504,91 @@ theorem terminal_read_trace_cont_count_exact
       simp only [ExactLoopTrace.contCount]
       rw [inductionHypothesis hasAccepted]
       omega
+
+theorem terminal_read_trace_accepted_has_complete_fixed_tail
+    {QueryFold DeriveQueries Trace : Type}
+    (environment : TerminalReadEnvironment QueryFold DeriveQueries Trace)
+    {state : TerminalReadState} {output : TerminalReadOutput}
+    (trace : ExactLoopTrace (terminalReadBody environment) state output)
+    (verified : v6_transcript.V6VerifiedTranscript)
+    (hasAccepted : output = some (.Ok verified)) :
+    ∃ readerAfter values,
+      SuccessfulFixedReaderTrace state.2.2.1 values readerAfter ∧
+      values.length = trace.contCount + 280 ∧
+      v6_onefold.V6FixedFieldReader.finish readerAfter = .ok (.Ok ()) := by
+  induction trace with
+  | done equation =>
+    rw [hasAccepted] at equation
+    obtain ⟨relationFields, readerAfterRelation, final256,
+        transcriptBeforeFinal, transcriptAfterFinal, readerAfterFinal,
+        relationRun, finalRun, finishRun⟩ :=
+      terminal_read_body_done_ok_exposes_fixed_tail environment _ verified
+        equation
+    obtain ⟨relationValues, relationReads, relationLength,
+        relationCanonical⟩ :=
+      generated_decode_compact_relation_fields_success_reads_exactly_24
+        _ _ relationFields relationRun
+    obtain ⟨finalValues, finalReads, finalLength, finalCanonical⟩ :=
+      generated_decode_and_absorb_final256_success_reads_exactly_256
+        transcriptBeforeFinal transcriptAfterFinal readerAfterRelation
+        readerAfterFinal final256 finalRun
+    refine ⟨readerAfterFinal, relationValues ++ finalValues,
+      SuccessfulFixedReaderTrace.append relationReads finalReads, ?_,
+      finishRun⟩
+    simp [ExactLoopTrace.contCount, relationLength, finalLength]
+  | cont equation tail inductionHypothesis =>
+    obtain ⟨value, read⟩ :=
+      (terminal_read_body_cont_has_exact_read environment _ _ equation).2
+    obtain ⟨readerAfter, values, rest, lengthExact, finishRun⟩ :=
+      inductionHypothesis hasAccepted
+    refine ⟨readerAfter, value :: values, .cons read rest, ?_, finishRun⟩
+    simp only [List.length_cons, ExactLoopTrace.contCount]
+    omega
+
+theorem generated_terminal_ood_loop_success_reads_exactly_282_and_finishes
+    {QueryFold DeriveQueries Trace : Type}
+    (environment : TerminalReadEnvironment QueryFold DeriveQueries Trace)
+    (transcriptBefore : transcript.Transcript)
+    (reader : v6_onefold.V6FixedFieldReader)
+    (runningClaim : field.QM31)
+    (weights : sumcheck.WeightAccumulator)
+    (verified : v6_transcript.V6VerifiedTranscript)
+    (run :
+      v6_transcript.finish_onefold_relation_loop0_loop0
+        environment.queryFoldInst environment.deriveQueriesInst
+        environment.traceInst
+        v6_onefold.V6FixedFieldReader.Insts.Aspis_coreV6_onefoldV6FixedFieldStream
+        { start := 0#i32, «end» := 2#i32 }
+        transcriptBefore environment.workNonces environment.c1Frontier
+        environment.c2Frontier environment.workBits environment.selector
+        environment.frontierNodeBytes environment.queryBatchLabels
+        environment.shiftQueryBatchForTag73
+        environment.exposeFinal256ToQueryFold environment.deriveQueries reader
+        environment.checkPow environment.semanticPoint environment.queryFold
+        environment.trace environment.gamma environment.kappa
+        environment.dPower environment.gammaPowers runningClaim weights =
+          .ok (some (.Ok verified))) :
+    ∃ readerAfter values,
+      SuccessfulFixedReaderTrace reader values readerAfter ∧
+      values.length = 282 ∧
+      (∀ value ∈ values, CanonicalGeneratedQM31 value) ∧
+      v6_onefold.V6FixedFieldReader.finish readerAfter = .ok (.Ok ()) := by
+  let state : TerminalReadState :=
+    ({ start := 0#i32, «end» := 2#i32 }, transcriptBefore, reader,
+      runningClaim, weights)
+  have loopRun : loop (terminalReadBody environment) state =
+      .ok (some (.Ok verified)) := by
+    exact run
+  obtain ⟨trace⟩ := terminal_read_loop_success_has_exact_trace
+    environment state verified loopRun
+  obtain ⟨readerAfter, values, reads, lengthExact, finishRun⟩ :=
+    terminal_read_trace_accepted_has_complete_fixed_tail environment trace
+      verified rfl
+  refine ⟨readerAfter, values, reads, ?_,
+    successful_trace_values_canonical reads, finishRun⟩
+  rw [lengthExact,
+    terminal_read_trace_cont_count_exact environment trace verified rfl]
+  norm_num [state, terminalReadMeasure, Int.toNat]
 
 theorem generated_terminal_ood_loop_success_reads_exactly_2
     {QueryFold DeriveQueries Trace : Type}
@@ -412,6 +669,28 @@ def terminalOuterBody {QueryFold DeriveQueries Trace : Type}
     environment.pointScales environment.terminal.dPower
     environment.terminal.gammaPowers environment.runningClaim
     state.1 state.2
+
+def terminalOuterFinish {QueryFold DeriveQueries Trace : Type}
+    (environment : TerminalOuterEnvironment QueryFold DeriveQueries Trace)
+    (weights : sumcheck.WeightAccumulator) : Result TerminalReadOutput :=
+  v6_transcript.finish_onefold_relation_loop0
+    environment.terminal.queryFoldInst environment.terminal.deriveQueriesInst
+    environment.terminal.traceInst
+    v6_onefold.V6FixedFieldReader.Insts.Aspis_coreV6_onefoldV6FixedFieldStream
+    { start := 0#usize, «end» := v6_onefold.V6_POINT_CLAIM_ROWS }
+    environment.transcriptBefore environment.terminal.workNonces
+    environment.terminal.c1Frontier environment.terminal.c2Frontier
+    environment.terminal.workBits environment.terminal.selector
+    environment.terminal.frontierNodeBytes environment.terminal.queryBatchLabels
+    environment.terminal.shiftQueryBatchForTag73
+    environment.terminal.exposeFinal256ToQueryFold
+    environment.terminal.deriveQueries environment.reader
+    environment.inactiveRowGroups environment.inactiveGroupMasks
+    environment.terminal.checkPow environment.terminal.semanticPoint
+    environment.terminal.queryFold environment.terminal.trace
+    environment.terminal.gamma environment.terminal.kappa environment.points
+    environment.pointScales environment.terminal.dPower
+    environment.terminal.gammaPowers environment.runningClaim weights
 
 def terminalOuterMeasure (state : TerminalOuterState) : Nat :=
   state.1.end.val - state.1.start.val
@@ -647,6 +926,75 @@ theorem generated_terminal_outer_success_reads_exactly_2
     innerEnvironment environment.transcriptBefore environment.reader
     environment.runningClaim weightsAfter verified exactOodRun
 
+theorem generated_terminal_outer_success_reads_exactly_282_and_finishes
+    {QueryFold DeriveQueries Trace : Type}
+    (environment : TerminalOuterEnvironment QueryFold DeriveQueries Trace)
+    (weights : sumcheck.WeightAccumulator)
+    (verified : v6_transcript.V6VerifiedTranscript)
+    (run :
+      v6_transcript.finish_onefold_relation_loop0
+        environment.terminal.queryFoldInst
+        environment.terminal.deriveQueriesInst environment.terminal.traceInst
+        v6_onefold.V6FixedFieldReader.Insts.Aspis_coreV6_onefoldV6FixedFieldStream
+        { start := 0#usize, «end» := v6_onefold.V6_POINT_CLAIM_ROWS }
+        environment.transcriptBefore environment.terminal.workNonces
+        environment.terminal.c1Frontier environment.terminal.c2Frontier
+        environment.terminal.workBits environment.terminal.selector
+        environment.terminal.frontierNodeBytes
+        environment.terminal.queryBatchLabels
+        environment.terminal.shiftQueryBatchForTag73
+        environment.terminal.exposeFinal256ToQueryFold
+        environment.terminal.deriveQueries environment.reader
+        environment.inactiveRowGroups environment.inactiveGroupMasks
+        environment.terminal.checkPow environment.terminal.semanticPoint
+        environment.terminal.queryFold environment.terminal.trace
+        environment.terminal.gamma environment.terminal.kappa
+        environment.points environment.pointScales environment.terminal.dPower
+        environment.terminal.gammaPowers environment.runningClaim weights =
+          .ok (some (.Ok verified))) :
+    ∃ readerAfter values,
+      SuccessfulFixedReaderTrace environment.reader values readerAfter ∧
+      values.length = 282 ∧
+      (∀ value ∈ values, CanonicalGeneratedQM31 value) ∧
+      v6_onefold.V6FixedFieldReader.finish readerAfter = .ok (.Ok ()) := by
+  let state : TerminalOuterState :=
+    ({ start := 0#usize, «end» := v6_onefold.V6_POINT_CLAIM_ROWS },
+      weights)
+  have loopRun : loop (terminalOuterBody environment) state =
+      .ok (some (.Ok verified)) := by
+    exact run
+  obtain ⟨trace⟩ := terminal_outer_loop_success_has_exact_trace
+    environment state (some (.Ok verified)) loopRun
+  obtain ⟨finalState, finalEquation⟩ :=
+    terminal_outer_trace_exposes_final_body environment trace
+  obtain ⟨weightsAfter, traceAfter, oodRun⟩ :=
+    terminal_outer_body_done_accepted_exposes_ood_loop environment
+      finalState verified finalEquation
+  let innerEnvironment : TerminalReadEnvironment QueryFold DeriveQueries Trace :=
+    { environment.terminal with trace := traceAfter }
+  have exactOodRun :
+      v6_transcript.finish_onefold_relation_loop0_loop0
+        innerEnvironment.queryFoldInst innerEnvironment.deriveQueriesInst
+        innerEnvironment.traceInst
+        v6_onefold.V6FixedFieldReader.Insts.Aspis_coreV6_onefoldV6FixedFieldStream
+        { start := 0#i32, «end» := 2#i32 }
+        environment.transcriptBefore innerEnvironment.workNonces
+        innerEnvironment.c1Frontier innerEnvironment.c2Frontier
+        innerEnvironment.workBits innerEnvironment.selector
+        innerEnvironment.frontierNodeBytes innerEnvironment.queryBatchLabels
+        innerEnvironment.shiftQueryBatchForTag73
+        innerEnvironment.exposeFinal256ToQueryFold
+        innerEnvironment.deriveQueries environment.reader
+        innerEnvironment.checkPow innerEnvironment.semanticPoint
+        innerEnvironment.queryFold innerEnvironment.trace
+        innerEnvironment.gamma innerEnvironment.kappa innerEnvironment.dPower
+        innerEnvironment.gammaPowers environment.runningClaim weightsAfter =
+          .ok (some (.Ok verified)) := by
+    simpa [innerEnvironment] using oodRun
+  exact generated_terminal_ood_loop_success_reads_exactly_282_and_finishes
+    innerEnvironment environment.transcriptBefore environment.reader
+    environment.runningClaim weightsAfter verified exactOodRun
+
 structure TerminalFinishEnvironment
     (QueryFold DeriveQueries Trace : Type) where
   queryFoldInst : core.ops.function.FnOnce QueryFold
@@ -699,15 +1047,19 @@ def terminalFinish {QueryFold DeriveQueries Trace : Type}
     environment.trace
 
 set_option maxHeartbeats 600000 in
-theorem generated_terminal_success_reads_exactly_3
+theorem terminal_finish_success_exposes_initial_read_and_outer
     {QueryFold DeriveQueries Trace : Type}
     (environment : TerminalFinishEnvironment QueryFold DeriveQueries Trace)
     (verified : v6_transcript.V6VerifiedTranscript)
     (run : terminalFinish environment = .ok (.Ok verified)) :
-    ∃ readerAfter values,
-      SuccessfulFixedReaderTrace environment.reader values readerAfter ∧
-      values.length = 3 ∧
-      ∀ value ∈ values, CanonicalGeneratedQM31 value := by
+    ∃ inactiveClaim readerAfterInitial,
+      ∃ outerEnvironment : TerminalOuterEnvironment QueryFold DeriveQueries Trace,
+      ∃ initialWeights,
+      v6_onefold.V6FixedFieldReader.next_qm31 environment.reader =
+        .ok (.Ok inactiveClaim, readerAfterInitial) ∧
+      outerEnvironment.reader = readerAfterInitial ∧
+      terminalOuterFinish outerEnvironment initialWeights =
+        .ok (some (.Ok verified)) := by
   unfold terminalFinish at run
   unfold v6_transcript.finish_onefold_relation at run
   rw [AspisV7Tag73AeneasExactLoopTrace.bind_eq_ok_iff] at run
@@ -883,12 +1235,6 @@ theorem generated_terminal_success_reads_exactly_3
                   dPower gammaPowers runningClaim initialWeights =
                     .ok (some (.Ok verified)) := by
               simpa [terminalEnvironment] using outerRun
-            obtain ⟨readerAfter, outerValues, outerReads, outerLength,
-                outerCanonical⟩ :=
-              generated_terminal_outer_success_reads_exactly_2
-                outerEnvironment initialWeights verified
-                (by simpa [outerEnvironment, terminalEnvironment]
-                  using exactOuterRun)
             have firstRead :
                 v6_onefold.V6FixedFieldReader.next_qm31 environment.reader =
                   .ok (.Ok inactiveClaim, readerAfterInitial) := by
@@ -896,24 +1242,80 @@ theorem generated_terminal_success_reads_exactly_3
               simpa [
                 v6_onefold.V6FixedFieldReader.Insts.Aspis_coreV6_onefoldV6FixedFieldStream.next_qm31]
                 using readRun
-            let completeReads : SuccessfulFixedReaderTrace environment.reader
-                (inactiveClaim :: outerValues) readerAfter :=
-              .cons firstRead outerReads
-            exact ⟨readerAfter, inactiveClaim :: outerValues, completeReads,
-              by simp [outerLength],
-              successful_trace_values_canonical completeReads⟩
+            exact ⟨inactiveClaim, readerAfterInitial, outerEnvironment,
+              initialWeights, firstRead, rfl,
+              by simpa [terminalOuterFinish, outerEnvironment,
+                terminalEnvironment] using exactOuterRun⟩
+
+theorem generated_terminal_success_reads_exactly_3
+    {QueryFold DeriveQueries Trace : Type}
+    (environment : TerminalFinishEnvironment QueryFold DeriveQueries Trace)
+    (verified : v6_transcript.V6VerifiedTranscript)
+    (run : terminalFinish environment = .ok (.Ok verified)) :
+    ∃ readerAfter values,
+      SuccessfulFixedReaderTrace environment.reader values readerAfter ∧
+      values.length = 3 ∧
+      ∀ value ∈ values, CanonicalGeneratedQM31 value := by
+  obtain ⟨inactiveClaim, readerAfterInitial, outerEnvironment,
+      initialWeights, firstRead, readerExact, outerRun⟩ :=
+    terminal_finish_success_exposes_initial_read_and_outer environment
+      verified run
+  obtain ⟨readerAfter, outerValues, outerReads, outerLength,
+      outerCanonical⟩ :=
+    generated_terminal_outer_success_reads_exactly_2
+      outerEnvironment initialWeights verified
+      (by simpa [terminalOuterFinish] using outerRun)
+  rw [readerExact] at outerReads
+  let completeReads : SuccessfulFixedReaderTrace environment.reader
+      (inactiveClaim :: outerValues) readerAfter :=
+    .cons firstRead outerReads
+  exact ⟨readerAfter, inactiveClaim :: outerValues, completeReads,
+    by simp [outerLength], successful_trace_values_canonical completeReads⟩
+
+theorem generated_terminal_success_reads_exactly_283_and_finishes
+    {QueryFold DeriveQueries Trace : Type}
+    (environment : TerminalFinishEnvironment QueryFold DeriveQueries Trace)
+    (verified : v6_transcript.V6VerifiedTranscript)
+    (run : terminalFinish environment = .ok (.Ok verified)) :
+    ∃ readerAfter values,
+      SuccessfulFixedReaderTrace environment.reader values readerAfter ∧
+      values.length = 283 ∧
+      (∀ value ∈ values, CanonicalGeneratedQM31 value) ∧
+      v6_onefold.V6FixedFieldReader.finish readerAfter = .ok (.Ok ()) := by
+  obtain ⟨inactiveClaim, readerAfterInitial, outerEnvironment,
+      initialWeights, firstRead, readerExact, outerRun⟩ :=
+    terminal_finish_success_exposes_initial_read_and_outer environment
+      verified run
+  obtain ⟨readerAfter, outerValues, outerReads, outerLength,
+      outerCanonical, finishRun⟩ :=
+    generated_terminal_outer_success_reads_exactly_282_and_finishes
+      outerEnvironment initialWeights verified
+      (by simpa [terminalOuterFinish] using outerRun)
+  rw [readerExact] at outerReads
+  let completeReads : SuccessfulFixedReaderTrace environment.reader
+      (inactiveClaim :: outerValues) readerAfter :=
+    .cons firstRead outerReads
+  exact ⟨readerAfter, inactiveClaim :: outerValues, completeReads,
+    by simp [outerLength], successful_trace_values_canonical completeReads,
+    finishRun⟩
 
 #print axioms terminal_read_body_cont_has_exact_read
 #print axioms terminal_read_body_done_ok_measure_zero
+#print axioms terminal_read_body_done_ok_exposes_fixed_tail
 #print axioms terminal_read_loop_success_has_exact_trace
 #print axioms terminal_read_trace_has_exact_reads
 #print axioms terminal_read_trace_cont_count_exact
+#print axioms terminal_read_trace_accepted_has_complete_fixed_tail
 #print axioms generated_terminal_ood_loop_success_reads_exactly_2
+#print axioms generated_terminal_ood_loop_success_reads_exactly_282_and_finishes
 #print axioms terminal_outer_body_cont_decreases
 #print axioms terminal_outer_loop_success_has_exact_trace
 #print axioms terminal_outer_trace_exposes_final_body
 #print axioms terminal_outer_body_done_accepted_exposes_ood_loop
 #print axioms generated_terminal_outer_success_reads_exactly_2
+#print axioms generated_terminal_outer_success_reads_exactly_282_and_finishes
+#print axioms terminal_finish_success_exposes_initial_read_and_outer
 #print axioms generated_terminal_success_reads_exactly_3
+#print axioms generated_terminal_success_reads_exactly_283_and_finishes
 
 end AspisV7Tag73GeneratedTerminalBridge
