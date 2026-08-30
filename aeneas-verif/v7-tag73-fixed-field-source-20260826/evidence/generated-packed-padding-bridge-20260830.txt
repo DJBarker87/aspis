@@ -115,3 +115,28 @@ NUC replay:
   propext
   Classical.choice
   Quot.sound
+
+Production-root composition:
+  generated_production_root_success_constructs_exact_canonical_section
+
+This theorem starts directly from literal success of the translated
+`verify_v7_compact_transcript_and_relation_prepared_with_hiding_context`
+production root. It constructs the complete reader trace internally and
+returns the exact canonical packed section; neither the trace nor canonicality
+is a premise.
+
+NUC replay:
+  systemd unit: aspis-v7-packed-reader-try72.scope
+  invocation: 14af678b340c42519fbe29c30cf0fb5b
+  MemoryHigh: 12G
+  MemoryMax: 16G
+  MemorySwapMax: 0
+  exit status: 0
+  wall: 61.18 seconds
+  peak RSS: 7,769,592 KiB
+  swaps: 0
+
+#print axioms for the production-root composition:
+  propext
+  Classical.choice
+  Quot.sound

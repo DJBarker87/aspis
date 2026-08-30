@@ -1345,6 +1345,44 @@ theorem complete_successful_fixed_reader_trace_constructs_exact_canonical_sectio
     rw [sectionsExact] at canonical
     exact canonical
 
+/-- Literal success of the translated production semantic verifier constructs
+the exact canonical fixed section that it consumed.  This is the first public
+composition theorem with neither a reader trace nor packed canonicality as an
+input premise. -/
+theorem generated_production_root_success_constructs_exact_canonical_section
+    {TerminalCheck QueryFold : Type}
+    (terminalCheckInst : core.ops.function.FnOnce TerminalCheck
+      v6_transcript.V6SemanticView Bool)
+    (queryFoldInst : core.ops.function.FnOnce QueryFold
+      v6_transcript.V6QueryBatchView
+      (core.result.Result v6_query_batch.V6AuthenticatedQueryBatch
+        v6_onefold.V6WireError))
+    (hash : Slice (Slice Std.U8) → Result (Array Std.U8 32#usize))
+    (wire : v7_onefold.V7CompactOneFoldWire)
+    (context : v6_transcript.V6TranscriptContext)
+    (hidingContext : state_only_hiding.StateOnlyHidingContext)
+    (inactiveRowGroups : Array Std.U8 64#usize)
+    (inactiveGroupMasks : Slice Std.U16)
+    (checkPow : Bool) (terminalCheck : TerminalCheck)
+    (queryFold : QueryFold)
+    (output : v6_transcript.V6VerifiedTranscript)
+    (run :
+      v6_transcript.verify_v7_compact_transcript_and_relation_prepared_with_hiding_context
+        terminalCheckInst queryFoldInst hash wire context hidingContext
+        inactiveRowGroups inactiveGroupMasks checkPow terminalCheck queryFold =
+          .ok (.Ok output)) :
+    ∃ lengthExact : wire.fixed_fields_packed.val.length = 9936,
+      ExactCanonicalPackedFixedSection
+        (packedSectionOfSlice wire.fixed_fields_packed lengthExact) := by
+  obtain ⟨initial, final, values, newRun, trace, finishRun, _, _, _⟩ :=
+    generated_production_root_success_reads_exactly_641_and_finishes
+      terminalCheckInst queryFoldInst hash wire context hidingContext
+      inactiveRowGroups inactiveGroupMasks checkPow terminalCheck queryFold
+      output run
+  exact
+    complete_successful_fixed_reader_trace_constructs_exact_canonical_section
+      wire.fixed_fields_packed initial final values newRun trace finishRun
+
 #print axioms new_success_exposes_padding_validation
 #print axioms padding_validation_success_last_byte_lt_16
 #print axioms new_success_packed_section_padding_zero
@@ -1370,5 +1408,6 @@ theorem complete_successful_fixed_reader_trace_constructs_exact_canonical_sectio
 #print axioms fixed_next_qm31_success_exact_field_and_state
 #print axioms successful_fixed_reader_trace_exact_range
 #print axioms complete_successful_fixed_reader_trace_constructs_exact_canonical_section
+#print axioms generated_production_root_success_constructs_exact_canonical_section
 
 end AspisV7Tag73GeneratedPackedReaderBridge
