@@ -306,6 +306,20 @@ run_case() {
     actual_matches_expected=$(jq -n \
       --argjson actual "$(jq '.result.value' <<<"$after_json")" \
       --argjson expected "$(jq . "$expected_file")" '$actual == $expected')
+    jq -n \
+      --arg case "$case_name" \
+      --argjson simulationActual "$(jq '.result.value.accounts' <<<"$simulation_response")" \
+      --argjson landedActual "$(jq '.result.value' <<<"$after_json")" \
+      --argjson expected "$(jq . "$expected_file")" '
+      {
+        schema: "aspis.v7.disposable-agave-state-comparison.v1",
+        case: $case,
+        simulationMatchesFrozenExpected: ($simulationActual == $expected),
+        landedMatchesFrozenExpected: ($landedActual == $expected),
+        simulationActual: $simulationActual,
+        landedActual: $landedActual,
+        frozenExpected: $expected
+      }' >"$EVIDENCE_DIR/$case_name.state-comparison.json"
     [[ "$simulation_matches_expected" == "true" && "$actual_matches_expected" == "true" ]] \
       || fail "honest protected post-state differs from the frozen expectation"
     [[ "$rollback_equal" == "false" ]] || fail "honest transaction did not change protected state"
