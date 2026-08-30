@@ -26,6 +26,7 @@ readonly BUNDLE_DIR=$2
 readonly EVIDENCE_DIR=$3
 readonly REPO_ROOT=$(cd "$(dirname "$0")/.." && pwd)
 readonly BUNDLE_MANIFEST="$BUNDLE_DIR/bundle.json"
+readonly BUNDLE_VERIFY="$REPO_ROOT/scripts/v7_txv1_bundle_verify.sh"
 readonly RPC_PORT=${ASPIS_TXV1_LOCAL_RPC_PORT:-18899}
 readonly RPC_URL="http://127.0.0.1:$RPC_PORT"
 
@@ -47,10 +48,20 @@ done
 }
 jq -e '
   .schema == "aspis.v7.disposable-agave-txv1-bundle.v1" and
+  .programSourceCommit == "bcd03b12293f2737dfa1da1436092a0a24a6ae24" and
   (.poolProgram | type == "string" and length > 0) and
   (.verifierProgram | type == "string" and length > 0) and
   (.poolSbf | type == "string" and length > 0) and
+  (.poolSbfSha256 | test("^[0-9a-f]{64}$")) and
+  (.poolSbfBytes | type == "number" and . > 0) and
   (.verifierSbf | type == "string" and length > 0) and
+  (.verifierSbfSha256 | test("^[0-9a-f]{64}$")) and
+  (.verifierSbfBytes | type == "number" and . > 0) and
+  .warpSlot == 150 and
+  .computeUnitCeiling == 1300000 and
+  .transactionByteCeilingExclusive == 4096 and
+  .allNegativeCasesRequireRollback == true and
+  .signed == false and .submitted == false and .deployed == false and
   (.cases | type == "array")
 ' "$BUNDLE_MANIFEST" >/dev/null || {
   echo "bundle manifest has the wrong or incomplete schema" >&2
@@ -99,10 +110,22 @@ validate_bundle_relative_path "$POOL_SBF_RELATIVE"
 validate_bundle_relative_path "$VERIFIER_SBF_RELATIVE"
 readonly POOL_SBF="$BUNDLE_DIR/$POOL_SBF_RELATIVE"
 readonly VERIFIER_SBF="$BUNDLE_DIR/$VERIFIER_SBF_RELATIVE"
+readonly WARP_SLOT=$(jq -er '.warpSlot' "$BUNDLE_MANIFEST")
 [[ -f "$POOL_SBF" && -f "$VERIFIER_SBF" ]] || {
   echo "bundle is missing one or both SBF artifacts" >&2
   exit 2
 }
+[[ "$(wc -c <"$POOL_SBF" | tr -d ' ')" == "$(jq -er '.poolSbfBytes' "$BUNDLE_MANIFEST")" \
+    && "$(shasum -a 256 "$POOL_SBF" | awk '{print $1}')" == "$(jq -er '.poolSbfSha256' "$BUNDLE_MANIFEST")" ]] \
+  || { echo "Pool SBF differs from the bundle binding" >&2; exit 2; }
+[[ "$(wc -c <"$VERIFIER_SBF" | tr -d ' ')" == "$(jq -er '.verifierSbfBytes' "$BUNDLE_MANIFEST")" \
+    && "$(shasum -a 256 "$VERIFIER_SBF" | awk '{print $1}')" == "$(jq -er '.verifierSbfSha256' "$BUNDLE_MANIFEST")" ]] \
+  || { echo "verifier SBF differs from the bundle binding" >&2; exit 2; }
+[[ -x "$BUNDLE_VERIFY" ]] || {
+  echo "offline bundle validator is unavailable: $BUNDLE_VERIFY" >&2
+  exit 2
+}
+"$BUNDLE_VERIFY" "$BUNDLE_DIR" --materialized >/dev/null
 
 mkdir -p "$EVIDENCE_DIR"
 readonly WORK_DIR=$(mktemp -d "${TMPDIR:-/tmp}/aspis-v7-txv1-preflight.XXXXXX")
@@ -142,15 +165,24 @@ run_case() {
     "$BUNDLE_MANIFEST" >"$case_json"
   jq -e '
     (.input | type == "string" and length > 0) and
+    (.inputSha256 | test("^[0-9a-f]{64}$")) and
     (.expectedOutcome == "success" or .expectedOutcome == "failure") and
     (.expectedLogContains | type == "array" and length > 0 and all(type == "string" and length > 0)) and
     (.genesisAccounts | type == "array" and length > 0 and all(
       (.address | type == "string" and length > 0) and
-      (.file | type == "string" and length > 0)
+      (.file | type == "string" and length > 0) and
+      (.fileSha256 | test("^[0-9a-f]{64}$"))
     )) and
+    (.programOverrides | type == "array" and all(
+      (.address | type == "string" and length > 0) and
+      (.file | type == "string" and length > 0) and
+      (.fileSha256 | test("^[0-9a-f]{64}$"))
+    )) and
+    (.rollbackRequired == (.expectedOutcome == "failure")) and
     (if .expectedOutcome == "success" then
-      (.expectedSimulationAccountsSha256 | test("^[0-9a-f]{64}$"))
-    else true end)
+      (.expectedSimulationAccountsSha256 | test("^[0-9a-f]{64}$")) and
+      .rollbackRequired == false
+    else .rollbackRequired == true end)
   ' "$case_json" >/dev/null || {
     echo "case manifest is incomplete or malformed: $case_name" >&2
     return 1
@@ -163,6 +195,10 @@ run_case() {
     echo "missing case input for $case_name: $case_input" >&2
     return 1
   }
+  [[ "$(shasum -a 256 "$case_input" | awk '{print $1}')" == "$(jq -er '.inputSha256' "$case_json")" ]] || {
+    echo "case input hash differs for $case_name" >&2
+    return 1
+  }
 
   validator_args=(
     --reset
@@ -170,17 +206,34 @@ run_case() {
     --ledger "$ledger"
     --bind-address 127.0.0.1
     --rpc-port "$RPC_PORT"
+    --warp-slot "$WARP_SLOT"
     --bpf-program "$POOL_PROGRAM" "$POOL_SBF"
     --bpf-program "$VERIFIER_PROGRAM" "$VERIFIER_SBF"
   )
-  while IFS=$'\t' read -r address relative_path; do
+  while IFS=$'\t' read -r address relative_path expected_sha; do
     validate_bundle_relative_path "$relative_path"
     [[ -f "$BUNDLE_DIR/$relative_path" ]] || {
       echo "missing genesis account for $case_name: $relative_path" >&2
       return 1
     }
+    [[ "$(shasum -a 256 "$BUNDLE_DIR/$relative_path" | awk '{print $1}')" == "$expected_sha" ]] || {
+      echo "genesis account hash differs for $case_name: $relative_path" >&2
+      return 1
+    }
     validator_args+=(--account "$address" "$BUNDLE_DIR/$relative_path")
-  done < <(jq -r '.genesisAccounts[] | [.address, .file] | @tsv' "$case_json")
+  done < <(jq -r '.genesisAccounts[] | [.address, .file, .fileSha256] | @tsv' "$case_json")
+  while IFS=$'\t' read -r address relative_path expected_sha; do
+    validate_bundle_relative_path "$relative_path"
+    [[ -f "$BUNDLE_DIR/$relative_path" ]] || {
+      echo "missing program override for $case_name: $relative_path" >&2
+      return 1
+    }
+    [[ "$(shasum -a 256 "$BUNDLE_DIR/$relative_path" | awk '{print $1}')" == "$expected_sha" ]] || {
+      echo "program override hash differs for $case_name: $relative_path" >&2
+      return 1
+    }
+    validator_args+=(--bpf-program "$address" "$BUNDLE_DIR/$relative_path")
+  done < <(jq -r '.programOverrides[]? | [.address, .file, .fileSha256] | @tsv' "$case_json")
 
   NO_DNA=1 "$AGAVE_BIN_DIR/solana-test-validator" "${validator_args[@]}" \
     >"$validator_log" 2>&1 &
@@ -297,12 +350,16 @@ jq -n \
   --arg version "$VERSION_OUTPUT" \
   --arg poolSha256 "$(shasum -a 256 "$POOL_SBF" | awk '{print $1}')" \
   --arg verifierSha256 "$(shasum -a 256 "$VERIFIER_SBF" | awk '{print $1}')" \
+  --arg bundleSha256 "$(shasum -a 256 "$BUNDLE_MANIFEST" | awk '{print $1}')" \
+  --argjson warpSlot "$WARP_SLOT" \
   --argjson cases "$(jq -s '.' "$EVIDENCE_DIR"/*.json)" \
   '{
     schema: "aspis.v7.disposable-agave-txv1-simulation-suite.v1",
     agave: $version,
     poolSbfSha256: $poolSha256,
     verifierSbfSha256: $verifierSha256,
+    bundleSha256: $bundleSha256,
+    warpSlot: $warpSlot,
     computeUnitCeiling: 1300000,
     transactionByteCeilingExclusive: 4096,
     signed: false,
