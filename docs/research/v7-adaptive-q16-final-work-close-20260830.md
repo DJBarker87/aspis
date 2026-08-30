@@ -141,13 +141,32 @@ usable exposure index.  The remaining work starts at this constructed trial
 and is the state-alignment/continuation argument for its executable causal
 controller.
 
+`V7Tag73IndexedControllerTraceAlignment.lean` now closes the deterministic
+state-alignment half as well:
+
+- replaying an actual flat-trace prefix through the indexed controller reaches
+  the exact production pre-answer cursor at the selected record;
+- the exposure counter after that prefix is exactly its list length;
+- candidate memory remains inactive before the fixed anchor, rather than
+  acquiring a role from an earlier answer;
+- the selected machine record exposes its literal SHA input at that cursor;
+  and
+- the earliest final-work/nonce record performs the exact first controller
+  transition: a work record labels the final-work slot and stores the key, or
+  an absorb record stores the q16 base.
+
+This result is independent of the current answer while choosing the slot.  It
+does not yet identify the selected pair answer with the accepted root-table
+work/q16-base value; that root-record uniqueness and the subsequent q16
+continuation are the remaining source-specific obligations.
+
 ## Exact remaining boundary
 
 The production/source layer must now instantiate the counted finite inventory
 and prove its cover:
 
-1. install the executable controller state/memory at the now-constructed
-   earliest `Fin F` pair exposure;
+1. identify the aligned pair record's answer with the accepted root-table
+   work result or q16-base value;
 2. outside the existing forward-reference/collision event, prove every
    accepted q16 block is routed at its original fresh exposure and distinct
    named slots never alias;
@@ -177,6 +196,7 @@ lake env lean AspisFormal/K1/V7Tag73IndexedExposureCausalRouter.lean
 lake env lean AspisFormal/K1/V7Tag73FinalWorkQ16CandidateController.lean
 lake env lean AspisFormal/K1/V7Tag73ExactCompilerFinalWorkTraceOccurrence.lean
 lake env lean AspisFormal/K1/V7Tag73FinalWorkEarliestExposure.lean
+lake env lean AspisFormal/K1/V7Tag73IndexedControllerTraceAlignment.lean
 ```
 
 Observed focused checks:
@@ -190,6 +210,7 @@ Observed focused checks:
 | raw final-work/q16 candidate controller | 0 | 4.4 s | not separately sampled |
 | exact accepted final-work trace occurrence | 0 | 4.37 s | 5,654,528,000 B |
 | exact earliest pair exposure trial | 0 | 4.21 s | 5,648,875,520 B |
+| indexed controller/production-prefix alignment | 0 | 4.14 s | 5,656,494,080 B |
 
 All reported theorem axiom sets are subsets of:
 
