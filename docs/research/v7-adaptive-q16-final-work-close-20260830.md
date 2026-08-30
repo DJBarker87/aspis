@@ -187,6 +187,21 @@ and both orders at block seven.  Only outputs receive named q16 slots, so the
 change preserves the exact 64-by-8, 512-coordinate forest and every existing
 probability parameter.
 
+`V7Tag73FinalWorkQ16ResidualCapacity.lean` closes the joint-router dimension
+check.  After reserving one coordinate for the selected final-work digest and
+all 512 possible q16 output blocks, the exact compiler tape leaves the reserve
+
+```text
+Q + 998 + R * (Q + 1511) + 2R.
+```
+
+The deployed verifier's non-routed full-width work is at most 998 calls, so
+all adversary, root, replay, fork, non-q16, q16-advance, and unused execution
+coordinates fit in that reserve.  Padding therefore cannot consume a still
+live named slot merely because the router was undersized.  This is an exact
+capacity theorem, not the remaining chronological source-classification
+theorem.
+
 ## Exact remaining boundary
 
 The production/source layer must now instantiate the counted finite inventory
@@ -195,8 +210,12 @@ and prove its cover:
 1. outside the existing forward-reference/collision event, prove every
    accepted q16 block is routed at its original fresh exposure and distinct
    named slots never alias;
-2. identify that routed forest with `exactOperationalQ16DuplexForest` and
-   conclude that the accepted production schedule is covered by the trial;
+2. prove that the routed forest agrees with
+   `exactOperationalQ16DuplexForest` on every block used through the selected
+   counter (the deterministic source forest intentionally zero-pads its
+   irrelevant suffix, so whole-array equality is neither true nor needed),
+   then conclude that the accepted production schedule is covered by the
+   trial;
    and
 3. either prove the selectable subinventory has cardinality at most `2^34`,
    or retain the exact general `F * p / 2^34` raw term.
@@ -219,6 +238,7 @@ lake env lean AspisFormal/K1/V7Tag73CausalQ16FinalWorkProbability.lean
 lake env lean AspisFormal/K1/V7Tag73AdaptiveQ16TrialAccounting.lean
 lake env lean AspisFormal/K1/V7Tag73IndexedExposureCausalRouter.lean
 lake env lean AspisFormal/K1/V7Tag73FinalWorkQ16CandidateController.lean
+lake env lean AspisFormal/K1/V7Tag73FinalWorkQ16ResidualCapacity.lean
 lake env lean AspisFormal/K1/V7Tag73ExactCompilerFinalWorkTraceOccurrence.lean
 lake env lean AspisFormal/K1/V7Tag73FinalWorkEarliestExposure.lean
 lake env lean AspisFormal/K1/V7Tag73ExactFinalWorkEarliestExposure.lean
@@ -235,6 +255,7 @@ Observed focused checks:
 | adaptive finite-trial accounting | 0 | 19.94 s | 5,573,836,800 B |
 | indexed production-cursor router | 0 | 4.0 s | not separately sampled |
 | order-robust final-work/q16 candidate controller | 0 | 4.05 s | 5,597,544,448 B |
+| exact joint-router residual capacity | 0 | 3.86 s | 5,544,230,912 B |
 | exact accepted final-work trace occurrence | 0 | 4.37 s | 5,654,528,000 B |
 | exact earliest pair exposure trial | 0 | 4.21 s | 5,648,875,520 B |
 | indexed controller/production-prefix alignment | 0 | 4.51 s | 5,660,295,168 B |
