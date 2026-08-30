@@ -246,14 +246,41 @@ controller supports both.  Thus adversary-first creation is now a normal
 causally ordered source case rather than a missing classifier or an extra bad
 event.
 
+`V7Tag73ExactRootFreshInputUniqueness.lean` closes the complementary input
+invariant.  Fresh SHA inputs are pairwise distinct within each executable
+projected root segment, and the verifier segment is disjoint from the
+adversary segment whose final oracle table it inherits.  Hence the complete
+adversary-then-verifier root list has no repeated fresh input, and any exact
+selected coordinate is absent from its strict prefix.  This is derived from
+the literal `lookupEntry = none` facts in the projected traces; it is not a
+raw role-classification assumption.
+
+`V7Tag73ExactCausalRouterTapeAlignment.lean` proves that both proof-indexed
+casts used by the 513-slot causal router preserve the master tape byte-for-byte
+and in order.  On the accepted source run the router's chronological tape is
+exactly the combined root fresh-query answers followed by the verifier's
+untouched suffix.  An exact root-list position therefore identifies the same
+answer position in the actual router tape.
+
+`V7Tag73CausalMachinePrefixRouting.lean` supplies the generic operational
+induction for the last source fold.  It follows an actual answer prefix through
+the compiled pre-answer router, proves that every still-live named coordinate
+is unchanged by that prefix, and proves that a subsequently preferred slot's
+recursive lookup equals the literal next answer.  The remaining protocol work
+is now to instantiate this induction with the exact Tag-73 controller while
+showing that its residual budget never falls back to padding before a live
+q16 slot.
+
 ## Exact remaining boundary
 
 The production/source layer must now instantiate the counted finite inventory
 and prove its cover:
 
 1. fold the exact ordered q16 coordinate certificates through the indexed
-   controller and prove the recursive routed lookup for every used output
-   slot (the source ordering and both sibling orders are now proved);
+   controller and the generic prefix-routing induction, proving that every
+   used output remains live and receives its literal answer (source ordering,
+   fresh-input uniqueness, tape alignment, and both sibling orders are now
+   proved);
 2. prove that the routed forest agrees with
    `exactOperationalQ16DuplexForest` on every block used through the selected
    counter (the deterministic source forest intentionally zero-pads its
@@ -289,6 +316,9 @@ lake env lean AspisFormal/K1/V7Tag73ExactRootPriorQueryHistory.lean
 lake env lean AspisFormal/K1/V7Tag73ExactRootQueryCausalOrder.lean
 lake env lean AspisFormal/K1/V7Tag73ExactRootLookupCausalOrder.lean
 lake env lean AspisFormal/K1/V7Tag73ExactQ16CausalCoordinateOrder.lean
+lake env lean AspisFormal/K1/V7Tag73ExactRootFreshInputUniqueness.lean
+lake env lean AspisFormal/K1/V7Tag73ExactCausalRouterTapeAlignment.lean
+lake env lean AspisFormal/K1/V7Tag73CausalMachinePrefixRouting.lean
 lake env lean AspisFormal/K1/V7Tag73ExactCompilerFinalWorkTraceOccurrence.lean
 lake env lean AspisFormal/K1/V7Tag73FinalWorkEarliestExposure.lean
 lake env lean AspisFormal/K1/V7Tag73ExactFinalWorkEarliestExposure.lean
@@ -312,6 +342,9 @@ Observed focused checks:
 | exact root causal ordering | 0 | 3.84 s | 5,650,186,240 B |
 | exact final-table dependency ordering | 0 | 3.94 s | 5,656,248,320 B |
 | exact used-q16 coordinate ordering | 0 | 3.96 s | 5,659,951,104 B |
+| exact root fresh-input uniqueness | 0 | 3.9 s | 5,649,612,800 B |
+| exact causal-router tape alignment | 0 | 4.23 s | 5,656,018,944 B |
+| generic causal-router prefix induction | 0 | 3.96 s | 5,539,348,480 B |
 | exact accepted final-work trace occurrence | 0 | 4.37 s | 5,654,528,000 B |
 | exact earliest pair exposure trial | 0 | 4.21 s | 5,648,875,520 B |
 | indexed controller/production-prefix alignment | 0 | 4.51 s | 5,660,295,168 B |
