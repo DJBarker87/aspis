@@ -1,0 +1,103 @@
+V7 Pool checkpoint SBF stack-frame evidence
+Date: 2026-08-30
+
+Source change
+-------------
+Production file:
+  programs/aspis-pool/src/pair_forest.rs
+SHA-256 after the change:
+  0b5a2824cb6b9a31971d75dd5bb0fcc224aece6873ac12f54b6a81822275ce0b
+
+The eight fixed-order strict lane decodes were moved, unchanged, from
+plan_pair_forest_checkpoint_accounts_v1 into the non-inlined helper
+decode_checkpoint_lanes_box_v1. The helper returns the same boxed eight-lane
+array to the unchanged global-root and pure checkpoint-planning path. No wire,
+account binding, checkpoint chronology, cryptographic primitive, or persisted
+image changed.
+
+Before
+------
+The independently repeated release build at e8317b09 emitted:
+
+  Function plan_pair_forest_checkpoint_accounts_v1
+  Stack offset of 4368 exceeded max offset of 4096 by 272 bytes.
+  Estimated function frame size: 4544 bytes.
+
+The diagnostic occurred identically in both isolated release builds:
+
+  /home/dombarker/project-offloads/aspis-v7-one-tx-release-e8317b09-20260830/
+    replay-2acd-r6/build-a-aspis-pool.log:686
+  /home/dombarker/project-offloads/aspis-v7-one-tx-release-e8317b09-20260830/
+    replay-2acd-r6/build-b-aspis-pool.log:686
+
+After
+-----
+NUC host:
+  nuc.local
+Unit:
+  aspis-v7-pool-checkpoint-stack-r1
+Invocation:
+  c9c027067ab64eb8b8a6b0b75da0d400
+Cgroup limits:
+  MemoryHigh=4G
+  MemoryMax=6G
+  MemorySwapMax=0
+Command profile:
+  cargo-build-sbf 2.3.0 / platform-tools v1.48 / --arch v0 / --locked
+  --no-default-features --features v7-pair-forest-one-tx-candidate
+Result:
+  exit status 0
+  wall 1:45.61
+  peak RSS 565,688 KiB
+  swaps 0
+  zero Stack offset / Estimated function frame size diagnostics
+
+Unstripped llvm-objdump evidence
+--------------------------------
+Tool:
+  platform-tools v1.48 LLVM 19.1.7-rust-dev llvm-objdump
+Planner symbol:
+  address 0x000000000000c710, size 0x1658
+  maximum observed r10-relative stack offset: 0xb60 = 2,912 bytes
+Lane-decoder helper symbol:
+  address 0x000000000000bd50, size 0x09c0
+  maximum observed r10-relative stack offset: 0xbd0 = 3,024 bytes
+
+Both observed function-local offsets are below Solana's 4,096-byte SBF frame
+limit. The build-time analyzer independently emitted no overflow warning.
+
+Artifact
+--------
+  sbf-out/aspis_pool.so
+  size: 526,056 bytes
+  SHA-256:
+    0bbe441f0e13c2f61e2369674628b06c9d538192514b4e9a92d229479956586d
+
+Remote task-owned evidence workspace:
+  /home/dombarker/project-offloads/
+    aspis-v7-pool-checkpoint-stack-20260830.x6G9VF
+
+Focused semantic checks
+-----------------------
+The strict checkpoint success/no-progress tests, occupied-checkpoint
+rejection, exact image/no-mutation test, and swapped/aliased/writable/wrong-PDA
+lane rejections passed against the changed source. The source-pinned terminal
+and vault-custody projections remain unchanged; their focused Lean consumers
+were replayed separately:
+
+  one-terminal Charon/Aeneas generated-output equality: PASS
+    wall 2.00 seconds; peak RSS 167,133,184 bytes; swaps 0
+  one-terminal generated/source Lean consumer: PASS
+    wall 16.44 seconds; peak RSS 2,265,759,744 bytes; swaps 0
+  vault-custody Charon/Aeneas generated-output equality: PASS
+    wall 1.50 seconds; peak RSS 158,908,416 bytes; swaps 0
+  vault-custody generated/source/caller Lean consumer: PASS
+    wall 9.17 seconds; peak RSS 2,319,319,040 bytes; swaps 0
+
+The complete printed axiom union remains exactly:
+
+  propext
+  Classical.choice
+  Quot.sound
+
+No broad package or manifest replay was run.

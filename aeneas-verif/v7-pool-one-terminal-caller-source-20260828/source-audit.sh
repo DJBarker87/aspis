@@ -27,7 +27,7 @@ check_hash() {
   test "$(shasum -a 256 "$path" | awk '{print $1}')" = "$expected"
 }
 
-check_hash 1f1719f4e27e72c4da3fdf414708bde25f4fe2b7fcc8aa24a0d98266f86d453a "$pair_source"
+check_hash 0b5a2824cb6b9a31971d75dd5bb0fcc224aece6873ac12f54b6a81822275ce0b "$pair_source"
 check_hash 08b9b563118e8fd9d0d43d2d36d1824e2e984a96610ed0fcb846835866e9f02e "$dispatch_source"
 check_hash ef68bfef98e6885167119ff6cb947f116177c0648f3aec4941893ac774079017 "$registry_source"
 check_hash 7d754900fecb4d6ba4511029a3617e90f91c697fc415fabd8aa4b2c0c519107a "$history_source"
@@ -39,6 +39,27 @@ check_hash d10c75884cde37792647736ed87d326b8f889ea9a17a363f14efc98b801b7175 "$ac
 check_hash 820710b2284ea967bb4b9a6d2ceb6cb171ac185b01df816db99db6ea78e629a3 "$terminal_source"
 check_hash faf0bffabea687d358bd67ba510afc9038f97313a184564532c99cdea565b9c5 "$pool_manifest"
 check_hash 6b3bc0b45b13a8a359f8c0515c7b5d0a71ff64199dd713df8a81c2faf3e2c774 "$verifier_manifest"
+
+# The checkpoint snapshot decode is deliberately split into its own SBF
+# frame. Pin both the non-inlining boundary and the exact one-call flow so a
+# later edit cannot silently put the eight depth-20 lane decodes back beside
+# the planner's output images. This is a stack-only refactor: the same strict
+# decoder, fixed lane order, and boxed array feed the unchanged pure planner.
+rg -U -q '#\[inline\(never\)\]\nfn decode_checkpoint_lanes_box_v1\(' "$pair_source"
+checkpoint_lane_helper=$(sed -n \
+  '/^fn decode_checkpoint_lanes_box_v1(/,/^}/p' "$pair_source")
+test "$(printf '%s\n' "$checkpoint_lane_helper" | rg -c 'decode_lane_account\(')" = 1
+test "$(printf '%s\n' "$checkpoint_lane_helper" | rg -c 'for lane in 0\.\.POOL_V1_PAIR_FOREST_LANE_COUNT')" = 1
+printf '%s\n' "$checkpoint_lane_helper" | rg -q '\.into_boxed_slice\(\)'
+checkpoint_plan_body=$(sed -n \
+  '/^pub fn plan_pair_forest_checkpoint_accounts_v1(/,/^}/p' "$pair_source")
+test "$(printf '%s\n' "$checkpoint_plan_body" | rg -c 'decode_checkpoint_lanes_box_v1\(')" = 1
+if printf '%s\n' "$checkpoint_plan_body" | rg -q 'decode_lane_account\('; then
+  echo 'checkpoint lane decode moved back into the oversized planner frame' >&2
+  exit 1
+fi
+printf '%s\n' "$checkpoint_plan_body" | rg -q \
+  'plan_pool_v1_pair_forest_checkpoint_v1\(&master, &lane_states, global_root\)'
 
 # Pin the aggregate release-candidate selections which decide the active
 # cfg-gated caller/result path and the selected verifier implementation.

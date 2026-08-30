@@ -20,7 +20,7 @@ check_hash() {
 
 check_hash d7889cbdec8c3987cfa5aaad3984475e18e390c84712826847de611680d90463 \
   "$vault_source"
-check_hash 1f1719f4e27e72c4da3fdf414708bde25f4fe2b7fcc8aa24a0d98266f86d453a \
+check_hash 0b5a2824cb6b9a31971d75dd5bb0fcc224aece6873ac12f54b6a81822275ce0b \
   "$pair_source"
 check_hash 3c989ba201b622c01e67edec7cba8b17ba30663b386a4f316e757ff06dad7354 \
   "$processor_source"
