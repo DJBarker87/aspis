@@ -516,6 +516,116 @@ theorem semantic_inner_body_done_no_pending_one_exact
     · exact ⟨rfl, by unfold semanticInnerMeasure; omega, rfl⟩
     · simp at oneFlag
 
+theorem semantic_inner_body_done_ok_implies_one
+    (transcriptBefore : transcript.Transcript)
+    (point : Array field.QM31 10#usize) (runningClaim : field.QM31)
+    (round : Std.Usize) (pending : SemanticPending)
+    (state : SemanticInnerState) (output : SemanticInnerOutput)
+    (run : semanticInnerBody transcriptBefore point runningClaim round pending
+      state = .ok (.done output))
+    (accepted : SemanticResult)
+    (hasAccepted : output.2.2.2.2.1 = some (.Ok accepted)) :
+    output.2.2.2.2.2 = 1#u32 := by
+  unfold semanticInnerBody at run
+  unfold v6_transcript.verify_compact_semantic_sumcheck_loop0_loop0.body at run
+  by_cases active : state.1.start.val < state.1.end.val
+  · have nextSpec :=
+      core.iter.range.IteratorRange.next_Usize_some_spec state.1 active
+    obtain ⟨⟨option, nextIter⟩, nextRun, optionExact, nextStart, nextEnd⟩ :=
+      WP.spec_imp_exists nextSpec
+    rw [optionExact] at nextRun
+    rw [bind_eq_ok_iff] at run
+    rcases run with ⟨iteratorPair, iteratorRun, run⟩
+    have iteratorPairExact : iteratorPair = (some state.1.start, nextIter) :=
+      Aeneas.Std.Result.ok.inj (iteratorRun.symm.trans nextRun)
+    subst iteratorPair
+    simp at run
+    rw [bind_eq_ok_iff] at run
+    rcases run with ⟨coefficient, coefficientRun, run⟩
+    rw [bind_eq_ok_iff] at run
+    rcases run with ⟨readerPair, readerRun, run⟩
+    rcases readerPair with ⟨readerResult, readerAfter⟩
+    simp at run
+    rw [bind_eq_ok_iff] at run
+    rcases run with ⟨flow, flowRun, run⟩
+    cases flow with
+    | Continue value =>
+      simp at run
+      repeat'
+        (rw [bind_eq_ok_iff] at run
+         rcases run with ⟨_, _, run⟩)
+      simp at run
+    | Break residual =>
+      simp at run
+      rw [bind_eq_ok_iff] at run
+      rcases run with ⟨convertedError, convertedErrorRun, run⟩
+      simp at run
+      subst output
+      cases readerResult with
+      | Ok value =>
+        simp [core.result.Result.Insts.CoreOpsTry.branch] at flowRun
+      | Err wireError =>
+        simp [core.result.Result.Insts.CoreOpsTry.branch] at flowRun
+        subst residual
+        simp [
+          core.result.Result.Insts.CoreOpsTryTraitFromResidualResultInfallible.from_residual,
+          v6_transcript.V6TranscriptError.Insts.CoreConvertFromV6WireError.from]
+          at convertedErrorRun
+        subst convertedError
+        simp at hasAccepted
+  · have nextSpec :=
+      core.iter.range.IteratorRange.next_Usize_none_spec state.1 (by omega)
+    obtain ⟨⟨option, nextIter⟩, nextRun, optionExact, nextExact⟩ :=
+      WP.spec_imp_exists nextSpec
+    rw [optionExact, nextExact] at nextRun
+    rw [bind_eq_ok_iff] at run
+    rcases run with ⟨iteratorPair, iteratorRun, run⟩
+    have iteratorPairExact : iteratorPair = (none, state.1) :=
+      Aeneas.Std.Result.ok.inj (iteratorRun.symm.trans nextRun)
+    subst iteratorPair
+    simp at run
+    repeat'
+      (rw [bind_eq_ok_iff] at run
+       rcases run with ⟨_, _, run⟩)
+    split at run
+    · repeat'
+        (rw [bind_eq_ok_iff] at run
+         rcases run with ⟨_, _, run⟩)
+      simp at run
+      subst output
+      rfl
+    · rw [bind_eq_ok_iff] at run
+      rcases run with ⟨convertedError, convertedErrorRun, run⟩
+      simp at run
+      subst output
+      casesm (core.result.Result field.QM31
+        v6_transcript.V6TranscriptError)
+      <;> try casesm (core.result.Result core.convert.Infallible
+        v6_transcript.V6TranscriptError)
+      <;> try casesm (core.result.Result SemanticResult
+        v6_transcript.V6TranscriptError)
+      <;> simp_all [core.result.Result.Insts.CoreOpsTry.branch,
+        core.result.Result.Insts.CoreOpsTryTraitFromResidualResultInfallible.from_residual,
+        core.convert.FromSame.from]
+
+theorem semantic_inner_body_done_ok_origin
+    (transcriptBefore : transcript.Transcript)
+    (point : Array field.QM31 10#usize) (runningClaim : field.QM31)
+    (round : Std.Usize) (pending : SemanticPending)
+    (state : SemanticInnerState) (output : SemanticInnerOutput)
+    (run : semanticInnerBody transcriptBefore point runningClaim round pending
+      state = .ok (.done output))
+    (accepted : SemanticResult)
+    (hasAccepted : output.2.2.2.2.1 = some (.Ok accepted)) :
+    pending = some (.Ok accepted) := by
+  have oneFlag := semantic_inner_body_done_ok_implies_one transcriptBefore point
+    runningClaim round pending state output run accepted hasAccepted
+  have preserved :=
+    (semantic_inner_body_done_no_pending_one_exact transcriptBefore point
+      runningClaim round pending state output run oneFlag).2.2
+  rw [hasAccepted] at preserved
+  exact preserved.symm
+
 theorem semantic_inner_body_cont_decreases
     (transcriptBefore : transcript.Transcript)
     (point : Array field.QM31 10#usize) (runningClaim : field.QM31)
@@ -619,6 +729,24 @@ theorem semantic_inner_trace_one_preserves_pending
       runningClaim round pending _ _ equation oneFlag).2.2
   | cont equation tail inductionHypothesis =>
     exact inductionHypothesis oneFlag
+
+theorem semantic_inner_trace_ok_origin
+    (transcriptBefore : transcript.Transcript)
+    (point : Array field.QM31 10#usize) (runningClaim : field.QM31)
+    (round : Std.Usize) (pending : SemanticPending)
+    {state : SemanticInnerState} {output : SemanticInnerOutput}
+    (trace : ExactLoopTrace
+      (semanticInnerBody transcriptBefore point runningClaim round pending)
+      state output)
+    (accepted : SemanticResult)
+    (hasAccepted : output.2.2.2.2.1 = some (.Ok accepted)) :
+    pending = some (.Ok accepted) := by
+  induction trace with
+  | done equation =>
+    exact semantic_inner_body_done_ok_origin transcriptBefore point
+      runningClaim round pending _ _ equation accepted hasAccepted
+  | cont equation tail inductionHypothesis =>
+    exact inductionHypothesis hasAccepted
 
 theorem generated_semantic_inner_success_reads_exactly_26
     (transcriptBefore transcriptAfter : transcript.Transcript)
@@ -841,15 +969,371 @@ theorem semantic_outer_body_cont_exact
               simp [innerLength]
         · cases pendingAfter <;> simp at run
 
+theorem semantic_outer_body_done_ok_from_none_exact
+    (eta : field.QM31) (state : SemanticOuterState)
+    (output : SemanticOuterOutput)
+    (run : semanticOuterBody eta state = .ok (.done output))
+    (accepted : SemanticResult)
+    (hasAccepted : output.2.2 = some (.Ok accepted))
+    (noPending : state.2.2.2.2.2 = none) :
+    output.2.1 = state.2.2.1 ∧ semanticOuterMeasure state = 0 := by
+  unfold semanticOuterBody at run
+  unfold v6_transcript.verify_compact_semantic_sumcheck_loop0.body at run
+  by_cases active : state.1.start.val < state.1.end.val
+  · have nextSpec :=
+      core.iter.range.IteratorRange.next_Usize_some_spec state.1 active
+    obtain ⟨⟨option, nextIter⟩, nextRun, optionExact, nextStart, nextEnd⟩ :=
+      WP.spec_imp_exists nextSpec
+    rw [optionExact] at nextRun
+    rw [nextRun] at run
+    simp at run
+    rw [bind_eq_ok_iff] at run
+    rcases run with ⟨framedSlot, framedSlotRun, run⟩
+    rcases framedSlot with ⟨framedByte, putFramedByte⟩
+    simp at run
+    rw [bind_eq_ok_iff] at run
+    rcases run with ⟨roundByte, roundByteRun, run⟩
+    rw [bind_eq_ok_iff] at run
+    rcases run with ⟨readerPair, readerRun, run⟩
+    rcases readerPair with ⟨readerResult, readerAfter⟩
+    simp at run
+    rw [bind_eq_ok_iff] at run
+    rcases run with ⟨flow, flowRun, run⟩
+    cases flow with
+    | Break residual =>
+      simp at run
+      rw [bind_eq_ok_iff] at run
+      rcases run with ⟨convertedError, convertedErrorRun, run⟩
+      simp at run
+      subst output
+      cases readerResult with
+      | Ok value =>
+        simp [core.result.Result.Insts.CoreOpsTry.branch] at flowRun
+      | Err wireError =>
+        simp [core.result.Result.Insts.CoreOpsTry.branch] at flowRun
+        subst residual
+        simp [
+          core.result.Result.Insts.CoreOpsTryTraitFromResidualResultInfallible.from_residual,
+          v6_transcript.V6TranscriptError.Insts.CoreConvertFromV6WireError.from]
+          at convertedErrorRun
+        subst convertedError
+        simp at hasAccepted
+    | Continue value =>
+      simp at run
+      rw [bind_eq_ok_iff] at run
+      rcases run with ⟨polynomial, polynomialRun, run⟩
+      rw [bind_eq_ok_iff] at run
+      rcases run with ⟨q, qRun, run⟩
+      rw [bind_eq_ok_iff] at run
+      rcases run with ⟨framedWindowPair, framedWindowRun, run⟩
+      rcases framedWindowPair with ⟨framedWindow, putFramedWindow⟩
+      simp at run
+      rw [bind_eq_ok_iff] at run
+      rcases run with ⟨encodedWindow, encodedWindowRun, run⟩
+      rw [bind_eq_ok_iff] at run
+      rcases run with ⟨limb0, limb0Run, run⟩
+      rw [bind_eq_ok_iff] at run
+      rcases run with ⟨doubled0, doubled0Run, run⟩
+      rw [bind_eq_ok_iff] at run
+      rcases run with ⟨limb1, limb1Run, run⟩
+      rw [bind_eq_ok_iff] at run
+      rcases run with ⟨doubled1, doubled1Run, run⟩
+      rw [bind_eq_ok_iff] at run
+      rcases run with ⟨limb2, limb2Run, run⟩
+      rw [bind_eq_ok_iff] at run
+      rcases run with ⟨doubled2, doubled2Run, run⟩
+      rw [bind_eq_ok_iff] at run
+      rcases run with ⟨limb3, limb3Run, run⟩
+      rw [bind_eq_ok_iff] at run
+      rcases run with ⟨doubled3, doubled3Run, run⟩
+      rw [bind_eq_ok_iff] at run
+      rcases run with ⟨innerOutput, innerRun, run⟩
+      rcases innerOutput with
+        ⟨transcriptAfter, readerAfterInner, pointAfter, claimAfter,
+          pendingAfter, status⟩
+      split at run
+      · simp at run
+      · cases pendingAfter with
+        | none =>
+          simp at run
+          subst output
+          simp at hasAccepted
+        | some pendingResult =>
+          simp at run
+          subst output
+          have pendingAccepted : pendingResult = .Ok accepted := by
+            simpa using hasAccepted
+          subst pendingResult
+          let exactInnerRange : core.ops.range.Range Std.Usize :=
+            { start := 1#usize,
+              «end» := v6_onefold.V6_SEMANTIC_SENT_VALUES }
+          let exactInnerState : SemanticInnerState :=
+            (exactInnerRange, readerAfter,
+              polynomial, putFramedWindow encodedWindow,
+              Array.make 4#usize
+                [ doubled0, doubled1, doubled2, doubled3 ])
+          obtain ⟨innerTrace⟩ := semantic_inner_loop_success_has_exact_trace
+            state.2.1 state.2.2.2.1 state.2.2.2.2.1 state.1.start
+            state.2.2.2.2.2 exactInnerState
+            (transcriptAfter, readerAfterInner, pointAfter, claimAfter,
+              some (.Ok accepted), status)
+            (by simpa using innerRun)
+          have origin := semantic_inner_trace_ok_origin state.2.1
+            state.2.2.2.1 state.2.2.2.2.1 state.1.start
+            state.2.2.2.2.2 innerTrace accepted rfl
+          rw [noPending] at origin
+          simp at origin
+  · have nextSpec :=
+      core.iter.range.IteratorRange.next_Usize_none_spec state.1 (by omega)
+    obtain ⟨⟨option, nextIter⟩, nextRun, optionExact, nextExact⟩ :=
+      WP.spec_imp_exists nextSpec
+    rw [optionExact, nextExact] at nextRun
+    rw [bind_eq_ok_iff] at run
+    rcases run with ⟨iteratorPair, iteratorRun, run⟩
+    have iteratorPairExact : iteratorPair = (none, state.1) :=
+      Aeneas.Std.Result.ok.inj (iteratorRun.symm.trans nextRun)
+    subst iteratorPair
+    simp at run
+    subst output
+    exact ⟨rfl, by unfold semanticOuterMeasure; omega⟩
+
+theorem semantic_outer_body_cont_decreases
+    (eta : field.QM31) (state next : SemanticOuterState)
+    (run : semanticOuterBody eta state = .ok (.cont next)) :
+    semanticOuterMeasure next < semanticOuterMeasure state := by
+  have exactStep := (semantic_outer_body_cont_exact eta state next run).1
+  omega
+
+theorem semantic_outer_loop_success_has_exact_trace
+    (eta : field.QM31) (iter : core.ops.range.Range Std.Usize)
+    (transcriptBefore : transcript.Transcript)
+    (reader : v6_onefold.V6FixedFieldReader)
+    (point : Array field.QM31 10#usize) (runningClaim : field.QM31)
+    (pending : SemanticPending) (output : SemanticOuterOutput)
+    (run :
+      v6_transcript.verify_compact_semantic_sumcheck_loop0
+          v6_onefold.V6FixedFieldReader.Insts.Aspis_coreV6_onefoldV6FixedFieldStream
+          iter transcriptBefore reader eta point runningClaim pending =
+        .ok output) :
+    Nonempty (ExactLoopTrace (semanticOuterBody eta)
+      (iter, transcriptBefore, reader, point, runningClaim, pending)
+      output) := by
+  unfold v6_transcript.verify_compact_semantic_sumcheck_loop0 at run
+  change loop (semanticOuterBody eta)
+      (iter, transcriptBefore, reader, point, runningClaim, pending) =
+        .ok output at run
+  exact loop_success_has_exact_trace
+    (semanticOuterBody eta) semanticOuterMeasure
+    (semantic_outer_body_cont_decreases eta)
+    (iter, transcriptBefore, reader, point, runningClaim, pending)
+    output run
+
+theorem semantic_outer_trace_from_none_has_reads
+    (eta : field.QM31) {state : SemanticOuterState}
+    {output : SemanticOuterOutput}
+    (trace : ExactLoopTrace (semanticOuterBody eta) state output)
+    (accepted : SemanticResult)
+    (hasAccepted : output.2.2 = some (.Ok accepted))
+    (noPending : state.2.2.2.2.2 = none) :
+    ∃ values,
+      SuccessfulFixedReaderTrace state.2.2.1 values output.2.1 ∧
+      values.length = 27 * trace.contCount := by
+  induction trace with
+  | done equation =>
+    obtain ⟨readerExact, _⟩ :=
+      semantic_outer_body_done_ok_from_none_exact eta _ _ equation
+        accepted hasAccepted noPending
+    refine ⟨[], ?_, by simp [ExactLoopTrace.contCount]⟩
+    rw [readerExact]
+    exact .nil _
+  | @cont current nextState finalOutput equation tail inductionHypothesis =>
+    obtain ⟨_, roundValues, roundReads, roundLength, pendingExact⟩ :=
+      semantic_outer_body_cont_exact eta current nextState equation
+    have nextNoPending : nextState.2.2.2.2.2 = none := by
+      rw [pendingExact, noPending]
+    obtain ⟨tailValues, tailReads, tailLength⟩ :=
+      inductionHypothesis hasAccepted nextNoPending
+    refine ⟨roundValues ++ tailValues,
+      fixedReaderTraceAppend roundReads tailReads, ?_⟩
+    simp only [List.length_append, ExactLoopTrace.contCount]
+    omega
+
+theorem semantic_outer_trace_from_none_cont_count
+    (eta : field.QM31) {state : SemanticOuterState}
+    {output : SemanticOuterOutput}
+    (trace : ExactLoopTrace (semanticOuterBody eta) state output)
+    (accepted : SemanticResult)
+    (hasAccepted : output.2.2 = some (.Ok accepted))
+    (noPending : state.2.2.2.2.2 = none) :
+    trace.contCount = semanticOuterMeasure state := by
+  induction trace with
+  | done equation =>
+    have exhausted :=
+      (semantic_outer_body_done_ok_from_none_exact eta _ _ equation
+        accepted hasAccepted noPending).2
+    simpa [ExactLoopTrace.contCount] using exhausted.symm
+  | @cont current nextState finalOutput equation tail inductionHypothesis =>
+    obtain ⟨measureExact, _, _, _, pendingExact⟩ :=
+      semantic_outer_body_cont_exact eta current nextState equation
+    have nextNoPending : nextState.2.2.2.2.2 = none := by
+      rw [pendingExact, noPending]
+    have tailCount := inductionHypothesis hasAccepted nextNoPending
+    simp only [ExactLoopTrace.contCount]
+    rw [tailCount]
+    exact measureExact
+
+theorem generated_semantic_outer_success_reads_exactly_270
+    (eta : field.QM31) (transcriptBefore transcriptAfter : transcript.Transcript)
+    (reader readerAfter : v6_onefold.V6FixedFieldReader)
+    (point : Array field.QM31 10#usize) (runningClaim : field.QM31)
+    (accepted : SemanticResult)
+    (run :
+      v6_transcript.verify_compact_semantic_sumcheck_loop0
+          v6_onefold.V6FixedFieldReader.Insts.Aspis_coreV6_onefoldV6FixedFieldStream
+          { start := 0#usize, «end» := v6_onefold.V6_SEMANTIC_ROUNDS }
+          transcriptBefore reader eta point runningClaim none =
+        .ok (transcriptAfter, readerAfter, some (.Ok accepted))) :
+    ∃ values,
+      SuccessfulFixedReaderTrace reader values readerAfter ∧
+      values.length = 270 ∧
+      (∀ value ∈ values, CanonicalGeneratedQM31 value) := by
+  obtain ⟨trace⟩ := semantic_outer_loop_success_has_exact_trace eta
+    { start := 0#usize, «end» := v6_onefold.V6_SEMANTIC_ROUNDS }
+    transcriptBefore reader point runningClaim none
+    (transcriptAfter, readerAfter, some (.Ok accepted)) run
+  obtain ⟨values, reads, lengthExact⟩ :=
+    semantic_outer_trace_from_none_has_reads eta trace accepted rfl rfl
+  have countExact :=
+    semantic_outer_trace_from_none_cont_count eta trace accepted rfl rfl
+  refine ⟨values, reads, ?_, successful_trace_values_canonical reads⟩
+  rw [lengthExact, countExact]
+  norm_num [semanticOuterMeasure, v6_onefold.V6_SEMANTIC_ROUNDS]
+
+theorem generated_semantic_success_reads_exactly_271
+    (transcriptBefore transcriptAfter : transcript.Transcript)
+    (reader readerAfter : v6_onefold.V6FixedFieldReader)
+    (eta : field.QM31) (point : Array field.QM31 10#usize)
+    (terminalClaim : field.QM31)
+    (run :
+      v6_transcript.verify_compact_semantic_sumcheck
+          v6_onefold.V6FixedFieldReader.Insts.Aspis_coreV6_onefoldV6FixedFieldStream
+          transcriptBefore reader =
+        .ok (.Ok (eta, point, terminalClaim), transcriptAfter, readerAfter)) :
+    ∃ values,
+      SuccessfulFixedReaderTrace reader values readerAfter ∧
+      values.length = 271 ∧
+      (∀ value ∈ values, CanonicalGeneratedQM31 value) := by
+  unfold v6_transcript.verify_compact_semantic_sumcheck at run
+  generalize initialReadEquation :
+      v6_onefold.V6FixedFieldReader.Insts.Aspis_coreV6_onefoldV6FixedFieldStream.next_qm31
+        reader = initialReadResult at run
+  cases initialReadResult with
+  | fail error => simp_all [Bind.bind, Aeneas.Std.bind]
+  | div => simp_all [Bind.bind, Aeneas.Std.bind]
+  | ok initialReadPair =>
+    rcases initialReadPair with ⟨initialOutcome, readerAfterInitial⟩
+    cases initialOutcome with
+    | Err wireError =>
+      simp_all [Bind.bind, Aeneas.Std.bind,
+        core.result.Result.Insts.CoreOpsTry.branch,
+        core.result.Result.Insts.CoreOpsTryTraitFromResidualResultInfallible.from_residual,
+        core.convert.FromSame.from,
+        v6_transcript.V6TranscriptError.Insts.CoreConvertFromV6WireError.from]
+    | Ok initialClaim =>
+      simp only [core.result.Result.Insts.CoreOpsTry.branch, bind_tc_ok] at run
+      generalize beginEquation :
+          state_only_hiding.begin_state_only_masked_sumcheck
+            transcriptBefore initialClaim = beginResult at run
+      cases beginResult with
+      | fail error => simp_all [Bind.bind, Aeneas.Std.bind]
+      | div => simp_all [Bind.bind, Aeneas.Std.bind]
+      | ok beginPair =>
+        rcases beginPair with ⟨beginOutcome, transcriptAfterBegin⟩
+        cases beginOutcome with
+        | Err scheduleError =>
+          simp_all [Bind.bind, Aeneas.Std.bind, core.result.Result.map_err,
+            v6_transcript.verify_compact_semantic_sumcheck.closure.Insts.CoreOpsFunctionFnOnceTupleStateOnlyHidingScheduleErrorV6TranscriptError.call_once,
+            core.result.Result.Insts.CoreOpsTry.branch,
+            core.result.Result.Insts.CoreOpsTryTraitFromResidualResultInfallible.from_residual,
+            core.convert.FromSame.from]
+        | Ok actualEta =>
+          simp only [core.result.Result.map_err,
+            core.result.Result.Insts.CoreOpsTry.branch, bind_tc_ok] at run
+          generalize outerEquation :
+              v6_transcript.verify_compact_semantic_sumcheck_loop0
+                v6_onefold.V6FixedFieldReader.Insts.Aspis_coreV6_onefoldV6FixedFieldStream
+                { start := 0#usize,
+                  «end» := v6_onefold.V6_SEMANTIC_ROUNDS }
+                transcriptAfterBegin readerAfterInitial actualEta
+                (Array.repeat 10#usize field.QM31.ZERO) initialClaim none =
+                  outerResult at run
+          cases outerResult with
+          | fail error => simp_all [Bind.bind, Aeneas.Std.bind]
+          | div => simp_all [Bind.bind, Aeneas.Std.bind]
+          | ok outerOutput =>
+            rcases outerOutput with
+              ⟨actualTranscript, actualReader, pending⟩
+            cases pending with
+            | none => simp_all [Bind.bind, Aeneas.Std.bind]
+            | some payload =>
+              cases payload with
+              | Err transcriptError => simp_all
+              | Ok accepted =>
+                rcases accepted with
+                  ⟨returnedEta, returnedPoint, returnedTerminal⟩
+                have outputExact :
+                    returnedEta = eta ∧ returnedPoint = point ∧
+                    returnedTerminal = terminalClaim ∧
+                    actualTranscript = transcriptAfter ∧
+                    actualReader = readerAfter := by
+                  simpa [Bind.bind, Aeneas.Std.bind, initialReadEquation,
+                    beginEquation, outerEquation] using run
+                rcases outputExact with
+                  ⟨returnedEtaExact, returnedPointExact,
+                    returnedTerminalExact, transcriptExact, readerExact⟩
+                subst returnedEta
+                subst returnedPoint
+                subst returnedTerminal
+                subst actualTranscript
+                subst actualReader
+                obtain ⟨outerValues, outerReads, outerLength, _⟩ :=
+                  generated_semantic_outer_success_reads_exactly_270
+                    actualEta transcriptAfterBegin transcriptAfter
+                    readerAfterInitial readerAfter
+                    (Array.repeat 10#usize field.QM31.ZERO) initialClaim
+                    (eta, point, terminalClaim) outerEquation
+                have firstRead :
+                    v6_onefold.V6FixedFieldReader.next_qm31 reader =
+                      .ok (.Ok initialClaim, readerAfterInitial) := by
+                  simpa [
+                    v6_onefold.V6FixedFieldReader.Insts.Aspis_coreV6_onefoldV6FixedFieldStream.next_qm31]
+                    using initialReadEquation
+                let completeReads : SuccessfulFixedReaderTrace reader
+                    (initialClaim :: outerValues) readerAfter :=
+                  .cons firstRead outerReads
+                exact ⟨initialClaim :: outerValues, completeReads,
+                  by simp [outerLength],
+                  successful_trace_values_canonical completeReads⟩
+
 #print axioms semantic_outer_body_cont_exact
+#print axioms semantic_outer_body_done_ok_from_none_exact
+#print axioms semantic_outer_body_cont_decreases
+#print axioms semantic_outer_loop_success_has_exact_trace
+#print axioms semantic_outer_trace_from_none_has_reads
+#print axioms semantic_outer_trace_from_none_cont_count
+#print axioms generated_semantic_outer_success_reads_exactly_270
+#print axioms generated_semantic_success_reads_exactly_271
 
 #print axioms semantic_inner_body_cont_exact
 #print axioms semantic_inner_body_done_no_pending_one_exact
+#print axioms semantic_inner_body_done_ok_implies_one
+#print axioms semantic_inner_body_done_ok_origin
 #print axioms semantic_inner_body_cont_decreases
 #print axioms semantic_inner_loop_success_has_exact_trace
 #print axioms semantic_inner_trace_no_pending_one_has_reads
 #print axioms semantic_inner_trace_no_pending_one_cont_count
 #print axioms semantic_inner_trace_one_preserves_pending
+#print axioms semantic_inner_trace_ok_origin
 #print axioms generated_semantic_inner_success_reads_exactly_26
 
 end AspisV7Tag73GeneratedSemanticBridge
