@@ -74,7 +74,7 @@ esac
 readonly OUTPUT_DIR=$2
 readonly AGAVE_BIN_DIR=${3:-}
 
-for command_name in awk cmp cp find git jq sed sort stat tar uname wc xargs; do
+for command_name in awk cmp cp find git jq readlink sed sort stat tar uname wc xargs; do
   require_command "$command_name"
 done
 [[ -x /usr/bin/time ]] || fail "/usr/bin/time is required for release resource evidence"
@@ -112,6 +112,8 @@ readonly CARGO_CACHE_INDEX="$ROOT/$(jq -er '.toolchain.offlineCargoCache.indexPa
   || fail "ASPIS_V7_CARGO_HOME must name the frozen offline Cargo cache"
 [[ -n "$RUSTUP_HOME_ROOT" && -d "$RUSTUP_HOME_ROOT/toolchains/stable-x86_64-unknown-linux-gnu" ]] \
   || fail "ASPIS_V7_RUSTUP_HOME must name the frozen host rustup home"
+[[ "$(readlink -f "$RUSTUP_HOME_ROOT/toolchains/solana")" == "$(readlink -f "$PLATFORM_TOOLS_ROOT/rust")" ]] \
+  || fail "rustup's solana toolchain does not resolve to the frozen v1.48 platform Rust"
 
 readonly CGROUP_RELATIVE=$(awk -F: '$1 == "0" {print $3}' /proc/self/cgroup)
 [[ -n "$CGROUP_RELATIVE" ]] || fail "cannot resolve the current cgroup-v2 path"
@@ -212,13 +214,17 @@ while IFS=$'\t' read -r relative expected_bytes expected_sha; do
     || fail "frozen toolchain file hash changed: $relative"
 done < <(jq -r '.toolchain_files[] | [.path, .bytes, .sha256] | @tsv' "$TOOLCHAIN_PROVENANCE")
 
-[[ "$(sha_file "$HOST_CARGO")" == "$(jq -er '.toolchain.offlineCargoCache.hostCargoSha256' "$MANIFEST")" ]] \
-  || fail "host Cargo bytes differ from the frozen offline-cache toolchain"
+[[ "$(sha_file "$HOST_CARGO")" == "$(jq -er '.toolchain.offlineCargoCache.hostRustupSha256' "$MANIFEST")" ]] \
+  || fail "host Cargo proxy bytes differ from the frozen rustup binary"
+readonly STABLE_CARGO="$RUSTUP_HOME_ROOT/toolchains/stable-x86_64-unknown-linux-gnu/bin/cargo"
+[[ -x "$STABLE_CARGO" && "$(sha_file "$STABLE_CARGO")" == "$(jq -er '.toolchain.offlineCargoCache.hostCargoSha256' "$MANIFEST")" ]] \
+  || fail "stable host Cargo payload differs from the frozen offline-cache toolchain"
 [[ "$(sha_file "$HOST_RUSTC")" == "$(jq -er '.toolchain.offlineCargoCache.hostRustcSha256' "$MANIFEST")" ]] \
   || fail "host rustc bytes differ from the frozen offline-cache toolchain"
 [[ "$(sha_file "$HOST_RUSTUP")" == "$(jq -er '.toolchain.offlineCargoCache.hostRustupSha256' "$MANIFEST")" ]] \
   || fail "host rustup bytes differ from the frozen offline-cache toolchain"
-host_cargo_version=$($HOST_CARGO --version)
+host_cargo_version=$(RUSTUP_HOME="$RUSTUP_HOME_ROOT" \
+  RUSTUP_TOOLCHAIN=stable-x86_64-unknown-linux-gnu "$HOST_CARGO" --version)
 host_rustc_version=$($HOST_RUSTC --version)
 host_rustup_version=$($HOST_RUSTUP --version 2>/dev/null | sed -n '1p')
 [[ "$host_cargo_version" == "$(jq -er '.hostCargo.version' "$CARGO_CACHE_PROVENANCE")" ]] \
@@ -383,7 +389,8 @@ jq -n \
   --arg toolchainInventorySha256 "$(jq -er '.toolchain.frozenInventory.sha256' "$MANIFEST")" \
   --arg offlineCargoCacheProvenanceSha256 "$(jq -er '.toolchain.offlineCargoCache.provenanceSha256' "$MANIFEST")" \
   --arg offlineCargoPackagesSha256 "$(sha_file "$OUTPUT_DIR/cargo-cache-after.tsv")" \
-  --arg hostCargoSha256 "$(sha_file "$HOST_CARGO")" \
+  --arg hostCargoSha256 "$(sha_file "$STABLE_CARGO")" \
+  --arg hostCargoProxySha256 "$(sha_file "$HOST_CARGO")" \
   --arg hostCargoVersion "$host_cargo_version" \
   --arg hostRustupSha256 "$(sha_file "$HOST_RUSTUP")" \
   --arg hostRustupVersion "$host_rustup_version" \
@@ -419,6 +426,7 @@ jq -n \
       offlineCargoPackagesSha256: $offlineCargoPackagesSha256,
       offlineCargoCacheVerifiedBeforeAndAfter: true,
       hostCargoSha256: $hostCargoSha256,
+      hostCargoProxySha256: $hostCargoProxySha256,
       hostCargoVersion: $hostCargoVersion,
       hostRustupSha256: $hostRustupSha256,
       hostRustupVersion: $hostRustupVersion,

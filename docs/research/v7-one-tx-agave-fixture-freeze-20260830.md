@@ -95,9 +95,12 @@ platform Cargo 1.84 resolves the older `6f17...` registry-cache namespace,
 whereas the complete current offline cache is in the host Cargo 1.94
 `1949...` namespace. `r3` passed the complete cache and locked-metadata checks,
 then established that `cargo-build-sbf` separately invokes the rustup manager;
-the deliberately narrow PATH had not yet included it. None of these attempts
-involved memory pressure, a compiler error, or changed program source, and
-none was retried unchanged.
+the deliberately narrow PATH had not yet included it. `r4` then proved the
+wrapper uses Cargo's rustup-proxy `+solana` dispatch rather than a direct Cargo
+payload. The corrected capture pins both proxy and payload and checks that the
+`solana` rustup toolchain resolves to the already-frozen v1.48 platform Rust.
+None of these attempts involved memory pressure, a compiler error, or changed
+program source, and none was retried unchanged.
 
 The corrected replay now pins the exact host Cargo/Rust/rustup binaries and the
 complete cache contents actually selected by the locked workspace: 428 crate
