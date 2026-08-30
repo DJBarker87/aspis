@@ -288,6 +288,20 @@ directly with the production cursor.  The proof uses exact source membership
 and distinct deployed encodings, not a retrospective raw-coordinate role
 classifier.
 
+`V7Tag73IndexedAlignedRecordReplay.lean` packages production-prefix alignment
+as a segment-stable controller invariant.  It proves that work-without-base is
+preserved until the unique absorb coordinate, and that base-without-work is
+preserved until the unique work coordinate while allowing legitimate branch
+state to evolve through intervening adversarial prequeries.
+
+`V7Tag73ExactFinalWorkPairControllerCompletion.lean` instantiates those
+invariants on the exact accepted actor-tagged root trace.  Its main theorem
+constructs an actual `Fin F` exposure trial and a literal root prefix whose
+concrete controller memory contains both `workSeen = true` and the exact
+returned q16 base, in either first-exposure order.  Thus the trial is now
+operationally initialized; the remaining causal work is the ordered q16
+candidate/duplex fold and its used-forest handoff.
+
 ## Exact remaining boundary
 
 The production/source layer must now instantiate the counted finite inventory
@@ -343,6 +357,8 @@ lake env lean AspisFormal/K1/V7Tag73IndexedControllerTraceAlignment.lean
 lake env lean AspisFormal/K1/V7Tag73ExactCompilerFinalWorkControllerAnchor.lean
 lake env lean AspisFormal/K1/V7Tag73ExactRootControllerCoordinateAlignment.lean
 lake env lean AspisFormal/K1/V7Tag73ExactFinalWorkPairRootOrder.lean
+lake env lean AspisFormal/K1/V7Tag73IndexedAlignedRecordReplay.lean
+lake env lean AspisFormal/K1/V7Tag73ExactFinalWorkPairControllerCompletion.lean
 ```
 
 Observed focused checks:
@@ -371,6 +387,8 @@ Observed focused checks:
 | accepted source to exact controller anchor | 0 | 3.92 s | 5,634,048,000 B |
 | exact root lookup/controller coordinate alignment | 0 | 3.92 s | 5,661,720,576 B |
 | exact final-work pair root order | 0 | 3.84 s | 5,659,705,344 B |
+| segment-stable aligned controller replay | 0 | 4.00 s | 5,665,554,432 B |
+| exact accepted pair controller completion | 0 | 4.04 s | 5,689,180,160 B |
 
 All reported theorem axiom sets are subsets of:
 
