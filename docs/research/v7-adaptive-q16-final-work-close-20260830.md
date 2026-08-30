@@ -89,17 +89,36 @@ This is a constructor, not a conclusion-shaped trace premise: the remaining
 Tag-73 layer must instantiate its memory and prove the accepted execution is
 covered.
 
+`V7Tag73FinalWorkQ16CandidateController.lean` now supplies that literal raw
+controller for every conservative exposure trial:
+
+- it byte-parses the exact 41-byte grinding input and 42-byte final-nonce
+  absorb input into their shared pre-final digest/nonce key;
+- whichever member of that pair is exposed first can anchor the trial, so
+  final work and nonce absorption need not be artificially ordered;
+- after the nonce-absorb answer fixes the q16 base, it follows all literal
+  candidate-absorb and squeeze/advance chains using only previously exposed
+  answers, independently of whether the actor is adversary or verifier; and
+- every `Fin F` exposure index now constructs the exact lossless 513-slot
+  compiler coordinates used by the joint product theorem.
+
+This removes the earlier verifier-first assumption. Cached verifier calls are
+handled by their original fresh exposure; they are not relabelled later.
+
 ## Exact remaining boundary
 
 The production/source layer must now instantiate the counted finite inventory
 and prove its cover:
 
 1. define the final-work/nonce/q16 grammar and controller memory at each
-   conservative exposure index;
-2. route the first exposure of its final-work digest and 512 q16 blocks,
-   including adversary-prequery/cache-hit executions;
-3. prove the router uses distinct chronological fresh-answer occurrences;
-4. prove the accepted production schedule is covered by one trial; and
+   conservative exposure index (now executable and kernel checked);
+2. prove that the earliest member of the accepted final-work/nonce pair is
+   one such anchor in the exact production master tape;
+3. outside the existing forward-reference/collision event, prove every
+   accepted q16 block is routed at its original fresh exposure and distinct
+   named slots never alias;
+4. conclude that the accepted production schedule is covered by that trial;
+   and
 5. either prove the selectable subinventory has cardinality at most `2^34`,
    or retain the exact general `F * p / 2^34` raw term.
 
@@ -120,6 +139,7 @@ lake env lean AspisFormal/K1/V7Tag73FinalWorkDigestProbability.lean
 lake env lean AspisFormal/K1/V7Tag73CausalQ16FinalWorkProbability.lean
 lake env lean AspisFormal/K1/V7Tag73AdaptiveQ16TrialAccounting.lean
 lake env lean AspisFormal/K1/V7Tag73IndexedExposureCausalRouter.lean
+lake env lean AspisFormal/K1/V7Tag73FinalWorkQ16CandidateController.lean
 ```
 
 Observed focused checks:
@@ -130,6 +150,7 @@ Observed focused checks:
 | causal joint work/q16 probability | 0 | 4.41 s | 5,567,283,200 B |
 | adaptive finite-trial accounting | 0 | 19.94 s | 5,573,836,800 B |
 | indexed production-cursor router | 0 | 4.0 s | not separately sampled |
+| raw final-work/q16 candidate controller | 0 | 4.4 s | not separately sampled |
 
 All reported theorem axiom sets are subsets of:
 
