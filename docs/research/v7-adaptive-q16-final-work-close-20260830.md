@@ -215,18 +215,28 @@ every earlier fresh query is a literal record in the selected coordinate's
 cumulative pre-answer history, and identifies that same history-indexed state
 with the native scheduler request.  This is positional rather than a search by
 query value, so duplicate pairs cannot select a different occurrence.  The
-remaining composition lifts this result across the adversary-to-verifier root
-boundary and identifies the native request with the target-clean certificate
-state at the same global prefix.
+query also remains in the returned segment's final cumulative history.
+
+`V7Tag73ExactRootPriorQueryHistory.lean` and
+`V7Tag73ExactRootQueryCausalOrder.lean` perform the full-root composition.  They
+lift the positional request state through the adversary root and across the
+adversary-to-verifier callback boundary, then identify it with the
+target-clean certificate state at the same global native scheduler prefix.
+Consequently, every fresh adversary answer is proved not to be the literal
+state prefix of any earlier adversary query, and every fresh verifier answer
+is proved not to be the literal state prefix of either any adversary query or
+any earlier verifier query.  This is the exact source-level causal-order fact
+needed to rule out a q16 child query preceding the fresh answer that determines
+its state; it introduces no raw-coordinate role classifier.
 
 ## Exact remaining boundary
 
 The production/source layer must now instantiate the counted finite inventory
 and prove its cover:
 
-1. outside the existing forward-reference/collision event, prove every
-   accepted q16 block is routed at its original fresh exposure and distinct
-   named slots never alias;
+1. instantiate the root causal-order theorems at every accepted q16
+   output/advance coordinate, and recursively prove every used q16 output is
+   routed at its original fresh exposure and distinct named slots never alias;
 2. prove that the routed forest agrees with
    `exactOperationalQ16DuplexForest` on every block used through the selected
    counter (the deterministic source forest intentionally zero-pads its
@@ -258,6 +268,8 @@ lake env lean AspisFormal/K1/V7Tag73FinalWorkQ16CandidateController.lean
 lake env lean AspisFormal/K1/V7Tag73FinalWorkQ16ResidualCapacity.lean
 lake env lean AspisFormal/K1/V7Tag73CausalFinalWorkQ16UsedForest.lean
 lake env lean AspisFormal/K1/V7Tag73ProjectedFreshPriorQueryHistory.lean
+lake env lean AspisFormal/K1/V7Tag73ExactRootPriorQueryHistory.lean
+lake env lean AspisFormal/K1/V7Tag73ExactRootQueryCausalOrder.lean
 lake env lean AspisFormal/K1/V7Tag73ExactCompilerFinalWorkTraceOccurrence.lean
 lake env lean AspisFormal/K1/V7Tag73FinalWorkEarliestExposure.lean
 lake env lean AspisFormal/K1/V7Tag73ExactFinalWorkEarliestExposure.lean
@@ -277,6 +289,8 @@ Observed focused checks:
 | exact joint-router residual capacity | 0 | 3.86 s | 5,544,230,912 B |
 | joint-router used-prefix forest handoff | 0 | 5.33 s | 5,607,358,464 B |
 | projected-prefix prior-history chronology | 0 | 3.97 s | 5,575,933,952 B |
+| exact full-root prior-query chronology | 0 | 3.96 s | 5,657,559,040 B |
+| exact root causal ordering | 0 | 3.84 s | 5,650,186,240 B |
 | exact accepted final-work trace occurrence | 0 | 4.37 s | 5,654,528,000 B |
 | exact earliest pair exposure trial | 0 | 4.21 s | 5,648,875,520 B |
 | indexed controller/production-prefix alignment | 0 | 4.51 s | 5,660,295,168 B |

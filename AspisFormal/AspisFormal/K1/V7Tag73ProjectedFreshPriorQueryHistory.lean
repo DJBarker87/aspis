@@ -38,6 +38,38 @@ def projectedFreshQueryRecord
     actor := actor
     origin := .fresh }
 
+/-- Every projected fresh query remains present in the returned segment's
+cumulative final history. -/
+theorem projected_fresh_query_record_mem_final_history
+    {MachineResult : Type u}
+    (limits : OracleLimits) (actor : QueryActor)
+    {fuel : Nat} {entryState : OracleState}
+    {program : OracleMachine MachineResult}
+    {freshQueries : List (ShaInput × Digest256)}
+    {result : MachineResult} {finalState : OracleState} {steps : Nat}
+    (trace : ProjectedFreshReturnedTrace limits actor fuel entryState program
+      freshQueries result finalState steps) :
+    ∀ query ∈ freshQueries,
+      projectedFreshQueryRecord actor query ∈ finalState.history := by
+  induction trace with
+  | returned =>
+      intro query member
+      simp at member
+  | @fresh fuel state requestState program coherent input nextProgram
+      remainingFuel cachedSteps requestCoherent totalRoom freshRoom missing
+      sought answer rest result finalState tailSteps tail ih =>
+      intro query member
+      simp only [List.mem_cons] at member
+      rcases member with queryExact | later
+      · subst query
+        have tailPrefix := projected_fresh_returned_trace_history_prefix
+          limits actor remainingFuel
+          (freshQueryState actor requestState input answer)
+          (nextProgram answer) rest result finalState tailSteps tail
+        apply tailPrefix.subset
+        simp [projectedFreshQueryRecord, freshQueryState]
+      · exact ih query later
+
 /-- Every coordinate consumed by a positional projected-trace prefix is in
 the cumulative history at the residual trace state.  Cached calls between
 fresh coordinates are harmless because they only extend that history. -/
@@ -242,6 +274,7 @@ theorem projected_fresh_trace_has_native_request_with_prior_history
 
 #print axioms
   projected_fresh_trace_suffix_prior_record_mem_history
+#print axioms projected_fresh_query_record_mem_final_history
 #print axioms projected_fresh_query_at_exact_prefix_retains_prior_records
 #print axioms projected_fresh_trace_has_native_request_with_prior_history
 
