@@ -175,6 +175,18 @@ No answer equality, record uniqueness, or conclusion-shaped trace premise is
 left at the anchor.  The remaining source-specific obligation is the q16
 continuation/forest realization from this exact state.
 
+The continuation audit exposed and repaired one controller-ordering defect.
+Once a q16 block digest is known, an adversary may expose the literal advance
+sibling before the literal output sibling; this is an ordinary query order,
+not a negligible bad event.  The original controller represented only the
+output-then-advance order.  `V7Tag73FinalWorkQ16CandidateController.lean` now
+uses one pending-pair state that independently records whether the output was
+seen and, when necessary, retains an advance answer exposed first.  Kernel
+checked transition lemmas cover both sibling orders, every nonterminal block,
+and both orders at block seven.  Only outputs receive named q16 slots, so the
+change preserves the exact 64-by-8, 512-coordinate forest and every existing
+probability parameter.
+
 ## Exact remaining boundary
 
 The production/source layer must now instantiate the counted finite inventory
@@ -222,12 +234,12 @@ Observed focused checks:
 | causal joint work/q16 probability | 0 | 4.41 s | 5,567,283,200 B |
 | adaptive finite-trial accounting | 0 | 19.94 s | 5,573,836,800 B |
 | indexed production-cursor router | 0 | 4.0 s | not separately sampled |
-| raw final-work/q16 candidate controller | 0 | 4.4 s | not separately sampled |
+| order-robust final-work/q16 candidate controller | 0 | 4.05 s | 5,597,544,448 B |
 | exact accepted final-work trace occurrence | 0 | 4.37 s | 5,654,528,000 B |
 | exact earliest pair exposure trial | 0 | 4.21 s | 5,648,875,520 B |
-| indexed controller/production-prefix alignment | 0 | 4.14 s | 5,656,494,080 B |
+| indexed controller/production-prefix alignment | 0 | 4.51 s | 5,660,295,168 B |
 | exact accepted-record selector | 0 | 4.12 s | 5,647,335,424 B |
-| accepted source to exact controller anchor | 0 | 3.90 s | 5,634,949,120 B |
+| accepted source to exact controller anchor | 0 | 3.92 s | 5,634,048,000 B |
 
 All reported theorem axiom sets are subsets of:
 

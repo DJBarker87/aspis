@@ -40,6 +40,7 @@ open AspisK1.V7Tag73IndexedExposureCausalRouter
 open AspisK1.V7Tag73Q16DigestDrawReindex
 open AspisK1.V7Tag73SchedulerCausalQ16Router
 open AspisK1.V7Tag73SchedulerHistoryQ16Router
+open AspisK1.V7Tag73DeterministicRefinement
 open AspisK1.V7Tag73TranscriptSchedule
 
 noncomputable section
@@ -183,8 +184,11 @@ def unifiedInputBeforeAnswer?
 
 inductive RawQ16BranchPhase where
   | unseen
-  | output (digest : Digest256) (block : Nat)
-  | advance (digest : Digest256) (block : Nat)
+  /-- Both sibling inputs are determined by `digest`. `outputSeen` records
+  whether the named q16 output coordinate has already been exposed;
+  `advanceAnswer` retains an advance sibling exposed first. -/
+  | pending (digest : Digest256) (block : Nat)
+      (outputSeen : Bool) (advanceAnswer : Option Digest256)
   | finished
   deriving DecidableEq, Repr
 
@@ -209,11 +213,13 @@ def RawQ16BranchPhase.preferredSlot
     (counter : Fin 64) (phase : RawQ16BranchPhase)
     (input : ShaInput) : Option Q16DigestSlot :=
   match phase with
-  | .output digest block =>
-      if _inputExact : input = bytes digest ++ [domSqueeze] then
-        if bounded : block < 8 then some (counter, ⟨block, bounded⟩) else none
+  | .pending digest block outputSeen _advanceAnswer =>
+      if _notSeen : outputSeen = false then
+        if _inputExact : input = bytes digest ++ [domSqueeze] then
+          if bounded : block < 8 then some (counter, ⟨block, bounded⟩) else none
+        else none
       else none
-  | .unseen | .advance _ _ | .finished => none
+  | .unseen | .finished => none
 
 def firstRawQ16PreferredSlot
     (branches : Fin 64 → RawQ16BranchPhase) (input : ShaInput) :
@@ -222,16 +228,27 @@ def firstRawQ16PreferredSlot
       (branches counter).preferredSlot counter input).foldl
     (fun found candidate => found.orElse fun _ => candidate) none
 
+/-- Complete a block once both sibling exposures are available. -/
+def nextRawQ16BranchPhase (block : Nat) (nextDigest : Digest256) :
+    RawQ16BranchPhase :=
+  if _bounded : block + 1 < 8 then
+    .pending nextDigest (block + 1) false none
+  else
+    .finished
+
+/-- Consume output and advance siblings in either chronological order. -/
 def RawQ16BranchPhase.afterInput
     (phase : RawQ16BranchPhase) (input : ShaInput) (answer : Digest256) :
     RawQ16BranchPhase :=
   match phase with
-  | .output digest block =>
-      if input = bytes digest ++ [domSqueeze] then .advance digest block
-      else phase
-  | .advance digest block =>
-      if input = bytes digest ++ [domAdvance] then
-        if block + 1 < 8 then .output answer (block + 1) else .finished
+  | .pending digest block outputSeen advanceAnswer =>
+      if input = bytes digest ++ [domSqueeze] then
+        match advanceAnswer with
+        | some nextDigest => nextRawQ16BranchPhase block nextDigest
+        | none => .pending digest block true none
+      else if input = bytes digest ++ [domAdvance] then
+        if outputSeen = true then nextRawQ16BranchPhase block answer
+        else .pending digest block false (some answer)
       else phase
   | .unseen | .finished => phase
 
@@ -240,7 +257,7 @@ def updateRawQ16Branches
     (input : ShaInput) (answer : Digest256) :
     Fin 64 → RawQ16BranchPhase := fun counter =>
   if _candidate : q16CandidateOfBaseInput? base input = some counter then
-    .output answer 0
+    .pending answer 0 false none
   else
     (branches counter).afterInput input answer
 
@@ -452,31 +469,74 @@ theorem literal_candidate_absorb_starts_block_zero
     updateRawQ16Branches base emptyRawQ16Branches
         (bytes base ++ [domAbsorb, queryCandidateLabel,
           UInt8.ofNat counter.val]) answer counter =
-      .output answer 0 := by
+      .pending answer 0 false none := by
   simp [updateRawQ16Branches]
 
 theorem literal_output_phase_labels_exact_slot
     (digest : Digest256) (counter : Fin 64) (block : Nat)
+    (advanceAnswer : Option Digest256)
     (bounded : block < 8) :
-    (RawQ16BranchPhase.output digest block).preferredSlot counter
+    (RawQ16BranchPhase.pending digest block false advanceAnswer).preferredSlot
+        counter
         (bytes digest ++ [domSqueeze]) =
       some (counter, ⟨block, bounded⟩) := by
   simp [RawQ16BranchPhase.preferredSlot, bounded]
 
-theorem literal_output_then_advance_phase
-    (digest answer : Digest256) (block : Nat) :
-    (RawQ16BranchPhase.output digest block).afterInput
-        (bytes digest ++ [domSqueeze]) answer =
-      .advance digest block := by
+theorem literal_output_then_waits_for_advance
+    (digest outputAnswer : Digest256) (block : Nat) :
+    (RawQ16BranchPhase.pending digest block false none).afterInput
+        (bytes digest ++ [domSqueeze]) outputAnswer =
+      .pending digest block true none := by
   simp [RawQ16BranchPhase.afterInput]
 
-theorem literal_advance_starts_next_output
-    (digest answer : Digest256) (block : Nat)
+theorem literal_advance_then_waits_for_output
+    (digest advanceAnswer : Digest256) (block : Nat) :
+    (RawQ16BranchPhase.pending digest block false none).afterInput
+        (bytes digest ++ [domAdvance]) advanceAnswer =
+      .pending digest block false (some advanceAnswer) := by
+  have different :
+      bytes digest ++ [domAdvance] ≠ bytes digest ++ [domSqueeze] :=
+    (squeeze_output_and_advance_inputs_are_distinct digest).symm
+  simp [RawQ16BranchPhase.afterInput, different]
+
+theorem literal_output_after_advance_starts_next
+    (digest outputAnswer advanceAnswer : Digest256) (block : Nat)
     (bounded : block + 1 < 8) :
-    (RawQ16BranchPhase.advance digest block).afterInput
-        (bytes digest ++ [domAdvance]) answer =
-      .output answer (block + 1) := by
-  simp [RawQ16BranchPhase.afterInput, bounded]
+    (RawQ16BranchPhase.pending digest block false
+        (some advanceAnswer)).afterInput
+        (bytes digest ++ [domSqueeze]) outputAnswer =
+      .pending advanceAnswer (block + 1) false none := by
+  simp [RawQ16BranchPhase.afterInput, nextRawQ16BranchPhase, bounded]
+
+theorem literal_advance_after_output_starts_next
+    (digest advanceAnswer : Digest256) (block : Nat)
+    (bounded : block + 1 < 8) :
+    (RawQ16BranchPhase.pending digest block true none).afterInput
+        (bytes digest ++ [domAdvance]) advanceAnswer =
+      .pending advanceAnswer (block + 1) false none := by
+  have different :
+      bytes digest ++ [domAdvance] ≠ bytes digest ++ [domSqueeze] :=
+    (squeeze_output_and_advance_inputs_are_distinct digest).symm
+  simp [RawQ16BranchPhase.afterInput, nextRawQ16BranchPhase, bounded,
+    different]
+
+theorem literal_output_after_final_advance_finishes
+    (digest outputAnswer advanceAnswer : Digest256) :
+    (RawQ16BranchPhase.pending digest 7 false
+        (some advanceAnswer)).afterInput
+        (bytes digest ++ [domSqueeze]) outputAnswer =
+      .finished := by
+  simp [RawQ16BranchPhase.afterInput, nextRawQ16BranchPhase]
+
+theorem literal_final_advance_after_output_finishes
+    (digest advanceAnswer : Digest256) :
+    (RawQ16BranchPhase.pending digest 7 true none).afterInput
+        (bytes digest ++ [domAdvance]) advanceAnswer =
+      .finished := by
+  have different :
+      bytes digest ++ [domAdvance] ≠ bytes digest ++ [domSqueeze] :=
+    (squeeze_output_and_advance_inputs_are_distinct digest).symm
+  simp [RawQ16BranchPhase.afterInput, nextRawQ16BranchPhase, different]
 
 #print axioms parse_literal_final_work_input
 #print axioms parse_literal_final_nonce_absorb_input
@@ -489,8 +549,12 @@ theorem literal_advance_starts_next_output
 #print axioms tracked_absorb_stores_q16_base
 #print axioms literal_candidate_absorb_starts_block_zero
 #print axioms literal_output_phase_labels_exact_slot
-#print axioms literal_output_then_advance_phase
-#print axioms literal_advance_starts_next_output
+#print axioms literal_output_then_waits_for_advance
+#print axioms literal_advance_then_waits_for_output
+#print axioms literal_output_after_advance_starts_next
+#print axioms literal_advance_after_output_starts_next
+#print axioms literal_output_after_final_advance_finishes
+#print axioms literal_final_advance_after_output_finishes
 #print axioms finalWorkQ16CandidateController
 #print axioms exactCompilerFinalWorkQ16CandidateRouter
 #print axioms exactCompilerFinalWorkQ16CandidateCoordinates
