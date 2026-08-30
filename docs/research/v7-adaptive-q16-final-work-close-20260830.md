@@ -155,25 +155,38 @@ state-alignment half as well:
   transition: a work record labels the final-work slot and stores the key, or
   an absorb record stores the q16 base.
 
-This result is independent of the current answer while choosing the slot.  It
-does not yet identify the selected pair answer with the accepted root-table
-work/q16-base value; that root-record uniqueness and the subsequent q16
-continuation are the remaining source-specific obligations.
+This result is independent of the current answer while choosing the slot.
+
+`V7Tag73ExactFinalWorkEarliestExposure.lean` and
+`V7Tag73ExactCompilerFinalWorkControllerAnchor.lean` close the answer binding
+without assuming a global raw-input uniqueness theorem:
+
+- the finite inventory selects the earlier of the two already-proved exact
+  accepted root records, not merely an input-shaped record;
+- the chosen work record therefore carries the exact accepted 34-bit digest,
+  while the chosen absorb record carries the exact returned q16 base;
+- selecting a trial after the run is legitimate because the union ranges over
+  every `Fin F` index, while that trial's slot choice remains strictly
+  pre-answer; and
+- strict accepted production execution now constructs the complete exact
+  controller anchor from the literal result-carrying scheduler trace.
+
+No answer equality, record uniqueness, or conclusion-shaped trace premise is
+left at the anchor.  The remaining source-specific obligation is the q16
+continuation/forest realization from this exact state.
 
 ## Exact remaining boundary
 
 The production/source layer must now instantiate the counted finite inventory
 and prove its cover:
 
-1. identify the aligned pair record's answer with the accepted root-table
-   work result or q16-base value;
-2. outside the existing forward-reference/collision event, prove every
+1. outside the existing forward-reference/collision event, prove every
    accepted q16 block is routed at its original fresh exposure and distinct
    named slots never alias;
-3. identify that routed forest with `exactOperationalQ16DuplexForest` and
+2. identify that routed forest with `exactOperationalQ16DuplexForest` and
    conclude that the accepted production schedule is covered by the trial;
    and
-4. either prove the selectable subinventory has cardinality at most `2^34`,
+3. either prove the selectable subinventory has cardinality at most `2^34`,
    or retain the exact general `F * p / 2^34` raw term.
 
 No probability-product or per-trial independence premise remains once that
@@ -196,7 +209,9 @@ lake env lean AspisFormal/K1/V7Tag73IndexedExposureCausalRouter.lean
 lake env lean AspisFormal/K1/V7Tag73FinalWorkQ16CandidateController.lean
 lake env lean AspisFormal/K1/V7Tag73ExactCompilerFinalWorkTraceOccurrence.lean
 lake env lean AspisFormal/K1/V7Tag73FinalWorkEarliestExposure.lean
+lake env lean AspisFormal/K1/V7Tag73ExactFinalWorkEarliestExposure.lean
 lake env lean AspisFormal/K1/V7Tag73IndexedControllerTraceAlignment.lean
+lake env lean AspisFormal/K1/V7Tag73ExactCompilerFinalWorkControllerAnchor.lean
 ```
 
 Observed focused checks:
@@ -211,6 +226,8 @@ Observed focused checks:
 | exact accepted final-work trace occurrence | 0 | 4.37 s | 5,654,528,000 B |
 | exact earliest pair exposure trial | 0 | 4.21 s | 5,648,875,520 B |
 | indexed controller/production-prefix alignment | 0 | 4.14 s | 5,656,494,080 B |
+| exact accepted-record selector | 0 | 4.12 s | 5,647,335,424 B |
+| accepted source to exact controller anchor | 0 | 3.90 s | 5,634,949,120 B |
 
 All reported theorem axiom sets are subsets of:
 

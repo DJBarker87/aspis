@@ -1,4 +1,4 @@
-import AspisFormal.K1.V7Tag73FinalWorkEarliestExposure
+import AspisFormal.K1.V7Tag73ExactFinalWorkEarliestExposure
 
 /-!
 # Exact trace alignment for an indexed pre-answer controller
@@ -26,6 +26,7 @@ open AspisK1.V7Tag73CausalQ16FinalWorkProbability
 open AspisK1.V7FsAokExperiment
 open AspisK1.V7Tag73FinalWorkQ16CandidateController
 open AspisK1.V7Tag73FinalWorkEarliestExposure
+open AspisK1.V7Tag73ExactFinalWorkEarliestExposure
 open AspisK1.V7Tag73IndexedExposureCausalRouter
 open AspisK1.V7Tag73SchedulerCausalQ16Router
 open AspisK1.V7Tag73TranscriptSchedule
@@ -337,12 +338,143 @@ theorem earliest_literal_pair_aligns_candidate_controller
       lengthExact, rfl, reachedIndex, reachedInactive, Or.inr
         ⟨selectedAbsorbLiteral, inputExact, afterExact⟩⟩
 
+/-! ## Exact accepted-answer anchor -/
+
+/-- Complete deterministic anchor object for the exact accepted work/q16-base
+record pair. -/
+def ExactLiteralPairControllerAnchor
+    {globalOracleCalls : Nat}
+    (transitionFuel : Nat) (cursor : UnifiedExposureCursor globalOracleCalls)
+    (records : List UnifiedExposureRecord)
+    (digest : Digest256) (nonce : NonceBytes)
+    (workAnswer q16Base : Digest256) (index : Nat) : Prop :=
+  ∃ prior selected later reached actor,
+    records = prior ++ selected :: later ∧
+    prior.length = index ∧
+    reached = indexedStateAfterRecords transitionFuel
+      (finalWorkQ16CandidateController globalOracleCalls transitionFuel index)
+      prior
+      { exposureIndex := 0
+        cursor := cursor
+        memory := inactiveCandidateMemory } ∧
+    reached.exposureIndex = index ∧
+    reached.memory = inactiveCandidateMemory ∧
+    ((selected = .machineFresh actor
+          (bytes digest ++ [domGrind] ++ bytes nonce) workAnswer ∧
+        unifiedInputBeforeAnswer? transitionFuel reached.cursor =
+          some (bytes digest ++ [domGrind] ++ bytes nonce) ∧
+        candidatePreferredSlot transitionFuel index reached = some none ∧
+        candidateAfterMemory transitionFuel index reached workAnswer =
+          .tracked (literalFinalWorkKey digest nonce) true none
+            emptyRawQ16Branches) ∨
+      (selected = .machineFresh actor
+          (bytes digest ++ [domAbsorb, finalWorkNonceLabel] ++ bytes nonce)
+            q16Base ∧
+        unifiedInputBeforeAnswer? transitionFuel reached.cursor =
+          some (bytes digest ++
+            [domAbsorb, finalWorkNonceLabel] ++ bytes nonce) ∧
+        candidateAfterMemory transitionFuel index reached q16Base =
+          .tracked (literalFinalWorkKey digest nonce) false (some q16Base)
+            emptyRawQ16Branches))
+
+/-- The earlier of the two exact accepted records constructs the complete
+pre-answer controller anchor.  No record-answer uniqueness premise is needed. -/
+theorem earliest_exact_literal_pair_aligns_candidate_controller
+    {globalOracleCalls transitionFuel remaining index : Nat}
+    (cursor : UnifiedExposureCursor globalOracleCalls)
+    (tape : FreshAnswerTape Digest256 remaining)
+    (records : List UnifiedExposureRecord)
+    (digest : Digest256) (nonce : NonceBytes)
+    (workAnswer q16Base : Digest256)
+    (earliest : EarliestExactFinalWorkPairOccurrence
+      (literalFinalWorkKey digest nonce) workAnswer q16Base records index)
+    (traceExact : runUnifiedExposureTrace transitionFuel remaining cursor tape =
+      records) :
+    ExactLiteralPairControllerAnchor transitionFuel cursor records digest nonce
+      workAnswer q16Base index := by
+  obtain ⟨prior, selected, later, recordsExact, lengthExact, pair⟩ :=
+    earliest_exact_pair_trace_decomposition earliest
+  let controller :=
+    finalWorkQ16CandidateController globalOracleCalls transitionFuel index
+  let initial : IndexedUnifiedExposureState globalOracleCalls
+      FinalWorkQ16CandidateMemory :=
+    { exposureIndex := 0
+      cursor := cursor
+      memory := inactiveCandidateMemory }
+  let reached :=
+    indexedStateAfterRecords transitionFuel controller prior initial
+  have selectedAligned :
+      unifiedRecordAtAnswer transitionFuel reached.cursor selected.answer =
+        selected := by
+    exact trace_prefix_aligns_indexed_state transitionFuel controller prior
+      later selected remaining initial tape (traceExact.trans recordsExact)
+  have reachedIndex : reached.exposureIndex = index := by
+    calc
+      reached.exposureIndex = initial.exposureIndex + prior.length := by
+        exact indexed_state_after_records_exposure_index transitionFuel
+          controller prior initial
+      _ = index := by simp only [initial, lengthExact, Nat.zero_add]
+  have reachedInactive : reached.memory = inactiveCandidateMemory := by
+    apply candidate_memory_stays_inactive_before_anchor transitionFuel index
+      prior initial
+    · simp only [initial, lengthExact, Nat.zero_add]
+    · rfl
+  obtain ⟨actor, selectedWork | selectedAbsorb⟩ :=
+    exact_final_work_pair_record_cases (literalFinalWorkKey digest nonce)
+      workAnswer q16Base selected pair
+  · have selectedWorkLiteral : selected = .machineFresh actor
+        (bytes digest ++ [domGrind] ++ bytes nonce) workAnswer := by
+      simpa only [literal_final_work_key_work_input] using selectedWork
+    have inputExact : unifiedInputBeforeAnswer? transitionFuel reached.cursor =
+        some (bytes digest ++ [domGrind] ++ bytes nonce) := by
+      apply aligned_machine_record_has_exact_input transitionFuel reached.cursor
+        actor (bytes digest ++ [domGrind] ++ bytes nonce) workAnswer
+      have recordExact := selectedAligned
+      rw [selectedWorkLiteral] at recordExact
+      simpa only [UnifiedExposureRecord.answer] using recordExact
+    have slotExact : candidatePreferredSlot transitionFuel index reached =
+        some none := by
+      simp [candidatePreferredSlot, inputExact, reachedIndex, reachedInactive,
+        inactiveCandidateMemory]
+    have afterExact :
+        candidateAfterMemory transitionFuel index reached workAnswer =
+          .tracked (literalFinalWorkKey digest nonce) true none
+            emptyRawQ16Branches := by
+      simp [candidateAfterMemory, inputExact, reachedIndex, reachedInactive,
+        inactiveCandidateMemory]
+    exact ⟨prior, selected, later, reached, actor, recordsExact, lengthExact,
+      rfl, reachedIndex, reachedInactive, Or.inl
+        ⟨selectedWorkLiteral, inputExact, slotExact, afterExact⟩⟩
+  · have selectedAbsorbLiteral : selected = .machineFresh actor
+        (bytes digest ++ [domAbsorb, finalWorkNonceLabel] ++ bytes nonce)
+          q16Base := by
+      simpa only [literal_final_work_key_absorb_input] using selectedAbsorb
+    have inputExact : unifiedInputBeforeAnswer? transitionFuel reached.cursor =
+        some (bytes digest ++
+          [domAbsorb, finalWorkNonceLabel] ++ bytes nonce) := by
+      apply aligned_machine_record_has_exact_input transitionFuel reached.cursor
+        actor
+        (bytes digest ++ [domAbsorb, finalWorkNonceLabel] ++ bytes nonce) q16Base
+      have recordExact := selectedAligned
+      rw [selectedAbsorbLiteral] at recordExact
+      simpa only [UnifiedExposureRecord.answer] using recordExact
+    have afterExact :
+        candidateAfterMemory transitionFuel index reached q16Base =
+          .tracked (literalFinalWorkKey digest nonce) false (some q16Base)
+            emptyRawQ16Branches := by
+      simp [candidateAfterMemory, inputExact, reachedIndex, reachedInactive,
+        inactiveCandidateMemory]
+    exact ⟨prior, selected, later, reached, actor, recordsExact, lengthExact,
+      rfl, reachedIndex, reachedInactive, Or.inr
+        ⟨selectedAbsorbLiteral, inputExact, afterExact⟩⟩
+
 #print axioms unified_record_at_answer_answer
 #print axioms indexed_state_after_records_exposure_index
 #print axioms trace_prefix_aligns_indexed_state
 #print axioms aligned_machine_record_has_exact_input
 #print axioms candidate_memory_stays_inactive_before_anchor
 #print axioms earliest_literal_pair_aligns_candidate_controller
+#print axioms earliest_exact_literal_pair_aligns_candidate_controller
 
 end
 
