@@ -1,4 +1,5 @@
 import AspisFormal.K1.V7Tag73UniqueRestorationRequests
+import AspisFormal.K1.V7Tag73SchedulerNativeSafety
 
 /-!
 # A finite root-transition sweep client for Tag-73 extraction
@@ -30,6 +31,14 @@ namespace AspisK1.V7Tag73ConcreteRootSweepClient
 
 open AspisK1.V7Tag73ConcreteRestorationClient
 open AspisK1.V7Tag73UniqueRestorationRequests
+open AspisK1.V7Tag73SchedulerNativeResult
+open AspisK1.V7Tag73SchedulerNativeSafety
+open AspisK1.V7FsAokExperiment
+open AspisK1.V7Tag73FutureFreeFullControl
+open AspisK1.V7Tag73RawProverMessages
+open AspisK1.V7Tag73RawSameTapeSource
+open AspisK1.V7Tag73OperationalCausalInjection
+open AspisK1.V7Tag73InteractiveAncestor
 
 universe u
 
@@ -187,6 +196,236 @@ theorem deployed_root_sweep_client_replay_base_safe
   apply repeat_root_transition_sweep_replay_base_safe
   exact ReplayBaseSafeConcreteClient.pure result
 
+/-! ## Exact fuel closure -/
+
+/-- The real one-request dispatcher preserves any terminal property already
+proved for every adaptive reply continuation.  This theorem unfolds the
+actual preparation, fork, replay and verifier-suffix dispatcher; it does not
+replace it by an abstract handler. -/
+theorem dispatch_one_concrete_restoration_preserves_all_returned
+    {Statement Proof Payload Result : Type*}
+    {globalOracleCalls : Nat}
+    (startProgram : OracleMachine
+      (CheckedRawTag73AdversaryReturnedValue Statement Proof Payload))
+    (environment : FutureFreeEnvironment)
+    (configuration : ConcreteRestorationConfiguration)
+    (accumulator : ConcreteRestorationAccumulator Statement Proof Payload)
+    (request : ConcreteRestorationRequest)
+    (resume : ConcreteRestorationReply →
+      ConcreteRestorationAccumulator Statement Proof Payload →
+        SchedulerNativeCursor globalOracleCalls
+          (ConcreteRestorationClientRun Statement Proof Payload Result))
+    (P : ConcreteRestorationClientRun Statement Proof Payload Result → Prop)
+    (continuations : ∀ reply nextAccumulator,
+      SchedulerNativeCursorAllReturned P (resume reply nextAccumulator)) :
+    SchedulerNativeCursorAllReturned P
+      (dispatchOneConcreteRestoration startProgram environment configuration
+        accumulator request resume) := by
+  classical
+  have failureSafe : ∀
+      (failureRequest : ConcreteRestorationRequest)
+      (reason : ConcreteRestorationFailure)
+      (nextAccumulator :
+        ConcreteRestorationAccumulator Statement Proof Payload),
+      SchedulerNativeCursorAllReturned P
+        (resume (.failed reason)
+          (nextAccumulator.addFailure failureRequest reason)) := by
+    intro failureRequest reason nextAccumulator
+    exact continuations _ _
+  generalize preparationExact :
+    prepareConcreteRestorationFromStartProgram startProgram configuration
+      accumulator request = preparation
+  cases preparation with
+  | failed reason prefixSteps prefixRestarts =>
+      simp only [dispatchOneConcreteRestoration,
+        dispatchConcreteRestoration, preparationExact]
+      exact failureSafe request reason _
+  | ready prepared =>
+      simp only [dispatchOneConcreteRestoration,
+        dispatchConcreteRestoration, preparationExact]
+      unfold dispatchPreparedRestoration
+      by_cases prefixCoherent :
+          HistoryTotalCoherent prepared.programmingBase
+      next =>
+        simp only [prefixCoherent, if_pos]
+        by_cases globalLimit :
+            configuration.oracleLimits.totalCalls ≤ globalOracleCalls
+        next =>
+          simp only [globalLimit, if_pos]
+          by_cases pairRoom : prepared.programmingBase.history.length + 2 ≤
+              globalOracleCalls
+          next =>
+            simp only [pairRoom, if_pos]
+            intro forkConfiguration
+            simp only
+            cases programmed : programConcretePair configuration.oracleLimits
+                configuration.pairProgrammingOrder prepared.programmingBase
+                prepared.outputInput prepared.advanceInput
+                forkConfiguration.forkOutput forkConfiguration.forkAdvance with
+            | failed reason inserted =>
+                simp only [programmed]
+                exact failureSafe prepared.request reason _
+            | ready afterBoth =>
+                simp only [programmed]
+                by_cases afterCoherent : HistoryTotalCoherent afterBoth
+                next =>
+                  simp only [afterCoherent, if_pos]
+                  by_cases proverRoom : StageHasOracleRoom
+                      configuration.oracleLimits afterBoth
+                      configuration.proverReplayFuel
+                  next =>
+                    simp only [proverRoom, if_pos]
+                    intro proverStage proverFinalOracle proverCoherent
+                    cases proverStage with
+                    | completed proverResult =>
+                        simp only
+                        cases proverResult with
+                        | error failure =>
+                            cases failure with
+                            | oracleAbort reason =>
+                                exact failureSafe prepared.request
+                                  (.proverReplayAbort reason) _
+                            | timeout =>
+                                exact failureSafe prepared.request
+                                  .proverReplayTimeout _
+                        | ok adversaryValue =>
+                            simp only
+                            by_cases bindingMismatch :
+                                FixedBindings.ofContext
+                                    adversaryValue.rawMessages.context ≠
+                                  prepared.restoredState.current.bindings
+                            next =>
+                              rw [dif_pos bindingMismatch]
+                              exact failureSafe prepared.request
+                                .restoredBindingMismatch _
+                            next =>
+                              rw [dif_neg bindingMismatch]
+                              by_cases verifierRoom : StageHasOracleRoom
+                                  configuration.oracleLimits proverFinalOracle
+                                  configuration.verifierFuel
+                              next =>
+                                simp only [verifierRoom, if_pos]
+                                intro verifierStage verifierFinalOracle
+                                  verifierCoherent
+                                cases verifierStage with
+                                | completed verifierResult =>
+                                    simp only
+                                    cases verifierResult with
+                                    | error failure =>
+                                        cases failure with
+                                        | oracleAbort reason =>
+                                            exact failureSafe prepared.request
+                                              (.verifierSuffixAbort reason) _
+                                        | timeout =>
+                                            exact failureSafe prepared.request
+                                              .verifierSuffixTimeout _
+                                    | ok verifierFinalState =>
+                                        exact continuations (.added _) _
+                              next =>
+                                simp only [verifierRoom, if_neg]
+                                exact failureSafe prepared.request
+                                  .verifierSuffixRoom _
+                  next =>
+                    simp only [proverRoom, if_neg]
+                    exact failureSafe prepared.request .proverReplayRoom _
+                next =>
+                  simp only [afterCoherent, if_neg]
+                  exact failureSafe prepared.request
+                    .incoherentProgrammedOracle _
+          next =>
+            simp only [pairRoom, if_neg]
+            exact failureSafe prepared.request .pairExposureLimit _
+        next =>
+          simp only [globalLimit, if_neg]
+          exact failureSafe prepared.request .globalLimitTooSmall _
+      next =>
+        simp only [prefixCoherent, if_neg]
+        exact failureSafe prepared.request .incoherentPrefixOracle _
+
+/-- A structurally certified client cannot reach the interpreter's
+`restorationFuelExhausted` terminal when its exact request count fits in the
+supplied fuel.  This closes the previously external `clientReturned` fact for
+all reply-insensitive finite clients, including the deployed root sweep. -/
+theorem exact_request_count_prevents_fuel_exhaustion
+    {Statement Proof Payload Result : Type*}
+    {globalOracleCalls : Nat}
+    (startProgram : OracleMachine
+      (CheckedRawTag73AdversaryReturnedValue Statement Proof Payload))
+    (environment : FutureFreeEnvironment)
+    (root : ConcreteRestorationNode Statement Proof Payload)
+    (configuration : ConcreteRestorationConfiguration)
+    (fuel count : Nat)
+    (client : ConcreteRestorationClient Result)
+    (result : Result)
+    (exactCount : ExactRequestCount result count client)
+    (fuelEnough : count ≤ fuel) :
+    SchedulerNativeCursorAllReturned
+      (fun run : ConcreteRestorationClientRun Statement Proof Payload Result =>
+        run.halt = .returned result)
+      (startConcreteRestorationClientFromRoot
+        (globalOracleCalls := globalOracleCalls) startProgram environment root
+        configuration fuel client) := by
+  let P := fun run : ConcreteRestorationClientRun Statement Proof Payload
+      Result => run.halt = .returned result
+  let motive := fun (remainingFuel : Nat)
+      (_accumulator : ConcreteRestorationAccumulator Statement Proof Payload)
+      (residualClient : ConcreteRestorationClient Result)
+      (cursor : SchedulerNativeCursor globalOracleCalls
+        (ConcreteRestorationClientRun Statement Proof Payload Result)) =>
+      ∀ residualCount,
+        ExactRequestCount result residualCount residualClient →
+        residualCount ≤ remainingFuel →
+        SchedulerNativeCursorAllReturned P cursor
+  have induction :=
+    start_concrete_restoration_client_from_root_dependent_induction
+      (globalOracleCalls := globalOracleCalls) startProgram environment root
+      configuration fuel client motive
+      (by
+        intro remainingFuel accumulator terminalResult residualCount certified
+          enough
+        cases certified
+        rfl)
+      (by
+        intro accumulator request next residualCount certified enough
+        cases certified with
+        | restore request next tails => omega)
+      (by
+        intro remainingFuel accumulator request next resume continuations
+          residualCount certified enough
+        cases certified with
+        | restore certifiedRequest certifiedNext tails =>
+            apply dispatch_one_concrete_restoration_preserves_all_returned
+              startProgram environment configuration accumulator request resume
+              P
+            intro reply nextAccumulator
+            exact continuations reply nextAccumulator _ (tails reply) (by omega))
+  exact induction count exactCount fuelEnough
+
+/-- Production specialization: `rounds * 1511` restoration fuel is sufficient
+for the complete deployed root-transition sweep to return its fixed result on
+every scheduler branch. -/
+theorem deployed_root_sweep_client_returns
+    {Statement Proof Payload Result : Type*}
+    {globalOracleCalls : Nat}
+    (startProgram : OracleMachine
+      (CheckedRawTag73AdversaryReturnedValue Statement Proof Payload))
+    (environment : FutureFreeEnvironment)
+    (root : ConcreteRestorationNode Statement Proof Payload)
+    (configuration : ConcreteRestorationConfiguration)
+    (rounds : Nat) (result : Result) :
+    SchedulerNativeCursorAllReturned
+      (fun run : ConcreteRestorationClientRun Statement Proof Payload Result =>
+        run.halt = .returned result)
+      (startConcreteRestorationClientFromRoot
+        (globalOracleCalls := globalOracleCalls) startProgram environment root
+        configuration (rounds * 1511)
+        (deployedRootSweepClient rounds result)) := by
+  apply exact_request_count_prevents_fuel_exhaustion
+    startProgram environment root configuration (rounds * 1511)
+    (rounds * 1511) (deployedRootSweepClient rounds result) result
+  · exact deployed_root_sweep_client_exact_request_count rounds result
+  · exact Nat.le_refl _
+
 #print axioms prepend_root_transition_sweep_exact_request_count
 #print axioms prepend_root_transition_sweep_adds_exact_request_count
 #print axioms repeat_root_transition_sweep_exact_request_count
@@ -194,5 +433,8 @@ theorem deployed_root_sweep_client_replay_base_safe
 #print axioms repeat_root_transition_sweep_replay_base_safe
 #print axioms deployed_root_sweep_client_exact_request_count
 #print axioms deployed_root_sweep_client_replay_base_safe
+#print axioms dispatch_one_concrete_restoration_preserves_all_returned
+#print axioms exact_request_count_prevents_fuel_exhaustion
+#print axioms deployed_root_sweep_client_returns
 
 end AspisK1.V7Tag73ConcreteRootSweepClient
