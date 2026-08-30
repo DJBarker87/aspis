@@ -1,5 +1,7 @@
 import AspisFormal.K1.V7Tag73UniqueRestorationRequests
 import AspisFormal.K1.V7Tag73SchedulerNativeSafety
+import AspisFormal.K1.V7Tag73CompletedFullRunProjection
+import AspisFormal.K1.V7Tag73ExactClientKnowledgeComposition
 
 /-!
 # A finite root-transition sweep client for Tag-73 extraction
@@ -26,6 +28,7 @@ probability, transcript-role, or extraction premise.
 -/
 
 set_option autoImplicit false
+set_option maxRecDepth 1000000
 
 namespace AspisK1.V7Tag73ConcreteRootSweepClient
 
@@ -39,6 +42,11 @@ open AspisK1.V7Tag73RawProverMessages
 open AspisK1.V7Tag73RawSameTapeSource
 open AspisK1.V7Tag73OperationalCausalInjection
 open AspisK1.V7Tag73InteractiveAncestor
+open AspisK1.V7Tag73CompletedFullRunProjection
+open AspisK1.V7Tag73ExactClientKnowledgeComposition
+open AspisK1.V7Tag73ExactCompilerResources
+open AspisK1.V7Tag73ExactPlainRomRun
+open AspisK1.V7Tag73SchedulerNativePlainRomExperiment
 
 universe u
 
@@ -426,6 +434,123 @@ theorem deployed_root_sweep_client_returns
   · exact deployed_root_sweep_client_exact_request_count rounds result
   · exact Nat.le_refl _
 
+/-! ## Production configuration and completed-run consequence -/
+
+/-- Replace an arbitrary witness configuration's client by the concrete
+deployed root sweep while preserving every machine and replay parameter.
+The only new premise is the honest resource inequality demanded by the exact
+compiler model. -/
+def exactRootSweepWitnessConfiguration
+    {HiddenTape TapeIdentity Observation Statement Proof Payload Witness : Type}
+    {parameters : ExactCompilerResourceParameters}
+    (base : ExactPlainRomWitnessConfiguration HiddenTape TapeIdentity
+      Observation Statement Proof Payload Witness parameters)
+    (rounds : Nat)
+    (extractor : ExactPlainRomWitnessExtractor Statement Proof Payload Witness)
+    (withinForkCap : rounds * 1511 ≤ parameters.forkRequestCap) :
+    ExactPlainRomWitnessConfiguration HiddenTape TapeIdentity Observation
+      Statement Proof Payload Witness parameters where
+  machine := base.machine
+  restorationConfiguration := base.restorationConfiguration
+  restorationFuel := rounds * 1511
+  client := deployedRootSweepClient rounds extractor
+  bounds :=
+    { rootAdversaryTotalCalls := base.bounds.rootAdversaryTotalCalls
+      rootVerifierTotalCalls := base.bounds.rootVerifierTotalCalls
+      replayTotalCalls := base.bounds.replayTotalCalls
+      rootAdversaryFuel := base.bounds.rootAdversaryFuel
+      rootVerifierFuel := base.bounds.rootVerifierFuel
+      replayAdversaryFuel := base.bounds.replayAdversaryFuel
+      replayVerifierFuel := base.bounds.replayVerifierFuel
+      restorationRequests := withinForkCap }
+
+@[simp] theorem exact_root_sweep_configuration_machine
+    {HiddenTape TapeIdentity Observation Statement Proof Payload Witness : Type}
+    {parameters : ExactCompilerResourceParameters}
+    (base : ExactPlainRomWitnessConfiguration HiddenTape TapeIdentity
+      Observation Statement Proof Payload Witness parameters)
+    (rounds : Nat)
+    (extractor : ExactPlainRomWitnessExtractor Statement Proof Payload Witness)
+    (withinForkCap : rounds * 1511 ≤ parameters.forkRequestCap) :
+    (exactRootSweepWitnessConfiguration base rounds extractor withinForkCap).machine =
+      base.machine := by
+  rfl
+
+@[simp] theorem exact_root_sweep_configuration_client
+    {HiddenTape TapeIdentity Observation Statement Proof Payload Witness : Type}
+    {parameters : ExactCompilerResourceParameters}
+    (base : ExactPlainRomWitnessConfiguration HiddenTape TapeIdentity
+      Observation Statement Proof Payload Witness parameters)
+    (rounds : Nat)
+    (extractor : ExactPlainRomWitnessExtractor Statement Proof Payload Witness)
+    (withinForkCap : rounds * 1511 ≤ parameters.forkRequestCap) :
+    (exactRootSweepWitnessConfiguration base rounds extractor
+        withinForkCap).client = deployedRootSweepClient rounds extractor := by
+  rfl
+
+/-- Any completed exact compiler run of the production sweep configuration
+has returned the fixed extractor.  The conclusion is derived from the actual
+cursor terminal and the fuel theorem above; it is no longer a per-sample
+`clientReturned` premise. -/
+theorem completed_exact_root_sweep_returns_extractor
+    {HiddenTape TapeIdentity Observation Statement Proof Payload Witness : Type}
+    {parameters : ExactCompilerResourceParameters}
+    (transitionFuel : Nat) (positive : 0 < transitionFuel)
+    (base : ExactPlainRomWitnessConfiguration HiddenTape TapeIdentity
+      Observation Statement Proof Payload Witness parameters)
+    (rounds : Nat)
+    (extractor : ExactPlainRomWitnessExtractor Statement Proof Payload Witness)
+    (withinForkCap : rounds * 1511 ≤ parameters.forkRequestCap)
+    (sample : ExactCompilerSample HiddenTape parameters)
+    (runtime : SchedulerNativePlainRomRootRuntime TapeIdentity Statement Proof
+      Payload)
+    (clientRun : ConcreteRestorationClientRun Statement Proof Payload
+      (ExactPlainRomWitnessExtractor Statement Proof Payload Witness))
+    (completed :
+      (runExactPlainRom transitionFuel
+          (exactRootSweepWitnessConfiguration base rounds extractor
+            withinForkCap) sample).terminal =
+        .returned (.completed runtime clientRun)) :
+    clientRun.halt = .returned extractor := by
+  let configuration := exactRootSweepWitnessConfiguration base rounds extractor
+    withinForkCap
+  let projection := Classical.choice
+    (completed_exact_plain_rom_gives_root_and_store_projection_nonempty
+      transitionFuel positive configuration sample runtime clientRun (by
+        simpa [configuration] using completed))
+  have safe : SchedulerNativeCursorAllReturned
+      (fun run : ConcreteRestorationClientRun Statement Proof Payload
+          (ExactPlainRomWitnessExtractor Statement Proof Payload Witness) =>
+        run.halt = .returned extractor)
+      (startConcreteRestorationClientFromRoot
+        (globalOracleCalls := globalFull256OracleCallCap parameters)
+        (configuration.machine.blackBox.start sample.1
+          configuration.machine.observation)
+        configuration.machine.environment runtime.node
+        configuration.restorationConfiguration configuration.restorationFuel
+        configuration.client) := by
+    change SchedulerNativeCursorAllReturned
+      (fun run : ConcreteRestorationClientRun Statement Proof Payload
+          (ExactPlainRomWitnessExtractor Statement Proof Payload Witness) =>
+        run.halt = .returned extractor)
+      (startConcreteRestorationClientFromRoot
+        (globalOracleCalls := globalFull256OracleCallCap parameters)
+        (base.machine.blackBox.start sample.1 base.machine.observation)
+        base.machine.environment runtime.node base.restorationConfiguration
+        (rounds * 1511) (deployedRootSweepClient rounds extractor))
+    exact deployed_root_sweep_client_returns
+      (globalOracleCalls := globalFull256OracleCallCap parameters)
+      (base.machine.blackBox.start sample.1 base.machine.observation)
+      base.machine.environment runtime.node base.restorationConfiguration
+      rounds extractor
+  exact run_scheduler_native_list_terminal_respects_all_returned
+    (fun run : ConcreteRestorationClientRun Statement Proof Payload
+        (ExactPlainRomWitnessExtractor Statement Proof Payload Witness) =>
+      run.halt = .returned extractor)
+    transitionFuel projection.clientCurrentTransitionFuel _
+    projection.rootPrefixes.verifier.remaining clientRun safe
+    projection.clientTerminalExact
+
 #print axioms prepend_root_transition_sweep_exact_request_count
 #print axioms prepend_root_transition_sweep_adds_exact_request_count
 #print axioms repeat_root_transition_sweep_exact_request_count
@@ -436,5 +561,7 @@ theorem deployed_root_sweep_client_returns
 #print axioms dispatch_one_concrete_restoration_preserves_all_returned
 #print axioms exact_request_count_prevents_fuel_exhaustion
 #print axioms deployed_root_sweep_client_returns
+#print axioms exactRootSweepWitnessConfiguration
+#print axioms completed_exact_root_sweep_returns_extractor
 
 end AspisK1.V7Tag73ConcreteRootSweepClient
