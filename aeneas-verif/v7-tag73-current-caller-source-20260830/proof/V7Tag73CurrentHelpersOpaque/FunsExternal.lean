@@ -1,0 +1,158 @@
+import V7Tag73CurrentHelpersOpaque.FunsExternalBase
+import V7GammaSlotMajorLiteral.Funs
+import V7Qm31Dot3Reduced.Funs
+
+open Aeneas Aeneas.Std Result ControlFlow Error
+set_option linter.dupNamespace false
+set_option linter.hashCommand false
+set_option linter.unusedVariables false
+namespace V7Tag73CurrentHelpersOpaqueHelpersSplit
+
+def mapArray {A B : Type} {N : Std.Usize} (f : A → B)
+    (values : Array A N) : Array B N :=
+  ⟨values.val.map f, by simpa using values.property⟩
+
+def mapSlice {A B : Type} (f : A → B) (values : Slice A) : Slice B :=
+  ⟨values.val.map f, by simpa using values.property⟩
+
+def toGammaPrepared
+    (value : V7Tag73CurrentHelpersOpaque.aspis_core.field.PreparedQm31Multiplier) :
+    V7GammaSlotMajorLiteral.field.PreparedQm31Multiplier :=
+  { components := value.components }
+
+def toGammaBase
+    (value : V7Tag73CurrentHelpersOpaque.aspis_core.state_only_query.StateOnlyQueryPowers) :
+    V7GammaSlotMajorLiteral.state_only_query.StateOnlyQueryPowers :=
+  { c1_limbs := value.c1_limbs
+    helpers := mapArray toGammaPrepared value.helpers }
+
+def toGammaPowers
+    (value : V7Tag73CurrentHelpersOpaque.aspis_core.state_only_spend_query.StateOnlySpendQueryPowers) :
+    V7GammaSlotMajorLiteral.state_only_spend_query.StateOnlySpendQueryPowers :=
+  { base := toGammaBase value.base
+    d := toGammaPrepared value.d }
+
+def toDotM31 (value : V7Tag73CurrentHelpersOpaque.aspis_core.field.M31) :
+    V7Qm31Dot3Reduced.field.M31 := value
+
+def toDotCM31 (value : V7Tag73CurrentHelpersOpaque.aspis_core.field.CM31) :
+    V7Qm31Dot3Reduced.field.CM31 :=
+  { a := toDotM31 value.a, b := toDotM31 value.b }
+
+def toDotQM31 (value : V7Tag73CurrentHelpersOpaque.aspis_core.field.QM31) :
+    V7Qm31Dot3Reduced.field.QM31 :=
+  { c0 := toDotCM31 value.c0
+    c1 := toDotCM31 value.c1 }
+
+def toDotSlice (values : Slice V7Tag73CurrentHelpersOpaque.aspis_core.field.QM31) :
+    Slice V7Qm31Dot3Reduced.field.QM31 :=
+  mapSlice toDotQM31 values
+
+def fromGammaCM31 (value : V7GammaSlotMajorLiteral.field.CM31) :
+    V7Tag73CurrentHelpersOpaque.aspis_core.field.CM31 :=
+  { a := value.a, b := value.b }
+
+def fromGammaQM31 (value : V7GammaSlotMajorLiteral.field.QM31) :
+    V7Tag73CurrentHelpersOpaque.aspis_core.field.QM31 :=
+  { c0 := fromGammaCM31 value.c0
+    c1 := fromGammaCM31 value.c1 }
+
+def fromDotM31 (value : V7Qm31Dot3Reduced.field.M31) :
+    V7Tag73CurrentHelpersOpaque.aspis_core.field.M31 := value
+
+def fromDotCM31 (value : V7Qm31Dot3Reduced.field.CM31) :
+    V7Tag73CurrentHelpersOpaque.aspis_core.field.CM31 :=
+  { a := fromDotM31 value.a, b := fromDotM31 value.b }
+
+def fromDotQM31 (value : V7Qm31Dot3Reduced.field.QM31) :
+    V7Tag73CurrentHelpersOpaque.aspis_core.field.QM31 :=
+  { c0 := fromDotCM31 value.c0
+    c1 := fromDotCM31 value.c1 }
+
+theorem gamma_input_components_exact
+    (value : V7Tag73CurrentHelpersOpaque.aspis_core.field.PreparedQm31Multiplier) :
+    (toGammaPrepared value).components = value.components := rfl
+
+theorem gamma_input_c1_limbs_exact
+    (value : V7Tag73CurrentHelpersOpaque.aspis_core.state_only_query.StateOnlyQueryPowers) :
+    (toGammaBase value).c1_limbs = value.c1_limbs := rfl
+
+theorem gamma_output_limbs_exact
+    (value : V7GammaSlotMajorLiteral.field.QM31) :
+    (fromGammaQM31 value).c0.a = value.c0.a ∧
+    (fromGammaQM31 value).c0.b = value.c0.b ∧
+    (fromGammaQM31 value).c1.a = value.c1.a ∧
+    (fromGammaQM31 value).c1.b = value.c1.b := by
+  exact ⟨rfl, rfl, rfl, rfl⟩
+
+theorem dot_input_limbs_exact
+    (value : V7Tag73CurrentHelpersOpaque.aspis_core.field.QM31) :
+    (toDotQM31 value).c0.a = value.c0.a ∧
+    (toDotQM31 value).c0.b = value.c0.b ∧
+    (toDotQM31 value).c1.a = value.c1.a ∧
+    (toDotQM31 value).c1.b = value.c1.b := by
+  exact ⟨rfl, rfl, rfl, rfl⟩
+
+theorem dot_output_limbs_exact
+    (value : V7Qm31Dot3Reduced.field.QM31) :
+    (fromDotQM31 value).c0.a = value.c0.a ∧
+    (fromDotQM31 value).c0.b = value.c0.b ∧
+    (fromDotQM31 value).c1.a = value.c1.a ∧
+    (fromDotQM31 value).c1.b = value.c1.b := by
+  exact ⟨rfl, rfl, rfl, rfl⟩
+
+end V7Tag73CurrentHelpersOpaqueHelpersSplit
+
+namespace V7Tag73CurrentHelpersOpaque
+
+@[rust_fun "aspis_core::v6_onefold::gamma_combine_v6_c1_slot_major"]
+def aspis_core.v6_onefold.gamma_combine_v6_c1_slot_major
+    (c1 : Array Std.U32 104#usize)
+    (powers : aspis_core.state_only_spend_query.StateOnlySpendQueryPowers) :
+    Result (Array aspis_core.field.QM31 4#usize) := do
+  let output ←
+    V7GammaSlotMajorLiteral.v6_onefold.gamma_combine_v6_c1_slot_major
+      c1 (V7Tag73CurrentHelpersOpaqueHelpersSplit.toGammaPowers powers)
+  .ok
+    (V7Tag73CurrentHelpersOpaqueHelpersSplit.mapArray
+      V7Tag73CurrentHelpersOpaqueHelpersSplit.fromGammaQM31 output)
+
+@[rust_fun "aspis_core::field::qm31_dot3"]
+def aspis_core.field.qm31_dot3
+    (weights : Slice aspis_core.field.QM31)
+    (values : Array (Slice aspis_core.field.QM31) 3#usize) :
+    Result (Array aspis_core.field.QM31 3#usize) := do
+  let output ←
+    V7Qm31Dot3Reduced.field.qm31_dot3
+      (V7Tag73CurrentHelpersOpaqueHelpersSplit.toDotSlice weights)
+      (V7Tag73CurrentHelpersOpaqueHelpersSplit.mapArray
+        V7Tag73CurrentHelpersOpaqueHelpersSplit.toDotSlice values)
+  .ok
+    (V7Tag73CurrentHelpersOpaqueHelpersSplit.mapArray
+      V7Tag73CurrentHelpersOpaqueHelpersSplit.fromDotQM31 output)
+
+theorem gamma_combine_v6_c1_slot_major_split_exact
+    (c1 : Array Std.U32 104#usize)
+    (powers : aspis_core.state_only_spend_query.StateOnlySpendQueryPowers) :
+    aspis_core.v6_onefold.gamma_combine_v6_c1_slot_major c1 powers = (do
+      let output ←
+        V7GammaSlotMajorLiteral.v6_onefold.gamma_combine_v6_c1_slot_major
+          c1 (V7Tag73CurrentHelpersOpaqueHelpersSplit.toGammaPowers powers)
+      .ok
+        (V7Tag73CurrentHelpersOpaqueHelpersSplit.mapArray
+          V7Tag73CurrentHelpersOpaqueHelpersSplit.fromGammaQM31 output)) := rfl
+
+theorem qm31_dot3_split_exact
+    (weights : Slice aspis_core.field.QM31)
+    (values : Array (Slice aspis_core.field.QM31) 3#usize) :
+    aspis_core.field.qm31_dot3 weights values = (do
+      let output ←
+        V7Qm31Dot3Reduced.field.qm31_dot3
+          (V7Tag73CurrentHelpersOpaqueHelpersSplit.toDotSlice weights)
+          (V7Tag73CurrentHelpersOpaqueHelpersSplit.mapArray
+            V7Tag73CurrentHelpersOpaqueHelpersSplit.toDotSlice values)
+      .ok
+        (V7Tag73CurrentHelpersOpaqueHelpersSplit.mapArray
+          V7Tag73CurrentHelpersOpaqueHelpersSplit.fromDotQM31 output)) := rfl
+
+end V7Tag73CurrentHelpersOpaque

@@ -1,0 +1,5 @@
+normalized exact two no-op Unit FnMut callbacks: PASS
+qualified exact 80 post-shadow Aeneas.Std.lift calls: PASS
+chunked five exact generated circle tables: PASS
+chunked exact 15-entry atomic copy-pattern registry: PASS
+current caller helper-split staging: PASS

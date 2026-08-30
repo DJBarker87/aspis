@@ -1,0 +1,208 @@
+diff --git a/crates/aspis-statement/src/atomic_state_only_terminal.rs b/crates/aspis-statement/src/atomic_state_only_terminal.rs
+index 38faf13..6eabab7 100644
+--- a/crates/aspis-statement/src/atomic_state_only_terminal.rs
++++ b/crates/aspis-statement/src/atomic_state_only_terminal.rs
+@@ -140,11 +140,23 @@ pub fn atomic_state_only_copy_inactive_row_groups_v3() -> &'static [u8; 64] {
+     &constants::COMPILED_ATOMIC_COPY_INACTIVE_ROW_GROUPS
+ }
+ 
++pub fn atomic_state_only_copy_inactive_row_groups_owned_v3() -> [u8; 64] {
++    constants::COMPILED_ATOMIC_COPY_INACTIVE_ROW_GROUPS
++}
++
+ /// Deduplicated masks referenced by
+ /// [`atomic_state_only_copy_inactive_row_groups_v3`].
+ pub fn atomic_state_only_copy_inactive_group_masks_v3() -> &'static [u16] {
+     &constants::COMPILED_ATOMIC_COPY_INACTIVE_GROUP_MASKS
+ }
+ 
++pub fn atomic_state_only_copy_inactive_group_masks_owned_v3() -> [u16; 7] {
++    constants::COMPILED_ATOMIC_COPY_INACTIVE_GROUP_MASKS
++}
++
+ pub fn atomic_state_only_copy_inactive_indicator_v3() -> Vec<QM31> {
+     atomic_state_only_copy_inactive_row_masks_v3()
+         .into_iter()
+@@ -254,14 +254,14 @@ impl AtomicSelectors {
+     }
+ 
+     fn copy_active(&self) -> QM31 {
+-        constants::COMPILED_ATOMIC_COPY_ACTIVE_FACTORS
+-            .iter()
+-            .copied()
+-            .fold(QM31::ZERO, |sum, (high_mask, low_mask)| {
++        constants::COMPILED_ATOMIC_COPY_ACTIVE_FACTORS.iter().fold(
++            QM31::ZERO,
++            |sum, &(high_mask, low_mask)| {
+                 let high = atomic_selector_mask_sum_64(&self.high, high_mask);
+                 let low = atomic_selector_mask_sum_16(&self.low, low_mask);
+                 sum.add(high.mul(low))
+-            })
++            },
++        )
+     }
+ }
+ 
+@@ -357,8 +357,7 @@ impl AtomicCrossSelectors {
+         let semantic_mid = core::array::from_fn(|middle| {
+             copy.high[middle * 16..(middle + 1) * 16]
+                 .iter()
+-                .copied()
+-                .fold(QM31::ZERO, QM31::add)
++                .fold(QM31::ZERO, |sum, value| sum.add(*value))
+         });
+         let semantic_local = core::array::from_fn(|local| {
+             copy.high[local]
+@@ -372,10 +371,11 @@ impl AtomicCrossSelectors {
+         // complete upper fibres, so both selectors stay sparse in this split.
+         let poseidon_block = copy.low[..12]
+             .iter()
+-            .copied()
+-            .fold(QM31::ZERO, QM31::add)
++            .fold(QM31::ZERO, |sum, value| sum.add(*value))
+             .add(copy.low[12].mul(semantic_mid[0]));
+-        let path_block = copy.low[1..11].iter().copied().fold(QM31::ZERO, QM31::add);
++        let path_block = copy.low[1..11]
++            .iter()
++            .fold(QM31::ZERO, |sum, value| sum.add(*value));
+         Self {
+             copy,
+             semantic_mid,
+@@ -748,6 +748,47 @@ fn evaluate_factorized_routing_linear_forms(
+             }
+         })
+         .collect()
++}
++
++#[inline(never)]
++fn add_atomic_copy_routing_destinations(
++    mut matrices: Vec<QM31>,
++    product: QM31,
++    start: usize,
++    len: usize,
++) -> Vec<QM31> {
++    let destinations = constants::ATOMIC_COPY_ROUTING_DESTINATIONS;
++    let mut destination_index = start;
++    let destination_end = start + len;
++    while destination_index < destination_end {
++        let matrix_index = usize::from(destinations[destination_index]);
++        let updated = matrices[matrix_index].add(product);
++        matrices[matrix_index] = updated;
++        destination_index += 1;
++    }
++    matrices
++}
++
++#[inline(never)]
++fn accumulate_atomic_copy_routing(
++    left_values: Vec<QM31>,
++    right_prepared: Vec<PreparedQm31Multiplier>,
++) -> Vec<QM31> {
++    let pair_terms = constants::ATOMIC_COPY_ROUTING_PAIR_TERMS;
++    let mut matrices = vec![QM31::ZERO; 4 * (2 + ATOMIC_STATE_ONLY_COMPILED_COPY_PATTERNS)];
++    let mut pair_index = 0usize;
++    while pair_index < pair_terms.len() {
++        let (left, right, matrix_start, matrix_len) = pair_terms[pair_index];
++        let product = right_prepared[usize::from(right)].mul(left_values[usize::from(left)]);
++        matrices = add_atomic_copy_routing_destinations(
++            matrices,
++            product,
++            usize::from(matrix_start),
++            usize::from(matrix_len),
++        );
++        pair_index += 1;
++    }
++    matrices
+ }
+ 
+ fn evaluate_atomic_copy_routing(selectors: &AtomicSelectors) -> Vec<QM31> {
+@@ -767,20 +808,9 @@ fn evaluate_atomic_copy_routing(selectors: &AtomicSelectors) -> Vec<QM31> {
+     );
+     let right_prepared = right_values
+         .iter()
+-        .copied()
+-        .map(PreparedQm31Multiplier::new)
++        .map(|value| PreparedQm31Multiplier::new(*value))
+         .collect::<Vec<_>>();
+-    let mut matrices = vec![QM31::ZERO; 4 * (2 + ATOMIC_STATE_ONLY_COMPILED_COPY_PATTERNS)];
+-    for &(left, right, matrix_start, matrix_len) in &constants::ATOMIC_COPY_ROUTING_PAIR_TERMS {
+-        let product = right_prepared[usize::from(right)].mul(left_values[usize::from(left)]);
+-        let start = usize::from(matrix_start);
+-        for &matrix in
+-            &constants::ATOMIC_COPY_ROUTING_DESTINATIONS[start..start + usize::from(matrix_len)]
+-        {
+-            matrices[usize::from(matrix)] = matrices[usize::from(matrix)].add(product);
+-        }
+-    }
+-    matrices
++    accumulate_atomic_copy_routing(left_values, right_prepared)
+ }
+ 
+ fn evaluate_atomic_copy_routing_legacy(selectors: &LegacyAtomicSelectors) -> Vec<QM31> {
+@@ -1066,7 +1096,7 @@ fn atomic_retained_initial_sums<S: AtomicSemanticSelectorView>(
+         let block = usize::from(state_constants::INITIAL_BLOCKS[index].0) >> 4;
+         selectors.block(block)
+     });
+-    let high_sum = highs.iter().copied().fold(QM31::ZERO, QM31::add);
++    let high_sum = highs.iter().fold(QM31::ZERO, |sum, value| sum.add(*value));
+     let domains = ATOMIC_RETAINED_INITIAL_BLOCK_INDICES
+         .map(|index| M31(state_constants::INITIAL_BLOCKS[index].1));
+     let lengths = ATOMIC_RETAINED_INITIAL_BLOCK_INDICES
+@@ -1198,15 +1228,14 @@ fn atomic_semantic_lane(
+     atomic_add_preweighted(&mut packed, 66, &fee_total);
+     trace(StateOnlyTerminalDiagnosticPhase::SemanticRange);
+ 
+-    let public_digests = [
+-        &statement.spend.anchor,
+-        &statement.output_anchor,
+-        &statement.spend.nullifier,
+-        &statement.spend.output_commitment,
++    let public_residuals: [[QM31; DIGEST_ELEMS]; 4] = [
++        core::array::from_fn(|limb| openings.z[limb].sub(lift(statement.spend.anchor[limb]))),
++        core::array::from_fn(|limb| openings.z[limb].sub(lift(statement.output_anchor[limb]))),
++        core::array::from_fn(|limb| openings.z[limb].sub(lift(statement.spend.nullifier[limb]))),
++        core::array::from_fn(|limb| {
++            openings.z[limb].sub(lift(statement.spend.output_commitment[limb]))
++        }),
+     ];
+-    let public_residuals: [[QM31; DIGEST_ELEMS]; 4] = core::array::from_fn(|input| {
+-        core::array::from_fn(|limb| openings.z[limb].sub(lift(public_digests[input][limb])))
+-    });
+     let public_selectors = [23usize, 43, 45, 48].map(|block| selectors.row(block * 16 + 11));
+     atomic_accumulate4(&mut packed, 67, &public_residuals, public_selectors);
+ 
+diff --git a/programs/aspis-verifier/src/v7_verifier.rs b/programs/aspis-verifier/src/v7_verifier.rs
+index 2dd8523..1a1dedf 100644
+--- a/programs/aspis-verifier/src/v7_verifier.rs
++++ b/programs/aspis-verifier/src/v7_verifier.rs
+@@ -24,8 +24,8 @@ use aspis_core::v7_onefold::{verify_and_gamma_combine_v7_openings, V7CompactOne
+ use aspis_core::{state_only_hiding::StateOnlyHidingContext, HashFn};
+ use aspis_statement::atomic_state_only_terminal::{
+-    atomic_state_only_copy_inactive_group_masks_v3, atomic_state_only_copy_inactive_row_groups_v3,
+-    atomic_state_only_selected_masked_terminal_value_compiled_tag73,
++    atomic_state_only_copy_inactive_group_masks_owned_v3,
++    atomic_state_only_copy_inactive_row_groups_owned_v3,
++    atomic_state_only_selected_masked_terminal_value_compiled_tag73,
+ };
+ use aspis_statement::{
+     atomic_payment_statement_digest_v4,
+@@ -260,6 +260,8 @@ pub fn verify_v7_read_only_with_statement_digest(
+     statement_digest: [u8; 32],
+     check_pow: bool,
+ ) -> Result<VerifiedV7ReadOnly, V7VerifyError> {
++    let inactive_row_groups = atomic_state_only_copy_inactive_row_groups_owned_v3();
++    let inactive_group_masks = atomic_state_only_copy_inactive_group_masks_owned_v3();
+     let wire = V7CompactOneFoldWire::parse_deferred_canonicality(proof, frontier_nodes)?;
+     let context = V6TranscriptContext {
+         program_id: program_id.to_bytes(),
+@@ -271,8 +273,8 @@ pub fn verify_v7_read_only_with_statement_digest(
+         hash,
+         &wire,
+         &context,
+-        atomic_state_only_copy_inactive_row_groups_v3(),
+-        atomic_state_only_copy_inactive_group_masks_v3(),
++        &inactive_row_groups,
++        &inactive_group_masks,
+         check_pow,
+         |view| terminal_matches(statement, view),
+         |view| authenticate_and_fold_queries(hash, &wire, view),

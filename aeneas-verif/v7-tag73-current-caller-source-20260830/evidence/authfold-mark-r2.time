@@ -1,0 +1,24 @@
+Command exited with non-zero status 2
+	Command being timed: "/bin/bash -lc set -o pipefail; task=/home/dombarker/project-offloads/aspis-v7-aeneas-source-unblock-20260830; \/home/dombarker/project-offloads/aspis-v7-aeneas-source-unblock-20260830/aeneas-caller-unbound-diag-r2 -sequential -no-progress-bar -abort-on-error -mark-ids s19890 -print-error-emitters -backend lean -namespace V7AuthenticateFoldFocusedMark -dest \/home/dombarker/project-offloads/aspis-v7-aeneas-source-unblock-20260830/generated-authfold-mark-r2 -subdir V7AuthenticateFoldFocused -split-files -emit-json \/home/dombarker/project-offloads/aspis-v7-aeneas-source-unblock-20260830/extraction/V7AuthenticateFoldFocused.llbc >\/home/dombarker/project-offloads/aspis-v7-aeneas-source-unblock-20260830/logs/authfold-mark-r2.log 2>&1"
+	User time (seconds): 51.93
+	System time (seconds): 0.16
+	Percent of CPU this job got: 99%
+	Elapsed (wall clock) time (h:mm:ss or m:ss): 0:52.11
+	Average shared text size (kbytes): 0
+	Average unshared data size (kbytes): 0
+	Average stack size (kbytes): 0
+	Average total size (kbytes): 0
+	Maximum resident set size (kbytes): 463656
+	Average resident set size (kbytes): 0
+	Major (requiring I/O) page faults: 99
+	Minor (reclaiming a frame) page faults: 124783
+	Voluntary context switches: 127
+	Involuntary context switches: 463
+	Swaps: 0
+	File system inputs: 31696
+	File system outputs: 56
+	Socket messages sent: 0
+	Socket messages received: 0
+	Signals delivered: 0
+	Page size (bytes): 4096
+	Exit status: 2

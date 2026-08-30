@@ -1,0 +1,76 @@
+namespace V7AuthenticateFoldGammaOpaqueSplit
+
+def mapArray {A B : Type} {N : Std.Usize} (f : A → B)
+    (values : Array A N) : Array B N :=
+  ⟨values.val.map f, by simpa using values.property⟩
+
+def toLiteralPrepared
+    (value : V7AuthenticateFoldGammaOpaque.aspis_core.field.PreparedQm31Multiplier) :
+    V7GammaSlotMajorLiteral.field.PreparedQm31Multiplier :=
+  { components := value.components }
+
+def toLiteralBase
+    (value : V7AuthenticateFoldGammaOpaque.aspis_core.state_only_query.StateOnlyQueryPowers) :
+    V7GammaSlotMajorLiteral.state_only_query.StateOnlyQueryPowers :=
+  { c1_limbs := value.c1_limbs
+    helpers := mapArray toLiteralPrepared value.helpers }
+
+def toLiteralPowers
+    (value : V7AuthenticateFoldGammaOpaque.aspis_core.state_only_spend_query.StateOnlySpendQueryPowers) :
+    V7GammaSlotMajorLiteral.state_only_spend_query.StateOnlySpendQueryPowers :=
+  { base := toLiteralBase value.base
+    d := toLiteralPrepared value.d }
+
+def fromLiteralCM31 (value : V7GammaSlotMajorLiteral.field.CM31) :
+    V7AuthenticateFoldGammaOpaque.aspis_core.field.CM31 :=
+  { a := value.a, b := value.b }
+
+def fromLiteralQM31 (value : V7GammaSlotMajorLiteral.field.QM31) :
+    V7AuthenticateFoldGammaOpaque.aspis_core.field.QM31 :=
+  { c0 := fromLiteralCM31 value.c0
+    c1 := fromLiteralCM31 value.c1 }
+
+theorem toLiteralPrepared_components
+    (value : V7AuthenticateFoldGammaOpaque.aspis_core.field.PreparedQm31Multiplier) :
+    (toLiteralPrepared value).components = value.components := rfl
+
+theorem toLiteralBase_c1_limbs
+    (value : V7AuthenticateFoldGammaOpaque.aspis_core.state_only_query.StateOnlyQueryPowers) :
+    (toLiteralBase value).c1_limbs = value.c1_limbs := rfl
+
+theorem fromLiteralQM31_limbs
+    (value : V7GammaSlotMajorLiteral.field.QM31) :
+    (fromLiteralQM31 value).c0.a = value.c0.a ∧
+    (fromLiteralQM31 value).c0.b = value.c0.b ∧
+    (fromLiteralQM31 value).c1.a = value.c1.a ∧
+    (fromLiteralQM31 value).c1.b = value.c1.b := by
+  exact ⟨rfl, rfl, rfl, rfl⟩
+
+end V7AuthenticateFoldGammaOpaqueSplit
+
+namespace V7AuthenticateFoldGammaOpaque
+
+@[rust_fun "aspis_core::v6_onefold::gamma_combine_v6_c1_slot_major"]
+def aspis_core.v6_onefold.gamma_combine_v6_c1_slot_major
+    (c1 : Array Std.U32 104#usize)
+    (powers : aspis_core.state_only_spend_query.StateOnlySpendQueryPowers) :
+    Result (Array aspis_core.field.QM31 4#usize) := do
+  let output ←
+    V7GammaSlotMajorLiteral.v6_onefold.gamma_combine_v6_c1_slot_major
+      c1 (V7AuthenticateFoldGammaOpaqueSplit.toLiteralPowers powers)
+  .ok
+    (V7AuthenticateFoldGammaOpaqueSplit.mapArray
+      V7AuthenticateFoldGammaOpaqueSplit.fromLiteralQM31 output)
+
+theorem gamma_combine_v6_c1_slot_major_split_exact
+    (c1 : Array Std.U32 104#usize)
+    (powers : aspis_core.state_only_spend_query.StateOnlySpendQueryPowers) :
+    aspis_core.v6_onefold.gamma_combine_v6_c1_slot_major c1 powers = (do
+      let output ←
+        V7GammaSlotMajorLiteral.v6_onefold.gamma_combine_v6_c1_slot_major
+          c1 (V7AuthenticateFoldGammaOpaqueSplit.toLiteralPowers powers)
+      .ok
+        (V7AuthenticateFoldGammaOpaqueSplit.mapArray
+          V7AuthenticateFoldGammaOpaqueSplit.fromLiteralQM31 output)) := rfl
+
+end V7AuthenticateFoldGammaOpaque

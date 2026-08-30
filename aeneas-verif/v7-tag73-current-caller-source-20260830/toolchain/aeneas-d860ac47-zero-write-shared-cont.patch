@@ -1,0 +1,13 @@
+diff --git a/src/interp/InterpAbs.ml b/src/interp/InterpAbs.ml
+index 8b3f743..a9d8734 100644
+--- a/src/interp/InterpAbs.ml
++++ b/src/interp/InterpAbs.ml
+@@ -2259,6 +2259,8 @@ let merge_abs_conts (span : Meta.span) (ctx : eval_ctx) ~(with_abs_conts : bool)
+       | ALoan (ASharedLoan (_, _, sv, child)) ->
+           (not (value_has_mut_borrows (Some span) ctx sv.value))
+           && not (ty_has_mut_borrows ctx.type_ctx.type_infos child.ty)
++      | ABorrow (ASharedBorrow _) ->
++          not (ty_has_mut_borrows ctx.type_ctx.type_infos av.ty)
+       | _ -> false
+     in
+     abs.avalues <> [] && List.for_all plain abs.avalues

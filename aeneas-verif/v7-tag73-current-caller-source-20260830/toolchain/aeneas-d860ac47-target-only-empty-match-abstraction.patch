@@ -1,0 +1,53 @@
+diff --git a/src/interp/InterpJoin.ml b/src/interp/InterpJoin.ml
+index 5b15b86..af49293 100644
+--- a/src/interp/InterpJoin.ml
++++ b/src/interp/InterpJoin.ml
+@@ -1862,6 +1862,35 @@ let match_ctx_with_target (config : config) (span : Meta.span)
+     ctx_map_abs normalize_abs src_ctx
+   in
+ 
++  let src_match_aids = ctx_get_abs_ids src_ctx_for_match in
++  let joined_ctx_for_match =
++    (* Nested iterator joins can leave an empty, target-only abstraction whose
++       continuation describes how the iterator was projected but whose
++       abstract state is already completely gone.  Continuations are not part
++       of context matching.  Remove only empty abstractions which have no
++       identity in the normalized source comparison context; every
++       abstraction carrying a value remains untouched, and [joined_ctx]
++       itself is retained for the generated continuation. *)
++    {
++      joined_ctx_for_match with
++      env =
++        List.filter
++          (function
++            | EAbs abs ->
++                abs.avalues <> [] || AbsId.Set.mem abs.abs_id src_match_aids
++            | _ -> true)
++          joined_ctx_for_match.env;
++    }
++  in
++  let removed_match_only_zero_state_input_aids =
++    (* The source-side match normalization removes only ignored or immutable
++       zero-write projector bookkeeping. Remember any such recursive input
++       so output-interface reconstruction does not demand a state mapping. *)
++    AbsId.Set.filter
++      (fun aid -> List.mem aid input_abs)
++      (AbsId.Set.diff (ctx_get_abs_ids src_ctx) src_match_aids)
++  in
++
+   (* An iterator step can merge an endable singleton shared-borrow
+      abstraction into the abstraction which owns its matching shared loan.
+      Normalize the other side with the ordinary abstraction merge.  This is
+@@ -2004,8 +2033,10 @@ let match_ctx_with_target (config : config) (span : Meta.span)
+     normalize_match_pair src_ctx_for_match joined_ctx_for_match
+   in
+   let removed_zero_state_input_aids =
+-    AbsId.Set.union removed_zero_state_input_aids
+-      !removed_shared_unit_input_aids
++    AbsId.Set.union
++      (AbsId.Set.union removed_zero_state_input_aids
++         removed_match_only_zero_state_input_aids)
++      !removed_shared_unit_input_aids
+   in
+   [%ltrace
+     "About to match:" ^ "\n- src_ctx:\n"

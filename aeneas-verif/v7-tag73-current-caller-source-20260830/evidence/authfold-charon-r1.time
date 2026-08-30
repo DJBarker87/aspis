@@ -1,0 +1,23 @@
+	Command being timed: "/bin/bash -lc set -euo pipefail; repo=/home/dombarker/project-offloads/ZK-v7-one-tx-formal-consolidation-20260828; task=/home/dombarker/project-offloads/aspis-v7-aeneas-source-unblock-20260830; export PATH=/home/dombarker/.cargo/bin:$PATH CARGO_BUILD_JOBS=1 CARGO_TARGET_DIR=$task/target; cd $repo; exec /home/dombarker/project-offloads/ZK-v5-formal/toolchains/charon/bin/charon cargo --preset aeneas --mir built --sysroot default --start-from crate::v7_verifier::authenticate_and_fold_queries --include aspis_core --opaque aspis_core::sumcheck::_::weight_at --dest-file $task/extraction/V7AuthenticateFoldFocused.llbc -- --locked --package aspis-verifier --lib --no-default-features --features v7-production-tag73"
+	User time (seconds): 50.30
+	System time (seconds): 7.87
+	Percent of CPU this job got: 102%
+	Elapsed (wall clock) time (h:mm:ss or m:ss): 0:56.69
+	Average shared text size (kbytes): 0
+	Average unshared data size (kbytes): 0
+	Average stack size (kbytes): 0
+	Average total size (kbytes): 0
+	Maximum resident set size (kbytes): 511676
+	Average resident set size (kbytes): 0
+	Major (requiring I/O) page faults: 1060
+	Minor (reclaiming a frame) page faults: 3220351
+	Voluntary context switches: 42879
+	Involuntary context switches: 3074
+	Swaps: 0
+	File system inputs: 20096
+	File system outputs: 2733024
+	Socket messages sent: 0
+	Socket messages received: 0
+	Signals delivered: 0
+	Page size (bytes): 4096
+	Exit status: 0

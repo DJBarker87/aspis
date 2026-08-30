@@ -1,0 +1,95 @@
+diff --git a/src/interp/InterpJoin.ml b/src/interp/InterpJoin.ml
+index c23db07..48b327e 100644
+--- a/src/interp/InterpJoin.ml
++++ b/src/interp/InterpJoin.ml
+@@ -1942,7 +1942,78 @@ let match_ctx_with_target (config : config) (span : Meta.span)
+   let joined_ctx_for_match =
+     erase_mixed_zero_write_shared_borrows joined_ctx_for_match
+   in
+ 
++  let removed_shared_group_input_aids = ref AbsId.Set.empty in
++  let canonicalize_shared_only_abs_group ~(record_removed_input : bool)
++      (opposing_aids : AbsId.Set.t) (ctx : eval_ctx) : eval_ctx =
++    (* Immutable, parentless abstractions carry no backward write-back state.
++       A loop join may group the same shared loans into one abstraction on one
++       side and several on the other.  If the two sides retain a common
++       abstraction id, merge every such comparison-only group into that
++       common anchor.  The actual contexts and continuations are unchanged. *)
++    let absl = AbsId.Map.values (ctx_get_abs ctx) in
++    let has_no_children (abs : abs) =
++      List.for_all
++        (fun (other : abs) ->
++          not (AbsId.Set.mem abs.abs_id other.parents))
++        absl
++    in
++    let eligible (abs : abs) =
++      abs.can_end && AbsId.Set.is_empty abs.parents
++      && AbsLevelSet.is_empty abs.ended_subabs && has_no_children abs
++      && not (AbsId.Set.mem abs.abs_id (ctx_get_frozen_abs_set ctx))
++      && abs.avalues <> []
++      && List.for_all
++           (fun (av : tavalue) ->
++             not (ty_has_mut_borrows ctx.type_ctx.type_infos av.ty))
++           abs.avalues
++    in
++    let eligible_aids =
++      AbsId.Set.of_list
++        (List.filter_map
++           (fun (abs : abs) ->
++             if eligible abs then Some abs.abs_id else None)
++           absl)
++    in
++    let common = AbsId.Set.inter eligible_aids opposing_aids in
++    match AbsId.Set.elements common with
++    | [] -> ctx
++    | anchor :: _ ->
++        AbsId.Set.fold
++          (fun aid ctx ->
++            if aid = anchor then ctx
++            else
++              let ctx, merged_aid =
++                InterpAbs.merge_into_first_abstraction span fresh_abs_kind
++                  ~can_end:true ~with_abs_conts:false None ctx anchor aid
++              in
++              let merged_abs = ctx_lookup_abs ctx merged_aid in
++              let merged_abs = { merged_abs with abs_id = anchor } in
++              [%sanity_check] span
++                (Option.is_none (ctx_lookup_abs_opt ctx anchor));
++              let ctx, replaced =
++                ctx_subst_abs span ctx merged_aid merged_abs
++              in
++              [%sanity_check] span (Option.is_some replaced);
++              if record_removed_input && List.mem aid input_abs then
++                removed_shared_group_input_aids :=
++                  AbsId.Set.add aid !removed_shared_group_input_aids;
++              if !Config.sanity_checks then
++                Invariants.check_unique_abs_ids span ctx;
++              ctx)
++          eligible_aids ctx
++  in
++  let source_group_aids = ctx_get_abs_ids src_ctx_for_match in
++  let target_group_aids = ctx_get_abs_ids joined_ctx_for_match in
++  let src_ctx_for_match =
++    canonicalize_shared_only_abs_group ~record_removed_input:true
++      target_group_aids src_ctx_for_match
++  in
++  let joined_ctx_for_match =
++    canonicalize_shared_only_abs_group ~record_removed_input:false
++      source_group_aids joined_ctx_for_match
++  in
++
+   let src_match_aids = ctx_get_abs_ids src_ctx_for_match in
+   let joined_ctx_for_match =
+     (* Nested iterator joins can leave an empty, target-only abstraction whose
+@@ -2113,7 +2184,9 @@ let match_ctx_with_target (config : config) (span : Meta.span)
+   let removed_zero_state_input_aids =
+     AbsId.Set.union
+-      (AbsId.Set.union removed_zero_state_input_aids
+-         removed_match_only_zero_state_input_aids)
++      (AbsId.Set.union
++         (AbsId.Set.union removed_zero_state_input_aids
++            removed_match_only_zero_state_input_aids)
++         !removed_shared_group_input_aids)
+       !removed_shared_unit_input_aids
+   in
+   [%ltrace

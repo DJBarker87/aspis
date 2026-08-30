@@ -1,0 +1,251 @@
+Running as unit: aspis-v7-current-audit-r19.service; invocation ID: a2832e65dec94b6e98d2f0ee59f2419c
+REUSE V7Tag73CurrentHelpersOpaque/TypesExternalBase.lean
+REUSE V7Tag73CurrentHelpersOpaque/TypesExternal.lean
+REUSE V7Tag73CurrentHelpersOpaque/Types.lean
+REUSE V7Tag73CurrentHelpersOpaque/FunsExternalBase.lean
+REUSE V7GammaSlotMajorLiteral/MutableIteratorCompat.lean
+REUSE V7GammaSlotMajorLiteral/Types.lean
+REUSE V7GammaSlotMajorLiteral/Funs.lean
+REUSE V7Qm31Dot3Reduced/TypesExternal.lean
+REUSE V7Qm31Dot3Reduced/Types.lean
+REUSE V7Qm31Dot3Reduced/FunsExternal.lean
+REUSE V7Qm31Dot3Reduced/Funs.lean
+REUSE V7Tag73CurrentHelpersOpaque/FunsExternal.lean
+REUSE V7Tag73CurrentHelpersOpaque/CircleTableSupport.lean
+REUSE V7Tag73CurrentHelpersOpaque/CircleTable_RATE512_CIRCLE_LOW8_WINDOW_Chunk00.lean
+REUSE V7Tag73CurrentHelpersOpaque/CircleTable_RATE512_CIRCLE_LOW8_WINDOW_Chunk01.lean
+REUSE V7Tag73CurrentHelpersOpaque/CircleTable_RATE512_CIRCLE_LOW8_WINDOW_Chunk02.lean
+REUSE V7Tag73CurrentHelpersOpaque/CircleTable_RATE512_CIRCLE_LOW8_WINDOW_Chunk03.lean
+REUSE V7Tag73CurrentHelpersOpaque/CircleTable_RATE512_CIRCLE_LOW8_WINDOW_Chunk04.lean
+REUSE V7Tag73CurrentHelpersOpaque/CircleTable_RATE512_CIRCLE_LOW8_WINDOW_Chunk05.lean
+REUSE V7Tag73CurrentHelpersOpaque/CircleTable_RATE512_CIRCLE_LOW8_WINDOW_Chunk06.lean
+REUSE V7Tag73CurrentHelpersOpaque/CircleTable_RATE512_CIRCLE_LOW8_WINDOW_Chunk07.lean
+REUSE V7Tag73CurrentHelpersOpaque/CircleTable_RATE512_CIRCLE_LOW8_WINDOW_Chunk08.lean
+REUSE V7Tag73CurrentHelpersOpaque/CircleTable_RATE512_CIRCLE_LOW8_WINDOW_Chunk09.lean
+REUSE V7Tag73CurrentHelpersOpaque/CircleTable_RATE512_CIRCLE_LOW8_WINDOW_Chunk10.lean
+REUSE V7Tag73CurrentHelpersOpaque/CircleTable_RATE512_CIRCLE_LOW8_WINDOW_Chunk11.lean
+REUSE V7Tag73CurrentHelpersOpaque/CircleTable_RATE512_CIRCLE_LOW8_WINDOW_Chunk12.lean
+REUSE V7Tag73CurrentHelpersOpaque/CircleTable_RATE512_CIRCLE_LOW8_WINDOW_Chunk13.lean
+REUSE V7Tag73CurrentHelpersOpaque/CircleTable_RATE512_CIRCLE_LOW8_WINDOW_Chunk14.lean
+REUSE V7Tag73CurrentHelpersOpaque/CircleTable_RATE512_CIRCLE_LOW8_WINDOW_Chunk15.lean
+REUSE V7Tag73CurrentHelpersOpaque/CircleTable_RATE512_CIRCLE_HIGH9_WINDOW_Chunk00.lean
+REUSE V7Tag73CurrentHelpersOpaque/CircleTable_RATE512_CIRCLE_HIGH9_WINDOW_Chunk01.lean
+REUSE V7Tag73CurrentHelpersOpaque/CircleTable_RATE512_CIRCLE_HIGH9_WINDOW_Chunk02.lean
+REUSE V7Tag73CurrentHelpersOpaque/CircleTable_RATE512_CIRCLE_HIGH9_WINDOW_Chunk03.lean
+REUSE V7Tag73CurrentHelpersOpaque/CircleTable_RATE512_CIRCLE_HIGH9_WINDOW_Chunk04.lean
+REUSE V7Tag73CurrentHelpersOpaque/CircleTable_RATE512_CIRCLE_HIGH9_WINDOW_Chunk05.lean
+REUSE V7Tag73CurrentHelpersOpaque/CircleTable_RATE512_CIRCLE_HIGH9_WINDOW_Chunk06.lean
+REUSE V7Tag73CurrentHelpersOpaque/CircleTable_RATE512_CIRCLE_HIGH9_WINDOW_Chunk07.lean
+REUSE V7Tag73CurrentHelpersOpaque/CircleTable_RATE512_CIRCLE_HIGH9_WINDOW_Chunk08.lean
+REUSE V7Tag73CurrentHelpersOpaque/CircleTable_RATE512_CIRCLE_HIGH9_WINDOW_Chunk09.lean
+REUSE V7Tag73CurrentHelpersOpaque/CircleTable_RATE512_CIRCLE_HIGH9_WINDOW_Chunk10.lean
+REUSE V7Tag73CurrentHelpersOpaque/CircleTable_RATE512_CIRCLE_HIGH9_WINDOW_Chunk11.lean
+REUSE V7Tag73CurrentHelpersOpaque/CircleTable_RATE512_CIRCLE_HIGH9_WINDOW_Chunk12.lean
+REUSE V7Tag73CurrentHelpersOpaque/CircleTable_RATE512_CIRCLE_HIGH9_WINDOW_Chunk13.lean
+REUSE V7Tag73CurrentHelpersOpaque/CircleTable_RATE512_CIRCLE_HIGH9_WINDOW_Chunk14.lean
+REUSE V7Tag73CurrentHelpersOpaque/CircleTable_RATE512_CIRCLE_HIGH9_WINDOW_Chunk15.lean
+REUSE V7Tag73CurrentHelpersOpaque/CircleTable_RATE512_CIRCLE_HIGH9_WINDOW_Chunk16.lean
+REUSE V7Tag73CurrentHelpersOpaque/CircleTable_RATE512_CIRCLE_HIGH9_WINDOW_Chunk17.lean
+REUSE V7Tag73CurrentHelpersOpaque/CircleTable_RATE512_CIRCLE_HIGH9_WINDOW_Chunk18.lean
+REUSE V7Tag73CurrentHelpersOpaque/CircleTable_RATE512_CIRCLE_HIGH9_WINDOW_Chunk19.lean
+REUSE V7Tag73CurrentHelpersOpaque/CircleTable_RATE512_CIRCLE_HIGH9_WINDOW_Chunk20.lean
+REUSE V7Tag73CurrentHelpersOpaque/CircleTable_RATE512_CIRCLE_HIGH9_WINDOW_Chunk21.lean
+REUSE V7Tag73CurrentHelpersOpaque/CircleTable_RATE512_CIRCLE_HIGH9_WINDOW_Chunk22.lean
+REUSE V7Tag73CurrentHelpersOpaque/CircleTable_RATE512_CIRCLE_HIGH9_WINDOW_Chunk23.lean
+REUSE V7Tag73CurrentHelpersOpaque/CircleTable_RATE512_CIRCLE_HIGH9_WINDOW_Chunk24.lean
+REUSE V7Tag73CurrentHelpersOpaque/CircleTable_RATE512_CIRCLE_HIGH9_WINDOW_Chunk25.lean
+REUSE V7Tag73CurrentHelpersOpaque/CircleTable_RATE512_CIRCLE_HIGH9_WINDOW_Chunk26.lean
+REUSE V7Tag73CurrentHelpersOpaque/CircleTable_RATE512_CIRCLE_HIGH9_WINDOW_Chunk27.lean
+REUSE V7Tag73CurrentHelpersOpaque/CircleTable_RATE512_CIRCLE_HIGH9_WINDOW_Chunk28.lean
+REUSE V7Tag73CurrentHelpersOpaque/CircleTable_RATE512_CIRCLE_HIGH9_WINDOW_Chunk29.lean
+REUSE V7Tag73CurrentHelpersOpaque/CircleTable_RATE512_CIRCLE_HIGH9_WINDOW_Chunk30.lean
+REUSE V7Tag73CurrentHelpersOpaque/CircleTable_RATE512_CIRCLE_HIGH9_WINDOW_Chunk31.lean
+REUSE V7Tag73CurrentHelpersOpaque/CircleTable_V6_CIRCLE_LOW6_WINDOW_Chunk00.lean
+REUSE V7Tag73CurrentHelpersOpaque/CircleTable_V6_CIRCLE_LOW6_WINDOW_Chunk01.lean
+REUSE V7Tag73CurrentHelpersOpaque/CircleTable_V6_CIRCLE_LOW6_WINDOW_Chunk02.lean
+REUSE V7Tag73CurrentHelpersOpaque/CircleTable_V6_CIRCLE_LOW6_WINDOW_Chunk03.lean
+REUSE V7Tag73CurrentHelpersOpaque/CircleTable_V6_CIRCLE_MIDDLE6_WINDOW_Chunk00.lean
+REUSE V7Tag73CurrentHelpersOpaque/CircleTable_V6_CIRCLE_MIDDLE6_WINDOW_Chunk01.lean
+REUSE V7Tag73CurrentHelpersOpaque/CircleTable_V6_CIRCLE_MIDDLE6_WINDOW_Chunk02.lean
+REUSE V7Tag73CurrentHelpersOpaque/CircleTable_V6_CIRCLE_MIDDLE6_WINDOW_Chunk03.lean
+REUSE V7Tag73CurrentHelpersOpaque/CircleTable_V6_CIRCLE_HIGH6_WINDOW_Chunk00.lean
+REUSE V7Tag73CurrentHelpersOpaque/CircleTable_V6_CIRCLE_HIGH6_WINDOW_Chunk01.lean
+REUSE V7Tag73CurrentHelpersOpaque/CircleTable_V6_CIRCLE_HIGH6_WINDOW_Chunk02.lean
+REUSE V7Tag73CurrentHelpersOpaque/CircleTable_V6_CIRCLE_HIGH6_WINDOW_Chunk03.lean
+REUSE V7Tag73CurrentHelpersOpaque/AtomicPatternSupport.lean
+REUSE V7Tag73CurrentHelpersOpaque/AtomicPatternChunk00.lean
+REUSE V7Tag73CurrentHelpersOpaque/AtomicPatternChunk01.lean
+REUSE V7Tag73CurrentHelpersOpaque/AtomicPatternChunk02.lean
+REUSE V7Tag73CurrentHelpersOpaque/AtomicPatternChunk03.lean
+REUSE V7Tag73CurrentHelpersOpaque/AtomicPatternChunk04.lean
+REUSE V7Tag73CurrentHelpersOpaque/AtomicPatternChunk05.lean
+REUSE V7Tag73CurrentHelpersOpaque/AtomicPatternChunk06.lean
+REUSE V7Tag73CurrentHelpersOpaque/AtomicPatternChunk07.lean
+REUSE V7Tag73CurrentHelpersOpaque/AtomicPatternChunk08.lean
+REUSE V7Tag73CurrentHelpersOpaque/AtomicPatternChunk09.lean
+REUSE V7Tag73CurrentHelpersOpaque/AtomicPatternChunk10.lean
+REUSE V7Tag73CurrentHelpersOpaque/AtomicPatternChunk11.lean
+REUSE V7Tag73CurrentHelpersOpaque/AtomicPatternChunk12.lean
+REUSE V7Tag73CurrentHelpersOpaque/AtomicPatternChunk13.lean
+REUSE V7Tag73CurrentHelpersOpaque/AtomicPatternChunk14.lean
+REUSE V7Tag73CurrentHelpersOpaque/LateScalarExternal.lean
+REUSE V7Tag73CurrentHelpersOpaque/FunsChunk00.lean
+REUSE V7Tag73CurrentHelpersOpaque/FunsChunk01.lean
+REUSE V7Tag73CurrentHelpersOpaque/FunsChunk02.lean
+REUSE V7Tag73CurrentHelpersOpaque/FunsChunk03.lean
+REUSE V7Tag73CurrentHelpersOpaque/FunsChunk04.lean
+REUSE V7Tag73CurrentHelpersOpaque/FunsChunk05.lean
+REUSE V7Tag73CurrentHelpersOpaque/FunsChunk06.lean
+REUSE V7Tag73CurrentHelpersOpaque/FunsChunk07.lean
+REUSE V7Tag73CurrentHelpersOpaque/FunsChunk08.lean
+REUSE V7Tag73CurrentHelpersOpaque/FunsChunk09.lean
+REUSE V7Tag73CurrentHelpersOpaque/FunsChunk10.lean
+REUSE V7Tag73CurrentHelpersOpaque/FunsChunk11.lean
+REUSE V7Tag73CurrentHelpersOpaque/FunsChunk12.lean
+REUSE V7Tag73CurrentHelpersOpaque/FunsChunk13.lean
+REUSE V7Tag73CurrentHelpersOpaque/FunsChunk14.lean
+REUSE V7Tag73CurrentHelpersOpaque/FunsChunk15.lean
+REUSE V7Tag73CurrentHelpersOpaque/FunsChunk16.lean
+REUSE V7Tag73CurrentHelpersOpaque/FunsChunk17.lean
+REUSE V7Tag73CurrentHelpersOpaque/FunsChunk18.lean
+REUSE V7Tag73CurrentHelpersOpaque/LateIteratorExternal.lean
+REUSE V7Tag73CurrentHelpersOpaque/FunsChunk19.lean
+REUSE V7Tag73CurrentHelpersOpaque/FunsChunk20.lean
+REUSE V7Tag73CurrentHelpersOpaque/FunsChunk21.lean
+REUSE V7Tag73CurrentHelpersOpaque/FunsChunk22.lean
+REUSE V7Tag73CurrentHelpersOpaque/FunsChunk23.lean
+REUSE V7Tag73CurrentHelpersOpaque/FunsChunk24.lean
+REUSE V7Tag73CurrentHelpersOpaque/FunsChunk25.lean
+REUSE V7Tag73CurrentHelpersOpaque/FunsChunk26.lean
+REUSE V7Tag73CurrentHelpersOpaque/FunsChunk27.lean
+REUSE V7Tag73CurrentHelpersOpaque/FunsChunk28.lean
+REUSE V7Tag73CurrentHelpersOpaque/FunsChunk29.lean
+REUSE V7Tag73CurrentHelpersOpaque/FunsChunk30.lean
+REUSE V7Tag73CurrentHelpersOpaque/FunsChunk31.lean
+REUSE V7Tag73CurrentHelpersOpaque/FunsChunk32.lean
+REUSE V7Tag73CurrentHelpersOpaque/FunsChunk33.lean
+REUSE V7Tag73CurrentHelpersOpaque/FunsChunk34.lean
+REUSE V7Tag73CurrentHelpersOpaque/FunsChunk35.lean
+REUSE V7Tag73CurrentHelpersOpaque/FunsChunk36.lean
+REUSE V7Tag73CurrentHelpersOpaque/FunsChunk37.lean
+REUSE V7Tag73CurrentHelpersOpaque/FunsChunk38.lean
+REUSE V7Tag73CurrentHelpersOpaque/FunsChunk39.lean
+REUSE V7Tag73CurrentHelpersOpaque/FunsChunk40.lean
+REUSE V7Tag73CurrentHelpersOpaque/FunsChunk41.lean
+REUSE V7Tag73CurrentHelpersOpaque/FunsChunk42.lean
+REUSE V7Tag73CurrentHelpersOpaque/FunsChunk43.lean
+REUSE V7Tag73CurrentHelpersOpaque/FunsChunk44.lean
+REUSE V7Tag73CurrentHelpersOpaque/FunsChunk45.lean
+REUSE V7Tag73CurrentHelpersOpaque/Funs.lean
+TARGET CurrentCallerAudit.lean
+def V7Tag73CurrentHelpersOpaque.v7_verifier.verify_v7_read_only_with_statement_digest : (Aeneas.Std.Slice
+      (Aeneas.Std.Slice Aeneas.Std.U8) →
+    Aeneas.Std.Result (Aeneas.Std.Array Aeneas.Std.U8 32#usize)) →
+  Aeneas.Std.Slice Aeneas.Std.U8 →
+    Aeneas.Std.Usize →
+      solana_pubkey.Pubkey →
+        Aeneas.Std.Array Aeneas.Std.U8 32#usize →
+          solana_pubkey.Pubkey →
+            V7Tag73CurrentHelpersOpaque.aspis_statement.atomic_statement.AtomicPaymentStatementV4 →
+              Aeneas.Std.Array Aeneas.Std.U8 32#usize →
+                Bool →
+                  Aeneas.Std.Result
+                    (Aeneas.Std.core.result.Result V7Tag73CurrentHelpersOpaque.v7_verifier.VerifiedV7ReadOnly
+                      V7Tag73CurrentHelpersOpaque.v7_verifier.V7VerifyError) :=
+fun hash proof frontier_nodes program_id release_binding attempt_id statement statement_digest check_pow => do
+  let inactive_row_groups ←
+    V7Tag73CurrentHelpersOpaque.aspis_statement.atomic_state_only_terminal.atomic_state_only_copy_inactive_row_groups_owned_v3
+  let inactive_group_masks ←
+    V7Tag73CurrentHelpersOpaque.aspis_statement.atomic_state_only_terminal.atomic_state_only_copy_inactive_group_masks_owned_v3
+  let r ←
+    V7Tag73CurrentHelpersOpaque.aspis_core.v7_onefold.V7CompactOneFoldWire.parse_deferred_canonicality proof
+        frontier_nodes
+  let cf ← Aeneas.Std.core.result.Result.Insts.CoreOpsTry.branch r
+  match cf with
+    | Aeneas.Std.core.ops.control_flow.ControlFlow.Continue vcofw => do
+      let a ← program_id.to_bytes
+      let a1 ← attempt_id.to_bytes
+      let s ← Aeneas.Std.lift inactive_group_masks.to_slice
+      let r1 ←
+        V7Tag73CurrentHelpersOpaque.aspis_core.v6_transcript.verify_v7_compact_transcript_and_relation_prepared
+            V7Tag73CurrentHelpersOpaque.v7_verifier.verify_v7_read_only_with_statement_digest.closure.Insts.CoreOpsFunctionFnOnceTupleSharedV6SemanticViewBool
+            V7Tag73CurrentHelpersOpaque.v7_verifier.verify_v7_read_only_with_statement_digest.closure_1.Insts.CoreOpsFunctionFnOnceTupleSharedV6QueryBatchViewResultV6AuthenticatedQueryBatchV6WireError
+            hash vcofw
+            { program_id := a, release_binding := release_binding, statement_digest := statement_digest,
+              attempt_id := a1 }
+            inactive_row_groups s check_pow statement (hash, vcofw)
+      let cf1 ← Aeneas.Std.core.result.Result.Insts.CoreOpsTry.branch r1
+      match cf1 with
+        | Aeneas.Std.core.ops.control_flow.ControlFlow.Continue val =>
+          Aeneas.Std.Result.ok
+            (Aeneas.Std.core.result.Result.Ok { transcript := val, folded_query_sum := val.folded_query_sum })
+        | Aeneas.Std.core.ops.control_flow.ControlFlow.Break residual =>
+          Aeneas.Std.core.result.Result.Insts.CoreOpsTryTraitFromResidualResultInfallible.from_residual
+            V7Tag73CurrentHelpersOpaque.v7_verifier.VerifiedV7ReadOnly
+            V7Tag73CurrentHelpersOpaque.v7_verifier.V7VerifyError.Insts.CoreConvertFromV6TranscriptError residual
+    | Aeneas.Std.core.ops.control_flow.ControlFlow.Break residual =>
+      Aeneas.Std.core.result.Result.Insts.CoreOpsTryTraitFromResidualResultInfallible.from_residual
+        V7Tag73CurrentHelpersOpaque.v7_verifier.VerifiedV7ReadOnly
+        V7Tag73CurrentHelpersOpaque.v7_verifier.V7VerifyError.Insts.CoreConvertFromV6WireError residual
+def V7Tag73CurrentHelpersOpaque.aspis_statement.atomic_state_only_terminal.atomic_state_only_copy_inactive_row_groups_owned_v3 : Aeneas.Std.Result
+  (Aeneas.Std.Array Aeneas.Std.U8 64#usize) :=
+Aeneas.Std.Result.ok
+  V7Tag73CurrentHelpersOpaque.aspis_statement.atomic_state_only_terminal.constants.COMPILED_ATOMIC_COPY_INACTIVE_ROW_GROUPS
+def V7Tag73CurrentHelpersOpaque.aspis_statement.atomic_state_only_terminal.atomic_state_only_copy_inactive_group_masks_owned_v3 : Aeneas.Std.Result
+  (Aeneas.Std.Array Aeneas.Std.U16 7#usize) :=
+Aeneas.Std.Result.ok
+  V7Tag73CurrentHelpersOpaque.aspis_statement.atomic_state_only_terminal.constants.COMPILED_ATOMIC_COPY_INACTIVE_GROUP_MASKS
+@[defeq] theorem V7Tag73CurrentHelpersOpaque.gamma_combine_v6_c1_slot_major_split_exact : ∀
+  (c1 : Aeneas.Std.Array Aeneas.Std.U32 104#usize)
+  (powers : V7Tag73CurrentHelpersOpaque.aspis_core.state_only_spend_query.StateOnlySpendQueryPowers),
+  V7Tag73CurrentHelpersOpaque.aspis_core.v6_onefold.gamma_combine_v6_c1_slot_major c1 powers = do
+    let output ←
+      V7GammaSlotMajorLiteral.v6_onefold.gamma_combine_v6_c1_slot_major c1
+          (V7Tag73CurrentHelpersOpaqueHelpersSplit.toGammaPowers powers)
+    Aeneas.Std.Result.ok
+        (V7Tag73CurrentHelpersOpaqueHelpersSplit.mapArray V7Tag73CurrentHelpersOpaqueHelpersSplit.fromGammaQM31
+          output) :=
+fun c1 powers => rfl
+@[defeq] theorem V7Tag73CurrentHelpersOpaque.qm31_dot3_split_exact : ∀
+  (weights : Aeneas.Std.Slice V7Tag73CurrentHelpersOpaque.aspis_core.field.QM31)
+  (values : Aeneas.Std.Array (Aeneas.Std.Slice V7Tag73CurrentHelpersOpaque.aspis_core.field.QM31) 3#usize),
+  V7Tag73CurrentHelpersOpaque.aspis_core.field.qm31_dot3 weights values = do
+    let output ←
+      V7Qm31Dot3Reduced.field.qm31_dot3 (V7Tag73CurrentHelpersOpaqueHelpersSplit.toDotSlice weights)
+          (V7Tag73CurrentHelpersOpaqueHelpersSplit.mapArray V7Tag73CurrentHelpersOpaqueHelpersSplit.toDotSlice values)
+    Aeneas.Std.Result.ok
+        (V7Tag73CurrentHelpersOpaqueHelpersSplit.mapArray V7Tag73CurrentHelpersOpaqueHelpersSplit.fromDotQM31 output) :=
+fun weights values => rfl
+'V7Tag73CurrentHelpersOpaque.v7_verifier.verify_v7_read_only_with_statement_digest' depends on axioms: [propext,
+ Classical.choice,
+ Quot.sound]
+'V7Tag73CurrentHelpersOpaque.aspis_statement.atomic_state_only_terminal.atomic_state_only_copy_inactive_row_groups_owned_v3' depends on axioms: [propext,
+ Classical.choice,
+ Quot.sound]
+'V7Tag73CurrentHelpersOpaque.aspis_statement.atomic_state_only_terminal.atomic_state_only_copy_inactive_group_masks_owned_v3' depends on axioms: [propext,
+ Classical.choice,
+ Quot.sound]
+'V7Tag73CurrentHelpersOpaque.gamma_combine_v6_c1_slot_major_split_exact' depends on axioms: [propext,
+ Classical.choice,
+ Quot.sound]
+'V7Tag73CurrentHelpersOpaque.qm31_dot3_split_exact' depends on axioms: [propext, Classical.choice, Quot.sound]
+'V7Tag73CurrentHelpersOpaqueHelpersSplit.gamma_input_components_exact' depends on axioms: [propext,
+ Classical.choice,
+ Quot.sound]
+'V7Tag73CurrentHelpersOpaqueHelpersSplit.gamma_input_c1_limbs_exact' depends on axioms: [propext,
+ Classical.choice,
+ Quot.sound]
+'V7Tag73CurrentHelpersOpaqueHelpersSplit.gamma_output_limbs_exact' does not depend on any axioms
+'V7Tag73CurrentHelpersOpaqueHelpersSplit.dot_input_limbs_exact' does not depend on any axioms
+'V7Tag73CurrentHelpersOpaqueHelpersSplit.dot_output_limbs_exact' does not depend on any axioms
+'V7GammaSlotMajorLiteral.v6_onefold.gamma_combine_v6_c1_slot_major' depends on axioms: [propext,
+ Classical.choice,
+ Quot.sound]
+'V7Qm31Dot3Reduced.field.qm31_dot3' depends on axioms: [propext, Classical.choice, Quot.sound]
+current production caller helper-split Lean replay: PASS
+Finished with result: success
+Main processes terminated with: code=exited/status=0
+Service runtime: 1.256s
+CPU time consumed: 1.390s
+Memory peak: 288.0K
+Memory swap peak: 0B

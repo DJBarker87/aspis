@@ -1,0 +1,20 @@
+diff --git a/src/interp/InterpBorrows.ml b/src/interp/InterpBorrows.ml
+--- a/src/interp/InterpBorrows.ml
++++ b/src/interp/InterpBorrows.ml
+@@ -2324,7 +2324,15 @@ let destructure_abs (span : Meta.span) (kind : abs_kind) ~(can_end : bool)
+                   in
+                   visitor#visit_tvalue () v
+                 in
+-                let sv = mk_value_with_fresh_sids sv in
++                let sv =
++                  if tvalue_has_borrows (Some span) ctx sv then
++                    mk_value_with_fresh_sids sv
++                  else
++                    (* Flattening a borrow-free immutable shared value creates
++                       no new alias obligation.  Preserve its symbolic identity
++                       so no unbound bookkeeping copy is introduced. *)
++                    sv
++                in
+                 (* Create the new avalue *)
+                 let value =
+                   ALoan

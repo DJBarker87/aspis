@@ -1,0 +1,32 @@
+TARGET V7Qm31Dot3Reduced/TypesExternal.lean
+/home/dombarker/project-offloads/aspis-v7-aeneas-source-unblock-20260830/staged-qm31-dot3-literal-r1/V7Qm31Dot3Reduced/TypesExternal.lean:8:2: warning: The namespace `array` is duplicated in the declaration `core.array.iter.IntoIter.array`.
+Note: This linter can be disabled with `set_option linter.dupNamespace false`
+/home/dombarker/project-offloads/aspis-v7-aeneas-source-unblock-20260830/staged-qm31-dot3-literal-r1/V7Qm31Dot3Reduced/TypesExternal.lean:13:2: warning: The namespace `iter` is duplicated in the declaration `core.iter.adapters.filter_map.FilterMap.iter`.
+Note: This linter can be disabled with `set_option linter.dupNamespace false`
+/home/dombarker/project-offloads/aspis-v7-aeneas-source-unblock-20260830/staged-qm31-dot3-literal-r1/V7Qm31Dot3Reduced/TypesExternal.lean:23:2: warning: The namespace `slice` is duplicated in the declaration `core.slice.iter.Windows.slice`.
+Note: This linter can be disabled with `set_option linter.dupNamespace false`
+TARGET V7Qm31Dot3Reduced/Types.lean
+TARGET V7Qm31Dot3Reduced/FunsExternal.lean
+/home/dombarker/project-offloads/aspis-v7-aeneas-source-unblock-20260830/staged-qm31-dot3-literal-r1/V7Qm31Dot3Reduced/FunsExternal.lean:360:8: warning: try 'simp' instead of 'simpa'
+Note: This linter can be disabled with `set_option linter.unnecessarySimpa false`
+TARGET V7Qm31Dot3Reduced/Funs.lean
+TARGET Qm31Dot3LiteralAudit.lean
+def V7Qm31Dot3Reduced.field.qm31_dot3 : Aeneas.Std.Slice V7Qm31Dot3Reduced.field.QM31 →
+  Aeneas.Std.Array (Aeneas.Std.Slice V7Qm31Dot3Reduced.field.QM31) 3#usize →
+    Aeneas.Std.Result (Aeneas.Std.Array V7Qm31Dot3Reduced.field.QM31 3#usize) :=
+fun weights values => do
+  let iter ← Array.Insts.CoreIterTraitsCollectIntoIteratorTIntoIter.into_iter values
+  V7Qm31Dot3Reduced.field.qm31_dot3_loop0 iter weights
+  have a : Aeneas.Std.Array V7Qm31Dot3Reduced.field.M31 9#usize :=
+    Aeneas.Std.Array.repeat 9#usize V7Qm31Dot3Reduced.field.M31.ZERO
+  have sums : Aeneas.Std.Array (Aeneas.Std.Array V7Qm31Dot3Reduced.field.M31 9#usize) 3#usize :=
+    Aeneas.Std.Array.repeat 3#usize a
+  have i : Aeneas.Std.Usize := weights.len
+  let iter1 ←
+    Aeneas.Std.core.iter.traits.iterator.Iterator.step_by.trait_default
+        (Aeneas.Std.core.iter.traits.iterator.IteratorRange Aeneas.Std.core.iter.range.StepUsize)
+        { start := 0#usize, «end» := i } V7Qm31Dot3Reduced.field.qm31_dot3.OUTER_COLUMNS
+  let sums1 ← V7Qm31Dot3Reduced.field.qm31_dot3_loop1 iter1 weights values sums
+  core.array.from_fn 3#usize V7Qm31Dot3Reduced.field.qm31_dot3.closure.Insts.CoreOpsFunctionFnMutTupleUsizeQM31 sums1
+'V7Qm31Dot3Reduced.field.qm31_dot3' depends on axioms: [propext, Classical.choice, Quot.sound]
+qm31_dot3 literal Lean replay: PASS

@@ -1,0 +1,14 @@
+diff --git a/src/interp/InterpJoinCore.ml b/src/interp/InterpJoinCore.ml
+index 184118fc..82013c78 100644
+--- a/src/interp/InterpJoinCore.ml
++++ b/src/interp/InterpJoinCore.ml
+@@ -866,9 +866,8 @@ let tevalue_add_marker (span : Meta.span) (ctx : eval_ctx) (pm : proj_marker)
+                  (TypesUtils.ty_has_mut_borrows ctx.type_ctx.type_infos child.ty));
+             super#visit_eborrow_content env bc
+         | EEndedMutBorrow _ -> super#visit_eborrow_content env bc
+         | EEndedIgnoredMutBorrow bc ->
+             EEndedIgnoredMutBorrow (self#visit_eended_ignored_mut_borrow env bc)
+-        | _ -> [%internal_error] span
+     end
+   in
+   obj#visit_tevalue ev.ty ev

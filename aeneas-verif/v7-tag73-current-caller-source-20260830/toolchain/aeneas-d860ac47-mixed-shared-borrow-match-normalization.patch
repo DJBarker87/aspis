@@ -1,0 +1,91 @@
+diff --git a/src/interp/InterpJoin.ml b/src/interp/InterpJoin.ml
+index af49293..c23db07 100644
+--- a/src/interp/InterpJoin.ml
++++ b/src/interp/InterpJoin.ml
+@@ -1862,6 +1862,86 @@ let match_ctx_with_target (config : config) (span : Meta.span)
+     ctx_map_abs normalize_abs src_ctx
+   in
+ 
++  let erase_mixed_zero_write_shared_borrows (ctx : eval_ctx) : eval_ctx =
++    (* A branch can compose an already-dead immutable borrow continuation
++       into an abstraction which also carries an unrelated live shared loan.
++       The fixed-point side has already erased that zero-write borrow.  For
++       matching only, erase the same uniquely paired shared-borrow
++       bookkeeping from a mixed, endable abstraction.  The underlying loan,
++       every value which can carry mutable write-back state, and the actual
++       contexts and continuations remain untouched. *)
++    let absl = AbsId.Map.values (ctx_get_abs ctx) in
++    let has_no_children (abs : abs) =
++      List.for_all
++        (fun (other : abs) ->
++          not (AbsId.Set.mem abs.abs_id other.parents))
++        absl
++    in
++    let abstract_borrow_count bid =
++      List.fold_left
++        (fun count (abs : abs) ->
++          List.fold_left
++            (fun count (av : tavalue) ->
++              match av.value with
++              | ABorrow (ASharedBorrow (PNone, found, _)) when found = bid ->
++                  count + 1
++              | _ -> count)
++            count abs.avalues)
++        0 absl
++    in
++    let immutable_matching_loan_count bid =
++      List.fold_left
++        (fun count (abs : abs) ->
++          List.fold_left
++            (fun count (av : tavalue) ->
++              match av.value with
++              | ALoan (ASharedLoan (PNone, found, _, _))
++                when found = bid
++                     && not
++                          (ty_has_mut_borrows ctx.type_ctx.type_infos av.ty) ->
++                  count + 1
++              | _ -> count)
++            count abs.avalues)
++        0 absl
++    in
++    ctx_map_abs
++      (fun (abs : abs) ->
++        let mixed =
++          List.exists
++            (fun (av : tavalue) ->
++              match av.value with
++              | ABorrow (ASharedBorrow (PNone, _, _)) -> false
++              | _ -> true)
++            abs.avalues
++        in
++        if
++          mixed && abs.can_end && AbsId.Set.is_empty abs.parents
++          && AbsLevelSet.is_empty abs.ended_subabs && has_no_children abs
++          && not (AbsId.Set.mem abs.abs_id (ctx_get_frozen_abs_set ctx))
++        then
++          {
++            abs with
++            avalues =
++              List.filter
++                (fun (av : tavalue) ->
++                  match av.value with
++                  | ABorrow (ASharedBorrow (PNone, bid, _)) ->
++                      ty_has_mut_borrows ctx.type_ctx.type_infos av.ty
++                      || abstract_borrow_count bid <> 1
++                      || immutable_matching_loan_count bid <> 1
++                  | _ -> true)
++                abs.avalues;
++          }
++        else abs)
++      ctx
++  in
++  let src_ctx_for_match =
++    erase_mixed_zero_write_shared_borrows src_ctx_for_match
++  in
++  let joined_ctx_for_match =
++    erase_mixed_zero_write_shared_borrows joined_ctx_for_match
++  in
++
+   let src_match_aids = ctx_get_abs_ids src_ctx_for_match in
+   let joined_ctx_for_match =
+     (* Nested iterator joins can leave an empty, target-only abstraction whose
