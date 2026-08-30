@@ -2,9 +2,13 @@
 
 Date: 2026-08-30
 
-Status: current V1 registry/operator semantics and selected-verifier result
-binding are source-tested and kernel-checked. ProgramData, upgrade-authority
-and executable-code identity are a hard mainnet activation blocker.
+Status: V1 registry/operator semantics remain frozen and source/kernel checked.
+The isolated Registry V2 runtime now adds immutable loader-v3 deployment
+certificates for both the Registry program and every selected verifier, and
+the Pool/Tag-73 registry readers fail closed onto the V2 account family when
+the immutable-deployment policy bit is set. Focused Rust tests are green. SBF
+measurement, operator-builder integration, refreshed Rust-to-Lean/Aeneas
+source closure and finalized devnet evidence remain activation gates.
 
 ## Current exact on-chain guarantee
 
@@ -41,7 +45,7 @@ program/loader/privileges, CPI failure, missing return, wrong return program,
 wrong length and malformed ASR8. Rejected paths preserve every supplied byte
 image in the focused tests.
 
-## What V1 does not prove
+## What V1 still does not prove
 
 The 32-byte release binding is SHA-256 of the protocol/profile inventory
 preimage in `tag73_pair_forest_profile.rs`. It is not the SBF executable hash.
@@ -58,8 +62,7 @@ Registry freeze is not program freeze. A frozen V1 registry can still select a
 program whose upgrade authority changes its code. External release manifests
 and startup checks are valuable operational evidence, but they are not an
 on-chain cryptographic guarantee. For the intended mainnet standard this is a
-hard blocker, superseding the earlier description of an on-chain ProgramData
-check as optional defence in depth.
+hard blocker for any Pool policy which does not require Registry V2.
 
 Lean makes this boundary executable:
 
@@ -70,43 +73,91 @@ current_v1_selection_is_independent_of_programdata_code_hash_and_authority
 Changing arbitrary ProgramData address, code hash, authority or immutability
 evidence cannot change the translated V1 decision because none is an input.
 
-## Smallest safe V2 closure
+## Implemented immutable-deployment V2
 
-The production profile should accept only permanently immutable verifier
+The production profile accepts only permanently immutable loader-v3
 deployments. Allowing a live upgrade authority would permit code replacement
 under an already-active entry; merely rechecking that the authority key is the
-same does not bind code.
+same would not bind code.
 
 ### Account-list changes
 
-Add a new `ScheduleProfileV2` operation with seven accounts:
+`InitializeV2` has six exact accounts:
+
+```text
+[registry_v2, authority, payer, System,
+ registry_program, registry_programdata]
+```
+
+Before creating or writing the registry PDA, it authenticates the executing
+Registry Program account as read-only, executable and loader-v3-owned; parses
+its exact 36-byte `Program` state; derives and checks the linked ProgramData
+PDA; parses the 45-byte ProgramData metadata; requires
+`upgrade_authority_address = None`; hashes every byte of the loader-visible
+executable payload; and compares that digest with the 32-byte expected
+Registry executable hash supplied by the V2 initialization instruction. The
+stored 256-byte registry image is therefore a certificate over the exact
+immutable Registry deployment, not merely a self-reported program address.
+
+Every subsequent V2 operator mutation rederives the Registry ProgramData PDA
+from the executing program and loader-v3 ID. Entry mutations likewise require
+the stored loader-v3 ID, the ProgramData PDA derived from the stored verifier
+Program, and a zero expected upgrade authority. A corrupted deployment
+certificate therefore fails before any registry or entry byte is changed.
+
+`ScheduleProfileV2` has seven exact accounts:
 
 ```text
 [registry_v2, fresh_entry_v2, authority, payer, System,
  verifier_program, deployment_metadata]
 ```
 
-For upgradeable BPF, `deployment_metadata` is the ProgramData account derived
-from the Program account. The registry must parse both loader states, require
-the exact pointer, require `upgrade_authority_address = None`, isolate the
-canonical executable payload after the 45-byte ProgramData header, hash it and
-compare it with the instruction's expected hash. Legacy BPF is already
-immutable and hashes the Program account data. Loader-v4 needs its own tagged
-state parser and an equivalent permanent-immutability check; it must not reuse
-upgradeable-loader offsets.
+`deployment_metadata` is the ProgramData account derived from the Program
+account. The implemented route applies the same exact loader state, PDA,
+finalized-authority and executable-payload hash checks and compares the result
+with the expected hash in the fixed V2 schedule instruction. V2 deliberately
+rejects legacy BPF and loader-v4 rather than pretending their state layouts
+share loader-v3 semantics.
 
 Under this immutable-only rule, the one-terminal Pool account list does not
 need another ProgramData meta on every spend. The registry-owned V2 entry is a
 one-time certificate over a deployment which the loader can no longer mutate.
-Pool dispatch must reject V1 entries for the hardened production policy and
-require the V2 immutable-deployment flag. A defence-in-depth terminal
+Pool dispatch rejects V1 entries for a policy carrying the new
+`IMMUTABLE_DEPLOYMENT` flag and derives only V2 registry/entry PDAs. It checks
+the stored Registry and verifier ProgramData PDAs against the loader-v3
+derivation, requires a frozen/unpaused Registry, an active exact release, a
+zero expected upgrade authority, and narrows the selected executable account
+owner to loader-v3. The Tag-73 registry-only reader performs the same V2
+selection. A defence-in-depth terminal
 ProgramData meta is possible, but without rehashing the code it adds no code
 identity and is not the minimal closure.
 
+The terminal account list remains exactly `[registry, entry]`; proof,
+ASQ8/ASF8/ASR8 and cryptographic relation bytes are unchanged.
+
+### Exact V2 registry image
+
+The new registry seed is `aspis-verifier-registry-v2`; V1 bytes are never
+reinterpreted.
+
+| Offset | Bytes | Field |
+| ---: | ---: | --- |
+| 0 | 8 | magic, version, flags, immutable-loader-v3 mode, reserved |
+| 8 | 32 | Pool |
+| 40 | 32 | authority; zero after freeze |
+| 72 | 32 | policy binding |
+| 104 | 8 | generation |
+| 112 | 8 | minimum activation delay |
+| 120 | 32 | Registry Program |
+| 152 | 32 | loader-v3 Program |
+| 184 | 32 | Registry ProgramData PDA |
+| 216 | 32 | exact Registry executable-payload SHA-256 |
+| 248 | 8 | zero reserved bytes |
+
 ### Exact V2 entry image
 
-Use a new magic/version and seed; never reinterpret 192 V1 bytes as V2. A
-320-byte fixed image is sufficient:
+The entry uses a new magic/version and `aspis-verifier-entry-v2` seed; 192-byte
+V1 entries are never reinterpreted. Its fixed image is 320 bytes:
 
 | Offset | Bytes | Field |
 | ---: | ---: | --- |
@@ -124,18 +175,19 @@ Use a new magic/version and seed; never reinterpret 192 V1 bytes as V2. A
 | 280 | 32 | policy binding |
 | 312 | 8 | flags and zero reserved bytes |
 
-This is exactly 128 bytes larger than V1. `ScheduleProfileV2` adds the expected
-32-byte executable hash to the instruction, taking its fixed data from 128 to
-160 bytes. Entry PDA seeds should use `aspis-verifier-entry-v2`; a V2 registry
-seed/version is required when migrating an already-frozen V1 registry.
+This is exactly 128 bytes larger than V1. `InitializeV2` is 112 bytes, adding
+the expected Registry executable hash to the 80-byte V1 shape.
+`ScheduleProfileV2` is 160 bytes, adding the expected verifier executable hash
+to the 128-byte V1 shape.
 
 ### Builder and compatibility changes
 
-Operator builders must derive the loader-specific metadata address, add the
-verifier and metadata accounts, calculate the canonical payload hash and build
-the V2 instruction. Pool transaction builders keep the existing verifier meta
-and select a V2 registry/entry pair; no proof, ASQ8, ASF8, ASR8 or cryptographic
-statement byte changes are needed.
+The low-level Rust codecs and PDA derivations are implemented. The production
+operator builder must still derive both ProgramData addresses, hash the exact
+post-45-byte account payloads, add the two init-only or schedule-only accounts,
+and emit the fixed V2 instructions. Pool transaction builders keep the
+existing terminal account count and merely select a V2 registry/entry pair;
+no proof, ASQ8, ASF8, ASR8 or cryptographic statement byte changes are needed.
 
 V1 decoders and PDAs remain frozen for archival replay. A mutable pre-release
 registry may schedule V2 beside V1, wait the activation delay, switch the Pool
@@ -145,13 +197,14 @@ must be no fallback from a malformed/missing V2 entry to V1.
 
 ### CU and TxV1 impact
 
-These are estimates, not measurements:
+These remain static estimates, not SBF measurements:
 
-- An upgradeable Tag-73 ProgramData account is about 1.2 MB. The pinned Agave
-  cost model records SHA-256 base cost 85 CU and byte cost 1 CU, so one full
-  payload hash is roughly 1.15–1.20M CU before registry parsing and account
-  creation. It may fit a one-time 1.4M-CU schedule transaction, but the margin
-  is tight and must be measured.
+- An upgradeable Tag-73 ProgramData account is about 1.2 MB. Agave 4.2 charges
+  SHA-256 base cost 85 CU plus `max(mem_op_base_cost, byte_cost * len / 2)` for
+  one slice, with byte cost 1. The hash syscall itself is therefore roughly
+  0.58–0.60M CU for a 1.15–1.20 MB payload, before account parsing and PDA
+  creation. That should fit a one-time 1.4M-CU schedule transaction, but the
+  complete instruction must still be measured.
 - If that one-shot schedule does not fit, first remove the upgrade authority,
   then build a permissionless chunked attestation PDA over the now-immutable
   ProgramData. Each transaction hashes the next fixed chunk and advances a
@@ -160,16 +213,24 @@ These are estimates, not measurements:
 - The terminal path only decodes 128 additional entry bytes and checks fixed
   fields. Expected incremental cost is low single-digit kCU; treat that as a
   static estimate until the combined SBF path is measured.
-- With address-table lookups, the two new schedule accounts add only account
-  indices plus the 32 instruction bytes. Without lookup tables they add up to
-  64 static-key bytes plus compiled indices, for an estimated schedule-packet
+- With address-table lookups, the two init/schedule-only accounts add only
+  account indices plus the 32 instruction bytes. Without lookup tables they
+  add up to 64 static-key bytes plus compiled indices, for an estimated packet
   increase of about 98–102 bytes. This is far below 4,096 bytes.
 - The one-terminal private-transfer/withdrawal TxV1 sizes do not grow in the
   immutable-only design. The larger entry is account data, not packet data.
 
 ## Activation decision
 
-Current V1 operator and selected-result semantics are green. Mainnet
-activation remains blocked until V2 (or an equivalently strong immutable
-deployment certificate) is implemented, source-bridged, measured and included
-in the finalized devnet lifecycle.
+The runtime V2 deployment certificate and terminal V2 selection are now
+implemented and locally green. Mainnet activation remains blocked on:
+
+1. production operator/builder integration and exact TxV1 packet evidence;
+2. reproducible SBF builds plus measured V2 initialize/schedule/terminal CU;
+3. refreshed Rust-to-Charon/Aeneas-to-Lean source bridges for V2 parsing,
+   deployment authentication and caller selection;
+4. finalized devnet initialization, schedule, activation/freeze, successful
+   spend, adversarial mutation and rollback receipts.
+
+Until those gates are frozen, the hardened policy bit stays default-off and
+V1 remains available only for archival/backward-compatible replay.

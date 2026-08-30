@@ -147,6 +147,9 @@ fn plan_pair_forest_terminal_dispatch_with_bytes_v1(
         },
         current_slot,
     )?;
+    if !authenticated.matches_verifier_owner(verifier_program.owner) {
+        return Err(PoolV1ProgramError::InvalidVerifierProgramAccount.into());
+    }
     if !authenticated.matches(
         master.key.to_bytes(),
         selected.to_bytes(),

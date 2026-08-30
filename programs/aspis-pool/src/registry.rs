@@ -7,16 +7,21 @@
 //! call the crate-private state transition kernel.
 
 use aspis_statement::pool_v1::{
-    decode_verifier_registry_entry_v1, decode_verifier_registry_v1, validate_verifier_policy_v1,
+    decode_verifier_registry_entry_v1, decode_verifier_registry_entry_v2,
+    decode_verifier_registry_v1, decode_verifier_registry_v2, validate_verifier_policy_v1,
     VerifierEntryStatusV1, VerifierPolicyV1, POOL_V1_VERIFIER_ENTRY_NO_RETIREMENT_SLOT,
+    POOL_V1_VERIFIER_POLICY_FLAG_IMMUTABLE_DEPLOYMENT,
     POOL_V1_VERIFIER_POLICY_FLAG_IMMUTABLE_REGISTRY,
 };
 use solana_program::{account_info::AccountInfo, program_error::ProgramError, pubkey::Pubkey};
+use solana_sdk_ids::bpf_loader_upgradeable;
 
 use crate::error::PoolV1ProgramError;
 
 pub const POOL_V1_VERIFIER_REGISTRY_SEED: &[u8] = b"aspis-verifier-registry-v1";
 pub const POOL_V1_VERIFIER_ENTRY_SEED: &[u8] = b"aspis-verifier-entry-v1";
+pub const POOL_V1_VERIFIER_REGISTRY_V2_SEED: &[u8] = b"aspis-verifier-registry-v2";
+pub const POOL_V1_VERIFIER_ENTRY_V2_SEED: &[u8] = b"aspis-verifier-entry-v2";
 
 pub fn pool_v1_verifier_registry_address(registry_program: &Pubkey, pool: &Pubkey) -> (Pubkey, u8) {
     Pubkey::find_program_address(
@@ -34,6 +39,33 @@ pub fn pool_v1_verifier_entry_address(
     Pubkey::find_program_address(
         &[
             POOL_V1_VERIFIER_ENTRY_SEED,
+            pool.as_ref(),
+            profile_binding,
+            release_binding,
+        ],
+        registry_program,
+    )
+}
+
+pub fn pool_v1_verifier_registry_v2_address(
+    registry_program: &Pubkey,
+    pool: &Pubkey,
+) -> (Pubkey, u8) {
+    Pubkey::find_program_address(
+        &[POOL_V1_VERIFIER_REGISTRY_V2_SEED, pool.as_ref()],
+        registry_program,
+    )
+}
+
+pub fn pool_v1_verifier_entry_v2_address(
+    registry_program: &Pubkey,
+    pool: &Pubkey,
+    profile_binding: &[u8; 32],
+    release_binding: &[u8; 32],
+) -> (Pubkey, u8) {
+    Pubkey::find_program_address(
+        &[
+            POOL_V1_VERIFIER_ENTRY_V2_SEED,
             pool.as_ref(),
             profile_binding,
             release_binding,
@@ -61,6 +93,9 @@ pub(crate) struct AuthenticatedVerifierSelectionV1 {
     release_binding: [u8; 32],
     statement_version: u8,
     registry_generation: u64,
+    /// V1 supports any explicitly accepted Solana loader. V2 certificates
+    /// narrow the selected account to the exact immutable loader-v3 owner.
+    expected_verifier_loader: Option<[u8; 32]>,
     /// Exact slot at which the registry/entry pair was authenticated.  Hot
     /// settlement paths must require this to equal their settlement slot so a
     /// capability obtained before a pause or retirement cannot be replayed.
@@ -94,6 +129,12 @@ impl AuthenticatedVerifierSelectionV1 {
     pub(crate) fn authenticated_at_slot(self) -> u64 {
         self.authenticated_at_slot
     }
+
+    pub(crate) fn matches_verifier_owner(self, owner: &Pubkey) -> bool {
+        self.expected_verifier_loader
+            .map(|expected| owner.to_bytes() == expected)
+            .unwrap_or(true)
+    }
 }
 
 fn require_readonly_registry_account(
@@ -124,6 +165,10 @@ pub(crate) fn authenticate_verifier_selection_v1(
     selection: VerifierSelectionV1,
     current_slot: u64,
 ) -> Result<AuthenticatedVerifierSelectionV1, ProgramError> {
+    validate_verifier_policy_v1(policy).map_err(|_| PoolV1ProgramError::InvalidVerifierRegistry)?;
+    if policy.flags & POOL_V1_VERIFIER_POLICY_FLAG_IMMUTABLE_DEPLOYMENT != 0 {
+        return authenticate_verifier_selection_v2(pool, policy, accounts, selection, current_slot);
+    }
     let [registry_account, entry_account] = accounts else {
         return Err(if accounts.len() < 2 {
             ProgramError::NotEnoughAccountKeys
@@ -131,7 +176,6 @@ pub(crate) fn authenticate_verifier_selection_v1(
             ProgramError::InvalidArgument
         });
     };
-    validate_verifier_policy_v1(policy).map_err(|_| PoolV1ProgramError::InvalidVerifierRegistry)?;
     let registry_program = Pubkey::new_from_array(policy.registry_program);
 
     require_readonly_registry_account(
@@ -209,6 +253,113 @@ pub(crate) fn authenticate_verifier_selection_v1(
         release_binding: entry.release_binding,
         statement_version: entry.statement_version,
         registry_generation: registry.generation,
+        expected_verifier_loader: None,
+        authenticated_at_slot: current_slot,
+    })
+}
+
+fn authenticate_verifier_selection_v2(
+    pool: &Pubkey,
+    policy: &VerifierPolicyV1,
+    accounts: &[AccountInfo],
+    selection: VerifierSelectionV1,
+    current_slot: u64,
+) -> Result<AuthenticatedVerifierSelectionV1, ProgramError> {
+    let [registry_account, entry_account] = accounts else {
+        return Err(if accounts.len() < 2 {
+            ProgramError::NotEnoughAccountKeys
+        } else {
+            ProgramError::InvalidArgument
+        });
+    };
+    let registry_program = Pubkey::new_from_array(policy.registry_program);
+    let loader = bpf_loader_upgradeable::id();
+    let expected_registry_programdata =
+        Pubkey::find_program_address(&[registry_program.as_ref()], &loader).0;
+
+    require_readonly_registry_account(
+        registry_account,
+        &registry_program,
+        PoolV1ProgramError::InvalidVerifierRegistry,
+    )?;
+    if registry_account.key != &pool_v1_verifier_registry_v2_address(&registry_program, pool).0 {
+        return Err(PoolV1ProgramError::InvalidVerifierRegistryAddress.into());
+    }
+    let registry = {
+        let data = registry_account.try_borrow_data()?;
+        decode_verifier_registry_v2(&data)
+            .map_err(|_| PoolV1ProgramError::InvalidVerifierRegistry)?
+    };
+    if registry.pool != pool.to_bytes()
+        || registry.authority != policy.registry_authority
+        || registry.policy_binding != policy.policy_binding
+        || !registry.is_immutable()
+        || registry.registry_program != policy.registry_program
+        || registry.loader_program != loader.to_bytes()
+        || registry.programdata_address != expected_registry_programdata.to_bytes()
+    {
+        return Err(PoolV1ProgramError::InvalidVerifierRegistry.into());
+    }
+    if registry.is_paused() {
+        return Err(PoolV1ProgramError::VerifierRegistryPaused.into());
+    }
+
+    require_readonly_registry_account(
+        entry_account,
+        &registry_program,
+        PoolV1ProgramError::InvalidVerifierEntry,
+    )?;
+    let expected_entry = pool_v1_verifier_entry_v2_address(
+        &registry_program,
+        pool,
+        &selection.profile_binding,
+        &selection.release_binding,
+    )
+    .0;
+    if entry_account.key != &expected_entry {
+        return Err(PoolV1ProgramError::InvalidVerifierEntryAddress.into());
+    }
+    let entry = {
+        let data = entry_account.try_borrow_data()?;
+        decode_verifier_registry_entry_v2(&data)
+            .map_err(|_| PoolV1ProgramError::InvalidVerifierEntry)?
+    };
+    let selected_program = Pubkey::new_from_array(selection.verifier_program);
+    let expected_verifier_programdata =
+        Pubkey::find_program_address(&[selected_program.as_ref()], &loader).0;
+    if entry.pool != pool.to_bytes()
+        || entry.policy_binding != policy.policy_binding
+        || entry.verifier_program != selection.verifier_program
+        || entry.profile_binding != selection.profile_binding
+        || entry.release_binding != selection.release_binding
+        || entry.statement_version != selection.statement_version
+        || entry.loader_program != loader.to_bytes()
+        || entry.programdata_address != expected_verifier_programdata.to_bytes()
+        || entry.expected_upgrade_authority != [0u8; 32]
+    {
+        return Err(PoolV1ProgramError::VerifierSelectionMismatch.into());
+    }
+    if entry.status != VerifierEntryStatusV1::Active {
+        return Err(PoolV1ProgramError::VerifierEntryInactive.into());
+    }
+    if current_slot < entry.activation_slot {
+        return Err(PoolV1ProgramError::VerifierEntryNotActiveYet.into());
+    }
+    if entry.retirement_slot != POOL_V1_VERIFIER_ENTRY_NO_RETIREMENT_SLOT
+        && current_slot >= entry.retirement_slot
+    {
+        return Err(PoolV1ProgramError::VerifierEntryRetired.into());
+    }
+
+    Ok(AuthenticatedVerifierSelectionV1 {
+        policy: *policy,
+        pool: entry.pool,
+        verifier_program: entry.verifier_program,
+        profile_binding: entry.profile_binding,
+        release_binding: entry.release_binding,
+        statement_version: entry.statement_version,
+        registry_generation: registry.generation,
+        expected_verifier_loader: Some(loader.to_bytes()),
         authenticated_at_slot: current_slot,
     })
 }
@@ -217,8 +368,11 @@ pub(crate) fn authenticate_verifier_selection_v1(
 mod tests {
     use super::*;
     use aspis_statement::pool_v1::{
-        encode_verifier_registry_entry_v1, encode_verifier_registry_v1, VerifierRegistryEntryV1,
-        VerifierRegistryV1, POOL_V1_VERIFIER_ENTRY_NO_RETIREMENT_SLOT,
+        encode_verifier_registry_entry_v1, encode_verifier_registry_entry_v2,
+        encode_verifier_registry_v1, encode_verifier_registry_v2, VerifierRegistryEntryV1,
+        VerifierRegistryEntryV2, VerifierRegistryV1, VerifierRegistryV2,
+        POOL_V1_VERIFIER_ENTRY_NO_RETIREMENT_SLOT,
+        POOL_V1_VERIFIER_POLICY_FLAG_IMMUTABLE_DEPLOYMENT,
         POOL_V1_VERIFIER_REGISTRY_FLAG_IMMUTABLE, POOL_V1_VERIFIER_REGISTRY_FLAG_PAUSED,
     };
     use solana_program::clock::Epoch;
@@ -267,6 +421,58 @@ mod tests {
         }
     }
 
+    fn immutable_deployment_policy(registry_program: Pubkey) -> VerifierPolicyV1 {
+        VerifierPolicyV1 {
+            flags: POOL_V1_VERIFIER_POLICY_FLAG_IMMUTABLE_REGISTRY
+                | POOL_V1_VERIFIER_POLICY_FLAG_IMMUTABLE_DEPLOYMENT,
+            registry_program: registry_program.to_bytes(),
+            registry_authority: [0u8; 32],
+            policy_binding: [8u8; 32],
+        }
+    }
+
+    fn registry_v2(registry_program: Pubkey, pool: Pubkey) -> VerifierRegistryV2 {
+        let programdata = Pubkey::find_program_address(
+            &[registry_program.as_ref()],
+            &bpf_loader_upgradeable::id(),
+        )
+        .0;
+        VerifierRegistryV2 {
+            flags: POOL_V1_VERIFIER_REGISTRY_FLAG_IMMUTABLE,
+            pool: pool.to_bytes(),
+            authority: [0u8; 32],
+            policy_binding: [8u8; 32],
+            generation: 4,
+            minimum_activation_delay_slots: 32,
+            registry_program: registry_program.to_bytes(),
+            loader_program: bpf_loader_upgradeable::id().to_bytes(),
+            programdata_address: programdata.to_bytes(),
+            executable_hash: [0xA5; 32],
+        }
+    }
+
+    fn entry_v2(pool: Pubkey) -> VerifierRegistryEntryV2 {
+        let selection = selection();
+        let verifier = Pubkey::new_from_array(selection.verifier_program);
+        let programdata =
+            Pubkey::find_program_address(&[verifier.as_ref()], &bpf_loader_upgradeable::id()).0;
+        VerifierRegistryEntryV2 {
+            status: VerifierEntryStatusV1::Active,
+            statement_version: selection.statement_version,
+            pool: pool.to_bytes(),
+            verifier_program: selection.verifier_program,
+            profile_binding: selection.profile_binding,
+            release_binding: selection.release_binding,
+            loader_program: bpf_loader_upgradeable::id().to_bytes(),
+            programdata_address: programdata.to_bytes(),
+            executable_hash: [0x5A; 32],
+            expected_upgrade_authority: [0u8; 32],
+            activation_slot: 100,
+            retirement_slot: POOL_V1_VERIFIER_ENTRY_NO_RETIREMENT_SLOT,
+            policy_binding: [8u8; 32],
+        }
+    }
+
     fn account<'a>(
         key: &'a Pubkey,
         owner: &'a Pubkey,
@@ -283,6 +489,102 @@ mod tests {
             false,
             Epoch::default(),
         )
+    }
+
+    #[test]
+    fn immutable_deployment_policy_selects_only_canonical_v2_certificates_and_loader_v3_owner() {
+        let registry_program = Pubkey::new_unique();
+        let pool = Pubkey::new_unique();
+        let policy = immutable_deployment_policy(registry_program);
+        let selection = selection();
+        let registry_key = pool_v1_verifier_registry_v2_address(&registry_program, &pool).0;
+        let entry_key = pool_v1_verifier_entry_v2_address(
+            &registry_program,
+            &pool,
+            &selection.profile_binding,
+            &selection.release_binding,
+        )
+        .0;
+        let mut registry_data =
+            encode_verifier_registry_v2(&registry_v2(registry_program, pool)).unwrap();
+        let mut entry_data = encode_verifier_registry_entry_v2(&entry_v2(pool)).unwrap();
+        let registry_before = registry_data;
+        let entry_before = entry_data;
+        let mut registry_lamports = 1;
+        let mut entry_lamports = 1;
+        let registry_account = account(
+            &registry_key,
+            &registry_program,
+            &mut registry_lamports,
+            &mut registry_data,
+        );
+        let entry_account = account(
+            &entry_key,
+            &registry_program,
+            &mut entry_lamports,
+            &mut entry_data,
+        );
+
+        let authenticated = authenticate_verifier_selection_v1(
+            &pool,
+            &policy,
+            &[registry_account, entry_account],
+            selection,
+            100,
+        )
+        .unwrap();
+        assert!(authenticated.matches_verifier_owner(&bpf_loader_upgradeable::id()));
+        assert!(!authenticated.matches_verifier_owner(&solana_sdk_ids::bpf_loader::id()));
+        assert_eq!(authenticated.registry_generation(), 4);
+        assert_eq!(registry_data, registry_before);
+        assert_eq!(entry_data, entry_before);
+
+        for mutation in 0..5 {
+            let mut registry_value = registry_v2(registry_program, pool);
+            let mut entry_value = entry_v2(pool);
+            match mutation {
+                0 => registry_value.loader_program = solana_sdk_ids::bpf_loader::id().to_bytes(),
+                1 => registry_value.registry_program = Pubkey::new_unique().to_bytes(),
+                2 => entry_value.loader_program = solana_sdk_ids::loader_v4::id().to_bytes(),
+                3 => entry_value.expected_upgrade_authority = [1u8; 32],
+                4 => entry_value.verifier_program = [0xCC; 32],
+                _ => unreachable!(),
+            }
+            let mut mutated_registry_data = encode_verifier_registry_v2(&registry_value).unwrap();
+            let mut mutated_entry_data = encode_verifier_registry_entry_v2(&entry_value)
+                .unwrap_or_else(|_| {
+                    // A nonzero expected authority is rejected by the canonical
+                    // codec before the Pool ever considers the account.
+                    let mut bytes = encode_verifier_registry_entry_v2(&entry_v2(pool)).unwrap();
+                    bytes[232] = 1;
+                    bytes
+                });
+            let mut registry_lamports = 1;
+            let mut entry_lamports = 1;
+            let registry_account = account(
+                &registry_key,
+                &registry_program,
+                &mut registry_lamports,
+                &mut mutated_registry_data,
+            );
+            let entry_account = account(
+                &entry_key,
+                &registry_program,
+                &mut entry_lamports,
+                &mut mutated_entry_data,
+            );
+            assert!(
+                authenticate_verifier_selection_v1(
+                    &pool,
+                    &policy,
+                    &[registry_account, entry_account],
+                    selection,
+                    100,
+                )
+                .is_err(),
+                "mutation {mutation}"
+            );
+        }
     }
 
     #[test]

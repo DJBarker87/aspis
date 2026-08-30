@@ -257,6 +257,9 @@ pub fn plan_authenticated_verifier_dispatch_v1(
         current_slot,
     )?;
     require_selected_verifier_program_account(verifier_program_account, &selected_program)?;
+    if !authenticated_selection.matches_verifier_owner(verifier_program_account.owner) {
+        return Err(PoolV1ProgramError::InvalidVerifierProgramAccount.into());
+    }
     authenticate_proof_account_body_v1(proof_account, &selected_program, pool, &claim, hash)?;
 
     if !authenticated_selection.matches(

@@ -213,6 +213,8 @@ name = "aspis-registry"
 version = "0.1.0"
 dependencies = [
  "aspis-statement",
+ "bincode",
+ "solana-loader-v3-interface",
  "solana-program",
  "solana-sdk-ids",
 ]
@@ -238,6 +240,7 @@ dependencies = [
  "borsh 1.5.7",
  "proptest",
  "solana-program",
+ "solana-sdk-ids",
 ]
 
 [[package]]

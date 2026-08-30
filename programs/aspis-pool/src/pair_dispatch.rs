@@ -213,6 +213,9 @@ pub fn plan_pair_verifier_dispatch_v1(
         },
         current_slot,
     )?;
+    if !authenticated.matches_verifier_owner(verifier_program.owner) {
+        return Err(PoolV1ProgramError::InvalidVerifierProgramAccount.into());
+    }
     if !authenticated.matches(
         pool.to_bytes(),
         claim.verifier_program,

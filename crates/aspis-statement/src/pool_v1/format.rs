@@ -78,7 +78,13 @@ pub const POOL_V1_IDENTITY_BYTES: usize = 144;
 pub const POOL_V1_VERIFIER_POLICY_MAGIC: [u8; 4] = *b"ASPP";
 pub const POOL_V1_VERIFIER_POLICY_BYTES: usize = 104;
 pub const POOL_V1_VERIFIER_POLICY_FLAG_IMMUTABLE_REGISTRY: u8 = 1 << 0;
-pub const POOL_V1_VERIFIER_POLICY_FLAGS_MASK: u8 = POOL_V1_VERIFIER_POLICY_FLAG_IMMUTABLE_REGISTRY;
+/// Select the distinct V2 registry/entry PDA family whose entries certify a
+/// permanently immutable loader-v3 deployment and exact executable hash.
+/// This bit was rejected by every earlier decoder, so accepting it does not
+/// reinterpret any previously valid V1 policy image.
+pub const POOL_V1_VERIFIER_POLICY_FLAG_IMMUTABLE_DEPLOYMENT: u8 = 1 << 1;
+pub const POOL_V1_VERIFIER_POLICY_FLAGS_MASK: u8 = POOL_V1_VERIFIER_POLICY_FLAG_IMMUTABLE_REGISTRY
+    | POOL_V1_VERIFIER_POLICY_FLAG_IMMUTABLE_DEPLOYMENT;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum PoolV1FormatError {
@@ -167,6 +173,11 @@ pub fn validate_verifier_policy_v1(policy: &VerifierPolicyV1) -> Result<(), Pool
         return Err(PoolV1FormatError::ZeroRequiredBinding);
     }
     let immutable = policy.flags & POOL_V1_VERIFIER_POLICY_FLAG_IMMUTABLE_REGISTRY != 0;
+    let immutable_deployment =
+        policy.flags & POOL_V1_VERIFIER_POLICY_FLAG_IMMUTABLE_DEPLOYMENT != 0;
+    if immutable_deployment && !immutable {
+        return Err(PoolV1FormatError::InvalidAuthorityMode);
+    }
     if immutable != (policy.registry_authority == [0u8; 32]) {
         return Err(PoolV1FormatError::InvalidAuthorityMode);
     }
@@ -320,6 +331,20 @@ mod tests {
             ..policy
         };
         assert!(encode_verifier_policy_v1(&immutable).is_ok());
+        assert!(encode_verifier_policy_v1(&VerifierPolicyV1 {
+            flags: POOL_V1_VERIFIER_POLICY_FLAG_IMMUTABLE_REGISTRY
+                | POOL_V1_VERIFIER_POLICY_FLAG_IMMUTABLE_DEPLOYMENT,
+            ..immutable
+        })
+        .is_ok());
+        assert_eq!(
+            encode_verifier_policy_v1(&VerifierPolicyV1 {
+                flags: POOL_V1_VERIFIER_POLICY_FLAG_IMMUTABLE_DEPLOYMENT,
+                registry_authority: [8u8; 32],
+                ..policy
+            }),
+            Err(PoolV1FormatError::InvalidAuthorityMode)
+        );
         assert_eq!(
             encode_verifier_policy_v1(&VerifierPolicyV1 {
                 registry_authority: [0u8; 32],

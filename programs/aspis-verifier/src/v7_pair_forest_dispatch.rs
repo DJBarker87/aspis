@@ -36,13 +36,15 @@ use aspis_statement::pool_v1::{
 };
 #[cfg(feature = "v7-pair-forest-lane-invariant-audit")]
 use aspis_statement::pool_v1::{
-    decode_verifier_registry_entry_v1, decode_verifier_registry_v1, validate_verifier_policy_v1,
+    decode_verifier_registry_entry_v1, decode_verifier_registry_entry_v2,
+    decode_verifier_registry_v1, decode_verifier_registry_v2, validate_verifier_policy_v1,
     IncrementalMerkleTreeV1, POOL_V1_DIGEST_ENCODING_VERSION, POOL_V1_PAIR_CAPACITY,
     POOL_V1_PAIR_FOREST_ACCOUNT_FORMAT_BINDING, POOL_V1_PAIR_FOREST_LANE_ACCOUNT_BYTES,
     POOL_V1_PAIR_FOREST_LANE_COUNT, POOL_V1_PAIR_FOREST_LANE_HEADER_BYTES,
     POOL_V1_PAIR_FOREST_LANE_MAGIC, POOL_V1_PAIR_FOREST_LANE_VERSION,
     POOL_V1_PAIR_FOREST_TERMINAL_VERSION, POOL_V1_PAIR_TREE_DEPTH, POOL_V1_TREE_HASH_VERSION,
     POOL_V1_TREE_STATE_MAGIC, POOL_V1_TREE_STATE_VERSION,
+    POOL_V1_VERIFIER_POLICY_FLAG_IMMUTABLE_DEPLOYMENT,
     POOL_V1_VERIFIER_POLICY_FLAG_IMMUTABLE_REGISTRY,
 };
 use solana_program::{
@@ -51,6 +53,8 @@ use solana_program::{
 };
 #[cfg(feature = "v7-pair-forest-lane-invariant-audit")]
 use solana_program::{clock::Clock, sysvar::Sysvar};
+#[cfg(feature = "v7-pair-forest-lane-invariant-audit")]
+use solana_sdk_ids::bpf_loader_upgradeable;
 
 use crate::{
     lifecycle::{proof_account_finalized, uploaded_proof_bounds},
@@ -64,6 +68,10 @@ const PAIR_FOREST_CHECKPOINT_SEED: &[u8] = b"aspis-pair-forest-checkpoint-v1";
 const VERIFIER_REGISTRY_SEED: &[u8] = b"aspis-verifier-registry-v1";
 #[cfg(feature = "v7-pair-forest-lane-invariant-audit")]
 const VERIFIER_ENTRY_SEED: &[u8] = b"aspis-verifier-entry-v1";
+#[cfg(feature = "v7-pair-forest-lane-invariant-audit")]
+const VERIFIER_REGISTRY_V2_SEED: &[u8] = b"aspis-verifier-registry-v2";
+#[cfg(feature = "v7-pair-forest-lane-invariant-audit")]
+const VERIFIER_ENTRY_V2_SEED: &[u8] = b"aspis-verifier-entry-v2";
 
 // Explicit audit-build release capability. These values match the frozen
 // deterministic TxV1 fixture. Production activation remains blocked until
@@ -145,8 +153,30 @@ fn authenticate_invariant_release_registry_v1(
     registry_account: &AccountInfo<'_>,
     entry_account: &AccountInfo<'_>,
 ) -> ProgramResult {
+    authenticate_invariant_release_registry_at_slot_v1(
+        verifier_program,
+        pool_program,
+        master_account,
+        master,
+        registry_account,
+        entry_account,
+        Clock::get()?.slot,
+    )
+}
+
+#[cfg(feature = "v7-pair-forest-lane-invariant-audit")]
+#[inline(never)]
+fn authenticate_invariant_release_registry_at_slot_v1(
+    verifier_program: &Pubkey,
+    pool_program: &Pubkey,
+    master_account: &AccountInfo<'_>,
+    master: &PoolV1PairForestMasterV1,
+    registry_account: &AccountInfo<'_>,
+    entry_account: &AccountInfo<'_>,
+    current_slot: u64,
+) -> ProgramResult {
     if pool_program.to_bytes() != PAIR_FOREST_INVARIANT_POOL_PROGRAM_AUDIT_V1
-        || master.verifier_policy.flags != POOL_V1_VERIFIER_POLICY_FLAG_IMMUTABLE_REGISTRY
+        || master.verifier_policy.flags & POOL_V1_VERIFIER_POLICY_FLAG_IMMUTABLE_REGISTRY == 0
         || master.verifier_policy.registry_program
             != PAIR_FOREST_INVARIANT_REGISTRY_PROGRAM_AUDIT_V1
         || master.verifier_policy.registry_authority != [0u8; 32]
@@ -158,6 +188,68 @@ fn authenticate_invariant_release_registry_v1(
         .map_err(|_| ProgramError::InvalidAccountData)?;
     let registry_program = Pubkey::new_from_array(PAIR_FOREST_INVARIANT_REGISTRY_PROGRAM_AUDIT_V1);
     require_readonly_account(registry_account, &registry_program)?;
+    let immutable_deployment =
+        master.verifier_policy.flags & POOL_V1_VERIFIER_POLICY_FLAG_IMMUTABLE_DEPLOYMENT != 0;
+    if immutable_deployment {
+        let loader = bpf_loader_upgradeable::id();
+        let expected_registry = Pubkey::find_program_address(
+            &[VERIFIER_REGISTRY_V2_SEED, master_account.key.as_ref()],
+            &registry_program,
+        )
+        .0;
+        if registry_account.key != &expected_registry {
+            return Err(ProgramError::InvalidAccountData);
+        }
+        let registry = decode_verifier_registry_v2(&registry_account.try_borrow_data()?)
+            .map_err(|_| ProgramError::InvalidAccountData)?;
+        let registry_programdata =
+            Pubkey::find_program_address(&[registry_program.as_ref()], &loader).0;
+        if registry.pool != master_account.key.to_bytes()
+            || registry.authority != master.verifier_policy.registry_authority
+            || registry.policy_binding != master.verifier_policy.policy_binding
+            || registry.registry_program != registry_program.to_bytes()
+            || registry.loader_program != loader.to_bytes()
+            || registry.programdata_address != registry_programdata.to_bytes()
+            || !registry.is_immutable()
+            || registry.is_paused()
+        {
+            return Err(ProgramError::InvalidAccountData);
+        }
+
+        require_readonly_account(entry_account, &registry_program)?;
+        let expected_entry = Pubkey::find_program_address(
+            &[
+                VERIFIER_ENTRY_V2_SEED,
+                master_account.key.as_ref(),
+                &V7_POOL_PAIR_FOREST_TAG73_PROFILE_BINDING,
+                &V7_POOL_PAIR_FOREST_TAG73_RELEASE_BINDING,
+            ],
+            &registry_program,
+        )
+        .0;
+        if entry_account.key != &expected_entry {
+            return Err(ProgramError::InvalidAccountData);
+        }
+        let entry = decode_verifier_registry_entry_v2(&entry_account.try_borrow_data()?)
+            .map_err(|_| ProgramError::InvalidAccountData)?;
+        let verifier_programdata =
+            Pubkey::find_program_address(&[verifier_program.as_ref()], &loader).0;
+        if entry.pool != master_account.key.to_bytes()
+            || entry.policy_binding != PAIR_FOREST_INVARIANT_POLICY_BINDING_AUDIT_V1
+            || entry.verifier_program != verifier_program.to_bytes()
+            || entry.profile_binding != V7_POOL_PAIR_FOREST_TAG73_PROFILE_BINDING
+            || entry.release_binding != V7_POOL_PAIR_FOREST_TAG73_RELEASE_BINDING
+            || entry.statement_version != POOL_V1_PAIR_FOREST_TERMINAL_VERSION
+            || entry.loader_program != loader.to_bytes()
+            || entry.programdata_address != verifier_programdata.to_bytes()
+            || entry.expected_upgrade_authority != [0u8; 32]
+            || !entry.is_active_at(current_slot)
+        {
+            return Err(ProgramError::InvalidAccountData);
+        }
+        return Ok(());
+    }
+
     let expected_registry = Pubkey::find_program_address(
         &[VERIFIER_REGISTRY_SEED, master_account.key.as_ref()],
         &registry_program,
@@ -193,7 +285,6 @@ fn authenticate_invariant_release_registry_v1(
     }
     let entry = decode_verifier_registry_entry_v1(&entry_account.try_borrow_data()?)
         .map_err(|_| ProgramError::InvalidAccountData)?;
-    let current_slot = Clock::get()?.slot;
     if entry.pool != master_account.key.to_bytes()
         || entry.policy_binding != PAIR_FOREST_INVARIANT_POLICY_BINDING_AUDIT_V1
         || entry.verifier_program != verifier_program.to_bytes()
@@ -996,11 +1087,14 @@ mod tests {
         decode_pool_v1_pair_forest_terminal_result_v1, encode_pool_v1_pair_forest_checkpoint_v1,
         encode_pool_v1_pair_forest_lane_state_v1, encode_pool_v1_pair_forest_master_v1,
         encode_pool_v1_pair_forest_terminal_request_v1, encode_pool_v1_pair_verified_afterstate_v1,
-        IncrementalMerkleTreeV1, PoolIdentityV1, PoolV1PairForestCheckpointV1,
-        PoolV1PairForestLaneStateV1, PoolV1PairForestMasterV1, PoolV1PairForestTerminalPaymentV1,
+        encode_verifier_registry_entry_v2, encode_verifier_registry_v2, IncrementalMerkleTreeV1,
+        PoolIdentityV1, PoolV1PairForestCheckpointV1, PoolV1PairForestLaneStateV1,
+        PoolV1PairForestMasterV1, PoolV1PairForestTerminalPaymentV1,
         PoolV1PairForestTerminalRequestV1, PoolV1PairForestTerminalResultV1,
-        PoolV1PairVerifiedAfterstateV1, PoolV1PrivateTransferPublicV1, VerifierPolicyV1,
+        PoolV1PairVerifiedAfterstateV1, PoolV1PrivateTransferPublicV1, VerifierEntryStatusV1,
+        VerifierPolicyV1, VerifierRegistryEntryV2, VerifierRegistryV2,
         POOL_V1_PAIR_FOREST_TERMINAL_RESULT_BYTES, POOL_V1_PAIR_TREE_DEPTH,
+        POOL_V1_VERIFIER_ENTRY_NO_RETIREMENT_SLOT, POOL_V1_VERIFIER_REGISTRY_FLAG_IMMUTABLE,
     };
     use solana_program::{
         clock::Epoch,
@@ -1782,6 +1876,234 @@ mod tests {
         with_fixture_accounts(fixture, |accounts| {
             validate_v7_pair_forest_asq8_request_v1(&verifier, accounts, &request)
         })
+    }
+
+    #[cfg(feature = "v7-pair-forest-lane-invariant-audit")]
+    #[test]
+    fn immutable_registry_v2_release_certificate_authenticates_fail_closed() {
+        let verifier_program = crate::id();
+        let pool_program = fixed_pubkey(0x41);
+        let registry_program = fixed_pubkey(0x44);
+        let loader = bpf_loader_upgradeable::id();
+        let master_key = fixed_pubkey(0x71);
+        let registry_key = Pubkey::find_program_address(
+            &[VERIFIER_REGISTRY_V2_SEED, master_key.as_ref()],
+            &registry_program,
+        )
+        .0;
+        let entry_key = Pubkey::find_program_address(
+            &[
+                VERIFIER_ENTRY_V2_SEED,
+                master_key.as_ref(),
+                &V7_POOL_PAIR_FOREST_TAG73_PROFILE_BINDING,
+                &V7_POOL_PAIR_FOREST_TAG73_RELEASE_BINDING,
+            ],
+            &registry_program,
+        )
+        .0;
+        let registry_programdata =
+            Pubkey::find_program_address(&[registry_program.as_ref()], &loader).0;
+        let verifier_programdata =
+            Pubkey::find_program_address(&[verifier_program.as_ref()], &loader).0;
+        let master = PoolV1PairForestMasterV1 {
+            identity: PoolIdentityV1 {
+                pool: master_key.to_bytes(),
+                asset_mint: fixed_pubkey(0x72).to_bytes(),
+                token_program: fixed_pubkey(0x73).to_bytes(),
+                asset_id: M31(17),
+                deployment_domain: [0x74; 32],
+            },
+            verifier_policy: VerifierPolicyV1 {
+                flags: POOL_V1_VERIFIER_POLICY_FLAG_IMMUTABLE_REGISTRY
+                    | POOL_V1_VERIFIER_POLICY_FLAG_IMMUTABLE_DEPLOYMENT,
+                registry_program: registry_program.to_bytes(),
+                registry_authority: [0; 32],
+                policy_binding: PAIR_FOREST_INVARIANT_POLICY_BINDING_AUDIT_V1,
+            },
+            initialized_lane_mask: POOL_V1_PAIR_FOREST_ALL_LANES_MASK,
+            has_checkpoint: true,
+            next_checkpoint_sequence: 1,
+            last_checkpoint_lane_sequences: [0; 8],
+        };
+        let registry = VerifierRegistryV2 {
+            flags: POOL_V1_VERIFIER_REGISTRY_FLAG_IMMUTABLE,
+            pool: master_key.to_bytes(),
+            authority: [0; 32],
+            policy_binding: PAIR_FOREST_INVARIANT_POLICY_BINDING_AUDIT_V1,
+            generation: 1,
+            minimum_activation_delay_slots: 1,
+            registry_program: registry_program.to_bytes(),
+            loader_program: loader.to_bytes(),
+            programdata_address: registry_programdata.to_bytes(),
+            executable_hash: [0xa5; 32],
+        };
+        let entry = VerifierRegistryEntryV2 {
+            status: VerifierEntryStatusV1::Active,
+            statement_version: POOL_V1_PAIR_FOREST_TERMINAL_VERSION,
+            pool: master_key.to_bytes(),
+            verifier_program: verifier_program.to_bytes(),
+            profile_binding: V7_POOL_PAIR_FOREST_TAG73_PROFILE_BINDING,
+            release_binding: V7_POOL_PAIR_FOREST_TAG73_RELEASE_BINDING,
+            loader_program: loader.to_bytes(),
+            programdata_address: verifier_programdata.to_bytes(),
+            executable_hash: [0x5a; 32],
+            expected_upgrade_authority: [0; 32],
+            activation_slot: 90,
+            retirement_slot: POOL_V1_VERIFIER_ENTRY_NO_RETIREMENT_SLOT,
+            policy_binding: PAIR_FOREST_INVARIANT_POLICY_BINDING_AUDIT_V1,
+        };
+
+        let authenticate = |candidate_registry: VerifierRegistryV2,
+                            candidate_entry: VerifierRegistryEntryV2,
+                            candidate_registry_key: Pubkey,
+                            candidate_entry_key: Pubkey,
+                            candidate_registry_owner: Pubkey,
+                            candidate_entry_owner: Pubkey,
+                            current_slot: u64| {
+            let mut master_lamports = 1;
+            let mut master_data = [];
+            let master_account = AccountInfo::new(
+                &master_key,
+                false,
+                false,
+                &mut master_lamports,
+                &mut master_data,
+                &pool_program,
+                false,
+                Epoch::default(),
+            );
+            let mut registry_lamports = 1;
+            let mut registry_data = encode_verifier_registry_v2(&candidate_registry)
+                .unwrap()
+                .to_vec();
+            let registry_account = AccountInfo::new(
+                &candidate_registry_key,
+                false,
+                false,
+                &mut registry_lamports,
+                &mut registry_data,
+                &candidate_registry_owner,
+                false,
+                Epoch::default(),
+            );
+            let mut entry_lamports = 1;
+            let mut entry_data = encode_verifier_registry_entry_v2(&candidate_entry)
+                .unwrap()
+                .to_vec();
+            let entry_account = AccountInfo::new(
+                &candidate_entry_key,
+                false,
+                false,
+                &mut entry_lamports,
+                &mut entry_data,
+                &candidate_entry_owner,
+                false,
+                Epoch::default(),
+            );
+            authenticate_invariant_release_registry_at_slot_v1(
+                &verifier_program,
+                &pool_program,
+                &master_account,
+                &master,
+                &registry_account,
+                &entry_account,
+                current_slot,
+            )
+        };
+
+        assert_eq!(
+            authenticate(
+                registry,
+                entry,
+                registry_key,
+                entry_key,
+                registry_program,
+                registry_program,
+                100,
+            ),
+            Ok(()),
+        );
+
+        let mut wrong_registry_programdata = registry;
+        wrong_registry_programdata.programdata_address = fixed_pubkey(0x81).to_bytes();
+        assert_eq!(
+            authenticate(
+                wrong_registry_programdata,
+                entry,
+                registry_key,
+                entry_key,
+                registry_program,
+                registry_program,
+                100,
+            ),
+            Err(ProgramError::InvalidAccountData),
+        );
+
+        let mut wrong_entry_programdata = entry;
+        wrong_entry_programdata.programdata_address = fixed_pubkey(0x82).to_bytes();
+        assert_eq!(
+            authenticate(
+                registry,
+                wrong_entry_programdata,
+                registry_key,
+                entry_key,
+                registry_program,
+                registry_program,
+                100,
+            ),
+            Err(ProgramError::InvalidAccountData),
+        );
+
+        let mut paused_entry = entry;
+        paused_entry.status = VerifierEntryStatusV1::Paused;
+        assert_eq!(
+            authenticate(
+                registry,
+                paused_entry,
+                registry_key,
+                entry_key,
+                registry_program,
+                registry_program,
+                100,
+            ),
+            Err(ProgramError::InvalidAccountData),
+        );
+        assert_eq!(
+            authenticate(
+                registry,
+                entry,
+                registry_key,
+                entry_key,
+                registry_program,
+                registry_program,
+                89,
+            ),
+            Err(ProgramError::InvalidAccountData),
+        );
+        assert_eq!(
+            authenticate(
+                registry,
+                entry,
+                registry_key,
+                entry_key,
+                fixed_pubkey(0x83),
+                registry_program,
+                100,
+            ),
+            Err(ProgramError::InvalidAccountData),
+        );
+        assert_eq!(
+            authenticate(
+                registry,
+                entry,
+                registry_key,
+                fixed_pubkey(0x84),
+                registry_program,
+                registry_program,
+                100,
+            ),
+            Err(ProgramError::InvalidAccountData),
+        );
     }
 
     #[test]
