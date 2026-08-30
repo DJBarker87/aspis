@@ -43,11 +43,26 @@ pub fn pool_v1_pair_forest_copy_active_row_masks_compiled_v1() -> &'static [u16;
     &constants::ACTIVE_ROW_MASKS
 }
 
+/// Frozen row-to-group schedule generated from the exact pair-forest copy
+/// registry.  The selected verifier consumes this directly instead of
+/// rebuilding and deduplicating public layout data on every transaction.
+pub fn pool_v1_pair_forest_copy_inactive_row_groups_compiled_v1() -> &'static [u8; 64] {
+    &constants::INACTIVE_ROW_GROUPS
+}
+
+/// Deduplicated inactive masks referenced by
+/// [`pool_v1_pair_forest_copy_inactive_row_groups_compiled_v1`].
+pub fn pool_v1_pair_forest_copy_inactive_group_masks_compiled_v1() -> &'static [u16] {
+    &constants::INACTIVE_GROUP_MASKS
+}
+
 const _: () = assert!(POSEIDON2_WIDTH == POOL_V1_PAIR_FOREST_COPY_TERMINAL_COLUMNS_V1);
 const _: () = assert!(constants::COPY_LINKS.len() == POOL_V1_PAIR_FOREST_COPY_TERMINAL_LINKS_V1);
 const _: () =
     assert!(constants::COPY_PATTERNS.len() == POOL_V1_PAIR_FOREST_COPY_TERMINAL_PATTERNS_V1);
 const _: () = assert!(constants::ACTIVE_ROW_MASKS.len() == 64);
+const _: () = assert!(constants::INACTIVE_ROW_GROUPS.len() == 64);
+const _: () = assert!(constants::INACTIVE_GROUP_MASKS.len() <= 64);
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum PoolV1PairForestCompiledVariantV1 {

@@ -156,6 +156,8 @@ pub use pair_forest_copy_terminal::{
     evaluate_pool_v1_pair_forest_copy_terminal_compiled_v1,
     pool_v1_pair_forest_copy_active_at_point_compiled_v1,
     pool_v1_pair_forest_copy_active_row_masks_compiled_v1,
+    pool_v1_pair_forest_copy_inactive_group_masks_compiled_v1,
+    pool_v1_pair_forest_copy_inactive_row_groups_compiled_v1,
     pool_v1_pair_forest_copy_lane_boolean_extraction_v1, PoolV1PairForestCompiledCopyTerminalV1,
     PoolV1PairForestCompiledVariantV1,
     PINNED_POOL_V1_PAIR_FOREST_COPY_TERMINAL_ACTIVE_ROWS_FINGERPRINT_V1,
