@@ -359,6 +359,7 @@ lake env lean AspisFormal/K1/V7Tag73ExactRootControllerCoordinateAlignment.lean
 lake env lean AspisFormal/K1/V7Tag73ExactFinalWorkPairRootOrder.lean
 lake env lean AspisFormal/K1/V7Tag73IndexedAlignedRecordReplay.lean
 lake env lean AspisFormal/K1/V7Tag73ExactFinalWorkPairControllerCompletion.lean
+lake env lean AspisFormal/K1/V7Tag73CausalMachineLabeledTraceRouting.lean
 ```
 
 Observed focused checks:
@@ -389,6 +390,7 @@ Observed focused checks:
 | exact final-work pair root order | 0 | 3.84 s | 5,659,705,344 B |
 | segment-stable aligned controller replay | 0 | 4.00 s | 5,665,554,432 B |
 | exact accepted pair controller completion | 0 | 4.04 s | 5,689,180,160 B |
+| finite pre-answer-labelled trace routing | 0 | 4.00 s | 5,690,392,576 B |
 
 All reported theorem axiom sets are subsets of:
 
@@ -414,3 +416,23 @@ accepted digests ≃ Fin (2^222)
 ```
 
 The final proof checks at roughly 5.5 GiB. This is the retained design.
+
+## Exact labelled-trace routing bridge
+
+`V7Tag73CausalMachineLabeledTraceRouting.lean` closes the generic routing
+step that previously sat between controller/source alignment and the causal
+coordinate equivalence.  It kernel-checks that a chronological pre-answer
+label trace consumes each distinct named destination exactly once, charges
+every unlabelled exposure to the explicit residual tape, and routes every
+named slot to its literal next answer.  The strongest endpoint is:
+
+```text
+machine_labeled_trace_routes_named_answer
+```
+
+Its only protocol-facing premises are distinct named labels, membership in
+the finite slot inventory, the residual-capacity inequality, and exact tape
+chronology.  It introduces no randomness, independence, trace-cover, or
+source-faithfulness premise.  The remaining Tag-73 work is now the specific
+label classification of the accepted final-work/q16 trace and the existing
+residual-capacity instantiation, rather than another router semantics proof.
