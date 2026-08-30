@@ -41,6 +41,14 @@ d7df5e1346da8f3e56cd96292b7f1ac05775f190d48c3823d184454e019abaf3  Funs.lean
 All module compilation logs are error-free. The helper reports one benign
 duplicated-namespace naming warning. No generated declaration reports `sorry`.
 
+A subsequent root `#print axioms` audit found eight generated
+`_native.decide` certificates, all originating in Debug/expect-only `Str`
+literals. The staging gate now replaces exactly those eight messages with the
+same kernel-proved empty `Str` used by earlier accepted-source bridges. This
+does not alter typed success or failure; it removes panic text from the Lean
+model. The staged hashes above predate this final string normalization and will
+be superseded by the next frozen replay manifest.
+
 ## Security scope
 
 Production Rust, the proof format, transcript order, field arithmetic,

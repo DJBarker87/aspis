@@ -95,6 +95,9 @@ Lean backend. The complete focused series, including this patch, has Git tree
 Lean-4.32 staging tree. It uses the same executable mutable-iterator model as
 the frozen V5 and V7 Merkle source bridges, decides sixteen stored Rust Boolean
 equalities, uncurries one two-argument `QM31::add` function item, and returns
-Rust unit with the unchanged state of one no-op `FnMut`. Every rewrite has an
-exact expected occurrence count and fails closed if the generated shape
-changes. `GENERATED-LEAN432.sha256` authenticates the staging script and helper.
+Rust unit with the unchanged state of one no-op `FnMut`. It also replaces eight
+Debug/expect-only string literals with a kernel-proved empty `Str`, preventing
+Lean's UTF-8 native-decide certificates from entering the verifier theorem.
+Every rewrite has an exact expected occurrence count and fails closed if the
+generated shape changes. `GENERATED-LEAN432.sha256` authenticates the staging
+script and helper.
