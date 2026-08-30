@@ -365,6 +365,8 @@ lake env lean AspisFormal/K1/V7Tag73ExactCandidateLabeledRootRouting.lean
 lake env lean AspisFormal/K1/V7Tag73Q16CandidateParserExact.lean
 lake env lean AspisFormal/K1/V7Tag73Q16BranchRecordReplay.lean
 lake env lean AspisFormal/K1/V7Tag73ExactRootRecordOrderLift.lean
+lake env lean AspisFormal/K1/V7Tag73CausalDagFinalWorkQ16Controller.lean
+lake env lean AspisFormal/K1/V7Tag73ExactDagCandidateLabeledRootRouting.lean
 ```
 
 Observed focused checks:
@@ -401,6 +403,8 @@ Observed focused checks:
 | exact raw q16 candidate inverse grammar | 0 | 5.36 s | 5,579,849,728 B |
 | selected q16 branch segment stability | 0 | 5.34 s | 5,657,509,888 B |
 | pair-order lift into actor-tagged root records | 0 | 4.06 s | 5,669,830,656 B |
+| causal-DAG final-work/q16 controller | 0 | 4.1 s | 5,684,559,872 B |
+| exact causal-DAG accepted-root router | 0 | 4.4 s | 5,688,705,024 B |
 
 All reported theorem axiom sets are subsets of:
 
@@ -490,3 +494,34 @@ actor for an adversary-first query and do not relabel a cached answer. The
 remaining controller fold must permit advance-derived later block queries to
 appear before an earlier sibling output; strict producer ordering alone does
 not justify a sequential-output assumption.
+
+## Causal-DAG correction
+
+`V7Tag73CausalDagFinalWorkQ16Controller.lean` implements that required
+correction. A candidate absorb creates the block-zero producer, and every
+causally known advance answer immediately creates the next block producer.
+An output is therefore labelable whenever its producer is known, even if an
+adversary exposes later-block coordinates before an earlier sibling output.
+Output arrival is not incorrectly used as a gate for advance-derived state.
+
+The controller also retains a monotone finite set of already emitted slots.
+Lean proves for every answer stream, without a source premise, that its named
+labels are pairwise distinct:
+
+```text
+dag_labeled_records_named_slots_nodup
+```
+
+`V7Tag73ExactDagCandidateLabeledRootRouting.lean` compiles this controller into
+the actual 513-slot measure-preserving router, reuses the byte-exact accepted
+root tape prefix, and removes the previous caller-supplied label-noduplication
+premise. It also proves the root residual bound from the deployed programmed
+coordinate budget under the explicit arithmetic condition
+`513 <= 2 * forkRequestCap`; this is conservative and does not assume that
+all 512 q16 slots were used.
+
+The remaining deterministic source obligation is now narrow: establish that
+the accepted final-work coordinate and each consumed q16 output have the
+controller's corresponding pre-answer label. The q16 producer scan already
+has kernel-checked unique-digest lookup lemmas for both output and advance
+edges.
