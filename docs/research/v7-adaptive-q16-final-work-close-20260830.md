@@ -362,6 +362,9 @@ lake env lean AspisFormal/K1/V7Tag73ExactFinalWorkPairControllerCompletion.lean
 lake env lean AspisFormal/K1/V7Tag73CausalMachineLabeledTraceRouting.lean
 lake env lean AspisFormal/K1/V7Tag73IndexedControllerLabeledRecords.lean
 lake env lean AspisFormal/K1/V7Tag73ExactCandidateLabeledRootRouting.lean
+lake env lean AspisFormal/K1/V7Tag73Q16CandidateParserExact.lean
+lake env lean AspisFormal/K1/V7Tag73Q16BranchRecordReplay.lean
+lake env lean AspisFormal/K1/V7Tag73ExactRootRecordOrderLift.lean
 ```
 
 Observed focused checks:
@@ -395,6 +398,9 @@ Observed focused checks:
 | finite pre-answer-labelled trace routing | 0 | 4.00 s | 5,690,392,576 B |
 | indexed controller record labelling | 0 | 3.74 s | 5,662,851,072 B |
 | exact accepted root/router routing bridge | 0 | 4.30 s | 5,677,760,512 B |
+| exact raw q16 candidate inverse grammar | 0 | 5.36 s | 5,579,849,728 B |
+| selected q16 branch segment stability | 0 | 5.34 s | 5,657,509,888 B |
+| pair-order lift into actor-tagged root records | 0 | 4.06 s | 5,669,830,656 B |
 
 All reported theorem axiom sets are subsets of:
 
@@ -457,3 +463,30 @@ the exact exposure-trial router.  Its remaining premises are now finite and
 source-specific: root-label noduplication, the root residual count, and the
 selected controller label.  No further tape-cast, scheduler-trace, or router
 semantics gap remains behind those premises.
+
+## Exact q16 record-order bridge
+
+Three focused leaves now remove another source/controller gap:
+
+* `V7Tag73Q16CandidateParserExact.lean` proves that a successful raw
+  candidate parse fixes all 35 deployed input bytes, including the shared
+  base, absorb domain, q16 label, and counter.
+* `V7Tag73Q16BranchRecordReplay.lean` proves that an aligned machine-fresh
+  segment avoiding a selected candidate input and the selected block's two
+  sibling inputs preserves that branch cell exactly.
+* `V7Tag73ExactRootRecordOrderLift.lean` proves that every strict ordering in
+  the chronological `(input, answer)` root list lifts to the same strict
+  ordering in the actor-tagged root record list consumed by the indexed
+  controller.
+
+The strongest new source lift is:
+
+```text
+exact_root_pair_order_lifts_to_records
+```
+
+These results are deterministic and kernel checked. They do not assume an
+actor for an adversary-first query and do not relabel a cached answer. The
+remaining controller fold must permit advance-derived later block queries to
+appear before an earlier sibling output; strict producer ordering alone does
+not justify a sequential-output assumption.
