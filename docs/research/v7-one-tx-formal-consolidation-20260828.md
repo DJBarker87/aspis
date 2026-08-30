@@ -275,6 +275,19 @@ candidate absorb and its subsequent squeeze/advance chain, or otherwise prove
 an equivalent measure-preserving factorization. It may not assume that the
 verifier exposed the coordinate first.
 
+The restoration-wide classifier now also removes a subtler proof-level
+ambiguity before that factorization. Theorems
+`restored_operational_k13_consistency_set_intrinsic` and
+`restored_operational_query_failure_intrinsic` prove that canonical field
+decoding, duplicate-free challenge records, and the selected-q16 ledger fix
+the complete K1.3 view and consistency set for a terminal node. The root event
+theorem
+`exact_restored_operational_root_query_event_exposes_intrinsic_bad_set` then
+exposes the same size-at-most-9,557 bad set for every admissible data witness
+on that node. Thus the probability target cannot vary with a hidden
+`Classical.choice`; only the genuine all-actor causal coordinate inclusion
+remains.
+
 The focused NUC check passed under the authorized 44/55 GiB no-swap cgroup:
 
 ```text

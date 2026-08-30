@@ -30,6 +30,8 @@ open AspisK1.V7Tag73ExactFixedK13K14FailureReduction
 open AspisK1.V7Tag73ExactRestoredOperationalK13Classifier
 open AspisK1.V7Tag73ExactRestoredOperationalStages
 open AspisK1.V7Tag73RestoredDerivedK13View
+open AspisK1.V7Tag73ChallengeRecordUniquenessInvariant
+open AspisK1.V7Tag73Q16FirstCompactUniformity
 open AspisK1.V7Tag73RestoredNodeK13Classifier
 open AspisK1.V7Tag73ParsedK13K14Classifier
 open AspisK1.V7Tag73ProofRelevantUpstreamInterface
@@ -374,6 +376,62 @@ def exactTag73RestoredOperationalRootK13QueryEvent
           (parsedK13Transcript words (restoredOperationalK13View data))
           (restoredOperationalK13View data).queries
 
+/-- Root query-event membership exposes one consistency set of deployed size
+at most 9,557 for *every* admissible K1.3 data witness on that same terminal
+root.  The universal conclusion is important: the subsequent random-oracle
+target cannot be changed by a `Classical.choice` hidden in the source
+provider. -/
+theorem exact_restored_operational_root_query_event_exposes_intrinsic_bad_set
+    {HiddenTape TapeIdentity Observation Statement Payload Witness : Type}
+    {parameters : ExactCompilerResourceParameters}
+    {transitionFuel : Nat}
+    {configuration : ExactPlainRomWitnessConfiguration HiddenTape TapeIdentity
+      Observation Statement Tag73K12ParsedProof Payload Witness parameters}
+    {projection : AcceptedTapeProjection Statement Tag73K12ParsedProof Payload}
+    {fixedInstance : PublicInstance Statement}
+    {decoder : ExactDecoderInstantiation QM31Exact}
+    {sample : ExactCompilerSample HiddenTape parameters}
+    (member : sample ∈
+      exactTag73RestoredOperationalRootK13QueryEvent transitionFuel
+        configuration projection fixedInstance decoder) :
+    ∃ (input : ExactK12OperationalInput transitionFuel configuration
+        projection fixedInstance sample)
+      (words : ExtractedWords),
+      ∀ data : RestoredOperationalK13Data
+          configuration.machine.environment
+          input.package.root.fixedRoot.base.runtime.node,
+        let bad := restoredOperationalK13ConsistencySet decoder words data
+        bad.card ≤ 9557 ∧ AllInBad bad data.selectedSchedule.positions := by
+  rcases member with ⟨input, words, failure⟩
+  refine ⟨input, words, ?_⟩
+  intro data
+  let node := input.package.root.fixedRoot.base.runtime.node
+  let rootMember : node ∈ (exactRestorationAccumulator input).nodes :=
+    exact_restoration_accumulator_contains_root input
+  let rootDone : node.verifierFinalState.current.control = .done :=
+    exact_restoration_accumulator_root_is_done input
+  let providerData := (exact_restored_operational_k13_provider input).data
+    node rootMember rootDone
+  have unique : SnapshotChallengeRecordUniqueness
+      node.verifierFinalState.current :=
+    (input.stateMap.everyNodeChallengeRecordUniqueness node rootMember).1
+  have failureData : QueryPhaseFailure
+      (restoredOperationalK13View data).schedule
+      (decoderCodeEncoders decoder)
+      (parsedK13Transcript words (restoredOperationalK13View data))
+      (restoredOperationalK13View data).queries :=
+    (restored_operational_query_failure_intrinsic unique words providerData
+      data).mp failure
+  refine ⟨failureData.2, ?_⟩
+  intro ordinal
+  have accepted := accepted_queries_mem_consistencySet
+    (restoredOperationalK13View data).schedule
+    (decoderCodeEncoders decoder)
+    (parsedK13Transcript words (restoredOperationalK13View data))
+    (restoredOperationalK13View data).queries failureData.1 ordinal
+  simpa [restoredOperationalK13ConsistencySet,
+    restoredOperationalK13View] using accepted
+
 def exactTag73RestoredOperationalRootK13OneFoldEvent
     {HiddenTape TapeIdentity Observation Statement Payload Witness : Type}
     {parameters : ExactCompilerResourceParameters}
@@ -504,6 +562,8 @@ theorem exact_restored_operational_root_k13_list_cap_event_eq_empty
 #print axioms exact_restored_operational_k13_failure_subset_complete
 #print axioms exact_restored_stages_k13_error_subset_complete
 #print axioms exactTag73RestoredOperationalK13RootEvent
+#print axioms
+  exact_restored_operational_root_query_event_exposes_intrinsic_bad_set
 #print axioms exact_restored_operational_k13_failure_subset_root_complete
 #print axioms
   exact_restored_operational_root_k13_list_cap_event_eq_empty
