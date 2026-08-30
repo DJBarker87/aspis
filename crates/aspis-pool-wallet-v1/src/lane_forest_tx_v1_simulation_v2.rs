@@ -14,6 +14,7 @@ use solana_address_v1::Address;
 use solana_hash_v1::Hash as V1Hash;
 use solana_message_v1::{v1, VersionedMessage as V1VersionedMessage};
 use solana_program::{instruction::Instruction, pubkey::Pubkey};
+use solana_sdk_ids::system_program;
 use solana_signature_v1::Signature as V1Signature;
 use solana_transaction_v1::versioned::VersionedTransaction as V1VersionedTransaction;
 
@@ -52,19 +53,26 @@ impl PairForestTxV1CaseV2 {
             (
                 PairForestTerminalOperationV2::PrivateTransfer,
                 PairForestTerminalHistoryPathV2::SamePage,
-            ) => 9,
+            ) => 11,
             (
                 PairForestTerminalOperationV2::PrivateTransfer,
                 PairForestTerminalHistoryPathV2::Rollover,
-            ) => 10,
+            ) => 12,
             (
                 PairForestTerminalOperationV2::Withdrawal,
                 PairForestTerminalHistoryPathV2::SamePage,
-            ) => 14,
+            ) => 16,
             (
                 PairForestTerminalOperationV2::Withdrawal,
                 PairForestTerminalHistoryPathV2::Rollover,
-            ) => 15,
+            ) => 17,
+        }
+    }
+
+    pub const fn marker_payer_index_v2(self) -> usize {
+        match self.history_path {
+            PairForestTerminalHistoryPathV2::SamePage => 5,
+            PairForestTerminalHistoryPathV2::Rollover => 6,
         }
     }
 
@@ -73,19 +81,19 @@ impl PairForestTxV1CaseV2 {
             (
                 PairForestTerminalOperationV2::PrivateTransfer,
                 PairForestTerminalHistoryPathV2::SamePage,
-            ) => 799,
+            ) => 833,
             (
                 PairForestTerminalOperationV2::PrivateTransfer,
                 PairForestTerminalHistoryPathV2::Rollover,
-            ) => 832,
+            ) => 866,
             (
                 PairForestTerminalOperationV2::Withdrawal,
                 PairForestTerminalHistoryPathV2::SamePage,
-            ) => 964,
+            ) => 998,
             (
                 PairForestTerminalOperationV2::Withdrawal,
                 PairForestTerminalHistoryPathV2::Rollover,
-            ) => 997,
+            ) => 1_031,
         }
     }
 }
@@ -218,7 +226,21 @@ pub fn build_pair_forest_tx_v1_simulation_preflight_v2(
     {
         return Err(PairForestTxV1SimulationErrorV2::WrongInstructionData);
     }
-    if instruction.accounts.iter().any(|meta| meta.is_signer) {
+    let payer_index = case.marker_payer_index_v2();
+    let payer = &instruction.accounts[payer_index];
+    let system = &instruction.accounts[payer_index + 1];
+    if payer.pubkey != fee_payer
+        || !payer.is_signer
+        || !payer.is_writable
+        || system.pubkey != system_program::id()
+        || system.is_signer
+        || system.is_writable
+        || instruction
+            .accounts
+            .iter()
+            .enumerate()
+            .any(|(index, meta)| index != payer_index && meta.is_signer)
+    {
         return Err(PairForestTxV1SimulationErrorV2::UnexpectedInstructionSigner);
     }
     if post_state_accounts.len() > 64 {
@@ -330,12 +352,17 @@ mod tests {
         Pubkey::new_from_array([seed; 32])
     }
 
-    fn instruction(account_count: usize) -> Instruction {
+    fn instruction(case: PairForestTxV1CaseV2, fee_payer: Pubkey) -> Instruction {
+        let account_count = case.expected_instruction_accounts_v2();
+        let payer_index = case.marker_payer_index_v2();
+        let mut accounts = (0..account_count)
+            .map(|index| AccountMeta::new(key(index as u8 + 1), false))
+            .collect::<Vec<_>>();
+        accounts[payer_index] = AccountMeta::new(fee_payer, true);
+        accounts[payer_index + 1] = AccountMeta::new_readonly(system_program::id(), false);
         Instruction {
             program_id: key(200),
-            accounts: (0..account_count)
-                .map(|index| AccountMeta::new(key(index as u8 + 1), false))
-                .collect(),
+            accounts,
             data: {
                 let mut data = vec![0u8; V7_TX_V1_TERMINAL_REQUEST_BYTES_V2];
                 data[..4].copy_from_slice(b"ASQ8");
@@ -365,12 +392,13 @@ mod tests {
             },
         ];
         for case in cases {
+            let fee_payer = key(201);
             let preflight = build_pair_forest_tx_v1_simulation_preflight_v2(
                 7,
                 9,
-                key(201),
+                fee_payer,
                 [202; 32],
-                &instruction(case.expected_instruction_accounts_v2()),
+                &instruction(case, fee_payer),
                 case,
                 &[key(203)],
             )
@@ -400,13 +428,14 @@ mod tests {
             operation: PairForestTerminalOperationV2::PrivateTransfer,
             history_path: PairForestTerminalHistoryPathV2::SamePage,
         };
-        let mut wrong_magic = instruction(case.expected_instruction_accounts_v2());
+        let fee_payer = key(201);
+        let mut wrong_magic = instruction(case, fee_payer);
         wrong_magic.data[..4].copy_from_slice(b"ASF8");
         assert_eq!(
             build_pair_forest_tx_v1_simulation_preflight_v2(
                 1,
                 2,
-                key(201),
+                fee_payer,
                 [202; 32],
                 &wrong_magic,
                 case,
@@ -414,5 +443,37 @@ mod tests {
             ),
             Err(PairForestTxV1SimulationErrorV2::WrongInstructionData)
         );
+    }
+
+    #[test]
+    fn marker_payer_and_system_program_metas_are_pinned() {
+        let case = PairForestTxV1CaseV2 {
+            operation: PairForestTerminalOperationV2::PrivateTransfer,
+            history_path: PairForestTerminalHistoryPathV2::SamePage,
+        };
+        let fee_payer = key(201);
+        let payer_index = case.marker_payer_index_v2();
+        for mutation in 0..4 {
+            let mut malformed = instruction(case, fee_payer);
+            match mutation {
+                0 => malformed.accounts[payer_index].is_signer = false,
+                1 => malformed.accounts[payer_index].pubkey = key(204),
+                2 => malformed.accounts[payer_index + 1].pubkey = key(205),
+                3 => malformed.accounts[0].is_signer = true,
+                _ => unreachable!(),
+            }
+            assert_eq!(
+                build_pair_forest_tx_v1_simulation_preflight_v2(
+                    1,
+                    2,
+                    fee_payer,
+                    [202; 32],
+                    &malformed,
+                    case,
+                    &[],
+                ),
+                Err(PairForestTxV1SimulationErrorV2::UnexpectedInstructionSigner)
+            );
+        }
     }
 }
