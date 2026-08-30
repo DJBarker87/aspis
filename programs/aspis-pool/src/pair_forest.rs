@@ -1335,6 +1335,7 @@ where
     let withdrawal_plan =
         if let PoolV1PairForestTerminalPaymentV1::Withdrawal(public) = request.public {
             let token_accounts = &accounts[layout.token_start..layout.token_start + 5];
+            require_token_program_account(&token_accounts[4])?;
             Some(plan_legacy_withdrawal_transfer_from_identity_v1(
                 program_id,
                 master_account.key,
@@ -3364,7 +3365,7 @@ mod tests {
     }
 
     #[test]
-    fn one_terminal_withdrawal_checks_custody_delta_and_failure_precedes_pool_writes() {
+    fn one_terminal_withdrawal_authenticates_loader_and_checks_custody_delta_before_writes() {
         let program_id = Pubkey::new_unique();
         let mint = Pubkey::new_unique();
         let (master_key, mut master_state) = master(program_id, mint);
@@ -3477,7 +3478,7 @@ mod tests {
             },
             TestAccount {
                 key: LEGACY_SPL_TOKEN_PROGRAM_ID,
-                owner: native_loader::id(),
+                owner: bpf_loader::id(),
                 lamports: 1,
                 data: vec![],
                 signer: false,
@@ -3486,6 +3487,44 @@ mod tests {
             },
         ]);
         let instruction = encode_pool_v1_pair_forest_terminal_request_v1(&request).unwrap();
+
+        // The fixed token-program address and executable bit are insufficient:
+        // authenticate that the program is itself owned by a supported loader,
+        // and reject before either verifier execution or custody CPI.
+        let token_program_index = accounts.len() - 1;
+        accounts[token_program_index].owner = native_loader::id();
+        let invalid_loader_before = accounts
+            .iter()
+            .map(|account| account.data.clone())
+            .collect::<Vec<_>>();
+        let infos: Vec<_> = accounts.iter_mut().map(TestAccount::info).collect();
+        let mut invalid_loader_cpi = WithdrawalCpi {
+            fail: false,
+            calls: 0,
+        };
+        assert_eq!(
+            process_pair_forest_terminal_with_verifier_v1(
+                &program_id,
+                &infos,
+                &instruction,
+                1,
+                &mut invalid_loader_cpi,
+                |_, _, _, _, _, _, _, _, _, _| panic!("invalid loader reached verifier"),
+                |_| {},
+            ),
+            Err(PoolV1ProgramError::InvalidTokenProgram.into()),
+        );
+        drop(infos);
+        assert_eq!(invalid_loader_cpi.calls, 0);
+        assert_eq!(
+            accounts
+                .iter()
+                .map(|account| account.data.clone())
+                .collect::<Vec<_>>(),
+            invalid_loader_before,
+        );
+        accounts[token_program_index].owner = bpf_loader::id();
+
         let before = accounts
             .iter()
             .map(|account| account.data.clone())
