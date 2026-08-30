@@ -105,6 +105,25 @@ controller for every conservative exposure trial:
 This removes the earlier verifier-first assumption. Cached verifier calls are
 handled by their original fresh exposure; they are not relabelled later.
 
+`V7Tag73ExactCompilerFinalWorkTraceOccurrence.lean` now closes the accepted
+source occurrence half of the next step:
+
+- strict `checkedRefine` success is split at the literal last three pre-q16
+  events rather than inferred from the work-erased replay;
+- the selected final-work query is proved to return a digest satisfying the
+  exact deployed 34-bit predicate;
+- the following final-nonce absorb is proved to return exactly the q16 base;
+- both distinct raw inputs are proved to have literal first-creation records
+  in the actual result-carrying compiler trace, with either adversary or
+  verifier as the creator; and
+- the exhaustive native target scan is proved to pause at both coordinates.
+
+Thus the final-work/absorb pair is no longer merely an evaluator-table fact.
+It is located in the literal production scheduler trace.  What remains is the
+chronological minimum/index selection and the continuation proof that the
+same indexed controller routes every accepted q16 coordinate outside the
+already-counted forward-reference/collision event.
+
 ## Exact remaining boundary
 
 The production/source layer must now instantiate the counted finite inventory
@@ -112,8 +131,9 @@ and prove its cover:
 
 1. define the final-work/nonce/q16 grammar and controller memory at each
    conservative exposure index (now executable and kernel checked);
-2. prove that the earliest member of the accepted final-work/nonce pair is
-   one such anchor in the exact production master tape;
+2. choose the earliest of the now-proved production-trace final-work/nonce
+   occurrences, prove its exact exposure index is below `F`, and install the
+   corresponding controller anchor;
 3. outside the existing forward-reference/collision event, prove every
    accepted q16 block is routed at its original fresh exposure and distinct
    named slots never alias;
@@ -140,6 +160,7 @@ lake env lean AspisFormal/K1/V7Tag73CausalQ16FinalWorkProbability.lean
 lake env lean AspisFormal/K1/V7Tag73AdaptiveQ16TrialAccounting.lean
 lake env lean AspisFormal/K1/V7Tag73IndexedExposureCausalRouter.lean
 lake env lean AspisFormal/K1/V7Tag73FinalWorkQ16CandidateController.lean
+lake env lean AspisFormal/K1/V7Tag73ExactCompilerFinalWorkTraceOccurrence.lean
 ```
 
 Observed focused checks:
@@ -151,6 +172,7 @@ Observed focused checks:
 | adaptive finite-trial accounting | 0 | 19.94 s | 5,573,836,800 B |
 | indexed production-cursor router | 0 | 4.0 s | not separately sampled |
 | raw final-work/q16 candidate controller | 0 | 4.4 s | not separately sampled |
+| exact accepted final-work trace occurrence | 0 | 4.37 s | 5,654,528,000 B |
 
 All reported theorem axiom sets are subsets of:
 
