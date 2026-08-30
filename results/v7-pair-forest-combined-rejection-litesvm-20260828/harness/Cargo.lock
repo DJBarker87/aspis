@@ -403,6 +403,7 @@ dependencies = [
  "aspis-core",
  "aspis-pool",
  "aspis-statement",
+ "base64 0.22.1",
  "litesvm",
  "serde_json",
  "sha2 0.10.9",

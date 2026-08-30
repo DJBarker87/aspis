@@ -12,6 +12,7 @@ anyhow = "1.0.100"
 aspis-core = { path = "../../../crates/aspis-core", features = ["v7-fixed-canonical-audit"] }
 aspis-pool = { path = "../../../programs/aspis-pool", features = ["no-entrypoint", "pair-forest-account-evidence"] }
 aspis-statement = { path = "../../../crates/aspis-statement", features = ["pool-v1-kernel"] }
+base64 = "0.22.1"
 litesvm = "=0.16.0"
 serde_json = "1.0.145"
 sha2 = "0.10.9"
