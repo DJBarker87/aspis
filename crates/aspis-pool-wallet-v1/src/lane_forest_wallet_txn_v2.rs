@@ -1,9 +1,10 @@
 //! Default-off, crash-consistent V2 wallet/lane transaction envelope.
 //!
 //! This module deliberately does **not** mirror or mutate the active V1 wallet,
-//! witness, relayer, or lane files. Activation is accepted only from an empty,
-//! mutually consistent V1 snapshot. From that point the one checksummed file
-//! is the authoritative logical wallet image: committed note/spend metadata,
+//! witness, relayer, or lane files. Activation accepts either an empty,
+//! mutually consistent V1 snapshot or a fully validated populated migration
+//! genesis. From that point the one checksummed file is the authoritative
+//! logical wallet image: committed note/spend metadata,
 //! canonical lane/witness/checkpoint state, finalized event history, and
 //! finalized relayer correlation live under one `AtomicStateFileV1` lock.
 //!
@@ -19,12 +20,10 @@
 //! and parent-directory-sync boundary. Any replace error poisons the live
 //! handle because the durable target may already contain the new image.
 //!
-//! Deliberate default-off boundaries remain. This coordinator does not advance
-//! empty finalized blocks, so an event whose parent is such a block is deferred
-//! rather than weakening exact-parent linkage. Copying a finalized ASRJ record
-//! into ASL2 is reconciliation between two locked files, not a physical
-//! cross-file commit: a crash before ASL2 Prepared is an idempotent retry, and
-//! after Prepared ASL2 recovery is authoritative. Tentative reorg evidence is
+//! Deliberate default-off boundaries remain. Canonical authenticated empty
+//! finalized blocks advance the same exact-parent cursor as eventful blocks.
+//! A populated migration archives a quiescent ASRJ image and uses the separate
+//! ownership journal for physical one-way handoff. Tentative reorg evidence is
 //! supplied by the external quorum/finality capability; ASL2 validates exact
 //! event/provider binding but does not itself query RPC.
 
@@ -58,14 +57,27 @@ use crate::{
         POOL_V1_NOTE_STORE_VERSION,
     },
     recompute_note_commitment_v1,
-    relayer_execution_journal::{DurableRelayerExecutionJournalV1, RelayerExecutionOutcomeV1},
+    relayer_execution_journal::{
+        validate_relayer_execution_archive_v1, DurableRelayerExecutionJournalV1,
+        RelayerExecutionOutcomeV1,
+    },
     scan_state::{
         DepositEventIdV1, DepositScanIdentityV1, FinalizedBlockV1, FinalizedChainPointV1,
     },
+    wallet_monotonic_v2::{
+        WalletMonotonicAdvanceV2, WalletMonotonicCommitmentV2, WalletMonotonicStoreErrorV2,
+        WalletMonotonicStoreQualificationV2, WalletMonotonicStoreV2,
+    },
+    wallet_populated_migration_v2::PopulatedWalletMigrationV2,
 };
 
 pub const LANE_FOREST_WALLET_TXN_MAGIC_V2: [u8; 4] = *b"ASL2";
+/// Frozen event-only ASL2 image version. The decoder remains available so
+/// default-off research images can be opened and rewritten canonically.
 pub const LANE_FOREST_WALLET_TXN_VERSION_V2: u8 = 2;
+/// Current ASL2 image version. Version 3 adds a first-class empty-finalized-
+/// block journal operation; it does not alias an empty block to a lane event.
+pub const LANE_FOREST_WALLET_TXN_VERSION_V3: u8 = 3;
 pub const LANE_FOREST_WALLET_TXN_HEADER_BYTES_V2: usize = 64;
 
 const TXN_CHECKSUM_OFFSET_V2: usize = 24;
@@ -73,6 +85,10 @@ const TXN_CHECKSUM_DOMAIN_V2: &[u8] = b"aspis:pool-v1:lane-forest-wallet-authori
 const ACTIVATION_DOMAIN_V2: &[u8] =
     b"aspis:pool-v1:lane-forest-wallet-empty-v1-activation:sha256:v2";
 const CONTENT_DOMAIN_V2: &[u8] = b"aspis:pool-v1:lane-forest-wallet-content:sha256:v2";
+const EMPTY_BLOCK_CONTENT_DOMAIN_V3: &[u8] =
+    b"aspis:pool-v1:lane-forest-wallet-empty-block-content:sha256:v3";
+const EMPTY_EVENT_SET_DOMAIN_V3: &[u8] =
+    b"aspis:pool-v1:lane-forest-wallet-empty-event-set:sha256:v3";
 const TRANSACTION_DOMAIN_V2: &[u8] = b"aspis:pool-v1:lane-forest-wallet-transaction:sha256:v2";
 const STATE_DOMAIN_V2: &[u8] = b"aspis:pool-v1:lane-forest-wallet-state:sha256:v2";
 const MAX_TXN_IMAGE_BYTES_V2: usize = 64 * 1024 * 1024;
@@ -192,8 +208,17 @@ pub enum LaneForestWalletTxnErrorV2 {
     TransactionMismatch,
     StateMismatch,
     Poisoned,
+    MonotonicRequired,
+    MonotonicRollback,
+    Monotonic(WalletMonotonicStoreErrorV2),
     InjectedFault(LaneForestWalletTxnFaultPointV2),
     InjectedAtomicFault(LaneForestWalletTxnAtomicFaultPointV2),
+}
+
+impl From<WalletMonotonicStoreErrorV2> for LaneForestWalletTxnErrorV2 {
+    fn from(error: WalletMonotonicStoreErrorV2) -> Self {
+        Self::Monotonic(error)
+    }
 }
 
 impl From<DurableStateErrorV1> for LaneForestWalletTxnErrorV2 {
@@ -214,13 +239,57 @@ impl From<io::Error> for LaneForestWalletTxnErrorV2 {
     }
 }
 
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, PartialEq, Eq)]
 pub struct EmptyV1LaneForestWalletActivationV2 {
     activation_id: [u8; 32],
     wallet_identity_sha256: [u8; 32],
     note_cipher_id: [u8; 32],
     anchor: FinalizedChainPointV1,
     initial_lane_state: LaneForestDurableStateV2,
+    initial_notes: Vec<LaneForestWalletStoredNoteV2>,
+    migration_genesis: Option<LaneForestWalletMigrationGenesisV2>,
+}
+
+impl core::fmt::Debug for EmptyV1LaneForestWalletActivationV2 {
+    fn fmt(&self, formatter: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        formatter
+            .debug_struct("EmptyV1LaneForestWalletActivationV2")
+            .field("anchor", &self.anchor)
+            .field("note_count", &self.initial_notes.len())
+            .field("populated_migration", &self.migration_genesis.is_some())
+            .field("private_state_and_digests", &"[REDACTED]")
+            .finish()
+    }
+}
+
+#[derive(Clone, PartialEq, Eq)]
+pub struct LaneForestWalletMigrationGenesisV2 {
+    migration_id: [u8; 32],
+    source_manifest_sha256: [u8; 32],
+    relayer_execution_archive: Vec<u8>,
+}
+
+impl core::fmt::Debug for LaneForestWalletMigrationGenesisV2 {
+    fn fmt(&self, formatter: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        formatter
+            .debug_struct("LaneForestWalletMigrationGenesisV2")
+            .field("private_digests_and_relayer_archive", &"[REDACTED]")
+            .finish()
+    }
+}
+
+impl LaneForestWalletMigrationGenesisV2 {
+    pub fn migration_id(&self) -> &[u8; 32] {
+        &self.migration_id
+    }
+
+    pub fn source_manifest_sha256(&self) -> &[u8; 32] {
+        &self.source_manifest_sha256
+    }
+
+    pub fn relayer_execution_archive(&self) -> &[u8] {
+        &self.relayer_execution_archive
+    }
 }
 
 /// Explicit operator policy for the topology change from the legacy single
@@ -305,6 +374,56 @@ impl EmptyV1LaneForestWalletActivationV2 {
             note_cipher_id,
             anchor,
             initial_lane_state: lane_state.clone(),
+            initial_notes: Vec::new(),
+            migration_genesis: None,
+        })
+    }
+
+    /// Construct a populated, migration-bound ASL2 genesis only from the
+    /// private-field snapshot returned by the locked cross-store validator.
+    /// No legacy bytes are reinterpreted here.
+    pub fn from_populated_migration_v2(
+        migration: &PopulatedWalletMigrationV2,
+    ) -> Result<Self, LaneForestWalletTxnErrorV2> {
+        let mut initial_notes = Vec::with_capacity(migration.notes().len());
+        for note in migration.notes() {
+            validate_note_envelope_v2(&note.sealed_note)?;
+            let nonce = note.sealed_note[8..POOL_V1_NOTE_STORE_HEADER_BYTES]
+                .try_into()
+                .map_err(|_| LaneForestWalletTxnErrorV2::InvalidNote)?;
+            initial_notes.push(LaneForestWalletStoredNoteV2 {
+                event_id: note.event_id,
+                access: note.access,
+                sealed_note: note.sealed_note.clone(),
+                nonce,
+                spent: note.spent,
+            });
+        }
+        initial_notes.sort_by_key(|note| encode_event_id_v2(note.event_id));
+        let migration_genesis = LaneForestWalletMigrationGenesisV2 {
+            migration_id: *migration.migration_id(),
+            source_manifest_sha256: *migration.source_manifest_sha256(),
+            relayer_execution_archive: migration.relayer_execution_archive().to_vec(),
+        };
+        validate_relayer_execution_archive_v1(&migration_genesis.relayer_execution_archive)
+            .map_err(|_| LaneForestWalletTxnErrorV2::InvalidRelayerObservation)?;
+        let lane_image = encode_lane_forest_durable_state_v2(migration.lane_state())?;
+        let activation_id = populated_activation_id_v3(
+            *migration.wallet_identity_sha256(),
+            *migration.note_cipher_id(),
+            migration.finalized_head(),
+            &lane_image,
+            &initial_notes,
+            &migration_genesis,
+        )?;
+        Ok(Self {
+            activation_id,
+            wallet_identity_sha256: *migration.wallet_identity_sha256(),
+            note_cipher_id: *migration.note_cipher_id(),
+            anchor: migration.finalized_head(),
+            initial_lane_state: migration.lane_state().clone(),
+            initial_notes,
+            migration_genesis: Some(migration_genesis),
         })
     }
 
@@ -322,6 +441,14 @@ impl EmptyV1LaneForestWalletActivationV2 {
 
     pub fn wallet_identity_sha256(&self) -> &[u8; 32] {
         &self.wallet_identity_sha256
+    }
+
+    pub fn migration_genesis(&self) -> Option<&LaneForestWalletMigrationGenesisV2> {
+        self.migration_genesis.as_ref()
+    }
+
+    pub fn requires_monotonic_protection_v2(&self) -> bool {
+        self.migration_genesis.is_some()
     }
 }
 
@@ -351,6 +478,50 @@ fn activation_id_v2(
     hash_point_v2(&mut hasher, anchor);
     hasher.update(lane_length.to_le_bytes());
     hasher.update(Sha256::digest(lane_image));
+    Ok(hasher.finalize().into())
+}
+
+fn populated_activation_id_v3(
+    wallet_identity_sha256: [u8; 32],
+    note_cipher_id: [u8; 32],
+    finalized_head: FinalizedChainPointV1,
+    lane_image: &[u8],
+    notes: &[LaneForestWalletStoredNoteV2],
+    migration: &LaneForestWalletMigrationGenesisV2,
+) -> Result<[u8; 32], LaneForestWalletTxnErrorV2> {
+    let lane_length =
+        u64::try_from(lane_image.len()).map_err(|_| LaneForestWalletTxnErrorV2::CountOverflow)?;
+    let archive_length = u64::try_from(migration.relayer_execution_archive.len())
+        .map_err(|_| LaneForestWalletTxnErrorV2::CountOverflow)?;
+    let mut hasher = Sha256::new();
+    hasher.update(b"aspis:pool-v1:lane-forest-wallet-populated-activation:sha256:v3");
+    hasher.update(wallet_identity_sha256);
+    hasher.update(note_cipher_id);
+    hash_point_v2(&mut hasher, finalized_head);
+    hasher.update(lane_length.to_le_bytes());
+    hasher.update(Sha256::digest(lane_image));
+    hasher.update((notes.len() as u64).to_le_bytes());
+    for note in notes {
+        hasher.update(encode_event_id_v2(note.event_id));
+        hasher.update([match note.access {
+            SealedNoteAccessV1::ViewOnly => 1,
+            SealedNoteAccessV1::Spendable => 2,
+        }]);
+        hasher.update(note.nonce);
+        hasher.update(Sha256::digest(&note.sealed_note));
+        match note.spent {
+            None => hasher.update([0]),
+            Some(spent) => {
+                hasher.update([1]);
+                hasher.update(encode_event_id_v2(spent.transition_output_id));
+                hasher.update(spent.nullifier);
+            }
+        }
+    }
+    hasher.update(migration.migration_id);
+    hasher.update(migration.source_manifest_sha256);
+    hasher.update(archive_length.to_le_bytes());
+    hasher.update(Sha256::digest(&migration.relayer_execution_archive));
     Ok(hasher.finalize().into())
 }
 
@@ -784,6 +955,110 @@ impl LaneForestWalletTxnIntentV2 {
     }
 }
 
+/// Authenticated evidence that one externally-finalized block contains no
+/// relevant pair-forest event. The evidence digests are deliberately public
+/// metadata, not cryptographic proof material: production callers must obtain
+/// them from the startup-pinned finalized provider/account-snapshot path.
+#[derive(Clone, Copy, PartialEq, Eq)]
+pub struct LaneForestWalletEmptyFinalizedBlockV2 {
+    block: FinalizedBlockV1,
+    empty_event_set_sha256: [u8; 32],
+    account_snapshot_sha256: [u8; 32],
+    startup_receipt_sha256: [u8; 32],
+    provider_set_sha256: [u8; 32],
+}
+
+impl core::fmt::Debug for LaneForestWalletEmptyFinalizedBlockV2 {
+    fn fmt(&self, formatter: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        formatter
+            .debug_struct("LaneForestWalletEmptyFinalizedBlockV2")
+            .field("point", &self.block.point())
+            .field("parent", &self.block.parent())
+            .field("authenticated_evidence", &"[REDACTED]")
+            .finish()
+    }
+}
+
+impl LaneForestWalletEmptyFinalizedBlockV2 {
+    pub fn new_v2(
+        block: FinalizedBlockV1,
+        account_snapshot_sha256: [u8; 32],
+        startup_receipt_sha256: [u8; 32],
+        provider_set_sha256: [u8; 32],
+    ) -> Result<Self, LaneForestWalletTxnErrorV2> {
+        if account_snapshot_sha256 == [0u8; 32]
+            || startup_receipt_sha256 == [0u8; 32]
+            || provider_set_sha256 == [0u8; 32]
+        {
+            return Err(LaneForestWalletTxnErrorV2::InvalidRelayerObservation);
+        }
+        Ok(Self {
+            block,
+            empty_event_set_sha256: canonical_empty_event_set_sha256_v3(),
+            account_snapshot_sha256,
+            startup_receipt_sha256,
+            provider_set_sha256,
+        })
+    }
+
+    pub fn block(&self) -> FinalizedBlockV1 {
+        self.block
+    }
+
+    pub fn empty_event_set_sha256(&self) -> &[u8; 32] {
+        &self.empty_event_set_sha256
+    }
+
+    pub fn account_snapshot_sha256(&self) -> &[u8; 32] {
+        &self.account_snapshot_sha256
+    }
+
+    pub fn startup_receipt_sha256(&self) -> &[u8; 32] {
+        &self.startup_receipt_sha256
+    }
+
+    pub fn provider_set_sha256(&self) -> &[u8; 32] {
+        &self.provider_set_sha256
+    }
+}
+
+fn canonical_empty_event_set_sha256_v3() -> [u8; 32] {
+    let mut hasher = Sha256::new();
+    hasher.update(EMPTY_EVENT_SET_DOMAIN_V3);
+    hasher.update(0u64.to_le_bytes());
+    hasher.finalize().into()
+}
+
+// Boxing this public operation would be an avoidable API shape change. The
+// durable bincode wire remains value-shaped and is size-bounded separately.
+#[allow(clippy::large_enum_variant)]
+#[derive(Clone, PartialEq, Eq)]
+pub enum LaneForestWalletTxnOperationV2 {
+    Event(LaneForestWalletTxnIntentV2),
+    EmptyFinalizedBlock(LaneForestWalletEmptyFinalizedBlockV2),
+}
+
+impl core::fmt::Debug for LaneForestWalletTxnOperationV2 {
+    fn fmt(&self, formatter: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        match self {
+            Self::Event(intent) => formatter.debug_tuple("Event").field(intent).finish(),
+            Self::EmptyFinalizedBlock(empty) => formatter
+                .debug_tuple("EmptyFinalizedBlock")
+                .field(empty)
+                .finish(),
+        }
+    }
+}
+
+impl LaneForestWalletTxnOperationV2 {
+    fn point_v2(&self) -> FinalizedChainPointV1 {
+        match self {
+            Self::Event(intent) => intent.event.point(),
+            Self::EmptyFinalizedBlock(empty) => empty.block.point(),
+        }
+    }
+}
+
 fn primary_event_id_v2(event: &ForestFinalizedAppendEventV2) -> DepositEventIdV1 {
     match event.kind {
         ForestFinalizedAppendKindV2::Deposit { event_id, .. }
@@ -980,7 +1255,7 @@ pub struct LaneForestWalletTxnRecordV2 {
     before_tentatives: Vec<LaneForestWalletTentativeObservationV2>,
     after_tentatives: Vec<LaneForestWalletTentativeObservationV2>,
     phase: LaneForestWalletTxnPhaseV2,
-    intent: LaneForestWalletTxnIntentV2,
+    operation: LaneForestWalletTxnOperationV2,
 }
 
 impl core::fmt::Debug for LaneForestWalletTxnRecordV2 {
@@ -989,7 +1264,7 @@ impl core::fmt::Debug for LaneForestWalletTxnRecordV2 {
             .debug_struct("LaneForestWalletTxnRecordV2")
             .field("sequence", &self.sequence)
             .field("phase", &self.phase)
-            .field("point", &self.intent.event.point())
+            .field("point", &self.operation.point_v2())
             .field("private_metadata", &"[REDACTED]")
             .finish()
     }
@@ -1008,8 +1283,22 @@ impl LaneForestWalletTxnRecordV2 {
         self.phase
     }
 
-    pub fn intent(&self) -> &LaneForestWalletTxnIntentV2 {
-        &self.intent
+    pub fn operation(&self) -> &LaneForestWalletTxnOperationV2 {
+        &self.operation
+    }
+
+    pub fn intent(&self) -> Option<&LaneForestWalletTxnIntentV2> {
+        match &self.operation {
+            LaneForestWalletTxnOperationV2::Event(intent) => Some(intent),
+            LaneForestWalletTxnOperationV2::EmptyFinalizedBlock(_) => None,
+        }
+    }
+
+    pub fn empty_finalized_block(&self) -> Option<&LaneForestWalletEmptyFinalizedBlockV2> {
+        match &self.operation {
+            LaneForestWalletTxnOperationV2::Event(_) => None,
+            LaneForestWalletTxnOperationV2::EmptyFinalizedBlock(empty) => Some(empty),
+        }
     }
 }
 
@@ -1020,6 +1309,50 @@ struct ActivationWireV2 {
     note_cipher_id: Vec<u8>,
     anchor: Vec<u8>,
     initial_lane_state: Vec<u8>,
+}
+
+#[derive(Clone, Serialize, Deserialize, PartialEq, Eq)]
+struct StoredNoteWireV3 {
+    event_id: Vec<u8>,
+    access: u8,
+    sealed_note: Vec<u8>,
+    nonce: Vec<u8>,
+    spent_transition_output_id: Option<Vec<u8>>,
+    spent_nullifier: Option<Vec<u8>>,
+}
+
+#[derive(Clone, Serialize, Deserialize, PartialEq, Eq)]
+struct MigrationGenesisWireV3 {
+    migration_id: Vec<u8>,
+    source_manifest_sha256: Vec<u8>,
+    relayer_execution_archive: Vec<u8>,
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+struct LaneForestWalletMonotonicMetadataV3 {
+    protection_id: [u8; 32],
+    generation: u64,
+    predecessor_commitment: [u8; 32],
+}
+
+type PreparedMonotonicImageV3 = (
+    Vec<u8>,
+    Option<LaneForestWalletMonotonicMetadataV3>,
+    Option<(WalletMonotonicCommitmentV2, WalletMonotonicCommitmentV2)>,
+);
+
+#[derive(Clone, Serialize, Deserialize, PartialEq, Eq)]
+struct MonotonicMetadataWireV3 {
+    protection_id: Vec<u8>,
+    generation: u64,
+    predecessor_commitment: Vec<u8>,
+}
+
+#[derive(Clone, Serialize, Deserialize, PartialEq, Eq)]
+struct ActivationWireV3 {
+    base: ActivationWireV2,
+    initial_notes: Vec<StoredNoteWireV3>,
+    migration_genesis: Option<MigrationGenesisWireV3>,
 }
 
 #[derive(Clone, Serialize, Deserialize, PartialEq, Eq)]
@@ -1101,6 +1434,48 @@ struct AuthoritativeImageWireV2 {
     tentative_observations: Vec<TentativeWireV2>,
 }
 
+#[derive(Clone, Serialize, Deserialize, PartialEq, Eq)]
+struct EmptyFinalizedBlockWireV3 {
+    point: Vec<u8>,
+    parent: Vec<u8>,
+    empty_event_set_sha256: Vec<u8>,
+    account_snapshot_sha256: Vec<u8>,
+    startup_receipt_sha256: Vec<u8>,
+    provider_set_sha256: Vec<u8>,
+}
+
+// Preserve the already-frozen local durable encoding rather than introducing
+// indirection solely to equalize in-memory enum variants.
+#[allow(clippy::large_enum_variant)]
+#[derive(Clone, Serialize, Deserialize, PartialEq, Eq)]
+enum OperationWireV3 {
+    Event(IntentWireV2),
+    EmptyFinalizedBlock(EmptyFinalizedBlockWireV3),
+}
+
+#[derive(Clone, Serialize, Deserialize, PartialEq, Eq)]
+struct RecordWireV3 {
+    sequence: u64,
+    parent_transaction_id: Vec<u8>,
+    transaction_id: Vec<u8>,
+    content_digest: Vec<u8>,
+    before_state_digest: Vec<u8>,
+    after_state_digest: Vec<u8>,
+    tentative_before_digest: Vec<u8>,
+    before_tentatives: Vec<TentativeWireV2>,
+    after_tentatives: Vec<TentativeWireV2>,
+    phase: u8,
+    operation: OperationWireV3,
+}
+
+#[derive(Clone, Serialize, Deserialize, PartialEq, Eq)]
+struct AuthoritativeImageWireV3 {
+    activation: ActivationWireV3,
+    records: Vec<RecordWireV3>,
+    tentative_observations: Vec<TentativeWireV2>,
+    monotonic: Option<MonotonicMetadataWireV3>,
+}
+
 fn activation_to_wire_v2(
     activation: &EmptyV1LaneForestWalletActivationV2,
 ) -> Result<ActivationWireV2, LaneForestWalletTxnErrorV2> {
@@ -1156,6 +1531,169 @@ fn activation_from_wire_v2(
         note_cipher_id,
         anchor,
         initial_lane_state,
+        initial_notes: Vec::new(),
+        migration_genesis: None,
+    })
+}
+
+fn stored_note_to_wire_v3(note: &LaneForestWalletStoredNoteV2) -> StoredNoteWireV3 {
+    StoredNoteWireV3 {
+        event_id: encode_event_id_v2(note.event_id).to_vec(),
+        access: match note.access {
+            SealedNoteAccessV1::ViewOnly => 1,
+            SealedNoteAccessV1::Spendable => 2,
+        },
+        sealed_note: note.sealed_note.clone(),
+        nonce: note.nonce.to_vec(),
+        spent_transition_output_id: note
+            .spent
+            .map(|spent| encode_event_id_v2(spent.transition_output_id).to_vec()),
+        spent_nullifier: note.spent.map(|spent| spent.nullifier.to_vec()),
+    }
+}
+
+fn activation_to_wire_v3(
+    activation: &EmptyV1LaneForestWalletActivationV2,
+) -> Result<ActivationWireV3, LaneForestWalletTxnErrorV2> {
+    Ok(ActivationWireV3 {
+        base: activation_to_wire_v2(activation)?,
+        initial_notes: activation
+            .initial_notes
+            .iter()
+            .map(stored_note_to_wire_v3)
+            .collect(),
+        migration_genesis: activation.migration_genesis.as_ref().map(|migration| {
+            MigrationGenesisWireV3 {
+                migration_id: migration.migration_id.to_vec(),
+                source_manifest_sha256: migration.source_manifest_sha256.to_vec(),
+                relayer_execution_archive: migration.relayer_execution_archive.clone(),
+            }
+        }),
+    })
+}
+
+fn activation_from_wire_v3(
+    wire: ActivationWireV3,
+) -> Result<EmptyV1LaneForestWalletActivationV2, LaneForestWalletTxnErrorV2> {
+    if wire.migration_genesis.is_none() {
+        if !wire.initial_notes.is_empty() {
+            return Err(LaneForestWalletTxnErrorV2::InvalidActivation);
+        }
+        return activation_from_wire_v2(wire.base);
+    }
+    let activation_id = exact_array_v2(&wire.base.activation_id)?;
+    let wallet_identity_sha256 = exact_array_v2(&wire.base.wallet_identity_sha256)?;
+    let note_cipher_id = exact_array_v2(&wire.base.note_cipher_id)?;
+    if note_cipher_id == [0u8; 32] {
+        return Err(LaneForestWalletTxnErrorV2::InvalidActivation);
+    }
+    let anchor = decode_point_v2(&wire.base.anchor)?;
+    let initial_lane_state = decode_lane_forest_durable_state_v2(&wire.base.initial_lane_state)?;
+    if initial_lane_state.finalized_head_v2() != Some(anchor) {
+        return Err(LaneForestWalletTxnErrorV2::InvalidActivation);
+    }
+    initial_lane_state.validate_migration_tracking_v2()?;
+    let migration_wire = wire
+        .migration_genesis
+        .ok_or(LaneForestWalletTxnErrorV2::InvalidActivation)?;
+    let migration_genesis = LaneForestWalletMigrationGenesisV2 {
+        migration_id: exact_array_v2(&migration_wire.migration_id)?,
+        source_manifest_sha256: exact_array_v2(&migration_wire.source_manifest_sha256)?,
+        relayer_execution_archive: migration_wire.relayer_execution_archive,
+    };
+    if migration_genesis.migration_id == [0u8; 32]
+        || migration_genesis.source_manifest_sha256 == [0u8; 32]
+    {
+        return Err(LaneForestWalletTxnErrorV2::InvalidActivation);
+    }
+    validate_relayer_execution_archive_v1(&migration_genesis.relayer_execution_archive)
+        .map_err(|_| LaneForestWalletTxnErrorV2::InvalidRelayerObservation)?;
+    let mut initial_notes = Vec::with_capacity(wire.initial_notes.len());
+    let mut previous = None;
+    let mut nonces = HashSet::new();
+    let mut nullifiers = HashSet::new();
+    for note in wire.initial_notes {
+        let event_id = decode_event_id_v2(&note.event_id)?;
+        let encoded_id = encode_event_id_v2(event_id);
+        if previous.is_some_and(|previous| previous >= encoded_id) {
+            return Err(LaneForestWalletTxnErrorV2::NonCanonicalEncoding);
+        }
+        previous = Some(encoded_id);
+        validate_note_envelope_v2(&note.sealed_note)?;
+        let nonce = exact_array_v2(&note.nonce)?;
+        if note.sealed_note[8..POOL_V1_NOTE_STORE_HEADER_BYTES] != nonce || !nonces.insert(nonce) {
+            return Err(LaneForestWalletTxnErrorV2::DuplicateNonce);
+        }
+        let access = match note.access {
+            1 => SealedNoteAccessV1::ViewOnly,
+            2 => SealedNoteAccessV1::Spendable,
+            _ => return Err(LaneForestWalletTxnErrorV2::InvalidNote),
+        };
+        let spent = match (note.spent_transition_output_id, note.spent_nullifier) {
+            (None, None) => None,
+            (Some(transition), Some(nullifier)) if access == SealedNoteAccessV1::Spendable => {
+                let nullifier = canonical_digest_v2(exact_array_v2(&nullifier)?)?;
+                if !nullifiers.insert(nullifier) {
+                    return Err(LaneForestWalletTxnErrorV2::InvalidSpend);
+                }
+                Some(SpentNoteMarkerV1 {
+                    transition_output_id: decode_event_id_v2(&transition)?,
+                    nullifier,
+                })
+            }
+            _ => return Err(LaneForestWalletTxnErrorV2::InvalidSpend),
+        };
+        let tracked = initial_lane_state
+            .migration_tracked_output_v2(event_id)
+            .ok_or(LaneForestWalletTxnErrorV2::InvalidNote)?;
+        let event = initial_lane_state
+            .retained_event_v2(event_id)
+            .ok_or(LaneForestWalletTxnErrorV2::InvalidNote)?;
+        if output_commitment_v2(event, event_id) != Some(tracked.commitment) {
+            return Err(LaneForestWalletTxnErrorV2::InvalidNote);
+        }
+        if let Some(spent) = spent {
+            let transition = initial_lane_state
+                .retained_event_v2(spent.transition_output_id)
+                .ok_or(LaneForestWalletTxnErrorV2::InvalidSpend)?;
+            let expected =
+                event_spend_v2(transition).ok_or(LaneForestWalletTxnErrorV2::InvalidSpend)?;
+            if expected != (spent.transition_output_id, spent.nullifier) {
+                return Err(LaneForestWalletTxnErrorV2::InvalidSpend);
+            }
+        }
+        initial_notes.push(LaneForestWalletStoredNoteV2 {
+            event_id,
+            access,
+            sealed_note: note.sealed_note,
+            nonce,
+            spent,
+        });
+    }
+    if initial_notes.len() > MAX_LOGICAL_NOTES_V2
+        || initial_lane_state.migration_tracked_outputs_v2().count() != initial_notes.len()
+    {
+        return Err(LaneForestWalletTxnErrorV2::StateMismatch);
+    }
+    let expected = populated_activation_id_v3(
+        wallet_identity_sha256,
+        note_cipher_id,
+        anchor,
+        &wire.base.initial_lane_state,
+        &initial_notes,
+        &migration_genesis,
+    )?;
+    if !bool::from(activation_id.ct_eq(&expected)) {
+        return Err(LaneForestWalletTxnErrorV2::InvalidActivation);
+    }
+    Ok(EmptyV1LaneForestWalletActivationV2 {
+        activation_id,
+        wallet_identity_sha256,
+        note_cipher_id,
+        anchor,
+        initial_lane_state,
+        initial_notes,
+        migration_genesis: Some(migration_genesis),
     })
 }
 
@@ -1355,30 +1893,6 @@ fn tentative_from_wire_v2(
     Ok(observation)
 }
 
-fn record_to_wire_v2(record: &LaneForestWalletTxnRecordV2) -> RecordWireV2 {
-    RecordWireV2 {
-        sequence: record.sequence,
-        parent_transaction_id: record.parent_transaction_id.to_vec(),
-        transaction_id: record.transaction_id.to_vec(),
-        content_digest: record.content_digest.to_vec(),
-        before_state_digest: record.before_state_digest.to_vec(),
-        after_state_digest: record.after_state_digest.to_vec(),
-        tentative_before_digest: record.tentative_before_digest.to_vec(),
-        before_tentatives: record
-            .before_tentatives
-            .iter()
-            .map(tentative_to_wire_v2)
-            .collect(),
-        after_tentatives: record
-            .after_tentatives
-            .iter()
-            .map(tentative_to_wire_v2)
-            .collect(),
-        phase: record.phase as u8,
-        intent: intent_to_wire_v2(&record.intent),
-    }
-}
-
 fn record_from_wire_v2(
     wire: RecordWireV2,
 ) -> Result<LaneForestWalletTxnRecordV2, LaneForestWalletTxnErrorV2> {
@@ -1406,7 +1920,114 @@ fn record_from_wire_v2(
             3 => LaneForestWalletTxnPhaseV2::Committed,
             _ => return Err(LaneForestWalletTxnErrorV2::InvalidPhase),
         },
-        intent: intent_from_wire_v2(wire.intent)?,
+        operation: LaneForestWalletTxnOperationV2::Event(intent_from_wire_v2(wire.intent)?),
+    })
+}
+
+fn empty_block_to_wire_v3(
+    empty: &LaneForestWalletEmptyFinalizedBlockV2,
+) -> EmptyFinalizedBlockWireV3 {
+    EmptyFinalizedBlockWireV3 {
+        point: encode_point_v2(empty.block.point()).to_vec(),
+        parent: encode_point_v2(empty.block.parent()).to_vec(),
+        empty_event_set_sha256: empty.empty_event_set_sha256.to_vec(),
+        account_snapshot_sha256: empty.account_snapshot_sha256.to_vec(),
+        startup_receipt_sha256: empty.startup_receipt_sha256.to_vec(),
+        provider_set_sha256: empty.provider_set_sha256.to_vec(),
+    }
+}
+
+fn empty_block_from_wire_v3(
+    wire: EmptyFinalizedBlockWireV3,
+) -> Result<LaneForestWalletEmptyFinalizedBlockV2, LaneForestWalletTxnErrorV2> {
+    let original = wire.clone();
+    let block = FinalizedBlockV1::new(
+        decode_point_v2(&wire.point)?,
+        decode_point_v2(&wire.parent)?,
+    )
+    .map_err(|_| LaneForestWalletTxnErrorV2::InvalidEvent)?;
+    let empty = LaneForestWalletEmptyFinalizedBlockV2::new_v2(
+        block,
+        exact_array_v2(&wire.account_snapshot_sha256)?,
+        exact_array_v2(&wire.startup_receipt_sha256)?,
+        exact_array_v2(&wire.provider_set_sha256)?,
+    )?;
+    if empty.empty_event_set_sha256 != exact_array_v2(&wire.empty_event_set_sha256)?
+        || empty_block_to_wire_v3(&empty) != original
+    {
+        return Err(LaneForestWalletTxnErrorV2::NonCanonicalEncoding);
+    }
+    Ok(empty)
+}
+
+fn record_to_wire_v3(record: &LaneForestWalletTxnRecordV2) -> RecordWireV3 {
+    RecordWireV3 {
+        sequence: record.sequence,
+        parent_transaction_id: record.parent_transaction_id.to_vec(),
+        transaction_id: record.transaction_id.to_vec(),
+        content_digest: record.content_digest.to_vec(),
+        before_state_digest: record.before_state_digest.to_vec(),
+        after_state_digest: record.after_state_digest.to_vec(),
+        tentative_before_digest: record.tentative_before_digest.to_vec(),
+        before_tentatives: record
+            .before_tentatives
+            .iter()
+            .map(tentative_to_wire_v2)
+            .collect(),
+        after_tentatives: record
+            .after_tentatives
+            .iter()
+            .map(tentative_to_wire_v2)
+            .collect(),
+        phase: record.phase as u8,
+        operation: match &record.operation {
+            LaneForestWalletTxnOperationV2::Event(intent) => {
+                OperationWireV3::Event(intent_to_wire_v2(intent))
+            }
+            LaneForestWalletTxnOperationV2::EmptyFinalizedBlock(empty) => {
+                OperationWireV3::EmptyFinalizedBlock(empty_block_to_wire_v3(empty))
+            }
+        },
+    }
+}
+
+fn record_from_wire_v3(
+    wire: RecordWireV3,
+) -> Result<LaneForestWalletTxnRecordV2, LaneForestWalletTxnErrorV2> {
+    Ok(LaneForestWalletTxnRecordV2 {
+        sequence: wire.sequence,
+        parent_transaction_id: exact_array_v2(&wire.parent_transaction_id)?,
+        transaction_id: exact_array_v2(&wire.transaction_id)?,
+        content_digest: exact_array_v2(&wire.content_digest)?,
+        before_state_digest: exact_array_v2(&wire.before_state_digest)?,
+        after_state_digest: exact_array_v2(&wire.after_state_digest)?,
+        tentative_before_digest: exact_array_v2(&wire.tentative_before_digest)?,
+        before_tentatives: wire
+            .before_tentatives
+            .into_iter()
+            .map(tentative_from_wire_v2)
+            .collect::<Result<Vec<_>, _>>()?,
+        after_tentatives: wire
+            .after_tentatives
+            .into_iter()
+            .map(tentative_from_wire_v2)
+            .collect::<Result<Vec<_>, _>>()?,
+        phase: match wire.phase {
+            1 => LaneForestWalletTxnPhaseV2::Prepared,
+            2 => LaneForestWalletTxnPhaseV2::StoresApplied,
+            3 => LaneForestWalletTxnPhaseV2::Committed,
+            _ => return Err(LaneForestWalletTxnErrorV2::InvalidPhase),
+        },
+        operation: match wire.operation {
+            OperationWireV3::Event(intent) => {
+                LaneForestWalletTxnOperationV2::Event(intent_from_wire_v2(intent)?)
+            }
+            OperationWireV3::EmptyFinalizedBlock(empty) => {
+                LaneForestWalletTxnOperationV2::EmptyFinalizedBlock(empty_block_from_wire_v3(
+                    empty,
+                )?)
+            }
+        },
     })
 }
 
@@ -1433,6 +2054,28 @@ fn content_digest_v2(
     hasher.update((wire.len() as u64).to_le_bytes());
     hasher.update(wire);
     Ok(hasher.finalize().into())
+}
+
+fn empty_block_content_digest_v3(
+    empty: &LaneForestWalletEmptyFinalizedBlockV2,
+) -> Result<[u8; 32], LaneForestWalletTxnErrorV2> {
+    let wire = canonical_serialize_v2(&empty_block_to_wire_v3(empty))?;
+    let mut hasher = Sha256::new();
+    hasher.update(EMPTY_BLOCK_CONTENT_DOMAIN_V3);
+    hasher.update((wire.len() as u64).to_le_bytes());
+    hasher.update(wire);
+    Ok(hasher.finalize().into())
+}
+
+fn operation_content_digest_v2(
+    operation: &LaneForestWalletTxnOperationV2,
+) -> Result<[u8; 32], LaneForestWalletTxnErrorV2> {
+    match operation {
+        LaneForestWalletTxnOperationV2::Event(intent) => content_digest_v2(intent),
+        LaneForestWalletTxnOperationV2::EmptyFinalizedBlock(empty) => {
+            empty_block_content_digest_v3(empty)
+        }
+    }
 }
 
 fn output_commitment_v2(
@@ -1517,15 +2160,26 @@ fn verify_retained_note_openings_v2(
         return Err(LaneForestWalletTxnErrorV2::NoteCipherMismatch);
     }
     for note in &state.notes {
-        let record = records
+        let retained_event = records
             .iter()
-            .find(|record| output_event_ids_v2(&record.intent.event).contains(&note.event_id))
+            .find_map(|record| {
+                matches!(
+                    &record.operation,
+                    LaneForestWalletTxnOperationV2::Event(intent)
+                        if output_event_ids_v2(&intent.event).contains(&note.event_id)
+                )
+                .then(|| match &record.operation {
+                    LaneForestWalletTxnOperationV2::Event(intent) => &intent.event,
+                    LaneForestWalletTxnOperationV2::EmptyFinalizedBlock(_) => unreachable!(),
+                })
+            })
+            .or_else(|| state.lane_state.retained_event_v2(note.event_id))
             .ok_or(LaneForestWalletTxnErrorV2::StateMismatch)?;
         let opening = open_note_opening_v1(cipher, note.event_id, note.access, &note.sealed_note)
             .map_err(|_| LaneForestWalletTxnErrorV2::InvalidNote)?;
         let commitment = recompute_note_commitment_v1(&opening)
             .map_err(|_| LaneForestWalletTxnErrorV2::InvalidNote)?;
-        if output_commitment_v2(&record.intent.event, note.event_id) != Some(commitment)
+        if output_commitment_v2(retained_event, note.event_id) != Some(commitment)
             || !(0u8..8).any(|lane| {
                 let lane = LaneIdV2::new(lane).expect("lane index is bounded by construction");
                 state
@@ -1631,6 +2285,30 @@ fn apply_intent_structural_v2(
     Ok(candidate)
 }
 
+fn apply_empty_finalized_block_structural_v2(
+    state: &LaneForestWalletCommittedStateV2,
+    empty: &LaneForestWalletEmptyFinalizedBlockV2,
+) -> LaneForestWalletCommittedStateV2 {
+    let mut candidate = state.clone();
+    candidate.finalized_head = empty.block.point();
+    candidate
+        .lane_state
+        .set_finalized_head_v2(empty.block.point());
+    candidate
+}
+
+fn apply_operation_structural_v2(
+    state: &LaneForestWalletCommittedStateV2,
+    operation: &LaneForestWalletTxnOperationV2,
+) -> Result<LaneForestWalletCommittedStateV2, LaneForestWalletTxnErrorV2> {
+    match operation {
+        LaneForestWalletTxnOperationV2::Event(intent) => apply_intent_structural_v2(state, intent),
+        LaneForestWalletTxnOperationV2::EmptyFinalizedBlock(empty) => {
+            Ok(apply_empty_finalized_block_structural_v2(state, empty))
+        }
+    }
+}
+
 fn tentative_digest_v2(
     observations: &[LaneForestWalletTentativeObservationV2],
 ) -> Result<[u8; 32], LaneForestWalletTxnErrorV2> {
@@ -1724,6 +2402,21 @@ fn validate_finalized_order_v2(
     Ok(())
 }
 
+fn validate_empty_finalized_order_v2(
+    state: &LaneForestWalletCommittedStateV2,
+    empty: &LaneForestWalletEmptyFinalizedBlockV2,
+) -> Result<(), LaneForestWalletTxnErrorV2> {
+    let point = empty.block.point();
+    let head = state.finalized_head;
+    if point.slot() <= head.slot() {
+        return Err(LaneForestWalletTxnErrorV2::FinalizedRollback);
+    }
+    if empty.block.parent() != head {
+        return Err(LaneForestWalletTxnErrorV2::FinalizedRollback);
+    }
+    Ok(())
+}
+
 fn remove_matching_tentative_v2(
     observations: &[LaneForestWalletTentativeObservationV2],
     event: &ForestFinalizedAppendEventV2,
@@ -1793,7 +2486,7 @@ fn initial_committed_state_v2(
     LaneForestWalletCommittedStateV2 {
         finalized_head: activation.anchor,
         note_cipher_id: activation.note_cipher_id,
-        notes: Vec::new(),
+        notes: activation.initial_notes.clone(),
         lane_state: activation.initial_lane_state.clone(),
     }
 }
@@ -1816,26 +2509,45 @@ fn replay_authoritative_image_v2(
     for (index, record) in records.iter().enumerate() {
         if record.sequence != index as u64 + 1
             || record.parent_transaction_id != parent_transaction_id
-            || record.content_digest != content_digest_v2(&record.intent)?
+            || record.content_digest != operation_content_digest_v2(&record.operation)?
         {
             return Err(LaneForestWalletTxnErrorV2::TransactionMismatch);
         }
-        for event_id in output_event_ids_v2(&record.intent.event) {
-            if !all_event_ids.insert(event_id) {
-                return Err(LaneForestWalletTxnErrorV2::EventConflict);
+        if let LaneForestWalletTxnOperationV2::Event(intent) = &record.operation {
+            for event_id in output_event_ids_v2(&intent.event) {
+                if !all_event_ids.insert(event_id) {
+                    return Err(LaneForestWalletTxnErrorV2::EventConflict);
+                }
             }
         }
         validate_tentative_ledger_v2(&record.before_tentatives)?;
         validate_tentative_ledger_v2(&record.after_tentatives)?;
-        if tentative_digest_v2(&record.before_tentatives)? != record.tentative_before_digest
-            || remove_matching_tentative_v2(&record.before_tentatives, &record.intent.event)?
-                != record.after_tentatives
-        {
+        if tentative_digest_v2(&record.before_tentatives)? != record.tentative_before_digest {
             return Err(LaneForestWalletTxnErrorV2::StateMismatch);
         }
-        validate_finalized_order_v2(&committed, previous_intent, &record.intent)?;
+        match &record.operation {
+            LaneForestWalletTxnOperationV2::Event(intent) => {
+                if remove_matching_tentative_v2(&record.before_tentatives, &intent.event)?
+                    != record.after_tentatives
+                {
+                    return Err(LaneForestWalletTxnErrorV2::StateMismatch);
+                }
+                validate_finalized_order_v2(&committed, previous_intent, intent)?;
+            }
+            LaneForestWalletTxnOperationV2::EmptyFinalizedBlock(empty) => {
+                if record.before_tentatives != record.after_tentatives
+                    || record
+                        .before_tentatives
+                        .iter()
+                        .any(|observation| observation.event.point() == empty.block.point())
+                {
+                    return Err(LaneForestWalletTxnErrorV2::StateMismatch);
+                }
+                validate_empty_finalized_order_v2(&committed, empty)?;
+            }
+        }
         let before_state_digest = logical_state_digest_v2(&committed, &record.before_tentatives)?;
-        let candidate = apply_intent_structural_v2(&committed, &record.intent)?;
+        let candidate = apply_operation_structural_v2(&committed, &record.operation)?;
         let after_state_digest = logical_state_digest_v2(&candidate, &record.after_tentatives)?;
         if record.before_state_digest != before_state_digest
             || record.after_state_digest != after_state_digest
@@ -1856,7 +2568,9 @@ fn replay_authoritative_image_v2(
                 if pending_candidate.is_some() {
                     return Err(LaneForestWalletTxnErrorV2::InvalidPhase);
                 }
-                committed_event_ids.extend(output_event_ids_v2(&record.intent.event));
+                if let LaneForestWalletTxnOperationV2::Event(intent) = &record.operation {
+                    committed_event_ids.extend(output_event_ids_v2(&intent.event));
+                }
                 committed = candidate;
             }
             LaneForestWalletTxnPhaseV2::Prepared | LaneForestWalletTxnPhaseV2::StoresApplied => {
@@ -1870,7 +2584,10 @@ fn replay_authoritative_image_v2(
             }
         }
         parent_transaction_id = record.transaction_id;
-        previous_intent = Some(&record.intent);
+        previous_intent = match &record.operation {
+            LaneForestWalletTxnOperationV2::Event(intent) => Some(intent),
+            LaneForestWalletTxnOperationV2::EmptyFinalizedBlock(_) => None,
+        };
     }
     for observation in tentative_observations {
         if output_event_ids_v2(&observation.event)
@@ -1913,19 +2630,82 @@ fn checksum_v2(bytes: &[u8]) -> Result<[u8; 32], LaneForestWalletTxnErrorV2> {
     Ok(hasher.finalize().into())
 }
 
-fn encode_authoritative_image_v2(
+fn monotonic_to_wire_v3(metadata: LaneForestWalletMonotonicMetadataV3) -> MonotonicMetadataWireV3 {
+    MonotonicMetadataWireV3 {
+        protection_id: metadata.protection_id.to_vec(),
+        generation: metadata.generation,
+        predecessor_commitment: metadata.predecessor_commitment.to_vec(),
+    }
+}
+
+fn monotonic_from_wire_v3(
+    wire: MonotonicMetadataWireV3,
+) -> Result<LaneForestWalletMonotonicMetadataV3, LaneForestWalletTxnErrorV2> {
+    let metadata = LaneForestWalletMonotonicMetadataV3 {
+        protection_id: exact_array_v2(&wire.protection_id)?,
+        generation: wire.generation,
+        predecessor_commitment: exact_array_v2(&wire.predecessor_commitment)?,
+    };
+    if metadata.protection_id == [0u8; 32]
+        || (metadata.generation == 0 && metadata.predecessor_commitment != [0u8; 32])
+        || (metadata.generation != 0 && metadata.predecessor_commitment == [0u8; 32])
+    {
+        return Err(LaneForestWalletTxnErrorV2::MonotonicRollback);
+    }
+    Ok(metadata)
+}
+
+fn authoritative_content_digest_v3(
     activation: &EmptyV1LaneForestWalletActivationV2,
     records: &[LaneForestWalletTxnRecordV2],
     tentative_observations: &[LaneForestWalletTentativeObservationV2],
-) -> Result<Vec<u8>, LaneForestWalletTxnErrorV2> {
-    replay_authoritative_image_v2(activation, records, tentative_observations)?;
-    let wire = AuthoritativeImageWireV2 {
-        activation: activation_to_wire_v2(activation)?,
-        records: records.iter().map(record_to_wire_v2).collect(),
+) -> Result<[u8; 32], LaneForestWalletTxnErrorV2> {
+    let wire = AuthoritativeImageWireV3 {
+        activation: activation_to_wire_v3(activation)?,
+        records: records.iter().map(record_to_wire_v3).collect(),
         tentative_observations: tentative_observations
             .iter()
             .map(tentative_to_wire_v2)
             .collect(),
+        monotonic: None,
+    };
+    let bytes = canonical_serialize_v2(&wire)?;
+    let mut hasher = Sha256::new();
+    hasher.update(b"aspis:pool-v1:lane-forest-wallet-authoritative-content:sha256:v3");
+    hasher.update((bytes.len() as u64).to_le_bytes());
+    hasher.update(bytes);
+    Ok(hasher.finalize().into())
+}
+
+fn monotonic_commitment_v3(
+    metadata: LaneForestWalletMonotonicMetadataV3,
+    finalized_point: FinalizedChainPointV1,
+    state_digest: [u8; 32],
+) -> Result<WalletMonotonicCommitmentV2, LaneForestWalletTxnErrorV2> {
+    WalletMonotonicCommitmentV2::new_v2(
+        metadata.generation,
+        finalized_point,
+        metadata.predecessor_commitment,
+        state_digest,
+    )
+    .map_err(Into::into)
+}
+
+fn encode_authoritative_image_v2(
+    activation: &EmptyV1LaneForestWalletActivationV2,
+    records: &[LaneForestWalletTxnRecordV2],
+    tentative_observations: &[LaneForestWalletTentativeObservationV2],
+    monotonic: Option<LaneForestWalletMonotonicMetadataV3>,
+) -> Result<Vec<u8>, LaneForestWalletTxnErrorV2> {
+    replay_authoritative_image_v2(activation, records, tentative_observations)?;
+    let wire = AuthoritativeImageWireV3 {
+        activation: activation_to_wire_v3(activation)?,
+        records: records.iter().map(record_to_wire_v3).collect(),
+        tentative_observations: tentative_observations
+            .iter()
+            .map(tentative_to_wire_v2)
+            .collect(),
+        monotonic: monotonic.map(monotonic_to_wire_v3),
     };
     let payload = canonical_serialize_v2(&wire)?;
     let length = LANE_FOREST_WALLET_TXN_HEADER_BYTES_V2
@@ -1936,7 +2716,7 @@ fn encode_authoritative_image_v2(
     }
     let mut output = vec![0u8; length];
     output[..4].copy_from_slice(&LANE_FOREST_WALLET_TXN_MAGIC_V2);
-    output[4] = LANE_FOREST_WALLET_TXN_VERSION_V2;
+    output[4] = LANE_FOREST_WALLET_TXN_VERSION_V3;
     output[8..16].copy_from_slice(&(payload.len() as u64).to_le_bytes());
     output[16..24].copy_from_slice(&(records.len() as u64).to_le_bytes());
     output[LANE_FOREST_WALLET_TXN_HEADER_BYTES_V2..].copy_from_slice(&payload);
@@ -1945,6 +2725,7 @@ fn encode_authoritative_image_v2(
     Ok(output)
 }
 
+#[allow(clippy::type_complexity)]
 fn decode_authoritative_image_v2(
     bytes: &[u8],
 ) -> Result<
@@ -1953,6 +2734,7 @@ fn decode_authoritative_image_v2(
         Vec<LaneForestWalletTxnRecordV2>,
         Vec<LaneForestWalletTentativeObservationV2>,
         ReplayedAuthoritativeImageV2,
+        Option<LaneForestWalletMonotonicMetadataV3>,
     ),
     LaneForestWalletTxnErrorV2,
 > {
@@ -1970,7 +2752,9 @@ fn decode_authoritative_image_v2(
             },
         );
     }
-    if bytes[4] != LANE_FOREST_WALLET_TXN_VERSION_V2 {
+    if bytes[4] != LANE_FOREST_WALLET_TXN_VERSION_V2
+        && bytes[4] != LANE_FOREST_WALLET_TXN_VERSION_V3
+    {
         return Err(if bytes[4] < LANE_FOREST_WALLET_TXN_VERSION_V2 {
             LaneForestWalletTxnErrorV2::MigrationRequired
         } else {
@@ -2003,29 +2787,154 @@ fn decode_authoritative_image_v2(
         return Err(LaneForestWalletTxnErrorV2::ChecksumMismatch);
     }
     let payload = &bytes[LANE_FOREST_WALLET_TXN_HEADER_BYTES_V2..];
-    let wire: AuthoritativeImageWireV2 = bincode::DefaultOptions::new()
-        .with_fixint_encoding()
-        .with_little_endian()
-        .reject_trailing_bytes()
-        .with_limit(MAX_TXN_IMAGE_BYTES_V2 as u64)
-        .deserialize(payload)
-        .map_err(|_| LaneForestWalletTxnErrorV2::NonCanonicalEncoding)?;
-    if canonical_serialize_v2(&wire)? != payload || wire.records.len() != record_count {
-        return Err(LaneForestWalletTxnErrorV2::NonCanonicalEncoding);
-    }
-    let activation = activation_from_wire_v2(wire.activation)?;
-    let records = wire
-        .records
-        .into_iter()
-        .map(record_from_wire_v2)
-        .collect::<Result<Vec<_>, _>>()?;
-    let tentative_observations = wire
-        .tentative_observations
-        .into_iter()
-        .map(tentative_from_wire_v2)
-        .collect::<Result<Vec<_>, _>>()?;
+    let (activation, records, tentative_observations, monotonic) =
+        if bytes[4] == LANE_FOREST_WALLET_TXN_VERSION_V2 {
+            let wire: AuthoritativeImageWireV2 = bincode::DefaultOptions::new()
+                .with_fixint_encoding()
+                .with_little_endian()
+                .reject_trailing_bytes()
+                .with_limit(MAX_TXN_IMAGE_BYTES_V2 as u64)
+                .deserialize(payload)
+                .map_err(|_| LaneForestWalletTxnErrorV2::NonCanonicalEncoding)?;
+            if canonical_serialize_v2(&wire)? != payload || wire.records.len() != record_count {
+                return Err(LaneForestWalletTxnErrorV2::NonCanonicalEncoding);
+            }
+            (
+                activation_from_wire_v2(wire.activation)?,
+                wire.records
+                    .into_iter()
+                    .map(record_from_wire_v2)
+                    .collect::<Result<Vec<_>, _>>()?,
+                wire.tentative_observations
+                    .into_iter()
+                    .map(tentative_from_wire_v2)
+                    .collect::<Result<Vec<_>, _>>()?,
+                None,
+            )
+        } else {
+            let wire: AuthoritativeImageWireV3 = bincode::DefaultOptions::new()
+                .with_fixint_encoding()
+                .with_little_endian()
+                .reject_trailing_bytes()
+                .with_limit(MAX_TXN_IMAGE_BYTES_V2 as u64)
+                .deserialize(payload)
+                .map_err(|_| LaneForestWalletTxnErrorV2::NonCanonicalEncoding)?;
+            if canonical_serialize_v2(&wire)? != payload || wire.records.len() != record_count {
+                return Err(LaneForestWalletTxnErrorV2::NonCanonicalEncoding);
+            }
+            let monotonic = wire.monotonic.map(monotonic_from_wire_v3).transpose()?;
+            (
+                activation_from_wire_v3(wire.activation)?,
+                wire.records
+                    .into_iter()
+                    .map(record_from_wire_v3)
+                    .collect::<Result<Vec<_>, _>>()?,
+                wire.tentative_observations
+                    .into_iter()
+                    .map(tentative_from_wire_v2)
+                    .collect::<Result<Vec<_>, _>>()?,
+                monotonic,
+            )
+        };
     let replayed = replay_authoritative_image_v2(&activation, &records, &tentative_observations)?;
-    Ok((activation, records, tentative_observations, replayed))
+    if activation.requires_monotonic_protection_v2() != monotonic.is_some() {
+        return Err(LaneForestWalletTxnErrorV2::MonotonicRequired);
+    }
+    Ok((
+        activation,
+        records,
+        tentative_observations,
+        replayed,
+        monotonic,
+    ))
+}
+
+/// Build the exact initial protected ASL2 bytes embedded in the migration
+/// journal's Prepared phase. The external monotonic store is intentionally not
+/// advanced until these bytes have been durably installed.
+pub fn prepare_protected_initial_image_v2(
+    activation: &EmptyV1LaneForestWalletActivationV2,
+    cipher: &NoteStoreCipherV1,
+    protection_id: [u8; 32],
+) -> Result<Vec<u8>, LaneForestWalletTxnErrorV2> {
+    if !activation.requires_monotonic_protection_v2()
+        || protection_id == [0u8; 32]
+        || cipher.cipher_id() != activation.note_cipher_id
+    {
+        return Err(LaneForestWalletTxnErrorV2::MonotonicRequired);
+    }
+    let records = Vec::new();
+    let tentative = Vec::new();
+    let state = initial_committed_state_v2(activation);
+    verify_retained_note_openings_v2(&state, &records, cipher)?;
+    encode_authoritative_image_v2(
+        activation,
+        &records,
+        &tentative,
+        Some(LaneForestWalletMonotonicMetadataV3 {
+            protection_id,
+            generation: 0,
+            predecessor_commitment: [0u8; 32],
+        }),
+    )
+}
+
+/// Recover the migration-bound activation capability embedded in a fully
+/// validated protected ASL2 image. This exists for ASMG restart recovery:
+/// after `Prepared`, legacy constructors are intentionally fenced and cannot
+/// be reopened merely to reconstruct the activation object.
+pub fn validated_protected_activation_from_image_v2(
+    bytes: &[u8],
+    cipher: &NoteStoreCipherV1,
+) -> Result<EmptyV1LaneForestWalletActivationV2, LaneForestWalletTxnErrorV2> {
+    let (activation, records, _tentative, replayed, monotonic) =
+        decode_authoritative_image_v2(bytes)?;
+    if !activation.requires_monotonic_protection_v2()
+        || monotonic.is_none()
+        || cipher.cipher_id() != activation.note_cipher_id
+    {
+        return Err(LaneForestWalletTxnErrorV2::MonotonicRequired);
+    }
+    verify_retained_note_openings_v2(&replayed.committed, &records, cipher)?;
+    if let Some(candidate) = &replayed.pending_candidate {
+        verify_retained_note_openings_v2(candidate, &records, cipher)?;
+    }
+    Ok(activation)
+}
+
+/// Reconcile an installed protected image with the trusted monotonic store.
+/// This is the crash-recovery step between target installation and ownership
+/// commit and is exact-replay idempotent.
+pub fn reconcile_protected_image_monotonic_v2(
+    bytes: &[u8],
+    expected_activation: &EmptyV1LaneForestWalletActivationV2,
+    cipher: &NoteStoreCipherV1,
+    protection_id: [u8; 32],
+    store: &mut dyn WalletMonotonicStoreV2,
+) -> Result<WalletMonotonicCommitmentV2, LaneForestWalletTxnErrorV2> {
+    let (activation, records, tentative, replayed, metadata) =
+        decode_authoritative_image_v2(bytes)?;
+    if activation.activation_id != expected_activation.activation_id
+        || cipher.cipher_id() != activation.note_cipher_id
+    {
+        return Err(LaneForestWalletTxnErrorV2::ActivationMismatch);
+    }
+    verify_retained_note_openings_v2(&replayed.committed, &records, cipher)?;
+    if let Some(candidate) = &replayed.pending_candidate {
+        verify_retained_note_openings_v2(candidate, &records, cipher)?;
+    }
+    let metadata = metadata.ok_or(LaneForestWalletTxnErrorV2::MonotonicRequired)?;
+    if metadata.protection_id != protection_id {
+        return Err(LaneForestWalletTxnErrorV2::MonotonicRollback);
+    }
+    reconcile_monotonic_v3(
+        &activation,
+        &records,
+        &tentative,
+        &replayed,
+        metadata,
+        store,
+    )
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -2037,6 +2946,38 @@ pub enum LaneForestWalletTentativeUpdateV2 {
     AlreadyAbsent,
 }
 
+fn reconcile_monotonic_v3(
+    activation: &EmptyV1LaneForestWalletActivationV2,
+    records: &[LaneForestWalletTxnRecordV2],
+    tentative_observations: &[LaneForestWalletTentativeObservationV2],
+    replayed: &ReplayedAuthoritativeImageV2,
+    metadata: LaneForestWalletMonotonicMetadataV3,
+    store: &mut dyn WalletMonotonicStoreV2,
+) -> Result<WalletMonotonicCommitmentV2, LaneForestWalletTxnErrorV2> {
+    let state_digest =
+        authoritative_content_digest_v3(activation, records, tentative_observations)?;
+    let finalized_point = replayed
+        .pending_candidate
+        .as_ref()
+        .unwrap_or(&replayed.committed)
+        .finalized_head;
+    let candidate = monotonic_commitment_v3(metadata, finalized_point, state_digest)?;
+    match store.current_commitment_v2()? {
+        None if metadata.generation == 0 => {
+            store.compare_and_advance_v2(None, candidate)?;
+        }
+        Some(current) if current == candidate => {}
+        Some(current)
+            if metadata.generation == current.generation().saturating_add(1)
+                && metadata.predecessor_commitment == current.commitment_digest_v2() =>
+        {
+            store.compare_and_advance_v2(Some(current.commitment_digest_v2()), candidate)?;
+        }
+        _ => return Err(LaneForestWalletTxnErrorV2::MonotonicRollback),
+    }
+    Ok(candidate)
+}
+
 pub struct LaneForestWalletTxnCoordinatorV2 {
     file: AtomicStateFileV1,
     activation: EmptyV1LaneForestWalletActivationV2,
@@ -2044,6 +2985,8 @@ pub struct LaneForestWalletTxnCoordinatorV2 {
     tentative_observations: Vec<LaneForestWalletTentativeObservationV2>,
     committed: LaneForestWalletCommittedStateV2,
     pending_candidate: Option<LaneForestWalletCommittedStateV2>,
+    monotonic_metadata: Option<LaneForestWalletMonotonicMetadataV3>,
+    monotonic_store: Option<Box<dyn WalletMonotonicStoreV2>>,
     poisoned: bool,
 }
 
@@ -2067,12 +3010,65 @@ impl LaneForestWalletTxnCoordinatorV2 {
         cipher: &NoteStoreCipherV1,
         faults: &mut F,
     ) -> Result<Self, LaneForestWalletTxnErrorV2> {
+        if activation.requires_monotonic_protection_v2() {
+            return Err(LaneForestWalletTxnErrorV2::MonotonicRequired);
+        }
+        Self::open_or_create_inner_v2(path, activation, cipher, None, faults)
+    }
+
+    pub fn open_or_create_protected_v2(
+        path: impl AsRef<Path>,
+        activation: EmptyV1LaneForestWalletActivationV2,
+        cipher: &NoteStoreCipherV1,
+        protection_id: [u8; 32],
+        monotonic_store: Box<dyn WalletMonotonicStoreV2>,
+    ) -> Result<Self, LaneForestWalletTxnErrorV2> {
+        Self::open_or_create_protected_with_faults_v2(
+            path,
+            activation,
+            cipher,
+            protection_id,
+            monotonic_store,
+            &mut NoLaneForestWalletTxnFaultsV2,
+        )
+    }
+
+    pub fn open_or_create_protected_with_faults_v2<F: LaneForestWalletTxnFaultInjectorV2>(
+        path: impl AsRef<Path>,
+        activation: EmptyV1LaneForestWalletActivationV2,
+        cipher: &NoteStoreCipherV1,
+        protection_id: [u8; 32],
+        monotonic_store: Box<dyn WalletMonotonicStoreV2>,
+        faults: &mut F,
+    ) -> Result<Self, LaneForestWalletTxnErrorV2> {
+        if protection_id == [0u8; 32] {
+            return Err(LaneForestWalletTxnErrorV2::MonotonicRequired);
+        }
+        Self::open_or_create_inner_v2(
+            path,
+            activation,
+            cipher,
+            Some((protection_id, monotonic_store)),
+            faults,
+        )
+    }
+
+    fn open_or_create_inner_v2<F: LaneForestWalletTxnFaultInjectorV2>(
+        path: impl AsRef<Path>,
+        activation: EmptyV1LaneForestWalletActivationV2,
+        cipher: &NoteStoreCipherV1,
+        mut monotonic: Option<([u8; 32], Box<dyn WalletMonotonicStoreV2>)>,
+        faults: &mut F,
+    ) -> Result<Self, LaneForestWalletTxnErrorV2> {
         if cipher.cipher_id() != activation.note_cipher_id {
             return Err(LaneForestWalletTxnErrorV2::NoteCipherMismatch);
         }
+        if activation.requires_monotonic_protection_v2() != monotonic.is_some() {
+            return Err(LaneForestWalletTxnErrorV2::MonotonicRequired);
+        }
         let file = AtomicStateFileV1::acquire(path.as_ref())?;
         if let Some(bytes) = file.read_optional()? {
-            let (stored_activation, records, tentative_observations, replayed) =
+            let (stored_activation, records, tentative_observations, replayed, metadata) =
                 decode_authoritative_image_v2(&bytes)?;
             if !bool::from(
                 stored_activation
@@ -2085,6 +3081,20 @@ impl LaneForestWalletTxnCoordinatorV2 {
             if let Some(candidate) = &replayed.pending_candidate {
                 verify_retained_note_openings_v2(candidate, &records, cipher)?;
             }
+            if let Some((protection_id, store)) = monotonic.as_mut() {
+                let metadata = metadata.ok_or(LaneForestWalletTxnErrorV2::MonotonicRequired)?;
+                if metadata.protection_id != *protection_id {
+                    return Err(LaneForestWalletTxnErrorV2::MonotonicRollback);
+                }
+                reconcile_monotonic_v3(
+                    &stored_activation,
+                    &records,
+                    &tentative_observations,
+                    &replayed,
+                    metadata,
+                    store.as_mut(),
+                )?;
+            }
             return Ok(Self {
                 file,
                 activation: stored_activation,
@@ -2092,12 +3102,27 @@ impl LaneForestWalletTxnCoordinatorV2 {
                 tentative_observations,
                 committed: replayed.committed,
                 pending_candidate: replayed.pending_candidate,
+                monotonic_metadata: metadata,
+                monotonic_store: monotonic.map(|(_, store)| store),
                 poisoned: false,
             });
         }
         let records = Vec::new();
         let tentative_observations = Vec::new();
-        let bytes = encode_authoritative_image_v2(&activation, &records, &tentative_observations)?;
+        let monotonic_metadata =
+            monotonic
+                .as_ref()
+                .map(|(protection_id, _)| LaneForestWalletMonotonicMetadataV3 {
+                    protection_id: *protection_id,
+                    generation: 0,
+                    predecessor_commitment: [0u8; 32],
+                });
+        let bytes = encode_authoritative_image_v2(
+            &activation,
+            &records,
+            &tentative_observations,
+            monotonic_metadata,
+        )?;
         let mut injected = None;
         if let Err(error) = file.replace_with_fault_v1(&bytes, |boundary| {
             let point = LaneForestWalletTxnAtomicFaultPointV2 {
@@ -2116,6 +3141,16 @@ impl LaneForestWalletTxnCoordinatorV2 {
                 LaneForestWalletTxnErrorV2::InjectedAtomicFault,
             ));
         }
+        if let Some((_, store)) = monotonic.as_mut() {
+            let metadata =
+                monotonic_metadata.ok_or(LaneForestWalletTxnErrorV2::MonotonicRequired)?;
+            let state_digest =
+                authoritative_content_digest_v3(&activation, &records, &tentative_observations)?;
+            let commitment = monotonic_commitment_v3(metadata, activation.anchor, state_digest)?;
+            match store.compare_and_advance_v2(None, commitment)? {
+                WalletMonotonicAdvanceV2::Advanced | WalletMonotonicAdvanceV2::AlreadyCurrent => {}
+            }
+        }
         Ok(Self {
             file,
             committed: initial_committed_state_v2(&activation),
@@ -2123,6 +3158,8 @@ impl LaneForestWalletTxnCoordinatorV2 {
             records,
             tentative_observations,
             pending_candidate: None,
+            monotonic_metadata,
+            monotonic_store: monotonic.map(|(_, store)| store),
             poisoned: false,
         })
     }
@@ -2132,6 +3169,24 @@ impl LaneForestWalletTxnCoordinatorV2 {
     ) -> Result<&LaneForestWalletCommittedStateV2, LaneForestWalletTxnErrorV2> {
         self.ensure_readable_v2()?;
         Ok(&self.committed)
+    }
+
+    pub fn activation_v2(
+        &self,
+    ) -> Result<&EmptyV1LaneForestWalletActivationV2, LaneForestWalletTxnErrorV2> {
+        self.ensure_readable_v2()?;
+        Ok(&self.activation)
+    }
+
+    pub(crate) fn authoritative_target_image_v2(
+        &self,
+    ) -> Result<(&Path, Vec<u8>), LaneForestWalletTxnErrorV2> {
+        self.ensure_readable_v2()?;
+        let bytes = self
+            .file
+            .read_optional()?
+            .ok_or(LaneForestWalletTxnErrorV2::WrongLength)?;
+        Ok((self.file.path_v1(), bytes))
     }
 
     pub fn records(&self) -> Result<&[LaneForestWalletTxnRecordV2], LaneForestWalletTxnErrorV2> {
@@ -2161,6 +3216,76 @@ impl LaneForestWalletTxnCoordinatorV2 {
 
     pub fn is_poisoned_v2(&self) -> bool {
         self.poisoned
+    }
+
+    pub fn monotonic_protection_id_v2(&self) -> Option<&[u8; 32]> {
+        self.monotonic_metadata
+            .as_ref()
+            .map(|metadata| &metadata.protection_id)
+    }
+
+    /// Return the injected backend's production qualification only when it is
+    /// bound to this exact ASL2 protection identity. The deterministic
+    /// in-memory store intentionally has no such qualification.
+    pub fn production_monotonic_qualification_v2(
+        &self,
+    ) -> Result<WalletMonotonicStoreQualificationV2, LaneForestWalletTxnErrorV2> {
+        self.ensure_readable_v2()?;
+        let protection_id = self
+            .monotonic_protection_id_v2()
+            .ok_or(LaneForestWalletTxnErrorV2::MonotonicRequired)?;
+        let qualification = self
+            .monotonic_store
+            .as_ref()
+            .and_then(|store| store.production_qualification_v2())
+            .ok_or(LaneForestWalletTxnErrorV2::MonotonicRequired)?;
+        if qualification.protection_id() != protection_id {
+            return Err(LaneForestWalletTxnErrorV2::MonotonicRollback);
+        }
+        Ok(qualification)
+    }
+
+    pub fn current_monotonic_commitment_v2(
+        &self,
+    ) -> Result<Option<WalletMonotonicCommitmentV2>, LaneForestWalletTxnErrorV2> {
+        let Some(metadata) = self.monotonic_metadata else {
+            return Ok(None);
+        };
+        let state_digest = authoritative_content_digest_v3(
+            &self.activation,
+            &self.records,
+            &self.tentative_observations,
+        )?;
+        let finalized_point = self
+            .pending_candidate
+            .as_ref()
+            .unwrap_or(&self.committed)
+            .finalized_head;
+        Ok(Some(monotonic_commitment_v3(
+            metadata,
+            finalized_point,
+            state_digest,
+        )?))
+    }
+
+    /// Return the current commitment only when the ASL2 image and the
+    /// injected trusted monotonic backend agree exactly. Activation uses this
+    /// stronger query rather than trusting image metadata alone.
+    pub fn externally_anchored_monotonic_commitment_v2(
+        &self,
+    ) -> Result<WalletMonotonicCommitmentV2, LaneForestWalletTxnErrorV2> {
+        self.ensure_readable_v2()?;
+        let candidate = self
+            .current_monotonic_commitment_v2()?
+            .ok_or(LaneForestWalletTxnErrorV2::MonotonicRequired)?;
+        let store = self
+            .monotonic_store
+            .as_ref()
+            .ok_or(LaneForestWalletTxnErrorV2::MonotonicRequired)?;
+        if store.current_commitment_v2()? != Some(candidate) {
+            return Err(LaneForestWalletTxnErrorV2::MonotonicRollback);
+        }
+        Ok(candidate)
     }
 
     pub fn prepare_finalized_v2<A: LocalSpendAuthenticatorV1>(
@@ -2197,18 +3322,27 @@ impl LaneForestWalletTxnCoordinatorV2 {
         let content_digest = content_digest_v2(&intent)?;
         let event_ids = output_event_ids_v2(&intent.event);
         for record in &self.records {
-            if output_event_ids_v2(&record.intent.event)
-                .iter()
-                .any(|event_id| event_ids.contains(event_id))
-            {
-                return if record.content_digest == content_digest {
-                    Ok(LaneForestWalletTxnPrepareV2::AlreadyPresent {
-                        transaction_id: record.transaction_id,
-                        phase: record.phase,
-                    })
-                } else {
-                    Err(LaneForestWalletTxnErrorV2::EventConflict)
-                };
+            match &record.operation {
+                LaneForestWalletTxnOperationV2::Event(existing)
+                    if output_event_ids_v2(&existing.event)
+                        .iter()
+                        .any(|event_id| event_ids.contains(event_id)) =>
+                {
+                    return if record.content_digest == content_digest {
+                        Ok(LaneForestWalletTxnPrepareV2::AlreadyPresent {
+                            transaction_id: record.transaction_id,
+                            phase: record.phase,
+                        })
+                    } else {
+                        Err(LaneForestWalletTxnErrorV2::EventConflict)
+                    };
+                }
+                LaneForestWalletTxnOperationV2::EmptyFinalizedBlock(empty)
+                    if empty.block.point() == intent.event.point() =>
+                {
+                    return Err(LaneForestWalletTxnErrorV2::EventConflict)
+                }
+                _ => {}
             }
         }
         if self.pending_candidate.is_some() {
@@ -2216,7 +3350,7 @@ impl LaneForestWalletTxnCoordinatorV2 {
         }
         validate_finalized_order_v2(
             &self.committed,
-            self.records.last().map(|record| &record.intent),
+            self.records.last().and_then(|record| record.intent()),
             &intent,
         )?;
         validate_secret_bindings_v2(&self.committed, &intent, cipher, authenticator)?;
@@ -2248,7 +3382,92 @@ impl LaneForestWalletTxnCoordinatorV2 {
             before_tentatives,
             after_tentatives,
             phase: LaneForestWalletTxnPhaseV2::Prepared,
-            intent,
+            operation: LaneForestWalletTxnOperationV2::Event(intent),
+        };
+        let mut records = self.records.clone();
+        records.push(record);
+        self.persist_phase_v2(
+            records,
+            self.tentative_observations.clone(),
+            self.committed.clone(),
+            Some(candidate),
+            LaneForestWalletTxnPhaseV2::Prepared,
+            faults,
+        )?;
+        Ok(LaneForestWalletTxnPrepareV2::Prepared(transaction_id))
+    }
+
+    pub fn prepare_empty_finalized_block_v2(
+        &mut self,
+        empty: LaneForestWalletEmptyFinalizedBlockV2,
+    ) -> Result<LaneForestWalletTxnPrepareV2, LaneForestWalletTxnErrorV2> {
+        self.prepare_empty_finalized_block_with_faults_v2(empty, &mut NoLaneForestWalletTxnFaultsV2)
+    }
+
+    pub fn prepare_empty_finalized_block_with_faults_v2<F: LaneForestWalletTxnFaultInjectorV2>(
+        &mut self,
+        empty: LaneForestWalletEmptyFinalizedBlockV2,
+        faults: &mut F,
+    ) -> Result<LaneForestWalletTxnPrepareV2, LaneForestWalletTxnErrorV2> {
+        self.ensure_live_v2()?;
+        let operation = LaneForestWalletTxnOperationV2::EmptyFinalizedBlock(empty);
+        let content_digest = operation_content_digest_v2(&operation)?;
+        for record in &self.records {
+            if record.operation.point_v2() == empty.block.point() {
+                return if matches!(
+                    record.operation,
+                    LaneForestWalletTxnOperationV2::EmptyFinalizedBlock(_)
+                ) && record.content_digest == content_digest
+                {
+                    Ok(LaneForestWalletTxnPrepareV2::AlreadyPresent {
+                        transaction_id: record.transaction_id,
+                        phase: record.phase,
+                    })
+                } else {
+                    Err(LaneForestWalletTxnErrorV2::EventConflict)
+                };
+            }
+        }
+        if self.pending_candidate.is_some() {
+            return Err(LaneForestWalletTxnErrorV2::PendingTransaction);
+        }
+        if self
+            .tentative_observations
+            .iter()
+            .any(|observation| observation.event.point() == empty.block.point())
+        {
+            return Err(LaneForestWalletTxnErrorV2::InvalidRelayerObservation);
+        }
+        validate_empty_finalized_order_v2(&self.committed, &empty)?;
+        let candidate = apply_empty_finalized_block_structural_v2(&self.committed, &empty);
+        let before_tentatives = self.tentative_observations.clone();
+        let after_tentatives = before_tentatives.clone();
+        let before_state_digest = logical_state_digest_v2(&self.committed, &before_tentatives)?;
+        let after_state_digest = logical_state_digest_v2(&candidate, &after_tentatives)?;
+        let sequence = self.records.len() as u64 + 1;
+        let parent_transaction_id = self
+            .records
+            .last()
+            .map_or([0u8; 32], |record| record.transaction_id);
+        let transaction_id = transaction_id_v2(
+            sequence,
+            parent_transaction_id,
+            content_digest,
+            before_state_digest,
+            after_state_digest,
+        );
+        let record = LaneForestWalletTxnRecordV2 {
+            sequence,
+            parent_transaction_id,
+            transaction_id,
+            content_digest,
+            before_state_digest,
+            after_state_digest,
+            tentative_before_digest: tentative_digest_v2(&before_tentatives)?,
+            before_tentatives,
+            after_tentatives,
+            phase: LaneForestWalletTxnPhaseV2::Prepared,
+            operation,
         };
         let mut records = self.records.clone();
         records.push(record);
@@ -2374,11 +3593,18 @@ impl LaneForestWalletTxnCoordinatorV2 {
         }
         let observation =
             LaneForestWalletTentativeObservationV2::new_v2(event, commitment, provider_set_digest)?;
+        if observation.event.point().slot() <= self.committed.finalized_head.slot() {
+            return Err(LaneForestWalletTxnErrorV2::FinalizedRollback);
+        }
         let ids = output_event_ids_v2(&observation.event);
         if self.records.iter().any(|record| {
-            output_event_ids_v2(&record.intent.event)
-                .iter()
-                .any(|event_id| ids.contains(event_id))
+            matches!(
+                &record.operation,
+                LaneForestWalletTxnOperationV2::Event(intent)
+                    if output_event_ids_v2(&intent.event)
+                        .iter()
+                        .any(|event_id| ids.contains(event_id))
+            )
         }) {
             return Err(LaneForestWalletTxnErrorV2::FinalizedRollback);
         }
@@ -2449,9 +3675,13 @@ impl LaneForestWalletTxnCoordinatorV2 {
         let canonical = encode_forest_finalized_append_event_v2(event)?;
         let ids = output_event_ids_v2(event);
         if self.records.iter().any(|record| {
-            output_event_ids_v2(&record.intent.event)
-                .iter()
-                .any(|event_id| ids.contains(event_id))
+            matches!(
+                &record.operation,
+                LaneForestWalletTxnOperationV2::Event(intent)
+                    if output_event_ids_v2(&intent.event)
+                        .iter()
+                        .any(|event_id| ids.contains(event_id))
+            )
         }) {
             return Err(LaneForestWalletTxnErrorV2::FinalizedRollback);
         }
@@ -2478,13 +3708,20 @@ impl LaneForestWalletTxnCoordinatorV2 {
         observations: Vec<LaneForestWalletTentativeObservationV2>,
         faults: &mut F,
     ) -> Result<(), LaneForestWalletTxnErrorV2> {
-        let bytes = encode_authoritative_image_v2(&self.activation, &self.records, &observations)?;
+        let (bytes, next_monotonic, monotonic_advance) = self.prepare_next_image_v2(
+            &self.records,
+            &observations,
+            &self.committed,
+            self.pending_candidate.as_ref(),
+        )?;
         self.replace_with_faults_v2(
             &bytes,
             LaneForestWalletTxnWriteV2::TentativeObservation,
             faults,
         )?;
+        self.advance_monotonic_after_replace_v2(monotonic_advance)?;
         self.tentative_observations = observations;
+        self.monotonic_metadata = next_monotonic;
         Ok(())
     }
 
@@ -2518,18 +3755,86 @@ impl LaneForestWalletTxnCoordinatorV2 {
             self.poisoned = true;
             return Err(LaneForestWalletTxnErrorV2::InjectedFault(before));
         }
-        let bytes =
-            encode_authoritative_image_v2(&self.activation, &records, &tentative_observations)?;
+        let (bytes, next_monotonic, monotonic_advance) = self.prepare_next_image_v2(
+            &records,
+            &tentative_observations,
+            &committed,
+            pending_candidate.as_ref(),
+        )?;
         self.replace_with_faults_v2(&bytes, write, faults)?;
+        self.advance_monotonic_after_replace_v2(monotonic_advance)?;
         self.records = records;
         self.tentative_observations = tentative_observations;
         self.committed = committed;
         self.pending_candidate = pending_candidate;
+        self.monotonic_metadata = next_monotonic;
         if faults.interrupt_v2(after) {
             self.poisoned = true;
             return Err(LaneForestWalletTxnErrorV2::InjectedFault(after));
         }
         Ok(())
+    }
+
+    fn prepare_next_image_v2(
+        &self,
+        records: &[LaneForestWalletTxnRecordV2],
+        tentative_observations: &[LaneForestWalletTentativeObservationV2],
+        committed: &LaneForestWalletCommittedStateV2,
+        pending_candidate: Option<&LaneForestWalletCommittedStateV2>,
+    ) -> Result<PreparedMonotonicImageV3, LaneForestWalletTxnErrorV2> {
+        let Some(current_metadata) = self.monotonic_metadata else {
+            let bytes = encode_authoritative_image_v2(
+                &self.activation,
+                records,
+                tentative_observations,
+                None,
+            )?;
+            return Ok((bytes, None, None));
+        };
+        let current = self
+            .current_monotonic_commitment_v2()?
+            .ok_or(LaneForestWalletTxnErrorV2::MonotonicRequired)?;
+        let generation = current_metadata
+            .generation
+            .checked_add(1)
+            .ok_or(LaneForestWalletTxnErrorV2::CountOverflow)?;
+        let next_metadata = LaneForestWalletMonotonicMetadataV3 {
+            protection_id: current_metadata.protection_id,
+            generation,
+            predecessor_commitment: current.commitment_digest_v2(),
+        };
+        let state_digest =
+            authoritative_content_digest_v3(&self.activation, records, tentative_observations)?;
+        let finalized_point = pending_candidate.unwrap_or(committed).finalized_head;
+        let next = monotonic_commitment_v3(next_metadata, finalized_point, state_digest)?;
+        let bytes = encode_authoritative_image_v2(
+            &self.activation,
+            records,
+            tentative_observations,
+            Some(next_metadata),
+        )?;
+        Ok((bytes, Some(next_metadata), Some((current, next))))
+    }
+
+    fn advance_monotonic_after_replace_v2(
+        &mut self,
+        advance: Option<(WalletMonotonicCommitmentV2, WalletMonotonicCommitmentV2)>,
+    ) -> Result<(), LaneForestWalletTxnErrorV2> {
+        let Some((current, next)) = advance else {
+            return Ok(());
+        };
+        let store = self
+            .monotonic_store
+            .as_mut()
+            .ok_or(LaneForestWalletTxnErrorV2::MonotonicRequired)?;
+        match store.compare_and_advance_v2(Some(current.commitment_digest_v2()), next) {
+            Ok(WalletMonotonicAdvanceV2::Advanced)
+            | Ok(WalletMonotonicAdvanceV2::AlreadyCurrent) => Ok(()),
+            Err(error) => {
+                self.poisoned = true;
+                Err(error.into())
+            }
+        }
     }
 
     fn replace_with_faults_v2<F: LaneForestWalletTxnFaultInjectorV2>(

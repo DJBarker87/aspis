@@ -37,7 +37,7 @@ use sha2::{Digest as _, Sha256};
 use solana_program::pubkey::Pubkey;
 
 use crate::{
-    durable_state::{AtomicStateFileV1, DurableStateErrorV1},
+    durable_state::{check_legacy_writer_authority_v2, AtomicStateFileV1, DurableStateErrorV1},
     lane_forest_v2::{lane_forest_global_root_v2, LaneIdV2, PairSlotV2, POOL_V1_LANE_COUNT_V2},
     scan_note_v1,
     scan_state::{DepositEventIdV1, FinalizedChainPointV1},
@@ -969,6 +969,86 @@ impl LaneForestDurableStateV2 {
             let (first, second) = event.event_ids();
             first == event_id || second == Some(event_id)
         })
+    }
+
+    pub(crate) fn migration_tracked_output_v2(
+        &self,
+        event_id: DepositEventIdV1,
+    ) -> Option<&ForestTrackedOutputV2> {
+        self.core
+            .lanes
+            .iter()
+            .flat_map(|lane| lane.tracked_outputs.iter())
+            .find(|output| output.output_event_id == event_id)
+    }
+
+    pub(crate) fn migration_tracked_outputs_v2(
+        &self,
+    ) -> impl Iterator<Item = &ForestTrackedOutputV2> {
+        self.core
+            .lanes
+            .iter()
+            .flat_map(|lane| lane.tracked_outputs.iter())
+    }
+
+    pub(crate) fn migration_events_v2(
+        &self,
+    ) -> impl Iterator<Item = &ForestFinalizedAppendEventV2> {
+        self.core.events.iter()
+    }
+
+    pub(crate) fn migration_checkpoint_points_v2(
+        &self,
+    ) -> impl Iterator<Item = FinalizedChainPointV1> + '_ {
+        self.checkpoints.iter().map(|checkpoint| checkpoint.point)
+    }
+
+    /// Close the decoder's intentionally structural tracked-output boundary
+    /// before migration: each retained local witness association must match
+    /// the exact canonical event, lane, pair index, slot and commitment.
+    pub(crate) fn validate_migration_tracking_v2(&self) -> Result<(), LaneForestDurableErrorV2> {
+        for output in self.migration_tracked_outputs_v2() {
+            let event = self
+                .retained_event_v2(output.output_event_id)
+                .ok_or(LaneForestDurableErrorV2::WitnessMismatch)?;
+            let expected = match &event.kind {
+                ForestFinalizedAppendKindV2::Deposit {
+                    event_id,
+                    commitment,
+                    ..
+                } if *event_id == output.output_event_id => (PairSlotV2::First, *commitment),
+                ForestFinalizedAppendKindV2::PrivateTransfer {
+                    recipient_event_id,
+                    recipient_commitment,
+                    ..
+                } if *recipient_event_id == output.output_event_id => {
+                    (PairSlotV2::First, *recipient_commitment)
+                }
+                ForestFinalizedAppendKindV2::PrivateTransfer {
+                    change_event_id,
+                    change_commitment,
+                    ..
+                } if *change_event_id == output.output_event_id => {
+                    (PairSlotV2::Second, *change_commitment)
+                }
+                ForestFinalizedAppendKindV2::Withdrawal {
+                    event_id,
+                    change_commitment,
+                    ..
+                } if *event_id == output.output_event_id => (PairSlotV2::First, *change_commitment),
+                _ => return Err(LaneForestDurableErrorV2::WitnessMismatch),
+            };
+            let (first, _) = event.event_ids();
+            if output.witness_event_id != first
+                || output.lane_id != event.lane_id
+                || output.pair_leaf_index != event.pair_leaf_index
+                || output.slot != expected.0
+                || output.commitment != expected.1
+            {
+                return Err(LaneForestDurableErrorV2::WitnessMismatch);
+            }
+        }
+        Ok(())
     }
 
     pub fn lane_page_cursors_v2(
@@ -1904,7 +1984,9 @@ impl DurableLaneForestWalletFileV2 {
         path: impl AsRef<Path>,
         initial: LaneForestDurableStateV2,
     ) -> Result<Self, LaneForestDurableErrorV2> {
+        check_legacy_writer_authority_v2(path.as_ref())?;
         let file = AtomicStateFileV1::acquire(path.as_ref())?;
+        check_legacy_writer_authority_v2(path.as_ref())?;
         let state = match file.read_optional()? {
             Some(bytes) => {
                 let stored = decode_lane_forest_durable_state_v2(&bytes)?;
@@ -1925,6 +2007,16 @@ impl DurableLaneForestWalletFileV2 {
 
     pub fn state(&self) -> &LaneForestDurableStateV2 {
         &self.state
+    }
+
+    pub(crate) fn migration_source_image_v2(&self) -> Result<Vec<u8>, LaneForestDurableErrorV2> {
+        self.file
+            .read_optional()?
+            .ok_or(LaneForestDurableErrorV2::InvalidDurableImage)
+    }
+
+    pub(crate) fn migration_source_path_v2(&self) -> &Path {
+        self.file.path_v1()
     }
 
     pub fn replace_state_v2(

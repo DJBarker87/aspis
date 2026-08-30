@@ -16,7 +16,7 @@ use solana_transaction::versioned::VersionedTransaction;
 
 use crate::scan_state::FinalizedChainPointV1;
 use crate::{
-    durable_state::{AtomicStateFileV1, DurableStateErrorV1},
+    durable_state::{check_legacy_writer_authority_v2, AtomicStateFileV1, DurableStateErrorV1},
     finalized_indexer::SolanaRpcCommitmentV1,
     relayer_transaction::AuthenticatedAddressLookupTableV1,
 };
@@ -339,7 +339,9 @@ impl DurableRelayerExecutionJournalV1 {
     pub fn open_or_create_v1(
         path: impl AsRef<Path>,
     ) -> Result<Self, RelayerExecutionJournalErrorV1> {
+        check_legacy_writer_authority_v2(path.as_ref())?;
         let file = AtomicStateFileV1::acquire(path.as_ref())?;
+        check_legacy_writer_authority_v2(path.as_ref())?;
         let records = match file.read_optional()? {
             Some(bytes) => decode_execution_journal_v1(&bytes)?,
             None => {
@@ -353,6 +355,18 @@ impl DurableRelayerExecutionJournalV1 {
 
     pub fn records(&self) -> &[RelayerExecutionRecordV1] {
         &self.records
+    }
+
+    pub(crate) fn migration_source_image_v1(
+        &self,
+    ) -> Result<Vec<u8>, RelayerExecutionJournalErrorV1> {
+        self.file
+            .read_optional()?
+            .ok_or(RelayerExecutionJournalErrorV1::WrongLength)
+    }
+
+    pub(crate) fn migration_source_path_v1(&self) -> &Path {
+        self.file.path_v1()
     }
 
     pub fn record_v1(&self, request_id: [u8; 32]) -> Option<&RelayerExecutionRecordV1> {
@@ -615,6 +629,15 @@ impl DurableRelayerExecutionJournalV1 {
         self.records = records;
         Ok(())
     }
+}
+
+/// Strictly validate an archived ASRJ image retained inside the authoritative
+/// V2 migration genesis. Both historical source versions are accepted only
+/// through the same canonical decoder used by the live journal.
+pub(crate) fn validate_relayer_execution_archive_v1(
+    bytes: &[u8],
+) -> Result<Vec<RelayerExecutionRecordV1>, RelayerExecutionJournalErrorV1> {
+    decode_execution_journal_v1(bytes)
 }
 
 fn validate_simulation_v1(

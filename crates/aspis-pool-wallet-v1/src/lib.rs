@@ -15,9 +15,9 @@ pub mod durable_state;
 pub mod durable_witness_state;
 pub mod finalized_indexer;
 #[cfg(feature = "eight-lane-plumbing-v2")]
-pub mod lane_forest_client_v2;
-#[cfg(feature = "eight-lane-plumbing-v2")]
 pub mod lane_forest_checkpoint_operator_v2;
+#[cfg(feature = "eight-lane-plumbing-v2")]
+pub mod lane_forest_client_v2;
 #[cfg(feature = "eight-lane-plumbing-v2")]
 pub mod lane_forest_durable_v2;
 #[cfg(feature = "eight-lane-plumbing-v2")]
@@ -56,7 +56,14 @@ pub mod rpc_wire;
 pub mod scan_state;
 pub mod transaction_builder;
 pub mod verifier_transaction_builder;
+#[cfg(feature = "eight-lane-plumbing-v2")]
+pub mod wallet_monotonic_v2;
+#[cfg(feature = "eight-lane-plumbing-v2")]
+pub mod wallet_populated_migration_v2;
+pub mod wallet_store_migration_v2;
 pub mod wallet_transition;
+#[cfg(feature = "eight-lane-plumbing-v2")]
+pub mod wallet_v2_activation;
 pub mod witness_state;
 
 use aspis_core::field::{M31, P};
@@ -396,9 +403,7 @@ fn digest_bytes_are_canonical(bytes: &[u8; 32]) -> bool {
         .all(|limb| u32::from_le_bytes(limb.try_into().unwrap()) < P)
 }
 
-pub(crate) fn encode_note_plaintext_v1(
-    note: &NoteOpeningV1,
-) -> [u8; POOL_V1_NOTE_PLAINTEXT_BYTES] {
+pub(crate) fn encode_note_plaintext_v1(note: &NoteOpeningV1) -> [u8; POOL_V1_NOTE_PLAINTEXT_BYTES] {
     let mut bytes = [0u8; POOL_V1_NOTE_PLAINTEXT_BYTES];
     bytes[..4].copy_from_slice(&POOL_V1_NOTE_PLAINTEXT_MAGIC);
     bytes[4] = POOL_V1_NOTE_PLAINTEXT_VERSION;
@@ -412,9 +417,7 @@ pub(crate) fn encode_note_plaintext_v1(
     bytes
 }
 
-pub(crate) fn decode_note_plaintext_v1(
-    bytes: &[u8],
-) -> Result<NoteOpeningV1, PoolV1WalletError> {
+pub(crate) fn decode_note_plaintext_v1(bytes: &[u8]) -> Result<NoteOpeningV1, PoolV1WalletError> {
     if bytes.len() != POOL_V1_NOTE_PLAINTEXT_BYTES
         || bytes[..4] != POOL_V1_NOTE_PLAINTEXT_MAGIC
         || bytes[4] != POOL_V1_NOTE_PLAINTEXT_VERSION

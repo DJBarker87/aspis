@@ -67,6 +67,9 @@ pub enum DurableStateErrorV1 {
     UnsafePath,
     InsecurePermissions,
     AlreadyLocked,
+    MigrationInProgress,
+    LegacyStoreRetired,
+    AuthorityConflict,
     Io(io::ErrorKind),
     ImageTooLarge,
     WrongMagic,
@@ -98,6 +101,19 @@ pub enum DurableStateErrorV1 {
     ScanState(ScanStateErrorV1),
     Relayer(RelayerErrorV1),
     Admission(RelayerAdmissionErrorV1),
+}
+
+pub(crate) fn check_legacy_writer_authority_v2(path: &Path) -> Result<(), DurableStateErrorV1> {
+    use crate::wallet_store_migration_v2::{
+        check_legacy_wallet_store_writer_allowed_v2, WalletStoreMigrationErrorV2,
+    };
+
+    check_legacy_wallet_store_writer_allowed_v2(path).map_err(|error| match error {
+        WalletStoreMigrationErrorV2::MigrationInProgress
+        | WalletStoreMigrationErrorV2::AuthorityBusy => DurableStateErrorV1::MigrationInProgress,
+        WalletStoreMigrationErrorV2::LegacyRetired => DurableStateErrorV1::LegacyStoreRetired,
+        _ => DurableStateErrorV1::AuthorityConflict,
+    })
 }
 
 impl From<io::Error> for DurableStateErrorV1 {
@@ -195,6 +211,10 @@ impl AtomicStateFileV1 {
             return Err(DurableStateErrorV1::ImageTooLarge);
         }
         Ok(Some(bytes))
+    }
+
+    pub(crate) fn path_v1(&self) -> &Path {
+        &self.path
     }
 
     pub(crate) fn replace(&self, bytes: &[u8]) -> Result<(), DurableStateErrorV1> {
@@ -369,10 +389,12 @@ impl DurableWalletStateV1 {
         initial_scan_state: ScanStateV1,
         note_cipher_id: [u8; 32],
     ) -> Result<Self, DurableStateErrorV1> {
+        check_legacy_writer_authority_v2(path.as_ref())?;
         if note_cipher_id == [0u8; 32] {
             return Err(DurableStateErrorV1::InvalidCipherId);
         }
         let file = AtomicStateFileV1::acquire(path.as_ref())?;
+        check_legacy_writer_authority_v2(path.as_ref())?;
         if let Some(bytes) = file.read_optional()? {
             let (scan_state, stored_cipher_id, notes, base_prepared_plans, lifecycle) =
                 decode_wallet_image_v1(&bytes)?;
@@ -417,6 +439,20 @@ impl DurableWalletStateV1 {
 
     pub fn notes(&self) -> &[StoredSealedNoteV1] {
         &self.notes
+    }
+
+    /// Exact locked source image used by the one-way V2 migration. The
+    /// migration coordinator hashes these bytes before its durable prepare
+    /// decision, so a later recovery never aliases a semantically similar but
+    /// physically different legacy source.
+    pub(crate) fn migration_source_image_v1(&self) -> Result<Vec<u8>, DurableStateErrorV1> {
+        self.file
+            .read_optional()?
+            .ok_or(DurableStateErrorV1::Truncated)
+    }
+
+    pub(crate) fn migration_source_path_v1(&self) -> &Path {
+        self.file.path_v1()
     }
 
     /// Atomically replace every opaque note ciphertext and advance the
@@ -1457,9 +1493,11 @@ impl DurableRelayerStateV1 {
         path: impl AsRef<Path>,
         policy: RelayerPolicyV1,
     ) -> Result<Self, DurableStateErrorV1> {
+        check_legacy_writer_authority_v2(path.as_ref())?;
         validate_policy_shape_v1(policy)?;
         let policy_id = relayer_policy_id_v1(policy);
         let file = AtomicStateFileV1::acquire(path.as_ref())?;
+        check_legacy_writer_authority_v2(path.as_ref())?;
         if let Some(bytes) = file.read_optional()? {
             let (stored_policy_id, rate_window_start_slot, admissions_in_window, entries) =
                 decode_relayer_image_v1(&bytes)?;
@@ -1497,6 +1535,16 @@ impl DurableRelayerStateV1 {
 
     pub fn rate_window(&self) -> (u64, u32) {
         (self.rate_window_start_slot, self.admissions_in_window)
+    }
+
+    pub(crate) fn migration_source_image_v1(&self) -> Result<Vec<u8>, DurableStateErrorV1> {
+        self.file
+            .read_optional()?
+            .ok_or(DurableStateErrorV1::Truncated)
+    }
+
+    pub(crate) fn migration_source_path_v1(&self) -> &Path {
+        self.file.path_v1()
     }
 
     /// Apply an operator-authenticated policy revision. Historical admission
