@@ -34,8 +34,8 @@ readonly TEMPLATE_VERIFIER_SHA256="4ee9b4789533e049e2d9e1f43c84fa97f745a98151f94
 readonly TEMPLATE_VERIFIER_BYTES=1700384
 readonly LINUX_VERIFIER_SHA256="c43960303f2d67606362dc09d74f3a7983dcfcbe0665984a385a0efa7ddc5e47"
 readonly LINUX_VERIFIER_BYTES=1812264
-readonly LINUX_POOL_SHA256="82606a25f00fd683b06186cdaae519b52c793d9a2f16f9d3f7c40c2b241685c2"
-readonly LINUX_POOL_BYTES=525888
+readonly LINUX_POOL_SHA256="0bbe441f0e13c2f61e2369674628b06c9d538192514b4e9a92d229479956586d"
+readonly LINUX_POOL_BYTES=526056
 if [[ "$MATERIALIZED" == "--materialized" ]]; then
   readonly EXPECTED_VERIFIER_SHA256=$LINUX_VERIFIER_SHA256
   readonly EXPECTED_VERIFIER_BYTES=$LINUX_VERIFIER_BYTES
@@ -88,9 +88,9 @@ jq -e \
   --argjson materialized "$MATERIALIZED_JSON" '
   .schema == "aspis.v7.disposable-agave-txv1-bundle.v1" and
   .generatorSchema == "aspis.v7.deterministic-agave-bundle-generator.v1" and
-  .programSourceCommit == "da77d5f5a22681200cceec8e90fc69ac2cc81ad8" and
-  .programSourceTree == "aee02a157b9866a4eaada912fe7ca8976ae51fce" and
-  .poolSourceTree == "872814145eb07077fae2f15cf507643d28f3fa4b" and
+  .programSourceCommit == "6bc7d3caf181be23a8a6ac7769497c965cd7273d" and
+  .programSourceTree == "aae627375ad1f4f48ac4eae8e0c585c6c0680bab" and
+  .poolSourceTree == "cd7df911f651f84f408053fd934421aa88c7a9ca" and
   .verifierSourceTree == "e7370c020cac1e51ca9e41092dcf6ecbf095bd99" and
   (.poolProgram | type == "string" and length > 0) and
   (.verifierProgram | type == "string" and length > 0) and
@@ -338,7 +338,7 @@ done
 
 if [[ "$MATERIALIZED" == "--materialized" ]]; then
   jq -e '.sbfBindingComplete == true and .executionReady == true' "$MANIFEST" >/dev/null \
-    || fail "materialized replay requires a fresh da77 Pool SBF binding"
+    || fail "materialized replay requires the fresh stack-safe Pool SBF binding"
   while IFS=$'\t' read -r relative_path expected_bytes expected_sha; do
     validate_relative_path "$relative_path"
     sbf="$BUNDLE_DIR/$relative_path"

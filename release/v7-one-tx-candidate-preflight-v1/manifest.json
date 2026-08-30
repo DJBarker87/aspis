@@ -1,23 +1,25 @@
 {
   "schema": "aspis.v7.one-tx-candidate-preflight.v1",
-  "status": "LINUX_REPRODUCIBLE_SBF_GREEN_AGAVE_AND_POOL_STACK_PENDING",
+  "status": "STACK_SAFE_SOURCE_FROZEN_DUAL_SBF_AND_LOCAL_AGAVE_PENDING",
   "authorization": {
     "build": true,
-    "localSimulationOnly": true,
-    "publicDevnetReadOnlyProbe": true,
-    "sign": false,
-    "submit": false,
+    "localSimulationOnly": false,
+    "localDisposableLifecycle": true,
+    "publicDevnetReadOnlyProbe": false,
+    "sign": true,
+    "submit": true,
+    "signAndSubmitScope": "DISPOSABLE_LOCAL_VALIDATOR_ONLY",
     "deploy": false,
     "mainnet": false
   },
   "source": {
-    "commit": "da77d5f5a22681200cceec8e90fc69ac2cc81ad8",
-    "tree": "aee02a157b9866a4eaada912fe7ca8976ae51fce",
+    "commit": "6bc7d3caf181be23a8a6ac7769497c965cd7273d",
+    "tree": "aae627375ad1f4f48ac4eae8e0c585c6c0680bab",
     "cargoLockBlob": "dedcbfac3e4726f759ba062aa26ae47f4bfa1512",
     "cargoLockSha256": "25cae3f276bd5831785bdb25e204ce99213934e7fcec3f5a76a5d742a018426b",
-    "poolTree": "872814145eb07077fae2f15cf507643d28f3fa4b",
+    "poolTree": "cd7df911f651f84f408053fd934421aa88c7a9ca",
     "verifierTree": "e7370c020cac1e51ca9e41092dcf6ecbf095bd99",
-    "lastPoolSourceCommit": "da77d5f5a22681200cceec8e90fc69ac2cc81ad8",
+    "lastPoolSourceCommit": "6bc7d3caf181be23a8a6ac7769497c965cd7273d",
     "lastVerifierSourceCommit": "6702cfcc987e29381085039d9da8715dafbbfce8"
   },
   "toolchain": {
@@ -69,11 +71,11 @@
       "features": "v7-pair-forest-one-tx-candidate",
       "noDefaultFeatures": true,
       "output": "aspis_pool.so",
-      "expectedBytes": 525888,
-      "expectedSha256": "82606a25f00fd683b06186cdaae519b52c793d9a2f16f9d3f7c40c2b241685c2",
-      "bindingStatus": "DERIVED_BY_BYTE_IDENTICAL_DA77_DUAL_LINUX_BUILD",
-      "referenceEvidence": "results/v7-one-tx-reproducible-sbf-20260830/r6/reproducible-sbf.json",
-      "referenceArtifact": "results/v7-one-tx-reproducible-sbf-20260830/r6/sbf/aspis_pool.so",
+      "expectedBytes": 526056,
+      "expectedSha256": "0bbe441f0e13c2f61e2369674628b06c9d538192514b4e9a92d229479956586d",
+      "bindingStatus": "FOCUSED_STACK_SAFE_LINUX_REFERENCE_PENDING_DUAL_CONFIRMATION",
+      "referenceEvidence": "aeneas-verif/v7-pool-one-terminal-caller-source-20260828/evidence/checkpoint-stack-frame-20260830.txt",
+      "referenceArtifact": "results/v7-one-tx-stack-safe-pool-reference-20260830/aspis_pool.so",
       "referenceArtifactCheckedIn": true
     },
     {
@@ -85,7 +87,7 @@
       "output": "aspis_verifier.so",
       "expectedBytes": 1812264,
       "expectedSha256": "c43960303f2d67606362dc09d74f3a7983dcfcbe0665984a385a0efa7ddc5e47",
-      "bindingStatus": "DERIVED_BY_BYTE_IDENTICAL_DA77_DUAL_LINUX_BUILD",
+      "bindingStatus": "DERIVED_BY_BYTE_IDENTICAL_PRE_STACK_FIX_DUAL_LINUX_BUILD_UNCHANGED_SOURCE_TREE",
       "referenceEvidence": "results/v7-one-tx-reproducible-sbf-20260830/r6/reproducible-sbf.json",
       "referenceArtifact": "results/v7-one-tx-reproducible-sbf-20260830/r6/sbf/aspis_verifier.so",
       "referenceArtifactCheckedIn": true,
@@ -148,27 +150,31 @@
   "releaseHarnessFiles": [
     {
       "path": "results/v7-pair-forest-combined-rejection-litesvm-20260828/harness/Cargo.toml",
-      "sha256": "844b2c3579eb89aaf58ea49b03295c4496c3abefae80cb1eed668e2985b63fdf"
+      "sha256": "2ca228e08c826bcf6364df6d7c071e1dcdc47cc3a61fa6e7635d46f7ecd51b21"
     },
     {
       "path": "results/v7-pair-forest-combined-rejection-litesvm-20260828/harness/Cargo.lock",
-      "sha256": "8a3c9e9d323b1ab362180e420e29f46f41cc5b38419cf3ac6ed3d874cf77962f"
+      "sha256": "38e59947f25a8536e8dab575ef083ea30fe616a197aae1fc646df41fee3edbe4"
     },
     {
       "path": "results/v7-pair-forest-combined-rejection-litesvm-20260828/harness/src/bin/generate_txv1_agave_bundle.rs",
-      "sha256": "81b0c310dbc0320bad0af94fe3e1d83f2657267ea40da204a70c5c99ca2c79d2"
+      "sha256": "44d0eb6385382b073eeb82d6ea96cb227a063d580d820ded41172a20a06671b8"
+    },
+    {
+      "path": "results/v7-pair-forest-combined-rejection-litesvm-20260828/harness/src/bin/build_signed_txv1_request.rs",
+      "sha256": "bf906ecd6b5eb0416eae5ed0e8a4d84a0783bf24700fb0508dcbe7c81c9d9eff"
     },
     {
       "path": "scripts/v7_txv1_bundle_verify.sh",
-      "sha256": "b2ca31a188d5721adaed2ab7a2bc1d07b74124f675c04fe42ec8f0e036d55a35"
+      "sha256": "5608ba94ce2c8e05241c56b4e55241a9163fb7424e5fb5f72065768f6cf5630a"
     },
     {
       "path": "scripts/v7_txv1_disposable_agave_simulate.sh",
-      "sha256": "a025c793abed7e9c927f4f82fcefdb4535cf8eb8cc6f37eec9c533f97bae4352"
+      "sha256": "fd69d57874cbc724cfe25f727826322f6fbcd254c8bf53191bf03bad09b85f0b"
     },
     {
       "path": "scripts/v7_one_tx_release_replay.sh",
-      "sha256": "23c51462dfa68b887356b62a0c8dcf548d5b52ee8c7b8343334c04082c08f6a0"
+      "sha256": "a052c9c10edf7e5489c267f8aec7b45263f1b954e10a570c0e0b8b60492c5ec3"
     },
     {
       "path": "release/v7-one-tx-candidate-preflight-v1/linux-x86_64-sbf-toolchain-v1.48.json",
@@ -199,16 +205,16 @@
       "sha256": "464035cef039e2384ebe8ec7093d6ac4527fe24a08a734f7684315d983bafc58"
     },
     {
-      "path": "results/v7-one-tx-agave-bundle-template-20260830/bundle.json",
-      "sha256": "5768416d9f720a93749408763ab72131cba7cf52ae77d1b739d1f2cfb68f289d"
+      "path": "results/v7-one-tx-agave-bundle-stack-safe-20260830/bundle.json",
+      "sha256": "c8fb7ec2a23bf67877832f7bfbd4f45503b9ba79719fc1139a362841673aeb92"
     },
     {
-      "path": "results/v7-one-tx-agave-bundle-template-20260830/TEMPLATE-SHA256SUMS",
-      "sha256": "5086e0c3da9e4eda6c6111ee8a2a0ee25a745c66f8d011d21ef1fe1df1621341"
+      "path": "results/v7-one-tx-agave-bundle-stack-safe-20260830/TEMPLATE-SHA256SUMS",
+      "sha256": "5c4f01b118d79f4527126b1807b21f2d462d709442a80c0027b65f86381522be"
     },
     {
-      "path": "results/v7-one-tx-agave-bundle-offline-audit-20260830/audit.json",
-      "sha256": "61b20e8171d6b81f772fc24907bed0a71ab3e8ef881f6b0e8077ab6b6655a6f9"
+      "path": "results/v7-one-tx-agave-bundle-stack-safe-offline-audit-20260830.json",
+      "sha256": "7237b1a7fbec4d21d5f461122fddc2e009b41f4b9d30e4f6280ffdccdba71245"
     },
     {
       "path": "results/v7-one-tx-agave-bundle-offline-audit-20260830/README.md",
@@ -219,7 +225,7 @@
       "sha256": "aeb5b2c13b1458cb80f8b7bbb1f3a9cedcdb074232bee4a3ee3e581123eb8a4d"
     }
   ],
-  "linuxSbfDerivation": {
+  "priorLinuxSbfDerivation": {
     "unit": "aspis-v7-one-tx-dual-sbf-20260830-r5.service",
     "invocationId": "42faf7a2919542aaa2d067d6aec68306",
     "sourceCommit": "da77d5f5a22681200cceec8e90fc69ac2cc81ad8",
@@ -233,7 +239,7 @@
     "finalHarnessStatus": "FAILED_ONLY_AT_HISTORICAL_DARWIN_VERIFIER_REFERENCE_GATE",
     "purpose": "derive the platform-specific Linux output identities before the provenance-complete confirmation replay"
   },
-  "linuxSbfConfirmation": {
+  "priorLinuxSbfConfirmation": {
     "unit": "aspis-v7-one-tx-dual-sbf-20260830-r6.service",
     "invocationId": "db1e20a369e54bbf849440c33230dae1",
     "harnessCommit": "2acd8a0c4f68b71ecb89dec2cc7128f93e646fff",
@@ -259,6 +265,16 @@
       "status": "MAINNET_BLOCKER"
     }
   },
+  "currentReleaseGate": {
+    "sourceCommit": "6bc7d3caf181be23a8a6ac7769497c965cd7273d",
+    "focusedPoolReferenceBytes": 526056,
+    "focusedPoolReferenceSha256": "0bbe441f0e13c2f61e2369674628b06c9d538192514b4e9a92d229479956586d",
+    "focusedPlannerMaximumStackOffsetBytes": 2912,
+    "focusedLaneDecoderMaximumStackOffsetBytes": 3024,
+    "maximumAllowedStackOffsetBytes": 4096,
+    "dualLinuxSbfExecuted": false,
+    "disposableAgaveLifecycleExecuted": false
+  },
   "priorMeasuredCombinedCase": {
     "classification": "REAL_COMBINED_LITESVM_BCD03B12_PRE_MARKER_CREATION_CHRONOLOGY_ONLY",
     "path": "results/v7-static-schedule-cu-check-20260830/withdrawal-rollover-counter0.json",
@@ -272,11 +288,11 @@
     "currentSource": false
   },
   "currentMeasuredCombinedCase": {
-    "sourceCommit": "da77d5f5a22681200cceec8e90fc69ac2cc81ad8",
+    "sourceCommit": "6bc7d3caf181be23a8a6ac7769497c965cd7273d",
     "executed": false,
     "computeUnits": null,
     "transactionBytes": 1031,
-    "reason": "byte-identical Linux SBFs are frozen; checkpoint stack repair and disposable Agave 4.2+ runtime replay remain pending"
+    "reason": "stack-safe focused Pool identity and official Agave 4.2.0 runtime are frozen; dual-build and finalized eleven-case replay are pending"
   },
   "txv1Lifecycle": {
     "authoritativePreflightCommit": "c403c2f95734b271c3f5e0cae50d2a770640941a",
@@ -297,11 +313,11 @@
       "failed-withdrawal-cpi-rollback"
     ],
     "caseBundleIncluded": true,
-    "caseBundle": "results/v7-one-tx-agave-bundle-template-20260830",
-    "caseBundleSha256": "5768416d9f720a93749408763ab72131cba7cf52ae77d1b739d1f2cfb68f289d",
-    "caseBundleInventorySha256": "5086e0c3da9e4eda6c6111ee8a2a0ee25a745c66f8d011d21ef1fe1df1621341",
-    "caseBundleOfflineAudit": "results/v7-one-tx-agave-bundle-offline-audit-20260830/audit.json",
-    "caseBundleOfflineAuditSha256": "61b20e8171d6b81f772fc24907bed0a71ab3e8ef881f6b0e8077ab6b6655a6f9",
+    "caseBundle": "results/v7-one-tx-agave-bundle-stack-safe-20260830",
+    "caseBundleSha256": "c8fb7ec2a23bf67877832f7bfbd4f45503b9ba79719fc1139a362841673aeb92",
+    "caseBundleInventorySha256": "5c4f01b118d79f4527126b1807b21f2d462d709442a80c0027b65f86381522be",
+    "caseBundleOfflineAudit": "results/v7-one-tx-agave-bundle-stack-safe-offline-audit-20260830.json",
+    "caseBundleOfflineAuditSha256": "7237b1a7fbec4d21d5f461122fddc2e009b41f4b9d30e4f6280ffdccdba71245",
     "caseBundleFiles": 44,
     "caseBundleBytes": 647048,
     "walletPreflightsExecuted": 11,
@@ -332,14 +348,14 @@
       }
     ],
     "caseBundlePoolSbfBindingComplete": false,
-    "materializedCaseBundleIncluded": true,
-    "materializedCaseBundle": "results/v7-one-tx-reproducible-sbf-20260830/r6/materialized-eleven-case-bundle",
-    "materializedCaseBundleSha256": "b4ca543d65a3f12abff72aa412bcad77acb7fb335692c045db2356f4230eda7f",
-    "materializedCaseBundleInventorySha256": "aa287b62b3c67ca05206c935feb08e62708db558457f09eea89776e2b5f01f52",
-    "materializedCaseBundleOfflineAuditSha256": "206e1237b8a49725ea6ad03b1878e3604ef460c3a9f0477d4c91f65e861a1569",
-    "agave42AvailableInRecordedLocalEnvironment": false,
+    "materializedCaseBundleIncluded": false,
+    "materializedCaseBundle": null,
+    "materializedCaseBundleSha256": null,
+    "materializedCaseBundleInventorySha256": null,
+    "materializedCaseBundleOfflineAuditSha256": null,
+    "agave42AvailableInRecordedLocalEnvironment": true,
     "suiteExecutedForThisFreeze": false,
-    "publicDevnetExecutionActivationRequired": true,
+    "publicDevnetExecutionActivationRequired": false,
     "publicDevnetSubmissionAuthorized": false
   }
 }

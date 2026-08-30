@@ -1,9 +1,9 @@
-//! Deterministic account/input bundle for the simulation-only V7 TxV1 suite.
+//! Deterministic account/input bundle for the disposable V7 TxV1 lifecycle suite.
 //!
 //! This generator does not load a signer, contact RPC, execute SBF, or mutate a
-//! cluster. It materializes only public genesis-account images, zero-signature
+//! cluster. It materializes only public genesis-account images, unsigned
 //! transaction inputs, expected successful poststates, and fail-closed case
-//! metadata for the existing disposable-Agave runner.
+//! metadata for the disposable-Agave runner.
 
 use std::{
     collections::{BTreeMap, BTreeSet},
@@ -51,9 +51,9 @@ use serde_json::{json, Value};
 use sha2::{Digest as _, Sha256};
 use solana_program::{pubkey::Pubkey, rent::Rent};
 
-const PROGRAM_SOURCE_COMMIT: &str = "da77d5f5a22681200cceec8e90fc69ac2cc81ad8";
-const PROGRAM_SOURCE_TREE: &str = "aee02a157b9866a4eaada912fe7ca8976ae51fce";
-const POOL_SOURCE_TREE: &str = "872814145eb07077fae2f15cf507643d28f3fa4b";
+const PROGRAM_SOURCE_COMMIT: &str = "6bc7d3caf181be23a8a6ac7769497c965cd7273d";
+const PROGRAM_SOURCE_TREE: &str = "aae627375ad1f4f48ac4eae8e0c585c6c0680bab";
+const POOL_SOURCE_TREE: &str = "cd7df911f651f84f408053fd934421aa88c7a9ca";
 const VERIFIER_SOURCE_TREE: &str = "e7370c020cac1e51ca9e41092dcf6ecbf095bd99";
 const VERIFIER_SBF_SHA256: &str =
     "4ee9b4789533e049e2d9e1f43c84fa97f745a98151f9477ebd828de742b75e5c";
@@ -1093,7 +1093,7 @@ fn parse_arguments() -> Result<(PathBuf, Option<PoolSbfBinding>)> {
         }
         _ => {
             eprintln!(
-                "usage: generate_txv1_agave_bundle <new-output-directory> [--pool-sbf <fresh-da77-sbf>]"
+                "usage: generate_txv1_agave_bundle <new-output-directory> [--pool-sbf <fresh-stack-safe-sbf>]"
             );
             std::process::exit(2);
         }

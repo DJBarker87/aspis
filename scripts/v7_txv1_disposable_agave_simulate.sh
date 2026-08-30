@@ -1,6 +1,11 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+# Historical filename retained so old release automation resolves the same
+# path. This runner now proves a real local lifecycle: each signed transaction
+# is simulated, the exact same bytes are submitted to a disposable validator,
+# and its finalized status and protected post-state are checked.
+
 readonly FEATURE_ID="txv1aq4pp281K9um3tnPgkfX8UqtFT6wcVW3hNezGLL"
 readonly REQUIRED_CASES=(
   transfer-same-page
@@ -16,8 +21,13 @@ readonly REQUIRED_CASES=(
   failed-withdrawal-cpi-rollback
 )
 
+fail() {
+  echo "FAIL: $*" >&2
+  exit 1
+}
+
 if [[ $# -ne 3 ]]; then
-  echo "usage: $0 <agave-4.2+-bin-dir> <case-bundle-dir> <evidence-dir>" >&2
+  echo "usage: $0 <agave-4.2+-bin-dir> <materialized-case-bundle-dir> <new-evidence-dir>" >&2
   exit 2
 fi
 
@@ -25,61 +35,41 @@ readonly AGAVE_BIN_DIR=$1
 readonly BUNDLE_DIR=$2
 readonly EVIDENCE_DIR=$3
 readonly REPO_ROOT=$(cd "$(dirname "$0")/.." && pwd)
-readonly WALLET_SOURCE_ROOT=${ASPIS_TXV1_WALLET_SOURCE_ROOT:-$REPO_ROOT}
 readonly BUNDLE_MANIFEST="$BUNDLE_DIR/bundle.json"
 readonly BUNDLE_VERIFY="$REPO_ROOT/scripts/v7_txv1_bundle_verify.sh"
+readonly SIGNER_MANIFEST="$REPO_ROOT/results/v7-pair-forest-combined-rejection-litesvm-20260828/harness/Cargo.toml"
 readonly RPC_PORT=${ASPIS_TXV1_LOCAL_RPC_PORT:-18899}
 readonly RPC_URL="http://127.0.0.1:$RPC_PORT"
 
-for command in cargo curl jq openssl shasum; do
-  command -v "$command" >/dev/null || {
-    echo "missing required command: $command" >&2
-    exit 2
-  }
+for command_name in cargo curl jq openssl shasum; do
+  command -v "$command_name" >/dev/null || fail "missing required command: $command_name"
 done
-for binary in solana solana-test-validator; do
-  [[ -x "$AGAVE_BIN_DIR/$binary" ]] || {
-    echo "missing executable: $AGAVE_BIN_DIR/$binary" >&2
-    exit 2
-  }
+for binary in solana solana-keygen solana-test-validator; do
+  [[ -x "$AGAVE_BIN_DIR/$binary" ]] || fail "missing executable: $AGAVE_BIN_DIR/$binary"
 done
-[[ -f "$BUNDLE_MANIFEST" ]] || {
-  echo "missing bundle manifest: $BUNDLE_MANIFEST" >&2
-  exit 2
-}
-[[ -f "$WALLET_SOURCE_ROOT/crates/aspis-pool-wallet-v1/Cargo.toml" ]] || {
-  echo "wallet source root is incomplete: $WALLET_SOURCE_ROOT" >&2
-  exit 2
-}
+[[ -f "$BUNDLE_MANIFEST" ]] || fail "missing bundle manifest: $BUNDLE_MANIFEST"
+[[ -f "$SIGNER_MANIFEST" ]] || fail "signed TxV1 evidence helper is unavailable"
+[[ -x "$BUNDLE_VERIFY" ]] || fail "offline bundle validator is unavailable"
+[[ ! -e "$EVIDENCE_DIR" ]] || fail "refusing to overwrite evidence directory: $EVIDENCE_DIR"
+
 jq -e '
   .schema == "aspis.v7.disposable-agave-txv1-bundle.v1" and
-  .programSourceCommit == "da77d5f5a22681200cceec8e90fc69ac2cc81ad8" and
-  .programSourceTree == "aee02a157b9866a4eaada912fe7ca8976ae51fce" and
-  .poolSourceTree == "872814145eb07077fae2f15cf507643d28f3fa4b" and
+  .programSourceCommit == "6bc7d3caf181be23a8a6ac7769497c965cd7273d" and
+  .programSourceTree == "aae627375ad1f4f48ac4eae8e0c585c6c0680bab" and
+  .poolSourceTree == "cd7df911f651f84f408053fd934421aa88c7a9ca" and
   .verifierSourceTree == "e7370c020cac1e51ca9e41092dcf6ecbf095bd99" and
-  (.poolProgram | type == "string" and length > 0) and
-  (.verifierProgram | type == "string" and length > 0) and
-  (.poolSbf | type == "string" and length > 0) and
-  (.poolSbfSha256 | test("^[0-9a-f]{64}$")) and
-  (.poolSbfBytes | type == "number" and . > 0) and
-  (.verifierSbf | type == "string" and length > 0) and
-  (.verifierSbfSha256 | test("^[0-9a-f]{64}$")) and
-  (.verifierSbfBytes | type == "number" and . > 0) and
+  .poolSbfSha256 == "0bbe441f0e13c2f61e2369674628b06c9d538192514b4e9a92d229479956586d" and
+  .poolSbfBytes == 526056 and
+  .verifierSbfSha256 == "c43960303f2d67606362dc09d74f3a7983dcfcbe0665984a385a0efa7ddc5e47" and
+  .verifierSbfBytes == 1812264 and
   .sbfBindingComplete == true and .executionReady == true and
-  .warpSlot == 150 and
-  .computeUnitCeiling == 1300000 and
+  .warpSlot == 150 and .computeUnitCeiling == 1300000 and
   .transactionByteCeilingExclusive == 4096 and
   .allNegativeCasesRequireRollback == true and
   .signed == false and .submitted == false and .deployed == false and
-  (.cases | type == "array")
-' "$BUNDLE_MANIFEST" >/dev/null || {
-  echo "bundle manifest has the wrong or incomplete schema" >&2
-  exit 2
-}
-if [[ -e "$EVIDENCE_DIR" ]]; then
-  echo "refusing to overwrite evidence directory: $EVIDENCE_DIR" >&2
-  exit 2
-fi
+  (.cases | type == "array" and length == 11)
+' "$BUNDLE_MANIFEST" >/dev/null || fail "bundle manifest has the wrong or incomplete release binding"
+"$BUNDLE_VERIFY" "$BUNDLE_DIR" --materialized >/dev/null
 
 readonly VERSION_OUTPUT=$(NO_DNA=1 "$AGAVE_BIN_DIR/solana" --version)
 readonly CORE_VERSION=$(sed -E 's/.* ([0-9]+\.[0-9]+\.[^ ]+).*/\1/' <<<"$VERSION_OUTPUT")
@@ -87,28 +77,20 @@ readonly CORE_MAJOR=${CORE_VERSION%%.*}
 readonly CORE_REST=${CORE_VERSION#*.}
 readonly CORE_MINOR=${CORE_REST%%.*}
 if (( CORE_MAJOR < 4 || (CORE_MAJOR == 4 && CORE_MINOR < 2) )); then
-  echo "Agave 4.2+ required; found: $VERSION_OUTPUT" >&2
-  exit 2
+  fail "Agave 4.2+ required; found: $VERSION_OUTPUT"
 fi
+
+for case_name in "${REQUIRED_CASES[@]}"; do
+  jq -e --arg name "$case_name" '[.cases[] | select(.name == $name)] | length == 1' \
+    "$BUNDLE_MANIFEST" >/dev/null || fail "bundle omits or duplicates required case: $case_name"
+done
 
 validate_bundle_relative_path() {
   local path=$1
-  if [[ -z "$path" || "$path" == /* || "$path" == ".." || "$path" == ../* || "$path" == */../* || "$path" == */.. ]]; then
-    echo "bundle path must be nonempty, relative, and contain no parent traversal: $path" >&2
-    return 1
+  if [[ -z "$path" || "$path" == /* || "$path" == ".." || "$path" == ../* \
+      || "$path" == */../* || "$path" == */.. ]]; then
+    fail "unsafe bundle path: $path"
   fi
-}
-
-for case_name in "${REQUIRED_CASES[@]}"; do
-  jq -e --arg name "$case_name" '[.cases[] | select(.name == $name)] | length == 1' "$BUNDLE_MANIFEST" >/dev/null || {
-    echo "bundle omits required case: $case_name" >&2
-    exit 2
-  }
-done
-jq -e --argjson expected "${#REQUIRED_CASES[@]}" '.cases | length == $expected' \
-  "$BUNDLE_MANIFEST" >/dev/null || {
-  echo "bundle must contain exactly the required case set" >&2
-  exit 2
 }
 
 readonly POOL_PROGRAM=$(jq -er '.poolProgram' "$BUNDLE_MANIFEST")
@@ -120,24 +102,10 @@ validate_bundle_relative_path "$VERIFIER_SBF_RELATIVE"
 readonly POOL_SBF="$BUNDLE_DIR/$POOL_SBF_RELATIVE"
 readonly VERIFIER_SBF="$BUNDLE_DIR/$VERIFIER_SBF_RELATIVE"
 readonly WARP_SLOT=$(jq -er '.warpSlot' "$BUNDLE_MANIFEST")
-[[ -f "$POOL_SBF" && -f "$VERIFIER_SBF" ]] || {
-  echo "bundle is missing one or both SBF artifacts" >&2
-  exit 2
-}
-[[ "$(wc -c <"$POOL_SBF" | tr -d ' ')" == "$(jq -er '.poolSbfBytes' "$BUNDLE_MANIFEST")" \
-    && "$(shasum -a 256 "$POOL_SBF" | awk '{print $1}')" == "$(jq -er '.poolSbfSha256' "$BUNDLE_MANIFEST")" ]] \
-  || { echo "Pool SBF differs from the bundle binding" >&2; exit 2; }
-[[ "$(wc -c <"$VERIFIER_SBF" | tr -d ' ')" == "$(jq -er '.verifierSbfBytes' "$BUNDLE_MANIFEST")" \
-    && "$(shasum -a 256 "$VERIFIER_SBF" | awk '{print $1}')" == "$(jq -er '.verifierSbfSha256' "$BUNDLE_MANIFEST")" ]] \
-  || { echo "verifier SBF differs from the bundle binding" >&2; exit 2; }
-[[ -x "$BUNDLE_VERIFY" ]] || {
-  echo "offline bundle validator is unavailable: $BUNDLE_VERIFY" >&2
-  exit 2
-}
-"$BUNDLE_VERIFY" "$BUNDLE_DIR" --materialized >/dev/null
+[[ -f "$POOL_SBF" && -f "$VERIFIER_SBF" ]] || fail "bundle omits the SBF artifacts"
 
 mkdir -p "$EVIDENCE_DIR"
-readonly WORK_DIR=$(mktemp -d "${TMPDIR:-/tmp}/aspis-v7-txv1-preflight.XXXXXX")
+readonly WORK_DIR=$(mktemp -d "${TMPDIR:-/tmp}/aspis-v7-txv1-lifecycle.XXXXXX")
 VALIDATOR_PID=""
 cleanup() {
   if [[ -n "$VALIDATOR_PID" ]]; then
@@ -145,236 +113,287 @@ cleanup() {
     wait "$VALIDATOR_PID" 2>/dev/null || true
   fi
   case "$WORK_DIR" in
-    */aspis-v7-txv1-preflight.*) rm -rf -- "$WORK_DIR" ;;
+    */aspis-v7-txv1-lifecycle.*) rm -rf -- "$WORK_DIR" ;;
     *) echo "refusing to remove unexpected temporary path: $WORK_DIR" >&2 ;;
   esac
 }
 trap cleanup EXIT
 
+NO_DNA=1 "$AGAVE_BIN_DIR/solana-keygen" new \
+  --no-bip39-passphrase --silent --force --outfile "$WORK_DIR/local-test-payer.json"
+readonly LOCAL_TEST_PAYER=$(NO_DNA=1 "$AGAVE_BIN_DIR/solana-keygen" pubkey "$WORK_DIR/local-test-payer.json")
+
+CARGO_NET_OFFLINE=true cargo build --release --offline --locked \
+  --manifest-path "$SIGNER_MANIFEST" --bin build_signed_txv1_request \
+  >"$EVIDENCE_DIR/signed-helper-build.log" 2>&1
+readonly SIGNER_BINARY="$REPO_ROOT/results/v7-pair-forest-combined-rejection-litesvm-20260828/harness/target/release/build_signed_txv1_request"
+[[ -x "$SIGNER_BINARY" ]] || fail "signed TxV1 helper build omitted its binary"
+shasum -a 256 "$SIGNER_BINARY" >"$EVIDENCE_DIR/signed-helper.sha256"
+shasum -a 256 "$SIGNER_MANIFEST" \
+  "$REPO_ROOT/results/v7-pair-forest-combined-rejection-litesvm-20260828/harness/Cargo.lock" \
+  "$REPO_ROOT/results/v7-pair-forest-combined-rejection-litesvm-20260828/harness/src/bin/build_signed_txv1_request.rs" \
+  >"$EVIDENCE_DIR/signed-helper-inputs.sha256"
+
 rpc() {
-  curl --fail-with-body --silent --show-error \
-    --max-time 60 \
-    -H 'content-type: application/json' \
-    --data-binary "$1" \
-    "$RPC_URL"
+  curl --fail-with-body --silent --show-error --max-time 60 \
+    -H 'content-type: application/json' --data-binary "$1" "$RPC_URL"
+}
+
+stop_validator() {
+  if [[ -n "$VALIDATOR_PID" ]]; then
+    kill "$VALIDATOR_PID"
+    wait "$VALIDATOR_PID" || true
+    VALIDATOR_PID=""
+  fi
 }
 
 run_case() {
   local case_name=$1
   local case_json="$WORK_DIR/$case_name.case.json"
-  local case_input case_input_relative
+  local case_input_relative case_input expected_outcome expected_file_relative expected_file
   local ledger="$WORK_DIR/$case_name-ledger"
   local validator_log="$EVIDENCE_DIR/$case_name.validator.log"
   local -a validator_args
-  local slot blockhash account_addresses before_json preflight_json response_json after_json
-  local expected_outcome units return_data_length rollback_equal state_unchanged
-  local expected_accounts_sha256 actual_accounts_sha256 expected_log
+  local slot blockhash account_addresses before_json signed_request simulation_response
+  local send_response signature status_response confirmation_status landed_error transaction_response
+  local after_json simulation_units landed_units return_data_length expected_log
+  local rollback_equal actual_matches_expected simulation_matches_expected actual_state_changed
+  local task_poll
 
   jq -e --arg name "$case_name" '.cases[] | select(.name == $name)' \
     "$BUNDLE_MANIFEST" >"$case_json"
-  jq -e '
-    (.input | type == "string" and length > 0) and
-    (.inputSha256 | test("^[0-9a-f]{64}$")) and
-    (.expectedOutcome == "success" or .expectedOutcome == "failure") and
-    (.expectedLogContains | type == "array" and length > 0 and all(type == "string" and length > 0)) and
-    (.genesisAccounts | type == "array" and length > 0 and all(
-      (.address | type == "string" and length > 0) and
-      (.file | type == "string" and length > 0) and
-      (.fileSha256 | test("^[0-9a-f]{64}$")) and
-      (.loadAtGenesis | type == "boolean")
-    )) and
-    (.programOverrides | type == "array" and all(
-      (.address | type == "string" and length > 0) and
-      (.file | type == "string" and length > 0) and
-      (.fileSha256 | test("^[0-9a-f]{64}$"))
-    )) and
-    (.rollbackRequired == (.expectedOutcome == "failure")) and
-    (if .expectedOutcome == "success" then
-      (.expectedSimulationAccountsSha256 | test("^[0-9a-f]{64}$")) and
-      .rollbackRequired == false
-    else .rollbackRequired == true end)
-  ' "$case_json" >/dev/null || {
-    echo "case manifest is incomplete or malformed: $case_name" >&2
-    return 1
-  }
   case_input_relative=$(jq -er '.input' "$case_json")
   validate_bundle_relative_path "$case_input_relative"
   case_input="$BUNDLE_DIR/$case_input_relative"
   expected_outcome=$(jq -er '.expectedOutcome' "$case_json")
-  [[ -f "$case_input" ]] || {
-    echo "missing case input for $case_name: $case_input" >&2
-    return 1
-  }
-  [[ "$(shasum -a 256 "$case_input" | awk '{print $1}')" == "$(jq -er '.inputSha256' "$case_json")" ]] || {
-    echo "case input hash differs for $case_name" >&2
-    return 1
-  }
+  [[ -f "$case_input" ]] || fail "missing case input for $case_name"
+  [[ "$(shasum -a 256 "$case_input" | awk '{print $1}')" == "$(jq -er '.inputSha256' "$case_json")" ]] \
+    || fail "case input hash differs for $case_name"
 
   validator_args=(
-    --reset
-    --quiet
-    --ledger "$ledger"
-    --bind-address 127.0.0.1
-    --rpc-port "$RPC_PORT"
-    --warp-slot "$WARP_SLOT"
+    --reset --quiet --ledger "$ledger" --bind-address 127.0.0.1 --rpc-port "$RPC_PORT"
+    --warp-slot "$WARP_SLOT" --mint "$LOCAL_TEST_PAYER"
     --bpf-program "$POOL_PROGRAM" "$POOL_SBF"
     --bpf-program "$VERIFIER_PROGRAM" "$VERIFIER_SBF"
   )
   while IFS=$'\t' read -r address relative_path expected_sha; do
     validate_bundle_relative_path "$relative_path"
-    [[ -f "$BUNDLE_DIR/$relative_path" ]] || {
-      echo "missing genesis account for $case_name: $relative_path" >&2
-      return 1
-    }
-    [[ "$(shasum -a 256 "$BUNDLE_DIR/$relative_path" | awk '{print $1}')" == "$expected_sha" ]] || {
-      echo "genesis account hash differs for $case_name: $relative_path" >&2
-      return 1
-    }
+    [[ -f "$BUNDLE_DIR/$relative_path" ]] || fail "missing genesis account: $relative_path"
+    [[ "$(shasum -a 256 "$BUNDLE_DIR/$relative_path" | awk '{print $1}')" == "$expected_sha" ]] \
+      || fail "genesis account hash differs: $relative_path"
     validator_args+=(--account "$address" "$BUNDLE_DIR/$relative_path")
   done < <(jq -r '.genesisAccounts[] | select(.loadAtGenesis) | [.address, .file, .fileSha256] | @tsv' "$case_json")
   while IFS=$'\t' read -r address relative_path expected_sha; do
     validate_bundle_relative_path "$relative_path"
-    [[ -f "$BUNDLE_DIR/$relative_path" ]] || {
-      echo "missing program override for $case_name: $relative_path" >&2
-      return 1
-    }
-    [[ "$(shasum -a 256 "$BUNDLE_DIR/$relative_path" | awk '{print $1}')" == "$expected_sha" ]] || {
-      echo "program override hash differs for $case_name: $relative_path" >&2
-      return 1
-    }
+    [[ "$(shasum -a 256 "$BUNDLE_DIR/$relative_path" | awk '{print $1}')" == "$expected_sha" ]] \
+      || fail "program override differs: $relative_path"
     validator_args+=(--bpf-program "$address" "$BUNDLE_DIR/$relative_path")
   done < <(jq -r '.programOverrides[]? | [.address, .file, .fileSha256] | @tsv' "$case_json")
 
   NO_DNA=1 "$AGAVE_BIN_DIR/solana-test-validator" "${validator_args[@]}" \
     >"$validator_log" 2>&1 &
   VALIDATOR_PID=$!
-  for _ in $(seq 1 100); do
+  for task_poll in $(seq 1 150); do
     if rpc '{"jsonrpc":"2.0","id":1,"method":"getHealth"}' \
       | jq -e '.result == "ok"' >/dev/null 2>&1; then
       break
     fi
     sleep 0.2
   done
-  rpc '{"jsonrpc":"2.0","id":1,"method":"getHealth"}' \
-    | jq -e '.result == "ok"' >/dev/null
-
+  rpc '{"jsonrpc":"2.0","id":1,"method":"getHealth"}' | jq -e '.result == "ok"' >/dev/null
   rpc "{\"jsonrpc\":\"2.0\",\"id\":2,\"method\":\"getAccountInfo\",\"params\":[\"$FEATURE_ID\",{\"encoding\":\"base64\",\"commitment\":\"finalized\"}]}" \
-    | jq -e '.result.value != null and (.result.value.data[0] | startswith("AQ"))' >/dev/null || {
-      echo "disposable validator did not activate TxV1 at genesis" >&2
-      return 1
-    }
+    | jq -e '.result.value != null and (.result.value.data[0] | startswith("AQ"))' >/dev/null \
+    || fail "TxV1 was not active for $case_name"
 
   slot=$(rpc '{"jsonrpc":"2.0","id":3,"method":"getSlot","params":[{"commitment":"finalized"}]}' | jq -er '.result')
   blockhash=$(rpc "{\"jsonrpc\":\"2.0\",\"id\":4,\"method\":\"getLatestBlockhash\",\"params\":[{\"commitment\":\"finalized\",\"minContextSlot\":$slot}]}" | jq -er '.result.value.blockhash')
   jq --arg blockhash "$blockhash" --argjson slot "$slot" \
     '.recentBlockhash = $blockhash | .minContextSlot = $slot' \
     "$case_input" >"$WORK_DIR/$case_name.input.json"
-
-  account_addresses=$(jq -c '.postStateAccounts // []' "$WORK_DIR/$case_name.input.json")
-  jq -e 'length > 0' <<<"$account_addresses" >/dev/null || {
-    echo "case must request protected post-state accounts: $case_name" >&2
-    return 1
-  }
+  account_addresses=$(jq -c '.postStateAccounts' "$WORK_DIR/$case_name.input.json")
+  jq -e 'length > 0' <<<"$account_addresses" >/dev/null || fail "protected account list is empty"
   before_json=$(rpc "$(jq -nc --argjson addresses "$account_addresses" '{jsonrpc:"2.0",id:5,method:"getMultipleAccounts",params:[$addresses,{encoding:"base64",commitment:"finalized"}]}')")
 
-  preflight_json=$(cd "$WALLET_SOURCE_ROOT" && NO_DNA=1 cargo run --quiet \
-    --manifest-path crates/aspis-pool-wallet-v1/Cargo.toml \
-    --features eight-lane-plumbing-v2 \
-    --example tx_v1_simulation_request -- \
-    "$WORK_DIR/$case_name.input.json")
-  jq -e '.summary.compute_unit_limit == 1300000 and .summary.serialized_transaction_bytes < 4096' \
-    <<<"$preflight_json" >/dev/null
-  response_json=$(rpc "$(jq -c '.simulationRequest' <<<"$preflight_json")")
-  jq -e '.error | not' <<<"$response_json" >/dev/null
-  units=$(jq -er '.result.value.unitsConsumed' <<<"$response_json")
-  (( units <= 1300000 ))
-  while IFS= read -r expected_log; do
-    jq -e --arg expected "$expected_log" \
-      '.result.value.logs | any(contains($expected))' <<<"$response_json" >/dev/null
-  done < <(jq -r '.expectedLogContains[]' "$case_json")
+  signed_request=$(NO_DNA=1 "$SIGNER_BINARY" \
+    "$WORK_DIR/$case_name.input.json" "$WORK_DIR/local-test-payer.json")
+  jq -e '
+    .schema == "aspis.v7.txv1-signed-local-request.v1" and .signed == true and
+    .summary.computeUnitLimit == 1300000 and
+    .serializedTransactionBytes < 4096 and
+    .summary.headroomTo4096Bytes > 0 and
+    (.signature | type == "string" and length > 0) and
+    (.signedWireSha256 | test("^[0-9a-f]{64}$"))
+  ' <<<"$signed_request" >/dev/null || fail "signed request preflight failed for $case_name"
 
+  simulation_response=$(rpc "$(jq -c '.simulationRequest' <<<"$signed_request")")
+  jq -e '.error | not' <<<"$simulation_response" >/dev/null
+  simulation_units=$(jq -er '.result.value.unitsConsumed' <<<"$simulation_response")
+  (( simulation_units <= 1300000 )) || fail "simulation CU exceeded the release ceiling"
   if [[ "$expected_outcome" == "success" ]]; then
-    jq -e '.result.value.err == null' <<<"$response_json" >/dev/null
-    jq -e --arg pool "$POOL_PROGRAM" '.result.value.returnData.programId == $pool' \
-      <<<"$response_json" >/dev/null
-    return_data_length=$(jq -r '.result.value.returnData.data[0]' <<<"$response_json" \
-      | openssl base64 -d -A | wc -c | tr -d ' ')
-    [[ "$return_data_length" == "792" ]]
-    expected_accounts_sha256=$(jq -er '.expectedSimulationAccountsSha256' "$case_json")
-    actual_accounts_sha256=$(jq -cSj '.result.value.accounts' <<<"$response_json" \
-      | shasum -a 256 | awk '{print $1}')
-    [[ "$actual_accounts_sha256" == "$expected_accounts_sha256" ]]
-  elif [[ "$expected_outcome" == "failure" ]]; then
-    jq -e '.result.value.err != null' <<<"$response_json" >/dev/null
-    rollback_equal=$(jq -n \
-      --argjson before "$(jq '.result.value' <<<"$before_json")" \
-      --argjson simulated "$(jq '.result.value.accounts' <<<"$response_json")" \
-      '$before == $simulated')
-    [[ "$rollback_equal" == "true" ]]
+    jq -e '.result.value.err == null' <<<"$simulation_response" >/dev/null
   else
-    echo "invalid expectedOutcome for $case_name" >&2
-    return 1
+    jq -e '.result.value.err != null' <<<"$simulation_response" >/dev/null
   fi
 
-  after_json=$(rpc "$(jq -nc --argjson addresses "$account_addresses" '{jsonrpc:"2.0",id:6,method:"getMultipleAccounts",params:[$addresses,{encoding:"base64",commitment:"finalized"}]}')")
-  state_unchanged=$(jq -n \
+  send_response=$(rpc "$(jq -c '.sendRequest' <<<"$signed_request")")
+  jq -e '.error | not' <<<"$send_response" >/dev/null
+  signature=$(jq -er '.result' <<<"$send_response")
+  [[ "$signature" == "$(jq -er '.signature' <<<"$signed_request")" ]] \
+    || fail "submitted signature differs from the exact simulated transaction"
+
+  status_response='null'
+  confirmation_status=''
+  for task_poll in $(seq 1 400); do
+    status_response=$(rpc "$(jq -nc --arg signature "$signature" '{jsonrpc:"2.0",id:6,method:"getSignatureStatuses",params:[[$signature],{searchTransactionHistory:true}]}')")
+    confirmation_status=$(jq -r '.result.value[0].confirmationStatus // empty' <<<"$status_response")
+    [[ "$confirmation_status" == "finalized" ]] && break
+    sleep 0.1
+  done
+  [[ "$confirmation_status" == "finalized" ]] || fail "transaction did not finalize: $case_name"
+  landed_error=$(jq -c '.result.value[0].err' <<<"$status_response")
+  if [[ "$expected_outcome" == "success" ]]; then
+    [[ "$landed_error" == "null" ]] || fail "honest transaction finalized with an error"
+  else
+    [[ "$landed_error" != "null" ]] || fail "negative transaction unexpectedly finalized successfully"
+  fi
+
+  transaction_response='null'
+  for task_poll in $(seq 1 100); do
+    transaction_response=$(rpc "$(jq -nc --arg signature "$signature" '{jsonrpc:"2.0",id:7,method:"getTransaction",params:[$signature,{encoding:"json",commitment:"finalized",maxSupportedTransactionVersion:1}]}')")
+    jq -e '.result != null' <<<"$transaction_response" >/dev/null && break
+    sleep 0.1
+  done
+  jq -e '.result != null' <<<"$transaction_response" >/dev/null || fail "finalized transaction unavailable"
+  landed_units=$(jq -er '.result.meta.computeUnitsConsumed' <<<"$transaction_response")
+  (( landed_units <= 1300000 )) || fail "landed CU exceeded the release ceiling"
+  if [[ "$expected_outcome" == "success" ]]; then
+    jq -e '.result.meta.err == null' <<<"$transaction_response" >/dev/null
+  else
+    jq -e '.result.meta.err != null' <<<"$transaction_response" >/dev/null
+  fi
+  while IFS= read -r expected_log; do
+    jq -e --arg expected "$expected_log" \
+      '.result.meta.logMessages | any(contains($expected))' <<<"$transaction_response" >/dev/null \
+      || fail "landed log omitted '$expected_log' for $case_name"
+  done < <(jq -r '.expectedLogContains[]' "$case_json")
+
+  after_json=$(rpc "$(jq -nc --argjson addresses "$account_addresses" '{jsonrpc:"2.0",id:8,method:"getMultipleAccounts",params:[$addresses,{encoding:"base64",commitment:"finalized"}]}')")
+  rollback_equal=$(jq -n \
     --argjson before "$(jq '.result.value' <<<"$before_json")" \
-    --argjson after "$(jq '.result.value' <<<"$after_json")" \
-    '$before == $after')
-  [[ "$state_unchanged" == "true" ]]
+    --argjson after "$(jq '.result.value' <<<"$after_json")" '$before == $after')
+
+  if [[ "$expected_outcome" == "success" ]]; then
+    expected_file_relative=$(jq -er '.expectedSimulationAccountsFile' "$case_json")
+    validate_bundle_relative_path "$expected_file_relative"
+    expected_file="$BUNDLE_DIR/$expected_file_relative"
+    simulation_matches_expected=$(jq -n \
+      --argjson actual "$(jq '.result.value.accounts' <<<"$simulation_response")" \
+      --argjson expected "$(jq . "$expected_file")" '$actual == $expected')
+    actual_matches_expected=$(jq -n \
+      --argjson actual "$(jq '.result.value' <<<"$after_json")" \
+      --argjson expected "$(jq . "$expected_file")" '$actual == $expected')
+    [[ "$simulation_matches_expected" == "true" && "$actual_matches_expected" == "true" ]] \
+      || fail "honest protected post-state differs from the frozen expectation"
+    [[ "$rollback_equal" == "false" ]] || fail "honest transaction did not change protected state"
+    jq -e --arg pool "$POOL_PROGRAM" '.result.meta.returnData.programId == $pool' \
+      <<<"$transaction_response" >/dev/null
+    return_data_length=$(jq -r '.result.meta.returnData.data[0]' <<<"$transaction_response" \
+      | openssl base64 -d -A | wc -c | tr -d ' ')
+    [[ "$return_data_length" == "792" ]] || fail "landed ASR8 return length differs"
+    actual_state_changed=true
+  else
+    [[ "$rollback_equal" == "true" ]] || fail "negative transaction changed protected state"
+    simulation_matches_expected=null
+    actual_matches_expected=null
+    actual_state_changed=false
+  fi
 
   jq -n \
-    --arg case "$case_name" \
-    --arg expected "$expected_outcome" \
-    --arg version "$VERSION_OUTPUT" \
-    --argjson preflight "$preflight_json" \
-    --argjson response "$response_json" \
-    --argjson before "$before_json" \
-    --argjson after "$after_json" \
-    '{
-      schema: "aspis.v7.disposable-agave-txv1-simulation-case.v1",
+    --arg case "$case_name" --arg expected "$expected_outcome" --arg version "$VERSION_OUTPUT" \
+    --arg localTestPayer "$LOCAL_TEST_PAYER" --arg signature "$signature" \
+    --argjson signedRequest "$signed_request" --argjson simulation "$simulation_response" \
+    --argjson send "$send_response" --argjson finalizedStatus "$status_response" \
+    --argjson transaction "$transaction_response" --argjson before "$before_json" \
+    --argjson after "$after_json" --argjson simulationUnits "$simulation_units" \
+    --argjson landedUnits "$landed_units" --argjson rollbackPreserved "$rollback_equal" \
+    --argjson actualStateChanged "$actual_state_changed" \
+    --argjson simulationMatchesExpected "$simulation_matches_expected" \
+    --argjson actualMatchesExpected "$actual_matches_expected" '
+    {
+      schema: "aspis.v7.disposable-agave-txv1-finalized-case.v1",
       case: $case,
       expectedOutcome: $expected,
       agave: $version,
-      signed: false,
-      submitted: false,
-      simulationOnly: true,
-      preflight: $preflight,
-      response: $response,
-      actualLedgerStateBefore: $before,
-      actualLedgerStateAfter: $after,
-      actualLedgerStateUnchanged: true
+      cluster: "disposable-local-validator",
+      localTestPayer: $localTestPayer,
+      signature: $signature,
+      signed: true,
+      submitted: true,
+      finalized: true,
+      sameSignedBytesSimulatedAndSubmitted: true,
+      packetBytes: $signedRequest.serializedTransactionBytes,
+      signedWireSha256: $signedRequest.signedWireSha256,
+      simulationUnitsConsumed: $simulationUnits,
+      landedUnitsConsumed: $landedUnits,
+      protectedStateRollbackPreserved: $rollbackPreserved,
+      protectedStateChangedOnSuccess: $actualStateChanged,
+      simulationMatchesFrozenExpectedState: $simulationMatchesExpected,
+      landedStateMatchesFrozenExpectedState: $actualMatchesExpected,
+      signedRequest: $signedRequest,
+      simulationResponse: $simulation,
+      sendResponse: $send,
+      finalizedStatus: $finalizedStatus,
+      transactionResponse: $transaction,
+      protectedStateBefore: $before,
+      protectedStateAfter: $after
     }' >"$EVIDENCE_DIR/$case_name.json"
 
-  kill "$VALIDATOR_PID"
-  wait "$VALIDATOR_PID" || true
-  VALIDATOR_PID=""
+  stop_validator
 }
 
 for case_name in "${REQUIRED_CASES[@]}"; do
-  echo "simulate-only: $case_name"
+  echo "signed/finalized local lifecycle: $case_name"
   run_case "$case_name"
 done
 
+case_files=()
+for case_name in "${REQUIRED_CASES[@]}"; do
+  case_files+=("$EVIDENCE_DIR/$case_name.json")
+done
 jq -n \
-  --arg version "$VERSION_OUTPUT" \
+  --arg version "$VERSION_OUTPUT" --arg localTestPayer "$LOCAL_TEST_PAYER" \
   --arg poolSha256 "$(shasum -a 256 "$POOL_SBF" | awk '{print $1}')" \
   --arg verifierSha256 "$(shasum -a 256 "$VERIFIER_SBF" | awk '{print $1}')" \
   --arg bundleSha256 "$(shasum -a 256 "$BUNDLE_MANIFEST" | awk '{print $1}')" \
-  --argjson warpSlot "$WARP_SLOT" \
-  --argjson cases "$(jq -s '.' "$EVIDENCE_DIR"/*.json)" \
-  '{
-    schema: "aspis.v7.disposable-agave-txv1-simulation-suite.v1",
+  --argjson warpSlot "$WARP_SLOT" --slurpfile cases <(jq -s '.' "${case_files[@]}") '
+  {
+    schema: "aspis.v7.disposable-agave-txv1-finalized-suite.v1",
     agave: $version,
+    cluster: "disposable-local-validator",
+    localTestPayer: $localTestPayer,
     poolSbfSha256: $poolSha256,
     verifierSbfSha256: $verifierSha256,
     bundleSha256: $bundleSha256,
     warpSlot: $warpSlot,
     computeUnitCeiling: 1300000,
     transactionByteCeilingExclusive: 4096,
-    signed: false,
-    submitted: false,
-    cases: $cases
+    cases: $cases[0],
+    allCasesSigned: ($cases[0] | all(.signed == true)),
+    allCasesSubmitted: ($cases[0] | all(.submitted == true)),
+    allCasesFinalized: ($cases[0] | all(.finalized == true)),
+    allPacketsUnder4096: ($cases[0] | all(.packetBytes < 4096)),
+    allLandedComputeUnder1300000: ($cases[0] | all(.landedUnitsConsumed <= 1300000)),
+    allNegativeCasesRolledBack: ($cases[0] | map(select(.expectedOutcome == "failure")) | all(.protectedStateRollbackPreserved == true)),
+    allHonestCasesMatchFrozenState: ($cases[0] | map(select(.expectedOutcome == "success")) | all(.landedStateMatchesFrozenExpectedState == true)),
+    publicClusterUsed: false,
+    deployed: false
   }' >"$EVIDENCE_DIR/suite.json"
 
-echo "disposable Agave simulation-only suite PASS: $EVIDENCE_DIR/suite.json"
+jq -e '
+  (.cases | length) == 11 and .allCasesSigned and .allCasesSubmitted and
+  .allCasesFinalized and .allPacketsUnder4096 and .allLandedComputeUnder1300000 and
+  .allNegativeCasesRolledBack and .allHonestCasesMatchFrozenState and
+  (.publicClusterUsed | not) and (.deployed | not)
+' "$EVIDENCE_DIR/suite.json" >/dev/null || fail "final suite summary did not close"
+
+echo "disposable Agave signed/finalized eleven-case suite PASS: $EVIDENCE_DIR/suite.json"

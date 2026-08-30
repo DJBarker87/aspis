@@ -5,7 +5,7 @@ readonly ROOT=$(cd "$(dirname "$0")/.." && pwd)
 readonly PREFLIGHT="$ROOT/release/v7-one-tx-candidate-preflight-v1"
 readonly MANIFEST="$PREFLIGHT/manifest.json"
 readonly VERIFY_INPUTS="$PREFLIGHT/verify-inputs.sh"
-readonly TEMPLATE_BUNDLE="$ROOT/results/v7-one-tx-agave-bundle-template-20260830"
+readonly TEMPLATE_BUNDLE="$ROOT/results/v7-one-tx-agave-bundle-stack-safe-20260830"
 readonly BUNDLE_VERIFY="$ROOT/scripts/v7_txv1_bundle_verify.sh"
 readonly AGAVE_RUNNER="$ROOT/scripts/v7_txv1_disposable_agave_simulate.sh"
 
@@ -31,7 +31,7 @@ usage() {
 usage:
   scripts/v7_one_tx_release_replay.sh check
   scripts/v7_one_tx_release_replay.sh build <new-output-dir>
-  scripts/v7_one_tx_release_replay.sh build-and-simulate \
+  scripts/v7_one_tx_release_replay.sh build-and-lifecycle \
     <new-output-dir> <agave-4.2+-bin-dir>
 
 The build modes require Linux x86_64, a cgroup-v2 scope capped at
@@ -47,9 +47,10 @@ MemoryHigh<=9 GiB, MemoryMax<=12 GiB and MemorySwapMax=0, and:
     x86_64-unknown-linux-gnu toolchain>
 
 Both build modes produce two independent SBF builds and materialize the frozen
-eleven-case fixture with the resulting Pool/verifier bytes. The simulation mode
-also requires Agave 4.2+ and runs only simulateTransaction against disposable
-validators. No mode signs, submits, deploys, or mutates a public cluster.
+eleven-case fixture with the resulting Pool/verifier bytes. The lifecycle mode
+also requires Agave 4.2+, signs with a disposable local test key, simulates and
+submits the exact same bytes, and requires finalized state/rollback evidence.
+It never contacts or mutates a public cluster.
 USAGE
   exit 2
 }
@@ -66,7 +67,7 @@ case "$MODE" in
   build)
     [[ $# -eq 2 ]] || usage
     ;;
-  build-and-simulate)
+  build-and-lifecycle)
     [[ $# -eq 3 ]] || usage
     ;;
   *) usage ;;
@@ -263,7 +264,7 @@ printf '%s\n' "$host_rustc_version" >"$OUTPUT_DIR/host-rustc-version.txt"
 printf '%s\n' "$host_rustup_version" >"$OUTPUT_DIR/host-rustup-version.txt"
 "$PLATFORM_TOOLS_ROOT/llvm/bin/clang-19" --version >"$OUTPUT_DIR/platform-clang-version.txt"
 
-echo "[2/6] Export two isolated copies of the exact da77 source"
+echo "[2/6] Export two isolated copies of the exact stack-safe production source"
 readonly SOURCE_COMMIT=$(jq -er '.source.commit' "$MANIFEST")
 readonly SOURCE_DATE_EPOCH=$(git -C "$ROOT" show -s --format=%ct "$SOURCE_COMMIT")
 for label in a b; do
@@ -343,6 +344,12 @@ echo "[3/6] Build Pool and verifier in both isolated source copies"
 for label in a b; do
   build_program "$label" aspis-pool
   build_program "$label" aspis-verifier
+done
+for label in a b; do
+  if grep -Eq 'Stack offset of|Estimated function frame size' \
+      "$OUTPUT_DIR/build-$label-aspis-pool.log"; then
+    fail "stack analyzer reported an overflow in Pool build $label"
+  fi
 done
 
 verify_offline_cargo_cache "$CARGO_CACHE_PACKAGES" "$CARGO_CACHE_INDEX" \
@@ -471,7 +478,15 @@ jq -n \
         bytes: $poolBytes,
         sha256: $poolSha256,
         buildsByteIdentical: true,
-        identityClassification: "FROZEN_DA77_LINUX_X86_64_V1_48_IDENTITY"
+        identityClassification: "FROZEN_STACK_SAFE_LINUX_X86_64_V1_48_IDENTITY",
+        stackGate: {
+          analyzerOverflowDiagnosticsInEitherBuild: false,
+          byteIdenticalToFocusedDisassemblyReference: true,
+          plannerMaximumObservedOffsetBytes: 2912,
+          laneDecoderMaximumObservedOffsetBytes: 3024,
+          maximumAllowedOffsetBytes: 4096,
+          passed: true
+        }
       },
       verifier: {
         bytes: $verifierBytes,
@@ -524,12 +539,12 @@ cp "$WORK_DIR/materialized-inventory" "$MATERIALIZED_BUNDLE/TEMPLATE-SHA256SUMS"
 
 suite_status="UNAVAILABLE_NOT_REQUESTED"
 suite_sha256=""
-if [[ "$MODE" == "build-and-simulate" ]]; then
-  echo "[6/6] Execute the exact eleven-case simulation-only TxV1 suite"
-  [[ -x "$AGAVE_BIN_DIR/solana" && -x "$AGAVE_BIN_DIR/solana-test-validator" ]] \
+if [[ "$MODE" == "build-and-lifecycle" ]]; then
+  echo "[6/6] Execute the exact eleven-case signed/finalized local TxV1 lifecycle"
+  [[ -x "$AGAVE_BIN_DIR/solana" && -x "$AGAVE_BIN_DIR/solana-keygen" \
+      && -x "$AGAVE_BIN_DIR/solana-test-validator" ]] \
     || fail "Agave bin directory is incomplete"
-  ASPIS_TXV1_WALLET_SOURCE_ROOT="$WORK_DIR/source-a" \
-    "$AGAVE_RUNNER" "$AGAVE_BIN_DIR" "$MATERIALIZED_BUNDLE" "$OUTPUT_DIR/txv1-suite"
+  "$AGAVE_RUNNER" "$AGAVE_BIN_DIR" "$MATERIALIZED_BUNDLE" "$OUTPUT_DIR/txv1-suite"
   suite_sha256=$(sha_file "$OUTPUT_DIR/txv1-suite/suite.json")
   suite_status="PASS"
 else
@@ -554,21 +569,23 @@ jq -n \
     disposableAgaveElevenCaseSuite: $suiteStatus,
     disposableAgaveSuiteSha256: (if $suiteSha256 == "" then null else $suiteSha256 end),
     publicDevnetLifecycle: "NOT_EXECUTED",
-    signed: false,
-    submitted: false,
+    localTransactionsSigned: ($suiteStatus == "PASS"),
+    localTransactionsSubmitted: ($suiteStatus == "PASS"),
+    localTransactionsFinalized: ($suiteStatus == "PASS"),
+    publicClusterUsed: false,
     deployed: false,
-    localBuildAndSimulationEvidenceComplete: ($suiteStatus == "PASS"),
+    localBuildAndLifecycleEvidenceComplete: ($suiteStatus == "PASS"),
     releaseReady: false
   }' >"$OUTPUT_DIR/summary.json"
 
 echo "PASS: two byte-identical Pool and verifier SBF builds completed"
 echo "PASS: deterministic eleven-case bundle materialized against those exact bytes"
 if [[ "$suite_status" == "PASS" ]]; then
-  echo "PASS: eleven-case disposable Agave TxV1 simulation suite completed"
+  echo "PASS: eleven-case disposable Agave TxV1 signed/finalized lifecycle completed"
 else
-  echo "OPEN GATE: eleven-case disposable Agave TxV1 simulation suite was not executed"
+  echo "OPEN GATE: eleven-case disposable Agave TxV1 lifecycle was not executed"
 fi
-echo "No transaction was signed, submitted, or deployed."
+echo "No public-cluster transaction was signed/submitted and no program was deployed."
 (
   cd "$OUTPUT_DIR"
   find . -type f ! -name SHA256SUMS -print0 \
