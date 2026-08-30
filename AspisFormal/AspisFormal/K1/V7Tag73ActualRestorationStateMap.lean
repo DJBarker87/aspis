@@ -45,6 +45,7 @@ open AspisK1.V7Tag73ActualNodeCausalProvenance
 open AspisK1.V7Tag73Q16ControlInvariant
 open AspisK1.V7Tag73Q16LedgerControlInvariant
 open AspisK1.V7Tag73ChallengeRecordControlInvariant
+open AspisK1.V7Tag73ChallengeRecordUniquenessInvariant
 
 noncomputable section
 
@@ -533,6 +534,11 @@ theorem dispatch_one_concrete_restoration_preserves_restoration_state_map
                                         prepared.parentNode.verifierFinalState :=
                                     invariant.everyNodeK13ChallengeInvariant
                                       prepared.parentNode parentMember
+                                  have parentChallengeRecords :
+                                      FutureFreeChallengeRecordUniqueness
+                                        prepared.parentNode.verifierFinalState :=
+                                    invariant.everyNodeChallengeRecordUniqueness
+                                      prepared.parentNode parentMember
                                   have selection :=
                                     prepare_concrete_restoration_ready_selection_exact
                                       startProgram configuration accumulator
@@ -569,6 +575,15 @@ theorem dispatch_one_concrete_restoration_preserves_restoration_state_map
                                     · simpa [childExecution] using
                                         parentK13Challenges
                                     · simpa [childExecution] using beforeSeen
+                                  have childChallengeRecords :
+                                      FutureFreeChallengeRecordUniqueness
+                                        node.verifierFinalState := by
+                                    apply
+                                      projected_restoration_child_challenge_record_uniqueness
+                                        childExecution
+                                    · simpa [childExecution] using
+                                        parentChallengeRecords
+                                    · simpa [childExecution] using beforeSeen
                                   simpa [added] using
                                     (restoration_state_map_add_child startProgram
                                       environment configuration verifierTrace []
@@ -578,6 +593,7 @@ theorem dispatch_one_concrete_restoration_preserves_restoration_state_map
                                         childQ16
                                         childQ16Ledger
                                         childK13Challenges
+                                        childChallengeRecords
                                         (by simpa using verifierCovered)
                                         chargedInvariant)
                                 change SchedulerNativeCursorAllProjectedTracedReturned _
@@ -740,6 +756,8 @@ theorem returned_concrete_restoration_client_has_exact_state_map
       root.verifierFinalState)
     (rootK13Challenges : FutureFreeK13ChallengeInvariant
       root.verifierFinalState)
+    (rootChallengeRecords : FutureFreeChallengeRecordUniqueness
+      root.verifierFinalState)
     (rootTraceHasNoAdvance : ∀ scheduled,
       (.forkAdvance scheduled : UnifiedExposureRecord) ∉ rootTrace)
     (answers : List Digest256)
@@ -771,6 +789,7 @@ theorem returned_concrete_restoration_client_has_exact_state_map
   have traced := safe rootTrace
     (initial_restoration_state_map startProgram environment configuration root
       rootTrace rootClosed rootQ16 rootQ16Ledger rootK13Challenges
+        rootChallengeRecords
         rootTraceHasNoAdvance)
   apply run_scheduler_native_list_run_respects_projected_traced_returned
     (fun result suffix => ActualRestorationStateMapInvariant startProgram

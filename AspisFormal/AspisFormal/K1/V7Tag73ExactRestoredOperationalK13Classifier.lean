@@ -45,6 +45,7 @@ open AspisK1.V7Tag73FixedFieldMessageBridge
 open AspisK1.V7Tag73Q16LedgerCertificate
 open AspisK1.V7Tag73Q16LedgerControlInvariant
 open AspisK1.V7Tag73ChallengeRecordControlInvariant
+open AspisK1.V7Tag73ChallengeRecordUniquenessInvariant
 open AspisK1.V7Tag73SecureCircleMap
 open AspisPool.AlgorithmicCircleDecoderV7
 open AspisV5ComponentCQM31TowerExact
@@ -266,6 +267,30 @@ noncomputable def exact_restored_operational_k13_provider
     (fun node _member _done =>
       exact_restored_operational_k13_source_node_data node)
 
+/-- Any two admissible data providers induce the same mathematical K1.3 view
+for one literal done node.  This removes the remaining classical-choice
+dependence from gamma, alpha zero, fixed-field decoding, and q16 selection. -/
+theorem exact_restored_operational_k13_view_is_intrinsic
+    {HiddenTape TapeIdentity Observation Statement Payload Result : Type}
+    {parameters : ExactCompilerResourceParameters}
+    {transitionFuel : Nat}
+    {configuration : ExactPlainRomConfiguration HiddenTape TapeIdentity
+      Observation Statement Tag73K12ParsedProof Payload Result parameters}
+    {projection : AcceptedTapeProjection Statement Tag73K12ParsedProof Payload}
+    {fixedInstance : PublicInstance Statement}
+    {sample : ExactCompilerSample HiddenTape parameters}
+    (input : ExactK12OperationalInput transitionFuel configuration projection
+      fixedInstance sample)
+    (node : RestoredK13Node Statement Payload)
+    (member : node ∈ (exactRestorationAccumulator input).nodes)
+    (_done : node.verifierFinalState.current.control = .done)
+    (left right : RestoredOperationalK13Data
+      configuration.machine.environment node) :
+    restoredOperationalK13View left = restoredOperationalK13View right := by
+  exact restored_operational_k13_view_unique
+    (input.stateMap.everyNodeChallengeRecordUniqueness node member).1
+    left right
+
 /-- Successful restoration-wide K1.3 classification chooses one literal
 accepting node from the returned accumulator and retains its exact corrected
 operational data and certificate. -/
@@ -464,6 +489,7 @@ theorem exact_restored_operational_k13_certificate_has_literal_node
 #print axioms exact_restored_operational_k13_data_of_source_node
 #print axioms exact_restored_operational_k13_provider_of_source
 #print axioms exact_restored_operational_k13_provider
+#print axioms exact_restored_operational_k13_view_is_intrinsic
 #print axioms exact_restored_operational_k13_error_exposes_done_failure
 #print axioms
   exact_restored_operational_k13_failure_event_exposes_node_failure

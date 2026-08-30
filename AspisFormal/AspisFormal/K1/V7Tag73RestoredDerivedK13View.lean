@@ -3,6 +3,7 @@ import AspisFormal.K1.V7Tag73CanonicalOneFoldSchedule
 import AspisFormal.K1.V7Tag73FixedFieldMessageBridge
 import AspisFormal.K1.V7Tag73ExactParsedProofSourceBinding
 import AspisFormal.K1.V7Tag73Q16LedgerCertificate
+import AspisFormal.K1.V7Tag73ChallengeRecordUniquenessInvariant
 
 /-!
 # Verifier-derived K1.3 view for restored Tag-73 nodes
@@ -37,6 +38,7 @@ open AspisK1.V7Tag73ParsedK13K14Classifier
 open AspisK1.V7Tag73ConcreteRestorationClient
 open AspisK1.V7Tag73RestoredNodeK13Classifier
 open AspisK1.V7Tag73Q16LedgerCertificate
+open AspisK1.V7Tag73ChallengeRecordUniquenessInvariant
 open AspisPool.AlgorithmicCircleDecoderV7
 open AspisPool.V7CoherentTraceExtraction
 open AspisPool.V7MerkleQueryExtractor
@@ -120,6 +122,37 @@ theorem restored_operational_k13_data_selected_unique
   exact selected_q16_ledger_certificate_selected_unique
     left.selectedLedgerCertificate right.selectedLedgerCertificate
 
+/-- Gamma and alpha zero are fixed by a duplicate-free verifier ledger.  The
+same immutable terminal snapshot therefore cannot support two different
+classical provider choices for either challenge. -/
+theorem restored_operational_k13_data_challenges_unique
+    {Statement Payload : Type*}
+    {environment : FutureFreeEnvironment}
+    {node : RestoredK13Node Statement Payload}
+    (invariant : SnapshotChallengeRecordUniqueness
+      node.verifierFinalState.current)
+    (left right : RestoredOperationalK13Data environment node) :
+    left.gammaBytes = right.gammaBytes ∧
+      left.gamma = right.gamma ∧
+      left.alphaZeroBytes = right.alphaZeroBytes ∧
+      left.alphaZero = right.alphaZero := by
+  have gammaBytes := decoded_challenge_value_unique invariant .gamma
+    left.gammaBytes right.gammaBytes left.gammaRecorded right.gammaRecorded
+  have alphaBytes := decoded_challenge_value_unique invariant (.alpha 0)
+    left.alphaZeroBytes right.alphaZeroBytes left.alphaZeroRecorded
+      right.alphaZeroRecorded
+  have gammaValue : left.gamma = right.gamma := by
+    have decodedEqual : some left.gamma = some right.gamma :=
+      left.gammaDecoded.symm.trans (by simpa [gammaBytes] using
+        right.gammaDecoded)
+    exact Option.some.inj decodedEqual
+  have alphaValue : left.alphaZero = right.alphaZero := by
+    have decodedEqual : some left.alphaZero = some right.alphaZero :=
+      left.alphaZeroDecoded.symm.trans (by simpa [alphaBytes] using
+        right.alphaZeroDecoded)
+    exact Option.some.inj decodedEqual
+  exact ⟨gammaBytes, gammaValue, alphaBytes, alphaValue⟩
+
 /-- The corrected proof view: parser-owned openings, canonically decoded
 fixed fields, and verifier-owned challenge/query data. -/
 def restoredOperationalK13View
@@ -132,6 +165,24 @@ def restoredOperationalK13View
     disclosedFinal := decodedFinalMessage data.decoded
     schedule := canonicalOneFoldSchedule data.alphaZero
     queries := data.selectedSchedule.positions }
+
+/-- The complete verifier-derived K1.3 view is intrinsic to one certified
+terminal node.  Fixed fields are canonically decoded, challenges are unique
+in the verifier ledger, and q16 selection is unique in its immutable ledger. -/
+theorem restored_operational_k13_view_unique
+    {Statement Payload : Type*}
+    {environment : FutureFreeEnvironment}
+    {node : RestoredK13Node Statement Payload}
+    (invariant : SnapshotChallengeRecordUniqueness
+      node.verifierFinalState.current)
+    (left right : RestoredOperationalK13Data environment node) :
+    restoredOperationalK13View left = restoredOperationalK13View right := by
+  have decoded := restored_operational_k13_data_decoded_unique left right
+  obtain ⟨_gammaBytes, gamma, _alphaBytes, alpha⟩ :=
+    restored_operational_k13_data_challenges_unique invariant left right
+  have selected := restored_operational_k13_data_selected_unique left right
+  unfold restoredOperationalK13View
+  rw [decoded, gamma, alpha, selected.2]
 
 @[simp] theorem restored_operational_view_openings
     {Statement Payload : Type*}
@@ -360,6 +411,8 @@ theorem restored_operational_query_event_exposes_selected_bad_set
 #print axioms restored_operational_view_queries
 #print axioms restored_operational_k13_data_decoded_unique
 #print axioms restored_operational_k13_data_selected_unique
+#print axioms restored_operational_k13_data_challenges_unique
+#print axioms restored_operational_k13_view_unique
 #print axioms classifyRestoredOperationalK13
 #print axioms restored_operational_k13_error_implies_failure_event
 #print axioms restored_operational_query_failure_selected_all_in_bad
