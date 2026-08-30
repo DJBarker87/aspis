@@ -88,6 +88,7 @@ readonly PLATFORM_TOOLS_ROOT="$TOOLCHAIN_CAPTURE_ROOT/platform-tools-v1.48"
 readonly SOLANA_ACTIVE_ROOT="$TOOLCHAIN_CAPTURE_ROOT/solana-active-release"
 readonly CARGO_BUILD_SBF="$SOLANA_ACTIVE_ROOT/bin/cargo-build-sbf"
 readonly SBF_SDK="$SOLANA_ACTIVE_ROOT/bin/platform-tools-sdk/sbf"
+readonly BUILD_PATH="$PLATFORM_TOOLS_ROOT/rust/bin:$SOLANA_ACTIVE_ROOT/bin:/usr/bin:/bin"
 [[ -x "$CARGO_BUILD_SBF" ]] || fail "frozen cargo-build-sbf is missing"
 [[ -x "$PLATFORM_TOOLS_ROOT/rust/bin/rustc" ]] || fail "frozen platform rustc is missing"
 [[ -x "$PLATFORM_TOOLS_ROOT/llvm/bin/clang-19" ]] || fail "frozen platform clang is missing"
@@ -153,6 +154,7 @@ platform_rustc_version=$($PLATFORM_TOOLS_ROOT/rust/bin/rustc --version)
   || fail "platform rustc version differs from the frozen toolchain"
 printf '%s\n' "$actual_version" >"$OUTPUT_DIR/cargo-build-sbf-version.txt"
 printf '%s\n' "$platform_rustc_version" >"$OUTPUT_DIR/platform-rustc-version.txt"
+PATH="$BUILD_PATH" cargo --version >"$OUTPUT_DIR/platform-cargo-version.txt"
 "$PLATFORM_TOOLS_ROOT/llvm/bin/clang-19" --version >"$OUTPUT_DIR/platform-clang-version.txt"
 
 echo "[2/6] Export two isolated copies of the exact da77 source"
@@ -188,6 +190,7 @@ build_program() {
     export LANG=C
     export LC_ALL=C
     export NO_DNA=1
+    export PATH="$BUILD_PATH"
     export SOURCE_DATE_EPOCH
     export TZ=UTC
     unset CARGO_ENCODED_RUSTFLAGS RUSTFLAGS

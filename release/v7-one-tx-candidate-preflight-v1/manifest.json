@@ -137,7 +137,7 @@
     },
     {
       "path": "scripts/v7_one_tx_release_replay.sh",
-      "sha256": "0c09411e0fe7ebc74311e032d39532e9da009df7bd74b6c3041d236eeecf7952"
+      "sha256": "e29daaccca673b79d9fe1ee012521a02edf84bc5416ac01412322433b1f6042b"
     },
     {
       "path": "release/v7-one-tx-candidate-preflight-v1/linux-x86_64-sbf-toolchain-v1.48.json",
