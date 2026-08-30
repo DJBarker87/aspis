@@ -271,6 +271,15 @@ is now to instantiate this induction with the exact Tag-73 controller while
 showing that its residual budget never falls back to padding before a live
 q16 slot.
 
+`V7Tag73ExactRootControllerCoordinateAlignment.lean` now performs the first
+half of that instantiation for every accepted final-table lookup.  It factors
+the literal full scheduler trace at the lookup's adversary-or-verifier fresh
+record, replays the strict prefix through the concrete exposure-indexed
+final-work/q16 controller, and proves that the reached cursor exposes exactly
+the selected SHA input before its answer is consumed.  This eliminates the
+previous gap between root-table membership and an executable controller
+coordinate; pair completion and live-slot preservation remain below.
+
 ## Exact remaining boundary
 
 The production/source layer must now instantiate the counted finite inventory
@@ -324,6 +333,7 @@ lake env lean AspisFormal/K1/V7Tag73FinalWorkEarliestExposure.lean
 lake env lean AspisFormal/K1/V7Tag73ExactFinalWorkEarliestExposure.lean
 lake env lean AspisFormal/K1/V7Tag73IndexedControllerTraceAlignment.lean
 lake env lean AspisFormal/K1/V7Tag73ExactCompilerFinalWorkControllerAnchor.lean
+lake env lean AspisFormal/K1/V7Tag73ExactRootControllerCoordinateAlignment.lean
 ```
 
 Observed focused checks:
@@ -350,6 +360,7 @@ Observed focused checks:
 | indexed controller/production-prefix alignment | 0 | 4.51 s | 5,660,295,168 B |
 | exact accepted-record selector | 0 | 4.12 s | 5,647,335,424 B |
 | accepted source to exact controller anchor | 0 | 3.92 s | 5,634,048,000 B |
+| exact root lookup/controller coordinate alignment | 0 | 3.92 s | 5,661,720,576 B |
 
 All reported theorem axiom sets are subsets of:
 
