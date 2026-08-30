@@ -41,6 +41,7 @@ open AspisK1.V7Tag73RestoredDerivedK13View
 open AspisK1.V7Tag73ParsedK13K14Classifier
 open AspisPool.AlgorithmicCircleDecoderV7
 open AspisPool.V7C1SubfieldRecovery
+open AspisPool.V7CoherentTraceExtraction
 open AspisV5ComponentCQM31TowerExact
 
 noncomputable section
@@ -240,11 +241,204 @@ noncomputable def exactTag73RestoredOperationalStages
         classifyExactRestoredOperationalK14 decoder binding input k13 := by
   rfl
 
+/-- The generic K1.6 error event for the restored stage package is exactly the
+source-closed restoration-wide K1.3 event.  In particular, the administrative
+`Unit` K1.2 value cannot change which operational input or restored accumulator
+is measured. -/
+theorem exact_restored_stages_k13_error_event_eq
+    {HiddenTape TapeIdentity Observation Statement Payload Witness : Type}
+    {parameters : ExactCompilerResourceParameters}
+    {transitionFuel : Nat}
+    {configuration : ExactPlainRomWitnessConfiguration HiddenTape TapeIdentity
+      Observation Statement Tag73K12ParsedProof Payload Witness parameters}
+    {projection : AcceptedTapeProjection Statement Tag73K12ParsedProof Payload}
+    {fixedInstance : PublicInstance Statement}
+    {relation : PublicInstance Statement → Witness → Prop}
+    {decoder : ExactDecoderInstantiation QM31Exact}
+    {binding : InitialProjectionBinding decoder}
+    (k15 : ExactRestoredOperationalK15Classifier transitionFuel configuration
+      projection fixedInstance relation decoder binding) :
+    k13CircleListDecodeErrorEvent
+        (exactTag73RestoredOperationalStages transitionFuel configuration
+          projection fixedInstance relation decoder binding k15) =
+      exactTag73RestoredOperationalK13FailureEvent transitionFuel configuration
+        projection fixedInstance decoder := by
+  ext sample
+  constructor
+  · rintro ⟨input, k12, failure⟩
+    cases k12
+    exact ⟨input, failure⟩
+  · rintro ⟨input, failure⟩
+    exact ⟨input, (), failure⟩
+
+/-- Literal sample event for failure of K1.4 on the node and K1.3
+certificate selected by the restoration-wide classifier. -/
+def exactTag73RestoredOperationalK14FailureEvent
+    {HiddenTape TapeIdentity Observation Statement Payload Witness : Type}
+    {parameters : ExactCompilerResourceParameters}
+    (transitionFuel : Nat)
+    (configuration : ExactPlainRomWitnessConfiguration HiddenTape TapeIdentity
+      Observation Statement Tag73K12ParsedProof Payload Witness parameters)
+    (projection : AcceptedTapeProjection Statement Tag73K12ParsedProof Payload)
+    (fixedInstance : PublicInstance Statement)
+    (decoder : ExactDecoderInstantiation QM31Exact) :
+    Set (ExactCompilerSample HiddenTape parameters) :=
+  {sample | ∃
+      (input : ExactK12OperationalInput transitionFuel configuration projection
+        fixedInstance sample)
+      (k13 : ExactRestoredOperationalK13Certificate decoder input),
+    Nonempty (ExactRestoredOperationalK14Error decoder input k13)}
+
+/-- The generic K1.4 event is definitionally the literal restored-node K1.4
+event; no root-only certificate or alternate parser view is involved. -/
+theorem exact_restored_stages_k14_error_event_eq
+    {HiddenTape TapeIdentity Observation Statement Payload Witness : Type}
+    {parameters : ExactCompilerResourceParameters}
+    {transitionFuel : Nat}
+    {configuration : ExactPlainRomWitnessConfiguration HiddenTape TapeIdentity
+      Observation Statement Tag73K12ParsedProof Payload Witness parameters}
+    {projection : AcceptedTapeProjection Statement Tag73K12ParsedProof Payload}
+    {fixedInstance : PublicInstance Statement}
+    {relation : PublicInstance Statement → Witness → Prop}
+    {decoder : ExactDecoderInstantiation QM31Exact}
+    {binding : InitialProjectionBinding decoder}
+    (k15 : ExactRestoredOperationalK15Classifier transitionFuel configuration
+      projection fixedInstance relation decoder binding) :
+    k14CoherentChainErrorEvent
+        (exactTag73RestoredOperationalStages transitionFuel configuration
+          projection fixedInstance relation decoder binding k15) =
+      exactTag73RestoredOperationalK14FailureEvent transitionFuel configuration
+        projection fixedInstance decoder := by
+  ext sample
+  constructor
+  · rintro ⟨input, k12, k13, failure⟩
+    cases k12
+    exact ⟨input, k13, failure⟩
+  · rintro ⟨input, k13, failure⟩
+    exact ⟨input, (), k13, failure⟩
+
+/-- The literal restoration-wide width-29 failure event. -/
+def exactTag73RestoredOperationalK14Width29Event
+    {HiddenTape TapeIdentity Observation Statement Payload Witness : Type}
+    {parameters : ExactCompilerResourceParameters}
+    (transitionFuel : Nat)
+    (configuration : ExactPlainRomWitnessConfiguration HiddenTape TapeIdentity
+      Observation Statement Tag73K12ParsedProof Payload Witness parameters)
+    (projection : AcceptedTapeProjection Statement Tag73K12ParsedProof Payload)
+    (fixedInstance : PublicInstance Statement)
+    (decoder : ExactDecoderInstantiation QM31Exact) :
+    Set (ExactCompilerSample HiddenTape parameters) :=
+  {sample | ∃
+      (input : ExactK12OperationalInput transitionFuel configuration projection
+        fixedInstance sample)
+      (k13 : ExactRestoredOperationalK13Certificate decoder input),
+    Width29DecompositionFailure decoder k13.classified.k12.words
+      (restoredOperationalK13View k13.data).gamma
+      (restoredOperationalK13View k13.data).disclosedFinal
+      (restoredOperationalK13View k13.data).schedule}
+
+/-- The sole restored K1.4 error constructor is exactly the width-29 event on
+the same selected node and verifier-derived transcript view. -/
+theorem exact_restored_operational_k14_failure_subset_width29
+    {HiddenTape TapeIdentity Observation Statement Payload Witness : Type}
+    {parameters : ExactCompilerResourceParameters}
+    {transitionFuel : Nat}
+    {configuration : ExactPlainRomWitnessConfiguration HiddenTape TapeIdentity
+      Observation Statement Tag73K12ParsedProof Payload Witness parameters}
+    {projection : AcceptedTapeProjection Statement Tag73K12ParsedProof Payload}
+    {fixedInstance : PublicInstance Statement}
+    {decoder : ExactDecoderInstantiation QM31Exact} :
+    exactTag73RestoredOperationalK14FailureEvent transitionFuel configuration
+        projection fixedInstance decoder ⊆
+      exactTag73RestoredOperationalK14Width29Event transitionFuel configuration
+        projection fixedInstance decoder := by
+  intro sample member
+  rcases member with ⟨input, k13, ⟨failure⟩⟩
+  cases failure.classified with
+  | width29 widthFailure => exact ⟨input, k13, widthFailure⟩
+
+/-- Direct generic-stage form of the restored width-29 cover. -/
+theorem exact_restored_stages_k14_error_subset_width29
+    {HiddenTape TapeIdentity Observation Statement Payload Witness : Type}
+    {parameters : ExactCompilerResourceParameters}
+    {transitionFuel : Nat}
+    {configuration : ExactPlainRomWitnessConfiguration HiddenTape TapeIdentity
+      Observation Statement Tag73K12ParsedProof Payload Witness parameters}
+    {projection : AcceptedTapeProjection Statement Tag73K12ParsedProof Payload}
+    {fixedInstance : PublicInstance Statement}
+    {relation : PublicInstance Statement → Witness → Prop}
+    {decoder : ExactDecoderInstantiation QM31Exact}
+    {binding : InitialProjectionBinding decoder}
+    (k15 : ExactRestoredOperationalK15Classifier transitionFuel configuration
+      projection fixedInstance relation decoder binding) :
+    k14CoherentChainErrorEvent
+        (exactTag73RestoredOperationalStages transitionFuel configuration
+          projection fixedInstance relation decoder binding k15) ⊆
+      exactTag73RestoredOperationalK14Width29Event transitionFuel configuration
+        projection fixedInstance decoder := by
+  rw [exact_restored_stages_k14_error_event_eq k15]
+  exact exact_restored_operational_k14_failure_subset_width29
+
+/-- Literal sample event for failure of the supplied restored-node K1.5
+classifier after the exact K1.3 and K1.4 certificates have been fixed. -/
+def exactTag73RestoredOperationalK15FailureEvent
+    {HiddenTape TapeIdentity Observation Statement Payload Witness : Type}
+    {parameters : ExactCompilerResourceParameters}
+    {transitionFuel : Nat}
+    {configuration : ExactPlainRomWitnessConfiguration HiddenTape TapeIdentity
+      Observation Statement Tag73K12ParsedProof Payload Witness parameters}
+    {projection : AcceptedTapeProjection Statement Tag73K12ParsedProof Payload}
+    {fixedInstance : PublicInstance Statement}
+    {relation : PublicInstance Statement → Witness → Prop}
+    {decoder : ExactDecoderInstantiation QM31Exact}
+    {binding : InitialProjectionBinding decoder}
+    (k15 : ExactRestoredOperationalK15Classifier transitionFuel configuration
+      projection fixedInstance relation decoder binding) :
+    Set (ExactCompilerSample HiddenTape parameters) :=
+  {sample | ∃
+      (input : ExactK12OperationalInput transitionFuel configuration projection
+        fixedInstance sample)
+      (k13 : ExactRestoredOperationalK13Certificate decoder input)
+      (k14 : ExactRestoredOperationalK14Certificate decoder binding input k13),
+    Nonempty (k15.error sample input k13 k14)}
+
+/-- The generic K1.5 event for the corrected stage package is exactly the
+literal classifier event above. -/
+theorem exact_restored_stages_k15_error_event_eq
+    {HiddenTape TapeIdentity Observation Statement Payload Witness : Type}
+    {parameters : ExactCompilerResourceParameters}
+    {transitionFuel : Nat}
+    {configuration : ExactPlainRomWitnessConfiguration HiddenTape TapeIdentity
+      Observation Statement Tag73K12ParsedProof Payload Witness parameters}
+    {projection : AcceptedTapeProjection Statement Tag73K12ParsedProof Payload}
+    {fixedInstance : PublicInstance Statement}
+    {relation : PublicInstance Statement → Witness → Prop}
+    {decoder : ExactDecoderInstantiation QM31Exact}
+    {binding : InitialProjectionBinding decoder}
+    (k15 : ExactRestoredOperationalK15Classifier transitionFuel configuration
+      projection fixedInstance relation decoder binding) :
+    k15SpendWitnessErrorEvent
+        (exactTag73RestoredOperationalStages transitionFuel configuration
+          projection fixedInstance relation decoder binding k15) =
+      exactTag73RestoredOperationalK15FailureEvent k15 := by
+  ext sample
+  constructor
+  · rintro ⟨input, k12, k13, k14, failure⟩
+    cases k12
+    exact ⟨input, k13, k14, failure⟩
+  · rintro ⟨input, k13, k14, failure⟩
+    exact ⟨input, (), k13, k14, failure⟩
+
 #print axioms classifyExactRestoredOperationalK14
 #print axioms exactTag73RestoredOperationalStages
 #print axioms exact_restored_stages_classify_k12
 #print axioms exact_restored_stages_classify_k13
 #print axioms exact_restored_stages_classify_k14
+#print axioms exact_restored_stages_k13_error_event_eq
+#print axioms exact_restored_stages_k14_error_event_eq
+#print axioms exact_restored_operational_k14_failure_subset_width29
+#print axioms exact_restored_stages_k14_error_subset_width29
+#print axioms exact_restored_stages_k15_error_event_eq
 
 end
 
