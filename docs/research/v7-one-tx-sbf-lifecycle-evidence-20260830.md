@@ -1,5 +1,13 @@
 # V7 one-transaction SBF and lifecycle evidence preflight
 
+> **Superseded candidate note (later on 2026-08-30):** Pool source advanced to
+> `da77d5f5a22681200cceec8e90fc69ac2cc81ad8` to create the canonical
+> nullifier-marker atomically. That security fix changes the terminal account
+> layouts and invalidates the `bcd03b12` Pool SBF hash and 997-byte worst-case
+> packet quoted below. The deterministic eleven-case fixture successor is
+> documented in `v7-one-tx-agave-fixture-freeze-20260830.md`. This file is
+> retained as chronology, not as the active release candidate.
+
 Date: 2026-08-30
 
 Status: reproducibility inputs frozen and replay rail implemented; Linux dual

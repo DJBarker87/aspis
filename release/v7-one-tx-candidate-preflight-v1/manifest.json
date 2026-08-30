@@ -1,6 +1,6 @@
 {
   "schema": "aspis.v7.one-tx-candidate-preflight.v1",
-  "status": "INPUTS_FROZEN_EXECUTION_EVIDENCE_INCOMPLETE",
+  "status": "ATOMIC_MARKER_FIXTURES_FROZEN_FRESH_SBF_AND_AGAVE_PENDING",
   "authorization": {
     "build": true,
     "localSimulationOnly": true,
@@ -11,13 +11,13 @@
     "mainnet": false
   },
   "source": {
-    "commit": "bcd03b12293f2737dfa1da1436092a0a24a6ae24",
-    "tree": "bbdc231d9ef8e09c23292c5c6f5ba8cefc9f76bb",
+    "commit": "da77d5f5a22681200cceec8e90fc69ac2cc81ad8",
+    "tree": "aee02a157b9866a4eaada912fe7ca8976ae51fce",
     "cargoLockBlob": "dedcbfac3e4726f759ba062aa26ae47f4bfa1512",
     "cargoLockSha256": "25cae3f276bd5831785bdb25e204ce99213934e7fcec3f5a76a5d742a018426b",
-    "poolTree": "744c10710cd4b99c65fe3ef726b4d1c761d1f51c",
+    "poolTree": "872814145eb07077fae2f15cf507643d28f3fa4b",
     "verifierTree": "e7370c020cac1e51ca9e41092dcf6ecbf095bd99",
-    "lastPoolSourceCommit": "66ec9efe0464bc09addbb146d5ff8a4da5fec2fb",
+    "lastPoolSourceCommit": "da77d5f5a22681200cceec8e90fc69ac2cc81ad8",
     "lastVerifierSourceCommit": "6702cfcc987e29381085039d9da8715dafbbfce8"
   },
   "toolchain": {
@@ -48,9 +48,10 @@
       "features": "v7-pair-forest-one-tx-candidate",
       "noDefaultFeatures": true,
       "output": "aspis_pool.so",
-      "expectedBytes": 524328,
-      "expectedSha256": "61f80ab33bff36b38716df944d7851a473be0ed065b2d57864082fd966ec8810",
-      "referenceEvidence": "results/v7-static-schedule-cu-check-20260830/withdrawal-rollover-counter0.json",
+      "expectedBytes": null,
+      "expectedSha256": null,
+      "bindingStatus": "PENDING_FRESH_DA77_DUAL_LINUX_BUILD",
+      "referenceEvidence": null,
       "referenceArtifactCheckedIn": false
     },
     {
@@ -67,7 +68,7 @@
       "referenceArtifactCheckedIn": true
     }
   ],
-  "frozenFiles": [
+  "sourceFrozenFiles": [
     {
       "path": "Cargo.toml",
       "sha256": "fe9ac71e9f67a0751279bbb77e9ff86b6e1c9d6eb8128cc3d419300e421fec16"
@@ -75,10 +76,6 @@
     {
       "path": "Cargo.lock",
       "sha256": "25cae3f276bd5831785bdb25e204ce99213934e7fcec3f5a76a5d742a018426b"
-    },
-    {
-      "path": "scripts/v7_txv1_disposable_agave_simulate.sh",
-      "sha256": "72e9fa04aaa90671309a4ce9789d45a993a608f73881b18081f3554d0eca97fb"
     },
     {
       "path": "scripts/v7_txv1_public_devnet_simulate.sh",
@@ -117,8 +114,54 @@
       "sha256": "70f037278f587754d5ef9713644e6ae7b6d7788d9f6c01153ac5da89939e9609"
     }
   ],
-  "latestMeasuredCombinedCase": {
-    "classification": "REAL_COMBINED_LITESVM_CURRENT_SOURCE_WORST_CASE",
+  "releaseHarnessFiles": [
+    {
+      "path": "results/v7-pair-forest-combined-rejection-litesvm-20260828/harness/Cargo.toml",
+      "sha256": "844b2c3579eb89aaf58ea49b03295c4496c3abefae80cb1eed668e2985b63fdf"
+    },
+    {
+      "path": "results/v7-pair-forest-combined-rejection-litesvm-20260828/harness/Cargo.lock",
+      "sha256": "8a3c9e9d323b1ab362180e420e29f46f41cc5b38419cf3ac6ed3d874cf77962f"
+    },
+    {
+      "path": "results/v7-pair-forest-combined-rejection-litesvm-20260828/harness/src/bin/generate_txv1_agave_bundle.rs",
+      "sha256": "81b0c310dbc0320bad0af94fe3e1d83f2657267ea40da204a70c5c99ca2c79d2"
+    },
+    {
+      "path": "scripts/v7_txv1_bundle_verify.sh",
+      "sha256": "cf969c0c2c0bf8755154524d98d821a483e441919c87a646a539b0878f79c04c"
+    },
+    {
+      "path": "scripts/v7_txv1_disposable_agave_simulate.sh",
+      "sha256": "a025c793abed7e9c927f4f82fcefdb4535cf8eb8cc6f37eec9c533f97bae4352"
+    },
+    {
+      "path": "scripts/v7_one_tx_release_replay.sh",
+      "sha256": "cc87852c977f51d7e961384b632f8095e3ea7e16b951a030b5e286ecdf996b17"
+    },
+    {
+      "path": "results/v7-one-tx-agave-bundle-template-20260830/bundle.json",
+      "sha256": "5768416d9f720a93749408763ab72131cba7cf52ae77d1b739d1f2cfb68f289d"
+    },
+    {
+      "path": "results/v7-one-tx-agave-bundle-template-20260830/TEMPLATE-SHA256SUMS",
+      "sha256": "5086e0c3da9e4eda6c6111ee8a2a0ee25a745c66f8d011d21ef1fe1df1621341"
+    },
+    {
+      "path": "results/v7-one-tx-agave-bundle-offline-audit-20260830/audit.json",
+      "sha256": "61b20e8171d6b81f772fc24907bed0a71ab3e8ef881f6b0e8077ab6b6655a6f9"
+    },
+    {
+      "path": "results/v7-one-tx-agave-bundle-offline-audit-20260830/README.md",
+      "sha256": "3450c4443dae9756bf5df28a8150be16727a4db080d9eb51f7195caadb6b5d19"
+    },
+    {
+      "path": "results/v7-one-tx-agave-bundle-offline-audit-20260830/SHA256SUMS",
+      "sha256": "aeb5b2c13b1458cb80f8b7bbb1f3a9cedcdb074232bee4a3ee3e581123eb8a4d"
+    }
+  ],
+  "priorMeasuredCombinedCase": {
+    "classification": "REAL_COMBINED_LITESVM_BCD03B12_PRE_MARKER_CREATION_CHRONOLOGY_ONLY",
     "path": "results/v7-static-schedule-cu-check-20260830/withdrawal-rollover-counter0.json",
     "operation": "withdrawal",
     "history": "rollover",
@@ -126,7 +169,15 @@
     "computeUnits": 1198735,
     "transactionBytes": 997,
     "computeUnitCeiling": 1300000,
-    "transactionByteCeilingExclusive": 4096
+    "transactionByteCeilingExclusive": 4096,
+    "currentSource": false
+  },
+  "currentMeasuredCombinedCase": {
+    "sourceCommit": "da77d5f5a22681200cceec8e90fc69ac2cc81ad8",
+    "executed": false,
+    "computeUnits": null,
+    "transactionBytes": 1031,
+    "reason": "fresh Pool SBF and runtime replay pending"
   },
   "txv1Lifecycle": {
     "authoritativePreflightCommit": "c403c2f95734b271c3f5e0cae50d2a770640941a",
@@ -146,7 +197,42 @@
       "mutated-proof-rejection",
       "failed-withdrawal-cpi-rollback"
     ],
-    "caseBundleIncluded": false,
+    "caseBundleIncluded": true,
+    "caseBundle": "results/v7-one-tx-agave-bundle-template-20260830",
+    "caseBundleSha256": "5768416d9f720a93749408763ab72131cba7cf52ae77d1b739d1f2cfb68f289d",
+    "caseBundleInventorySha256": "5086e0c3da9e4eda6c6111ee8a2a0ee25a745c66f8d011d21ef1fe1df1621341",
+    "caseBundleOfflineAudit": "results/v7-one-tx-agave-bundle-offline-audit-20260830/audit.json",
+    "caseBundleOfflineAuditSha256": "61b20e8171d6b81f772fc24907bed0a71ab3e8ef881f6b0e8077ab6b6655a6f9",
+    "caseBundleFiles": 44,
+    "caseBundleBytes": 647048,
+    "walletPreflightsExecuted": 11,
+    "walletPreflightShapes": [
+      {
+        "operation": "private-transfer",
+        "history": "same-page",
+        "instructionAccounts": 11,
+        "serializedTransactionBytes": 833
+      },
+      {
+        "operation": "private-transfer",
+        "history": "rollover",
+        "instructionAccounts": 12,
+        "serializedTransactionBytes": 866
+      },
+      {
+        "operation": "withdrawal",
+        "history": "same-page",
+        "instructionAccounts": 16,
+        "serializedTransactionBytes": 998
+      },
+      {
+        "operation": "withdrawal",
+        "history": "rollover",
+        "instructionAccounts": 17,
+        "serializedTransactionBytes": 1031
+      }
+    ],
+    "caseBundlePoolSbfBindingComplete": false,
     "agave42AvailableInRecordedLocalEnvironment": false,
     "suiteExecutedForThisFreeze": false,
     "publicDevnetExecutionActivationRequired": true,

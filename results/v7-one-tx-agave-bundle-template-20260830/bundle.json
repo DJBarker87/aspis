@@ -1,0 +1,996 @@
+{
+  "allNegativeCasesRequireRollback": true,
+  "cases": [
+    {
+      "expectedFailureStage": null,
+      "expectedLogContains": [
+        "Program 7Q2nGsPg8rbjdxKHK4jxTgEWLTyd9o1X4KMSjCieRmue success",
+        "Program 5PjDJaGfSPJj4tFzMRCiuuAasKg5n8dJKXKenhuwZexx success"
+      ],
+      "expectedOutcome": "success",
+      "expectedSimulationAccountsFile": "cases/transfer-same-page/expected-simulation-accounts.json",
+      "expectedSimulationAccountsFileSha256": "cfd0b591014825b359348186864a506da6c222a721b7bad76d1deeb25d4992d3",
+      "expectedSimulationAccountsSha256": "6a47913cfdfb8cdb701895bd991b632fa6d4982730f91983449f80600f14b3f2",
+      "genesisAccounts": [
+        {
+          "address": "2nzTKLWYCX7X95x9N2r16JpaNpAhQgBavCe1vbQ3Lkjg",
+          "file": "accounts/fe0da9f042a1c7f71a1e00e9450d797241a4a3644bc28782200e8bf159e114cc.json",
+          "fileSha256": "fe0da9f042a1c7f71a1e00e9450d797241a4a3644bc28782200e8bf159e114cc",
+          "loadAtGenesis": true
+        },
+        {
+          "address": "3B3QhxztFR6kSo3m3kpTaU9JsQyJH6ScoT94gwnFXQYj",
+          "file": "accounts/3c0e86992a1fccfb300931a65027075fe51f255d98e51b3516d0d3891a280289.json",
+          "fileSha256": "3c0e86992a1fccfb300931a65027075fe51f255d98e51b3516d0d3891a280289",
+          "loadAtGenesis": true
+        },
+        {
+          "address": "3Hrd4YKTTF2eaoWjdwzBwagmH9SeuenwiVyQajm72C8N",
+          "file": "accounts/04c505b01aa2bef9886005380b20f8594279101c684b16b923ab1978df6ccf54.json",
+          "fileSha256": "04c505b01aa2bef9886005380b20f8594279101c684b16b923ab1978df6ccf54",
+          "loadAtGenesis": true
+        },
+        {
+          "address": "5fQPsn8hoaVddFG26cWQ5QFdqxWtUPNaZ9zH2E6LYzFn",
+          "file": "accounts/39580e98c6c3ebfc30c31acf6eecb6a266071125691277472aa4e406d54e6356.json",
+          "fileSha256": "39580e98c6c3ebfc30c31acf6eecb6a266071125691277472aa4e406d54e6356",
+          "loadAtGenesis": true
+        },
+        {
+          "address": "7YvvqJNdXZt3aNMkCebG4To2f1VJe1TbxHBtY41D4Jy2",
+          "file": "accounts/48c6a6825e7ed7ed47424569eac0a7fe346242fefbeb2e66e1c4e9ad284a2342.json",
+          "fileSha256": "48c6a6825e7ed7ed47424569eac0a7fe346242fefbeb2e66e1c4e9ad284a2342",
+          "loadAtGenesis": false
+        },
+        {
+          "address": "AKnL4NNf3DGWZJS6cPknBuEGnVsV4A4m5tgebLHaRSZ9",
+          "file": "accounts/64e48bddc65ac6aa562251061c548e9cde21c923fa364eba366494a8ffae3ffd.json",
+          "fileSha256": "64e48bddc65ac6aa562251061c548e9cde21c923fa364eba366494a8ffae3ffd",
+          "loadAtGenesis": true
+        },
+        {
+          "address": "DEozmkY3H2YccnEAqHyENJp2Hs1HAFjBq6xqdJDFeZk9",
+          "file": "accounts/b2b311e5a3c8709fe26d2e8ac5bac853ee2e0ccc20d240794057253d5775480b.json",
+          "fileSha256": "b2b311e5a3c8709fe26d2e8ac5bac853ee2e0ccc20d240794057253d5775480b",
+          "loadAtGenesis": true
+        },
+        {
+          "address": "EDfQpAnRQVqFmGZuY2ocZoX7gBp5H1N3MWWMLmuWTmD6",
+          "file": "accounts/831a43ef135ffd21c7db675a0bbf311d0b7cfb80ea946aae6f1efa3b2ce50055.json",
+          "fileSha256": "831a43ef135ffd21c7db675a0bbf311d0b7cfb80ea946aae6f1efa3b2ce50055",
+          "loadAtGenesis": true
+        },
+        {
+          "address": "VpJVmumSKG78SuniaC8contYbYsqXGYv1J7Ha7jpuLc",
+          "file": "accounts/062f49e314bf196255154052af91755a339373459d955beba92c3fc0a022e344.json",
+          "fileSha256": "062f49e314bf196255154052af91755a339373459d955beba92c3fc0a022e344",
+          "loadAtGenesis": true
+        }
+      ],
+      "genesisAccountsSha256": "30d020ba34d512cd599e8955525cb6e12e704ec4b502082ee8da7598d7b5350e",
+      "input": "cases/transfer-same-page/input.json",
+      "inputSha256": "c6b12300aa9ee7146ed817610cbbdae5c354d052a398ad8163580871634d0071",
+      "markerStart": {
+        "dataBytes": 0,
+        "kind": "zero-lamport-system-owned",
+        "lamports": 0,
+        "owner": "11111111111111111111111111111111"
+      },
+      "name": "transfer-same-page",
+      "postStateAccountsSha256": "371201dd158132f1daa861677db8d716392e8ff35c41969f7c2b854aaa3138e5",
+      "programOverrides": [],
+      "rollbackRequired": false
+    },
+    {
+      "expectedFailureStage": null,
+      "expectedLogContains": [
+        "Program 7Q2nGsPg8rbjdxKHK4jxTgEWLTyd9o1X4KMSjCieRmue success",
+        "Program 5PjDJaGfSPJj4tFzMRCiuuAasKg5n8dJKXKenhuwZexx success"
+      ],
+      "expectedOutcome": "success",
+      "expectedSimulationAccountsFile": "cases/transfer-rollover/expected-simulation-accounts.json",
+      "expectedSimulationAccountsFileSha256": "6f26165da410639512ff05cf6b6b7da09698f72f3b8816c9f32c546792645fc1",
+      "expectedSimulationAccountsSha256": "e87087a0433ef581cbd59b0c35de489541a07b873cb6793a06e9f2c1dd4e034e",
+      "genesisAccounts": [
+        {
+          "address": "2nzTKLWYCX7X95x9N2r16JpaNpAhQgBavCe1vbQ3Lkjg",
+          "file": "accounts/fe0da9f042a1c7f71a1e00e9450d797241a4a3644bc28782200e8bf159e114cc.json",
+          "fileSha256": "fe0da9f042a1c7f71a1e00e9450d797241a4a3644bc28782200e8bf159e114cc",
+          "loadAtGenesis": true
+        },
+        {
+          "address": "3B3QhxztFR6kSo3m3kpTaU9JsQyJH6ScoT94gwnFXQYj",
+          "file": "accounts/aab5f185b7d2d2860295a92ceb6c920afec29616ecee5e74e3682470240266f2.json",
+          "fileSha256": "aab5f185b7d2d2860295a92ceb6c920afec29616ecee5e74e3682470240266f2",
+          "loadAtGenesis": true
+        },
+        {
+          "address": "3Hrd4YKTTF2eaoWjdwzBwagmH9SeuenwiVyQajm72C8N",
+          "file": "accounts/04c505b01aa2bef9886005380b20f8594279101c684b16b923ab1978df6ccf54.json",
+          "fileSha256": "04c505b01aa2bef9886005380b20f8594279101c684b16b923ab1978df6ccf54",
+          "loadAtGenesis": true
+        },
+        {
+          "address": "5fQPsn8hoaVddFG26cWQ5QFdqxWtUPNaZ9zH2E6LYzFn",
+          "file": "accounts/f7a172123b613393f6d424a29dd7edbf493f86545abf30e3e88887b52163da55.json",
+          "fileSha256": "f7a172123b613393f6d424a29dd7edbf493f86545abf30e3e88887b52163da55",
+          "loadAtGenesis": true
+        },
+        {
+          "address": "7YvvqJNdXZt3aNMkCebG4To2f1VJe1TbxHBtY41D4Jy2",
+          "file": "accounts/4737bf68d2478900b0c740671e54c1f0ef768dd24a79efb13953449cfb775828.json",
+          "fileSha256": "4737bf68d2478900b0c740671e54c1f0ef768dd24a79efb13953449cfb775828",
+          "loadAtGenesis": true
+        },
+        {
+          "address": "AKnL4NNf3DGWZJS6cPknBuEGnVsV4A4m5tgebLHaRSZ9",
+          "file": "accounts/64e48bddc65ac6aa562251061c548e9cde21c923fa364eba366494a8ffae3ffd.json",
+          "fileSha256": "64e48bddc65ac6aa562251061c548e9cde21c923fa364eba366494a8ffae3ffd",
+          "loadAtGenesis": true
+        },
+        {
+          "address": "DEozmkY3H2YccnEAqHyENJp2Hs1HAFjBq6xqdJDFeZk9",
+          "file": "accounts/a15d1f7389d742e2a1858c82bb4457f93dedb870838ebc2ec16b878d898b2fb9.json",
+          "fileSha256": "a15d1f7389d742e2a1858c82bb4457f93dedb870838ebc2ec16b878d898b2fb9",
+          "loadAtGenesis": true
+        },
+        {
+          "address": "EDfQpAnRQVqFmGZuY2ocZoX7gBp5H1N3MWWMLmuWTmD6",
+          "file": "accounts/831a43ef135ffd21c7db675a0bbf311d0b7cfb80ea946aae6f1efa3b2ce50055.json",
+          "fileSha256": "831a43ef135ffd21c7db675a0bbf311d0b7cfb80ea946aae6f1efa3b2ce50055",
+          "loadAtGenesis": true
+        },
+        {
+          "address": "GCtLhcW4k4mYZRnGecvcx1CEWyiYQzs4UjuDUEaBirqY",
+          "file": "accounts/26aed3a7e0ad42520950214e60512a425015f2a6e3314621afa04b8c850cc4e2.json",
+          "fileSha256": "26aed3a7e0ad42520950214e60512a425015f2a6e3314621afa04b8c850cc4e2",
+          "loadAtGenesis": true
+        },
+        {
+          "address": "VpJVmumSKG78SuniaC8contYbYsqXGYv1J7Ha7jpuLc",
+          "file": "accounts/062f49e314bf196255154052af91755a339373459d955beba92c3fc0a022e344.json",
+          "fileSha256": "062f49e314bf196255154052af91755a339373459d955beba92c3fc0a022e344",
+          "loadAtGenesis": true
+        }
+      ],
+      "genesisAccountsSha256": "5fbe7e3bdc38eabbd044908fac24751c49f0470e4ccbe11c100b00adec8645a3",
+      "input": "cases/transfer-rollover/input.json",
+      "inputSha256": "83ff059ee6e1aa986aaa028466cff9998e3eb0d2ee96abd4f602f3321b6bb3db",
+      "markerStart": {
+        "dataBytes": 0,
+        "kind": "dusted-system-owned",
+        "lamports": 1,
+        "owner": "11111111111111111111111111111111"
+      },
+      "name": "transfer-rollover",
+      "postStateAccountsSha256": "15e1196b5285ebad0db276ffbcfeba28cdeb0dc8b1bcc4985326f0362eb701c1",
+      "programOverrides": [],
+      "rollbackRequired": false
+    },
+    {
+      "expectedFailureStage": null,
+      "expectedLogContains": [
+        "Program 7Q2nGsPg8rbjdxKHK4jxTgEWLTyd9o1X4KMSjCieRmue success",
+        "Program 5PjDJaGfSPJj4tFzMRCiuuAasKg5n8dJKXKenhuwZexx success",
+        "Program TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA success"
+      ],
+      "expectedOutcome": "success",
+      "expectedSimulationAccountsFile": "cases/withdrawal-same-page/expected-simulation-accounts.json",
+      "expectedSimulationAccountsFileSha256": "bf7fa016d7e913833b46d545fe0b5f9978ca1d7c6d24e5fbbaa30a285a631d03",
+      "expectedSimulationAccountsSha256": "a620b31c2bd911c70b33d6e0ebb53d8525d828fe3845155a3af8c530e17c2837",
+      "genesisAccounts": [
+        {
+          "address": "2nzTKLWYCX7X95x9N2r16JpaNpAhQgBavCe1vbQ3Lkjg",
+          "file": "accounts/fe0da9f042a1c7f71a1e00e9450d797241a4a3644bc28782200e8bf159e114cc.json",
+          "fileSha256": "fe0da9f042a1c7f71a1e00e9450d797241a4a3644bc28782200e8bf159e114cc",
+          "loadAtGenesis": true
+        },
+        {
+          "address": "3B3QhxztFR6kSo3m3kpTaU9JsQyJH6ScoT94gwnFXQYj",
+          "file": "accounts/3c0e86992a1fccfb300931a65027075fe51f255d98e51b3516d0d3891a280289.json",
+          "fileSha256": "3c0e86992a1fccfb300931a65027075fe51f255d98e51b3516d0d3891a280289",
+          "loadAtGenesis": true
+        },
+        {
+          "address": "3Hrd4YKTTF2eaoWjdwzBwagmH9SeuenwiVyQajm72C8N",
+          "file": "accounts/04c505b01aa2bef9886005380b20f8594279101c684b16b923ab1978df6ccf54.json",
+          "fileSha256": "04c505b01aa2bef9886005380b20f8594279101c684b16b923ab1978df6ccf54",
+          "loadAtGenesis": true
+        },
+        {
+          "address": "5TeWSsjg2gbxCyWVniXeCmwM7UtHTCK7svzJr5xYJzHf",
+          "file": "accounts/57f823adf734156674eed223c84543db02c67447e8293c47c1728029d907f111.json",
+          "fileSha256": "57f823adf734156674eed223c84543db02c67447e8293c47c1728029d907f111",
+          "loadAtGenesis": true
+        },
+        {
+          "address": "5fQPsn8hoaVddFG26cWQ5QFdqxWtUPNaZ9zH2E6LYzFn",
+          "file": "accounts/8adebf56b65c38cdc0bfebd21f631274defe836cf1d87cac2f601d734f4da2d0.json",
+          "fileSha256": "8adebf56b65c38cdc0bfebd21f631274defe836cf1d87cac2f601d734f4da2d0",
+          "loadAtGenesis": true
+        },
+        {
+          "address": "5w5aSyzkAmgYBcG3qop5EuLgpbMhAe7rnneuFkGjYKYc",
+          "file": "accounts/3e6aed40fba07736796eac6bbb61673e49187ec28f7970292824725d90ba9cfb.json",
+          "fileSha256": "3e6aed40fba07736796eac6bbb61673e49187ec28f7970292824725d90ba9cfb",
+          "loadAtGenesis": true
+        },
+        {
+          "address": "6CquEHN9aS4cvEjUnZPhr1azMBmbiF5pMfdjVu8RQx6p",
+          "file": "accounts/c2dcda69acdec81550a375e89cdabb076f708f077928a3bbddb0d582e07f4612.json",
+          "fileSha256": "c2dcda69acdec81550a375e89cdabb076f708f077928a3bbddb0d582e07f4612",
+          "loadAtGenesis": true
+        },
+        {
+          "address": "7YvvqJNdXZt3aNMkCebG4To2f1VJe1TbxHBtY41D4Jy2",
+          "file": "accounts/48c6a6825e7ed7ed47424569eac0a7fe346242fefbeb2e66e1c4e9ad284a2342.json",
+          "fileSha256": "48c6a6825e7ed7ed47424569eac0a7fe346242fefbeb2e66e1c4e9ad284a2342",
+          "loadAtGenesis": false
+        },
+        {
+          "address": "9D428z6FiWBzKX9i72tc26RGybMbGV9FLUa8EAAvf7kX",
+          "file": "accounts/efbc0405570f252cdfea7c24650cb5f6d276af083e2b0ff7e25720bee100ada8.json",
+          "fileSha256": "efbc0405570f252cdfea7c24650cb5f6d276af083e2b0ff7e25720bee100ada8",
+          "loadAtGenesis": true
+        },
+        {
+          "address": "AKnL4NNf3DGWZJS6cPknBuEGnVsV4A4m5tgebLHaRSZ9",
+          "file": "accounts/64e48bddc65ac6aa562251061c548e9cde21c923fa364eba366494a8ffae3ffd.json",
+          "fileSha256": "64e48bddc65ac6aa562251061c548e9cde21c923fa364eba366494a8ffae3ffd",
+          "loadAtGenesis": true
+        },
+        {
+          "address": "DEozmkY3H2YccnEAqHyENJp2Hs1HAFjBq6xqdJDFeZk9",
+          "file": "accounts/b2b311e5a3c8709fe26d2e8ac5bac853ee2e0ccc20d240794057253d5775480b.json",
+          "fileSha256": "b2b311e5a3c8709fe26d2e8ac5bac853ee2e0ccc20d240794057253d5775480b",
+          "loadAtGenesis": true
+        },
+        {
+          "address": "EDfQpAnRQVqFmGZuY2ocZoX7gBp5H1N3MWWMLmuWTmD6",
+          "file": "accounts/831a43ef135ffd21c7db675a0bbf311d0b7cfb80ea946aae6f1efa3b2ce50055.json",
+          "fileSha256": "831a43ef135ffd21c7db675a0bbf311d0b7cfb80ea946aae6f1efa3b2ce50055",
+          "loadAtGenesis": true
+        },
+        {
+          "address": "VpJVmumSKG78SuniaC8contYbYsqXGYv1J7Ha7jpuLc",
+          "file": "accounts/062f49e314bf196255154052af91755a339373459d955beba92c3fc0a022e344.json",
+          "fileSha256": "062f49e314bf196255154052af91755a339373459d955beba92c3fc0a022e344",
+          "loadAtGenesis": true
+        }
+      ],
+      "genesisAccountsSha256": "157db013dfbcddf16407730f3a409d2ec766edf47874e1b0c5ea74e4c8c8dac1",
+      "input": "cases/withdrawal-same-page/input.json",
+      "inputSha256": "dc0d351e7378948de7f66941421fd707a351e93ef1109e0171f48c8bd5c4142f",
+      "markerStart": {
+        "dataBytes": 0,
+        "kind": "zero-lamport-system-owned",
+        "lamports": 0,
+        "owner": "11111111111111111111111111111111"
+      },
+      "name": "withdrawal-same-page",
+      "postStateAccountsSha256": "e36ce7c1898aa52814b670bde08673d74cbc52d7e3897cf2c99673641d39007d",
+      "programOverrides": [],
+      "rollbackRequired": false
+    },
+    {
+      "expectedFailureStage": null,
+      "expectedLogContains": [
+        "Program 7Q2nGsPg8rbjdxKHK4jxTgEWLTyd9o1X4KMSjCieRmue success",
+        "Program 5PjDJaGfSPJj4tFzMRCiuuAasKg5n8dJKXKenhuwZexx success",
+        "Program TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA success"
+      ],
+      "expectedOutcome": "success",
+      "expectedSimulationAccountsFile": "cases/withdrawal-rollover/expected-simulation-accounts.json",
+      "expectedSimulationAccountsFileSha256": "77d5fdbed01abb46d211694cacff930c83fd85b61b0a3f88cb4688c2a17bd87e",
+      "expectedSimulationAccountsSha256": "c160f724873d065a01f01efbb482743cc829498194266f9a48972726e7793600",
+      "genesisAccounts": [
+        {
+          "address": "2nzTKLWYCX7X95x9N2r16JpaNpAhQgBavCe1vbQ3Lkjg",
+          "file": "accounts/fe0da9f042a1c7f71a1e00e9450d797241a4a3644bc28782200e8bf159e114cc.json",
+          "fileSha256": "fe0da9f042a1c7f71a1e00e9450d797241a4a3644bc28782200e8bf159e114cc",
+          "loadAtGenesis": true
+        },
+        {
+          "address": "3B3QhxztFR6kSo3m3kpTaU9JsQyJH6ScoT94gwnFXQYj",
+          "file": "accounts/aab5f185b7d2d2860295a92ceb6c920afec29616ecee5e74e3682470240266f2.json",
+          "fileSha256": "aab5f185b7d2d2860295a92ceb6c920afec29616ecee5e74e3682470240266f2",
+          "loadAtGenesis": true
+        },
+        {
+          "address": "3Hrd4YKTTF2eaoWjdwzBwagmH9SeuenwiVyQajm72C8N",
+          "file": "accounts/04c505b01aa2bef9886005380b20f8594279101c684b16b923ab1978df6ccf54.json",
+          "fileSha256": "04c505b01aa2bef9886005380b20f8594279101c684b16b923ab1978df6ccf54",
+          "loadAtGenesis": true
+        },
+        {
+          "address": "5TeWSsjg2gbxCyWVniXeCmwM7UtHTCK7svzJr5xYJzHf",
+          "file": "accounts/57f823adf734156674eed223c84543db02c67447e8293c47c1728029d907f111.json",
+          "fileSha256": "57f823adf734156674eed223c84543db02c67447e8293c47c1728029d907f111",
+          "loadAtGenesis": true
+        },
+        {
+          "address": "5fQPsn8hoaVddFG26cWQ5QFdqxWtUPNaZ9zH2E6LYzFn",
+          "file": "accounts/898bc4fbc5acae44123cd9f256c0d6f0c6a9cf0bd175ae82964ff661caf0f911.json",
+          "fileSha256": "898bc4fbc5acae44123cd9f256c0d6f0c6a9cf0bd175ae82964ff661caf0f911",
+          "loadAtGenesis": true
+        },
+        {
+          "address": "5w5aSyzkAmgYBcG3qop5EuLgpbMhAe7rnneuFkGjYKYc",
+          "file": "accounts/3e6aed40fba07736796eac6bbb61673e49187ec28f7970292824725d90ba9cfb.json",
+          "fileSha256": "3e6aed40fba07736796eac6bbb61673e49187ec28f7970292824725d90ba9cfb",
+          "loadAtGenesis": true
+        },
+        {
+          "address": "6CquEHN9aS4cvEjUnZPhr1azMBmbiF5pMfdjVu8RQx6p",
+          "file": "accounts/c2dcda69acdec81550a375e89cdabb076f708f077928a3bbddb0d582e07f4612.json",
+          "fileSha256": "c2dcda69acdec81550a375e89cdabb076f708f077928a3bbddb0d582e07f4612",
+          "loadAtGenesis": true
+        },
+        {
+          "address": "7YvvqJNdXZt3aNMkCebG4To2f1VJe1TbxHBtY41D4Jy2",
+          "file": "accounts/4737bf68d2478900b0c740671e54c1f0ef768dd24a79efb13953449cfb775828.json",
+          "fileSha256": "4737bf68d2478900b0c740671e54c1f0ef768dd24a79efb13953449cfb775828",
+          "loadAtGenesis": true
+        },
+        {
+          "address": "9D428z6FiWBzKX9i72tc26RGybMbGV9FLUa8EAAvf7kX",
+          "file": "accounts/efbc0405570f252cdfea7c24650cb5f6d276af083e2b0ff7e25720bee100ada8.json",
+          "fileSha256": "efbc0405570f252cdfea7c24650cb5f6d276af083e2b0ff7e25720bee100ada8",
+          "loadAtGenesis": true
+        },
+        {
+          "address": "AKnL4NNf3DGWZJS6cPknBuEGnVsV4A4m5tgebLHaRSZ9",
+          "file": "accounts/64e48bddc65ac6aa562251061c548e9cde21c923fa364eba366494a8ffae3ffd.json",
+          "fileSha256": "64e48bddc65ac6aa562251061c548e9cde21c923fa364eba366494a8ffae3ffd",
+          "loadAtGenesis": true
+        },
+        {
+          "address": "DEozmkY3H2YccnEAqHyENJp2Hs1HAFjBq6xqdJDFeZk9",
+          "file": "accounts/a15d1f7389d742e2a1858c82bb4457f93dedb870838ebc2ec16b878d898b2fb9.json",
+          "fileSha256": "a15d1f7389d742e2a1858c82bb4457f93dedb870838ebc2ec16b878d898b2fb9",
+          "loadAtGenesis": true
+        },
+        {
+          "address": "EDfQpAnRQVqFmGZuY2ocZoX7gBp5H1N3MWWMLmuWTmD6",
+          "file": "accounts/831a43ef135ffd21c7db675a0bbf311d0b7cfb80ea946aae6f1efa3b2ce50055.json",
+          "fileSha256": "831a43ef135ffd21c7db675a0bbf311d0b7cfb80ea946aae6f1efa3b2ce50055",
+          "loadAtGenesis": true
+        },
+        {
+          "address": "GCtLhcW4k4mYZRnGecvcx1CEWyiYQzs4UjuDUEaBirqY",
+          "file": "accounts/26aed3a7e0ad42520950214e60512a425015f2a6e3314621afa04b8c850cc4e2.json",
+          "fileSha256": "26aed3a7e0ad42520950214e60512a425015f2a6e3314621afa04b8c850cc4e2",
+          "loadAtGenesis": true
+        },
+        {
+          "address": "VpJVmumSKG78SuniaC8contYbYsqXGYv1J7Ha7jpuLc",
+          "file": "accounts/062f49e314bf196255154052af91755a339373459d955beba92c3fc0a022e344.json",
+          "fileSha256": "062f49e314bf196255154052af91755a339373459d955beba92c3fc0a022e344",
+          "loadAtGenesis": true
+        }
+      ],
+      "genesisAccountsSha256": "accb3735acb7408790fd80df3346669d82310093342e5f46bb2c9e4809cf7fac",
+      "input": "cases/withdrawal-rollover/input.json",
+      "inputSha256": "ba59ec69d764188abdd66a1a4bf362269e7d5eb7ceffcafce767d920c98be2ea",
+      "markerStart": {
+        "dataBytes": 0,
+        "kind": "dusted-system-owned",
+        "lamports": 1,
+        "owner": "11111111111111111111111111111111"
+      },
+      "name": "withdrawal-rollover",
+      "postStateAccountsSha256": "0cdc083d59b4091eff9562d404fc02d6dd8e23486028f9ba73c0e2e70b61ca56",
+      "programOverrides": [],
+      "rollbackRequired": false
+    },
+    {
+      "expectedFailureStage": "live selected lane advanced after proof construction",
+      "expectedLogContains": [
+        "Program 5PjDJaGfSPJj4tFzMRCiuuAasKg5n8dJKXKenhuwZexx failed"
+      ],
+      "expectedOutcome": "failure",
+      "expectedSimulationAccountsFile": null,
+      "expectedSimulationAccountsFileSha256": null,
+      "expectedSimulationAccountsSha256": null,
+      "genesisAccounts": [
+        {
+          "address": "2nzTKLWYCX7X95x9N2r16JpaNpAhQgBavCe1vbQ3Lkjg",
+          "file": "accounts/fe0da9f042a1c7f71a1e00e9450d797241a4a3644bc28782200e8bf159e114cc.json",
+          "fileSha256": "fe0da9f042a1c7f71a1e00e9450d797241a4a3644bc28782200e8bf159e114cc",
+          "loadAtGenesis": true
+        },
+        {
+          "address": "3B3QhxztFR6kSo3m3kpTaU9JsQyJH6ScoT94gwnFXQYj",
+          "file": "accounts/59b964467876feeeacf41dcab0a4f42931aee493f0624778c2325d86bbf3f66d.json",
+          "fileSha256": "59b964467876feeeacf41dcab0a4f42931aee493f0624778c2325d86bbf3f66d",
+          "loadAtGenesis": true
+        },
+        {
+          "address": "3Hrd4YKTTF2eaoWjdwzBwagmH9SeuenwiVyQajm72C8N",
+          "file": "accounts/04c505b01aa2bef9886005380b20f8594279101c684b16b923ab1978df6ccf54.json",
+          "fileSha256": "04c505b01aa2bef9886005380b20f8594279101c684b16b923ab1978df6ccf54",
+          "loadAtGenesis": true
+        },
+        {
+          "address": "5fQPsn8hoaVddFG26cWQ5QFdqxWtUPNaZ9zH2E6LYzFn",
+          "file": "accounts/39580e98c6c3ebfc30c31acf6eecb6a266071125691277472aa4e406d54e6356.json",
+          "fileSha256": "39580e98c6c3ebfc30c31acf6eecb6a266071125691277472aa4e406d54e6356",
+          "loadAtGenesis": true
+        },
+        {
+          "address": "7YvvqJNdXZt3aNMkCebG4To2f1VJe1TbxHBtY41D4Jy2",
+          "file": "accounts/48c6a6825e7ed7ed47424569eac0a7fe346242fefbeb2e66e1c4e9ad284a2342.json",
+          "fileSha256": "48c6a6825e7ed7ed47424569eac0a7fe346242fefbeb2e66e1c4e9ad284a2342",
+          "loadAtGenesis": false
+        },
+        {
+          "address": "AKnL4NNf3DGWZJS6cPknBuEGnVsV4A4m5tgebLHaRSZ9",
+          "file": "accounts/64e48bddc65ac6aa562251061c548e9cde21c923fa364eba366494a8ffae3ffd.json",
+          "fileSha256": "64e48bddc65ac6aa562251061c548e9cde21c923fa364eba366494a8ffae3ffd",
+          "loadAtGenesis": true
+        },
+        {
+          "address": "DEozmkY3H2YccnEAqHyENJp2Hs1HAFjBq6xqdJDFeZk9",
+          "file": "accounts/0316ff198b5d2f1b58cfa71ba8a96f5694f050099b8949e27894703cb84f8f2c.json",
+          "fileSha256": "0316ff198b5d2f1b58cfa71ba8a96f5694f050099b8949e27894703cb84f8f2c",
+          "loadAtGenesis": true
+        },
+        {
+          "address": "EDfQpAnRQVqFmGZuY2ocZoX7gBp5H1N3MWWMLmuWTmD6",
+          "file": "accounts/831a43ef135ffd21c7db675a0bbf311d0b7cfb80ea946aae6f1efa3b2ce50055.json",
+          "fileSha256": "831a43ef135ffd21c7db675a0bbf311d0b7cfb80ea946aae6f1efa3b2ce50055",
+          "loadAtGenesis": true
+        },
+        {
+          "address": "VpJVmumSKG78SuniaC8contYbYsqXGYv1J7Ha7jpuLc",
+          "file": "accounts/062f49e314bf196255154052af91755a339373459d955beba92c3fc0a022e344.json",
+          "fileSha256": "062f49e314bf196255154052af91755a339373459d955beba92c3fc0a022e344",
+          "loadAtGenesis": true
+        }
+      ],
+      "genesisAccountsSha256": "abec27d11a97bcbbd2a6f24cde06b4a7516562bfd9b423c10e3fe0706decce5f",
+      "input": "cases/stale-selected-lane-rejection/input.json",
+      "inputSha256": "4b73f97abc86dd18664105e36708315e7b7516a343dce498ada91331995b5584",
+      "markerStart": {
+        "dataBytes": 0,
+        "kind": "zero-lamport-system-owned",
+        "lamports": 0,
+        "owner": "11111111111111111111111111111111"
+      },
+      "name": "stale-selected-lane-rejection",
+      "postStateAccountsSha256": "371201dd158132f1daa861677db8d716392e8ff35c41969f7c2b854aaa3138e5",
+      "programOverrides": [],
+      "rollbackRequired": true
+    },
+    {
+      "expectedFailureStage": "canonical nullifier marker already populated",
+      "expectedLogContains": [
+        "Program 5PjDJaGfSPJj4tFzMRCiuuAasKg5n8dJKXKenhuwZexx failed"
+      ],
+      "expectedOutcome": "failure",
+      "expectedSimulationAccountsFile": null,
+      "expectedSimulationAccountsFileSha256": null,
+      "expectedSimulationAccountsSha256": null,
+      "genesisAccounts": [
+        {
+          "address": "2nzTKLWYCX7X95x9N2r16JpaNpAhQgBavCe1vbQ3Lkjg",
+          "file": "accounts/fe0da9f042a1c7f71a1e00e9450d797241a4a3644bc28782200e8bf159e114cc.json",
+          "fileSha256": "fe0da9f042a1c7f71a1e00e9450d797241a4a3644bc28782200e8bf159e114cc",
+          "loadAtGenesis": true
+        },
+        {
+          "address": "3B3QhxztFR6kSo3m3kpTaU9JsQyJH6ScoT94gwnFXQYj",
+          "file": "accounts/3c0e86992a1fccfb300931a65027075fe51f255d98e51b3516d0d3891a280289.json",
+          "fileSha256": "3c0e86992a1fccfb300931a65027075fe51f255d98e51b3516d0d3891a280289",
+          "loadAtGenesis": true
+        },
+        {
+          "address": "3Hrd4YKTTF2eaoWjdwzBwagmH9SeuenwiVyQajm72C8N",
+          "file": "accounts/04c505b01aa2bef9886005380b20f8594279101c684b16b923ab1978df6ccf54.json",
+          "fileSha256": "04c505b01aa2bef9886005380b20f8594279101c684b16b923ab1978df6ccf54",
+          "loadAtGenesis": true
+        },
+        {
+          "address": "5fQPsn8hoaVddFG26cWQ5QFdqxWtUPNaZ9zH2E6LYzFn",
+          "file": "accounts/39580e98c6c3ebfc30c31acf6eecb6a266071125691277472aa4e406d54e6356.json",
+          "fileSha256": "39580e98c6c3ebfc30c31acf6eecb6a266071125691277472aa4e406d54e6356",
+          "loadAtGenesis": true
+        },
+        {
+          "address": "7YvvqJNdXZt3aNMkCebG4To2f1VJe1TbxHBtY41D4Jy2",
+          "file": "accounts/3768374c56a0c35c4c50063ff76473ee20e7fb6e4ebec6031f7857e6cc1656e6.json",
+          "fileSha256": "3768374c56a0c35c4c50063ff76473ee20e7fb6e4ebec6031f7857e6cc1656e6",
+          "loadAtGenesis": true
+        },
+        {
+          "address": "AKnL4NNf3DGWZJS6cPknBuEGnVsV4A4m5tgebLHaRSZ9",
+          "file": "accounts/64e48bddc65ac6aa562251061c548e9cde21c923fa364eba366494a8ffae3ffd.json",
+          "fileSha256": "64e48bddc65ac6aa562251061c548e9cde21c923fa364eba366494a8ffae3ffd",
+          "loadAtGenesis": true
+        },
+        {
+          "address": "DEozmkY3H2YccnEAqHyENJp2Hs1HAFjBq6xqdJDFeZk9",
+          "file": "accounts/b2b311e5a3c8709fe26d2e8ac5bac853ee2e0ccc20d240794057253d5775480b.json",
+          "fileSha256": "b2b311e5a3c8709fe26d2e8ac5bac853ee2e0ccc20d240794057253d5775480b",
+          "loadAtGenesis": true
+        },
+        {
+          "address": "EDfQpAnRQVqFmGZuY2ocZoX7gBp5H1N3MWWMLmuWTmD6",
+          "file": "accounts/831a43ef135ffd21c7db675a0bbf311d0b7cfb80ea946aae6f1efa3b2ce50055.json",
+          "fileSha256": "831a43ef135ffd21c7db675a0bbf311d0b7cfb80ea946aae6f1efa3b2ce50055",
+          "loadAtGenesis": true
+        },
+        {
+          "address": "VpJVmumSKG78SuniaC8contYbYsqXGYv1J7Ha7jpuLc",
+          "file": "accounts/062f49e314bf196255154052af91755a339373459d955beba92c3fc0a022e344.json",
+          "fileSha256": "062f49e314bf196255154052af91755a339373459d955beba92c3fc0a022e344",
+          "loadAtGenesis": true
+        }
+      ],
+      "genesisAccountsSha256": "7c2a19aa4a079800fc35fc130661303b8f450c33c515658363334b56b5f059a8",
+      "input": "cases/replay-nullifier-rejection/input.json",
+      "inputSha256": "96abbe2a4aa3f5a0c98aed246cc0f8cb02e2f932a0da519d238e1204f76590c4",
+      "markerStart": {
+        "dataBytes": 208,
+        "kind": "consumed-pool-owned",
+        "lamports": 2338560,
+        "owner": "5PjDJaGfSPJj4tFzMRCiuuAasKg5n8dJKXKenhuwZexx"
+      },
+      "name": "replay-nullifier-rejection",
+      "postStateAccountsSha256": "371201dd158132f1daa861677db8d716392e8ff35c41969f7c2b854aaa3138e5",
+      "programOverrides": [],
+      "rollbackRequired": true
+    },
+    {
+      "expectedFailureStage": "checkpoint account disagrees with the proof-bound historical anchor",
+      "expectedLogContains": [
+        "Program 5PjDJaGfSPJj4tFzMRCiuuAasKg5n8dJKXKenhuwZexx failed"
+      ],
+      "expectedOutcome": "failure",
+      "expectedSimulationAccountsFile": null,
+      "expectedSimulationAccountsFileSha256": null,
+      "expectedSimulationAccountsSha256": null,
+      "genesisAccounts": [
+        {
+          "address": "2nzTKLWYCX7X95x9N2r16JpaNpAhQgBavCe1vbQ3Lkjg",
+          "file": "accounts/fe0da9f042a1c7f71a1e00e9450d797241a4a3644bc28782200e8bf159e114cc.json",
+          "fileSha256": "fe0da9f042a1c7f71a1e00e9450d797241a4a3644bc28782200e8bf159e114cc",
+          "loadAtGenesis": true
+        },
+        {
+          "address": "3B3QhxztFR6kSo3m3kpTaU9JsQyJH6ScoT94gwnFXQYj",
+          "file": "accounts/3c0e86992a1fccfb300931a65027075fe51f255d98e51b3516d0d3891a280289.json",
+          "fileSha256": "3c0e86992a1fccfb300931a65027075fe51f255d98e51b3516d0d3891a280289",
+          "loadAtGenesis": true
+        },
+        {
+          "address": "3Hrd4YKTTF2eaoWjdwzBwagmH9SeuenwiVyQajm72C8N",
+          "file": "accounts/04c505b01aa2bef9886005380b20f8594279101c684b16b923ab1978df6ccf54.json",
+          "fileSha256": "04c505b01aa2bef9886005380b20f8594279101c684b16b923ab1978df6ccf54",
+          "loadAtGenesis": true
+        },
+        {
+          "address": "5fQPsn8hoaVddFG26cWQ5QFdqxWtUPNaZ9zH2E6LYzFn",
+          "file": "accounts/39580e98c6c3ebfc30c31acf6eecb6a266071125691277472aa4e406d54e6356.json",
+          "fileSha256": "39580e98c6c3ebfc30c31acf6eecb6a266071125691277472aa4e406d54e6356",
+          "loadAtGenesis": true
+        },
+        {
+          "address": "7YvvqJNdXZt3aNMkCebG4To2f1VJe1TbxHBtY41D4Jy2",
+          "file": "accounts/48c6a6825e7ed7ed47424569eac0a7fe346242fefbeb2e66e1c4e9ad284a2342.json",
+          "fileSha256": "48c6a6825e7ed7ed47424569eac0a7fe346242fefbeb2e66e1c4e9ad284a2342",
+          "loadAtGenesis": false
+        },
+        {
+          "address": "AKnL4NNf3DGWZJS6cPknBuEGnVsV4A4m5tgebLHaRSZ9",
+          "file": "accounts/64e48bddc65ac6aa562251061c548e9cde21c923fa364eba366494a8ffae3ffd.json",
+          "fileSha256": "64e48bddc65ac6aa562251061c548e9cde21c923fa364eba366494a8ffae3ffd",
+          "loadAtGenesis": true
+        },
+        {
+          "address": "DEozmkY3H2YccnEAqHyENJp2Hs1HAFjBq6xqdJDFeZk9",
+          "file": "accounts/b2b311e5a3c8709fe26d2e8ac5bac853ee2e0ccc20d240794057253d5775480b.json",
+          "fileSha256": "b2b311e5a3c8709fe26d2e8ac5bac853ee2e0ccc20d240794057253d5775480b",
+          "loadAtGenesis": true
+        },
+        {
+          "address": "EDfQpAnRQVqFmGZuY2ocZoX7gBp5H1N3MWWMLmuWTmD6",
+          "file": "accounts/659e590159a4f2048b911ee2f76f5718bc121ae20bf1c62c59bdf4772dd1ef8f.json",
+          "fileSha256": "659e590159a4f2048b911ee2f76f5718bc121ae20bf1c62c59bdf4772dd1ef8f",
+          "loadAtGenesis": true
+        },
+        {
+          "address": "VpJVmumSKG78SuniaC8contYbYsqXGYv1J7Ha7jpuLc",
+          "file": "accounts/062f49e314bf196255154052af91755a339373459d955beba92c3fc0a022e344.json",
+          "fileSha256": "062f49e314bf196255154052af91755a339373459d955beba92c3fc0a022e344",
+          "loadAtGenesis": true
+        }
+      ],
+      "genesisAccountsSha256": "10b182688280f7218bd3f302768633553bd456cbc6eb0c045fd9c1d1e56fcc2d",
+      "input": "cases/wrong-checkpoint-rejection/input.json",
+      "inputSha256": "5a43969ddf299258e3a614cfd95fe25eb45abbb269a5453a128c1d9fd470caba",
+      "markerStart": {
+        "dataBytes": 0,
+        "kind": "zero-lamport-system-owned",
+        "lamports": 0,
+        "owner": "11111111111111111111111111111111"
+      },
+      "name": "wrong-checkpoint-rejection",
+      "postStateAccountsSha256": "371201dd158132f1daa861677db8d716392e8ff35c41969f7c2b854aaa3138e5",
+      "programOverrides": [],
+      "rollbackRequired": true
+    },
+    {
+      "expectedFailureStage": "registry entry release differs from request and PDA",
+      "expectedLogContains": [
+        "Program 5PjDJaGfSPJj4tFzMRCiuuAasKg5n8dJKXKenhuwZexx failed"
+      ],
+      "expectedOutcome": "failure",
+      "expectedSimulationAccountsFile": null,
+      "expectedSimulationAccountsFileSha256": null,
+      "expectedSimulationAccountsSha256": null,
+      "genesisAccounts": [
+        {
+          "address": "2nzTKLWYCX7X95x9N2r16JpaNpAhQgBavCe1vbQ3Lkjg",
+          "file": "accounts/4dfeb68faaf3721bec31ea416981e54de2b898141e8f0179277696d4675e0a69.json",
+          "fileSha256": "4dfeb68faaf3721bec31ea416981e54de2b898141e8f0179277696d4675e0a69",
+          "loadAtGenesis": true
+        },
+        {
+          "address": "3B3QhxztFR6kSo3m3kpTaU9JsQyJH6ScoT94gwnFXQYj",
+          "file": "accounts/3c0e86992a1fccfb300931a65027075fe51f255d98e51b3516d0d3891a280289.json",
+          "fileSha256": "3c0e86992a1fccfb300931a65027075fe51f255d98e51b3516d0d3891a280289",
+          "loadAtGenesis": true
+        },
+        {
+          "address": "3Hrd4YKTTF2eaoWjdwzBwagmH9SeuenwiVyQajm72C8N",
+          "file": "accounts/04c505b01aa2bef9886005380b20f8594279101c684b16b923ab1978df6ccf54.json",
+          "fileSha256": "04c505b01aa2bef9886005380b20f8594279101c684b16b923ab1978df6ccf54",
+          "loadAtGenesis": true
+        },
+        {
+          "address": "5fQPsn8hoaVddFG26cWQ5QFdqxWtUPNaZ9zH2E6LYzFn",
+          "file": "accounts/39580e98c6c3ebfc30c31acf6eecb6a266071125691277472aa4e406d54e6356.json",
+          "fileSha256": "39580e98c6c3ebfc30c31acf6eecb6a266071125691277472aa4e406d54e6356",
+          "loadAtGenesis": true
+        },
+        {
+          "address": "7YvvqJNdXZt3aNMkCebG4To2f1VJe1TbxHBtY41D4Jy2",
+          "file": "accounts/48c6a6825e7ed7ed47424569eac0a7fe346242fefbeb2e66e1c4e9ad284a2342.json",
+          "fileSha256": "48c6a6825e7ed7ed47424569eac0a7fe346242fefbeb2e66e1c4e9ad284a2342",
+          "loadAtGenesis": false
+        },
+        {
+          "address": "AKnL4NNf3DGWZJS6cPknBuEGnVsV4A4m5tgebLHaRSZ9",
+          "file": "accounts/64e48bddc65ac6aa562251061c548e9cde21c923fa364eba366494a8ffae3ffd.json",
+          "fileSha256": "64e48bddc65ac6aa562251061c548e9cde21c923fa364eba366494a8ffae3ffd",
+          "loadAtGenesis": true
+        },
+        {
+          "address": "DEozmkY3H2YccnEAqHyENJp2Hs1HAFjBq6xqdJDFeZk9",
+          "file": "accounts/b2b311e5a3c8709fe26d2e8ac5bac853ee2e0ccc20d240794057253d5775480b.json",
+          "fileSha256": "b2b311e5a3c8709fe26d2e8ac5bac853ee2e0ccc20d240794057253d5775480b",
+          "loadAtGenesis": true
+        },
+        {
+          "address": "EDfQpAnRQVqFmGZuY2ocZoX7gBp5H1N3MWWMLmuWTmD6",
+          "file": "accounts/831a43ef135ffd21c7db675a0bbf311d0b7cfb80ea946aae6f1efa3b2ce50055.json",
+          "fileSha256": "831a43ef135ffd21c7db675a0bbf311d0b7cfb80ea946aae6f1efa3b2ce50055",
+          "loadAtGenesis": true
+        },
+        {
+          "address": "VpJVmumSKG78SuniaC8contYbYsqXGYv1J7Ha7jpuLc",
+          "file": "accounts/062f49e314bf196255154052af91755a339373459d955beba92c3fc0a022e344.json",
+          "fileSha256": "062f49e314bf196255154052af91755a339373459d955beba92c3fc0a022e344",
+          "loadAtGenesis": true
+        }
+      ],
+      "genesisAccountsSha256": "5a5a8a905a04cadcf460c5cb2bfb5cdad62ff829c2aec14eca29ec904b6913cb",
+      "input": "cases/wrong-registry-release-rejection/input.json",
+      "inputSha256": "89d960614815f72dab593ce09ac92c23b0b8b5ba998f3f291778c905b96dec2c",
+      "markerStart": {
+        "dataBytes": 0,
+        "kind": "zero-lamport-system-owned",
+        "lamports": 0,
+        "owner": "11111111111111111111111111111111"
+      },
+      "name": "wrong-registry-release-rejection",
+      "postStateAccountsSha256": "371201dd158132f1daa861677db8d716392e8ff35c41969f7c2b854aaa3138e5",
+      "programOverrides": [],
+      "rollbackRequired": true
+    },
+    {
+      "expectedFailureStage": "proof-account header magic malformed",
+      "expectedLogContains": [
+        "Program 5PjDJaGfSPJj4tFzMRCiuuAasKg5n8dJKXKenhuwZexx failed"
+      ],
+      "expectedOutcome": "failure",
+      "expectedSimulationAccountsFile": null,
+      "expectedSimulationAccountsFileSha256": null,
+      "expectedSimulationAccountsSha256": null,
+      "genesisAccounts": [
+        {
+          "address": "2nzTKLWYCX7X95x9N2r16JpaNpAhQgBavCe1vbQ3Lkjg",
+          "file": "accounts/fe0da9f042a1c7f71a1e00e9450d797241a4a3644bc28782200e8bf159e114cc.json",
+          "fileSha256": "fe0da9f042a1c7f71a1e00e9450d797241a4a3644bc28782200e8bf159e114cc",
+          "loadAtGenesis": true
+        },
+        {
+          "address": "3B3QhxztFR6kSo3m3kpTaU9JsQyJH6ScoT94gwnFXQYj",
+          "file": "accounts/3c0e86992a1fccfb300931a65027075fe51f255d98e51b3516d0d3891a280289.json",
+          "fileSha256": "3c0e86992a1fccfb300931a65027075fe51f255d98e51b3516d0d3891a280289",
+          "loadAtGenesis": true
+        },
+        {
+          "address": "3Hrd4YKTTF2eaoWjdwzBwagmH9SeuenwiVyQajm72C8N",
+          "file": "accounts/04c505b01aa2bef9886005380b20f8594279101c684b16b923ab1978df6ccf54.json",
+          "fileSha256": "04c505b01aa2bef9886005380b20f8594279101c684b16b923ab1978df6ccf54",
+          "loadAtGenesis": true
+        },
+        {
+          "address": "5fQPsn8hoaVddFG26cWQ5QFdqxWtUPNaZ9zH2E6LYzFn",
+          "file": "accounts/17013eeba7a02c05f635e00f56a4c1aa3bd3993fa5df81af31f3bbe1baf42b25.json",
+          "fileSha256": "17013eeba7a02c05f635e00f56a4c1aa3bd3993fa5df81af31f3bbe1baf42b25",
+          "loadAtGenesis": true
+        },
+        {
+          "address": "7YvvqJNdXZt3aNMkCebG4To2f1VJe1TbxHBtY41D4Jy2",
+          "file": "accounts/48c6a6825e7ed7ed47424569eac0a7fe346242fefbeb2e66e1c4e9ad284a2342.json",
+          "fileSha256": "48c6a6825e7ed7ed47424569eac0a7fe346242fefbeb2e66e1c4e9ad284a2342",
+          "loadAtGenesis": false
+        },
+        {
+          "address": "AKnL4NNf3DGWZJS6cPknBuEGnVsV4A4m5tgebLHaRSZ9",
+          "file": "accounts/64e48bddc65ac6aa562251061c548e9cde21c923fa364eba366494a8ffae3ffd.json",
+          "fileSha256": "64e48bddc65ac6aa562251061c548e9cde21c923fa364eba366494a8ffae3ffd",
+          "loadAtGenesis": true
+        },
+        {
+          "address": "DEozmkY3H2YccnEAqHyENJp2Hs1HAFjBq6xqdJDFeZk9",
+          "file": "accounts/b2b311e5a3c8709fe26d2e8ac5bac853ee2e0ccc20d240794057253d5775480b.json",
+          "fileSha256": "b2b311e5a3c8709fe26d2e8ac5bac853ee2e0ccc20d240794057253d5775480b",
+          "loadAtGenesis": true
+        },
+        {
+          "address": "EDfQpAnRQVqFmGZuY2ocZoX7gBp5H1N3MWWMLmuWTmD6",
+          "file": "accounts/831a43ef135ffd21c7db675a0bbf311d0b7cfb80ea946aae6f1efa3b2ce50055.json",
+          "fileSha256": "831a43ef135ffd21c7db675a0bbf311d0b7cfb80ea946aae6f1efa3b2ce50055",
+          "loadAtGenesis": true
+        },
+        {
+          "address": "VpJVmumSKG78SuniaC8contYbYsqXGYv1J7Ha7jpuLc",
+          "file": "accounts/062f49e314bf196255154052af91755a339373459d955beba92c3fc0a022e344.json",
+          "fileSha256": "062f49e314bf196255154052af91755a339373459d955beba92c3fc0a022e344",
+          "loadAtGenesis": true
+        }
+      ],
+      "genesisAccountsSha256": "a32a0fc142380bb64beb26e6ce54e47f3d3a3121e0f4b31b68996a61f5cdd1ef",
+      "input": "cases/malformed-proof-rejection/input.json",
+      "inputSha256": "3bb376961a5a2c0cec3d5239fc9bf77829d00ded8ea59c9c872aa2602d5f07b5",
+      "markerStart": {
+        "dataBytes": 0,
+        "kind": "zero-lamport-system-owned",
+        "lamports": 0,
+        "owner": "11111111111111111111111111111111"
+      },
+      "name": "malformed-proof-rejection",
+      "postStateAccountsSha256": "371201dd158132f1daa861677db8d716392e8ff35c41969f7c2b854aaa3138e5",
+      "programOverrides": [],
+      "rollbackRequired": true
+    },
+    {
+      "expectedFailureStage": "authenticated proof body changed after construction",
+      "expectedLogContains": [
+        "Program 5PjDJaGfSPJj4tFzMRCiuuAasKg5n8dJKXKenhuwZexx failed"
+      ],
+      "expectedOutcome": "failure",
+      "expectedSimulationAccountsFile": null,
+      "expectedSimulationAccountsFileSha256": null,
+      "expectedSimulationAccountsSha256": null,
+      "genesisAccounts": [
+        {
+          "address": "2nzTKLWYCX7X95x9N2r16JpaNpAhQgBavCe1vbQ3Lkjg",
+          "file": "accounts/fe0da9f042a1c7f71a1e00e9450d797241a4a3644bc28782200e8bf159e114cc.json",
+          "fileSha256": "fe0da9f042a1c7f71a1e00e9450d797241a4a3644bc28782200e8bf159e114cc",
+          "loadAtGenesis": true
+        },
+        {
+          "address": "3B3QhxztFR6kSo3m3kpTaU9JsQyJH6ScoT94gwnFXQYj",
+          "file": "accounts/3c0e86992a1fccfb300931a65027075fe51f255d98e51b3516d0d3891a280289.json",
+          "fileSha256": "3c0e86992a1fccfb300931a65027075fe51f255d98e51b3516d0d3891a280289",
+          "loadAtGenesis": true
+        },
+        {
+          "address": "3Hrd4YKTTF2eaoWjdwzBwagmH9SeuenwiVyQajm72C8N",
+          "file": "accounts/04c505b01aa2bef9886005380b20f8594279101c684b16b923ab1978df6ccf54.json",
+          "fileSha256": "04c505b01aa2bef9886005380b20f8594279101c684b16b923ab1978df6ccf54",
+          "loadAtGenesis": true
+        },
+        {
+          "address": "5fQPsn8hoaVddFG26cWQ5QFdqxWtUPNaZ9zH2E6LYzFn",
+          "file": "accounts/7e6ee4748f821068677b370225584d875e193ba97ac0f67abd81eee74819c39b.json",
+          "fileSha256": "7e6ee4748f821068677b370225584d875e193ba97ac0f67abd81eee74819c39b",
+          "loadAtGenesis": true
+        },
+        {
+          "address": "7YvvqJNdXZt3aNMkCebG4To2f1VJe1TbxHBtY41D4Jy2",
+          "file": "accounts/4737bf68d2478900b0c740671e54c1f0ef768dd24a79efb13953449cfb775828.json",
+          "fileSha256": "4737bf68d2478900b0c740671e54c1f0ef768dd24a79efb13953449cfb775828",
+          "loadAtGenesis": true
+        },
+        {
+          "address": "AKnL4NNf3DGWZJS6cPknBuEGnVsV4A4m5tgebLHaRSZ9",
+          "file": "accounts/64e48bddc65ac6aa562251061c548e9cde21c923fa364eba366494a8ffae3ffd.json",
+          "fileSha256": "64e48bddc65ac6aa562251061c548e9cde21c923fa364eba366494a8ffae3ffd",
+          "loadAtGenesis": true
+        },
+        {
+          "address": "DEozmkY3H2YccnEAqHyENJp2Hs1HAFjBq6xqdJDFeZk9",
+          "file": "accounts/b2b311e5a3c8709fe26d2e8ac5bac853ee2e0ccc20d240794057253d5775480b.json",
+          "fileSha256": "b2b311e5a3c8709fe26d2e8ac5bac853ee2e0ccc20d240794057253d5775480b",
+          "loadAtGenesis": true
+        },
+        {
+          "address": "EDfQpAnRQVqFmGZuY2ocZoX7gBp5H1N3MWWMLmuWTmD6",
+          "file": "accounts/831a43ef135ffd21c7db675a0bbf311d0b7cfb80ea946aae6f1efa3b2ce50055.json",
+          "fileSha256": "831a43ef135ffd21c7db675a0bbf311d0b7cfb80ea946aae6f1efa3b2ce50055",
+          "loadAtGenesis": true
+        },
+        {
+          "address": "VpJVmumSKG78SuniaC8contYbYsqXGYv1J7Ha7jpuLc",
+          "file": "accounts/062f49e314bf196255154052af91755a339373459d955beba92c3fc0a022e344.json",
+          "fileSha256": "062f49e314bf196255154052af91755a339373459d955beba92c3fc0a022e344",
+          "loadAtGenesis": true
+        }
+      ],
+      "genesisAccountsSha256": "317ae8fe4fc5b527b8e84858c8fa567c697c5c71230bf1c0d053975cc36bdfb6",
+      "input": "cases/mutated-proof-rejection/input.json",
+      "inputSha256": "c2437b2d69ca595c6cc90b9b73a9047dfcb3e7bd02d540079d100769b871601c",
+      "markerStart": {
+        "dataBytes": 0,
+        "kind": "dusted-system-owned",
+        "lamports": 1,
+        "owner": "11111111111111111111111111111111"
+      },
+      "name": "mutated-proof-rejection",
+      "postStateAccountsSha256": "371201dd158132f1daa861677db8d716392e8ff35c41969f7c2b854aaa3138e5",
+      "programOverrides": [],
+      "rollbackRequired": true
+    },
+    {
+      "expectedFailureStage": "selected verifier succeeds, deterministic token-program test double rejects CPI",
+      "expectedLogContains": [
+        "Program 5PjDJaGfSPJj4tFzMRCiuuAasKg5n8dJKXKenhuwZexx failed",
+        "Program 7Q2nGsPg8rbjdxKHK4jxTgEWLTyd9o1X4KMSjCieRmue success",
+        "Program TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA failed"
+      ],
+      "expectedOutcome": "failure",
+      "expectedSimulationAccountsFile": null,
+      "expectedSimulationAccountsFileSha256": null,
+      "expectedSimulationAccountsSha256": null,
+      "genesisAccounts": [
+        {
+          "address": "2nzTKLWYCX7X95x9N2r16JpaNpAhQgBavCe1vbQ3Lkjg",
+          "file": "accounts/fe0da9f042a1c7f71a1e00e9450d797241a4a3644bc28782200e8bf159e114cc.json",
+          "fileSha256": "fe0da9f042a1c7f71a1e00e9450d797241a4a3644bc28782200e8bf159e114cc",
+          "loadAtGenesis": true
+        },
+        {
+          "address": "3B3QhxztFR6kSo3m3kpTaU9JsQyJH6ScoT94gwnFXQYj",
+          "file": "accounts/3c0e86992a1fccfb300931a65027075fe51f255d98e51b3516d0d3891a280289.json",
+          "fileSha256": "3c0e86992a1fccfb300931a65027075fe51f255d98e51b3516d0d3891a280289",
+          "loadAtGenesis": true
+        },
+        {
+          "address": "3Hrd4YKTTF2eaoWjdwzBwagmH9SeuenwiVyQajm72C8N",
+          "file": "accounts/04c505b01aa2bef9886005380b20f8594279101c684b16b923ab1978df6ccf54.json",
+          "fileSha256": "04c505b01aa2bef9886005380b20f8594279101c684b16b923ab1978df6ccf54",
+          "loadAtGenesis": true
+        },
+        {
+          "address": "5TeWSsjg2gbxCyWVniXeCmwM7UtHTCK7svzJr5xYJzHf",
+          "file": "accounts/57f823adf734156674eed223c84543db02c67447e8293c47c1728029d907f111.json",
+          "fileSha256": "57f823adf734156674eed223c84543db02c67447e8293c47c1728029d907f111",
+          "loadAtGenesis": true
+        },
+        {
+          "address": "5fQPsn8hoaVddFG26cWQ5QFdqxWtUPNaZ9zH2E6LYzFn",
+          "file": "accounts/8adebf56b65c38cdc0bfebd21f631274defe836cf1d87cac2f601d734f4da2d0.json",
+          "fileSha256": "8adebf56b65c38cdc0bfebd21f631274defe836cf1d87cac2f601d734f4da2d0",
+          "loadAtGenesis": true
+        },
+        {
+          "address": "5w5aSyzkAmgYBcG3qop5EuLgpbMhAe7rnneuFkGjYKYc",
+          "file": "accounts/3e6aed40fba07736796eac6bbb61673e49187ec28f7970292824725d90ba9cfb.json",
+          "fileSha256": "3e6aed40fba07736796eac6bbb61673e49187ec28f7970292824725d90ba9cfb",
+          "loadAtGenesis": true
+        },
+        {
+          "address": "6CquEHN9aS4cvEjUnZPhr1azMBmbiF5pMfdjVu8RQx6p",
+          "file": "accounts/c2dcda69acdec81550a375e89cdabb076f708f077928a3bbddb0d582e07f4612.json",
+          "fileSha256": "c2dcda69acdec81550a375e89cdabb076f708f077928a3bbddb0d582e07f4612",
+          "loadAtGenesis": true
+        },
+        {
+          "address": "7YvvqJNdXZt3aNMkCebG4To2f1VJe1TbxHBtY41D4Jy2",
+          "file": "accounts/48c6a6825e7ed7ed47424569eac0a7fe346242fefbeb2e66e1c4e9ad284a2342.json",
+          "fileSha256": "48c6a6825e7ed7ed47424569eac0a7fe346242fefbeb2e66e1c4e9ad284a2342",
+          "loadAtGenesis": false
+        },
+        {
+          "address": "9D428z6FiWBzKX9i72tc26RGybMbGV9FLUa8EAAvf7kX",
+          "file": "accounts/efbc0405570f252cdfea7c24650cb5f6d276af083e2b0ff7e25720bee100ada8.json",
+          "fileSha256": "efbc0405570f252cdfea7c24650cb5f6d276af083e2b0ff7e25720bee100ada8",
+          "loadAtGenesis": true
+        },
+        {
+          "address": "AKnL4NNf3DGWZJS6cPknBuEGnVsV4A4m5tgebLHaRSZ9",
+          "file": "accounts/64e48bddc65ac6aa562251061c548e9cde21c923fa364eba366494a8ffae3ffd.json",
+          "fileSha256": "64e48bddc65ac6aa562251061c548e9cde21c923fa364eba366494a8ffae3ffd",
+          "loadAtGenesis": true
+        },
+        {
+          "address": "DEozmkY3H2YccnEAqHyENJp2Hs1HAFjBq6xqdJDFeZk9",
+          "file": "accounts/b2b311e5a3c8709fe26d2e8ac5bac853ee2e0ccc20d240794057253d5775480b.json",
+          "fileSha256": "b2b311e5a3c8709fe26d2e8ac5bac853ee2e0ccc20d240794057253d5775480b",
+          "loadAtGenesis": true
+        },
+        {
+          "address": "EDfQpAnRQVqFmGZuY2ocZoX7gBp5H1N3MWWMLmuWTmD6",
+          "file": "accounts/831a43ef135ffd21c7db675a0bbf311d0b7cfb80ea946aae6f1efa3b2ce50055.json",
+          "fileSha256": "831a43ef135ffd21c7db675a0bbf311d0b7cfb80ea946aae6f1efa3b2ce50055",
+          "loadAtGenesis": true
+        },
+        {
+          "address": "VpJVmumSKG78SuniaC8contYbYsqXGYv1J7Ha7jpuLc",
+          "file": "accounts/062f49e314bf196255154052af91755a339373459d955beba92c3fc0a022e344.json",
+          "fileSha256": "062f49e314bf196255154052af91755a339373459d955beba92c3fc0a022e344",
+          "loadAtGenesis": true
+        }
+      ],
+      "genesisAccountsSha256": "157db013dfbcddf16407730f3a409d2ec766edf47874e1b0c5ea74e4c8c8dac1",
+      "input": "cases/failed-withdrawal-cpi-rollback/input.json",
+      "inputSha256": "db349622a5fcbc876d63151453fbccfc4065a0d48769cbb14e69052464fab0b8",
+      "markerStart": {
+        "dataBytes": 0,
+        "kind": "zero-lamport-system-owned",
+        "lamports": 0,
+        "owner": "11111111111111111111111111111111"
+      },
+      "name": "failed-withdrawal-cpi-rollback",
+      "postStateAccountsSha256": "e36ce7c1898aa52814b670bde08673d74cbc52d7e3897cf2c99673641d39007d",
+      "programOverrides": [
+        {
+          "address": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA",
+          "file": "sbf/aspis_verifier.so",
+          "fileSha256": "4ee9b4789533e049e2d9e1f43c84fa97f745a98151f9477ebd828de742b75e5c",
+          "purpose": "deterministic rejecting CPI test double; production SPL Token is not replaced outside this disposable case"
+        }
+      ],
+      "rollbackRequired": true
+    }
+  ],
+  "computeUnitCeiling": 1300000,
+  "deployed": false,
+  "executionReady": false,
+  "generatorSchema": "aspis.v7.deterministic-agave-bundle-generator.v1",
+  "poolProgram": "5PjDJaGfSPJj4tFzMRCiuuAasKg5n8dJKXKenhuwZexx",
+  "poolSbf": "sbf/aspis_pool.so",
+  "poolSbfBytes": null,
+  "poolSbfSha256": null,
+  "poolSourceTree": "872814145eb07077fae2f15cf507643d28f3fa4b",
+  "programSourceCommit": "da77d5f5a22681200cceec8e90fc69ac2cc81ad8",
+  "programSourceTree": "aee02a157b9866a4eaada912fe7ca8976ae51fce",
+  "sbfBindingComplete": false,
+  "sbfFilesIncludedInTemplate": false,
+  "schema": "aspis.v7.disposable-agave-txv1-bundle.v1",
+  "signed": false,
+  "submitted": false,
+  "transactionByteCeilingExclusive": 4096,
+  "verifierProgram": "7Q2nGsPg8rbjdxKHK4jxTgEWLTyd9o1X4KMSjCieRmue",
+  "verifierSbf": "sbf/aspis_verifier.so",
+  "verifierSbfBytes": 1700384,
+  "verifierSbfSha256": "4ee9b4789533e049e2d9e1f43c84fa97f745a98151f9477ebd828de742b75e5c",
+  "verifierSourceTree": "e7370c020cac1e51ca9e41092dcf6ecbf095bd99",
+  "warpSlot": 150
+}

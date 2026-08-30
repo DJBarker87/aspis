@@ -5,6 +5,9 @@ readonly ROOT=$(cd "$(dirname "$0")/.." && pwd)
 readonly PREFLIGHT="$ROOT/release/v7-one-tx-candidate-preflight-v1"
 readonly MANIFEST="$PREFLIGHT/manifest.json"
 readonly VERIFY_INPUTS="$PREFLIGHT/verify-inputs.sh"
+readonly TEMPLATE_BUNDLE="$ROOT/results/v7-one-tx-agave-bundle-template-20260830"
+readonly BUNDLE_VERIFY="$ROOT/scripts/v7_txv1_bundle_verify.sh"
+readonly AGAVE_RUNNER="$ROOT/scripts/v7_txv1_disposable_agave_simulate.sh"
 
 fail() {
   echo "FAIL: $*" >&2
@@ -29,7 +32,7 @@ usage:
   scripts/v7_one_tx_release_replay.sh check
   scripts/v7_one_tx_release_replay.sh build <new-output-dir>
   scripts/v7_one_tx_release_replay.sh build-and-simulate \
-    <new-output-dir> <agave-4.2+-bin-dir> <eleven-case-bundle-dir>
+    <new-output-dir> <agave-4.2+-bin-dir>
 
 The build modes require Linux x86_64, a cgroup-v2 scope capped at
 MemoryHigh<=4 GiB, MemoryMax<=6 GiB and MemorySwapMax=0, and:
@@ -38,13 +41,16 @@ MemoryHigh<=4 GiB, MemoryMax<=6 GiB and MemorySwapMax=0, and:
     platform-tools-v1.48/ and solana-active-release/ from the frozen
     91-file toolchain inventory>
 
-No mode signs, submits, deploys, or mutates a public cluster.
+Both build modes produce two independent SBF builds and materialize the frozen
+eleven-case fixture with the resulting Pool/verifier bytes. The simulation mode
+also requires Agave 4.2+ and runs only simulateTransaction against disposable
+validators. No mode signs, submits, deploys, or mutates a public cluster.
 USAGE
   exit 2
 }
 
-[[ -f "$MANIFEST" && -x "$VERIFY_INPUTS" ]] \
-  || fail "V7 preflight bundle is incomplete"
+[[ -f "$MANIFEST" && -x "$VERIFY_INPUTS" && -x "$BUNDLE_VERIFY" && -x "$AGAVE_RUNNER" ]] \
+  || fail "V7 preflight or replay harness is incomplete"
 
 readonly MODE=${1:-}
 case "$MODE" in
@@ -56,16 +62,15 @@ case "$MODE" in
     [[ $# -eq 2 ]] || usage
     ;;
   build-and-simulate)
-    [[ $# -eq 4 ]] || usage
+    [[ $# -eq 3 ]] || usage
     ;;
   *) usage ;;
 esac
 
 readonly OUTPUT_DIR=$2
 readonly AGAVE_BIN_DIR=${3:-}
-readonly CASE_BUNDLE_DIR=${4:-}
 
-for command_name in awk cmp cp find git jq sed sha256sum sort tar uname wc xargs; do
+for command_name in awk cmp cp find git jq sed sort tar uname wc xargs; do
   require_command "$command_name"
 done
 [[ -x /usr/bin/time ]] || fail "/usr/bin/time is required for release resource evidence"
@@ -125,7 +130,7 @@ trap 'exit 1' HUP INT TERM
 
 "$VERIFY_INPUTS" >"$OUTPUT_DIR/input-audit.json"
 
-echo "[1/5] Verify all frozen toolchain bytes"
+echo "[1/6] Verify every byte in the frozen SBF toolchain"
 expected_cargo_build_sbf_sha=$(jq -er '.toolchain.frozenInventory.cargoBuildSbfSha256' "$MANIFEST")
 [[ "$(sha_file "$CARGO_BUILD_SBF")" == "$expected_cargo_build_sbf_sha" ]] \
   || fail "cargo-build-sbf bytes differ from the frozen toolchain"
@@ -150,7 +155,7 @@ printf '%s\n' "$actual_version" >"$OUTPUT_DIR/cargo-build-sbf-version.txt"
 printf '%s\n' "$platform_rustc_version" >"$OUTPUT_DIR/platform-rustc-version.txt"
 "$PLATFORM_TOOLS_ROOT/llvm/bin/clang-19" --version >"$OUTPUT_DIR/platform-clang-version.txt"
 
-echo "[2/5] Export two isolated copies of the exact source commit"
+echo "[2/6] Export two isolated copies of the exact da77 source"
 readonly SOURCE_COMMIT=$(jq -er '.source.commit' "$MANIFEST")
 readonly SOURCE_DATE_EPOCH=$(git -C "$ROOT" show -s --format=%ct "$SOURCE_COMMIT")
 for label in a b; do
@@ -203,26 +208,30 @@ build_program() {
   [[ -f "$out_dir/$output_name" ]] || fail "build $label omitted $output_name"
 }
 
-echo "[3/5] Build Pool and verifier in both isolated source copies"
+echo "[3/6] Build Pool and verifier in both isolated source copies"
 for label in a b; do
   build_program "$label" aspis-pool
   build_program "$label" aspis-verifier
 done
 
-echo "[4/5] Require A/B equality and the frozen measured-candidate hashes"
+echo "[4/6] Require A/B equality and freeze exact derived SBF identities"
 mkdir -p "$OUTPUT_DIR/sbf"
 build_records='[]'
 for program in aspis-pool aspis-verifier; do
   output_name=$(jq -er --arg program "$program" '.programs[] | select(.name == $program) | .output' "$MANIFEST")
-  expected_sha=$(jq -er --arg program "$program" '.programs[] | select(.name == $program) | .expectedSha256' "$MANIFEST")
-  expected_bytes=$(jq -er --arg program "$program" '.programs[] | select(.name == $program) | .expectedBytes' "$MANIFEST")
+  expected_sha=$(jq -r --arg program "$program" '.programs[] | select(.name == $program) | .expectedSha256 // empty' "$MANIFEST")
+  expected_bytes=$(jq -r --arg program "$program" '.programs[] | select(.name == $program) | .expectedBytes // empty' "$MANIFEST")
   artifact_a="$WORK_DIR/sbf-a-$program/$output_name"
   artifact_b="$WORK_DIR/sbf-b-$program/$output_name"
   cmp -s "$artifact_a" "$artifact_b" || fail "$program A/B SBFs are not byte-identical"
-  [[ "$(sha_file "$artifact_a")" == "$expected_sha" ]] \
-    || fail "$program SBF does not match the frozen measured candidate hash"
-  [[ "$(wc -c <"$artifact_a" | tr -d ' ')" == "$expected_bytes" ]] \
-    || fail "$program SBF does not match the frozen measured candidate length"
+  actual_sha=$(sha_file "$artifact_a")
+  actual_bytes=$(wc -c <"$artifact_a" | tr -d ' ')
+  if [[ -n "$expected_sha" || -n "$expected_bytes" ]]; then
+    [[ "$actual_sha" == "$expected_sha" && "$actual_bytes" == "$expected_bytes" ]] \
+      || fail "$program SBF does not match its frozen reference"
+  elif [[ "$program" != "aspis-pool" ]]; then
+    fail "only the atomic-marker Pool may use a first-derived SBF identity"
+  fi
   cp "$artifact_a" "$OUTPUT_DIR/sbf/$output_name"
   for label in a b; do
     time_file="$OUTPUT_DIR/build-$label-$program.time"
@@ -245,6 +254,11 @@ for program in aspis-pool aspis-verifier; do
   done
 done
 
+pool_sha=$(sha_file "$OUTPUT_DIR/sbf/aspis_pool.so")
+pool_bytes=$(wc -c <"$OUTPUT_DIR/sbf/aspis_pool.so" | tr -d ' ')
+verifier_sha=$(sha_file "$OUTPUT_DIR/sbf/aspis_verifier.so")
+verifier_bytes=$(wc -c <"$OUTPUT_DIR/sbf/aspis_verifier.so" | tr -d ' ')
+
 jq -n \
   --arg sourceCommit "$SOURCE_COMMIT" \
   --arg sourceTree "$(jq -er '.source.tree' "$MANIFEST")" \
@@ -256,17 +270,17 @@ jq -n \
   --arg cargoBuildSbfVersion "$actual_version" \
   --arg uname "$(<"$OUTPUT_DIR/uname.txt")" \
   --arg osReleaseSha256 "$(sha_file "$OUTPUT_DIR/os-release.txt")" \
-  --arg poolSha256 "$(sha_file "$OUTPUT_DIR/sbf/aspis_pool.so")" \
-  --arg verifierSha256 "$(sha_file "$OUTPUT_DIR/sbf/aspis_verifier.so")" \
+  --arg poolSha256 "$pool_sha" \
+  --arg verifierSha256 "$verifier_sha" \
   --argjson builds "$build_records" \
-  --argjson poolBytes "$(wc -c <"$OUTPUT_DIR/sbf/aspis_pool.so" | tr -d ' ')" \
-  --argjson verifierBytes "$(wc -c <"$OUTPUT_DIR/sbf/aspis_verifier.so" | tr -d ' ')" \
+  --argjson poolBytes "$pool_bytes" \
+  --argjson verifierBytes "$verifier_bytes" \
   --arg cgroup "$CGROUP_RELATIVE" \
   --argjson memoryHigh "$MEMORY_HIGH" \
   --argjson memoryMax "$MEMORY_MAX" \
   --argjson memorySwapMax "$MEMORY_SWAP_MAX" '
   {
-    schema: "aspis.v7.one-tx-reproducible-sbf.v1",
+    schema: "aspis.v7.one-tx-reproducible-sbf.v2",
     source: {
       commit: $sourceCommit,
       tree: $sourceTree,
@@ -291,43 +305,81 @@ jq -n \
     },
     builds: $builds,
     programs: {
-      pool: {bytes: $poolBytes, sha256: $poolSha256, buildsByteIdentical: true, matchesMeasuredCandidate: true},
-      verifier: {bytes: $verifierBytes, sha256: $verifierSha256, buildsByteIdentical: true, matchesMeasuredCandidate: true}
+      pool: {
+        bytes: $poolBytes,
+        sha256: $poolSha256,
+        buildsByteIdentical: true,
+        identityClassification: "FIRST_FRESH_DA77_ATOMIC_MARKER_FREEZE"
+      },
+      verifier: {
+        bytes: $verifierBytes,
+        sha256: $verifierSha256,
+        buildsByteIdentical: true,
+        matchesFrozenReference: true
+      }
     },
     signed: false,
     submitted: false,
     deployed: false
   }' >"$OUTPUT_DIR/reproducible-sbf.json"
 
+echo "[5/6] Materialize and verify the frozen eleven-case bundle"
+readonly MATERIALIZED_BUNDLE="$OUTPUT_DIR/materialized-eleven-case-bundle"
+mkdir -p "$MATERIALIZED_BUNDLE"
+cp -R "$TEMPLATE_BUNDLE"/. "$MATERIALIZED_BUNDLE"/
+mkdir -p "$MATERIALIZED_BUNDLE/sbf"
+cp "$OUTPUT_DIR/sbf/aspis_pool.so" "$MATERIALIZED_BUNDLE/sbf/aspis_pool.so"
+cp "$OUTPUT_DIR/sbf/aspis_verifier.so" "$MATERIALIZED_BUNDLE/sbf/aspis_verifier.so"
+jq \
+  --arg poolSha "$pool_sha" \
+  --argjson poolBytes "$pool_bytes" '
+  .poolSbfSha256 = $poolSha |
+  .poolSbfBytes = $poolBytes |
+  .sbfBindingComplete = true |
+  .executionReady = true
+' "$MATERIALIZED_BUNDLE/bundle.json" >"$WORK_DIR/materialized-bundle.json"
+cp "$WORK_DIR/materialized-bundle.json" "$MATERIALIZED_BUNDLE/bundle.json"
+(
+  cd "$MATERIALIZED_BUNDLE"
+  find . -type f ! -path './sbf/*' ! -name TEMPLATE-SHA256SUMS -print \
+    | sort \
+    | while IFS= read -r relative; do
+        printf '%s  %s\n' "$(sha_file "$relative")" "${relative#./}"
+      done >"$WORK_DIR/materialized-inventory"
+)
+cp "$WORK_DIR/materialized-inventory" "$MATERIALIZED_BUNDLE/TEMPLATE-SHA256SUMS"
+"$BUNDLE_VERIFY" "$MATERIALIZED_BUNDLE" --materialized \
+  >"$OUTPUT_DIR/materialized-bundle-audit.json"
+
 suite_status="UNAVAILABLE_NOT_REQUESTED"
 suite_sha256=""
 if [[ "$MODE" == "build-and-simulate" ]]; then
-  echo "[5/5] Run the exact eleven-case simulation-only TxV1 suite"
+  echo "[6/6] Execute the exact eleven-case simulation-only TxV1 suite"
   [[ -x "$AGAVE_BIN_DIR/solana" && -x "$AGAVE_BIN_DIR/solana-test-validator" ]] \
     || fail "Agave bin directory is incomplete"
-  [[ -f "$CASE_BUNDLE_DIR/bundle.json" ]] || fail "eleven-case bundle is missing bundle.json"
-  bundle_pool=$(jq -er '.poolSbf' "$CASE_BUNDLE_DIR/bundle.json")
-  bundle_verifier=$(jq -er '.verifierSbf' "$CASE_BUNDLE_DIR/bundle.json")
-  [[ "$(sha_file "$CASE_BUNDLE_DIR/$bundle_pool")" == "$(sha_file "$OUTPUT_DIR/sbf/aspis_pool.so")" ]] \
-    || fail "case bundle Pool SBF differs from the reproducible candidate"
-  [[ "$(sha_file "$CASE_BUNDLE_DIR/$bundle_verifier")" == "$(sha_file "$OUTPUT_DIR/sbf/aspis_verifier.so")" ]] \
-    || fail "case bundle verifier SBF differs from the reproducible candidate"
-  bash "$WORK_DIR/source-a/scripts/v7_txv1_disposable_agave_simulate.sh" \
-    "$AGAVE_BIN_DIR" "$CASE_BUNDLE_DIR" "$OUTPUT_DIR/txv1-suite"
+  ASPIS_TXV1_WALLET_SOURCE_ROOT="$WORK_DIR/source-a" \
+    "$AGAVE_RUNNER" "$AGAVE_BIN_DIR" "$MATERIALIZED_BUNDLE" "$OUTPUT_DIR/txv1-suite"
   suite_sha256=$(sha_file "$OUTPUT_DIR/txv1-suite/suite.json")
   suite_status="PASS"
 else
-  echo "[5/5] Eleven-case Agave suite not requested; release gate remains open"
+  echo "[6/6] Agave suite not requested; runtime/CU gate remains open"
 fi
 
 jq -n \
   --arg sbfRecordSha256 "$(sha_file "$OUTPUT_DIR/reproducible-sbf.json")" \
+  --arg poolSha256 "$pool_sha" \
+  --arg materializedBundleSha256 "$(sha_file "$MATERIALIZED_BUNDLE/bundle.json")" \
+  --arg materializedBundleAuditSha256 "$(sha_file "$OUTPUT_DIR/materialized-bundle-audit.json")" \
   --arg suiteStatus "$suite_status" \
   --arg suiteSha256 "$suite_sha256" '
   {
-    schema: "aspis.v7.one-tx-release-replay-summary.v1",
+    schema: "aspis.v7.one-tx-release-replay-summary.v2",
     reproducibleSbf: "PASS",
     reproducibleSbfRecordSha256: $sbfRecordSha256,
+    atomicMarkerPoolSbfSha256: $poolSha256,
+    deterministicBundleMaterialized: true,
+    materializedBundleSha256: $materializedBundleSha256,
+    materializedBundleAuditSha256: $materializedBundleAuditSha256,
     disposableAgaveElevenCaseSuite: $suiteStatus,
     disposableAgaveSuiteSha256: (if $suiteSha256 == "" then null else $suiteSha256 end),
     publicDevnetLifecycle: "NOT_EXECUTED",
@@ -338,7 +390,8 @@ jq -n \
     releaseReady: false
   }' >"$OUTPUT_DIR/summary.json"
 
-echo "PASS: reproducible SBF build completed"
+echo "PASS: two byte-identical Pool and verifier SBF builds completed"
+echo "PASS: deterministic eleven-case bundle materialized against those exact bytes"
 if [[ "$suite_status" == "PASS" ]]; then
   echo "PASS: eleven-case disposable Agave TxV1 simulation suite completed"
 else

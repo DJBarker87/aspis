@@ -49,19 +49,20 @@ use aspis_statement::{
 use base64::{engine::general_purpose::STANDARD as BASE64_STANDARD, Engine as _};
 use serde_json::{json, Value};
 use sha2::{Digest as _, Sha256};
-use solana_keypair::Keypair;
-use solana_program::pubkey::Pubkey;
-use solana_signer::Signer;
+use solana_program::{pubkey::Pubkey, rent::Rent};
 
-const PROGRAM_SOURCE_COMMIT: &str = "bcd03b12293f2737dfa1da1436092a0a24a6ae24";
-const POOL_SBF_SHA256: &str = "61f80ab33bff36b38716df944d7851a473be0ed065b2d57864082fd966ec8810";
-const POOL_SBF_BYTES: u64 = 524_328;
-const VERIFIER_SBF_SHA256: &str = "4ee9b478953e049e2d9e1f43c84fa97f745a98151f9477ebd828de742b75e5c";
+const PROGRAM_SOURCE_COMMIT: &str = "da77d5f5a22681200cceec8e90fc69ac2cc81ad8";
+const PROGRAM_SOURCE_TREE: &str = "aee02a157b9866a4eaada912fe7ca8976ae51fce";
+const POOL_SOURCE_TREE: &str = "872814145eb07077fae2f15cf507643d28f3fa4b";
+const VERIFIER_SOURCE_TREE: &str = "e7370c020cac1e51ca9e41092dcf6ecbf095bd99";
+const VERIFIER_SBF_SHA256: &str =
+    "4ee9b4789533e049e2d9e1f43c84fa97f745a98151f9477ebd828de742b75e5c";
 const VERIFIER_SBF_BYTES: u64 = 1_700_384;
 const PROFILE_SLOT: u64 = 150;
 
 const POOL_PROGRAM_BYTES: [u8; 32] = [0x41; 32];
 const VERIFIER_PROGRAM_ID: &str = "7Q2nGsPg8rbjdxKHK4jxTgEWLTyd9o1X4KMSjCieRmue";
+const SIMULATION_FEE_PAYER_ID: &str = "AKnL4NNf3DGWZJS6cPknBuEGnVsV4A4m5tgebLHaRSZ9";
 const REGISTRY_PROGRAM_BYTES: [u8; 32] = [0x44; 32];
 const REGISTRY_AUTHORITY_BYTES: [u8; 32] = [0; 32];
 const POLICY_BINDING_BYTES: [u8; 32] = [7; 32];
@@ -126,6 +127,13 @@ impl CaseSpec {
         } else {
             "same-page"
         }
+    }
+
+    fn dusted_marker(self) -> bool {
+        matches!(
+            self.name,
+            "transfer-rollover" | "withdrawal-rollover" | "mutated-proof-rejection"
+        )
     }
 }
 
@@ -385,11 +393,11 @@ fn load_payload(repo: &Path, path: &str, expected_afterstate: &[u8]) -> Result<V
     Ok(payload)
 }
 
-fn account_meta(key: Pubkey, writable: bool) -> Value {
+fn account_meta(key: Pubkey, writable: bool, signer: bool) -> Value {
     json!({
         "pubkey": key.to_string(),
         "writable": writable,
-        "signer": false,
+        "signer": signer,
     })
 }
 
@@ -699,9 +707,9 @@ fn case_bundle(repo: &Path, output: &Path, spec: CaseSpec, request_id: u64) -> R
     insert_account(
         &mut accounts,
         marker_key,
-        pool_program,
-        vec![0u8; POOL_V1_NULLIFIER_MARKER_ACCOUNT_BYTES],
-        DATA_ACCOUNT_LAMPORTS,
+        Pubkey::default(),
+        Vec::new(),
+        if spec.dusted_marker() { 1 } else { 0 },
     )?;
     insert_account(
         &mut accounts,
@@ -789,7 +797,14 @@ fn case_bundle(repo: &Path, output: &Path, spec: CaseSpec, request_id: u64) -> R
             replace_account_data(&mut accounts, page_key, stale_history)?;
         }
         Mutation::ReplayMarker => {
-            replace_account_data(&mut accounts, marker_key, expected_marker.to_vec())?;
+            let marker = accounts
+                .get_mut(&account_key(&marker_key))
+                .context("missing replay marker")?;
+            marker.owner = pool_program;
+            marker.data = expected_marker.to_vec();
+            marker.lamports = Rent::default()
+                .minimum_balance(POOL_V1_NULLIFIER_MARKER_ACCOUNT_BYTES)
+                .max(1);
         }
         Mutation::WrongCheckpoint => {
             let mut wrong = checkpoint;
@@ -828,8 +843,11 @@ fn case_bundle(repo: &Path, output: &Path, spec: CaseSpec, request_id: u64) -> R
         }
     }
 
-    let payer = Keypair::new_from_array([1u8; 32]);
-    let payer_key = Pubkey::new_from_array(payer.pubkey().to_bytes());
+    // The fixture needs only a public fee-payer address. The wallet emits a
+    // zero-signature simulation request, so no private key is constructed,
+    // stored, serialized, or loaded by this generator.
+    let payer_key = Pubkey::from_str(SIMULATION_FEE_PAYER_ID)
+        .context("decode deterministic public simulation fee payer")?;
     insert_account(
         &mut accounts,
         payer_key,
@@ -857,28 +875,30 @@ fn case_bundle(repo: &Path, output: &Path, spec: CaseSpec, request_id: u64) -> R
     );
 
     let mut instruction_accounts = vec![
-        account_meta(master_key, false),
-        account_meta(checkpoint_key, false),
-        account_meta(lane_key, true),
-        account_meta(page_key, !rollover),
+        account_meta(master_key, false, false),
+        account_meta(checkpoint_key, false, false),
+        account_meta(lane_key, true, false),
+        account_meta(page_key, !rollover, false),
     ];
     if let Some(next_page_key) = next_page_key {
-        instruction_accounts.push(account_meta(next_page_key, true));
+        instruction_accounts.push(account_meta(next_page_key, true, false));
     }
     instruction_accounts.extend([
-        account_meta(marker_key, true),
-        account_meta(registry_key, false),
-        account_meta(entry_key, false),
-        account_meta(verifier_program, false),
-        account_meta(proof_key, false),
+        account_meta(marker_key, true, false),
+        account_meta(payer_key, true, true),
+        account_meta(Pubkey::default(), false, false),
+        account_meta(registry_key, false, false),
+        account_meta(entry_key, false, false),
+        account_meta(verifier_program, false, false),
+        account_meta(proof_key, false, false),
     ]);
     if spec.operation == Operation::Withdrawal {
         instruction_accounts.extend([
-            account_meta(mint, false),
-            account_meta(vault_key, true),
-            account_meta(destination_key, true),
-            account_meta(vault_authority, false),
-            account_meta(token_program, false),
+            account_meta(mint, false, false),
+            account_meta(vault_key, true, false),
+            account_meta(destination_key, true, false),
+            account_meta(vault_authority, false, false),
+            account_meta(token_program, false, false),
         ]);
     }
 
@@ -905,6 +925,7 @@ fn case_bundle(repo: &Path, output: &Path, spec: CaseSpec, request_id: u64) -> R
             "address": address,
             "file": file,
             "fileSha256": file_sha,
+            "loadAtGenesis": account.lamports > 0,
         }));
     }
     let genesis_sha = sha256_hex(&serde_json::to_vec(&genesis)?);
@@ -937,7 +958,14 @@ fn case_bundle(repo: &Path, output: &Path, spec: CaseSpec, request_id: u64) -> R
         if let (Some(next_page_key), Some(next_page)) = (next_page_key, successful_next_page) {
             replace_account_data(&mut expected, next_page_key, next_page)?;
         }
-        replace_account_data(&mut expected, marker_key, expected_marker.to_vec())?;
+        let expected_marker_account = expected
+            .get_mut(&account_key(&marker_key))
+            .context("missing expected marker")?;
+        expected_marker_account.owner = pool_program;
+        expected_marker_account.data = expected_marker.to_vec();
+        expected_marker_account.lamports = Rent::default()
+            .minimum_balance(POOL_V1_NULLIFIER_MARKER_ACCOUNT_BYTES)
+            .max(1);
         if spec.operation == Operation::Withdrawal {
             replace_account_data(
                 &mut expected,
@@ -1004,6 +1032,18 @@ fn case_bundle(repo: &Path, output: &Path, spec: CaseSpec, request_id: u64) -> R
         "expectedLogContains": expected_logs,
         "expectedFailureStage": spec.failure_stage,
         "rollbackRequired": !spec.succeeds(),
+        "markerStart": {
+            "kind": if spec.mutation == Mutation::ReplayMarker {
+                "consumed-pool-owned"
+            } else if spec.dusted_marker() {
+                "dusted-system-owned"
+            } else {
+                "zero-lamport-system-owned"
+            },
+            "lamports": accounts.get(&account_key(&marker_key)).map(|account| account.lamports),
+            "owner": accounts.get(&account_key(&marker_key)).map(|account| account.owner.to_string()),
+            "dataBytes": accounts.get(&account_key(&marker_key)).map(|account| account.data.len()),
+        },
         "genesisAccounts": genesis,
         "genesisAccountsSha256": genesis_sha,
         "postStateAccountsSha256": post_keys_sha,
@@ -1030,11 +1070,38 @@ fn collect_files(root: &Path, current: &Path, files: &mut Vec<PathBuf>) -> Resul
     Ok(())
 }
 
+struct PoolSbfBinding {
+    bytes: u64,
+    sha256: String,
+}
+
+fn parse_arguments() -> Result<(PathBuf, Option<PoolSbfBinding>)> {
+    let arguments = env::args().skip(1).collect::<Vec<_>>();
+    match arguments.as_slice() {
+        [output] => Ok((PathBuf::from(output), None)),
+        [output, flag, pool_sbf] if flag == "--pool-sbf" => {
+            let bytes = fs::read(pool_sbf)
+                .with_context(|| format!("read freshly reproduced Pool SBF {pool_sbf}"))?;
+            ensure!(!bytes.is_empty(), "Pool SBF is empty");
+            Ok((
+                PathBuf::from(output),
+                Some(PoolSbfBinding {
+                    bytes: bytes.len() as u64,
+                    sha256: sha256_hex(&bytes),
+                }),
+            ))
+        }
+        _ => {
+            eprintln!(
+                "usage: generate_txv1_agave_bundle <new-output-directory> [--pool-sbf <fresh-da77-sbf>]"
+            );
+            std::process::exit(2);
+        }
+    }
+}
+
 fn main() -> Result<()> {
-    let output = env::args().nth(1).map(PathBuf::from).unwrap_or_else(|| {
-        eprintln!("usage: generate_txv1_agave_bundle <new-output-directory>");
-        std::process::exit(2);
-    });
+    let (output, pool_sbf_binding) = parse_arguments()?;
     ensure!(
         !output.exists(),
         "refusing to overwrite {}",
@@ -1062,15 +1129,20 @@ fn main() -> Result<()> {
         "schema": "aspis.v7.disposable-agave-txv1-bundle.v1",
         "generatorSchema": "aspis.v7.deterministic-agave-bundle-generator.v1",
         "programSourceCommit": PROGRAM_SOURCE_COMMIT,
+        "programSourceTree": PROGRAM_SOURCE_TREE,
+        "poolSourceTree": POOL_SOURCE_TREE,
+        "verifierSourceTree": VERIFIER_SOURCE_TREE,
         "poolProgram": Pubkey::new_from_array(POOL_PROGRAM_BYTES).to_string(),
         "verifierProgram": VERIFIER_PROGRAM_ID,
         "poolSbf": "sbf/aspis_pool.so",
-        "poolSbfSha256": POOL_SBF_SHA256,
-        "poolSbfBytes": POOL_SBF_BYTES,
+        "poolSbfSha256": pool_sbf_binding.as_ref().map(|binding| binding.sha256.clone()),
+        "poolSbfBytes": pool_sbf_binding.as_ref().map(|binding| binding.bytes),
         "verifierSbf": "sbf/aspis_verifier.so",
         "verifierSbfSha256": VERIFIER_SBF_SHA256,
         "verifierSbfBytes": VERIFIER_SBF_BYTES,
+        "sbfBindingComplete": pool_sbf_binding.is_some(),
         "sbfFilesIncludedInTemplate": false,
+        "executionReady": pool_sbf_binding.is_some(),
         "warpSlot": PROFILE_SLOT,
         "computeUnitCeiling": 1_300_000,
         "transactionByteCeilingExclusive": 4_096,
@@ -1100,6 +1172,7 @@ fn main() -> Result<()> {
         output.display()
     );
     println!("cases={}", CASES.len());
+    println!("sbf_binding_complete={}", pool_sbf_binding.is_some());
     println!("signed=false submitted=false deployed=false");
     Ok(())
 }

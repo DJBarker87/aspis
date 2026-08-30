@@ -10,7 +10,7 @@ require_command() {
   command -v "$1" >/dev/null 2>&1 || fail "required command is unavailable: $1"
 }
 
-for command_name in bash git jq wc; do
+for command_name in awk bash find git jq wc; do
   require_command "$command_name"
 done
 
@@ -26,14 +26,14 @@ fi
 
 readonly BUNDLE=$(cd "$(dirname "$0")" && pwd)
 readonly ROOT=$(cd "$BUNDLE/../.." && pwd)
-git -C "$ROOT" rev-parse --git-dir >/dev/null 2>&1 \
-  || fail "preflight bundle is not inside the Aspis git repository"
 readonly MANIFEST="$BUNDLE/manifest.json"
 [[ -f "$MANIFEST" ]] || fail "preflight manifest is missing"
+git -C "$ROOT" rev-parse --git-dir >/dev/null 2>&1 \
+  || fail "preflight bundle is not inside the Aspis git repository"
 
 jq -e '
   .schema == "aspis.v7.one-tx-candidate-preflight.v1" and
-  .status == "INPUTS_FROZEN_EXECUTION_EVIDENCE_INCOMPLETE" and
+  .status == "ATOMIC_MARKER_FIXTURES_FROZEN_FRESH_SBF_AND_AGAVE_PENDING" and
   .authorization.build == true and
   .authorization.localSimulationOnly == true and
   .authorization.publicDevnetReadOnlyProbe == true and
@@ -42,9 +42,22 @@ jq -e '
   .authorization.deploy == false and
   .authorization.mainnet == false and
   (.programs | length == 2) and
-  (.txv1Lifecycle.requiredCases | length == 11) and
-  .txv1Lifecycle.caseBundleIncluded == false and
-  .txv1Lifecycle.suiteExecutedForThisFreeze == false
+  ([.programs[] | select(.name == "aspis-pool")][0] |
+    .expectedBytes == null and .expectedSha256 == null and
+    .bindingStatus == "PENDING_FRESH_DA77_DUAL_LINUX_BUILD") and
+  ([.programs[] | select(.name == "aspis-verifier")][0] |
+    .expectedBytes == 1700384 and
+    .expectedSha256 == "4ee9b4789533e049e2d9e1f43c84fa97f745a98151f9477ebd828de742b75e5c") and
+  (.txv1Lifecycle.requiredCases | length) == 11 and
+  (.txv1Lifecycle.requiredCases | unique | length) == 11 and
+  .txv1Lifecycle.caseBundleIncluded == true and
+  .txv1Lifecycle.caseBundlePoolSbfBindingComplete == false and
+  .txv1Lifecycle.walletPreflightsExecuted == 11 and
+  .txv1Lifecycle.agave42AvailableInRecordedLocalEnvironment == false and
+  .txv1Lifecycle.suiteExecutedForThisFreeze == false and
+  .currentMeasuredCombinedCase.executed == false and
+  .currentMeasuredCombinedCase.computeUnits == null and
+  .priorMeasuredCombinedCase.currentSource == false
 ' "$MANIFEST" >/dev/null || fail "manifest schema or fail-closed status changed"
 
 readonly SOURCE_COMMIT=$(jq -er '.source.commit' "$MANIFEST")
@@ -65,13 +78,14 @@ readonly VERIFIER_TREE=$(jq -er '.source.verifierTree' "$MANIFEST")
   || fail "frozen verifier source tree changed"
 
 while IFS=$'\t' read -r path expected; do
-  [[ -n "$path" && -n "$expected" ]] || fail "malformed frozen-file entry"
+  [[ -n "$path" && "$expected" =~ ^[0-9a-f]{64}$ ]] \
+    || fail "malformed source-frozen file entry"
   git -C "$ROOT" cat-file -e "$SOURCE_COMMIT:$path" 2>/dev/null \
     || fail "frozen source omits required path: $path"
   actual=$(git -C "$ROOT" show "$SOURCE_COMMIT:$path" | sha_stdin)
   [[ "$actual" == "$expected" ]] \
-    || fail "frozen file hash changed: $path"
-done < <(jq -r '.frozenFiles[] | [.path, .sha256] | @tsv' "$MANIFEST")
+    || fail "frozen source file hash changed: $path"
+done < <(jq -r '.sourceFrozenFiles[] | [.path, .sha256] | @tsv' "$MANIFEST")
 
 while IFS=$'\t' read -r manifest_path expected; do
   actual=$(git -C "$ROOT" show "$SOURCE_COMMIT:$manifest_path" | sha_stdin)
@@ -83,114 +97,163 @@ readonly TOOLCHAIN_PROVENANCE=$(jq -er '.toolchain.frozenInventory.path' "$MANIF
 readonly TOOLCHAIN_PROVENANCE_SHA=$(jq -er '.toolchain.frozenInventory.sha256' "$MANIFEST")
 readonly TOOLCHAIN_FILE_COUNT=$(jq -er '.toolchain.frozenInventory.toolchainFileCount' "$MANIFEST")
 readonly CARGO_BUILD_SBF_SHA=$(jq -er '.toolchain.frozenInventory.cargoBuildSbfSha256' "$MANIFEST")
-
 toolchain_actual=$(git -C "$ROOT" show "$SOURCE_COMMIT:$TOOLCHAIN_PROVENANCE" | sha_stdin)
 [[ "$toolchain_actual" == "$TOOLCHAIN_PROVENANCE_SHA" ]] \
   || fail "frozen toolchain inventory hash changed"
 jq -e \
   --argjson count "$TOOLCHAIN_FILE_COUNT" \
-  --arg cargoBuildSbfSha256 "$CARGO_BUILD_SBF_SHA" \
-  '(.toolchain_files | length) == $count and
-   .cargo_build_sbf_sha256 == $cargoBuildSbfSha256 and
-   .platform_tools_version == "v1.48" and
-   (.cargo_build_sbf_version | startswith("solana-cargo-build-sbf 2.3.0\nplatform-tools v1.48"))' \
-  < <(git -C "$ROOT" show "$SOURCE_COMMIT:$TOOLCHAIN_PROVENANCE") >/dev/null \
+  --arg cargoBuildSbfSha256 "$CARGO_BUILD_SBF_SHA" '
+  (.toolchain_files | length) == $count and
+  .cargo_build_sbf_sha256 == $cargoBuildSbfSha256 and
+  .platform_tools_version == "v1.48" and
+  (.cargo_build_sbf_version | startswith("solana-cargo-build-sbf 2.3.0\nplatform-tools v1.48"))
+' < <(git -C "$ROOT" show "$SOURCE_COMMIT:$TOOLCHAIN_PROVENANCE") >/dev/null \
   || fail "frozen toolchain inventory contents changed"
 
-readonly MEASURED_CASE=$(jq -er '.latestMeasuredCombinedCase.path' "$MANIFEST")
-readonly POOL_SHA=$(jq -er '.programs[] | select(.name == "aspis-pool") | .expectedSha256' "$MANIFEST")
-readonly POOL_BYTES=$(jq -er '.programs[] | select(.name == "aspis-pool") | .expectedBytes' "$MANIFEST")
+while IFS=$'\t' read -r path expected; do
+  [[ -n "$path" && "$expected" =~ ^[0-9a-f]{64}$ ]] \
+    || fail "malformed release-harness file entry: $path"
+  [[ -f "$ROOT/$path" ]] || fail "release-harness file is missing: $path"
+  [[ "$(sha_file "$ROOT/$path")" == "$expected" ]] \
+    || fail "release-harness file hash changed: $path"
+done < <(jq -r '.releaseHarnessFiles[] | [.path, .sha256] | @tsv' "$MANIFEST")
+
+readonly VERIFIER_ARTIFACT=$(jq -er '.programs[] | select(.name == "aspis-verifier") | .referenceArtifact' "$MANIFEST")
 readonly VERIFIER_SHA=$(jq -er '.programs[] | select(.name == "aspis-verifier") | .expectedSha256' "$MANIFEST")
 readonly VERIFIER_BYTES=$(jq -er '.programs[] | select(.name == "aspis-verifier") | .expectedBytes' "$MANIFEST")
-readonly MEASURED_CU=$(jq -er '.latestMeasuredCombinedCase.computeUnits' "$MANIFEST")
-readonly MEASURED_TX_BYTES=$(jq -er '.latestMeasuredCombinedCase.transactionBytes' "$MANIFEST")
+[[ "$(git -C "$ROOT" show "$SOURCE_COMMIT:$VERIFIER_ARTIFACT" | sha_stdin)" == "$VERIFIER_SHA" ]] \
+  || fail "frozen verifier reference artifact hash changed"
+[[ "$(git -C "$ROOT" cat-file -s "$SOURCE_COMMIT:$VERIFIER_ARTIFACT")" == "$VERIFIER_BYTES" ]] \
+  || fail "frozen verifier reference artifact length changed"
+
+readonly CASE_BUNDLE_RELATIVE=$(jq -er '.txv1Lifecycle.caseBundle' "$MANIFEST")
+readonly CASE_BUNDLE="$ROOT/$CASE_BUNDLE_RELATIVE"
+readonly CASE_BUNDLE_SHA=$(jq -er '.txv1Lifecycle.caseBundleSha256' "$MANIFEST")
+readonly CASE_INVENTORY_SHA=$(jq -er '.txv1Lifecycle.caseBundleInventorySha256' "$MANIFEST")
+readonly OFFLINE_AUDIT_RELATIVE=$(jq -er '.txv1Lifecycle.caseBundleOfflineAudit' "$MANIFEST")
+readonly OFFLINE_AUDIT="$ROOT/$OFFLINE_AUDIT_RELATIVE"
+readonly OFFLINE_AUDIT_SHA=$(jq -er '.txv1Lifecycle.caseBundleOfflineAuditSha256' "$MANIFEST")
+readonly BUNDLE_VERIFY="$ROOT/scripts/v7_txv1_bundle_verify.sh"
+[[ -d "$CASE_BUNDLE" && -x "$BUNDLE_VERIFY" && -f "$OFFLINE_AUDIT" ]] \
+  || fail "deterministic bundle, validator, or offline audit is missing"
+[[ "$(sha_file "$CASE_BUNDLE/bundle.json")" == "$CASE_BUNDLE_SHA" ]] \
+  || fail "case bundle manifest hash changed"
+[[ "$(sha_file "$CASE_BUNDLE/TEMPLATE-SHA256SUMS")" == "$CASE_INVENTORY_SHA" ]] \
+  || fail "case bundle checksum inventory changed"
+[[ "$(sha_file "$OFFLINE_AUDIT")" == "$OFFLINE_AUDIT_SHA" ]] \
+  || fail "offline audit hash changed"
+
+bundle_file_count=0
+bundle_bytes=0
+while IFS= read -r -d '' file; do
+  ((bundle_file_count += 1))
+  bytes=$(wc -c <"$file" | tr -d ' ')
+  ((bundle_bytes += bytes))
+done < <(find "$CASE_BUNDLE" -type f -print0)
+[[ "$bundle_file_count" == "$(jq -er '.txv1Lifecycle.caseBundleFiles' "$MANIFEST")" ]] \
+  || fail "case bundle file count changed"
+[[ "$bundle_bytes" == "$(jq -er '.txv1Lifecycle.caseBundleBytes' "$MANIFEST")" ]] \
+  || fail "case bundle byte count changed"
+
+bundle_audit=$($BUNDLE_VERIFY "$CASE_BUNDLE")
+jq -e \
+  --arg bundleSha "$CASE_BUNDLE_SHA" \
+  --arg inventorySha "$CASE_INVENTORY_SHA" '
+  .schema == "aspis.v7.deterministic-agave-bundle-offline-audit.v1" and
+  .cases == 11 and .exactRequiredCaseSet == true and
+  .allNegativeCasesRequireRollback == true and
+  .hashesAndLengthsMatch == true and
+  .canonicalAsq8InputsMatch == true and
+  .deterministicTokenFailureTestDoublePinned == true and
+  .bundleSha256 == $bundleSha and
+  .templateInventorySha256 == $inventorySha and
+  .sbfMaterializedAndMatched == false and
+  .agaveExecutionPerformed == false and
+  .signed == false and .submitted == false and .deployed == false
+' <<<"$bundle_audit" >/dev/null || fail "offline bundle validator did not reproduce the frozen result"
 
 jq -e \
-  --arg poolSha "$POOL_SHA" \
-  --arg verifierSha "$VERIFIER_SHA" \
-  --argjson poolBytes "$POOL_BYTES" \
-  --argjson verifierBytes "$VERIFIER_BYTES" \
-  --argjson units "$MEASURED_CU" \
-  --argjson txBytes "$MEASURED_TX_BYTES" '
-    .schema == "aspis.v7-pair-forest.combined-litesvm.v2" and
-    .artifacts.pool.sha256 == $poolSha and
-    .artifacts.pool.bytes == $poolBytes and
-    .artifacts.verifier.sha256 == $verifierSha and
-    .artifacts.verifier.bytes == $verifierBytes and
-    .execution.network == "none" and
-    .execution.runtime == "LiteSVM 0.16.0" and
-    .execution.operation == "withdrawal" and
-    .execution.outcome == "accepted" and
-    .execution.compute_units == $units and
-    .execution.compute_units < 1300000 and
-    .execution.serialized_transaction_bytes == $txBytes and
-    .execution.serialized_transaction_bytes < 4096 and
-    .execution.return_data_bytes == 792 and
-    .execution.simulation_equals_execution == true and
-    .execution.selected_verifier_cpi_observed_in_logs == true and
-    .atomicity.checkpoint_unchanged == true and
-    .atomicity.entry_unchanged == true and
-    .atomicity.lane_changed_exactly_on_success == true and
-    .atomicity.nullifier_marker_changed_exactly_on_success == true and
-    .atomicity.master_unchanged == true and
-    .atomicity.proof_unchanged == true and
-    .atomicity.registry_unchanged == true and
-    .atomicity.rollover_page_changed_exactly_on_success == true and
-    .atomicity.settled_history_equals_expected == true and
-    .atomicity.settled_lane_equals_candidate == true and
-    .atomicity.settled_marker_equals_expected == true and
-    .atomicity.settled_rollover_page_equals_expected == true and
-    .atomicity.withdrawal_mint_unchanged == true and
-    (.atomicity.withdrawal_vault_amount_before - .atomicity.withdrawal_vault_amount_after) == 250 and
-    (.atomicity.withdrawal_destination_amount_after - .atomicity.withdrawal_destination_amount_before) == 250
-  ' < <(git -C "$ROOT" show "$SOURCE_COMMIT:$MEASURED_CASE") >/dev/null \
-  || fail "latest measured combined case no longer satisfies the frozen predicates"
-
-while IFS= read -r script_path; do
-  temporary_script=$(mktemp "${TMPDIR:-/tmp}/aspis-v7-script.XXXXXX")
-  git -C "$ROOT" show "$SOURCE_COMMIT:$script_path" >"$temporary_script"
-  bash -n "$temporary_script" || {
-    rm -f "$temporary_script"
-    fail "shell syntax check failed: $script_path"
-  }
-  rm -f "$temporary_script"
-done < <(jq -r '.frozenFiles[] | select(.path | startswith("scripts/")) | .path' "$MANIFEST")
-
-jq -n \
-  --arg schema "aspis.v7.one-tx-candidate-input-audit.v1" \
   --arg sourceCommit "$SOURCE_COMMIT" \
   --arg sourceTree "$SOURCE_TREE" \
-  --arg poolSha256 "$POOL_SHA" \
+  --arg poolTree "$POOL_TREE" \
+  --arg verifierTree "$VERIFIER_TREE" \
+  --arg bundleSha "$CASE_BUNDLE_SHA" \
+  --arg inventorySha "$CASE_INVENTORY_SHA" '
+  .schema == "aspis.v7.deterministic-agave-bundle-offline-audit.v2" and
+  .programSource.commit == $sourceCommit and
+  .programSource.tree == $sourceTree and
+  .programSource.poolTree == $poolTree and
+  .programSource.verifierTree == $verifierTree and
+  .bundle.bundleSha256 == $bundleSha and
+  .bundle.templateInventorySha256 == $inventorySha and
+  .bundle.cases == 11 and .bundle.successCases == 4 and .bundle.rollbackCases == 7 and
+  .bundle.allNegativeCasesRequireRollback == true and
+  .bundle.independentGenerations == 2 and
+  .bundle.independentOutputsByteIdentical == true and
+  .txv1.walletPreflightsExecuted == 11 and .txv1.allPreflightsPassed == true and
+  ([.txv1.shapes[].serializedTransactionBytes] == [833, 866, 998, 1031]) and
+  .sbf.poolBindingComplete == false and .sbf.poolSha256 == null and .sbf.poolBytes == null and
+  .execution.agaveSuiteExecuted == false and
+  .execution.liteSvmSubstituted == false and
+  .execution.componentSumsSubstituted == false and
+  .execution.signed == false and .execution.submitted == false and .execution.deployed == false and
+  .result == "OFFLINE_FIXTURES_GREEN_RUNTIME_PENDING"
+' "$OFFLINE_AUDIT" >/dev/null || fail "offline evidence record changed"
+
+while IFS= read -r script_path; do
+  bash -n "$ROOT/$script_path" || fail "shell syntax check failed: $script_path"
+done < <(jq -r '.releaseHarnessFiles[] | select(.path | endswith(".sh")) | .path' "$MANIFEST")
+bash -n "$BUNDLE/verify-inputs.sh" || fail "shell syntax check failed: release verifier"
+
+jq -n \
+  --arg sourceCommit "$SOURCE_COMMIT" \
+  --arg sourceTree "$SOURCE_TREE" \
   --arg verifierSha256 "$VERIFIER_SHA" \
-  --argjson measuredWorstCaseCu "$MEASURED_CU" \
-  --argjson measuredWorstCaseTxBytes "$MEASURED_TX_BYTES" \
-  --arg toolchainInventorySha256 "$TOOLCHAIN_PROVENANCE_SHA" \
-  --argjson requiredTxv1Cases 11 '
+  --arg bundleSha256 "$CASE_BUNDLE_SHA" \
+  --arg bundleInventorySha256 "$CASE_INVENTORY_SHA" \
+  --arg offlineAuditSha256 "$OFFLINE_AUDIT_SHA" \
+  --arg toolchainInventorySha256 "$TOOLCHAIN_PROVENANCE_SHA" '
   {
-    schema: $schema,
+    schema: "aspis.v7.one-tx-candidate-input-audit.v2",
     sourceCommit: $sourceCommit,
     sourceTree: $sourceTree,
-    frozenFileHashesMatch: true,
+    frozenSourceFileHashesMatch: true,
+    frozenReleaseHarnessHashesMatch: true,
     frozenToolchainInventoryMatches: true,
     programFeatureManifestsMatch: true,
-    currentSourceMeasuredWorstCase: {
-      classification: "REAL_COMBINED_LITESVM_CURRENT_SOURCE_WORST_CASE",
-      poolSha256: $poolSha256,
-      verifierSha256: $verifierSha256,
-      computeUnits: $measuredWorstCaseCu,
-      transactionBytes: $measuredWorstCaseTxBytes,
-      predicatesMatch: true
+    verifierReference: {bytes: 1700384, sha256: $verifierSha256},
+    poolReference: {
+      bytes: null,
+      sha256: null,
+      status: "PENDING_FRESH_DA77_DUAL_LINUX_BUILD"
     },
-    requiredTxv1Cases: $requiredTxv1Cases,
+    deterministicCaseBundle: {
+      cases: 11,
+      successCases: 4,
+      rollbackCases: 7,
+      allNegativeCasesRequireRollback: true,
+      bundleSha256: $bundleSha256,
+      inventorySha256: $bundleInventorySha256,
+      offlineAuditSha256: $offlineAuditSha256,
+      independentGenerationsByteIdentical: true,
+      walletPreflightsPassed: 11,
+      sbfMaterialized: false,
+      agaveExecuted: false
+    },
     reproducibleBuildExecuted: false,
     disposableAgaveSuiteExecuted: false,
     publicDevnetTransactionSigned: false,
     publicDevnetTransactionSubmitted: false,
     releaseReady: false,
     remainingGates: [
-      "two byte-identical clean Linux SBF builds from the frozen source",
-      "eleven-case Agave 4.2+ TxV1 simulation-only bundle and replay",
-      "public-devnet finalized TxV1 execution activation before any RPC simulation"
+      "two byte-identical capped Linux SBF builds from da77d5f5",
+      "materialize the frozen eleven-case bundle with the resulting Pool SBF",
+      "execute all eleven cases on a disposable Agave 4.2+ validator",
+      "measure fresh combined CU for all four honest paths and enforce rollback for all seven failures",
+      "public-devnet TxV1 execution activation before any public RPC simulation"
     ],
-    toolchainInventorySha256: $toolchainInventorySha256
+    toolchainInventorySha256: $toolchainInventorySha256,
+    signed: false,
+    submitted: false,
+    deployed: false
   }'

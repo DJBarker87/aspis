@@ -25,6 +25,7 @@ readonly AGAVE_BIN_DIR=$1
 readonly BUNDLE_DIR=$2
 readonly EVIDENCE_DIR=$3
 readonly REPO_ROOT=$(cd "$(dirname "$0")/.." && pwd)
+readonly WALLET_SOURCE_ROOT=${ASPIS_TXV1_WALLET_SOURCE_ROOT:-$REPO_ROOT}
 readonly BUNDLE_MANIFEST="$BUNDLE_DIR/bundle.json"
 readonly BUNDLE_VERIFY="$REPO_ROOT/scripts/v7_txv1_bundle_verify.sh"
 readonly RPC_PORT=${ASPIS_TXV1_LOCAL_RPC_PORT:-18899}
@@ -46,9 +47,16 @@ done
   echo "missing bundle manifest: $BUNDLE_MANIFEST" >&2
   exit 2
 }
+[[ -f "$WALLET_SOURCE_ROOT/crates/aspis-pool-wallet-v1/Cargo.toml" ]] || {
+  echo "wallet source root is incomplete: $WALLET_SOURCE_ROOT" >&2
+  exit 2
+}
 jq -e '
   .schema == "aspis.v7.disposable-agave-txv1-bundle.v1" and
-  .programSourceCommit == "bcd03b12293f2737dfa1da1436092a0a24a6ae24" and
+  .programSourceCommit == "da77d5f5a22681200cceec8e90fc69ac2cc81ad8" and
+  .programSourceTree == "aee02a157b9866a4eaada912fe7ca8976ae51fce" and
+  .poolSourceTree == "872814145eb07077fae2f15cf507643d28f3fa4b" and
+  .verifierSourceTree == "e7370c020cac1e51ca9e41092dcf6ecbf095bd99" and
   (.poolProgram | type == "string" and length > 0) and
   (.verifierProgram | type == "string" and length > 0) and
   (.poolSbf | type == "string" and length > 0) and
@@ -57,6 +65,7 @@ jq -e '
   (.verifierSbf | type == "string" and length > 0) and
   (.verifierSbfSha256 | test("^[0-9a-f]{64}$")) and
   (.verifierSbfBytes | type == "number" and . > 0) and
+  .sbfBindingComplete == true and .executionReady == true and
   .warpSlot == 150 and
   .computeUnitCeiling == 1300000 and
   .transactionByteCeilingExclusive == 4096 and
@@ -171,7 +180,8 @@ run_case() {
     (.genesisAccounts | type == "array" and length > 0 and all(
       (.address | type == "string" and length > 0) and
       (.file | type == "string" and length > 0) and
-      (.fileSha256 | test("^[0-9a-f]{64}$"))
+      (.fileSha256 | test("^[0-9a-f]{64}$")) and
+      (.loadAtGenesis | type == "boolean")
     )) and
     (.programOverrides | type == "array" and all(
       (.address | type == "string" and length > 0) and
@@ -221,7 +231,7 @@ run_case() {
       return 1
     }
     validator_args+=(--account "$address" "$BUNDLE_DIR/$relative_path")
-  done < <(jq -r '.genesisAccounts[] | [.address, .file, .fileSha256] | @tsv' "$case_json")
+  done < <(jq -r '.genesisAccounts[] | select(.loadAtGenesis) | [.address, .file, .fileSha256] | @tsv' "$case_json")
   while IFS=$'\t' read -r address relative_path expected_sha; do
     validate_bundle_relative_path "$relative_path"
     [[ -f "$BUNDLE_DIR/$relative_path" ]] || {
@@ -267,7 +277,7 @@ run_case() {
   }
   before_json=$(rpc "$(jq -nc --argjson addresses "$account_addresses" '{jsonrpc:"2.0",id:5,method:"getMultipleAccounts",params:[$addresses,{encoding:"base64",commitment:"finalized"}]}')")
 
-  preflight_json=$(cd "$REPO_ROOT" && NO_DNA=1 cargo run --quiet \
+  preflight_json=$(cd "$WALLET_SOURCE_ROOT" && NO_DNA=1 cargo run --quiet \
     --manifest-path crates/aspis-pool-wallet-v1/Cargo.toml \
     --features eight-lane-plumbing-v2 \
     --example tx_v1_simulation_request -- \
@@ -291,7 +301,7 @@ run_case() {
       | openssl base64 -d -A | wc -c | tr -d ' ')
     [[ "$return_data_length" == "792" ]]
     expected_accounts_sha256=$(jq -er '.expectedSimulationAccountsSha256' "$case_json")
-    actual_accounts_sha256=$(jq -cS '.result.value.accounts' <<<"$response_json" \
+    actual_accounts_sha256=$(jq -cSj '.result.value.accounts' <<<"$response_json" \
       | shasum -a 256 | awk '{print $1}')
     [[ "$actual_accounts_sha256" == "$expected_accounts_sha256" ]]
   elif [[ "$expected_outcome" == "failure" ]]; then
