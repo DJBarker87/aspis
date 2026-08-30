@@ -229,14 +229,31 @@ any earlier verifier query.  This is the exact source-level causal-order fact
 needed to rule out a q16 child query preceding the fresh answer that determines
 its state; it introduces no raw-coordinate role classifier.
 
+`V7Tag73ExactRootLookupCausalOrder.lean` turns that positional fact into the
+source-facing lookup theorem.  Every exact final-table lookup receives its
+literal adversary-or-verifier position, its answer is excluded from its own
+input prefix as well as every earlier query prefix, and any second lookup whose
+input begins with that answer is proved to occur strictly later in the combined
+adversary-then-verifier root chronology.
+
+`V7Tag73ExactQ16CausalCoordinateOrder.lean` instantiates the theorem across the
+entire accepted q16 scan.  It proves that every candidate starts from the one
+recorded q16 base, the literal counter absorb returns the canonical branch
+initial digest, and recursively every used output and advance query occurs
+strictly after the query that produced its current state digest.  It does not
+impose an order between the output and advance siblings; the repaired
+controller supports both.  Thus adversary-first creation is now a normal
+causally ordered source case rather than a missing classifier or an extra bad
+event.
+
 ## Exact remaining boundary
 
 The production/source layer must now instantiate the counted finite inventory
 and prove its cover:
 
-1. instantiate the root causal-order theorems at every accepted q16
-   output/advance coordinate, and recursively prove every used q16 output is
-   routed at its original fresh exposure and distinct named slots never alias;
+1. fold the exact ordered q16 coordinate certificates through the indexed
+   controller and prove the recursive routed lookup for every used output
+   slot (the source ordering and both sibling orders are now proved);
 2. prove that the routed forest agrees with
    `exactOperationalQ16DuplexForest` on every block used through the selected
    counter (the deterministic source forest intentionally zero-pads its
@@ -270,6 +287,8 @@ lake env lean AspisFormal/K1/V7Tag73CausalFinalWorkQ16UsedForest.lean
 lake env lean AspisFormal/K1/V7Tag73ProjectedFreshPriorQueryHistory.lean
 lake env lean AspisFormal/K1/V7Tag73ExactRootPriorQueryHistory.lean
 lake env lean AspisFormal/K1/V7Tag73ExactRootQueryCausalOrder.lean
+lake env lean AspisFormal/K1/V7Tag73ExactRootLookupCausalOrder.lean
+lake env lean AspisFormal/K1/V7Tag73ExactQ16CausalCoordinateOrder.lean
 lake env lean AspisFormal/K1/V7Tag73ExactCompilerFinalWorkTraceOccurrence.lean
 lake env lean AspisFormal/K1/V7Tag73FinalWorkEarliestExposure.lean
 lake env lean AspisFormal/K1/V7Tag73ExactFinalWorkEarliestExposure.lean
@@ -291,6 +310,8 @@ Observed focused checks:
 | projected-prefix prior-history chronology | 0 | 3.97 s | 5,575,933,952 B |
 | exact full-root prior-query chronology | 0 | 3.96 s | 5,657,559,040 B |
 | exact root causal ordering | 0 | 3.84 s | 5,650,186,240 B |
+| exact final-table dependency ordering | 0 | 3.94 s | 5,656,248,320 B |
+| exact used-q16 coordinate ordering | 0 | 3.96 s | 5,659,951,104 B |
 | exact accepted final-work trace occurrence | 0 | 4.37 s | 5,654,528,000 B |
 | exact earliest pair exposure trial | 0 | 4.21 s | 5,648,875,520 B |
 | indexed controller/production-prefix alignment | 0 | 4.51 s | 5,660,295,168 B |
