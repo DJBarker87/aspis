@@ -202,6 +202,13 @@ live named slot merely because the router was undersized.  This is an exact
 capacity theorem, not the remaining chronological source-classification
 theorem.
 
+`V7Tag73CausalFinalWorkQ16UsedForest.lean` removes an over-strong handoff
+obligation from that remaining proof.  For the joint 513-slot router it proves
+that exact recursive lookups for only the blocks consumed through the selected
+counter construct `OperationalQ16ForestRealization` directly.  The routed
+forest's unused suffix may remain arbitrary and independent; it no longer has
+to equal the canonical source forest's deliberately zero-padded suffix.
+
 ## Exact remaining boundary
 
 The production/source layer must now instantiate the counted finite inventory
@@ -239,6 +246,7 @@ lake env lean AspisFormal/K1/V7Tag73AdaptiveQ16TrialAccounting.lean
 lake env lean AspisFormal/K1/V7Tag73IndexedExposureCausalRouter.lean
 lake env lean AspisFormal/K1/V7Tag73FinalWorkQ16CandidateController.lean
 lake env lean AspisFormal/K1/V7Tag73FinalWorkQ16ResidualCapacity.lean
+lake env lean AspisFormal/K1/V7Tag73CausalFinalWorkQ16UsedForest.lean
 lake env lean AspisFormal/K1/V7Tag73ExactCompilerFinalWorkTraceOccurrence.lean
 lake env lean AspisFormal/K1/V7Tag73FinalWorkEarliestExposure.lean
 lake env lean AspisFormal/K1/V7Tag73ExactFinalWorkEarliestExposure.lean
@@ -256,6 +264,7 @@ Observed focused checks:
 | indexed production-cursor router | 0 | 4.0 s | not separately sampled |
 | order-robust final-work/q16 candidate controller | 0 | 4.05 s | 5,597,544,448 B |
 | exact joint-router residual capacity | 0 | 3.86 s | 5,544,230,912 B |
+| joint-router used-prefix forest handoff | 0 | 5.33 s | 5,607,358,464 B |
 | exact accepted final-work trace occurrence | 0 | 4.37 s | 5,654,528,000 B |
 | exact earliest pair exposure trial | 0 | 4.21 s | 5,648,875,520 B |
 | indexed controller/production-prefix alignment | 0 | 4.51 s | 5,660,295,168 B |
