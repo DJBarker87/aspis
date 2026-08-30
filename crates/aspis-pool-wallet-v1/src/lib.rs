@@ -64,6 +64,8 @@ pub mod wallet_store_migration_v2;
 pub mod wallet_transition;
 #[cfg(feature = "eight-lane-plumbing-v2")]
 pub mod wallet_v2_activation;
+#[cfg(feature = "eight-lane-plumbing-v2")]
+pub mod wallet_v2_runtime;
 pub mod witness_state;
 
 use aspis_core::field::{M31, P};

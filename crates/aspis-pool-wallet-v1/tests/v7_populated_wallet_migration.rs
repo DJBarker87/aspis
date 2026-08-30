@@ -1,29 +1,18 @@
 #![cfg(feature = "eight-lane-plumbing-v2")]
 
-#[cfg(unix)]
-use std::os::unix::fs::PermissionsExt as _;
-use std::{
-    convert::Infallible,
-    fs,
-    path::PathBuf,
-    sync::{
-        atomic::{AtomicU64, Ordering},
-        Arc, Mutex,
-    },
-};
-
 use aspis_core::field::M31;
 use aspis_pool::{
-    deposit::DepositRequestV1, pool_v1_pair_forest_checkpoint_address,
-    pool_v1_pair_forest_lane_address, pool_v1_pair_forest_master_address,
-    pool_v1_root_page_address, pool_v1_state_address, pool_v1_vault_token_account_address,
-    POOL_V1_PAIR_EMPTY_ROOTS,
+    deposit::DepositRequestV1,
+    instruction::{encode_transition_receipt_v1, TransitionReceiptV1},
+    pool_v1_pair_forest_checkpoint_address, pool_v1_pair_forest_lane_address,
+    pool_v1_pair_forest_master_address, pool_v1_root_page_address, pool_v1_state_address,
+    pool_v1_vault_token_account_address, PrivateTransferStatementV1, POOL_V1_PAIR_EMPTY_ROOTS,
 };
 use aspis_pool_wallet_v1::{
     derive_viewing_keypair_v1,
     durable_state::{
-        DurableRelayerStateV1, DurableStateErrorV1, DurableWalletStateV1,
-        LocalSpendAuthenticatorV1, SealedNoteAccessV1,
+        AuthenticatedSpentNoteUpdateV1, DurableRelayerStateV1, DurableStateErrorV1,
+        DurableWalletStateV1, LocalSpendAuthenticatorV1, SealedNoteAccessV1,
     },
     durable_witness_state::{DurableWalletWitnessStateV1, DurableWitnessErrorV1},
     encrypt_note_v1,
@@ -40,8 +29,11 @@ use aspis_pool_wallet_v1::{
     lane_forest_v2::{lane_forest_global_root_v2, LaneIdV2},
     lane_forest_wallet_txn_v2::{
         validated_protected_activation_from_image_v2, LaneForestWalletActivationPolicyV2,
-        LaneForestWalletEmptyFinalizedBlockV2, LaneForestWalletTxnCoordinatorV2,
-        LaneForestWalletTxnErrorV2,
+        LaneForestWalletEmptyFinalizedBlockV2, LaneForestWalletTentativeCommitmentV2,
+        LaneForestWalletTxnAtomicBoundaryV2, LaneForestWalletTxnAtomicFaultPointV2,
+        LaneForestWalletTxnCoordinatorV2, LaneForestWalletTxnErrorV2,
+        LaneForestWalletTxnFaultInjectorV2, LaneForestWalletTxnFaultPointV2,
+        LaneForestWalletTxnIntentV2,
     },
     note_store_crypto::{
         seal_recovered_note_v1, EncryptedLocalSpendAuthenticatorV1, LocalNullifierKeyStoreV1,
@@ -61,10 +53,13 @@ use aspis_pool_wallet_v1::{
         DepositScanOutcomeV1, FinalizedBlockV1, FinalizedChainPointV1, LocalOwnerKeyStoreV1,
         ScanStateV1,
     },
-    transaction_builder::build_deposit_instruction_v1,
+    transaction_builder::{
+        build_deposit_instruction_v1, build_private_transfer_instruction_v1,
+        VerifierRouteAccountsV1,
+    },
     wallet_monotonic_v2::{
-        InMemoryWalletMonotonicStoreV2, WalletMonotonicAdvanceV2, WalletMonotonicCommitmentV2,
-        WalletMonotonicStoreErrorV2, WalletMonotonicStoreQualificationV2, WalletMonotonicStoreV2,
+        FaultInjectableWalletMonotonicStoreV2, WalletMonotonicFaultPointV2,
+        WalletMonotonicPreparedNextV2, WalletMonotonicStoreV2,
     },
     wallet_populated_migration_v2::{
         migrate_locked_legacy_wallet_to_asl2_v2, recover_populated_wallet_handoff_v2,
@@ -78,22 +73,30 @@ use aspis_pool_wallet_v1::{
         WalletStoreMigrationPhaseV2, WalletStoreMigrationWriteV2, WalletStoreSourceRoleV2,
         WALLET_STORE_RETIREMENT_MAGIC_V2,
     },
-    wallet_v2_activation::{
-        evaluate_wallet_v2_activation, WalletV2ActivationMode, WalletV2ActivationPrerequisites,
-        WalletV2ProductionConfig,
-    },
+    wallet_transition::derive_note_nullifier_v1,
+    wallet_v2_activation::WalletV2ActivationPrerequisites,
     witness_state::WalletWitnessStateV1,
     NoteContextV1, NoteOpeningV1, ViewingPublicKeyV1, ViewingSecretKeyV1,
+};
+#[cfg(feature = "wallet-v2-reference-tests")]
+use aspis_pool_wallet_v1::{
+    wallet_v2_activation::{
+        evaluate_wallet_v2_activation, WalletV2ActivationMode, WalletV2ProductionConfig,
+    },
+    wallet_v2_runtime::{
+        ActivatedWalletRuntimeV2, WalletV2RuntimeError, WalletV2RuntimePolicyBindings,
+    },
 };
 use aspis_statement::{
     decode_digest_canonical, derive_owner_key, encode_digest_canonical,
     pool_v1::{
         encode_pool_v1_pair_forest_checkpoint_v1, encode_pool_v1_pair_forest_lane_state_v1,
         encode_pool_v1_pair_forest_master_v1, root_history::initialize_root_history_page_bytes_v1,
-        DepositEventV1, DepositReceiptV1, IncrementalMerkleTreeV1, PoolIdentityV1,
-        PoolV1PairForestCheckpointV1, PoolV1PairForestLaneStateV1, PoolV1PairForestMasterV1,
-        PoolV1PairLeafWitnessV1, VerifierPolicyV1, POOL_V1_PAIR_FOREST_ALL_LANES_MASK,
-        POOL_V1_PAIR_TREE_DEPTH, POOL_V1_ROOT_HISTORY_PAGE_ACCOUNT_BYTES,
+        DepositEventV1, DepositReceiptV1, HistoricalAnchorEnvelopeV1, IncrementalMerkleTreeV1,
+        PoolIdentityV1, PoolV1PairForestCheckpointV1, PoolV1PairForestLaneStateV1,
+        PoolV1PairForestMasterV1, PoolV1PairLeafWitnessV1, PoolV1TransitionKind, VerifierPolicyV1,
+        POOL_V1_PAIR_FOREST_ALL_LANES_MASK, POOL_V1_PAIR_TREE_DEPTH,
+        POOL_V1_ROOT_HISTORY_PAGE_ACCOUNT_BYTES,
     },
     Digest,
 };
@@ -101,6 +104,17 @@ use base64::{engine::general_purpose::STANDARD as BASE64_STANDARD, Engine as _};
 use hpke::rand_core::{TryCryptoRng, TryRng};
 use sha2::{Digest as _, Sha256};
 use solana_program::pubkey::Pubkey;
+#[cfg(unix)]
+use std::os::unix::fs::PermissionsExt;
+use std::{
+    convert::Infallible,
+    fs,
+    path::PathBuf,
+    sync::{
+        atomic::{AtomicU64, Ordering},
+        mpsc::{Receiver, SyncSender},
+    },
+};
 
 const LEGACY_PROGRAM: [u8; 32] = [0x91; 32];
 const FOREST_PROGRAM: [u8; 32] = [0xb1; 32];
@@ -135,34 +149,7 @@ impl TryRng for IncrementingRng {
 
 impl TryCryptoRng for IncrementingRng {}
 
-#[derive(Clone, Default)]
-struct SharedMonotonicStore(Arc<Mutex<InMemoryWalletMonotonicStoreV2>>);
-
-impl WalletMonotonicStoreV2 for SharedMonotonicStore {
-    fn production_qualification_v2(&self) -> Option<WalletMonotonicStoreQualificationV2> {
-        Some(
-            WalletMonotonicStoreQualificationV2::new_v2([0xa1; 32], [0xd1; 32], [0xa2; 32])
-                .unwrap(),
-        )
-    }
-
-    fn current_commitment_v2(
-        &self,
-    ) -> Result<Option<WalletMonotonicCommitmentV2>, WalletMonotonicStoreErrorV2> {
-        self.0.lock().unwrap().current_commitment_v2()
-    }
-
-    fn compare_and_advance_v2(
-        &mut self,
-        expected_predecessor: Option<[u8; 32]>,
-        candidate: WalletMonotonicCommitmentV2,
-    ) -> Result<WalletMonotonicAdvanceV2, WalletMonotonicStoreErrorV2> {
-        self.0
-            .lock()
-            .unwrap()
-            .compare_and_advance_v2(expected_predecessor, candidate)
-    }
-}
+type SharedMonotonicStore = FaultInjectableWalletMonotonicStoreV2;
 
 struct TestDirectory(PathBuf);
 
@@ -272,6 +259,50 @@ impl WalletStoreMigrationFaultInjectorV2 for StopBeforeFirstLegacyTombstone {
 
     fn interrupt_atomic_v2(&mut self, _: WalletStoreMigrationAtomicFaultPointV2) -> bool {
         false
+    }
+}
+
+struct StopAtAsl2AtomicBoundary {
+    boundary: LaneForestWalletTxnAtomicBoundaryV2,
+    fired: bool,
+}
+
+struct PauseBeforeJournalPrepare {
+    entered: SyncSender<()>,
+    release: Receiver<()>,
+    paused: bool,
+}
+
+impl WalletStoreMigrationFaultInjectorV2 for PauseBeforeJournalPrepare {
+    fn interrupt_logical_v2(&mut self, point: WalletStoreMigrationLogicalFaultPointV2) -> bool {
+        if !self.paused
+            && point.write == WalletStoreMigrationWriteV2::JournalPrepared
+            && point.boundary == WalletStoreMigrationLogicalBoundaryV2::BeforeWrite
+        {
+            self.paused = true;
+            self.entered.send(()).unwrap();
+            self.release.recv().unwrap();
+        }
+        false
+    }
+
+    fn interrupt_atomic_v2(&mut self, _: WalletStoreMigrationAtomicFaultPointV2) -> bool {
+        false
+    }
+}
+
+impl LaneForestWalletTxnFaultInjectorV2 for StopAtAsl2AtomicBoundary {
+    fn interrupt_v2(&mut self, _: LaneForestWalletTxnFaultPointV2) -> bool {
+        false
+    }
+
+    fn interrupt_atomic_v2(&mut self, point: LaneForestWalletTxnAtomicFaultPointV2) -> bool {
+        if !self.fired && point.boundary == self.boundary {
+            self.fired = true;
+            true
+        } else {
+            false
+        }
     }
 }
 
@@ -501,6 +532,142 @@ fn ingest_one_finalized_deposit(
     (result, next_tree)
 }
 
+struct PrivateTransferBlockSpec {
+    slot: u64,
+    block_hash_byte: u8,
+    parent_slot: u64,
+    parent_hash_byte: u8,
+    signature_byte: u8,
+    envelope: HistoricalAnchorEnvelopeV1,
+    statement: PrivateTransferStatementV1,
+    first_leaf_index: u64,
+    intermediate_root: Digest,
+    final_root: Digest,
+    history_roots: Vec<Digest>,
+}
+
+fn ingest_finalized_private_transfer(
+    state: &mut ScanStateV1,
+    spec: &PrivateTransferBlockSpec,
+    viewing_secret: &ViewingSecretKeyV1,
+    local_keys: &impl LocalOwnerKeyStoreV1,
+) -> FinalizedBlockIngestResultV1 {
+    let built = build_private_transfer_instruction_v1(
+        Pubkey::new_from_array(LEGACY_PROGRAM),
+        spec.first_leaf_index,
+        &spec.envelope,
+        &spec.statement,
+        VerifierRouteAccountsV1 {
+            payer: Pubkey::new_from_array([0x63; 32]),
+            registry_program: Pubkey::new_from_array([0x64; 32]),
+            verifier_program: Pubkey::new_from_array([0x65; 32]),
+            sealed_proof_account: Pubkey::new_from_array([0x66; 32]),
+        },
+    )
+    .unwrap();
+    let instruction_data = encode_base58(&built.data);
+    let receipt = TransitionReceiptV1 {
+        transition_kind: PoolV1TransitionKind::PrivateTransfer,
+        pool: *identity().pool(),
+        nullifier: spec.statement.nullifier,
+        first_output: spec.statement.recipient_commitment,
+        second_output_or_destination: encode_digest_canonical(&spec.statement.change_commitment),
+        withdrawal_amount: 0,
+        first_leaf_index: spec.first_leaf_index,
+        second_leaf_index: spec.first_leaf_index + 1,
+        root_sequence: spec.first_leaf_index + 2,
+        root: spec.final_root,
+    };
+    let return_data = BASE64_STANDARD.encode(encode_transition_receipt_v1(&receipt).unwrap());
+
+    let mut encoded_keys = Vec::with_capacity(built.accounts.len() + 1);
+    encoded_keys.push(encode_base58(&LEGACY_PROGRAM));
+    encoded_keys.extend(
+        built
+            .accounts
+            .iter()
+            .map(|account| encode_base58(account.pubkey.as_ref())),
+    );
+    let static_keys = encoded_keys.iter().map(String::as_str).collect::<Vec<_>>();
+    let account_indices = (1..=built.accounts.len() as u16).collect::<Vec<_>>();
+    let instructions = [SolanaRpcCompiledInstructionV1 {
+        program_id_index: 0,
+        account_indices: &account_indices,
+        data_base58: &instruction_data,
+    }];
+    let signature = encode_base58(&[spec.signature_byte; 64]);
+    let signatures = [signature.as_str()];
+    let transactions = [SolanaRpcTransactionV1 {
+        version: SolanaRpcTransactionVersionV1::Legacy,
+        signatures_base58: &signatures,
+        static_account_keys_base58: &static_keys,
+        loaded_addresses: None,
+        top_level_instructions: &instructions,
+        succeeded: true,
+        return_data: Some(SolanaRpcReturnDataV1 {
+            program_id_base58: static_keys[0],
+            binary: SolanaRpcEncodedBinaryV1 {
+                data: &return_data,
+                encoding: "base64",
+            },
+        }),
+    }];
+    let block_hash = encode_base58(&[spec.block_hash_byte; 32]);
+    let parent_hash = encode_base58(&[spec.parent_hash_byte; 32]);
+    let block = SolanaRpcBlockV1 {
+        asserted_commitment: SolanaRpcCommitmentV1::Finalized,
+        slot: spec.slot,
+        blockhash_base58: &block_hash,
+        previous_blockhash_base58: &parent_hash,
+        parent_slot: spec.parent_slot,
+        transactions: &transactions,
+    };
+
+    let mut roots = spec.history_roots.clone();
+    roots[spec.first_leaf_index as usize + 1] = spec.intermediate_root;
+    roots[spec.first_leaf_index as usize + 2] = spec.final_root;
+    let mut page_bytes = vec![0u8; POOL_V1_ROOT_HISTORY_PAGE_ACCOUNT_BYTES];
+    initialize_root_history_page_bytes_v1(&mut page_bytes, *identity().pool(), 0, &roots).unwrap();
+    let page_data = BASE64_STANDARD.encode(page_bytes);
+    let page_address_bytes = pool_v1_root_page_address(
+        &Pubkey::new_from_array(LEGACY_PROGRAM),
+        &Pubkey::new_from_array(*identity().pool()),
+        0,
+    )
+    .0
+    .to_bytes();
+    let page_address = encode_base58(&page_address_bytes);
+    let page_owner = encode_base58(&LEGACY_PROGRAM);
+    let accounts = [SolanaRpcRootPageAccountV1 {
+        page_number: 0,
+        address_base58: &page_address,
+        owner_base58: &page_owner,
+        executable: false,
+        data: SolanaRpcEncodedBinaryV1 {
+            data: &page_data,
+            encoding: "base64",
+        },
+    }];
+    let pages = SolanaRpcRootPageBatchV1 {
+        asserted_commitment: SolanaRpcCommitmentV1::Finalized,
+        context_slot: spec.slot,
+        accounts: &accounts,
+    };
+    ingest_finalized_rpc_block_v1(
+        state,
+        &DepositRpcBindingV1::new(LEGACY_PROGRAM).unwrap(),
+        &[RootPageAddressBindingV1 {
+            page_number: 0,
+            address: page_address_bytes,
+        }],
+        &block,
+        Some(&pages),
+        viewing_secret,
+        local_keys,
+    )
+    .unwrap()
+}
+
 fn forest_state(deployment_domain: [u8; 32]) -> LaneForestDurableStateV2 {
     let program = Pubkey::new_from_array(FOREST_PROGRAM);
     let mint = Pubkey::new_from_array([0xb2; 32]);
@@ -621,10 +788,105 @@ fn append_lane_deposit(
     }
 }
 
+fn lane_deposit_event_without_note(
+    state: &LaneForestDurableStateV2,
+    event_id: DepositEventIdV1,
+    commitment: [u8; 32],
+) -> ForestFinalizedAppendEventV2 {
+    let lane_id = LaneIdV2::new(commitment[0] & 7).unwrap();
+    let pair_leaf =
+        PoolV1PairLeafWitnessV1::single_output(decode_digest_canonical(&commitment).unwrap())
+            .unwrap()
+            .leaf_digest()
+            .unwrap();
+    let current = *state.lane(lane_id).0;
+    let pair_leaf_index = current.value.tree.next_leaf_index;
+    let next_tree = current
+        .value
+        .tree
+        .append_one_with_empty_roots(pair_leaf, &POOL_V1_PAIR_EMPTY_ROOTS)
+        .unwrap()
+        .0;
+    let next_lane = PoolV1PairForestLaneStateV1 {
+        tree: next_tree,
+        ..current.value
+    };
+    ForestFinalizedAppendEventV2 {
+        master: state.master().address,
+        lane_id,
+        pair_leaf_index,
+        root_sequence: pair_leaf_index + 1,
+        after_lane_address: current.address,
+        after_lane_image: encode_pool_v1_pair_forest_lane_state_v1(
+            &next_lane,
+            &POOL_V1_PAIR_EMPTY_ROOTS,
+        )
+        .unwrap(),
+        kind: ForestFinalizedAppendKindV2::Deposit {
+            event_id,
+            commitment,
+            encrypted_note: None,
+        },
+    }
+}
+
+fn append_lane_private_transfer(
+    state: &mut LaneForestDurableStateV2,
+    recipient_event_id: DepositEventIdV1,
+    change_event_id: DepositEventIdV1,
+    nullifier: [u8; 32],
+    recipient_commitment: [u8; 32],
+    change_commitment: [u8; 32],
+) {
+    let lane_id = LaneIdV2::new(nullifier[0] & 7).unwrap();
+    let pair_leaf = PoolV1PairLeafWitnessV1::two_outputs(
+        decode_digest_canonical(&recipient_commitment).unwrap(),
+        decode_digest_canonical(&change_commitment).unwrap(),
+    )
+    .unwrap()
+    .leaf_digest()
+    .unwrap();
+    let current = *state.lane(lane_id).0;
+    let pair_leaf_index = current.value.tree.next_leaf_index;
+    let next_tree = current
+        .value
+        .tree
+        .append_one_with_empty_roots(pair_leaf, &POOL_V1_PAIR_EMPTY_ROOTS)
+        .unwrap()
+        .0;
+    let next_lane = PoolV1PairForestLaneStateV1 {
+        tree: next_tree,
+        ..current.value
+    };
+    let event = ForestFinalizedAppendEventV2 {
+        master: state.master().address,
+        lane_id,
+        pair_leaf_index,
+        root_sequence: pair_leaf_index + 1,
+        after_lane_address: current.address,
+        after_lane_image: encode_pool_v1_pair_forest_lane_state_v1(
+            &next_lane,
+            &POOL_V1_PAIR_EMPTY_ROOTS,
+        )
+        .unwrap(),
+        kind: ForestFinalizedAppendKindV2::PrivateTransfer {
+            recipient_event_id,
+            change_event_id,
+            nullifier,
+            recipient_commitment,
+            change_commitment,
+            recipient_encrypted_note: None,
+            change_encrypted_note: None,
+        },
+    };
+    state.ingest_finalized_append_v2(event, None).unwrap();
+}
+
 fn ingest_checkpoint(
     state: &mut LaneForestDurableStateV2,
     checkpoint_point: FinalizedChainPointV1,
 ) {
+    let checkpoint_sequence = state.master().value.next_checkpoint_sequence;
     let sequences: [u64; 8] = core::array::from_fn(|index| {
         state
             .lane(LaneIdV2::new(index as u8).unwrap())
@@ -646,18 +908,19 @@ fn ingest_checkpoint(
     let checkpoint = PoolV1PairForestCheckpointV1 {
         master: state.master().address,
         deployment_domain: state.master().value.identity.deployment_domain,
-        checkpoint_sequence: 0,
+        checkpoint_sequence,
         global_root: decode_digest_canonical(&lane_forest_global_root_v2(&roots).unwrap()).unwrap(),
         lane_sequences: sequences,
     };
     let program = Pubkey::new_from_array(*state.program_id());
     let master = Pubkey::new_from_array(state.master().address);
-    let checkpoint_address = pool_v1_pair_forest_checkpoint_address(&program, &master, 0)
-        .0
-        .to_bytes();
+    let checkpoint_address =
+        pool_v1_pair_forest_checkpoint_address(&program, &master, checkpoint_sequence)
+            .0
+            .to_bytes();
     let next_master = PoolV1PairForestMasterV1 {
         has_checkpoint: true,
-        next_checkpoint_sequence: 1,
+        next_checkpoint_sequence: checkpoint_sequence + 1,
         last_checkpoint_lane_sequences: sequences,
         ..state.master().value
     };
@@ -902,6 +1165,7 @@ fn populated_sources_validate_and_exact_replay_is_stable() {
             WalletMigrationSourceRoleV2::RelayerExecution,
         ]
     );
+
     assert_eq!(
         first
             .source_descriptors()
@@ -918,6 +1182,263 @@ fn populated_sources_validate_and_exact_replay_is_stable() {
         fs::read(fixture.directory.path("execution.asrj")).unwrap(),
     ];
     assert_eq!(before, after, "read-only validation mutated a source store");
+}
+
+#[test]
+fn populated_v1_migration_preserves_a_finalized_note_and_finalized_spend() {
+    std::thread::Builder::new()
+        .name("v7-populated-finalized-spend".to_owned())
+        .stack_size(16 * 1024 * 1024)
+        .spawn(populated_v1_migration_finalized_spend_body)
+        .unwrap()
+        .join()
+        .unwrap();
+}
+
+fn populated_v1_migration_finalized_spend_body() {
+    let mut fixture = fixture("finalized-spend", true, point(101, 0xa1), [0xb4; 32], true);
+    let unspent_wallet_image = fs::read(fixture.directory.path("wallet.asdw")).unwrap();
+    let nullifier_key = encode_digest_canonical(&digest(700));
+    let owner_key = encode_digest_canonical(&derive_owner_key(
+        &decode_digest_canonical(&nullifier_key).unwrap(),
+    ));
+    let local_keys = LocalKeys {
+        owner_key,
+        nullifier_key,
+    };
+    let opening =
+        NoteOpeningV1::new(owner_key, 77, 4, encode_digest_canonical(&digest(701))).unwrap();
+    let nullifier_bytes = derive_note_nullifier_v1(&opening, &nullifier_key).unwrap();
+    let nullifier = decode_digest_canonical(&nullifier_bytes).unwrap();
+    let recipient_commitment = digest(901);
+    let change_commitment = digest(902);
+    let current_tree = fixture.witness.current_state().tree();
+    assert_eq!(current_tree.next_leaf_index, 1);
+    let (intermediate_tree, _) = current_tree.append_one(recipient_commitment).unwrap();
+    let (final_tree, _) = intermediate_tree.append_one(change_commitment).unwrap();
+    let transfer = PrivateTransferBlockSpec {
+        slot: 102,
+        block_hash_byte: 0xa2,
+        parent_slot: 101,
+        parent_hash_byte: 0xa1,
+        signature_byte: 0x42,
+        envelope: HistoricalAnchorEnvelopeV1 {
+            transition_kind: PoolV1TransitionKind::PrivateTransfer,
+            pool: *identity().pool(),
+            deployment_domain: *identity().deployment_domain(),
+            anchor_sequence: 1,
+            anchor_root: current_tree.root,
+            nullifier,
+            verifier_profile: [0x81; 32],
+            verifier_release: [0x82; 32],
+        },
+        statement: PrivateTransferStatementV1 {
+            pool: *identity().pool(),
+            deployment_domain: *identity().deployment_domain(),
+            anchor_sequence: 1,
+            anchor_root: current_tree.root,
+            nullifier,
+            asset_id: M31(identity().asset_id()),
+            recipient_commitment,
+            change_commitment,
+        },
+        first_leaf_index: 1,
+        intermediate_root: intermediate_tree.root,
+        final_root: final_tree.root,
+        history_roots: vec![
+            fixture.initial_witness.tree().root,
+            current_tree.root,
+            intermediate_tree.root,
+            final_tree.root,
+        ],
+    };
+    let previous_scan = fixture.wallet.scan_state().clone();
+    let mut candidate_scan = previous_scan.clone();
+    let result = ingest_finalized_private_transfer(
+        &mut candidate_scan,
+        &transfer,
+        &derive_viewing_keypair_v1(&[0x51; 32]).unwrap().0,
+        &local_keys,
+    );
+    let output_ids = result.transition_evidence()[0].output_ids.clone();
+    let spend = AuthenticatedSpentNoteUpdateV1 {
+        input_event_id: fixture.event_id,
+        transition_output_id: output_ids[0],
+        nullifier: nullifier_bytes,
+    };
+    fixture
+        .wallet
+        .commit_finalized_ingest_v1(
+            candidate_scan.clone(),
+            &result,
+            &[],
+            &[spend],
+            &EncryptedLocalSpendAuthenticatorV1::new(&fixture.cipher, &local_keys),
+        )
+        .unwrap();
+    fixture
+        .witness
+        .commit_finalized_ingest_v1(&previous_scan, &candidate_scan, &result, &[])
+        .unwrap();
+
+    let mut lane_state = fixture.lane_file.state().clone();
+    append_lane_private_transfer(
+        &mut lane_state,
+        output_ids[0],
+        output_ids[1],
+        nullifier_bytes,
+        encode_digest_canonical(&recipient_commitment),
+        encode_digest_canonical(&change_commitment),
+    );
+    ingest_checkpoint(&mut lane_state, point(102, 0xa2));
+    fixture.lane_file.replace_state_v2(lane_state).unwrap();
+
+    let migrated = PopulatedWalletMigrationV2::from_locked_v1(
+        &fixture.wallet,
+        &fixture.witness,
+        &fixture.relayer_admission,
+        &fixture.relayer_execution,
+        &fixture.lane_file,
+        &fixture.cipher,
+        &EncryptedLocalSpendAuthenticatorV1::new(&fixture.cipher, &local_keys),
+        &ApproveTopology,
+    )
+    .unwrap();
+    assert_eq!(migrated.finalized_head(), point(102, 0xa2));
+    assert_eq!(migrated.notes().len(), 1);
+    assert_eq!(migrated.notes()[0].event_id, fixture.event_id);
+    assert_eq!(
+        migrated.notes()[0].spent,
+        Some(aspis_pool_wallet_v1::durable_state::SpentNoteMarkerV1 {
+            transition_output_id: output_ids[0],
+            nullifier: nullifier_bytes,
+        })
+    );
+
+    let target_path = fixture.directory.path("wallet.asl2");
+    let wallet_path = fixture.directory.path("wallet.asdw");
+    let initial_scan = fixture.initial_scan.clone();
+    let mut monotonic = SharedMonotonicStore::default();
+    let mut faults = NoWalletStoreMigrationFaultsV2;
+    let receipt = migrate_locked_legacy_wallet_to_asl2_v2(
+        LockedLegacyWalletStoresV2 {
+            wallet: fixture.wallet,
+            witness: fixture.witness,
+            lane_forest: fixture.lane_file,
+            relayer_admission: fixture.relayer_admission,
+            relayer_execution: fixture.relayer_execution,
+        },
+        &target_path,
+        &fixture.cipher,
+        &EncryptedLocalSpendAuthenticatorV1::new(&fixture.cipher, &local_keys),
+        &ApproveTopology,
+        [0xd5; 32],
+        &mut monotonic,
+        &mut faults,
+    )
+    .unwrap();
+    assert_eq!(receipt.phase(), WalletStoreMigrationPhaseV2::LegacyRetired);
+    let target_image = fs::read(&target_path).unwrap();
+    let activation =
+        validated_protected_activation_from_image_v2(&target_image, &fixture.cipher).unwrap();
+    let coordinator = LaneForestWalletTxnCoordinatorV2::open_or_create_protected_v2(
+        &target_path,
+        activation,
+        &fixture.cipher,
+        [0xd5; 32],
+        Box::new(monotonic),
+    )
+    .unwrap();
+    assert!(coordinator.committed_state().unwrap().notes()[0].is_spent());
+    assert_eq!(
+        coordinator
+            .committed_state()
+            .unwrap()
+            .spendable_unspent_notes_v2()
+            .count(),
+        0
+    );
+    drop(coordinator);
+
+    // Rolling back only the retired local V1 note store to the exact pre-spend
+    // image cannot reopen a writer because ASMG remains authoritative.
+    fs::write(&wallet_path, unspent_wallet_image).unwrap();
+    #[cfg(unix)]
+    fs::set_permissions(&wallet_path, fs::Permissions::from_mode(0o600)).unwrap();
+    assert_eq!(
+        DurableWalletStateV1::open_or_create_v1(
+            wallet_path,
+            initial_scan,
+            fixture.cipher.cipher_id(),
+        )
+        .err(),
+        Some(DurableStateErrorV1::LegacyStoreRetired)
+    );
+}
+
+#[test]
+fn threaded_scanner_cannot_open_while_migration_holds_the_legacy_cutover_locks() {
+    let Fixture {
+        directory,
+        wallet,
+        witness,
+        relayer_admission,
+        relayer_execution,
+        lane_file,
+        cipher,
+        initial_scan,
+        ..
+    } = fixture(
+        "threaded-exclusion",
+        true,
+        point(101, 0xa1),
+        [0xb4; 32],
+        true,
+    );
+    let wallet_path = directory.path("wallet.asdw");
+    let target_path = directory.path("wallet.asl2");
+    let cipher_id = cipher.cipher_id();
+    let (entered_tx, entered_rx) = std::sync::mpsc::sync_channel(0);
+    let (release_tx, release_rx) = std::sync::mpsc::sync_channel(0);
+    let mut faults = PauseBeforeJournalPrepare {
+        entered: entered_tx,
+        release: release_rx,
+        paused: false,
+    };
+
+    std::thread::scope(|scope| {
+        let migration = scope.spawn(move || {
+            let mut monotonic = SharedMonotonicStore::default();
+            migrate_locked_legacy_wallet_to_asl2_v2(
+                LockedLegacyWalletStoresV2 {
+                    wallet,
+                    witness,
+                    lane_forest: lane_file,
+                    relayer_admission,
+                    relayer_execution,
+                },
+                target_path,
+                &cipher,
+                &NeverAuthorize,
+                &ApproveTopology,
+                [0xd4; 32],
+                &mut monotonic,
+                &mut faults,
+            )
+        });
+        entered_rx.recv().unwrap();
+        let concurrent_error =
+            DurableWalletStateV1::open_or_create_v1(&wallet_path, initial_scan, cipher_id).err();
+        release_tx.send(()).unwrap();
+        assert_eq!(
+            migration.join().unwrap().unwrap().phase(),
+            WalletStoreMigrationPhaseV2::LegacyRetired
+        );
+        assert_eq!(
+            concurrent_error,
+            Some(DurableStateErrorV1::MigrationInProgress)
+        );
+    });
 }
 
 #[test]
@@ -1058,60 +1579,390 @@ fn populated_handoff_body() {
         Box::new(monotonic.clone()),
     )
     .unwrap();
-    let commitment = coordinator
+    coordinator
         .externally_anchored_monotonic_commitment_v2()
         .unwrap();
-    let monotonic_qualification = coordinator
-        .production_monotonic_qualification_v2()
-        .unwrap()
-        .qualification_digest_v2();
+    assert!(matches!(
+        coordinator.production_monotonic_qualification_v2(),
+        Err(LaneForestWalletTxnErrorV2::MonotonicRequired)
+    ));
     let startup = [0xe1; 32];
     let provider = [0xe2; 32];
     let finality = [0xe3; 32];
-    let prerequisites = WalletV2ActivationPrerequisites::from_authoritative_state_v2(
+    assert_eq!(
+        WalletV2ActivationPrerequisites::from_authoritative_state_v2(
         &coordinator,
         receipt,
         vec![startup],
         vec![provider],
         vec![finality],
-    )
-    .unwrap();
-    let config = WalletV2ProductionConfig::new_v2(
+    ),
+        Err(aspis_pool_wallet_v1::wallet_v2_activation::WalletV2ActivationError::MonotonicUnqualified)
+    );
+
+    #[cfg(feature = "wallet-v2-reference-tests")]
+    let (runtime_mode, runtime_permit, runtime_policy) = {
+        let reference_service = [0xe4; 32];
+        let prerequisites =
+            WalletV2ActivationPrerequisites::from_authoritative_state_reference_only_v2(
+                &coordinator,
+                receipt,
+                reference_service,
+                vec![startup],
+                vec![provider],
+                vec![finality],
+            )
+            .unwrap();
+        let config = WalletV2ProductionConfig::new_v2(
+            *activation.wallet_identity_sha256(),
+            *activation.note_cipher_id(),
+            *activation.migration_genesis().unwrap().migration_id(),
+            *receipt.migration_id(),
+            *receipt.target_digest(),
+            *receipt.target_path_digest(),
+            protection_id,
+            reference_service,
+            startup,
+            provider,
+            finality,
+        )
+        .unwrap();
+        let mode = WalletV2ActivationMode::ReferenceOnly(config);
+        let permit = evaluate_wallet_v2_activation(&mode, &prerequisites).unwrap();
+        let policy = WalletV2RuntimePolicyBindings::reference_only_v2(
+            startup,
+            provider,
+            finality,
+            reference_service,
+        )
+        .unwrap();
+        (mode, permit, policy)
+    };
+
+    let genesis_commitment = coordinator
+        .current_monotonic_commitment_v2()
+        .unwrap()
+        .unwrap();
+    let mut parent = point(101, 0xa1);
+    let mut forged_successor_image = None;
+    for (offset, boundary) in [
+        LaneForestWalletTxnAtomicBoundaryV2::TargetRename,
+        LaneForestWalletTxnAtomicBoundaryV2::TemporaryWrite,
+        LaneForestWalletTxnAtomicBoundaryV2::TemporaryFileSync,
+        LaneForestWalletTxnAtomicBoundaryV2::ParentDirectorySync,
+    ]
+    .into_iter()
+    .enumerate()
+    {
+        let next = point(102 + offset as u64, 0xa2 + offset as u8);
+        let empty = LaneForestWalletEmptyFinalizedBlockV2::new_v2(
+            FinalizedBlockV1::new(next, parent).unwrap(),
+            [0xf1; 32],
+            startup,
+            provider,
+        )
+        .unwrap();
+        let mut atomic_fault = StopAtAsl2AtomicBoundary {
+            boundary,
+            fired: false,
+        };
+        assert!(coordinator
+            .prepare_empty_finalized_block_with_faults_v2(empty, &mut atomic_fault)
+            .is_err());
+        assert!(atomic_fault.fired);
+        if boundary == LaneForestWalletTxnAtomicBoundaryV2::TargetRename {
+            forged_successor_image = Some(fs::read(&target_path).unwrap());
+        }
+        drop(coordinator);
+        coordinator = LaneForestWalletTxnCoordinatorV2::open_or_create_protected_v2(
+            &target_path,
+            activation.clone(),
+            &cipher,
+            protection_id,
+            Box::new(monotonic.clone()),
+        )
+        .unwrap();
+        coordinator.prepare_empty_finalized_block_v2(empty).unwrap();
+        coordinator.recover_to_committed_v2().unwrap();
+        assert_eq!(
+            coordinator.committed_state().unwrap().finalized_head(),
+            next
+        );
+        parent = next;
+    }
+
+    // A checksummed successor copied without its exact external preparation is
+    // rejected even though its generation and predecessor are structurally
+    // valid.
+    let mut forged_anchor = FaultInjectableWalletMonotonicStoreV2::new_v2();
+    let genesis_preparation = WalletMonotonicPreparedNextV2::new_v2(
+        None,
+        genesis_commitment,
+        [0x71; 32],
         *activation.wallet_identity_sha256(),
-        *activation.note_cipher_id(),
-        *activation.migration_genesis().unwrap().migration_id(),
-        *receipt.migration_id(),
-        commitment.commitment_digest_v2(),
+        *activation.activation_id(),
         protection_id,
-        monotonic_qualification,
-        startup,
-        provider,
-        finality,
+        *activation.note_cipher_id(),
+        [0x72; 32],
     )
     .unwrap();
-    assert!(matches!(
-        evaluate_wallet_v2_activation(&WalletV2ActivationMode::default(), &prerequisites),
-        Err(aspis_pool_wallet_v1::wallet_v2_activation::WalletV2ActivationError::Disabled)
-    ));
-    assert!(evaluate_wallet_v2_activation(
-        &WalletV2ActivationMode::Production(config),
-        &prerequisites,
-    )
-    .is_ok());
+    forged_anchor
+        .compare_and_prepare_next_v2(genesis_preparation)
+        .unwrap();
+    forged_anchor
+        .compare_and_commit_prepared_v2(genesis_preparation)
+        .unwrap();
+    let forged_path = directory.path("forged-ahead.asl2");
+    fs::write(&forged_path, forged_successor_image.unwrap()).unwrap();
+    #[cfg(unix)]
+    fs::set_permissions(&forged_path, fs::Permissions::from_mode(0o600)).unwrap();
+    assert_eq!(
+        LaneForestWalletTxnCoordinatorV2::open_or_create_protected_v2(
+            &forged_path,
+            activation.clone(),
+            &cipher,
+            protection_id,
+            Box::new(forged_anchor),
+        )
+        .err(),
+        Some(LaneForestWalletTxnErrorV2::MonotonicRollback)
+    );
 
     // Once the externally anchored generation advances, restoring the exact
     // old populated image (which would also restore its note/spend/cursor
     // state) is rejected deterministically on every reopen.
     let empty = LaneForestWalletEmptyFinalizedBlockV2::new_v2(
-        FinalizedBlockV1::new(point(102, 0xa2), point(101, 0xa1)).unwrap(),
+        FinalizedBlockV1::new(point(106, 0xa6), parent).unwrap(),
         [0xf1; 32],
-        [0xf2; 32],
-        [0xf3; 32],
+        startup,
+        provider,
     )
     .unwrap();
-    coordinator.prepare_empty_finalized_block_v2(empty).unwrap();
-    coordinator.recover_to_committed_v2().unwrap();
-    drop(coordinator);
+    #[cfg(not(feature = "wallet-v2-reference-tests"))]
+    {
+        coordinator.prepare_empty_finalized_block_v2(empty).unwrap();
+        coordinator.recover_to_committed_v2().unwrap();
+        drop(coordinator);
+    }
+    #[cfg(feature = "wallet-v2-reference-tests")]
+    {
+        drop(coordinator);
+        let preflight_image = fs::read(&target_path).unwrap();
+        assert!(matches!(
+            ActivatedWalletRuntimeV2::start_v2(
+                &target_path,
+                activation.clone(),
+                &cipher,
+                protection_id,
+                Box::new(monotonic.clone()),
+                receipt,
+                &runtime_mode,
+                None,
+                runtime_policy,
+            ),
+            Err(WalletV2RuntimeError::MissingPermit)
+        ));
+        assert_eq!(fs::read(&target_path).unwrap(), preflight_image);
+        let wrong_provider_policy = WalletV2RuntimePolicyBindings::reference_only_v2(
+            startup, [0xee; 32], finality, [0xe4; 32],
+        )
+        .unwrap();
+        assert!(ActivatedWalletRuntimeV2::start_v2(
+            &target_path,
+            activation.clone(),
+            &cipher,
+            protection_id,
+            Box::new(monotonic.clone()),
+            receipt,
+            &runtime_mode,
+            Some(&runtime_permit),
+            wrong_provider_policy,
+        )
+        .is_err());
+        assert_eq!(fs::read(&target_path).unwrap(), preflight_image);
+        monotonic
+            .inject_stale_current_once_v2(Some(genesis_commitment))
+            .unwrap();
+        assert!(ActivatedWalletRuntimeV2::start_v2(
+            &target_path,
+            activation.clone(),
+            &cipher,
+            protection_id,
+            Box::new(monotonic.clone()),
+            receipt,
+            &runtime_mode,
+            Some(&runtime_permit),
+            runtime_policy,
+        )
+        .is_err());
+        monotonic
+            .inject_once_v2(WalletMonotonicFaultPointV2::CurrentRead)
+            .unwrap();
+        assert!(ActivatedWalletRuntimeV2::start_v2(
+            &target_path,
+            activation.clone(),
+            &cipher,
+            protection_id,
+            Box::new(monotonic.clone()),
+            receipt,
+            &runtime_mode,
+            Some(&runtime_permit),
+            runtime_policy,
+        )
+        .is_err());
+
+        let mut runtime = ActivatedWalletRuntimeV2::start_v2(
+            &target_path,
+            activation.clone(),
+            &cipher,
+            protection_id,
+            Box::new(monotonic.clone()),
+            receipt,
+            &runtime_mode,
+            Some(&runtime_permit),
+            runtime_policy,
+        )
+        .unwrap();
+        monotonic
+            .inject_once_v2(WalletMonotonicFaultPointV2::AfterPrepare)
+            .unwrap();
+        assert!(runtime.apply_empty_finalized_block_v2(empty).is_err());
+        drop(runtime);
+
+        let mut runtime = ActivatedWalletRuntimeV2::start_v2(
+            &target_path,
+            activation.clone(),
+            &cipher,
+            protection_id,
+            Box::new(monotonic.clone()),
+            receipt,
+            &runtime_mode,
+            Some(&runtime_permit),
+            runtime_policy,
+        )
+        .unwrap();
+        assert_eq!(
+            runtime.committed_state_v2().unwrap().finalized_head(),
+            parent
+        );
+        monotonic
+            .inject_once_v2(WalletMonotonicFaultPointV2::BeforeCommit)
+            .unwrap();
+        assert!(runtime.apply_empty_finalized_block_v2(empty).is_err());
+        drop(runtime);
+
+        let mut runtime = ActivatedWalletRuntimeV2::start_v2(
+            &target_path,
+            activation.clone(),
+            &cipher,
+            protection_id,
+            Box::new(monotonic.clone()),
+            receipt,
+            &runtime_mode,
+            Some(&runtime_permit),
+            runtime_policy,
+        )
+        .unwrap();
+        assert_eq!(
+            runtime.committed_state_v2().unwrap().finalized_head(),
+            point(106, 0xa6)
+        );
+        runtime.apply_empty_finalized_block_v2(empty).unwrap();
+
+        let lost_commit_response = LaneForestWalletEmptyFinalizedBlockV2::new_v2(
+            FinalizedBlockV1::new(point(107, 0xa7), point(106, 0xa6)).unwrap(),
+            [0xf4; 32],
+            startup,
+            provider,
+        )
+        .unwrap();
+        monotonic
+            .inject_once_v2(WalletMonotonicFaultPointV2::AfterCommit)
+            .unwrap();
+        assert!(runtime
+            .apply_empty_finalized_block_v2(lost_commit_response)
+            .is_err());
+        drop(runtime);
+
+        let mut runtime = ActivatedWalletRuntimeV2::start_v2(
+            &target_path,
+            activation.clone(),
+            &cipher,
+            protection_id,
+            Box::new(monotonic.clone()),
+            receipt,
+            &runtime_mode,
+            Some(&runtime_permit),
+            runtime_policy,
+        )
+        .unwrap();
+        assert_eq!(
+            runtime.committed_state_v2().unwrap().finalized_head(),
+            point(107, 0xa7)
+        );
+        let clean = LaneForestWalletEmptyFinalizedBlockV2::new_v2(
+            FinalizedBlockV1::new(point(108, 0xa8), point(107, 0xa7)).unwrap(),
+            [0xf5; 32],
+            startup,
+            provider,
+        )
+        .unwrap();
+        runtime.apply_empty_finalized_block_v2(clean).unwrap();
+
+        let unrelated = NoteOpeningV1::new(
+            encode_digest_canonical(&digest(0x991)),
+            12,
+            4,
+            encode_digest_canonical(&digest(0x992)),
+        )
+        .unwrap();
+        let unrelated_commitment = recompute_note_commitment_v1(&unrelated).unwrap();
+        let event_id = DepositEventIdV1::new(point(109, 0xa9), [0x49; 64], 0, 0).unwrap();
+        let event = lane_deposit_event_without_note(
+            runtime.committed_state_v2().unwrap().lane_state(),
+            event_id,
+            unrelated_commitment,
+        );
+        runtime
+            .observe_tentative_v2(
+                event.clone(),
+                LaneForestWalletTentativeCommitmentV2::Confirmed,
+                provider,
+            )
+            .unwrap();
+        runtime
+            .reorg_tentative_v2(&event, [0xfa; 32], provider)
+            .unwrap();
+        assert_eq!(
+            runtime.committed_state_v2().unwrap().finalized_head(),
+            point(108, 0xa8)
+        );
+        runtime
+            .observe_tentative_v2(
+                event.clone(),
+                LaneForestWalletTentativeCommitmentV2::Confirmed,
+                provider,
+            )
+            .unwrap();
+        let intent = LaneForestWalletTxnIntentV2::new_v2(
+            FinalizedBlockV1::new(point(109, 0xa9), point(108, 0xa8)).unwrap(),
+            event,
+            cipher.cipher_id(),
+            Vec::new(),
+            Vec::new(),
+            None,
+            None,
+        )
+        .unwrap();
+        runtime
+            .apply_finalized_event_v2(intent, &cipher, &NeverAuthorize)
+            .unwrap();
+        assert_eq!(
+            runtime.committed_state_v2().unwrap().finalized_head(),
+            point(109, 0xa9)
+        );
+        runtime.shutdown_v2().unwrap();
+    }
     fs::write(&target_path, old_target_image).unwrap();
     assert!(matches!(
         LaneForestWalletTxnCoordinatorV2::open_or_create_protected_v2(

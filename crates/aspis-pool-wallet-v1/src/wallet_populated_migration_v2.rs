@@ -28,9 +28,9 @@ use crate::{
     },
     lane_forest_wallet_txn_v2::LaneForestWalletActivationPolicyV2,
     lane_forest_wallet_txn_v2::{
-        prepare_protected_initial_image_v2, reconcile_protected_image_monotonic_v2,
-        validated_protected_activation_from_image_v2, EmptyV1LaneForestWalletActivationV2,
-        LaneForestWalletTxnErrorV2,
+        prepare_protected_image_monotonic_v2, prepare_protected_initial_image_v2,
+        reconcile_protected_image_monotonic_v2, validated_protected_activation_from_image_v2,
+        EmptyV1LaneForestWalletActivationV2, LaneForestWalletTxnErrorV2,
     },
     note_store_crypto::{open_note_opening_v1, NoteStoreCipherV1, POOL_V1_NOTE_STORE_HEADER_BYTES},
     recompute_note_commitment_v1,
@@ -552,6 +552,16 @@ fn resume_populated_wallet_handoff_v2<F: WalletStoreMigrationFaultInjectorV2>(
     }
 
     if phase < WalletStoreMigrationPhaseV2::OwnershipCommitted {
+        let prepared_target = journal.target_bytes_v2()?.to_vec();
+        let activation = validated_protected_activation_from_image_v2(&prepared_target, cipher)?;
+        validate_expected_activation_v2(expected_activation, &activation)?;
+        prepare_protected_image_monotonic_v2(
+            &prepared_target,
+            &activation,
+            cipher,
+            protection_id,
+            monotonic_store,
+        )?;
         journal.install_target_with_faults_v2(target_path, faults)?;
     }
     let prepared_target = journal.target_bytes_v2()?.to_vec();

@@ -28,6 +28,10 @@ pub enum WalletV2ActivationMode {
     #[default]
     Disabled,
     Production(WalletV2ProductionConfig),
+    /// Explicitly non-production path used to execute the complete runtime
+    /// state machine against the volatile reference monotonic service.
+    #[cfg(feature = "wallet-v2-reference-tests")]
+    ReferenceOnly(WalletV2ProductionConfig),
 }
 
 /// Exact operator-pinned state allowed to enter production V2 dispatch.
@@ -40,7 +44,8 @@ pub struct WalletV2ProductionConfig {
     note_cipher_id: [u8; 32],
     migration_id: [u8; 32],
     ownership_id: [u8; 32],
-    monotonic_commitment: [u8; 32],
+    migration_target_digest: [u8; 32],
+    migration_target_path_digest: [u8; 32],
     monotonic_protection_id: [u8; 32],
     monotonic_store_qualification: [u8; 32],
     qualified_startup_digest: [u8; 32],
@@ -67,7 +72,8 @@ impl WalletV2ProductionConfig {
         note_cipher_id: [u8; 32],
         migration_id: [u8; 32],
         ownership_id: [u8; 32],
-        monotonic_commitment: [u8; 32],
+        migration_target_digest: [u8; 32],
+        migration_target_path_digest: [u8; 32],
         monotonic_protection_id: [u8; 32],
         monotonic_store_qualification: [u8; 32],
         qualified_startup_digest: [u8; 32],
@@ -82,7 +88,8 @@ impl WalletV2ProductionConfig {
             note_cipher_id,
             migration_id,
             ownership_id,
-            monotonic_commitment,
+            migration_target_digest,
+            migration_target_path_digest,
             monotonic_protection_id,
             monotonic_store_qualification,
             qualified_startup_digest,
@@ -102,7 +109,8 @@ impl WalletV2ProductionConfig {
                 self.note_cipher_id,
                 self.migration_id,
                 self.ownership_id,
-                self.monotonic_commitment,
+                self.migration_target_digest,
+                self.migration_target_path_digest,
                 self.monotonic_protection_id,
                 self.monotonic_store_qualification,
                 self.qualified_startup_digest,
@@ -152,7 +160,8 @@ pub struct WalletV2ActivationPrerequisites {
     asl2_ownership_committed: bool,
     retired_legacy_roles: Vec<LegacyWalletStoreRoleV2>,
     has_pending_transaction: bool,
-    current_monotonic_commitments: Vec<[u8; 32]>,
+    migration_target_digests: Vec<[u8; 32]>,
+    migration_target_path_digest: [u8; 32],
     monotonic_protection_id: [u8; 32],
     monotonic_store_qualifications: Vec<[u8; 32]>,
     qualified_startup_digests: Vec<[u8; 32]>,
@@ -194,13 +203,13 @@ impl WalletV2ActivationPrerequisites {
         let migration = activation
             .migration_genesis()
             .ok_or(WalletV2ActivationError::MigrationNotCommitted)?;
-        let (target_path, target_bytes) = coordinator
+        let (target_path, _target_bytes) = coordinator
             .authoritative_target_image_v2()
             .map_err(|_| WalletV2ActivationError::RuntimeStateRejected)?;
-        if !ownership.authenticates_target_v2(target_path, &target_bytes) {
+        if !ownership.authenticates_target_path_v2(target_path) {
             return Err(WalletV2ActivationError::OwnershipTargetMismatch);
         }
-        let monotonic = coordinator
+        coordinator
             .externally_anchored_monotonic_commitment_v2()
             .map_err(|_| WalletV2ActivationError::MonotonicUnavailable)?;
         let protection_id = coordinator
@@ -222,7 +231,8 @@ impl WalletV2ActivationPrerequisites {
             asl2_ownership_committed: true,
             retired_legacy_roles: ALL_LEGACY_STORE_ROLES_V2.to_vec(),
             has_pending_transaction: false,
-            current_monotonic_commitments: vec![monotonic.commitment_digest_v2()],
+            migration_target_digests: vec![*ownership.target_digest()],
+            migration_target_path_digest: *ownership.target_path_digest(),
             monotonic_protection_id: protection_id,
             monotonic_store_qualifications: vec![monotonic_qualification.qualification_digest_v2()],
             qualified_startup_digests,
@@ -230,30 +240,133 @@ impl WalletV2ActivationPrerequisites {
             qualified_finality_digests,
         })
     }
+
+    /// Build otherwise identical runtime evidence for the explicitly
+    /// non-production reference mode. This never calls or fabricates
+    /// `production_monotonic_qualification_v2`.
+    #[cfg(feature = "wallet-v2-reference-tests")]
+    pub fn from_authoritative_state_reference_only_v2(
+        coordinator: &LaneForestWalletTxnCoordinatorV2,
+        ownership: WalletStoreMigrationReceiptV2,
+        reference_service_digest: [u8; 32],
+        qualified_startup_digests: Vec<[u8; 32]>,
+        qualified_provider_digests: Vec<[u8; 32]>,
+        qualified_finality_digests: Vec<[u8; 32]>,
+    ) -> Result<Self, WalletV2ActivationError> {
+        if reference_service_digest == [0u8; 32] {
+            return Err(WalletV2ActivationError::MonotonicUnqualified);
+        }
+        let mut prerequisites = Self::from_authoritative_state_without_qualification_v2(
+            coordinator,
+            ownership,
+            qualified_startup_digests,
+            qualified_provider_digests,
+            qualified_finality_digests,
+        )?;
+        prerequisites.monotonic_store_qualifications = vec![reference_service_digest];
+        Ok(prerequisites)
+    }
+
+    #[cfg(feature = "wallet-v2-reference-tests")]
+    fn from_authoritative_state_without_qualification_v2(
+        coordinator: &LaneForestWalletTxnCoordinatorV2,
+        ownership: WalletStoreMigrationReceiptV2,
+        qualified_startup_digests: Vec<[u8; 32]>,
+        qualified_provider_digests: Vec<[u8; 32]>,
+        qualified_finality_digests: Vec<[u8; 32]>,
+    ) -> Result<Self, WalletV2ActivationError> {
+        if ownership.phase() != WalletStoreMigrationPhaseV2::LegacyRetired {
+            return Err(WalletV2ActivationError::LegacyWriterNotRetired);
+        }
+        if coordinator
+            .pending_phase_v2()
+            .map_err(|_| WalletV2ActivationError::RuntimeStateRejected)?
+            .is_some()
+        {
+            return Err(WalletV2ActivationError::PendingTransaction);
+        }
+        let activation = coordinator
+            .activation_v2()
+            .map_err(|_| WalletV2ActivationError::RuntimeStateRejected)?;
+        let migration = activation
+            .migration_genesis()
+            .ok_or(WalletV2ActivationError::MigrationNotCommitted)?;
+        let (target_path, _) = coordinator
+            .authoritative_target_image_v2()
+            .map_err(|_| WalletV2ActivationError::RuntimeStateRejected)?;
+        if !ownership.authenticates_target_path_v2(target_path) {
+            return Err(WalletV2ActivationError::OwnershipTargetMismatch);
+        }
+        coordinator
+            .externally_anchored_monotonic_commitment_v2()
+            .map_err(|_| WalletV2ActivationError::MonotonicUnavailable)?;
+        let protection_id = coordinator
+            .monotonic_protection_id_v2()
+            .copied()
+            .ok_or(WalletV2ActivationError::MonotonicUnavailable)?;
+        Ok(Self {
+            asl2_magic: LANE_FOREST_WALLET_TXN_MAGIC_V2,
+            asl2_schema_version: LANE_FOREST_WALLET_TXN_VERSION_V3,
+            activation_schema_version: WALLET_V2_ACTIVATION_SCHEMA_VERSION,
+            wallet_id: *activation.wallet_identity_sha256(),
+            note_cipher_id: *activation.note_cipher_id(),
+            migration_id: *migration.migration_id(),
+            migration_committed: true,
+            ownership_id: *ownership.migration_id(),
+            asl2_ownership_committed: true,
+            retired_legacy_roles: ALL_LEGACY_STORE_ROLES_V2.to_vec(),
+            has_pending_transaction: false,
+            migration_target_digests: vec![*ownership.target_digest()],
+            migration_target_path_digest: *ownership.target_path_digest(),
+            monotonic_protection_id: protection_id,
+            monotonic_store_qualifications: Vec::new(),
+            qualified_startup_digests,
+            qualified_provider_digests,
+            qualified_finality_digests,
+        })
+    }
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub(crate) enum WalletV2ActivationClass {
+    Production,
+    #[cfg(feature = "wallet-v2-reference-tests")]
+    ReferenceOnly,
 }
 
 /// Opaque proof that the complete predicate succeeded. Private fields prevent
 /// construction by production dispatch code without calling the predicate.
 #[derive(Clone, PartialEq, Eq)]
 pub struct WalletV2ActivationPermit {
+    activation_class: WalletV2ActivationClass,
     activation_digest: [u8; 32],
     wallet_id: [u8; 32],
     migration_id: [u8; 32],
     ownership_id: [u8; 32],
-    monotonic_commitment: [u8; 32],
+    migration_target_digest: [u8; 32],
+    migration_target_path_digest: [u8; 32],
+    note_cipher_id: [u8; 32],
+    monotonic_protection_id: [u8; 32],
+    monotonic_store_qualification: [u8; 32],
+    qualified_startup_digest: [u8; 32],
+    qualified_provider_digest: [u8; 32],
+    qualified_finality_digest: [u8; 32],
 }
 
 impl core::fmt::Debug for WalletV2ActivationPermit {
     fn fmt(&self, formatter: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         formatter
             .debug_struct("WalletV2ActivationPermit")
-            .field("production_activation", &true)
+            .field("activation_class", &self.activation_class)
             .field("bindings", &"[REDACTED]")
             .finish()
     }
 }
 
 impl WalletV2ActivationPermit {
+    pub(crate) fn activation_class_v2(&self) -> WalletV2ActivationClass {
+        self.activation_class
+    }
     pub fn activation_digest_v2(&self) -> &[u8; 32] {
         &self.activation_digest
     }
@@ -270,8 +383,36 @@ impl WalletV2ActivationPermit {
         &self.ownership_id
     }
 
-    pub fn monotonic_commitment_v2(&self) -> &[u8; 32] {
-        &self.monotonic_commitment
+    pub fn migration_target_digest_v2(&self) -> &[u8; 32] {
+        &self.migration_target_digest
+    }
+
+    pub fn migration_target_path_digest_v2(&self) -> &[u8; 32] {
+        &self.migration_target_path_digest
+    }
+
+    pub fn note_cipher_id_v2(&self) -> &[u8; 32] {
+        &self.note_cipher_id
+    }
+
+    pub fn monotonic_protection_id_v2(&self) -> &[u8; 32] {
+        &self.monotonic_protection_id
+    }
+
+    pub fn monotonic_store_qualification_v2(&self) -> &[u8; 32] {
+        &self.monotonic_store_qualification
+    }
+
+    pub fn qualified_startup_digest_v2(&self) -> &[u8; 32] {
+        &self.qualified_startup_digest
+    }
+
+    pub fn qualified_provider_digest_v2(&self) -> &[u8; 32] {
+        &self.qualified_provider_digest
+    }
+
+    pub fn qualified_finality_digest_v2(&self) -> &[u8; 32] {
+        &self.qualified_finality_digest
     }
 }
 
@@ -301,8 +442,13 @@ pub fn evaluate_wallet_v2_activation(
     mode: &WalletV2ActivationMode,
     prerequisites: &WalletV2ActivationPrerequisites,
 ) -> Result<WalletV2ActivationPermit, WalletV2ActivationError> {
-    let WalletV2ActivationMode::Production(config) = mode else {
-        return Err(WalletV2ActivationError::Disabled);
+    let (config, activation_class) = match mode {
+        WalletV2ActivationMode::Disabled => return Err(WalletV2ActivationError::Disabled),
+        WalletV2ActivationMode::Production(config) => (config, WalletV2ActivationClass::Production),
+        #[cfg(feature = "wallet-v2-reference-tests")]
+        WalletV2ActivationMode::ReferenceOnly(config) => {
+            (config, WalletV2ActivationClass::ReferenceOnly)
+        }
     };
     config.validate_v2()?;
 
@@ -346,8 +492,9 @@ pub fn evaluate_wallet_v2_activation(
         return Err(WalletV2ActivationError::PendingTransaction);
     }
 
-    let monotonic = exactly_one_nonzero_v2(&prerequisites.current_monotonic_commitments)?;
-    if monotonic != config.monotonic_commitment
+    let migration_target = exactly_one_nonzero_v2(&prerequisites.migration_target_digests)?;
+    if migration_target != config.migration_target_digest
+        || prerequisites.migration_target_path_digest != config.migration_target_path_digest
         || prerequisites.monotonic_protection_id != config.monotonic_protection_id
     {
         return Err(WalletV2ActivationError::MonotonicMismatch);
@@ -376,7 +523,8 @@ pub fn evaluate_wallet_v2_activation(
     hasher.update(config.note_cipher_id);
     hasher.update(config.migration_id);
     hasher.update(config.ownership_id);
-    hasher.update(config.monotonic_commitment);
+    hasher.update(config.migration_target_digest);
+    hasher.update(config.migration_target_path_digest);
     hasher.update(config.monotonic_protection_id);
     hasher.update(config.monotonic_store_qualification);
     hasher.update(config.qualified_startup_digest);
@@ -384,11 +532,19 @@ pub fn evaluate_wallet_v2_activation(
     hasher.update(config.qualified_finality_digest);
     let activation_digest = hasher.finalize().into();
     Ok(WalletV2ActivationPermit {
+        activation_class,
         activation_digest,
         wallet_id: config.wallet_id,
         migration_id: config.migration_id,
         ownership_id: config.ownership_id,
-        monotonic_commitment: config.monotonic_commitment,
+        migration_target_digest: config.migration_target_digest,
+        migration_target_path_digest: config.migration_target_path_digest,
+        note_cipher_id: config.note_cipher_id,
+        monotonic_protection_id: config.monotonic_protection_id,
+        monotonic_store_qualification: config.monotonic_store_qualification,
+        qualified_startup_digest: config.qualified_startup_digest,
+        qualified_provider_digest: config.qualified_provider_digest,
+        qualified_finality_digest: config.qualified_finality_digest,
     })
 }
 
@@ -399,6 +555,35 @@ fn exactly_one_nonzero_v2(values: &[[u8; 32]]) -> Result<[u8; 32], WalletV2Activ
         [value] => Ok(*value),
         _ => Err(WalletV2ActivationError::AmbiguousPrerequisite),
     }
+}
+
+/// Cheap, side-effect-free preflight used before restart recovery. Full
+/// startup still reconstructs prerequisites and reevaluates the predicate.
+pub(crate) fn permit_matches_mode_configuration_v2(
+    mode: &WalletV2ActivationMode,
+    permit: &WalletV2ActivationPermit,
+) -> bool {
+    let (config, activation_class) = match mode {
+        WalletV2ActivationMode::Disabled => return false,
+        WalletV2ActivationMode::Production(config) => (config, WalletV2ActivationClass::Production),
+        #[cfg(feature = "wallet-v2-reference-tests")]
+        WalletV2ActivationMode::ReferenceOnly(config) => {
+            (config, WalletV2ActivationClass::ReferenceOnly)
+        }
+    };
+    config.validate_v2().is_ok()
+        && permit.activation_class == activation_class
+        && permit.wallet_id == config.wallet_id
+        && permit.note_cipher_id == config.note_cipher_id
+        && permit.migration_id == config.migration_id
+        && permit.ownership_id == config.ownership_id
+        && permit.migration_target_digest == config.migration_target_digest
+        && permit.migration_target_path_digest == config.migration_target_path_digest
+        && permit.monotonic_protection_id == config.monotonic_protection_id
+        && permit.monotonic_store_qualification == config.monotonic_store_qualification
+        && permit.qualified_startup_digest == config.qualified_startup_digest
+        && permit.qualified_provider_digest == config.qualified_provider_digest
+        && permit.qualified_finality_digest == config.qualified_finality_digest
 }
 
 #[cfg(test)]
@@ -421,6 +606,7 @@ mod tests {
             digest(8),
             digest(9),
             digest(10),
+            digest(11),
         )
         .unwrap()
     }
@@ -438,12 +624,13 @@ mod tests {
             asl2_ownership_committed: true,
             retired_legacy_roles: ALL_LEGACY_STORE_ROLES_V2.to_vec(),
             has_pending_transaction: false,
-            current_monotonic_commitments: vec![digest(5)],
-            monotonic_protection_id: digest(6),
-            monotonic_store_qualifications: vec![digest(7)],
-            qualified_startup_digests: vec![digest(8)],
-            qualified_provider_digests: vec![digest(9)],
-            qualified_finality_digests: vec![digest(10)],
+            migration_target_digests: vec![digest(5)],
+            migration_target_path_digest: digest(6),
+            monotonic_protection_id: digest(7),
+            monotonic_store_qualifications: vec![digest(8)],
+            qualified_startup_digests: vec![digest(9)],
+            qualified_provider_digests: vec![digest(10)],
+            qualified_finality_digests: vec![digest(11)],
         }
     }
 
@@ -462,7 +649,8 @@ mod tests {
         assert_eq!(first.wallet_id_v2(), &digest(1));
         assert_eq!(first.migration_id_v2(), &digest(3));
         assert_eq!(first.ownership_id_v2(), &digest(4));
-        assert_eq!(first.monotonic_commitment_v2(), &digest(5));
+        assert_eq!(first.migration_target_digest_v2(), &digest(5));
+        assert_eq!(first.migration_target_path_digest_v2(), &digest(6));
     }
 
     #[derive(Clone, Copy, Debug)]
@@ -487,6 +675,8 @@ mod tests {
         MonotonicZero,
         MonotonicMismatch,
         MonotonicAmbiguous,
+        TargetPathZero,
+        TargetPathMismatch,
         ProtectionZero,
         ProtectionMismatch,
         MonotonicQualificationMissing,
@@ -528,6 +718,8 @@ mod tests {
         FailureCase::MonotonicZero,
         FailureCase::MonotonicMismatch,
         FailureCase::MonotonicAmbiguous,
+        FailureCase::TargetPathZero,
+        FailureCase::TargetPathMismatch,
         FailureCase::ProtectionZero,
         FailureCase::ProtectionMismatch,
         FailureCase::MonotonicQualificationMissing,
@@ -570,12 +762,14 @@ mod tests {
                 .retired_legacy_roles
                 .push(LegacyWalletStoreRoleV2::WalletAndScanner),
             FailureCase::PendingTransaction => value.has_pending_transaction = true,
-            FailureCase::MonotonicMissing => value.current_monotonic_commitments.clear(),
-            FailureCase::MonotonicZero => value.current_monotonic_commitments[0] = [0u8; 32],
-            FailureCase::MonotonicMismatch => value.current_monotonic_commitments[0] = digest(25),
+            FailureCase::MonotonicMissing => value.migration_target_digests.clear(),
+            FailureCase::MonotonicZero => value.migration_target_digests[0] = [0u8; 32],
+            FailureCase::MonotonicMismatch => value.migration_target_digests[0] = digest(25),
             FailureCase::MonotonicAmbiguous => {
-                value.current_monotonic_commitments.push(digest(26));
+                value.migration_target_digests.push(digest(26));
             }
+            FailureCase::TargetPathZero => value.migration_target_path_digest = [0u8; 32],
+            FailureCase::TargetPathMismatch => value.migration_target_path_digest = digest(36),
             FailureCase::ProtectionZero => value.monotonic_protection_id = [0u8; 32],
             FailureCase::ProtectionMismatch => value.monotonic_protection_id = digest(27),
             FailureCase::MonotonicQualificationMissing => {
@@ -640,9 +834,10 @@ mod tests {
             | FailureCase::StartupAmbiguous
             | FailureCase::ProviderAmbiguous
             | FailureCase::FinalityAmbiguous => WalletV2ActivationError::AmbiguousPrerequisite,
-            FailureCase::MonotonicMismatch | FailureCase::ProtectionMismatch => {
-                WalletV2ActivationError::MonotonicMismatch
-            }
+            FailureCase::MonotonicMismatch
+            | FailureCase::TargetPathZero
+            | FailureCase::TargetPathMismatch
+            | FailureCase::ProtectionMismatch => WalletV2ActivationError::MonotonicMismatch,
             FailureCase::MonotonicQualificationMismatch
             | FailureCase::StartupMismatch
             | FailureCase::ProviderMismatch
@@ -688,7 +883,7 @@ mod tests {
 
     #[test]
     fn zero_configuration_bindings_are_rejected() {
-        for index in 0..10 {
+        for index in 0..11 {
             let mut bindings = [
                 digest(1),
                 digest(2),
@@ -700,6 +895,7 @@ mod tests {
                 digest(8),
                 digest(9),
                 digest(10),
+                digest(11),
             ];
             bindings[index] = [0u8; 32];
             assert_eq!(
@@ -714,9 +910,40 @@ mod tests {
                     bindings[7],
                     bindings[8],
                     bindings[9],
+                    bindings[10],
                 ),
                 Err(WalletV2ActivationError::InvalidConfiguration)
             );
         }
+    }
+
+    #[test]
+    fn permit_copied_between_wallets_is_rejected() {
+        let mode = WalletV2ActivationMode::Production(config());
+        let permit = evaluate_wallet_v2_activation(&mode, &prerequisites()).unwrap();
+        let mut other_wallet = prerequisites();
+        other_wallet.wallet_id = digest(0x91);
+        assert_eq!(
+            evaluate_wallet_v2_activation(&mode, &other_wallet),
+            Err(WalletV2ActivationError::IdentityMismatch)
+        );
+        assert_ne!(permit.wallet_id_v2(), &other_wallet.wallet_id);
+        let other_mode = WalletV2ActivationMode::Production(
+            WalletV2ProductionConfig::new_v2(
+                digest(0x91),
+                digest(2),
+                digest(3),
+                digest(4),
+                digest(5),
+                digest(6),
+                digest(7),
+                digest(8),
+                digest(9),
+                digest(10),
+                digest(11),
+            )
+            .unwrap(),
+        );
+        assert!(!permit_matches_mode_configuration_v2(&other_mode, &permit));
     }
 }

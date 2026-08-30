@@ -445,13 +445,13 @@ impl WalletStoreMigrationReceiptV2 {
         &self.target_path_digest
     }
 
-    pub(crate) fn authenticates_target_v2(&self, path: &Path, bytes: &[u8]) -> bool {
-        let Ok((path_digest, _)) = canonical_bound_path_digests_v2(path) else {
-            return false;
-        };
-        u64::try_from(bytes.len()) == Ok(self.target_length)
-            && path_digest == self.target_path_digest
-            && exact_target_digest_v2(bytes) == Ok(self.target_digest)
+    /// Bind a later authoritative ASL2 generation to the one migration target
+    /// path without pretending the ASMG genesis digest equals the evolved
+    /// image. Current-image authenticity is checked independently against the
+    /// external monotonic service.
+    pub(crate) fn authenticates_target_path_v2(&self, path: &Path) -> bool {
+        canonical_bound_path_digests_v2(path)
+            .is_ok_and(|(path_digest, _)| path_digest == self.target_path_digest)
     }
 }
 

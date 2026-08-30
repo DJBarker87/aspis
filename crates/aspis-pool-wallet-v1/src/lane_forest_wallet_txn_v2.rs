@@ -65,7 +65,8 @@ use crate::{
         DepositEventIdV1, DepositScanIdentityV1, FinalizedBlockV1, FinalizedChainPointV1,
     },
     wallet_monotonic_v2::{
-        WalletMonotonicAdvanceV2, WalletMonotonicCommitmentV2, WalletMonotonicStoreErrorV2,
+        WalletMonotonicAbortV2, WalletMonotonicAdvanceV2, WalletMonotonicCommitmentV2,
+        WalletMonotonicPrepareV2, WalletMonotonicPreparedNextV2, WalletMonotonicStoreErrorV2,
         WalletMonotonicStoreQualificationV2, WalletMonotonicStoreV2,
     },
     wallet_populated_migration_v2::PopulatedWalletMigrationV2,
@@ -91,6 +92,8 @@ const EMPTY_EVENT_SET_DOMAIN_V3: &[u8] =
     b"aspis:pool-v1:lane-forest-wallet-empty-event-set:sha256:v3";
 const TRANSACTION_DOMAIN_V2: &[u8] = b"aspis:pool-v1:lane-forest-wallet-transaction:sha256:v2";
 const STATE_DOMAIN_V2: &[u8] = b"aspis:pool-v1:lane-forest-wallet-state:sha256:v2";
+const PREPARED_IMAGE_DOMAIN_V3: &[u8] =
+    b"aspis:pool-v1:lane-forest-wallet-prepared-image:sha256:v3";
 const MAX_TXN_IMAGE_BYTES_V2: usize = 64 * 1024 * 1024;
 const MAX_TXN_RECORDS_V2: usize = 100_000;
 const MAX_LOGICAL_NOTES_V2: usize = 1_000_000;
@@ -823,6 +826,10 @@ impl LaneForestWalletRelayerObservationV2 {
     pub fn point(&self) -> FinalizedChainPointV1 {
         self.point
     }
+
+    pub fn provider_set_digest(&self) -> &[u8; 32] {
+        &self.provider_set_digest
+    }
 }
 
 #[derive(Clone, PartialEq, Eq)]
@@ -1338,7 +1345,7 @@ struct LaneForestWalletMonotonicMetadataV3 {
 type PreparedMonotonicImageV3 = (
     Vec<u8>,
     Option<LaneForestWalletMonotonicMetadataV3>,
-    Option<(WalletMonotonicCommitmentV2, WalletMonotonicCommitmentV2)>,
+    Option<WalletMonotonicPreparedNextV2>,
 );
 
 #[derive(Clone, Serialize, Deserialize, PartialEq, Eq)]
@@ -2691,6 +2698,31 @@ fn monotonic_commitment_v3(
     .map_err(Into::into)
 }
 
+fn prepared_monotonic_replacement_v3(
+    activation: &EmptyV1LaneForestWalletActivationV2,
+    protection_id: [u8; 32],
+    expected_current: Option<WalletMonotonicCommitmentV2>,
+    next: WalletMonotonicCommitmentV2,
+    next_image: &[u8],
+    operation_identity: [u8; 32],
+) -> Result<WalletMonotonicPreparedNextV2, LaneForestWalletTxnErrorV2> {
+    let mut image_hasher = Sha256::new();
+    image_hasher.update(PREPARED_IMAGE_DOMAIN_V3);
+    image_hasher.update((next_image.len() as u64).to_le_bytes());
+    image_hasher.update(next_image);
+    WalletMonotonicPreparedNextV2::new_v2(
+        expected_current,
+        next,
+        image_hasher.finalize().into(),
+        activation.wallet_identity_sha256,
+        activation.activation_id,
+        protection_id,
+        activation.note_cipher_id,
+        operation_identity,
+    )
+    .map_err(Into::into)
+}
+
 fn encode_authoritative_image_v2(
     activation: &EmptyV1LaneForestWalletActivationV2,
     records: &[LaneForestWalletTxnRecordV2],
@@ -2928,6 +2960,7 @@ pub fn reconcile_protected_image_monotonic_v2(
         return Err(LaneForestWalletTxnErrorV2::MonotonicRollback);
     }
     reconcile_monotonic_v3(
+        bytes,
         &activation,
         &records,
         &tentative,
@@ -2935,6 +2968,59 @@ pub fn reconcile_protected_image_monotonic_v2(
         metadata,
         store,
     )
+}
+
+/// Reserve the exact ASMG-authenticated protected target before it is
+/// installed locally. Migration recovery calls this before target replacement;
+/// a generic ASL2 open path can never manufacture the missing reservation.
+pub(crate) fn prepare_protected_image_monotonic_v2(
+    bytes: &[u8],
+    expected_activation: &EmptyV1LaneForestWalletActivationV2,
+    cipher: &NoteStoreCipherV1,
+    protection_id: [u8; 32],
+    store: &mut dyn WalletMonotonicStoreV2,
+) -> Result<WalletMonotonicCommitmentV2, LaneForestWalletTxnErrorV2> {
+    let (activation, records, tentative, replayed, metadata) =
+        decode_authoritative_image_v2(bytes)?;
+    if activation.activation_id != expected_activation.activation_id
+        || cipher.cipher_id() != activation.note_cipher_id
+    {
+        return Err(LaneForestWalletTxnErrorV2::ActivationMismatch);
+    }
+    verify_retained_note_openings_v2(&replayed.committed, &records, cipher)?;
+    if let Some(candidate) = &replayed.pending_candidate {
+        verify_retained_note_openings_v2(candidate, &records, cipher)?;
+    }
+    let metadata = metadata.ok_or(LaneForestWalletTxnErrorV2::MonotonicRequired)?;
+    if metadata.protection_id != protection_id {
+        return Err(LaneForestWalletTxnErrorV2::MonotonicRollback);
+    }
+    let state_digest = authoritative_content_digest_v3(&activation, &records, &tentative)?;
+    let finalized_point = replayed
+        .pending_candidate
+        .as_ref()
+        .unwrap_or(&replayed.committed)
+        .finalized_head;
+    let candidate = monotonic_commitment_v3(metadata, finalized_point, state_digest)?;
+    let current = store.current_commitment_v2()?;
+    if current == Some(candidate) {
+        if store.prepared_next_v2()?.is_some() {
+            return Err(LaneForestWalletTxnErrorV2::MonotonicRollback);
+        }
+        return Ok(candidate);
+    }
+    let prepared = prepared_monotonic_replacement_v3(
+        &activation,
+        protection_id,
+        current,
+        candidate,
+        bytes,
+        state_digest,
+    )?;
+    match store.compare_and_prepare_next_v2(prepared)? {
+        WalletMonotonicPrepareV2::Prepared | WalletMonotonicPrepareV2::AlreadyPrepared => {}
+    }
+    Ok(candidate)
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -2947,6 +3033,7 @@ pub enum LaneForestWalletTentativeUpdateV2 {
 }
 
 fn reconcile_monotonic_v3(
+    image_bytes: &[u8],
     activation: &EmptyV1LaneForestWalletActivationV2,
     records: &[LaneForestWalletTxnRecordV2],
     tentative_observations: &[LaneForestWalletTentativeObservationV2],
@@ -2962,18 +3049,32 @@ fn reconcile_monotonic_v3(
         .unwrap_or(&replayed.committed)
         .finalized_head;
     let candidate = monotonic_commitment_v3(metadata, finalized_point, state_digest)?;
-    match store.current_commitment_v2()? {
-        None if metadata.generation == 0 => {
-            store.compare_and_advance_v2(None, candidate)?;
+    let current = store.current_commitment_v2()?;
+    if current == Some(candidate) {
+        if let Some(dangling) = store.prepared_next_v2()? {
+            if dangling.expected_current_v2() != Some(candidate) {
+                return Err(LaneForestWalletTxnErrorV2::MonotonicRollback);
+            }
+            match store.compare_and_abort_prepared_v2(dangling)? {
+                WalletMonotonicAbortV2::Aborted | WalletMonotonicAbortV2::AlreadyAbsent => {}
+            }
         }
-        Some(current) if current == candidate => {}
-        Some(current)
-            if metadata.generation == current.generation().saturating_add(1)
-                && metadata.predecessor_commitment == current.commitment_digest_v2() =>
-        {
-            store.compare_and_advance_v2(Some(current.commitment_digest_v2()), candidate)?;
-        }
-        _ => return Err(LaneForestWalletTxnErrorV2::MonotonicRollback),
+        return Ok(candidate);
+    }
+    let prepared = prepared_monotonic_replacement_v3(
+        activation,
+        metadata.protection_id,
+        current,
+        candidate,
+        image_bytes,
+        state_digest,
+    )
+    .map_err(|_| LaneForestWalletTxnErrorV2::MonotonicRollback)?;
+    if store.prepared_next_v2()? != Some(prepared) {
+        return Err(LaneForestWalletTxnErrorV2::MonotonicRollback);
+    }
+    match store.compare_and_commit_prepared_v2(prepared)? {
+        WalletMonotonicAdvanceV2::Advanced | WalletMonotonicAdvanceV2::AlreadyCurrent => {}
     }
     Ok(candidate)
 }
@@ -3087,6 +3188,7 @@ impl LaneForestWalletTxnCoordinatorV2 {
                     return Err(LaneForestWalletTxnErrorV2::MonotonicRollback);
                 }
                 reconcile_monotonic_v3(
+                    &bytes,
                     &stored_activation,
                     &records,
                     &tentative_observations,
@@ -3123,6 +3225,27 @@ impl LaneForestWalletTxnCoordinatorV2 {
             &tentative_observations,
             monotonic_metadata,
         )?;
+        let prepared_monotonic = if let Some((_, store)) = monotonic.as_mut() {
+            let metadata =
+                monotonic_metadata.ok_or(LaneForestWalletTxnErrorV2::MonotonicRequired)?;
+            let state_digest =
+                authoritative_content_digest_v3(&activation, &records, &tentative_observations)?;
+            let commitment = monotonic_commitment_v3(metadata, activation.anchor, state_digest)?;
+            let prepared = prepared_monotonic_replacement_v3(
+                &activation,
+                metadata.protection_id,
+                store.current_commitment_v2()?,
+                commitment,
+                &bytes,
+                state_digest,
+            )?;
+            match store.compare_and_prepare_next_v2(prepared)? {
+                WalletMonotonicPrepareV2::Prepared | WalletMonotonicPrepareV2::AlreadyPrepared => {}
+            }
+            Some(prepared)
+        } else {
+            None
+        };
         let mut injected = None;
         if let Err(error) = file.replace_with_fault_v1(&bytes, |boundary| {
             let point = LaneForestWalletTxnAtomicFaultPointV2 {
@@ -3141,13 +3264,8 @@ impl LaneForestWalletTxnCoordinatorV2 {
                 LaneForestWalletTxnErrorV2::InjectedAtomicFault,
             ));
         }
-        if let Some((_, store)) = monotonic.as_mut() {
-            let metadata =
-                monotonic_metadata.ok_or(LaneForestWalletTxnErrorV2::MonotonicRequired)?;
-            let state_digest =
-                authoritative_content_digest_v3(&activation, &records, &tentative_observations)?;
-            let commitment = monotonic_commitment_v3(metadata, activation.anchor, state_digest)?;
-            match store.compare_and_advance_v2(None, commitment)? {
+        if let (Some(prepared), Some((_, store))) = (prepared_monotonic, monotonic.as_mut()) {
+            match store.compare_and_commit_prepared_v2(prepared)? {
                 WalletMonotonicAdvanceV2::Advanced | WalletMonotonicAdvanceV2::AlreadyCurrent => {}
             }
         }
@@ -3714,12 +3832,13 @@ impl LaneForestWalletTxnCoordinatorV2 {
             &self.committed,
             self.pending_candidate.as_ref(),
         )?;
+        self.prepare_monotonic_before_replace_v2(monotonic_advance)?;
         self.replace_with_faults_v2(
             &bytes,
             LaneForestWalletTxnWriteV2::TentativeObservation,
             faults,
         )?;
-        self.advance_monotonic_after_replace_v2(monotonic_advance)?;
+        self.commit_monotonic_after_replace_v2(monotonic_advance)?;
         self.tentative_observations = observations;
         self.monotonic_metadata = next_monotonic;
         Ok(())
@@ -3761,8 +3880,9 @@ impl LaneForestWalletTxnCoordinatorV2 {
             &committed,
             pending_candidate.as_ref(),
         )?;
+        self.prepare_monotonic_before_replace_v2(monotonic_advance)?;
         self.replace_with_faults_v2(&bytes, write, faults)?;
-        self.advance_monotonic_after_replace_v2(monotonic_advance)?;
+        self.commit_monotonic_after_replace_v2(monotonic_advance)?;
         self.records = records;
         self.tentative_observations = tentative_observations;
         self.committed = committed;
@@ -3813,21 +3933,47 @@ impl LaneForestWalletTxnCoordinatorV2 {
             tentative_observations,
             Some(next_metadata),
         )?;
-        Ok((bytes, Some(next_metadata), Some((current, next))))
+        let prepared = prepared_monotonic_replacement_v3(
+            &self.activation,
+            current_metadata.protection_id,
+            Some(current),
+            next,
+            &bytes,
+            state_digest,
+        )?;
+        Ok((bytes, Some(next_metadata), Some(prepared)))
     }
 
-    fn advance_monotonic_after_replace_v2(
+    fn prepare_monotonic_before_replace_v2(
         &mut self,
-        advance: Option<(WalletMonotonicCommitmentV2, WalletMonotonicCommitmentV2)>,
+        prepared: Option<WalletMonotonicPreparedNextV2>,
     ) -> Result<(), LaneForestWalletTxnErrorV2> {
-        let Some((current, next)) = advance else {
+        let Some(prepared) = prepared else {
             return Ok(());
         };
         let store = self
             .monotonic_store
             .as_mut()
             .ok_or(LaneForestWalletTxnErrorV2::MonotonicRequired)?;
-        match store.compare_and_advance_v2(Some(current.commitment_digest_v2()), next) {
+        match store.compare_and_prepare_next_v2(prepared)? {
+            WalletMonotonicPrepareV2::Prepared | WalletMonotonicPrepareV2::AlreadyPrepared => {
+                Ok(())
+            }
+        }
+    }
+
+    fn commit_monotonic_after_replace_v2(
+        &mut self,
+        prepared: Option<WalletMonotonicPreparedNextV2>,
+    ) -> Result<(), LaneForestWalletTxnErrorV2> {
+        let Some(prepared) = prepared else {
+            return Ok(());
+        };
+        let store = self
+            .monotonic_store
+            .as_mut()
+            .ok_or(LaneForestWalletTxnErrorV2::MonotonicRequired)?;
+        match store.compare_and_commit_prepared_v2(prepared) {
             Ok(WalletMonotonicAdvanceV2::Advanced)
             | Ok(WalletMonotonicAdvanceV2::AlreadyCurrent) => Ok(()),
             Err(error) => {

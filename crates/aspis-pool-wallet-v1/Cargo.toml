@@ -19,6 +19,7 @@ required-features = ["eight-lane-plumbing-v2"]
 [features]
 default = []
 eight-lane-plumbing-v2 = ["aspis-pool/pair-forest-account-evidence"]
+wallet-v2-reference-tests = ["eight-lane-plumbing-v2"]
 
 [dependencies]
 aspis-core = { path = "../aspis-core" }
