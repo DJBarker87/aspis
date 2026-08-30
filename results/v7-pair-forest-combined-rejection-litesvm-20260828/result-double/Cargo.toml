@@ -1,0 +1,16 @@
+[package]
+name = "aspis-pair-forest-result-double"
+version = "0.1.0"
+edition = "2021"
+publish = false
+
+[workspace]
+
+[lib]
+crate-type = ["cdylib", "lib"]
+
+[dependencies]
+# Keep the standalone test fixture aligned with the repository's frozen SBF
+# dependency graph so the capped Linux build remains fully offline.
+blake3 = "=1.5.5"
+solana-program = "=2.3.0"

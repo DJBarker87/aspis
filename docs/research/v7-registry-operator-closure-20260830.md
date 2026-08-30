@@ -8,9 +8,10 @@ certificates for both the Registry program and every selected verifier, and
 the Pool/Tag-73 registry readers fail closed onto the V2 account family when
 the immutable-deployment policy bit is set. The explicit V2 governance client,
 finalized-account selector and real TxV1 terminal builder are now integrated
-and focused Rust tests are green. SBF measurement, refreshed
-Rust-to-Lean/Aeneas source closure and finalized devnet evidence remain
-activation gates.
+and focused Rust tests are green. The real combined Registry V2 SBF path is
+now measured below 1.3M CU for all four terminal shapes. Independent
+reproducible-build equality, refreshed Rust-to-Lean/Aeneas source closure and
+finalized devnet evidence remain activation gates.
 
 ## Current exact on-chain guarantee
 
@@ -244,42 +245,37 @@ Results: 4/4 V1/V2 governance-builder tests, 5/5 finalized client tests, 2/2
 V2 terminal tests and the focused legacy sizing regression passed. Peak RSS
 was 771,440,640 bytes across the changed-feature builds; swaps were zero.
 
-### CU impact
+### Measured CU impact
 
-The following remain static estimates, not new SBF measurements:
+The current Pool, Tag-73 verifier and Registry were rebuilt as SBF and run in
+one real LiteSVM transaction with V2 accounts created by the actual governance
+instructions. These are combined measurements, not independent-component
+sums:
 
-- An upgradeable Tag-73 ProgramData account is about 1.2 MB. Agave 4.2 charges
-  SHA-256 base cost 85 CU plus `max(mem_op_base_cost, byte_cost * len / 2)` for
-  one slice, with byte cost 1. The hash syscall itself is therefore roughly
-  0.58–0.60M CU for a 1.15–1.20 MB payload, before account parsing and PDA
-  creation. That should fit a one-time 1.4M-CU schedule transaction, but the
-  complete instruction must still be measured.
-- If that one-shot schedule does not fit, first remove the upgrade authority,
-  then build a permissionless chunked attestation PDA over the now-immutable
-  ProgramData. Each transaction hashes the next fixed chunk and advances a
-  domain-separated rolling commitment; `ScheduleProfileV2` accepts only the
-  finalized attestation. This adds setup transactions, not spend transactions.
-- The terminal path only decodes 128 additional entry bytes and checks fixed
-  fields. Expected incremental cost is low single-digit kCU; treat that as a
-  static estimate until the combined SBF path is measured.
-- With address-table lookups, the two init/schedule-only accounts add only
-  account indices plus the 32 instruction bytes. Without lookup tables they
-  add up to 64 static-key bytes plus compiled indices, for an estimated packet
-  increase of about 98–102 bytes. This is far below 4,096 bytes.
-- The terminal client/source changes do no on-chain work by themselves. The
-  on-chain V2 reader decodes 128 additional entry bytes and checks fixed
-  certificate fields, but the existing combined LiteSVM harness is pinned to
-  V1 account fixtures and prior SBF artifacts. It cannot honestly provide a
-  V2 CU delta without rebuilding the programs and adding ASR2/ASE2 fixtures.
-  No independent-component sum is reported as a combined measurement.
+| Terminal shape | Combined CU | TxV1 bytes |
+| --- | ---: | ---: |
+| transfer, same page | 1,161,460 | 845 |
+| transfer, rollover | 1,207,174 | 878 |
+| withdrawal, same page | 1,153,110 | 1,010 |
+| withdrawal, rollover | 1,218,822 | 1,043 |
+
+The one-time Registry initialize costs 106,065 CU. Scheduling the exact
+1,819,480-byte finalized verifier ProgramData costs 929,136 CU, activation
+12,794 CU and freeze 4,914 CU. Thus the direct one-shot executable certificate
+fits; the earlier chunked-attestation fallback is not needed for this release
+artifact.
+
+The full evidence, artifact hashes, adversarial rollback cases and local replay
+are frozen under
+`results/v7-pair-forest-registry-v2-litesvm-20260830/`.
 
 ## Activation decision
 
 The runtime V2 deployment certificate, governance builder, finalized client
-selection and exact TxV1 terminal selection are now implemented and locally
-green. Mainnet activation remains blocked on:
+selection, exact TxV1 terminal selection and combined local SBF lifecycle are
+implemented and green. Mainnet activation remains blocked on:
 
-1. reproducible SBF builds plus measured V2 initialize/schedule/terminal CU;
+1. independent reproducible SBF equality and final stack analysis;
 2. refreshed Rust-to-Charon/Aeneas-to-Lean source bridges for V2 parsing,
    deployment authentication and caller selection;
 3. finalized devnet initialization, schedule, activation/freeze, successful

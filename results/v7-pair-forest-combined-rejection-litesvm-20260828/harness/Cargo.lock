@@ -389,6 +389,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "aspis-registry"
+version = "0.1.0"
+dependencies = [
+ "aspis-statement",
+ "bincode",
+ "solana-loader-v3-interface 5.0.0",
+ "solana-program",
+ "solana-sdk-ids 2.2.1",
+]
+
+[[package]]
 name = "aspis-statement"
 version = "0.1.0"
 dependencies = [
@@ -402,6 +413,7 @@ dependencies = [
  "anyhow",
  "aspis-core",
  "aspis-pool",
+ "aspis-registry",
  "aspis-statement",
  "litesvm",
  "serde_json",

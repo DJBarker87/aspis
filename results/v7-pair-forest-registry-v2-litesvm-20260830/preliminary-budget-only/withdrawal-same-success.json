@@ -1,0 +1,257 @@
+{
+  "artifacts": {
+    "pool": {
+      "bytes": 534608,
+      "path": "results/v7-pair-forest-registry-v2-litesvm-20260830/artifacts/aspis_pool.so",
+      "sha256": "0e94c98d28437f0b01dce546fdefaad21dc10772a4d46991c2a573d8129cd4f6"
+    },
+    "production_verifier": {
+      "bytes": 1819480,
+      "path": "results/v7-pair-forest-registry-v2-litesvm-20260830/artifacts/aspis_verifier.so",
+      "sha256": "97df12937d46e25a2eeefeac16ce31925fd473c672d6b656548be9220adbcc6d"
+    },
+    "registry": {
+      "bytes": 189824,
+      "path": "results/v7-pair-forest-registry-v2-litesvm-20260830/artifacts/aspis_registry.so",
+      "sha256": "0f14c7b74ec6cbe3b3f637b0f24c7e8cdc46fd09f5b2e495fd51ada16ad8f11b"
+    },
+    "result_double": {
+      "bytes": 20816,
+      "path": "results/v7-pair-forest-registry-v2-litesvm-20260830/artifacts/aspis_pair_forest_result_double.so",
+      "sha256": "3693edf83f100ca90229a8aa0406182d71fd56b6480a1fa7366c4caff4ad5c29"
+    },
+    "selected_verifier": {
+      "bytes": 1819480,
+      "kind": "production Tag-73 verifier",
+      "sha256": "97df12937d46e25a2eeefeac16ce31925fd473c672d6b656548be9220adbcc6d"
+    },
+    "token_program": {
+      "kind": "LiteSVM legacy SPL Token builtin",
+      "program_id": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
+    }
+  },
+  "atomicity": {
+    "checkpoint_unchanged": true,
+    "entry_unchanged": true,
+    "failure_all_accounts_byte_exact": false,
+    "history_changed_exactly_on_success": true,
+    "lane_changed_exactly_on_success": true,
+    "master_unchanged": true,
+    "nullifier_marker_absent_before": true,
+    "nullifier_marker_changed_exactly_on_success": true,
+    "proof_unchanged": true,
+    "registry_unchanged": true,
+    "replay_preserved_settled_state_byte_exact": null,
+    "rollover_page_changed_exactly_on_success": null,
+    "settled_history_equals_expected": true,
+    "settled_lane_equals_candidate": true,
+    "settled_marker_equals_expected": true,
+    "settled_rollover_page_equals_expected": null,
+    "withdrawal_destination_amount_after": 267,
+    "withdrawal_destination_amount_before": 17,
+    "withdrawal_mint_unchanged": true,
+    "withdrawal_vault_amount_after": 9750,
+    "withdrawal_vault_amount_before": 10000
+  },
+  "authenticated_path": {
+    "candidate_afterstate_matches_deterministic_lane_transition": true,
+    "checkpoint": "EDfQpAnRQVqFmGZuY2ocZoX7gBp5H1N3MWWMLmuWTmD6",
+    "history_mode": "same-page",
+    "history_page": "DEozmkY3H2YccnEAqHyENJp2Hs1HAFjBq6xqdJDFeZk9",
+    "history_roots_before": 14,
+    "master": "3Hrd4YKTTF2eaoWjdwzBwagmH9SeuenwiVyQajm72C8N",
+    "nullifier_marker": "7YvvqJNdXZt3aNMkCebG4To2f1VJe1TbxHBtY41D4Jy2",
+    "pool_program": "5PjDJaGfSPJj4tFzMRCiuuAasKg5n8dJKXKenhuwZexx",
+    "populated_lane_pairs_before": 13,
+    "proof_account": "5fQPsn8hoaVddFG26cWQ5QFdqxWtUPNaZ9zH2E6LYzFn",
+    "proof_owner_is_selected_verifier": true,
+    "registry_code_certificate_matches_loaded_programdata": true,
+    "registry_entry_active_at_slot": 150,
+    "registry_family": "ASR2/ASE2 immutable deployment",
+    "registry_profile_and_release_exact": true,
+    "registry_program": "5bV6jUfhDHCQVA1WfKBUnXUsboJgoKgkzkKcxr3joew5",
+    "rollover_history_page": null,
+    "selected_lane": "3B3QhxztFR6kSo3m3kpTaU9JsQyJH6ScoT94gwnFXQYj",
+    "selected_output_lane": 3,
+    "verifier_code_certificate_matches_loaded_programdata": true,
+    "verifier_program": "7Q2nGsPg8rbjdxKHK4jxTgEWLTyd9o1X4KMSjCieRmue"
+  },
+  "boundaries": [
+    "This is deterministic local LiteSVM evidence. No devnet, mainnet, signing service, or RPC is used.",
+    "The transaction is a real TxV1 message with its 1.4M compute limit in TransactionConfig.",
+    "A runtime limit above 1.4M is an explicit local diagnostic override and is not deployable evidence.",
+    "Production success/rejection cases execute the strict frozen proof and all 35/31/34-bit work checks; result-double cases are explicitly isolated outer-Pool return-data adversarial tests.",
+    "ASR2/ASE2 are created by real Registry V2 instructions against loader-v3 Program/ProgramData accounts installed by LiteSVM, not hand-encoded terminal fixtures."
+  ],
+  "classification": "REAL COMBINED STRICT-WORK ACCEPTANCE CU",
+  "execution": {
+    "compute_units": 1152942,
+    "error": null,
+    "instruction_account_metas": 16,
+    "instruction_bytes": 320,
+    "logs": [
+      "Program 5PjDJaGfSPJj4tFzMRCiuuAasKg5n8dJKXKenhuwZexx invoke [1]",
+      "Program 11111111111111111111111111111111 invoke [2]",
+      "Program 11111111111111111111111111111111 success",
+      "Program 7Q2nGsPg8rbjdxKHK4jxTgEWLTyd9o1X4KMSjCieRmue invoke [2]",
+      "Program 7Q2nGsPg8rbjdxKHK4jxTgEWLTyd9o1X4KMSjCieRmue consumed 1085267 of 1342825 compute units",
+      "Program return: 7Q2nGsPg8rbjdxKHK4jxTgEWLTyd9o1X4KMSjCieRmue QVNSOAECAQMiCMY3PdMTsvJ2pS0U/pMZN53TfJiqO1i2TfyYLRpSPyBJ588BTYh1L85ifQ3tcLC7ekH4vY20GS2ONAjKThAc2xuCAEyQiQYUYLJhpCUGAICP2nCipLAUGbrAE9GvbnVBU0pBAQEBAQ4AAAAAAAAAmyeZaJfLG2SnLUxMciztXq0ZfWM9bj5KZqivHCnsIhSg4sNVrO6fLn1zFFxu7yA17crROsVd4hECQNwPLE/YRFbXdT0bT7l1rMAsEJj5uhgsCOICjS0xRC4RrjdBUAli/1dhIYrOigad7xN74VyWFAJUZ0g+RdgVx4xgGzYoqhzcFpFfkZgNSnvEvkTlWHcXl1uRKshE1XyN91MDCoCYJz65C1S57ygooTEUOPbyWRBXkn1mBRHCZIubHAzowJhuSMT+VeqBz1vPXEML8pMRBiKwRHAPS8VpQ+7iTbB4cSFLGY4OvUqrOvgoe1cd8/16hBJDaTcriU2r1BxeQwN2LDQbICgc6kQCoyajVn+W509qpvUVSM9WbffQGBCXsGsq+2SdAWzg1ks5PX876J7tVkW55TRSp9JHVIOGMw7dACE4WJh1O7mOSVNSPjqihphlvaxqYHDNbmzWYAc2ZdGOYqys7xjUnSMc/dX1M98y5QWoV854EnewWS6FRhjdd1ZrOFnKOrkiXCcHTlQ8htwPG8hy3jpjKSAlGlWSRE7kS0wlTEV+fYG4ZaWH3n5ZPfgJDh9pGIge3k7VmQ9w2FZkep2hhw9tv/ZRF4BtXtb+Y0GwrHRk/v7VP5X//X3uIR05EWPoSTMgKDuaZUxT9aTQG3XTfnsacn8qRqYJetcyJmQAaRBr4BkBb6jAfnQ6bvhGeeG8FYGOzALw7wEolTVnSJCNOUNAeoIn/BECBV64TzsrdJ5U8xIzdRLz5zH5yC18tjnHTmzbpS7os2NU3s9vBNkqRi4880ITOc+SGX0gfE10t4xaZJClSRDzoGMOWWdW1TOgIMnPn2Ai9+cPU37aGnu+JwHZPwVOJuAED+XnRRysm117xaMXbyOtEQnTwKsn",
+      "Program 7Q2nGsPg8rbjdxKHK4jxTgEWLTyd9o1X4KMSjCieRmue success",
+      "Program TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA invoke [2]",
+      "Program TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA consumed 105 of 249132 compute units",
+      "Program TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA success",
+      "Program 5PjDJaGfSPJj4tFzMRCiuuAasKg5n8dJKXKenhuwZexx consumed 1152942 of 1400000 compute units",
+      "Program return: 5PjDJaGfSPJj4tFzMRCiuuAasKg5n8dJKXKenhuwZexx QVNSOAECAQMiCMY3PdMTsvJ2pS0U/pMZN53TfJiqO1i2TfyYLRpSPyBJ588BTYh1L85ifQ3tcLC7ekH4vY20GS2ONAjKThAc2xuCAEyQiQYUYLJhpCUGAICP2nCipLAUGbrAE9GvbnVBU0pBAQEBAQ4AAAAAAAAAmyeZaJfLG2SnLUxMciztXq0ZfWM9bj5KZqivHCnsIhSg4sNVrO6fLn1zFFxu7yA17crROsVd4hECQNwPLE/YRFbXdT0bT7l1rMAsEJj5uhgsCOICjS0xRC4RrjdBUAli/1dhIYrOigad7xN74VyWFAJUZ0g+RdgVx4xgGzYoqhzcFpFfkZgNSnvEvkTlWHcXl1uRKshE1XyN91MDCoCYJz65C1S57ygooTEUOPbyWRBXkn1mBRHCZIubHAzowJhuSMT+VeqBz1vPXEML8pMRBiKwRHAPS8VpQ+7iTbB4cSFLGY4OvUqrOvgoe1cd8/16hBJDaTcriU2r1BxeQwN2LDQbICgc6kQCoyajVn+W509qpvUVSM9WbffQGBCXsGsq+2SdAWzg1ks5PX876J7tVkW55TRSp9JHVIOGMw7dACE4WJh1O7mOSVNSPjqihphlvaxqYHDNbmzWYAc2ZdGOYqys7xjUnSMc/dX1M98y5QWoV854EnewWS6FRhjdd1ZrOFnKOrkiXCcHTlQ8htwPG8hy3jpjKSAlGlWSRE7kS0wlTEV+fYG4ZaWH3n5ZPfgJDh9pGIge3k7VmQ9w2FZkep2hhw9tv/ZRF4BtXtb+Y0GwrHRk/v7VP5X//X3uIR05EWPoSTMgKDuaZUxT9aTQG3XTfnsacn8qRqYJetcyJmQAaRBr4BkBb6jAfnQ6bvhGeeG8FYGOzALw7wEolTVnSJCNOUNAeoIn/BECBV64TzsrdJ5U8xIzdRLz5zH5yC18tjnHTmzbpS7os2NU3s9vBNkqRi4880ITOc+SGX0gfE10t4xaZJClSRDzoGMOWWdW1TOgIMnPn2Ai9+cPU37aGnu+JwHZPwVOJuAED+XnRRysm117xaMXbyOtEQnTwKsn",
+      "Program 5PjDJaGfSPJj4tFzMRCiuuAasKg5n8dJKXKenhuwZexx success"
+    ],
+    "network": "none",
+    "operation": "withdrawal",
+    "outcome": "accepted",
+    "replay": null,
+    "return_data_bytes": 792,
+    "return_data_sha256": "299685a1e3edc57e983bd25ab08a42b2ba8b43a899828a79f67cba9e5e7ecaf7",
+    "return_program": "5PjDJaGfSPJj4tFzMRCiuuAasKg5n8dJKXKenhuwZexx",
+    "runtime": "LiteSVM 0.16.0",
+    "runtime_compute_limit": 1400000,
+    "runtime_limit_is_diagnostic_override": false,
+    "selected_verifier_cpi_observed_in_logs": true,
+    "serialized_transaction_bytes": 998,
+    "simulation_equals_execution": true,
+    "terminal_transport": "ASQ8 / 320-byte compact request",
+    "transaction_format": "true Solana TxV1 / VersionedMessage::V1",
+    "txv1_4096_target_headroom_bytes": 3098,
+    "txv1_declared_compute_unit_limit": 1400000
+  },
+  "fixture": {
+    "candidate_afterstate_bytes": 688,
+    "external_path": "results/v7-pair-forest-combined-rejection-litesvm-20260828/evidence/withdrawal-same-page-counter0-strict-canonical.bin",
+    "kind": "compact-proof-body",
+    "payload_bytes": 31512,
+    "payload_sha256": "baa4cdd67e837389a1d451beba56fd64a99741fd89742916ca3eebda33fc79a5",
+    "proof_byte_mutated_by_harness": false,
+    "proof_bytes": 30824,
+    "proof_sha256": "85cef2964031f2f9456be88f8ca10bcc19a90b29e61719fcc9d353fd7e6fa285",
+    "strict_work_expected": true
+  },
+  "honest_fixture_contract": {
+    "argument": "sixth argument is either compact proof body or complete payload, excluding the 40-byte ASPU header",
+    "fixed_pool_master": "3Hrd4YKTTF2eaoWjdwzBwagmH9SeuenwiVyQajm72C8N",
+    "fixed_proof_account": "5fQPsn8hoaVddFG26cWQ5QFdqxWtUPNaZ9zH2E6LYzFn",
+    "fixed_verifier_program": "7Q2nGsPg8rbjdxKHK4jxTgEWLTyd9o1X4KMSjCieRmue",
+    "payload_layout": "688-byte encoded candidate afterstate followed by compact Tag-73 proof",
+    "requirement": "the fixture must be generated for the deterministic public statement and identities recorded above"
+  },
+  "registry_v2_governance": {
+    "activate": {
+      "compute_units": 12738,
+      "error": null,
+      "logs": [
+        "Program 5bV6jUfhDHCQVA1WfKBUnXUsboJgoKgkzkKcxr3joew5 invoke [1]",
+        "Program 5bV6jUfhDHCQVA1WfKBUnXUsboJgoKgkzkKcxr3joew5 consumed 12738 of 1400000 compute units",
+        "Program 5bV6jUfhDHCQVA1WfKBUnXUsboJgoKgkzkKcxr3joew5 success"
+      ],
+      "return_data_bytes": 0,
+      "return_data_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "return_program": "5bV6jUfhDHCQVA1WfKBUnXUsboJgoKgkzkKcxr3joew5",
+      "serialized_transaction_bytes": 361,
+      "txv1_4096_target_headroom_bytes": 3735
+    },
+    "entry_active_at_slot": 120,
+    "entry_fixture_bytes": 320,
+    "entry_fixture_path": "results/v7-pair-forest-registry-v2-litesvm-20260830/withdrawal-same-success.ase2.bin",
+    "entry_fixture_sha256": "e82965fc06929e94d9318b355d8c387d8d87cd34c459c612fe1923ae133fd81e",
+    "failed_hash_checks_preserved_registry_and_entry_byte_exact": true,
+    "final_authority_zero": true,
+    "final_entry_magic": "ASE2",
+    "final_entry_pda": "9zQXTg6QqijGAG3kyWf94CQA3KdFq3VoYBLAUrhge1WB",
+    "final_generation": 3,
+    "final_registry_immutable": true,
+    "final_registry_magic": "ASR2",
+    "final_registry_pda": "JBz8KKzyZ6FzTU7WmLywurr49xJPpQcA9ECNg2SZX6iH",
+    "freeze": {
+      "compute_units": 4858,
+      "error": null,
+      "logs": [
+        "Program 5bV6jUfhDHCQVA1WfKBUnXUsboJgoKgkzkKcxr3joew5 invoke [1]",
+        "Program 5bV6jUfhDHCQVA1WfKBUnXUsboJgoKgkzkKcxr3joew5 consumed 4858 of 1400000 compute units",
+        "Program 5bV6jUfhDHCQVA1WfKBUnXUsboJgoKgkzkKcxr3joew5 success"
+      ],
+      "return_data_bytes": 0,
+      "return_data_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "return_program": "5bV6jUfhDHCQVA1WfKBUnXUsboJgoKgkzkKcxr3joew5",
+      "serialized_transaction_bytes": 328,
+      "txv1_4096_target_headroom_bytes": 3768
+    },
+    "initialize": {
+      "compute_units": 106009,
+      "error": null,
+      "logs": [
+        "Program 5bV6jUfhDHCQVA1WfKBUnXUsboJgoKgkzkKcxr3joew5 invoke [1]",
+        "Program 11111111111111111111111111111111 invoke [2]",
+        "Program 11111111111111111111111111111111 success",
+        "Program 5bV6jUfhDHCQVA1WfKBUnXUsboJgoKgkzkKcxr3joew5 consumed 106009 of 1400000 compute units",
+        "Program 5bV6jUfhDHCQVA1WfKBUnXUsboJgoKgkzkKcxr3joew5 success"
+      ],
+      "return_data_bytes": 0,
+      "return_data_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "return_program": "11111111111111111111111111111111",
+      "serialized_transaction_bytes": 492,
+      "txv1_4096_target_headroom_bytes": 3604
+    },
+    "programdata_upgrade_authorities": "None, authenticated by Registry V2",
+    "registry_executable_sha256": "0f14c7b74ec6cbe3b3f637b0f24c7e8cdc46fd09f5b2e495fd51ada16ad8f11b",
+    "registry_fixture_bytes": 256,
+    "registry_fixture_path": "results/v7-pair-forest-registry-v2-litesvm-20260830/withdrawal-same-success.asr2.bin",
+    "registry_fixture_sha256": "cb0aa4373e923eace3187333a5485728240a36c2ff8ecdf7c33779e8226d604c",
+    "registry_program": "5bV6jUfhDHCQVA1WfKBUnXUsboJgoKgkzkKcxr3joew5",
+    "registry_programdata": "jXrkJpunSfyA8WsBgKPdErECQnLWmex1PTicKUrTNdi",
+    "runtime": "LiteSVM 0.16.0",
+    "schedule": {
+      "compute_units": 929080,
+      "error": null,
+      "logs": [
+        "Program 5bV6jUfhDHCQVA1WfKBUnXUsboJgoKgkzkKcxr3joew5 invoke [1]",
+        "Program 11111111111111111111111111111111 invoke [2]",
+        "Program 11111111111111111111111111111111 success",
+        "Program 5bV6jUfhDHCQVA1WfKBUnXUsboJgoKgkzkKcxr3joew5 consumed 929080 of 1400000 compute units",
+        "Program 5bV6jUfhDHCQVA1WfKBUnXUsboJgoKgkzkKcxr3joew5 success"
+      ],
+      "return_data_bytes": 0,
+      "return_data_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "return_program": "11111111111111111111111111111111",
+      "serialized_transaction_bytes": 605,
+      "txv1_4096_target_headroom_bytes": 3491
+    },
+    "selected_verifier_executable_sha256": "97df12937d46e25a2eeefeac16ce31925fd473c672d6b656548be9220adbcc6d",
+    "wrong_registry_code_hash_rejection": {
+      "compute_units": 99787,
+      "error": "InstructionError(0, Custom(1095970844))",
+      "logs": [
+        "Program 5bV6jUfhDHCQVA1WfKBUnXUsboJgoKgkzkKcxr3joew5 invoke [1]",
+        "Program 5bV6jUfhDHCQVA1WfKBUnXUsboJgoKgkzkKcxr3joew5 consumed 99787 of 1400000 compute units",
+        "Program 5bV6jUfhDHCQVA1WfKBUnXUsboJgoKgkzkKcxr3joew5 failed: custom program error: 0x4153301c"
+      ],
+      "return_data_bytes": 0,
+      "return_data_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "return_program": "5bV6jUfhDHCQVA1WfKBUnXUsboJgoKgkzkKcxr3joew5",
+      "serialized_transaction_bytes": 492,
+      "txv1_4096_target_headroom_bytes": 3604
+    },
+    "wrong_verifier_code_hash_rejection": {
+      "compute_units": 920477,
+      "error": "InstructionError(0, Custom(1095970844))",
+      "logs": [
+        "Program 5bV6jUfhDHCQVA1WfKBUnXUsboJgoKgkzkKcxr3joew5 invoke [1]",
+        "Program 5bV6jUfhDHCQVA1WfKBUnXUsboJgoKgkzkKcxr3joew5 consumed 920477 of 1400000 compute units",
+        "Program 5bV6jUfhDHCQVA1WfKBUnXUsboJgoKgkzkKcxr3joew5 failed: custom program error: 0x4153301c"
+      ],
+      "return_data_bytes": 0,
+      "return_data_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "return_program": "5bV6jUfhDHCQVA1WfKBUnXUsboJgoKgkzkKcxr3joew5",
+      "serialized_transaction_bytes": 605,
+      "txv1_4096_target_headroom_bytes": 3491
+    }
+  },
+  "scenario": "success",
+  "schema": "aspis.v7-pair-forest.registry-v2-combined-litesvm.v3"
+}
