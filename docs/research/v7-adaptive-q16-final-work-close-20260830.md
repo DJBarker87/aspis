@@ -209,6 +209,16 @@ counter construct `OperationalQ16ForestRealization` directly.  The routed
 forest's unused suffix may remain arbitrary and independent; it no longer has
 to equal the canonical source forest's deliberately zero-padded suffix.
 
+`V7Tag73ProjectedFreshPriorQueryHistory.lean` closes the machine-local source
+chronology kernel.  At an exact positional fresh-query prefix it proves that
+every earlier fresh query is a literal record in the selected coordinate's
+cumulative pre-answer history, and identifies that same history-indexed state
+with the native scheduler request.  This is positional rather than a search by
+query value, so duplicate pairs cannot select a different occurrence.  The
+remaining composition lifts this result across the adversary-to-verifier root
+boundary and identifies the native request with the target-clean certificate
+state at the same global prefix.
+
 ## Exact remaining boundary
 
 The production/source layer must now instantiate the counted finite inventory
@@ -247,6 +257,7 @@ lake env lean AspisFormal/K1/V7Tag73IndexedExposureCausalRouter.lean
 lake env lean AspisFormal/K1/V7Tag73FinalWorkQ16CandidateController.lean
 lake env lean AspisFormal/K1/V7Tag73FinalWorkQ16ResidualCapacity.lean
 lake env lean AspisFormal/K1/V7Tag73CausalFinalWorkQ16UsedForest.lean
+lake env lean AspisFormal/K1/V7Tag73ProjectedFreshPriorQueryHistory.lean
 lake env lean AspisFormal/K1/V7Tag73ExactCompilerFinalWorkTraceOccurrence.lean
 lake env lean AspisFormal/K1/V7Tag73FinalWorkEarliestExposure.lean
 lake env lean AspisFormal/K1/V7Tag73ExactFinalWorkEarliestExposure.lean
@@ -265,6 +276,7 @@ Observed focused checks:
 | order-robust final-work/q16 candidate controller | 0 | 4.05 s | 5,597,544,448 B |
 | exact joint-router residual capacity | 0 | 3.86 s | 5,544,230,912 B |
 | joint-router used-prefix forest handoff | 0 | 5.33 s | 5,607,358,464 B |
+| projected-prefix prior-history chronology | 0 | 3.97 s | 5,575,933,952 B |
 | exact accepted final-work trace occurrence | 0 | 4.37 s | 5,654,528,000 B |
 | exact earliest pair exposure trial | 0 | 4.21 s | 5,648,875,520 B |
 | indexed controller/production-prefix alignment | 0 | 4.51 s | 5,660,295,168 B |
