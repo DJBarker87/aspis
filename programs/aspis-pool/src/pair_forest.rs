@@ -521,6 +521,33 @@ fn decode_checkpoint_master_box_v1(
     )?))
 }
 
+/// Decode the fixed lane snapshot in a separate SBF frame.  Each decoded lane
+/// is a large value (root plus the complete depth-20 frontier); keeping the
+/// loop in the checkpoint planner made the compiler retain its by-value
+/// decode scratch alongside the planner's pure plan and two output images.
+/// The returned allocation and the accepted bytes are unchanged.
+#[inline(never)]
+fn decode_checkpoint_lanes_box_v1(
+    program_id: &Pubkey,
+    master: &Pubkey,
+    lane_accounts: &[AccountInfo<'_>],
+) -> Result<Box<[PoolV1PairForestLaneStateV1; POOL_V1_PAIR_FOREST_LANE_COUNT]>, ProgramError> {
+    let mut lane_states = Vec::with_capacity(POOL_V1_PAIR_FOREST_LANE_COUNT);
+    for lane in 0..POOL_V1_PAIR_FOREST_LANE_COUNT {
+        lane_states.push(decode_lane_account(
+            program_id,
+            master,
+            lane as u8,
+            &lane_accounts[lane],
+            false,
+        )?);
+    }
+    lane_states
+        .into_boxed_slice()
+        .try_into()
+        .map_err(|_| ProgramError::InvalidAccountData)
+}
+
 /// Authenticate the exact fixed-order account snapshot and prepare, without
 /// mutation, one master update plus one immutable checkpoint image.
 pub fn plan_pair_forest_checkpoint_accounts_v1(
@@ -538,21 +565,8 @@ pub fn plan_pair_forest_checkpoint_accounts_v1(
     }
     require_alias_free(master_account, lane_accounts, checkpoint_account)?;
     let master = decode_checkpoint_master_box_v1(program_id, master_account)?;
-    let mut lane_states = Vec::with_capacity(POOL_V1_PAIR_FOREST_LANE_COUNT);
-    for lane in 0..POOL_V1_PAIR_FOREST_LANE_COUNT {
-        lane_states.push(decode_lane_account(
-            program_id,
-            master_account.key,
-            lane as u8,
-            &lane_accounts[lane],
-            false,
-        )?);
-    }
-    let lane_states: Box<[PoolV1PairForestLaneStateV1; POOL_V1_PAIR_FOREST_LANE_COUNT]> =
-        lane_states
-            .into_boxed_slice()
-            .try_into()
-            .map_err(|_| ProgramError::InvalidAccountData)?;
+    let lane_states =
+        decode_checkpoint_lanes_box_v1(program_id, master_account.key, lane_accounts)?;
     let lane_roots = lane_states.each_ref().map(|lane| lane.tree.root);
     let global_root = pool_v1_pair_forest_global_root_v1(&lane_roots);
     let pure = plan_pool_v1_pair_forest_checkpoint_v1(&master, &lane_states, global_root)
