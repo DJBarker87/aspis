@@ -64,6 +64,22 @@ contains neither the runtime `pool_inactive_schedule` helper nor the obsolete
 slot-major gamma path. This removes a tool obstruction without adding an
 opaque semantic boundary.
 
+The ordinary-kernel bridge
+`AspisFormal.Pool.V7StaticInactiveScheduleBridge` pins production revision
+`6702cfcc987e29381085039d9da8715dafbbfce8`, records the exact 64-entry group
+map and seven masks, and proves:
+
+```text
+inactiveGroupMask_injective
+inactiveGroupMask_complements_activeMask
+inactiveSchedule_lookup_complements_activeRow
+```
+
+The focused NUC replay completed all 8,699 dependencies and the new target in
+6.67 seconds with maximum RSS 6,667,420 KiB and zero swap. The complete axiom
+union is exactly `propext`, `Classical.choice`, and `Quot.sound`; there is no
+project-specific axiom, `sorry`, `admit`, `sorryAx`, or `native_decide`.
+
 ## Focused replay
 
 ```sh
