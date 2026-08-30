@@ -124,22 +124,37 @@ chronological minimum/index selection and the continuation proof that the
 same indexed controller routes every accepted q16 coordinate outside the
 already-counted forward-reference/collision event.
 
+`V7Tag73FinalWorkEarliestExposure.lean` closes that chronological selection:
+
+- it defines a proof-relevant first occurrence of either member of the exact
+  final-work/final-nonce pair;
+- it proves every earlier production trace record is pair-clean, so the trial
+  cannot be selected retrospectively after seeing an answer;
+- it retains an exact prefix/selected/suffix decomposition at the hit;
+- it proves the complete compiler exposure trace has exactly `F` records; and
+- from strict source acceptance it constructs an actual `Fin F` trial at the
+  earliest pair exposure, together with the exact accepted 34-bit work result
+  and q16-base digest.
+
+The production cover therefore no longer assumes that an accepted pair has a
+usable exposure index.  The remaining work starts at this constructed trial
+and is the state-alignment/continuation argument for its executable causal
+controller.
+
 ## Exact remaining boundary
 
 The production/source layer must now instantiate the counted finite inventory
 and prove its cover:
 
-1. define the final-work/nonce/q16 grammar and controller memory at each
-   conservative exposure index (now executable and kernel checked);
-2. choose the earliest of the now-proved production-trace final-work/nonce
-   occurrences, prove its exact exposure index is below `F`, and install the
-   corresponding controller anchor;
-3. outside the existing forward-reference/collision event, prove every
+1. install the executable controller state/memory at the now-constructed
+   earliest `Fin F` pair exposure;
+2. outside the existing forward-reference/collision event, prove every
    accepted q16 block is routed at its original fresh exposure and distinct
    named slots never alias;
-4. conclude that the accepted production schedule is covered by that trial;
+3. identify that routed forest with `exactOperationalQ16DuplexForest` and
+   conclude that the accepted production schedule is covered by the trial;
    and
-5. either prove the selectable subinventory has cardinality at most `2^34`,
+4. either prove the selectable subinventory has cardinality at most `2^34`,
    or retain the exact general `F * p / 2^34` raw term.
 
 No probability-product or per-trial independence premise remains once that
@@ -161,6 +176,7 @@ lake env lean AspisFormal/K1/V7Tag73AdaptiveQ16TrialAccounting.lean
 lake env lean AspisFormal/K1/V7Tag73IndexedExposureCausalRouter.lean
 lake env lean AspisFormal/K1/V7Tag73FinalWorkQ16CandidateController.lean
 lake env lean AspisFormal/K1/V7Tag73ExactCompilerFinalWorkTraceOccurrence.lean
+lake env lean AspisFormal/K1/V7Tag73FinalWorkEarliestExposure.lean
 ```
 
 Observed focused checks:
@@ -173,6 +189,7 @@ Observed focused checks:
 | indexed production-cursor router | 0 | 4.0 s | not separately sampled |
 | raw final-work/q16 candidate controller | 0 | 4.4 s | not separately sampled |
 | exact accepted final-work trace occurrence | 0 | 4.37 s | 5,654,528,000 B |
+| exact earliest pair exposure trial | 0 | 4.21 s | 5,648,875,520 B |
 
 All reported theorem axiom sets are subsets of:
 
