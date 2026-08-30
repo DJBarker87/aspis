@@ -137,6 +137,24 @@ structure ExactRestoredOperationalK13SourceNodeData
   fixedFields : CurrentSourceFixedFieldProjection
     node.adversaryValue.rawMessages decoded
 
+/-- The checked raw-prover refinement supplies the sole source datum needed
+by K1.3 for every literal restoration node.  No per-node acceptance or source
+oracle is required: invalid packed field encodings are excluded by the same
+canonical reader check that precedes deployed transcript verification. -/
+noncomputable def exact_restored_operational_k13_source_node_data
+    {Statement Payload : Type*}
+    (node : RestoredK13Node Statement Payload) :
+    ExactRestoredOperationalK13SourceNodeData node := by
+  have decodeExists :=
+    V7Tag73RawSameTapeSource.checked_raw_return_has_exact_fixed_field_decode
+      node.adversaryValue
+  let decoded := Classical.choose decodeExists
+  have decodeExact := Classical.choose_spec decodeExists
+  exact
+    { decoded := decoded
+      fixedFields :=
+        fixed_field_decode_implies_current_source_projection decodeExact }
+
 /-- Operational state supplies q16; the source node data supplies only the
 canonical field/challenge bytes.  Their composition is the corrected K1.3
 view consumed by the total classifier. -/
@@ -227,6 +245,26 @@ noncomputable def exact_restored_operational_k13_provider_of_source
   data := fun node member done =>
     exact_restored_operational_k13_data_of_source_node input node member done
       (source node member done)
+
+/-- The complete restoration-wide K1.3 provider now follows from the exact
+operational input alone.  Canonical fixed-field decoding is part of the
+checked deployed-parser return type, while gamma, alpha zero and q16 remain
+verifier-owned consequences of the restored controller state. -/
+noncomputable def exact_restored_operational_k13_provider
+    {HiddenTape TapeIdentity Observation Statement Payload Result : Type}
+    {parameters : ExactCompilerResourceParameters}
+    {transitionFuel : Nat}
+    {configuration : ExactPlainRomConfiguration HiddenTape TapeIdentity
+      Observation Statement Tag73K12ParsedProof Payload Result parameters}
+    {projection : AcceptedTapeProjection Statement Tag73K12ParsedProof Payload}
+    {fixedInstance : PublicInstance Statement}
+    {sample : ExactCompilerSample HiddenTape parameters}
+    (input : ExactK12OperationalInput transitionFuel configuration projection
+      fixedInstance sample) :
+    ExactRestoredOperationalK13DataProvider input :=
+  exact_restored_operational_k13_provider_of_source input
+    (fun node _member _done =>
+      exact_restored_operational_k13_source_node_data node)
 
 /-- Successful restoration-wide K1.3 classification chooses one literal
 accepting node from the returned accumulator and retains its exact corrected
@@ -354,8 +392,10 @@ theorem exact_restored_operational_k13_certificate_has_literal_node
 #print axioms exact_restoration_accumulator_contains_root
 #print axioms exact_restoration_accumulator_root_is_done
 #print axioms exact_restored_done_node_selected_q16_ledger
+#print axioms exact_restored_operational_k13_source_node_data
 #print axioms exact_restored_operational_k13_data_of_source_node
 #print axioms exact_restored_operational_k13_provider_of_source
+#print axioms exact_restored_operational_k13_provider
 #print axioms exact_restored_operational_k13_error_exposes_done_failure
 #print axioms exact_restored_operational_k13_certificate_has_literal_node
 
