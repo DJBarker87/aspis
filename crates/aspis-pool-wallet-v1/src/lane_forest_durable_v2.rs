@@ -1035,6 +1035,8 @@ impl LaneForestDurableStateV2 {
         self.finalized_head = Some(point);
     }
 
+    /// Ingest one finalized append. An exact canonical replay is a no-op that
+    /// returns an empty association vector; conflicting identity reuse errors.
     pub fn ingest_finalized_append_v2(
         &mut self,
         event: ForestFinalizedAppendEventV2,
@@ -1046,7 +1048,7 @@ impl LaneForestDurableStateV2 {
         let event_wire = encode_forest_finalized_append_event_v2(&event)?;
         let event = decode_forest_finalized_append_event_v2(&event_wire)?;
         let (first_id, second_id) = event.event_ids();
-        if self.core.events.iter().any(|previous| {
+        if let Some(previous) = self.core.events.iter().find(|previous| {
             let (previous_first, previous_second) = previous.event_ids();
             previous_first == first_id
                 || previous_second == Some(first_id)
@@ -1054,7 +1056,15 @@ impl LaneForestDurableStateV2 {
                     previous_first == second || previous_second == Some(second)
                 })
         }) {
-            return Err(LaneForestDurableErrorV2::DuplicateEvent);
+            // Every newly accepted append produces one or two associations,
+            // so an empty vector is an unambiguous exact-replay no-op.  Any
+            // reuse of either stable output identity with different canonical
+            // event data remains a fail-closed conflict.
+            return if previous == &event {
+                Ok(Vec::new())
+            } else {
+                Err(LaneForestDurableErrorV2::DuplicateEvent)
+            };
         }
         if self
             .core
