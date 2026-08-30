@@ -1,5 +1,4 @@
 import AspisFormal.K1.V7Tag73Q16SemanticProbability
-import AspisFormal.K1.V7Tag73SuccessfulSamplerConditioningBridge
 
 /-!
 # Raw ENNReal probability of the Tag-73 first-cap-203 q16 scan
