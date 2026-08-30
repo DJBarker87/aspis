@@ -514,6 +514,86 @@ fn schedule_enforces_authority_generation_and_full_nonzero_delay_before_any_writ
 }
 
 #[test]
+fn initialization_and_schedule_reject_spoofed_payer_or_system_before_any_write() {
+    let program_id = Pubkey::new_unique();
+    let authority_key = Pubkey::new_unique();
+
+    for payer_mutation in 0..4 {
+        let pool = Pubkey::new_unique();
+        let mut registry = zeroed_registry_account(program_id, pool);
+        let mut authority = authority_account(authority_key, true);
+        let mut payer = payer_account();
+        let mut system = system_program_account();
+        match payer_mutation {
+            0 => payer.is_signer = false,
+            1 => payer.is_writable = false,
+            2 => payer.executable = true,
+            3 => payer.owner = Pubkey::new_unique(),
+            _ => unreachable!(),
+        }
+        let registry_before = registry.snapshot();
+        let payer_before = payer.snapshot();
+        let system_before = system.snapshot();
+        assert_eq!(
+            invoke_initialize(
+                &program_id,
+                &mut registry,
+                &mut authority,
+                &mut payer,
+                &mut system,
+                &encode_initialize_registry_v1(pool.to_bytes(), POLICY_BINDING, 10),
+            ),
+            Err(custom(RegistryProgramErrorV1::InvalidPayer))
+        );
+        assert_all_unchanged(&[
+            (&registry, registry_before),
+            (&payer, payer_before),
+            (&system, system_before),
+        ]);
+    }
+
+    for system_mutation in 0..5 {
+        let pool = Pubkey::new_unique();
+        let mut registry = registry_account(program_id, pool, authority_key, 0, 0);
+        let mut entry = zeroed_entry_account(program_id, pool, PROFILE_BINDING, RELEASE_A);
+        let mut authority = authority_account(authority_key, true);
+        let mut payer = payer_account();
+        let mut system = system_program_account();
+        match system_mutation {
+            0 => system.key = Pubkey::new_unique(),
+            1 => system.owner = Pubkey::new_unique(),
+            2 => system.executable = false,
+            3 => system.is_signer = true,
+            4 => system.is_writable = true,
+            _ => unreachable!(),
+        }
+        let registry_before = registry.snapshot();
+        let entry_before = entry.snapshot();
+        let payer_before = payer.snapshot();
+        let system_before = system.snapshot();
+        assert_eq!(
+            invoke_schedule(
+                &program_id,
+                &mut registry,
+                &mut entry,
+                &mut authority,
+                &mut payer,
+                &mut system,
+                &encode_schedule_profile_v1(0, VERIFIER_A, PROFILE_BINDING, RELEASE_A, 1, 110,),
+                100,
+            ),
+            Err(custom(RegistryProgramErrorV1::InvalidSystemProgram))
+        );
+        assert_all_unchanged(&[
+            (&registry, registry_before),
+            (&entry, entry_before),
+            (&payer, payer_before),
+            (&system, system_before),
+        ]);
+    }
+}
+
+#[test]
 fn pause_and_unpause_increment_once_while_noops_stale_generation_and_overflow_roll_back() {
     let program_id = Pubkey::new_unique();
     let pool = Pubkey::new_unique();
@@ -797,6 +877,96 @@ fn retirement_requires_distinct_active_exact_profile_continuity() {
         Err(custom(RegistryProgramErrorV1::InvalidRetirementSlot))
     );
     fixture.assert_unchanged(&before);
+}
+
+#[test]
+fn activation_and_retirement_reject_cross_policy_or_malformed_entries_atomically() {
+    let program_id = Pubkey::new_unique();
+    let pool = Pubkey::new_unique();
+    let authority_key = Pubkey::new_unique();
+    let mut authority = authority_account(authority_key, true);
+
+    let pending = entry_state(
+        pool,
+        PROFILE_BINDING,
+        RELEASE_A,
+        VERIFIER_A,
+        VerifierEntryStatusV1::Pending,
+        110,
+    );
+    let mut registry = registry_account(program_id, pool, authority_key, 0, 0);
+    let mut cross_policy = entry_account(
+        program_id,
+        VerifierRegistryEntryV1 {
+            policy_binding: [99u8; 32],
+            ..pending
+        },
+        true,
+    );
+    let registry_before = registry.snapshot();
+    let entry_before = cross_policy.snapshot();
+    assert_eq!(
+        invoke_activate(
+            &program_id,
+            &mut registry,
+            &mut cross_policy,
+            &mut authority,
+            0,
+            110,
+        ),
+        Err(custom(RegistryProgramErrorV1::InvalidEntryAccount))
+    );
+    assert_all_unchanged(&[(&registry, registry_before), (&cross_policy, entry_before)]);
+
+    let (retiring, replacement) = retirement_pair(pool);
+    let mut registry = registry_account(program_id, pool, authority_key, 5, 0);
+    let mut retiring = entry_account(program_id, retiring, true);
+    let mut cross_policy_replacement = entry_account(
+        program_id,
+        VerifierRegistryEntryV1 {
+            policy_binding: [98u8; 32],
+            ..replacement
+        },
+        false,
+    );
+    let registry_before = registry.snapshot();
+    let retiring_before = retiring.snapshot();
+    let replacement_before = cross_policy_replacement.snapshot();
+    assert_eq!(
+        invoke_retire(
+            &program_id,
+            &mut registry,
+            &mut retiring,
+            &mut cross_policy_replacement,
+            &mut authority,
+            5,
+            110,
+        ),
+        Err(custom(RegistryProgramErrorV1::InvalidEntryAccount))
+    );
+    assert_all_unchanged(&[
+        (&registry, registry_before),
+        (&retiring, retiring_before),
+        (&cross_policy_replacement, replacement_before),
+    ]);
+
+    let mut registry = registry_account(program_id, pool, authority_key, 0, 0);
+    let mut malformed = entry_account(program_id, pending, true);
+    malformed.data[4] ^= 1;
+    let registry_before = registry.snapshot();
+    let entry_before = malformed.snapshot();
+    assert_eq!(
+        invoke_activate(
+            &program_id,
+            &mut registry,
+            &mut malformed,
+            &mut authority,
+            0,
+            110,
+        ),
+        Err(custom(RegistryProgramErrorV1::InvalidEntryAccount))
+    );
+    assert_all_unchanged(&[(&registry, registry_before), (&malformed, entry_before)]);
 }
 
 #[test]
