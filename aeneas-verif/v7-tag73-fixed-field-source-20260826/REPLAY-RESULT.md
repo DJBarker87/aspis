@@ -49,3 +49,46 @@ printed theorem reports exactly `propext`, `Classical.choice`, and
 Still missing is the middle control-flow inversion that constructs the
 complete trace from all nested semantic, point-claim, relation and final-vector
 calls, followed by the exact packed-bit/value and K1.3 projection composition.
+
+## 2026-08-30 K1.3 fixed-field projection closure
+
+The middle control-flow, packed-bit and K1.3 projection steps described above
+are now kernel checked.  The strongest theorem is
+`generated_production_root_success_constructs_k13_fixed_projection` in
+`proof/V7Tag73GeneratedPackedReaderBridge.lean`.
+
+Starting only from literal success of the translated
+`verify_v7_compact_transcript_and_relation_prepared_with_hiding_context`, it
+constructs:
+
+- the exact 9,936-byte fixed section;
+- canonicality of all 2,564 packed M31 limbs;
+- canonical high-padding rejection;
+- one exact family of 641 `QM31Exact` values;
+- `FixedFieldDecodeExact`; and
+- `CurrentSourceFixedFieldProjection` for the projected deployed tape.
+
+Focused NUC replay:
+
+```text
+unit: aspis-v7-k13-fixed-projection-20260830-r4.service
+exit status: 0
+wall: 1:01.21
+GNU-time peak RSS: 7,829,728 KiB
+swap: 0
+olean SHA-256: b981aa970f58d82e7061b502f2348985f70d1185a2f865dd134a13278da8beac
+```
+
+The theorem's exact `#print axioms` result is:
+
+```text
+propext
+Classical.choice
+Quot.sound
+```
+
+There is no `sorry`, `admit`, `sorryAx`, `native_decide`, or project-specific
+axiom.  This closes the generated semantic-root fixed-field endpoint.  It does
+not claim the remaining outer caller/parser namespace alignment or the final
+done-restoration-node `rawMessages` transport; those remain explicit source
+composition work.

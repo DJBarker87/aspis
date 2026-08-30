@@ -77,6 +77,16 @@ least 24 GiB, and under the user-authorized parallel-lane envelope
 checks remain safe locally.
 
 Status is recorded in `REPLAY-RESULT.md`. Translation and executable-root
-closure are green. The remaining theorem must start from literal success of
-the generated production root; no parser-correctness or acceptance implication
-is an input premise.
+closure are green.  The generated semantic-verifier root now also constructs
+the exact `CurrentSourceFixedFieldProjection` consumed by K1.3 directly from
+literal success: all 641 reader calls, all 2,564 strict limb comparisons,
+canonical padding and successful `finish` are internal consequences rather
+than premises.
+
+The remaining outer-source work is narrower and explicit: invert the current
+`verify_v7_read_only_with_statement_digest` caller, connect its opaque parser
+call to the separately translated exact current parser, identify the returned
+fixed slice with this generated root's wire, and transport that projection to
+each done restoration node's literal `rawMessages`.  The generated namespaces
+must be joined by proved value/layout maps or replaced by one current combined
+translation; namespace identity must not be assumed.

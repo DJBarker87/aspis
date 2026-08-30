@@ -23,6 +23,13 @@ open AspisV7Tag73GeneratedReaderBridge
 open AspisV7Tag73GeneratedProductionRootBridge
 open AspisV7Tag73FixedFieldLayoutModel
 open AspisV5ComponentCRejectionSampler
+open AspisK1.V7Tag73CurrentSourceDecodeBridge
+open AspisK1.V7Tag73DeterministicRefinement
+open AspisK1.V7Tag73FixedFieldMessageBridge
+open AspisK1.V7Tag73RawProverMessages
+open AspisV5ComponentCQM31TowerExact
+open AspisV6AcceptedPathObligations
+open AspisV6TranscriptRelationGrammar
 
 private theorem usizeMulExact (x y z : Std.Usize)
     (hbound : x.val * y.val ≤ Std.Usize.max)
@@ -1383,6 +1390,72 @@ theorem generated_production_root_success_constructs_exact_canonical_section
     complete_successful_fixed_reader_trace_constructs_exact_canonical_section
       wire.fixed_fields_packed initial final values newRun trace finishRun
 
+/-- Literal success of the translated production semantic verifier constructs
+the exact fixed-field projection consumed by the restoration-wide K1.3
+classifier.  The projected tape changes only the seven fixed prover-message
+families; every challenge, search witness, frontier count, secure-circle
+return and non-fixed prover message is retained from `tape`.
+
+Neither canonical decoding nor a source/projection equality is an input to
+this theorem.  Both follow from the translated 641-call reader trace and its
+literal successful `finish` call. -/
+theorem generated_production_root_success_constructs_k13_fixed_projection
+    {TerminalCheck QueryFold : Type}
+    (terminalCheckInst : core.ops.function.FnOnce TerminalCheck
+      v6_transcript.V6SemanticView Bool)
+    (queryFoldInst : core.ops.function.FnOnce QueryFold
+      v6_transcript.V6QueryBatchView
+      (core.result.Result v6_query_batch.V6AuthenticatedQueryBatch
+        v6_onefold.V6WireError))
+    (hash : Slice (Slice Std.U8) → Result (Array Std.U8 32#usize))
+    (wire : v7_onefold.V7CompactOneFoldWire)
+    (context : v6_transcript.V6TranscriptContext)
+    (hidingContext : state_only_hiding.StateOnlyHidingContext)
+    (inactiveRowGroups : Array Std.U8 64#usize)
+    (inactiveGroupMasks : Slice Std.U16)
+    (checkPow : Bool) (terminalCheck : TerminalCheck)
+    (queryFold : QueryFold)
+    (output : v6_transcript.V6VerifiedTranscript)
+    (run :
+      v6_transcript.verify_v7_compact_transcript_and_relation_prepared_with_hiding_context
+        terminalCheckInst queryFoldInst hash wire context hidingContext
+        inactiveRowGroups inactiveGroupMasks checkPow terminalCheck queryFold =
+          .ok (.Ok output))
+    (tape : DeployedFixedTape) :
+    ∃ (lengthExact : wire.fixed_fields_packed.val.length = 9936),
+      ∃ (exact : ExactCanonicalPackedFixedSection
+        (packedSectionOfSlice wire.fixed_fields_packed lengthExact)),
+        ∃ decoded : Fin 641 → QM31Exact,
+          CurrentSourceFixedFieldProjection
+              (rawOfMessages
+                (tapeWithPackedFixedFields tape
+                  (packedSectionOfSlice wire.fixed_fields_packed
+                    lengthExact)).messages)
+              decoded ∧
+          FixedFieldDecodeExact
+              (rawOfMessages
+                (tapeWithPackedFixedFields tape
+                  (packedSectionOfSlice wire.fixed_fields_packed
+                    lengthExact)).messages)
+              decoded ∧
+          packedFixedFieldView
+              (packedSectionOfSlice wire.fixed_fields_packed lengthExact)
+              exact.canonical = decodedFixedFieldView decoded ∧
+          CanonicalFixedPadding
+            (packedSectionOfSlice wire.fixed_fields_packed lengthExact
+              ⟨9935, by norm_num⟩) := by
+  obtain ⟨lengthExact, exact⟩ :=
+    generated_production_root_success_constructs_exact_canonical_section
+      terminalCheckInst queryFoldInst hash wire context hidingContext
+      inactiveRowGroups inactiveGroupMasks checkPow terminalCheck queryFold
+      output run
+  obtain ⟨decoded, decodeExact, viewExact, paddingExact⟩ :=
+    exactCanonicalPackedSection_constructs_projected_decode_and_view tape
+      (packedSectionOfSlice wire.fixed_fields_packed lengthExact) exact
+  exact ⟨lengthExact, exact, decoded,
+    fixed_field_decode_implies_current_source_projection decodeExact,
+    decodeExact, viewExact, paddingExact⟩
+
 #print axioms new_success_exposes_padding_validation
 #print axioms padding_validation_success_last_byte_lt_16
 #print axioms new_success_packed_section_padding_zero
@@ -1409,5 +1482,6 @@ theorem generated_production_root_success_constructs_exact_canonical_section
 #print axioms successful_fixed_reader_trace_exact_range
 #print axioms complete_successful_fixed_reader_trace_constructs_exact_canonical_section
 #print axioms generated_production_root_success_constructs_exact_canonical_section
+#print axioms generated_production_root_success_constructs_k13_fixed_projection
 
 end AspisV7Tag73GeneratedPackedReaderBridge
