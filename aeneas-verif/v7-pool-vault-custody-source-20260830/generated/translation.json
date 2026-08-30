@@ -1,0 +1,376 @@
+{
+  "aeneas_version": "b59d518",
+  "charon_version": "0.1.223",
+  "crate": "v7_pool_vault_custody_source",
+  "functions": [
+    {
+      "def_id": 12,
+      "lean_name": "V7PoolVaultCustodyGenerated.core.option.Option.ok_or",
+      "lean_file": "V7PoolVaultCustody/FunsExternal_Template.lean",
+      "rust_name": "core::option::{core::option::Option<T>}::ok_or",
+      "is_local": false,
+      "source": {
+        "file": "/rustc/library/core/src/option.rs",
+        "begin_line": 1334,
+        "end_line": 1334
+      },
+      "is_opaque": true,
+      "can_fail": true,
+      "can_diverge": false,
+      "is_rec": false,
+      "reducible": false
+    },
+    {
+      "def_id": 3,
+      "lean_name": "V7PoolVaultCustodyGenerated.empty_trace",
+      "lean_file": "V7PoolVaultCustody/Funs.lean",
+      "rust_name": "v7_pool_vault_custody_source::empty_trace",
+      "is_local": true,
+      "source": { "file": "src/lib.rs", "begin_line": 210, "end_line": 219 },
+      "is_opaque": false,
+      "can_fail": true,
+      "can_diverge": false,
+      "is_rec": false,
+      "reducible": false
+    },
+    {
+      "def_id": 15,
+      "lean_name": "V7PoolVaultCustodyGenerated.supported_loader",
+      "lean_file": "V7PoolVaultCustody/Funs.lean",
+      "rust_name": "v7_pool_vault_custody_source::supported_loader",
+      "is_local": true,
+      "source": { "file": "src/lib.rs", "begin_line": 221, "end_line": 223 },
+      "is_opaque": false,
+      "can_fail": true,
+      "can_diverge": false,
+      "is_rec": false,
+      "reducible": false
+    },
+    {
+      "def_id": 6,
+      "lean_name": "V7PoolVaultCustodyGenerated.authenticate_token_program",
+      "lean_file": "V7PoolVaultCustody/Funs.lean",
+      "rust_name": "v7_pool_vault_custody_source::authenticate_token_program",
+      "is_local": true,
+      "source": { "file": "src/lib.rs", "begin_line": 225, "end_line": 239 },
+      "is_opaque": false,
+      "can_fail": true,
+      "can_diverge": false,
+      "is_rec": false,
+      "reducible": false
+    },
+    {
+      "def_id": 8,
+      "lean_name": "V7PoolVaultCustodyGenerated.authenticate_mint",
+      "lean_file": "V7PoolVaultCustody/Funs.lean",
+      "rust_name": "v7_pool_vault_custody_source::authenticate_mint",
+      "is_local": true,
+      "source": { "file": "src/lib.rs", "begin_line": 241, "end_line": 254 },
+      "is_opaque": false,
+      "can_fail": true,
+      "can_diverge": false,
+      "is_rec": false,
+      "reducible": false
+    },
+    {
+      "def_id": 10,
+      "lean_name": "V7PoolVaultCustodyGenerated.authenticate_token_account",
+      "lean_file": "V7PoolVaultCustody/Funs.lean",
+      "rust_name": "v7_pool_vault_custody_source::authenticate_token_account",
+      "is_local": true,
+      "source": { "file": "src/lib.rs", "begin_line": 256, "end_line": 271 },
+      "is_opaque": false,
+      "can_fail": true,
+      "can_diverge": false,
+      "is_rec": false,
+      "reducible": false
+    },
+    {
+      "def_id": 5,
+      "lean_name": "V7PoolVaultCustodyGenerated.plan_deposit",
+      "lean_file": "V7PoolVaultCustody/Funs.lean",
+      "rust_name": "v7_pool_vault_custody_source::plan_deposit",
+      "is_local": true,
+      "source": { "file": "src/lib.rs", "begin_line": 273, "end_line": 335 },
+      "is_opaque": false,
+      "can_fail": true,
+      "can_diverge": false,
+      "is_rec": false,
+      "reducible": false
+    },
+    {
+      "def_id": 4,
+      "lean_name": "V7PoolVaultCustodyGenerated.plan_withdrawal",
+      "lean_file": "V7PoolVaultCustody/Funs.lean",
+      "rust_name": "v7_pool_vault_custody_source::plan_withdrawal",
+      "is_local": true,
+      "source": { "file": "src/lib.rs", "begin_line": 337, "end_line": 402 },
+      "is_opaque": false,
+      "can_fail": true,
+      "can_diverge": false,
+      "is_rec": false,
+      "reducible": false
+    },
+    {
+      "def_id": 2,
+      "lean_name": "V7PoolVaultCustodyGenerated.execute_deposit",
+      "lean_file": "V7PoolVaultCustody/Funs.lean",
+      "rust_name": "v7_pool_vault_custody_source::execute_deposit",
+      "is_local": true,
+      "source": { "file": "src/lib.rs", "begin_line": 404, "end_line": 444 },
+      "is_opaque": false,
+      "can_fail": true,
+      "can_diverge": false,
+      "is_rec": false,
+      "reducible": false
+    },
+    {
+      "def_id": 1,
+      "lean_name": "V7PoolVaultCustodyGenerated.execute_withdrawal",
+      "lean_file": "V7PoolVaultCustody/Funs.lean",
+      "rust_name": "v7_pool_vault_custody_source::execute_withdrawal",
+      "is_local": true,
+      "source": { "file": "src/lib.rs", "begin_line": 446, "end_line": 494 },
+      "is_opaque": false,
+      "can_fail": true,
+      "can_diverge": false,
+      "is_rec": false,
+      "reducible": false
+    },
+    {
+      "def_id": 0,
+      "lean_name": "V7PoolVaultCustodyGenerated.execute_atomic_custody",
+      "lean_file": "V7PoolVaultCustody/Funs.lean",
+      "rust_name": "v7_pool_vault_custody_source::execute_atomic_custody",
+      "is_local": true,
+      "source": { "file": "src/lib.rs", "begin_line": 496, "end_line": 531 },
+      "is_opaque": false,
+      "can_fail": true,
+      "can_diverge": false,
+      "is_rec": false,
+      "reducible": false
+    }
+  ],
+  "types": [
+    {
+      "def_id": 9,
+      "lean_name": "V7PoolVaultCustodyGenerated.CustodyError",
+      "lean_file": "V7PoolVaultCustody/Types.lean",
+      "rust_name": "v7_pool_vault_custody_source::CustodyError",
+      "is_local": true,
+      "source": { "file": "src/lib.rs", "begin_line": 14, "end_line": 30 }
+    },
+    {
+      "def_id": 13,
+      "lean_name": "V7PoolVaultCustodyGenerated.AccountView",
+      "lean_file": "V7PoolVaultCustody/Types.lean",
+      "rust_name": "v7_pool_vault_custody_source::AccountView",
+      "is_local": true,
+      "source": { "file": "src/lib.rs", "begin_line": 33, "end_line": 39 }
+    },
+    {
+      "def_id": 14,
+      "lean_name": "V7PoolVaultCustodyGenerated.MintView",
+      "lean_file": "V7PoolVaultCustody/Types.lean",
+      "rust_name": "v7_pool_vault_custody_source::MintView",
+      "is_local": true,
+      "source": { "file": "src/lib.rs", "begin_line": 42, "end_line": 48 }
+    },
+    {
+      "def_id": 15,
+      "lean_name": "V7PoolVaultCustodyGenerated.TokenAccountView",
+      "lean_file": "V7PoolVaultCustody/Types.lean",
+      "rust_name": "v7_pool_vault_custody_source::TokenAccountView",
+      "is_local": true,
+      "source": { "file": "src/lib.rs", "begin_line": 51, "end_line": 63 }
+    },
+    {
+      "def_id": 1,
+      "lean_name": "V7PoolVaultCustodyGenerated.CustodyState",
+      "lean_file": "V7PoolVaultCustody/Types.lean",
+      "rust_name": "v7_pool_vault_custody_source::CustodyState",
+      "is_local": true,
+      "source": { "file": "src/lib.rs", "begin_line": 66, "end_line": 74 }
+    },
+    {
+      "def_id": 16,
+      "lean_name": "V7PoolVaultCustodyGenerated.RuntimeOutcomes",
+      "lean_file": "V7PoolVaultCustody/Types.lean",
+      "rust_name": "v7_pool_vault_custody_source::RuntimeOutcomes",
+      "is_local": true,
+      "source": { "file": "src/lib.rs", "begin_line": 77, "end_line": 84 }
+    },
+    {
+      "def_id": 3,
+      "lean_name": "V7PoolVaultCustodyGenerated.DepositInput",
+      "lean_file": "V7PoolVaultCustody/Types.lean",
+      "rust_name": "v7_pool_vault_custody_source::DepositInput",
+      "is_local": true,
+      "source": { "file": "src/lib.rs", "begin_line": 87, "end_line": 104 }
+    },
+    {
+      "def_id": 11,
+      "lean_name": "V7PoolVaultCustodyGenerated.WithdrawalInput",
+      "lean_file": "V7PoolVaultCustody/Types.lean",
+      "rust_name": "v7_pool_vault_custody_source::WithdrawalInput",
+      "is_local": true,
+      "source": { "file": "src/lib.rs", "begin_line": 107, "end_line": 129 }
+    },
+    {
+      "def_id": 19,
+      "lean_name": "V7PoolVaultCustodyGenerated.TransferCheckedPlan",
+      "lean_file": "V7PoolVaultCustody/Types.lean",
+      "rust_name": "v7_pool_vault_custody_source::TransferCheckedPlan",
+      "is_local": true,
+      "source": { "file": "src/lib.rs", "begin_line": 132, "end_line": 141 }
+    },
+    {
+      "def_id": 17,
+      "lean_name": "V7PoolVaultCustodyGenerated.DepositPlan",
+      "lean_file": "V7PoolVaultCustody/Types.lean",
+      "rust_name": "v7_pool_vault_custody_source::DepositPlan",
+      "is_local": true,
+      "source": { "file": "src/lib.rs", "begin_line": 144, "end_line": 150 }
+    },
+    {
+      "def_id": 18,
+      "lean_name": "V7PoolVaultCustodyGenerated.WithdrawalPlan",
+      "lean_file": "V7PoolVaultCustody/Types.lean",
+      "rust_name": "v7_pool_vault_custody_source::WithdrawalPlan",
+      "is_local": true,
+      "source": { "file": "src/lib.rs", "begin_line": 153, "end_line": 159 }
+    },
+    {
+      "def_id": 10,
+      "lean_name": "V7PoolVaultCustodyGenerated.CallTrace",
+      "lean_file": "V7PoolVaultCustody/Types.lean",
+      "rust_name": "v7_pool_vault_custody_source::CallTrace",
+      "is_local": true,
+      "source": { "file": "src/lib.rs", "begin_line": 162, "end_line": 169 }
+    },
+    {
+      "def_id": 5,
+      "lean_name": "V7PoolVaultCustodyGenerated.DepositCertificate",
+      "lean_file": "V7PoolVaultCustody/Types.lean",
+      "rust_name": "v7_pool_vault_custody_source::DepositCertificate",
+      "is_local": true,
+      "source": { "file": "src/lib.rs", "begin_line": 172, "end_line": 175 }
+    },
+    {
+      "def_id": 12,
+      "lean_name": "V7PoolVaultCustodyGenerated.WithdrawalCertificate",
+      "lean_file": "V7PoolVaultCustody/Types.lean",
+      "rust_name": "v7_pool_vault_custody_source::WithdrawalCertificate",
+      "is_local": true,
+      "source": { "file": "src/lib.rs", "begin_line": 178, "end_line": 181 }
+    },
+    {
+      "def_id": 8,
+      "lean_name": "V7PoolVaultCustodyGenerated.CustodyCertificate",
+      "lean_file": "V7PoolVaultCustody/Types.lean",
+      "rust_name": "v7_pool_vault_custody_source::CustodyCertificate",
+      "is_local": true,
+      "source": { "file": "src/lib.rs", "begin_line": 184, "end_line": 187 }
+    },
+    {
+      "def_id": 0,
+      "lean_name": "V7PoolVaultCustodyGenerated.CustodyRequest",
+      "lean_file": "V7PoolVaultCustody/Types.lean",
+      "rust_name": "v7_pool_vault_custody_source::CustodyRequest",
+      "is_local": true,
+      "source": { "file": "src/lib.rs", "begin_line": 190, "end_line": 193 }
+    },
+    {
+      "def_id": 2,
+      "lean_name": "V7PoolVaultCustodyGenerated.CustodyOutcome",
+      "lean_file": "V7PoolVaultCustody/Types.lean",
+      "rust_name": "v7_pool_vault_custody_source::CustodyOutcome",
+      "is_local": true,
+      "source": { "file": "src/lib.rs", "begin_line": 196, "end_line": 202 }
+    },
+    {
+      "def_id": 6,
+      "lean_name": "V7PoolVaultCustodyGenerated.ExecutionFailure",
+      "lean_file": "V7PoolVaultCustody/Types.lean",
+      "rust_name": "v7_pool_vault_custody_source::ExecutionFailure",
+      "is_local": true,
+      "source": { "file": "src/lib.rs", "begin_line": 205, "end_line": 208 }
+    }
+  ],
+  "globals": [
+    {
+      "def_id": 2,
+      "lean_name": "V7PoolVaultCustodyGenerated.LEGACY_TOKEN_PROGRAM_ID",
+      "lean_file": "V7PoolVaultCustody/Funs.lean",
+      "rust_name": "v7_pool_vault_custody_source::LEGACY_TOKEN_PROGRAM_ID",
+      "is_local": true,
+      "source": { "file": "src/lib.rs", "begin_line": 3, "end_line": 3 },
+      "can_fail": false
+    },
+    {
+      "def_id": 5,
+      "lean_name": "V7PoolVaultCustodyGenerated.BPF_LOADER_ID",
+      "lean_file": "V7PoolVaultCustody/Funs.lean",
+      "rust_name": "v7_pool_vault_custody_source::BPF_LOADER_ID",
+      "is_local": true,
+      "source": { "file": "src/lib.rs", "begin_line": 5, "end_line": 5 },
+      "can_fail": false
+    },
+    {
+      "def_id": 6,
+      "lean_name": "V7PoolVaultCustodyGenerated.BPF_UPGRADEABLE_LOADER_ID",
+      "lean_file": "V7PoolVaultCustody/Funs.lean",
+      "rust_name": "v7_pool_vault_custody_source::BPF_UPGRADEABLE_LOADER_ID",
+      "is_local": true,
+      "source": { "file": "src/lib.rs", "begin_line": 6, "end_line": 6 },
+      "can_fail": false
+    },
+    {
+      "def_id": 7,
+      "lean_name": "V7PoolVaultCustodyGenerated.LOADER_V4_ID",
+      "lean_file": "V7PoolVaultCustody/Funs.lean",
+      "rust_name": "v7_pool_vault_custody_source::LOADER_V4_ID",
+      "is_local": true,
+      "source": { "file": "src/lib.rs", "begin_line": 7, "end_line": 7 },
+      "can_fail": false
+    },
+    {
+      "def_id": 1,
+      "lean_name": "V7PoolVaultCustodyGenerated.SYSTEM_PROGRAM_ID",
+      "lean_file": "V7PoolVaultCustody/Funs.lean",
+      "rust_name": "v7_pool_vault_custody_source::SYSTEM_PROGRAM_ID",
+      "is_local": true,
+      "source": { "file": "src/lib.rs", "begin_line": 8, "end_line": 8 },
+      "can_fail": false
+    },
+    {
+      "def_id": 3,
+      "lean_name": "V7PoolVaultCustodyGenerated.LEGACY_MINT_BYTES",
+      "lean_file": "V7PoolVaultCustody/Funs.lean",
+      "rust_name": "v7_pool_vault_custody_source::LEGACY_MINT_BYTES",
+      "is_local": true,
+      "source": { "file": "src/lib.rs", "begin_line": 9, "end_line": 9 },
+      "can_fail": false
+    },
+    {
+      "def_id": 4,
+      "lean_name": "V7PoolVaultCustodyGenerated.LEGACY_TOKEN_ACCOUNT_BYTES",
+      "lean_file": "V7PoolVaultCustody/Funs.lean",
+      "rust_name": "v7_pool_vault_custody_source::LEGACY_TOKEN_ACCOUNT_BYTES",
+      "is_local": true,
+      "source": { "file": "src/lib.rs", "begin_line": 10, "end_line": 10 },
+      "can_fail": false
+    },
+    {
+      "def_id": 0,
+      "lean_name": "V7PoolVaultCustodyGenerated.VALUE_LIMIT",
+      "lean_file": "V7PoolVaultCustody/Funs.lean",
+      "rust_name": "v7_pool_vault_custody_source::VALUE_LIMIT",
+      "is_local": true,
+      "source": { "file": "src/lib.rs", "begin_line": 11, "end_line": 11 },
+      "can_fail": false
+    }
+  ],
+  "trait_decls": [],
+  "trait_impls": []
+}

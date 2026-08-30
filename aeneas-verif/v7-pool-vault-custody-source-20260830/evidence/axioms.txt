@@ -1,0 +1,84 @@
+V7PoolVaultCustodyGenerated.translated_token_program_success_is_exact
+  propext
+  Classical.choice
+  Quot.sound
+
+V7PoolVaultCustodyGenerated.translated_mint_success_is_exact
+  propext
+  Classical.choice
+  Quot.sound
+
+V7PoolVaultCustodyGenerated.translated_token_account_success_is_exact
+  propext
+  Classical.choice
+  Quot.sound
+
+V7PoolVaultCustodyGenerated.translated_deposit_plan_success_is_exact
+  propext
+  Classical.choice
+  Quot.sound
+
+V7PoolVaultCustodyGenerated.translated_withdrawal_plan_success_is_exact
+  propext
+  Classical.choice
+  Quot.sound
+
+V7PoolVaultCustodyGenerated.translated_deposit_execution_success_is_exact
+  propext
+  Classical.choice
+  Quot.sound
+
+V7PoolVaultCustodyGenerated.translated_withdrawal_execution_success_is_exact
+  propext
+  Classical.choice
+  Quot.sound
+
+V7PoolVaultCustodyGenerated.translated_atomic_deposit_success_is_exact
+  propext
+  Classical.choice
+  Quot.sound
+
+V7PoolVaultCustodyGenerated.translated_atomic_withdrawal_success_is_exact
+  propext
+  Classical.choice
+  Quot.sound
+
+V7PoolVaultCustodyGenerated.translated_atomic_rejection_is_exact_prestate
+  propext
+  Classical.choice
+  Quot.sound
+
+V7PoolVaultCustodyGenerated.translated_committed_deposit_is_legacy_not_token2022
+  propext
+  Classical.choice
+  Quot.sound
+
+V7PoolVaultCustodyGenerated.translated_committed_withdrawal_is_legacy_not_token2022
+  propext
+  Classical.choice
+  Quot.sound
+
+V7PoolVaultCustodyGenerated.translated_token2022_deposit_is_rejected_with_exact_rollback
+  propext
+  Classical.choice
+  Quot.sound
+
+V7PoolVaultCustodyGenerated.translated_token2022_withdrawal_is_rejected_with_exact_rollback
+  propext
+  Classical.choice
+  Quot.sound
+
+V7PoolVaultCustodyGenerated.translated_deposit_token_cpi_failure_is_exact_rollback
+  propext
+  Classical.choice
+  Quot.sound
+
+V7PoolVaultCustodyGenerated.translated_withdrawal_token_cpi_failure_is_exact_rollback
+  propext
+  Classical.choice
+  Quot.sound
+
+Union:
+  propext
+  Classical.choice
+  Quot.sound
