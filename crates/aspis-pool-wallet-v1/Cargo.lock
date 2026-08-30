@@ -95,6 +95,8 @@ name = "aspis-registry"
 version = "0.1.0"
 dependencies = [
  "aspis-statement",
+ "bincode",
+ "solana-loader-v3-interface",
  "solana-program",
  "solana-sdk-ids 2.2.1",
 ]

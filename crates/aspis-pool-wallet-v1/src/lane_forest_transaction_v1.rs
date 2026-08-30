@@ -23,6 +23,7 @@ use aspis_statement::{
         root_history_location, PoolV1PairForestLaneStateV1, PoolV1PairForestMasterV1,
         PoolV1PairForestTerminalPaymentV1, PoolV1PairForestTerminalRequestV1,
         POOL_V1_PAIR_CAPACITY, POOL_V1_PAIR_FOREST_TERMINAL_VERSION,
+        POOL_V1_VERIFIER_POLICY_FLAG_IMMUTABLE_DEPLOYMENT,
     },
 };
 use base64::{engine::general_purpose::STANDARD as BASE64_STANDARD, Engine as _};
@@ -40,7 +41,9 @@ use solana_signature_v1::Signature as V1Signature;
 use solana_transaction::versioned::VersionedTransaction as LegacyVersionedTransaction;
 use solana_transaction_v1::versioned::VersionedTransaction as V1VersionedTransaction;
 
-use crate::lane_forest_client_v2::PairForestSpendProfileSelectionV2;
+use crate::lane_forest_client_v2::{
+    PairForestSpendProfileSelectionV2, PairForestVerifierRegistryFamilyV2,
+};
 
 pub const SOLANA_LEGACY_V0_TRANSACTION_MAX_BYTES_V2: usize = 1_232;
 pub const SOLANA_V1_TRANSACTION_MAX_BYTES_V2: usize = 4_096;
@@ -449,16 +452,39 @@ pub fn build_pair_forest_terminal_instruction_v1_4k_v2(
         return Err(PairForestTransactionV1ErrorV2::WrongProfile);
     }
     let registry_program = Pubkey::new_from_array(profile.registry_program);
-    let registry_address =
-        aspis_registry::pool_v1_verifier_registry_address(&registry_program, &master_address).0;
-    let entry_address = aspis_registry::pool_v1_verifier_entry_address(
-        &registry_program,
-        &master_address,
-        &request.verifier_profile,
-        &request.verifier_release,
-    )
-    .0;
-    if profile.registry_address != registry_address.to_bytes()
+    let immutable_deployment =
+        master.verifier_policy.flags & POOL_V1_VERIFIER_POLICY_FLAG_IMMUTABLE_DEPLOYMENT != 0;
+    let (expected_family, registry_address, entry_address) = if immutable_deployment {
+        (
+            PairForestVerifierRegistryFamilyV2::ImmutableDeploymentV2,
+            aspis_registry::pool_v1_verifier_registry_v2_address(
+                &registry_program,
+                &master_address,
+            )
+            .0,
+            aspis_registry::pool_v1_verifier_entry_v2_address(
+                &registry_program,
+                &master_address,
+                &request.verifier_profile,
+                &request.verifier_release,
+            )
+            .0,
+        )
+    } else {
+        (
+            PairForestVerifierRegistryFamilyV2::LegacyV1,
+            aspis_registry::pool_v1_verifier_registry_address(&registry_program, &master_address).0,
+            aspis_registry::pool_v1_verifier_entry_address(
+                &registry_program,
+                &master_address,
+                &request.verifier_profile,
+                &request.verifier_release,
+            )
+            .0,
+        )
+    };
+    if profile.registry_family != expected_family
+        || profile.registry_address != registry_address.to_bytes()
         || profile.entry_address != entry_address.to_bytes()
     {
         return Err(PairForestTransactionV1ErrorV2::WrongProfile);
@@ -677,6 +703,7 @@ mod tests {
         IncrementalMerkleTreeV1, PoolIdentityV1, PoolV1PrivateTransferPublicV1,
         PoolV1WithdrawalPublicV1, VerifierPolicyV1, POOL_V1_ENCRYPTED_NOTE_PAYLOAD_MAX_BYTES,
         POOL_V1_PAIR_FOREST_ALL_LANES_MASK, POOL_V1_PAIR_TREE_DEPTH, POOL_V1_ROOT_HISTORY_CAPACITY,
+        POOL_V1_VERIFIER_POLICY_FLAG_IMMUTABLE_REGISTRY,
     };
 
     use crate::{
@@ -754,6 +781,7 @@ mod tests {
     ) -> PairForestSpendProfileSelectionV2 {
         let pool = Pubkey::new_from_array(master.identity.pool);
         PairForestSpendProfileSelectionV2 {
+            registry_family: PairForestVerifierRegistryFamilyV2::LegacyV1,
             finalized_point: FinalizedChainPointV1::new(10, [11; 32]).unwrap(),
             provider_set_digest: [12; 32],
             registry_program: registry_program.to_bytes(),
@@ -852,6 +880,39 @@ mod tests {
         )
     }
 
+    fn immutable_terminal_fixture(
+        withdrawal: bool,
+        rollover: bool,
+    ) -> (
+        Pubkey,
+        PoolV1PairForestMasterV1,
+        PoolV1PairForestLaneStateV1,
+        PairForestSpendProfileSelectionV2,
+        PoolV1PairForestTerminalRequestV1,
+    ) {
+        let (program, mut master, lane, mut profile, request) =
+            terminal_fixture(withdrawal, rollover);
+        master.verifier_policy.flags = POOL_V1_VERIFIER_POLICY_FLAG_IMMUTABLE_REGISTRY
+            | POOL_V1_VERIFIER_POLICY_FLAG_IMMUTABLE_DEPLOYMENT;
+        master.verifier_policy.registry_authority = [0u8; 32];
+        let registry_program = Pubkey::new_from_array(profile.registry_program);
+        let pool = Pubkey::new_from_array(master.identity.pool);
+        profile.registry_family = PairForestVerifierRegistryFamilyV2::ImmutableDeploymentV2;
+        profile.registry_address =
+            aspis_registry::pool_v1_verifier_registry_v2_address(&registry_program, &pool)
+                .0
+                .to_bytes();
+        profile.entry_address = aspis_registry::pool_v1_verifier_entry_v2_address(
+            &registry_program,
+            &pool,
+            &profile.profile_binding,
+            &profile.release_binding,
+        )
+        .0
+        .to_bytes();
+        (program, master, lane, profile, request)
+    }
+
     #[test]
     fn max_shape_terminal_wires_are_tx_v1_and_never_embed_the_proof() {
         for (
@@ -904,6 +965,81 @@ mod tests {
             assert_eq!(v0.serialized_wire_bytes, expected_v0);
             assert!(!v0.eligible_for_four_kib);
         }
+    }
+
+    #[test]
+    fn immutable_registry_v2_terminal_wires_preserve_account_count_and_exact_four_kib_sizes() {
+        for (withdrawal, rollover, expected_accounts, expected_v1, expected_addresses) in [
+            (false, false, 11, 845, 12),
+            (false, true, 12, 878, 13),
+            (true, false, 16, 1_010, 17),
+            (true, true, 17, 1_043, 18),
+        ] {
+            let (program, master, lane, profile, request) =
+                immutable_terminal_fixture(withdrawal, rollover);
+            let registry = Pubkey::new_from_array(profile.registry_address);
+            let entry = Pubkey::new_from_array(profile.entry_address);
+            let proof_account = key(21);
+            let marker_payer = key(22);
+            let instruction = build_pair_forest_terminal_instruction_v1_4k_v2(
+                program,
+                &master,
+                &lane,
+                profile,
+                marker_payer,
+                proof_account,
+                &request,
+            )
+            .unwrap();
+            assert_eq!(instruction.accounts.len(), expected_accounts);
+            assert_eq!(instruction.data.len(), 320);
+            assert!(instruction
+                .accounts
+                .iter()
+                .any(|meta| meta.pubkey == registry));
+            assert!(instruction.accounts.iter().any(|meta| meta.pubkey == entry));
+            assert!(!instruction.accounts.iter().any(|meta| {
+                meta.pubkey
+                    == aspis_registry::pool_v1_verifier_registry_address(
+                        &Pubkey::new_from_array(profile.registry_program),
+                        &Pubkey::new_from_array(master.identity.pool),
+                    )
+                    .0
+            }));
+            let transaction = build_exact_pair_forest_v1_transaction_v2(
+                &instruction,
+                marker_payer,
+                [23; 32],
+                config(),
+                &[],
+            )
+            .unwrap();
+            assert_eq!(transaction.serialized_wire_bytes_v2(), expected_v1);
+            assert_eq!(transaction.inline_addresses_v2(), expected_addresses);
+            assert_eq!(
+                SOLANA_V1_TRANSACTION_MAX_BYTES_V2 - transaction.serialized_wire_bytes_v2(),
+                SOLANA_V1_TRANSACTION_MAX_BYTES_V2 - expected_v1
+            );
+        }
+    }
+
+    #[test]
+    fn immutable_registry_policy_rejects_legacy_selection_without_fallback() {
+        let (program, master, lane, mut profile, request) =
+            immutable_terminal_fixture(false, false);
+        profile.registry_family = PairForestVerifierRegistryFamilyV2::LegacyV1;
+        assert_eq!(
+            build_pair_forest_terminal_instruction_v1_4k_v2(
+                program,
+                &master,
+                &lane,
+                profile,
+                key(22),
+                key(21),
+                &request,
+            ),
+            Err(PairForestTransactionV1ErrorV2::WrongProfile)
+        );
     }
 
     #[test]

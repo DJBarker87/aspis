@@ -16,18 +16,24 @@ use aspis_pool::{
     pool_v1_pair_forest_master_address, pool_v1_vault_token_account_address, PoolInitializationV1,
     PoolInstructionFormatErrorV1, LEGACY_SPL_TOKEN_PROGRAM_ID,
 };
-use aspis_registry::{pool_v1_verifier_entry_address, pool_v1_verifier_registry_address};
+use aspis_registry::{
+    pool_v1_verifier_entry_address, pool_v1_verifier_entry_v2_address,
+    pool_v1_verifier_registry_address, pool_v1_verifier_registry_v2_address,
+};
 use aspis_statement::pool_v1::{
-    decode_verifier_registry_entry_v1, decode_verifier_registry_v1, pool_v1_note_commitment,
-    pool_v1_pair_forest_deposit_lane_v1, root_history_location, PoolV1PairForestLaneStateV1,
-    PoolV1PairForestMasterV1, PoolV1VerifierRegistryFormatError, VerifierRegistryEntryV1,
-    VerifierRegistryV1, POOL_V1_PAIR_CAPACITY,
+    decode_verifier_registry_entry_v1, decode_verifier_registry_entry_v2,
+    decode_verifier_registry_v1, decode_verifier_registry_v2, pool_v1_note_commitment,
+    pool_v1_pair_forest_deposit_lane_v1, root_history_location, validate_verifier_policy_v1,
+    PoolV1PairForestLaneStateV1, PoolV1PairForestMasterV1, PoolV1VerifierRegistryFormatError,
+    VerifierRegistryEntryV1, VerifierRegistryEntryV2, VerifierRegistryV1, VerifierRegistryV2,
+    POOL_V1_PAIR_CAPACITY, POOL_V1_VERIFIER_POLICY_FLAG_IMMUTABLE_DEPLOYMENT,
+    POOL_V1_VERIFIER_POLICY_FLAG_IMMUTABLE_REGISTRY,
 };
 use solana_program::{
     instruction::{AccountMeta, Instruction},
     pubkey::Pubkey,
 };
-use solana_sdk_ids::system_program;
+use solana_sdk_ids::{bpf_loader_upgradeable, system_program};
 
 use crate::{
     finalized_indexer::SolanaRpcCommitmentV1, lane_forest_rpc_v2::FinalizedForestAccountV2,
@@ -324,7 +330,17 @@ pub struct PairForestSpendProfileRequestV2 {
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum PairForestVerifierRegistryFamilyV2 {
+    /// Legacy mutable/frozen governance registry. This remains the default
+    /// unless the Pool master explicitly opts into immutable deployments.
+    LegacyV1,
+    /// Distinct ASR2/ASE2 PDAs carrying immutable loader-v3 code certificates.
+    ImmutableDeploymentV2,
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct PairForestSpendProfileSelectionV2 {
+    pub registry_family: PairForestVerifierRegistryFamilyV2,
     pub finalized_point: FinalizedChainPointV1,
     pub provider_set_digest: [u8; 32],
     pub registry_program: [u8; 32],
@@ -370,6 +386,8 @@ pub fn select_pair_forest_spend_profile_v2(
     accounts: &FinalizedPairForestProfileAccountsV2,
 ) -> Result<PairForestSpendProfileSelectionV2, PairForestClientErrorV2> {
     require_program_v2(registry_program)?;
+    validate_verifier_policy_v1(&master.verifier_policy)
+        .map_err(|_| PairForestClientErrorV2::ProfileMismatch)?;
     if accounts.commitment != SolanaRpcCommitmentV1::Finalized {
         return Err(PairForestClientErrorV2::NotFinalized);
     }
@@ -387,14 +405,33 @@ pub fn select_pair_forest_spend_profile_v2(
     {
         return Err(PairForestClientErrorV2::ProfileMismatch);
     }
-    let registry_address = pool_v1_verifier_registry_address(&registry_program, &pool).0;
-    let entry_address = pool_v1_verifier_entry_address(
-        &registry_program,
-        &pool,
-        &request.profile_binding,
-        &request.release_binding,
-    )
-    .0;
+    let immutable_deployment =
+        master.verifier_policy.flags & POOL_V1_VERIFIER_POLICY_FLAG_IMMUTABLE_DEPLOYMENT != 0;
+    let (registry_family, registry_address, entry_address) = if immutable_deployment {
+        (
+            PairForestVerifierRegistryFamilyV2::ImmutableDeploymentV2,
+            pool_v1_verifier_registry_v2_address(&registry_program, &pool).0,
+            pool_v1_verifier_entry_v2_address(
+                &registry_program,
+                &pool,
+                &request.profile_binding,
+                &request.release_binding,
+            )
+            .0,
+        )
+    } else {
+        (
+            PairForestVerifierRegistryFamilyV2::LegacyV1,
+            pool_v1_verifier_registry_address(&registry_program, &pool).0,
+            pool_v1_verifier_entry_address(
+                &registry_program,
+                &pool,
+                &request.profile_binding,
+                &request.release_binding,
+            )
+            .0,
+        )
+    };
     if accounts.registry.address != registry_address.to_bytes()
         || accounts.entry.address != entry_address.to_bytes()
     {
@@ -402,39 +439,79 @@ pub fn select_pair_forest_spend_profile_v2(
     }
     require_registry_account_v2(&accounts.registry, registry_program)?;
     require_registry_account_v2(&accounts.entry, registry_program)?;
-    let registry: VerifierRegistryV1 = decode_verifier_registry_v1(&accounts.registry.data)?;
-    let entry: VerifierRegistryEntryV1 = decode_verifier_registry_entry_v1(&accounts.entry.data)?;
-    if registry.pool != master.identity.pool
-        || registry.policy_binding != master.verifier_policy.policy_binding
-        || registry.authority != master.verifier_policy.registry_authority
-        || entry.pool != master.identity.pool
-        || entry.policy_binding != master.verifier_policy.policy_binding
-    {
-        return Err(PairForestClientErrorV2::ProfileMismatch);
-    }
-    if registry.is_paused() {
-        return Err(PairForestClientErrorV2::RegistryPaused);
-    }
-    if !entry.is_active_at(accounts.point.slot()) {
-        return Err(PairForestClientErrorV2::ProfileInactive);
-    }
-    if entry.profile_binding != request.profile_binding
-        || entry.release_binding != request.release_binding
-        || entry.statement_version != request.statement_version
-    {
-        return Err(PairForestClientErrorV2::ProfileMismatch);
-    }
+    let (registry_generation, verifier_program) = if immutable_deployment {
+        let registry: VerifierRegistryV2 = decode_verifier_registry_v2(&accounts.registry.data)?;
+        let entry: VerifierRegistryEntryV2 =
+            decode_verifier_registry_entry_v2(&accounts.entry.data)?;
+        let loader = bpf_loader_upgradeable::id();
+        let expected_registry_programdata =
+            Pubkey::find_program_address(&[registry_program.as_ref()], &loader).0;
+        let verifier_program = Pubkey::new_from_array(entry.verifier_program);
+        let expected_verifier_programdata =
+            Pubkey::find_program_address(&[verifier_program.as_ref()], &loader).0;
+        if registry.pool != master.identity.pool
+            || registry.policy_binding != master.verifier_policy.policy_binding
+            || registry.authority != master.verifier_policy.registry_authority
+            || !registry.is_immutable()
+            || registry.registry_program != registry_program.to_bytes()
+            || registry.loader_program != loader.to_bytes()
+            || registry.programdata_address != expected_registry_programdata.to_bytes()
+            || entry.pool != master.identity.pool
+            || entry.policy_binding != master.verifier_policy.policy_binding
+            || entry.loader_program != loader.to_bytes()
+            || entry.programdata_address != expected_verifier_programdata.to_bytes()
+            || entry.expected_upgrade_authority != [0u8; 32]
+            || entry.profile_binding != request.profile_binding
+            || entry.release_binding != request.release_binding
+            || entry.statement_version != request.statement_version
+        {
+            return Err(PairForestClientErrorV2::ProfileMismatch);
+        }
+        if registry.is_paused() {
+            return Err(PairForestClientErrorV2::RegistryPaused);
+        }
+        if !entry.is_active_at(accounts.point.slot()) {
+            return Err(PairForestClientErrorV2::ProfileInactive);
+        }
+        (registry.generation, entry.verifier_program)
+    } else {
+        let registry: VerifierRegistryV1 = decode_verifier_registry_v1(&accounts.registry.data)?;
+        let entry: VerifierRegistryEntryV1 =
+            decode_verifier_registry_entry_v1(&accounts.entry.data)?;
+        let policy_requires_immutable =
+            master.verifier_policy.flags & POOL_V1_VERIFIER_POLICY_FLAG_IMMUTABLE_REGISTRY != 0;
+        if registry.pool != master.identity.pool
+            || registry.policy_binding != master.verifier_policy.policy_binding
+            || registry.authority != master.verifier_policy.registry_authority
+            || registry.is_immutable() != policy_requires_immutable
+            || entry.pool != master.identity.pool
+            || entry.policy_binding != master.verifier_policy.policy_binding
+            || entry.profile_binding != request.profile_binding
+            || entry.release_binding != request.release_binding
+            || entry.statement_version != request.statement_version
+        {
+            return Err(PairForestClientErrorV2::ProfileMismatch);
+        }
+        if registry.is_paused() {
+            return Err(PairForestClientErrorV2::RegistryPaused);
+        }
+        if !entry.is_active_at(accounts.point.slot()) {
+            return Err(PairForestClientErrorV2::ProfileInactive);
+        }
+        (registry.generation, entry.verifier_program)
+    };
     Ok(PairForestSpendProfileSelectionV2 {
+        registry_family,
         finalized_point: accounts.point,
         provider_set_digest: accounts.provider_set_digest,
         registry_program: registry_program.to_bytes(),
         registry_address: registry_address.to_bytes(),
-        registry_generation: registry.generation,
+        registry_generation,
         entry_address: entry_address.to_bytes(),
-        verifier_program: entry.verifier_program,
-        profile_binding: entry.profile_binding,
-        release_binding: entry.release_binding,
-        statement_version: entry.statement_version,
+        verifier_program,
+        profile_binding: request.profile_binding,
+        release_binding: request.release_binding,
+        statement_version: request.statement_version,
     })
 }
 
@@ -447,10 +524,11 @@ mod tests {
         decode_pair_forest_initialize_instruction_v1, POOL_V1_PAIR_EMPTY_ROOTS,
     };
     use aspis_statement::pool_v1::{
-        encode_verifier_registry_entry_v1, encode_verifier_registry_v1, IncrementalMerkleTreeV1,
-        PoolIdentityV1, VerifierEntryStatusV1, VerifierPolicyV1,
-        POOL_V1_PAIR_FOREST_ALL_LANES_MASK, POOL_V1_PAIR_TREE_DEPTH,
-        POOL_V1_VERIFIER_ENTRY_NO_RETIREMENT_SLOT,
+        encode_verifier_registry_entry_v1, encode_verifier_registry_entry_v2,
+        encode_verifier_registry_v1, encode_verifier_registry_v2, IncrementalMerkleTreeV1,
+        PoolIdentityV1, VerifierEntryStatusV1, VerifierPolicyV1, VerifierRegistryEntryV2,
+        VerifierRegistryV2, POOL_V1_PAIR_FOREST_ALL_LANES_MASK, POOL_V1_PAIR_TREE_DEPTH,
+        POOL_V1_VERIFIER_ENTRY_NO_RETIREMENT_SLOT, POOL_V1_VERIFIER_POLICY_FLAG_IMMUTABLE_REGISTRY,
     };
 
     fn key(seed: u8) -> Pubkey {
@@ -490,6 +568,18 @@ mod tests {
             next_checkpoint_sequence: 0,
             last_checkpoint_lane_sequences: [0; 8],
         }
+    }
+
+    fn immutable_master(
+        program: Pubkey,
+        mint: Pubkey,
+        registry_program: Pubkey,
+    ) -> PoolV1PairForestMasterV1 {
+        let mut master = master(program, mint, registry_program);
+        master.verifier_policy.flags = POOL_V1_VERIFIER_POLICY_FLAG_IMMUTABLE_REGISTRY
+            | POOL_V1_VERIFIER_POLICY_FLAG_IMMUTABLE_DEPLOYMENT;
+        master.verifier_policy.registry_authority = [0u8; 32];
+        master
     }
 
     fn lane(
@@ -748,6 +838,10 @@ mod tests {
         let selected =
             select_pair_forest_spend_profile_v2(registry_program, &master, request, &accounts)
                 .unwrap();
+        assert_eq!(
+            selected.registry_family,
+            PairForestVerifierRegistryFamilyV2::LegacyV1
+        );
         assert_eq!(selected.registry_generation, 7);
         assert_eq!(selected.verifier_program, [45; 32]);
         assert_eq!(selected.provider_set_digest, [47; 32]);
@@ -783,6 +877,169 @@ mod tests {
                 &nonfinal_accounts,
             ),
             Err(PairForestClientErrorV2::NotFinalized)
+        );
+    }
+
+    #[test]
+    fn finalized_immutable_registry_v2_selection_authenticates_exact_certificates() {
+        let program = key(80);
+        let mint = key(81);
+        let registry_program = key(82);
+        let master = immutable_master(program, mint, registry_program);
+        let pool = Pubkey::new_from_array(master.identity.pool);
+        let request = PairForestSpendProfileRequestV2 {
+            profile_binding: [83; 32],
+            release_binding: [84; 32],
+            statement_version: 1,
+        };
+        let loader = bpf_loader_upgradeable::id();
+        let verifier_program = key(85);
+        let registry_programdata =
+            Pubkey::find_program_address(&[registry_program.as_ref()], &loader).0;
+        let verifier_programdata =
+            Pubkey::find_program_address(&[verifier_program.as_ref()], &loader).0;
+        let registry = VerifierRegistryV2 {
+            flags: aspis_statement::pool_v1::POOL_V1_VERIFIER_REGISTRY_FLAG_IMMUTABLE,
+            pool: master.identity.pool,
+            authority: [0u8; 32],
+            policy_binding: master.verifier_policy.policy_binding,
+            generation: 9,
+            minimum_activation_delay_slots: 10,
+            registry_program: registry_program.to_bytes(),
+            loader_program: loader.to_bytes(),
+            programdata_address: registry_programdata.to_bytes(),
+            executable_hash: [86; 32],
+        };
+        let entry = VerifierRegistryEntryV2 {
+            status: VerifierEntryStatusV1::Active,
+            statement_version: request.statement_version,
+            pool: master.identity.pool,
+            verifier_program: verifier_program.to_bytes(),
+            profile_binding: request.profile_binding,
+            release_binding: request.release_binding,
+            loader_program: loader.to_bytes(),
+            programdata_address: verifier_programdata.to_bytes(),
+            executable_hash: [87; 32],
+            expected_upgrade_authority: [0u8; 32],
+            activation_slot: 50,
+            retirement_slot: POOL_V1_VERIFIER_ENTRY_NO_RETIREMENT_SLOT,
+            policy_binding: master.verifier_policy.policy_binding,
+        };
+        let point = FinalizedChainPointV1::new(60, [88; 32]).unwrap();
+        let accounts = FinalizedPairForestProfileAccountsV2 {
+            point,
+            context_slot: 60,
+            commitment: SolanaRpcCommitmentV1::Finalized,
+            provider_set_digest: [89; 32],
+            registry: FinalizedForestAccountV2 {
+                address: pool_v1_verifier_registry_v2_address(&registry_program, &pool)
+                    .0
+                    .to_bytes(),
+                owner: registry_program.to_bytes(),
+                executable: false,
+                data: encode_verifier_registry_v2(&registry).unwrap().to_vec(),
+            },
+            entry: FinalizedForestAccountV2 {
+                address: pool_v1_verifier_entry_v2_address(
+                    &registry_program,
+                    &pool,
+                    &request.profile_binding,
+                    &request.release_binding,
+                )
+                .0
+                .to_bytes(),
+                owner: registry_program.to_bytes(),
+                executable: false,
+                data: encode_verifier_registry_entry_v2(&entry).unwrap().to_vec(),
+            },
+        };
+
+        let selected =
+            select_pair_forest_spend_profile_v2(registry_program, &master, request, &accounts)
+                .unwrap();
+        assert_eq!(
+            selected.registry_family,
+            PairForestVerifierRegistryFamilyV2::ImmutableDeploymentV2
+        );
+        assert_eq!(selected.registry_generation, 9);
+        assert_eq!(selected.verifier_program, verifier_program.to_bytes());
+
+        // The policy-selected V2 family never falls back to syntactically
+        // valid V1 accounts at their distinct legacy addresses.
+        let legacy_registry = VerifierRegistryV1 {
+            flags: aspis_statement::pool_v1::POOL_V1_VERIFIER_REGISTRY_FLAG_IMMUTABLE,
+            pool: master.identity.pool,
+            authority: [0u8; 32],
+            policy_binding: master.verifier_policy.policy_binding,
+            generation: 9,
+            minimum_activation_delay_slots: 10,
+        };
+        let legacy_entry = VerifierRegistryEntryV1 {
+            status: VerifierEntryStatusV1::Active,
+            statement_version: request.statement_version,
+            pool: master.identity.pool,
+            verifier_program: verifier_program.to_bytes(),
+            profile_binding: request.profile_binding,
+            release_binding: request.release_binding,
+            activation_slot: 50,
+            retirement_slot: POOL_V1_VERIFIER_ENTRY_NO_RETIREMENT_SLOT,
+            policy_binding: master.verifier_policy.policy_binding,
+        };
+        let legacy_accounts = FinalizedPairForestProfileAccountsV2 {
+            registry: FinalizedForestAccountV2 {
+                address: pool_v1_verifier_registry_address(&registry_program, &pool)
+                    .0
+                    .to_bytes(),
+                data: encode_verifier_registry_v1(&legacy_registry)
+                    .unwrap()
+                    .to_vec(),
+                ..accounts.registry.clone()
+            },
+            entry: FinalizedForestAccountV2 {
+                address: pool_v1_verifier_entry_address(
+                    &registry_program,
+                    &pool,
+                    &request.profile_binding,
+                    &request.release_binding,
+                )
+                .0
+                .to_bytes(),
+                data: encode_verifier_registry_entry_v1(&legacy_entry)
+                    .unwrap()
+                    .to_vec(),
+                ..accounts.entry.clone()
+            },
+            ..accounts.clone()
+        };
+        assert_eq!(
+            select_pair_forest_spend_profile_v2(
+                registry_program,
+                &master,
+                request,
+                &legacy_accounts,
+            ),
+            Err(PairForestClientErrorV2::WrongRegistry)
+        );
+
+        let mut wrong_programdata = registry;
+        wrong_programdata.programdata_address = key(90).to_bytes();
+        let wrong_programdata_accounts = FinalizedPairForestProfileAccountsV2 {
+            registry: FinalizedForestAccountV2 {
+                data: encode_verifier_registry_v2(&wrong_programdata)
+                    .unwrap()
+                    .to_vec(),
+                ..accounts.registry.clone()
+            },
+            ..accounts
+        };
+        assert_eq!(
+            select_pair_forest_spend_profile_v2(
+                registry_program,
+                &master,
+                request,
+                &wrong_programdata_accounts,
+            ),
+            Err(PairForestClientErrorV2::ProfileMismatch)
         );
     }
 }

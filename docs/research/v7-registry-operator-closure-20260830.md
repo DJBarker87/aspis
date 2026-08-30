@@ -6,9 +6,11 @@ Status: V1 registry/operator semantics remain frozen and source/kernel checked.
 The isolated Registry V2 runtime now adds immutable loader-v3 deployment
 certificates for both the Registry program and every selected verifier, and
 the Pool/Tag-73 registry readers fail closed onto the V2 account family when
-the immutable-deployment policy bit is set. Focused Rust tests are green. SBF
-measurement, operator-builder integration, refreshed Rust-to-Lean/Aeneas
-source closure and finalized devnet evidence remain activation gates.
+the immutable-deployment policy bit is set. The explicit V2 governance client,
+finalized-account selector and real TxV1 terminal builder are now integrated
+and focused Rust tests are green. SBF measurement, refreshed
+Rust-to-Lean/Aeneas source closure and finalized devnet evidence remain
+activation gates.
 
 ## Current exact on-chain guarantee
 
@@ -182,12 +184,27 @@ to the 128-byte V1 shape.
 
 ### Builder and compatibility changes
 
-The low-level Rust codecs and PDA derivations are implemented. The production
-operator builder must still derive both ProgramData addresses, hash the exact
-post-45-byte account payloads, add the two init-only or schedule-only accounts,
-and emit the fixed V2 instructions. Pool transaction builders keep the
-existing terminal account count and merely select a V2 registry/entry pair;
-no proof, ASQ8, ASF8, ASR8 or cryptographic statement byte changes are needed.
+The production-default-off governance client now has explicit V2 methods for
+initialize, schedule, pause, unpause, activate, retire and freeze. Initialize
+derives the executing Registry ProgramData PDA and emits the exact six-account
+ASRM-v2 instruction. Schedule derives the selected verifier ProgramData PDA,
+requires the caller-pinned nonzero executable hash and emits the exact
+seven-account ASRM-v2 instruction. The client never signs, submits, probes for
+an alternative program, or silently turns a V1 request into V2.
+
+The finalized client selector validates the Pool's policy first. Only the
+`IMMUTABLE_DEPLOYMENT` bit selects ASR2/ASE2 PDAs and codecs. It checks the
+stored Registry Program, loader-v3 ID and derived ProgramData PDA, requires the
+Registry to be frozen and unpaused, then checks the verifier loader-v3 ID,
+derived ProgramData PDA, zero expected upgrade authority and exact active
+profile/release/version. A missing, malformed or wrong V2 account never falls
+back to V1. The returned selection carries an explicit registry-family tag so
+the terminal builder rejects a manually mixed V1/V2 selection.
+
+The real TxV1 Pool terminal builder derives the same policy-selected PDA
+family. V2 replaces the two V1 registry keys one-for-one; it does not add a
+terminal account. No proof, ASQ8, ASF8, ASR8 or cryptographic statement byte
+changes are needed.
 
 V1 decoders and PDAs remain frozen for archival replay. A mutable pre-release
 registry may schedule V2 beside V1, wait the activation delay, switch the Pool
@@ -195,9 +212,41 @@ policy to V2-only and retire V1. An immutable V1 registry cannot be upgraded;
 it needs a new V2 registry PDA and the Pool's governed policy migration. There
 must be no fallback from a malformed/missing V2 entry to V1.
 
-### CU and TxV1 impact
+### Exact terminal TxV1 impact
 
-These remain static estimates, not SBF measurements:
+The measurements below use the real `solana-message` v1 compiler and `wincode`
+transaction serializer with one placeholder signature, all inline account
+keys, ASQ8's exact 320 bytes, a 1,400,000-CU limit, 8 MiB loaded-account limit,
+256 KiB heap and 10,000-lamport priority fee. They are complete serialized
+packets, not instruction-data estimates.
+
+| V2 terminal | Accounts | Inline addresses | Serialized TxV1 bytes | Headroom to 4,096 |
+| --- | ---: | ---: | ---: | ---: |
+| private transfer, same page | 11 | 12 | 845 | 3,251 |
+| private transfer, rollover | 12 | 13 | 878 | 3,218 |
+| withdrawal, same page | 16 | 17 | 1,010 | 3,086 |
+| withdrawal, rollover | 17 | 18 | 1,043 | 3,053 |
+
+Every value is exactly equal to the corresponding V1 terminal packet. The
+largest current Pool operation remains the separate 1,277-byte rollover
+deposit; Registry V2 does not affect it.
+
+Focused replay commands:
+
+```text
+cargo test registry_transaction_builder::tests -- --nocapture
+cargo test --features eight-lane-plumbing-v2 lane_forest_client_v2::tests -- --nocapture
+cargo test --features eight-lane-plumbing-v2 lane_forest_transaction_v1::tests::immutable_registry -- --nocapture
+cargo test --features eight-lane-plumbing-v2 lane_forest_transaction_v1::tests::max_shape_terminal_wires_are_tx_v1_and_never_embed_the_proof -- --nocapture
+```
+
+Results: 4/4 V1/V2 governance-builder tests, 5/5 finalized client tests, 2/2
+V2 terminal tests and the focused legacy sizing regression passed. Peak RSS
+was 771,440,640 bytes across the changed-feature builds; swaps were zero.
+
+### CU impact
+
+The following remain static estimates, not new SBF measurements:
 
 - An upgradeable Tag-73 ProgramData account is about 1.2 MB. Agave 4.2 charges
   SHA-256 base cost 85 CU plus `max(mem_op_base_cost, byte_cost * len / 2)` for
@@ -217,19 +266,23 @@ These remain static estimates, not SBF measurements:
   account indices plus the 32 instruction bytes. Without lookup tables they
   add up to 64 static-key bytes plus compiled indices, for an estimated packet
   increase of about 98–102 bytes. This is far below 4,096 bytes.
-- The one-terminal private-transfer/withdrawal TxV1 sizes do not grow in the
-  immutable-only design. The larger entry is account data, not packet data.
+- The terminal client/source changes do no on-chain work by themselves. The
+  on-chain V2 reader decodes 128 additional entry bytes and checks fixed
+  certificate fields, but the existing combined LiteSVM harness is pinned to
+  V1 account fixtures and prior SBF artifacts. It cannot honestly provide a
+  V2 CU delta without rebuilding the programs and adding ASR2/ASE2 fixtures.
+  No independent-component sum is reported as a combined measurement.
 
 ## Activation decision
 
-The runtime V2 deployment certificate and terminal V2 selection are now
-implemented and locally green. Mainnet activation remains blocked on:
+The runtime V2 deployment certificate, governance builder, finalized client
+selection and exact TxV1 terminal selection are now implemented and locally
+green. Mainnet activation remains blocked on:
 
-1. production operator/builder integration and exact TxV1 packet evidence;
-2. reproducible SBF builds plus measured V2 initialize/schedule/terminal CU;
-3. refreshed Rust-to-Charon/Aeneas-to-Lean source bridges for V2 parsing,
+1. reproducible SBF builds plus measured V2 initialize/schedule/terminal CU;
+2. refreshed Rust-to-Charon/Aeneas-to-Lean source bridges for V2 parsing,
    deployment authentication and caller selection;
-4. finalized devnet initialization, schedule, activation/freeze, successful
+3. finalized devnet initialization, schedule, activation/freeze, successful
    spend, adversarial mutation and rollback receipts.
 
 Until those gates are frozen, the hardened policy bit stays default-off and
