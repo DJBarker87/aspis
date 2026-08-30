@@ -84,6 +84,17 @@ perl -0pi -e \
   's/\) :\n  Result\n    \(v6_transcript\.verify_v7_compact_transcript_and_relation_prepared_with_hiding_context\.closure\n    TerminalCheck QueryFold\)\n  := do\n  ok c/) :\n  Result\n    (Unit ×\n      v6_transcript.verify_v7_compact_transcript_and_relation_prepared_with_hiding_context.closure\n      TerminalCheck QueryFold)\n  := do\n  ok ((), c)/' \
   "$staged_module/Funs.lean"
 
+# Generated `Str` literals use native-decide certificates for UTF-8 validity.
+# These eight strings feed only Debug/expect panic messages; the Aeneas `Str`
+# argument is observationally irrelevant to the typed success/failure result.
+# Use the same empty, kernel-proved `Str` normalization as earlier source
+# bridges so no `_native.decide` axiom enters the production root closure.
+test "$(rg -F -c 'toStr "' "$staged_module/Funs.lean")" = 5
+test "$(rg -U -c 'toStr\n[[:space:]]+"' "$staged_module/Funs.lean")" = 3
+perl -0pi -e \
+  's/toStr "[^"]*"/(⟨[], Nat.zero_le _⟩ : Str)/g; s/toStr\n[[:space:]]+"[^"]*"/(⟨[], Nat.zero_le _⟩ : Str)/g' \
+  "$staged_module/Funs.lean"
+
 test "$(rg -F -c 'next := core.slice.iter.IteratorIterMut.next_without_writeback' \
   "$staged_module/Funs.lean")" = 1
 test "$(rg -F -c 'IteratorEnumerateMut.next iter' \
@@ -97,6 +108,10 @@ test "$(rg -F -c 'ok (decide (context.layout_factor_fingerprint = i))' \
 test "$(rg -F -c 'field.QM31.ZERO (fun p => field.QM31.add p.1 p.2)' \
   "$staged_module/Funs.lean")" = 1
 test "$(rg -F -c 'ok ((), c)' "$staged_module/Funs.lean")" = 1
+if rg -n 'toStr' "$staged_module/Funs.lean"; then
+  echo "unexpected generated Str literal remains" >&2
+  exit 1
+fi
 if rg -n '\(transcript[[:space:]]*:' "$staged_module/Funs.lean"; then
   echo "generated local still shadows the transcript namespace" >&2
   exit 1
