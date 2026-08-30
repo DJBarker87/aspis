@@ -28,8 +28,8 @@ namespace AspisV6CompactFrontierTailCertificate
 open AspisV6CompactFrontierRecurrence
 
 theorem tailLive_eq_expected :
-    (∑ frontier ∈ Finset.Icc 210 224,
-      concreteFrontierCount 18 16 frontier) = 14674433666996641882200248991177161572700984080998586769411569185737146368 := by
+    liveTailFor finalFrontierCount = 14674433666996641882200248991177161572700984080998586769411569185737146368 := by
+  unfold liveTailFor finalFrontierCount
   norm_num only [Finset.sum_Icc_succ_top,
     weighted_certificate_18_16_210,
     weighted_certificate_18_16_211,

@@ -656,10 +656,10 @@
     "V6CompactFrontierTailCertificate/Depth18Chunk077.lean": "f82801efa20ad71e4c6a9acd6fb4dcd00f1ca7d688a7539f6338b03f4694aa41",
     "V6CompactFrontierTailCertificate/Depth18Chunk078.lean": "ee377ad6d47b0793206749a599b0a25a12d4dafeb147c37a74c26412ec9cff59",
     "V6CompactFrontierTailCertificate/Support.lean": "ce1ec7d8db577a27d48bbf54539d6366e07abaa2f93e2f202c2a00323cf2bb5a",
-    "V6CompactFrontierTailCertificate/TailSumCombine.lean": "46d9a150ed4d978fbacd29f2ab4172b7f67d8a76ffcb3f47f75940d93620d6b0",
-    "V6CompactFrontierTailCertificate/TailSumLive.lean": "d01dba8fc80c3807068e217d31c4c861e35b4e75b0a08f40374cb2fcf9319a02",
-    "V6CompactFrontierTailCertificate/TailSumSupport.lean": "20e9c2e194d64a587ebddae289ddbb538b81fe9c600d2a74e23fc68a869ecf6f",
-    "V6CompactFrontierTailCertificate/TailSumZero.lean": "b217ce49194a7cb72fe193520716c38b5712ffeddeb50212e11b6e45fd8b32dd"
+    "V6CompactFrontierTailCertificate/TailSumCombine.lean": "56adf5b4b80cce1ef76244c5266ba0fe1baecd8aadc8b9cdc3b0cf827b3e4ed9",
+    "V6CompactFrontierTailCertificate/TailSumLive.lean": "0da18928967dfac0133613ab7928f29cde6d930c20c68bcbaccef821db21112b",
+    "V6CompactFrontierTailCertificate/TailSumSupport.lean": "752cc7e74bef31bfa7875a4c4fd758abf0c13b50821136454e4633878557db07",
+    "V6CompactFrontierTailCertificate/TailSumZero.lean": "6345b620f789bf965aa05a78dcb370ad6093cad601a8ff409ee69c5ee45c8e75"
   },
   "non_base_rw_norm_num_cells": 752,
   "ordinary_recurrence_cells": 753,

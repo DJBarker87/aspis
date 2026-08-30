@@ -13,25 +13,27 @@ namespace AspisV6CompactFrontierTailCertificate
 open AspisV6CompactFrontierRecurrence
 open AspisV6CompactFrontierSupport
 
-/-- Exact count of schedules rejected solely because their compact
-frontier is above the release cap. The range continues to the
-proved loose maximum; all coefficients after 224 are checked zero. -/
-def compactTail : Nat :=
-  ∑ frontier ∈ Finset.Icc 210 288,
-    concreteFrontierCount 18 16 frontier
-
 def expectedCompactTail : Nat :=
   14674433666996641882200248991177161572700984080998586769411569185737146368
 
-theorem compactTail_eq_expected :
-    compactTail = expectedCompactTail := by
-  unfold compactTail
-  rw [sum_Icc_split_at
-    (fun frontier => concreteFrontierCount 18 16 frontier)
-    210 224 288 (by omega) (by omega)]
-  rw [tailLive_eq_expected, tailAboveSupport_eq_zero]
-  norm_num [expectedCompactTail]
+theorem compactTailFor_final_eq_expected :
+    compactTailFor finalFrontierCount = expectedCompactTail := by
+  calc
+    compactTailFor finalFrontierCount =
+        splitCompactTailFor finalFrontierCount :=
+      compactTailFor_eq_split finalFrontierCount
+    _ = liveTailFor finalFrontierCount +
+          aboveSupportTailFor finalFrontierCount :=
+      splitCompactTailFor_eq_components finalFrontierCount
+    _ = 14674433666996641882200248991177161572700984080998586769411569185737146368 + 0 :=
+      congrArg₂ (· + ·) tailLive_eq_expected tailAboveSupport_eq_zero
+    _ = expectedCompactTail := by rfl
 
+theorem compactTail_eq_expected :
+    compactTail = expectedCompactTail :=
+  compactTailFor_final_eq_expected
+
+#print axioms compactTailFor_final_eq_expected
 #print axioms compactTail_eq_expected
 
 end AspisV6CompactFrontierTailCertificate

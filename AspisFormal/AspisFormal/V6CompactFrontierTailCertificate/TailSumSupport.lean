@@ -8,6 +8,8 @@ set_option autoImplicit false
 
 namespace AspisV6CompactFrontierTailCertificate
 
+open AspisV6CompactFrontierRecurrence
+
 theorem sum_Icc_split_at
     (f : Nat → Nat) (a b c : Nat)
     (hab : a ≤ b) (hbc : b < c) :
@@ -27,6 +29,49 @@ theorem sum_Icc_split_at
     omega
   rw [union_eq, Finset.sum_union disjoint]
 
+/-- The live interval sum, kept generic so structural type checking
+cannot unfold a concrete recurrence while matching expressions. -/
+def liveTailFor (f : Nat → Nat) : Nat :=
+  ∑ frontier ∈ Finset.Icc 210 224, f frontier
+
+/-- The interval above the exact support boundary. -/
+def aboveSupportTailFor (f : Nat → Nat) : Nat :=
+  ∑ frontier ∈ Finset.Icc 225 288, f frontier
+
+/-- The complete published tail interval. -/
+def compactTailFor (f : Nat → Nat) : Nat :=
+  ∑ frontier ∈ Finset.Icc 210 288, f frontier
+
+/-- The complete interval factored at the support boundary. -/
+def splitCompactTailFor (f : Nat → Nat) : Nat :=
+  liveTailFor f + aboveSupportTailFor f
+
+theorem compactTailFor_eq_split (f : Nat → Nat) :
+    compactTailFor f = splitCompactTailFor f := by
+  unfold compactTailFor splitCompactTailFor liveTailFor aboveSupportTailFor
+  exact sum_Icc_split_at f
+    210 224 288
+    (by omega) (by omega)
+
+/-- The concrete final-row count, named to prevent reducible-function
+unification from evaluating the recurrence. -/
+def finalFrontierCount (frontier : Nat) : Nat :=
+  concreteFrontierCount 18 16 frontier
+
+/-- The concrete full-range tail retains the historical public name. -/
+def compactTail : Nat := compactTailFor finalFrontierCount
+
+theorem splitCompactTailFor_eq_components (f : Nat → Nat) :
+    splitCompactTailFor f = liveTailFor f + aboveSupportTailFor f := by rfl
+
+theorem compactTailFor_final_eq_recurrence :
+    compactTailFor finalFrontierCount =
+      ∑ frontier ∈ Finset.Icc 210 288,
+        concreteFrontierCount 18 16 frontier := by rfl
+
 #print axioms sum_Icc_split_at
+#print axioms compactTailFor_eq_split
+#print axioms splitCompactTailFor_eq_components
+#print axioms compactTailFor_final_eq_recurrence
 
 end AspisV6CompactFrontierTailCertificate
