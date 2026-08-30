@@ -27,7 +27,7 @@ readonly BUNDLE_VERIFY="$ROOT/scripts/v7_txv1_bundle_verify.sh"
 
 jq -e '
   .schema == "aspis.v7.one-tx-candidate-preflight.v1" and
-  .status == "STACK_SAFE_SOURCE_FROZEN_DUAL_SBF_AND_LOCAL_AGAVE_PENDING" and
+  .status == "STACK_SAFE_DUAL_SBF_AND_LOCAL_AGAVE_GREEN" and
   .authorization.build == true and
   .authorization.localDisposableLifecycle == true and
   .authorization.sign == true and .authorization.submit == true and
@@ -48,15 +48,29 @@ jq -e '
   .currentReleaseGate.focusedPlannerMaximumStackOffsetBytes == 2912 and
   .currentReleaseGate.focusedLaneDecoderMaximumStackOffsetBytes == 3024 and
   .currentReleaseGate.maximumAllowedStackOffsetBytes == 4096 and
-  .currentReleaseGate.dualLinuxSbfExecuted == false and
-  .currentReleaseGate.disposableAgaveLifecycleExecuted == false and
+  .currentReleaseGate.dualLinuxSbfExecuted == true and
+  .currentReleaseGate.disposableAgaveLifecycleExecuted == true and
+  .currentReleaseGate.allElevenCasesFinalized == true and
+  .currentReleaseGate.allNegativeCasesRolledBackExactly == true and
+  .currentReleaseGate.allHonestCasesUnder1300000Cu == true and
+  .currentReleaseGate.publicClusterUsed == false and
   .txv1Lifecycle.caseBundleIncluded == true and
-  .txv1Lifecycle.caseBundlePoolSbfBindingComplete == false and
-  .txv1Lifecycle.materializedCaseBundleIncluded == false and
+  .txv1Lifecycle.caseBundlePoolSbfBindingComplete == true and
+  .txv1Lifecycle.materializedCaseBundleIncluded == true and
   .txv1Lifecycle.agave42AvailableInRecordedLocalEnvironment == true and
-  .txv1Lifecycle.suiteExecutedForThisFreeze == false and
-  .currentMeasuredCombinedCase.executed == false
-' "$MANIFEST" >/dev/null || fail "manifest is not the exact pending stack-safe release gate"
+  .txv1Lifecycle.suiteExecutedForThisFreeze == true and
+  .txv1Lifecycle.allCasesFinalized == true and
+  .txv1Lifecycle.allNegativeCasesRolledBackExactly == true and
+  .txv1Lifecycle.allHonestCasesMatchFrozenProgramState == true and
+  .txv1Lifecycle.programStateComparisonExcludesRuntimeMetadata == ["rentEpoch"] and
+  .txv1Lifecycle.publicDevnetSubmissionAuthorized == false and
+  .txv1Lifecycle.publicClusterUsed == false and
+  .currentMeasuredCombinedCase.executed == true and
+  .currentMeasuredCombinedCase.computeUnits == 1217607 and
+  .currentMeasuredCombinedCase.transactionBytes == 1031 and
+  .currentMeasuredCombinedCase.computeUnitHeadroom == 82393 and
+  .currentMeasuredCombinedCase.transactionByteHeadroom == 3065
+' "$MANIFEST" >/dev/null || fail "manifest is not the exact green stack-safe release gate"
 
 readonly SOURCE_COMMIT=$(jq -er '.source.commit' "$MANIFEST")
 [[ "$(git -C "$ROOT" rev-parse "$SOURCE_COMMIT^{commit}")" == "$SOURCE_COMMIT" ]] \
@@ -132,6 +146,120 @@ fresh_audit=$($BUNDLE_VERIFY "$CASE_BUNDLE")
 jq -e --argjson fresh "$fresh_audit" --argjson frozen "$(jq . "$OFFLINE_AUDIT")" '$fresh == $frozen' \
   <<<null >/dev/null || fail "fresh case-bundle audit differs from the frozen result"
 
+readonly MATERIALIZED_BUNDLE="$ROOT/$(jq -er '.txv1Lifecycle.materializedCaseBundle' "$MANIFEST")"
+readonly MATERIALIZED_AUDIT="$ROOT/$(jq -er '.txv1Lifecycle.materializedCaseBundleOfflineAudit' "$MANIFEST")"
+readonly SBF_RECORD="$ROOT/$(jq -er '.currentReleaseGate.reproducibleSbfRecord' "$MANIFEST")"
+readonly SUITE="$ROOT/$(jq -er '.txv1Lifecycle.suite' "$MANIFEST")"
+readonly RELEASE_EVIDENCE="$ROOT/$(jq -er '.currentReleaseGate.releaseEvidence' "$MANIFEST")"
+readonly EVIDENCE_INVENTORY="$ROOT/$(jq -er '.currentReleaseGate.evidenceInventory' "$MANIFEST")"
+[[ -d "$MATERIALIZED_BUNDLE" && -f "$MATERIALIZED_AUDIT" && -f "$SBF_RECORD" \
+    && -f "$SUITE" && -f "$RELEASE_EVIDENCE" && -f "$EVIDENCE_INVENTORY" ]] \
+  || fail "green release evidence is incomplete"
+[[ "$(sha_file "$MATERIALIZED_BUNDLE/bundle.json")" \
+      == "$(jq -er '.txv1Lifecycle.materializedCaseBundleSha256' "$MANIFEST")" ]] \
+  || fail "materialized bundle manifest differs"
+[[ "$(sha_file "$MATERIALIZED_BUNDLE/TEMPLATE-SHA256SUMS")" \
+      == "$(jq -er '.txv1Lifecycle.materializedCaseBundleInventorySha256' "$MANIFEST")" ]] \
+  || fail "materialized bundle inventory differs"
+[[ "$(sha_file "$MATERIALIZED_AUDIT")" \
+      == "$(jq -er '.txv1Lifecycle.materializedCaseBundleOfflineAuditSha256' "$MANIFEST")" ]] \
+  || fail "materialized bundle audit differs"
+fresh_materialized_audit=$($BUNDLE_VERIFY "$MATERIALIZED_BUNDLE" --materialized)
+jq -e --argjson fresh "$fresh_materialized_audit" \
+  --argjson frozen "$(jq . "$MATERIALIZED_AUDIT")" '$fresh == $frozen' \
+  <<<null >/dev/null || fail "fresh materialized-bundle audit differs"
+
+[[ "$(sha_file "$SBF_RECORD")" == "$(jq -er '.currentReleaseGate.reproducibleSbfRecordSha256' "$MANIFEST")" ]] \
+  || fail "reproducible SBF record differs"
+jq -e \
+  --arg sourceCommit "$SOURCE_COMMIT" \
+  --arg sourceTree "$(jq -er '.source.tree' "$MANIFEST")" \
+  --arg poolSha "$(jq -er '.programs[] | select(.name == "aspis-pool") | .expectedSha256' "$MANIFEST")" \
+  --arg verifierSha "$(jq -er '.programs[] | select(.name == "aspis-verifier") | .expectedSha256' "$MANIFEST")" '
+  .schema == "aspis.v7.one-tx-reproducible-sbf.v2" and
+  .source.commit == $sourceCommit and .source.tree == $sourceTree and
+  .source.independentCopies == 2 and .source.archivesByteIdentical == true and
+  .programs.pool.sha256 == $poolSha and .programs.pool.bytes == 526056 and
+  .programs.pool.buildsByteIdentical == true and .programs.pool.stackGate.passed == true and
+  .programs.pool.stackGate.plannerMaximumObservedOffsetBytes == 2912 and
+  .programs.pool.stackGate.laneDecoderMaximumObservedOffsetBytes == 3024 and
+  .programs.verifier.sha256 == $verifierSha and .programs.verifier.bytes == 1812264 and
+  .programs.verifier.buildsByteIdentical == true and
+  .builder.offlineCargoCacheVerifiedBeforeAndAfter == true and
+  .builder.offlineSbfCargoCacheVerifiedBeforeAndAfter == true and
+  .builder.memoryMaxBytes <= 12884901888 and .builder.memorySwapMaxBytes == 0
+' "$SBF_RECORD" >/dev/null || fail "reproducible SBF record did not close"
+
+[[ "$(sha_file "$SUITE")" == "$(jq -er '.txv1Lifecycle.suiteSha256' "$MANIFEST")" ]] \
+  || fail "finalized Agave suite differs"
+jq -e \
+  --arg poolSha "$(jq -er '.programs[] | select(.name == "aspis-pool") | .expectedSha256' "$MANIFEST")" \
+  --arg verifierSha "$(jq -er '.programs[] | select(.name == "aspis-verifier") | .expectedSha256' "$MANIFEST")" \
+  --arg bundleSha "$(jq -er '.txv1Lifecycle.materializedCaseBundleSha256' "$MANIFEST")" '
+  def base64_bytes:
+    . as $encoded |
+    ((($encoded | length) * 3 / 4) -
+      (if ($encoded | endswith("==")) then 2 elif ($encoded | endswith("=")) then 1 else 0 end));
+  ([.cases[] | {key: .case, value: {bytes: .packetBytes, cu: .landedUnitsConsumed}}] |
+    from_entries) as $measured |
+  .schema == "aspis.v7.disposable-agave-txv1-finalized-suite.v2" and
+  .poolSbfSha256 == $poolSha and .verifierSbfSha256 == $verifierSha and
+  .bundleSha256 == $bundleSha and (.cases | length) == 11 and
+  .allCasesSigned and .allCasesSubmitted and .allCasesFinalized and
+  .allPacketsUnder4096 and .allLandedComputeUnder1300000 and
+  .allNegativeCasesRolledBack and .allHonestCasesMatchFrozenProgramState and
+  .allHonestRuntimeMetadataValid and
+  .programStateComparisonExcludesRuntimeMetadata == ["rentEpoch"] and
+  (.cases | all(.simulationUnitsConsumed == .landedUnitsConsumed)) and
+  (.cases | map(select(.expectedOutcome == "success")) |
+    all((.transactionResponse.result.meta.returnData.data[0] | base64_bytes) == 792)) and
+  $measured["transfer-same-page"] == {bytes: 833, cu: 1157102} and
+  $measured["transfer-rollover"] == {bytes: 866, cu: 1206015} and
+  $measured["withdrawal-same-page"] == {bytes: 998, cu: 1148696} and
+  $measured["withdrawal-rollover"] == {bytes: 1031, cu: 1217607} and
+  $measured["stale-selected-lane-rejection"] == {bytes: 833, cu: 67809} and
+  $measured["replay-nullifier-rejection"] == {bytes: 833, cu: 23666} and
+  $measured["wrong-checkpoint-rejection"] == {bytes: 833, cu: 15587} and
+  $measured["wrong-registry-release-rejection"] == {bytes: 833, cu: 39727} and
+  $measured["malformed-proof-rejection"] == {bytes: 833, cu: 30837} and
+  $measured["mutated-proof-rejection"] == {bytes: 833, cu: 974231} and
+  $measured["failed-withdrawal-cpi-rollback"] == {bytes: 998, cu: 1147481} and
+  (.publicClusterUsed | not) and (.deployed | not)
+' "$SUITE" >/dev/null || fail "finalized Agave suite did not close"
+
+while IFS= read -r case_name; do
+  case_file="$(dirname "$SUITE")/$case_name.json"
+  [[ -f "$case_file" ]] || fail "committed finalized case is missing: $case_name"
+  jq -e --arg case "$case_name" --slurpfile standalone "$case_file" \
+    '.cases[] | select(.case == $case) | . == $standalone[0]' "$SUITE" >/dev/null \
+    || fail "standalone finalized case differs from suite: $case_name"
+done < <(jq -r '.txv1Lifecycle.requiredCases[]' "$MANIFEST")
+
+[[ "$(sha_file "$RELEASE_EVIDENCE")" == "$(jq -er '.currentReleaseGate.releaseEvidenceSha256' "$MANIFEST")" ]] \
+  || fail "release-evidence summary differs"
+jq -e '
+  .schema == "aspis.v7.one-tx-stack-safe-local-release-evidence.v1" and
+  .reproducibleSbf.dualBuildEvidenceValid and
+  .finalizedLifecycle.allCasesFinalized and
+  .finalizedLifecycle.allNegativeCasesRolledBackExactly and
+  .finalizedLifecycle.allHonestCasesMatchFrozenProgramState and
+  (.finalizedLifecycle.cases | length) == 11 and
+  (.finalizedLifecycle.cases | all(.simulationEqualsLandedCompute)) and
+  (.scope.localReleaseEvidenceComplete == true) and
+  (.scope.publicClusterUsed | not) and (.scope.programDeployed | not)
+' "$RELEASE_EVIDENCE" >/dev/null || fail "release-evidence summary did not close"
+
+[[ "$(sha_file "$EVIDENCE_INVENTORY")" == "$(jq -er '.currentReleaseGate.evidenceInventorySha256' "$MANIFEST")" ]] \
+  || fail "release-evidence inventory differs"
+while read -r expected relative_path; do
+  [[ -n "$expected" && -n "$relative_path" ]] \
+    || fail "malformed release-evidence inventory entry"
+  inventory_file="$(dirname "$EVIDENCE_INVENTORY")/$relative_path"
+  [[ -f "$inventory_file" ]] || fail "release-evidence file is missing: $relative_path"
+  [[ "$(sha_file "$inventory_file")" == "$expected" ]] \
+    || fail "release-evidence file differs: $relative_path"
+done < "$EVIDENCE_INVENTORY"
+
 jq -n \
   --arg sourceCommit "$SOURCE_COMMIT" \
   --arg sourceTree "$(jq -er '.source.tree' "$MANIFEST")" \
@@ -151,7 +279,10 @@ jq -n \
     caseBundleSha256: $caseBundleSha,
     exactCaseCount: 11,
     stackOffsetsUnder4096: true,
-    dualLinuxSbfPending: true,
-    disposableAgaveLifecyclePending: true,
+    dualLinuxSbfPassed: true,
+    disposableAgaveLifecyclePassed: true,
+    worstHonestComputeUnits: 1217607,
+    worstHonestTransactionBytes: 1031,
+    allNegativeCasesRolledBackExactly: true,
     publicClusterAuthorized: false
   }'

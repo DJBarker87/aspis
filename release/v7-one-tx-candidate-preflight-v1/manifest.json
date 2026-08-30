@@ -1,6 +1,6 @@
 {
   "schema": "aspis.v7.one-tx-candidate-preflight.v1",
-  "status": "STACK_SAFE_SOURCE_FROZEN_DUAL_SBF_AND_LOCAL_AGAVE_PENDING",
+  "status": "STACK_SAFE_DUAL_SBF_AND_LOCAL_AGAVE_GREEN",
   "authorization": {
     "build": true,
     "localSimulationOnly": false,
@@ -73,8 +73,8 @@
       "output": "aspis_pool.so",
       "expectedBytes": 526056,
       "expectedSha256": "0bbe441f0e13c2f61e2369674628b06c9d538192514b4e9a92d229479956586d",
-      "bindingStatus": "FOCUSED_STACK_SAFE_LINUX_REFERENCE_PENDING_DUAL_CONFIRMATION",
-      "referenceEvidence": "aeneas-verif/v7-pool-one-terminal-caller-source-20260828/evidence/checkpoint-stack-frame-20260830.txt",
+      "bindingStatus": "DUAL_LINUX_CONFIRMED_STACK_SAFE_CURRENT_SOURCE",
+      "referenceEvidence": "results/v7-one-tx-stack-safe-release-20260830/dual-sbf-r2/reproducible-sbf.json",
       "referenceArtifact": "results/v7-one-tx-stack-safe-pool-reference-20260830/aspis_pool.so",
       "referenceArtifactCheckedIn": true
     },
@@ -87,8 +87,8 @@
       "output": "aspis_verifier.so",
       "expectedBytes": 1812264,
       "expectedSha256": "c43960303f2d67606362dc09d74f3a7983dcfcbe0665984a385a0efa7ddc5e47",
-      "bindingStatus": "DERIVED_BY_BYTE_IDENTICAL_PRE_STACK_FIX_DUAL_LINUX_BUILD_UNCHANGED_SOURCE_TREE",
-      "referenceEvidence": "results/v7-one-tx-reproducible-sbf-20260830/r6/reproducible-sbf.json",
+      "bindingStatus": "DUAL_LINUX_CONFIRMED_CURRENT_SOURCE",
+      "referenceEvidence": "results/v7-one-tx-stack-safe-release-20260830/dual-sbf-r2/reproducible-sbf.json",
       "referenceArtifact": "results/v7-one-tx-reproducible-sbf-20260830/r6/sbf/aspis_verifier.so",
       "referenceArtifactCheckedIn": true,
       "historicalDarwinReference": {
@@ -272,8 +272,20 @@
     "focusedPlannerMaximumStackOffsetBytes": 2912,
     "focusedLaneDecoderMaximumStackOffsetBytes": 3024,
     "maximumAllowedStackOffsetBytes": 4096,
-    "dualLinuxSbfExecuted": false,
-    "disposableAgaveLifecycleExecuted": false
+    "dualLinuxSbfExecuted": true,
+    "disposableAgaveLifecycleExecuted": true,
+    "reproducibleSbfRecord": "results/v7-one-tx-stack-safe-release-20260830/dual-sbf-r2/reproducible-sbf.json",
+    "reproducibleSbfRecordSha256": "3411d0b9de283fa3015a0e357d888c5b9d4f7d1256d101991876785edf0378e5",
+    "localAgaveSuite": "results/v7-one-tx-stack-safe-release-20260830/agave-r5/suite.json",
+    "localAgaveSuiteSha256": "5a3502e74c259071d49bbefdb3ead8853d139259912f131282551250d82ce8db",
+    "releaseEvidence": "results/v7-one-tx-stack-safe-release-20260830/release-evidence.json",
+    "releaseEvidenceSha256": "c69939a39d7e91d2c19f46411cd60ecb0b7d39562d078260110588a6d889fc21",
+    "evidenceInventory": "results/v7-one-tx-stack-safe-release-20260830/SHA256SUMS",
+    "evidenceInventorySha256": "ac39cde83d120228bcb5a2c45535d3cdf2f0ce7decb0d896aabe78a1232a8697",
+    "allElevenCasesFinalized": true,
+    "allNegativeCasesRolledBackExactly": true,
+    "allHonestCasesUnder1300000Cu": true,
+    "publicClusterUsed": false
   },
   "priorMeasuredCombinedCase": {
     "classification": "REAL_COMBINED_LITESVM_BCD03B12_PRE_MARKER_CREATION_CHRONOLOGY_ONLY",
@@ -289,10 +301,17 @@
   },
   "currentMeasuredCombinedCase": {
     "sourceCommit": "6bc7d3caf181be23a8a6ac7769497c965cd7273d",
-    "executed": false,
-    "computeUnits": null,
+    "executed": true,
+    "classification": "REAL_COMBINED_OFFICIAL_AGAVE_4_2_TXV1_FINALIZED_LOCAL_VALIDATOR",
+    "case": "withdrawal-rollover",
+    "computeUnits": 1217607,
     "transactionBytes": 1031,
-    "reason": "stack-safe focused Pool identity and official Agave 4.2.0 runtime are frozen; dual-build and finalized eleven-case replay are pending"
+    "computeUnitCeiling": 1300000,
+    "computeUnitHeadroom": 82393,
+    "transactionByteCeilingExclusive": 4096,
+    "transactionByteHeadroom": 3065,
+    "simulationEqualsLandedCompute": true,
+    "evidence": "results/v7-one-tx-stack-safe-release-20260830/agave-r5/suite.json"
   },
   "txv1Lifecycle": {
     "authoritativePreflightCommit": "c403c2f95734b271c3f5e0cae50d2a770640941a",
@@ -347,15 +366,27 @@
         "serializedTransactionBytes": 1031
       }
     ],
-    "caseBundlePoolSbfBindingComplete": false,
-    "materializedCaseBundleIncluded": false,
-    "materializedCaseBundle": null,
-    "materializedCaseBundleSha256": null,
-    "materializedCaseBundleInventorySha256": null,
-    "materializedCaseBundleOfflineAuditSha256": null,
+    "caseBundlePoolSbfBindingComplete": true,
+    "materializedCaseBundleIncluded": true,
+    "materializedCaseBundle": "results/v7-one-tx-stack-safe-release-20260830/dual-sbf-r2/materialized-bundle",
+    "materializedCaseBundleSha256": "e4476f1f48f0439f0ca4b5d68f66d4e4c7c7c0eec58de862149bfb37f1ccb6f1",
+    "materializedCaseBundleInventorySha256": "3df90a400dbfd435d81c5a7cc823fa3b102d7f61c8a44535d1f91bfb1befc6d0",
+    "materializedCaseBundleOfflineAudit": "results/v7-one-tx-stack-safe-release-20260830/dual-sbf-r2/materialized-bundle-audit.json",
+    "materializedCaseBundleOfflineAuditSha256": "7e32ea4fe409a7da8226c6dedd723a71648b46bb05e1184898b6a373d4ec8cb6",
     "agave42AvailableInRecordedLocalEnvironment": true,
-    "suiteExecutedForThisFreeze": false,
-    "publicDevnetExecutionActivationRequired": false,
-    "publicDevnetSubmissionAuthorized": false
+    "suiteExecutedForThisFreeze": true,
+    "suite": "results/v7-one-tx-stack-safe-release-20260830/agave-r5/suite.json",
+    "suiteSha256": "5a3502e74c259071d49bbefdb3ead8853d139259912f131282551250d82ce8db",
+    "allCasesSigned": true,
+    "allCasesSubmitted": true,
+    "allCasesFinalized": true,
+    "allNegativeCasesRolledBackExactly": true,
+    "allHonestCasesMatchFrozenProgramState": true,
+    "programStateComparisonExcludesRuntimeMetadata": [
+      "rentEpoch"
+    ],
+    "publicDevnetExecutionActivationRequired": true,
+    "publicDevnetSubmissionAuthorized": false,
+    "publicClusterUsed": false
   }
 }

@@ -1,0 +1,8 @@
+[1/6] Verify every byte in the frozen SBF toolchain
+[2/6] Export two isolated copies of the exact stack-safe production source
+[3/6] Build Pool and verifier in both isolated source copies
+[4/6] Require A/B equality and freeze exact derived SBF identities
+[5/6] Materialize and verify the frozen eleven-case bundle
+[6/6] Execute the exact eleven-case signed/finalized local TxV1 lifecycle
+Wrote new keypair to /tmp/aspis-v7-txv1-lifecycle.wMj4v3/local-test-payer.json
+signed/finalized local lifecycle: transfer-same-page

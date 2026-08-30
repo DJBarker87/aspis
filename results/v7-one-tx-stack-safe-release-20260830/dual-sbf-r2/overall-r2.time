@@ -1,0 +1,24 @@
+Command exited with non-zero status 4
+	Command being timed: "env ASPIS_V7_TOOLCHAIN_CAPTURE_ROOT=/home/dombarker/project-offloads/aspis-v7-one-tx-release-e8317b09-20260830/toolchain-capture ASPIS_V7_CARGO_HOME=/home/dombarker/.cargo ASPIS_V7_RUSTUP_HOME=/home/dombarker/.rustup ./scripts/v7_one_tx_release_replay.sh build-and-lifecycle /home/dombarker/project-offloads/aspis-v7-stack-safe-release-20260830-r1/replay-r2 /home/dombarker/project-offloads/aspis-v7-agave-v4.2.0-runtime-20260830-r1/extracted/solana-release/bin"
+	User time (seconds): 837.16
+	System time (seconds): 231.95
+	Percent of CPU this job got: 180%
+	Elapsed (wall clock) time (h:mm:ss or m:ss): 9:51.43
+	Average shared text size (kbytes): 0
+	Average unshared data size (kbytes): 0
+	Average stack size (kbytes): 0
+	Average total size (kbytes): 0
+	Maximum resident set size (kbytes): 638000
+	Average resident set size (kbytes): 0
+	Major (requiring I/O) page faults: 1540
+	Minor (reclaiming a frame) page faults: 64777570
+	Voluntary context switches: 590277
+	Involuntary context switches: 110565
+	Swaps: 0
+	File system inputs: 161424
+	File system outputs: 5689656
+	Socket messages sent: 0
+	Socket messages received: 0
+	Signals delivered: 0
+	Page size (bytes): 4096
+	Exit status: 4

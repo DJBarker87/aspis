@@ -1,0 +1,15 @@
+{
+  "schema": "aspis.v7.stack-safe-release-input-audit.v1",
+  "sourceCommit": "6bc7d3caf181be23a8a6ac7769497c965cd7273d",
+  "sourceTree": "aae627375ad1f4f48ac4eae8e0c585c6c0680bab",
+  "poolTree": "cd7df911f651f84f408053fd934421aa88c7a9ca",
+  "verifierTree": "e7370c020cac1e51ca9e41092dcf6ecbf095bd99",
+  "poolReferenceSha256": "0bbe441f0e13c2f61e2369674628b06c9d538192514b4e9a92d229479956586d",
+  "verifierReferenceSha256": "c43960303f2d67606362dc09d74f3a7983dcfcbe0665984a385a0efa7ddc5e47",
+  "caseBundleSha256": "c8fb7ec2a23bf67877832f7bfbd4f45503b9ba79719fc1139a362841673aeb92",
+  "exactCaseCount": 11,
+  "stackOffsetsUnder4096": true,
+  "dualLinuxSbfPending": true,
+  "disposableAgaveLifecyclePending": true,
+  "publicClusterAuthorized": false
+}

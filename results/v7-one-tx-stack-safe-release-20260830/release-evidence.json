@@ -1,0 +1,335 @@
+{
+  "schema": "aspis.v7.one-tx-stack-safe-local-release-evidence.v1",
+  "recordedAt": "2026-08-30",
+  "productionSource": {
+    "commit": "6bc7d3caf181be23a8a6ac7769497c965cd7273d",
+    "tree": "aae627375ad1f4f48ac4eae8e0c585c6c0680bab",
+    "poolTree": "cd7df911f651f84f408053fd934421aa88c7a9ca",
+    "verifierTree": "e7370c020cac1e51ca9e41092dcf6ecbf095bd99"
+  },
+  "evidenceHarnessCommit": "5e2f85f70bb6b6ea8b9a640c14c4d7ca405296c4",
+  "reproducibleSbf": {
+    "unit": "aspis-v7-stack-safe-release-20260830-r2.service",
+    "invocationId": "99952ef52fa5430f9cd9411fe6bd5d43",
+    "record": "dual-sbf-r2/reproducible-sbf.json",
+    "recordSha256": "3411d0b9de283fa3015a0e357d888c5b9d4f7d1256d101991876785edf0378e5",
+    "independentSourceCopies": 2,
+    "sourceArchivesByteIdentical": true,
+    "programs": {
+      "pool": {
+        "bytes": 526056,
+        "sha256": "0bbe441f0e13c2f61e2369674628b06c9d538192514b4e9a92d229479956586d",
+        "buildsByteIdentical": true,
+        "identityClassification": "FROZEN_STACK_SAFE_LINUX_X86_64_V1_48_IDENTITY",
+        "stackGate": {
+          "analyzerOverflowDiagnosticsInEitherBuild": false,
+          "byteIdenticalToFocusedDisassemblyReference": true,
+          "plannerMaximumObservedOffsetBytes": 2912,
+          "laneDecoderMaximumObservedOffsetBytes": 3024,
+          "maximumAllowedOffsetBytes": 4096,
+          "passed": true
+        }
+      },
+      "verifier": {
+        "bytes": 1812264,
+        "sha256": "c43960303f2d67606362dc09d74f3a7983dcfcbe0665984a385a0efa7ddc5e47",
+        "buildsByteIdentical": true,
+        "matchesFrozenLinuxReference": true
+      }
+    },
+    "builds": [
+      {
+        "copy": "a",
+        "program": "aspis-pool",
+        "elapsed": "1:52.60",
+        "maximumResidentSetKiB": 566076,
+        "logSha256": "ef0297a75455fb19642b3dcd462d9f82bb58fa22c4463777135b239e2502972f",
+        "timeSha256": "70e528b97c798952b7e9e79cc8018f0b31b4ef7cca03693056c03aca54220997"
+      },
+      {
+        "copy": "b",
+        "program": "aspis-pool",
+        "elapsed": "2:06.45",
+        "maximumResidentSetKiB": 566676,
+        "logSha256": "f3aa0cfc188ddefa2b0808db407699095733f2dbb52acde5aa181aa521e66a09",
+        "timeSha256": "c754a673af6c1e466eb6dfe471289b9df91e66dc1f7cf05b0c88867dd01eb533"
+      },
+      {
+        "copy": "a",
+        "program": "aspis-verifier",
+        "elapsed": "0:37.58",
+        "maximumResidentSetKiB": 570100,
+        "logSha256": "a992fb23ee0000ab7c638ffadbdace68d54499536e26fdb122c7671882b7e86c",
+        "timeSha256": "fdb104642c4c0ab5fb2e6943db511aeffc3c2eda1eb639a3919eb0e915e1e301"
+      },
+      {
+        "copy": "b",
+        "program": "aspis-verifier",
+        "elapsed": "0:44.72",
+        "maximumResidentSetKiB": 570040,
+        "logSha256": "51b866c311fff2b43e9fcbc15c37ea50c3f842eea5ef881edbcfd1a0f6e55493",
+        "timeSha256": "d1ab5618979376aecfc0c9cd4f56d6359b7e554641a43fa6958caaae916f875e"
+      }
+    ],
+    "cachesVerifiedBeforeAndAfter": true,
+    "memoryHighBytes": 9663676416,
+    "memoryMaxBytes": 12884901888,
+    "memorySwapMaxBytes": 0,
+    "wrapperAfterBuildStatus": "FAILED_BEFORE_TRANSACTION_DUE_TO_AGAVE_ACCOUNT_JSON_WRAPPER",
+    "dualBuildEvidenceValid": true
+  },
+  "materializedBundle": {
+    "path": "dual-sbf-r2/materialized-bundle",
+    "manifestSha256": "e4476f1f48f0439f0ca4b5d68f66d4e4c7c7c0eec58de862149bfb37f1ccb6f1",
+    "inventorySha256": "3df90a400dbfd435d81c5a7cc823fa3b102d7f61c8a44535d1f91bfb1befc6d0",
+    "auditSha256": "7e32ea4fe409a7da8226c6dedd723a71648b46bb05e1184898b6a373d4ec8cb6",
+    "exactCaseCount": 11,
+    "sbfMaterializedAndMatched": true
+  },
+  "runtime": {
+    "version": "solana-cli 4.2.0 (src:ac82b5d4; feat:21b0d33a, client:Agave)",
+    "officialTag": "v4.2.0",
+    "officialTagCommit": "ac82b5d438b0c2303dc7169f52c748977713a111",
+    "officialAssetSha256": "1f5eb13bcf3694dbd3cf634602aee5edcf8eab519acac75778391c979c3002b0",
+    "solanaSha256": "b6134ccddcb3456e49c0c15bc028c2902184a8fef6f6e6e665d9f8ae5bea8d10",
+    "validatorSha256": "78ee817e9a4fade8a6606ee663060d39728017c79ebac7a7cd35b2a985066f6a",
+    "txv1Feature": "txv1aq4pp281K9um3tnPgkfX8UqtFT6wcVW3hNezGLL",
+    "maximumTransactionBytes": 4096
+  },
+  "finalizedLifecycle": {
+    "unit": "aspis-v7-stack-safe-lifecycle-20260830-r5.service",
+    "invocationId": "68462da4e4204b3ebf11e30f39db5fb7",
+    "suite": "agave-r5/suite.json",
+    "suiteSha256": "5a3502e74c259071d49bbefdb3ead8853d139259912f131282551250d82ce8db",
+    "wallSeconds": 164.38,
+    "systemdCpuTimeSeconds": 221.580,
+    "systemdMemoryPeakDisplay": "822.5M",
+    "timeMaximumResidentSetKiB": 512028,
+    "memorySwapPeakBytes": 0,
+    "allCasesSigned": true,
+    "allCasesSubmitted": true,
+    "allCasesFinalized": true,
+    "allPacketsUnder4096": true,
+    "allLandedComputeUnder1300000": true,
+    "allNegativeCasesRolledBackExactly": true,
+    "allHonestCasesMatchFrozenProgramState": true,
+    "allHonestRuntimeMetadataValid": true,
+    "cases": [
+      {
+        "case": "transfer-same-page",
+        "expectedOutcome": "success",
+        "packetBytes": 833,
+        "simulationUnitsConsumed": 1157102,
+        "landedUnitsConsumed": 1157102,
+        "simulationEqualsLandedCompute": true,
+        "protectedStateRollbackPreserved": false,
+        "protectedStateChangedOnSuccess": true,
+        "landedMatchesFrozenExpectedExactly": false,
+        "landedMatchesFrozenExpectedProgramState": true,
+        "landedRuntimeMetadataValid": true,
+        "returnDataBytes": 792,
+        "finalizedSlot": 151,
+        "signature": "2RpVDhscbdqbqvykks2Eg3rq4mm4Q5d8Bh4pXVYyaDvXXs6CTQ16DMDWhzP39tWbX1yQsRVDx5tW73pDkdgPhiHb"
+      },
+      {
+        "case": "transfer-rollover",
+        "expectedOutcome": "success",
+        "packetBytes": 866,
+        "simulationUnitsConsumed": 1206015,
+        "landedUnitsConsumed": 1206015,
+        "simulationEqualsLandedCompute": true,
+        "protectedStateRollbackPreserved": false,
+        "protectedStateChangedOnSuccess": true,
+        "landedMatchesFrozenExpectedExactly": false,
+        "landedMatchesFrozenExpectedProgramState": true,
+        "landedRuntimeMetadataValid": true,
+        "returnDataBytes": 792,
+        "finalizedSlot": 151,
+        "signature": "5eskYcqgrRMUNeJwG5qaUeKZzjU5wZRf3AcYvRBU3RgXwE9STnB4wsunY9LQEzcDds9DrGRkWpzJWqRqNncXA1YX"
+      },
+      {
+        "case": "withdrawal-same-page",
+        "expectedOutcome": "success",
+        "packetBytes": 998,
+        "simulationUnitsConsumed": 1148696,
+        "landedUnitsConsumed": 1148696,
+        "simulationEqualsLandedCompute": true,
+        "protectedStateRollbackPreserved": false,
+        "protectedStateChangedOnSuccess": true,
+        "landedMatchesFrozenExpectedExactly": false,
+        "landedMatchesFrozenExpectedProgramState": true,
+        "landedRuntimeMetadataValid": true,
+        "returnDataBytes": 792,
+        "finalizedSlot": 151,
+        "signature": "3VSdGtDSoUhffQiz5wu6DbJYFvJTqUVZ2h88G1Sz3eL91STUeDkk7w4d6r1MkY4vZ7bmL1ECkpkG2ShryKkDAu1k"
+      },
+      {
+        "case": "withdrawal-rollover",
+        "expectedOutcome": "success",
+        "packetBytes": 1031,
+        "simulationUnitsConsumed": 1217607,
+        "landedUnitsConsumed": 1217607,
+        "simulationEqualsLandedCompute": true,
+        "protectedStateRollbackPreserved": false,
+        "protectedStateChangedOnSuccess": true,
+        "landedMatchesFrozenExpectedExactly": false,
+        "landedMatchesFrozenExpectedProgramState": true,
+        "landedRuntimeMetadataValid": true,
+        "returnDataBytes": 792,
+        "finalizedSlot": 151,
+        "signature": "3wsGqkb2MZU6GVMNEcDpUsGwt1mJ8vtriSihCuobQ8q9hRdEn1fYv6tx6gh74oKi6qXS3Ruv4gqByFvrDGFAJog4"
+      },
+      {
+        "case": "stale-selected-lane-rejection",
+        "expectedOutcome": "failure",
+        "packetBytes": 833,
+        "simulationUnitsConsumed": 67809,
+        "landedUnitsConsumed": 67809,
+        "simulationEqualsLandedCompute": true,
+        "protectedStateRollbackPreserved": true,
+        "protectedStateChangedOnSuccess": false,
+        "landedMatchesFrozenExpectedExactly": null,
+        "landedMatchesFrozenExpectedProgramState": null,
+        "landedRuntimeMetadataValid": null,
+        "returnDataBytes": null,
+        "finalizedSlot": 151,
+        "signature": "618xHExZRGXBMvgphDRbuxi4h7rUkEMBXrCEDrQcye1fLhBwx1ajG73qdJjcK3ne7pK6ewp4aGrSBk8e4CXBvWcW"
+      },
+      {
+        "case": "replay-nullifier-rejection",
+        "expectedOutcome": "failure",
+        "packetBytes": 833,
+        "simulationUnitsConsumed": 23666,
+        "landedUnitsConsumed": 23666,
+        "simulationEqualsLandedCompute": true,
+        "protectedStateRollbackPreserved": true,
+        "protectedStateChangedOnSuccess": false,
+        "landedMatchesFrozenExpectedExactly": null,
+        "landedMatchesFrozenExpectedProgramState": null,
+        "landedRuntimeMetadataValid": null,
+        "returnDataBytes": null,
+        "finalizedSlot": 151,
+        "signature": "3omLzgLL4qDZ7Wcxcrgcyahx2AXBABesnTsK2Jg22PrLpK8oMX7wEuZ53M4ett9zFxZUBF6srXDxL38KpNdMfoYS"
+      },
+      {
+        "case": "wrong-checkpoint-rejection",
+        "expectedOutcome": "failure",
+        "packetBytes": 833,
+        "simulationUnitsConsumed": 15587,
+        "landedUnitsConsumed": 15587,
+        "simulationEqualsLandedCompute": true,
+        "protectedStateRollbackPreserved": true,
+        "protectedStateChangedOnSuccess": false,
+        "landedMatchesFrozenExpectedExactly": null,
+        "landedMatchesFrozenExpectedProgramState": null,
+        "landedRuntimeMetadataValid": null,
+        "returnDataBytes": null,
+        "finalizedSlot": 151,
+        "signature": "3MmRwSRZNpeKiCd8qimEd71bNzV6Zm8U8Mm1XykUwQFWx6u8T5E4xUvYU8VDNLa6bSFbU8zWJcxCmSuivJbA6DP9"
+      },
+      {
+        "case": "wrong-registry-release-rejection",
+        "expectedOutcome": "failure",
+        "packetBytes": 833,
+        "simulationUnitsConsumed": 39727,
+        "landedUnitsConsumed": 39727,
+        "simulationEqualsLandedCompute": true,
+        "protectedStateRollbackPreserved": true,
+        "protectedStateChangedOnSuccess": false,
+        "landedMatchesFrozenExpectedExactly": null,
+        "landedMatchesFrozenExpectedProgramState": null,
+        "landedRuntimeMetadataValid": null,
+        "returnDataBytes": null,
+        "finalizedSlot": 151,
+        "signature": "5e6iEKEtfkdRZL384YEwJqznKhgksWcVGQ8zc6X1F3jQatt6AJp2Vh9jTUGE6ATmocin3r6D2Ac6fkGhTHUYVa6R"
+      },
+      {
+        "case": "malformed-proof-rejection",
+        "expectedOutcome": "failure",
+        "packetBytes": 833,
+        "simulationUnitsConsumed": 30837,
+        "landedUnitsConsumed": 30837,
+        "simulationEqualsLandedCompute": true,
+        "protectedStateRollbackPreserved": true,
+        "protectedStateChangedOnSuccess": false,
+        "landedMatchesFrozenExpectedExactly": null,
+        "landedMatchesFrozenExpectedProgramState": null,
+        "landedRuntimeMetadataValid": null,
+        "returnDataBytes": null,
+        "finalizedSlot": 151,
+        "signature": "5bkdHhPzaMYAtKVQwoXrhbvVR2B2VYGwaYSZ8Yg9ocA96qpsrhKpjKN8rpzQiAeryvSU9uxfqNPdr5htRVpUUD1A"
+      },
+      {
+        "case": "mutated-proof-rejection",
+        "expectedOutcome": "failure",
+        "packetBytes": 833,
+        "simulationUnitsConsumed": 974231,
+        "landedUnitsConsumed": 974231,
+        "simulationEqualsLandedCompute": true,
+        "protectedStateRollbackPreserved": true,
+        "protectedStateChangedOnSuccess": false,
+        "landedMatchesFrozenExpectedExactly": null,
+        "landedMatchesFrozenExpectedProgramState": null,
+        "landedRuntimeMetadataValid": null,
+        "returnDataBytes": null,
+        "finalizedSlot": 151,
+        "signature": "iYbzaa65Db8n8kzXx3VDJuLniBXz96w6GCnojGKP6XrSyq7xcV4tSuStxNBaAqdcvQv1vcL7gjtbRFG2reuzBW6"
+      },
+      {
+        "case": "failed-withdrawal-cpi-rollback",
+        "expectedOutcome": "failure",
+        "packetBytes": 998,
+        "simulationUnitsConsumed": 1147481,
+        "landedUnitsConsumed": 1147481,
+        "simulationEqualsLandedCompute": true,
+        "protectedStateRollbackPreserved": true,
+        "protectedStateChangedOnSuccess": false,
+        "landedMatchesFrozenExpectedExactly": null,
+        "landedMatchesFrozenExpectedProgramState": null,
+        "landedRuntimeMetadataValid": null,
+        "returnDataBytes": null,
+        "finalizedSlot": 151,
+        "signature": "5jhUje8MiJABys6SxenbNfDcHygbGx1CmsaMpp1KCE69VhNPtV5FQAa9dYS3w23kQcn8ngZbwzmw1DKBKUFnehFb"
+      }
+    ]
+  },
+  "programStateBoundary": {
+    "excludedRuntimeMetadata": [
+      "rentEpoch"
+    ],
+    "acceptedRentEpochValues": [
+      0,
+      18446744073709551615
+    ],
+    "reason": "Agave writes u64::MAX for touched rent-exempt accounts; LiteSVM fixtures retained 0. Program-controlled data, owner, lamports, executable flag, and space match exactly. Negative rollback compares complete RPC account values without normalization."
+  },
+  "failedHarnessAttemptsPreserved": [
+    {
+      "run": "r1",
+      "stage": "release output preflight",
+      "cause": "relative output path resolved inside an isolated source copy",
+      "programExecutionReached": false
+    },
+    {
+      "run": "r2",
+      "stage": "first validator launch after green dual build",
+      "cause": "Agave required {pubkey,account} around frozen RPC account values",
+      "programExecutionReached": false
+    },
+    {
+      "run": "r3-r4",
+      "stage": "first finalized honest transfer comparison",
+      "cause": "isolated runtime-maintained rentEpoch difference only",
+      "programExecutionReached": true
+    }
+  ],
+  "scope": {
+    "cluster": "disposable-local-validator",
+    "publicClusterUsed": false,
+    "publicDevnetExecuted": false,
+    "publicMainnetExecuted": false,
+    "programDeployed": false,
+    "localReleaseEvidenceComplete": true,
+    "fullProjectMainnetReady": false
+  }
+}
