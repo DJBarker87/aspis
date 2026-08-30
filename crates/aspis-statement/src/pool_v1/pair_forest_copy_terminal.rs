@@ -111,7 +111,7 @@ mod constants {
 }
 
 #[inline(always)]
-fn lift(value: M31) -> QM31 {
+fn lift_m31(value: M31) -> QM31 {
     QM31::from_cm31(CM31::from_m31(value))
 }
 
@@ -251,7 +251,7 @@ fn pattern_values_literal(
         while limb < POSEIDON2_WIDTH {
             if pattern.kinds[limb] == 1 {
                 let source = openings[usize::from(pattern.columns[limb])]
-                    .add(lift(M31(pattern.offsets[limb])));
+                    .add(lift_m31(M31(pattern.offsets[limb])));
                 value = value.add(powers[limb].mul(source));
             }
             limb += 1;
@@ -272,9 +272,11 @@ fn pattern_values_windowed(
 ) -> [QM31; POOL_V1_PAIR_FOREST_COPY_TERMINAL_PATTERNS_V1] {
     let mut powers = [QM31::ZERO; 8];
     let mut power = lambda;
-    for slot in &mut powers {
-        *slot = power;
+    let mut slot = 0usize;
+    while slot < powers.len() {
+        powers[slot] = power;
         power = power.mul(lambda);
+        slot += 1;
     }
     let prepared: [PreparedQm31Multiplier; 8] = powers.map(PreparedQm31Multiplier::new);
     let window = |start: usize| {
@@ -309,7 +311,7 @@ fn pattern_values_windowed(
     result[7] = prepared[0].mul(openings[10]);
     result[8] = prepared[0].mul(openings[1]);
     result[9] = prepared[0].mul(openings[2]);
-    result[10] = window_8.add(prepared[7].mul(lift(M31(1_051_521_018))));
+    result[10] = window_8.add(prepared[7].mul(lift_m31(M31(1_051_521_018))));
     result[11] = window_2;
     result[12] = window_1;
     result[13] = window_8;
@@ -443,7 +445,7 @@ fn accumulate_endpoint(
     {
         weights[slot] = add_binary_weight(weights[slot], selector, weight);
     }
-    let compressed = lift(M31(tag)).add(patterns[usize::from(endpoint.pattern)]);
+    let compressed = lift_m31(M31(tag)).add(patterns[usize::from(endpoint.pattern)]);
     values[slot] = values[slot].add(selector.mul(compressed));
 }
 
@@ -791,6 +793,16 @@ fn finish_pattern_basis_values(
 }
 
 #[cfg(any(test, feature = "pool-v1-pair-forest-copy-selector-tensor-basis-audit"))]
+#[inline(never)]
+fn selected_binary_weight(high: QM31, weight: M31) -> QM31 {
+    if weight.0 == 1 {
+        high
+    } else {
+        QM31::ZERO
+    }
+}
+
+#[cfg(any(test, feature = "pool-v1-pair-forest-copy-selector-tensor-basis-audit"))]
 fn accumulate_endpoint_selector_tensor_basis(
     scratch: &mut [QM31],
     side: usize,
@@ -811,10 +823,9 @@ fn accumulate_endpoint_selector_tensor_basis(
     }
     #[cfg(feature = "pool-v1-pair-forest-copy-tag-dot-basis-audit")]
     let _ = tag;
-    if weight.0 == 1 {
-        scratch[COPY_SELECTOR_TENSOR_WEIGHT_OFFSET + group_local] =
-            scratch[COPY_SELECTOR_TENSOR_WEIGHT_OFFSET + group_local].add(high);
-    }
+    let weight_index = COPY_SELECTOR_TENSOR_WEIGHT_OFFSET + group_local;
+    scratch[weight_index] =
+        scratch[weight_index].add(selected_binary_weight(high, weight));
     let pattern_local =
         usize::from(COPY_PATTERN_LOCAL_COORDINATES[group][usize::from(endpoint.pattern)][local]);
     scratch[COPY_SELECTOR_TENSOR_PATTERN_OFFSET + pattern_local] =

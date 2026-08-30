@@ -142,10 +142,18 @@ fn extension_from_raw_limbs(limbs: [u64; 4]) -> QM31 {
 /// Addition-only Poseidon external layer with one reduction per output limb.
 #[inline(never)]
 fn external_linear_lazy(state: &mut [QM31; POSEIDON2_WIDTH]) {
-    for values in state.chunks_exact_mut(4) {
-        let input: [QM31; 4] = values.try_into().expect("four-lane chunk");
+    let mut group = 0usize;
+    while group < 4 {
+        let start = 4 * group;
+        let input = [
+            state[start],
+            state[start + 1],
+            state[start + 2],
+            state[start + 3],
+        ];
         let input = input.map(extension_limbs);
-        for output in 0..4 {
+        let mut output = 0usize;
+        while output < 4 {
             let raw = core::array::from_fn(|limb| {
                 let a = u64::from(input[0][limb]);
                 let b = u64::from(input[1][limb]);
@@ -159,21 +167,26 @@ fn external_linear_lazy(state: &mut [QM31; POSEIDON2_WIDTH]) {
                     _ => unreachable!(),
                 }
             });
-            values[output] = extension_from_raw_limbs(raw);
+            state[start + output] = extension_from_raw_limbs(raw);
+            output += 1;
         }
+        group += 1;
     }
     let sums: [[u64; 4]; 4] = core::array::from_fn(|column| {
         core::array::from_fn(|limb| {
-            (0..4)
-                .map(|row| u64::from(extension_limbs(state[row * 4 + column])[limb]))
-                .sum()
+            u64::from(extension_limbs(state[column])[limb])
+                + u64::from(extension_limbs(state[4 + column])[limb])
+                + u64::from(extension_limbs(state[8 + column])[limb])
+                + u64::from(extension_limbs(state[12 + column])[limb])
         })
     });
-    for (index, value) in state.iter_mut().enumerate() {
-        let limbs = extension_limbs(*value);
-        *value = extension_from_raw_limbs(core::array::from_fn(|limb| {
+    let mut index = 0usize;
+    while index < POSEIDON2_WIDTH {
+        let limbs = extension_limbs(state[index]);
+        state[index] = extension_from_raw_limbs(core::array::from_fn(|limb| {
             u64::from(limbs[limb]) + sums[index & 3][limb]
         }));
+        index += 1;
     }
 }
 
@@ -218,10 +231,17 @@ fn external_local_packed_raw(input: [QM31; 4]) -> [u64; 4] {
             }
         })
     });
-    debug_assert!(local
-        .iter()
-        .flatten()
-        .all(|&limb| limb < EXTERNAL_LOCAL_LIMB_MODULUS_BOUND));
+    let mut all_local_limbs_bounded = true;
+    let mut output = 0usize;
+    while output < 4 {
+        let mut limb = 0usize;
+        while limb < 4 {
+            all_local_limbs_bounded &= local[output][limb] < EXTERNAL_LOCAL_LIMB_MODULUS_BOUND;
+            limb += 1;
+        }
+        output += 1;
+    }
+    debug_assert!(all_local_limbs_bounded);
 
     let bound = EXTERNAL_LOCAL_LIMB_MODULUS_BOUND;
     let packed = [
@@ -260,11 +280,23 @@ fn external_local_packed(input: [QM31; 4]) -> QM31 {
 #[inline(never)]
 fn external_linear_packed(state: [QM31; POSEIDON2_WIDTH]) -> [QM31; 4] {
     let mut local_packed = [QM31::ZERO; 4];
-    for (group, values) in state.chunks_exact(4).enumerate() {
-        let input: [QM31; 4] = values.try_into().expect("four-lane chunk");
+    let mut group = 0usize;
+    while group < 4 {
+        let start = 4 * group;
+        let input = [
+            state[start],
+            state[start + 1],
+            state[start + 2],
+            state[start + 3],
+        ];
         local_packed[group] = external_local_packed(input);
+        group += 1;
     }
-    let sum = local_packed.iter().copied().fold(QM31::ZERO, QM31::add);
+    let sum = QM31::ZERO
+        .add(local_packed[0])
+        .add(local_packed[1])
+        .add(local_packed[2])
+        .add(local_packed[3]);
     local_packed.map(|value| value.add(sum))
 }
 
@@ -272,12 +304,17 @@ fn external_linear_packed(state: [QM31; POSEIDON2_WIDTH]) -> [QM31; 4] {
 fn internal_linear_lazy(state: &mut [QM31; POSEIDON2_WIDTH]) {
     const SHIFTS: [u8; 15] = [0, 1, 2, 3, 4, 5, 6, 7, 8, 10, 12, 13, 14, 15, 16];
     let old_zero = extension_limbs(state[0]);
-    let part_sum: [u64; 4] = core::array::from_fn(|limb| {
-        state[1..]
-            .iter()
-            .map(|value| u64::from(extension_limbs(*value)[limb]))
-            .sum()
-    });
+    let mut part_sum = [0u64; 4];
+    let mut lane = 1usize;
+    while lane < POSEIDON2_WIDTH {
+        let limbs = extension_limbs(state[lane]);
+        let mut limb = 0usize;
+        while limb < 4 {
+            part_sum[limb] += u64::from(limbs[limb]);
+            limb += 1;
+        }
+        lane += 1;
+    }
     let full_sum: [u64; 4] =
         core::array::from_fn(|limb| part_sum[limb] + u64::from(old_zero[limb]));
     state[0] = extension_from_raw_limbs(core::array::from_fn(|limb| {
@@ -375,46 +412,91 @@ fn leading_pair_packed(
     )
 }
 
-#[inline(never)]
+#[inline(always)]
+fn interpolate_three_constant_limb(
+    weight0: u32,
+    weight1: u32,
+    weight2: u32,
+    constant0: u32,
+    constant1: u32,
+    constant2: u32,
+) -> M31 {
+    M31::reduce_u64(
+        u64::from(weight0) * u64::from(constant0)
+            + u64::from(weight1) * u64::from(constant1)
+            + u64::from(weight2) * u64::from(constant2),
+    )
+}
+
+#[inline(always)]
 fn interpolate_three_constant_columns(
     weights: [QM31; 3],
-    columns: [&[u32; POSEIDON2_WIDTH]; 3],
+    column0: [u32; POSEIDON2_WIDTH],
+    column1: [u32; POSEIDON2_WIDTH],
+    column2: [u32; POSEIDON2_WIDTH],
 ) -> [QM31; POSEIDON2_WIDTH] {
-    core::array::from_fn(|lane| {
-        let constants = [columns[0][lane], columns[1][lane], columns[2][lane]];
-        let dot_limb = |limbs: [u32; 3]| {
-            M31::reduce_u64(
-                u64::from(limbs[0]) * u64::from(constants[0])
-                    + u64::from(limbs[1]) * u64::from(constants[1])
-                    + u64::from(limbs[2]) * u64::from(constants[2]),
-            )
-        };
-        QM31 {
+    let mut output = [QM31::ZERO; POSEIDON2_WIDTH];
+    let mut lane = 0usize;
+    while lane < POSEIDON2_WIDTH {
+        output[lane] = QM31 {
             c0: CM31::new(
-                dot_limb(weights.map(|weight| weight.c0.a.0)),
-                dot_limb(weights.map(|weight| weight.c0.b.0)),
+                interpolate_three_constant_limb(
+                    weights[0].c0.a.0,
+                    weights[1].c0.a.0,
+                    weights[2].c0.a.0,
+                    column0[lane],
+                    column1[lane],
+                    column2[lane],
+                ),
+                interpolate_three_constant_limb(
+                    weights[0].c0.b.0,
+                    weights[1].c0.b.0,
+                    weights[2].c0.b.0,
+                    column0[lane],
+                    column1[lane],
+                    column2[lane],
+                ),
             ),
             c1: CM31::new(
-                dot_limb(weights.map(|weight| weight.c1.a.0)),
-                dot_limb(weights.map(|weight| weight.c1.b.0)),
+                interpolate_three_constant_limb(
+                    weights[0].c1.a.0,
+                    weights[1].c1.a.0,
+                    weights[2].c1.a.0,
+                    column0[lane],
+                    column1[lane],
+                    column2[lane],
+                ),
+                interpolate_three_constant_limb(
+                    weights[0].c1.b.0,
+                    weights[1].c1.b.0,
+                    weights[2].c1.b.0,
+                    column0[lane],
+                    column1[lane],
+                    column2[lane],
+                ),
             ),
-        }
-    })
+        };
+        lane += 1;
+    }
+    output
 }
 
 fn interpolated_full_pair(
     state: [QM31; POSEIDON2_WIDTH],
     local: &[QM31; 16],
 ) -> [QM31; POSEIDON2_WIDTH] {
-    const ROWS: [usize; 3] = [1, 9, 10];
-    let weights = ROWS.map(|row| local[row]);
+    let weights = [local[1], local[9], local[10]];
     let even = interpolate_three_constant_columns(
         weights,
-        [&EXTERNAL_INITIAL[2], &EXTERNAL_FINAL[0], &EXTERNAL_FINAL[2]],
+        EXTERNAL_INITIAL[2],
+        EXTERNAL_FINAL[0],
+        EXTERNAL_FINAL[2],
     );
     let odd = interpolate_three_constant_columns(
         weights,
-        [&EXTERNAL_INITIAL[3], &EXTERNAL_FINAL[1], &EXTERNAL_FINAL[3]],
+        EXTERNAL_INITIAL[3],
+        EXTERNAL_FINAL[1],
+        EXTERNAL_FINAL[3],
     );
     full_round(full_round(state, even), odd)
 }
@@ -423,15 +505,18 @@ fn interpolated_full_pair_packed(
     state: [QM31; POSEIDON2_WIDTH],
     local: &[QM31; 16],
 ) -> [QM31; STATE_ONLY_POSEIDON_PACKED_LANES] {
-    const ROWS: [usize; 3] = [1, 9, 10];
-    let weights = ROWS.map(|row| local[row]);
+    let weights = [local[1], local[9], local[10]];
     let even = interpolate_three_constant_columns(
         weights,
-        [&EXTERNAL_INITIAL[2], &EXTERNAL_FINAL[0], &EXTERNAL_FINAL[2]],
+        EXTERNAL_INITIAL[2],
+        EXTERNAL_FINAL[0],
+        EXTERNAL_FINAL[2],
     );
     let odd = interpolate_three_constant_columns(
         weights,
-        [&EXTERNAL_INITIAL[3], &EXTERNAL_FINAL[1], &EXTERNAL_FINAL[3]],
+        EXTERNAL_INITIAL[3],
+        EXTERNAL_FINAL[1],
+        EXTERNAL_FINAL[3],
     );
     full_round_packed(full_round(state, even), odd)
 }
