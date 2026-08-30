@@ -126,6 +126,59 @@ jq -e \
 ' "$ROOT/$TOOLCHAIN_PROVENANCE" >/dev/null \
   || fail "frozen toolchain inventory contents changed"
 
+readonly CARGO_CACHE_PROVENANCE="$ROOT/$(jq -er '.toolchain.offlineCargoCache.provenancePath' "$MANIFEST")"
+readonly CARGO_CACHE_PACKAGES="$ROOT/$(jq -er '.toolchain.offlineCargoCache.packagesPath' "$MANIFEST")"
+readonly CARGO_CACHE_INDEX="$ROOT/$(jq -er '.toolchain.offlineCargoCache.indexPath' "$MANIFEST")"
+for cache_evidence in "$CARGO_CACHE_PROVENANCE" "$CARGO_CACHE_PACKAGES" "$CARGO_CACHE_INDEX"; do
+  [[ -f "$cache_evidence" ]] || fail "offline Cargo cache provenance is incomplete"
+done
+[[ "$(sha_file "$CARGO_CACHE_PROVENANCE")" == "$(jq -er '.toolchain.offlineCargoCache.provenanceSha256' "$MANIFEST")" ]] \
+  || fail "offline Cargo cache provenance hash changed"
+[[ "$(sha_file "$CARGO_CACHE_PACKAGES")" == "$(jq -er '.toolchain.offlineCargoCache.packagesSha256' "$MANIFEST")" ]] \
+  || fail "offline Cargo package inventory hash changed"
+[[ "$(sha_file "$CARGO_CACHE_INDEX")" == "$(jq -er '.toolchain.offlineCargoCache.indexSha256' "$MANIFEST")" ]] \
+  || fail "offline Cargo index inventory hash changed"
+readonly CARGO_CACHE_PACKAGE_COUNT=$(jq -er '.toolchain.offlineCargoCache.packages' "$MANIFEST")
+readonly CARGO_CACHE_INDEX_COUNT=$(jq -er '.toolchain.offlineCargoCache.indexEntries' "$MANIFEST")
+[[ "$(wc -l <"$CARGO_CACHE_PACKAGES" | tr -d ' ')" == "$CARGO_CACHE_PACKAGE_COUNT" ]] \
+  || fail "offline Cargo package inventory count changed"
+[[ "$(wc -l <"$CARGO_CACHE_INDEX" | tr -d ' ')" == "$CARGO_CACHE_INDEX_COUNT" ]] \
+  || fail "offline Cargo index inventory count changed"
+jq -e \
+  --arg packagesSha "$(sha_file "$CARGO_CACHE_PACKAGES")" \
+  --arg indexSha "$(sha_file "$CARGO_CACHE_INDEX")" \
+  --arg hostCargoSha "$(jq -er '.toolchain.offlineCargoCache.hostCargoSha256' "$MANIFEST")" \
+  --arg hostRustcSha "$(jq -er '.toolchain.offlineCargoCache.hostRustcSha256' "$MANIFEST")" \
+  --argjson packages "$CARGO_CACHE_PACKAGE_COUNT" \
+  --argjson indexEntries "$CARGO_CACHE_INDEX_COUNT" '
+  .schema == "aspis.v7.linux-cargo-offline-cache-provenance.v1" and
+  .cargoLockSha256 == "25cae3f276bd5831785bdb25e204ce99213934e7fcec3f5a76a5d742a018426b" and
+  .hostCargo.sha256 == $hostCargoSha and
+  .hostCargo.version == "cargo 1.94.1 (29ea6fb6a 2026-03-24)" and
+  .hostRustc.sha256 == $hostRustcSha and
+  .hostRustc.version == "rustc 1.94.1 (e408947bf 2026-03-25)" and
+  .packages.count == $packages and .packages.inventorySha256 == $packagesSha and
+  .sparseIndex.entries == $indexEntries and .sparseIndex.inventorySha256 == $indexSha and
+  .networkAllowed == false and .downloadsPerformed == false and
+  .sharedCacheMutationAuthorized == false
+' "$CARGO_CACHE_PROVENANCE" >/dev/null \
+  || fail "offline Cargo cache provenance contents changed"
+while IFS=$'\t' read -r name version source archive_path archive_bytes archive_sha \
+    source_path source_files source_identity; do
+  [[ -n "$name" && -n "$version" && "$source" == "registry+https://github.com/rust-lang/crates.io-index" ]] \
+    || fail "malformed offline Cargo package identity"
+  [[ "$archive_path" != /* && "$archive_path" != *..* && "$source_path" != /* && "$source_path" != *..* ]] \
+    || fail "unsafe offline Cargo cache path"
+  [[ "$archive_bytes" =~ ^[0-9]+$ && "$archive_sha" =~ ^[0-9a-f]{64}$ && "$source_files" =~ ^[0-9]+$ \
+      && "$source_identity" =~ ^[0-9]+:[0-9a-f]{64}$ ]] \
+    || fail "malformed offline Cargo package checksum"
+done <"$CARGO_CACHE_PACKAGES"
+while IFS=$'\t' read -r index_path index_bytes index_sha; do
+  [[ "$index_path" != /* && "$index_path" != *..* && "$index_bytes" =~ ^[0-9]+$ \
+      && "$index_sha" =~ ^[0-9a-f]{64}$ ]] \
+    || fail "malformed offline Cargo index entry"
+done <"$CARGO_CACHE_INDEX"
+
 while IFS=$'\t' read -r path expected; do
   [[ -n "$path" && "$expected" =~ ^[0-9a-f]{64}$ ]] \
     || fail "malformed release-harness file entry: $path"
@@ -228,7 +281,10 @@ jq -n \
   --arg bundleSha256 "$CASE_BUNDLE_SHA" \
   --arg bundleInventorySha256 "$CASE_INVENTORY_SHA" \
   --arg offlineAuditSha256 "$OFFLINE_AUDIT_SHA" \
-  --arg toolchainInventorySha256 "$TOOLCHAIN_PROVENANCE_SHA" '
+  --arg toolchainInventorySha256 "$TOOLCHAIN_PROVENANCE_SHA" \
+  --arg cargoCacheProvenanceSha256 "$(sha_file "$CARGO_CACHE_PROVENANCE")" \
+  --arg cargoCachePackagesSha256 "$(sha_file "$CARGO_CACHE_PACKAGES")" \
+  --arg cargoCacheIndexSha256 "$(sha_file "$CARGO_CACHE_INDEX")" '
   {
     schema: "aspis.v7.one-tx-candidate-input-audit.v2",
     sourceCommit: $sourceCommit,
@@ -269,6 +325,14 @@ jq -n \
       "public-devnet TxV1 execution activation before any public RPC simulation"
     ],
     toolchainInventorySha256: $toolchainInventorySha256,
+    offlineCargoCache: {
+      provenanceSha256: $cargoCacheProvenanceSha256,
+      packageInventorySha256: $cargoCachePackagesSha256,
+      indexInventorySha256: $cargoCacheIndexSha256,
+      packages: 428,
+      indexEntries: 394,
+      buildTimeByteVerificationRequired: true
+    },
     signed: false,
     submitted: false,
     deployed: false

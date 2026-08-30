@@ -34,6 +34,18 @@
       "cargoBuildSbfSha256": "b2ee45538a199c00833811383b88dd286380e7d2dbc16e10ddbf94ac51e183cb",
       "toolchainFileCount": 91
     },
+    "offlineCargoCache": {
+      "provenancePath": "release/v7-one-tx-candidate-preflight-v1/linux-offline-cargo-cache-provenance.json",
+      "provenanceSha256": "87d3d0bccdc5ed4733b4991696e6cd43821ff443d88c4092f1687f132391a776",
+      "packagesPath": "release/v7-one-tx-candidate-preflight-v1/linux-offline-cargo-cache-packages.tsv",
+      "packagesSha256": "3e40be42d1794e8a0d3c853a4f4af74803b46de724c320d9683f8e72f783e370",
+      "packages": 428,
+      "indexPath": "release/v7-one-tx-candidate-preflight-v1/linux-offline-cargo-cache-index.tsv",
+      "indexSha256": "8ff8a24e0a0b7d87f3cdbecef5605b52c2b1186a87a9df609c4b5389841ad6be",
+      "indexEntries": 394,
+      "hostCargoSha256": "b7561ebe947acf816451536f19871ea4810f6be3f82fd252feab6ca7be8396f5",
+      "hostRustcSha256": "ef6d716e5d1c6c93def277c0afa037c21e7a74f7de3aed4ee0700646c3301b1d"
+    },
     "requiredCgroup": {
       "memoryHighBytesAtMost": 9663676416,
       "memoryMaxBytesAtMost": 12884901888,
@@ -137,11 +149,23 @@
     },
     {
       "path": "scripts/v7_one_tx_release_replay.sh",
-      "sha256": "e29daaccca673b79d9fe1ee012521a02edf84bc5416ac01412322433b1f6042b"
+      "sha256": "b86b936c0d58dcd30f7f883b8cce2295640f5b706461886d93459eeb4319a0b9"
     },
     {
       "path": "release/v7-one-tx-candidate-preflight-v1/linux-x86_64-sbf-toolchain-v1.48.json",
       "sha256": "2bcdd08e9c26f5cd1743a07cfb8aae341dc278e9d4e33eed512b746bc365d61c"
+    },
+    {
+      "path": "release/v7-one-tx-candidate-preflight-v1/linux-offline-cargo-cache-provenance.json",
+      "sha256": "87d3d0bccdc5ed4733b4991696e6cd43821ff443d88c4092f1687f132391a776"
+    },
+    {
+      "path": "release/v7-one-tx-candidate-preflight-v1/linux-offline-cargo-cache-packages.tsv",
+      "sha256": "3e40be42d1794e8a0d3c853a4f4af74803b46de724c320d9683f8e72f783e370"
+    },
+    {
+      "path": "release/v7-one-tx-candidate-preflight-v1/linux-offline-cargo-cache-index.tsv",
+      "sha256": "8ff8a24e0a0b7d87f3cdbecef5605b52c2b1186a87a9df609c4b5389841ad6be"
     },
     {
       "path": "results/v7-one-tx-agave-bundle-template-20260830/bundle.json",

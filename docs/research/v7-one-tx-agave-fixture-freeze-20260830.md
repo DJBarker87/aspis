@@ -86,6 +86,22 @@ The real wallet preflight accepted all eleven generated inputs:
 Every request has one required signature, a canonical 320-byte ASQ8 payload,
 a 1.3M compute limit and no signing/submission code path.
 
+## Build-host preflight corrections
+
+Two bounded attempts stopped before compilation and are retained as negative
+release-harness evidence. `r1` showed that a transient user service does not
+inherit the interactive shell's Cargo path. `r2` then showed that the SBF
+platform Cargo 1.84 resolves the older `6f17...` registry-cache namespace,
+whereas the complete current offline cache is in the host Cargo 1.94
+`1949...` namespace. Neither failure involved memory pressure, a compiler
+error, or changed program source, and neither was retried unchanged.
+
+The corrected replay now pins the exact host Cargo/Rust binaries and the
+complete cache contents actually selected by the locked workspace: 428 crate
+archives and extracted source trees plus 394 sparse-index entries. It verifies
+those bytes before and after the build, keeps `--offline --locked`, and does
+not download into or clean the shared cache.
+
 ## Determinism and offline verification
 
 Two independent optimized runs produced byte-identical outputs:

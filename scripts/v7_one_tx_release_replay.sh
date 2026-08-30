@@ -38,8 +38,10 @@ The build modes require Linux x86_64, a cgroup-v2 scope capped at
 MemoryHigh<=9 GiB, MemoryMax<=12 GiB and MemorySwapMax=0, and:
 
   ASPIS_V7_TOOLCHAIN_CAPTURE_ROOT=<directory containing both
-    platform-tools-v1.48/ and solana-active-release/ from the frozen
-    platform-specific Linux x86_64 91-file toolchain inventory>
+    platform-tools-v1.48/, solana-active-release/, and host-rust-stable/
+    from the frozen platform-specific Linux x86_64 toolchain inventories>
+  ASPIS_V7_CARGO_HOME=<exact offline Cargo cache matching the frozen
+    428-package and 394-index-entry content inventory>
 
 Both build modes produce two independent SBF builds and materialize the frozen
 eleven-case fixture with the resulting Pool/verifier bytes. The simulation mode
@@ -70,7 +72,7 @@ esac
 readonly OUTPUT_DIR=$2
 readonly AGAVE_BIN_DIR=${3:-}
 
-for command_name in awk cmp cp find git jq sed sort tar uname wc xargs; do
+for command_name in awk cmp cp find git jq sed sort stat tar uname wc xargs; do
   require_command "$command_name"
 done
 [[ -x /usr/bin/time ]] || fail "/usr/bin/time is required for release resource evidence"
@@ -86,13 +88,23 @@ readonly TOOLCHAIN_PROVENANCE="$ROOT/$(jq -er '.toolchain.frozenInventory.path' 
   || fail "working toolchain inventory differs from the frozen source"
 readonly PLATFORM_TOOLS_ROOT="$TOOLCHAIN_CAPTURE_ROOT/platform-tools-v1.48"
 readonly SOLANA_ACTIVE_ROOT="$TOOLCHAIN_CAPTURE_ROOT/solana-active-release"
+readonly HOST_RUST_ROOT="$TOOLCHAIN_CAPTURE_ROOT/host-rust-stable"
 readonly CARGO_BUILD_SBF="$SOLANA_ACTIVE_ROOT/bin/cargo-build-sbf"
 readonly SBF_SDK="$SOLANA_ACTIVE_ROOT/bin/platform-tools-sdk/sbf"
-readonly BUILD_PATH="$PLATFORM_TOOLS_ROOT/rust/bin:$SOLANA_ACTIVE_ROOT/bin:/usr/bin:/bin"
+readonly HOST_CARGO="$HOST_RUST_ROOT/bin/cargo"
+readonly HOST_RUSTC="$HOST_RUST_ROOT/bin/rustc"
+readonly BUILD_PATH="$HOST_RUST_ROOT/bin:$SOLANA_ACTIVE_ROOT/bin:/usr/bin:/bin"
+readonly CARGO_HOME_ROOT=${ASPIS_V7_CARGO_HOME:-}
+readonly CARGO_CACHE_PROVENANCE="$ROOT/$(jq -er '.toolchain.offlineCargoCache.provenancePath' "$MANIFEST")"
+readonly CARGO_CACHE_PACKAGES="$ROOT/$(jq -er '.toolchain.offlineCargoCache.packagesPath' "$MANIFEST")"
+readonly CARGO_CACHE_INDEX="$ROOT/$(jq -er '.toolchain.offlineCargoCache.indexPath' "$MANIFEST")"
 [[ -x "$CARGO_BUILD_SBF" ]] || fail "frozen cargo-build-sbf is missing"
+[[ -x "$HOST_CARGO" && -x "$HOST_RUSTC" ]] || fail "frozen host Cargo/Rust pair is missing"
 [[ -x "$PLATFORM_TOOLS_ROOT/rust/bin/rustc" ]] || fail "frozen platform rustc is missing"
 [[ -x "$PLATFORM_TOOLS_ROOT/llvm/bin/clang-19" ]] || fail "frozen platform clang is missing"
 [[ -d "$SBF_SDK" ]] || fail "frozen SBF SDK is missing"
+[[ -n "$CARGO_HOME_ROOT" && -d "$CARGO_HOME_ROOT/registry" ]] \
+  || fail "ASPIS_V7_CARGO_HOME must name the frozen offline Cargo cache"
 
 readonly CGROUP_RELATIVE=$(awk -F: '$1 == "0" {print $3}' /proc/self/cgroup)
 [[ -n "$CGROUP_RELATIVE" ]] || fail "cannot resolve the current cgroup-v2 path"
@@ -129,6 +141,54 @@ cleanup() {
 trap cleanup EXIT
 trap 'exit 1' HUP INT TERM
 
+verify_offline_cargo_cache() {
+  local snapshot=$1
+  local name version source archive_path archive_bytes archive_sha
+  local source_path source_files source_identity source_bytes source_sha
+  local archive source_dir source_inventory actual_archive_bytes actual_archive_sha
+  local actual_source_files actual_source_bytes actual_source_sha
+  local index_path index_bytes index_sha index_file
+  : >"$snapshot"
+  while IFS=$'\t' read -r name version source archive_path archive_bytes archive_sha \
+      source_path source_files source_identity; do
+    archive="$CARGO_HOME_ROOT/$archive_path"
+    source_dir="$CARGO_HOME_ROOT/$source_path"
+    [[ -f "$archive" && -d "$source_dir" ]] \
+      || fail "frozen offline Cargo package is missing: $name $version"
+    actual_archive_bytes=$(stat -c %s "$archive")
+    actual_archive_sha=$(sha_file "$archive")
+    [[ "$actual_archive_bytes" == "$archive_bytes" && "$actual_archive_sha" == "$archive_sha" ]] \
+      || fail "offline Cargo archive changed: $name $version"
+    source_inventory="$WORK_DIR/cache-source-inventory"
+    (
+      cd "$source_dir"
+      LC_ALL=C find . -type f -print0 | LC_ALL=C sort -z \
+        | while IFS= read -r -d '' file; do
+            printf '%s\t%s\t%s\n' "${file#./}" "$(stat -c %s "$file")" "$(sha_file "$file")"
+          done
+    ) >"$source_inventory"
+    actual_source_files=$(wc -l <"$source_inventory" | tr -d ' ')
+    actual_source_bytes=$(awk -F'\t' '{sum += $2} END {print sum + 0}' "$source_inventory")
+    actual_source_sha=$(sha_file "$source_inventory")
+    source_bytes=${source_identity%%:*}
+    source_sha=${source_identity#*:}
+    [[ "$actual_source_files" == "$source_files" && "$actual_source_bytes" == "$source_bytes" \
+        && "$actual_source_sha" == "$source_sha" ]] \
+      || fail "offline Cargo extracted source changed: $name $version"
+    printf '%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n' \
+      "$name" "$version" "$source" "$archive_path" "$archive_bytes" "$archive_sha" \
+      "$source_path" "$source_files" "$source_identity" >>"$snapshot"
+  done <"$CARGO_CACHE_PACKAGES"
+  cmp -s "$snapshot" "$CARGO_CACHE_PACKAGES" \
+    || fail "offline Cargo package inventory did not reproduce byte for byte"
+  while IFS=$'\t' read -r index_path index_bytes index_sha; do
+    index_file="$CARGO_HOME_ROOT/$index_path"
+    [[ -f "$index_file" && "$(stat -c %s "$index_file")" == "$index_bytes" \
+        && "$(sha_file "$index_file")" == "$index_sha" ]] \
+      || fail "offline Cargo sparse-index entry changed: $index_path"
+  done <"$CARGO_CACHE_INDEX"
+}
+
 "$VERIFY_INPUTS" >"$OUTPUT_DIR/input-audit.json"
 
 echo "[1/6] Verify every byte in the frozen SBF toolchain"
@@ -145,6 +205,18 @@ while IFS=$'\t' read -r relative expected_bytes expected_sha; do
     || fail "frozen toolchain file hash changed: $relative"
 done < <(jq -r '.toolchain_files[] | [.path, .bytes, .sha256] | @tsv' "$TOOLCHAIN_PROVENANCE")
 
+[[ "$(sha_file "$HOST_CARGO")" == "$(jq -er '.toolchain.offlineCargoCache.hostCargoSha256' "$MANIFEST")" ]] \
+  || fail "host Cargo bytes differ from the frozen offline-cache toolchain"
+[[ "$(sha_file "$HOST_RUSTC")" == "$(jq -er '.toolchain.offlineCargoCache.hostRustcSha256' "$MANIFEST")" ]] \
+  || fail "host rustc bytes differ from the frozen offline-cache toolchain"
+host_cargo_version=$($HOST_CARGO --version)
+host_rustc_version=$($HOST_RUSTC --version)
+[[ "$host_cargo_version" == "$(jq -er '.hostCargo.version' "$CARGO_CACHE_PROVENANCE")" ]] \
+  || fail "host Cargo version differs from the frozen offline-cache toolchain"
+[[ "$host_rustc_version" == "$(jq -er '.hostRustc.version' "$CARGO_CACHE_PROVENANCE")" ]] \
+  || fail "host rustc version differs from the frozen offline-cache toolchain"
+verify_offline_cargo_cache "$OUTPUT_DIR/cargo-cache-before.tsv"
+
 expected_version=$(jq -er '.toolchain.cargoBuildSbfVersion' "$MANIFEST")
 actual_version=$($CARGO_BUILD_SBF --version)
 [[ "$actual_version" == "$expected_version" ]] \
@@ -154,7 +226,8 @@ platform_rustc_version=$($PLATFORM_TOOLS_ROOT/rust/bin/rustc --version)
   || fail "platform rustc version differs from the frozen toolchain"
 printf '%s\n' "$actual_version" >"$OUTPUT_DIR/cargo-build-sbf-version.txt"
 printf '%s\n' "$platform_rustc_version" >"$OUTPUT_DIR/platform-rustc-version.txt"
-PATH="$BUILD_PATH" cargo --version >"$OUTPUT_DIR/platform-cargo-version.txt"
+printf '%s\n' "$host_cargo_version" >"$OUTPUT_DIR/host-cargo-version.txt"
+printf '%s\n' "$host_rustc_version" >"$OUTPUT_DIR/host-rustc-version.txt"
 "$PLATFORM_TOOLS_ROOT/llvm/bin/clang-19" --version >"$OUTPUT_DIR/platform-clang-version.txt"
 
 echo "[2/6] Export two isolated copies of the exact da77 source"
@@ -172,6 +245,22 @@ readonly SOURCE_ARCHIVE_B_SHA=$(sha_file "$WORK_DIR/source-b.tar")
 [[ "$SOURCE_ARCHIVE_A_SHA" == "$SOURCE_ARCHIVE_B_SHA" ]] \
   || fail "independent source archives differ"
 
+for program in aspis-pool aspis-verifier; do
+  manifest_path=$(jq -er --arg program "$program" '.programs[] | select(.name == $program) | .manifest' "$MANIFEST")
+  (
+    cd "$WORK_DIR/source-a"
+    CARGO_HOME="$CARGO_HOME_ROOT" CARGO_NET_OFFLINE=true PATH="$BUILD_PATH" \
+      "$HOST_CARGO" metadata --offline --locked --format-version 1 \
+      --manifest-path "$manifest_path"
+  ) >"$OUTPUT_DIR/metadata-$program.json"
+done
+jq -r '.packages[] | select(.source != null) | [.name,.version,.source] | @tsv' \
+  "$OUTPUT_DIR/metadata-aspis-pool.json" "$OUTPUT_DIR/metadata-aspis-verifier.json" \
+  | LC_ALL=C sort -u >"$OUTPUT_DIR/metadata-registry-packages.tsv"
+cut -f1-3 "$CARGO_CACHE_PACKAGES" >"$WORK_DIR/expected-registry-packages.tsv"
+cmp -s "$OUTPUT_DIR/metadata-registry-packages.tsv" "$WORK_DIR/expected-registry-packages.tsv" \
+  || fail "locked Pool/verifier metadata differs from the frozen offline Cargo package set"
+
 build_program() {
   local label=$1
   local program=$2
@@ -187,6 +276,8 @@ build_program() {
     cd "$source_dir"
     export CARGO_TARGET_DIR="$target_dir"
     export CARGO_BUILD_JOBS=1
+    export CARGO_HOME="$CARGO_HOME_ROOT"
+    export CARGO_NET_OFFLINE=true
     export LANG=C
     export LC_ALL=C
     export NO_DNA=1
@@ -216,6 +307,10 @@ for label in a b; do
   build_program "$label" aspis-pool
   build_program "$label" aspis-verifier
 done
+
+verify_offline_cargo_cache "$OUTPUT_DIR/cargo-cache-after.tsv"
+cmp -s "$OUTPUT_DIR/cargo-cache-before.tsv" "$OUTPUT_DIR/cargo-cache-after.tsv" \
+  || fail "offline Cargo cache content changed during the dual build"
 
 echo "[4/6] Require A/B equality and freeze exact derived SBF identities"
 mkdir -p "$OUTPUT_DIR/sbf"
@@ -269,6 +364,10 @@ jq -n \
   --arg sourceArchiveASha256 "$SOURCE_ARCHIVE_A_SHA" \
   --arg sourceArchiveBSha256 "$SOURCE_ARCHIVE_B_SHA" \
   --arg toolchainInventorySha256 "$(jq -er '.toolchain.frozenInventory.sha256' "$MANIFEST")" \
+  --arg offlineCargoCacheProvenanceSha256 "$(jq -er '.toolchain.offlineCargoCache.provenanceSha256' "$MANIFEST")" \
+  --arg offlineCargoPackagesSha256 "$(sha_file "$OUTPUT_DIR/cargo-cache-after.tsv")" \
+  --arg hostCargoSha256 "$(sha_file "$HOST_CARGO")" \
+  --arg hostCargoVersion "$host_cargo_version" \
   --arg cargoBuildSbfSha256 "$expected_cargo_build_sbf_sha" \
   --arg cargoBuildSbfVersion "$actual_version" \
   --arg uname "$(<"$OUTPUT_DIR/uname.txt")" \
@@ -297,6 +396,11 @@ jq -n \
       host: "Linux x86_64",
       containerImage: null,
       toolchainInventorySha256: $toolchainInventorySha256,
+      offlineCargoCacheProvenanceSha256: $offlineCargoCacheProvenanceSha256,
+      offlineCargoPackagesSha256: $offlineCargoPackagesSha256,
+      offlineCargoCacheVerifiedBeforeAndAfter: true,
+      hostCargoSha256: $hostCargoSha256,
+      hostCargoVersion: $hostCargoVersion,
       cargoBuildSbfSha256: $cargoBuildSbfSha256,
       cargoBuildSbfVersion: $cargoBuildSbfVersion,
       uname: $uname,
