@@ -1,11 +1,11 @@
-# Aspis V7: transparent private payments on Solana
-
-[![Spend integration](https://github.com/DJBarker87/aspis/actions/workflows/spend-integration.yml/badge.svg)](https://github.com/DJBarker87/aspis/actions/workflows/spend-integration.yml)
+# Aspis ZK: native Circle STARK verification on Solana
 
 Aspis is a transparent, trusted-setup-free zero-knowledge payment system for
 Solana. Its on-chain verifier uses Circle STARK techniques. The accompanying
 proof work is written in Lean 4 and connected to selected production Rust with
 Charon and Aeneas.
+
+[Read the plain-language introduction at aspis.djbmaths.uk](https://aspis.djbmaths.uk/).
 
 One point deserves emphasis. The V7 mathematics no longer relies on a theorem
 from the literature being supplied as a premise. The decoding, list-size,
@@ -19,9 +19,6 @@ transaction. Exact local runtime tests put every measured V7 path below 1.3
 million compute units. The earlier V5 verifier has already completed a
 finalized mainnet transaction, using 1,334,452 compute units for the full
 private-spend verification and state change.
-
-This repository is the `DJBarker87/aspis` cryptography project. It has no
-connection with the DeFi product at `aspis.finance`.
 
 ## Current results
 
@@ -104,6 +101,15 @@ The formal work has two connected parts:
 2. [`aeneas-verif/`](aeneas-verif/) uses Charon and Aeneas to translate
    selected Rust functions into Lean, where their behaviour can be compared
    with the mathematical models.
+
+The second part is vital. A correct theorem about an inaccurate model would
+say nothing reliable about the program running on Solana. Charon records the
+types, loops, and decisions in selected production Rust. Aeneas turns that
+record into Lean functions. Further Lean theorems must then show that those
+functions agree with the mathematical verifier. This is where a difference in
+byte parsing, branching, hash use, or account updates can be found. Translation
+alone is not treated as a proof of correctness, and the remaining V7 source
+connections are stated openly.
 
 ### The cited mathematics is now proved here
 

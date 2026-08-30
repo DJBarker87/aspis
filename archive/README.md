@@ -5,7 +5,7 @@ its supporting release machinery. Earlier experiments are retained in Git,
 not copied into this directory.
 
 The immutable
-[`research-archive-2026-07-14`](https://github.com/DJBarker87/aspis/tree/research-archive-2026-07-14)
+[`research-archive-2026-07-14`](https://github.com/DJBarker87/aspisZK/tree/research-archive-2026-07-14)
 tag contains these historical categories:
 
 - rejected parameter profiles and superseded release certificates;
@@ -15,7 +15,7 @@ tag contains these historical categories:
 - regression fixtures that were not required on the public release surface.
 
 The immutable
-[`research-archive-2026-07-15`](https://github.com/DJBarker87/aspis/tree/research-archive-2026-07-15)
+[`research-archive-2026-07-15`](https://github.com/DJBarker87/aspisZK/tree/research-archive-2026-07-15)
 tag is the working tree immediately before the production-surface strip. It
 contains the research measurement harness removed from `xtask` (the stage
 0–2 measurement subcommands and the local-validator measurement module), the
@@ -25,23 +25,23 @@ historical measurement and reproduction commands recorded there run from
 that tag.
 
 The immutable
-[`research-archive-v5-production-closure-2026-07-22`](https://github.com/DJBarker87/aspis/releases/tag/research-archive-v5-production-closure-2026-07-22)
+[`research-archive-v5-production-closure-2026-07-22`](https://github.com/DJBarker87/aspisZK/releases/tag/research-archive-v5-production-closure-2026-07-22)
 release and
-[matching tag](https://github.com/DJBarker87/aspis/tree/research-archive-v5-production-closure-2026-07-22)
+[matching tag](https://github.com/DJBarker87/aspisZK/tree/research-archive-v5-production-closure-2026-07-22)
 contain the complete V5 production-closure workspace before publication
 curation. It preserves every LLBC blob, raw and versioned Aeneas translation,
 extraction log, superseded retarget experiment, and intermediate V5
 feature-build directory. The default branch retains the final normalized Lean,
 proof source, integration theorems, reports, canonical SBF, and CU evidence.
 The tag is pinned to full commit
-[`859d8588d2761fac6714226877c9317f7d697a03`](https://github.com/DJBarker87/aspis/commit/859d8588d2761fac6714226877c9317f7d697a03).
+[`859d8588d2761fac6714226877c9317f7d697a03`](https://github.com/DJBarker87/aspisZK/commit/859d8588d2761fac6714226877c9317f7d697a03).
 Its deterministic archive identity is recorded in
 [`v5-production-closure-2026-07-22-manifest.json`](v5-production-closure-2026-07-22-manifest.json).
 
 ## Final V5 end-to-end record
 
 The immutable
-[`aspis-v5-formalization-paper-v1`](https://github.com/DJBarker87/aspis/tree/aspis-v5-formalization-paper-v1)
+[`aspis-v5-formalization-paper-v1`](https://github.com/DJBarker87/aspisZK/tree/aspis-v5-formalization-paper-v1)
 tag preserves the frozen end-to-end V5 formalization publication at commit
 `105738ebe0758fd31edbb76f6735c7f5da96dbdd`. The maintained
 `aspis-spend` branch adds only later publication maintenance, including the

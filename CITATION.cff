@@ -37,9 +37,9 @@ keywords:
   - "Aeneas"
   - "formal verification"
   - "reproducible builds"
-repository-code: "https://github.com/DJBarker87/aspis"
-repository-artifact: "https://github.com/DJBarker87/aspis/tree/aspis-v5-formalization-paper-v1/paper/aspis-formalization"
-url: "https://github.com/DJBarker87/aspis"
+repository-code: "https://github.com/DJBarker87/aspisZK"
+repository-artifact: "https://github.com/DJBarker87/aspisZK/tree/aspis-v5-formalization-paper-v1/paper/aspis-formalization"
+url: "https://github.com/DJBarker87/aspisZK"
 license:
   - Apache-2.0
   - MIT
@@ -50,7 +50,7 @@ preferred-citation:
     - family-names: "Barker"
       given-names: "Dominic"
   year: 2026
-  url: "https://github.com/DJBarker87/aspis/tree/aspis-v5-formalization-paper-v1/paper/aspis-formalization"
+  url: "https://github.com/DJBarker87/aspisZK/tree/aspis-v5-formalization-paper-v1/paper/aspis-formalization"
 references:
   - type: software
     title: "Aspis V5 Mainnet Evidence Bundle"
@@ -59,9 +59,9 @@ references:
     authors:
       - family-names: "Barker"
         given-names: "Dominic"
-    repository-code: "https://github.com/DJBarker87/aspis"
-    repository-artifact: "https://github.com/DJBarker87/aspis/tree/aspis-v5-tag67-mainnet-v1/release/aspis-v5-tag67-mainnet-v1"
-    url: "https://github.com/DJBarker87/aspis/tree/aspis-v5-tag67-mainnet-v1/release/aspis-v5-tag67-mainnet-v1"
+    repository-code: "https://github.com/DJBarker87/aspisZK"
+    repository-artifact: "https://github.com/DJBarker87/aspisZK/tree/aspis-v5-tag67-mainnet-v1/release/aspis-v5-tag67-mainnet-v1"
+    url: "https://github.com/DJBarker87/aspisZK/tree/aspis-v5-tag67-mainnet-v1/release/aspis-v5-tag67-mainnet-v1"
     abstract: >-
       Source-linked V5 mainnet evidence for the byte-reproducible
       1,258,496-byte SBF binary, 75,358-byte proof, and finalized
@@ -72,4 +72,4 @@ references:
     authors:
       - family-names: "Barker"
         given-names: "Dominic"
-    url: "https://github.com/DJBarker87/aspis/releases/tag/aspis-spend-q18-g37-mainnet-v1"
+    url: "https://github.com/DJBarker87/aspisZK/releases/tag/aspis-spend-q18-g37-mainnet-v1"

@@ -7,10 +7,10 @@ that the manuscript remains readable.
 Paper title: **Aspis: End-to-End Formal Verification of a Transparent Private Spend
 on Solana**
 
-Development repository: <https://github.com/DJBarker87/aspis>
+Development repository: <https://github.com/DJBarker87/aspisZK>
 
 Frozen V5 publication tag:
-[`aspis-v5-formalization-paper-v1`](https://github.com/DJBarker87/aspis/tree/aspis-v5-formalization-paper-v1)
+[`aspis-v5-formalization-paper-v1`](https://github.com/DJBarker87/aspisZK/tree/aspis-v5-formalization-paper-v1)
 
 Formal source baseline: `a561d9a304a6c86fb037c974c4198b4eb94ecb61`
 
