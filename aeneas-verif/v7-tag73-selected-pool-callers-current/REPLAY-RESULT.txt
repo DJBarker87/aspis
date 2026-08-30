@@ -1,0 +1,11 @@
+Source revision: 68ac0c73a1f93cc42c81ea04df52cd26d80ec79c
+Charon: PASS; has_errors=false
+Aeneas: PASS; both selected production roots translated
+Lean generated module: PASS
+Lean source bridge: PASS
+Extraction replay wall time: 36.52 s
+Extraction replay peak RSS: 745,788 KiB
+Complete Lean replay wall time: 23.71 s
+Complete Lean replay peak RSS: 3,121,352 KiB
+Swap: 0
+Axiom union: propext, Classical.choice, Quot.sound
