@@ -33,7 +33,7 @@ git -C "$ROOT" rev-parse --git-dir >/dev/null 2>&1 \
 
 jq -e '
   .schema == "aspis.v7.one-tx-candidate-preflight.v1" and
-  .status == "ATOMIC_MARKER_FIXTURES_FROZEN_FRESH_SBF_AND_AGAVE_PENDING" and
+  .status == "ATOMIC_MARKER_LINUX_SBF_IDENTITIES_FROZEN_AGAVE_PENDING" and
   .authorization.build == true and
   .authorization.localSimulationOnly == true and
   .authorization.publicDevnetReadOnlyProbe == true and
@@ -43,11 +43,15 @@ jq -e '
   .authorization.mainnet == false and
   (.programs | length == 2) and
   ([.programs[] | select(.name == "aspis-pool")][0] |
-    .expectedBytes == null and .expectedSha256 == null and
-    .bindingStatus == "PENDING_FRESH_DA77_DUAL_LINUX_BUILD") and
+    .expectedBytes == 525888 and
+    .expectedSha256 == "82606a25f00fd683b06186cdaae519b52c793d9a2f16f9d3f7c40c2b241685c2" and
+    .bindingStatus == "DERIVED_BY_BYTE_IDENTICAL_DA77_DUAL_LINUX_BUILD") and
   ([.programs[] | select(.name == "aspis-verifier")][0] |
-    .expectedBytes == 1700384 and
-    .expectedSha256 == "4ee9b4789533e049e2d9e1f43c84fa97f745a98151f9477ebd828de742b75e5c") and
+    .expectedBytes == 1812264 and
+    .expectedSha256 == "c43960303f2d67606362dc09d74f3a7983dcfcbe0665984a385a0efa7ddc5e47" and
+    .bindingStatus == "DERIVED_BY_BYTE_IDENTICAL_DA77_DUAL_LINUX_BUILD" and
+    .historicalDarwinReference.bytes == 1700384 and
+    .historicalDarwinReference.sha256 == "4ee9b4789533e049e2d9e1f43c84fa97f745a98151f9477ebd828de742b75e5c") and
   (.txv1Lifecycle.requiredCases | length) == 11 and
   (.txv1Lifecycle.requiredCases | unique | length) == 11 and
   .txv1Lifecycle.caseBundleIncluded == true and
@@ -183,6 +187,61 @@ while IFS=$'\t' read -r index_path index_bytes index_sha; do
     || fail "malformed offline Cargo index entry"
 done <"$CARGO_CACHE_INDEX"
 
+readonly SBF_CARGO_CACHE_PROVENANCE="$ROOT/$(jq -er '.toolchain.offlineCargoCache.sbfProvenancePath' "$MANIFEST")"
+readonly SBF_CARGO_CACHE_PACKAGES="$ROOT/$(jq -er '.toolchain.offlineCargoCache.sbfPackagesPath' "$MANIFEST")"
+readonly SBF_CARGO_CACHE_INDEX="$ROOT/$(jq -er '.toolchain.offlineCargoCache.sbfIndexPath' "$MANIFEST")"
+for cache_evidence in "$SBF_CARGO_CACHE_PROVENANCE" "$SBF_CARGO_CACHE_PACKAGES" "$SBF_CARGO_CACHE_INDEX"; do
+  [[ -f "$cache_evidence" ]] || fail "cargo +solana offline cache provenance is incomplete"
+done
+[[ "$(sha_file "$SBF_CARGO_CACHE_PROVENANCE")" == "$(jq -er '.toolchain.offlineCargoCache.sbfProvenanceSha256' "$MANIFEST")" ]] \
+  || fail "cargo +solana cache provenance hash changed"
+[[ "$(sha_file "$SBF_CARGO_CACHE_PACKAGES")" == "$(jq -er '.toolchain.offlineCargoCache.sbfPackagesSha256' "$MANIFEST")" ]] \
+  || fail "cargo +solana package inventory hash changed"
+[[ "$(sha_file "$SBF_CARGO_CACHE_INDEX")" == "$(jq -er '.toolchain.offlineCargoCache.sbfIndexSha256' "$MANIFEST")" ]] \
+  || fail "cargo +solana index inventory hash changed"
+readonly SBF_CARGO_CACHE_PACKAGE_COUNT=$(jq -er '.toolchain.offlineCargoCache.sbfPackages' "$MANIFEST")
+readonly SBF_CARGO_CACHE_INDEX_COUNT=$(jq -er '.toolchain.offlineCargoCache.sbfIndexEntries' "$MANIFEST")
+[[ "$(wc -l <"$SBF_CARGO_CACHE_PACKAGES" | tr -d ' ')" == "$SBF_CARGO_CACHE_PACKAGE_COUNT" ]] \
+  || fail "cargo +solana package inventory count changed"
+[[ "$(wc -l <"$SBF_CARGO_CACHE_INDEX" | tr -d ' ')" == "$SBF_CARGO_CACHE_INDEX_COUNT" ]] \
+  || fail "cargo +solana index inventory count changed"
+jq -e \
+  --arg packagesSha "$(sha_file "$SBF_CARGO_CACHE_PACKAGES")" \
+  --arg indexSha "$(sha_file "$SBF_CARGO_CACHE_INDEX")" \
+  --arg platformCargoSha "$(jq -er '.toolchain_files[] | select(.path == "platform-tools-v1.48/rust/bin/cargo") | .sha256' "$ROOT/$TOOLCHAIN_PROVENANCE")" \
+  --argjson packages "$SBF_CARGO_CACHE_PACKAGE_COUNT" \
+  --argjson indexEntries "$SBF_CARGO_CACHE_INDEX_COUNT" '
+  .schema == "aspis.v7.linux-sbf-cargo-offline-cache-provenance.v1" and
+  .cargoLockSha256 == "25cae3f276bd5831785bdb25e204ce99213934e7fcec3f5a76a5d742a018426b" and
+  .registryNamespace == "index.crates.io-6f17d22bba15001f" and
+  .platformCargo.version == "cargo 1.84.0 (12fe57a9d 2025-04-07)" and
+  .platformCargo.sha256 == $platformCargoSha and
+  .packages.count == $packages and .packages.inventorySha256 == $packagesSha and
+  .index.entries == $indexEntries and .index.inventorySha256 == $indexSha and
+  .observedBuild.poolSha256 == "82606a25f00fd683b06186cdaae519b52c793d9a2f16f9d3f7c40c2b241685c2" and
+  .observedBuild.verifierSha256 == "c43960303f2d67606362dc09d74f3a7983dcfcbe0665984a385a0efa7ddc5e47" and
+  .observedBuild.aAndBByteIdentical == true and
+  .observedBuild.memorySwapPeakBytes == 0 and
+  .networkAllowed == false and .downloadsPerformed == false and
+  .sharedCacheMutationAuthorized == false
+' "$SBF_CARGO_CACHE_PROVENANCE" >/dev/null \
+  || fail "cargo +solana cache provenance contents changed"
+while IFS=$'\t' read -r name version source archive_path archive_bytes archive_sha \
+    source_path source_files source_identity; do
+  [[ -n "$name" && -n "$version" && "$source" == "registry+https://github.com/rust-lang/crates.io-index" ]] \
+    || fail "malformed cargo +solana package identity"
+  [[ "$archive_path" != /* && "$archive_path" != *..* && "$source_path" != /* && "$source_path" != *..* ]] \
+    || fail "unsafe cargo +solana cache path"
+  [[ "$archive_bytes" =~ ^[0-9]+$ && "$archive_sha" =~ ^[0-9a-f]{64}$ && "$source_files" =~ ^[0-9]+$ \
+      && "$source_identity" =~ ^[0-9]+:[0-9a-f]{64}$ ]] \
+    || fail "malformed cargo +solana package checksum"
+done <"$SBF_CARGO_CACHE_PACKAGES"
+while IFS=$'\t' read -r index_path index_bytes index_sha; do
+  [[ "$index_path" != /* && "$index_path" != *..* && "$index_bytes" =~ ^[0-9]+$ \
+      && "$index_sha" =~ ^[0-9a-f]{64}$ ]] \
+    || fail "malformed cargo +solana index entry"
+done <"$SBF_CARGO_CACHE_INDEX"
+
 while IFS=$'\t' read -r path expected; do
   [[ -n "$path" && "$expected" =~ ^[0-9a-f]{64}$ ]] \
     || fail "malformed release-harness file entry: $path"
@@ -191,13 +250,15 @@ while IFS=$'\t' read -r path expected; do
     || fail "release-harness file hash changed: $path"
 done < <(jq -r '.releaseHarnessFiles[] | [.path, .sha256] | @tsv' "$MANIFEST")
 
-readonly VERIFIER_ARTIFACT=$(jq -er '.programs[] | select(.name == "aspis-verifier") | .referenceArtifact' "$MANIFEST")
 readonly VERIFIER_SHA=$(jq -er '.programs[] | select(.name == "aspis-verifier") | .expectedSha256' "$MANIFEST")
 readonly VERIFIER_BYTES=$(jq -er '.programs[] | select(.name == "aspis-verifier") | .expectedBytes' "$MANIFEST")
-[[ "$(git -C "$ROOT" show "$SOURCE_COMMIT:$VERIFIER_ARTIFACT" | sha_stdin)" == "$VERIFIER_SHA" ]] \
-  || fail "frozen verifier reference artifact hash changed"
-[[ "$(git -C "$ROOT" cat-file -s "$SOURCE_COMMIT:$VERIFIER_ARTIFACT")" == "$VERIFIER_BYTES" ]] \
-  || fail "frozen verifier reference artifact length changed"
+readonly HISTORICAL_VERIFIER_ARTIFACT=$(jq -er '.programs[] | select(.name == "aspis-verifier") | .historicalDarwinReference.artifact' "$MANIFEST")
+readonly HISTORICAL_VERIFIER_SHA=$(jq -er '.programs[] | select(.name == "aspis-verifier") | .historicalDarwinReference.sha256' "$MANIFEST")
+readonly HISTORICAL_VERIFIER_BYTES=$(jq -er '.programs[] | select(.name == "aspis-verifier") | .historicalDarwinReference.bytes' "$MANIFEST")
+[[ "$(git -C "$ROOT" show "$SOURCE_COMMIT:$HISTORICAL_VERIFIER_ARTIFACT" | sha_stdin)" == "$HISTORICAL_VERIFIER_SHA" ]] \
+  || fail "historical Darwin verifier artifact hash changed"
+[[ "$(git -C "$ROOT" cat-file -s "$SOURCE_COMMIT:$HISTORICAL_VERIFIER_ARTIFACT")" == "$HISTORICAL_VERIFIER_BYTES" ]] \
+  || fail "historical Darwin verifier artifact length changed"
 
 readonly CASE_BUNDLE_RELATIVE=$(jq -er '.txv1Lifecycle.caseBundle' "$MANIFEST")
 readonly CASE_BUNDLE="$ROOT/$CASE_BUNDLE_RELATIVE"
@@ -282,13 +343,18 @@ jq -n \
   --arg sourceCommit "$SOURCE_COMMIT" \
   --arg sourceTree "$SOURCE_TREE" \
   --arg verifierSha256 "$VERIFIER_SHA" \
+  --arg historicalVerifierSha256 "$HISTORICAL_VERIFIER_SHA" \
+  --arg poolSha256 "$(jq -er '.programs[] | select(.name == "aspis-pool") | .expectedSha256' "$MANIFEST")" \
   --arg bundleSha256 "$CASE_BUNDLE_SHA" \
   --arg bundleInventorySha256 "$CASE_INVENTORY_SHA" \
   --arg offlineAuditSha256 "$OFFLINE_AUDIT_SHA" \
   --arg toolchainInventorySha256 "$TOOLCHAIN_PROVENANCE_SHA" \
   --arg cargoCacheProvenanceSha256 "$(sha_file "$CARGO_CACHE_PROVENANCE")" \
   --arg cargoCachePackagesSha256 "$(sha_file "$CARGO_CACHE_PACKAGES")" \
-  --arg cargoCacheIndexSha256 "$(sha_file "$CARGO_CACHE_INDEX")" '
+  --arg cargoCacheIndexSha256 "$(sha_file "$CARGO_CACHE_INDEX")" \
+  --arg sbfCargoCacheProvenanceSha256 "$(sha_file "$SBF_CARGO_CACHE_PROVENANCE")" \
+  --arg sbfCargoCachePackagesSha256 "$(sha_file "$SBF_CARGO_CACHE_PACKAGES")" \
+  --arg sbfCargoCacheIndexSha256 "$(sha_file "$SBF_CARGO_CACHE_INDEX")" '
   {
     schema: "aspis.v7.one-tx-candidate-input-audit.v2",
     sourceCommit: $sourceCommit,
@@ -297,11 +363,12 @@ jq -n \
     frozenReleaseHarnessHashesMatch: true,
     frozenToolchainInventoryMatches: true,
     programFeatureManifestsMatch: true,
-    verifierReference: {bytes: 1700384, sha256: $verifierSha256},
+    verifierLinuxReference: {bytes: 1812264, sha256: $verifierSha256},
+    verifierHistoricalDarwinReference: {bytes: 1700384, sha256: $historicalVerifierSha256},
     poolReference: {
-      bytes: null,
-      sha256: null,
-      status: "PENDING_FRESH_DA77_DUAL_LINUX_BUILD"
+      bytes: 525888,
+      sha256: $poolSha256,
+      status: "DERIVED_BY_BYTE_IDENTICAL_DA77_DUAL_LINUX_BUILD"
     },
     deterministicCaseBundle: {
       cases: 11,
@@ -316,14 +383,14 @@ jq -n \
       sbfMaterialized: false,
       agaveExecuted: false
     },
-    reproducibleBuildExecuted: false,
+    derivationDualBuildExecuted: true,
+    provenanceCompleteConfirmationReplayExecuted: false,
     disposableAgaveSuiteExecuted: false,
     publicDevnetTransactionSigned: false,
     publicDevnetTransactionSubmitted: false,
     releaseReady: false,
     remainingGates: [
-      "two byte-identical capped Linux SBF builds from da77d5f5",
-      "materialize the frozen eleven-case bundle with the resulting Pool SBF",
+      "one provenance-complete capped Linux confirmation replay against both frozen Cargo registry namespaces",
       "execute all eleven cases on a disposable Agave 4.2+ validator",
       "measure fresh combined CU for all four honest paths and enforce rollback for all seven failures",
       "public-devnet TxV1 execution activation before any public RPC simulation"
@@ -334,7 +401,14 @@ jq -n \
       packageInventorySha256: $cargoCachePackagesSha256,
       indexInventorySha256: $cargoCacheIndexSha256,
       packages: 428,
-      indexEntries: 394,
+      indexEntries: 395,
+      cargoPlusSolana: {
+        provenanceSha256: $sbfCargoCacheProvenanceSha256,
+        packageInventorySha256: $sbfCargoCachePackagesSha256,
+        indexInventorySha256: $sbfCargoCacheIndexSha256,
+        packages: 186,
+        indexEntries: 399
+      },
       buildTimeByteVerificationRequired: true
     },
     signed: false,

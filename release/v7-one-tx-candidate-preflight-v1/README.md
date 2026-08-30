@@ -27,11 +27,12 @@ Darwin arm64 inventory is preserved in its original release directory but is
 not a valid input to this Linux replay.
 
 The build also requires the existing offline Cargo cache content frozen by
-`linux-offline-cargo-cache-provenance.json` and its two TSV inventories. The
-replay authenticates 428 package archives and extracted source trees plus 394
-sparse-index entries before compilation, repeats the content check afterward,
-and uses the pinned host Cargo only for the wrapper's host-side work. Network
-access remains disabled.
+`linux-offline-cargo-cache-provenance.json` and the separate
+`linux-offline-sbf-cargo-cache-provenance.json`. Host Cargo metadata reads 428
+package/source pairs and 395 index/config entries from the `1949...`
+namespace. The platform `cargo +solana` build reads the complete 186-package,
+399-index/config-entry `6f17...` namespace. The replay authenticates both
+namespaces before and after the dual build. Network access remains disabled.
 
 The exact eleven-case Agave suite additionally requires an Agave 4.2+ binary
 directory. The replay materializes the committed fixture template against the
@@ -45,12 +46,15 @@ ASPIS_V7_RUSTUP_HOME=<frozen-host-rustup-home> \
   <new-output-directory> <agave-4.2+-bin-directory>
 ```
 
-The Pool SBF identity is intentionally not inherited from the superseded
-pre-marker candidate. The first capped dual Linux run derives and records the
-new Pool hash; the unchanged verifier must still match its frozen reference.
-Both modes validate the fixture offline and require all seven negative cases
-to assert exact protected-account rollback. Agave execution and fresh combined
-CU remain open until the `build-and-simulate` mode succeeds.
+The Pool SBF identity is not inherited from the superseded pre-marker
+candidate. A capped two-copy Linux derivation produced byte-identical Pool and
+verifier outputs: `82606a25...` (525,888 bytes) and `c4396030...` (1,812,264
+bytes). The older `4ee9...` verifier remains a historical Darwin artifact and
+is not relabelled as a Linux reproduction. One provenance-complete confirmation
+replay is required against the now-frozen two Cargo namespaces. Both modes
+validate the fixture offline and require all seven negative cases to assert
+exact protected-account rollback. Agave execution and fresh combined CU remain
+open until `build-and-simulate` succeeds with an actual Agave 4.2+ binary set.
 
 All paths are fail-closed. No command in this preflight signs, submits, deploys
 or mutates a public cluster.

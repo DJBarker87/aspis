@@ -2,8 +2,9 @@
 
 Date: 2026-08-30
 
-Status: **offline fixture closure passes; fresh Pool SBF and Agave execution
-remain open**. No transaction was signed, submitted or deployed.
+Status: **offline fixture closure and platform-specific Linux SBF derivation
+pass; one provenance-complete confirmation build and Agave execution remain
+open**. No transaction was signed, submitted or deployed.
 
 ## Outcome
 
@@ -17,12 +18,16 @@ bound to these exact production source objects:
 | whole tree | `aee02a157b9866a4eaada912fe7ca8976ae51fce` |
 | Pool tree | `872814145eb07077fae2f15cf507643d28f3fa4b` |
 | verifier tree | `e7370c020cac1e51ca9e41092dcf6ecbf095bd99` |
-| verifier SBF | 1,700,384 B, `4ee9b4789533e049e2d9e1f43c84fa97f745a98151f9477ebd828de742b75e5c` |
+| Linux Pool SBF | 525,888 B, `82606a25f00fd683b06186cdaae519b52c793d9a2f16f9d3f7c40c2b241685c2` |
+| Linux verifier SBF | 1,812,264 B, `c43960303f2d67606362dc09d74f3a7983dcfcbe0665984a385a0efa7ddc5e47` |
+| historical Darwin verifier | 1,700,384 B, `4ee9b4789533e049e2d9e1f43c84fa97f745a98151f9477ebd828de742b75e5c` |
 
-The Pool SBF field is deliberately null. Atomic marker creation changes Pool
-runtime bytes, so the earlier `61f80a...` Pool artifact is not reused or
-misrepresented as current evidence. The executable runner requires a non-null
-fresh binding and therefore fails closed on the checked-in template.
+The checked-in fixture template deliberately retains a null Pool binding and
+the historical verifier binding, so it cannot execute by itself. The release
+replay materializes a distinct copy with the two Linux identities above and
+rewrites the pinned failed-CPI verifier test-double hash before validation.
+Atomic marker creation changes Pool runtime bytes, so the earlier `61f80a...`
+Pool artifact is neither reused nor represented as current evidence.
 
 The build preflight now pins the dedicated builder's exact Linux x86_64
 platform-tools v1.48 bytes in
@@ -102,11 +107,31 @@ payload. The corrected capture pins both proxy and payload and checks that the
 None of these attempts involved memory pressure, a compiler error, or changed
 program source, and none was retried unchanged.
 
-The corrected replay now pins the exact host Cargo/Rust/rustup binaries and the
-complete cache contents actually selected by the locked workspace: 428 crate
-archives and extracted source trees plus 394 sparse-index entries. It verifies
-those bytes before and after the build, keeps `--offline --locked`, and does
-not download into or clean the shared cache.
+The `r5` run was the first attempt to complete all four SBF builds. Each build
+exited zero. The two Pool outputs were byte-identical, as were the two verifier
+outputs, under a 9 GiB/12 GiB/no-swap cgroup. Peak cgroup memory was
+2,257,649,664 bytes and wall time was 7:26.80. The harness then failed closed
+because it still compared the Linux verifier against the historical Darwin
+artifact. That failure is preserved in
+`results/v7-one-tx-linux-sbf-derivation-20260830/r5/`.
+
+ELF inspection makes the platform split explicit: both verifier files have
+entry point `0x29118`, and their 28,311-byte `.rodata` sections are
+byte-identical with SHA-256 `dabe1a78...`; their `.text` sections differ in
+size. The old artifact remains historical CU/runtime evidence. It is not
+accepted by the Linux release replay.
+
+The run also exposed the second Cargo namespace used internally by
+`cargo +solana`. The corrected replay now authenticates both complete input
+sets before and after compilation:
+
+- host Cargo metadata: 428 package/source pairs and 395 index/config entries
+  in `1949...`;
+- platform Cargo: the complete 186 package/source pairs and 399 index/config
+  entries in `6f17...`.
+
+It keeps `--offline --locked` and does not download into or clean the shared
+cache.
 
 ## Determinism and offline verification
 
@@ -156,14 +181,12 @@ The next permitted build-host run must:
 
 1. export `da77d5f5` twice into isolated Linux source copies;
 2. use the frozen v1.48 SBF toolchain under a capped cgroup with no swap;
-3. require byte-identical Pool and verifier artifacts across both builds;
-4. require the verifier to retain its frozen `4ee9...` identity;
-5. materialize the byte-identical fixture template with the fresh Pool length
-   and hash derived from actual bytes (an independent regeneration with
-   `--pool-sbf <fresh-pool.so>` is equivalent and remains available);
-6. materialize those exact SBFs and pass the offline validator in
+3. verify both Cargo registry namespaces before and after compilation;
+4. reproduce the frozen Linux Pool `82606a25...` and verifier `c4396030...`
+   identities from both copies;
+5. materialize those exact SBFs and pass the offline validator in
    `--materialized` mode;
-7. run the eleven-case suite under Agave 4.2+, reporting actual CU and exact
+6. run the eleven-case suite under Agave 4.2+, reporting actual CU and exact
    success/rollback states.
 
 Agave 4.2+ remains unavailable in the inspected local and dedicated-builder

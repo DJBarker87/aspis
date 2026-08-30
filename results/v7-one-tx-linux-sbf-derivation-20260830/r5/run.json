@@ -1,0 +1,52 @@
+{
+  "schema": "aspis.v7.one-tx-linux-sbf-derivation-run.v1",
+  "sourceCommit": "da77d5f5a22681200cceec8e90fc69ac2cc81ad8",
+  "harnessCommit": "7799f686e746329c0d74d4ebfcc569098d4726cf",
+  "unit": "aspis-v7-one-tx-dual-sbf-20260830-r5.service",
+  "invocationId": "42faf7a2919542aaa2d067d6aec68306",
+  "cgroup": {
+    "memoryHighBytes": 9663676416,
+    "memoryMaxBytes": 12884901888,
+    "memorySwapMaxBytes": 0,
+    "observedMemoryPeakBytes": 2257649664,
+    "observedMemorySwapPeakBytes": 0
+  },
+  "wallSeconds": 446.8,
+  "builds": [
+    {"copy":"a","program":"aspis-pool","elapsed":"1:42.68","maximumResidentSetKiB":565356,"exitStatus":0},
+    {"copy":"a","program":"aspis-verifier","elapsed":"0:39.33","maximumResidentSetKiB":570324,"exitStatus":0},
+    {"copy":"b","program":"aspis-pool","elapsed":"2:01.52","maximumResidentSetKiB":566376,"exitStatus":0},
+    {"copy":"b","program":"aspis-verifier","elapsed":"0:44.19","maximumResidentSetKiB":570476,"exitStatus":0}
+  ],
+  "programs": {
+    "pool": {
+      "bytes": 525888,
+      "sha256": "82606a25f00fd683b06186cdaae519b52c793d9a2f16f9d3f7c40c2b241685c2",
+      "aAndBByteIdentical": true
+    },
+    "verifier": {
+      "bytes": 1812264,
+      "sha256": "c43960303f2d67606362dc09d74f3a7983dcfcbe0665984a385a0efa7ddc5e47",
+      "aAndBByteIdentical": true,
+      "historicalDarwinReferenceBytes": 1700384,
+      "historicalDarwinReferenceSha256": "4ee9b4789533e049e2d9e1f43c84fa97f745a98151f9477ebd828de742b75e5c"
+    }
+  },
+  "hostMetadataCacheBeforeAfterSha256": "3e40be42d1794e8a0d3c853a4f4af74803b46de724c320d9683f8e72f783e370",
+  "historicalDarwinVsLinuxVerifierElf": {
+    "entryPointBoth": "0x29118",
+    "rodataBytesBoth": 28311,
+    "rodataSha256Both": "dabe1a7898efda232a6685156f74dd99f23684b2e397c2add13bd26ac7e0c4a0",
+    "rodataByteIdentical": true,
+    "historicalTextBytes": 1643544,
+    "linuxTextBytes": 1755720
+  },
+  "finalHarnessExitStatus": 1,
+  "finalHarnessFailure": "aspis-verifier SBF does not match its frozen reference",
+  "classification": "DERIVATION_GREEN_A_B_DETERMINISM; FINAL_GATE_FAILED_ON_PLATFORM_SPECIFIC_HISTORICAL_REFERENCE",
+  "runtimeLifecycleExecuted": false,
+  "computeUnitsClaimed": false,
+  "signed": false,
+  "submitted": false,
+  "deployed": false
+}

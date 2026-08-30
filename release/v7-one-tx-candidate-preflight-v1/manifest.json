@@ -1,6 +1,6 @@
 {
   "schema": "aspis.v7.one-tx-candidate-preflight.v1",
-  "status": "ATOMIC_MARKER_FIXTURES_FROZEN_FRESH_SBF_AND_AGAVE_PENDING",
+  "status": "ATOMIC_MARKER_LINUX_SBF_IDENTITIES_FROZEN_AGAVE_PENDING",
   "authorization": {
     "build": true,
     "localSimulationOnly": true,
@@ -36,16 +36,24 @@
     },
     "offlineCargoCache": {
       "provenancePath": "release/v7-one-tx-candidate-preflight-v1/linux-offline-cargo-cache-provenance.json",
-      "provenanceSha256": "cc4a7e4f3e485164e2d559060deb9f2a79344f310f848162864e3bfa87ed0573",
+      "provenanceSha256": "f5e43356be7aef8abd7adc6ca5909c2a957ed3b53842caf15055166f522bb49e",
       "packagesPath": "release/v7-one-tx-candidate-preflight-v1/linux-offline-cargo-cache-packages.tsv",
       "packagesSha256": "3e40be42d1794e8a0d3c853a4f4af74803b46de724c320d9683f8e72f783e370",
       "packages": 428,
       "indexPath": "release/v7-one-tx-candidate-preflight-v1/linux-offline-cargo-cache-index.tsv",
-      "indexSha256": "8ff8a24e0a0b7d87f3cdbecef5605b52c2b1186a87a9df609c4b5389841ad6be",
-      "indexEntries": 394,
+      "indexSha256": "5b40d7284d0aceaa502e6f4c4b8bf2a2a2827a8c6e60217bd93f02b1d73600ef",
+      "indexEntries": 395,
       "hostCargoSha256": "b7561ebe947acf816451536f19871ea4810f6be3f82fd252feab6ca7be8396f5",
       "hostRustcSha256": "ef6d716e5d1c6c93def277c0afa037c21e7a74f7de3aed4ee0700646c3301b1d",
-      "hostRustupSha256": "4acc9acc76d5079515b46346a485974457b5a79893cfb01112423c89aeb5aa10"
+      "hostRustupSha256": "4acc9acc76d5079515b46346a485974457b5a79893cfb01112423c89aeb5aa10",
+      "sbfProvenancePath": "release/v7-one-tx-candidate-preflight-v1/linux-offline-sbf-cargo-cache-provenance.json",
+      "sbfProvenanceSha256": "edbad6e67e209ce4d24f8a6608e9349e1ab2266a98ff87a72be73ff1b74fab5a",
+      "sbfPackagesPath": "release/v7-one-tx-candidate-preflight-v1/linux-offline-sbf-cargo-cache-packages.tsv",
+      "sbfPackagesSha256": "165e0a7f107dedc16083216b39f6216fad2ba4fa1977ceb7b6c36d4771f19255",
+      "sbfPackages": 186,
+      "sbfIndexPath": "release/v7-one-tx-candidate-preflight-v1/linux-offline-sbf-cargo-cache-index.tsv",
+      "sbfIndexSha256": "464035cef039e2384ebe8ec7093d6ac4527fe24a08a734f7684315d983bafc58",
+      "sbfIndexEntries": 399
     },
     "requiredCgroup": {
       "memoryHighBytesAtMost": 9663676416,
@@ -61,10 +69,10 @@
       "features": "v7-pair-forest-one-tx-candidate",
       "noDefaultFeatures": true,
       "output": "aspis_pool.so",
-      "expectedBytes": null,
-      "expectedSha256": null,
-      "bindingStatus": "PENDING_FRESH_DA77_DUAL_LINUX_BUILD",
-      "referenceEvidence": null,
+      "expectedBytes": 525888,
+      "expectedSha256": "82606a25f00fd683b06186cdaae519b52c793d9a2f16f9d3f7c40c2b241685c2",
+      "bindingStatus": "DERIVED_BY_BYTE_IDENTICAL_DA77_DUAL_LINUX_BUILD",
+      "referenceEvidence": "aspis-v7-one-tx-dual-sbf-20260830-r5.service",
       "referenceArtifactCheckedIn": false
     },
     {
@@ -74,11 +82,19 @@
       "features": "v7-pair-forest-one-tx-candidate",
       "noDefaultFeatures": true,
       "output": "aspis_verifier.so",
-      "expectedBytes": 1700384,
-      "expectedSha256": "4ee9b4789533e049e2d9e1f43c84fa97f745a98151f9477ebd828de742b75e5c",
-      "referenceEvidence": "results/v7-static-schedule-cu-check-20260830/withdrawal-rollover-counter0.json",
-      "referenceArtifact": "results/v7-static-schedule-cu-check-20260830/verifier/aspis_verifier.so",
-      "referenceArtifactCheckedIn": true
+      "expectedBytes": 1812264,
+      "expectedSha256": "c43960303f2d67606362dc09d74f3a7983dcfcbe0665984a385a0efa7ddc5e47",
+      "bindingStatus": "DERIVED_BY_BYTE_IDENTICAL_DA77_DUAL_LINUX_BUILD",
+      "referenceEvidence": "aspis-v7-one-tx-dual-sbf-20260830-r5.service",
+      "referenceArtifactCheckedIn": false,
+      "historicalDarwinReference": {
+        "bytes": 1700384,
+        "sha256": "4ee9b4789533e049e2d9e1f43c84fa97f745a98151f9477ebd828de742b75e5c",
+        "evidence": "results/v7-static-schedule-cu-check-20260830/withdrawal-rollover-counter0.json",
+        "artifact": "results/v7-static-schedule-cu-check-20260830/verifier/aspis_verifier.so",
+        "artifactCheckedIn": true,
+        "classification": "HISTORICAL_DARWIN_ARM64_BUILD_NOT_ACCEPTED_AS_LINUX_REPLAY_IDENTITY"
+      }
     }
   ],
   "sourceFrozenFiles": [
@@ -142,7 +158,7 @@
     },
     {
       "path": "scripts/v7_txv1_bundle_verify.sh",
-      "sha256": "cf969c0c2c0bf8755154524d98d821a483e441919c87a646a539b0878f79c04c"
+      "sha256": "b2ca31a188d5721adaed2ab7a2bc1d07b74124f675c04fe42ec8f0e036d55a35"
     },
     {
       "path": "scripts/v7_txv1_disposable_agave_simulate.sh",
@@ -150,7 +166,7 @@
     },
     {
       "path": "scripts/v7_one_tx_release_replay.sh",
-      "sha256": "e11c23c0895fd5cc7b3b2dddee1f94f88175d400ccf0bb772653f28c2ad1e1a9"
+      "sha256": "23c51462dfa68b887356b62a0c8dcf548d5b52ee8c7b8343334c04082c08f6a0"
     },
     {
       "path": "release/v7-one-tx-candidate-preflight-v1/linux-x86_64-sbf-toolchain-v1.48.json",
@@ -158,7 +174,7 @@
     },
     {
       "path": "release/v7-one-tx-candidate-preflight-v1/linux-offline-cargo-cache-provenance.json",
-      "sha256": "cc4a7e4f3e485164e2d559060deb9f2a79344f310f848162864e3bfa87ed0573"
+      "sha256": "f5e43356be7aef8abd7adc6ca5909c2a957ed3b53842caf15055166f522bb49e"
     },
     {
       "path": "release/v7-one-tx-candidate-preflight-v1/linux-offline-cargo-cache-packages.tsv",
@@ -166,7 +182,19 @@
     },
     {
       "path": "release/v7-one-tx-candidate-preflight-v1/linux-offline-cargo-cache-index.tsv",
-      "sha256": "8ff8a24e0a0b7d87f3cdbecef5605b52c2b1186a87a9df609c4b5389841ad6be"
+      "sha256": "5b40d7284d0aceaa502e6f4c4b8bf2a2a2827a8c6e60217bd93f02b1d73600ef"
+    },
+    {
+      "path": "release/v7-one-tx-candidate-preflight-v1/linux-offline-sbf-cargo-cache-provenance.json",
+      "sha256": "edbad6e67e209ce4d24f8a6608e9349e1ab2266a98ff87a72be73ff1b74fab5a"
+    },
+    {
+      "path": "release/v7-one-tx-candidate-preflight-v1/linux-offline-sbf-cargo-cache-packages.tsv",
+      "sha256": "165e0a7f107dedc16083216b39f6216fad2ba4fa1977ceb7b6c36d4771f19255"
+    },
+    {
+      "path": "release/v7-one-tx-candidate-preflight-v1/linux-offline-sbf-cargo-cache-index.tsv",
+      "sha256": "464035cef039e2384ebe8ec7093d6ac4527fe24a08a734f7684315d983bafc58"
     },
     {
       "path": "results/v7-one-tx-agave-bundle-template-20260830/bundle.json",
@@ -189,6 +217,20 @@
       "sha256": "aeb5b2c13b1458cb80f8b7bbb1f3a9cedcdb074232bee4a3ee3e581123eb8a4d"
     }
   ],
+  "linuxSbfDerivation": {
+    "unit": "aspis-v7-one-tx-dual-sbf-20260830-r5.service",
+    "invocationId": "42faf7a2919542aaa2d067d6aec68306",
+    "sourceCommit": "da77d5f5a22681200cceec8e90fc69ac2cc81ad8",
+    "independentSourceCopies": 2,
+    "allFourBuildCommandsExitedZero": true,
+    "poolAAndBByteIdentical": true,
+    "verifierAAndBByteIdentical": true,
+    "memoryPeakBytes": 2257649664,
+    "memorySwapPeakBytes": 0,
+    "wallSeconds": 446.8,
+    "finalHarnessStatus": "FAILED_ONLY_AT_HISTORICAL_DARWIN_VERIFIER_REFERENCE_GATE",
+    "purpose": "derive the platform-specific Linux output identities before the provenance-complete confirmation replay"
+  },
   "priorMeasuredCombinedCase": {
     "classification": "REAL_COMBINED_LITESVM_BCD03B12_PRE_MARKER_CREATION_CHRONOLOGY_ONLY",
     "path": "results/v7-static-schedule-cu-check-20260830/withdrawal-rollover-counter0.json",
@@ -206,7 +248,7 @@
     "executed": false,
     "computeUnits": null,
     "transactionBytes": 1031,
-    "reason": "fresh Pool SBF and runtime replay pending"
+    "reason": "byte-identical Linux SBFs are frozen; disposable Agave 4.2+ runtime replay remains pending"
   },
   "txv1Lifecycle": {
     "authoritativePreflightCommit": "c403c2f95734b271c3f5e0cae50d2a770640941a",

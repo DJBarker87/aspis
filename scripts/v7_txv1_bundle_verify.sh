@@ -30,6 +30,21 @@ fi
 readonly BUNDLE_DIR=$(cd "$1" && pwd)
 readonly MATERIALIZED=${2:-}
 readonly MANIFEST="$BUNDLE_DIR/bundle.json"
+readonly TEMPLATE_VERIFIER_SHA256="4ee9b4789533e049e2d9e1f43c84fa97f745a98151f9477ebd828de742b75e5c"
+readonly TEMPLATE_VERIFIER_BYTES=1700384
+readonly LINUX_VERIFIER_SHA256="c43960303f2d67606362dc09d74f3a7983dcfcbe0665984a385a0efa7ddc5e47"
+readonly LINUX_VERIFIER_BYTES=1812264
+readonly LINUX_POOL_SHA256="82606a25f00fd683b06186cdaae519b52c793d9a2f16f9d3f7c40c2b241685c2"
+readonly LINUX_POOL_BYTES=525888
+if [[ "$MATERIALIZED" == "--materialized" ]]; then
+  readonly EXPECTED_VERIFIER_SHA256=$LINUX_VERIFIER_SHA256
+  readonly EXPECTED_VERIFIER_BYTES=$LINUX_VERIFIER_BYTES
+  readonly MATERIALIZED_JSON=true
+else
+  readonly EXPECTED_VERIFIER_SHA256=$TEMPLATE_VERIFIER_SHA256
+  readonly EXPECTED_VERIFIER_BYTES=$TEMPLATE_VERIFIER_BYTES
+  readonly MATERIALIZED_JSON=false
+fi
 
 for command_name in cmp find jq openssl sort wc; do
   command -v "$command_name" >/dev/null 2>&1 \
@@ -65,7 +80,12 @@ cleanup() {
 }
 trap cleanup EXIT
 
-jq -e '
+jq -e \
+  --arg verifierSha "$EXPECTED_VERIFIER_SHA256" \
+  --argjson verifierBytes "$EXPECTED_VERIFIER_BYTES" \
+  --arg poolSha "$LINUX_POOL_SHA256" \
+  --argjson poolBytes "$LINUX_POOL_BYTES" \
+  --argjson materialized "$MATERIALIZED_JSON" '
   .schema == "aspis.v7.disposable-agave-txv1-bundle.v1" and
   .generatorSchema == "aspis.v7.deterministic-agave-bundle-generator.v1" and
   .programSourceCommit == "da77d5f5a22681200cceec8e90fc69ac2cc81ad8" and
@@ -75,14 +95,16 @@ jq -e '
   (.poolProgram | type == "string" and length > 0) and
   (.verifierProgram | type == "string" and length > 0) and
   .poolSbf == "sbf/aspis_pool.so" and
-  ((.sbfBindingComplete == false and .executionReady == false and
-      .poolSbfSha256 == null and .poolSbfBytes == null) or
-   (.sbfBindingComplete == true and .executionReady == true and
-      (.poolSbfSha256 | test("^[0-9a-f]{64}$")) and
-      (.poolSbfBytes | type == "number" and . > 0))) and
+  (if $materialized then
+    .sbfBindingComplete == true and .executionReady == true and
+    .poolSbfSha256 == $poolSha and .poolSbfBytes == $poolBytes
+   else
+    .sbfBindingComplete == false and .executionReady == false and
+    .poolSbfSha256 == null and .poolSbfBytes == null
+   end) and
   .verifierSbf == "sbf/aspis_verifier.so" and
-  .verifierSbfSha256 == "4ee9b4789533e049e2d9e1f43c84fa97f745a98151f9477ebd828de742b75e5c" and
-  .verifierSbfBytes == 1700384 and
+  .verifierSbfSha256 == $verifierSha and
+  .verifierSbfBytes == $verifierBytes and
   .sbfFilesIncludedInTemplate == false and
   .warpSlot == 150 and
   .computeUnitCeiling == 1300000 and

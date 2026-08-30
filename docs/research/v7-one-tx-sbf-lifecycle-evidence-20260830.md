@@ -14,6 +14,12 @@
 > replay uses the separate Linux x86_64 inventory frozen in
 > `release/v7-one-tx-candidate-preflight-v1/`.
 
+> **Later Linux derivation:** capped two-copy builds at `da77d5f5` produced
+> byte-identical Linux Pool `82606a25...` (525,888 bytes) and verifier
+> `c4396030...` (1,812,264 bytes). The active status is in
+> `v7-one-tx-agave-fixture-freeze-20260830.md`; the `4ee9...` verifier below is
+> preserved only as the historical Darwin/runtime baseline.
+
 Date: 2026-08-30
 
 Status: reproducibility inputs frozen and replay rail implemented; Linux dual
