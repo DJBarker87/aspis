@@ -1,0 +1,34 @@
+V7 Tag-73 generated packed-reader padding bridge
+Date: 2026-08-30
+
+Source:
+  proof/V7Tag73GeneratedPackedReaderBridge.lean
+
+Principal results:
+  new_success_exposes_padding_validation
+  padding_validation_success_last_byte_lt_16
+  new_success_packed_section_padding_zero
+
+The final theorem starts from literal translated
+V6FixedFieldReader.new success and proves that the exact 9,936-byte packed
+section satisfies PackedFixedPaddingZero. This is the parser-side uniqueness
+condition for the unused high nibble of byte 9,935.
+
+NUC replay:
+  host: nuc.local
+  systemd unit: aspis-v7-packed-reader-try14.scope
+  invocation: dd5a996312324712a2206694ab8dc69c
+  MemoryHigh: 12G
+  MemoryMax: 16G
+  MemorySwapMax: 0
+  exit status: 0
+  wall: 4.01 seconds
+  peak RSS: 7,105,688 KiB
+  swaps: 0
+
+#print axioms for all three principal results:
+  propext
+  Classical.choice
+  Quot.sound
+
+No sorry, admit, sorryAx, native_decide, or project-specific axiom is used.
