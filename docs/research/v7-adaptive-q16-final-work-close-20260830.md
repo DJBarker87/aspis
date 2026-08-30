@@ -360,6 +360,8 @@ lake env lean AspisFormal/K1/V7Tag73ExactFinalWorkPairRootOrder.lean
 lake env lean AspisFormal/K1/V7Tag73IndexedAlignedRecordReplay.lean
 lake env lean AspisFormal/K1/V7Tag73ExactFinalWorkPairControllerCompletion.lean
 lake env lean AspisFormal/K1/V7Tag73CausalMachineLabeledTraceRouting.lean
+lake env lean AspisFormal/K1/V7Tag73IndexedControllerLabeledRecords.lean
+lake env lean AspisFormal/K1/V7Tag73ExactCandidateLabeledRootRouting.lean
 ```
 
 Observed focused checks:
@@ -391,6 +393,8 @@ Observed focused checks:
 | segment-stable aligned controller replay | 0 | 4.00 s | 5,665,554,432 B |
 | exact accepted pair controller completion | 0 | 4.04 s | 5,689,180,160 B |
 | finite pre-answer-labelled trace routing | 0 | 4.00 s | 5,690,392,576 B |
+| indexed controller record labelling | 0 | 3.74 s | 5,662,851,072 B |
+| exact accepted root/router routing bridge | 0 | 4.30 s | 5,677,760,512 B |
 
 All reported theorem axiom sets are subsets of:
 
@@ -436,3 +440,20 @@ chronology.  It introduces no randomness, independence, trace-cover, or
 source-faithfulness premise.  The remaining Tag-73 work is now the specific
 label classification of the accepted final-work/q16 trace and the existing
 residual-capacity instantiation, rather than another router semantics proof.
+
+`V7Tag73IndexedControllerLabeledRecords.lean` then generates those labels
+directly from actor-tagged scheduler records and the literal indexed
+controller state.  `V7Tag73ExactCandidateLabeledRootRouting.lean` specializes
+the construction to the accepted adversary-then-verifier root, proves the
+labelled answers are the exact prefix of the compiler router tape, and gives
+the operational endpoint:
+
+```text
+exact_candidate_router_routes_selected_root_answer
+```
+
+That theorem concludes a real `causalRoutedAnswer? = some literalAnswer` for
+the exact exposure-trial router.  Its remaining premises are now finite and
+source-specific: root-label noduplication, the root residual count, and the
+selected controller label.  No further tape-cast, scheduler-trace, or router
+semantics gap remains behind those premises.

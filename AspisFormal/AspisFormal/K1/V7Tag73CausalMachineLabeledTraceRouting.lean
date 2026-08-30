@@ -124,6 +124,20 @@ theorem residual_trace_steps_append
       cases label <;> simp [residualTraceSteps, ih, Nat.add_assoc,
         Nat.add_comm]
 
+/-- Every chronological step is either one named destination or one residual
+destination. -/
+theorem labeled_trace_length_split
+    {Output Slot : Type} :
+    ∀ steps : List (Option Slot × Output),
+      steps.length =
+        (namedTraceSlots steps).length + residualTraceSteps steps := by
+  intro steps
+  induction steps with
+  | nil => rfl
+  | cons head tail ih =>
+      rcases head with ⟨label, answer⟩
+      cases label <;> simp [namedTraceSlots, residualTraceSteps, ih] <;> omega
+
 /-- Split a labelled execution at any list decomposition. -/
 theorem machine_labeled_trace_append_split
     {Output Slot : Type} {State : Type u}
@@ -445,6 +459,7 @@ theorem machine_labeled_trace_routes_named_answer
 #print axioms residualTraceSteps
 #print axioms named_trace_slots_append
 #print axioms residual_trace_steps_append
+#print axioms labeled_trace_length_split
 #print axioms machine_labeled_trace_append_split
 #print axioms machine_labeled_trace_constructs_router_prefix
 #print axioms machine_labeled_trace_routes_named_answer
