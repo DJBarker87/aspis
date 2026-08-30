@@ -1,0 +1,75 @@
+{
+  "schema": "aspis.v7.agave-txv1-runtime-gate-run.v1",
+  "date": "2026-08-30",
+  "repositoryInputHead": "786ee5e30e8702da819ffe3ffdcfab53853971fe",
+  "host": "nuc.local",
+  "officialRelease": {
+    "tag": "v4.2.0",
+    "commit": "ac82b5d438b0c2303dc7169f52c748977713a111",
+    "tree": "f73e1b374fb2cc492783f3c154d0820310329377",
+    "githubCommitVerification": "valid",
+    "linuxArchiveBytes": 86392960,
+    "linuxArchiveSha256": "1f5eb13bcf3694dbd3cf634602aee5edcf8eab519acac75778391c979c3002b0"
+  },
+  "executedScripts": {
+    "scripts/v7_agave_v42_runtime_prepare.sh": "a4d2703440c10e08937ab5c0666236109e3f0a64edba04159f219d04d937041b",
+    "scripts/v7_agave_txv1_runtime_readiness.sh": "16927f11554d778ecebc0eb48dfcaa9b63579d0bfed63f4fc1dd74ae4967e2aa"
+  },
+  "acquisition": {
+    "unit": "aspis-v7-agave-v420-acquire-r1.service",
+    "invocationId": "44151f266cd44f0188831375b4f6c8b7",
+    "startedAt": "2026-08-30T18:32:33Z",
+    "endedAt": "2026-08-30T18:32:51Z",
+    "wallSeconds": 17.43,
+    "exitStatus": 0,
+    "memoryHighBytes": 9663676416,
+    "memoryMaxBytes": 12884901888,
+    "memorySwapMaxBytes": 0,
+    "systemdCgroupMemoryPeakBytes": 376770560,
+    "gnuTimeMaximumResidentSetKiB": 18128,
+    "memorySwapPeakBytes": 0,
+    "builtFromSource": false,
+    "downloadedOfficialArtifact": true
+  },
+  "materializedRuntime": {
+    "solanaVersion": "solana-cli 4.2.0 (src:ac82b5d4; feat:21b0d33a, client:Agave)",
+    "solanaBytes": 32607160,
+    "solanaSha256": "b6134ccddcb3456e49c0c15bc028c2902184a8fef6f6e6e665d9f8ae5bea8d10",
+    "solanaTestValidatorVersion": "solana-test-validator 4.2.0 (src:ac82b5d4; feat:21b0d33a, client:Agave)",
+    "solanaTestValidatorBytes": 75151616,
+    "solanaTestValidatorSha256": "78ee817e9a4fade8a6606ee663060d39728017c79ebac7a7cd35b2a985066f6a",
+    "runtimeEvidenceInventorySha256": "c6b03b995f387cb37e6007eb165964db61fbdef9c2887a27922903ac6c3cbd71"
+  },
+  "readiness": {
+    "unit": "aspis-v7-agave-v420-readiness-r1.service",
+    "invocationId": "0df9aaffa4a3434f801e45eeb880f037",
+    "startedAt": "2026-08-30T18:33:10Z",
+    "endedAt": "2026-08-30T18:33:11Z",
+    "wallSeconds": 1.02,
+    "exitStatus": 0,
+    "memoryHighBytes": 9663676416,
+    "memoryMaxBytes": 12884901888,
+    "memorySwapMaxBytes": 0,
+    "directCgroupMemoryPeakBytesWhileValidatorLive": 434610176,
+    "gnuTimeMaximumResidentSetKiB": 438756,
+    "memorySwapPeakBytes": 0,
+    "rpcCoreVersion": "4.2.0",
+    "rpcFeatureSet": 565236538,
+    "genesisHash": "3TBu9RgYSgZKS5VEHJkWbysNtLunwc9kqvy5nuDEVnh9",
+    "finalizedSlot": 150,
+    "loopbackOnly": true,
+    "txv1FeatureId": "txv1aq4pp281K9um3tnPgkfX8UqtFT6wcVW3hNezGLL",
+    "txv1FeatureDataHex": "010000000000000000",
+    "txv1FeatureStatus": "active since epoch 0 at slot 0",
+    "maximumTxv1SerializedBytes": 4096,
+    "readinessEvidenceInventorySha256": "15f2a78aac10bb3e191fb4630beaf1080aeb085c9b742fd59ead85de4f90d94b"
+  },
+  "authorizationBoundary": {
+    "aspisProgramsLoaded": 0,
+    "programsDeployed": 0,
+    "transactionsSigned": 0,
+    "transactionsSubmitted": 0,
+    "lifecycleCasesExecuted": 0
+  },
+  "outcome": "OFFICIAL_AGAVE_V4_2_TXV1_RUNTIME_READY_LIFECYCLE_PENDING"
+}

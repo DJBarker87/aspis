@@ -1,0 +1,17 @@
+solana-release/
+solana-release/.crates.toml
+solana-release/version.yml
+solana-release/.crates2.json
+solana-release/bin/
+solana-release/bin/solana-stake-accounts
+solana-release/bin/deps/
+solana-release/bin/solana-test-validator
+solana-release/bin/agave-install-init
+solana-release/bin/agave-install
+solana-release/bin/cargo-test-sbf
+solana-release/bin/solana
+solana-release/bin/spl-token
+solana-release/bin/solana-tokens
+solana-release/bin/solana-keygen
+solana-release/bin/agave-ledger-tool
+solana-release/bin/cargo-build-sbf

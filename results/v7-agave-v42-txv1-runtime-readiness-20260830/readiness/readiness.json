@@ -1,0 +1,43 @@
+{
+  "schema": "aspis.v7.agave-txv1-runtime-readiness.v1",
+  "release": {
+    "tag": "v4.2.0",
+    "commit": "ac82b5d438b0c2303dc7169f52c748977713a111",
+    "solanaVersion": "solana-cli 4.2.0 (src:ac82b5d4; feat:21b0d33a, client:Agave)",
+    "solanaSha256": "b6134ccddcb3456e49c0c15bc028c2902184a8fef6f6e6e665d9f8ae5bea8d10",
+    "validatorVersion": "solana-test-validator 4.2.0 (src:ac82b5d4; feat:21b0d33a, client:Agave)",
+    "validatorSha256": "78ee817e9a4fade8a6606ee663060d39728017c79ebac7a7cd35b2a985066f6a"
+  },
+  "rpc": {
+    "healthy": true,
+    "coreVersion": "4.2.0",
+    "featureSet": 565236538,
+    "genesisHash": "3TBu9RgYSgZKS5VEHJkWbysNtLunwc9kqvy5nuDEVnh9",
+    "finalizedSlot": 150,
+    "boundToLoopback": true
+  },
+  "txv1": {
+    "featureId": "txv1aq4pp281K9um3tnPgkfX8UqtFT6wcVW3hNezGLL",
+    "featureOwner": "Feature111111111111111111111111111111111111",
+    "featureDataHex": "010000000000000000",
+    "activeAtGenesis": true,
+    "transactionVersion": 1,
+    "maximumSerializedBytes": 4096,
+    "capabilitySource": "official Agave v4.2.0 runtime plus active feature account"
+  },
+  "cgroup": {
+    "path": "/user.slice/user-1000.slice/user@1000.service/app.slice/aspis-v7-agave-v420-readiness-r1.service",
+    "memoryHighBytes": 9663676416,
+    "memoryMaxBytes": 12884901888,
+    "memorySwapMaxBytes": 0,
+    "memoryCurrentBytesAtCapture": 429367296,
+    "memoryPeakBytesAtCapture": 434610176,
+    "memorySwapCurrentBytesAtCapture": 0,
+    "memorySwapPeakBytesAtCapture": 0
+  },
+  "lifecycleSuiteExecuted": false,
+  "programDeployed": false,
+  "transactionSigned": false,
+  "transactionSubmitted": false,
+  "readyForMaterializedElevenCaseSimulation": true
+}
