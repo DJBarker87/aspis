@@ -1,0 +1,94 @@
+translated_payer_and_system_success_is_exact:
+  propext
+  Classical.choice
+  Quot.sound
+
+translated_create_zero_plan_is_exact:
+  propext
+  Classical.choice
+  Quot.sound
+
+translated_dusted_plan_is_exact:
+  propext
+  Classical.choice
+  Quot.sound
+
+translated_program_owned_plan_is_exact:
+  propext
+  Classical.choice
+  Quot.sound
+
+translated_rejected_atomic_marker_terminal_is_exact_prestate:
+  propext
+  Classical.choice
+  Quot.sound
+
+translated_accepted_atomic_marker_terminal_is_exact:
+  propext
+  Classical.choice
+  Quot.sound
+
+translated_create_account_reservation_is_exact:
+  propext
+  Classical.choice
+  Quot.sound
+
+translated_transfer_allocate_assign_reservation_is_exact:
+  propext
+  Classical.choice
+  Quot.sound
+
+translated_allocate_assign_reservation_is_exact:
+  propext
+  Classical.choice
+  Quot.sound
+
+translated_already_program_owned_reservation_is_exact:
+  propext
+  Classical.choice
+  Quot.sound
+
+translated_accepted_create_account_path_is_exact:
+  propext
+  Classical.choice
+  Quot.sound
+
+translated_accepted_transfer_allocate_assign_path_is_exact:
+  propext
+  Classical.choice
+  Quot.sound
+
+translated_accepted_allocate_assign_path_is_exact:
+  propext
+  Classical.choice
+  Quot.sound
+
+translated_accepted_already_program_owned_path_is_exact:
+  propext
+  Classical.choice
+  Quot.sound
+
+translated_spent_replay_is_exact_and_atomic:
+  propext
+  Classical.choice
+  Quot.sound
+
+translated_accepted_marker_is_consumed_exactly:
+  propext
+  Classical.choice
+  Quot.sound
+
+translated_successful_reservation_path_is_exactly_classified:
+  propext
+  Classical.choice
+  Quot.sound
+
+translated_accepted_atomic_has_one_exact_marker_lifecycle:
+  propext
+  Classical.choice
+  Quot.sound
+
+Complete union:
+  propext
+  Classical.choice
+  Quot.sound

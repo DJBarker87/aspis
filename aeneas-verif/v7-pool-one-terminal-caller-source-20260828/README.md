@@ -95,6 +95,24 @@ proved by the earlier source bridge at `3c390c38`; this bundle proves successful
 authentication requires that capability and every terminal write preserves
 it. Ownership alone is not treated as the invariant.
 
+## Fresh marker lifecycle refinement at `da77d5f5`
+
+The original generated caller model begins its writeback seam with a
+program-owned zero marker. Production now constructs that state atomically
+from one of four exact entry shapes immediately before verifier CPI. The
+focused successor bundle
+`../v7-pool-nullifier-marker-source-20260830/` discharges that seam without
+changing this historical generated model. It proves the payer/System Program
+authentication, canonical Rent schedule, create versus dusted
+transfer/allocate/assign paths, post-CPI replan, exact verifier/core/consume
+order, failure rollback and replay rejection. Its four path statements remain
+separate rather than treating marker preparation as an unchecked abstraction.
+
+`source-audit.sh` is refreshed to the `da77d5f5` production hashes and ordering.
+The hashes and replay result originally recorded in this directory remain the
+historical `2026-08-28` evidence for its generated caller; current marker
+lifecycle evidence lives in the successor bundle.
+
 ## Explicit trust and refinement boundaries
 
 - SHA-256 and Poseidon primitive behavior and the selected Tag-73 verifier's
