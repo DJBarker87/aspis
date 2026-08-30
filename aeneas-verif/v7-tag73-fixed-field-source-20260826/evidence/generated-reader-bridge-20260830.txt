@@ -1,0 +1,26 @@
+V7 Tag-73 literal generated-reader bridge
+Date: 2026-08-30
+Host: nuc.local
+Unit: aspis-v7-reader-bridge-final2
+MemoryHigh: 22G
+MemoryMax: 28G
+MemorySwapMax: 0
+Result: PASS
+Wall: 3.07 s
+Peak RSS: 2,514,604 KiB
+Swaps: 0
+
+Principal theorems:
+next_qm31_success_remaining_and_canonical
+new_success_exact_length_and_count
+finish_success_remaining_zero
+complete_successful_trace_has_exact_641_canonical_values
+production_root_success_exposes_exact_fixed_reader
+
+Every printed theorem depends on exactly:
+propext
+Classical.choice
+Quot.sound
+
+No sorry, sorryAx, project-specific axiom, native_decide, or trace/canonicality
+premise is present in these compiled theorems.

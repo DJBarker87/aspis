@@ -34,3 +34,18 @@ Git tree `de8340302a8a14448e47e2a878ac726ed29228b2`.
 The remaining source task is theorem construction, not translation: invert
 literal successful production-root control flow to construct the exact
 641-QM31 packed-field trace and compose it with the frozen K1.3 projection.
+
+The first inversion layer is now kernel checked in
+`V7Tag73GeneratedReaderBridge.lean`. Literal production-root success exposes
+the exact initialized reader; initialization fixes the packed section at
+9,936 bytes and the remaining count at 641. Every literal successful reader
+step decrements that count by exactly one and proves all four returned limbs
+strictly below `P`; successful finish proves count zero. Consequently any
+complete exposed trace contains exactly 641 canonical QM31 values. The focused
+run passed in 3.07 seconds at 2,514,604 KiB RSS with zero swap, and every
+printed theorem reports exactly `propext`, `Classical.choice`, and
+`Quot.sound`.
+
+Still missing is the middle control-flow inversion that constructs the
+complete trace from all nested semantic, point-claim, relation and final-vector
+calls, followed by the exact packed-bit/value and K1.3 projection composition.
