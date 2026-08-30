@@ -280,6 +280,14 @@ the selected SHA input before its answer is consumed.  This eliminates the
 previous gap between root-table membership and an executable controller
 coordinate; pair completion and live-slot preservation remain below.
 
+`V7Tag73ExactFinalWorkPairRootOrder.lean` proves that the accepted final-work
+query and its nonce-absorb query have one of the two strict orders in the
+combined adversary/verifier root chronology.  A second record-level theorem
+retains the actual actor on each first creation, so the result composes
+directly with the production cursor.  The proof uses exact source membership
+and distinct deployed encodings, not a retrospective raw-coordinate role
+classifier.
+
 ## Exact remaining boundary
 
 The production/source layer must now instantiate the counted finite inventory
@@ -334,6 +342,7 @@ lake env lean AspisFormal/K1/V7Tag73ExactFinalWorkEarliestExposure.lean
 lake env lean AspisFormal/K1/V7Tag73IndexedControllerTraceAlignment.lean
 lake env lean AspisFormal/K1/V7Tag73ExactCompilerFinalWorkControllerAnchor.lean
 lake env lean AspisFormal/K1/V7Tag73ExactRootControllerCoordinateAlignment.lean
+lake env lean AspisFormal/K1/V7Tag73ExactFinalWorkPairRootOrder.lean
 ```
 
 Observed focused checks:
@@ -361,6 +370,7 @@ Observed focused checks:
 | exact accepted-record selector | 0 | 4.12 s | 5,647,335,424 B |
 | accepted source to exact controller anchor | 0 | 3.92 s | 5,634,048,000 B |
 | exact root lookup/controller coordinate alignment | 0 | 3.92 s | 5,661,720,576 B |
+| exact final-work pair root order | 0 | 3.84 s | 5,659,705,344 B |
 
 All reported theorem axiom sets are subsets of:
 
