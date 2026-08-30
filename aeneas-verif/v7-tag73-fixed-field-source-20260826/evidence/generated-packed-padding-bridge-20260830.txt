@@ -32,3 +32,30 @@ NUC replay:
   Quot.sound
 
 No sorry, admit, sorryAx, native_decide, or project-specific axiom is used.
+
+Packed refill/geometry extension:
+  packed_next_success_exposes_exact_refill
+  new_success_has_initial_packed_reader_geometry
+  packed_next_success_preserves_reader_geometry
+
+The extension starts from literal translated `PackedM31Reader.next` success.
+It derives a finite trace of the generated refill loop, proves each continue
+edge consumes exactly one real source byte, proves the exact three-or-four
+byte refill count, exposes the low-31-bit mask and post-read shift, and
+preserves the closed byte-index/buffered-bit formula at the next ordinal.
+
+NUC replay:
+  systemd unit: aspis-v7-packed-reader-try39.scope
+  invocation: be4a91f15c994f819eb5a15c65569556
+  MemoryHigh: 12G
+  MemoryMax: 16G
+  MemorySwapMax: 0
+  exit status: 0
+  wall: 4.60 seconds
+  peak RSS: 7,147,716 KiB
+  swaps: 0
+
+#print axioms for the public extension theorems:
+  propext
+  Classical.choice
+  Quot.sound
