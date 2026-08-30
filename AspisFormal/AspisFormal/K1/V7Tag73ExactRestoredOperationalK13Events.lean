@@ -1,4 +1,5 @@
 import AspisFormal.K1.V7Tag73ExactRestoredOperationalStages
+import AspisFormal.K1.V7Tag73ExactFixedK13K14FailureReduction
 
 /-!
 # Exact restoration-wide K1.3 event ledger
@@ -24,6 +25,8 @@ open AspisK1.V7Tag73ExactCompilerResources
 open AspisK1.V7Tag73ExactPlainRomRun
 open AspisK1.V7Tag73ExactSourceAcceptanceModel
 open AspisK1.V7Tag73ExactFixedK12MerkleClassifier
+open AspisK1.V7Tag73ExactFixedK13K14Classifier
+open AspisK1.V7Tag73ExactFixedK13K14FailureReduction
 open AspisK1.V7Tag73ExactRestoredOperationalK13Classifier
 open AspisK1.V7Tag73ExactRestoredOperationalStages
 open AspisK1.V7Tag73RestoredDerivedK13View
@@ -160,6 +163,37 @@ def exactTag73RestoredOperationalK13ListCapEvent
         InitialListCapFailure (decoderCodeEncoders decoder)
           (parsedK13Transcript words (restoredOperationalK13View data))
 
+/-- The restored list-cap event is empty for the exact production initial
+encoder.  This is the same proved overlap argument as the fixed-root case and
+does not consume a probability term. -/
+theorem exact_restored_operational_k13_list_cap_event_eq_empty
+    {HiddenTape TapeIdentity Observation Statement Payload Witness : Type}
+    {parameters : ExactCompilerResourceParameters}
+    {transitionFuel : Nat}
+    {configuration : ExactPlainRomWitnessConfiguration HiddenTape TapeIdentity
+      Observation Statement Tag73K12ParsedProof Payload Witness parameters}
+    {projection : AcceptedTapeProjection Statement Tag73K12ParsedProof Payload}
+    {fixedInstance : PublicInstance Statement}
+    {decoder : ExactDecoderInstantiation QM31Exact}
+    (initialEncoderExact : decoder.initialEncoder =
+      AspisPool.V7C1ConcreteProjectionBinding.exactInitialEncoder) :
+    exactTag73RestoredOperationalK13ListCapEvent transitionFuel configuration
+        projection fixedInstance decoder = ∅ := by
+  ext sample
+  constructor
+  · rintro ⟨input, node, member, done, words, failure⟩
+    have overlap : InitialEncoderOverlapCap (decoderCodeEncoders decoder) := by
+      simpa [exactK13Encoders] using
+        exact_k13_initial_encoder_overlap_cap decoder initialEncoderExact
+    exact False.elim
+      ((initial_list_cap_failure_impossible_of_overlap
+        (decoderCodeEncoders decoder)
+        (parsedK13Transcript words
+          (restoredOperationalK13View
+            ((exact_restored_operational_k13_provider input).data node member
+              done))) overlap) failure)
+  · simp
+
 /-- Complete literal K1.2/K1.3 failure ledger for a restored node. -/
 def exactTag73RestoredOperationalK13CompleteEvent
     {HiddenTape TapeIdentity Observation Statement Payload Witness : Type}
@@ -241,6 +275,7 @@ theorem exact_restored_stages_k13_error_subset_complete
   exact exact_restored_operational_k13_failure_subset_complete
 
 #print axioms exactTag73RestoredOperationalK13NodeEvent
+#print axioms exact_restored_operational_k13_list_cap_event_eq_empty
 #print axioms exact_restored_operational_k13_failure_subset_complete
 #print axioms exact_restored_stages_k13_error_subset_complete
 
