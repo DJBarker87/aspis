@@ -43,24 +43,65 @@ predicate:
 `V7Tag73AdaptiveQ16TrialAccounting.lean` proves:
 
 - `ExactCompilerCausalFinalWorkQ16Trials.event_probability_le_product`; and
-- `ExactCompilerCausalFinalWorkQ16Trials.failure_union_probability_le_one_forest`.
+- `ExactCompilerCausalFinalWorkQ16Trials.failure_union_probability_le_one_forest`;
+- `work_qualified_q16_trial_union_probability_le_card_mul`, the honest raw
+  bound for an arbitrary finite number of trials; and
+- the exposure-indexed specializations
+  `failure_union_probability_le_exposure_mul` and
+  `failure_union_probability_le_one_forest`.
 
 The latter theorem says that at most `2^34` genuinely selectable, jointly
 work-qualified causal trials have union probability at most the original raw
 one-forest q16 error. This is not a reporting-time work normalization and it
 does not divide an already-stated soundness claim by work.
 
+The production-facing conservative inventory is now fixed to
+
+```text
+Trial = Fin (unifiedFull256ExposureCap parameters).
+```
+
+Without a tighter source theorem, its exact raw bound is
+
+```text
+F * q16SemanticOneForestRawError / 2^34.
+```
+
+Recovering the frozen one-forest term therefore requires either the explicit
+one-work-unit release condition `F <= 2^34`, or a proved source-specific
+trial inventory of cardinality at most `2^34`.  A verifier-only work-query
+count is not silently substituted for `F`, because an adversary can be the
+first party to expose a coordinate later consumed by final work or q16.
+
+`V7Tag73IndexedExposureCausalRouter.lean` supplies the operational counted
+router used by the remaining source cover:
+
+- its state carries the literal full-256 exposure ordinal, exact production
+  `UnifiedExposureCursor`, and finite protocol memory;
+- the slot is chosen from that complete state before the current answer is
+  visible;
+- the ordinal, production cursor, and protocol memory advance exactly once
+  after the answer; and
+- `exactCompilerIndexedFinalWorkQ16Router` compiles this controller into the
+  exact lossless 513-slot coordinate router consumed by the product theorem.
+
+This is a constructor, not a conclusion-shaped trace premise: the remaining
+Tag-73 layer must instantiate its memory and prove the accepted execution is
+covered.
+
 ## Exact remaining boundary
 
-The production/source layer must now construct the finite trial inventory and
-prove its cover:
+The production/source layer must now instantiate the counted finite inventory
+and prove its cover:
 
-1. enumerate every genuinely selectable final-work/q16 transcript trial;
+1. define the final-work/nonce/q16 grammar and controller memory at each
+   conservative exposure index;
 2. route the first exposure of its final-work digest and 512 q16 blocks,
    including adversary-prequery/cache-hit executions;
 3. prove the router uses distinct chronological fresh-answer occurrences;
 4. prove the accepted production schedule is covered by one trial; and
-5. prove the number of selectable trials is at most `2^34`.
+5. either prove the selectable subinventory has cardinality at most `2^34`,
+   or retain the exact general `F * p / 2^34` raw term.
 
 No probability-product or per-trial independence premise remains once that
 trace object is constructed.
@@ -78,6 +119,7 @@ cd AspisFormal
 lake env lean AspisFormal/K1/V7Tag73FinalWorkDigestProbability.lean
 lake env lean AspisFormal/K1/V7Tag73CausalQ16FinalWorkProbability.lean
 lake env lean AspisFormal/K1/V7Tag73AdaptiveQ16TrialAccounting.lean
+lake env lean AspisFormal/K1/V7Tag73IndexedExposureCausalRouter.lean
 ```
 
 Observed focused checks:
@@ -87,6 +129,7 @@ Observed focused checks:
 | final-work digest probability | 0 | 4.22 s | 5,521,981,440 B |
 | causal joint work/q16 probability | 0 | 4.41 s | 5,567,283,200 B |
 | adaptive finite-trial accounting | 0 | 19.94 s | 5,573,836,800 B |
+| indexed production-cursor router | 0 | 4.0 s | not separately sampled |
 
 All reported theorem axiom sets are subsets of:
 

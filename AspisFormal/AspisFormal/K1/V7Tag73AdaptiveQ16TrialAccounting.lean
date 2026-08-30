@@ -170,16 +170,16 @@ work factor and there are at most `2^34` trials, their finite union is still
 bounded by the one-forest q16 error.  The explicit `perTrial` premise is the
 remaining causal work/q16 product theorem; it is not inferred from the q16
 router alone. -/
-theorem work_qualified_q16_trial_union_probability_le_one_forest
+theorem work_qualified_q16_trial_union_probability_le_card_mul
     {Sample Trial : Type} [Fintype Trial]
     (law : PMF Sample)
     (event : Trial → Set Sample)
     (perTrial : ∀ trial,
       law.toOuterMeasure (event trial) ≤
-        q16SemanticOneForestRawError / (2 : ENNReal) ^ 34)
-    (trialCap : Fintype.card Trial ≤ 2 ^ 34) :
+        q16SemanticOneForestRawError / (2 : ENNReal) ^ 34) :
     law.toOuterMeasure (⋃ trial, event trial) ≤
-      q16SemanticOneForestRawError := by
+      ((Fintype.card Trial : ENNReal) * q16SemanticOneForestRawError) /
+        (2 : ENNReal) ^ 34 := by
   calc
     law.toOuterMeasure (⋃ trial, event trial) ≤
         ∑ trial : Trial, law.toOuterMeasure (event trial) := by
@@ -193,6 +193,23 @@ theorem work_qualified_q16_trial_union_probability_le_one_forest
     _ = ((Fintype.card Trial : ENNReal) *
         q16SemanticOneForestRawError) / (2 : ENNReal) ^ 34 := by
       simp only [div_eq_mul_inv, mul_assoc]
+
+theorem work_qualified_q16_trial_union_probability_le_one_forest
+    {Sample Trial : Type} [Fintype Trial]
+    (law : PMF Sample)
+    (event : Trial → Set Sample)
+    (perTrial : ∀ trial,
+      law.toOuterMeasure (event trial) ≤
+        q16SemanticOneForestRawError / (2 : ENNReal) ^ 34)
+    (trialCap : Fintype.card Trial ≤ 2 ^ 34) :
+    law.toOuterMeasure (⋃ trial, event trial) ≤
+      q16SemanticOneForestRawError := by
+  calc
+    law.toOuterMeasure (⋃ trial, event trial) ≤
+        ((Fintype.card Trial : ENNReal) *
+        q16SemanticOneForestRawError) / (2 : ENNReal) ^ 34 := by
+      exact work_qualified_q16_trial_union_probability_le_card_mul law event
+        perTrial
     _ ≤ q16SemanticOneForestRawError := by
       rw [ENNReal.div_le_iff (by norm_num) (by norm_num)]
       have castTrialCap : (Fintype.card Trial : ENNReal) ≤
@@ -278,13 +295,84 @@ theorem ExactCompilerCausalFinalWorkQ16Trials.failure_union_probability_le_one_f
     (exactCompilerJointLaw hiddenLaw parameters) trials.event
     trials.event_probability_le_product trialCap
 
+/-! ## Literal compiler-exposure trial inventory -/
+
+/-- The conservative production trial type has one candidate for every
+full-256 coordinate on the exact compiler master tape.  A tighter source
+bridge may later prove that only a proper subset can begin a final-work/q16
+trial, but it must not replace this inventory by the verifier-only work-query
+count: an adversary may expose a matching coordinate before the verifier uses
+it. -/
+abbrev ExactCompilerExposureTrial
+    (parameters : ExactCompilerResourceParameters) :=
+  Fin (unifiedFull256ExposureCap parameters)
+
+theorem exact_compiler_exposure_trial_card
+    (parameters : ExactCompilerResourceParameters) :
+    Fintype.card (ExactCompilerExposureTrial parameters) =
+      unifiedFull256ExposureCap parameters := by
+  simp [ExactCompilerExposureTrial]
+
+/-- Exact specialization of the causal trial package to chronological master
+tape coordinates.  This removes an arbitrary caller-selected trial type from
+the production-facing boundary. -/
+abbrev ExactCompilerExposureIndexedFinalWorkQ16Trials
+    {HiddenTape : Type} [Fintype HiddenTape]
+    (parameters : ExactCompilerResourceParameters) :=
+  ExactCompilerCausalFinalWorkQ16Trials
+    (HiddenTape := HiddenTape)
+    (Trial := ExactCompilerExposureTrial parameters) parameters
+
+/-- If the complete compiler exposure budget fits the deployed final-work
+envelope, the exposure-indexed causal cover has the original one-forest raw
+q16 loss.  The source layer still has to construct the cover itself; the
+cardinality premise is now the exact `F` used by K1.6 rather than an opaque
+trial count. -/
+theorem
+    ExactCompilerExposureIndexedFinalWorkQ16Trials.failure_union_probability_le_exposure_mul
+    {HiddenTape : Type} [Fintype HiddenTape]
+    {hiddenLaw : PMF HiddenTape}
+    {parameters : ExactCompilerResourceParameters}
+    (trials : ExactCompilerExposureIndexedFinalWorkQ16Trials
+      (HiddenTape := HiddenTape) parameters) :
+    (exactCompilerJointLaw hiddenLaw parameters).toOuterMeasure
+        (⋃ trial, trials.event trial) ≤
+      ((unifiedFull256ExposureCap parameters : ENNReal) *
+        q16SemanticOneForestRawError) / (2 : ENNReal) ^ 34 := by
+  simpa [ExactCompilerExposureTrial] using
+    (work_qualified_q16_trial_union_probability_le_card_mul
+      (exactCompilerJointLaw hiddenLaw parameters) trials.event
+      trials.event_probability_le_product)
+
+/-- The one-forest release form is the exact exposure-indexed raw theorem
+under a one-work-unit (`F ≤ 2^34`) compiler budget. -/
+theorem
+    ExactCompilerExposureIndexedFinalWorkQ16Trials.failure_union_probability_le_one_forest
+    {HiddenTape : Type} [Fintype HiddenTape]
+    {hiddenLaw : PMF HiddenTape}
+    {parameters : ExactCompilerResourceParameters}
+    (trials : ExactCompilerExposureIndexedFinalWorkQ16Trials
+      (HiddenTape := HiddenTape) parameters)
+    (exposureCap : unifiedFull256ExposureCap parameters ≤ 2 ^ 34) :
+    (exactCompilerJointLaw hiddenLaw parameters).toOuterMeasure
+        (⋃ trial, trials.event trial) ≤ q16SemanticOneForestRawError := by
+  apply ExactCompilerCausalFinalWorkQ16Trials.failure_union_probability_le_one_forest
+    trials
+  simpa [ExactCompilerExposureTrial] using exposureCap
+
 end
 
 #print axioms ExactCompilerCausalQ16Trials.event_probability_le_semantic
 #print axioms ExactCompilerCausalQ16Trials.failure_union_probability_le
 #print axioms ExactCompilerCausalQ16Trials.covered_failure_probability_le
+#print axioms work_qualified_q16_trial_union_probability_le_card_mul
 #print axioms work_qualified_q16_trial_union_probability_le_one_forest
 #print axioms ExactCompilerCausalFinalWorkQ16Trials.event_probability_le_product
 #print axioms ExactCompilerCausalFinalWorkQ16Trials.failure_union_probability_le_one_forest
+#print axioms exact_compiler_exposure_trial_card
+#print axioms
+  ExactCompilerExposureIndexedFinalWorkQ16Trials.failure_union_probability_le_exposure_mul
+#print axioms
+  ExactCompilerExposureIndexedFinalWorkQ16Trials.failure_union_probability_le_one_forest
 
 end AspisK1.V7Tag73AdaptiveQ16TrialAccounting
