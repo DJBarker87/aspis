@@ -151,6 +151,7 @@ run_case() {
   local case_name=$1
   local case_json="$WORK_DIR/$case_name.case.json"
   local case_input_relative case_input expected_outcome expected_file_relative expected_file
+  local validator_account_file
   local ledger="$WORK_DIR/$case_name-ledger"
   local validator_log="$EVIDENCE_DIR/$case_name.validator.log"
   local -a validator_args
@@ -181,7 +182,20 @@ run_case() {
     [[ -f "$BUNDLE_DIR/$relative_path" ]] || fail "missing genesis account: $relative_path"
     [[ "$(shasum -a 256 "$BUNDLE_DIR/$relative_path" | awk '{print $1}')" == "$expected_sha" ]] \
       || fail "genesis account hash differs: $relative_path"
-    validator_args+=(--account "$address" "$BUNDLE_DIR/$relative_path")
+    # The frozen fixture deliberately uses the RPC account-value shape so its
+    # protected-state bytes can be compared directly.  Agave's genesis loader
+    # requires the CLI wrapper {pubkey, account}, even though --account already
+    # receives that address.  Wrap the byte-exact account value with only that
+    # authenticated address in a task-owned temporary copy; never rewrite or
+    # weaken the hash binding of the frozen fixture itself.
+    validator_account_file="$WORK_DIR/$case_name-genesis-$address.json"
+    jq --arg pubkey "$address" '. as $account | {pubkey: $pubkey, account: $account}' \
+      "$BUNDLE_DIR/$relative_path" >"$validator_account_file"
+    jq -e --arg pubkey "$address" \
+      '.pubkey == $pubkey and (.account | type == "object")' \
+      "$validator_account_file" >/dev/null \
+      || fail "temporary Agave account adapter lost its authenticated pubkey"
+    validator_args+=(--account "$address" "$validator_account_file")
   done < <(jq -r '.genesisAccounts[] | select(.loadAtGenesis) | [.address, .file, .fileSha256] | @tsv' "$case_json")
   while IFS=$'\t' read -r address relative_path expected_sha; do
     validate_bundle_relative_path "$relative_path"
