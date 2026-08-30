@@ -1,0 +1,155 @@
+{
+  "schema": "aspis.v7.one-tx-candidate-preflight.v1",
+  "status": "INPUTS_FROZEN_EXECUTION_EVIDENCE_INCOMPLETE",
+  "authorization": {
+    "build": true,
+    "localSimulationOnly": true,
+    "publicDevnetReadOnlyProbe": true,
+    "sign": false,
+    "submit": false,
+    "deploy": false,
+    "mainnet": false
+  },
+  "source": {
+    "commit": "bcd03b12293f2737dfa1da1436092a0a24a6ae24",
+    "tree": "bbdc231d9ef8e09c23292c5c6f5ba8cefc9f76bb",
+    "cargoLockBlob": "dedcbfac3e4726f759ba062aa26ae47f4bfa1512",
+    "cargoLockSha256": "25cae3f276bd5831785bdb25e204ce99213934e7fcec3f5a76a5d742a018426b",
+    "poolTree": "744c10710cd4b99c65fe3ef726b4d1c761d1f51c",
+    "verifierTree": "e7370c020cac1e51ca9e41092dcf6ecbf095bd99",
+    "lastPoolSourceCommit": "66ec9efe0464bc09addbb146d5ff8a4da5fec2fb",
+    "lastVerifierSourceCommit": "6702cfcc987e29381085039d9da8715dafbbfce8"
+  },
+  "toolchain": {
+    "host": "Linux x86_64",
+    "containerImage": null,
+    "containerNote": "No OCI image is asserted. Reproduction instead requires the exact 91-file platform-tools/SBF-SDK inventory frozen below and a capped cgroup-v2 Linux execution.",
+    "cargoBuildSbfVersion": "solana-cargo-build-sbf 2.3.0\nplatform-tools v1.48\nrustc 1.84.1",
+    "platformTools": "v1.48",
+    "platformRustc": "rustc 1.84.1-dev",
+    "architecture": "v0",
+    "frozenInventory": {
+      "path": "release/aspis-v5-tag67-frozen-candidate-v1/provenance/build-provenance.json",
+      "sha256": "70f037278f587754d5ef9713644e6ae7b6d7788d9f6c01153ac5da89939e9609",
+      "cargoBuildSbfSha256": "7f16d75bdd59bad56442ab89f9768280ea8f1e14a4fbd68ee8822ce735312f42",
+      "toolchainFileCount": 91
+    },
+    "requiredCgroup": {
+      "memoryHighBytesAtMost": 4294967296,
+      "memoryMaxBytesAtMost": 6442450944,
+      "memorySwapMaxBytes": 0
+    }
+  },
+  "programs": [
+    {
+      "name": "aspis-pool",
+      "manifest": "programs/aspis-pool/Cargo.toml",
+      "manifestSha256": "faf0bffabea687d358bd67ba510afc9038f97313a184564532c99cdea565b9c5",
+      "features": "v7-pair-forest-one-tx-candidate",
+      "noDefaultFeatures": true,
+      "output": "aspis_pool.so",
+      "expectedBytes": 524328,
+      "expectedSha256": "61f80ab33bff36b38716df944d7851a473be0ed065b2d57864082fd966ec8810",
+      "referenceEvidence": "results/v7-static-schedule-cu-check-20260830/withdrawal-rollover-counter0.json",
+      "referenceArtifactCheckedIn": false
+    },
+    {
+      "name": "aspis-verifier",
+      "manifest": "programs/aspis-verifier/Cargo.toml",
+      "manifestSha256": "6b3bc0b45b13a8a359f8c0515c7b5d0a71ff64199dd713df8a81c2faf3e2c774",
+      "features": "v7-pair-forest-one-tx-candidate",
+      "noDefaultFeatures": true,
+      "output": "aspis_verifier.so",
+      "expectedBytes": 1700384,
+      "expectedSha256": "4ee9b4789533e049e2d9e1f43c84fa97f745a98151f9477ebd828de742b75e5c",
+      "referenceEvidence": "results/v7-static-schedule-cu-check-20260830/withdrawal-rollover-counter0.json",
+      "referenceArtifact": "results/v7-static-schedule-cu-check-20260830/verifier/aspis_verifier.so",
+      "referenceArtifactCheckedIn": true
+    }
+  ],
+  "frozenFiles": [
+    {
+      "path": "Cargo.toml",
+      "sha256": "fe9ac71e9f67a0751279bbb77e9ff86b6e1c9d6eb8128cc3d419300e421fec16"
+    },
+    {
+      "path": "Cargo.lock",
+      "sha256": "25cae3f276bd5831785bdb25e204ce99213934e7fcec3f5a76a5d742a018426b"
+    },
+    {
+      "path": "scripts/v7_txv1_disposable_agave_simulate.sh",
+      "sha256": "72e9fa04aaa90671309a4ce9789d45a993a608f73881b18081f3554d0eca97fb"
+    },
+    {
+      "path": "scripts/v7_txv1_public_devnet_simulate.sh",
+      "sha256": "d19ccf081a5a82ee9a6a2fb1ef5b9f370f2dd082d1df12fe54468e4d456a859e"
+    },
+    {
+      "path": "results/v7-pair-forest-combined-rejection-litesvm-20260828/evidence/v7-pair-forest-transfer-strict-work-canonical-fixed.bin",
+      "sha256": "ce2aa9bcb2fa4eed70f0f1f09befd656e5146e2208bd590c07c348d7dff2cfe3"
+    },
+    {
+      "path": "results/v7-pair-forest-combined-rejection-litesvm-20260828/evidence/transfer-rollover-strict-canonical.bin",
+      "sha256": "c14ba12e58d0f4799046214331beb729483e8590602c12e44c89f837d1ee0b4b"
+    },
+    {
+      "path": "results/v7-pair-forest-combined-rejection-litesvm-20260828/evidence/withdrawal-same-page-counter0-strict-canonical.bin",
+      "sha256": "85cef2964031f2f9456be88f8ca10bcc19a90b29e61719fcc9d353fd7e6fa285"
+    },
+    {
+      "path": "results/v7-pair-forest-combined-rejection-litesvm-20260828/evidence/withdrawal-rollover-counter0-strict-canonical.bin",
+      "sha256": "4a1d72848124fcb139fcc134508fc43537000ec804d0cc0122b4bde4f87edc62"
+    },
+    {
+      "path": "results/v7-pair-forest-combined-rejection-litesvm-20260828/evidence/honest-unmined-payload.bin",
+      "sha256": "5fcb5668677b6b4eb81c0d964f84961576c3c05be55958fc4b495fea7f983645"
+    },
+    {
+      "path": "results/v7-static-schedule-cu-check-20260830/withdrawal-rollover-counter0.json",
+      "sha256": "91e362d86ad89c50b0325a20121bf92c52fbff2514adc6776b544178c5aac256"
+    },
+    {
+      "path": "results/v7-static-schedule-cu-check-20260830/verifier/aspis_verifier.so",
+      "sha256": "4ee9b4789533e049e2d9e1f43c84fa97f745a98151f9477ebd828de742b75e5c"
+    },
+    {
+      "path": "release/aspis-v5-tag67-frozen-candidate-v1/provenance/build-provenance.json",
+      "sha256": "70f037278f587754d5ef9713644e6ae7b6d7788d9f6c01153ac5da89939e9609"
+    }
+  ],
+  "latestMeasuredCombinedCase": {
+    "classification": "REAL_COMBINED_LITESVM_CURRENT_SOURCE_WORST_CASE",
+    "path": "results/v7-static-schedule-cu-check-20260830/withdrawal-rollover-counter0.json",
+    "operation": "withdrawal",
+    "history": "rollover",
+    "populatedPairs": 255,
+    "computeUnits": 1198735,
+    "transactionBytes": 997,
+    "computeUnitCeiling": 1300000,
+    "transactionByteCeilingExclusive": 4096
+  },
+  "txv1Lifecycle": {
+    "authoritativePreflightCommit": "c403c2f95734b271c3f5e0cae50d2a770640941a",
+    "runner": "scripts/v7_txv1_disposable_agave_simulate.sh",
+    "minimumAgaveCore": "4.2.0",
+    "txv1Feature": "txv1aq4pp281K9um3tnPgkfX8UqtFT6wcVW3hNezGLL",
+    "requiredCases": [
+      "transfer-same-page",
+      "transfer-rollover",
+      "withdrawal-same-page",
+      "withdrawal-rollover",
+      "stale-selected-lane-rejection",
+      "replay-nullifier-rejection",
+      "wrong-checkpoint-rejection",
+      "wrong-registry-release-rejection",
+      "malformed-proof-rejection",
+      "mutated-proof-rejection",
+      "failed-withdrawal-cpi-rollback"
+    ],
+    "caseBundleIncluded": false,
+    "agave42AvailableInRecordedLocalEnvironment": false,
+    "suiteExecutedForThisFreeze": false,
+    "publicDevnetExecutionActivationRequired": true,
+    "publicDevnetSubmissionAuthorized": false
+  }
+}

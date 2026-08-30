@@ -1,0 +1,31 @@
+{
+  "schema": "aspis.v7.public-devnet-txv1-capability-observation.v1",
+  "checkedAtUtc": "2026-08-30T16:43:31Z",
+  "sourceCommit": "bcd03b12293f2737dfa1da1436092a0a24a6ae24",
+  "network": "devnet",
+  "rpcUrl": "https://api.devnet.solana.com",
+  "probe": {
+    "schema": "aspis.v7.public-devnet-txv1-capability.v1",
+    "capability": {
+      "activation_slot": null,
+      "feature_account_present": false,
+      "feature_set": 2409014235,
+      "finalized_slot": 490505494,
+      "genesis_hash": "EtWTRABZaYq6iMfeYKouRu166VU2xqa1wcaWoxPkrZBG",
+      "max_transaction_version_one_rpc_supported": true,
+      "solana_core": "4.3.0-beta.2"
+    },
+    "executionActivated": false
+  },
+  "command": "NO_DNA=1 cargo run --quiet --manifest-path crates/aspis-pool-wallet-v1/Cargo.toml --features eight-lane-plumbing-v2 --example tx_v1_devnet_probe",
+  "exitStatus": 0,
+  "wallSeconds": 28.95,
+  "maximumResidentSetBytes": 14991360,
+  "swaps": 0,
+  "rpcMethodsAreReadOnly": true,
+  "simulationRequestSent": false,
+  "signed": false,
+  "submitted": false,
+  "deployed": false,
+  "decision": "FAIL_CLOSED_BEFORE_SIMULATION"
+}

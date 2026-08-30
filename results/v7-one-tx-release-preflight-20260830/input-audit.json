@@ -1,0 +1,28 @@
+{
+  "schema": "aspis.v7.one-tx-candidate-input-audit.v1",
+  "sourceCommit": "bcd03b12293f2737dfa1da1436092a0a24a6ae24",
+  "sourceTree": "bbdc231d9ef8e09c23292c5c6f5ba8cefc9f76bb",
+  "frozenFileHashesMatch": true,
+  "frozenToolchainInventoryMatches": true,
+  "programFeatureManifestsMatch": true,
+  "currentSourceMeasuredWorstCase": {
+    "classification": "REAL_COMBINED_LITESVM_CURRENT_SOURCE_WORST_CASE",
+    "poolSha256": "61f80ab33bff36b38716df944d7851a473be0ed065b2d57864082fd966ec8810",
+    "verifierSha256": "4ee9b4789533e049e2d9e1f43c84fa97f745a98151f9477ebd828de742b75e5c",
+    "computeUnits": 1198735,
+    "transactionBytes": 997,
+    "predicatesMatch": true
+  },
+  "requiredTxv1Cases": 11,
+  "reproducibleBuildExecuted": false,
+  "disposableAgaveSuiteExecuted": false,
+  "publicDevnetTransactionSigned": false,
+  "publicDevnetTransactionSubmitted": false,
+  "releaseReady": false,
+  "remainingGates": [
+    "two byte-identical clean Linux SBF builds from the frozen source",
+    "eleven-case Agave 4.2+ TxV1 simulation-only bundle and replay",
+    "public-devnet finalized TxV1 execution activation before any RPC simulation"
+  ],
+  "toolchainInventorySha256": "70f037278f587754d5ef9713644e6ae7b6d7788d9f6c01153ac5da89939e9609"
+}
