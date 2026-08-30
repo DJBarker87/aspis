@@ -2,6 +2,7 @@ import AspisFormal.K1.V7Tag73RestoredNodeK13Classifier
 import AspisFormal.K1.V7Tag73CanonicalOneFoldSchedule
 import AspisFormal.K1.V7Tag73FixedFieldMessageBridge
 import AspisFormal.K1.V7Tag73ExactParsedProofSourceBinding
+import AspisFormal.K1.V7Tag73Q16LedgerCertificate
 
 /-!
 # Verifier-derived K1.3 view for restored Tag-73 nodes
@@ -35,6 +36,7 @@ open AspisK1.V7Tag73ExactFixedK12MerkleClassifier
 open AspisK1.V7Tag73ParsedK13K14Classifier
 open AspisK1.V7Tag73ConcreteRestorationClient
 open AspisK1.V7Tag73RestoredNodeK13Classifier
+open AspisK1.V7Tag73Q16LedgerCertificate
 open AspisPool.AlgorithmicCircleDecoderV7
 open AspisPool.V7CoherentTraceExtraction
 open AspisPool.V7MerkleQueryExtractor
@@ -77,6 +79,46 @@ structure RestoredOperationalK13Data
     node.verifierFinalState.current.q16Candidates =
       priorCandidates ++
         [decodedScheduleRecord selectedCounter selectedSchedule]
+
+/-- Repackage the data's q16 fields as the intrinsic selected-ledger
+certificate for its immutable terminal snapshot. -/
+def RestoredOperationalK13Data.selectedLedgerCertificate
+    {Statement Payload : Type*}
+    {environment : FutureFreeEnvironment}
+    {node : RestoredK13Node Statement Payload}
+    (data : RestoredOperationalK13Data environment node) :
+    SelectedQ16LedgerCertificate environment
+      node.verifierFinalState.current where
+  priorCandidates := data.priorCandidates
+  selectedCounter := data.selectedCounter
+  selectedSchedule := data.selectedSchedule
+  priorHistory := data.priorHistory
+  selectedCompact := data.selectedCompact
+  ledgerExact := data.candidateLedgerExact
+
+/-- Canonical fixed-field decoding is functional.  Thus the disclosed-final
+message does not depend on which existential decoder witness was selected. -/
+theorem restored_operational_k13_data_decoded_unique
+    {Statement Payload : Type*}
+    {environment : FutureFreeEnvironment}
+    {node : RestoredK13Node Statement Payload}
+    (left right : RestoredOperationalK13Data environment node) :
+    left.decoded = right.decoded := by
+  funext index
+  exact Option.some.inj ((left.fixedDecode index).symm.trans
+    (right.fixedDecode index))
+
+/-- The selected counter and schedule are fixed by the snapshot ledger, not
+by the classical certificate choice used by the source provider. -/
+theorem restored_operational_k13_data_selected_unique
+    {Statement Payload : Type*}
+    {environment : FutureFreeEnvironment}
+    {node : RestoredK13Node Statement Payload}
+    (left right : RestoredOperationalK13Data environment node) :
+    left.selectedCounter = right.selectedCounter ∧
+      left.selectedSchedule = right.selectedSchedule := by
+  exact selected_q16_ledger_certificate_selected_unique
+    left.selectedLedgerCertificate right.selectedLedgerCertificate
 
 /-- The corrected proof view: parser-owned openings, canonically decoded
 fixed fields, and verifier-owned challenge/query data. -/
@@ -316,6 +358,8 @@ theorem restored_operational_query_event_exposes_selected_bad_set
     selectedMember, allBad⟩
 
 #print axioms restored_operational_view_queries
+#print axioms restored_operational_k13_data_decoded_unique
+#print axioms restored_operational_k13_data_selected_unique
 #print axioms classifyRestoredOperationalK13
 #print axioms restored_operational_k13_error_implies_failure_event
 #print axioms restored_operational_query_failure_selected_all_in_bad
