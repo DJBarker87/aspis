@@ -22,6 +22,7 @@ open V7Tag73FixedFieldGenericNamespaceR1Generated
 open AspisV7Tag73GeneratedReaderBridge
 open AspisV7Tag73GeneratedProductionRootBridge
 open AspisV7Tag73FixedFieldLayoutModel
+open AspisV5ComponentCRejectionSampler
 
 private theorem usizeMulExact (x y z : Std.Usize)
     (hbound : x.val * y.val ≤ Std.Usize.max)
@@ -522,6 +523,26 @@ theorem packed_next_success_exposes_exact_refill
     castFacts, rfl, rfl, shiftedFacts.2, ?_⟩
   exact remainingBitsFacts.2.1.symm
 
+theorem packed_next_success_preserves_bytes
+    (before after : v6_onefold.PackedM31Reader) (value : Std.U32)
+    (run : v6_onefold.PackedM31Reader.next before = .ok (value, after)) :
+    after.bytes = before.bytes := by
+  unfold v6_onefold.PackedM31Reader.next at run
+  rw [AspisV7Tag73AeneasExactLoopTrace.bind_eq_ok_iff] at run
+  rcases run with ⟨_, _, run⟩
+  rw [AspisV7Tag73AeneasExactLoopTrace.bind_eq_ok_iff] at run
+  rcases run with ⟨_, _, run⟩
+  rw [AspisV7Tag73AeneasExactLoopTrace.bind_eq_ok_iff] at run
+  rcases run with ⟨_, _, run⟩
+  rw [AspisV7Tag73AeneasExactLoopTrace.bind_eq_ok_iff] at run
+  rcases run with ⟨_, _, run⟩
+  rw [AspisV7Tag73AeneasExactLoopTrace.bind_eq_ok_iff] at run
+  rcases run with ⟨_, _, run⟩
+  injection run with outputExact
+  injection outputExact with _ afterExact
+  subst after
+  rfl
+
 def GeneratedPackedReaderGeometryAt
     (reader : v6_onefold.PackedM31Reader) (ordinal : Nat) : Prop :=
   reader.byte_index.val = readerByteIndexAtLimb ordinal ∧
@@ -607,6 +628,86 @@ private def packedFiveByteWindowBv
 private def slotByteShift (slot : Nat) : Nat :=
   if slot = 0 then 0 else 8 - slot
 
+private theorem packedFiveByteWindowBv_toNat
+    (window : Fin 5 → BitVec 8) :
+    (packedFiveByteWindowBv window).toNat =
+      (window 0).toNat + 256 * (window 1).toNat +
+        65536 * (window 2).toNat + 16777216 * (window 3).toNat +
+        4294967296 * (window 4).toNat := by
+  let b0 := (window 0).toNat
+  let b1 := (window 1).toNat
+  let b2 := (window 2).toNat
+  let b3 := (window 3).toNat
+  let b4 := (window 4).toNat
+  have hb0 : b0 < 256 := by dsimp [b0]; simpa using (window 0).isLt
+  have hb1 : b1 < 256 := by dsimp [b1]; simpa using (window 1).isLt
+  have hb2 : b2 < 256 := by dsimp [b2]; simpa using (window 2).isLt
+  have hb3 : b3 < 256 := by dsimp [b3]; simpa using (window 3).isLt
+  have hb4 : b4 < 256 := by dsimp [b4]; simpa using (window 4).isLt
+  have h01 : b0 + 256 * b1 < 65536 := by omega
+  have h012 : b0 + 256 * b1 + 65536 * b2 < 16777216 := by omega
+  have h0123 :
+      b0 + 256 * b1 + 65536 * b2 + 16777216 * b3 < 4294967296 := by
+    omega
+  have hfull :
+      b0 + 256 * b1 + 65536 * b2 + 16777216 * b3 +
+        4294967296 * b4 < 18446744073709551616 := by
+    omega
+  have or01 : b0 ||| b1 * 256 = b0 + 256 * b1 := by
+    rw [Nat.or_comm, Nat.mul_comm]
+    simpa [Nat.add_comm] using
+      (Nat.two_pow_add_eq_or_of_lt (i := 8) hb0 b1).symm
+  have or012 :
+      (b0 + 256 * b1) ||| b2 * 65536 =
+        b0 + 256 * b1 + 65536 * b2 := by
+    rw [Nat.or_comm, Nat.mul_comm]
+    simpa [Nat.add_comm] using
+      (Nat.two_pow_add_eq_or_of_lt (i := 16) h01 b2).symm
+  have or0123 :
+      (b0 + 256 * b1 + 65536 * b2) ||| b3 * 16777216 =
+        b0 + 256 * b1 + 65536 * b2 + 16777216 * b3 := by
+    rw [Nat.or_comm, Nat.mul_comm]
+    simpa [Nat.add_comm] using
+      (Nat.two_pow_add_eq_or_of_lt (i := 24) h012 b3).symm
+  have orFull :
+      (b0 + 256 * b1 + 65536 * b2 + 16777216 * b3) |||
+          b4 * 4294967296 =
+        b0 + 256 * b1 + 65536 * b2 + 16777216 * b3 +
+          4294967296 * b4 := by
+    rw [Nat.or_comm, Nat.mul_comm]
+    simpa [Nat.add_comm] using
+      (Nat.two_pow_add_eq_or_of_lt (i := 32) h0123 b4).symm
+  simp only [packedFiveByteWindowBv, widenByte, BitVec.toNat_or,
+    BitVec.toNat_setWidth, BitVec.toNat_shiftLeft, Nat.shiftLeft_eq]
+  norm_num
+  change ((((b0 % 18446744073709551616 |||
+      (b1 * 256) % 18446744073709551616) |||
+      (b2 * 65536) % 18446744073709551616) |||
+      (b3 * 16777216) % 18446744073709551616) |||
+      (b4 * 4294967296) % 18446744073709551616) =
+    b0 + 256 * b1 + 65536 * b2 + 16777216 * b3 + 4294967296 * b4
+  rw [Nat.mod_eq_of_lt (by omega : b0 < 18446744073709551616),
+    Nat.mod_eq_of_lt (by omega : b1 * 256 < 18446744073709551616),
+    Nat.mod_eq_of_lt (by omega : b2 * 65536 < 18446744073709551616),
+    Nat.mod_eq_of_lt (by omega : b3 * 16777216 < 18446744073709551616),
+    Nat.mod_eq_of_lt (by omega : b4 * 4294967296 < 18446744073709551616)]
+  change ((((b0 ||| b1 * 256) ||| b2 * 65536) |||
+      b3 * 16777216) ||| b4 * 4294967296) =
+    b0 + 256 * b1 + 65536 * b2 + 16777216 * b3 + 4294967296 * b4
+  rw [or01, or012, or0123, orFull]
+
+private theorem packedFiveByteWindow_masked_shift_toNat
+    (window : Fin 5 → BitVec 8) (shift : Nat) (shiftLt : shift < 8) :
+    ((packedFiveByteWindowBv window >>> shift) &&&
+        (2147483647 : BitVec 64)).toNat =
+      ((packedFiveByteWindowBv window).toNat / 2 ^ shift) % 2 ^ 31 := by
+  simp only [BitVec.toNat_and, BitVec.toNat_ushiftRight]
+  rw [Nat.shiftRight_eq_div_pow]
+  change ((packedFiveByteWindowBv window).toNat / 2 ^ shift) &&&
+      (2 ^ 31 - 1) =
+    ((packedFiveByteWindowBv window).toNat / 2 ^ shift) % 2 ^ 31
+  exact Nat.and_two_pow_sub_one_eq_mod _ 31
+
 private def slotRefillBv (slot : Nat)
     (window : Fin 5 → BitVec 8) : BitVec 64 :=
   match slot with
@@ -677,6 +778,573 @@ private theorem slot_refill_low31_and_residual_exact
     apply BitVec.eq_of_getLsbD_eq <;> intro index indexLt <;>
     interval_cases index <;> simp
 
+private def sourceByte8Bv (bytes : Slice Std.U8) (index : Nat) : BitVec 8 :=
+  if bound : index < bytes.val.length then bytes.val[index]'bound |>.bv else 0
+
+private theorem sourceByteBv_eq_widen_sourceByte8
+    (bytes : Slice Std.U8) (index : Nat) :
+    sourceByteBv bytes index = widenByte (sourceByte8Bv bytes index) := by
+  unfold sourceByteBv sourceByte8Bv widenByte
+  split <;> rfl
+
+private def sourceWindow8 (bytes : Slice Std.U8) (start : Nat) :
+    Fin 5 → BitVec 8 :=
+  fun offset => sourceByte8Bv bytes (start + offset.val)
+
+private theorem sourceWindow8_to_packedLimbWindow
+    (bytes : Slice Std.U8) (lengthExact : bytes.val.length = 9936)
+    (field : Fin FixedFieldCount) (limb : Fin LimbsPerQM31) :
+    (packedFiveByteWindowBv
+        (sourceWindow8 bytes (fixedLimbByteStart field limb))).toNat =
+      packedLimbWindow (packedSectionOfSlice bytes lengthExact) field limb := by
+  have within := fixedLimbFiveByteWindow_within_packed field limb
+  norm_num [FixedPackedBytes] at within
+  have h0 : fixedLimbByteStart field limb < bytes.val.length := by omega
+  have h1 : fixedLimbByteStart field limb + 1 < bytes.val.length := by omega
+  have h2 : fixedLimbByteStart field limb + 2 < bytes.val.length := by omega
+  have h3 : fixedLimbByteStart field limb + 3 < bytes.val.length := by omega
+  have h4 : fixedLimbByteStart field limb + 4 < bytes.val.length := by omega
+  have p0 : fixedLimbByteStart field limb < 9936 := by omega
+  have p1 : fixedLimbByteStart field limb + 1 < 9936 := by omega
+  have p2 : fixedLimbByteStart field limb + 2 < 9936 := by omega
+  have p3 : fixedLimbByteStart field limb + 3 < 9936 := by omega
+  have p4 : fixedLimbByteStart field limb + 4 < 9936 := by omega
+  rw [packedFiveByteWindowBv_toNat]
+  simp [packedLimbWindow, Fin.sum_univ_succ, sourceWindow8, sourceByte8Bv,
+    packedSectionByte, packedSectionOfSlice, h0, h1, h2, h3, h4,
+    p0, p1, p2, p3, p4,
+    Nat.add_assoc, Nat.mul_comm]
+
+private def slotPreResidualBv (slot : Nat)
+    (window : Fin 5 → BitVec 8) : BitVec 64 :=
+  match slot with
+  | 0 => 0
+  | 1 => widenByte (window 0) >>> 7
+  | 2 => widenByte (window 0) >>> 6
+  | 3 => widenByte (window 0) >>> 5
+  | 4 => widenByte (window 0) >>> 4
+  | 5 => widenByte (window 0) >>> 3
+  | 6 => widenByte (window 0) >>> 2
+  | _ => widenByte (window 0) >>> 1
+
+private theorem refillBufferBv_slot_exact
+    (bytes : Slice Std.U8) (start slot : Nat) (slotLt : slot < 8) :
+    refillBufferBv bytes (start + if slot = 0 then 0 else 1)
+        (slotPreResidualBv slot (sourceWindow8 bytes start)) slot
+        (if slot = 7 then 3 else 4) =
+      slotRefillBv slot (sourceWindow8 bytes start) := by
+  interval_cases slot <;>
+    simp [refillBufferBv, slotPreResidualBv, slotRefillBv, sourceWindow8,
+      sourceByteBv_eq_widen_sourceByte8, Nat.add_assoc]
+
+private theorem slot_post_residual_is_next_pre_residual
+    (bytes : Slice Std.U8) (start slot : Nat) (slotLt : slot < 8) :
+    slotPostResidualBv slot (sourceWindow8 bytes start) =
+      slotPreResidualBv ((slot + 1) % 8)
+        (sourceWindow8 bytes
+          (start + if slot = 0 then 3 else 4)) := by
+  interval_cases slot <;>
+    simp [slotPostResidualBv, slotPreResidualBv, sourceWindow8,
+      Nat.add_assoc]
+
+private theorem packed_reader_ordinal_arithmetic (ordinal : Nat) :
+    let slot := ordinal % 8
+    readerBufferedBitsAtLimb ordinal = slot ∧
+      readerByteIndexAtLimb ordinal =
+        ordinal * 31 / 8 + (if slot = 0 then 0 else 1) ∧
+      slotByteShift slot = ordinal * 31 % 8 ∧
+      (ordinal + 1) * 31 / 8 =
+        ordinal * 31 / 8 + (if slot = 0 then 3 else 4) ∧
+      (ordinal + 1) % 8 = (slot + 1) % 8 := by
+  let block := ordinal / 8
+  let slot := ordinal % 8
+  have slotLt : slot < 8 := Nat.mod_lt _ (by norm_num)
+  have decompose : ordinal = 8 * block + slot := by
+    dsimp [block, slot]
+    omega
+  obtain ⟨indexExact, bitsExact⟩ :=
+    reader_state_eight_limb_cycle block slot slotLt
+  dsimp only
+  rw [decompose]
+  interval_cases slot <;>
+    simp [readerByteIndexAtLimb, readerBufferedBitsAtLimb, slotByteShift,
+      PackedLimbBits] at indexExact bitsExact ⊢ <;>
+    omega
+
+def GeneratedPackedReaderContentAt
+    (reader : v6_onefold.PackedM31Reader) (ordinal : Nat) : Prop :=
+  reader.buffer.bv =
+    slotPreResidualBv (ordinal % 8)
+      (sourceWindow8 reader.bytes (ordinal * 31 / 8))
+
+def GeneratedPackedReaderExactAt
+    (reader : v6_onefold.PackedM31Reader) (ordinal : Nat) : Prop :=
+  GeneratedPackedReaderGeometryAt reader ordinal ∧
+    GeneratedPackedReaderContentAt reader ordinal
+
+theorem new_success_has_initial_packed_reader_exact_state
+    (bytes : Slice Std.U8) (reader : v6_onefold.V6FixedFieldReader)
+    (run : v6_onefold.V6FixedFieldReader.new bytes = .ok (.Ok reader)) :
+    GeneratedPackedReaderExactAt reader.packed 0 := by
+  have geometry := new_success_has_initial_packed_reader_geometry bytes reader run
+  obtain ⟨_, _, _, _, bufferZero, _⟩ :=
+    new_success_exact_length_and_count bytes reader run
+  have bufferExact : reader.packed.buffer = 0#u64 := by
+    apply UScalar.eq_of_val_eq
+    exact bufferZero
+  constructor
+  · exact geometry
+  · simp [GeneratedPackedReaderContentAt, slotPreResidualBv, bufferExact]
+
+theorem packed_next_success_exact_window_and_state
+    (ordinal : Nat) (before after : v6_onefold.PackedM31Reader)
+    (value : Std.U32)
+    (exactState : GeneratedPackedReaderExactAt before ordinal)
+    (run : v6_onefold.PackedM31Reader.next before = .ok (value, after)) :
+    value.val =
+        ((packedFiveByteWindowBv
+            (sourceWindow8 before.bytes (ordinal * 31 / 8)) >>>
+              slotByteShift (ordinal % 8)) &&&
+          (2147483647 : BitVec 64)).toNat ∧
+      GeneratedPackedReaderExactAt after (ordinal + 1) := by
+  let slot := ordinal % 8
+  let start := ordinal * 31 / 8
+  have slotLt : slot < 8 := by
+    dsimp [slot]
+    exact Nat.mod_lt _ (by norm_num)
+  have arithmetic := packed_reader_ordinal_arithmetic ordinal
+  dsimp only at arithmetic
+  obtain ⟨refillIndex, refillBuffer, refillBits, refillRun,
+      ⟨trace⟩, valueExact, afterBytes, afterIndex, afterBuffer, afterBits⟩ :=
+    packed_next_success_exposes_exact_refill before after value run
+  have geometry := exactState.1
+  have beforeContent := exactState.2
+  have lowBuffer : before.buffered_bits.val < 8 := by
+    rw [geometry.2, arithmetic.1]
+    exact slotLt
+  have countExact :=
+    refill_trace_count_from_low_buffer before.bytes lowBuffer trace
+  have refillExact := refill_trace_exact_buffer before.bytes trace
+  have refillMatches :
+      refillBuffer.bv =
+        slotRefillBv slot (sourceWindow8 before.bytes start) := by
+    rw [refillExact, countExact]
+    rw [geometry.1, geometry.2, arithmetic.1, arithmetic.2.1]
+    unfold GeneratedPackedReaderContentAt at beforeContent
+    rw [beforeContent]
+    simpa [slot, start] using
+      refillBufferBv_slot_exact before.bytes start slot slotLt
+  have slotFacts := slot_refill_low31_and_residual_exact slot slotLt
+    (sourceWindow8 before.bytes start)
+  have lowExact :
+      refillBuffer.bv &&& (2147483647 : BitVec 64) =
+        (packedFiveByteWindowBv (sourceWindow8 before.bytes start) >>>
+            slotByteShift slot) &&& (2147483647 : BitVec 64) := by
+    rw [refillMatches]
+    exact slotFacts.1
+  have decodedExact :
+      value.val =
+        ((packedFiveByteWindowBv (sourceWindow8 before.bytes start) >>>
+            slotByteShift slot) &&& (2147483647 : BitVec 64)).toNat := by
+    calc
+      value.val = (refillBuffer &&& 2147483647#u64).val := valueExact
+      _ = (refillBuffer.bv &&& (2147483647 : BitVec 64)).toNat := rfl
+      _ = ((packedFiveByteWindowBv (sourceWindow8 before.bytes start) >>>
+          slotByteShift slot) &&& (2147483647 : BitVec 64)).toNat :=
+        congrArg BitVec.toNat lowExact
+  constructor
+  · simpa [slot, start] using decodedExact
+  · constructor
+    · exact packed_next_success_preserves_reader_geometry ordinal before after
+        value geometry run
+    · unfold GeneratedPackedReaderContentAt
+      rw [afterBytes, afterBuffer, refillMatches, slotFacts.2]
+      rw [arithmetic.2.2.2.1, arithmetic.2.2.2.2]
+      simpa [slot, start] using
+        slot_post_residual_is_next_pre_residual before.bytes start slot slotLt
+
+theorem packed_next_success_exact_limb_and_state
+    (ordinal : Fin FixedLimbCount)
+    (before after : v6_onefold.PackedM31Reader) (value : Std.U32)
+    (lengthExact : before.bytes.val.length = 9936)
+    (exactState : GeneratedPackedReaderExactAt before ordinal.val)
+    (run : v6_onefold.PackedM31Reader.next before = .ok (value, after)) :
+    value.val =
+        packedLimbNat (packedSectionOfSlice before.bytes lengthExact)
+          (fieldAtLimbOrdinal ordinal) (limbAtLimbOrdinal ordinal) ∧
+      GeneratedPackedReaderExactAt after (ordinal.val + 1) := by
+  let field := fieldAtLimbOrdinal ordinal
+  let limb := limbAtLimbOrdinal ordinal
+  have bitStart := fixedLimbBitStart_at_ordinal ordinal
+  have startExact :
+      fixedLimbByteStart field limb = ordinal.val * 31 / 8 := by
+    unfold fixedLimbByteStart
+    simpa [field, limb] using congrArg (fun value => value / 8) bitStart
+  have ordinalArithmetic := packed_reader_ordinal_arithmetic ordinal.val
+  dsimp only at ordinalArithmetic
+  have shiftExact :
+      fixedLimbByteShift field limb = slotByteShift (ordinal.val % 8) := by
+    unfold fixedLimbByteShift
+    rw [bitStart]
+    exact ordinalArithmetic.2.2.1.symm
+  have shiftLt : slotByteShift (ordinal.val % 8) < 8 := by
+    rw [← shiftExact]
+    exact fixedLimbByteShift_lt_eight field limb
+  have windowExact := sourceWindow8_to_packedLimbWindow before.bytes
+    lengthExact field limb
+  rw [startExact] at windowExact
+  have step := packed_next_success_exact_window_and_state ordinal.val
+    before after value exactState run
+  constructor
+  · calc
+      value.val =
+          ((packedFiveByteWindowBv
+              (sourceWindow8 before.bytes (ordinal.val * 31 / 8)) >>>
+                slotByteShift (ordinal.val % 8)) &&&
+            (2147483647 : BitVec 64)).toNat := step.1
+      _ = ((packedFiveByteWindowBv
+              (sourceWindow8 before.bytes (ordinal.val * 31 / 8))).toNat /
+              2 ^ slotByteShift (ordinal.val % 8)) % 2 ^ 31 :=
+        packedFiveByteWindow_masked_shift_toNat _ _ shiftLt
+      _ = (packedLimbWindow (packedSectionOfSlice before.bytes lengthExact)
+              field limb / 2 ^ fixedLimbByteShift field limb) % 2 ^ 31 := by
+        rw [windowExact, shiftExact]
+      _ = packedLimbNat (packedSectionOfSlice before.bytes lengthExact)
+          (fieldAtLimbOrdinal ordinal) (limbAtLimbOrdinal ordinal) := by
+        rfl
+  · exact step.2
+
+theorem packed_qm31_success_exposes_four_nexts
+    (before after : v6_onefold.PackedM31Reader) (value : field.QM31)
+    (run : v6_onefold.PackedM31Reader.qm31 before = .ok (value, after)) :
+    ∃ value0 value1 value2 value3,
+      ∃ reader1 reader2 reader3,
+      v6_onefold.PackedM31Reader.next before = .ok (value0, reader1) ∧
+      v6_onefold.PackedM31Reader.next reader1 = .ok (value1, reader2) ∧
+      v6_onefold.PackedM31Reader.next reader2 = .ok (value2, reader3) ∧
+      v6_onefold.PackedM31Reader.next reader3 = .ok (value3, after) ∧
+      value.c0.a = value0 ∧ value.c0.b = value1 ∧
+      value.c1.a = value2 ∧ value.c1.b = value3 := by
+  unfold v6_onefold.PackedM31Reader.qm31 at run
+  rw [AspisV7Tag73AeneasExactLoopTrace.bind_eq_ok_iff] at run
+  rcases run with ⟨first, firstRun, run⟩
+  rcases first with ⟨value0, reader1⟩
+  rw [AspisV7Tag73AeneasExactLoopTrace.bind_eq_ok_iff] at run
+  rcases run with ⟨second, secondRun, run⟩
+  rcases second with ⟨value1, reader2⟩
+  simp only [field.CM31.new, bind_tc_ok] at run
+  rw [AspisV7Tag73AeneasExactLoopTrace.bind_eq_ok_iff] at run
+  rcases run with ⟨third, thirdRun, run⟩
+  rcases third with ⟨value2, reader3⟩
+  rw [AspisV7Tag73AeneasExactLoopTrace.bind_eq_ok_iff] at run
+  rcases run with ⟨fourth, fourthRun, run⟩
+  rcases fourth with ⟨value3, reader4⟩
+  simp only [field.CM31.new, bind_tc_ok] at run
+  injection run with resultExact
+  injection resultExact with valueExact readerExact
+  subst value
+  subst reader4
+  exact ⟨value0, value1, value2, value3, reader1, reader2, reader3,
+    firstRun, secondRun, thirdRun, fourthRun, rfl, rfl, rfl, rfl⟩
+
+theorem packed_qm31_success_preserves_bytes
+    (before after : v6_onefold.PackedM31Reader) (value : field.QM31)
+    (run : v6_onefold.PackedM31Reader.qm31 before = .ok (value, after)) :
+    after.bytes = before.bytes := by
+  obtain ⟨value0, value1, value2, value3, reader1, reader2, reader3,
+      run0, run1, run2, run3, _, _, _, _⟩ :=
+    packed_qm31_success_exposes_four_nexts before after value run
+  exact (packed_next_success_preserves_bytes reader3 after value3 run3).trans
+    ((packed_next_success_preserves_bytes reader2 reader3 value2 run2).trans
+      ((packed_next_success_preserves_bytes reader1 reader2 value1 run1).trans
+        (packed_next_success_preserves_bytes before reader1 value0 run0)))
+
+theorem fixed_next_qm31_success_exposes_packed_run
+    (before after : v6_onefold.V6FixedFieldReader) (value : field.QM31)
+    (run : v6_onefold.V6FixedFieldReader.next_qm31 before =
+      .ok (.Ok value, after)) :
+    before.remaining.val > 0 ∧
+      ∃ packedAfter,
+        v6_onefold.PackedM31Reader.qm31 before.packed =
+          .ok (value, packedAfter) ∧
+        after.packed = packedAfter ∧
+        after.remaining.val + 1 = before.remaining.val := by
+  unfold v6_onefold.V6FixedFieldReader.next_qm31 at run
+  split at run
+  · simp at run
+  · rename_i nonempty
+    generalize packedRun :
+        v6_onefold.PackedM31Reader.qm31 before.packed = packedResult at run
+    cases packedResult with
+    | fail error => simp at run
+    | div => simp at run
+    | ok pair =>
+      rcases pair with ⟨decoded, packedAfter⟩
+      generalize subRun : before.remaining - 1#usize = subResult at run
+      have subFacts := UScalar.sub_equiv before.remaining 1#usize
+      rw [subRun] at subFacts
+      cases subResult with
+      | fail error => simp at run
+      | div => simp at run
+      | ok remainingAfter =>
+        simp only [bind_tc_ok] at run
+        split at run <;> try simp_all
+        split at run <;> try simp_all
+        split at run <;> try simp_all
+        split at run <;> try simp_all
+        rcases run with ⟨rfl, rfl⟩
+        constructor
+        · simpa using nonempty
+        · rfl
+
+theorem fixed_next_qm31_success_preserves_packed_bytes
+    (before after : v6_onefold.V6FixedFieldReader) (value : field.QM31)
+    (run : v6_onefold.V6FixedFieldReader.next_qm31 before =
+      .ok (.Ok value, after)) :
+    after.packed.bytes = before.packed.bytes := by
+  obtain ⟨_, packedAfter, packedRun, afterPacked, _⟩ :=
+    fixed_next_qm31_success_exposes_packed_run before after value run
+  rw [afterPacked]
+  exact packed_qm31_success_preserves_bytes before.packed packedAfter value
+    packedRun
+
+private theorem generated_field_P_val_exact : field.P.val = 2147483647 := by
+  unfold field.P
+  rfl
+
+private theorem generated_m31_modulus_eq_field_P :
+    m31Modulus = field.P.val := by
+  rw [generated_field_P_val_exact]
+  norm_num [m31Modulus, rawCandidateCount]
+
+def GeneratedQM31MatchesPackedField
+    (packed : PackedFixedSection) (fieldIndex : Fin FixedFieldCount)
+    (value : field.QM31) : Prop :=
+  value.c0.a.val = packedLimbNat packed fieldIndex ⟨0, by norm_num⟩ ∧
+    value.c0.b.val = packedLimbNat packed fieldIndex ⟨1, by norm_num⟩ ∧
+    value.c1.a.val = packedLimbNat packed fieldIndex ⟨2, by norm_num⟩ ∧
+    value.c1.b.val = packedLimbNat packed fieldIndex ⟨3, by norm_num⟩
+
+private theorem packedSectionOfSlice_eq_of_slice_eq
+    (left right : Slice Std.U8)
+    (leftLength : left.val.length = 9936)
+    (rightLength : right.val.length = 9936)
+    (bytesExact : left = right) :
+    packedSectionOfSlice left leftLength =
+      packedSectionOfSlice right rightLength := by
+  subst right
+  rfl
+
+theorem fixed_next_qm31_success_exact_field_and_state
+    (fieldIndex : Fin FixedFieldCount)
+    (before after : v6_onefold.V6FixedFieldReader) (value : field.QM31)
+    (lengthExact : before.packed.bytes.val.length = 9936)
+    (exactState : GeneratedPackedReaderExactAt before.packed
+      (fieldIndex.val * 4))
+    (run : v6_onefold.V6FixedFieldReader.next_qm31 before =
+      .ok (.Ok value, after)) :
+    GeneratedQM31MatchesPackedField
+        (packedSectionOfSlice before.packed.bytes lengthExact) fieldIndex value ∧
+      GeneratedPackedReaderExactAt after.packed (fieldIndex.val * 4 + 4) := by
+  obtain ⟨_, packedAfter, packedRun, afterPacked, _⟩ :=
+    fixed_next_qm31_success_exposes_packed_run before after value run
+  obtain ⟨value0, value1, value2, value3, reader1, reader2, reader3,
+      run0, run1, run2, run3, value0Exact, value1Exact,
+      value2Exact, value3Exact⟩ :=
+    packed_qm31_success_exposes_four_nexts before.packed packedAfter value
+      packedRun
+  have bytes1 := packed_next_success_preserves_bytes before.packed reader1
+    value0 run0
+  have bytes2 := packed_next_success_preserves_bytes reader1 reader2 value1 run1
+  have bytes3 := packed_next_success_preserves_bytes reader2 reader3 value2 run2
+  have bytes4 := packed_next_success_preserves_bytes reader3 packedAfter value3 run3
+  have length1 : reader1.bytes.val.length = 9936 := by
+    rw [bytes1]
+    exact lengthExact
+  have length2 : reader2.bytes.val.length = 9936 := by
+    rw [bytes2]
+    exact length1
+  have length3 : reader3.bytes.val.length = 9936 := by
+    rw [bytes3]
+    exact length2
+  let limb0 : Fin LimbsPerQM31 := ⟨0, by norm_num [LimbsPerQM31]⟩
+  let limb1 : Fin LimbsPerQM31 := ⟨1, by norm_num [LimbsPerQM31]⟩
+  let limb2 : Fin LimbsPerQM31 := ⟨2, by norm_num [LimbsPerQM31]⟩
+  let limb3 : Fin LimbsPerQM31 := ⟨3, by norm_num [LimbsPerQM31]⟩
+  let ordinal0 := fixedLimbIndex fieldIndex limb0
+  let ordinal1 := fixedLimbIndex fieldIndex limb1
+  let ordinal2 := fixedLimbIndex fieldIndex limb2
+  let ordinal3 := fixedLimbIndex fieldIndex limb3
+  have state0 : GeneratedPackedReaderExactAt before.packed ordinal0.val := by
+    simpa [ordinal0, limb0] using exactState
+  have step0 := packed_next_success_exact_limb_and_state ordinal0 before.packed
+    reader1 value0 lengthExact state0 run0
+  have state1 : GeneratedPackedReaderExactAt reader1 ordinal1.val := by
+    simpa [ordinal0, ordinal1, limb0, limb1] using step0.2
+  have step1 := packed_next_success_exact_limb_and_state ordinal1 reader1
+    reader2 value1 length1 state1 run1
+  have state2 : GeneratedPackedReaderExactAt reader2 ordinal2.val := by
+    simpa [ordinal1, ordinal2, limb1, limb2] using step1.2
+  have step2 := packed_next_success_exact_limb_and_state ordinal2 reader2
+    reader3 value2 length2 state2 run2
+  have state3 : GeneratedPackedReaderExactAt reader3 ordinal3.val := by
+    simpa [ordinal2, ordinal3, limb2, limb3] using step2.2
+  have step3 := packed_next_success_exact_limb_and_state ordinal3 reader3
+    packedAfter value3 length3 state3 run3
+  have packedSections1 :
+      packedSectionOfSlice reader1.bytes length1 =
+        packedSectionOfSlice before.packed.bytes lengthExact := by
+    exact packedSectionOfSlice_eq_of_slice_eq reader1.bytes before.packed.bytes
+      length1 lengthExact bytes1
+  have packedSections2 :
+      packedSectionOfSlice reader2.bytes length2 =
+        packedSectionOfSlice before.packed.bytes lengthExact := by
+    exact packedSectionOfSlice_eq_of_slice_eq reader2.bytes before.packed.bytes
+      length2 lengthExact (bytes2.trans bytes1)
+  have packedSections3 :
+      packedSectionOfSlice reader3.bytes length3 =
+        packedSectionOfSlice before.packed.bytes lengthExact := by
+    exact packedSectionOfSlice_eq_of_slice_eq reader3.bytes before.packed.bytes
+      length3 lengthExact (bytes3.trans (bytes2.trans bytes1))
+  constructor
+  · unfold GeneratedQM31MatchesPackedField
+    constructor
+    · rw [value0Exact]
+      simpa [ordinal0, limb0, fieldAtLimbOrdinal_fixedLimbIndex,
+        limbAtLimbOrdinal_fixedLimbIndex] using step0.1
+    constructor
+    · rw [value1Exact]
+      rw [packedSections1] at step1
+      simpa [ordinal1, limb1, fieldAtLimbOrdinal_fixedLimbIndex,
+        limbAtLimbOrdinal_fixedLimbIndex] using step1.1
+    constructor
+    · rw [value2Exact]
+      rw [packedSections2] at step2
+      simpa [ordinal2, limb2, fieldAtLimbOrdinal_fixedLimbIndex,
+        limbAtLimbOrdinal_fixedLimbIndex] using step2.1
+    · rw [value3Exact]
+      rw [packedSections3] at step3
+      simpa [ordinal3, limb3, fieldAtLimbOrdinal_fixedLimbIndex,
+        limbAtLimbOrdinal_fixedLimbIndex] using step3.1
+  · rw [afterPacked]
+    simpa [ordinal3, limb3] using step3.2
+
+theorem successful_fixed_reader_trace_exact_range
+    {first final : v6_onefold.V6FixedFieldReader}
+    {values : List field.QM31}
+    (start : Nat)
+    (lengthExact : first.packed.bytes.val.length = 9936)
+    (rangeBound : start + values.length ≤ FixedFieldCount)
+    (exactState : GeneratedPackedReaderExactAt first.packed (start * 4))
+    (trace : SuccessfulFixedReaderTrace first values final) :
+    (∀ fieldIndex : Fin FixedFieldCount,
+        start ≤ fieldIndex.val →
+        fieldIndex.val < start + values.length →
+        ∀ limb : Fin LimbsPerQM31,
+          packedLimbNat
+              (packedSectionOfSlice first.packed.bytes lengthExact)
+              fieldIndex limb < m31Modulus) ∧
+      GeneratedPackedReaderExactAt final.packed
+        ((start + values.length) * 4) := by
+  induction trace generalizing start with
+  | nil =>
+      constructor
+      · intro fieldIndex lower upper limb
+        simp only [List.length_nil, Nat.add_zero] at upper
+        omega
+      · simpa using exactState
+  | @cons before after final value tail read rest inductionHypothesis =>
+      have startLt : start < FixedFieldCount := by
+        simp only [List.length_cons] at rangeBound
+        omega
+      let fieldIndex : Fin FixedFieldCount := ⟨start, startLt⟩
+      have fieldStep := fixed_next_qm31_success_exact_field_and_state
+        fieldIndex before after value lengthExact exactState read
+      have bytesAfter := fixed_next_qm31_success_preserves_packed_bytes
+        before after value read
+      have lengthAfter : after.packed.bytes.val.length = 9936 := by
+        rw [bytesAfter]
+        exact lengthExact
+      have tailBound : start + 1 + tail.length ≤ FixedFieldCount := by
+        simp only [List.length_cons] at rangeBound
+        omega
+      have tailResult := inductionHypothesis (start + 1) lengthAfter tailBound
+        (by convert fieldStep.2 using 1 <;> simp [fieldIndex] <;> omega)
+      have packedSectionsAfter :
+          packedSectionOfSlice after.packed.bytes lengthAfter =
+            packedSectionOfSlice before.packed.bytes lengthExact :=
+        packedSectionOfSlice_eq_of_slice_eq after.packed.bytes
+          before.packed.bytes lengthAfter lengthExact bytesAfter
+      rw [packedSectionsAfter] at tailResult
+      constructor
+      · intro target lower upper limb
+        by_cases current : target.val = start
+        · have targetExact : target = fieldIndex := by
+            apply Fin.ext
+            exact current
+          subst target
+          obtain ⟨_, _, canonical0, canonical1, canonical2, canonical3⟩ :=
+            next_qm31_success_remaining_and_canonical before after value read
+          rcases fieldStep.1 with ⟨matches0, matches1, matches2, matches3⟩
+          rw [generated_m31_modulus_eq_field_P]
+          fin_cases limb
+          · rw [← matches0]
+            exact canonical0
+          · rw [← matches1]
+            exact canonical1
+          · rw [← matches2]
+            exact canonical2
+          · rw [← matches3]
+            exact canonical3
+        · exact tailResult.1 target (by omega) (by
+            simp only [List.length_cons] at upper
+            omega) limb
+      · convert tailResult.2 using 1 <;>
+          simp only [List.length_cons] <;> omega
+
+/-- A complete successful production fixed-reader run constructs the exact
+canonical packed section required by the frozen Tag-73 layout model.  In
+particular, neither padding nor any of the 2,564 strict M31 comparisons remains
+as a caller-supplied premise. -/
+theorem complete_successful_fixed_reader_trace_constructs_exact_canonical_section
+    (bytes : Slice Std.U8)
+    (initial final : v6_onefold.V6FixedFieldReader)
+    (values : List field.QM31)
+    (newRun : v6_onefold.V6FixedFieldReader.new bytes = .ok (.Ok initial))
+    (trace : SuccessfulFixedReaderTrace initial values final)
+    (finishRun : v6_onefold.V6FixedFieldReader.finish final = .ok (.Ok ())) :
+    ∃ lengthExact : bytes.val.length = 9936,
+      ExactCanonicalPackedFixedSection
+        (packedSectionOfSlice bytes lengthExact) := by
+  obtain ⟨lengthExact, valuesLength, _⟩ :=
+    complete_successful_trace_has_exact_641_canonical_values
+      bytes initial final values newRun trace finishRun
+  obtain ⟨_, _, initialBytes, _, _, _⟩ :=
+    new_success_exact_length_and_count bytes initial newRun
+  have readerLength : initial.packed.bytes.val.length = 9936 := by
+    rw [initialBytes]
+    exact lengthExact
+  have rangeBound : 0 + values.length ≤ FixedFieldCount := by
+    simp [valuesLength, FixedFieldCount]
+  have rangeResult := successful_fixed_reader_trace_exact_range
+    0 readerLength rangeBound
+      (new_success_has_initial_packed_reader_exact_state bytes initial newRun)
+      trace
+  have sectionsExact :
+      packedSectionOfSlice initial.packed.bytes readerLength =
+        packedSectionOfSlice bytes lengthExact :=
+    packedSectionOfSlice_eq_of_slice_eq initial.packed.bytes bytes
+      readerLength lengthExact initialBytes
+  obtain ⟨paddingLength, paddingZero⟩ :=
+    new_success_packed_section_padding_zero bytes initial newRun
+  refine ⟨lengthExact, ?_, ?_⟩
+  · simpa using paddingZero
+  · intro fieldIndex limb
+    have canonical := rangeResult.1 fieldIndex (by omega) (by
+      simpa [valuesLength, FixedFieldCount] using fieldIndex.isLt) limb
+    rw [sectionsExact] at canonical
+    exact canonical
+
 #print axioms new_success_exposes_padding_validation
 #print axioms padding_validation_success_last_byte_lt_16
 #print axioms new_success_packed_section_padding_zero
@@ -691,5 +1359,16 @@ private theorem slot_refill_low31_and_residual_exact
 #print axioms new_success_has_initial_packed_reader_geometry
 #print axioms packed_next_success_preserves_reader_geometry
 #print axioms slot_refill_low31_and_residual_exact
+#print axioms refillBufferBv_slot_exact
+#print axioms slot_post_residual_is_next_pre_residual
+#print axioms packed_reader_ordinal_arithmetic
+#print axioms new_success_has_initial_packed_reader_exact_state
+#print axioms packed_next_success_exact_window_and_state
+#print axioms packed_next_success_exact_limb_and_state
+#print axioms packed_qm31_success_exposes_four_nexts
+#print axioms fixed_next_qm31_success_exposes_packed_run
+#print axioms fixed_next_qm31_success_exact_field_and_state
+#print axioms successful_fixed_reader_trace_exact_range
+#print axioms complete_successful_fixed_reader_trace_constructs_exact_canonical_section
 
 end AspisV7Tag73GeneratedPackedReaderBridge

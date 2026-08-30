@@ -84,3 +84,34 @@ NUC replay:
   propext
   Classical.choice
   Quot.sound
+
+Complete generated fixed-reader canonicality:
+  new_success_has_initial_packed_reader_exact_state
+  packed_next_success_exact_window_and_state
+  packed_next_success_exact_limb_and_state
+  fixed_next_qm31_success_exact_field_and_state
+  successful_fixed_reader_trace_exact_range
+  complete_successful_fixed_reader_trace_constructs_exact_canonical_section
+
+The capstone starts from literal translated `V6FixedFieldReader.new`, the
+complete 641-call successful reader trace, and literal translated `finish`
+success. It constructs `ExactCanonicalPackedFixedSection` for the original
+9,936 source bytes. Thus the high padding nibble and every one of the 2,564
+strict M31 limb comparisons are consequences of translated production control
+flow rather than caller-supplied premises.
+
+NUC replay:
+  systemd unit: aspis-v7-packed-reader-try71.scope
+  invocation: dac86d92ce5842b4a40f499fcb7d9d5b
+  MemoryHigh: 12G
+  MemoryMax: 16G
+  MemorySwapMax: 0
+  exit status: 0
+  wall: 60.60 seconds
+  peak RSS: 7,770,164 KiB
+  swaps: 0
+
+#print axioms for the complete capstone:
+  propext
+  Classical.choice
+  Quot.sound
