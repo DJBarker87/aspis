@@ -26,7 +26,9 @@ release build.
 | --- | --- | ---: | ---: | ---: |
 | Production Rust to Lean generation | PASS | 6:38.396 | 2,691,724 KiB | 0 |
 | Scoped Aeneas Lean-4.32 runtime | PASS | 4:22.465 | 6.2 GiB cgroup | 0 |
-| Complete staged generated module | PASS | 30.266 s | 3,282,612 KiB | 0 |
+| Initial staged generated module | PASS | 30.266 s | 3,282,612 KiB | 0 |
+| Exact-external staged module | PASS | 34.058 s total | 3,433,020 KiB | 0 |
+| Production-root axiom audit | PASS | 1.938 s | below 1 MiB | 0 |
 
 The staged source SHA-256 values are:
 
@@ -41,13 +43,21 @@ d7df5e1346da8f3e56cd96292b7f1ac05775f190d48c3823d184454e019abaf3  Funs.lean
 All module compilation logs are error-free. The helper reports one benign
 duplicated-namespace naming warning. No generated declaration reports `sorry`.
 
-A subsequent root `#print axioms` audit found eight generated
-`_native.decide` certificates, all originating in Debug/expect-only `Str`
-literals. The staging gate now replaces exactly those eight messages with the
-same kernel-proved empty `Str` used by earlier accepted-source bridges. This
-does not alter typed success or failure; it removes panic text from the Lean
-model. The staged hashes above predate this final string normalization and will
-be superseded by the next frozen replay manifest.
+A subsequent root audit found eight generated `_native.decide` certificates
+from Debug/expect-only strings and one Formatter dependency from four
+Debug-only unwrap/expect calls. Shape-checked staging now normalizes those
+strings and spells the same success/fail-closed branches as explicit matches.
+It also replaces all 45 generated external template declarations with tracked
+executable Lean models. The literal production root now reports exactly:
+
+```text
+propext
+Classical.choice
+Quot.sound
+```
+
+There is no project axiom, `sorry`, `sorryAx`, native-decision certificate or
+runtime-formatting premise in the production-root closure.
 
 ## Security scope
 
@@ -56,8 +66,6 @@ Merkle profile, work schedule, query count and semantic relation are unchanged.
 The staging layer is shape-checked and fails if the generated occurrences
 change.
 
-This is not yet the final end-to-end source theorem. `FunsExternal` remains the
-generated template. The next gate is to install exact executable models for
-the reached ownership/container operations, preserve the explicit SHA/runtime
-boundary, and prove literal production success implies the existing fixed-field
-projection and restored K1.3 source input.
+This is not yet the final end-to-end source theorem. The next gate is to prove
+literal production-root success constructs the existing exact fixed-field
+projection, then compose that result with the restored K1.3 source input.

@@ -1,0 +1,31 @@
+V7 Tag-73 production-root Lean 4.32 focused evidence
+Date: 2026-08-30
+Host: nuc.local
+Unit: aspis-v7-external-models-r7
+MemoryHigh: 22G
+MemoryMax: 28G
+MemorySwapMax: 0
+
+TypesExternal: PASS, 1.23 s, 2,498,652 KiB RSS, 0 swaps
+Types: PASS, 2.21 s, 2,548,408 KiB RSS, 0 swaps
+MutableIteratorCompat: PASS, 1.19 s, 2,496,144 KiB RSS, 0 swaps
+FunsExternal: PASS, 1.69 s, 2,533,712 KiB RSS, 0 swaps
+Funs: PASS, 26.85 s, 3,433,020 KiB RSS, 0 swaps
+Focused unit: PASS, 34.058 s
+
+Root axiom unit: aspis-v7-root-axioms-r7
+Root axiom unit result: PASS, 1.938 s, 0 swaps
+
+Production root:
+V7Tag73FixedFieldGenericNamespaceR1Generated.v6_transcript.verify_v7_compact_transcript_and_relation_prepared_with_hiding_context
+
+Exact #print axioms result:
+propext
+Classical.choice
+Quot.sound
+
+Forbidden result scan:
+no project-specific axiom
+no sorry or sorryAx
+no native-decide certificate
+no generated external-template axiom in the root closure
