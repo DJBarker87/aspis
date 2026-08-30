@@ -42,6 +42,8 @@ MemoryHigh<=9 GiB, MemoryMax<=12 GiB and MemorySwapMax=0, and:
     from the frozen platform-specific Linux x86_64 toolchain inventories>
   ASPIS_V7_CARGO_HOME=<exact offline Cargo cache matching the frozen
     428-package and 394-index-entry content inventory>
+  ASPIS_V7_RUSTUP_HOME=<exact host rustup home containing the pinned stable
+    x86_64-unknown-linux-gnu toolchain>
 
 Both build modes produce two independent SBF builds and materialize the frozen
 eleven-case fixture with the resulting Pool/verifier bytes. The simulation mode
@@ -93,18 +95,23 @@ readonly CARGO_BUILD_SBF="$SOLANA_ACTIVE_ROOT/bin/cargo-build-sbf"
 readonly SBF_SDK="$SOLANA_ACTIVE_ROOT/bin/platform-tools-sdk/sbf"
 readonly HOST_CARGO="$HOST_RUST_ROOT/bin/cargo"
 readonly HOST_RUSTC="$HOST_RUST_ROOT/bin/rustc"
+readonly HOST_RUSTUP="$HOST_RUST_ROOT/bin/rustup"
 readonly BUILD_PATH="$HOST_RUST_ROOT/bin:$SOLANA_ACTIVE_ROOT/bin:/usr/bin:/bin"
 readonly CARGO_HOME_ROOT=${ASPIS_V7_CARGO_HOME:-}
+readonly RUSTUP_HOME_ROOT=${ASPIS_V7_RUSTUP_HOME:-}
 readonly CARGO_CACHE_PROVENANCE="$ROOT/$(jq -er '.toolchain.offlineCargoCache.provenancePath' "$MANIFEST")"
 readonly CARGO_CACHE_PACKAGES="$ROOT/$(jq -er '.toolchain.offlineCargoCache.packagesPath' "$MANIFEST")"
 readonly CARGO_CACHE_INDEX="$ROOT/$(jq -er '.toolchain.offlineCargoCache.indexPath' "$MANIFEST")"
 [[ -x "$CARGO_BUILD_SBF" ]] || fail "frozen cargo-build-sbf is missing"
-[[ -x "$HOST_CARGO" && -x "$HOST_RUSTC" ]] || fail "frozen host Cargo/Rust pair is missing"
+[[ -x "$HOST_CARGO" && -x "$HOST_RUSTC" && -x "$HOST_RUSTUP" ]] \
+  || fail "frozen host Cargo/Rust/rustup toolchain is missing"
 [[ -x "$PLATFORM_TOOLS_ROOT/rust/bin/rustc" ]] || fail "frozen platform rustc is missing"
 [[ -x "$PLATFORM_TOOLS_ROOT/llvm/bin/clang-19" ]] || fail "frozen platform clang is missing"
 [[ -d "$SBF_SDK" ]] || fail "frozen SBF SDK is missing"
 [[ -n "$CARGO_HOME_ROOT" && -d "$CARGO_HOME_ROOT/registry" ]] \
   || fail "ASPIS_V7_CARGO_HOME must name the frozen offline Cargo cache"
+[[ -n "$RUSTUP_HOME_ROOT" && -d "$RUSTUP_HOME_ROOT/toolchains/stable-x86_64-unknown-linux-gnu" ]] \
+  || fail "ASPIS_V7_RUSTUP_HOME must name the frozen host rustup home"
 
 readonly CGROUP_RELATIVE=$(awk -F: '$1 == "0" {print $3}' /proc/self/cgroup)
 [[ -n "$CGROUP_RELATIVE" ]] || fail "cannot resolve the current cgroup-v2 path"
@@ -209,12 +216,17 @@ done < <(jq -r '.toolchain_files[] | [.path, .bytes, .sha256] | @tsv' "$TOOLCHAI
   || fail "host Cargo bytes differ from the frozen offline-cache toolchain"
 [[ "$(sha_file "$HOST_RUSTC")" == "$(jq -er '.toolchain.offlineCargoCache.hostRustcSha256' "$MANIFEST")" ]] \
   || fail "host rustc bytes differ from the frozen offline-cache toolchain"
+[[ "$(sha_file "$HOST_RUSTUP")" == "$(jq -er '.toolchain.offlineCargoCache.hostRustupSha256' "$MANIFEST")" ]] \
+  || fail "host rustup bytes differ from the frozen offline-cache toolchain"
 host_cargo_version=$($HOST_CARGO --version)
 host_rustc_version=$($HOST_RUSTC --version)
+host_rustup_version=$($HOST_RUSTUP --version 2>/dev/null | sed -n '1p')
 [[ "$host_cargo_version" == "$(jq -er '.hostCargo.version' "$CARGO_CACHE_PROVENANCE")" ]] \
   || fail "host Cargo version differs from the frozen offline-cache toolchain"
 [[ "$host_rustc_version" == "$(jq -er '.hostRustc.version' "$CARGO_CACHE_PROVENANCE")" ]] \
   || fail "host rustc version differs from the frozen offline-cache toolchain"
+[[ "$host_rustup_version" == "$(jq -er '.hostRustup.version' "$CARGO_CACHE_PROVENANCE")" ]] \
+  || fail "host rustup version differs from the frozen offline-cache toolchain"
 verify_offline_cargo_cache "$OUTPUT_DIR/cargo-cache-before.tsv"
 
 expected_version=$(jq -er '.toolchain.cargoBuildSbfVersion' "$MANIFEST")
@@ -228,6 +240,7 @@ printf '%s\n' "$actual_version" >"$OUTPUT_DIR/cargo-build-sbf-version.txt"
 printf '%s\n' "$platform_rustc_version" >"$OUTPUT_DIR/platform-rustc-version.txt"
 printf '%s\n' "$host_cargo_version" >"$OUTPUT_DIR/host-cargo-version.txt"
 printf '%s\n' "$host_rustc_version" >"$OUTPUT_DIR/host-rustc-version.txt"
+printf '%s\n' "$host_rustup_version" >"$OUTPUT_DIR/host-rustup-version.txt"
 "$PLATFORM_TOOLS_ROOT/llvm/bin/clang-19" --version >"$OUTPUT_DIR/platform-clang-version.txt"
 
 echo "[2/6] Export two isolated copies of the exact da77 source"
@@ -249,7 +262,9 @@ for program in aspis-pool aspis-verifier; do
   manifest_path=$(jq -er --arg program "$program" '.programs[] | select(.name == $program) | .manifest' "$MANIFEST")
   (
     cd "$WORK_DIR/source-a"
-    CARGO_HOME="$CARGO_HOME_ROOT" CARGO_NET_OFFLINE=true PATH="$BUILD_PATH" \
+    CARGO_HOME="$CARGO_HOME_ROOT" CARGO_NET_OFFLINE=true \
+      RUSTUP_HOME="$RUSTUP_HOME_ROOT" RUSTUP_TOOLCHAIN=stable-x86_64-unknown-linux-gnu \
+      PATH="$BUILD_PATH" \
       "$HOST_CARGO" metadata --offline --locked --format-version 1 \
       --manifest-path "$manifest_path"
   ) >"$OUTPUT_DIR/metadata-$program.json"
@@ -282,6 +297,8 @@ build_program() {
     export LC_ALL=C
     export NO_DNA=1
     export PATH="$BUILD_PATH"
+    export RUSTUP_HOME="$RUSTUP_HOME_ROOT"
+    export RUSTUP_TOOLCHAIN=stable-x86_64-unknown-linux-gnu
     export SOURCE_DATE_EPOCH
     export TZ=UTC
     unset CARGO_ENCODED_RUSTFLAGS RUSTFLAGS
@@ -368,6 +385,8 @@ jq -n \
   --arg offlineCargoPackagesSha256 "$(sha_file "$OUTPUT_DIR/cargo-cache-after.tsv")" \
   --arg hostCargoSha256 "$(sha_file "$HOST_CARGO")" \
   --arg hostCargoVersion "$host_cargo_version" \
+  --arg hostRustupSha256 "$(sha_file "$HOST_RUSTUP")" \
+  --arg hostRustupVersion "$host_rustup_version" \
   --arg cargoBuildSbfSha256 "$expected_cargo_build_sbf_sha" \
   --arg cargoBuildSbfVersion "$actual_version" \
   --arg uname "$(<"$OUTPUT_DIR/uname.txt")" \
@@ -401,6 +420,8 @@ jq -n \
       offlineCargoCacheVerifiedBeforeAndAfter: true,
       hostCargoSha256: $hostCargoSha256,
       hostCargoVersion: $hostCargoVersion,
+      hostRustupSha256: $hostRustupSha256,
+      hostRustupVersion: $hostRustupVersion,
       cargoBuildSbfSha256: $cargoBuildSbfSha256,
       cargoBuildSbfVersion: $cargoBuildSbfVersion,
       uname: $uname,

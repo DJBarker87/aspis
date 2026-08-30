@@ -149,6 +149,7 @@ jq -e \
   --arg indexSha "$(sha_file "$CARGO_CACHE_INDEX")" \
   --arg hostCargoSha "$(jq -er '.toolchain.offlineCargoCache.hostCargoSha256' "$MANIFEST")" \
   --arg hostRustcSha "$(jq -er '.toolchain.offlineCargoCache.hostRustcSha256' "$MANIFEST")" \
+  --arg hostRustupSha "$(jq -er '.toolchain.offlineCargoCache.hostRustupSha256' "$MANIFEST")" \
   --argjson packages "$CARGO_CACHE_PACKAGE_COUNT" \
   --argjson indexEntries "$CARGO_CACHE_INDEX_COUNT" '
   .schema == "aspis.v7.linux-cargo-offline-cache-provenance.v1" and
@@ -157,6 +158,9 @@ jq -e \
   .hostCargo.version == "cargo 1.94.1 (29ea6fb6a 2026-03-24)" and
   .hostRustc.sha256 == $hostRustcSha and
   .hostRustc.version == "rustc 1.94.1 (e408947bf 2026-03-25)" and
+  .hostRustup.sha256 == $hostRustupSha and
+  .hostRustup.version == "rustup 1.29.0 (28d1352db 2026-03-05)" and
+  .hostRustup.bytes == 20838840 and
   .packages.count == $packages and .packages.inventorySha256 == $packagesSha and
   .sparseIndex.entries == $indexEntries and .sparseIndex.inventorySha256 == $indexSha and
   .networkAllowed == false and .downloadsPerformed == false and

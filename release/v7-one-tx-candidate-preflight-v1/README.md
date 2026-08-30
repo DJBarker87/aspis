@@ -17,6 +17,7 @@ Run the two-copy Linux build only inside the required capped cgroup:
 ```sh
 ASPIS_V7_TOOLCHAIN_CAPTURE_ROOT=<frozen-toolchain-capture> \
 ASPIS_V7_CARGO_HOME=<frozen-offline-cargo-cache> \
+ASPIS_V7_RUSTUP_HOME=<frozen-host-rustup-home> \
   scripts/v7_one_tx_release_replay.sh build <new-output-directory>
 ```
 
@@ -39,6 +40,7 @@ fresh byte-identical SBFs before execution:
 ```sh
 ASPIS_V7_TOOLCHAIN_CAPTURE_ROOT=<frozen-toolchain-capture> \
 ASPIS_V7_CARGO_HOME=<frozen-offline-cargo-cache> \
+ASPIS_V7_RUSTUP_HOME=<frozen-host-rustup-home> \
   scripts/v7_one_tx_release_replay.sh build-and-simulate \
   <new-output-directory> <agave-4.2+-bin-directory>
 ```

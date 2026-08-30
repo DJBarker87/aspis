@@ -36,7 +36,7 @@
     },
     "offlineCargoCache": {
       "provenancePath": "release/v7-one-tx-candidate-preflight-v1/linux-offline-cargo-cache-provenance.json",
-      "provenanceSha256": "87d3d0bccdc5ed4733b4991696e6cd43821ff443d88c4092f1687f132391a776",
+      "provenanceSha256": "cc4a7e4f3e485164e2d559060deb9f2a79344f310f848162864e3bfa87ed0573",
       "packagesPath": "release/v7-one-tx-candidate-preflight-v1/linux-offline-cargo-cache-packages.tsv",
       "packagesSha256": "3e40be42d1794e8a0d3c853a4f4af74803b46de724c320d9683f8e72f783e370",
       "packages": 428,
@@ -44,7 +44,8 @@
       "indexSha256": "8ff8a24e0a0b7d87f3cdbecef5605b52c2b1186a87a9df609c4b5389841ad6be",
       "indexEntries": 394,
       "hostCargoSha256": "b7561ebe947acf816451536f19871ea4810f6be3f82fd252feab6ca7be8396f5",
-      "hostRustcSha256": "ef6d716e5d1c6c93def277c0afa037c21e7a74f7de3aed4ee0700646c3301b1d"
+      "hostRustcSha256": "ef6d716e5d1c6c93def277c0afa037c21e7a74f7de3aed4ee0700646c3301b1d",
+      "hostRustupSha256": "4acc9acc76d5079515b46346a485974457b5a79893cfb01112423c89aeb5aa10"
     },
     "requiredCgroup": {
       "memoryHighBytesAtMost": 9663676416,
@@ -149,7 +150,7 @@
     },
     {
       "path": "scripts/v7_one_tx_release_replay.sh",
-      "sha256": "b86b936c0d58dcd30f7f883b8cce2295640f5b706461886d93459eeb4319a0b9"
+      "sha256": "fa02ecc64470ceb4b90f03a1a72963a8ccd7e9e4655d82db7ebf258c4d73dcb7"
     },
     {
       "path": "release/v7-one-tx-candidate-preflight-v1/linux-x86_64-sbf-toolchain-v1.48.json",
@@ -157,7 +158,7 @@
     },
     {
       "path": "release/v7-one-tx-candidate-preflight-v1/linux-offline-cargo-cache-provenance.json",
-      "sha256": "87d3d0bccdc5ed4733b4991696e6cd43821ff443d88c4092f1687f132391a776"
+      "sha256": "cc4a7e4f3e485164e2d559060deb9f2a79344f310f848162864e3bfa87ed0573"
     },
     {
       "path": "release/v7-one-tx-candidate-preflight-v1/linux-offline-cargo-cache-packages.tsv",

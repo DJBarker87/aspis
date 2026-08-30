@@ -13,6 +13,12 @@
     "version": "rustc 1.94.1 (e408947bf 2026-03-25)",
     "sha256": "ef6d716e5d1c6c93def277c0afa037c21e7a74f7de3aed4ee0700646c3301b1d"
   },
+  "hostRustup": {
+    "path": "/home/dombarker/.cargo/bin/rustup",
+    "version": "rustup 1.29.0 (28d1352db 2026-03-05)",
+    "bytes": 20838840,
+    "sha256": "4acc9acc76d5079515b46346a485974457b5a79893cfb01112423c89aeb5aa10"
+  },
   "cargoLockSha256": "25cae3f276bd5831785bdb25e204ce99213934e7fcec3f5a76a5d742a018426b",
   "packages": {
     "count": 428,
