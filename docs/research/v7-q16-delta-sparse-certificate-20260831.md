@@ -321,3 +321,25 @@ All eight Chunk000 theorems report exactly
 
 Chunk000 is independently green.  Chunk001 and the Depth07 aggregator remain
 unbuilt.
+
+## Focused Depth07 Chunk001 gate
+
+The independent Chunk001 unit was
+`aspis-v7-q16-delta-depth07-chunk001-b3d-r11.service`, invocation
+`f57873be2dd241379495e7d76ab0ee4f`, under the same 10G/12G/zero-swap limits.
+
+| Target | Exit | Wall | Max process RSS | Swaps |
+|---|---:|---:|---:|---:|
+| `Depth07Chunk001.lean` | 0 | 3.33s | 6,191,160 KiB | 0 |
+| Chunk001 axioms probe | 0 | 2.48s | 6,138,608 KiB | 0 |
+
+Both Chunk001 theorems report exactly
+`[propext, Classical.choice, Quot.sound]`.
+
+```text
+39d7dd5be119f34d2719d54e98d3ae1d84fbe6c90c5ba7a00e598b06ba44697f  Depth07Chunk001.olean
+72f5694f8cc1f1e882a5c0bdbc4cfd91d1645f79081019fbc9b02d04d3d99d7d  Depth07Chunk001.ilean
+```
+
+Both Depth07 chunks are independently green.  The small Depth07 aggregator is
+the next gate and has not yet been run.
