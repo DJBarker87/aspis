@@ -196,6 +196,89 @@ theorem exact_fixed_clean_probability_le_extraction_plus_four_terms
             projection fixedInstance) stages terms k12Bound k13Bound k14Bound
               k15Bound
 
+/-- Exact clean-event composition with stage bounds restricted to the same
+literal compiler-clean event.  This is the operationally minimal form: K1.6
+already pays the causal target event separately, so none of K1.2--K1.5 needs
+to bound its behaviour on target-hit executions. -/
+theorem exact_fixed_clean_probability_le_extraction_plus_four_restricted_terms
+    {HiddenTape TapeIdentity Observation Statement Proof Payload Witness : Type}
+    [Fintype HiddenTape]
+    (hiddenLaw : PMF HiddenTape)
+    {parameters : ExactCompilerResourceParameters}
+    (transitionFuel : Nat)
+    (configuration : ExactPlainRomWitnessConfiguration HiddenTape TapeIdentity
+      Observation Statement Proof Payload Witness parameters)
+    (projection : AcceptedTapeProjection Statement Proof Payload)
+    (fixedInstance : PublicInstance Statement)
+    (relation : PublicInstance Statement → Witness → Prop)
+    (transitionRoom : 3 ≤ transitionFuel)
+    (driverCoversProtocol :
+      tag73CanonicalDriverFuelCap ≤ configuration.machine.driverFuel)
+    (runtimeReserves : ExactOperationalRuntimeReserves parameters)
+    (cutoffBeyondCap :
+      totalCompilerRuntimeCap parameters < parameters.timeoutCutoff)
+    (stages : ProofRelevantK12ToK15Stages transitionFuel configuration
+      fixedInstance relation
+        (ExactFixedSchedulerK12ToK15Input transitionFuel configuration
+          projection fixedInstance))
+    (terms : ConcreteUpstreamErrorTerms)
+    (k12Bound :
+      (exactCompilerJointLaw hiddenLaw parameters).toOuterMeasure
+          (exactFixedPlainRomLegalSameTapeEvent transitionFuel configuration
+              projection fixedInstance ∩
+            k12TwoTreeMerkle208ErrorEvent stages) ≤
+        terms.k12TwoTreeMerkle208)
+    (k13Bound :
+      (exactCompilerJointLaw hiddenLaw parameters).toOuterMeasure
+          (exactFixedPlainRomLegalSameTapeEvent transitionFuel configuration
+              projection fixedInstance ∩
+            k13CircleListDecodeErrorEvent stages) ≤
+        terms.k13CircleListDecoding)
+    (k14Bound :
+      (exactCompilerJointLaw hiddenLaw parameters).toOuterMeasure
+          (exactFixedPlainRomLegalSameTapeEvent transitionFuel configuration
+              projection fixedInstance ∩
+            k14CoherentChainErrorEvent stages) ≤
+        terms.k14CoherentChainSelection)
+    (k15Bound :
+      (exactCompilerJointLaw hiddenLaw parameters).toOuterMeasure
+          (exactFixedPlainRomLegalSameTapeEvent transitionFuel configuration
+              projection fixedInstance ∩
+            k15SpendWitnessErrorEvent stages) ≤
+        terms.k15SpendWitnessRecovery) :
+    (exactCompilerJointLaw hiddenLaw parameters).toOuterMeasure
+        (exactFixedPlainRomLegalSameTapeEvent transitionFuel configuration
+          projection fixedInstance) ≤
+      exactFixedPlainRomValidClientExtractionProbability hiddenLaw
+          transitionFuel configuration fixedInstance relation +
+        concreteUpstreamRawError terms := by
+  have restricted :=
+    clean_probability_le_extraction_plus_restricted_upstream_raw_error
+      hiddenLaw transitionFuel configuration fixedInstance relation
+      (ExactFixedSchedulerK12ToK15Input transitionFuel configuration
+        projection fixedInstance) stages
+      (exactFixedPlainRomLegalSameTapeEvent transitionFuel configuration
+        projection fixedInstance)
+      (exact_fixed_legal_subset_operational_input transitionFuel configuration
+        projection fixedInstance transitionRoom driverCoversProtocol
+          runtimeReserves cutoffBeyondCap)
+  calc
+    (exactCompilerJointLaw hiddenLaw parameters).toOuterMeasure
+        (exactFixedPlainRomLegalSameTapeEvent transitionFuel configuration
+          projection fixedInstance) ≤
+      exactFixedPlainRomValidClientExtractionProbability hiddenLaw
+          transitionFuel configuration fixedInstance relation +
+        proofRelevantRestrictedUpstreamRawError hiddenLaw
+          (exactFixedPlainRomLegalSameTapeEvent transitionFuel configuration
+            projection fixedInstance) stages := restricted
+    _ ≤ exactFixedPlainRomValidClientExtractionProbability hiddenLaw
+          transitionFuel configuration fixedInstance relation +
+        concreteUpstreamRawError terms := by
+      apply add_le_add (le_refl _)
+      unfold proofRelevantRestrictedUpstreamRawError concreteUpstreamRawError
+      exact add_le_add
+        (add_le_add (add_le_add k12Bound k13Bound) k14Bound) k15Bound
+
 /-! ## Exact compiler error and final AoK inequalities -/
 
 def exactFixedClosedK16ExactCountError
@@ -375,6 +458,95 @@ theorem exact_fixed_tag73_k16_classical_rom_aok_raw
       unfold exactFixedClosedK16RawError
       ac_rfl
 
+/-- Raw K1.6 closure from the minimal clean-restricted K1.2--K1.5 bounds.
+The exact compiler target coefficient is unchanged and appears once. -/
+theorem exact_fixed_tag73_k16_classical_rom_aok_raw_restricted_stages
+    {HiddenTape TapeIdentity Observation Statement Proof Payload Witness : Type}
+    [Fintype HiddenTape]
+    (hiddenLaw : PMF HiddenTape)
+    {parameters : ExactCompilerResourceParameters}
+    (transitionFuel : Nat)
+    (configuration : ExactPlainRomWitnessConfiguration HiddenTape TapeIdentity
+      Observation Statement Proof Payload Witness parameters)
+    (projection : AcceptedTapeProjection Statement Proof Payload)
+    (fixedInstance : PublicInstance Statement)
+    (relation : PublicInstance Statement → Witness → Prop)
+    (transitionRoom : 3 ≤ transitionFuel)
+    (driverCoversProtocol :
+      tag73CanonicalDriverFuelCap ≤ configuration.machine.driverFuel)
+    (runtimeReserves : ExactOperationalRuntimeReserves parameters)
+    (cutoffBeyondCap :
+      totalCompilerRuntimeCap parameters < parameters.timeoutCutoff)
+    (stages : ProofRelevantK12ToK15Stages transitionFuel configuration
+      fixedInstance relation
+        (ExactFixedSchedulerK12ToK15Input transitionFuel configuration
+          projection fixedInstance))
+    (terms : ConcreteUpstreamErrorTerms)
+    (k12Bound :
+      (exactCompilerJointLaw hiddenLaw parameters).toOuterMeasure
+          (exactFixedPlainRomLegalSameTapeEvent transitionFuel configuration
+              projection fixedInstance ∩
+            k12TwoTreeMerkle208ErrorEvent stages) ≤
+        terms.k12TwoTreeMerkle208)
+    (k13Bound :
+      (exactCompilerJointLaw hiddenLaw parameters).toOuterMeasure
+          (exactFixedPlainRomLegalSameTapeEvent transitionFuel configuration
+              projection fixedInstance ∩
+            k13CircleListDecodeErrorEvent stages) ≤
+        terms.k13CircleListDecoding)
+    (k14Bound :
+      (exactCompilerJointLaw hiddenLaw parameters).toOuterMeasure
+          (exactFixedPlainRomLegalSameTapeEvent transitionFuel configuration
+              projection fixedInstance ∩
+            k14CoherentChainErrorEvent stages) ≤
+        terms.k14CoherentChainSelection)
+    (k15Bound :
+      (exactCompilerJointLaw hiddenLaw parameters).toOuterMeasure
+          (exactFixedPlainRomLegalSameTapeEvent transitionFuel configuration
+              projection fixedInstance ∩
+            k15SpendWitnessErrorEvent stages) ≤
+        terms.k15SpendWitnessRecovery) :
+    (exactCompilerJointLaw hiddenLaw parameters).toOuterMeasure
+        (exactFixedSourceRefinementEvent transitionFuel configuration projection
+          fixedInstance) ≤
+      exactFixedPlainRomValidClientExtractionProbability hiddenLaw
+          transitionFuel configuration fixedInstance relation +
+        exactFixedClosedK16RawError terms parameters := by
+  have cleanBound :=
+    exact_fixed_clean_probability_le_extraction_plus_four_restricted_terms
+      hiddenLaw transitionFuel configuration projection fixedInstance relation
+        transitionRoom driverCoversProtocol runtimeReserves cutoffBeyondCap
+          stages terms k12Bound k13Bound k14Bound k15Bound
+  have targetBound := exact_plain_rom_target_probability_le_raw_error hiddenLaw
+    transitionFuel configuration
+  calc
+    (exactCompilerJointLaw hiddenLaw parameters).toOuterMeasure
+        (exactFixedSourceRefinementEvent transitionFuel configuration projection
+          fixedInstance) ≤
+      (exactCompilerJointLaw hiddenLaw parameters).toOuterMeasure
+        (exactFixedPlainRomLegalSameTapeEvent transitionFuel configuration
+            projection fixedInstance ∪
+          exactPlainRomTargetEvent transitionFuel configuration) :=
+      measure_mono (exact_fixed_source_subset_legal_union_target transitionFuel
+        configuration projection fixedInstance)
+    _ ≤ (exactCompilerJointLaw hiddenLaw parameters).toOuterMeasure
+          (exactFixedPlainRomLegalSameTapeEvent transitionFuel configuration
+            projection fixedInstance) +
+        (exactCompilerJointLaw hiddenLaw parameters).toOuterMeasure
+          (exactPlainRomTargetEvent transitionFuel configuration) :=
+      measure_union_le _ _
+    _ ≤
+      (exactFixedPlainRomValidClientExtractionProbability hiddenLaw
+          transitionFuel configuration fixedInstance relation +
+        concreteUpstreamRawError terms) +
+          exactCompilerPositiveExposureError parameters :=
+      add_le_add cleanBound targetBound
+    _ = exactFixedPlainRomValidClientExtractionProbability hiddenLaw
+          transitionFuel configuration fixedInstance relation +
+        exactFixedClosedK16RawError terms parameters := by
+      unfold exactFixedClosedK16RawError
+      ac_rfl
+
 /-- Loss-one normalized extraction statement.  No soundness term and no
 grinding work factor is divided out. -/
 theorem exact_fixed_tag73_k16_classical_rom_aok_normalized
@@ -422,9 +594,12 @@ theorem exact_fixed_tag73_k16_classical_rom_aok_normalized
 #print axioms exact_fixed_legal_subset_operational_input
 #print axioms exact_fixed_clean_probability_le_extraction_plus_stage_events
 #print axioms exact_fixed_clean_probability_le_extraction_plus_four_terms
+#print axioms
+  exact_fixed_clean_probability_le_extraction_plus_four_restricted_terms
 #print axioms exact_fixed_closed_k16_raw_error_expanded
 #print axioms exact_fixed_tag73_k16_classical_rom_aok_exact_count
 #print axioms exact_fixed_tag73_k16_classical_rom_aok_raw
+#print axioms exact_fixed_tag73_k16_classical_rom_aok_raw_restricted_stages
 #print axioms exact_fixed_tag73_k16_classical_rom_aok_normalized
 
 end
