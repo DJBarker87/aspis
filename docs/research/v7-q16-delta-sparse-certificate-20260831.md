@@ -271,3 +271,29 @@ f661ea50cee530fa9d5ca22cfb64347ec607b3d8892c24067ce20ecae86a78be  Depth05.ilean
 
 Depth05 is green.  The next legitimate gate is `Depth06Chunk000.lean` then
 the Depth06 aggregator only.
+
+## Focused Depth06 local-cell gate
+
+The Depth06 symbol manifest passed before the serial run.  Unit
+`aspis-v7-q16-delta-depth06-b3d-r8.service`, invocation
+`d2dab58a51204d47810ca185bd801e10`, used the same 10G/12G/zero-swap limits.
+
+| Target | Exit | Wall | Max process RSS | Swaps |
+|---|---:|---:|---:|---:|
+| `Depth06Chunk000.lean` | 0 | 4.49s | 6,204,016 KiB | 0 |
+| `Depth06.lean` | 0 | 2.53s | 6,146,124 KiB | 0 |
+| Depth06 axioms probe | 0 | 2.67s | 6,138,208 KiB | 0 |
+
+All seven local theorems report exactly
+`[propext, Classical.choice, Quot.sound]`.
+
+```text
+fc442e37b117901388e3f2b3597fd8521c409839249619704bef4ced34477dc3  Depth06Chunk000.olean
+ee1b778c8b941e80c502a3ce60a98707a6329907d5cde979531b5d66a6d0347b  Depth06Chunk000.ilean
+81efc1cdc567cb58efb56eeb8e89be8112bb9bfe248068449c44a1ea620fbed0  Depth06.olean
+e2d06fc91afb17370e8e1429731f99a8e43cc5e6b2432ebb13e0d617e401b772  Depth06.ilean
+```
+
+Depth06 is green.  Depth07 contains two bounded chunks; the next legitimate
+gate is `Depth07Chunk000.lean` only, before any decision about Chunk001 or its
+aggregator.
