@@ -123,6 +123,32 @@ it remains the intentionally explicit Aeneas/source obligation.  It does
 mean that, once that bridge is instantiated, no separate arbitrary
 inverse-table or schedule-equality premise is left over.
 
+## Exact remaining premise, reduced to four fields
+
+`V7Tag73ExactFixedQ16SemanticNoninterference.lean` proves that existing q16
+probability accounting needs equality only of:
+
+1. authenticated K1.2 words;
+2. gamma;
+3. decoded final-256; and
+4. the one-fold schedule.
+
+It no longer asks for equality of openings or of the entire parsed proof.
+`V7Tag73ExactFixedQ16DerivedProfileInvariant.lean` then derives that semantic
+condition, and hence the existing `ExactFixedK13ResidualInvariant`, from one
+profile equality containing exactly the same K1.2 words, canonical fixed
+field decode, verifier gamma, and verifier alpha-zero.  All parser-field
+normalization and inverse-table reasoning happens inside Lean.
+
+So the precise remaining K1.3 actual-law theorem is now:
+
+> Within one genuine chronological trial and fixed hidden tape, equal
+> non-q16 residual coordinates preserve the derived four-field profile.
+
+That is the appropriate target for the q16 state-restoration/source-causality
+bridge.  It is still open, and must include the adversary-first cached path;
+it may not be replaced by a raw SHA-input classifier or a fresh-query claim.
+
 ## Current honest status
 
 The fixed and restored q16 factorization theorems remain conditional
