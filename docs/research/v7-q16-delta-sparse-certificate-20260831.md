@@ -516,3 +516,24 @@ f26a8b4cefad6760b7cc482fc18205e9c2d5eb5ef265f27c72761ebc5503cf14  Depth09Chunk00
 
 Chunk002 is independently green.  Chunk003 and the Depth09 aggregator remain
 unbuilt.
+
+## Focused Depth09 Chunk003 gate
+
+Unit `aspis-v7-q16-delta-depth09-chunk003-b3d-r20.service`, invocation
+`e6e8a61b4d09430a8a731709ff3d1913`, ran only Chunk003 and its axioms probe
+under the same 10G/12G/zero-swap limits.
+
+| Target | Exit | Wall | Max process RSS | Swaps |
+|---|---:|---:|---:|---:|
+| `Depth09Chunk003.lean` | 0 | 3.06s | 6,188,184 KiB | 0 |
+| Chunk003 axioms probe | 0 | 2.46s | 6,141,916 KiB | 0 |
+
+Its theorem reports exactly `[propext, Classical.choice, Quot.sound]`.
+
+```text
+7ee877d39ed81c563b7b3321f0dec5b43e434191d747b0dd65856e8401c1feed  Depth09Chunk003.olean
+fd84b3821ec902ca7ba9aac461dddaf67f7da91f59824a239353cad46f12b349  Depth09Chunk003.ilean
+```
+
+All four Depth09 chunks are independently green.  The Depth09 aggregator
+remains unbuilt.
