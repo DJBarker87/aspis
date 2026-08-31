@@ -1,0 +1,9 @@
+[[92mInfo[39m ] Imported: /home/dombarker/project-offloads/aspis-v7-registry-v2-projection-certificate-20260831/final-tmp/aspis-v7-registry-v2-deployment-extraction.YZRjCS/V7RegistryV2DeploymentCertificate.llbc
+[[92mInfo[39m ] Creating missing directory: /home/dombarker/project-offloads/aspis-v7-registry-v2-projection-certificate-20260831/final-tmp/aspis-v7-registry-v2-deployment-extraction.YZRjCS/generated/V7RegistryV2DeploymentCertificate
+[[92mInfo[39m ] Generated: /home/dombarker/project-offloads/aspis-v7-registry-v2-projection-certificate-20260831/final-tmp/aspis-v7-registry-v2-deployment-extraction.YZRjCS/generated/V7RegistryV2DeploymentCertificate/Types.lean
+[[92mInfo[39m ] Generated: /home/dombarker/project-offloads/aspis-v7-registry-v2-projection-certificate-20260831/final-tmp/aspis-v7-registry-v2-deployment-extraction.YZRjCS/generated/V7RegistryV2DeploymentCertificate/Funs.lean
+[[92mInfo[39m ] Generated: /home/dombarker/project-offloads/aspis-v7-registry-v2-projection-certificate-20260831/final-tmp/aspis-v7-registry-v2-deployment-extraction.YZRjCS/generated/translation.json
+[[92mInfo[39m ] Total execution time: 0.220679 seconds
+replayed LLBC SHA-256: bc9980735043163ec65b933e4edece454effe3dc55d7e0b58b3071f9e027e326
+note: raw LLBC embeds the disposable workspace path; generated output is compared byte-for-byte
+V7 Registry V2 deployment certificate Charon/Aeneas replay: PASS

@@ -1,0 +1,25 @@
+V7RegistryV2DeploymentCertificateSourceBridge.lean:294:12: warning: This simp argument is unused:
+  core.convert.FromSame
+
+Hint: Omit it from the simp argument list.
+  simp [authenticationRun, core.result.Result.Insts.CoreOpsTry.branch,
+              c̵o̵r̵e̵.̵r̵e̵s̵u̵l̵t̵.̵R̵e̵s̵u̵l̵t̵.̵I̵n̵s̵t̵s̵.̵C̵o̵r̵e̵O̵p̵s̵T̵r̵y̵T̵r̵a̵i̵t̵F̵r̵o̵m̵R̵e̵s̵i̵d̵u̵a̵l̵R̵e̵s̵u̵l̵t̵I̵n̵f̵a̵l̵l̵i̵b̵l̵e̵.̵f̵r̵o̵m̵_̵r̵e̵s̵i̵d̵u̵a̵l̵,̵
+  ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵c̵o̵r̵e̵.̵c̵o̵n̵v̵e̵r̵t̵.̵F̵r̵o̵m̵S̵a̵m̵e̵]̵c̲o̲r̲e̲.̲r̲e̲s̲u̲l̲t̲.̲R̲e̲s̲u̲l̲t̲.̲I̲n̲s̲t̲s̲.̲C̲o̲r̲e̲O̲p̲s̲T̲r̲y̲T̲r̲a̲i̲t̲F̲r̲o̲m̲R̲e̲s̲i̲d̲u̲a̲l̲R̲e̲s̲u̲l̲t̲I̲n̲f̲a̲l̲l̲i̲b̲l̲e̲.̲f̲r̲o̲m̲_̲r̲e̲s̲i̲d̲u̲a̲l̲]̲ at
+  ̲  ̲ ̲ ̲ ̲ ̲ ̲ ̲ ̲ ̲ ̲ ̲ ̲ ̲run
+
+Note: This linter can be disabled with `set_option linter.unusedSimpArgs false`
+'V7RegistryV2DeploymentCertificateGenerated.partial_ne_u8_array_exact' depends on axioms: [propext,
+ Classical.choice,
+ Quot.sound]
+'V7RegistryV2DeploymentCertificateGenerated.translated_immutable_deployment_success_is_exact' depends on axioms: [propext,
+ Classical.choice,
+ Quot.sound]
+'V7RegistryV2DeploymentCertificateGenerated.translated_deployment_source_root_success_is_exact' depends on axioms: [propext,
+ Classical.choice,
+ Quot.sound]
+'V7RegistryV2DeploymentCertificateGenerated.transaction_local_projection_iff_literal_256_fields' depends on axioms: [propext,
+ Classical.choice,
+ Quot.sound]
+'V7RegistryV2DeploymentCertificateGenerated.literal_256_fields_supply_fixed_caller_certificate_fields' depends on axioms: [propext,
+ Classical.choice,
+ Quot.sound]

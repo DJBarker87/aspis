@@ -1,0 +1,10 @@
+
+running 5 tests
+test instruction::tests::every_v2_instruction_roundtrips_and_v1_never_reinterprets_it ... ok
+test processor::tests::v2_initialize_certifies_the_exact_finalized_registry_executable_before_writing ... ok
+test processor::tests::v2_operator_mutations_reject_corrupted_deployment_certificates_without_writes ... ok
+test processor::tests::v2_initialize_rejects_loader_link_owner_privilege_and_upgrade_mutations_without_writes ... ok
+test processor::tests::v2_schedule_binds_exact_finalized_verifier_code_and_rolls_back_all_mutations ... ok
+
+test result: ok. 5 passed; 0 failed; 0 ignored; 0 measured; 12 filtered out; finished in 0.01s
+

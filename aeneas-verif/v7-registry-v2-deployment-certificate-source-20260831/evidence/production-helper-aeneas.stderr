@@ -1,0 +1,224 @@
+Uncaught exception:
+  
+  (Failure
+    "Unreachable\
+   \nSource: 'programs/aspis-registry/src/processor.rs', lines 212:0-285:1\
+   \nCompiler source: symbolic/SymbolicToPureValues.ml, line 878")
+
+Raised at Aeneas__Errors.craise_opt_span in file "Errors.ml", line 120, characters 4-23
+Called from Aeneas__Errors.cassert_opt_span in file "Errors.ml" (inlined), line 152, characters 16-50
+Called from Aeneas__Errors.cassert in file "Errors.ml" (inlined), line 156, characters 2-46
+Called from Aeneas__SymbolicToPureValues.aproj_to_given_back_aux in file "symbolic/SymbolicToPureValues.ml", line 878, characters 6-52
+Called from Aeneas__SymbolicToPureValues.tavalue_to_given_back_aux in file "symbolic/SymbolicToPureValues.ml", line 747, characters 8-74
+Called from Stdlib__List.fold_left_map.aux in file "list.ml", line 296, characters 22-30
+Called from Aeneas__SymbolicToPureValues.abs_to_given_back in file "symbolic/SymbolicToPureValues.ml", lines 932-935, characters 4-17
+Called from Aeneas__SymbolicToPureExpressions.translate_end_abstraction_fun_call in file "symbolic/SymbolicToPureExpressions.ml", line 1198, characters 23-69
+Called from Aeneas__SymbolicToPureExpressions.translate_emeta in file "symbolic/SymbolicToPureExpressions.ml", line 2306, characters 15-35
+Called from Aeneas__SymbolicToPureExpressions.translate_emeta in file "symbolic/SymbolicToPureExpressions.ml", line 2306, characters 15-35
+Called from Aeneas__SymbolicToPureExpressions.translate_forward_end.translate_one_end in file "symbolic/SymbolicToPureExpressions.ml", line 1831, characters 12-32
+Called from Aeneas__SymbolicToPureExpressions.translate_forward_end.(fun) in file "symbolic/SymbolicToPureExpressions.ml", line 1858, characters 13-47
+Called from Stdlib__List.map in file "list.ml", line 87, characters 15-19
+Called from Aeneas__SymbolicToPureExpressions.translate_forward_end in file "symbolic/SymbolicToPureExpressions.ml", lines 1856-1859, characters 4-56
+Called from Aeneas__SymbolicToPureExpressions.translate_emeta in file "symbolic/SymbolicToPureExpressions.ml", line 2306, characters 15-35
+Called from Aeneas__SymbolicToPureExpressions.translate_emeta in file "symbolic/SymbolicToPureExpressions.ml", line 2306, characters 15-35
+Called from Aeneas__SymbolicToPureExpressions.translate_emeta in file "symbolic/SymbolicToPureExpressions.ml", line 2306, characters 15-35
+Called from Aeneas__SymbolicToPureExpressions.translate_emeta in file "symbolic/SymbolicToPureExpressions.ml", line 2306, characters 15-35
+Called from Aeneas__SymbolicToPureExpressions.translate_emeta in file "symbolic/SymbolicToPureExpressions.ml", line 2306, characters 15-35
+Called from Aeneas__SymbolicToPureExpressions.translate_emeta in file "symbolic/SymbolicToPureExpressions.ml", line 2306, characters 15-35
+Called from Aeneas__SymbolicToPureExpressions.translate_emeta in file "symbolic/SymbolicToPureExpressions.ml", line 2306, characters 15-35
+Called from Aeneas__SymbolicToPureExpressions.translate_emeta in file "symbolic/SymbolicToPureExpressions.ml", line 2306, characters 15-35
+Called from Aeneas__SymbolicToPureExpressions.translate_emeta in file "symbolic/SymbolicToPureExpressions.ml", line 2306, characters 15-35
+Called from Aeneas__SymbolicToPureExpressions.translate_emeta in file "symbolic/SymbolicToPureExpressions.ml", line 2306, characters 15-35
+Called from Aeneas__SymbolicToPureExpressions.translate_emeta in file "symbolic/SymbolicToPureExpressions.ml", line 2306, characters 15-35
+Called from Aeneas__SymbolicToPureExpressions.translate_function_call_aux in file "symbolic/SymbolicToPureExpressions.ml", line 864, characters 15-35
+Called from Aeneas__SymbolicToPureExpressions.translate_emeta in file "symbolic/SymbolicToPureExpressions.ml", line 2306, characters 15-35
+Called from Aeneas__SymbolicToPureExpressions.translate_emeta in file "symbolic/SymbolicToPureExpressions.ml", line 2306, characters 15-35
+Called from Aeneas__SymbolicToPureExpressions.translate_emeta in file "symbolic/SymbolicToPureExpressions.ml", line 2306, characters 15-35
+Called from Aeneas__SymbolicToPureExpressions.translate_emeta in file "symbolic/SymbolicToPureExpressions.ml", line 2306, characters 15-35
+Called from Aeneas__SymbolicToPureExpressions.translate_emeta in file "symbolic/SymbolicToPureExpressions.ml", line 2306, characters 15-35
+Called from Aeneas__SymbolicToPureExpressions.translate_emeta in file "symbolic/SymbolicToPureExpressions.ml", line 2306, characters 15-35
+Called from Aeneas__SymbolicToPureExpressions.translate_emeta in file "symbolic/SymbolicToPureExpressions.ml", line 2306, characters 15-35
+Called from Aeneas__SymbolicToPureExpressions.translate_emeta in file "symbolic/SymbolicToPureExpressions.ml", line 2306, characters 15-35
+Called from Aeneas__SymbolicToPureExpressions.translate_emeta in file "symbolic/SymbolicToPureExpressions.ml", line 2306, characters 15-35
+Called from Aeneas__SymbolicToPureExpressions.translate_emeta in file "symbolic/SymbolicToPureExpressions.ml", line 2306, characters 15-35
+Called from Aeneas__SymbolicToPureExpressions.translate_expansion in file "symbolic/SymbolicToPureExpressions.ml", line 1533, characters 19-44
+Called from Aeneas__SymbolicToPureExpressions.translate_emeta in file "symbolic/SymbolicToPureExpressions.ml", line 2306, characters 15-35
+Called from Aeneas__SymbolicToPureExpressions.translate_emeta in file "symbolic/SymbolicToPureExpressions.ml", line 2306, characters 15-35
+Called from Aeneas__SymbolicToPureExpressions.translate_function_call_aux in file "symbolic/SymbolicToPureExpressions.ml", line 864, characters 15-35
+Called from Aeneas__SymbolicToPureExpressions.translate_emeta in file "symbolic/SymbolicToPureExpressions.ml", line 2306, characters 15-35
+Called from Aeneas__SymbolicToPureExpressions.translate_function_call_aux in file "symbolic/SymbolicToPureExpressions.ml", line 864, characters 15-35
+Called from Aeneas__SymbolicToPureExpressions.translate_emeta in file "symbolic/SymbolicToPureExpressions.ml", line 2306, characters 15-35
+Called from Aeneas__SymbolicToPureExpressions.translate_emeta in file "symbolic/SymbolicToPureExpressions.ml", line 2306, characters 15-35
+Called from Aeneas__SymbolicToPureExpressions.translate_emeta in file "symbolic/SymbolicToPureExpressions.ml", line 2306, characters 15-35
+Called from Aeneas__SymbolicToPureExpressions.translate_function_call_aux in file "symbolic/SymbolicToPureExpressions.ml", line 864, characters 15-35
+Called from Aeneas__SymbolicToPureExpressions.translate_emeta in file "symbolic/SymbolicToPureExpressions.ml", line 2306, characters 15-35
+Called from Aeneas__SymbolicToPureExpressions.translate_emeta in file "symbolic/SymbolicToPureExpressions.ml", line 2306, characters 15-35
+Called from Aeneas__SymbolicToPureExpressions.translate_emeta in file "symbolic/SymbolicToPureExpressions.ml", line 2306, characters 15-35
+Called from Aeneas__SymbolicToPureExpressions.translate_expansion in file "symbolic/SymbolicToPureExpressions.ml", line 1469, characters 23-43
+Called from Aeneas__SymbolicToPureExpressions.translate_expansion in file "symbolic/SymbolicToPureExpressions.ml", line 1469, characters 23-43
+Called from Aeneas__SymbolicToPureExpressions.translate_emeta in file "symbolic/SymbolicToPureExpressions.ml", line 2306, characters 15-35
+Called from Aeneas__SymbolicToPureExpressions.translate_function_call_aux in file "symbolic/SymbolicToPureExpressions.ml", line 864, characters 15-35
+Called from Aeneas__SymbolicToPureExpressions.translate_emeta in file "symbolic/SymbolicToPureExpressions.ml", line 2306, characters 15-35
+Called from Aeneas__SymbolicToPureExpressions.translate_emeta in file "symbolic/SymbolicToPureExpressions.ml", line 2306, characters 15-35
+Called from Aeneas__SymbolicToPureExpressions.translate_emeta in file "symbolic/SymbolicToPureExpressions.ml", line 2306, characters 15-35
+Called from Aeneas__SymbolicToPureExpressions.translate_emeta in file "symbolic/SymbolicToPureExpressions.ml", line 2306, characters 15-35
+Called from Aeneas__SymbolicToPureExpressions.translate_emeta in file "symbolic/SymbolicToPureExpressions.ml", line 2306, characters 15-35
+Called from Aeneas__SymbolicToPureExpressions.translate_emeta in file "symbolic/SymbolicToPureExpressions.ml", line 2306, characters 15-35
+Called from Aeneas__SymbolicToPureExpressions.translate_emeta in file "symbolic/SymbolicToPureExpressions.ml", line 2306, characters 15-35
+Called from Aeneas__SymbolicToPureExpressions.translate_emeta in file "symbolic/SymbolicToPureExpressions.ml", line 2306, characters 15-35
+Called from Aeneas__SymbolicToPureExpressions.translate_emeta in file "symbolic/SymbolicToPureExpressions.ml", line 2306, characters 15-35
+Called from Aeneas__SymbolicToPureExpressions.translate_emeta in file "symbolic/SymbolicToPureExpressions.ml", line 2306, characters 15-35
+Called from Aeneas__SymbolicToPureExpressions.translate_emeta in file "symbolic/SymbolicToPureExpressions.ml", line 2306, characters 15-35
+Called from Aeneas__SymbolicToPureExpressions.translate_expansion.translate_branch in file "symbolic/SymbolicToPureExpressions.ml", line 1502, characters 25-50
+Called from Stdlib__List.map in file "list.ml", line 86, characters 15-19
+Called from Aeneas__SymbolicToPureExpressions.translate_expansion in file "symbolic/SymbolicToPureExpressions.ml", line 1506, characters 12-79
+Called from Aeneas__SymbolicToPureExpressions.translate_emeta in file "symbolic/SymbolicToPureExpressions.ml", line 2306, characters 15-35
+Called from Aeneas__SymbolicToPureExpressions.translate_emeta in file "symbolic/SymbolicToPureExpressions.ml", line 2306, characters 15-35
+Called from Aeneas__SymbolicToPureExpressions.translate_function_call_aux in file "symbolic/SymbolicToPureExpressions.ml", line 864, characters 15-35
+Called from Aeneas__SymbolicToPureExpressions.translate_emeta in file "symbolic/SymbolicToPureExpressions.ml", line 2306, characters 15-35
+Called from Aeneas__SymbolicToPureExpressions.translate_emeta in file "symbolic/SymbolicToPureExpressions.ml", line 2306, characters 15-35
+Called from Aeneas__SymbolicToPureExpressions.translate_function_call_aux in file "symbolic/SymbolicToPureExpressions.ml", line 864, characters 15-35
+Called from Aeneas__SymbolicToPureExpressions.translate_emeta in file "symbolic/SymbolicToPureExpressions.ml", line 2306, characters 15-35
+Called from Aeneas__SymbolicToPureExpressions.translate_emeta in file "symbolic/SymbolicToPureExpressions.ml", line 2306, characters 15-35
+Called from Aeneas__SymbolicToPureExpressions.translate_emeta in file "symbolic/SymbolicToPureExpressions.ml", line 2306, characters 15-35
+Called from Aeneas__SymbolicToPureExpressions.translate_emeta in file "symbolic/SymbolicToPureExpressions.ml", line 2306, characters 15-35
+Called from Aeneas__SymbolicToPureExpressions.translate_emeta in file "symbolic/SymbolicToPureExpressions.ml", line 2306, characters 15-35
+Called from Aeneas__SymbolicToPureExpressions.translate_emeta in file "symbolic/SymbolicToPureExpressions.ml", line 2306, characters 15-35
+Called from Aeneas__SymbolicToPureExpressions.translate_emeta in file "symbolic/SymbolicToPureExpressions.ml", line 2306, characters 15-35
+Called from Aeneas__SymbolicToPureExpressions.translate_expansion in file "symbolic/SymbolicToPureExpressions.ml", line 1534, characters 20-46
+Called from Aeneas__SymbolicToPureExpressions.translate_emeta in file "symbolic/SymbolicToPureExpressions.ml", line 2306, characters 15-35
+Called from Aeneas__SymbolicToPureExpressions.translate_emeta in file "symbolic/SymbolicToPureExpressions.ml", line 2306, characters 15-35
+Called from Aeneas__SymbolicToPureExpressions.translate_emeta in file "symbolic/SymbolicToPureExpressions.ml", line 2306, characters 15-35
+Called from Aeneas__SymbolicToPureExpressions.translate_expansion in file "symbolic/SymbolicToPureExpressions.ml", line 1534, characters 20-46
+Called from Aeneas__SymbolicToPureExpressions.translate_emeta in file "symbolic/SymbolicToPureExpressions.ml", line 2306, characters 15-35
+Called from Aeneas__SymbolicToPureExpressions.translate_emeta in file "symbolic/SymbolicToPureExpressions.ml", line 2306, characters 15-35
+Called from Aeneas__SymbolicToPureExpressions.translate_emeta in file "symbolic/SymbolicToPureExpressions.ml", line 2306, characters 15-35
+Called from Aeneas__SymbolicToPureExpressions.translate_expansion in file "symbolic/SymbolicToPureExpressions.ml", line 1534, characters 20-46
+Called from Aeneas__SymbolicToPureExpressions.translate_emeta in file "symbolic/SymbolicToPureExpressions.ml", line 2306, characters 15-35
+Called from Aeneas__SymbolicToPureExpressions.translate_emeta in file "symbolic/SymbolicToPureExpressions.ml", line 2306, characters 15-35
+Called from Aeneas__SymbolicToPureExpressions.translate_emeta in file "symbolic/SymbolicToPureExpressions.ml", line 2306, characters 15-35
+Called from Aeneas__SymbolicToPureExpressions.translate_emeta in file "symbolic/SymbolicToPureExpressions.ml", line 2306, characters 15-35
+Called from Aeneas__SymbolicToPureExpressions.translate_emeta in file "symbolic/SymbolicToPureExpressions.ml", line 2306, characters 15-35
+Called from Aeneas__SymbolicToPureExpressions.translate_emeta in file "symbolic/SymbolicToPureExpressions.ml", line 2306, characters 15-35
+Called from Aeneas__SymbolicToPureExpressions.translate_emeta in file "symbolic/SymbolicToPureExpressions.ml", line 2306, characters 15-35
+Called from Aeneas__SymbolicToPureExpressions.translate_emeta in file "symbolic/SymbolicToPureExpressions.ml", line 2306, characters 15-35
+Called from Aeneas__SymbolicToPureExpressions.translate_emeta in file "symbolic/SymbolicToPureExpressions.ml", line 2306, characters 15-35
+Called from Aeneas__SymbolicToPureExpressions.translate_emeta in file "symbolic/SymbolicToPureExpressions.ml", line 2306, characters 15-35
+Called from Aeneas__SymbolicToPureExpressions.translate_emeta in file "symbolic/SymbolicToPureExpressions.ml", line 2306, characters 15-35
+Called from Aeneas__SymbolicToPureExpressions.translate_expansion in file "symbolic/SymbolicToPureExpressions.ml", line 1534, characters 20-46
+Called from Aeneas__SymbolicToPureExpressions.translate_emeta in file "symbolic/SymbolicToPureExpressions.ml", line 2306, characters 15-35
+Called from Aeneas__SymbolicToPureExpressions.translate_function_call_aux in file "symbolic/SymbolicToPureExpressions.ml", line 864, characters 15-35
+Called from Aeneas__SymbolicToPureExpressions.translate_emeta in file "symbolic/SymbolicToPureExpressions.ml", line 2306, characters 15-35
+Called from Aeneas__SymbolicToPureExpressions.translate_emeta in file "symbolic/SymbolicToPureExpressions.ml", line 2306, characters 15-35
+Called from Aeneas__SymbolicToPureExpressions.translate_emeta in file "symbolic/SymbolicToPureExpressions.ml", line 2306, characters 15-35
+Called from Aeneas__SymbolicToPureExpressions.translate_emeta in file "symbolic/SymbolicToPureExpressions.ml", line 2306, characters 15-35
+Called from Aeneas__SymbolicToPureExpressions.translate_emeta in file "symbolic/SymbolicToPureExpressions.ml", line 2306, characters 15-35
+Called from Aeneas__SymbolicToPureExpressions.translate_emeta in file "symbolic/SymbolicToPureExpressions.ml", line 2306, characters 15-35
+Called from Aeneas__SymbolicToPureExpressions.translate_emeta in file "symbolic/SymbolicToPureExpressions.ml", line 2306, characters 15-35
+Called from Aeneas__SymbolicToPureExpressions.translate_emeta in file "symbolic/SymbolicToPureExpressions.ml", line 2306, characters 15-35
+Called from Aeneas__SymbolicToPureExpressions.translate_emeta in file "symbolic/SymbolicToPureExpressions.ml", line 2306, characters 15-35
+Called from Aeneas__SymbolicToPureExpressions.translate_emeta in file "symbolic/SymbolicToPureExpressions.ml", line 2306, characters 15-35
+Called from Aeneas__SymbolicToPureExpressions.translate_emeta in file "symbolic/SymbolicToPureExpressions.ml", line 2306, characters 15-35
+Called from Aeneas__SymbolicToPureExpressions.translate_emeta in file "symbolic/SymbolicToPureExpressions.ml", line 2306, characters 15-35
+Called from Aeneas__SymbolicToPureExpressions.translate_expansion in file "symbolic/SymbolicToPureExpressions.ml", line 1534, characters 20-46
+Called from Aeneas__SymbolicToPureExpressions.translate_emeta in file "symbolic/SymbolicToPureExpressions.ml", line 2306, characters 15-35
+Called from Aeneas__SymbolicToPureExpressions.translate_emeta in file "symbolic/SymbolicToPureExpressions.ml", line 2306, characters 15-35
+Called from Aeneas__SymbolicToPureExpressions.translate_emeta in file "symbolic/SymbolicToPureExpressions.ml", line 2306, characters 15-35
+Called from Aeneas__SymbolicToPureExpressions.translate_expansion in file "symbolic/SymbolicToPureExpressions.ml", line 1534, characters 20-46
+Called from Aeneas__SymbolicToPureExpressions.translate_emeta in file "symbolic/SymbolicToPureExpressions.ml", line 2306, characters 15-35
+Called from Aeneas__SymbolicToPureExpressions.translate_emeta in file "symbolic/SymbolicToPureExpressions.ml", line 2306, characters 15-35
+Called from Aeneas__SymbolicToPureExpressions.translate_emeta in file "symbolic/SymbolicToPureExpressions.ml", line 2306, characters 15-35
+Called from Aeneas__SymbolicToPureExpressions.translate_expansion in file "symbolic/SymbolicToPureExpressions.ml", line 1533, characters 19-44
+Called from Aeneas__SymbolicToPureExpressions.translate_emeta in file "symbolic/SymbolicToPureExpressions.ml", line 2306, characters 15-35
+Called from Aeneas__SymbolicToPureExpressions.translate_emeta in file "symbolic/SymbolicToPureExpressions.ml", line 2306, characters 15-35
+Called from Aeneas__SymbolicToPureExpressions.translate_emeta in file "symbolic/SymbolicToPureExpressions.ml", line 2306, characters 15-35
+Called from Aeneas__SymbolicToPureExpressions.translate_emeta in file "symbolic/SymbolicToPureExpressions.ml", line 2306, characters 15-35
+Called from Aeneas__SymbolicToPureExpressions.translate_emeta in file "symbolic/SymbolicToPureExpressions.ml", line 2306, characters 15-35
+Called from Aeneas__SymbolicToPureExpressions.translate_emeta in file "symbolic/SymbolicToPureExpressions.ml", line 2306, characters 15-35
+Called from Aeneas__SymbolicToPureExpressions.translate_emeta in file "symbolic/SymbolicToPureExpressions.ml", line 2306, characters 15-35
+Called from Aeneas__SymbolicToPureExpressions.translate_emeta in file "symbolic/SymbolicToPureExpressions.ml", line 2306, characters 15-35
+Called from Aeneas__SymbolicToPureExpressions.translate_emeta in file "symbolic/SymbolicToPureExpressions.ml", line 2306, characters 15-35
+Called from Aeneas__SymbolicToPureExpressions.translate_emeta in file "symbolic/SymbolicToPureExpressions.ml", line 2306, characters 15-35
+Called from Aeneas__SymbolicToPureExpressions.translate_emeta in file "symbolic/SymbolicToPureExpressions.ml", line 2306, characters 15-35
+Called from Aeneas__SymbolicToPureExpressions.translate_expansion in file "symbolic/SymbolicToPureExpressions.ml", line 1534, characters 20-46
+Called from Aeneas__SymbolicToPureExpressions.translate_emeta in file "symbolic/SymbolicToPureExpressions.ml", line 2306, characters 15-35
+Called from Aeneas__SymbolicToPureExpressions.translate_function_call_aux in file "symbolic/SymbolicToPureExpressions.ml", line 864, characters 15-35
+Called from Aeneas__SymbolicToPureExpressions.translate_emeta in file "symbolic/SymbolicToPureExpressions.ml", line 2306, characters 15-35
+Called from Aeneas__SymbolicToPureExpressions.translate_emeta in file "symbolic/SymbolicToPureExpressions.ml", line 2306, characters 15-35
+Called from Aeneas__SymbolicToPureExpressions.translate_emeta in file "symbolic/SymbolicToPureExpressions.ml", line 2306, characters 15-35
+Called from Aeneas__SymbolicToPureExpressions.translate_emeta in file "symbolic/SymbolicToPureExpressions.ml", line 2306, characters 15-35
+Called from Aeneas__SymbolicToPureExpressions.translate_emeta in file "symbolic/SymbolicToPureExpressions.ml", line 2306, characters 15-35
+Called from Aeneas__SymbolicToPureExpressions.translate_emeta in file "symbolic/SymbolicToPureExpressions.ml", line 2306, characters 15-35
+Called from Aeneas__SymbolicToPureExpressions.translate_emeta in file "symbolic/SymbolicToPureExpressions.ml", line 2306, characters 15-35
+Called from Aeneas__SymbolicToPureExpressions.translate_emeta in file "symbolic/SymbolicToPureExpressions.ml", line 2306, characters 15-35
+Called from Aeneas__SymbolicToPureExpressions.translate_emeta in file "symbolic/SymbolicToPureExpressions.ml", line 2306, characters 15-35
+Called from Aeneas__SymbolicToPureExpressions.translate_emeta in file "symbolic/SymbolicToPureExpressions.ml", line 2306, characters 15-35
+Called from Aeneas__SymbolicToPureExpressions.translate_emeta in file "symbolic/SymbolicToPureExpressions.ml", line 2306, characters 15-35
+Called from Aeneas__SymbolicToPureExpressions.translate_emeta in file "symbolic/SymbolicToPureExpressions.ml", line 2306, characters 15-35
+Called from Aeneas__SymbolicToPureExpressions.translate_emeta in file "symbolic/SymbolicToPureExpressions.ml", line 2306, characters 15-35
+Called from Aeneas__SymbolicToPureExpressions.translate_expansion in file "symbolic/SymbolicToPureExpressions.ml", line 1534, characters 20-46
+Called from Aeneas__SymbolicToPureExpressions.translate_intro_symbolic in file "symbolic/SymbolicToPureExpressions.ml", line 1638, characters 15-35
+Called from Aeneas__SymbolicToPureExpressions.translate_intro_symbolic in file "symbolic/SymbolicToPureExpressions.ml", line 1638, characters 15-35
+Called from Aeneas__SymbolicToPureExpressions.translate_intro_symbolic in file "symbolic/SymbolicToPureExpressions.ml", line 1638, characters 15-35
+Called from Aeneas__SymbolicToPureExpressions.translate_intro_symbolic in file "symbolic/SymbolicToPureExpressions.ml", line 1638, characters 15-35
+Called from Aeneas__SymbolicToPureExpressions.translate_intro_symbolic in file "symbolic/SymbolicToPureExpressions.ml", line 1638, characters 15-35
+Called from Aeneas__SymbolicToPureExpressions.translate_intro_symbolic in file "symbolic/SymbolicToPureExpressions.ml", line 1638, characters 15-35
+Called from Aeneas__SymbolicToPureExpressions.translate_intro_symbolic in file "symbolic/SymbolicToPureExpressions.ml", line 1638, characters 15-35
+Called from Aeneas__SymbolicToPureExpressions.translate_intro_symbolic in file "symbolic/SymbolicToPureExpressions.ml", line 1638, characters 15-35
+Called from Aeneas__SymbolicToPureExpressions.translate_intro_symbolic in file "symbolic/SymbolicToPureExpressions.ml", line 1638, characters 15-35
+Called from Aeneas__SymbolicToPureExpressions.translate_intro_symbolic in file "symbolic/SymbolicToPureExpressions.ml", line 1638, characters 15-35
+Called from Aeneas__SymbolicToPureExpressions.translate_intro_symbolic in file "symbolic/SymbolicToPureExpressions.ml", line 1638, characters 15-35
+Called from Aeneas__SymbolicToPureExpressions.translate_intro_symbolic in file "symbolic/SymbolicToPureExpressions.ml", line 1638, characters 15-35
+Called from Aeneas__SymbolicToPureExpressions.translate_intro_symbolic in file "symbolic/SymbolicToPureExpressions.ml", line 1638, characters 15-35
+Called from Aeneas__SymbolicToPureExpressions.translate_emeta in file "symbolic/SymbolicToPureExpressions.ml", line 2306, characters 15-35
+Called from Aeneas__SymbolicToPureExpressions.translate_function_call_aux in file "symbolic/SymbolicToPureExpressions.ml", line 864, characters 15-35
+Called from Aeneas__SymbolicToPureExpressions.translate_emeta in file "symbolic/SymbolicToPureExpressions.ml", line 2306, characters 15-35
+Called from Aeneas__SymbolicToPureExpressions.translate_emeta in file "symbolic/SymbolicToPureExpressions.ml", line 2306, characters 15-35
+Called from Aeneas__SymbolicToPureExpressions.translate_emeta in file "symbolic/SymbolicToPureExpressions.ml", line 2306, characters 15-35
+Called from Aeneas__SymbolicToPureExpressions.translate_emeta in file "symbolic/SymbolicToPureExpressions.ml", line 2306, characters 15-35
+Called from Aeneas__SymbolicToPureExpressions.translate_emeta in file "symbolic/SymbolicToPureExpressions.ml", line 2306, characters 15-35
+Called from Aeneas__SymbolicToPureExpressions.translate_function_call_aux in file "symbolic/SymbolicToPureExpressions.ml", line 864, characters 15-35
+Called from Aeneas__SymbolicToPureExpressions.translate_expansion in file "symbolic/SymbolicToPureExpressions.ml", line 1469, characters 23-43
+Called from Aeneas__SymbolicToPureExpressions.translate_expansion in file "symbolic/SymbolicToPureExpressions.ml", line 1469, characters 23-43
+Called from Aeneas__SymbolicToPureExpressions.translate_ExpandAdt_one_branch in file "symbolic/SymbolicToPureExpressions.ml", line 1592, characters 15-40
+Called from Aeneas__SymbolicToPureExpressions.translate_expansion in file "symbolic/SymbolicToPureExpressions.ml", line 1469, characters 23-43
+Called from Aeneas__SymbolicToPureExpressions.translate_expansion in file "symbolic/SymbolicToPureExpressions.ml", line 1469, characters 23-43
+Called from Aeneas__SymbolicToPureExpressions.translate_expansion in file "symbolic/SymbolicToPureExpressions.ml", line 1469, characters 23-43
+Called from Aeneas__SymbolicToPureExpressions.translate_ExpandAdt_one_branch in file "symbolic/SymbolicToPureExpressions.ml", line 1592, characters 15-40
+Called from Aeneas__SymbolicToPureExpressions.translate_expansion in file "symbolic/SymbolicToPureExpressions.ml", line 1469, characters 23-43
+Called from Aeneas__SymbolicToPureExpressions.translate_expansion in file "symbolic/SymbolicToPureExpressions.ml", line 1469, characters 23-43
+Called from Aeneas__SymbolicToPureExpressions.translate_emeta in file "symbolic/SymbolicToPureExpressions.ml", line 2306, characters 15-35
+Called from Aeneas__SymbolicToPure.translate_fun_decl_body in file "symbolic/SymbolicToPure.ml", line 50, characters 13-36
+Called from Aeneas__SymbolicToPure.translate_fun_decl in file "symbolic/SymbolicToPure.ml", line 90, characters 17-61
+Called from Aeneas__Translate.translate_function_to_pure_aux in file "Translate.ml", line 270, characters 23-71
+Called from Aeneas__Translate.translate_function_to_pure in file "Translate.ml", lines 288-289, characters 6-41
+Called from Aeneas__Translate.translate_crate_to_pure.process.(fun) in file "Translate.ml", lines 501-502, characters 16-45
+Called from Stdlib__List.filter_map in file "list.ml", line 280, characters 12-15
+Called from Aeneas__Parallel.catch_reraise in file "Parallel.ml", line 17, characters 6-9
+Called from Aeneas__Translate.translate_crate_to_pure in file "Translate.ml", line 519, characters 22-62
+Called from Aeneas__Translate.translate_crate in file "Translate.ml", line 2199, characters 31-71
+Called from Dune__exe__Main in file "Main.ml", lines 743-744, characters 8-37
+Command exited with non-zero status 2
+	Command being timed: "/home/dombarker/project-offloads/v7-tag73-challenge-qm31-source-20260825-work/toolchain/output/aeneas-b59d5188-lean432-extended-static -sequential -no-progress-bar -abort-on-error -backend lean -namespace V7RegistryV2ImmutableDeploymentGenerated -dest generated-deploy-01 -subdir V7RegistryV2ImmutableDeployment -split-files -emit-json ImmutableDeployment01.llbc"
+	User time (seconds): 0.83
+	System time (seconds): 0.05
+	Percent of CPU this job got: 99%
+	Elapsed (wall clock) time (h:mm:ss or m:ss): 0:00.88
+	Average shared text size (kbytes): 0
+	Average unshared data size (kbytes): 0
+	Average stack size (kbytes): 0
+	Average total size (kbytes): 0
+	Maximum resident set size (kbytes): 183392
+	Average resident set size (kbytes): 0
+	Major (requiring I/O) page faults: 0
+	Minor (reclaiming a frame) page faults: 40220
+	Voluntary context switches: 1
+	Involuntary context switches: 2
+	Swaps: 0
+	File system inputs: 0
+	File system outputs: 64
+	Socket messages sent: 0
+	Socket messages received: 0
+	Signals delivered: 0
+	Page size (bytes): 4096
+	Exit status: 2

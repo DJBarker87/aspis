@@ -1,0 +1,1364 @@
+/home/dombarker/project-offloads/aspis-v7-registry-v2-projection-certificate-20260831/final-tmp/aspis-v7-registry-v2-deployment-lean.EQna2P/V7RegistryV2AccountInfoProjectionBridge.lean:157:13: warning: This simp argument is unused:
+  productionRegistryAccountsAccepted
+
+Hint: Omit it from the simp argument list.
+  simp only [̵p̵r̵o̵d̵u̵c̵t̵i̵o̵n̵R̵e̵g̵i̵s̵t̵r̵y̵A̵c̵c̵o̵u̵n̵t̵s̵A̵c̵c̵e̵p̵t̵e̵d̵,̵ ̵F̵i̵x̵e̵d̵R̵e̵g̵i̵s̵t̵r̵y̵A̵c̵c̵o̵u̵n̵t̵S̵o̵u̵r̵c̵e̵S̵h̵a̵p̵e̵,̵[̲F̲i̲x̲e̲d̲R̲e̲g̲i̲s̲t̲r̲y̲A̲c̲c̲o̲u̲n̲t̲S̲o̲u̲r̲c̲e̲S̲h̲a̲p̲e̲,̲ FixedRegistryAccountFields, FixedReadonlyOwned,
+  ̲  ̲ ̲ ̲projectAccountView]
+
+Note: This linter can be disabled with `set_option linter.unusedSimpArgs false`
+/home/dombarker/project-offloads/aspis-v7-registry-v2-projection-certificate-20260831/final-tmp/aspis-v7-registry-v2-deployment-lean.EQna2P/V7RegistryV2AccountInfoProjectionBridge.lean:225:18: warning: This simp argument is unused:
+  List.allM
+
+Hint: Omit it from the simp argument list.
+  simp [L̵i̵s̵t̵.̵a̵l̵l̵M̵,̵ ̵headValuesEqual] at allEqual
+
+Note: This linter can be disabled with `set_option linter.unusedSimpArgs false`
+/home/dombarker/project-offloads/aspis-v7-registry-v2-projection-certificate-20260831/final-tmp/aspis-v7-registry-v2-deployment-lean.EQna2P/V7RegistryV2AccountInfoProjectionBridge.lean:233:18: warning: This simp argument is unused:
+  List.allM
+
+Hint: Omit it from the simp argument list.
+  simp [L̵i̵s̵t̵.̵a̵l̵l̵M̵,̵ ̵headValuesEqual, pure] at allEqual
+
+Note: This linter can be disabled with `set_option linter.unusedSimpArgs false`
+/home/dombarker/project-offloads/aspis-v7-registry-v2-projection-certificate-20260831/final-tmp/aspis-v7-registry-v2-deployment-lean.EQna2P/V7RegistryV2AccountInfoProjectionBridge.lean:260:12: warning: This simp argument is unused:
+  List.allM
+
+Hint: Omit it from the simp argument list.
+  simp [̵L̵i̵s̵t̵.̵a̵l̵l̵M̵,̵ ̵i̵n̵d̵u̵c̵t̵i̵o̵n̵H̵y̵p̵o̵t̵h̵e̵s̵i̵s̵]̵[̲i̲n̲d̲u̲c̲t̲i̲o̲n̲H̲y̲p̲o̲t̲h̲e̲s̲i̲s̲]̲
+
+Note: This linter can be disabled with `set_option linter.unusedSimpArgs false`
+/home/dombarker/project-offloads/aspis-v7-registry-v2-projection-certificate-20260831/final-tmp/aspis-v7-registry-v2-deployment-lean.EQna2P/V7RegistryV2AccountInfoProjectionBridge.lean:271:8: warning: try 'simp' instead of 'simpa'
+
+Note: This linter can be disabled with `set_option linter.unnecessarySimpa false`
+/home/dombarker/project-offloads/aspis-v7-registry-v2-projection-certificate-20260831/final-tmp/aspis-v7-registry-v2-deployment-lean.EQna2P/V7RegistryV2AccountInfoProjectionBridge.lean:267:8: warning: This simp argument is unused:
+  core.cmp.PartialEqU8
+
+Hint: Omit it from the simp argument list.
+  simp [̵c̵o̵r̵e̵.̵c̵m̵p̵.̵P̵a̵r̵t̵i̵a̵l̵E̵q̵U̵8̵,̵ ̵c̵o̵r̵e̵.̵c̵m̵p̵.̵i̵m̵p̵l̵s̵.̵P̵a̵r̵t̵i̵a̵l̵E̵q̵U̵8̵.̵n̵e̵,̵[̲c̲o̲r̲e̲.̲c̲m̲p̲.̲i̲m̲p̲l̲s̲.̲P̲a̲r̲t̲i̲a̲l̲E̲q̲U̲8̲.̲n̲e̲,̲ Aeneas.Std.liftFun2] at run
+
+Note: This linter can be disabled with `set_option linter.unusedSimpArgs false`
+/home/dombarker/project-offloads/aspis-v7-registry-v2-projection-certificate-20260831/final-tmp/aspis-v7-registry-v2-deployment-lean.EQna2P/V7RegistryV2AccountInfoProjectionBridge.lean:288:27: warning: This simp argument is unused:
+  ↓reduceIte
+
+Hint: Omit it from the simp argument list.
+  simp only [Array.length,̵ ̵↓̵r̵e̵d̵u̵c̵e̵I̵t̵e̵]
+
+Note: This linter can be disabled with `set_option linter.unusedSimpArgs false`
+'AspisPool.V7RegistryV2AccountInfoProjectionBridge.production_readonly_success_iff' depends on axioms: [propext,
+ Classical.choice,
+ Quot.sound]
+'AspisPool.V7RegistryV2AccountInfoProjectionBridge.production_readonly_success_iff_projected_account' depends on axioms: [propext,
+ Classical.choice,
+ Quot.sound]
+'AspisPool.V7RegistryV2AccountInfoProjectionBridge.production_registry_pair_iff_fixed_source_shape' depends on axioms: [propext,
+ Classical.choice,
+ Quot.sound]
+'AspisPool.V7RegistryV2AccountInfoProjectionBridge.production_registry_pair_supplies_fixed_account_fields' depends on axioms: [propext,
+ Classical.choice,
+ Quot.sound]
+'AspisPool.V7RegistryV2AccountInfoProjectionBridge.required_binding_is_zero_ok_iff' depends on axioms: [propext,
+ Classical.choice,
+ Quot.sound]
+'AspisPool.V7RegistryV2AccountInfoProjectionBridge.required_binding_is_nonzero_ok_iff' depends on axioms: [propext,
+ Classical.choice,
+ Quot.sound]
+/home/dombarker/project-offloads/aspis-v7-registry-v2-projection-certificate-20260831/final-tmp/aspis-v7-registry-v2-deployment-lean.EQna2P/V7RegistryV2OneTerminalCallerSourceBridge.lean:319:18: warning: This simp argument is unused:
+  Bool.ne_false_iff
+
+Hint: Omit it from the simp argument list.
+  s̵i̵m̵p̵ ̵[̵B̵o̵o̵l̵.̵n̵e̵_̵f̵a̵l̵s̵e̵_̵i̵f̵f̵]̵ ̵a̵t̵ ̵h̵s̲i̲m̲p̲ ̲a̲t̲ ̲h̲
+
+Note: This linter can be disabled with `set_option linter.unusedSimpArgs false`
+/home/dombarker/project-offloads/aspis-v7-registry-v2-projection-certificate-20260831/final-tmp/aspis-v7-registry-v2-deployment-lean.EQna2P/V7RegistryV2OneTerminalCallerSourceBridge.lean:329:18: warning: This simp argument is unused:
+  Bool.ne_false_iff
+
+Hint: Omit it from the simp argument list.
+  s̵i̵m̵p̵ ̵[̵B̵o̵o̵l̵.̵n̵e̵_̵f̵a̵l̵s̵e̵_̵i̵f̵f̵]̵ ̵a̵t̵ ̵h̵s̲i̲m̲p̲ ̲a̲t̲ ̲h̲
+
+Note: This linter can be disabled with `set_option linter.unusedSimpArgs false`
+/home/dombarker/project-offloads/aspis-v7-registry-v2-projection-certificate-20260831/final-tmp/aspis-v7-registry-v2-deployment-lean.EQna2P/V7RegistryV2OneTerminalCallerSourceBridge.lean:339:18: warning: This simp argument is unused:
+  Bool.ne_false_iff
+
+Hint: Omit it from the simp argument list.
+  s̵i̵m̵p̵ ̵[̵B̵o̵o̵l̵.̵n̵e̵_̵f̵a̵l̵s̵e̵_̵i̵f̵f̵]̵ ̵a̵t̵ ̵h̵s̲i̲m̲p̲ ̲a̲t̲ ̲h̲
+
+Note: This linter can be disabled with `set_option linter.unusedSimpArgs false`
+/home/dombarker/project-offloads/aspis-v7-registry-v2-projection-certificate-20260831/final-tmp/aspis-v7-registry-v2-deployment-lean.EQna2P/V7RegistryV2OneTerminalCallerSourceBridge.lean:349:18: warning: This simp argument is unused:
+  Bool.ne_false_iff
+
+Hint: Omit it from the simp argument list.
+  s̵i̵m̵p̵ ̵[̵B̵o̵o̵l̵.̵n̵e̵_̵f̵a̵l̵s̵e̵_̵i̵f̵f̵]̵ ̵a̵t̵ ̵h̵s̲i̲m̲p̲ ̲a̲t̲ ̲h̲
+
+Note: This linter can be disabled with `set_option linter.unusedSimpArgs false`
+/home/dombarker/project-offloads/aspis-v7-registry-v2-projection-certificate-20260831/final-tmp/aspis-v7-registry-v2-deployment-lean.EQna2P/V7RegistryV2OneTerminalCallerSourceBridge.lean:359:18: warning: This simp argument is unused:
+  Bool.ne_false_iff
+
+Hint: Omit it from the simp argument list.
+  simp [̵B̵o̵o̵l̵.̵n̵e̵_̵f̵a̵l̵s̵e̵_̵i̵f̵f̵,̵ ̵n̵o̵t̵_̵o̵r̵]̵[̲n̲o̲t̲_̲o̲r̲]̲ at h
+
+Note: This linter can be disabled with `set_option linter.unusedSimpArgs false`
+/home/dombarker/project-offloads/aspis-v7-registry-v2-projection-certificate-20260831/final-tmp/aspis-v7-registry-v2-deployment-lean.EQna2P/V7RegistryV2OneTerminalCallerSourceBridge.lean:380:11: warning: Local variable 'unit' resembles constructor 'PUnit.unit' - write '.unit' (with a dot) or 'PUnit.unit' to use the constructor.
+
+Note: This linter can be disabled with `set_option linter.constructorNameAsVariable false`
+/home/dombarker/project-offloads/aspis-v7-registry-v2-projection-certificate-20260831/final-tmp/aspis-v7-registry-v2-deployment-lean.EQna2P/V7RegistryV2OneTerminalCallerSourceBridge.lean:396:19: warning: Local variable 'unit' resembles constructor 'PUnit.unit' - write '.unit' (with a dot) or 'PUnit.unit' to use the constructor.
+
+Note: This linter can be disabled with `set_option linter.constructorNameAsVariable false`
+/home/dombarker/project-offloads/aspis-v7-registry-v2-projection-certificate-20260831/final-tmp/aspis-v7-registry-v2-deployment-lean.EQna2P/V7RegistryV2OneTerminalCallerSourceBridge.lean:412:27: warning: Local variable 'unit' resembles constructor 'PUnit.unit' - write '.unit' (with a dot) or 'PUnit.unit' to use the constructor.
+
+Note: This linter can be disabled with `set_option linter.constructorNameAsVariable false`
+/home/dombarker/project-offloads/aspis-v7-registry-v2-projection-certificate-20260831/final-tmp/aspis-v7-registry-v2-deployment-lean.EQna2P/V7RegistryV2OneTerminalCallerSourceBridge.lean:431:35: warning: Local variable 'unit' resembles constructor 'PUnit.unit' - write '.unit' (with a dot) or 'PUnit.unit' to use the constructor.
+
+Note: This linter can be disabled with `set_option linter.constructorNameAsVariable false`
+/home/dombarker/project-offloads/aspis-v7-registry-v2-projection-certificate-20260831/final-tmp/aspis-v7-registry-v2-deployment-lean.EQna2P/V7RegistryV2OneTerminalCallerSourceBridge.lean:367:45: warning: This simp argument is unused:
+  bind_tc_ok
+
+Hint: Omit it from the simp argument list.
+  simp_all only [Bind.bind, Aeneas.Std.bind, bind_tc_o̵k̵,̵ ̵b̵i̵n̵d̵_̵t̵c̵_̵fail,
+  ̵  ̵ ̵ ̵bind_tc_div, Aeneas.Std.Result.ok.injEq]
+
+Note: This linter can be disabled with `set_option linter.unusedSimpArgs false`
+/home/dombarker/project-offloads/aspis-v7-registry-v2-projection-certificate-20260831/final-tmp/aspis-v7-registry-v2-deployment-lean.EQna2P/V7RegistryV2OneTerminalCallerSourceBridge.lean:367:57: warning: This simp argument is unused:
+  bind_tc_fail
+
+Hint: Omit it from the simp argument list.
+  simp_all only [Bind.bind, Aeneas.Std.bind, bind_tc_ok, bind_tc_f̵a̵i̵l̵,̵
+  ̵ ̵ ̵ ̵ ̵b̵i̵n̵d_̵t̵c̵_̵d̵iv, Aeneas.Std.Result.ok.injEq]
+
+Note: This linter can be disabled with `set_option linter.unusedSimpArgs false`
+/home/dombarker/project-offloads/aspis-v7-registry-v2-projection-certificate-20260831/final-tmp/aspis-v7-registry-v2-deployment-lean.EQna2P/V7RegistryV2OneTerminalCallerSourceBridge.lean:368:4: warning: This simp argument is unused:
+  bind_tc_div
+
+Hint: Omit it from the simp argument list.
+  simp_all only [Bind.bind, Aeneas.Std.bind, bind_tc_ok, bind_tc_fail,
+  ̵  ̵ ̵ ̵b̵i̵n̵d̵_̵t̵c̵_̵d̵i̵v̵,̵ ̵Aeneas.Std.Result.ok.injEq]
+
+Note: This linter can be disabled with `set_option linter.unusedSimpArgs false`
+/home/dombarker/project-offloads/aspis-v7-registry-v2-projection-certificate-20260831/final-tmp/aspis-v7-registry-v2-deployment-lean.EQna2P/V7RegistryV2OneTerminalCallerSourceBridge.lean:368:17: warning: This simp argument is unused:
+  Aeneas.Std.Result.ok.injEq
+
+Hint: Omit it from the simp argument list.
+  simp_all only [Bind.bind, Aeneas.Std.bind, bind_tc_ok, bind_tc_fail, b̵i̵n̵d̵_̵t̵c̵_̵d̵i̵v̵,̵ ̵A̵e̵n̵e̵a̵s̵.̵S̵t̵d̵.̵R̵e̵s̵u̵l̵t̵.̵o̵k̵.̵i̵n̵j̵E̵q̵]̵b̲i̲n̲d̲_̲t̲c̲_̲d̲i̲v̲]̲
+
+Note: This linter can be disabled with `set_option linter.unusedSimpArgs false`
+/home/dombarker/project-offloads/aspis-v7-registry-v2-projection-certificate-20260831/final-tmp/aspis-v7-registry-v2-deployment-lean.EQna2P/V7RegistryV2OneTerminalCallerSourceBridge.lean:372:24: warning: This simp argument is unused:
+  policyRun
+
+Hint: Omit it from the simp argument list.
+  simp [̵p̵o̵l̵i̵c̵y̵R̵u̵n̵]̵ ̵at run
+
+Note: This linter can be disabled with `set_option linter.unusedSimpArgs false`
+/home/dombarker/project-offloads/aspis-v7-registry-v2-projection-certificate-20260831/final-tmp/aspis-v7-registry-v2-deployment-lean.EQna2P/V7RegistryV2OneTerminalCallerSourceBridge.lean:373:17: warning: This simp argument is unused:
+  policyRun
+
+Hint: Omit it from the simp argument list.
+  simp [̵p̵o̵l̵i̵c̵y̵R̵u̵n̵]̵ ̵at run
+
+Note: This linter can be disabled with `set_option linter.unusedSimpArgs false`
+/home/dombarker/project-offloads/aspis-v7-registry-v2-projection-certificate-20260831/final-tmp/aspis-v7-registry-v2-deployment-lean.EQna2P/V7RegistryV2OneTerminalCallerSourceBridge.lean:377:16: warning: This simp argument is unused:
+  policyRun
+
+Hint: Omit it from the simp argument list.
+  simp [p̵o̵l̵i̵cy̵R̵u̵n̵,̵ ̵c̵ore.result.Result.Insts.CoreOpsTry.branch,
+              core.result.Result.Insts.CoreOpsTryTraitFromResidualResultInfallible.from_residual,
+              core.convert.FromSame.from] at run
+
+Note: This linter can be disabled with `set_option linter.unusedSimpArgs false`
+/home/dombarker/project-offloads/aspis-v7-registry-v2-projection-certificate-20260831/final-tmp/aspis-v7-registry-v2-deployment-lean.EQna2P/V7RegistryV2OneTerminalCallerSourceBridge.lean:385:32: warning: This simp argument is unused:
+  policyRun
+
+Hint: Omit it from the simp argument list.
+  simp [̵p̵o̵l̵i̵c̵y̵R̵u̵n̵,̵ ̵r̵e̵g̵i̵s̵t̵r̵y̵R̵u̵n̵,̵[̲r̲e̲g̲i̲s̲t̲r̲y̲R̲u̲n̲,̲ core.result.Result.Insts.CoreOpsTry.branch] at run
+
+Note: This linter can be disabled with `set_option linter.unusedSimpArgs false`
+/home/dombarker/project-offloads/aspis-v7-registry-v2-projection-certificate-20260831/final-tmp/aspis-v7-registry-v2-deployment-lean.EQna2P/V7RegistryV2OneTerminalCallerSourceBridge.lean:385:43: warning: This simp argument is unused:
+  registryRun
+
+Hint: Omit it from the simp argument list.
+  simp [policyRun, r̵e̵g̵i̵s̵t̵r̵y̵R̵u̵n̵,̵
+  ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵core.result.Result.Insts.CoreOpsTry.branch] at run
+
+Note: This linter can be disabled with `set_option linter.unusedSimpArgs false`
+/home/dombarker/project-offloads/aspis-v7-registry-v2-projection-certificate-20260831/final-tmp/aspis-v7-registry-v2-deployment-lean.EQna2P/V7RegistryV2OneTerminalCallerSourceBridge.lean:387:25: warning: This simp argument is unused:
+  policyRun
+
+Hint: Omit it from the simp argument list.
+  simp [̵p̵o̵l̵i̵c̵y̵R̵u̵n̵,̵ ̵r̵e̵g̵i̵s̵t̵r̵y̵R̵u̵n̵,̵[̲r̲e̲g̲i̲s̲t̲r̲y̲R̲u̲n̲,̲ core.result.Result.Insts.CoreOpsTry.branch] at run
+
+Note: This linter can be disabled with `set_option linter.unusedSimpArgs false`
+/home/dombarker/project-offloads/aspis-v7-registry-v2-projection-certificate-20260831/final-tmp/aspis-v7-registry-v2-deployment-lean.EQna2P/V7RegistryV2OneTerminalCallerSourceBridge.lean:387:36: warning: This simp argument is unused:
+  registryRun
+
+Hint: Omit it from the simp argument list.
+  simp [policyRun, r̵e̵g̵i̵s̵t̵r̵y̵R̵u̵n̵,̵
+  ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵core.result.Result.Insts.CoreOpsTry.branch] at run
+
+Note: This linter can be disabled with `set_option linter.unusedSimpArgs false`
+/home/dombarker/project-offloads/aspis-v7-registry-v2-projection-certificate-20260831/final-tmp/aspis-v7-registry-v2-deployment-lean.EQna2P/V7RegistryV2OneTerminalCallerSourceBridge.lean:392:24: warning: This simp argument is unused:
+  policyRun
+
+Hint: Omit it from the simp argument list.
+  simp [p̵o̵l̵i̵c̵y̵R̵u̵n̵,̵ ̵registryRun,
+  ̵  ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵core.result.Result.Insts.CoreOpsTry.branch,
+                      core.result.Result.Insts.CoreOpsTryTraitFromResidualResultInfallible.from_residual,
+                      core.convert.FromSame.from] at run
+
+Note: This linter can be disabled with `set_option linter.unusedSimpArgs false`
+/home/dombarker/project-offloads/aspis-v7-registry-v2-projection-certificate-20260831/final-tmp/aspis-v7-registry-v2-deployment-lean.EQna2P/V7RegistryV2OneTerminalCallerSourceBridge.lean:392:35: warning: This simp argument is unused:
+  registryRun
+
+Hint: Omit it from the simp argument list.
+  simp [policyRun, r̵e̵g̵i̵s̵t̵r̵y̵R̵u̵n̵,̵
+  ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵core.result.Result.Insts.CoreOpsTry.branch,
+                      core.result.Result.Insts.CoreOpsTryTraitFromResidualResultInfallible.from_residual,
+                      core.convert.FromSame.from] at run
+
+Note: This linter can be disabled with `set_option linter.unusedSimpArgs false`
+/home/dombarker/project-offloads/aspis-v7-registry-v2-projection-certificate-20260831/final-tmp/aspis-v7-registry-v2-deployment-lean.EQna2P/V7RegistryV2OneTerminalCallerSourceBridge.lean:401:40: warning: This simp argument is unused:
+  policyRun
+
+Hint: Omit it from the simp argument list.
+  simp [p̵o̵l̵i̵c̵y̵R̵u̵n̵,̵ ̵registryRun, entryRun,
+                       ̵ ̵core.result.Result.Insts.CoreOpsTry.branch] at run
+
+Note: This linter can be disabled with `set_option linter.unusedSimpArgs false`
+/home/dombarker/project-offloads/aspis-v7-registry-v2-projection-certificate-20260831/final-tmp/aspis-v7-registry-v2-deployment-lean.EQna2P/V7RegistryV2OneTerminalCallerSourceBridge.lean:401:51: warning: This simp argument is unused:
+  registryRun
+
+Hint: Omit it from the simp argument list.
+  simp [policyRun, r̵eg̵i̵s̵t̵r̵y̵R̵u̵n,̵ ̵e̵n̵tryRun,
+                       ̵ ̵core.result.Result.Insts.CoreOpsTry.branch] at run
+
+Note: This linter can be disabled with `set_option linter.unusedSimpArgs false`
+/home/dombarker/project-offloads/aspis-v7-registry-v2-projection-certificate-20260831/final-tmp/aspis-v7-registry-v2-deployment-lean.EQna2P/V7RegistryV2OneTerminalCallerSourceBridge.lean:401:64: warning: This simp argument is unused:
+  entryRun
+
+Hint: Omit it from the simp argument list.
+  simp [policyRun, registryRun, ̵e̵n̵t̵r̵y̵R̵u̵n̵,̵
+                       ̵ ̵core.result.Result.Insts.CoreOpsTry.branch] at run
+
+Note: This linter can be disabled with `set_option linter.unusedSimpArgs false`
+/home/dombarker/project-offloads/aspis-v7-registry-v2-projection-certificate-20260831/final-tmp/aspis-v7-registry-v2-deployment-lean.EQna2P/V7RegistryV2OneTerminalCallerSourceBridge.lean:403:33: warning: This simp argument is unused:
+  policyRun
+
+Hint: Omit it from the simp argument list.
+  simp [p̵o̵l̵i̵c̵y̵R̵u̵n̵,̵ ̵registryRun, entryRun,
+                       ̵ ̵core.result.Result.Insts.CoreOpsTry.branch] at run
+
+Note: This linter can be disabled with `set_option linter.unusedSimpArgs false`
+/home/dombarker/project-offloads/aspis-v7-registry-v2-projection-certificate-20260831/final-tmp/aspis-v7-registry-v2-deployment-lean.EQna2P/V7RegistryV2OneTerminalCallerSourceBridge.lean:403:44: warning: This simp argument is unused:
+  registryRun
+
+Hint: Omit it from the simp argument list.
+  simp [policyRun, r̵eg̵i̵s̵t̵r̵y̵R̵u̵n,̵ ̵e̵n̵tryRun,
+                       ̵ ̵core.result.Result.Insts.CoreOpsTry.branch] at run
+
+Note: This linter can be disabled with `set_option linter.unusedSimpArgs false`
+/home/dombarker/project-offloads/aspis-v7-registry-v2-projection-certificate-20260831/final-tmp/aspis-v7-registry-v2-deployment-lean.EQna2P/V7RegistryV2OneTerminalCallerSourceBridge.lean:403:57: warning: This simp argument is unused:
+  entryRun
+
+Hint: Omit it from the simp argument list.
+  simp [policyRun, registryRun, ̵e̵n̵t̵r̵y̵R̵u̵n̵,̵
+                       ̵ ̵core.result.Result.Insts.CoreOpsTry.branch] at run
+
+Note: This linter can be disabled with `set_option linter.unusedSimpArgs false`
+/home/dombarker/project-offloads/aspis-v7-registry-v2-projection-certificate-20260831/final-tmp/aspis-v7-registry-v2-deployment-lean.EQna2P/V7RegistryV2OneTerminalCallerSourceBridge.lean:408:32: warning: This simp argument is unused:
+  policyRun
+
+Hint: Omit it from the simp argument list.
+  simp [p̵o̵l̵i̵c̵y̵R̵u̵n̵,̵ ̵registryRun, entryRun,
+  ̵  ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵core.result.Result.Insts.CoreOpsTry.branch,
+                              core.result.Result.Insts.CoreOpsTryTraitFromResidualResultInfallible.from_residual,
+                              core.convert.FromSame.from] at run
+
+Note: This linter can be disabled with `set_option linter.unusedSimpArgs false`
+/home/dombarker/project-offloads/aspis-v7-registry-v2-projection-certificate-20260831/final-tmp/aspis-v7-registry-v2-deployment-lean.EQna2P/V7RegistryV2OneTerminalCallerSourceBridge.lean:408:43: warning: This simp argument is unused:
+  registryRun
+
+Hint: Omit it from the simp argument list.
+  simp [policyRun, r̵eg̵i̵s̵t̵r̵y̵R̵u̵n,̵ ̵e̵n̵tryRun,
+  ̵  ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵core.result.Result.Insts.CoreOpsTry.branch,
+                              core.result.Result.Insts.CoreOpsTryTraitFromResidualResultInfallible.from_residual,
+                              core.convert.FromSame.from] at run
+
+Note: This linter can be disabled with `set_option linter.unusedSimpArgs false`
+/home/dombarker/project-offloads/aspis-v7-registry-v2-projection-certificate-20260831/final-tmp/aspis-v7-registry-v2-deployment-lean.EQna2P/V7RegistryV2OneTerminalCallerSourceBridge.lean:408:56: warning: This simp argument is unused:
+  entryRun
+
+Hint: Omit it from the simp argument list.
+  simp [policyRun, registryRun, e̵n̵t̵r̵y̵R̵u̵n̵,̵
+  ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵core.result.Result.Insts.CoreOpsTry.branch,
+                              core.result.Result.Insts.CoreOpsTryTraitFromResidualResultInfallible.from_residual,
+                              core.convert.FromSame.from] at run
+
+Note: This linter can be disabled with `set_option linter.unusedSimpArgs false`
+/home/dombarker/project-offloads/aspis-v7-registry-v2-projection-certificate-20260831/final-tmp/aspis-v7-registry-v2-deployment-lean.EQna2P/V7RegistryV2OneTerminalCallerSourceBridge.lean:417:48: warning: This simp argument is unused:
+  policyRun
+
+Hint: Omit it from the simp argument list.
+  simp [̵p̵o̵l̵i̵c̵y̵R̵u̵n̵,̵ ̵r̵e̵g̵i̵s̵t̵r̵y̵R̵u̵n̵,̵[̲r̲e̲g̲i̲s̲t̲r̲y̲R̲u̲n̲,̲ entryRun, activeRun,
+                              core.result.Result.Insts.CoreOpsTry.branch] at run
+
+Note: This linter can be disabled with `set_option linter.unusedSimpArgs false`
+/home/dombarker/project-offloads/aspis-v7-registry-v2-projection-certificate-20260831/final-tmp/aspis-v7-registry-v2-deployment-lean.EQna2P/V7RegistryV2OneTerminalCallerSourceBridge.lean:417:59: warning: This simp argument is unused:
+  registryRun
+
+Hint: Omit it from the simp argument list.
+  simp [policyRun, r̵e̵g̵i̵s̵t̵r̵y̵R̵u̵n̵,̵ ̵entryRun, activeRun,
+                              core.result.Result.Insts.CoreOpsTry.branch] at run
+
+Note: This linter can be disabled with `set_option linter.unusedSimpArgs false`
+/home/dombarker/project-offloads/aspis-v7-registry-v2-projection-certificate-20260831/final-tmp/aspis-v7-registry-v2-deployment-lean.EQna2P/V7RegistryV2OneTerminalCallerSourceBridge.lean:417:72: warning: This simp argument is unused:
+  entryRun
+
+Hint: Omit it from the simp argument list.
+  simp [policyRun, registryRun, e̵n̵t̵r̵y̵R̵u̵n̵,̵activeRun,
+                              core.result.Result.Insts.CoreOpsTry.branch] at run
+
+Note: This linter can be disabled with `set_option linter.unusedSimpArgs false`
+/home/dombarker/project-offloads/aspis-v7-registry-v2-projection-certificate-20260831/final-tmp/aspis-v7-registry-v2-deployment-lean.EQna2P/V7RegistryV2OneTerminalCallerSourceBridge.lean:418:30: warning: This simp argument is unused:
+  activeRun
+
+Hint: Omit it from the simp argument list.
+  simp [policyRun, registryRun, entryRun,
+                              a̵c̵t̵i̵v̵e̵R̵u̵n̵,̵core.result.Result.Insts.CoreOpsTry.branch] at run
+
+Note: This linter can be disabled with `set_option linter.unusedSimpArgs false`
+/home/dombarker/project-offloads/aspis-v7-registry-v2-projection-certificate-20260831/final-tmp/aspis-v7-registry-v2-deployment-lean.EQna2P/V7RegistryV2OneTerminalCallerSourceBridge.lean:420:41: warning: This simp argument is unused:
+  policyRun
+
+Hint: Omit it from the simp argument list.
+  simp [̵p̵o̵l̵i̵c̵y̵R̵u̵n̵,̵ ̵r̵e̵g̵i̵s̵t̵r̵y̵R̵u̵n̵,̵[̲r̲e̲g̲i̲s̲t̲r̲y̲R̲u̲n̲,̲ entryRun, activeRun,
+                              core.result.Result.Insts.CoreOpsTry.branch] at run
+
+Note: This linter can be disabled with `set_option linter.unusedSimpArgs false`
+/home/dombarker/project-offloads/aspis-v7-registry-v2-projection-certificate-20260831/final-tmp/aspis-v7-registry-v2-deployment-lean.EQna2P/V7RegistryV2OneTerminalCallerSourceBridge.lean:420:52: warning: This simp argument is unused:
+  registryRun
+
+Hint: Omit it from the simp argument list.
+  simp [policyRun, r̵e̵g̵i̵s̵t̵r̵y̵R̵u̵n̵,̵ ̵entryRun, activeRun,
+                              core.result.Result.Insts.CoreOpsTry.branch] at run
+
+Note: This linter can be disabled with `set_option linter.unusedSimpArgs false`
+/home/dombarker/project-offloads/aspis-v7-registry-v2-projection-certificate-20260831/final-tmp/aspis-v7-registry-v2-deployment-lean.EQna2P/V7RegistryV2OneTerminalCallerSourceBridge.lean:420:65: warning: This simp argument is unused:
+  entryRun
+
+Hint: Omit it from the simp argument list.
+  simp [policyRun, registryRun, e̵n̵t̵r̵y̵R̵u̵n̵,̵activeRun,
+                              core.result.Result.Insts.CoreOpsTry.branch] at run
+
+Note: This linter can be disabled with `set_option linter.unusedSimpArgs false`
+/home/dombarker/project-offloads/aspis-v7-registry-v2-projection-certificate-20260831/final-tmp/aspis-v7-registry-v2-deployment-lean.EQna2P/V7RegistryV2OneTerminalCallerSourceBridge.lean:421:30: warning: This simp argument is unused:
+  activeRun
+
+Hint: Omit it from the simp argument list.
+  simp [policyRun, registryRun, entryRun,
+                              a̵c̵t̵i̵v̵e̵R̵u̵n̵,̵core.result.Result.Insts.CoreOpsTry.branch] at run
+
+Note: This linter can be disabled with `set_option linter.unusedSimpArgs false`
+/home/dombarker/project-offloads/aspis-v7-registry-v2-projection-certificate-20260831/final-tmp/aspis-v7-registry-v2-deployment-lean.EQna2P/V7RegistryV2OneTerminalCallerSourceBridge.lean:426:40: warning: This simp argument is unused:
+  policyRun
+
+Hint: Omit it from the simp argument list.
+  simp [p̵o̵l̵i̵c̵y̵R̵u̵n̵,̵ ̵registryRun, entryRun,
+  ̵  ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵activeRun,
+                                      core.result.Result.Insts.CoreOpsTry.branch,
+                                      core.result.Result.Insts.CoreOpsTryTraitFromResidualResultInfallible.from_residual,
+                                      core.convert.FromSame.from] at run
+
+Note: This linter can be disabled with `set_option linter.unusedSimpArgs false`
+/home/dombarker/project-offloads/aspis-v7-registry-v2-projection-certificate-20260831/final-tmp/aspis-v7-registry-v2-deployment-lean.EQna2P/V7RegistryV2OneTerminalCallerSourceBridge.lean:426:51: warning: This simp argument is unused:
+  registryRun
+
+Hint: Omit it from the simp argument list.
+  simp [policyRun, r̵eg̵i̵s̵t̵r̵y̵R̵u̵n,̵ ̵e̵n̵tryRun,
+  ̵  ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵activeRun,
+                                      core.result.Result.Insts.CoreOpsTry.branch,
+                                      core.result.Result.Insts.CoreOpsTryTraitFromResidualResultInfallible.from_residual,
+                                      core.convert.FromSame.from] at run
+
+Note: This linter can be disabled with `set_option linter.unusedSimpArgs false`
+/home/dombarker/project-offloads/aspis-v7-registry-v2-projection-certificate-20260831/final-tmp/aspis-v7-registry-v2-deployment-lean.EQna2P/V7RegistryV2OneTerminalCallerSourceBridge.lean:426:64: warning: This simp argument is unused:
+  entryRun
+
+Hint: Omit it from the simp argument list.
+  simp [policyRun, registryRun, e̵n̵t̵r̵y̵R̵u̵n̵,̵
+  ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵activeRun,
+                                      core.result.Result.Insts.CoreOpsTry.branch,
+                                      core.result.Result.Insts.CoreOpsTryTraitFromResidualResultInfallible.from_residual,
+                                      core.convert.FromSame.from] at run
+
+Note: This linter can be disabled with `set_option linter.unusedSimpArgs false`
+/home/dombarker/project-offloads/aspis-v7-registry-v2-projection-certificate-20260831/final-tmp/aspis-v7-registry-v2-deployment-lean.EQna2P/V7RegistryV2OneTerminalCallerSourceBridge.lean:427:36: warning: This simp argument is unused:
+  activeRun
+
+Hint: Omit it from the simp argument list.
+  simp [policyRun, registryRun, entryRun,
+                                      a̵ct̵i̵v̵e̵R̵u̵n̵,̵
+  ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵c̵ore.result.Result.Insts.CoreOpsTry.branch,
+                                      core.result.Result.Insts.CoreOpsTryTraitFromResidualResultInfallible.from_residual,
+                                      core.convert.FromSame.from] at run
+
+Note: This linter can be disabled with `set_option linter.unusedSimpArgs false`
+/home/dombarker/project-offloads/aspis-v7-registry-v2-projection-certificate-20260831/final-tmp/aspis-v7-registry-v2-deployment-lean.EQna2P/V7RegistryV2OneTerminalCallerSourceBridge.lean:473:11: warning: Local variable 'unit' resembles constructor 'PUnit.unit' - write '.unit' (with a dot) or 'PUnit.unit' to use the constructor.
+
+Note: This linter can be disabled with `set_option linter.constructorNameAsVariable false`
+/home/dombarker/project-offloads/aspis-v7-registry-v2-projection-certificate-20260831/final-tmp/aspis-v7-registry-v2-deployment-lean.EQna2P/V7RegistryV2OneTerminalCallerSourceBridge.lean:487:19: warning: Local variable 'unit' resembles constructor 'PUnit.unit' - write '.unit' (with a dot) or 'PUnit.unit' to use the constructor.
+
+Note: This linter can be disabled with `set_option linter.constructorNameAsVariable false`
+/home/dombarker/project-offloads/aspis-v7-registry-v2-projection-certificate-20260831/final-tmp/aspis-v7-registry-v2-deployment-lean.EQna2P/V7RegistryV2OneTerminalCallerSourceBridge.lean:501:27: warning: Local variable 'unit' resembles constructor 'PUnit.unit' - write '.unit' (with a dot) or 'PUnit.unit' to use the constructor.
+
+Note: This linter can be disabled with `set_option linter.constructorNameAsVariable false`
+/home/dombarker/project-offloads/aspis-v7-registry-v2-projection-certificate-20260831/final-tmp/aspis-v7-registry-v2-deployment-lean.EQna2P/V7RegistryV2OneTerminalCallerSourceBridge.lean:515:35: warning: Local variable 'unit' resembles constructor 'PUnit.unit' - write '.unit' (with a dot) or 'PUnit.unit' to use the constructor.
+
+Note: This linter can be disabled with `set_option linter.constructorNameAsVariable false`
+/home/dombarker/project-offloads/aspis-v7-registry-v2-projection-certificate-20260831/final-tmp/aspis-v7-registry-v2-deployment-lean.EQna2P/V7RegistryV2OneTerminalCallerSourceBridge.lean:532:43: warning: Local variable 'unit' resembles constructor 'PUnit.unit' - write '.unit' (with a dot) or 'PUnit.unit' to use the constructor.
+
+Note: This linter can be disabled with `set_option linter.constructorNameAsVariable false`
+/home/dombarker/project-offloads/aspis-v7-registry-v2-projection-certificate-20260831/final-tmp/aspis-v7-registry-v2-deployment-lean.EQna2P/V7RegistryV2OneTerminalCallerSourceBridge.lean:461:45: warning: This simp argument is unused:
+  bind_tc_ok
+
+Hint: Omit it from the simp argument list.
+  simp_all only [Bind.bind, Aeneas.Std.bind, bind_tc_o̵k̵,̵ ̵b̵i̵n̵d̵_̵t̵c̵_̵fail,
+  ̵  ̵ ̵ ̵bind_tc_div, Aeneas.Std.Result.ok.injEq]
+
+Note: This linter can be disabled with `set_option linter.unusedSimpArgs false`
+/home/dombarker/project-offloads/aspis-v7-registry-v2-projection-certificate-20260831/final-tmp/aspis-v7-registry-v2-deployment-lean.EQna2P/V7RegistryV2OneTerminalCallerSourceBridge.lean:461:57: warning: This simp argument is unused:
+  bind_tc_fail
+
+Hint: Omit it from the simp argument list.
+  simp_all only [Bind.bind, Aeneas.Std.bind, bind_tc_ok, bind_tc_f̵a̵i̵l̵,̵
+  ̵ ̵ ̵ ̵ ̵b̵i̵n̵d_̵t̵c̵_̵d̵iv, Aeneas.Std.Result.ok.injEq]
+
+Note: This linter can be disabled with `set_option linter.unusedSimpArgs false`
+/home/dombarker/project-offloads/aspis-v7-registry-v2-projection-certificate-20260831/final-tmp/aspis-v7-registry-v2-deployment-lean.EQna2P/V7RegistryV2OneTerminalCallerSourceBridge.lean:462:4: warning: This simp argument is unused:
+  bind_tc_div
+
+Hint: Omit it from the simp argument list.
+  simp_all only [Bind.bind, Aeneas.Std.bind, bind_tc_ok, bind_tc_fail,
+  ̵  ̵ ̵ ̵b̵i̵n̵d̵_̵t̵c̵_̵d̵i̵v̵,̵ ̵Aeneas.Std.Result.ok.injEq]
+
+Note: This linter can be disabled with `set_option linter.unusedSimpArgs false`
+/home/dombarker/project-offloads/aspis-v7-registry-v2-projection-certificate-20260831/final-tmp/aspis-v7-registry-v2-deployment-lean.EQna2P/V7RegistryV2OneTerminalCallerSourceBridge.lean:462:17: warning: This simp argument is unused:
+  Aeneas.Std.Result.ok.injEq
+
+Hint: Omit it from the simp argument list.
+  simp_all only [Bind.bind, Aeneas.Std.bind, bind_tc_ok, bind_tc_fail, b̵i̵n̵d̵_̵t̵c̵_̵d̵i̵v̵,̵ ̵A̵e̵n̵e̵a̵s̵.̵S̵t̵d̵.̵R̵e̵s̵u̵l̵t̵.̵o̵k̵.̵i̵n̵j̵E̵q̵]̵b̲i̲n̲d̲_̲t̲c̲_̲d̲i̲v̲]̲
+
+Note: This linter can be disabled with `set_option linter.unusedSimpArgs false`
+/home/dombarker/project-offloads/aspis-v7-registry-v2-projection-certificate-20260831/final-tmp/aspis-v7-registry-v2-deployment-lean.EQna2P/V7RegistryV2OneTerminalCallerSourceBridge.lean:465:24: warning: This simp argument is unused:
+  requestRun
+
+Hint: Omit it from the simp argument list.
+  simp [̵r̵e̵q̵u̵e̵s̵t̵R̵u̵n̵]̵ ̵at run
+
+Note: This linter can be disabled with `set_option linter.unusedSimpArgs false`
+/home/dombarker/project-offloads/aspis-v7-registry-v2-projection-certificate-20260831/final-tmp/aspis-v7-registry-v2-deployment-lean.EQna2P/V7RegistryV2OneTerminalCallerSourceBridge.lean:466:17: warning: This simp argument is unused:
+  requestRun
+
+Hint: Omit it from the simp argument list.
+  simp [̵r̵e̵q̵u̵e̵s̵t̵R̵u̵n̵]̵ ̵at run
+
+Note: This linter can be disabled with `set_option linter.unusedSimpArgs false`
+/home/dombarker/project-offloads/aspis-v7-registry-v2-projection-certificate-20260831/final-tmp/aspis-v7-registry-v2-deployment-lean.EQna2P/V7RegistryV2OneTerminalCallerSourceBridge.lean:469:27: warning: This simp argument is unused:
+  requestRun
+
+Hint: Omit it from the simp argument list.
+  simp [r̵e̵q̵u̵e̵s̵t̵R̵u̵n̵,̵
+  ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵core.result.Result.Insts.CoreOpsTry.branch,
+           ̵ ̵core.result.Result.Insts.CoreOpsTryTraitFromResidualResultInfallible.from_residual,
+           ̵ ̵core.convert.FromSame.from] at run
+
+Note: This linter can be disabled with `set_option linter.unusedSimpArgs false`
+/home/dombarker/project-offloads/aspis-v7-registry-v2-projection-certificate-20260831/final-tmp/aspis-v7-registry-v2-deployment-lean.EQna2P/V7RegistryV2OneTerminalCallerSourceBridge.lean:477:32: warning: This simp argument is unused:
+  requestRun
+
+Hint: Omit it from the simp argument list.
+  simp [̵r̵e̵q̵u̵e̵s̵t̵R̵u̵n̵,̵ ̵p̵o̵o̵l̵R̵u̵n̵,̵[̲p̲o̲o̲l̲R̲u̲n̲,̲ core.result.Result.Insts.CoreOpsTry.branch] at run
+
+Note: This linter can be disabled with `set_option linter.unusedSimpArgs false`
+/home/dombarker/project-offloads/aspis-v7-registry-v2-projection-certificate-20260831/final-tmp/aspis-v7-registry-v2-deployment-lean.EQna2P/V7RegistryV2OneTerminalCallerSourceBridge.lean:477:44: warning: This simp argument is unused:
+  poolRun
+
+Hint: Omit it from the simp argument list.
+  simp [requestRun, p̵o̵o̵l̵R̵u̵n̵,̵
+  ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵core.result.Result.Insts.CoreOpsTry.branch] at run
+
+Note: This linter can be disabled with `set_option linter.unusedSimpArgs false`
+/home/dombarker/project-offloads/aspis-v7-registry-v2-projection-certificate-20260831/final-tmp/aspis-v7-registry-v2-deployment-lean.EQna2P/V7RegistryV2OneTerminalCallerSourceBridge.lean:479:25: warning: This simp argument is unused:
+  requestRun
+
+Hint: Omit it from the simp argument list.
+  simp [̵r̵e̵q̵u̵e̵s̵t̵R̵u̵n̵,̵ ̵p̵o̵o̵l̵R̵u̵n̵,̵[̲p̲o̲o̲l̲R̲u̲n̲,̲ core.result.Result.Insts.CoreOpsTry.branch] at run
+
+Note: This linter can be disabled with `set_option linter.unusedSimpArgs false`
+/home/dombarker/project-offloads/aspis-v7-registry-v2-projection-certificate-20260831/final-tmp/aspis-v7-registry-v2-deployment-lean.EQna2P/V7RegistryV2OneTerminalCallerSourceBridge.lean:479:37: warning: This simp argument is unused:
+  poolRun
+
+Hint: Omit it from the simp argument list.
+  simp [requestRun, p̵o̵o̵l̵R̵u̵n̵,̵
+  ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵core.result.Result.Insts.CoreOpsTry.branch] at run
+
+Note: This linter can be disabled with `set_option linter.unusedSimpArgs false`
+/home/dombarker/project-offloads/aspis-v7-registry-v2-projection-certificate-20260831/final-tmp/aspis-v7-registry-v2-deployment-lean.EQna2P/V7RegistryV2OneTerminalCallerSourceBridge.lean:483:35: warning: This simp argument is unused:
+  requestRun
+
+Hint: Omit it from the simp argument list.
+  simp [r̵e̵q̵u̵e̵s̵t̵R̵u̵n̵,̵ ̵poolRun,
+  ̵  ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵core.result.Result.Insts.CoreOpsTry.branch,
+                   ̵ ̵core.result.Result.Insts.CoreOpsTryTraitFromResidualResultInfallible.from_residual,
+                   ̵ ̵core.convert.FromSame.from] at run
+
+Note: This linter can be disabled with `set_option linter.unusedSimpArgs false`
+/home/dombarker/project-offloads/aspis-v7-registry-v2-projection-certificate-20260831/final-tmp/aspis-v7-registry-v2-deployment-lean.EQna2P/V7RegistryV2OneTerminalCallerSourceBridge.lean:483:47: warning: This simp argument is unused:
+  poolRun
+
+Hint: Omit it from the simp argument list.
+  simp [requestRun, p̵o̵o̵l̵R̵u̵n̵,̵
+  ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵core.result.Result.Insts.CoreOpsTry.branch,
+                   ̵ ̵core.result.Result.Insts.CoreOpsTryTraitFromResidualResultInfallible.from_residual,
+                   ̵ ̵core.convert.FromSame.from] at run
+
+Note: This linter can be disabled with `set_option linter.unusedSimpArgs false`
+/home/dombarker/project-offloads/aspis-v7-registry-v2-projection-certificate-20260831/final-tmp/aspis-v7-registry-v2-deployment-lean.EQna2P/V7RegistryV2OneTerminalCallerSourceBridge.lean:491:40: warning: This simp argument is unused:
+  requestRun
+
+Hint: Omit it from the simp argument list.
+  simp [r̵e̵q̵u̵e̵s̵t̵R̵u̵n̵,̵ ̵poolRun, registryRun,
+                       ̵ ̵core.result.Result.Insts.CoreOpsTry.branch] at run
+
+Note: This linter can be disabled with `set_option linter.unusedSimpArgs false`
+/home/dombarker/project-offloads/aspis-v7-registry-v2-projection-certificate-20260831/final-tmp/aspis-v7-registry-v2-deployment-lean.EQna2P/V7RegistryV2OneTerminalCallerSourceBridge.lean:491:52: warning: This simp argument is unused:
+  poolRun
+
+Hint: Omit it from the simp argument list.
+  simp [requestRun, p̵o̵o̵l̵R̵u̵n̵,̵ ̵registryRun,
+                       ̵ ̵core.result.Result.Insts.CoreOpsTry.branch] at run
+
+Note: This linter can be disabled with `set_option linter.unusedSimpArgs false`
+/home/dombarker/project-offloads/aspis-v7-registry-v2-projection-certificate-20260831/final-tmp/aspis-v7-registry-v2-deployment-lean.EQna2P/V7RegistryV2OneTerminalCallerSourceBridge.lean:491:61: warning: This simp argument is unused:
+  registryRun
+
+Hint: Omit it from the simp argument list.
+  simp [requestRun, poolRun, ̵r̵e̵g̵i̵s̵t̵r̵y̵R̵u̵n̵,̵
+                       ̵ ̵core.result.Result.Insts.CoreOpsTry.branch] at run
+
+Note: This linter can be disabled with `set_option linter.unusedSimpArgs false`
+/home/dombarker/project-offloads/aspis-v7-registry-v2-projection-certificate-20260831/final-tmp/aspis-v7-registry-v2-deployment-lean.EQna2P/V7RegistryV2OneTerminalCallerSourceBridge.lean:493:33: warning: This simp argument is unused:
+  requestRun
+
+Hint: Omit it from the simp argument list.
+  simp [r̵e̵q̵u̵e̵s̵t̵R̵u̵n̵,̵ ̵poolRun, registryRun,
+                       ̵ ̵core.result.Result.Insts.CoreOpsTry.branch] at run
+
+Note: This linter can be disabled with `set_option linter.unusedSimpArgs false`
+/home/dombarker/project-offloads/aspis-v7-registry-v2-projection-certificate-20260831/final-tmp/aspis-v7-registry-v2-deployment-lean.EQna2P/V7RegistryV2OneTerminalCallerSourceBridge.lean:493:45: warning: This simp argument is unused:
+  poolRun
+
+Hint: Omit it from the simp argument list.
+  simp [requestRun, p̵o̵o̵l̵R̵u̵n̵,̵ ̵registryRun,
+                       ̵ ̵core.result.Result.Insts.CoreOpsTry.branch] at run
+
+Note: This linter can be disabled with `set_option linter.unusedSimpArgs false`
+/home/dombarker/project-offloads/aspis-v7-registry-v2-projection-certificate-20260831/final-tmp/aspis-v7-registry-v2-deployment-lean.EQna2P/V7RegistryV2OneTerminalCallerSourceBridge.lean:493:54: warning: This simp argument is unused:
+  registryRun
+
+Hint: Omit it from the simp argument list.
+  simp [requestRun, poolRun, ̵r̵e̵g̵i̵s̵t̵r̵y̵R̵u̵n̵,̵
+                       ̵ ̵core.result.Result.Insts.CoreOpsTry.branch] at run
+
+Note: This linter can be disabled with `set_option linter.unusedSimpArgs false`
+/home/dombarker/project-offloads/aspis-v7-registry-v2-projection-certificate-20260831/final-tmp/aspis-v7-registry-v2-deployment-lean.EQna2P/V7RegistryV2OneTerminalCallerSourceBridge.lean:497:43: warning: This simp argument is unused:
+  requestRun
+
+Hint: Omit it from the simp argument list.
+  simp [r̵e̵q̵u̵e̵s̵t̵R̵u̵n̵,̵ ̵poolRun, registryRun,
+                           ̵ ̵core.result.Result.Insts.CoreOpsTry.branch,
+                           ̵ ̵core.result.Result.Insts.CoreOpsTryTraitFromResidualResultInfallible.from_residual,
+                           ̵ ̵core.convert.FromSame.from] at run
+
+Note: This linter can be disabled with `set_option linter.unusedSimpArgs false`
+/home/dombarker/project-offloads/aspis-v7-registry-v2-projection-certificate-20260831/final-tmp/aspis-v7-registry-v2-deployment-lean.EQna2P/V7RegistryV2OneTerminalCallerSourceBridge.lean:497:55: warning: This simp argument is unused:
+  poolRun
+
+Hint: Omit it from the simp argument list.
+  simp [requestRun, p̵o̵o̵l̵R̵u̵n̵,̵ ̵registryRun,
+                           ̵ ̵core.result.Result.Insts.CoreOpsTry.branch,
+                           ̵ ̵core.result.Result.Insts.CoreOpsTryTraitFromResidualResultInfallible.from_residual,
+                           ̵ ̵core.convert.FromSame.from] at run
+
+Note: This linter can be disabled with `set_option linter.unusedSimpArgs false`
+/home/dombarker/project-offloads/aspis-v7-registry-v2-projection-certificate-20260831/final-tmp/aspis-v7-registry-v2-deployment-lean.EQna2P/V7RegistryV2OneTerminalCallerSourceBridge.lean:497:64: warning: This simp argument is unused:
+  registryRun
+
+Hint: Omit it from the simp argument list.
+  simp [requestRun, poolRun, ̵r̵e̵g̵i̵s̵t̵r̵y̵R̵u̵n̵,̵
+                           ̵ ̵core.result.Result.Insts.CoreOpsTry.branch,
+                           ̵ ̵core.result.Result.Insts.CoreOpsTryTraitFromResidualResultInfallible.from_residual,
+                           ̵ ̵core.convert.FromSame.from] at run
+
+Note: This linter can be disabled with `set_option linter.unusedSimpArgs false`
+/home/dombarker/project-offloads/aspis-v7-registry-v2-projection-certificate-20260831/final-tmp/aspis-v7-registry-v2-deployment-lean.EQna2P/V7RegistryV2OneTerminalCallerSourceBridge.lean:505:48: warning: This simp argument is unused:
+  requestRun
+
+Hint: Omit it from the simp argument list.
+  simp [̵r̵e̵q̵u̵e̵s̵t̵R̵u̵n̵,̵ ̵p̵o̵o̵l̵R̵u̵n̵,̵[̲p̲o̲o̲l̲R̲u̲n̲,̲ registryRun, verifierRun,
+  ̲  ̲ ̲ ̲ ̲ ̲ ̲ ̲ ̲ ̲ ̲ ̲ ̲ ̲ ̲ ̲ ̲ ̲ ̲ ̲ ̲ ̲ ̲ ̲ ̲ ̲ ̲ ̲core.result.Result.Insts.CoreOpsTry.branch] at run
+
+Note: This linter can be disabled with `set_option linter.unusedSimpArgs false`
+/home/dombarker/project-offloads/aspis-v7-registry-v2-projection-certificate-20260831/final-tmp/aspis-v7-registry-v2-deployment-lean.EQna2P/V7RegistryV2OneTerminalCallerSourceBridge.lean:505:60: warning: This simp argument is unused:
+  poolRun
+
+Hint: Omit it from the simp argument list.
+  simp [requestRun, p̵o̵o̵l̵R̵u̵n̵,̵ ̵registryRun, verifierRun,
+  ̲  ̲ ̲ ̲ ̲ ̲ ̲ ̲ ̲ ̲ ̲ ̲ ̲ ̲ ̲ ̲ ̲ ̲ ̲ ̲ ̲ ̲ ̲ ̲ ̲ ̲ ̲ ̲core.result.Result.Insts.CoreOpsTry.branch] at run
+
+Note: This linter can be disabled with `set_option linter.unusedSimpArgs false`
+/home/dombarker/project-offloads/aspis-v7-registry-v2-projection-certificate-20260831/final-tmp/aspis-v7-registry-v2-deployment-lean.EQna2P/V7RegistryV2OneTerminalCallerSourceBridge.lean:505:69: warning: This simp argument is unused:
+  registryRun
+
+Hint: Omit it from the simp argument list.
+  simp [requestRun, poolRun, r̵e̵g̵i̵s̵t̵r̵y̵R̵u̵n̵,̵verifierRun,
+                              core.result.Result.Insts.CoreOpsTry.branch] at run
+
+Note: This linter can be disabled with `set_option linter.unusedSimpArgs false`
+/home/dombarker/project-offloads/aspis-v7-registry-v2-projection-certificate-20260831/final-tmp/aspis-v7-registry-v2-deployment-lean.EQna2P/V7RegistryV2OneTerminalCallerSourceBridge.lean:506:30: warning: This simp argument is unused:
+  verifierRun
+
+Hint: Omit it from the simp argument list.
+  simp [requestRun, poolRun, registryRun,
+                               ̵ ̵v̵e̵r̵i̵f̵i̵e̵r̵R̵u̵n̵,̵ ̵core.result.Result.Insts.CoreOpsTry.branch] at run
+
+Note: This linter can be disabled with `set_option linter.unusedSimpArgs false`
+/home/dombarker/project-offloads/aspis-v7-registry-v2-projection-certificate-20260831/final-tmp/aspis-v7-registry-v2-deployment-lean.EQna2P/V7RegistryV2OneTerminalCallerSourceBridge.lean:507:41: warning: This simp argument is unused:
+  requestRun
+
+Hint: Omit it from the simp argument list.
+  simp [̵r̵e̵q̵u̵e̵s̵t̵R̵u̵n̵,̵ ̵p̵o̵o̵l̵R̵u̵n̵,̵[̲p̲o̲o̲l̲R̲u̲n̲,̲ registryRun, verifierRun,
+  ̲  ̲ ̲ ̲ ̲ ̲ ̲ ̲ ̲ ̲ ̲ ̲ ̲ ̲ ̲ ̲ ̲ ̲ ̲ ̲ ̲ ̲ ̲ ̲ ̲ ̲ ̲ ̲core.result.Result.Insts.CoreOpsTry.branch] at run
+
+Note: This linter can be disabled with `set_option linter.unusedSimpArgs false`
+/home/dombarker/project-offloads/aspis-v7-registry-v2-projection-certificate-20260831/final-tmp/aspis-v7-registry-v2-deployment-lean.EQna2P/V7RegistryV2OneTerminalCallerSourceBridge.lean:507:53: warning: This simp argument is unused:
+  poolRun
+
+Hint: Omit it from the simp argument list.
+  simp [requestRun, p̵o̵o̵l̵R̵u̵n̵,̵ ̵registryRun, verifierRun,
+  ̲  ̲ ̲ ̲ ̲ ̲ ̲ ̲ ̲ ̲ ̲ ̲ ̲ ̲ ̲ ̲ ̲ ̲ ̲ ̲ ̲ ̲ ̲ ̲ ̲ ̲ ̲ ̲core.result.Result.Insts.CoreOpsTry.branch] at run
+
+Note: This linter can be disabled with `set_option linter.unusedSimpArgs false`
+/home/dombarker/project-offloads/aspis-v7-registry-v2-projection-certificate-20260831/final-tmp/aspis-v7-registry-v2-deployment-lean.EQna2P/V7RegistryV2OneTerminalCallerSourceBridge.lean:507:62: warning: This simp argument is unused:
+  registryRun
+
+Hint: Omit it from the simp argument list.
+  simp [requestRun, poolRun, r̵e̵g̵i̵s̵t̵r̵y̵R̵u̵n̵,̵verifierRun,
+                              core.result.Result.Insts.CoreOpsTry.branch] at run
+
+Note: This linter can be disabled with `set_option linter.unusedSimpArgs false`
+/home/dombarker/project-offloads/aspis-v7-registry-v2-projection-certificate-20260831/final-tmp/aspis-v7-registry-v2-deployment-lean.EQna2P/V7RegistryV2OneTerminalCallerSourceBridge.lean:508:30: warning: This simp argument is unused:
+  verifierRun
+
+Hint: Omit it from the simp argument list.
+  simp [requestRun, poolRun, registryRun,
+                               ̵ ̵v̵e̵r̵i̵f̵i̵e̵r̵R̵u̵n̵,̵ ̵core.result.Result.Insts.CoreOpsTry.branch] at run
+
+Note: This linter can be disabled with `set_option linter.unusedSimpArgs false`
+/home/dombarker/project-offloads/aspis-v7-registry-v2-projection-certificate-20260831/final-tmp/aspis-v7-registry-v2-deployment-lean.EQna2P/V7RegistryV2OneTerminalCallerSourceBridge.lean:511:51: warning: This simp argument is unused:
+  requestRun
+
+Hint: Omit it from the simp argument list.
+  simp [̵r̵e̵q̵u̵e̵s̵t̵R̵u̵n̵,̵ ̵p̵o̵o̵l̵R̵u̵n̵,̵[̲p̲o̲o̲l̲R̲u̲n̲,̲ registryRun, verifierRun,
+  ̲  ̲ ̲ ̲ ̲ ̲ ̲ ̲ ̲ ̲ ̲ ̲ ̲ ̲ ̲ ̲ ̲ ̲ ̲ ̲ ̲ ̲ ̲ ̲ ̲ ̲ ̲ ̲ ̲ ̲ ̲ ̲core.result.Result.Insts.CoreOpsTry.branch,
+                                  core.result.Result.Insts.CoreOpsTryTraitFromResidualResultInfallible.from_residual,
+                                  core.convert.FromSame.from] at run
+
+Note: This linter can be disabled with `set_option linter.unusedSimpArgs false`
+/home/dombarker/project-offloads/aspis-v7-registry-v2-projection-certificate-20260831/final-tmp/aspis-v7-registry-v2-deployment-lean.EQna2P/V7RegistryV2OneTerminalCallerSourceBridge.lean:511:63: warning: This simp argument is unused:
+  poolRun
+
+Hint: Omit it from the simp argument list.
+  simp [requestRun, p̵o̵o̵l̵R̵u̵n̵,̵ ̵registryRun, verifierRun,
+  ̲  ̲ ̲ ̲ ̲ ̲ ̲ ̲ ̲ ̲ ̲ ̲ ̲ ̲ ̲ ̲ ̲ ̲ ̲ ̲ ̲ ̲ ̲ ̲ ̲ ̲ ̲ ̲ ̲ ̲ ̲ ̲core.result.Result.Insts.CoreOpsTry.branch,
+                                  core.result.Result.Insts.CoreOpsTryTraitFromResidualResultInfallible.from_residual,
+                                  core.convert.FromSame.from] at run
+
+Note: This linter can be disabled with `set_option linter.unusedSimpArgs false`
+/home/dombarker/project-offloads/aspis-v7-registry-v2-projection-certificate-20260831/final-tmp/aspis-v7-registry-v2-deployment-lean.EQna2P/V7RegistryV2OneTerminalCallerSourceBridge.lean:511:72: warning: This simp argument is unused:
+  registryRun
+
+Hint: Omit it from the simp argument list.
+  simp [requestRun, poolRun, r̵e̵g̵i̵s̵t̵r̵y̵R̵u̵n̵,̵verifierRun,
+                                  core.result.Result.Insts.CoreOpsTry.branch,
+  ̲  ̲ ̲ ̲ ̲ ̲ ̲ ̲ ̲ ̲ ̲ ̲ ̲ ̲ ̲ ̲ ̲ ̲ ̲ ̲ ̲ ̲ ̲ ̲ ̲ ̲ ̲ ̲ ̲ ̲ ̲ ̲core.result.Result.Insts.CoreOpsTryTraitFromResidualResultInfallible.from_residual,
+                                  core.convert.FromSame.from] at run
+
+Note: This linter can be disabled with `set_option linter.unusedSimpArgs false`
+/home/dombarker/project-offloads/aspis-v7-registry-v2-projection-certificate-20260831/final-tmp/aspis-v7-registry-v2-deployment-lean.EQna2P/V7RegistryV2OneTerminalCallerSourceBridge.lean:512:34: warning: This simp argument is unused:
+  verifierRun
+
+Hint: Omit it from the simp argument list.
+  simp [requestRun, poolRun, registryRun,
+                                   ̵ ̵v̵e̵r̵i̵f̵i̵e̵r̵R̵u̵n̵,̵ ̵core.result.Result.Insts.CoreOpsTry.branch,
+                                   ̵ ̵core.result.Result.Insts.CoreOpsTryTraitFromResidualResultInfallible.from_residual,
+                                   ̵ ̵core.convert.FromSame.from] at run
+
+Note: This linter can be disabled with `set_option linter.unusedSimpArgs false`
+/home/dombarker/project-offloads/aspis-v7-registry-v2-projection-certificate-20260831/final-tmp/aspis-v7-registry-v2-deployment-lean.EQna2P/V7RegistryV2OneTerminalCallerSourceBridge.lean:519:56: warning: This simp argument is unused:
+  requestRun
+
+Hint: Omit it from the simp argument list.
+  simp [̵r̵e̵q̵u̵e̵s̵t̵R̵u̵n̵,̵ ̵p̵o̵o̵l̵R̵u̵n̵,̵[̲p̲o̲o̲l̲R̲u̲n̲,̲ registryRun, verifierRun,
+  ̲  ̲ ̲ ̲ ̲ ̲ ̲ ̲ ̲ ̲ ̲ ̲ ̲ ̲ ̲ ̲ ̲ ̲ ̲ ̲ ̲ ̲ ̲ ̲ ̲ ̲ ̲ ̲ ̲ ̲ ̲ ̲ ̲ ̲ ̲ ̲distinctRun, core.result.Result.Insts.CoreOpsTry.branch] at run
+
+Note: This linter can be disabled with `set_option linter.unusedSimpArgs false`
+/home/dombarker/project-offloads/aspis-v7-registry-v2-projection-certificate-20260831/final-tmp/aspis-v7-registry-v2-deployment-lean.EQna2P/V7RegistryV2OneTerminalCallerSourceBridge.lean:519:68: warning: This simp argument is unused:
+  poolRun
+
+Hint: Omit it from the simp argument list.
+  simp [requestRun, p̵o̵o̵l̵R̵u̵n̵,̵ ̵registryRun, verifierRun,
+  ̲  ̲ ̲ ̲ ̲ ̲ ̲ ̲ ̲ ̲ ̲ ̲ ̲ ̲ ̲ ̲ ̲ ̲ ̲ ̲ ̲ ̲ ̲ ̲ ̲ ̲ ̲ ̲ ̲ ̲ ̲ ̲ ̲ ̲ ̲ ̲distinctRun, core.result.Result.Insts.CoreOpsTry.branch] at run
+
+Note: This linter can be disabled with `set_option linter.unusedSimpArgs false`
+/home/dombarker/project-offloads/aspis-v7-registry-v2-projection-certificate-20260831/final-tmp/aspis-v7-registry-v2-deployment-lean.EQna2P/V7RegistryV2OneTerminalCallerSourceBridge.lean:519:77: warning: This simp argument is unused:
+  registryRun
+
+Hint: Omit it from the simp argument list.
+  simp [requestRun, poolRun, r̵e̵g̵i̵s̵t̵r̵y̵R̵u̵n̵,̵verifierRun,
+                                      distinctRun, core.result.Result.Insts.CoreOpsTry.branch] at run
+
+Note: This linter can be disabled with `set_option linter.unusedSimpArgs false`
+/home/dombarker/project-offloads/aspis-v7-registry-v2-projection-certificate-20260831/final-tmp/aspis-v7-registry-v2-deployment-lean.EQna2P/V7RegistryV2OneTerminalCallerSourceBridge.lean:520:38: warning: This simp argument is unused:
+  verifierRun
+
+Hint: Omit it from the simp argument list.
+  simp [requestRun, poolRun, registryRun,
+                                      v̵e̵r̵i̵f̵i̵e̵r̵R̵u̵n̵,̵ ̵distinctRun, core.result.Result.Insts.CoreOpsTry.branch] at run
+
+Note: This linter can be disabled with `set_option linter.unusedSimpArgs false`
+/home/dombarker/project-offloads/aspis-v7-registry-v2-projection-certificate-20260831/final-tmp/aspis-v7-registry-v2-deployment-lean.EQna2P/V7RegistryV2OneTerminalCallerSourceBridge.lean:520:51: warning: This simp argument is unused:
+  distinctRun
+
+Hint: Omit it from the simp argument list.
+  simp [requestRun, poolRun, registryRun,
+                                      verifierRun, d̵i̵s̵t̵i̵n̵c̵t̵R̵u̵n̵,̵core.result.Result.Insts.CoreOpsTry.branch] at run
+
+Note: This linter can be disabled with `set_option linter.unusedSimpArgs false`
+/home/dombarker/project-offloads/aspis-v7-registry-v2-projection-certificate-20260831/final-tmp/aspis-v7-registry-v2-deployment-lean.EQna2P/V7RegistryV2OneTerminalCallerSourceBridge.lean:522:49: warning: This simp argument is unused:
+  requestRun
+
+Hint: Omit it from the simp argument list.
+  simp [̵r̵e̵q̵u̵e̵s̵t̵R̵u̵n̵,̵ ̵p̵o̵o̵l̵R̵u̵n̵,̵[̲p̲o̲o̲l̲R̲u̲n̲,̲ registryRun, verifierRun, distinctRun,
+                                      core.result.Result.Insts.CoreOpsTry.branch] at run
+
+Note: This linter can be disabled with `set_option linter.unusedSimpArgs false`
+/home/dombarker/project-offloads/aspis-v7-registry-v2-projection-certificate-20260831/final-tmp/aspis-v7-registry-v2-deployment-lean.EQna2P/V7RegistryV2OneTerminalCallerSourceBridge.lean:522:61: warning: This simp argument is unused:
+  poolRun
+
+Hint: Omit it from the simp argument list.
+  simp [requestRun, p̵o̵o̵l̵R̵u̵n̵,̵ ̵registryRun, verifierRun, distinctRun,
+                                      core.result.Result.Insts.CoreOpsTry.branch] at run
+
+Note: This linter can be disabled with `set_option linter.unusedSimpArgs false`
+/home/dombarker/project-offloads/aspis-v7-registry-v2-projection-certificate-20260831/final-tmp/aspis-v7-registry-v2-deployment-lean.EQna2P/V7RegistryV2OneTerminalCallerSourceBridge.lean:522:70: warning: This simp argument is unused:
+  registryRun
+
+Hint: Omit it from the simp argument list.
+  simp [requestRun, poolRun, r̵e̵g̵i̵s̵t̵r̵y̵R̵u̵n̵,̵verifierRun, distinctRun,
+  ̲  ̲ ̲ ̲ ̲ ̲ ̲ ̲ ̲ ̲ ̲ ̲ ̲ ̲ ̲ ̲ ̲ ̲ ̲ ̲ ̲ ̲ ̲ ̲ ̲ ̲ ̲ ̲ ̲ ̲ ̲ ̲ ̲ ̲ ̲ ̲core.result.Result.Insts.CoreOpsTry.branch] at run
+
+Note: This linter can be disabled with `set_option linter.unusedSimpArgs false`
+/home/dombarker/project-offloads/aspis-v7-registry-v2-projection-certificate-20260831/final-tmp/aspis-v7-registry-v2-deployment-lean.EQna2P/V7RegistryV2OneTerminalCallerSourceBridge.lean:523:38: warning: This simp argument is unused:
+  verifierRun
+
+Hint: Omit it from the simp argument list.
+  simp [requestRun, poolRun, registryRun, v̵e̵r̵i̵f̵i̵e̵r̵R̵u̵n̵,̵ ̵distinctRun,
+                                      core.result.Result.Insts.CoreOpsTry.branch] at run
+
+Note: This linter can be disabled with `set_option linter.unusedSimpArgs false`
+/home/dombarker/project-offloads/aspis-v7-registry-v2-projection-certificate-20260831/final-tmp/aspis-v7-registry-v2-deployment-lean.EQna2P/V7RegistryV2OneTerminalCallerSourceBridge.lean:523:51: warning: This simp argument is unused:
+  distinctRun
+
+Hint: Omit it from the simp argument list.
+  simp [requestRun, poolRun, registryRun, verifierRun,
+  ̲  ̲ ̲ ̲ ̲ ̲ ̲ ̲ ̲ ̲ ̲ ̲ ̲ ̲ ̲ ̲ ̲ ̲ ̲ ̲ ̲ ̲ ̲ ̲ ̲ ̲ ̲ ̲ ̲ ̲ ̲ ̲ ̲ ̲ ̲ ̲d̵i̵s̵t̵i̵n̵c̵t̵R̵u̵n̵,̵core.result.Result.Insts.CoreOpsTry.branch] at run
+
+Note: This linter can be disabled with `set_option linter.unusedSimpArgs false`
+/home/dombarker/project-offloads/aspis-v7-registry-v2-projection-certificate-20260831/final-tmp/aspis-v7-registry-v2-deployment-lean.EQna2P/V7RegistryV2OneTerminalCallerSourceBridge.lean:527:59: warning: This simp argument is unused:
+  requestRun
+
+Hint: Omit it from the simp argument list.
+  simp [̵r̵e̵q̵u̵e̵s̵t̵R̵u̵n̵,̵ ̵p̵o̵o̵l̵R̵u̵n̵,̵[̲p̲o̲o̲l̲R̲u̲n̲,̲ registryRun, verifierRun,
+  ̲  ̲ ̲ ̲ ̲ ̲ ̲ ̲ ̲ ̲ ̲ ̲ ̲ ̲ ̲ ̲ ̲ ̲ ̲ ̲ ̲ ̲ ̲ ̲ ̲ ̲ ̲ ̲ ̲ ̲ ̲ ̲ ̲ ̲ ̲ ̲ ̲ ̲ ̲ ̲distinctRun, core.result.Result.Insts.CoreOpsTry.branch,
+                                          core.result.Result.Insts.CoreOpsTryTraitFromResidualResultInfallible.from_residual,
+                                          core.convert.FromSame.from] at run
+
+Note: This linter can be disabled with `set_option linter.unusedSimpArgs false`
+/home/dombarker/project-offloads/aspis-v7-registry-v2-projection-certificate-20260831/final-tmp/aspis-v7-registry-v2-deployment-lean.EQna2P/V7RegistryV2OneTerminalCallerSourceBridge.lean:527:71: warning: This simp argument is unused:
+  poolRun
+
+Hint: Omit it from the simp argument list.
+  simp [requestRun, p̵o̵o̵l̵R̵u̵n̵,̵ ̵registryRun, verifierRun,
+  ̲  ̲ ̲ ̲ ̲ ̲ ̲ ̲ ̲ ̲ ̲ ̲ ̲ ̲ ̲ ̲ ̲ ̲ ̲ ̲ ̲ ̲ ̲ ̲ ̲ ̲ ̲ ̲ ̲ ̲ ̲ ̲ ̲ ̲ ̲ ̲ ̲ ̲ ̲ ̲distinctRun, core.result.Result.Insts.CoreOpsTry.branch,
+                                          core.result.Result.Insts.CoreOpsTryTraitFromResidualResultInfallible.from_residual,
+                                          core.convert.FromSame.from] at run
+
+Note: This linter can be disabled with `set_option linter.unusedSimpArgs false`
+/home/dombarker/project-offloads/aspis-v7-registry-v2-projection-certificate-20260831/final-tmp/aspis-v7-registry-v2-deployment-lean.EQna2P/V7RegistryV2OneTerminalCallerSourceBridge.lean:527:80: warning: This simp argument is unused:
+  registryRun
+
+Hint: Omit it from the simp argument list.
+  simp [requestRun, poolRun, r̵e̵g̵i̵s̵t̵r̵y̵R̵u̵n̵,̵verifierRun,
+                                          distinctRun, core.result.Result.Insts.CoreOpsTry.branch,
+                                          core.result.Result.Insts.CoreOpsTryTraitFromResidualResultInfallible.from_residual,
+                                          core.convert.FromSame.from] at run
+
+Note: This linter can be disabled with `set_option linter.unusedSimpArgs false`
+/home/dombarker/project-offloads/aspis-v7-registry-v2-projection-certificate-20260831/final-tmp/aspis-v7-registry-v2-deployment-lean.EQna2P/V7RegistryV2OneTerminalCallerSourceBridge.lean:528:42: warning: This simp argument is unused:
+  verifierRun
+
+Hint: Omit it from the simp argument list.
+  simp [requestRun, poolRun, registryRun,
+                                           ̵ ̵v̵e̵r̵i̵f̵i̵e̵r̵R̵u̵n̵,̵ ̵distinctRun,
+  ̵  ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵core.result.Result.Insts.CoreOpsTry.branch,
+                                           ̵ ̵core.result.Result.Insts.CoreOpsTryTraitFromResidualResultInfallible.from_residual,
+                                           ̵ ̵core.convert.FromSame.from] at run
+
+Note: This linter can be disabled with `set_option linter.unusedSimpArgs false`
+/home/dombarker/project-offloads/aspis-v7-registry-v2-projection-certificate-20260831/final-tmp/aspis-v7-registry-v2-deployment-lean.EQna2P/V7RegistryV2OneTerminalCallerSourceBridge.lean:528:55: warning: This simp argument is unused:
+  distinctRun
+
+Hint: Omit it from the simp argument list.
+  simp [requestRun, poolRun, registryRun,
+                                           ̵ ̵verifierRun, d̵i̵s̵t̵i̵n̵ct̵R̵u̵n̵,̵
+  ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵c̵ore.result.Result.Insts.CoreOpsTry.branch,
+                                           ̵ ̵core.result.Result.Insts.CoreOpsTryTraitFromResidualResultInfallible.from_residual,
+                                           ̵ ̵core.convert.FromSame.from] at run
+
+Note: This linter can be disabled with `set_option linter.unusedSimpArgs false`
+/home/dombarker/project-offloads/aspis-v7-registry-v2-projection-certificate-20260831/final-tmp/aspis-v7-registry-v2-deployment-lean.EQna2P/V7RegistryV2OneTerminalCallerSourceBridge.lean:636:20: warning: try 'simp' instead of 'simpa'
+
+Note: This linter can be disabled with `set_option linter.unnecessarySimpa false`
+/home/dombarker/project-offloads/aspis-v7-registry-v2-projection-certificate-20260831/final-tmp/aspis-v7-registry-v2-deployment-lean.EQna2P/V7RegistryV2OneTerminalCallerSourceBridge.lean:685:11: warning: Local variable 'unit' resembles constructor 'PUnit.unit' - write '.unit' (with a dot) or 'PUnit.unit' to use the constructor.
+
+Note: This linter can be disabled with `set_option linter.constructorNameAsVariable false`
+/home/dombarker/project-offloads/aspis-v7-registry-v2-projection-certificate-20260831/final-tmp/aspis-v7-registry-v2-deployment-lean.EQna2P/V7RegistryV2OneTerminalCallerSourceBridge.lean:677:24: warning: This simp argument is unused:
+  authRun
+
+Hint: Omit it from the simp argument list.
+  simp [̵a̵u̵t̵h̵R̵u̵n̵]̵ ̵at run
+
+Note: This linter can be disabled with `set_option linter.unusedSimpArgs false`
+/home/dombarker/project-offloads/aspis-v7-registry-v2-projection-certificate-20260831/final-tmp/aspis-v7-registry-v2-deployment-lean.EQna2P/V7RegistryV2OneTerminalCallerSourceBridge.lean:678:17: warning: This simp argument is unused:
+  authRun
+
+Hint: Omit it from the simp argument list.
+  simp [̵a̵u̵t̵h̵R̵u̵n̵]̵ ̵at run
+
+Note: This linter can be disabled with `set_option linter.unusedSimpArgs false`
+/home/dombarker/project-offloads/aspis-v7-registry-v2-projection-certificate-20260831/final-tmp/aspis-v7-registry-v2-deployment-lean.EQna2P/V7RegistryV2OneTerminalCallerSourceBridge.lean:681:27: warning: This simp argument is unused:
+  authRun
+
+Hint: Omit it from the simp argument list.
+  simp [a̵u̵t̵h̵R̵u̵n̵,̵
+  ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵core.result.Result.Insts.CoreOpsTry.branch,
+           ̵ ̵core.result.Result.Insts.CoreOpsTryTraitFromResidualResultInfallible.from_residual,
+           ̵ ̵core.convert.FromSame.from] at run
+
+Note: This linter can be disabled with `set_option linter.unusedSimpArgs false`
+/home/dombarker/project-offloads/aspis-v7-registry-v2-projection-certificate-20260831/final-tmp/aspis-v7-registry-v2-deployment-lean.EQna2P/V7RegistryV2OneTerminalCallerSourceBridge.lean:690:32: warning: This simp argument is unused:
+  authRun
+
+Hint: Omit it from the simp argument list.
+  simp [̵a̵u̵t̵h̵R̵u̵n̵,̵ ̵m̵a̵r̵k̵e̵r̵R̵u̵n̵,̵[̲m̲a̲r̲k̲e̲r̲R̲u̲n̲,̲ core.result.Result.Insts.CoreOpsTry.branch] at run
+
+Note: This linter can be disabled with `set_option linter.unusedSimpArgs false`
+/home/dombarker/project-offloads/aspis-v7-registry-v2-projection-certificate-20260831/final-tmp/aspis-v7-registry-v2-deployment-lean.EQna2P/V7RegistryV2OneTerminalCallerSourceBridge.lean:690:41: warning: This simp argument is unused:
+  markerRun
+
+Hint: Omit it from the simp argument list.
+  simp [authRun, m̵a̵r̵k̵e̵r̵R̵u̵n̵,̵
+  ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵core.result.Result.Insts.CoreOpsTry.branch] at run
+
+Note: This linter can be disabled with `set_option linter.unusedSimpArgs false`
+/home/dombarker/project-offloads/aspis-v7-registry-v2-projection-certificate-20260831/final-tmp/aspis-v7-registry-v2-deployment-lean.EQna2P/V7RegistryV2OneTerminalCallerSourceBridge.lean:691:14: warning: This simp argument is unused:
+  core.result.Result.Insts.CoreOpsTry.branch
+
+Hint: Omit it from the simp argument list.
+  simp [authRun, markerRun,̵
+  ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵c̵o̵r̵e̵.̵r̵e̵s̵u̵l̵t̵.̵R̵e̵s̵u̵l̵t̵.̵I̵n̵s̵t̵s̵.̵C̵o̵r̵e̵O̵p̵s̵T̵r̵y̵.̵b̵r̵a̵n̵c̵h̵] at run
+
+Note: This linter can be disabled with `set_option linter.unusedSimpArgs false`
+/home/dombarker/project-offloads/aspis-v7-registry-v2-projection-certificate-20260831/final-tmp/aspis-v7-registry-v2-deployment-lean.EQna2P/V7RegistryV2OneTerminalCallerSourceBridge.lean:692:25: warning: This simp argument is unused:
+  authRun
+
+Hint: Omit it from the simp argument list.
+  simp [̵a̵u̵t̵h̵R̵u̵n̵,̵ ̵m̵a̵r̵k̵e̵r̵R̵u̵n̵,̵[̲m̲a̲r̲k̲e̲r̲R̲u̲n̲,̲ core.result.Result.Insts.CoreOpsTry.branch] at run
+
+Note: This linter can be disabled with `set_option linter.unusedSimpArgs false`
+/home/dombarker/project-offloads/aspis-v7-registry-v2-projection-certificate-20260831/final-tmp/aspis-v7-registry-v2-deployment-lean.EQna2P/V7RegistryV2OneTerminalCallerSourceBridge.lean:692:34: warning: This simp argument is unused:
+  markerRun
+
+Hint: Omit it from the simp argument list.
+  simp [authRun, m̵a̵r̵k̵e̵r̵R̵u̵n̵,̵
+  ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵core.result.Result.Insts.CoreOpsTry.branch] at run
+
+Note: This linter can be disabled with `set_option linter.unusedSimpArgs false`
+/home/dombarker/project-offloads/aspis-v7-registry-v2-projection-certificate-20260831/final-tmp/aspis-v7-registry-v2-deployment-lean.EQna2P/V7RegistryV2OneTerminalCallerSourceBridge.lean:693:14: warning: This simp argument is unused:
+  core.result.Result.Insts.CoreOpsTry.branch
+
+Hint: Omit it from the simp argument list.
+  simp [authRun, markerRun,̵
+  ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵c̵o̵r̵e̵.̵r̵e̵s̵u̵l̵t̵.̵R̵e̵s̵u̵l̵t̵.̵I̵n̵s̵t̵s̵.̵C̵o̵r̵e̵O̵p̵s̵T̵r̵y̵.̵b̵r̵a̵n̵c̵h̵] at run
+
+Note: This linter can be disabled with `set_option linter.unusedSimpArgs false`
+/home/dombarker/project-offloads/aspis-v7-registry-v2-projection-certificate-20260831/final-tmp/aspis-v7-registry-v2-deployment-lean.EQna2P/V7RegistryV2OneTerminalCallerSourceBridge.lean:696:35: warning: This simp argument is unused:
+  authRun
+
+Hint: Omit it from the simp argument list.
+  simp [a̵u̵t̵h̵R̵u̵n̵,̵ ̵markerRun,
+  ̵  ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵core.result.Result.Insts.CoreOpsTry.branch,
+                   ̵ ̵core.result.Result.Insts.CoreOpsTryTraitFromResidualResultInfallible.from_residual,
+                   ̵ ̵core.convert.FromSame.from] at run
+
+Note: This linter can be disabled with `set_option linter.unusedSimpArgs false`
+/home/dombarker/project-offloads/aspis-v7-registry-v2-projection-certificate-20260831/final-tmp/aspis-v7-registry-v2-deployment-lean.EQna2P/V7RegistryV2OneTerminalCallerSourceBridge.lean:696:44: warning: This simp argument is unused:
+  markerRun
+
+Hint: Omit it from the simp argument list.
+  simp [authRun, m̵a̵r̵k̵e̵r̵R̵u̵n̵,̵
+  ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵core.result.Result.Insts.CoreOpsTry.branch,
+                   ̵ ̵core.result.Result.Insts.CoreOpsTryTraitFromResidualResultInfallible.from_residual,
+                   ̵ ̵core.convert.FromSame.from] at run
+
+Note: This linter can be disabled with `set_option linter.unusedSimpArgs false`
+/home/dombarker/project-offloads/aspis-v7-registry-v2-projection-certificate-20260831/final-tmp/aspis-v7-registry-v2-deployment-lean.EQna2P/V7RegistryV2OneTerminalCallerSourceBridge.lean:697:18: warning: This simp argument is unused:
+  core.result.Result.Insts.CoreOpsTry.branch
+
+Hint: Omit it from the simp argument list.
+  simp [authRun, markerRun,
+                  c̵o̵r̵e̵.̵r̵e̵s̵u̵l̵t̵.̵R̵e̵s̵u̵l̵t̵.̵I̵n̵s̵t̵s̵.̵C̵o̵r̵e̵O̵p̵s̵T̵r̵y̵.̵b̵r̵a̵n̵c̵h̵,̵core.result.Result.Insts.CoreOpsTryTraitFromResidualResultInfallible.from_residual,
+                  core.convert.FromSame.from] at run
+
+Note: This linter can be disabled with `set_option linter.unusedSimpArgs false`
+/home/dombarker/project-offloads/aspis-v7-registry-v2-projection-certificate-20260831/final-tmp/aspis-v7-registry-v2-deployment-lean.EQna2P/V7RegistryV2OneTerminalCallerSourceBridge.lean:701:24: warning: This simp argument is unused:
+  core.result.Result.Insts.CoreOpsTry.branch
+
+Hint: Omit it from the simp argument list.
+  s̵i̵m̵p̵ ̵[̵c̵o̵r̵e̵.̵r̵e̵s̵u̵l̵t̵.̵R̵e̵s̵u̵l̵t̵.̵I̵n̵s̵t̵s̵.̵C̵o̵r̵e̵O̵p̵s̵T̵r̵y̵.̵b̵r̵a̵n̵c̵h̵]̵ ̵a̵t̵ ̵r̵u̵n̵s̲i̲m̲p̲ ̲a̲t̲ ̲r̲u̲n̲
+
+Note: This linter can be disabled with `set_option linter.unusedSimpArgs false`
+/home/dombarker/project-offloads/aspis-v7-registry-v2-projection-certificate-20260831/final-tmp/aspis-v7-registry-v2-deployment-lean.EQna2P/V7RegistryV2OneTerminalCallerSourceBridge.lean:704:40: warning: This simp argument is unused:
+  authRun
+
+Hint: Omit it from the simp argument list.
+  simp [a̵u̵t̵h̵R̵u̵n̵,̵ ̵markerRun, resultRun,
+                       ̵ ̵core.result.Result.Insts.CoreOpsTry.branch] at run
+
+Note: This linter can be disabled with `set_option linter.unusedSimpArgs false`
+/home/dombarker/project-offloads/aspis-v7-registry-v2-projection-certificate-20260831/final-tmp/aspis-v7-registry-v2-deployment-lean.EQna2P/V7RegistryV2OneTerminalCallerSourceBridge.lean:704:49: warning: This simp argument is unused:
+  markerRun
+
+Hint: Omit it from the simp argument list.
+  simp [authRun, m̵a̵rk̵er̵R̵u̵n̵,̵ ̵r̵e̵sultRun,
+                       ̵ ̵core.result.Result.Insts.CoreOpsTry.branch] at run
+
+Note: This linter can be disabled with `set_option linter.unusedSimpArgs false`
+/home/dombarker/project-offloads/aspis-v7-registry-v2-projection-certificate-20260831/final-tmp/aspis-v7-registry-v2-deployment-lean.EQna2P/V7RegistryV2OneTerminalCallerSourceBridge.lean:704:60: warning: This simp argument is unused:
+  resultRun
+
+Hint: Omit it from the simp argument list.
+  simp [authRun, markerRun, ̵r̵e̵s̵u̵l̵t̵R̵u̵n̵,̵
+                       ̵ ̵core.result.Result.Insts.CoreOpsTry.branch] at run
+
+Note: This linter can be disabled with `set_option linter.unusedSimpArgs false`
+/home/dombarker/project-offloads/aspis-v7-registry-v2-projection-certificate-20260831/final-tmp/aspis-v7-registry-v2-deployment-lean.EQna2P/V7RegistryV2OneTerminalCallerSourceBridge.lean:705:22: warning: This simp argument is unused:
+  core.result.Result.Insts.CoreOpsTry.branch
+
+Hint: Omit it from the simp argument list.
+  simp [authRun, markerRun, resultRun,̵
+  ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵c̵o̵r̵e̵.̵r̵e̵s̵u̵l̵t̵.̵R̵e̵s̵u̵l̵t̵.̵I̵n̵s̵t̵s̵.̵C̵o̵r̵e̵O̵p̵s̵T̵r̵y̵.̵b̵r̵a̵n̵c̵h̵] at run
+
+Note: This linter can be disabled with `set_option linter.unusedSimpArgs false`
+/home/dombarker/project-offloads/aspis-v7-registry-v2-projection-certificate-20260831/final-tmp/aspis-v7-registry-v2-deployment-lean.EQna2P/V7RegistryV2OneTerminalCallerSourceBridge.lean:706:33: warning: This simp argument is unused:
+  authRun
+
+Hint: Omit it from the simp argument list.
+  simp [a̵u̵t̵h̵R̵u̵n̵,̵ ̵markerRun, resultRun,
+                       ̵ ̵core.result.Result.Insts.CoreOpsTry.branch] at run
+
+Note: This linter can be disabled with `set_option linter.unusedSimpArgs false`
+/home/dombarker/project-offloads/aspis-v7-registry-v2-projection-certificate-20260831/final-tmp/aspis-v7-registry-v2-deployment-lean.EQna2P/V7RegistryV2OneTerminalCallerSourceBridge.lean:706:42: warning: This simp argument is unused:
+  markerRun
+
+Hint: Omit it from the simp argument list.
+  simp [authRun, m̵a̵rk̵er̵R̵u̵n̵,̵ ̵r̵e̵sultRun,
+                       ̵ ̵core.result.Result.Insts.CoreOpsTry.branch] at run
+
+Note: This linter can be disabled with `set_option linter.unusedSimpArgs false`
+/home/dombarker/project-offloads/aspis-v7-registry-v2-projection-certificate-20260831/final-tmp/aspis-v7-registry-v2-deployment-lean.EQna2P/V7RegistryV2OneTerminalCallerSourceBridge.lean:706:53: warning: This simp argument is unused:
+  resultRun
+
+Hint: Omit it from the simp argument list.
+  simp [authRun, markerRun, ̵r̵e̵s̵u̵l̵t̵R̵u̵n̵,̵
+                       ̵ ̵core.result.Result.Insts.CoreOpsTry.branch] at run
+
+Note: This linter can be disabled with `set_option linter.unusedSimpArgs false`
+/home/dombarker/project-offloads/aspis-v7-registry-v2-projection-certificate-20260831/final-tmp/aspis-v7-registry-v2-deployment-lean.EQna2P/V7RegistryV2OneTerminalCallerSourceBridge.lean:707:22: warning: This simp argument is unused:
+  core.result.Result.Insts.CoreOpsTry.branch
+
+Hint: Omit it from the simp argument list.
+  simp [authRun, markerRun, resultRun,̵
+  ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵c̵o̵r̵e̵.̵r̵e̵s̵u̵l̵t̵.̵R̵e̵s̵u̵l̵t̵.̵I̵n̵s̵t̵s̵.̵C̵o̵r̵e̵O̵p̵s̵T̵r̵y̵.̵b̵r̵a̵n̵c̵h̵] at run
+
+Note: This linter can be disabled with `set_option linter.unusedSimpArgs false`
+/home/dombarker/project-offloads/aspis-v7-registry-v2-projection-certificate-20260831/final-tmp/aspis-v7-registry-v2-deployment-lean.EQna2P/V7RegistryV2OneTerminalCallerSourceBridge.lean:710:43: warning: This simp argument is unused:
+  authRun
+
+Hint: Omit it from the simp argument list.
+  simp [a̵u̵t̵h̵R̵u̵n̵,̵ ̵markerRun, resultRun,
+                           ̵ ̵core.result.Result.Insts.CoreOpsTry.branch,
+                           ̵ ̵core.result.Result.Insts.CoreOpsTryTraitFromResidualResultInfallible.from_residual,
+                           ̵ ̵core.convert.FromSame.from] at run
+
+Note: This linter can be disabled with `set_option linter.unusedSimpArgs false`
+/home/dombarker/project-offloads/aspis-v7-registry-v2-projection-certificate-20260831/final-tmp/aspis-v7-registry-v2-deployment-lean.EQna2P/V7RegistryV2OneTerminalCallerSourceBridge.lean:710:52: warning: This simp argument is unused:
+  markerRun
+
+Hint: Omit it from the simp argument list.
+  simp [authRun, m̵a̵rk̵er̵R̵u̵n̵,̵ ̵r̵e̵sultRun,
+                           ̵ ̵core.result.Result.Insts.CoreOpsTry.branch,
+                           ̵ ̵core.result.Result.Insts.CoreOpsTryTraitFromResidualResultInfallible.from_residual,
+                           ̵ ̵core.convert.FromSame.from] at run
+
+Note: This linter can be disabled with `set_option linter.unusedSimpArgs false`
+/home/dombarker/project-offloads/aspis-v7-registry-v2-projection-certificate-20260831/final-tmp/aspis-v7-registry-v2-deployment-lean.EQna2P/V7RegistryV2OneTerminalCallerSourceBridge.lean:710:63: warning: This simp argument is unused:
+  resultRun
+
+Hint: Omit it from the simp argument list.
+  simp [authRun, markerRun, ̵r̵e̵s̵u̵l̵t̵R̵u̵n̵,̵
+                           ̵ ̵core.result.Result.Insts.CoreOpsTry.branch,
+                           ̵ ̵core.result.Result.Insts.CoreOpsTryTraitFromResidualResultInfallible.from_residual,
+                           ̵ ̵core.convert.FromSame.from] at run
+
+Note: This linter can be disabled with `set_option linter.unusedSimpArgs false`
+/home/dombarker/project-offloads/aspis-v7-registry-v2-projection-certificate-20260831/final-tmp/aspis-v7-registry-v2-deployment-lean.EQna2P/V7RegistryV2OneTerminalCallerSourceBridge.lean:711:26: warning: This simp argument is unused:
+  core.result.Result.Insts.CoreOpsTry.branch
+
+Hint: Omit it from the simp argument list.
+  simp [authRun, markerRun, resultRun,
+                          c̵o̵r̵e̵.̵r̵e̵s̵u̵l̵t̵.̵R̵e̵s̵u̵l̵t̵.̵I̵n̵s̵t̵s̵.̵C̵o̵r̵e̵O̵p̵s̵T̵r̵y̵.̵b̵r̵a̵n̵c̵h̵,̵core.result.Result.Insts.CoreOpsTryTraitFromResidualResultInfallible.from_residual,
+                          core.convert.FromSame.from] at run
+
+Note: This linter can be disabled with `set_option linter.unusedSimpArgs false`
+/home/dombarker/project-offloads/aspis-v7-registry-v2-projection-certificate-20260831/final-tmp/aspis-v7-registry-v2-deployment-lean.EQna2P/V7RegistryV2OneTerminalCallerSourceBridge.lean:715:32: warning: This simp argument is unused:
+  core.result.Result.Insts.CoreOpsTry.branch
+
+Hint: Omit it from the simp argument list.
+  s̵i̵m̵p̵ ̵[̵c̵o̵r̵e̵.̵r̵e̵s̵u̵l̵t̵.̵R̵e̵s̵u̵l̵t̵.̵I̵n̵s̵t̵s̵.̵C̵o̵r̵e̵O̵p̵s̵T̵r̵y̵.̵b̵r̵a̵n̵c̵h̵]̵ ̵a̵t̵ ̵r̵u̵n̵s̲i̲m̲p̲ ̲a̲t̲ ̲r̲u̲n̲
+
+Note: This linter can be disabled with `set_option linter.unusedSimpArgs false`
+/home/dombarker/project-offloads/aspis-v7-registry-v2-projection-certificate-20260831/final-tmp/aspis-v7-registry-v2-deployment-lean.EQna2P/V7RegistryV2OneTerminalCallerSourceBridge.lean:719:48: warning: This simp argument is unused:
+  authRun
+
+Hint: Omit it from the simp argument list.
+  simp [̵a̵u̵t̵h̵R̵u̵n̵,̵ ̵m̵a̵r̵k̵e̵r̵R̵u̵n̵,̵[̲m̲a̲r̲k̲e̲r̲R̲u̲n̲,̲ resultRun, historyRun,
+  ̲  ̲ ̲ ̲ ̲ ̲ ̲ ̲ ̲ ̲ ̲ ̲ ̲ ̲ ̲ ̲ ̲ ̲ ̲ ̲ ̲ ̲ ̲ ̲ ̲ ̲ ̲ ̲core.result.Result.Insts.CoreOpsTry.branch] at run
+
+Note: This linter can be disabled with `set_option linter.unusedSimpArgs false`
+/home/dombarker/project-offloads/aspis-v7-registry-v2-projection-certificate-20260831/final-tmp/aspis-v7-registry-v2-deployment-lean.EQna2P/V7RegistryV2OneTerminalCallerSourceBridge.lean:719:57: warning: This simp argument is unused:
+  markerRun
+
+Hint: Omit it from the simp argument list.
+  simp [authRun, m̵a̵r̵k̵e̵r̵R̵u̵n̵,̵ ̵resultRun, historyRun,
+  ̲  ̲ ̲ ̲ ̲ ̲ ̲ ̲ ̲ ̲ ̲ ̲ ̲ ̲ ̲ ̲ ̲ ̲ ̲ ̲ ̲ ̲ ̲ ̲ ̲ ̲ ̲ ̲core.result.Result.Insts.CoreOpsTry.branch] at run
+
+Note: This linter can be disabled with `set_option linter.unusedSimpArgs false`
+/home/dombarker/project-offloads/aspis-v7-registry-v2-projection-certificate-20260831/final-tmp/aspis-v7-registry-v2-deployment-lean.EQna2P/V7RegistryV2OneTerminalCallerSourceBridge.lean:719:68: warning: This simp argument is unused:
+  resultRun
+
+Hint: Omit it from the simp argument list.
+  simp [authRun, markerRun, r̵e̵s̵u̵l̵t̵R̵u̵n̵,̵historyRun,
+                              core.result.Result.Insts.CoreOpsTry.branch] at run
+
+Note: This linter can be disabled with `set_option linter.unusedSimpArgs false`
+/home/dombarker/project-offloads/aspis-v7-registry-v2-projection-certificate-20260831/final-tmp/aspis-v7-registry-v2-deployment-lean.EQna2P/V7RegistryV2OneTerminalCallerSourceBridge.lean:720:30: warning: This simp argument is unused:
+  historyRun
+
+Hint: Omit it from the simp argument list.
+  simp [authRun, markerRun, resultRun,
+                               ̵ ̵h̵i̵s̵t̵o̵r̵y̵R̵u̵n̵,̵ ̵core.result.Result.Insts.CoreOpsTry.branch] at run
+
+Note: This linter can be disabled with `set_option linter.unusedSimpArgs false`
+/home/dombarker/project-offloads/aspis-v7-registry-v2-projection-certificate-20260831/final-tmp/aspis-v7-registry-v2-deployment-lean.EQna2P/V7RegistryV2OneTerminalCallerSourceBridge.lean:720:42: warning: This simp argument is unused:
+  core.result.Result.Insts.CoreOpsTry.branch
+
+Hint: Omit it from the simp argument list.
+  simp [authRun, markerRun, resultRun, h̵i̵s̵t̵o̵r̵y̵R̵u̵n̵,̵ ̵c̵o̵r̵e̵.̵r̵e̵s̵u̵l̵t̵.̵R̵e̵s̵u̵l̵t̵.̵I̵n̵s̵t̵s̵.̵C̵o̵r̵e̵O̵p̵s̵T̵r̵y̵.̵b̵r̵a̵n̵c̵h̵]̵h̲i̲s̲t̲o̲r̲y̲R̲u̲n̲]̲ at run
+
+Note: This linter can be disabled with `set_option linter.unusedSimpArgs false`
+/home/dombarker/project-offloads/aspis-v7-registry-v2-projection-certificate-20260831/final-tmp/aspis-v7-registry-v2-deployment-lean.EQna2P/V7RegistryV2OneTerminalCallerSourceBridge.lean:721:41: warning: This simp argument is unused:
+  authRun
+
+Hint: Omit it from the simp argument list.
+  simp [̵a̵u̵t̵h̵R̵u̵n̵,̵ ̵m̵a̵r̵k̵e̵r̵R̵u̵n̵,̵[̲m̲a̲r̲k̲e̲r̲R̲u̲n̲,̲ resultRun, historyRun,
+  ̲  ̲ ̲ ̲ ̲ ̲ ̲ ̲ ̲ ̲ ̲ ̲ ̲ ̲ ̲ ̲ ̲ ̲ ̲ ̲ ̲ ̲ ̲ ̲ ̲ ̲ ̲ ̲core.result.Result.Insts.CoreOpsTry.branch] at run
+
+Note: This linter can be disabled with `set_option linter.unusedSimpArgs false`
+/home/dombarker/project-offloads/aspis-v7-registry-v2-projection-certificate-20260831/final-tmp/aspis-v7-registry-v2-deployment-lean.EQna2P/V7RegistryV2OneTerminalCallerSourceBridge.lean:721:50: warning: This simp argument is unused:
+  markerRun
+
+Hint: Omit it from the simp argument list.
+  simp [authRun, m̵a̵r̵k̵e̵r̵R̵u̵n̵,̵ ̵resultRun, historyRun,
+  ̲  ̲ ̲ ̲ ̲ ̲ ̲ ̲ ̲ ̲ ̲ ̲ ̲ ̲ ̲ ̲ ̲ ̲ ̲ ̲ ̲ ̲ ̲ ̲ ̲ ̲ ̲ ̲core.result.Result.Insts.CoreOpsTry.branch] at run
+
+Note: This linter can be disabled with `set_option linter.unusedSimpArgs false`
+/home/dombarker/project-offloads/aspis-v7-registry-v2-projection-certificate-20260831/final-tmp/aspis-v7-registry-v2-deployment-lean.EQna2P/V7RegistryV2OneTerminalCallerSourceBridge.lean:721:61: warning: This simp argument is unused:
+  resultRun
+
+Hint: Omit it from the simp argument list.
+  simp [authRun, markerRun, r̵e̵s̵u̵l̵t̵R̵u̵n̵,̵historyRun,
+                              core.result.Result.Insts.CoreOpsTry.branch] at run
+
+Note: This linter can be disabled with `set_option linter.unusedSimpArgs false`
+/home/dombarker/project-offloads/aspis-v7-registry-v2-projection-certificate-20260831/final-tmp/aspis-v7-registry-v2-deployment-lean.EQna2P/V7RegistryV2OneTerminalCallerSourceBridge.lean:722:30: warning: This simp argument is unused:
+  historyRun
+
+Hint: Omit it from the simp argument list.
+  simp [authRun, markerRun, resultRun,
+                               ̵ ̵h̵i̵s̵t̵o̵r̵y̵R̵u̵n̵,̵ ̵core.result.Result.Insts.CoreOpsTry.branch] at run
+
+Note: This linter can be disabled with `set_option linter.unusedSimpArgs false`
+/home/dombarker/project-offloads/aspis-v7-registry-v2-projection-certificate-20260831/final-tmp/aspis-v7-registry-v2-deployment-lean.EQna2P/V7RegistryV2OneTerminalCallerSourceBridge.lean:722:42: warning: This simp argument is unused:
+  core.result.Result.Insts.CoreOpsTry.branch
+
+Hint: Omit it from the simp argument list.
+  simp [authRun, markerRun, resultRun, h̵i̵s̵t̵o̵r̵y̵R̵u̵n̵,̵ ̵c̵o̵r̵e̵.̵r̵e̵s̵u̵l̵t̵.̵R̵e̵s̵u̵l̵t̵.̵I̵n̵s̵t̵s̵.̵C̵o̵r̵e̵O̵p̵s̵T̵r̵y̵.̵b̵r̵a̵n̵c̵h̵]̵h̲i̲s̲t̲o̲r̲y̲R̲u̲n̲]̲ at run
+
+Note: This linter can be disabled with `set_option linter.unusedSimpArgs false`
+/home/dombarker/project-offloads/aspis-v7-registry-v2-projection-certificate-20260831/final-tmp/aspis-v7-registry-v2-deployment-lean.EQna2P/V7RegistryV2OneTerminalCallerSourceBridge.lean:725:51: warning: This simp argument is unused:
+  authRun
+
+Hint: Omit it from the simp argument list.
+  simp [a̵u̵t̵h̵R̵u̵n̵,̵ ̵markerRun, resultRun,
+  ̵  ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵historyRun,
+                                   ̵ ̵core.result.Result.Insts.CoreOpsTry.branch,
+                                   ̵ ̵core.result.Result.Insts.CoreOpsTryTraitFromResidualResultInfallible.from_residual,
+                                   ̵ ̵core.convert.FromSame.from] at run
+
+Note: This linter can be disabled with `set_option linter.unusedSimpArgs false`
+/home/dombarker/project-offloads/aspis-v7-registry-v2-projection-certificate-20260831/final-tmp/aspis-v7-registry-v2-deployment-lean.EQna2P/V7RegistryV2OneTerminalCallerSourceBridge.lean:725:60: warning: This simp argument is unused:
+  markerRun
+
+Hint: Omit it from the simp argument list.
+  simp [authRun, m̵a̵rk̵er̵R̵u̵n̵,̵ ̵r̵e̵sultRun,
+  ̵  ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵historyRun,
+                                   ̵ ̵core.result.Result.Insts.CoreOpsTry.branch,
+                                   ̵ ̵core.result.Result.Insts.CoreOpsTryTraitFromResidualResultInfallible.from_residual,
+                                   ̵ ̵core.convert.FromSame.from] at run
+
+Note: This linter can be disabled with `set_option linter.unusedSimpArgs false`
+/home/dombarker/project-offloads/aspis-v7-registry-v2-projection-certificate-20260831/final-tmp/aspis-v7-registry-v2-deployment-lean.EQna2P/V7RegistryV2OneTerminalCallerSourceBridge.lean:725:71: warning: This simp argument is unused:
+  resultRun
+
+Hint: Omit it from the simp argument list.
+  simp [authRun, markerRun, r̵e̵s̵u̵l̵t̵R̵u̵n̵,̵
+  ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵historyRun,
+                                   ̵ ̵core.result.Result.Insts.CoreOpsTry.branch,
+                                   ̵ ̵core.result.Result.Insts.CoreOpsTryTraitFromResidualResultInfallible.from_residual,
+                                   ̵ ̵core.convert.FromSame.from] at run
+
+Note: This linter can be disabled with `set_option linter.unusedSimpArgs false`
+/home/dombarker/project-offloads/aspis-v7-registry-v2-projection-certificate-20260831/final-tmp/aspis-v7-registry-v2-deployment-lean.EQna2P/V7RegistryV2OneTerminalCallerSourceBridge.lean:726:34: warning: This simp argument is unused:
+  historyRun
+
+Hint: Omit it from the simp argument list.
+  simp [authRun, markerRun, resultRun,
+                                   ̵ ̵h̵i̵s̵t̵o̵r̵y̵R̵u̵n̵,̵
+  ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵core.result.Result.Insts.CoreOpsTry.branch,
+                                   ̵ ̵core.result.Result.Insts.CoreOpsTryTraitFromResidualResultInfallible.from_residual,
+                                   ̵ ̵core.convert.FromSame.from] at run
+
+Note: This linter can be disabled with `set_option linter.unusedSimpArgs false`
+/home/dombarker/project-offloads/aspis-v7-registry-v2-projection-certificate-20260831/final-tmp/aspis-v7-registry-v2-deployment-lean.EQna2P/V7RegistryV2OneTerminalCallerSourceBridge.lean:727:34: warning: This simp argument is unused:
+  core.result.Result.Insts.CoreOpsTry.branch
+
+Hint: Omit it from the simp argument list.
+  simp [authRun, markerRun, resultRun, historyRun,
+                                  c̵o̵r̵e̵.̵r̵e̵s̵u̵l̵t̵.̵R̵e̵s̵u̵l̵t̵.̵I̵n̵s̵t̵s̵.̵C̵o̵r̵e̵O̵p̵s̵T̵r̵y̵.̵b̵r̵a̵n̵c̵h̵,̵core.result.Result.Insts.CoreOpsTryTraitFromResidualResultInfallible.from_residual,
+                                  core.convert.FromSame.from] at run
+
+Note: This linter can be disabled with `set_option linter.unusedSimpArgs false`
+/home/dombarker/project-offloads/aspis-v7-registry-v2-projection-certificate-20260831/final-tmp/aspis-v7-registry-v2-deployment-lean.EQna2P/V7RegistryV2OneTerminalCallerSourceBridge.lean:731:40: warning: This simp argument is unused:
+  core.result.Result.Insts.CoreOpsTry.branch
+
+Hint: Omit it from the simp argument list.
+  s̵i̵m̵p̵ ̵[̵c̵o̵r̵e̵.̵r̵e̵s̵u̵l̵t̵.̵R̵e̵s̵u̵l̵t̵.̵I̵n̵s̵t̵s̵.̵C̵o̵r̵e̵O̵p̵s̵T̵r̵y̵.̵b̵r̵a̵n̵c̵h̵]̵ ̵a̵t̵ ̵r̵u̵n̵s̲i̲m̲p̲ ̲a̲t̲ ̲r̲u̲n̲
+
+Note: This linter can be disabled with `set_option linter.unusedSimpArgs false`
+/home/dombarker/project-offloads/aspis-v7-registry-v2-projection-certificate-20260831/final-tmp/aspis-v7-registry-v2-deployment-lean.EQna2P/V7RegistryV2OneTerminalCallerSourceBridge.lean:760:27: warning: Used `tac1 <;> tac2` where `(tac1; tac2)` would suffice
+
+Note: This linter can be disabled with `set_option linter.unnecessarySeqFocus false`
+/home/dombarker/project-offloads/aspis-v7-registry-v2-projection-certificate-20260831/final-tmp/aspis-v7-registry-v2-deployment-lean.EQna2P/V7RegistryV2OneTerminalCallerSourceBridge.lean:816:36: warning: try 'simp' instead of 'simpa'
+
+Note: This linter can be disabled with `set_option linter.unnecessarySimpa false`
+/home/dombarker/project-offloads/aspis-v7-registry-v2-projection-certificate-20260831/final-tmp/aspis-v7-registry-v2-deployment-lean.EQna2P/V7RegistryV2OneTerminalCallerSourceBridge.lean:849:36: warning: try 'simp' instead of 'simpa'
+
+Note: This linter can be disabled with `set_option linter.unnecessarySimpa false`
+/home/dombarker/project-offloads/aspis-v7-registry-v2-projection-certificate-20260831/final-tmp/aspis-v7-registry-v2-deployment-lean.EQna2P/V7RegistryV2OneTerminalCallerSourceBridge.lean:793:30: warning: This simp argument is unused:
+  UScalar.eq_equiv
+
+Hint: Omit it from the simp argument list.
+  simp [apply_withdrawal, exactFive, tokenProgram, mint, vaultAuthority,
+  ̲  ̲ ̲ ̲ ̲ ̲ ̲ ̲ ̲ ̲ ̲ ̲ ̲ ̲ ̲ ̲ ̲ ̲ ̲ ̲ ̲ ̲ ̲ ̲ ̲ ̲ ̲ ̲ ̲ ̲destination, destinationZero, w̵i̵t̵h̵d̵r̵a̵w̵a̵l̵C̵p̵i̵,̵
+  ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵U̵S̵c̵a̵l̵a̵r̵.̵e̵q̵_̵e̵q̵u̵i̵v̵]̵w̲i̲t̲h̲d̲r̲a̲w̲a̲l̲C̲p̲i̲]̲ at run
+
+Note: This linter can be disabled with `set_option linter.unusedSimpArgs false`
+/home/dombarker/project-offloads/aspis-v7-registry-v2-projection-certificate-20260831/final-tmp/aspis-v7-registry-v2-deployment-lean.EQna2P/V7RegistryV2OneTerminalCallerSourceBridge.lean:940:27: warning: Local variable 'unit' resembles constructor 'PUnit.unit' - write '.unit' (with a dot) or 'PUnit.unit' to use the constructor.
+
+Note: This linter can be disabled with `set_option linter.constructorNameAsVariable false`
+/home/dombarker/project-offloads/aspis-v7-registry-v2-projection-certificate-20260831/final-tmp/aspis-v7-registry-v2-deployment-lean.EQna2P/V7RegistryV2OneTerminalCallerSourceBridge.lean:931:40: warning: This simp argument is unused:
+  withdrawalRun
+
+Hint: Omit it from the simp argument list.
+  simp [̵w̵i̵t̵h̵d̵r̵a̵w̵a̵l̵R̵u̵n̵]̵ ̵at run
+
+Note: This linter can be disabled with `set_option linter.unusedSimpArgs false`
+/home/dombarker/project-offloads/aspis-v7-registry-v2-projection-certificate-20260831/final-tmp/aspis-v7-registry-v2-deployment-lean.EQna2P/V7RegistryV2OneTerminalCallerSourceBridge.lean:932:33: warning: This simp argument is unused:
+  withdrawalRun
+
+Hint: Omit it from the simp argument list.
+  simp [̵w̵i̵t̵h̵d̵r̵a̵w̵a̵l̵R̵u̵n̵]̵ ̵at run
+
+Note: This linter can be disabled with `set_option linter.unusedSimpArgs false`
+/home/dombarker/project-offloads/aspis-v7-registry-v2-projection-certificate-20260831/final-tmp/aspis-v7-registry-v2-deployment-lean.EQna2P/V7RegistryV2OneTerminalCallerSourceBridge.lean:936:43: warning: This simp argument is unused:
+  withdrawalRun
+
+Hint: Omit it from the simp argument list.
+  simp [̵w̵i̵t̵h̵d̵r̵a̵w̵a̵l̵R̵u̵n̵,̵
+  ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵c̵o̵r̵e̵.̵r̵e̵s̵u̵l̵t̵.̵R̵e̵s̵u̵l̵t̵.̵I̵n̵s̵t̵s̵.̵C̵o̵r̵e̵O̵p̵s̵T̵r̵y̵.̵b̵r̵a̵n̵c̵h̵,̵[̲c̲o̲r̲e̲.̲r̲e̲s̲u̲l̲t̲.̲R̲e̲s̲u̲l̲t̲.̲I̲n̲s̲t̲s̲.̲C̲o̲r̲e̲O̲p̲s̲T̲r̲y̲.̲b̲r̲a̲n̲c̲h̲,̲
+                          core.result.Result.Insts.CoreOpsTryTraitFromResidualResultInfallible.from_residual,
+                          core.convert.FromSame.from] at run
+
+Note: This linter can be disabled with `set_option linter.unusedSimpArgs false`
+/home/dombarker/project-offloads/aspis-v7-registry-v2-projection-certificate-20260831/final-tmp/aspis-v7-registry-v2-deployment-lean.EQna2P/V7RegistryV2OneTerminalCallerSourceBridge.lean:991:24: warning: This simp argument is unused:
+  callerRun
+
+Hint: Omit it from the simp argument list.
+  simp [̵c̵a̵l̵l̵e̵r̵R̵u̵n̵]̵ ̵at run
+
+Note: This linter can be disabled with `set_option linter.unusedSimpArgs false`
+/home/dombarker/project-offloads/aspis-v7-registry-v2-projection-certificate-20260831/final-tmp/aspis-v7-registry-v2-deployment-lean.EQna2P/V7RegistryV2OneTerminalCallerSourceBridge.lean:992:17: warning: This simp argument is unused:
+  callerRun
+
+Hint: Omit it from the simp argument list.
+  simp [̵c̵a̵l̵l̵e̵r̵R̵u̵n̵]̵ ̵at run
+
+Note: This linter can be disabled with `set_option linter.unusedSimpArgs false`
+/home/dombarker/project-offloads/aspis-v7-registry-v2-projection-certificate-20260831/final-tmp/aspis-v7-registry-v2-deployment-lean.EQna2P/V7RegistryV2OneTerminalCallerSourceBridge.lean:995:29: warning: This simp argument is unused:
+  callerRun
+
+Hint: Omit it from the simp argument list.
+  simp [̵c̵a̵l̵l̵e̵r̵R̵u̵n̵]̵ ̵at run
+
+Note: This linter can be disabled with `set_option linter.unusedSimpArgs false`
+/home/dombarker/project-offloads/aspis-v7-registry-v2-projection-certificate-20260831/final-tmp/aspis-v7-registry-v2-deployment-lean.EQna2P/V7RegistryV2OneTerminalCallerSourceBridge.lean:997:16: warning: This simp argument is unused:
+  callerRun
+
+Hint: Omit it from the simp argument list.
+  simp [̵c̵a̵l̵l̵e̵r̵R̵u̵n̵]̵ ̵at run
+
+Note: This linter can be disabled with `set_option linter.unusedSimpArgs false`
+/home/dombarker/project-offloads/aspis-v7-registry-v2-projection-certificate-20260831/final-tmp/aspis-v7-registry-v2-deployment-lean.EQna2P/V7RegistryV2OneTerminalCallerSourceBridge.lean:1008:24: warning: This simp argument is unused:
+  prepareRun
+
+Hint: Omit it from the simp argument list.
+  simp [̵p̵r̵e̵p̵a̵r̵e̵R̵u̵n̵]̵ ̵at run
+
+Note: This linter can be disabled with `set_option linter.unusedSimpArgs false`
+/home/dombarker/project-offloads/aspis-v7-registry-v2-projection-certificate-20260831/final-tmp/aspis-v7-registry-v2-deployment-lean.EQna2P/V7RegistryV2OneTerminalCallerSourceBridge.lean:1009:17: warning: This simp argument is unused:
+  prepareRun
+
+Hint: Omit it from the simp argument list.
+  simp [̵p̵r̵e̵p̵a̵r̵e̵R̵u̵n̵]̵ ̵at run
+
+Note: This linter can be disabled with `set_option linter.unusedSimpArgs false`
+/home/dombarker/project-offloads/aspis-v7-registry-v2-projection-certificate-20260831/final-tmp/aspis-v7-registry-v2-deployment-lean.EQna2P/V7RegistryV2OneTerminalCallerSourceBridge.lean:1012:27: warning: This simp argument is unused:
+  prepareRun
+
+Hint: Omit it from the simp argument list.
+  simp [p̵r̵e̵p̵a̵r̵e̵R̵u̵n̵,̵
+  ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵ ̵core.result.Result.Insts.CoreOpsTry.branch,
+           ̵ ̵core.result.Result.Insts.CoreOpsTryTraitFromResidualResultInfallible.from_residual,
+           ̵ ̵core.convert.FromSame.from] at run
+
+Note: This linter can be disabled with `set_option linter.unusedSimpArgs false`
+/home/dombarker/project-offloads/aspis-v7-registry-v2-projection-certificate-20260831/final-tmp/aspis-v7-registry-v2-deployment-lean.EQna2P/V7RegistryV2OneTerminalCallerSourceBridge.lean:1035:24: warning: This simp argument is unused:
+  callerRun
+
+Hint: Omit it from the simp argument list.
+  simp [̵c̵a̵l̵l̵e̵r̵R̵u̵n̵]̵ ̵at run
+
+Note: This linter can be disabled with `set_option linter.unusedSimpArgs false`
+/home/dombarker/project-offloads/aspis-v7-registry-v2-projection-certificate-20260831/final-tmp/aspis-v7-registry-v2-deployment-lean.EQna2P/V7RegistryV2OneTerminalCallerSourceBridge.lean:1036:17: warning: This simp argument is unused:
+  callerRun
+
+Hint: Omit it from the simp argument list.
+  simp [̵c̵a̵l̵l̵e̵r̵R̵u̵n̵]̵ ̵at run
+
+Note: This linter can be disabled with `set_option linter.unusedSimpArgs false`
+/home/dombarker/project-offloads/aspis-v7-registry-v2-projection-certificate-20260831/final-tmp/aspis-v7-registry-v2-deployment-lean.EQna2P/V7RegistryV2OneTerminalCallerSourceBridge.lean:1039:27: warning: This simp argument is unused:
+  callerRun
+
+Hint: Omit it from the simp argument list.
+  simp [̵c̵a̵l̵l̵e̵r̵R̵u̵n̵]̵ ̵at run
+
+Note: This linter can be disabled with `set_option linter.unusedSimpArgs false`
+/home/dombarker/project-offloads/aspis-v7-registry-v2-projection-certificate-20260831/final-tmp/aspis-v7-registry-v2-deployment-lean.EQna2P/V7RegistryV2OneTerminalCallerSourceBridge.lean:1041:16: warning: This simp argument is unused:
+  callerRun
+
+Hint: Omit it from the simp argument list.
+  simp [̵c̵a̵l̵l̵e̵r̵R̵u̵n̵]̵ ̵at run
+
+Note: This linter can be disabled with `set_option linter.unusedSimpArgs false`
+'V7RegistryV2OneTerminalCallerGenerated.translated_authentication_success_is_exact' depends on axioms: [propext,
+ Classical.choice,
+ Quot.sound]
+'V7RegistryV2OneTerminalCallerGenerated.translated_result_success_is_exact' depends on axioms: [propext,
+ Classical.choice,
+ Quot.sound]
+'V7RegistryV2OneTerminalCallerGenerated.translated_marker_success_is_exact' depends on axioms: [propext]
+'V7RegistryV2OneTerminalCallerGenerated.translated_prepare_success_is_exact' depends on axioms: [propext,
+ Classical.choice,
+ Quot.sound]
+'V7RegistryV2OneTerminalCallerGenerated.translated_finalize_success_is_exact' depends on axioms: [propext,
+ Classical.choice,
+ Quot.sound]
+'V7RegistryV2OneTerminalCallerGenerated.translated_withdrawal_apply_success_is_exact' depends on axioms: [propext,
+ Classical.choice,
+ Quot.sound]
+'V7RegistryV2OneTerminalCallerGenerated.translated_apply_prepared_success_is_exact' depends on axioms: [propext,
+ Classical.choice,
+ Quot.sound]
+'V7RegistryV2OneTerminalCallerGenerated.translated_rejected_atomic_transaction_is_exact_prestate' depends on axioms: [propext,
+ Classical.choice,
+ Quot.sound]
+'V7RegistryV2OneTerminalCallerGenerated.translated_accepted_caller_has_exact_writeback' depends on axioms: [propext,
+ Classical.choice,
+ Quot.sound]
+'V7RegistryV2OneTerminalCallerGenerated.translated_accepted_atomic_transaction_has_exact_writeback' depends on axioms: [propext,
+ Classical.choice,
+ Quot.sound]
+'V7RegistryV2DeploymentCertificateGenerated.partial_ne_u8_array_exact' depends on axioms: [propext,
+ Classical.choice,
+ Quot.sound]
+'V7RegistryV2DeploymentCertificateGenerated.translated_immutable_deployment_success_is_exact' depends on axioms: [propext,
+ Classical.choice,
+ Quot.sound]
+'V7RegistryV2DeploymentCertificateGenerated.translated_deployment_source_root_success_is_exact' depends on axioms: [propext,
+ Classical.choice,
+ Quot.sound]
+'V7RegistryV2DeploymentCertificateGenerated.transaction_local_projection_iff_literal_256_fields' depends on axioms: [propext,
+ Classical.choice,
+ Quot.sound]
+'V7RegistryV2DeploymentCertificateGenerated.literal_256_fields_supply_fixed_caller_certificate_fields' depends on axioms: [propext,
+ Classical.choice,
+ Quot.sound]
+V7 Registry V2 deployment certificate Lean replay: PASS
