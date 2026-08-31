@@ -1,6 +1,7 @@
 import AspisFormal.K1.V7Tag73ExactDagPreAnchorResidualPrefix
 import AspisFormal.K1.V7Tag73K12BudgetedSchedulerTree
 import AspisFormal.K1.V7Tag73ExactFixedK13K14Classifier
+import AspisFormal.K1.V7Tag73ExactK12PrefixWordCongruence
 
 /-!
 # Verifier-owned q16 anchors retain the completed prover prefix
@@ -35,7 +36,9 @@ open AspisK1.V7Tag73ExactDagQ16ChainRouting
 open AspisK1.V7Tag73ExactFinalWorkPairControllerCompletion
 open AspisK1.V7Tag73ExactFixedFullRunFactorization
 open AspisK1.V7Tag73ExactFixedK12MerkleClassifier
+open AspisK1.V7Tag73ExactFixedK12PrefixClassifier
 open AspisK1.V7Tag73ExactFixedK13K14Classifier
+open AspisK1.V7Tag73ExactK12PrefixWordCongruence
 open AspisK1.V7Tag73ExactPlainRomRun
 open AspisK1.V7Tag73ExactSourceAcceptanceModel
 open AspisK1.V7Tag73FullCursorClientLineageLift
@@ -388,12 +391,61 @@ theorem exact_dag_residual_coordinate_preserves_parsed_proof_at_verifier_anchor
   simpa only [exactK13ParsedProof] using congrArg
     (fun value => value.1.publicProof.proof.rawProof) adversaryExact
 
+/-- The verifier-owned residual branch fixes both pre-q16 values consumed by
+the K1.3 bad-set construction: the parsed proof and the K1.2 prefix words.
+The proof intentionally stops at the pre-q16 boundary; later verifier-table
+entries are not claimed equal. -/
+theorem exact_dag_residual_coordinate_preserves_pre_k13_values_at_verifier_anchor
+    {HiddenTape TapeIdentity Observation Statement Payload Result : Type}
+    {parameters : ExactCompilerResourceParameters}
+    {transitionFuel : Nat}
+    {configuration : ExactPlainRomConfiguration HiddenTape TapeIdentity
+      Observation Statement Tag73K12ParsedProof Payload Result parameters}
+    {projection : AcceptedTapeProjection Statement Tag73K12ParsedProof Payload}
+    {fixedInstance : PublicInstance Statement}
+    {sample : ExactCompilerSample HiddenTape parameters}
+    (input : ExactK12OperationalInput transitionFuel configuration projection
+      fixedInstance sample)
+    (trial : ExactCompilerExposureTrial parameters)
+    (prior later : List UnifiedExposureRecord)
+    (target : ShaInput) (answer : Digest256)
+    (rootExact : exactFixedRootRecords input.package.root =
+      prior ++ (.machineFresh .verifier target answer : UnifiedExposureRecord) ::
+        later)
+    (trialExact : trial.val = prior.length)
+    (programmedCover : 513 ≤ 2 * parameters.forkRequestCap)
+    (right : FreshAnswerTape Digest256
+      (exactCompilerTargetCaps parameters).length)
+    (rightInput : ExactK12OperationalInput transitionFuel configuration projection
+      fixedInstance (sample.1, right))
+    (coordinateExact :
+      ((exactCompilerExposureTrialDagRouter parameters transitionFuel trial
+        (exactPlainRomCursor configuration sample.1).erase).coordinateEquiv
+        (finalWorkQ16NamedSlotInputTape
+          (exactCompilerFinalWorkQ16InputTape parameters sample.2))).2 =
+      ((exactCompilerExposureTrialDagRouter parameters transitionFuel trial
+        (exactPlainRomCursor configuration sample.1).erase).coordinateEquiv
+        (finalWorkQ16NamedSlotInputTape
+          (exactCompilerFinalWorkQ16InputTape parameters right))).2) :
+    exactK13ParsedProof rightInput = exactK13ParsedProof input ∧
+      exactPrefixK12Words rightInput = exactPrefixK12Words input := by
+  obtain ⟨adversaryExact, proverExact⟩ :=
+    exact_dag_residual_coordinate_preserves_prover_runtime_at_verifier_anchor
+      input trial prior later target answer rootExact trialExact programmedCover
+        right rightInput coordinateExact
+  constructor
+  · simpa only [exactK13ParsedProof] using congrArg
+      (fun value => value.1.publicProof.proof.rawProof) adversaryExact
+  · exact exact_prefix_k12_words_eq_of_same_prover_runtime rightInput input
+      adversaryExact proverExact
+
 #print axioms machine_fresh_mem_projected_records_iff
 #print axioms exact_dag_verifier_root_record_has_completed_prover_prefix
 #print axioms exact_dag_residual_coordinate_forces_completed_prover_tape_prefix
 #print axioms exact_dag_residual_coordinate_replays_completed_prover_at_verifier_anchor
 #print axioms exact_dag_residual_coordinate_preserves_prover_runtime_at_verifier_anchor
 #print axioms exact_dag_residual_coordinate_preserves_parsed_proof_at_verifier_anchor
+#print axioms exact_dag_residual_coordinate_preserves_pre_k13_values_at_verifier_anchor
 
 end
 
