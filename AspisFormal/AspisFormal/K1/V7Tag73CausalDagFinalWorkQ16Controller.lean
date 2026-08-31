@@ -170,20 +170,60 @@ theorem q16_dag_advanced_slot_of_digest_nodup
         rw [reduce]
         exact ih tailNodup member
 
+/-- The slot produced by the current causal edge, if any. -/
+def q16DagProducedSlot? (base : Digest256)
+    (producers : List Q16DagProducer) (input : ShaInput) :
+    Option Q16DigestSlot :=
+  match q16CandidateOfBaseInput? base input with
+  | some counter => some (counter, ⟨0, by omega⟩)
+  | none => q16DagAdvancedSlot? producers input
+
 /-- Update only the causal producer inventory.  Candidate absorbs depend on
 the already exposed q16 base; advance answers extend their branch without
 waiting for the sibling output. -/
 def updateQ16DagProducers (base : Digest256)
     (producers : List Q16DagProducer) (input : ShaInput) (answer : Digest256) :
     List Q16DagProducer :=
-  match q16CandidateOfBaseInput? base input with
-  | some counter =>
-      producers ++
-        [{ digest := answer, slot := (counter, ⟨0, by omega⟩) }]
-  | none =>
-      match q16DagAdvancedSlot? producers input with
-      | some slot => producers ++ [{ digest := answer, slot := slot }]
-      | none => producers
+  match q16DagProducedSlot? base producers input with
+  | some slot => producers ++ [{ digest := answer, slot := slot }]
+  | none => producers
+
+theorem update_q16_dag_producers_eq_or_append
+    (base : Digest256) (producers : List Q16DagProducer)
+    (input : ShaInput) (answer : Digest256) :
+    updateQ16DagProducers base producers input answer = producers ∨
+      ∃ slot, updateQ16DagProducers base producers input answer =
+        producers ++ [{ digest := answer, slot := slot }] := by
+  unfold updateQ16DagProducers
+  cases produced : q16DagProducedSlot? base producers input with
+  | none => exact Or.inl rfl
+  | some slot => exact Or.inr ⟨slot, rfl⟩
+
+theorem update_q16_dag_producers_prefix
+    (base : Digest256) (producers : List Q16DagProducer)
+    (input : ShaInput) (answer : Digest256) :
+    producers <+: updateQ16DagProducers base producers input answer := by
+  rcases update_q16_dag_producers_eq_or_append base producers input answer with
+    unchanged | ⟨slot, appended⟩
+  · rw [unchanged]
+  · rw [appended]
+    exact List.prefix_append _ _
+
+theorem update_q16_dag_producers_new_digest
+    (base : Digest256) (producers : List Q16DagProducer)
+    (input : ShaInput) (answer : Digest256)
+    (producer : Q16DagProducer)
+    (member : producer ∈ updateQ16DagProducers base producers input answer) :
+    producer ∈ producers ∨ producer.digest = answer := by
+  rcases update_q16_dag_producers_eq_or_append base producers input answer with
+    unchanged | ⟨slot, appended⟩
+  · rw [unchanged] at member
+    exact Or.inl member
+  · rw [appended, List.mem_append] at member
+    rcases member with old | added
+    · exact Or.inl old
+    · simp only [List.mem_singleton] at added
+      exact Or.inr (by rw [added])
 
 /-- Raw pre-answer label before enforcing one-shot use. -/
 def dagRawPreferredSlot (anchorIndex exposureIndex : Nat)
@@ -255,6 +295,31 @@ def dagCoreMemoryAfterInput (anchorIndex exposureIndex : Nat)
             producers := updateQ16DagProducers base memory.producers input answer
             usedSlots := memory.usedSlots }
 
+/-- Causal producers are append-only across one raw memory step. -/
+theorem dag_core_memory_producers_prefix
+    (anchorIndex exposureIndex : Nat) (memory : FinalWorkQ16DagMemory)
+    (input : ShaInput) (answer : Digest256) :
+    memory.producers <+:
+      (dagCoreMemoryAfterInput anchorIndex exposureIndex memory input answer).producers := by
+  cases anchorExact : memory.anchor with
+  | inactive =>
+      simp only [dagCoreMemoryAfterInput, anchorExact]
+      split
+      · split
+        · exact List.prefix_refl _
+        · split <;> exact List.prefix_refl _
+      · exact List.prefix_refl _
+  | tracked key workSeen =>
+      simp only [dagCoreMemoryAfterInput, anchorExact]
+      cases baseExact : memory.q16Base with
+      | none =>
+          simp only [baseExact]
+          split <;> exact List.prefix_refl _
+      | some base =>
+          simp only [baseExact]
+          simpa using
+            update_q16_dag_producers_prefix base memory.producers input answer
+
 /-- Advance all causal memory and mark the pre-answer label as consumed. -/
 def dagMemoryAfterInput (anchorIndex exposureIndex : Nat)
     (memory : FinalWorkQ16DagMemory) (input : ShaInput) (answer : Digest256) :
@@ -266,6 +331,45 @@ def dagMemoryAfterInput (anchorIndex exposureIndex : Nat)
       match dagPreferredSlotForInput anchorIndex exposureIndex memory input with
       | some slot => insert slot memory.usedSlots
       | none => memory.usedSlots }
+
+/-- Marking a label does not disturb the append-only producer inventory. -/
+theorem dag_memory_producers_prefix
+    (anchorIndex exposureIndex : Nat) (memory : FinalWorkQ16DagMemory)
+    (input : ShaInput) (answer : Digest256) :
+    memory.producers <+:
+      (dagMemoryAfterInput anchorIndex exposureIndex memory input answer).producers := by
+  exact dag_core_memory_producers_prefix anchorIndex exposureIndex memory input answer
+
+/-- One memory step either keeps the producer inventory or appends exactly
+the current answer with the causally derived slot. -/
+theorem dag_memory_producers_eq_or_append
+    (anchorIndex exposureIndex : Nat) (memory : FinalWorkQ16DagMemory)
+    (input : ShaInput) (answer : Digest256) :
+    (dagMemoryAfterInput anchorIndex exposureIndex memory input answer).producers =
+        memory.producers ∨
+      ∃ slot,
+        (dagMemoryAfterInput anchorIndex exposureIndex memory input answer).producers =
+          memory.producers ++ [{ digest := answer, slot := slot }] := by
+  unfold dagMemoryAfterInput
+  cases anchorExact : memory.anchor with
+  | inactive =>
+      simp only [dagCoreMemoryAfterInput, anchorExact]
+      split
+      · split
+        · exact Or.inl rfl
+        · split <;> exact Or.inl rfl
+      · exact Or.inl rfl
+  | tracked key workSeen =>
+      simp only [dagCoreMemoryAfterInput, anchorExact]
+      cases baseExact : memory.q16Base with
+      | none =>
+          simp only [baseExact]
+          split <;> exact Or.inl rfl
+      | some base =>
+          simp only [baseExact]
+          simpa using
+            update_q16_dag_producers_eq_or_append base memory.producers input
+              answer
 
 def dagCandidatePreferredSlot
     {globalOracleCalls : Nat}
@@ -376,6 +480,156 @@ theorem dag_candidate_memory_used_slots_mono
   · exact Finset.subset_insert _ _
   · exact Finset.Subset.rfl
 
+/-- One indexed controller step can only append causal producers. -/
+theorem dag_candidate_memory_producers_prefix
+    {globalOracleCalls : Nat}
+    (transitionFuel anchorIndex : Nat)
+    (state : IndexedUnifiedExposureState globalOracleCalls
+      FinalWorkQ16DagMemory)
+    (answer : Digest256) :
+    state.memory.producers <+:
+      (dagCandidateAfterMemory transitionFuel anchorIndex state answer).producers := by
+  unfold dagCandidateAfterMemory
+  cases inputExact : unifiedInputBeforeAnswer? transitionFuel state.cursor with
+  | none => exact List.prefix_refl _
+  | some input =>
+      exact dag_memory_producers_prefix anchorIndex state.exposureIndex
+        state.memory input answer
+
+/-- Indexed form of the exact keep-or-single-append transition. -/
+theorem dag_candidate_memory_producers_eq_or_append
+    {globalOracleCalls : Nat}
+    (transitionFuel anchorIndex : Nat)
+    (state : IndexedUnifiedExposureState globalOracleCalls
+      FinalWorkQ16DagMemory)
+    (answer : Digest256) :
+    (dagCandidateAfterMemory transitionFuel anchorIndex state answer).producers =
+        state.memory.producers ∨
+      ∃ slot,
+        (dagCandidateAfterMemory transitionFuel anchorIndex state answer).producers =
+          state.memory.producers ++ [{ digest := answer, slot := slot }] := by
+  unfold dagCandidateAfterMemory
+  cases inputExact : unifiedInputBeforeAnswer? transitionFuel state.cursor with
+  | none => exact Or.inl rfl
+  | some input =>
+      exact dag_memory_producers_eq_or_append anchorIndex state.exposureIndex
+        state.memory input answer
+
+/-- A fresh answer preserves uniqueness of producer digests. -/
+theorem dag_candidate_memory_producer_digests_nodup
+    {globalOracleCalls : Nat}
+    (transitionFuel anchorIndex : Nat)
+    (state : IndexedUnifiedExposureState globalOracleCalls
+      FinalWorkQ16DagMemory)
+    (answer : Digest256)
+    (currentNodup : (state.memory.producers.map Q16DagProducer.digest).Nodup)
+    (answerFresh : answer ∉ state.memory.producers.map Q16DagProducer.digest) :
+    ((dagCandidateAfterMemory transitionFuel anchorIndex state answer).producers.map
+      Q16DagProducer.digest).Nodup := by
+  rcases dag_candidate_memory_producers_eq_or_append transitionFuel anchorIndex
+      state answer with unchanged | ⟨slot, appended⟩
+  · simpa [unchanged] using currentNodup
+  · rw [appended, List.map_append]
+    simp only [List.map_singleton]
+    rw [List.nodup_append]
+    refine ⟨currentNodup, by simp, ?_⟩
+    intro prior priorMember singleton singletonMember
+    simp only [List.mem_singleton] at singletonMember
+    subst singleton
+    exact fun equal => answerFresh (equal ▸ priorMember)
+
+/-- Exact-root answer uniqueness implies producer-digest uniqueness throughout
+the full causal-DAG replay. -/
+theorem dag_indexed_state_producer_digests_nodup
+    {globalOracleCalls : Nat}
+    (transitionFuel anchorIndex : Nat) :
+    ∀ (records : List UnifiedExposureRecord)
+      (state : IndexedUnifiedExposureState globalOracleCalls
+        FinalWorkQ16DagMemory),
+      (records.map UnifiedExposureRecord.answer).Nodup →
+      (state.memory.producers.map Q16DagProducer.digest).Nodup →
+      (∀ producer ∈ state.memory.producers,
+        producer.digest ∉ records.map UnifiedExposureRecord.answer) →
+      ((indexedStateAfterRecords transitionFuel
+        (finalWorkQ16DagController globalOracleCalls transitionFuel anchorIndex)
+        records state).memory.producers.map Q16DagProducer.digest).Nodup := by
+  intro records
+  induction records with
+  | nil =>
+      intro state _recordsNodup producerNodup _disjoint
+      simpa only [indexed_state_after_records_nil] using producerNodup
+  | cons record records ih =>
+      intro state recordsNodup producerNodup disjoint
+      have splitNodup := List.nodup_cons.mp recordsNodup
+      let controller := finalWorkQ16DagController globalOracleCalls
+        transitionFuel anchorIndex
+      let next := controller.afterAnswer transitionFuel state record.answer
+      have answerFresh : record.answer ∉
+          state.memory.producers.map Q16DagProducer.digest := by
+        intro answerMember
+        obtain ⟨producer, producerMember, producerDigest⟩ :=
+          List.mem_map.mp answerMember
+        apply disjoint producer producerMember
+        simp only [List.map_cons, List.mem_cons]
+        exact Or.inl producerDigest
+      have nextNodup :
+          (next.memory.producers.map Q16DagProducer.digest).Nodup := by
+        simpa [next, controller, finalWorkQ16DagController,
+          IndexedUnifiedExposureController.afterAnswer] using
+          dag_candidate_memory_producer_digests_nodup transitionFuel
+            anchorIndex state record.answer producerNodup answerFresh
+      have nextDisjoint : ∀ producer ∈ next.memory.producers,
+          producer.digest ∉ records.map UnifiedExposureRecord.answer := by
+        intro producer producerMember tailMember
+        change producer ∈
+          (dagCandidateAfterMemory transitionFuel anchorIndex state
+            record.answer).producers at producerMember
+        rcases dag_candidate_memory_producers_eq_or_append transitionFuel
+            anchorIndex state record.answer with unchanged | ⟨slot, appended⟩
+        · rw [unchanged] at producerMember
+          exact disjoint producer producerMember (by
+            simpa only [List.map_cons] using
+              List.mem_cons_of_mem record.answer tailMember)
+        · rw [appended, List.mem_append] at producerMember
+          rcases producerMember with old | added
+          · exact disjoint producer old (by
+              simpa only [List.map_cons] using
+                List.mem_cons_of_mem record.answer tailMember)
+          · simp only [List.mem_singleton] at added
+            subst producer
+            exact splitNodup.1 tailMember
+      rw [indexed_state_after_records_cons]
+      exact ih next splitNodup.2 nextNodup nextDisjoint
+
+/-- Producer monotonicity lifts through an arbitrary literal record replay. -/
+theorem dag_indexed_state_producers_prefix
+    {globalOracleCalls : Nat}
+    (transitionFuel anchorIndex : Nat) :
+    ∀ (records : List UnifiedExposureRecord)
+      (state : IndexedUnifiedExposureState globalOracleCalls
+        FinalWorkQ16DagMemory),
+      state.memory.producers <+:
+        (indexedStateAfterRecords transitionFuel
+          (finalWorkQ16DagController globalOracleCalls transitionFuel anchorIndex)
+          records state).memory.producers := by
+  intro records
+  induction records with
+  | nil =>
+      intro state
+      exact List.prefix_refl _
+  | cons record records ih =>
+      intro state
+      let controller := finalWorkQ16DagController globalOracleCalls
+        transitionFuel anchorIndex
+      let next := controller.afterAnswer transitionFuel state record.answer
+      have oneStep : state.memory.producers <+: next.memory.producers := by
+        simpa [next, controller, finalWorkQ16DagController,
+          IndexedUnifiedExposureController.afterAnswer] using
+          dag_candidate_memory_producers_prefix transitionFuel anchorIndex state
+            record.answer
+      rw [indexed_state_after_records_cons]
+      exact oneStep.trans (ih next)
+
 /-- Every named label emitted by the causal-DAG controller is distinct, for
 every answer stream.  This is an executable controller invariant rather than
 a source-trace assumption.  The stronger second conclusion records freshness
@@ -469,6 +723,12 @@ theorem dag_labeled_records_named_slots_nodup
 #print axioms dag_candidate_preferred_slot_fresh
 #print axioms dag_candidate_after_memory_used_slots
 #print axioms dag_candidate_memory_used_slots_mono
+#print axioms dag_memory_producers_eq_or_append
+#print axioms dag_candidate_memory_producers_prefix
+#print axioms dag_candidate_memory_producers_eq_or_append
+#print axioms dag_candidate_memory_producer_digests_nodup
+#print axioms dag_indexed_state_producer_digests_nodup
+#print axioms dag_indexed_state_producers_prefix
 #print axioms dag_labeled_records_nodup_and_avoid_initial
 #print axioms dag_labeled_records_named_slots_nodup
 

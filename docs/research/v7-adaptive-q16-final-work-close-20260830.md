@@ -525,3 +525,29 @@ the accepted final-work coordinate and each consumed q16 output have the
 controller's corresponding pre-answer label. The q16 producer scan already
 has kernel-checked unique-digest lookup lemmas for both output and advance
 edges.
+
+## Exact accepted-pair handoff and producer uniqueness
+
+The causal-DAG controller now has an append-only producer invariant and an
+exact keep-or-single-append theorem for each exposed answer.  Clean exact-root
+answer uniqueness lifts through the complete controller replay, proving that
+the final producer inventory has no duplicate digest.  Thus its executable
+first-match scan cannot silently choose a different source producer.
+
+`V7Tag73DagFinalWorkPairCompletion.lean` erases both the rejected sequential
+branch cell and the new producer inventory to their common final-work core.
+Lean proves that this core is identical after every literal root record.  The
+existing accepted final-work pair theorem can therefore establish, for the
+same exposure trial, that the DAG controller has both accepted work and the
+exact returned q16 base, without importing any sequential q16 routing claim:
+
+```text
+exact_compiler_accepted_final_work_dag_pair_completes
+```
+
+The remaining deterministic endpoint is the recursive causal-chain replay:
+each used candidate/advance answer must install its `(counter, block)`
+producer, after which each used output record receives that slot.  Exact root
+alignment, strict producer-before-child order, producer monotonicity, and
+producer-digest uniqueness are now all kernel checked inputs to that final
+recursion.

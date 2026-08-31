@@ -1,5 +1,6 @@
 import AspisFormal.K1.V7Tag73CausalDagFinalWorkQ16Controller
 import AspisFormal.K1.V7Tag73ExactCandidateLabeledRootRouting
+import AspisFormal.K1.V7Tag73IndexedAlignedRecordReplay
 
 /-!
 # Exact accepted root routed by the causal-DAG controller
@@ -31,10 +32,12 @@ open AspisK1.V7Tag73ExactFixedK12MerkleClassifier
 open AspisK1.V7Tag73ExactFixedOperationalStateMap
 open AspisK1.V7Tag73ExactPlainRomRun
 open AspisK1.V7Tag73ExactPlainRomTraceResourceCaps
+open AspisK1.V7Tag73ExactProbabilityCoverageAudit
 open AspisK1.V7Tag73ExactRootLookupCausalOrder
 open AspisK1.V7Tag73ExactSourceAcceptanceModel
 open AspisK1.V7Tag73IndexedControllerLabeledRecords
 open AspisK1.V7Tag73IndexedControllerTraceAlignment
+open AspisK1.V7Tag73IndexedAlignedRecordReplay
 open AspisK1.V7Tag73IndexedExposureCausalRouter
 open AspisK1.V7Tag73FullCursorClientLineageLift
 open AspisK1.V7Tag73OperationalSemanticReplay
@@ -68,6 +71,114 @@ def exactDagTrialController
     (transitionFuel : Nat) (trial : ExactCompilerExposureTrial parameters) :=
   finalWorkQ16DagController
     (globalFull256OracleCallCap parameters) transitionFuel trial.val
+
+theorem nonpadding_exposure_answers_append
+    (first second : List UnifiedExposureRecord) :
+    nonpaddingExposureAnswers (first ++ second) =
+      nonpaddingExposureAnswers first ++ nonpaddingExposureAnswers second := by
+  induction first with
+  | nil => rfl
+  | cons record records ih =>
+      cases record <;> simp [nonpaddingExposureAnswers, ih]
+
+theorem projected_machine_fresh_nonpadding_answers
+    (actor : QueryActor) (queries : List (ShaInput × Digest256)) :
+    nonpaddingExposureAnswers (projectedMachineFreshRecords actor queries) =
+      queries.map Prod.snd := by
+  induction queries with
+  | nil => rfl
+  | cons query queries ih =>
+      rcases query with ⟨input, answer⟩
+      simp [projectedMachineFreshRecords, nonpaddingExposureAnswers, ih,
+        UnifiedExposureRecord.answer]
+
+/-- Clean exact-root answers are pairwise distinct.  This is the source fact
+that makes the executable producer scan unambiguous. -/
+theorem exact_root_record_answers_nodup
+    {HiddenTape TapeIdentity Observation Statement Payload Result : Type}
+    {parameters : ExactCompilerResourceParameters}
+    {transitionFuel : Nat}
+    {configuration : ExactPlainRomConfiguration HiddenTape TapeIdentity
+      Observation Statement Tag73K12ParsedProof Payload Result parameters}
+    {projection : AcceptedTapeProjection Statement Tag73K12ParsedProof Payload}
+    {fixedInstance : PublicInstance Statement}
+    {sample : ExactCompilerSample HiddenTape parameters}
+    (input : ExactK12OperationalInput transitionFuel configuration projection
+      fixedInstance sample) :
+    ((exactFixedRootRecords input.package.root).map
+      UnifiedExposureRecord.answer).Nodup := by
+  have fullNodup :=
+    input.package.root.wholeTraceClean.nonpaddingAnswersNodup
+  rw [exact_compiler_unified_exposure_trace_is_actual_plain_rom_trace
+    transitionFuel configuration sample] at fullNodup
+  rw [exact_fixed_operational_state_map_trace_is_full_trace transitionFuel
+    configuration projection fixedInstance sample input.package] at fullNodup
+  unfold exactFixedOperationalStateMapTrace at fullNodup
+  rw [nonpadding_exposure_answers_append] at fullNodup
+  have rootNodup := (List.nodup_append.mp fullNodup).1
+  have rootAnswersExact :
+      nonpaddingExposureAnswers (exactFixedRootRecords input.package.root) =
+        (exactFixedRootRecords input.package.root).map
+          UnifiedExposureRecord.answer := by
+    unfold exactFixedRootRecords fullProjectedRootRecords
+    rw [nonpadding_exposure_answers_append,
+      projected_machine_fresh_nonpadding_answers,
+      projected_machine_fresh_nonpadding_answers]
+    simp [projectedMachineFreshRecords, List.map_append]
+  rw [rootAnswersExact] at rootNodup
+  exact rootNodup
+
+/-- The exact accepted root trace is cursor-aligned with the causal-DAG
+controller at every fixed trial anchor. -/
+theorem exact_root_records_aligned_for_dag_controller
+    {HiddenTape TapeIdentity Observation Statement Payload Result : Type}
+    {parameters : ExactCompilerResourceParameters}
+    {transitionFuel : Nat}
+    {configuration : ExactPlainRomConfiguration HiddenTape TapeIdentity
+      Observation Statement Tag73K12ParsedProof Payload Result parameters}
+    {projection : AcceptedTapeProjection Statement Tag73K12ParsedProof Payload}
+    {fixedInstance : PublicInstance Statement}
+    {sample : ExactCompilerSample HiddenTape parameters}
+    (input : ExactK12OperationalInput transitionFuel configuration projection
+      fixedInstance sample)
+    (anchor : Nat) :
+    IndexedRecordsAligned transitionFuel
+      (finalWorkQ16DagController
+        (globalFull256OracleCallCap parameters) transitionFuel anchor)
+      (exactDagCandidateInitialState input)
+      (exactFixedRootRecords input.package.root) := by
+  let controller := finalWorkQ16DagController
+    (globalFull256OracleCallCap parameters) transitionFuel anchor
+  let rootTape := operationalTapeCoordinates
+    (globalFull256OracleCallCap parameters) 1
+    (unifiedFull256ExposureCap parameters)
+    (exactCompilerOperationalIndexedTape parameters sample.2)
+  have traceExact :
+      runUnifiedExposureTrace transitionFuel
+          (unifiedFull256ExposureCap parameters)
+          (exactPlainRomCursor configuration sample.1).erase rootTape =
+        (runExactPlainRom transitionFuel configuration sample).trace := by
+    simpa [rootTape, exactCompilerUnifiedExposureTrace] using
+      exact_compiler_unified_exposure_trace_is_actual_plain_rom_trace
+        transitionFuel configuration sample
+  have fullAligned := indexed_records_aligned_of_trace transitionFuel
+    controller (exactDagCandidateInitialState input) rootTape
+      (runExactPlainRom transitionFuel configuration sample).trace traceExact
+  have fullSplit :
+      (runExactPlainRom transitionFuel configuration sample).trace =
+        [] ++ exactFixedRootRecords input.package.root ++
+          (exactFixedComputedClientTailRun transitionFuel configuration sample
+            input.package.root).trace := by
+    rw [exact_fixed_operational_state_map_trace_is_full_trace transitionFuel
+      configuration projection fixedInstance sample input.package]
+    rfl
+  have rootAligned := indexed_records_aligned_segment transitionFuel controller
+    (exactDagCandidateInitialState input)
+    (runExactPlainRom transitionFuel configuration sample).trace []
+    (exactFixedRootRecords input.package.root)
+    (exactFixedComputedClientTailRun transitionFuel configuration sample
+      input.package.root).trace fullAligned fullSplit
+  simpa only [indexed_state_after_records_nil] using rootAligned
 
 def exactCompilerExposureTrialDagRouter
     (parameters : ExactCompilerResourceParameters)
@@ -148,6 +259,31 @@ theorem exact_dag_candidate_root_named_slots_nodup
   exact dag_labeled_records_named_slots_nodup transitionFuel trial.val
     (exactFixedRootRecords input.package.root)
     (exactDagCandidateInitialState input)
+
+/-- The final exact-root causal inventory has no duplicate producer digest. -/
+theorem exact_dag_candidate_root_producer_digests_nodup
+    {HiddenTape TapeIdentity Observation Statement Payload Result : Type}
+    {parameters : ExactCompilerResourceParameters}
+    {transitionFuel : Nat}
+    {configuration : ExactPlainRomConfiguration HiddenTape TapeIdentity
+      Observation Statement Tag73K12ParsedProof Payload Result parameters}
+    {projection : AcceptedTapeProjection Statement Tag73K12ParsedProof Payload}
+    {fixedInstance : PublicInstance Statement}
+    {sample : ExactCompilerSample HiddenTape parameters}
+    (input : ExactK12OperationalInput transitionFuel configuration projection
+      fixedInstance sample)
+    (trial : ExactCompilerExposureTrial parameters) :
+    (((indexedStateAfterRecords transitionFuel
+      (exactDagTrialController transitionFuel trial)
+      (exactFixedRootRecords input.package.root)
+      (exactDagCandidateInitialState input)).memory.producers).map
+        Q16DagProducer.digest).Nodup := by
+  apply dag_indexed_state_producer_digests_nodup transitionFuel trial.val
+    (exactFixedRootRecords input.package.root)
+    (exactDagCandidateInitialState input)
+  · exact exact_root_record_answers_nodup input
+  · simp [exactDagCandidateInitialState, inactiveDagMemory]
+  · simp [exactDagCandidateInitialState, inactiveDagMemory]
 
 theorem exact_dag_candidate_root_labels_tape_prefix
     {HiddenTape TapeIdentity Observation Statement Payload Result : Type}
@@ -293,10 +429,13 @@ theorem exact_dag_candidate_router_routes_selected_root_answer
     priorLabels laterLabels target answer labelsDecomposition
 
 #print axioms exactDagCandidateInitialState
+#print axioms exact_root_record_answers_nodup
+#print axioms exact_root_records_aligned_for_dag_controller
 #print axioms exactCompilerExposureTrialDagRouter
 #print axioms exactCompilerExposureTrialDagCoordinates
 #print axioms exact_dag_candidate_root_labels_form_trace
 #print axioms exact_dag_candidate_root_named_slots_nodup
+#print axioms exact_dag_candidate_root_producer_digests_nodup
 #print axioms exact_dag_candidate_root_labels_tape_prefix
 #print axioms exact_dag_candidate_root_residual_enough_of_programmed_cover
 #print axioms exact_dag_candidate_router_routes_selected_root_answer
