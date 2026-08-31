@@ -1,0 +1,15 @@
+diff --git a/programs/aspis-verifier/src/v7_pair_forest_dispatch.rs b/programs/aspis-verifier/src/v7_pair_forest_dispatch.rs
+index 294596d..8f7ef79 100644
+--- a/programs/aspis-verifier/src/v7_pair_forest_dispatch.rs
++++ b/programs/aspis-verifier/src/v7_pair_forest_dispatch.rs
+@@ -953,7 +953,9 @@ where
+     clear_return_data();
+     let validated =
+         validate_v7_pair_forest_asq8_request_v1(verifier_program, accounts, instruction_data)?;
+-    let proof_account = &accounts[0];
++    let proof_account = accounts
++        .first()
++        .ok_or(ProgramError::NotEnoughAccountKeys)?;
+     let data = proof_account.try_borrow_data()?;
+     let (payload_start, payload_end) = uploaded_proof_bounds(&data)?;
+     if payload_end != data.len() {

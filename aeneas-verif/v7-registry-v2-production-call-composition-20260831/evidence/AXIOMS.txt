@@ -1,0 +1,17 @@
+V7PairForestProductionCodecsGenerated.ProductionCodecSourceBridge.translated_reconstruction_success_is_exact
+[propext, Classical.choice, Quot.sound]
+
+V7PairForestProductionCodecsGenerated.ProductionCodecSourceBridge.translated_emit_success_has_exact_canonical_result
+[propext, Classical.choice, Quot.sound]
+
+V7RegistryV2ProductionCallComposition.translated_components_compose_exact_accepted_path
+[propext, Classical.choice, Quot.sound]
+
+Union:
+propext
+Classical.choice
+Quot.sound
+
+No sorryAx, project-specific axiom, sorry, admit, or native_decide occurs in
+the compiled accepted proof graph. Generated *_Template.lean files are
+archival and are not imported.
