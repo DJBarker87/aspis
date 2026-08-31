@@ -126,6 +126,49 @@ theorem exact_compiler_actual_q16_source_plan_first_pause
       · exact ⟨pause, by
           simpa [first, schedulerNativeQ16BranchOfSpec] using paused⟩
 
+/-- Source-level form of the preceding entry-point result.  Retaining the
+head `CandidateSpec` exposes the checked coordinate chain needed to run the
+complete actual forest from that same literal pause. -/
+theorem exact_compiler_actual_q16_source_spec_head_pause
+    {HiddenTape TapeIdentity Observation Statement Payload Result : Type}
+    {parameters : ExactCompilerResourceParameters}
+    {transitionFuel : Nat}
+    {configuration : ExactPlainRomConfiguration HiddenTape TapeIdentity
+      Observation Statement Tag73K12ParsedProof Payload Result parameters}
+    {projection : AcceptedTapeProjection Statement Tag73K12ParsedProof Payload}
+    {fixedInstance : PublicInstance Statement}
+    {sample : ExactCompilerSample HiddenTape parameters}
+    (input : ExactK12OperationalInput transitionFuel configuration projection
+      fixedInstance sample) :
+    ∃ spec specs,
+      q16SpecsOfSearch (exactOperationalTape input).search = spec :: specs ∧
+      spec.counter.val ≤ (exactOperationalTape input).search.selectedCounter.val ∧
+      spec.outcome = (exactOperationalTape input).search.outcome spec.counter ∧
+      ∃ pause : SchedulerNativeFreshPause
+        (globalFull256OracleCallCap parameters)
+        (SchedulerNativePlainRomResult TapeIdentity Statement
+          Tag73K12ParsedProof Payload Result)
+        (q16OutputInput (exactOperationalQ16InitialDigest input spec.counter)),
+        exactCompilerFullTargetScan input
+          (q16OutputInput (exactOperationalQ16InitialDigest input spec.counter)) =
+            .paused pause := by
+  let search := (exactOperationalTape input).search
+  cases planExact : q16SpecsOfSearch search with
+  | nil =>
+      exact False.elim (q16_specs_of_search_nonempty search planExact)
+  | cons spec specs =>
+      have specMember : spec ∈ q16SpecsOfSearch search := by
+        rw [planExact]
+        simp
+      obtain ⟨beforeSelected, outcomeExact⟩ :=
+        q16_specs_of_search_match search spec specMember
+      obtain ⟨pause, paused⟩ :=
+        exact_compiler_each_q16_initial_target_scan_paused input spec.counter
+          beforeSelected
+      refine ⟨spec, specs, ?_, beforeSelected, outcomeExact, pause, ?_⟩
+      · simpa [search] using planExact
+      · exact paused
+
 /-- Fold exact branch replay across any sublist of the literal source plan. -/
 theorem run_scheduler_native_q16_source_specs_actual
     {HiddenTape TapeIdentity Observation Statement Payload Result : Type}
@@ -289,12 +332,114 @@ theorem exact_compiler_actual_q16_forest_closure
     exact_compiler_root_q16_alignment_reconstructs_run input final aligned,
     exact_operational_q16_duplex_forest_succeeds input frontierExact⟩
 
+/-- Strengthened actual-run closure: the complete q16 forest may start at its
+literal first source exposure, not only at a reconstructed root cursor.  The
+first pause keeps its actual actor and cache state; the rest of the forest is
+then executed by the existing cache-aware source-plan induction. -/
+theorem exact_compiler_actual_q16_first_pause_forest_closure
+    {HiddenTape TapeIdentity Observation Statement Payload Result : Type}
+    {parameters : ExactCompilerResourceParameters}
+    {transitionFuel : Nat}
+    {configuration : ExactPlainRomConfiguration HiddenTape TapeIdentity
+      Observation Statement Tag73K12ParsedProof Payload Result parameters}
+    {projection : AcceptedTapeProjection Statement Tag73K12ParsedProof Payload}
+    {fixedInstance : PublicInstance Statement}
+    {sample : ExactCompilerSample HiddenTape parameters}
+    (transitionRoom : 2 ≤ transitionFuel)
+    (input : ExactK12OperationalInput transitionFuel configuration projection
+      fixedInstance sample)
+    (frontierExact : ∀ schedule,
+      (exactOperationalTape input).frontierNodes schedule =
+        semanticFrontierNodes schedule.positions) :
+    ∃ first rest pause final,
+      schedulerNativeQ16BranchesOfSearch
+          (exactOperationalQ16InitialDigest input)
+          (exactOperationalTape input).search = first :: rest ∧
+      exactCompilerFullTargetScan input (q16OutputInput first.initialDigest) =
+        .paused pause ∧
+      runSchedulerNativeQ16ForestFromFirstPause transitionFuel first pause rest
+          (exactOperationalQ16DuplexForest input) = .ok final ∧
+      (finishSchedulerNativeQ16Forest transitionFuel final).run =
+        runExactPlainRom transitionFuel configuration sample ∧
+      q16DigestForestSucceeds (exactOperationalQ16DuplexForest input).1 := by
+  obtain ⟨spec, specs, planExact, beforeSelected, outcomeExact, pause,
+      paused⟩ := exact_compiler_actual_q16_source_spec_head_pause input
+  let search := (exactOperationalTape input).search
+  let first := schedulerNativeQ16BranchOfSpec
+    (exactOperationalQ16InitialDigest input) spec
+  let rest := specs.map (schedulerNativeQ16BranchOfSpec
+    (exactOperationalQ16InitialDigest input))
+  let coordinates := exactOperationalQ16BranchCoordinates input spec.counter
+    beforeSelected
+  have branchesExact :
+      schedulerNativeQ16BranchesOfSearch
+          (exactOperationalQ16InitialDigest input) search = first :: rest := by
+    change List.map (schedulerNativeQ16BranchOfSpec
+      (exactOperationalQ16InitialDigest input))
+        (q16SpecsOfSearch search) = first :: rest
+    rw [planExact]
+    rfl
+  have outputsPositive : coordinates.outputs ≠ [] := by
+    intro empty
+    have lengthZero := congrArg List.length empty
+    rw [coordinates.outputsLength] at lengthZero
+    exact (candidate_outcome_blocks_positive (search.outcome spec.counter)).ne'
+      lengthZero
+  have pairsExact :
+      q16BranchDuplexPairs first (exactOperationalQ16DuplexForest input) =
+        coordinates.outputs.zip coordinates.advances := by
+    have specCanonical : spec =
+        { counter := spec.counter
+          outcome := search.outcome spec.counter } := by
+      cases spec with
+      | mk counter outcome =>
+          simp only at outcomeExact ⊢
+          rw [outcomeExact]
+    have firstExact : first = schedulerNativeQ16BranchOfSpec
+        (exactOperationalQ16InitialDigest input)
+        { counter := spec.counter
+          outcome := search.outcome spec.counter } := by
+      dsimp [first]
+      rw [specCanonical]
+    rw [firstExact]
+    exact exact_operational_q16_branch_duplex_pairs input spec.counter
+      beforeSelected
+  let coordinateStep := exact_compiler_actual_q16_coordinate_step
+    transitionRoom input
+  obtain ⟨afterFirst, firstRun, ⟨firstAligned⟩⟩ :=
+    run_scheduler_native_q16_branch_from_first_pause_actual_chain input
+      coordinateStep first (exactOperationalQ16DuplexForest input)
+      coordinates.outputs coordinates.advances coordinates.tableChain
+      outputsPositive pairsExact pause (by
+        simpa [first, schedulerNativeQ16BranchOfSpec] using paused)
+  have tailMatches : ∀ tailSpec ∈ specs,
+      tailSpec.counter.val ≤ search.selectedCounter.val ∧
+        tailSpec.outcome = search.outcome tailSpec.counter := by
+    intro tailSpec member
+    apply q16_specs_of_search_match search tailSpec
+    rw [planExact]
+    simp [member]
+  obtain ⟨final, tailRun, finalAligned⟩ :=
+    run_scheduler_native_q16_source_specs_actual input coordinateStep specs
+      tailMatches afterFirst firstAligned
+  refine ⟨first, rest, pause, final, ?_, ?_, ?_, ?_, ?_⟩
+  · simpa [search] using branchesExact
+  · simpa [first, schedulerNativeQ16BranchOfSpec] using paused
+  · unfold runSchedulerNativeQ16ForestFromFirstPause
+    rw [firstRun]
+    simpa [rest] using tailRun
+  · rcases finalAligned with ⟨aligned⟩
+    exact exact_compiler_root_q16_alignment_reconstructs_run input final aligned
+  · exact exact_operational_q16_duplex_forest_succeeds input frontierExact
+
 #print axioms q16_specs_of_search_match
 #print axioms exact_compiler_actual_q16_source_plan_first_pause
+#print axioms exact_compiler_actual_q16_source_spec_head_pause
 #print axioms run_scheduler_native_q16_source_specs_actual
 #print axioms exact_compiler_actual_q16_forest_replay
 #print axioms exact_compiler_root_q16_alignment_reconstructs_run
 #print axioms exact_compiler_actual_q16_forest_closure
+#print axioms exact_compiler_actual_q16_first_pause_forest_closure
 
 end
 

@@ -261,6 +261,15 @@ the executable base required for the remaining response-family construction.
 It still does not establish the four-field profile invariant across changed
 responses, so K1.3 remains open.
 
+`exact_compiler_actual_q16_first_pause_forest_closure` now folds that branch
+into the remaining literal source-plan branches and proves that finishing the
+resulting cursor is exactly `runExactPlainRom` on the deployed sample.  This
+strengthens the older root-cursor closure: the full 64-by-8 forest is now
+shown executable from the actual chronological first exposure itself.  It
+also carries the unchanged successful-forest certificate.  This is an
+actual-run/state-restoration base case only; it does not assert that a forest
+with a changed first output preserves acceptance or the four-field profile.
+
 The two focused targets passed on the NUC with zero swap and peak RSS below
 6.57 GiB.  Their complete reported axiom set is still only `propext`,
 `Classical.choice`, and `Quot.sound`.
