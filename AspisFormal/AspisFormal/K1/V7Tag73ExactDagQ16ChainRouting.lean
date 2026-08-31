@@ -533,9 +533,9 @@ theorem dag_labeled_records_before_anchor_all_residual
         unfold controller finalWorkQ16DagController
         unfold dagCandidatePreferredSlot
         cases inputExact : unifiedInputBeforeAnswer? transitionFuel state.cursor
-        · rfl
-        · simp [dagPreferredSlotForInput, dagRawPreferredSlot, inactive,
-            beforeAnchor, inactiveDagMemory]
+        · simp [inputExact]
+        · simp [inputExact, dagPreferredSlotForInput, dagRawPreferredSlot,
+            inactive, beforeAnchor, inactiveDagMemory]
       have nextInactive : next.memory = inactiveDagMemory := by
         simp only [next, controller, finalWorkQ16DagController,
           IndexedUnifiedExposureController.afterAnswer]
