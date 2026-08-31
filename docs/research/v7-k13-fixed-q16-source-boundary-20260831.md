@@ -154,6 +154,20 @@ That is the appropriate target for the q16 state-restoration/source-causality
 bridge.  It is still open, and must include the adversary-first cached path;
 it may not be replaced by a raw SHA-input classifier or a fresh-query claim.
 
+## Anchor-partition reduction
+
+`V7Tag73ExactFixedQ16AnchorPartition.lean` makes the remaining statement
+fully modular.  It proves that the existing verifier-owned profile theorem
+plus one explicitly typed adversary-anchor profile condition imply the
+ordinary `ExactFixedK13ResidualInvariant` consumed by the fixed K1.3 measure
+bound.  The condition is quantified only over genuine joint-trial witnesses
+whose literal selected root record was first created by the adversary.
+
+This is a reduction, not a closure: the adversary-anchor condition is not
+assumed to be negligible, fresh, or already proved.  The next mathematical
+work is precisely to derive it from the cache-aware state-restoring q16
+response family.
+
 ## Verifier-owned partition now reaches the minimal profile
 
 `V7Tag73ExactFixedQ16VerifierDerivedProfile.lean` proves that the existing
