@@ -1,5 +1,6 @@
 import AspisFormal.K1.V7Tag73ExactDagPreAnchorResidualPrefix
 import AspisFormal.K1.V7Tag73K12BudgetedSchedulerTree
+import AspisFormal.K1.V7Tag73ExactFixedK13K14Classifier
 
 /-!
 # Verifier-owned q16 anchors retain the completed prover prefix
@@ -34,6 +35,7 @@ open AspisK1.V7Tag73ExactDagQ16ChainRouting
 open AspisK1.V7Tag73ExactFinalWorkPairControllerCompletion
 open AspisK1.V7Tag73ExactFixedFullRunFactorization
 open AspisK1.V7Tag73ExactFixedK12MerkleClassifier
+open AspisK1.V7Tag73ExactFixedK13K14Classifier
 open AspisK1.V7Tag73ExactPlainRomRun
 open AspisK1.V7Tag73ExactSourceAcceptanceModel
 open AspisK1.V7Tag73FullCursorClientLineageLift
@@ -43,6 +45,7 @@ open AspisK1.V7Tag73OperationalOracleExposure
 open AspisK1.V7Tag73IndexedAlignedRecordReplay
 open AspisK1.V7Tag73ProjectedMachineNativeRequestPrefix
 open AspisK1.V7Tag73SchedulerTraceFactorization
+open AspisK1.V7Tag73SchedulerNativePlainRomExperiment
 open AspisK1.V7Tag73TranscriptSchedule
 
 noncomputable section
@@ -247,10 +250,150 @@ theorem exact_dag_residual_coordinate_replays_completed_prover_at_verifier_ancho
   rw [rightPrefix]
   simpa only [List.append_assoc] using replay
 
+/-- If the right-hand tape is itself a genuine exact source input with the
+same hidden prover tape, the verifier-owned residual-prefix replay identifies
+its prover result and prover-final oracle with the left source input.  It
+does not identify the later verifier-final table: q16 answers after the
+anchor may legitimately differ. -/
+theorem exact_dag_residual_coordinate_preserves_prover_runtime_at_verifier_anchor
+    {HiddenTape TapeIdentity Observation Statement Payload Result : Type}
+    {parameters : ExactCompilerResourceParameters}
+    {transitionFuel : Nat}
+    {configuration : ExactPlainRomConfiguration HiddenTape TapeIdentity
+      Observation Statement Tag73K12ParsedProof Payload Result parameters}
+    {projection : AcceptedTapeProjection Statement Tag73K12ParsedProof Payload}
+    {fixedInstance : PublicInstance Statement}
+    {sample : ExactCompilerSample HiddenTape parameters}
+    (input : ExactK12OperationalInput transitionFuel configuration projection
+      fixedInstance sample)
+    (trial : ExactCompilerExposureTrial parameters)
+    (prior later : List UnifiedExposureRecord)
+    (target : ShaInput) (answer : Digest256)
+    (rootExact : exactFixedRootRecords input.package.root =
+      prior ++ (.machineFresh .verifier target answer : UnifiedExposureRecord) ::
+        later)
+    (trialExact : trial.val = prior.length)
+    (programmedCover : 513 ≤ 2 * parameters.forkRequestCap)
+    (right : FreshAnswerTape Digest256
+      (exactCompilerTargetCaps parameters).length)
+    (rightInput : ExactK12OperationalInput transitionFuel configuration projection
+      fixedInstance (sample.1, right))
+    (coordinateExact :
+      ((exactCompilerExposureTrialDagRouter parameters transitionFuel trial
+        (exactPlainRomCursor configuration sample.1).erase).coordinateEquiv
+        (finalWorkQ16NamedSlotInputTape
+          (exactCompilerFinalWorkQ16InputTape parameters sample.2))).2 =
+      ((exactCompilerExposureTrialDagRouter parameters transitionFuel trial
+        (exactPlainRomCursor configuration sample.1).erase).coordinateEquiv
+        (finalWorkQ16NamedSlotInputTape
+          (exactCompilerFinalWorkQ16InputTape parameters right))).2) :
+    (exactK12Runtime rightInput).adversaryValue =
+        (exactK12Runtime input).adversaryValue ∧
+      (exactK12Runtime rightInput).proverFinalOracle =
+        (exactK12Runtime input).proverFinalOracle := by
+  have leftReplay :=
+    exact_dag_residual_coordinate_replays_completed_prover_at_verifier_anchor
+      input trial prior later target answer rootExact trialExact programmedCover
+        right coordinateExact
+  rw [final_work_q16_named_slot_tape_preserves_master_list] at leftReplay
+  let rightPrefixes :=
+    rightInput.package.root.full.projection.rootPrefixes
+  have rightReplay := k12_prover_run_from_completed_prefix_append_exact
+    configuration.machine sample.1 (freshAnswerTapeToList right)
+    rightInput.package.root.fixedRoot.base.runtime rightPrefixes
+    rightPrefixes.adversary.remaining
+  have rightAvailable : freshAnswerTapeToList right =
+      rightPrefixes.adversary.freshQueries.map Prod.snd ++
+        rightPrefixes.adversary.remaining := by
+    simpa [rightPrefixes] using rightPrefixes.adversary.availableExact
+  rw [← rightAvailable] at rightReplay
+  have rawRunExact := leftReplay.symm.trans rightReplay
+  have adversaryExact :
+      input.package.root.full.projection.rootPrefixes.adversaryValue =
+        rightPrefixes.adversaryValue := by
+    have haltExact := congrArg (fun run => run.halt) rawRunExact
+    simpa only [MachineHalt.returned.injEq] using haltExact
+  have proverExact :
+      input.package.root.full.projection.rootPrefixes.adversary.finalState =
+        rightPrefixes.adversary.finalState := by
+    exact congrArg (fun run => run.oracle) rawRunExact
+  have leftAdversaryRuntime : (exactK12Runtime input).adversaryValue =
+      input.package.root.full.projection.rootPrefixes.adversaryValue := by
+    have runtimeExact := congrArg (fun runtime => runtime.adversaryValue)
+      input.package.root.full.projection.rootPrefixes.runtimeExact
+    simpa [exactK12Runtime, operationalRootRuntime] using runtimeExact
+  have rightAdversaryRuntime : (exactK12Runtime rightInput).adversaryValue =
+      rightPrefixes.adversaryValue := by
+    have runtimeExact := congrArg (fun runtime => runtime.adversaryValue)
+      rightPrefixes.runtimeExact
+    simpa [rightPrefixes, exactK12Runtime, operationalRootRuntime] using
+      runtimeExact
+  have leftProverRuntime : (exactK12Runtime input).proverFinalOracle =
+      input.package.root.full.projection.rootPrefixes.adversary.finalState := by
+    have runtimeExact := congrArg (fun runtime => runtime.proverFinalOracle)
+      input.package.root.full.projection.rootPrefixes.runtimeExact
+    simpa [exactK12Runtime, operationalRootRuntime] using runtimeExact
+  have rightProverRuntime : (exactK12Runtime rightInput).proverFinalOracle =
+      rightPrefixes.adversary.finalState := by
+    have runtimeExact := congrArg (fun runtime => runtime.proverFinalOracle)
+      rightPrefixes.runtimeExact
+    simpa [rightPrefixes, exactK12Runtime, operationalRootRuntime] using
+      runtimeExact
+  constructor
+  · exact rightAdversaryRuntime.trans adversaryExact.symm |>.trans
+      leftAdversaryRuntime.symm
+  · exact rightProverRuntime.trans proverExact.symm |>.trans
+      leftProverRuntime.symm
+
+/-- The parsed proof is a direct projection of the completed prover return,
+so the verifier-owned residual prefix also fixes the complete parsed proof
+without assumptions about the later verifier table. -/
+theorem exact_dag_residual_coordinate_preserves_parsed_proof_at_verifier_anchor
+    {HiddenTape TapeIdentity Observation Statement Payload Result : Type}
+    {parameters : ExactCompilerResourceParameters}
+    {transitionFuel : Nat}
+    {configuration : ExactPlainRomConfiguration HiddenTape TapeIdentity
+      Observation Statement Tag73K12ParsedProof Payload Result parameters}
+    {projection : AcceptedTapeProjection Statement Tag73K12ParsedProof Payload}
+    {fixedInstance : PublicInstance Statement}
+    {sample : ExactCompilerSample HiddenTape parameters}
+    (input : ExactK12OperationalInput transitionFuel configuration projection
+      fixedInstance sample)
+    (trial : ExactCompilerExposureTrial parameters)
+    (prior later : List UnifiedExposureRecord)
+    (target : ShaInput) (answer : Digest256)
+    (rootExact : exactFixedRootRecords input.package.root =
+      prior ++ (.machineFresh .verifier target answer : UnifiedExposureRecord) ::
+        later)
+    (trialExact : trial.val = prior.length)
+    (programmedCover : 513 ≤ 2 * parameters.forkRequestCap)
+    (right : FreshAnswerTape Digest256
+      (exactCompilerTargetCaps parameters).length)
+    (rightInput : ExactK12OperationalInput transitionFuel configuration projection
+      fixedInstance (sample.1, right))
+    (coordinateExact :
+      ((exactCompilerExposureTrialDagRouter parameters transitionFuel trial
+        (exactPlainRomCursor configuration sample.1).erase).coordinateEquiv
+        (finalWorkQ16NamedSlotInputTape
+          (exactCompilerFinalWorkQ16InputTape parameters sample.2))).2 =
+      ((exactCompilerExposureTrialDagRouter parameters transitionFuel trial
+        (exactPlainRomCursor configuration sample.1).erase).coordinateEquiv
+        (finalWorkQ16NamedSlotInputTape
+          (exactCompilerFinalWorkQ16InputTape parameters right))).2) :
+    exactK13ParsedProof rightInput = exactK13ParsedProof input := by
+  obtain ⟨adversaryExact, _proverExact⟩ :=
+    exact_dag_residual_coordinate_preserves_prover_runtime_at_verifier_anchor
+      input trial prior later target answer rootExact trialExact programmedCover
+        right rightInput coordinateExact
+  simpa only [exactK13ParsedProof] using congrArg
+    (fun value => value.1.publicProof.proof.rawProof) adversaryExact
+
 #print axioms machine_fresh_mem_projected_records_iff
 #print axioms exact_dag_verifier_root_record_has_completed_prover_prefix
 #print axioms exact_dag_residual_coordinate_forces_completed_prover_tape_prefix
 #print axioms exact_dag_residual_coordinate_replays_completed_prover_at_verifier_anchor
+#print axioms exact_dag_residual_coordinate_preserves_prover_runtime_at_verifier_anchor
+#print axioms exact_dag_residual_coordinate_preserves_parsed_proof_at_verifier_anchor
 
 end
 
