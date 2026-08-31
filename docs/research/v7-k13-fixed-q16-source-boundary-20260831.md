@@ -241,6 +241,30 @@ the verifier-owned bridge in 3.63s and 3.37s respectively, at 6.59GiB and
 commands exited zero and produced their `.olean` files; this toolchain issue
 is recorded separately from theorem status.
 
+## First-pause state-restoration base now explicit
+
+The source plan and the replay engine are now joined at the right
+chronological point rather than at a reconstructed global root:
+
+- `exact_compiler_actual_q16_source_plan_first_pause` proves that the head of
+  the literal q16 source plan has a `SchedulerNativeFreshPause` at precisely
+  its canonical first-output coordinate; and
+- `run_scheduler_native_q16_branch_from_first_pause_actual_chain` proves that
+  installing the production head output at that pause and consuming the rest
+  of its literal duplex chain succeeds while preserving the source-aligned
+  cursor invariant.
+
+The pause retains the original actor and table state.  In particular, if an
+adversary made the first query, the proof uses that adversary-owned pause; it
+does not turn the later verifier use into an imaginary fresh draw.  This is
+the executable base required for the remaining response-family construction.
+It still does not establish the four-field profile invariant across changed
+responses, so K1.3 remains open.
+
+The two focused targets passed on the NUC with zero swap and peak RSS below
+6.57 GiB.  Their complete reported axiom set is still only `propext`,
+`Classical.choice`, and `Quot.sound`.
+
 ## Current honest status
 
 The fixed and restored q16 factorization theorems remain conditional

@@ -1,4 +1,5 @@
 import AspisFormal.K1.V7Tag73ExactCompilerQ16DuplexForest
+import AspisFormal.K1.V7Tag73ExactCompilerQ16TraceOccurrence
 
 /-!
 # Exact compiler q16 forest replay closure
@@ -37,6 +38,8 @@ open AspisK1.V7Tag73ExactCompilerQ16InitialDigestMap
 open AspisK1.V7Tag73ExactCompilerQ16DuplexForest
 open AspisK1.V7Tag73Q16SemanticFrontierBridge
 open AspisK1.V7Tag73Q16SuccessfulForestBridge
+open AspisK1.V7Tag73SchedulerNativeTargetPause
+open AspisK1.V7Tag73ExactCompilerSchedulerPauseBinding
 
 noncomputable section
 
@@ -64,6 +67,64 @@ theorem q16_specs_of_search_match
       simpa using selected
     rw [specExact]
     exact ⟨by rfl, search.selectedOutcome.symm⟩
+
+/-- The literal head of the accepted q16 source plan has a scheduler pause at
+its canonical first-output coordinate.  This is the chronological entry point
+for a state-restoring q16 response family: the pause records the actual actor
+that first exposed the coordinate, so an adversary-first exposure is retained
+as such rather than relabelled as a verifier draw. -/
+theorem exact_compiler_actual_q16_source_plan_first_pause
+    {HiddenTape TapeIdentity Observation Statement Payload Result : Type}
+    {parameters : ExactCompilerResourceParameters}
+    {transitionFuel : Nat}
+    {configuration : ExactPlainRomConfiguration HiddenTape TapeIdentity
+      Observation Statement Tag73K12ParsedProof Payload Result parameters}
+    {projection : AcceptedTapeProjection Statement Tag73K12ParsedProof Payload}
+    {fixedInstance : PublicInstance Statement}
+    {sample : ExactCompilerSample HiddenTape parameters}
+    (input : ExactK12OperationalInput transitionFuel configuration projection
+      fixedInstance sample) :
+    ∃ first rest,
+      schedulerNativeQ16BranchesOfSearch
+          (exactOperationalQ16InitialDigest input)
+          (exactOperationalTape input).search = first :: rest ∧
+      ∃ pause : SchedulerNativeFreshPause
+        (globalFull256OracleCallCap parameters)
+        (SchedulerNativePlainRomResult TapeIdentity Statement
+          Tag73K12ParsedProof Payload Result)
+        (q16OutputInput first.initialDigest),
+        exactCompilerFullTargetScan input (q16OutputInput first.initialDigest) =
+          .paused pause := by
+  let search := (exactOperationalTape input).search
+  cases planExact : q16SpecsOfSearch search with
+  | nil =>
+      exact False.elim (q16_specs_of_search_nonempty search planExact)
+  | cons spec specs =>
+      let first := schedulerNativeQ16BranchOfSpec
+        (exactOperationalQ16InitialDigest input) spec
+      let rest := specs.map (schedulerNativeQ16BranchOfSpec
+        (exactOperationalQ16InitialDigest input))
+      have specMember : spec ∈ q16SpecsOfSearch search := by
+        rw [planExact]
+        simp
+      obtain ⟨beforeSelected, _outcomeExact⟩ :=
+        q16_specs_of_search_match search spec specMember
+      obtain ⟨pause, paused⟩ :=
+        exact_compiler_each_q16_initial_target_scan_paused input spec.counter
+          beforeSelected
+      have branchesExact :
+          schedulerNativeQ16BranchesOfSearch
+              (exactOperationalQ16InitialDigest input) search =
+            first :: rest := by
+        change List.map (schedulerNativeQ16BranchOfSpec
+          (exactOperationalQ16InitialDigest input))
+            (q16SpecsOfSearch search) = first :: rest
+        rw [planExact]
+        rfl
+      refine ⟨first, rest, ?_, ?_⟩
+      · simpa [search] using branchesExact
+      · exact ⟨pause, by
+          simpa [first, schedulerNativeQ16BranchOfSpec] using paused⟩
 
 /-- Fold exact branch replay across any sublist of the literal source plan. -/
 theorem run_scheduler_native_q16_source_specs_actual
@@ -229,6 +290,7 @@ theorem exact_compiler_actual_q16_forest_closure
     exact_operational_q16_duplex_forest_succeeds input frontierExact⟩
 
 #print axioms q16_specs_of_search_match
+#print axioms exact_compiler_actual_q16_source_plan_first_pause
 #print axioms run_scheduler_native_q16_source_specs_actual
 #print axioms exact_compiler_actual_q16_forest_replay
 #print axioms exact_compiler_root_q16_alignment_reconstructs_run
