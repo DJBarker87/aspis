@@ -28,6 +28,14 @@ else
   fail "sha256sum or shasum is required"
 fi
 
+file_bytes() {
+  if stat -c %s "$1" >/dev/null 2>&1; then
+    stat -c %s "$1"
+  else
+    stat -f %z "$1"
+  fi
+}
+
 [[ -f "$MANIFEST" ]] || fail "missing release audit manifest"
 jq -e '.schema == "aspis.v7.registry-v2-runtime-audit-inputs.v1"' "$MANIFEST" >/dev/null
 
@@ -54,7 +62,7 @@ done
 
 [[ "$(git -C "$ROOT" rev-parse "$EVIDENCE_COMMIT:Cargo.lock")" == \
     "$(jq -er '.source.cargoLockBlob' "$MANIFEST")" ]] || fail "Cargo.lock blob differs"
-[[ "$(stat -f %z "$ROOT/Cargo.lock" 2>/dev/null || stat -c %s "$ROOT/Cargo.lock")" == \
+[[ "$(file_bytes "$ROOT/Cargo.lock")" == \
     "$(jq -er '.source.cargoLockBytes' "$MANIFEST")" ]] || fail "Cargo.lock byte length differs"
 [[ "$(sha_file "$ROOT/Cargo.lock")" == "$(jq -er '.source.cargoLockSha256' "$MANIFEST")" ]] \
   || fail "Cargo.lock digest differs"
