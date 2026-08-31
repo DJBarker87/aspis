@@ -2,8 +2,8 @@
 
 ## Classification
 
-Kernel-checked semantic probability closure; production trace/source cover
-still open.
+Kernel-checked semantic probability closure and accepted-source q16 causal
+forest realization; joint final-work event/source composition still open.
 
 This milestone fixes the adversary-prequery problem honestly. A raw SHA input
 does not identify whether a cached answer will later serve as lambda, gamma,
@@ -304,26 +304,19 @@ candidate/duplex fold and its used-forest handoff.
 
 ## Exact remaining boundary
 
-The production/source layer must now instantiate the counted finite inventory
-and prove its cover:
+The accepted-source q16 causal cover is now constructed. The production layer
+still has to:
 
-1. fold the exact ordered q16 coordinate certificates through the indexed
-   controller and the generic prefix-routing induction, proving that every
-   used output remains live and receives its literal answer (source ordering,
-   fresh-input uniqueness, tape alignment, and both sibling orders are now
-   proved);
-2. prove that the routed forest agrees with
-   `exactOperationalQ16DuplexForest` on every block used through the selected
-   counter (the deterministic source forest intentionally zero-pads its
-   irrelevant suffix, so whole-array equality is neither true nor needed),
-   then conclude that the accepted production schedule is covered by the
-   trial;
-   and
+1. route the accepted final-work answer to the `none` slot of the same concrete
+   exposure trial and package it jointly with the newly proved operational
+   q16 forest realization;
+2. instantiate the K1.3 bad-set/event predicate and compose that joint trial
+   cover through the existing K1.4 and K1.5 fixed-law bounds; and
 3. either prove the selectable subinventory has cardinality at most `2^34`,
    or retain the exact general `F * p / 2^34` raw term.
 
-No probability-product or per-trial independence premise remains once that
-trace object is constructed.
+No q16 query-order, adversary-first, sibling-order, whole-forest equality,
+probability-product, or per-trial independence premise remains.
 
 The generated compact-frontier certificate is still required only to rewrite
 the semantic denominator to the frozen release integer. It is not part of the
@@ -367,6 +360,7 @@ lake env lean AspisFormal/K1/V7Tag73Q16BranchRecordReplay.lean
 lake env lean AspisFormal/K1/V7Tag73ExactRootRecordOrderLift.lean
 lake env lean AspisFormal/K1/V7Tag73CausalDagFinalWorkQ16Controller.lean
 lake env lean AspisFormal/K1/V7Tag73ExactDagCandidateLabeledRootRouting.lean
+lake env lean AspisFormal/K1/V7Tag73ExactDagQ16ChainRouting.lean
 ```
 
 Observed focused checks:
@@ -405,6 +399,7 @@ Observed focused checks:
 | pair-order lift into actor-tagged root records | 0 | 4.06 s | 5,669,830,656 B |
 | causal-DAG final-work/q16 controller | 0 | 4.1 s | 5,684,559,872 B |
 | exact causal-DAG accepted-root router | 0 | 4.4 s | 5,688,705,024 B |
+| accepted-source recursive q16 DAG/forest closure | 0 | 5.1 s | 5,749,358,592 B |
 
 All reported theorem axiom sets are subsets of:
 
@@ -618,6 +613,31 @@ exact_dag_q16_output_has_preferred_slot
 The proof permits adversary-first creation, either output/advance sibling
 order, and advance-driven pipelining.  It introduces no query-order,
 independence, probability, or role-classifier premise.
+
+## Accepted-source recursive q16 forest closure
+
+`V7Tag73ExactDagQ16ChainRouting.lean` completes the recursive source fold. It
+first proves that the exact accepted final-work/nonce pair selects one genuine
+exposure trial and installs block-zero producers for every counter through the
+selected cap-203 result. It then follows every strict producer-to-output and
+producer-to-advance edge in the exact root query DAG. Advance answers install
+the next producer immediately, so later blocks may be pipelined before an
+earlier sibling output without invalidating the induction.
+
+The strongest endpoint is:
+
+```text
+exact_compiler_accepted_dag_q16_operational_realization
+```
+
+It constructs a concrete accepted trial whose 513-slot causal router realizes
+the complete operational q16 search on every consumed block. The proof uses
+the source decoder's literal branch coordinates, the exact root ordering, the
+one-shot slot provenance, and the conservative residual-capacity theorem. It
+does not equate unused padded suffix coordinates and introduces no trace-cover
+premise or new bad event. The remaining deterministic step is only the
+accepted final-work `none`-slot handoff for this same trial, after which the
+existing joint product theorem can be instantiated.
 
 The current deterministic boundary is now only the recursive composition:
 start the block-zero producer at each exact candidate record, propagate each
