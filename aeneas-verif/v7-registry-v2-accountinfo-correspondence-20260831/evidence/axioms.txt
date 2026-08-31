@@ -1,0 +1,36 @@
+'AspisPool.V7RegistryV2AccountInfoProjectionBridge.production_readonly_success_iff' depends on axioms:
+  propext
+  Classical.choice
+  Quot.sound
+
+'AspisPool.V7RegistryV2AccountInfoProjectionBridge.production_readonly_success_iff_projected_account' depends on axioms:
+  propext
+  Classical.choice
+  Quot.sound
+
+'AspisPool.V7RegistryV2AccountInfoProjectionBridge.production_registry_pair_iff_fixed_source_shape' depends on axioms:
+  propext
+  Classical.choice
+  Quot.sound
+
+'AspisPool.V7RegistryV2AccountInfoProjectionBridge.production_registry_pair_supplies_fixed_account_fields' depends on axioms:
+  propext
+  Classical.choice
+  Quot.sound
+
+'AspisPool.V7RegistryV2AccountInfoProjectionBridge.required_binding_is_zero_ok_iff' depends on axioms:
+  propext
+  Classical.choice
+  Quot.sound
+
+'AspisPool.V7RegistryV2AccountInfoProjectionBridge.required_binding_is_nonzero_ok_iff' depends on axioms:
+  propext
+  Classical.choice
+  Quot.sound
+
+Union:
+  propext
+  Classical.choice
+  Quot.sound
+
+No sorryAx or project-specific axiom was reported.

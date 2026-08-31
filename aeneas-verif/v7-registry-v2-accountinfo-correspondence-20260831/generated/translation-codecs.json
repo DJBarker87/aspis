@@ -1,0 +1,357 @@
+{
+  "aeneas_version": "b59d5188-lean432-extended",
+  "charon_version": "0.1.223",
+  "crate": "aspis_statement",
+  "functions": [
+    {
+      "def_id": 4,
+      "lean_name": "V7RegistryV2ProductionCodecsGenerated.Slice.Insts.CoreCmpPartialEqArray.ne",
+      "lean_file": "V7RegistryV2ProductionCodecs/FunsExternal_Template.lean",
+      "rust_name": "core::array::equality::{impl core::cmp::PartialEq<[U; N]> for [T]}::ne",
+      "is_local": false,
+      "source": {
+        "file": "/rustc/library/core/src/array/equality.rs",
+        "begin_line": 55,
+        "end_line": 55
+      },
+      "is_opaque": true,
+      "can_fail": true,
+      "can_diverge": false,
+      "is_rec": false,
+      "reducible": false
+    },
+    {
+      "def_id": 11,
+      "lean_name": "V7RegistryV2ProductionCodecsGenerated.pool_v1.verifier_registry.VerifierEntryStatusV1.Insts.CoreConvertTryFromU8PoolV1VerifierRegistryFormatError.try_from",
+      "lean_file": "V7RegistryV2ProductionCodecs/Funs.lean",
+      "rust_name": "aspis_statement::pool_v1::verifier_registry::{impl core::convert::TryFrom<u8, aspis_statement::pool_v1::verifier_registry::PoolV1VerifierRegistryFormatError> for aspis_statement::pool_v1::verifier_registry::VerifierEntryStatusV1}::try_from",
+      "is_local": true,
+      "source": {
+        "file": "crates/aspis-statement/src/pool_v1/verifier_registry.rs",
+        "begin_line": 59,
+        "end_line": 67
+      },
+      "is_opaque": false,
+      "can_fail": true,
+      "can_diverge": false,
+      "is_rec": false,
+      "reducible": false
+    },
+    {
+      "def_id": 36,
+      "lean_name": "V7RegistryV2ProductionCodecsGenerated.pool_v1.verifier_registry.VerifierRegistryV2.is_immutable",
+      "lean_file": "V7RegistryV2ProductionCodecs/Funs.lean",
+      "rust_name": "aspis_statement::pool_v1::verifier_registry::{aspis_statement::pool_v1::verifier_registry::VerifierRegistryV2}::is_immutable",
+      "is_local": true,
+      "source": {
+        "file": "crates/aspis-statement/src/pool_v1/verifier_registry.rs",
+        "begin_line": 140,
+        "end_line": 142
+      },
+      "is_opaque": false,
+      "can_fail": true,
+      "can_diverge": false,
+      "is_rec": false,
+      "reducible": false
+    },
+    {
+      "def_id": 43,
+      "lean_name": "V7RegistryV2ProductionCodecsGenerated.pool_v1.verifier_registry.VerifierRegistryEntryV2.has_no_retirement_slot",
+      "lean_file": "V7RegistryV2ProductionCodecs/Funs.lean",
+      "rust_name": "aspis_statement::pool_v1::verifier_registry::{aspis_statement::pool_v1::verifier_registry::VerifierRegistryEntryV2}::has_no_retirement_slot",
+      "is_local": true,
+      "source": {
+        "file": "crates/aspis-statement/src/pool_v1/verifier_registry.rs",
+        "begin_line": 172,
+        "end_line": 174
+      },
+      "is_opaque": false,
+      "can_fail": true,
+      "can_diverge": false,
+      "is_rec": false,
+      "reducible": false
+    },
+    {
+      "def_id": 35,
+      "lean_name": "V7RegistryV2ProductionCodecsGenerated.pool_v1.verifier_registry.required_binding_is_zero",
+      "lean_file": "V7RegistryV2ProductionCodecs/Funs.lean",
+      "rust_name": "aspis_statement::pool_v1::verifier_registry::required_binding_is_zero",
+      "is_local": true,
+      "source": {
+        "file": "crates/aspis-statement/src/pool_v1/verifier_registry.rs",
+        "begin_line": 223,
+        "end_line": 225
+      },
+      "is_opaque": false,
+      "can_fail": true,
+      "can_diverge": false,
+      "is_rec": false,
+      "reducible": false
+    },
+    {
+      "def_id": 8,
+      "lean_name": "V7RegistryV2ProductionCodecsGenerated.pool_v1.verifier_registry.validate_verifier_registry_v2",
+      "lean_file": "V7RegistryV2ProductionCodecs/Funs.lean",
+      "rust_name": "aspis_statement::pool_v1::verifier_registry::validate_verifier_registry_v2",
+      "is_local": true,
+      "source": {
+        "file": "crates/aspis-statement/src/pool_v1/verifier_registry.rs",
+        "begin_line": 359,
+        "end_line": 381
+      },
+      "is_opaque": false,
+      "can_fail": true,
+      "can_diverge": false,
+      "is_rec": false,
+      "reducible": false
+    },
+    {
+      "def_id": 0,
+      "lean_name": "V7RegistryV2ProductionCodecsGenerated.pool_v1.verifier_registry.decode_verifier_registry_v2",
+      "lean_file": "V7RegistryV2ProductionCodecs/Funs.lean",
+      "rust_name": "aspis_statement::pool_v1::verifier_registry::decode_verifier_registry_v2",
+      "is_local": true,
+      "source": {
+        "file": "crates/aspis-statement/src/pool_v1/verifier_registry.rs",
+        "begin_line": 404,
+        "end_line": 436
+      },
+      "is_opaque": false,
+      "can_fail": true,
+      "can_diverge": false,
+      "is_rec": false,
+      "reducible": false
+    },
+    {
+      "def_id": 12,
+      "lean_name": "V7RegistryV2ProductionCodecsGenerated.pool_v1.verifier_registry.validate_verifier_registry_entry_v2",
+      "lean_file": "V7RegistryV2ProductionCodecs/Funs.lean",
+      "rust_name": "aspis_statement::pool_v1::verifier_registry::validate_verifier_registry_entry_v2",
+      "is_local": true,
+      "source": {
+        "file": "crates/aspis-statement/src/pool_v1/verifier_registry.rs",
+        "begin_line": 438,
+        "end_line": 462
+      },
+      "is_opaque": false,
+      "can_fail": true,
+      "can_diverge": false,
+      "is_rec": false,
+      "reducible": false
+    },
+    {
+      "def_id": 1,
+      "lean_name": "V7RegistryV2ProductionCodecsGenerated.pool_v1.verifier_registry.decode_verifier_registry_entry_v2",
+      "lean_file": "V7RegistryV2ProductionCodecs/Funs.lean",
+      "rust_name": "aspis_statement::pool_v1::verifier_registry::decode_verifier_registry_entry_v2",
+      "is_local": true,
+      "source": {
+        "file": "crates/aspis-statement/src/pool_v1/verifier_registry.rs",
+        "begin_line": 488,
+        "end_line": 523
+      },
+      "is_opaque": false,
+      "can_fail": true,
+      "can_diverge": false,
+      "is_rec": false,
+      "reducible": false
+    }
+  ],
+  "types": [
+    {
+      "def_id": 2,
+      "lean_name": "V7RegistryV2ProductionCodecsGenerated.pool_v1.verifier_registry.PoolV1VerifierRegistryFormatError",
+      "lean_file": "V7RegistryV2ProductionCodecs/Types.lean",
+      "rust_name": "aspis_statement::pool_v1::verifier_registry::PoolV1VerifierRegistryFormatError",
+      "is_local": true,
+      "source": {
+        "file": "crates/aspis-statement/src/pool_v1/verifier_registry.rs",
+        "begin_line": 32,
+        "end_line": 45
+      }
+    },
+    {
+      "def_id": 9,
+      "lean_name": "V7RegistryV2ProductionCodecsGenerated.pool_v1.verifier_registry.VerifierEntryStatusV1",
+      "lean_file": "V7RegistryV2ProductionCodecs/Types.lean",
+      "rust_name": "aspis_statement::pool_v1::verifier_registry::VerifierEntryStatusV1",
+      "is_local": true,
+      "source": {
+        "file": "crates/aspis-statement/src/pool_v1/verifier_registry.rs",
+        "begin_line": 49,
+        "end_line": 54
+      }
+    },
+    {
+      "def_id": 1,
+      "lean_name": "V7RegistryV2ProductionCodecsGenerated.pool_v1.verifier_registry.VerifierRegistryV2",
+      "lean_file": "V7RegistryV2ProductionCodecs/Types.lean",
+      "rust_name": "aspis_statement::pool_v1::verifier_registry::VerifierRegistryV2",
+      "is_local": true,
+      "source": {
+        "file": "crates/aspis-statement/src/pool_v1/verifier_registry.rs",
+        "begin_line": 122,
+        "end_line": 133
+      }
+    },
+    {
+      "def_id": 8,
+      "lean_name": "V7RegistryV2ProductionCodecsGenerated.pool_v1.verifier_registry.VerifierRegistryEntryV2",
+      "lean_file": "V7RegistryV2ProductionCodecs/Types.lean",
+      "rust_name": "aspis_statement::pool_v1::verifier_registry::VerifierRegistryEntryV2",
+      "is_local": true,
+      "source": {
+        "file": "crates/aspis-statement/src/pool_v1/verifier_registry.rs",
+        "begin_line": 154,
+        "end_line": 169
+      }
+    }
+  ],
+  "globals": [
+    {
+      "def_id": 19,
+      "lean_name": "V7RegistryV2ProductionCodecsGenerated.pool_v1.verifier_registry.POOL_V1_VERIFIER_REGISTRY_FLAG_PAUSED",
+      "lean_file": "V7RegistryV2ProductionCodecs/Funs.lean",
+      "rust_name": "aspis_statement::pool_v1::verifier_registry::POOL_V1_VERIFIER_REGISTRY_FLAG_PAUSED",
+      "is_local": true,
+      "source": {
+        "file": "crates/aspis-statement/src/pool_v1/verifier_registry.rs",
+        "begin_line": 10,
+        "end_line": 10
+      },
+      "can_fail": true
+    },
+    {
+      "def_id": 16,
+      "lean_name": "V7RegistryV2ProductionCodecsGenerated.pool_v1.verifier_registry.POOL_V1_VERIFIER_REGISTRY_FLAG_IMMUTABLE",
+      "lean_file": "V7RegistryV2ProductionCodecs/Funs.lean",
+      "rust_name": "aspis_statement::pool_v1::verifier_registry::POOL_V1_VERIFIER_REGISTRY_FLAG_IMMUTABLE",
+      "is_local": true,
+      "source": {
+        "file": "crates/aspis-statement/src/pool_v1/verifier_registry.rs",
+        "begin_line": 11,
+        "end_line": 11
+      },
+      "can_fail": true
+    },
+    {
+      "def_id": 13,
+      "lean_name": "V7RegistryV2ProductionCodecsGenerated.pool_v1.verifier_registry.POOL_V1_VERIFIER_REGISTRY_FLAGS_MASK",
+      "lean_file": "V7RegistryV2ProductionCodecs/Funs.lean",
+      "rust_name": "aspis_statement::pool_v1::verifier_registry::POOL_V1_VERIFIER_REGISTRY_FLAGS_MASK",
+      "is_local": true,
+      "source": {
+        "file": "crates/aspis-statement/src/pool_v1/verifier_registry.rs",
+        "begin_line": 12,
+        "end_line": 13
+      },
+      "can_fail": true
+    },
+    {
+      "def_id": 18,
+      "lean_name": "V7RegistryV2ProductionCodecsGenerated.pool_v1.verifier_registry.POOL_V1_VERIFIER_ENTRY_NO_RETIREMENT_SLOT",
+      "lean_file": "V7RegistryV2ProductionCodecs/Funs.lean",
+      "rust_name": "aspis_statement::pool_v1::verifier_registry::POOL_V1_VERIFIER_ENTRY_NO_RETIREMENT_SLOT",
+      "is_local": true,
+      "source": {
+        "file": "crates/aspis-statement/src/pool_v1/verifier_registry.rs",
+        "begin_line": 18,
+        "end_line": 18
+      },
+      "can_fail": false
+    },
+    {
+      "def_id": 1,
+      "lean_name": "V7RegistryV2ProductionCodecsGenerated.pool_v1.verifier_registry.POOL_V1_VERIFIER_REGISTRY_V2_MAGIC",
+      "lean_file": "V7RegistryV2ProductionCodecs/Funs.lean",
+      "rust_name": "aspis_statement::pool_v1::verifier_registry::POOL_V1_VERIFIER_REGISTRY_V2_MAGIC",
+      "is_local": true,
+      "source": {
+        "file": "crates/aspis-statement/src/pool_v1/verifier_registry.rs",
+        "begin_line": 23,
+        "end_line": 23
+      },
+      "can_fail": false
+    },
+    {
+      "def_id": 2,
+      "lean_name": "V7RegistryV2ProductionCodecsGenerated.pool_v1.verifier_registry.POOL_V1_VERIFIER_REGISTRY_V2_VERSION",
+      "lean_file": "V7RegistryV2ProductionCodecs/Funs.lean",
+      "rust_name": "aspis_statement::pool_v1::verifier_registry::POOL_V1_VERIFIER_REGISTRY_V2_VERSION",
+      "is_local": true,
+      "source": {
+        "file": "crates/aspis-statement/src/pool_v1/verifier_registry.rs",
+        "begin_line": 24,
+        "end_line": 24
+      },
+      "can_fail": false
+    },
+    {
+      "def_id": 0,
+      "lean_name": "V7RegistryV2ProductionCodecsGenerated.pool_v1.verifier_registry.POOL_V1_VERIFIER_REGISTRY_V2_BYTES",
+      "lean_file": "V7RegistryV2ProductionCodecs/Funs.lean",
+      "rust_name": "aspis_statement::pool_v1::verifier_registry::POOL_V1_VERIFIER_REGISTRY_V2_BYTES",
+      "is_local": true,
+      "source": {
+        "file": "crates/aspis-statement/src/pool_v1/verifier_registry.rs",
+        "begin_line": 25,
+        "end_line": 25
+      },
+      "can_fail": false
+    },
+    {
+      "def_id": 5,
+      "lean_name": "V7RegistryV2ProductionCodecsGenerated.pool_v1.verifier_registry.POOL_V1_VERIFIER_ENTRY_V2_MAGIC",
+      "lean_file": "V7RegistryV2ProductionCodecs/Funs.lean",
+      "rust_name": "aspis_statement::pool_v1::verifier_registry::POOL_V1_VERIFIER_ENTRY_V2_MAGIC",
+      "is_local": true,
+      "source": {
+        "file": "crates/aspis-statement/src/pool_v1/verifier_registry.rs",
+        "begin_line": 26,
+        "end_line": 26
+      },
+      "can_fail": false
+    },
+    {
+      "def_id": 6,
+      "lean_name": "V7RegistryV2ProductionCodecsGenerated.pool_v1.verifier_registry.POOL_V1_VERIFIER_ENTRY_V2_VERSION",
+      "lean_file": "V7RegistryV2ProductionCodecs/Funs.lean",
+      "rust_name": "aspis_statement::pool_v1::verifier_registry::POOL_V1_VERIFIER_ENTRY_V2_VERSION",
+      "is_local": true,
+      "source": {
+        "file": "crates/aspis-statement/src/pool_v1/verifier_registry.rs",
+        "begin_line": 27,
+        "end_line": 27
+      },
+      "can_fail": false
+    },
+    {
+      "def_id": 4,
+      "lean_name": "V7RegistryV2ProductionCodecsGenerated.pool_v1.verifier_registry.POOL_V1_VERIFIER_ENTRY_V2_BYTES",
+      "lean_file": "V7RegistryV2ProductionCodecs/Funs.lean",
+      "rust_name": "aspis_statement::pool_v1::verifier_registry::POOL_V1_VERIFIER_ENTRY_V2_BYTES",
+      "is_local": true,
+      "source": {
+        "file": "crates/aspis-statement/src/pool_v1/verifier_registry.rs",
+        "begin_line": 28,
+        "end_line": 28
+      },
+      "can_fail": false
+    },
+    {
+      "def_id": 3,
+      "lean_name": "V7RegistryV2ProductionCodecsGenerated.pool_v1.verifier_registry.POOL_V1_VERIFIER_DEPLOYMENT_MODE_IMMUTABLE_LOADER_V3",
+      "lean_file": "V7RegistryV2ProductionCodecs/Funs.lean",
+      "rust_name": "aspis_statement::pool_v1::verifier_registry::POOL_V1_VERIFIER_DEPLOYMENT_MODE_IMMUTABLE_LOADER_V3",
+      "is_local": true,
+      "source": {
+        "file": "crates/aspis-statement/src/pool_v1/verifier_registry.rs",
+        "begin_line": 29,
+        "end_line": 29
+      },
+      "can_fail": false
+    }
+  ],
+  "trait_decls": [],
+  "trait_impls": []
+}

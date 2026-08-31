@@ -1,0 +1,166 @@
+V7 REGISTRY V2 ACCOUNTINFO CORRESPONDENCE REPLAY
+================================================
+
+Base/source revision:
+  883fa397d27e3f4fe28acea7899083479b7affd8
+
+Toolchain:
+  Charon: 0.1.223
+  Charon binary SHA-256:
+    b2b0961a3c55aca64752b2fa4a4701ba0c06b860236979e5727c07de8ac2310c
+  Aeneas: b59d5188-lean432-extended
+  Aeneas binary SHA-256:
+    4632746db1bf6c3953f2971078965a2a5a8ad6cf5f75636b46b397bc50c550b5
+  Lean: 4.31.0
+
+Literal full-caller extraction audit
+------------------------------------
+
+Generic production caller Charon:
+  root: aspis_pool::pair_forest::process_pair_forest_terminal_with_verifier_v1
+  unit: aspis-v7-registry-v2-literal-charon-03
+  invocation: fdc517f47f7e4d8cb7b9594ddf387342
+  exit: 0
+  wall: 57.86 s
+  peak RSS: 556,096 KiB
+  swaps: 0
+  artifact SHA-256:
+    9dc143b5cc9d982852db057e3381eb8a1b15f108f85e432c1ada7aacb47f484d
+  Charon has_errors: false
+
+Generic production caller Aeneas:
+  unit: aspis-v7-registry-v2-literal-aeneas-03
+  invocation: 27682921110c453482578415208a0767
+  exit: 2 (expected audited limitation)
+  wall: 1.42 s
+  peak RSS: 583,440 KiB
+  swaps: 0
+  error: higher-ranked lifetime related to a free lifetime
+  source: programs/aspis-pool/src/pair_forest.rs:1287-1473
+  emitter: llbc/TypesAnalysis.ml:973
+
+Concrete production wrapper Charon:
+  root: aspis_pool::pair_forest::process_pair_forest_terminal_v1
+  unit: aspis-v7-registry-v2-concrete-charon-04
+  invocation: 829fbb833b71408182759f22004565f3
+  exit: 0
+  wall: 14.79 s
+  peak RSS: 555,528 KiB
+  swaps: 0
+  artifact SHA-256:
+    67b175c7a17a6d47357b6fcfeef33a1be416b4aba374de2f971f8c0fb2253e78
+  Charon has_errors: false
+
+Concrete production wrapper Aeneas:
+  unit: aspis-v7-registry-v2-concrete-aeneas-04
+  invocation: fcd2e6e6e82146cfbf77a320ade83a72
+  exit: 2 (expected audited limitation)
+  wall: 1.53 s
+  peak RSS: 590,480 KiB
+  swaps: 0
+  error: same higher-ranked/free lifetime limitation
+
+Extraction-only exact-callback specialization Charon:
+  root: aspis_pool::pair_forest::process_pair_forest_terminal_v1
+  unit: aspis-v7-registry-v2-specialized-charon-05
+  invocation: c811c751bac5417a9250a366656ab0b2
+  exit: 0
+  wall: 56.61 s
+  peak RSS: 555,932 KiB
+  swaps: 0
+  artifact SHA-256:
+    0c63314d352d500a4f4fc33c8bb7fe49755a8bc7c62b00131a912639ba012b25
+  Charon has_errors: false
+
+Extraction-only exact-callback specialization Aeneas:
+  unit: aspis-v7-registry-v2-specialized-aeneas-05
+  invocation: a348ffd082dc45a5a10d4c156b7a184a
+  exit: 2 (expected audited limitation)
+  wall: 1.74 s
+  peak RSS: 417,296 KiB
+  swaps: 0
+  error: shared AccountInfo borrow-graph merge at a control-flow join
+  emitter: interp/InterpReduceCollapse.ml:1716
+
+Focused production primitives
+-----------------------------
+
+Registry V2 codecs Charon:
+  roots: decode_verifier_registry_v2, decode_verifier_registry_entry_v2
+  unit/invocation:
+    aspis-v7-registry-v2-codecs-charon-09
+    5dfeb2b46f5045f9b14edb8e4a2c363e
+  exit: 0
+  wall: 12.85 s
+  peak RSS: 710,676 KiB
+  swaps: 0
+  artifact SHA-256:
+    80a229493dd09740b5437f128e3dff11b7feeca72dd6b1e5f47aa571d3e6e6f2
+  Charon has_errors: false
+
+Registry V2 codecs Aeneas:
+  unit/invocation:
+    aspis-v7-registry-v2-codecs-aeneas-09
+    a21935e0740e45c593afd1bd797a62b9
+  exit: 0
+  wall: 0.73 s
+  peak RSS: 104,368 KiB
+  swaps: 0
+
+Readonly AccountInfo helper Charon:
+  root: aspis_pool::registry::require_readonly_registry_account
+  unit/invocation:
+    aspis-v7-registry-v2-readonly-charon-11
+    730741ef166c46e7913610d3a60d3ef9
+  exit: 0
+  wall: 13.83 s
+  peak RSS: 556,632 KiB
+  swaps: 0
+  artifact SHA-256:
+    e3f0912aef4c2a9acdb4827285e41be431ede0bc7926ba1c30836e4c0e2be636
+  Charon has_errors: false
+
+Readonly AccountInfo helper Aeneas:
+  unit/invocation:
+    aspis-v7-registry-v2-readonly-aeneas-11
+    eed7349998024a1b9e9984af5d77ccb7
+  exit: 0
+  wall: 0.29 s
+  peak RSS: 63,360 KiB
+  swaps: 0
+
+Final clean Lean replay
+-----------------------
+
+  unit: aspis-v7-registry-v2-accountinfo-final-23
+  invocation: 1c909898e81e44ee8e12b363b3dd3f54
+  cgroup: MemoryHigh=4G, MemoryMax=6G, MemorySwapMax=0
+  exit: 0
+  wall: 11.75 s
+  peak RSS: 2,577,948 KiB
+  swaps: 0
+  compiled targets:
+    V7RegistryV2OneTerminalCaller.Types
+    V7RegistryV2ProductionCodecs.Types
+    V7RegistryV2ProductionCodecs.FunsExternal
+    V7RegistryV2ProductionCodecs.Funs
+    V7RegistryV2ProductionReadonly.TypesExternal
+    V7RegistryV2ProductionReadonly.Types
+    V7RegistryV2ProductionReadonly.FunsExternal
+    V7RegistryV2ProductionReadonly.Funs
+    V7RegistryV2AccountInfoProjectionBridge
+  forbidden compiled constructs: none
+  #print axioms union:
+    propext
+    Classical.choice
+    Quot.sound
+
+Strongest proved theorem:
+  production_registry_pair_iff_fixed_source_shape
+
+Strongest fixed-caller feed theorem:
+  production_registry_pair_supplies_fixed_account_fields
+
+RESULT: PASS for the focused literal AccountInfo/codec correspondence.
+RESULT: the complete literal AccountInfo caller remains explicitly blocked in
+        Aeneas at the two audited translator limitations above.

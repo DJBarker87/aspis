@@ -1,0 +1,61 @@
+--- a/programs/aspis-pool/src/pair_forest.rs
++++ b/programs/aspis-pool/src/pair_forest.rs
+@@ -1284,31 +1284,16 @@
+ }
+ 
+ #[allow(clippy::too_many_arguments)]
+-pub(crate) fn process_pair_forest_terminal_with_verifier_v1<'info, R, V, S>(
++pub(crate) fn process_pair_forest_terminal_with_verifier_v1<'info, R>(
+     program_id: &Pubkey,
+     accounts: &[AccountInfo<'info>],
+     instruction_data: &[u8],
+     current_slot: u64,
+     rent: &Rent,
+     runtime: &mut R,
+-    verify: V,
+-    set_return_data: S,
+ ) -> ProgramResult
+ where
+     R: PoolCpiRuntimeV1,
+-    V: FnOnce(
+-        &Pubkey,
+-        &AccountInfo<'info>,
+-        &AccountInfo<'info>,
+-        &AccountInfo<'info>,
+-        &aspis_statement::pool_v1::VerifierPolicyV1,
+-        &[AccountInfo<'info>],
+-        &AccountInfo<'info>,
+-        &AccountInfo<'info>,
+-        &PoolV1PairForestTerminalRequestV1,
+-        u64,
+-    ) -> Result<AuthenticatedPairForestResultV1, ProgramError>,
+-    S: FnOnce(&[u8]),
+ {
+     let request = decode_terminal_request_box_v1(instruction_data)?;
+     let master_account = accounts.first().ok_or(ProgramError::NotEnoughAccountKeys)?;
+@@ -1385,7 +1370,7 @@
+         rent,
+     )?;
+ 
+-    let authenticated = verify(
++    let authenticated = dispatch_pair_forest_terminal_readonly_v1(
+         program_id,
+         master_account,
+         checkpoint_account,
+@@ -1468,7 +1453,7 @@
+         ),
+     }
+     marker_data.copy_from_slice(&ready_marker.encoded_marker());
+-    set_return_data(result_bytes.as_ref());
++    solana_program::program::set_return_data(result_bytes.as_ref());
+     Ok(())
+ }
+ 
+@@ -1487,7 +1472,5 @@
+         current_slot,
+         rent,
+         runtime,
+-        dispatch_pair_forest_terminal_readonly_v1,
+-        solana_program::program::set_return_data,
+     )
+ }

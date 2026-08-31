@@ -1,0 +1,12 @@
+Unit: aspis-v7-registry-v2-accountinfo-final-23
+Invocation: 1c909898e81e44ee8e12b363b3dd3f54
+MemoryHigh: 4 GiB
+MemoryMax: 6 GiB
+MemorySwapMax: 0
+Exit status: 0
+Elapsed wall time: 11.75 s
+Maximum resident set size: 2,577,948 KiB
+Swaps: 0
+Lean: 4.31.0
+Lean threads: 1
+Result: V7 Registry V2 AccountInfo projection Lean replay: PASS

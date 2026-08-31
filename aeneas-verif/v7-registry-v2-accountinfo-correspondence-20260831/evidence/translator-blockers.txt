@@ -1,0 +1,49 @@
+Complete generic caller Aeneas result
+=====================================
+
+Unit: aspis-v7-registry-v2-literal-aeneas-03
+Invocation: 27682921110c453482578415208a0767
+Exit: 2
+Wall: 1.42 s
+Peak RSS: 583,440 KiB
+Swaps: 0
+
+Unimplemented: found an occurrence of a lifetime constraint relating a
+higher-ranked lifetime to a free lifetime.
+Source: programs/aspis-pool/src/pair_forest.rs:1287-1473
+Compiler source: llbc/TypesAnalysis.ml:973
+
+Complete concrete wrapper Aeneas result
+=======================================
+
+Unit: aspis-v7-registry-v2-concrete-aeneas-04
+Invocation: fcd2e6e6e82146cfbf77a320ade83a72
+Exit: 2
+Wall: 1.53 s
+Peak RSS: 590,480 KiB
+Swaps: 0
+
+Same higher-ranked/free lifetime limitation. The concrete wrapper reaches the
+generic production caller and does not erase the callback lifetime relation.
+
+Exact-callback extraction specialization Aeneas result
+======================================================
+
+Unit: aspis-v7-registry-v2-specialized-aeneas-05
+Invocation: a348ffd082dc45a5a10d4c156b7a184a
+Exit: 2
+Wall: 1.74 s
+Peak RSS: 417,296 KiB
+Swaps: 0
+
+Internal error while merging shared borrows at a control-flow join.
+Source reported by Aeneas: /rustc/library/core/src/macros/mod.rs:430-432
+Compiler source: interp/InterpReduceCollapse.ml:1716
+
+Conclusion
+==========
+
+The callback HRTB is one real limitation, but not the only limitation. Once
+the callback is specialized to the exact production functions, the literal
+AccountInfo interior-borrow graph reaches a second independent Aeneas join
+failure. No full-caller theorem is claimed from either failed translation.
