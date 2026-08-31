@@ -23,6 +23,7 @@ namespace AspisK1.V7Tag73ExactFixedQ16JointEventHandoff
 open AspisK1.V7FsAokExperiment
 open AspisK1.V7Tag73AdaptiveLazyOracle
 open AspisK1.V7Tag73AdaptiveQ16TrialAccounting
+open AspisK1.V7Tag73AtomicForkUniformScheduler
 open AspisK1.V7Tag73CausalQ16FinalWorkProbability
 open AspisK1.V7Tag73ExactCompilerResources
 open AspisK1.V7Tag73ExactClientKnowledgeComposition
@@ -30,6 +31,8 @@ open AspisK1.V7Tag73ExactCompilerQ16EventHandoff
 open AspisK1.V7Tag73ExactConcreteK13K14Events
 open AspisK1.V7Tag73ExactDagCandidateLabeledRootRouting
 open AspisK1.V7Tag73ExactDagQ16ChainRouting
+open AspisK1.V7Tag73ExactFinalWorkPairControllerCompletion
+open AspisK1.V7Tag73ExactFixedFullRunFactorization
 open AspisK1.V7Tag73ExactFixedK12MerkleClassifier
 open AspisK1.V7Tag73ExactFixedK12PrefixClassifier
 open AspisK1.V7Tag73ExactFixedK13K14Classifier
@@ -38,7 +41,10 @@ open AspisK1.V7Tag73ExactPlainRomRun
 open AspisK1.V7Tag73ExactSourceAcceptanceModel
 open AspisK1.V7Tag73FinalWorkDigestProbability
 open AspisK1.V7Tag73FinalWorkQ16CandidateController
+open AspisK1.V7Tag73FullCursorClientLineageLift
+open AspisK1.V7Tag73IndexedControllerTraceAlignment
 open AspisK1.V7Tag73OperationalQ16ForestHandoff
+open AspisK1.V7Tag73OperationalNodeCertificate
 open AspisK1.V7Tag73OperationalSemanticReplay
 open AspisK1.V7Tag73Q16FirstCompactUniformity
 open AspisK1.V7Tag73Q16DigestDrawReindex
@@ -142,6 +148,75 @@ def ExactFixedK13ActualJointTrial
       (exactOperationalTape input).frontierNodes
       (exactOperationalTape input).search
       (exactFixedK13TrialCoordinates transitionFuel configuration trial sample).2.2
+
+/-- The source root itself supplies the only meaningful owner split for a
+selected final-work coordinate.  There is deliberately no classifier from the
+raw SHA input: the identical bytes may be queried by the adversary before the
+verifier.  This theorem instead exposes the actual chronological first-fresh
+record, which is either an adversary query or the verifier's query. -/
+theorem exact_fixed_k13_actual_joint_trial_root_actor_cases
+    {HiddenTape TapeIdentity Observation Statement Payload Witness : Type}
+    {parameters : ExactCompilerResourceParameters}
+    {transitionFuel : Nat}
+    {configuration : ExactPlainRomWitnessConfiguration HiddenTape TapeIdentity
+      Observation Statement Tag73K12ParsedProof Payload Witness parameters}
+    {projection : AcceptedTapeProjection Statement Tag73K12ParsedProof Payload}
+    {fixedInstance : PublicInstance Statement}
+    {sample : ExactCompilerSample HiddenTape parameters}
+    (input : ExactK12OperationalInput transitionFuel configuration projection
+      fixedInstance sample)
+    (trial : ExactCompilerExposureTrial parameters)
+    (actual : ExactFixedK13ActualJointTrial input trial) :
+    ∃ (digest workAnswer : Digest256),
+      FinalWork34Accepted workAnswer ∧
+        ((∃ prior later,
+            exactFixedRootRecords input.package.root =
+              prior ++ (.machineFresh .adversary
+                (literalFinalWorkKey digest
+                  (exactOperationalTape input).messages.finalGrinding.selected).workInput
+                workAnswer : UnifiedExposureRecord) :: later ∧
+            (exactDagTrialController transitionFuel trial).preferredSlot
+              (indexedStateAfterRecords transitionFuel
+                (exactDagTrialController transitionFuel trial) prior
+                (exactDagCandidateInitialState input)) = some none) ∨
+          (∃ prior later,
+            exactFixedRootRecords input.package.root =
+              prior ++ (.machineFresh .verifier
+                (literalFinalWorkKey digest
+                  (exactOperationalTape input).messages.finalGrinding.selected).workInput
+                workAnswer : UnifiedExposureRecord) :: later ∧
+            (exactDagTrialController transitionFuel trial).preferredSlot
+              (indexedStateAfterRecords transitionFuel
+                (exactDagTrialController transitionFuel trial) prior
+                (exactDagCandidateInitialState input)) = some none)) := by
+  obtain ⟨digest, workAnswer, _base, workAccepted, _baseExact, workLabeled,
+      _workCoordinate, _realized⟩ := actual
+  obtain ⟨prior, later, actor, rootExact, preferred⟩ := workLabeled
+  have member : (.machineFresh actor
+      (literalFinalWorkKey digest
+        (exactOperationalTape input).messages.finalGrinding.selected).workInput
+      workAnswer : UnifiedExposureRecord) ∈
+      exactFixedRootRecords input.package.root := by
+    rw [rootExact]
+    simp
+  unfold exactFixedRootRecords fullProjectedRootRecords at member
+  rw [List.mem_append] at member
+  refine ⟨digest, workAnswer, workAccepted, ?_⟩
+  rcases member with adversary | verifier
+  · obtain ⟨queryInput, answer, recordExact⟩ :=
+      only_machine_fresh_actor_projected_records .adversary
+        input.package.root.full.projection.rootPrefixes.adversary.freshQueries
+        _ adversary
+    injection recordExact with actorExact _inputExact _answerExact
+    subst actor
+    exact Or.inl ⟨prior, later, rootExact, preferred⟩
+  · obtain ⟨queryInput, answer, recordExact⟩ :=
+      only_machine_fresh_actor_projected_records .verifier
+        input.package.root.full.projection.rootPrefixes.verifier.freshQueries
+        _ verifier
+    injection recordExact with actorExact _inputExact _answerExact
+    subst actor
+    exact Or.inr ⟨prior, later, rootExact, preferred⟩
 
 /-- Current-source decoding supplies the only semantic bridge needed here:
 the parsed proof's selected q16 positions are the positions consumed by the
@@ -411,6 +486,7 @@ def ExactFixedK13ResidualInvariant
 
 #print axioms exact_fixed_k13_intrinsic_bad_eq_certificate
 #print axioms ExactFixedK13ActualJointTrial
+#print axioms exact_fixed_k13_actual_joint_trial_root_actor_cases
 #print axioms exact_fixed_k13_query_failure_has_joint_trial_coordinate
 #print axioms exact_fixed_k13_query_failure_has_joint_trial_witness
 #print axioms exact_fixed_k13_pointwise_bad_card
