@@ -1,0 +1,118 @@
+V7 Registry V2 one-terminal caller Rust-to-Lean bridge: PASS
+Date: 2026-08-31
+
+Pinned revisions
+----------------
+Runtime milestone:
+  7179f7c550fe0461f4251dea5268af73876da91d
+Production source revision:
+  4722228b991ebb72850b8d79dd54b0fee4899462
+Branch:
+  research/v7-registry-v2-caller-source-20260831
+Production and artifact hashes:
+  evidence/source-sha256.txt
+
+Focused results
+---------------
+Production source/control-flow audit:
+  PASS; 0.96 s local; peak RSS 7,110,656 bytes; swaps 0
+Projected Rust tests:
+  PASS; 5 passed, 0 failed; 0.92 s local
+  peak RSS 131,530,752 bytes; swaps 0
+Clean Charon/Aeneas extraction:
+  PASS; exact generated Types/Funs/external-template/translation equality
+Lean source proof:
+  PASS; strongest theorem at
+  proof/V7RegistryV2OneTerminalCallerSourceBridge.lean:1022
+Compiled forbidden-construct scan:
+  PASS
+
+Final NUC extraction replay
+---------------------------
+Host:
+  nuc, Linux 6.8.0-110-generic x86_64
+Unit:
+  aspis-v7-registry-v2-extract-final-02
+Invocation:
+  e4225de5b38949568565da0baffdb042
+Limits:
+  MemoryHigh=4G, MemoryMax=6G, MemorySwapMax=0
+Jobs:
+  CARGO_BUILD_JOBS=1
+Result:
+  exit status 0
+Wall time:
+  2.34 seconds
+Peak RSS reported by /usr/bin/time:
+  159,104 KiB
+Swaps:
+  0
+
+Final NUC Lean replay
+---------------------
+Host:
+  nuc, Linux 6.8.0-110-generic x86_64
+Unit:
+  aspis-v7-registry-v2-lean-final-01
+Invocation:
+  6b9aa55933b84efd9019f36cbac12cd7
+Limits:
+  MemoryHigh=4G, MemoryMax=6G, MemorySwapMax=0
+Threads:
+  LEAN_NUM_THREADS=1
+Result:
+  exit status 0
+Wall time:
+  21.44 seconds
+Peak RSS reported by /usr/bin/time:
+  2,639,456 KiB
+Swaps:
+  0
+
+Principal theorem results
+-------------------------
+  translated_authentication_success_is_exact
+  translated_result_success_is_exact
+  translated_marker_success_is_exact
+  translated_prepare_success_is_exact
+  translated_finalize_success_is_exact
+  translated_withdrawal_apply_success_is_exact
+  translated_apply_prepared_success_is_exact
+  translated_rejected_atomic_transaction_is_exact_prestate
+  translated_accepted_caller_has_exact_writeback
+  translated_accepted_atomic_transaction_has_exact_writeback
+
+The complete printed axiom union is exactly:
+  propext
+  Classical.choice
+  Quot.sound
+
+There is no project-specific axiom, sorry, admit, sorryAx or native_decide in
+compiled generated/proof source.
+
+What this closes
+----------------
+  Registry V2 immutable policy and canonical account selection
+  loader/programdata identities and permanent zero upgrade authority
+  exact active verifier/profile/release/statement-version selection
+  canonical 320-byte ASQ8 and 792-byte ASR8 result binding
+  exact six-account selected-verifier CPI image
+  exact ASR8 byte identity through accepted Pool return state
+  selected-lane/history/nullifier/custody writeback
+  translated rejection rollback
+
+Explicit remaining source/runtime boundaries
+--------------------------------------------
+  fixed-width projection correspondence to hash-pinned AccountInfo source
+  Registry V2 PDA/codec and loader-v3 ProgramData/executable-SHA semantics
+  selected verifier ASF8 reconstruction and Tag-73 cryptographic acceptance
+  Solana ownership/PDA/CPI/borrow/return-data/atomic rollback semantics
+  SPL Token withdrawal-CPI behavior
+  Charon/Aeneas/Rust/Lean toolchain
+
+ASR8 does not carry the old lane root/frontier. That live snapshot is bound by
+the selected verifier's ASF8 reconstruction and acceptance theorem; it is not
+invented as a Pool-result field here.
+
+No production Rust, cryptographic relation, wire format or deployment state
+was changed. Nothing was merged, deployed, signed or submitted.

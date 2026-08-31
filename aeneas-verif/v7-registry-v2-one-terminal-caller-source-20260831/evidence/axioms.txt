@@ -1,0 +1,28 @@
+translated_authentication_success_is_exact:
+  propext, Classical.choice, Quot.sound
+translated_result_success_is_exact:
+  propext, Classical.choice, Quot.sound
+translated_marker_success_is_exact:
+  propext
+translated_prepare_success_is_exact:
+  propext, Classical.choice, Quot.sound
+translated_finalize_success_is_exact:
+  propext, Classical.choice, Quot.sound
+translated_withdrawal_apply_success_is_exact:
+  propext, Classical.choice, Quot.sound
+translated_apply_prepared_success_is_exact:
+  propext, Classical.choice, Quot.sound
+translated_rejected_atomic_transaction_is_exact_prestate:
+  propext, Classical.choice, Quot.sound
+translated_accepted_caller_has_exact_writeback:
+  propext, Classical.choice, Quot.sound
+translated_accepted_atomic_transaction_has_exact_writeback:
+  propext, Classical.choice, Quot.sound
+
+Exact union:
+  propext, Classical.choice, Quot.sound
+
+No project-specific axiom, sorryAx, sorry, admit or native_decide occurs in
+compiled generated/proof source. FunsExternal_Template.lean is uncompiled;
+its standard-library Option equality interface is transparently implemented
+in FunsExternal.lean.
