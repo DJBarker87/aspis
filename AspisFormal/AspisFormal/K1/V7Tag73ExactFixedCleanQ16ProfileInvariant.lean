@@ -53,8 +53,11 @@ open AspisK1.V7Tag73ExactPlainRomRun
 open AspisK1.V7Tag73ExactRootPriorQueryHistory
 open AspisK1.V7Tag73ExactSourceAcceptanceModel
 open AspisK1.V7Tag73FullCursorClientLineageLift
+open AspisK1.V7Tag73FinalWorkQ16CandidateController
+open AspisK1.V7Tag73NoPairOccurrenceTrichotomy
 open AspisK1.V7Tag73OperationalOracleExposure
 open AspisK1.V7Tag73OperationalNodeCertificate
+open AspisK1.V7Tag73OperationalSemanticReplay
 open AspisK1.V7Tag73ProjectedMachineNativeRequestPrefix
 open AspisK1.V7Tag73SchedulerTraceFactorization
 open AspisK1.V7Tag73SchedulerCausalStateAlignment
@@ -66,6 +69,24 @@ open AspisPool.AlgorithmicCircleDecoderV7
 open AspisV5ComponentCQM31TowerExact
 
 noncomputable section
+
+private theorem selected_record_eq_of_same_index
+    {records priorLeft laterLeft priorRight laterRight : List
+      UnifiedExposureRecord}
+    {left right : UnifiedExposureRecord} {index : Nat}
+    (leftExact : records = priorLeft ++ left :: laterLeft)
+    (leftIndex : index = priorLeft.length)
+    (rightExact : records = priorRight ++ right :: laterRight)
+    (rightIndex : index = priorRight.length) :
+    left = right := by
+  have leftAt : records[index]? = some left := by
+    rw [leftExact, leftIndex]
+    simp
+  have rightAt : records[index]? = some right := by
+    rw [rightExact, rightIndex]
+    simp
+  rw [leftAt] at rightAt
+  exact Option.some.inj rightAt
 
 /-- A root record labelled adversary-owned is positionally inside the literal
 adversary source segment.  In particular, no verifier record can be silently
@@ -246,6 +267,97 @@ theorem exact_fixed_clean_k13_adversary_anchor_has_shared_native_pause
     exact rightPrefix
   exact ⟨queryPrior, queryLater, target, answer, requestState, rightRemaining,
     adversaryExact, rightPrefix', requestExact⟩
+
+/-- The adversary-owned selected anchor is literally one of the two deployed
+final-work inputs and therefore carries the accepted pre-final transcript
+digest in its first 32 bytes.  This is derived from the proof-relevant actual
+trial, not from a fallible raw-coordinate role classifier. -/
+theorem exact_fixed_k13_adversary_anchor_has_prefinal_digest_prefix
+    {HiddenTape TapeIdentity Observation Statement Payload Witness : Type}
+    {parameters : ExactCompilerResourceParameters}
+    {transitionFuel : Nat}
+    {configuration : ExactPlainRomWitnessConfiguration HiddenTape TapeIdentity
+      Observation Statement Tag73K12ParsedProof Payload Witness parameters}
+    {projection : AcceptedTapeProjection Statement Tag73K12ParsedProof Payload}
+    {fixedInstance : PublicInstance Statement}
+    {decoder : ExactDecoderInstantiation QM31Exact}
+    {sample : ExactCompilerSample HiddenTape parameters}
+    (trial : ExactCompilerExposureTrial parameters)
+    (witness : ExactFixedK13JointTrialWitness transitionFuel configuration
+      projection fixedInstance decoder sample trial)
+    (anchor : ExactFixedK13AdversaryAnchor witness.input trial) :
+    ∃ prior later target answer digest,
+      exactFixedRootRecords witness.input.package.root =
+          prior ++
+            (.machineFresh .adversary target answer : UnifiedExposureRecord) ::
+              later ∧
+      trial.val = prior.length ∧
+      HasLiteralStatePrefix digest target := by
+  obtain ⟨anchorPrior, anchorLater, target, answer, anchorExact,
+      anchorIndex⟩ := anchor
+  obtain ⟨digest, workAnswer, base, _workAccepted, _baseExact, pairLabeled,
+      _workLabeled, _workCoordinate, _realized⟩ := witness.actualTrial
+  rcases pairLabeled with
+      ⟨pairPrior, middle, pairLater, workActor, absorbActor, pairExact,
+        pairIndex⟩ |
+      ⟨pairPrior, middle, pairLater, workActor, absorbActor, pairExact,
+        pairIndex⟩
+  · have pairHeadExact :
+        exactFixedRootRecords witness.input.package.root =
+          pairPrior ++
+            (.machineFresh workActor
+              (literalFinalWorkKey digest
+                (exactOperationalTape witness.input).messages.finalGrinding.selected).workInput
+              workAnswer : UnifiedExposureRecord) ::
+              (middle ++
+                (.machineFresh absorbActor
+                  (literalFinalWorkKey digest
+                    (exactOperationalTape witness.input).messages.finalGrinding.selected).absorbInput
+                  base : UnifiedExposureRecord) :: pairLater) := by
+      simpa only [List.cons_append, List.append_assoc] using pairExact
+    have selectedExact :
+        (.machineFresh .adversary target answer : UnifiedExposureRecord) =
+          .machineFresh workActor
+            (literalFinalWorkKey digest
+              (exactOperationalTape witness.input).messages.finalGrinding.selected).workInput
+            workAnswer :=
+      selected_record_eq_of_same_index anchorExact anchorIndex pairHeadExact pairIndex
+    injection selectedExact with _actorExact targetExact _answerExact
+    subst target
+    refine ⟨anchorPrior, anchorLater,
+      (literalFinalWorkKey digest
+        (exactOperationalTape witness.input).messages.finalGrinding.selected).workInput,
+      answer, digest, anchorExact, anchorIndex, ?_⟩
+    simp [HasLiteralStatePrefix, RawFinalWorkKey.workInput,
+      literalFinalWorkKey]
+  · have pairHeadExact :
+        exactFixedRootRecords witness.input.package.root =
+          pairPrior ++
+            (.machineFresh absorbActor
+              (literalFinalWorkKey digest
+                (exactOperationalTape witness.input).messages.finalGrinding.selected).absorbInput
+              base : UnifiedExposureRecord) ::
+              (middle ++
+                (.machineFresh workActor
+                  (literalFinalWorkKey digest
+                    (exactOperationalTape witness.input).messages.finalGrinding.selected).workInput
+                  workAnswer : UnifiedExposureRecord) :: pairLater) := by
+      simpa only [List.cons_append, List.append_assoc] using pairExact
+    have selectedExact :
+        (.machineFresh .adversary target answer : UnifiedExposureRecord) =
+          .machineFresh absorbActor
+            (literalFinalWorkKey digest
+              (exactOperationalTape witness.input).messages.finalGrinding.selected).absorbInput
+            base :=
+      selected_record_eq_of_same_index anchorExact anchorIndex pairHeadExact pairIndex
+    injection selectedExact with _actorExact targetExact _answerExact
+    subst target
+    refine ⟨anchorPrior, anchorLater,
+      (literalFinalWorkKey digest
+        (exactOperationalTape witness.input).messages.finalGrinding.selected).absorbInput,
+      answer, digest, anchorExact, anchorIndex, ?_⟩
+    simp [HasLiteralStatePrefix, RawFinalWorkKey.absorbInput,
+      literalFinalWorkKey]
 
 /-- Equality of the four q16 semantic inputs is required only between two
 accepted, target-clean members of the same residual fibre. -/
@@ -435,6 +547,8 @@ theorem exact_fixed_clean_k13_residual_invariant_of_adversary_anchor_profile
 #print axioms ExactFixedCleanK13DerivedPreQ16ProfileInvariant
 #print axioms
   exact_fixed_k13_adversary_anchor_has_literal_adversary_prefix
+#print axioms
+  exact_fixed_k13_adversary_anchor_has_prefinal_digest_prefix
 #print axioms
   exact_fixed_clean_k13_adversary_anchor_replays_raw_pre_anchor_tape
 #print axioms
