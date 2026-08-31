@@ -101,7 +101,9 @@ compiler sample.  Lean proves both directions needed for later use:
 - reapplying the trial-coordinate map returns the supplied residual and
   final-work/q16 tuple; and
 - supplying an actual sample's own coordinates reconstructs that sample and
-  its literal production scheduler run.
+  its literal production scheduler run; and
+- the initial-only root-runtime projection is available for each response and
+  recovers the deployed root run at actual coordinates.
 
 The family is deliberately not yet called an accepting-response family.  It
 does not claim that an arbitrary counterfactual sample returns a parsed proof,

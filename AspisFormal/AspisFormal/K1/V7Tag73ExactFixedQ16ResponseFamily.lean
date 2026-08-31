@@ -91,6 +91,39 @@ noncomputable def exactFixedK13CounterfactualRun
     (exactFixedK13CounterfactualSample transitionFuel configuration trial
       hidden residual coordinates)
 
+/-- The corresponding initial-only run exposes the returned root runtime
+before any restoration client is entered.  It is the response projection used
+by the later q16 source/decoder bridge. -/
+noncomputable def exactFixedK13CounterfactualRootRun
+    {HiddenTape TapeIdentity Observation Statement Payload Witness : Type}
+    {parameters : ExactCompilerResourceParameters}
+    (transitionFuel : Nat)
+    (configuration : ExactPlainRomWitnessConfiguration HiddenTape TapeIdentity
+      Observation Statement Tag73K12ParsedProof Payload Witness parameters)
+    (trial : ExactCompilerExposureTrial parameters)
+    (hidden : HiddenTape)
+    (residual : ExactCompilerFinalWorkQ16Residual parameters)
+    (coordinates : Digest256 × Q16CandidateDigestForest) :=
+  runExactPlainRomRoot transitionFuel configuration
+    (exactFixedK13CounterfactualSample transitionFuel configuration trial
+      hidden residual coordinates)
+
+/-- A total, fail-closed projection of a counterfactual root run.  `none`
+means the ordinary source scheduler did not complete its initial stage. -/
+noncomputable def exactFixedK13CounterfactualRoot?
+    {HiddenTape TapeIdentity Observation Statement Payload Witness : Type}
+    {parameters : ExactCompilerResourceParameters}
+    (transitionFuel : Nat)
+    (configuration : ExactPlainRomWitnessConfiguration HiddenTape TapeIdentity
+      Observation Statement Tag73K12ParsedProof Payload Witness parameters)
+    (trial : ExactCompilerExposureTrial parameters)
+    (hidden : HiddenTape)
+    (residual : ExactCompilerFinalWorkQ16Residual parameters)
+    (coordinates : Digest256 × Q16CandidateDigestForest) :=
+  exactPlainRomRoot? transitionFuel configuration
+    (exactFixedK13CounterfactualSample transitionFuel configuration trial
+      hidden residual coordinates)
+
 /-- Every response is exactly the literal production scheduler evaluated at
 the sample constructed by the causal-router inverse. -/
 theorem exact_fixed_k13_counterfactual_run_is_literal
@@ -106,6 +139,25 @@ theorem exact_fixed_k13_counterfactual_run_is_literal
     exactFixedK13CounterfactualRun transitionFuel configuration trial hidden
         residual coordinates =
       runExactPlainRom transitionFuel configuration
+        (exactFixedK13CounterfactualSample transitionFuel configuration trial
+          hidden residual coordinates) := by
+  rfl
+
+/-- The root projection is likewise an ordinary initial-only production run,
+not a synthesized response object. -/
+theorem exact_fixed_k13_counterfactual_root_run_is_literal
+    {HiddenTape TapeIdentity Observation Statement Payload Witness : Type}
+    {parameters : ExactCompilerResourceParameters}
+    {transitionFuel : Nat}
+    {configuration : ExactPlainRomWitnessConfiguration HiddenTape TapeIdentity
+      Observation Statement Tag73K12ParsedProof Payload Witness parameters}
+    (trial : ExactCompilerExposureTrial parameters)
+    (hidden : HiddenTape)
+    (residual : ExactCompilerFinalWorkQ16Residual parameters)
+    (coordinates : Digest256 × Q16CandidateDigestForest) :
+    exactFixedK13CounterfactualRootRun transitionFuel configuration trial hidden
+        residual coordinates =
+      runExactPlainRomRoot transitionFuel configuration
         (exactFixedK13CounterfactualSample transitionFuel configuration trial
           hidden residual coordinates) := by
   rfl
@@ -177,13 +229,64 @@ theorem exact_fixed_k13_counterfactual_run_of_actual_coordinates
   unfold exactFixedK13CounterfactualRun
   rw [exact_fixed_k13_counterfactual_sample_of_actual_coordinates input trial]
 
+/-- The actual initial-only source run is recovered at the same coordinates;
+this supplies the exact root-runtime base case for a typed q16 response
+family. -/
+theorem exact_fixed_k13_counterfactual_root_run_of_actual_coordinates
+    {HiddenTape TapeIdentity Observation Statement Payload Witness : Type}
+    {parameters : ExactCompilerResourceParameters}
+    {transitionFuel : Nat}
+    {configuration : ExactPlainRomWitnessConfiguration HiddenTape TapeIdentity
+      Observation Statement Tag73K12ParsedProof Payload Witness parameters}
+    {projection : AcceptedTapeProjection Statement Tag73K12ParsedProof Payload}
+    {fixedInstance : PublicInstance Statement}
+    {sample : ExactCompilerSample HiddenTape parameters}
+    (input : ExactK12OperationalInput transitionFuel configuration projection
+      fixedInstance sample)
+    (trial : ExactCompilerExposureTrial parameters) :
+    exactFixedK13CounterfactualRootRun transitionFuel configuration trial
+      sample.1
+      (exactFixedK13TrialCoordinates transitionFuel configuration trial
+        sample).1
+      (exactFixedK13TrialCoordinates transitionFuel configuration trial
+        sample).2 = runExactPlainRomRoot transitionFuel configuration sample := by
+  unfold exactFixedK13CounterfactualRootRun
+  rw [exact_fixed_k13_counterfactual_sample_of_actual_coordinates input trial]
+
+/-- The fail-closed root-runtime projection agrees at actual coordinates as
+well, without assuming that arbitrary counterfactual coordinates complete. -/
+theorem exact_fixed_k13_counterfactual_root_of_actual_coordinates
+    {HiddenTape TapeIdentity Observation Statement Payload Witness : Type}
+    {parameters : ExactCompilerResourceParameters}
+    {transitionFuel : Nat}
+    {configuration : ExactPlainRomWitnessConfiguration HiddenTape TapeIdentity
+      Observation Statement Tag73K12ParsedProof Payload Witness parameters}
+    {projection : AcceptedTapeProjection Statement Tag73K12ParsedProof Payload}
+    {fixedInstance : PublicInstance Statement}
+    {sample : ExactCompilerSample HiddenTape parameters}
+    (input : ExactK12OperationalInput transitionFuel configuration projection
+      fixedInstance sample)
+    (trial : ExactCompilerExposureTrial parameters) :
+    exactFixedK13CounterfactualRoot? transitionFuel configuration trial sample.1
+      (exactFixedK13TrialCoordinates transitionFuel configuration trial
+        sample).1
+      (exactFixedK13TrialCoordinates transitionFuel configuration trial
+        sample).2 = exactPlainRomRoot? transitionFuel configuration sample := by
+  unfold exactFixedK13CounterfactualRoot?
+  rw [exact_fixed_k13_counterfactual_sample_of_actual_coordinates input trial]
+
 #print axioms exactFixedK13ResponseCoordinateEquiv
 #print axioms exactFixedK13CounterfactualSample
 #print axioms exactFixedK13CounterfactualRun
+#print axioms exactFixedK13CounterfactualRootRun
+#print axioms exactFixedK13CounterfactualRoot?
 #print axioms exact_fixed_k13_counterfactual_run_is_literal
+#print axioms exact_fixed_k13_counterfactual_root_run_is_literal
 #print axioms exact_fixed_k13_counterfactual_coordinates_exact
 #print axioms exact_fixed_k13_counterfactual_sample_of_actual_coordinates
 #print axioms exact_fixed_k13_counterfactual_run_of_actual_coordinates
+#print axioms exact_fixed_k13_counterfactual_root_run_of_actual_coordinates
+#print axioms exact_fixed_k13_counterfactual_root_of_actual_coordinates
 
 end
 
