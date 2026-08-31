@@ -343,3 +343,25 @@ Both Chunk001 theorems report exactly
 
 Both Depth07 chunks are independently green.  The small Depth07 aggregator is
 the next gate and has not yet been run.
+
+## Focused Depth07 aggregator gate
+
+After both chunks were independently green, unit
+`aspis-v7-q16-delta-depth07-aggregator-b3d-r12.service`, invocation
+`cbfa16076d1341ea9db2c28969db2dfb`, built only the aggregator and its axioms
+probe under the same 10G/12G/zero-swap limits.
+
+| Target | Exit | Wall | Max process RSS | Swaps |
+|---|---:|---:|---:|---:|
+| `Depth07.lean` | 0 | 2.49s | 6,147,892 KiB | 0 |
+| Depth07 axioms probe | 0 | 2.64s | 6,139,620 KiB | 0 |
+
+All ten re-exported local theorems report exactly
+`[propext, Classical.choice, Quot.sound]`.
+
+```text
+ad52f0f57b84d4f06173d0490c6ed6407edeb85293c0b532ad7977359d745b2e  Depth07.olean
+34001dcd3829dffc6f93eb9c7adacfdec9b422c1cdb3028f50162d8530b18e10  Depth07.ilean
+```
+
+Depth07 is fully green.  No Depth08 target was started in this gate.
