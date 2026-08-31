@@ -780,6 +780,40 @@ def ExactDagProducerInstalled
             UnifiedExposureRecord)])
         (exactDagCandidateInitialState input)).memory.producers
 
+/-- The exact source positions of the two final-work inputs selected by one
+causal-DAG trial.  The trial anchor is the earlier of the work and nonce-
+absorb records, rather than an abstract tape index.  Keeping both actors and
+the strict order proof-relevant is necessary for the later cached-versus-fresh
+source analysis: either input may already have been first queried by the
+adversary. -/
+def ExactDagFinalWorkPairLabeled
+    {HiddenTape TapeIdentity Observation Statement Payload Result : Type}
+    {parameters : ExactCompilerResourceParameters}
+    {transitionFuel : Nat}
+    {configuration : ExactPlainRomConfiguration HiddenTape TapeIdentity
+      Observation Statement Tag73K12ParsedProof Payload Result parameters}
+    {projection : AcceptedTapeProjection Statement Tag73K12ParsedProof Payload}
+    {fixedInstance : PublicInstance Statement}
+    {sample : ExactCompilerSample HiddenTape parameters}
+    (input : ExactK12OperationalInput transitionFuel configuration projection
+      fixedInstance sample)
+    (trial : ExactCompilerExposureTrial parameters)
+    (key : RawFinalWorkKey) (workAnswer base : Digest256) : Prop :=
+  (∃ prior middle later workActor absorbActor,
+      exactFixedRootRecords input.package.root =
+        prior ++ (.machineFresh workActor key.workInput workAnswer :
+          UnifiedExposureRecord) :: middle ++
+          (.machineFresh absorbActor key.absorbInput base :
+            UnifiedExposureRecord) :: later ∧
+      trial.val = prior.length) ∨
+  (∃ prior middle later workActor absorbActor,
+      exactFixedRootRecords input.package.root =
+        prior ++ (.machineFresh absorbActor key.absorbInput base :
+          UnifiedExposureRecord) :: middle ++
+          (.machineFresh workActor key.workInput workAnswer :
+            UnifiedExposureRecord) :: later ∧
+      trial.val = prior.length)
+
 /-- The selected final-work answer is named by the `none` slot in the same
 exact causal-DAG trial used for q16 routing. -/
 def ExactDagFinalWorkLabeled
@@ -988,6 +1022,10 @@ theorem exact_compiler_accepted_dag_trial_installs_all_candidates
         (trial : ExactCompilerExposureTrial parameters),
       FinalWork34Accepted workAnswer ∧
       base = (exactOperationalRawTrace input).q16BaseDigest ∧
+      ExactDagFinalWorkPairLabeled input trial
+        (literalFinalWorkKey digest
+          (exactOperationalTape input).messages.finalGrinding.selected)
+        workAnswer base ∧
       ExactDagFinalWorkLabeled input trial
         (literalFinalWorkKey digest
           (exactOperationalTape input).messages.finalGrinding.selected)
@@ -1036,6 +1074,10 @@ theorem exact_compiler_accepted_dag_trial_installs_all_candidates
           simpa only [List.cons_append, List.append_assoc] using workFirst)
     let trial : ExactCompilerExposureTrial parameters :=
       ⟨prior.length, trialBound⟩
+    have pairLabeled : ExactDagFinalWorkPairLabeled input trial key
+        workAnswer base := by
+      refine Or.inl ⟨prior, middle, later, workActor, absorbActor, ?_, rfl⟩
+      simpa [workRecord, absorbRecord, key] using workFirst
     let basePrefix := prior ++ workRecord :: middle ++ [absorbRecord]
     have pairExact : exactFixedRootRecords input.package.root =
         prior ++
@@ -1095,7 +1137,7 @@ theorem exact_compiler_accepted_dag_trial_installs_all_candidates
           dagRawPreferredSlot, beforeIndex, beforeInactive, inactiveDagMemory,
           key, nonce]
     refine ⟨digest, workAnswer, base, trial, workAccepted, baseExact,
-      workLabeled, ?_⟩
+      pairLabeled, workLabeled, ?_⟩
     intro counter beforeSelected
     obtain ⟨absorbPrior, candidateMiddle, candidateLater,
         firstAbsorbActor, candidateActor, absorbBeforeCandidate⟩ :=
@@ -1155,6 +1197,10 @@ theorem exact_compiler_accepted_dag_trial_installs_all_candidates
           simpa only [List.cons_append, List.append_assoc] using absorbFirst)
     let trial : ExactCompilerExposureTrial parameters :=
       ⟨prior.length, trialBound⟩
+    have pairLabeled : ExactDagFinalWorkPairLabeled input trial key
+        workAnswer base := by
+      refine Or.inr ⟨prior, middle, later, workActor, absorbActor, ?_, rfl⟩
+      simpa [workRecord, absorbRecord, key] using absorbFirst
     let basePrefix := prior ++ [absorbRecord]
     have absorbExact : exactFixedRootRecords input.package.root =
         prior ++
@@ -1255,7 +1301,7 @@ theorem exact_compiler_accepted_dag_trial_installs_all_candidates
         simp [dagCandidatePreferredSlot, inputExact, dagPreferredSlotForInput,
           dagRawPreferredSlot, beforeWorkTracked.1, noneFresh]
     refine ⟨digest, workAnswer, base, trial, workAccepted, baseExact,
-      workLabeled, ?_⟩
+      pairLabeled, workLabeled, ?_⟩
     intro counter beforeSelected
     obtain ⟨absorbPrior, candidateMiddle, candidateLater,
         firstAbsorbActor, candidateActor, absorbBeforeCandidate⟩ :=
@@ -1759,6 +1805,10 @@ theorem exact_compiler_accepted_dag_q16_operational_realization
         (trial : ExactCompilerExposureTrial parameters),
       FinalWork34Accepted workAnswer ∧
       base = (exactOperationalRawTrace input).q16BaseDigest ∧
+      ExactDagFinalWorkPairLabeled input trial
+        (literalFinalWorkKey digest
+          (exactOperationalTape input).messages.finalGrinding.selected)
+        workAnswer base ∧
       ExactDagFinalWorkLabeled input trial
         (literalFinalWorkKey digest
           (exactOperationalTape input).messages.finalGrinding.selected)
@@ -1775,7 +1825,7 @@ theorem exact_compiler_accepted_dag_q16_operational_realization
             (exactPlainRomCursor configuration sample.1).erase)
           sample.2).2.2 := by
   obtain ⟨digest, workAnswer, base, trial, workAccepted, baseExact,
-      workLabeled, installed⟩ :=
+      pairLabeled, workLabeled, installed⟩ :=
     exact_compiler_accepted_dag_trial_installs_all_candidates transitionRoom
       input
   have residualEnough :
@@ -1892,7 +1942,7 @@ theorem exact_compiler_accepted_dag_q16_operational_realization
     intro counter schedule _beforeSelected _outcomeExact
     exact (frontierExact schedule).symm
   refine ⟨digest, workAnswer, base, trial, workAccepted, baseExact,
-    workLabeledExact, workCoordinate, ?_⟩
+    pairLabeled, workLabeledExact, workCoordinate, ?_⟩
   exact exact_compiler_final_work_q16_operational_realization_of_used_lookups
     parameters
     (exactCompilerExposureTrialDagRouter parameters transitionFuel trial
@@ -1920,6 +1970,7 @@ theorem exact_compiler_accepted_dag_q16_operational_realization
 #print axioms exact_dag_work_then_absorb_tracks_base
 #print axioms producer_member_implies_tracks_some_base
 #print axioms ExactDagProducerInstalled
+#print axioms ExactDagFinalWorkPairLabeled
 #print axioms ExactDagFinalWorkLabeled
 #print axioms exact_dag_candidate_installed_after_tracked_prefix
 #print axioms exact_compiler_accepted_dag_trial_installs_all_candidates

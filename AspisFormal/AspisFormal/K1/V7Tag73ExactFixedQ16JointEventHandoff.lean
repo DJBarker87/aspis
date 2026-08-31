@@ -138,6 +138,10 @@ def ExactFixedK13ActualJointTrial
   ∃ (digest workAnswer base : Digest256),
     FinalWork34Accepted workAnswer ∧
     base = (exactOperationalRawTrace input).q16BaseDigest ∧
+    ExactDagFinalWorkPairLabeled input trial
+      (literalFinalWorkKey digest
+        (exactOperationalTape input).messages.finalGrinding.selected)
+      workAnswer base ∧
     ExactDagFinalWorkLabeled input trial
       (literalFinalWorkKey digest
         (exactOperationalTape input).messages.finalGrinding.selected)
@@ -189,8 +193,8 @@ theorem exact_fixed_k13_actual_joint_trial_root_actor_cases
               (indexedStateAfterRecords transitionFuel
                 (exactDagTrialController transitionFuel trial) prior
                 (exactDagCandidateInitialState input)) = some none)) := by
-  obtain ⟨digest, workAnswer, _base, workAccepted, _baseExact, workLabeled,
-      _workCoordinate, _realized⟩ := actual
+  obtain ⟨digest, workAnswer, _base, workAccepted, _baseExact, _pairLabeled,
+      workLabeled, _workCoordinate, _realized⟩ := actual
   obtain ⟨prior, later, actor, rootExact, preferred⟩ := workLabeled
   have member : (.machineFresh actor
       (literalFinalWorkKey digest
@@ -286,11 +290,11 @@ theorem exact_fixed_k13_query_failure_has_joint_trial_coordinate
     rw [badCertificate]
     exact exact_query_phase_failure_selected_all_in_bad sourceBinding failure
   obtain ⟨digest, workAnswer, base, trial, workAccepted, baseExact,
-      workLabeled, workCoordinate, realized⟩ :=
+      pairLabeled, workLabeled, workCoordinate, realized⟩ :=
     exact_compiler_accepted_dag_q16_operational_realization transitionRoom
       programmedCover input (frontierExact input)
   have actualTrial : ExactFixedK13ActualJointTrial input trial :=
-    ⟨digest, workAnswer, base, workAccepted, baseExact, workLabeled,
+    ⟨digest, workAnswer, base, workAccepted, baseExact, pairLabeled, workLabeled,
       workCoordinate, realized⟩
   refine ⟨input, bad, trial, rfl, badCard, actualTrial, ?_⟩
   have q16Success :=

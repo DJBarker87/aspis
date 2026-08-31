@@ -219,7 +219,7 @@ theorem exact_restored_root_query_failure_has_joint_trial_coordinate
     rw [← selectedScheduleExact]
     exact badFacts.2
   obtain ⟨_digest, _workAnswer, _base, trial, workAccepted, _baseExact,
-      _workLabeled, workCoordinate, realized⟩ :=
+      _pairLabeled, _workLabeled, workCoordinate, realized⟩ :=
     exact_compiler_accepted_dag_q16_operational_realization transitionRoom
       programmedCover input (frontierExact input)
   refine ⟨input, words, bad, trial, rfl, badFacts.1, ?_⟩
