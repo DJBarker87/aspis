@@ -1,0 +1,8 @@
+86d296114c2095086e35c1b897893a543650245d5f3289e8ac933b9e7e87ac7e  release/v7-registry-v2-mainnet-rc1/manifest.json
+805d728248e67cab4b28b1b839b473309a028d3bd3e9c51c535d39db0a71e63d  release/v7-registry-v2-mainnet-rc1/README.md
+426d3411c6af2de94569753ae58270f039ebbd65f1aafc677f02f7dc62d4fb13  release/v7-registry-v2-mainnet-rc1/runbook.md
+57c642a9298dc8f02561ac7cb57a3e919360d5dde00fe970200662a00cc952f3  release/v7-registry-v2-mainnet-rc1/statement-inventory.json
+994bf767ba5ab0fd24c1561d0453288c3da3fb24fa1ac2763ffb2d9f4f4df5cd  release/v7-registry-v2-mainnet-rc1/verify.sh
+b5161a0d75948e56bf6d41ee0e0fa54f04bca508a7edd2c280f4d0da1dabed4d  docs/research/v7-registry-v2-mainnet-readiness-20260901.md
+169fddd9e14438304b7e4d59b9cede6d2e4ce48f2aad4cf0fe7174da16a833a6  docs/research/v7-registry-v2-mainnet-readiness-20260901.html
+3e7b94ed7cbe63cbfeee816317c4b7f0c9bb25cb359d406d60387fd2a8b72915  results/v7-pair-forest-combined-rejection-litesvm-20260828/harness/src/bin/inventory_registry_v2_rc.rs

@@ -1,0 +1,142 @@
+{
+  "bundleSha256": "1d27eed3e3022172170c351e70f409ed8cdbd83e755c9147a1478c0932d5321d",
+  "cases": [
+    {
+      "candidateAfterstate": {
+        "bytes": 688,
+        "sha256": "d529ce1dfba60a3effc97797331c0be7af2bbeb65281238055e5bf63601c46d0"
+      },
+      "case": "transfer-same-page",
+      "proofAccount": {
+        "address": "5fQPsn8hoaVddFG26cWQ5QFdqxWtUPNaZ9zH2E6LYzFn",
+        "bytes": 31448,
+        "sha256": "b1ace686c0c20cde1265a48cc2305074924d06340221679906f44b0a11a43709"
+      },
+      "proofPayload": {
+        "bytes": 31408,
+        "sha256": "194756c69d1d1a8f46ad1ad3d66952242167241d8499f7938660e882876b7f4a"
+      },
+      "request": {
+        "bytes": 320,
+        "sha256": "73246bcf0a693f1e3b181b7974c34ce4bf74e6188d8927430a7d097245e03f47"
+      },
+      "result": {
+        "bytes": 792,
+        "sha256": "2f2e4aafce3891c542a8a18403b8c1d43b4c6fa27653a66f6f3d4318709248e4"
+      },
+      "statement": {
+        "bytes": 1880,
+        "sha256": "f6bcd49446f1077d2c5ed4be940e91f0be444efc5ae83024ec0700b8c205c331",
+        "transcriptDigestSha256": "caf7a43261079647e86ba3a433b940c7034bf8d62716540f7bab8b1d47b89bf9"
+      },
+      "tag73ProofBody": {
+        "bytes": 30720,
+        "sha256": "ce2aa9bcb2fa4eed70f0f1f09befd656e5146e2208bd590c07c348d7dff2cfe3"
+      }
+    },
+    {
+      "candidateAfterstate": {
+        "bytes": 688,
+        "sha256": "47a48ae1a100be5c7a285e64403280de9c1e245c1db23c37f9e6e497b89177b4"
+      },
+      "case": "transfer-rollover",
+      "proofAccount": {
+        "address": "5fQPsn8hoaVddFG26cWQ5QFdqxWtUPNaZ9zH2E6LYzFn",
+        "bytes": 31448,
+        "sha256": "8cfbf2f42b1a732cb3948648f0c926dd2b4b40a04fc19f4c45f4d3f5ee00e590"
+      },
+      "proofPayload": {
+        "bytes": 31408,
+        "sha256": "6e1c2b4517ca04c5d03738400764170281fb8bf1fee7d60943323af20277bcd7"
+      },
+      "request": {
+        "bytes": 320,
+        "sha256": "73246bcf0a693f1e3b181b7974c34ce4bf74e6188d8927430a7d097245e03f47"
+      },
+      "result": {
+        "bytes": 792,
+        "sha256": "091137e11015ae32c8b093e05b2ca9a793cccfa1d01b03832e51b2839961b73e"
+      },
+      "statement": {
+        "bytes": 1880,
+        "sha256": "e201be4a028d74258c5344e7395bfabf7568af4ee7df0ec0c7b695f02fbacb15",
+        "transcriptDigestSha256": "5b52576b4b05f810987501dfb1ddcfb13430efd6e9e1c8a9e0de724145f4bd05"
+      },
+      "tag73ProofBody": {
+        "bytes": 30720,
+        "sha256": "c14ba12e58d0f4799046214331beb729483e8590602c12e44c89f837d1ee0b4b"
+      }
+    },
+    {
+      "candidateAfterstate": {
+        "bytes": 688,
+        "sha256": "388f0815cb75b28f74707afb0f8e86a05f162bcf4ff2375af301268a462c0d71"
+      },
+      "case": "withdrawal-same-page",
+      "proofAccount": {
+        "address": "5fQPsn8hoaVddFG26cWQ5QFdqxWtUPNaZ9zH2E6LYzFn",
+        "bytes": 31552,
+        "sha256": "1b3a7533e78365cd89d1a6c08f6f63a4378fc602e55af27e382c8fdc13ec2880"
+      },
+      "proofPayload": {
+        "bytes": 31512,
+        "sha256": "baa4cdd67e837389a1d451beba56fd64a99741fd89742916ca3eebda33fc79a5"
+      },
+      "request": {
+        "bytes": 320,
+        "sha256": "2dbdca31c277338fc7c26d4c32270e39ce36132573d416fe3421907bb22b5f3f"
+      },
+      "result": {
+        "bytes": 792,
+        "sha256": "299685a1e3edc57e983bd25ab08a42b2ba8b43a899828a79f67cba9e5e7ecaf7"
+      },
+      "statement": {
+        "bytes": 1880,
+        "sha256": "43b4235fd9752c40ae4d18ae44c9324504513cee8c7b303d3ace9bbf514910a4",
+        "transcriptDigestSha256": "acd9365d0a74ceecc11894ce1408e9f7bdf699f114393e654008927bbe525327"
+      },
+      "tag73ProofBody": {
+        "bytes": 30824,
+        "sha256": "85cef2964031f2f9456be88f8ca10bcc19a90b29e61719fcc9d353fd7e6fa285"
+      }
+    },
+    {
+      "candidateAfterstate": {
+        "bytes": 688,
+        "sha256": "3eb02e1581acf0652f02605b4ced5ee3a16c631474d2fe37b2355bc926e8c2f2"
+      },
+      "case": "withdrawal-rollover",
+      "proofAccount": {
+        "address": "5fQPsn8hoaVddFG26cWQ5QFdqxWtUPNaZ9zH2E6LYzFn",
+        "bytes": 31500,
+        "sha256": "8f2efa83398536b369b8f80990b7b7cec74fb052be0c2d46d6c97f98293616df"
+      },
+      "proofPayload": {
+        "bytes": 31460,
+        "sha256": "5f3030e9b73beed8d73621f35599f278ccda87c50cbdf5ced13d3614296a73e9"
+      },
+      "request": {
+        "bytes": 320,
+        "sha256": "2dbdca31c277338fc7c26d4c32270e39ce36132573d416fe3421907bb22b5f3f"
+      },
+      "result": {
+        "bytes": 792,
+        "sha256": "bc8dd50e47737b65cb8e91509ec60f4371ce0d26921cd1ae79468e8121f670f9"
+      },
+      "statement": {
+        "bytes": 1880,
+        "sha256": "7c2c27e135fa537776fad1457047f6c86ec351d64a8f0c6053674d2c2631200a",
+        "transcriptDigestSha256": "9ecd1e21822532f5b601ab4622956ce3c4787378fa6c9f427ad5fadd5774a8d3"
+      },
+      "tag73ProofBody": {
+        "bytes": 30772,
+        "sha256": "4a1d72848124fcb139fcc134508fc43537000ec804d0cc0122b4bde4f87edc62"
+      }
+    }
+  ],
+  "executed": false,
+  "readOnly": true,
+  "schema": "aspis.v7.registry-v2-rc-transient-statement-inventory.v1",
+  "signed": false,
+  "submitted": false
+}
