@@ -1,4 +1,5 @@
 import AspisFormal.K1.V7Tag73ExactFixedQ16JointEventHandoff
+import AspisFormal.K1.V7Tag73ExactCompilerQ16ForestReplayClosure
 
 /-!
 # Literal same-tape response family for fixed Tag-73 final-work/q16 trials
@@ -31,8 +32,17 @@ open AspisK1.V7Tag73ExactCompilerResources
 open AspisK1.V7Tag73ExactDagCandidateLabeledRootRouting
 open AspisK1.V7Tag73ExactFixedK12MerkleClassifier
 open AspisK1.V7Tag73ExactFixedQ16JointEventHandoff
+open AspisK1.V7Tag73ExactCompilerQ16ForestReplayClosure
 open AspisK1.V7Tag73ExactPlainRomRun
 open AspisK1.V7Tag73ExactSourceAcceptanceModel
+open AspisK1.V7Tag73ExactCompilerQ16CoordinateStep
+open AspisK1.V7Tag73ExactCompilerQ16DuplexForest
+open AspisK1.V7Tag73ExactCompilerQ16InitialDigestMap
+open AspisK1.V7Tag73OperationalSemanticReplay
+open AspisK1.V7Tag73SchedulerNativeQ16ForestReplay
+open AspisK1.V7Tag73SchedulerNativeQ16SourcePlan
+open AspisK1.V7Tag73Q16SemanticFrontierBridge
+open AspisK1.V7Tag73Q16SuccessfulForestBridge
 open AspisK1.V7Tag73Q16DigestDrawReindex
 open AspisK1.V7Tag73TranscriptSchedule
 
@@ -275,6 +285,51 @@ theorem exact_fixed_k13_counterfactual_root_of_actual_coordinates
   unfold exactFixedK13CounterfactualRoot?
   rw [exact_fixed_k13_counterfactual_sample_of_actual_coordinates input trial]
 
+/-- At its original coordinates, the literal response family inherits the
+complete cache-aware q16 replay of the deployed execution.  This joins the
+same-hidden-tape response construction to the existing source-aligned q16
+forest closure without asserting anything about counterfactual responses.
+
+In particular, this theorem does not turn an adversary-first cache hit into a
+fresh verifier draw: `exact_compiler_actual_q16_forest_closure` is the
+cache-aware source replay, and the final equality only rewrites the original
+member of the response family back to the actual scheduler run. -/
+theorem exact_fixed_k13_counterfactual_actual_q16_closure
+    {HiddenTape TapeIdentity Observation Statement Payload Witness : Type}
+    {parameters : ExactCompilerResourceParameters}
+    {transitionFuel : Nat}
+    {configuration : ExactPlainRomWitnessConfiguration HiddenTape TapeIdentity
+      Observation Statement Tag73K12ParsedProof Payload Witness parameters}
+    {projection : AcceptedTapeProjection Statement Tag73K12ParsedProof Payload}
+    {fixedInstance : PublicInstance Statement}
+    {sample : ExactCompilerSample HiddenTape parameters}
+    (transitionRoom : 2 ≤ transitionFuel)
+    (input : ExactK12OperationalInput transitionFuel configuration projection
+      fixedInstance sample)
+    (trial : ExactCompilerExposureTrial parameters)
+    (frontierExact : ∀ schedule,
+      (exactOperationalTape input).frontierNodes schedule =
+        semanticFrontierNodes schedule.positions) :
+    ∃ final,
+      runSchedulerNativeQ16BranchList transitionFuel
+          (exactOperationalQ16DuplexForest input)
+          (schedulerNativeQ16BranchesOfSearch
+            (exactOperationalQ16InitialDigest input)
+            (exactOperationalTape input).search)
+          (exactCompilerInitialQ16Cursor input) = .ok final ∧
+      (finishSchedulerNativeQ16Forest transitionFuel final).run =
+        exactFixedK13CounterfactualRun transitionFuel configuration trial sample.1
+          (exactFixedK13TrialCoordinates transitionFuel configuration trial
+            sample).1
+          (exactFixedK13TrialCoordinates transitionFuel configuration trial
+            sample).2 ∧
+      q16DigestForestSucceeds (exactOperationalQ16DuplexForest input).1 := by
+  obtain ⟨final, replayed, actualRun, forestSucceeds⟩ :=
+    exact_compiler_actual_q16_forest_closure transitionRoom input frontierExact
+  refine ⟨final, replayed, ?_, forestSucceeds⟩
+  rw [exact_fixed_k13_counterfactual_run_of_actual_coordinates input trial]
+  exact actualRun
+
 #print axioms exactFixedK13ResponseCoordinateEquiv
 #print axioms exactFixedK13CounterfactualSample
 #print axioms exactFixedK13CounterfactualRun
@@ -287,6 +342,7 @@ theorem exact_fixed_k13_counterfactual_root_of_actual_coordinates
 #print axioms exact_fixed_k13_counterfactual_run_of_actual_coordinates
 #print axioms exact_fixed_k13_counterfactual_root_run_of_actual_coordinates
 #print axioms exact_fixed_k13_counterfactual_root_of_actual_coordinates
+#print axioms exact_fixed_k13_counterfactual_actual_q16_closure
 
 end
 

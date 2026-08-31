@@ -110,6 +110,15 @@ does not claim that an arbitrary counterfactual sample returns a parsed proof,
 realizes its supplied q16 forest operationally, or preserves a pre-q16
 profile.  Those are precisely the next cache-aware/source-causality theorems.
 
+The actual member is now joined to the literal source q16 replay as well.
+`exact_fixed_k13_counterfactual_actual_q16_closure` shows that, at the
+original sample's own coordinates, the response family executes the complete
+cache-aware 64-by-8 q16 forest, reconstructs the same production scheduler
+run, and obtains the existing successful-forest certificate.  This is only a
+base-case bridge: it says nothing about an arbitrary changed coordinate tuple
+or about preservation of the four-field pre-q16 profile.  In particular it
+does not relabel an adversary-first cache hit as a verifier-fresh query.
+
 ## Implemented derived-q16 seam
 
 `V7Tag73DerivedK13Q16Handoff.lean` now makes the narrower target explicit.
