@@ -1,0 +1,10 @@
+{
+  "schema": "aspis.v7.registry-v2-dual-sbf-failed-attempt.v1",
+  "unit": "aspis-v7-one-tx-dual-sbf-20260830-r1",
+  "exitStatus": 1,
+  "memoryPeakApproxBytes": 1572864,
+  "buildStarted": false,
+  "cause": "The input verifier used macOS-only stat syntax on Linux and failed before either isolated SBF build.",
+  "replacement": "aspis-v7-registry-v2-dual-sbf-ea98c0b-r2",
+  "preservedZeroBytePartialOutput": "input-audit.json"
+}

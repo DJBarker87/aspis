@@ -1,0 +1,30 @@
+{
+  "schema": "aspis.v7.task-owned-cargo-cache-extension.v1",
+  "reason": "The capped Agave r1 and r2 runs failed before transaction construction because the task-owned offline Cargo cache was incomplete. The cache was extended only from a pre-existing local Cargo cache, then the wallet built offline and locked in r3.",
+  "source": "existing local Cargo cache; no network access and no shared cache mutation",
+  "destination": "/home/dombarker/project-offloads/aspis-v7-registry-v2-release-audit-a7c91a2-20260831/toolchain/cargo-home",
+  "cargoLock": "crates/aspis-pool-wallet-v1/Cargo.lock",
+  "initialMissingPackage": {
+    "name": "hpke",
+    "version": "0.14.0",
+    "lockChecksum": "dd5130e119706b4d8c2180da6126f7e60b6c38c2d340d539219f57051f0a7af7",
+    "crateSha256": "dd5130e119706b4d8c2180da6126f7e60b6c38c2d340d539219f57051f0a7af7",
+    "sparseIndexEntrySha256": "9c8eeb212df3e080361fef28a9f8739517ccea113b3f29d95ebe4977ef04c2e8"
+  },
+  "completeExtension": {
+    "crateArchivesCopied": 54,
+    "sparseIndexEntriesCopied": 56,
+    "totalFilesCopied": 110,
+    "inventory": "results/v7-registry-v2-release-audit-20260831/cache-extension-files.sha256",
+    "buildHostInventory": "/home/dombarker/project-offloads/aspis-v7-registry-v2-release-audit-a7c91a2-20260831/toolchain/cache-extension-files.sha256",
+    "inventorySha256": "fb65d0d527bbe4d0e79b2de1db219960db362b736d09b8848a84a64043c5ea78",
+    "targetSpecificArchivesNotCopied": [
+      "solana-define-syscall-5.2.0.crate",
+      "wasm-bindgen-futures-0.4.77.crate"
+    ],
+    "targetSpecificArchivesRequiredByLinuxWalletBuild": false
+  },
+  "offlineLockedWalletBuildCompleted": true,
+  "networkUsed": false,
+  "sharedCacheChanged": false
+}

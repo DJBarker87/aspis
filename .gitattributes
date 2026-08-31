@@ -5,5 +5,9 @@
 /release/**/*.so -text
 /release/**/*.pdf -text
 
+# Captured compiler stderr is retained byte-for-byte, including terminal blank
+# lines emitted by Cargo/rustc.
+/results/v7-registry-v2-release-audit-20260831/agave-runs/**/*.stderr whitespace=-blank-at-eof
+
 # Unified diffs require a single-space marker on blank context lines.
 /aeneas-verif/**/*.patch whitespace=-blank-at-eol

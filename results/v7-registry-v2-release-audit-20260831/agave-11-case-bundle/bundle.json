@@ -1,0 +1,1205 @@
+{
+  "allNegativeCasesRequireRollback": true,
+  "cases": [
+    {
+      "expectedFailureStage": null,
+      "expectedLogContains": [
+        "Program 7Q2nGsPg8rbjdxKHK4jxTgEWLTyd9o1X4KMSjCieRmue success",
+        "Program 5PjDJaGfSPJj4tFzMRCiuuAasKg5n8dJKXKenhuwZexx success"
+      ],
+      "expectedOutcome": "success",
+      "expectedSimulationAccountsFile": "cases/transfer-same-page/expected-simulation-accounts.json",
+      "expectedSimulationAccountsFileSha256": "e6a2337da207658c5234c00e5af0d58a054a112b6ea21d07beaa20d072a4107d",
+      "expectedSimulationAccountsSha256": "bed3ddb3d417dac23ed9ad22a7935dd7332ecb3dc9c73b2671f3cc3b21c021ee",
+      "genesisAccounts": [
+        {
+          "address": "3B3QhxztFR6kSo3m3kpTaU9JsQyJH6ScoT94gwnFXQYj",
+          "file": "accounts/3c0e86992a1fccfb300931a65027075fe51f255d98e51b3516d0d3891a280289.json",
+          "fileSha256": "3c0e86992a1fccfb300931a65027075fe51f255d98e51b3516d0d3891a280289",
+          "loadAtGenesis": true
+        },
+        {
+          "address": "3Hrd4YKTTF2eaoWjdwzBwagmH9SeuenwiVyQajm72C8N",
+          "file": "accounts/6e77f8697cf9722594966728db24991a4ccadea0cddb6fa549d6740c3be2b9e6.json",
+          "fileSha256": "6e77f8697cf9722594966728db24991a4ccadea0cddb6fa549d6740c3be2b9e6",
+          "loadAtGenesis": true
+        },
+        {
+          "address": "5fQPsn8hoaVddFG26cWQ5QFdqxWtUPNaZ9zH2E6LYzFn",
+          "file": "accounts/39580e98c6c3ebfc30c31acf6eecb6a266071125691277472aa4e406d54e6356.json",
+          "fileSha256": "39580e98c6c3ebfc30c31acf6eecb6a266071125691277472aa4e406d54e6356",
+          "loadAtGenesis": true
+        },
+        {
+          "address": "7YvvqJNdXZt3aNMkCebG4To2f1VJe1TbxHBtY41D4Jy2",
+          "file": "accounts/48c6a6825e7ed7ed47424569eac0a7fe346242fefbeb2e66e1c4e9ad284a2342.json",
+          "fileSha256": "48c6a6825e7ed7ed47424569eac0a7fe346242fefbeb2e66e1c4e9ad284a2342",
+          "loadAtGenesis": false
+        },
+        {
+          "address": "9zQXTg6QqijGAG3kyWf94CQA3KdFq3VoYBLAUrhge1WB",
+          "file": "accounts/bc0e84848edbbb9ea9b81f4cfe7931917fb031637cb334d23f4783fd7f5dfa8b.json",
+          "fileSha256": "bc0e84848edbbb9ea9b81f4cfe7931917fb031637cb334d23f4783fd7f5dfa8b",
+          "loadAtGenesis": true
+        },
+        {
+          "address": "AKnL4NNf3DGWZJS6cPknBuEGnVsV4A4m5tgebLHaRSZ9",
+          "file": "accounts/64e48bddc65ac6aa562251061c548e9cde21c923fa364eba366494a8ffae3ffd.json",
+          "fileSha256": "64e48bddc65ac6aa562251061c548e9cde21c923fa364eba366494a8ffae3ffd",
+          "loadAtGenesis": true
+        },
+        {
+          "address": "DEozmkY3H2YccnEAqHyENJp2Hs1HAFjBq6xqdJDFeZk9",
+          "file": "accounts/b2b311e5a3c8709fe26d2e8ac5bac853ee2e0ccc20d240794057253d5775480b.json",
+          "fileSha256": "b2b311e5a3c8709fe26d2e8ac5bac853ee2e0ccc20d240794057253d5775480b",
+          "loadAtGenesis": true
+        },
+        {
+          "address": "EDfQpAnRQVqFmGZuY2ocZoX7gBp5H1N3MWWMLmuWTmD6",
+          "file": "accounts/831a43ef135ffd21c7db675a0bbf311d0b7cfb80ea946aae6f1efa3b2ce50055.json",
+          "fileSha256": "831a43ef135ffd21c7db675a0bbf311d0b7cfb80ea946aae6f1efa3b2ce50055",
+          "loadAtGenesis": true
+        },
+        {
+          "address": "JBz8KKzyZ6FzTU7WmLywurr49xJPpQcA9ECNg2SZX6iH",
+          "file": "accounts/c5b296542ee51d2fbc4753962b80d8454b20c93136456e36c61a157695230be2.json",
+          "fileSha256": "c5b296542ee51d2fbc4753962b80d8454b20c93136456e36c61a157695230be2",
+          "loadAtGenesis": true
+        }
+      ],
+      "genesisAccountsSha256": "7e16be1fb17166278376c3f5ddaf554cc80d3d30437bb15ea81cd9c4a9df8707",
+      "input": "cases/transfer-same-page/input.json",
+      "inputSha256": "93e37afb8228b253391f7645e48262a3cfae9266d90678782d6e6c6d7a865320",
+      "markerStart": {
+        "dataBytes": 0,
+        "kind": "zero-lamport-system-owned",
+        "lamports": 0,
+        "owner": "11111111111111111111111111111111"
+      },
+      "name": "transfer-same-page",
+      "postStateAccountsSha256": "c536d1e080727affad06ae64efd505ead5fb87cab74b9803ae9922b9393bcb47",
+      "programOverrides": [],
+      "registryV2Fixtures": {
+        "entryBytes": 320,
+        "entrySha256": "e82965fc06929e94d9318b355d8c387d8d87cd34c459c612fe1923ae133fd81e",
+        "entrySource": "results/v7-pair-forest-registry-v2-litesvm-20260830/production-transfer-same-success.ase2.bin",
+        "registryBytes": 256,
+        "registryExecutableSha256": "0f14c7b74ec6cbe3b3f637b0f24c7e8cdc46fd09f5b2e495fd51ada16ad8f11b",
+        "registryProgramdata": "jXrkJpunSfyA8WsBgKPdErECQnLWmex1PTicKUrTNdi",
+        "registrySha256": "cb0aa4373e923eace3187333a5485728240a36c2ff8ecdf7c33779e8226d604c",
+        "registrySource": "results/v7-pair-forest-registry-v2-litesvm-20260830/production-transfer-same-success.asr2.bin",
+        "selectedVerifierExecutableSha256": "97df12937d46e25a2eeefeac16ce31925fd473c672d6b656548be9220adbcc6d",
+        "verifierProgramdata": "cdRqe7MGCEJ2Z6iZfWuXtuymRiAhXtyfDgT47sKZr69"
+      },
+      "rollbackRequired": false,
+      "selectedVerifier": {
+        "file": "sbf/aspis_verifier.so",
+        "fileBytes": 1819480,
+        "fileSha256": "97df12937d46e25a2eeefeac16ce31925fd473c672d6b656548be9220adbcc6d",
+        "loader": "upgradeable-none"
+      }
+    },
+    {
+      "expectedFailureStage": null,
+      "expectedLogContains": [
+        "Program 7Q2nGsPg8rbjdxKHK4jxTgEWLTyd9o1X4KMSjCieRmue success",
+        "Program 5PjDJaGfSPJj4tFzMRCiuuAasKg5n8dJKXKenhuwZexx success"
+      ],
+      "expectedOutcome": "success",
+      "expectedSimulationAccountsFile": "cases/transfer-rollover/expected-simulation-accounts.json",
+      "expectedSimulationAccountsFileSha256": "7ea69a38d0d0683832a3ada9546e10b8c9c19bae5d09492c57bb13e93fa6d10a",
+      "expectedSimulationAccountsSha256": "e0656c663053ccb5861e7a1901f642b5e7a54e6d85633e468674f5180dc97478",
+      "genesisAccounts": [
+        {
+          "address": "3B3QhxztFR6kSo3m3kpTaU9JsQyJH6ScoT94gwnFXQYj",
+          "file": "accounts/aab5f185b7d2d2860295a92ceb6c920afec29616ecee5e74e3682470240266f2.json",
+          "fileSha256": "aab5f185b7d2d2860295a92ceb6c920afec29616ecee5e74e3682470240266f2",
+          "loadAtGenesis": true
+        },
+        {
+          "address": "3Hrd4YKTTF2eaoWjdwzBwagmH9SeuenwiVyQajm72C8N",
+          "file": "accounts/6e77f8697cf9722594966728db24991a4ccadea0cddb6fa549d6740c3be2b9e6.json",
+          "fileSha256": "6e77f8697cf9722594966728db24991a4ccadea0cddb6fa549d6740c3be2b9e6",
+          "loadAtGenesis": true
+        },
+        {
+          "address": "5fQPsn8hoaVddFG26cWQ5QFdqxWtUPNaZ9zH2E6LYzFn",
+          "file": "accounts/f7a172123b613393f6d424a29dd7edbf493f86545abf30e3e88887b52163da55.json",
+          "fileSha256": "f7a172123b613393f6d424a29dd7edbf493f86545abf30e3e88887b52163da55",
+          "loadAtGenesis": true
+        },
+        {
+          "address": "7YvvqJNdXZt3aNMkCebG4To2f1VJe1TbxHBtY41D4Jy2",
+          "file": "accounts/48c6a6825e7ed7ed47424569eac0a7fe346242fefbeb2e66e1c4e9ad284a2342.json",
+          "fileSha256": "48c6a6825e7ed7ed47424569eac0a7fe346242fefbeb2e66e1c4e9ad284a2342",
+          "loadAtGenesis": false
+        },
+        {
+          "address": "9zQXTg6QqijGAG3kyWf94CQA3KdFq3VoYBLAUrhge1WB",
+          "file": "accounts/bc0e84848edbbb9ea9b81f4cfe7931917fb031637cb334d23f4783fd7f5dfa8b.json",
+          "fileSha256": "bc0e84848edbbb9ea9b81f4cfe7931917fb031637cb334d23f4783fd7f5dfa8b",
+          "loadAtGenesis": true
+        },
+        {
+          "address": "AKnL4NNf3DGWZJS6cPknBuEGnVsV4A4m5tgebLHaRSZ9",
+          "file": "accounts/64e48bddc65ac6aa562251061c548e9cde21c923fa364eba366494a8ffae3ffd.json",
+          "fileSha256": "64e48bddc65ac6aa562251061c548e9cde21c923fa364eba366494a8ffae3ffd",
+          "loadAtGenesis": true
+        },
+        {
+          "address": "DEozmkY3H2YccnEAqHyENJp2Hs1HAFjBq6xqdJDFeZk9",
+          "file": "accounts/a15d1f7389d742e2a1858c82bb4457f93dedb870838ebc2ec16b878d898b2fb9.json",
+          "fileSha256": "a15d1f7389d742e2a1858c82bb4457f93dedb870838ebc2ec16b878d898b2fb9",
+          "loadAtGenesis": true
+        },
+        {
+          "address": "EDfQpAnRQVqFmGZuY2ocZoX7gBp5H1N3MWWMLmuWTmD6",
+          "file": "accounts/831a43ef135ffd21c7db675a0bbf311d0b7cfb80ea946aae6f1efa3b2ce50055.json",
+          "fileSha256": "831a43ef135ffd21c7db675a0bbf311d0b7cfb80ea946aae6f1efa3b2ce50055",
+          "loadAtGenesis": true
+        },
+        {
+          "address": "GCtLhcW4k4mYZRnGecvcx1CEWyiYQzs4UjuDUEaBirqY",
+          "file": "accounts/26aed3a7e0ad42520950214e60512a425015f2a6e3314621afa04b8c850cc4e2.json",
+          "fileSha256": "26aed3a7e0ad42520950214e60512a425015f2a6e3314621afa04b8c850cc4e2",
+          "loadAtGenesis": true
+        },
+        {
+          "address": "JBz8KKzyZ6FzTU7WmLywurr49xJPpQcA9ECNg2SZX6iH",
+          "file": "accounts/c5b296542ee51d2fbc4753962b80d8454b20c93136456e36c61a157695230be2.json",
+          "fileSha256": "c5b296542ee51d2fbc4753962b80d8454b20c93136456e36c61a157695230be2",
+          "loadAtGenesis": true
+        }
+      ],
+      "genesisAccountsSha256": "ecd4c9c5eb15ac76819a56bb3f15d21e3b6b5a9ac2d40a2453a056e9bca4628c",
+      "input": "cases/transfer-rollover/input.json",
+      "inputSha256": "3f58aba876f8bcea892c981faca64c190e15254dcc6e3747376cd76b500cc4e8",
+      "markerStart": {
+        "dataBytes": 0,
+        "kind": "zero-lamport-system-owned",
+        "lamports": 0,
+        "owner": "11111111111111111111111111111111"
+      },
+      "name": "transfer-rollover",
+      "postStateAccountsSha256": "f6faa84143bbc88379e0cc9bec58e618241db59ade10d1622132228340ed0244",
+      "programOverrides": [],
+      "registryV2Fixtures": {
+        "entryBytes": 320,
+        "entrySha256": "e82965fc06929e94d9318b355d8c387d8d87cd34c459c612fe1923ae133fd81e",
+        "entrySource": "results/v7-pair-forest-registry-v2-litesvm-20260830/production-transfer-rollover-success.ase2.bin",
+        "registryBytes": 256,
+        "registryExecutableSha256": "0f14c7b74ec6cbe3b3f637b0f24c7e8cdc46fd09f5b2e495fd51ada16ad8f11b",
+        "registryProgramdata": "jXrkJpunSfyA8WsBgKPdErECQnLWmex1PTicKUrTNdi",
+        "registrySha256": "cb0aa4373e923eace3187333a5485728240a36c2ff8ecdf7c33779e8226d604c",
+        "registrySource": "results/v7-pair-forest-registry-v2-litesvm-20260830/production-transfer-rollover-success.asr2.bin",
+        "selectedVerifierExecutableSha256": "97df12937d46e25a2eeefeac16ce31925fd473c672d6b656548be9220adbcc6d",
+        "verifierProgramdata": "cdRqe7MGCEJ2Z6iZfWuXtuymRiAhXtyfDgT47sKZr69"
+      },
+      "rollbackRequired": false,
+      "selectedVerifier": {
+        "file": "sbf/aspis_verifier.so",
+        "fileBytes": 1819480,
+        "fileSha256": "97df12937d46e25a2eeefeac16ce31925fd473c672d6b656548be9220adbcc6d",
+        "loader": "upgradeable-none"
+      }
+    },
+    {
+      "expectedFailureStage": null,
+      "expectedLogContains": [
+        "Program 7Q2nGsPg8rbjdxKHK4jxTgEWLTyd9o1X4KMSjCieRmue success",
+        "Program 5PjDJaGfSPJj4tFzMRCiuuAasKg5n8dJKXKenhuwZexx success",
+        "Program TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA success"
+      ],
+      "expectedOutcome": "success",
+      "expectedSimulationAccountsFile": "cases/withdrawal-same-page/expected-simulation-accounts.json",
+      "expectedSimulationAccountsFileSha256": "5193ba69e2dbbf1843e95fefa6c873f0f6e7f3f730068a90c6bbcc4a55ec32c8",
+      "expectedSimulationAccountsSha256": "41bb92249e9a9dc8570437ebdbe9083cedf4c14a714a8b88cb2cc157abccce19",
+      "genesisAccounts": [
+        {
+          "address": "3B3QhxztFR6kSo3m3kpTaU9JsQyJH6ScoT94gwnFXQYj",
+          "file": "accounts/3c0e86992a1fccfb300931a65027075fe51f255d98e51b3516d0d3891a280289.json",
+          "fileSha256": "3c0e86992a1fccfb300931a65027075fe51f255d98e51b3516d0d3891a280289",
+          "loadAtGenesis": true
+        },
+        {
+          "address": "3Hrd4YKTTF2eaoWjdwzBwagmH9SeuenwiVyQajm72C8N",
+          "file": "accounts/6e77f8697cf9722594966728db24991a4ccadea0cddb6fa549d6740c3be2b9e6.json",
+          "fileSha256": "6e77f8697cf9722594966728db24991a4ccadea0cddb6fa549d6740c3be2b9e6",
+          "loadAtGenesis": true
+        },
+        {
+          "address": "5TeWSsjg2gbxCyWVniXeCmwM7UtHTCK7svzJr5xYJzHf",
+          "file": "accounts/57f823adf734156674eed223c84543db02c67447e8293c47c1728029d907f111.json",
+          "fileSha256": "57f823adf734156674eed223c84543db02c67447e8293c47c1728029d907f111",
+          "loadAtGenesis": true
+        },
+        {
+          "address": "5fQPsn8hoaVddFG26cWQ5QFdqxWtUPNaZ9zH2E6LYzFn",
+          "file": "accounts/8adebf56b65c38cdc0bfebd21f631274defe836cf1d87cac2f601d734f4da2d0.json",
+          "fileSha256": "8adebf56b65c38cdc0bfebd21f631274defe836cf1d87cac2f601d734f4da2d0",
+          "loadAtGenesis": true
+        },
+        {
+          "address": "5w5aSyzkAmgYBcG3qop5EuLgpbMhAe7rnneuFkGjYKYc",
+          "file": "accounts/3e6aed40fba07736796eac6bbb61673e49187ec28f7970292824725d90ba9cfb.json",
+          "fileSha256": "3e6aed40fba07736796eac6bbb61673e49187ec28f7970292824725d90ba9cfb",
+          "loadAtGenesis": true
+        },
+        {
+          "address": "6CquEHN9aS4cvEjUnZPhr1azMBmbiF5pMfdjVu8RQx6p",
+          "file": "accounts/c2dcda69acdec81550a375e89cdabb076f708f077928a3bbddb0d582e07f4612.json",
+          "fileSha256": "c2dcda69acdec81550a375e89cdabb076f708f077928a3bbddb0d582e07f4612",
+          "loadAtGenesis": true
+        },
+        {
+          "address": "7YvvqJNdXZt3aNMkCebG4To2f1VJe1TbxHBtY41D4Jy2",
+          "file": "accounts/48c6a6825e7ed7ed47424569eac0a7fe346242fefbeb2e66e1c4e9ad284a2342.json",
+          "fileSha256": "48c6a6825e7ed7ed47424569eac0a7fe346242fefbeb2e66e1c4e9ad284a2342",
+          "loadAtGenesis": false
+        },
+        {
+          "address": "9D428z6FiWBzKX9i72tc26RGybMbGV9FLUa8EAAvf7kX",
+          "file": "accounts/efbc0405570f252cdfea7c24650cb5f6d276af083e2b0ff7e25720bee100ada8.json",
+          "fileSha256": "efbc0405570f252cdfea7c24650cb5f6d276af083e2b0ff7e25720bee100ada8",
+          "loadAtGenesis": true
+        },
+        {
+          "address": "9zQXTg6QqijGAG3kyWf94CQA3KdFq3VoYBLAUrhge1WB",
+          "file": "accounts/bc0e84848edbbb9ea9b81f4cfe7931917fb031637cb334d23f4783fd7f5dfa8b.json",
+          "fileSha256": "bc0e84848edbbb9ea9b81f4cfe7931917fb031637cb334d23f4783fd7f5dfa8b",
+          "loadAtGenesis": true
+        },
+        {
+          "address": "AKnL4NNf3DGWZJS6cPknBuEGnVsV4A4m5tgebLHaRSZ9",
+          "file": "accounts/64e48bddc65ac6aa562251061c548e9cde21c923fa364eba366494a8ffae3ffd.json",
+          "fileSha256": "64e48bddc65ac6aa562251061c548e9cde21c923fa364eba366494a8ffae3ffd",
+          "loadAtGenesis": true
+        },
+        {
+          "address": "DEozmkY3H2YccnEAqHyENJp2Hs1HAFjBq6xqdJDFeZk9",
+          "file": "accounts/b2b311e5a3c8709fe26d2e8ac5bac853ee2e0ccc20d240794057253d5775480b.json",
+          "fileSha256": "b2b311e5a3c8709fe26d2e8ac5bac853ee2e0ccc20d240794057253d5775480b",
+          "loadAtGenesis": true
+        },
+        {
+          "address": "EDfQpAnRQVqFmGZuY2ocZoX7gBp5H1N3MWWMLmuWTmD6",
+          "file": "accounts/831a43ef135ffd21c7db675a0bbf311d0b7cfb80ea946aae6f1efa3b2ce50055.json",
+          "fileSha256": "831a43ef135ffd21c7db675a0bbf311d0b7cfb80ea946aae6f1efa3b2ce50055",
+          "loadAtGenesis": true
+        },
+        {
+          "address": "JBz8KKzyZ6FzTU7WmLywurr49xJPpQcA9ECNg2SZX6iH",
+          "file": "accounts/c5b296542ee51d2fbc4753962b80d8454b20c93136456e36c61a157695230be2.json",
+          "fileSha256": "c5b296542ee51d2fbc4753962b80d8454b20c93136456e36c61a157695230be2",
+          "loadAtGenesis": true
+        }
+      ],
+      "genesisAccountsSha256": "b764fa241bf2b7e73b841b1287bd2bbc215a7443ad2a5aecfdfd1be61c74a478",
+      "input": "cases/withdrawal-same-page/input.json",
+      "inputSha256": "962734f87b82e2e71484c12fa55a57baa7c84ee12d40bd7294aba9fa32cf2995",
+      "markerStart": {
+        "dataBytes": 0,
+        "kind": "zero-lamport-system-owned",
+        "lamports": 0,
+        "owner": "11111111111111111111111111111111"
+      },
+      "name": "withdrawal-same-page",
+      "postStateAccountsSha256": "9934be40a79f777decad47a041fb88511016c71f3a7edc2360c36d51c3e1b62d",
+      "programOverrides": [],
+      "registryV2Fixtures": {
+        "entryBytes": 320,
+        "entrySha256": "e82965fc06929e94d9318b355d8c387d8d87cd34c459c612fe1923ae133fd81e",
+        "entrySource": "results/v7-pair-forest-registry-v2-litesvm-20260830/production-withdrawal-same-success.ase2.bin",
+        "registryBytes": 256,
+        "registryExecutableSha256": "0f14c7b74ec6cbe3b3f637b0f24c7e8cdc46fd09f5b2e495fd51ada16ad8f11b",
+        "registryProgramdata": "jXrkJpunSfyA8WsBgKPdErECQnLWmex1PTicKUrTNdi",
+        "registrySha256": "cb0aa4373e923eace3187333a5485728240a36c2ff8ecdf7c33779e8226d604c",
+        "registrySource": "results/v7-pair-forest-registry-v2-litesvm-20260830/production-withdrawal-same-success.asr2.bin",
+        "selectedVerifierExecutableSha256": "97df12937d46e25a2eeefeac16ce31925fd473c672d6b656548be9220adbcc6d",
+        "verifierProgramdata": "cdRqe7MGCEJ2Z6iZfWuXtuymRiAhXtyfDgT47sKZr69"
+      },
+      "rollbackRequired": false,
+      "selectedVerifier": {
+        "file": "sbf/aspis_verifier.so",
+        "fileBytes": 1819480,
+        "fileSha256": "97df12937d46e25a2eeefeac16ce31925fd473c672d6b656548be9220adbcc6d",
+        "loader": "upgradeable-none"
+      }
+    },
+    {
+      "expectedFailureStage": null,
+      "expectedLogContains": [
+        "Program 7Q2nGsPg8rbjdxKHK4jxTgEWLTyd9o1X4KMSjCieRmue success",
+        "Program 5PjDJaGfSPJj4tFzMRCiuuAasKg5n8dJKXKenhuwZexx success",
+        "Program TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA success"
+      ],
+      "expectedOutcome": "success",
+      "expectedSimulationAccountsFile": "cases/withdrawal-rollover/expected-simulation-accounts.json",
+      "expectedSimulationAccountsFileSha256": "5558f0e3bad92a991fb32f17d8f4742beb991a67f674b4e0260a228b4a78af9f",
+      "expectedSimulationAccountsSha256": "00ac4c4f8b1d47fad79e4944e7f1d570f566892bbfc0abe9d5af8770dd62c2df",
+      "genesisAccounts": [
+        {
+          "address": "3B3QhxztFR6kSo3m3kpTaU9JsQyJH6ScoT94gwnFXQYj",
+          "file": "accounts/aab5f185b7d2d2860295a92ceb6c920afec29616ecee5e74e3682470240266f2.json",
+          "fileSha256": "aab5f185b7d2d2860295a92ceb6c920afec29616ecee5e74e3682470240266f2",
+          "loadAtGenesis": true
+        },
+        {
+          "address": "3Hrd4YKTTF2eaoWjdwzBwagmH9SeuenwiVyQajm72C8N",
+          "file": "accounts/6e77f8697cf9722594966728db24991a4ccadea0cddb6fa549d6740c3be2b9e6.json",
+          "fileSha256": "6e77f8697cf9722594966728db24991a4ccadea0cddb6fa549d6740c3be2b9e6",
+          "loadAtGenesis": true
+        },
+        {
+          "address": "5TeWSsjg2gbxCyWVniXeCmwM7UtHTCK7svzJr5xYJzHf",
+          "file": "accounts/57f823adf734156674eed223c84543db02c67447e8293c47c1728029d907f111.json",
+          "fileSha256": "57f823adf734156674eed223c84543db02c67447e8293c47c1728029d907f111",
+          "loadAtGenesis": true
+        },
+        {
+          "address": "5fQPsn8hoaVddFG26cWQ5QFdqxWtUPNaZ9zH2E6LYzFn",
+          "file": "accounts/898bc4fbc5acae44123cd9f256c0d6f0c6a9cf0bd175ae82964ff661caf0f911.json",
+          "fileSha256": "898bc4fbc5acae44123cd9f256c0d6f0c6a9cf0bd175ae82964ff661caf0f911",
+          "loadAtGenesis": true
+        },
+        {
+          "address": "5w5aSyzkAmgYBcG3qop5EuLgpbMhAe7rnneuFkGjYKYc",
+          "file": "accounts/3e6aed40fba07736796eac6bbb61673e49187ec28f7970292824725d90ba9cfb.json",
+          "fileSha256": "3e6aed40fba07736796eac6bbb61673e49187ec28f7970292824725d90ba9cfb",
+          "loadAtGenesis": true
+        },
+        {
+          "address": "6CquEHN9aS4cvEjUnZPhr1azMBmbiF5pMfdjVu8RQx6p",
+          "file": "accounts/c2dcda69acdec81550a375e89cdabb076f708f077928a3bbddb0d582e07f4612.json",
+          "fileSha256": "c2dcda69acdec81550a375e89cdabb076f708f077928a3bbddb0d582e07f4612",
+          "loadAtGenesis": true
+        },
+        {
+          "address": "7YvvqJNdXZt3aNMkCebG4To2f1VJe1TbxHBtY41D4Jy2",
+          "file": "accounts/48c6a6825e7ed7ed47424569eac0a7fe346242fefbeb2e66e1c4e9ad284a2342.json",
+          "fileSha256": "48c6a6825e7ed7ed47424569eac0a7fe346242fefbeb2e66e1c4e9ad284a2342",
+          "loadAtGenesis": false
+        },
+        {
+          "address": "9D428z6FiWBzKX9i72tc26RGybMbGV9FLUa8EAAvf7kX",
+          "file": "accounts/efbc0405570f252cdfea7c24650cb5f6d276af083e2b0ff7e25720bee100ada8.json",
+          "fileSha256": "efbc0405570f252cdfea7c24650cb5f6d276af083e2b0ff7e25720bee100ada8",
+          "loadAtGenesis": true
+        },
+        {
+          "address": "9zQXTg6QqijGAG3kyWf94CQA3KdFq3VoYBLAUrhge1WB",
+          "file": "accounts/bc0e84848edbbb9ea9b81f4cfe7931917fb031637cb334d23f4783fd7f5dfa8b.json",
+          "fileSha256": "bc0e84848edbbb9ea9b81f4cfe7931917fb031637cb334d23f4783fd7f5dfa8b",
+          "loadAtGenesis": true
+        },
+        {
+          "address": "AKnL4NNf3DGWZJS6cPknBuEGnVsV4A4m5tgebLHaRSZ9",
+          "file": "accounts/64e48bddc65ac6aa562251061c548e9cde21c923fa364eba366494a8ffae3ffd.json",
+          "fileSha256": "64e48bddc65ac6aa562251061c548e9cde21c923fa364eba366494a8ffae3ffd",
+          "loadAtGenesis": true
+        },
+        {
+          "address": "DEozmkY3H2YccnEAqHyENJp2Hs1HAFjBq6xqdJDFeZk9",
+          "file": "accounts/a15d1f7389d742e2a1858c82bb4457f93dedb870838ebc2ec16b878d898b2fb9.json",
+          "fileSha256": "a15d1f7389d742e2a1858c82bb4457f93dedb870838ebc2ec16b878d898b2fb9",
+          "loadAtGenesis": true
+        },
+        {
+          "address": "EDfQpAnRQVqFmGZuY2ocZoX7gBp5H1N3MWWMLmuWTmD6",
+          "file": "accounts/831a43ef135ffd21c7db675a0bbf311d0b7cfb80ea946aae6f1efa3b2ce50055.json",
+          "fileSha256": "831a43ef135ffd21c7db675a0bbf311d0b7cfb80ea946aae6f1efa3b2ce50055",
+          "loadAtGenesis": true
+        },
+        {
+          "address": "GCtLhcW4k4mYZRnGecvcx1CEWyiYQzs4UjuDUEaBirqY",
+          "file": "accounts/26aed3a7e0ad42520950214e60512a425015f2a6e3314621afa04b8c850cc4e2.json",
+          "fileSha256": "26aed3a7e0ad42520950214e60512a425015f2a6e3314621afa04b8c850cc4e2",
+          "loadAtGenesis": true
+        },
+        {
+          "address": "JBz8KKzyZ6FzTU7WmLywurr49xJPpQcA9ECNg2SZX6iH",
+          "file": "accounts/c5b296542ee51d2fbc4753962b80d8454b20c93136456e36c61a157695230be2.json",
+          "fileSha256": "c5b296542ee51d2fbc4753962b80d8454b20c93136456e36c61a157695230be2",
+          "loadAtGenesis": true
+        }
+      ],
+      "genesisAccountsSha256": "bfd4b4cf0ac70890ff07dcf44749a52c47bd064c3c4fc46193eb9ece568c1aa4",
+      "input": "cases/withdrawal-rollover/input.json",
+      "inputSha256": "35bfb5d7b5416c29a3cd18c1028edb4dc86d1e9bb2d7aa3cff61cd0ee9da3956",
+      "markerStart": {
+        "dataBytes": 0,
+        "kind": "zero-lamport-system-owned",
+        "lamports": 0,
+        "owner": "11111111111111111111111111111111"
+      },
+      "name": "withdrawal-rollover",
+      "postStateAccountsSha256": "1180869a5b312099324f559a737601a129b1cff803cafe2d2655d91fdcc589ce",
+      "programOverrides": [],
+      "registryV2Fixtures": {
+        "entryBytes": 320,
+        "entrySha256": "e82965fc06929e94d9318b355d8c387d8d87cd34c459c612fe1923ae133fd81e",
+        "entrySource": "results/v7-pair-forest-registry-v2-litesvm-20260830/production-withdrawal-rollover-success.ase2.bin",
+        "registryBytes": 256,
+        "registryExecutableSha256": "0f14c7b74ec6cbe3b3f637b0f24c7e8cdc46fd09f5b2e495fd51ada16ad8f11b",
+        "registryProgramdata": "jXrkJpunSfyA8WsBgKPdErECQnLWmex1PTicKUrTNdi",
+        "registrySha256": "cb0aa4373e923eace3187333a5485728240a36c2ff8ecdf7c33779e8226d604c",
+        "registrySource": "results/v7-pair-forest-registry-v2-litesvm-20260830/production-withdrawal-rollover-success.asr2.bin",
+        "selectedVerifierExecutableSha256": "97df12937d46e25a2eeefeac16ce31925fd473c672d6b656548be9220adbcc6d",
+        "verifierProgramdata": "cdRqe7MGCEJ2Z6iZfWuXtuymRiAhXtyfDgT47sKZr69"
+      },
+      "rollbackRequired": false,
+      "selectedVerifier": {
+        "file": "sbf/aspis_verifier.so",
+        "fileBytes": 1819480,
+        "fileSha256": "97df12937d46e25a2eeefeac16ce31925fd473c672d6b656548be9220adbcc6d",
+        "loader": "upgradeable-none"
+      }
+    },
+    {
+      "expectedFailureStage": "authenticated strict-work proof body changed after construction",
+      "expectedLogContains": [
+        "Program 5PjDJaGfSPJj4tFzMRCiuuAasKg5n8dJKXKenhuwZexx failed"
+      ],
+      "expectedOutcome": "failure",
+      "expectedSimulationAccountsFile": null,
+      "expectedSimulationAccountsFileSha256": null,
+      "expectedSimulationAccountsSha256": null,
+      "genesisAccounts": [
+        {
+          "address": "3B3QhxztFR6kSo3m3kpTaU9JsQyJH6ScoT94gwnFXQYj",
+          "file": "accounts/3c0e86992a1fccfb300931a65027075fe51f255d98e51b3516d0d3891a280289.json",
+          "fileSha256": "3c0e86992a1fccfb300931a65027075fe51f255d98e51b3516d0d3891a280289",
+          "loadAtGenesis": true
+        },
+        {
+          "address": "3Hrd4YKTTF2eaoWjdwzBwagmH9SeuenwiVyQajm72C8N",
+          "file": "accounts/6e77f8697cf9722594966728db24991a4ccadea0cddb6fa549d6740c3be2b9e6.json",
+          "fileSha256": "6e77f8697cf9722594966728db24991a4ccadea0cddb6fa549d6740c3be2b9e6",
+          "loadAtGenesis": true
+        },
+        {
+          "address": "5fQPsn8hoaVddFG26cWQ5QFdqxWtUPNaZ9zH2E6LYzFn",
+          "file": "accounts/7e6ee4748f821068677b370225584d875e193ba97ac0f67abd81eee74819c39b.json",
+          "fileSha256": "7e6ee4748f821068677b370225584d875e193ba97ac0f67abd81eee74819c39b",
+          "loadAtGenesis": true
+        },
+        {
+          "address": "7YvvqJNdXZt3aNMkCebG4To2f1VJe1TbxHBtY41D4Jy2",
+          "file": "accounts/48c6a6825e7ed7ed47424569eac0a7fe346242fefbeb2e66e1c4e9ad284a2342.json",
+          "fileSha256": "48c6a6825e7ed7ed47424569eac0a7fe346242fefbeb2e66e1c4e9ad284a2342",
+          "loadAtGenesis": false
+        },
+        {
+          "address": "9zQXTg6QqijGAG3kyWf94CQA3KdFq3VoYBLAUrhge1WB",
+          "file": "accounts/bc0e84848edbbb9ea9b81f4cfe7931917fb031637cb334d23f4783fd7f5dfa8b.json",
+          "fileSha256": "bc0e84848edbbb9ea9b81f4cfe7931917fb031637cb334d23f4783fd7f5dfa8b",
+          "loadAtGenesis": true
+        },
+        {
+          "address": "AKnL4NNf3DGWZJS6cPknBuEGnVsV4A4m5tgebLHaRSZ9",
+          "file": "accounts/64e48bddc65ac6aa562251061c548e9cde21c923fa364eba366494a8ffae3ffd.json",
+          "fileSha256": "64e48bddc65ac6aa562251061c548e9cde21c923fa364eba366494a8ffae3ffd",
+          "loadAtGenesis": true
+        },
+        {
+          "address": "DEozmkY3H2YccnEAqHyENJp2Hs1HAFjBq6xqdJDFeZk9",
+          "file": "accounts/b2b311e5a3c8709fe26d2e8ac5bac853ee2e0ccc20d240794057253d5775480b.json",
+          "fileSha256": "b2b311e5a3c8709fe26d2e8ac5bac853ee2e0ccc20d240794057253d5775480b",
+          "loadAtGenesis": true
+        },
+        {
+          "address": "EDfQpAnRQVqFmGZuY2ocZoX7gBp5H1N3MWWMLmuWTmD6",
+          "file": "accounts/831a43ef135ffd21c7db675a0bbf311d0b7cfb80ea946aae6f1efa3b2ce50055.json",
+          "fileSha256": "831a43ef135ffd21c7db675a0bbf311d0b7cfb80ea946aae6f1efa3b2ce50055",
+          "loadAtGenesis": true
+        },
+        {
+          "address": "JBz8KKzyZ6FzTU7WmLywurr49xJPpQcA9ECNg2SZX6iH",
+          "file": "accounts/c5b296542ee51d2fbc4753962b80d8454b20c93136456e36c61a157695230be2.json",
+          "fileSha256": "c5b296542ee51d2fbc4753962b80d8454b20c93136456e36c61a157695230be2",
+          "loadAtGenesis": true
+        }
+      ],
+      "genesisAccountsSha256": "651566ad9d5705826393fea8a000dc19b3377fa3e6fdbc874ab450e68d6d4eac",
+      "input": "cases/strict-proof-mutation-rejection/input.json",
+      "inputSha256": "55ca77870ed8cdca611a80841a8f17995c0a51ec13ec06cf4c717ecd1857f019",
+      "markerStart": {
+        "dataBytes": 0,
+        "kind": "zero-lamport-system-owned",
+        "lamports": 0,
+        "owner": "11111111111111111111111111111111"
+      },
+      "name": "strict-proof-mutation-rejection",
+      "postStateAccountsSha256": "c536d1e080727affad06ae64efd505ead5fb87cab74b9803ae9922b9393bcb47",
+      "programOverrides": [],
+      "registryV2Fixtures": {
+        "entryBytes": 320,
+        "entrySha256": "e82965fc06929e94d9318b355d8c387d8d87cd34c459c612fe1923ae133fd81e",
+        "entrySource": "results/v7-pair-forest-registry-v2-litesvm-20260830/production-proof-rejection.ase2.bin",
+        "registryBytes": 256,
+        "registryExecutableSha256": "0f14c7b74ec6cbe3b3f637b0f24c7e8cdc46fd09f5b2e495fd51ada16ad8f11b",
+        "registryProgramdata": "jXrkJpunSfyA8WsBgKPdErECQnLWmex1PTicKUrTNdi",
+        "registrySha256": "cb0aa4373e923eace3187333a5485728240a36c2ff8ecdf7c33779e8226d604c",
+        "registrySource": "results/v7-pair-forest-registry-v2-litesvm-20260830/production-proof-rejection.asr2.bin",
+        "selectedVerifierExecutableSha256": "97df12937d46e25a2eeefeac16ce31925fd473c672d6b656548be9220adbcc6d",
+        "verifierProgramdata": "cdRqe7MGCEJ2Z6iZfWuXtuymRiAhXtyfDgT47sKZr69"
+      },
+      "rollbackRequired": true,
+      "selectedVerifier": {
+        "file": "sbf/aspis_verifier.so",
+        "fileBytes": 1819480,
+        "fileSha256": "97df12937d46e25a2eeefeac16ce31925fd473c672d6b656548be9220adbcc6d",
+        "loader": "upgradeable-none"
+      }
+    },
+    {
+      "expectedFailureStage": "request release differs from the canonical Registry V2 entry PDA",
+      "expectedLogContains": [
+        "Program 5PjDJaGfSPJj4tFzMRCiuuAasKg5n8dJKXKenhuwZexx failed"
+      ],
+      "expectedOutcome": "failure",
+      "expectedSimulationAccountsFile": null,
+      "expectedSimulationAccountsFileSha256": null,
+      "expectedSimulationAccountsSha256": null,
+      "genesisAccounts": [
+        {
+          "address": "3B3QhxztFR6kSo3m3kpTaU9JsQyJH6ScoT94gwnFXQYj",
+          "file": "accounts/3c0e86992a1fccfb300931a65027075fe51f255d98e51b3516d0d3891a280289.json",
+          "fileSha256": "3c0e86992a1fccfb300931a65027075fe51f255d98e51b3516d0d3891a280289",
+          "loadAtGenesis": true
+        },
+        {
+          "address": "3Hrd4YKTTF2eaoWjdwzBwagmH9SeuenwiVyQajm72C8N",
+          "file": "accounts/6e77f8697cf9722594966728db24991a4ccadea0cddb6fa549d6740c3be2b9e6.json",
+          "fileSha256": "6e77f8697cf9722594966728db24991a4ccadea0cddb6fa549d6740c3be2b9e6",
+          "loadAtGenesis": true
+        },
+        {
+          "address": "5fQPsn8hoaVddFG26cWQ5QFdqxWtUPNaZ9zH2E6LYzFn",
+          "file": "accounts/39580e98c6c3ebfc30c31acf6eecb6a266071125691277472aa4e406d54e6356.json",
+          "fileSha256": "39580e98c6c3ebfc30c31acf6eecb6a266071125691277472aa4e406d54e6356",
+          "loadAtGenesis": true
+        },
+        {
+          "address": "7YvvqJNdXZt3aNMkCebG4To2f1VJe1TbxHBtY41D4Jy2",
+          "file": "accounts/48c6a6825e7ed7ed47424569eac0a7fe346242fefbeb2e66e1c4e9ad284a2342.json",
+          "fileSha256": "48c6a6825e7ed7ed47424569eac0a7fe346242fefbeb2e66e1c4e9ad284a2342",
+          "loadAtGenesis": false
+        },
+        {
+          "address": "9zQXTg6QqijGAG3kyWf94CQA3KdFq3VoYBLAUrhge1WB",
+          "file": "accounts/bc0e84848edbbb9ea9b81f4cfe7931917fb031637cb334d23f4783fd7f5dfa8b.json",
+          "fileSha256": "bc0e84848edbbb9ea9b81f4cfe7931917fb031637cb334d23f4783fd7f5dfa8b",
+          "loadAtGenesis": true
+        },
+        {
+          "address": "AKnL4NNf3DGWZJS6cPknBuEGnVsV4A4m5tgebLHaRSZ9",
+          "file": "accounts/64e48bddc65ac6aa562251061c548e9cde21c923fa364eba366494a8ffae3ffd.json",
+          "fileSha256": "64e48bddc65ac6aa562251061c548e9cde21c923fa364eba366494a8ffae3ffd",
+          "loadAtGenesis": true
+        },
+        {
+          "address": "DEozmkY3H2YccnEAqHyENJp2Hs1HAFjBq6xqdJDFeZk9",
+          "file": "accounts/b2b311e5a3c8709fe26d2e8ac5bac853ee2e0ccc20d240794057253d5775480b.json",
+          "fileSha256": "b2b311e5a3c8709fe26d2e8ac5bac853ee2e0ccc20d240794057253d5775480b",
+          "loadAtGenesis": true
+        },
+        {
+          "address": "EDfQpAnRQVqFmGZuY2ocZoX7gBp5H1N3MWWMLmuWTmD6",
+          "file": "accounts/831a43ef135ffd21c7db675a0bbf311d0b7cfb80ea946aae6f1efa3b2ce50055.json",
+          "fileSha256": "831a43ef135ffd21c7db675a0bbf311d0b7cfb80ea946aae6f1efa3b2ce50055",
+          "loadAtGenesis": true
+        },
+        {
+          "address": "JBz8KKzyZ6FzTU7WmLywurr49xJPpQcA9ECNg2SZX6iH",
+          "file": "accounts/c5b296542ee51d2fbc4753962b80d8454b20c93136456e36c61a157695230be2.json",
+          "fileSha256": "c5b296542ee51d2fbc4753962b80d8454b20c93136456e36c61a157695230be2",
+          "loadAtGenesis": true
+        }
+      ],
+      "genesisAccountsSha256": "7e16be1fb17166278376c3f5ddaf554cc80d3d30437bb15ea81cd9c4a9df8707",
+      "input": "cases/wrong-registry-release-rejection/input.json",
+      "inputSha256": "9519915919aadecc72c17f13706e02bb04582d7759948bce7e500ea736acd3fb",
+      "markerStart": {
+        "dataBytes": 0,
+        "kind": "zero-lamport-system-owned",
+        "lamports": 0,
+        "owner": "11111111111111111111111111111111"
+      },
+      "name": "wrong-registry-release-rejection",
+      "postStateAccountsSha256": "c536d1e080727affad06ae64efd505ead5fb87cab74b9803ae9922b9393bcb47",
+      "programOverrides": [],
+      "registryV2Fixtures": {
+        "entryBytes": 320,
+        "entrySha256": "e82965fc06929e94d9318b355d8c387d8d87cd34c459c612fe1923ae133fd81e",
+        "entrySource": "results/v7-pair-forest-registry-v2-litesvm-20260830/production-wrong-release.ase2.bin",
+        "registryBytes": 256,
+        "registryExecutableSha256": "0f14c7b74ec6cbe3b3f637b0f24c7e8cdc46fd09f5b2e495fd51ada16ad8f11b",
+        "registryProgramdata": "jXrkJpunSfyA8WsBgKPdErECQnLWmex1PTicKUrTNdi",
+        "registrySha256": "cb0aa4373e923eace3187333a5485728240a36c2ff8ecdf7c33779e8226d604c",
+        "registrySource": "results/v7-pair-forest-registry-v2-litesvm-20260830/production-wrong-release.asr2.bin",
+        "selectedVerifierExecutableSha256": "97df12937d46e25a2eeefeac16ce31925fd473c672d6b656548be9220adbcc6d",
+        "verifierProgramdata": "cdRqe7MGCEJ2Z6iZfWuXtuymRiAhXtyfDgT47sKZr69"
+      },
+      "rollbackRequired": true,
+      "selectedVerifier": {
+        "file": "sbf/aspis_verifier.so",
+        "fileBytes": 1819480,
+        "fileSha256": "97df12937d46e25a2eeefeac16ce31925fd473c672d6b656548be9220adbcc6d",
+        "loader": "upgradeable-none"
+      }
+    },
+    {
+      "expectedFailureStage": "live selected lane advanced after proof construction",
+      "expectedLogContains": [
+        "Program 5PjDJaGfSPJj4tFzMRCiuuAasKg5n8dJKXKenhuwZexx failed"
+      ],
+      "expectedOutcome": "failure",
+      "expectedSimulationAccountsFile": null,
+      "expectedSimulationAccountsFileSha256": null,
+      "expectedSimulationAccountsSha256": null,
+      "genesisAccounts": [
+        {
+          "address": "3B3QhxztFR6kSo3m3kpTaU9JsQyJH6ScoT94gwnFXQYj",
+          "file": "accounts/59b964467876feeeacf41dcab0a4f42931aee493f0624778c2325d86bbf3f66d.json",
+          "fileSha256": "59b964467876feeeacf41dcab0a4f42931aee493f0624778c2325d86bbf3f66d",
+          "loadAtGenesis": true
+        },
+        {
+          "address": "3Hrd4YKTTF2eaoWjdwzBwagmH9SeuenwiVyQajm72C8N",
+          "file": "accounts/6e77f8697cf9722594966728db24991a4ccadea0cddb6fa549d6740c3be2b9e6.json",
+          "fileSha256": "6e77f8697cf9722594966728db24991a4ccadea0cddb6fa549d6740c3be2b9e6",
+          "loadAtGenesis": true
+        },
+        {
+          "address": "5fQPsn8hoaVddFG26cWQ5QFdqxWtUPNaZ9zH2E6LYzFn",
+          "file": "accounts/39580e98c6c3ebfc30c31acf6eecb6a266071125691277472aa4e406d54e6356.json",
+          "fileSha256": "39580e98c6c3ebfc30c31acf6eecb6a266071125691277472aa4e406d54e6356",
+          "loadAtGenesis": true
+        },
+        {
+          "address": "7YvvqJNdXZt3aNMkCebG4To2f1VJe1TbxHBtY41D4Jy2",
+          "file": "accounts/48c6a6825e7ed7ed47424569eac0a7fe346242fefbeb2e66e1c4e9ad284a2342.json",
+          "fileSha256": "48c6a6825e7ed7ed47424569eac0a7fe346242fefbeb2e66e1c4e9ad284a2342",
+          "loadAtGenesis": false
+        },
+        {
+          "address": "9zQXTg6QqijGAG3kyWf94CQA3KdFq3VoYBLAUrhge1WB",
+          "file": "accounts/bc0e84848edbbb9ea9b81f4cfe7931917fb031637cb334d23f4783fd7f5dfa8b.json",
+          "fileSha256": "bc0e84848edbbb9ea9b81f4cfe7931917fb031637cb334d23f4783fd7f5dfa8b",
+          "loadAtGenesis": true
+        },
+        {
+          "address": "AKnL4NNf3DGWZJS6cPknBuEGnVsV4A4m5tgebLHaRSZ9",
+          "file": "accounts/64e48bddc65ac6aa562251061c548e9cde21c923fa364eba366494a8ffae3ffd.json",
+          "fileSha256": "64e48bddc65ac6aa562251061c548e9cde21c923fa364eba366494a8ffae3ffd",
+          "loadAtGenesis": true
+        },
+        {
+          "address": "DEozmkY3H2YccnEAqHyENJp2Hs1HAFjBq6xqdJDFeZk9",
+          "file": "accounts/0316ff198b5d2f1b58cfa71ba8a96f5694f050099b8949e27894703cb84f8f2c.json",
+          "fileSha256": "0316ff198b5d2f1b58cfa71ba8a96f5694f050099b8949e27894703cb84f8f2c",
+          "loadAtGenesis": true
+        },
+        {
+          "address": "EDfQpAnRQVqFmGZuY2ocZoX7gBp5H1N3MWWMLmuWTmD6",
+          "file": "accounts/831a43ef135ffd21c7db675a0bbf311d0b7cfb80ea946aae6f1efa3b2ce50055.json",
+          "fileSha256": "831a43ef135ffd21c7db675a0bbf311d0b7cfb80ea946aae6f1efa3b2ce50055",
+          "loadAtGenesis": true
+        },
+        {
+          "address": "JBz8KKzyZ6FzTU7WmLywurr49xJPpQcA9ECNg2SZX6iH",
+          "file": "accounts/c5b296542ee51d2fbc4753962b80d8454b20c93136456e36c61a157695230be2.json",
+          "fileSha256": "c5b296542ee51d2fbc4753962b80d8454b20c93136456e36c61a157695230be2",
+          "loadAtGenesis": true
+        }
+      ],
+      "genesisAccountsSha256": "46e2955f5e74a3cec7e9f261da3f0a4fbaf44f48741a7ccfa4d0516b11c0a441",
+      "input": "cases/stale-selected-lane-rejection/input.json",
+      "inputSha256": "b3697e337c45e2b3a64724c587da24fdef5736d3156b343b0147b106c40bb5ce",
+      "markerStart": {
+        "dataBytes": 0,
+        "kind": "zero-lamport-system-owned",
+        "lamports": 0,
+        "owner": "11111111111111111111111111111111"
+      },
+      "name": "stale-selected-lane-rejection",
+      "postStateAccountsSha256": "c536d1e080727affad06ae64efd505ead5fb87cab74b9803ae9922b9393bcb47",
+      "programOverrides": [],
+      "registryV2Fixtures": {
+        "entryBytes": 320,
+        "entrySha256": "e82965fc06929e94d9318b355d8c387d8d87cd34c459c612fe1923ae133fd81e",
+        "entrySource": "results/v7-pair-forest-registry-v2-litesvm-20260830/production-stale-lane.ase2.bin",
+        "registryBytes": 256,
+        "registryExecutableSha256": "0f14c7b74ec6cbe3b3f637b0f24c7e8cdc46fd09f5b2e495fd51ada16ad8f11b",
+        "registryProgramdata": "jXrkJpunSfyA8WsBgKPdErECQnLWmex1PTicKUrTNdi",
+        "registrySha256": "cb0aa4373e923eace3187333a5485728240a36c2ff8ecdf7c33779e8226d604c",
+        "registrySource": "results/v7-pair-forest-registry-v2-litesvm-20260830/production-stale-lane.asr2.bin",
+        "selectedVerifierExecutableSha256": "97df12937d46e25a2eeefeac16ce31925fd473c672d6b656548be9220adbcc6d",
+        "verifierProgramdata": "cdRqe7MGCEJ2Z6iZfWuXtuymRiAhXtyfDgT47sKZr69"
+      },
+      "rollbackRequired": true,
+      "selectedVerifier": {
+        "file": "sbf/aspis_verifier.so",
+        "fileBytes": 1819480,
+        "fileSha256": "97df12937d46e25a2eeefeac16ce31925fd473c672d6b656548be9220adbcc6d",
+        "loader": "upgradeable-none"
+      }
+    },
+    {
+      "expectedFailureStage": "canonical nullifier marker already populated",
+      "expectedLogContains": [
+        "Program 5PjDJaGfSPJj4tFzMRCiuuAasKg5n8dJKXKenhuwZexx failed"
+      ],
+      "expectedOutcome": "failure",
+      "expectedSimulationAccountsFile": null,
+      "expectedSimulationAccountsFileSha256": null,
+      "expectedSimulationAccountsSha256": null,
+      "genesisAccounts": [
+        {
+          "address": "3B3QhxztFR6kSo3m3kpTaU9JsQyJH6ScoT94gwnFXQYj",
+          "file": "accounts/3c0e86992a1fccfb300931a65027075fe51f255d98e51b3516d0d3891a280289.json",
+          "fileSha256": "3c0e86992a1fccfb300931a65027075fe51f255d98e51b3516d0d3891a280289",
+          "loadAtGenesis": true
+        },
+        {
+          "address": "3Hrd4YKTTF2eaoWjdwzBwagmH9SeuenwiVyQajm72C8N",
+          "file": "accounts/6e77f8697cf9722594966728db24991a4ccadea0cddb6fa549d6740c3be2b9e6.json",
+          "fileSha256": "6e77f8697cf9722594966728db24991a4ccadea0cddb6fa549d6740c3be2b9e6",
+          "loadAtGenesis": true
+        },
+        {
+          "address": "5fQPsn8hoaVddFG26cWQ5QFdqxWtUPNaZ9zH2E6LYzFn",
+          "file": "accounts/39580e98c6c3ebfc30c31acf6eecb6a266071125691277472aa4e406d54e6356.json",
+          "fileSha256": "39580e98c6c3ebfc30c31acf6eecb6a266071125691277472aa4e406d54e6356",
+          "loadAtGenesis": true
+        },
+        {
+          "address": "7YvvqJNdXZt3aNMkCebG4To2f1VJe1TbxHBtY41D4Jy2",
+          "file": "accounts/3768374c56a0c35c4c50063ff76473ee20e7fb6e4ebec6031f7857e6cc1656e6.json",
+          "fileSha256": "3768374c56a0c35c4c50063ff76473ee20e7fb6e4ebec6031f7857e6cc1656e6",
+          "loadAtGenesis": true
+        },
+        {
+          "address": "9zQXTg6QqijGAG3kyWf94CQA3KdFq3VoYBLAUrhge1WB",
+          "file": "accounts/bc0e84848edbbb9ea9b81f4cfe7931917fb031637cb334d23f4783fd7f5dfa8b.json",
+          "fileSha256": "bc0e84848edbbb9ea9b81f4cfe7931917fb031637cb334d23f4783fd7f5dfa8b",
+          "loadAtGenesis": true
+        },
+        {
+          "address": "AKnL4NNf3DGWZJS6cPknBuEGnVsV4A4m5tgebLHaRSZ9",
+          "file": "accounts/64e48bddc65ac6aa562251061c548e9cde21c923fa364eba366494a8ffae3ffd.json",
+          "fileSha256": "64e48bddc65ac6aa562251061c548e9cde21c923fa364eba366494a8ffae3ffd",
+          "loadAtGenesis": true
+        },
+        {
+          "address": "DEozmkY3H2YccnEAqHyENJp2Hs1HAFjBq6xqdJDFeZk9",
+          "file": "accounts/b2b311e5a3c8709fe26d2e8ac5bac853ee2e0ccc20d240794057253d5775480b.json",
+          "fileSha256": "b2b311e5a3c8709fe26d2e8ac5bac853ee2e0ccc20d240794057253d5775480b",
+          "loadAtGenesis": true
+        },
+        {
+          "address": "EDfQpAnRQVqFmGZuY2ocZoX7gBp5H1N3MWWMLmuWTmD6",
+          "file": "accounts/831a43ef135ffd21c7db675a0bbf311d0b7cfb80ea946aae6f1efa3b2ce50055.json",
+          "fileSha256": "831a43ef135ffd21c7db675a0bbf311d0b7cfb80ea946aae6f1efa3b2ce50055",
+          "loadAtGenesis": true
+        },
+        {
+          "address": "JBz8KKzyZ6FzTU7WmLywurr49xJPpQcA9ECNg2SZX6iH",
+          "file": "accounts/c5b296542ee51d2fbc4753962b80d8454b20c93136456e36c61a157695230be2.json",
+          "fileSha256": "c5b296542ee51d2fbc4753962b80d8454b20c93136456e36c61a157695230be2",
+          "loadAtGenesis": true
+        }
+      ],
+      "genesisAccountsSha256": "3568d71487dff7f9e20244397149690d2d85a63329e039392ba9566c1259f6e0",
+      "input": "cases/replay-nullifier-rejection/input.json",
+      "inputSha256": "b94dca9ac8d60c63c8874fb859e86b5174f0a1db879199175388838fb3b646b6",
+      "markerStart": {
+        "dataBytes": 208,
+        "kind": "consumed-pool-owned",
+        "lamports": 2338560,
+        "owner": "5PjDJaGfSPJj4tFzMRCiuuAasKg5n8dJKXKenhuwZexx"
+      },
+      "name": "replay-nullifier-rejection",
+      "postStateAccountsSha256": "c536d1e080727affad06ae64efd505ead5fb87cab74b9803ae9922b9393bcb47",
+      "programOverrides": [],
+      "registryV2Fixtures": {
+        "entryBytes": 320,
+        "entrySha256": "e82965fc06929e94d9318b355d8c387d8d87cd34c459c612fe1923ae133fd81e",
+        "entrySource": "results/v7-pair-forest-registry-v2-litesvm-20260830/production-replay-nullifier.ase2.bin",
+        "registryBytes": 256,
+        "registryExecutableSha256": "0f14c7b74ec6cbe3b3f637b0f24c7e8cdc46fd09f5b2e495fd51ada16ad8f11b",
+        "registryProgramdata": "jXrkJpunSfyA8WsBgKPdErECQnLWmex1PTicKUrTNdi",
+        "registrySha256": "cb0aa4373e923eace3187333a5485728240a36c2ff8ecdf7c33779e8226d604c",
+        "registrySource": "results/v7-pair-forest-registry-v2-litesvm-20260830/production-replay-nullifier.asr2.bin",
+        "selectedVerifierExecutableSha256": "97df12937d46e25a2eeefeac16ce31925fd473c672d6b656548be9220adbcc6d",
+        "verifierProgramdata": "cdRqe7MGCEJ2Z6iZfWuXtuymRiAhXtyfDgT47sKZr69"
+      },
+      "rollbackRequired": true,
+      "selectedVerifier": {
+        "file": "sbf/aspis_verifier.so",
+        "fileBytes": 1819480,
+        "fileSha256": "97df12937d46e25a2eeefeac16ce31925fd473c672d6b656548be9220adbcc6d",
+        "loader": "upgradeable-none"
+      }
+    },
+    {
+      "expectedFailureStage": "selected verifier returns a truncated ASR8 result",
+      "expectedLogContains": [
+        "Program 5PjDJaGfSPJj4tFzMRCiuuAasKg5n8dJKXKenhuwZexx failed",
+        "Program 7Q2nGsPg8rbjdxKHK4jxTgEWLTyd9o1X4KMSjCieRmue success"
+      ],
+      "expectedOutcome": "failure",
+      "expectedSimulationAccountsFile": null,
+      "expectedSimulationAccountsFileSha256": null,
+      "expectedSimulationAccountsSha256": null,
+      "genesisAccounts": [
+        {
+          "address": "3B3QhxztFR6kSo3m3kpTaU9JsQyJH6ScoT94gwnFXQYj",
+          "file": "accounts/3c0e86992a1fccfb300931a65027075fe51f255d98e51b3516d0d3891a280289.json",
+          "fileSha256": "3c0e86992a1fccfb300931a65027075fe51f255d98e51b3516d0d3891a280289",
+          "loadAtGenesis": true
+        },
+        {
+          "address": "3Hrd4YKTTF2eaoWjdwzBwagmH9SeuenwiVyQajm72C8N",
+          "file": "accounts/6e77f8697cf9722594966728db24991a4ccadea0cddb6fa549d6740c3be2b9e6.json",
+          "fileSha256": "6e77f8697cf9722594966728db24991a4ccadea0cddb6fa549d6740c3be2b9e6",
+          "loadAtGenesis": true
+        },
+        {
+          "address": "5fQPsn8hoaVddFG26cWQ5QFdqxWtUPNaZ9zH2E6LYzFn",
+          "file": "accounts/f711267404266f045f1836bdba20be6a6e6a9279ee014fa4b541bd15fa746694.json",
+          "fileSha256": "f711267404266f045f1836bdba20be6a6e6a9279ee014fa4b541bd15fa746694",
+          "loadAtGenesis": true
+        },
+        {
+          "address": "7YvvqJNdXZt3aNMkCebG4To2f1VJe1TbxHBtY41D4Jy2",
+          "file": "accounts/48c6a6825e7ed7ed47424569eac0a7fe346242fefbeb2e66e1c4e9ad284a2342.json",
+          "fileSha256": "48c6a6825e7ed7ed47424569eac0a7fe346242fefbeb2e66e1c4e9ad284a2342",
+          "loadAtGenesis": false
+        },
+        {
+          "address": "9zQXTg6QqijGAG3kyWf94CQA3KdFq3VoYBLAUrhge1WB",
+          "file": "accounts/68ebaa34e4fd14e2841be658286f7edeeac96d6b62fe2f345bef57488dcc6572.json",
+          "fileSha256": "68ebaa34e4fd14e2841be658286f7edeeac96d6b62fe2f345bef57488dcc6572",
+          "loadAtGenesis": true
+        },
+        {
+          "address": "AKnL4NNf3DGWZJS6cPknBuEGnVsV4A4m5tgebLHaRSZ9",
+          "file": "accounts/64e48bddc65ac6aa562251061c548e9cde21c923fa364eba366494a8ffae3ffd.json",
+          "fileSha256": "64e48bddc65ac6aa562251061c548e9cde21c923fa364eba366494a8ffae3ffd",
+          "loadAtGenesis": true
+        },
+        {
+          "address": "DEozmkY3H2YccnEAqHyENJp2Hs1HAFjBq6xqdJDFeZk9",
+          "file": "accounts/b2b311e5a3c8709fe26d2e8ac5bac853ee2e0ccc20d240794057253d5775480b.json",
+          "fileSha256": "b2b311e5a3c8709fe26d2e8ac5bac853ee2e0ccc20d240794057253d5775480b",
+          "loadAtGenesis": true
+        },
+        {
+          "address": "EDfQpAnRQVqFmGZuY2ocZoX7gBp5H1N3MWWMLmuWTmD6",
+          "file": "accounts/831a43ef135ffd21c7db675a0bbf311d0b7cfb80ea946aae6f1efa3b2ce50055.json",
+          "fileSha256": "831a43ef135ffd21c7db675a0bbf311d0b7cfb80ea946aae6f1efa3b2ce50055",
+          "loadAtGenesis": true
+        },
+        {
+          "address": "JBz8KKzyZ6FzTU7WmLywurr49xJPpQcA9ECNg2SZX6iH",
+          "file": "accounts/c5b296542ee51d2fbc4753962b80d8454b20c93136456e36c61a157695230be2.json",
+          "fileSha256": "c5b296542ee51d2fbc4753962b80d8454b20c93136456e36c61a157695230be2",
+          "loadAtGenesis": true
+        }
+      ],
+      "genesisAccountsSha256": "042039ffd37bcbde0c7c9193e65ee4fae1ac6185435878aa9177dc6593613f3c",
+      "input": "cases/malformed-result-rejection/input.json",
+      "inputSha256": "b69df5e138eea7e206a99172cea1138031ee13198218e03aa6e4634cff3acbec",
+      "markerStart": {
+        "dataBytes": 0,
+        "kind": "zero-lamport-system-owned",
+        "lamports": 0,
+        "owner": "11111111111111111111111111111111"
+      },
+      "name": "malformed-result-rejection",
+      "postStateAccountsSha256": "c536d1e080727affad06ae64efd505ead5fb87cab74b9803ae9922b9393bcb47",
+      "programOverrides": [],
+      "registryV2Fixtures": {
+        "entryBytes": 320,
+        "entrySha256": "634df990b166a16f2642ff7eaa2e6ddcfdd09fe85ba81f702c89d924b15ef237",
+        "entrySource": "results/v7-pair-forest-registry-v2-litesvm-20260830/production-malformed-result.ase2.bin",
+        "registryBytes": 256,
+        "registryExecutableSha256": "0f14c7b74ec6cbe3b3f637b0f24c7e8cdc46fd09f5b2e495fd51ada16ad8f11b",
+        "registryProgramdata": "jXrkJpunSfyA8WsBgKPdErECQnLWmex1PTicKUrTNdi",
+        "registrySha256": "cb0aa4373e923eace3187333a5485728240a36c2ff8ecdf7c33779e8226d604c",
+        "registrySource": "results/v7-pair-forest-registry-v2-litesvm-20260830/production-malformed-result.asr2.bin",
+        "selectedVerifierExecutableSha256": "3693edf83f100ca90229a8aa0406182d71fd56b6480a1fa7366c4caff4ad5c29",
+        "verifierProgramdata": "cdRqe7MGCEJ2Z6iZfWuXtuymRiAhXtyfDgT47sKZr69"
+      },
+      "rollbackRequired": true,
+      "selectedVerifier": {
+        "file": "sbf/aspis_pair_forest_result_double.so",
+        "fileBytes": 20816,
+        "fileSha256": "3693edf83f100ca90229a8aa0406182d71fd56b6480a1fa7366c4caff4ad5c29",
+        "loader": "upgradeable-none"
+      }
+    },
+    {
+      "expectedFailureStage": "selected verifier returns a canonical ASR8 with the wrong selected-lane binding",
+      "expectedLogContains": [
+        "Program 5PjDJaGfSPJj4tFzMRCiuuAasKg5n8dJKXKenhuwZexx failed",
+        "Program 7Q2nGsPg8rbjdxKHK4jxTgEWLTyd9o1X4KMSjCieRmue success"
+      ],
+      "expectedOutcome": "failure",
+      "expectedSimulationAccountsFile": null,
+      "expectedSimulationAccountsFileSha256": null,
+      "expectedSimulationAccountsSha256": null,
+      "genesisAccounts": [
+        {
+          "address": "3B3QhxztFR6kSo3m3kpTaU9JsQyJH6ScoT94gwnFXQYj",
+          "file": "accounts/3c0e86992a1fccfb300931a65027075fe51f255d98e51b3516d0d3891a280289.json",
+          "fileSha256": "3c0e86992a1fccfb300931a65027075fe51f255d98e51b3516d0d3891a280289",
+          "loadAtGenesis": true
+        },
+        {
+          "address": "3Hrd4YKTTF2eaoWjdwzBwagmH9SeuenwiVyQajm72C8N",
+          "file": "accounts/6e77f8697cf9722594966728db24991a4ccadea0cddb6fa549d6740c3be2b9e6.json",
+          "fileSha256": "6e77f8697cf9722594966728db24991a4ccadea0cddb6fa549d6740c3be2b9e6",
+          "loadAtGenesis": true
+        },
+        {
+          "address": "5fQPsn8hoaVddFG26cWQ5QFdqxWtUPNaZ9zH2E6LYzFn",
+          "file": "accounts/c9fbbbb367e08d0d762dd1f1e172f048d4f5ed51411df9c4909a7e4ba303b73f.json",
+          "fileSha256": "c9fbbbb367e08d0d762dd1f1e172f048d4f5ed51411df9c4909a7e4ba303b73f",
+          "loadAtGenesis": true
+        },
+        {
+          "address": "7YvvqJNdXZt3aNMkCebG4To2f1VJe1TbxHBtY41D4Jy2",
+          "file": "accounts/48c6a6825e7ed7ed47424569eac0a7fe346242fefbeb2e66e1c4e9ad284a2342.json",
+          "fileSha256": "48c6a6825e7ed7ed47424569eac0a7fe346242fefbeb2e66e1c4e9ad284a2342",
+          "loadAtGenesis": false
+        },
+        {
+          "address": "9zQXTg6QqijGAG3kyWf94CQA3KdFq3VoYBLAUrhge1WB",
+          "file": "accounts/68ebaa34e4fd14e2841be658286f7edeeac96d6b62fe2f345bef57488dcc6572.json",
+          "fileSha256": "68ebaa34e4fd14e2841be658286f7edeeac96d6b62fe2f345bef57488dcc6572",
+          "loadAtGenesis": true
+        },
+        {
+          "address": "AKnL4NNf3DGWZJS6cPknBuEGnVsV4A4m5tgebLHaRSZ9",
+          "file": "accounts/64e48bddc65ac6aa562251061c548e9cde21c923fa364eba366494a8ffae3ffd.json",
+          "fileSha256": "64e48bddc65ac6aa562251061c548e9cde21c923fa364eba366494a8ffae3ffd",
+          "loadAtGenesis": true
+        },
+        {
+          "address": "DEozmkY3H2YccnEAqHyENJp2Hs1HAFjBq6xqdJDFeZk9",
+          "file": "accounts/b2b311e5a3c8709fe26d2e8ac5bac853ee2e0ccc20d240794057253d5775480b.json",
+          "fileSha256": "b2b311e5a3c8709fe26d2e8ac5bac853ee2e0ccc20d240794057253d5775480b",
+          "loadAtGenesis": true
+        },
+        {
+          "address": "EDfQpAnRQVqFmGZuY2ocZoX7gBp5H1N3MWWMLmuWTmD6",
+          "file": "accounts/831a43ef135ffd21c7db675a0bbf311d0b7cfb80ea946aae6f1efa3b2ce50055.json",
+          "fileSha256": "831a43ef135ffd21c7db675a0bbf311d0b7cfb80ea946aae6f1efa3b2ce50055",
+          "loadAtGenesis": true
+        },
+        {
+          "address": "JBz8KKzyZ6FzTU7WmLywurr49xJPpQcA9ECNg2SZX6iH",
+          "file": "accounts/c5b296542ee51d2fbc4753962b80d8454b20c93136456e36c61a157695230be2.json",
+          "fileSha256": "c5b296542ee51d2fbc4753962b80d8454b20c93136456e36c61a157695230be2",
+          "loadAtGenesis": true
+        }
+      ],
+      "genesisAccountsSha256": "90fb89db30ccb0618a2d742dcb725d5db59369e0e80fcc485ae3710e6779f4b0",
+      "input": "cases/mutated-result-rejection/input.json",
+      "inputSha256": "2506017d1aff63d4f08ece4e7ea06801d0bddb26ccf0a2ce6f47c7b614eb724f",
+      "markerStart": {
+        "dataBytes": 0,
+        "kind": "zero-lamport-system-owned",
+        "lamports": 0,
+        "owner": "11111111111111111111111111111111"
+      },
+      "name": "mutated-result-rejection",
+      "postStateAccountsSha256": "c536d1e080727affad06ae64efd505ead5fb87cab74b9803ae9922b9393bcb47",
+      "programOverrides": [],
+      "registryV2Fixtures": {
+        "entryBytes": 320,
+        "entrySha256": "634df990b166a16f2642ff7eaa2e6ddcfdd09fe85ba81f702c89d924b15ef237",
+        "entrySource": "results/v7-pair-forest-registry-v2-litesvm-20260830/production-mutated-result.ase2.bin",
+        "registryBytes": 256,
+        "registryExecutableSha256": "0f14c7b74ec6cbe3b3f637b0f24c7e8cdc46fd09f5b2e495fd51ada16ad8f11b",
+        "registryProgramdata": "jXrkJpunSfyA8WsBgKPdErECQnLWmex1PTicKUrTNdi",
+        "registrySha256": "cb0aa4373e923eace3187333a5485728240a36c2ff8ecdf7c33779e8226d604c",
+        "registrySource": "results/v7-pair-forest-registry-v2-litesvm-20260830/production-mutated-result.asr2.bin",
+        "selectedVerifierExecutableSha256": "3693edf83f100ca90229a8aa0406182d71fd56b6480a1fa7366c4caff4ad5c29",
+        "verifierProgramdata": "cdRqe7MGCEJ2Z6iZfWuXtuymRiAhXtyfDgT47sKZr69"
+      },
+      "rollbackRequired": true,
+      "selectedVerifier": {
+        "file": "sbf/aspis_pair_forest_result_double.so",
+        "fileBytes": 20816,
+        "fileSha256": "3693edf83f100ca90229a8aa0406182d71fd56b6480a1fa7366c4caff4ad5c29",
+        "loader": "upgradeable-none"
+      }
+    },
+    {
+      "expectedFailureStage": "selected verifier succeeds, deterministic token-program test double rejects CPI",
+      "expectedLogContains": [
+        "Program 5PjDJaGfSPJj4tFzMRCiuuAasKg5n8dJKXKenhuwZexx failed",
+        "Program 7Q2nGsPg8rbjdxKHK4jxTgEWLTyd9o1X4KMSjCieRmue success",
+        "Program TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA failed"
+      ],
+      "expectedOutcome": "failure",
+      "expectedSimulationAccountsFile": null,
+      "expectedSimulationAccountsFileSha256": null,
+      "expectedSimulationAccountsSha256": null,
+      "genesisAccounts": [
+        {
+          "address": "3B3QhxztFR6kSo3m3kpTaU9JsQyJH6ScoT94gwnFXQYj",
+          "file": "accounts/3c0e86992a1fccfb300931a65027075fe51f255d98e51b3516d0d3891a280289.json",
+          "fileSha256": "3c0e86992a1fccfb300931a65027075fe51f255d98e51b3516d0d3891a280289",
+          "loadAtGenesis": true
+        },
+        {
+          "address": "3Hrd4YKTTF2eaoWjdwzBwagmH9SeuenwiVyQajm72C8N",
+          "file": "accounts/6e77f8697cf9722594966728db24991a4ccadea0cddb6fa549d6740c3be2b9e6.json",
+          "fileSha256": "6e77f8697cf9722594966728db24991a4ccadea0cddb6fa549d6740c3be2b9e6",
+          "loadAtGenesis": true
+        },
+        {
+          "address": "5TeWSsjg2gbxCyWVniXeCmwM7UtHTCK7svzJr5xYJzHf",
+          "file": "accounts/57f823adf734156674eed223c84543db02c67447e8293c47c1728029d907f111.json",
+          "fileSha256": "57f823adf734156674eed223c84543db02c67447e8293c47c1728029d907f111",
+          "loadAtGenesis": true
+        },
+        {
+          "address": "5fQPsn8hoaVddFG26cWQ5QFdqxWtUPNaZ9zH2E6LYzFn",
+          "file": "accounts/8adebf56b65c38cdc0bfebd21f631274defe836cf1d87cac2f601d734f4da2d0.json",
+          "fileSha256": "8adebf56b65c38cdc0bfebd21f631274defe836cf1d87cac2f601d734f4da2d0",
+          "loadAtGenesis": true
+        },
+        {
+          "address": "5w5aSyzkAmgYBcG3qop5EuLgpbMhAe7rnneuFkGjYKYc",
+          "file": "accounts/3e6aed40fba07736796eac6bbb61673e49187ec28f7970292824725d90ba9cfb.json",
+          "fileSha256": "3e6aed40fba07736796eac6bbb61673e49187ec28f7970292824725d90ba9cfb",
+          "loadAtGenesis": true
+        },
+        {
+          "address": "6CquEHN9aS4cvEjUnZPhr1azMBmbiF5pMfdjVu8RQx6p",
+          "file": "accounts/c2dcda69acdec81550a375e89cdabb076f708f077928a3bbddb0d582e07f4612.json",
+          "fileSha256": "c2dcda69acdec81550a375e89cdabb076f708f077928a3bbddb0d582e07f4612",
+          "loadAtGenesis": true
+        },
+        {
+          "address": "7YvvqJNdXZt3aNMkCebG4To2f1VJe1TbxHBtY41D4Jy2",
+          "file": "accounts/48c6a6825e7ed7ed47424569eac0a7fe346242fefbeb2e66e1c4e9ad284a2342.json",
+          "fileSha256": "48c6a6825e7ed7ed47424569eac0a7fe346242fefbeb2e66e1c4e9ad284a2342",
+          "loadAtGenesis": false
+        },
+        {
+          "address": "9D428z6FiWBzKX9i72tc26RGybMbGV9FLUa8EAAvf7kX",
+          "file": "accounts/efbc0405570f252cdfea7c24650cb5f6d276af083e2b0ff7e25720bee100ada8.json",
+          "fileSha256": "efbc0405570f252cdfea7c24650cb5f6d276af083e2b0ff7e25720bee100ada8",
+          "loadAtGenesis": true
+        },
+        {
+          "address": "9zQXTg6QqijGAG3kyWf94CQA3KdFq3VoYBLAUrhge1WB",
+          "file": "accounts/bc0e84848edbbb9ea9b81f4cfe7931917fb031637cb334d23f4783fd7f5dfa8b.json",
+          "fileSha256": "bc0e84848edbbb9ea9b81f4cfe7931917fb031637cb334d23f4783fd7f5dfa8b",
+          "loadAtGenesis": true
+        },
+        {
+          "address": "AKnL4NNf3DGWZJS6cPknBuEGnVsV4A4m5tgebLHaRSZ9",
+          "file": "accounts/64e48bddc65ac6aa562251061c548e9cde21c923fa364eba366494a8ffae3ffd.json",
+          "fileSha256": "64e48bddc65ac6aa562251061c548e9cde21c923fa364eba366494a8ffae3ffd",
+          "loadAtGenesis": true
+        },
+        {
+          "address": "DEozmkY3H2YccnEAqHyENJp2Hs1HAFjBq6xqdJDFeZk9",
+          "file": "accounts/b2b311e5a3c8709fe26d2e8ac5bac853ee2e0ccc20d240794057253d5775480b.json",
+          "fileSha256": "b2b311e5a3c8709fe26d2e8ac5bac853ee2e0ccc20d240794057253d5775480b",
+          "loadAtGenesis": true
+        },
+        {
+          "address": "EDfQpAnRQVqFmGZuY2ocZoX7gBp5H1N3MWWMLmuWTmD6",
+          "file": "accounts/831a43ef135ffd21c7db675a0bbf311d0b7cfb80ea946aae6f1efa3b2ce50055.json",
+          "fileSha256": "831a43ef135ffd21c7db675a0bbf311d0b7cfb80ea946aae6f1efa3b2ce50055",
+          "loadAtGenesis": true
+        },
+        {
+          "address": "JBz8KKzyZ6FzTU7WmLywurr49xJPpQcA9ECNg2SZX6iH",
+          "file": "accounts/c5b296542ee51d2fbc4753962b80d8454b20c93136456e36c61a157695230be2.json",
+          "fileSha256": "c5b296542ee51d2fbc4753962b80d8454b20c93136456e36c61a157695230be2",
+          "loadAtGenesis": true
+        }
+      ],
+      "genesisAccountsSha256": "b764fa241bf2b7e73b841b1287bd2bbc215a7443ad2a5aecfdfd1be61c74a478",
+      "input": "cases/failed-withdrawal-cpi-rollback/input.json",
+      "inputSha256": "26656c34faa32ea97a4a73de76f40f8c5ba1891c05f83de3dda8ea3099ab2214",
+      "markerStart": {
+        "dataBytes": 0,
+        "kind": "zero-lamport-system-owned",
+        "lamports": 0,
+        "owner": "11111111111111111111111111111111"
+      },
+      "name": "failed-withdrawal-cpi-rollback",
+      "postStateAccountsSha256": "9934be40a79f777decad47a041fb88511016c71f3a7edc2360c36d51c3e1b62d",
+      "programOverrides": [
+        {
+          "address": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA",
+          "file": "sbf/aspis_pair_forest_result_double.so",
+          "fileSha256": "3693edf83f100ca90229a8aa0406182d71fd56b6480a1fa7366c4caff4ad5c29",
+          "loader": "bpf",
+          "purpose": "deterministic rejecting CPI test double; production SPL Token is not replaced outside this disposable case"
+        }
+      ],
+      "registryV2Fixtures": {
+        "entryBytes": 320,
+        "entrySha256": "e82965fc06929e94d9318b355d8c387d8d87cd34c459c612fe1923ae133fd81e",
+        "entrySource": "results/v7-pair-forest-registry-v2-litesvm-20260830/production-withdrawal-cpi-failure.ase2.bin",
+        "registryBytes": 256,
+        "registryExecutableSha256": "0f14c7b74ec6cbe3b3f637b0f24c7e8cdc46fd09f5b2e495fd51ada16ad8f11b",
+        "registryProgramdata": "jXrkJpunSfyA8WsBgKPdErECQnLWmex1PTicKUrTNdi",
+        "registrySha256": "cb0aa4373e923eace3187333a5485728240a36c2ff8ecdf7c33779e8226d604c",
+        "registrySource": "results/v7-pair-forest-registry-v2-litesvm-20260830/production-withdrawal-cpi-failure.asr2.bin",
+        "selectedVerifierExecutableSha256": "97df12937d46e25a2eeefeac16ce31925fd473c672d6b656548be9220adbcc6d",
+        "verifierProgramdata": "cdRqe7MGCEJ2Z6iZfWuXtuymRiAhXtyfDgT47sKZr69"
+      },
+      "rollbackRequired": true,
+      "selectedVerifier": {
+        "file": "sbf/aspis_verifier.so",
+        "fileBytes": 1819480,
+        "fileSha256": "97df12937d46e25a2eeefeac16ce31925fd473c672d6b656548be9220adbcc6d",
+        "loader": "upgradeable-none"
+      }
+    }
+  ],
+  "computeUnitCeiling": 1300000,
+  "deployed": false,
+  "executionReady": true,
+  "generatorSchema": "aspis.v7.registry-v2-deterministic-agave-bundle-generator.v1",
+  "poolProgram": "5PjDJaGfSPJj4tFzMRCiuuAasKg5n8dJKXKenhuwZexx",
+  "poolSbf": "sbf/aspis_pool.so",
+  "poolSbfBytes": 534608,
+  "poolSbfSha256": "0e94c98d28437f0b01dce546fdefaad21dc10772a4d46991c2a573d8129cd4f6",
+  "poolSourceTree": "0bebca6b10c61e1d97949da10e6b4901d5117fa0",
+  "programSourceCommit": "7179f7c550fe0461f4251dea5268af73876da91d",
+  "programSourceTree": "72d8ccd295994277bcb5f9df922c2a1483ac0443",
+  "registryProgram": "5bV6jUfhDHCQVA1WfKBUnXUsboJgoKgkzkKcxr3joew5",
+  "registrySbf": "sbf/aspis_registry.so",
+  "registrySbfBytes": 189824,
+  "registrySbfSha256": "0f14c7b74ec6cbe3b3f637b0f24c7e8cdc46fd09f5b2e495fd51ada16ad8f11b",
+  "registrySourceTree": "50edc0c660f12c68baa6298f8f01e3422ea8b70b",
+  "resultDoubleSbf": "sbf/aspis_pair_forest_result_double.so",
+  "resultDoubleSbfBytes": 20816,
+  "resultDoubleSbfSha256": "3693edf83f100ca90229a8aa0406182d71fd56b6480a1fa7366c4caff4ad5c29",
+  "sbfBindingComplete": true,
+  "sbfFilesIncludedInTemplate": true,
+  "schema": "aspis.v7.registry-v2-disposable-agave-txv1-bundle.v1",
+  "signed": false,
+  "submitted": false,
+  "transactionByteCeilingExclusive": 4096,
+  "verifierProgram": "7Q2nGsPg8rbjdxKHK4jxTgEWLTyd9o1X4KMSjCieRmue",
+  "verifierSbf": "sbf/aspis_verifier.so",
+  "verifierSbfBytes": 1819480,
+  "verifierSbfSha256": "97df12937d46e25a2eeefeac16ce31925fd473c672d6b656548be9220adbcc6d",
+  "verifierSourceTree": "0b9627c523ac47682f3c987abd68ae2027ac5eb2",
+  "warpSlot": 150
+}

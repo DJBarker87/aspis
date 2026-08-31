@@ -1,0 +1,90 @@
+{
+  "schema": "aspis.v7.registry-v2-disposable-agave-run-audit.v1",
+  "runtime": "solana-cli 4.2.0 (src:ac82b5d4; feat:21b0d33a, client:Agave)",
+  "sourceCommit": "7179f7c550fe0461f4251dea5268af73876da91d",
+  "bundleSha256": "1d27eed3e3022172170c351e70f409ed8cdbd83e755c9147a1478c0932d5321d",
+  "bundleInventorySha256": "84b45dd5e1fb316501c833b00c4df5bc4f678a3dc466fda06a6cbc8e7d29a0d0",
+  "suiteSha256": "3bd0af676e940f5b0221d600525a3bd2e108f48b5490222f2d3504170d998aee",
+  "execution": {
+    "caseUnit": "aspis-v7-registry-v2-agave-11case-r6",
+    "caseInvocation": "bf1bf40ea616491a83e7e5ae9ef5d6e0",
+    "memoryHighBytes": 10737418240,
+    "memoryMaxBytes": 12884901888,
+    "memorySwapMaxBytes": 0,
+    "wall": "0:19.72",
+    "maximumProcessResidentSetKiB": 461968,
+    "swaps": 0,
+    "allElevenCasesExecuted": true,
+    "runnerExitStatus": 126,
+    "runnerExitExplanation": "All eleven cases and their case records completed; the original in-process suite aggregation exceeded the host argument-list limit. No case was rerun. The aggregation was factored into the focused r7 materializer."
+  },
+  "aggregation": {
+    "unit": "aspis-v7-registry-v2-agave-suite-materialize-r7",
+    "invocation": "23e90b1e5c8940008e2ffcac0b206be5",
+    "memoryHighBytes": 10737418240,
+    "memoryMaxBytes": 12884901888,
+    "memorySwapMaxBytes": 0,
+    "wall": "0:00.12",
+    "maximumProcessResidentSetKiB": 7920,
+    "swaps": 0,
+    "exitStatus": 0
+  },
+  "predecessors": [
+    {
+      "run": "r1",
+      "invocation": "cee5f864ab884a0e9f3b704bd6cd0ddc",
+      "exitStatus": 101,
+      "reason": "task-owned offline Cargo cache lacked hpke 0.14.0",
+      "wall": "0:04.77",
+      "maximumProcessResidentSetKiB": 442064,
+      "swaps": 0
+    },
+    {
+      "run": "r2",
+      "invocation": "1a813d4dce8648a09ba1b3180e0084a4",
+      "exitStatus": 101,
+      "reason": "task-owned offline Cargo cache next lacked chacha20poly1305 0.11.0",
+      "wall": "0:04.77",
+      "maximumProcessResidentSetKiB": 443056,
+      "swaps": 0
+    },
+    {
+      "run": "r3",
+      "invocation": "8ae1dc48fc324e8e8c48ed444e639340",
+      "exitStatus": 1,
+      "reason": "offline wallet build completed, then the first case hit an opaque evidence assertion; the runner was changed to persist preflight and response evidence before assertions",
+      "wall": "3:04.08",
+      "maximumProcessResidentSetKiB": 808988,
+      "swaps": 0
+    },
+    {
+      "run": "r4",
+      "invocation": "c0b8f4d3405e4926972a2ef4dcfa5bb3",
+      "exitStatus": 1,
+      "reason": "four honest cases passed; strict-proof rejection exposed Agave's all-null failed-simulation account snapshots",
+      "wall": "0:11.15",
+      "maximumProcessResidentSetKiB": 464076,
+      "swaps": 0
+    },
+    {
+      "run": "r5",
+      "invocation": "463b540c935f458b8fb1923460c30f26",
+      "exitStatus": 1,
+      "reason": "four honest cases passed; raw failed-simulation snapshot equality was correctly rejected because Agave returns no failed post-account snapshots",
+      "wall": "0:11.34",
+      "maximumProcessResidentSetKiB": 462368,
+      "swaps": 0
+    }
+  ],
+  "classification": {
+    "realAgaveSimulationCu": true,
+    "componentSum": false,
+    "signed": false,
+    "submitted": false,
+    "publicClusterUsed": false,
+    "landedOrFinalizedCu": false,
+    "directNegativeRollbackObserved": false,
+    "negativeFailClosedSimulationObserved": true
+  },
+  "pass": true
+}

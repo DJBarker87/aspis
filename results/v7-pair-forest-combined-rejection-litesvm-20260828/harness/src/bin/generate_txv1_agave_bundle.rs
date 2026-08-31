@@ -1,9 +1,9 @@
-//! Deterministic account/input bundle for the simulation-only V7 TxV1 suite.
+//! Deterministic account/input bundle for the disposable V7 TxV1 lifecycle suite.
 //!
 //! This generator does not load a signer, contact RPC, execute SBF, or mutate a
-//! cluster. It materializes only public genesis-account images, zero-signature
+//! cluster. It materializes only public genesis-account images, unsigned
 //! transaction inputs, expected successful poststates, and fail-closed case
-//! metadata for the existing disposable-Agave runner.
+//! metadata for the disposable-Agave runner.
 
 use std::{
     collections::{BTreeMap, BTreeSet},
@@ -20,28 +20,33 @@ use aspis_pool::{
     pool_v1_root_page_address, pool_v1_vault_authority_address,
     pool_v1_vault_token_account_address, POOL_V1_PAIR_EMPTY_ROOTS,
 };
+use aspis_registry::{pool_v1_verifier_entry_v2_address, pool_v1_verifier_registry_v2_address};
 use aspis_statement::pool_v1::root_history::{
     append_root_history_page_bytes_v1, initialize_root_history_page_bytes_v1, root_history_location,
 };
 use aspis_statement::{
     derive_owner_key, encode_digest_canonical,
     pool_v1::{
-        decode_pool_v1_pair_verified_afterstate_v1, encode_pool_v1_nullifier_marker,
+        decode_pool_v1_pair_verified_afterstate_v1, decode_verifier_registry_entry_v2,
+        decode_verifier_registry_v2, encode_pool_v1_nullifier_marker,
         encode_pool_v1_pair_forest_checkpoint_v1, encode_pool_v1_pair_forest_lane_state_v1,
         encode_pool_v1_pair_forest_master_v1, encode_pool_v1_pair_forest_terminal_request_v1,
-        encode_pool_v1_pair_verified_afterstate_v1, encode_verifier_registry_entry_v1,
-        encode_verifier_registry_v1, pool_v1_note_commitment, pool_v1_nullifier,
-        pool_v1_pair_forest_output_lane_v1, pool_v1_tree_parent, IncrementalMerkleTreeV1,
-        PoolIdentityV1, PoolV1NullifierMarkerV1, PoolV1PairForestCheckpointV1,
-        PoolV1PairForestLaneStateV1, PoolV1PairForestMasterV1, PoolV1PairForestTerminalPaymentV1,
-        PoolV1PairForestTerminalRequestV1, PoolV1PairLeafWitnessV1, PoolV1PairVerifiedAfterstateV1,
+        encode_pool_v1_pair_forest_terminal_result_v1, encode_pool_v1_pair_verified_afterstate_v1,
+        pool_v1_note_commitment, pool_v1_nullifier, pool_v1_pair_forest_output_lane_v1,
+        pool_v1_tree_parent, IncrementalMerkleTreeV1, PoolIdentityV1, PoolV1NullifierMarkerV1,
+        PoolV1PairForestCheckpointV1, PoolV1PairForestLaneStateV1, PoolV1PairForestMasterV1,
+        PoolV1PairForestTerminalPaymentV1, PoolV1PairForestTerminalRequestV1,
+        PoolV1PairForestTerminalResultV1, PoolV1PairLeafWitnessV1, PoolV1PairVerifiedAfterstateV1,
         PoolV1PrivateTransferPublicV1, PoolV1WithdrawalPublicV1, VerifierEntryStatusV1,
-        VerifierPolicyV1, VerifierRegistryEntryV1, VerifierRegistryV1,
-        POOL_V1_NULLIFIER_MARKER_ACCOUNT_BYTES, POOL_V1_PAIR_FOREST_TERMINAL_REQUEST_BYTES,
+        VerifierPolicyV1, POOL_V1_NULLIFIER_MARKER_ACCOUNT_BYTES,
+        POOL_V1_PAIR_FOREST_TERMINAL_REQUEST_BYTES, POOL_V1_PAIR_FOREST_TERMINAL_VERSION,
         POOL_V1_PAIR_TREE_DEPTH, POOL_V1_PAIR_VERIFIED_AFTERSTATE_BYTES,
         POOL_V1_ROOT_HISTORY_CAPACITY, POOL_V1_ROOT_HISTORY_PAGE_ACCOUNT_BYTES,
-        POOL_V1_VERIFIER_ENTRY_NO_RETIREMENT_SLOT, POOL_V1_VERIFIER_PROOF_ACCOUNT_HEADER_BYTES,
-        POOL_V1_VERIFIER_PROOF_ACCOUNT_MAGIC, V7_POOL_PAIR_FOREST_TAG73_PROFILE_BINDING,
+        POOL_V1_VERIFIER_ENTRY_NO_RETIREMENT_SLOT,
+        POOL_V1_VERIFIER_POLICY_FLAG_IMMUTABLE_DEPLOYMENT,
+        POOL_V1_VERIFIER_POLICY_FLAG_IMMUTABLE_REGISTRY,
+        POOL_V1_VERIFIER_PROOF_ACCOUNT_HEADER_BYTES, POOL_V1_VERIFIER_PROOF_ACCOUNT_MAGIC,
+        POOL_V1_VERIFIER_REGISTRY_FLAG_IMMUTABLE, V7_POOL_PAIR_FOREST_TAG73_PROFILE_BINDING,
         V7_POOL_PAIR_FOREST_TAG73_RELEASE_BINDING,
     },
     poseidon2::Digest,
@@ -49,19 +54,18 @@ use aspis_statement::{
 use base64::{engine::general_purpose::STANDARD as BASE64_STANDARD, Engine as _};
 use serde_json::{json, Value};
 use sha2::{Digest as _, Sha256};
-use solana_keypair::Keypair;
-use solana_program::pubkey::Pubkey;
-use solana_signer::Signer;
+use solana_program::{pubkey::Pubkey, rent::Rent};
 
-const PROGRAM_SOURCE_COMMIT: &str = "bcd03b12293f2737dfa1da1436092a0a24a6ae24";
-const POOL_SBF_SHA256: &str = "61f80ab33bff36b38716df944d7851a473be0ed065b2d57864082fd966ec8810";
-const POOL_SBF_BYTES: u64 = 524_328;
-const VERIFIER_SBF_SHA256: &str = "4ee9b478953e049e2d9e1f43c84fa97f745a98151f9477ebd828de742b75e5c";
-const VERIFIER_SBF_BYTES: u64 = 1_700_384;
+const PROGRAM_SOURCE_COMMIT: &str = "7179f7c550fe0461f4251dea5268af73876da91d";
+const PROGRAM_SOURCE_TREE: &str = "72d8ccd295994277bcb5f9df922c2a1483ac0443";
+const POOL_SOURCE_TREE: &str = "0bebca6b10c61e1d97949da10e6b4901d5117fa0";
+const VERIFIER_SOURCE_TREE: &str = "0b9627c523ac47682f3c987abd68ae2027ac5eb2";
+const REGISTRY_SOURCE_TREE: &str = "50edc0c660f12c68baa6298f8f01e3422ea8b70b";
 const PROFILE_SLOT: u64 = 150;
 
 const POOL_PROGRAM_BYTES: [u8; 32] = [0x41; 32];
 const VERIFIER_PROGRAM_ID: &str = "7Q2nGsPg8rbjdxKHK4jxTgEWLTyd9o1X4KMSjCieRmue";
+const SIMULATION_FEE_PAYER_ID: &str = "AKnL4NNf3DGWZJS6cPknBuEGnVsV4A4m5tgebLHaRSZ9";
 const REGISTRY_PROGRAM_BYTES: [u8; 32] = [0x44; 32];
 const REGISTRY_AUTHORITY_BYTES: [u8; 32] = [0; 32];
 const POLICY_BINDING_BYTES: [u8; 32] = [7; 32];
@@ -70,6 +74,9 @@ const PROOF_ACCOUNT_BYTES: [u8; 32] = [0x45; 32];
 const DESTINATION_TOKEN_ACCOUNT_BYTES: [u8; 32] = [0x49; 32];
 const DESTINATION_TOKEN_OWNER_BYTES: [u8; 32] = [0x4a; 32];
 const LEGACY_SPL_TOKEN_PROGRAM_ID: &str = "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA";
+const BPF_LOADER_UPGRADEABLE_ID: &str = "BPFLoaderUpgradeab1e11111111111111111111111";
+const WRONG_RELEASE_BINDING: [u8; 32] = [0xee; 32];
+const REGISTRY_FIXTURE_ROOT: &str = "results/v7-pair-forest-registry-v2-litesvm-20260830";
 const LEGACY_SPL_TOKEN_MINT_ACCOUNT_BYTES: usize = 82;
 const LEGACY_SPL_TOKEN_ACCOUNT_BYTES: usize = 165;
 const WITHDRAWAL_AMOUNT: u64 = 250;
@@ -98,10 +105,10 @@ enum Mutation {
     None,
     StaleLane,
     ReplayMarker,
-    WrongCheckpoint,
     WrongRegistryRelease,
-    MalformedProof,
-    MutatedProof,
+    StrictProofMutation,
+    MalformedResult,
+    MutatedResult,
     FailingWithdrawalCpi,
 }
 
@@ -112,6 +119,7 @@ struct CaseSpec {
     populated_pairs: u32,
     mutation: Mutation,
     fixture: &'static str,
+    registry_fixture_stem: &'static str,
     failure_stage: Option<&'static str>,
 }
 
@@ -127,6 +135,13 @@ impl CaseSpec {
             "same-page"
         }
     }
+
+    fn uses_result_double(self) -> bool {
+        matches!(
+            self.mutation,
+            Mutation::MalformedResult | Mutation::MutatedResult
+        )
+    }
 }
 
 const CASES: [CaseSpec; 11] = [
@@ -136,6 +151,7 @@ const CASES: [CaseSpec; 11] = [
         populated_pairs: 13,
         mutation: Mutation::None,
         fixture: "results/v7-pair-forest-combined-rejection-litesvm-20260828/evidence/v7-pair-forest-transfer-strict-work-canonical-fixed.bin",
+        registry_fixture_stem: "production-transfer-same-success",
         failure_stage: None,
     },
     CaseSpec {
@@ -144,6 +160,7 @@ const CASES: [CaseSpec; 11] = [
         populated_pairs: 255,
         mutation: Mutation::None,
         fixture: "results/v7-pair-forest-combined-rejection-litesvm-20260828/evidence/transfer-rollover-strict-canonical.bin",
+        registry_fixture_stem: "production-transfer-rollover-success",
         failure_stage: None,
     },
     CaseSpec {
@@ -152,6 +169,7 @@ const CASES: [CaseSpec; 11] = [
         populated_pairs: 13,
         mutation: Mutation::None,
         fixture: "results/v7-pair-forest-combined-rejection-litesvm-20260828/evidence/withdrawal-same-page-counter0-strict-canonical.bin",
+        registry_fixture_stem: "production-withdrawal-same-success",
         failure_stage: None,
     },
     CaseSpec {
@@ -160,7 +178,26 @@ const CASES: [CaseSpec; 11] = [
         populated_pairs: 255,
         mutation: Mutation::None,
         fixture: "results/v7-pair-forest-combined-rejection-litesvm-20260828/evidence/withdrawal-rollover-counter0-strict-canonical.bin",
+        registry_fixture_stem: "production-withdrawal-rollover-success",
         failure_stage: None,
+    },
+    CaseSpec {
+        name: "strict-proof-mutation-rejection",
+        operation: Operation::Transfer,
+        populated_pairs: 13,
+        mutation: Mutation::StrictProofMutation,
+        fixture: "results/v7-pair-forest-combined-rejection-litesvm-20260828/evidence/v7-pair-forest-transfer-strict-work-canonical-fixed.bin",
+        registry_fixture_stem: "production-proof-rejection",
+        failure_stage: Some("authenticated strict-work proof body changed after construction"),
+    },
+    CaseSpec {
+        name: "wrong-registry-release-rejection",
+        operation: Operation::Transfer,
+        populated_pairs: 13,
+        mutation: Mutation::WrongRegistryRelease,
+        fixture: "results/v7-pair-forest-combined-rejection-litesvm-20260828/evidence/v7-pair-forest-transfer-strict-work-canonical-fixed.bin",
+        registry_fixture_stem: "production-wrong-release",
+        failure_stage: Some("request release differs from the canonical Registry V2 entry PDA"),
     },
     CaseSpec {
         name: "stale-selected-lane-rejection",
@@ -168,6 +205,7 @@ const CASES: [CaseSpec; 11] = [
         populated_pairs: 13,
         mutation: Mutation::StaleLane,
         fixture: "results/v7-pair-forest-combined-rejection-litesvm-20260828/evidence/v7-pair-forest-transfer-strict-work-canonical-fixed.bin",
+        registry_fixture_stem: "production-stale-lane",
         failure_stage: Some("live selected lane advanced after proof construction"),
     },
     CaseSpec {
@@ -176,39 +214,26 @@ const CASES: [CaseSpec; 11] = [
         populated_pairs: 13,
         mutation: Mutation::ReplayMarker,
         fixture: "results/v7-pair-forest-combined-rejection-litesvm-20260828/evidence/v7-pair-forest-transfer-strict-work-canonical-fixed.bin",
+        registry_fixture_stem: "production-replay-nullifier",
         failure_stage: Some("canonical nullifier marker already populated"),
     },
     CaseSpec {
-        name: "wrong-checkpoint-rejection",
+        name: "malformed-result-rejection",
         operation: Operation::Transfer,
         populated_pairs: 13,
-        mutation: Mutation::WrongCheckpoint,
+        mutation: Mutation::MalformedResult,
         fixture: "results/v7-pair-forest-combined-rejection-litesvm-20260828/evidence/v7-pair-forest-transfer-strict-work-canonical-fixed.bin",
-        failure_stage: Some("checkpoint account disagrees with the proof-bound historical anchor"),
+        registry_fixture_stem: "production-malformed-result",
+        failure_stage: Some("selected verifier returns a truncated ASR8 result"),
     },
     CaseSpec {
-        name: "wrong-registry-release-rejection",
+        name: "mutated-result-rejection",
         operation: Operation::Transfer,
         populated_pairs: 13,
-        mutation: Mutation::WrongRegistryRelease,
+        mutation: Mutation::MutatedResult,
         fixture: "results/v7-pair-forest-combined-rejection-litesvm-20260828/evidence/v7-pair-forest-transfer-strict-work-canonical-fixed.bin",
-        failure_stage: Some("registry entry release differs from request and PDA"),
-    },
-    CaseSpec {
-        name: "malformed-proof-rejection",
-        operation: Operation::Transfer,
-        populated_pairs: 13,
-        mutation: Mutation::MalformedProof,
-        fixture: "results/v7-pair-forest-combined-rejection-litesvm-20260828/evidence/v7-pair-forest-transfer-strict-work-canonical-fixed.bin",
-        failure_stage: Some("proof-account header magic malformed"),
-    },
-    CaseSpec {
-        name: "mutated-proof-rejection",
-        operation: Operation::Transfer,
-        populated_pairs: 13,
-        mutation: Mutation::MutatedProof,
-        fixture: "results/v7-pair-forest-combined-rejection-litesvm-20260828/evidence/v7-pair-forest-transfer-strict-work-canonical-fixed.bin",
-        failure_stage: Some("authenticated proof body changed after construction"),
+        registry_fixture_stem: "production-mutated-result",
+        failure_stage: Some("selected verifier returns a canonical ASR8 with the wrong selected-lane binding"),
     },
     CaseSpec {
         name: "failed-withdrawal-cpi-rollback",
@@ -216,6 +241,7 @@ const CASES: [CaseSpec; 11] = [
         populated_pairs: 13,
         mutation: Mutation::FailingWithdrawalCpi,
         fixture: "results/v7-pair-forest-combined-rejection-litesvm-20260828/evidence/withdrawal-same-page-counter0-strict-canonical.bin",
+        registry_fixture_stem: "production-withdrawal-cpi-failure",
         failure_stage: Some("selected verifier succeeds, deterministic token-program test double rejects CPI"),
     },
 ];
@@ -385,11 +411,11 @@ fn load_payload(repo: &Path, path: &str, expected_afterstate: &[u8]) -> Result<V
     Ok(payload)
 }
 
-fn account_meta(key: Pubkey, writable: bool) -> Value {
+fn account_meta(key: Pubkey, writable: bool, signer: bool) -> Value {
     json!({
         "pubkey": key.to_string(),
         "writable": writable,
-        "signer": false,
+        "signer": signer,
     })
 }
 
@@ -411,7 +437,38 @@ fn materialize_account_file(output: &Path, account: &FixtureAccount) -> Result<(
     Ok((relative, sha))
 }
 
-fn case_bundle(repo: &Path, output: &Path, spec: CaseSpec, request_id: u64) -> Result<Value> {
+struct SbfArtifact {
+    source: PathBuf,
+    relative: &'static str,
+    bytes: Vec<u8>,
+    sha256: String,
+    digest: [u8; 32],
+}
+
+struct SbfArtifacts {
+    pool: SbfArtifact,
+    verifier: SbfArtifact,
+    registry: SbfArtifact,
+    result_double: SbfArtifact,
+}
+
+impl SbfArtifacts {
+    fn selected_verifier(&self, spec: CaseSpec) -> &SbfArtifact {
+        if spec.uses_result_double() {
+            &self.result_double
+        } else {
+            &self.verifier
+        }
+    }
+}
+
+fn case_bundle(
+    repo: &Path,
+    output: &Path,
+    artifacts: &SbfArtifacts,
+    spec: CaseSpec,
+    request_id: u64,
+) -> Result<Value> {
     let pool_program = Pubkey::new_from_array(POOL_PROGRAM_BYTES);
     let verifier_program = Pubkey::from_str(VERIFIER_PROGRAM_ID)?;
     let registry_program = Pubkey::new_from_array(REGISTRY_PROGRAM_BYTES);
@@ -421,7 +478,8 @@ fn case_bundle(repo: &Path, output: &Path, spec: CaseSpec, request_id: u64) -> R
     let (historical_global_anchor, nullifier) = deterministic_anchor_and_nullifier()?;
 
     let policy = VerifierPolicyV1 {
-        flags: 1,
+        flags: POOL_V1_VERIFIER_POLICY_FLAG_IMMUTABLE_REGISTRY
+            | POOL_V1_VERIFIER_POLICY_FLAG_IMMUTABLE_DEPLOYMENT,
         registry_program: REGISTRY_PROGRAM_BYTES,
         registry_authority: REGISTRY_AUTHORITY_BYTES,
         policy_binding: POLICY_BINDING_BYTES,
@@ -508,7 +566,11 @@ fn case_bundle(repo: &Path, output: &Path, spec: CaseSpec, request_id: u64) -> R
     };
     let request = PoolV1PairForestTerminalRequestV1 {
         verifier_profile: V7_POOL_PAIR_FOREST_TAG73_PROFILE_BINDING,
-        verifier_release: V7_POOL_PAIR_FOREST_TAG73_RELEASE_BINDING,
+        verifier_release: if spec.mutation == Mutation::WrongRegistryRelease {
+            WRONG_RELEASE_BINDING
+        } else {
+            V7_POOL_PAIR_FOREST_TAG73_RELEASE_BINDING
+        },
         pool_program: pool_program.to_bytes(),
         public: payment,
     };
@@ -539,7 +601,43 @@ fn case_bundle(repo: &Path, output: &Path, spec: CaseSpec, request_id: u64) -> R
     };
     let expected_afterstate = encode_pool_v1_pair_verified_afterstate_v1(&candidate_afterstate)
         .map_err(|error| anyhow!("encode afterstate: {error:?}"))?;
-    let payload = load_payload(repo, spec.fixture, &expected_afterstate)?;
+    let expected_result = PoolV1PairForestTerminalResultV1 {
+        transition_kind: request.public.transition_kind(),
+        master_account: master_key.to_bytes(),
+        selected_lane_account: lane_key.to_bytes(),
+        output_lane,
+        nullifier,
+        verified_afterstate: candidate_afterstate,
+    };
+    let expected_result_bytes = encode_pool_v1_pair_forest_terminal_result_v1(&expected_result)
+        .map_err(|error| anyhow!("encode expected ASR8: {error:?}"))?;
+    let mut payload = if spec.uses_result_double() {
+        match spec.mutation {
+            Mutation::MalformedResult => {
+                expected_result_bytes[..expected_result_bytes.len() - 1].to_vec()
+            }
+            Mutation::MutatedResult => {
+                let mut wrong = expected_result;
+                wrong.selected_lane_account[0] ^= 1;
+                encode_pool_v1_pair_forest_terminal_result_v1(&wrong)
+                    .map_err(|error| anyhow!("encode canonical wrong ASR8: {error:?}"))?
+                    .to_vec()
+            }
+            _ => unreachable!(),
+        }
+    } else {
+        load_payload(repo, spec.fixture, &expected_afterstate)?
+    };
+    if spec.mutation == Mutation::StrictProofMutation {
+        let final_byte = payload
+            .last_mut()
+            .context("proof mutation fixture is empty")?;
+        *final_byte ^= 1;
+    }
+    ensure!(
+        payload.len() <= u32::MAX as usize,
+        "proof payload too large"
+    );
     let mut proof_image = vec![0u8; POOL_V1_VERIFIER_PROOF_ACCOUNT_HEADER_BYTES + payload.len()];
     proof_image[..4].copy_from_slice(&POOL_V1_VERIFIER_PROOF_ACCOUNT_MAGIC);
     proof_image[4..8].copy_from_slice(&(payload.len() as u32).to_le_bytes());
@@ -568,37 +666,62 @@ fn case_bundle(repo: &Path, output: &Path, spec: CaseSpec, request_id: u64) -> R
         &encode_digest_canonical(&nullifier),
     )?
     .0;
-    let registry_key =
-        aspis_pool::pool_v1_verifier_registry_address(&registry_program, &master_key).0;
-    let entry_key = aspis_pool::pool_v1_verifier_entry_address(
+    let registry_key = pool_v1_verifier_registry_v2_address(&registry_program, &master_key).0;
+    let entry_key = pool_v1_verifier_entry_v2_address(
         &registry_program,
         &master_key,
         &V7_POOL_PAIR_FOREST_TAG73_PROFILE_BINDING,
         &V7_POOL_PAIR_FOREST_TAG73_RELEASE_BINDING,
     )
     .0;
-    let registry_image = encode_verifier_registry_v1(&VerifierRegistryV1 {
-        flags: 2,
-        pool: master_key.to_bytes(),
-        authority: REGISTRY_AUTHORITY_BYTES,
-        policy_binding: POLICY_BINDING_BYTES,
-        generation: 1,
-        minimum_activation_delay_slots: 1,
-    })
-    .map_err(|error| anyhow!("encode registry: {error:?}"))?;
-    let entry = VerifierRegistryEntryV1 {
-        status: VerifierEntryStatusV1::Active,
-        statement_version: 1,
-        pool: master_key.to_bytes(),
-        verifier_program: verifier_program.to_bytes(),
-        profile_binding: V7_POOL_PAIR_FOREST_TAG73_PROFILE_BINDING,
-        release_binding: V7_POOL_PAIR_FOREST_TAG73_RELEASE_BINDING,
-        activation_slot: 90,
-        retirement_slot: POOL_V1_VERIFIER_ENTRY_NO_RETIREMENT_SLOT,
-        policy_binding: POLICY_BINDING_BYTES,
-    };
-    let entry_image = encode_verifier_registry_entry_v1(&entry)
-        .map_err(|error| anyhow!("encode registry entry: {error:?}"))?;
+    let registry_fixture = repo
+        .join(REGISTRY_FIXTURE_ROOT)
+        .join(format!("{}.asr2.bin", spec.registry_fixture_stem));
+    let entry_fixture = repo
+        .join(REGISTRY_FIXTURE_ROOT)
+        .join(format!("{}.ase2.bin", spec.registry_fixture_stem));
+    let registry_image = fs::read(&registry_fixture)
+        .with_context(|| format!("read Registry V2 image {}", registry_fixture.display()))?;
+    let entry_image = fs::read(&entry_fixture)
+        .with_context(|| format!("read Registry V2 entry {}", entry_fixture.display()))?;
+    let registry = decode_verifier_registry_v2(&registry_image)
+        .map_err(|error| anyhow!("decode frozen ASR2: {error:?}"))?;
+    let entry = decode_verifier_registry_entry_v2(&entry_image)
+        .map_err(|error| anyhow!("decode frozen ASE2: {error:?}"))?;
+    let loader = Pubkey::from_str(BPF_LOADER_UPGRADEABLE_ID)?;
+    let registry_programdata =
+        Pubkey::find_program_address(&[registry_program.as_ref()], &loader).0;
+    let verifier_programdata =
+        Pubkey::find_program_address(&[verifier_program.as_ref()], &loader).0;
+    let selected_verifier = artifacts.selected_verifier(spec);
+    ensure!(
+        registry.flags == POOL_V1_VERIFIER_REGISTRY_FLAG_IMMUTABLE
+            && registry.pool == master_key.to_bytes()
+            && registry.authority == REGISTRY_AUTHORITY_BYTES
+            && registry.policy_binding == POLICY_BINDING_BYTES
+            && registry.generation == 3
+            && registry.registry_program == registry_program.to_bytes()
+            && registry.loader_program == loader.to_bytes()
+            && registry.programdata_address == registry_programdata.to_bytes()
+            && registry.executable_hash == artifacts.registry.digest,
+        "frozen ASR2 is not the exact immutable Registry V2 certificate"
+    );
+    ensure!(
+        entry.status == VerifierEntryStatusV1::Active
+            && entry.statement_version == POOL_V1_PAIR_FOREST_TERMINAL_VERSION
+            && entry.pool == master_key.to_bytes()
+            && entry.verifier_program == verifier_program.to_bytes()
+            && entry.profile_binding == V7_POOL_PAIR_FOREST_TAG73_PROFILE_BINDING
+            && entry.release_binding == V7_POOL_PAIR_FOREST_TAG73_RELEASE_BINDING
+            && entry.loader_program == loader.to_bytes()
+            && entry.programdata_address == verifier_programdata.to_bytes()
+            && entry.executable_hash == selected_verifier.digest
+            && entry.expected_upgrade_authority == [0u8; 32]
+            && entry.activation_slot == 120
+            && entry.retirement_slot == POOL_V1_VERIFIER_ENTRY_NO_RETIREMENT_SLOT
+            && entry.policy_binding == POLICY_BINDING_BYTES,
+        "frozen ASE2 is not the exact active verifier certificate"
+    );
 
     let current_page_first =
         current_history_location.page_number * POOL_V1_ROOT_HISTORY_CAPACITY as u64;
@@ -696,13 +819,7 @@ fn case_bundle(repo: &Path, output: &Path, spec: CaseSpec, request_id: u64) -> R
             DATA_ACCOUNT_LAMPORTS,
         )?;
     }
-    insert_account(
-        &mut accounts,
-        marker_key,
-        pool_program,
-        vec![0u8; POOL_V1_NULLIFIER_MARKER_ACCOUNT_BYTES],
-        DATA_ACCOUNT_LAMPORTS,
-    )?;
+    insert_account(&mut accounts, marker_key, Pubkey::default(), Vec::new(), 0)?;
     insert_account(
         &mut accounts,
         registry_key,
@@ -760,7 +877,12 @@ fn case_bundle(repo: &Path, output: &Path, spec: CaseSpec, request_id: u64) -> R
     }
 
     match spec.mutation {
-        Mutation::None | Mutation::FailingWithdrawalCpi => {}
+        Mutation::None
+        | Mutation::WrongRegistryRelease
+        | Mutation::StrictProofMutation
+        | Mutation::MalformedResult
+        | Mutation::MutatedResult
+        | Mutation::FailingWithdrawalCpi => {}
         Mutation::StaleLane => {
             let stale_tree = lane
                 .tree
@@ -789,47 +911,22 @@ fn case_bundle(repo: &Path, output: &Path, spec: CaseSpec, request_id: u64) -> R
             replace_account_data(&mut accounts, page_key, stale_history)?;
         }
         Mutation::ReplayMarker => {
-            replace_account_data(&mut accounts, marker_key, expected_marker.to_vec())?;
-        }
-        Mutation::WrongCheckpoint => {
-            let mut wrong = checkpoint;
-            wrong.global_root = digest(60_000);
-            replace_account_data(
-                &mut accounts,
-                checkpoint_key,
-                encode_pool_v1_pair_forest_checkpoint_v1(&wrong)
-                    .map_err(|error| anyhow!("encode wrong checkpoint: {error:?}"))?
-                    .to_vec(),
-            )?;
-        }
-        Mutation::WrongRegistryRelease => {
-            let mut wrong = entry;
-            wrong.release_binding[0] ^= 1;
-            replace_account_data(
-                &mut accounts,
-                entry_key,
-                encode_verifier_registry_entry_v1(&wrong)
-                    .map_err(|error| anyhow!("encode wrong registry entry: {error:?}"))?
-                    .to_vec(),
-            )?;
-        }
-        Mutation::MalformedProof => {
-            let proof = accounts
-                .get_mut(&account_key(&proof_key))
-                .context("missing proof for malformed mutation")?;
-            proof.data[..4].copy_from_slice(b"BAD!");
-        }
-        Mutation::MutatedProof => {
-            let proof = accounts
-                .get_mut(&account_key(&proof_key))
-                .context("missing proof for body mutation")?;
-            let final_byte = proof.data.last_mut().context("empty proof image")?;
-            *final_byte ^= 1;
+            let marker = accounts
+                .get_mut(&account_key(&marker_key))
+                .context("missing replay marker")?;
+            marker.owner = pool_program;
+            marker.data = expected_marker.to_vec();
+            marker.lamports = Rent::default()
+                .minimum_balance(POOL_V1_NULLIFIER_MARKER_ACCOUNT_BYTES)
+                .max(1);
         }
     }
 
-    let payer = Keypair::new_from_array([1u8; 32]);
-    let payer_key = Pubkey::new_from_array(payer.pubkey().to_bytes());
+    // The fixture needs only a public fee-payer address. The wallet emits a
+    // zero-signature simulation request, so no private key is constructed,
+    // stored, serialized, or loaded by this generator.
+    let payer_key = Pubkey::from_str(SIMULATION_FEE_PAYER_ID)
+        .context("decode deterministic public simulation fee payer")?;
     insert_account(
         &mut accounts,
         payer_key,
@@ -857,28 +954,30 @@ fn case_bundle(repo: &Path, output: &Path, spec: CaseSpec, request_id: u64) -> R
     );
 
     let mut instruction_accounts = vec![
-        account_meta(master_key, false),
-        account_meta(checkpoint_key, false),
-        account_meta(lane_key, true),
-        account_meta(page_key, !rollover),
+        account_meta(master_key, false, false),
+        account_meta(checkpoint_key, false, false),
+        account_meta(lane_key, true, false),
+        account_meta(page_key, !rollover, false),
     ];
     if let Some(next_page_key) = next_page_key {
-        instruction_accounts.push(account_meta(next_page_key, true));
+        instruction_accounts.push(account_meta(next_page_key, true, false));
     }
     instruction_accounts.extend([
-        account_meta(marker_key, true),
-        account_meta(registry_key, false),
-        account_meta(entry_key, false),
-        account_meta(verifier_program, false),
-        account_meta(proof_key, false),
+        account_meta(marker_key, true, false),
+        account_meta(payer_key, true, true),
+        account_meta(Pubkey::default(), false, false),
+        account_meta(registry_key, false, false),
+        account_meta(entry_key, false, false),
+        account_meta(verifier_program, false, false),
+        account_meta(proof_key, false, false),
     ]);
     if spec.operation == Operation::Withdrawal {
         instruction_accounts.extend([
-            account_meta(mint, false),
-            account_meta(vault_key, true),
-            account_meta(destination_key, true),
-            account_meta(vault_authority, false),
-            account_meta(token_program, false),
+            account_meta(mint, false, false),
+            account_meta(vault_key, true, false),
+            account_meta(destination_key, true, false),
+            account_meta(vault_authority, false, false),
+            account_meta(token_program, false, false),
         ]);
     }
 
@@ -905,6 +1004,7 @@ fn case_bundle(repo: &Path, output: &Path, spec: CaseSpec, request_id: u64) -> R
             "address": address,
             "file": file,
             "fileSha256": file_sha,
+            "loadAtGenesis": account.lamports > 0,
         }));
     }
     let genesis_sha = sha256_hex(&serde_json::to_vec(&genesis)?);
@@ -937,7 +1037,14 @@ fn case_bundle(repo: &Path, output: &Path, spec: CaseSpec, request_id: u64) -> R
         if let (Some(next_page_key), Some(next_page)) = (next_page_key, successful_next_page) {
             replace_account_data(&mut expected, next_page_key, next_page)?;
         }
-        replace_account_data(&mut expected, marker_key, expected_marker.to_vec())?;
+        let expected_marker_account = expected
+            .get_mut(&account_key(&marker_key))
+            .context("missing expected marker")?;
+        expected_marker_account.owner = pool_program;
+        expected_marker_account.data = expected_marker.to_vec();
+        expected_marker_account.lamports = Rent::default()
+            .minimum_balance(POOL_V1_NULLIFIER_MARKER_ACCOUNT_BYTES)
+            .max(1);
         if spec.operation == Operation::Withdrawal {
             replace_account_data(
                 &mut expected,
@@ -985,13 +1092,16 @@ fn case_bundle(repo: &Path, output: &Path, spec: CaseSpec, request_id: u64) -> R
         if spec.operation == Operation::Withdrawal {
             expected_logs.push(format!("Program {} success", token_program));
         }
+    } else if spec.uses_result_double() {
+        expected_logs.push(format!("Program {} success", verifier_program));
     } else if spec.mutation == Mutation::FailingWithdrawalCpi {
         expected_logs.push(format!("Program {} success", verifier_program));
         expected_logs.push(format!("Program {} failed", token_program));
         program_overrides.push(json!({
             "address": token_program.to_string(),
-            "file": "sbf/aspis_verifier.so",
-            "fileSha256": VERIFIER_SBF_SHA256,
+            "file": artifacts.result_double.relative,
+            "fileSha256": artifacts.result_double.sha256,
+            "loader": "bpf",
             "purpose": "deterministic rejecting CPI test double; production SPL Token is not replaced outside this disposable case",
         }));
     }
@@ -1004,6 +1114,34 @@ fn case_bundle(repo: &Path, output: &Path, spec: CaseSpec, request_id: u64) -> R
         "expectedLogContains": expected_logs,
         "expectedFailureStage": spec.failure_stage,
         "rollbackRequired": !spec.succeeds(),
+        "selectedVerifier": {
+            "file": selected_verifier.relative,
+            "fileSha256": selected_verifier.sha256,
+            "fileBytes": selected_verifier.bytes.len(),
+            "loader": "upgradeable-none",
+        },
+        "registryV2Fixtures": {
+            "registrySource": registry_fixture.strip_prefix(repo)?.to_string_lossy(),
+            "registrySha256": sha256_hex(&registry_image),
+            "registryBytes": registry_image.len(),
+            "entrySource": entry_fixture.strip_prefix(repo)?.to_string_lossy(),
+            "entrySha256": sha256_hex(&entry_image),
+            "entryBytes": entry_image.len(),
+            "registryProgramdata": registry_programdata.to_string(),
+            "verifierProgramdata": verifier_programdata.to_string(),
+            "registryExecutableSha256": artifacts.registry.sha256,
+            "selectedVerifierExecutableSha256": selected_verifier.sha256,
+        },
+        "markerStart": {
+            "kind": if spec.mutation == Mutation::ReplayMarker {
+                "consumed-pool-owned"
+            } else {
+                "zero-lamport-system-owned"
+            },
+            "lamports": accounts.get(&account_key(&marker_key)).map(|account| account.lamports),
+            "owner": accounts.get(&account_key(&marker_key)).map(|account| account.owner.to_string()),
+            "dataBytes": accounts.get(&account_key(&marker_key)).map(|account| account.data.len()),
+        },
         "genesisAccounts": genesis,
         "genesisAccountsSha256": genesis_sha,
         "postStateAccountsSha256": post_keys_sha,
@@ -1022,7 +1160,7 @@ fn collect_files(root: &Path, current: &Path, files: &mut Vec<PathBuf>) -> Resul
             collect_files(root, &path, files)?;
         } else {
             let relative = path.strip_prefix(root)?.to_path_buf();
-            if relative != Path::new("TEMPLATE-SHA256SUMS") && !relative.starts_with("sbf") {
+            if relative != Path::new("TEMPLATE-SHA256SUMS") {
                 files.push(relative);
             }
         }
@@ -1030,11 +1168,55 @@ fn collect_files(root: &Path, current: &Path, files: &mut Vec<PathBuf>) -> Resul
     Ok(())
 }
 
+fn load_sbf(source: &str, relative: &'static str) -> Result<SbfArtifact> {
+    let bytes = fs::read(source).with_context(|| format!("read SBF artifact {source}"))?;
+    ensure!(!bytes.is_empty(), "SBF artifact is empty: {source}");
+    let digest: [u8; 32] = Sha256::digest(&bytes).into();
+    Ok(SbfArtifact {
+        source: PathBuf::from(source),
+        relative,
+        sha256: sha256_hex(&bytes),
+        digest,
+        bytes,
+    })
+}
+
+fn parse_arguments() -> Result<(PathBuf, SbfArtifacts)> {
+    let arguments = env::args().skip(1).collect::<Vec<_>>();
+    match arguments.as_slice() {
+        [output, pool_flag, pool_sbf, verifier_flag, verifier_sbf, registry_flag, registry_sbf, result_double_flag, result_double_sbf]
+            if pool_flag == "--pool-sbf"
+                && verifier_flag == "--verifier-sbf"
+                && registry_flag == "--registry-sbf"
+                && result_double_flag == "--result-double-sbf" =>
+        {
+            Ok((
+                PathBuf::from(output),
+                SbfArtifacts {
+                    pool: load_sbf(pool_sbf, "sbf/aspis_pool.so")?,
+                    verifier: load_sbf(verifier_sbf, "sbf/aspis_verifier.so")?,
+                    registry: load_sbf(registry_sbf, "sbf/aspis_registry.so")?,
+                    result_double: load_sbf(
+                        result_double_sbf,
+                        "sbf/aspis_pair_forest_result_double.so",
+                    )?,
+                },
+            ))
+        }
+        _ => {
+            eprintln!(
+                "usage: generate_txv1_agave_bundle <new-output-directory> \
+                 --pool-sbf <aspis_pool.so> --verifier-sbf <aspis_verifier.so> \
+                 --registry-sbf <aspis_registry.so> \
+                 --result-double-sbf <aspis_pair_forest_result_double.so>"
+            );
+            std::process::exit(2);
+        }
+    }
+}
+
 fn main() -> Result<()> {
-    let output = env::args().nth(1).map(PathBuf::from).unwrap_or_else(|| {
-        eprintln!("usage: generate_txv1_agave_bundle <new-output-directory>");
-        std::process::exit(2);
-    });
+    let (output, artifacts) = parse_arguments()?;
     ensure!(
         !output.exists(),
         "refusing to overwrite {}",
@@ -1047,10 +1229,36 @@ fn main() -> Result<()> {
     fs::create_dir_all(output.join("accounts"))?;
     fs::create_dir_all(output.join("cases"))?;
     fs::create_dir_all(output.join("sbf"))?;
+    for artifact in [
+        &artifacts.pool,
+        &artifacts.verifier,
+        &artifacts.registry,
+        &artifacts.result_double,
+    ] {
+        let destination = output.join(artifact.relative);
+        fs::copy(&artifact.source, &destination).with_context(|| {
+            format!(
+                "copy SBF {} to {}",
+                artifact.source.display(),
+                destination.display()
+            )
+        })?;
+        ensure!(
+            fs::read(&destination)? == artifact.bytes,
+            "copied SBF differs: {}",
+            artifact.relative
+        );
+    }
 
     let mut cases = Vec::new();
     for (index, spec) in CASES.into_iter().enumerate() {
-        cases.push(case_bundle(&repo, &output, spec, 1_000 + index as u64)?);
+        cases.push(case_bundle(
+            &repo,
+            &output,
+            &artifacts,
+            spec,
+            1_000 + index as u64,
+        )?);
     }
     let names = cases
         .iter()
@@ -1059,18 +1267,31 @@ fn main() -> Result<()> {
     ensure!(names.len() == CASES.len(), "case names are not unique");
 
     let bundle = json!({
-        "schema": "aspis.v7.disposable-agave-txv1-bundle.v1",
-        "generatorSchema": "aspis.v7.deterministic-agave-bundle-generator.v1",
+        "schema": "aspis.v7.registry-v2-disposable-agave-txv1-bundle.v1",
+        "generatorSchema": "aspis.v7.registry-v2-deterministic-agave-bundle-generator.v1",
         "programSourceCommit": PROGRAM_SOURCE_COMMIT,
+        "programSourceTree": PROGRAM_SOURCE_TREE,
+        "poolSourceTree": POOL_SOURCE_TREE,
+        "verifierSourceTree": VERIFIER_SOURCE_TREE,
+        "registrySourceTree": REGISTRY_SOURCE_TREE,
         "poolProgram": Pubkey::new_from_array(POOL_PROGRAM_BYTES).to_string(),
         "verifierProgram": VERIFIER_PROGRAM_ID,
-        "poolSbf": "sbf/aspis_pool.so",
-        "poolSbfSha256": POOL_SBF_SHA256,
-        "poolSbfBytes": POOL_SBF_BYTES,
-        "verifierSbf": "sbf/aspis_verifier.so",
-        "verifierSbfSha256": VERIFIER_SBF_SHA256,
-        "verifierSbfBytes": VERIFIER_SBF_BYTES,
-        "sbfFilesIncludedInTemplate": false,
+        "registryProgram": Pubkey::new_from_array(REGISTRY_PROGRAM_BYTES).to_string(),
+        "poolSbf": artifacts.pool.relative,
+        "poolSbfSha256": artifacts.pool.sha256,
+        "poolSbfBytes": artifacts.pool.bytes.len(),
+        "verifierSbf": artifacts.verifier.relative,
+        "verifierSbfSha256": artifacts.verifier.sha256,
+        "verifierSbfBytes": artifacts.verifier.bytes.len(),
+        "registrySbf": artifacts.registry.relative,
+        "registrySbfSha256": artifacts.registry.sha256,
+        "registrySbfBytes": artifacts.registry.bytes.len(),
+        "resultDoubleSbf": artifacts.result_double.relative,
+        "resultDoubleSbfSha256": artifacts.result_double.sha256,
+        "resultDoubleSbfBytes": artifacts.result_double.bytes.len(),
+        "sbfBindingComplete": true,
+        "sbfFilesIncludedInTemplate": true,
+        "executionReady": true,
         "warpSlot": PROFILE_SLOT,
         "computeUnitCeiling": 1_300_000,
         "transactionByteCeilingExclusive": 4_096,
@@ -1100,6 +1321,7 @@ fn main() -> Result<()> {
         output.display()
     );
     println!("cases={}", CASES.len());
+    println!("sbf_binding_complete=true");
     println!("signed=false submitted=false deployed=false");
     Ok(())
 }

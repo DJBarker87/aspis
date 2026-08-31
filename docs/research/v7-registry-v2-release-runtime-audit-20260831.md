@@ -2,16 +2,70 @@
 
 Date: 2026-08-31
 
-Status: focused input/provenance and stack checks are executable. The existing
-combined LiteSVM measurement is internally consistent and below both release
-ceilings. It is still one Linux SBF build, not an independent A/B
-reproducibility result, and it is not a devnet receipt.
+Status: the independent Linux A/B SBF build and stack gate is green, and the
+deterministic eleven-case Registry V2 suite is green on a disposable official
+Agave v4.2.0 validator. The Agave values are real `simulateTransaction` CU,
+not component sums. The suite is deliberately unsigned and simulation-only;
+it is not a landed/finalized local, devnet or mainnet receipt.
 
 This work is pinned to evidence commit
 `7179f7c550fe0461f4251dea5268af73876da91d`. That commit changes the runtime
 harness and freezes evidence; its production `Cargo.lock`, Pool, verifier and
 Registry trees are byte-identical to parent
 `4722228b991ebb72850b8d79dd54b0fee4899462`.
+
+## Current official-Agave result
+
+The materialized bundle is pinned by:
+
+```text
+bundle.json             1d27eed3e3022172170c351e70f409ed8cdbd83e755c9147a1478c0932d5321d
+TEMPLATE-SHA256SUMS     84b45dd5e1fb316501c833b00c4df5bc4f678a3dc466fda06a6cbc8e7d29a0d0
+Agave suite             3bd0af676e940f5b0221d600525a3bd2e108f48b5490222f2d3504170d998aee
+```
+
+It ran against `solana-cli 4.2.0 (src:ac82b5d4; feat:21b0d33a,
+client:Agave)` with TxV1 active at genesis. All four honest simulated state
+transitions matched the frozen expected account state after removing only the
+runtime-owned `rentEpoch` field.
+
+| Shape | Real Agave simulation CU | TxV1 bytes | CU margin to 1.3M | Byte margin to 4,096 |
+|---|---:|---:|---:|---:|
+| transfer, same page | 1,161,348 | 833 | 138,652 | 3,263 |
+| transfer, rollover | 1,207,062 | 866 | 92,938 | 3,230 |
+| withdrawal, same page | 1,152,942 | 998 | 147,058 | 3,098 |
+| withdrawal, rollover | 1,218,654 | 1,031 | 81,346 | 3,065 |
+
+The seven negative simulations all returned a transaction error, returned no
+partial post-account snapshots, and left the disposable validator ledger
+unchanged:
+
+| Negative case | Real Agave simulation CU | TxV1 bytes |
+|---|---:|---:|
+| strict proof mutation | 975,278 | 833 |
+| wrong Registry release | 36,573 | 833 |
+| stale selected lane | 72,055 | 833 |
+| replay/nullifier | 23,671 | 833 |
+| malformed result | 47,002 | 833 |
+| mutated result | 50,039 | 833 |
+| failed withdrawal CPI | 1,151,707 | 998 |
+
+This is fail-closed simulation evidence, not direct landed rollback evidence.
+Agave returns `null` for every requested post-account snapshot after a failed
+simulation, so the record explicitly sets
+`allNegativeCasesDirectRollbackObserved` to false. A signed disposable-validator
+submission is required to observe transaction-level rollback directly. No key
+was read, no transaction was signed or submitted, and no public cluster was
+used in this milestone.
+
+The eleven case executions ran in capped unit
+`aspis-v7-registry-v2-agave-11case-r6` (invocation
+`bf1bf40ea616491a83e7e5ae9ef5d6e0`): 19.72 seconds wall, 461,968 KiB
+maximum process RSS and zero swaps. All cases completed before the original
+shell aggregation hit the host argument-list limit. The cases were not rerun;
+the aggregation was factored into
+`scripts/v7_txv1_agave_suite_materialize.sh` and passed in r7 in 0.12 seconds,
+7,920 KiB maximum RSS and zero swaps.
 
 ## What the measured result actually proves
 
@@ -72,13 +126,15 @@ Compile only its exact focused test:
 /usr/bin/time -l cargo test --locked --offline \
   --manifest-path crates/aspis-pool-wallet-v1/Cargo.toml \
   --features eight-lane-plumbing-v2 \
-  lane_forest_transaction_v1::tests::immutable_registry_v2_terminal_wires_preserve_account_count_and_exact_four_kib_sizes \
+  lane_forest_tx_v1_simulation_v2::tests::all_four_frozen_terminal_shapes_emit_strict_unsigned_simulation_requests \
   -- --exact --nocapture
 ```
 
-The expected account/address/packet triples are 11/12/845, 12/13/878,
-16/17/1,010 and 17/18/1,043. The test also proves that Registry V2 replaces
-the V1 Registry/entry keys one-for-one rather than adding terminal accounts.
+The selected simulation envelope omits optional heap/priority instructions.
+Its expected account/address/packet triples are 11/12/833, 12/13/866,
+16/17/998 and 17/18/1,031. The separate immutable-Registry instruction test
+proves that Registry V2 replaces the V1 Registry/entry keys one-for-one rather
+than adding terminal accounts.
 
 ## Existing focused stack corroboration
 
@@ -139,6 +195,21 @@ systemd-run --user --wait --collect \
 Do not reuse an output directory and do not relax `--offline --locked`. A
 different tool hash, artifact hash, stack offset, swap event or nonzero build
 exit fails closed.
+
+The corrected r2 gate completed under unit
+`aspis-v7-registry-v2-dual-sbf-ea98c0b-r2`, invocation
+`50f5bb8110f44d8cb9a146299cd964a1`. Cgroup peak was 1,144,864,768 bytes and
+swap was zero. Both isolated builds produced byte-identical artifacts that
+also match the frozen Registry V2 artifacts:
+
+| Program | Bytes | SHA-256 | Maximum observed stack access |
+|---|---:|---|---:|
+| Pool | 534,608 | `0e94c98d28437f0b01dce546fdefaad21dc10772a4d46991c2a573d8129cd4f6` | 4,096 B |
+| verifier | 1,819,480 | `97df12937d46e25a2eeefeac16ce31925fd473c672d6b656548be9220adbcc6d` | 4,096 B |
+| Registry | 189,824 | `0f14c7b74ec6cbe3b3f637b0f24c7e8cdc46fd09f5b2e495fd51ada16ad8f11b` | 4,096 B |
+
+The six builds were serial, offline and locked. Their individual peak RSS was
+219,568--571,328 KiB and every build recorded zero swaps.
 
 ## Exact Agave/4-KiB feature gates
 
@@ -209,14 +280,14 @@ deploys a program.
 
 This milestone does not activate Registry V2. The remaining runtime gates are:
 
-1. execute the prepared dual SBF/stack gate and commit its exact A/B record;
-2. materialize an Agave Registry V2 lifecycle bundle from those exact three
-   binaries rather than reusing V1 Registry fixtures;
-3. run the four success and seven rollback cases on official disposable Agave
-   4.2+;
-4. after source/formal closure is integrated, execute the same lifecycle on
-   finalized feature-enabled devnet and freeze receipts;
-5. perform the final deployment-identity and mainnet-readiness audit.
+1. integrate the final source/formal closure and rerun only the evidence whose
+   covered binary/source hash changes;
+2. run signed submissions on a disposable validator if direct landed rollback
+   receipts are required (the present evidence is unsigned simulation-only);
+3. once public devnet activates TxV1/4-KiB transactions, deploy the exact
+   selected binaries there, execute the lifecycle, and freeze finalized
+   transaction/state receipts;
+4. perform the final deployment-identity and mainnet-readiness audit.
 
-No CU value in this document is represented as Agave/devnet CU until those
-runtime executions exist.
+The CU values in the first tables are exact local Agave 4.2 simulation CU.
+They are not devnet CU and are not landed/finalized receipts.
