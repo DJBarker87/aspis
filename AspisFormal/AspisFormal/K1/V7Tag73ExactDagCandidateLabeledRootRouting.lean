@@ -320,6 +320,105 @@ theorem exact_dag_candidate_root_producer_invariant
   · exact inactive_dag_memory_producer_invariant
   · simp [exactDagCandidateInitialState, inactiveDagMemory]
 
+/-- The same producer invariant holds at every exact root prefix, which is
+the form needed immediately before a selected q16 output record. -/
+theorem exact_dag_candidate_prefix_producer_invariant
+    {HiddenTape TapeIdentity Observation Statement Payload Result : Type}
+    {parameters : ExactCompilerResourceParameters}
+    {transitionFuel : Nat}
+    {configuration : ExactPlainRomConfiguration HiddenTape TapeIdentity
+      Observation Statement Tag73K12ParsedProof Payload Result parameters}
+    {projection : AcceptedTapeProjection Statement Tag73K12ParsedProof Payload}
+    {fixedInstance : PublicInstance Statement}
+    {sample : ExactCompilerSample HiddenTape parameters}
+    (input : ExactK12OperationalInput transitionFuel configuration projection
+      fixedInstance sample)
+    (trial : ExactCompilerExposureTrial parameters)
+    (prior later : List UnifiedExposureRecord)
+    (decomposition : exactFixedRootRecords input.package.root = prior ++ later) :
+    Q16DagMemoryProducerInvariant
+      (indexedStateAfterRecords transitionFuel
+        (exactDagTrialController transitionFuel trial) prior
+        (exactDagCandidateInitialState input)).memory := by
+  let controller := exactDagTrialController transitionFuel trial
+  let initial := exactDagCandidateInitialState input
+  have priorAligned : IndexedRecordsAligned transitionFuel controller initial
+      prior := by
+    apply indexed_records_aligned_segment transitionFuel controller initial
+      (exactFixedRootRecords input.package.root) [] prior later
+      (by simpa [controller, exactDagTrialController, initial] using
+        exact_root_records_aligned_for_dag_controller input trial.val)
+    simpa using decomposition
+  have priorOnly : OnlyMachineFreshRecords prior := by
+    apply only_machine_fresh_records_segment
+      (exactFixedRootRecords input.package.root) [] prior later
+      (exact_root_records_only_machine_fresh input)
+    simpa using decomposition
+  have priorInputsNodup : (prior.map causalInput?).Nodup := by
+    have rootNodup := exact_root_record_causal_inputs_nodup input
+    rw [decomposition, List.map_append] at rootNodup
+    exact (List.nodup_append.mp rootNodup).1
+  simpa [controller, exactDagTrialController, initial] using
+    aligned_machine_records_preserve_dag_producer_invariant
+      transitionFuel trial.val prior initial priorAligned priorOnly
+      priorInputsNodup inactive_dag_memory_producer_invariant (by
+        simp [initial, exactDagCandidateInitialState, inactiveDagMemory])
+
+/-- Clean answer uniqueness likewise restricts to every exact root prefix. -/
+theorem exact_dag_candidate_prefix_producer_digests_nodup
+    {HiddenTape TapeIdentity Observation Statement Payload Result : Type}
+    {parameters : ExactCompilerResourceParameters}
+    {transitionFuel : Nat}
+    {configuration : ExactPlainRomConfiguration HiddenTape TapeIdentity
+      Observation Statement Tag73K12ParsedProof Payload Result parameters}
+    {projection : AcceptedTapeProjection Statement Tag73K12ParsedProof Payload}
+    {fixedInstance : PublicInstance Statement}
+    {sample : ExactCompilerSample HiddenTape parameters}
+    (input : ExactK12OperationalInput transitionFuel configuration projection
+      fixedInstance sample)
+    (trial : ExactCompilerExposureTrial parameters)
+    (prior later : List UnifiedExposureRecord)
+    (decomposition : exactFixedRootRecords input.package.root = prior ++ later) :
+    (((indexedStateAfterRecords transitionFuel
+      (exactDagTrialController transitionFuel trial) prior
+      (exactDagCandidateInitialState input)).memory.producers).map
+        Q16DagProducer.digest).Nodup := by
+  have priorAnswersNodup :
+      (prior.map UnifiedExposureRecord.answer).Nodup := by
+    have rootNodup := exact_root_record_answers_nodup input
+    rw [decomposition, List.map_append] at rootNodup
+    exact (List.nodup_append.mp rootNodup).1
+  simpa [exactDagTrialController] using
+    dag_indexed_state_producer_digests_nodup transitionFuel trial.val prior
+      (exactDagCandidateInitialState input) priorAnswersNodup
+      (by simp [exactDagCandidateInitialState, inactiveDagMemory])
+      (by simp [exactDagCandidateInitialState, inactiveDagMemory])
+
+/-- Every exact prefix also retains the canonical key widths established by
+the raw final-work parsers. -/
+theorem exact_dag_candidate_prefix_anchor_well_formed
+    {HiddenTape TapeIdentity Observation Statement Payload Result : Type}
+    {parameters : ExactCompilerResourceParameters}
+    {transitionFuel : Nat}
+    {configuration : ExactPlainRomConfiguration HiddenTape TapeIdentity
+      Observation Statement Tag73K12ParsedProof Payload Result parameters}
+    {projection : AcceptedTapeProjection Statement Tag73K12ParsedProof Payload}
+    {fixedInstance : PublicInstance Statement}
+    {sample : ExactCompilerSample HiddenTape parameters}
+    (input : ExactK12OperationalInput transitionFuel configuration projection
+      fixedInstance sample)
+    (trial : ExactCompilerExposureTrial parameters)
+    (prior : List UnifiedExposureRecord) :
+    Q16DagAnchorWellFormed
+      (indexedStateAfterRecords transitionFuel
+        (exactDagTrialController transitionFuel trial) prior
+        (exactDagCandidateInitialState input)).memory.anchor := by
+  simpa [exactDagTrialController] using
+    dag_indexed_state_anchor_well_formed transitionFuel trial.val prior
+      (exactDagCandidateInitialState input) (by
+        simp [exactDagCandidateInitialState, inactiveDagMemory,
+          Q16DagAnchorWellFormed])
+
 theorem exact_dag_candidate_root_labels_tape_prefix
     {HiddenTape TapeIdentity Observation Statement Payload Result : Type}
     {parameters : ExactCompilerResourceParameters}
@@ -472,6 +571,9 @@ theorem exact_dag_candidate_router_routes_selected_root_answer
 #print axioms exact_dag_candidate_root_named_slots_nodup
 #print axioms exact_dag_candidate_root_producer_digests_nodup
 #print axioms exact_dag_candidate_root_producer_invariant
+#print axioms exact_dag_candidate_prefix_producer_invariant
+#print axioms exact_dag_candidate_prefix_producer_digests_nodup
+#print axioms exact_dag_candidate_prefix_anchor_well_formed
 #print axioms exact_dag_candidate_root_labels_tape_prefix
 #print axioms exact_dag_candidate_root_residual_enough_of_programmed_cover
 #print axioms exact_dag_candidate_router_routes_selected_root_answer

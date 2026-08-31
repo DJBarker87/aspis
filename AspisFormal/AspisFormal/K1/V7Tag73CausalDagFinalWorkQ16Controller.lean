@@ -637,6 +637,132 @@ theorem dag_indexed_state_producers_prefix
       rw [indexed_state_after_records_cons]
       exact oneStep.trans (ih next)
 
+/-- The monotone used-set contains exactly the initial slots together with
+the labels emitted by the replayed record prefix. -/
+theorem dag_indexed_state_used_slots_eq_initial_union_labels
+    {globalOracleCalls : Nat}
+    (transitionFuel anchorIndex : Nat) :
+    ∀ (records : List UnifiedExposureRecord)
+      (state : IndexedUnifiedExposureState globalOracleCalls
+        FinalWorkQ16DagMemory),
+      (indexedStateAfterRecords transitionFuel
+        (finalWorkQ16DagController globalOracleCalls transitionFuel anchorIndex)
+        records state).memory.usedSlots =
+      state.memory.usedSlots ∪
+        (namedTraceSlots
+          (indexedControllerLabeledRecords transitionFuel
+            (finalWorkQ16DagController globalOracleCalls transitionFuel
+              anchorIndex) state records)).toFinset := by
+  intro records
+  induction records with
+  | nil =>
+      intro state
+      simp [indexedControllerLabeledRecords, namedTraceSlots]
+  | cons record records ih =>
+      intro state
+      let controller := finalWorkQ16DagController globalOracleCalls
+        transitionFuel anchorIndex
+      let next := controller.afterAnswer transitionFuel state record.answer
+      rw [indexed_state_after_records_cons]
+      rw [ih next]
+      have nextUsed : next.memory.usedSlots =
+          match controller.preferredSlot state with
+          | some slot => insert slot state.memory.usedSlots
+          | none => state.memory.usedSlots := by
+        simpa [next, controller, finalWorkQ16DagController,
+          IndexedUnifiedExposureController.afterAnswer] using
+          dag_candidate_after_memory_used_slots transitionFuel anchorIndex
+            state record.answer
+      cases preferred : controller.preferredSlot state with
+      | none =>
+          rw [nextUsed]
+          simp [indexedControllerLabeledRecords, next, controller, preferred]
+      | some slot =>
+          rw [nextUsed]
+          simp [indexedControllerLabeledRecords, next, controller, preferred,
+            Finset.insert_union]
+
+/-- Every slot newly present after a record prefix was emitted at one literal
+earlier pre-answer state in that prefix. -/
+theorem dag_used_slot_has_prior_record
+    {globalOracleCalls : Nat}
+    (transitionFuel anchorIndex : Nat) :
+    ∀ (records : List UnifiedExposureRecord)
+      (state : IndexedUnifiedExposureState globalOracleCalls
+        FinalWorkQ16DagMemory)
+      (slot : FinalWorkQ16DigestSlot),
+      slot ∉ state.memory.usedSlots →
+      slot ∈
+        (indexedStateAfterRecords transitionFuel
+          (finalWorkQ16DagController globalOracleCalls transitionFuel
+            anchorIndex) records state).memory.usedSlots →
+      ∃ prior record later,
+        records = prior ++ record :: later ∧
+        (finalWorkQ16DagController globalOracleCalls transitionFuel
+          anchorIndex).preferredSlot
+          (indexedStateAfterRecords transitionFuel
+            (finalWorkQ16DagController globalOracleCalls transitionFuel
+              anchorIndex) prior state) = some slot := by
+  intro records
+  induction records with
+  | nil =>
+      intro state slot fresh used
+      simp only [indexed_state_after_records_nil] at used
+      exact (fresh used).elim
+  | cons head tail ih =>
+      intro state slot fresh used
+      let controller := finalWorkQ16DagController globalOracleCalls
+        transitionFuel anchorIndex
+      let next := controller.afterAnswer transitionFuel state head.answer
+      have tailUsed : slot ∈
+          (indexedStateAfterRecords transitionFuel controller tail next).memory.usedSlots := by
+        simpa [controller, next, indexed_state_after_records_cons] using used
+      cases preferred : controller.preferredSlot state with
+      | none =>
+          have preferred' : dagCandidatePreferredSlot transitionFuel
+              anchorIndex state = none := by
+            simpa [controller, finalWorkQ16DagController] using preferred
+          have nextFresh : slot ∉ next.memory.usedSlots := by
+            have nextUsed := dag_candidate_after_memory_used_slots
+              transitionFuel anchorIndex state head.answer
+            rw [show next.memory.usedSlots = state.memory.usedSlots by
+              simpa [next, controller, finalWorkQ16DagController,
+                IndexedUnifiedExposureController.afterAnswer, preferred'] using
+                nextUsed]
+            exact fresh
+          obtain ⟨prior, record, later, decomposition, selected⟩ :=
+            ih next slot nextFresh tailUsed
+          refine ⟨head :: prior, record, later, ?_, ?_⟩
+          · simp [decomposition]
+          · simpa [controller, next, indexed_state_after_records_cons] using
+              selected
+      | some current =>
+          have preferred' : dagCandidatePreferredSlot transitionFuel
+              anchorIndex state = some current := by
+            simpa [controller, finalWorkQ16DagController] using preferred
+          by_cases currentExact : current = slot
+          · subst current
+            exact ⟨[], head, tail, by simp, by
+              simpa [controller, indexed_state_after_records_nil] using
+                preferred⟩
+          · have nextFresh : slot ∉ next.memory.usedSlots := by
+              have nextUsed := dag_candidate_after_memory_used_slots
+                transitionFuel anchorIndex state head.answer
+              rw [show next.memory.usedSlots =
+                  insert current state.memory.usedSlots by
+                simpa [next, controller, finalWorkQ16DagController,
+                  IndexedUnifiedExposureController.afterAnswer, preferred']
+                  using nextUsed]
+              have slotNe : slot ≠ current := fun equal =>
+                currentExact equal.symm
+              simp [fresh, slotNe]
+            obtain ⟨prior, record, later, decomposition, selected⟩ :=
+              ih next slot nextFresh tailUsed
+            refine ⟨head :: prior, record, later, ?_, ?_⟩
+            · simp [decomposition]
+            · simpa [controller, next, indexed_state_after_records_cons] using
+                selected
+
 /-- Every named label emitted by the causal-DAG controller is distinct, for
 every answer stream.  This is an executable controller invariant rather than
 a source-trace assumption.  The stronger second conclusion records freshness
@@ -736,6 +862,8 @@ theorem dag_labeled_records_named_slots_nodup
 #print axioms dag_candidate_memory_producer_digests_nodup
 #print axioms dag_indexed_state_producer_digests_nodup
 #print axioms dag_indexed_state_producers_prefix
+#print axioms dag_indexed_state_used_slots_eq_initial_union_labels
+#print axioms dag_used_slot_has_prior_record
 #print axioms dag_labeled_records_nodup_and_avoid_initial
 #print axioms dag_labeled_records_named_slots_nodup
 

@@ -26,9 +26,119 @@ open AspisK1.V7Tag73IndexedAlignedRecordReplay
 open AspisK1.V7Tag73IndexedControllerTraceAlignment
 open AspisK1.V7Tag73IndexedExposureCausalRouter
 open AspisK1.V7Tag73Q16CandidateParserExact
+open AspisK1.V7Tag73SchedulerHistoryQ16Router
 open AspisK1.V7Tag73TranscriptSchedule
 
 noncomputable section
+
+/-- Every key returned by the raw work parser has the deployed 32-byte digest
+and 8-byte nonce widths. -/
+theorem raw_final_work_key_of_work_input_some_lengths
+    (input : ShaInput) (key : RawFinalWorkKey)
+    (parsed : rawFinalWorkKeyOfWorkInput? input = some key) :
+    key.digest.length = 32 ∧ key.nonce.length = 8 := by
+  unfold rawFinalWorkKeyOfWorkInput? at parsed
+  split at parsed <;> try contradiction
+  rename_i inputLength
+  split at parsed <;> try contradiction
+  simp only [Option.some.injEq] at parsed
+  subst key
+  constructor
+  · simp [inputLength]
+  · simp [inputLength]
+
+/-- The nonce-absorb parser establishes the same canonical key widths. -/
+theorem raw_final_work_key_of_absorb_input_some_lengths
+    (input : ShaInput) (key : RawFinalWorkKey)
+    (parsed : rawFinalWorkKeyOfAbsorbInput? input = some key) :
+    key.digest.length = 32 ∧ key.nonce.length = 8 := by
+  unfold rawFinalWorkKeyOfAbsorbInput? at parsed
+  split at parsed <;> try contradiction
+  rename_i inputLength
+  split at parsed <;> try contradiction
+  split at parsed <;> try contradiction
+  simp only [Option.some.injEq] at parsed
+  subst key
+  constructor
+  · simp [inputLength]
+  · simp [inputLength]
+
+def Q16DagAnchorWellFormed : FinalWorkDagAnchor → Prop
+  | .inactive => True
+  | .tracked key _workSeen =>
+      key.digest.length = 32 ∧ key.nonce.length = 8
+
+/-- One arbitrary input step preserves canonical final-work key widths. -/
+theorem dag_memory_after_input_preserves_anchor_well_formed
+    (anchorIndex exposureIndex : Nat) (memory : FinalWorkQ16DagMemory)
+    (input : ShaInput) (answer : Digest256)
+    (wellFormed : Q16DagAnchorWellFormed memory.anchor) :
+    Q16DagAnchorWellFormed
+      (dagMemoryAfterInput anchorIndex exposureIndex memory input answer).anchor := by
+  unfold dagMemoryAfterInput dagCoreMemoryAfterInput
+  cases anchorExact : memory.anchor with
+  | inactive =>
+      simp only
+      by_cases atAnchor : exposureIndex = anchorIndex
+      · simp only [atAnchor, if_pos]
+        cases work : rawFinalWorkKeyOfWorkInput? input with
+        | some key =>
+            simpa [Q16DagAnchorWellFormed] using
+              raw_final_work_key_of_work_input_some_lengths input key work
+        | none =>
+            simp only [work]
+            cases absorb : rawFinalWorkKeyOfAbsorbInput? input with
+            | some key =>
+                simpa [Q16DagAnchorWellFormed] using
+                  raw_final_work_key_of_absorb_input_some_lengths input key
+                    absorb
+            | none =>
+                simpa [anchorExact, Q16DagAnchorWellFormed] using wellFormed
+      · simpa [atAnchor, anchorExact, Q16DagAnchorWellFormed] using
+          wellFormed
+  | tracked key workSeen =>
+      have keyWellFormed : key.digest.length = 32 ∧ key.nonce.length = 8 := by
+        simpa [anchorExact, Q16DagAnchorWellFormed] using wellFormed
+      cases baseExact : memory.q16Base with
+      | none =>
+          by_cases absorb : input = key.absorbInput <;>
+            simp [baseExact, absorb, Q16DagAnchorWellFormed, keyWellFormed]
+      | some base =>
+          simp [baseExact, Q16DagAnchorWellFormed, keyWellFormed]
+
+/-- Canonical key widths lift through any indexed causal-DAG replay. -/
+theorem dag_indexed_state_anchor_well_formed
+    {globalOracleCalls : Nat}
+    (transitionFuel anchorIndex : Nat) :
+    ∀ (records : List UnifiedExposureRecord)
+      (state : IndexedUnifiedExposureState globalOracleCalls
+        FinalWorkQ16DagMemory),
+      Q16DagAnchorWellFormed state.memory.anchor →
+      Q16DagAnchorWellFormed
+        (indexedStateAfterRecords transitionFuel
+          (finalWorkQ16DagController globalOracleCalls transitionFuel
+            anchorIndex) records state).memory.anchor := by
+  intro records
+  induction records with
+  | nil =>
+      intro state wellFormed
+      simpa only [indexed_state_after_records_nil] using wellFormed
+  | cons record records ih =>
+      intro state wellFormed
+      let controller := finalWorkQ16DagController globalOracleCalls
+        transitionFuel anchorIndex
+      let next := controller.afterAnswer transitionFuel state record.answer
+      have nextWellFormed : Q16DagAnchorWellFormed next.memory.anchor := by
+        unfold next controller finalWorkQ16DagController
+        simp only [IndexedUnifiedExposureController.afterAnswer]
+        unfold dagCandidateAfterMemory
+        cases inputExact : unifiedInputBeforeAnswer? transitionFuel state.cursor
+        · exact wellFormed
+        · exact dag_memory_after_input_preserves_anchor_well_formed
+            anchorIndex state.exposureIndex state.memory _ record.answer
+              wellFormed
+      rw [indexed_state_after_records_cons]
+      exact ih next nextWellFormed
 
 /-- A producer's remembered source is either its unique block-zero candidate
 absorb or the advance edge of an existing predecessor. -/
@@ -47,6 +157,70 @@ def Q16DagProducerInventoryValid (base : Digest256)
     (producers : List Q16DagProducer) : Prop :=
   ∀ producer ∈ producers,
     Q16DagProducerSourceValid base producers producer
+
+/-- A successful output-slot scan returns a literal producer whose digest
+forms the queried squeeze input. -/
+theorem q16_dag_output_slot_cases
+    (producers : List Q16DagProducer) (input : ShaInput)
+    (slot : Q16DigestSlot)
+    (output : q16DagOutputSlot? producers input = some slot) :
+    ∃ producer ∈ producers,
+      input = bytes producer.digest ++ [domSqueeze] ∧
+      producer.slot = slot := by
+  unfold q16DagOutputSlot? at output
+  generalize foundExact : producers.find? (fun producer =>
+      decide (input = bytes producer.digest ++ [domSqueeze])) = found at output
+  cases found with
+  | none => simp at output
+  | some producer =>
+      have producerMember : producer ∈ producers :=
+        List.mem_of_find?_eq_some foundExact
+      have predicate := List.find?_some foundExact
+      have inputExact : input = bytes producer.digest ++ [domSqueeze] :=
+        of_decide_eq_true predicate
+      have slotExact : producer.slot = slot := by
+        simpa using Option.some.inj output
+      exact ⟨producer, producerMember, inputExact, slotExact⟩
+
+/-- A q16-valued preferred label is backed by a literal producer in the
+current causal inventory.  The final-work label cannot inhabit this case. -/
+theorem dag_preferred_q16_slot_has_producer
+    (anchorIndex exposureIndex : Nat) (memory : FinalWorkQ16DagMemory)
+    (input : ShaInput) (slot : Q16DigestSlot)
+    (preferred : dagPreferredSlotForInput anchorIndex exposureIndex memory
+      input = some (some slot)) :
+    ∃ producer ∈ memory.producers,
+      input = bytes producer.digest ++ [domSqueeze] ∧
+      producer.slot = slot := by
+  have rawPreferred : dagRawPreferredSlot anchorIndex exposureIndex memory
+      input = some (some slot) := by
+    unfold dagPreferredSlotForInput at preferred
+    cases raw : dagRawPreferredSlot anchorIndex exposureIndex memory input with
+    | none => simp [raw] at preferred
+    | some rawSlot =>
+        by_cases used : rawSlot ∈ memory.usedSlots
+        · simp [raw, used] at preferred
+        · simp only [raw, used, if_false] at preferred
+          have slotExact : rawSlot = some slot := Option.some.inj preferred
+          simpa [slotExact] using raw
+  cases anchorExact : memory.anchor with
+  | inactive =>
+      unfold dagRawPreferredSlot at rawPreferred
+      rw [anchorExact] at rawPreferred
+      by_cases atAnchor : exposureIndex = anchorIndex
+      · simp only [atAnchor, if_pos] at rawPreferred
+        cases work : rawFinalWorkKeyOfWorkInput? input <;>
+          simp [work] at rawPreferred
+      · simp [atAnchor] at rawPreferred
+  | tracked key workSeen =>
+      unfold dagRawPreferredSlot at rawPreferred
+      rw [anchorExact] at rawPreferred
+      by_cases work : workSeen = false ∧ input = key.workInput
+      · simp [work] at rawPreferred
+      · simp only [work, if_false] at rawPreferred
+        have output : q16DagOutputSlot? memory.producers input = some slot := by
+          simpa using rawPreferred
+        exact q16_dag_output_slot_cases memory.producers input slot output
 
 theorem q16_dag_advanced_slot_cases
     (producers : List Q16DagProducer) (input : ShaInput)
@@ -298,6 +472,80 @@ structure Q16DagMemoryProducerInvariant
   sourceInputsNodup :
     (memory.producers.map Q16DagProducer.sourceInput).Nodup
 
+@[simp] theorem literal_q16_candidate_parses
+    (base : Digest256) (counter : Fin 64) :
+    q16CandidateOfBaseInput? base
+        (bytes base ++ [domAbsorb, queryCandidateLabel,
+          UInt8.ofNat counter.val]) = some counter := by
+  exact q16_candidate_of_literal_base_input base counter
+
+@[simp] theorem advance_input_is_not_q16_candidate
+    (base digest : Digest256) :
+    q16CandidateOfBaseInput? base (bytes digest ++ [domAdvance]) = none := by
+  simp [q16CandidateOfBaseInput?, q16CandidateCounterOfInput?]
+
+/-- Once a tracked DAG memory has a q16 base, arbitrary inputs preserve that
+same base. -/
+theorem dag_memory_after_input_preserves_tracked_base
+    (anchorIndex exposureIndex : Nat) (memory : FinalWorkQ16DagMemory)
+    (key : RawFinalWorkKey) (workSeen : Bool) (base : Digest256)
+    (input : ShaInput) (answer : Digest256)
+    (anchorExact : memory.anchor = .tracked key workSeen)
+    (baseExact : memory.q16Base = some base) :
+    (dagMemoryAfterInput anchorIndex exposureIndex memory input answer).q16Base =
+      some base := by
+  unfold dagMemoryAfterInput dagCoreMemoryAfterInput
+  rw [anchorExact, baseExact]
+
+/-- A literal candidate absorb answer installs the exact block-zero producer. -/
+theorem dag_memory_after_candidate_contains_producer
+    (anchorIndex exposureIndex : Nat) (memory : FinalWorkQ16DagMemory)
+    (key : RawFinalWorkKey) (workSeen : Bool) (base answer : Digest256)
+    (counter : Fin 64)
+    (anchorExact : memory.anchor = .tracked key workSeen)
+    (baseExact : memory.q16Base = some base) :
+    Q16DagProducer.mk answer (counter, ⟨0, by omega⟩)
+        (bytes base ++ [domAbsorb, queryCandidateLabel,
+          UInt8.ofNat counter.val]) ∈
+      (dagMemoryAfterInput anchorIndex exposureIndex memory
+        (bytes base ++ [domAbsorb, queryCandidateLabel,
+          UInt8.ofNat counter.val]) answer).producers := by
+  have produced :
+      q16DagProducedSlot? base memory.producers
+          (bytes base ++ [domAbsorb, queryCandidateLabel,
+            UInt8.ofNat counter.val]) =
+        some (counter, ⟨0, by omega⟩) := by
+    simp [q16DagProducedSlot?]
+  simp only [dagMemoryAfterInput, dagCoreMemoryAfterInput, anchorExact,
+    baseExact]
+  unfold updateQ16DagProducers
+  rw [produced]
+  simp
+
+/-- A literal advance answer from a known bounded parent installs the exact
+next-block producer without waiting for the sibling output. -/
+theorem dag_memory_after_advance_contains_producer
+    (anchorIndex exposureIndex : Nat) (memory : FinalWorkQ16DagMemory)
+    (key : RawFinalWorkKey) (workSeen : Bool) (base answer : Digest256)
+    (parent : Q16DagProducer)
+    (bounded : parent.slot.2.val + 1 < 8)
+    (anchorExact : memory.anchor = .tracked key workSeen)
+    (baseExact : memory.q16Base = some base)
+    (digestNodup : (memory.producers.map Q16DagProducer.digest).Nodup)
+    (parentMember : parent ∈ memory.producers) :
+    Q16DagProducer.mk answer
+        (parent.slot.1, ⟨parent.slot.2.val + 1, bounded⟩)
+        (bytes parent.digest ++ [domAdvance]) ∈
+      (dagMemoryAfterInput anchorIndex exposureIndex memory
+        (bytes parent.digest ++ [domAdvance]) answer).producers := by
+  have advanced := q16_dag_advanced_slot_of_digest_nodup parent bounded
+    memory.producers digestNodup parentMember
+  unfold dagMemoryAfterInput dagCoreMemoryAfterInput updateQ16DagProducers
+  rw [anchorExact, baseExact]
+  simp only [q16DagProducedSlot?, advance_input_is_not_q16_candidate,
+    advanced]
+  simp
+
 theorem inactive_dag_memory_producer_invariant :
     Q16DagMemoryProducerInvariant inactiveDagMemory := by
   constructor <;> simp [inactiveDagMemory, Q16DagProducerInventoryValid]
@@ -399,6 +647,48 @@ theorem dag_memory_after_input_preserves_producer_invariant
           · exact updatedSlots
           · exact updatedSources
 
+/-- A live producer's squeeze coordinate receives its q16 slot whenever that
+slot has not been consumed already.  Canonical parser widths rule out the
+33-byte squeeze coordinate being mistaken for the 41-byte work coordinate. -/
+theorem dag_q16_output_is_preferred_of_producer
+    (anchorIndex exposureIndex : Nat) (memory : FinalWorkQ16DagMemory)
+    (producer : Q16DagProducer)
+    (invariant : Q16DagMemoryProducerInvariant memory)
+    (anchorWellFormed : Q16DagAnchorWellFormed memory.anchor)
+    (digestNodup : (memory.producers.map Q16DagProducer.digest).Nodup)
+    (producerMember : producer ∈ memory.producers)
+    (slotUnused : some producer.slot ∉ memory.usedSlots) :
+    dagPreferredSlotForInput anchorIndex exposureIndex memory
+        (bytes producer.digest ++ [domSqueeze]) =
+      some (some producer.slot) := by
+  have outputSlot : q16DagOutputSlot? memory.producers
+      (bytes producer.digest ++ [domSqueeze]) = some producer.slot :=
+    q16_dag_output_slot_of_digest_nodup producer memory.producers digestNodup
+      producerMember
+  cases anchorExact : memory.anchor with
+  | inactive =>
+      have baseNone := invariant.inactiveHasNoBase anchorExact
+      have producersEmpty := invariant.noBaseHasNoProducers baseNone
+      rw [producersEmpty] at producerMember
+      exact (by simpa using producerMember : False).elim
+  | tracked key workSeen =>
+      have keyWellFormed : key.digest.length = 32 ∧
+          key.nonce.length = 8 := by
+        simpa [anchorExact, Q16DagAnchorWellFormed] using anchorWellFormed
+      have outputNeWork : bytes producer.digest ++ [domSqueeze] ≠
+          key.workInput := by
+        intro equal
+        have lengths := congrArg List.length equal
+        simp [RawFinalWorkKey.workInput, keyWellFormed.1,
+          keyWellFormed.2] at lengths
+      have notWork : ¬ (workSeen = false ∧
+          bytes producer.digest ++ [domSqueeze] = key.workInput) := by
+        intro work
+        exact outputNeWork work.2
+      unfold dagPreferredSlotForInput dagRawPreferredSlot
+      rw [anchorExact]
+      simp [notWork, outputSlot, slotUnused]
+
 /-- Replaying a fresh-input machine trace preserves the recursive producer
 invariant.  The disjointness premise is deliberately stated against the
 literal remaining root inputs: it is discharged by the clean-root input
@@ -498,6 +788,13 @@ theorem aligned_machine_records_preserve_dag_producer_invariant
         nextDisjoint
 
 #print axioms q16_dag_advanced_slot_cases
+#print axioms q16_dag_output_slot_cases
+#print axioms dag_preferred_q16_slot_has_producer
+#print axioms raw_final_work_key_of_work_input_some_lengths
+#print axioms raw_final_work_key_of_absorb_input_some_lengths
+#print axioms Q16DagAnchorWellFormed
+#print axioms dag_memory_after_input_preserves_anchor_well_formed
+#print axioms dag_indexed_state_anchor_well_formed
 #print axioms q16_dag_produced_slot_cases
 #print axioms q16_dag_producer_source_valid_mono
 #print axioms update_q16_dag_producers_preserves_inventory_valid
@@ -506,8 +803,14 @@ theorem aligned_machine_records_preserve_dag_producer_invariant
 #print axioms update_q16_dag_producers_slots_nodup
 #print axioms update_q16_dag_producers_source_inputs_nodup
 #print axioms Q16DagMemoryProducerInvariant
+#print axioms literal_q16_candidate_parses
+#print axioms advance_input_is_not_q16_candidate
+#print axioms dag_memory_after_input_preserves_tracked_base
+#print axioms dag_memory_after_candidate_contains_producer
+#print axioms dag_memory_after_advance_contains_producer
 #print axioms inactive_dag_memory_producer_invariant
 #print axioms dag_memory_after_input_preserves_producer_invariant
+#print axioms dag_q16_output_is_preferred_of_producer
 #print axioms aligned_machine_records_preserve_dag_producer_invariant
 
 end

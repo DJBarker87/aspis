@@ -582,3 +582,65 @@ The remaining deterministic step is to relate the controller's monotone
 show that a fresh exact-root output input cannot have consumed its unique slot
 already, completing the per-output preferred-label theorem required by the
 used-forest routing endpoint.
+
+## Exact live-slot/output-label closure
+
+That remaining per-output step is now kernel checked.
+
+`V7Tag73CausalDagFinalWorkQ16Controller.lean` proves that the controller's
+used-set after any record prefix is exactly the initial used-set union the
+labels emitted by that prefix.  Consequently, every newly used slot has a
+literal earlier record at whose pre-answer state the controller selected that
+slot.  This is provenance from executable replay, not a freshness premise.
+
+`V7Tag73CausalDagProducerInvariant.lean` additionally proves the local state
+transitions needed by the recursive source fold:
+
+- a literal candidate absorb installs the exact `(counter, 0)` producer;
+- a literal advance answer from a known bounded producer installs the exact
+  next-block producer immediately;
+- arbitrary intervening records preserve the tracked q16 base; and
+- the existing recursive provenance, unique-source, unique-slot, and
+  unique-digest invariants remain available at every prefix.
+
+`V7Tag73ExactDagQ16OutputLabel.lean` combines used-slot provenance with exact
+root fresh-input uniqueness.  If a selected output's slot had already been
+used, the earlier emitted label would identify a producer in that same slot;
+producer-slot uniqueness identifies the same producer, forcing the identical
+squeeze input to occur twice in the clean root.  That contradicts the
+source-derived fresh-input theorem.  Therefore every producer-backed exact
+q16 output has its exact preferred slot at the aligned pre-answer state:
+
+```text
+exact_dag_q16_output_has_preferred_slot
+```
+
+The proof permits adversary-first creation, either output/advance sibling
+order, and advance-driven pipelining.  It introduces no query-order,
+independence, probability, or role-classifier premise.
+
+The current deterministic boundary is now only the recursive composition:
+start the block-zero producer at each exact candidate record, propagate each
+used advance edge through the actual root chronology, apply the exact output
+label/router theorem at every consumed output, and construct the already
+defined `OperationalQ16ForestRealization`.  After that, the only separate
+accounting choice is whether to prove a selectable trial inventory of at most
+`2^34` or retain the exact general `F * p / 2^34` term.
+
+Focused replay added by this milestone:
+
+```text
+cd AspisFormal
+lake env lean AspisFormal/K1/V7Tag73CausalDagProducerInvariant.lean
+lake env lean AspisFormal/K1/V7Tag73ExactDagCandidateLabeledRootRouting.lean
+lake env lean AspisFormal/K1/V7Tag73ExactDagQ16OutputLabel.lean
+```
+
+The direct producer-invariant and exact-output-label checks completed locally
+at approximately 5.70 GiB and 5.67 GiB peak RSS respectively.  The focused
+Lake build completed all three targets successfully.  The library-suggestion
+writer emitted its known post-elaboration recursion diagnostic while writing
+large module metadata, but the target objects were produced and the build
+exited successfully.  Every printed theorem axiom set remains a subset of
+`propext`, `Classical.choice`, and `Quot.sound`; forbidden-placeholder scans
+remain mandatory at commit time.
