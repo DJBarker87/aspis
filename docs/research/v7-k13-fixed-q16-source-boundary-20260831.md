@@ -168,12 +168,14 @@ It no longer asks for equality of openings or of the entire parsed proof.
 again: its profile contains only K1.2 words, verifier gamma, the disclosed
 final-256, and verifier alpha-zero.  It deliberately does **not** require
 equality of all 641 decoded fields.  Its separate
-`ExactFixedK13SourceScheduleFunctional` premise states precisely the remaining
-alpha-to-total-schedule obligation.  The committed canonical inverse-table
-bridge is the intended discharge of that premise; it is no longer imported by
-the lightweight q16 module because Lean's module emitter expands that aggregate
-past the project memory limit.  The obligation is therefore visible, not
-silently trusted.
+alpha-to-total-schedule obligation is now discharged directly from the two
+inverse-table equations in `ExactParsedProofSourceBinding`.  The low-memory
+pointwise theorem
+`exact_fixed_k13_schedule_eq_of_source_bindings` proves this without importing
+the aggregate canonical-schedule module that expands Lean's environment past
+the project memory limit.  The derived-profile and anchor-partition theorems
+now use that result internally, so no caller-supplied schedule-functionality
+premise remains.
 
 So the precise remaining K1.3 actual-law theorem is now:
 
@@ -183,6 +185,24 @@ So the precise remaining K1.3 actual-law theorem is now:
 That is the appropriate target for the q16 state-restoration/source-causality
 bridge.  It is still open, and must include the adversary-first cached path;
 it may not be replaced by a raw SHA-input classifier or a fresh-query claim.
+
+## Schedule-functionality premise closed
+
+`V7Tag73ExactFixedQ16ScheduleFunctional.lean` proves the independent
+alpha-to-schedule seam locally: if two source-bound parsed schedules have the
+same verifier alpha-zero, their inverse-table equations determine equal x and
+y entries at every index and hence the same full schedule.  This is the same
+algebra used by the canonical schedule uniqueness result, factored so the
+focused target stays below 7 GiB RSS.
+
+As a consequence, the K1.3 residual-invariant reduction now requires only:
+
+1. the already explicit parsed-source provider; and
+2. the genuine four-field pre-q16 profile invariant, including the
+   adversary-first/cache-hit case.
+
+It no longer requires a separate schedule-functional assumption.  This does
+not close the four-field invariant itself.
 
 ## Anchor-partition reduction
 

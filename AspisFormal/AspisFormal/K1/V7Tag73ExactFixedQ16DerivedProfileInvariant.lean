@@ -1,4 +1,5 @@
 import AspisFormal.K1.V7Tag73ExactFixedQ16SemanticNoninterference
+import AspisFormal.K1.V7Tag73ExactFixedQ16ScheduleFunctional
 import AspisFormal.K1.V7Tag73ExactClientKnowledgeComposition
 import AspisFormal.K1.V7Tag73AdaptiveQ16TrialAccounting
 import AspisFormal.K1.V7Tag73OperationalSemanticReplay
@@ -33,6 +34,7 @@ open AspisK1.V7Tag73ExactCompilerResources
 open AspisK1.V7Tag73ExactFixedK12MerkleClassifier
 open AspisK1.V7Tag73ExactFixedK12PrefixClassifier
 open AspisK1.V7Tag73ExactFixedK13K14Classifier
+open AspisK1.V7Tag73ExactFixedQ16ScheduleFunctional
 open AspisK1.V7Tag73ExactFixedQ16JointEventHandoff
 open AspisK1.V7Tag73ExactFixedQ16ResidualFactorization
 open AspisK1.V7Tag73ExactFixedQ16SemanticNoninterference
@@ -99,32 +101,6 @@ def ExactFixedK13DerivedPreQ16ProfileInvariant
     exactFixedK13Q16SemanticProfileOf leftWitness.input =
       exactFixedK13Q16SemanticProfileOf rightWitness.input
 
-/-- At the explicit parsed-source boundary, a total one-fold schedule is a
-function of the operational round-zero alpha.  The separate canonical bridge
-discharges this from the two inverse-table equations; this lightweight q16
-module keeps the obligation named rather than trusting a parser field. -/
-def ExactFixedK13SourceScheduleFunctional
-    {HiddenTape TapeIdentity Observation Statement Payload Witness : Type}
-    {parameters : ExactCompilerResourceParameters}
-    (transitionFuel : Nat)
-    (configuration : ExactPlainRomWitnessConfiguration HiddenTape TapeIdentity
-      Observation Statement Tag73K12ParsedProof Payload Witness parameters)
-    (projection : AcceptedTapeProjection Statement Tag73K12ParsedProof Payload)
-    (fixedInstance : PublicInstance Statement) : Prop :=
-  ∀ {leftSample rightSample : ExactCompilerSample HiddenTape parameters}
-      (left : ExactK12OperationalInput transitionFuel configuration projection
-        fixedInstance leftSample)
-      (leftDecoded : Fin 641 → QM31Exact)
-      (_leftBinding : ExactParsedProofSourceBinding left leftDecoded)
-      (right : ExactK12OperationalInput transitionFuel configuration projection
-        fixedInstance rightSample)
-      (rightDecoded : Fin 641 → QM31Exact)
-      (_rightBinding : ExactParsedProofSourceBinding right rightDecoded),
-    exactOperationalChallenge left (.alpha 0) =
-      exactOperationalChallenge right (.alpha 0) →
-    (exactK13ParsedProof left).schedule =
-      (exactK13ParsedProof right).schedule
-
 -- Source bindings normalize gamma and the total schedule. The profile
 -- equality remains the sole q16 state-restoration/source theorem.
 set_option maxHeartbeats 800000 in
@@ -139,8 +115,6 @@ theorem exact_fixed_k13_semantic_invariant_of_derived_profile
     {decoder : ExactDecoderInstantiation QM31Exact}
     (source : ExactFixedK13ParsedSourceProvider transitionFuel configuration
       projection fixedInstance)
-    (scheduleFunctional : ExactFixedK13SourceScheduleFunctional transitionFuel
-      configuration projection fixedInstance)
     (profileInvariant : ExactFixedK13DerivedPreQ16ProfileInvariant
       transitionFuel configuration projection fixedInstance decoder) :
     ExactFixedK13PreQ16SemanticInvariant transitionFuel configuration
@@ -171,8 +145,9 @@ theorem exact_fixed_k13_semantic_invariant_of_derived_profile
   have scheduleExact :
       (exactK13ParsedProof leftWitness.input).schedule =
         (exactK13ParsedProof rightWitness.input).schedule := by
-    exact scheduleFunctional leftWitness.input leftDecoded leftBinding
-      rightWitness.input rightDecoded rightBinding alphaOperationalExact
+    exact exact_fixed_k13_schedule_eq_of_source_bindings
+      leftWitness.input leftDecoded leftBinding rightWitness.input rightDecoded
+        rightBinding alphaOperationalExact
   exact ⟨wordsExact, gammaExact, finalExact, scheduleExact⟩
 
 /-- The minimal derived-profile condition discharges the existing finite q16
@@ -188,15 +163,12 @@ theorem exact_fixed_k13_residual_invariant_of_derived_profile
     {decoder : ExactDecoderInstantiation QM31Exact}
     (source : ExactFixedK13ParsedSourceProvider transitionFuel configuration
       projection fixedInstance)
-    (scheduleFunctional : ExactFixedK13SourceScheduleFunctional transitionFuel
-      configuration projection fixedInstance)
     (profileInvariant : ExactFixedK13DerivedPreQ16ProfileInvariant
       transitionFuel configuration projection fixedInstance decoder) :
     ExactFixedK13ResidualInvariant transitionFuel configuration projection
       fixedInstance decoder := by
   exact exact_fixed_k13_residual_invariant_of_pre_q16_semantics
     (exact_fixed_k13_semantic_invariant_of_derived_profile source
-      scheduleFunctional
       profileInvariant)
 
 #print axioms exact_fixed_k13_semantic_invariant_of_derived_profile

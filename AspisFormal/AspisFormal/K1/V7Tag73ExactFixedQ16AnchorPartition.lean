@@ -155,8 +155,6 @@ theorem exact_fixed_k13_residual_invariant_of_adversary_anchor_profile
     {decoder : ExactDecoderInstantiation QM31Exact}
     (source : ExactFixedK13ParsedSourceProvider transitionFuel configuration
       projection fixedInstance)
-    (scheduleFunctional : ExactFixedK13SourceScheduleFunctional transitionFuel
-      configuration projection fixedInstance)
     (programmedCover : 513 ≤ 2 * parameters.forkRequestCap)
     (adversaryInvariant :
       ExactFixedK13DerivedPreQ16ProfileInvariantOnAdversaryAnchors
@@ -164,7 +162,6 @@ theorem exact_fixed_k13_residual_invariant_of_adversary_anchor_profile
     ExactFixedK13ResidualInvariant transitionFuel configuration projection
       fixedInstance decoder := by
   apply exact_fixed_k13_residual_invariant_of_derived_profile source
-    scheduleFunctional
   apply exact_fixed_k13_derived_profile_invariant_of_anchor_partition
   · exact exact_fixed_k13_derived_profile_invariant_on_verifier_anchors source
       programmedCover
