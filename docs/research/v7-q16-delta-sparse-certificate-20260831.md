@@ -246,3 +246,28 @@ bfcb6aae860a45c90c1cd0867857695a476f127c3490cbce98fc843e6e9e3a94  Depth04.olean
 
 Depth04 is green.  The next legitimate gate is `Depth05Chunk000.lean` then
 the Depth05 aggregator only.
+
+## Focused Depth05 local-cell gate
+
+The Depth05 symbol manifest passed before the serial run.  Unit
+`aspis-v7-q16-delta-depth05-b3d-r7.service`, invocation
+`07535ff117de400aa90ccd60f24999db`, used the same 10G/12G/zero-swap limits.
+
+| Target | Exit | Wall | Max process RSS | Swaps |
+|---|---:|---:|---:|---:|
+| `Depth05Chunk000.lean` | 0 | 3.54s | 6,189,292 KiB | 0 |
+| `Depth05.lean` | 0 | 2.47s | 6,145,252 KiB | 0 |
+| Depth05 axioms probe | 0 | 2.47s | 6,137,152 KiB | 0 |
+
+All four local theorems report exactly
+`[propext, Classical.choice, Quot.sound]`.
+
+```text
+dba608873383867054647c64296da71c1f034881e9156b843e880357a7ebbd64  Depth05Chunk000.olean
+d23dbf161f59b3e9d85e56fc3b2c9bed6c51d4477adbdd903fd2a66fbb1e1bfc  Depth05Chunk000.ilean
+a7791d2ce6dd94098b42d7e2e999e9e56c971cca2d8475709a419714eda95f79  Depth05.olean
+f661ea50cee530fa9d5ca22cfb64347ec607b3d8892c24067ce20ecae86a78be  Depth05.ilean
+```
+
+Depth05 is green.  The next legitimate gate is `Depth06Chunk000.lean` then
+the Depth06 aggregator only.
