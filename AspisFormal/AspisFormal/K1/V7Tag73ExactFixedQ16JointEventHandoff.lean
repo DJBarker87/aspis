@@ -37,6 +37,7 @@ open AspisK1.V7Tag73ExactParsedProofSourceBinding
 open AspisK1.V7Tag73ExactPlainRomRun
 open AspisK1.V7Tag73ExactSourceAcceptanceModel
 open AspisK1.V7Tag73FinalWorkDigestProbability
+open AspisK1.V7Tag73FinalWorkQ16CandidateController
 open AspisK1.V7Tag73OperationalQ16ForestHandoff
 open AspisK1.V7Tag73OperationalSemanticReplay
 open AspisK1.V7Tag73Q16FirstCompactUniformity
@@ -111,6 +112,37 @@ def exactFixedK13TrialCoordinates
     (exactCompilerExposureTrialDagRouter parameters transitionFuel trial
       (exactPlainRomCursor configuration sample.1).erase) sample.2
 
+/-- A trial used by the fixed-root q16 event is not an arbitrary index into
+the master tape.  It is tied to the literal accepted final-work record and to
+the exact first-cap-203 q16 realization of the same source input.  Keeping
+this fact proof-relevant prevents a later residual argument from silently
+quantifying over synthetic early trial placements. -/
+def ExactFixedK13ActualJointTrial
+    {HiddenTape TapeIdentity Observation Statement Payload Witness : Type}
+    {parameters : ExactCompilerResourceParameters}
+    {transitionFuel : Nat}
+    {configuration : ExactPlainRomWitnessConfiguration HiddenTape TapeIdentity
+      Observation Statement Tag73K12ParsedProof Payload Witness parameters}
+    {projection : AcceptedTapeProjection Statement Tag73K12ParsedProof Payload}
+    {fixedInstance : PublicInstance Statement}
+    {sample : ExactCompilerSample HiddenTape parameters}
+    (input : ExactK12OperationalInput transitionFuel configuration projection
+      fixedInstance sample)
+    (trial : ExactCompilerExposureTrial parameters) : Prop :=
+  ∃ (digest workAnswer base : Digest256),
+    FinalWork34Accepted workAnswer ∧
+    base = (exactOperationalRawTrace input).q16BaseDigest ∧
+    ExactDagFinalWorkLabeled input trial
+      (literalFinalWorkKey digest
+        (exactOperationalTape input).messages.finalGrinding.selected)
+      workAnswer ∧
+    (exactFixedK13TrialCoordinates transitionFuel configuration trial sample).2.1 =
+      workAnswer ∧
+    OperationalQ16ForestRealization
+      (exactOperationalTape input).frontierNodes
+      (exactOperationalTape input).search
+      (exactFixedK13TrialCoordinates transitionFuel configuration trial sample).2.2
+
 /-- Current-source decoding supplies the only semantic bridge needed here:
 the parsed proof's selected q16 positions are the positions consumed by the
 literal operational search. -/
@@ -159,6 +191,7 @@ theorem exact_fixed_k13_query_failure_has_joint_trial_coordinate
         (trial : ExactCompilerExposureTrial parameters),
       bad = exactFixedK13IntrinsicBad decoder input ∧
       bad.card ≤ 9557 ∧
+      ExactFixedK13ActualJointTrial input trial ∧
       exactFixedK13TrialCoordinates transitionFuel configuration trial sample ∈
         dependentSuccessfulSubtypeEvent finalWorkQ16TotalSucceeds
           (fun _residual => successfulFinalWorkQ16TotalEquiv ⁻¹'
@@ -177,11 +210,14 @@ theorem exact_fixed_k13_query_failure_has_joint_trial_coordinate
       (exactOperationalTape input).search.selectedSchedule.positions := by
     rw [badCertificate]
     exact exact_query_phase_failure_selected_all_in_bad sourceBinding failure
-  obtain ⟨_digest, _workAnswer, _base, trial, workAccepted, _baseExact,
-      workCoordinate, realized⟩ :=
+  obtain ⟨digest, workAnswer, base, trial, workAccepted, baseExact,
+      workLabeled, workCoordinate, realized⟩ :=
     exact_compiler_accepted_dag_q16_operational_realization transitionRoom
       programmedCover input (frontierExact input)
-  refine ⟨input, bad, trial, rfl, badCard, ?_⟩
+  have actualTrial : ExactFixedK13ActualJointTrial input trial :=
+    ⟨digest, workAnswer, base, workAccepted, baseExact, workLabeled,
+      workCoordinate, realized⟩
+  refine ⟨input, bad, trial, rfl, badCard, actualTrial, ?_⟩
   have q16Success :=
     operational_realization_implies_q16_digest_forest_succeeds realized
   have q16Bad : successfulQ16DigestForestEquiv
@@ -219,6 +255,7 @@ structure ExactFixedK13JointTrialWitness
   bad : Finset (Fin 262144)
   badExact : bad = exactFixedK13IntrinsicBad decoder input
   badCard : bad.card ≤ 9557
+  actualTrial : ExactFixedK13ActualJointTrial input trial
   coordinate :
     exactFixedK13TrialCoordinates transitionFuel configuration trial sample ∈
       dependentSuccessfulSubtypeEvent finalWorkQ16TotalSucceeds
@@ -267,7 +304,7 @@ theorem exact_fixed_k13_query_failure_has_joint_trial_witness
     ∃ trial : ExactCompilerExposureTrial parameters,
       sample ∈ exactFixedK13JointTrialEvent transitionFuel configuration
         projection fixedInstance decoder trial := by
-  obtain ⟨input, bad, trial, badExact, badCard, coordinate⟩ :=
+  obtain ⟨input, bad, trial, badExact, badCard, actualTrial, coordinate⟩ :=
     exact_fixed_k13_query_failure_has_joint_trial_coordinate transitionRoom
       programmedCover source frontierExact member
   refine ⟨trial, ⟨?_⟩⟩
@@ -276,6 +313,7 @@ theorem exact_fixed_k13_query_failure_has_joint_trial_witness
       bad := bad
       badExact := badExact
       badCard := badCard
+      actualTrial := actualTrial
       coordinate := coordinate }
 
 /-! ## Exact residual-fibre obligation -/
@@ -372,6 +410,7 @@ def ExactFixedK13ResidualInvariant
         fixedInstance decoder trial (hidden, right)
 
 #print axioms exact_fixed_k13_intrinsic_bad_eq_certificate
+#print axioms ExactFixedK13ActualJointTrial
 #print axioms exact_fixed_k13_query_failure_has_joint_trial_coordinate
 #print axioms exact_fixed_k13_query_failure_has_joint_trial_witness
 #print axioms exact_fixed_k13_pointwise_bad_card

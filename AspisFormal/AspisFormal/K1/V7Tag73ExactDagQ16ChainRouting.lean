@@ -1759,6 +1759,10 @@ theorem exact_compiler_accepted_dag_q16_operational_realization
         (trial : ExactCompilerExposureTrial parameters),
       FinalWork34Accepted workAnswer ∧
       base = (exactOperationalRawTrace input).q16BaseDigest ∧
+      ExactDagFinalWorkLabeled input trial
+        (literalFinalWorkKey digest
+          (exactOperationalTape input).messages.finalGrinding.selected)
+        workAnswer ∧
       (exactCompilerCausalFinalWorkQ16Coordinates parameters
         (exactCompilerExposureTrialDagRouter parameters transitionFuel trial
           (exactPlainRomCursor configuration sample.1).erase)
@@ -1779,6 +1783,7 @@ theorem exact_compiler_accepted_dag_q16_operational_realization
         (exactCompilerTargetCaps parameters).length - 513 :=
     exact_dag_candidate_root_residual_enough_of_programmed_cover input trial
       programmedCover
+  have workLabeledExact := workLabeled
   obtain ⟨workPrior, workLater, workActor, workDecomposition,
       workPreferred⟩ := workLabeled
   have workRouted :
@@ -1887,7 +1892,7 @@ theorem exact_compiler_accepted_dag_q16_operational_realization
     intro counter schedule _beforeSelected _outcomeExact
     exact (frontierExact schedule).symm
   refine ⟨digest, workAnswer, base, trial, workAccepted, baseExact,
-    workCoordinate, ?_⟩
+    workLabeledExact, workCoordinate, ?_⟩
   exact exact_compiler_final_work_q16_operational_realization_of_used_lookups
     parameters
     (exactCompilerExposureTrialDagRouter parameters transitionFuel trial
