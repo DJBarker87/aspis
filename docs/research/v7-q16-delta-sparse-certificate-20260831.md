@@ -537,3 +537,25 @@ fd84b3821ec902ca7ba9aac461dddaf67f7da91f59824a239353cad46f12b349  Depth09Chunk00
 
 All four Depth09 chunks are independently green.  The Depth09 aggregator
 remains unbuilt.
+
+## Focused Depth09 aggregator gate
+
+After all four chunks were independently green, unit
+`aspis-v7-q16-delta-depth09-aggregator-b3d-r21.service`, invocation
+`71188f0407c3412293228e3a2409763d`, built only the aggregator and exact
+13-theorem re-export/axioms probe under the same 10G/12G/zero-swap limits.
+
+| Target | Exit | Wall | Max process RSS | Swaps |
+|---|---:|---:|---:|---:|
+| `Depth09.lean` | 0 | 2.60s | 6,152,976 KiB | 0 |
+| Depth09 axioms probe | 0 | 2.52s | 6,144,388 KiB | 0 |
+
+The exact 13 local declarations were present through the aggregator and each
+reported `[propext, Classical.choice, Quot.sound]`.
+
+```text
+b6eac5b95c48fe4821220a1a6dc0e62feeea900eab77d0853c1e783328064c59  Depth09.olean
+410499bc994b5db7680cae64df3200079085444118b927b7b0ceca143963dde6  Depth09.ilean
+```
+
+Depth09 is fully green.  No Depth10 target was started in this gate.
