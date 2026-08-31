@@ -296,14 +296,24 @@ scripts/v7_txv1_4k_feature_gate.sh \
   /absolute/new-output/devnet-feature-gate
 ```
 
-The read-only check was executed on 2026-08-31 at finalized slot 491,127,793.
-Devnet reported `solana-core 4.3.0-beta.2`, but the feature account was null
-and `solana feature status` reported `inactive`, activation slot `NA`, with
-feature activation not allowed at that time. The gate therefore failed closed
-before any simulation or submission. The exact status is frozen in
-`results/v7-registry-v2-release-audit-20260831/devnet-txv1-feature-gate.json`.
+The read-only check was repeated after the signed local gate on 2026-08-31 at
+finalized slot 491,160,606. Devnet still reported `solana-core 4.3.0-beta.2`,
+but the feature account was null and `solana feature status` reported
+`inactive`, activation slot `NA`, with feature activation not allowed at that
+time. The gate therefore failed closed before any simulation or submission.
+The updated raw responses and summary are frozen in
+`results/v7-registry-v2-release-audit-20260831/devnet-feature-gate-r2`.
 Public-devnet Registry V2 lifecycle execution cannot honestly start until this
 same finalized-commitment gate becomes active.
+
+Exact replay shape:
+
+```bash
+scripts/v7_txv1_4k_feature_gate.sh \
+  /absolute/official-agave-4.2+-solana \
+  https://api.devnet.solana.com \
+  /absolute/new-evidence-directory
+```
 
 Its underlying direct checks are:
 

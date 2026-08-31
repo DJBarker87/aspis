@@ -1,0 +1,39 @@
+{
+  "schema": "aspis.v7.txv1-4k-read-only-feature-gate.v1",
+  "capturedAtUtc": "2026-08-31T22:52:27Z",
+  "rpcUrl": "https://api.devnet.solana.com",
+  "cli": {
+    "version": "solana-cli 4.2.0 (src:ac82b5d4; feat:21b0d33a, client:Agave)",
+    "bytes": 32607160,
+    "sha256": "b6134ccddcb3456e49c0c15bc028c2902184a8fef6f6e6e665d9f8ae5bea8d10"
+  },
+  "rpc": {
+    "healthy": true,
+    "coreVersion": "4.3.0-beta.2",
+    "featureSet": 2409014235,
+    "finalizedSlot": 491160606,
+    "getHealthResponseSha256": "a94b1df49cd1f0179f5e1110f80d13b97bb84f3ae1310ff67829d68db89df390",
+    "getVersionResponseSha256": "0d7bd9d92aa5454f51cecf2cb1c3c2c6c537aae5425dd07a3f268356fea566fd",
+    "getFinalizedSlotResponseSha256": "6170f9a9913fe89b11e9829cfc693eb8f6bb32aadfe747a709e8d99467874615"
+  },
+  "txv1": {
+    "featureId": "txv1aq4pp281K9um3tnPgkfX8UqtFT6wcVW3hNezGLL",
+    "featureAccountAtFinalizedCommitment": null,
+    "featureAccountResponseContextSlot": 491160606,
+    "featureAccountResponseSha256": "92a4b37364a93520758d81e59f571961a983e23b36646371f6133e4c5437c0d0",
+    "featureStatus": "inactive",
+    "activationSlot": null,
+    "featureStatusOutputSha256": "7c7d641ff5ec649c042aa18c0fdd0571699708b13d0746c970c638e3a45ee6f7",
+    "maximumSerializedBytesWhenActive": 4096,
+    "activeAtFinalizedCommitment": false
+  },
+  "classification": "FAIL_CLOSED_PUBLIC_DEVNET_TXV1_NOT_ACTIVE",
+  "scriptExitStatus": 1,
+  "replayCommand": "scripts/v7_txv1_4k_feature_gate.sh <official-agave-4.2+-solana> https://api.devnet.solana.com <new-absolute-evidence-directory>",
+  "readOnly": true,
+  "simulated": false,
+  "signed": false,
+  "submitted": false,
+  "deployed": false,
+  "pass": false
+}
