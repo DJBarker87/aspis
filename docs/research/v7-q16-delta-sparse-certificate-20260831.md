@@ -220,3 +220,29 @@ fe4abfbcd96a3288f5bdee16cb7f3b941cf7e30e69b5665df42e6458889ee9ad  Depth03.olean
 
 Depth03 is green.  The next legitimate gate is `Depth04Chunk000.lean` then
 the Depth04 aggregator only.  No multi-depth or monolithic run has been used.
+
+## Focused Depth04 local-cell gate
+
+The Depth04 symbol manifest passed before the serial run.  The unit was
+`aspis-v7-q16-delta-depth04-b3d-r6.service`, invocation
+`c5294905ef064344b7cc97a0c89662da`, with `MemoryHigh=10G`, `MemoryMax=12G`,
+and `MemorySwapMax=0`.
+
+| Target | Exit | Wall | Max process RSS | Swaps |
+|---|---:|---:|---:|---:|
+| `Depth04Chunk000.lean` | 0 | 3.24s | 6,185,292 KiB | 0 |
+| `Depth04.lean` | 0 | 2.53s | 6,144,740 KiB | 0 |
+| Depth04 axioms probe | 0 | 2.51s | 6,136,116 KiB | 0 |
+
+All three local theorems report exactly
+`[propext, Classical.choice, Quot.sound]`.
+
+```text
+4696cb389a6e4a369695991c9f85869c2cf31ba1e87a2a27086b7bb5bdfa1680  Depth04Chunk000.olean
+433b6cc089eb2813c6f47345957ff4d6e728e97ab099c7fa8fe30c5a187d1bdd  Depth04Chunk000.ilean
+bfcb6aae860a45c90c1cd0867857695a476f127c3490cbce98fc843e6e9e3a94  Depth04.olean
+4fd12fdacb43226b28c2b7ce39b6f59858ded13dcdd9cad01265213c01855083  Depth04.ilean
+```
+
+Depth04 is green.  The next legitimate gate is `Depth05Chunk000.lean` then
+the Depth05 aggregator only.
