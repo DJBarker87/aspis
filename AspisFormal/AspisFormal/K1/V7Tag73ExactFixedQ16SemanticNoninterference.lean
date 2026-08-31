@@ -1,4 +1,7 @@
 import AspisFormal.K1.V7Tag73ExactFixedQ16SourceNoninterference
+import AspisFormal.K1.V7Tag73ExactFixedK12PrefixClassifier
+import AspisFormal.K1.V7Tag73ExactClientKnowledgeComposition
+import AspisFormal.K1.V7Tag73AdaptiveQ16TrialAccounting
 
 /-!
 # Semantic noninterference endpoint for fixed K1.3 q16
@@ -20,8 +23,11 @@ namespace AspisK1.V7Tag73ExactFixedQ16SemanticNoninterference
 
 open AspisK1.V7FsAokExperiment
 open AspisK1.V7Tag73AdaptiveLazyOracle
+open AspisK1.V7Tag73AdaptiveQ16TrialAccounting
+open AspisK1.V7Tag73ExactClientKnowledgeComposition
 open AspisK1.V7Tag73ExactCompilerResources
 open AspisK1.V7Tag73ExactFixedK12MerkleClassifier
+open AspisK1.V7Tag73ExactFixedK12PrefixClassifier
 open AspisK1.V7Tag73ExactFixedK13K14Classifier
 open AspisK1.V7Tag73ExactFixedQ16JointEventHandoff
 open AspisK1.V7Tag73ExactFixedQ16ResidualFactorization

@@ -134,11 +134,16 @@ probability accounting needs equality only of:
 4. the one-fold schedule.
 
 It no longer asks for equality of openings or of the entire parsed proof.
-`V7Tag73ExactFixedQ16DerivedProfileInvariant.lean` then derives that semantic
-condition, and hence the existing `ExactFixedK13ResidualInvariant`, from one
-profile equality containing exactly the same K1.2 words, canonical fixed
-field decode, verifier gamma, and verifier alpha-zero.  All parser-field
-normalization and inverse-table reasoning happens inside Lean.
+`V7Tag73ExactFixedQ16DerivedProfileInvariant.lean` tightens that endpoint
+again: its profile contains only K1.2 words, verifier gamma, the disclosed
+final-256, and verifier alpha-zero.  It deliberately does **not** require
+equality of all 641 decoded fields.  Its separate
+`ExactFixedK13SourceScheduleFunctional` premise states precisely the remaining
+alpha-to-total-schedule obligation.  The committed canonical inverse-table
+bridge is the intended discharge of that premise; it is no longer imported by
+the lightweight q16 module because Lean's module emitter expands that aggregate
+past the project memory limit.  The obligation is therefore visible, not
+silently trusted.
 
 So the precise remaining K1.3 actual-law theorem is now:
 
@@ -148,6 +153,24 @@ So the precise remaining K1.3 actual-law theorem is now:
 That is the appropriate target for the q16 state-restoration/source-causality
 bridge.  It is still open, and must include the adversary-first cached path;
 it may not be replaced by a raw SHA-input classifier or a fresh-query claim.
+
+## Verifier-owned partition now reaches the minimal profile
+
+`V7Tag73ExactFixedQ16VerifierDerivedProfile.lean` proves that the existing
+verifier-owned anchor theorem, together with the explicit parsed-source
+provider, fixes all four values of the minimal profile on an equal-residual
+fibre.  This is the exact verifier-owned half of the remaining causality
+condition.  It does not claim anything about the adversary-first/cache-hit
+half, and it does not import or assume a raw-input role classifier.
+
+Focused NUC checks on 2026-08-31 compiled the lightweight profile bridge and
+the verifier-owned bridge in 3.63s and 3.37s respectively, at 6.59GiB and
+6.56GiB peak RSS with zero swap.  Both reported only `propext`,
+`Classical.choice`, and `Quot.sound`; no project axiom, `sorry`, `admit`, or
+`native_decide` was introduced.  Lean 4.32 emitted its known
+`LibrarySuggestions` recursion panic while writing module metadata, but both
+commands exited zero and produced their `.olean` files; this toolchain issue
+is recorded separately from theorem status.
 
 ## Current honest status
 
