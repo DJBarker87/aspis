@@ -297,3 +297,27 @@ e2d06fc91afb17370e8e1429731f99a8e43cc5e6b2432ebb13e0d617e401b772  Depth06.ilean
 Depth06 is green.  Depth07 contains two bounded chunks; the next legitimate
 gate is `Depth07Chunk000.lean` only, before any decision about Chunk001 or its
 aggregator.
+
+## Focused Depth07 Chunk000 gate
+
+The first narrowed runner, r9, failed before elaboration in 0.03s because it
+omitted `cd $SOURCE_FORMAL`; Lean correctly rejected an input outside its root
+directory.  It wrote no artifact.  The cwd-corrected r10 unit was
+`aspis-v7-q16-delta-depth07-chunk000-b3d-r10.service`, invocation
+`c3e2a5a86b0a4a22bbbcc9597db66abc`, under the same 10G/12G/zero-swap limits.
+
+| Target | Exit | Wall | Max process RSS | Swaps |
+|---|---:|---:|---:|---:|
+| `Depth07Chunk000.lean` | 0 | 5.49s | 6,214,572 KiB | 0 |
+| Chunk000 axioms probe | 0 | 2.50s | 6,138,520 KiB | 0 |
+
+All eight Chunk000 theorems report exactly
+`[propext, Classical.choice, Quot.sound]`.
+
+```text
+3c4d3ccb7f7201819c5401024a432cc8431225b7fd36acceee71c2a01c0ac415  Depth07Chunk000.olean
+4599ce5317c4d8cca14974d2483dca7fa50639ce7260f7b27c84a3d9ceea677b  Depth07Chunk000.ilean
+```
+
+Chunk000 is independently green.  Chunk001 and the Depth07 aggregator remain
+unbuilt.
