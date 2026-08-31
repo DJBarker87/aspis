@@ -1,0 +1,41 @@
+{
+  "schema": "aspis.v7.registry-v2-release-focused-checks.v1",
+  "sourceCommit": "7179f7c550fe0461f4251dea5268af73876da91d",
+  "host": "Darwin Dominics-Laptop.local 25.5.0 arm64",
+  "toolchain": {
+    "rustc": "rustc 1.93.0 (254b59607 2026-01-19)",
+    "cargo": "cargo 1.93.0 (083ac5135 2025-12-15)"
+  },
+  "checks": [
+    {
+      "name": "frozen Registry V2 input and ledger audit",
+      "command": "release/v7-registry-v2-runtime-audit-v1/verify-inputs.sh",
+      "exitStatus": 0,
+      "wallSeconds": 0.38,
+      "maximumResidentSetBytes": 5095424,
+      "swaps": 0,
+      "outputSha256": "4e4ae0c35727d7370396b139a4773a1f335a8cd3a640d37083b1af07d0b45d31",
+      "checkedTerminalCases": 11,
+      "worstCombinedCu": 1218822,
+      "largestTerminalTransactionBytes": 1043
+    },
+    {
+      "name": "exact immutable Registry V2 TxV1 packet sizes",
+      "command": "CARGO_BUILD_JOBS=1 NO_DNA=1 cargo test --locked --offline --manifest-path crates/aspis-pool-wallet-v1/Cargo.toml --features eight-lane-plumbing-v2 lane_forest_transaction_v1::tests::immutable_registry_v2_terminal_wires_preserve_account_count_and_exact_four_kib_sizes -- --exact --nocapture",
+      "exitStatus": 0,
+      "wallSeconds": 93.41,
+      "maximumResidentSetBytes": 686882816,
+      "swaps": 0,
+      "testsPassed": 1,
+      "testsFailed": 0,
+      "testsFilteredOut": 145,
+      "packetSizes": [845, 878, 1010, 1043]
+    }
+  ],
+  "broadRegressionRun": false,
+  "sbfBuildRun": false,
+  "transactionSigned": false,
+  "transactionSubmitted": false,
+  "programDeployed": false,
+  "pass": true
+}
