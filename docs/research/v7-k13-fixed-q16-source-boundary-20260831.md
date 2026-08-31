@@ -89,6 +89,22 @@ This is a reformulation of the actual-law K1.3 proof obligation, not a change
 to the protocol, proof bytes, query count, digest width, work accounting, or
 cryptographic claim.
 
+## Implemented derived-q16 seam
+
+`V7Tag73DerivedK13Q16Handoff.lean` now makes the narrower target explicit.
+`DerivedK13Q16BadProfile` contains exactly the authenticated K1.2 words,
+canonically decoded fixed fields, verifier-derived gamma, and verifier-derived
+round-zero alpha.  It deliberately contains no q16-selected positions and no
+opaque parsed-proof value.
+
+The kernel-checked handoff proves that a query-phase failure in
+`derivedK13View` exposes the literal selected first-cap-203 schedule inside
+that profile's consistency set, with the unchanged `9557` cardinality cap.
+Thus the next causality theorem need only show that this *four-component
+profile* is committed before the q16 forest.  It no longer needs to claim
+equality of the whole replayed parsed proof.  That precommitment/source bridge
+is still open; this module does not manufacture it.
+
 ## Current honest status
 
 The fixed and restored q16 factorization theorems remain conditional
