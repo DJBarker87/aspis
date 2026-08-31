@@ -105,6 +105,24 @@ profile* is committed before the q16 forest.  It no longer needs to claim
 equality of the whole replayed parsed proof.  That precommitment/source bridge
 is still open; this module does not manufacture it.
 
+## Source-binding normalization now proved
+
+Two additional focused modules close a bookkeeping gap at that boundary:
+
+- `V7Tag73CanonicalOneFoldScheduleUniqueness.lean` proves that alpha plus the
+  exact two inverse-table equations uniquely determine the complete total
+  one-fold schedule; and
+- `V7Tag73DerivedK13SourceBridge.lean` uses the explicit
+  `ExactParsedProofSourceBinding` to identify the legacy parsed view with the
+  verifier-derived view, including the canonical schedule.  The accompanying
+  `V7Tag73DerivedK13LegacyQueryBridge.lean` transfers the existing fixed
+  query failure to the derived q16 bad profile.
+
+This does not turn `ExactParsedProofSourceBinding` into a proved Rust bridge:
+it remains the intentionally explicit Aeneas/source obligation.  It does
+mean that, once that bridge is instantiated, no separate arbitrary
+inverse-table or schedule-equality premise is left over.
+
 ## Current honest status
 
 The fixed and restored q16 factorization theorems remain conditional
