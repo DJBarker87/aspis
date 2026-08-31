@@ -24,7 +24,7 @@ theorem certificate_12_3_21 :
         frontierCoeff 11 1 leftFrontier *
           frontierCoeff 11 2 (21 - leftFrontier)) = 1 := by
     have live0 : supportedSplitFrontiers 11 1 2 21 = {1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11} := by
-      rw [supportedSplitFrontiers_eq_Icc, support_11_1, support_11_2]
+      rw [supportedSplitFrontiers_eq_Icc, AspisV6CompactFrontierTailCertificate.support_11_1, AspisV6CompactFrontierTailCertificate.support_11_2]
       ext value
       simp <;> omega
     rw [live0]
@@ -48,7 +48,7 @@ theorem certificate_12_3_21 :
         frontierCoeff 11 2 leftFrontier *
           frontierCoeff 11 1 (21 - leftFrontier)) = 1 := by
     have live1 : supportedSplitFrontiers 11 2 1 21 = {10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20} := by
-      rw [supportedSplitFrontiers_eq_Icc, support_11_1, support_11_2]
+      rw [supportedSplitFrontiers_eq_Icc, AspisV6CompactFrontierTailCertificate.support_11_1, AspisV6CompactFrontierTailCertificate.support_11_2]
       ext value
       simp <;> omega
     rw [live1]
@@ -101,7 +101,7 @@ theorem certificate_12_3_22 :
         frontierCoeff 11 1 leftFrontier *
           frontierCoeff 11 2 (22 - leftFrontier)) = 1 := by
     have live0 : supportedSplitFrontiers 11 1 2 22 = {2, 3, 4, 5, 6, 7, 8, 9, 10, 11} := by
-      rw [supportedSplitFrontiers_eq_Icc, support_11_1, support_11_2]
+      rw [supportedSplitFrontiers_eq_Icc, AspisV6CompactFrontierTailCertificate.support_11_1, AspisV6CompactFrontierTailCertificate.support_11_2]
       ext value
       simp <;> omega
     rw [live0]
@@ -125,7 +125,7 @@ theorem certificate_12_3_22 :
         frontierCoeff 11 2 leftFrontier *
           frontierCoeff 11 1 (22 - leftFrontier)) = 1 := by
     have live1 : supportedSplitFrontiers 11 2 1 22 = {11, 12, 13, 14, 15, 16, 17, 18, 19, 20} := by
-      rw [supportedSplitFrontiers_eq_Icc, support_11_1, support_11_2]
+      rw [supportedSplitFrontiers_eq_Icc, AspisV6CompactFrontierTailCertificate.support_11_1, AspisV6CompactFrontierTailCertificate.support_11_2]
       ext value
       simp <;> omega
     rw [live1]

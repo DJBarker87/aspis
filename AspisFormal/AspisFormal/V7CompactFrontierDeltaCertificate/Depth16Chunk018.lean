@@ -24,7 +24,7 @@ theorem certificate_16_5_54 :
         frontierCoeff 15 1 leftFrontier *
           frontierCoeff 15 4 (54 - leftFrontier)) = 116 := by
     have live0 : supportedSplitFrontiers 15 1 4 54 = {2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15} := by
-      rw [supportedSplitFrontiers_eq_Icc, support_15_1, support_15_4]
+      rw [supportedSplitFrontiers_eq_Icc, AspisV6CompactFrontierTailCertificate.support_15_1, AspisV6CompactFrontierTailCertificate.support_15_4]
       ext value
       simp <;> omega
     rw [live0]
@@ -49,7 +49,7 @@ theorem certificate_16_5_54 :
         frontierCoeff 15 2 leftFrontier *
           frontierCoeff 15 3 (54 - leftFrontier)) = 126 := by
     have live1 : supportedSplitFrontiers 15 2 3 54 = {14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28} := by
-      rw [supportedSplitFrontiers_eq_Icc, support_15_2, support_15_3]
+      rw [supportedSplitFrontiers_eq_Icc, AspisV6CompactFrontierTailCertificate.support_15_2, AspisV6CompactFrontierTailCertificate.support_15_3]
       ext value
       simp <;> omega
     rw [live1]
@@ -74,7 +74,7 @@ theorem certificate_16_5_54 :
         frontierCoeff 15 3 leftFrontier *
           frontierCoeff 15 2 (54 - leftFrontier)) = 126 := by
     have live2 : supportedSplitFrontiers 15 3 2 54 = {26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40} := by
-      rw [supportedSplitFrontiers_eq_Icc, support_15_2, support_15_3]
+      rw [supportedSplitFrontiers_eq_Icc, AspisV6CompactFrontierTailCertificate.support_15_2, AspisV6CompactFrontierTailCertificate.support_15_3]
       ext value
       simp <;> omega
     rw [live2]
@@ -99,7 +99,7 @@ theorem certificate_16_5_54 :
         frontierCoeff 15 4 leftFrontier *
           frontierCoeff 15 1 (54 - leftFrontier)) = 116 := by
     have live3 : supportedSplitFrontiers 15 4 1 54 = {39, 40, 41, 42, 43, 44, 45, 46, 47, 48, 49, 50, 51, 52} := by
-      rw [supportedSplitFrontiers_eq_Icc, support_15_1, support_15_4]
+      rw [supportedSplitFrontiers_eq_Icc, AspisV6CompactFrontierTailCertificate.support_15_1, AspisV6CompactFrontierTailCertificate.support_15_4]
       ext value
       simp <;> omega
     rw [live3]

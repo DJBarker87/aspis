@@ -24,7 +24,7 @@ theorem certificate_15_5_52 :
         frontierCoeff 14 1 leftFrontier *
           frontierCoeff 14 4 (52 - leftFrontier)) = 74 := by
     have live0 : supportedSplitFrontiers 14 1 4 52 = {4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14} := by
-      rw [supportedSplitFrontiers_eq_Icc, support_14_1, support_14_4]
+      rw [supportedSplitFrontiers_eq_Icc, AspisV6CompactFrontierTailCertificate.support_14_1, AspisV6CompactFrontierTailCertificate.support_14_4]
       ext value
       simp <;> omega
     rw [live0]
@@ -48,7 +48,7 @@ theorem certificate_15_5_52 :
         frontierCoeff 14 2 leftFrontier *
           frontierCoeff 14 3 (52 - leftFrontier)) = 84 := by
     have live1 : supportedSplitFrontiers 14 2 3 52 = {15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26} := by
-      rw [supportedSplitFrontiers_eq_Icc, support_14_2, support_14_3]
+      rw [supportedSplitFrontiers_eq_Icc, AspisV6CompactFrontierTailCertificate.support_14_2, AspisV6CompactFrontierTailCertificate.support_14_3]
       ext value
       simp <;> omega
     rw [live1]
@@ -72,7 +72,7 @@ theorem certificate_15_5_52 :
         frontierCoeff 14 3 leftFrontier *
           frontierCoeff 14 2 (52 - leftFrontier)) = 84 := by
     have live2 : supportedSplitFrontiers 14 3 2 52 = {26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37} := by
-      rw [supportedSplitFrontiers_eq_Icc, support_14_2, support_14_3]
+      rw [supportedSplitFrontiers_eq_Icc, AspisV6CompactFrontierTailCertificate.support_14_2, AspisV6CompactFrontierTailCertificate.support_14_3]
       ext value
       simp <;> omega
     rw [live2]
@@ -96,7 +96,7 @@ theorem certificate_15_5_52 :
         frontierCoeff 14 4 leftFrontier *
           frontierCoeff 14 1 (52 - leftFrontier)) = 74 := by
     have live3 : supportedSplitFrontiers 14 4 1 52 = {38, 39, 40, 41, 42, 43, 44, 45, 46, 47, 48} := by
-      rw [supportedSplitFrontiers_eq_Icc, support_14_1, support_14_4]
+      rw [supportedSplitFrontiers_eq_Icc, AspisV6CompactFrontierTailCertificate.support_14_1, AspisV6CompactFrontierTailCertificate.support_14_4]
       ext value
       simp <;> omega
     rw [live3]

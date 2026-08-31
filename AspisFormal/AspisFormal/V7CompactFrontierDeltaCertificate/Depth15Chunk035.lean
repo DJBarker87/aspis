@@ -28,7 +28,7 @@ theorem certificate_15_9_99 :
         frontierCoeff 14 1 leftFrontier *
           frontierCoeff 14 8 (99 - leftFrontier)) = 350 := by
     have live0 : supportedSplitFrontiers 14 1 8 99 = {11, 12, 13, 14} := by
-      rw [supportedSplitFrontiers_eq_Icc, support_14_1, support_14_8]
+      rw [supportedSplitFrontiers_eq_Icc, AspisV6CompactFrontierTailCertificate.support_14_1, AspisV6CompactFrontierTailCertificate.support_14_8]
       ext value
       simp <;> omega
     rw [live0]
@@ -50,7 +50,7 @@ theorem certificate_15_9_99 :
         frontierCoeff 14 2 leftFrontier *
           frontierCoeff 14 7 (99 - leftFrontier)) = 1632 := by
     have live1 : supportedSplitFrontiers 14 2 7 99 = {21, 22, 23, 24, 25, 26} := by
-      rw [supportedSplitFrontiers_eq_Icc, support_14_2, support_14_7]
+      rw [supportedSplitFrontiers_eq_Icc, AspisV6CompactFrontierTailCertificate.support_14_2, AspisV6CompactFrontierTailCertificate.support_14_7]
       ext value
       simp <;> omega
     rw [live1]
@@ -72,7 +72,7 @@ theorem certificate_15_9_99 :
         frontierCoeff 14 3 leftFrontier *
           frontierCoeff 14 6 (99 - leftFrontier)) = 3324 := by
     have live2 : supportedSplitFrontiers 14 3 6 99 = {31, 32, 33, 34, 35, 36, 37} := by
-      rw [supportedSplitFrontiers_eq_Icc, support_14_3, support_14_6]
+      rw [supportedSplitFrontiers_eq_Icc, AspisV6CompactFrontierTailCertificate.support_14_3, AspisV6CompactFrontierTailCertificate.support_14_6]
       ext value
       simp <;> omega
     rw [live2]
@@ -95,7 +95,7 @@ theorem certificate_15_9_99 :
         frontierCoeff 14 4 leftFrontier *
           frontierCoeff 14 5 (99 - leftFrontier)) = 4478 := by
     have live3 : supportedSplitFrontiers 14 4 5 99 = {41, 42, 43, 44, 45, 46, 47, 48} := by
-      rw [supportedSplitFrontiers_eq_Icc, support_14_4, support_14_5]
+      rw [supportedSplitFrontiers_eq_Icc, AspisV6CompactFrontierTailCertificate.support_14_4, AspisV6CompactFrontierTailCertificate.support_14_5]
       ext value
       simp <;> omega
     rw [live3]
@@ -118,7 +118,7 @@ theorem certificate_15_9_99 :
         frontierCoeff 14 5 leftFrontier *
           frontierCoeff 14 4 (99 - leftFrontier)) = 4478 := by
     have live4 : supportedSplitFrontiers 14 5 4 99 = {51, 52, 53, 54, 55, 56, 57, 58} := by
-      rw [supportedSplitFrontiers_eq_Icc, support_14_4, support_14_5]
+      rw [supportedSplitFrontiers_eq_Icc, AspisV6CompactFrontierTailCertificate.support_14_4, AspisV6CompactFrontierTailCertificate.support_14_5]
       ext value
       simp <;> omega
     rw [live4]
@@ -141,7 +141,7 @@ theorem certificate_15_9_99 :
         frontierCoeff 14 6 leftFrontier *
           frontierCoeff 14 3 (99 - leftFrontier)) = 3324 := by
     have live5 : supportedSplitFrontiers 14 6 3 99 = {62, 63, 64, 65, 66, 67, 68} := by
-      rw [supportedSplitFrontiers_eq_Icc, support_14_3, support_14_6]
+      rw [supportedSplitFrontiers_eq_Icc, AspisV6CompactFrontierTailCertificate.support_14_3, AspisV6CompactFrontierTailCertificate.support_14_6]
       ext value
       simp <;> omega
     rw [live5]
@@ -164,7 +164,7 @@ theorem certificate_15_9_99 :
         frontierCoeff 14 7 leftFrontier *
           frontierCoeff 14 2 (99 - leftFrontier)) = 1632 := by
     have live6 : supportedSplitFrontiers 14 7 2 99 = {73, 74, 75, 76, 77, 78} := by
-      rw [supportedSplitFrontiers_eq_Icc, support_14_2, support_14_7]
+      rw [supportedSplitFrontiers_eq_Icc, AspisV6CompactFrontierTailCertificate.support_14_2, AspisV6CompactFrontierTailCertificate.support_14_7]
       ext value
       simp <;> omega
     rw [live6]
@@ -186,7 +186,7 @@ theorem certificate_15_9_99 :
         frontierCoeff 14 8 leftFrontier *
           frontierCoeff 14 1 (99 - leftFrontier)) = 350 := by
     have live7 : supportedSplitFrontiers 14 8 1 99 = {85, 86, 87, 88} := by
-      rw [supportedSplitFrontiers_eq_Icc, support_14_1, support_14_8]
+      rw [supportedSplitFrontiers_eq_Icc, AspisV6CompactFrontierTailCertificate.support_14_1, AspisV6CompactFrontierTailCertificate.support_14_8]
       ext value
       simp <;> omega
     rw [live7]

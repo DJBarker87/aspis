@@ -24,7 +24,7 @@ theorem certificate_13_5_47 :
         frontierCoeff 12 1 leftFrontier *
           frontierCoeff 12 4 (47 - leftFrontier)) = 25 := by
     have live0 : supportedSplitFrontiers 12 1 4 47 = {7, 8, 9, 10, 11, 12} := by
-      rw [supportedSplitFrontiers_eq_Icc, support_12_1, support_12_4]
+      rw [supportedSplitFrontiers_eq_Icc, AspisV6CompactFrontierTailCertificate.support_12_1, AspisV6CompactFrontierTailCertificate.support_12_4]
       ext value
       simp <;> omega
     rw [live0]
@@ -46,7 +46,7 @@ theorem certificate_13_5_47 :
         frontierCoeff 12 2 leftFrontier *
           frontierCoeff 12 3 (47 - leftFrontier)) = 32 := by
     have live1 : supportedSplitFrontiers 12 2 3 47 = {16, 17, 18, 19, 20, 21, 22} := by
-      rw [supportedSplitFrontiers_eq_Icc, support_12_2, support_12_3]
+      rw [supportedSplitFrontiers_eq_Icc, AspisV6CompactFrontierTailCertificate.support_12_2, AspisV6CompactFrontierTailCertificate.support_12_3]
       ext value
       simp <;> omega
     rw [live1]
@@ -69,7 +69,7 @@ theorem certificate_13_5_47 :
         frontierCoeff 12 3 leftFrontier *
           frontierCoeff 12 2 (47 - leftFrontier)) = 32 := by
     have live2 : supportedSplitFrontiers 12 3 2 47 = {25, 26, 27, 28, 29, 30, 31} := by
-      rw [supportedSplitFrontiers_eq_Icc, support_12_2, support_12_3]
+      rw [supportedSplitFrontiers_eq_Icc, AspisV6CompactFrontierTailCertificate.support_12_2, AspisV6CompactFrontierTailCertificate.support_12_3]
       ext value
       simp <;> omega
     rw [live2]
@@ -92,7 +92,7 @@ theorem certificate_13_5_47 :
         frontierCoeff 12 4 leftFrontier *
           frontierCoeff 12 1 (47 - leftFrontier)) = 25 := by
     have live3 : supportedSplitFrontiers 12 4 1 47 = {35, 36, 37, 38, 39, 40} := by
-      rw [supportedSplitFrontiers_eq_Icc, support_12_1, support_12_4]
+      rw [supportedSplitFrontiers_eq_Icc, AspisV6CompactFrontierTailCertificate.support_12_1, AspisV6CompactFrontierTailCertificate.support_12_4]
       ext value
       simp <;> omega
     rw [live3]

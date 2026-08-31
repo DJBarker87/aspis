@@ -46,6 +46,8 @@ The frozen boundary is:
 |---|---:|
 | Exact extant V6 sparse inventory | 753 |
 | V6 cells actually reused by V7 | 652 |
+| Exact V6 sparse-support inventory | 304 |
+| V6 support theorems actually reused by V7 | 88 |
 | New local V7 delta cells | 412 |
 | Final V7 cells | 6 (frontiers 204 through 209) |
 
@@ -56,7 +58,9 @@ reached.  Every remaining cell uses the same proved
 653-theorem monolith.
 
 The generated manifest records the full reused/local symbol lists, their
-SHA-256 surfaces, every generated-source hash, and per-depth chunk bounds.
+SHA-256 surfaces, every generated-source hash, and per-depth chunk bounds.  It
+also requires the exact `support_0_1` through `support_18_16` grid and qualifies
+every generated support reference against that 304-theorem inventory.
 
 Preflight commands:
 
@@ -73,18 +77,20 @@ Results:
 
 ```text
 V6 split certificate: PASS (520 generated parts, 753 recurrence cells)
-V7 sparse symbol manifest: PASS (412 local, 652 reused V6 symbols)
+V7 sparse symbol manifest: PASS (412 local, 652 reused V6 cells, 88 reused support theorems)
 V7 split delta certificate: PASS (326 generated parts)
 ```
 
-Key source hashes before commit:
+Key source hashes at this milestone:
 
 ```text
-7870de94b2fc531597dcddc639bbd2464fb6c7139d0e0566543113021805100f  tools/generate_v7_compact_frontier_delta.py
+f27faff42522a25b84a8032198c3be65ba36d9e2e57a9203020ecc65ce6bf2ad  tools/generate_v7_compact_frontier_delta.py
 b1530375cc72836238787974e515a46937fb3baab9a1edf3372c9efc1ca93caa  AspisFormal/AspisFormal/V7CompactFrontierDeltaCertificate.lean
-f82158ba9042a4b1e9bfffcd0a3fcb7ad16bc561b9248b0d431c93064a3b9cfc  AspisFormal/AspisFormal/V7CompactFrontierDeltaCertificate/manifest.json
+49672277125d43cf06b1f8ee3bae0363028b40b33a1afe7a18995800c224bf5d  AspisFormal/AspisFormal/V7CompactFrontierDeltaCertificate/manifest.json
 7b1ecd41f01b35652fe28329b3759549925a382b201538c90d297f5172016f1a  AspisFormal/AspisFormal/V7CompactFrontierDeltaCertificate/Depth00.lean
 cc1aa42af5bb6be290a215256605b99f3d46dc7db5487595af4c6a920318b80a  AspisFormal/AspisFormal/V7CompactFrontierDeltaCertificate/Depth01.lean
+53ec9b28479cea19bcc3bdb557357eaed86ff11bf4a35120d396f65bcc3fa311  AspisFormal/AspisFormal/V7CompactFrontierDeltaCertificate/Depth02Chunk000.lean
+f006083c4392a941d4dcdb432fd62bb0b420beab2c4559b7463f7720cfe796b7  AspisFormal/AspisFormal/V7CompactFrontierDeltaCertificate/Depth02.lean
 ```
 
 ## Focused NUC Depth00/Depth01 gate
@@ -125,8 +131,54 @@ a94174c9554a0da8e63b3accf7408b30358480b0a423f040e089c103c2b1a877  Depth01.ilean
 ```
 
 Depth00 and Depth01 are import/re-export modules and introduce no theorem, so
-there is no new `#print axioms` surface at this gate.  The first local theorem
-is in `Depth02Chunk000`; its focused kernel build is the next gate.  Only after
-that theorem and its Depth02 aggregator are green should later depths be
-compiled serially.  The final delta sum, V7 compact-frontier certificate, and
-q16 count bridge remain pending.
+there is no new `#print axioms` surface at this gate.
+
+## Focused Depth02 local-cell gate
+
+The first Depth02 attempt failed fast and usefully.  Unit
+`aspis-v7-q16-delta-depth02-b3d-r3.service`, invocation
+`6ff9f1af999d4dab915d96c8def1628b`, stopped in 2.54s because the inherited V6
+proof text referred to unqualified `support_1_1`.  No Depth02 artifact was
+written.  The generator was corrected to derive the exact 304-theorem support
+inventory and qualify only references present in it; this is a source change,
+not an unchanged rerun.
+
+Replacement unit:
+
+```text
+aspis-v7-q16-delta-depth02-b3d-r4.service
+invocation 41c2306d64db46cb830eb9e42d99fc36
+MemoryHigh=10G
+MemoryMax=12G
+MemorySwapMax=0
+```
+
+| Target | Exit | Wall | Max process RSS | Swaps |
+|---|---:|---:|---:|---:|
+| `Depth02Chunk000.lean` | 0 | 2.77s | 6,179,716 KiB | 0 |
+| `Depth02.lean` | 0 | 2.59s | 6,143,924 KiB | 0 |
+| Depth02 axioms probe | 0 | 2.47s | 6,135,180 KiB | 0 |
+
+The unit's cgroup peak was 642.6 MiB and its swap peak was zero.  Process RSS
+above includes shared read-only dependency mappings, so both measurements are
+reported rather than conflated.
+
+Artifact hashes:
+
+```text
+dc5d70c980bd7607cc0974acb42a22a4b6ad2f5d046be48b120637edb1198e33  Depth02Chunk000.olean
+3e85e088417a20ddacd04c6de8c89bdeb7c2c79eb5fccb5b49c568e16f9e5dd7  Depth02Chunk000.ilean
+14e885d61a9140fedfaac3813a33962b4c76f54d28ca02dfee8261afc423a405  Depth02.olean
+f29883d25680a92a52c63f385c54251a2e624802e76f8c953d2d0fd3562924ff  Depth02.ilean
+```
+
+The first local theorem reports exactly:
+
+```text
+[propext, Classical.choice, Quot.sound]
+```
+
+Depth02 is therefore green.  The next legitimate gate is
+`Depth03Chunk000.lean`, followed by the Depth03 aggregator only if that chunk
+passes.  The final delta sum, V7 compact-frontier certificate, and q16 count
+bridge remain pending.

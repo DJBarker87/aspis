@@ -49,12 +49,20 @@ CERTIFICATE_RE = re.compile(r"(?<![A-Za-z0-9_.])certificate_(\d+)_(\d+)_(\d+)")
 V6_REFERENCE_RE = re.compile(
     rf"{V6_NAMESPACE}\.certificate_(\d+)_(\d+)_(\d+)"
 )
+SUPPORT_RE = re.compile(r"(?<![A-Za-z0-9_.])support_(\d+)_(\d+)")
+V6_SUPPORT_REFERENCE_RE = re.compile(
+    rf"{V6_NAMESPACE}\.support_(\d+)_(\d+)"
+)
 DECLARATION_RE = re.compile(
     r"^theorem certificate_(\d+)_(\d+)_(\d+)\s*:", re.MULTILINE
+)
+SUPPORT_DECLARATION_RE = re.compile(
+    r"^theorem support_(\d+)_(\d+)\s*:", re.MULTILINE
 )
 
 
 State = tuple[int, int, int]
+SupportState = tuple[int, int]
 
 
 def state_name(state: State) -> str:
@@ -68,6 +76,16 @@ def state_from_match(match: re.Match[str]) -> State:
 
 def states_sha256(states: set[State]) -> str:
     surface = "".join(f"{state_name(state)}\n" for state in sorted(states))
+    return hashlib.sha256(surface.encode("utf-8")).hexdigest()
+
+
+def support_name(state: SupportState) -> str:
+    depth, selected = state
+    return f"support_{depth}_{selected}"
+
+
+def support_states_sha256(states: set[SupportState]) -> str:
+    surface = "".join(f"{support_name(state)}\n" for state in sorted(states))
     return hashlib.sha256(surface.encode("utf-8")).hexdigest()
 
 
@@ -103,6 +121,32 @@ def scan_v6_inventory(output: Path) -> tuple[set[State], dict[str, object]]:
     if manifest.get("ordinary_recurrence_cells") != len(expected):
         raise SystemExit("V6 manifest recurrence-cell count does not match source symbols")
     return actual, manifest
+
+
+def scan_v6_support_inventory(output: Path) -> tuple[set[SupportState], Path]:
+    support_path = output.parent / "V6CompactFrontierTailCertificate" / "Support.lean"
+    if not support_path.is_file():
+        raise SystemExit(f"missing V6 sparse support source: {support_path}")
+    actual = {
+        (int(match.group(1)), int(match.group(2)))
+        for match in SUPPORT_DECLARATION_RE.finditer(
+            support_path.read_text(encoding="utf-8")
+        )
+    }
+    expected = {
+        (depth, selected)
+        for depth in range(DEPTH + 1)
+        for selected in range(1, SELECTED + 1)
+    }
+    if actual != expected:
+        missing = sorted(expected - actual)
+        unexpected = sorted(actual - expected)
+        raise SystemExit(
+            "V6 sparse support inventory mismatch: "
+            f"missing={','.join(support_name(state) for state in missing[:16])}; "
+            f"unexpected={','.join(support_name(state) for state in unexpected[:16])}"
+        )
+    return actual, support_path
 
 
 def delta_symbol_graph(v6_symbols: set[State]) -> tuple[set[State], set[State]]:
@@ -170,6 +214,21 @@ def qualify_v6_references(
     return CERTIFICATE_RE.sub(replace, source)
 
 
+def qualify_v6_support_references(
+    source: str, v6_support_symbols: set[SupportState]
+) -> str:
+    def replace(match: re.Match[str]) -> str:
+        state = (int(match.group(1)), int(match.group(2)))
+        if state not in v6_support_symbols:
+            raise SystemExit(
+                "generated proof referenced an unproved support theorem: "
+                + support_name(state)
+            )
+        return f"{V6_NAMESPACE}.{match.group(0)}"
+
+    return SUPPORT_RE.sub(replace, source)
+
+
 def generate_chunk(
     depth: int,
     chunk: int,
@@ -179,6 +238,7 @@ def generate_chunk(
     tables: list[dict[int, dict[int, int]]],
     local: set[State],
     v6_symbols: set[State],
+    v6_support_symbols: set[SupportState],
 ) -> str:
     old_cap = v6.CAP
     try:
@@ -208,6 +268,7 @@ def generate_chunk(
     )
     source = source.replace(V6_NAMESPACE, NAMESPACE)
     source = qualify_v6_references(source, local, v6_symbols)
+    source = qualify_v6_support_references(source, v6_support_symbols)
     return source
 
 
@@ -308,8 +369,19 @@ def symbol_sets_from_contents(contents: list[str]) -> tuple[set[State], set[Stat
     return local, external
 
 
+def support_symbols_from_contents(contents: list[str]) -> set[SupportState]:
+    external: set[SupportState] = set()
+    for content in contents:
+        external.update(
+            (int(match.group(1)), int(match.group(2)))
+            for match in V6_SUPPORT_REFERENCE_RE.finditer(content)
+        )
+    return external
+
+
 def generated_files(output: Path) -> dict[Path, str]:
     v6_symbols, v6_manifest = scan_v6_inventory(output)
+    v6_support_symbols, v6_support_path = scan_v6_support_inventory(output)
     local, external = delta_symbol_graph(v6_symbols)
     tables = v6.coefficient_tables()
     generated_dir = output.with_suffix("")
@@ -329,6 +401,7 @@ def generated_files(output: Path) -> dict[Path, str]:
                 tables,
                 local,
                 v6_symbols,
+                v6_support_symbols,
             )
         files[generated_dir / f"{depth_name(depth)}.lean"] = (
             generate_depth_aggregator(depth, len(chunks))
@@ -362,6 +435,9 @@ def generated_files(output: Path) -> dict[Path, str]:
             "generated V6 reference surface mismatch: "
             f"missing={len(missing)}, unexpected={len(unexpected)}"
         )
+    referenced_support = support_symbols_from_contents(lean_contents)
+    if not referenced_support or not referenced_support <= v6_support_symbols:
+        raise SystemExit("generated V6 support reference surface is invalid")
 
     lean_hashes = {
         str(path.relative_to(output.parent)): hashlib.sha256(
@@ -385,6 +461,18 @@ def generated_files(output: Path) -> dict[Path, str]:
         "v6_referenced_symbol_count": len(external),
         "v6_referenced_symbols_sha256": states_sha256(external),
         "v6_referenced_symbols": [state_name(state) for state in sorted(external)],
+        "v6_support_source_sha256": hashlib.sha256(
+            v6_support_path.read_bytes()
+        ).hexdigest(),
+        "v6_support_symbol_count": len(v6_support_symbols),
+        "v6_support_symbols_sha256": support_states_sha256(v6_support_symbols),
+        "v6_referenced_support_symbol_count": len(referenced_support),
+        "v6_referenced_support_symbols_sha256": support_states_sha256(
+            referenced_support
+        ),
+        "v6_referenced_support_symbols": [
+            support_name(state) for state in sorted(referenced_support)
+        ],
         "v7_local_symbol_count": len(local),
         "v7_local_symbols_sha256": states_sha256(local),
         "v7_local_symbols": [state_name(state) for state in sorted(local)],
@@ -427,9 +515,16 @@ def check_symbols(output: Path) -> None:
     )
     if actual_local != expected_local or actual_external != expected_external:
         raise SystemExit("V7 generated source symbols do not match the frozen manifest")
+    actual_support = support_symbols_from_contents(actual_sources)
+    expected_support = support_symbols_from_contents(
+        [content for path, content in expected.items() if path.suffix == ".lean"]
+    )
+    if actual_support != expected_support:
+        raise SystemExit("V7 generated support symbols do not match the frozen manifest")
     print(
         "V7 sparse symbol manifest: PASS "
-        f"({len(actual_local)} local, {len(actual_external)} reused V6 symbols)"
+        f"({len(actual_local)} local, {len(actual_external)} reused V6 cells, "
+        f"{len(actual_support)} reused support theorems)"
     )
 
 

@@ -24,7 +24,7 @@ theorem certificate_6_2_0 :
         frontierCoeff 5 1 leftFrontier *
           frontierCoeff 5 1 (0 - leftFrontier)) = 0 := by
     have live0 : supportedSplitFrontiers 5 1 1 0 = {0} := by
-      rw [supportedSplitFrontiers_eq_Icc, support_5_1]
+      rw [supportedSplitFrontiers_eq_Icc, AspisV6CompactFrontierTailCertificate.support_5_1]
       ext value
       simp <;> omega
     rw [live0]
@@ -74,7 +74,7 @@ theorem certificate_6_2_1 :
         frontierCoeff 5 1 leftFrontier *
           frontierCoeff 5 1 (1 - leftFrontier)) = 0 := by
     have live0 : supportedSplitFrontiers 5 1 1 1 = {0, 1} := by
-      rw [supportedSplitFrontiers_eq_Icc, support_5_1]
+      rw [supportedSplitFrontiers_eq_Icc, AspisV6CompactFrontierTailCertificate.support_5_1]
       ext value
       simp <;> omega
     rw [live0]
@@ -124,7 +124,7 @@ theorem certificate_6_2_2 :
         frontierCoeff 5 1 leftFrontier *
           frontierCoeff 5 1 (2 - leftFrontier)) = 0 := by
     have live0 : supportedSplitFrontiers 5 1 1 2 = {0, 1, 2} := by
-      rw [supportedSplitFrontiers_eq_Icc, support_5_1]
+      rw [supportedSplitFrontiers_eq_Icc, AspisV6CompactFrontierTailCertificate.support_5_1]
       ext value
       simp <;> omega
     rw [live0]
@@ -174,7 +174,7 @@ theorem certificate_6_2_3 :
         frontierCoeff 5 1 leftFrontier *
           frontierCoeff 5 1 (3 - leftFrontier)) = 0 := by
     have live0 : supportedSplitFrontiers 5 1 1 3 = {0, 1, 2, 3} := by
-      rw [supportedSplitFrontiers_eq_Icc, support_5_1]
+      rw [supportedSplitFrontiers_eq_Icc, AspisV6CompactFrontierTailCertificate.support_5_1]
       ext value
       simp <;> omega
     rw [live0]
@@ -224,7 +224,7 @@ theorem certificate_6_2_4 :
         frontierCoeff 5 1 leftFrontier *
           frontierCoeff 5 1 (4 - leftFrontier)) = 0 := by
     have live0 : supportedSplitFrontiers 5 1 1 4 = {0, 1, 2, 3, 4} := by
-      rw [supportedSplitFrontiers_eq_Icc, support_5_1]
+      rw [supportedSplitFrontiers_eq_Icc, AspisV6CompactFrontierTailCertificate.support_5_1]
       ext value
       simp <;> omega
     rw [live0]
@@ -278,7 +278,7 @@ theorem certificate_6_3_12 :
         frontierCoeff 5 1 leftFrontier *
           frontierCoeff 5 2 (12 - leftFrontier)) = 1 := by
     have live0 : supportedSplitFrontiers 5 1 2 12 = {4, 5} := by
-      rw [supportedSplitFrontiers_eq_Icc, support_5_1, support_5_2]
+      rw [supportedSplitFrontiers_eq_Icc, AspisV6CompactFrontierTailCertificate.support_5_1, AspisV6CompactFrontierTailCertificate.support_5_2]
       ext value
       simp <;> omega
     rw [live0]
@@ -299,7 +299,7 @@ theorem certificate_6_3_12 :
         frontierCoeff 5 2 leftFrontier *
           frontierCoeff 5 1 (12 - leftFrontier)) = 1 := by
     have live1 : supportedSplitFrontiers 5 2 1 12 = {7, 8} := by
-      rw [supportedSplitFrontiers_eq_Icc, support_5_1, support_5_2]
+      rw [supportedSplitFrontiers_eq_Icc, AspisV6CompactFrontierTailCertificate.support_5_1, AspisV6CompactFrontierTailCertificate.support_5_2]
       ext value
       simp <;> omega
     rw [live1]
@@ -353,7 +353,7 @@ theorem certificate_6_3_13 :
         frontierCoeff 5 1 leftFrontier *
           frontierCoeff 5 2 (13 - leftFrontier)) = 1 := by
     have live0 : supportedSplitFrontiers 5 1 2 13 = {5} := by
-      rw [supportedSplitFrontiers_eq_Icc, support_5_1, support_5_2]
+      rw [supportedSplitFrontiers_eq_Icc, AspisV6CompactFrontierTailCertificate.support_5_1, AspisV6CompactFrontierTailCertificate.support_5_2]
       ext value
       simp <;> omega
     rw [live0]
@@ -374,7 +374,7 @@ theorem certificate_6_3_13 :
         frontierCoeff 5 2 leftFrontier *
           frontierCoeff 5 1 (13 - leftFrontier)) = 1 := by
     have live1 : supportedSplitFrontiers 5 2 1 13 = {8} := by
-      rw [supportedSplitFrontiers_eq_Icc, support_5_1, support_5_2]
+      rw [supportedSplitFrontiers_eq_Icc, AspisV6CompactFrontierTailCertificate.support_5_1, AspisV6CompactFrontierTailCertificate.support_5_2]
       ext value
       simp <;> omega
     rw [live1]
