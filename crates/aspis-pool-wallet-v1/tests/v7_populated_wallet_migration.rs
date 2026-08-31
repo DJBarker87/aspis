@@ -23,8 +23,13 @@ use aspis_pool_wallet_v1::{
         SolanaRpcRootPageBatchV1, SolanaRpcTransactionV1, SolanaRpcTransactionVersionV1,
     },
     lane_forest_durable_v2::{
-        DurableLaneForestWalletFileV2, ForestFinalizedAppendEventV2, ForestFinalizedAppendKindV2,
-        ForestNoteAssociationOutcomeV2, LaneForestDurableErrorV2, LaneForestDurableStateV2,
+        canonical_lane_root_page_cursor_v2, DurableLaneForestWalletFileV2,
+        ForestFinalizedAppendEventV2, ForestFinalizedAppendKindV2, ForestNoteAssociationOutcomeV2,
+        LaneForestDurableErrorV2, LaneForestDurableStateV2,
+    },
+    lane_forest_rpc_v2::{
+        derive_finalized_pair_forest_terminal_event_v2, FinalizedForestAccountV2,
+        FinalizedForestRootPageV2, FinalizedPairForestTerminalObservationV2, LaneForestRpcErrorV2,
     },
     lane_forest_v2::{lane_forest_global_root_v2, LaneIdV2},
     lane_forest_wallet_txn_v2::{
@@ -33,7 +38,6 @@ use aspis_pool_wallet_v1::{
         LaneForestWalletTxnAtomicBoundaryV2, LaneForestWalletTxnAtomicFaultPointV2,
         LaneForestWalletTxnCoordinatorV2, LaneForestWalletTxnErrorV2,
         LaneForestWalletTxnFaultInjectorV2, LaneForestWalletTxnFaultPointV2,
-        LaneForestWalletTxnIntentV2,
     },
     note_store_crypto::{
         seal_recovered_note_v1, EncryptedLocalSpendAuthenticatorV1, LocalNullifierKeyStoreV1,
@@ -91,10 +95,14 @@ use aspis_statement::{
     decode_digest_canonical, derive_owner_key, encode_digest_canonical,
     pool_v1::{
         encode_pool_v1_pair_forest_checkpoint_v1, encode_pool_v1_pair_forest_lane_state_v1,
-        encode_pool_v1_pair_forest_master_v1, root_history::initialize_root_history_page_bytes_v1,
-        DepositEventV1, DepositReceiptV1, HistoricalAnchorEnvelopeV1, IncrementalMerkleTreeV1,
-        PoolIdentityV1, PoolV1PairForestCheckpointV1, PoolV1PairForestLaneStateV1,
-        PoolV1PairForestMasterV1, PoolV1PairLeafWitnessV1, PoolV1TransitionKind, VerifierPolicyV1,
+        encode_pool_v1_pair_forest_master_v1, encode_pool_v1_pair_forest_terminal_request_v1,
+        encode_pool_v1_pair_forest_terminal_result_v1,
+        root_history::initialize_root_history_page_bytes_v1, DepositEventV1, DepositReceiptV1,
+        HistoricalAnchorEnvelopeV1, IncrementalMerkleTreeV1, PoolIdentityV1,
+        PoolV1PairForestCheckpointV1, PoolV1PairForestLaneStateV1, PoolV1PairForestMasterV1,
+        PoolV1PairForestTerminalPaymentV1, PoolV1PairForestTerminalRequestV1,
+        PoolV1PairForestTerminalResultV1, PoolV1PairLeafWitnessV1, PoolV1PairVerifiedAfterstateV1,
+        PoolV1PrivateTransferPublicV1, PoolV1TransitionKind, RootHistoryPageV1, VerifierPolicyV1,
         POOL_V1_PAIR_FOREST_ALL_LANES_MASK, POOL_V1_PAIR_TREE_DEPTH,
         POOL_V1_ROOT_HISTORY_PAGE_ACCOUNT_BYTES,
     },
@@ -788,44 +796,97 @@ fn append_lane_deposit(
     }
 }
 
-fn lane_deposit_event_without_note(
+fn finalized_terminal_observation_without_notes(
     state: &LaneForestDurableStateV2,
-    event_id: DepositEventIdV1,
-    commitment: [u8; 32],
-) -> ForestFinalizedAppendEventV2 {
-    let lane_id = LaneIdV2::new(commitment[0] & 7).unwrap();
-    let pair_leaf =
-        PoolV1PairLeafWitnessV1::single_output(decode_digest_canonical(&commitment).unwrap())
-            .unwrap()
-            .leaf_digest()
-            .unwrap();
-    let current = *state.lane(lane_id).0;
-    let pair_leaf_index = current.value.tree.next_leaf_index;
-    let next_tree = current
+    block: FinalizedBlockV1,
+    transaction_signature: [u8; 64],
+) -> FinalizedPairForestTerminalObservationV2 {
+    let (nullifier, lane_id) = (1u32..10_000)
+        .find_map(|seed| {
+            let nullifier = digest(0x9a00 + seed);
+            let lane_id = LaneIdV2::new(encode_digest_canonical(&nullifier)[0] & 7).unwrap();
+            (state.lane(lane_id).0.value.tree.next_leaf_index == 0).then_some((nullifier, lane_id))
+        })
+        .expect("fixture retains at least one empty output lane");
+    let recipient = digest(0x9b01);
+    let change = digest(0x9b02);
+    let public = PoolV1PrivateTransferPublicV1 {
+        pool: state.master().address,
+        deployment_domain: state.master().value.identity.deployment_domain,
+        anchor_sequence: 0,
+        anchor_root: digest(0x9b03),
+        nullifier,
+        asset_id: state.master().value.identity.asset_id,
+        recipient_commitment: recipient,
+        change_commitment: change,
+    };
+    let request = PoolV1PairForestTerminalRequestV1 {
+        verifier_profile: [0x91; 32],
+        verifier_release: [0x92; 32],
+        pool_program: *state.program_id(),
+        public: PoolV1PairForestTerminalPaymentV1::PrivateTransfer(public),
+    };
+    let (lane, _) = state.lane(lane_id);
+    let pair_leaf = PoolV1PairLeafWitnessV1::two_outputs(recipient, change)
+        .unwrap()
+        .leaf_digest()
+        .unwrap();
+    let next = lane
         .value
         .tree
         .append_one_with_empty_roots(pair_leaf, &POOL_V1_PAIR_EMPTY_ROOTS)
         .unwrap()
         .0;
-    let next_lane = PoolV1PairForestLaneStateV1 {
-        tree: next_tree,
-        ..current.value
+    let result = PoolV1PairForestTerminalResultV1 {
+        transition_kind: PoolV1TransitionKind::PrivateTransfer,
+        master_account: state.master().address,
+        selected_lane_account: lane.address,
+        output_lane: lane_id.as_u8(),
+        nullifier,
+        verified_afterstate: PoolV1PairVerifiedAfterstateV1 {
+            next_pair_index: next.next_leaf_index,
+            next_root: next.root,
+            next_frontier: next.frontier,
+        },
     };
-    ForestFinalizedAppendEventV2 {
-        master: state.master().address,
+    let mut page = RootHistoryPageV1::genesis(
+        lane.address,
+        POOL_V1_PAIR_EMPTY_ROOTS[POOL_V1_PAIR_TREE_DEPTH],
+    );
+    page.push(next.next_leaf_index, next.root).unwrap();
+    let cursor = canonical_lane_root_page_cursor_v2(
+        *state.program_id(),
+        state.master().address,
         lane_id,
-        pair_leaf_index,
-        root_sequence: pair_leaf_index + 1,
-        after_lane_address: current.address,
-        after_lane_image: encode_pool_v1_pair_forest_lane_state_v1(
-            &next_lane,
-            &POOL_V1_PAIR_EMPTY_ROOTS,
-        )
-        .unwrap(),
-        kind: ForestFinalizedAppendKindV2::Deposit {
-            event_id,
-            commitment,
-            encrypted_note: None,
+        next.next_leaf_index,
+    )
+    .unwrap();
+    FinalizedPairForestTerminalObservationV2 {
+        asserted_commitment: SolanaRpcCommitmentV1::Finalized,
+        accounts_asserted_commitment: SolanaRpcCommitmentV1::Finalized,
+        block,
+        account_context_slot: block.point().slot(),
+        transaction_signature,
+        transaction_succeeded: true,
+        instruction_index: 2,
+        top_level_instruction_count: 3,
+        instruction_program: *state.program_id(),
+        instruction_bytes: encode_pool_v1_pair_forest_terminal_request_v1(&request)
+            .unwrap()
+            .to_vec(),
+        return_data_program: *state.program_id(),
+        return_data: encode_pool_v1_pair_forest_terminal_result_v1(&result)
+            .unwrap()
+            .to_vec(),
+        root_page: FinalizedForestRootPageV2 {
+            lane_id,
+            page_number: cursor.page_number,
+            account: FinalizedForestAccountV2 {
+                address: cursor.address,
+                owner: *state.program_id(),
+                executable: false,
+                data: page.encode().unwrap().to_vec(),
+            },
         },
     }
 }
@@ -1956,20 +2017,16 @@ fn populated_handoff_body() {
         .unwrap();
         runtime.apply_empty_finalized_block_v2(clean).unwrap();
 
-        let unrelated = NoteOpeningV1::new(
-            encode_digest_canonical(&digest(0x991)),
-            12,
-            4,
-            encode_digest_canonical(&digest(0x992)),
+        let terminal_observation = finalized_terminal_observation_without_notes(
+            runtime.committed_state_v2().unwrap().lane_state(),
+            FinalizedBlockV1::new(point(109, 0xa9), point(108, 0xa8)).unwrap(),
+            [0x49; 64],
+        );
+        let event = derive_finalized_pair_forest_terminal_event_v2(
+            runtime.committed_state_v2().unwrap().lane_state(),
+            &terminal_observation,
         )
         .unwrap();
-        let unrelated_commitment = recompute_note_commitment_v1(&unrelated).unwrap();
-        let event_id = DepositEventIdV1::new(point(109, 0xa9), [0x49; 64], 0, 0).unwrap();
-        let event = lane_deposit_event_without_note(
-            runtime.committed_state_v2().unwrap().lane_state(),
-            event_id,
-            unrelated_commitment,
-        );
         runtime
             .observe_tentative_v2(
                 event.clone(),
@@ -1991,17 +2048,6 @@ fn populated_handoff_body() {
                 provider,
             )
             .unwrap();
-        let intent = LaneForestWalletTxnIntentV2::new_v2(
-            FinalizedBlockV1::new(point(109, 0xa9), point(108, 0xa8)).unwrap(),
-            event.clone(),
-            cipher.cipher_id(),
-            Vec::new(),
-            Vec::new(),
-            None,
-            None,
-        )
-        .unwrap();
-
         // V2 relayer execution starts in a fresh authority directory. The
         // migrated legacy directory is intentionally fenced by ASMG/ASRT and
         // cannot silently become writable again.
@@ -2017,9 +2063,31 @@ fn populated_handoff_body() {
         let journal = DurableRelayerExecutionJournalV1::open_or_create_v1(&journal_path).unwrap();
 
         let before_failures = fs::read(&target_path).unwrap();
+        let mut unfinalized_source = terminal_observation.clone();
+        unfinalized_source.asserted_commitment = SolanaRpcCommitmentV1::Confirmed;
+        assert_eq!(
+            runtime
+                .apply_finalized_pool_terminal_journal_v2(
+                    &unfinalized_source,
+                    Vec::new(),
+                    Vec::new(),
+                    None,
+                    &journal,
+                    request_id,
+                    &cipher,
+                    &NeverAuthorize,
+                )
+                .err(),
+            Some(WalletV2RuntimeError::FinalizedSource(
+                LaneForestRpcErrorV2::NotFinalized
+            ))
+        );
         assert!(matches!(
-            runtime.apply_finalized_journal_event_v2(
-                intent.clone(),
+            runtime.apply_finalized_pool_terminal_journal_v2(
+                &terminal_observation,
+                Vec::new(),
+                Vec::new(),
+                None,
                 &journal,
                 [0xfe; 32],
                 &cipher,
@@ -2041,8 +2109,11 @@ fn populated_handoff_body() {
         let wrong_signature =
             DurableRelayerExecutionJournalV1::open_or_create_v1(&wrong_signature_path).unwrap();
         assert!(matches!(
-            runtime.apply_finalized_journal_event_v2(
-                intent.clone(),
+            runtime.apply_finalized_pool_terminal_journal_v2(
+                &terminal_observation,
+                Vec::new(),
+                Vec::new(),
+                None,
                 &wrong_signature,
                 [0x22; 32],
                 &cipher,
@@ -2065,8 +2136,11 @@ fn populated_handoff_body() {
             DurableRelayerExecutionJournalV1::open_or_create_v1(&wrong_provider_path).unwrap();
         assert_eq!(
             runtime
-                .apply_finalized_journal_event_v2(
-                    intent.clone(),
+                .apply_finalized_pool_terminal_journal_v2(
+                    &terminal_observation,
+                    Vec::new(),
+                    Vec::new(),
+                    None,
                     &wrong_provider,
                     [0x23; 32],
                     &cipher,
@@ -2084,8 +2158,11 @@ fn populated_handoff_body() {
             .inject_once_v2(WalletMonotonicFaultPointV2::AfterCommit)
             .unwrap();
         assert!(runtime
-            .apply_finalized_journal_event_v2(
-                intent.clone(),
+            .apply_finalized_pool_terminal_journal_v2(
+                &terminal_observation,
+                Vec::new(),
+                Vec::new(),
+                None,
                 &journal,
                 request_id,
                 &cipher,
@@ -2112,8 +2189,11 @@ fn populated_handoff_body() {
             point(109, 0xa9)
         );
         runtime
-            .apply_finalized_journal_event_v2(
-                intent.clone(),
+            .apply_finalized_pool_terminal_journal_v2(
+                &terminal_observation,
+                Vec::new(),
+                Vec::new(),
+                None,
                 &journal,
                 request_id,
                 &cipher,
@@ -2134,8 +2214,11 @@ fn populated_handoff_body() {
         let conflicting =
             DurableRelayerExecutionJournalV1::open_or_create_v1(&conflicting_path).unwrap();
         assert!(matches!(
-            runtime.apply_finalized_journal_event_v2(
-                intent,
+            runtime.apply_finalized_pool_terminal_journal_v2(
+                &terminal_observation,
+                Vec::new(),
+                Vec::new(),
+                None,
                 &conflicting,
                 [0x24; 32],
                 &cipher,

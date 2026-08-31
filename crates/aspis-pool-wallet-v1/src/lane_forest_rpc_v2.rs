@@ -1,11 +1,13 @@
 //! Default-off finalized RPC adapter for the eight-lane pair forest.
 //!
-//! The compact `ASF8` append image below is the frozen wallet-side consumer
-//! ABI. No deployed Pool instruction emits it yet. Production activation must
-//! therefore wait for a separately reviewed program emitter; this module never
-//! synthesizes an event from unauthenticated logs. Given authenticated event
-//! bytes and one coherent finalized account snapshot, ingestion is staged in a
-//! cloned durable state and persisted once.
+//! `ASF8` is exclusively the 1,880-byte cryptographic semantic statement. The
+//! compact wallet-side normalized scanner record in this module is `ASFE`; it
+//! is not an on-chain Pool event and must never be accepted from program logs.
+//! The production boundary bypasses that record and derives the ASL2 event
+//! directly from the exact successful, finalized, last top-level `ASQ8` Pool
+//! instruction, its Pool-owned `ASR8` return data and the deployment-owned
+//! finalized root page. The older batch adapter remains default-off for
+//! fixtures and independently supplied scanner evidence.
 //!
 //! The existing relayer execution journal is a separate atomic file and this
 //! consumer ABI has no authenticated relayer request identifier. Cross-file
@@ -16,12 +18,13 @@ use aspis_pool::POOL_V1_PAIR_EMPTY_ROOTS;
 use aspis_statement::{
     decode_digest_canonical, encode_digest_canonical,
     pool_v1::{
-        decode_pool_v1_pair_forest_lane_state_v1, encode_pool_v1_pair_forest_lane_state_v1,
+        decode_pool_v1_pair_forest_lane_state_v1, decode_pool_v1_pair_forest_terminal_request_v1,
+        decode_pool_v1_pair_forest_terminal_result_v1, encode_pool_v1_pair_forest_lane_state_v1,
         root_history::{read_root_history_page_root_v1, validate_root_history_page_bytes_v1},
-        PoolV1PairForestLaneStateV1, PoolV1PairLeafWitnessV1, PoolV1RootHistoryError,
-        POOL_V1_PAIR_CAPACITY, POOL_V1_PAIR_FOREST_CHECKPOINT_ACCOUNT_BYTES,
-        POOL_V1_PAIR_FOREST_LANE_ACCOUNT_BYTES, POOL_V1_PAIR_FOREST_MASTER_ACCOUNT_BYTES,
-        POOL_V1_ROOT_HISTORY_PAGE_ACCOUNT_BYTES,
+        PoolV1PairForestLaneStateV1, PoolV1PairForestTerminalPaymentV1, PoolV1PairLeafWitnessV1,
+        PoolV1RootHistoryError, PoolV1TransitionKind, POOL_V1_PAIR_CAPACITY,
+        POOL_V1_PAIR_FOREST_CHECKPOINT_ACCOUNT_BYTES, POOL_V1_PAIR_FOREST_LANE_ACCOUNT_BYTES,
+        POOL_V1_PAIR_FOREST_MASTER_ACCOUNT_BYTES, POOL_V1_ROOT_HISTORY_PAGE_ACCOUNT_BYTES,
     },
 };
 
@@ -33,13 +36,20 @@ use crate::{
         LaneForestDurableErrorV2, LaneForestDurableStateV2,
     },
     lane_forest_v2::{LaneIdV2, POOL_V1_LANE_COUNT_V2},
-    scan_state::{DepositEventIdV1, FinalizedChainPointV1},
+    lane_forest_wallet_txn_v2::{
+        LaneForestWalletCheckpointBindingV2, LaneForestWalletCommittedStateV2,
+        LaneForestWalletNoteBindingV2, LaneForestWalletSpendBindingV2, LaneForestWalletTxnErrorV2,
+        LaneForestWalletTxnIntentV2,
+    },
+    scan_state::{DepositEventIdV1, FinalizedBlockV1, FinalizedChainPointV1},
     ViewingSecretKeyV1, POOL_V1_NOTE_ENCRYPTED_PAYLOAD_BYTES,
 };
 
 pub type ForestRpcCommitmentV2 = SolanaRpcCommitmentV1;
 
-pub const PAIR_FOREST_PROGRAM_EVENT_MAGIC_V2: [u8; 4] = *b"ASF8";
+/// Wallet-only normalized scanner evidence. This value deliberately differs
+/// from the cryptographic `ASF8` semantic statement magic.
+pub const PAIR_FOREST_SCANNER_EVENT_MAGIC_V2: [u8; 4] = *b"ASFE";
 pub const PAIR_FOREST_PROGRAM_EVENT_VERSION_V2: u8 = 2;
 pub const PAIR_FOREST_PROGRAM_EVENT_HEADER_BYTES_V2: usize = 232;
 pub const PAIR_FOREST_PROGRAM_EVENT_DEPOSIT_V2: u8 = 1;
@@ -49,8 +59,11 @@ pub const PAIR_FOREST_PROGRAM_EVENT_WITHDRAWAL_V2: u8 = 3;
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum LaneForestRpcErrorV2 {
     NotFinalized,
+    TransactionFailed,
     ContextTooOld,
     WrongProgram,
+    WrongReturnDataProgram,
+    WrongInstructionPosition,
     ExecutableAccount,
     WrongAccountCount,
     WrongAccountOwner,
@@ -70,8 +83,10 @@ pub enum LaneForestRpcErrorV2 {
     UnexpectedCheckpoint,
     MissingRootPage,
     WrongRootPage,
+    TerminalResultMismatch,
     RootPage(PoolV1RootHistoryError),
     Durable(LaneForestDurableErrorV2),
+    Wallet(LaneForestWalletTxnErrorV2),
 }
 
 impl From<LaneForestDurableErrorV2> for LaneForestRpcErrorV2 {
@@ -83,6 +98,12 @@ impl From<LaneForestDurableErrorV2> for LaneForestRpcErrorV2 {
 impl From<PoolV1RootHistoryError> for LaneForestRpcErrorV2 {
     fn from(error: PoolV1RootHistoryError) -> Self {
         Self::RootPage(error)
+    }
+}
+
+impl From<LaneForestWalletTxnErrorV2> for LaneForestRpcErrorV2 {
+    fn from(error: LaneForestWalletTxnErrorV2) -> Self {
+        Self::Wallet(error)
     }
 }
 
@@ -198,7 +219,7 @@ pub fn encode_pair_forest_program_event_v2(
         PAIR_FOREST_PROGRAM_EVENT_HEADER_BYTES_V2
             + payload_count * POOL_V1_NOTE_ENCRYPTED_PAYLOAD_BYTES
     ];
-    output[..4].copy_from_slice(&PAIR_FOREST_PROGRAM_EVENT_MAGIC_V2);
+    output[..4].copy_from_slice(&PAIR_FOREST_SCANNER_EVENT_MAGIC_V2);
     output[4] = PAIR_FOREST_PROGRAM_EVENT_VERSION_V2;
     output[5] = kind;
     output[6] = u8::from(first_payload.is_some()) | (u8::from(second_payload.is_some()) << 1);
@@ -234,7 +255,7 @@ pub fn decode_pair_forest_program_event_v2(
     if bytes.len() < PAIR_FOREST_PROGRAM_EVENT_HEADER_BYTES_V2 {
         return Err(LaneForestRpcErrorV2::WrongEventLength);
     }
-    if bytes[..4] != PAIR_FOREST_PROGRAM_EVENT_MAGIC_V2 {
+    if bytes[..4] != PAIR_FOREST_SCANNER_EVENT_MAGIC_V2 {
         return Err(LaneForestRpcErrorV2::WrongEventMagic);
     }
     if bytes[4] != PAIR_FOREST_PROGRAM_EVENT_VERSION_V2 {
@@ -348,6 +369,31 @@ pub struct FinalizedForestRootPageV2 {
     pub lane_id: LaneIdV2,
     pub page_number: u64,
     pub account: FinalizedForestAccountV2,
+}
+
+/// Exact externally authenticated fields needed to turn one deployed Pool V2
+/// terminal into a canonical wallet event. `instruction_index` is the index in
+/// `transaction.message.instructions`; the instruction must be last so no
+/// later top-level program can overwrite transaction-global return data.
+///
+/// The finalized root page may be fetched after the entire block. Its history
+/// entry at the exact ASR8 sequence, rather than its latest root, authenticates
+/// this transaction's after-root even when later appends share the block.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct FinalizedPairForestTerminalObservationV2 {
+    pub asserted_commitment: ForestRpcCommitmentV2,
+    pub accounts_asserted_commitment: ForestRpcCommitmentV2,
+    pub block: FinalizedBlockV1,
+    pub account_context_slot: u64,
+    pub transaction_signature: [u8; 64],
+    pub transaction_succeeded: bool,
+    pub instruction_index: u16,
+    pub top_level_instruction_count: u16,
+    pub instruction_program: [u8; 32],
+    pub instruction_bytes: Vec<u8>,
+    pub return_data_program: [u8; 32],
+    pub return_data: Vec<u8>,
+    pub root_page: FinalizedForestRootPageV2,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -558,6 +604,233 @@ fn durable_event_from_program_v2(
         },
         withdrawal,
     ))
+}
+
+fn validate_terminal_root_page_v2(
+    state: &LaneForestDurableStateV2,
+    lane_id: LaneIdV2,
+    root_sequence: u64,
+    expected_root: aspis_statement::Digest,
+    page: &FinalizedForestRootPageV2,
+) -> Result<(), LaneForestRpcErrorV2> {
+    if page.lane_id != lane_id {
+        return Err(LaneForestRpcErrorV2::WrongRootPage);
+    }
+    require_program_account_v2(&page.account, *state.program_id())?;
+    if page.account.data.len() != POOL_V1_ROOT_HISTORY_PAGE_ACCOUNT_BYTES {
+        return Err(LaneForestRpcErrorV2::WrongRootPage);
+    }
+    let cursor = canonical_lane_root_page_cursor_v2(
+        *state.program_id(),
+        state.master().address,
+        lane_id,
+        root_sequence,
+    )?;
+    let (lane, _) = state.lane(lane_id);
+    let header = validate_root_history_page_bytes_v1(&page.account.data)?;
+    if page.page_number != cursor.page_number
+        || page.account.address != cursor.address
+        || header.pool != lane.address
+        || header.page_number != cursor.page_number
+        || read_root_history_page_root_v1(&page.account.data, root_sequence)? != expected_root
+    {
+        return Err(LaneForestRpcErrorV2::WrongRootPage);
+    }
+    Ok(())
+}
+
+fn terminal_public_matches_master_v2(
+    state: &LaneForestDurableStateV2,
+    public: &PoolV1PairForestTerminalPaymentV1,
+) -> bool {
+    let identity = &state.master().value.identity;
+    match public {
+        PoolV1PairForestTerminalPaymentV1::PrivateTransfer(public) => {
+            public.pool == state.master().address
+                && public.deployment_domain == identity.deployment_domain
+                && public.asset_id == identity.asset_id
+        }
+        PoolV1PairForestTerminalPaymentV1::Withdrawal(public) => {
+            public.pool == state.master().address
+                && public.deployment_domain == identity.deployment_domain
+                && public.asset_id == identity.asset_id
+        }
+    }
+}
+
+fn scanner_event_from_terminal_v2(
+    state: &LaneForestDurableStateV2,
+    observation: &FinalizedPairForestTerminalObservationV2,
+) -> Result<(DepositEventIdV1, PairForestProgramEventV2), LaneForestRpcErrorV2> {
+    if observation.asserted_commitment != ForestRpcCommitmentV2::Finalized
+        || observation.accounts_asserted_commitment != ForestRpcCommitmentV2::Finalized
+    {
+        return Err(LaneForestRpcErrorV2::NotFinalized);
+    }
+    if observation.account_context_slot < observation.block.point().slot() {
+        return Err(LaneForestRpcErrorV2::ContextTooOld);
+    }
+    if !observation.transaction_succeeded {
+        return Err(LaneForestRpcErrorV2::TransactionFailed);
+    }
+    if observation.top_level_instruction_count == 0
+        || observation
+            .instruction_index
+            .checked_add(1)
+            .is_none_or(|next| next != observation.top_level_instruction_count)
+    {
+        return Err(LaneForestRpcErrorV2::WrongInstructionPosition);
+    }
+    if observation.instruction_program != *state.program_id() {
+        return Err(LaneForestRpcErrorV2::WrongProgram);
+    }
+    if observation.return_data_program != *state.program_id() {
+        return Err(LaneForestRpcErrorV2::WrongReturnDataProgram);
+    }
+    let request = decode_pool_v1_pair_forest_terminal_request_v1(&observation.instruction_bytes)
+        .map_err(|_| LaneForestRpcErrorV2::InvalidEvent)?;
+    let result = decode_pool_v1_pair_forest_terminal_result_v1(&observation.return_data)
+        .map_err(|_| LaneForestRpcErrorV2::InvalidEvent)?;
+    if request.pool_program != *state.program_id()
+        || !terminal_public_matches_master_v2(state, &request.public)
+        || result.transition_kind != request.public.transition_kind()
+        || result.master_account != state.master().address
+        || result.nullifier != *request.public.nullifier()
+    {
+        return Err(LaneForestRpcErrorV2::TerminalResultMismatch);
+    }
+    let lane_id = LaneIdV2::new(result.output_lane)
+        .map_err(|_| LaneForestRpcErrorV2::TerminalResultMismatch)?;
+    let (lane, _) = state.lane(lane_id);
+    if result.selected_lane_account != lane.address {
+        return Err(LaneForestRpcErrorV2::TerminalResultMismatch);
+    }
+    let pair_leaf_index = result
+        .verified_afterstate
+        .next_pair_index
+        .checked_sub(1)
+        .ok_or(LaneForestRpcErrorV2::TerminalResultMismatch)?;
+    let kind = match request.public {
+        PoolV1PairForestTerminalPaymentV1::PrivateTransfer(public) => {
+            if result.transition_kind != PoolV1TransitionKind::PrivateTransfer {
+                return Err(LaneForestRpcErrorV2::TerminalResultMismatch);
+            }
+            PairForestProgramEventKindV2::PrivateTransfer {
+                nullifier: encode_digest_canonical(&public.nullifier),
+                recipient_commitment: encode_digest_canonical(&public.recipient_commitment),
+                change_commitment: encode_digest_canonical(&public.change_commitment),
+                // The deployed ASQ8/ASR8 terminal does not carry ciphertext.
+                // Recipient delivery is an independently authenticated input
+                // to the intent builder, never synthesized from public bytes.
+                recipient_encrypted_note: None,
+                change_encrypted_note: None,
+            }
+        }
+        PoolV1PairForestTerminalPaymentV1::Withdrawal(public) => {
+            if result.transition_kind != PoolV1TransitionKind::Withdrawal {
+                return Err(LaneForestRpcErrorV2::TerminalResultMismatch);
+            }
+            PairForestProgramEventKindV2::Withdrawal {
+                nullifier: encode_digest_canonical(&public.nullifier),
+                change_commitment: encode_digest_canonical(&public.change_commitment),
+                destination_token_account: public.destination_token_account,
+                amount: public.amount,
+                encrypted_note: None,
+            }
+        }
+    };
+    let event_id = DepositEventIdV1::new(
+        observation.block.point(),
+        observation.transaction_signature,
+        observation.instruction_index,
+        0,
+    )
+    .map_err(|_| LaneForestRpcErrorV2::InvalidEvent)?;
+    Ok((
+        event_id,
+        PairForestProgramEventV2 {
+            master: state.master().address,
+            pair_leaf_index,
+            root_sequence: result.verified_afterstate.next_pair_index,
+            after_lane_root: encode_digest_canonical(&result.verified_afterstate.next_root),
+            kind,
+        },
+    ))
+}
+
+/// Derive one canonical ASL2 append event from the literal deployed terminal
+/// path. No program log or caller-supplied `ASFE` bytes are trusted.
+pub fn derive_finalized_pair_forest_terminal_event_v2(
+    state: &LaneForestDurableStateV2,
+    observation: &FinalizedPairForestTerminalObservationV2,
+) -> Result<ForestFinalizedAppendEventV2, LaneForestRpcErrorV2> {
+    let head = state.finalized_head_v2();
+    let point = observation.block.point();
+    if head.is_some_and(|head| {
+        point.slot() < head.slot()
+            || (point.slot() == head.slot() && point.block_hash() != head.block_hash())
+    }) {
+        return Err(LaneForestRpcErrorV2::FinalizedRollback);
+    }
+    if head.is_some_and(|head| point != head && observation.block.parent() != head) {
+        return Err(LaneForestRpcErrorV2::InvalidChainLink);
+    }
+    let result = decode_pool_v1_pair_forest_terminal_result_v1(&observation.return_data)
+        .map_err(|_| LaneForestRpcErrorV2::InvalidEvent)?;
+    let lane_id = LaneIdV2::new(result.output_lane)
+        .map_err(|_| LaneForestRpcErrorV2::TerminalResultMismatch)?;
+    let (event_id, scanner_event) = scanner_event_from_terminal_v2(state, observation)?;
+    let event = if let Some(retained) = state.retained_event_v2(event_id) {
+        if !retained_event_matches_program_v2(retained, event_id, &scanner_event)? {
+            return Err(LaneForestRpcErrorV2::ReplayMismatch);
+        }
+        retained.clone()
+    } else {
+        durable_event_from_program_v2(state, event_id, scanner_event)?.0
+    };
+    let after = decode_pool_v1_pair_forest_lane_state_v1(
+        &event.after_lane_image,
+        &POOL_V1_PAIR_EMPTY_ROOTS,
+    )
+    .map_err(LaneForestDurableErrorV2::from)?;
+    if after.tree.next_leaf_index != result.verified_afterstate.next_pair_index
+        || after.tree.root != result.verified_afterstate.next_root
+        || after.tree.frontier != result.verified_afterstate.next_frontier
+        || event.lane_id != lane_id
+        || event.after_lane_address != result.selected_lane_account
+    {
+        return Err(LaneForestRpcErrorV2::TerminalResultMismatch);
+    }
+    validate_terminal_root_page_v2(
+        state,
+        lane_id,
+        event.root_sequence,
+        after.tree.root,
+        &observation.root_page,
+    )?;
+    Ok(event)
+}
+
+/// Construct the exact ASL2 intent from a derived deployed terminal event.
+/// Local note/spend bindings remain separately authenticated by the ASL2
+/// coordinator; absent terminal ciphertext cannot create a wallet note.
+pub fn derive_finalized_pair_forest_terminal_intent_v2(
+    state: &LaneForestWalletCommittedStateV2,
+    observation: &FinalizedPairForestTerminalObservationV2,
+    notes: Vec<LaneForestWalletNoteBindingV2>,
+    spends: Vec<LaneForestWalletSpendBindingV2>,
+    checkpoint: Option<LaneForestWalletCheckpointBindingV2>,
+) -> Result<LaneForestWalletTxnIntentV2, LaneForestRpcErrorV2> {
+    let event = derive_finalized_pair_forest_terminal_event_v2(state.lane_state(), observation)?;
+    Ok(LaneForestWalletTxnIntentV2::new_v2(
+        observation.block,
+        event,
+        *state.note_cipher_id(),
+        notes,
+        spends,
+        checkpoint,
+        None,
+    )?)
 }
 
 fn retained_event_matches_program_v2(
@@ -831,9 +1104,13 @@ mod tests {
     };
     use aspis_statement::pool_v1::{
         encode_pool_v1_pair_forest_checkpoint_v1, encode_pool_v1_pair_forest_master_v1,
-        IncrementalMerkleTreeV1, PoolIdentityV1, PoolV1PairForestCheckpointV1,
-        PoolV1PairForestMasterV1, RootHistoryPageV1, VerifierPolicyV1,
-        POOL_V1_PAIR_FOREST_ALL_LANES_MASK, POOL_V1_PAIR_TREE_DEPTH,
+        encode_pool_v1_pair_forest_terminal_request_v1,
+        encode_pool_v1_pair_forest_terminal_result_v1, IncrementalMerkleTreeV1, PoolIdentityV1,
+        PoolV1PairForestCheckpointV1, PoolV1PairForestMasterV1, PoolV1PairForestTerminalPaymentV1,
+        PoolV1PairForestTerminalRequestV1, PoolV1PairForestTerminalResultV1,
+        PoolV1PairVerifiedAfterstateV1, PoolV1PrivateTransferPublicV1, PoolV1WithdrawalPublicV1,
+        RootHistoryPageV1, VerifierPolicyV1, POOL_V1_PAIR_FOREST_ALL_LANES_MASK,
+        POOL_V1_PAIR_TREE_DEPTH,
     };
     use solana_program::pubkey::Pubkey;
 
@@ -983,6 +1260,190 @@ mod tests {
     ) {
         let (event, _) = durable_event_from_program_v2(state, id, event).unwrap();
         state.ingest_finalized_append_v2(event, None).unwrap();
+    }
+
+    fn terminal_observation(
+        program: Pubkey,
+        state: &LaneForestDurableStateV2,
+        chain_point: FinalizedChainPointV1,
+        signature: [u8; 64],
+    ) -> FinalizedPairForestTerminalObservationV2 {
+        let nullifier = digest(0);
+        let recipient = digest(810);
+        let change = digest(820);
+        let public = PoolV1PrivateTransferPublicV1 {
+            pool: state.master().address,
+            deployment_domain: state.master().value.identity.deployment_domain,
+            anchor_sequence: 0,
+            anchor_root: digest(830),
+            nullifier,
+            asset_id: state.master().value.identity.asset_id,
+            recipient_commitment: recipient,
+            change_commitment: change,
+        };
+        let request = PoolV1PairForestTerminalRequestV1 {
+            verifier_profile: [0x91; 32],
+            verifier_release: [0x92; 32],
+            pool_program: program.to_bytes(),
+            public: PoolV1PairForestTerminalPaymentV1::PrivateTransfer(public),
+        };
+        let lane_id = LaneIdV2::new(encode_digest_canonical(&nullifier)[0] & 7).unwrap();
+        let (lane, _) = state.lane(lane_id);
+        let pair_leaf = PoolV1PairLeafWitnessV1::two_outputs(recipient, change)
+            .unwrap()
+            .leaf_digest()
+            .unwrap();
+        let next = lane
+            .value
+            .tree
+            .append_one_with_empty_roots(pair_leaf, &POOL_V1_PAIR_EMPTY_ROOTS)
+            .unwrap()
+            .0;
+        let result = PoolV1PairForestTerminalResultV1 {
+            transition_kind: PoolV1TransitionKind::PrivateTransfer,
+            master_account: state.master().address,
+            selected_lane_account: lane.address,
+            output_lane: lane_id.as_u8(),
+            nullifier,
+            verified_afterstate: PoolV1PairVerifiedAfterstateV1 {
+                next_pair_index: next.next_leaf_index,
+                next_root: next.root,
+                next_frontier: next.frontier,
+            },
+        };
+        let mut root_page = RootHistoryPageV1::genesis(
+            lane.address,
+            POOL_V1_PAIR_EMPTY_ROOTS[POOL_V1_PAIR_TREE_DEPTH],
+        );
+        root_page.push(next.next_leaf_index, next.root).unwrap();
+        let cursor = canonical_lane_root_page_cursor_v2(
+            program.to_bytes(),
+            state.master().address,
+            lane_id,
+            next.next_leaf_index,
+        )
+        .unwrap();
+        FinalizedPairForestTerminalObservationV2 {
+            asserted_commitment: ForestRpcCommitmentV2::Finalized,
+            accounts_asserted_commitment: ForestRpcCommitmentV2::Finalized,
+            block: FinalizedBlockV1::new(chain_point, point(chain_point.slot() - 1)).unwrap(),
+            account_context_slot: chain_point.slot(),
+            transaction_signature: signature,
+            transaction_succeeded: true,
+            instruction_index: 2,
+            top_level_instruction_count: 3,
+            instruction_program: program.to_bytes(),
+            instruction_bytes: encode_pool_v1_pair_forest_terminal_request_v1(&request)
+                .unwrap()
+                .to_vec(),
+            return_data_program: program.to_bytes(),
+            return_data: encode_pool_v1_pair_forest_terminal_result_v1(&result)
+                .unwrap()
+                .to_vec(),
+            root_page: FinalizedForestRootPageV2 {
+                lane_id,
+                page_number: cursor.page_number,
+                account: FinalizedForestAccountV2 {
+                    address: cursor.address,
+                    owner: program.to_bytes(),
+                    executable: false,
+                    data: root_page.encode().unwrap().to_vec(),
+                },
+            },
+        }
+    }
+
+    fn withdrawal_observation(
+        program: Pubkey,
+        state: &LaneForestDurableStateV2,
+        chain_point: FinalizedChainPointV1,
+        signature: [u8; 64],
+    ) -> FinalizedPairForestTerminalObservationV2 {
+        let nullifier = digest(1);
+        let change = digest(910);
+        let destination = [0x93; 32];
+        let amount = 77;
+        let public = PoolV1WithdrawalPublicV1 {
+            pool: state.master().address,
+            deployment_domain: state.master().value.identity.deployment_domain,
+            anchor_sequence: 0,
+            anchor_root: digest(930),
+            nullifier,
+            asset_id: state.master().value.identity.asset_id,
+            amount,
+            destination_token_account: destination,
+            change_commitment: change,
+        };
+        let request = PoolV1PairForestTerminalRequestV1 {
+            verifier_profile: [0x91; 32],
+            verifier_release: [0x92; 32],
+            pool_program: program.to_bytes(),
+            public: PoolV1PairForestTerminalPaymentV1::Withdrawal(public),
+        };
+        let lane_id = LaneIdV2::new(encode_digest_canonical(&nullifier)[0] & 7).unwrap();
+        let (lane, _) = state.lane(lane_id);
+        let pair_leaf = PoolV1PairLeafWitnessV1::single_output(change)
+            .unwrap()
+            .leaf_digest()
+            .unwrap();
+        let next = lane
+            .value
+            .tree
+            .append_one_with_empty_roots(pair_leaf, &POOL_V1_PAIR_EMPTY_ROOTS)
+            .unwrap()
+            .0;
+        let result = PoolV1PairForestTerminalResultV1 {
+            transition_kind: PoolV1TransitionKind::Withdrawal,
+            master_account: state.master().address,
+            selected_lane_account: lane.address,
+            output_lane: lane_id.as_u8(),
+            nullifier,
+            verified_afterstate: PoolV1PairVerifiedAfterstateV1 {
+                next_pair_index: next.next_leaf_index,
+                next_root: next.root,
+                next_frontier: next.frontier,
+            },
+        };
+        let mut page = RootHistoryPageV1::genesis(
+            lane.address,
+            POOL_V1_PAIR_EMPTY_ROOTS[POOL_V1_PAIR_TREE_DEPTH],
+        );
+        page.push(next.next_leaf_index, next.root).unwrap();
+        let cursor = canonical_lane_root_page_cursor_v2(
+            program.to_bytes(),
+            state.master().address,
+            lane_id,
+            next.next_leaf_index,
+        )
+        .unwrap();
+        FinalizedPairForestTerminalObservationV2 {
+            asserted_commitment: ForestRpcCommitmentV2::Finalized,
+            accounts_asserted_commitment: ForestRpcCommitmentV2::Finalized,
+            block: FinalizedBlockV1::new(chain_point, point(chain_point.slot() - 1)).unwrap(),
+            account_context_slot: chain_point.slot(),
+            transaction_signature: signature,
+            transaction_succeeded: true,
+            instruction_index: 2,
+            top_level_instruction_count: 3,
+            instruction_program: program.to_bytes(),
+            instruction_bytes: encode_pool_v1_pair_forest_terminal_request_v1(&request)
+                .unwrap()
+                .to_vec(),
+            return_data_program: program.to_bytes(),
+            return_data: encode_pool_v1_pair_forest_terminal_result_v1(&result)
+                .unwrap()
+                .to_vec(),
+            root_page: FinalizedForestRootPageV2 {
+                lane_id,
+                page_number: cursor.page_number,
+                account: FinalizedForestAccountV2 {
+                    address: cursor.address,
+                    owner: program.to_bytes(),
+                    executable: false,
+                    data: page.encode().unwrap().to_vec(),
+                },
+            },
+        }
     }
 
     fn snapshot(
@@ -1142,7 +1603,7 @@ mod tests {
     }
 
     #[test]
-    fn compact_program_event_abi_round_trips_all_variants_and_rejects_drift() {
+    fn compact_scanner_event_abi_round_trips_all_variants_and_rejects_drift() {
         let (_, state) = fixture();
         let variants = [
             PairForestProgramEventKindV2::Deposit {
@@ -1167,6 +1628,8 @@ mod tests {
         for kind in variants {
             let event = program_event(&state, kind);
             let encoded = encode_pair_forest_program_event_v2(&event).unwrap();
+            assert_eq!(&encoded[..4], b"ASFE");
+            assert_ne!(&encoded[..4], b"ASF8");
             assert_eq!(decode_pair_forest_program_event_v2(&encoded), Ok(event));
             let mut trailing = encoded;
             trailing.push(0);
@@ -1175,6 +1638,137 @@ mod tests {
                 Err(LaneForestRpcErrorV2::WrongEventLength)
             );
         }
+    }
+
+    #[test]
+    fn deployed_terminal_source_derives_exact_event_and_fails_closed() {
+        let (program, initial) = fixture();
+        let chain_point = point(40);
+        let observation = terminal_observation(program, &initial, chain_point, [0x44; 64]);
+        let event = derive_finalized_pair_forest_terminal_event_v2(&initial, &observation).unwrap();
+        let (first, second) = event.event_ids();
+        assert_eq!(first.point(), chain_point);
+        assert_eq!(first.transaction_signature(), &[0x44; 64]);
+        assert_eq!(first.instruction_index(), 2);
+        assert_eq!(first.event_index(), 0);
+        assert_eq!(second.unwrap().event_index(), 1);
+        assert!(matches!(
+            event.kind,
+            ForestFinalizedAppendKindV2::PrivateTransfer {
+                recipient_encrypted_note: None,
+                change_encrypted_note: None,
+                ..
+            }
+        ));
+
+        let mut not_finalized = observation.clone();
+        not_finalized.asserted_commitment = ForestRpcCommitmentV2::Confirmed;
+        assert_eq!(
+            derive_finalized_pair_forest_terminal_event_v2(&initial, &not_finalized),
+            Err(LaneForestRpcErrorV2::NotFinalized)
+        );
+        let mut failed = observation.clone();
+        failed.transaction_succeeded = false;
+        assert_eq!(
+            derive_finalized_pair_forest_terminal_event_v2(&initial, &failed),
+            Err(LaneForestRpcErrorV2::TransactionFailed)
+        );
+        let mut stale_accounts = observation.clone();
+        stale_accounts.account_context_slot = chain_point.slot() - 1;
+        assert_eq!(
+            derive_finalized_pair_forest_terminal_event_v2(&initial, &stale_accounts),
+            Err(LaneForestRpcErrorV2::ContextTooOld)
+        );
+        let mut wrong_program = observation.clone();
+        wrong_program.instruction_program = [0x54; 32];
+        assert_eq!(
+            derive_finalized_pair_forest_terminal_event_v2(&initial, &wrong_program),
+            Err(LaneForestRpcErrorV2::WrongProgram)
+        );
+        let mut zero_signature = observation.clone();
+        zero_signature.transaction_signature = [0u8; 64];
+        assert_eq!(
+            derive_finalized_pair_forest_terminal_event_v2(&initial, &zero_signature),
+            Err(LaneForestRpcErrorV2::InvalidEvent)
+        );
+        let mut overwritten_return = observation.clone();
+        overwritten_return.top_level_instruction_count = 4;
+        assert_eq!(
+            derive_finalized_pair_forest_terminal_event_v2(&initial, &overwritten_return),
+            Err(LaneForestRpcErrorV2::WrongInstructionPosition)
+        );
+        let mut wrong_return_program = observation.clone();
+        wrong_return_program.return_data_program = [0x55; 32];
+        assert_eq!(
+            derive_finalized_pair_forest_terminal_event_v2(&initial, &wrong_return_program),
+            Err(LaneForestRpcErrorV2::WrongReturnDataProgram)
+        );
+        let mut mutated_result = observation.clone();
+        mutated_result.return_data[40] ^= 1;
+        assert!(derive_finalized_pair_forest_terminal_event_v2(&initial, &mutated_result).is_err());
+        let mut wrong_page = observation.clone();
+        wrong_page.root_page.account.owner = [0x66; 32];
+        assert_eq!(
+            derive_finalized_pair_forest_terminal_event_v2(&initial, &wrong_page),
+            Err(LaneForestRpcErrorV2::WrongAccountOwner)
+        );
+        let mut wrong_page_address = observation.clone();
+        wrong_page_address.root_page.account.address = [0x67; 32];
+        assert_eq!(
+            derive_finalized_pair_forest_terminal_event_v2(&initial, &wrong_page_address),
+            Err(LaneForestRpcErrorV2::WrongRootPage)
+        );
+
+        let withdrawal = derive_finalized_pair_forest_terminal_event_v2(
+            &initial,
+            &withdrawal_observation(program, &initial, point(41), [0x45; 64]),
+        )
+        .unwrap();
+        assert!(matches!(
+            withdrawal.kind,
+            ForestFinalizedAppendKindV2::Withdrawal {
+                destination_token_account,
+                amount: 77,
+                encrypted_note: None,
+                ..
+            } if destination_token_account == [0x93; 32]
+        ));
+    }
+
+    #[test]
+    fn deployed_terminal_source_replays_exactly_and_rejects_finalized_forks() {
+        let (program, initial) = fixture();
+        let chain_point = point(50);
+        let observation = terminal_observation(program, &initial, chain_point, [0x54; 64]);
+        let event = derive_finalized_pair_forest_terminal_event_v2(&initial, &observation).unwrap();
+        let mut advanced = initial.clone();
+        advanced
+            .ingest_finalized_append_v2(event.clone(), None)
+            .unwrap();
+        advanced.set_finalized_head_v2(chain_point);
+        assert_eq!(
+            derive_finalized_pair_forest_terminal_event_v2(&advanced, &observation),
+            Ok(event)
+        );
+
+        let mut same_slot_fork = observation.clone();
+        same_slot_fork.block = FinalizedBlockV1::new(
+            FinalizedChainPointV1::new(50, [0xf0; 32]).unwrap(),
+            point(49),
+        )
+        .unwrap();
+        assert_eq!(
+            derive_finalized_pair_forest_terminal_event_v2(&advanced, &same_slot_fork),
+            Err(LaneForestRpcErrorV2::FinalizedRollback)
+        );
+        let mut wrong_parent = observation.clone();
+        wrong_parent.block = FinalizedBlockV1::new(point(51), point(48)).unwrap();
+        wrong_parent.account_context_slot = 51;
+        wrong_parent.transaction_signature = [0x55; 64];
+        assert_eq!(
+            derive_finalized_pair_forest_terminal_event_v2(&advanced, &wrong_parent),
+            Err(LaneForestRpcErrorV2::InvalidChainLink)
+        );
     }
 
     #[test]

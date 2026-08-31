@@ -9,12 +9,17 @@
 use crate::{
     durable_state::LocalSpendAuthenticatorV1,
     lane_forest_durable_v2::ForestFinalizedAppendEventV2,
+    lane_forest_rpc_v2::{
+        derive_finalized_pair_forest_terminal_intent_v2, FinalizedPairForestTerminalObservationV2,
+        LaneForestRpcErrorV2,
+    },
     lane_forest_wallet_txn_v2::{
-        EmptyV1LaneForestWalletActivationV2, LaneForestWalletCommittedStateV2,
-        LaneForestWalletEmptyFinalizedBlockV2, LaneForestWalletTentativeCommitmentV2,
-        LaneForestWalletTentativeUpdateV2, LaneForestWalletTxnCoordinatorV2,
-        LaneForestWalletTxnErrorV2, LaneForestWalletTxnIntentV2, LaneForestWalletTxnPrepareV2,
-        LaneForestWalletTxnRecoveryV2,
+        EmptyV1LaneForestWalletActivationV2, LaneForestWalletCheckpointBindingV2,
+        LaneForestWalletCommittedStateV2, LaneForestWalletEmptyFinalizedBlockV2,
+        LaneForestWalletNoteBindingV2, LaneForestWalletSpendBindingV2,
+        LaneForestWalletTentativeCommitmentV2, LaneForestWalletTentativeUpdateV2,
+        LaneForestWalletTxnCoordinatorV2, LaneForestWalletTxnErrorV2, LaneForestWalletTxnIntentV2,
+        LaneForestWalletTxnPrepareV2, LaneForestWalletTxnRecoveryV2,
     },
     note_store_crypto::NoteStoreCipherV1,
     relayer_execution_journal::DurableRelayerExecutionJournalV1,
@@ -35,6 +40,13 @@ pub enum WalletV2RuntimeError {
     RuntimePolicyMismatch,
     Activation(WalletV2ActivationError),
     Transaction(LaneForestWalletTxnErrorV2),
+    FinalizedSource(LaneForestRpcErrorV2),
+}
+
+impl From<LaneForestRpcErrorV2> for WalletV2RuntimeError {
+    fn from(error: LaneForestRpcErrorV2) -> Self {
+        Self::FinalizedSource(error)
+    }
 }
 
 impl From<WalletV2ActivationError> for WalletV2RuntimeError {
@@ -294,6 +306,31 @@ impl ActivatedWalletRuntimeV2 {
     ) -> Result<WalletV2FinalizedApply, WalletV2RuntimeError> {
         let intent = intent.bind_finalized_relayer_journal_v2(journal, request_id)?;
         self.apply_finalized_event_v2(intent, cipher, authenticator)
+    }
+
+    /// Production Pool V2 scanner-to-wallet handoff. Derive the event from
+    /// the exact finalized ASQ8/ASR8/root-page source, bind it to the exact
+    /// finalized ASRJ success record, then commit it through ASL2.
+    #[allow(clippy::too_many_arguments)]
+    pub fn apply_finalized_pool_terminal_journal_v2<A: LocalSpendAuthenticatorV1>(
+        &mut self,
+        observation: &FinalizedPairForestTerminalObservationV2,
+        notes: Vec<LaneForestWalletNoteBindingV2>,
+        spends: Vec<LaneForestWalletSpendBindingV2>,
+        checkpoint: Option<LaneForestWalletCheckpointBindingV2>,
+        journal: &DurableRelayerExecutionJournalV1,
+        request_id: [u8; 32],
+        cipher: &NoteStoreCipherV1,
+        authenticator: &A,
+    ) -> Result<WalletV2FinalizedApply, WalletV2RuntimeError> {
+        let intent = derive_finalized_pair_forest_terminal_intent_v2(
+            self.committed_state_v2()?,
+            observation,
+            notes,
+            spends,
+            checkpoint,
+        )?;
+        self.apply_finalized_journal_event_v2(intent, journal, request_id, cipher, authenticator)
     }
 
     pub fn apply_empty_finalized_block_v2(
