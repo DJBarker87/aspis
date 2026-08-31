@@ -23,6 +23,9 @@ use crate::{
     },
     note_store_crypto::NoteStoreCipherV1,
     relayer_execution_journal::DurableRelayerExecutionJournalV1,
+    tx_v1_finalized_rpc_v2::{
+        AgreedFinalizedTxV1BlockV2, AgreedFinalizedTxV1RootPageV2, FinalizedTxV1RpcErrorV2,
+    },
     wallet_monotonic_v2::WalletMonotonicStoreV2,
     wallet_store_migration_v2::WalletStoreMigrationReceiptV2,
     wallet_v2_activation::{
@@ -41,11 +44,18 @@ pub enum WalletV2RuntimeError {
     Activation(WalletV2ActivationError),
     Transaction(LaneForestWalletTxnErrorV2),
     FinalizedSource(LaneForestRpcErrorV2),
+    FinalizedTxV1Source(FinalizedTxV1RpcErrorV2),
 }
 
 impl From<LaneForestRpcErrorV2> for WalletV2RuntimeError {
     fn from(error: LaneForestRpcErrorV2) -> Self {
         Self::FinalizedSource(error)
+    }
+}
+
+impl From<FinalizedTxV1RpcErrorV2> for WalletV2RuntimeError {
+    fn from(error: FinalizedTxV1RpcErrorV2) -> Self {
+        Self::FinalizedTxV1Source(error)
     }
 }
 
@@ -331,6 +341,57 @@ impl ActivatedWalletRuntimeV2 {
             checkpoint,
         )?;
         self.apply_finalized_journal_event_v2(intent, journal, request_id, cipher, authenticator)
+    }
+
+    /// Production-owned RPC path. Only a constructor-sealed, two-provider
+    /// finalized TxV1 block plus its independently agreed exact root-history
+    /// entry can enter the ASQ8/ASR8-derived terminal path. Exact transaction-array
+    /// order is committed into ASL2 and survives restart; signature ordering
+    /// is never used as a ledger-order surrogate.
+    #[allow(clippy::too_many_arguments)]
+    pub fn apply_agreed_finalized_tx_v1_terminal_journal_v2<A: LocalSpendAuthenticatorV1>(
+        &mut self,
+        block: &AgreedFinalizedTxV1BlockV2,
+        terminal_index: usize,
+        root_page: &AgreedFinalizedTxV1RootPageV2,
+        notes: Vec<LaneForestWalletNoteBindingV2>,
+        spends: Vec<LaneForestWalletSpendBindingV2>,
+        checkpoint: Option<LaneForestWalletCheckpointBindingV2>,
+        journal: &DurableRelayerExecutionJournalV1,
+        request_id: [u8; 32],
+        cipher: &NoteStoreCipherV1,
+        authenticator: &A,
+    ) -> Result<WalletV2FinalizedApply, WalletV2RuntimeError> {
+        if block.provider_set_digest_v2() != &self.policy.provider_set_digest
+            || block.startup_receipt_digest_v2() != &self.policy.startup_receipt_digest
+        {
+            return Err(WalletV2RuntimeError::RuntimePolicyMismatch);
+        }
+        let point = block.block_v2().point();
+        let previous_transaction_index = if self.committed_state_v2()?.finalized_head() == point {
+            let (previous_point, previous_position) = self
+                .coordinator
+                .last_finalized_ledger_position_v2()?
+                .ok_or(FinalizedTxV1RpcErrorV2::TerminalOrder)?;
+            if previous_point != point {
+                return Err(FinalizedTxV1RpcErrorV2::TerminalOrder.into());
+            }
+            Some(previous_position.transaction_index_v2())
+        } else {
+            None
+        };
+        block.validate_terminal_progress_v2(terminal_index, previous_transaction_index)?;
+        let observation = block.terminal_observation_v2(terminal_index, root_page)?;
+        self.apply_finalized_pool_terminal_journal_v2(
+            &observation,
+            notes,
+            spends,
+            checkpoint,
+            journal,
+            request_id,
+            cipher,
+            authenticator,
+        )
     }
 
     pub fn apply_empty_finalized_block_v2(

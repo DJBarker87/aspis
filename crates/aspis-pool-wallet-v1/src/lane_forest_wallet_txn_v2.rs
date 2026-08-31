@@ -94,6 +94,9 @@ const TRANSACTION_DOMAIN_V2: &[u8] = b"aspis:pool-v1:lane-forest-wallet-transact
 const STATE_DOMAIN_V2: &[u8] = b"aspis:pool-v1:lane-forest-wallet-state:sha256:v2";
 const PREPARED_IMAGE_DOMAIN_V3: &[u8] =
     b"aspis:pool-v1:lane-forest-wallet-prepared-image:sha256:v3";
+const FINALIZED_LEDGER_EVENT_MAGIC_V2: [u8; 4] = *b"ASO2";
+const FINALIZED_LEDGER_EVENT_VERSION_V2: u8 = 1;
+const FINALIZED_LEDGER_EVENT_HEADER_BYTES_V2: usize = 16;
 const MAX_TXN_IMAGE_BYTES_V2: usize = 64 * 1024 * 1024;
 const MAX_TXN_RECORDS_V2: usize = 100_000;
 const MAX_LOGICAL_NOTES_V2: usize = 1_000_000;
@@ -168,6 +171,24 @@ pub enum LaneForestWalletTxnPrepareV2 {
         transaction_id: [u8; 32],
         phase: LaneForestWalletTxnPhaseV2,
     },
+}
+
+/// Exact position of a transaction in the finalized block's RPC transaction
+/// array. Solana transaction signatures are stable event identifiers, but
+/// their byte ordering is unrelated to ledger execution order.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]
+pub struct FinalizedLedgerPositionV2 {
+    transaction_index: u32,
+}
+
+impl FinalizedLedgerPositionV2 {
+    pub fn new_v2(transaction_index: u32) -> Self {
+        Self { transaction_index }
+    }
+
+    pub fn transaction_index_v2(self) -> u32 {
+        self.transaction_index
+    }
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -581,6 +602,63 @@ fn decode_event_id_v2(bytes: &[u8]) -> Result<DepositEventIdV1, LaneForestWallet
     .map_err(|_| LaneForestWalletTxnErrorV2::InvalidEvent)
 }
 
+fn encode_finalized_ledger_event_v2(
+    canonical_event_wire: &[u8],
+    position: Option<FinalizedLedgerPositionV2>,
+) -> Result<Vec<u8>, LaneForestWalletTxnErrorV2> {
+    let event = decode_forest_finalized_append_event_v2(canonical_event_wire)?;
+    if encode_forest_finalized_append_event_v2(&event)? != canonical_event_wire {
+        return Err(LaneForestWalletTxnErrorV2::NonCanonicalEncoding);
+    }
+    let Some(position) = position else {
+        return Ok(canonical_event_wire.to_vec());
+    };
+    let mut output = vec![0u8; FINALIZED_LEDGER_EVENT_HEADER_BYTES_V2 + canonical_event_wire.len()];
+    output[..4].copy_from_slice(&FINALIZED_LEDGER_EVENT_MAGIC_V2);
+    output[4] = FINALIZED_LEDGER_EVENT_VERSION_V2;
+    output[8..12].copy_from_slice(&position.transaction_index.to_le_bytes());
+    output[FINALIZED_LEDGER_EVENT_HEADER_BYTES_V2..].copy_from_slice(canonical_event_wire);
+    Ok(output)
+}
+
+fn decode_finalized_ledger_event_v2(
+    bytes: &[u8],
+) -> Result<
+    (
+        ForestFinalizedAppendEventV2,
+        Option<FinalizedLedgerPositionV2>,
+    ),
+    LaneForestWalletTxnErrorV2,
+> {
+    if !bytes.starts_with(&FINALIZED_LEDGER_EVENT_MAGIC_V2) {
+        let event = decode_forest_finalized_append_event_v2(bytes)?;
+        if encode_forest_finalized_append_event_v2(&event)? != bytes {
+            return Err(LaneForestWalletTxnErrorV2::NonCanonicalEncoding);
+        }
+        return Ok((event, None));
+    }
+    if bytes.len() <= FINALIZED_LEDGER_EVENT_HEADER_BYTES_V2
+        || bytes[4] != FINALIZED_LEDGER_EVENT_VERSION_V2
+        || bytes[5..8] != [0u8; 3]
+        || bytes[12..FINALIZED_LEDGER_EVENT_HEADER_BYTES_V2] != [0u8; 4]
+    {
+        return Err(LaneForestWalletTxnErrorV2::NonCanonicalEncoding);
+    }
+    let position = FinalizedLedgerPositionV2::new_v2(u32::from_le_bytes(
+        bytes[8..12]
+            .try_into()
+            .map_err(|_| LaneForestWalletTxnErrorV2::WrongLength)?,
+    ));
+    let canonical = &bytes[FINALIZED_LEDGER_EVENT_HEADER_BYTES_V2..];
+    let event = decode_forest_finalized_append_event_v2(canonical)?;
+    if encode_forest_finalized_append_event_v2(&event)? != canonical
+        || encode_finalized_ledger_event_v2(canonical, Some(position))? != bytes
+    {
+        return Err(LaneForestWalletTxnErrorV2::NonCanonicalEncoding);
+    }
+    Ok((event, Some(position)))
+}
+
 fn canonical_digest_v2(bytes: [u8; 32]) -> Result<[u8; 32], LaneForestWalletTxnErrorV2> {
     let digest =
         decode_digest_canonical(&bytes).map_err(|_| LaneForestWalletTxnErrorV2::InvalidSpend)?;
@@ -837,6 +915,7 @@ pub struct LaneForestWalletTxnIntentV2 {
     finalized_parent: FinalizedChainPointV1,
     event: ForestFinalizedAppendEventV2,
     event_wire: Vec<u8>,
+    finalized_ledger_position: Option<FinalizedLedgerPositionV2>,
     note_cipher_id: [u8; 32],
     notes: Vec<LaneForestWalletNoteBindingV2>,
     spends: Vec<LaneForestWalletSpendBindingV2>,
@@ -849,6 +928,7 @@ impl core::fmt::Debug for LaneForestWalletTxnIntentV2 {
         formatter
             .debug_struct("LaneForestWalletTxnIntentV2")
             .field("point", &self.event.point())
+            .field("finalized_ledger_position", &self.finalized_ledger_position)
             .field("note_count", &self.notes.len())
             .field("spend_count", &self.spends.len())
             .field("has_checkpoint", &self.checkpoint.is_some())
@@ -862,6 +942,56 @@ impl LaneForestWalletTxnIntentV2 {
     pub fn new_v2(
         finalized_block: FinalizedBlockV1,
         event: ForestFinalizedAppendEventV2,
+        note_cipher_id: [u8; 32],
+        notes: Vec<LaneForestWalletNoteBindingV2>,
+        spends: Vec<LaneForestWalletSpendBindingV2>,
+        checkpoint: Option<LaneForestWalletCheckpointBindingV2>,
+        relayer: Option<LaneForestWalletRelayerObservationV2>,
+    ) -> Result<Self, LaneForestWalletTxnErrorV2> {
+        Self::new_with_finalized_ledger_position_v2(
+            finalized_block,
+            event,
+            None,
+            note_cipher_id,
+            notes,
+            spends,
+            checkpoint,
+            relayer,
+        )
+    }
+
+    /// Construct an intent whose exact finalized ledger position was decoded
+    /// from an owned, quorum-agreed `getBlock` response. The position is stored
+    /// inside a versioned nested event envelope, so it is covered by the
+    /// existing ASL2 content/transaction/checksum chain and survives restart.
+    #[allow(clippy::too_many_arguments)]
+    pub fn new_ordered_v2(
+        finalized_block: FinalizedBlockV1,
+        event: ForestFinalizedAppendEventV2,
+        finalized_ledger_position: FinalizedLedgerPositionV2,
+        note_cipher_id: [u8; 32],
+        notes: Vec<LaneForestWalletNoteBindingV2>,
+        spends: Vec<LaneForestWalletSpendBindingV2>,
+        checkpoint: Option<LaneForestWalletCheckpointBindingV2>,
+        relayer: Option<LaneForestWalletRelayerObservationV2>,
+    ) -> Result<Self, LaneForestWalletTxnErrorV2> {
+        Self::new_with_finalized_ledger_position_v2(
+            finalized_block,
+            event,
+            Some(finalized_ledger_position),
+            note_cipher_id,
+            notes,
+            spends,
+            checkpoint,
+            relayer,
+        )
+    }
+
+    #[allow(clippy::too_many_arguments)]
+    fn new_with_finalized_ledger_position_v2(
+        finalized_block: FinalizedBlockV1,
+        event: ForestFinalizedAppendEventV2,
+        finalized_ledger_position: Option<FinalizedLedgerPositionV2>,
         note_cipher_id: [u8; 32],
         mut notes: Vec<LaneForestWalletNoteBindingV2>,
         mut spends: Vec<LaneForestWalletSpendBindingV2>,
@@ -877,8 +1007,10 @@ impl LaneForestWalletTxnIntentV2 {
         if notes.len() > MAX_EVENT_NOTES_V2 || spends.len() > MAX_EVENT_SPENDS_V2 {
             return Err(LaneForestWalletTxnErrorV2::CountOverflow);
         }
-        let event_wire = encode_forest_finalized_append_event_v2(&event)?;
-        let event = decode_forest_finalized_append_event_v2(&event_wire)?;
+        let canonical_event_wire = encode_forest_finalized_append_event_v2(&event)?;
+        let event = decode_forest_finalized_append_event_v2(&canonical_event_wire)?;
+        let event_wire =
+            encode_finalized_ledger_event_v2(&canonical_event_wire, finalized_ledger_position)?;
         notes.sort_by_key(|note| encode_event_id_v2(note.event_id));
         spends.sort_by_key(|spend| encode_event_id_v2(spend.input_event_id));
         let output_ids = output_event_ids_v2(&event);
@@ -925,6 +1057,7 @@ impl LaneForestWalletTxnIntentV2 {
             finalized_parent: finalized_block.parent(),
             event,
             event_wire,
+            finalized_ledger_position,
             note_cipher_id,
             notes,
             spends,
@@ -939,6 +1072,10 @@ impl LaneForestWalletTxnIntentV2 {
 
     pub fn finalized_parent(&self) -> FinalizedChainPointV1 {
         self.finalized_parent
+    }
+
+    pub fn finalized_ledger_position_v2(&self) -> Option<FinalizedLedgerPositionV2> {
+        self.finalized_ledger_position
     }
 
     pub fn note_cipher_id(&self) -> &[u8; 32] {
@@ -1795,10 +1932,7 @@ fn intent_from_wire_v2(
 ) -> Result<LaneForestWalletTxnIntentV2, LaneForestWalletTxnErrorV2> {
     validate_intent_wire_order_v2(&wire)?;
     let original = wire.clone();
-    let event = decode_forest_finalized_append_event_v2(&wire.event_wire)?;
-    if encode_forest_finalized_append_event_v2(&event)? != wire.event_wire {
-        return Err(LaneForestWalletTxnErrorV2::NonCanonicalEncoding);
-    }
+    let (event, finalized_ledger_position) = decode_finalized_ledger_event_v2(&wire.event_wire)?;
     let note_cipher_id = exact_array_v2(&wire.note_cipher_id)?;
     let finalized_parent = decode_point_v2(&wire.finalized_parent)?;
     let finalized_block = FinalizedBlockV1::new(event.point(), finalized_parent)
@@ -1868,15 +2002,27 @@ fn intent_from_wire_v2(
             Ok::<LaneForestWalletRelayerObservationV2, LaneForestWalletTxnErrorV2>(observation)
         })
         .transpose()?;
-    let intent = LaneForestWalletTxnIntentV2::new_v2(
-        finalized_block,
-        event,
-        note_cipher_id,
-        notes,
-        spends,
-        checkpoint,
-        relayer,
-    )?;
+    let intent = match finalized_ledger_position {
+        Some(position) => LaneForestWalletTxnIntentV2::new_ordered_v2(
+            finalized_block,
+            event,
+            position,
+            note_cipher_id,
+            notes,
+            spends,
+            checkpoint,
+            relayer,
+        )?,
+        None => LaneForestWalletTxnIntentV2::new_v2(
+            finalized_block,
+            event,
+            note_cipher_id,
+            notes,
+            spends,
+            checkpoint,
+            relayer,
+        )?,
+    };
     if intent_to_wire_v2(&intent) != original {
         return Err(LaneForestWalletTxnErrorV2::NonCanonicalEncoding);
     }
@@ -2426,10 +2572,10 @@ fn validate_finalized_order_v2(
     }
     if point == head {
         let previous = previous.ok_or(LaneForestWalletTxnErrorV2::EventOutsideFinalizedOrder)?;
+        let ordered = finalized_intent_follows_v2(previous, next);
         if previous.event.point() != point
             || previous.finalized_parent != next.finalized_parent
-            || encode_event_id_v2(primary_event_id_v2(&next.event))
-                <= encode_event_id_v2(primary_event_id_v2(&previous.event))
+            || !ordered
         {
             return Err(LaneForestWalletTxnErrorV2::EventOutsideFinalizedOrder);
         }
@@ -2437,6 +2583,26 @@ fn validate_finalized_order_v2(
         return Err(LaneForestWalletTxnErrorV2::FinalizedRollback);
     }
     Ok(())
+}
+
+fn finalized_intent_follows_v2(
+    previous: &LaneForestWalletTxnIntentV2,
+    next: &LaneForestWalletTxnIntentV2,
+) -> bool {
+    match (
+        previous.finalized_ledger_position,
+        next.finalized_ledger_position,
+    ) {
+        (Some(previous), Some(next)) => next > previous,
+        (None, None) => {
+            // Frozen pre-RPC-V2 images used signature order. Preserve their
+            // replay semantics without allowing a new ordered stream to mix
+            // with that unauthenticated convention.
+            encode_event_id_v2(primary_event_id_v2(&next.event))
+                > encode_event_id_v2(primary_event_id_v2(&previous.event))
+        }
+        _ => false,
+    }
 }
 
 fn validate_empty_finalized_order_v2(
@@ -3319,6 +3485,22 @@ impl LaneForestWalletTxnCoordinatorV2 {
         Ok(&self.committed)
     }
 
+    pub(crate) fn last_finalized_ledger_position_v2(
+        &self,
+    ) -> Result<
+        Option<(FinalizedChainPointV1, FinalizedLedgerPositionV2)>,
+        LaneForestWalletTxnErrorV2,
+    > {
+        self.ensure_readable_v2()?;
+        Ok(self.records.last().and_then(|record| {
+            let intent = record.intent()?;
+            Some((
+                intent.event().point(),
+                intent.finalized_ledger_position_v2()?,
+            ))
+        }))
+    }
+
     pub fn activation_v2(
         &self,
     ) -> Result<&EmptyV1LaneForestWalletActivationV2, LaneForestWalletTxnErrorV2> {
@@ -4091,6 +4273,15 @@ mod tests {
         RelayerFinalizedFailureEvidenceV1, RelayerSimulationEvidenceV1,
         RelayerTerminalFailureEvidenceV1, SignedTransactionInspectorV1,
     };
+    use aspis_core::field::M31;
+    use aspis_pool::POOL_V1_PAIR_EMPTY_ROOTS;
+    use aspis_statement::{
+        encode_digest_canonical,
+        pool_v1::{
+            encode_pool_v1_pair_forest_lane_state_v1, PoolV1PairForestLaneStateV1,
+            PoolV1PairLeafWitnessV1, POOL_V1_PAIR_TREE_DEPTH,
+        },
+    };
 
     static NEXT_RELAYER_JOURNAL_DIRECTORY_V2: AtomicU64 = AtomicU64::new(0);
 
@@ -4196,6 +4387,65 @@ mod tests {
         }
     }
 
+    fn ordered_deposit_intent_v2(
+        transaction_index: u32,
+        signature: u8,
+    ) -> LaneForestWalletTxnIntentV2 {
+        let commitment = core::array::from_fn(|index| M31(20 + index as u32));
+        let commitment_bytes = encode_digest_canonical(&commitment);
+        let lane_id = LaneIdV2::new(commitment_bytes[0] & 7).unwrap();
+        let master = [0x81; 32];
+        let initial = IncrementalMerkleTreeV1 {
+            next_leaf_index: 0,
+            root: POOL_V1_PAIR_EMPTY_ROOTS[POOL_V1_PAIR_TREE_DEPTH],
+            frontier: core::array::from_fn(|level| POOL_V1_PAIR_EMPTY_ROOTS[level]),
+        };
+        let pair_leaf = PoolV1PairLeafWitnessV1::single_output(commitment)
+            .unwrap()
+            .leaf_digest()
+            .unwrap();
+        let next = initial
+            .append_one_with_empty_roots(pair_leaf, &POOL_V1_PAIR_EMPTY_ROOTS)
+            .unwrap()
+            .0;
+        let after = PoolV1PairForestLaneStateV1 {
+            master,
+            lane_id: lane_id.as_u8(),
+            tree: next,
+        };
+        let point = FinalizedChainPointV1::new(500, [0x82; 32]).unwrap();
+        let parent = FinalizedChainPointV1::new(499, [0x83; 32]).unwrap();
+        let event_id = DepositEventIdV1::new(point, [signature; 64], 1, 0).unwrap();
+        let event = ForestFinalizedAppendEventV2 {
+            master,
+            lane_id,
+            pair_leaf_index: 0,
+            root_sequence: 1,
+            after_lane_address: [0x84; 32],
+            after_lane_image: encode_pool_v1_pair_forest_lane_state_v1(
+                &after,
+                &POOL_V1_PAIR_EMPTY_ROOTS,
+            )
+            .unwrap(),
+            kind: ForestFinalizedAppendKindV2::Deposit {
+                event_id,
+                commitment: commitment_bytes,
+                encrypted_note: None,
+            },
+        };
+        LaneForestWalletTxnIntentV2::new_ordered_v2(
+            FinalizedBlockV1::new(point, parent).unwrap(),
+            event,
+            FinalizedLedgerPositionV2::new_v2(transaction_index),
+            [0x85; 32],
+            Vec::new(),
+            Vec::new(),
+            None,
+            None,
+        )
+        .unwrap()
+    }
+
     #[test]
     fn typed_intent_wire_order_aliases_are_rejected_before_semantic_decode() {
         let mut wire = empty_wire_v2();
@@ -4211,6 +4461,58 @@ mod tests {
             validate_intent_wire_order_v2(&wire),
             Err(LaneForestWalletTxnErrorV2::NonCanonicalEncoding)
         );
+    }
+
+    #[test]
+    fn finalized_ledger_position_is_canonical_durable_and_not_signature_order() {
+        let first = ordered_deposit_intent_v2(0, 0xf0);
+        let second = ordered_deposit_intent_v2(1, 0x10);
+        assert_eq!(
+            first
+                .finalized_ledger_position_v2()
+                .unwrap()
+                .transaction_index_v2(),
+            0
+        );
+        assert!(
+            primary_event_id_v2(first.event()).transaction_signature()
+                > primary_event_id_v2(second.event()).transaction_signature()
+        );
+        assert!(finalized_intent_follows_v2(&first, &second));
+        assert!(!finalized_intent_follows_v2(&second, &first));
+
+        let first_wire = intent_to_wire_v2(&first);
+        assert!(first_wire
+            .event_wire
+            .starts_with(&FINALIZED_LEDGER_EVENT_MAGIC_V2));
+        let recovered = intent_from_wire_v2(first_wire.clone()).unwrap();
+        assert_eq!(recovered, first);
+        assert!(intent_to_wire_v2(&recovered) == first_wire);
+
+        let mut reserved = first_wire.clone();
+        reserved.event_wire[5] = 1;
+        assert_eq!(
+            intent_from_wire_v2(reserved),
+            Err(LaneForestWalletTxnErrorV2::NonCanonicalEncoding)
+        );
+
+        let legacy = LaneForestWalletTxnIntentV2::new_v2(
+            FinalizedBlockV1::new(first.event().point(), first.finalized_parent()).unwrap(),
+            first.event().clone(),
+            *first.note_cipher_id(),
+            Vec::new(),
+            Vec::new(),
+            None,
+            None,
+        )
+        .unwrap();
+        assert_eq!(legacy.finalized_ledger_position_v2(), None);
+        assert_eq!(
+            intent_from_wire_v2(intent_to_wire_v2(&legacy)).unwrap(),
+            legacy
+        );
+        assert!(!finalized_intent_follows_v2(&first, &legacy));
+        assert!(!finalized_intent_follows_v2(&legacy, &first));
     }
 
     #[test]

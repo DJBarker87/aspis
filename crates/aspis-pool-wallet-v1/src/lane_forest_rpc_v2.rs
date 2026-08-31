@@ -37,9 +37,9 @@ use crate::{
     },
     lane_forest_v2::{LaneIdV2, POOL_V1_LANE_COUNT_V2},
     lane_forest_wallet_txn_v2::{
-        LaneForestWalletCheckpointBindingV2, LaneForestWalletCommittedStateV2,
-        LaneForestWalletNoteBindingV2, LaneForestWalletSpendBindingV2, LaneForestWalletTxnErrorV2,
-        LaneForestWalletTxnIntentV2,
+        FinalizedLedgerPositionV2, LaneForestWalletCheckpointBindingV2,
+        LaneForestWalletCommittedStateV2, LaneForestWalletNoteBindingV2,
+        LaneForestWalletSpendBindingV2, LaneForestWalletTxnErrorV2, LaneForestWalletTxnIntentV2,
     },
     scan_state::{DepositEventIdV1, FinalizedBlockV1, FinalizedChainPointV1},
     ViewingSecretKeyV1, POOL_V1_NOTE_ENCRYPTED_PAYLOAD_BYTES,
@@ -385,6 +385,9 @@ pub struct FinalizedPairForestTerminalObservationV2 {
     pub accounts_asserted_commitment: ForestRpcCommitmentV2,
     pub block: FinalizedBlockV1,
     pub account_context_slot: u64,
+    /// Exact index in the finalized block's transaction array. This is ledger
+    /// order; signature byte ordering is deliberately not used as a proxy.
+    pub transaction_index: u32,
     pub transaction_signature: [u8; 64],
     pub transaction_succeeded: bool,
     pub instruction_index: u16,
@@ -822,9 +825,10 @@ pub fn derive_finalized_pair_forest_terminal_intent_v2(
     checkpoint: Option<LaneForestWalletCheckpointBindingV2>,
 ) -> Result<LaneForestWalletTxnIntentV2, LaneForestRpcErrorV2> {
     let event = derive_finalized_pair_forest_terminal_event_v2(state.lane_state(), observation)?;
-    Ok(LaneForestWalletTxnIntentV2::new_v2(
+    Ok(LaneForestWalletTxnIntentV2::new_ordered_v2(
         observation.block,
         event,
+        FinalizedLedgerPositionV2::new_v2(observation.transaction_index),
         *state.note_cipher_id(),
         notes,
         spends,
@@ -1328,6 +1332,7 @@ mod tests {
             accounts_asserted_commitment: ForestRpcCommitmentV2::Finalized,
             block: FinalizedBlockV1::new(chain_point, point(chain_point.slot() - 1)).unwrap(),
             account_context_slot: chain_point.slot(),
+            transaction_index: 0,
             transaction_signature: signature,
             transaction_succeeded: true,
             instruction_index: 2,
@@ -1421,6 +1426,7 @@ mod tests {
             accounts_asserted_commitment: ForestRpcCommitmentV2::Finalized,
             block: FinalizedBlockV1::new(chain_point, point(chain_point.slot() - 1)).unwrap(),
             account_context_slot: chain_point.slot(),
+            transaction_index: 0,
             transaction_signature: signature,
             transaction_succeeded: true,
             instruction_index: 2,

@@ -866,6 +866,7 @@ fn finalized_terminal_observation_without_notes(
         accounts_asserted_commitment: SolanaRpcCommitmentV1::Finalized,
         block,
         account_context_slot: block.point().slot(),
+        transaction_index: 0,
         transaction_signature,
         transaction_succeeded: true,
         instruction_index: 2,
