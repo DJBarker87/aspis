@@ -43,6 +43,7 @@ noncomputable section
 structure Q16DagProducer where
   digest : Digest256
   slot : Q16DigestSlot
+  sourceInput : ShaInput
   deriving DecidableEq, Repr
 
 /-- The pair key selected at the trial anchor.  `workSeen` is independent of
@@ -185,7 +186,8 @@ def updateQ16DagProducers (base : Digest256)
     (producers : List Q16DagProducer) (input : ShaInput) (answer : Digest256) :
     List Q16DagProducer :=
   match q16DagProducedSlot? base producers input with
-  | some slot => producers ++ [{ digest := answer, slot := slot }]
+  | some slot => producers ++
+      [Q16DagProducer.mk answer slot input]
   | none => producers
 
 theorem update_q16_dag_producers_eq_or_append
@@ -193,7 +195,8 @@ theorem update_q16_dag_producers_eq_or_append
     (input : ShaInput) (answer : Digest256) :
     updateQ16DagProducers base producers input answer = producers ∨
       ∃ slot, updateQ16DagProducers base producers input answer =
-        producers ++ [{ digest := answer, slot := slot }] := by
+        producers ++
+          [Q16DagProducer.mk answer slot input] := by
   unfold updateQ16DagProducers
   cases produced : q16DagProducedSlot? base producers input with
   | none => exact Or.inl rfl
@@ -347,9 +350,10 @@ theorem dag_memory_producers_eq_or_append
     (input : ShaInput) (answer : Digest256) :
     (dagMemoryAfterInput anchorIndex exposureIndex memory input answer).producers =
         memory.producers ∨
-      ∃ slot,
+      ∃ (slot : Q16DigestSlot),
         (dagMemoryAfterInput anchorIndex exposureIndex memory input answer).producers =
-          memory.producers ++ [{ digest := answer, slot := slot }] := by
+          memory.producers ++
+            [Q16DagProducer.mk answer slot input] := by
   unfold dagMemoryAfterInput
   cases anchorExact : memory.anchor with
   | inactive =>
@@ -505,9 +509,12 @@ theorem dag_candidate_memory_producers_eq_or_append
     (answer : Digest256) :
     (dagCandidateAfterMemory transitionFuel anchorIndex state answer).producers =
         state.memory.producers ∨
-      ∃ slot,
+      ∃ (slot : Q16DigestSlot),
         (dagCandidateAfterMemory transitionFuel anchorIndex state answer).producers =
-          state.memory.producers ++ [{ digest := answer, slot := slot }] := by
+          state.memory.producers ++
+            [Q16DagProducer.mk answer slot
+              (Option.getD
+                (unifiedInputBeforeAnswer? transitionFuel state.cursor) [])] := by
   unfold dagCandidateAfterMemory
   cases inputExact : unifiedInputBeforeAnswer? transitionFuel state.cursor with
   | none => exact Or.inl rfl

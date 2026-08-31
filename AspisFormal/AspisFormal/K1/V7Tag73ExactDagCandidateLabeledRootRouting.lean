@@ -1,5 +1,7 @@
 import AspisFormal.K1.V7Tag73CausalDagFinalWorkQ16Controller
+import AspisFormal.K1.V7Tag73CausalDagProducerInvariant
 import AspisFormal.K1.V7Tag73ExactCandidateLabeledRootRouting
+import AspisFormal.K1.V7Tag73ExactFinalWorkPairControllerCompletion
 import AspisFormal.K1.V7Tag73IndexedAlignedRecordReplay
 
 /-!
@@ -20,6 +22,7 @@ open AspisK1.V7Tag73AdaptiveLazyOracle
 open AspisK1.V7Tag73AdaptiveQ16TrialAccounting
 open AspisK1.V7Tag73AtomicForkUniformScheduler
 open AspisK1.V7Tag73CausalDagFinalWorkQ16Controller
+open AspisK1.V7Tag73CausalDagProducerInvariant
 open AspisK1.V7Tag73CausalFinalWorkQ16UsedForest
 open AspisK1.V7Tag73CausalMachineLabeledTraceRouting
 open AspisK1.V7Tag73CausalQ16FinalWorkProbability
@@ -27,6 +30,7 @@ open AspisK1.V7Tag73CausalSlotRouterLookup
 open AspisK1.V7Tag73ExactCandidateLabeledRootRouting
 open AspisK1.V7Tag73ExactCausalRouterTapeAlignment
 open AspisK1.V7Tag73ExactCompilerResources
+open AspisK1.V7Tag73ExactFinalWorkPairControllerCompletion
 open AspisK1.V7Tag73ExactFixedFullRunFactorization
 open AspisK1.V7Tag73ExactFixedK12MerkleClassifier
 open AspisK1.V7Tag73ExactFixedOperationalStateMap
@@ -285,6 +289,37 @@ theorem exact_dag_candidate_root_producer_digests_nodup
   · simp [exactDagCandidateInitialState, inactiveDagMemory]
   · simp [exactDagCandidateInitialState, inactiveDagMemory]
 
+/-- The full exact-root replay satisfies recursive producer provenance and
+has duplicate-free source inputs and slots.  This is obtained from literal
+root-input freshness, not from a sequential ordering assumption on q16
+siblings. -/
+theorem exact_dag_candidate_root_producer_invariant
+    {HiddenTape TapeIdentity Observation Statement Payload Result : Type}
+    {parameters : ExactCompilerResourceParameters}
+    {transitionFuel : Nat}
+    {configuration : ExactPlainRomConfiguration HiddenTape TapeIdentity
+      Observation Statement Tag73K12ParsedProof Payload Result parameters}
+    {projection : AcceptedTapeProjection Statement Tag73K12ParsedProof Payload}
+    {fixedInstance : PublicInstance Statement}
+    {sample : ExactCompilerSample HiddenTape parameters}
+    (input : ExactK12OperationalInput transitionFuel configuration projection
+      fixedInstance sample)
+    (trial : ExactCompilerExposureTrial parameters) :
+    Q16DagMemoryProducerInvariant
+      (indexedStateAfterRecords transitionFuel
+        (exactDagTrialController transitionFuel trial)
+        (exactFixedRootRecords input.package.root)
+        (exactDagCandidateInitialState input)).memory := by
+  apply aligned_machine_records_preserve_dag_producer_invariant
+    transitionFuel trial.val
+      (exactFixedRootRecords input.package.root)
+      (exactDagCandidateInitialState input)
+  · exact exact_root_records_aligned_for_dag_controller input trial.val
+  · exact exact_root_records_only_machine_fresh input
+  · exact exact_root_record_causal_inputs_nodup input
+  · exact inactive_dag_memory_producer_invariant
+  · simp [exactDagCandidateInitialState, inactiveDagMemory]
+
 theorem exact_dag_candidate_root_labels_tape_prefix
     {HiddenTape TapeIdentity Observation Statement Payload Result : Type}
     {parameters : ExactCompilerResourceParameters}
@@ -436,6 +471,7 @@ theorem exact_dag_candidate_router_routes_selected_root_answer
 #print axioms exact_dag_candidate_root_labels_form_trace
 #print axioms exact_dag_candidate_root_named_slots_nodup
 #print axioms exact_dag_candidate_root_producer_digests_nodup
+#print axioms exact_dag_candidate_root_producer_invariant
 #print axioms exact_dag_candidate_root_labels_tape_prefix
 #print axioms exact_dag_candidate_root_residual_enough_of_programmed_cover
 #print axioms exact_dag_candidate_router_routes_selected_root_answer

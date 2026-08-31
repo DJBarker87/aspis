@@ -551,3 +551,34 @@ producer, after which each used output record receives that slot.  Exact root
 alignment, strict producer-before-child order, producer monotonicity, and
 producer-digest uniqueness are now all kernel checked inputs to that final
 recursion.
+
+## Exact producer-source and slot invariant
+
+`V7Tag73CausalDagProducerInvariant.lean` strengthens the producer inventory
+with the literal SHA input that created every producer.  Block zero is
+certified as originating from the exact candidate-absorb input for its
+counter; each later block is certified as originating from the advance input
+of an existing producer in the preceding block.  A single aligned replay
+induction proves that clean machine-fresh root inputs preserve this recursive
+certificate and keep both producer source inputs and producer slots
+duplicate-free.
+
+The exact accepted root instantiation is:
+
+```text
+exact_dag_candidate_root_producer_invariant
+```
+
+It is discharged from the existing source-derived root alignment,
+machine-fresh shape, and pairwise-distinct fresh-input theorem.  It adds no
+honest-order premise: output and advance siblings may still be queried in
+either order, and later blocks may be pipelined as soon as their advance
+answer exists.  Together with the already-proved producer-digest uniqueness,
+the executable inventory now has unique source input, unique slot, and unique
+digest coordinates throughout the exact root replay.
+
+The remaining deterministic step is to relate the controller's monotone
+`usedSlots` set to earlier labelled output records.  That provenance will
+show that a fresh exact-root output input cannot have consumed its unique slot
+already, completing the per-output preferred-label theorem required by the
+used-forest routing endpoint.
