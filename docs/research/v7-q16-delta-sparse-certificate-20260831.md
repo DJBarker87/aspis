@@ -182,3 +182,41 @@ Depth02 is therefore green.  The next legitimate gate is
 `Depth03Chunk000.lean`, followed by the Depth03 aggregator only if that chunk
 passes.  The final delta sum, V7 compact-frontier certificate, and q16 count
 bridge remain pending.
+
+## Focused Depth03 local-cell gate
+
+The Depth03 fail-fast symbol manifest passed before execution.  The bounded
+serial unit was:
+
+```text
+aspis-v7-q16-delta-depth03-b3d-r5.service
+invocation c2edc94b464340c488aa18a0c2eb2362
+MemoryHigh=10G
+MemoryMax=12G
+MemorySwapMax=0
+```
+
+| Target | Exit | Wall | Max process RSS | Swaps |
+|---|---:|---:|---:|---:|
+| `Depth03Chunk000.lean` | 0 | 3.24s | 6,182,576 KiB | 0 |
+| `Depth03.lean` | 0 | 2.47s | 6,144,488 KiB | 0 |
+| Depth03 axioms probe | 0 | 2.65s | 6,135,932 KiB | 0 |
+
+The cgroup peak was 648.3 MiB with zero swap.  Both local theorems,
+`certificate_3_2_0` and `certificate_3_2_1`, report exactly:
+
+```text
+[propext, Classical.choice, Quot.sound]
+```
+
+Artifact hashes:
+
+```text
+5a87a243519de5d9182c8a3eb0c554add78aa9303c50dd6db2f528d9fdfab607  Depth03Chunk000.olean
+679b9956c2b7cf26c056d5eb2d1590924f2e418f4c7ddca707c0214dbbcb21dc  Depth03Chunk000.ilean
+fe4abfbcd96a3288f5bdee16cb7f3b941cf7e30e69b5665df42e6458889ee9ad  Depth03.olean
+6498f9337a212af4e1ed4f003f7936b897edb8320cfe80ec1b8b1ea15c8c7a9d  Depth03.ilean
+```
+
+Depth03 is green.  The next legitimate gate is `Depth04Chunk000.lean` then
+the Depth04 aggregator only.  No multi-depth or monolithic run has been used.
