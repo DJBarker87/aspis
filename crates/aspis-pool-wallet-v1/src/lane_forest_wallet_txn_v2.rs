@@ -960,6 +960,36 @@ impl LaneForestWalletTxnIntentV2 {
     pub fn content_digest_v2(&self) -> Result<[u8; 32], LaneForestWalletTxnErrorV2> {
         content_digest_v2(self)
     }
+
+    /// Bind an otherwise uncorrelated finalized Pool event to the exact
+    /// finalized-success capability retained by ASRJ. This is deliberately
+    /// crate-private: the permit-gated runtime facade owns this live-journal
+    /// handoff, while the existing lower-level finalized-capability constructor
+    /// remains available for codecs and deliberately composed callers.
+    ///
+    /// The journal remains locked by its live handle while the runtime writes
+    /// ASL2. The files are not claimed to share one filesystem transaction;
+    /// safety follows from ASRJ finality being immutable and ASL2 recovery
+    /// rolling the exact prepared intent forward after a crash.
+    pub(crate) fn bind_finalized_relayer_journal_v2(
+        mut self,
+        journal: &DurableRelayerExecutionJournalV1,
+        request_id: [u8; 32],
+    ) -> Result<Self, LaneForestWalletTxnErrorV2> {
+        if self.relayer.is_some() {
+            return Err(LaneForestWalletTxnErrorV2::InvalidRelayerObservation);
+        }
+        let observation =
+            LaneForestWalletRelayerObservationV2::from_finalized_journal_v2(journal, request_id)?;
+        if observation.point != self.event.point()
+            || observation.transaction_signature
+                != *primary_event_id_v2(&self.event).transaction_signature()
+        {
+            return Err(LaneForestWalletTxnErrorV2::InvalidRelayerObservation);
+        }
+        self.relayer = Some(observation);
+        Ok(self)
+    }
 }
 
 /// Authenticated evidence that one externally-finalized block contains no

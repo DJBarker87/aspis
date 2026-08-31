@@ -17,6 +17,7 @@ use crate::{
         LaneForestWalletTxnRecoveryV2,
     },
     note_store_crypto::NoteStoreCipherV1,
+    relayer_execution_journal::DurableRelayerExecutionJournalV1,
     wallet_monotonic_v2::WalletMonotonicStoreV2,
     wallet_store_migration_v2::WalletStoreMigrationReceiptV2,
     wallet_v2_activation::{
@@ -272,6 +273,27 @@ impl ActivatedWalletRuntimeV2 {
             .prepare_finalized_v2(intent, cipher, authenticator)?;
         let recovery = self.coordinator.recover_to_committed_v2()?;
         Ok(WalletV2FinalizedApply { prepare, recovery })
+    }
+
+    /// Consume one exact finalized-success ASRJ record and commit its Pool
+    /// event, note/spend updates and relayer correlation through the same
+    /// authoritative ASL2 transaction.
+    ///
+    /// This is the production handoff for relayed transactions. Unknown,
+    /// pending, terminal-failure, finalized-failure, wrong-signature,
+    /// wrong-point and wrong-provider records fail before an ASL2 mutation.
+    /// A crash after ASL2 preparation is recovered by normal runtime startup;
+    /// retrying the same immutable ASRJ record is idempotent.
+    pub fn apply_finalized_journal_event_v2<A: LocalSpendAuthenticatorV1>(
+        &mut self,
+        intent: LaneForestWalletTxnIntentV2,
+        journal: &DurableRelayerExecutionJournalV1,
+        request_id: [u8; 32],
+        cipher: &NoteStoreCipherV1,
+        authenticator: &A,
+    ) -> Result<WalletV2FinalizedApply, WalletV2RuntimeError> {
+        let intent = intent.bind_finalized_relayer_journal_v2(journal, request_id)?;
+        self.apply_finalized_event_v2(intent, cipher, authenticator)
     }
 
     pub fn apply_empty_finalized_block_v2(

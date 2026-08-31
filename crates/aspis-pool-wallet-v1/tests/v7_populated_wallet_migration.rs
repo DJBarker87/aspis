@@ -970,6 +970,54 @@ fn canonical_asrj(terminal: bool) -> Vec<u8> {
         record[416..448].copy_from_slice(&[0x19; 32]);
         record[448..480].copy_from_slice(&[0x1a; 32]);
     }
+    finish_asrj_checksum(&mut bytes);
+    bytes
+}
+
+fn canonical_finalized_asrj(
+    request_id: [u8; 32],
+    point: FinalizedChainPointV1,
+    transaction_signature: [u8; 64],
+    provider_set_digest: [u8; 32],
+) -> Vec<u8> {
+    const HEADER: usize = 88;
+    const RECORD: usize = 576;
+    let signed_wire = [1u8, 2, 3, 4];
+    let mut bytes = vec![0u8; HEADER + RECORD + signed_wire.len()];
+    bytes[..4].copy_from_slice(b"ASRJ");
+    bytes[4] = 2;
+    bytes[8..12].copy_from_slice(&1u32.to_le_bytes());
+    let record = &mut bytes[HEADER..HEADER + RECORD];
+    record[..32].copy_from_slice(&request_id);
+    record[32..64].copy_from_slice(&[0x12; 32]);
+    record[64..72].copy_from_slice(&90u64.to_le_bytes());
+    record[72..104].copy_from_slice(&[0x13; 32]);
+    record[104..112].copy_from_slice(&120u64.to_le_bytes());
+    record[112..144].copy_from_slice(&[0x14; 32]);
+    record[144..176].copy_from_slice(&[0x15; 32]);
+    record[176..208].copy_from_slice(&[0x16; 32]);
+    record[208..240].copy_from_slice(&[0x17; 32]);
+    record[240..272].copy_from_slice(&[0x18; 32]);
+    record[272..276].copy_from_slice(&1_000u32.to_le_bytes());
+    record[276..284].copy_from_slice(&900u64.to_le_bytes());
+    record[284..292].copy_from_slice(&5u64.to_le_bytes());
+    record[292] = 1;
+    record[294] = 1;
+    record[296..360].copy_from_slice(&transaction_signature);
+    record[360..364].copy_from_slice(&(signed_wire.len() as u32).to_le_bytes());
+    record[404..412].copy_from_slice(&point.slot().to_le_bytes());
+    record[412..444].copy_from_slice(point.block_hash());
+    record[444..452].copy_from_slice(&5u64.to_le_bytes());
+    record[452..460].copy_from_slice(&850u64.to_le_bytes());
+    record[460..492].copy_from_slice(&[0x19; 32]);
+    record[492..524].copy_from_slice(&[0x1a; 32]);
+    record[524..556].copy_from_slice(&provider_set_digest);
+    bytes[HEADER + RECORD..].copy_from_slice(&signed_wire);
+    finish_asrj_checksum(&mut bytes);
+    bytes
+}
+
+fn finish_asrj_checksum(bytes: &mut [u8]) {
     let mut hasher = Sha256::new();
     hasher.update(ASRJ_CHECKSUM_DOMAIN);
     hasher.update((bytes.len() as u64).to_le_bytes());
@@ -977,7 +1025,6 @@ fn canonical_asrj(terminal: bool) -> Vec<u8> {
     hasher.update([0u8; 32]);
     hasher.update(&bytes[88..]);
     bytes[56..88].copy_from_slice(&hasher.finalize());
-    bytes
 }
 
 struct Fixture {
@@ -1946,7 +1993,7 @@ fn populated_handoff_body() {
             .unwrap();
         let intent = LaneForestWalletTxnIntentV2::new_v2(
             FinalizedBlockV1::new(point(109, 0xa9), point(108, 0xa8)).unwrap(),
-            event,
+            event.clone(),
             cipher.cipher_id(),
             Vec::new(),
             Vec::new(),
@@ -1954,13 +2001,150 @@ fn populated_handoff_body() {
             None,
         )
         .unwrap();
-        runtime
-            .apply_finalized_event_v2(intent, &cipher, &NeverAuthorize)
+
+        // V2 relayer execution starts in a fresh authority directory. The
+        // migrated legacy directory is intentionally fenced by ASMG/ASRT and
+        // cannot silently become writable again.
+        let relayer_v2_directory = directory.path("v2-relayer");
+        fs::create_dir(&relayer_v2_directory).unwrap();
+        let request_id = [0x21; 32];
+        let journal_path = relayer_v2_directory.join("exact.asrj");
+        let journal_image =
+            canonical_finalized_asrj(request_id, point(109, 0xa9), [0x49; 64], provider);
+        fs::write(&journal_path, &journal_image).unwrap();
+        #[cfg(unix)]
+        fs::set_permissions(&journal_path, fs::Permissions::from_mode(0o600)).unwrap();
+        let journal = DurableRelayerExecutionJournalV1::open_or_create_v1(&journal_path).unwrap();
+
+        let before_failures = fs::read(&target_path).unwrap();
+        assert!(matches!(
+            runtime.apply_finalized_journal_event_v2(
+                intent.clone(),
+                &journal,
+                [0xfe; 32],
+                &cipher,
+                &NeverAuthorize,
+            ),
+            Err(WalletV2RuntimeError::Transaction(
+                LaneForestWalletTxnErrorV2::InvalidRelayerObservation
+            ))
+        ));
+
+        let wrong_signature_path = relayer_v2_directory.join("wrong-signature.asrj");
+        fs::write(
+            &wrong_signature_path,
+            canonical_finalized_asrj([0x22; 32], point(109, 0xa9), [0x4a; 64], provider),
+        )
+        .unwrap();
+        #[cfg(unix)]
+        fs::set_permissions(&wrong_signature_path, fs::Permissions::from_mode(0o600)).unwrap();
+        let wrong_signature =
+            DurableRelayerExecutionJournalV1::open_or_create_v1(&wrong_signature_path).unwrap();
+        assert!(matches!(
+            runtime.apply_finalized_journal_event_v2(
+                intent.clone(),
+                &wrong_signature,
+                [0x22; 32],
+                &cipher,
+                &NeverAuthorize,
+            ),
+            Err(WalletV2RuntimeError::Transaction(
+                LaneForestWalletTxnErrorV2::InvalidRelayerObservation
+            ))
+        ));
+
+        let wrong_provider_path = relayer_v2_directory.join("wrong-provider.asrj");
+        fs::write(
+            &wrong_provider_path,
+            canonical_finalized_asrj([0x23; 32], point(109, 0xa9), [0x49; 64], [0xee; 32]),
+        )
+        .unwrap();
+        #[cfg(unix)]
+        fs::set_permissions(&wrong_provider_path, fs::Permissions::from_mode(0o600)).unwrap();
+        let wrong_provider =
+            DurableRelayerExecutionJournalV1::open_or_create_v1(&wrong_provider_path).unwrap();
+        assert_eq!(
+            runtime
+                .apply_finalized_journal_event_v2(
+                    intent.clone(),
+                    &wrong_provider,
+                    [0x23; 32],
+                    &cipher,
+                    &NeverAuthorize,
+                )
+                .err(),
+            Some(WalletV2RuntimeError::RuntimePolicyMismatch)
+        );
+        assert_eq!(fs::read(&target_path).unwrap(), before_failures);
+
+        // Model a lost runtime response after the external monotonic service
+        // committed the exact ASL2 successor. Startup recovers that successor,
+        // and the same immutable journal handoff then replays idempotently.
+        monotonic
+            .inject_once_v2(WalletMonotonicFaultPointV2::AfterCommit)
             .unwrap();
+        assert!(runtime
+            .apply_finalized_journal_event_v2(
+                intent.clone(),
+                &journal,
+                request_id,
+                &cipher,
+                &NeverAuthorize,
+            )
+            .is_err());
+        drop(runtime);
+        assert_eq!(fs::read(&journal_path).unwrap(), journal_image);
+
+        let mut runtime = ActivatedWalletRuntimeV2::start_v2(
+            &target_path,
+            activation.clone(),
+            &cipher,
+            protection_id,
+            Box::new(monotonic.clone()),
+            receipt,
+            &runtime_mode,
+            Some(&runtime_permit),
+            runtime_policy,
+        )
+        .unwrap();
         assert_eq!(
             runtime.committed_state_v2().unwrap().finalized_head(),
             point(109, 0xa9)
         );
+        runtime
+            .apply_finalized_journal_event_v2(
+                intent.clone(),
+                &journal,
+                request_id,
+                &cipher,
+                &NeverAuthorize,
+            )
+            .unwrap();
+
+        // A second valid finalized journal record cannot relabel the already
+        // committed Pool event with another request identity.
+        let conflicting_path = relayer_v2_directory.join("conflicting-request.asrj");
+        fs::write(
+            &conflicting_path,
+            canonical_finalized_asrj([0x24; 32], point(109, 0xa9), [0x49; 64], provider),
+        )
+        .unwrap();
+        #[cfg(unix)]
+        fs::set_permissions(&conflicting_path, fs::Permissions::from_mode(0o600)).unwrap();
+        let conflicting =
+            DurableRelayerExecutionJournalV1::open_or_create_v1(&conflicting_path).unwrap();
+        assert!(matches!(
+            runtime.apply_finalized_journal_event_v2(
+                intent,
+                &conflicting,
+                [0x24; 32],
+                &cipher,
+                &NeverAuthorize,
+            ),
+            Err(WalletV2RuntimeError::Transaction(
+                LaneForestWalletTxnErrorV2::EventConflict
+            ))
+        ));
         runtime.shutdown_v2().unwrap();
     }
     fs::write(&target_path, old_target_image).unwrap();
