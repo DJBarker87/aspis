@@ -20,6 +20,7 @@ namespace AspisK1.V7Tag73ExactDagQ16ChainRouting
 
 open AspisK1.V7FsAokExperiment
 open AspisK1.V7Tag73ActualQ16InitialDigest
+open AspisK1.V7Tag73AdaptiveLazyOracle
 open AspisK1.V7Tag73AdaptiveQ16TrialAccounting
 open AspisK1.V7Tag73AtomicForkUniformScheduler
 open AspisK1.V7Tag73CausalDagFinalWorkQ16Controller
@@ -113,6 +114,133 @@ def Q16DagTracksBase (memory : FinalWorkQ16DagMemory)
   ∃ workSeen, memory.anchor = .tracked key workSeen ∧
     memory.q16Base = some base
 
+/-- The exact state after the nonce-absorb coordinate but before the matching
+final-work coordinate. The q16 base is available while the work flag remains
+false. -/
+def Q16DagTracksBaseBeforeWork (memory : FinalWorkQ16DagMemory)
+    (key : RawFinalWorkKey) (base : Digest256) : Prop :=
+  memory.anchor = .tracked key false ∧ memory.q16Base = some base
+
+/-- Consuming the final-work slot implies that the tracked anchor has seen its
+work input. This invariant is independent of q16 producer progress. -/
+def Q16DagWorkSlotSound (memory : FinalWorkQ16DagMemory) : Prop :=
+  match memory.anchor with
+  | .inactive =>
+      (none : FinalWorkQ16DigestSlot) ∉ memory.usedSlots
+  | .tracked _ workSeen =>
+      (none : FinalWorkQ16DigestSlot) ∈ memory.usedSlots → workSeen = true
+
+theorem inactive_dag_memory_work_slot_sound :
+    Q16DagWorkSlotSound inactiveDagMemory := by
+  simp [Q16DagWorkSlotSound, inactiveDagMemory]
+
+theorem dag_memory_after_input_preserves_work_slot_sound
+    (anchorIndex exposureIndex : Nat) (memory : FinalWorkQ16DagMemory)
+    (input : ShaInput) (answer : Digest256)
+    (sound : Q16DagWorkSlotSound memory) :
+    Q16DagWorkSlotSound
+      (dagMemoryAfterInput anchorIndex exposureIndex memory input answer) := by
+  rcases memory with ⟨anchor, q16Base, producers, usedSlots⟩
+  cases anchor with
+  | inactive =>
+      by_cases atAnchor : exposureIndex = anchorIndex
+      · cases work : rawFinalWorkKeyOfWorkInput? input with
+        | some key =>
+            simp [Q16DagWorkSlotSound, dagMemoryAfterInput,
+              dagCoreMemoryAfterInput, dagPreferredSlotForInput,
+              dagRawPreferredSlot, atAnchor, work]
+        | none =>
+            cases absorb : rawFinalWorkKeyOfAbsorbInput? input with
+            | some key =>
+                simpa [Q16DagWorkSlotSound, dagMemoryAfterInput,
+                  dagCoreMemoryAfterInput, dagPreferredSlotForInput,
+                  dagRawPreferredSlot, atAnchor, work, absorb] using sound
+            | none =>
+                simpa [Q16DagWorkSlotSound, dagMemoryAfterInput,
+                  dagCoreMemoryAfterInput, dagPreferredSlotForInput,
+                  dagRawPreferredSlot, atAnchor, work, absorb] using sound
+      · simpa [Q16DagWorkSlotSound, dagMemoryAfterInput,
+          dagCoreMemoryAfterInput, dagPreferredSlotForInput,
+          dagRawPreferredSlot, atAnchor] using sound
+  | tracked key workSeen =>
+      cases workSeen with
+      | false =>
+          have noneFresh : (none : FinalWorkQ16DigestSlot) ∉ usedSlots := by
+            intro used
+            have sound' : (none : FinalWorkQ16DigestSlot) ∈ usedSlots →
+                false = true := by
+              simpa [Q16DagWorkSlotSound] using sound
+            exact Bool.noConfusion (sound' used)
+          by_cases isWork : input = key.workInput
+          · subst input
+            cases q16Base with
+            | none =>
+                by_cases isAbsorb : key.workInput = key.absorbInput <;>
+                  simp [Q16DagWorkSlotSound, dagMemoryAfterInput,
+                    dagCoreMemoryAfterInput, dagPreferredSlotForInput,
+                    dagRawPreferredSlot, isAbsorb, noneFresh]
+            | some base =>
+                simp [Q16DagWorkSlotSound, dagMemoryAfterInput,
+                  dagCoreMemoryAfterInput, dagPreferredSlotForInput,
+                  dagRawPreferredSlot, noneFresh]
+          · cases q16Base with
+            | none =>
+                by_cases isAbsorb : input = key.absorbInput
+                · subst input
+                  have absorbNeWork : key.absorbInput ≠ key.workInput :=
+                    isWork
+                  cases output : q16DagOutputSlot? producers
+                      key.absorbInput with
+                  | none =>
+                      simp [Q16DagWorkSlotSound, dagMemoryAfterInput,
+                        dagCoreMemoryAfterInput, dagPreferredSlotForInput,
+                        dagRawPreferredSlot, absorbNeWork,
+                        noneFresh, output]
+                  | some slot =>
+                      by_cases outputUsed :
+                        (some slot : FinalWorkQ16DigestSlot) ∈ usedSlots <;>
+                        simp [Q16DagWorkSlotSound, dagMemoryAfterInput,
+                          dagCoreMemoryAfterInput, dagPreferredSlotForInput,
+                          dagRawPreferredSlot, absorbNeWork,
+                          noneFresh, output, outputUsed]
+                · cases output : q16DagOutputSlot? producers input with
+                  | none =>
+                      simp [Q16DagWorkSlotSound, dagMemoryAfterInput,
+                        dagCoreMemoryAfterInput, dagPreferredSlotForInput,
+                        dagRawPreferredSlot, isWork, isAbsorb, noneFresh,
+                        output]
+                  | some slot =>
+                      by_cases outputUsed :
+                        (some slot : FinalWorkQ16DigestSlot) ∈ usedSlots <;>
+                        simp [Q16DagWorkSlotSound, dagMemoryAfterInput,
+                          dagCoreMemoryAfterInput, dagPreferredSlotForInput,
+                          dagRawPreferredSlot, isWork, isAbsorb, noneFresh,
+                          output, outputUsed]
+            | some base =>
+                cases output : q16DagOutputSlot? producers input with
+                | none =>
+                    simp [Q16DagWorkSlotSound, dagMemoryAfterInput,
+                      dagCoreMemoryAfterInput, dagPreferredSlotForInput,
+                      dagRawPreferredSlot, isWork, noneFresh, output]
+                | some slot =>
+                    by_cases outputUsed :
+                      (some slot : FinalWorkQ16DigestSlot) ∈ usedSlots <;>
+                      simp [Q16DagWorkSlotSound, dagMemoryAfterInput,
+                        dagCoreMemoryAfterInput, dagPreferredSlotForInput,
+                        dagRawPreferredSlot, isWork, noneFresh, output,
+                        outputUsed]
+      | true =>
+          cases q16Base with
+          | none =>
+              by_cases isAbsorb : input = key.absorbInput <;>
+                simp [Q16DagWorkSlotSound, dagMemoryAfterInput,
+                  dagCoreMemoryAfterInput, dagPreferredSlotForInput,
+                  dagRawPreferredSlot, isAbsorb]
+          | some base =>
+              simp [Q16DagWorkSlotSound, dagMemoryAfterInput,
+                dagCoreMemoryAfterInput, dagPreferredSlotForInput,
+                dagRawPreferredSlot]
+
 theorem dag_memory_after_input_preserves_tracks_base
     (anchorIndex exposureIndex : Nat) (memory : FinalWorkQ16DagMemory)
     (key : RawFinalWorkKey) (base : Digest256)
@@ -146,6 +274,23 @@ theorem dag_candidate_after_memory_preserves_tracks_base
         dag_memory_after_input_preserves_tracks_base anchorIndex
           state.exposureIndex state.memory key base input answer tracked
 
+theorem dag_candidate_after_memory_preserves_work_slot_sound
+    {globalOracleCalls : Nat}
+    (transitionFuel anchorIndex : Nat)
+    (state : IndexedUnifiedExposureState globalOracleCalls
+      FinalWorkQ16DagMemory)
+    (answer : Digest256)
+    (sound : Q16DagWorkSlotSound state.memory) :
+    Q16DagWorkSlotSound
+      (dagCandidateAfterMemory transitionFuel anchorIndex state answer) := by
+  unfold dagCandidateAfterMemory
+  cases inputExact : unifiedInputBeforeAnswer? transitionFuel state.cursor with
+  | none => simpa [inputExact] using sound
+  | some input =>
+      simpa [inputExact] using
+        dag_memory_after_input_preserves_work_slot_sound anchorIndex
+          state.exposureIndex state.memory input answer sound
+
 /-- Prefix-independent monotonicity used between a producer coordinate and
 either of its two children. -/
 theorem dag_indexed_state_preserves_tracks_base
@@ -177,6 +322,137 @@ theorem dag_indexed_state_preserves_tracks_base
             anchorIndex state key base record.answer tracked
       rw [indexed_state_after_records_cons]
       exact ih next key base nextTracked
+
+theorem dag_indexed_state_preserves_work_slot_sound
+    {globalOracleCalls : Nat}
+    (transitionFuel anchorIndex : Nat) :
+    ∀ (records : List UnifiedExposureRecord)
+      (state : IndexedUnifiedExposureState globalOracleCalls
+        FinalWorkQ16DagMemory),
+      Q16DagWorkSlotSound state.memory →
+      Q16DagWorkSlotSound
+        (indexedStateAfterRecords transitionFuel
+          (finalWorkQ16DagController globalOracleCalls transitionFuel
+            anchorIndex) records state).memory := by
+  intro records
+  induction records with
+  | nil =>
+      intro state sound
+      simpa only [indexed_state_after_records_nil] using sound
+  | cons record records ih =>
+      intro state sound
+      let controller := finalWorkQ16DagController globalOracleCalls
+        transitionFuel anchorIndex
+      let next := controller.afterAnswer transitionFuel state record.answer
+      have nextSound : Q16DagWorkSlotSound next.memory := by
+        simpa [next, controller, finalWorkQ16DagController,
+          IndexedUnifiedExposureController.afterAnswer] using
+          dag_candidate_after_memory_preserves_work_slot_sound transitionFuel
+            anchorIndex state record.answer sound
+      rw [indexed_state_after_records_cons]
+      exact ih next nextSound
+
+theorem dag_memory_after_nonwork_preserves_base_before_work
+    (anchorIndex exposureIndex : Nat) (memory : FinalWorkQ16DagMemory)
+    (key : RawFinalWorkKey) (base : Digest256)
+    (input : ShaInput) (answer : Digest256)
+    (inputNe : input ≠ key.workInput)
+    (tracked : Q16DagTracksBaseBeforeWork memory key base) :
+    Q16DagTracksBaseBeforeWork
+      (dagMemoryAfterInput anchorIndex exposureIndex memory input answer)
+      key base := by
+  obtain ⟨anchorExact, baseExact⟩ := tracked
+  rcases memory with ⟨anchor, q16Base, producers, usedSlots⟩
+  simp only at anchorExact baseExact
+  subst anchor
+  subst q16Base
+  constructor <;>
+    simp [dagMemoryAfterInput, dagCoreMemoryAfterInput, inputNe]
+
+theorem dag_candidate_after_nonwork_preserves_base_before_work
+    {globalOracleCalls : Nat}
+    (transitionFuel anchorIndex : Nat)
+    (state : IndexedUnifiedExposureState globalOracleCalls
+      FinalWorkQ16DagMemory)
+    (key : RawFinalWorkKey) (base answer : Digest256)
+    (input : ShaInput)
+    (inputExact : unifiedInputBeforeAnswer? transitionFuel state.cursor =
+      some input)
+    (inputNe : input ≠ key.workInput)
+    (tracked : Q16DagTracksBaseBeforeWork state.memory key base) :
+    Q16DagTracksBaseBeforeWork
+      (dagCandidateAfterMemory transitionFuel anchorIndex state answer)
+      key base := by
+  unfold dagCandidateAfterMemory
+  rw [inputExact]
+  exact dag_memory_after_nonwork_preserves_base_before_work anchorIndex
+    state.exposureIndex state.memory key base input answer inputNe tracked
+
+/-- Aligned machine-fresh records that avoid the literal work coordinate keep
+the absorb-first anchor at `workSeen = false`. Q16 producers may still evolve
+under adversarial prequeries. -/
+theorem aligned_machine_records_preserve_dag_base_before_work
+    {globalOracleCalls : Nat}
+    (transitionFuel anchorIndex : Nat)
+    (key : RawFinalWorkKey) (base : Digest256) :
+    ∀ (records : List UnifiedExposureRecord)
+      (state : IndexedUnifiedExposureState globalOracleCalls
+        FinalWorkQ16DagMemory),
+      IndexedRecordsAligned transitionFuel
+          (finalWorkQ16DagController globalOracleCalls transitionFuel
+            anchorIndex) state records →
+      OnlyMachineFreshRecords records →
+      (∀ record ∈ records,
+        causalInput? record ≠ some key.workInput) →
+      Q16DagTracksBaseBeforeWork state.memory key base →
+      Q16DagTracksBaseBeforeWork
+        (indexedStateAfterRecords transitionFuel
+          (finalWorkQ16DagController globalOracleCalls transitionFuel
+            anchorIndex) records state).memory key base := by
+  intro records
+  induction records with
+  | nil =>
+      intro state _aligned _onlyMachine _avoids tracked
+      simpa only [indexed_state_after_records_nil] using tracked
+  | cons head tail ih =>
+      intro state aligned onlyMachine avoids tracked
+      obtain ⟨actor, input, answer, headExact⟩ :=
+        onlyMachine head (by simp)
+      subst head
+      have headAligned := aligned [] (.machineFresh actor input answer) tail
+        (by rfl)
+      have inputExact : unifiedInputBeforeAnswer? transitionFuel state.cursor =
+          some input := by
+        simpa only [indexed_state_after_records_nil] using
+          aligned_machine_record_has_exact_input transitionFuel state.cursor
+            actor input answer headAligned
+      have inputNe : input ≠ key.workInput := by
+        intro equal
+        apply avoids (.machineFresh actor input answer) (by simp)
+        simp [causalInput?, equal]
+      let controller := finalWorkQ16DagController globalOracleCalls
+        transitionFuel anchorIndex
+      let next := controller.afterAnswer transitionFuel state answer
+      have nextTracked : Q16DagTracksBaseBeforeWork next.memory key base := by
+        simpa [next, controller, finalWorkQ16DagController,
+          IndexedUnifiedExposureController.afterAnswer] using
+          dag_candidate_after_nonwork_preserves_base_before_work transitionFuel
+            anchorIndex state key base answer input inputExact inputNe tracked
+      have tailAligned : IndexedRecordsAligned transitionFuel controller next
+          tail := by
+        apply indexed_records_aligned_segment transitionFuel controller state
+          ((.machineFresh actor input answer) :: tail)
+          [(.machineFresh actor input answer)] tail [] aligned
+        simp
+      have tailOnly : OnlyMachineFreshRecords tail := by
+        intro record member
+        exact onlyMachine record (by simp [member])
+      have tailAvoids : ∀ record ∈ tail,
+          causalInput? record ≠ some key.workInput := by
+        intro record member
+        exact avoids record (by simp [member])
+      rw [indexed_state_after_records_cons]
+      exact ih next tailAligned tailOnly tailAvoids nextTracked
 
 /-- Before its fixed ordinal the causal-DAG controller remains completely
 inactive, just like the older branch controller. -/
@@ -287,6 +563,78 @@ theorem exact_dag_absorb_anchor_tracks_base
   unfold dagCandidateAfterMemory
   rw [inputExact]
   refine ⟨false, ?_, ?_⟩
+  · simp [dagMemoryAfterInput, dagCoreMemoryAfterInput, beforeIndex,
+      beforeInactive, inactiveDagMemory]
+  · simp [dagMemoryAfterInput, dagCoreMemoryAfterInput, beforeIndex,
+      beforeInactive, inactiveDagMemory]
+
+/-- Strong absorb-first form: immediately after the selected anchor the q16
+base is installed and the matching final-work input has not yet been seen. -/
+theorem exact_dag_absorb_anchor_tracks_base_before_work
+    {HiddenTape TapeIdentity Observation Statement Payload Result : Type}
+    {parameters : ExactCompilerResourceParameters}
+    {transitionFuel : Nat}
+    {configuration : ExactPlainRomConfiguration HiddenTape TapeIdentity
+      Observation Statement Tag73K12ParsedProof Payload Result parameters}
+    {projection : AcceptedTapeProjection Statement Tag73K12ParsedProof Payload}
+    {fixedInstance : PublicInstance Statement}
+    {sample : ExactCompilerSample HiddenTape parameters}
+    (input : ExactK12OperationalInput transitionFuel configuration projection
+      fixedInstance sample)
+    (digest base : Digest256) (nonce : NonceBytes)
+    (trial : ExactCompilerExposureTrial parameters)
+    (prior later : List UnifiedExposureRecord) (actor : QueryActor)
+    (trialExact : trial.val = prior.length)
+    (decomposition : exactFixedRootRecords input.package.root =
+      prior ++
+        (.machineFresh actor
+          (literalFinalWorkKey digest nonce).absorbInput base :
+          UnifiedExposureRecord) :: later) :
+    Q16DagTracksBaseBeforeWork
+      (indexedStateAfterRecords transitionFuel
+        (exactDagTrialController transitionFuel trial)
+        (prior ++
+          [(.machineFresh actor
+            (literalFinalWorkKey digest nonce).absorbInput base :
+            UnifiedExposureRecord)])
+        (exactDagCandidateInitialState input)).memory
+      (literalFinalWorkKey digest nonce) base := by
+  let controller := exactDagTrialController transitionFuel trial
+  let initial := exactDagCandidateInitialState input
+  let beforeAbsorb := indexedStateAfterRecords transitionFuel controller prior
+    initial
+  have beforeIndex : beforeAbsorb.exposureIndex = trial.val := by
+    have count := indexed_state_after_records_exposure_index transitionFuel
+      controller prior initial
+    simpa [beforeAbsorb, initial, exactDagCandidateInitialState, trialExact]
+      using count
+  have beforeInactive : beforeAbsorb.memory = inactiveDagMemory := by
+    apply dag_memory_stays_inactive_before_anchor transitionFuel trial.val prior
+      initial
+    · simp [initial, exactDagCandidateInitialState, trialExact]
+    · simp [initial, exactDagCandidateInitialState]
+  have aligned : unifiedRecordAtAnswer transitionFuel beforeAbsorb.cursor base =
+      .machineFresh actor (literalFinalWorkKey digest nonce).absorbInput base := by
+    have rootAligned := exact_root_records_aligned_for_dag_controller input
+      trial.val prior
+        (.machineFresh actor
+          (literalFinalWorkKey digest nonce).absorbInput base)
+        later decomposition
+    simpa [beforeAbsorb, controller, exactDagTrialController, initial,
+      UnifiedExposureRecord.answer] using rootAligned
+  have inputExact : unifiedInputBeforeAnswer? transitionFuel
+      beforeAbsorb.cursor =
+        some (literalFinalWorkKey digest nonce).absorbInput :=
+    aligned_machine_record_has_exact_input transitionFuel beforeAbsorb.cursor
+      actor (literalFinalWorkKey digest nonce).absorbInput base aligned
+  rw [indexed_state_after_records_append,
+    indexed_state_after_records_cons, indexed_state_after_records_nil]
+  change Q16DagTracksBaseBeforeWork
+    (dagCandidateAfterMemory transitionFuel trial.val beforeAbsorb base)
+      (literalFinalWorkKey digest nonce) base
+  unfold dagCandidateAfterMemory
+  rw [inputExact]
+  constructor
   · simp [dagMemoryAfterInput, dagCoreMemoryAfterInput, beforeIndex,
       beforeInactive, inactiveDagMemory]
   · simp [dagMemoryAfterInput, dagCoreMemoryAfterInput, beforeIndex,
@@ -431,6 +779,30 @@ def ExactDagProducerInstalled
           [(.machineFresh actor producer.sourceInput producer.digest :
             UnifiedExposureRecord)])
         (exactDagCandidateInitialState input)).memory.producers
+
+/-- The selected final-work answer is named by the `none` slot in the same
+exact causal-DAG trial used for q16 routing. -/
+def ExactDagFinalWorkLabeled
+    {HiddenTape TapeIdentity Observation Statement Payload Result : Type}
+    {parameters : ExactCompilerResourceParameters}
+    {transitionFuel : Nat}
+    {configuration : ExactPlainRomConfiguration HiddenTape TapeIdentity
+      Observation Statement Tag73K12ParsedProof Payload Result parameters}
+    {projection : AcceptedTapeProjection Statement Tag73K12ParsedProof Payload}
+    {fixedInstance : PublicInstance Statement}
+    {sample : ExactCompilerSample HiddenTape parameters}
+    (input : ExactK12OperationalInput transitionFuel configuration projection
+      fixedInstance sample)
+    (trial : ExactCompilerExposureTrial parameters)
+    (key : RawFinalWorkKey) (answer : Digest256) : Prop :=
+  ∃ prior later actor,
+    exactFixedRootRecords input.package.root =
+      prior ++ (.machineFresh actor key.workInput answer :
+        UnifiedExposureRecord) :: later ∧
+    (exactDagTrialController transitionFuel trial).preferredSlot
+      (indexedStateAfterRecords transitionFuel
+        (exactDagTrialController transitionFuel trial) prior
+        (exactDagCandidateInitialState input)) = some none
 
 /-- A candidate record after any already-tracked base prefix installs the
 exact block-zero producer; projected-input uniqueness makes the conclusion
@@ -616,6 +988,10 @@ theorem exact_compiler_accepted_dag_trial_installs_all_candidates
         (trial : ExactCompilerExposureTrial parameters),
       FinalWork34Accepted workAnswer ∧
       base = (exactOperationalRawTrace input).q16BaseDigest ∧
+      ExactDagFinalWorkLabeled input trial
+        (literalFinalWorkKey digest
+          (exactOperationalTape input).messages.finalGrinding.selected)
+        workAnswer ∧
       ∀ (counter : Fin 64)
         (beforeSelected : counter.val ≤
           (exactOperationalTape input).search.selectedCounter.val),
@@ -678,7 +1054,48 @@ theorem exact_compiler_accepted_dag_trial_installs_all_candidates
         workAnswer base nonce trial prior middle later workActor absorbActor
         (by rfl) pairExact
       simpa [basePrefix, workRecord, absorbRecord, key] using ready
-    refine ⟨digest, workAnswer, base, trial, workAccepted, baseExact, ?_⟩
+    have workLabeled : ExactDagFinalWorkLabeled input trial
+        (literalFinalWorkKey digest
+          (exactOperationalTape input).messages.finalGrinding.selected)
+        workAnswer := by
+      refine ⟨prior, middle ++ absorbRecord :: later, workActor, ?_, ?_⟩
+      · simpa [workRecord, key, nonce, List.cons_append,
+          List.append_assoc] using workFirst
+      · let beforeWork := indexedStateAfterRecords transitionFuel
+          (exactDagTrialController transitionFuel trial) prior
+          (exactDagCandidateInitialState input)
+        have beforeIndex : beforeWork.exposureIndex = trial.val := by
+          have count := indexed_state_after_records_exposure_index
+            transitionFuel (exactDagTrialController transitionFuel trial) prior
+              (exactDagCandidateInitialState input)
+          simpa [beforeWork, exactDagCandidateInitialState, trial] using count
+        have beforeInactive : beforeWork.memory = inactiveDagMemory := by
+          apply dag_memory_stays_inactive_before_anchor transitionFuel
+            trial.val prior (exactDagCandidateInitialState input)
+          · simp [exactDagCandidateInitialState, trial]
+          · simp [exactDagCandidateInitialState]
+        have pairAtWork : exactFixedRootRecords input.package.root =
+            prior ++ workRecord :: (middle ++ absorbRecord :: later) := by
+          simpa only [List.cons_append, List.append_assoc] using workFirst
+        have aligned : unifiedRecordAtAnswer transitionFuel beforeWork.cursor
+            workAnswer = workRecord := by
+          have rootAligned := exact_root_records_aligned_for_dag_controller
+            input trial.val prior workRecord
+              (middle ++ absorbRecord :: later) pairAtWork
+          simpa [beforeWork, workRecord, UnifiedExposureRecord.answer,
+            exactDagTrialController] using rootAligned
+        have inputExact : unifiedInputBeforeAnswer? transitionFuel
+            beforeWork.cursor = some key.workInput :=
+          aligned_machine_record_has_exact_input transitionFuel
+            beforeWork.cursor workActor key.workInput workAnswer (by
+              simpa [workRecord] using aligned)
+        change dagCandidatePreferredSlot transitionFuel trial.val beforeWork =
+          some none
+        simp [dagCandidatePreferredSlot, inputExact, dagPreferredSlotForInput,
+          dagRawPreferredSlot, beforeIndex, beforeInactive, inactiveDagMemory,
+          key, nonce]
+    refine ⟨digest, workAnswer, base, trial, workAccepted, baseExact,
+      workLabeled, ?_⟩
     intro counter beforeSelected
     obtain ⟨absorbPrior, candidateMiddle, candidateLater,
         firstAbsorbActor, candidateActor, absorbBeforeCandidate⟩ :=
@@ -754,7 +1171,91 @@ theorem exact_compiler_accepted_dag_trial_installs_all_candidates
         trial prior (middle ++ workRecord :: later) absorbActor (by rfl)
         absorbExact
       simpa [basePrefix, absorbRecord, key] using ready
-    refine ⟨digest, workAnswer, base, trial, workAccepted, baseExact, ?_⟩
+    let workPrior := prior ++ absorbRecord :: middle
+    let beforeWork := indexedStateAfterRecords transitionFuel
+      (exactDagTrialController transitionFuel trial) workPrior
+      (exactDagCandidateInitialState input)
+    have beforeWorkTracked : Q16DagTracksBaseBeforeWork beforeWork.memory
+        key base := by
+      let afterAbsorb := indexedStateAfterRecords transitionFuel
+        (exactDagTrialController transitionFuel trial) basePrefix
+        (exactDagCandidateInitialState input)
+      have afterAbsorbTracked : Q16DagTracksBaseBeforeWork afterAbsorb.memory
+          key base := by
+        have ready := exact_dag_absorb_anchor_tracks_base_before_work input
+          digest base nonce trial prior (middle ++ workRecord :: later)
+            absorbActor (by rfl) absorbExact
+        simpa [afterAbsorb, basePrefix, absorbRecord, key] using ready
+      have segmentDecomposition : exactFixedRootRecords input.package.root =
+          basePrefix ++ middle ++ (workRecord :: later) := by
+        simpa [basePrefix, List.cons_append, List.append_assoc] using
+          absorbFirst
+      have fullAligned := exact_root_records_aligned_for_dag_controller input
+        trial.val
+      have middleAlignedRaw := indexed_records_aligned_segment transitionFuel
+        (exactDagTrialController transitionFuel trial)
+        (exactDagCandidateInitialState input)
+        (exactFixedRootRecords input.package.root) basePrefix middle
+          (workRecord :: later) fullAligned segmentDecomposition
+      have middleAligned : IndexedRecordsAligned transitionFuel
+          (exactDagTrialController transitionFuel trial) afterAbsorb middle := by
+        simpa [afterAbsorb] using middleAlignedRaw
+      have middleOnly := only_machine_fresh_records_segment
+        (exactFixedRootRecords input.package.root) basePrefix middle
+          (workRecord :: later) (exact_root_records_only_machine_fresh input)
+            segmentDecomposition
+      have middleAvoidsRaw := strict_record_middle_avoids_second_input
+        (exactFixedRootRecords input.package.root) prior middle later
+          absorbRecord workRecord (exact_root_record_causal_inputs_nodup input)
+            absorbFirst
+      have middleAvoids : ∀ record ∈ middle,
+          causalInput? record ≠ some key.workInput := by
+        intro record member
+        simpa [workRecord, causalInput?] using
+          middleAvoidsRaw record member
+      have preserved := aligned_machine_records_preserve_dag_base_before_work
+        transitionFuel trial.val key base middle afterAbsorb middleAligned
+          middleOnly middleAvoids afterAbsorbTracked
+      simpa [beforeWork, workPrior, afterAbsorb, basePrefix,
+        indexed_state_after_records_append, exactDagTrialController] using
+          preserved
+    have workLabeled : ExactDagFinalWorkLabeled input trial
+        (literalFinalWorkKey digest
+          (exactOperationalTape input).messages.finalGrinding.selected)
+        workAnswer := by
+      refine ⟨workPrior, later, workActor, ?_, ?_⟩
+      · simpa [workPrior, workRecord, key, nonce, List.cons_append,
+          List.append_assoc] using absorbFirst
+      · have pairAtWork : exactFixedRootRecords input.package.root =
+            workPrior ++ workRecord :: later := by
+          simpa [workPrior, List.cons_append, List.append_assoc] using
+            absorbFirst
+        have aligned : unifiedRecordAtAnswer transitionFuel beforeWork.cursor
+            workAnswer = workRecord := by
+          have rootAligned := exact_root_records_aligned_for_dag_controller
+            input trial.val workPrior workRecord later pairAtWork
+          simpa [beforeWork, workRecord, UnifiedExposureRecord.answer,
+            exactDagTrialController] using rootAligned
+        have inputExact : unifiedInputBeforeAnswer? transitionFuel
+            beforeWork.cursor = some key.workInput :=
+          aligned_machine_record_has_exact_input transitionFuel
+            beforeWork.cursor workActor key.workInput workAnswer (by
+              simpa [workRecord] using aligned)
+        have workSlotSound : Q16DagWorkSlotSound beforeWork.memory := by
+          have preserved := dag_indexed_state_preserves_work_slot_sound
+            transitionFuel trial.val workPrior
+              (exactDagCandidateInitialState input)
+                inactive_dag_memory_work_slot_sound
+          simpa [beforeWork, exactDagTrialController] using preserved
+        have noneFresh : (none : FinalWorkQ16DigestSlot) ∉
+            beforeWork.memory.usedSlots := by
+          simpa [Q16DagWorkSlotSound, beforeWorkTracked.1] using workSlotSound
+        change dagCandidatePreferredSlot transitionFuel trial.val beforeWork =
+          some none
+        simp [dagCandidatePreferredSlot, inputExact, dagPreferredSlotForInput,
+          dagRawPreferredSlot, beforeWorkTracked.1, noneFresh]
+    refine ⟨digest, workAnswer, base, trial, workAccepted, baseExact,
+      workLabeled, ?_⟩
     intro counter beforeSelected
     obtain ⟨absorbPrior, candidateMiddle, candidateLater,
         firstAbsorbActor, candidateActor, absorbBeforeCandidate⟩ :=
@@ -1203,6 +1704,37 @@ theorem exact_dag_operational_q16_candidate_blocks_decode
   exact (exactOperationalQ16BranchCoordinates input counter
     beforeSelected).decoded
 
+/-- The selected final-work component of the joint factorization is exactly
+the `none` named slot of the causal router. -/
+theorem exact_compiler_final_work_apply_eq_named_slot_coordinate
+    (parameters : ExactCompilerResourceParameters)
+    (router : ExactCompilerCausalFinalWorkQ16Router parameters)
+    (tape : FreshAnswerTape Digest256
+      (exactCompilerTargetCaps parameters).length) :
+    (exactCompilerCausalFinalWorkQ16Coordinates parameters router tape).2.1 =
+      (router.coordinateEquiv
+        (finalWorkQ16NamedSlotInputTape
+          (exactCompilerFinalWorkQ16InputTape parameters tape))).1
+        ⟨none, Finset.mem_univ _⟩ := by
+  rfl
+
+theorem exact_compiler_final_work_coordinate_eq_of_routed_lookup
+    (parameters : ExactCompilerResourceParameters)
+    (router : ExactCompilerCausalFinalWorkQ16Router parameters)
+    (tape : FreshAnswerTape Digest256
+      (exactCompilerTargetCaps parameters).length)
+    (answer : Digest256)
+    (routed : causalRoutedAnswer? none router
+      (finalWorkQ16NamedSlotInputTape
+        (exactCompilerFinalWorkQ16InputTape parameters tape)) = some answer) :
+    (exactCompilerCausalFinalWorkQ16Coordinates parameters router tape).2.1 =
+      answer := by
+  rw [exact_compiler_final_work_apply_eq_named_slot_coordinate]
+  exact coordinate_eq_of_causalRoutedAnswer?_eq_some router
+    (finalWorkQ16NamedSlotInputTape
+      (exactCompilerFinalWorkQ16InputTape parameters tape))
+    none (Finset.mem_univ _) answer routed
+
 /-- Accepted production execution supplies one concrete restoration trial in
 which every consumed q16 block is routed to its literal source answer. Thus
 the online causal router realizes the same first-cap-203 search consumed by
@@ -1227,6 +1759,10 @@ theorem exact_compiler_accepted_dag_q16_operational_realization
         (trial : ExactCompilerExposureTrial parameters),
       FinalWork34Accepted workAnswer ∧
       base = (exactOperationalRawTrace input).q16BaseDigest ∧
+      (exactCompilerCausalFinalWorkQ16Coordinates parameters
+        (exactCompilerExposureTrialDagRouter parameters transitionFuel trial
+          (exactPlainRomCursor configuration sample.1).erase)
+        sample.2).2.1 = workAnswer ∧
       OperationalQ16ForestRealization
         (exactOperationalTape input).frontierNodes
         (exactOperationalTape input).search
@@ -1235,7 +1771,7 @@ theorem exact_compiler_accepted_dag_q16_operational_realization
             (exactPlainRomCursor configuration sample.1).erase)
           sample.2).2.2 := by
   obtain ⟨digest, workAnswer, base, trial, workAccepted, baseExact,
-      installed⟩ :=
+      workLabeled, installed⟩ :=
     exact_compiler_accepted_dag_trial_installs_all_candidates transitionRoom
       input
   have residualEnough :
@@ -1243,6 +1779,29 @@ theorem exact_compiler_accepted_dag_q16_operational_realization
         (exactCompilerTargetCaps parameters).length - 513 :=
     exact_dag_candidate_root_residual_enough_of_programmed_cover input trial
       programmedCover
+  obtain ⟨workPrior, workLater, workActor, workDecomposition,
+      workPreferred⟩ := workLabeled
+  have workRouted :
+      causalRoutedAnswer? none
+          (exactCompilerExposureTrialDagRouter parameters transitionFuel trial
+            (exactPlainRomCursor configuration sample.1).erase)
+          (finalWorkQ16NamedSlotInputTape
+            (exactCompilerFinalWorkQ16InputTape parameters sample.2)) =
+        some workAnswer :=
+    exact_dag_candidate_router_routes_selected_root_answer input trial
+      workPrior workLater workActor
+      (literalFinalWorkKey digest
+        (exactOperationalTape input).messages.finalGrinding.selected).workInput
+      workAnswer none workDecomposition residualEnough workPreferred
+  have workCoordinate :
+      (exactCompilerCausalFinalWorkQ16Coordinates parameters
+        (exactCompilerExposureTrialDagRouter parameters transitionFuel trial
+          (exactPlainRomCursor configuration sample.1).erase)
+        sample.2).2.1 = workAnswer :=
+    exact_compiler_final_work_coordinate_eq_of_routed_lookup parameters
+      (exactCompilerExposureTrialDagRouter parameters transitionFuel trial
+        (exactPlainRomCursor configuration sample.1).erase)
+      sample.2 workAnswer workRouted
   have candidateLengthCap : ∀ counter,
       counter.val ≤ (exactOperationalTape input).search.selectedCounter.val →
       (exactDagOperationalQ16CandidateBlocks input counter).length ≤ 8 := by
@@ -1327,7 +1886,8 @@ theorem exact_compiler_accepted_dag_q16_operational_realization
         (exactOperationalTape input).frontierNodes schedule := by
     intro counter schedule _beforeSelected _outcomeExact
     exact (frontierExact schedule).symm
-  refine ⟨digest, workAnswer, base, trial, workAccepted, baseExact, ?_⟩
+  refine ⟨digest, workAnswer, base, trial, workAccepted, baseExact,
+    workCoordinate, ?_⟩
   exact exact_compiler_final_work_q16_operational_realization_of_used_lookups
     parameters
     (exactCompilerExposureTrialDagRouter parameters transitionFuel trial
@@ -1338,14 +1898,24 @@ theorem exact_compiler_accepted_dag_q16_operational_realization
 
 #print axioms mapped_nodup_selected_prefix_eq
 #print axioms Q16DagTracksBase
+#print axioms Q16DagTracksBaseBeforeWork
+#print axioms Q16DagWorkSlotSound
+#print axioms dag_memory_after_input_preserves_work_slot_sound
+#print axioms dag_candidate_after_memory_preserves_work_slot_sound
+#print axioms dag_indexed_state_preserves_work_slot_sound
+#print axioms dag_memory_after_nonwork_preserves_base_before_work
+#print axioms dag_candidate_after_nonwork_preserves_base_before_work
+#print axioms aligned_machine_records_preserve_dag_base_before_work
 #print axioms dag_memory_after_input_preserves_tracks_base
 #print axioms dag_candidate_after_memory_preserves_tracks_base
 #print axioms dag_indexed_state_preserves_tracks_base
 #print axioms dag_memory_stays_inactive_before_anchor
 #print axioms exact_dag_absorb_anchor_tracks_base
+#print axioms exact_dag_absorb_anchor_tracks_base_before_work
 #print axioms exact_dag_work_then_absorb_tracks_base
 #print axioms producer_member_implies_tracks_some_base
 #print axioms ExactDagProducerInstalled
+#print axioms ExactDagFinalWorkLabeled
 #print axioms exact_dag_candidate_installed_after_tracked_prefix
 #print axioms exact_compiler_accepted_dag_trial_installs_all_candidates
 #print axioms exact_dag_installed_producer_available_before_ordered_child
@@ -1355,6 +1925,8 @@ theorem exact_compiler_accepted_dag_q16_operational_realization
 #print axioms exactDagOperationalQ16CandidateBlocks
 #print axioms exact_dag_operational_q16_candidate_blocks_length
 #print axioms exact_dag_operational_q16_candidate_blocks_decode
+#print axioms exact_compiler_final_work_apply_eq_named_slot_coordinate
+#print axioms exact_compiler_final_work_coordinate_eq_of_routed_lookup
 #print axioms exact_compiler_accepted_dag_q16_operational_realization
 
 end

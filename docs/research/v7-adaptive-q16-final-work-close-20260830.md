@@ -2,8 +2,9 @@
 
 ## Classification
 
-Kernel-checked semantic probability closure and accepted-source q16 causal
-forest realization; joint final-work event/source composition still open.
+Kernel-checked semantic probability closure and same-trial accepted-source
+final-work/q16 causal-forest realization; K1.3–K1.5 event composition remains
+open.
 
 This milestone fixes the adversary-prequery problem honestly. A raw SHA input
 does not identify whether a cached answer will later serve as lambda, gamma,
@@ -631,21 +632,31 @@ exact_compiler_accepted_dag_q16_operational_realization
 ```
 
 It constructs a concrete accepted trial whose 513-slot causal router realizes
-the complete operational q16 search on every consumed block. The proof uses
-the source decoder's literal branch coordinates, the exact root ordering, the
-one-shot slot provenance, and the conservative residual-capacity theorem. It
-does not equate unused padded suffix coordinates and introduces no trace-cover
-premise or new bad event. The remaining deterministic step is only the
-accepted final-work `none`-slot handoff for this same trial, after which the
-existing joint product theorem can be instantiated.
+both the exact selected 34-bit final-work digest and the complete operational
+q16 search on every consumed block. The same existential trial supplies both
+results; they are not obtained from separately selected replays.
 
-The current deterministic boundary is now only the recursive composition:
-start the block-zero producer at each exact candidate record, propagate each
-used advance edge through the actual root chronology, apply the exact output
-label/router theorem at every consumed output, and construct the already
-defined `OperationalQ16ForestRealization`.  After that, the only separate
-accounting choice is whether to prove a selectable trial inventory of at most
-`2^34` or retain the exact general `F * p / 2^34` term.
+The absorb-first chronology is handled explicitly. Lean proves that the q16
+base remains attached to an anchor with `workSeen = false` across every
+intervening aligned machine-fresh record that avoids the matching work input.
+A separate monotone invariant proves that the final-work `none` slot cannot
+already have been consumed while that flag is false. Therefore the eventual
+literal work record receives the `none` label even under adversary-first q16
+prequeries, sibling reordering, and advance-driven pipelining. The work-first
+chronology labels the same slot directly at its inactive anchor.
+
+The theorem then converts the recursive routed lookup into the actual
+`Digest256` component of `exactCompilerCausalFinalWorkQ16Coordinates`, while
+the used-prefix endpoint constructs `OperationalQ16ForestRealization` from the
+same coordinate equivalence. It does not equate unused padded suffix
+coordinates and introduces no trace-cover premise or new bad event.
+
+The remaining cryptographic boundary is probabilistic/event composition:
+embed this same-trial deterministic realization into the exact K1.3, K1.4 and
+K1.5 bad-event predicates, discharge their current-source decode premises,
+and instantiate the already-proved finite-trial union bound. The accounting
+choice remains explicit: prove a selectable trial inventory of at most
+`2^34`, or retain the exact general `F * p / 2^34` term.
 
 Focused replay added by this milestone:
 
@@ -654,11 +665,14 @@ cd AspisFormal
 lake env lean AspisFormal/K1/V7Tag73CausalDagProducerInvariant.lean
 lake env lean AspisFormal/K1/V7Tag73ExactDagCandidateLabeledRootRouting.lean
 lake env lean AspisFormal/K1/V7Tag73ExactDagQ16OutputLabel.lean
+lake env lean AspisFormal/K1/V7Tag73ExactDagQ16ChainRouting.lean
 ```
 
 The direct producer-invariant and exact-output-label checks completed locally
 at approximately 5.70 GiB and 5.67 GiB peak RSS respectively.  The focused
-Lake build completed all three targets successfully.  The library-suggestion
+same-trial chain-routing check completed in approximately six seconds at
+5.81 GiB peak RSS with zero swap. The focused Lake build completed all four
+targets successfully. The library-suggestion
 writer emitted its known post-elaboration recursion diagnostic while writing
 large module metadata, but the target objects were produced and the build
 exited successfully.  Every printed theorem axiom set remains a subset of
