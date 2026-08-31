@@ -2,6 +2,7 @@ import AspisFormal.K1.V7Tag73DagFinalWorkPairCompletion
 import AspisFormal.K1.V7Tag73ExactDagQ16OutputLabel
 import AspisFormal.K1.V7Tag73ExactQ16CausalCoordinateOrder
 import AspisFormal.K1.V7Tag73ExactRootRecordOrderLift
+import AspisFormal.K1.V7Tag73IndexedControllerLabeledRecords
 
 /-!
 # Exact recursive routing of the causal q16 DAG
@@ -50,6 +51,7 @@ open AspisK1.V7Tag73ExactSourceAcceptanceModel
 open AspisK1.V7Tag73FinalWorkQ16CandidateController
 open AspisK1.V7Tag73FinalWorkDigestProbability
 open AspisK1.V7Tag73IndexedAlignedRecordReplay
+open AspisK1.V7Tag73IndexedControllerLabeledRecords
 open AspisK1.V7Tag73IndexedControllerTraceAlignment
 open AspisK1.V7Tag73IndexedExposureCausalRouter
 open AspisK1.V7Tag73NoPairOccurrenceTrichotomy
@@ -496,6 +498,63 @@ theorem dag_memory_stays_inactive_before_anchor
       rw [indexed_state_after_records_cons]
       exact ih next nextAnchor nextInactive
 
+/-- Before the selected final-work anchor, the causal-DAG controller cannot
+reserve any final-work or q16 destination.  The labelled prefix is therefore
+entirely residual.  This is intentionally a controller fact, independent of
+whether a source coordinate was first queried by the adversary or verifier. -/
+theorem dag_labeled_records_before_anchor_all_residual
+    {globalOracleCalls : Nat}
+    (transitionFuel anchor : Nat) :
+    ∀ (records : List UnifiedExposureRecord)
+      (state : IndexedUnifiedExposureState globalOracleCalls
+        FinalWorkQ16DagMemory),
+      state.exposureIndex + records.length = anchor →
+      state.memory = inactiveDagMemory →
+      namedTraceSlots
+        (indexedControllerLabeledRecords transitionFuel
+          (finalWorkQ16DagController globalOracleCalls transitionFuel anchor)
+          state records) = [] := by
+  intro records
+  induction records with
+  | nil =>
+      intro state _anchorExact _inactive
+      rfl
+  | cons record records ih =>
+      intro state anchorExact inactive
+      have beforeAnchor : state.exposureIndex ≠ anchor := by
+        intro equal
+        rw [equal] at anchorExact
+        simp only [List.length_cons] at anchorExact
+        omega
+      let controller := finalWorkQ16DagController globalOracleCalls
+        transitionFuel anchor
+      let next := controller.afterAnswer transitionFuel state record.answer
+      have preferredNone : controller.preferredSlot state = none := by
+        unfold controller finalWorkQ16DagController
+        unfold dagCandidatePreferredSlot
+        cases inputExact : unifiedInputBeforeAnswer? transitionFuel state.cursor
+        · rfl
+        · simp [dagPreferredSlotForInput, dagRawPreferredSlot, inactive,
+            beforeAnchor, inactiveDagMemory]
+      have nextInactive : next.memory = inactiveDagMemory := by
+        simp only [next, controller, finalWorkQ16DagController,
+          IndexedUnifiedExposureController.afterAnswer]
+        cases inputExact : unifiedInputBeforeAnswer? transitionFuel state.cursor <;>
+          simp [dagCandidateAfterMemory, inputExact, inactive, beforeAnchor,
+            inactiveDagMemory, dagMemoryAfterInput, dagCoreMemoryAfterInput,
+            dagPreferredSlotForInput, dagRawPreferredSlot]
+      have nextAnchor : next.exposureIndex + records.length = anchor := by
+        simp only [next, indexed_after_answer_exposure_index,
+          List.length_cons] at anchorExact ⊢
+        omega
+      have tailResidual := ih next nextAnchor nextInactive
+      change namedTraceSlots
+        ((controller.preferredSlot state, record.answer) ::
+          indexedControllerLabeledRecords transitionFuel controller next
+            records) = []
+      rw [preferredNone]
+      exact tailResidual
+
 /-- If the exact nonce-absorb record is the selected trial anchor, consuming
 it installs the literal q16 base in the causal-DAG state. -/
 theorem exact_dag_absorb_anchor_tracks_base
@@ -813,6 +872,124 @@ def ExactDagFinalWorkPairLabeled
           (.machineFresh workActor key.workInput workAnswer :
             UnifiedExposureRecord) :: later ∧
       trial.val = prior.length)
+
+/-- The proof-relevant final-work pair anchor exposes an entirely residual
+literal prefix.  The result is deliberately about the controller labels only:
+it does not claim that this prefix was verifier-owned, since either selected
+pair input may have been prequeried by the adversary. -/
+theorem exact_dag_final_work_pair_labeled_prefix_all_residual
+    {HiddenTape TapeIdentity Observation Statement Payload Result : Type}
+    {parameters : ExactCompilerResourceParameters}
+    {transitionFuel : Nat}
+    {configuration : ExactPlainRomConfiguration HiddenTape TapeIdentity
+      Observation Statement Tag73K12ParsedProof Payload Result parameters}
+    {projection : AcceptedTapeProjection Statement Tag73K12ParsedProof Payload}
+    {fixedInstance : PublicInstance Statement}
+    {sample : ExactCompilerSample HiddenTape parameters}
+    (input : ExactK12OperationalInput transitionFuel configuration projection
+      fixedInstance sample)
+    (trial : ExactCompilerExposureTrial parameters)
+    (key : RawFinalWorkKey) (workAnswer base : Digest256)
+    (labeled : ExactDagFinalWorkPairLabeled input trial key workAnswer base) :
+    (∃ prior middle later workActor absorbActor,
+      exactFixedRootRecords input.package.root =
+        prior ++ (.machineFresh workActor key.workInput workAnswer :
+          UnifiedExposureRecord) :: middle ++
+          (.machineFresh absorbActor key.absorbInput base :
+          UnifiedExposureRecord) :: later ∧
+      trial.val = prior.length ∧
+      namedTraceSlots (List.take prior.length
+        (exactDagCandidateRootLabels input trial)) = []) ∨
+    (∃ prior middle later workActor absorbActor,
+      exactFixedRootRecords input.package.root =
+        prior ++ (.machineFresh absorbActor key.absorbInput base :
+          UnifiedExposureRecord) :: middle ++
+          (.machineFresh workActor key.workInput workAnswer :
+          UnifiedExposureRecord) :: later ∧
+      trial.val = prior.length ∧
+      namedTraceSlots (List.take prior.length
+        (exactDagCandidateRootLabels input trial)) = []) := by
+  rcases labeled with
+      ⟨prior, middle, later, workActor, absorbActor, recordsExact, trialExact⟩ |
+      ⟨prior, middle, later, workActor, absorbActor, recordsExact, trialExact⟩
+  · refine Or.inl ⟨prior, middle, later, workActor, absorbActor, recordsExact,
+      trialExact, ?_⟩
+    have prefixLabels : List.take prior.length
+        (exactDagCandidateRootLabels input trial) = indexedControllerLabeledRecords transitionFuel
+          (exactDagTrialController transitionFuel trial)
+          (exactDagCandidateInitialState input) prior := by
+      unfold exactDagCandidateRootLabels
+      let suffix :=
+        (.machineFresh workActor key.workInput workAnswer :
+          UnifiedExposureRecord) :: middle ++
+          (.machineFresh absorbActor key.absorbInput base :
+            UnifiedExposureRecord) :: later
+      have rootSplit : exactFixedRootRecords input.package.root =
+          prior ++ suffix := by
+        simpa [suffix, List.append_assoc] using recordsExact
+      rw [rootSplit]
+      rw [indexed_controller_labeled_records_append transitionFuel
+        (exactDagTrialController transitionFuel trial)
+        (exactDagCandidateInitialState input) prior suffix]
+      have prefixLength :
+          (indexedControllerLabeledRecords transitionFuel
+            (exactDagTrialController transitionFuel trial)
+            (exactDagCandidateInitialState input) prior).length =
+            prior.length := by
+        have answers := congrArg List.length
+          (indexed_controller_labeled_records_answers transitionFuel
+            (exactDagTrialController transitionFuel trial)
+            (exactDagCandidateInitialState input) prior)
+        simpa using answers
+      rw [List.take_append_of_le_length (by omega : prior.length ≤
+        (indexedControllerLabeledRecords transitionFuel
+          (exactDagTrialController transitionFuel trial)
+          (exactDagCandidateInitialState input) prior).length)]
+      simp [prefixLength]
+    rw [prefixLabels]
+    apply dag_labeled_records_before_anchor_all_residual transitionFuel trial.val
+      prior (exactDagCandidateInitialState input)
+    · simp [exactDagCandidateInitialState, trialExact]
+    · rfl
+  · refine Or.inr ⟨prior, middle, later, workActor, absorbActor, recordsExact,
+      trialExact, ?_⟩
+    have prefixLabels : List.take prior.length
+        (exactDagCandidateRootLabels input trial) = indexedControllerLabeledRecords transitionFuel
+          (exactDagTrialController transitionFuel trial)
+          (exactDagCandidateInitialState input) prior := by
+      unfold exactDagCandidateRootLabels
+      let suffix :=
+        (.machineFresh absorbActor key.absorbInput base :
+          UnifiedExposureRecord) :: middle ++
+          (.machineFresh workActor key.workInput workAnswer :
+            UnifiedExposureRecord) :: later
+      have rootSplit : exactFixedRootRecords input.package.root =
+          prior ++ suffix := by
+        simpa [suffix, List.append_assoc] using recordsExact
+      rw [rootSplit]
+      rw [indexed_controller_labeled_records_append transitionFuel
+        (exactDagTrialController transitionFuel trial)
+        (exactDagCandidateInitialState input) prior suffix]
+      have prefixLength :
+          (indexedControllerLabeledRecords transitionFuel
+            (exactDagTrialController transitionFuel trial)
+            (exactDagCandidateInitialState input) prior).length =
+            prior.length := by
+        have answers := congrArg List.length
+          (indexed_controller_labeled_records_answers transitionFuel
+            (exactDagTrialController transitionFuel trial)
+            (exactDagCandidateInitialState input) prior)
+        simpa using answers
+      rw [List.take_append_of_le_length (by omega : prior.length ≤
+        (indexedControllerLabeledRecords transitionFuel
+          (exactDagTrialController transitionFuel trial)
+          (exactDagCandidateInitialState input) prior).length)]
+      simp [prefixLength]
+    rw [prefixLabels]
+    apply dag_labeled_records_before_anchor_all_residual transitionFuel trial.val
+      prior (exactDagCandidateInitialState input)
+    · simp [exactDagCandidateInitialState, trialExact]
+    · rfl
 
 /-- The selected final-work answer is named by the `none` slot in the same
 exact causal-DAG trial used for q16 routing. -/
@@ -1965,12 +2142,14 @@ theorem exact_compiler_accepted_dag_q16_operational_realization
 #print axioms dag_candidate_after_memory_preserves_tracks_base
 #print axioms dag_indexed_state_preserves_tracks_base
 #print axioms dag_memory_stays_inactive_before_anchor
+#print axioms dag_labeled_records_before_anchor_all_residual
 #print axioms exact_dag_absorb_anchor_tracks_base
 #print axioms exact_dag_absorb_anchor_tracks_base_before_work
 #print axioms exact_dag_work_then_absorb_tracks_base
 #print axioms producer_member_implies_tracks_some_base
 #print axioms ExactDagProducerInstalled
 #print axioms ExactDagFinalWorkPairLabeled
+#print axioms exact_dag_final_work_pair_labeled_prefix_all_residual
 #print axioms ExactDagFinalWorkLabeled
 #print axioms exact_dag_candidate_installed_after_tracked_prefix
 #print axioms exact_compiler_accepted_dag_trial_installs_all_candidates
