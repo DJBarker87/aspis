@@ -89,6 +89,25 @@ This is a reformulation of the actual-law K1.3 proof obligation, not a change
 to the protocol, proof bytes, query count, digest width, work accounting, or
 cryptographic claim.
 
+## Literal response-family construction
+
+`V7Tag73ExactFixedQ16ResponseFamily.lean` now provides the first part of that
+construction without introducing a black-box continuation.  For any fixed
+hidden tape and chronological trial, it inverts the existing exact
+final-work/q16 causal-router equivalence on an arbitrary residual plus 513
+coordinate tuple, then runs `runExactPlainRom` on the resulting ordinary
+compiler sample.  Lean proves both directions needed for later use:
+
+- reapplying the trial-coordinate map returns the supplied residual and
+  final-work/q16 tuple; and
+- supplying an actual sample's own coordinates reconstructs that sample and
+  its literal production scheduler run.
+
+The family is deliberately not yet called an accepting-response family.  It
+does not claim that an arbitrary counterfactual sample returns a parsed proof,
+realizes its supplied q16 forest operationally, or preserves a pre-q16
+profile.  Those are precisely the next cache-aware/source-causality theorems.
+
 ## Implemented derived-q16 seam
 
 `V7Tag73DerivedK13Q16Handoff.lean` now makes the narrower target explicit.
