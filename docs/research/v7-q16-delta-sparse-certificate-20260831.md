@@ -365,3 +365,26 @@ ad52f0f57b84d4f06173d0490c6ed6407edeb85293c0b532ad7977359d745b2e  Depth07.olean
 ```
 
 Depth07 is fully green.  No Depth08 target was started in this gate.
+
+## Focused Depth08 Chunk000 gate
+
+The frozen manifest describes Depth08 as 12 local cells in three chunks, with
+at most eight cells and recurrence cost 89 per chunk.  Only Chunk000 was run.
+Unit `aspis-v7-q16-delta-depth08-chunk000-b3d-r13.service`, invocation
+`e6aa3893f5294d4cb8aa6b869fdd09d5`, used the same 10G/12G/zero-swap limits.
+
+| Target | Exit | Wall | Max process RSS | Swaps |
+|---|---:|---:|---:|---:|
+| `Depth08Chunk000.lean` | 0 | 6.33s | 6,223,856 KiB | 0 |
+| Chunk000 axioms probe | 0 | 2.49s | 6,140,732 KiB | 0 |
+
+All eight Chunk000 theorems report exactly
+`[propext, Classical.choice, Quot.sound]`.
+
+```text
+c478c1eb4eabc472e5224cbafcb9aa596d9666a9754a79568979c941428bb344  Depth08Chunk000.olean
+f80f165947bc17ae39b7b016d014251c698cb4aac5d119dc0b710c1bbdcff062  Depth08Chunk000.ilean
+```
+
+Chunk000 is independently green.  Depth08 Chunk001, Chunk002, and the
+aggregator remain unbuilt.
