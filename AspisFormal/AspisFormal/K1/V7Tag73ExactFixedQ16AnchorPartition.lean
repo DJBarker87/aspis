@@ -68,6 +68,27 @@ def ExactFixedK13DerivedPreQ16ProfileInvariantOnAdversaryAnchors
     exactFixedK13Q16SemanticProfileOf leftWitness.input =
       exactFixedK13Q16SemanticProfileOf rightWitness.input
 
+/-- Any global profile invariant restricts to the adversary-owned partition.
+Together with the next theorem, this makes the remaining condition an exact
+logical boundary rather than merely a sufficient approximation. -/
+theorem exact_fixed_k13_adversary_profile_invariant_of_derived_profile
+    {HiddenTape TapeIdentity Observation Statement Payload Witness : Type}
+    {parameters : ExactCompilerResourceParameters}
+    {transitionFuel : Nat}
+    {configuration : ExactPlainRomWitnessConfiguration HiddenTape TapeIdentity
+      Observation Statement Tag73K12ParsedProof Payload Witness parameters}
+    {projection : AcceptedTapeProjection Statement Tag73K12ParsedProof Payload}
+    {fixedInstance : PublicInstance Statement}
+    {decoder : ExactDecoderInstantiation QM31Exact}
+    (profileInvariant : ExactFixedK13DerivedPreQ16ProfileInvariant
+      transitionFuel configuration projection fixedInstance decoder) :
+    ExactFixedK13DerivedPreQ16ProfileInvariantOnAdversaryAnchors
+      transitionFuel configuration projection fixedInstance decoder := by
+  intro trial hidden left right leftWitness rightWitness _adversaryAnchor
+    coordinateExact
+  exact profileInvariant trial hidden left right leftWitness rightWitness
+    coordinateExact
+
 set_option maxHeartbeats 800000 in
 /-- The literal anchor split turns the two chronological profile conditions
 into the unqualified profile invariant consumed by K1.3 accounting. -/
@@ -95,6 +116,30 @@ theorem exact_fixed_k13_derived_profile_invariant_of_anchor_partition
       verifierAnchor coordinateExact
   · exact adversaryInvariant trial hidden left right leftWitness rightWitness
       adversaryAnchor coordinateExact
+
+/-- Once the checked verifier-owned condition is supplied, the global K1.3
+profile invariant is equivalent to the adversary-first/cache-hit condition.
+No event is discarded in either direction. -/
+theorem exact_fixed_k13_derived_profile_invariant_iff_adversary_anchor
+    {HiddenTape TapeIdentity Observation Statement Payload Witness : Type}
+    {parameters : ExactCompilerResourceParameters}
+    {transitionFuel : Nat}
+    {configuration : ExactPlainRomWitnessConfiguration HiddenTape TapeIdentity
+      Observation Statement Tag73K12ParsedProof Payload Witness parameters}
+    {projection : AcceptedTapeProjection Statement Tag73K12ParsedProof Payload}
+    {fixedInstance : PublicInstance Statement}
+    {decoder : ExactDecoderInstantiation QM31Exact}
+    (verifierInvariant :
+      ExactFixedK13DerivedPreQ16ProfileInvariantOnVerifierAnchors
+        transitionFuel configuration projection fixedInstance decoder) :
+    ExactFixedK13DerivedPreQ16ProfileInvariant transitionFuel configuration
+      projection fixedInstance decoder ↔
+      ExactFixedK13DerivedPreQ16ProfileInvariantOnAdversaryAnchors
+        transitionFuel configuration projection fixedInstance decoder := by
+  constructor
+  · exact exact_fixed_k13_adversary_profile_invariant_of_derived_profile
+  · exact exact_fixed_k13_derived_profile_invariant_of_anchor_partition
+      verifierInvariant
 
 /-- With the existing verifier-anchor theorem instantiated, only the
 adversary-first/cache-hit profile condition remains before the normal K1.3
@@ -127,7 +172,9 @@ theorem exact_fixed_k13_residual_invariant_of_adversary_anchor_profile
 
 #print axioms
   ExactFixedK13DerivedPreQ16ProfileInvariantOnAdversaryAnchors
+#print axioms exact_fixed_k13_adversary_profile_invariant_of_derived_profile
 #print axioms exact_fixed_k13_derived_profile_invariant_of_anchor_partition
+#print axioms exact_fixed_k13_derived_profile_invariant_iff_adversary_anchor
 #print axioms exact_fixed_k13_residual_invariant_of_adversary_anchor_profile
 
 end

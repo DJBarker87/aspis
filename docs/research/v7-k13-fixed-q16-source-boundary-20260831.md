@@ -163,6 +163,11 @@ ordinary `ExactFixedK13ResidualInvariant` consumed by the fixed K1.3 measure
 bound.  The condition is quantified only over genuine joint-trial witnesses
 whose literal selected root record was first created by the adversary.
 
+It also proves the converse reduction: once the verifier-owned theorem is
+available, the global derived-profile invariant is *equivalent* to that
+adversary-anchor condition.  Thus there is no unrecorded third chronological
+case or extra profile premise behind the reduction.
+
 This is a reduction, not a closure: the adversary-anchor condition is not
 assumed to be negligible, fresh, or already proved.  The next mathematical
 work is precisely to derive it from the cache-aware state-restoring q16
