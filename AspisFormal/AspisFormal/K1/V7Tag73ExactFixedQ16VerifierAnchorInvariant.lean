@@ -28,6 +28,7 @@ open AspisK1.V7Tag73CausalFinalWorkQ16UsedForest
 open AspisK1.V7Tag73ExactClientKnowledgeComposition
 open AspisK1.V7Tag73ExactCompilerResources
 open AspisK1.V7Tag73ExactDagCandidateLabeledRootRouting
+open AspisK1.V7Tag73ExactDagQ16ChainRouting
 open AspisK1.V7Tag73ExactDagVerifierAnchorPrefix
 open AspisK1.V7Tag73ExactFixedFullRunFactorization
 open AspisK1.V7Tag73ExactFixedK12MerkleClassifier
@@ -37,6 +38,10 @@ open AspisK1.V7Tag73ExactFixedQ16JointEventHandoff
 open AspisK1.V7Tag73ExactFixedQ16SourceNoninterference
 open AspisK1.V7Tag73ExactPlainRomRun
 open AspisK1.V7Tag73ExactSourceAcceptanceModel
+open AspisK1.V7Tag73FinalWorkQ16CandidateController
+open AspisK1.V7Tag73FullCursorClientLineageLift
+open AspisK1.V7Tag73OperationalSemanticReplay
+open AspisK1.V7Tag73OperationalNodeCertificate
 open AspisK1.V7Tag73TranscriptSchedule
 open AspisPool.AlgorithmicCircleDecoderV7
 open AspisV5ComponentCQM31TowerExact
@@ -63,6 +68,128 @@ def ExactFixedK13VerifierAnchor
       prior ++ (.machineFresh .verifier target answer : UnifiedExposureRecord) ::
         later ∧
     trial.val = prior.length
+
+/-- The complementary chronological case: an arbitrary adversary created the
+selected anchor before the verifier reached it.  This case is retained as a
+first-class predicate so a later replay proof cannot silently relabel it. -/
+def ExactFixedK13AdversaryAnchor
+    {HiddenTape TapeIdentity Observation Statement Payload Result : Type}
+    {parameters : ExactCompilerResourceParameters}
+    {transitionFuel : Nat}
+    {configuration : ExactPlainRomConfiguration HiddenTape TapeIdentity
+      Observation Statement Tag73K12ParsedProof Payload Result parameters}
+    {projection : AcceptedTapeProjection Statement Tag73K12ParsedProof Payload}
+    {fixedInstance : PublicInstance Statement}
+    {sample : ExactCompilerSample HiddenTape parameters}
+    (input : ExactK12OperationalInput transitionFuel configuration projection
+      fixedInstance sample)
+    (trial : ExactCompilerExposureTrial parameters) : Prop :=
+  ∃ prior later target answer,
+    exactFixedRootRecords input.package.root =
+      prior ++ (.machineFresh .adversary target answer : UnifiedExposureRecord) ::
+        later ∧
+    trial.val = prior.length
+
+/-- Root records cannot first originate from an internal replay actor.  This
+is a property of the exact accepted-root projection, rather than a property
+of the raw input bytes. -/
+theorem exact_fixed_root_machine_fresh_actor_cases
+    {HiddenTape TapeIdentity Observation Statement Payload Result : Type}
+    {parameters : ExactCompilerResourceParameters}
+    {transitionFuel : Nat}
+    {configuration : ExactPlainRomConfiguration HiddenTape TapeIdentity
+      Observation Statement Tag73K12ParsedProof Payload Result parameters}
+    {projection : AcceptedTapeProjection Statement Tag73K12ParsedProof Payload}
+    {fixedInstance : PublicInstance Statement}
+    {sample : ExactCompilerSample HiddenTape parameters}
+    (input : ExactK12OperationalInput transitionFuel configuration projection
+      fixedInstance sample)
+    (actor : QueryActor) (target : ShaInput) (answer : Digest256)
+    (member : (.machineFresh actor target answer : UnifiedExposureRecord) ∈
+      exactFixedRootRecords input.package.root) :
+    actor = .adversary ∨ actor = .verifier := by
+  unfold exactFixedRootRecords fullProjectedRootRecords at member
+  rw [List.mem_append] at member
+  rcases member with adversary | verifier
+  · obtain ⟨sourceInput, sourceAnswer, recordExact⟩ :=
+      only_machine_fresh_actor_projected_records .adversary
+        input.package.root.full.projection.rootPrefixes.adversary.freshQueries
+        _ adversary
+    injection recordExact with actorExact _targetExact _answerExact
+    exact Or.inl actorExact
+  · obtain ⟨sourceInput, sourceAnswer, recordExact⟩ :=
+      only_machine_fresh_actor_projected_records .verifier
+        input.package.root.full.projection.rootPrefixes.verifier.freshQueries
+        _ verifier
+    injection recordExact with actorExact _targetExact _answerExact
+    exact Or.inr actorExact
+
+/-- The actual paired final-work witness partitions at its earlier root
+record.  There is no third case: the selected anchor was first created by
+either the adversary or the verifier. -/
+theorem exact_fixed_k13_actual_joint_trial_anchor_actor_cases
+    {HiddenTape TapeIdentity Observation Statement Payload Witness : Type}
+    {parameters : ExactCompilerResourceParameters}
+    {transitionFuel : Nat}
+    {configuration : ExactPlainRomWitnessConfiguration HiddenTape TapeIdentity
+      Observation Statement Tag73K12ParsedProof Payload Witness parameters}
+    {projection : AcceptedTapeProjection Statement Tag73K12ParsedProof Payload}
+    {fixedInstance : PublicInstance Statement}
+    {sample : ExactCompilerSample HiddenTape parameters}
+    (input : ExactK12OperationalInput transitionFuel configuration projection
+      fixedInstance sample)
+    (trial : ExactCompilerExposureTrial parameters)
+    (actual : ExactFixedK13ActualJointTrial input trial) :
+    ExactFixedK13VerifierAnchor input trial ∨
+      ExactFixedK13AdversaryAnchor input trial := by
+  obtain ⟨digest, workAnswer, base, _workAccepted, _baseExact, pairLabeled,
+      _workLabeled, _workCoordinate, _realized⟩ := actual
+  let key := literalFinalWorkKey digest
+    (exactOperationalTape input).messages.finalGrinding.selected
+  change ExactDagFinalWorkPairLabeled input trial key workAnswer base at pairLabeled
+  rcases pairLabeled with
+      ⟨prior, middle, later, workActor, absorbActor, recordsExact, trialExact⟩ |
+      ⟨prior, middle, later, workActor, absorbActor, recordsExact, trialExact⟩
+  · have workMember : (.machineFresh workActor key.workInput workAnswer :
+        UnifiedExposureRecord) ∈ exactFixedRootRecords input.package.root := by
+      rw [recordsExact]
+      simp
+    rcases exact_fixed_root_machine_fresh_actor_cases input workActor
+        key.workInput workAnswer workMember with workActorExact | workActorExact
+    · subst workActor
+      exact Or.inr ⟨prior,
+          middle ++ (.machineFresh absorbActor key.absorbInput base :
+            UnifiedExposureRecord) :: later,
+          key.workInput, workAnswer, by
+            simpa only [List.cons_append, List.append_assoc] using recordsExact,
+          trialExact⟩
+    · subst workActor
+      exact Or.inl ⟨prior,
+          middle ++ (.machineFresh absorbActor key.absorbInput base :
+            UnifiedExposureRecord) :: later,
+          key.workInput, workAnswer, by
+            simpa only [List.cons_append, List.append_assoc] using recordsExact,
+          trialExact⟩
+  · have absorbMember : (.machineFresh absorbActor key.absorbInput base :
+        UnifiedExposureRecord) ∈ exactFixedRootRecords input.package.root := by
+      rw [recordsExact]
+      simp
+    rcases exact_fixed_root_machine_fresh_actor_cases input absorbActor
+        key.absorbInput base absorbMember with absorbActorExact | absorbActorExact
+    · subst absorbActor
+      exact Or.inr ⟨prior,
+          middle ++ (.machineFresh workActor key.workInput workAnswer :
+            UnifiedExposureRecord) :: later,
+          key.absorbInput, base, by
+            simpa only [List.cons_append, List.append_assoc] using recordsExact,
+          trialExact⟩
+    · subst absorbActor
+      exact Or.inl ⟨prior,
+          middle ++ (.machineFresh workActor key.workInput workAnswer :
+            UnifiedExposureRecord) :: later,
+          key.absorbInput, base, by
+            simpa only [List.cons_append, List.append_assoc] using recordsExact,
+          trialExact⟩
 
 /-- Equal residual coordinates preserve the K1.3 pre-q16 values throughout
 the verifier-owned part of a chronological trial fibre. -/
@@ -144,6 +271,9 @@ theorem exact_fixed_k13_joint_trial_pre_q16_values_of_left_verifier_anchor
   exact coordinateExact
 
 #print axioms ExactFixedK13VerifierAnchor
+#print axioms ExactFixedK13AdversaryAnchor
+#print axioms exact_fixed_root_machine_fresh_actor_cases
+#print axioms exact_fixed_k13_actual_joint_trial_anchor_actor_cases
 #print axioms exact_fixed_k13_pre_q16_values_of_verifier_anchor
 #print axioms exact_fixed_k13_joint_trial_pre_q16_values_of_left_verifier_anchor
 
