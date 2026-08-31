@@ -1,0 +1,14 @@
+Wrote new keypair to /tmp/aspis-v7-registry-v2-finalized.51I7fr/local-test-payer.json
+signed/finalized local lifecycle: transfer-same-page
+signed/finalized local lifecycle: transfer-rollover
+signed/finalized local lifecycle: withdrawal-same-page
+signed/finalized local lifecycle: withdrawal-rollover
+signed/finalized local lifecycle: strict-proof-mutation-rejection
+signed/finalized local lifecycle: wrong-registry-release-rejection
+signed/finalized local lifecycle: stale-selected-lane-rejection
+signed/finalized local lifecycle: replay-nullifier-rejection
+signed/finalized local lifecycle: malformed-result-rejection
+signed/finalized local lifecycle: mutated-result-rejection
+signed/finalized local lifecycle: failed-withdrawal-cpi-rollback
+disposable Agave finalized suite materialized: /home/dombarker/project-offloads/aspis-v7-registry-v2-release-audit-a7c91a2-20260831/agave-finalized-r1/evidence/suite.json
+disposable Agave signed/finalized Registry V2 suite PASS: /home/dombarker/project-offloads/aspis-v7-registry-v2-release-audit-a7c91a2-20260831/agave-finalized-r1/evidence/suite.json

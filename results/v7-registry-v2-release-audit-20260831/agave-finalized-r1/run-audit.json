@@ -1,0 +1,37 @@
+{
+  "schema": "aspis.v7.registry-v2-disposable-agave-finalized-run-audit.v1",
+  "runtime": "solana-cli 4.2.0 (src:ac82b5d4; feat:21b0d33a, client:Agave)",
+  "sourceCommit": "7179f7c550fe0461f4251dea5268af73876da91d",
+  "bundleSha256": "1d27eed3e3022172170c351e70f409ed8cdbd83e755c9147a1478c0932d5321d",
+  "bundleInventorySha256": "84b45dd5e1fb316501c833b00c4df5bc4f678a3dc466fda06a6cbc8e7d29a0d0",
+  "suiteSha256": "2772c65a6ae68a7fa66790b1451e905c1df2e61afdef76e2443254fd02b464e8",
+  "signedHelperSha256": "e058c49bb539f6a2734d75046e9435d1f42d53e33f4fda5b95cadd64a58dbf63",
+  "execution": {
+    "unit": "aspis-v7-registry-v2-agave-finalized-r1",
+    "invocation": "6800fc3c3338438ca281721547cffd2b",
+    "memoryHighBytes": 10737418240,
+    "memoryMaxBytes": 12884901888,
+    "memorySwapMaxBytes": 0,
+    "cgroupMemoryPeakBytes": 1553203200,
+    "memorySwapPeakBytes": 0,
+    "wall": "6:09.96",
+    "maximumProcessResidentSetKiB": 653276,
+    "cpuTimeNanoseconds": 427488477000,
+    "exitStatus": 0
+  },
+  "classification": {
+    "realAgaveSimulationCu": true,
+    "realAgaveLandedCu": true,
+    "signed": true,
+    "submitted": true,
+    "allElevenCasesFinalized": true,
+    "identicalBytesSimulatedAndSubmitted": true,
+    "allSevenNegativeRollbacksDirectlyObserved": true,
+    "allFourHonestStatesMatchFrozenExpected": true,
+    "localEphemeralKeyOnly": true,
+    "realFundsUsed": false,
+    "publicClusterUsed": false,
+    "deployed": false
+  },
+  "pass": true
+}

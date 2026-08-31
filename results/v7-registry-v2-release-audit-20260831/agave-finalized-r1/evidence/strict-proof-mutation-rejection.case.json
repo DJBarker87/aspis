@@ -1,0 +1,45 @@
+{
+  "schema": "aspis.v7.registry-v2-disposable-agave-txv1-finalized-case.v1",
+  "case": "strict-proof-mutation-rejection",
+  "expectedOutcome": "failure",
+  "agave": "solana-cli 4.2.0 (src:ac82b5d4; feat:21b0d33a, client:Agave)",
+  "cluster": "disposable-local-validator",
+  "localTestPayer": "F7maZWq6BqhJGxNn7hWPYHPZ6igcsB5RTY8piKGovinv",
+  "signature": "v9Hq6we1ayGkbnH8H7T7xpz9MPDsBMvNi9MNCSrZHNs5HA26fJmffV5gT4mFs78Trceadtf4WTNMEjyTdbji2MK",
+  "signed": true,
+  "submitted": true,
+  "finalized": true,
+  "sameSignedBytesSimulatedAndSubmitted": true,
+  "packetBytes": 833,
+  "transactionHeadroomTo4096Bytes": 3263,
+  "signedWireSha256": "cd2d3cf6914d856a446a576c54b6ec4f129af20f6090184eb4589b720ad36d16",
+  "simulationUnitsConsumed": 975278,
+  "landedUnitsConsumed": 975278,
+  "landedError": {
+    "InstructionError": [
+      0,
+      "InvalidAccountData"
+    ]
+  },
+  "protectedStateRollbackPreserved": true,
+  "protectedStateChangedOnSuccess": null,
+  "simulationMatchesFrozenExpectedState": null,
+  "landedStateMatchesFrozenExpectedState": null,
+  "simulationRuntimeMetadataValid": null,
+  "landedRuntimeMetadataValid": null,
+  "returnDataBytes": null,
+  "localEphemeralKeyOnly": true,
+  "realFundsUsed": false,
+  "publicClusterUsed": false,
+  "deployed": false,
+  "receipts": {
+    "signedRequest": "strict-proof-mutation-rejection.signed-request.json",
+    "simulation": "strict-proof-mutation-rejection.simulation.json",
+    "send": "strict-proof-mutation-rejection.send.json",
+    "finalizedStatus": "strict-proof-mutation-rejection.finalized-status.json",
+    "transaction": "strict-proof-mutation-rejection.transaction.json",
+    "protectedStateBefore": "strict-proof-mutation-rejection.before.json",
+    "protectedStateAfter": "strict-proof-mutation-rejection.after.json",
+    "validatorLog": "strict-proof-mutation-rejection.validator.log"
+  }
+}

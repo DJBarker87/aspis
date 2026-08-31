@@ -17,13 +17,18 @@ build is frozen under
 `results/v7-registry-v2-release-audit-20260831/dual-linux-sbf-r2`, and the
 unsigned official-Agave 4.2 simulation suite is frozen under
 `results/v7-registry-v2-release-audit-20260831/agave-runs/r6`.
+The signed and finalized eleven-case local Agave suite, including direct
+negative-case rollback receipts, is frozen under
+`results/v7-registry-v2-release-audit-20260831/agave-finalized-r1`.
 
 Use `scripts/v7_registry_v2_dual_sbf_audit.sh` for the independent Linux A/B
 build and stack gate, `scripts/v7_txv1_bundle_verify.sh` for the deterministic
 eleven-case input bundle, `scripts/v7_txv1_agave_suite_materialize.sh` for the
-completed case-evidence audit, and `scripts/v7_txv1_4k_feature_gate.sh` for the
-read-only Agave/devnet TxV1 activation check.
+earlier unsigned case-evidence audit,
+`scripts/v7_registry_v2_disposable_agave_finalize.sh` for signed local landing,
+and `scripts/v7_txv1_4k_feature_gate.sh` for the read-only Agave/devnet TxV1
+activation check.
 
-The Agave suite is real local `simulateTransaction` CU, not devnet CU and not
-a landed/finalized receipt. It reads no key, signs/submits no transaction and
-uses no public cluster.
+The finalized suite uses a generated ephemeral local payer, submits only to a
+disposable loopback validator, and records real landed CU and rollback. It is
+not public-devnet or mainnet evidence and uses no persistent key or real funds.

@@ -1,0 +1,21 @@
+{
+  "jsonrpc": "2.0",
+  "result": {
+    "context": {
+      "apiVersion": "4.2.0",
+      "slot": 182
+    },
+    "value": [
+      {
+        "confirmationStatus": "finalized",
+        "confirmations": null,
+        "err": null,
+        "slot": 151,
+        "status": {
+          "Ok": null
+        }
+      }
+    ]
+  },
+  "id": 6
+}

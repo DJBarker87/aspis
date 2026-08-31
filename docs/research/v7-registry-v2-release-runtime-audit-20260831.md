@@ -3,10 +3,11 @@
 Date: 2026-08-31
 
 Status: the independent Linux A/B SBF build and stack gate is green, and the
-deterministic eleven-case Registry V2 suite is green on a disposable official
-Agave v4.2.0 validator. The Agave values are real `simulateTransaction` CU,
-not component sums. The suite is deliberately unsigned and simulation-only;
-it is not a landed/finalized local, devnet or mainnet receipt.
+deterministic eleven-case Registry V2 suite is signed, submitted and finalized
+on disposable official Agave v4.2.0 validators. The same signed transaction
+bytes were simulated and submitted in every case. The CU values are real
+landed Agave CU, not component sums. This remains local-validator evidence,
+not public-devnet or mainnet deployment evidence.
 
 This work is pinned to evidence commit
 `7179f7c550fe0461f4251dea5268af73876da91d`. That commit changes the runtime
@@ -14,7 +15,53 @@ harness and freezes evidence; its production `Cargo.lock`, Pool, verifier and
 Registry trees are byte-identical to parent
 `4722228b991ebb72850b8d79dd54b0fee4899462`.
 
-## Current official-Agave result
+## Signed and finalized official-Agave result
+
+The finalized suite is pinned by:
+
+```text
+bundle.json             1d27eed3e3022172170c351e70f409ed8cdbd83e755c9147a1478c0932d5321d
+TEMPLATE-SHA256SUMS     84b45dd5e1fb316501c833b00c4df5bc4f678a3dc466fda06a6cbc8e7d29a0d0
+finalized suite         2772c65a6ae68a7fa66790b1451e905c1df2e61afdef76e2443254fd02b464e8
+```
+
+All four honest transactions finalized successfully, changed the protected
+Pool state, matched the frozen expected state after removing only Agave's
+runtime-owned `rentEpoch`, and returned the exact 792-byte ASR8 result.
+
+| Shape | Simulation CU | Landed CU | Signed TxV1 bytes | CU margin to 1.3M |
+|---|---:|---:|---:|---:|
+| transfer, same page | 1,161,348 | 1,161,348 | 833 | 138,652 |
+| transfer, rollover | 1,207,062 | 1,207,062 | 866 | 92,938 |
+| withdrawal, same page | 1,152,942 | 1,152,942 | 998 | 147,058 |
+| withdrawal, rollover | 1,218,654 | 1,218,654 | 1,031 | 81,346 |
+
+All seven negative transactions were accepted into the disposable ledger and
+finalized with an instruction error. Direct finalized pre/post RPC snapshots
+of every protected account were byte-identical, including the failed
+withdrawal CPI case:
+
+| Negative case | Simulation CU | Landed CU | Signed TxV1 bytes | Direct rollback |
+|---|---:|---:|---:|---|
+| strict proof mutation | 975,278 | 975,278 | 833 | exact |
+| wrong Registry release | 36,573 | 36,573 | 833 | exact |
+| stale selected lane | 72,055 | 72,055 | 833 | exact |
+| replay/nullifier | 23,671 | 23,671 | 833 | exact |
+| malformed result | 47,002 | 47,002 | 833 | exact |
+| mutated result | 50,039 | 50,039 | 833 | exact |
+| failed withdrawal CPI | 1,151,707 | 1,151,707 | 998 | exact |
+
+The run used only an ephemeral validator-minted payer; the key file was in the
+runner's private temporary directory and was deleted on exit. It used no
+public RPC, real funds, deployment or persistent key. Unit
+`aspis-v7-registry-v2-agave-finalized-r1`, invocation
+`6800fc3c3338438ca281721547cffd2b`, completed in 6:09.96 with 653,276 KiB
+maximum process RSS, 1,553,203,200 bytes cgroup peak and zero swap. The exact
+signatures, simulation responses, finalized statuses, transaction receipts,
+logs and pre/post account snapshots are frozen under
+`results/v7-registry-v2-release-audit-20260831/agave-finalized-r1`.
+
+## Earlier unsigned simulation-only result
 
 The materialized bundle is pinned by:
 
@@ -282,12 +329,10 @@ This milestone does not activate Registry V2. The remaining runtime gates are:
 
 1. integrate the final source/formal closure and rerun only the evidence whose
    covered binary/source hash changes;
-2. run signed submissions on a disposable validator if direct landed rollback
-   receipts are required (the present evidence is unsigned simulation-only);
-3. once public devnet activates TxV1/4-KiB transactions, deploy the exact
+2. once public devnet activates TxV1/4-KiB transactions, deploy the exact
    selected binaries there, execute the lifecycle, and freeze finalized
    transaction/state receipts;
-4. perform the final deployment-identity and mainnet-readiness audit.
+3. perform the final deployment-identity and mainnet-readiness audit.
 
-The CU values in the first tables are exact local Agave 4.2 simulation CU.
-They are not devnet CU and are not landed/finalized receipts.
+The CU values in the first tables are exact signed, landed local Agave 4.2 CU.
+They are not public-devnet or mainnet CU.

@@ -1,0 +1,45 @@
+{
+  "schema": "aspis.v7.registry-v2-disposable-agave-txv1-finalized-case.v1",
+  "case": "failed-withdrawal-cpi-rollback",
+  "expectedOutcome": "failure",
+  "agave": "solana-cli 4.2.0 (src:ac82b5d4; feat:21b0d33a, client:Agave)",
+  "cluster": "disposable-local-validator",
+  "localTestPayer": "F7maZWq6BqhJGxNn7hWPYHPZ6igcsB5RTY8piKGovinv",
+  "signature": "3zi2c45uBq9t3Zqqj1H2aUw3Aohfuo7FV9NYQkP2w8xZE6FZGnGWz4kQQLBtoa6WmXLHJeHwb83LZAAPCQvyCVa5",
+  "signed": true,
+  "submitted": true,
+  "finalized": true,
+  "sameSignedBytesSimulatedAndSubmitted": true,
+  "packetBytes": 998,
+  "transactionHeadroomTo4096Bytes": 3098,
+  "signedWireSha256": "82e659f23a43236ca5d7b6633972ea8e7975e5876c6c6f138b9ecfe019f558b8",
+  "simulationUnitsConsumed": 1151707,
+  "landedUnitsConsumed": 1151707,
+  "landedError": {
+    "InstructionError": [
+      0,
+      "InvalidAccountData"
+    ]
+  },
+  "protectedStateRollbackPreserved": true,
+  "protectedStateChangedOnSuccess": null,
+  "simulationMatchesFrozenExpectedState": null,
+  "landedStateMatchesFrozenExpectedState": null,
+  "simulationRuntimeMetadataValid": null,
+  "landedRuntimeMetadataValid": null,
+  "returnDataBytes": null,
+  "localEphemeralKeyOnly": true,
+  "realFundsUsed": false,
+  "publicClusterUsed": false,
+  "deployed": false,
+  "receipts": {
+    "signedRequest": "failed-withdrawal-cpi-rollback.signed-request.json",
+    "simulation": "failed-withdrawal-cpi-rollback.simulation.json",
+    "send": "failed-withdrawal-cpi-rollback.send.json",
+    "finalizedStatus": "failed-withdrawal-cpi-rollback.finalized-status.json",
+    "transaction": "failed-withdrawal-cpi-rollback.transaction.json",
+    "protectedStateBefore": "failed-withdrawal-cpi-rollback.before.json",
+    "protectedStateAfter": "failed-withdrawal-cpi-rollback.after.json",
+    "validatorLog": "failed-withdrawal-cpi-rollback.validator.log"
+  }
+}

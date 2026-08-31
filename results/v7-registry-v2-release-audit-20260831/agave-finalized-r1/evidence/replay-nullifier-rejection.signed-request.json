@@ -1,0 +1,72 @@
+{
+  "inputPath": "/tmp/aspis-v7-registry-v2-finalized.51I7fr/replay-nullifier-rejection.input.json",
+  "localTestFeePayer": "F7maZWq6BqhJGxNn7hWPYHPZ6igcsB5RTY8piKGovinv",
+  "reviewedFeePayer": "AKnL4NNf3DGWZJS6cPknBuEGnVsV4A4m5tgebLHaRSZ9",
+  "schema": "aspis.v7.txv1-signed-local-request.v1",
+  "sendRequest": {
+    "id": 101007,
+    "jsonrpc": "2.0",
+    "method": "sendTransaction",
+    "params": [
+      "gQEACAwAAAC7peFKzwHuPv8/hsfByJluzXUhBEvbGoiF94go6ePp/wEM0b+BzYF5b2DdePF0nJES0HE9HKCu5lU78d/V6uJHfLMgSefPAU2IdS/OYn0N7XCwu3pB+L2NtBktjjQIyk4QHGFUGngH8w2KHhMPRglpr4heo3JVuOzlGJ1fKh9N356NtdXup/PsVQrI1zhZljH5oeL66Q9QFX8bwLa/l4F3Tq4AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAACIIxjc90xOy8nalLRT+kxk3ndN8mKo7WLZN/JgtGlI/QUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFFRUVFRUVFRUVFRUVFRUVFRUVFRUVFRUVFRUVFRUVFRV8MflRUuL8sf+1V+hpBC6LqtMGVor5k9+L9OwDhl5qNhZIzlwiQS3F7bAS3pSXvlrgNGRn3a2sEWMY2UK/kEZTEZlSqaCvbMLpriVNe9k0AX8IX0y2FhmzCTKdIz3LAzf9nFB0Tw0h5uM9dqZkkjqvIXE9ruqnG0nPB5ezv1lEeINYTAAAAAAQGC0ABBQoBAwIABAsJCAdBU1E4AQEBAKF5+NfjcCTrVOPbF/OWs5ihvrLaDIv69iszXyuk6lwmrdCWY8alSDgOGn5TlMhCbm5IusJKjFNqBF+/nb6fuhxBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFTQ1ABAQEAIgjGNz3TE7LydqUtFP6TGTed03yYqjtYtk38mC0aUj8FBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBSoAAAAAAAAAVfY+BJ9QdSHd74B42IONMWPvZiP9lJMGgHhDZ1axnTjbG4IATJCJBhRgsmGkJQYAgI/acKKksBQZusAT0a9udU0AAAAAAAAAJl8GVhWQQBeQJg4sEyzMciKkChkxp7ovH/CYOEh8dgQjFYgGQRNOeHEmDUb6MeAgCIYwFwFTkSEjwFFVzRnsFHNo7EDKePDmm730ZXpUlvXt2t4MM6ZtT1UgKLEvsH3ZVte4I21H2anNMt8+3Kl21kkDB08nXUoF35ZSIGfMNQw=",
+      {
+        "encoding": "base64",
+        "maxRetries": 0,
+        "minContextSlot": 150,
+        "preflightCommitment": "finalized",
+        "skipPreflight": true
+      }
+    ]
+  },
+  "serializedTransactionBytes": 833,
+  "signature": "3Jq8u4NXz5KP1oW2XcdCtNRYfh683qePUjhb7wY43wGzZyxphsjJNNeHi5zi1heGa1S3zFM1ZDAq4FgaM5kiCUYK",
+  "signed": true,
+  "signedWireBase64": "gQEACAwAAAC7peFKzwHuPv8/hsfByJluzXUhBEvbGoiF94go6ePp/wEM0b+BzYF5b2DdePF0nJES0HE9HKCu5lU78d/V6uJHfLMgSefPAU2IdS/OYn0N7XCwu3pB+L2NtBktjjQIyk4QHGFUGngH8w2KHhMPRglpr4heo3JVuOzlGJ1fKh9N356NtdXup/PsVQrI1zhZljH5oeL66Q9QFX8bwLa/l4F3Tq4AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAACIIxjc90xOy8nalLRT+kxk3ndN8mKo7WLZN/JgtGlI/QUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFFRUVFRUVFRUVFRUVFRUVFRUVFRUVFRUVFRUVFRUVFRV8MflRUuL8sf+1V+hpBC6LqtMGVor5k9+L9OwDhl5qNhZIzlwiQS3F7bAS3pSXvlrgNGRn3a2sEWMY2UK/kEZTEZlSqaCvbMLpriVNe9k0AX8IX0y2FhmzCTKdIz3LAzf9nFB0Tw0h5uM9dqZkkjqvIXE9ruqnG0nPB5ezv1lEeINYTAAAAAAQGC0ABBQoBAwIABAsJCAdBU1E4AQEBAKF5+NfjcCTrVOPbF/OWs5ihvrLaDIv69iszXyuk6lwmrdCWY8alSDgOGn5TlMhCbm5IusJKjFNqBF+/nb6fuhxBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFTQ1ABAQEAIgjGNz3TE7LydqUtFP6TGTed03yYqjtYtk38mC0aUj8FBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBSoAAAAAAAAAVfY+BJ9QdSHd74B42IONMWPvZiP9lJMGgHhDZ1axnTjbG4IATJCJBhRgsmGkJQYAgI/acKKksBQZusAT0a9udU0AAAAAAAAAJl8GVhWQQBeQJg4sEyzMciKkChkxp7ovH/CYOEh8dgQjFYgGQRNOeHEmDUb6MeAgCIYwFwFTkSEjwFFVzRnsFHNo7EDKePDmm730ZXpUlvXt2t4MM6ZtT1UgKLEvsH3ZVte4I21H2anNMt8+3Kl21kkDB08nXUoF35ZSIGfMNQw=",
+  "signedWireSha256": "b2e817e35fdb048dfe33e5d72d5f2d93b7fa043f9bccff1eff2daf2363b7fc51",
+  "simulationRequest": {
+    "id": 1007,
+    "jsonrpc": "2.0",
+    "method": "simulateTransaction",
+    "params": [
+      "gQEACAwAAAC7peFKzwHuPv8/hsfByJluzXUhBEvbGoiF94go6ePp/wEM0b+BzYF5b2DdePF0nJES0HE9HKCu5lU78d/V6uJHfLMgSefPAU2IdS/OYn0N7XCwu3pB+L2NtBktjjQIyk4QHGFUGngH8w2KHhMPRglpr4heo3JVuOzlGJ1fKh9N356NtdXup/PsVQrI1zhZljH5oeL66Q9QFX8bwLa/l4F3Tq4AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAACIIxjc90xOy8nalLRT+kxk3ndN8mKo7WLZN/JgtGlI/QUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFFRUVFRUVFRUVFRUVFRUVFRUVFRUVFRUVFRUVFRUVFRV8MflRUuL8sf+1V+hpBC6LqtMGVor5k9+L9OwDhl5qNhZIzlwiQS3F7bAS3pSXvlrgNGRn3a2sEWMY2UK/kEZTEZlSqaCvbMLpriVNe9k0AX8IX0y2FhmzCTKdIz3LAzf9nFB0Tw0h5uM9dqZkkjqvIXE9ruqnG0nPB5ezv1lEeINYTAAAAAAQGC0ABBQoBAwIABAsJCAdBU1E4AQEBAKF5+NfjcCTrVOPbF/OWs5ihvrLaDIv69iszXyuk6lwmrdCWY8alSDgOGn5TlMhCbm5IusJKjFNqBF+/nb6fuhxBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFTQ1ABAQEAIgjGNz3TE7LydqUtFP6TGTed03yYqjtYtk38mC0aUj8FBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBSoAAAAAAAAAVfY+BJ9QdSHd74B42IONMWPvZiP9lJMGgHhDZ1axnTjbG4IATJCJBhRgsmGkJQYAgI/acKKksBQZusAT0a9udU0AAAAAAAAAJl8GVhWQQBeQJg4sEyzMciKkChkxp7ovH/CYOEh8dgQjFYgGQRNOeHEmDUb6MeAgCIYwFwFTkSEjwFFVzRnsFHNo7EDKePDmm730ZXpUlvXt2t4MM6ZtT1UgKLEvsH3ZVte4I21H2anNMt8+3Kl21kkDB08nXUoF35ZSIGfMNQw=",
+      {
+        "accounts": {
+          "addresses": [
+            "3Hrd4YKTTF2eaoWjdwzBwagmH9SeuenwiVyQajm72C8N",
+            "EDfQpAnRQVqFmGZuY2ocZoX7gBp5H1N3MWWMLmuWTmD6",
+            "3B3QhxztFR6kSo3m3kpTaU9JsQyJH6ScoT94gwnFXQYj",
+            "DEozmkY3H2YccnEAqHyENJp2Hs1HAFjBq6xqdJDFeZk9",
+            "7YvvqJNdXZt3aNMkCebG4To2f1VJe1TbxHBtY41D4Jy2",
+            "JBz8KKzyZ6FzTU7WmLywurr49xJPpQcA9ECNg2SZX6iH",
+            "9zQXTg6QqijGAG3kyWf94CQA3KdFq3VoYBLAUrhge1WB",
+            "5fQPsn8hoaVddFG26cWQ5QFdqxWtUPNaZ9zH2E6LYzFn"
+          ],
+          "encoding": "base64"
+        },
+        "commitment": "finalized",
+        "encoding": "base64",
+        "innerInstructions": true,
+        "minContextSlot": 150,
+        "replaceRecentBlockhash": false,
+        "sigVerify": true
+      }
+    ]
+  },
+  "summary": {
+    "computeUnitLimit": 1300000,
+    "feePayer": "F7maZWq6BqhJGxNn7hWPYHPZ6igcsB5RTY8piKGovinv",
+    "headroomTo4096Bytes": 3263,
+    "historyPath": "same-page",
+    "inlineAddresses": 12,
+    "instructionAccounts": 11,
+    "instructionDataBytes": 320,
+    "loadedAccountsDataSizeLimit": 67108864,
+    "minContextSlot": 150,
+    "operation": "private-transfer",
+    "poolProgram": "5PjDJaGfSPJj4tFzMRCiuuAasKg5n8dJKXKenhuwZexx",
+    "requiredSignatures": 1,
+    "schema": "aspis.v7.txv1-signed-local-summary.v1",
+    "serializedTransactionBytes": 833,
+    "signableMessageSha256": "44fad3f28f6315a188dcd459e303e4f3301faddbad0ade7dec317c1ac288469b"
+  }
+}
