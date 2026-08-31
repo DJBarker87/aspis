@@ -56,6 +56,8 @@ pub mod rpc_wire;
 pub mod scan_state;
 pub mod transaction_builder;
 #[cfg(feature = "eight-lane-plumbing-v2")]
+pub mod tx_v1_ciphertext_carrier_v2;
+#[cfg(feature = "eight-lane-plumbing-v2")]
 pub mod tx_v1_finalized_rpc_v2;
 pub mod verifier_transaction_builder;
 #[cfg(feature = "eight-lane-plumbing-v2")]

@@ -27,8 +27,10 @@ use aspis_statement::{
         POOL_V1_PAIR_FOREST_MASTER_ACCOUNT_BYTES, POOL_V1_ROOT_HISTORY_PAGE_ACCOUNT_BYTES,
     },
 };
+use hpke::rand_core::CryptoRng;
 
 use crate::{
+    durable_state::SealedNoteAccessV1,
     finalized_indexer::SolanaRpcCommitmentV1,
     lane_forest_durable_v2::{
         canonical_lane_root_page_cursor_v2, DurableLaneForestWalletFileV2,
@@ -41,8 +43,13 @@ use crate::{
         LaneForestWalletCommittedStateV2, LaneForestWalletNoteBindingV2,
         LaneForestWalletSpendBindingV2, LaneForestWalletTxnErrorV2, LaneForestWalletTxnIntentV2,
     },
+    note_matches_spending_key_v1,
+    note_store_crypto::{
+        seal_recovered_note_v1, LocalNullifierKeyStoreV1, NoteStoreCipherV1, NoteStoreCryptoErrorV1,
+    },
+    scan_note_v1,
     scan_state::{DepositEventIdV1, FinalizedBlockV1, FinalizedChainPointV1},
-    ViewingSecretKeyV1, POOL_V1_NOTE_ENCRYPTED_PAYLOAD_BYTES,
+    PoolV1WalletError, ScanResultV1, ViewingSecretKeyV1, POOL_V1_NOTE_ENCRYPTED_PAYLOAD_BYTES,
 };
 
 pub type ForestRpcCommitmentV2 = SolanaRpcCommitmentV1;
@@ -87,6 +94,8 @@ pub enum LaneForestRpcErrorV2 {
     RootPage(PoolV1RootHistoryError),
     Durable(LaneForestDurableErrorV2),
     Wallet(LaneForestWalletTxnErrorV2),
+    NoteEnvelope(PoolV1WalletError),
+    NoteStore(NoteStoreCryptoErrorV1),
 }
 
 impl From<LaneForestDurableErrorV2> for LaneForestRpcErrorV2 {
@@ -104,6 +113,18 @@ impl From<PoolV1RootHistoryError> for LaneForestRpcErrorV2 {
 impl From<LaneForestWalletTxnErrorV2> for LaneForestRpcErrorV2 {
     fn from(error: LaneForestWalletTxnErrorV2) -> Self {
         Self::Wallet(error)
+    }
+}
+
+impl From<PoolV1WalletError> for LaneForestRpcErrorV2 {
+    fn from(error: PoolV1WalletError) -> Self {
+        Self::NoteEnvelope(error)
+    }
+}
+
+impl From<NoteStoreCryptoErrorV1> for LaneForestRpcErrorV2 {
+    fn from(error: NoteStoreCryptoErrorV1) -> Self {
+        Self::NoteStore(error)
     }
 }
 
@@ -371,6 +392,25 @@ pub struct FinalizedForestRootPageV2 {
     pub account: FinalizedForestAccountV2,
 }
 
+/// Wallet delivery metadata is deliberately subordinate to the proved Pool
+/// transition. A missing or malformed carrier cannot fabricate a note and
+/// cannot prevent the canonical ASQ8/ASR8 lane append from entering ASL2.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum PairForestCiphertextDeliveryFailureV2 {
+    Missing,
+    Invalid,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub enum FinalizedPairForestCiphertextDeliveryV2 {
+    Unrecoverable(PairForestCiphertextDeliveryFailureV2),
+    Verified {
+        instruction_index: u16,
+        authority: [u8; 32],
+        carrier: crate::tx_v1_ciphertext_carrier_v2::TxV1CiphertextCarrierV2,
+    },
+}
+
 /// Exact externally authenticated fields needed to turn one deployed Pool V2
 /// terminal into a canonical wallet event. `instruction_index` is the index in
 /// `transaction.message.instructions`; the instruction must be last so no
@@ -394,6 +434,7 @@ pub struct FinalizedPairForestTerminalObservationV2 {
     pub top_level_instruction_count: u16,
     pub instruction_program: [u8; 32],
     pub instruction_bytes: Vec<u8>,
+    pub ciphertext_delivery: FinalizedPairForestCiphertextDeliveryV2,
     pub return_data_program: [u8; 32],
     pub return_data: Vec<u8>,
     pub root_page: FinalizedForestRootPageV2,
@@ -692,6 +733,34 @@ fn scanner_event_from_terminal_v2(
     }
     let request = decode_pool_v1_pair_forest_terminal_request_v1(&observation.instruction_bytes)
         .map_err(|_| LaneForestRpcErrorV2::InvalidEvent)?;
+    let (recipient_ciphertext, change_ciphertext) = match &observation.ciphertext_delivery {
+        FinalizedPairForestCiphertextDeliveryV2::Unrecoverable(_) => (None, None),
+        FinalizedPairForestCiphertextDeliveryV2::Verified {
+            instruction_index,
+            authority,
+            carrier,
+        } => {
+            if *authority == [0u8; 32]
+                || instruction_index
+                    .checked_add(1)
+                    .is_none_or(|next| next != observation.instruction_index)
+            {
+                return Err(LaneForestRpcErrorV2::InvalidEvent);
+            }
+            carrier
+                .validate_terminal_v2(
+                    &observation.instruction_bytes,
+                    *carrier.proof_account_v2(),
+                    *instruction_index,
+                    observation.instruction_index,
+                )
+                .map_err(|_| LaneForestRpcErrorV2::InvalidEvent)?;
+            (
+                carrier.recipient_ciphertext_v2().copied(),
+                Some(*carrier.change_ciphertext_v2()),
+            )
+        }
+    };
     let result = decode_pool_v1_pair_forest_terminal_result_v1(&observation.return_data)
         .map_err(|_| LaneForestRpcErrorV2::InvalidEvent)?;
     if request.pool_program != *state.program_id()
@@ -722,11 +791,8 @@ fn scanner_event_from_terminal_v2(
                 nullifier: encode_digest_canonical(&public.nullifier),
                 recipient_commitment: encode_digest_canonical(&public.recipient_commitment),
                 change_commitment: encode_digest_canonical(&public.change_commitment),
-                // The deployed ASQ8/ASR8 terminal does not carry ciphertext.
-                // Recipient delivery is an independently authenticated input
-                // to the intent builder, never synthesized from public bytes.
-                recipient_encrypted_note: None,
-                change_encrypted_note: None,
+                recipient_encrypted_note: recipient_ciphertext,
+                change_encrypted_note: change_ciphertext,
             }
         }
         PoolV1PairForestTerminalPaymentV1::Withdrawal(public) => {
@@ -738,7 +804,7 @@ fn scanner_event_from_terminal_v2(
                 change_commitment: encode_digest_canonical(&public.change_commitment),
                 destination_token_account: public.destination_token_account,
                 amount: public.amount,
-                encrypted_note: None,
+                encrypted_note: change_ciphertext,
             }
         }
     };
@@ -825,6 +891,129 @@ pub fn derive_finalized_pair_forest_terminal_intent_v2(
     checkpoint: Option<LaneForestWalletCheckpointBindingV2>,
 ) -> Result<LaneForestWalletTxnIntentV2, LaneForestRpcErrorV2> {
     let event = derive_finalized_pair_forest_terminal_event_v2(state.lane_state(), observation)?;
+    Ok(LaneForestWalletTxnIntentV2::new_ordered_v2(
+        observation.block,
+        event,
+        FinalizedLedgerPositionV2::new_v2(observation.transaction_index),
+        *state.note_cipher_id(),
+        notes,
+        spends,
+        checkpoint,
+        None,
+    )?)
+}
+
+fn recovered_carrier_note_bindings_v2(
+    rng: &mut impl CryptoRng,
+    lane_state: &LaneForestDurableStateV2,
+    note_cipher_id: [u8; 32],
+    event: &ForestFinalizedAppendEventV2,
+    viewing_secret: &ViewingSecretKeyV1,
+    local_keys: &impl LocalNullifierKeyStoreV1,
+    cipher: &NoteStoreCipherV1,
+) -> Result<Vec<LaneForestWalletNoteBindingV2>, LaneForestRpcErrorV2> {
+    if note_cipher_id != cipher.cipher_id() {
+        return Err(LaneForestRpcErrorV2::Wallet(
+            LaneForestWalletTxnErrorV2::InvalidNoteCipher,
+        ));
+    }
+    let deployment_domain = lane_state.master().value.identity.deployment_domain;
+    let mut outputs = Vec::with_capacity(2);
+    match &event.kind {
+        ForestFinalizedAppendKindV2::PrivateTransfer {
+            recipient_event_id,
+            change_event_id,
+            recipient_commitment,
+            change_commitment,
+            recipient_encrypted_note,
+            change_encrypted_note,
+            ..
+        } => {
+            if let Some(payload) = recipient_encrypted_note {
+                outputs.push((*recipient_event_id, *recipient_commitment, payload));
+            }
+            if let Some(payload) = change_encrypted_note {
+                outputs.push((*change_event_id, *change_commitment, payload));
+            }
+        }
+        ForestFinalizedAppendKindV2::Withdrawal {
+            event_id,
+            change_commitment,
+            encrypted_note,
+            ..
+        } => {
+            if let Some(payload) = encrypted_note {
+                outputs.push((*event_id, *change_commitment, payload));
+            }
+        }
+        ForestFinalizedAppendKindV2::Deposit { .. } => {
+            return Err(LaneForestRpcErrorV2::InvalidEvent)
+        }
+    }
+    let mut notes = Vec::with_capacity(outputs.len());
+    for (event_id, commitment, payload) in outputs {
+        let context = crate::NoteContextV1::new(
+            event.master,
+            deployment_domain,
+            event.pair_leaf_index,
+            commitment,
+        )?;
+        let note = match scan_note_v1(viewing_secret, &context, payload) {
+            Ok(ScanResultV1::NotForViewingKey) => continue,
+            Ok(ScanResultV1::RecoveredView(note)) => note,
+            Err(PoolV1WalletError::InvalidViewingKey) => {
+                return Err(LaneForestRpcErrorV2::NoteEnvelope(
+                    PoolV1WalletError::InvalidViewingKey,
+                ));
+            }
+            // Once ASC8 framing and signature/context binding have passed,
+            // malformed plaintext or commitment mismatch is sender-controlled
+            // delivery metadata. It cannot create a note and must not stall
+            // the independently authenticated Pool append.
+            Err(_) => continue,
+        };
+        // A viewing key alone yields a view-only record. Spendability is
+        // promoted only if the protected local key service returns a matching
+        // nullifier key for this exact decrypted owner digest.
+        let access = local_keys
+            .nullifier_key_for_owner_v1(note.owner_key())
+            .map(|key| note_matches_spending_key_v1(&note, key.as_bytes()))
+            .transpose()?
+            .unwrap_or(false)
+            .then_some(SealedNoteAccessV1::Spendable)
+            .unwrap_or(SealedNoteAccessV1::ViewOnly);
+        let sealed = seal_recovered_note_v1(rng, cipher, event_id, access, &note)?;
+        notes.push(LaneForestWalletNoteBindingV2::from_sealed_recovered_note_v2(&sealed)?);
+    }
+    Ok(notes)
+}
+
+/// Construct the production ASL2 intent directly from the quorum-authenticated
+/// ASC8→ASQ8→ASR8 path. Ciphertexts are decrypted with the local viewing key,
+/// every recovered plaintext recomputes its public commitment inside
+/// `scan_note_v1`, and the resulting note-store envelopes enter the same ASL2
+/// transaction as the finalized append.
+#[allow(clippy::too_many_arguments)]
+pub fn derive_finalized_pair_forest_terminal_intent_with_carrier_notes_v2(
+    rng: &mut impl CryptoRng,
+    state: &LaneForestWalletCommittedStateV2,
+    observation: &FinalizedPairForestTerminalObservationV2,
+    viewing_secret: &ViewingSecretKeyV1,
+    local_keys: &impl LocalNullifierKeyStoreV1,
+    cipher: &NoteStoreCipherV1,
+    spends: Vec<LaneForestWalletSpendBindingV2>,
+    checkpoint: Option<LaneForestWalletCheckpointBindingV2>,
+) -> Result<LaneForestWalletTxnIntentV2, LaneForestRpcErrorV2> {
+    let event = derive_finalized_pair_forest_terminal_event_v2(state.lane_state(), observation)?;
+    let notes = recovered_carrier_note_bindings_v2(
+        rng,
+        state.lane_state(),
+        *state.note_cipher_id(),
+        &event,
+        viewing_secret,
+        local_keys,
+        cipher,
+    )?;
     Ok(LaneForestWalletTxnIntentV2::new_ordered_v2(
         observation.block,
         event,
@@ -1116,9 +1305,56 @@ mod tests {
         RootHistoryPageV1, VerifierPolicyV1, POOL_V1_PAIR_FOREST_ALL_LANES_MASK,
         POOL_V1_PAIR_TREE_DEPTH,
     };
+    use core::convert::Infallible;
+    use hpke::rand_core::{TryCryptoRng, TryRng};
     use solana_program::pubkey::Pubkey;
 
-    use crate::lane_forest_v2::lane_forest_global_root_v2;
+    use crate::{
+        derive_viewing_keypair_v1, encrypt_note_v1,
+        lane_forest_v2::lane_forest_global_root_v2,
+        note_store_crypto::{open_note_opening_v1, NullifierKeyMaterialV1},
+        recompute_note_commitment_v1,
+        tx_v1_ciphertext_carrier_v2::{
+            structurally_valid_test_note_envelope_v2, TxV1CiphertextCarrierV2,
+        },
+        NoteContextV1, NoteOpeningV1,
+    };
+
+    struct FixedTestRng(u8);
+
+    impl TryRng for FixedTestRng {
+        type Error = Infallible;
+
+        fn try_next_u32(&mut self) -> Result<u32, Self::Error> {
+            let mut bytes = [0u8; 4];
+            self.try_fill_bytes(&mut bytes)?;
+            Ok(u32::from_le_bytes(bytes))
+        }
+
+        fn try_next_u64(&mut self) -> Result<u64, Self::Error> {
+            let mut bytes = [0u8; 8];
+            self.try_fill_bytes(&mut bytes)?;
+            Ok(u64::from_le_bytes(bytes))
+        }
+
+        fn try_fill_bytes(&mut self, destination: &mut [u8]) -> Result<(), Self::Error> {
+            for byte in destination {
+                *byte = self.0;
+                self.0 = self.0.wrapping_add(1);
+            }
+            Ok(())
+        }
+    }
+
+    impl TryCryptoRng for FixedTestRng {}
+
+    struct NoLocalKeys;
+
+    impl LocalNullifierKeyStoreV1 for NoLocalKeys {
+        fn nullifier_key_for_owner_v1(&self, _: &[u8; 32]) -> Option<NullifierKeyMaterialV1> {
+            None
+        }
+    }
 
     fn digest(seed: u32) -> [M31; 8] {
         core::array::from_fn(|index| M31(seed + 17 * index as u32 + 1))
@@ -1266,15 +1502,18 @@ mod tests {
         state.ingest_finalized_append_v2(event, None).unwrap();
     }
 
-    fn terminal_observation(
+    #[allow(clippy::too_many_arguments)]
+    fn terminal_observation_with_outputs(
         program: Pubkey,
         state: &LaneForestDurableStateV2,
         chain_point: FinalizedChainPointV1,
         signature: [u8; 64],
+        recipient: aspis_statement::Digest,
+        change: aspis_statement::Digest,
+        recipient_ciphertext: [u8; POOL_V1_NOTE_ENCRYPTED_PAYLOAD_BYTES],
+        change_ciphertext: [u8; POOL_V1_NOTE_ENCRYPTED_PAYLOAD_BYTES],
     ) -> FinalizedPairForestTerminalObservationV2 {
         let nullifier = digest(0);
-        let recipient = digest(810);
-        let change = digest(820);
         let public = PoolV1PrivateTransferPublicV1 {
             pool: state.master().address,
             deployment_domain: state.master().value.identity.deployment_domain,
@@ -1291,6 +1530,15 @@ mod tests {
             pool_program: program.to_bytes(),
             public: PoolV1PairForestTerminalPaymentV1::PrivateTransfer(public),
         };
+        let ciphertext_carrier = TxV1CiphertextCarrierV2::from_terminal_v2(
+            &request,
+            [0xa4; 32],
+            1,
+            2,
+            Some(recipient_ciphertext),
+            change_ciphertext,
+        )
+        .unwrap();
         let lane_id = LaneIdV2::new(encode_digest_canonical(&nullifier)[0] & 7).unwrap();
         let (lane, _) = state.lane(lane_id);
         let pair_leaf = PoolV1PairLeafWitnessV1::two_outputs(recipient, change)
@@ -1341,6 +1589,11 @@ mod tests {
             instruction_bytes: encode_pool_v1_pair_forest_terminal_request_v1(&request)
                 .unwrap()
                 .to_vec(),
+            ciphertext_delivery: FinalizedPairForestCiphertextDeliveryV2::Verified {
+                instruction_index: 1,
+                authority: [0xa3; 32],
+                carrier: ciphertext_carrier,
+            },
             return_data_program: program.to_bytes(),
             return_data: encode_pool_v1_pair_forest_terminal_result_v1(&result)
                 .unwrap()
@@ -1356,6 +1609,24 @@ mod tests {
                 },
             },
         }
+    }
+
+    fn terminal_observation(
+        program: Pubkey,
+        state: &LaneForestDurableStateV2,
+        chain_point: FinalizedChainPointV1,
+        signature: [u8; 64],
+    ) -> FinalizedPairForestTerminalObservationV2 {
+        terminal_observation_with_outputs(
+            program,
+            state,
+            chain_point,
+            signature,
+            digest(810),
+            digest(820),
+            structurally_valid_test_note_envelope_v2(0xa5),
+            structurally_valid_test_note_envelope_v2(0xa6),
+        )
     }
 
     fn withdrawal_observation(
@@ -1385,6 +1656,15 @@ mod tests {
             pool_program: program.to_bytes(),
             public: PoolV1PairForestTerminalPaymentV1::Withdrawal(public),
         };
+        let ciphertext_carrier = TxV1CiphertextCarrierV2::from_terminal_v2(
+            &request,
+            [0xa4; 32],
+            1,
+            2,
+            None,
+            structurally_valid_test_note_envelope_v2(0xa6),
+        )
+        .unwrap();
         let lane_id = LaneIdV2::new(encode_digest_canonical(&nullifier)[0] & 7).unwrap();
         let (lane, _) = state.lane(lane_id);
         let pair_leaf = PoolV1PairLeafWitnessV1::single_output(change)
@@ -1435,6 +1715,11 @@ mod tests {
             instruction_bytes: encode_pool_v1_pair_forest_terminal_request_v1(&request)
                 .unwrap()
                 .to_vec(),
+            ciphertext_delivery: FinalizedPairForestCiphertextDeliveryV2::Verified {
+                instruction_index: 1,
+                authority: [0xa3; 32],
+                carrier: ciphertext_carrier,
+            },
             return_data_program: program.to_bytes(),
             return_data: encode_pool_v1_pair_forest_terminal_result_v1(&result)
                 .unwrap()
@@ -1661,11 +1946,28 @@ mod tests {
         assert!(matches!(
             event.kind,
             ForestFinalizedAppendKindV2::PrivateTransfer {
+                recipient_encrypted_note: Some(_),
+                change_encrypted_note: Some(_),
+                ..
+            }
+        ));
+
+        let mut omitted_delivery = observation.clone();
+        omitted_delivery.ciphertext_delivery =
+            FinalizedPairForestCiphertextDeliveryV2::Unrecoverable(
+                PairForestCiphertextDeliveryFailureV2::Missing,
+            );
+        let omitted_event =
+            derive_finalized_pair_forest_terminal_event_v2(&initial, &omitted_delivery).unwrap();
+        assert!(matches!(
+            omitted_event.kind,
+            ForestFinalizedAppendKindV2::PrivateTransfer {
                 recipient_encrypted_note: None,
                 change_encrypted_note: None,
                 ..
             }
         ));
+        assert_eq!(omitted_event.after_lane_image, event.after_lane_image);
 
         let mut not_finalized = observation.clone();
         not_finalized.asserted_commitment = ForestRpcCommitmentV2::Confirmed;
@@ -1735,10 +2037,178 @@ mod tests {
             ForestFinalizedAppendKindV2::Withdrawal {
                 destination_token_account,
                 amount: 77,
-                encrypted_note: None,
+                encrypted_note: Some(_),
                 ..
             } if destination_token_account == [0x93; 32]
         ));
+    }
+
+    #[test]
+    fn carrier_aead_recovers_each_wallet_without_allowing_bad_delivery_to_stall_state() {
+        let (program, initial) = fixture();
+        let (recipient_secret, recipient_public) = derive_viewing_keypair_v1(&[0x31; 32]).unwrap();
+        let (change_secret, change_public) = derive_viewing_keypair_v1(&[0x32; 32]).unwrap();
+        let recipient_note = NoteOpeningV1::new(
+            encode_digest_canonical(&digest(1_010)),
+            70,
+            initial.master().value.identity.asset_id.0,
+            encode_digest_canonical(&digest(1_011)),
+        )
+        .unwrap();
+        let change_note = NoteOpeningV1::new(
+            encode_digest_canonical(&digest(1_020)),
+            30,
+            initial.master().value.identity.asset_id.0,
+            encode_digest_canonical(&digest(1_021)),
+        )
+        .unwrap();
+        let recipient_commitment = recompute_note_commitment_v1(&recipient_note).unwrap();
+        let change_commitment = recompute_note_commitment_v1(&change_note).unwrap();
+        let recipient_digest = decode_digest_canonical(&recipient_commitment).unwrap();
+        let change_digest = decode_digest_canonical(&change_commitment).unwrap();
+        let recipient_context = NoteContextV1::new(
+            initial.master().address,
+            initial.master().value.identity.deployment_domain,
+            0,
+            recipient_commitment,
+        )
+        .unwrap();
+        let change_context = NoteContextV1::new(
+            initial.master().address,
+            initial.master().value.identity.deployment_domain,
+            0,
+            change_commitment,
+        )
+        .unwrap();
+        let recipient_payload = encrypt_note_v1(
+            &mut FixedTestRng(0x40),
+            &recipient_public,
+            &recipient_context,
+            &recipient_note,
+        )
+        .unwrap();
+        let change_payload = encrypt_note_v1(
+            &mut FixedTestRng(0x80),
+            &change_public,
+            &change_context,
+            &change_note,
+        )
+        .unwrap();
+        let observation = terminal_observation_with_outputs(
+            program,
+            &initial,
+            point(42),
+            [0x46; 64],
+            recipient_digest,
+            change_digest,
+            recipient_payload,
+            change_payload,
+        );
+        let event = derive_finalized_pair_forest_terminal_event_v2(&initial, &observation).unwrap();
+        let recipient_cipher = NoteStoreCipherV1::from_key_bytes([0x51; 32]).unwrap();
+        let change_cipher = NoteStoreCipherV1::from_key_bytes([0x52; 32]).unwrap();
+        let recipient_notes = recovered_carrier_note_bindings_v2(
+            &mut FixedTestRng(0xa0),
+            &initial,
+            recipient_cipher.cipher_id(),
+            &event,
+            &recipient_secret,
+            &NoLocalKeys,
+            &recipient_cipher,
+        )
+        .unwrap();
+        let change_notes = recovered_carrier_note_bindings_v2(
+            &mut FixedTestRng(0xb0),
+            &initial,
+            change_cipher.cipher_id(),
+            &event,
+            &change_secret,
+            &NoLocalKeys,
+            &change_cipher,
+        )
+        .unwrap();
+        assert_eq!(recipient_notes.len(), 1);
+        assert_eq!(change_notes.len(), 1);
+        assert_eq!(recipient_notes[0].access(), SealedNoteAccessV1::ViewOnly);
+        assert_eq!(change_notes[0].access(), SealedNoteAccessV1::ViewOnly);
+        assert_eq!(recipient_notes[0].event_id().event_index(), 0);
+        assert_eq!(change_notes[0].event_id().event_index(), 1);
+        let recovered_recipient = open_note_opening_v1(
+            &recipient_cipher,
+            recipient_notes[0].event_id(),
+            recipient_notes[0].access(),
+            recipient_notes[0].sealed_note(),
+        )
+        .unwrap();
+        let recovered_change = open_note_opening_v1(
+            &change_cipher,
+            change_notes[0].event_id(),
+            change_notes[0].access(),
+            change_notes[0].sealed_note(),
+        )
+        .unwrap();
+        assert_eq!(
+            recompute_note_commitment_v1(&recovered_recipient).unwrap(),
+            recipient_commitment
+        );
+        assert_eq!(
+            recompute_note_commitment_v1(&recovered_change).unwrap(),
+            change_commitment
+        );
+
+        // Swapping two canonical ciphertext slots preserves the proved
+        // commitments and lane transition, but both AEAD AAD checks fail, so
+        // neither wallet creates a note.
+        let swapped = terminal_observation_with_outputs(
+            program,
+            &initial,
+            point(42),
+            [0x47; 64],
+            recipient_digest,
+            change_digest,
+            change_payload,
+            recipient_payload,
+        );
+        let swapped_event =
+            derive_finalized_pair_forest_terminal_event_v2(&initial, &swapped).unwrap();
+        assert_eq!(swapped_event.after_lane_image, event.after_lane_image);
+        for (secret, cipher, seed) in [
+            (&recipient_secret, &recipient_cipher, 0xc0),
+            (&change_secret, &change_cipher, 0xd0),
+        ] {
+            assert!(recovered_carrier_note_bindings_v2(
+                &mut FixedTestRng(seed),
+                &initial,
+                cipher.cipher_id(),
+                &swapped_event,
+                secret,
+                &NoLocalKeys,
+                cipher,
+            )
+            .unwrap()
+            .is_empty());
+        }
+
+        // A missing carrier is recorded as unrecoverable delivery while the
+        // exact same authenticated append remains ingestible into ASL2.
+        let mut omitted = observation;
+        omitted.ciphertext_delivery = FinalizedPairForestCiphertextDeliveryV2::Unrecoverable(
+            PairForestCiphertextDeliveryFailureV2::Missing,
+        );
+        let omitted_event = derive_finalized_pair_forest_terminal_event_v2(&initial, &omitted)
+            .expect("delivery omission cannot invalidate Pool state");
+        assert_eq!(omitted_event.after_lane_image, event.after_lane_image);
+        assert!(recovered_carrier_note_bindings_v2(
+            &mut FixedTestRng(0xe0),
+            &initial,
+            recipient_cipher.cipher_id(),
+            &omitted_event,
+            &recipient_secret,
+            &NoLocalKeys,
+            &recipient_cipher,
+        )
+        .unwrap()
+        .is_empty());
     }
 
     #[test]

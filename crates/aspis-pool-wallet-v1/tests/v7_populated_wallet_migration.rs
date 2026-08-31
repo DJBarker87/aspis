@@ -29,7 +29,8 @@ use aspis_pool_wallet_v1::{
     },
     lane_forest_rpc_v2::{
         derive_finalized_pair_forest_terminal_event_v2, FinalizedForestAccountV2,
-        FinalizedForestRootPageV2, FinalizedPairForestTerminalObservationV2, LaneForestRpcErrorV2,
+        FinalizedForestRootPageV2, FinalizedPairForestCiphertextDeliveryV2,
+        FinalizedPairForestTerminalObservationV2, LaneForestRpcErrorV2,
     },
     lane_forest_v2::{lane_forest_global_root_v2, LaneIdV2},
     lane_forest_wallet_txn_v2::{
@@ -61,6 +62,7 @@ use aspis_pool_wallet_v1::{
         build_deposit_instruction_v1, build_private_transfer_instruction_v1,
         VerifierRouteAccountsV1,
     },
+    tx_v1_ciphertext_carrier_v2::TxV1CiphertextCarrierV2,
     wallet_monotonic_v2::{
         FaultInjectableWalletMonotonicStoreV2, WalletMonotonicFaultPointV2,
         WalletMonotonicPreparedNextV2, WalletMonotonicStoreV2,
@@ -826,6 +828,32 @@ fn finalized_terminal_observation_without_notes(
         pool_program: *state.program_id(),
         public: PoolV1PairForestTerminalPaymentV1::PrivateTransfer(public),
     };
+    let test_envelope = |seed: u8| {
+        let mut payload = [seed; aspis_pool_wallet_v1::POOL_V1_NOTE_ENCRYPTED_PAYLOAD_BYTES];
+        payload[..4].copy_from_slice(&aspis_pool_wallet_v1::POOL_V1_NOTE_ENVELOPE_MAGIC);
+        payload[4] = aspis_pool_wallet_v1::POOL_V1_NOTE_ENVELOPE_VERSION;
+        payload[5] = aspis_pool_wallet_v1::POOL_V1_NOTE_ENVELOPE_FLAGS;
+        payload[6..8]
+            .copy_from_slice(&aspis_pool_wallet_v1::POOL_V1_NOTE_HPKE_KEM_ID.to_be_bytes());
+        payload[8..10]
+            .copy_from_slice(&aspis_pool_wallet_v1::POOL_V1_NOTE_HPKE_KDF_ID.to_be_bytes());
+        payload[10..12]
+            .copy_from_slice(&aspis_pool_wallet_v1::POOL_V1_NOTE_HPKE_AEAD_ID.to_be_bytes());
+        payload[12..14].copy_from_slice(
+            &(aspis_pool_wallet_v1::POOL_V1_NOTE_CIPHERTEXT_BYTES as u16).to_be_bytes(),
+        );
+        payload[14..16].fill(0);
+        payload
+    };
+    let ciphertext_carrier = TxV1CiphertextCarrierV2::from_terminal_v2(
+        &request,
+        [0xa4; 32],
+        1,
+        2,
+        Some(test_envelope(0xa5)),
+        test_envelope(0xa6),
+    )
+    .unwrap();
     let (lane, _) = state.lane(lane_id);
     let pair_leaf = PoolV1PairLeafWitnessV1::two_outputs(recipient, change)
         .unwrap()
@@ -875,6 +903,11 @@ fn finalized_terminal_observation_without_notes(
         instruction_bytes: encode_pool_v1_pair_forest_terminal_request_v1(&request)
             .unwrap()
             .to_vec(),
+        ciphertext_delivery: FinalizedPairForestCiphertextDeliveryV2::Verified {
+            instruction_index: 1,
+            authority: [0xa3; 32],
+            carrier: ciphertext_carrier,
+        },
         return_data_program: *state.program_id(),
         return_data: encode_pool_v1_pair_forest_terminal_result_v1(&result)
             .unwrap()

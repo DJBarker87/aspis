@@ -7,7 +7,9 @@
 //! exact block order, and emits Pool terminals only from literal TxV1 messages.
 //! The transaction-array index is retained separately from the stable
 //! signature-based event ID and is committed into ASL2 by the terminal intent
-//! builder.
+//! builder. Ciphertext delivery is deliberately non-blocking for authenticated
+//! Pool state: a missing or invalid carrier is retained as unrecoverable local
+//! delivery metadata, while only a fully verified carrier may create a note.
 
 use std::collections::BTreeSet;
 
@@ -28,7 +30,8 @@ use crate::{
     lane_forest_durable_v2::canonical_lane_root_page_cursor_v2,
     lane_forest_rpc_v2::{
         FinalizedForestAccountV2, FinalizedForestRootPageV2,
-        FinalizedPairForestTerminalObservationV2,
+        FinalizedPairForestCiphertextDeliveryV2, FinalizedPairForestTerminalObservationV2,
+        PairForestCiphertextDeliveryFailureV2,
     },
     lane_forest_transaction_v1::{
         SOLANA_LEGACY_V0_TRANSACTION_MAX_BYTES_V2, SOLANA_V1_TRANSACTION_MAX_BYTES_V2,
@@ -80,6 +83,9 @@ pub enum FinalizedTxV1RpcErrorV2 {
     WrongTerminalPosition,
     TerminalOrder,
     WrongProgram,
+    MissingCiphertextCarrier,
+    InvalidCiphertextCarrier,
+    InvalidSignature,
     InvalidEventId,
     InvalidRootRequest,
     RootContextTooOld,
@@ -285,6 +291,7 @@ struct OwnedFinalizedTxV1TerminalV2 {
     top_level_instruction_count: u16,
     instruction_program: [u8; 32],
     instruction_bytes: Vec<u8>,
+    ciphertext_delivery: FinalizedPairForestCiphertextDeliveryV2,
     return_data_program: [u8; 32],
     return_data: Vec<u8>,
     event_id: DepositEventIdV1,
@@ -462,6 +469,7 @@ impl AgreedFinalizedTxV1BlockV2 {
             top_level_instruction_count: terminal.top_level_instruction_count,
             instruction_program: terminal.instruction_program,
             instruction_bytes: terminal.instruction_bytes.clone(),
+            ciphertext_delivery: terminal.ciphertext_delivery.clone(),
             return_data_program: terminal.return_data_program,
             return_data: terminal.return_data.clone(),
             root_page: root_page.root_page.clone(),
@@ -544,6 +552,7 @@ fn terminal_binding_v2(
     transaction_index: u32,
     signature: [u8; 64],
     instruction_index: u16,
+    ciphertext_delivery: &FinalizedPairForestCiphertextDeliveryV2,
     instruction: &[u8],
     return_data: &[u8],
 ) -> Result<[u8; 32], FinalizedTxV1RpcErrorV2> {
@@ -557,6 +566,29 @@ fn terminal_binding_v2(
     hasher.update(block.point().block_hash());
     hasher.update(transaction_index.to_le_bytes());
     hasher.update(signature);
+    match ciphertext_delivery {
+        FinalizedPairForestCiphertextDeliveryV2::Unrecoverable(reason) => {
+            hasher.update([0]);
+            hasher.update([match reason {
+                PairForestCiphertextDeliveryFailureV2::Missing => 1,
+                PairForestCiphertextDeliveryFailureV2::Invalid => 2,
+            }]);
+        }
+        FinalizedPairForestCiphertextDeliveryV2::Verified {
+            instruction_index,
+            authority,
+            carrier,
+        } => {
+            let carrier =
+                crate::tx_v1_ciphertext_carrier_v2::encode_tx_v1_ciphertext_carrier_v2(carrier)
+                    .map_err(|_| FinalizedTxV1RpcErrorV2::InvalidCiphertextCarrier)?;
+            hasher.update([1]);
+            hasher.update(instruction_index.to_le_bytes());
+            hasher.update(authority);
+            hasher.update((carrier.len() as u64).to_le_bytes());
+            hasher.update(carrier);
+        }
+    }
     hasher.update(instruction_index.to_le_bytes());
     hasher.update(instruction_length.to_le_bytes());
     hasher.update(instruction);
@@ -634,6 +666,20 @@ fn parse_finalized_tx_v1_block_v2(
         {
             return Err(FinalizedTxV1RpcErrorV2::NonCanonicalTransaction);
         }
+        let serialized_message = transaction.message.serialize();
+        let required_signatures = usize::from(transaction.message.header().num_required_signatures);
+        let static_keys = transaction.message.static_account_keys();
+        if required_signatures == 0
+            || transaction.signatures.len() != required_signatures
+            || static_keys.len() < required_signatures
+            || transaction
+                .signatures
+                .iter()
+                .zip(&static_keys[..required_signatures])
+                .any(|(signature, key)| !signature.verify(key.as_ref(), &serialized_message))
+        {
+            return Err(FinalizedTxV1RpcErrorV2::InvalidSignature);
+        }
         let primary_signature = transaction
             .signatures
             .first()
@@ -671,9 +717,94 @@ fn parse_finalized_tx_v1_block_v2(
                 if instruction_index + 1 != instructions.len() {
                     return Err(FinalizedTxV1RpcErrorV2::WrongTerminalPosition);
                 }
-                decode_pool_v1_pair_forest_terminal_request_v1(&instruction.data)
-                    .map_err(|_| FinalizedTxV1RpcErrorV2::InvalidTerminal)?;
+                let terminal_request =
+                    decode_pool_v1_pair_forest_terminal_request_v1(&instruction.data)
+                        .map_err(|_| FinalizedTxV1RpcErrorV2::InvalidTerminal)?;
                 if succeeded {
+                    let terminal_accounts = instruction
+                        .accounts
+                        .iter()
+                        .map(|index| {
+                            static_keys
+                                .get(usize::from(*index))
+                                .map(|key| key.to_bytes())
+                                .ok_or(FinalizedTxV1RpcErrorV2::InvalidTransaction)
+                        })
+                        .collect::<Result<Vec<_>, _>>()?;
+                    let proof_index = match terminal_request.public {
+                        aspis_statement::pool_v1::PoolV1PairForestTerminalPaymentV1::PrivateTransfer(_) => {
+                            if !matches!(terminal_accounts.len(), 9 | 10) {
+                                return Err(FinalizedTxV1RpcErrorV2::InvalidTerminal);
+                            }
+                            terminal_accounts.len() - 1
+                        }
+                        aspis_statement::pool_v1::PoolV1PairForestTerminalPaymentV1::Withdrawal(_) => {
+                            if !matches!(terminal_accounts.len(), 14 | 15) {
+                                return Err(FinalizedTxV1RpcErrorV2::InvalidTerminal);
+                            }
+                            terminal_accounts.len() - 6
+                        }
+                    };
+                    let proof_account = terminal_accounts[proof_index];
+                    let terminal_instruction_index_u16 = u16::try_from(instruction_index)
+                        .map_err(|_| FinalizedTxV1RpcErrorV2::InvalidTransaction)?;
+                    let ciphertext_delivery = match instruction_index.checked_sub(1) {
+                        None => FinalizedPairForestCiphertextDeliveryV2::Unrecoverable(
+                            PairForestCiphertextDeliveryFailureV2::Missing,
+                        ),
+                        Some(carrier_instruction_index) => {
+                            let carrier_instruction = &instructions[carrier_instruction_index];
+                            let carrier_program = static_keys
+                                .get(usize::from(carrier_instruction.program_id_index))
+                                .ok_or(FinalizedTxV1RpcErrorV2::InvalidTransaction)?;
+                            if carrier_program.to_bytes()
+                                != crate::tx_v1_ciphertext_carrier_v2::POOL_V1_TX_V1_CIPHERTEXT_CARRIER_PROGRAM_V2
+                                    .to_bytes()
+                            {
+                                FinalizedPairForestCiphertextDeliveryV2::Unrecoverable(
+                                    PairForestCiphertextDeliveryFailureV2::Missing,
+                                )
+                            } else {
+                                let verified = (|| {
+                                    if carrier_instruction.accounts.len() != 1 {
+                                        return None;
+                                    }
+                                    let authority_index =
+                                        usize::from(carrier_instruction.accounts[0]);
+                                    let authority = static_keys.get(authority_index)?;
+                                    if !transaction.message.is_signer(authority_index)
+                                        || authority.to_bytes() == [0u8; 32]
+                                    {
+                                        return None;
+                                    }
+                                    let carrier = crate::tx_v1_ciphertext_carrier_v2::decode_tx_v1_ciphertext_carrier_v2(
+                                        &carrier_instruction.data,
+                                    )
+                                    .ok()?;
+                                    let carrier_instruction_index =
+                                        u16::try_from(carrier_instruction_index).ok()?;
+                                    carrier
+                                        .validate_terminal_v2(
+                                            &instruction.data,
+                                            proof_account,
+                                            carrier_instruction_index,
+                                            terminal_instruction_index_u16,
+                                        )
+                                        .ok()?;
+                                    Some(FinalizedPairForestCiphertextDeliveryV2::Verified {
+                                        instruction_index: carrier_instruction_index,
+                                        authority: authority.to_bytes(),
+                                        carrier,
+                                    })
+                                })();
+                                verified.unwrap_or(
+                                    FinalizedPairForestCiphertextDeliveryV2::Unrecoverable(
+                                        PairForestCiphertextDeliveryFailureV2::Invalid,
+                                    ),
+                                )
+                            }
+                        }
+                    };
                     let return_data = return_data
                         .as_ref()
                         .ok_or(FinalizedTxV1RpcErrorV2::InvalidReturnData)?;
@@ -698,6 +829,7 @@ fn parse_finalized_tx_v1_block_v2(
                         top_level_instruction_count,
                         instruction_program: pool_program,
                         instruction_bytes: instruction.data.clone(),
+                        ciphertext_delivery: ciphertext_delivery.clone(),
                         return_data_program: return_data.program_id,
                         return_data: return_data.data.clone(),
                         event_id,
@@ -705,7 +837,8 @@ fn parse_finalized_tx_v1_block_v2(
                             block,
                             transaction_index,
                             primary_signature,
-                            instruction_index,
+                            terminal_instruction_index_u16,
+                            &ciphertext_delivery,
                             &instruction.data,
                             &return_data.data,
                         )?,
@@ -1047,14 +1180,22 @@ mod tests {
     use serde_json::json;
     use solana_address_v1::Address;
     use solana_hash_v1::Hash;
-    use solana_instruction_v1::Instruction;
+    use solana_instruction_v1::{AccountMeta, Instruction};
+    use solana_keypair::Keypair;
     use solana_message_v1::{v1, VersionedMessage};
     use solana_program::pubkey::Pubkey;
     use solana_signature_v1::Signature;
+    use solana_signer::Signer;
 
     use super::*;
-    use crate::operator_startup::{
-        provider_set_digest_v1, FinalizedReleaseCheckpointV1, OperatorStartupReceiptV1,
+    use crate::{
+        operator_startup::{
+            provider_set_digest_v1, FinalizedReleaseCheckpointV1, OperatorStartupReceiptV1,
+        },
+        tx_v1_ciphertext_carrier_v2::{
+            encode_tx_v1_ciphertext_carrier_v2, structurally_valid_test_note_envelope_v2,
+            TxV1CiphertextCarrierV2, POOL_V1_TX_V1_CIPHERTEXT_CARRIER_PROGRAM_V2,
+        },
     };
 
     const PROVIDERS: [[u8; 32]; 2] = [[0x11; 32], [0x22; 32]];
@@ -1112,6 +1253,8 @@ mod tests {
         lane_id: LaneIdV2,
         lane_account: [u8; 32],
         request: Vec<u8>,
+        carrier: Vec<u8>,
+        proof_account: [u8; 32],
         result: Vec<u8>,
         next_root: aspis_statement::poseidon2::Digest,
     }
@@ -1141,6 +1284,16 @@ mod tests {
             pool_program: program.to_bytes(),
             public: PoolV1PairForestTerminalPaymentV1::PrivateTransfer(public),
         };
+        let proof_account = [0x68; 32];
+        let carrier = TxV1CiphertextCarrierV2::from_terminal_v2(
+            &request,
+            proof_account,
+            0,
+            1,
+            Some(structurally_valid_test_note_envelope_v2(0x69)),
+            structurally_valid_test_note_envelope_v2(0x6a),
+        )
+        .unwrap();
         let next_root = digest(24);
         let result = PoolV1PairForestTerminalResultV1 {
             transition_kind: PoolV1TransitionKind::PrivateTransfer,
@@ -1162,6 +1315,10 @@ mod tests {
             request: encode_pool_v1_pair_forest_terminal_request_v1(&request)
                 .unwrap()
                 .to_vec(),
+            carrier: encode_tx_v1_ciphertext_carrier_v2(&carrier)
+                .unwrap()
+                .to_vec(),
+            proof_account,
             result: encode_pool_v1_pair_forest_terminal_result_v1(&result)
                 .unwrap()
                 .to_vec(),
@@ -1169,18 +1326,44 @@ mod tests {
         }
     }
 
-    fn tx_v1_wire(fixture: &TerminalFixtureV2, signature: u8) -> Vec<u8> {
-        let payer = Address::new_from_array([0x61; 32]);
-        let padding_program = Address::new_from_array([0x62; 32]);
+    fn sign_transaction_v2(transaction: &mut V1VersionedTransaction, signer: &Keypair) -> [u8; 64] {
+        let message = transaction.message.serialize();
+        assert_eq!(transaction.signatures.len(), 1);
+        assert_eq!(
+            transaction.message.static_account_keys()[0].to_bytes(),
+            signer.pubkey().to_bytes()
+        );
+        let signature: [u8; 64] = signer.sign_message(&message).as_ref().try_into().unwrap();
+        transaction.signatures[0] = Signature::from(signature);
+        signature
+    }
+
+    fn tx_v1_transaction(
+        fixture: &TerminalFixtureV2,
+        signer_seed: u8,
+    ) -> (V1VersionedTransaction, [u8; 64]) {
+        let signer = Keypair::new_from_array([signer_seed; 32]);
+        let payer = Address::new_from_array(signer.pubkey().to_bytes());
+        let carrier_program =
+            Address::new_from_array(POOL_V1_TX_V1_CIPHERTEXT_CARRIER_PROGRAM_V2.to_bytes());
+        let mut terminal_accounts = (0..8u8)
+            .map(|index| {
+                AccountMeta::new_readonly(Address::new_from_array([0x70 + index; 32]), false)
+            })
+            .collect::<Vec<_>>();
+        terminal_accounts.push(AccountMeta::new_readonly(
+            Address::new_from_array(fixture.proof_account),
+            false,
+        ));
         let instructions = vec![
             Instruction {
-                program_id: padding_program,
-                accounts: Vec::new(),
-                data: vec![0x63; 1_300],
+                program_id: carrier_program,
+                accounts: vec![AccountMeta::new_readonly(payer, true)],
+                data: fixture.carrier.clone(),
             },
             Instruction {
                 program_id: Address::new_from_array(fixture.program),
-                accounts: Vec::new(),
+                accounts: terminal_accounts,
                 data: fixture.request.clone(),
             },
         ];
@@ -1191,24 +1374,33 @@ mod tests {
             v1::TransactionConfig::empty().with_compute_unit_limit(1_300_000),
         )
         .unwrap();
-        let transaction = V1VersionedTransaction {
-            signatures: vec![Signature::from([signature; 64])],
+        let mut transaction = V1VersionedTransaction {
+            signatures: vec![Signature::default()],
             message: VersionedMessage::V1(message),
         };
-        let wire = wincode::serialize(&transaction).unwrap();
-        assert_eq!(wire.len(), 1_834);
-        assert!(wire.len() > SOLANA_LEGACY_V0_TRANSACTION_MAX_BYTES_V2);
-        assert!(wire.len() < SOLANA_V1_TRANSACTION_MAX_BYTES_V2);
-        wire
+        let signature = sign_transaction_v2(&mut transaction, &signer);
+        (transaction, signature)
     }
 
-    fn block_response(request_id: u64, fixture: &TerminalFixtureV2, signatures: &[u8]) -> Vec<u8> {
-        let transactions = signatures
+    fn tx_v1_wire(fixture: &TerminalFixtureV2, signer_seed: u8) -> (Vec<u8>, [u8; 64]) {
+        let (transaction, signature) = tx_v1_transaction(fixture, signer_seed);
+        let wire = wincode::serialize(&transaction).unwrap();
+        assert!(wire.len() > SOLANA_LEGACY_V0_TRANSACTION_MAX_BYTES_V2);
+        assert!(wire.len() < SOLANA_V1_TRANSACTION_MAX_BYTES_V2);
+        (wire, signature)
+    }
+
+    fn block_response_from_wires(
+        request_id: u64,
+        fixture: &TerminalFixtureV2,
+        wires: &[Vec<u8>],
+    ) -> Vec<u8> {
+        let transactions = wires
             .iter()
-            .map(|signature| {
+            .map(|wire| {
                 json!({
                     "transaction": [
-                        BASE64_STANDARD.encode(tx_v1_wire(fixture, *signature)),
+                        BASE64_STANDARD.encode(wire),
                         "base64"
                     ],
                     "meta": {
@@ -1234,6 +1426,43 @@ mod tests {
             }
         }))
         .unwrap()
+    }
+
+    fn block_response(request_id: u64, fixture: &TerminalFixtureV2, seeds: &[u8]) -> Vec<u8> {
+        let wires = seeds
+            .iter()
+            .map(|seed| tx_v1_wire(fixture, *seed).0)
+            .collect::<Vec<_>>();
+        block_response_from_wires(request_id, fixture, &wires)
+    }
+
+    fn transaction_signature(fixture: &TerminalFixtureV2, seed: u8) -> [u8; 64] {
+        tx_v1_wire(fixture, seed).1
+    }
+
+    fn mutated_tx_v1_wire(
+        fixture: &TerminalFixtureV2,
+        signer_seed: u8,
+        resign: bool,
+        mutate: impl FnOnce(&mut V1VersionedTransaction),
+    ) -> Vec<u8> {
+        let signer = Keypair::new_from_array([signer_seed; 32]);
+        let (mut transaction, _) = tx_v1_transaction(fixture, signer_seed);
+        mutate(&mut transaction);
+        if resign {
+            sign_transaction_v2(&mut transaction, &signer);
+        }
+        wincode::serialize(&transaction).unwrap()
+    }
+
+    fn parse_one_wire(
+        request_id: u64,
+        fixture: &TerminalFixtureV2,
+        wire: Vec<u8>,
+    ) -> Result<OwnedFinalizedTxV1BlockV2, FinalizedTxV1RpcErrorV2> {
+        let request = FinalizedTxV1GetBlockRequestV2::new_v2(request_id, BLOCK_SLOT).unwrap();
+        let response = block_response_from_wires(request_id, fixture, &[wire]);
+        parse_finalized_tx_v1_block_v2(request, fixture.program, &response)
     }
 
     fn block_exchanges<'a>(
@@ -1289,7 +1518,10 @@ mod tests {
         assert!(String::from_utf8(request_json.clone())
             .unwrap()
             .contains("\"commitment\":\"finalized\""));
-        // Signature byte order is deliberately opposite to ledger order.
+        // Ledger order is the array order; signature values are identifiers,
+        // never an ordering surrogate.
+        let first_signature = transaction_signature(&fixture, 0xf0);
+        let second_signature = transaction_signature(&fixture, 0x10);
         let first = block_response(9, &fixture, &[0xf0, 0x10]);
         let second_value: serde_json::Value = serde_json::from_slice(&first).unwrap();
         let second = serde_json::to_vec_pretty(&second_value).unwrap();
@@ -1319,14 +1551,14 @@ mod tests {
                 .terminal_event_id_v2(0)
                 .unwrap()
                 .transaction_signature(),
-            &[0xf0; 64]
+            &first_signature
         );
         assert_eq!(
             agreed
                 .terminal_event_id_v2(1)
                 .unwrap()
                 .transaction_signature(),
-            &[0x10; 64]
+            &second_signature
         );
         assert_eq!(
             agreed.terminal_event_id_v2(0).unwrap().instruction_index(),
@@ -1349,7 +1581,16 @@ mod tests {
         .unwrap();
         let observation = agreed.terminal_observation_v2(0, &root).unwrap();
         assert_eq!(observation.transaction_index, 0);
-        assert_eq!(observation.transaction_signature, [0xf0; 64]);
+        assert_eq!(observation.transaction_signature, first_signature);
+        assert_eq!(observation.instruction_index, 1);
+        assert!(matches!(
+            &observation.ciphertext_delivery,
+            FinalizedPairForestCiphertextDeliveryV2::Verified {
+                instruction_index: 0,
+                carrier,
+                ..
+            } if carrier.proof_account_v2() == &fixture.proof_account
+        ));
         assert_eq!(observation.account_context_slot, BLOCK_SLOT);
         assert_eq!(observation.root_page.lane_id, fixture.lane_id);
         assert_eq!(observation.root_page.account.owner, fixture.program);
@@ -1460,6 +1701,124 @@ mod tests {
             ),
             Err(FinalizedTxV1RpcErrorV2::WrongRequestBytes { provider_index: 0 })
         );
+    }
+
+    #[test]
+    fn finalized_tx_v1_carrier_rejects_omit_reorder_truncate_context_and_relayer_mutation() {
+        let fixture = terminal_fixture();
+
+        let omitted = mutated_tx_v1_wire(&fixture, 0x81, true, |transaction| {
+            let VersionedMessage::V1(message) = &mut transaction.message else {
+                panic!("expected v1")
+            };
+            message.instructions.remove(0);
+        });
+        let omitted = parse_one_wire(21, &fixture, omitted).unwrap();
+        assert!(matches!(
+            omitted.terminals[0].ciphertext_delivery,
+            FinalizedPairForestCiphertextDeliveryV2::Unrecoverable(
+                PairForestCiphertextDeliveryFailureV2::Missing
+            )
+        ));
+
+        let reordered = mutated_tx_v1_wire(&fixture, 0x82, true, |transaction| {
+            let VersionedMessage::V1(message) = &mut transaction.message else {
+                panic!("expected v1")
+            };
+            message.instructions.swap(0, 1);
+        });
+        assert_eq!(
+            parse_one_wire(22, &fixture, reordered).unwrap_err(),
+            FinalizedTxV1RpcErrorV2::WrongTerminalPosition,
+        );
+
+        for (request_id, wire) in [
+            (
+                23,
+                mutated_tx_v1_wire(&fixture, 0x83, true, |transaction| {
+                    let VersionedMessage::V1(message) = &mut transaction.message else {
+                        panic!("expected v1")
+                    };
+                    message.instructions[0].data.pop();
+                }),
+            ),
+            (
+                24,
+                mutated_tx_v1_wire(&fixture, 0x84, true, |transaction| {
+                    let VersionedMessage::V1(message) = &mut transaction.message else {
+                        panic!("expected v1")
+                    };
+                    message.instructions[0].data.push(0);
+                }),
+            ),
+            (
+                25,
+                mutated_tx_v1_wire(&fixture, 0x85, true, |transaction| {
+                    let VersionedMessage::V1(message) = &mut transaction.message else {
+                        panic!("expected v1")
+                    };
+                    // Exact ASQ8 SHA-256 binding.
+                    message.instructions[0].data[112] ^= 1;
+                }),
+            ),
+            (
+                26,
+                mutated_tx_v1_wire(&fixture, 0x86, true, |transaction| {
+                    let VersionedMessage::V1(message) = &mut transaction.message else {
+                        panic!("expected v1")
+                    };
+                    // Recipient commitment binding.
+                    message.instructions[0].data[144] ^= 1;
+                }),
+            ),
+        ] {
+            let parsed = parse_one_wire(request_id, &fixture, wire).unwrap();
+            assert!(matches!(
+                parsed.terminals[0].ciphertext_delivery,
+                FinalizedPairForestCiphertextDeliveryV2::Unrecoverable(
+                    PairForestCiphertextDeliveryFailureV2::Invalid
+                )
+            ));
+        }
+
+        let relayer_mutation = mutated_tx_v1_wire(&fixture, 0x87, false, |transaction| {
+            let VersionedMessage::V1(message) = &mut transaction.message else {
+                panic!("expected v1")
+            };
+            message.instructions[0].data[300] ^= 1;
+        });
+        assert_eq!(
+            parse_one_wire(27, &fixture, relayer_mutation).unwrap_err(),
+            FinalizedTxV1RpcErrorV2::InvalidSignature,
+        );
+    }
+
+    #[test]
+    fn malformed_delivery_in_one_transaction_does_not_hide_later_block_terminals() {
+        let fixture = terminal_fixture();
+        let bad_delivery = mutated_tx_v1_wire(&fixture, 0x91, true, |transaction| {
+            let VersionedMessage::V1(message) = &mut transaction.message else {
+                panic!("expected v1")
+            };
+            message.instructions[0].data[112] ^= 1;
+        });
+        let good_delivery = tx_v1_wire(&fixture, 0x92).0;
+        let request = FinalizedTxV1GetBlockRequestV2::new_v2(28, BLOCK_SLOT).unwrap();
+        let response = block_response_from_wires(28, &fixture, &[bad_delivery, good_delivery]);
+        let parsed = parse_finalized_tx_v1_block_v2(request, fixture.program, &response).unwrap();
+        assert_eq!(parsed.terminals.len(), 2);
+        assert_eq!(parsed.terminals[0].transaction_index, 0);
+        assert_eq!(parsed.terminals[1].transaction_index, 1);
+        assert!(matches!(
+            parsed.terminals[0].ciphertext_delivery,
+            FinalizedPairForestCiphertextDeliveryV2::Unrecoverable(
+                PairForestCiphertextDeliveryFailureV2::Invalid
+            )
+        ));
+        assert!(matches!(
+            parsed.terminals[1].ciphertext_delivery,
+            FinalizedPairForestCiphertextDeliveryV2::Verified { .. }
+        ));
     }
 
     #[test]

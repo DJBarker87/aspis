@@ -48,7 +48,7 @@ solana-message-v1 = { package = "solana-message", version = "=4.2.4", features =
 solana-sanitize-v1 = { package = "solana-sanitize", version = "=3.0.0" }
 solana-sdk-ids-v1 = { package = "solana-sdk-ids", version = "=3.0.0" }
 solana-short-vec-v1 = { package = "solana-short-vec", version = "=3.2.2" }
-solana-signature-v1 = { package = "solana-signature", version = "=3.4.1" }
+solana-signature-v1 = { package = "solana-signature", version = "=3.4.1", features = ["verify"] }
 solana-transaction-v1 = { package = "solana-transaction", version = "=4.1.5", features = ["wincode"] }
 solana-transaction-error-v1 = { package = "solana-transaction-error", version = "=3.3.1" }
 subtle = { version = "=2.6.1", default-features = false }

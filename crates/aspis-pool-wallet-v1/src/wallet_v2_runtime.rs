@@ -10,8 +10,9 @@ use crate::{
     durable_state::LocalSpendAuthenticatorV1,
     lane_forest_durable_v2::ForestFinalizedAppendEventV2,
     lane_forest_rpc_v2::{
-        derive_finalized_pair_forest_terminal_intent_v2, FinalizedPairForestTerminalObservationV2,
-        LaneForestRpcErrorV2,
+        derive_finalized_pair_forest_terminal_intent_v2,
+        derive_finalized_pair_forest_terminal_intent_with_carrier_notes_v2,
+        FinalizedPairForestTerminalObservationV2, LaneForestRpcErrorV2,
     },
     lane_forest_wallet_txn_v2::{
         EmptyV1LaneForestWalletActivationV2, LaneForestWalletCheckpointBindingV2,
@@ -21,7 +22,7 @@ use crate::{
         LaneForestWalletTxnCoordinatorV2, LaneForestWalletTxnErrorV2, LaneForestWalletTxnIntentV2,
         LaneForestWalletTxnPrepareV2, LaneForestWalletTxnRecoveryV2,
     },
-    note_store_crypto::NoteStoreCipherV1,
+    note_store_crypto::{LocalNullifierKeyStoreV1, NoteStoreCipherV1},
     relayer_execution_journal::DurableRelayerExecutionJournalV1,
     tx_v1_finalized_rpc_v2::{
         AgreedFinalizedTxV1BlockV2, AgreedFinalizedTxV1RootPageV2, FinalizedTxV1RpcErrorV2,
@@ -34,6 +35,7 @@ use crate::{
         WalletV2ActivationPermit, WalletV2ActivationPrerequisites,
     },
 };
+use hpke::rand_core::CryptoRng;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum WalletV2RuntimeError {
@@ -318,9 +320,11 @@ impl ActivatedWalletRuntimeV2 {
         self.apply_finalized_event_v2(intent, cipher, authenticator)
     }
 
-    /// Production Pool V2 scanner-to-wallet handoff. Derive the event from
-    /// the exact finalized ASQ8/ASR8/root-page source, bind it to the exact
-    /// finalized ASRJ success record, then commit it through ASL2.
+    /// Compatibility/reference Pool V2 scanner-to-wallet handoff. It derives
+    /// the event from an already authenticated observation, but its caller
+    /// supplies note bindings. Production finalized TxV1 ingestion must use
+    /// `apply_agreed_finalized_tx_v1_terminal_journal_v2`, which derives notes
+    /// only from the signed and quorum-agreed carrier.
     #[allow(clippy::too_many_arguments)]
     pub fn apply_finalized_pool_terminal_journal_v2<A: LocalSpendAuthenticatorV1>(
         &mut self,
@@ -349,12 +353,18 @@ impl ActivatedWalletRuntimeV2 {
     /// order is committed into ASL2 and survives restart; signature ordering
     /// is never used as a ledger-order surrogate.
     #[allow(clippy::too_many_arguments)]
-    pub fn apply_agreed_finalized_tx_v1_terminal_journal_v2<A: LocalSpendAuthenticatorV1>(
+    pub fn apply_agreed_finalized_tx_v1_terminal_journal_v2<
+        A: LocalSpendAuthenticatorV1,
+        K: LocalNullifierKeyStoreV1,
+        R: CryptoRng,
+    >(
         &mut self,
         block: &AgreedFinalizedTxV1BlockV2,
         terminal_index: usize,
         root_page: &AgreedFinalizedTxV1RootPageV2,
-        notes: Vec<LaneForestWalletNoteBindingV2>,
+        rng: &mut R,
+        viewing_secret: &crate::ViewingSecretKeyV1,
+        local_keys: &K,
         spends: Vec<LaneForestWalletSpendBindingV2>,
         checkpoint: Option<LaneForestWalletCheckpointBindingV2>,
         journal: &DurableRelayerExecutionJournalV1,
@@ -382,16 +392,17 @@ impl ActivatedWalletRuntimeV2 {
         };
         block.validate_terminal_progress_v2(terminal_index, previous_transaction_index)?;
         let observation = block.terminal_observation_v2(terminal_index, root_page)?;
-        self.apply_finalized_pool_terminal_journal_v2(
+        let intent = derive_finalized_pair_forest_terminal_intent_with_carrier_notes_v2(
+            rng,
+            self.committed_state_v2()?,
             &observation,
-            notes,
+            viewing_secret,
+            local_keys,
+            cipher,
             spends,
             checkpoint,
-            journal,
-            request_id,
-            cipher,
-            authenticator,
-        )
+        )?;
+        self.apply_finalized_journal_event_v2(intent, journal, request_id, cipher, authenticator)
     }
 
     pub fn apply_empty_finalized_block_v2(
