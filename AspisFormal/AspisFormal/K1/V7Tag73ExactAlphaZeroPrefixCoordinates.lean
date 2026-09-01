@@ -147,6 +147,8 @@ theorem exact_compiler_constructs_alpha_zero_prefix_coordinates
       advances.length = outputs.length ∧
       GammaTableCoordinateChain (exactOperationalTable input)
         beforeAlpha.digest outputs advances ∧
+      afterBlocks.digest =
+        gammaTerminalDigest beforeAlpha.digest advances ∧
       afterBlocks.calls = beforeAlpha.calls ++
         gammaConsumedRawCallsFrom (.challenge (.alpha 0)) 0
           beforeAlpha.digest outputs advances ∧
@@ -216,8 +218,9 @@ theorem exact_compiler_constructs_alpha_zero_prefix_coordinates
       recordMember⟩ := challenge_event_work_erased_exposes_record
     (exactOperationalTable input) beforeAlpha afterAlpha (.alpha 0)
       ((exactOperationalTape input).messages.challengeUse (.alpha 0)) alphaRun'
-  obtain ⟨advances, advancesLength, coordinates, callsExact⟩ :=
-    squeeze_many_coordinates (exactOperationalTable input)
+  obtain ⟨advances, advancesLength, coordinates, terminalExact,
+      callsExact⟩ :=
+    squeeze_many_coordinates_with_terminal (exactOperationalTable input)
       (.challenge (.alpha 0))
       ((exactOperationalTape input).messages.challengeUse (.alpha 0)).blocksUsed
       beforeAlpha afterBlocks outputs squeezeRun
@@ -274,8 +277,8 @@ theorem exact_compiler_constructs_alpha_zero_prefix_coordinates
     afterBlocks, afterFinal256, outputs, advances, exactValue,
     producerPrefixRun, boundaryRun, boundaryLookup, squeezeRun,
     afterAlphaExact,
-    final256Run, outputsLength, advancesLength, coordinates, callsExact,
-    exactDecode, operationalValue, final256Lookup⟩
+    final256Run, outputsLength, advancesLength, coordinates, terminalExact,
+    callsExact, exactDecode, operationalValue, final256Lookup⟩
 
 #print axioms after_semantic_tail_events_alpha_zero_split
 #print axioms before_alpha_zero_tail_producer_split
