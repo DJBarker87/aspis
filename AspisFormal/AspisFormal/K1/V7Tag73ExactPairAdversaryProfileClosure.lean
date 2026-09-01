@@ -35,6 +35,7 @@ open AspisK1.V7Tag73ExactFixedK12PrefixClassifier
 open AspisK1.V7Tag73ExactFixedK13K14Classifier
 open AspisK1.V7Tag73ExactFixedFullRunFactorization
 open AspisK1.V7Tag73ExactFixedQ16JointEventHandoff
+open AspisK1.V7Tag73ExactFinal256DigestRootOrigin
 open AspisK1.V7Tag73ExactFixedQ16SemanticNoninterference
 open AspisK1.V7Tag73ExactFixedQ16VerifierAnchorInvariant
 open AspisK1.V7Tag73ExactFixedQ16ScheduleFunctional
@@ -75,12 +76,11 @@ def exactTag73PreFinalSemanticSnapshot
   gamma := (exactK13ParsedProof input).gamma
   alphaZero := exactOperationalChallenge input (.alpha 0)
 
-/-- Narrow source-control-flow boundary for an adversary-owned final-work
-pause.  Both executions are tied to literal accepted final-work trials, and
-the same chronological root prefix reaches the selected request.  A concrete
-source bridge must show that the already-built semantic snapshot cannot be
-changed by the selected work answer or any later suffix. -/
-def ExactTag73AdversaryFinalWorkPauseSnapshotFunctional
+/-- Cryptographic binding boundary at the pre-final transcript digest.  This
+is deliberately not an honest-prover control-flow premise: the K1 adversary is
+arbitrary.  In the classical ROM it is discharged outside the collision event;
+for deployed SHA-256 it is the corresponding transcript-binding assumption. -/
+def ExactTag73PrefinalDigestSemanticBinding
     {HiddenTape TapeIdentity Observation Statement Payload Witness : Type}
     {parameters : ExactCompilerResourceParameters}
     (transitionFuel : Nat)
@@ -93,23 +93,10 @@ def ExactTag73AdversaryFinalWorkPauseSnapshotFunctional
         projection fixedInstance leftSample)
       (rightInput : ExactK12OperationalInput transitionFuel configuration
         projection fixedInstance rightSample)
-      (finalTrial : ExactCompilerExposureTrial parameters),
-    ExactFixedK13ActualJointTrial leftInput finalTrial →
-    ExactFixedK13ActualJointTrial rightInput finalTrial →
-    ExactFixedK13AdversaryAnchor leftInput finalTrial →
-    (∃ leftPrior leftLater rightPrior rightLater leftInputAt rightInputAt
-          leftAnswer rightAnswer rightActor,
-      exactFixedRootRecords leftInput.package.root =
-        leftPrior ++
-          (.machineFresh .adversary leftInputAt leftAnswer :
-            UnifiedExposureRecord) :: leftLater ∧
-      exactFixedRootRecords rightInput.package.root =
-        rightPrior ++
-          (.machineFresh rightActor rightInputAt rightAnswer :
-            UnifiedExposureRecord) :: rightLater ∧
-      finalTrial.val = leftPrior.length ∧
-      finalTrial.val = rightPrior.length ∧
-      leftPrior = rightPrior) →
+      (leftDigest rightDigest : Digest256),
+    ExactOperationalPrefinalDigest leftInput leftDigest →
+    ExactOperationalPrefinalDigest rightInput rightDigest →
+    leftDigest = rightDigest →
     exactTag73PreFinalSemanticSnapshot leftInput =
       exactTag73PreFinalSemanticSnapshot rightInput
 
@@ -158,10 +145,10 @@ def ExactFixedCleanK13PairPreFinalInvariantOnAdversaryAnchors
       exactOperationalChallenge leftWitness.joint.input (.alpha 0) =
       exactOperationalChallenge rightWitness.joint.input (.alpha 0)
 
-/-- The narrow source pause theorem supplies the complete pre-final invariant
-on every fold-armed coordinate fibre.  All coordinate reasoning stays in the
-already-green pair-prefix theorem; this step only projects the source snapshot. -/
-theorem exact_fixed_clean_pair_k13_pre_final_invariant_of_pause_snapshot
+/-- Prefinal transcript binding supplies the complete pre-final invariant on
+every fold-armed coordinate fibre.  The existing clean prefix theorem proves
+that both accepted executions reach the same source-bound pre-final digest. -/
+theorem exact_fixed_clean_pair_k13_pre_final_invariant_of_digest_binding
     {HiddenTape TapeIdentity Observation Statement Payload Witness : Type}
     {parameters : ExactCompilerResourceParameters}
     {transitionFuel : Nat}
@@ -171,51 +158,21 @@ theorem exact_fixed_clean_pair_k13_pre_final_invariant_of_pause_snapshot
     {fixedInstance : PublicInstance Statement}
     {decoder : ExactDecoderInstantiation QM31Exact}
     (programmedCover : 518 ≤ 2 * parameters.forkRequestCap)
-    (pauseFunctional :
-      ExactTag73AdversaryFinalWorkPauseSnapshotFunctional transitionFuel
+    (digestBinding :
+      ExactTag73PrefinalDigestSemanticBinding transitionFuel
         configuration projection fixedInstance) :
     ExactFixedCleanK13PairPreFinalInvariantOnAdversaryAnchors transitionFuel
       configuration projection fixedInstance decoder := by
   intro foldTrial finalTrial hidden left right leftWitness rightWitness anchor
     contextExact foldExact
-  obtain ⟨leftPrior, leftLater, rightPrior, rightLater, leftActor, rightActor,
-      leftInputAt, rightInputAt, leftAnswer, rightAnswer, leftRootExact,
-      rightRootExact, leftTrialExact, rightTrialExact, priorExact⟩ :=
-    exact_fixed_clean_pair_k13_selected_root_priors_eq foldTrial finalTrial
-      hidden left right leftWitness rightWitness programmedCover contextExact
-        foldExact
-  have leftActorExact : leftActor = .adversary := by
-    obtain ⟨anchorPrior, anchorLater, anchorInput, anchorAnswer,
-        anchorRootExact, anchorTrialExact⟩ := anchor
-    let records := exactFixedRootRecords leftWitness.joint.input.package.root
-    have selectedExact :
-        (.machineFresh leftActor leftInputAt leftAnswer :
-            UnifiedExposureRecord) =
-          .machineFresh .adversary anchorInput anchorAnswer := by
-      have leftAt :
-          records[leftPrior.length]? =
-            some (.machineFresh leftActor leftInputAt leftAnswer) := by
-        dsimp [records]
-        rw [leftRootExact]
-        simp
-      have anchorAt :
-          records[anchorPrior.length]? =
-            some (.machineFresh .adversary anchorInput anchorAnswer) := by
-        dsimp [records]
-        rw [anchorRootExact]
-        simp
-      rw [← leftTrialExact] at leftAt
-      rw [← anchorTrialExact] at anchorAt
-      exact Option.some.inj (leftAt.symm.trans anchorAt)
-    simp only [UnifiedExposureRecord.machineFresh.injEq] at selectedExact
-    exact selectedExact.1
-  subst leftActor
-  have snapshotExact := pauseFunctional leftWitness.joint.input
-    rightWitness.joint.input finalTrial leftWitness.joint.actualTrial
-      rightWitness.joint.actualTrial anchor ⟨leftPrior, leftLater, rightPrior,
-        rightLater, leftInputAt, rightInputAt, leftAnswer, rightAnswer,
-        rightActor, leftRootExact, rightRootExact, leftTrialExact,
-        rightTrialExact, priorExact⟩
+  obtain ⟨_selectedInput, leftDigest, rightDigest, _leftPrefix, _rightPrefix,
+      digestExact, leftOrigin, rightOrigin⟩ :=
+    exact_fixed_clean_pair_k13_adversary_anchor_selected_input_and_digest_eq
+      foldTrial finalTrial hidden left right leftWitness rightWitness anchor
+        programmedCover contextExact foldExact
+  have snapshotExact := digestBinding leftWitness.joint.input
+    rightWitness.joint.input leftDigest rightDigest leftOrigin rightOrigin
+      digestExact
   have wordsExact :=
     congrArg Tag73PreFinalSemanticSnapshot.words snapshotExact
   have gammaExact :=
@@ -273,14 +230,42 @@ theorem exact_fixed_clean_pair_k13_adversary_bad_invariant_of_pre_final_profile
     leftWitness.joint.input rightWitness.joint.input wordsExact gammaExact
       finalExact scheduleExact
 
+/-- Complete K1.3 coordinate noninterference, conditional only on the parsed
+source bridge and the explicit pre-final digest binding boundary. -/
+theorem exact_fixed_clean_k13_pair_coordinate_invariant_of_digest_binding
+    {HiddenTape TapeIdentity Observation Statement Payload Witness : Type}
+    {parameters : ExactCompilerResourceParameters}
+    {transitionFuel : Nat}
+    {configuration : ExactPlainRomWitnessConfiguration HiddenTape TapeIdentity
+      Observation Statement Tag73K12ParsedProof Payload Witness parameters}
+    {projection : AcceptedTapeProjection Statement Tag73K12ParsedProof Payload}
+    {fixedInstance : PublicInstance Statement}
+    {decoder : ExactDecoderInstantiation QM31Exact}
+    (source : ExactFixedK13DecodedParsedSourceProvider transitionFuel
+      configuration projection fixedInstance)
+    (transitionRoom : 2 ≤ transitionFuel)
+    (programmedCover : 518 ≤ 2 * parameters.forkRequestCap)
+    (digestBinding : ExactTag73PrefinalDigestSemanticBinding transitionFuel
+      configuration projection fixedInstance) :
+    ExactFixedCleanK13PairCoordinateInvariant transitionFuel configuration
+      projection fixedInstance decoder := by
+  apply exact_fixed_clean_k13_pair_coordinate_invariant_of_adversary_anchors
+    programmedCover
+  apply exact_fixed_clean_pair_k13_adversary_bad_invariant_of_pre_final_profile
+    source transitionRoom programmedCover
+  exact exact_fixed_clean_pair_k13_pre_final_invariant_of_digest_binding
+    programmedCover digestBinding
+
 #print axioms
   ExactFixedCleanK13PairPreFinalInvariantOnAdversaryAnchors
 #print axioms
-  ExactTag73AdversaryFinalWorkPauseSnapshotFunctional
+  ExactTag73PrefinalDigestSemanticBinding
 #print axioms
-  exact_fixed_clean_pair_k13_pre_final_invariant_of_pause_snapshot
+  exact_fixed_clean_pair_k13_pre_final_invariant_of_digest_binding
 #print axioms
   exact_fixed_clean_pair_k13_adversary_bad_invariant_of_pre_final_profile
+#print axioms
+  exact_fixed_clean_k13_pair_coordinate_invariant_of_digest_binding
 
 end
 
