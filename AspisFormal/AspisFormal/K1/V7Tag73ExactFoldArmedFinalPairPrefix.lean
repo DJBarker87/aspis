@@ -1,5 +1,6 @@
 import AspisFormal.K1.V7Tag73ExactDagQ16ChainRouting
 import AspisFormal.K1.V7Tag73ExactFoldArmedFinalWorkRouting
+import AspisFormal.K1.V7Tag73FoldAlphaPreFinalPrefix
 import AspisFormal.K1.V7Tag73FoldArmedWorkConditionedPrefix
 
 /-!
@@ -25,6 +26,7 @@ open AspisK1.V7Tag73AlphaFinalWorkQ16ControllerComposition
 open AspisK1.V7Tag73AtomicForkUniformScheduler
 open AspisK1.V7Tag73CausalDagProducerInvariant
 open AspisK1.V7Tag73CausalDagFinalWorkQ16Controller
+open AspisK1.V7Tag73CausalFoldAlphaFinalWorkQ16Coordinates
 open AspisK1.V7Tag73CausalMachineLabeledTraceRouting
 open AspisK1.V7Tag73ExactCompilerResources
 open AspisK1.V7Tag73ExactDagCandidateLabeledRootRouting
@@ -36,7 +38,9 @@ open AspisK1.V7Tag73ExactPlainRomRun
 open AspisK1.V7Tag73ExactSourceAcceptanceModel
 open AspisK1.V7Tag73FinalWorkQ16CandidateController
 open AspisK1.V7Tag73FoldArmedAlphaZeroController
+open AspisK1.V7Tag73FoldAlphaPreFinalPrefix
 open AspisK1.V7Tag73FoldArmedPreFinalPrefix
+open AspisK1.V7Tag73FoldArmedWorkConditionedPrefix
 open AspisK1.V7Tag73IndexedControllerLabeledRecords
 open AspisK1.V7Tag73IndexedAlignedRecordReplay
 open AspisK1.V7Tag73IndexedControllerTraceAlignment
@@ -301,9 +305,73 @@ theorem exact_fold_armed_final_pair_has_work_conditioned_prefix
         foldArmedInitialState, foldArmedUnderlyingState,
         finalWorkQ16IndexedState, exactDagCandidateInitialState] using source
 
+/-- Equal context, fold, and final-work coordinates replay the literal master
+tape through the selected nonce-absorb record, irrespective of which member
+of the final-work pair was exposed first. -/
+theorem exact_fold_armed_coordinates_force_final_pair_tape_prefix
+    {HiddenTape TapeIdentity Observation Statement Payload Result : Type}
+    {parameters : ExactCompilerResourceParameters}
+    {transitionFuel : Nat}
+    {configuration : ExactPlainRomConfiguration HiddenTape TapeIdentity
+      Observation Statement Tag73K12ParsedProof Payload Result parameters}
+    {projection : AcceptedTapeProjection Statement Tag73K12ParsedProof Payload}
+    {fixedInstance : PublicInstance Statement}
+    {sample : ExactCompilerSample HiddenTape parameters}
+    (input : ExactK12OperationalInput transitionFuel configuration projection
+      fixedInstance sample)
+    (foldTrial finalTrial : ExactCompilerExposureTrial parameters)
+    (digest workAnswer base : Digest256) (nonce : NonceBytes)
+    (pairLabeled : ExactDagFinalWorkPairLabeled input finalTrial
+      (literalFinalWorkKey digest nonce) workAnswer base)
+    (programmedCover : 518 ≤ 2 * parameters.forkRequestCap)
+    (right : FreshAnswerTape Digest256
+      (exactCompilerTargetCaps parameters).length)
+    (contextExact :
+      (exactCompilerCausalFoldAlphaFinalWorkQ16Coordinates parameters
+        (exactCompilerFoldArmedAlphaFinalWorkQ16Router parameters
+          transitionFuel foldTrial.val finalTrial.val
+          (exactPlainRomCursor configuration sample.1).erase) sample.2).1 =
+      (exactCompilerCausalFoldAlphaFinalWorkQ16Coordinates parameters
+        (exactCompilerFoldArmedAlphaFinalWorkQ16Router parameters
+          transitionFuel foldTrial.val finalTrial.val
+          (exactPlainRomCursor configuration sample.1).erase) right).1)
+    (foldExact :
+      (exactCompilerCausalFoldAlphaFinalWorkQ16Coordinates parameters
+        (exactCompilerFoldArmedAlphaFinalWorkQ16Router parameters
+          transitionFuel foldTrial.val finalTrial.val
+          (exactPlainRomCursor configuration sample.1).erase) sample.2).2.1 =
+      (exactCompilerCausalFoldAlphaFinalWorkQ16Coordinates parameters
+        (exactCompilerFoldArmedAlphaFinalWorkQ16Router parameters
+          transitionFuel foldTrial.val finalTrial.val
+          (exactPlainRomCursor configuration sample.1).erase) right).2.1)
+    (workExact :
+      (exactCompilerCausalFoldAlphaFinalWorkQ16Coordinates parameters
+        (exactCompilerFoldArmedAlphaFinalWorkQ16Router parameters
+          transitionFuel foldTrial.val finalTrial.val
+          (exactPlainRomCursor configuration sample.1).erase) sample.2).2.2.1 =
+      (exactCompilerCausalFoldAlphaFinalWorkQ16Coordinates parameters
+        (exactCompilerFoldArmedAlphaFinalWorkQ16Router parameters
+          transitionFuel foldTrial.val finalTrial.val
+          (exactPlainRomCursor configuration sample.1).erase) right).2.2.1) :
+    ∃ completed rootRemaining tapeRemaining,
+      exactFixedRootRecords input.package.root = completed ++ rootRemaining ∧
+      freshAnswerTapeToList right =
+        completed.map UnifiedExposureRecord.answer ++ tapeRemaining := by
+  obtain ⟨completed, rootRemaining, rootExact, noQ16⟩ :=
+    exact_fold_armed_final_pair_has_work_conditioned_prefix input foldTrial
+      finalTrial digest workAnswer base nonce pairLabeled
+  obtain ⟨tapeRemaining, tapeExact⟩ :=
+    exact_fold_armed_coordinates_force_work_conditioned_prefix input foldTrial
+      finalTrial completed rootRemaining rootExact programmedCover right
+        contextExact foldExact workExact noQ16
+  rw [fold_alpha_final_work_q16_named_slot_tape_preserves_master_list]
+    at tapeExact
+  exact ⟨completed, rootRemaining, tapeRemaining, rootExact, tapeExact⟩
+
 #print axioms exact_work_first_prefix_has_no_q16_producers
 #print axioms exact_absorb_first_prefix_has_no_q16_producers
 #print axioms exact_fold_armed_final_pair_has_work_conditioned_prefix
+#print axioms exact_fold_armed_coordinates_force_final_pair_tape_prefix
 
 end
 

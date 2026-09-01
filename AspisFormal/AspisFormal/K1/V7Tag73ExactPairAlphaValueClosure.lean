@@ -1,4 +1,5 @@
 import AspisFormal.K1.V7Tag73ExactPairAdversaryProfileClosure
+import AspisFormal.K1.V7Tag73ExactFoldArmedFinalPairPrefix
 
 /-!
 # Pair-specific alpha-zero value closure
@@ -21,13 +22,16 @@ namespace AspisK1.V7Tag73ExactPairAlphaValueClosure
 open AspisK1.V7FsAokExperiment
 open AspisK1.V7Tag73AdaptiveLazyOracle
 open AspisK1.V7Tag73AdaptiveQ16TrialAccounting
+open AspisK1.V7Tag73AtomicForkUniformScheduler
 open AspisK1.V7Tag73CausalFoldAlphaFinalWorkQ16Coordinates
 open AspisK1.V7Tag73ExactClientKnowledgeComposition
 open AspisK1.V7Tag73ExactCompilerResources
 open AspisK1.V7Tag73ExactAdversaryAnchorFinalProfile
 open AspisK1.V7Tag73ExactFixedK12MerkleClassifier
 open AspisK1.V7Tag73ExactFixedK13K14Classifier
+open AspisK1.V7Tag73ExactFixedFullRunFactorization
 open AspisK1.V7Tag73ExactFixedQ16VerifierAnchorInvariant
+open AspisK1.V7Tag73ExactFoldArmedFinalPairPrefix
 open AspisK1.V7Tag73ExactPairAdversaryProfileClosure
 open AspisK1.V7Tag73ExactPairCoordinateProfileInvariant
 open AspisK1.V7Tag73ExactPairTrialProbabilityClosure
@@ -36,6 +40,7 @@ open AspisK1.V7Tag73ExactPlainRomRun
 open AspisK1.V7Tag73ExactSourceAcceptanceModel
 open AspisK1.V7Tag73FoldArmedAlphaZeroController
 open AspisK1.V7Tag73OperationalSemanticReplay
+open AspisK1.V7Tag73OperationalOracleExposure
 open AspisK1.V7Tag73SamplerDecoder
 open AspisK1.V7Tag73SecureCircleMap
 open AspisK1.V7Tag73TranscriptSchedule
@@ -43,6 +48,67 @@ open AspisPool.AlgorithmicCircleDecoderV7
 open AspisV5ComponentCQM31TowerExact
 
 noncomputable section
+
+/-- The proof-relevant K1.3 pair witness supplies the literal final-work pair
+needed by the no-q16 replay theorem.  Thus equal non-q16 conditioning
+coordinates expose one common master-tape prefix through the nonce absorb;
+this is constructed data, not an extra transcript-invariance premise. -/
+theorem exact_fixed_clean_pair_k13_has_common_final_absorb_tape_prefix
+    {HiddenTape TapeIdentity Observation Statement Payload Witness : Type}
+    {parameters : ExactCompilerResourceParameters}
+    {transitionFuel : Nat}
+    {configuration : ExactPlainRomWitnessConfiguration HiddenTape TapeIdentity
+      Observation Statement Tag73K12ParsedProof Payload Witness parameters}
+    {projection : AcceptedTapeProjection Statement Tag73K12ParsedProof Payload}
+    {fixedInstance : PublicInstance Statement}
+    {decoder : ExactDecoderInstantiation QM31Exact}
+    (foldTrial finalTrial : ExactCompilerExposureTrial parameters)
+    (hidden : HiddenTape)
+    (left right : FreshAnswerTape Digest256
+      (exactCompilerTargetCaps parameters).length)
+    (leftWitness : ExactFixedCleanK13PairTrialWitness transitionFuel
+      configuration projection fixedInstance decoder (hidden, left) foldTrial
+        finalTrial)
+    (programmedCover : 518 ≤ 2 * parameters.forkRequestCap)
+    (contextExact :
+      let router := exactCompilerFoldArmedAlphaFinalWorkQ16Router parameters
+        transitionFuel foldTrial.val finalTrial.val
+        (exactPlainRomCursor configuration hidden).erase
+      (exactCompilerCausalFoldAlphaFinalWorkQ16Coordinates parameters router
+          left).1 =
+        (exactCompilerCausalFoldAlphaFinalWorkQ16Coordinates parameters router
+          right).1)
+    (foldExact :
+      let router := exactCompilerFoldArmedAlphaFinalWorkQ16Router parameters
+        transitionFuel foldTrial.val finalTrial.val
+        (exactPlainRomCursor configuration hidden).erase
+      (exactCompilerCausalFoldAlphaFinalWorkQ16Coordinates parameters router
+          left).2.1 =
+        (exactCompilerCausalFoldAlphaFinalWorkQ16Coordinates parameters router
+          right).2.1)
+    (workExact :
+      let router := exactCompilerFoldArmedAlphaFinalWorkQ16Router parameters
+        transitionFuel foldTrial.val finalTrial.val
+        (exactPlainRomCursor configuration hidden).erase
+      (exactCompilerCausalFoldAlphaFinalWorkQ16Coordinates parameters router
+          left).2.2.1 =
+        (exactCompilerCausalFoldAlphaFinalWorkQ16Coordinates parameters router
+          right).2.2.1) :
+    ∃ completed rootRemaining tapeRemaining,
+      exactFixedRootRecords leftWitness.joint.input.package.root =
+          completed ++ rootRemaining ∧
+        freshAnswerTapeToList right =
+          completed.map UnifiedExposureRecord.answer ++ tapeRemaining := by
+  obtain ⟨digest, workAnswer, base, _workAccepted, _prefinal, _baseExact,
+      pairLabeled, _workLabeled, _workCoordinate, _forest⟩ :=
+    leftWitness.joint.actualTrial
+  exact exact_fold_armed_coordinates_force_final_pair_tape_prefix
+    leftWitness.joint.input foldTrial finalTrial digest workAnswer base
+      (exactOperationalTape leftWitness.joint.input).messages.finalGrinding.selected
+      pairLabeled programmedCover right contextExact foldExact workExact
+
+#print axioms
+  exact_fixed_clean_pair_k13_has_common_final_absorb_tape_prefix
 
 /-- Output of the hybrid residual/named alpha routing proof. Both deployed
 decoders consume prefixes of one common four-block tape. -/
