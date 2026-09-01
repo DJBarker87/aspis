@@ -129,14 +129,21 @@ name = "aspis-v7-live-pool-proof"
 version = "0.1.0"
 dependencies = [
  "anyhow",
+ "aspis-core",
+ "aspis-pool",
  "aspis-pool-wallet-v1",
  "aspis-prover",
  "aspis-statement",
  "base64 0.22.1",
+ "bincode",
  "serde",
  "serde_json",
  "sha2 0.10.9",
+ "solana-keypair",
+ "solana-message 2.4.0",
  "solana-program",
+ "solana-signer 2.2.1",
+ "solana-transaction 2.2.3",
 ]
 
 [[package]]

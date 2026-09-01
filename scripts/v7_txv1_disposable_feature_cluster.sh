@@ -96,10 +96,29 @@ NO_DNA=1 "$AGAVE_BIN_DIR/solana-keygen" new --no-bip39-passphrase --silent \
   --force --outfile "$PAYER"
 readonly PAYER_PUBKEY=$(NO_DNA=1 "$AGAVE_BIN_DIR/solana-keygen" pubkey "$PAYER")
 
+if [[ -n "${ASPIS_TXV1_LIVE_GENESIS_PREPARER:-}" ]]; then
+  [[ -x "$ASPIS_TXV1_LIVE_GENESIS_PREPARER" ]] \
+    || fail "live genesis preparer is not executable"
+  readonly LIVE_GENESIS_DIR="$WORK_DIR/live-genesis"
+  "$ASPIS_TXV1_LIVE_GENESIS_PREPARER" "$REPO_ROOT" "$CONFIG" \
+    "$PAYER_PUBKEY" "$LIVE_GENESIS_DIR" >"$EVIDENCE_DIR/live-genesis.json"
+  jq -e '.schema == "aspis.v7.disposable-live-genesis.v1" and .auditOnly == true' \
+    "$EVIDENCE_DIR/live-genesis.json" >/dev/null \
+    || fail "live genesis preparer returned an invalid manifest"
+fi
+
 declare -a VALIDATOR_ARGS=(
   --reset --quiet --ledger "$LEDGER" --bind-address 127.0.0.1
   --rpc-port "$RPC_PORT" --warp-slot 150 --mint "$PAYER_PUBKEY"
 )
+if [[ -n "${ASPIS_TXV1_LIVE_GENESIS_PREPARER:-}" ]]; then
+  while IFS=$'\t' read -r address account_file; do
+    [[ "$account_file" == "$LIVE_GENESIS_DIR"/* && -f "$account_file" ]] \
+      || fail "live genesis account escaped task directory"
+    VALIDATOR_ARGS+=(--account "$address" "$account_file")
+  done < <(jq -r '.accounts[] | [.address,.file] | @tsv' \
+    "$EVIDENCE_DIR/live-genesis.json")
+fi
 while IFS=$'\t' read -r name id loader relative expected_sha; do
   artifact="$REPO_ROOT/$relative"
   [[ -f "$artifact" ]] || fail "missing frozen $name binary: $relative"

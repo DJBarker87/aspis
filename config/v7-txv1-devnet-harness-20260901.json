@@ -61,6 +61,25 @@
       }
     ]
   },
+  "disposableLiveGenesis": {
+    "enabledOnlyWithDisposableAcknowledgement": true,
+    "mint": {
+      "id": "5TeWSsjg2gbxCyWVniXeCmwM7UtHTCK7svzJr5xYJzHf",
+      "source": "results/v7-registry-v2-release-audit-20260831/agave-11-case-bundle/accounts/57f823adf734156674eed223c84543db02c67447e8293c47c1728029d907f111.json"
+    },
+    "sourceTokenAccount": "5XZobBCgcyuBM4m1E1rZVei7Me6V8FzwSLexuU194KcN",
+    "withdrawalDestinationTokenAccount": "5jKh25biPsnrmLWXXuqKNH2Q67j69T4Q7Zew5c8wJKaV",
+    "bindingAccounts": [
+      {
+        "id": "JBz8KKzyZ6FzTU7WmLywurr49xJPpQcA9ECNg2SZX6iH",
+        "source": "results/v7-registry-v2-release-audit-20260831/agave-11-case-bundle/accounts/c5b296542ee51d2fbc4753962b80d8454b20c93136456e36c61a157695230be2.json"
+      },
+      {
+        "id": "9zQXTg6QqijGAG3kyWf94CQA3KdFq3VoYBLAUrhge1WB",
+        "source": "results/v7-registry-v2-release-audit-20260831/agave-11-case-bundle/accounts/bc0e84848edbbb9ea9b81f4cfe7931917fb031637cb334d23f4783fd7f5dfa8b.json"
+      }
+    ]
+  },
   "requiredCases": [
     "deposit-init",
     "transfer-same-page",
