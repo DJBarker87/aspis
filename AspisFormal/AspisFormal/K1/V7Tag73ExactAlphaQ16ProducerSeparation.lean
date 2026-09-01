@@ -35,6 +35,7 @@ open AspisK1.V7Tag73ExactFixedK12MerkleClassifier
 open AspisK1.V7Tag73ExactPlainRomRun
 open AspisK1.V7Tag73ExactQ16CausalCoordinateOrder
 open AspisK1.V7Tag73ExactSourceAcceptanceModel
+open AspisK1.V7Tag73FinalWorkQ16CandidateController
 open AspisK1.V7Tag73IndexedControllerTraceAlignment
 open AspisK1.V7Tag73OperationalSemanticReplay
 open AspisK1.V7Tag73SchedulerNativeGammaReplay
@@ -93,6 +94,72 @@ theorem gamma_advance_input_ne_q16_candidate
   intro equal
   have lengths := congrArg List.length equal
   simp [gammaAdvanceInput] at lengths
+
+/-- A duplex output coordinate has 33 bytes, so it cannot be parsed as the
+41-byte final-work coordinate. -/
+theorem raw_final_work_key_of_gamma_output_input_none
+    (state : Digest256) :
+    rawFinalWorkKeyOfWorkInput? (gammaOutputInput state) = none := by
+  simp [rawFinalWorkKeyOfWorkInput?, gammaOutputInput]
+
+/-- If a duplex state avoids the current q16 producer inventory, its output
+coordinate is residual for the deployed final-work/q16 controller.  The two
+named cases are excluded independently: final work by exact input length and
+q16 by literal producer provenance. -/
+theorem dag_preferred_slot_none_of_gamma_state_avoids_producers
+    (anchorIndex exposureIndex : Nat) (memory : FinalWorkQ16DagMemory)
+    (state : Digest256)
+    (wellFormed : Q16DagAnchorWellFormed memory.anchor)
+    (avoids : ∀ producer ∈ memory.producers,
+      state ≠ producer.digest) :
+    dagPreferredSlotForInput anchorIndex exposureIndex memory
+      (gammaOutputInput state) = none := by
+  cases preferred : dagPreferredSlotForInput anchorIndex exposureIndex memory
+      (gammaOutputInput state) with
+  | none => rfl
+  | some slot =>
+      exfalso
+      cases slot with
+      | none =>
+          have rawPreferred :
+              dagRawPreferredSlot anchorIndex exposureIndex memory
+                (gammaOutputInput state) = some none := by
+            unfold dagPreferredSlotForInput at preferred
+            cases raw : dagRawPreferredSlot anchorIndex exposureIndex memory
+                (gammaOutputInput state) with
+            | none => simp [raw] at preferred
+            | some rawSlot =>
+                by_cases used : rawSlot ∈ memory.usedSlots
+                · simp [raw, used] at preferred
+                · simp only [raw, used, if_false] at preferred
+                  have slotExact : rawSlot = none := Option.some.inj preferred
+                  simpa [slotExact] using raw
+          cases anchorExact : memory.anchor with
+          | inactive =>
+              unfold dagRawPreferredSlot at rawPreferred
+              rw [anchorExact] at rawPreferred
+              by_cases atAnchor : exposureIndex = anchorIndex
+              · simp [atAnchor,
+                  raw_final_work_key_of_gamma_output_input_none] at rawPreferred
+              · simp [atAnchor] at rawPreferred
+          | tracked key workSeen =>
+              have keyWellFormed :
+                  key.digest.length = 32 ∧ key.nonce.length = 8 := by
+                simpa [anchorExact, Q16DagAnchorWellFormed] using wellFormed
+              unfold dagRawPreferredSlot at rawPreferred
+              rw [anchorExact] at rawPreferred
+              by_cases work :
+                  workSeen = false ∧ gammaOutputInput state = key.workInput
+              · have lengths := congrArg List.length work.2
+                simp [gammaOutputInput, RawFinalWorkKey.workInput,
+                  keyWellFormed.1, keyWellFormed.2] at lengths
+              · simp [work] at rawPreferred
+      | some q16Slot =>
+          obtain ⟨producer, producerMember, inputExact, _slotExact⟩ :=
+            dag_preferred_q16_slot_has_producer anchorIndex exposureIndex
+              memory (gammaOutputInput state) q16Slot preferred
+          exact (avoids producer producerMember)
+            (output_input_eq_implies_state_eq state producer.digest inputExact)
 
 /-- The fold-nonce alpha boundary has 43 bytes, while q16 candidate and
 advance producer coordinates have 35 and 33 bytes respectively. -/
@@ -252,6 +319,8 @@ theorem exact_alpha_chain_avoids_full_dag_producers
 
 #print axioms clean_root_answer_eq_fixes_source_input
 #print axioms gamma_advance_input_ne_q16_candidate
+#print axioms raw_final_work_key_of_gamma_output_input_none
+#print axioms dag_preferred_slot_none_of_gamma_state_avoids_producers
 #print axioms alpha_zero_boundary_avoids_q16_producer_sources
 #print axioms exact_root_ordered_chain_avoids_q16_producers
 #print axioms exact_alpha_chain_avoids_full_dag_producers
