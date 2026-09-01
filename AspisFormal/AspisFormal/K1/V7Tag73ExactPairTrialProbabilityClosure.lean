@@ -1,6 +1,7 @@
 import AspisFormal.K1.V7Tag73AdaptiveFoldFinalWorkQ16TrialAccounting
 import AspisFormal.K1.V7Tag73ExactFixedCleanWorkDependentQ16Factorization
 import AspisFormal.K1.V7Tag73ExactFoldAlphaQ16OperationalRealization
+import AspisFormal.K1.V7Tag73ExactFoldArmedQ16Routing
 
 /-!
 # Exact two-trial K1.3 probability closure
@@ -44,12 +45,14 @@ open AspisK1.V7Tag73ExactConcreteK13K14Events
 open AspisK1.V7Tag73ExactFixedInstanceEvent
 open AspisK1.V7Tag73ExactFixedQ16JointEventHandoff
 open AspisK1.V7Tag73ExactFoldAlphaQ16OperationalRealization
+open AspisK1.V7Tag73ExactFoldArmedQ16Routing
 open AspisK1.V7Tag73ExactAcceptedFoldTrialPackage
 open AspisK1.V7Tag73ExactPlainRomRun
 open AspisK1.V7Tag73ExactSourceAcceptanceModel
 open AspisK1.V7Tag73FinalWorkQ16CandidateController
 open AspisK1.V7Tag73FinalWorkDigestProbability
 open AspisK1.V7Tag73FoldAlphaFinalWorkQ16ControllerComposition
+open AspisK1.V7Tag73FoldArmedAlphaZeroController
 open AspisK1.V7Tag73IndexedAlignedRecordReplay
 open AspisK1.V7Tag73HiddenTapeAveraging
 open AspisK1.V7Tag73OperationalSemanticReplay
@@ -471,11 +474,8 @@ def ExactFixedCleanK13PairCoordinateInvariant
       configuration projection fixedInstance decoder foldTrial finalTrial →
     (hidden, right) ∈ exactFixedCleanK13PairTrialEvent transitionFuel
       configuration projection fixedInstance decoder foldTrial finalTrial →
-    let router := exactCompilerFoldAlphaFinalWorkQ16Router parameters
-      transitionFuel foldTrial.val
-      (alphaFinalWorkQ16DagController transitionFuel finalTrial.val
-        (alphaZeroCausalController transitionFuel 0))
-      (inactiveAlphaZeroMemory, inactiveDagMemory)
+    let router := exactCompilerFoldArmedAlphaFinalWorkQ16Router parameters
+      transitionFuel foldTrial.val finalTrial.val
       (exactPlainRomCursor configuration hidden).erase
     (exactCompilerCausalFoldAlphaFinalWorkQ16Coordinates parameters router
         left).1 =
@@ -508,11 +508,8 @@ def exactFixedCleanK13PairFibreNonempty
     (context : ExactCompilerFoldAlphaFinalWorkQ16Residual parameters ×
       AlphaZeroDigestBlocks)
     (fold work : Digest256) : Prop :=
-  let router := exactCompilerFoldAlphaFinalWorkQ16Router parameters
-    transitionFuel foldTrial.val
-    (alphaFinalWorkQ16DagController transitionFuel finalTrial.val
-      (alphaZeroCausalController transitionFuel 0))
-    (inactiveAlphaZeroMemory, inactiveDagMemory)
+  let router := exactCompilerFoldArmedAlphaFinalWorkQ16Router parameters
+    transitionFuel foldTrial.val finalTrial.val
     (exactPlainRomCursor configuration hidden).erase
   ∃ tape : FreshAnswerTape Digest256
       (exactCompilerTargetCaps parameters).length,
@@ -593,11 +590,8 @@ theorem exact_fixed_clean_k13_pair_fibre_bad_eq_pointwise
       (exactCompilerTargetCaps parameters).length)
     (member : (hidden, tape) ∈ exactFixedCleanK13PairTrialEvent transitionFuel
       configuration projection fixedInstance decoder foldTrial finalTrial) :
-    let router := exactCompilerFoldAlphaFinalWorkQ16Router parameters
-      transitionFuel foldTrial.val
-      (alphaFinalWorkQ16DagController transitionFuel finalTrial.val
-        (alphaZeroCausalController transitionFuel 0))
-      (inactiveAlphaZeroMemory, inactiveDagMemory)
+    let router := exactCompilerFoldArmedAlphaFinalWorkQ16Router parameters
+      transitionFuel foldTrial.val finalTrial.val
       (exactPlainRomCursor configuration hidden).erase
     exactFixedCleanK13PairFibreBad transitionFuel configuration projection
         fixedInstance decoder foldTrial finalTrial hidden
@@ -610,11 +604,8 @@ theorem exact_fixed_clean_k13_pair_fibre_bad_eq_pointwise
       exactFixedCleanK13PairPointwiseBad transitionFuel configuration projection
         fixedInstance decoder foldTrial finalTrial (hidden, tape) := by
   classical
-  let router := exactCompilerFoldAlphaFinalWorkQ16Router parameters
-    transitionFuel foldTrial.val
-    (alphaFinalWorkQ16DagController transitionFuel finalTrial.val
-      (alphaZeroCausalController transitionFuel 0))
-    (inactiveAlphaZeroMemory, inactiveDagMemory)
+  let router := exactCompilerFoldArmedAlphaFinalWorkQ16Router parameters
+    transitionFuel foldTrial.val finalTrial.val
     (exactPlainRomCursor configuration hidden).erase
   let coordinates := exactCompilerCausalFoldAlphaFinalWorkQ16Coordinates
     parameters router tape
@@ -660,11 +651,8 @@ noncomputable def exactFixedCleanK13PairExposureTrials
   event := exactFixedCleanK13PairTrialEvent transitionFuel configuration
     projection fixedInstance decoder
   router := fun foldTrial finalTrial hidden =>
-    exactCompilerFoldAlphaFinalWorkQ16Router parameters transitionFuel
-      foldTrial.val
-      (alphaFinalWorkQ16DagController transitionFuel finalTrial.val
-        (alphaZeroCausalController transitionFuel 0))
-      (inactiveAlphaZeroMemory, inactiveDagMemory)
+    exactCompilerFoldArmedAlphaFinalWorkQ16Router parameters transitionFuel
+      foldTrial.val finalTrial.val
       (exactPlainRomCursor configuration hidden).erase
   bad := fun foldTrial finalTrial hidden residual alpha fold work =>
     exactFixedCleanK13PairFibreBad transitionFuel configuration projection
@@ -682,19 +670,20 @@ noncomputable def exactFixedCleanK13PairExposureTrials
       configuration projection fixedInstance decoder (hidden, tape) foldTrial
         finalTrial) at member
     let witness := Classical.choice member
-    obtain ⟨realization, finalExact, boundaryExact, foldCanonicalExact⟩ :=
-      exact_fixed_k13_actual_fold_alpha_q16_realization transitionRoom
-        programmedCover witness.joint.input finalTrial witness.joint.actualTrial
-        (frontierExact (hidden, tape) witness.joint.input)
-    let router := exactCompilerFoldAlphaFinalWorkQ16Router parameters
-      transitionFuel foldTrial.val
-      (alphaFinalWorkQ16DagController transitionFuel finalTrial.val
-        (alphaZeroCausalController transitionFuel 0))
-      (inactiveAlphaZeroMemory, inactiveDagMemory)
+    let realization := Classical.choice
+      (exact_compiler_accepted_fold_armed_q16_operational_realization
+        transitionRoom programmedCover witness.joint.input
+          (frontierExact (hidden, tape) witness.joint.input))
+    have finalExact : realization.anchor.source.finalTrial = finalTrial := by
+      rw [realization.anchor.sourceExact]
+      exact (exact_fixed_k13_actual_trial_eq_accepted_installation transitionRoom
+        witness.joint.input finalTrial witness.joint.actualTrial).symm
+    let router := exactCompilerFoldArmedAlphaFinalWorkQ16Router parameters
+      transitionFuel foldTrial.val finalTrial.val
       (exactPlainRomCursor configuration hidden).erase
     have routerExact : realization.anchor.router = router := by
-      rw [realization.anchor.routerExact, finalExact, boundaryExact,
-        foldCanonicalExact, witness.foldExact]
+      rw [realization.anchor.routerExact, realization.anchor.foldExact,
+        finalExact, witness.foldExact]
     let coordinates := exactCompilerCausalFoldAlphaFinalWorkQ16Coordinates
       parameters router tape
     have q16Success : q16DigestForestSucceeds
@@ -748,8 +737,9 @@ noncomputable def exactFixedCleanK13PairExposureTrials
     refine ⟨q16Success, ?_⟩
     change FoldWork31Accepted _ ∧ FinalWork34Accepted _ ∧ _
     refine ⟨realization.anchor.foldCoordinate ▸
-      realization.anchor.foldAccepted,
-      realization.anchor.workCoordinate ▸ realization.anchor.workAccepted, ?_⟩
+      realization.anchor.fold.accepted,
+      realization.anchor.workCoordinate ▸
+        realization.anchor.source.workAccepted, ?_⟩
     change successfulQ16DigestForestEquiv
         ⟨(exactCompilerCausalFoldAlphaFinalWorkQ16Coordinates parameters
           realization.anchor.router tape).2.2.2, q16Success⟩ ∈

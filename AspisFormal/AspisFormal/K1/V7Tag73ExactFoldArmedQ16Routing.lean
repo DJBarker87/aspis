@@ -463,8 +463,11 @@ structure ExactAcceptedFoldArmedQ16Anchor
     {sample : ExactCompilerSample HiddenTape parameters}
     (input : ExactK12OperationalInput transitionFuel configuration projection
       fixedInstance sample) where
+  transitionRoom : 2 ≤ transitionFuel
   fold : ExactAcceptedFoldTrial input
+  foldExact : fold = exactAcceptedFoldTrial input
   source : ExactAcceptedDagInstallation input
+  sourceExact : source = exactAcceptedDagInstallation transitionRoom input
   router : ExactCompilerCausalFoldAlphaFinalWorkQ16Router parameters
   routerExact : router = exactCompilerFoldArmedAlphaFinalWorkQ16Router
     parameters transitionFuel fold.trial.val source.finalTrial.val
@@ -489,8 +492,11 @@ noncomputable def exactAcceptedFoldArmedQ16Anchor
     (programmedCover : 518 ≤ 2 * parameters.forkRequestCap)
     (input : ExactK12OperationalInput transitionFuel configuration projection
       fixedInstance sample) : ExactAcceptedFoldArmedQ16Anchor input :=
-  { fold := exactAcceptedFoldTrial input
+  { transitionRoom := transitionRoom
+    fold := exactAcceptedFoldTrial input
+    foldExact := rfl
     source := exactAcceptedDagInstallation transitionRoom input
+    sourceExact := rfl
     router := exactAcceptedFoldArmedRouter transitionRoom input
     routerExact := rfl
     foldCoordinate := exact_accepted_fold_armed_coordinate transitionRoom
