@@ -799,6 +799,25 @@ pub struct ForestTrackedOutputV2 {
     pub commitment: [u8; 32],
 }
 
+/// A spend membership exported from one authenticated retained checkpoint.
+///
+/// This is deliberately a value-only boundary: callers cannot substitute a
+/// current lane path for a historical one without failing the checkpoint root
+/// reconstruction performed by the live witness adapter.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct AuthenticatedForestSpendMembershipV2 {
+    pub checkpoint_point: FinalizedChainPointV1,
+    pub checkpoint_address: [u8; 32],
+    pub checkpoint_sequence: u64,
+    pub input_lane: LaneIdV2,
+    pub pair_leaf_index: u64,
+    pub slot: PairSlotV2,
+    pub first_commitment: [u8; 32],
+    pub second_commitment: Option<[u8; 32]>,
+    pub pair_siblings: [[u8; 32]; POOL_V1_TREE_DEPTH],
+    pub checkpoint_lane_roots: [[u8; 32]; POOL_V1_PAIR_FOREST_LANE_COUNT],
+}
+
 #[derive(Clone, Debug, PartialEq, Eq)]
 struct DurableLaneCoreV2 {
     account: AuthenticatedForestLaneAccountV2,
@@ -1087,6 +1106,110 @@ impl LaneForestDurableStateV2 {
     ) -> Option<u64> {
         self.checkpoints.iter().find_map(|snapshot| {
             (snapshot.point == point).then_some(snapshot.checkpoint.value.checkpoint_sequence)
+        })
+    }
+
+    /// Export the exact pair path and eight historical lane roots retained for
+    /// `output_event_id` at `checkpoint_sequence`.
+    pub fn authenticated_spend_membership_v2(
+        &self,
+        output_event_id: DepositEventIdV1,
+        checkpoint_sequence: u64,
+    ) -> Result<AuthenticatedForestSpendMembershipV2, LaneForestDurableErrorV2> {
+        let snapshot = self
+            .checkpoints
+            .iter()
+            .find(|snapshot| snapshot.checkpoint.value.checkpoint_sequence == checkpoint_sequence)
+            .ok_or(LaneForestDurableErrorV2::CheckpointSequenceMismatch)?;
+        let output = snapshot
+            .core
+            .lanes
+            .iter()
+            .flat_map(|lane| lane.tracked_outputs.iter())
+            .find(|output| output.output_event_id == output_event_id)
+            .ok_or(LaneForestDurableErrorV2::WitnessMismatch)?;
+        let lane = &snapshot.core.lanes[output.lane_id.index()];
+        let witness = lane
+            .witness
+            .tracked
+            .iter()
+            .find(|witness| {
+                witness.event_id == output.witness_event_id
+                    && witness.pair_leaf_index == output.pair_leaf_index
+            })
+            .ok_or(LaneForestDurableErrorV2::WitnessMismatch)?;
+        if witness.root() != lane.account.value.tree.root
+            || snapshot.checkpoint.value.lane_sequences[output.lane_id.index()]
+                != lane.account.value.tree.next_leaf_index
+        {
+            return Err(LaneForestDurableErrorV2::WitnessMismatch);
+        }
+        let event = snapshot
+            .core
+            .events
+            .iter()
+            .find(|event| {
+                let (first, second) = event.event_ids();
+                first == output.output_event_id || second == Some(output.output_event_id)
+            })
+            .ok_or(LaneForestDurableErrorV2::WitnessMismatch)?;
+        let (first_commitment, second_commitment) = match &event.kind {
+            ForestFinalizedAppendKindV2::Deposit {
+                event_id,
+                commitment,
+                ..
+            } if *event_id == output.output_event_id => (*commitment, None),
+            ForestFinalizedAppendKindV2::PrivateTransfer {
+                recipient_event_id,
+                change_event_id,
+                recipient_commitment,
+                change_commitment,
+                ..
+            } if *recipient_event_id == output.output_event_id
+                || *change_event_id == output.output_event_id =>
+            {
+                (*recipient_commitment, Some(*change_commitment))
+            }
+            ForestFinalizedAppendKindV2::Withdrawal {
+                event_id,
+                change_commitment,
+                ..
+            } if *event_id == output.output_event_id => (*change_commitment, None),
+            _ => return Err(LaneForestDurableErrorV2::WitnessMismatch),
+        };
+        let selected = match output.slot {
+            PairSlotV2::First => first_commitment,
+            PairSlotV2::Second => {
+                second_commitment.ok_or(LaneForestDurableErrorV2::WitnessMismatch)?
+            }
+        };
+        if selected != output.commitment {
+            return Err(LaneForestDurableErrorV2::WitnessMismatch);
+        }
+        let checkpoint_lane_roots = snapshot
+            .core
+            .lanes
+            .each_ref()
+            .map(|lane| encode_digest_canonical(&lane.account.value.tree.root));
+        if lane_forest_global_root_v2(&checkpoint_lane_roots)
+            .map_err(|_| LaneForestDurableErrorV2::GlobalRootMismatch)?
+            != encode_digest_canonical(&snapshot.checkpoint.value.global_root)
+        {
+            return Err(LaneForestDurableErrorV2::GlobalRootMismatch);
+        }
+        Ok(AuthenticatedForestSpendMembershipV2 {
+            checkpoint_point: snapshot.point,
+            checkpoint_address: snapshot.checkpoint.address,
+            checkpoint_sequence,
+            input_lane: output.lane_id,
+            pair_leaf_index: output.pair_leaf_index,
+            slot: output.slot,
+            first_commitment,
+            second_commitment,
+            pair_siblings: witness
+                .siblings
+                .map(|value| encode_digest_canonical(&value)),
+            checkpoint_lane_roots,
         })
     }
 
@@ -2533,6 +2656,58 @@ mod tests {
         );
         assert_eq!(state, after_second);
         assert_ne!(state, at_checkpoint);
+    }
+
+    #[test]
+    fn retained_checkpoint_exports_authenticated_live_spend_membership() {
+        let (_, _, _, _, mut state) = fixtures();
+        let output_id = event(40, 1, 0);
+        let commitment = encode_digest_canonical(&digest(801));
+        let append = deposit_event(&state, output_id, commitment, None);
+        let input_lane = append.lane_id;
+        state
+            .ingest_finalized_append_preselected_v2(append, &[output_id])
+            .unwrap();
+        let (master_address, master_image, lanes, checkpoint_address, checkpoint_image) =
+            checkpoint_inputs(&state);
+        let checkpoint_point = FinalizedChainPointV1::new(41, [42; 32]).unwrap();
+        state
+            .ingest_finalized_checkpoint_v2(
+                checkpoint_point,
+                master_address,
+                &master_image,
+                &lanes,
+                checkpoint_address,
+                &checkpoint_image,
+            )
+            .unwrap();
+
+        let membership = state
+            .authenticated_spend_membership_v2(output_id, 0)
+            .unwrap();
+        assert_eq!(membership.checkpoint_point, checkpoint_point);
+        assert_eq!(membership.checkpoint_address, checkpoint_address);
+        assert_eq!(membership.checkpoint_sequence, 0);
+        assert_eq!(membership.input_lane, input_lane);
+        assert_eq!(membership.pair_leaf_index, 0);
+        assert_eq!(membership.slot, PairSlotV2::First);
+        assert_eq!(membership.first_commitment, commitment);
+        assert_eq!(membership.second_commitment, None);
+        for (actual, expected) in membership
+            .pair_siblings
+            .iter()
+            .zip(&POOL_V1_PAIR_EMPTY_ROOTS[..POOL_V1_TREE_DEPTH])
+        {
+            assert_eq!(*actual, encode_digest_canonical(expected));
+        }
+        assert_eq!(
+            lane_forest_global_root_v2(&membership.checkpoint_lane_roots).unwrap(),
+            encode_digest_canonical(&state.checkpoints[0].checkpoint.value.global_root)
+        );
+        assert_eq!(
+            state.authenticated_spend_membership_v2(output_id, 1),
+            Err(LaneForestDurableErrorV2::CheckpointSequenceMismatch)
+        );
     }
 
     #[test]
