@@ -124,6 +124,9 @@ theorem exact_tag73_measured_clean_k16_aok_raw
         semanticFrontierNodes schedule.positions)
     (digestBinding : ExactTag73PrefinalDigestSemanticBinding transitionFuel
       configuration projection fixedInstance)
+    (k12WordsInvariant :
+      ExactFixedCleanK13PairWordsInvariantOnAdversaryAnchors transitionFuel
+        configuration projection fixedInstance decoder)
     (reference : AdmittedResult SemanticCap203Admitted)
     (traceExists : Nonempty
       (FirstAdmittedTrace q16CandidateOutput SemanticCap203Admitted 64
@@ -180,8 +183,8 @@ theorem exact_tag73_measured_clean_k16_aok_raw
   have q16SemanticBound :=
     exact_fixed_clean_pair_k13_query_probability_le_one_forest_of_digest_binding
       (decoder := decoder) hiddenLaw q16TransitionRoom programmedCover
-      decodedSource digestBinding frontierExact reference traceExists
-      foldExposureCap finalExposureCap
+      decodedSource digestBinding k12WordsInvariant frontierExact reference
+      traceExists foldExposureCap finalExposureCap
   have q16CleanBound :
       (exactCompilerJointLaw hiddenLaw parameters).toOuterMeasure
           (exactFixedPlainRomLegalSameTapeEvent transitionFuel configuration

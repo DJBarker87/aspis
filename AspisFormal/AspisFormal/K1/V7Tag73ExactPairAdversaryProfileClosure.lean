@@ -58,16 +58,16 @@ open AspisV5ComponentCQM31TowerExact
 
 noncomputable section
 
-/-- The semantic data that is already fixed when the deployed prover reaches
-the selected final-work request.  Keeping this as one source snapshot avoids
-three unrelated, conclusion-shaped stability assumptions. -/
-structure Tag73PreFinalSemanticSnapshot where
-  words : ExtractedWords
+/-- The transcript challenges already fixed when the deployed prover reaches
+the selected final-work request.  Merkle-derived K1.2 words are deliberately
+excluded: their cross-run coherence belongs to K1.2 authentication, not SHA
+transcript binding. -/
+structure Tag73PreFinalTranscriptSnapshot where
   gamma : QM31Exact
   alphaZero : QM31Exact
 
-/-- Read the pre-final semantic snapshot from one exact accepted execution. -/
-def exactTag73PreFinalSemanticSnapshot
+/-- Read the pre-final transcript snapshot from one exact accepted execution. -/
+def exactTag73PreFinalTranscriptSnapshot
     {HiddenTape TapeIdentity Observation Statement Payload Result : Type}
     {parameters : ExactCompilerResourceParameters}
     {transitionFuel : Nat}
@@ -77,17 +77,15 @@ def exactTag73PreFinalSemanticSnapshot
     {fixedInstance : PublicInstance Statement}
     {sample : ExactCompilerSample HiddenTape parameters}
     (input : ExactK12OperationalInput transitionFuel configuration projection
-      fixedInstance sample) : Tag73PreFinalSemanticSnapshot where
-  words := exactPrefixK12Words input
+      fixedInstance sample) : Tag73PreFinalTranscriptSnapshot where
   gamma := (exactK13ParsedProof input).gamma
   alphaZero := exactOperationalChallenge input (.alpha 0)
 
-/-- Typed semantic-binding boundary at the pre-final transcript digest.  This
+/-- Typed challenge-binding boundary at the pre-final transcript digest.  This
 is deliberately not an honest-prover control-flow premise: the K1 adversary is
-arbitrary.  Before release, this premise must either be reduced to a
-prefix-local snapshot and charged to the compiler collision event, or retained
-as an explicitly stronger external assumption; this definition itself makes
-neither claim. -/
+arbitrary.  The snapshot contains only transcript-derived challenges, making
+this the precise premise to connect to the compiler collision event and the
+deployed SHA-256 binding boundary. -/
 def ExactTag73PrefinalDigestSemanticBinding
     {HiddenTape TapeIdentity Observation Statement Payload Witness : Type}
     {parameters : ExactCompilerResourceParameters}
@@ -105,8 +103,49 @@ def ExactTag73PrefinalDigestSemanticBinding
     ExactOperationalPrefinalDigest leftInput leftDigest →
     ExactOperationalPrefinalDigest rightInput rightDigest →
     leftDigest = rightDigest →
-    exactTag73PreFinalSemanticSnapshot leftInput =
-      exactTag73PreFinalSemanticSnapshot rightInput
+    exactTag73PreFinalTranscriptSnapshot leftInput =
+      exactTag73PreFinalTranscriptSnapshot rightInput
+
+/-- K1.2 coherence needed by the K1.3 q16 fibre argument.  This is separate
+from transcript binding because the words are reconstructed from authenticated
+Merkle openings and the oracle prefix, rather than serialized in the pre-final
+digest. -/
+def ExactFixedCleanK13PairWordsInvariantOnAdversaryAnchors
+    {HiddenTape TapeIdentity Observation Statement Payload Witness : Type}
+    {parameters : ExactCompilerResourceParameters}
+    (transitionFuel : Nat)
+    (configuration : ExactPlainRomWitnessConfiguration HiddenTape TapeIdentity
+      Observation Statement Tag73K12ParsedProof Payload Witness parameters)
+    (projection : AcceptedTapeProjection Statement Tag73K12ParsedProof Payload)
+    (fixedInstance : PublicInstance Statement)
+    (decoder : ExactDecoderInstantiation QM31Exact) : Prop :=
+  ∀ (foldTrial finalTrial : ExactCompilerExposureTrial parameters)
+      (hidden : HiddenTape)
+      (left right : FreshAnswerTape Digest256
+        (exactCompilerTargetCaps parameters).length)
+      (leftWitness : ExactFixedCleanK13PairTrialWitness transitionFuel
+        configuration projection fixedInstance decoder (hidden, left)
+          foldTrial finalTrial)
+      (rightWitness : ExactFixedCleanK13PairTrialWitness transitionFuel
+        configuration projection fixedInstance decoder (hidden, right)
+          foldTrial finalTrial),
+    ExactFixedK13AdversaryAnchor leftWitness.joint.input finalTrial →
+    (let router := exactCompilerFoldArmedAlphaFinalWorkQ16Router parameters
+      transitionFuel foldTrial.val finalTrial.val
+      (exactPlainRomCursor configuration hidden).erase
+    (exactCompilerCausalFoldAlphaFinalWorkQ16Coordinates parameters router
+        left).1 =
+      (exactCompilerCausalFoldAlphaFinalWorkQ16Coordinates parameters router
+        right).1) →
+    (let router := exactCompilerFoldArmedAlphaFinalWorkQ16Router parameters
+      transitionFuel foldTrial.val finalTrial.val
+      (exactPlainRomCursor configuration hidden).erase
+    (exactCompilerCausalFoldAlphaFinalWorkQ16Coordinates parameters router
+        left).2.1 =
+      (exactCompilerCausalFoldAlphaFinalWorkQ16Coordinates parameters router
+        right).2.1) →
+    exactPrefixK12Words leftWitness.joint.input =
+      exactPrefixK12Words rightWitness.joint.input
 
 /-- The exact pre-final semantic data still to transport across an
 adversary-first complete-coordinate fibre.  The disclosed final vector is
@@ -166,6 +205,9 @@ theorem exact_fixed_clean_pair_k13_pre_final_invariant_of_digest_binding
     {fixedInstance : PublicInstance Statement}
     {decoder : ExactDecoderInstantiation QM31Exact}
     (programmedCover : 518 ≤ 2 * parameters.forkRequestCap)
+    (wordsInvariant :
+      ExactFixedCleanK13PairWordsInvariantOnAdversaryAnchors transitionFuel
+        configuration projection fixedInstance decoder)
     (digestBinding :
       ExactTag73PrefinalDigestSemanticBinding transitionFuel
         configuration projection fixedInstance) :
@@ -173,6 +215,8 @@ theorem exact_fixed_clean_pair_k13_pre_final_invariant_of_digest_binding
       configuration projection fixedInstance decoder := by
   intro foldTrial finalTrial hidden left right leftWitness rightWitness anchor
     contextExact foldExact
+  have wordsExact := wordsInvariant foldTrial finalTrial hidden left right
+    leftWitness rightWitness anchor contextExact foldExact
   obtain ⟨_selectedInput, leftDigest, rightDigest, _leftPrefix, _rightPrefix,
       digestExact, leftOrigin, rightOrigin⟩ :=
     exact_fixed_clean_pair_k13_adversary_anchor_selected_input_and_digest_eq
@@ -181,14 +225,10 @@ theorem exact_fixed_clean_pair_k13_pre_final_invariant_of_digest_binding
   have snapshotExact := digestBinding leftWitness.joint.input
     rightWitness.joint.input leftDigest rightDigest leftOrigin rightOrigin
       digestExact
-  have wordsExact :=
-    congrArg Tag73PreFinalSemanticSnapshot.words snapshotExact
   have gammaExact :=
-    congrArg Tag73PreFinalSemanticSnapshot.gamma snapshotExact
+    congrArg Tag73PreFinalTranscriptSnapshot.gamma snapshotExact
   have alphaExact :=
-    congrArg Tag73PreFinalSemanticSnapshot.alphaZero snapshotExact
-  change exactPrefixK12Words leftWitness.joint.input =
-    exactPrefixK12Words rightWitness.joint.input at wordsExact
+    congrArg Tag73PreFinalTranscriptSnapshot.alphaZero snapshotExact
   change (exactK13ParsedProof leftWitness.joint.input).gamma =
     (exactK13ParsedProof rightWitness.joint.input).gamma at gammaExact
   change exactOperationalChallenge leftWitness.joint.input (.alpha 0) =
@@ -254,7 +294,10 @@ theorem exact_fixed_clean_k13_pair_coordinate_invariant_of_digest_binding
     (transitionRoom : 2 ≤ transitionFuel)
     (programmedCover : 518 ≤ 2 * parameters.forkRequestCap)
     (digestBinding : ExactTag73PrefinalDigestSemanticBinding transitionFuel
-      configuration projection fixedInstance) :
+      configuration projection fixedInstance)
+    (wordsInvariant :
+      ExactFixedCleanK13PairWordsInvariantOnAdversaryAnchors transitionFuel
+        configuration projection fixedInstance decoder) :
     ExactFixedCleanK13PairCoordinateInvariant transitionFuel configuration
       projection fixedInstance decoder := by
   apply exact_fixed_clean_k13_pair_coordinate_invariant_of_adversary_anchors
@@ -262,7 +305,7 @@ theorem exact_fixed_clean_k13_pair_coordinate_invariant_of_digest_binding
   apply exact_fixed_clean_pair_k13_adversary_bad_invariant_of_pre_final_profile
     source transitionRoom programmedCover
   exact exact_fixed_clean_pair_k13_pre_final_invariant_of_digest_binding
-    programmedCover digestBinding
+    programmedCover wordsInvariant digestBinding
 
 /-- End-to-end K1.3 one-forest probability bound under the exact parsed-source
 provider and the explicitly typed pre-final semantic-binding boundary. -/
@@ -283,6 +326,9 @@ theorem exact_fixed_clean_pair_k13_query_probability_le_one_forest_of_digest_bin
       configuration projection fixedInstance)
     (digestBinding : ExactTag73PrefinalDigestSemanticBinding transitionFuel
       configuration projection fixedInstance)
+    (wordsInvariant :
+      ExactFixedCleanK13PairWordsInvariantOnAdversaryAnchors transitionFuel
+        configuration projection fixedInstance decoder)
     (frontierExact : ∀
       (sample : ExactCompilerSample HiddenTape parameters)
       (input : ExactK12OperationalInput transitionFuel configuration projection
@@ -309,12 +355,15 @@ theorem exact_fixed_clean_pair_k13_query_probability_le_one_forest_of_digest_bin
   have invariant :=
     exact_fixed_clean_k13_pair_coordinate_invariant_of_digest_binding
       (decoder := decoder) source transitionRoom programmedCover digestBinding
+        wordsInvariant
   exact exact_fixed_clean_pair_k13_query_probability_le_one_forest hiddenLaw
     transitionRoom programmedCover parsedSource frontierExact invariant
       reference traceExists foldExposureCap finalExposureCap
 
 #print axioms
   ExactFixedCleanK13PairPreFinalInvariantOnAdversaryAnchors
+#print axioms
+  ExactFixedCleanK13PairWordsInvariantOnAdversaryAnchors
 #print axioms
   ExactTag73PrefinalDigestSemanticBinding
 #print axioms
