@@ -46,10 +46,10 @@ def causalInput? : UnifiedExposureRecord → Option ShaInput
 /-- Replaying an appended record list is replaying the first list and then the
 second. -/
 theorem indexed_state_after_records_append
-    {globalOracleCalls : Nat} {Memory : Type u}
+    {globalOracleCalls : Nat} {Slot : Type} {Memory : Type u}
     (transitionFuel : Nat)
     (controller : IndexedUnifiedExposureController globalOracleCalls
-      Digest256 FinalWorkQ16DigestSlot Memory) :
+      Digest256 Slot Memory) :
     ∀ (first second : List UnifiedExposureRecord)
       (state : IndexedUnifiedExposureState globalOracleCalls Memory),
       indexedStateAfterRecords transitionFuel controller (first ++ second)
@@ -69,10 +69,10 @@ theorem indexed_state_after_records_append
 /-- Every selected record is the literal record emitted at the cursor reached
 by replaying its strict prefix. -/
 def IndexedRecordsAligned
-    {globalOracleCalls : Nat} {Memory : Type u}
+    {globalOracleCalls : Nat} {Slot : Type} {Memory : Type u}
     (transitionFuel : Nat)
     (controller : IndexedUnifiedExposureController globalOracleCalls
-      Digest256 FinalWorkQ16DigestSlot Memory)
+      Digest256 Slot Memory)
     (state : IndexedUnifiedExposureState globalOracleCalls Memory)
     (records : List UnifiedExposureRecord) : Prop :=
   ∀ prior selected later,
@@ -84,10 +84,10 @@ def IndexedRecordsAligned
 /-- A literal scheduler trace supplies aligned-record replay for any indexed
 controller driven by the same cursor transition. -/
 theorem indexed_records_aligned_of_trace
-    {globalOracleCalls remaining : Nat} {Memory : Type u}
+    {globalOracleCalls remaining : Nat} {Slot : Type} {Memory : Type u}
     (transitionFuel : Nat)
     (controller : IndexedUnifiedExposureController globalOracleCalls
-      Digest256 FinalWorkQ16DigestSlot Memory)
+      Digest256 Slot Memory)
     (state : IndexedUnifiedExposureState globalOracleCalls Memory)
     (tape : FreshAnswerTape Digest256 remaining)
     (records : List UnifiedExposureRecord)
@@ -101,10 +101,10 @@ theorem indexed_records_aligned_of_trace
 /-- Alignment restricts to a contiguous segment after replaying the preceding
 prefix. -/
 theorem indexed_records_aligned_segment
-    {globalOracleCalls : Nat} {Memory : Type u}
+    {globalOracleCalls : Nat} {Slot : Type} {Memory : Type u}
     (transitionFuel : Nat)
     (controller : IndexedUnifiedExposureController globalOracleCalls
-      Digest256 FinalWorkQ16DigestSlot Memory)
+      Digest256 Slot Memory)
     (state : IndexedUnifiedExposureState globalOracleCalls Memory)
     (records preceding segment suffix : List UnifiedExposureRecord)
     (aligned : IndexedRecordsAligned transitionFuel controller state records)

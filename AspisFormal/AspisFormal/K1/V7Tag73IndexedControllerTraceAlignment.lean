@@ -48,10 +48,10 @@ universe u
 record's already-exposed answer is consumed; the next slot is always chosen
 from the state before that answer. -/
 def indexedStateAfterRecords
-    {globalOracleCalls : Nat} {Memory : Type u}
+    {globalOracleCalls : Nat} {Slot : Type} {Memory : Type u}
     (transitionFuel : Nat)
     (controller : IndexedUnifiedExposureController globalOracleCalls
-      Digest256 FinalWorkQ16DigestSlot Memory) :
+      Digest256 Slot Memory) :
     List UnifiedExposureRecord →
       IndexedUnifiedExposureState globalOracleCalls Memory →
       IndexedUnifiedExposureState globalOracleCalls Memory
@@ -61,19 +61,19 @@ def indexedStateAfterRecords
         (controller.afterAnswer transitionFuel state record.answer)
 
 @[simp] theorem indexed_state_after_records_nil
-    {globalOracleCalls : Nat} {Memory : Type u}
+    {globalOracleCalls : Nat} {Slot : Type} {Memory : Type u}
     (transitionFuel : Nat)
     (controller : IndexedUnifiedExposureController globalOracleCalls
-      Digest256 FinalWorkQ16DigestSlot Memory)
+      Digest256 Slot Memory)
     (state : IndexedUnifiedExposureState globalOracleCalls Memory) :
     indexedStateAfterRecords transitionFuel controller [] state = state := by
   rfl
 
 @[simp] theorem indexed_state_after_records_cons
-    {globalOracleCalls : Nat} {Memory : Type u}
+    {globalOracleCalls : Nat} {Slot : Type} {Memory : Type u}
     (transitionFuel : Nat)
     (controller : IndexedUnifiedExposureController globalOracleCalls
-      Digest256 FinalWorkQ16DigestSlot Memory)
+      Digest256 Slot Memory)
     (record : UnifiedExposureRecord) (records : List UnifiedExposureRecord)
     (state : IndexedUnifiedExposureState globalOracleCalls Memory) :
     indexedStateAfterRecords transitionFuel controller (record :: records)
@@ -83,10 +83,10 @@ def indexedStateAfterRecords
   rfl
 
 theorem indexed_state_after_records_exposure_index
-    {globalOracleCalls : Nat} {Memory : Type u}
+    {globalOracleCalls : Nat} {Slot : Type} {Memory : Type u}
     (transitionFuel : Nat)
     (controller : IndexedUnifiedExposureController globalOracleCalls
-      Digest256 FinalWorkQ16DigestSlot Memory) :
+      Digest256 Slot Memory) :
     ∀ (records : List UnifiedExposureRecord)
       (state : IndexedUnifiedExposureState globalOracleCalls Memory),
       (indexedStateAfterRecords transitionFuel controller records state).exposureIndex =
@@ -105,10 +105,10 @@ theorem indexed_state_after_records_exposure_index
 /-- A trace decomposition determines the controller's exact pre-answer cursor
 at the selected record after replaying precisely the preceding answers. -/
 theorem trace_prefix_aligns_indexed_state
-    {globalOracleCalls : Nat} {Memory : Type u}
+    {globalOracleCalls : Nat} {Slot : Type} {Memory : Type u}
     (transitionFuel : Nat)
     (controller : IndexedUnifiedExposureController globalOracleCalls
-      Digest256 FinalWorkQ16DigestSlot Memory) :
+      Digest256 Slot Memory) :
     ∀ (prior later : List UnifiedExposureRecord)
       (selected : UnifiedExposureRecord) (remaining : Nat)
       (state : IndexedUnifiedExposureState globalOracleCalls Memory)

@@ -30,13 +30,13 @@ universe u
 /-- Chronological `(pre-answer label, answer)` pairs obtained by replaying a
 record list through an indexed controller. -/
 def indexedControllerLabeledRecords
-    {globalOracleCalls : Nat} {Memory : Type u}
+    {globalOracleCalls : Nat} {Slot : Type} {Memory : Type u}
     (transitionFuel : Nat)
     (controller : IndexedUnifiedExposureController globalOracleCalls
-      Digest256 FinalWorkQ16DigestSlot Memory) :
+      Digest256 Slot Memory) :
     IndexedUnifiedExposureState globalOracleCalls Memory →
       List UnifiedExposureRecord →
-        List (Option FinalWorkQ16DigestSlot × Digest256)
+        List (Option Slot × Digest256)
   | _state, [] => []
   | state, record :: records =>
       (controller.preferredSlot state, record.answer) ::
@@ -44,19 +44,19 @@ def indexedControllerLabeledRecords
           (controller.afterAnswer transitionFuel state record.answer) records
 
 @[simp] theorem indexed_controller_labeled_records_nil
-    {globalOracleCalls : Nat} {Memory : Type u}
+    {globalOracleCalls : Nat} {Slot : Type} {Memory : Type u}
     (transitionFuel : Nat)
     (controller : IndexedUnifiedExposureController globalOracleCalls
-      Digest256 FinalWorkQ16DigestSlot Memory)
+      Digest256 Slot Memory)
     (state : IndexedUnifiedExposureState globalOracleCalls Memory) :
     indexedControllerLabeledRecords transitionFuel controller state [] = [] := by
   rfl
 
 @[simp] theorem indexed_controller_labeled_records_cons
-    {globalOracleCalls : Nat} {Memory : Type u}
+    {globalOracleCalls : Nat} {Slot : Type} {Memory : Type u}
     (transitionFuel : Nat)
     (controller : IndexedUnifiedExposureController globalOracleCalls
-      Digest256 FinalWorkQ16DigestSlot Memory)
+      Digest256 Slot Memory)
     (state : IndexedUnifiedExposureState globalOracleCalls Memory)
     (record : UnifiedExposureRecord) (records : List UnifiedExposureRecord) :
     indexedControllerLabeledRecords transitionFuel controller state
@@ -68,10 +68,10 @@ def indexedControllerLabeledRecords
 
 /-- Forgetting labels recovers the literal record-answer list. -/
 theorem indexed_controller_labeled_records_answers
-    {globalOracleCalls : Nat} {Memory : Type u}
+    {globalOracleCalls : Nat} {Slot : Type} {Memory : Type u}
     (transitionFuel : Nat)
     (controller : IndexedUnifiedExposureController globalOracleCalls
-      Digest256 FinalWorkQ16DigestSlot Memory) :
+      Digest256 Slot Memory) :
     ∀ (state : IndexedUnifiedExposureState globalOracleCalls Memory)
       (records : List UnifiedExposureRecord),
       (indexedControllerLabeledRecords transitionFuel controller state
@@ -86,10 +86,10 @@ theorem indexed_controller_labeled_records_answers
 /-- The terminal state of the labelled execution is the ordinary indexed
 record replay state. -/
 theorem indexed_controller_labeled_records_form_trace
-    {globalOracleCalls : Nat} {Memory : Type u}
+    {globalOracleCalls : Nat} {Slot : Type} {Memory : Type u}
     (transitionFuel : Nat)
     (controller : IndexedUnifiedExposureController globalOracleCalls
-      Digest256 FinalWorkQ16DigestSlot Memory) :
+      Digest256 Slot Memory) :
     ∀ (state : IndexedUnifiedExposureState globalOracleCalls Memory)
       (records : List UnifiedExposureRecord),
       MachineLabeledTrace (controller.machine transitionFuel) state
@@ -106,10 +106,10 @@ theorem indexed_controller_labeled_records_form_trace
 /-- Splitting the record list also splits the generated labels at the exact
 controller state reached by the first segment. -/
 theorem indexed_controller_labeled_records_append
-    {globalOracleCalls : Nat} {Memory : Type u}
+    {globalOracleCalls : Nat} {Slot : Type} {Memory : Type u}
     (transitionFuel : Nat)
     (controller : IndexedUnifiedExposureController globalOracleCalls
-      Digest256 FinalWorkQ16DigestSlot Memory)
+      Digest256 Slot Memory)
     (state : IndexedUnifiedExposureState globalOracleCalls Memory)
     (first second : List UnifiedExposureRecord) :
     indexedControllerLabeledRecords transitionFuel controller state
