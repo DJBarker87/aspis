@@ -1,6 +1,7 @@
 import AspisFormal.K1.V7Tag73FoldArmedAlphaZeroController
 import AspisFormal.K1.V7Tag73AlphaZeroLabeledRecordsNodup
 import AspisFormal.K1.V7Tag73IndexedControllerLabeledRecords
+import AspisFormal.K1.V7Tag73IndexedControllerTraceAlignment
 
 /-!
 # Duplicate-free labels for the fold-armed 518-slot controller
@@ -27,6 +28,7 @@ open AspisK1.V7Tag73CausalMachineLabeledTraceRouting
 open AspisK1.V7Tag73FinalWorkQ16CandidateController
 open AspisK1.V7Tag73FoldArmedAlphaZeroController
 open AspisK1.V7Tag73IndexedControllerLabeledRecords
+open AspisK1.V7Tag73IndexedControllerTraceAlignment
 open AspisK1.V7Tag73IndexedExposureCausalRouter
 open AspisK1.V7Tag73TranscriptSchedule
 
@@ -73,6 +75,28 @@ theorem fold_armed_outer_coherent_after_answer
     · have before : state.exposureIndex < foldExposureIndex := by omega
       simp [passed, atFold]
       exact before
+
+theorem fold_armed_outer_coherent_after_records
+    {globalOracleCalls : Nat}
+    (transitionFuel foldExposureIndex finalWorkAnchorIndex : Nat) :
+    ∀ (records : List UnifiedExposureRecord)
+      (state : IndexedUnifiedExposureState globalOracleCalls
+        FoldArmedCompleteMemory),
+      FoldArmedOuterCoherent foldExposureIndex state →
+      FoldArmedOuterCoherent foldExposureIndex
+        (indexedStateAfterRecords transitionFuel
+          (foldArmedCompleteController transitionFuel foldExposureIndex
+            finalWorkAnchorIndex) records state) := by
+  intro records
+  induction records with
+  | nil =>
+      intro state coherent
+      simpa using coherent
+  | cons record records ih =>
+      intro state coherent
+      apply ih
+      exact fold_armed_outer_coherent_after_answer transitionFuel
+        foldExposureIndex finalWorkAnchorIndex state record.answer coherent
 
 theorem fold_armed_complete_slot_used_mono
     {globalOracleCalls : Nat}
@@ -438,6 +462,7 @@ theorem fold_armed_complete_labeled_records_named_slots_nodup
       coherent).1
 
 #print axioms fold_armed_complete_slot_used_mono
+#print axioms fold_armed_outer_coherent_after_records
 #print axioms fold_armed_complete_preferred_slot_fresh
 #print axioms fold_armed_complete_preferred_slot_used_after_answer
 #print axioms fold_armed_complete_labeled_records_named_slots_nodup
