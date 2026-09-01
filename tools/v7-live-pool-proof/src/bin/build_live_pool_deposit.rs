@@ -137,13 +137,14 @@ fn main() -> Result<()> {
         source_authority.pubkey() != payer.pubkey(),
         "source authority aliases payer"
     );
+    let page_payer = (lane.tree.next_leaf_index == 0).then_some(payer.pubkey());
     let instruction = build_pair_forest_deposit_instruction_v2(
         Pubkey::from_str(pool_id)?,
         &master,
         &lane,
         Pubkey::from_str(source)?,
         source_authority.pubkey(),
-        Some(payer.pubkey()),
+        page_payer,
         &DepositRequestV1 {
             owner_key,
             amount: 1_000,
