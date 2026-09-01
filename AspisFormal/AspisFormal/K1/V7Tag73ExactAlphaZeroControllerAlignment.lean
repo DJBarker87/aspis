@@ -1,7 +1,6 @@
 import AspisFormal.K1.V7Tag73AlphaZeroCausalController
 import AspisFormal.K1.V7Tag73ExactAlphaZeroRootOrder
 import AspisFormal.K1.V7Tag73ExactDagCandidateLabeledRootRouting
-import AspisFormal.K1.V7Tag73ExactDagQ16ChainRouting
 import AspisFormal.K1.V7Tag73ExactRootRecordOrderLift
 
 /-!
@@ -32,7 +31,6 @@ open AspisK1.V7Tag73ExactAlphaZeroRootOrder
 open AspisK1.V7Tag73ExactCompilerGammaTraceOccurrence
 open AspisK1.V7Tag73ExactCompilerResources
 open AspisK1.V7Tag73ExactDagCandidateLabeledRootRouting
-open AspisK1.V7Tag73ExactDagQ16ChainRouting
 open AspisK1.V7Tag73ExactFixedFullRunFactorization
 open AspisK1.V7Tag73ExactFixedK12MerkleClassifier
 open AspisK1.V7Tag73ExactFixedOperationalStateMap
@@ -52,6 +50,49 @@ open AspisK1.V7Tag73SchedulerTraceFactorization
 open AspisK1.V7Tag73TranscriptSchedule
 
 noncomputable section
+
+/-- Two decompositions selecting the same projected key in a projected-nodup
+list have the same strict prefix.  This small local copy keeps the alpha
+controller independent of the much larger q16 recursive-routing module. -/
+theorem alpha_mapped_nodup_selected_prefix_eq
+    {A B : Type} [BEq B] [LawfulBEq B]
+    (f : A → B) (values firstPrefix firstSuffix secondPrefix secondSuffix :
+      List A)
+    (first second : A)
+    (nodup : (values.map f).Nodup)
+    (firstExact : values = firstPrefix ++ first :: firstSuffix)
+    (secondExact : values = secondPrefix ++ second :: secondSuffix)
+    (selectedExact : f first = f second) :
+    firstPrefix = secondPrefix := by
+  have firstFresh : f first ∉ firstPrefix.map f := by
+    rw [firstExact, List.map_append, List.map_cons] at nodup
+    have separated := (List.nodup_append.mp nodup).2.2
+    intro member
+    exact separated (f first) member (f first) (by simp) rfl
+  have secondFresh : f second ∉ secondPrefix.map f := by
+    rw [secondExact, List.map_append, List.map_cons] at nodup
+    have separated := (List.nodup_append.mp nodup).2.2
+    intro member
+    exact separated (f second) member (f second) (by simp) rfl
+  have firstIndex : (values.map f).idxOf (f first) = firstPrefix.length := by
+    rw [firstExact, List.map_append, List.map_cons,
+      List.idxOf_append_of_notMem firstFresh, List.idxOf_cons_self,
+      List.length_map]
+    omega
+  have secondIndex : (values.map f).idxOf (f second) = secondPrefix.length := by
+    rw [secondExact, List.map_append, List.map_cons,
+      List.idxOf_append_of_notMem secondFresh, List.idxOf_cons_self,
+      List.length_map]
+    omega
+  have lengthsExact : firstPrefix.length = secondPrefix.length := by
+    rw [selectedExact] at firstIndex
+    omega
+  have firstPrefixOf : firstPrefix <+: values := by
+    exact ⟨first :: firstSuffix, firstExact.symm⟩
+  have secondPrefixOf : secondPrefix <+: values := by
+    exact ⟨second :: secondSuffix, secondExact.symm⟩
+  rw [List.prefix_iff_eq_take] at firstPrefixOf secondPrefixOf
+  rw [firstPrefixOf, secondPrefixOf, lengthsExact]
 
 /-- Canonical initial state of the accepted run's alpha-zero controller. -/
 def exactAlphaZeroInitialState
@@ -265,7 +306,7 @@ theorem exact_compiler_alpha_zero_initial_producer_installed
   refine ⟨boundaryIndex, producer, rfl, ?_⟩
   intro arbitraryPrior arbitraryLater arbitraryActor arbitraryExact
   have prefixExact : prior = arbitraryPrior := by
-    apply mapped_nodup_selected_prefix_eq UnifiedExposureRecord.answer
+    apply alpha_mapped_nodup_selected_prefix_eq UnifiedExposureRecord.answer
       (exactFixedRootRecords input.package.root) prior later arbitraryPrior
         arbitraryLater
       (.machineFresh actor producerInput beforeAlphaDigest :
