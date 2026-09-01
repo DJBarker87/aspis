@@ -73,6 +73,7 @@ structure ExactAcceptedFoldTrial
   beforeRelation : EvalState
   digest : Digest256
   answer : Digest256
+  boundaryAnswer : Digest256
   trial : ExactCompilerExposureTrial parameters
   prior : List UnifiedExposureRecord
   later : List UnifiedExposureRecord
@@ -92,6 +93,11 @@ structure ExactAcceptedFoldTrial
         (bytes digest ++ [domGrind] ++
           bytes (exactOperationalTape input).messages.foldGrinding.selected) =
       some answer
+  boundaryLookup :
+    tableLookup (exactOperationalTable input)
+        (bytes digest ++ [domAbsorb, foldWorkNonceLabel, 0] ++
+          bytes (exactOperationalTape input).messages.foldGrinding.selected) =
+      some boundaryAnswer
   rootDecomposition :
     exactFixedRootRecords input.package.root =
       prior ++
@@ -113,8 +119,9 @@ theorem exact_accepted_fold_trial_exists
     (input : ExactK12OperationalInput transitionFuel configuration projection
       fixedInstance sample) :
     Nonempty (ExactAcceptedFoldTrial input) := by
-  obtain ⟨beforeRelation, digest, answer, relationLookup, workLookup,
-      accepted⟩ := exact_operational_relation_zero_and_fold_work_lookups input
+  obtain ⟨beforeRelation, digest, answer, boundaryAnswer, relationLookup,
+      workLookup, accepted, boundaryLookup⟩ :=
+    exact_operational_relation_zero_and_fold_work_lookups input
   obtain ⟨actor, member⟩ :=
     exact_final_table_lookup_has_root_record input _ answer workLookup
   obtain ⟨prior, later, decomposition⟩ := (List.mem_iff_append).mp member
@@ -134,6 +141,7 @@ theorem exact_accepted_fold_trial_exists
     { beforeRelation := beforeRelation
       digest := digest
       answer := answer
+      boundaryAnswer := boundaryAnswer
       trial := trial
       prior := prior
       later := later
@@ -141,6 +149,7 @@ theorem exact_accepted_fold_trial_exists
       accepted := accepted
       relationLookup := relationLookup
       workLookup := workLookup
+      boundaryLookup := boundaryLookup
       rootDecomposition := decomposition
       trialExact := rfl }⟩
 

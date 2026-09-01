@@ -90,6 +90,76 @@ def armFoldAlphaBoundary
   (unifiedInputBeforeAnswer? transitionFuel state.cursor).bind
     foldWorkInputToAlphaBoundary?
 
+/-- Lookup in the immutable oracle table visible at the current pre-answer
+machine pause.  Fork coordinates are not machine-table pauses and therefore
+return `none`. -/
+def unifiedCachedAnswerBefore?
+    {globalOracleCalls : Nat}
+    (transitionFuel : Nat)
+    (cursor : UnifiedExposureCursor globalOracleCalls)
+    (target : ShaInput) : Option Digest256 :=
+  match seekUnifiedExposure transitionFuel cursor with
+  | .machineFresh _limits _limitBound _actor state _input _nextProgram
+      _remainingFuel _coherent _totalRoom _freshRoom _missing _onReturned =>
+      (lookupEntry state target).map TableEntry.output
+  | .forkOutput .. | .forkAdvance .. | .halted | .transitionLimit => none
+
+/-- Arm the exact future boundary, installing block zero immediately when an
+adversary-first query has already populated that coordinate.  Otherwise the
+ordinary future-boundary branch remains armed. -/
+def armFoldAlphaMemory
+    {globalOracleCalls : Nat}
+    (transitionFuel : Nat)
+    (state : IndexedUnifiedExposureState globalOracleCalls
+      FoldArmedAlphaZeroMemory) : FoldArmedAlphaZeroMemory :=
+  match armFoldAlphaBoundary transitionFuel state with
+  | none => state.memory
+  | some target =>
+      match unifiedCachedAnswerBefore? transitionFuel state.cursor target with
+      | none => { state.memory with expectedBoundary := some target }
+      | some answer =>
+          { expectedBoundary := some target
+            alpha :=
+              { producers :=
+                  [{ digest := answer, block := 0, sourceInput := target }]
+                usedSlots := state.memory.alpha.usedSlots } }
+
+theorem arm_fold_alpha_memory_expected_boundary
+    {globalOracleCalls : Nat}
+    (transitionFuel : Nat)
+    (state : IndexedUnifiedExposureState globalOracleCalls
+      FoldArmedAlphaZeroMemory)
+    (target : ShaInput)
+    (armed : armFoldAlphaBoundary transitionFuel state = some target) :
+    (armFoldAlphaMemory transitionFuel state).expectedBoundary = some target := by
+  simp only [armFoldAlphaMemory, armed]
+  split <;> rfl
+
+theorem arm_fold_alpha_memory_cached_installs_block_zero
+    {globalOracleCalls : Nat}
+    (transitionFuel : Nat)
+    (state : IndexedUnifiedExposureState globalOracleCalls
+      FoldArmedAlphaZeroMemory)
+    (target : ShaInput) (answer : Digest256)
+    (armed : armFoldAlphaBoundary transitionFuel state = some target)
+    (cached : unifiedCachedAnswerBefore? transitionFuel state.cursor target =
+      some answer) :
+    (armFoldAlphaMemory transitionFuel state).alpha.producers =
+      [{ digest := answer, block := 0, sourceInput := target }] := by
+  simp [armFoldAlphaMemory, armed, cached]
+
+theorem arm_fold_alpha_memory_uncached_retains_inventory
+    {globalOracleCalls : Nat}
+    (transitionFuel : Nat)
+    (state : IndexedUnifiedExposureState globalOracleCalls
+      FoldArmedAlphaZeroMemory)
+    (target : ShaInput)
+    (armed : armFoldAlphaBoundary transitionFuel state = some target)
+    (uncached : unifiedCachedAnswerBefore? transitionFuel state.cursor target =
+      none) :
+    (armFoldAlphaMemory transitionFuel state).alpha = state.memory.alpha := by
+  simp [armFoldAlphaMemory, armed, uncached]
+
 /-- Dynamic alpha update.  An exact armed-boundary match resets the producer
 inventory to block zero; every other input follows the ordinary append-only
 advance logic.  The used-slot set is never reset. -/
@@ -214,9 +284,7 @@ def foldArmedCompleteController
           (foldArmedUnderlyingState state) answer
     let alphaNext :=
       if state.exposureIndex = foldExposureIndex then
-        { underlyingNext.1 with
-          expectedBoundary := armFoldAlphaBoundary transitionFuel
-            (foldArmedAlphaState state) }
+        armFoldAlphaMemory transitionFuel (foldArmedAlphaState state)
       else
         underlyingNext.1
     (state.memory.1 || decide (state.exposureIndex = foldExposureIndex),
@@ -254,9 +322,15 @@ theorem fold_armed_complete_literal_fold_step_arms_boundary
         some (bytes digest ++ [domGrind] ++ bytes nonce) := by
     simpa [foldArmedAlphaState, foldArmedUnderlyingState, alphaIndexedState]
       using inputExact
-  simp only [foldArmedCompleteController, atFold, if_pos,
-    armFoldAlphaBoundary, projectedInputExact, Option.bind_some]
-  exact literal_fold_work_arms_exact_alpha_boundary digest nonce
+  have armedExact :
+      armFoldAlphaBoundary transitionFuel (foldArmedAlphaState state) =
+        some (bytes digest ++ [domAbsorb, foldWorkNonceLabel, 0] ++
+          bytes nonce) := by
+    simp only [armFoldAlphaBoundary, projectedInputExact, Option.bind_some]
+    exact literal_fold_work_arms_exact_alpha_boundary digest nonce
+  simp only [foldArmedCompleteController, atFold, if_pos]
+  exact arm_fold_alpha_memory_expected_boundary transitionFuel
+    (foldArmedAlphaState state) _ armedExact
 
 /-- Compile the fold-armed controller into the same 518-coordinate shape used
 by the K1.3 probability theorem. -/
