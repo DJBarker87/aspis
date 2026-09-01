@@ -22,6 +22,20 @@ struct GenesisAccount {
     space: usize,
 }
 
+#[derive(Serialize)]
+struct KeyedGenesisAccount<'a> {
+    pubkey: &'a str,
+    account: &'a GenesisAccount,
+}
+
+fn write_keyed_account(path: &Path, pubkey: &str, account: &GenesisAccount) -> Result<()> {
+    fs::write(
+        path,
+        serde_json::to_vec_pretty(&KeyedGenesisAccount { pubkey, account })?,
+    )?;
+    Ok(())
+}
+
 fn resolve(root: &Path, relative: &str) -> Result<PathBuf> {
     ensure!(
         !relative.starts_with('/') && !relative.contains(".."),
@@ -75,7 +89,7 @@ fn main() -> Result<()> {
     mint_data[50..82].fill(0);
     mint.data.0 = BASE64.encode(&mint_data);
     let mint_output = output.join("mint.json");
-    fs::write(&mint_output, serde_json::to_vec_pretty(&mint)?)?;
+    write_keyed_account(&mint_output, mint_id, &mint)?;
     let mut accounts = vec![serde_json::json!({
         "kind":"disposable-mint-with-ephemeral-authority", "address":mint_id,
         "file":mint_output, "dataSha256":format!("{:x}", Sha256::digest(&mint_data))
@@ -110,7 +124,7 @@ fn main() -> Result<()> {
             space: data.len(),
         };
         let destination = output.join(filename);
-        fs::write(&destination, serde_json::to_vec_pretty(&account)?)?;
+        write_keyed_account(&destination, address, &account)?;
         accounts.push(serde_json::json!({
             "kind":"disposable-token-account-with-ephemeral-owner",
             "address":address,
@@ -147,7 +161,7 @@ fn main() -> Result<()> {
             "binding data hash mismatch"
         );
         let destination = output.join(format!("binding-{index}.json"));
-        fs::write(&destination, raw)?;
+        write_keyed_account(&destination, id, &decoded)?;
         accounts.push(serde_json::json!({
             "kind":"audit-only-registry-binding", "address":id, "file":destination,
             "dataSha256":expected["dataSha256"]
