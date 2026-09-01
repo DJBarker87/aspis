@@ -3445,6 +3445,8 @@ theorem accepting_q16_run_gives_selected_ledger_certificate
     ∃ steps pairs final,
       ∃ certificate : SelectedQ16LedgerCertificate
           (fixedTapeFutureFreeEnvironment tape) final.current,
+      certificate.selectedCounter = tape.search.selectedCounter ∧
+      certificate.selectedSchedule = tape.search.selectedSchedule ∧
       NonterminalRawDriverTrace (fixedTapeFutureFreeEnvironment tape)
         (fixedTapeRawMessages tape) state steps pairs final ∧
       PathUsesFixedTable table pairs ∧
@@ -3496,8 +3498,8 @@ theorem accepting_q16_run_gives_selected_ledger_certificate
         simpa [fixedTapeFutureFreeEnvironment] using
           tape.search.selectedCompact
       ledgerExact := ledgerExact' }
-  exact ⟨steps, pairs, final, certificate, trace, supported, finalControl,
-    finalSame, fuelExact⟩
+  exact ⟨steps, pairs, final, certificate, rfl, rfl, trace, supported,
+    finalControl, finalSame, fuelExact⟩
 
 theorem terminal_slot_gives_schedule_exhaustion
     (table : FixedOracleTable) (environment : FutureFreeEnvironment)
@@ -3860,6 +3862,10 @@ structure CanonicalCheckedFutureFreeConstruction
   complete : CompleteCheckedFutureFreePath table tape
   selectedQ16 : SelectedQ16LedgerCertificate
     (fixedTapeFutureFreeEnvironment tape) complete.final.current
+  selectedQ16CounterExact :
+    selectedQ16.selectedCounter = tape.search.selectedCounter
+  selectedQ16ScheduleExact :
+    selectedQ16.selectedSchedule = tape.search.selectedSchedule
   adaptiveSteps : Nat
   beforeQ16Steps : Nat
   q16Steps : Nat
@@ -4005,8 +4011,9 @@ theorem checked_work_erased_refinement_constructs_canonical_future_free_path
     beforeCandidates.trans (adaptiveCandidates.trans c1CandidatesEmpty)
 
   have q16Plan := exact_discarded_q16_plan_of_first_cap_search tape
-  obtain ⟨q16Steps, q16Pairs, afterQ16State, q16Certificate, q16Trace,
-      q16Table, afterQ16Control, q16SameFinal, q16Fuel⟩ :=
+  obtain ⟨q16Steps, q16Pairs, afterQ16State, q16Certificate,
+      q16CounterExact, q16ScheduleExact, q16Trace, q16Table,
+      afterQ16Control, q16SameFinal, q16Fuel⟩ :=
     accepting_q16_run_gives_selected_ledger_certificate table tape rawTrace
       q16State evaluator.prefixState evaluator.afterQ16 afterQ16Slots
       q16Control q16CandidatesEmpty q16Same evaluator.q16Run q16Plan
@@ -4115,6 +4122,12 @@ theorem checked_work_erased_refinement_constructs_canonical_future_free_path
     { complete := complete
       selectedQ16 := by
         simpa [environment] using finalQ16Certificate
+      selectedQ16CounterExact := by
+        simpa [environment, finalQ16Certificate,
+          SelectedQ16LedgerCertificate.transport] using q16CounterExact
+      selectedQ16ScheduleExact := by
+        simpa [environment, finalQ16Certificate,
+          SelectedQ16LedgerCertificate.transport] using q16ScheduleExact
       adaptiveSteps := adaptiveSteps
       beforeQ16Steps := beforeSteps
       q16Steps := q16Steps

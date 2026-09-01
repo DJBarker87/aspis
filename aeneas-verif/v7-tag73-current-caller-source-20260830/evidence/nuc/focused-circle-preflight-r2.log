@@ -1,0 +1,10 @@
+Running as unit: aspis-v7-focused-circle-preflight-r2.service; invocation ID: 4493fd979f694872b8a61147de1c10c7
+TARGET V7AuthenticateFoldGammaOpaque/CircleTableSupport.lean
+TARGET V7AuthenticateFoldGammaOpaque/CircleTable_RATE512_CIRCLE_LOW8_WINDOW_Chunk00.lean
+focused circle-table preflight: PASS
+Finished with result: success
+Main processes terminated with: code=exited/status=0
+Service runtime: 4.363s
+CPU time consumed: 4.420s
+Memory peak: 512.0K
+Memory swap peak: 0B

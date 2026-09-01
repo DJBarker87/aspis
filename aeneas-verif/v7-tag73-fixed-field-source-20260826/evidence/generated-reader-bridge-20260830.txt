@@ -1,0 +1,36 @@
+V7 Tag-73 literal generated-reader bridge
+Date: 2026-08-30
+Host: nuc.local
+Unit: aspis-v7-final256-production-close-final
+MemoryHigh: 12G
+MemoryMax: 16G
+MemorySwapMax: 0
+Result: PASS
+Wall: 3.21 s
+Peak RSS: 2,579,256 KiB
+Swaps: 0
+
+Principal theorems:
+next_qm31_success_remaining_and_canonical
+new_success_exact_length_and_count
+finish_success_remaining_zero
+complete_successful_trace_has_exact_641_canonical_values
+production_root_success_exposes_exact_fixed_reader
+final256_decode_body_cont_decreases
+final256_loop_success_has_exact_trace
+final256_decode_body_cont_has_successful_read
+final256_decode_body_done_without_pending_exact
+final256_exact_loop_trace_without_pending_has_successful_reads
+final256_exact_loop_trace_without_pending_cont_count
+final256_loop_success_without_pending_has_successful_reads
+generated_final256_success_reads_exactly_256_canonical_values
+final256_exact_loop_trace_never_returns_pending_success
+generated_decode_and_absorb_final256_success_reads_exactly_256
+
+Every printed theorem depends on exactly:
+propext
+Classical.choice
+Quot.sound
+
+No sorry, sorryAx, project-specific axiom, native_decide, or trace/canonicality
+premise is present in these compiled theorems.

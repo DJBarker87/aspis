@@ -1,0 +1,32 @@
+Running as unit: aspis-v7-focused-split-chunked-r1.service; invocation ID: 9f798a755bc3438a8070b1eb371670ef
+TARGET V7GammaSlotMajorLiteral/MutableIteratorCompat.lean
+/home/dombarker/project-offloads/aspis-v7-aeneas-source-unblock-20260830/staged-focused-split-r4/V7GammaSlotMajorLiteral/MutableIteratorCompat.lean:48:4: warning: The namespace `enumerate` is duplicated in the declaration `core.iter.adapters.enumerate.IteratorEnumerateMut.enumerate`.
+
+Note: This linter can be disabled with `set_option linter.dupNamespace false`
+TARGET V7GammaSlotMajorLiteral/Types.lean
+TARGET V7GammaSlotMajorLiteral/Funs.lean
+TARGET V7AuthenticateFoldGammaOpaque/TypesExternal.lean
+/home/dombarker/project-offloads/aspis-v7-aeneas-source-unblock-20260830/staged-focused-split-r4/V7AuthenticateFoldGammaOpaque/TypesExternal.lean:8:2: warning: The namespace `array` is duplicated in the declaration `core.array.iter.IntoIter.array`.
+
+Note: This linter can be disabled with `set_option linter.dupNamespace false`
+/home/dombarker/project-offloads/aspis-v7-aeneas-source-unblock-20260830/staged-focused-split-r4/V7AuthenticateFoldGammaOpaque/TypesExternal.lean:13:2: warning: The namespace `iter` is duplicated in the declaration `core.iter.adapters.filter_map.FilterMap.iter`.
+
+Note: This linter can be disabled with `set_option linter.dupNamespace false`
+/home/dombarker/project-offloads/aspis-v7-aeneas-source-unblock-20260830/staged-focused-split-r4/V7AuthenticateFoldGammaOpaque/TypesExternal.lean:23:2: warning: The namespace `slice` is duplicated in the declaration `core.slice.iter.Windows.slice`.
+
+Note: This linter can be disabled with `set_option linter.dupNamespace false`
+TARGET V7AuthenticateFoldGammaOpaque/Types.lean
+TARGET V7AuthenticateFoldGammaOpaque/FunsExternal.lean
+/home/dombarker/project-offloads/aspis-v7-aeneas-source-unblock-20260830/staged-focused-split-r4/V7AuthenticateFoldGammaOpaque/FunsExternal.lean:361:8: warning: try 'simp' instead of 'simpa'
+
+Note: This linter can be disabled with `set_option linter.unnecessarySimpa false`
+/home/dombarker/project-offloads/aspis-v7-aeneas-source-unblock-20260830/staged-focused-split-r4/V7AuthenticateFoldGammaOpaque/FunsExternal.lean:563:24: warning: try 'simp' instead of 'simpa'
+
+Note: This linter can be disabled with `set_option linter.unnecessarySimpa false`
+TARGET V7AuthenticateFoldGammaOpaque/FunsChunk00.lean
+Finished with result: success
+Main processes terminated with: code=killed/status=TERM
+Service runtime: 12min 17.869s
+CPU time consumed: 5min 30.089s
+Memory peak: 21.2G
+Memory swap peak: 0B

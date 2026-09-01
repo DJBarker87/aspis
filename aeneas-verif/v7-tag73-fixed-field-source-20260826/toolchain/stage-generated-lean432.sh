@@ -21,8 +21,13 @@ test ! -e "$staged_root"
 
 mkdir -p "$staged_module"
 cp "$raw_module"/*.lean "$staged_module/"
-cp "$raw_module/TypesExternal_Template.lean" "$staged_module/TypesExternal.lean"
-cp "$raw_module/FunsExternal_Template.lean" "$staged_module/FunsExternal.lean"
+cp "$script_dir/V7Tag73ExactTypesExternal.lean" \
+  "$staged_module/TypesExternal.lean"
+sed \
+  -e "s/@MODULE@Generated/${module}Generated/g" \
+  -e "s/@MODULE@/${module}/g" \
+  "$script_dir/V7Tag73ExactFunsExternal.lean.in" \
+  > "$staged_module/FunsExternal.lean"
 cp "$script_dir/V7Tag73MutableIteratorCompat.lean" \
   "$staged_module/MutableIteratorCompat.lean"
 
@@ -95,6 +100,26 @@ perl -0pi -e \
   's/toStr "[^"]*"/(⟨[], Nat.zero_le _⟩ : Str)/g; s/toStr\n[[:space:]]+"[^"]*"/(⟨[], Nat.zero_le _⟩ : Str)/g' \
   "$staged_module/Funs.lean"
 
+# This sole `Result::expect` is used only to turn a checked 256-element slice
+# conversion into the generated function's fail-closed result.  Spell out the
+# same match so its unused Debug formatter dictionary does not enter the
+# production theorem's axiom closure.
+test "$(rg -U -c 'let a ←\n[[:space:]]+core\.result\.Result\.expect \(Box\.Insts\.CoreFmtDebug Global\n[[:space:]]+\(Slice\.Insts\.CoreFmtDebug field\.QM31\.Insts\.CoreFmtDebug\)\) r \(\(⟨\[\], Nat\.zero_le _⟩ : Str\)\)' \
+  "$staged_module/Funs.lean")" = 1
+perl -0pi -e \
+  's/let a ←\n[[:space:]]+core\.result\.Result\.expect \(Box\.Insts\.CoreFmtDebug Global\n[[:space:]]+\(Slice\.Insts\.CoreFmtDebug field\.QM31\.Insts\.CoreFmtDebug\)\) r \(\(⟨\[\], Nat\.zero_le _⟩ : Str\)\)/let a ←\n      match r with\n      | core.result.Result.Ok value => ok value\n      | core.result.Result.Err _ => fail .panic/' \
+  "$staged_module/Funs.lean"
+
+# Three fixed-size slice conversions use `Result::unwrap`.  Their Debug
+# dictionary is needed only to format a panic message, while both Rust and the
+# translated `Result` fail on the same `Err` branch.  Keep that control flow
+# explicitly and remove the otherwise-semantic-free Formatter dependency.
+test "$(rg -F -c 'let a ← core.result.Result.unwrap core.fmt.DebugTryFromSliceError r' \
+  "$staged_module/Funs.lean")" = 3
+perl -0pi -e \
+  's/let a ← core\.result\.Result\.unwrap core\.fmt\.DebugTryFromSliceError r/let a ←\n      match r with\n      | core.result.Result.Ok value => ok value\n      | core.result.Result.Err _ => fail .panic/g' \
+  "$staged_module/Funs.lean"
+
 test "$(rg -F -c 'next := core.slice.iter.IteratorIterMut.next_without_writeback' \
   "$staged_module/Funs.lean")" = 1
 test "$(rg -F -c 'IteratorEnumerateMut.next iter' \
@@ -110,6 +135,14 @@ test "$(rg -F -c 'field.QM31.ZERO (fun p => field.QM31.add p.1 p.2)' \
 test "$(rg -F -c 'ok ((), c)' "$staged_module/Funs.lean")" = 1
 if rg -n 'toStr' "$staged_module/Funs.lean"; then
   echo "unexpected generated Str literal remains" >&2
+  exit 1
+fi
+if rg -n 'core\.result\.Result\.expect' "$staged_module/Funs.lean"; then
+  echo "unexpected Result::expect remains" >&2
+  exit 1
+fi
+if rg -n 'core\.result\.Result\.unwrap' "$staged_module/Funs.lean"; then
+  echo "unexpected Result::unwrap remains" >&2
   exit 1
 fi
 if rg -n '\(transcript[[:space:]]*:' "$staged_module/Funs.lean"; then

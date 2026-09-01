@@ -98,6 +98,12 @@ equalities, uncurries one two-argument `QM31::add` function item, and returns
 Rust unit with the unchanged state of one no-op `FnMut`. It also replaces eight
 Debug/expect-only string literals with a kernel-proved empty `Str`, preventing
 Lean's UTF-8 native-decide certificates from entering the verifier theorem.
+The staged tree replaces the generated `TypesExternal` and `FunsExternal`
+templates with tracked executable models for every reached container,
+iterator, conversion, option, arithmetic and sorting operation. Four
+Debug-only unwrap/expect sites retain their exact fail-closed result branches
+as explicit matches, so unused panic formatting is outside the theorem
+closure.
 Every rewrite has an exact expected occurrence count and fails closed if the
 generated shape changes. `GENERATED-LEAN432.sha256` authenticates the staging
-script and helper.
+script and all three executable support files.

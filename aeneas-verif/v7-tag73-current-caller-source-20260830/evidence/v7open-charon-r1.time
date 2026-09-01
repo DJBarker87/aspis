@@ -1,0 +1,23 @@
+	Command being timed: "/bin/bash -lc set -euo pipefail; repo=/home/dombarker/project-offloads/ZK-v7-one-tx-formal-consolidation-20260828; task=/home/dombarker/project-offloads/aspis-v7-aeneas-source-unblock-20260830; export PATH=/home/dombarker/.cargo/bin:$PATH CARGO_BUILD_JOBS=1 CARGO_TARGET_DIR=$task/target; cd $repo; exec /home/dombarker/project-offloads/ZK-v5-formal/toolchains/charon/bin/charon cargo --preset aeneas --mir built --sysroot default --start-from crate::v7_onefold::verify_and_gamma_combine_v7_openings --include aspis_core::field::M31 --include aspis_core::field::CM31 --include aspis_core::field::QM31 --opaque aspis_core::v7_merkle208::private_leaf_hash_v7 --opaque aspis_core::v7_merkle208::verify_two_minimal_subtrees_v7_bytes --dest-file $task/extraction/V7OpeningGammaFocused.llbc -- --locked --package aspis-core"
+	User time (seconds): 5.17
+	System time (seconds): 0.46
+	Percent of CPU this job got: 100%
+	Elapsed (wall clock) time (h:mm:ss or m:ss): 0:05.61
+	Average shared text size (kbytes): 0
+	Average unshared data size (kbytes): 0
+	Average stack size (kbytes): 0
+	Average total size (kbytes): 0
+	Maximum resident set size (kbytes): 697552
+	Average resident set size (kbytes): 0
+	Major (requiring I/O) page faults: 22
+	Minor (reclaiming a frame) page faults: 225956
+	Voluntary context switches: 2657
+	Involuntary context switches: 335
+	Swaps: 0
+	File system inputs: 4512
+	File system outputs: 328704
+	Socket messages sent: 0
+	Socket messages received: 0
+	Signals delivered: 0
+	Page size (bytes): 4096
+	Exit status: 0

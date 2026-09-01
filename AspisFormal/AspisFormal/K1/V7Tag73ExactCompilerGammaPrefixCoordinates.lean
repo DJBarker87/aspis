@@ -93,6 +93,11 @@ def gammaConsumedRawCallsFrom (owner : SqueezeOwner) :
         gammaConsumedRawCallsFrom owner (first + 1) advanced outputs advances
   | _, _, _, _ => []
 
+/-- Digest reached after a chronological list of duplex advances. -/
+def gammaTerminalDigest : Digest256 → List Digest256 → Digest256
+  | initial, [] => initial
+  | _initial, advanced :: advances => gammaTerminalDigest advanced advances
+
 @[simp] theorem gamma_consumed_coordinates_length
     (table : FixedOracleTable) (digest : Digest256)
     (outputs advances : List Digest256)
@@ -136,7 +141,36 @@ theorem gamma_consumed_coordinate_lookup
       · exact ih later
 
 /-- The evaluator squeeze recursion exposes both answers, including the
-advance digest that is not stored in `SampleRecord.blocks`. -/
+advance digest that is not stored in `SampleRecord.blocks`.  The coordinate
+chain is owner-independent; logical ownership is retained only in the raw
+call evidence. -/
+theorem evaluator_squeeze_chain_coordinates
+    (table : FixedOracleTable) (first : Nat)
+    (owner : SqueezeOwner)
+    (state finalState : EvalState) (outputs : List Digest256)
+    (chain : EvaluatorSqueezeChain table owner first state outputs finalState) :
+    ∃ advances,
+      advances.length = outputs.length ∧
+      GammaTableCoordinateChain table state.digest outputs advances ∧
+      finalState.calls = state.calls ++
+        gammaConsumedRawCallsFrom owner first state.digest outputs advances := by
+  induction chain with
+  | done first state => exact ⟨[], rfl, .done state.digest, by simp
+      [gammaConsumedRawCallsFrom]⟩
+  | @next first state middle final output outputs head tail ih =>
+      obtain ⟨advances, lengthExact, tailCoordinates, tailCalls⟩ := ih
+      obtain ⟨outputLookup, advanceLookup, headCalls⟩ :=
+        squeeze_step_emits_two_distinct_queries table state middle
+          owner first output head
+      refine ⟨middle.digest :: advances, by simp [lengthExact], ?_, ?_⟩
+      · exact .next
+          (by simpa [gammaOutputInput, domSqueeze] using outputLookup)
+          (by simpa [gammaAdvanceInput, domAdvance] using advanceLookup)
+          tailCoordinates
+      · rw [tailCalls, headCalls]
+        simp [gammaConsumedRawCallsFrom, List.append_assoc]
+
+/-- Gamma-specialized compatibility wrapper. -/
 theorem evaluator_gamma_squeeze_chain_coordinates
     (table : FixedOracleTable) (first : Nat)
     (state finalState : EvalState) (outputs : List Digest256)
@@ -147,22 +181,75 @@ theorem evaluator_gamma_squeeze_chain_coordinates
       GammaTableCoordinateChain table state.digest outputs advances ∧
       finalState.calls = state.calls ++
         gammaConsumedRawCallsFrom (.challenge .gamma) first state.digest
-          outputs advances := by
+          outputs advances :=
+  evaluator_squeeze_chain_coordinates table first (.challenge .gamma) state
+    finalState outputs chain
+
+/-- Strengthened coordinate extraction retaining the exact digest reached
+after the consumed advance chain. -/
+theorem evaluator_squeeze_chain_coordinates_with_terminal
+    (table : FixedOracleTable) (first : Nat)
+    (owner : SqueezeOwner)
+    (state finalState : EvalState) (outputs : List Digest256)
+    (chain : EvaluatorSqueezeChain table owner first state outputs finalState) :
+    ∃ advances,
+      advances.length = outputs.length ∧
+      GammaTableCoordinateChain table state.digest outputs advances ∧
+      finalState.digest = gammaTerminalDigest state.digest advances ∧
+      finalState.calls = state.calls ++
+        gammaConsumedRawCallsFrom owner first state.digest outputs advances := by
   induction chain with
-  | done first state => exact ⟨[], rfl, .done state.digest, by simp
-      [gammaConsumedRawCallsFrom]⟩
+  | done first state =>
+      exact ⟨[], rfl, .done state.digest, rfl, by simp
+        [gammaConsumedRawCallsFrom]⟩
   | @next first state middle final output outputs head tail ih =>
-      obtain ⟨advances, lengthExact, tailCoordinates, tailCalls⟩ := ih
+      obtain ⟨advances, lengthExact, tailCoordinates, terminalExact,
+        tailCalls⟩ := ih
       obtain ⟨outputLookup, advanceLookup, headCalls⟩ :=
         squeeze_step_emits_two_distinct_queries table state middle
-          (.challenge .gamma) first output head
-      refine ⟨middle.digest :: advances, by simp [lengthExact], ?_, ?_⟩
+          owner first output head
+      refine ⟨middle.digest :: advances, by simp [lengthExact], ?_, ?_, ?_⟩
       · exact .next
           (by simpa [gammaOutputInput, domSqueeze] using outputLookup)
           (by simpa [gammaAdvanceInput, domAdvance] using advanceLookup)
           tailCoordinates
+      · simpa [gammaTerminalDigest] using terminalExact
       · rw [tailCalls, headCalls]
         simp [gammaConsumedRawCallsFrom, List.append_assoc]
+
+/-- Owner-generic coordinate extraction for one successful deployed sampler.
+Logical ownership is retained in the raw-call suffix, while the fixed-table
+coordinates themselves remain the literal two-query duplex inputs. -/
+theorem squeeze_many_coordinates
+    (table : FixedOracleTable) (owner : SqueezeOwner) (count : Nat)
+    (state finalState : EvalState) (outputs : List Digest256)
+    (run : squeezeMany table owner count state = some (outputs, finalState)) :
+    ∃ advances,
+      advances.length = outputs.length ∧
+      GammaTableCoordinateChain table state.digest outputs advances ∧
+      finalState.calls = state.calls ++
+        gammaConsumedRawCallsFrom owner 0 state.digest outputs advances := by
+  have chain := evaluator_squeeze_chain_of_run table owner 0 count state
+    finalState outputs (by simpa [squeezeMany] using run)
+  exact evaluator_squeeze_chain_coordinates table 0 owner state finalState
+    outputs chain
+
+/-- Successful deployed sampling reaches exactly the terminal digest of its
+literal advance coordinates. -/
+theorem squeeze_many_coordinates_with_terminal
+    (table : FixedOracleTable) (owner : SqueezeOwner) (count : Nat)
+    (state finalState : EvalState) (outputs : List Digest256)
+    (run : squeezeMany table owner count state = some (outputs, finalState)) :
+    ∃ advances,
+      advances.length = outputs.length ∧
+      GammaTableCoordinateChain table state.digest outputs advances ∧
+      finalState.digest = gammaTerminalDigest state.digest advances ∧
+      finalState.calls = state.calls ++
+        gammaConsumedRawCallsFrom owner 0 state.digest outputs advances := by
+  have chain := evaluator_squeeze_chain_of_run table owner 0 count state
+    finalState outputs (by simpa [squeezeMany] using run)
+  exact evaluator_squeeze_chain_coordinates_with_terminal table 0 owner state
+    finalState outputs chain
 
 theorem squeeze_many_gamma_coordinates
     (table : FixedOracleTable) (count : Nat)
@@ -175,10 +262,8 @@ theorem squeeze_many_gamma_coordinates
       finalState.calls = state.calls ++
         gammaConsumedRawCallsFrom (.challenge .gamma) 0 state.digest outputs
           advances := by
-  have chain := evaluator_squeeze_chain_of_run table (.challenge .gamma) 0
-    count state finalState outputs (by simpa [squeezeMany] using run)
-  exact evaluator_gamma_squeeze_chain_coordinates table 0 state finalState
-    outputs chain
+  exact squeeze_many_coordinates table (.challenge .gamma) count state
+    finalState outputs run
 
 /-! ## Padding only the unread suffix -/
 
@@ -520,7 +605,12 @@ theorem exact_compiler_constructs_routed_gamma_with_first_pause
 
 #print axioms gamma_consumed_coordinates_length
 #print axioms gamma_consumed_coordinate_lookup
+#print axioms evaluator_squeeze_chain_coordinates
 #print axioms evaluator_gamma_squeeze_chain_coordinates
+#print axioms squeeze_many_coordinates
+#print axioms gammaTerminalDigest
+#print axioms evaluator_squeeze_chain_coordinates_with_terminal
+#print axioms squeeze_many_coordinates_with_terminal
 #print axioms squeeze_many_gamma_coordinates
 #print axioms ofFn_pad_gamma_coordinates_take
 #print axioms exact_compiler_constructs_successful_gamma_prefix_coordinates

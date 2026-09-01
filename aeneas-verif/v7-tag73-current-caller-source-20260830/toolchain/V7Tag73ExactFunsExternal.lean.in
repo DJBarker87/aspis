@@ -1,0 +1,610 @@
+import Aeneas.Std
+import Aeneas.Data.Discriminant
+import Aeneas.Tactic.RustAttributes
+import @MODULE@.Types
+
+open Aeneas Aeneas.Std Result ControlFlow Error
+set_option linter.dupNamespace false
+set_option linter.hashCommand false
+set_option linter.unusedVariables false
+set_option maxHeartbeats 1000000
+set_option maxRecDepth 4096
+
+open @MODULE@Generated
+
+@[rust_fun
+  "core::array::iter::{core::iter::traits::collect::IntoIterator<[@T; @N], @T, core::array::iter::IntoIter<@T, @N>>}::into_iter"]
+def Array.Insts.CoreIterTraitsCollectIntoIteratorTIntoIter.into_iter
+    {T : Type} {N : Std.Usize} (array : Array T N) :
+    Result (core.array.iter.IntoIter T N) :=
+  .ok { array }
+
+@[rust_fun
+  "core::array::iter::{core::iter::traits::iterator::Iterator<core::array::iter::IntoIter<@T, @N>, @T>}::next"]
+def core.array.iter.IntoIter.Insts.CoreIterTraitsIteratorIterator.next
+    {T : Type} {N : Std.Usize}
+    (iterator : core.array.iter.IntoIter T N) :
+    Result (Option T × core.array.iter.IntoIter T N) :=
+  if h : iterator.index < iterator.backIndex ∧
+      iterator.index < iterator.array.val.length then
+    .ok (some iterator.array.val[iterator.index],
+      { iterator with index := iterator.index + 1 })
+  else
+    .ok (none, iterator)
+
+@[rust_fun
+  "core::array::iter::{core::iter::traits::double_ended::DoubleEndedIterator<core::array::iter::IntoIter<@T, @N>, @T>}::next_back"]
+def core.array.iter.IntoIter.Insts.CoreIterTraitsDouble_endedDoubleEndedIterator.next_back
+    {T : Type} {N : Std.Usize}
+    (iterator : core.array.iter.IntoIter T N) :
+    Result (Option T × core.array.iter.IntoIter T N) :=
+  if h : iterator.index < iterator.backIndex ∧
+      iterator.backIndex ≤ iterator.array.val.length then
+    let backIndex := iterator.backIndex - 1
+    .ok (some iterator.array.val[backIndex],
+      { iterator with backIndex })
+  else
+    .ok (none, iterator)
+
+def core.array.iter.IntoIter.foldAux
+    {T Acc Fold : Type} {N : Std.Usize}
+    (fnMut : core.ops.function.FnMut Fold (Acc × T) Acc) :
+    Nat → core.array.iter.IntoIter T N → Acc → Fold → Result Acc
+  | 0, _, accumulator, _ => .ok accumulator
+  | fuel + 1, iterator, accumulator, closure => do
+      let (item, iteratorNext) ←
+        core.array.iter.IntoIter.Insts.CoreIterTraitsIteratorIterator.next
+          iterator
+      match item with
+      | none => .ok accumulator
+      | some value =>
+        let (accumulatorNext, closureNext) ←
+          fnMut.call_mut closure (accumulator, value)
+        core.array.iter.IntoIter.foldAux fnMut fuel iteratorNext
+          accumulatorNext closureNext
+
+@[rust_fun
+  "core::array::iter::{core::iter::traits::iterator::Iterator<core::array::iter::IntoIter<@T, @N>, @T>}::fold"]
+def core.array.iter.IntoIter.Insts.CoreIterTraitsIteratorIterator.fold
+    {T Acc Fold : Type} {N : Std.Usize}
+    (fnMut : core.ops.function.FnMut Fold (Acc × T) Acc)
+    (iterator : core.array.iter.IntoIter T N) (accumulator : Acc)
+    (closure : Fold) : Result Acc :=
+  core.array.iter.IntoIter.foldAux fnMut
+    (iterator.backIndex - iterator.index + 1) iterator accumulator closure
+
+@[trait_default, rust_fun "core::iter::traits::iterator::Iterator::any"]
+def core.iter.traits.iterator.Iterator.any.default
+    {Self F Item : Type}
+    (iteratorInst : core.iter.traits.iterator.Iterator Self Item)
+    (fnMut : core.ops.function.FnMut F Item Bool) :
+    Self → F → Result (Bool × Self) :=
+  fun iterator closure => do
+    let result : Result (Bool × Self × F) :=
+      loop
+        (fun (iteratorState, closureState) => do
+          let (item, iteratorNext) ← iteratorInst.next iteratorState
+          match item with
+          | none => .ok (.done (false, iteratorNext, closureState))
+          | some value =>
+            let (found, closureNext) ← fnMut.call_mut closureState value
+            if found then .ok (.done (true, iteratorNext, closureNext))
+            else .ok (.cont (iteratorNext, closureNext)))
+        (iterator, closure)
+    let (found, iteratorFinal, _) ← result
+    .ok (found, iteratorFinal)
+
+@[trait_default, rust_fun "core::iter::traits::iterator::Iterator::max"]
+def core.iter.traits.iterator.Iterator.max.default
+    {Self Item : Type}
+    (iteratorInst : core.iter.traits.iterator.Iterator Self Item)
+    (ordInst : core.cmp.Ord Item) (iterator : Self) :
+    Result (Option Item) := do
+  let (head, iteratorNext) ← iteratorInst.next iterator
+  match head with
+  | none => .ok none
+  | some first =>
+    loop
+      (fun (state, best) => do
+        let (item, stateNext) ← iteratorInst.next state
+        match item with
+        | none => .ok (.done (some best))
+        | some value =>
+          let takeValue ← ordInst.partialOrdInst.le best value
+          .ok (.cont (stateNext, if takeValue then value else best)))
+      (iteratorNext, first)
+
+@[trait_default, rust_fun "core::iter::traits::iterator::Iterator::filter_map"]
+def core.iter.traits.iterator.Iterator.filter_map.default
+    {Self B F Item : Type}
+    (_iteratorInst : core.iter.traits.iterator.Iterator Self Item)
+    (_fnMut : core.ops.function.FnMut F Item (Option B))
+    (iterator : Self) (closure : F) :
+    Result (core.iter.adapters.filter_map.FilterMap Self F) :=
+  .ok { iter := iterator, f := closure }
+
+def core.iter.adapters.filter_map.FilterMap.nextLoop
+    {B I F Item : Type}
+    (iteratorInst : core.iter.traits.iterator.Iterator I Item)
+    (fnMut : core.ops.function.FnMut F Item (Option B))
+    (state : core.iter.adapters.filter_map.FilterMap I F) :
+    Result (Option B × core.iter.adapters.filter_map.FilterMap I F) :=
+  loop
+    (fun current => do
+      let (item, iteratorNext) ← iteratorInst.next current.iter
+      match item with
+      | none => .ok (.done (none, { current with iter := iteratorNext }))
+      | some value =>
+        let (mapped, closureNext) ← fnMut.call_mut current.f value
+        let next := { iter := iteratorNext, f := closureNext }
+        match mapped with
+        | none => .ok (.cont next)
+        | some output => .ok (.done (some output, next)))
+    state
+
+@[rust_fun
+  "core::iter::adapters::filter_map::{core::iter::traits::iterator::Iterator<core::iter::adapters::filter_map::FilterMap<@I, @F>, @B>}::next"]
+def core.iter.adapters.filter_map.FilterMap.Insts.CoreIterTraitsIteratorIterator.next
+    {B I F Item : Type}
+    (iteratorInst : core.iter.traits.iterator.Iterator I Item)
+    (fnMut : core.ops.function.FnMut F Item (Option B)) :
+    core.iter.adapters.filter_map.FilterMap I F →
+      Result (Option B × core.iter.adapters.filter_map.FilterMap I F) :=
+  core.iter.adapters.filter_map.FilterMap.nextLoop iteratorInst fnMut
+
+@[rust_fun
+  "core::iter::adapters::filter_map::{core::iter::traits::iterator::Iterator<core::iter::adapters::filter_map::FilterMap<@I, @F>, @B>}::fold"]
+def core.iter.adapters.filter_map.FilterMap.Insts.CoreIterTraitsIteratorIterator.fold
+    {B I F Acc Fold Item : Type}
+    (iteratorInst : core.iter.traits.iterator.Iterator I Item)
+    (filterFn : core.ops.function.FnMut F Item (Option B))
+    (foldFn : core.ops.function.FnMut Fold (Acc × B) Acc)
+    (iterator : core.iter.adapters.filter_map.FilterMap I F)
+    (accumulator : Acc) (foldClosure : Fold) : Result Acc := do
+  let result : Acc × core.iter.adapters.filter_map.FilterMap I F × Fold ←
+    loop
+      (fun (acc, state, closure) => do
+        let (item, stateNext) ←
+          core.iter.adapters.filter_map.FilterMap.nextLoop iteratorInst filterFn
+            state
+        match item with
+        | none => .ok (.done (acc, stateNext, closure))
+        | some value =>
+          let (accNext, closureNext) ← foldFn.call_mut closure (acc, value)
+          .ok (.cont (accNext, stateNext, closureNext)))
+      (accumulator, iterator, foldClosure)
+  .ok result.1
+
+@[rust_fun
+  "core::iter::adapters::map::{core::iter::traits::iterator::Iterator<core::iter::adapters::map::Map<@I, @F>, @B>}::next"]
+def core.iter.adapters.map.Map.Insts.CoreIterTraitsIteratorIterator.next
+    {B I F Item : Type}
+    (iteratorInst : core.iter.traits.iterator.Iterator I Item)
+    (fnMut : core.ops.function.FnMut F Item B)
+    (state : core.iter.adapters.map.Map I F) :
+    Result (Option B × core.iter.adapters.map.Map I F) := do
+  let (item, iteratorNext) ← iteratorInst.next state.iter
+  match item with
+  | none => .ok (none, { state with iter := iteratorNext })
+  | some value =>
+    let (mapped, closureNext) ← fnMut.call_mut state.f value
+    .ok (some mapped, { iter := iteratorNext, f := closureNext })
+
+@[trait_default, rust_fun "core::iter::traits::iterator::Iterator::fold"]
+def core.iter.traits.iterator.Iterator.fold.default
+    {Self B F Item : Type}
+    (iteratorInst : core.iter.traits.iterator.Iterator Self Item)
+    (fnMut : core.ops.function.FnMut F (B × Item) B)
+    (iterator : Self) (accumulator : B) (closure : F) : Result B := do
+  let result : B × Self × F ←
+    loop
+      (fun (acc, state, closureState) => do
+        let (item, stateNext) ← iteratorInst.next state
+        match item with
+        | none => .ok (.done (acc, stateNext, closureState))
+        | some value =>
+          let (accNext, closureNext) ←
+            fnMut.call_mut closureState (acc, value)
+          .ok (.cont (accNext, stateNext, closureNext)))
+      (accumulator, iterator, closure)
+  .ok result.1
+
+@[rust_fun
+  "core::iter::range::{core::iter::traits::iterator::Iterator<core::ops::range::Range<@A>, @A>}::max"]
+def core.ops.range.Range.Insts.CoreIterTraitsIteratorIterator.max
+    {A : Type} (stepInst : core.iter.range.Step A) (ordInst : core.cmp.Ord A)
+    (range : core.ops.range.Range A) : Result (Option A) :=
+  core.iter.traits.iterator.Iterator.max.default
+    (core.iter.traits.iterator.IteratorRange stepInst)
+    ordInst range
+
+def core.array.fromFnList
+    {T F : Type} (fnMut : core.ops.function.FnMut F Std.Usize T) :
+    Nat → Std.Usize → F → Result (List T × F)
+  | 0, _, closure => .ok ([], closure)
+  | fuel + 1, index, closure => do
+      let (value, closureNext) ← fnMut.call_mut closure index
+      match fuel with
+      | 0 => .ok ([value], closureNext)
+      | remaining + 1 =>
+        let indexNext ← index + 1#usize
+        let (rest, closureFinal) ←
+          core.array.fromFnList fnMut (remaining + 1) indexNext closureNext
+        .ok (value :: rest, closureFinal)
+
+@[rust_fun "core::array::from_fn"]
+def core.array.from_fn
+    {T F : Type} (N : Std.Usize)
+    (fnMut : core.ops.function.FnMut F Std.Usize T)
+    (closure : F) : Result (Array T N) :=
+  match core.array.fromFnList fnMut N.val 0#usize closure with
+  | .fail error => .fail error
+  | .div => .div
+  | .ok (values, _) =>
+    if h : values.length = N.val then .ok ⟨values, h⟩ else .fail .panic
+
+def core.array.mapListFnMut
+    {T F U : Type} (fnMut : core.ops.function.FnMut F T U) :
+    (values : List T) → F →
+      Result ({ output : List U // output.length = values.length } × F)
+  | [], closure => .ok (⟨[], rfl⟩, closure)
+  | value :: rest, closure => do
+      let (mapped, closureNext) ← fnMut.call_mut closure value
+      let (mappedRest, closureFinal) ←
+        core.array.mapListFnMut fnMut rest closureNext
+      .ok (⟨mapped :: mappedRest.val, by simp [mappedRest.property]⟩,
+        closureFinal)
+
+@[rust_fun "core::array::{[@T; @N]}::map"]
+def core.array.Array.map
+    {T F U : Type} {N : Std.Usize}
+    (fnMut : core.ops.function.FnMut F T U)
+    (values : Array T N) (closure : F) : Result (Array U N) := do
+  let (mapped, _) ← core.array.mapListFnMut fnMut values.val closure
+  .ok ⟨mapped.val, mapped.property.trans values.property⟩
+
+@[rust_fun
+  "core::array::{core::iter::traits::collect::IntoIterator<&'a mut [@T; @N], &'a mut @T, core::slice::iter::IterMut<'a, @T>>}::into_iter"]
+def MutAArray.Insts.CoreIterTraitsCollectIntoIteratorMutATIterMut.into_iter
+    {T : Type} {N : Std.Usize} (array : Array T N) :
+    Result (core.slice.iter.IterMut T ×
+      (core.slice.iter.IterMut T → Array T N)) :=
+  .ok ({ slice := Array.to_slice array },
+    fun iterator => Array.from_slice array iterator.slice)
+
+@[rust_fun "core::cmp::impls::{core::cmp::PartialEq<&'1 mut @A, &'0 @B>}::ne"]
+def Mut1A.Insts.CoreCmpPartialEqShared0B.ne
+    {A B : Type} (partialEqInst : core.cmp.PartialEq A B)
+    (left : A) (right : B) : Result Bool :=
+  core.cmp.PartialEq.ne.trait_default partialEqInst left right
+
+@[rust_fun "core::fmt::{core::fmt::Debug<[@T]>}::fmt"]
+def Slice.Insts.CoreFmtDebug.fmt
+    {T : Type} (_debugInst : core.fmt.Debug T) :
+    Slice T → core.fmt.Formatter →
+      Result (core.result.Result Unit core.fmt.Error × core.fmt.Formatter) :=
+  fun _ formatter => .ok (.Ok (), formatter)
+
+@[rust_fun "alloc::boxed::{core::fmt::Debug<Box<@T>>}::fmt"]
+def Box.Insts.CoreFmtDebug.fmt
+    {T : Type} (_allocator : Type) (_debugInst : core.fmt.Debug T) :
+    T → core.fmt.Formatter →
+      Result (core.result.Result Unit core.fmt.Error × core.fmt.Formatter) :=
+  fun _ formatter => .ok (.Ok (), formatter)
+
+@[rust_fun "core::num::{u16}::count_ones"]
+def core.num.U16.count_ones (value : Std.U16) : Result Std.U32 :=
+  .ok ⟨value.bv.cpop.zeroExtend 32⟩
+
+@[rust_fun "core::num::{u32}::checked_shl"]
+def core.num.U32.checked_shl (value shift : Std.U32) :
+    Result (Option Std.U32) :=
+  if shift.val < 32 then .ok (some (core.num.U32.wrapping_shl value shift))
+  else .ok none
+
+@[rust_fun "core::num::{u32}::is_power_of_two"]
+def core.num.U32.is_power_of_two (value : Std.U32) : Result Bool :=
+  .ok value.val.isPowerOfTwo
+
+@[rust_fun "core::num::{usize}::reverse_bits"]
+def core.num.Usize.reverse_bits (value : Std.Usize) : Result Std.Usize :=
+  .ok ⟨value.bv.reverse⟩
+
+@[rust_fun "core::num::{usize}::checked_shl"]
+def core.num.Usize.checked_shl
+    (value : Std.Usize) (shift : Std.U32) : Result (Option Std.Usize) :=
+  if shift.val < System.Platform.numBits then
+    .ok (some ⟨value.bv.shiftLeft shift.val⟩)
+  else
+    .ok none
+
+@[rust_fun "core::option::{core::option::Option<@T>}::as_ref"]
+def core.option.Option.as_ref {T : Type} (value : Option T) :
+    Result (Option T) := .ok value
+
+@[rust_fun "core::option::{core::option::Option<@T>}::unwrap_or_default"]
+def core.option.Option.unwrap_or_default
+    {T : Type} (defaultInst : core.default.Default T) : Option T → Result T
+  | some value => .ok value
+  | none => defaultInst.default
+
+@[rust_fun "core::option::{core::option::Option<@T>}::ok_or"]
+def core.option.Option.ok_or {T E : Type} :
+    Option T → E → Result (core.result.Result T E)
+  | some value, _ => .ok (.Ok value)
+  | none, error => .ok (.Err error)
+
+@[rust_fun
+  "core::option::{core::ops::try_trait::Try<core::option::Option<@T>>}::branch"]
+def core.option.Option.Insts.CoreOpsTry_traitTry.branch {T : Type} :
+    Option T → Result
+      (core.ops.control_flow.ControlFlow (Option core.convert.Infallible) T)
+  | some value => .ok (.Continue value)
+  | none => .ok (.Break none)
+
+@[rust_fun
+  "core::option::{core::ops::try_trait::FromResidual<core::option::Option<@T>, core::option::Option<core::convert::Infallible>>}::from_residual"]
+def core.option.Option.Insts.CoreOpsTry_traitFromResidualOptionInfallible.from_residual
+    (T : Type) : Option core.convert.Infallible → Result (Option T)
+  | none => .ok none
+  | some impossible => nomatch impossible
+
+@[rust_fun "core::result::{core::result::Result<@T, @E>}::is_ok_and"]
+def core.result.Result.is_ok_and
+    {T E F : Type} (fnOnce : core.ops.function.FnOnce F T Bool) :
+    core.result.Result T E → F → Result Bool
+  | .Ok value, closure => fnOnce.call_once closure value
+  | .Err _, _ => .ok false
+
+@[rust_fun "core::result::{core::result::Result<@T, @E>}::ok"]
+def core.result.Result.ok {T E : Type} :
+    core.result.Result T E → Result (Option T)
+  | .Ok value => .ok (some value)
+  | .Err _ => .ok none
+
+@[rust_fun "core::option::{core::option::Option<&'0 @T>}::copied"]
+def core.option.OptionShared0T.copied
+    {T : Type} (_copyInst : core.marker.Copy T) (value : Option T) :
+    Result (Option T) := .ok value
+
+@[rust_fun "core::result::{core::result::Result<@T, @E>}::map_err"]
+def core.result.Result.map_err
+    {T E F O : Type} (fnOnce : core.ops.function.FnOnce O E F) :
+    core.result.Result T E → O → Result (core.result.Result T F)
+  | .Ok value, _ => .ok (.Ok value)
+  | .Err error, closure => do
+      let mapped ← fnOnce.call_once closure error
+      .ok (.Err mapped)
+
+def core.slice.iter.Windows.windowAt
+    {T : Type} (slice : Slice T) (index width : Nat) : Slice T :=
+  ⟨(slice.val.drop index).take width, by
+    calc
+      ((slice.val.drop index).take width).length ≤
+          (slice.val.drop index).length := List.length_take_le' _ _
+      _ = slice.val.length - index := List.length_drop
+      _ ≤ slice.val.length := Nat.sub_le _ _
+      _ ≤ Usize.max := slice.property⟩
+
+@[rust_fun
+  "core::slice::iter::{core::iter::traits::iterator::Iterator<core::slice::iter::Windows<'a, @T>, &'a [@T]>}::next"]
+def core.slice.iter.Windows.Insts.CoreIterTraitsIteratorIteratorSharedASlice.next
+    {T : Type} (iterator : core.slice.iter.Windows T) :
+    Result (Option (Slice T) × core.slice.iter.Windows T) :=
+  if iterator.index + iterator.width.val ≤ iterator.slice.val.length then
+    .ok (some (core.slice.iter.Windows.windowAt iterator.slice
+      iterator.index iterator.width.val),
+      { iterator with index := iterator.index + 1 })
+  else .ok (none, iterator)
+
+@[rust_fun
+  "core::slice::iter::{core::iter::traits::double_ended::DoubleEndedIterator<core::slice::iter::Iter<'a, @T>, &'_ @T>}::next_back"]
+def core.slice.iter.Iter.Insts.CoreIterTraitsDouble_endedDoubleEndedIteratorSharedT.next_back
+    {T : Type} (iterator : core.slice.iter.Iter T) :
+    Result (Option T × core.slice.iter.Iter T) :=
+  if iterator.i < iterator.slice.val.length then
+    let shortened : Slice T :=
+      ⟨iterator.slice.val.dropLast,
+        by
+          rw [List.length_dropLast]
+          exact Nat.le_trans (Nat.sub_le _ _) iterator.slice.property⟩
+    .ok (iterator.slice.val.getLast?, { iterator with slice := shortened })
+  else
+    .ok (none, iterator)
+
+@[rust_fun "core::slice::{[@T]}::last"]
+def core.slice.Slice.last {T : Type} (slice : Slice T) :
+    Result (Option T) := .ok slice.val.getLast?
+
+@[rust_fun "core::slice::{[@T]}::windows"]
+def core.slice.Slice.windows
+    {T : Type} (slice : Slice T) (width : Std.Usize) :
+    Result (core.slice.iter.Windows T) :=
+  if width = 0#usize then .fail .panic else .ok { slice, width, index := 0 }
+
+def core.slice.sortInsert
+    {T : Type} (ordInst : core.cmp.Ord T) (value : T) :
+    (values : List T) →
+      Result { output : List T // output.length = values.length + 1 }
+  | [] => .ok ⟨[value], by simp⟩
+  | head :: tail => do
+      let ordering ← ordInst.cmp value head
+      if ordering = .gt then
+        let inserted ← core.slice.sortInsert ordInst value tail
+        .ok ⟨head :: inserted.val, by simp [inserted.property]⟩
+      else .ok ⟨value :: head :: tail, by simp⟩
+
+def core.slice.sortList
+    {T : Type} (ordInst : core.cmp.Ord T) :
+    (values : List T) →
+      Result { output : List T // output.length = values.length }
+  | [] => .ok ⟨[], rfl⟩
+  | head :: tail => do
+      let sortedTail ← core.slice.sortList ordInst tail
+      let inserted ← core.slice.sortInsert ordInst head sortedTail.val
+      .ok ⟨inserted.val, by
+        simpa [sortedTail.property] using inserted.property⟩
+
+@[rust_fun "core::slice::{[@T]}::sort_unstable"]
+def core.slice.Slice.sort_unstable
+    {T : Type} (ordInst : core.cmp.Ord T) (slice : Slice T) :
+    Result (Slice T) := do
+  let sorted ← core.slice.sortList ordInst slice.val
+  .ok ⟨sorted.val, by rw [sorted.property]; exact slice.property⟩
+
+namespace @MODULE@External
+
+def insertByKey
+    {T K F : Type} (fnMut : core.ops.function.FnMut F T K)
+    (ord : core.cmp.Ord K) (value : T) :
+    List T → F → Result (List T × F)
+  | [], closure => .ok ([value], closure)
+  | head :: tail, closure => do
+      let (valueKey, closure) ← fnMut.call_mut closure value
+      let (headKey, closure) ← fnMut.call_mut closure head
+      let ordering ← ord.cmp valueKey headKey
+      match ordering with
+      | .lt => .ok (value :: head :: tail, closure)
+      | .eq =>
+          let (rest, closure) ← insertByKey fnMut ord value tail closure
+          .ok (head :: rest, closure)
+      | .gt =>
+          let (rest, closure) ← insertByKey fnMut ord value tail closure
+          .ok (head :: rest, closure)
+
+def sortListByKey
+    {T K F : Type} (fnMut : core.ops.function.FnMut F T K)
+    (ord : core.cmp.Ord K) : List T → F → Result (List T × F)
+  | [], closure => .ok ([], closure)
+  | head :: tail, closure => do
+      let (sortedTail, closure) ← sortListByKey fnMut ord tail closure
+      insertByKey fnMut ord head sortedTail closure
+
+end @MODULE@External
+
+@[rust_fun "core::slice::{[@T]}::sort_unstable_by_key"]
+def core.slice.Slice.sort_unstable_by_key
+    {T K F : Type} (fnMut : core.ops.function.FnMut F T K)
+    (ord : core.cmp.Ord K) : Slice T → F → Result (Slice T)
+  | slice, closure => do
+      let (values, _) ←
+        @MODULE@External.sortListByKey fnMut ord slice.val closure
+      dite (values.length ≤ Usize.max)
+        (fun h => .ok ⟨values, h⟩)
+        (fun _ => .fail .panic)
+
+@[rust_fun
+  "alloc::boxed::convert::{core::convert::TryFrom<Box<[@T; @N]>, Box<[@T]>, Box<[@T]>>}::try_from"]
+def BoxArray.Insts.CoreConvertTryFromBoxSliceBoxSlice.try_from
+    {T : Type} (N : Std.Usize) (slice : Slice T) :
+    Result (core.result.Result (Array T N) (Slice T)) :=
+  if h : slice.val.length = N.val then .ok (.Ok ⟨slice.val, h⟩)
+  else .ok (.Err slice)
+
+@[rust_fun "alloc::boxed::{core::convert::AsRef<Box<@T>, @T>}::as_ref"]
+def Box.Insts.CoreConvertAsRef.as_ref
+    {T : Type} (_allocator : Type) (value : T) : Result T := .ok value
+
+@[rust_fun "alloc::vec::{alloc::vec::Vec<@T>}::into_boxed_slice"]
+def alloc.vec.Vec.into_boxed_slice
+    {T : Type} (_allocator : Type) (value : alloc.vec.Vec T) :
+    Result (Slice T) := .ok ⟨value.val, value.property⟩
+
+@[rust_fun "alloc::vec::{alloc::vec::Vec<@T>}::truncate"]
+def alloc.vec.Vec.truncate
+    {T : Type} (_allocator : Type) (value : alloc.vec.Vec T)
+    (length : Std.Usize) : Result (alloc.vec.Vec T) :=
+  .ok ⟨value.val.take length.val,
+    Nat.le_trans (List.length_take_le' ..) value.property⟩
+
+@[rust_fun "alloc::vec::{alloc::vec::Vec<@T>}::remove"]
+def alloc.vec.Vec.remove
+    {T : Type} (_allocator : Type) (value : alloc.vec.Vec T)
+    (index : Std.Usize) : Result (T × alloc.vec.Vec T) :=
+  if h : index.val < value.val.length then
+    .ok (value.val[index.val],
+      ⟨value.val.eraseIdx index.val,
+        Nat.le_trans (List.length_eraseIdx_le ..) value.property⟩)
+  else .fail .arrayOutOfBounds
+
+@[rust_fun "alloc::vec::{alloc::vec::Vec<@T>}::clear"]
+def alloc.vec.Vec.clear
+    {T : Type} (_allocator : Type) (_value : alloc.vec.Vec T) :
+    Result (alloc.vec.Vec T) := .ok (alloc.vec.Vec.new T)
+
+@[rust_fun "solana_pubkey::{solana_pubkey::Pubkey}::to_bytes"]
+def solana_pubkey.Pubkey.to_bytes
+    (key : solana_pubkey.Pubkey) : Result (Array Std.U8 32#usize) := .ok key
+
+@[rust_fun "alloc::vec::{alloc::vec::Vec<@T>}::is_empty"]
+def alloc.vec.Vec.is_empty
+    {T : Type} (_allocator : Type) (value : alloc.vec.Vec T) : Result Bool :=
+  .ok value.val.isEmpty
+
+@[rust_fun
+  "alloc::vec::{core::iter::traits::collect::IntoIterator<&'a alloc::vec::Vec<@T>, &'a @T, core::slice::iter::Iter<'a, @T>>}::into_iter"]
+def SharedAVec.Insts.CoreIterTraitsCollectIntoIteratorSharedATIter.into_iter
+    {T : Type} (_allocator : Type) (value : alloc.vec.Vec T) :
+    Result (core.slice.iter.Iter T) :=
+  core.slice.Slice.iter (alloc.vec.Vec.deref value)
+
+@[rust_fun
+  "alloc::vec::{core::convert::TryFrom<[@T; @N], alloc::vec::Vec<@T>, alloc::vec::Vec<@T>>}::try_from"]
+def Array.Insts.CoreConvertTryFromVecVec.try_from
+    {T : Type} (_allocator : Type) (N : Std.Usize)
+    (value : alloc.vec.Vec T) :
+    Result (core.result.Result (Array T N) (alloc.vec.Vec T)) :=
+  if h : value.val.length = N.val then .ok (.Ok ⟨value.val, h⟩)
+  else .ok (.Err value)
+
+-- These generic iterator entrypoints are emitted but are not in the selected
+-- production root's dependency closure. They are nevertheless executable so
+-- the staged module contains no project-specific axiom declarations.
+@[rust_fun
+  "core::slice::iter::{core::iter::traits::iterator::Iterator<core::slice::iter::Iter<'a, @T>, &'a @T>}::any"]
+def core.slice.iter.Iter.Insts.CoreIterTraitsIteratorIteratorSharedAT.any
+    {T F : Type} (fnMut : core.ops.function.FnMut F T Bool) :
+    core.slice.iter.Iter T → F → Result (Bool × core.slice.iter.Iter T) :=
+  core.iter.traits.iterator.Iterator.any.default
+    (core.iter.traits.iterator.IteratorSliceIter T) fnMut
+
+@[rust_fun
+  "core::slice::iter::{core::iter::traits::iterator::Iterator<core::slice::iter::Iter<'a, @T>, &'a @T>}::fold"]
+def core.slice.iter.Iter.Insts.CoreIterTraitsIteratorIteratorSharedAT.fold
+    {T B F : Type} (fnMut : core.ops.function.FnMut F (B × T) B) :
+    core.slice.iter.Iter T → B → F → Result B :=
+  core.iter.traits.iterator.Iterator.fold.default
+    (core.iter.traits.iterator.IteratorSliceIter T) fnMut
+
+@[rust_fun
+  "core::slice::iter::{core::iter::traits::iterator::Iterator<core::slice::iter::IterMut<'a, @T>, &'a mut @T>}::any"]
+def core.slice.iter.IterMut.Insts.CoreIterTraitsIteratorIteratorMutAT.any
+    {T F : Type} (fnMut : core.ops.function.FnMut F T Bool)
+    (iterator : core.slice.iter.IterMut T) (closure : F) :
+    Result (Bool × core.slice.iter.IterMut T ×
+      (core.slice.iter.IterMut T → core.slice.iter.IterMut T)) := do
+  let result ← core.iter.traits.iterator.Iterator.any.default
+    { next := fun state => do
+        let (item, next, _) ← core.slice.iter.IteratorIterMut.next state
+        .ok (item, next) }
+    fnMut iterator closure
+  .ok (result.1, result.2, fun state => state)
+
+@[rust_fun
+  "core::slice::iter::{core::iter::traits::iterator::Iterator<core::slice::iter::IterMut<'a, @T>, &'a mut @T>}::fold"]
+def core.slice.iter.IterMut.Insts.CoreIterTraitsIteratorIteratorMutAT.fold
+    {T B F : Type} (fnMut : core.ops.function.FnMut F (B × T) B)
+    (iterator : core.slice.iter.IterMut T) (accumulator : B) (closure : F) :
+    Result (B × core.slice.iter.IterMut T) := do
+  let result : B × core.slice.iter.IterMut T × F ←
+    loop
+      (fun (acc, state, closureState) => do
+        let (item, stateNext, _) ← core.slice.iter.IteratorIterMut.next state
+        match item with
+        | none => .ok (.done (acc, stateNext, closureState))
+        | some value =>
+          let (accNext, closureNext) ←
+            fnMut.call_mut closureState (acc, value)
+          .ok (.cont (accNext, stateNext, closureNext)))
+      (accumulator, iterator, closure)
+  .ok (result.1, result.2.1)

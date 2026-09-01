@@ -1,0 +1,62 @@
+V7 Tag-73 literal generated terminal three-field source bridge
+Date: 2026-08-30
+Host: nuc.local
+Unit: aspis-v7-terminal-exact3-check2-20260830
+Invocation: 1637ebd9716d457a84aeec268d1f222b
+MemoryHigh: 12G
+MemoryMax: 16G
+MemorySwapMax: 0
+Result: PASS
+Wall: 13.82 s
+Peak RSS: 2,715,968 KiB
+Swaps: 0
+
+Principal theorem:
+generated_terminal_success_reads_exactly_3
+
+The theorem starts from literal translated production
+finish_onefold_relation success. It proves the initial inactive-claim read,
+follows the exact generated three-row weight loop without attributing any
+reader activity to it, exposes the generated 0..2 circle-OOD loop at its
+accepted terminal edge, and constructs the ordered SuccessfulFixedReaderTrace
+containing exactly three canonical QM31 values.
+
+Supporting results prove the exact one-step reader and range behavior, finite
+traces for both literal translated loops, exhaustion of the two-iteration
+circle-OOD loop, and preservation of the production reader through the outer
+weight loop.
+
+Every printed public theorem depends on a subset of:
+propext
+Classical.choice
+Quot.sound
+
+No sorry, sorryAx, project-specific axiom, native_decide, decoder-agreement,
+or source-agreement premise is present in the compiled theorem.
+
+Together with the committed semantic (271), point-claims (87),
+relation-fields (24), and final256 (256) bridges, direct literal production
+fixed-field coverage is now 641/641.
+
+Follow-on ordered-tail closure (same source file):
+
+Final unit: aspis-v7-terminal-283-final-20260830
+Final invocation: cb5cd0a0259f4aa2987f9b6ce7f738fb
+Result: PASS
+Wall: 14.35 s
+Peak RSS: 2,747,004 KiB
+Swaps: 0
+
+Principal theorem:
+generated_terminal_success_reads_exactly_283_and_finishes
+
+This stronger theorem follows the accepted terminal path through the nested
+relation-field and final256 decoders. It constructs one ordered trace of
+exactly 283 canonical values:
+
+  1 inactive claim + 2 circle-OOD claims + 24 relation fields + 256 final256
+
+and proves that the translated production reader's final `finish` call
+succeeds. This removes the prior composition ambiguity between the three
+direct terminal reads and the 280 fields consumed inside its accepted done
+edge.

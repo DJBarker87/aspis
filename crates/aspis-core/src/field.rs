@@ -1364,12 +1364,15 @@ pub fn qm31_m31_dot(weights: &[QM31], values: &[M31]) -> QM31 {
     // uses this fixed 3/4-term shape heavily.
     if weights.len() <= 4 {
         let mut raw = [0u64; 4];
-        for (weight, value) in weights.iter().zip(values) {
-            let value = u64::from(value.0);
+        let mut index = 0usize;
+        while index < weights.len() {
+            let weight = weights[index];
+            let value = u64::from(values[index].0);
             raw[0] += u64::from(weight.c0.a.0) * value;
             raw[1] += u64::from(weight.c0.b.0) * value;
             raw[2] += u64::from(weight.c1.a.0) * value;
             raw[3] += u64::from(weight.c1.b.0) * value;
+            index += 1;
         }
         return QM31 {
             c0: CM31::new(M31::reduce_u64(raw[0]), M31::reduce_u64(raw[1])),

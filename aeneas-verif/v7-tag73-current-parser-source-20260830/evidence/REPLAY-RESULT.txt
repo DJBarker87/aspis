@@ -1,0 +1,54 @@
+V7 Tag-73 current deferred-parser source bridge replay
+Date: 2026-08-30 Europe/London
+Pinned production revision: f45c21b1db2b05a60582fb84cae371e6bdc1a3ff
+Result: PASS
+
+Production source:
+  crates/aspis-core/src/v7_onefold.rs
+  SHA-256: 6abb0376100611c5553258062480777187785579f402c9c1d3ce72379518258f
+
+Extraction-only overlay:
+  overlay/v7-current-parser-extraction-only.patch
+  SHA-256: 950f3a990a3a3bd75944c8f1c64de207f99a404bd04b6d65b5846ebf186e86ab
+
+Raw LLBC:
+  extraction/V7CurrentParser-r4.llbc
+  SHA-256: 0629bd5ec0b0adf9a7968cd491fe1435589309551a0e5d1e3771b02a0a10e062
+  Normalized SHA-256: ec9cd3a21e3adcb1e177014028aee64e59f915aeb9f309e93b4b3868f32b5bef
+
+Pinned tools:
+  Charon 0.1.223
+  Charon SHA-256: b2b0961a3c55aca64752b2fa4a4701ba0c06b860236979e5727c07de8ac2310c
+  Aeneas d860ac47-tag73-variantfn-namespace-r1
+  Aeneas SHA-256: 017fc5685a79d4aa3aa19f9529d57fdf167c1387c9b1fee63a254994f5ff9d5a
+
+Focused NUC stages, all exit status 0 and zero swap:
+  aspis-v7-current-parser-charon-r4: 2.15 s, 562,120 KiB peak RSS
+  aspis-v7-current-parser-aeneas-r5: 0.92 s, 212,112 KiB peak RSS
+  aspis-v7-current-parser-lean-r2: 9.23 s, 2,539,952 KiB peak RSS
+  aspis-v7-current-parser-bridge-r1: 2.14 s, 2,503,388 KiB peak RSS
+  final direct layout replay: 30.69 s, 6,876,104 KiB peak RSS
+
+Final layout replay environment:
+  LEAN_PATH=/home/dombarker/project-offloads/v7-k12-source-integration-20260828/.lake/build/lib/lean:/home/dombarker/project-offloads/v7-k12-source-integration-20260828/current-parser-f45c21b1:/home/dombarker/project-offloads/aeneas-d860-v6-src/backends/lean/.lake/build/lib/lean
+  /home/dombarker/.elan/bin/lake env lean -j1 current-parser-f45c21b1/V7Tag73CurrentParserLayoutBridge.lean
+
+The four public layout theorems printed exactly this axiom set:
+  propext
+  Classical.choice
+  Quot.sound
+
+The strongest theorem is:
+  AspisV7Tag73CurrentParserLayoutBridge.current_parser_success_has_exact_fixed_reader_input
+
+It derives from literal translated parser success:
+  frontierNodes <= 203
+  proof bytes = 19948 + 52 * frontierNodes
+  fixed_fields_packed = proof.take 9936
+  fixed_fields_packed.length = 9936
+
+Imported compiled proof sources contain no sorry, admit, sorryAx,
+native_decide, or project-specific axiom. Generated axiom templates are
+excluded and are not imported.
+
+No production Rust, SBF, deployment, transaction, or account was changed.

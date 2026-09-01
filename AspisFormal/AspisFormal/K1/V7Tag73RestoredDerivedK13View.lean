@@ -2,6 +2,8 @@ import AspisFormal.K1.V7Tag73RestoredNodeK13Classifier
 import AspisFormal.K1.V7Tag73CanonicalOneFoldSchedule
 import AspisFormal.K1.V7Tag73FixedFieldMessageBridge
 import AspisFormal.K1.V7Tag73ExactParsedProofSourceBinding
+import AspisFormal.K1.V7Tag73Q16LedgerCertificate
+import AspisFormal.K1.V7Tag73ChallengeRecordUniquenessInvariant
 
 /-!
 # Verifier-derived K1.3 view for restored Tag-73 nodes
@@ -35,6 +37,8 @@ open AspisK1.V7Tag73ExactFixedK12MerkleClassifier
 open AspisK1.V7Tag73ParsedK13K14Classifier
 open AspisK1.V7Tag73ConcreteRestorationClient
 open AspisK1.V7Tag73RestoredNodeK13Classifier
+open AspisK1.V7Tag73Q16LedgerCertificate
+open AspisK1.V7Tag73ChallengeRecordUniquenessInvariant
 open AspisPool.AlgorithmicCircleDecoderV7
 open AspisPool.V7CoherentTraceExtraction
 open AspisPool.V7MerkleQueryExtractor
@@ -78,6 +82,77 @@ structure RestoredOperationalK13Data
       priorCandidates ++
         [decodedScheduleRecord selectedCounter selectedSchedule]
 
+/-- Repackage the data's q16 fields as the intrinsic selected-ledger
+certificate for its immutable terminal snapshot. -/
+def RestoredOperationalK13Data.selectedLedgerCertificate
+    {Statement Payload : Type*}
+    {environment : FutureFreeEnvironment}
+    {node : RestoredK13Node Statement Payload}
+    (data : RestoredOperationalK13Data environment node) :
+    SelectedQ16LedgerCertificate environment
+      node.verifierFinalState.current where
+  priorCandidates := data.priorCandidates
+  selectedCounter := data.selectedCounter
+  selectedSchedule := data.selectedSchedule
+  priorHistory := data.priorHistory
+  selectedCompact := data.selectedCompact
+  ledgerExact := data.candidateLedgerExact
+
+/-- Canonical fixed-field decoding is functional.  Thus the disclosed-final
+message does not depend on which existential decoder witness was selected. -/
+theorem restored_operational_k13_data_decoded_unique
+    {Statement Payload : Type*}
+    {environment : FutureFreeEnvironment}
+    {node : RestoredK13Node Statement Payload}
+    (left right : RestoredOperationalK13Data environment node) :
+    left.decoded = right.decoded := by
+  funext index
+  exact Option.some.inj ((left.fixedDecode index).symm.trans
+    (right.fixedDecode index))
+
+/-- The selected counter and schedule are fixed by the snapshot ledger, not
+by the classical certificate choice used by the source provider. -/
+theorem restored_operational_k13_data_selected_unique
+    {Statement Payload : Type*}
+    {environment : FutureFreeEnvironment}
+    {node : RestoredK13Node Statement Payload}
+    (left right : RestoredOperationalK13Data environment node) :
+    left.selectedCounter = right.selectedCounter ∧
+      left.selectedSchedule = right.selectedSchedule := by
+  exact selected_q16_ledger_certificate_selected_unique
+    left.selectedLedgerCertificate right.selectedLedgerCertificate
+
+/-- Gamma and alpha zero are fixed by a duplicate-free verifier ledger.  The
+same immutable terminal snapshot therefore cannot support two different
+classical provider choices for either challenge. -/
+theorem restored_operational_k13_data_challenges_unique
+    {Statement Payload : Type*}
+    {environment : FutureFreeEnvironment}
+    {node : RestoredK13Node Statement Payload}
+    (invariant : SnapshotChallengeRecordUniqueness
+      node.verifierFinalState.current)
+    (left right : RestoredOperationalK13Data environment node) :
+    left.gammaBytes = right.gammaBytes ∧
+      left.gamma = right.gamma ∧
+      left.alphaZeroBytes = right.alphaZeroBytes ∧
+      left.alphaZero = right.alphaZero := by
+  have gammaBytes := decoded_challenge_value_unique invariant .gamma
+    left.gammaBytes right.gammaBytes left.gammaRecorded right.gammaRecorded
+  have alphaBytes := decoded_challenge_value_unique invariant (.alpha 0)
+    left.alphaZeroBytes right.alphaZeroBytes left.alphaZeroRecorded
+      right.alphaZeroRecorded
+  have gammaValue : left.gamma = right.gamma := by
+    have decodedEqual : some left.gamma = some right.gamma :=
+      left.gammaDecoded.symm.trans (by simpa [gammaBytes] using
+        right.gammaDecoded)
+    exact Option.some.inj decodedEqual
+  have alphaValue : left.alphaZero = right.alphaZero := by
+    have decodedEqual : some left.alphaZero = some right.alphaZero :=
+      left.alphaZeroDecoded.symm.trans (by simpa [alphaBytes] using
+        right.alphaZeroDecoded)
+    exact Option.some.inj decodedEqual
+  exact ⟨gammaBytes, gammaValue, alphaBytes, alphaValue⟩
+
 /-- The corrected proof view: parser-owned openings, canonically decoded
 fixed fields, and verifier-owned challenge/query data. -/
 def restoredOperationalK13View
@@ -90,6 +165,24 @@ def restoredOperationalK13View
     disclosedFinal := decodedFinalMessage data.decoded
     schedule := canonicalOneFoldSchedule data.alphaZero
     queries := data.selectedSchedule.positions }
+
+/-- The complete verifier-derived K1.3 view is intrinsic to one certified
+terminal node.  Fixed fields are canonically decoded, challenges are unique
+in the verifier ledger, and q16 selection is unique in its immutable ledger. -/
+theorem restored_operational_k13_view_unique
+    {Statement Payload : Type*}
+    {environment : FutureFreeEnvironment}
+    {node : RestoredK13Node Statement Payload}
+    (invariant : SnapshotChallengeRecordUniqueness
+      node.verifierFinalState.current)
+    (left right : RestoredOperationalK13Data environment node) :
+    restoredOperationalK13View left = restoredOperationalK13View right := by
+  have decoded := restored_operational_k13_data_decoded_unique left right
+  obtain ⟨_gammaBytes, gamma, _alphaBytes, alpha⟩ :=
+    restored_operational_k13_data_challenges_unique invariant left right
+  have selected := restored_operational_k13_data_selected_unique left right
+  unfold restoredOperationalK13View
+  rw [decoded, gamma, alpha, selected.2]
 
 @[simp] theorem restored_operational_view_openings
     {Statement Payload : Type*}
@@ -158,6 +251,58 @@ inductive RestoredOperationalK13Error
       (error : ParsedK13Error decoder words
         (restoredOperationalK13View data))
 
+/-- Proposition-level inventory for the corrected restored-node classifier.
+Every disjunct is an existing K1.2 or K1.3 mathematical failure evaluated on
+the verifier-derived view; no opaque classifier-result event is introduced. -/
+def RestoredOperationalK13FailureEvent
+    {Statement Payload : Type*}
+    {environment : FutureFreeEnvironment}
+    (decoder : ExactDecoderInstantiation QM31Exact)
+    (node : RestoredK13Node Statement Payload)
+    (data : RestoredOperationalK13Data environment node) : Prop :=
+  (¬ accepted_two_tree_openings (restoredNodeK12Truncate node)
+      (restoredNodeK12Roots node) (restoredNodeK12Openings node)) ∨
+  V7MerkleExtractionFailure (restoredNodeK12Truncate node)
+      (restoredNodeK12Roots node) (restoredNodeK12Openings node)
+      (restoredNodeK12OrderedQueries node) ∨
+  ∃ words : ExtractedWords,
+    (¬ IdealAccepts (restoredOperationalK13View data).schedule
+      (decoderCodeEncoders decoder)
+      (parsedK13Transcript words (restoredOperationalK13View data))
+      (restoredOperationalK13View data).queries) ∨
+    QueryPhaseFailure (restoredOperationalK13View data).schedule
+      (decoderCodeEncoders decoder)
+      (parsedK13Transcript words (restoredOperationalK13View data))
+      (restoredOperationalK13View data).queries ∨
+    OneFoldReductionFailure (restoredOperationalK13View data).schedule
+      (decoderCodeEncoders decoder)
+      (parsedK13Transcript words (restoredOperationalK13View data)) ∨
+    InitialListCapFailure (decoderCodeEncoders decoder)
+      (parsedK13Transcript words (restoredOperationalK13View data))
+
+/-- A returned corrected classifier error always inhabits exactly one of the
+explicit mathematical failure families above. -/
+theorem restored_operational_k13_error_implies_failure_event
+    {Statement Payload : Type*}
+    {environment : FutureFreeEnvironment}
+    {decoder : ExactDecoderInstantiation QM31Exact}
+    {node : RestoredK13Node Statement Payload}
+    {data : RestoredOperationalK13Data environment node}
+    (error : RestoredOperationalK13Error decoder node data) :
+    RestoredOperationalK13FailureEvent decoder node data := by
+  cases error with
+  | k12 error =>
+      cases error with
+      | openingAuthenticationRejected rejected => exact .inl rejected
+      | extractionFailure reason failed => exact .inr (.inl ⟨reason, failed⟩)
+  | k13 words error =>
+      refine .inr (.inr ⟨words, ?_⟩)
+      cases error with
+      | idealRejected rejected => exact .inl rejected
+      | queryPhaseFailure failure => exact .inr (.inl failure)
+      | oneFoldReductionFailure failure => exact .inr (.inr (.inl failure))
+      | initialListCapFailure failure => exact .inr (.inr (.inr failure))
+
 /-- Total restored-node K1.3 classifier over the corrected operational view. -/
 noncomputable def classifyRestoredOperationalK13
     {Statement Payload : Type*}
@@ -174,6 +319,62 @@ noncomputable def classifyRestoredOperationalK13
           (restoredOperationalK13View data) with
       | .inl k13 => .inl ⟨k12, k13⟩
       | .inr error => .inr (.k13 k12.words error)
+
+/-- The exact consistency set attached to one restored verifier-owned K1.3
+view.  Naming it separately makes the probability target explicit and lets us
+prove that it is independent of every classical witness used to construct
+`RestoredOperationalK13Data`. -/
+def restoredOperationalK13ConsistencySet
+    {Statement Payload : Type*}
+    {environment : FutureFreeEnvironment}
+    (decoder : ExactDecoderInstantiation QM31Exact)
+    {node : RestoredK13Node Statement Payload}
+    (words : ExtractedWords)
+    (data : RestoredOperationalK13Data environment node) :
+    Finset (Fin 262144) :=
+  consistencySet (restoredOperationalK13View data).schedule
+    (decoderCodeEncoders decoder)
+    (parsedK13Transcript words (restoredOperationalK13View data))
+
+/-- Canonical field decoding, duplicate-free challenge records, and the
+selected-q16 ledger together make the complete K1.3 consistency set intrinsic
+to one terminal node.  In particular, a probability argument cannot change
+its bad set by choosing a different proof witness for the same node. -/
+theorem restored_operational_k13_consistency_set_intrinsic
+    {Statement Payload : Type*}
+    {environment : FutureFreeEnvironment}
+    {decoder : ExactDecoderInstantiation QM31Exact}
+    {node : RestoredK13Node Statement Payload}
+    (invariant : SnapshotChallengeRecordUniqueness
+      node.verifierFinalState.current)
+    (words : ExtractedWords)
+    (left right : RestoredOperationalK13Data environment node) :
+    restoredOperationalK13ConsistencySet decoder words left =
+      restoredOperationalK13ConsistencySet decoder words right := by
+  unfold restoredOperationalK13ConsistencySet
+  rw [restored_operational_k13_view_unique invariant left right]
+
+/-- The corresponding query-failure proposition is intrinsic as well; this
+is stronger than equality of the cardinality bound because it retains the
+literal accepted query vector. -/
+theorem restored_operational_query_failure_intrinsic
+    {Statement Payload : Type*}
+    {environment : FutureFreeEnvironment}
+    {decoder : ExactDecoderInstantiation QM31Exact}
+    {node : RestoredK13Node Statement Payload}
+    (invariant : SnapshotChallengeRecordUniqueness
+      node.verifierFinalState.current)
+    (words : ExtractedWords)
+    (left right : RestoredOperationalK13Data environment node) :
+    QueryPhaseFailure (restoredOperationalK13View left).schedule
+        (decoderCodeEncoders decoder)
+        (parsedK13Transcript words (restoredOperationalK13View left))
+        (restoredOperationalK13View left).queries ↔
+      QueryPhaseFailure (restoredOperationalK13View right).schedule
+        (decoderCodeEncoders decoder)
+        (parsedK13Transcript words (restoredOperationalK13View right))
+        (restoredOperationalK13View right).queries := by
+  rw [restored_operational_k13_view_unique invariant left right]
 
 /-- A q16 failure for the corrected view is attached to the selected record
 of the exact retained first-cap-203 ledger, with no parsed-query equality
@@ -264,7 +465,14 @@ theorem restored_operational_query_event_exposes_selected_bad_set
     selectedMember, allBad⟩
 
 #print axioms restored_operational_view_queries
+#print axioms restored_operational_k13_data_decoded_unique
+#print axioms restored_operational_k13_data_selected_unique
+#print axioms restored_operational_k13_data_challenges_unique
+#print axioms restored_operational_k13_view_unique
+#print axioms restored_operational_k13_consistency_set_intrinsic
+#print axioms restored_operational_query_failure_intrinsic
 #print axioms classifyRestoredOperationalK13
+#print axioms restored_operational_k13_error_implies_failure_event
 #print axioms restored_operational_query_failure_selected_all_in_bad
 #print axioms restored_operational_query_event_exposes_selected_bad_set
 

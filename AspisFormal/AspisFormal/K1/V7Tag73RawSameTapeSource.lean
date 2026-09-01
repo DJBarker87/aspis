@@ -1,5 +1,6 @@
 import AspisFormal.K1.V7Tag73FutureFreeFullControl
 import AspisFormal.K1.V7Tag73RawProverMessages
+import AspisFormal.K1.V7Tag73FixedFieldMessageBridge
 
 /-!
 # Raw same-tape source for the Tag-73 compiler
@@ -29,8 +30,10 @@ open AspisK1.V7Tag73InteractiveAncestor
 open AspisK1.V7Tag73RawProverMessages
 open AspisK1.V7Tag73FutureFreeFullControl
 open AspisK1.V7Tag73ResumeDerivedReplayNode
+open AspisK1.V7Tag73FixedFieldMessageBridge
 open AspisK1.V7FsAokExperiment
 open AspisK1.V7FsStateRestorationCoupling
+open AspisV5ComponentCQM31TowerExact
 
 noncomputable section
 
@@ -76,14 +79,16 @@ def rawReturnedValueContextMatches
 abbrev CheckedRawTag73AdversaryReturnedValue
     (Statement Proof Payload : Type*) :=
   {value : RawTag73AdversaryReturnedValue Statement Proof Payload //
-    rawReturnedValueContextMatches value = true}
+    rawReturnedValueContextMatches value = true ∧
+      ∃ decoded : Fin 641 → QM31Exact,
+        FixedFieldDecodeExact value.publicProof.proof.messages decoded}
 
 theorem checked_raw_return_context_is_exact
     {Statement Proof Payload : Type*}
     (value : CheckedRawTag73AdversaryReturnedValue Statement Proof Payload) :
     value.1.publicProof.proof.messages.context =
       value.1.publicProof.publicInstance.context := by
-  have checked := value.2
+  have checked := value.2.1
   simp only [rawReturnedValueContextMatches, contextFieldsMatch,
     Bool.and_eq_true, decide_eq_true_eq] at checked
   have program := checked.1.1.1
@@ -91,6 +96,17 @@ theorem checked_raw_return_context_is_exact
   have statement := checked.1.2
   have attempt := checked.2
   exact context_eq_of_fields program release statement attempt
+
+/-- Every value admitted by the checked raw-prover interface has the exact
+canonical 641-field decoding performed by the deployed packed reader.  This
+is a parser refinement, not a knowledge or soundness assumption: the
+current-source Aeneas bridge constructs it from literal reader success. -/
+theorem checked_raw_return_has_exact_fixed_field_decode
+    {Statement Proof Payload : Type*}
+    (value : CheckedRawTag73AdversaryReturnedValue Statement Proof Payload) :
+    ∃ decoded : Fin 641 → QM31Exact,
+      FixedFieldDecodeExact value.1.publicProof.proof.messages decoded := by
+  exact value.2.2
 
 /-- There is no projection from the raw result to verifier-derived values.
 This positive theorem records the complete prover-controlled projection used
@@ -354,6 +370,7 @@ theorem checked_raw_return_preserves_public_bindings
   exact ⟨rfl, rfl, rfl, rfl, rfl⟩
 
 #print axioms checked_raw_return_context_is_exact
+#print axioms checked_raw_return_has_exact_fixed_field_decode
 #print axioms raw_source_capability_uses_same_hidden_tape
 #print axioms raw_source_capability_identity
 #print axioms raw_origin_first_execution_is_source_execution

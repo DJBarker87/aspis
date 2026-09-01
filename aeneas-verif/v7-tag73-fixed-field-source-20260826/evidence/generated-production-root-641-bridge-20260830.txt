@@ -1,0 +1,50 @@
+Aspis V7 Tag-73 literal production-root fixed-field composition
+Date: 2026-08-30
+
+Theorem:
+  AspisV7Tag73GeneratedProductionRootBridge.
+    generated_production_root_success_reads_exactly_641_and_finishes
+
+Input boundary:
+  Literal successful result from translated production function
+  verify_v7_compact_transcript_and_relation_prepared_with_hiding_context.
+
+Constructed result:
+  - literal V6FixedFieldReader.new success;
+  - one ordered SuccessfulFixedReaderTrace through the actual production call;
+  - semantic prefix: 271 QM31 values;
+  - point-claim section: 87 QM31 values;
+  - complete terminal section: 283 QM31 values;
+  - total: exactly 641 QM31 values;
+  - literal V6FixedFieldReader.finish success;
+  - exact packed input length: 9,936 bytes;
+  - every returned generated QM31 value has four canonical M31 limbs.
+
+The theorem follows the exact translated call order and instantiates the real
+Tag-73 finish_v7_compact_relation closure, work-bit constants, digest width,
+query labels, shift/exposure flags, and diagnostic closure.  No alternate
+decoder, trace-cover premise, or source-equality assumption is introduced.
+
+NUC replay:
+  host: nuc.local
+  systemd unit: aspis-v7-production-root-try04
+  invocation: 638b307dfc174bdeb473a313b83853f3
+  MemoryHigh: 12G
+  MemoryMax: 16G
+  MemorySwapMax: 0
+  wall: 2.19 s
+  peak RSS: 2,563,848 KiB
+  swaps: 0
+  exit status: 0
+
+#print axioms:
+  propext
+  Classical.choice
+  Quot.sound
+
+Forbidden constructs:
+  no sorry
+  no admit
+  no sorryAx
+  no native_decide
+  no project-specific axiom

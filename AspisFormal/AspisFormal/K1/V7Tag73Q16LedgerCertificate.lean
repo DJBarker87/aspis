@@ -54,6 +54,35 @@ theorem selected_q16_ledger_prior_records_are_noncompact
     environment certificate.selectedCounter certificate.priorCandidates
       certificate.priorHistory
 
+/-- Two certificates for the same immutable snapshot cannot select different
+q16 records.  Both exact ledgers end in their selected record, so equality of
+the snapshot ledger fixes the counter and schedule independently of any
+classical choice used to obtain a certificate. -/
+theorem selected_q16_ledger_certificate_selected_unique
+    {environment : FutureFreeEnvironment}
+    {snapshot : FutureFreeSnapshot}
+    (left right : SelectedQ16LedgerCertificate environment snapshot) :
+    left.selectedCounter = right.selectedCounter ∧
+      left.selectedSchedule = right.selectedSchedule := by
+  have ledgers :
+      left.priorCandidates ++
+          [decodedScheduleRecord left.selectedCounter left.selectedSchedule] =
+        right.priorCandidates ++
+          [decodedScheduleRecord right.selectedCounter
+            right.selectedSchedule] :=
+    left.ledgerExact.symm.trans right.ledgerExact
+  have lastRecords := congrArg List.getLast? ledgers
+  have recordExact :
+      decodedScheduleRecord left.selectedCounter left.selectedSchedule =
+        decodedScheduleRecord right.selectedCounter right.selectedSchedule := by
+    simpa using lastRecords
+  have counterExact := congrArg DecodedQ16Candidate.counter recordExact
+  have outcomeExact := congrArg DecodedQ16Candidate.outcome recordExact
+  constructor
+  · simpa [decodedScheduleRecord] using counterExact
+  · exact CandidateOutcome.schedule.inj
+      (by simpa [decodedScheduleRecord] using outcomeExact)
+
 def SelectedQ16LedgerCertificate.transport
     {environment : FutureFreeEnvironment}
     {before after : FutureFreeSnapshot}
@@ -93,6 +122,7 @@ def compact_candidate_constructs_selected_q16_ledger
 
 #print axioms selected_q16_ledger_contains_selected
 #print axioms selected_q16_ledger_prior_records_are_noncompact
+#print axioms selected_q16_ledger_certificate_selected_unique
 #print axioms SelectedQ16LedgerCertificate.transport
 #print axioms compact_candidate_constructs_selected_q16_ledger
 

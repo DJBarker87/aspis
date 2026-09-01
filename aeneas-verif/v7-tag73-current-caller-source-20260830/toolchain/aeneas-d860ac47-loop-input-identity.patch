@@ -1,0 +1,180 @@
+diff --git a/src/interp/InterpJoin.ml b/src/interp/InterpJoin.ml
+index 11e7c95..6a07c9e 100644
+--- a/src/interp/InterpJoin.ml
++++ b/src/interp/InterpJoin.ml
+@@ -1346,7 +1346,7 @@ let destructure_shared_loans (span : Meta.span) (fixed_aids : AbsId.Set.t) :
+ let match_ctx_with_target (config : config) (span : Meta.span)
+     (fresh_abs_kind : abs_kind) (fixed_aids : AbsId.Set.t)
+     (fixed_dids : DummyVarId.Set.t) (input_abs : AbsId.id list)
+-    (input_svalues : SymbolicValueId.id list) ~(recoverable : bool)
++    (input_svalues : symbolic_value list) ~(recoverable : bool)
+     (src_ctx : eval_ctx) (tgt_ctx : eval_ctx) :
+     (eval_ctx * eval_ctx * tvalue SymbolicValueId.Map.t * abs AbsId.Map.t)
+     * (SymbolicAst.expr -> SymbolicAst.expr) =
+@@ -1937,7 +1937,11 @@ let match_ctx_with_target (config : config) (span : Meta.span)
+   [%ltrace
+     "About to compute the input values and abstractions:"
+     ^ "\n- fp_input_svalues: "
+-    ^ String.concat ", " (List.map SymbolicValueId.to_string input_svalues)
++    ^ String.concat ", "
++        (List.map
++           (fun (sv : symbolic_value) ->
++             SymbolicValueId.to_string sv.sv_id)
++           input_svalues)
+     ^ "\n- src_to_joined_maps:\n"
+     ^ ids_maps_to_string joined_ctx src_to_joined_maps
+     ^ "\n- joined_symbolic_to_tgt_value: "
+@@ -1948,7 +1952,8 @@ let match_ctx_with_target (config : config) (span : Meta.span)
+   let input_values =
+     SymbolicValueId.Map.of_list
+       (List.map
+-         (fun sid ->
++         (fun (input_sv : symbolic_value) ->
++           let sid = input_sv.sv_id in
+            (* We retrieve the value in two steps:
+               - source to joined
+               - joined to target
+@@ -1965,10 +1970,12 @@ let match_ctx_with_target (config : config) (span : Meta.span)
+              with
+              | Some v -> v
+              | None ->
+-                 [%craise] span
+-                   ("Could not find symbolic value @"
+-                   ^ SymbolicValueId.to_string sid
+-                   ^ " in src_to_joined_map")
++                 (* This is the identity case described immediately above.
++                    The previous interface erased every input to its id before
++                    this point and therefore lost the type needed to build the
++                    identity value. Keep the already-existing symbolic value
++                    and change no mapped substitution. *)
++                 mk_tvalue_from_symbolic_value input_sv
+            in
+            (* Update the symbolic values appearing in [v] *)
+            let subst =
+@@ -2024,7 +2031,7 @@ let match_ctx_with_target (config : config) (span : Meta.span)
+ let loop_match_break_ctx_with_target (config : config) (span : Meta.span)
+     (_loop_id : LoopId.id) (fixed_aids : AbsId.Set.t)
+     (fixed_dids : DummyVarId.Set.t) (fp_input_abs : abs_id list)
+-    (fp_input_svalues : SymbolicValueId.id list) (src_ctx : eval_ctx)
++    (fp_input_svalues : symbolic_value list) (src_ctx : eval_ctx)
+     (tgt_ctx : eval_ctx) :
+     (eval_ctx * eval_ctx * tvalue SymbolicValueId.Map.t * abs AbsId.Map.t)
+     * (SymbolicAst.expr -> SymbolicAst.expr) =
+diff --git a/src/interp/InterpJoin.mli b/src/interp/InterpJoin.mli
+index 45ff4fd..f437d82 100644
+--- a/src/interp/InterpJoin.mli
++++ b/src/interp/InterpJoin.mli
+@@ -322,7 +322,7 @@ val match_ctx_with_target :
+   AbsId.Set.t ->
+   DummyVarId.Set.t ->
+   abs_id list ->
+-  symbolic_value_id list ->
++  symbolic_value list ->
+   recoverable:bool ->
+   eval_ctx ->
+   eval_ctx ->
+@@ -354,7 +354,7 @@ val loop_match_break_ctx_with_target :
+   AbsId.Set.t ->
+   DummyVarId.Set.t ->
+   abs_id list ->
+-  symbolic_value_id list ->
++  symbolic_value list ->
+   eval_ctx ->
+   eval_ctx ->
+   (eval_ctx * eval_ctx * tvalue SymbolicValueId.Map.t * abs AbsId.Map.t)
+diff --git a/src/interp/InterpLoops.ml b/src/interp/InterpLoops.ml
+index a0d0c9b..07229f8 100644
+--- a/src/interp/InterpLoops.ml
++++ b/src/interp/InterpLoops.ml
+@@ -77,7 +77,7 @@ let eval_loop_concrete (span : Meta.span) (eval_loop_body : stl_cm_fun) :
+     borrow l1 to loan l3. *)
+ let eval_loop_symbolic_apply_loop (config : config) (span : span)
+     (loop_id : LoopId.id) (init_ctx : eval_ctx) (fp_ctx : eval_ctx)
+-    (fp_input_abs : AbsId.id list) (fp_input_svalues : SymbolicValueId.id list)
++    (fp_input_abs : AbsId.id list) (fp_input_svalues : symbolic_value list)
+     :
+     (eval_ctx * eval_ctx * tvalue SymbolicValueId.Map.t * abs AbsId.Map.t)
+     * (SymbolicAst.expr -> SymbolicAst.expr) =
+@@ -133,9 +133,9 @@ let eval_loop_symbolic_apply_loop (config : config) (span : span)
+     the context at the break. *)
+ let eval_loop_symbolic_synthesize_loop_body (config : config) (span : span)
+     (eval_loop_body : stl_cm_fun) (loop_id : LoopId.id) (fp_ctx : eval_ctx)
+-    (fp_input_abs : AbsId.id list) (fp_input_svalues : SymbolicValueId.id list)
++    (fp_input_abs : AbsId.id list) (fp_input_svalues : symbolic_value list)
+     (fixed_aids : AbsId.Set.t) (fixed_dids : DummyVarId.Set.t)
+-    (break_info : (eval_ctx * AbsId.id list * SymbolicValueId.id list) option) :
++    (break_info : (eval_ctx * AbsId.id list * symbolic_value list) option) :
+     (eval_ctx * abs list * symbolic_value list) option * SA.expr * AbsId.Set.t =
+   [%ldebug "fp_ctx:\n" ^ eval_ctx_to_string fp_ctx];
+ 
+@@ -152,8 +152,10 @@ let eval_loop_symbolic_synthesize_loop_body (config : config) (span : span)
+     List.filter_map (fun id -> AbsId.Map.find_opt id map) absl
+   in
+   let reorder_input_values (map : tvalue SymbolicValueId.Map.t)
+-      (values : symbolic_value_id list) : tvalue list =
+-    List.map (fun id -> SymbolicValueId.Map.find id map) values
++      (values : symbolic_value list) : tvalue list =
++    List.map
++      (fun (sv : symbolic_value) -> SymbolicValueId.Map.find sv.sv_id map)
++      values
+   in
+ 
+   let ctx_info_at_break = ref None in
+@@ -419,9 +421,6 @@ let eval_loop_symbolic (config : config) (span : span)
+     compute_ctx_fresh_ordered_symbolic_values span ~only_modified_svalues:false
+       ctx fp_ctx
+   in
+-  let fp_input_svalue_ids =
+-    List.map (fun (sv : symbolic_value) -> sv.sv_id) fp_input_svalues
+-  in
+   [%ltrace
+     "\n- fp_input_svalues: "
+     ^ String.concat ", "
+@@ -444,15 +443,11 @@ let eval_loop_symbolic (config : config) (span : span)
+           compute_ctx_fresh_ordered_symbolic_values span
+             ~only_modified_svalues:false ctx break_ctx
+         in
+-        let break_input_svalue_ids =
+-          List.map (fun (sv : symbolic_value) -> sv.sv_id) break_input_svalues
+-        in
+-
+         [%ltrace
+           "- break_input_svalues: "
+           ^ String.concat ", "
+               (List.map (symbolic_value_to_string ctx) break_input_svalues)];
+-        ( Some (break_ctx, break_input_abs_ids, break_input_svalue_ids),
++        ( Some (break_ctx, break_input_abs_ids, break_input_svalues),
+           Some (break_abs, break_input_svalues) )
+   in
+ 
+@@ -460,7 +455,7 @@ let eval_loop_symbolic (config : config) (span : span)
+   let (_ctx_after_loop, entry_loop_ctx, input_values, input_abs), cf_before_loop
+       =
+     eval_loop_symbolic_apply_loop config span loop_id ctx fp_ctx
+-      input_abs_ids_list fp_input_svalue_ids
++      input_abs_ids_list fp_input_svalues
+   in
+ 
+   [%ltrace "matched the fixed-point context with the original context."];
+@@ -470,7 +465,7 @@ let eval_loop_symbolic (config : config) (span : span)
+     let fixed_aids = InterpJoinCore.compute_fixed_abs_ids ctx fp_ctx in
+     let fixed_dids = ctx_get_dummy_var_ids ctx in
+     eval_loop_symbolic_synthesize_loop_body config span eval_loop_body loop_id
+-      fp_ctx input_abs_ids_list fp_input_svalue_ids fixed_aids fixed_dids
++      fp_ctx input_abs_ids_list fp_input_svalues fixed_aids fixed_dids
+       break_info
+   in
+ 
+diff --git a/src/interp/InterpStatements.ml b/src/interp/InterpStatements.ml
+index 3b8bd28..4fbe874 100644
+--- a/src/interp/InterpStatements.ml
++++ b/src/interp/InterpStatements.ml
+@@ -1405,7 +1405,7 @@ and eval_switch_with_join (config : config) (span : Meta.span)
+       (* Match the contexts with the joined context to determine the output of the branch *)
+       let (_, ctx, output_values, output_abs), cf =
+         InterpJoin.match_ctx_with_target config span WithCont fixed_aids
+-          fixed_dids output_abs_ids output_svalue_ids
++          fixed_dids output_abs_ids output_svalues
+           ~recoverable:!Config.recover_joins joined_ctx ctx
+       in
+ 

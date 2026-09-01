@@ -1,0 +1,680 @@
+# V7 adaptive q16/final-work probability milestone — 2026-08-30
+
+## Classification
+
+Kernel-checked semantic probability closure and same-trial accepted-source
+final-work/q16 causal-forest realization; K1.3–K1.5 event composition remains
+open.
+
+This milestone fixes the adversary-prequery problem honestly. A raw SHA input
+does not identify whether a cached answer will later serve as lambda, gamma,
+q16, or another squeeze role. The proof therefore does not assume one global
+role classifier or one verifier-only q16 router.
+
+Instead it proves a finite-trial statement. Each genuine selectable trial has
+one pre-answer causal router containing exactly 513 named fresh-answer slots:
+
+- one literal final-work digest; and
+- all `64 * 8 = 512` q16 candidate/block digests.
+
+The current answer never determines its own slot. Later routing may depend on
+earlier answers.
+
+## Principal results
+
+`V7Tag73FinalWorkDigestProbability.lean` proves the literal production
+predicate:
+
+- `bigEndianHead64` is identified with the exact eight-byte base-256 value;
+- final work accepts exactly the heads below `2^30`;
+- accepted 32-byte digests have cardinality `2^222`; and
+- uniform acceptance probability is exactly `2^-34`.
+
+`V7Tag73CausalQ16FinalWorkProbability.lean` proves:
+
+- `finalWorkQ16DigestSlot_card`: the joint slot type has cardinality 513;
+- `exactCompilerCausalFinalWorkQ16Coordinates`: the adaptive router is a
+  lossless coordinate equivalence;
+- `uniform_final_work_q16_bad_probability_le_semantic`: one trial costs the
+  product of exact final-work probability and the existing semantic q16
+  bound; and
+- `exact_compiler_causal_final_work_q16_event_probability_le_semantic`: the
+  same product bound after hidden-tape averaging.
+
+`V7Tag73AdaptiveQ16TrialAccounting.lean` proves:
+
+- `ExactCompilerCausalFinalWorkQ16Trials.event_probability_le_product`; and
+- `ExactCompilerCausalFinalWorkQ16Trials.failure_union_probability_le_one_forest`;
+- `work_qualified_q16_trial_union_probability_le_card_mul`, the honest raw
+  bound for an arbitrary finite number of trials; and
+- the exposure-indexed specializations
+  `failure_union_probability_le_exposure_mul` and
+  `failure_union_probability_le_one_forest`.
+
+The latter theorem says that at most `2^34` genuinely selectable, jointly
+work-qualified causal trials have union probability at most the original raw
+one-forest q16 error. This is not a reporting-time work normalization and it
+does not divide an already-stated soundness claim by work.
+
+The production-facing conservative inventory is now fixed to
+
+```text
+Trial = Fin (unifiedFull256ExposureCap parameters).
+```
+
+Without a tighter source theorem, its exact raw bound is
+
+```text
+F * q16SemanticOneForestRawError / 2^34.
+```
+
+Recovering the frozen one-forest term therefore requires either the explicit
+one-work-unit release condition `F <= 2^34`, or a proved source-specific
+trial inventory of cardinality at most `2^34`.  A verifier-only work-query
+count is not silently substituted for `F`, because an adversary can be the
+first party to expose a coordinate later consumed by final work or q16.
+
+`V7Tag73IndexedExposureCausalRouter.lean` supplies the operational counted
+router used by the remaining source cover:
+
+- its state carries the literal full-256 exposure ordinal, exact production
+  `UnifiedExposureCursor`, and finite protocol memory;
+- the slot is chosen from that complete state before the current answer is
+  visible;
+- the ordinal, production cursor, and protocol memory advance exactly once
+  after the answer; and
+- `exactCompilerIndexedFinalWorkQ16Router` compiles this controller into the
+  exact lossless 513-slot coordinate router consumed by the product theorem.
+
+This is a constructor, not a conclusion-shaped trace premise: the remaining
+Tag-73 layer must instantiate its memory and prove the accepted execution is
+covered.
+
+`V7Tag73FinalWorkQ16CandidateController.lean` now supplies that literal raw
+controller for every conservative exposure trial:
+
+- it byte-parses the exact 41-byte grinding input and 42-byte final-nonce
+  absorb input into their shared pre-final digest/nonce key;
+- whichever member of that pair is exposed first can anchor the trial, so
+  final work and nonce absorption need not be artificially ordered;
+- after the nonce-absorb answer fixes the q16 base, it follows all literal
+  candidate-absorb and squeeze/advance chains using only previously exposed
+  answers, independently of whether the actor is adversary or verifier; and
+- every `Fin F` exposure index now constructs the exact lossless 513-slot
+  compiler coordinates used by the joint product theorem.
+
+This removes the earlier verifier-first assumption. Cached verifier calls are
+handled by their original fresh exposure; they are not relabelled later.
+
+`V7Tag73ExactCompilerFinalWorkTraceOccurrence.lean` now closes the accepted
+source occurrence half of the next step:
+
+- strict `checkedRefine` success is split at the literal last three pre-q16
+  events rather than inferred from the work-erased replay;
+- the selected final-work query is proved to return a digest satisfying the
+  exact deployed 34-bit predicate;
+- the following final-nonce absorb is proved to return exactly the q16 base;
+- both distinct raw inputs are proved to have literal first-creation records
+  in the actual result-carrying compiler trace, with either adversary or
+  verifier as the creator; and
+- the exhaustive native target scan is proved to pause at both coordinates.
+
+Thus the final-work/absorb pair is no longer merely an evaluator-table fact.
+It is located in the literal production scheduler trace.  What remains is the
+chronological minimum/index selection and the continuation proof that the
+same indexed controller routes every accepted q16 coordinate outside the
+already-counted forward-reference/collision event.
+
+`V7Tag73FinalWorkEarliestExposure.lean` closes that chronological selection:
+
+- it defines a proof-relevant first occurrence of either member of the exact
+  final-work/final-nonce pair;
+- it proves every earlier production trace record is pair-clean, so the trial
+  cannot be selected retrospectively after seeing an answer;
+- it retains an exact prefix/selected/suffix decomposition at the hit;
+- it proves the complete compiler exposure trace has exactly `F` records; and
+- from strict source acceptance it constructs an actual `Fin F` trial at the
+  earliest pair exposure, together with the exact accepted 34-bit work result
+  and q16-base digest.
+
+The production cover therefore no longer assumes that an accepted pair has a
+usable exposure index.  The remaining work starts at this constructed trial
+and is the state-alignment/continuation argument for its executable causal
+controller.
+
+`V7Tag73IndexedControllerTraceAlignment.lean` now closes the deterministic
+state-alignment half as well:
+
+- replaying an actual flat-trace prefix through the indexed controller reaches
+  the exact production pre-answer cursor at the selected record;
+- the exposure counter after that prefix is exactly its list length;
+- candidate memory remains inactive before the fixed anchor, rather than
+  acquiring a role from an earlier answer;
+- the selected machine record exposes its literal SHA input at that cursor;
+  and
+- the earliest final-work/nonce record performs the exact first controller
+  transition: a work record labels the final-work slot and stores the key, or
+  an absorb record stores the q16 base.
+
+This result is independent of the current answer while choosing the slot.
+
+`V7Tag73ExactFinalWorkEarliestExposure.lean` and
+`V7Tag73ExactCompilerFinalWorkControllerAnchor.lean` close the answer binding
+without assuming a global raw-input uniqueness theorem:
+
+- the finite inventory selects the earlier of the two already-proved exact
+  accepted root records, not merely an input-shaped record;
+- the chosen work record therefore carries the exact accepted 34-bit digest,
+  while the chosen absorb record carries the exact returned q16 base;
+- selecting a trial after the run is legitimate because the union ranges over
+  every `Fin F` index, while that trial's slot choice remains strictly
+  pre-answer; and
+- strict accepted production execution now constructs the complete exact
+  controller anchor from the literal result-carrying scheduler trace.
+
+No answer equality, record uniqueness, or conclusion-shaped trace premise is
+left at the anchor.  The remaining source-specific obligation is the q16
+continuation/forest realization from this exact state.
+
+The continuation audit exposed and repaired one controller-ordering defect.
+Once a q16 block digest is known, an adversary may expose the literal advance
+sibling before the literal output sibling; this is an ordinary query order,
+not a negligible bad event.  The original controller represented only the
+output-then-advance order.  `V7Tag73FinalWorkQ16CandidateController.lean` now
+uses one pending-pair state that independently records whether the output was
+seen and, when necessary, retains an advance answer exposed first.  Kernel
+checked transition lemmas cover both sibling orders, every nonterminal block,
+and both orders at block seven.  Only outputs receive named q16 slots, so the
+change preserves the exact 64-by-8, 512-coordinate forest and every existing
+probability parameter.
+
+`V7Tag73FinalWorkQ16ResidualCapacity.lean` closes the joint-router dimension
+check.  After reserving one coordinate for the selected final-work digest and
+all 512 possible q16 output blocks, the exact compiler tape leaves the reserve
+
+```text
+Q + 998 + R * (Q + 1511) + 2R.
+```
+
+The deployed verifier's non-routed full-width work is at most 998 calls, so
+all adversary, root, replay, fork, non-q16, q16-advance, and unused execution
+coordinates fit in that reserve.  Padding therefore cannot consume a still
+live named slot merely because the router was undersized.  This is an exact
+capacity theorem, not the remaining chronological source-classification
+theorem.
+
+`V7Tag73CausalFinalWorkQ16UsedForest.lean` removes an over-strong handoff
+obligation from that remaining proof.  For the joint 513-slot router it proves
+that exact recursive lookups for only the blocks consumed through the selected
+counter construct `OperationalQ16ForestRealization` directly.  The routed
+forest's unused suffix may remain arbitrary and independent; it no longer has
+to equal the canonical source forest's deliberately zero-padded suffix.
+
+`V7Tag73ProjectedFreshPriorQueryHistory.lean` closes the machine-local source
+chronology kernel.  At an exact positional fresh-query prefix it proves that
+every earlier fresh query is a literal record in the selected coordinate's
+cumulative pre-answer history, and identifies that same history-indexed state
+with the native scheduler request.  This is positional rather than a search by
+query value, so duplicate pairs cannot select a different occurrence.  The
+query also remains in the returned segment's final cumulative history.
+
+`V7Tag73ExactRootPriorQueryHistory.lean` and
+`V7Tag73ExactRootQueryCausalOrder.lean` perform the full-root composition.  They
+lift the positional request state through the adversary root and across the
+adversary-to-verifier callback boundary, then identify it with the
+target-clean certificate state at the same global native scheduler prefix.
+Consequently, every fresh adversary answer is proved not to be the literal
+state prefix of any earlier adversary query, and every fresh verifier answer
+is proved not to be the literal state prefix of either any adversary query or
+any earlier verifier query.  This is the exact source-level causal-order fact
+needed to rule out a q16 child query preceding the fresh answer that determines
+its state; it introduces no raw-coordinate role classifier.
+
+`V7Tag73ExactRootLookupCausalOrder.lean` turns that positional fact into the
+source-facing lookup theorem.  Every exact final-table lookup receives its
+literal adversary-or-verifier position, its answer is excluded from its own
+input prefix as well as every earlier query prefix, and any second lookup whose
+input begins with that answer is proved to occur strictly later in the combined
+adversary-then-verifier root chronology.
+
+`V7Tag73ExactQ16CausalCoordinateOrder.lean` instantiates the theorem across the
+entire accepted q16 scan.  It proves that every candidate starts from the one
+recorded q16 base, the literal counter absorb returns the canonical branch
+initial digest, and recursively every used output and advance query occurs
+strictly after the query that produced its current state digest.  It does not
+impose an order between the output and advance siblings; the repaired
+controller supports both.  Thus adversary-first creation is now a normal
+causally ordered source case rather than a missing classifier or an extra bad
+event.
+
+`V7Tag73ExactRootFreshInputUniqueness.lean` closes the complementary input
+invariant.  Fresh SHA inputs are pairwise distinct within each executable
+projected root segment, and the verifier segment is disjoint from the
+adversary segment whose final oracle table it inherits.  Hence the complete
+adversary-then-verifier root list has no repeated fresh input, and any exact
+selected coordinate is absent from its strict prefix.  This is derived from
+the literal `lookupEntry = none` facts in the projected traces; it is not a
+raw role-classification assumption.
+
+`V7Tag73ExactCausalRouterTapeAlignment.lean` proves that both proof-indexed
+casts used by the 513-slot causal router preserve the master tape byte-for-byte
+and in order.  On the accepted source run the router's chronological tape is
+exactly the combined root fresh-query answers followed by the verifier's
+untouched suffix.  An exact root-list position therefore identifies the same
+answer position in the actual router tape.
+
+`V7Tag73CausalMachinePrefixRouting.lean` supplies the generic operational
+induction for the last source fold.  It follows an actual answer prefix through
+the compiled pre-answer router, proves that every still-live named coordinate
+is unchanged by that prefix, and proves that a subsequently preferred slot's
+recursive lookup equals the literal next answer.  The remaining protocol work
+is now to instantiate this induction with the exact Tag-73 controller while
+showing that its residual budget never falls back to padding before a live
+q16 slot.
+
+`V7Tag73ExactRootControllerCoordinateAlignment.lean` now performs the first
+half of that instantiation for every accepted final-table lookup.  It factors
+the literal full scheduler trace at the lookup's adversary-or-verifier fresh
+record, replays the strict prefix through the concrete exposure-indexed
+final-work/q16 controller, and proves that the reached cursor exposes exactly
+the selected SHA input before its answer is consumed.  This eliminates the
+previous gap between root-table membership and an executable controller
+coordinate; pair completion and live-slot preservation remain below.
+
+`V7Tag73ExactFinalWorkPairRootOrder.lean` proves that the accepted final-work
+query and its nonce-absorb query have one of the two strict orders in the
+combined adversary/verifier root chronology.  A second record-level theorem
+retains the actual actor on each first creation, so the result composes
+directly with the production cursor.  The proof uses exact source membership
+and distinct deployed encodings, not a retrospective raw-coordinate role
+classifier.
+
+`V7Tag73IndexedAlignedRecordReplay.lean` packages production-prefix alignment
+as a segment-stable controller invariant.  It proves that work-without-base is
+preserved until the unique absorb coordinate, and that base-without-work is
+preserved until the unique work coordinate while allowing legitimate branch
+state to evolve through intervening adversarial prequeries.
+
+`V7Tag73ExactFinalWorkPairControllerCompletion.lean` instantiates those
+invariants on the exact accepted actor-tagged root trace.  Its main theorem
+constructs an actual `Fin F` exposure trial and a literal root prefix whose
+concrete controller memory contains both `workSeen = true` and the exact
+returned q16 base, in either first-exposure order.  Thus the trial is now
+operationally initialized; the remaining causal work is the ordered q16
+candidate/duplex fold and its used-forest handoff.
+
+## Exact remaining boundary
+
+The accepted-source q16 causal cover is now constructed. The production layer
+still has to:
+
+1. route the accepted final-work answer to the `none` slot of the same concrete
+   exposure trial and package it jointly with the newly proved operational
+   q16 forest realization;
+2. instantiate the K1.3 bad-set/event predicate and compose that joint trial
+   cover through the existing K1.4 and K1.5 fixed-law bounds; and
+3. either prove the selectable subinventory has cardinality at most `2^34`,
+   or retain the exact general `F * p / 2^34` raw term.
+
+No q16 query-order, adversary-first, sibling-order, whole-forest equality,
+probability-product, or per-trial independence premise remains.
+
+The generated compact-frontier certificate is still required only to rewrite
+the semantic denominator to the frozen release integer. It is not part of the
+causal product argument.
+
+## Verification
+
+Focused commands:
+
+```text
+cd AspisFormal
+lake env lean AspisFormal/K1/V7Tag73FinalWorkDigestProbability.lean
+lake env lean AspisFormal/K1/V7Tag73CausalQ16FinalWorkProbability.lean
+lake env lean AspisFormal/K1/V7Tag73AdaptiveQ16TrialAccounting.lean
+lake env lean AspisFormal/K1/V7Tag73IndexedExposureCausalRouter.lean
+lake env lean AspisFormal/K1/V7Tag73FinalWorkQ16CandidateController.lean
+lake env lean AspisFormal/K1/V7Tag73FinalWorkQ16ResidualCapacity.lean
+lake env lean AspisFormal/K1/V7Tag73CausalFinalWorkQ16UsedForest.lean
+lake env lean AspisFormal/K1/V7Tag73ProjectedFreshPriorQueryHistory.lean
+lake env lean AspisFormal/K1/V7Tag73ExactRootPriorQueryHistory.lean
+lake env lean AspisFormal/K1/V7Tag73ExactRootQueryCausalOrder.lean
+lake env lean AspisFormal/K1/V7Tag73ExactRootLookupCausalOrder.lean
+lake env lean AspisFormal/K1/V7Tag73ExactQ16CausalCoordinateOrder.lean
+lake env lean AspisFormal/K1/V7Tag73ExactRootFreshInputUniqueness.lean
+lake env lean AspisFormal/K1/V7Tag73ExactCausalRouterTapeAlignment.lean
+lake env lean AspisFormal/K1/V7Tag73CausalMachinePrefixRouting.lean
+lake env lean AspisFormal/K1/V7Tag73ExactCompilerFinalWorkTraceOccurrence.lean
+lake env lean AspisFormal/K1/V7Tag73FinalWorkEarliestExposure.lean
+lake env lean AspisFormal/K1/V7Tag73ExactFinalWorkEarliestExposure.lean
+lake env lean AspisFormal/K1/V7Tag73IndexedControllerTraceAlignment.lean
+lake env lean AspisFormal/K1/V7Tag73ExactCompilerFinalWorkControllerAnchor.lean
+lake env lean AspisFormal/K1/V7Tag73ExactRootControllerCoordinateAlignment.lean
+lake env lean AspisFormal/K1/V7Tag73ExactFinalWorkPairRootOrder.lean
+lake env lean AspisFormal/K1/V7Tag73IndexedAlignedRecordReplay.lean
+lake env lean AspisFormal/K1/V7Tag73ExactFinalWorkPairControllerCompletion.lean
+lake env lean AspisFormal/K1/V7Tag73CausalMachineLabeledTraceRouting.lean
+lake env lean AspisFormal/K1/V7Tag73IndexedControllerLabeledRecords.lean
+lake env lean AspisFormal/K1/V7Tag73ExactCandidateLabeledRootRouting.lean
+lake env lean AspisFormal/K1/V7Tag73Q16CandidateParserExact.lean
+lake env lean AspisFormal/K1/V7Tag73Q16BranchRecordReplay.lean
+lake env lean AspisFormal/K1/V7Tag73ExactRootRecordOrderLift.lean
+lake env lean AspisFormal/K1/V7Tag73CausalDagFinalWorkQ16Controller.lean
+lake env lean AspisFormal/K1/V7Tag73ExactDagCandidateLabeledRootRouting.lean
+lake env lean AspisFormal/K1/V7Tag73ExactDagQ16ChainRouting.lean
+```
+
+Observed focused checks:
+
+| Target | Exit | Wall | Peak RSS |
+|---|---:|---:|---:|
+| final-work digest probability | 0 | 4.22 s | 5,521,981,440 B |
+| causal joint work/q16 probability | 0 | 4.41 s | 5,567,283,200 B |
+| adaptive finite-trial accounting | 0 | 19.94 s | 5,573,836,800 B |
+| indexed production-cursor router | 0 | 4.0 s | not separately sampled |
+| order-robust final-work/q16 candidate controller | 0 | 4.05 s | 5,597,544,448 B |
+| exact joint-router residual capacity | 0 | 3.86 s | 5,544,230,912 B |
+| joint-router used-prefix forest handoff | 0 | 5.33 s | 5,607,358,464 B |
+| projected-prefix prior-history chronology | 0 | 3.97 s | 5,575,933,952 B |
+| exact full-root prior-query chronology | 0 | 3.96 s | 5,657,559,040 B |
+| exact root causal ordering | 0 | 3.84 s | 5,650,186,240 B |
+| exact final-table dependency ordering | 0 | 3.94 s | 5,656,248,320 B |
+| exact used-q16 coordinate ordering | 0 | 3.96 s | 5,659,951,104 B |
+| exact root fresh-input uniqueness | 0 | 3.9 s | 5,649,612,800 B |
+| exact causal-router tape alignment | 0 | 4.23 s | 5,656,018,944 B |
+| generic causal-router prefix induction | 0 | 3.96 s | 5,539,348,480 B |
+| exact accepted final-work trace occurrence | 0 | 4.37 s | 5,654,528,000 B |
+| exact earliest pair exposure trial | 0 | 4.21 s | 5,648,875,520 B |
+| indexed controller/production-prefix alignment | 0 | 4.51 s | 5,660,295,168 B |
+| exact accepted-record selector | 0 | 4.12 s | 5,647,335,424 B |
+| accepted source to exact controller anchor | 0 | 3.92 s | 5,634,048,000 B |
+| exact root lookup/controller coordinate alignment | 0 | 3.92 s | 5,661,720,576 B |
+| exact final-work pair root order | 0 | 3.84 s | 5,659,705,344 B |
+| segment-stable aligned controller replay | 0 | 4.00 s | 5,665,554,432 B |
+| exact accepted pair controller completion | 0 | 4.04 s | 5,689,180,160 B |
+| finite pre-answer-labelled trace routing | 0 | 4.00 s | 5,690,392,576 B |
+| indexed controller record labelling | 0 | 3.74 s | 5,662,851,072 B |
+| exact accepted root/router routing bridge | 0 | 4.30 s | 5,677,760,512 B |
+| exact raw q16 candidate inverse grammar | 0 | 5.36 s | 5,579,849,728 B |
+| selected q16 branch segment stability | 0 | 5.34 s | 5,657,509,888 B |
+| pair-order lift into actor-tagged root records | 0 | 4.06 s | 5,669,830,656 B |
+| causal-DAG final-work/q16 controller | 0 | 4.1 s | 5,684,559,872 B |
+| exact causal-DAG accepted-root router | 0 | 4.4 s | 5,688,705,024 B |
+| accepted-source recursive q16 DAG/forest closure | 0 | 5.1 s | 5,749,358,592 B |
+
+All reported theorem axiom sets are subsets of:
+
+```text
+propext
+Classical.choice
+Quot.sound
+```
+
+There is no `sorry`, `admit`, `sorryAx`, native decision shortcut, or
+project-specific axiom in these modules.
+
+## Memory-factorisation note
+
+An initial cardinality proof asked normalization to expand `UInt8^32` and
+large powers, causing two owned local checks to cross 12 GiB. They were
+stopped immediately and not allowed to continue. The proof was refactored
+through explicit finite equivalences:
+
+```text
+Digest256 ≃ Fin (2^256)
+accepted digests ≃ Fin (2^222)
+```
+
+The final proof checks at roughly 5.5 GiB. This is the retained design.
+
+## Exact labelled-trace routing bridge
+
+`V7Tag73CausalMachineLabeledTraceRouting.lean` closes the generic routing
+step that previously sat between controller/source alignment and the causal
+coordinate equivalence.  It kernel-checks that a chronological pre-answer
+label trace consumes each distinct named destination exactly once, charges
+every unlabelled exposure to the explicit residual tape, and routes every
+named slot to its literal next answer.  The strongest endpoint is:
+
+```text
+machine_labeled_trace_routes_named_answer
+```
+
+Its only protocol-facing premises are distinct named labels, membership in
+the finite slot inventory, the residual-capacity inequality, and exact tape
+chronology.  It introduces no randomness, independence, trace-cover, or
+source-faithfulness premise.  The remaining Tag-73 work is now the specific
+label classification of the accepted final-work/q16 trace and the existing
+residual-capacity instantiation, rather than another router semantics proof.
+
+`V7Tag73IndexedControllerLabeledRecords.lean` then generates those labels
+directly from actor-tagged scheduler records and the literal indexed
+controller state.  `V7Tag73ExactCandidateLabeledRootRouting.lean` specializes
+the construction to the accepted adversary-then-verifier root, proves the
+labelled answers are the exact prefix of the compiler router tape, and gives
+the operational endpoint:
+
+```text
+exact_candidate_router_routes_selected_root_answer
+```
+
+That theorem concludes a real `causalRoutedAnswer? = some literalAnswer` for
+the exact exposure-trial router.  Its remaining premises are now finite and
+source-specific: root-label noduplication, the root residual count, and the
+selected controller label.  No further tape-cast, scheduler-trace, or router
+semantics gap remains behind those premises.
+
+## Exact q16 record-order bridge
+
+Three focused leaves now remove another source/controller gap:
+
+* `V7Tag73Q16CandidateParserExact.lean` proves that a successful raw
+  candidate parse fixes all 35 deployed input bytes, including the shared
+  base, absorb domain, q16 label, and counter.
+* `V7Tag73Q16BranchRecordReplay.lean` proves that an aligned machine-fresh
+  segment avoiding a selected candidate input and the selected block's two
+  sibling inputs preserves that branch cell exactly.
+* `V7Tag73ExactRootRecordOrderLift.lean` proves that every strict ordering in
+  the chronological `(input, answer)` root list lifts to the same strict
+  ordering in the actor-tagged root record list consumed by the indexed
+  controller.
+
+The strongest new source lift is:
+
+```text
+exact_root_pair_order_lifts_to_records
+```
+
+These results are deterministic and kernel checked. They do not assume an
+actor for an adversary-first query and do not relabel a cached answer. The
+remaining controller fold must permit advance-derived later block queries to
+appear before an earlier sibling output; strict producer ordering alone does
+not justify a sequential-output assumption.
+
+## Causal-DAG correction
+
+`V7Tag73CausalDagFinalWorkQ16Controller.lean` implements that required
+correction. A candidate absorb creates the block-zero producer, and every
+causally known advance answer immediately creates the next block producer.
+An output is therefore labelable whenever its producer is known, even if an
+adversary exposes later-block coordinates before an earlier sibling output.
+Output arrival is not incorrectly used as a gate for advance-derived state.
+
+The controller also retains a monotone finite set of already emitted slots.
+Lean proves for every answer stream, without a source premise, that its named
+labels are pairwise distinct:
+
+```text
+dag_labeled_records_named_slots_nodup
+```
+
+`V7Tag73ExactDagCandidateLabeledRootRouting.lean` compiles this controller into
+the actual 513-slot measure-preserving router, reuses the byte-exact accepted
+root tape prefix, and removes the previous caller-supplied label-noduplication
+premise. It also proves the root residual bound from the deployed programmed
+coordinate budget under the explicit arithmetic condition
+`513 <= 2 * forkRequestCap`; this is conservative and does not assume that
+all 512 q16 slots were used.
+
+The remaining deterministic source obligation is now narrow: establish that
+the accepted final-work coordinate and each consumed q16 output have the
+controller's corresponding pre-answer label. The q16 producer scan already
+has kernel-checked unique-digest lookup lemmas for both output and advance
+edges.
+
+## Exact accepted-pair handoff and producer uniqueness
+
+The causal-DAG controller now has an append-only producer invariant and an
+exact keep-or-single-append theorem for each exposed answer.  Clean exact-root
+answer uniqueness lifts through the complete controller replay, proving that
+the final producer inventory has no duplicate digest.  Thus its executable
+first-match scan cannot silently choose a different source producer.
+
+`V7Tag73DagFinalWorkPairCompletion.lean` erases both the rejected sequential
+branch cell and the new producer inventory to their common final-work core.
+Lean proves that this core is identical after every literal root record.  The
+existing accepted final-work pair theorem can therefore establish, for the
+same exposure trial, that the DAG controller has both accepted work and the
+exact returned q16 base, without importing any sequential q16 routing claim:
+
+```text
+exact_compiler_accepted_final_work_dag_pair_completes
+```
+
+The remaining deterministic endpoint is the recursive causal-chain replay:
+each used candidate/advance answer must install its `(counter, block)`
+producer, after which each used output record receives that slot.  Exact root
+alignment, strict producer-before-child order, producer monotonicity, and
+producer-digest uniqueness are now all kernel checked inputs to that final
+recursion.
+
+## Exact producer-source and slot invariant
+
+`V7Tag73CausalDagProducerInvariant.lean` strengthens the producer inventory
+with the literal SHA input that created every producer.  Block zero is
+certified as originating from the exact candidate-absorb input for its
+counter; each later block is certified as originating from the advance input
+of an existing producer in the preceding block.  A single aligned replay
+induction proves that clean machine-fresh root inputs preserve this recursive
+certificate and keep both producer source inputs and producer slots
+duplicate-free.
+
+The exact accepted root instantiation is:
+
+```text
+exact_dag_candidate_root_producer_invariant
+```
+
+It is discharged from the existing source-derived root alignment,
+machine-fresh shape, and pairwise-distinct fresh-input theorem.  It adds no
+honest-order premise: output and advance siblings may still be queried in
+either order, and later blocks may be pipelined as soon as their advance
+answer exists.  Together with the already-proved producer-digest uniqueness,
+the executable inventory now has unique source input, unique slot, and unique
+digest coordinates throughout the exact root replay.
+
+The remaining deterministic step is to relate the controller's monotone
+`usedSlots` set to earlier labelled output records.  That provenance will
+show that a fresh exact-root output input cannot have consumed its unique slot
+already, completing the per-output preferred-label theorem required by the
+used-forest routing endpoint.
+
+## Exact live-slot/output-label closure
+
+That remaining per-output step is now kernel checked.
+
+`V7Tag73CausalDagFinalWorkQ16Controller.lean` proves that the controller's
+used-set after any record prefix is exactly the initial used-set union the
+labels emitted by that prefix.  Consequently, every newly used slot has a
+literal earlier record at whose pre-answer state the controller selected that
+slot.  This is provenance from executable replay, not a freshness premise.
+
+`V7Tag73CausalDagProducerInvariant.lean` additionally proves the local state
+transitions needed by the recursive source fold:
+
+- a literal candidate absorb installs the exact `(counter, 0)` producer;
+- a literal advance answer from a known bounded producer installs the exact
+  next-block producer immediately;
+- arbitrary intervening records preserve the tracked q16 base; and
+- the existing recursive provenance, unique-source, unique-slot, and
+  unique-digest invariants remain available at every prefix.
+
+`V7Tag73ExactDagQ16OutputLabel.lean` combines used-slot provenance with exact
+root fresh-input uniqueness.  If a selected output's slot had already been
+used, the earlier emitted label would identify a producer in that same slot;
+producer-slot uniqueness identifies the same producer, forcing the identical
+squeeze input to occur twice in the clean root.  That contradicts the
+source-derived fresh-input theorem.  Therefore every producer-backed exact
+q16 output has its exact preferred slot at the aligned pre-answer state:
+
+```text
+exact_dag_q16_output_has_preferred_slot
+```
+
+The proof permits adversary-first creation, either output/advance sibling
+order, and advance-driven pipelining.  It introduces no query-order,
+independence, probability, or role-classifier premise.
+
+## Accepted-source recursive q16 forest closure
+
+`V7Tag73ExactDagQ16ChainRouting.lean` completes the recursive source fold. It
+first proves that the exact accepted final-work/nonce pair selects one genuine
+exposure trial and installs block-zero producers for every counter through the
+selected cap-203 result. It then follows every strict producer-to-output and
+producer-to-advance edge in the exact root query DAG. Advance answers install
+the next producer immediately, so later blocks may be pipelined before an
+earlier sibling output without invalidating the induction.
+
+The strongest endpoint is:
+
+```text
+exact_compiler_accepted_dag_q16_operational_realization
+```
+
+It constructs a concrete accepted trial whose 513-slot causal router realizes
+both the exact selected 34-bit final-work digest and the complete operational
+q16 search on every consumed block. The same existential trial supplies both
+results; they are not obtained from separately selected replays.
+
+The absorb-first chronology is handled explicitly. Lean proves that the q16
+base remains attached to an anchor with `workSeen = false` across every
+intervening aligned machine-fresh record that avoids the matching work input.
+A separate monotone invariant proves that the final-work `none` slot cannot
+already have been consumed while that flag is false. Therefore the eventual
+literal work record receives the `none` label even under adversary-first q16
+prequeries, sibling reordering, and advance-driven pipelining. The work-first
+chronology labels the same slot directly at its inactive anchor.
+
+The theorem then converts the recursive routed lookup into the actual
+`Digest256` component of `exactCompilerCausalFinalWorkQ16Coordinates`, while
+the used-prefix endpoint constructs `OperationalQ16ForestRealization` from the
+same coordinate equivalence. It does not equate unused padded suffix
+coordinates and introduces no trace-cover premise or new bad event.
+
+The remaining cryptographic boundary is probabilistic/event composition:
+embed this same-trial deterministic realization into the exact K1.3, K1.4 and
+K1.5 bad-event predicates, discharge their current-source decode premises,
+and instantiate the already-proved finite-trial union bound. The accounting
+choice remains explicit: prove a selectable trial inventory of at most
+`2^34`, or retain the exact general `F * p / 2^34` term.
+
+Focused replay added by this milestone:
+
+```text
+cd AspisFormal
+lake env lean AspisFormal/K1/V7Tag73CausalDagProducerInvariant.lean
+lake env lean AspisFormal/K1/V7Tag73ExactDagCandidateLabeledRootRouting.lean
+lake env lean AspisFormal/K1/V7Tag73ExactDagQ16OutputLabel.lean
+lake env lean AspisFormal/K1/V7Tag73ExactDagQ16ChainRouting.lean
+```
+
+The direct producer-invariant and exact-output-label checks completed locally
+at approximately 5.70 GiB and 5.67 GiB peak RSS respectively.  The focused
+same-trial chain-routing check completed in approximately six seconds at
+5.81 GiB peak RSS with zero swap. The focused Lake build completed all four
+targets successfully. The library-suggestion
+writer emitted its known post-elaboration recursion diagnostic while writing
+large module metadata, but the target objects were produced and the build
+exited successfully.  Every printed theorem axiom set remains a subset of
+`propext`, `Classical.choice`, and `Quot.sound`; forbidden-placeholder scans
+remain mandatory at commit time.

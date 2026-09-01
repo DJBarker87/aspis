@@ -1,0 +1,20 @@
+diff --git a/src/extract/ExtractBase.ml b/src/extract/ExtractBase.ml
+--- a/src/extract/ExtractBase.ml
++++ b/src/extract/ExtractBase.ml
+@@ -2586,6 +2586,16 @@ let ctx_add_fun_decl (def : fun_decl) (ctx : extraction_ctx) : extraction_ctx =
+   else
+     let def_id = def.def_id in
+     (* Add the function name *)
+     let def_name = ctx_compute_fun_name def false ctx in
++    let def_name =
++      match
++        names_map_get_id_from_name def_name ctx.names_maps.names_map
++      with
++      | Some (VariantId _, _) ->
++          (* Charon may materialize an enum constructor used as a first-class
++             function.  Lean already owns the unsuffixed constructor name. *)
++          def_name ^ "_fn"
++      | _ -> def_name
++    in
+     let fun_id = (Pure.FunId (FRegular def_id), def.loop_id) in
+     ctx_add def.item_meta.span (FunId (FromLlbc fun_id)) def_name ctx

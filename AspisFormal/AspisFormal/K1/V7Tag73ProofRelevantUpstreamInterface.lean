@@ -393,6 +393,177 @@ theorem proof_relevant_operational_input_without_extraction_subset_errors
   · exact (notExtracted extracted).elim
   · exact failed
 
+/-! ## Restriction to the compiler-clean event
+
+The top-level compiler theorem already partitions accepted executions into a
+literal target-clean event and the separately bounded causal target event.
+Consequently K1.2--K1.5 are required only on that clean event.  The following
+definitions and theorems retain this restriction explicitly instead of asking
+for stronger global bounds on executions which K1.6 has already charged to the
+target event.
+-/
+
+/-- The four stage errors, each intersected with one fixed clean event. -/
+def proofRelevantRestrictedUpstreamErrorUnion
+    {HiddenTape TapeIdentity Observation Statement Proof Payload Witness : Type}
+    {parameters : ExactCompilerResourceParameters}
+    {transitionFuel : Nat}
+    {configuration : ExactPlainRomWitnessConfiguration HiddenTape TapeIdentity
+      Observation Statement Proof Payload Witness parameters}
+    {fixedInstance : PublicInstance Statement}
+    {relation : PublicInstance Statement → Witness → Prop}
+    {OperationalInput : ExactCompilerSample HiddenTape parameters → Type}
+    (clean : Set (ExactCompilerSample HiddenTape parameters))
+    (stages : ProofRelevantK12ToK15Stages transitionFuel configuration
+      fixedInstance relation OperationalInput) :
+    Set (ExactCompilerSample HiddenTape parameters) :=
+  (clean ∩ k12TwoTreeMerkle208ErrorEvent stages) ∪
+    ((clean ∩ k13CircleListDecodeErrorEvent stages) ∪
+      ((clean ∩ k14CoherentChainErrorEvent stages) ∪
+        (clean ∩ k15SpendWitnessErrorEvent stages)))
+
+/-- Classification restricted to the event which K1.6 actually consumes.
+No stage result is changed: the clean-membership proof is simply retained on
+the error branch. -/
+theorem clean_subset_extraction_union_restricted_upstream_errors
+    {HiddenTape TapeIdentity Observation Statement Proof Payload Witness : Type}
+    {parameters : ExactCompilerResourceParameters}
+    (transitionFuel : Nat)
+    (configuration : ExactPlainRomWitnessConfiguration HiddenTape TapeIdentity
+      Observation Statement Proof Payload Witness parameters)
+    (fixedInstance : PublicInstance Statement)
+    (relation : PublicInstance Statement → Witness → Prop)
+    (OperationalInput : ExactCompilerSample HiddenTape parameters → Type)
+    (stages : ProofRelevantK12ToK15Stages transitionFuel configuration
+      fixedInstance relation OperationalInput)
+    (clean : Set (ExactCompilerSample HiddenTape parameters))
+    (cleanOperational : clean ⊆
+      proofRelevantOperationalInputEvent OperationalInput) :
+    clean ⊆
+      exactFixedPlainRomValidClientExtractionEvent transitionFuel configuration
+          fixedInstance relation ∪
+        proofRelevantRestrictedUpstreamErrorUnion clean stages := by
+  intro sample cleanMember
+  rcases proof_relevant_operational_input_subset_extraction_union_errors
+      transitionFuel configuration fixedInstance relation OperationalInput
+        stages (cleanOperational cleanMember) with extracted | failed
+  · exact Or.inl extracted
+  · refine Or.inr ?_
+    rcases failed with k12Failure | laterFailures
+    · exact Or.inl ⟨cleanMember, k12Failure⟩
+    · rcases laterFailures with k13Failure | laterFailures
+      · exact Or.inr (Or.inl ⟨cleanMember, k13Failure⟩)
+      · rcases laterFailures with k14Failure | k15Failure
+        · exact Or.inr (Or.inr (Or.inl ⟨cleanMember, k14Failure⟩))
+        · exact Or.inr (Or.inr (Or.inr ⟨cleanMember, k15Failure⟩))
+
+/-- Sum of the four stage-error measures after restriction to `clean`. -/
+def proofRelevantRestrictedUpstreamRawError
+    {HiddenTape TapeIdentity Observation Statement Proof Payload Witness : Type}
+    [Fintype HiddenTape]
+    (hiddenLaw : PMF HiddenTape)
+    {parameters : ExactCompilerResourceParameters}
+    {transitionFuel : Nat}
+    {configuration : ExactPlainRomWitnessConfiguration HiddenTape TapeIdentity
+      Observation Statement Proof Payload Witness parameters}
+    {fixedInstance : PublicInstance Statement}
+    {relation : PublicInstance Statement → Witness → Prop}
+    {OperationalInput : ExactCompilerSample HiddenTape parameters → Type}
+    (clean : Set (ExactCompilerSample HiddenTape parameters))
+    (stages : ProofRelevantK12ToK15Stages transitionFuel configuration
+      fixedInstance relation OperationalInput) : ENNReal :=
+  let law := exactCompilerJointLaw hiddenLaw parameters
+  law.toOuterMeasure (clean ∩ k12TwoTreeMerkle208ErrorEvent stages) +
+    law.toOuterMeasure (clean ∩ k13CircleListDecodeErrorEvent stages) +
+    law.toOuterMeasure (clean ∩ k14CoherentChainErrorEvent stages) +
+    law.toOuterMeasure (clean ∩ k15SpendWitnessErrorEvent stages)
+
+/-- Ordinary union arithmetic for the four clean-restricted errors. -/
+theorem restricted_upstream_error_union_probability_le_raw_error
+    {HiddenTape TapeIdentity Observation Statement Proof Payload Witness : Type}
+    [Fintype HiddenTape]
+    (hiddenLaw : PMF HiddenTape)
+    {parameters : ExactCompilerResourceParameters}
+    {transitionFuel : Nat}
+    {configuration : ExactPlainRomWitnessConfiguration HiddenTape TapeIdentity
+      Observation Statement Proof Payload Witness parameters}
+    {fixedInstance : PublicInstance Statement}
+    {relation : PublicInstance Statement → Witness → Prop}
+    {OperationalInput : ExactCompilerSample HiddenTape parameters → Type}
+    (clean : Set (ExactCompilerSample HiddenTape parameters))
+    (stages : ProofRelevantK12ToK15Stages transitionFuel configuration
+      fixedInstance relation OperationalInput) :
+    (exactCompilerJointLaw hiddenLaw parameters).toOuterMeasure
+        (proofRelevantRestrictedUpstreamErrorUnion clean stages) ≤
+      proofRelevantRestrictedUpstreamRawError hiddenLaw clean stages := by
+  let law : OuterMeasure (ExactCompilerSample HiddenTape parameters) :=
+    (exactCompilerJointLaw hiddenLaw parameters).toOuterMeasure
+  calc
+    law (proofRelevantRestrictedUpstreamErrorUnion clean stages) ≤
+        law (clean ∩ k12TwoTreeMerkle208ErrorEvent stages) +
+          law ((clean ∩ k13CircleListDecodeErrorEvent stages) ∪
+            ((clean ∩ k14CoherentChainErrorEvent stages) ∪
+              (clean ∩ k15SpendWitnessErrorEvent stages))) :=
+      measure_union_le (μ := law) _ _
+    _ ≤ law (clean ∩ k12TwoTreeMerkle208ErrorEvent stages) +
+          (law (clean ∩ k13CircleListDecodeErrorEvent stages) +
+            law ((clean ∩ k14CoherentChainErrorEvent stages) ∪
+              (clean ∩ k15SpendWitnessErrorEvent stages))) := by
+      exact add_le_add (le_refl _) (measure_union_le (μ := law) _ _)
+    _ ≤ law (clean ∩ k12TwoTreeMerkle208ErrorEvent stages) +
+          (law (clean ∩ k13CircleListDecodeErrorEvent stages) +
+            (law (clean ∩ k14CoherentChainErrorEvent stages) +
+              law (clean ∩ k15SpendWitnessErrorEvent stages))) := by
+      exact add_le_add (le_refl _)
+        (add_le_add (le_refl _) (measure_union_le (μ := law) _ _))
+    _ = proofRelevantRestrictedUpstreamRawError hiddenLaw clean stages := by
+      unfold proofRelevantRestrictedUpstreamRawError
+      ac_rfl
+
+/-- The clean event is bounded by actual extraction plus only the portions of
+the four stage errors lying in that same event. -/
+theorem clean_probability_le_extraction_plus_restricted_upstream_raw_error
+    {HiddenTape TapeIdentity Observation Statement Proof Payload Witness : Type}
+    [Fintype HiddenTape]
+    (hiddenLaw : PMF HiddenTape)
+    {parameters : ExactCompilerResourceParameters}
+    (transitionFuel : Nat)
+    (configuration : ExactPlainRomWitnessConfiguration HiddenTape TapeIdentity
+      Observation Statement Proof Payload Witness parameters)
+    (fixedInstance : PublicInstance Statement)
+    (relation : PublicInstance Statement → Witness → Prop)
+    (OperationalInput : ExactCompilerSample HiddenTape parameters → Type)
+    (stages : ProofRelevantK12ToK15Stages transitionFuel configuration
+      fixedInstance relation OperationalInput)
+    (clean : Set (ExactCompilerSample HiddenTape parameters))
+    (cleanOperational : clean ⊆
+      proofRelevantOperationalInputEvent OperationalInput) :
+    (exactCompilerJointLaw hiddenLaw parameters).toOuterMeasure clean ≤
+      exactFixedPlainRomValidClientExtractionProbability hiddenLaw
+          transitionFuel configuration fixedInstance relation +
+        proofRelevantRestrictedUpstreamRawError hiddenLaw clean stages := by
+  let law : OuterMeasure (ExactCompilerSample HiddenTape parameters) :=
+    (exactCompilerJointLaw hiddenLaw parameters).toOuterMeasure
+  calc
+    law clean ≤ law
+        (exactFixedPlainRomValidClientExtractionEvent transitionFuel
+            configuration fixedInstance relation ∪
+          proofRelevantRestrictedUpstreamErrorUnion clean stages) :=
+      measure_mono
+        (clean_subset_extraction_union_restricted_upstream_errors
+          transitionFuel configuration fixedInstance relation OperationalInput
+          stages clean cleanOperational)
+    _ ≤ law (exactFixedPlainRomValidClientExtractionEvent transitionFuel
+            configuration fixedInstance relation) +
+          law (proofRelevantRestrictedUpstreamErrorUnion clean stages) :=
+      measure_union_le (μ := law) _ _
+    _ ≤ exactFixedPlainRomValidClientExtractionProbability hiddenLaw
+            transitionFuel configuration fixedInstance relation +
+          proofRelevantRestrictedUpstreamRawError hiddenLaw clean stages := by
+      exact add_le_add (le_refl _)
+        (restricted_upstream_error_union_probability_le_raw_error hiddenLaw
+          clean stages)
+
 /-! ## Separate measured errors and union arithmetic -/
 
 def proofRelevantUpstreamRawError
@@ -639,6 +810,10 @@ theorem proof_relevant_operational_input_probability_le_four_upstream_terms
 #print axioms mem_exact_fixed_client_extraction_event_iff_certificate
 #print axioms proof_relevant_operational_input_subset_extraction_union_errors
 #print axioms proof_relevant_operational_input_without_extraction_subset_errors
+#print axioms clean_subset_extraction_union_restricted_upstream_errors
+#print axioms restricted_upstream_error_union_probability_le_raw_error
+#print axioms
+  clean_probability_le_extraction_plus_restricted_upstream_raw_error
 #print axioms proof_relevant_upstream_raw_error_four_term_expansion
 #print axioms proof_relevant_upstream_error_union_probability_le_raw_error
 #print axioms proof_relevant_operational_input_probability_le_extraction_plus_raw_error

@@ -1,0 +1,142 @@
+V7 Tag-73 generated packed-reader padding bridge
+Date: 2026-08-30
+
+Source:
+  proof/V7Tag73GeneratedPackedReaderBridge.lean
+
+Principal results:
+  new_success_exposes_padding_validation
+  padding_validation_success_last_byte_lt_16
+  new_success_packed_section_padding_zero
+
+The final theorem starts from literal translated
+V6FixedFieldReader.new success and proves that the exact 9,936-byte packed
+section satisfies PackedFixedPaddingZero. This is the parser-side uniqueness
+condition for the unused high nibble of byte 9,935.
+
+NUC replay:
+  host: nuc.local
+  systemd unit: aspis-v7-packed-reader-try14.scope
+  invocation: dd5a996312324712a2206694ab8dc69c
+  MemoryHigh: 12G
+  MemoryMax: 16G
+  MemorySwapMax: 0
+  exit status: 0
+  wall: 4.01 seconds
+  peak RSS: 7,105,688 KiB
+  swaps: 0
+
+#print axioms for all three principal results:
+  propext
+  Classical.choice
+  Quot.sound
+
+No sorry, admit, sorryAx, native_decide, or project-specific axiom is used.
+
+Packed refill/geometry extension:
+  packed_next_success_exposes_exact_refill
+  new_success_has_initial_packed_reader_geometry
+  packed_next_success_preserves_reader_geometry
+
+The extension starts from literal translated `PackedM31Reader.next` success.
+It derives a finite trace of the generated refill loop, proves each continue
+edge consumes exactly one real source byte, proves the exact three-or-four
+byte refill count, exposes the low-31-bit mask and post-read shift, and
+preserves the closed byte-index/buffered-bit formula at the next ordinal.
+
+NUC replay:
+  systemd unit: aspis-v7-packed-reader-try39.scope
+  invocation: be4a91f15c994f819eb5a15c65569556
+  MemoryHigh: 12G
+  MemoryMax: 16G
+  MemorySwapMax: 0
+  exit status: 0
+  wall: 4.60 seconds
+  peak RSS: 7,147,716 KiB
+  swaps: 0
+
+#print axioms for the public extension theorems:
+  propext
+  Classical.choice
+  Quot.sound
+
+Eight-slot bit-vector identity:
+  slot_refill_low31_and_residual_exact
+
+For each of the eight possible packed-reader bit alignments, the theorem
+proves that the translated refill buffer's low 31 bits equal the corresponding
+five-byte little-endian window and that the post-read residual buffer is exact.
+The proof expands all 64 output bits in the Lean kernel; it deliberately does
+not use bv_decide or native_decide.
+
+NUC replay:
+  systemd unit: aspis-v7-packed-reader-try47.scope
+  invocation: f3f8ea18bbc1461b88ee04928c3d5308
+  MemoryHigh: 12G
+  MemoryMax: 16G
+  MemorySwapMax: 0
+  exit status: 0
+  wall: 58.80 seconds
+  peak RSS: 7,516,756 KiB
+  swaps: 0
+
+#print axioms:
+  propext
+  Classical.choice
+  Quot.sound
+
+Complete generated fixed-reader canonicality:
+  new_success_has_initial_packed_reader_exact_state
+  packed_next_success_exact_window_and_state
+  packed_next_success_exact_limb_and_state
+  fixed_next_qm31_success_exact_field_and_state
+  successful_fixed_reader_trace_exact_range
+  complete_successful_fixed_reader_trace_constructs_exact_canonical_section
+
+The capstone starts from literal translated `V6FixedFieldReader.new`, the
+complete 641-call successful reader trace, and literal translated `finish`
+success. It constructs `ExactCanonicalPackedFixedSection` for the original
+9,936 source bytes. Thus the high padding nibble and every one of the 2,564
+strict M31 limb comparisons are consequences of translated production control
+flow rather than caller-supplied premises.
+
+NUC replay:
+  systemd unit: aspis-v7-packed-reader-try71.scope
+  invocation: dac86d92ce5842b4a40f499fcb7d9d5b
+  MemoryHigh: 12G
+  MemoryMax: 16G
+  MemorySwapMax: 0
+  exit status: 0
+  wall: 60.60 seconds
+  peak RSS: 7,770,164 KiB
+  swaps: 0
+
+#print axioms for the complete capstone:
+  propext
+  Classical.choice
+  Quot.sound
+
+Production-root composition:
+  generated_production_root_success_constructs_exact_canonical_section
+
+This theorem starts directly from literal success of the translated
+`verify_v7_compact_transcript_and_relation_prepared_with_hiding_context`
+production root. It constructs the complete reader trace internally and
+returns the exact canonical packed section; neither the trace nor canonicality
+is a premise.
+
+NUC replay:
+  systemd unit: aspis-v7-packed-reader-try72.scope
+  invocation: 14af678b340c42519fbe29c30cf0fb5b
+  MemoryHigh: 12G
+  MemoryMax: 16G
+  MemorySwapMax: 0
+  exit status: 0
+  wall: 61.18 seconds
+  peak RSS: 7,769,592 KiB
+  swaps: 0
+
+#print axioms for the production-root composition:
+  propext
+  Classical.choice
+  Quot.sound

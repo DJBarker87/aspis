@@ -1,0 +1,20 @@
+diff --git a/src/symbolic/SymbolicToPureValues.ml b/src/symbolic/SymbolicToPureValues.ml
+--- a/src/symbolic/SymbolicToPureValues.ml
++++ b/src/symbolic/SymbolicToPureValues.ml
+@@ -52,6 +52,16 @@ let symbolic_value_to_texpr (ctx : bs_ctx) (sv : V.symbolic_value) : texpr =
+   (* If the type is unit, directly return unit *)
+   if ty_is_unit ty then mk_unit_texpr
+   else
++    let () =
++      if not (V.SymbolicValueId.Map.mem sv.sv_id ctx.sv_to_var) then
++        [%ldebug
++          "Unregistered symbolic value at Pure conversion:\n- value: "
++          ^ symbolic_value_to_string ctx sv
++          ^ "\n- registered symbolic ids: "
++          ^ String.concat ","
++              (List.map V.SymbolicValueId.to_string
++                 (V.SymbolicValueId.Map.keys ctx.sv_to_var))]
++    in
+     (* Otherwise lookup the variable *)
+     match lookup_var_for_symbolic_value sv.sv_id ctx with
+     | Some var -> mk_texpr_from_fvar var

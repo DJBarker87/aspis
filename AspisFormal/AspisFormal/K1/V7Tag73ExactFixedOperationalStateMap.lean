@@ -48,6 +48,7 @@ open AspisK1.V7Tag73Q16ControlInvariant
 open AspisK1.V7Tag73Q16LedgerCertificate
 open AspisK1.V7Tag73Q16LedgerControlInvariant
 open AspisK1.V7Tag73ChallengeRecordControlInvariant
+open AspisK1.V7Tag73ChallengeRecordUniquenessInvariant
 
 noncomputable section
 
@@ -198,6 +199,36 @@ theorem exact_fixed_package_root_k13_challenge_invariant
   rw [← projected.finalStateExact]
   exact invariant
 
+/-- The root execution additionally proves that its decoded challenge ledger
+and every restoration-visible snapshot contain no duplicate logical ids. -/
+theorem exact_fixed_package_root_challenge_record_uniqueness
+    {HiddenTape TapeIdentity Observation Statement Proof Payload Result : Type}
+    {parameters : ExactCompilerResourceParameters}
+    {transitionFuel : Nat}
+    {configuration : ExactPlainRomConfiguration HiddenTape TapeIdentity
+      Observation Statement Proof Payload Result parameters}
+    {projection : AcceptedTapeProjection Statement Proof Payload}
+    {fixedInstance : PublicInstance Statement}
+    {sample : ExactCompilerSample HiddenTape parameters}
+    (package : ExactFixedCleanFullRunFactorizationPackage transitionFuel
+      configuration projection fixedInstance sample) :
+    FutureFreeChallengeRecordUniqueness
+      package.root.fixedRoot.base.runtime.node.verifierFinalState := by
+  let projected := package.root.fixedRoot.base.projected
+  obtain ⟨pairs, _history, operational⟩ :=
+    raw_verifier_execution_has_operational_trace projected.execution
+  have invariant :=
+    future_free_operational_trace_preserves_record_uniqueness
+      projected.execution.environment
+      projected.execution.adversaryValue.rawMessages _ _ pairs operational
+      (initial_future_free_challenge_record_uniqueness
+        (FixedBindings.ofContext
+          projected.execution.adversaryValue.rawMessages.context))
+  change FutureFreeChallengeRecordUniqueness
+    package.root.fixedRoot.base.runtime.verifierFinalState
+  rw [← projected.finalStateExact]
+  exact invariant
+
 /-- The fixed operational package retains the stronger selected-ledger
 certificate constructed by the strict source replay, not merely the local
 q16 sampler block-cap invariant. -/
@@ -288,6 +319,7 @@ theorem exact_fixed_completed_package_has_operational_state_map
     (exact_fixed_package_root_q16_slot_invariant package)
     (exact_fixed_package_root_q16_ledger_invariant package)
     (exact_fixed_package_root_k13_challenge_invariant package)
+    (exact_fixed_package_root_challenge_record_uniqueness package)
     (full_projected_root_records_have_no_fork_advance
       package.root.full.projection.rootPrefixes)
     package.root.full.projection.rootPrefixes.verifier.remaining
@@ -394,6 +426,7 @@ theorem fixed_legal_member_has_operational_state_restoration_input
 #print axioms exact_fixed_package_root_q16_slot_invariant
 #print axioms exact_fixed_package_root_q16_ledger_invariant
 #print axioms exact_fixed_package_root_k13_challenge_invariant
+#print axioms exact_fixed_package_root_challenge_record_uniqueness
 #print axioms exact_fixed_package_root_selected_q16_ledger
 #print axioms exact_fixed_operational_state_map_trace_is_full_trace
 #print axioms exact_fixed_completed_package_has_operational_state_map

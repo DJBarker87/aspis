@@ -1,0 +1,24 @@
+diff --git a/crates/aspis-core/src/v7_onefold.rs b/crates/aspis-core/src/v7_onefold.rs
+index 0b9ce11..8c97587 100644
+--- a/crates/aspis-core/src/v7_onefold.rs
++++ b/crates/aspis-core/src/v7_onefold.rs
+@@ -204,6 +204,19 @@ impl<'a> V7CompactOneFoldWire<'a> {
+     }
+ }
+ 
++/// Extraction-only free-function boundary for the deployed inherent parser.
++///
++/// This wrapper is applied only in the frozen Charon workspace and is never
++/// compiled into a production SBF.  Its body is definitionally the deployed
++/// `parse_deferred_canonicality` method.
++#[inline(always)]
++pub fn parse_v7_compact_onefold_wire_deferred(
++    bytes: &[u8],
++    frontier_nodes: usize,
++) -> Result<V7CompactOneFoldWire<'_>, V6WireError> {
++    V7CompactOneFoldWire::parse_deferred_canonicality(bytes, frontier_nodes)
++}
++
+ /// Authenticate and gamma-combine every complete V7 query opening.
+ pub fn verify_and_gamma_combine_v7_openings(
+     hash: HashFn,

@@ -98,7 +98,7 @@ struct SemanticPublic<'a> {
 }
 
 #[inline(always)]
-fn lift(value: M31) -> QM31 {
+fn lift_m31(value: M31) -> QM31 {
     QM31::from_cm31(CM31::from_m31(value))
 }
 
@@ -215,6 +215,29 @@ fn poseidon_selectors(selectors: &Selectors) -> StateOnlyPoseidonSelectors {
     }
 }
 
+#[inline(never)]
+fn initial_variant_selectors(
+    variant: CompiledVariant,
+    high27: QM31,
+    high28: QM31,
+    high29: QM31,
+) -> (QM31, QM31, QM31, QM31) {
+    match variant {
+        CompiledVariant::PrivateTransfer => (
+            high27,
+            QM31::ZERO,
+            high27.add(high28),
+            high29,
+        ),
+        CompiledVariant::Withdrawal => (
+            QM31::ZERO,
+            high27.add(high28).add(high29),
+            QM31::ZERO,
+            QM31::ZERO,
+        ),
+    }
+}
+
 fn semantic_initial_and_absorption(
     public: SemanticPublic<'_>,
     openings: &StateOnlyPoseidonOpenings,
@@ -225,18 +248,13 @@ fn semantic_initial_and_absorption(
         .add(selectors.high[1])
         .add(selectors.high[25])
         .add(selectors.high[30]);
-    let transfer_first = if public.variant == CompiledVariant::PrivateTransfer {
-        selectors.high[27]
-    } else {
-        QM31::ZERO
-    };
-    let fixed = if public.variant == CompiledVariant::Withdrawal {
-        selectors.high[27]
-            .add(selectors.high[28])
-            .add(selectors.high[29])
-    } else {
-        QM31::ZERO
-    };
+    let (transfer_first, fixed, private_chunk_eight, private_chunk_two) =
+        initial_variant_selectors(
+            public.variant,
+            selectors.high[27],
+            selectors.high[28],
+            selectors.high[29],
+        );
     let full_initial_selector = selectors.low[0].mul(first_common.add(transfer_first).add(fixed));
     let rate_initial_selector = selectors.low[0].mul(nodes);
     let full = PreparedQm31Multiplier::new(full_initial_selector);
@@ -271,10 +289,8 @@ fn semantic_initial_and_absorption(
         .add(selectors.high[30])
         .add(selectors.high[31]);
     let mut chunk_two = selectors.high[3].add(selectors.high[32]);
-    if public.variant == CompiledVariant::PrivateTransfer {
-        chunk_eight = chunk_eight.add(selectors.high[27]).add(selectors.high[28]);
-        chunk_two = chunk_two.add(selectors.high[29]);
-    }
+    chunk_eight = chunk_eight.add(private_chunk_eight);
+    chunk_two = chunk_two.add(private_chunk_two);
     #[cfg(not(feature = "pool-v1-pair-forest-semantic-factor-audit"))]
     let absorption = absorption_lanes_literal(
         selectors.low[12],
@@ -358,7 +374,7 @@ fn add_digest_binding(
         if right_tweak && lane + 1 == DIGEST_ELEMS {
             target = target.add(MERKLE_NODE_COMPRESSION_V3_TWEAK);
         }
-        output[lane] = output[lane].add(selector.mul(opened[start + lane].sub(lift(target))));
+        output[lane] = output[lane].add(selector.mul(opened[start + lane].sub(lift_m31(target))));
     }
 }
 
@@ -419,11 +435,30 @@ fn path_lanes_factored(path_selector: QM31, openings: &StateOnlyPoseidonOpenings
     let right = PreparedQm31Multiplier::new(selected_bit);
     let mut path = [QM31::ZERO; 17];
     path[0] = selected_bit.mul(bit.sub(QM31::ONE));
-    for lane in 0..DIGEST_ELEMS {
-        let current = openings.z[1 + lane];
-        path[1 + lane] = left.mul(openings.succ_z[lane].sub(current));
-        path[1 + DIGEST_ELEMS + lane] = right.mul(openings.succ_z[RATE + lane].sub(current));
-    }
+    let current0 = openings.z[1];
+    path[1] = left.mul(openings.succ_z[0].sub(current0));
+    path[9] = right.mul(openings.succ_z[RATE].sub(current0));
+    let current1 = openings.z[2];
+    path[2] = left.mul(openings.succ_z[1].sub(current1));
+    path[10] = right.mul(openings.succ_z[RATE + 1].sub(current1));
+    let current2 = openings.z[3];
+    path[3] = left.mul(openings.succ_z[2].sub(current2));
+    path[11] = right.mul(openings.succ_z[RATE + 2].sub(current2));
+    let current3 = openings.z[4];
+    path[4] = left.mul(openings.succ_z[3].sub(current3));
+    path[12] = right.mul(openings.succ_z[RATE + 3].sub(current3));
+    let current4 = openings.z[5];
+    path[5] = left.mul(openings.succ_z[4].sub(current4));
+    path[13] = right.mul(openings.succ_z[RATE + 4].sub(current4));
+    let current5 = openings.z[6];
+    path[6] = left.mul(openings.succ_z[5].sub(current5));
+    path[14] = right.mul(openings.succ_z[RATE + 5].sub(current5));
+    let current6 = openings.z[7];
+    path[7] = left.mul(openings.succ_z[6].sub(current6));
+    path[15] = right.mul(openings.succ_z[RATE + 6].sub(current6));
+    let current7 = openings.z[8];
+    path[8] = left.mul(openings.succ_z[7].sub(current7));
+    path[16] = right.mul(openings.succ_z[RATE + 7].sub(current7));
     path
 }
 
@@ -435,13 +470,29 @@ fn add_value_lanes(
 ) {
     let value_selectors =
         [0usize, 2, 4].map(|local| selectors.row(16 * VALUE_AUXILIARY_BLOCK + local));
-    let range_selector = value_selectors.iter().copied().fold(QM31::ZERO, QM31::add);
-    let views = [&openings.z, &openings.succ_z, &openings.xor12_z];
+    let range_selector = QM31::ZERO
+        .add(value_selectors[0])
+        .add(value_selectors[1])
+        .add(value_selectors[2]);
     let mut range = [QM31::ZERO; 33];
-    for (view, values) in views.into_iter().zip(range[..30].chunks_mut(10)) {
-        for index in 0..10 {
-            values[index] = view[index].square().sub(view[index]);
-        }
+    let mut index = 0usize;
+    while index < 10 {
+        range[index] = openings.z[index].square().sub(openings.z[index]);
+        index += 1;
+    }
+    index = 0;
+    while index < 10 {
+        range[10 + index] = openings.succ_z[index]
+            .square()
+            .sub(openings.succ_z[index]);
+        index += 1;
+    }
+    index = 0;
+    while index < 10 {
+        range[20 + index] = openings.xor12_z[index]
+            .square()
+            .sub(openings.xor12_z[index]);
+        index += 1;
     }
     let reconstructed = reconstruct_10(&openings.z)
         .add(reconstruct_10(&openings.succ_z).mul_m31(M31(1 << 10)))
@@ -468,6 +519,14 @@ fn add_value_lanes(
 }
 
 #[inline(never)]
+fn variant_expected_output(variant: CompiledVariant) -> M31 {
+    match variant {
+        CompiledVariant::PrivateTransfer => M31(1),
+        CompiledVariant::Withdrawal => M31(0),
+    }
+}
+
+#[inline(never)]
 fn add_occupancy_lanes(
     packed: &mut [QM31; POOL_V1_PAIR_FOREST_PACKED_SEMANTIC_LANES_V1],
     public: SemanticPublic<'_>,
@@ -476,9 +535,7 @@ fn add_occupancy_lanes(
 ) {
     let input_occupancy = selectors.row(INPUT_OCCUPANCY_ROW);
     let output_occupancy = selectors.row(OUTPUT_OCCUPANCY_ROW);
-    let expected_output = M31(u32::from(
-        public.variant == CompiledVariant::PrivateTransfer,
-    ));
+    let expected_output = variant_expected_output(public.variant);
     #[cfg(not(feature = "pool-v1-pair-forest-semantic-factor-audit"))]
     let occupancy = occupancy_lanes_literal(
         input_occupancy,
@@ -516,7 +573,7 @@ fn occupancy_lanes_literal(
     }
     occupancy[11] = input_occupancy
         .mul(opened[10].mul(one_minus))
-        .add(output_occupancy.mul(occupied.sub(lift(expected_output))));
+        .add(output_occupancy.mul(occupied.sub(lift_m31(expected_output))));
     occupancy
 }
 
@@ -543,7 +600,7 @@ fn occupancy_lanes_factored(
     }
     occupancy[11] = input_occupancy
         .mul(opened[10].mul(one_minus))
-        .add(output_occupancy.mul(occupied.sub(lift(expected_output))));
+        .add(output_occupancy.mul(occupied.sub(lift_m31(expected_output))));
     occupancy
 }
 
@@ -660,7 +717,7 @@ fn add_digest_binding_packed(
             if right_tweak && lane + 1 == DIGEST_ELEMS {
                 target = target.add(MERKLE_NODE_COMPRESSION_V3_TWEAK);
             }
-            opened[start + lane].sub(lift(target))
+            opened[start + lane].sub(lift_m31(target))
         });
         output[group] = output[group].add(selector.mul(qm31_pack_base4(&residuals)));
     }
@@ -766,33 +823,188 @@ fn public_digest_packed_row_major(
     feature = "pool-v1-pair-forest-packed-digest-selector-tensor-audit"
 ))]
 #[inline(always)]
-fn add_digest_binding_packed_selector_tensor(
-    local_sums: &mut [[QM31; DIGEST_ELEMS / 4]; 3],
-    selectors: &Selectors,
-    row: usize,
-    opened: &[QM31; POSEIDON2_WIDTH],
-    start: usize,
-    expected: &Digest,
-    right_tweak: bool,
-) {
-    let local_coordinate = match row & 15 {
-        0 => 0,
-        11 => 1,
-        12 => 2,
-        _ => unreachable!("frozen public-digest binding local coordinate"),
-    };
-    let high = PreparedQm31Multiplier::new(selectors.high[row >> 4]);
-    for group in 0..DIGEST_ELEMS / 4 {
-        let residuals: [QM31; 4] = core::array::from_fn(|slot| {
-            let lane = 4 * group + slot;
-            let mut target = expected[lane];
-            if right_tweak && lane + 1 == DIGEST_ELEMS {
-                target = target.add(MERKLE_NODE_COMPRESSION_V3_TWEAK);
+fn left_digest_packed_selector_tensor(
+    high: QM31,
+    opened: [QM31; POSEIDON2_WIDTH],
+    expected: Digest,
+) -> [QM31; DIGEST_ELEMS / 4] {
+    let prepared_high = PreparedQm31Multiplier::new(high);
+    let residual0 = [
+        opened[0].sub(lift_m31(expected[0])),
+        opened[1].sub(lift_m31(expected[1])),
+        opened[2].sub(lift_m31(expected[2])),
+        opened[3].sub(lift_m31(expected[3])),
+    ];
+    let residual1 = [
+        opened[4].sub(lift_m31(expected[4])),
+        opened[5].sub(lift_m31(expected[5])),
+        opened[6].sub(lift_m31(expected[6])),
+        opened[7].sub(lift_m31(expected[7])),
+    ];
+    [
+        prepared_high.mul(qm31_pack_base4(&residual0)),
+        prepared_high.mul(qm31_pack_base4(&residual1)),
+    ]
+}
+
+#[cfg(any(
+    test,
+    feature = "pool-v1-pair-forest-packed-digest-selector-tensor-audit"
+))]
+#[inline(never)]
+fn optional_recipient_packed_selector_tensor(
+    recipient: Option<Digest>,
+    opened: [QM31; POSEIDON2_WIDTH],
+    high: QM31,
+) -> [QM31; DIGEST_ELEMS / 4] {
+    match recipient {
+        Some(expected) => {
+            let prepared_high = PreparedQm31Multiplier::new(high);
+            let mut contribution = [QM31::ZERO; DIGEST_ELEMS / 4];
+            let mut group = 0usize;
+            while group < DIGEST_ELEMS / 4 {
+                let lane = 4 * group;
+                let residuals = [
+                    opened[lane].sub(lift_m31(expected[lane])),
+                    opened[lane + 1].sub(lift_m31(expected[lane + 1])),
+                    opened[lane + 2].sub(lift_m31(expected[lane + 2])),
+                    opened[lane + 3].sub(lift_m31(expected[lane + 3])),
+                ];
+                contribution[group] = prepared_high.mul(qm31_pack_base4(&residuals));
+                group += 1;
             }
-            opened[start + lane].sub(lift(target))
-        });
-        local_sums[local_coordinate][group] =
-            local_sums[local_coordinate][group].add(high.mul(qm31_pack_base4(&residuals)));
+            contribution
+        }
+        None => [QM31::ZERO; DIGEST_ELEMS / 4],
+    }
+}
+
+#[cfg(any(
+    test,
+    feature = "pool-v1-pair-forest-packed-digest-selector-tensor-audit"
+))]
+#[inline(never)]
+fn append_level_packed_selector_tensor(
+    next_pair_index: u64,
+    level: usize,
+    frontier: Digest,
+    opened: [QM31; POSEIDON2_WIDTH],
+    high: QM31,
+) -> (
+    [QM31; DIGEST_ELEMS / 4],
+    [QM31; DIGEST_ELEMS / 4],
+) {
+    let prepared_high = PreparedQm31Multiplier::new(high);
+    if ((next_pair_index >> level) & 1) == 0 {
+        let expected = empty_root(level);
+        let residual0 = [
+            opened[RATE].sub(lift_m31(expected[0])),
+            opened[RATE + 1].sub(lift_m31(expected[1])),
+            opened[RATE + 2].sub(lift_m31(expected[2])),
+            opened[RATE + 3].sub(lift_m31(expected[3])),
+        ];
+        let residual1 = [
+            opened[RATE + 4].sub(lift_m31(expected[4])),
+            opened[RATE + 5].sub(lift_m31(expected[5])),
+            opened[RATE + 6].sub(lift_m31(expected[6])),
+            opened[RATE + 7]
+                .sub(lift_m31(expected[7].add(MERKLE_NODE_COMPRESSION_V3_TWEAK))),
+        ];
+        (
+            [
+                prepared_high.mul(qm31_pack_base4(&residual0)),
+                prepared_high.mul(qm31_pack_base4(&residual1)),
+            ],
+            [QM31::ZERO; DIGEST_ELEMS / 4],
+        )
+    } else {
+        let residual0 = [
+            opened[0].sub(lift_m31(frontier[0])),
+            opened[1].sub(lift_m31(frontier[1])),
+            opened[2].sub(lift_m31(frontier[2])),
+            opened[3].sub(lift_m31(frontier[3])),
+        ];
+        let residual1 = [
+            opened[4].sub(lift_m31(frontier[4])),
+            opened[5].sub(lift_m31(frontier[5])),
+            opened[6].sub(lift_m31(frontier[6])),
+            opened[7].sub(lift_m31(frontier[7])),
+        ];
+        (
+            [QM31::ZERO; DIGEST_ELEMS / 4],
+            [
+                prepared_high.mul(qm31_pack_base4(&residual0)),
+                prepared_high.mul(qm31_pack_base4(&residual1)),
+            ],
+        )
+    }
+}
+
+#[cfg(any(
+    test,
+    feature = "pool-v1-pair-forest-packed-digest-selector-tensor-audit"
+))]
+#[inline(always)]
+fn append_levels_packed_selector_tensor(
+    next_pair_index: u64,
+    frontier: [Digest; 20],
+    opened: [QM31; POSEIDON2_WIDTH],
+    selector_high: [QM31; 64],
+) -> (
+    [QM31; DIGEST_ELEMS / 4],
+    [QM31; DIGEST_ELEMS / 4],
+) {
+    let mut local0 = [QM31::ZERO; DIGEST_ELEMS / 4];
+    let mut local12 = [QM31::ZERO; DIGEST_ELEMS / 4];
+    let mut level = 0usize;
+    while level < 20 {
+        let (level0, level12) = append_level_packed_selector_tensor(
+            next_pair_index,
+            level,
+            frontier[level],
+            opened,
+            selector_high[34 + level],
+        );
+        local0[0] = local0[0].add(level0[0]);
+        local0[1] = local0[1].add(level0[1]);
+        local12[0] = local12[0].add(level12[0]);
+        local12[1] = local12[1].add(level12[1]);
+        level += 1;
+    }
+    (local0, local12)
+}
+
+#[cfg(any(
+    test,
+    feature = "pool-v1-pair-forest-packed-digest-selector-tensor-audit"
+))]
+#[inline(never)]
+fn optional_carry_packed_selector_tensor(
+    carry: usize,
+    opened: [QM31; POSEIDON2_WIDTH],
+    high: QM31,
+    frontier: Digest,
+) -> [QM31; DIGEST_ELEMS / 4] {
+    if carry < 20 {
+        let prepared_high = PreparedQm31Multiplier::new(high);
+        let residual0 = [
+            opened[0].sub(lift_m31(frontier[0])),
+            opened[1].sub(lift_m31(frontier[1])),
+            opened[2].sub(lift_m31(frontier[2])),
+            opened[3].sub(lift_m31(frontier[3])),
+        ];
+        let residual1 = [
+            opened[4].sub(lift_m31(frontier[4])),
+            opened[5].sub(lift_m31(frontier[5])),
+            opened[6].sub(lift_m31(frontier[6])),
+            opened[7].sub(lift_m31(frontier[7])),
+        ];
+        [
+            prepared_high.mul(qm31_pack_base4(&residual0)),
+            prepared_high.mul(qm31_pack_base4(&residual1)),
+        ]
+    } else {
+        [QM31::ZERO; DIGEST_ELEMS / 4]
     }
 }
 
@@ -817,55 +1029,79 @@ fn public_digest_packed_selector_tensor(
     selectors: &Selectors,
 ) -> [QM31; DIGEST_ELEMS / 4] {
     let mut local_sums = [[QM31::ZERO; DIGEST_ELEMS / 4]; 3];
-    macro_rules! add {
-        ($row:expr, $start:expr, $expected:expr, $right_tweak:expr $(,)?) => {
-            add_digest_binding_packed_selector_tensor(
-                &mut local_sums,
-                selectors,
-                $row,
-                &openings.z,
-                $start,
-                $expected,
-                $right_tweak,
-            )
-        };
-    }
-    add!(56 * 16 + 11, 0, &public.anchor, false);
-    add!(26 * 16 + 11, 0, &public.nullifier, false);
-    if let Some(recipient) = public.recipient {
-        add!(29 * 16 + 11, 0, &recipient, false);
-    }
-    add!(32 * 16 + 11, 0, &public.change, false);
+    let anchor = left_digest_packed_selector_tensor(
+        selectors.high[56],
+        openings.z,
+        public.anchor,
+    );
+    local_sums[1][0] = local_sums[1][0].add(anchor[0]);
+    local_sums[1][1] = local_sums[1][1].add(anchor[1]);
+    let nullifier = left_digest_packed_selector_tensor(
+        selectors.high[26],
+        openings.z,
+        public.nullifier,
+    );
+    local_sums[1][0] = local_sums[1][0].add(nullifier[0]);
+    local_sums[1][1] = local_sums[1][1].add(nullifier[1]);
+    let recipient = optional_recipient_packed_selector_tensor(
+        public.recipient,
+        openings.z,
+        selectors.high[29],
+    );
+    local_sums[1][0] = local_sums[1][0].add(recipient[0]);
+    local_sums[1][1] = local_sums[1][1].add(recipient[1]);
+    let change = left_digest_packed_selector_tensor(
+        selectors.high[32],
+        openings.z,
+        public.change,
+    );
+    local_sums[1][0] = local_sums[1][0].add(change[0]);
+    local_sums[1][1] = local_sums[1][1].add(change[1]);
 
     let source = public.transition.live_snapshot;
     let after = public.transition.candidate_afterstate;
-    for level in 0..20 {
-        let block = 34 + level;
-        if ((source.next_pair_index >> level) & 1) == 0 {
-            add!(block * 16, RATE, &empty_root(level), true);
-        } else {
-            add!(block * 16 + 12, 0, &source.frontier[level], false);
-        }
-    }
-    add!(53 * 16 + 11, 0, &after.next_root, false);
-    let carry = core::cmp::min(source.next_pair_index.trailing_ones() as usize, 20);
-    if carry < 20 {
-        add!(
-            (33 + carry) * 16 + 11,
-            0,
-            &after.next_frontier[carry],
-            false,
-        );
-    }
+    let next_pair_index = source.next_pair_index;
+    let source_frontier = source.frontier;
+    let opened_z = openings.z;
+    let selector_high = selectors.high;
+    let (append_local0, append_local12) = append_levels_packed_selector_tensor(
+        next_pair_index,
+        source_frontier,
+        opened_z,
+        selector_high,
+    );
+    local_sums[0][0] = local_sums[0][0].add(append_local0[0]);
+    local_sums[0][1] = local_sums[0][1].add(append_local0[1]);
+    local_sums[2][0] = local_sums[2][0].add(append_local12[0]);
+    local_sums[2][1] = local_sums[2][1].add(append_local12[1]);
+    let next_root = left_digest_packed_selector_tensor(
+        selector_high[53],
+        opened_z,
+        after.next_root,
+    );
+    local_sums[1][0] = local_sums[1][0].add(next_root[0]);
+    local_sums[1][1] = local_sums[1][1].add(next_root[1]);
+    let carry = core::cmp::min(next_pair_index.trailing_ones() as usize, 20);
+    let carry_index = core::cmp::min(carry, 19);
+    let carry_contribution = optional_carry_packed_selector_tensor(
+        carry,
+        opened_z,
+        selector_high[33 + carry_index],
+        after.next_frontier[carry_index],
+    );
+    local_sums[1][0] = local_sums[1][0].add(carry_contribution[0]);
+    local_sums[1][1] = local_sums[1][1].add(carry_contribution[1]);
 
-    let locals = [0usize, 11, 12];
     let mut output = [QM31::ZERO; DIGEST_ELEMS / 4];
-    for coordinate in 0..locals.len() {
-        let low = PreparedQm31Multiplier::new(selectors.low[locals[coordinate]]);
-        for group in 0..DIGEST_ELEMS / 4 {
-            output[group] = output[group].add(low.mul(local_sums[coordinate][group]));
-        }
-    }
+    let low0 = PreparedQm31Multiplier::new(selectors.low[0]);
+    output[0] = output[0].add(low0.mul(local_sums[0][0]));
+    output[1] = output[1].add(low0.mul(local_sums[0][1]));
+    let low11 = PreparedQm31Multiplier::new(selectors.low[11]);
+    output[0] = output[0].add(low11.mul(local_sums[1][0]));
+    output[1] = output[1].add(low11.mul(local_sums[1][1]));
+    let low12 = PreparedQm31Multiplier::new(selectors.low[12]);
+    output[0] = output[0].add(low12.mul(local_sums[2][0]));
+    output[1] = output[1].add(low12.mul(local_sums[2][1]));
     output
 }
 
@@ -883,34 +1119,25 @@ fn public_digest_packed(
 }
 
 #[inline(never)]
-fn add_scalar_lanes(
-    packed: &mut [QM31; POOL_V1_PAIR_FOREST_PACKED_SEMANTIC_LANES_V1],
-    public: SemanticPublic<'_>,
-    openings: &StateOnlyPoseidonOpenings,
-    selectors: &Selectors,
-) {
-    let withdrawal_value_selector = selectors.row(16 * VALUE_AUXILIARY_BLOCK + 2);
-    let input_asset = selectors
-        .row(2 * 16 + 12)
-        .mul(openings.z[1].sub(lift(public.asset_id)));
-    let mut output_scalar = selectors
-        .row(31 * 16 + 12)
-        .mul(openings.z[1].sub(lift(public.asset_id)));
-    match (public.variant, public.withdrawal_amount) {
-        (CompiledVariant::PrivateTransfer, _) => {
-            output_scalar = output_scalar.add(
-                selectors
-                    .row(28 * 16 + 12)
-                    .mul(openings.z[1].sub(lift(public.asset_id))),
-            );
+fn scalar_lanes(
+    variant: CompiledVariant,
+    withdrawal_amount_present: bool,
+    input_asset: QM31,
+    mut output_scalar: QM31,
+    private_transfer_term: QM31,
+    withdrawal_term: QM31,
+) -> [QM31; 2] {
+    match variant {
+        CompiledVariant::PrivateTransfer => {
+            output_scalar = output_scalar.add(private_transfer_term);
         }
-        (CompiledVariant::Withdrawal, Some(amount)) => {
-            output_scalar = output_scalar
-                .add(withdrawal_value_selector.mul(openings.z[10].sub(lift(M31(amount)))));
+        CompiledVariant::Withdrawal => {
+            if withdrawal_amount_present {
+                output_scalar = output_scalar.add(withdrawal_term);
+            }
         }
-        (CompiledVariant::Withdrawal, None) => {}
     }
-    add_preweighted(packed, 92, &[input_asset, output_scalar]);
+    [input_asset, output_scalar]
 }
 
 fn semantic_packed(
@@ -935,7 +1162,23 @@ fn semantic_packed(
         packed[84 / 4] = packed[84 / 4].add(digests[0]);
         packed[84 / 4 + 1] = packed[84 / 4 + 1].add(digests[1]);
     }
-    add_scalar_lanes(&mut packed, public, openings, selectors);
+    let asset_difference = openings.z[1].sub(lift_m31(public.asset_id));
+    let input_asset = selectors.row(2 * 16 + 12).mul(asset_difference);
+    let output_scalar = selectors.row(31 * 16 + 12).mul(asset_difference);
+    let private_transfer_term = selectors.row(28 * 16 + 12).mul(asset_difference);
+    let withdrawal_amount_value = public.withdrawal_amount.unwrap_or(0);
+    let withdrawal_term = selectors
+        .row(16 * VALUE_AUXILIARY_BLOCK + 2)
+        .mul(openings.z[10].sub(lift_m31(M31(withdrawal_amount_value))));
+    let scalars = scalar_lanes(
+        public.variant,
+        public.withdrawal_amount.is_some(),
+        input_asset,
+        output_scalar,
+        private_transfer_term,
+        withdrawal_term,
+    );
+    add_preweighted(&mut packed, 92, &scalars);
     packed
 }
 
@@ -947,17 +1190,26 @@ fn selected_claim(
     claims[point * POOL_V1_PAIR_FOREST_SELECTED_TERMINAL_COLUMNS_V1 + column]
 }
 
+#[inline(never)]
+fn copy_variant(variant: CompiledVariant) -> PoolV1PairForestCompiledVariantV1 {
+    match variant {
+        CompiledVariant::PrivateTransfer => PoolV1PairForestCompiledVariantV1::PrivateTransfer,
+        CompiledVariant::Withdrawal => PoolV1PairForestCompiledVariantV1::Withdrawal,
+    }
+}
+
 fn equality_value(left: &[QM31; 10], right: &[QM31; 10]) -> QM31 {
     let factor = |a: QM31, b: QM31| {
         let ab = a.mul(b);
         QM31::ONE.sub(a).sub(b).add(ab).add(ab)
     };
-    left[1..]
-        .iter()
-        .zip(&right[1..])
-        .fold(factor(left[0], right[0]), |product, (&a, &b)| {
-            product.mul(factor(a, b))
-        })
+    let mut product = factor(left[0], right[0]);
+    let mut index = 1usize;
+    while index < left.len() {
+        product = product.mul(factor(left[index], right[index]));
+        index += 1;
+    }
+    product
 }
 
 #[allow(clippy::type_complexity)]
@@ -1010,10 +1262,7 @@ fn composition_parts(
         lambda,
         chi,
         public.transition.live_snapshot.next_pair_index,
-        match public.variant {
-            CompiledVariant::PrivateTransfer => PoolV1PairForestCompiledVariantV1::PrivateTransfer,
-            CompiledVariant::Withdrawal => PoolV1PairForestCompiledVariantV1::Withdrawal,
-        },
+        copy_variant(public.variant),
     );
     let prepared_theta = PreparedQm31Multiplier::new(theta);
     let mut composition = copy.residual;
@@ -1419,7 +1668,7 @@ mod tests {
     }
 
     fn boolean_point(row: usize) -> [QM31; 10] {
-        core::array::from_fn(|coordinate| lift(M31(((row >> (9 - coordinate)) & 1) as u32)))
+        core::array::from_fn(|coordinate| lift_m31(M31(((row >> (9 - coordinate)) & 1) as u32)))
     }
 
     fn compiled_openings_at(
@@ -1428,9 +1677,9 @@ mod tests {
     ) -> StateOnlyPoseidonOpenings {
         let rows = [row, (row + 1) & 1023, row ^ 12];
         StateOnlyPoseidonOpenings {
-            z: core::array::from_fn(|column| lift(compiled.semantic_c1.c1[column][rows[0]])),
-            succ_z: core::array::from_fn(|column| lift(compiled.semantic_c1.c1[column][rows[1]])),
-            xor12_z: core::array::from_fn(|column| lift(compiled.semantic_c1.c1[column][rows[2]])),
+            z: core::array::from_fn(|column| lift_m31(compiled.semantic_c1.c1[column][rows[0]])),
+            succ_z: core::array::from_fn(|column| lift_m31(compiled.semantic_c1.c1[column][rows[1]])),
+            xor12_z: core::array::from_fn(|column| lift_m31(compiled.semantic_c1.c1[column][rows[2]])),
         }
     }
 
@@ -1570,7 +1819,7 @@ mod tests {
         let mut claims = [QM31::ZERO; POOL_V1_PAIR_FOREST_SELECTED_TERMINAL_CLAIMS_V1];
         for point in 0..3 {
             for column in 0..16 {
-                claims[point * 28 + column] = lift(compiled.semantic_c1.c1[column][rows[point]]);
+                claims[point * 28 + column] = lift_m31(compiled.semantic_c1.c1[column][rows[point]]);
             }
         }
         claims[SELECTED_H1_COLUMN] = helper[row];
@@ -1581,9 +1830,9 @@ mod tests {
         public: &PoolV1PrivateTransferPublicV1,
         compiled: &PoolV1PairForestMergedC1CompilationV1,
     ) {
-        let lambda = lift(M31(19));
-        let chi = lift(M31(23));
-        let theta = lift(M31(29));
+        let lambda = lift_m31(M31(19));
+        let chi = lift_m31(M31(23));
+        let theta = lift_m31(M31(29));
         let helper = build_pool_v1_pair_forest_copy_helper_v1(
             &compiled.trace,
             compiled.public_statement.live_snapshot.next_pair_index,
@@ -1611,9 +1860,9 @@ mod tests {
         public: &PoolV1WithdrawalPublicV1,
         compiled: &PoolV1PairForestMergedC1CompilationV1,
     ) {
-        let lambda = lift(M31(31));
-        let chi = lift(M31(37));
-        let theta = lift(M31(41));
+        let lambda = lift_m31(M31(31));
+        let chi = lift_m31(M31(37));
+        let theta = lift_m31(M31(41));
         let helper = build_pool_v1_pair_forest_copy_helper_v1(
             &compiled.trace,
             compiled.public_statement.live_snapshot.next_pair_index,
@@ -1677,9 +1926,9 @@ mod tests {
     #[test]
     fn output_occupancy_and_append_afterstate_fail_closed() {
         let (public, compiled) = transfer_at(13);
-        let lambda = lift(M31(19));
-        let chi = lift(M31(23));
-        let theta = lift(M31(29));
+        let lambda = lift_m31(M31(19));
+        let chi = lift_m31(M31(23));
+        let theta = lift_m31(M31(29));
         let helper =
             build_pool_v1_pair_forest_copy_helper_v1(&compiled.trace, 13, lambda, chi).unwrap();
         let row = OUTPUT_OCCUPANCY_ROW;

@@ -17,6 +17,7 @@ import AspisFormal.K1.V7Tag73PrefixTableProvenance
 import AspisFormal.K1.V7Tag73Q16ControlInvariant
 import AspisFormal.K1.V7Tag73Q16LedgerControlInvariant
 import AspisFormal.K1.V7Tag73ChallengeRecordControlInvariant
+import AspisFormal.K1.V7Tag73ChallengeRecordUniquenessInvariant
 
 /-!
 # Actual-node causal provenance for the concrete Tag-73 restoration client
@@ -77,6 +78,7 @@ open AspisK1.V7Tag73CompletedFullRunProjection
 open AspisK1.V7Tag73Q16ControlInvariant
 open AspisK1.V7Tag73Q16LedgerControlInvariant
 open AspisK1.V7Tag73ChallengeRecordControlInvariant
+open AspisK1.V7Tag73ChallengeRecordUniquenessInvariant
 
 noncomputable section
 
@@ -1311,6 +1313,42 @@ theorem every_stored_node_k13_challenge_invariant_add_child
     (childInvariant : FutureFreeK13ChallengeInvariant
       child.verifierFinalState) :
     EveryStoredNodeK13ChallengeInvariant (accumulator.addNode child).2 := by
+  intro candidate member
+  simp only [ConcreteRestorationAccumulator.addNode, List.mem_append,
+    List.mem_singleton] at member
+  rcases member with old | rfl
+  · exact invariant candidate old
+  · exact childInvariant
+
+/-- Every stored verifier history has one record at most for every logical
+challenge id, including every snapshot eligible for restoration. -/
+def EveryStoredNodeChallengeRecordUniqueness
+    {Statement Proof Payload : Type u}
+    (accumulator : ConcreteRestorationAccumulator Statement Proof Payload) :
+    Prop :=
+  ∀ node ∈ accumulator.nodes,
+    FutureFreeChallengeRecordUniqueness node.verifierFinalState
+
+theorem every_stored_node_challenge_record_uniqueness_of_nodes_eq
+    {Statement Proof Payload : Type u}
+    (oldAccumulator newAccumulator :
+      ConcreteRestorationAccumulator Statement Proof Payload)
+    (nodesExact : newAccumulator.nodes = oldAccumulator.nodes)
+    (invariant : EveryStoredNodeChallengeRecordUniqueness oldAccumulator) :
+    EveryStoredNodeChallengeRecordUniqueness newAccumulator := by
+  intro node member
+  apply invariant node
+  rw [← nodesExact]
+  exact member
+
+theorem every_stored_node_challenge_record_uniqueness_add_child
+    {Statement Proof Payload : Type u}
+    (accumulator : ConcreteRestorationAccumulator Statement Proof Payload)
+    (child : ConcreteRestorationNode Statement Proof Payload)
+    (invariant : EveryStoredNodeChallengeRecordUniqueness accumulator)
+    (childInvariant : FutureFreeChallengeRecordUniqueness
+      child.verifierFinalState) :
+    EveryStoredNodeChallengeRecordUniqueness (accumulator.addNode child).2 := by
   intro candidate member
   simp only [ConcreteRestorationAccumulator.addNode, List.mem_append,
     List.mem_singleton] at member
@@ -3137,6 +3175,50 @@ theorem projected_restoration_child_k13_challenge_invariant
   obtain ⟨pairs, _path, _historyExact, operational, _tableAnswers⟩ :=
     projected_restoration_node_verifier_has_operational_trace base
   exact future_free_operational_trace_preserves_k13_challenge_invariant
+    environment child.adversaryValue.rawMessages child.verifierEntryState
+      child.verifierFinalState pairs operational entryInvariant
+
+/-- Duplicate-free challenge records follow the same exact restored snapshot
+and chronological child verifier trace. -/
+theorem projected_restoration_child_challenge_record_uniqueness
+    {Statement Proof Payload Final : Type u}
+    {startProgram : OracleMachine
+      (CheckedRawTag73AdversaryReturnedValue Statement Proof Payload)}
+    {environment : FutureFreeEnvironment}
+    {configuration : ConcreteRestorationConfiguration}
+    {fullTrace : List UnifiedExposureRecord}
+    {accumulator : ConcreteRestorationAccumulator Statement Proof Payload}
+    {child : ConcreteRestorationNode Statement Proof Payload}
+    (base : ProjectedRestorationNodeExecution
+      (Final := Final) startProgram environment configuration fullTrace
+        accumulator child)
+    (parentInvariant : FutureFreeChallengeRecordUniqueness
+      base.prepared.parentNode.verifierFinalState)
+    (beforeSeen : base.prepared.transition.before ∈
+      base.prepared.parentNode.verifierFinalState.seen) :
+    FutureFreeChallengeRecordUniqueness child.verifierFinalState := by
+  have selection := prepare_concrete_restoration_ready_selection_exact
+    startProgram configuration accumulator base.prepared.request base.prepared
+      base.preparationExact
+  have beforeInvariant : SnapshotChallengeRecordUniqueness
+      base.prepared.transition.before :=
+    parentInvariant.2 base.prepared.transition.before beforeSeen
+  have restoredInvariant : FutureFreeChallengeRecordUniqueness
+      base.prepared.restoredState := by
+    rw [selection.2.2.2]
+    constructor
+    · exact beforeInvariant
+    · intro snapshot member
+      simp only [restoreIndexedTransition, List.mem_singleton] at member
+      subst snapshot
+      exact beforeInvariant
+  have entryInvariant : FutureFreeChallengeRecordUniqueness
+      child.verifierEntryState := by
+    rw [base.restoredEntryExact]
+    exact restoredInvariant
+  obtain ⟨pairs, _path, _historyExact, operational, _tableAnswers⟩ :=
+    projected_restoration_node_verifier_has_operational_trace base
+  exact future_free_operational_trace_preserves_record_uniqueness
     environment child.adversaryValue.rawMessages child.verifierEntryState
       child.verifierFinalState pairs operational entryInvariant
 
@@ -5397,6 +5479,8 @@ structure ActualRestorationStateMapInvariant
     EveryStoredNodeQ16LedgerInvariant environment accumulator
   everyNodeK13ChallengeInvariant :
     EveryStoredNodeK13ChallengeInvariant accumulator
+  everyNodeChallengeRecordUniqueness :
+    EveryStoredNodeChallengeRecordUniqueness accumulator
   everyEmittedPairRestored : EveryEmittedPairHasConcreteRestoration
     startProgram configuration trace
 
@@ -5450,6 +5534,10 @@ theorem restoration_state_map_of_nodes_eq
     everyNodeK13ChallengeInvariant :=
       every_stored_node_k13_challenge_invariant_of_nodes_eq oldAccumulator
         newAccumulator nodesExact invariant.everyNodeK13ChallengeInvariant
+    everyNodeChallengeRecordUniqueness :=
+      every_stored_node_challenge_record_uniqueness_of_nodes_eq oldAccumulator
+        newAccumulator nodesExact
+          invariant.everyNodeChallengeRecordUniqueness
     everyEmittedPairRestored := pairsCovered }
 
 /-- Appending one actually returned child preserves closed histories and the
@@ -5469,6 +5557,8 @@ theorem restoration_state_map_add_child
       child.verifierFinalState)
     (childK13Challenges : FutureFreeK13ChallengeInvariant
       child.verifierFinalState)
+    (childChallengeRecords : FutureFreeChallengeRecordUniqueness
+      child.verifierFinalState)
     (pairsCovered : EveryEmittedPairHasConcreteRestoration startProgram
       configuration (trace ++ suffix))
     (invariant : ActualRestorationStateMapInvariant startProgram environment
@@ -5487,6 +5577,9 @@ theorem restoration_state_map_add_child
     everyNodeK13ChallengeInvariant :=
       every_stored_node_k13_challenge_invariant_add_child accumulator child
         invariant.everyNodeK13ChallengeInvariant childK13Challenges
+    everyNodeChallengeRecordUniqueness :=
+      every_stored_node_challenge_record_uniqueness_add_child accumulator child
+        invariant.everyNodeChallengeRecordUniqueness childChallengeRecords
     everyEmittedPairRestored := pairsCovered }
 
 /-- The singleton root initializes the map on any fork-free root prefix. -/
@@ -5503,6 +5596,8 @@ theorem initial_restoration_state_map
     (rootQ16Ledger : FutureFreeQ16LedgerInvariant environment
       root.verifierFinalState)
     (rootK13Challenges : FutureFreeK13ChallengeInvariant
+      root.verifierFinalState)
+    (rootChallengeRecords : FutureFreeChallengeRecordUniqueness
       root.verifierFinalState)
     (noAdvance : ∀ scheduled,
       (.forkAdvance scheduled : UnifiedExposureRecord) ∉ trace) :
@@ -5532,6 +5627,12 @@ theorem initial_restoration_state_map
         simpa [initialRestorationAccumulatorFromRoot] using member
       subst node
       exact rootK13Challenges
+    everyNodeChallengeRecordUniqueness := by
+      intro node member
+      have nodeExact : node = root := by
+        simpa [initialRestorationAccumulatorFromRoot] using member
+      subst node
+      exact rootChallengeRecords
     everyEmittedPairRestored :=
       every_emitted_pair_of_no_fork_advance startProgram configuration trace
         noAdvance }
@@ -5576,6 +5677,7 @@ theorem unchanged_continuation_preserves_restoration_state_map
 #print axioms every_emitted_pair_append_without_fork_advance
 #print axioms every_emitted_pair_append_scheduled_pair
 #print axioms projected_restoration_child_q16_slot_invariant
+#print axioms projected_restoration_child_challenge_record_uniqueness
 #print axioms initial_restoration_state_map
 #print axioms unchanged_continuation_preserves_restoration_state_map
 

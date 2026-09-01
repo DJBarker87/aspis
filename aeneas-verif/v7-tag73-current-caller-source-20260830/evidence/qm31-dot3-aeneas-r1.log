@@ -1,0 +1,15 @@
+Running as unit: aspis-v7-qm31-dot3-aeneas-r1.service; invocation ID: 5e5ed575be7744368facda8bb65ff277
+[[92mInfo[39m ] Imported: /home/dombarker/project-offloads/aspis-v7-aeneas-source-unblock-20260830/qm31-dot3-reduced-r1/extraction/V7Qm31Dot3.llbc
+[[92mInfo[39m ] Creating missing directory: /home/dombarker/project-offloads/aspis-v7-aeneas-source-unblock-20260830/qm31-dot3-reduced-r1/generated-r1/V7Qm31Dot3Reduced
+[[92mInfo[39m ] Generated: /home/dombarker/project-offloads/aspis-v7-aeneas-source-unblock-20260830/qm31-dot3-reduced-r1/generated-r1/V7Qm31Dot3Reduced/TypesExternal_Template.lean
+[[92mInfo[39m ] Generated: /home/dombarker/project-offloads/aspis-v7-aeneas-source-unblock-20260830/qm31-dot3-reduced-r1/generated-r1/V7Qm31Dot3Reduced/Types.lean
+[[92mInfo[39m ] Generated: /home/dombarker/project-offloads/aspis-v7-aeneas-source-unblock-20260830/qm31-dot3-reduced-r1/generated-r1/V7Qm31Dot3Reduced/FunsExternal_Template.lean
+[[92mInfo[39m ] Generated: /home/dombarker/project-offloads/aspis-v7-aeneas-source-unblock-20260830/qm31-dot3-reduced-r1/generated-r1/V7Qm31Dot3Reduced/Funs.lean
+[[92mInfo[39m ] Generated: /home/dombarker/project-offloads/aspis-v7-aeneas-source-unblock-20260830/qm31-dot3-reduced-r1/generated-r1/translation.json
+[[92mInfo[39m ] Total execution time: 109.118626 seconds
+Finished with result: success
+Main processes terminated with: code=exited/status=0
+Service runtime: 1min 49.233s
+CPU time consumed: 1min 49.126s
+Memory peak: 232.4M
+Memory swap peak: 0B

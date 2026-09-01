@@ -1,0 +1,53 @@
+V7 Tag-73 generated K1.3 fixed-field projection: PASS
+
+Theorem:
+  AspisV7Tag73GeneratedPackedReaderBridge.
+    generated_production_root_success_constructs_k13_fixed_projection
+
+Input boundary:
+  literal translated success of
+  verify_v7_compact_transcript_and_relation_prepared_with_hiding_context
+
+Constructed conclusions:
+  exact 9,936-byte fixed section
+  exact canonical packed section
+  641 decoded QM31Exact values
+  CurrentSourceFixedFieldProjection
+  FixedFieldDecodeExact
+  exact decoded FixedFieldView
+  canonical final high padding
+
+NUC unit:
+  aspis-v7-k13-fixed-projection-20260830-r4.service
+
+Limits:
+  MemoryHigh=12G
+  MemoryMax=16G
+  MemorySwapMax=0
+
+Result:
+  exit status 0
+  wall 1:01.21
+  GNU-time maximum resident set 7,829,728 KiB
+  swaps 0
+
+Generated olean:
+  b981aa970f58d82e7061b502f2348985f70d1185a2f865dd134a13278da8beac
+
+#print axioms:
+  propext
+  Classical.choice
+  Quot.sound
+
+Forbidden proof devices:
+  no sorry
+  no admit
+  no sorryAx
+  no native_decide
+  no project-specific axiom
+
+Remaining boundary:
+  compose the current outer verifier caller and exact current parser with this
+  semantic-root theorem, then transport the resulting fixed projection to each
+  literal done restoration node's rawMessages.  Generated namespace equality
+  is not assumed.

@@ -1,4 +1,6 @@
-import Aeneas
+import Aeneas.Std
+import Aeneas.Data.Discriminant
+import Aeneas.Tactic.RustAttributes
 
 /-!
 # Finite traces of literal Aeneas loops

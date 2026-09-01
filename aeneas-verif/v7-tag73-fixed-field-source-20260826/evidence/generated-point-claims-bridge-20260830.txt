@@ -1,0 +1,30 @@
+V7 Tag-73 literal generated point-claims bridge
+Date: 2026-08-30
+Host: nuc.local
+Unit: aspis-v7-point87-source-final2-20260830
+Invocation: af2f1448285244d7919a7eb0550db5af
+MemoryHigh: 12G
+MemoryMax: 16G
+MemorySwapMax: 0
+Result: PASS
+Wall: 2.97 s
+Peak RSS: 2,601,072 KiB
+Swaps: 0
+
+Principal theorem:
+generated_decode_and_absorb_point_claims_success_reads_exactly_87
+
+The theorem starts from literal translated production
+decode_and_absorb_point_claims success and constructs an ordered
+SuccessfulFixedReaderTrace containing exactly 87 canonical QM31 values. It
+covers the exact 3 x 29 mutable-array traversal, both generated loop bodies,
+reader-state threading, transcript absorption, and fail-closed pending-return
+behavior.
+
+Every printed public theorem depends on a subset of:
+propext
+Classical.choice
+Quot.sound
+
+No sorry, sorryAx, project-specific axiom, native_decide, decoder-agreement,
+or source-agreement premise is present in the compiled theorem.

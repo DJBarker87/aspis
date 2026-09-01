@@ -34,7 +34,8 @@ use aspis_statement::{
         evaluate_pool_v1_pair_forest_withdrawal_selected_masked_terminal_compiled_tag73_v1,
         evaluate_pool_v1_private_transfer_selected_masked_terminal_compiled_tag73_v1,
         evaluate_pool_v1_withdrawal_selected_masked_terminal_compiled_tag73_v1,
-        pool_v1_pair_forest_copy_active_row_masks_compiled_v1,
+        pool_v1_pair_forest_copy_inactive_group_masks_compiled_v1,
+        pool_v1_pair_forest_copy_inactive_row_groups_compiled_v1,
         pool_v1_private_transfer_copy_active_row_masks_compiled_v1,
         pool_v1_withdrawal_copy_active_row_masks_compiled_v1, PoolV1PairLatePublicStatementV1,
         PoolV1PrivateTransferPublicV1, PoolV1WithdrawalPublicV1,
@@ -42,6 +43,9 @@ use aspis_statement::{
     AtomicPaymentStatementV4,
 };
 use solana_program::pubkey::Pubkey;
+
+#[cfg(test)]
+use aspis_statement::pool_v1::pool_v1_pair_forest_copy_active_row_masks_compiled_v1;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum V7VerifyError {
@@ -376,15 +380,15 @@ pub fn verify_v7_pool_pair_forest_private_transfer_with_statement_digest(
         statement_digest,
         attempt_id: attempt_id.to_bytes(),
     };
-    let (row_groups, group_masks, group_count) =
-        pool_inactive_schedule(pool_v1_pair_forest_copy_active_row_masks_compiled_v1());
+    let row_groups = pool_v1_pair_forest_copy_inactive_row_groups_compiled_v1();
+    let group_masks = pool_v1_pair_forest_copy_inactive_group_masks_compiled_v1();
     let transcript = verify_v7_compact_transcript_and_relation_prepared_with_hiding_context(
         hash,
         &wire,
         &context,
         StateOnlyHidingContext::pool_v1_pair_forest_v1(statement_digest, attempt_id.to_bytes()),
-        &row_groups,
-        &group_masks[..group_count],
+        row_groups,
+        group_masks,
         check_pow,
         |view| pool_pair_forest_private_transfer_terminal_matches(statement, transition, view),
         |view| authenticate_and_fold_queries(hash, &wire, view),
@@ -415,15 +419,15 @@ pub fn verify_v7_pool_pair_forest_withdrawal_with_statement_digest(
         statement_digest,
         attempt_id: attempt_id.to_bytes(),
     };
-    let (row_groups, group_masks, group_count) =
-        pool_inactive_schedule(pool_v1_pair_forest_copy_active_row_masks_compiled_v1());
+    let row_groups = pool_v1_pair_forest_copy_inactive_row_groups_compiled_v1();
+    let group_masks = pool_v1_pair_forest_copy_inactive_group_masks_compiled_v1();
     let transcript = verify_v7_compact_transcript_and_relation_prepared_with_hiding_context(
         hash,
         &wire,
         &context,
         StateOnlyHidingContext::pool_v1_pair_forest_v1(statement_digest, attempt_id.to_bytes()),
-        &row_groups,
-        &group_masks[..group_count],
+        row_groups,
+        group_masks,
         check_pow,
         |view| pool_pair_forest_withdrawal_terminal_matches(statement, transition, view),
         |view| authenticate_and_fold_queries(hash, &wire, view),
@@ -458,15 +462,15 @@ pub fn verify_v7_pool_pair_forest_private_transfer_canonical_with_statement_dige
         statement_digest,
         attempt_id: attempt_id.to_bytes(),
     };
-    let (row_groups, group_masks, group_count) =
-        pool_inactive_schedule(pool_v1_pair_forest_copy_active_row_masks_compiled_v1());
+    let row_groups = pool_v1_pair_forest_copy_inactive_row_groups_compiled_v1();
+    let group_masks = pool_v1_pair_forest_copy_inactive_group_masks_compiled_v1();
     let transcript = verify_v7_canonical_transcript_and_relation_prepared_with_hiding_context(
         hash,
         &wire,
         &context,
         StateOnlyHidingContext::pool_v1_pair_forest_v1(statement_digest, attempt_id.to_bytes()),
-        &row_groups,
-        &group_masks[..group_count],
+        row_groups,
+        group_masks,
         check_pow,
         |view| pool_pair_forest_private_transfer_terminal_matches(statement, transition, view),
         |view| authenticate_and_fold_canonical_queries(hash, &wire, view),
@@ -501,15 +505,15 @@ pub fn verify_v7_pool_pair_forest_withdrawal_canonical_with_statement_digest(
         statement_digest,
         attempt_id: attempt_id.to_bytes(),
     };
-    let (row_groups, group_masks, group_count) =
-        pool_inactive_schedule(pool_v1_pair_forest_copy_active_row_masks_compiled_v1());
+    let row_groups = pool_v1_pair_forest_copy_inactive_row_groups_compiled_v1();
+    let group_masks = pool_v1_pair_forest_copy_inactive_group_masks_compiled_v1();
     let transcript = verify_v7_canonical_transcript_and_relation_prepared_with_hiding_context(
         hash,
         &wire,
         &context,
         StateOnlyHidingContext::pool_v1_pair_forest_v1(statement_digest, attempt_id.to_bytes()),
-        &row_groups,
-        &group_masks[..group_count],
+        row_groups,
+        group_masks,
         check_pow,
         |view| pool_pair_forest_withdrawal_terminal_matches(statement, transition, view),
         |view| authenticate_and_fold_canonical_queries(hash, &wire, view),
@@ -543,5 +547,16 @@ mod pool_tests {
                 }
             }
         }
+
+        let (expected_groups, expected_masks, expected_count) =
+            pool_inactive_schedule(pool_v1_pair_forest_copy_active_row_masks_compiled_v1());
+        assert_eq!(
+            pool_v1_pair_forest_copy_inactive_row_groups_compiled_v1(),
+            &expected_groups
+        );
+        assert_eq!(
+            pool_v1_pair_forest_copy_inactive_group_masks_compiled_v1(),
+            &expected_masks[..expected_count]
+        );
     }
 }
