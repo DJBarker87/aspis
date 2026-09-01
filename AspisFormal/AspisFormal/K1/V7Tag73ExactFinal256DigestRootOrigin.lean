@@ -104,7 +104,8 @@ theorem exact_operational_final256_and_work_lookups
     {sample : ExactCompilerSample HiddenTape parameters}
     (input : ExactK12OperationalInput transitionFuel configuration projection
       fixedInstance sample) :
-    ∃ (beforeFinal256 : EvalState) (prefinalDigest workAnswer : Digest256),
+    ∃ (beforeFinal256 : EvalState)
+        (prefinalDigest workAnswer q16Base : Digest256),
       tableLookup (exactOperationalTable input)
           (bytes beforeFinal256.digest ++
             [domAbsorb,
@@ -117,7 +118,12 @@ theorem exact_operational_final256_and_work_lookups
           (bytes prefinalDigest ++ [domGrind] ++
             bytes (exactOperationalTape input).messages.finalGrinding.selected) =
         some workAnswer ∧
-      FinalWork34Accepted workAnswer := by
+      FinalWork34Accepted workAnswer ∧
+      tableLookup (exactOperationalTable input)
+          (bytes prefinalDigest ++ [domAbsorb, finalWorkNonceLabel] ++
+            bytes (exactOperationalTape input).messages.finalGrinding.selected) =
+        some q16Base ∧
+      q16Base = (exactOperationalRawTrace input).q16BaseDigest := by
   have strict := input.package.root.fixedRoot.base.strictRefinement
   have refined := (checked_refinement_is_well_formed
     (exactOperationalTable input) exactDeterministicDecoders
@@ -126,8 +132,12 @@ theorem exact_operational_final256_and_work_lookups
   obtain ⟨prefixState, prefixRun, refined⟩ :=
     Option.bind_eq_some_iff.mp refined
   obtain ⟨afterQ16, _q16Run, refined⟩ := Option.bind_eq_some_iff.mp refined
-  obtain ⟨finalState, _finalRun, _rawRun⟩ :=
+  obtain ⟨finalState, _finalRun, rawRun⟩ :=
     Option.bind_eq_some_iff.mp refined
+  have rawExact := Option.some.inj rawRun
+  have q16BaseExact : prefixState.digest =
+      (exactOperationalRawTrace input).q16BaseDigest := by
+    simpa using congrArg InteractiveRawTrace.q16BaseDigest rawExact
   rw [runPrefix] at prefixRun
   obtain ⟨beforeC1, _beforeC1Run, prefixRun⟩ :=
     Option.bind_eq_some_iff.mp prefixRun
@@ -172,17 +182,91 @@ theorem exact_operational_final256_and_work_lookups
   simp only [runMachineEvents] at suffixRun
   obtain ⟨afterGrind, grindRun, suffixRun⟩ :=
     Option.bind_eq_some_iff.mp suffixRun
-  obtain ⟨afterCheck, checkRun, _suffixRun⟩ :=
+  obtain ⟨afterCheck, checkRun, suffixRun⟩ :=
     Option.bind_eq_some_iff.mp suffixRun
   have afterCheckExact : afterCheck = afterGrind := by
     simpa [runMachineEvent] using (Option.some.inj checkRun).symm
   subst afterCheck
+  obtain ⟨afterAbsorb, absorbRun, finalRun⟩ :=
+    Option.bind_eq_some_iff.mp suffixRun
+  have afterAbsorbExact : afterAbsorb = prefixState := by
+    simpa [runMachineEvents] using Option.some.inj finalRun
+  subst afterAbsorb
   obtain ⟨workAnswer, workLookup, workAccepted⟩ :=
     run_grinding_choice_exposes_selected_lookup
       (exactOperationalTable input) beforeFinalWork afterGrind .final
       (exactOperationalTape input).messages.finalGrinding grindRun
-  exact ⟨beforeFinal256, beforeFinalWork.digest, workAnswer,
-    final256Lookup, workLookup, workAccepted⟩
+  have stableDigest : afterGrind.digest = beforeFinalWork.digest :=
+    grinding_choice_does_not_advance (exactOperationalTable input)
+      beforeFinalWork afterGrind .final
+      (exactOperationalTape input).messages.finalGrinding grindRun
+  have absorbLookup := absorb_step_exposes_literal_lookup
+    (exactOperationalTable input) afterGrind prefixState
+    (.finalNonce
+      (exactOperationalTape input).messages.finalGrinding.selected) absorbRun
+  rw [stableDigest] at absorbLookup
+  refine ⟨beforeFinal256, beforeFinalWork.digest, workAnswer,
+    prefixState.digest, final256Lookup, workLookup, workAccepted, ?_,
+    q16BaseExact⟩
+  simpa [AspisK1.V7Tag73TranscriptSchedule.Payload.label,
+    AspisK1.V7Tag73TranscriptSchedule.Payload.data] using absorbLookup
+
+/-- A digest is the exact state produced by the deployed `final256`
+absorption in this accepted execution.  This predicate makes the source
+origin proof-relevant when the digest is later carried by a causal-DAG trial. -/
+def ExactOperationalPrefinalDigest
+    {HiddenTape TapeIdentity Observation Statement Payload Result : Type}
+    {parameters : ExactCompilerResourceParameters}
+    {transitionFuel : Nat}
+    {configuration : ExactPlainRomConfiguration HiddenTape TapeIdentity
+      Observation Statement Tag73K12ParsedProof Payload Result parameters}
+    {projection : AcceptedTapeProjection Statement Tag73K12ParsedProof Payload}
+    {fixedInstance : PublicInstance Statement}
+    {sample : ExactCompilerSample HiddenTape parameters}
+    (input : ExactK12OperationalInput transitionFuel configuration projection
+      fixedInstance sample)
+    (digest : Digest256) : Prop :=
+  ∃ beforeFinal256 : EvalState,
+    tableLookup (exactOperationalTable input)
+        (bytes beforeFinal256.digest ++
+          [domAbsorb,
+            (AspisK1.V7Tag73TranscriptSchedule.Payload.final256
+              (exactOperationalTape input).messages.finalValues).label] ++
+          (AspisK1.V7Tag73TranscriptSchedule.Payload.final256
+            (exactOperationalTape input).messages.finalValues).data) =
+      some digest
+
+/-- The exact accepted execution returns the final-work pair together with
+the explicit fact that its serialized state is the preceding `final256`
+answer. -/
+theorem exact_operational_final_work_pair_with_prefinal_origin
+    {HiddenTape TapeIdentity Observation Statement Payload Result : Type}
+    {parameters : ExactCompilerResourceParameters}
+    {transitionFuel : Nat}
+    {configuration : ExactPlainRomConfiguration HiddenTape TapeIdentity
+      Observation Statement Tag73K12ParsedProof Payload Result parameters}
+    {projection : AcceptedTapeProjection Statement Tag73K12ParsedProof Payload}
+    {fixedInstance : PublicInstance Statement}
+    {sample : ExactCompilerSample HiddenTape parameters}
+    (input : ExactK12OperationalInput transitionFuel configuration projection
+      fixedInstance sample) :
+    ∃ (digest workAnswer q16Base : Digest256),
+      ExactOperationalPrefinalDigest input digest ∧
+      tableLookup (exactOperationalTable input)
+          (bytes digest ++ [domGrind] ++
+            bytes (exactOperationalTape input).messages.finalGrinding.selected) =
+        some workAnswer ∧
+      FinalWork34Accepted workAnswer ∧
+      tableLookup (exactOperationalTable input)
+          (bytes digest ++ [domAbsorb, finalWorkNonceLabel] ++
+            bytes (exactOperationalTape input).messages.finalGrinding.selected) =
+        some q16Base ∧
+      q16Base = (exactOperationalRawTrace input).q16BaseDigest := by
+  obtain ⟨beforeFinal256, digest, workAnswer, q16Base, final256Lookup,
+      workLookup, workAccepted, absorbLookup, baseExact⟩ :=
+    exact_operational_final256_and_work_lookups input
+  exact ⟨digest, workAnswer, q16Base, ⟨beforeFinal256, final256Lookup⟩,
+    workLookup, workAccepted, absorbLookup, baseExact⟩
 
 /-- The final-256 digest has a literal first-creation record in the exact root
 trace. -/
@@ -203,8 +287,8 @@ theorem exact_operational_prefinal_digest_has_root_record
       HasLiteralStatePrefix prefinalDigest
         (bytes prefinalDigest ++ [domGrind] ++
           bytes (exactOperationalTape input).messages.finalGrinding.selected) := by
-  obtain ⟨beforeFinal256, prefinalDigest, workAnswer, final256Lookup,
-      _workLookup, _workAccepted⟩ :=
+  obtain ⟨beforeFinal256, prefinalDigest, workAnswer, q16Base, final256Lookup,
+      _workLookup, _workAccepted, _absorbLookup, _baseExact⟩ :=
     exact_operational_final256_and_work_lookups input
   obtain ⟨actor, rootMember⟩ := exact_final_table_lookup_has_root_record input
     (bytes beforeFinal256.digest ++
@@ -231,6 +315,7 @@ theorem exact_operational_prefinal_digest_has_root_record
 
 #print axioms prefix_before_final_work_final256_split
 #print axioms exact_operational_final256_and_work_lookups
+#print axioms exact_operational_final_work_pair_with_prefinal_origin
 #print axioms exact_operational_prefinal_digest_has_root_record
 
 end

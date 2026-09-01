@@ -142,8 +142,9 @@ theorem exact_fixed_k13_actual_joint_trial_anchor_actor_cases
     (actual : ExactFixedK13ActualJointTrial input trial) :
     ExactFixedK13VerifierAnchor input trial ∨
       ExactFixedK13AdversaryAnchor input trial := by
-  obtain ⟨digest, workAnswer, base, _workAccepted, _baseExact, pairLabeled,
-      _workLabeled, _workCoordinate, _realized⟩ := actual
+  obtain ⟨digest, workAnswer, base, _workAccepted, _prefinalOrigin,
+      _baseExact, pairLabeled, _workLabeled, _workCoordinate, _realized⟩ :=
+    actual
   let key := literalFinalWorkKey digest
     (exactOperationalTape input).messages.finalGrinding.selected
   change ExactDagFinalWorkPairLabeled input trial key workAnswer base at pairLabeled

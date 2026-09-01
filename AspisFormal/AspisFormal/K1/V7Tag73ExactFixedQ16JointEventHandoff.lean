@@ -32,6 +32,7 @@ open AspisK1.V7Tag73ExactConcreteK13K14Events
 open AspisK1.V7Tag73ExactDagCandidateLabeledRootRouting
 open AspisK1.V7Tag73ExactDagQ16ChainRouting
 open AspisK1.V7Tag73ExactFinalWorkPairControllerCompletion
+open AspisK1.V7Tag73ExactFinal256DigestRootOrigin
 open AspisK1.V7Tag73ExactFixedFullRunFactorization
 open AspisK1.V7Tag73ExactFixedK12MerkleClassifier
 open AspisK1.V7Tag73ExactFixedK12PrefixClassifier
@@ -137,6 +138,7 @@ def ExactFixedK13ActualJointTrial
     (trial : ExactCompilerExposureTrial parameters) : Prop :=
   ∃ (digest workAnswer base : Digest256),
     FinalWork34Accepted workAnswer ∧
+    ExactOperationalPrefinalDigest input digest ∧
     base = (exactOperationalRawTrace input).q16BaseDigest ∧
     ExactDagFinalWorkPairLabeled input trial
       (literalFinalWorkKey digest
@@ -193,8 +195,9 @@ theorem exact_fixed_k13_actual_joint_trial_root_actor_cases
               (indexedStateAfterRecords transitionFuel
                 (exactDagTrialController transitionFuel trial) prior
                 (exactDagCandidateInitialState input)) = some none)) := by
-  obtain ⟨digest, workAnswer, _base, workAccepted, _baseExact, _pairLabeled,
-      workLabeled, _workCoordinate, _realized⟩ := actual
+  obtain ⟨digest, workAnswer, _base, workAccepted, _prefinalOrigin,
+      _baseExact, _pairLabeled, workLabeled, _workCoordinate, _realized⟩ :=
+    actual
   obtain ⟨prior, later, actor, rootExact, preferred⟩ := workLabeled
   have member : (.machineFresh actor
       (literalFinalWorkKey digest
@@ -289,13 +292,14 @@ theorem exact_fixed_k13_query_failure_has_joint_trial_coordinate
       (exactOperationalTape input).search.selectedSchedule.positions := by
     rw [badCertificate]
     exact exact_query_phase_failure_selected_all_in_bad sourceBinding failure
-  obtain ⟨digest, workAnswer, base, trial, workAccepted, baseExact,
+  obtain ⟨digest, workAnswer, base, trial, workAccepted, prefinalOrigin,
+      baseExact,
       pairLabeled, workLabeled, workCoordinate, realized⟩ :=
     exact_compiler_accepted_dag_q16_operational_realization transitionRoom
       programmedCover input (frontierExact input)
   have actualTrial : ExactFixedK13ActualJointTrial input trial :=
-    ⟨digest, workAnswer, base, workAccepted, baseExact, pairLabeled, workLabeled,
-      workCoordinate, realized⟩
+    ⟨digest, workAnswer, base, workAccepted, prefinalOrigin, baseExact,
+      pairLabeled, workLabeled, workCoordinate, realized⟩
   refine ⟨input, bad, trial, rfl, badCard, actualTrial, ?_⟩
   have q16Success :=
     operational_realization_implies_q16_digest_forest_succeeds realized

@@ -295,8 +295,9 @@ theorem exact_fixed_k13_adversary_anchor_has_prefinal_digest_prefix
       HasLiteralStatePrefix digest target := by
   obtain ⟨anchorPrior, anchorLater, target, answer, anchorExact,
       anchorIndex⟩ := anchor
-  obtain ⟨digest, workAnswer, base, _workAccepted, _baseExact, pairLabeled,
-      _workLabeled, _workCoordinate, _realized⟩ := witness.actualTrial
+  obtain ⟨digest, workAnswer, base, _workAccepted, _prefinalOrigin,
+      _baseExact, pairLabeled, _workLabeled, _workCoordinate, _realized⟩ :=
+    witness.actualTrial
   rcases pairLabeled with
       ⟨pairPrior, middle, pairLater, workActor, absorbActor, pairExact,
         pairIndex⟩ |

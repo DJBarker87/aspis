@@ -1,5 +1,6 @@
 import AspisFormal.K1.V7Tag73DagFinalWorkPairCompletion
 import AspisFormal.K1.V7Tag73ExactDagQ16OutputLabel
+import AspisFormal.K1.V7Tag73ExactFinal256DigestRootOrigin
 import AspisFormal.K1.V7Tag73ExactQ16CausalCoordinateOrder
 import AspisFormal.K1.V7Tag73ExactRootRecordOrderLift
 import AspisFormal.K1.V7Tag73IndexedControllerLabeledRecords
@@ -39,6 +40,7 @@ open AspisK1.V7Tag73ExactCompilerQ16InitialDigestMap
 open AspisK1.V7Tag73ExactDagCandidateLabeledRootRouting
 open AspisK1.V7Tag73ExactDagQ16OutputLabel
 open AspisK1.V7Tag73ExactCompilerFinalWorkTraceOccurrence
+open AspisK1.V7Tag73ExactFinal256DigestRootOrigin
 open AspisK1.V7Tag73ExactFinalWorkPairControllerCompletion
 open AspisK1.V7Tag73ExactFinalWorkPairRootOrder
 open AspisK1.V7Tag73ExactFixedFullRunFactorization
@@ -1198,6 +1200,7 @@ theorem exact_compiler_accepted_dag_trial_installs_all_candidates
     ∃ (digest workAnswer base : Digest256)
         (trial : ExactCompilerExposureTrial parameters),
       FinalWork34Accepted workAnswer ∧
+      ExactOperationalPrefinalDigest input digest ∧
       base = (exactOperationalRawTrace input).q16BaseDigest ∧
       ExactDagFinalWorkPairLabeled input trial
         (literalFinalWorkKey digest
@@ -1215,8 +1218,9 @@ theorem exact_compiler_accepted_dag_trial_installs_all_candidates
             (counter, ⟨0, by omega⟩)
             (bytes base ++ [domAbsorb, queryCandidateLabel,
               UInt8.ofNat counter.val])) := by
-  obtain ⟨digest, workAnswer, base, workLookup, workAccepted, absorbLookup,
-      baseExact⟩ := exact_operational_final_work_pair_lookups input
+  obtain ⟨digest, workAnswer, base, prefinalOrigin, workLookup, workAccepted,
+      absorbLookup, baseExact⟩ :=
+    exact_operational_final_work_pair_with_prefinal_origin input
   let nonce := (exactOperationalTape input).messages.finalGrinding.selected
   let key := literalFinalWorkKey digest nonce
   obtain ⟨workActor, workMember⟩ :=
@@ -1313,7 +1317,8 @@ theorem exact_compiler_accepted_dag_trial_installs_all_candidates
         simp [dagCandidatePreferredSlot, inputExact, dagPreferredSlotForInput,
           dagRawPreferredSlot, beforeIndex, beforeInactive, inactiveDagMemory,
           key, nonce]
-    refine ⟨digest, workAnswer, base, trial, workAccepted, baseExact,
+    refine ⟨digest, workAnswer, base, trial, workAccepted, prefinalOrigin,
+      baseExact,
       pairLabeled, workLabeled, ?_⟩
     intro counter beforeSelected
     obtain ⟨absorbPrior, candidateMiddle, candidateLater,
@@ -1477,7 +1482,8 @@ theorem exact_compiler_accepted_dag_trial_installs_all_candidates
           some none
         simp [dagCandidatePreferredSlot, inputExact, dagPreferredSlotForInput,
           dagRawPreferredSlot, beforeWorkTracked.1, noneFresh]
-    refine ⟨digest, workAnswer, base, trial, workAccepted, baseExact,
+    refine ⟨digest, workAnswer, base, trial, workAccepted, prefinalOrigin,
+      baseExact,
       pairLabeled, workLabeled, ?_⟩
     intro counter beforeSelected
     obtain ⟨absorbPrior, candidateMiddle, candidateLater,
@@ -1981,6 +1987,7 @@ theorem exact_compiler_accepted_dag_q16_operational_realization
     ∃ (digest workAnswer base : Digest256)
         (trial : ExactCompilerExposureTrial parameters),
       FinalWork34Accepted workAnswer ∧
+      ExactOperationalPrefinalDigest input digest ∧
       base = (exactOperationalRawTrace input).q16BaseDigest ∧
       ExactDagFinalWorkPairLabeled input trial
         (literalFinalWorkKey digest
@@ -2001,7 +2008,8 @@ theorem exact_compiler_accepted_dag_q16_operational_realization
           (exactCompilerExposureTrialDagRouter parameters transitionFuel trial
             (exactPlainRomCursor configuration sample.1).erase)
           sample.2).2.2 := by
-  obtain ⟨digest, workAnswer, base, trial, workAccepted, baseExact,
+  obtain ⟨digest, workAnswer, base, trial, workAccepted, prefinalOrigin,
+      baseExact,
       pairLabeled, workLabeled, installed⟩ :=
     exact_compiler_accepted_dag_trial_installs_all_candidates transitionRoom
       input
@@ -2118,7 +2126,8 @@ theorem exact_compiler_accepted_dag_q16_operational_realization
         (exactOperationalTape input).frontierNodes schedule := by
     intro counter schedule _beforeSelected _outcomeExact
     exact (frontierExact schedule).symm
-  refine ⟨digest, workAnswer, base, trial, workAccepted, baseExact,
+  refine ⟨digest, workAnswer, base, trial, workAccepted, prefinalOrigin,
+    baseExact,
     pairLabeled, workLabeledExact, workCoordinate, ?_⟩
   exact exact_compiler_final_work_q16_operational_realization_of_used_lookups
     parameters
