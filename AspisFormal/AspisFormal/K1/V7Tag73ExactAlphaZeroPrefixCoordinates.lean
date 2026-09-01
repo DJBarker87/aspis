@@ -51,6 +51,30 @@ def beforeAlphaZeroTailEvents (messages : Messages) : List MachineEvent :=
    .check .foldWork,
    .absorb (.foldNonce messages.foldGrinding.selected)]
 
+/-- Prefix ending immediately before the fold-nonce absorption that produces
+the alpha-zero sampler's initial digest. -/
+def beforeAlphaZeroProducerTailEvents (messages : Messages) :
+    List MachineEvent :=
+  beforeGammaTailEvents messages ++
+  [challengeEvent messages .gamma,
+   .absorb (.inactiveClaim messages.inactiveClaim),
+   challengeEvent messages .kappa] ++
+  oodEvents messages ++
+  [.absorb (.relationRound 0 (messages.relationSent 0)),
+   .grind .fold messages.foldGrinding,
+   .check .foldWork]
+
+def alphaZeroBoundaryPayload (messages : Messages) :
+    AspisK1.V7Tag73TranscriptSchedule.Payload :=
+  .foldNonce messages.foldGrinding.selected
+
+theorem before_alpha_zero_tail_producer_split (messages : Messages) :
+    beforeAlphaZeroTailEvents messages =
+      beforeAlphaZeroProducerTailEvents messages ++
+        [.absorb (alphaZeroBoundaryPayload messages)] := by
+  simp [beforeAlphaZeroTailEvents, beforeAlphaZeroProducerTailEvents,
+    alphaZeroBoundaryPayload]
+
 /-- Exact suffix beginning with the value that alpha-zero immediately binds. -/
 def afterAlphaZeroTailEvents (messages : Messages) : List MachineEvent :=
   [.absorb (.final256 messages.finalValues),
@@ -85,12 +109,27 @@ theorem exact_compiler_constructs_alpha_zero_prefix_coordinates
       (segments : SemanticExecutionSegments (exactOperationalTable input)
         (exactOperationalTape input).messages evaluator.afterC2
         evaluator.prefixState)
-      (beforeAlpha afterAlpha afterBlocks afterFinal256 : EvalState)
+      (beforeAlphaProducer beforeAlpha afterAlpha afterBlocks afterFinal256 :
+        EvalState)
       (outputs advances : List Digest256) (exactValue : QM31Exact),
       runMachineEventsWorkErased (exactOperationalTable input)
-          (beforeAlphaZeroTailEvents (exactOperationalTape input).messages)
+          (beforeAlphaZeroProducerTailEvents
+            (exactOperationalTape input).messages)
           segments.afterSemantic =
+        some beforeAlphaProducer ∧
+      runMachineEventWorkErased (exactOperationalTable input)
+          beforeAlphaProducer
+          (.absorb (alphaZeroBoundaryPayload
+            (exactOperationalTape input).messages)) =
         some beforeAlpha ∧
+      tableLookup (exactOperationalTable input)
+          (bytes beforeAlphaProducer.digest ++
+            [domAbsorb,
+              (alphaZeroBoundaryPayload
+                (exactOperationalTape input).messages).label] ++
+            (alphaZeroBoundaryPayload
+              (exactOperationalTape input).messages).data) =
+        some beforeAlpha.digest ∧
       squeezeMany (exactOperationalTable input) (.challenge (.alpha 0))
           ((exactOperationalTape input).messages.challengeUse
             (.alpha 0)).blocksUsed beforeAlpha =
@@ -141,6 +180,30 @@ theorem exact_compiler_constructs_alpha_zero_prefix_coordinates
       (challengeEvent (exactOperationalTape input).messages (.alpha 0) ::
         afterAlphaZeroTailEvents (exactOperationalTape input).messages)
       segments.afterSemantic evaluator.prefixState).mp splitRun
+  rw [before_alpha_zero_tail_producer_split] at prefixRun
+  obtain ⟨beforeAlphaProducer, producerPrefixRun, boundaryTailRun⟩ :=
+    (run_machine_events_work_erased_append_iff
+      (exactOperationalTable input)
+      (beforeAlphaZeroProducerTailEvents
+        (exactOperationalTape input).messages)
+      [.absorb (alphaZeroBoundaryPayload
+        (exactOperationalTape input).messages)]
+      segments.afterSemantic beforeAlpha).mp prefixRun
+  simp only [runMachineEventsWorkErased] at boundaryTailRun
+  obtain ⟨boundaryAfter, boundaryRun, boundaryDone⟩ :=
+    Option.bind_eq_some_iff.mp boundaryTailRun
+  have boundaryAfterExact : boundaryAfter = beforeAlpha := by
+    simpa [runMachineEventsWorkErased] using Option.some.inj boundaryDone
+  subst boundaryAfter
+  have boundaryAbsorb : absorbStep (exactOperationalTable input)
+      beforeAlphaProducer
+      (alphaZeroBoundaryPayload (exactOperationalTape input).messages) =
+        some beforeAlpha := by
+    simpa [runMachineEventWorkErased] using boundaryRun
+  have boundaryLookup := absorb_step_exposes_literal_lookup
+    (exactOperationalTable input) beforeAlphaProducer beforeAlpha
+      (alphaZeroBoundaryPayload (exactOperationalTape input).messages)
+      boundaryAbsorb
   simp only [runMachineEventsWorkErased] at restRun
   obtain ⟨afterAlpha, alphaRun, suffixRun⟩ :=
     Option.bind_eq_some_iff.mp restRun
@@ -207,14 +270,15 @@ theorem exact_compiler_constructs_alpha_zero_prefix_coordinates
     (exactOperationalTable input) afterAlpha afterFinal256
       (.final256 (exactOperationalTape input).messages.finalValues)
       final256Absorb
-  refine ⟨evaluator, segments, beforeAlpha, afterAlpha, afterBlocks,
-    afterFinal256, outputs, advances, exactValue, ?_, squeezeRun,
+  refine ⟨evaluator, segments, beforeAlphaProducer, beforeAlpha, afterAlpha,
+    afterBlocks, afterFinal256, outputs, advances, exactValue,
+    producerPrefixRun, boundaryRun, boundaryLookup, squeezeRun,
     afterAlphaExact,
     final256Run, outputsLength, advancesLength, coordinates, callsExact,
     exactDecode, operationalValue, final256Lookup⟩
-  simpa using prefixRun
 
 #print axioms after_semantic_tail_events_alpha_zero_split
+#print axioms before_alpha_zero_tail_producer_split
 #print axioms exact_compiler_constructs_alpha_zero_prefix_coordinates
 
 end
