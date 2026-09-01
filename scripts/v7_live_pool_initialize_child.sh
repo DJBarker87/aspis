@@ -21,6 +21,7 @@ readonly MATERIALIZER=${ASPIS_V7_LIVE_PROOF_MATERIALIZER:-}
 readonly PROVER=${ASPIS_V7_LIVE_POOL_PROVER:-}
 readonly PROOF_UPLOAD_CHILD=${ASPIS_V7_PROOF_UPLOAD_CHILD:-}
 readonly TERMINAL_BUILDER=${ASPIS_V7_LIVE_TERMINAL_BUILDER:-${ASPIS_V7_LIVE_TRANSFER_TERMINAL_BUILDER:-}}
+readonly PROOF_CLOSE_BUILDER=${ASPIS_V7_LIVE_PROOF_CLOSE_BUILDER:-}
 readonly AGAVE_BIN_DIR=${ASPIS_TXV1_DISPOSABLE_AGAVE_BIN_DIR:-}
 readonly OPERATION=${ASPIS_V7_LIVE_OPERATION:-transfer}
 
@@ -47,6 +48,10 @@ rpc() {
 
 account_data_hash() {
   jq -er '.result.value.data[0]' "$1" | openssl base64 -d -A | shasum -a 256 | awk '{print $1}'
+}
+
+account_values_hash() {
+  jq -cS '.result.value' "$1" | shasum -a 256 | awk '{print $1}'
 }
 
 token_amount() {
@@ -423,6 +428,17 @@ if [[ -n "$SECRET_BUILDER" || -n "$DEPOSIT_BUILDER" ]]; then
         rpc "$(jq -nc --argjson addresses "$protected_addresses" \
           '{jsonrpc:"2.0",id:1801,method:"getMultipleAccounts",params:[$addresses,{encoding:"base64",commitment:"finalized"}]}')" \
           | jq . >"$TERMINAL_EVIDENCE/accounts-after.json"
+        replay_simulation=$(rpc "$(jq -c '.simulationRequest' "$TERMINAL_EVIDENCE/signed-request.json")")
+        jq . <<<"$replay_simulation" >"$TERMINAL_EVIDENCE/replay-simulation.json"
+        jq -e '.error | not' <<<"$replay_simulation" >/dev/null
+        jq -e '.result.value.err != null' <<<"$replay_simulation" >/dev/null \
+          || fail "landed nullifier replay was not rejected"
+        rpc "$(jq -nc --argjson addresses "$protected_addresses" \
+          '{jsonrpc:"2.0",id:1804,method:"getMultipleAccounts",params:[$addresses,{encoding:"base64",commitment:"finalized"}]}')" \
+          | jq . >"$TERMINAL_EVIDENCE/accounts-after-replay-simulation.json"
+        [[ "$(account_values_hash "$TERMINAL_EVIDENCE/accounts-after.json")" == \
+          "$(account_values_hash "$TERMINAL_EVIDENCE/accounts-after-replay-simulation.json")" ]] \
+          || fail "replay simulation changed finalized accounts"
         terminal_simulated_cu=$(jq -er '.result.value.unitsConsumed' "$TERMINAL_EVIDENCE/simulation.json")
         terminal_landed_cu=$(jq -er '.result.meta.computeUnitsConsumed' "$TERMINAL_EVIDENCE/finalized-transaction.json")
         terminal_slot=$(jq -er '.result.slot' "$TERMINAL_EVIDENCE/finalized-transaction.json")
@@ -466,6 +482,75 @@ if [[ -n "$SECRET_BUILDER" || -n "$DEPOSIT_BUILDER" ]]; then
             protectedAccountsAfterJsonSha256:$afterSha,custody:$custody,
             finalized:true,auditOnly:true,disposable:true,mainnetReady:false}' \
           >"$TERMINAL_EVIDENCE/terminal-finalized.json"
+        jq -n --argjson error "$(jq -c '.result.value.err' "$TERMINAL_EVIDENCE/replay-simulation.json")" \
+          --arg before "$(account_values_hash "$TERMINAL_EVIDENCE/accounts-after.json")" \
+          --arg after "$(account_values_hash "$TERMINAL_EVIDENCE/accounts-after-replay-simulation.json")" \
+          '{schema:"aspis.v7.live-terminal-replay-rejection.v1",expected:"reject",
+            actual:"rejected",error:$error,finalizedStateBeforeSha256:$before,
+            finalizedStateAfterSha256:$after,stateUnchanged:true}' \
+          >"$TERMINAL_EVIDENCE/replay-rejection.json"
+        if [[ -n "$PROOF_CLOSE_BUILDER" ]]; then
+          [[ -x "$PROOF_CLOSE_BUILDER" ]] || fail "proof close builder is unavailable"
+          mkdir "$EVIDENCE_DIR/proof-close"
+          rpc "$(jq -nc --arg address "$proof_pubkey" \
+            '{jsonrpc:"2.0",id:1900,method:"getAccountInfo",params:[$address,{encoding:"base64",commitment:"finalized"}]}')" \
+            | jq --arg requestedAddress "$proof_pubkey" '. + {requestedAddress:$requestedAddress}' \
+            >"$EVIDENCE_DIR/proof-close/proof-before.json"
+          close_slot=$(rpc '{"jsonrpc":"2.0","id":1902,"method":"getSlot","params":[{"commitment":"finalized"}]}' | jq -er '.result')
+          close_blockhash=$(rpc "$(jq -nc --argjson slot "$close_slot" \
+            '{jsonrpc:"2.0",id:1903,method:"getLatestBlockhash",params:[{commitment:"finalized",minContextSlot:$slot}]}')" \
+            | jq -er '.result.value.blockhash')
+          verifier_program=$(jq -er '.identitySet.programs[] | select(.name == "verifier") | .id' "$CONFIG")
+          jq -n --arg verifier "$verifier_program" --arg proof "$proof_keypair" \
+            --arg payer "$PAYER_KEYPAIR" --arg blockhash "$close_blockhash" --argjson slot "$close_slot" \
+            '{schema:"aspis.v7.live-proof-close-input.v1",verifierProgram:$verifier,
+              proofKeypair:$proof,payerKeypair:$payer,recentBlockhash:$blockhash,
+              minContextSlot:$slot,requestId:2000}' >"$WORK_DIR/proof-close-input.json"
+          "$PROOF_CLOSE_BUILDER" "$WORK_DIR/proof-close-input.json" \
+            >"$EVIDENCE_DIR/proof-close/signed-request.json"
+          close_simulation=$(rpc "$(jq -c '.simulationRequest' "$EVIDENCE_DIR/proof-close/signed-request.json")")
+          jq . <<<"$close_simulation" >"$EVIDENCE_DIR/proof-close/simulation.json"
+          jq -e '.error | not' <<<"$close_simulation" >/dev/null
+          jq -e '.result.value.err == null' <<<"$close_simulation" >/dev/null \
+            || fail "proof close simulation failed"
+          close_send=$(rpc "$(jq -c '.sendRequest' "$EVIDENCE_DIR/proof-close/signed-request.json")")
+          jq . <<<"$close_send" >"$EVIDENCE_DIR/proof-close/send.json"
+          close_signature=$(jq -er '.result' <<<"$close_send")
+          [[ "$close_signature" == "$(jq -er '.signature' "$EVIDENCE_DIR/proof-close/signed-request.json")" ]] \
+            || fail "proof close submission changed signed wire"
+          close_finalized=false
+          for _ in $(seq 1 600); do
+            close_status=$(rpc "$(jq -nc --arg signature "$close_signature" \
+              '{jsonrpc:"2.0",id:2100,method:"getSignatureStatuses",params:[[$signature],{searchTransactionHistory:true}]}')")
+            if jq -e '.result.value[0] != null and .result.value[0].confirmationStatus == "finalized"' \
+              <<<"$close_status" >/dev/null; then close_finalized=true; break; fi
+            sleep 0.1
+          done
+          [[ "$close_finalized" == true ]] || fail "proof close did not finalize"
+          rpc "$(jq -nc --arg signature "$close_signature" \
+            '{jsonrpc:"2.0",id:2200,method:"getTransaction",params:[$signature,{encoding:"json",commitment:"finalized",maxSupportedTransactionVersion:1}]}')" \
+            | jq . >"$EVIDENCE_DIR/proof-close/finalized-transaction.json"
+          jq -e '.result != null and .result.meta.err == null' \
+            "$EVIDENCE_DIR/proof-close/finalized-transaction.json" >/dev/null || fail "proof close landed failure"
+          rpc "$(jq -nc --arg address "$proof_pubkey" \
+            '{jsonrpc:"2.0",id:2201,method:"getAccountInfo",params:[$address,{encoding:"base64",commitment:"finalized"}]}')" \
+            | jq --arg requestedAddress "$proof_pubkey" '. + {requestedAddress:$requestedAddress}' \
+            >"$EVIDENCE_DIR/proof-close/proof-after.json"
+          jq -e '.result.value == null or .result.value.lamports == 0' \
+            "$EVIDENCE_DIR/proof-close/proof-after.json" >/dev/null || fail "proof close did not drain account"
+          jq -n --arg signature "$close_signature" \
+            --argjson slot "$(jq -er '.result.slot' "$EVIDENCE_DIR/proof-close/finalized-transaction.json")" \
+            --argjson simulatedCu "$(jq -er '.result.value.unitsConsumed' "$EVIDENCE_DIR/proof-close/simulation.json")" \
+            --argjson landedCu "$(jq -er '.result.meta.computeUnitsConsumed' "$EVIDENCE_DIR/proof-close/finalized-transaction.json")" \
+            --argjson rentRefund "$(jq -er '.result.value.lamports' "$EVIDENCE_DIR/proof-close/proof-before.json")" \
+            --slurpfile request "$EVIDENCE_DIR/proof-close/signed-request.json" \
+            '{schema:"aspis.v7.live-proof-close-finalized.v1",signature:$signature,slot:$slot,
+              simulatedCu:$simulatedCu,landedCu:$landedCu,serializedTransactionBytes:$request[0].serializedTransactionBytes,
+              signedWireSha256:$request[0].signedWireSha256,byteIdenticalSimulationSubmission:true,
+              proofAccount:$request[0].proofAccount,refundAccount:$request[0].refundAccount,
+              proofAccountDrained:true,rentRefundLamports:$rentRefund,finalized:true}' \
+            >"$EVIDENCE_DIR/proof-close/proof-close-finalized.json"
+        fi
       fi
     fi
   fi

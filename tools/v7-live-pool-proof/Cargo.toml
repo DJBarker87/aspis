@@ -63,3 +63,7 @@ path = "src/bin/materialize_live_proof_bundle.rs"
 [[bin]]
 name = "build-live-transfer-terminal"
 path = "src/bin/build_live_transfer_terminal.rs"
+
+[[bin]]
+name = "build-live-proof-close"
+path = "src/bin/build_live_proof_close.rs"
