@@ -105,6 +105,13 @@ theorem raw_final_work_key_of_gamma_output_input_none
     rawFinalWorkKeyOfWorkInput? (gammaOutputInput state) = none := by
   simp [rawFinalWorkKeyOfWorkInput?, gammaOutputInput]
 
+/-- An advance coordinate also has 33 bytes, so it cannot be parsed as the
+41-byte final-work coordinate. -/
+theorem raw_final_work_key_of_gamma_advance_input_none
+    (state : Digest256) :
+    rawFinalWorkKeyOfWorkInput? (gammaAdvanceInput state) = none := by
+  simp [rawFinalWorkKeyOfWorkInput?, gammaAdvanceInput]
+
 /-- If a duplex state avoids the current q16 producer inventory, its output
 coordinate is residual for the deployed final-work/q16 controller.  The two
 named cases are excluded independently: final work by exact input length and
@@ -163,6 +170,62 @@ theorem dag_preferred_slot_none_of_gamma_state_avoids_producers
               memory (gammaOutputInput state) q16Slot preferred
           exact (avoids producer producerMember)
             (output_input_eq_implies_state_eq state producer.digest inputExact)
+
+/-- Every duplex advance coordinate is residual for the deployed router.
+Unlike an output half, no producer-inventory premise is needed: q16 outputs
+use the globally disjoint squeeze-output tag, while final work has a different
+fixed width. -/
+theorem dag_preferred_slot_none_of_gamma_advance
+    (anchorIndex exposureIndex : Nat) (memory : FinalWorkQ16DagMemory)
+    (state : Digest256)
+    (wellFormed : Q16DagAnchorWellFormed memory.anchor) :
+    dagPreferredSlotForInput anchorIndex exposureIndex memory
+      (gammaAdvanceInput state) = none := by
+  cases preferred : dagPreferredSlotForInput anchorIndex exposureIndex memory
+      (gammaAdvanceInput state) with
+  | none => rfl
+  | some slot =>
+      exfalso
+      cases slot with
+      | none =>
+          have rawPreferred :
+              dagRawPreferredSlot anchorIndex exposureIndex memory
+                (gammaAdvanceInput state) = some none := by
+            unfold dagPreferredSlotForInput at preferred
+            cases raw : dagRawPreferredSlot anchorIndex exposureIndex memory
+                (gammaAdvanceInput state) with
+            | none => simp [raw] at preferred
+            | some rawSlot =>
+                by_cases used : rawSlot ∈ memory.usedSlots
+                · simp [raw, used] at preferred
+                · simp only [raw, used, if_false] at preferred
+                  have slotExact : rawSlot = none := Option.some.inj preferred
+                  simpa [slotExact] using raw
+          cases anchorExact : memory.anchor with
+          | inactive =>
+              unfold dagRawPreferredSlot at rawPreferred
+              rw [anchorExact] at rawPreferred
+              by_cases atAnchor : exposureIndex = anchorIndex
+              · simp [atAnchor,
+                  raw_final_work_key_of_gamma_advance_input_none] at rawPreferred
+              · simp [atAnchor] at rawPreferred
+          | tracked key workSeen =>
+              have keyWellFormed :
+                  key.digest.length = 32 ∧ key.nonce.length = 8 := by
+                simpa [anchorExact, Q16DagAnchorWellFormed] using wellFormed
+              unfold dagRawPreferredSlot at rawPreferred
+              rw [anchorExact] at rawPreferred
+              by_cases work :
+                  workSeen = false ∧ gammaAdvanceInput state = key.workInput
+              · have lengths := congrArg List.length work.2
+                simp [gammaAdvanceInput, RawFinalWorkKey.workInput,
+                  keyWellFormed.1, keyWellFormed.2] at lengths
+              · simp [work] at rawPreferred
+      | some q16Slot =>
+          obtain ⟨producer, _producerMember, inputExact, _slotExact⟩ :=
+            dag_preferred_q16_slot_has_producer anchorIndex exposureIndex
+              memory (gammaAdvanceInput state) q16Slot preferred
+          exact advance_input_ne_output_input state producer.digest inputExact
 
 /-- The fold-nonce alpha boundary has 43 bytes, while q16 candidate and
 advance producer coordinates have 35 and 33 bytes respectively. -/
@@ -413,14 +476,66 @@ theorem exact_alpha_output_is_residual_at_literal_root_prefix
     trial.val reached.exposureIndex reached.memory state anchorWellFormed
       prefixAvoid
 
+/-- Every consumed alpha advance is likewise residual at its literal
+pre-answer root prefix.  This half is unconditional because the advance tag
+is disjoint from the q16-output tag. -/
+theorem exact_alpha_advance_is_residual_at_literal_root_prefix
+    {HiddenTape TapeIdentity Observation Statement Payload Result : Type}
+    {parameters : ExactCompilerResourceParameters}
+    {transitionFuel : Nat}
+    {configuration : ExactPlainRomConfiguration HiddenTape TapeIdentity
+      Observation Statement Tag73K12ParsedProof Payload Result parameters}
+    {projection : AcceptedTapeProjection Statement Tag73K12ParsedProof Payload}
+    {fixedInstance : PublicInstance Statement}
+    {sample : ExactCompilerSample HiddenTape parameters}
+    (input : ExactK12OperationalInput transitionFuel configuration projection
+      fixedInstance sample)
+    (trial : ExactCompilerExposureTrial parameters)
+    (state advanced : Digest256) (actor : QueryActor)
+    (prior later : List UnifiedExposureRecord)
+    (decomposition : exactFixedRootRecords input.package.root =
+      prior ++
+        (.machineFresh actor (gammaAdvanceInput state) advanced :
+          UnifiedExposureRecord) :: later) :
+    (exactDagTrialController transitionFuel trial).preferredSlot
+      (indexedStateAfterRecords transitionFuel
+        (exactDagTrialController transitionFuel trial) prior
+        (exactDagCandidateInitialState input)) = none := by
+  let controller := exactDagTrialController transitionFuel trial
+  let initial := exactDagCandidateInitialState input
+  let reached := indexedStateAfterRecords transitionFuel controller prior initial
+  have anchorWellFormed : Q16DagAnchorWellFormed reached.memory.anchor := by
+    simpa [reached, controller, initial] using
+      exact_dag_candidate_prefix_anchor_well_formed input trial prior
+  have inputExact : unifiedInputBeforeAnswer? transitionFuel reached.cursor =
+      some (gammaAdvanceInput state) := by
+    have aligned : unifiedRecordAtAnswer transitionFuel reached.cursor advanced =
+        .machineFresh actor (gammaAdvanceInput state) advanced := by
+      have rootAligned := exact_root_records_aligned_for_dag_controller input
+        trial.val prior
+          (.machineFresh actor (gammaAdvanceInput state) advanced)
+          later decomposition
+      simpa [reached, controller, initial, exactDagTrialController,
+        UnifiedExposureRecord.answer] using rootAligned
+    exact aligned_machine_record_has_exact_input transitionFuel reached.cursor
+      actor (gammaAdvanceInput state) advanced aligned
+  change dagCandidatePreferredSlot transitionFuel trial.val reached = none
+  unfold dagCandidatePreferredSlot
+  rw [inputExact]
+  exact dag_preferred_slot_none_of_gamma_advance trial.val
+    reached.exposureIndex reached.memory state anchorWellFormed
+
 #print axioms clean_root_answer_eq_fixes_source_input
 #print axioms gamma_advance_input_ne_q16_candidate
 #print axioms raw_final_work_key_of_gamma_output_input_none
+#print axioms raw_final_work_key_of_gamma_advance_input_none
 #print axioms dag_preferred_slot_none_of_gamma_state_avoids_producers
+#print axioms dag_preferred_slot_none_of_gamma_advance
 #print axioms alpha_zero_boundary_avoids_q16_producer_sources
 #print axioms exact_root_ordered_chain_avoids_q16_producers
 #print axioms exact_alpha_chain_avoids_full_dag_producers
 #print axioms exact_alpha_output_is_residual_at_literal_root_prefix
+#print axioms exact_alpha_advance_is_residual_at_literal_root_prefix
 
 end
 
