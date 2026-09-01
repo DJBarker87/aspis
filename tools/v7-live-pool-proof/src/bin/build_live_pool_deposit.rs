@@ -26,6 +26,7 @@ struct Input {
     schema: String,
     config: String,
     payer_keypair: String,
+    source_authority_keypair: String,
     recent_blockhash: String,
     min_context_slot: u64,
     request_id: u64,
@@ -107,8 +108,11 @@ fn main() -> Result<()> {
         "selected deposit lane is not the fresh live lane");
     let payer = read_keypair_file(&input.payer_keypair)
         .map_err(|error| anyhow::anyhow!("read disposable payer: {error}"))?;
+    let source_authority = read_keypair_file(&input.source_authority_keypair)
+        .map_err(|error| anyhow::anyhow!("read disposable source authority: {error}"))?;
+    ensure!(source_authority.pubkey() != payer.pubkey(), "source authority aliases payer");
     let instruction = build_pair_forest_deposit_instruction_v2(
-        Pubkey::from_str(pool_id)?, &master, &lane, Pubkey::from_str(source)?, payer.pubkey(),
+        Pubkey::from_str(pool_id)?, &master, &lane, Pubkey::from_str(source)?, source_authority.pubkey(),
         Some(payer.pubkey()), &DepositRequestV1 {
             owner_key, amount: 1_000, salt, encrypted_note_payload: &[],
         },
@@ -117,7 +121,7 @@ fn main() -> Result<()> {
     let message = VersionedMessage::Legacy(legacy::Message::new_with_blockhash(
         &[instruction], Some(&payer.pubkey()), &blockhash,
     ));
-    let transaction = VersionedTransaction::try_new(message, &[&payer])
+    let transaction = VersionedTransaction::try_new(message, &[&payer, &source_authority])
         .map_err(|error| anyhow::anyhow!("sign deposit: {error}"))?;
     let signature = transaction.signatures[0].to_string();
     let wire = bincode::serialize(&transaction)?;

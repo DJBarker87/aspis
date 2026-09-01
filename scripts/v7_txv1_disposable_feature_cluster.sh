@@ -75,6 +75,7 @@ readonly RPC_URL="http://127.0.0.1:$RPC_PORT"
 readonly WORK_DIR=$(mktemp -d "${TMPDIR:-/tmp}/aspis-v7-txv1-feature-cluster.XXXXXX")
 readonly LEDGER="$WORK_DIR/ledger"
 readonly PAYER="$WORK_DIR/disposable-payer.json"
+readonly SOURCE_AUTHORITY="$WORK_DIR/disposable-source-authority.json"
 VALIDATOR_PID=""
 
 cleanup() {
@@ -95,13 +96,16 @@ mkdir -p "$EVIDENCE_DIR/program-accounts" "$EVIDENCE_DIR/program-binary-hashes"
 NO_DNA=1 "$AGAVE_BIN_DIR/solana-keygen" new --no-bip39-passphrase --silent \
   --force --outfile "$PAYER"
 readonly PAYER_PUBKEY=$(NO_DNA=1 "$AGAVE_BIN_DIR/solana-keygen" pubkey "$PAYER")
+NO_DNA=1 "$AGAVE_BIN_DIR/solana-keygen" new --no-bip39-passphrase --silent \
+  --force --outfile "$SOURCE_AUTHORITY"
+readonly SOURCE_AUTHORITY_PUBKEY=$(NO_DNA=1 "$AGAVE_BIN_DIR/solana-keygen" pubkey "$SOURCE_AUTHORITY")
 
 if [[ -n "${ASPIS_TXV1_LIVE_GENESIS_PREPARER:-}" ]]; then
   [[ -x "$ASPIS_TXV1_LIVE_GENESIS_PREPARER" ]] \
     || fail "live genesis preparer is not executable"
   readonly LIVE_GENESIS_DIR="$WORK_DIR/live-genesis"
   "$ASPIS_TXV1_LIVE_GENESIS_PREPARER" "$REPO_ROOT" "$CONFIG" \
-    "$PAYER_PUBKEY" "$LIVE_GENESIS_DIR" >"$EVIDENCE_DIR/live-genesis.json"
+    "$PAYER_PUBKEY" "$SOURCE_AUTHORITY_PUBKEY" "$LIVE_GENESIS_DIR" >"$EVIDENCE_DIR/live-genesis.json"
   jq -e '.schema == "aspis.v7.disposable-live-genesis.v1" and .auditOnly == true' \
     "$EVIDENCE_DIR/live-genesis.json" >/dev/null \
     || fail "live genesis preparer returned an invalid manifest"
@@ -233,6 +237,7 @@ if [[ $# -gt 0 ]]; then
   export ASPIS_TXV1_DISPOSABLE_RPC_URL="$RPC_URL"
   export ASPIS_TXV1_DISPOSABLE_PAYER_KEYPAIR="$PAYER"
   export ASPIS_TXV1_DISPOSABLE_PAYER_PUBKEY="$PAYER_PUBKEY"
+  export ASPIS_TXV1_DISPOSABLE_SOURCE_AUTHORITY_KEYPAIR="$SOURCE_AUTHORITY"
   "$@" >"$EVIDENCE_DIR/child.stdout" 2>"$EVIDENCE_DIR/child.stderr"
 fi
 

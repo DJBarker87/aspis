@@ -12,6 +12,7 @@ readonly REPO_ROOT=$(cd "$(dirname "$0")/.." && pwd)
 readonly CONFIG="$REPO_ROOT/config/v7-txv1-devnet-harness-20260901.json"
 readonly RPC_URL=${ASPIS_TXV1_DISPOSABLE_RPC_URL:-}
 readonly PAYER_KEYPAIR=${ASPIS_TXV1_DISPOSABLE_PAYER_KEYPAIR:-}
+readonly SOURCE_AUTHORITY_KEYPAIR=${ASPIS_TXV1_DISPOSABLE_SOURCE_AUTHORITY_KEYPAIR:-}
 readonly BUILDER=${ASPIS_V7_LIVE_POOL_INITIALIZE_BUILDER:-}
 readonly SECRET_BUILDER=${ASPIS_V7_LIVE_OPERATION_SECRET_BUILDER:-}
 readonly DEPOSIT_BUILDER=${ASPIS_V7_LIVE_POOL_DEPOSIT_BUILDER:-}
@@ -112,10 +113,13 @@ if [[ -n "$SECRET_BUILDER" || -n "$DEPOSIT_BUILDER" ]]; then
     '{jsonrpc:"2.0",id:602,method:"getLatestBlockhash",params:[{commitment:"finalized",minContextSlot:$slot}]}')" \
     | jq -er '.result.value.blockhash')
   lane_files=$(for lane_index in $(seq 1 8); do printf '%s\n' "$EVIDENCE_DIR/account-$lane_index.json"; done | jq -Rsc 'split("\n")[:-1]')
-  jq -n --arg config "$CONFIG" --arg payer "$PAYER_KEYPAIR" --arg hash "$blockhash_deposit" \
+  [[ -f "$SOURCE_AUTHORITY_KEYPAIR" ]] || fail "ephemeral source authority unavailable"
+  jq -n --arg config "$CONFIG" --arg payer "$PAYER_KEYPAIR" \
+    --arg sourceAuthority "$SOURCE_AUTHORITY_KEYPAIR" --arg hash "$blockhash_deposit" \
     --argjson slot "$slot_deposit" --arg master "$EVIDENCE_DIR/account-0.json" \
     --argjson lanes "$lane_files" --arg secrets "$WORK_DIR/operation-secrets.json" \
     '{schema:"aspis.v7.live-pool-deposit-input.v1",config:$config,payerKeypair:$payer,
+      sourceAuthorityKeypair:$sourceAuthority,
       recentBlockhash:$hash,minContextSlot:$slot,requestId:700,masterAccount:$master,
       laneAccounts:$lanes,secretsFile:$secrets}' >"$WORK_DIR/deposit-input.json"
   "$DEPOSIT_BUILDER" "$WORK_DIR/deposit-input.json" >"$EVIDENCE_DIR/deposit/signed-request.json"

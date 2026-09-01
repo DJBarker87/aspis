@@ -47,11 +47,18 @@ fn resolve(root: &Path, relative: &str) -> Result<PathBuf> {
 fn main() -> Result<()> {
     let mut args = env::args_os().skip(1);
     let repo = PathBuf::from(args.next().context(
-        "usage: prepare-live-genesis <repo-root> <config.json> <payer-pubkey> <new-output-dir>",
+        "usage: prepare-live-genesis <repo-root> <config.json> <payer-pubkey> <source-authority-pubkey> <new-output-dir>",
     )?);
     let config_path = PathBuf::from(args.next().context("missing config")?);
     let payer = Pubkey::from_str(&args.next().context("missing payer")?.to_string_lossy())
         .context("invalid payer")?;
+    let source_authority = Pubkey::from_str(
+        &args.next()
+            .context("missing source authority")?
+            .to_string_lossy(),
+    )
+    .context("invalid source authority")?;
+    ensure!(source_authority != payer, "source authority aliases payer");
     let output = PathBuf::from(args.next().context("missing output directory")?);
     ensure!(args.next().is_none(), "unexpected extra argument");
     ensure!(!output.exists(), "refusing to overwrite genesis output");
@@ -112,7 +119,7 @@ fn main() -> Result<()> {
         );
         let mut data = vec![0_u8; 165];
         data[..32].copy_from_slice(&Pubkey::from_str(mint_id)?.to_bytes());
-        data[32..64].copy_from_slice(&payer.to_bytes());
+        data[32..64].copy_from_slice(&source_authority.to_bytes());
         data[64..72].copy_from_slice(&amount.to_le_bytes());
         data[108] = 1;
         let account = GenesisAccount {
@@ -171,7 +178,8 @@ fn main() -> Result<()> {
         "{}",
         serde_json::to_string(&serde_json::json!({
             "schema":"aspis.v7.disposable-live-genesis.v1", "auditOnly":true,
-            "ephemeralMintAuthority":payer.to_string(), "accounts":accounts
+            "ephemeralMintAuthority":payer.to_string(),
+            "ephemeralTokenAuthority":source_authority.to_string(), "accounts":accounts
         }))?
     );
     Ok(())
