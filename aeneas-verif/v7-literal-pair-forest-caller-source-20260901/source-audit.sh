@@ -191,6 +191,24 @@ grep -Fq 'def alloc.vec.Vec.is_empty' \
   "$script_dir/proof/V7LiteralCallerCorePrimitivesExternal.lean"
 grep -Fq 'theorem vec_remove_out_of_bounds' \
   "$script_dir/proof/V7LiteralCallerCorePrimitivesBridge.lean"
+grep -Fq 'structure core.slice.iter.Windows' \
+  "$script_dir/generated/current309b-metadata-accountopaque-m31ctor-acceptedtool-r1/V7LiteralCallerCurrent309bMetadataAccountOpaqueAcceptedToolR1/TypesExternal.lean"
+grep -Fq 'def Slice.Insts.CoreCmpPartialEqArray.eq' \
+  "$script_dir/proof/V7LiteralCallerCorePrimitivesExternal.lean"
+grep -Fq 'def Slice.Insts.CoreCmpPartialEqArray.ne' \
+  "$script_dir/proof/V7LiteralCallerCorePrimitivesExternal.lean"
+grep -Fq 'def core.slice.iter.Windows.Insts.CoreIterTraitsIteratorIteratorSharedASlice.next' \
+  "$script_dir/proof/V7LiteralCallerCorePrimitivesExternal.lean"
+grep -Fq 'def core.slice.Slice.windows' \
+  "$script_dir/proof/V7LiteralCallerCorePrimitivesExternal.lean"
+grep -Fq 'def BoxArray.Insts.CoreConvertTryFromBoxSliceBoxSlice.try_from' \
+  "$script_dir/proof/V7LiteralCallerCorePrimitivesExternal.lean"
+grep -Fq 'def SharedAVec.Insts.CoreIterTraitsCollectIntoIteratorSharedATIter.into_iter' \
+  "$script_dir/proof/V7LiteralCallerCorePrimitivesExternal.lean"
+grep -Fq 'def Array.Insts.CoreConvertTryFromVecVec.try_from' \
+  "$script_dir/proof/V7LiteralCallerCorePrimitivesExternal.lean"
+grep -Fq 'theorem windows_next_exhausted' \
+  "$script_dir/proof/V7LiteralCallerCorePrimitivesBridge.lean"
 
 ! grep -REn '(^|[[:space:]])(sorry|admit|native_decide)([[:space:]]|$)' \
   "$script_dir/proof" --include='*.lean'

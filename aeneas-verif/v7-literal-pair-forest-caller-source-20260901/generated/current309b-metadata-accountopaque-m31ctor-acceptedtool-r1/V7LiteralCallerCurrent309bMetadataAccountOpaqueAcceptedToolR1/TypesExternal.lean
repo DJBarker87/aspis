@@ -10,8 +10,10 @@ set_option linter.unusedVariables false
 /-!
 Executable replacements for the seven external type templates in the accepted
 whole-caller translation.  Only `AccountInfo` participates in the metadata
-bridge below; the five iterator/container types are opaque-to-this-root carrier
-types, represented as empty inductives rather than logical axioms.
+bridge below.  Four iterator/container types remain opaque-to-this-root carrier
+types, represented as empty inductives rather than logical axioms.  `Windows`
+is now its exact finite logical state so its ordinary slice-library operations
+can be executable.
 -/
 @[rust_type "core::array::iter::IntoIter"]
 inductive core.array.iter.IntoIter (T : Type) (N : Std.Usize) : Type
@@ -35,7 +37,10 @@ arbitrary host calls.
 def core.cell.Ref (T : Type) := T
 
 @[rust_type "core::slice::iter::Windows"]
-inductive core.slice.iter.Windows (T : Type) : Type
+structure core.slice.iter.Windows (T : Type) where
+  slice : Slice T
+  width : Std.Usize
+  index : Nat
 
 @[reducible, rust_type "solana_account_info::AccountInfo" (mutRegions := #[0])]
 def solana_account_info.AccountInfo :=

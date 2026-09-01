@@ -223,3 +223,43 @@ identity and five owned-vector operations join the first twelve deterministic
 core definitions. The literal RefCell dynamic check remains the smallest
 platform boundary. Forty-two ordinary templates and the named platform groups
 still separate this focused source graph from a literal whole-caller theorem.
+
+Finite Windows and conversion cluster: PASS
+TypesExternal unit: aspis-v7-windows-typesexternal-r1.service
+TypesExternal invocation: 8c978b8cbd06439cb13bd78bcea1d09e
+TypesExternal wall: 1.50 s
+TypesExternal peak RSS: 2,549,904 KiB
+TypesExternal swap: 0
+Dependent Types unit: aspis-v7-windows-types-r1.service
+Dependent Types invocation: 81981bfac626438680f52d7ee98f9249
+Dependent Types wall: 3.43 s
+Dependent Types peak RSS: 2,750,084 KiB
+Dependent Types swap: 0
+External unit: aspis-v7-core-primitives-external-r5.service
+External invocation: 3896d22148384ae283e489fe1cc07c3a
+External wall: 1.63 s
+External peak RSS: 2,560,308 KiB
+External swap: 0
+Bridge unit: aspis-v7-core-primitives-bridge-r4.service
+Bridge invocation: 2665628b595c421b82a796d7a85f6473
+Bridge wall: 1.53 s
+Bridge peak RSS: 2,567,868 KiB
+Bridge swap: 0
+
+Complete focused Lean replay including all 34 core definitions: PASS
+Unit: aspis-v7-core-primitives-final-replay-r4.service
+Invocation: b0e5be82b4ea4b5b905f48af5c6c2181
+Wall: 20.20 s
+Peak RSS: 2,756,236 KiB
+Swap: 0
+Executable ordinary external definitions: 34
+Remaining ordinary external templates: 35
+Axioms: propext, Classical.choice, Quot.sound
+Forbidden constructs: none
+
+Updated classification: the external `Windows` type is no longer an empty
+carrier; its exact slice/width/index state supports executable creation and
+iteration. Slice/array equality, both fixed-size conversions, and shared-vector
+iteration are also explicit. The Solana RefCell entry-state check remains the
+smallest platform boundary. Thirty-five ordinary templates plus the named
+platform groups still separate this graph from the literal whole caller.

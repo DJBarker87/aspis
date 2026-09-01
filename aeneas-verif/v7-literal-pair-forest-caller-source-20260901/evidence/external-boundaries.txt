@@ -32,9 +32,16 @@ graph now supplies executable definitions for 12 of them:
 - alloc.vec.Vec.remove
 - alloc.vec.Vec.clear
 - alloc.vec.Vec.is_empty
+- Slice.Insts.CoreCmpPartialEqArray.eq
+- Slice.Insts.CoreCmpPartialEqArray.ne
+- core.slice.iter.Windows.Insts.CoreIterTraitsIteratorIteratorSharedASlice.next
+- core.slice.Slice.windows
+- BoxArray.Insts.CoreConvertTryFromBoxSliceBoxSlice.try_from
+- SharedAVec.Insts.CoreIterTraitsCollectIntoIteratorSharedATIter.into_iter
+- Array.Insts.CoreConvertTryFromVecVec.try_from
 
 The archival generated template still lists these declarations, but it is not
-imported by the focused accepted graph. 42 ordinary templates remain to fill or
+imported by the focused accepted graph. 35 ordinary templates remain to fill or
 classify.
 
 14 protocol/platform declaration groups remain:

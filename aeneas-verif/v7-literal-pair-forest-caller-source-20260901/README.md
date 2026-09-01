@@ -62,17 +62,20 @@ entry-state/platform boundary.  The production verifier starts from freshly
 provided transaction accounts, and the modeled accepted path is restricted to
 that borrow-ready state.
 
-Two deterministic core-library clusters are now supplied by executable Lean
+Three deterministic core-library clusters are now supplied by executable Lean
 definitions matching the generated Rust signatures.  The focused accepted
-graph defines 27 formerly external operations.  The first cluster covers
+graph defines 34 formerly external operations.  The first cluster covers
 boolean `then_some`, the `u16`/`u64` bit counts, `usize` bit reversal, both
 checked shifts, `u32::is_power_of_two`, `Option::{as_ref,ok_or}`, and
 `Slice::{first,last}`.  The second covers range cloning, option comparison and
 try control flow, result inspection/mapping, boxed-value identity, and five
 owned-vector operations (`into_boxed_slice`, `truncate`, `remove`, `clear`, and
-`is_empty`).  The accompanying bridge proves branch-sensitive behavior,
-failure cases, and exact list images.  These definitions are ordinary Rust
-library semantics; they introduce no protocol or cryptographic premise.
+`is_empty`).  The third replaces the empty `Windows` carrier by its exact
+finite state and closes slice/array comparison, window creation/iteration,
+boxed-slice and vector-to-array conversion, and shared-vector iteration.  The
+accompanying bridge proves branch-sensitive behavior, failure cases, and exact
+list images.  These definitions are ordinary Rust library semantics; they
+introduce no protocol or cryptographic premise.
 
 The formerly blocked six-account helper is now independently translated as
 six literal shared-slice indices, in order `0` through `5`.  Lean proves:
@@ -119,7 +122,7 @@ Lean axioms), down from 84/74.  The six-account helper is no longer among them.
 The accepted compile graph now supplies executable definitions for the metadata
 accessor, borrow-ready account-data view, and read-only guard dereference rather
 than importing those archival axioms.  It also supplies executable definitions
-for 27 deterministic core-library templates.  The archival generated
+for 34 deterministic core-library templates.  The archival generated
 `FunsExternal_Template.lean` remains an inventory and still displays all of its
 original declarations; it is not imported by the focused accepted graph.
 
@@ -127,15 +130,15 @@ The literal `AccountInfo::try_borrow_data` implementation itself is not
 translated: current Aeneas cannot synthesize nested mutable ADT write-back
 projections.  This is now the smallest explicit Solana platform boundary, not
 an opaque caller-acceptance premise.  A single-premise literal caller theorem
-also still requires filling or explicitly classifying the remaining 42
+also still requires filling or explicitly classifying the remaining 35
 ordinary Rust-library templates and the platform templates.
 
 ## Remaining explicit boundaries
 
 The generated whole-caller template has 83 external function declarations:
 69 ordinary Rust/core/alloc operations and 14 protocol/platform groups.
-Twenty-seven of the 69 ordinary declarations now have executable definitions
-in the focused accepted graph, leaving 42 ordinary templates to fill or
+Thirty-four of the 69 ordinary declarations now have executable definitions
+in the focused accepted graph, leaving 35 ordinary templates to fill or
 classify.
 The protocol/platform set is:
 

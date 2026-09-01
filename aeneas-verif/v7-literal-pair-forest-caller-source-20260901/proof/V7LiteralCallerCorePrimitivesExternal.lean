@@ -204,4 +204,81 @@ def alloc.vec.Vec.is_empty
     {T : Type} (_allocator : Type) (value : alloc.vec.Vec T) : Result Bool :=
   .ok value.val.isEmpty
 
+@[rust_fun
+  "core::array::equality::{core::cmp::PartialEq<[@T], [@U; @N]>}::eq"]
+def Slice.Insts.CoreCmpPartialEqArray.eq
+    {T U : Type} {N : Std.Usize}
+    (partialEq : core.cmp.PartialEq T U) :
+    Slice T → Array U N → Result Bool :=
+  fun left right =>
+    core.slice.cmp.PartialEqSlice.eq partialEq left right.to_slice
+
+@[rust_fun
+  "core::array::equality::{core::cmp::PartialEq<[@T], [@U; @N]>}::ne"]
+def Slice.Insts.CoreCmpPartialEqArray.ne
+    {T U : Type} {N : Std.Usize}
+    (partialEq : core.cmp.PartialEq T U) :
+    Slice T → Array U N → Result Bool :=
+  fun left right =>
+    core.slice.cmp.PartialEqSlice.ne partialEq left right.to_slice
+
+def core.slice.iter.Windows.windowAt
+    {T : Type} (slice : Slice T) (index width : Nat) : Slice T :=
+  ⟨(slice.val.drop index).take width, by
+    calc
+      ((slice.val.drop index).take width).length ≤
+          (slice.val.drop index).length := List.length_take_le' _ _
+      _ = slice.val.length - index := List.length_drop
+      _ ≤ slice.val.length := Nat.sub_le _ _
+      _ ≤ Usize.max := slice.property⟩
+
+@[rust_fun
+  "core::slice::iter::{core::iter::traits::iterator::Iterator<core::slice::iter::Windows<'a, @T>, &'a [@T]>}::next"]
+def core.slice.iter.Windows.Insts.CoreIterTraitsIteratorIteratorSharedASlice.next
+    {T : Type} (iterator : core.slice.iter.Windows T) :
+    Result (Option (Slice T) × core.slice.iter.Windows T) :=
+  if iterator.index + iterator.width.val ≤ iterator.slice.val.length then
+    .ok (some (core.slice.iter.Windows.windowAt iterator.slice
+      iterator.index iterator.width.val),
+      { iterator with index := iterator.index + 1 })
+  else
+    .ok (none, iterator)
+
+@[rust_fun "core::slice::{[@T]}::windows"]
+def core.slice.Slice.windows
+    {T : Type} (slice : Slice T) (width : Std.Usize) :
+    Result (core.slice.iter.Windows T) :=
+  if width = 0#usize then
+    .fail .panic
+  else
+    .ok { slice, width, index := 0 }
+
+@[rust_fun
+  "alloc::boxed::convert::{core::convert::TryFrom<Box<[@T; @N]>, Box<[@T]>, Box<[@T]>>}::try_from"]
+def BoxArray.Insts.CoreConvertTryFromBoxSliceBoxSlice.try_from
+    {T : Type} (N : Std.Usize) (slice : Slice T) :
+    Result (core.result.Result (Array T N) (Slice T)) :=
+  if h : slice.val.length = N.val then
+    .ok (.Ok ⟨slice.val, h⟩)
+  else
+    .ok (.Err slice)
+
+@[rust_fun
+  "alloc::vec::{core::iter::traits::collect::IntoIterator<&'a alloc::vec::Vec<@T>, &'a @T, core::slice::iter::Iter<'a, @T>>}::into_iter"]
+def SharedAVec.Insts.CoreIterTraitsCollectIntoIteratorSharedATIter.into_iter
+    {T : Type} (_allocator : Type) (value : alloc.vec.Vec T) :
+    Result (core.slice.iter.Iter T) :=
+  core.slice.Slice.iter (alloc.vec.Vec.deref value)
+
+@[rust_fun
+  "alloc::vec::{core::convert::TryFrom<[@T; @N], alloc::vec::Vec<@T>, alloc::vec::Vec<@T>>}::try_from"]
+def Array.Insts.CoreConvertTryFromVecVec.try_from
+    {T : Type} (_allocator : Type) (N : Std.Usize)
+    (value : alloc.vec.Vec T) :
+    Result (core.result.Result (Array T N) (alloc.vec.Vec T)) :=
+  if h : value.val.length = N.val then
+    .ok (.Ok ⟨value.val, h⟩)
+  else
+    .ok (.Err value)
+
 end V7LiteralCallerCurrent309bMetadataAccountOpaqueAcceptedToolR1

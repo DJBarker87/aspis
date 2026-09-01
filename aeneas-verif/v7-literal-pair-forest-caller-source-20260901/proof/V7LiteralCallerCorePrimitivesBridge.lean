@@ -143,6 +143,57 @@ theorem vec_is_empty_exact
     alloc.vec.Vec.is_empty allocator value = .ok value.val.isEmpty := by
   rfl
 
+theorem slice_array_eq_is_exact_slice_comparison
+    {T U : Type} {N : Std.Usize}
+    (partialEq : core.cmp.PartialEq T U) (left : Slice T)
+    (right : Array U N) :
+    Slice.Insts.CoreCmpPartialEqArray.eq partialEq left right =
+      core.slice.cmp.PartialEqSlice.eq partialEq left right.to_slice := by
+  rfl
+
+theorem slice_array_ne_is_exact_slice_comparison
+    {T U : Type} {N : Std.Usize}
+    (partialEq : core.cmp.PartialEq T U) (left : Slice T)
+    (right : Array U N) :
+    Slice.Insts.CoreCmpPartialEqArray.ne partialEq left right =
+      core.slice.cmp.PartialEqSlice.ne partialEq left right.to_slice := by
+  rfl
+
+theorem slice_windows_zero_rejected {T : Type} (slice : Slice T) :
+    core.slice.Slice.windows slice 0#usize = .fail .panic := by
+  rfl
+
+theorem windows_next_exhausted
+    {T : Type} (iterator : core.slice.iter.Windows T)
+    (exhausted : iterator.slice.val.length <
+      iterator.index + iterator.width.val) :
+    core.slice.iter.Windows.Insts.CoreIterTraitsIteratorIteratorSharedASlice.next
+        iterator = .ok (none, iterator) := by
+  simp [
+    core.slice.iter.Windows.Insts.CoreIterTraitsIteratorIteratorSharedASlice.next,
+    Nat.not_le.mpr exhausted]
+
+theorem boxed_slice_try_from_wrong_length
+    {T : Type} (N : Std.Usize) (slice : Slice T)
+    (wrong : slice.val.length ≠ N.val) :
+    BoxArray.Insts.CoreConvertTryFromBoxSliceBoxSlice.try_from N slice =
+      .ok (.Err slice) := by
+  simp [BoxArray.Insts.CoreConvertTryFromBoxSliceBoxSlice.try_from, wrong]
+
+theorem shared_vec_into_iter_exact
+    {T : Type} (allocator : Type) (value : alloc.vec.Vec T) :
+    SharedAVec.Insts.CoreIterTraitsCollectIntoIteratorSharedATIter.into_iter
+        allocator value =
+      core.slice.Slice.iter (alloc.vec.Vec.deref value) := by
+  rfl
+
+theorem vec_try_from_wrong_length
+    {T : Type} (allocator : Type) (N : Std.Usize)
+    (value : alloc.vec.Vec T) (wrong : value.val.length ≠ N.val) :
+    Array.Insts.CoreConvertTryFromVecVec.try_from allocator N value =
+      .ok (.Err value) := by
+  simp [Array.Insts.CoreConvertTryFromVecVec.try_from, wrong]
+
 #print axioms bool_then_some_true_exact
 #print axioms bool_then_some_false_exact
 #print axioms option_as_ref_exact
@@ -169,5 +220,12 @@ theorem vec_is_empty_exact
 #print axioms vec_remove_out_of_bounds
 #print axioms vec_clear_is_empty
 #print axioms vec_is_empty_exact
+#print axioms slice_array_eq_is_exact_slice_comparison
+#print axioms slice_array_ne_is_exact_slice_comparison
+#print axioms slice_windows_zero_rejected
+#print axioms windows_next_exhausted
+#print axioms boxed_slice_try_from_wrong_length
+#print axioms shared_vec_into_iter_exact
+#print axioms vec_try_from_wrong_length
 
 end V7LiteralCallerCurrent309bMetadataAccountOpaqueAcceptedToolR1
