@@ -11,7 +11,7 @@ readonly FEATURE_OWNER="Feature111111111111111111111111111111111111"
 readonly AGAVE_GENESIS_PROGRAM_OWNER="BPFLoaderUpgradeab1e11111111111111111111111"
 readonly DISPOSABLE_ACK="I_ACKNOWLEDGE_AUDIT_ONLY_IDENTITIES_AND_DISPOSABLE_FUNDS"
 readonly REPO_ROOT=$(cd "$(dirname "$0")/.." && pwd)
-readonly CONFIG="$REPO_ROOT/config/v7-txv1-devnet-harness-20260901.json"
+readonly CONFIG=${ASPIS_TXV1_HARNESS_CONFIG:-$REPO_ROOT/config/v7-txv1-devnet-harness-20260901.json}
 
 fail() {
   echo "FAIL: $*" >&2
@@ -48,7 +48,7 @@ fi
 [[ "$EVIDENCE_DIR" == /* && "$EVIDENCE_DIR" != / ]] \
   || fail "evidence directory must be an explicit absolute non-root path"
 [[ ! -e "$EVIDENCE_DIR" ]] || fail "refusing to overwrite evidence: $EVIDENCE_DIR"
-[[ -f "$CONFIG" ]] || fail "missing harness configuration"
+[[ "$CONFIG" == /* && -f "$CONFIG" ]] || fail "harness configuration must be an absolute file"
 jq -e '.mainnetReady == false and .identitySet.auditOnly == true and
   .identitySet.productionApproved == false' "$CONFIG" >/dev/null \
   || fail "configuration does not identify an audit-only disposable identity set"

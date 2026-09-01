@@ -45,6 +45,7 @@ fn resolve(root: &Path, relative: &str) -> Result<PathBuf> {
 }
 
 fn main() -> Result<()> {
+    const DEPOSIT_CU_AUDIT_ACK: &str = "I_ACKNOWLEDGE_256_DISPOSABLE_SEQUENTIAL_DEPOSITS";
     let selected_lane_test_mode = env::var("ASPIS_V7_LIVE_SELECTED_LANE_CASE")
         .ok()
         .filter(|mode| mode != "none");
@@ -53,6 +54,19 @@ fn main() -> Result<()> {
             .as_deref()
             .is_none_or(|mode| mode == "stale-after-deposit"),
         "unsupported selected-lane test mode"
+    );
+    let deposit_cu_audit = env::var("ASPIS_V7_PAIR_FOREST_DEPOSIT_CU_AUDIT")
+        .ok()
+        .filter(|value| !value.is_empty());
+    ensure!(
+        deposit_cu_audit
+            .as_deref()
+            .is_none_or(|value| value == DEPOSIT_CU_AUDIT_ACK),
+        "invalid sequential-deposit CU audit acknowledgement"
+    );
+    ensure!(
+        deposit_cu_audit.is_none() || selected_lane_test_mode.is_none(),
+        "sequential-deposit CU audit cannot be combined with selected-lane mode"
     );
     let mut args = env::args_os().skip(1);
     let repo = PathBuf::from(args.next().context(
@@ -111,7 +125,9 @@ fn main() -> Result<()> {
         "kind":"disposable-mint-with-ephemeral-authority", "address":mint_id,
         "file":mint_output, "dataSha256":format!("{:x}", Sha256::digest(&mint_data))
     })];
-    let source_amount = if selected_lane_test_mode.as_deref() == Some("stale-after-deposit") {
+    let source_amount = if deposit_cu_audit.is_some() {
+        256_000_u64
+    } else if selected_lane_test_mode.as_deref() == Some("stale-after-deposit") {
         2_000_u64
     } else {
         1_000_u64
@@ -200,6 +216,8 @@ fn main() -> Result<()> {
         serde_json::to_string(&serde_json::json!({
             "schema":"aspis.v7.disposable-live-genesis.v1", "auditOnly":true,
             "selectedLaneTestMode":selected_lane_test_mode,
+            "sequentialDepositCuAudit":deposit_cu_audit.is_some(),
+            "sourceTokenAmount":source_amount,
             "ephemeralMintAuthority":payer.to_string(),
             "ephemeralTokenAuthority":source_authority.to_string(), "accounts":accounts
         }))?

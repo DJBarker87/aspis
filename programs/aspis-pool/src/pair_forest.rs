@@ -365,9 +365,14 @@ fn decode_lane_account(
 
 /// Decode the complete canonical lane byte image while treating only the
 /// persisted active root/frontier relation as an inductive Pool-owned state
-/// invariant. This remains private and is used only by the named default-off
-/// terminal CU feature; checkpoint and deposit keep the generic strict codec.
-#[cfg(feature = "pair-forest-source-invariant-audit")]
+/// invariant. This remains private and is used only by named default-off
+/// terminal or deposit audit features. Checkpoint keeps the generic strict
+/// codec, and each caller must independently authenticate the retained
+/// history root before any CPI or persistence.
+#[cfg(any(
+    feature = "pair-forest-source-invariant-audit",
+    feature = "pair-forest-deposit-invariant-audit"
+))]
 fn decode_lane_account_from_program_invariant_v1(
     program_id: &Pubkey,
     master: &Pubkey,
@@ -440,11 +445,15 @@ fn decode_lane_account_from_program_invariant_v1(
     })
 }
 
-/// Byte-exact encoder for a verifier-authenticated next lane. It retains all
-/// canonical field, capacity, inactive-frontier and genesis checks, omitting
-/// only a second root/frontier Poseidon reconstruction already enforced by
-/// the selected verifier relation.
-#[cfg(feature = "pair-forest-source-result-invariant-audit")]
+/// Byte-exact encoder for an authenticated Pool transition output. It retains
+/// all canonical field, capacity, inactive-frontier and genesis checks,
+/// omitting only a second root/frontier Poseidon reconstruction already
+/// enforced either by the selected verifier relation or by the Pool's checked
+/// deposit append construction.
+#[cfg(any(
+    feature = "pair-forest-source-result-invariant-audit",
+    feature = "pair-forest-deposit-invariant-audit"
+))]
 fn encode_lane_from_authenticated_result_v1(
     lane: &PoolV1PairForestLaneStateV1,
 ) -> Result<[u8; POOL_V1_PAIR_FOREST_LANE_ACCOUNT_BYTES], ProgramError> {
@@ -658,6 +667,62 @@ fn validate_lane_current_page(
     Ok(header)
 }
 
+/// Apply the pair-state module's established binary-carry construction using
+/// the pair-leaf empty-root domain. The source root/frontier relation is the
+/// one inductive Pool-owned lane invariant; capacity, canonical inactive
+/// slots and the retained current root are checked by the deposit caller
+/// before this helper's result can be persisted.
+#[cfg(feature = "pair-forest-deposit-invariant-audit")]
+fn append_pair_leaf_from_program_invariant_v1(
+    source: &IncrementalMerkleTreeV1,
+    pair_leaf: Digest,
+) -> Result<(IncrementalMerkleTreeV1, AppendOneV1), ProgramError> {
+    if source.next_leaf_index >= POOL_V1_PAIR_CAPACITY {
+        return Err(PoolV1ProgramError::TreeFull.into());
+    }
+    if pair_leaf.iter().any(|limb| limb.0 >= aspis_core::field::P) {
+        return Err(PoolV1ProgramError::NonCanonicalLeaf.into());
+    }
+    let leaf_index = source.next_leaf_index;
+    let mut frontier = source.frontier;
+    let mut carry = pair_leaf;
+    let mut carry_level = 0usize;
+    while carry_level < POOL_V1_PAIR_TREE_DEPTH && (leaf_index >> carry_level) & 1 == 1 {
+        carry = pool_v1_tree_parent(&frontier[carry_level], &carry);
+        frontier[carry_level] = POOL_V1_PAIR_EMPTY_ROOTS[carry_level];
+        carry_level += 1;
+    }
+    let next_leaf_index = leaf_index
+        .checked_add(1)
+        .ok_or(PoolV1ProgramError::ArithmeticOverflow)?;
+    let root = if carry_level == POOL_V1_PAIR_TREE_DEPTH {
+        carry
+    } else {
+        frontier[carry_level] = carry;
+        let mut node = POOL_V1_PAIR_EMPTY_ROOTS[carry_level];
+        for level in carry_level..POOL_V1_PAIR_TREE_DEPTH {
+            node = if (next_leaf_index >> level) & 1 == 0 {
+                pool_v1_tree_parent(&node, &POOL_V1_PAIR_EMPTY_ROOTS[level])
+            } else {
+                pool_v1_tree_parent(&frontier[level], &node)
+            };
+        }
+        node
+    };
+    let next = IncrementalMerkleTreeV1 {
+        next_leaf_index,
+        root,
+        frontier,
+    };
+    let receipt = AppendOneV1 {
+        leaf_index,
+        root_sequence: next_leaf_index,
+        root,
+        history: root_history_location(next_leaf_index),
+    };
+    Ok((next, receipt))
+}
+
 #[inline(never)]
 fn prepare_deposit_append_v1(
     lane: &PoolV1PairForestLaneStateV1,
@@ -670,20 +735,52 @@ fn prepare_deposit_append_v1(
     ),
     ProgramError,
 > {
+    #[cfg(not(feature = "pair-forest-deposit-invariant-audit"))]
     let (next_tree, append) = lane
         .tree
         .append_one_with_empty_roots(pair_leaf, &POOL_V1_PAIR_EMPTY_ROOTS)
         .map_err(|_| PoolV1ProgramError::StateHistoryMismatch)?;
+    #[cfg(feature = "pair-forest-deposit-invariant-audit")]
+    let (next_tree, append) = append_pair_leaf_from_program_invariant_v1(&lane.tree, pair_leaf)?;
     let next_lane = Box::new(PoolV1PairForestLaneStateV1 {
         master: lane.master,
         lane_id,
         tree: next_tree,
     });
+    #[cfg(not(feature = "pair-forest-deposit-invariant-audit"))]
     let next_lane_image = Box::new(
         encode_pool_v1_pair_forest_lane_state_v1(&next_lane, &POOL_V1_PAIR_EMPTY_ROOTS)
             .map_err(|_| PoolV1ProgramError::StateHistoryMismatch)?,
     );
+    #[cfg(feature = "pair-forest-deposit-invariant-audit")]
+    let next_lane_image = Box::new(encode_lane_from_authenticated_result_v1(&next_lane)?);
     Ok((append, next_lane_image))
+}
+
+#[inline(never)]
+fn decode_deposit_lane_box_v1(
+    program_id: &Pubkey,
+    master: &Pubkey,
+    lane_id: u8,
+    lane_account: &AccountInfo<'_>,
+) -> Result<Box<PoolV1PairForestLaneStateV1>, ProgramError> {
+    #[cfg(feature = "pair-forest-deposit-invariant-audit")]
+    return Ok(Box::new(decode_lane_account_from_program_invariant_v1(
+        program_id,
+        master,
+        lane_id,
+        lane_account,
+        true,
+    )?));
+
+    #[cfg(not(feature = "pair-forest-deposit-invariant-audit"))]
+    Ok(Box::new(decode_lane_account(
+        program_id,
+        master,
+        lane_id,
+        lane_account,
+        true,
+    )?))
 }
 
 /// Apply one vault-backed public deposit to its deterministic pair-forest
@@ -725,7 +822,7 @@ pub(crate) fn process_pair_forest_deposit_with_runtime_v1<'info, R: PoolCpiRunti
     if master.initialized_lane_mask & (1u8 << lane_id) == 0 {
         return Err(PoolV1ProgramError::StateHistoryMismatch.into());
     }
-    let lane = decode_terminal_lane_box_v1(program_id, master_account.key, lane_id, lane_account)?;
+    let lane = decode_deposit_lane_box_v1(program_id, master_account.key, lane_id, lane_account)?;
     if lane.tree.next_leaf_index >= POOL_V1_PAIR_CAPACITY {
         return Err(PoolV1ProgramError::TreeFull.into());
     }
@@ -2171,9 +2268,12 @@ mod tests {
         }
     }
 
-    #[cfg(feature = "pair-forest-source-invariant-audit")]
+    #[cfg(any(
+        feature = "pair-forest-source-invariant-audit",
+        feature = "pair-forest-deposit-invariant-audit"
+    ))]
     #[test]
-    fn terminal_program_invariant_lane_decoder_keeps_exact_boundary() {
+    fn program_invariant_lane_decoder_keeps_exact_boundary() {
         let program_id = Pubkey::new_unique();
         let master = Pubkey::new_unique();
         let lane_id = 3;
@@ -2213,8 +2313,8 @@ mod tests {
 
         // The one explicit boundary is real: a canonical but inconsistent
         // active root is accepted here and rejected by the generic codec.
-        // The terminal path additionally binds this root to the Pool-owned
-        // current history entry before CPI.
+        // Every invariant-backed caller additionally binds this root to the
+        // Pool-owned current history entry before CPI.
         let root_start = POOL_V1_PAIR_FOREST_LANE_HEADER_BYTES + 16;
         account.data[root_start..root_start + 32]
             .copy_from_slice(&encode_digest_canonical(&digest(90_000)));
@@ -2246,7 +2346,10 @@ mod tests {
         .is_err());
     }
 
-    #[cfg(feature = "pair-forest-source-result-invariant-audit")]
+    #[cfg(any(
+        feature = "pair-forest-source-result-invariant-audit",
+        feature = "pair-forest-deposit-invariant-audit"
+    ))]
     #[test]
     fn authenticated_result_encoder_is_byte_exact_for_valid_lanes() {
         let master = Pubkey::new_unique();
@@ -2264,6 +2367,70 @@ mod tests {
         );
         lane.tree.frontier[0] = digest(99_000);
         assert!(encode_lane_from_authenticated_result_v1(&lane).is_err());
+    }
+
+    #[cfg(feature = "pair-forest-deposit-invariant-audit")]
+    #[test]
+    fn deposit_invariant_append_is_byte_exact_at_measured_boundaries() {
+        let master = Pubkey::new_unique();
+        let lane_id = 2;
+        let mut lane = lane_state(master, lane_id);
+        let measured = [0u64, 1, 2, 3, 7, 15, 255];
+
+        for source_index in 0u64..=255 {
+            let pair_leaf = digest(40_000 + source_index as u32);
+            if measured.contains(&source_index) {
+                let (strict_tree, strict_receipt) = lane
+                    .tree
+                    .append_one_with_empty_roots(pair_leaf, &POOL_V1_PAIR_EMPTY_ROOTS)
+                    .unwrap();
+                let strict_lane = PoolV1PairForestLaneStateV1 {
+                    master: master.to_bytes(),
+                    lane_id,
+                    tree: strict_tree,
+                };
+                let strict_image = encode_pool_v1_pair_forest_lane_state_v1(
+                    &strict_lane,
+                    &POOL_V1_PAIR_EMPTY_ROOTS,
+                )
+                .unwrap();
+                let (audit_receipt, audit_image) =
+                    prepare_deposit_append_v1(&lane, lane_id, pair_leaf).unwrap();
+                assert_eq!(audit_receipt, strict_receipt, "receipt at {source_index}");
+                assert_eq!(
+                    audit_image.as_ref(),
+                    &strict_image,
+                    "image at {source_index}"
+                );
+                assert_eq!(
+                    decode_pool_v1_pair_forest_lane_state_v1(
+                        audit_image.as_ref(),
+                        &POOL_V1_PAIR_EMPTY_ROOTS,
+                    )
+                    .unwrap(),
+                    strict_lane,
+                    "strict successor decode at {source_index}",
+                );
+            }
+
+            lane.tree = append_pair_leaf_from_program_invariant_v1(&lane.tree, pair_leaf)
+                .unwrap()
+                .0;
+        }
+    }
+
+    #[test]
+    fn pair_forest_lane_persistence_surface_remains_closed() {
+        let source = include_str!("pair_forest.rs");
+        let transition_write =
+            ["lane_data", ".copy_from_slice(next_lane_image.as_ref());"].concat();
+        let genesis_write = [
+            "lane_data[lane]",
+            ".copy_from_slice(lane_images[lane].as_ref());",
+        ]
+        .concat();
+        assert_eq!(source.matches(&transition_write).count(), 2);
+        assert_eq!(source.matches(&genesis_write).count(), 1);
     }
 
     fn fixtures(program_id: Pubkey) -> (TestAccount, [TestAccount; 8], TestAccount, Pubkey) {
@@ -2902,6 +3069,51 @@ mod tests {
             read_retained_root(&accounts[2].data, page, 2).unwrap(),
             lane.tree.root
         );
+    }
+
+    #[cfg(feature = "pair-forest-deposit-invariant-audit")]
+    #[test]
+    fn deposit_invariant_source_root_still_requires_exact_retained_history() {
+        let program_id = Pubkey::new_unique();
+        let mint = Pubkey::new_unique();
+        let (mut accounts, instruction, _, _) = genesis_deposit_fixture(program_id, mint);
+        let mut runtime = DepositCpi {
+            apply_exact_delta: true,
+            calls: 0,
+        };
+        let infos: Vec<_> = accounts.iter_mut().map(TestAccount::info).collect();
+        process_pair_forest_deposit_with_runtime_v1(
+            &program_id,
+            &infos,
+            &instruction,
+            &Rent::default(),
+            &mut runtime,
+        )
+        .unwrap();
+        drop(infos);
+        assert_eq!(runtime.calls, 1);
+
+        accounts.truncate(FOREST_DEPOSIT_SAME_PAGE_ACCOUNT_COUNT);
+        let root_start = POOL_V1_PAIR_FOREST_LANE_HEADER_BYTES + 16;
+        accounts[1].data[root_start..root_start + 32]
+            .copy_from_slice(&encode_digest_canonical(&digest(92_000)));
+        let lane_before = accounts[1].data.clone();
+        let page_before = accounts[2].data.clone();
+        let infos: Vec<_> = accounts.iter_mut().map(TestAccount::info).collect();
+        assert_eq!(
+            process_pair_forest_deposit_with_runtime_v1(
+                &program_id,
+                &infos,
+                &instruction,
+                &Rent::default(),
+                &mut runtime,
+            ),
+            Err(PoolV1ProgramError::StateHistoryMismatch.into())
+        );
+        drop(infos);
+        assert_eq!(runtime.calls, 1, "history mismatch must precede token CPI");
+        assert_eq!(accounts[1].data, lane_before);
+        assert_eq!(accounts[2].data, page_before);
     }
 
     #[test]

@@ -1,13 +1,16 @@
 use std::{env, fs, path::PathBuf, str::FromStr};
 
 use anyhow::{ensure, Context, Result};
-use aspis_pool::{deposit::DepositRequestV1, empty_roots::POOL_V1_PAIR_EMPTY_ROOTS};
+use aspis_pool::{
+    deposit::DepositRequestV1, empty_roots::POOL_V1_PAIR_EMPTY_ROOTS,
+    pool_v1_pair_forest_lane_address, pool_v1_pair_forest_lane_root_page_address,
+};
 use aspis_pool_wallet_v1::lane_forest_client_v2::build_pair_forest_deposit_instruction_v2;
 use aspis_statement::{
     decode_digest_canonical,
     pool_v1::{
         decode_pool_v1_pair_forest_lane_state_v1, decode_pool_v1_pair_forest_master_v1,
-        pool_v1_note_commitment, pool_v1_pair_forest_deposit_lane_v1,
+        pool_v1_note_commitment, pool_v1_pair_forest_deposit_lane_v1, root_history_location,
     },
 };
 use base64::{engine::general_purpose::STANDARD as BASE64, Engine as _};
@@ -34,6 +37,8 @@ struct Input {
     master_account: String,
     lane_accounts: Vec<String>,
     secrets_file: String,
+    #[serde(default)]
+    expected_next_leaf_index: Option<u64>,
 }
 
 #[derive(Deserialize)]
@@ -79,8 +84,17 @@ fn main() -> Result<()> {
     ensure!(env::args_os().nth(2).is_none(), "unexpected extra argument");
     let input: Input = serde_json::from_slice(&fs::read(&input_path)?)?;
     let expected_next_leaf_index = match input.schema.as_str() {
-        "aspis.v7.live-pool-deposit-input.v1" => 0,
-        "aspis.v7.live-pool-staling-deposit-input.v1" => 1,
+        "aspis.v7.live-pool-deposit-input.v1" => {
+            ensure!(input.expected_next_leaf_index.is_none(), "unexpected index");
+            0
+        }
+        "aspis.v7.live-pool-staling-deposit-input.v1" => {
+            ensure!(input.expected_next_leaf_index.is_none(), "unexpected index");
+            1
+        }
+        "aspis.v7.live-pool-sequential-deposit-input.v1" => input
+            .expected_next_leaf_index
+            .context("missing expected sequential-deposit index")?,
         _ => anyhow::bail!("wrong input schema"),
     };
     ensure!(
@@ -137,9 +151,44 @@ fn main() -> Result<()> {
         source_authority.pubkey() != payer.pubkey(),
         "source authority aliases payer"
     );
-    let page_payer = (lane.tree.next_leaf_index == 0).then_some(payer.pubkey());
+    let current_location = root_history_location(lane.tree.next_leaf_index);
+    let next_location = root_history_location(
+        lane.tree
+            .next_leaf_index
+            .checked_add(1)
+            .context("deposit index overflow")?,
+    );
+    let page_mode = if lane.tree.next_leaf_index == 0 {
+        "genesis"
+    } else if current_location.page_number == next_location.page_number {
+        "same-page"
+    } else {
+        "rollover"
+    };
+    let page_payer = (page_mode != "same-page").then_some(payer.pubkey());
+    let pool_program = Pubkey::from_str(pool_id)?;
+    let master_address = Pubkey::new_from_array(master.identity.pool);
+    let lane_address = pool_v1_pair_forest_lane_address(&pool_program, &master_address, lane_id)
+        .map_err(|error| anyhow::anyhow!("derive lane: {error:?}"))?
+        .0;
+    let current_page_address = pool_v1_pair_forest_lane_root_page_address(
+        &pool_program,
+        &master_address,
+        lane_id,
+        current_location.page_number,
+    )
+    .map_err(|error| anyhow::anyhow!("derive current page: {error:?}"))?
+    .0;
+    let successor_page_address = pool_v1_pair_forest_lane_root_page_address(
+        &pool_program,
+        &master_address,
+        lane_id,
+        next_location.page_number,
+    )
+    .map_err(|error| anyhow::anyhow!("derive successor page: {error:?}"))?
+    .0;
     let instruction = build_pair_forest_deposit_instruction_v2(
-        Pubkey::from_str(pool_id)?,
+        pool_program,
         &master,
         &lane,
         Pubkey::from_str(source)?,
@@ -172,7 +221,12 @@ fn main() -> Result<()> {
         "{}",
         json!({
             "schema":"aspis.v7.live-pool-signed-request.v1","operation":"deposit",
-            "selectedLane":lane_id,"serializedTransactionBytes":wire.len(),
+            "selectedLane":lane_id,"sourceNextLeafIndex":lane.tree.next_leaf_index,
+            "successorNextLeafIndex":lane.tree.next_leaf_index + 1,"pageMode":page_mode,
+            "laneAccount":lane_address.to_string(),
+            "currentPageAccount":current_page_address.to_string(),
+            "successorPageAccount":successor_page_address.to_string(),
+            "serializedTransactionBytes":wire.len(),
             "signedWireSha256":format!("{:x}",Sha256::digest(&wire)),"signature":signature,
             "simulationRequest":{"jsonrpc":"2.0","id":input.request_id,"method":"simulateTransaction",
                 "params":[wire_base64,{"encoding":"base64","commitment":"confirmed","sigVerify":true,
