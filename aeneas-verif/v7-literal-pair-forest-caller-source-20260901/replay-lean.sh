@@ -33,6 +33,8 @@ cp "$script_dir/proof/V7LiteralCallerReadonlyMetadataExternal.lean" "$replay_tmp
 cp "$script_dir/proof/V7LiteralCallerReadonlyMetadataBridge.lean" "$replay_tmp/"
 cp "$script_dir/proof/V7LiteralCallerReadonlyDataExternal.lean" "$replay_tmp/"
 cp "$script_dir/proof/V7LiteralCallerReadonlyDataBridge.lean" "$replay_tmp/"
+cp "$script_dir/proof/V7LiteralCallerCorePrimitivesExternal.lean" "$replay_tmp/"
+cp "$script_dir/proof/V7LiteralCallerCorePrimitivesBridge.lean" "$replay_tmp/"
 cp "$script_dir/proof/V7LiteralCallerExactSixAccountRefsBridge.lean" "$replay_tmp/"
 
 export LEAN_PATH="$replay_tmp:$backend_path"
@@ -46,6 +48,8 @@ targets=(
   V7LiteralCallerReadonlyMetadataBridge
   V7LiteralCallerReadonlyDataExternal
   V7LiteralCallerReadonlyDataBridge
+  V7LiteralCallerCorePrimitivesExternal
+  V7LiteralCallerCorePrimitivesBridge
   V7LiteralCallerExactSixAccountRefsLenPreflightSharedIndexCurrent309bR1/TypesExternal
   V7LiteralCallerExactSixAccountRefsLenPreflightSharedIndexCurrent309bR1/Types
   V7LiteralCallerExactSixAccountRefsLenPreflightSharedIndexCurrent309bR1/Funs
@@ -56,4 +60,4 @@ for target in "${targets[@]}"; do
   "$LEAN_BIN" -R "$replay_tmp" -o "$replay_tmp/$target.olean" "$replay_tmp/$target.lean"
 done
 
-echo 'V7 literal readonly-metadata and exact-six Lean replay: PASS'
+echo 'V7 literal readonly-metadata, core-primitives, and exact-six Lean replay: PASS'

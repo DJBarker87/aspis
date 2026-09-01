@@ -163,3 +163,34 @@ borrow-ready production-entry model, with no project axiom. Literal arbitrary
 RefCell-borrow-state behavior remains an explicit Solana/Aeneas platform
 boundary. The next finite caller work is the ordinary Rust/platform external
 inventory; no caller-acceptance premise has been introduced.
+
+Deterministic core-primitives focused Lean chain: PASS
+External unit: aspis-v7-core-primitives-external-r1.service
+External invocation: 398956ab07ef4cb7a55081cc0c1c86d7
+External wall: 1.51 s
+External peak RSS: 2,545,644 KiB
+External swap: 0
+Bridge unit: aspis-v7-core-primitives-bridge-r1.service
+Bridge invocation: 58daddc891114b01bb5646fe96e0a522
+Bridge wall: 1.50 s
+Bridge peak RSS: 2,544,840 KiB
+Bridge swap: 0
+
+Complete focused Lean replay including core primitives: PASS
+Unit: aspis-v7-core-primitives-final-replay-r1.service
+Invocation: e9e1d2d441ed4396b62dc2c88fc629c1
+Wall: 19.68 s
+Peak RSS: 2,752,624 KiB
+Swap: 0
+New executable external definitions: 12
+Remaining ordinary external templates: 57
+Axioms: propext, Classical.choice, Quot.sound
+Forbidden constructs: none
+
+Updated classification: twelve deterministic Rust core operations now have
+executable, signature-matched definitions and focused branch/rejection
+theorems. The archival generated external template remains only an inventory;
+the accepted focused graph does not import those twelve axioms. Literal
+arbitrary-state RefCell borrow behavior remains the smallest platform boundary,
+and 57 ordinary Rust templates plus the remaining named platform groups still
+separate this milestone from a literal whole-caller theorem.

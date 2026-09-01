@@ -2,7 +2,25 @@ Generated full-caller FunsExternal template: 83 declarations
 (73 are rendered as Lean axioms.)
 
 69 declarations are Rust core/alloc collection, iterator, option, result,
-slice, box, vector, numeric or formatting operations.
+slice, box, vector, numeric or formatting operations. The focused accepted
+graph now supplies executable definitions for 12 of them:
+
+- core.bool.Bool.then_some
+- core.num.U16.count_ones
+- core.num.U16.trailing_zeros
+- core.num.U64.trailing_ones
+- core.num.Usize.reverse_bits
+- core.num.Usize.checked_shl
+- core.num.U32.checked_shl
+- core.num.U32.is_power_of_two
+- core.option.Option.as_ref
+- core.option.Option.ok_or
+- core.slice.Slice.first
+- core.slice.Slice.last
+
+The archival generated template still lists these declarations, but it is not
+imported by the focused accepted graph. 57 ordinary templates remain to fill or
+classify.
 
 14 protocol/platform declaration groups remain:
 
@@ -30,4 +48,5 @@ generated Funs module and is independently kernel checked for exact 0-through-5
 order. Item 12 now has an executable, axiom-free definition for the production
 borrow-ready entry state. The smallest remaining source boundary inside it is
 Solana's arbitrary-state RefCell dynamic-borrow check; ordinary Rust and the
-other platform declarations remain separate explicit boundaries.
+other platform declarations remain separate explicit boundaries. The new core
+cluster changes neither that platform boundary nor any protocol theorem.

@@ -133,6 +133,32 @@ grep -Fq 'def core.cell.Ref.Insts.CoreOpsDerefDeref.deref' \
   "$script_dir/proof/V7LiteralCallerReadonlyDataExternal.lean"
 grep -Fq 'theorem borrow_readonly_account_data_success_is_exact_view' \
   "$script_dir/proof/V7LiteralCallerReadonlyDataBridge.lean"
+grep -Fq 'def core.bool.Bool.then_some' \
+  "$script_dir/proof/V7LiteralCallerCorePrimitivesExternal.lean"
+grep -Fq 'def core.num.U16.count_ones' \
+  "$script_dir/proof/V7LiteralCallerCorePrimitivesExternal.lean"
+grep -Fq 'def core.num.U16.trailing_zeros' \
+  "$script_dir/proof/V7LiteralCallerCorePrimitivesExternal.lean"
+grep -Fq 'def core.num.U64.trailing_ones' \
+  "$script_dir/proof/V7LiteralCallerCorePrimitivesExternal.lean"
+grep -Fq 'def core.num.Usize.reverse_bits' \
+  "$script_dir/proof/V7LiteralCallerCorePrimitivesExternal.lean"
+grep -Fq 'def core.num.Usize.checked_shl' \
+  "$script_dir/proof/V7LiteralCallerCorePrimitivesExternal.lean"
+grep -Fq 'def core.num.U32.checked_shl' \
+  "$script_dir/proof/V7LiteralCallerCorePrimitivesExternal.lean"
+grep -Fq 'def core.num.U32.is_power_of_two' \
+  "$script_dir/proof/V7LiteralCallerCorePrimitivesExternal.lean"
+grep -Fq 'def core.option.Option.as_ref' \
+  "$script_dir/proof/V7LiteralCallerCorePrimitivesExternal.lean"
+grep -Fq 'def core.option.Option.ok_or' \
+  "$script_dir/proof/V7LiteralCallerCorePrimitivesExternal.lean"
+grep -Fq 'def core.slice.Slice.first' \
+  "$script_dir/proof/V7LiteralCallerCorePrimitivesExternal.lean"
+grep -Fq 'def core.slice.Slice.last' \
+  "$script_dir/proof/V7LiteralCallerCorePrimitivesExternal.lean"
+grep -Fq 'theorem u32_checked_shl_out_of_range' \
+  "$script_dir/proof/V7LiteralCallerCorePrimitivesBridge.lean"
 
 ! grep -REn '(^|[[:space:]])(sorry|admit|native_decide)([[:space:]]|$)' \
   "$script_dir/proof" --include='*.lean'
