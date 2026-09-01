@@ -100,17 +100,39 @@ for request_index in $(seq 0 $((request_count - 1))); do
   signature=$(jq -er '.result' <<<"$send")
   [[ "$signature" == "$(jq -er ".requests[$request_index].signature" \
     "$EVIDENCE_DIR/signed-requests.json")" ]] || fail "submitted signature changed for $name"
-  finalized=false
-  for _ in $(seq 1 300); do
+  confirmed=false
+  for _ in $(seq 1 150); do
     status=$(rpc "$(jq -nc --arg signature "$signature" \
       '{jsonrpc:"2.0",id:4000,method:"getSignatureStatuses",params:[[$signature],{searchTransactionHistory:true}]}')")
-    if jq -e '.result.value[0].confirmationStatus == "finalized"' <<<"$status" >/dev/null; then
-      finalized=true
+    if jq -e '.result.value[0].confirmationStatus == "confirmed" or
+      .result.value[0].confirmationStatus == "finalized"' <<<"$status" >/dev/null; then
+      confirmed=true
       break
     fi
     sleep 0.1
   done
-  [[ "$finalized" == true ]] || fail "transaction did not finalize: $name"
+  [[ "$confirmed" == true ]] || fail "transaction did not confirm: $name"
+done
+
+# All dependent writes have executed in order and were submitted within one
+# blockhash lifetime. Finalization is then required for the complete set.
+signatures=$(jq -c '[.requests[].signature]' "$EVIDENCE_DIR/signed-requests.json")
+all_finalized=false
+for _ in $(seq 1 600); do
+  statuses=$(rpc "$(jq -nc --argjson signatures "$signatures" \
+    '{jsonrpc:"2.0",id:4500,method:"getSignatureStatuses",params:[$signatures,{searchTransactionHistory:true}]}')")
+  if jq -e '.result.value | all(. != null and .confirmationStatus == "finalized")' \
+    <<<"$statuses" >/dev/null; then
+    all_finalized=true
+    break
+  fi
+  sleep 0.1
+done
+[[ "$all_finalized" == true ]] || fail "complete proof upload set did not finalize"
+
+for request_index in $(seq 0 $((request_count - 1))); do
+  name=$(jq -er ".requests[$request_index].name" "$EVIDENCE_DIR/signed-requests.json")
+  signature=$(jq -er ".requests[$request_index].signature" "$EVIDENCE_DIR/signed-requests.json")
   landed=$(rpc "$(jq -nc --arg signature "$signature" \
     '{jsonrpc:"2.0",id:5000,method:"getTransaction",params:[$signature,{encoding:"json",commitment:"finalized",maxSupportedTransactionVersion:1}]}')")
   jq . <<<"$landed" >"$EVIDENCE_DIR/transactions/$name.finalized.json"
