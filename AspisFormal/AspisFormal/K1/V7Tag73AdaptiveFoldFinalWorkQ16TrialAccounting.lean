@@ -176,6 +176,37 @@ theorem
     (fun foldTrial => ⋃ finalTrial, trials.event foldTrial finalTrial)
     (trials.inner_union_probability_le finalTrialCap) foldTrialCap
 
+/-! ## Literal compiler exposure inventory -/
+
+abbrev ExactCompilerExposurePairIndexedFoldAlphaFinalWorkQ16Trials
+    {HiddenTape : Type} [Fintype HiddenTape]
+    (parameters : ExactCompilerResourceParameters) :=
+  ExactCompilerCausalFoldAlphaFinalWorkAnswerQ16Trials
+    (HiddenTape := HiddenTape)
+    (FoldTrial := ExactCompilerExposureTrial parameters)
+    (FinalTrial := ExactCompilerExposureTrial parameters) parameters
+
+/-- Production-facing release form.  Both inventories are the exact compiler
+master-exposure type; the two distinct positioned work stages discharge their
+own cardinality requirements. -/
+theorem
+    ExactCompilerExposurePairIndexedFoldAlphaFinalWorkQ16Trials.failure_union_probability_le_one_forest
+    {HiddenTape : Type} [Fintype HiddenTape]
+    {hiddenLaw : PMF HiddenTape}
+    {parameters : ExactCompilerResourceParameters}
+    (trials : ExactCompilerExposurePairIndexedFoldAlphaFinalWorkQ16Trials
+      (HiddenTape := HiddenTape) parameters)
+    (foldExposureCap : unifiedFull256ExposureCap parameters ≤ 2 ^ 31)
+    (finalExposureCap : unifiedFull256ExposureCap parameters ≤ 2 ^ 34) :
+    (exactCompilerJointLaw hiddenLaw parameters).toOuterMeasure
+        (⋃ foldTrial, ⋃ finalTrial, trials.event foldTrial finalTrial) ≤
+      q16SemanticOneForestRawError := by
+  apply
+    ExactCompilerCausalFoldAlphaFinalWorkAnswerQ16Trials.failure_union_probability_le_one_forest
+      trials
+  · simpa [ExactCompilerExposureTrial] using foldExposureCap
+  · simpa [ExactCompilerExposureTrial] using finalExposureCap
+
 end
 
 
@@ -187,5 +218,7 @@ end
   ExactCompilerCausalFoldAlphaFinalWorkAnswerQ16Trials.inner_union_probability_le
 #print axioms
   ExactCompilerCausalFoldAlphaFinalWorkAnswerQ16Trials.failure_union_probability_le_one_forest
+#print axioms
+  ExactCompilerExposurePairIndexedFoldAlphaFinalWorkQ16Trials.failure_union_probability_le_one_forest
 
 end AspisK1.V7Tag73AdaptiveFoldFinalWorkQ16TrialAccounting
