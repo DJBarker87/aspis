@@ -34,6 +34,7 @@ open AspisK1.V7Tag73ExactCompilerGammaTraceOccurrence
 open AspisK1.V7Tag73ExactCompilerResources
 open AspisK1.V7Tag73ExactClientKnowledgeComposition
 open AspisK1.V7Tag73ExactDagCandidateLabeledRootRouting
+open AspisK1.V7Tag73ExactDagQ16ChainRouting
 open AspisK1.V7Tag73ExactFixedFullRunFactorization
 open AspisK1.V7Tag73ExactFixedK12MerkleClassifier
 open AspisK1.V7Tag73ExactFixedOperationalStateMap
@@ -224,9 +225,9 @@ theorem exact_accepted_fold_trial_is_routed
       finalTrial boundaryIndex)
     priorLabels laterLabels none fold.answer labelsDecomposition
 
-/-- The retained fold trial cannot be the proof-relevant final-work/q16 trial
-from the same accepted execution. -/
-theorem exact_accepted_fold_trial_ne_actual_final_trial
+/-- The retained fold record and either chronological ordering of the literal
+final-work pair occupy different exposure trials. -/
+theorem exact_accepted_fold_trial_ne_final_pair_trial
     {HiddenTape TapeIdentity Observation Statement Payload Witness : Type}
     {parameters : ExactCompilerResourceParameters}
     {transitionFuel : Nat}
@@ -239,17 +240,13 @@ theorem exact_accepted_fold_trial_ne_actual_final_trial
       fixedInstance sample)
     (fold : ExactAcceptedFoldTrial input)
     (finalTrial : ExactCompilerExposureTrial parameters)
-    (actual : ExactFixedK13ActualJointTrial input finalTrial) :
+    (finalDigest finalAnswer base : Digest256)
+    (prefinal : ExactOperationalPrefinalDigest input finalDigest)
+    (pairLabeled : ExactDagFinalWorkPairLabeled input finalTrial
+      (literalFinalWorkKey finalDigest
+        (exactOperationalTape input).messages.finalGrinding.selected)
+      finalAnswer base) :
     fold.trial.val ≠ finalTrial.val := by
-  let finalDigest := Classical.choose actual
-  let afterDigest := Classical.choose_spec actual
-  let finalAnswer := Classical.choose afterDigest
-  let afterAnswer := Classical.choose_spec afterDigest
-  let base := Classical.choose afterAnswer
-  let afterBase := Classical.choose_spec afterAnswer
-  have prefinal : ExactOperationalPrefinalDigest input finalDigest :=
-    afterBase.2.1
-  let pairLabeled := afterBase.2.2.2.1
   have digestDifferent : fold.digest ≠ finalDigest :=
     exact_relation_fold_digest_ne_operational_prefinal input
       fold.beforeRelation fold.digest finalDigest fold.relationLookup prefinal
@@ -336,10 +333,69 @@ theorem exact_accepted_fold_trial_ne_actual_final_trial
         using lengthExact
     omega
 
+/-- Any root record whose SHA input is not 41 bytes occupies a different
+exposure from the retained fold-work query. -/
+theorem exact_accepted_fold_trial_ne_root_record_of_input_length
+    {HiddenTape TapeIdentity Observation Statement Payload Result : Type}
+    {parameters : ExactCompilerResourceParameters}
+    {transitionFuel : Nat}
+    {configuration : ExactPlainRomConfiguration HiddenTape TapeIdentity
+      Observation Statement Tag73K12ParsedProof Payload Result parameters}
+    {projection : AcceptedTapeProjection Statement Tag73K12ParsedProof Payload}
+    {fixedInstance : PublicInstance Statement}
+    {sample : ExactCompilerSample HiddenTape parameters}
+    (input : ExactK12OperationalInput transitionFuel configuration projection
+      fixedInstance sample)
+    (fold : ExactAcceptedFoldTrial input)
+    (prior later : List UnifiedExposureRecord)
+    (actor : QueryActor) (queryInput : ShaInput) (answer : Digest256)
+    (decomposition : exactFixedRootRecords input.package.root =
+      prior ++ (.machineFresh actor queryInput answer : UnifiedExposureRecord) ::
+        later)
+    (lengthDifferent : queryInput.length ≠ 41) :
+    fold.trial.val ≠ prior.length := by
+  intro trialEqual
+  have prefixLengthEqual : fold.prior.length = prior.length := by
+    rw [← fold.trialExact, trialEqual]
+  have recordExact := selected_record_eq_of_equal_prefix_length
+    fold.rootDecomposition decomposition prefixLengthEqual
+  have inputExact :
+      bytes fold.digest ++ [domGrind] ++
+          bytes (exactOperationalTape input).messages.foldGrinding.selected =
+        queryInput := by
+    injection recordExact
+  apply lengthDifferent
+  rw [← inputExact]
+  simp [bytes_length]
+
+/-- The retained fold trial cannot be the proof-relevant final-work/q16 trial
+from the same accepted execution. -/
+theorem exact_accepted_fold_trial_ne_actual_final_trial
+    {HiddenTape TapeIdentity Observation Statement Payload Witness : Type}
+    {parameters : ExactCompilerResourceParameters}
+    {transitionFuel : Nat}
+    {configuration : ExactPlainRomWitnessConfiguration HiddenTape TapeIdentity
+      Observation Statement Tag73K12ParsedProof Payload Witness parameters}
+    {projection : AcceptedTapeProjection Statement Tag73K12ParsedProof Payload}
+    {fixedInstance : PublicInstance Statement}
+    {sample : ExactCompilerSample HiddenTape parameters}
+    (input : ExactK12OperationalInput transitionFuel configuration projection
+      fixedInstance sample)
+    (fold : ExactAcceptedFoldTrial input)
+    (finalTrial : ExactCompilerExposureTrial parameters)
+    (actual : ExactFixedK13ActualJointTrial input finalTrial) :
+    fold.trial.val ≠ finalTrial.val := by
+  obtain ⟨finalDigest, finalAnswer, base, _accepted, prefinal, _baseExact,
+      pairLabeled, _workLabeled, _workCoordinate, _realized⟩ := actual
+  exact exact_accepted_fold_trial_ne_final_pair_trial input fold finalTrial
+    finalDigest finalAnswer base prefinal pairLabeled
+
 #print axioms ExactAcceptedFoldTrial
 #print axioms exact_accepted_fold_trial_exists
 #print axioms exactAcceptedFoldTrial
 #print axioms exact_accepted_fold_trial_is_routed
+#print axioms exact_accepted_fold_trial_ne_final_pair_trial
+#print axioms exact_accepted_fold_trial_ne_root_record_of_input_length
 #print axioms exact_accepted_fold_trial_ne_actual_final_trial
 
 end
