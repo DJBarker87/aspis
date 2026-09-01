@@ -1,135 +1,143 @@
-V7 eight-lane Pool invariant fast-path source bridge: PASS
-Date: 2026-08-28
+V7 persisted pair-forest lane source/formal closure: PASS
+Date: 2026-09-01
+
+Integrated revisions
+--------------------
+Main integration base:
+  fc5c5b8ddff7f3387861e3a811ec43bb0d0d7b39
+Validated closure implementation:
+  4915d88114896fa2cf618451f685de777edc4679
+Required default-off deposit source ancestor:
+  74cc65d4f0da48ea8a49e833c0f35398195b3ec4
+Required sequential CU evidence ancestor:
+  5bd2e3e433a13f5b3243cf3762b47b34d73abad9
 
 Pinned production source
 ------------------------
-Fast-path source commit:
-  eb3fbcde (selected source stack; descendant of a789a9c6)
 Pair-forest source SHA-256:
-  4702885ad27659b99ea72dbbb3b96945411616d63392f7d4f9a93cae986085e1
+  8cdf153df70c593380fed33c9d8054ee49c9f9d876238126eae3849a3cbc4620
 Processor dispatch source SHA-256:
-  84b6dbfa9ec12d56184bb0c1e250ed731af83fa44c91fbd05505c38ae356c995
+  3c989ba201b622c01e67edec7cba8b17ba30663b386a4f316e757ff06dad7354
 Pool manifest SHA-256:
-  f5b42a59c788694ce6a0eba02b193e50f9c58028e1ba55bd8827118656f9aa2e
+  4c9c42e6b46b07dec31a013f6fbee0aa5f399af3c7f74071461d116b7d06dc61
 Pool verifier-dispatch source SHA-256:
-  95281016c34355c7f5bbb5e8ac31cacfa9c743699ecfeb1c8ddbae2cc1a3afc8
+  7e45910a3d64e328dc234ede290119770e898bcb48f277d978219740ec891514
 Verifier manifest SHA-256:
-  e563f04f7871c25b0d3d43094ce61a7f39143508c5193d53e14991013ea4a428
+  7f8d8fe0633a86e26d7693b71abb2ca16f7ed58cbe9b0896ee49b7454318557d
 Verifier ASQ8 reader source SHA-256:
-  276c3eb0d157408e2f132e69001e77c32f306baa86450f1e8fab9cdcb8fbadbb
+  4577c435a5c41a147331ca7d42b65053e181d58dca1b4322ef96b48c85babf77
 Statement manifest SHA-256:
-  f268aa7a85b32969f57b3a21fcefffd5310c98b522bf467b151232e91e2d537a
+  cf8babeac16a1987ed1dbd05454f77cb0f217779c33d6384a986eccf9e5b5231
 Packed semantic-terminal source SHA-256:
-  0f3cbc9aead222e49ffaaa678e5f952a52c5f93aa28f5de802a3390993157edd
+  efbc5be87e271419d7b09e1bb6e3a83984d42795bc20067ea039814fb89ffa58
 Binary Copy-terminal source SHA-256:
-  f6f8018ed3e3ae2a29ec21d12c9ac1b7ffb93024d73d188c66ea514e05c05d86
+  50062fff8b6afbffad3ddbb8eda09992353a9171c4955151cece26a654c6a6d5
 Generated Copy constants SHA-256:
-  bc4d72deed0c4b17cefa5092aa05bbc5587c76123df69bd4b4e1187f46280cf6
+  cfce7ec499d3cfd54cf91eb88675e45d89ada5ce073fe00c78be5211204fbc50
 
-Pinned tools
-------------
-Charon: 0.1.223
-Charon binary SHA-256:
-  d785c5f18053c4d310c7388dfdb0b59adfc9854c28b632a34a8f6301ba1c4b43
-Aeneas: b59d518
-Aeneas binary SHA-256:
-  fbb8dac1a9a57e635a762e04b95aeb46dbd2dab2be5ed54fa9e0b1321c1962cf
+Source persistence inventory
+----------------------------
+source-audit.sh: PASS
+Exactly three lane byte-write sites remain pinned:
+  deposit successor at pair_forest.rs:980
+  authenticated terminal successor at pair_forest.rs:1545
+  initialization loop at pair_forest.rs:1858
+Checkpoint remains read-only. The deposit audit feature is present but absent
+from default and v7-pair-forest-one-tx-candidate.
+Wall: 1.36 seconds
+Maximum RSS: 7,110,656 bytes
+Swap: 0
 
-Extraction replay
------------------
-Harness source SHA-256:
-  444e98ddaba75c5a0e7aac15abcf9c208a2e82e4aa8ed686ac668c97b5db0b64
-Stored LLBC SHA-256:
-  fe7c383af2d2d8857227188d942cf7fe419be15e7617b25e75fad4515f706086
-The raw LLBC records its temporary destination and unordered serialized maps,
-so replay acceptance is exact equality of the generated Types/Funs/template
-rather than a misleading raw-LLBC hash equality.
-Types.lean SHA-256:
-  58f7dfee9926dff0d11eb0440e7de56330ea12f964d9ec0fdcb97b80ac07d12b
-Funs.lean SHA-256:
-  9e1752cfa345c0d2d8bd3ae2a02202aaf48cd289d049422c4b01801ade775388
-Transparent FunsExternal.lean SHA-256:
-  0a3c1f2c456d4051e23c27c469da218c3b1b2c55251a6cf2ea5afc514643156d
+Main mathematical induction
+---------------------------
+Toolchain: Lean 4.32.0
+Focused predecessor:
+  AspisFormal.Pool.V7PairForestLaneInvariant
+  exit 0; wall 13.97 seconds; peak RSS 6,366,408 KiB; swap 0
+Smallest changed target:
+  AspisFormal.Pool.V7PairForestPersistedReachability
+  exit 0; wall 4.50 seconds; peak RSS 6,447,500 KiB; swap 0
 
-Focused production Rust tests
------------------------------
-terminal_program_invariant_lane_decoder_keeps_exact_boundary:
-  1 passed; 0 failed
-authenticated_result_encoder_is_byte_exact_for_valid_lanes:
-  1 passed; 0 failed
-Pool six-account invariant feature check:
-  passed
-Verifier immutable-release lane-reader feature check:
-  passed
-packed_public_digest_matches_all_transfer_and_withdrawal_bindings:
-  1 passed; 0 failed
-every_generated_copy_weight_is_binary_and_skip_add_is_exact:
-  1 passed; 0 failed
-Direct-result exact terminal transfer:
-  1 passed; 0 failed
-Selected Pool/verifier feature composition checks:
-  passed
-endpoint_selector_cache_matches_every_generated_endpoint_exactly:
-  1 passed; 0 failed
-Binary-weight + selector-cache full Copy evaluator against host reference:
-  1 passed; 0 failed
+Principal results:
+  authenticated_transition_preserves_invariant
+  persisted_lane_reachable_has_invariant
+  persisted_lane_reachable_is_genesis_or_authenticated_output
+  accepted_deposit_yields_authenticated_lane_transition
+  accepted_deposit_extends_persisted_reachability
+  accepted_terminal_yields_authenticated_lane_transition
+  accepted_terminal_extends_persisted_reachability
 
-Focused Lean result
--------------------
-All seven source-proof modules compile.  Principal results:
-  valid_strict_encoder_bytes_equal_fast_encoder_bytes
-  hot_decode_success_requires_capability_and_exact_length
-  initialization_success_has_exact_source_relation
-  checked_deposit_success_has_exact_source_relation
-  authenticated_settlement_success_has_exact_source_relation
-  translated_production_lane_write_preserves_program_owned_invariant
-  translated_write_renews_activation
-  translated_hot_decode_has_complete_activation_boundary
-  translated_write_to_fast_decode_activation
-  direct_asq8_lane_read_success_has_exact_gate_and_capability
-  translated_direct_asq8_reader_consumes_fresh_pool_invariant
-  exact_release_authentication_without_lane_invariant_rejected
-  translated_direct_result_binding_eq_reconstructed
-  translated_direct_result_success_has_exact_gate
-  translated_digest_factoring_preserves_exact_schedule
-  selector_mul_symbolicPack4
-  translated_link_then_action_success_is_exact
-  specialized_binary_weight_eq_literal
-  translated_cache_lookup_returns_literal
-  translated_cache_collision_is_literal_miss
-  translated_cache_hit_requires_exact_row_tag
-  translated_endpoint_order_is_unchanged
+The classification theorem is axiom-free. Every other printed axiom set is a
+subset of propext, Classical.choice and Quot.sound. There is no sorry, admit,
+native_decide or project-specific axiom.
 
-Every printed theorem axiom set is a subset of:
-  propext
-  Classical.choice
-  Quot.sound
+Translated source induction
+---------------------------
+Backend: /home/dombarker/project-offloads/aeneas-d860-v6/backends/lean
+Backend lakefile SHA-256:
+  43504207e4a34e55be916327f7ef3189981fc68752abea691a3c4dda680087c6
+Toolchain: Lean 4.31.0
+replay-lean.sh: PASS
+Exit 0; wall 20.24 seconds; peak RSS 2,573,640 KiB; swap 0
 
-There is no sorry, admit, native_decide, project-specific axiom or
-conclusion-shaped restore function in compiled generated/proof source.
+New principal results:
+  checked_deposit_success_has_byte_exact_strict_image
+  authenticated_settlement_success_has_byte_exact_strict_image
+  translated_reachable_is_genesis_or_byte_exact_authenticated_output
+  translated_reachable_preserves_program_owned_invariant
 
-Exact activation result
+Every printed translated theorem axiom set is a subset of propext,
+Classical.choice and Quot.sound. The compiled generated/proof set contains no
+sorry, admit, native_decide, project-specific axiom or conclusion-shaped
+restore function.
+
+Focused production Rust
 -----------------------
-Fresh translated initialization creates only newlyInitializedPda activation.
-Deposit and authenticated-ASR8 settlement consume an activated predecessor
-and preserve its origin.  Pool ownership alone does not activate the fast
-path.  A checked one-time migration remains an explicit certificate boundary;
-there is no such instruction in the pinned production source.  Therefore the
-current release route requires freshly initialized canonical lane PDAs.
+Cargo 1.94.1; rustc 1.94.1; CARGO_BUILD_JOBS=1.
+All arithmetic tests ran with optimized release binaries. The focused replay
+and the corrected exact source-decoder selection passed. New closure checks:
+  program_invariant_lane_decoder_keeps_exact_boundary: 1 passed
+  authenticated_result_encoder_is_byte_exact_for_valid_lanes: 1 passed
+  deposit_invariant_append_is_byte_exact_at_measured_boundaries: 1 passed
+  deposit_invariant_source_root_still_requires_exact_retained_history: 1 passed
+  pair_forest_lane_persistence_surface_remains_closed: 1 passed
 
-The direct verifier reader additionally authenticates the exact six-account
-Pool/registry universe against the immutable audit release root.  That release
-authentication does not imply the invariant: the translated reader consumes a
-separate fresh-initialization capability, and full authentication with the
-capability set false is proved to reject.  The pinned `[0x41; 32]` Pool,
-`[0x44; 32]` registry and `[7; 32]` policy binding are fixture constants only;
-generated production identities and release evidence remain mandatory before
-activation.
+The existing focused terminal/statement checks also passed: packed digest,
+binary Copy weights, endpoint-selector cache, full Copy evaluator equivalence,
+selected-lane terminal mutation, Pool feature composition and verifier feature
+composition. Focused replay exit 0; wall 363.23 seconds; peak RSS 615,268 KiB;
+swap 0. The corrected exact source-decoder rerun exited 0 in 2.68 seconds with
+peak RSS 263,708 KiB and zero swap.
 
-Explicit remaining mathematical boundary
-----------------------------------------
-ProgramOwnedLaneInvariantCapability.Holds is the single omitted active
-root-to-frontier reconstruction fact.  The main Lean mathematics must supply
-genesis, checked-deposit and authenticated-settlement preservation.  This
-focused source bundle deliberately does not replace that fact with ownership
-or an unverified hint.
+Existing finalized CU evidence (not rerun)
+------------------------------------------
+The integrated evidence commit already records 256 sequential finalized
+deposits on a disposable feature-active Agave 4.2.0 cluster. Exact selected
+points are:
+  index 0:   651 bytes; 640,272 simulated/landed CU
+  index 1:   617 bytes; 594,743 simulated/landed CU
+  index 2:   617 bytes; 594,683 simulated/landed CU
+  index 3:   617 bytes; 594,776 simulated/landed CU
+  index 7:   617 bytes; 594,730 simulated/landed CU
+  index 15:  617 bytes; 594,714 simulated/landed CU
+  index 255: 684 bytes; 643,854 simulated/landed CU; page rollover
+
+The exact generic comparison at index 0 is 1,112,399 CU, a reduction of
+472,127 CU (42.44%). At index 1 the generic path hit the 1,400,000 ceiling;
+the audit path leaves 805,257 CU of ceiling headroom. No unavailable generic
+baseline is invented for later indices.
+
+Closure and release boundary
+----------------------------
+The main Lean proof establishes the mathematical genesis/exact-append
+induction. The Aeneas proof establishes translated writer reachability,
+byte-exact strict images and capability preservation. The hash-pinned source
+audit establishes that the production persistence surface contains only those
+three writers. Rust equivalence tests bind the default-off deposit decoder,
+append and encoder to the strict codec at the measured boundaries.
+
+The two Lean projects use different pinned compiler versions, so this is an
+explicit source/formal correspondence package, not a single cross-version
+kernel import. The audit feature remains default-off. There was no verifier,
+TxV1, tree-depth, proof-format, cryptographic, CPI-order, production deployment
+or q16/K1.3 change. Promotion is not proposed here; mainnetReady remains false.
