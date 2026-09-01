@@ -49,6 +49,13 @@ rpc() {
     -H 'content-type: application/json' --data-binary "$1" "$RPC_URL"
 }
 
+NO_DNA=1 CARGO_BUILD_JOBS=2 cargo build --quiet --release --locked --offline \
+  --manifest-path "$BUILDER_MANIFEST" --bin build_proof_upload_requests
+readonly BUILDER="$REPO_ROOT/tools/v7-txv1-honest-proof/target/release/build_proof_upload_requests"
+[[ -x "$BUILDER" ]] || fail "proof upload request builder is unavailable"
+
+# Acquire the signed-wire validity inputs only after a potentially cold build.
+# No compilation or proof generation is permitted between this point and send.
 slot=$(rpc '{"jsonrpc":"2.0","id":1,"method":"getSlot","params":[{"commitment":"finalized"}]}' \
   | jq -er '.result')
 blockhash=$(rpc "$(jq -nc --argjson slot "$slot" \
@@ -67,10 +74,6 @@ jq -n --arg blockhash "$blockhash" --argjson slot "$slot" --argjson rent "$rent_
     payerKeypair:$payer,proofKeypair:$proof,proofPayload:$payload}' \
   >"$WORK_DIR/input.json"
 
-NO_DNA=1 CARGO_BUILD_JOBS=2 cargo build --quiet --release --locked --offline \
-  --manifest-path "$BUILDER_MANIFEST" --bin build_proof_upload_requests
-readonly BUILDER="$REPO_ROOT/tools/v7-txv1-honest-proof/target/release/build_proof_upload_requests"
-[[ -x "$BUILDER" ]] || fail "proof upload request builder is unavailable"
 NO_DNA=1 "$BUILDER" "$WORK_DIR/input.json" >"$EVIDENCE_DIR/signed-requests.json"
 jq -e --argjson payloadBytes "$payload_bytes" '
   .schema == "aspis.v7.txv1-proof-upload-signed-requests.v1" and
