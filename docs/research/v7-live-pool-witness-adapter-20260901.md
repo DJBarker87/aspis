@@ -19,7 +19,8 @@ at authenticated lane index 1 exhausts Solana's transaction CU ceiling. The
 entire requested adversarial matrix is not complete. Public devnet was not used
 or changed; all identities and funds were explicitly disposable and audit-only.
 
-Base: `97e50660d61bfc07fb22bb0a6cc8a268fe073352`  
+Base: `97e50660d61bfc07fb22bb0a6cc8a268fe073352`
+
 Tested transfer implementation: `14389d767d375db88b97a1aae2ff323145fdbaf0`
 
 Tested withdrawal implementation: `c2fd867229b115c1195119a9a81a64c41c99b3b4`
