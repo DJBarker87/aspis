@@ -108,6 +108,14 @@ theorem exact_compiler_alpha_zero_chain_has_root_order
       (workAnswer q16Base : Digest256),
       tableLookup (exactOperationalTable input) producerInput =
           some beforeAlpha.digest ∧
+      (∃ (producerDigest : Digest256),
+        producerInput =
+          bytes producerDigest ++
+            [domAbsorb,
+              (alphaZeroBoundaryPayload
+                (exactOperationalTape input).messages).label] ++
+            (alphaZeroBoundaryPayload
+              (exactOperationalTape input).messages).data) ∧
       ExactRootOrderedQ16Chain input producerInput beforeAlpha.digest
           outputs advances ∧
       outputs.length =
@@ -187,7 +195,8 @@ theorem exact_compiler_alpha_zero_chain_has_root_order
     · exact strictFinalNonceLookup
   refine ⟨producerInput, final256Input, beforeAlpha, afterAlpha, afterBlocks,
     afterFinal256, outputs, advances, exactValue, workAnswer, q16Base, ?_,
-    ordered, outputsLength, outputsPositive, advancesLength, terminalExact,
+    ⟨beforeAlphaProducer.digest, rfl⟩, ordered, outputsLength, outputsPositive,
+    advancesLength, terminalExact,
     afterDigest, rfl, ?_, ?_, workAccepted, ?_, strictQ16BaseExact,
     exactDecode, operationalValue⟩
   · simpa [producerInput] using boundaryLookup

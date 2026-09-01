@@ -229,7 +229,8 @@ theorem exact_fixed_k13_actual_trial_has_alpha_zero_terminal_profile
       exactOperationalChallenge input (.alpha 0) = exactValue := by
   obtain ⟨producerInput, _final256Input, beforeAlpha, afterAlpha, afterBlocks,
       afterFinal256, outputs, advances, exactValue, _workAnswer, q16Base,
-      _producerLookup, ordered, _outputsLength, outputsPositive,
+      _producerLookup, _producerBoundary, ordered, _outputsLength,
+      outputsPositive,
       advancesLength, terminalExact, afterAlphaExact, _final256InputExact,
       _final256Lookup, _workLookup, _workAccepted, finalNonceLookup,
       q16BaseExact, exactDecode, operationalExact⟩ :=
