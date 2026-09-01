@@ -18,6 +18,7 @@ set_option maxHeartbeats 1000000
 
 namespace AspisK1.V7Tag73ExactPairTrialProbabilityClosure
 
+open MeasureTheory
 open AspisK1.V7FsAokExperiment
 open AspisK1.V7Tag73AdaptiveLazyOracle
 open AspisK1.V7Tag73AdaptiveQ16TrialAccounting
@@ -28,6 +29,7 @@ open AspisK1.V7Tag73AlphaZeroCausalController
 open AspisK1.V7Tag73CausalAlphaFinalWorkQ16Probability
 open AspisK1.V7Tag73CausalDagFinalWorkQ16Controller
 open AspisK1.V7Tag73CausalFoldAlphaFinalWorkQ16Coordinates
+open AspisK1.V7Tag73CausalFoldAlphaFinalWorkQ16Probability
 open AspisK1.V7Tag73ExactClientKnowledgeComposition
 open AspisK1.V7Tag73ExactCompilerResources
 open AspisK1.V7Tag73ExactDagCandidateLabeledRootRouting
@@ -46,15 +48,22 @@ open AspisK1.V7Tag73ExactAcceptedFoldTrialPackage
 open AspisK1.V7Tag73ExactPlainRomRun
 open AspisK1.V7Tag73ExactSourceAcceptanceModel
 open AspisK1.V7Tag73FinalWorkQ16CandidateController
+open AspisK1.V7Tag73FinalWorkDigestProbability
 open AspisK1.V7Tag73FoldAlphaFinalWorkQ16ControllerComposition
 open AspisK1.V7Tag73IndexedAlignedRecordReplay
+open AspisK1.V7Tag73HiddenTapeAveraging
 open AspisK1.V7Tag73OperationalSemanticReplay
 open AspisK1.V7Tag73OperationalQ16ForestHandoff
 open AspisK1.V7Tag73Q16SemanticFrontierBridge
+open AspisK1.V7Tag73Q16FirstCompactUniformity
+open AspisK1.V7Tag73Q16RawENNRealProbability
+open AspisK1.V7Tag73Q16SuccessfulForestBridge
+open AspisK1.V7Tag73SuccessfulSamplerConditioningBridge
 open AspisK1.V7Tag73SqueezeInputStateInjectivity
 open AspisK1.V7Tag73TranscriptSchedule
 open AspisPool.AlgorithmicCircleDecoderV7
 open AspisV5ComponentCQM31TowerExact
+open AspisV5WithoutReplacementQuerySoundness
 
 noncomputable section
 
@@ -621,6 +630,189 @@ theorem exact_fixed_clean_k13_pair_fibre_bad_eq_pointwise
   simpa [exactFixedCleanK13PairFibreBad, inhabitedFibre, router, coordinates,
     representative] using sameBad
 
+noncomputable def exactFixedCleanK13PairExposureTrials
+    {HiddenTape TapeIdentity Observation Statement Payload Witness : Type}
+    [Fintype HiddenTape]
+    {parameters : ExactCompilerResourceParameters}
+    (transitionFuel : Nat)
+    (configuration : ExactPlainRomWitnessConfiguration HiddenTape TapeIdentity
+      Observation Statement Tag73K12ParsedProof Payload Witness parameters)
+    (projection : AcceptedTapeProjection Statement Tag73K12ParsedProof Payload)
+    (fixedInstance : PublicInstance Statement)
+    (decoder : ExactDecoderInstantiation QM31Exact)
+    (transitionRoom : 2 ≤ transitionFuel)
+    (programmedCover : 518 ≤ 2 * parameters.forkRequestCap)
+    (frontierExact : ∀
+      (sample : ExactCompilerSample HiddenTape parameters)
+      (input : ExactK12OperationalInput transitionFuel configuration projection
+        fixedInstance sample)
+      (schedule : QuerySchedule),
+      (exactOperationalTape input).frontierNodes schedule =
+        semanticFrontierNodes schedule.positions)
+    (invariant : ExactFixedCleanK13PairCoordinateInvariant transitionFuel
+      configuration projection fixedInstance decoder)
+    (reference : AdmittedResult SemanticCap203Admitted)
+    (traceExists : Nonempty
+      (FirstAdmittedTrace q16CandidateOutput SemanticCap203Admitted 64
+        reference.1)) :
+    ExactCompilerExposurePairIndexedFoldAlphaFinalWorkQ16Trials
+      (HiddenTape := HiddenTape) parameters where
+  event := exactFixedCleanK13PairTrialEvent transitionFuel configuration
+    projection fixedInstance decoder
+  router := fun foldTrial finalTrial hidden =>
+    exactCompilerFoldAlphaFinalWorkQ16Router parameters transitionFuel
+      foldTrial.val
+      (alphaFinalWorkQ16DagController transitionFuel finalTrial.val
+        (alphaZeroCausalController transitionFuel 0))
+      (inactiveAlphaZeroMemory, inactiveDagMemory)
+      (exactPlainRomCursor configuration hidden).erase
+  bad := fun foldTrial finalTrial hidden residual alpha fold work =>
+    exactFixedCleanK13PairFibreBad transitionFuel configuration projection
+      fixedInstance decoder foldTrial finalTrial hidden (residual, alpha) fold work
+  badCard := fun foldTrial finalTrial hidden residual alpha fold work =>
+    exact_fixed_clean_k13_pair_fibre_bad_card
+      (configuration := configuration) (projection := projection)
+      (fixedInstance := fixedInstance) (decoder := decoder) foldTrial finalTrial
+      hidden (residual, alpha) fold work
+  reference := reference
+  traceExists := traceExists
+  covered := by
+    intro foldTrial finalTrial hidden tape member
+    change Nonempty (ExactFixedCleanK13PairTrialWitness transitionFuel
+      configuration projection fixedInstance decoder (hidden, tape) foldTrial
+        finalTrial) at member
+    let witness := Classical.choice member
+    obtain ⟨realization, finalExact, boundaryExact, foldCanonicalExact⟩ :=
+      exact_fixed_k13_actual_fold_alpha_q16_realization transitionRoom
+        programmedCover witness.joint.input finalTrial witness.joint.actualTrial
+        (frontierExact (hidden, tape) witness.joint.input)
+    let router := exactCompilerFoldAlphaFinalWorkQ16Router parameters
+      transitionFuel foldTrial.val
+      (alphaFinalWorkQ16DagController transitionFuel finalTrial.val
+        (alphaZeroCausalController transitionFuel 0))
+      (inactiveAlphaZeroMemory, inactiveDagMemory)
+      (exactPlainRomCursor configuration hidden).erase
+    have routerExact : realization.anchor.router = router := by
+      rw [realization.anchor.routerExact, finalExact, boundaryExact,
+        foldCanonicalExact, witness.foldExact]
+    let coordinates := exactCompilerCausalFoldAlphaFinalWorkQ16Coordinates
+      parameters router tape
+    have q16Success : q16DigestForestSucceeds
+        (exactCompilerCausalFoldAlphaFinalWorkQ16Coordinates parameters
+          realization.anchor.router tape).2.2.2 := by
+      simpa using operational_realization_implies_q16_digest_forest_succeeds
+        realization.forestRealized
+    have pointwiseExact : exactFixedCleanK13PairPointwiseBad transitionFuel
+        configuration projection fixedInstance decoder foldTrial finalTrial
+          (hidden, tape) = witness.joint.bad := by
+      simp [exactFixedCleanK13PairPointwiseBad, member, witness]
+    have fibreExact := exact_fixed_clean_k13_pair_fibre_bad_eq_pointwise
+      invariant foldTrial finalTrial hidden tape member
+    have badExact : exactFixedCleanK13PairFibreBad transitionFuel configuration
+        projection fixedInstance decoder foldTrial finalTrial hidden
+          coordinates.1 coordinates.2.1 coordinates.2.2.1 =
+        witness.joint.bad := by
+      simpa [router, coordinates] using fibreExact.trans pointwiseExact
+    obtain ⟨_digest, _workAnswer, _base, _workAccepted, _prefinal, _baseExact,
+        _pairLabeled, _workLabeled, _workCoordinate, oldRealized⟩ :=
+      witness.joint.actualTrial
+    rcases witness.joint.coordinate with ⟨_oldSuccess, oldBad⟩
+    have allBad : AllInBad witness.joint.bad
+        (semanticScheduleOfOperational
+          (exactOperationalTape witness.joint.input).search.selectedSchedule) := by
+      have oldQ16Bad := oldBad.2
+      change (successfulQ16DigestForestEquiv
+        ⟨(exactFixedK13TrialCoordinates transitionFuel configuration finalTrial
+          (hidden, tape)).2.2,
+          operational_realization_implies_q16_digest_forest_succeeds
+            oldRealized⟩).2 ∈ q16FirstAdmittedBadEvent witness.joint.bad at oldQ16Bad
+      rw [successful_forest_equiv_selected_exact oldRealized] at oldQ16Bad
+      exact oldQ16Bad
+    have q16Bad := operational_all_in_bad_implies_successful_coordinate_bad
+      realization.forestRealized witness.joint.bad allBad
+    have badExactAnchor : exactFixedCleanK13PairFibreBad transitionFuel
+        configuration projection fixedInstance decoder foldTrial finalTrial
+        hidden
+          (exactCompilerCausalFoldAlphaFinalWorkQ16Coordinates parameters
+            realization.anchor.router tape).1
+          (exactCompilerCausalFoldAlphaFinalWorkQ16Coordinates parameters
+            realization.anchor.router tape).2.1
+          (exactCompilerCausalFoldAlphaFinalWorkQ16Coordinates parameters
+            realization.anchor.router tape).2.2.1 = witness.joint.bad := by
+      rw [routerExact]
+      exact badExact
+    simp only [Set.mem_preimage]
+    change (exactCompilerCausalFoldAlphaFinalWorkQ16Coordinates parameters
+      router tape) ∈ dependentSuccessfulSubtypeEvent _ _
+    rw [← routerExact]
+    refine ⟨q16Success, ?_⟩
+    change FoldWork31Accepted _ ∧ FinalWork34Accepted _ ∧ _
+    refine ⟨realization.anchor.foldCoordinate ▸
+      realization.anchor.foldAccepted,
+      realization.anchor.workCoordinate ▸ realization.anchor.workAccepted, ?_⟩
+    change successfulQ16DigestForestEquiv
+        ⟨(exactCompilerCausalFoldAlphaFinalWorkQ16Coordinates parameters
+          realization.anchor.router tape).2.2.2, q16Success⟩ ∈
+      q16SuccessfulCoordinatesBadEvent
+        (exactFixedCleanK13PairFibreBad transitionFuel configuration projection
+          fixedInstance decoder foldTrial finalTrial hidden
+          (exactCompilerCausalFoldAlphaFinalWorkQ16Coordinates parameters
+            realization.anchor.router tape).1
+          (exactCompilerCausalFoldAlphaFinalWorkQ16Coordinates parameters
+            realization.anchor.router tape).2.1
+          (exactCompilerCausalFoldAlphaFinalWorkQ16Coordinates parameters
+            realization.anchor.router tape).2.2.1)
+    rw [badExactAnchor]
+    exact q16Bad
+
+theorem exact_fixed_clean_pair_k13_query_probability_le_one_forest
+    {HiddenTape TapeIdentity Observation Statement Payload Witness : Type}
+    [Fintype HiddenTape]
+    (hiddenLaw : PMF HiddenTape)
+    {parameters : ExactCompilerResourceParameters}
+    {transitionFuel : Nat}
+    {configuration : ExactPlainRomWitnessConfiguration HiddenTape TapeIdentity
+      Observation Statement Tag73K12ParsedProof Payload Witness parameters}
+    {projection : AcceptedTapeProjection Statement Tag73K12ParsedProof Payload}
+    {fixedInstance : PublicInstance Statement}
+    {decoder : ExactDecoderInstantiation QM31Exact}
+    (transitionRoom : 2 ≤ transitionFuel)
+    (programmedCover : 518 ≤ 2 * parameters.forkRequestCap)
+    (source : ExactFixedK13ParsedSourceProvider transitionFuel configuration
+      projection fixedInstance)
+    (frontierExact : ∀
+      (sample : ExactCompilerSample HiddenTape parameters)
+      (input : ExactK12OperationalInput transitionFuel configuration projection
+        fixedInstance sample)
+      (schedule : QuerySchedule),
+      (exactOperationalTape input).frontierNodes schedule =
+        semanticFrontierNodes schedule.positions)
+    (invariant : ExactFixedCleanK13PairCoordinateInvariant transitionFuel
+      configuration projection fixedInstance decoder)
+    (reference : AdmittedResult SemanticCap203Admitted)
+    (traceExists : Nonempty
+      (FirstAdmittedTrace q16CandidateOutput SemanticCap203Admitted 64
+        reference.1))
+    (foldExposureCap : unifiedFull256ExposureCap parameters ≤ 2 ^ 31)
+    (finalExposureCap : unifiedFull256ExposureCap parameters ≤ 2 ^ 34) :
+    (exactCompilerJointLaw hiddenLaw parameters).toOuterMeasure
+        (exactFixedPlainRomLegalSameTapeEvent transitionFuel configuration
+            projection fixedInstance ∩
+          exactTag73K13QueryEvent transitionFuel configuration projection
+            fixedInstance decoder) ≤ q16SemanticOneForestRawError := by
+  let trials := exactFixedCleanK13PairExposureTrials transitionFuel
+    configuration projection fixedInstance decoder transitionRoom
+    programmedCover frontierExact invariant reference traceExists
+  calc
+    _ ≤ (exactCompilerJointLaw hiddenLaw parameters).toOuterMeasure
+        (⋃ foldTrial, ⋃ finalTrial, trials.event foldTrial finalTrial) := by
+      apply measure_mono
+      exact exact_fixed_clean_k13_query_event_subset_pair_trial_union
+        transitionRoom programmedCover source frontierExact
+    _ ≤ q16SemanticOneForestRawError :=
+      trials.failure_union_probability_le_one_forest foldExposureCap
+        finalExposureCap
+
 #print axioms nodup_selected_prefix_length_unique
 #print axioms nodup_selected_index_unique
 #print axioms exact_dag_final_work_pair_labeled_trial_unique
@@ -634,6 +826,8 @@ theorem exact_fixed_clean_k13_pair_fibre_bad_eq_pointwise
 #print axioms ExactFixedCleanK13PairCoordinateInvariant
 #print axioms exact_fixed_clean_k13_pair_fibre_bad_card
 #print axioms exact_fixed_clean_k13_pair_fibre_bad_eq_pointwise
+#print axioms exactFixedCleanK13PairExposureTrials
+#print axioms exact_fixed_clean_pair_k13_query_probability_le_one_forest
 
 end
 
