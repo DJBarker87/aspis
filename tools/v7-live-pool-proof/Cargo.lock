@@ -146,6 +146,7 @@ dependencies = [
  "solana-compute-budget-interface",
  "solana-keypair",
  "solana-message 2.4.0",
+ "solana-message 4.2.4",
  "solana-program",
  "solana-signature 3.4.1",
  "solana-signer 2.2.1",

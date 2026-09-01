@@ -39,6 +39,7 @@ use serde::Deserialize;
 use serde_json::json;
 use sha2::{Digest as _, Sha256};
 use solana_keypair::read_keypair_file;
+use solana_message_v1::VersionedMessage as V1VersionedMessage;
 use solana_program::pubkey::Pubkey;
 use solana_signature_v1::Signature as V1Signature;
 use solana_signer::Signer;
@@ -74,6 +75,7 @@ struct Input {
     recent_blockhash: String,
     min_context_slot: u64,
     request_id: u64,
+    carrier_test_mode: Option<String>,
 }
 #[derive(Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -168,11 +170,28 @@ fn main() -> Result<()> {
     );
     ensure!(env::args_os().nth(2).is_none(), "extra argument");
     let input: Input = serde_json::from_slice(&fs::read(&input_path)?)?;
+    let malformed_carrier_test = match input.carrier_test_mode.as_deref() {
+        None => false,
+        Some("malformed-magic") => {
+            ensure!(
+                input.schema == "aspis.v7.live-terminal-malformed-carrier-test-input.v1",
+                "malformed carrier requires the explicit test schema"
+            );
+            true
+        }
+        Some(_) => anyhow::bail!("unsupported carrier test mode"),
+    };
     ensure!(
         (input.schema == "aspis.v7.live-transfer-terminal-input.v1"
-            || input.schema == "aspis.v7.live-terminal-input.v1")
+            || input.schema == "aspis.v7.live-terminal-input.v1"
+            || input.schema == "aspis.v7.live-terminal-malformed-carrier-test-input.v1")
             && input.min_context_slot > 0,
         "wrong input"
+    );
+    ensure!(
+        malformed_carrier_test
+            == (input.schema == "aspis.v7.live-terminal-malformed-carrier-test-input.v1"),
+        "test schema requires an exact carrier mutation"
     );
     let bundle_path = resolve(input_path.parent().unwrap_or(Path::new(".")), &input.bundle);
     let base = bundle_path.parent().unwrap_or(Path::new("."));
@@ -370,13 +389,37 @@ fn main() -> Result<()> {
     );
     let mut transaction: V1VersionedTransaction =
         wincode::deserialize(expected.placeholder_signature_wire_v2())?;
+    if malformed_carrier_test {
+        let V1VersionedMessage::V1(message) = &mut transaction.message else {
+            anyhow::bail!("expected TxV1 message")
+        };
+        ensure!(
+            message.instructions.len() == 2
+                && message.instructions[0].data.len()
+                    == aspis_pool_wallet_v1::tx_v1_ciphertext_carrier_v2::POOL_V1_TX_V1_CIPHERTEXT_CARRIER_BYTES_V2
+                && message.instructions[0].data.starts_with(b"ASC8"),
+            "unexpected canonical carrier shape"
+        );
+        message.instructions[0].data[0] ^= 1;
+        ensure!(
+            message.instructions[0].data[0..4] != *b"ASC8",
+            "carrier mutation did not make the magic malformed"
+        );
+    }
     let message = transaction.message.serialize();
     let signed = payer.sign_message(&message);
     let bytes: [u8; 64] = signed.as_ref().try_into()?;
     transaction.signatures[0] = V1Signature::from(bytes);
     let wire = wincode::serialize(&transaction)?;
-    validate_signed_pair_forest_v1_carrier_transaction_v2(&expected, &wire)
-        .map_err(|e| anyhow::anyhow!("validate signed TxV1: {e:?}"))?;
+    if malformed_carrier_test {
+        ensure!(
+            validate_signed_pair_forest_v1_carrier_transaction_v2(&expected, &wire).is_err(),
+            "malformed carrier unexpectedly passed canonical validation"
+        );
+    } else {
+        validate_signed_pair_forest_v1_carrier_transaction_v2(&expected, &wire)
+            .map_err(|e| anyhow::anyhow!("validate signed TxV1: {e:?}"))?;
+    }
     ensure!(
         wire.len() < 4096 && wire.len() <= 3500,
         "TxV1 size policy failed"
@@ -387,7 +430,10 @@ fn main() -> Result<()> {
         "{}",
         json!({"schema":"aspis.v7.live-terminal-signed.v1","operation":operation,"signature":signature,
         "selectedLane":lane_id,"serializedTransactionBytes":wire.len(),"signedWireSha256":format!("{:x}",Sha256::digest(&wire)),
-        "instructionCount":2,"terminalInstructionCount":1,"ciphertextCarrierRealHpke":true,
+        "instructionCount":2,"terminalInstructionCount":1,
+        "ciphertextCarrierRealHpke":!malformed_carrier_test,
+        "ciphertextCarrierCanonical":!malformed_carrier_test,
+        "carrierTestMode":input.carrier_test_mode,
         "terminalAccounts":terminal_accounts,"markerAccount":marker_account,
         "simulationRequest":{"jsonrpc":"2.0","id":input.request_id,"method":"simulateTransaction","params":[wire64,{"encoding":"base64","commitment":"finalized","sigVerify":true,"replaceRecentBlockhash":false,"minContextSlot":input.min_context_slot,"innerInstructions":true}]},
         "sendRequest":{"jsonrpc":"2.0","id":input.request_id+100000,"method":"sendTransaction","params":[wire64,{"encoding":"base64","skipPreflight":true,"preflightCommitment":"finalized","maxRetries":0,"minContextSlot":input.min_context_slot}]}})

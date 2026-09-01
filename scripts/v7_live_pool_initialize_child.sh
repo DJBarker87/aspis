@@ -24,10 +24,13 @@ readonly TERMINAL_BUILDER=${ASPIS_V7_LIVE_TERMINAL_BUILDER:-${ASPIS_V7_LIVE_TRAN
 readonly PROOF_CLOSE_BUILDER=${ASPIS_V7_LIVE_PROOF_CLOSE_BUILDER:-}
 readonly AGAVE_BIN_DIR=${ASPIS_TXV1_DISPOSABLE_AGAVE_BIN_DIR:-}
 readonly OPERATION=${ASPIS_V7_LIVE_OPERATION:-transfer}
+readonly CIPHERTEXT_CASE=${ASPIS_V7_LIVE_CIPHERTEXT_CASE:-canonical}
 
 [[ "$RPC_URL" =~ ^http://127\.0\.0\.1:[0-9]+$ ]] || fail "disposable RPC is required"
 [[ "$OPERATION" == transfer || "$OPERATION" == withdrawal ]] \
   || fail "ASPIS_V7_LIVE_OPERATION must be transfer or withdrawal"
+[[ "$CIPHERTEXT_CASE" == canonical || "$CIPHERTEXT_CASE" == malformed-magic ]] \
+  || fail "ASPIS_V7_LIVE_CIPHERTEXT_CASE must be canonical or malformed-magic"
 [[ -f "$PAYER_KEYPAIR" && -x "$BUILDER" ]] || fail "ephemeral payer or prebuilt builder unavailable"
 [[ "$EVIDENCE_DIR" == /* && "$EVIDENCE_DIR" != / && ! -e "$EVIDENCE_DIR" ]] \
   || fail "evidence directory must be new, absolute and non-root"
@@ -403,17 +406,33 @@ if [[ -n "$SECRET_BUILDER" || -n "$DEPOSIT_BUILDER" ]]; then
         terminal_blockhash=$(rpc "$(jq -nc --argjson slot "$terminal_context_slot" \
           '{jsonrpc:"2.0",id:1501,method:"getLatestBlockhash",params:[{commitment:"finalized",minContextSlot:$slot}]}')" \
           | jq -er '.result.value.blockhash')
-        jq -n --arg bundle "$EVIDENCE_DIR/live-proof-bundle/live-bundle.json" \
+        terminal_schema=aspis.v7.live-terminal-input.v1
+        carrier_test_mode=null
+        if [[ "$CIPHERTEXT_CASE" == malformed-magic ]]; then
+          terminal_schema=aspis.v7.live-terminal-malformed-carrier-test-input.v1
+          carrier_test_mode='"malformed-magic"'
+        fi
+        jq -n --arg schema "$terminal_schema" \
+          --argjson carrierTestMode "$carrier_test_mode" \
+          --arg bundle "$EVIDENCE_DIR/live-proof-bundle/live-bundle.json" \
           --arg asq8 "$EVIDENCE_DIR/live-proof/asq8.bin" --arg payer "$PAYER_KEYPAIR" \
           --arg blockhash "$terminal_blockhash" --argjson slot "$terminal_context_slot" \
-          '{schema:"aspis.v7.live-terminal-input.v1",bundle:$bundle,asq8:$asq8,
-            payerKeypair:$payer,recentBlockhash:$blockhash,minContextSlot:$slot,requestId:1600}' \
+          '{schema:$schema,bundle:$bundle,asq8:$asq8,payerKeypair:$payer,
+            recentBlockhash:$blockhash,minContextSlot:$slot,requestId:1600,
+            carrierTestMode:$carrierTestMode}' \
           >"$WORK_DIR/terminal-input.json"
         "$TERMINAL_BUILDER" "$WORK_DIR/terminal-input.json" \
           >"$TERMINAL_EVIDENCE/signed-request.json"
-        jq -e --arg operation "$OPERATION" '.operation == $operation and
+        jq -e --arg operation "$OPERATION" --arg carrierCase "$CIPHERTEXT_CASE" '
+          .operation == $operation and
           .instructionCount == 2 and .terminalInstructionCount == 1 and
-          .ciphertextCarrierRealHpke == true and .serializedTransactionBytes < 4096 and
+          (if $carrierCase == "canonical" then
+            .ciphertextCarrierRealHpke == true and .ciphertextCarrierCanonical == true and
+              .carrierTestMode == null
+           else
+            .ciphertextCarrierRealHpke == false and .ciphertextCarrierCanonical == false and
+              .carrierTestMode == "malformed-magic"
+           end) and .serializedTransactionBytes < 4096 and
           .serializedTransactionBytes <= 3500' "$TERMINAL_EVIDENCE/signed-request.json" >/dev/null \
           || fail "terminal TxV1 preflight failed"
         protected_addresses=$(jq -nc --slurpfile init "$EVIDENCE_DIR/signed-request.json" \
@@ -500,7 +519,10 @@ if [[ -n "$SECRET_BUILDER" || -n "$DEPOSIT_BUILDER" ]]; then
             serializedTransactionBytes:$request[0].serializedTransactionBytes,
             signedWireSha256:$request[0].signedWireSha256,selectedLane:$request[0].selectedLane,
             instructionCount:2,terminalInstructionCount:1,byteIdenticalSimulationSubmission:true,
-            ciphertextCarrierRealHpke:true,protectedAccountsBeforeJsonSha256:$beforeSha,
+            ciphertextCarrierRealHpke:$request[0].ciphertextCarrierRealHpke,
+            ciphertextCarrierCanonical:$request[0].ciphertextCarrierCanonical,
+            carrierTestMode:$request[0].carrierTestMode,
+            protectedAccountsBeforeJsonSha256:$beforeSha,
             protectedAccountsAfterJsonSha256:$afterSha,custody:$custody,
             finalized:true,auditOnly:true,disposable:true,mainnetReady:false}' \
           >"$TERMINAL_EVIDENCE/terminal-finalized.json"
