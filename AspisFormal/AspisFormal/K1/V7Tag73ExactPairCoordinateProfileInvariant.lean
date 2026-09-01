@@ -55,6 +55,8 @@ open AspisK1.V7Tag73ExactParsedProofSourceBinding
 open AspisK1.V7Tag73ExactPlainRomRun
 open AspisK1.V7Tag73ExactQ16CausalCoordinateOrder
 open AspisK1.V7Tag73ExactRootPriorQueryHistory
+open AspisK1.V7Tag73ExactRootLookupCausalOrder
+open AspisK1.V7Tag73ExactRootRecordOrderLift
 open AspisK1.V7Tag73ExactSourceAcceptanceModel
 open AspisK1.V7Tag73FoldAlphaFinalWorkQ16ControllerComposition
 open AspisK1.V7Tag73FoldAlphaPreFinalPrefix
@@ -70,6 +72,7 @@ open AspisK1.V7Tag73OperationalSemanticReplay
 open AspisK1.V7Tag73ProjectedMachineNativeRequestPrefix
 open AspisK1.V7Tag73RawProverMessages
 open AspisK1.V7Tag73SchedulerCausalStateAlignment
+open AspisK1.V7Tag73SchedulerNativeGammaReplay
 open AspisK1.V7Tag73SchedulerNativeResult
 open AspisK1.V7Tag73SchedulerNativePrefixTraversal
 open AspisK1.V7Tag73SamplerDecoder
@@ -554,6 +557,32 @@ theorem equal_prefixes_of_equal_decomposition_lengths
     simp
   exact leftTake.symm.trans rightTake
 
+/-- Strict chronology is closed downward inside a canonical root prefix: if
+the later record is already before the anchor, so is the earlier record. -/
+theorem mem_prefix_of_strict_order_and_later_mem
+    {Record : Type} [DecidableEq Record]
+    (records prior anchorLater before middle after : List Record)
+    (first second anchorRecord : Record)
+    (recordsNodup : records.Nodup)
+    (anchorExact : records = prior ++ anchorRecord :: anchorLater)
+    (orderedExact : records =
+      before ++ first :: middle ++ second :: after)
+    (secondMember : second ∈ prior) :
+    first ∈ prior := by
+  obtain ⟨insideBefore, insideAfter, priorExact⟩ :=
+    (List.mem_iff_append).mp secondMember
+  have secondPivotExact : records =
+      insideBefore ++ second ::
+        (insideAfter ++ anchorRecord :: anchorLater) := by
+    rw [anchorExact, priorExact]
+    simp only [List.cons_append, List.append_assoc]
+  have firstInside : first ∈ insideBefore :=
+    mem_canonical_prefix_of_strictly_before_pivot records insideBefore
+      (insideAfter ++ anchorRecord :: anchorLater) before middle after
+      first second recordsNodup secondPivotExact orderedExact
+  rw [priorExact]
+  exact List.mem_append_left _ firstInside
+
 /-- The complete-coordinate prefix fixes the selected literal SHA input and
 its source-bound pre-final digest across two clean pair witnesses. -/
 theorem exact_fixed_clean_pair_k13_adversary_anchor_selected_input_and_digest_eq
@@ -714,7 +743,9 @@ theorem exact_fixed_clean_pair_k13_adversary_anchor_final256_input_eq
         (exactCompilerCausalFoldAlphaFinalWorkQ16Coordinates parameters router
           right).2.1) :
     ∃ (leftBefore rightBefore : EvalState) (digest leftBase rightBase : Digest256)
-        (leftAbsorbActor rightAbsorbActor : QueryActor),
+        (leftAbsorbActor rightAbsorbActor : QueryActor)
+        (leftPrior rightPrior leftLater rightLater : List UnifiedExposureRecord)
+        (leftAnchorRecord rightAnchorRecord : UnifiedExposureRecord),
       (bytes leftBefore.digest ++
           [domAbsorb,
             (AspisK1.V7Tag73TranscriptSchedule.Payload.final256
@@ -741,6 +772,25 @@ theorem exact_fixed_clean_pair_k13_adversary_anchor_final256_input_eq
             (AspisK1.V7Tag73TranscriptSchedule.Payload.final256
               (exactOperationalTape rightWitness.joint.input).messages.finalValues).data) =
         some digest ∧
+      leftPrior = rightPrior ∧
+      exactFixedRootRecords leftWitness.joint.input.package.root =
+        leftPrior ++ leftAnchorRecord :: leftLater ∧
+      exactFixedRootRecords rightWitness.joint.input.package.root =
+        rightPrior ++ rightAnchorRecord :: rightLater ∧
+      (.machineFresh .adversary
+          (bytes leftBefore.digest ++ [domAbsorb,
+            (AspisK1.V7Tag73TranscriptSchedule.Payload.final256
+              (exactOperationalTape leftWitness.joint.input).messages.finalValues).label] ++
+            (AspisK1.V7Tag73TranscriptSchedule.Payload.final256
+              (exactOperationalTape leftWitness.joint.input).messages.finalValues).data)
+          digest : UnifiedExposureRecord) ∈ leftPrior ∧
+      (.machineFresh .adversary
+          (bytes rightBefore.digest ++ [domAbsorb,
+            (AspisK1.V7Tag73TranscriptSchedule.Payload.final256
+              (exactOperationalTape rightWitness.joint.input).messages.finalValues).label] ++
+            (AspisK1.V7Tag73TranscriptSchedule.Payload.final256
+              (exactOperationalTape rightWitness.joint.input).messages.finalValues).data)
+          digest : UnifiedExposureRecord) ∈ rightPrior ∧
       leftBase =
         (exactOperationalRawTrace leftWitness.joint.input).q16BaseDigest ∧
       rightBase =
@@ -879,12 +929,28 @@ theorem exact_fixed_clean_pair_k13_adversary_anchor_final256_input_eq
       transportedProducerMember rightCanonicalMember rfl
   have producerInputExact : leftProducerInput = rightCanonicalInput := by
     injection rightCanonicalRecordExact
+  have leftProducerPriorMember :
+      (.machineFresh .adversary leftCanonicalInput leftDigest :
+        UnifiedExposureRecord) ∈ leftPrior := by
+    rw [← leftProducerCanonical]
+    simp [leftPrior]
+  have rightProducerPriorMember :
+      (.machineFresh .adversary rightCanonicalInput leftDigest :
+        UnifiedExposureRecord) ∈ rightPrior := by
+    rw [← producerInputExact, ← priorExact]
+    simp [leftPrior]
   refine ⟨leftBefore, rightBefore, leftDigest, leftBase, rightBase,
-    leftAbsorbActor, rightAbsorbActor,
-    leftProducerCanonical.symm.trans producerInputExact, ?_, ?_, leftBaseExact,
-    rightBaseExact, leftAbsorbMember, ?_⟩
+    leftAbsorbActor, rightAbsorbActor, leftPrior, rightPrior, leftRootLater,
+    rightLater,
+    (.machineFresh .adversary leftAnchorInput leftAnchorAnswer),
+    (.machineFresh rightActor rightAnchorInput rightAnchorAnswer),
+    leftProducerCanonical.symm.trans producerInputExact, ?_, ?_, priorExact,
+    leftSelectedExact, rightRootExact, ?_, ?_, leftBaseExact, rightBaseExact,
+    leftAbsorbMember, ?_⟩
   · simpa [leftCanonicalInput] using leftLookup
   · simpa [rightCanonicalInput, digestExact] using rightLookup
+  · simpa [leftCanonicalInput] using leftProducerPriorMember
+  · simpa [rightCanonicalInput] using rightProducerPriorMember
   · simpa [digestExact] using rightAbsorbMember
 
 /-- Equal complete-coordinate `final256` inputs fix the transcript digest
@@ -937,9 +1003,11 @@ theorem exact_fixed_clean_pair_k13_adversary_anchor_before_final256_digest_eq
     ∃ leftBefore rightBefore : EvalState,
       leftBefore.digest = rightBefore.digest := by
   obtain ⟨leftBefore, rightBefore, _digest, _leftBase, _rightBase,
-      _leftAbsorbActor, _rightAbsorbActor, inputExact, _leftLookup,
-      _rightLookup, _leftBaseExact, _rightBaseExact, _leftAbsorbMember,
-      _rightAbsorbMember⟩ :=
+      _leftAbsorbActor, _rightAbsorbActor, _leftPrior, _rightPrior, _leftLater,
+      _rightLater, _leftAnchorRecord, _rightAnchorRecord, inputExact,
+      _leftLookup, _rightLookup, _priorExact, _leftRootExact, _rightRootExact,
+      _leftProducerMember, _rightProducerMember, _leftBaseExact,
+      _rightBaseExact, _leftAbsorbMember, _rightAbsorbMember⟩ :=
     exact_fixed_clean_pair_k13_adversary_anchor_final256_input_eq
       transitionRoom foldTrial finalTrial hidden left right leftWitness
       rightWitness anchor programmedCover contextExact foldExact
@@ -995,12 +1063,14 @@ theorem exact_fixed_clean_pair_k13_adversary_anchor_alpha_terminal_eq
           left).2.1 =
         (exactCompilerCausalFoldAlphaFinalWorkQ16Coordinates parameters router
           right).2.1) :
-    ∃ (leftProducer rightProducer : ShaInput)
+    ∃ (leftProducer rightProducer leftFinal256Input rightFinal256Input : ShaInput)
         (leftBeforeAlpha rightBeforeAlpha leftAfterAlpha rightAfterAlpha
           leftAfterBlocks rightAfterBlocks leftAfterFinal256 rightAfterFinal256 :
           EvalState)
         (leftOutputs leftAdvances rightOutputs rightAdvances : List Digest256)
-        (leftValue rightValue : QM31Exact) (prefinalDigest : Digest256),
+        (leftValue rightValue : QM31Exact) (prefinalDigest : Digest256)
+        (leftPrior rightPrior leftLater rightLater : List UnifiedExposureRecord)
+        (leftAnchorRecord rightAnchorRecord : UnifiedExposureRecord),
       ExactRootOrderedQ16Chain leftWitness.joint.input leftProducer
           leftBeforeAlpha.digest leftOutputs leftAdvances ∧
       ExactRootOrderedQ16Chain rightWitness.joint.input rightProducer
@@ -1019,6 +1089,21 @@ theorem exact_fixed_clean_pair_k13_adversary_anchor_alpha_terminal_eq
       leftAfterFinal256.digest = prefinalDigest ∧
       rightAfterFinal256.digest = prefinalDigest ∧
       leftAfterFinal256.digest = rightAfterFinal256.digest ∧
+      HasLiteralStatePrefix leftAfterAlpha.digest leftFinal256Input ∧
+      HasLiteralStatePrefix rightAfterAlpha.digest rightFinal256Input ∧
+      tableLookup (exactOperationalTable leftWitness.joint.input)
+          leftFinal256Input = some prefinalDigest ∧
+      tableLookup (exactOperationalTable rightWitness.joint.input)
+          rightFinal256Input = some prefinalDigest ∧
+      leftPrior = rightPrior ∧
+      exactFixedRootRecords leftWitness.joint.input.package.root =
+        leftPrior ++ leftAnchorRecord :: leftLater ∧
+      exactFixedRootRecords rightWitness.joint.input.package.root =
+        rightPrior ++ rightAnchorRecord :: rightLater ∧
+      (.machineFresh .adversary leftFinal256Input prefinalDigest :
+        UnifiedExposureRecord) ∈ leftPrior ∧
+      (.machineFresh .adversary rightFinal256Input prefinalDigest :
+        UnifiedExposureRecord) ∈ rightPrior ∧
       decodeTagQM31ExactLE
           ((exactOperationalTape leftWitness.joint.input).messages.challengeValue
             (.alpha 0)) = some leftValue ∧
@@ -1029,9 +1114,12 @@ theorem exact_fixed_clean_pair_k13_adversary_anchor_alpha_terminal_eq
       exactOperationalChallenge rightWitness.joint.input (.alpha 0) =
         rightValue := by
   obtain ⟨leftCanonicalBefore, rightCanonicalBefore, digest, leftBase,
-      rightBase, leftAbsorbActor, rightAbsorbActor, canonicalInputExact,
-      leftCanonicalLookup, rightCanonicalLookup, leftBaseExact, rightBaseExact,
-      leftAbsorbMember, rightAbsorbMember⟩ :=
+      rightBase, leftAbsorbActor, rightAbsorbActor, leftPrior, rightPrior,
+      leftLater, rightLater, leftAnchorRecord, rightAnchorRecord,
+      canonicalInputExact, leftCanonicalLookup, rightCanonicalLookup,
+      priorExact, leftRootExact, rightRootExact, leftProducerMember,
+      rightProducerMember, leftBaseExact, rightBaseExact, leftAbsorbMember,
+      rightAbsorbMember⟩ :=
     exact_fixed_clean_pair_k13_adversary_anchor_final256_input_eq
       transitionRoom foldTrial finalTrial hidden left right leftWitness
       rightWitness anchor programmedCover contextExact foldExact
@@ -1126,16 +1214,140 @@ theorem exact_fixed_clean_pair_k13_adversary_anchor_alpha_terminal_eq
     apply digest_bytes_injective
     have prefixExact := congrArg (List.take 32) alphaFinal256InputExact
     simpa using prefixExact
-  exact ⟨leftProducer, rightProducer, leftBeforeAlpha, rightBeforeAlpha,
+  have leftFinal256Prefix :
+      HasLiteralStatePrefix leftAfterAlpha.digest leftFinal256Input := by
+    unfold HasLiteralStatePrefix
+    rw [leftFinal256InputExact]
+    simp
+  have rightFinal256Prefix :
+      HasLiteralStatePrefix rightAfterAlpha.digest rightFinal256Input := by
+    unfold HasLiteralStatePrefix
+    rw [rightFinal256InputExact]
+    simp
+  have leftFinal256Lookup' :
+      tableLookup (exactOperationalTable leftWitness.joint.input)
+          leftFinal256Input = some digest := by
+    simpa [leftPrefinalExact] using leftFinal256Lookup
+  have rightFinal256Lookup' :
+      tableLookup (exactOperationalTable rightWitness.joint.input)
+          rightFinal256Input = some digest := by
+    simpa [rightPrefinalExact] using rightFinal256Lookup
+  have leftFinal256PriorMember :
+      (.machineFresh .adversary leftFinal256Input digest :
+        UnifiedExposureRecord) ∈ leftPrior := by
+    rw [leftInputExact]
+    simpa [leftCanonicalInput] using leftProducerMember
+  have rightFinal256PriorMember :
+      (.machineFresh .adversary rightFinal256Input digest :
+        UnifiedExposureRecord) ∈ rightPrior := by
+    rw [rightInputExact]
+    simpa [rightCanonicalInput] using rightProducerMember
+  exact ⟨leftProducer, rightProducer, leftFinal256Input, rightFinal256Input,
+    leftBeforeAlpha, rightBeforeAlpha,
     leftAfterAlpha, rightAfterAlpha, leftAfterBlocks, rightAfterBlocks,
     leftAfterFinal256, rightAfterFinal256, leftOutputs, leftAdvances,
-    rightOutputs, rightAdvances, leftValue, rightValue, digest, leftOrdered,
+    rightOutputs, rightAdvances, leftValue, rightValue, digest, leftPrior,
+    rightPrior, leftLater, rightLater, leftAnchorRecord, rightAnchorRecord,
+    leftOrdered,
     rightOrdered, leftOutputsPositive, rightOutputsPositive,
     leftAdvancesLength, rightAdvancesLength, leftTerminalExact,
     rightTerminalExact, leftAfterAlphaExact, rightAfterAlphaExact,
     alphaTerminalExact, leftPrefinalExact, rightPrefinalExact,
-    terminalSuccessorExact, leftDecode, rightDecode,
+    terminalSuccessorExact, leftFinal256Prefix, rightFinal256Prefix,
+    leftFinal256Lookup', rightFinal256Lookup', priorExact, leftRootExact,
+    rightRootExact, leftFinal256PriorMember, rightFinal256PriorMember,
+    leftDecode, rightDecode,
     leftOperational, rightOperational⟩
+
+/-- If a final256 producer is already inside an anchor prefix, the terminal
+advance of its nonempty ordered alpha chain is inside that prefix as well. -/
+theorem exact_alpha_terminal_advance_mem_anchor_prior
+    {HiddenTape TapeIdentity Observation Statement Payload Result : Type}
+    {parameters : ExactCompilerResourceParameters}
+    {transitionFuel : Nat}
+    {configuration : ExactPlainRomConfiguration HiddenTape TapeIdentity
+      Observation Statement Tag73K12ParsedProof Payload Result parameters}
+    {projection : AcceptedTapeProjection Statement Tag73K12ParsedProof Payload}
+    {fixedInstance : PublicInstance Statement}
+    {sample : ExactCompilerSample HiddenTape parameters}
+    (transitionRoom : 2 ≤ transitionFuel)
+    (input : ExactK12OperationalInput transitionFuel configuration projection
+      fixedInstance sample)
+    (prior anchorLater : List UnifiedExposureRecord)
+    (anchorRecord : UnifiedExposureRecord)
+    (rootExact : exactFixedRootRecords input.package.root =
+      prior ++ anchorRecord :: anchorLater)
+    (producerInput : ShaInput) (initialDigest : Digest256)
+    (outputs advances : List Digest256)
+    (chain : ExactRootOrderedQ16Chain input producerInput initialDigest
+      outputs advances)
+    (nonempty : 0 < outputs.length)
+    (final256Input : ShaInput) (prefinalDigest : Digest256)
+    (final256Prefix :
+      HasLiteralStatePrefix (gammaTerminalDigest initialDigest advances)
+        final256Input)
+    (final256Lookup : tableLookup (exactOperationalTable input) final256Input =
+      some prefinalDigest)
+    (final256Actor : QueryActor)
+    (final256Member :
+      (.machineFresh final256Actor final256Input prefinalDigest :
+        UnifiedExposureRecord) ∈ prior) :
+    ∃ blockDigest blockOutput advanceActor,
+      tableLookup (exactOperationalTable input)
+          (gammaOutputInput blockDigest) = some blockOutput ∧
+      tableLookup (exactOperationalTable input)
+          (gammaAdvanceInput blockDigest) =
+        some (gammaTerminalDigest initialDigest advances) ∧
+      (.machineFresh advanceActor (gammaAdvanceInput blockDigest)
+          (gammaTerminalDigest initialDigest advances) :
+        UnifiedExposureRecord) ∈ prior := by
+  classical
+  obtain ⟨blockDigest, blockOutput, outputLookup, advanceLookup,
+      _outputMember, _advanceMember⟩ :=
+    exact_root_ordered_q16_chain_terminal_pair_mem chain nonempty
+  obtain ⟨before, middle, after, pairOrder⟩ :=
+    exact_compiler_literal_dependency_has_strict_root_order transitionRoom
+      input (gammaAdvanceInput blockDigest) final256Input
+      (gammaTerminalDigest initialDigest advances) prefinalDigest
+      advanceLookup final256Lookup final256Prefix
+  obtain ⟨beforeRecords, middleRecords, afterRecords, advanceActor,
+      orderedFinalActor, recordOrder⟩ :=
+    exact_root_pair_order_lifts_to_records input
+      (gammaAdvanceInput blockDigest) final256Input
+      (gammaTerminalDigest initialDigest advances) prefinalDigest
+      before middle after pairOrder
+  have final256MemberRoot :
+      (.machineFresh final256Actor final256Input prefinalDigest :
+        UnifiedExposureRecord) ∈ exactFixedRootRecords input.package.root := by
+    rw [rootExact]
+    exact List.mem_append_left _ final256Member
+  have orderedFinalMemberRoot :
+      (.machineFresh orderedFinalActor final256Input prefinalDigest :
+        UnifiedExposureRecord) ∈ exactFixedRootRecords input.package.root := by
+    rw [recordOrder]
+    simp
+  have finalRecordExact :
+      (.machineFresh orderedFinalActor final256Input prefinalDigest :
+          UnifiedExposureRecord) =
+        .machineFresh final256Actor final256Input prefinalDigest :=
+    List.inj_on_of_nodup_map (exact_root_record_answers_nodup input)
+      orderedFinalMemberRoot final256MemberRoot rfl
+  have orderedFinalMember :
+      (.machineFresh orderedFinalActor final256Input prefinalDigest :
+        UnifiedExposureRecord) ∈ prior := by
+    simpa [finalRecordExact] using final256Member
+  have rootNodup : (exactFixedRootRecords input.package.root).Nodup :=
+    List.Nodup.of_map UnifiedExposureRecord.answer
+      (exact_root_record_answers_nodup input)
+  have advanceMember := mem_prefix_of_strict_order_and_later_mem
+    (exactFixedRootRecords input.package.root) prior anchorLater beforeRecords
+    middleRecords afterRecords
+    (.machineFresh advanceActor (gammaAdvanceInput blockDigest)
+      (gammaTerminalDigest initialDigest advances))
+    (.machineFresh orderedFinalActor final256Input prefinalDigest)
+    anchorRecord rootNodup rootExact recordOrder orderedFinalMember
+  exact ⟨blockDigest, blockOutput, advanceActor, outputLookup, advanceLookup,
+    advanceMember⟩
 
 /-- The canonical `final256` producer itself lies in the shared pre-anchor
 root prefix.  Thus both executions literally retain the same actor-tagged
@@ -1184,60 +1396,162 @@ theorem exact_fixed_clean_pair_k13_final256_record_mem_shared_priors
           left).2.1 =
         (exactCompilerCausalFoldAlphaFinalWorkQ16Coordinates parameters router
           right).2.1) :
-    ∃ (leftPrior rightPrior : List UnifiedExposureRecord)
+    ∃ (leftPrior rightPrior leftLater rightLater : List UnifiedExposureRecord)
+        (leftAnchorRecord rightAnchorRecord : UnifiedExposureRecord)
         (producerInput : ShaInput) (prefinalDigest : Digest256),
       leftPrior = rightPrior ∧
+      exactFixedRootRecords leftWitness.joint.input.package.root =
+        leftPrior ++ leftAnchorRecord :: leftLater ∧
+      exactFixedRootRecords rightWitness.joint.input.package.root =
+        rightPrior ++ rightAnchorRecord :: rightLater ∧
       tableLookup (exactOperationalTable leftWitness.joint.input)
         producerInput = some prefinalDigest ∧
       (.machineFresh .adversary producerInput prefinalDigest :
           UnifiedExposureRecord) ∈ leftPrior ∧
       (.machineFresh .adversary producerInput prefinalDigest :
           UnifiedExposureRecord) ∈ rightPrior := by
-  obtain ⟨leftPrior, leftLater, rightPrior, rightLater, leftAnchorInput,
-      rightAnchorInput, leftAnchorAnswer, rightAnchorAnswer, rightActor,
-      leftRootExact, rightRootExact, leftTrialExact, rightTrialExact,
-      priorExact⟩ :=
-    exact_fixed_clean_pair_k13_adversary_anchor_root_priors_eq foldTrial
-      finalTrial hidden left right leftWitness rightWitness anchor
-      programmedCover contextExact foldExact
-  obtain ⟨producerPrior, producerMiddle, producerLater, producerInput,
-      chronologyAnchorInput, chronologyAnchorAnswer, prefinalDigest, _base,
-      _absorbActor, chronologyExact, chronologyTrialExact, producerLookup,
-      _statePrefix, _prefinalOrigin, _baseExact, _absorbMember⟩ :=
-    exact_fixed_k13_adversary_anchor_has_earlier_final256_root_record
-      transitionRoom finalTrial leftWitness.joint anchor
-  let chronologyPrior : List UnifiedExposureRecord :=
-    producerPrior ++
-      (.machineFresh .adversary producerInput prefinalDigest :
-        UnifiedExposureRecord) :: producerMiddle
-  have chronologyExact' :
-      exactFixedRootRecords leftWitness.joint.input.package.root =
-        chronologyPrior ++
-          (.machineFresh .adversary chronologyAnchorInput chronologyAnchorAnswer :
-            UnifiedExposureRecord) :: producerLater := by
-    simpa [chronologyPrior, List.append_assoc] using chronologyExact
-  have chronologyLength : finalTrial.val = chronologyPrior.length := by
-    simpa [chronologyPrior] using chronologyTrialExact
-  have prefixExact : leftPrior = chronologyPrior :=
-    equal_prefixes_of_equal_decomposition_lengths
-      (exactFixedRootRecords leftWitness.joint.input.package.root)
-      leftPrior leftLater chronologyPrior producerLater
-      (.machineFresh .adversary leftAnchorInput leftAnchorAnswer)
-      (.machineFresh .adversary chronologyAnchorInput chronologyAnchorAnswer)
-      leftRootExact chronologyExact'
-      (by rw [← leftTrialExact, ← chronologyLength])
-  have leftMember :
-      (.machineFresh .adversary producerInput prefinalDigest :
-        UnifiedExposureRecord) ∈ leftPrior := by
-    rw [prefixExact]
-    simp [chronologyPrior]
-  have rightMember :
-      (.machineFresh .adversary producerInput prefinalDigest :
-        UnifiedExposureRecord) ∈ rightPrior := by
-    rw [← priorExact]
-    exact leftMember
-  exact ⟨leftPrior, rightPrior, producerInput, prefinalDigest, priorExact,
-    producerLookup, leftMember, rightMember⟩
+  obtain ⟨leftBefore, _rightBefore, digest, _leftBase, _rightBase,
+      _leftAbsorbActor, _rightAbsorbActor, leftPrior, rightPrior, leftLater,
+      rightLater, leftAnchorRecord, rightAnchorRecord, inputExact,
+      leftLookup, _rightLookup, priorExact, leftRootExact, rightRootExact,
+      leftMember, rightMember, _leftBaseExact, _rightBaseExact,
+      _leftAbsorbMember, _rightAbsorbMember⟩ :=
+    exact_fixed_clean_pair_k13_adversary_anchor_final256_input_eq
+      transitionRoom foldTrial finalTrial hidden left right leftWitness
+      rightWitness anchor programmedCover contextExact foldExact
+  let producerInput : ShaInput :=
+    bytes leftBefore.digest ++ [domAbsorb,
+      (AspisK1.V7Tag73TranscriptSchedule.Payload.final256
+        (exactOperationalTape leftWitness.joint.input).messages.finalValues).label] ++
+      (AspisK1.V7Tag73TranscriptSchedule.Payload.final256
+        (exactOperationalTape leftWitness.joint.input).messages.finalValues).data
+  exact ⟨leftPrior, rightPrior, leftLater, rightLater, leftAnchorRecord,
+    rightAnchorRecord, producerInput, digest, priorExact, leftRootExact,
+    rightRootExact, by simpa [producerInput] using leftLookup,
+    by simpa [producerInput] using leftMember,
+    by simpa [producerInput, inputExact] using rightMember⟩
+
+/-- The last consumed alpha duplex block is identical across the two clean
+complete-coordinate fibres.  Equality comes from the shared root record for
+the common terminal answer, not from hash injectivity. -/
+theorem exact_fixed_clean_pair_k13_alpha_terminal_block_eq
+    {HiddenTape TapeIdentity Observation Statement Payload Witness : Type}
+    {parameters : ExactCompilerResourceParameters}
+    {transitionFuel : Nat}
+    {configuration : ExactPlainRomWitnessConfiguration HiddenTape TapeIdentity
+      Observation Statement Tag73K12ParsedProof Payload Witness parameters}
+    {projection : AcceptedTapeProjection Statement Tag73K12ParsedProof Payload}
+    {fixedInstance : PublicInstance Statement}
+    {decoder : ExactDecoderInstantiation QM31Exact}
+    (transitionRoom : 2 ≤ transitionFuel)
+    (foldTrial finalTrial : ExactCompilerExposureTrial parameters)
+    (hidden : HiddenTape)
+    (left right : FreshAnswerTape Digest256
+      (exactCompilerTargetCaps parameters).length)
+    (leftWitness : ExactFixedCleanK13PairTrialWitness transitionFuel
+      configuration projection fixedInstance decoder (hidden, left) foldTrial
+        finalTrial)
+    (rightWitness : ExactFixedCleanK13PairTrialWitness transitionFuel
+      configuration projection fixedInstance decoder (hidden, right) foldTrial
+        finalTrial)
+    (anchor : ExactFixedK13AdversaryAnchor leftWitness.joint.input finalTrial)
+    (programmedCover : 518 ≤ 2 * parameters.forkRequestCap)
+    (contextExact :
+      let router := exactCompilerFoldAlphaFinalWorkQ16Router parameters
+        transitionFuel foldTrial.val
+        (alphaFinalWorkQ16DagController transitionFuel finalTrial.val
+          (alphaZeroCausalController transitionFuel 0))
+        (inactiveAlphaZeroMemory, inactiveDagMemory)
+        (exactPlainRomCursor configuration hidden).erase
+      (exactCompilerCausalFoldAlphaFinalWorkQ16Coordinates parameters router
+          left).1 =
+        (exactCompilerCausalFoldAlphaFinalWorkQ16Coordinates parameters router
+          right).1)
+    (foldExact :
+      let router := exactCompilerFoldAlphaFinalWorkQ16Router parameters
+        transitionFuel foldTrial.val
+        (alphaFinalWorkQ16DagController transitionFuel finalTrial.val
+          (alphaZeroCausalController transitionFuel 0))
+        (inactiveAlphaZeroMemory, inactiveDagMemory)
+        (exactPlainRomCursor configuration hidden).erase
+      (exactCompilerCausalFoldAlphaFinalWorkQ16Coordinates parameters router
+          left).2.1 =
+        (exactCompilerCausalFoldAlphaFinalWorkQ16Coordinates parameters router
+          right).2.1) :
+    ∃ leftBlock rightBlock : Digest256, leftBlock = rightBlock := by
+  obtain ⟨leftProducer, rightProducer, leftFinal256Input, rightFinal256Input,
+      leftBeforeAlpha, rightBeforeAlpha, leftAfterAlpha, rightAfterAlpha,
+      leftAfterBlocks, rightAfterBlocks, _leftAfterFinal256,
+      _rightAfterFinal256, leftOutputs, leftAdvances, rightOutputs,
+      rightAdvances, _leftValue, _rightValue, prefinalDigest, leftPrior,
+      rightPrior, leftLater, rightLater, leftAnchorRecord, rightAnchorRecord,
+      leftChain,
+      rightChain, leftPositive, rightPositive, _leftLengths, _rightLengths,
+      leftTerminal, rightTerminal, leftAfterExact, rightAfterExact,
+      alphaTerminalExact, _leftPrefinal, _rightPrefinal, _prefinalExact,
+      leftFinal256Prefix, rightFinal256Prefix, leftFinal256Lookup,
+      rightFinal256Lookup, priorExact, leftRootExact, rightRootExact,
+      leftFinalMember, rightFinalMember, _leftDecode, _rightDecode,
+      _leftOperational, _rightOperational⟩ :=
+    exact_fixed_clean_pair_k13_adversary_anchor_alpha_terminal_eq
+      transitionRoom foldTrial finalTrial hidden left right leftWitness
+      rightWitness anchor programmedCover contextExact foldExact
+  have leftGammaTerminal :
+      gammaTerminalDigest leftBeforeAlpha.digest leftAdvances =
+        leftAfterAlpha.digest :=
+    leftTerminal.symm.trans leftAfterExact.symm
+  have rightGammaTerminal :
+      gammaTerminalDigest rightBeforeAlpha.digest rightAdvances =
+        rightAfterAlpha.digest :=
+    rightTerminal.symm.trans rightAfterExact.symm
+  have leftPrefix :
+      HasLiteralStatePrefix
+          (gammaTerminalDigest leftBeforeAlpha.digest leftAdvances)
+        leftFinal256Input := by
+    simpa only [leftGammaTerminal] using leftFinal256Prefix
+  have rightPrefix :
+      HasLiteralStatePrefix
+          (gammaTerminalDigest rightBeforeAlpha.digest rightAdvances)
+        rightFinal256Input := by
+    simpa only [rightGammaTerminal] using rightFinal256Prefix
+  obtain ⟨leftBlock, _leftOutput, leftAdvanceActor, _leftOutputLookup,
+      _leftAdvanceLookup, leftAdvanceMember⟩ :=
+    exact_alpha_terminal_advance_mem_anchor_prior transitionRoom
+      leftWitness.joint.input leftPrior leftLater leftAnchorRecord leftRootExact
+      leftProducer leftBeforeAlpha.digest leftOutputs leftAdvances leftChain
+      leftPositive leftFinal256Input prefinalDigest leftPrefix
+      leftFinal256Lookup .adversary leftFinalMember
+  obtain ⟨rightBlock, _rightOutput, rightAdvanceActor, _rightOutputLookup,
+      _rightAdvanceLookup, rightAdvanceMember⟩ :=
+    exact_alpha_terminal_advance_mem_anchor_prior transitionRoom
+      rightWitness.joint.input rightPrior rightLater rightAnchorRecord
+      rightRootExact rightProducer rightBeforeAlpha.digest rightOutputs
+      rightAdvances rightChain rightPositive rightFinal256Input prefinalDigest
+      rightPrefix rightFinal256Lookup .adversary rightFinalMember
+  have leftAdvanceMember' :
+      (.machineFresh leftAdvanceActor (gammaAdvanceInput leftBlock)
+          leftAfterAlpha.digest : UnifiedExposureRecord) ∈ leftPrior := by
+    simpa only [leftGammaTerminal] using leftAdvanceMember
+  have rightAdvanceMember' :
+      (.machineFresh rightAdvanceActor (gammaAdvanceInput rightBlock)
+          leftAfterAlpha.digest : UnifiedExposureRecord) ∈ rightPrior := by
+    simpa only [rightGammaTerminal, ← alphaTerminalExact] using
+      rightAdvanceMember
+  have advanceInputExact :
+      gammaAdvanceInput leftBlock = gammaAdvanceInput rightBlock :=
+    exact_equal_root_priors_same_answer_input_eq leftWitness.joint.input
+      leftPrior rightPrior leftAdvanceActor rightAdvanceActor
+      (gammaAdvanceInput leftBlock) (gammaAdvanceInput rightBlock)
+      leftAfterAlpha.digest priorExact leftAdvanceMember' rightAdvanceMember'
+      (by
+        intro record member
+        rw [leftRootExact]
+        exact List.mem_append_left _ member)
+  have blockExact : leftBlock = rightBlock := by
+    apply digest_bytes_injective
+    have prefixExact := congrArg (List.take 32) advanceInputExact
+    simpa [gammaAdvanceInput] using prefixExact
+  exact ⟨leftBlock, rightBlock, blockExact⟩
 
 /-- Equality of the canonical `final256` inputs fixes every serialized field
 block before q16; this is fixed-width decoding, not hash inversion. -/
@@ -1288,9 +1602,11 @@ theorem exact_fixed_clean_pair_k13_adversary_anchor_final_values_eq
     (exactOperationalTape leftWitness.joint.input).messages.finalValues =
       (exactOperationalTape rightWitness.joint.input).messages.finalValues := by
   obtain ⟨leftBefore, rightBefore, _digest, _leftBase, _rightBase,
-      _leftAbsorbActor, _rightAbsorbActor, inputExact, _leftLookup,
-      _rightLookup, _leftBaseExact, _rightBaseExact, _leftAbsorbMember,
-      _rightAbsorbMember⟩ :=
+      _leftAbsorbActor, _rightAbsorbActor, _leftPrior, _rightPrior, _leftLater,
+      _rightLater, _leftAnchorRecord, _rightAnchorRecord, inputExact,
+      _leftLookup, _rightLookup, _priorExact, _leftRootExact, _rightRootExact,
+      _leftProducerMember, _rightProducerMember, _leftBaseExact,
+      _rightBaseExact, _leftAbsorbMember, _rightAbsorbMember⟩ :=
     exact_fixed_clean_pair_k13_adversary_anchor_final256_input_eq
       transitionRoom foldTrial finalTrial hidden left right leftWitness
       rightWitness anchor programmedCover contextExact foldExact
@@ -1433,6 +1749,8 @@ theorem exact_fixed_clean_pair_k13_adversary_anchor_disclosed_final_eq
 #print axioms
   equal_prefixes_of_equal_decomposition_lengths
 #print axioms
+  mem_prefix_of_strict_order_and_later_mem
+#print axioms
   exact_fixed_clean_pair_k13_adversary_anchor_selected_input_and_digest_eq
 #print axioms
   exact_fixed_clean_pair_k13_adversary_anchor_final256_input_eq
@@ -1441,7 +1759,11 @@ theorem exact_fixed_clean_pair_k13_adversary_anchor_disclosed_final_eq
 #print axioms
   exact_fixed_clean_pair_k13_adversary_anchor_alpha_terminal_eq
 #print axioms
+  exact_alpha_terminal_advance_mem_anchor_prior
+#print axioms
   exact_fixed_clean_pair_k13_final256_record_mem_shared_priors
+#print axioms
+  exact_fixed_clean_pair_k13_alpha_terminal_block_eq
 #print axioms
   exact_fixed_clean_pair_k13_adversary_anchor_final_values_eq
 #print axioms
