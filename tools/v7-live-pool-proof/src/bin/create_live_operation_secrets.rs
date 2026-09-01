@@ -7,9 +7,13 @@ use std::{
 };
 
 use anyhow::{ensure, Context, Result};
+use aspis_pool_wallet_v1::{wallet_transition::derive_note_nullifier_v1, NoteOpeningV1};
 use aspis_statement::{
     decode_digest_canonical, derive_owner_key, encode_digest_canonical,
-    pool_v1::{pool_v1_note_commitment, pool_v1_pair_forest_deposit_lane_v1},
+    pool_v1::{
+        pool_v1_note_commitment, pool_v1_pair_forest_deposit_lane_v1,
+        pool_v1_pair_forest_output_lane_v1,
+    },
 };
 use serde_json::json;
 
@@ -40,11 +44,34 @@ fn main() -> Result<()> {
     let output = PathBuf::from(env::args_os().nth(2).context("missing secret output")?);
     ensure!(env::args_os().nth(3).is_none(), "unexpected extra argument");
     ensure!(operation == "transfer" || operation == "withdrawal", "invalid operation");
-    let nullifier_key = random_digest_bytes()?;
-    let decoded_nullifier = decode_digest_canonical(&nullifier_key)
-        .map_err(|error| anyhow::anyhow!("decode generated nullifier: {error:?}"))?;
-    let owner_key = encode_digest_canonical(&derive_owner_key(&decoded_nullifier));
-    let input_salt = random_digest_bytes()?;
+    let (nullifier_key, owner_key, input_salt, input_commitment, lane, attempts) =
+        (1_u32..=1_024)
+            .find_map(|attempts| {
+                let nullifier_key = random_digest_bytes().ok()?;
+                let decoded_nullifier = decode_digest_canonical(&nullifier_key).ok()?;
+                let owner_key = encode_digest_canonical(&derive_owner_key(&decoded_nullifier));
+                let input_salt = random_digest_bytes().ok()?;
+                let opening = NoteOpeningV1::new(owner_key, 1_000, 77, input_salt).ok()?;
+                let input_commitment = decode_digest_canonical(
+                    &aspis_pool_wallet_v1::recompute_note_commitment_v1(&opening).ok()?,
+                )
+                .ok()?;
+                let nullifier = decode_digest_canonical(
+                    &derive_note_nullifier_v1(&opening, &nullifier_key).ok()?,
+                )
+                .ok()?;
+                let deposit_lane = pool_v1_pair_forest_deposit_lane_v1(&input_commitment).ok()?;
+                let output_lane = pool_v1_pair_forest_output_lane_v1(&nullifier).ok()?;
+                (deposit_lane == output_lane).then_some((
+                    nullifier_key,
+                    owner_key,
+                    input_salt,
+                    input_commitment,
+                    deposit_lane,
+                    attempts,
+                ))
+            })
+            .context("failed to generate same-lane live note within bounded attempts")?;
     let input = note(owner_key, 1_000, input_salt);
     let recipient = if operation == "transfer" {
         Some(note(random_digest_bytes()?, 600, random_digest_bytes()?))
@@ -72,18 +99,20 @@ fn main() -> Result<()> {
         .map_err(|error| anyhow::anyhow!("decode generated owner key: {error:?}"))?;
     let decoded_salt = decode_digest_canonical(&input_salt)
         .map_err(|error| anyhow::anyhow!("decode generated salt: {error:?}"))?;
-    let input_commitment = pool_v1_note_commitment(
-        &decoded_owner,
-        1_000,
-        aspis_core::field::M31(77),
-        &decoded_salt,
+    ensure!(
+        pool_v1_note_commitment(
+            &decoded_owner,
+            1_000,
+            aspis_core::field::M31(77),
+            &decoded_salt,
+        ) == input_commitment,
+        "generated commitment changed"
     );
-    let lane = pool_v1_pair_forest_deposit_lane_v1(&input_commitment)
-        .map_err(|error| anyhow::anyhow!("route deposit: {error:?}"))?;
     println!("{}", json!({
         "schema":"aspis.v7.live-operation-public.v1","operation":operation,
         "inputCommitmentHex":hex(&encode_digest_canonical(&input_commitment)),
-        "depositLane":lane,"secretFileMode":"0600","secretValuesPrinted":false
+        "depositLane":lane,"outputLane":lane,"sameLaneSelectionAttempts":attempts,
+        "secretFileMode":"0600","secretValuesPrinted":false
     }));
     Ok(())
 }
