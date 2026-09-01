@@ -27,6 +27,8 @@ Tested replay/close implementation: `271e29c3` (full revision is in its
 cluster evidence)
 
 Tested fresh-signature replay implementation: `fafd9cca905d7125b838a1201152e02af13da2aa`
+
+Tested malformed-carrier implementation: `6380691e7780ec92ea7f6a852ba51dc3a39fa686`
 Branch: `research/v7-live-pool-witness-adapter-20260901`
 
 ## Architecture and authenticated field sources
@@ -214,19 +216,40 @@ landed transaction fee. This run is not represented as a complete successful
 harness invocation, and its separately established replay result is retained
 with that provenance.
 
+A separate explicit test-schema run changed the first ASC8 magic byte after
+constructing the production-shaped carrier and before signing. The host-side
+canonical validator rejected that mutated message as intended. The immutable
+SPL Noop carrier instruction nevertheless accepted the arbitrary bytes, and
+the unchanged terminal ASQ8 finalized successfully in the Pool at slot 437.
+The exact signed wire was 1,378 bytes,
+`af33ca1da332b7674c78ba65ab5de9676c63a584743ac07c4ee310a6c449bf89`,
+and simulation and landing both measured 1,275,978 CU. Only selected lane 3,
+its current history page, the nullifier marker, and the disposable fee payer
+changed; the master, retained checkpoint, proof account, vault, and seven
+non-selected lanes did not. This establishes that malformed ciphertext
+delivery metadata cannot stall an otherwise valid Pool settlement.
+
+That encompassing run also exited after the completed target case, during its
+subsequent replay check: the comparator invoked `jq` with slurped files but
+without null-input mode, so its filter never ran. Diagnosis also showed that
+subtracting the approximately 5e17-lamport balances in `jq` rounds the exact
+5,000-lamport delta to 4,992. The comparator now uses `jq -n` only for
+structural normalization and Bash integer arithmetic for the fee delta. No
+terminal failure is hidden or relabelled.
+
 Transfer/withdrawal rollover, different-lane concurrency, stale selected-lane
-rejection, wrong-checkpoint/release runtime cases, malformed-ASQ8/result/
-ciphertext runtime cases, and failed withdrawal CPI rollback remain
+rejection, wrong-checkpoint/release runtime cases, malformed-ASQ8/result
+runtime cases, missing-ciphertext runtime behavior, and failed withdrawal CPI rollback remain
 unexecuted and are explicitly `not-run` in evidence.
 
 The smallest remaining integration is host-side: add reusable terminal
-mutation runners, beginning with failed withdrawal CPI rollback and malformed
-ciphertext non-stalling, followed by stale-lane and authenticated-identity
-rejections. No cryptographic integration or production program change is
-currently indicated.
+mutation runners, beginning with failed withdrawal CPI rollback, followed by
+stale-lane and authenticated-identity rejections. No cryptographic integration
+or production program change is currently indicated.
 
 The result is safe to cherry-pick as host-only, default-off research plumbing.
-It establishes genuine finalized local transfer and withdrawal plus finalized
-fresh-signature nullifier replay rejection, not public-devnet lifecycle
-completion, production identities, or mainnet readiness.
+It establishes genuine finalized local transfer and withdrawal, finalized
+fresh-signature nullifier replay rejection, and finalized malformed-carrier
+non-stalling, not public-devnet lifecycle completion, production identities,
+or mainnet readiness.
 `mainnetReady` remains false.

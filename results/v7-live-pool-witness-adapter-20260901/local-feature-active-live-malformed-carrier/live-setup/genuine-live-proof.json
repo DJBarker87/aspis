@@ -1,0 +1,61 @@
+{
+  "schema": "aspis.v7.genuine-live-proof-finalized-input.v1",
+  "proofAccount": "8fC1xoQtMHFy467UKVAmpv4gM2E1rTCRNF5geY2ntcmm",
+  "proofKeypairLocation": "task-owned mktemp; destroyed by parent cleanup trap",
+  "keypairCommitted": false,
+  "keypairPrinted": false,
+  "keypairCleanupRequired": true,
+  "proof": {
+    "asf8": {
+      "bytes": 1880,
+      "sha256": "dbe359072df41c89860d128b281fb8c0f0a2537cdcec419489a08accc5a8b98d"
+    },
+    "asq8": {
+      "bytes": 320,
+      "sha256": "3b8c298b465d7699b2e79b691cf31b2d8289f821196e04f7ccbe67d2ee46924d"
+    },
+    "attemptId": "8fC1xoQtMHFy467UKVAmpv4gM2E1rTCRNF5geY2ntcmm",
+    "checkpointSequence": 0,
+    "deterministicFixtureEntropy": false,
+    "elapsedMillis": 94398,
+    "expectedAsr8": {
+      "bytes": 792,
+      "sha256": "7a83b4fc88568ac30c97c419713ba2670a044c54a8a6dce834eb941699f2f7f4"
+    },
+    "finalizedSlot": 215,
+    "operation": "transfer",
+    "programId": "5PjDJaGfSPJj4tFzMRCiuuAasKg5n8dJKXKenhuwZexx",
+    "proof": {
+      "bytes": 30668,
+      "canonicalFixedDeltaBytes": 320,
+      "powValid": true,
+      "sha256": "14e742ed0142363a77cf0a75df1b087f2c422952e47424b6ab9601377589d599",
+      "wireFormat": "tag73-canonical-fixed-audit"
+    },
+    "proofAccount": "8fC1xoQtMHFy467UKVAmpv4gM2E1rTCRNF5geY2ntcmm",
+    "proofPayload": {
+      "bytes": 31356,
+      "sha256": "df6e23e9a5c4911093a5a981a9771f9c3edc7e94a578d3824322dc9e65568b4d"
+    },
+    "schema": "aspis.v7.live-pool-proof-output.v1",
+    "sources": {
+      "checkpoint": "9ZiDxh6meBcjSAEmkh4syiy85gMaF8hubkraFcej6cbQ",
+      "lanes": [
+        "EWAWegMJFS9Dgxy4vmdoWWk4KqiH1tGko6bpDYsfwdPT",
+        "HZnVqKEV4J8sB9SrK8BS2Ds8cLyQCTwXN62wdUhWbHsH",
+        "BVinTuDJuEQ7sBaePzuWpwRTYvVFcfCQJcYKJqVFTtPY",
+        "3B3QhxztFR6kSo3m3kpTaU9JsQyJH6ScoT94gwnFXQYj",
+        "8EkMVrGuAmYEeZMGiJQJHAZFWuG77J5Dwhc65Ju3LB95",
+        "AsZpeSN85h6WWG3Kf9SjMZtgqM4kbBEhCRoXhX1T5jMe",
+        "6Cp7KLYgxPtXKUbojf982VujgZ9FWn7YkrguyRWNbDYo",
+        "DBkNZFhoio2nawZpA8rzHJqsE7VrvTtm4uu5voB1ggby"
+      ],
+      "master": "3Hrd4YKTTF2eaoWjdwzBwagmH9SeuenwiVyQajm72C8N",
+      "secretsFileCommitted": false,
+      "walletStateSha256": "6fe6bcdd40fd80fc3cf2a20de73996e9d5a5d1c9de05e8d0e5e9831e6d42ad7a"
+    },
+    "trustedResultAccount": false,
+    "verifierBypass": false
+  },
+  "mainnetReady": false
+}

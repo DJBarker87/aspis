@@ -66,17 +66,17 @@ account_values_fee_normalized_hash() {
 
 assert_failed_transaction_fee_only() {
   local before=$1 after=$2 payer_index=$3 fee=$4
-  jq -e --argjson payerIndex "$payer_index" --argjson fee "$fee" \
+  jq -ne --argjson payerIndex "$payer_index" \
     --slurpfile before "$before" --slurpfile after "$after" '
-      ($before[0].result.value | length) == ($after[0].result.value | length) and
-      all(range(0; ($before[0].result.value | length));
-        if . == $payerIndex then
-          ($before[0].result.value[.] | .lamports = 0) ==
-            ($after[0].result.value[.] | .lamports = 0) and
-          ($before[0].result.value[.].lamports - $after[0].result.value[.].lamports) == $fee
-        else
-          $before[0].result.value[.] == $after[0].result.value[.]
-        end)' >/dev/null
+      ($before[0].result.value | .[$payerIndex].lamports = 0) ==
+        ($after[0].result.value | .[$payerIndex].lamports = 0)' >/dev/null \
+    || return 1
+  local before_lamports after_lamports
+  before_lamports=$(jq -er --argjson payerIndex "$payer_index" \
+    '.result.value[$payerIndex].lamports | tostring' "$before")
+  after_lamports=$(jq -er --argjson payerIndex "$payer_index" \
+    '.result.value[$payerIndex].lamports | tostring' "$after")
+  ((before_lamports - after_lamports == fee))
 }
 
 token_amount() {
