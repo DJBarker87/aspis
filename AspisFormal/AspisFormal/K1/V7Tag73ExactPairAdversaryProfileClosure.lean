@@ -82,10 +82,12 @@ def exactTag73PreFinalSemanticSnapshot
   gamma := (exactK13ParsedProof input).gamma
   alphaZero := exactOperationalChallenge input (.alpha 0)
 
-/-- Cryptographic binding boundary at the pre-final transcript digest.  This
+/-- Typed semantic-binding boundary at the pre-final transcript digest.  This
 is deliberately not an honest-prover control-flow premise: the K1 adversary is
-arbitrary.  In the classical ROM it is discharged outside the collision event;
-for deployed SHA-256 it is the corresponding transcript-binding assumption. -/
+arbitrary.  Before release, this premise must either be reduced to a
+prefix-local snapshot and charged to the compiler collision event, or retained
+as an explicitly stronger external assumption; this definition itself makes
+neither claim. -/
 def ExactTag73PrefinalDigestSemanticBinding
     {HiddenTape TapeIdentity Observation Statement Payload Witness : Type}
     {parameters : ExactCompilerResourceParameters}
@@ -263,7 +265,7 @@ theorem exact_fixed_clean_k13_pair_coordinate_invariant_of_digest_binding
     programmedCover digestBinding
 
 /-- End-to-end K1.3 one-forest probability bound under the exact parsed-source
-provider and the explicit SHA/ROM pre-final transcript-binding boundary. -/
+provider and the explicitly typed pre-final semantic-binding boundary. -/
 theorem exact_fixed_clean_pair_k13_query_probability_le_one_forest_of_digest_binding
     {HiddenTape TapeIdentity Observation Statement Payload Witness : Type}
     [Fintype HiddenTape]
