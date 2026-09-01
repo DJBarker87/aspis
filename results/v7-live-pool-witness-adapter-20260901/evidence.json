@@ -1,12 +1,13 @@
 {
   "schema": "aspis.v7.live-pool-witness-adapter-evidence.v1",
-  "generatedAt": "2026-09-01T12:05:00Z",
-  "repository": {"base":"97e50660d61bfc07fb22bb0a6cc8a268fe073352","testedImplementationRevision":"14389d767d375db88b97a1aae2ff323145fdbaf0","branch":"research/v7-live-pool-witness-adapter-20260901"},
-  "classification": "B — LIVE TRANSFER COMPLETE; WITHDRAWAL BLOCKED",
+  "generatedAt": "2026-09-01T13:05:00Z",
+  "repository": {"base":"97e50660d61bfc07fb22bb0a6cc8a268fe073352","testedImplementationRevision":"271e29c3","branch":"research/v7-live-pool-witness-adapter-20260901"},
+  "classification": "A — LIVE TRANSFER AND WITHDRAWAL LIFECYCLE COMPLETE",
   "genuinelyLiveTransferComplete": true,
-  "genuinelyLiveWithdrawalComplete": false,
+  "genuinelyLiveWithdrawalComplete": true,
   "partlySyntheticLifecycleClaimed": false,
   "cluster": {"kind":"disposable-local-validator","agave":"solana-cli 4.2.0 (src:ac82b5d4; feat:21b0d33a, client:Agave)","genesisHash":"GcgcXEk2fnmGb3zBbALLy41dyyeNexXLwQ68eagpt8fc","rpcUrlDuringRun":"http://127.0.0.1:18912","featureId":"txv1aq4pp281K9um3tnPgkfX8UqtFT6wcVW3hNezGLL","featureActive":true,"featureActivationSlot":0,"runtimeFeatureSet":565236538,"auditOnlyIdentities":true,"publicDevnetUsed":false,"realFundsUsed":false},
+  "withdrawalCluster": {"kind":"disposable-local-validator","agave":"solana-cli 4.2.0 (src:ac82b5d4; feat:21b0d33a, client:Agave)","genesisHash":"3izqRxKca6mqpGcLBB1RYCJvf4yqrfgSzw3AjHB11eot","rpcUrlDuringRun":"http://127.0.0.1:18914","featureId":"txv1aq4pp281K9um3tnPgkfX8UqtFT6wcVW3hNezGLL","featureActive":true,"featureActivationSlot":0,"runtimeFeatureSet":565236538,"auditOnlyIdentities":true,"publicDevnetUsed":false,"realFundsUsed":false},
   "programs": [
     {"name":"pool","id":"5PjDJaGfSPJj4tFzMRCiuuAasKg5n8dJKXKenhuwZexx","sha256":"0e94c98d28437f0b01dce546fdefaad21dc10772a4d46991c2a573d8129cd4f6"},
     {"name":"registry","id":"5bV6jUfhDHCQVA1WfKBUnXUsboJgoKgkzkKcxr3joew5","sha256":"0f14c7b74ec6cbe3b3f637b0f24c7e8cdc46fd09f5b2e495fd51ada16ad8f11b"},
@@ -15,12 +16,16 @@
   ],
   "adapter": {"transferComplete":true,"withdrawalCompleteOffline":true,"durableCheckpointMembershipExportComplete":true,"productionProverHandoffComplete":true,"insecureFixtureFeatureEnabledInLiveProverCrate":false,"fixtureOnlyEntropyUsed":false,"trustedResultUsed":false,"verifierBypassUsed":false,"productionRuntimeSourceChanged":false,"cryptographicParametersChanged":false},
   "proof": {"account":"6xyX2V84p1TLxRHMceX9sPqxv2iUpVu68VVQVGJ8CNh2","bodyBytes":30720,"bodySha256":"de64d59936a84ced7ff8173db307196029b0997b8866ac69f1a02212a44c23ac","payloadBytes":31408,"payloadSha256":"e94aba876143295ee7ef1ce5fbbb0a4ca6407129d3825dc1f1916dfbacf54406","wireFormat":"tag73-canonical-fixed-audit","canonicalFixedDeltaBytes":320,"powValid":true,"generationMillis":219885,"uploadTransactions":35,"allUploadTransactionsFinalized":true,"sealed":true,"closedAfterTerminal":false},
-  "canonicalWireSizes": {"asq8Bytes":320,"asf8Bytes":1880,"expectedAsr8Bytes":792,"terminalTransactionBytes":1378,"below4096":true,"atOrBelow3500":true},
+  "withdrawalProof": {"account":"8sDpK3rAEBmMAH2NP6Ua3uPhRCJV6Y5zYbjJvP1z5cFj","bodyBytes":30564,"bodySha256":"2d4b577009f70ee9578283d6fe1b651b8b6819ff8c284a57ca36299aeaebb6a7","payloadBytes":31252,"payloadSha256":"fe9e8f52e5f8605066437d049e67579f7d64203c115bfe91e4507fd8d6fb53a3","wireFormat":"tag73-canonical-fixed-audit","canonicalFixedDeltaBytes":320,"powValid":true,"generationMillis":368699,"uploadTransactions":35,"allUploadTransactionsFinalized":true,"sealed":true,"closedAfterTerminal":false},
+  "canonicalWireSizes": {"asq8Bytes":320,"asf8Bytes":1880,"expectedAsr8Bytes":792,"transferTerminalTransactionBytes":1378,"withdrawalTerminalTransactionBytes":1543,"below4096":true,"atOrBelow3500":true},
   "finalizedTransactions": {
     "initialize": {"bytes":784,"simulatedCu":131942,"landedCu":131942,"slot":151,"signature":"4Rd9MGUEtw2WJvnRTLbptnATN3e7SdnEzi6J9eahRbW6tkZNN4PrbgVQCXELcFofmGcSVZ87FioYTwHYj6dwj7oK","wireSha256":"323a28a36e16bf0eb73de5a90579972a306526c9721930e7a0efd69811cdc47f"},
     "deposit": {"bytes":651,"simulatedCu":1112379,"landedCu":1112379,"slot":183,"selectedLane":5,"signature":"a9ZeXdPakSTnBQrQqxepwajrrAyTc5jVzFZPo4s75dRfpX1xg5u37c4kferxn9wCZnfprn9UNxuzvxRRnVUR79u","wireSha256":"e6ca7081c1d88e1ef0781426b8c95c48d7b34fe743141ddf8b7901160483f552"},
     "checkpoint": {"bytes":581,"simulatedCu":703262,"landedCu":703262,"slot":215,"signature":"52cxFBek5nC1fhHVFSw84464y7gUPTctnEmxZ5c28dxojxwRaumLupmLMA5Scxm2XQwDMxznUW5yQgN4MTLCuVNh","wireSha256":"2eda3800234ed80da90dbbd74511200347c0e79f6548b43862f388acf642f516"},
-    "transferSamePage": {"bytes":1378,"simulatedCu":1199794,"landedCu":1199794,"slot":563,"selectedLane":5,"signature":"36xzE8aH8EwQ5vn8Y7H6gCnRqfNKJTWH6DxesKz2gH5swp66tLuq6xsSwUQgevgNGmYTZiuCKJAxMVPvZTrkZtgr","wireSha256":"6a6e30d8449b8f3ee65840adae3ad250a65e32288c9f32cc27e8dd376ec4d338","topLevelInstructions":2,"terminalTransactions":1,"byteIdenticalSimulationSubmission":true,"realHpkeCiphertextCarrier":true}
+    "transferSamePage": {"bytes":1378,"simulatedCu":1199794,"landedCu":1199794,"slot":563,"selectedLane":5,"signature":"36xzE8aH8EwQ5vn8Y7H6gCnRqfNKJTWH6DxesKz2gH5swp66tLuq6xsSwUQgevgNGmYTZiuCKJAxMVPvZTrkZtgr","wireSha256":"6a6e30d8449b8f3ee65840adae3ad250a65e32288c9f32cc27e8dd376ec4d338","topLevelInstructions":2,"terminalTransactions":1,"byteIdenticalSimulationSubmission":true,"realHpkeCiphertextCarrier":true},
+    "withdrawalSamePage": {"bytes":1543,"simulatedCu":1230370,"landedCu":1230370,"slot":672,"selectedLane":5,"amount":250,"vaultBefore":1000,"vaultAfter":750,"destinationBefore":0,"destinationAfter":250,"signature":"2eUXrCsm7z6APJHAJmQBT1mZWWMB8f9zrRdXjQsiK9yiqxKBrKwgHZDJkxtDikBuM7AMk9WNgvxqvs33x1scZtXZ","wireSha256":"49fe32f50bacc3b12d59cc871b9bd355a04857dc0429e27617fd0dc5928410af","topLevelInstructions":2,"terminalTransactions":1,"byteIdenticalSimulationSubmission":true,"realHpkeCiphertextCarrier":true},
+    "proofClose": {"bytes":268,"simulatedCu":782,"landedCu":782,"slot":846,"rentRefundLamports":220130880,"signature":"2nkWwG6SPoUAvQiX6GYwcpq9CWU5xMtMh2DztufrhzLnkXnML9gHsGeBjywBbkYR8dLkwif4zXoCaPQCg9CDGuAz","wireSha256":"e20ffb6a6d26db54d5f79090973c714161d98ef05a5e52c5e41dd8e52a55f8be","byteIdenticalSimulationSubmission":true,"proofAccountDrained":true},
+    "identicalWireReplay": {"result":"AlreadyProcessed","stateUnchanged":true,"programNullifierMarkerReached":false}
   },
   "terminalAccountDataSha256": {
     "master": {"before":"1b4a965ab60afb514ec1c66738b7b35debe3e957dceaee63e7a72f57ac98bc88","after":"1b4a965ab60afb514ec1c66738b7b35debe3e957dceaee63e7a72f57ac98bc88"},
@@ -32,16 +37,32 @@
     "currentHistoryPage": {"address":"C4yCiv5WuKmDmDg7xku4mesPPRzxUx47NpNPAAACaosF","before":"34f3c44e72fea61cdf2e6d5897cf1e956f395eaf7ba1eadbcb8b1392091c51c8","after":"11a65918928e29330f3ee8f66cf720e9800249af6b7f0355ce22b3ce55ac3a33"},
     "nonSelectedLanesUnchanged": true
   },
-  "invariants": {"exactlyOneTerminalTransaction":"pass","messageBelow4096":"pass","combinedLandedCuBelow1300000":"pass","exactRegistryProfileReleaseProgramAuthentication":"pass","asq8ToAsf8AndAsr8Binding":"pass","onlySelectedLaneChanges":"pass","historicalCheckpointUnchanged":"pass","nullifierMarkerCreatedExactlyOnce":"pass-for-first-spend-only","transferVaultConservation":"pass","ciphertextCarrierCannotStallSettlement":"pass-for-valid-real-hpke-carrier","proofAccountCloseRefund":"not-run"},
-  "lifecycleMatrix": {"initializePool":"finalized-pass","deposit":"finalized-pass","checkpoint":"finalized-pass","genuineLiveNoteProofGeneration":"pass","transferSamePage":"finalized-pass","transferRollover":"not-run","withdrawalSamePage":"not-run","staleSelectedLaneRejection":"not-run","replayNullifierRejection":"not-run","wrongHistoricalCheckpointRejection":"not-run","wrongRegistryReleaseRejection":"not-run","malformedAsq8Rejection":"not-run","malformedCiphertextNonStalling":"not-run","failedWithdrawalCpiRollback":"not-run"},
+  "withdrawalTerminalAccountDataSha256": {
+    "master": {"address":"3Hrd4YKTTF2eaoWjdwzBwagmH9SeuenwiVyQajm72C8N","before":"1b4a965ab60afb514ec1c66738b7b35debe3e957dceaee63e7a72f57ac98bc88","after":"1b4a965ab60afb514ec1c66738b7b35debe3e957dceaee63e7a72f57ac98bc88"},
+    "selectedLane": {"address":"AsZpeSN85h6WWG3Kf9SjMZtgqM4kbBEhCRoXhX1T5jMe","before":"1da28f3457009ec5f1dd0770f5406f583444a7200c1d0a8df5ec55b67a7216ed","after":"69f11102e90b570d3ab96ef7b571288892ce8b6136158e77143e6d362590f5b8"},
+    "checkpoint": {"address":"9ZiDxh6meBcjSAEmkh4syiy85gMaF8hubkraFcej6cbQ","before":"a393dd586886a88d2aa0702303d3e2dfc7ca0277cc061e751b3c167d9ee5ca49","after":"a393dd586886a88d2aa0702303d3e2dfc7ca0277cc061e751b3c167d9ee5ca49"},
+    "historyPage": {"address":"C4yCiv5WuKmDmDg7xku4mesPPRzxUx47NpNPAAACaosF","before":"ffa52da341d9ad31b13c8103b35e4e36682cdc9bb390ab43cce70f2dc8337851","after":"ef18d3fde5af16f177d38c4cc2884f5a94892226a3962a014aff7c344f37de32"},
+    "marker": {"address":"C1WTiL68VQZi4rHJCF9pgbUrYPuNb6tYJgHihPg123wt","before":null,"after":"1bc0c9b42a281254a9850510819359d1f8aad40f3e77e68dc3512f94e2024fc9"},
+    "mint": {"address":"5TeWSsjg2gbxCyWVniXeCmwM7UtHTCK7svzJr5xYJzHf","before":"30435518976c2bcd5e537c1ac7eb8e4bf16e94a14c0a222576065a0a460e2593","after":"30435518976c2bcd5e537c1ac7eb8e4bf16e94a14c0a222576065a0a460e2593"},
+    "vault": {"address":"9D428z6FiWBzKX9i72tc26RGybMbGV9FLUa8EAAvf7kX","before":"157dbe7d3d37dc6eacf793405a81940a7d07765eb9704d1fc08723a5a73e6f85","after":"90f3ef0bbac1c858c7d8378283292d2fa3934c508e8ad9e2ad90782d0d952d67"},
+    "destination": {"address":"5jKh25biPsnrmLWXXuqKNH2Q67j69T4Q7Zew5c8wJKaV","before":"87ad52c16dc0b4ec740d6ef0280d77ef9a66b895bd3943ceb33fc98bc5c66d76","after":"0c5e1c17fb2a6ee719891fd61d86ee129d39a3ae4987265ce4c7cf0c583f7dc1"},
+    "proof": {"address":"8sDpK3rAEBmMAH2NP6Ua3uPhRCJV6Y5zYbjJvP1z5cFj","before":"082b152cdbb8541305f1da2cbbf36e4f521c9e4106132fc0985e36ca7f664bdd","after":"082b152cdbb8541305f1da2cbbf36e4f521c9e4106132fc0985e36ca7f664bdd"},
+    "nonSelectedLanesUnchanged": true
+  },
+  "invariants": {"exactlyOneTerminalTransaction":"pass-transfer-and-withdrawal","messageBelow4096":"pass-transfer-and-withdrawal","combinedLandedCuBelow1300000":"pass-transfer-and-withdrawal","exactRegistryProfileReleaseProgramAuthentication":"pass","asq8ToAsf8AndAsr8Binding":"pass-transfer-and-withdrawal","onlySelectedLaneChanges":"pass-transfer-and-withdrawal","historicalCheckpointUnchanged":"pass-transfer-and-withdrawal","nullifierMarkerCreatedExactlyOnce":"pass-for-each-first-spend; fresh-signature replay not-run","transferVaultConservation":"pass","withdrawalVaultDestinationConservation":"pass","withdrawalDestinationBinding":"pass","ciphertextCarrierCannotStallSettlement":"pass-for-valid-real-hpke-carrier-only","duplicateSignedWireRejected":"pass-at-rpc-already-processed-layer","proofAccountCloseRefund":"finalized-pass"},
+  "lifecycleMatrix": {"initializePool":"finalized-pass","deposit":"finalized-pass","checkpoint":"finalized-pass","genuineLiveNoteProofGeneration":"pass-transfer-and-withdrawal","transferSamePage":"finalized-pass","transferRollover":"not-run","withdrawalSamePage":"finalized-pass","withdrawalRollover":"not-run","twoDifferentLanes":"not-run","staleSelectedLaneRejection":"not-run","duplicateIdenticalWireRejection":"pass-already-processed-state-unchanged","replayNullifierRejection":"not-run-fresh-signature-required","wrongHistoricalCheckpointRejection":"offline-focused-pass-runtime-not-run","wrongRegistryReleaseRejection":"offline-focused-pass-runtime-not-run","malformedAsq8Rejection":"codec-focused-pass-runtime-not-run","malformedAsr8Rejection":"not-run","malformedCiphertextNonStalling":"not-run","missingCiphertextNonStalling":"not-run","failedWithdrawalCpiRollback":"not-run","proofAccountCloseRefund":"finalized-pass"},
   "focusedValidation": [
     {"command":"cargo check --manifest-path tools/v7-live-pool-proof/Cargo.toml --bins","result":"pass"},
     {"command":"cargo test --locked --manifest-path crates/aspis-core/Cargo.toml --features v7-fixed-canonical-audit canonical_fixed_delta_is_exactly_320_bytes --lib","result":"1 passed"},
     {"command":"bash -n scripts/v7_txv1_disposable_feature_cluster.sh scripts/v7_live_pool_initialize_child.sh scripts/v7_txv1_upload_honest_proof_child.sh","result":"pass"},
-    {"command":"shasum -a 256 -c local-feature-active-live-transfer/SHA256SUMS","result":"all pass"}
+    {"command":"shasum -a 256 -c local-feature-active-live-transfer/SHA256SUMS","result":"all pass"},
+    {"command":"cargo check --release --manifest-path tools/v7-live-pool-proof/Cargo.toml --bin materialize-live-proof-bundle --bin build-live-transfer-terminal --bin build-live-proof-close","result":"pass"},
+    {"command":"bash -n scripts/v7_live_pool_initialize_child.sh","result":"pass"},
+    {"command":"shasum -a 256 -c local-feature-active-live-withdrawal/SHA256SUMS","result":"all pass"},
+    {"command":"shasum -a 256 -c local-feature-active-live-replay-close/SHA256SUMS","result":"all pass"}
   ],
-  "resourceUsage": {"systemdMemoryHighBytes":8589934592,"systemdMemoryMaxBytes":12884901888,"memorySwapMaxBytes":0,"observedPeak":"1.3G","wallTime":"5min 3.129s","cpuTime":"1h 4min 36.305s"},
-  "blocker": {"kind":"remaining-terminal-harness-matrix","smallestExactMissingStep":"Generalize the live child and terminal builder from transfer-only to withdrawal custody accounts, then add proof-close and fail-closed negative-case runners; the offline withdrawal witness/statement adapter is already complete.","cryptographicIntegrationMissing":false,"productionProgramChangeRequired":false},
+  "resourceUsage": {"systemdMemoryHighBytes":8589934592,"systemdMemoryMaxBytes":12884901888,"memorySwapMaxBytes":0,"priorObservedPeak":"1.3G","withdrawalWallTime":"7min 32.219s","withdrawalCpuTime":"1h 58min 57.490s","replayCloseWallTime":"9min 14.276s","replayCloseCpuTime":"2h 19min 11.460s","systemdReportedSwapPeak":"0B"},
+  "blocker": {"kind":"remaining-terminal-harness-matrix","smallestExactMissingStep":"Rebuild and re-sign the already-proven ASQ8 with a fresh blockhash after settlement so replay reaches the Pool nullifier marker instead of RPC AlreadyProcessed; then add stale-lane, malformed-carrier, and failed-withdrawal-CPI runners.","cryptographicIntegrationMissing":false,"productionProgramChangeRequired":false},
   "publicDevnetEvidenceModified": false,
   "publicFinalizedDevnetLifecycleComplete": false,
   "mainnetReady": false

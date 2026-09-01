@@ -2,21 +2,29 @@
 
 ## Classification
 
-**B — LIVE TRANSFER COMPLETE; WITHDRAWAL BLOCKED**
+**A — LIVE TRANSFER AND WITHDRAWAL LIFECYCLE COMPLETE**
 
 The production-shaped transfer and withdrawal adapters pass focused offline
 tests. On a disposable Agave 4.2.0 cluster with TxV1 active at genesis, the
 live path then initialized a fresh eight-lane Pool, deposited a fresh note,
 finalized checkpoint 0, reconstructed its membership from those accounts,
-generated and sealed a genuine Tag-73 proof, simulated the exact signed TxV1
-wire, submitted the same bytes, and finalized the same-page transfer.
+generated and sealed genuine Tag-73 proofs, simulated the exact signed TxV1
+wires, submitted the same bytes, and finalized both same-page transfer and
+withdrawal. The withdrawal moved exactly 250 tokens from the authenticated
+vault to the statement-bound destination.
 
-The live withdrawal runner and remaining negative matrix are not complete, so
-this is not a complete lifecycle claim. Public devnet was not used or changed;
-all identities and funds were explicitly disposable and audit-only.
+This classification covers the positive live transfer and withdrawal
+lifecycle, not the entire requested adversarial matrix. Several negative and
+rollover cases remain unexecuted. Public devnet was not used or changed; all
+identities and funds were explicitly disposable and audit-only.
 
 Base: `97e50660d61bfc07fb22bb0a6cc8a268fe073352`  
-Tested implementation: `14389d767d375db88b97a1aae2ff323145fdbaf0`
+Tested transfer implementation: `14389d767d375db88b97a1aae2ff323145fdbaf0`
+
+Tested withdrawal implementation: `c2fd867229b115c1195119a9a81a64c41c99b3b4`
+
+Tested replay/close implementation: `271e29c3` (full revision is in its
+cluster evidence)
 Branch: `research/v7-live-pool-witness-adapter-20260901`
 
 ## Architecture and authenticated field sources
@@ -68,7 +76,9 @@ The frozen one-transaction verifier consumes the repository's existing
 canonical-fixed audit wire, so the adapter transcodes only the 641 packed
 fixed QM31 values after proving. This adds exactly 320 bytes; roots, work
 nonces, queries, private salts and Merkle frontiers remain byte-identical. The
-accepted live proof was 30,720 bytes and its ASJA payload was 31,408 bytes.
+accepted live transfer proof was 30,720 bytes and its ASJA payload was 31,408
+bytes. The accepted live withdrawal proof was 30,564 bytes and its payload was
+31,252 bytes.
 
 ## Fixture constants eliminated
 
@@ -101,8 +111,10 @@ slot, and an underfunded withdrawal vault. Existing canonical codecs and
 Registry selection tests cover malformed wire and Registry account inputs.
 
 Canonical adapter outputs are 320-byte ASQ8, 1,880-byte ASF8 and 792-byte
-expected ASR8. The genuine signed terminal TxV1 was 1,378 serialized bytes and
+expected ASR8. The genuine signed transfer TxV1 was 1,378 serialized bytes and
 used 1,199,794 CU in both exact-wire simulation and finalized execution. The
+genuine signed withdrawal TxV1 was 1,543 serialized bytes and used 1,230,370
+CU in both exact-wire simulation and finalized execution. The
 frozen 997-byte / 1,201,757-CU reference remains a separate prior measurement;
 it is not relabelled as this live run.
 
@@ -119,6 +131,7 @@ fresh ledger genesis hash was
 | Deposit | 651 | 1,112,379 | 1,112,379 | 183 |
 | Checkpoint | 581 | 703,262 | 703,262 | 215 |
 | Terminal transfer | 1,378 | 1,199,794 | 1,199,794 | 563 |
+| Terminal withdrawal | 1,543 | 1,230,370 | 1,230,370 | 672 |
 
 The terminal signature is
 `36xzE8aH8EwQ5vn8Y7H6gCnRqfNKJTWH6DxesKz2gH5swp66tLuq6xsSwUQgevgNGmYTZiuCKJAxMVPvZTrkZtgr`;
@@ -132,8 +145,21 @@ changed, the nullifier marker was absent then created, and master, checkpoint,
 vault, proof account and all seven non-selected lanes were unchanged. Exact
 per-account hashes and all RPC responses are in
 `results/v7-live-pool-witness-adapter-20260901/local-feature-active-live-transfer/`.
-The proof account remained sealed and was not closed; close/refund is still a
-missing matrix case.
+The first transfer proof account remained sealed. A second genuine live
+transfer run closed its sealed proof account with a byte-identical
+simulated/submitted 268-byte transaction: 782 simulated and landed CU,
+finalized slot 846, and a 220,130,880-lamport drain/refund. The proof account
+was absent after finalization.
+
+The finalized withdrawal signature is
+`2eUXrCsm7z6APJHAJmQBT1mZWWMB8f9zrRdXjQsiK9yiqxKBrKwgHZDJkxtDikBuM7AMk9WNgvxqvs33x1scZtXZ`;
+its signed-wire SHA-256 is
+`49fe32f50bacc3b12d59cc871b9bd355a04857dc0429e27617fd0dc5928410af`.
+Selected lane 5 and its history page changed, the marker was created, vault
+balance fell from 1,000 to 750, and the bound destination rose from 0 to 250.
+Master, checkpoint, mint, proof, and all seven non-selected lanes were
+unchanged. Exact RPC images and checksums are under
+`results/v7-live-pool-witness-adapter-20260901/local-feature-active-live-withdrawal/`.
 
 ## Replay and secret handling
 
@@ -161,22 +187,28 @@ Exact focused commands are also in
 ## Lifecycle matrix and blocker
 
 Finalized live cases are Pool initialize, deposit, checkpoint, genuine
-live-note proof generation/upload, and same-page private transfer. The
+live-note proof generation/upload, same-page private transfer, same-page
+withdrawal, and proof close/refund. The
 transfer proves the adapter no longer depends on the deterministic Pool root:
 the input note and append before-state came from independently created live
 accounts, while deposit and output routing were sampled until both selected
 the same live-created lane page.
 
-Transfer rollover, withdrawal, different-lane concurrency, stale/replay,
-wrong-checkpoint/release, malformed-ASQ8/result/ciphertext, failed withdrawal
-CPI rollback, and proof close/refund remain unexecuted and are explicitly
-`not-run` in machine-readable evidence.
+An immediate byte-identical replay was rejected as `AlreadyProcessed` and its
+finalized account-value hash stayed unchanged. This proves duplicate-wire
+rejection only; it is not relabelled as fresh-signature nullifier-marker
+rejection.
 
-The smallest remaining integration is host-side: generalize the live child
-and terminal builder from transfer-only to the already implemented withdrawal
-plan and its five custody accounts, then add reusable mutation/replay and
-proof-close runners. No cryptographic integration or production program
-change is currently indicated.
+Transfer/withdrawal rollover, different-lane concurrency, stale selected-lane
+rejection, fresh-signature nullifier replay, wrong-checkpoint/release runtime
+cases, malformed-ASQ8/result/ciphertext runtime cases, and failed withdrawal
+CPI rollback remain unexecuted and are explicitly `not-run` in evidence.
+
+The smallest remaining integration is host-side: rebuild the already-proven
+ASQ8 with a fresh blockhash/signature after settlement to reach the Pool's
+nullifier marker rather than RPC duplicate suppression, then add reusable
+mutation and failed-CPI runners. No cryptographic integration or production
+program change is currently indicated.
 
 The result is safe to cherry-pick as host-only, default-off research plumbing.
 It establishes one genuine finalized local transfer, not public-devnet

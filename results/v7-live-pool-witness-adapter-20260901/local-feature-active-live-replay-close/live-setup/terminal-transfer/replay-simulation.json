@@ -1,0 +1,57 @@
+{
+  "jsonrpc": "2.0",
+  "result": {
+    "context": {
+      "apiVersion": "4.2.0",
+      "slot": 814
+    },
+    "value": {
+      "accounts": null,
+      "err": "AlreadyProcessed",
+      "fee": null,
+      "innerInstructions": null,
+      "loadedAccountsDataSize": 0,
+      "loadedAddresses": {
+        "readonly": [],
+        "writable": []
+      },
+      "logs": [],
+      "postBalances": [
+        499999999661253640,
+        2338560,
+        6236160,
+        58352640,
+        1,
+        1141440,
+        3563520,
+        1141440,
+        1141440,
+        2227200,
+        1000000000,
+        220130880,
+        1000000000
+      ],
+      "postTokenBalances": [],
+      "preBalances": [
+        499999999661253640,
+        2338560,
+        6236160,
+        58352640,
+        1,
+        1141440,
+        3563520,
+        1141440,
+        1141440,
+        2227200,
+        1000000000,
+        220130880,
+        1000000000
+      ],
+      "preTokenBalances": [],
+      "replacementBlockhash": null,
+      "returnData": null,
+      "unitsConsumed": 0
+    }
+  },
+  "id": 1600
+}
