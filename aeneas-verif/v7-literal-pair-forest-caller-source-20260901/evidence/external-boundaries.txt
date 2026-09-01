@@ -17,9 +17,24 @@ graph now supplies executable definitions for 12 of them:
 - core.option.Option.ok_or
 - core.slice.Slice.first
 - core.slice.Slice.last
+- core.ops.range.Range.Insts.CoreCloneClone.clone
+- core.option.Option.is_some_and
+- core.option.Option.Insts.CoreCmpPartialEqOption.eq
+- core.option.Option.Insts.CoreOpsTry_traitTry.branch
+- core.option.Option.Insts.CoreOpsTry_traitFromResidualOptionInfallible.from_residual
+- core.result.Result.is_ok_and
+- core.result.Result.ok
+- core.result.Result.map
+- core.result.Result.map_err
+- Box.Insts.CoreConvertAsRef.as_ref
+- alloc.vec.Vec.into_boxed_slice
+- alloc.vec.Vec.truncate
+- alloc.vec.Vec.remove
+- alloc.vec.Vec.clear
+- alloc.vec.Vec.is_empty
 
 The archival generated template still lists these declarations, but it is not
-imported by the focused accepted graph. 57 ordinary templates remain to fill or
+imported by the focused accepted graph. 42 ordinary templates remain to fill or
 classify.
 
 14 protocol/platform declaration groups remain:

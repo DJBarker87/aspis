@@ -1,0 +1,45 @@
+V7 literal caller deterministic core-primitives evidence
+Date: 2026-09-01
+
+Focused external target: V7LiteralCallerCorePrimitivesExternal.lean
+Unit: aspis-v7-core-primitives-external-r3.service
+Invocation: a03a3f586da34d96a79e9c50051fa683
+Exit: 0
+Wall: 1.54 s
+Peak RSS: 2,555,624 KiB
+MemoryHigh: 3 GiB
+MemoryMax: 4 GiB
+MemorySwapMax: 0
+Observed swaps: 0
+
+Focused bridge target: V7LiteralCallerCorePrimitivesBridge.lean
+Unit: aspis-v7-core-primitives-bridge-r3.service
+Invocation: 647bbf76a6e64d91b025c22e9f35e28f
+Exit: 0
+Wall: 1.51 s
+Peak RSS: 2,565,148 KiB
+MemoryHigh: 3 GiB
+MemoryMax: 4 GiB
+MemorySwapMax: 0
+Observed swaps: 0
+
+Dependent focused replay: replay-lean.sh
+Unit: aspis-v7-core-primitives-final-replay-r3.service
+Invocation: f7835d08886e4d53bf77c6af164d3e94
+Exit: 0
+Wall: 19.71 s
+Peak RSS: 2,747,876 KiB
+MemoryHigh: 3 GiB
+MemoryMax: 4 GiB
+MemorySwapMax: 0
+Observed swaps: 0
+
+Accepted executable ordinary external definitions: 27
+Remaining ordinary external templates: 42
+#print axioms union: propext, Classical.choice, Quot.sound
+Forbidden constructs: none
+
+The generated FunsExternal_Template.lean remains an archival inventory. The
+focused accepted graph imports the executable definitions instead of the 27
+corresponding declarations. This result does not model an arbitrary outstanding
+Solana RefCell borrow; that remains the explicit platform/entry-state boundary.

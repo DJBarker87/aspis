@@ -92,4 +92,116 @@ def core.slice.Slice.last {T : Type}
     (value : Slice T) : Result (Option T) :=
   ok value.val.getLast?
 
+@[rust_fun
+  "core::ops::range::{core::clone::Clone<core::ops::range::Range<@Idx>>}::clone"]
+def core.ops.range.Range.Insts.CoreCloneClone.clone
+    {Idx : Type} (cloneInst : core.clone.Clone Idx)
+    (range : core.ops.range.Range Idx) :
+    Result (core.ops.range.Range Idx) := do
+  let start ← cloneInst.clone range.start
+  let «end» ← cloneInst.clone range.«end»
+  ok { start, «end» }
+
+@[rust_fun "core::option::{core::option::Option<@T>}::is_some_and"]
+def core.option.Option.is_some_and
+    {T T1 : Type} (fnOnce : core.ops.function.FnOnce T1 T Bool) :
+    Option T → T1 → Result Bool
+  | none, _ => ok false
+  | some value, closure => fnOnce.call_once closure value
+
+@[rust_fun
+  "core::option::{core::cmp::PartialEq<core::option::Option<@T>, core::option::Option<@T>>}::eq"]
+def core.option.Option.Insts.CoreCmpPartialEqOption.eq
+    {T : Type} (partialEq : core.cmp.PartialEq T T) :
+    Option T → Option T → Result Bool
+  | none, none => ok true
+  | some left, some right => partialEq.eq left right
+  | _, _ => ok false
+
+@[rust_fun
+  "core::option::{core::ops::try_trait::Try<core::option::Option<@T>>}::branch"]
+def core.option.Option.Insts.CoreOpsTry_traitTry.branch {T : Type} :
+    Option T → Result
+      (core.ops.control_flow.ControlFlow (Option core.convert.Infallible) T)
+  | some value => ok (.Continue value)
+  | none => ok (.Break none)
+
+@[rust_fun
+  "core::option::{core::ops::try_trait::FromResidual<core::option::Option<@T>, core::option::Option<core::convert::Infallible>>}::from_residual"]
+def core.option.Option.Insts.CoreOpsTry_traitFromResidualOptionInfallible.from_residual
+    (T : Type) : Option core.convert.Infallible → Result (Option T)
+  | none => ok none
+  | some impossible => nomatch impossible
+
+@[rust_fun "core::result::{core::result::Result<@T, @E>}::is_ok_and"]
+def core.result.Result.is_ok_and
+    {T E F : Type} (fnOnce : core.ops.function.FnOnce F T Bool) :
+    core.result.Result T E → F → Result Bool
+  | .Ok value, closure => fnOnce.call_once closure value
+  | .Err _, _ => ok false
+
+@[rust_fun "core::result::{core::result::Result<@T, @E>}::ok"]
+def core.result.Result.ok {T E : Type} :
+    core.result.Result T E → Result (Option T)
+  | .Ok value => .ok (some value)
+  | .Err _ => .ok none
+
+@[rust_fun "core::result::{core::result::Result<@T, @E>}::map"]
+def core.result.Result.map
+    {T E U F : Type} (fnOnce : core.ops.function.FnOnce F T U) :
+    core.result.Result T E → F → Result (core.result.Result U E)
+  | .Ok value, closure => do
+      let mapped ← fnOnce.call_once closure value
+      .ok (.Ok mapped)
+  | .Err error, _ => .ok (.Err error)
+
+@[rust_fun "core::result::{core::result::Result<@T, @E>}::map_err"]
+def core.result.Result.map_err
+    {T E F O : Type} (fnOnce : core.ops.function.FnOnce O E F) :
+    core.result.Result T E → O → Result (core.result.Result T F)
+  | .Ok value, _ => .ok (.Ok value)
+  | .Err error, closure => do
+      let mapped ← fnOnce.call_once closure error
+      .ok (.Err mapped)
+
+@[rust_fun "alloc::boxed::{core::convert::AsRef<Box<@T>, @T>}::as_ref"]
+def Box.Insts.CoreConvertAsRef.as_ref
+    {T : Type} (_allocator : Type) (value : T) : Result T :=
+  .ok value
+
+@[rust_fun "alloc::vec::{alloc::vec::Vec<@T>}::into_boxed_slice"]
+def alloc.vec.Vec.into_boxed_slice
+    {T : Type} (_allocator : Type) (value : alloc.vec.Vec T) :
+    Result (Slice T) :=
+  .ok ⟨value.val, value.property⟩
+
+@[rust_fun "alloc::vec::{alloc::vec::Vec<@T>}::truncate"]
+def alloc.vec.Vec.truncate
+    {T : Type} (_allocator : Type) (value : alloc.vec.Vec T)
+    (length : Std.Usize) : Result (alloc.vec.Vec T) :=
+  .ok ⟨value.val.take length.val,
+    Nat.le_trans (List.length_take_le' ..) value.property⟩
+
+@[rust_fun "alloc::vec::{alloc::vec::Vec<@T>}::remove"]
+def alloc.vec.Vec.remove
+    {T : Type} (_allocator : Type) (value : alloc.vec.Vec T)
+    (index : Std.Usize) : Result (T × alloc.vec.Vec T) :=
+  if h : index.val < value.val.length then
+    .ok (value.val[index.val],
+      ⟨value.val.eraseIdx index.val,
+        Nat.le_trans (List.length_eraseIdx_le ..) value.property⟩)
+  else
+    .fail .arrayOutOfBounds
+
+@[rust_fun "alloc::vec::{alloc::vec::Vec<@T>}::clear"]
+def alloc.vec.Vec.clear
+    {T : Type} (_allocator : Type) (_value : alloc.vec.Vec T) :
+    Result (alloc.vec.Vec T) :=
+  .ok (alloc.vec.Vec.new T)
+
+@[rust_fun "alloc::vec::{alloc::vec::Vec<@T>}::is_empty"]
+def alloc.vec.Vec.is_empty
+    {T : Type} (_allocator : Type) (value : alloc.vec.Vec T) : Result Bool :=
+  .ok value.val.isEmpty
+
 end V7LiteralCallerCurrent309bMetadataAccountOpaqueAcceptedToolR1

@@ -159,6 +159,38 @@ grep -Fq 'def core.slice.Slice.last' \
   "$script_dir/proof/V7LiteralCallerCorePrimitivesExternal.lean"
 grep -Fq 'theorem u32_checked_shl_out_of_range' \
   "$script_dir/proof/V7LiteralCallerCorePrimitivesBridge.lean"
+grep -Fq 'def core.ops.range.Range.Insts.CoreCloneClone.clone' \
+  "$script_dir/proof/V7LiteralCallerCorePrimitivesExternal.lean"
+grep -Fq 'def core.option.Option.is_some_and' \
+  "$script_dir/proof/V7LiteralCallerCorePrimitivesExternal.lean"
+grep -Fq 'def core.option.Option.Insts.CoreCmpPartialEqOption.eq' \
+  "$script_dir/proof/V7LiteralCallerCorePrimitivesExternal.lean"
+grep -Fq 'def core.option.Option.Insts.CoreOpsTry_traitTry.branch' \
+  "$script_dir/proof/V7LiteralCallerCorePrimitivesExternal.lean"
+grep -Fq 'def core.option.Option.Insts.CoreOpsTry_traitFromResidualOptionInfallible.from_residual' \
+  "$script_dir/proof/V7LiteralCallerCorePrimitivesExternal.lean"
+grep -Fq 'def core.result.Result.is_ok_and' \
+  "$script_dir/proof/V7LiteralCallerCorePrimitivesExternal.lean"
+grep -Fq 'def core.result.Result.ok' \
+  "$script_dir/proof/V7LiteralCallerCorePrimitivesExternal.lean"
+grep -Fq 'def core.result.Result.map' \
+  "$script_dir/proof/V7LiteralCallerCorePrimitivesExternal.lean"
+grep -Fq 'def core.result.Result.map_err' \
+  "$script_dir/proof/V7LiteralCallerCorePrimitivesExternal.lean"
+grep -Fq 'def Box.Insts.CoreConvertAsRef.as_ref' \
+  "$script_dir/proof/V7LiteralCallerCorePrimitivesExternal.lean"
+grep -Fq 'def alloc.vec.Vec.into_boxed_slice' \
+  "$script_dir/proof/V7LiteralCallerCorePrimitivesExternal.lean"
+grep -Fq 'def alloc.vec.Vec.truncate' \
+  "$script_dir/proof/V7LiteralCallerCorePrimitivesExternal.lean"
+grep -Fq 'def alloc.vec.Vec.remove' \
+  "$script_dir/proof/V7LiteralCallerCorePrimitivesExternal.lean"
+grep -Fq 'def alloc.vec.Vec.clear' \
+  "$script_dir/proof/V7LiteralCallerCorePrimitivesExternal.lean"
+grep -Fq 'def alloc.vec.Vec.is_empty' \
+  "$script_dir/proof/V7LiteralCallerCorePrimitivesExternal.lean"
+grep -Fq 'theorem vec_remove_out_of_bounds' \
+  "$script_dir/proof/V7LiteralCallerCorePrimitivesBridge.lean"
 
 ! grep -REn '(^|[[:space:]])(sorry|admit|native_decide)([[:space:]]|$)' \
   "$script_dir/proof" --include='*.lean'

@@ -194,3 +194,32 @@ the accepted focused graph does not import those twelve axioms. Literal
 arbitrary-state RefCell borrow behavior remains the smallest platform boundary,
 and 57 ordinary Rust templates plus the remaining named platform groups still
 separate this milestone from a literal whole-caller theorem.
+
+Extended deterministic core-primitives focused chain: PASS
+External unit: aspis-v7-core-primitives-external-r3.service
+External invocation: a03a3f586da34d96a79e9c50051fa683
+External wall: 1.54 s
+External peak RSS: 2,555,624 KiB
+External swap: 0
+Bridge unit: aspis-v7-core-primitives-bridge-r3.service
+Bridge invocation: 647bbf76a6e64d91b025c22e9f35e28f
+Bridge wall: 1.51 s
+Bridge peak RSS: 2,565,148 KiB
+Bridge swap: 0
+
+Complete focused Lean replay including all 27 core definitions: PASS
+Unit: aspis-v7-core-primitives-final-replay-r3.service
+Invocation: f7835d08886e4d53bf77c6af164d3e94
+Wall: 19.71 s
+Peak RSS: 2,747,876 KiB
+Swap: 0
+Executable ordinary external definitions: 27
+Remaining ordinary external templates: 42
+Axioms: propext, Classical.choice, Quot.sound
+Forbidden constructs: none
+
+Updated classification: range clone, option try/equality, result mapping, boxed
+identity and five owned-vector operations join the first twelve deterministic
+core definitions. The literal RefCell dynamic check remains the smallest
+platform boundary. Forty-two ordinary templates and the named platform groups
+still separate this focused source graph from a literal whole-caller theorem.
