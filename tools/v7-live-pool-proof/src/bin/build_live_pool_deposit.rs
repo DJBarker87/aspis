@@ -15,6 +15,7 @@ use serde::Deserialize;
 use serde_json::{json, Value};
 use sha2::{Digest as _, Sha256};
 use solana_keypair::read_keypair_file;
+use solana_compute_budget_interface::ComputeBudgetInstruction;
 use solana_message::{legacy, VersionedMessage};
 use solana_program::{hash::Hash, pubkey::Pubkey};
 use solana_signer::Signer;
@@ -119,7 +120,8 @@ fn main() -> Result<()> {
     ).map_err(|error| anyhow::anyhow!("build deposit instruction: {error:?}"))?;
     let blockhash = Hash::from_str(&input.recent_blockhash)?;
     let message = VersionedMessage::Legacy(legacy::Message::new_with_blockhash(
-        &[instruction], Some(&payer.pubkey()), &blockhash,
+        &[ComputeBudgetInstruction::set_compute_unit_limit(1_400_000), instruction],
+        Some(&payer.pubkey()), &blockhash,
     ));
     let transaction = VersionedTransaction::try_new(message, &[&payer, &source_authority])
         .map_err(|error| anyhow::anyhow!("sign deposit: {error}"))?;

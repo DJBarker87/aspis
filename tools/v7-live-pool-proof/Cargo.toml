@@ -20,6 +20,7 @@ serde = { version = "1.0.229", features = ["derive"] }
 serde_json = "1.0.145"
 sha2 = "0.10.9"
 solana-keypair = "=2.2.3"
+solana-compute-budget-interface = "=2.2.2"
 solana-message = { version = "=2.4.0", features = ["bincode"] }
 solana-program = "=2.3.0"
 solana-signer = "=2.2.1"
