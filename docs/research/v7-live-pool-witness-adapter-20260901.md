@@ -2,7 +2,7 @@
 
 ## Classification
 
-**A — LIVE TRANSFER AND WITHDRAWAL LIFECYCLE COMPLETE**
+**E — SECURITY OR PROTOCOL DEFECT FOUND**
 
 The production-shaped transfer and withdrawal adapters pass focused offline
 tests. On a disposable Agave 4.2.0 cluster with TxV1 active at genesis, the
@@ -13,10 +13,11 @@ wires, submitted the same bytes, and finalized both same-page transfer and
 withdrawal. The withdrawal moved exactly 250 tokens from the authenticated
 vault to the statement-bound destination.
 
-This classification covers the positive live transfer and withdrawal
-lifecycle, not the entire requested adversarial matrix. Several negative and
-rollover cases remain unexecuted. Public devnet was not used or changed; all
-identities and funds were explicitly disposable and audit-only.
+The positive live transfer and withdrawal lifecycle remains complete, but the
+later stale-lane work found a Pool runtime-liveness defect: a same-page deposit
+at authenticated lane index 1 exhausts Solana's transaction CU ceiling. The
+entire requested adversarial matrix is not complete. Public devnet was not used
+or changed; all identities and funds were explicitly disposable and audit-only.
 
 Base: `97e50660d61bfc07fb22bb0a6cc8a268fe073352`  
 Tested transfer implementation: `14389d767d375db88b97a1aae2ff323145fdbaf0`
@@ -27,6 +28,8 @@ Tested replay/close implementation: `271e29c3` (full revision is in its
 cluster evidence)
 
 Tested fresh-signature replay implementation: `fafd9cca905d7125b838a1201152e02af13da2aa`
+
+Tested stale-lane blocker implementation: `348ada86a0dabf4013d3b3ca0ca840ce3c479d42`
 
 Tested malformed-carrier implementation: `6380691e7780ec92ea7f6a852ba51dc3a39fa686`
 
@@ -260,15 +263,44 @@ finalized CPI failure and atomic rollback, not a pre-verifier rejection. Full
 evidence is under
 `results/v7-live-pool-witness-adapter-20260901/local-feature-active-live-failed-withdrawal-cpi-rollback/`.
 
-Transfer/withdrawal rollover, different-lane concurrency, stale selected-lane
-rejection, wrong-checkpoint/release runtime cases, malformed-ASQ8/result
+The stale selected-lane runner created a second independently randomized note
+whose authenticated deposit and output routing both selected live lane 4. The
+fresh Pool's first deposit finalized at slot 183 in 1,112,399 CU, the retained
+checkpoint finalized, a genuine 30,824-byte Tag-73 proof was generated and
+uploaded, and the resulting 1,378-byte terminal wire was signed before any
+lane mutation. Its wire SHA-256 was
+`acb3d5e047d3b6f773075342fd6bf9a24a2ed368d353a275c079047bc7525d3c`.
+
+The normal same-page staling deposit could not complete. Its genuine 617-byte
+signed wire simulated against authenticated lane index 1, where the Pool
+consumed all 1,399,850 CU available to the program and the transaction stopped
+at the 1,400,000-CU ceiling with `ProgramFailedToComplete`. It was not
+submitted, and the prebuilt terminal was consequently neither simulated nor
+submitted: the prerequisite live-lane mutation had not landed. This is
+simulation-only blocker evidence, not a finalized stale-lane rejection. The
+runner remains fail-closed and full evidence is under
+`results/v7-live-pool-witness-adapter-20260901/local-feature-active-live-stale-selected-lane-blocked/`.
+
+This establishes a runtime-liveness defect in the frozen audit artifact: a
+same-page deposit at authenticated lane index 1 cannot fit Solana's transaction
+CU ceiling. Fixing or optimizing production Pool/SBF code is outside this
+branch's scope, so no runtime source was changed and no SBF build was rerun.
+The final classification is therefore `E — SECURITY OR PROTOCOL DEFECT FOUND`.
+The prior genuine live transfer and withdrawal guarantees remain established;
+this does not imply public-devnet or mainnet readiness.
+
+Transfer/withdrawal rollover, different-lane concurrency, finalized stale
+selected-lane rejection, wrong-checkpoint/release runtime cases, malformed-ASQ8/result
 runtime cases, and missing-ciphertext runtime behavior remain unexecuted and
 are explicitly `not-run` in evidence.
 
-The smallest remaining integration is host-side: add stale-lane and
-authenticated checkpoint/Registry identity rejection runners. Rollover and
-simultaneously valid different-lane cases also remain. No cryptographic
-integration or production program change is currently indicated.
+The smallest exact blocker for the implemented stale-lane route is the Pool
+same-page deposit's CU exhaustion. An alternative honest route would require a
+second live note in another lane, a second checkpoint and genuine proof, and a
+terminal mutation routed into the first proof's selected lane. That integration
+remains host-side but is not equivalent to making the failing deposit green.
+Authenticated checkpoint/Registry identity rejection runners, rollover, and
+simultaneously valid different-lane cases also remain.
 
 The result is safe to cherry-pick as host-only, default-off research plumbing.
 It establishes genuine finalized local transfer and withdrawal, finalized

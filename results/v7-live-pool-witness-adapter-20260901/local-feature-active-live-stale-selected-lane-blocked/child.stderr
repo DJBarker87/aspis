@@ -1,0 +1,945 @@
+warning: unexpected `cfg` condition value: `solana`
+   --> /home/dombarker/project-offloads/aspis-v7-live-adapter.oTxZ60/repo/crates/aspis-core/src/circle_prefix.rs:585:11
+    |
+585 | #[cfg(not(target_os = "solana"))]
+    |           ^^^^^^^^^^^^^^^^^^^^
+    |
+    = note: expected values for `target_os` are: `aix`, `amdhsa`, `android`, `cuda`, `cygwin`, `dragonfly`, `emscripten`, `espidf`, `freebsd`, `fuchsia`, `haiku`, `helenos`, `hermit`, `horizon`, `hurd`, `illumos`, `ios`, `l4re`, `linux`, `lynxos178`, `macos`, `managarm`, `motor`, `netbsd`, `none`, `nto`, `nuttx`, `openbsd`, `psp`, `psx`, `qurt`, `redox`, `rtems`, `solaris`, and `solid_asp3` and 14 more
+    = note: see <https://doc.rust-lang.org/nightly/rustc/check-cfg/cargo-specifics.html> for more information about checking conditional configuration
+    = note: `#[warn(unexpected_cfgs)]` on by default
+
+warning: unexpected `cfg` condition value: `solana`
+   --> /home/dombarker/project-offloads/aspis-v7-live-adapter.oTxZ60/repo/crates/aspis-core/src/circle_prefix.rs:594:11
+    |
+594 | #[cfg(not(target_os = "solana"))]
+    |           ^^^^^^^^^^^^^^^^^^^^
+    |
+    = note: expected values for `target_os` are: `aix`, `amdhsa`, `android`, `cuda`, `cygwin`, `dragonfly`, `emscripten`, `espidf`, `freebsd`, `fuchsia`, `haiku`, `helenos`, `hermit`, `horizon`, `hurd`, `illumos`, `ios`, `l4re`, `linux`, `lynxos178`, `macos`, `managarm`, `motor`, `netbsd`, `none`, `nto`, `nuttx`, `openbsd`, `psp`, `psx`, `qurt`, `redox`, `rtems`, `solaris`, and `solid_asp3` and 14 more
+    = note: see <https://doc.rust-lang.org/nightly/rustc/check-cfg/cargo-specifics.html> for more information about checking conditional configuration
+
+warning: unexpected `cfg` condition value: `solana`
+   --> /home/dombarker/project-offloads/aspis-v7-live-adapter.oTxZ60/repo/crates/aspis-core/src/circle_prefix.rs:638:11
+    |
+638 | #[cfg(not(target_os = "solana"))]
+    |           ^^^^^^^^^^^^^^^^^^^^
+    |
+    = note: expected values for `target_os` are: `aix`, `amdhsa`, `android`, `cuda`, `cygwin`, `dragonfly`, `emscripten`, `espidf`, `freebsd`, `fuchsia`, `haiku`, `helenos`, `hermit`, `horizon`, `hurd`, `illumos`, `ios`, `l4re`, `linux`, `lynxos178`, `macos`, `managarm`, `motor`, `netbsd`, `none`, `nto`, `nuttx`, `openbsd`, `psp`, `psx`, `qurt`, `redox`, `rtems`, `solaris`, and `solid_asp3` and 14 more
+    = note: see <https://doc.rust-lang.org/nightly/rustc/check-cfg/cargo-specifics.html> for more information about checking conditional configuration
+
+warning: function `verify_circle_layer0_opening_from_proof_deferred_canonical_for_depth_and_c2_leaf_bytes` is never used
+   --> /home/dombarker/project-offloads/aspis-v7-live-adapter.oTxZ60/repo/crates/aspis-core/src/circle_merkle.rs:419:15
+    |
+419 | pub(crate) fn verify_circle_layer0_opening_from_proof_deferred_canonical_for_depth_and_c2_leaf_bytes<
+    |               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+    = note: `#[warn(dead_code)]` (part of `#[warn(unused)]`) on by default
+
+warning: function `verify_circle_openings_deferred_canonical` is never used
+   --> /home/dombarker/project-offloads/aspis-v7-live-adapter.oTxZ60/repo/crates/aspis-core/src/circle_openings.rs:993:15
+    |
+993 | pub(crate) fn verify_circle_openings_deferred_canonical<'a>(
+    |               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: function `verify_radix4_minimal_subtree_prevalidated_in_place` is never used
+   --> /home/dombarker/project-offloads/aspis-v7-live-adapter.oTxZ60/repo/crates/aspis-core/src/merkle.rs:329:15
+    |
+329 | pub(crate) fn verify_radix4_minimal_subtree_prevalidated_in_place(
+    |               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: unexpected `cfg` condition value: `solana`
+  --> /home/dombarker/project-offloads/aspis-v7-live-adapter.oTxZ60/repo/crates/aspis-statement/src/lib.rs:14:11
+   |
+14 | #[cfg(not(target_os = "solana"))]
+   |           ^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: expected values for `target_os` are: `aix`, `amdhsa`, `android`, `cuda`, `cygwin`, `dragonfly`, `emscripten`, `espidf`, `freebsd`, `fuchsia`, `haiku`, `helenos`, `hermit`, `horizon`, `hurd`, `illumos`, `ios`, `l4re`, `linux`, `lynxos178`, `macos`, `managarm`, `motor`, `netbsd`, `none`, `nto`, `nuttx`, `openbsd`, `psp`, `psx`, `qurt`, `redox`, `rtems`, `solaris`, and `solid_asp3` and 14 more
+   = note: see <https://doc.rust-lang.org/nightly/rustc/check-cfg/cargo-specifics.html> for more information about checking conditional configuration
+   = note: `#[warn(unexpected_cfgs)]` on by default
+
+warning: unexpected `cfg` condition value: `solana`
+  --> /home/dombarker/project-offloads/aspis-v7-live-adapter.oTxZ60/repo/crates/aspis-statement/src/lib.rs:17:11
+   |
+17 | #[cfg(not(target_os = "solana"))]
+   |           ^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: expected values for `target_os` are: `aix`, `amdhsa`, `android`, `cuda`, `cygwin`, `dragonfly`, `emscripten`, `espidf`, `freebsd`, `fuchsia`, `haiku`, `helenos`, `hermit`, `horizon`, `hurd`, `illumos`, `ios`, `l4re`, `linux`, `lynxos178`, `macos`, `managarm`, `motor`, `netbsd`, `none`, `nto`, `nuttx`, `openbsd`, `psp`, `psx`, `qurt`, `redox`, `rtems`, `solaris`, and `solid_asp3` and 14 more
+   = note: see <https://doc.rust-lang.org/nightly/rustc/check-cfg/cargo-specifics.html> for more information about checking conditional configuration
+
+warning: unexpected `cfg` condition value: `solana`
+  --> /home/dombarker/project-offloads/aspis-v7-live-adapter.oTxZ60/repo/crates/aspis-statement/src/lib.rs:24:15
+   |
+24 | #[cfg(any(not(target_os = "solana"), feature = "pool-v1-kernel"))]
+   |               ^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: expected values for `target_os` are: `aix`, `amdhsa`, `android`, `cuda`, `cygwin`, `dragonfly`, `emscripten`, `espidf`, `freebsd`, `fuchsia`, `haiku`, `helenos`, `hermit`, `horizon`, `hurd`, `illumos`, `ios`, `l4re`, `linux`, `lynxos178`, `macos`, `managarm`, `motor`, `netbsd`, `none`, `nto`, `nuttx`, `openbsd`, `psp`, `psx`, `qurt`, `redox`, `rtems`, `solaris`, and `solid_asp3` and 14 more
+   = note: see <https://doc.rust-lang.org/nightly/rustc/check-cfg/cargo-specifics.html> for more information about checking conditional configuration
+
+warning: unexpected `cfg` condition value: `solana`
+  --> /home/dombarker/project-offloads/aspis-v7-live-adapter.oTxZ60/repo/crates/aspis-statement/src/lib.rs:28:11
+   |
+28 | #[cfg(not(target_os = "solana"))]
+   |           ^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: expected values for `target_os` are: `aix`, `amdhsa`, `android`, `cuda`, `cygwin`, `dragonfly`, `emscripten`, `espidf`, `freebsd`, `fuchsia`, `haiku`, `helenos`, `hermit`, `horizon`, `hurd`, `illumos`, `ios`, `l4re`, `linux`, `lynxos178`, `macos`, `managarm`, `motor`, `netbsd`, `none`, `nto`, `nuttx`, `openbsd`, `psp`, `psx`, `qurt`, `redox`, `rtems`, `solaris`, and `solid_asp3` and 14 more
+   = note: see <https://doc.rust-lang.org/nightly/rustc/check-cfg/cargo-specifics.html> for more information about checking conditional configuration
+
+warning: unexpected `cfg` condition value: `solana`
+  --> /home/dombarker/project-offloads/aspis-v7-live-adapter.oTxZ60/repo/crates/aspis-statement/src/lib.rs:31:11
+   |
+31 | #[cfg(not(target_os = "solana"))]
+   |           ^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: expected values for `target_os` are: `aix`, `amdhsa`, `android`, `cuda`, `cygwin`, `dragonfly`, `emscripten`, `espidf`, `freebsd`, `fuchsia`, `haiku`, `helenos`, `hermit`, `horizon`, `hurd`, `illumos`, `ios`, `l4re`, `linux`, `lynxos178`, `macos`, `managarm`, `motor`, `netbsd`, `none`, `nto`, `nuttx`, `openbsd`, `psp`, `psx`, `qurt`, `redox`, `rtems`, `solaris`, and `solid_asp3` and 14 more
+   = note: see <https://doc.rust-lang.org/nightly/rustc/check-cfg/cargo-specifics.html> for more information about checking conditional configuration
+
+warning: unexpected `cfg` condition value: `solana`
+  --> /home/dombarker/project-offloads/aspis-v7-live-adapter.oTxZ60/repo/crates/aspis-statement/src/lib.rs:35:11
+   |
+35 | #[cfg(not(target_os = "solana"))]
+   |           ^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: expected values for `target_os` are: `aix`, `amdhsa`, `android`, `cuda`, `cygwin`, `dragonfly`, `emscripten`, `espidf`, `freebsd`, `fuchsia`, `haiku`, `helenos`, `hermit`, `horizon`, `hurd`, `illumos`, `ios`, `l4re`, `linux`, `lynxos178`, `macos`, `managarm`, `motor`, `netbsd`, `none`, `nto`, `nuttx`, `openbsd`, `psp`, `psx`, `qurt`, `redox`, `rtems`, `solaris`, and `solid_asp3` and 14 more
+   = note: see <https://doc.rust-lang.org/nightly/rustc/check-cfg/cargo-specifics.html> for more information about checking conditional configuration
+
+warning: unexpected `cfg` condition value: `solana`
+  --> /home/dombarker/project-offloads/aspis-v7-live-adapter.oTxZ60/repo/crates/aspis-statement/src/lib.rs:67:11
+   |
+67 | #[cfg(not(target_os = "solana"))]
+   |           ^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: expected values for `target_os` are: `aix`, `amdhsa`, `android`, `cuda`, `cygwin`, `dragonfly`, `emscripten`, `espidf`, `freebsd`, `fuchsia`, `haiku`, `helenos`, `hermit`, `horizon`, `hurd`, `illumos`, `ios`, `l4re`, `linux`, `lynxos178`, `macos`, `managarm`, `motor`, `netbsd`, `none`, `nto`, `nuttx`, `openbsd`, `psp`, `psx`, `qurt`, `redox`, `rtems`, `solaris`, and `solid_asp3` and 14 more
+   = note: see <https://doc.rust-lang.org/nightly/rustc/check-cfg/cargo-specifics.html> for more information about checking conditional configuration
+
+warning: unexpected `cfg` condition value: `solana`
+   --> /home/dombarker/project-offloads/aspis-v7-live-adapter.oTxZ60/repo/crates/aspis-statement/src/lib.rs:117:11
+    |
+117 | #[cfg(not(target_os = "solana"))]
+    |           ^^^^^^^^^^^^^^^^^^^^
+    |
+    = note: expected values for `target_os` are: `aix`, `amdhsa`, `android`, `cuda`, `cygwin`, `dragonfly`, `emscripten`, `espidf`, `freebsd`, `fuchsia`, `haiku`, `helenos`, `hermit`, `horizon`, `hurd`, `illumos`, `ios`, `l4re`, `linux`, `lynxos178`, `macos`, `managarm`, `motor`, `netbsd`, `none`, `nto`, `nuttx`, `openbsd`, `psp`, `psx`, `qurt`, `redox`, `rtems`, `solaris`, and `solid_asp3` and 14 more
+    = note: see <https://doc.rust-lang.org/nightly/rustc/check-cfg/cargo-specifics.html> for more information about checking conditional configuration
+
+warning: unexpected `cfg` condition value: `solana`
+   --> /home/dombarker/project-offloads/aspis-v7-live-adapter.oTxZ60/repo/crates/aspis-statement/src/lib.rs:119:11
+    |
+119 | #[cfg(not(target_os = "solana"))]
+    |           ^^^^^^^^^^^^^^^^^^^^
+    |
+    = note: expected values for `target_os` are: `aix`, `amdhsa`, `android`, `cuda`, `cygwin`, `dragonfly`, `emscripten`, `espidf`, `freebsd`, `fuchsia`, `haiku`, `helenos`, `hermit`, `horizon`, `hurd`, `illumos`, `ios`, `l4re`, `linux`, `lynxos178`, `macos`, `managarm`, `motor`, `netbsd`, `none`, `nto`, `nuttx`, `openbsd`, `psp`, `psx`, `qurt`, `redox`, `rtems`, `solaris`, and `solid_asp3` and 14 more
+    = note: see <https://doc.rust-lang.org/nightly/rustc/check-cfg/cargo-specifics.html> for more information about checking conditional configuration
+
+warning: unexpected `cfg` condition value: `solana`
+   --> /home/dombarker/project-offloads/aspis-v7-live-adapter.oTxZ60/repo/crates/aspis-statement/src/lib.rs:129:11
+    |
+129 | #[cfg(not(target_os = "solana"))]
+    |           ^^^^^^^^^^^^^^^^^^^^
+    |
+    = note: expected values for `target_os` are: `aix`, `amdhsa`, `android`, `cuda`, `cygwin`, `dragonfly`, `emscripten`, `espidf`, `freebsd`, `fuchsia`, `haiku`, `helenos`, `hermit`, `horizon`, `hurd`, `illumos`, `ios`, `l4re`, `linux`, `lynxos178`, `macos`, `managarm`, `motor`, `netbsd`, `none`, `nto`, `nuttx`, `openbsd`, `psp`, `psx`, `qurt`, `redox`, `rtems`, `solaris`, and `solid_asp3` and 14 more
+    = note: see <https://doc.rust-lang.org/nightly/rustc/check-cfg/cargo-specifics.html> for more information about checking conditional configuration
+
+warning: unexpected `cfg` condition value: `solana`
+   --> /home/dombarker/project-offloads/aspis-v7-live-adapter.oTxZ60/repo/crates/aspis-statement/src/lib.rs:153:11
+    |
+153 | #[cfg(not(target_os = "solana"))]
+    |           ^^^^^^^^^^^^^^^^^^^^
+    |
+    = note: expected values for `target_os` are: `aix`, `amdhsa`, `android`, `cuda`, `cygwin`, `dragonfly`, `emscripten`, `espidf`, `freebsd`, `fuchsia`, `haiku`, `helenos`, `hermit`, `horizon`, `hurd`, `illumos`, `ios`, `l4re`, `linux`, `lynxos178`, `macos`, `managarm`, `motor`, `netbsd`, `none`, `nto`, `nuttx`, `openbsd`, `psp`, `psx`, `qurt`, `redox`, `rtems`, `solaris`, and `solid_asp3` and 14 more
+    = note: see <https://doc.rust-lang.org/nightly/rustc/check-cfg/cargo-specifics.html> for more information about checking conditional configuration
+
+warning: unexpected `cfg` condition value: `solana`
+   --> /home/dombarker/project-offloads/aspis-v7-live-adapter.oTxZ60/repo/crates/aspis-statement/src/constraints_v4.rs:723:11
+    |
+723 | #[cfg(not(target_os = "solana"))]
+    |           ^^^^^^^^^^^^^^^^^^^^
+    |
+    = note: expected values for `target_os` are: `aix`, `amdhsa`, `android`, `cuda`, `cygwin`, `dragonfly`, `emscripten`, `espidf`, `freebsd`, `fuchsia`, `haiku`, `helenos`, `hermit`, `horizon`, `hurd`, `illumos`, `ios`, `l4re`, `linux`, `lynxos178`, `macos`, `managarm`, `motor`, `netbsd`, `none`, `nto`, `nuttx`, `openbsd`, `psp`, `psx`, `qurt`, `redox`, `rtems`, `solaris`, and `solid_asp3` and 14 more
+    = note: see <https://doc.rust-lang.org/nightly/rustc/check-cfg/cargo-specifics.html> for more information about checking conditional configuration
+
+warning: unexpected `cfg` condition value: `solana`
+   --> /home/dombarker/project-offloads/aspis-v7-live-adapter.oTxZ60/repo/crates/aspis-statement/src/constraints_v4.rs:734:11
+    |
+734 | #[cfg(not(target_os = "solana"))]
+    |           ^^^^^^^^^^^^^^^^^^^^
+    |
+    = note: expected values for `target_os` are: `aix`, `amdhsa`, `android`, `cuda`, `cygwin`, `dragonfly`, `emscripten`, `espidf`, `freebsd`, `fuchsia`, `haiku`, `helenos`, `hermit`, `horizon`, `hurd`, `illumos`, `ios`, `l4re`, `linux`, `lynxos178`, `macos`, `managarm`, `motor`, `netbsd`, `none`, `nto`, `nuttx`, `openbsd`, `psp`, `psx`, `qurt`, `redox`, `rtems`, `solaris`, and `solid_asp3` and 14 more
+    = note: see <https://doc.rust-lang.org/nightly/rustc/check-cfg/cargo-specifics.html> for more information about checking conditional configuration
+
+warning: unexpected `cfg` condition value: `solana`
+   --> /home/dombarker/project-offloads/aspis-v7-live-adapter.oTxZ60/repo/crates/aspis-statement/src/constraints_v4.rs:749:11
+    |
+749 | #[cfg(not(target_os = "solana"))]
+    |           ^^^^^^^^^^^^^^^^^^^^
+    |
+    = note: expected values for `target_os` are: `aix`, `amdhsa`, `android`, `cuda`, `cygwin`, `dragonfly`, `emscripten`, `espidf`, `freebsd`, `fuchsia`, `haiku`, `helenos`, `hermit`, `horizon`, `hurd`, `illumos`, `ios`, `l4re`, `linux`, `lynxos178`, `macos`, `managarm`, `motor`, `netbsd`, `none`, `nto`, `nuttx`, `openbsd`, `psp`, `psx`, `qurt`, `redox`, `rtems`, `solaris`, and `solid_asp3` and 14 more
+    = note: see <https://doc.rust-lang.org/nightly/rustc/check-cfg/cargo-specifics.html> for more information about checking conditional configuration
+
+warning: unexpected `cfg` condition value: `solana`
+    --> /home/dombarker/project-offloads/aspis-v7-live-adapter.oTxZ60/repo/crates/aspis-statement/src/constraints_v4.rs:2602:11
+     |
+2602 | #[cfg(not(target_os = "solana"))]
+     |           ^^^^^^^^^^^^^^^^^^^^
+     |
+     = note: expected values for `target_os` are: `aix`, `amdhsa`, `android`, `cuda`, `cygwin`, `dragonfly`, `emscripten`, `espidf`, `freebsd`, `fuchsia`, `haiku`, `helenos`, `hermit`, `horizon`, `hurd`, `illumos`, `ios`, `l4re`, `linux`, `lynxos178`, `macos`, `managarm`, `motor`, `netbsd`, `none`, `nto`, `nuttx`, `openbsd`, `psp`, `psx`, `qurt`, `redox`, `rtems`, `solaris`, and `solid_asp3` and 14 more
+     = note: see <https://doc.rust-lang.org/nightly/rustc/check-cfg/cargo-specifics.html> for more information about checking conditional configuration
+
+warning: unexpected `cfg` condition value: `solana`
+    --> /home/dombarker/project-offloads/aspis-v7-live-adapter.oTxZ60/repo/crates/aspis-statement/src/constraints_v4.rs:2766:11
+     |
+2766 | #[cfg(not(target_os = "solana"))]
+     |           ^^^^^^^^^^^^^^^^^^^^
+     |
+     = note: expected values for `target_os` are: `aix`, `amdhsa`, `android`, `cuda`, `cygwin`, `dragonfly`, `emscripten`, `espidf`, `freebsd`, `fuchsia`, `haiku`, `helenos`, `hermit`, `horizon`, `hurd`, `illumos`, `ios`, `l4re`, `linux`, `lynxos178`, `macos`, `managarm`, `motor`, `netbsd`, `none`, `nto`, `nuttx`, `openbsd`, `psp`, `psx`, `qurt`, `redox`, `rtems`, `solaris`, and `solid_asp3` and 14 more
+     = note: see <https://doc.rust-lang.org/nightly/rustc/check-cfg/cargo-specifics.html> for more information about checking conditional configuration
+
+warning: unexpected `cfg` condition value: `solana`
+    --> /home/dombarker/project-offloads/aspis-v7-live-adapter.oTxZ60/repo/crates/aspis-statement/src/constraints_v4.rs:2776:11
+     |
+2776 | #[cfg(not(target_os = "solana"))]
+     |           ^^^^^^^^^^^^^^^^^^^^
+     |
+     = note: expected values for `target_os` are: `aix`, `amdhsa`, `android`, `cuda`, `cygwin`, `dragonfly`, `emscripten`, `espidf`, `freebsd`, `fuchsia`, `haiku`, `helenos`, `hermit`, `horizon`, `hurd`, `illumos`, `ios`, `l4re`, `linux`, `lynxos178`, `macos`, `managarm`, `motor`, `netbsd`, `none`, `nto`, `nuttx`, `openbsd`, `psp`, `psx`, `qurt`, `redox`, `rtems`, `solaris`, and `solid_asp3` and 14 more
+     = note: see <https://doc.rust-lang.org/nightly/rustc/check-cfg/cargo-specifics.html> for more information about checking conditional configuration
+
+warning: unexpected `cfg` condition value: `solana`
+    --> /home/dombarker/project-offloads/aspis-v7-live-adapter.oTxZ60/repo/crates/aspis-statement/src/constraints_v4.rs:2790:11
+     |
+2790 | #[cfg(not(target_os = "solana"))]
+     |           ^^^^^^^^^^^^^^^^^^^^
+     |
+     = note: expected values for `target_os` are: `aix`, `amdhsa`, `android`, `cuda`, `cygwin`, `dragonfly`, `emscripten`, `espidf`, `freebsd`, `fuchsia`, `haiku`, `helenos`, `hermit`, `horizon`, `hurd`, `illumos`, `ios`, `l4re`, `linux`, `lynxos178`, `macos`, `managarm`, `motor`, `netbsd`, `none`, `nto`, `nuttx`, `openbsd`, `psp`, `psx`, `qurt`, `redox`, `rtems`, `solaris`, and `solid_asp3` and 14 more
+     = note: see <https://doc.rust-lang.org/nightly/rustc/check-cfg/cargo-specifics.html> for more information about checking conditional configuration
+
+warning: unused imports: `visit_copy_exceptional_terminal_links` and `visit_copy_terminal_links`
+  --> /home/dombarker/project-offloads/aspis-v7-live-adapter.oTxZ60/repo/crates/aspis-statement/src/constraints_v4.rs:32:5
+   |
+32 |     visit_copy_exceptional_terminal_links, visit_copy_links, visit_copy_terminal_links,
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^                    ^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: `#[warn(unused_imports)]` (part of `#[warn(unused)]`) on by default
+
+warning: unexpected `cfg` condition value: `solana`
+  --> /home/dombarker/project-offloads/aspis-v7-live-adapter.oTxZ60/repo/crates/aspis-statement/src/pool_v1/mod.rs:16:11
+   |
+16 | #[cfg(not(target_os = "solana"))]
+   |           ^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: expected values for `target_os` are: `aix`, `amdhsa`, `android`, `cuda`, `cygwin`, `dragonfly`, `emscripten`, `espidf`, `freebsd`, `fuchsia`, `haiku`, `helenos`, `hermit`, `horizon`, `hurd`, `illumos`, `ios`, `l4re`, `linux`, `lynxos178`, `macos`, `managarm`, `motor`, `netbsd`, `none`, `nto`, `nuttx`, `openbsd`, `psp`, `psx`, `qurt`, `redox`, `rtems`, `solaris`, and `solid_asp3` and 14 more
+   = note: see <https://doc.rust-lang.org/nightly/rustc/check-cfg/cargo-specifics.html> for more information about checking conditional configuration
+
+warning: unexpected `cfg` condition value: `solana`
+  --> /home/dombarker/project-offloads/aspis-v7-live-adapter.oTxZ60/repo/crates/aspis-statement/src/pool_v1/mod.rs:19:11
+   |
+19 | #[cfg(not(target_os = "solana"))]
+   |           ^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: expected values for `target_os` are: `aix`, `amdhsa`, `android`, `cuda`, `cygwin`, `dragonfly`, `emscripten`, `espidf`, `freebsd`, `fuchsia`, `haiku`, `helenos`, `hermit`, `horizon`, `hurd`, `illumos`, `ios`, `l4re`, `linux`, `lynxos178`, `macos`, `managarm`, `motor`, `netbsd`, `none`, `nto`, `nuttx`, `openbsd`, `psp`, `psx`, `qurt`, `redox`, `rtems`, `solaris`, and `solid_asp3` and 14 more
+   = note: see <https://doc.rust-lang.org/nightly/rustc/check-cfg/cargo-specifics.html> for more information about checking conditional configuration
+
+warning: unexpected `cfg` condition value: `solana`
+  --> /home/dombarker/project-offloads/aspis-v7-live-adapter.oTxZ60/repo/crates/aspis-statement/src/pool_v1/mod.rs:22:11
+   |
+22 | #[cfg(not(target_os = "solana"))]
+   |           ^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: expected values for `target_os` are: `aix`, `amdhsa`, `android`, `cuda`, `cygwin`, `dragonfly`, `emscripten`, `espidf`, `freebsd`, `fuchsia`, `haiku`, `helenos`, `hermit`, `horizon`, `hurd`, `illumos`, `ios`, `l4re`, `linux`, `lynxos178`, `macos`, `managarm`, `motor`, `netbsd`, `none`, `nto`, `nuttx`, `openbsd`, `psp`, `psx`, `qurt`, `redox`, `rtems`, `solaris`, and `solid_asp3` and 14 more
+   = note: see <https://doc.rust-lang.org/nightly/rustc/check-cfg/cargo-specifics.html> for more information about checking conditional configuration
+
+warning: unexpected `cfg` condition value: `solana`
+  --> /home/dombarker/project-offloads/aspis-v7-live-adapter.oTxZ60/repo/crates/aspis-statement/src/pool_v1/mod.rs:24:11
+   |
+24 | #[cfg(not(target_os = "solana"))]
+   |           ^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: expected values for `target_os` are: `aix`, `amdhsa`, `android`, `cuda`, `cygwin`, `dragonfly`, `emscripten`, `espidf`, `freebsd`, `fuchsia`, `haiku`, `helenos`, `hermit`, `horizon`, `hurd`, `illumos`, `ios`, `l4re`, `linux`, `lynxos178`, `macos`, `managarm`, `motor`, `netbsd`, `none`, `nto`, `nuttx`, `openbsd`, `psp`, `psx`, `qurt`, `redox`, `rtems`, `solaris`, and `solid_asp3` and 14 more
+   = note: see <https://doc.rust-lang.org/nightly/rustc/check-cfg/cargo-specifics.html> for more information about checking conditional configuration
+
+warning: unexpected `cfg` condition value: `solana`
+  --> /home/dombarker/project-offloads/aspis-v7-live-adapter.oTxZ60/repo/crates/aspis-statement/src/pool_v1/mod.rs:28:11
+   |
+28 | #[cfg(not(target_os = "solana"))]
+   |           ^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: expected values for `target_os` are: `aix`, `amdhsa`, `android`, `cuda`, `cygwin`, `dragonfly`, `emscripten`, `espidf`, `freebsd`, `fuchsia`, `haiku`, `helenos`, `hermit`, `horizon`, `hurd`, `illumos`, `ios`, `l4re`, `linux`, `lynxos178`, `macos`, `managarm`, `motor`, `netbsd`, `none`, `nto`, `nuttx`, `openbsd`, `psp`, `psx`, `qurt`, `redox`, `rtems`, `solaris`, and `solid_asp3` and 14 more
+   = note: see <https://doc.rust-lang.org/nightly/rustc/check-cfg/cargo-specifics.html> for more information about checking conditional configuration
+
+warning: unexpected `cfg` condition value: `solana`
+  --> /home/dombarker/project-offloads/aspis-v7-live-adapter.oTxZ60/repo/crates/aspis-statement/src/pool_v1/mod.rs:31:11
+   |
+31 | #[cfg(not(target_os = "solana"))]
+   |           ^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: expected values for `target_os` are: `aix`, `amdhsa`, `android`, `cuda`, `cygwin`, `dragonfly`, `emscripten`, `espidf`, `freebsd`, `fuchsia`, `haiku`, `helenos`, `hermit`, `horizon`, `hurd`, `illumos`, `ios`, `l4re`, `linux`, `lynxos178`, `macos`, `managarm`, `motor`, `netbsd`, `none`, `nto`, `nuttx`, `openbsd`, `psp`, `psx`, `qurt`, `redox`, `rtems`, `solaris`, and `solid_asp3` and 14 more
+   = note: see <https://doc.rust-lang.org/nightly/rustc/check-cfg/cargo-specifics.html> for more information about checking conditional configuration
+
+warning: unexpected `cfg` condition value: `solana`
+  --> /home/dombarker/project-offloads/aspis-v7-live-adapter.oTxZ60/repo/crates/aspis-statement/src/pool_v1/mod.rs:33:11
+   |
+33 | #[cfg(not(target_os = "solana"))]
+   |           ^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: expected values for `target_os` are: `aix`, `amdhsa`, `android`, `cuda`, `cygwin`, `dragonfly`, `emscripten`, `espidf`, `freebsd`, `fuchsia`, `haiku`, `helenos`, `hermit`, `horizon`, `hurd`, `illumos`, `ios`, `l4re`, `linux`, `lynxos178`, `macos`, `managarm`, `motor`, `netbsd`, `none`, `nto`, `nuttx`, `openbsd`, `psp`, `psx`, `qurt`, `redox`, `rtems`, `solaris`, and `solid_asp3` and 14 more
+   = note: see <https://doc.rust-lang.org/nightly/rustc/check-cfg/cargo-specifics.html> for more information about checking conditional configuration
+
+warning: unexpected `cfg` condition value: `solana`
+  --> /home/dombarker/project-offloads/aspis-v7-live-adapter.oTxZ60/repo/crates/aspis-statement/src/pool_v1/mod.rs:36:11
+   |
+36 | #[cfg(not(target_os = "solana"))]
+   |           ^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: expected values for `target_os` are: `aix`, `amdhsa`, `android`, `cuda`, `cygwin`, `dragonfly`, `emscripten`, `espidf`, `freebsd`, `fuchsia`, `haiku`, `helenos`, `hermit`, `horizon`, `hurd`, `illumos`, `ios`, `l4re`, `linux`, `lynxos178`, `macos`, `managarm`, `motor`, `netbsd`, `none`, `nto`, `nuttx`, `openbsd`, `psp`, `psx`, `qurt`, `redox`, `rtems`, `solaris`, and `solid_asp3` and 14 more
+   = note: see <https://doc.rust-lang.org/nightly/rustc/check-cfg/cargo-specifics.html> for more information about checking conditional configuration
+
+warning: unexpected `cfg` condition value: `solana`
+  --> /home/dombarker/project-offloads/aspis-v7-live-adapter.oTxZ60/repo/crates/aspis-statement/src/pool_v1/mod.rs:38:11
+   |
+38 | #[cfg(not(target_os = "solana"))]
+   |           ^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: expected values for `target_os` are: `aix`, `amdhsa`, `android`, `cuda`, `cygwin`, `dragonfly`, `emscripten`, `espidf`, `freebsd`, `fuchsia`, `haiku`, `helenos`, `hermit`, `horizon`, `hurd`, `illumos`, `ios`, `l4re`, `linux`, `lynxos178`, `macos`, `managarm`, `motor`, `netbsd`, `none`, `nto`, `nuttx`, `openbsd`, `psp`, `psx`, `qurt`, `redox`, `rtems`, `solaris`, and `solid_asp3` and 14 more
+   = note: see <https://doc.rust-lang.org/nightly/rustc/check-cfg/cargo-specifics.html> for more information about checking conditional configuration
+
+warning: unexpected `cfg` condition value: `solana`
+  --> /home/dombarker/project-offloads/aspis-v7-live-adapter.oTxZ60/repo/crates/aspis-statement/src/pool_v1/mod.rs:41:11
+   |
+41 | #[cfg(not(target_os = "solana"))]
+   |           ^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: expected values for `target_os` are: `aix`, `amdhsa`, `android`, `cuda`, `cygwin`, `dragonfly`, `emscripten`, `espidf`, `freebsd`, `fuchsia`, `haiku`, `helenos`, `hermit`, `horizon`, `hurd`, `illumos`, `ios`, `l4re`, `linux`, `lynxos178`, `macos`, `managarm`, `motor`, `netbsd`, `none`, `nto`, `nuttx`, `openbsd`, `psp`, `psx`, `qurt`, `redox`, `rtems`, `solaris`, and `solid_asp3` and 14 more
+   = note: see <https://doc.rust-lang.org/nightly/rustc/check-cfg/cargo-specifics.html> for more information about checking conditional configuration
+
+warning: unexpected `cfg` condition value: `solana`
+  --> /home/dombarker/project-offloads/aspis-v7-live-adapter.oTxZ60/repo/crates/aspis-statement/src/pool_v1/mod.rs:43:11
+   |
+43 | #[cfg(not(target_os = "solana"))]
+   |           ^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: expected values for `target_os` are: `aix`, `amdhsa`, `android`, `cuda`, `cygwin`, `dragonfly`, `emscripten`, `espidf`, `freebsd`, `fuchsia`, `haiku`, `helenos`, `hermit`, `horizon`, `hurd`, `illumos`, `ios`, `l4re`, `linux`, `lynxos178`, `macos`, `managarm`, `motor`, `netbsd`, `none`, `nto`, `nuttx`, `openbsd`, `psp`, `psx`, `qurt`, `redox`, `rtems`, `solaris`, and `solid_asp3` and 14 more
+   = note: see <https://doc.rust-lang.org/nightly/rustc/check-cfg/cargo-specifics.html> for more information about checking conditional configuration
+
+warning: unexpected `cfg` condition value: `solana`
+  --> /home/dombarker/project-offloads/aspis-v7-live-adapter.oTxZ60/repo/crates/aspis-statement/src/pool_v1/mod.rs:46:11
+   |
+46 | #[cfg(not(target_os = "solana"))]
+   |           ^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: expected values for `target_os` are: `aix`, `amdhsa`, `android`, `cuda`, `cygwin`, `dragonfly`, `emscripten`, `espidf`, `freebsd`, `fuchsia`, `haiku`, `helenos`, `hermit`, `horizon`, `hurd`, `illumos`, `ios`, `l4re`, `linux`, `lynxos178`, `macos`, `managarm`, `motor`, `netbsd`, `none`, `nto`, `nuttx`, `openbsd`, `psp`, `psx`, `qurt`, `redox`, `rtems`, `solaris`, and `solid_asp3` and 14 more
+   = note: see <https://doc.rust-lang.org/nightly/rustc/check-cfg/cargo-specifics.html> for more information about checking conditional configuration
+
+warning: unexpected `cfg` condition value: `solana`
+   --> /home/dombarker/project-offloads/aspis-v7-live-adapter.oTxZ60/repo/crates/aspis-statement/src/pool_v1/mod.rs:123:11
+    |
+123 | #[cfg(not(target_os = "solana"))]
+    |           ^^^^^^^^^^^^^^^^^^^^
+    |
+    = note: expected values for `target_os` are: `aix`, `amdhsa`, `android`, `cuda`, `cygwin`, `dragonfly`, `emscripten`, `espidf`, `freebsd`, `fuchsia`, `haiku`, `helenos`, `hermit`, `horizon`, `hurd`, `illumos`, `ios`, `l4re`, `linux`, `lynxos178`, `macos`, `managarm`, `motor`, `netbsd`, `none`, `nto`, `nuttx`, `openbsd`, `psp`, `psx`, `qurt`, `redox`, `rtems`, `solaris`, and `solid_asp3` and 14 more
+    = note: see <https://doc.rust-lang.org/nightly/rustc/check-cfg/cargo-specifics.html> for more information about checking conditional configuration
+
+warning: unexpected `cfg` condition value: `solana`
+   --> /home/dombarker/project-offloads/aspis-v7-live-adapter.oTxZ60/repo/crates/aspis-statement/src/pool_v1/mod.rs:173:11
+    |
+173 | #[cfg(not(target_os = "solana"))]
+    |           ^^^^^^^^^^^^^^^^^^^^
+    |
+    = note: expected values for `target_os` are: `aix`, `amdhsa`, `android`, `cuda`, `cygwin`, `dragonfly`, `emscripten`, `espidf`, `freebsd`, `fuchsia`, `haiku`, `helenos`, `hermit`, `horizon`, `hurd`, `illumos`, `ios`, `l4re`, `linux`, `lynxos178`, `macos`, `managarm`, `motor`, `netbsd`, `none`, `nto`, `nuttx`, `openbsd`, `psp`, `psx`, `qurt`, `redox`, `rtems`, `solaris`, and `solid_asp3` and 14 more
+    = note: see <https://doc.rust-lang.org/nightly/rustc/check-cfg/cargo-specifics.html> for more information about checking conditional configuration
+
+warning: unexpected `cfg` condition value: `solana`
+   --> /home/dombarker/project-offloads/aspis-v7-live-adapter.oTxZ60/repo/crates/aspis-statement/src/pool_v1/mod.rs:190:11
+    |
+190 | #[cfg(not(target_os = "solana"))]
+    |           ^^^^^^^^^^^^^^^^^^^^
+    |
+    = note: expected values for `target_os` are: `aix`, `amdhsa`, `android`, `cuda`, `cygwin`, `dragonfly`, `emscripten`, `espidf`, `freebsd`, `fuchsia`, `haiku`, `helenos`, `hermit`, `horizon`, `hurd`, `illumos`, `ios`, `l4re`, `linux`, `lynxos178`, `macos`, `managarm`, `motor`, `netbsd`, `none`, `nto`, `nuttx`, `openbsd`, `psp`, `psx`, `qurt`, `redox`, `rtems`, `solaris`, and `solid_asp3` and 14 more
+    = note: see <https://doc.rust-lang.org/nightly/rustc/check-cfg/cargo-specifics.html> for more information about checking conditional configuration
+
+warning: unexpected `cfg` condition value: `solana`
+   --> /home/dombarker/project-offloads/aspis-v7-live-adapter.oTxZ60/repo/crates/aspis-statement/src/pool_v1/mod.rs:231:11
+    |
+231 | #[cfg(not(target_os = "solana"))]
+    |           ^^^^^^^^^^^^^^^^^^^^
+    |
+    = note: expected values for `target_os` are: `aix`, `amdhsa`, `android`, `cuda`, `cygwin`, `dragonfly`, `emscripten`, `espidf`, `freebsd`, `fuchsia`, `haiku`, `helenos`, `hermit`, `horizon`, `hurd`, `illumos`, `ios`, `l4re`, `linux`, `lynxos178`, `macos`, `managarm`, `motor`, `netbsd`, `none`, `nto`, `nuttx`, `openbsd`, `psp`, `psx`, `qurt`, `redox`, `rtems`, `solaris`, and `solid_asp3` and 14 more
+    = note: see <https://doc.rust-lang.org/nightly/rustc/check-cfg/cargo-specifics.html> for more information about checking conditional configuration
+
+warning: unexpected `cfg` condition value: `solana`
+   --> /home/dombarker/project-offloads/aspis-v7-live-adapter.oTxZ60/repo/crates/aspis-statement/src/pool_v1/mod.rs:235:11
+    |
+235 | #[cfg(not(target_os = "solana"))]
+    |           ^^^^^^^^^^^^^^^^^^^^
+    |
+    = note: expected values for `target_os` are: `aix`, `amdhsa`, `android`, `cuda`, `cygwin`, `dragonfly`, `emscripten`, `espidf`, `freebsd`, `fuchsia`, `haiku`, `helenos`, `hermit`, `horizon`, `hurd`, `illumos`, `ios`, `l4re`, `linux`, `lynxos178`, `macos`, `managarm`, `motor`, `netbsd`, `none`, `nto`, `nuttx`, `openbsd`, `psp`, `psx`, `qurt`, `redox`, `rtems`, `solaris`, and `solid_asp3` and 14 more
+    = note: see <https://doc.rust-lang.org/nightly/rustc/check-cfg/cargo-specifics.html> for more information about checking conditional configuration
+
+warning: unexpected `cfg` condition value: `solana`
+   --> /home/dombarker/project-offloads/aspis-v7-live-adapter.oTxZ60/repo/crates/aspis-statement/src/pool_v1/mod.rs:258:11
+    |
+258 | #[cfg(not(target_os = "solana"))]
+    |           ^^^^^^^^^^^^^^^^^^^^
+    |
+    = note: expected values for `target_os` are: `aix`, `amdhsa`, `android`, `cuda`, `cygwin`, `dragonfly`, `emscripten`, `espidf`, `freebsd`, `fuchsia`, `haiku`, `helenos`, `hermit`, `horizon`, `hurd`, `illumos`, `ios`, `l4re`, `linux`, `lynxos178`, `macos`, `managarm`, `motor`, `netbsd`, `none`, `nto`, `nuttx`, `openbsd`, `psp`, `psx`, `qurt`, `redox`, `rtems`, `solaris`, and `solid_asp3` and 14 more
+    = note: see <https://doc.rust-lang.org/nightly/rustc/check-cfg/cargo-specifics.html> for more information about checking conditional configuration
+
+warning: unexpected `cfg` condition value: `solana`
+   --> /home/dombarker/project-offloads/aspis-v7-live-adapter.oTxZ60/repo/crates/aspis-statement/src/pool_v1/mod.rs:301:11
+    |
+301 | #[cfg(not(target_os = "solana"))]
+    |           ^^^^^^^^^^^^^^^^^^^^
+    |
+    = note: expected values for `target_os` are: `aix`, `amdhsa`, `android`, `cuda`, `cygwin`, `dragonfly`, `emscripten`, `espidf`, `freebsd`, `fuchsia`, `haiku`, `helenos`, `hermit`, `horizon`, `hurd`, `illumos`, `ios`, `l4re`, `linux`, `lynxos178`, `macos`, `managarm`, `motor`, `netbsd`, `none`, `nto`, `nuttx`, `openbsd`, `psp`, `psx`, `qurt`, `redox`, `rtems`, `solaris`, and `solid_asp3` and 14 more
+    = note: see <https://doc.rust-lang.org/nightly/rustc/check-cfg/cargo-specifics.html> for more information about checking conditional configuration
+
+warning: unexpected `cfg` condition value: `solana`
+   --> /home/dombarker/project-offloads/aspis-v7-live-adapter.oTxZ60/repo/crates/aspis-statement/src/pool_v1/mod.rs:313:11
+    |
+313 | #[cfg(not(target_os = "solana"))]
+    |           ^^^^^^^^^^^^^^^^^^^^
+    |
+    = note: expected values for `target_os` are: `aix`, `amdhsa`, `android`, `cuda`, `cygwin`, `dragonfly`, `emscripten`, `espidf`, `freebsd`, `fuchsia`, `haiku`, `helenos`, `hermit`, `horizon`, `hurd`, `illumos`, `ios`, `l4re`, `linux`, `lynxos178`, `macos`, `managarm`, `motor`, `netbsd`, `none`, `nto`, `nuttx`, `openbsd`, `psp`, `psx`, `qurt`, `redox`, `rtems`, `solaris`, and `solid_asp3` and 14 more
+    = note: see <https://doc.rust-lang.org/nightly/rustc/check-cfg/cargo-specifics.html> for more information about checking conditional configuration
+
+warning: unexpected `cfg` condition value: `solana`
+   --> /home/dombarker/project-offloads/aspis-v7-live-adapter.oTxZ60/repo/crates/aspis-statement/src/pool_v1/mod.rs:359:11
+    |
+359 | #[cfg(not(target_os = "solana"))]
+    |           ^^^^^^^^^^^^^^^^^^^^
+    |
+    = note: expected values for `target_os` are: `aix`, `amdhsa`, `android`, `cuda`, `cygwin`, `dragonfly`, `emscripten`, `espidf`, `freebsd`, `fuchsia`, `haiku`, `helenos`, `hermit`, `horizon`, `hurd`, `illumos`, `ios`, `l4re`, `linux`, `lynxos178`, `macos`, `managarm`, `motor`, `netbsd`, `none`, `nto`, `nuttx`, `openbsd`, `psp`, `psx`, `qurt`, `redox`, `rtems`, `solaris`, and `solid_asp3` and 14 more
+    = note: see <https://doc.rust-lang.org/nightly/rustc/check-cfg/cargo-specifics.html> for more information about checking conditional configuration
+
+warning: unused import: `vec`
+ --> /home/dombarker/project-offloads/aspis-v7-live-adapter.oTxZ60/repo/crates/aspis-statement/src/pool_v1/pair_forest_copy_terminal.rs:8:25
+  |
+8 | use alloc::{boxed::Box, vec};
+  |                         ^^^
+
+warning: unexpected `cfg` condition value: `solana`
+   --> /home/dombarker/project-offloads/aspis-v7-live-adapter.oTxZ60/repo/crates/aspis-statement/src/pool_v1/pair_forest_terminal.rs:626:11
+    |
+626 | #[cfg(not(target_os = "solana"))]
+    |           ^^^^^^^^^^^^^^^^^^^^
+    |
+    = note: expected values for `target_os` are: `aix`, `amdhsa`, `android`, `cuda`, `cygwin`, `dragonfly`, `emscripten`, `espidf`, `freebsd`, `fuchsia`, `haiku`, `helenos`, `hermit`, `horizon`, `hurd`, `illumos`, `ios`, `l4re`, `linux`, `lynxos178`, `macos`, `managarm`, `motor`, `netbsd`, `none`, `nto`, `nuttx`, `openbsd`, `psp`, `psx`, `qurt`, `redox`, `rtems`, `solaris`, and `solid_asp3` and 14 more
+    = note: see <https://doc.rust-lang.org/nightly/rustc/check-cfg/cargo-specifics.html> for more information about checking conditional configuration
+
+warning: unexpected `cfg` condition value: `solana`
+   --> /home/dombarker/project-offloads/aspis-v7-live-adapter.oTxZ60/repo/crates/aspis-statement/src/pool_v1/pair_forest_terminal.rs:803:11
+    |
+803 | #[cfg(not(target_os = "solana"))]
+    |           ^^^^^^^^^^^^^^^^^^^^
+    |
+    = note: expected values for `target_os` are: `aix`, `amdhsa`, `android`, `cuda`, `cygwin`, `dragonfly`, `emscripten`, `espidf`, `freebsd`, `fuchsia`, `haiku`, `helenos`, `hermit`, `horizon`, `hurd`, `illumos`, `ios`, `l4re`, `linux`, `lynxos178`, `macos`, `managarm`, `motor`, `netbsd`, `none`, `nto`, `nuttx`, `openbsd`, `psp`, `psx`, `qurt`, `redox`, `rtems`, `solaris`, and `solid_asp3` and 14 more
+    = note: see <https://doc.rust-lang.org/nightly/rustc/check-cfg/cargo-specifics.html> for more information about checking conditional configuration
+
+warning: unused import: `decode_pool_v1_pair_late_public_statement_v1`
+  --> /home/dombarker/project-offloads/aspis-v7-live-adapter.oTxZ60/repo/crates/aspis-statement/src/pool_v1/pair_forest_terminal.rs:15:5
+   |
+15 |     decode_pool_v1_pair_late_public_statement_v1, decode_pool_v1_pair_verified_afterstate_v1,
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: unused import: `pool_v1_note_commitment`
+  --> /home/dombarker/project-offloads/aspis-v7-live-adapter.oTxZ60/repo/crates/aspis-statement/src/pool_v1/pair_trace.rs:50:5
+   |
+50 |     pool_v1_note_commitment, pool_v1_nullifier, pool_v1_tree_parent,
+   |     ^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: unexpected `cfg` condition value: `solana`
+   --> /home/dombarker/project-offloads/aspis-v7-live-adapter.oTxZ60/repo/crates/aspis-statement/src/pool_v1/root_history.rs:297:15
+    |
+297 |     #[cfg(not(target_os = "solana"))]
+    |               ^^^^^^^^^^^^^^^^^^^^
+    |
+    = note: expected values for `target_os` are: `aix`, `amdhsa`, `android`, `cuda`, `cygwin`, `dragonfly`, `emscripten`, `espidf`, `freebsd`, `fuchsia`, `haiku`, `helenos`, `hermit`, `horizon`, `hurd`, `illumos`, `ios`, `l4re`, `linux`, `lynxos178`, `macos`, `managarm`, `motor`, `netbsd`, `none`, `nto`, `nuttx`, `openbsd`, `psp`, `psx`, `qurt`, `redox`, `rtems`, `solaris`, and `solid_asp3` and 14 more
+    = note: see <https://doc.rust-lang.org/nightly/rustc/check-cfg/cargo-specifics.html> for more information about checking conditional configuration
+
+warning: unexpected `cfg` condition value: `solana`
+   --> /home/dombarker/project-offloads/aspis-v7-live-adapter.oTxZ60/repo/crates/aspis-statement/src/pool_v1/root_history.rs:312:15
+    |
+312 |     #[cfg(not(target_os = "solana"))]
+    |               ^^^^^^^^^^^^^^^^^^^^
+    |
+    = note: expected values for `target_os` are: `aix`, `amdhsa`, `android`, `cuda`, `cygwin`, `dragonfly`, `emscripten`, `espidf`, `freebsd`, `fuchsia`, `haiku`, `helenos`, `hermit`, `horizon`, `hurd`, `illumos`, `ios`, `l4re`, `linux`, `lynxos178`, `macos`, `managarm`, `motor`, `netbsd`, `none`, `nto`, `nuttx`, `openbsd`, `psp`, `psx`, `qurt`, `redox`, `rtems`, `solaris`, and `solid_asp3` and 14 more
+    = note: see <https://doc.rust-lang.org/nightly/rustc/check-cfg/cargo-specifics.html> for more information about checking conditional configuration
+
+warning: unexpected `cfg` condition value: `solana`
+   --> /home/dombarker/project-offloads/aspis-v7-live-adapter.oTxZ60/repo/crates/aspis-statement/src/pool_v1/root_history.rs:407:15
+    |
+407 |     #[cfg(not(target_os = "solana"))]
+    |               ^^^^^^^^^^^^^^^^^^^^
+    |
+    = note: expected values for `target_os` are: `aix`, `amdhsa`, `android`, `cuda`, `cygwin`, `dragonfly`, `emscripten`, `espidf`, `freebsd`, `fuchsia`, `haiku`, `helenos`, `hermit`, `horizon`, `hurd`, `illumos`, `ios`, `l4re`, `linux`, `lynxos178`, `macos`, `managarm`, `motor`, `netbsd`, `none`, `nto`, `nuttx`, `openbsd`, `psp`, `psx`, `qurt`, `redox`, `rtems`, `solaris`, and `solid_asp3` and 14 more
+    = note: see <https://doc.rust-lang.org/nightly/rustc/check-cfg/cargo-specifics.html> for more information about checking conditional configuration
+
+warning: unexpected `cfg` condition value: `solana`
+   --> /home/dombarker/project-offloads/aspis-v7-live-adapter.oTxZ60/repo/crates/aspis-statement/src/pool_v1/root_history.rs:421:15
+    |
+421 |     #[cfg(not(target_os = "solana"))]
+    |               ^^^^^^^^^^^^^^^^^^^^
+    |
+    = note: expected values for `target_os` are: `aix`, `amdhsa`, `android`, `cuda`, `cygwin`, `dragonfly`, `emscripten`, `espidf`, `freebsd`, `fuchsia`, `haiku`, `helenos`, `hermit`, `horizon`, `hurd`, `illumos`, `ios`, `l4re`, `linux`, `lynxos178`, `macos`, `managarm`, `motor`, `netbsd`, `none`, `nto`, `nuttx`, `openbsd`, `psp`, `psx`, `qurt`, `redox`, `rtems`, `solaris`, and `solid_asp3` and 14 more
+    = note: see <https://doc.rust-lang.org/nightly/rustc/check-cfg/cargo-specifics.html> for more information about checking conditional configuration
+
+warning: unexpected `cfg` condition value: `solana`
+   --> /home/dombarker/project-offloads/aspis-v7-live-adapter.oTxZ60/repo/crates/aspis-statement/src/state_only_poseidon.rs:639:11
+    |
+639 | #[cfg(not(target_os = "solana"))]
+    |           ^^^^^^^^^^^^^^^^^^^^
+    |
+    = note: expected values for `target_os` are: `aix`, `amdhsa`, `android`, `cuda`, `cygwin`, `dragonfly`, `emscripten`, `espidf`, `freebsd`, `fuchsia`, `haiku`, `helenos`, `hermit`, `horizon`, `hurd`, `illumos`, `ios`, `l4re`, `linux`, `lynxos178`, `macos`, `managarm`, `motor`, `netbsd`, `none`, `nto`, `nuttx`, `openbsd`, `psp`, `psx`, `qurt`, `redox`, `rtems`, `solaris`, and `solid_asp3` and 14 more
+    = note: see <https://doc.rust-lang.org/nightly/rustc/check-cfg/cargo-specifics.html> for more information about checking conditional configuration
+
+warning: unused imports: `trace_round_constant` and `trace_round_descriptor`
+  --> /home/dombarker/project-offloads/aspis-v7-live-adapter.oTxZ60/repo/crates/aspis-statement/src/state_only_poseidon.rs:18:5
+   |
+18 |     trace_round_constant, trace_round_descriptor, EXTERNAL_FINAL, EXTERNAL_INITIAL, INTERNAL,
+   |     ^^^^^^^^^^^^^^^^^^^^  ^^^^^^^^^^^^^^^^^^^^^^
+
+warning: type `CompiledCopyLink` is more private than the item `COMPILED_COPY_LINKS`
+   --> /home/dombarker/project-offloads/aspis-v7-live-adapter.oTxZ60/repo/crates/aspis-statement/src/state_only_terminal_constants.rs:850:1
+    |
+850 | pub(crate) const COMPILED_COPY_LINKS: [CompiledCopyLink; 102] = [
+    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ constant `COMPILED_COPY_LINKS` is reachable at visibility `pub(crate)`
+    |
+note: but type `CompiledCopyLink` is only usable at visibility `pub(self)`
+   --> /home/dombarker/project-offloads/aspis-v7-live-adapter.oTxZ60/repo/crates/aspis-statement/src/state_only_terminal.rs:88:1
+    |
+ 88 | struct CompiledCopyLink {
+    | ^^^^^^^^^^^^^^^^^^^^^^^
+    = note: `#[warn(private_interfaces)]` on by default
+
+warning: fields `kinds`, `columns`, and `scales` are never read
+  --> /home/dombarker/project-offloads/aspis-v7-live-adapter.oTxZ60/repo/crates/aspis-statement/src/atomic_state_only_terminal.rs:59:5
+   |
+57 | struct CompiledAtomicPattern {
+   |        --------------------- fields in this struct
+58 |     /// 0 = zero, 1 = constant, 2 = affine local cell.
+59 |     kinds: [u8; 16],
+   |     ^^^^^
+60 |     columns: [u8; 16],
+   |     ^^^^^^^
+61 |     scales: [u32; 16],
+   |     ^^^^^^
+   |
+   = note: `CompiledAtomicPattern` has a derived impl for the trait `Clone`, but this is intentionally ignored during dead code analysis
+   = note: `#[warn(dead_code)]` (part of `#[warn(unused)]`) on by default
+
+warning: fields `row`, `slot`, and `pattern` are never read
+  --> /home/dombarker/project-offloads/aspis-v7-live-adapter.oTxZ60/repo/crates/aspis-statement/src/atomic_state_only_terminal.rs:67:5
+   |
+66 | struct CompiledAtomicCopyEndpoint {
+   |        -------------------------- fields in this struct
+67 |     row: u16,
+   |     ^^^
+68 |     slot: u8,
+   |     ^^^^
+69 |     pattern: u8,
+   |     ^^^^^^^
+   |
+   = note: `CompiledAtomicCopyEndpoint` has a derived impl for the trait `Clone`, but this is intentionally ignored during dead code analysis
+
+warning: fields `tag`, `producer`, and `consumer` are never read
+  --> /home/dombarker/project-offloads/aspis-v7-live-adapter.oTxZ60/repo/crates/aspis-statement/src/atomic_state_only_terminal.rs:74:5
+   |
+73 | struct CompiledAtomicCopyLink {
+   |        ---------------------- fields in this struct
+74 |     tag: u32,
+   |     ^^^
+75 |     producer: CompiledAtomicCopyEndpoint,
+   |     ^^^^^^^^
+76 |     consumer: CompiledAtomicCopyEndpoint,
+   |     ^^^^^^^^
+   |
+   = note: `CompiledAtomicCopyLink` has a derived impl for the trait `Clone`, but this is intentionally ignored during dead code analysis
+
+warning: struct `AtomicSemanticSelectors` is never constructed
+   --> /home/dombarker/project-offloads/aspis-v7-live-adapter.oTxZ60/repo/crates/aspis-statement/src/atomic_state_only_terminal.rs:297:8
+    |
+297 | struct AtomicSemanticSelectors {
+    |        ^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: associated items `at_point`, `row`, and `poseidon` are never used
+   --> /home/dombarker/project-offloads/aspis-v7-live-adapter.oTxZ60/repo/crates/aspis-statement/src/atomic_state_only_terminal.rs:305:8
+    |
+304 | impl AtomicSemanticSelectors {
+    | ---------------------------- associated items in this implementation
+305 |     fn at_point(point: &[QM31; 10]) -> Self {
+    |        ^^^^^^^^
+...
+327 |     fn row(&self, row: usize) -> QM31 {
+    |        ^^^
+...
+331 |     fn poseidon(&self) -> StateOnlyPoseidonSelectors {
+    |        ^^^^^^^^
+
+warning: constant `COMPILED_ATOMIC_COPY_ACTIVE_ROWS` is never used
+ --> /home/dombarker/project-offloads/aspis-v7-live-adapter.oTxZ60/repo/crates/aspis-statement/src/atomic_state_only_terminal_constants_legacy_partition.rs:6:18
+  |
+6 | pub(crate) const COMPILED_ATOMIC_COPY_ACTIVE_ROWS: [u16; 210] = [11, 12, 27, 28, 32, 43, 44, 48, 59, 60, 64, 75, 76, 80, 91, 92, 96, ...
+  |                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: constant `COMPILED_ATOMIC_COPY_ACTIVE_ROWS_FINGERPRINT` is never used
+ --> /home/dombarker/project-offloads/aspis-v7-live-adapter.oTxZ60/repo/crates/aspis-statement/src/atomic_state_only_terminal_constants_legacy_partition.rs:7:18
+  |
+7 | pub(crate) const COMPILED_ATOMIC_COPY_ACTIVE_ROWS_FINGERPRINT: u64 = 0xfc90f89be110b6f5;
+  |                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: constant `ATOMIC_COPY_PATTERNS` is never used
+  --> /home/dombarker/project-offloads/aspis-v7-live-adapter.oTxZ60/repo/crates/aspis-statement/src/atomic_state_only_terminal_constants_legacy_partition.rs:16:18
+   |
+16 | pub(crate) const ATOMIC_COPY_PATTERNS: [CompiledAtomicPattern; 15] = [
+   |                  ^^^^^^^^^^^^^^^^^^^^
+
+warning: constant `COMPILED_ATOMIC_COPY_LINKS` is never used
+  --> /home/dombarker/project-offloads/aspis-v7-live-adapter.oTxZ60/repo/crates/aspis-statement/src/atomic_state_only_terminal_constants_legacy_partition.rs:40:18
+   |
+40 | pub(crate) const COMPILED_ATOMIC_COPY_LINKS: [CompiledAtomicCopyLink; 183] = [
+   |                  ^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: function `compose_direct_range_terminal_packed_residuals` is never used
+   --> /home/dombarker/project-offloads/aspis-v7-live-adapter.oTxZ60/repo/crates/aspis-statement/src/constraints_v4.rs:371:4
+    |
+371 | fn compose_direct_range_terminal_packed_residuals(
+    |    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: function `eq_row` is never used
+   --> /home/dombarker/project-offloads/aspis-v7-live-adapter.oTxZ60/repo/crates/aspis-statement/src/constraints_v4.rs:588:4
+    |
+588 | fn eq_row(point: &[QM31; 10], row: usize) -> QM31 {
+    |    ^^^^^^
+
+warning: function `compress_opened_tuple` is never used
+    --> /home/dombarker/project-offloads/aspis-v7-live-adapter.oTxZ60/repo/crates/aspis-statement/src/constraints_v4.rs:1184:4
+     |
+1184 | fn compress_opened_tuple(
+     |    ^^^^^^^^^^^^^^^^^^^^^
+
+warning: constant `COPY_ROUTING_EXPANDED_FACTOR_SUPPORT` is never used
+    --> /home/dombarker/project-offloads/aspis-v7-live-adapter.oTxZ60/repo/crates/aspis-statement/src/constraints_v4.rs:1203:7
+     |
+1203 | const COPY_ROUTING_EXPANDED_FACTOR_SUPPORT: usize = 674;
+     |       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: function `evaluate_exceptional_copy_routing_direct` is never used
+    --> /home/dombarker/project-offloads/aspis-v7-live-adapter.oTxZ60/repo/crates/aspis-statement/src/constraints_v4.rs:1717:4
+     |
+1717 | fn evaluate_exceptional_copy_routing_direct(
+     |    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: function `lift` is never used
+  --> /home/dombarker/project-offloads/aspis-v7-live-adapter.oTxZ60/repo/crates/aspis-statement/src/direct_range_hiding_v4.rs:67:4
+   |
+67 | fn lift(value: M31) -> QM31 {
+   |    ^^^^
+
+warning: function `merkle_node_sponge_v2` is never used
+   --> /home/dombarker/project-offloads/aspis-v7-live-adapter.oTxZ60/repo/crates/aspis-statement/src/poseidon2.rs:480:15
+    |
+480 | pub(crate) fn merkle_node_sponge_v2(left: &Digest, right: &Digest) -> Digest {
+    |               ^^^^^^^^^^^^^^^^^^^^^
+
+warning: fields `row`, `slot`, `present`, and `columns` are never read
+  --> /home/dombarker/project-offloads/aspis-v7-live-adapter.oTxZ60/repo/crates/aspis-statement/src/state_only_terminal.rs:81:5
+   |
+80 | struct CompiledCopyEndpoint {
+   |        -------------------- fields in this struct
+81 |     row: u16,
+   |     ^^^
+82 |     slot: u8,
+   |     ^^^^
+83 |     present: u16,
+   |     ^^^^^^^
+84 |     columns: u64,
+   |     ^^^^^^^
+   |
+   = note: `CompiledCopyEndpoint` has a derived impl for the trait `Clone`, but this is intentionally ignored during dead code analysis
+
+warning: fields `tag`, `producer`, and `consumer` are never read
+  --> /home/dombarker/project-offloads/aspis-v7-live-adapter.oTxZ60/repo/crates/aspis-statement/src/state_only_terminal.rs:89:5
+   |
+88 | struct CompiledCopyLink {
+   |        ---------------- fields in this struct
+89 |     tag: u32,
+   |     ^^^
+90 |     producer: CompiledCopyEndpoint,
+   |     ^^^^^^^^
+91 |     consumer: CompiledCopyEndpoint,
+   |     ^^^^^^^^
+   |
+   = note: `CompiledCopyLink` has a derived impl for the trait `Clone`, but this is intentionally ignored during dead code analysis
+
+warning: function `append_link` is never used
+    --> /home/dombarker/project-offloads/aspis-v7-live-adapter.oTxZ60/repo/crates/aspis-statement/src/trace_v4.rs:1017:4
+     |
+1017 | fn append_link(
+     |    ^^^^^^^^^^^
+
+warning: function `append_intra_permutation_links` is never used
+    --> /home/dombarker/project-offloads/aspis-v7-live-adapter.oTxZ60/repo/crates/aspis-statement/src/trace_v4.rs:1048:4
+     |
+1048 | fn append_intra_permutation_links(layout: &mut CopyLayout) {
+     |    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: function `append_sponge_continuation_links` is never used
+    --> /home/dombarker/project-offloads/aspis-v7-live-adapter.oTxZ60/repo/crates/aspis-statement/src/trace_v4.rs:1067:4
+     |
+1067 | fn append_sponge_continuation_links(layout: &mut CopyLayout) {
+     |    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: function `append_merkle_level_links` is never used
+    --> /home/dombarker/project-offloads/aspis-v7-live-adapter.oTxZ60/repo/crates/aspis-statement/src/trace_v4.rs:1090:4
+     |
+1090 | fn append_merkle_level_links(layout: &mut CopyLayout) {
+     |    ^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: function `append_semantic_ingress_links` is never used
+    --> /home/dombarker/project-offloads/aspis-v7-live-adapter.oTxZ60/repo/crates/aspis-statement/src/trace_v4.rs:1107:4
+     |
+1107 | fn append_semantic_ingress_links(layout: &mut CopyLayout) {
+     |    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: function `append_absorption_links` is never used
+    --> /home/dombarker/project-offloads/aspis-v7-live-adapter.oTxZ60/repo/crates/aspis-statement/src/trace_v4.rs:1163:4
+     |
+1163 | fn append_absorption_links(layout: &mut CopyLayout) {
+     |    ^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: function `append_value_reconstruction_links` is never used
+    --> /home/dombarker/project-offloads/aspis-v7-live-adapter.oTxZ60/repo/crates/aspis-statement/src/trace_v4.rs:1190:4
+     |
+1190 | fn append_value_reconstruction_links(layout: &mut CopyLayout) {
+     |    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: unexpected `cfg` condition value: `insecure-profile21-fixture`
+   --> /home/dombarker/project-offloads/aspis-v7-live-adapter.oTxZ60/repo/crates/aspis-prover/src/state_only_entropy.rs:120:21
+    |
+120 |     #[cfg(any(test, feature = "insecure-profile21-fixture"))]
+    |                     ^^^^^^^^^^----------------------------
+    |                               |
+    |                               help: there is a expected value with a similar name: `"insecure-spend-fixture"`
+    |
+    = note: expected values for `feature` are: `insecure-spend-fixture`, `insecure-test-framing`, `insecure-test-ordering`, and `v5-mask`
+    = help: consider adding `insecure-profile21-fixture` as a feature in `Cargo.toml`
+    = note: see <https://doc.rust-lang.org/nightly/rustc/check-cfg/cargo-specifics.html> for more information about checking conditional configuration
+    = note: `#[warn(unexpected_cfgs)]` on by default
+
+warning: unexpected `cfg` condition value: `insecure-profile22-fixture`
+   --> /home/dombarker/project-offloads/aspis-v7-live-adapter.oTxZ60/repo/crates/aspis-prover/src/state_only_entropy.rs:138:21
+    |
+138 |     #[cfg(any(test, feature = "insecure-profile22-fixture"))]
+    |                     ^^^^^^^^^^----------------------------
+    |                               |
+    |                               help: there is a expected value with a similar name: `"insecure-spend-fixture"`
+    |
+    = note: expected values for `feature` are: `insecure-spend-fixture`, `insecure-test-framing`, `insecure-test-ordering`, and `v5-mask`
+    = help: consider adding `insecure-profile22-fixture` as a feature in `Cargo.toml`
+    = note: see <https://doc.rust-lang.org/nightly/rustc/check-cfg/cargo-specifics.html> for more information about checking conditional configuration
+
+warning: function `extended_row_pcs_tail_sparse` is never used
+    --> /home/dombarker/project-offloads/aspis-v7-live-adapter.oTxZ60/repo/crates/aspis-prover/src/state_only_hiding_rank.rs:3362:4
+     |
+3362 | fn extended_row_pcs_tail_sparse(
+     |    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+     |
+     = note: `#[warn(dead_code)]` (part of `#[warn(unused)]`) on by default
+
+warning: function `extended_row_public_maps_sparse_atomic_profile21` is never used
+    --> /home/dombarker/project-offloads/aspis-v7-live-adapter.oTxZ60/repo/crates/aspis-prover/src/state_only_hiding_rank.rs:3472:4
+     |
+3472 | fn extended_row_public_maps_sparse_atomic_profile21(
+     |    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: function `probe_atomic_state_only_compact_claim_rank_with_zero_factor_pad` is never used
+    --> /home/dombarker/project-offloads/aspis-v7-live-adapter.oTxZ60/repo/crates/aspis-prover/src/state_only_hiding_rank/state_only_claim_aggregation_rank.rs:2030:8
+     |
+2030 | pub fn probe_atomic_state_only_compact_claim_rank_with_zero_factor_pad(
+     |        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: unused import: `aspis_core::field::M31`
+  --> /home/dombarker/project-offloads/aspis-v7-live-adapter.oTxZ60/repo/programs/aspis-pool/src/pair_forest.rs:14:5
+   |
+14 | use aspis_core::field::M31;
+   |     ^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: `#[warn(unused_imports)]` (part of `#[warn(unused)]`) on by default
+
+warning: unused imports: `POOL_V1_PAIR_FOREST_ACCOUNT_FORMAT_BINDING`, `POOL_V1_PAIR_FOREST_LANE_HEADER_BYTES`, `POOL_V1_PAIR_FOREST_LANE_MAGIC`, `POOL_V1_PAIR_FOREST_LANE_VERSION`, `POOL_V1_TREE_HASH_VERSION`, `POOL_V1_TREE_STATE_MAGIC`, `POOL_V1_TREE_STATE_VERSION`, `decode_digest_canonical`, `decode_pool_v1_pair_forest_terminal_statement_v1`, `encode_digest_canonical`, and `encode_pool_v1_pair_forest_terminal_request_v1`
+  --> /home/dombarker/project-offloads/aspis-v7-live-adapter.oTxZ60/repo/programs/aspis-pool/src/pair_forest.rs:17:5
+   |
+17 |     decode_digest_canonical, encode_digest_canonical,
+   |     ^^^^^^^^^^^^^^^^^^^^^^^  ^^^^^^^^^^^^^^^^^^^^^^^
+...
+21 |         decode_pool_v1_pair_forest_terminal_statement_v1, encode_pool_v1_pair_forest_checkpoint_v1,
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+22 |         encode_pool_v1_pair_forest_lane_state_v1, encode_pool_v1_pair_forest_master_v1,
+23 |         encode_pool_v1_pair_forest_terminal_request_v1,
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+...
+32 |         POOL_V1_PAIR_FOREST_ACCOUNT_FORMAT_BINDING, POOL_V1_PAIR_FOREST_CHECKPOINT_ACCOUNT_BYTES,
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+33 |         POOL_V1_PAIR_FOREST_LANE_ACCOUNT_BYTES, POOL_V1_PAIR_FOREST_LANE_COUNT,
+34 |         POOL_V1_PAIR_FOREST_LANE_HEADER_BYTES, POOL_V1_PAIR_FOREST_LANE_MAGIC,
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+35 |         POOL_V1_PAIR_FOREST_LANE_VERSION, POOL_V1_PAIR_FOREST_MASTER_ACCOUNT_BYTES,
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+...
+38 |         POOL_V1_ROOT_HISTORY_PAGE_SEED, POOL_V1_TREE_HASH_VERSION, POOL_V1_TREE_STATE_MAGIC,
+   |                                         ^^^^^^^^^^^^^^^^^^^^^^^^^  ^^^^^^^^^^^^^^^^^^^^^^^^
+39 |         POOL_V1_TREE_STATE_VERSION,
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: unused import: `encode_pool_v1_pair_forest_terminal_result_v1`
+  --> /home/dombarker/project-offloads/aspis-v7-live-adapter.oTxZ60/repo/programs/aspis-pool/src/pair_forest_dispatch.rs:14:5
+   |
+14 |     encode_pool_v1_pair_forest_terminal_result_v1, PoolV1PairForestTerminalRequestV1,
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: unused variable: `registry_accounts`
+   --> /home/dombarker/project-offloads/aspis-v7-live-adapter.oTxZ60/repo/programs/aspis-pool/src/pair_forest_dispatch.rs:222:5
+    |
+222 |     registry_accounts: &[AccountInfo<'info>],
+    |     ^^^^^^^^^^^^^^^^^ help: if this is intentional, prefix it with an underscore: `_registry_accounts`
+    |
+    = note: `#[warn(unused_variables)]` (part of `#[warn(unused)]`) on by default
+
+warning: function `pair_cu_checkpoint` is never used
+  --> /home/dombarker/project-offloads/aspis-v7-live-adapter.oTxZ60/repo/programs/aspis-pool/src/pair_dispatch.rs:37:4
+   |
+37 | fn pair_cu_checkpoint(label: &str) {
+   |    ^^^^^^^^^^^^^^^^^^
+   |
+   = note: `#[warn(dead_code)]` (part of `#[warn(unused)]`) on by default
+
+warning: struct `AuthenticatedPairAfterstateV1` is never constructed
+  --> /home/dombarker/project-offloads/aspis-v7-live-adapter.oTxZ60/repo/programs/aspis-pool/src/pair_dispatch.rs:67:19
+   |
+67 | pub(crate) struct AuthenticatedPairAfterstateV1(Box<PoolV1PairVerifiedAfterstateV1>);
+   |                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: method `value` is never used
+  --> /home/dombarker/project-offloads/aspis-v7-live-adapter.oTxZ60/repo/programs/aspis-pool/src/pair_dispatch.rs:70:19
+   |
+69 | impl AuthenticatedPairAfterstateV1 {
+   | ---------------------------------- method in this implementation
+70 |     pub(crate) fn value(&self) -> &PoolV1PairVerifiedAfterstateV1 {
+   |                   ^^^^^
+
+warning: function `authenticate_pair_verified_afterstate_return_v1` is never used
+  --> /home/dombarker/project-offloads/aspis-v7-live-adapter.oTxZ60/repo/programs/aspis-pool/src/pair_dispatch.rs:78:15
+   |
+78 | pub(crate) fn authenticate_pair_verified_afterstate_return_v1(
+   |               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: function `invoke_pair_afterstate_verifier_with_runtime_v1` is never used
+   --> /home/dombarker/project-offloads/aspis-v7-live-adapter.oTxZ60/repo/programs/aspis-pool/src/pair_dispatch.rs:286:4
+    |
+286 | fn invoke_pair_afterstate_verifier_with_runtime_v1<'info, R: PairVerifierRuntimeV1>(
+    |    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: method `exact_bytes` is never used
+  --> /home/dombarker/project-offloads/aspis-v7-live-adapter.oTxZ60/repo/programs/aspis-pool/src/pair_forest_dispatch.rs:45:19
+   |
+40 | impl AuthenticatedPairForestResultV1 {
+   | ------------------------------------ method in this implementation
+...
+45 |     pub(crate) fn exact_bytes(&self) -> &[u8] {
+   |                   ^^^^^^^^^^^
+
+warning: function `pair_cu_checkpoint` is never used
+  --> /home/dombarker/project-offloads/aspis-v7-live-adapter.oTxZ60/repo/programs/aspis-pool/src/pair_processor.rs:50:4
+   |
+50 | fn pair_cu_checkpoint(label: &str) {
+   |    ^^^^^^^^^^^^^^^^^^
+
+warning: struct `PairSpendLayoutV1` is never constructed
+  --> /home/dombarker/project-offloads/aspis-v7-live-adapter.oTxZ60/repo/programs/aspis-pool/src/pair_processor.rs:61:8
+   |
+61 | struct PairSpendLayoutV1 {
+   |        ^^^^^^^^^^^^^^^^^
+
+warning: struct `ValidatedPairHistoryV1` is never constructed
+  --> /home/dombarker/project-offloads/aspis-v7-live-adapter.oTxZ60/repo/programs/aspis-pool/src/pair_processor.rs:78:8
+   |
+78 | struct ValidatedPairHistoryV1 {
+   |        ^^^^^^^^^^^^^^^^^^^^^^
+
+warning: function `require_unique` is never used
+  --> /home/dombarker/project-offloads/aspis-v7-live-adapter.oTxZ60/repo/programs/aspis-pool/src/pair_processor.rs:82:4
+   |
+82 | fn require_unique(accounts: &[AccountInfo<'_>]) -> ProgramResult {
+   |    ^^^^^^^^^^^^^^
+
+warning: function `plan_layout` is never used
+  --> /home/dombarker/project-offloads/aspis-v7-live-adapter.oTxZ60/repo/programs/aspis-pool/src/pair_processor.rs:94:4
+   |
+94 | fn plan_layout(
+   |    ^^^^^^^^^^^
+
+warning: function `validate_history` is never used
+   --> /home/dombarker/project-offloads/aspis-v7-live-adapter.oTxZ60/repo/programs/aspis-pool/src/pair_processor.rs:180:4
+    |
+180 | fn validate_history(
+    |    ^^^^^^^^^^^^^^^^
+
+warning: function `process_pair_private_transfer_with_verifier_v1` is never used
+   --> /home/dombarker/project-offloads/aspis-v7-live-adapter.oTxZ60/repo/programs/aspis-pool/src/pair_processor.rs:277:15
+    |
+277 | pub(crate) fn process_pair_private_transfer_with_verifier_v1<'info, V, S>(
+    |               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: function `process_pair_withdrawal_with_verifier_v1` is never used
+   --> /home/dombarker/project-offloads/aspis-v7-live-adapter.oTxZ60/repo/programs/aspis-pool/src/pair_processor.rs:418:15
+    |
+418 | pub(crate) fn process_pair_withdrawal_with_verifier_v1<'info, R, V, S>(
+    |               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: function `exact` is never used
+  --> /home/dombarker/project-offloads/aspis-v7-live-adapter.oTxZ60/repo/programs/aspis-pool/src/pair_state.rs:56:4
+   |
+56 | fn exact<const N: usize>(bytes: &[u8]) -> Result<[u8; N], ProgramError> {
+   |    ^^^^^
+
+warning: struct `CanonicalPairPoolStateV1` is never constructed
+  --> /home/dombarker/project-offloads/aspis-v7-live-adapter.oTxZ60/repo/programs/aspis-pool/src/pair_state.rs:96:19
+   |
+96 | pub(crate) struct CanonicalPairPoolStateV1 {
+   |                   ^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: associated items `decode_account_from_program_invariant` and `require_same_account` are never used
+   --> /home/dombarker/project-offloads/aspis-v7-live-adapter.oTxZ60/repo/programs/aspis-pool/src/pair_state.rs:111:19
+    |
+110 | impl CanonicalPairPoolStateV1 {
+    | ----------------------------- associated items in this implementation
+111 |     pub(crate) fn decode_account_from_program_invariant(
+    |                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+...
+134 |     pub(crate) fn require_same_account(
+    |                   ^^^^^^^^^^^^^^^^^^^^
+
+warning: associated items `apply_authenticated_afterstate_from_program_invariant` and `decode_from_program_invariant` are never used
+   --> /home/dombarker/project-offloads/aspis-v7-live-adapter.oTxZ60/repo/programs/aspis-pool/src/pair_state.rs:188:19
+    |
+151 | impl PairPoolStateV1 {
+    | -------------------- associated items in this implementation
+...
+188 |     pub(crate) fn apply_authenticated_afterstate_from_program_invariant(
+    |                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+...
+369 |     pub(crate) fn decode_from_program_invariant(
+    |                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: method `transition_kind` is never used
+  --> /home/dombarker/project-offloads/aspis-v7-live-adapter.oTxZ60/repo/programs/aspis-pool/src/prepared_settlement.rs:88:19
+   |
+87 | impl AuthenticatedPreparedSettlementActionV1 {
+   | -------------------------------------------- method in this implementation
+88 |     pub(crate) fn transition_kind(self) -> PoolV1TransitionKind {
+   |                   ^^^^^^^^^^^^^^^
+
+warning: use of deprecated module `solana_program::system_instruction`: Use `solana_system_interface` crate instead
+  --> src/bin/build_proof_upload_requests.rs:14:5
+   |
+14 |     system_instruction,
+   |     ^^^^^^^^^^^^^^^^^^
+   |
+   = note: `#[warn(deprecated)]` on by default
+
+FAIL: staling deposit simulation failed
