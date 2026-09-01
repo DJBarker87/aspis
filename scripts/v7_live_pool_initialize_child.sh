@@ -25,12 +25,19 @@ readonly PROOF_CLOSE_BUILDER=${ASPIS_V7_LIVE_PROOF_CLOSE_BUILDER:-}
 readonly AGAVE_BIN_DIR=${ASPIS_TXV1_DISPOSABLE_AGAVE_BIN_DIR:-}
 readonly OPERATION=${ASPIS_V7_LIVE_OPERATION:-transfer}
 readonly CIPHERTEXT_CASE=${ASPIS_V7_LIVE_CIPHERTEXT_CASE:-canonical}
+readonly WITHDRAWAL_CPI_CASE=${ASPIS_V7_LIVE_WITHDRAWAL_CPI_CASE:-none}
 
 [[ "$RPC_URL" =~ ^http://127\.0\.0\.1:[0-9]+$ ]] || fail "disposable RPC is required"
 [[ "$OPERATION" == transfer || "$OPERATION" == withdrawal ]] \
   || fail "ASPIS_V7_LIVE_OPERATION must be transfer or withdrawal"
 [[ "$CIPHERTEXT_CASE" == canonical || "$CIPHERTEXT_CASE" == malformed-magic ]] \
   || fail "ASPIS_V7_LIVE_CIPHERTEXT_CASE must be canonical or malformed-magic"
+[[ "$WITHDRAWAL_CPI_CASE" == none || "$WITHDRAWAL_CPI_CASE" == frozen-destination ]] \
+  || fail "ASPIS_V7_LIVE_WITHDRAWAL_CPI_CASE must be none or frozen-destination"
+if [[ "$WITHDRAWAL_CPI_CASE" != none ]]; then
+  [[ "$OPERATION" == withdrawal && "$CIPHERTEXT_CASE" == canonical ]] \
+    || fail "withdrawal CPI failure testing requires canonical withdrawal mode"
+fi
 [[ -f "$PAYER_KEYPAIR" && -x "$BUILDER" ]] || fail "ephemeral payer or prebuilt builder unavailable"
 [[ "$EVIDENCE_DIR" == /* && "$EVIDENCE_DIR" != / && ! -e "$EVIDENCE_DIR" ]] \
   || fail "evidence directory must be new, absolute and non-root"
@@ -91,6 +98,11 @@ token_amount() {
     multiplier=$((multiplier * 256))
   done
   printf '%s\n' "$amount"
+}
+
+token_state() {
+  jq -er '.result.value.data[0]' "$1" | openssl base64 -d -A \
+    | od -An -j108 -N1 -tu1 | tr -d '[:space:]'
 }
 
 slot=$(rpc '{"jsonrpc":"2.0","id":1,"method":"getSlot","params":[{"commitment":"finalized"}]}' | jq -er '.result')
@@ -445,6 +457,96 @@ if [[ -n "$SECRET_BUILDER" || -n "$DEPOSIT_BUILDER" ]]; then
         terminal_simulation=$(rpc "$(jq -c '.simulationRequest' "$TERMINAL_EVIDENCE/signed-request.json")")
         jq . <<<"$terminal_simulation" >"$TERMINAL_EVIDENCE/simulation.json"
         jq -e '.error | not' <<<"$terminal_simulation" >/dev/null
+        if [[ "$WITHDRAWAL_CPI_CASE" == frozen-destination ]]; then
+          [[ "$(token_state "$EVIDENCE_DIR/live-proof-inputs/destination.json")" == 2 ]] \
+            || fail "withdrawal CPI test destination is not frozen"
+          jq -e '.result.value.err != null and .result.value.unitsConsumed < 1300000 and
+            any(.result.value.logs[]; contains("Program 7Q2nGsPg8rbjdxKHK4jxTgEWLTyd9o1X4KMSjCieRmue success")) and
+            any(.result.value.logs[]; contains("Program TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA failed"))' \
+            <<<"$terminal_simulation" >/dev/null \
+            || fail "withdrawal simulation did not reach and fail the SPL token CPI"
+          failed_send=$(rpc "$(jq -c '.sendRequest' "$TERMINAL_EVIDENCE/signed-request.json")")
+          jq . <<<"$failed_send" >"$TERMINAL_EVIDENCE/send.json"
+          failed_signature=$(jq -er '.result' <<<"$failed_send")
+          [[ "$failed_signature" == "$(jq -er '.signature' "$TERMINAL_EVIDENCE/signed-request.json")" ]] \
+            || fail "failed withdrawal CPI submission changed signed wire"
+          failed_finalized=false
+          for _ in $(seq 1 600); do
+            failed_status=$(rpc "$(jq -nc --arg signature "$failed_signature" \
+              '{jsonrpc:"2.0",id:1650,method:"getSignatureStatuses",params:[[$signature],{searchTransactionHistory:true}]}')")
+            if jq -e '.result.value[0] != null and .result.value[0].confirmationStatus == "finalized"' \
+              <<<"$failed_status" >/dev/null; then failed_finalized=true; break; fi
+            sleep 0.1
+          done
+          [[ "$failed_finalized" == true ]] || fail "failed withdrawal CPI did not finalize"
+          rpc "$(jq -nc --arg signature "$failed_signature" \
+            '{jsonrpc:"2.0",id:1651,method:"getTransaction",params:[$signature,{encoding:"json",commitment:"finalized",maxSupportedTransactionVersion:1}]}')" \
+            | jq . >"$TERMINAL_EVIDENCE/finalized-transaction.json"
+          jq -e '.result != null and .result.meta.err != null and
+            .result.meta.computeUnitsConsumed < 1300000 and
+            any(.result.meta.logMessages[]; contains("Program 7Q2nGsPg8rbjdxKHK4jxTgEWLTyd9o1X4KMSjCieRmue success")) and
+            any(.result.meta.logMessages[]; contains("Program TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA failed"))' \
+            "$TERMINAL_EVIDENCE/finalized-transaction.json" >/dev/null \
+            || fail "landed withdrawal did not fail at the SPL token CPI"
+          [[ "$(jq -c '.result.value.err' "$TERMINAL_EVIDENCE/simulation.json")" == \
+            "$(jq -c '.result.meta.err' "$TERMINAL_EVIDENCE/finalized-transaction.json")" ]] \
+            || fail "withdrawal CPI simulation and landed errors differ"
+          [[ "$(jq -er '.result.value.unitsConsumed' "$TERMINAL_EVIDENCE/simulation.json")" == \
+            "$(jq -er '.result.meta.computeUnitsConsumed' "$TERMINAL_EVIDENCE/finalized-transaction.json")" ]] \
+            || fail "withdrawal CPI simulation and landed CU differ"
+          rpc "$(jq -nc --argjson addresses "$protected_addresses" \
+            '{jsonrpc:"2.0",id:1652,method:"getMultipleAccounts",params:[$addresses,{encoding:"base64",commitment:"finalized"}]}')" \
+            | jq . >"$TERMINAL_EVIDENCE/accounts-after.json"
+          payer_pubkey=$(NO_DNA=1 "$AGAVE_BIN_DIR/solana-keygen" pubkey "$PAYER_KEYPAIR")
+          payer_index=$(jq -en --argjson addresses "$protected_addresses" --arg payer "$payer_pubkey" \
+            '$addresses | index($payer) // error("payer absent from protected account set")')
+          failed_fee=$(jq -er '.result.meta.fee' "$TERMINAL_EVIDENCE/finalized-transaction.json")
+          assert_failed_transaction_fee_only "$TERMINAL_EVIDENCE/accounts-before.json" \
+            "$TERMINAL_EVIDENCE/accounts-after.json" "$payer_index" "$failed_fee" \
+            || fail "failed withdrawal CPI changed state beyond its payer fee"
+          rpc "$(jq -nc --arg address "$vault_address" \
+            '{jsonrpc:"2.0",id:1653,method:"getAccountInfo",params:[$address,{encoding:"base64",commitment:"finalized"}]}')" \
+            | jq --arg requestedAddress "$vault_address" '. + {requestedAddress:$requestedAddress}' \
+            >"$TERMINAL_EVIDENCE/vault-after.json"
+          rpc "$(jq -nc --arg address "$destination_address" \
+            '{jsonrpc:"2.0",id:1654,method:"getAccountInfo",params:[$address,{encoding:"base64",commitment:"finalized"}]}')" \
+            | jq --arg requestedAddress "$destination_address" '. + {requestedAddress:$requestedAddress}' \
+            >"$TERMINAL_EVIDENCE/destination-after.json"
+          vault_before_amount=$(token_amount "$EVIDENCE_DIR/live-proof-inputs/vault.json")
+          vault_after_amount=$(token_amount "$TERMINAL_EVIDENCE/vault-after.json")
+          destination_before_amount=$(token_amount "$EVIDENCE_DIR/live-proof-inputs/destination.json")
+          destination_after_amount=$(token_amount "$TERMINAL_EVIDENCE/destination-after.json")
+          [[ "$vault_before_amount" == "$vault_after_amount" &&
+            "$destination_before_amount" == "$destination_after_amount" ]] \
+            || fail "failed withdrawal CPI changed custody balances"
+          jq -n --arg signature "$failed_signature" \
+            --argjson slot "$(jq -er '.result.slot' "$TERMINAL_EVIDENCE/finalized-transaction.json")" \
+            --argjson simulatedError "$(jq -c '.result.value.err' "$TERMINAL_EVIDENCE/simulation.json")" \
+            --argjson landedError "$(jq -c '.result.meta.err' "$TERMINAL_EVIDENCE/finalized-transaction.json")" \
+            --argjson simulatedCu "$(jq -er '.result.value.unitsConsumed' "$TERMINAL_EVIDENCE/simulation.json")" \
+            --argjson landedCu "$(jq -er '.result.meta.computeUnitsConsumed' "$TERMINAL_EVIDENCE/finalized-transaction.json")" \
+            --argjson payerFeeLamports "$failed_fee" --arg payer "$payer_pubkey" \
+            --arg before "$(account_values_fee_normalized_hash "$TERMINAL_EVIDENCE/accounts-before.json" "$payer_index")" \
+            --arg after "$(account_values_fee_normalized_hash "$TERMINAL_EVIDENCE/accounts-after.json" "$payer_index")" \
+            --argjson vaultAmount "$vault_after_amount" --argjson destinationAmount "$destination_after_amount" \
+            --slurpfile request "$TERMINAL_EVIDENCE/signed-request.json" \
+            '{schema:"aspis.v7.live-terminal-failed-withdrawal-cpi-rollback.v1",
+              expected:"SPL token CPI failure with atomic rollback",actual:"finalized-rejected",
+              failureFixture:"frozen-destination-at-genesis",signature:$signature,slot:$slot,
+              serializedTransactionBytes:$request[0].serializedTransactionBytes,
+              signedWireSha256:$request[0].signedWireSha256,selectedLane:$request[0].selectedLane,
+              simulatedError:$simulatedError,landedError:$landedError,
+              simulatedCu:$simulatedCu,landedCu:$landedCu,
+              verifierSucceededBeforeCpiFailure:true,byteIdenticalSimulationSubmission:true,
+              feeNormalizedProtectedStateBeforeSha256:$before,
+              feeNormalizedProtectedStateAfterSha256:$after,
+              stateUnchangedExceptPayerFee:true,payer:$payer,payerFeeLamports:$payerFeeLamports,
+              vaultAmountBeforeAndAfter:$vaultAmount,
+              destinationAmountBeforeAndAfter:$destinationAmount,
+              finalized:true,auditOnly:true,disposable:true,mainnetReady:false}' \
+            >"$TERMINAL_EVIDENCE/failed-withdrawal-cpi-rollback.json"
+          exit 0
+        fi
         jq -e '.result.value.err == null and .result.value.unitsConsumed < 1300000' <<<"$terminal_simulation" >/dev/null \
           || fail "terminal $OPERATION simulation failed"
         terminal_send=$(rpc "$(jq -c '.sendRequest' "$TERMINAL_EVIDENCE/signed-request.json")")
