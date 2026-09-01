@@ -112,6 +112,35 @@ theorem indexed_records_aligned_eq_of_answer_maps_eq
             rightTail leftTailAligned rightTailAligned answersExact.2
           rw [tailExact]
 
+/-- The fixed-width transcript block encoder is injective. -/
+theorem encode_blocks_injective (width : Nat) :
+    ∀ count : Nat,
+      Function.Injective
+        (encodeBlocks : (Fin count → Bytes width) → ByteString) := by
+  intro count
+  induction count with
+  | zero =>
+      intro left right _exact
+      funext index
+      exact Fin.elim0 index
+  | succ count ih =>
+      intro left right exact
+      have splitExact :
+          bytes (left 0) ++
+              encodeBlocks (fun (index : Fin count) => left index.succ) =
+            bytes (right 0) ++
+              encodeBlocks (fun (index : Fin count) => right index.succ) := by
+        simpa [encodeBlocks, List.ofFn_succ] using exact
+      obtain ⟨headExact, tailExact⟩ := List.append_inj splitExact (by simp)
+      have headValueExact : left 0 = right 0 :=
+        List.ofFn_injective headExact
+      have tailValueExact :
+          (fun (index : Fin count) => left index.succ) =
+            (fun (index : Fin count) => right index.succ) := ih tailExact
+      funext index
+      refine Fin.cases headValueExact (fun tailIndex => ?_) index
+      exact congrFun tailValueExact tailIndex
+
 /-- Every proof-relevant actual K1.3 trial exposes the earlier member of its
 literal final-work pair.  The selected input carries the exact source-bound
 pre-final digest, irrespective of which actor first queried it. -/
@@ -621,7 +650,100 @@ theorem exact_fixed_clean_k13_adversary_anchor_final256_input_eq
   · simpa [leftCanonicalInput] using leftLookup
   · simpa [rightCanonicalInput, digestExact] using rightLookup
 
+/-- The canonical final-256 producer equality fixes every serialized prover
+field block before q16. -/
+theorem exact_fixed_clean_k13_adversary_anchor_final_values_eq
+    {HiddenTape TapeIdentity Observation Statement Payload Witness : Type}
+    {parameters : ExactCompilerResourceParameters}
+    {transitionFuel : Nat}
+    {configuration : ExactPlainRomWitnessConfiguration HiddenTape TapeIdentity
+      Observation Statement Tag73K12ParsedProof Payload Witness parameters}
+    {projection : AcceptedTapeProjection Statement Tag73K12ParsedProof Payload}
+    {fixedInstance : PublicInstance Statement}
+    {decoder : ExactDecoderInstantiation QM31Exact}
+    (transitionRoom : 2 ≤ transitionFuel)
+    (trial : ExactCompilerExposureTrial parameters) (hidden : HiddenTape)
+    (left right : FreshAnswerTape Digest256
+      (exactCompilerTargetCaps parameters).length)
+    (leftWitness : ExactFixedK13JointTrialWitness transitionFuel configuration
+      projection fixedInstance decoder (hidden, left) trial)
+    (rightWitness : ExactFixedK13JointTrialWitness transitionFuel configuration
+      projection fixedInstance decoder (hidden, right) trial)
+    (anchor : ExactFixedK13AdversaryAnchor leftWitness.input trial)
+    (programmedCover : 513 ≤ 2 * parameters.forkRequestCap)
+    (coordinateExact :
+      (exactFixedK13TrialCoordinates transitionFuel configuration trial
+        (hidden, left)).1 =
+      (exactFixedK13TrialCoordinates transitionFuel configuration trial
+        (hidden, right)).1) :
+    (exactOperationalTape leftWitness.input).messages.finalValues =
+      (exactOperationalTape rightWitness.input).messages.finalValues := by
+  obtain ⟨leftBefore, rightBefore, digest, inputExact, _leftLookup,
+      _rightLookup⟩ :=
+    exact_fixed_clean_k13_adversary_anchor_final256_input_eq transitionRoom
+      trial hidden left right leftWitness rightWitness anchor programmedCover
+      coordinateExact
+  have leftDrop :
+      List.drop 34
+          (bytes leftBefore.digest ++
+            [domAbsorb,
+              (AspisK1.V7Tag73TranscriptSchedule.Payload.final256
+                (exactOperationalTape leftWitness.input).messages.finalValues).label] ++
+            (AspisK1.V7Tag73TranscriptSchedule.Payload.final256
+              (exactOperationalTape leftWitness.input).messages.finalValues).data) =
+        encodeBlocks
+          (exactOperationalTape leftWitness.input).messages.finalValues := by
+    simp only [AspisK1.V7Tag73TranscriptSchedule.Payload.label,
+      AspisK1.V7Tag73TranscriptSchedule.Payload.data]
+    convert (List.drop_append_length
+      (l₁ := bytes leftBefore.digest ++ [domAbsorb, final256Label])
+      (l₂ := encodeBlocks
+        (exactOperationalTape leftWitness.input).messages.finalValues)) using 1 <;>
+      simp
+  have rightDrop :
+      List.drop 34
+          (bytes rightBefore.digest ++
+            [domAbsorb,
+              (AspisK1.V7Tag73TranscriptSchedule.Payload.final256
+                (exactOperationalTape rightWitness.input).messages.finalValues).label] ++
+            (AspisK1.V7Tag73TranscriptSchedule.Payload.final256
+              (exactOperationalTape rightWitness.input).messages.finalValues).data) =
+        encodeBlocks
+          (exactOperationalTape rightWitness.input).messages.finalValues := by
+    simp only [AspisK1.V7Tag73TranscriptSchedule.Payload.label,
+      AspisK1.V7Tag73TranscriptSchedule.Payload.data]
+    convert (List.drop_append_length
+      (l₁ := bytes rightBefore.digest ++ [domAbsorb, final256Label])
+      (l₂ := encodeBlocks
+        (exactOperationalTape rightWitness.input).messages.finalValues)) using 1 <;>
+      simp
+  have finalBytesExact :
+      encodeBlocks
+          (exactOperationalTape leftWitness.input).messages.finalValues =
+        encodeBlocks
+          (exactOperationalTape rightWitness.input).messages.finalValues := by
+    calc
+      _ = List.drop 34
+          (bytes leftBefore.digest ++
+            [domAbsorb,
+              (AspisK1.V7Tag73TranscriptSchedule.Payload.final256
+                (exactOperationalTape leftWitness.input).messages.finalValues).label] ++
+            (AspisK1.V7Tag73TranscriptSchedule.Payload.final256
+              (exactOperationalTape leftWitness.input).messages.finalValues).data) :=
+        leftDrop.symm
+      _ = List.drop 34
+          (bytes rightBefore.digest ++
+            [domAbsorb,
+              (AspisK1.V7Tag73TranscriptSchedule.Payload.final256
+                (exactOperationalTape rightWitness.input).messages.finalValues).label] ++
+            (AspisK1.V7Tag73TranscriptSchedule.Payload.final256
+              (exactOperationalTape rightWitness.input).messages.finalValues).data) := by
+        rw [inputExact]
+      _ = _ := rightDrop
+  exact encode_blocks_injective 16 256 finalBytesExact
+
 #print axioms indexed_records_aligned_eq_of_answer_maps_eq
+#print axioms encode_blocks_injective
 #print axioms exact_fixed_k13_actual_trial_has_selected_prefinal_prefix
 #print axioms exact_master_tape_has_root_record_prefix
 #print axioms exact_fixed_clean_k13_equal_residual_selected_root_priors_eq
@@ -629,6 +751,8 @@ theorem exact_fixed_clean_k13_adversary_anchor_final256_input_eq
   exact_fixed_clean_k13_adversary_anchor_selected_input_and_digest_eq
 #print axioms
   exact_fixed_clean_k13_adversary_anchor_final256_input_eq
+#print axioms
+  exact_fixed_clean_k13_adversary_anchor_final_values_eq
 
 end
 
