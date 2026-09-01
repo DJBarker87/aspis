@@ -21,6 +21,7 @@ namespace AspisK1.V7Tag73ExactPairTrialProbabilityClosure
 open AspisK1.V7FsAokExperiment
 open AspisK1.V7Tag73AdaptiveLazyOracle
 open AspisK1.V7Tag73AdaptiveQ16TrialAccounting
+open AspisK1.V7Tag73AdaptiveFoldFinalWorkQ16TrialAccounting
 open AspisK1.V7Tag73AtomicForkUniformScheduler
 open AspisK1.V7Tag73CausalFoldAlphaFinalWorkQ16Coordinates
 open AspisK1.V7Tag73ExactClientKnowledgeComposition
@@ -31,8 +32,13 @@ open AspisK1.V7Tag73ExactFinalWorkPairControllerCompletion
 open AspisK1.V7Tag73ExactFixedK12MerkleClassifier
 open AspisK1.V7Tag73ExactFixedFullRunFactorization
 open AspisK1.V7Tag73ExactFixedOperationalStateMap
+open AspisK1.V7Tag73ExactFixedCleanQ16ResidualFactorization
+open AspisK1.V7Tag73ExactFixedCleanWorkDependentQ16Factorization
+open AspisK1.V7Tag73ExactConcreteK13K14Events
+open AspisK1.V7Tag73ExactFixedInstanceEvent
 open AspisK1.V7Tag73ExactFixedQ16JointEventHandoff
 open AspisK1.V7Tag73ExactFoldAlphaQ16OperationalRealization
+open AspisK1.V7Tag73ExactAcceptedFoldTrialPackage
 open AspisK1.V7Tag73ExactPlainRomRun
 open AspisK1.V7Tag73ExactSourceAcceptanceModel
 open AspisK1.V7Tag73FinalWorkQ16CandidateController
@@ -42,6 +48,8 @@ open AspisK1.V7Tag73OperationalQ16ForestHandoff
 open AspisK1.V7Tag73Q16SemanticFrontierBridge
 open AspisK1.V7Tag73SqueezeInputStateInjectivity
 open AspisK1.V7Tag73TranscriptSchedule
+open AspisPool.AlgorithmicCircleDecoderV7
+open AspisV5ComponentCQM31TowerExact
 
 noncomputable section
 
@@ -296,7 +304,9 @@ theorem exact_fixed_k13_actual_fold_alpha_q16_realization
       (exactOperationalTape input).frontierNodes schedule =
         semanticFrontierNodes schedule.positions) :
     ∃ realization : ExactAcceptedFoldAlphaQ16Realization input,
-      realization.anchor.finalTrial = trial := by
+      realization.anchor.finalTrial = trial ∧
+      realization.anchor.boundaryIndex = 0 ∧
+      realization.anchor.fold.trial = (exactAcceptedFoldTrial input).trial := by
   let anchor := exactAcceptedFoldAlphaQ16Anchor transitionRoom programmedCover
     input
   have forestRealized : OperationalQ16ForestRealization
@@ -308,10 +318,84 @@ theorem exact_fixed_k13_actual_fold_alpha_q16_realization
     exact exact_compiler_fold_alpha_q16_forest_realization transitionRoom
       programmedCover input anchor.fold anchor.finalTrial anchor.boundaryIndex
       anchor.base anchor.baseExact anchor.installed frontierExact
-  refine ⟨{ anchor := anchor, forestRealized := forestRealized }, ?_⟩
+  refine ⟨{ anchor := anchor, forestRealized := forestRealized }, ?_, rfl, rfl⟩
   change (exactAcceptedDagInstallation transitionRoom input).finalTrial = trial
   exact (exact_fixed_k13_actual_trial_eq_accepted_installation transitionRoom
     input trial actual).symm
+
+/-! ## Exact clean pair-indexed event -/
+
+/-- One clean K1.3 failure indexed by both literal positioned work trials. -/
+structure ExactFixedCleanK13PairTrialWitness
+    {HiddenTape TapeIdentity Observation Statement Payload Witness : Type}
+    {parameters : ExactCompilerResourceParameters}
+    (transitionFuel : Nat)
+    (configuration : ExactPlainRomWitnessConfiguration HiddenTape TapeIdentity
+      Observation Statement Tag73K12ParsedProof Payload Witness parameters)
+    (projection : AcceptedTapeProjection Statement Tag73K12ParsedProof Payload)
+    (fixedInstance : PublicInstance Statement)
+    (decoder : ExactDecoderInstantiation QM31Exact)
+    (sample : ExactCompilerSample HiddenTape parameters)
+    (foldTrial finalTrial : ExactCompilerExposureTrial parameters) : Type where
+  joint : ExactFixedK13JointTrialWitness transitionFuel configuration
+    projection fixedInstance decoder sample finalTrial
+  legal : sample ∈ exactFixedPlainRomLegalSameTapeEvent transitionFuel
+    configuration projection fixedInstance
+  foldExact : (exactAcceptedFoldTrial joint.input).trial = foldTrial
+
+def exactFixedCleanK13PairTrialEvent
+    {HiddenTape TapeIdentity Observation Statement Payload Witness : Type}
+    {parameters : ExactCompilerResourceParameters}
+    (transitionFuel : Nat)
+    (configuration : ExactPlainRomWitnessConfiguration HiddenTape TapeIdentity
+      Observation Statement Tag73K12ParsedProof Payload Witness parameters)
+    (projection : AcceptedTapeProjection Statement Tag73K12ParsedProof Payload)
+    (fixedInstance : PublicInstance Statement)
+    (decoder : ExactDecoderInstantiation QM31Exact)
+    (foldTrial finalTrial : ExactCompilerExposureTrial parameters) :
+    Set (ExactCompilerSample HiddenTape parameters) :=
+  {sample | Nonempty (ExactFixedCleanK13PairTrialWitness transitionFuel
+    configuration projection fixedInstance decoder sample foldTrial finalTrial)}
+
+/-- Every clean K1.3 query failure chooses its literal fold/final trial pair. -/
+theorem exact_fixed_clean_k13_query_event_subset_pair_trial_union
+    {HiddenTape TapeIdentity Observation Statement Payload Witness : Type}
+    [Fintype HiddenTape]
+    {parameters : ExactCompilerResourceParameters}
+    {transitionFuel : Nat}
+    {configuration : ExactPlainRomWitnessConfiguration HiddenTape TapeIdentity
+      Observation Statement Tag73K12ParsedProof Payload Witness parameters}
+    {projection : AcceptedTapeProjection Statement Tag73K12ParsedProof Payload}
+    {fixedInstance : PublicInstance Statement}
+    {decoder : ExactDecoderInstantiation QM31Exact}
+    (transitionRoom : 2 ≤ transitionFuel)
+    (programmedCover : 518 ≤ 2 * parameters.forkRequestCap)
+    (source : ExactFixedK13ParsedSourceProvider transitionFuel configuration
+      projection fixedInstance)
+    (frontierExact : ∀
+      (sample : ExactCompilerSample HiddenTape parameters)
+      (input : ExactK12OperationalInput transitionFuel configuration projection
+        fixedInstance sample)
+      (schedule : QuerySchedule),
+      (exactOperationalTape input).frontierNodes schedule =
+        semanticFrontierNodes schedule.positions) :
+    (exactFixedPlainRomLegalSameTapeEvent transitionFuel configuration projection
+        fixedInstance ∩
+      exactTag73K13QueryEvent transitionFuel configuration projection
+        fixedInstance decoder) ⊆
+      ⋃ foldTrial : ExactCompilerExposureTrial parameters,
+        ⋃ finalTrial : ExactCompilerExposureTrial parameters,
+          exactFixedCleanK13PairTrialEvent transitionFuel configuration
+            projection fixedInstance decoder foldTrial finalTrial := by
+  intro sample member
+  obtain ⟨finalTrial, finalMember⟩ :=
+    exact_fixed_k13_query_failure_has_joint_trial_witness transitionRoom
+      (by omega) source (frontierExact sample) member.2
+  let joint := Classical.choice finalMember
+  let foldTrial := (exactAcceptedFoldTrial joint.input).trial
+  apply Set.mem_iUnion.mpr
+  refine ⟨foldTrial, Set.mem_iUnion.mpr ⟨finalTrial, ?_⟩⟩
+  exact ⟨{ joint := joint, legal := member.1, foldExact := rfl }⟩
 
 #print axioms nodup_selected_prefix_length_unique
 #print axioms nodup_selected_index_unique
@@ -320,6 +404,8 @@ theorem exact_fixed_k13_actual_fold_alpha_q16_realization
 #print axioms exact_literal_final_work_pair_trial_unique_of_base
 #print axioms exact_fixed_k13_actual_trial_eq_accepted_installation
 #print axioms exact_fixed_k13_actual_fold_alpha_q16_realization
+#print axioms ExactFixedCleanK13PairTrialWitness
+#print axioms exact_fixed_clean_k13_query_event_subset_pair_trial_union
 
 end
 
