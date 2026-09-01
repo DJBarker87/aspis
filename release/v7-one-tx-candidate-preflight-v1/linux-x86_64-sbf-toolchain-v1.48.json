@@ -1,0 +1,482 @@
+{
+  "schema": "aspis.v7.linux-x86_64-sbf-toolchain-inventory.v1",
+  "captured_at_utc": "2026-08-30T17:32:50Z",
+  "capture_note": "Exact bytes already installed on the dedicated Linux builder; logical paths are rooted at ASPIS_V7_TOOLCHAIN_CAPTURE_ROOT. No download, installation, or shared-cache mutation occurred during capture.",
+  "host": "Linux x86_64",
+  "acquisition_host": {
+    "uname": "Linux nuc 6.8.0-110-generic #110-Ubuntu SMP PREEMPT_DYNAMIC Thu Mar 19 15:09:20 UTC 2026 x86_64 x86_64 x86_64 GNU/Linux",
+    "os_release_sha256": "01af466feb100306498c86aa6bad1815e33036019aa34d4362c20f374ea5c829"
+  },
+  "cargo_build_sbf_path": "solana-active-release/bin/cargo-build-sbf",
+  "cargo_build_sbf_bytes": 18776304,
+  "cargo_build_sbf_sha256": "b2ee45538a199c00833811383b88dd286380e7d2dbc16e10ddbf94ac51e183cb",
+  "cargo_build_sbf_version": "solana-cargo-build-sbf 2.3.0\nplatform-tools v1.48\nrustc 1.84.1",
+  "sbf_sdk_path": "solana-active-release/bin/platform-tools-sdk/sbf",
+  "platform_tools_root": "platform-tools-v1.48",
+  "platform_tools_version": "v1.48",
+  "platform_rustc_version": "rustc 1.84.1-dev",
+  "platform_clang_version": "clang version 19.1.7-rust-dev (https://github.com/anza-xyz/llvm-project.git 58a09e9726c323da6cd66bfa96fdf16632ef3973)",
+  "selection": {
+    "explicit_platform_binaries_and_archives": 11,
+    "complete_sbpf_rust_sysroot_rlibs": 25,
+    "direct_sbf_sdk_release_files": 55,
+    "total": 91
+  },
+  "toolchain_files": [
+    {
+      "path": "platform-tools-v1.48/llvm/bin/clang-19",
+      "bytes": 143751056,
+      "sha256": "591471c0944f680420ab0c28193c57a1b6f9553c7f86c0a158338a317eb7bfa3"
+    },
+    {
+      "path": "platform-tools-v1.48/llvm/bin/llc",
+      "bytes": 75656784,
+      "sha256": "0c1b48f4be12a4da5fb3758017b1a314c5f9ce467da65be5c2111064be1d89c8"
+    },
+    {
+      "path": "platform-tools-v1.48/llvm/bin/lld",
+      "bytes": 83456072,
+      "sha256": "4b7510ee2cba519bdf829f18843ac3a2133825307487ae16278cccc76db25972"
+    },
+    {
+      "path": "platform-tools-v1.48/llvm/bin/llvm-ar",
+      "bytes": 13951824,
+      "sha256": "84efd927e2f9f003fa292b82a55f1c0dd216e46c26599bbfbc40479b7060019d"
+    },
+    {
+      "path": "platform-tools-v1.48/llvm/bin/llvm-objcopy",
+      "bytes": 6918496,
+      "sha256": "3a871eab7279dee53f2580e8a022c980305738b575755b7d3529a6230ec4f672"
+    },
+    {
+      "path": "platform-tools-v1.48/llvm/bin/llvm-objdump",
+      "bytes": 17619584,
+      "sha256": "f83c9ce83cf03beb282137f9b428c7214e74adb460b6c609c5fd7f63a3e04363"
+    },
+    {
+      "path": "platform-tools-v1.48/llvm/bin/llvm-readobj",
+      "bytes": 10145232,
+      "sha256": "6d313f4208a87d65e8928b0e2dc1f79546e6378fbec3d0fdf03db9938af724c3"
+    },
+    {
+      "path": "platform-tools-v1.48/llvm/lib/sbpf/libc.a",
+      "bytes": 903974,
+      "sha256": "e9f0d9127d5d29bbf909ee4fe448e5c5f4f48e3c1de8542639c44f9795604e70"
+    },
+    {
+      "path": "platform-tools-v1.48/llvm/lib/sbpf/libm.a",
+      "bytes": 619102,
+      "sha256": "e9b27d36b6504d673e039e3d700996fc5a2dbb3ced98be6d4857ce338c7e634d"
+    },
+    {
+      "path": "platform-tools-v1.48/rust/bin/cargo",
+      "bytes": 38680184,
+      "sha256": "5614db715dddef5793dc5dc6403fea384993ea429337620aab9020438356d8ca"
+    },
+    {
+      "path": "platform-tools-v1.48/rust/bin/rustc",
+      "bytes": 16424,
+      "sha256": "89fd4ccdd6e678a24c2cda074b498b46a352fcfce21018119c9526751afc678d"
+    },
+    {
+      "path": "platform-tools-v1.48/rust/lib/rustlib/sbpf-solana-solana/lib/libaddr2line-ef7fa1817b7a0044.rlib",
+      "bytes": 452134,
+      "sha256": "d97a0f1ba928a9651ba867caf7e7437163250d8c725c1f44d97e64f16d28c284"
+    },
+    {
+      "path": "platform-tools-v1.48/rust/lib/rustlib/sbpf-solana-solana/lib/libadler-1678726f524da49d.rlib",
+      "bytes": 33308,
+      "sha256": "0c77aa1c052731736dd85f370f5ebcad197c4ed63043fc8584dae7935da34b3d"
+    },
+    {
+      "path": "platform-tools-v1.48/rust/lib/rustlib/sbpf-solana-solana/lib/liballoc-dc3bf3e87d3d7094.rlib",
+      "bytes": 6165654,
+      "sha256": "f8848291159a4209c0f1a540188f1d02614df7a711baaec95c63240cd620e80e"
+    },
+    {
+      "path": "platform-tools-v1.48/rust/lib/rustlib/sbpf-solana-solana/lib/libcfg_if-d923b64a7dc0dd9d.rlib",
+      "bytes": 8830,
+      "sha256": "2325cad82219a32f8b5a3b48c371eb026c20ac0f1455d8dcc910c2ebb8784e3d"
+    },
+    {
+      "path": "platform-tools-v1.48/rust/lib/rustlib/sbpf-solana-solana/lib/libcompiler_builtins-d7924d72317b3879.rlib",
+      "bytes": 2862872,
+      "sha256": "2d243336180429fcbd6dc16676cc13e93ab31cb2ecfc335c3fdd76c4ba366317"
+    },
+    {
+      "path": "platform-tools-v1.48/rust/lib/rustlib/sbpf-solana-solana/lib/libcore-df2f94031a6f96fd.rlib",
+      "bytes": 32737030,
+      "sha256": "3eb55b498c50d2e4d106b84e2b4b02c938127d534f87ffc3996618ce9aeaf26d"
+    },
+    {
+      "path": "platform-tools-v1.48/rust/lib/rustlib/sbpf-solana-solana/lib/libgetopts-7ce2c5310600d66c.rlib",
+      "bytes": 398746,
+      "sha256": "337ea1c6eceb5f431d7ca7b51f55529aec67cdf9e4c9917773426339efeead03"
+    },
+    {
+      "path": "platform-tools-v1.48/rust/lib/rustlib/sbpf-solana-solana/lib/libgimli-0701cc5ed8bf7398.rlib",
+      "bytes": 5975968,
+      "sha256": "b5aa16bf388a2e4ca2130b5df35a0d99f9f42575c2311acad6e66cb6c4d3768b"
+    },
+    {
+      "path": "platform-tools-v1.48/rust/lib/rustlib/sbpf-solana-solana/lib/libhashbrown-8be0fce723a0d798.rlib",
+      "bytes": 1546498,
+      "sha256": "fe6aebcf8fb6725862ce21cd50a03330ed1da95432193f44f06a6e57f678d9d6"
+    },
+    {
+      "path": "platform-tools-v1.48/rust/lib/rustlib/sbpf-solana-solana/lib/liblibc-4604a3d665b78706.rlib",
+      "bytes": 36554,
+      "sha256": "abc6a1e01d811cb34de1a03a27db665ea8dacb8f06bf040cb0164fffc534902a"
+    },
+    {
+      "path": "platform-tools-v1.48/rust/lib/rustlib/sbpf-solana-solana/lib/libmemchr-fca3fb7649e46819.rlib",
+      "bytes": 665070,
+      "sha256": "426b391fb8b7e024299119bfa35eff9d3d6e04c2ce5a7203a49e25de6496b492"
+    },
+    {
+      "path": "platform-tools-v1.48/rust/lib/rustlib/sbpf-solana-solana/lib/libminiz_oxide-1e9ef2886dc15386.rlib",
+      "bytes": 303794,
+      "sha256": "e26b883892758bf27819762599d263070eb89f378e5e1d179e2f74de062378f3"
+    },
+    {
+      "path": "platform-tools-v1.48/rust/lib/rustlib/sbpf-solana-solana/lib/libobject-820492d38da87a01.rlib",
+      "bytes": 8459866,
+      "sha256": "d7400a5c40e7cbcc3de8a03d1e15570efb6c31e2360018afe805b9256c97c150"
+    },
+    {
+      "path": "platform-tools-v1.48/rust/lib/rustlib/sbpf-solana-solana/lib/libpanic_abort-0902a34c2638b51f.rlib",
+      "bytes": 8980,
+      "sha256": "da1229d625100eb266fea1cfac06627451698cb833cd235d700a62232bcab3b6"
+    },
+    {
+      "path": "platform-tools-v1.48/rust/lib/rustlib/sbpf-solana-solana/lib/libpanic_unwind-aef962e07f7b5787.rlib",
+      "bytes": 12814,
+      "sha256": "100de9c6c9a8218b93214254ddabeefab84d6a572b0e31db9a9933ddb8088f0b"
+    },
+    {
+      "path": "platform-tools-v1.48/rust/lib/rustlib/sbpf-solana-solana/lib/libproc_macro-d1b377d2946b1156.rlib",
+      "bytes": 2264250,
+      "sha256": "3efdfd4b0403ebdb2c0bab9d55d3ab3571a22c4825ceef3635b7c6fe9b82810a"
+    },
+    {
+      "path": "platform-tools-v1.48/rust/lib/rustlib/sbpf-solana-solana/lib/librustc_std_workspace_alloc-a809c420916c4df8.rlib",
+      "bytes": 5148,
+      "sha256": "08365b3a9de2e3da950264b295d155535407523ea8e9835874773622f086cd57"
+    },
+    {
+      "path": "platform-tools-v1.48/rust/lib/rustlib/sbpf-solana-solana/lib/librustc_std_workspace_core-02199b0ee1706357.rlib",
+      "bytes": 8074,
+      "sha256": "afd0dbcc1559bc41ece1dff3872aae3aaeadc65ca9b216f042e34e05537a1886"
+    },
+    {
+      "path": "platform-tools-v1.48/rust/lib/rustlib/sbpf-solana-solana/lib/librustc_std_workspace_std-f050d1a665dbab57.rlib",
+      "bytes": 9328,
+      "sha256": "7c6ff495d0459f7d6debcf32cd8dfbb80e09d7a0563412d3788d73035e8ef565"
+    },
+    {
+      "path": "platform-tools-v1.48/rust/lib/rustlib/sbpf-solana-solana/lib/libstd-0f02fa4f6c0db083.rlib",
+      "bytes": 6964700,
+      "sha256": "075fece54c5d34c9fee1bc41b5e18b3e99407ccc7b01d6669eefad1b1cfd9e5d"
+    },
+    {
+      "path": "platform-tools-v1.48/rust/lib/rustlib/sbpf-solana-solana/lib/libstd_detect-6784016d6fbf00cd.rlib",
+      "bytes": 140366,
+      "sha256": "1cb6fa2f89947aa1f24123108dc1581effa9d9ca95392e6a51b6fe3d3891e6ba"
+    },
+    {
+      "path": "platform-tools-v1.48/rust/lib/rustlib/sbpf-solana-solana/lib/libsysroot-56b304a838aec3ae.rlib",
+      "bytes": 4824,
+      "sha256": "bd0831e4932c051f29a9f53593b9647ddcbbe5f3de77c3a8325edff06918b571"
+    },
+    {
+      "path": "platform-tools-v1.48/rust/lib/rustlib/sbpf-solana-solana/lib/libtest-34dcee2513246be2.rlib",
+      "bytes": 2496168,
+      "sha256": "c2d822b657f3c9479ee4d6563c6a97180a25d147f5c9a09134adab09e5088a4f"
+    },
+    {
+      "path": "platform-tools-v1.48/rust/lib/rustlib/sbpf-solana-solana/lib/libunicode_width-c04b48a92a06935d.rlib",
+      "bytes": 859676,
+      "sha256": "67f6ab782aa02a02fd4d43eeedb54fdb907ea2ded6e605794191f34694407897"
+    },
+    {
+      "path": "platform-tools-v1.48/rust/lib/rustlib/sbpf-solana-solana/lib/libunwind-2d18407b9e261821.rlib",
+      "bytes": 9894,
+      "sha256": "92a8bdb391f91e587929d56fd90e6814305141e97798f1536f7aacd14cb60ddd"
+    },
+    {
+      "path": "solana-active-release/bin/platform-tools-sdk/sbf/c/README.md",
+      "bytes": 1030,
+      "sha256": "06a36b4517d8a1f5ca005385601e5c14827baefc87ce45719681f65436c0335c"
+    },
+    {
+      "path": "solana-active-release/bin/platform-tools-sdk/sbf/c/inc/deserialize_deprecated.h",
+      "bytes": 39,
+      "sha256": "76c96c25637df160388fac89f265c0af946dae909fa37fbb0d979cb35946b03e"
+    },
+    {
+      "path": "solana-active-release/bin/platform-tools-sdk/sbf/c/inc/sol/alt_bn128.h",
+      "bytes": 1625,
+      "sha256": "aa05959b4147805bc08fc64d46c125bfdff127d8b442fb4bfd99067ee46e4145"
+    },
+    {
+      "path": "solana-active-release/bin/platform-tools-sdk/sbf/c/inc/sol/alt_bn128_compression.h",
+      "bytes": 2056,
+      "sha256": "047178eb076f59cb09c3780b2e18c1c1946829e0b4953cd686dacd8240b52c75"
+    },
+    {
+      "path": "solana-active-release/bin/platform-tools-sdk/sbf/c/inc/sol/assert.h",
+      "bytes": 1299,
+      "sha256": "d488f2eb8453488e298482a0db2daf7f40dfcecc939a3a7253e680503feca36e"
+    },
+    {
+      "path": "solana-active-release/bin/platform-tools-sdk/sbf/c/inc/sol/big_mod_exp.h",
+      "bytes": 857,
+      "sha256": "8b2a539d43050b758527af9eb1bfc78a0cab0e2eccf4c25e9644c3dfcc8a42ec"
+    },
+    {
+      "path": "solana-active-release/bin/platform-tools-sdk/sbf/c/inc/sol/blake3.h",
+      "bytes": 921,
+      "sha256": "1685b4195b4e83a9e0c7cd0bb22cd1e02a4a3dc7fac364be77609c59c977e204"
+    },
+    {
+      "path": "solana-active-release/bin/platform-tools-sdk/sbf/c/inc/sol/compute_units.h",
+      "bytes": 901,
+      "sha256": "98fdaeccd35479de916296eb6d95e11a16b84382f3ac0b5e5983691472107fe0"
+    },
+    {
+      "path": "solana-active-release/bin/platform-tools-sdk/sbf/c/inc/sol/constants.h",
+      "bytes": 801,
+      "sha256": "7dd040c41526b0676d0f2ab7e2a9137065106e83a4d83a375b95d28d52307b5b"
+    },
+    {
+      "path": "solana-active-release/bin/platform-tools-sdk/sbf/c/inc/sol/cpi.h",
+      "bytes": 3841,
+      "sha256": "96c75b02b43a4aa7e90696e5812e9772174a5b1f80fa229874a4437b2ffb8384"
+    },
+    {
+      "path": "solana-active-release/bin/platform-tools-sdk/sbf/c/inc/sol/deserialize.h",
+      "bytes": 4137,
+      "sha256": "505785cdbc64d74372ab71791adcd2a8305fb298c201dbca979e0dfca291bb53"
+    },
+    {
+      "path": "solana-active-release/bin/platform-tools-sdk/sbf/c/inc/sol/deserialize_deprecated.h",
+      "bytes": 3420,
+      "sha256": "113d2f4577684caa2ff6f4607e98537079c597349db145aab6c457715076feaa"
+    },
+    {
+      "path": "solana-active-release/bin/platform-tools-sdk/sbf/c/inc/sol/entrypoint.h",
+      "bytes": 1663,
+      "sha256": "2f99d265e925adf204041008ccfae84844a486bfe456f75ee03e2c04ee9374ab"
+    },
+    {
+      "path": "solana-active-release/bin/platform-tools-sdk/sbf/c/inc/sol/inc/alt_bn128.inc",
+      "bytes": 1032,
+      "sha256": "6ae92d1138161ced53ffbd2c5e0a78c449bb902db679e95ffd4dbb015cd43a3c"
+    },
+    {
+      "path": "solana-active-release/bin/platform-tools-sdk/sbf/c/inc/sol/inc/alt_bn128_compression.inc",
+      "bytes": 1316,
+      "sha256": "e067415bc4c61431e0f16f551c3f44ba6cd731f89f7bd3d2ab70bf01ff662c7a"
+    },
+    {
+      "path": "solana-active-release/bin/platform-tools-sdk/sbf/c/inc/sol/inc/assert.inc",
+      "bytes": 828,
+      "sha256": "88e6625a05acf6d09588eca6f1a152057fb0565e164a7033ad4dc6a7f311e4b2"
+    },
+    {
+      "path": "solana-active-release/bin/platform-tools-sdk/sbf/c/inc/sol/inc/big_mod_exp.inc",
+      "bytes": 390,
+      "sha256": "472ec9728c281669071eae3784ecf255f651468713b85e8084a7f7f464a8e2ba"
+    },
+    {
+      "path": "solana-active-release/bin/platform-tools-sdk/sbf/c/inc/sol/inc/blake3.inc",
+      "bytes": 455,
+      "sha256": "03b3fe35b02e906d109c30c7bab66db7dd6b0a1f0c78b1c12af744a66101aa50"
+    },
+    {
+      "path": "solana-active-release/bin/platform-tools-sdk/sbf/c/inc/sol/inc/compute_units.inc",
+      "bytes": 432,
+      "sha256": "d2d0ea287f00664012d4676b403bb4b2217c5d47e1318ee9f84b15d5d9a15f4b"
+    },
+    {
+      "path": "solana-active-release/bin/platform-tools-sdk/sbf/c/inc/sol/inc/cpi.inc",
+      "bytes": 3193,
+      "sha256": "d932d0400803f42f20191732565a7c42140347ef855109efd9afccd3bd516adc"
+    },
+    {
+      "path": "solana-active-release/bin/platform-tools-sdk/sbf/c/inc/sol/inc/keccak.inc",
+      "bytes": 452,
+      "sha256": "fc9b740a99bb48aa42cb8aa54240e4b0f05165a3f85f352bcdb71e8f1997d252"
+    },
+    {
+      "path": "solana-active-release/bin/platform-tools-sdk/sbf/c/inc/sol/inc/last_restart_slot.inc",
+      "bytes": 261,
+      "sha256": "06548830c844182b6ace88f2598872c5170af73f03c73d71483d6e6d21a9af4f"
+    },
+    {
+      "path": "solana-active-release/bin/platform-tools-sdk/sbf/c/inc/sol/inc/log.inc",
+      "bytes": 2590,
+      "sha256": "a6aef93e86a3ed71dabc0670506bc4603b64144b355948b3c2fc3f1837b55736"
+    },
+    {
+      "path": "solana-active-release/bin/platform-tools-sdk/sbf/c/inc/sol/inc/poseidon.inc",
+      "bytes": 1229,
+      "sha256": "c083b4fffc6ab62a9aaffab07c6fdfd0a95817e8fcf93ec8de69f25e852447d9"
+    },
+    {
+      "path": "solana-active-release/bin/platform-tools-sdk/sbf/c/inc/sol/inc/pubkey.inc",
+      "bytes": 2336,
+      "sha256": "038379d439f4fd72bebd4caed69f8e26c8267d1a20c87a56aa792c85b0da953f"
+    },
+    {
+      "path": "solana-active-release/bin/platform-tools-sdk/sbf/c/inc/sol/inc/return_data.inc",
+      "bytes": 875,
+      "sha256": "5fbf73f745893a4205d0ba7ea0e12811bdbdcfa549db23b87d2524b7f785ecea"
+    },
+    {
+      "path": "solana-active-release/bin/platform-tools-sdk/sbf/c/inc/sol/inc/secp256k1.inc",
+      "bytes": 1205,
+      "sha256": "ec843427e8277dbcacaef96c2b71a9d7237b01b63ea1c86be62c5f7bb2ecccee"
+    },
+    {
+      "path": "solana-active-release/bin/platform-tools-sdk/sbf/c/inc/sol/inc/sha.inc",
+      "bytes": 446,
+      "sha256": "288faee6eb253def269b4127eeb7d429b4e6f41c8eab11ae7e9ee44714ca87d7"
+    },
+    {
+      "path": "solana-active-release/bin/platform-tools-sdk/sbf/c/inc/sol/keccak.h",
+      "bytes": 925,
+      "sha256": "0058f9ef7e2de1be77a3b713dbd355ed00a4ef4afd88ba971b76aa11d69da5f4"
+    },
+    {
+      "path": "solana-active-release/bin/platform-tools-sdk/sbf/c/inc/sol/last_restart_slot.h",
+      "bytes": 750,
+      "sha256": "dd66d2188ec0e7cd88654e9fed0167c6a40252db54417042ad3f20584cb85585"
+    },
+    {
+      "path": "solana-active-release/bin/platform-tools-sdk/sbf/c/inc/sol/log.h",
+      "bytes": 4308,
+      "sha256": "aabc490bc3e40512d6aa57a47eb90b9fcffe6dd30acf5a7f9b021040df681dd0"
+    },
+    {
+      "path": "solana-active-release/bin/platform-tools-sdk/sbf/c/inc/sol/poseidon.h",
+      "bytes": 1916,
+      "sha256": "8bb9c176f125545b73af9a7723ca1a8fd5eb8f428452592f9a9aa8ad84e21596"
+    },
+    {
+      "path": "solana-active-release/bin/platform-tools-sdk/sbf/c/inc/sol/pubkey.h",
+      "bytes": 4021,
+      "sha256": "e7490aecae4ccc3a5f1dab8f4c64907e97f3def927ffedd7eb61d760b50bfd2b"
+    },
+    {
+      "path": "solana-active-release/bin/platform-tools-sdk/sbf/c/inc/sol/return_data.h",
+      "bytes": 1863,
+      "sha256": "4595e26096f93cf97939747a6d74978cfd0be74303c13aca3dc641cc4921ac2d"
+    },
+    {
+      "path": "solana-active-release/bin/platform-tools-sdk/sbf/c/inc/sol/secp256k1.h",
+      "bytes": 1781,
+      "sha256": "fd580acfc83b513b4f1593bfd6e6ae2eae1fea3bfe6ae5ce3e62b7865ef58da4"
+    },
+    {
+      "path": "solana-active-release/bin/platform-tools-sdk/sbf/c/inc/sol/sha.h",
+      "bytes": 897,
+      "sha256": "4683a97894efea38058b602edacceeaac045baba12c2bdf70530168a41047bc4"
+    },
+    {
+      "path": "solana-active-release/bin/platform-tools-sdk/sbf/c/inc/sol/string.h",
+      "bytes": 2069,
+      "sha256": "1fb1db89fba24801dc0c014fdd6543c96ebddd051787f768005e069122df5461"
+    },
+    {
+      "path": "solana-active-release/bin/platform-tools-sdk/sbf/c/inc/sol/types.h",
+      "bytes": 3883,
+      "sha256": "e52965f8bd283e8ac7b504022d394b718dd2ba77270e9ce34f6b64acd555326e"
+    },
+    {
+      "path": "solana-active-release/bin/platform-tools-sdk/sbf/c/inc/solana_sdk.h",
+      "bytes": 515,
+      "sha256": "cf7f5762db7a87677bfb62b357c6950cba6d1146bc2a4e3adc8eacab7bde1d44"
+    },
+    {
+      "path": "solana-active-release/bin/platform-tools-sdk/sbf/c/inc/stdio.h",
+      "bytes": 81,
+      "sha256": "b05557a562439eb2981507f79f90855a72aaf716cc068a4d96727b958162fdf1"
+    },
+    {
+      "path": "solana-active-release/bin/platform-tools-sdk/sbf/c/inc/stdlib.h",
+      "bytes": 37,
+      "sha256": "866e40d29930b07886fba1a881cf11cb43a1e19ce00e656d67c6f6e528afdf83"
+    },
+    {
+      "path": "solana-active-release/bin/platform-tools-sdk/sbf/c/inc/string.h",
+      "bytes": 116,
+      "sha256": "1fa8b80022c45e01274e452964efad09dd7e7951e060874a3c8ca03bab320635"
+    },
+    {
+      "path": "solana-active-release/bin/platform-tools-sdk/sbf/c/inc/sys/param.h",
+      "bytes": 13,
+      "sha256": "b3adf106d95b8934f690943f2921308b90be5b766c4c8ba250c792de56400201"
+    },
+    {
+      "path": "solana-active-release/bin/platform-tools-sdk/sbf/c/inc/wchar.h",
+      "bytes": 13,
+      "sha256": "b3adf106d95b8934f690943f2921308b90be5b766c4c8ba250c792de56400201"
+    },
+    {
+      "path": "solana-active-release/bin/platform-tools-sdk/sbf/c/sbf.ld",
+      "bytes": 452,
+      "sha256": "a7feb3b4a201045e44c3cce9f3c1087a2bf2fb6d1974aa84f55ed4a65b6f1380"
+    },
+    {
+      "path": "solana-active-release/bin/platform-tools-sdk/sbf/c/sbf.mk",
+      "bytes": 9411,
+      "sha256": "5087a38789eb0aed6931ff9fca78ff7166fcbd2f89b4367c707b77ef8f82f5c7"
+    },
+    {
+      "path": "solana-active-release/bin/platform-tools-sdk/sbf/dependencies/criterion-v2.3.3.md",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "solana-active-release/bin/platform-tools-sdk/sbf/dependencies/platform-tools-v1.48.md",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "solana-active-release/bin/platform-tools-sdk/sbf/env.sh",
+      "bytes": 499,
+      "sha256": "ff2f69a21002d52c154c839057c52252b0bf784bbba4d7a3e26e660233e552f2"
+    },
+    {
+      "path": "solana-active-release/bin/platform-tools-sdk/sbf/scripts/dump.sh",
+      "bytes": 1016,
+      "sha256": "1a10c293944672576a4d840f7fd5a093d59781ea094f19dee1e19386185f3f07"
+    },
+    {
+      "path": "solana-active-release/bin/platform-tools-sdk/sbf/scripts/install.sh",
+      "bytes": 2978,
+      "sha256": "89644f119cd649b3e6c4e6bfb3758ac8e198e662bd2bee79a6e76525cb2825c4"
+    },
+    {
+      "path": "solana-active-release/bin/platform-tools-sdk/sbf/scripts/objcopy.sh",
+      "bytes": 209,
+      "sha256": "7425a852c14baa9706c360d1ecbdbd696dd8ce6cd0cb12050b3bde888f9f7160"
+    },
+    {
+      "path": "solana-active-release/bin/platform-tools-sdk/sbf/scripts/package.sh",
+      "bytes": 354,
+      "sha256": "b8651c7f1fc35911f24254e5fb6993aefc4ee750c782b399a9388c9be9b81019"
+    },
+    {
+      "path": "solana-active-release/bin/platform-tools-sdk/sbf/scripts/strip.sh",
+      "bytes": 510,
+      "sha256": "aa6fad201d4301e8d9adf92359c951a828002679ed043703477a3b333c171ead"
+    },
+    {
+      "path": "solana-active-release/bin/platform-tools-sdk/sbf/syscalls.txt",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    }
+  ]
+}

@@ -1,0 +1,33 @@
+{
+  "schema": "aspis.v7.agave-runtime-materialization.v1",
+  "officialRelease": {
+    "tag": "v4.2.0",
+    "commit": "ac82b5d438b0c2303dc7169f52c748977713a111",
+    "tree": "f73e1b374fb2cc492783f3c154d0820310329377",
+    "githubCommitVerified": true,
+    "asset": "solana-release-x86_64-unknown-linux-gnu.tar.bz2",
+    "assetUrl": "https://github.com/anza-xyz/agave/releases/download/v4.2.0/solana-release-x86_64-unknown-linux-gnu.tar.bz2",
+    "assetSha256": "1f5eb13bcf3694dbd3cf634602aee5edcf8eab519acac75778391c979c3002b0",
+    "assetBytes": 86392960,
+    "channelManifest": "solana-release-x86_64-unknown-linux-gnu.yml",
+    "channelManifestSha256": "76faed5da7a1152d88f37c97c599f2bcccb6912f8596faebd33a5dc70088fc4c"
+  },
+  "runtime": {
+    "binDirectoryRelative": "extracted/solana-release/bin",
+    "solana": {
+      "version": "solana-cli 4.2.0 (src:ac82b5d4; feat:21b0d33a, client:Agave)",
+      "bytes": 32607160,
+      "sha256": "b6134ccddcb3456e49c0c15bc028c2902184a8fef6f6e6e665d9f8ae5bea8d10"
+    },
+    "solanaTestValidator": {
+      "version": "solana-test-validator 4.2.0 (src:ac82b5d4; feat:21b0d33a, client:Agave)",
+      "bytes": 75151616,
+      "sha256": "78ee817e9a4fade8a6606ee663060d39728017c79ebac7a7cd35b2a985066f6a"
+    }
+  },
+  "downloaded": true,
+  "builtFromSource": false,
+  "programDeployed": false,
+  "transactionSigned": false,
+  "transactionSubmitted": false
+}

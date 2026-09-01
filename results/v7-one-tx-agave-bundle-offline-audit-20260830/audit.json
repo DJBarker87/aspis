@@ -1,0 +1,84 @@
+{
+  "schema": "aspis.v7.deterministic-agave-bundle-offline-audit.v2",
+  "date": "2026-08-30",
+  "programSource": {
+    "commit": "da77d5f5a22681200cceec8e90fc69ac2cc81ad8",
+    "tree": "aee02a157b9866a4eaada912fe7ca8976ae51fce",
+    "poolTree": "872814145eb07077fae2f15cf507643d28f3fa4b",
+    "verifierTree": "e7370c020cac1e51ca9e41092dcf6ecbf095bd99"
+  },
+  "bundle": {
+    "path": "results/v7-one-tx-agave-bundle-template-20260830",
+    "bundleSha256": "5768416d9f720a93749408763ab72131cba7cf52ae77d1b739d1f2cfb68f289d",
+    "templateInventorySha256": "5086e0c3da9e4eda6c6111ee8a2a0ee25a745c66f8d011d21ef1fe1df1621341",
+    "files": 44,
+    "bytes": 647048,
+    "independentGenerations": 2,
+    "independentOutputsByteIdentical": true,
+    "exactRequiredCaseSet": true,
+    "cases": 11,
+    "successCases": 4,
+    "rollbackCases": 7,
+    "allNegativeCasesRequireRollback": true,
+    "zeroLamportMarkerCases": 7,
+    "dustedMarkerCases": 3,
+    "consumedMarkerCases": 1,
+    "canonicalAsq8Bytes": 320,
+    "warpSlot": 150
+  },
+  "txv1": {
+    "walletPreflightsExecuted": 11,
+    "allPreflightsPassed": true,
+    "requiredSignatures": 1,
+    "computeUnitLimit": 1300000,
+    "transactionByteCeilingExclusive": 4096,
+    "shapes": [
+      {
+        "operation": "private-transfer",
+        "historyPath": "same-page",
+        "instructionAccounts": 11,
+        "serializedTransactionBytes": 833,
+        "headroomTo4096": 3263
+      },
+      {
+        "operation": "private-transfer",
+        "historyPath": "rollover",
+        "instructionAccounts": 12,
+        "serializedTransactionBytes": 866,
+        "headroomTo4096": 3230
+      },
+      {
+        "operation": "withdrawal",
+        "historyPath": "same-page",
+        "instructionAccounts": 16,
+        "serializedTransactionBytes": 998,
+        "headroomTo4096": 3098
+      },
+      {
+        "operation": "withdrawal",
+        "historyPath": "rollover",
+        "instructionAccounts": 17,
+        "serializedTransactionBytes": 1031,
+        "headroomTo4096": 3065
+      }
+    ]
+  },
+  "sbf": {
+    "poolBindingComplete": false,
+    "poolSha256": null,
+    "poolBytes": null,
+    "reason": "atomic marker creation changed the Pool source after the prior bcd03b12 SBF freeze; a fresh capped Linux dual build is required",
+    "verifierSha256": "4ee9b4789533e049e2d9e1f43c84fa97f745a98151f9477ebd828de742b75e5c",
+    "verifierBytes": 1700384
+  },
+  "execution": {
+    "agave42Available": false,
+    "agaveSuiteExecuted": false,
+    "liteSvmSubstituted": false,
+    "componentSumsSubstituted": false,
+    "signed": false,
+    "submitted": false,
+    "deployed": false
+  },
+  "result": "OFFLINE_FIXTURES_GREEN_RUNTIME_PENDING"
+}

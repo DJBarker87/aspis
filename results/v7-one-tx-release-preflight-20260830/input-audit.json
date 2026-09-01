@@ -1,0 +1,47 @@
+{
+  "schema": "aspis.v7.one-tx-candidate-input-audit.v2",
+  "sourceCommit": "da77d5f5a22681200cceec8e90fc69ac2cc81ad8",
+  "sourceTree": "aee02a157b9866a4eaada912fe7ca8976ae51fce",
+  "frozenSourceFileHashesMatch": true,
+  "frozenReleaseHarnessHashesMatch": true,
+  "frozenToolchainInventoryMatches": true,
+  "programFeatureManifestsMatch": true,
+  "verifierReference": {
+    "bytes": 1700384,
+    "sha256": "4ee9b4789533e049e2d9e1f43c84fa97f745a98151f9477ebd828de742b75e5c"
+  },
+  "poolReference": {
+    "bytes": null,
+    "sha256": null,
+    "status": "PENDING_FRESH_DA77_DUAL_LINUX_BUILD"
+  },
+  "deterministicCaseBundle": {
+    "cases": 11,
+    "successCases": 4,
+    "rollbackCases": 7,
+    "allNegativeCasesRequireRollback": true,
+    "bundleSha256": "5768416d9f720a93749408763ab72131cba7cf52ae77d1b739d1f2cfb68f289d",
+    "inventorySha256": "5086e0c3da9e4eda6c6111ee8a2a0ee25a745c66f8d011d21ef1fe1df1621341",
+    "offlineAuditSha256": "61b20e8171d6b81f772fc24907bed0a71ab3e8ef881f6b0e8077ab6b6655a6f9",
+    "independentGenerationsByteIdentical": true,
+    "walletPreflightsPassed": 11,
+    "sbfMaterialized": false,
+    "agaveExecuted": false
+  },
+  "reproducibleBuildExecuted": false,
+  "disposableAgaveSuiteExecuted": false,
+  "publicDevnetTransactionSigned": false,
+  "publicDevnetTransactionSubmitted": false,
+  "releaseReady": false,
+  "remainingGates": [
+    "two byte-identical capped Linux SBF builds from da77d5f5",
+    "materialize the frozen eleven-case bundle with the resulting Pool SBF",
+    "execute all eleven cases on a disposable Agave 4.2+ validator",
+    "measure fresh combined CU for all four honest paths and enforce rollback for all seven failures",
+    "public-devnet TxV1 execution activation before any public RPC simulation"
+  ],
+  "toolchainInventorySha256": "70f037278f587754d5ef9713644e6ae7b6d7788d9f6c01153ac5da89939e9609",
+  "signed": false,
+  "submitted": false,
+  "deployed": false
+}

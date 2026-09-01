@@ -1,0 +1,24 @@
+Command exited with non-zero status 1
+	Command being timed: "env ASPIS_V7_TOOLCHAIN_CAPTURE_ROOT=/home/dombarker/project-offloads/aspis-v7-one-tx-release-e8317b09-20260830/toolchain-capture ASPIS_V7_CARGO_HOME=/home/dombarker/.cargo ASPIS_V7_RUSTUP_HOME=/home/dombarker/.rustup ./scripts/v7_one_tx_release_replay.sh build /home/dombarker/project-offloads/aspis-v7-one-tx-release-e8317b09-20260830/replay-7799-r5"
+	User time (seconds): 353.48
+	System time (seconds): 145.75
+	Percent of CPU this job got: 111%
+	Elapsed (wall clock) time (h:mm:ss or m:ss): 7:26.80
+	Average shared text size (kbytes): 0
+	Average unshared data size (kbytes): 0
+	Average stack size (kbytes): 0
+	Average total size (kbytes): 0
+	Maximum resident set size (kbytes): 570476
+	Average resident set size (kbytes): 0
+	Major (requiring I/O) page faults: 2248
+	Minor (reclaiming a frame) page faults: 41890178
+	Voluntary context switches: 415631
+	Involuntary context switches: 43374
+	Swaps: 0
+	File system inputs: 318024
+	File system outputs: 3594176
+	Socket messages sent: 0
+	Socket messages received: 0
+	Signals delivered: 0
+	Page size (bytes): 4096
+	Exit status: 1

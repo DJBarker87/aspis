@@ -1,0 +1,687 @@
+   Compiling proc-macro2 v1.0.106
+   Compiling quote v1.0.46
+   Compiling unicode-ident v1.0.24
+   Compiling serde_core v1.0.228
+   Compiling syn v2.0.118
+   Compiling version_check v0.9.5
+   Compiling generic-array v0.14.7
+   Compiling serde v1.0.228
+   Compiling serde_derive v1.0.228
+   Compiling equivalent v1.0.2
+   Compiling hashbrown v0.15.5
+   Compiling typenum v1.20.1
+   Compiling indexmap v2.7.1
+   Compiling toml_write v0.1.2
+   Compiling toml_datetime v0.6.11
+   Compiling cfg-if v1.0.4
+   Compiling winnow v0.7.15
+   Compiling toml_edit v0.22.27
+   Compiling cfg_aliases v0.2.1
+   Compiling borsh v1.5.7
+   Compiling proc-macro-crate v3.2.0
+   Compiling crypto-common v0.1.7
+   Compiling block-buffer v0.10.4
+   Compiling autocfg v1.5.1
+   Compiling syn v1.0.109
+   Compiling subtle v2.6.1
+   Compiling solana-define-syscall v2.3.0
+   Compiling once_cell v1.21.4
+   Compiling borsh-derive v1.5.7
+   Compiling digest v0.10.7
+   Compiling five8_core v0.1.2
+   Compiling zerocopy v0.8.52
+   Compiling ahash v0.8.12
+   Compiling toml v0.5.11
+   Compiling five8 v0.2.1
+   Compiling bytemuck_derive v1.10.2
+   Compiling solana-sanitize v2.2.1
+   Compiling solana-atomic-u64 v2.2.1
+   Compiling bytemuck v1.25.0
+   Compiling solana-hash v2.3.0
+   Compiling proc-macro-crate v0.1.5
+   Compiling borsh-derive-internal v0.10.4
+   Compiling borsh-schema-derive-internal v0.10.4
+   Compiling num-traits v0.2.19
+   Compiling borsh-derive v0.10.4
+   Compiling hashbrown v0.13.2
+   Compiling borsh v0.10.4
+   Compiling sha2 v0.10.9
+   Compiling solana-sha256-hasher v2.3.0
+   Compiling solana-decode-error v2.3.0
+   Compiling five8_const v0.1.4
+   Compiling solana-pubkey v2.4.0
+   Compiling zmij v1.0.21
+   Compiling serde_json v1.0.150
+   Compiling itoa v1.0.18
+   Compiling memchr v2.8.2
+   Compiling bincode v1.3.3
+   Compiling solana-instruction v2.3.3
+   Compiling solana-sdk-ids v2.2.1
+   Compiling solana-sysvar-id v2.2.1
+   Compiling bs58 v0.5.1
+   Compiling solana-sdk-macro v2.2.1
+   Compiling solana-msg v2.2.1
+   Compiling solana-program-error v2.2.2
+   Compiling solana-program-memory v2.3.1
+   Compiling solana-account-info v2.3.0
+   Compiling solana-system-interface v1.0.0
+   Compiling solana-clock v2.2.3
+   Compiling find-msvc-tools v0.1.9
+   Compiling shlex v2.0.1
+   Compiling cc v1.2.65
+   Compiling feature-probe v0.1.1
+   Compiling bv v0.11.1
+   Compiling blake3 v1.5.5
+   Compiling solana-rent v2.2.1
+   Compiling solana-serialize-utils v2.2.1
+   Compiling solana-stable-layout v2.2.1
+   Compiling serde_bytes v0.11.19
+   Compiling log v0.4.33
+   Compiling arrayref v0.3.9
+   Compiling constant_time_eq v0.3.1
+   Compiling arrayvec v0.7.8
+   Compiling thiserror v2.0.18
+   Compiling solana-fee-calculator v2.2.1
+   Compiling solana-cpi v2.2.1
+   Compiling solana-slot-hashes v2.2.1
+   Compiling memoffset v0.9.1
+   Compiling solana-short-vec v2.2.1
+   Compiling thiserror-impl v2.0.18
+   Compiling lazy_static v1.5.0
+   Compiling keccak v0.1.6
+   Compiling aspis-core v0.1.0 (/tmp/aspis-v7-one-tx-release.ehwTsg/source-b/crates/aspis-core)
+   Compiling sha3 v0.10.9
+   Compiling solana-slot-history v2.2.1
+   Compiling solana-stake-interface v1.2.1
+   Compiling solana-instructions-sysvar v2.2.2
+   Compiling solana-account v2.2.1
+   Compiling solana-program-entrypoint v2.3.0
+   Compiling solana-last-restart-slot v2.2.1
+   Compiling solana-epoch-rewards v2.2.1
+   Compiling solana-epoch-schedule v2.2.1
+   Compiling solana-bincode v2.2.1
+   Compiling solana-transaction-error v2.2.1
+   Compiling solana-serde-varint v2.2.2
+   Compiling num-derive v0.4.2
+   Compiling solana-vote-interface v2.2.6
+   Compiling solana-message v2.4.0
+   Compiling solana-sysvar v2.3.0
+   Compiling solana-feature-gate-interface v2.2.2
+   Compiling solana-secp256k1-recover v2.2.1
+   Compiling solana-keccak-hasher v2.2.1
+warning: unused imports: `begin_payment_zerocheck` and `verify_payment_sumcheck_messages`
+  --> crates/aspis-core/src/circle_prefix.rs:17:5
+   |
+17 |     begin_payment_zerocheck, decode_wire, verify_payment_sumcheck_messages,
+   |     ^^^^^^^^^^^^^^^^^^^^^^^               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: `#[warn(unused_imports)]` on by default
+
+warning: function `verify_circle_layer0_opening_from_proof_deferred_canonical_for_depth_and_c2_leaf_bytes` is never used
+   --> crates/aspis-core/src/circle_merkle.rs:419:15
+    |
+419 | pub(crate) fn verify_circle_layer0_opening_from_proof_deferred_canonical_for_depth_and_c2_leaf_bytes<
+    |               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+    = note: `#[warn(dead_code)]` on by default
+
+warning: function `verify_circle_openings_deferred_canonical` is never used
+   --> crates/aspis-core/src/circle_openings.rs:993:15
+    |
+993 | pub(crate) fn verify_circle_openings_deferred_canonical<'a>(
+    |               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: function `verify_radix4_minimal_subtree_prevalidated_in_place` is never used
+   --> crates/aspis-core/src/merkle.rs:329:15
+    |
+329 | pub(crate) fn verify_radix4_minimal_subtree_prevalidated_in_place(
+    |               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: `aspis-core` (lib) generated 4 warnings (run `cargo fix --lib -p aspis-core` to apply 1 suggestion)
+   Compiling solana-address-lookup-table-interface v2.2.2
+   Compiling solana-nonce v2.2.1
+   Compiling solana-blake3-hasher v2.2.1
+   Compiling solana-loader-v4-interface v2.2.1
+   Compiling solana-loader-v3-interface v5.0.0
+   Compiling solana-loader-v2-interface v2.2.1
+   Compiling solana-program-pack v2.2.1
+   Compiling solana-borsh v2.2.1
+   Compiling solana-big-mod-exp v2.2.1
+   Compiling getrandom v0.2.17
+   Compiling solana-program-option v2.2.1
+   Compiling solana-native-token v2.3.0
+   Compiling solana-program v2.3.0
+   Compiling aspis-statement v0.1.0 (/tmp/aspis-v7-one-tx-release.ehwTsg/source-b/crates/aspis-statement)
+warning: unused imports: `copy_logup_residual` and `range_logup_residual`
+  --> crates/aspis-statement/src/constraints_v4.rs:21:56
+   |
+21 |     build_copy_logup_helper, build_range_logup_helper, copy_logup_residual, range_logup_residual,
+   |                                                        ^^^^^^^^^^^^^^^^^^^  ^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: `#[warn(unused_imports)]` on by default
+
+warning: unused import: `evaluate_trace_round`
+  --> crates/aspis-statement/src/constraints_v4.rs:26:5
+   |
+26 |     evaluate_trace_round, trace_round_constant, DIGEST_ELEMS, POSEIDON2_WIDTH, RATE,
+   |     ^^^^^^^^^^^^^^^^^^^^
+
+warning: unused imports: `is_poseidon_active_row`, `is_poseidon_padding_row`, `merkle_boundary_layout`, `visit_copy_exceptional_terminal_links`, and `visit_copy_terminal_links`
+  --> crates/aspis-statement/src/constraints_v4.rs:30:47
+   |
+30 |     copy_terminal_pattern, has_carry_payload, is_poseidon_active_row, is_poseidon_padding_row,
+   |                                               ^^^^^^^^^^^^^^^^^^^^^^  ^^^^^^^^^^^^^^^^^^^^^^^
+31 |     merkle_boundary_layout, permutation_block_schedule, source_relation_layout,
+   |     ^^^^^^^^^^^^^^^^^^^^^^
+32 |     visit_copy_exceptional_terminal_links, visit_copy_links, visit_copy_terminal_links,
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^                    ^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: unused import: `vec`
+ --> crates/aspis-statement/src/pool_v1/pair_forest_copy_terminal.rs:8:25
+  |
+8 | use alloc::{boxed::Box, vec};
+  |                         ^^^
+
+warning: unused imports: `POOL_V1_PAIR_FOREST_ALL_LANES_MASK` and `decode_pool_v1_pair_late_public_statement_v1`
+  --> crates/aspis-statement/src/pool_v1/pair_forest_terminal.rs:15:5
+   |
+15 |     decode_pool_v1_pair_late_public_statement_v1, decode_pool_v1_pair_verified_afterstate_v1,
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+...
+24 |     PoolV1WithdrawalPublicV1, POOL_V1_DIGEST_ENCODING_VERSION, POOL_V1_PAIR_FOREST_ALL_LANES_MASK,
+   |                                                                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: unused imports: `trace_round_constant` and `trace_round_descriptor`
+  --> crates/aspis-statement/src/state_only_poseidon.rs:18:5
+   |
+18 |     trace_round_constant, trace_round_descriptor, EXTERNAL_FINAL, EXTERNAL_INITIAL, INTERNAL,
+   |     ^^^^^^^^^^^^^^^^^^^^  ^^^^^^^^^^^^^^^^^^^^^^
+
+warning: type `CompiledCopyLink` is more private than the item `COMPILED_COPY_LINKS`
+   --> crates/aspis-statement/src/state_only_terminal_constants.rs:850:1
+    |
+850 | pub(crate) const COMPILED_COPY_LINKS: [CompiledCopyLink; 102] = [
+    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ constant `COMPILED_COPY_LINKS` is reachable at visibility `pub(crate)`
+    |
+note: but type `CompiledCopyLink` is only usable at visibility `pub(self)`
+   --> crates/aspis-statement/src/state_only_terminal.rs:88:1
+    |
+88  | struct CompiledCopyLink {
+    | ^^^^^^^^^^^^^^^^^^^^^^^
+    = note: `#[warn(private_interfaces)]` on by default
+
+warning: constant `PINNED_ATOMIC_STATE_ONLY_REGISTRY_FINGERPRINT_V3` is never used
+  --> crates/aspis-statement/src/atomic_state_only_terminal.rs:30:7
+   |
+30 | const PINNED_ATOMIC_STATE_ONLY_REGISTRY_FINGERPRINT_V3: u64 = 0xa524_9dda_67f7_5888;
+   |       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: `#[warn(dead_code)]` on by default
+
+warning: constant `ATOMIC_SOURCE_SEMANTIC_LANES` is never used
+  --> crates/aspis-statement/src/atomic_state_only_terminal.rs:32:7
+   |
+32 | const ATOMIC_SOURCE_SEMANTIC_LANES: usize = 77;
+   |       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: fields `kinds`, `columns`, and `scales` are never read
+  --> crates/aspis-statement/src/atomic_state_only_terminal.rs:59:5
+   |
+57 | struct CompiledAtomicPattern {
+   |        --------------------- fields in this struct
+58 |     /// 0 = zero, 1 = constant, 2 = affine local cell.
+59 |     kinds: [u8; 16],
+   |     ^^^^^
+60 |     columns: [u8; 16],
+   |     ^^^^^^^
+61 |     scales: [u32; 16],
+   |     ^^^^^^
+   |
+   = note: `CompiledAtomicPattern` has a derived impl for the trait `Clone`, but this is intentionally ignored during dead code analysis
+
+warning: fields `row`, `slot`, and `pattern` are never read
+  --> crates/aspis-statement/src/atomic_state_only_terminal.rs:67:5
+   |
+66 | struct CompiledAtomicCopyEndpoint {
+   |        -------------------------- fields in this struct
+67 |     row: u16,
+   |     ^^^
+68 |     slot: u8,
+   |     ^^^^
+69 |     pattern: u8,
+   |     ^^^^^^^
+   |
+   = note: `CompiledAtomicCopyEndpoint` has a derived impl for the trait `Clone`, but this is intentionally ignored during dead code analysis
+
+warning: fields `tag`, `producer`, and `consumer` are never read
+  --> crates/aspis-statement/src/atomic_state_only_terminal.rs:74:5
+   |
+73 | struct CompiledAtomicCopyLink {
+   |        ---------------------- fields in this struct
+74 |     tag: u32,
+   |     ^^^
+75 |     producer: CompiledAtomicCopyEndpoint,
+   |     ^^^^^^^^
+76 |     consumer: CompiledAtomicCopyEndpoint,
+   |     ^^^^^^^^
+   |
+   = note: `CompiledAtomicCopyLink` has a derived impl for the trait `Clone`, but this is intentionally ignored during dead code analysis
+
+warning: struct `AtomicSemanticSelectors` is never constructed
+   --> crates/aspis-statement/src/atomic_state_only_terminal.rs:297:8
+    |
+297 | struct AtomicSemanticSelectors {
+    |        ^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: associated items `at_point`, `row`, and `poseidon` are never used
+   --> crates/aspis-statement/src/atomic_state_only_terminal.rs:305:8
+    |
+304 | impl AtomicSemanticSelectors {
+    | ---------------------------- associated items in this implementation
+305 |     fn at_point(point: &[QM31; 10]) -> Self {
+    |        ^^^^^^^^
+...
+327 |     fn row(&self, row: usize) -> QM31 {
+    |        ^^^
+...
+331 |     fn poseidon(&self) -> StateOnlyPoseidonSelectors {
+    |        ^^^^^^^^
+
+warning: constant `COMPILED_ATOMIC_REGISTRY_FINGERPRINT` is never used
+ --> crates/aspis-statement/src/atomic_state_only_terminal_constants.rs:4:18
+  |
+4 | pub(crate) const COMPILED_ATOMIC_REGISTRY_FINGERPRINT: u64 = 0xa5249dda67f75888;
+  |                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: constant `COMPILED_ATOMIC_REGISTRY_FINGERPRINT` is never used
+ --> crates/aspis-statement/src/atomic_state_only_terminal_constants_legacy_partition.rs:4:18
+  |
+4 | pub(crate) const COMPILED_ATOMIC_REGISTRY_FINGERPRINT: u64 = 0xa5249dda67f75888;
+  |                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: constant `ATOMIC_COPY_ROUTING_LOW_ROW_BITS` is never used
+ --> crates/aspis-statement/src/atomic_state_only_terminal_constants_legacy_partition.rs:5:18
+  |
+5 | pub(crate) const ATOMIC_COPY_ROUTING_LOW_ROW_BITS: u16 = 0x000f;
+  |                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: constant `COMPILED_ATOMIC_COPY_ACTIVE_ROWS` is never used
+ --> crates/aspis-statement/src/atomic_state_only_terminal_constants_legacy_partition.rs:6:18
+  |
+6 | pub(crate) const COMPILED_ATOMIC_COPY_ACTIVE_ROWS: [u16; 210] = [11, 12, 27, 28, 32, 43, 44, 48, 59, 60, 64, 75, 76, 80, 91, 92, 96, 107,...
+  |                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: constant `COMPILED_ATOMIC_COPY_ACTIVE_ROWS_FINGERPRINT` is never used
+ --> crates/aspis-statement/src/atomic_state_only_terminal_constants_legacy_partition.rs:7:18
+  |
+7 | pub(crate) const COMPILED_ATOMIC_COPY_ACTIVE_ROWS_FINGERPRINT: u64 = 0xfc90f89be110b6f5;
+  |                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: constant `ATOMIC_COPY_PATTERNS` is never used
+  --> crates/aspis-statement/src/atomic_state_only_terminal_constants_legacy_partition.rs:16:18
+   |
+16 | pub(crate) const ATOMIC_COPY_PATTERNS: [CompiledAtomicPattern; 15] = [
+   |                  ^^^^^^^^^^^^^^^^^^^^
+
+warning: constant `ATOMIC_COPY_ROUTING_RANK` is never used
+  --> crates/aspis-statement/src/atomic_state_only_terminal_constants_legacy_partition.rs:33:18
+   |
+33 | pub(crate) const ATOMIC_COPY_ROUTING_RANK: usize = 103;
+   |                  ^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: constant `COMPILED_ATOMIC_COPY_LINKS` is never used
+  --> crates/aspis-statement/src/atomic_state_only_terminal_constants_legacy_partition.rs:40:18
+   |
+40 | pub(crate) const COMPILED_ATOMIC_COPY_LINKS: [CompiledAtomicCopyLink; 183] = [
+   |                  ^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: function `compose_randomized_residuals` is never used
+   --> crates/aspis-statement/src/constraints_v4.rs:275:4
+    |
+275 | fn compose_randomized_residuals(
+    |    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: function `compose_direct_range_randomized_residuals` is never used
+   --> crates/aspis-statement/src/constraints_v4.rs:317:4
+    |
+317 | fn compose_direct_range_randomized_residuals(
+    |    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: function `compose_direct_range_terminal_packed_residuals` is never used
+   --> crates/aspis-statement/src/constraints_v4.rs:371:4
+    |
+371 | fn compose_direct_range_terminal_packed_residuals(
+    |    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: function `eq_row` is never used
+   --> crates/aspis-statement/src/constraints_v4.rs:588:4
+    |
+588 | fn eq_row(point: &[QM31; 10], row: usize) -> QM31 {
+    |    ^^^^^^
+
+warning: constant `POSEIDON_PREPROCESSED_INDIVIDUAL_DEGREE` is never used
+   --> crates/aspis-statement/src/constraints_v4.rs:980:7
+    |
+980 | const POSEIDON_PREPROCESSED_INDIVIDUAL_DEGREE: usize = 6;
+    |       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: function `compress_opened_tuple` is never used
+    --> crates/aspis-statement/src/constraints_v4.rs:1184:4
+     |
+1184 | fn compress_opened_tuple(
+     |    ^^^^^^^^^^^^^^^^^^^^^
+
+warning: constant `COPY_ROUTING_EXPANDED_FACTOR_SUPPORT` is never used
+    --> crates/aspis-statement/src/constraints_v4.rs:1203:7
+     |
+1203 | const COPY_ROUTING_EXPANDED_FACTOR_SUPPORT: usize = 674;
+     |       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: function `evaluate_exceptional_copy_routing_direct` is never used
+    --> crates/aspis-statement/src/constraints_v4.rs:1717:4
+     |
+1717 | fn evaluate_exceptional_copy_routing_direct(
+     |    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: function `absorption_column_must_be_zero` is never used
+    --> crates/aspis-statement/src/constraints_v4.rs:2586:4
+     |
+2586 | fn absorption_column_must_be_zero(block: usize, column: usize) -> bool {
+     |    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: function `lift` is never used
+  --> crates/aspis-statement/src/direct_range_hiding_v4.rs:67:4
+   |
+67 | fn lift(value: M31) -> QM31 {
+   |    ^^^^
+
+warning: constant `AUXILIARY_USED_COLUMN_MASKS` is never used
+ --> crates/aspis-statement/src/pool_v1/payment_semantic_terminal_constants.rs:7:18
+  |
+7 | pub(crate) const AUXILIARY_USED_COLUMN_MASKS: [u16; 96] = [511, 65535, 511, 65535, 511, 65535, 511, 65535, 255, 0, 255, 0, 255, 0, 255, 0...
+  |                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: function `evaluate_trace_round_pair` is never used
+   --> crates/aspis-statement/src/poseidon2.rs:239:15
+    |
+239 | pub(crate) fn evaluate_trace_round_pair(
+    |               ^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: function `evaluate_trace_round` is never used
+   --> crates/aspis-statement/src/poseidon2.rs:256:15
+    |
+256 | pub(crate) fn evaluate_trace_round(
+    |               ^^^^^^^^^^^^^^^^^^^^
+
+warning: function `apply_round_by_index` is never used
+   --> crates/aspis-statement/src/poseidon2.rs:268:4
+    |
+268 | fn apply_round_by_index(state: &mut [M31; POSEIDON2_WIDTH], round: usize) -> Option<()> {
+    |    ^^^^^^^^^^^^^^^^^^^^
+
+warning: function `merkle_node_sponge_v2` is never used
+   --> crates/aspis-statement/src/poseidon2.rs:480:15
+    |
+480 | pub(crate) fn merkle_node_sponge_v2(left: &Digest, right: &Digest) -> Digest {
+    |               ^^^^^^^^^^^^^^^^^^^^^
+
+warning: function `lift` is never used
+   --> crates/aspis-statement/src/state_only_poseidon.rs:119:4
+    |
+119 | fn lift(value: M31) -> QM31 {
+    |    ^^^^
+
+warning: function `multilinear_evaluate` is never used
+   --> crates/aspis-statement/src/state_only_poseidon.rs:619:4
+    |
+619 | fn multilinear_evaluate(column: &[M31], point: &[QM31; 10]) -> Option<QM31> {
+    |    ^^^^^^^^^^^^^^^^^^^^
+
+warning: struct `CompiledCopyEndpoint` is never constructed
+  --> crates/aspis-statement/src/state_only_terminal.rs:80:8
+   |
+80 | struct CompiledCopyEndpoint {
+   |        ^^^^^^^^^^^^^^^^^^^^
+
+warning: struct `CompiledCopyLink` is never constructed
+  --> crates/aspis-statement/src/state_only_terminal.rs:88:8
+   |
+88 | struct CompiledCopyLink {
+   |        ^^^^^^^^^^^^^^^^
+
+warning: constant `COMPILED_COPY_LINKS` is never used
+   --> crates/aspis-statement/src/state_only_terminal_constants.rs:850:18
+    |
+850 | pub(crate) const COMPILED_COPY_LINKS: [CompiledCopyLink; 102] = [
+    |                  ^^^^^^^^^^^^^^^^^^^
+
+warning: function `append_link` is never used
+    --> crates/aspis-statement/src/trace_v4.rs:1017:4
+     |
+1017 | fn append_link(
+     |    ^^^^^^^^^^^
+
+warning: function `append_intra_permutation_links` is never used
+    --> crates/aspis-statement/src/trace_v4.rs:1048:4
+     |
+1048 | fn append_intra_permutation_links(layout: &mut CopyLayout) {
+     |    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: function `append_sponge_continuation_links` is never used
+    --> crates/aspis-statement/src/trace_v4.rs:1067:4
+     |
+1067 | fn append_sponge_continuation_links(layout: &mut CopyLayout) {
+     |    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: function `append_merkle_level_links` is never used
+    --> crates/aspis-statement/src/trace_v4.rs:1090:4
+     |
+1090 | fn append_merkle_level_links(layout: &mut CopyLayout) {
+     |    ^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: function `append_semantic_ingress_links` is never used
+    --> crates/aspis-statement/src/trace_v4.rs:1107:4
+     |
+1107 | fn append_semantic_ingress_links(layout: &mut CopyLayout) {
+     |    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: function `append_absorption_links` is never used
+    --> crates/aspis-statement/src/trace_v4.rs:1163:4
+     |
+1163 | fn append_absorption_links(layout: &mut CopyLayout) {
+     |    ^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: function `append_value_reconstruction_links` is never used
+    --> crates/aspis-statement/src/trace_v4.rs:1190:4
+     |
+1190 | fn append_value_reconstruction_links(layout: &mut CopyLayout) {
+     |    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: `aspis-statement` (lib) generated 49 warnings (run `cargo fix --lib -p aspis-statement` to apply 6 suggestions)
+   Compiling aspis-pool v0.1.0 (/tmp/aspis-v7-one-tx-release.ehwTsg/source-b/programs/aspis-pool)
+warning: unused imports: `decode_pool_v1_pair_forest_terminal_statement_v1` and `encode_pool_v1_pair_forest_terminal_request_v1`
+  --> programs/aspis-pool/src/pair_forest.rs:21:9
+   |
+21 |         decode_pool_v1_pair_forest_terminal_statement_v1, encode_pool_v1_pair_forest_checkpoint_v1,
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+22 |         encode_pool_v1_pair_forest_lane_state_v1, encode_pool_v1_pair_forest_master_v1,
+23 |         encode_pool_v1_pair_forest_terminal_request_v1,
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: `#[warn(unused_imports)]` on by default
+
+warning: unused import: `validate_root_page_bytes`
+  --> programs/aspis-pool/src/pair_forest.rs:58:34
+   |
+58 |         require_program_account, validate_root_page_bytes, write_new_page_unchecked,
+   |                                  ^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: unused import: `encode_pool_v1_pair_forest_terminal_result_v1`
+  --> programs/aspis-pool/src/pair_forest_dispatch.rs:14:5
+   |
+14 |     encode_pool_v1_pair_forest_terminal_result_v1,
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: function `pair_cu_checkpoint` is never used
+  --> programs/aspis-pool/src/pair_dispatch.rs:37:4
+   |
+37 | fn pair_cu_checkpoint(label: &str) {
+   |    ^^^^^^^^^^^^^^^^^^
+   |
+   = note: `#[warn(dead_code)]` on by default
+
+warning: struct `AuthenticatedPairAfterstateV1` is never constructed
+  --> programs/aspis-pool/src/pair_dispatch.rs:67:19
+   |
+67 | pub(crate) struct AuthenticatedPairAfterstateV1(Box<PoolV1PairVerifiedAfterstateV1>);
+   |                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: method `value` is never used
+  --> programs/aspis-pool/src/pair_dispatch.rs:70:19
+   |
+69 | impl AuthenticatedPairAfterstateV1 {
+   | ---------------------------------- method in this implementation
+70 |     pub(crate) fn value(&self) -> &PoolV1PairVerifiedAfterstateV1 {
+   |                   ^^^^^
+
+warning: function `authenticate_pair_verified_afterstate_return_v1` is never used
+  --> programs/aspis-pool/src/pair_dispatch.rs:78:15
+   |
+78 | pub(crate) fn authenticate_pair_verified_afterstate_return_v1(
+   |               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: function `invoke_pair_afterstate_verifier_with_runtime_v1` is never used
+   --> programs/aspis-pool/src/pair_dispatch.rs:283:4
+    |
+283 | fn invoke_pair_afterstate_verifier_with_runtime_v1<'info, R: PairVerifierRuntimeV1>(
+    |    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: function `terminal_common_box_v1` is never used
+    --> programs/aspis-pool/src/pair_forest.rs:1145:4
+     |
+1145 | fn terminal_common_box_v1(
+     |    ^^^^^^^^^^^^^^^^^^^^^^
+
+warning: function `transfer_terminal_statement_box_v1` is never used
+    --> programs/aspis-pool/src/pair_forest.rs:1177:4
+     |
+1177 | fn transfer_terminal_statement_box_v1(
+     |    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: function `withdrawal_terminal_statement_box_v1` is never used
+    --> programs/aspis-pool/src/pair_forest.rs:1188:4
+     |
+1188 | fn withdrawal_terminal_statement_box_v1(
+     |    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: function `validate_authenticated_terminal_result_v1` is never used
+    --> programs/aspis-pool/src/pair_forest.rs:1199:4
+     |
+1199 | fn validate_authenticated_terminal_result_v1(
+     |    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: function `terminal_result_bytes_box_v1` is never used
+    --> programs/aspis-pool/src/pair_forest.rs:1277:4
+     |
+1277 | fn terminal_result_bytes_box_v1(
+     |    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: function `pair_cu_checkpoint` is never used
+  --> programs/aspis-pool/src/pair_processor.rs:50:4
+   |
+50 | fn pair_cu_checkpoint(label: &str) {
+   |    ^^^^^^^^^^^^^^^^^^
+
+warning: struct `PairSpendLayoutV1` is never constructed
+  --> programs/aspis-pool/src/pair_processor.rs:61:8
+   |
+61 | struct PairSpendLayoutV1 {
+   |        ^^^^^^^^^^^^^^^^^
+
+warning: struct `ValidatedPairHistoryV1` is never constructed
+  --> programs/aspis-pool/src/pair_processor.rs:78:8
+   |
+78 | struct ValidatedPairHistoryV1 {
+   |        ^^^^^^^^^^^^^^^^^^^^^^
+
+warning: function `require_unique` is never used
+  --> programs/aspis-pool/src/pair_processor.rs:82:4
+   |
+82 | fn require_unique(accounts: &[AccountInfo<'_>]) -> ProgramResult {
+   |    ^^^^^^^^^^^^^^
+
+warning: function `plan_layout` is never used
+  --> programs/aspis-pool/src/pair_processor.rs:94:4
+   |
+94 | fn plan_layout(
+   |    ^^^^^^^^^^^
+
+warning: function `validate_history` is never used
+   --> programs/aspis-pool/src/pair_processor.rs:180:4
+    |
+180 | fn validate_history(
+    |    ^^^^^^^^^^^^^^^^
+
+warning: function `process_pair_private_transfer_with_verifier_v1` is never used
+   --> programs/aspis-pool/src/pair_processor.rs:277:15
+    |
+277 | pub(crate) fn process_pair_private_transfer_with_verifier_v1<'info, V, S>(
+    |               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: function `process_pair_withdrawal_with_verifier_v1` is never used
+   --> programs/aspis-pool/src/pair_processor.rs:418:15
+    |
+418 | pub(crate) fn process_pair_withdrawal_with_verifier_v1<'info, R, V, S>(
+    |               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: function `exact` is never used
+  --> programs/aspis-pool/src/pair_state.rs:56:4
+   |
+56 | fn exact<const N: usize>(bytes: &[u8]) -> Result<[u8; N], ProgramError> {
+   |    ^^^^^
+
+warning: struct `CanonicalPairPoolStateV1` is never constructed
+  --> programs/aspis-pool/src/pair_state.rs:96:19
+   |
+96 | pub(crate) struct CanonicalPairPoolStateV1 {
+   |                   ^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: associated items `decode_account_from_program_invariant` and `require_same_account` are never used
+   --> programs/aspis-pool/src/pair_state.rs:111:19
+    |
+110 | impl CanonicalPairPoolStateV1 {
+    | ----------------------------- associated items in this implementation
+111 |     pub(crate) fn decode_account_from_program_invariant(
+    |                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+...
+134 |     pub(crate) fn require_same_account(
+    |                   ^^^^^^^^^^^^^^^^^^^^
+
+warning: associated items `apply_authenticated_afterstate_from_program_invariant` and `decode_from_program_invariant` are never used
+   --> programs/aspis-pool/src/pair_state.rs:188:19
+    |
+151 | impl PairPoolStateV1 {
+    | -------------------- associated items in this implementation
+...
+188 |     pub(crate) fn apply_authenticated_afterstate_from_program_invariant(
+    |                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+...
+369 |     pub(crate) fn decode_from_program_invariant(
+    |                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: method `transition_kind` is never used
+  --> programs/aspis-pool/src/prepared_settlement.rs:88:19
+   |
+87 | impl AuthenticatedPreparedSettlementActionV1 {
+   | -------------------------------------------- method in this implementation
+88 |     pub(crate) fn transition_kind(self) -> PoolV1TransitionKind {
+   |                   ^^^^^^^^^^^^^^^
+
+warning: constant `PREPARED_SETTLEMENT_MAX_LIVE_OUTPUT_IMAGE_BYTES` is never used
+  --> programs/aspis-pool/src/prepared_settlement_format.rs:96:18
+   |
+96 | pub(crate) const PREPARED_SETTLEMENT_MAX_LIVE_OUTPUT_IMAGE_BYTES: usize =
+   |                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: `aspis-pool` (lib) generated 27 warnings (run `cargo fix --lib -p aspis-pool` to apply 3 suggestions)
+    Finished `release` profile [optimized] target(s) in 2m 06s

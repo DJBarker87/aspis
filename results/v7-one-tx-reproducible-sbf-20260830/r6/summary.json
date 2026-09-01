@@ -1,0 +1,17 @@
+{
+  "schema": "aspis.v7.one-tx-release-replay-summary.v2",
+  "reproducibleSbf": "PASS",
+  "reproducibleSbfRecordSha256": "1b66865f8b7f9a9ec7158b92fc0e526f7ac37713282c28a82f2452fe23596aab",
+  "atomicMarkerPoolSbfSha256": "82606a25f00fd683b06186cdaae519b52c793d9a2f16f9d3f7c40c2b241685c2",
+  "deterministicBundleMaterialized": true,
+  "materializedBundleSha256": "b4ca543d65a3f12abff72aa412bcad77acb7fb335692c045db2356f4230eda7f",
+  "materializedBundleAuditSha256": "206e1237b8a49725ea6ad03b1878e3604ef460c3a9f0477d4c91f65e861a1569",
+  "disposableAgaveElevenCaseSuite": "UNAVAILABLE_NOT_REQUESTED",
+  "disposableAgaveSuiteSha256": null,
+  "publicDevnetLifecycle": "NOT_EXECUTED",
+  "signed": false,
+  "submitted": false,
+  "deployed": false,
+  "localBuildAndSimulationEvidenceComplete": false,
+  "releaseReady": false
+}

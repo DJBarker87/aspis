@@ -1,0 +1,58 @@
+{
+  "schema": "aspis.v7.agave-runtime-input.v1",
+  "purpose": "Signer-free disposable TxV1 and 4096-byte transaction runtime readiness",
+  "officialRepository": "https://github.com/anza-xyz/agave",
+  "releaseApiUrl": "https://api.github.com/repos/anza-xyz/agave/releases/tags/v4.2.0",
+  "releaseHtmlUrl": "https://github.com/anza-xyz/agave/releases/tag/v4.2.0",
+  "releaseTag": "v4.2.0",
+  "releaseName": "Release v4.2.0",
+  "publishedAt": "2026-08-07T20:29:04Z",
+  "stable": true,
+  "tagCommit": "ac82b5d438b0c2303dc7169f52c748977713a111",
+  "tagCommitTree": "f73e1b374fb2cc492783f3c154d0820310329377",
+  "tagCommitGithubVerification": {
+    "verified": true,
+    "reason": "valid",
+    "verifiedAt": "2026-08-07T20:20:15Z"
+  },
+  "linuxAsset": {
+    "name": "solana-release-x86_64-unknown-linux-gnu.tar.bz2",
+    "url": "https://github.com/anza-xyz/agave/releases/download/v4.2.0/solana-release-x86_64-unknown-linux-gnu.tar.bz2",
+    "bytes": 86392960,
+    "sha256": "1f5eb13bcf3694dbd3cf634602aee5edcf8eab519acac75778391c979c3002b0",
+    "githubAssetId": 505635142
+  },
+  "channelManifest": {
+    "name": "solana-release-x86_64-unknown-linux-gnu.yml",
+    "url": "https://github.com/anza-xyz/agave/releases/download/v4.2.0/solana-release-x86_64-unknown-linux-gnu.yml",
+    "bytes": 98,
+    "sha256": "76faed5da7a1152d88f37c97c599f2bcccb6912f8596faebd33a5dc70088fc4c",
+    "githubAssetId": 505635257,
+    "expected": {
+      "channel": "v4.2.0",
+      "commit": "ac82b5d438b0c2303dc7169f52c748977713a111",
+      "target": "x86_64-unknown-linux-gnu"
+    }
+  },
+  "requiredExecutables": [
+    "solana",
+    "solana-test-validator"
+  ],
+  "txv1": {
+    "featureId": "txv1aq4pp281K9um3tnPgkfX8UqtFT6wcVW3hNezGLL",
+    "featureOwner": "Feature111111111111111111111111111111111111",
+    "transactionVersion": 1,
+    "maximumSerializedBytes": 4096,
+    "localValidatorMinimumVersion": "4.2.0",
+    "officialCapabilityReference": "https://solana.com/upgrades/larger-transaction-sizes"
+  },
+  "runtimeGate": {
+    "host": "Linux x86_64",
+    "memoryHighBytes": 9663676416,
+    "memoryMaxBytes": 12884901888,
+    "memorySwapMaxBytes": 0,
+    "programDeploymentAllowed": false,
+    "transactionSigningAllowed": false,
+    "transactionSubmissionAllowed": false
+  }
+}

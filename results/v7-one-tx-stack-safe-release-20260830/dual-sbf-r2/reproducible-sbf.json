@@ -1,0 +1,96 @@
+{
+  "schema": "aspis.v7.one-tx-reproducible-sbf.v2",
+  "source": {
+    "commit": "6bc7d3caf181be23a8a6ac7769497c965cd7273d",
+    "tree": "aae627375ad1f4f48ac4eae8e0c585c6c0680bab",
+    "sourceDateEpoch": 1788115093,
+    "independentCopies": 2,
+    "archiveASha256": "8dc71eb63c6fde66c3ab1c9455f4a722b8de679abbc46c6e8597e2c4f0ff7fd7",
+    "archiveBSha256": "8dc71eb63c6fde66c3ab1c9455f4a722b8de679abbc46c6e8597e2c4f0ff7fd7",
+    "archivesByteIdentical": true
+  },
+  "builder": {
+    "host": "Linux x86_64",
+    "containerImage": null,
+    "toolchainInventorySha256": "2bcdd08e9c26f5cd1743a07cfb8aae341dc278e9d4e33eed512b746bc365d61c",
+    "offlineCargoCacheProvenanceSha256": "f5e43356be7aef8abd7adc6ca5909c2a957ed3b53842caf15055166f522bb49e",
+    "offlineCargoPackagesSha256": "3e40be42d1794e8a0d3c853a4f4af74803b46de724c320d9683f8e72f783e370",
+    "offlineCargoCacheVerifiedBeforeAndAfter": true,
+    "offlineSbfCargoCacheProvenanceSha256": "edbad6e67e209ce4d24f8a6608e9349e1ab2266a98ff87a72be73ff1b74fab5a",
+    "offlineSbfCargoPackagesSha256": "165e0a7f107dedc16083216b39f6216fad2ba4fa1977ceb7b6c36d4771f19255",
+    "offlineSbfCargoCacheVerifiedBeforeAndAfter": true,
+    "hostCargoSha256": "b7561ebe947acf816451536f19871ea4810f6be3f82fd252feab6ca7be8396f5",
+    "hostCargoProxySha256": "4acc9acc76d5079515b46346a485974457b5a79893cfb01112423c89aeb5aa10",
+    "hostCargoVersion": "cargo 1.94.1 (29ea6fb6a 2026-03-24)",
+    "hostRustupSha256": "4acc9acc76d5079515b46346a485974457b5a79893cfb01112423c89aeb5aa10",
+    "hostRustupVersion": "rustup 1.29.0 (28d1352db 2026-03-05)",
+    "platformCargoVersion": "cargo 1.84.0 (12fe57a9d 2025-04-07)",
+    "cargoBuildSbfSha256": "b2ee45538a199c00833811383b88dd286380e7d2dbc16e10ddbf94ac51e183cb",
+    "cargoBuildSbfVersion": "solana-cargo-build-sbf 2.3.0\nplatform-tools v1.48\nrustc 1.84.1",
+    "uname": "Linux nuc 6.8.0-110-generic #110-Ubuntu SMP PREEMPT_DYNAMIC Thu Mar 19 15:09:20 UTC 2026 x86_64 x86_64 x86_64 GNU/Linux",
+    "osReleaseSha256": "01af466feb100306498c86aa6bad1815e33036019aa34d4362c20f374ea5c829",
+    "cgroup": "/user.slice/user-1000.slice/user@1000.service/app.slice/aspis-v7-stack-safe-release-20260830-r2.service",
+    "memoryHighBytes": 9663676416,
+    "memoryMaxBytes": 12884901888,
+    "memorySwapMaxBytes": 0
+  },
+  "builds": [
+    {
+      "copy": "a",
+      "program": "aspis-pool",
+      "elapsed": "1:52.60",
+      "maximumResidentSetKiB": 566076,
+      "logSha256": "ef0297a75455fb19642b3dcd462d9f82bb58fa22c4463777135b239e2502972f",
+      "timeSha256": "70e528b97c798952b7e9e79cc8018f0b31b4ef7cca03693056c03aca54220997"
+    },
+    {
+      "copy": "b",
+      "program": "aspis-pool",
+      "elapsed": "2:06.45",
+      "maximumResidentSetKiB": 566676,
+      "logSha256": "f3aa0cfc188ddefa2b0808db407699095733f2dbb52acde5aa181aa521e66a09",
+      "timeSha256": "c754a673af6c1e466eb6dfe471289b9df91e66dc1f7cf05b0c88867dd01eb533"
+    },
+    {
+      "copy": "a",
+      "program": "aspis-verifier",
+      "elapsed": "0:37.58",
+      "maximumResidentSetKiB": 570100,
+      "logSha256": "a992fb23ee0000ab7c638ffadbdace68d54499536e26fdb122c7671882b7e86c",
+      "timeSha256": "fdb104642c4c0ab5fb2e6943db511aeffc3c2eda1eb639a3919eb0e915e1e301"
+    },
+    {
+      "copy": "b",
+      "program": "aspis-verifier",
+      "elapsed": "0:44.72",
+      "maximumResidentSetKiB": 570040,
+      "logSha256": "51b866c311fff2b43e9fcbc15c37ea50c3f842eea5ef881edbcfd1a0f6e55493",
+      "timeSha256": "d1ab5618979376aecfc0c9cd4f56d6359b7e554641a43fa6958caaae916f875e"
+    }
+  ],
+  "programs": {
+    "pool": {
+      "bytes": 526056,
+      "sha256": "0bbe441f0e13c2f61e2369674628b06c9d538192514b4e9a92d229479956586d",
+      "buildsByteIdentical": true,
+      "identityClassification": "FROZEN_STACK_SAFE_LINUX_X86_64_V1_48_IDENTITY",
+      "stackGate": {
+        "analyzerOverflowDiagnosticsInEitherBuild": false,
+        "byteIdenticalToFocusedDisassemblyReference": true,
+        "plannerMaximumObservedOffsetBytes": 2912,
+        "laneDecoderMaximumObservedOffsetBytes": 3024,
+        "maximumAllowedOffsetBytes": 4096,
+        "passed": true
+      }
+    },
+    "verifier": {
+      "bytes": 1812264,
+      "sha256": "c43960303f2d67606362dc09d74f3a7983dcfcbe0665984a385a0efa7ddc5e47",
+      "buildsByteIdentical": true,
+      "matchesFrozenLinuxReference": true
+    }
+  },
+  "signed": false,
+  "submitted": false,
+  "deployed": false
+}

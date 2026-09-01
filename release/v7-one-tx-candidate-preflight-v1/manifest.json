@@ -1,0 +1,392 @@
+{
+  "schema": "aspis.v7.one-tx-candidate-preflight.v1",
+  "status": "STACK_SAFE_DUAL_SBF_AND_LOCAL_AGAVE_GREEN",
+  "authorization": {
+    "build": true,
+    "localSimulationOnly": false,
+    "localDisposableLifecycle": true,
+    "publicDevnetReadOnlyProbe": false,
+    "sign": true,
+    "submit": true,
+    "signAndSubmitScope": "DISPOSABLE_LOCAL_VALIDATOR_ONLY",
+    "deploy": false,
+    "mainnet": false
+  },
+  "source": {
+    "commit": "6bc7d3caf181be23a8a6ac7769497c965cd7273d",
+    "tree": "aae627375ad1f4f48ac4eae8e0c585c6c0680bab",
+    "cargoLockBlob": "dedcbfac3e4726f759ba062aa26ae47f4bfa1512",
+    "cargoLockSha256": "25cae3f276bd5831785bdb25e204ce99213934e7fcec3f5a76a5d742a018426b",
+    "poolTree": "cd7df911f651f84f408053fd934421aa88c7a9ca",
+    "verifierTree": "e7370c020cac1e51ca9e41092dcf6ecbf095bd99",
+    "lastPoolSourceCommit": "6bc7d3caf181be23a8a6ac7769497c965cd7273d",
+    "lastVerifierSourceCommit": "6702cfcc987e29381085039d9da8715dafbbfce8"
+  },
+  "toolchain": {
+    "host": "Linux x86_64",
+    "containerImage": null,
+    "containerNote": "No OCI image is asserted. Reproduction instead requires the exact platform-specific 91-file Linux x86_64 platform-tools/SBF-SDK inventory frozen below and a capped cgroup-v2 Linux execution. The older Darwin arm64 V5 inventory remains historical evidence and is not accepted by this replay.",
+    "cargoBuildSbfVersion": "solana-cargo-build-sbf 2.3.0\nplatform-tools v1.48\nrustc 1.84.1",
+    "platformTools": "v1.48",
+    "platformRustc": "rustc 1.84.1-dev",
+    "architecture": "v0",
+    "frozenInventory": {
+      "path": "release/v7-one-tx-candidate-preflight-v1/linux-x86_64-sbf-toolchain-v1.48.json",
+      "sha256": "2bcdd08e9c26f5cd1743a07cfb8aae341dc278e9d4e33eed512b746bc365d61c",
+      "cargoBuildSbfSha256": "b2ee45538a199c00833811383b88dd286380e7d2dbc16e10ddbf94ac51e183cb",
+      "toolchainFileCount": 91
+    },
+    "offlineCargoCache": {
+      "provenancePath": "release/v7-one-tx-candidate-preflight-v1/linux-offline-cargo-cache-provenance.json",
+      "provenanceSha256": "f5e43356be7aef8abd7adc6ca5909c2a957ed3b53842caf15055166f522bb49e",
+      "packagesPath": "release/v7-one-tx-candidate-preflight-v1/linux-offline-cargo-cache-packages.tsv",
+      "packagesSha256": "3e40be42d1794e8a0d3c853a4f4af74803b46de724c320d9683f8e72f783e370",
+      "packages": 428,
+      "indexPath": "release/v7-one-tx-candidate-preflight-v1/linux-offline-cargo-cache-index.tsv",
+      "indexSha256": "5b40d7284d0aceaa502e6f4c4b8bf2a2a2827a8c6e60217bd93f02b1d73600ef",
+      "indexEntries": 395,
+      "hostCargoSha256": "b7561ebe947acf816451536f19871ea4810f6be3f82fd252feab6ca7be8396f5",
+      "hostRustcSha256": "ef6d716e5d1c6c93def277c0afa037c21e7a74f7de3aed4ee0700646c3301b1d",
+      "hostRustupSha256": "4acc9acc76d5079515b46346a485974457b5a79893cfb01112423c89aeb5aa10",
+      "sbfProvenancePath": "release/v7-one-tx-candidate-preflight-v1/linux-offline-sbf-cargo-cache-provenance.json",
+      "sbfProvenanceSha256": "edbad6e67e209ce4d24f8a6608e9349e1ab2266a98ff87a72be73ff1b74fab5a",
+      "sbfPackagesPath": "release/v7-one-tx-candidate-preflight-v1/linux-offline-sbf-cargo-cache-packages.tsv",
+      "sbfPackagesSha256": "165e0a7f107dedc16083216b39f6216fad2ba4fa1977ceb7b6c36d4771f19255",
+      "sbfPackages": 186,
+      "sbfIndexPath": "release/v7-one-tx-candidate-preflight-v1/linux-offline-sbf-cargo-cache-index.tsv",
+      "sbfIndexSha256": "464035cef039e2384ebe8ec7093d6ac4527fe24a08a734f7684315d983bafc58",
+      "sbfIndexEntries": 399
+    },
+    "requiredCgroup": {
+      "memoryHighBytesAtMost": 9663676416,
+      "memoryMaxBytesAtMost": 12884901888,
+      "memorySwapMaxBytes": 0
+    }
+  },
+  "programs": [
+    {
+      "name": "aspis-pool",
+      "manifest": "programs/aspis-pool/Cargo.toml",
+      "manifestSha256": "faf0bffabea687d358bd67ba510afc9038f97313a184564532c99cdea565b9c5",
+      "features": "v7-pair-forest-one-tx-candidate",
+      "noDefaultFeatures": true,
+      "output": "aspis_pool.so",
+      "expectedBytes": 526056,
+      "expectedSha256": "0bbe441f0e13c2f61e2369674628b06c9d538192514b4e9a92d229479956586d",
+      "bindingStatus": "DUAL_LINUX_CONFIRMED_STACK_SAFE_CURRENT_SOURCE",
+      "referenceEvidence": "results/v7-one-tx-stack-safe-release-20260830/dual-sbf-r2/reproducible-sbf.json",
+      "referenceArtifact": "results/v7-one-tx-stack-safe-pool-reference-20260830/aspis_pool.so",
+      "referenceArtifactCheckedIn": true
+    },
+    {
+      "name": "aspis-verifier",
+      "manifest": "programs/aspis-verifier/Cargo.toml",
+      "manifestSha256": "6b3bc0b45b13a8a359f8c0515c7b5d0a71ff64199dd713df8a81c2faf3e2c774",
+      "features": "v7-pair-forest-one-tx-candidate",
+      "noDefaultFeatures": true,
+      "output": "aspis_verifier.so",
+      "expectedBytes": 1812264,
+      "expectedSha256": "c43960303f2d67606362dc09d74f3a7983dcfcbe0665984a385a0efa7ddc5e47",
+      "bindingStatus": "DUAL_LINUX_CONFIRMED_CURRENT_SOURCE",
+      "referenceEvidence": "results/v7-one-tx-stack-safe-release-20260830/dual-sbf-r2/reproducible-sbf.json",
+      "referenceArtifact": "results/v7-one-tx-reproducible-sbf-20260830/r6/sbf/aspis_verifier.so",
+      "referenceArtifactCheckedIn": true,
+      "historicalDarwinReference": {
+        "bytes": 1700384,
+        "sha256": "4ee9b4789533e049e2d9e1f43c84fa97f745a98151f9477ebd828de742b75e5c",
+        "evidence": "results/v7-static-schedule-cu-check-20260830/withdrawal-rollover-counter0.json",
+        "artifact": "results/v7-static-schedule-cu-check-20260830/verifier/aspis_verifier.so",
+        "artifactCheckedIn": true,
+        "classification": "HISTORICAL_DARWIN_ARM64_BUILD_NOT_ACCEPTED_AS_LINUX_REPLAY_IDENTITY"
+      }
+    }
+  ],
+  "sourceFrozenFiles": [
+    {
+      "path": "Cargo.toml",
+      "sha256": "fe9ac71e9f67a0751279bbb77e9ff86b6e1c9d6eb8128cc3d419300e421fec16"
+    },
+    {
+      "path": "Cargo.lock",
+      "sha256": "25cae3f276bd5831785bdb25e204ce99213934e7fcec3f5a76a5d742a018426b"
+    },
+    {
+      "path": "scripts/v7_txv1_public_devnet_simulate.sh",
+      "sha256": "d19ccf081a5a82ee9a6a2fb1ef5b9f370f2dd082d1df12fe54468e4d456a859e"
+    },
+    {
+      "path": "results/v7-pair-forest-combined-rejection-litesvm-20260828/evidence/v7-pair-forest-transfer-strict-work-canonical-fixed.bin",
+      "sha256": "ce2aa9bcb2fa4eed70f0f1f09befd656e5146e2208bd590c07c348d7dff2cfe3"
+    },
+    {
+      "path": "results/v7-pair-forest-combined-rejection-litesvm-20260828/evidence/transfer-rollover-strict-canonical.bin",
+      "sha256": "c14ba12e58d0f4799046214331beb729483e8590602c12e44c89f837d1ee0b4b"
+    },
+    {
+      "path": "results/v7-pair-forest-combined-rejection-litesvm-20260828/evidence/withdrawal-same-page-counter0-strict-canonical.bin",
+      "sha256": "85cef2964031f2f9456be88f8ca10bcc19a90b29e61719fcc9d353fd7e6fa285"
+    },
+    {
+      "path": "results/v7-pair-forest-combined-rejection-litesvm-20260828/evidence/withdrawal-rollover-counter0-strict-canonical.bin",
+      "sha256": "4a1d72848124fcb139fcc134508fc43537000ec804d0cc0122b4bde4f87edc62"
+    },
+    {
+      "path": "results/v7-pair-forest-combined-rejection-litesvm-20260828/evidence/honest-unmined-payload.bin",
+      "sha256": "5fcb5668677b6b4eb81c0d964f84961576c3c05be55958fc4b495fea7f983645"
+    },
+    {
+      "path": "results/v7-static-schedule-cu-check-20260830/withdrawal-rollover-counter0.json",
+      "sha256": "91e362d86ad89c50b0325a20121bf92c52fbff2514adc6776b544178c5aac256"
+    },
+    {
+      "path": "results/v7-static-schedule-cu-check-20260830/verifier/aspis_verifier.so",
+      "sha256": "4ee9b4789533e049e2d9e1f43c84fa97f745a98151f9477ebd828de742b75e5c"
+    },
+    {
+      "path": "release/aspis-v5-tag67-frozen-candidate-v1/provenance/build-provenance.json",
+      "sha256": "70f037278f587754d5ef9713644e6ae7b6d7788d9f6c01153ac5da89939e9609"
+    }
+  ],
+  "releaseHarnessFiles": [
+    {
+      "path": "results/v7-pair-forest-combined-rejection-litesvm-20260828/harness/Cargo.toml",
+      "sha256": "2ca228e08c826bcf6364df6d7c071e1dcdc47cc3a61fa6e7635d46f7ecd51b21"
+    },
+    {
+      "path": "results/v7-pair-forest-combined-rejection-litesvm-20260828/harness/Cargo.lock",
+      "sha256": "38e59947f25a8536e8dab575ef083ea30fe616a197aae1fc646df41fee3edbe4"
+    },
+    {
+      "path": "results/v7-pair-forest-combined-rejection-litesvm-20260828/harness/src/bin/generate_txv1_agave_bundle.rs",
+      "sha256": "44d0eb6385382b073eeb82d6ea96cb227a063d580d820ded41172a20a06671b8"
+    },
+    {
+      "path": "results/v7-pair-forest-combined-rejection-litesvm-20260828/harness/src/bin/build_signed_txv1_request.rs",
+      "sha256": "bf906ecd6b5eb0416eae5ed0e8a4d84a0783bf24700fb0508dcbe7c81c9d9eff"
+    },
+    {
+      "path": "scripts/v7_txv1_bundle_verify.sh",
+      "sha256": "5608ba94ce2c8e05241c56b4e55241a9163fb7424e5fb5f72065768f6cf5630a"
+    },
+    {
+      "path": "scripts/v7_txv1_disposable_agave_simulate.sh",
+      "sha256": "9cea4796a8d4092a25f16dbd5ca7a9d6ee789302fd62f36b631ff9b621bffbbc"
+    },
+    {
+      "path": "scripts/v7_one_tx_release_replay.sh",
+      "sha256": "a052c9c10edf7e5489c267f8aec7b45263f1b954e10a570c0e0b8b60492c5ec3"
+    },
+    {
+      "path": "release/v7-one-tx-candidate-preflight-v1/linux-x86_64-sbf-toolchain-v1.48.json",
+      "sha256": "2bcdd08e9c26f5cd1743a07cfb8aae341dc278e9d4e33eed512b746bc365d61c"
+    },
+    {
+      "path": "release/v7-one-tx-candidate-preflight-v1/linux-offline-cargo-cache-provenance.json",
+      "sha256": "f5e43356be7aef8abd7adc6ca5909c2a957ed3b53842caf15055166f522bb49e"
+    },
+    {
+      "path": "release/v7-one-tx-candidate-preflight-v1/linux-offline-cargo-cache-packages.tsv",
+      "sha256": "3e40be42d1794e8a0d3c853a4f4af74803b46de724c320d9683f8e72f783e370"
+    },
+    {
+      "path": "release/v7-one-tx-candidate-preflight-v1/linux-offline-cargo-cache-index.tsv",
+      "sha256": "5b40d7284d0aceaa502e6f4c4b8bf2a2a2827a8c6e60217bd93f02b1d73600ef"
+    },
+    {
+      "path": "release/v7-one-tx-candidate-preflight-v1/linux-offline-sbf-cargo-cache-provenance.json",
+      "sha256": "edbad6e67e209ce4d24f8a6608e9349e1ab2266a98ff87a72be73ff1b74fab5a"
+    },
+    {
+      "path": "release/v7-one-tx-candidate-preflight-v1/linux-offline-sbf-cargo-cache-packages.tsv",
+      "sha256": "165e0a7f107dedc16083216b39f6216fad2ba4fa1977ceb7b6c36d4771f19255"
+    },
+    {
+      "path": "release/v7-one-tx-candidate-preflight-v1/linux-offline-sbf-cargo-cache-index.tsv",
+      "sha256": "464035cef039e2384ebe8ec7093d6ac4527fe24a08a734f7684315d983bafc58"
+    },
+    {
+      "path": "results/v7-one-tx-agave-bundle-stack-safe-20260830/bundle.json",
+      "sha256": "c8fb7ec2a23bf67877832f7bfbd4f45503b9ba79719fc1139a362841673aeb92"
+    },
+    {
+      "path": "results/v7-one-tx-agave-bundle-stack-safe-20260830/TEMPLATE-SHA256SUMS",
+      "sha256": "5c4f01b118d79f4527126b1807b21f2d462d709442a80c0027b65f86381522be"
+    },
+    {
+      "path": "results/v7-one-tx-agave-bundle-stack-safe-offline-audit-20260830.json",
+      "sha256": "7237b1a7fbec4d21d5f461122fddc2e009b41f4b9d30e4f6280ffdccdba71245"
+    },
+    {
+      "path": "results/v7-one-tx-agave-bundle-offline-audit-20260830/README.md",
+      "sha256": "3450c4443dae9756bf5df28a8150be16727a4db080d9eb51f7195caadb6b5d19"
+    },
+    {
+      "path": "results/v7-one-tx-agave-bundle-offline-audit-20260830/SHA256SUMS",
+      "sha256": "aeb5b2c13b1458cb80f8b7bbb1f3a9cedcdb074232bee4a3ee3e581123eb8a4d"
+    }
+  ],
+  "priorLinuxSbfDerivation": {
+    "unit": "aspis-v7-one-tx-dual-sbf-20260830-r5.service",
+    "invocationId": "42faf7a2919542aaa2d067d6aec68306",
+    "sourceCommit": "da77d5f5a22681200cceec8e90fc69ac2cc81ad8",
+    "independentSourceCopies": 2,
+    "allFourBuildCommandsExitedZero": true,
+    "poolAAndBByteIdentical": true,
+    "verifierAAndBByteIdentical": true,
+    "memoryPeakBytes": 2257649664,
+    "memorySwapPeakBytes": 0,
+    "wallSeconds": 446.8,
+    "finalHarnessStatus": "FAILED_ONLY_AT_HISTORICAL_DARWIN_VERIFIER_REFERENCE_GATE",
+    "purpose": "derive the platform-specific Linux output identities before the provenance-complete confirmation replay"
+  },
+  "priorLinuxSbfConfirmation": {
+    "unit": "aspis-v7-one-tx-dual-sbf-20260830-r6.service",
+    "invocationId": "db1e20a369e54bbf849440c33230dae1",
+    "harnessCommit": "2acd8a0c4f68b71ecb89dec2cc7128f93e646fff",
+    "sourceCommit": "da77d5f5a22681200cceec8e90fc69ac2cc81ad8",
+    "independentSourceCopies": 2,
+    "allFourBuildCommandsExitedZero": true,
+    "poolAAndBByteIdentical": true,
+    "verifierAAndBByteIdentical": true,
+    "bothCargoRegistryNamespacesVerifiedBeforeAndAfter": true,
+    "reproducibleSbfRecord": "results/v7-one-tx-reproducible-sbf-20260830/r6/reproducible-sbf.json",
+    "reproducibleSbfRecordSha256": "1b66865f8b7f9a9ec7158b92fc0e526f7ac37713282c28a82f2452fe23596aab",
+    "materializedBundleSha256": "b4ca543d65a3f12abff72aa412bcad77acb7fb335692c045db2356f4230eda7f",
+    "materializedBundleAuditSha256": "206e1237b8a49725ea6ad03b1878e3604ef460c3a9f0477d4c91f65e861a1569",
+    "memoryPeakBytes": 2094817280,
+    "memorySwapPeakBytes": 0,
+    "wallSeconds": 589.19,
+    "exitStatus": 0,
+    "agaveSuiteExecuted": false,
+    "poolCheckpointStackGate": {
+      "function": "aspis_pool::pair_forest::plan_pair_forest_checkpoint_accounts_v1",
+      "stackOffsetBytes": 4368,
+      "maximumOffsetBytes": 4096,
+      "status": "MAINNET_BLOCKER"
+    }
+  },
+  "currentReleaseGate": {
+    "sourceCommit": "6bc7d3caf181be23a8a6ac7769497c965cd7273d",
+    "focusedPoolReferenceBytes": 526056,
+    "focusedPoolReferenceSha256": "0bbe441f0e13c2f61e2369674628b06c9d538192514b4e9a92d229479956586d",
+    "focusedPlannerMaximumStackOffsetBytes": 2912,
+    "focusedLaneDecoderMaximumStackOffsetBytes": 3024,
+    "maximumAllowedStackOffsetBytes": 4096,
+    "dualLinuxSbfExecuted": true,
+    "disposableAgaveLifecycleExecuted": true,
+    "reproducibleSbfRecord": "results/v7-one-tx-stack-safe-release-20260830/dual-sbf-r2/reproducible-sbf.json",
+    "reproducibleSbfRecordSha256": "3411d0b9de283fa3015a0e357d888c5b9d4f7d1256d101991876785edf0378e5",
+    "localAgaveSuite": "results/v7-one-tx-stack-safe-release-20260830/agave-r5/suite.json",
+    "localAgaveSuiteSha256": "5a3502e74c259071d49bbefdb3ead8853d139259912f131282551250d82ce8db",
+    "releaseEvidence": "results/v7-one-tx-stack-safe-release-20260830/release-evidence.json",
+    "releaseEvidenceSha256": "c69939a39d7e91d2c19f46411cd60ecb0b7d39562d078260110588a6d889fc21",
+    "evidenceInventory": "results/v7-one-tx-stack-safe-release-20260830/SHA256SUMS",
+    "evidenceInventorySha256": "ac39cde83d120228bcb5a2c45535d3cdf2f0ce7decb0d896aabe78a1232a8697",
+    "allElevenCasesFinalized": true,
+    "allNegativeCasesRolledBackExactly": true,
+    "allHonestCasesUnder1300000Cu": true,
+    "publicClusterUsed": false
+  },
+  "priorMeasuredCombinedCase": {
+    "classification": "REAL_COMBINED_LITESVM_BCD03B12_PRE_MARKER_CREATION_CHRONOLOGY_ONLY",
+    "path": "results/v7-static-schedule-cu-check-20260830/withdrawal-rollover-counter0.json",
+    "operation": "withdrawal",
+    "history": "rollover",
+    "populatedPairs": 255,
+    "computeUnits": 1198735,
+    "transactionBytes": 997,
+    "computeUnitCeiling": 1300000,
+    "transactionByteCeilingExclusive": 4096,
+    "currentSource": false
+  },
+  "currentMeasuredCombinedCase": {
+    "sourceCommit": "6bc7d3caf181be23a8a6ac7769497c965cd7273d",
+    "executed": true,
+    "classification": "REAL_COMBINED_OFFICIAL_AGAVE_4_2_TXV1_FINALIZED_LOCAL_VALIDATOR",
+    "case": "withdrawal-rollover",
+    "computeUnits": 1217607,
+    "transactionBytes": 1031,
+    "computeUnitCeiling": 1300000,
+    "computeUnitHeadroom": 82393,
+    "transactionByteCeilingExclusive": 4096,
+    "transactionByteHeadroom": 3065,
+    "simulationEqualsLandedCompute": true,
+    "evidence": "results/v7-one-tx-stack-safe-release-20260830/agave-r5/suite.json"
+  },
+  "txv1Lifecycle": {
+    "authoritativePreflightCommit": "c403c2f95734b271c3f5e0cae50d2a770640941a",
+    "runner": "scripts/v7_txv1_disposable_agave_simulate.sh",
+    "minimumAgaveCore": "4.2.0",
+    "txv1Feature": "txv1aq4pp281K9um3tnPgkfX8UqtFT6wcVW3hNezGLL",
+    "requiredCases": [
+      "transfer-same-page",
+      "transfer-rollover",
+      "withdrawal-same-page",
+      "withdrawal-rollover",
+      "stale-selected-lane-rejection",
+      "replay-nullifier-rejection",
+      "wrong-checkpoint-rejection",
+      "wrong-registry-release-rejection",
+      "malformed-proof-rejection",
+      "mutated-proof-rejection",
+      "failed-withdrawal-cpi-rollback"
+    ],
+    "caseBundleIncluded": true,
+    "caseBundle": "results/v7-one-tx-agave-bundle-stack-safe-20260830",
+    "caseBundleSha256": "c8fb7ec2a23bf67877832f7bfbd4f45503b9ba79719fc1139a362841673aeb92",
+    "caseBundleInventorySha256": "5c4f01b118d79f4527126b1807b21f2d462d709442a80c0027b65f86381522be",
+    "caseBundleOfflineAudit": "results/v7-one-tx-agave-bundle-stack-safe-offline-audit-20260830.json",
+    "caseBundleOfflineAuditSha256": "7237b1a7fbec4d21d5f461122fddc2e009b41f4b9d30e4f6280ffdccdba71245",
+    "caseBundleFiles": 44,
+    "caseBundleBytes": 647048,
+    "walletPreflightsExecuted": 11,
+    "walletPreflightShapes": [
+      {
+        "operation": "private-transfer",
+        "history": "same-page",
+        "instructionAccounts": 11,
+        "serializedTransactionBytes": 833
+      },
+      {
+        "operation": "private-transfer",
+        "history": "rollover",
+        "instructionAccounts": 12,
+        "serializedTransactionBytes": 866
+      },
+      {
+        "operation": "withdrawal",
+        "history": "same-page",
+        "instructionAccounts": 16,
+        "serializedTransactionBytes": 998
+      },
+      {
+        "operation": "withdrawal",
+        "history": "rollover",
+        "instructionAccounts": 17,
+        "serializedTransactionBytes": 1031
+      }
+    ],
+    "caseBundlePoolSbfBindingComplete": true,
+    "materializedCaseBundleIncluded": true,
+    "materializedCaseBundle": "results/v7-one-tx-stack-safe-release-20260830/dual-sbf-r2/materialized-bundle",
+    "materializedCaseBundleSha256": "e4476f1f48f0439f0ca4b5d68f66d4e4c7c7c0eec58de862149bfb37f1ccb6f1",
+    "materializedCaseBundleInventorySha256": "3df90a400dbfd435d81c5a7cc823fa3b102d7f61c8a44535d1f91bfb1befc6d0",
+    "materializedCaseBundleOfflineAudit": "results/v7-one-tx-stack-safe-release-20260830/dual-sbf-r2/materialized-bundle-audit.json",
+    "materializedCaseBundleOfflineAuditSha256": "7e32ea4fe409a7da8226c6dedd723a71648b46bb05e1184898b6a373d4ec8cb6",
+    "agave42AvailableInRecordedLocalEnvironment": true,
+    "suiteExecutedForThisFreeze": true,
+    "suite": "results/v7-one-tx-stack-safe-release-20260830/agave-r5/suite.json",
+    "suiteSha256": "5a3502e74c259071d49bbefdb3ead8853d139259912f131282551250d82ce8db",
+    "allCasesSigned": true,
+    "allCasesSubmitted": true,
+    "allCasesFinalized": true,
+    "allNegativeCasesRolledBackExactly": true,
+    "allHonestCasesMatchFrozenProgramState": true,
+    "programStateComparisonExcludesRuntimeMetadata": [
+      "rentEpoch"
+    ],
+    "publicDevnetExecutionActivationRequired": true,
+    "publicDevnetSubmissionAuthorized": false,
+    "publicClusterUsed": false
+  }
+}

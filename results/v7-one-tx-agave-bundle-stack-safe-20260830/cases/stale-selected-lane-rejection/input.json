@@ -1,0 +1,78 @@
+{
+  "feePayer": "AKnL4NNf3DGWZJS6cPknBuEGnVsV4A4m5tgebLHaRSZ9",
+  "historyPath": "same-page",
+  "instructionAccounts": [
+    {
+      "pubkey": "3Hrd4YKTTF2eaoWjdwzBwagmH9SeuenwiVyQajm72C8N",
+      "signer": false,
+      "writable": false
+    },
+    {
+      "pubkey": "EDfQpAnRQVqFmGZuY2ocZoX7gBp5H1N3MWWMLmuWTmD6",
+      "signer": false,
+      "writable": false
+    },
+    {
+      "pubkey": "3B3QhxztFR6kSo3m3kpTaU9JsQyJH6ScoT94gwnFXQYj",
+      "signer": false,
+      "writable": true
+    },
+    {
+      "pubkey": "DEozmkY3H2YccnEAqHyENJp2Hs1HAFjBq6xqdJDFeZk9",
+      "signer": false,
+      "writable": true
+    },
+    {
+      "pubkey": "7YvvqJNdXZt3aNMkCebG4To2f1VJe1TbxHBtY41D4Jy2",
+      "signer": false,
+      "writable": true
+    },
+    {
+      "pubkey": "AKnL4NNf3DGWZJS6cPknBuEGnVsV4A4m5tgebLHaRSZ9",
+      "signer": true,
+      "writable": true
+    },
+    {
+      "pubkey": "11111111111111111111111111111111",
+      "signer": false,
+      "writable": false
+    },
+    {
+      "pubkey": "VpJVmumSKG78SuniaC8contYbYsqXGYv1J7Ha7jpuLc",
+      "signer": false,
+      "writable": false
+    },
+    {
+      "pubkey": "2nzTKLWYCX7X95x9N2r16JpaNpAhQgBavCe1vbQ3Lkjg",
+      "signer": false,
+      "writable": false
+    },
+    {
+      "pubkey": "7Q2nGsPg8rbjdxKHK4jxTgEWLTyd9o1X4KMSjCieRmue",
+      "signer": false,
+      "writable": false
+    },
+    {
+      "pubkey": "5fQPsn8hoaVddFG26cWQ5QFdqxWtUPNaZ9zH2E6LYzFn",
+      "signer": false,
+      "writable": false
+    }
+  ],
+  "instructionDataBase64": "QVNROAEBAQChefjX43Ak61Tj2xfzlrOYob6y2gyL+vYrM18rpOpcJq3QlmPGpUg4Dhp+U5TIQm5uSLrCSoxTagRfv52+n7ocQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBU0NQAQEBACIIxjc90xOy8nalLRT+kxk3ndN8mKo7WLZN/JgtGlI/BQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUqAAAAAAAAAFX2PgSfUHUh3e+AeNiDjTFj72Yj/ZSTBoB4Q2dWsZ042xuCAEyQiQYUYLJhpCUGAICP2nCipLAUGbrAE9GvbnVNAAAAAAAAACZfBlYVkEAXkCYOLBMszHIipAoZMae6Lx/wmDhIfHYEIxWIBkETTnhxJg1G+jHgIAiGMBcBU5EhI8BRVc0Z7BQ=",
+  "minContextSlot": 1,
+  "operation": "private-transfer",
+  "poolProgram": "5PjDJaGfSPJj4tFzMRCiuuAasKg5n8dJKXKenhuwZexx",
+  "postStateAccounts": [
+    "3Hrd4YKTTF2eaoWjdwzBwagmH9SeuenwiVyQajm72C8N",
+    "EDfQpAnRQVqFmGZuY2ocZoX7gBp5H1N3MWWMLmuWTmD6",
+    "3B3QhxztFR6kSo3m3kpTaU9JsQyJH6ScoT94gwnFXQYj",
+    "DEozmkY3H2YccnEAqHyENJp2Hs1HAFjBq6xqdJDFeZk9",
+    "7YvvqJNdXZt3aNMkCebG4To2f1VJe1TbxHBtY41D4Jy2",
+    "VpJVmumSKG78SuniaC8contYbYsqXGYv1J7Ha7jpuLc",
+    "2nzTKLWYCX7X95x9N2r16JpaNpAhQgBavCe1vbQ3Lkjg",
+    "5fQPsn8hoaVddFG26cWQ5QFdqxWtUPNaZ9zH2E6LYzFn"
+  ],
+  "recentBlockhash": "11111111111111111111111111111111",
+  "requestId": 1004,
+  "schema": "aspis.v7.txv1-simulation-input.v1"
+}

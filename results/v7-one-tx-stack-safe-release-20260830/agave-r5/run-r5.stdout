@@ -1,0 +1,13 @@
+Wrote new keypair to /tmp/aspis-v7-txv1-lifecycle.mMZmuW/local-test-payer.json
+signed/finalized local lifecycle: transfer-same-page
+signed/finalized local lifecycle: transfer-rollover
+signed/finalized local lifecycle: withdrawal-same-page
+signed/finalized local lifecycle: withdrawal-rollover
+signed/finalized local lifecycle: stale-selected-lane-rejection
+signed/finalized local lifecycle: replay-nullifier-rejection
+signed/finalized local lifecycle: wrong-checkpoint-rejection
+signed/finalized local lifecycle: wrong-registry-release-rejection
+signed/finalized local lifecycle: malformed-proof-rejection
+signed/finalized local lifecycle: mutated-proof-rejection
+signed/finalized local lifecycle: failed-withdrawal-cpi-rollback
+disposable Agave signed/finalized eleven-case suite PASS: /home/dombarker/project-offloads/aspis-v7-stack-safe-release-20260830-r1/r5-txv1-suite/suite.json
