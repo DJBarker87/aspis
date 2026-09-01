@@ -1,4 +1,6 @@
 import AspisFormal.K1.V7Tag73ExactFixedQ16JointEventHandoff
+import AspisFormal.K1.V7Tag73ExactFixedQ16VerifierAnchorInvariant
+import AspisFormal.K1.V7Tag73ExactPairTrialProbabilityClosure
 import AspisFormal.K1.V7Tag73ExactRestoredQ16JointEventHandoff
 
 /-!
@@ -32,6 +34,9 @@ open AspisK1.V7Tag73ExactCompilerResources
 open AspisK1.V7Tag73ExactDagCandidateLabeledRootRouting
 open AspisK1.V7Tag73ExactFixedK12MerkleClassifier
 open AspisK1.V7Tag73ExactFixedQ16JointEventHandoff
+open AspisK1.V7Tag73ExactFixedQ16VerifierAnchorInvariant
+open AspisK1.V7Tag73ExactFoldAlphaQ16OperationalRealization
+open AspisK1.V7Tag73ExactPairTrialProbabilityClosure
 open AspisK1.V7Tag73ExactFixedOperationalStateMap
 open AspisK1.V7Tag73ExactPlainRomRun
 open AspisK1.V7Tag73ExactRestoredOperationalK13Classifier
@@ -122,6 +127,48 @@ structure ExactRestoredRootK13JointTrialWitness
       dependentSuccessfulSubtypeEvent finalWorkQ16TotalSucceeds
         (fun _residual => successfulFinalWorkQ16TotalEquiv ⁻¹'
           finalWorkQ16SuccessfulBadEvent bad)
+
+/-- A restored trial witness now retains enough source chronology to expose
+the honest first-fresh actor split.  This cannot be reconstructed from the
+successful coordinate alone. -/
+theorem ExactRestoredRootK13JointTrialWitness.anchorActorCases
+    {HiddenTape TapeIdentity Observation Statement Payload Witness : Type}
+    {parameters : ExactCompilerResourceParameters}
+    {transitionFuel : Nat}
+    {configuration : ExactPlainRomWitnessConfiguration HiddenTape TapeIdentity
+      Observation Statement Tag73K12ParsedProof Payload Witness parameters}
+    {projection : AcceptedTapeProjection Statement Tag73K12ParsedProof Payload}
+    {fixedInstance : PublicInstance Statement}
+    {decoder : ExactDecoderInstantiation QM31Exact}
+    {sample : ExactCompilerSample HiddenTape parameters}
+    {trial : ExactCompilerExposureTrial parameters}
+    (witness : ExactRestoredRootK13JointTrialWitness transitionFuel
+      configuration projection fixedInstance decoder sample trial) :
+    ExactFixedK13VerifierAnchor witness.input trial ∨
+      ExactFixedK13AdversaryAnchor witness.input trial :=
+  exact_fixed_k13_actual_joint_trial_anchor_actor_cases witness.input trial
+    witness.actualTrial
+
+/-- The retained restored trial is the unique deployed final-work trial in
+the canonical accepted DAG installation. -/
+theorem ExactRestoredRootK13JointTrialWitness.trialExact
+    {HiddenTape TapeIdentity Observation Statement Payload Witness : Type}
+    {parameters : ExactCompilerResourceParameters}
+    {transitionFuel : Nat}
+    {configuration : ExactPlainRomWitnessConfiguration HiddenTape TapeIdentity
+      Observation Statement Tag73K12ParsedProof Payload Witness parameters}
+    {projection : AcceptedTapeProjection Statement Tag73K12ParsedProof Payload}
+    {fixedInstance : PublicInstance Statement}
+    {decoder : ExactDecoderInstantiation QM31Exact}
+    {sample : ExactCompilerSample HiddenTape parameters}
+    {trial : ExactCompilerExposureTrial parameters}
+    (transitionRoom : 2 ≤ transitionFuel)
+    (witness : ExactRestoredRootK13JointTrialWitness transitionFuel
+      configuration projection fixedInstance decoder sample trial) :
+    trial = (exactAcceptedDagInstallation transitionRoom
+      witness.input).finalTrial :=
+  exact_fixed_k13_actual_trial_eq_accepted_installation transitionRoom
+    witness.input trial witness.actualTrial
 
 /-- The event assigned to one chronological trial is inhabitedness of the
 exact source-derived witness above. -/
@@ -587,6 +634,8 @@ theorem exact_restored_root_k13_query_probability_le_one_forest
       trials.failure_union_probability_le_one_forest exposureCap
 
 #print axioms exact_restored_root_query_failure_has_joint_trial_witness
+#print axioms ExactRestoredRootK13JointTrialWitness.anchorActorCases
+#print axioms ExactRestoredRootK13JointTrialWitness.trialExact
 #print axioms exact_restored_root_k13_pointwise_bad_card
 #print axioms exact_restored_root_k13_residual_bad_card
 #print axioms exact_restored_root_k13_residual_bad_eq_pointwise
