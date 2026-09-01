@@ -477,6 +477,92 @@ theorem fold_armed_live_producers_persist_over_aligned_records
           tailAligned tailOnly nextNodup nextMatching seedZero
           (List.mem_append_left _ seedRecord) nextSeed nextProducer
 
+/-- Every alpha slot newly consumed by fold-armed replay was selected at one
+literal earlier pre-answer state.  Unlike the retrospective alpha controller,
+this statement permits the boundary to be cached before the fold or installed
+after it; only the online pre-answer preference can consume a slot. -/
+theorem fold_armed_alpha_used_slot_has_prior_record
+    {globalOracleCalls : Nat}
+    (transitionFuel : Nat) :
+    ∀ (records : List UnifiedExposureRecord)
+      (state : IndexedUnifiedExposureState globalOracleCalls
+        FoldArmedAlphaZeroMemory) (slot : Fin 4),
+      slot ∉ state.memory.alpha.usedSlots →
+      slot ∈
+        (indexedStateAfterRecords transitionFuel
+          (foldArmedAlphaZeroController transitionFuel)
+          records state).memory.alpha.usedSlots →
+      ∃ prior record later,
+        records = prior ++ record :: later ∧
+        (foldArmedAlphaZeroController transitionFuel).preferredSlot
+          (indexedStateAfterRecords transitionFuel
+            (foldArmedAlphaZeroController transitionFuel)
+            prior state) = some slot := by
+  intro records
+  induction records with
+  | nil =>
+      intro state slot fresh used
+      simp only [indexed_state_after_records_nil] at used
+      exact (fresh used).elim
+  | cons head tail ih =>
+      intro state slot fresh used
+      let controller := foldArmedAlphaZeroController
+        (globalOracleCalls := globalOracleCalls) transitionFuel
+      let next := controller.afterAnswer transitionFuel state head.answer
+      have tailUsed : slot ∈
+          (indexedStateAfterRecords transitionFuel controller tail
+            next).memory.alpha.usedSlots := by
+        simpa [controller, next, indexed_state_after_records_cons] using used
+      cases preferred : controller.preferredSlot state with
+      | none =>
+          have preferred' : alphaZeroPreferredSlot transitionFuel
+              (foldArmedAlphaIndexedState state) = none := by
+            simpa [controller] using preferred
+          have nextFresh : slot ∉ next.memory.alpha.usedSlots := by
+            have nextUsed := fold_armed_alpha_after_memory_used_slots
+              transitionFuel state head.answer
+            rw [show next.memory.alpha.usedSlots =
+                state.memory.alpha.usedSlots by
+              change
+                (foldArmedAlphaAfterMemory transitionFuel state
+                  head.answer).alpha.usedSlots = state.memory.alpha.usedSlots
+              simpa [preferred'] using nextUsed]
+            exact fresh
+          obtain ⟨prior, record, later, decomposition, selected⟩ :=
+            ih next slot nextFresh tailUsed
+          refine ⟨head :: prior, record, later, ?_, ?_⟩
+          · simp [decomposition]
+          · simpa [controller, next, indexed_state_after_records_cons] using
+              selected
+      | some current =>
+          have preferred' : alphaZeroPreferredSlot transitionFuel
+              (foldArmedAlphaIndexedState state) = some current := by
+            simpa [controller] using preferred
+          by_cases currentExact : current = slot
+          · subst current
+            exact ⟨[], head, tail, by simp, by
+              simpa [controller, indexed_state_after_records_nil] using
+                preferred⟩
+          · have nextFresh : slot ∉ next.memory.alpha.usedSlots := by
+              have nextUsed := fold_armed_alpha_after_memory_used_slots
+                transitionFuel state head.answer
+              rw [show next.memory.alpha.usedSlots =
+                  insert current state.memory.alpha.usedSlots by
+                change
+                  (foldArmedAlphaAfterMemory transitionFuel state
+                    head.answer).alpha.usedSlots =
+                      insert current state.memory.alpha.usedSlots
+                simpa [preferred'] using nextUsed]
+              have slotNe : slot ≠ current := fun equal =>
+                currentExact equal.symm
+              simp [fresh, slotNe]
+            obtain ⟨prior, record, later, decomposition, selected⟩ :=
+              ih next slot nextFresh tailUsed
+            refine ⟨head :: prior, record, later, ?_, ?_⟩
+            · simp [decomposition]
+            · simpa [controller, next, indexed_state_after_records_cons] using
+                selected
+
 #print axioms AlphaBlockZeroMatchesExpected
 #print axioms alpha_zero_inventory_member_has_block_zero
 #print axioms fold_armed_alpha_producers_prefix_of_nonboundary
@@ -494,6 +580,7 @@ theorem fold_armed_live_producers_persist_over_aligned_records
   exact_fold_armed_post_fold_prefix_block_zero_expected
 #print axioms live_alpha_producer_forces_nonboundary_of_fresh_input
 #print axioms fold_armed_live_producers_persist_over_aligned_records
+#print axioms fold_armed_alpha_used_slot_has_prior_record
 
 end
 
