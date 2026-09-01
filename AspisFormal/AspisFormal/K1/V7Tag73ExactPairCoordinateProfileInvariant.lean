@@ -841,6 +841,67 @@ theorem exact_fixed_clean_pair_k13_adversary_anchor_final256_input_eq
   · simpa [rightCanonicalInput, digestExact] using rightLookup
   · simpa [digestExact] using rightAbsorbMember
 
+/-- Equal complete-coordinate `final256` inputs fix the transcript digest
+immediately before that absorption.  This uses fixed-width serialization,
+not SHA-256 inversion. -/
+theorem exact_fixed_clean_pair_k13_adversary_anchor_before_final256_digest_eq
+    {HiddenTape TapeIdentity Observation Statement Payload Witness : Type}
+    {parameters : ExactCompilerResourceParameters}
+    {transitionFuel : Nat}
+    {configuration : ExactPlainRomWitnessConfiguration HiddenTape TapeIdentity
+      Observation Statement Tag73K12ParsedProof Payload Witness parameters}
+    {projection : AcceptedTapeProjection Statement Tag73K12ParsedProof Payload}
+    {fixedInstance : PublicInstance Statement}
+    {decoder : ExactDecoderInstantiation QM31Exact}
+    (transitionRoom : 2 ≤ transitionFuel)
+    (foldTrial finalTrial : ExactCompilerExposureTrial parameters)
+    (hidden : HiddenTape)
+    (left right : FreshAnswerTape Digest256
+      (exactCompilerTargetCaps parameters).length)
+    (leftWitness : ExactFixedCleanK13PairTrialWitness transitionFuel
+      configuration projection fixedInstance decoder (hidden, left) foldTrial
+        finalTrial)
+    (rightWitness : ExactFixedCleanK13PairTrialWitness transitionFuel
+      configuration projection fixedInstance decoder (hidden, right) foldTrial
+        finalTrial)
+    (anchor : ExactFixedK13AdversaryAnchor leftWitness.joint.input finalTrial)
+    (programmedCover : 518 ≤ 2 * parameters.forkRequestCap)
+    (contextExact :
+      let router := exactCompilerFoldAlphaFinalWorkQ16Router parameters
+        transitionFuel foldTrial.val
+        (alphaFinalWorkQ16DagController transitionFuel finalTrial.val
+          (alphaZeroCausalController transitionFuel 0))
+        (inactiveAlphaZeroMemory, inactiveDagMemory)
+        (exactPlainRomCursor configuration hidden).erase
+      (exactCompilerCausalFoldAlphaFinalWorkQ16Coordinates parameters router
+          left).1 =
+        (exactCompilerCausalFoldAlphaFinalWorkQ16Coordinates parameters router
+          right).1)
+    (foldExact :
+      let router := exactCompilerFoldAlphaFinalWorkQ16Router parameters
+        transitionFuel foldTrial.val
+        (alphaFinalWorkQ16DagController transitionFuel finalTrial.val
+          (alphaZeroCausalController transitionFuel 0))
+        (inactiveAlphaZeroMemory, inactiveDagMemory)
+        (exactPlainRomCursor configuration hidden).erase
+      (exactCompilerCausalFoldAlphaFinalWorkQ16Coordinates parameters router
+          left).2.1 =
+        (exactCompilerCausalFoldAlphaFinalWorkQ16Coordinates parameters router
+          right).2.1) :
+    ∃ leftBefore rightBefore : EvalState,
+      leftBefore.digest = rightBefore.digest := by
+  obtain ⟨leftBefore, rightBefore, _digest, _leftBase, _rightBase,
+      _leftAbsorbActor, _rightAbsorbActor, inputExact, _leftLookup,
+      _rightLookup, _leftBaseExact, _rightBaseExact, _leftAbsorbMember,
+      _rightAbsorbMember⟩ :=
+    exact_fixed_clean_pair_k13_adversary_anchor_final256_input_eq
+      transitionRoom foldTrial finalTrial hidden left right leftWitness
+      rightWitness anchor programmedCover contextExact foldExact
+  refine ⟨leftBefore, rightBefore, ?_⟩
+  apply digest_bytes_injective
+  have prefixExact := congrArg (List.take 32) inputExact
+  simpa using prefixExact
+
 /-- Equality of the canonical `final256` inputs fixes every serialized field
 block before q16; this is fixed-width decoding, not hash inversion. -/
 theorem exact_fixed_clean_pair_k13_adversary_anchor_final_values_eq
@@ -1034,6 +1095,8 @@ theorem exact_fixed_clean_pair_k13_adversary_anchor_disclosed_final_eq
   exact_fixed_clean_pair_k13_adversary_anchor_selected_input_and_digest_eq
 #print axioms
   exact_fixed_clean_pair_k13_adversary_anchor_final256_input_eq
+#print axioms
+  exact_fixed_clean_pair_k13_adversary_anchor_before_final256_digest_eq
 #print axioms
   exact_fixed_clean_pair_k13_adversary_anchor_final_values_eq
 #print axioms
