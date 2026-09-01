@@ -2,6 +2,7 @@ import AspisFormal.K1.V7Tag73AlphaFinalWorkQ16ControllerProjection
 import AspisFormal.K1.V7Tag73AlphaFinalWorkQ16LabelsNodup
 import AspisFormal.K1.V7Tag73ExactAlphaZeroChainRouting
 import AspisFormal.K1.V7Tag73ExactAlphaQ16ProducerSeparation
+import AspisFormal.K1.V7Tag73ExactAlphaDagPrioritySeparation
 
 /-!
 # Accepted-root alpha labels in the composed 517-slot controller
@@ -28,11 +29,13 @@ open AspisK1.V7Tag73AtomicForkUniformScheduler
 open AspisK1.V7Tag73CausalAlphaFinalWorkQ16Probability
 open AspisK1.V7Tag73CausalDagFinalWorkQ16Controller
 open AspisK1.V7Tag73CausalFinalWorkQ16UsedForest
+open AspisK1.V7Tag73CausalQ16FinalWorkProbability
 open AspisK1.V7Tag73CausalMachineLabeledTraceRouting
 open AspisK1.V7Tag73CausalQ16CoordinateRouter
 open AspisK1.V7Tag73CausalSlotRouterLookup
 open AspisK1.V7Tag73ExactAlphaZeroChainRouting
 open AspisK1.V7Tag73ExactAlphaZeroControllerAlignment
+open AspisK1.V7Tag73ExactAlphaDagPrioritySeparation
 open AspisK1.V7Tag73ExactCandidateLabeledRootRouting
 open AspisK1.V7Tag73ExactCausalRouterTapeAlignment
 open AspisK1.V7Tag73ExactCompilerResources
@@ -207,6 +210,46 @@ theorem exact_compiler_consumed_alpha_outputs_have_517_preferred_slots
   exact ⟨outputPrefix, later, outputActor, outputInput, decomposition,
     exact_alpha_preferred_lifts_to_composed_controller input trial boundaryIndex
       outputPrefix _ preferred⟩
+
+/-- Every existing final-work/q16 label survives as the right summand of the
+composed controller at the identical accepted-root prefix. -/
+theorem exact_dag_preferred_lifts_to_composed_controller
+    {HiddenTape TapeIdentity Observation Statement Payload Result : Type}
+    {parameters : ExactCompilerResourceParameters}
+    {transitionFuel : Nat}
+    {configuration : ExactPlainRomConfiguration HiddenTape TapeIdentity
+      Observation Statement Tag73K12ParsedProof Payload Result parameters}
+    {projection : AcceptedTapeProjection Statement Tag73K12ParsedProof Payload}
+    {fixedInstance : PublicInstance Statement}
+    {sample : ExactCompilerSample HiddenTape parameters}
+    (input : ExactK12OperationalInput transitionFuel configuration projection
+      fixedInstance sample)
+    (trial : ExactCompilerExposureTrial parameters)
+    (boundaryIndex : Nat) (prior later : List UnifiedExposureRecord)
+    (actor : QueryActor) (queryInput : ShaInput) (answer : Digest256)
+    (slot : FinalWorkQ16DigestSlot)
+    (decomposition : exactFixedRootRecords input.package.root =
+      prior ++ (.machineFresh actor queryInput answer : UnifiedExposureRecord) ::
+        later)
+    (preferred :
+      (exactDagTrialController transitionFuel trial).preferredSlot
+        (indexedStateAfterRecords transitionFuel
+          (exactDagTrialController transitionFuel trial) prior
+          (exactDagCandidateInitialState input)) = some slot) :
+    (alphaFinalWorkQ16DagController transitionFuel trial.val
+      (alphaZeroCausalController transitionFuel boundaryIndex)).preferredSlot
+        (indexedStateAfterRecords transitionFuel
+          (alphaFinalWorkQ16DagController transitionFuel trial.val
+            (alphaZeroCausalController transitionFuel boundaryIndex)) prior
+          (exactAlphaFinalWorkQ16InitialState input)) =
+      some (Sum.inr slot) := by
+  apply alpha_final_work_q16_preferred_of_dag
+  · rw [alpha_indexed_state_after_composed_records]
+    simpa using exact_alpha_preferred_none_of_dag_preferred input trial
+      boundaryIndex prior later actor queryInput answer slot decomposition
+        preferred
+  · rw [final_work_q16_indexed_state_after_composed_records]
+    simpa [exactDagTrialController] using preferred
 
 def exactAlphaFinalWorkQ16RootLabels
     {HiddenTape TapeIdentity Observation Statement Payload Result : Type}
@@ -436,6 +479,49 @@ theorem exact_alpha_final_work_q16_router_routes_selected_root_answer
     input.package.root.full.projection.rootPrefixes.verifier.remaining
     (exact_alpha_final_work_q16_root_labels_tape_prefix input trial boundaryIndex)
     priorLabels laterLabels target answer labelsDecomposition
+
+/-- Every answer routed by the existing 513-slot final-work/q16 controller is
+preserved at the corresponding right-summand coordinate of the concrete
+517-slot router.  Thus adding alpha does not change an existing routed answer. -/
+theorem exact_dag_preferred_answer_is_routed_by_517_router
+    {HiddenTape TapeIdentity Observation Statement Payload Result : Type}
+    {parameters : ExactCompilerResourceParameters}
+    {transitionFuel : Nat}
+    {configuration : ExactPlainRomConfiguration HiddenTape TapeIdentity
+      Observation Statement Tag73K12ParsedProof Payload Result parameters}
+    {projection : AcceptedTapeProjection Statement Tag73K12ParsedProof Payload}
+    {fixedInstance : PublicInstance Statement}
+    {sample : ExactCompilerSample HiddenTape parameters}
+    (programmedCover : 517 ≤ 2 * parameters.forkRequestCap)
+    (input : ExactK12OperationalInput transitionFuel configuration projection
+      fixedInstance sample)
+    (trial : ExactCompilerExposureTrial parameters)
+    (boundaryIndex : Nat) (prior later : List UnifiedExposureRecord)
+    (actor : QueryActor) (queryInput : ShaInput) (answer : Digest256)
+    (slot : FinalWorkQ16DigestSlot)
+    (decomposition : exactFixedRootRecords input.package.root =
+      prior ++ (.machineFresh actor queryInput answer : UnifiedExposureRecord) ::
+        later)
+    (preferred :
+      (exactDagTrialController transitionFuel trial).preferredSlot
+        (indexedStateAfterRecords transitionFuel
+          (exactDagTrialController transitionFuel trial) prior
+          (exactDagCandidateInitialState input)) = some slot) :
+    causalRoutedAnswer? (Sum.inr slot)
+        (exactCompilerConcreteAlphaFinalWorkQ16Router parameters transitionFuel
+          boundaryIndex trial.val
+          (exactPlainRomCursor configuration sample.1).erase)
+      (alphaFinalWorkQ16NamedSlotInputTape
+          (exactCompilerAlphaFinalWorkQ16InputTape parameters sample.2)) =
+      some answer := by
+  apply exact_alpha_final_work_q16_router_routes_selected_root_answer input trial
+    boundaryIndex prior later actor queryInput answer (Sum.inr slot)
+    decomposition
+  · exact exact_alpha_final_work_q16_root_residual_enough_of_programmed_cover
+      input trial boundaryIndex programmedCover
+  · exact exact_dag_preferred_lifts_to_composed_controller input trial
+      boundaryIndex prior later actor queryInput answer slot decomposition
+        preferred
 
 /-- Operational accepted-source endpoint for the added alpha coordinates.
 Every alpha-zero output block consumed by the deployed bounded decoder is the
