@@ -45,11 +45,6 @@ use solana_signature_v1::Signature as V1Signature;
 use solana_signer::Signer;
 use solana_transaction_v1::versioned::VersionedTransaction as V1VersionedTransaction;
 
-// The pinned successful withdrawal reaches the SPL Token CPI with 71,760 CU
-// remaining. This explicit negative-test budget removes 71,700 CU, leaving the
-// verifier enough to succeed and the genuine Token program too little to finish.
-const WITHDRAWAL_CPI_EXHAUSTION_COMPUTE_LIMIT: u32 = 1_228_300;
-
 struct OsEntropy;
 impl TryRng for OsEntropy {
     type Error = Infallible;
@@ -82,6 +77,7 @@ struct Input {
     request_id: u64,
     carrier_test_mode: Option<String>,
     withdrawal_cpi_test_mode: Option<String>,
+    compute_unit_limit: Option<u32>,
 }
 #[derive(Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -220,6 +216,22 @@ fn main() -> Result<()> {
         !(malformed_carrier_test && withdrawal_cpi_compute_exhaustion_test),
         "terminal negative-test modes are mutually exclusive"
     );
+    let compute_unit_limit = if withdrawal_cpi_compute_exhaustion_test {
+        let limit = input
+            .compute_unit_limit
+            .context("withdrawal CPI failure mode requires calibrated compute limit")?;
+        ensure!(
+            (1_150_000..1_300_000).contains(&limit),
+            "calibrated withdrawal CPI failure limit is outside the fail-closed range"
+        );
+        limit
+    } else {
+        ensure!(
+            input.compute_unit_limit.is_none(),
+            "custom compute limit requires the explicit withdrawal CPI failure schema"
+        );
+        1_300_000
+    };
     let bundle_path = resolve(input_path.parent().unwrap_or(Path::new(".")), &input.bundle);
     let base = bundle_path.parent().unwrap_or(Path::new("."));
     let bundle: Bundle = serde_json::from_slice(&fs::read(&bundle_path)?)?;
@@ -407,11 +419,7 @@ fn main() -> Result<()> {
         recent,
         PairForestV1TransactionConfigV2 {
             priority_fee_lamports: 0,
-            compute_unit_limit: if withdrawal_cpi_compute_exhaustion_test {
-                WITHDRAWAL_CPI_EXHAUSTION_COMPUTE_LIMIT
-            } else {
-                1_300_000
-            },
+            compute_unit_limit,
             loaded_accounts_data_size_limit: 8 * 1024 * 1024,
             heap_size: 256 * 1024,
         },
@@ -470,7 +478,7 @@ fn main() -> Result<()> {
         "ciphertextCarrierCanonical":!malformed_carrier_test,
         "carrierTestMode":input.carrier_test_mode,
         "withdrawalCpiTestMode":input.withdrawal_cpi_test_mode,
-        "computeUnitLimit":if withdrawal_cpi_compute_exhaustion_test { WITHDRAWAL_CPI_EXHAUSTION_COMPUTE_LIMIT } else { 1_300_000 },
+        "computeUnitLimit":compute_unit_limit,
         "terminalAccounts":terminal_accounts,"markerAccount":marker_account,
         "simulationRequest":{"jsonrpc":"2.0","id":input.request_id,"method":"simulateTransaction","params":[wire64,{"encoding":"base64","commitment":"finalized","sigVerify":true,"replaceRecentBlockhash":false,"minContextSlot":input.min_context_slot,"innerInstructions":true}]},
         "sendRequest":{"jsonrpc":"2.0","id":input.request_id+100000,"method":"sendTransaction","params":[wire64,{"encoding":"base64","skipPreflight":true,"preflightCommitment":"finalized","maxRetries":0,"minContextSlot":input.min_context_slot}]}})

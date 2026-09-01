@@ -418,6 +418,38 @@ if [[ -n "$SECRET_BUILDER" || -n "$DEPOSIT_BUILDER" ]]; then
         terminal_blockhash=$(rpc "$(jq -nc --argjson slot "$terminal_context_slot" \
           '{jsonrpc:"2.0",id:1501,method:"getLatestBlockhash",params:[{commitment:"finalized",minContextSlot:$slot}]}')" \
           | jq -er '.result.value.blockhash')
+        calibrated_compute_limit=1300000
+        calibration_token_entry_cu=null
+        terminal_compute_unit_limit=null
+        if [[ "$WITHDRAWAL_CPI_CASE" == compute-exhaustion ]]; then
+          jq -n --arg schema aspis.v7.live-terminal-input.v1 \
+            --arg bundle "$EVIDENCE_DIR/live-proof-bundle/live-bundle.json" \
+            --arg asq8 "$EVIDENCE_DIR/live-proof/asq8.bin" --arg payer "$PAYER_KEYPAIR" \
+            --arg blockhash "$terminal_blockhash" --argjson slot "$terminal_context_slot" \
+            '{schema:$schema,bundle:$bundle,asq8:$asq8,payerKeypair:$payer,
+              recentBlockhash:$blockhash,minContextSlot:$slot,requestId:1590,
+              carrierTestMode:null,withdrawalCpiTestMode:null,computeUnitLimit:null}' \
+            >"$WORK_DIR/terminal-calibration-input.json"
+          "$TERMINAL_BUILDER" "$WORK_DIR/terminal-calibration-input.json" \
+            >"$TERMINAL_EVIDENCE/calibration-signed-request.json"
+          calibration_simulation=$(rpc "$(jq -c '.simulationRequest' \
+            "$TERMINAL_EVIDENCE/calibration-signed-request.json")")
+          jq . <<<"$calibration_simulation" >"$TERMINAL_EVIDENCE/calibration-simulation.json"
+          jq -e '.error | not' <<<"$calibration_simulation" >/dev/null
+          jq -e '.result.value.err == null and .result.value.unitsConsumed < 1300000 and
+            any(.result.value.logs[]; contains("Program 7Q2nGsPg8rbjdxKHK4jxTgEWLTyd9o1X4KMSjCieRmue success")) and
+            any(.result.value.logs[]; contains("Program TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA success"))' \
+            <<<"$calibration_simulation" >/dev/null \
+            || fail "withdrawal CPI calibration did not complete the genuine verifier and token CPI"
+          calibration_token_entry_cu=$(jq -r '.result.value.logs[]' <<<"$calibration_simulation" \
+            | sed -nE 's/^Program TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA consumed [0-9]+ of ([0-9]+) compute units$/\1/p')
+          [[ "$calibration_token_entry_cu" =~ ^[0-9]+$ && "$calibration_token_entry_cu" -gt 60 ]] \
+            || fail "could not derive the calibrated SPL token entry budget"
+          calibrated_compute_limit=$((1300000 - calibration_token_entry_cu + 60))
+          terminal_compute_unit_limit=$calibrated_compute_limit
+          [[ "$calibrated_compute_limit" -ge 1150000 && "$calibrated_compute_limit" -lt 1300000 ]] \
+            || fail "calibrated withdrawal CPI failure limit is outside the fail-closed range"
+        fi
         terminal_schema=aspis.v7.live-terminal-input.v1
         carrier_test_mode=null
         if [[ "$CIPHERTEXT_CASE" == malformed-magic ]]; then
@@ -432,17 +464,20 @@ if [[ -n "$SECRET_BUILDER" || -n "$DEPOSIT_BUILDER" ]]; then
         jq -n --arg schema "$terminal_schema" \
           --argjson carrierTestMode "$carrier_test_mode" \
           --argjson withdrawalCpiTestMode "$withdrawal_cpi_test_mode" \
+          --argjson computeUnitLimit "$terminal_compute_unit_limit" \
           --arg bundle "$EVIDENCE_DIR/live-proof-bundle/live-bundle.json" \
           --arg asq8 "$EVIDENCE_DIR/live-proof/asq8.bin" --arg payer "$PAYER_KEYPAIR" \
           --arg blockhash "$terminal_blockhash" --argjson slot "$terminal_context_slot" \
           '{schema:$schema,bundle:$bundle,asq8:$asq8,payerKeypair:$payer,
             recentBlockhash:$blockhash,minContextSlot:$slot,requestId:1600,
-            carrierTestMode:$carrierTestMode,withdrawalCpiTestMode:$withdrawalCpiTestMode}' \
+            carrierTestMode:$carrierTestMode,withdrawalCpiTestMode:$withdrawalCpiTestMode,
+            computeUnitLimit:$computeUnitLimit}' \
           >"$WORK_DIR/terminal-input.json"
         "$TERMINAL_BUILDER" "$WORK_DIR/terminal-input.json" \
           >"$TERMINAL_EVIDENCE/signed-request.json"
         jq -e --arg operation "$OPERATION" --arg carrierCase "$CIPHERTEXT_CASE" \
-          --arg withdrawalCpiCase "$WITHDRAWAL_CPI_CASE" '
+          --arg withdrawalCpiCase "$WITHDRAWAL_CPI_CASE" \
+          --argjson expectedComputeUnitLimit "$calibrated_compute_limit" '
           .operation == $operation and
           .instructionCount == 2 and .terminalInstructionCount == 1 and
           (if $carrierCase == "canonical" then
@@ -455,7 +490,8 @@ if [[ -n "$SECRET_BUILDER" || -n "$DEPOSIT_BUILDER" ]]; then
           (if $withdrawalCpiCase == "none" then
              .withdrawalCpiTestMode == null and .computeUnitLimit == 1300000
            else
-             .withdrawalCpiTestMode == "compute-exhaustion" and .computeUnitLimit == 1228300
+             .withdrawalCpiTestMode == "compute-exhaustion" and
+               .computeUnitLimit == $expectedComputeUnitLimit
            end) and .serializedTransactionBytes < 4096 and
           .serializedTransactionBytes <= 3500' "$TERMINAL_EVIDENCE/signed-request.json" >/dev/null \
           || fail "terminal TxV1 preflight failed"
@@ -472,7 +508,8 @@ if [[ -n "$SECRET_BUILDER" || -n "$DEPOSIT_BUILDER" ]]; then
         if [[ "$WITHDRAWAL_CPI_CASE" == compute-exhaustion ]]; then
           [[ "$(token_state "$EVIDENCE_DIR/live-proof-inputs/destination.json")" == 1 ]] \
             || fail "withdrawal CPI test destination is not initialized"
-          jq -e '.result.value.err != null and .result.value.unitsConsumed <= 1228300 and
+          jq -e --argjson computeUnitLimit "$calibrated_compute_limit" '
+            .result.value.err != null and .result.value.unitsConsumed <= $computeUnitLimit and
             any(.result.value.logs[]; contains("Program 7Q2nGsPg8rbjdxKHK4jxTgEWLTyd9o1X4KMSjCieRmue success")) and
             any(.result.value.logs[]; contains("Program TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA invoke")) and
             any(.result.value.logs[]; contains("Program TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA failed"))' \
@@ -495,8 +532,9 @@ if [[ -n "$SECRET_BUILDER" || -n "$DEPOSIT_BUILDER" ]]; then
           rpc "$(jq -nc --arg signature "$failed_signature" \
             '{jsonrpc:"2.0",id:1651,method:"getTransaction",params:[$signature,{encoding:"json",commitment:"finalized",maxSupportedTransactionVersion:1}]}')" \
             | jq . >"$TERMINAL_EVIDENCE/finalized-transaction.json"
-          jq -e '.result != null and .result.meta.err != null and
-            .result.meta.computeUnitsConsumed <= 1228300 and
+          jq -e --argjson computeUnitLimit "$calibrated_compute_limit" '
+            .result != null and .result.meta.err != null and
+            .result.meta.computeUnitsConsumed <= $computeUnitLimit and
             any(.result.meta.logMessages[]; contains("Program 7Q2nGsPg8rbjdxKHK4jxTgEWLTyd9o1X4KMSjCieRmue success")) and
             any(.result.meta.logMessages[]; contains("Program TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA invoke")) and
             any(.result.meta.logMessages[]; contains("Program TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA failed"))' \
@@ -540,6 +578,8 @@ if [[ -n "$SECRET_BUILDER" || -n "$DEPOSIT_BUILDER" ]]; then
             --argjson simulatedCu "$(jq -er '.result.value.unitsConsumed' "$TERMINAL_EVIDENCE/simulation.json")" \
             --argjson landedCu "$(jq -er '.result.meta.computeUnitsConsumed' "$TERMINAL_EVIDENCE/finalized-transaction.json")" \
             --argjson payerFeeLamports "$failed_fee" --arg payer "$payer_pubkey" \
+            --argjson calibratedComputeUnitLimit "$calibrated_compute_limit" \
+            --argjson calibrationTokenEntryCu "$calibration_token_entry_cu" \
             --arg before "$(account_values_fee_normalized_hash "$TERMINAL_EVIDENCE/accounts-before.json" "$payer_index")" \
             --arg after "$(account_values_fee_normalized_hash "$TERMINAL_EVIDENCE/accounts-after.json" "$payer_index")" \
             --argjson vaultAmount "$vault_after_amount" --argjson destinationAmount "$destination_after_amount" \
@@ -551,6 +591,9 @@ if [[ -n "$SECRET_BUILDER" || -n "$DEPOSIT_BUILDER" ]]; then
               signedWireSha256:$request[0].signedWireSha256,selectedLane:$request[0].selectedLane,
               simulatedError:$simulatedError,landedError:$landedError,
               simulatedCu:$simulatedCu,landedCu:$landedCu,
+              calibratedComputeUnitLimit:$calibratedComputeUnitLimit,
+              calibrationTokenEntryCu:$calibrationTokenEntryCu,
+              calibrationSubmitted:false,
               verifierSucceededBeforeCpiFailure:true,byteIdenticalSimulationSubmission:true,
               feeNormalizedProtectedStateBeforeSha256:$before,
               feeNormalizedProtectedStateAfterSha256:$after,
