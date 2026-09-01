@@ -150,9 +150,9 @@ jq -e --arg owner "$VERIFIER_PROGRAM" --argjson space "$space" '
   || fail "final proof account shape is wrong"
 jq -er '.result.value.data[0]' "$EVIDENCE_DIR/proof-account-finalized.json" \
   | openssl base64 -d -A >"$WORK_DIR/proof-account.bin"
-magic=$(od -An -tx1 -N4 "$WORK_DIR/proof-account.bin" | tr -d ' \n')
+magic=$(od -An -v -tx1 -N4 "$WORK_DIR/proof-account.bin" | tr -d ' \n')
 [[ "$magic" == 41535055 ]] || fail "proof account magic is not ASPU"
-authority_hex=$(od -An -tx1 -j8 -N32 "$WORK_DIR/proof-account.bin" | tr -d ' \n')
+authority_hex=$(od -An -v -tx1 -j8 -N32 "$WORK_DIR/proof-account.bin" | tr -d ' \n')
 [[ "$authority_hex" == "$(printf '00%.0s' {1..32})" ]] || fail "proof account was not sealed"
 tail -c +41 "$WORK_DIR/proof-account.bin" >"$WORK_DIR/landed-payload.bin"
 [[ "$(shasum -a 256 "$WORK_DIR/landed-payload.bin" | awk '{print $1}')" == \
