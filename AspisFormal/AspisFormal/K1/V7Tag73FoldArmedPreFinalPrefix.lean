@@ -171,6 +171,74 @@ theorem fold_armed_preferred_slot_without_q16_producers
           rw [underlying] at preferred
           exact Or.inr (Or.inr (Option.some.inj preferred).symm)
 
+/-- A literal segment whose DAG producer inventory is empty at every
+pre-answer prefix has no q16 labels.  This list-level factor keeps the later
+final-nonce proof separate from controller label bookkeeping. -/
+theorem fold_armed_named_slots_without_q16_producers
+    {globalOracleCalls : Nat}
+    (transitionFuel foldExposureIndex finalExposureIndex : Nat) :
+    ∀ (records : List UnifiedExposureRecord)
+      (state : IndexedUnifiedExposureState globalOracleCalls
+        FoldArmedPreFinalMemory),
+      (∀ prior current later,
+        records = prior ++ current :: later →
+        (foldArmedPreFinalDagState
+          (indexedStateAfterRecords transitionFuel
+            (foldArmedCompleteController transitionFuel foldExposureIndex
+              finalExposureIndex) prior state)).memory.producers = []) →
+      ∀ slot ∈ namedTraceSlots
+        (indexedControllerLabeledRecords transitionFuel
+          (foldArmedCompleteController transitionFuel foldExposureIndex
+            finalExposureIndex) state records),
+        slot = none ∨ (∃ alpha : Fin 4, slot = some (Sum.inl alpha)) ∨
+          slot = some (Sum.inr none) := by
+  intro records
+  induction records with
+  | nil =>
+      intro state _emptyAtPrefix slot member
+      simp at member
+  | cons record records ih =>
+      intro state emptyAtPrefix slot member
+      let controller := foldArmedCompleteController
+        (globalOracleCalls := globalOracleCalls) transitionFuel
+          foldExposureIndex finalExposureIndex
+      let next := controller.afterAnswer transitionFuel state record.answer
+      have currentEmpty :
+          (foldArmedPreFinalDagState state).memory.producers = [] := by
+        simpa using emptyAtPrefix [] record records (by simp)
+      have tailEmpty : ∀ prior current later,
+          records = prior ++ current :: later →
+          (foldArmedPreFinalDagState
+            (indexedStateAfterRecords transitionFuel controller prior next)
+            ).memory.producers = [] := by
+        intro prior current later decomposition
+        have original : record :: records =
+            (record :: prior) ++ current :: later := by
+          simp [decomposition]
+        have fromOriginal := emptyAtPrefix (record :: prior) current later
+          original
+        simpa [controller, next, indexed_state_after_records_cons] using
+          fromOriginal
+      change slot ∈ namedTraceSlots
+        (indexedControllerLabeledRecords transitionFuel controller state
+          (record :: records)) at member
+      cases preferredExact : controller.preferredSlot state with
+      | none =>
+          rw [indexed_controller_labeled_records_cons, preferredExact] at member
+          simp only [named_trace_slots_none_cons] at member
+          exact ih next tailEmpty slot (by simpa [controller] using member)
+      | some current =>
+          have currentShape :=
+            fold_armed_preferred_slot_without_q16_producers transitionFuel
+              foldExposureIndex finalExposureIndex state currentEmpty current
+                preferredExact
+          rw [indexed_controller_labeled_records_cons, preferredExact] at member
+          simp only [named_trace_slots_some_cons, List.mem_cons] at member
+          rcases member with rfl | tailMember
+          · exact currentShape
+          · exact ih next tailEmpty slot (by
+              simpa [controller] using tailMember)
+
 /-- Strictly before final work, the inactive DAG cannot emit a final/q16
 label.  Dynamic alpha arming changes producers but not this label shape. -/
 theorem fold_armed_pre_final_named_slots_only_fold_or_alpha
@@ -461,6 +529,7 @@ theorem exact_fold_armed_coordinates_force_pre_final_tape_prefix
 
 #print axioms fold_armed_pre_final_named_slots_only_fold_or_alpha
 #print axioms fold_armed_preferred_slot_without_q16_producers
+#print axioms fold_armed_named_slots_without_q16_producers
 #print axioms exact_fold_armed_coordinates_force_pre_final_tape_prefix
 
 end

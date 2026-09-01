@@ -125,6 +125,13 @@ def Q16DagTracksBaseBeforeWork (memory : FinalWorkQ16DagMemory)
     (key : RawFinalWorkKey) (base : Digest256) : Prop :=
   memory.anchor = .tracked key false ∧ memory.q16Base = some base
 
+/-- The selected final-work key is known but its nonce-absorb answer has not
+yet installed a q16 base. -/
+def Q16DagTracksWithoutBase (memory : FinalWorkQ16DagMemory)
+    (key : RawFinalWorkKey) : Prop :=
+  ∃ workSeen, memory.anchor = .tracked key workSeen ∧
+    memory.q16Base = none
+
 /-- Consuming the final-work slot implies that the tracked anchor has seen its
 work input. This invariant is independent of q16 producer progress. -/
 def Q16DagWorkSlotSound (memory : FinalWorkQ16DagMemory) : Prop :=
@@ -277,6 +284,103 @@ theorem dag_candidate_after_memory_preserves_tracks_base
       simpa [inputExact] using
         dag_memory_after_input_preserves_tracks_base anchorIndex
           state.exposureIndex state.memory key base input answer tracked
+
+/-- Until the exact nonce-absorb input is consumed, a tracked DAG remains
+without a q16 base. -/
+theorem dag_memory_after_nonabsorb_preserves_without_base
+    (anchorIndex exposureIndex : Nat) (memory : FinalWorkQ16DagMemory)
+    (key : RawFinalWorkKey) (input : ShaInput) (answer : Digest256)
+    (inputNe : input ≠ key.absorbInput)
+    (tracked : Q16DagTracksWithoutBase memory key) :
+    Q16DagTracksWithoutBase
+      (dagMemoryAfterInput anchorIndex exposureIndex memory input answer) key := by
+  obtain ⟨workSeen, anchorExact, baseExact⟩ := tracked
+  refine ⟨workSeen || decide (input = key.workInput), ?_, ?_⟩
+  · simp [dagMemoryAfterInput, dagCoreMemoryAfterInput, anchorExact,
+      baseExact, inputNe]
+  · simp [dagMemoryAfterInput, dagCoreMemoryAfterInput, anchorExact,
+      baseExact, inputNe]
+
+theorem dag_candidate_after_nonabsorb_preserves_without_base
+    {globalOracleCalls : Nat}
+    (transitionFuel anchorIndex : Nat)
+    (state : IndexedUnifiedExposureState globalOracleCalls
+      FinalWorkQ16DagMemory)
+    (key : RawFinalWorkKey) (input : ShaInput) (answer : Digest256)
+    (inputExact : unifiedInputBeforeAnswer? transitionFuel state.cursor =
+      some input)
+    (inputNe : input ≠ key.absorbInput)
+    (tracked : Q16DagTracksWithoutBase state.memory key) :
+    Q16DagTracksWithoutBase
+      (dagCandidateAfterMemory transitionFuel anchorIndex state answer) key := by
+  unfold dagCandidateAfterMemory
+  rw [inputExact]
+  exact dag_memory_after_nonabsorb_preserves_without_base anchorIndex
+    state.exposureIndex state.memory key input answer inputNe tracked
+
+/-- Aligned machine records avoiding the selected nonce-absorb input preserve
+the no-base state across the whole segment. -/
+theorem aligned_machine_records_preserve_dag_without_base
+    {globalOracleCalls : Nat}
+    (transitionFuel anchorIndex : Nat) (key : RawFinalWorkKey) :
+    ∀ (records : List UnifiedExposureRecord)
+      (state : IndexedUnifiedExposureState globalOracleCalls
+        FinalWorkQ16DagMemory),
+      IndexedRecordsAligned transitionFuel
+        (finalWorkQ16DagController globalOracleCalls transitionFuel
+          anchorIndex) state records →
+      OnlyMachineFreshRecords records →
+      (∀ record ∈ records,
+        causalInput? record ≠ some key.absorbInput) →
+      Q16DagTracksWithoutBase state.memory key →
+      Q16DagTracksWithoutBase
+        (indexedStateAfterRecords transitionFuel
+          (finalWorkQ16DagController globalOracleCalls transitionFuel
+            anchorIndex) records state).memory key := by
+  intro records
+  induction records with
+  | nil =>
+      intro state _aligned _onlyMachine _avoids tracked
+      simpa only [indexed_state_after_records_nil] using tracked
+  | cons head tail ih =>
+      intro state aligned onlyMachine avoids tracked
+      obtain ⟨actor, input, answer, headExact⟩ :=
+        onlyMachine head (by simp)
+      subst head
+      have headAligned := aligned [] (.machineFresh actor input answer) tail
+        (by rfl)
+      have inputExact : unifiedInputBeforeAnswer? transitionFuel state.cursor =
+          some input := by
+        simpa only [indexed_state_after_records_nil] using
+          aligned_machine_record_has_exact_input transitionFuel state.cursor
+            actor input answer headAligned
+      have inputNe : input ≠ key.absorbInput := by
+        intro equal
+        apply avoids (.machineFresh actor input answer) (by simp)
+        simp [causalInput?, equal]
+      let controller := finalWorkQ16DagController globalOracleCalls
+        transitionFuel anchorIndex
+      let next := controller.afterAnswer transitionFuel state answer
+      have nextTracked : Q16DagTracksWithoutBase next.memory key := by
+        simpa [next, controller, finalWorkQ16DagController,
+          IndexedUnifiedExposureController.afterAnswer] using
+          dag_candidate_after_nonabsorb_preserves_without_base transitionFuel
+            anchorIndex state key input answer inputExact inputNe tracked
+      have tailAligned : IndexedRecordsAligned transitionFuel controller next
+          tail := by
+        apply indexed_records_aligned_segment transitionFuel controller state
+          ((.machineFresh actor input answer) :: tail)
+          [(.machineFresh actor input answer)] tail [] aligned
+        simp
+      have tailOnly : OnlyMachineFreshRecords tail := by
+        intro record member
+        exact onlyMachine record (by simp [member])
+      have tailAvoids : ∀ record ∈ tail,
+          causalInput? record ≠ some key.absorbInput := by
+        intro record member
+        exact avoids record (by simp [member])
+      rw [indexed_state_after_records_cons]
+      exact ih next tailAligned tailOnly tailAvoids nextTracked
 
 theorem dag_candidate_after_memory_preserves_work_slot_sound
     {globalOracleCalls : Nat}
@@ -500,6 +604,50 @@ theorem dag_memory_stays_inactive_before_anchor
       rw [indexed_state_after_records_cons]
       exact ih next nextAnchor nextInactive
 
+/-- The prefix form of `dag_memory_stays_inactive_before_anchor`: consuming
+at most the records preceding the fixed anchor cannot activate the DAG.  The
+non-strict inequality is useful when quantifying over every pre-answer prefix
+of a segment whose final record is the anchor itself. -/
+theorem dag_memory_stays_inactive_through_anchor_prefix
+    {globalOracleCalls : Nat}
+    (transitionFuel anchor : Nat) :
+    ∀ (records : List UnifiedExposureRecord)
+      (state : IndexedUnifiedExposureState globalOracleCalls
+        FinalWorkQ16DagMemory),
+      state.exposureIndex + records.length ≤ anchor →
+      state.memory = inactiveDagMemory →
+      (indexedStateAfterRecords transitionFuel
+        (finalWorkQ16DagController globalOracleCalls transitionFuel anchor)
+        records state).memory = inactiveDagMemory := by
+  intro records
+  induction records with
+  | nil =>
+      intro state _before inactive
+      simpa only [indexed_state_after_records_nil] using inactive
+  | cons record records ih =>
+      intro state before inactive
+      have beforeAnchor : state.exposureIndex ≠ anchor := by
+        intro equal
+        rw [equal] at before
+        simp only [List.length_cons] at before
+        omega
+      let controller := finalWorkQ16DagController globalOracleCalls
+        transitionFuel anchor
+      let next := controller.afterAnswer transitionFuel state record.answer
+      have nextInactive : next.memory = inactiveDagMemory := by
+        simp only [next, controller, finalWorkQ16DagController,
+          IndexedUnifiedExposureController.afterAnswer]
+        cases inputExact : unifiedInputBeforeAnswer? transitionFuel state.cursor <;>
+          simp [dagCandidateAfterMemory, inputExact, inactive, beforeAnchor,
+            inactiveDagMemory, dagMemoryAfterInput, dagCoreMemoryAfterInput,
+            dagPreferredSlotForInput, dagRawPreferredSlot]
+      have nextBefore : next.exposureIndex + records.length ≤ anchor := by
+        simp only [next, indexed_after_answer_exposure_index,
+          List.length_cons] at before ⊢
+        omega
+      rw [indexed_state_after_records_cons]
+      exact ih next nextBefore nextInactive
+
 /-- Before the selected final-work anchor, the causal-DAG controller cannot
 reserve any final-work or q16 destination.  The labelled prefix is therefore
 entirely residual.  This is intentionally a controller fact, independent of
@@ -556,6 +704,178 @@ theorem dag_labeled_records_before_anchor_all_residual
             records) = []
       rw [preferredNone]
       exact tailResidual
+
+/-- If the exact final-work record is the selected trial anchor, consuming it
+tracks the key while retaining an absent q16 base. -/
+theorem exact_dag_work_anchor_tracks_without_base
+    {HiddenTape TapeIdentity Observation Statement Payload Result : Type}
+    {parameters : ExactCompilerResourceParameters}
+    {transitionFuel : Nat}
+    {configuration : ExactPlainRomConfiguration HiddenTape TapeIdentity
+      Observation Statement Tag73K12ParsedProof Payload Result parameters}
+    {projection : AcceptedTapeProjection Statement Tag73K12ParsedProof Payload}
+    {fixedInstance : PublicInstance Statement}
+    {sample : ExactCompilerSample HiddenTape parameters}
+    (input : ExactK12OperationalInput transitionFuel configuration projection
+      fixedInstance sample)
+    (digest workAnswer : Digest256) (nonce : NonceBytes)
+    (trial : ExactCompilerExposureTrial parameters)
+    (prior later : List UnifiedExposureRecord) (actor : QueryActor)
+    (trialExact : trial.val = prior.length)
+    (decomposition : exactFixedRootRecords input.package.root =
+      prior ++
+        (.machineFresh actor
+          (literalFinalWorkKey digest nonce).workInput workAnswer :
+          UnifiedExposureRecord) :: later) :
+    Q16DagTracksWithoutBase
+      (indexedStateAfterRecords transitionFuel
+        (exactDagTrialController transitionFuel trial)
+        (prior ++
+          [(.machineFresh actor
+            (literalFinalWorkKey digest nonce).workInput workAnswer :
+            UnifiedExposureRecord)])
+        (exactDagCandidateInitialState input)).memory
+      (literalFinalWorkKey digest nonce) := by
+  let controller := exactDagTrialController transitionFuel trial
+  let initial := exactDagCandidateInitialState input
+  let beforeWork := indexedStateAfterRecords transitionFuel controller prior
+    initial
+  have beforeIndex : beforeWork.exposureIndex = trial.val := by
+    have count := indexed_state_after_records_exposure_index transitionFuel
+      controller prior initial
+    simpa [beforeWork, initial, exactDagCandidateInitialState, trialExact]
+      using count
+  have beforeInactive : beforeWork.memory = inactiveDagMemory := by
+    apply dag_memory_stays_inactive_before_anchor transitionFuel trial.val prior
+      initial
+    · simp [initial, exactDagCandidateInitialState, trialExact]
+    · simp [initial, exactDagCandidateInitialState]
+  have aligned : unifiedRecordAtAnswer transitionFuel beforeWork.cursor
+      workAnswer =
+        .machineFresh actor (literalFinalWorkKey digest nonce).workInput
+          workAnswer := by
+    have rootAligned := exact_root_records_aligned_for_dag_controller input
+      trial.val prior
+        (.machineFresh actor (literalFinalWorkKey digest nonce).workInput
+          workAnswer) later decomposition
+    simpa [beforeWork, controller, exactDagTrialController, initial,
+      UnifiedExposureRecord.answer] using rootAligned
+  have inputExact : unifiedInputBeforeAnswer? transitionFuel beforeWork.cursor =
+      some (literalFinalWorkKey digest nonce).workInput :=
+    aligned_machine_record_has_exact_input transitionFuel beforeWork.cursor
+      actor (literalFinalWorkKey digest nonce).workInput workAnswer aligned
+  rw [indexed_state_after_records_append,
+    indexed_state_after_records_cons, indexed_state_after_records_nil]
+  change Q16DagTracksWithoutBase
+    (dagCandidateAfterMemory transitionFuel trial.val beforeWork workAnswer)
+      (literalFinalWorkKey digest nonce)
+  unfold dagCandidateAfterMemory
+  rw [inputExact]
+  refine ⟨true, ?_, ?_⟩
+  · simp [dagMemoryAfterInput, dagCoreMemoryAfterInput, beforeIndex,
+      beforeInactive, inactiveDagMemory]
+  · simp [dagMemoryAfterInput, dagCoreMemoryAfterInput, beforeIndex,
+      beforeInactive, inactiveDagMemory]
+
+/-- Every strict middle prefix between a work-first anchor and its matching
+nonce-absorb remains tracked without a q16 base. -/
+theorem exact_dag_work_then_absorb_middle_prefix_without_base
+    {HiddenTape TapeIdentity Observation Statement Payload Result : Type}
+    {parameters : ExactCompilerResourceParameters}
+    {transitionFuel : Nat}
+    {configuration : ExactPlainRomConfiguration HiddenTape TapeIdentity
+      Observation Statement Tag73K12ParsedProof Payload Result parameters}
+    {projection : AcceptedTapeProjection Statement Tag73K12ParsedProof Payload}
+    {fixedInstance : PublicInstance Statement}
+    {sample : ExactCompilerSample HiddenTape parameters}
+    (input : ExactK12OperationalInput transitionFuel configuration projection
+      fixedInstance sample)
+    (digest workAnswer base : Digest256) (nonce : NonceBytes)
+    (trial : ExactCompilerExposureTrial parameters)
+    (prior middle later middlePrefix suffix : List UnifiedExposureRecord)
+    (workActor absorbActor : QueryActor)
+    (trialExact : trial.val = prior.length)
+    (decomposition : exactFixedRootRecords input.package.root =
+      prior ++
+        (.machineFresh workActor
+          (literalFinalWorkKey digest nonce).workInput workAnswer :
+          UnifiedExposureRecord) :: middle ++
+        (.machineFresh absorbActor
+          (literalFinalWorkKey digest nonce).absorbInput base :
+          UnifiedExposureRecord) :: later)
+    (middleExact : middle = middlePrefix ++ suffix) :
+    Q16DagTracksWithoutBase
+      (indexedStateAfterRecords transitionFuel
+        (exactDagTrialController transitionFuel trial)
+        (prior ++
+          (.machineFresh workActor
+            (literalFinalWorkKey digest nonce).workInput workAnswer :
+            UnifiedExposureRecord) :: middlePrefix)
+        (exactDagCandidateInitialState input)).memory
+      (literalFinalWorkKey digest nonce) := by
+  let key := literalFinalWorkKey digest nonce
+  let workRecord : UnifiedExposureRecord :=
+    .machineFresh workActor key.workInput workAnswer
+  let absorbRecord : UnifiedExposureRecord :=
+    .machineFresh absorbActor key.absorbInput base
+  let controller := exactDagTrialController transitionFuel trial
+  let initial := exactDagCandidateInitialState input
+  let afterWork := indexedStateAfterRecords transitionFuel controller
+    (prior ++ [workRecord]) initial
+  have workRootExact : exactFixedRootRecords input.package.root =
+      prior ++ workRecord :: (middle ++ absorbRecord :: later) := by
+    simpa [key, workRecord, absorbRecord, List.append_assoc] using decomposition
+  have afterWorkTracked : Q16DagTracksWithoutBase afterWork.memory key := by
+    simpa [afterWork, controller, initial, key, workRecord] using
+      exact_dag_work_anchor_tracks_without_base input digest workAnswer nonce
+        trial prior (middle ++ absorbRecord :: later) workActor trialExact
+          workRootExact
+  have fullAligned := exact_root_records_aligned_for_dag_controller input
+    trial.val
+  have segmentDecomposition : exactFixedRootRecords input.package.root =
+      (prior ++ [workRecord]) ++ middlePrefix ++
+        (suffix ++ absorbRecord :: later) := by
+    rw [workRootExact, middleExact]
+    simp [List.append_assoc]
+  have prefixAlignedRaw := indexed_records_aligned_segment transitionFuel
+    controller initial (exactFixedRootRecords input.package.root)
+      (prior ++ [workRecord]) middlePrefix (suffix ++ absorbRecord :: later)
+      (by simpa [controller, exactDagTrialController] using fullAligned)
+      segmentDecomposition
+  have afterWorkExact : indexedStateAfterRecords transitionFuel controller
+      (prior ++ [workRecord]) initial = afterWork := rfl
+  have prefixAligned : IndexedRecordsAligned transitionFuel controller
+      afterWork middlePrefix := by
+    simpa only [afterWorkExact] using prefixAlignedRaw
+  have prefixOnly : OnlyMachineFreshRecords middlePrefix := by
+    apply only_machine_fresh_records_segment
+      (exactFixedRootRecords input.package.root) (prior ++ [workRecord])
+        middlePrefix
+        (suffix ++ absorbRecord :: later)
+      (exact_root_records_only_machine_fresh input)
+      segmentDecomposition
+  have middleAvoidsRaw := strict_record_middle_avoids_second_input
+    (exactFixedRootRecords input.package.root) prior middle later workRecord
+      absorbRecord (exact_root_record_causal_inputs_nodup input) (by
+        simpa [key, workRecord, absorbRecord] using decomposition)
+  have prefixAvoids : ∀ record ∈ middlePrefix,
+      causalInput? record ≠ some key.absorbInput := by
+    intro record member
+    apply middleAvoidsRaw record
+    rw [middleExact]
+    exact List.mem_append_left suffix member
+  have preserved := aligned_machine_records_preserve_dag_without_base
+    transitionFuel trial.val key middlePrefix afterWork prefixAligned prefixOnly
+      prefixAvoids afterWorkTracked
+  have prefixState : indexedStateAfterRecords transitionFuel controller
+      (prior ++ workRecord :: middlePrefix) initial =
+        indexedStateAfterRecords transitionFuel controller middlePrefix
+          afterWork := by
+    rw [show prior ++ workRecord :: middlePrefix =
+        (prior ++ [workRecord]) ++ middlePrefix by simp [List.append_assoc],
+      indexed_state_after_records_append]
+  rw [prefixState]
+  simpa [controller, exactDagTrialController, key, workRecord] using preserved
 
 /-- If the exact nonce-absorb record is the selected trial anchor, consuming
 it installs the literal q16 base in the causal-DAG state. -/
@@ -2140,6 +2460,13 @@ theorem exact_compiler_accepted_dag_q16_operational_realization
 #print axioms mapped_nodup_selected_prefix_eq
 #print axioms Q16DagTracksBase
 #print axioms Q16DagTracksBaseBeforeWork
+#print axioms Q16DagTracksWithoutBase
+#print axioms dag_memory_after_nonabsorb_preserves_without_base
+#print axioms dag_candidate_after_nonabsorb_preserves_without_base
+#print axioms aligned_machine_records_preserve_dag_without_base
+#print axioms exact_dag_work_anchor_tracks_without_base
+#print axioms exact_dag_work_then_absorb_middle_prefix_without_base
+#print axioms dag_memory_stays_inactive_through_anchor_prefix
 #print axioms Q16DagWorkSlotSound
 #print axioms dag_memory_after_input_preserves_work_slot_sound
 #print axioms dag_candidate_after_memory_preserves_work_slot_sound
