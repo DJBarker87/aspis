@@ -69,6 +69,12 @@
     },
     "sourceTokenAccount": "5XZobBCgcyuBM4m1E1rZVei7Me6V8FzwSLexuU194KcN",
     "withdrawalDestinationTokenAccount": "5jKh25biPsnrmLWXXuqKNH2Q67j69T4Q7Zew5c8wJKaV",
+    "ciphertextCarrierProgram": {
+      "id": "noopb9bkMVfRPU8AsbpTUg8AQkHtKwMYZiFUjNRtMmV",
+      "source": "read-only solana program dump from mainnet-beta; task-owned and not committed",
+      "bytes": 41056,
+      "sha256": "3ebf49dd7d38bd45422caa3482446cd2d4867f956b040b1b75d6aafabdce8db7"
+    },
     "bindingAccounts": [
       {
         "id": "JBz8KKzyZ6FzTU7WmLywurr49xJPpQcA9ECNg2SZX6iH",

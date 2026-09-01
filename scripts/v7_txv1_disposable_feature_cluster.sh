@@ -53,7 +53,7 @@ jq -e '.mainnetReady == false and .identitySet.auditOnly == true and
   .identitySet.productionApproved == false' "$CONFIG" >/dev/null \
   || fail "configuration does not identify an audit-only disposable identity set"
 
-for command_name in awk curl date find git grep jq od openssl sed seq shasum sort xargs; do
+for command_name in awk curl date find git grep jq od openssl sed seq shasum sort tr wc xargs; do
   command -v "$command_name" >/dev/null || fail "missing required command: $command_name"
 done
 for binary in solana solana-keygen solana-test-validator; do
@@ -122,6 +122,16 @@ if [[ -n "${ASPIS_TXV1_LIVE_GENESIS_PREPARER:-}" ]]; then
     VALIDATOR_ARGS+=(--account "$address" "$account_file")
   done < <(jq -r '.accounts[] | [.address,.file] | @tsv' \
     "$EVIDENCE_DIR/live-genesis.json")
+fi
+if [[ -n "${ASPIS_TXV1_SPL_NOOP_BINARY:-}" ]]; then
+  [[ -f "$ASPIS_TXV1_SPL_NOOP_BINARY" ]] || fail "SPL Noop binary is unavailable"
+  readonly NOOP_ID=$(jq -er '.disposableLiveGenesis.ciphertextCarrierProgram.id' "$CONFIG")
+  readonly NOOP_SHA=$(jq -er '.disposableLiveGenesis.ciphertextCarrierProgram.sha256' "$CONFIG")
+  readonly NOOP_BYTES=$(jq -er '.disposableLiveGenesis.ciphertextCarrierProgram.bytes' "$CONFIG")
+  [[ "$(shasum -a 256 "$ASPIS_TXV1_SPL_NOOP_BINARY" | awk '{print $1}')" == "$NOOP_SHA" \
+      && "$(wc -c <"$ASPIS_TXV1_SPL_NOOP_BINARY" | tr -d ' ')" == "$NOOP_BYTES" ]] \
+    || fail "SPL Noop binary identity mismatch"
+  VALIDATOR_ARGS+=(--bpf-program "$NOOP_ID" "$ASPIS_TXV1_SPL_NOOP_BINARY")
 fi
 while IFS=$'\t' read -r name id loader relative expected_sha; do
   artifact="$REPO_ROOT/$relative"
@@ -210,6 +220,20 @@ while IFS=$'\t' read -r name id configured_loader expected_sha; do
     >"$EVIDENCE_DIR/program-binary-hashes/$name.sha256"
   [[ "$actual_sha" == "$expected_sha" ]] || fail "$name deployed binary hash mismatch"
 done < <(jq -r '.identitySet.programs[] | [.name,.id,.loader,.sha256] | @tsv' "$CONFIG")
+
+if [[ -n "${ASPIS_TXV1_SPL_NOOP_BINARY:-}" ]]; then
+  rpc "$(jq -nc --arg id "$NOOP_ID" \
+    '{jsonrpc:"2.0",id:7,method:"getAccountInfo",params:[$id,{encoding:"base64",commitment:"finalized"}]}')" \
+    | jq . >"$EVIDENCE_DIR/program-accounts/spl-noop.json"
+  jq -e '.result.value != null and .result.value.executable == true' \
+    "$EVIDENCE_DIR/program-accounts/spl-noop.json" >/dev/null || fail "SPL Noop is not executable"
+  dumped="$WORK_DIR/spl-noop.so"
+  NO_DNA=1 "$AGAVE_BIN_DIR/solana" program dump --url "$RPC_URL" "$NOOP_ID" "$dumped" \
+    >"$EVIDENCE_DIR/program-binary-hashes/spl-noop.dump.log" 2>&1
+  [[ "$(shasum -a 256 "$dumped" | awk '{print $1}')" == "$NOOP_SHA" ]] \
+    || fail "landed SPL Noop binary hash mismatch"
+  printf '%s  spl-noop.so\n' "$NOOP_SHA" >"$EVIDENCE_DIR/program-binary-hashes/spl-noop.sha256"
+fi
 
 jq -n --arg generatedAt "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
   --arg revision "$(git -C "$REPO_ROOT" rev-parse HEAD)" \
