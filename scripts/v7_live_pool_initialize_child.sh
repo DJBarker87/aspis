@@ -19,6 +19,7 @@ readonly DEPOSIT_BUILDER=${ASPIS_V7_LIVE_POOL_DEPOSIT_BUILDER:-}
 readonly CHECKPOINT_BUILDER=${ASPIS_V7_LIVE_POOL_CHECKPOINT_BUILDER:-}
 readonly MATERIALIZER=${ASPIS_V7_LIVE_PROOF_MATERIALIZER:-}
 readonly PROVER=${ASPIS_V7_LIVE_POOL_PROVER:-}
+readonly PROOF_UPLOAD_CHILD=${ASPIS_V7_PROOF_UPLOAD_CHILD:-}
 readonly AGAVE_BIN_DIR=${ASPIS_TXV1_DISPOSABLE_AGAVE_BIN_DIR:-}
 
 [[ "$RPC_URL" =~ ^http://127\.0\.0\.1:[0-9]+$ ]] || fail "disposable RPC is required"
@@ -315,6 +316,15 @@ if [[ -n "$SECRET_BUILDER" || -n "$DEPOSIT_BUILDER" ]]; then
         proofKeypairLocation:$keypairLocation,keypairCommitted:false,keypairPrinted:false,
         keypairCleanupRequired:true,proof:$proof[0],mainnetReady:false}' \
       >"$EVIDENCE_DIR/genuine-live-proof.json"
+    if [[ -n "$PROOF_UPLOAD_CHILD" ]]; then
+      [[ -x "$PROOF_UPLOAD_CHILD" ]] || fail "proof upload child is not executable"
+      "$PROOF_UPLOAD_CHILD" "$proof_keypair" "$EVIDENCE_DIR/live-proof/proof-payload.bin" \
+        "$EVIDENCE_DIR/proof-upload" >"$EVIDENCE_DIR/proof-upload.stdout"
+      jq -e '.allSimulatedBeforeSubmission == true and .allSubmittedByteIdentically == true and
+        .allFinalized == true and .sealed == true and .proofAccount == $proof' \
+        --arg proof "$proof_pubkey" "$EVIDENCE_DIR/proof-upload/proof-upload.json" >/dev/null \
+        || fail "genuine live proof upload failed validation"
+    fi
   fi
 fi
 
