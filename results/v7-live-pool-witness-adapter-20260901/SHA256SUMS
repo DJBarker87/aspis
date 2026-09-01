@@ -1,0 +1,9 @@
+7b313a1a260987065168093bebd5292a3eeb291a61e5bd2890ce81da8e1bc43a  results/v7-live-pool-witness-adapter-20260901/evidence.json
+5fef3ba61b3bc701c9021e8ead16cb0017b7fefc46d1faa31b7a631471919173  results/v7-live-pool-witness-adapter-20260901/replay-commands.txt
+60c6944c170218d8c18eb5f5baddd86013b6b04597c1cce6c1d1b171f5cd951c  docs/research/v7-live-pool-witness-adapter-20260901.md
+b9ff14dd9195af31f9418dc56c334a23d831edc462ba4a7e31b2350b16abf97b  tools/v7-live-pool-proof/Cargo.lock
+ac2bea131633531808bfe6c806e2584bcb954deeb8842a2586e59ac828b10f8e  tools/v7-live-pool-proof/Cargo.toml
+e38d69604cb91d5cbf24a4cff5a58c211c55c52a525c7dd7c716aefd12b1b017  tools/v7-live-pool-proof/src/lib.rs
+a0bbc4f02c150fe0b6ca04d13310f498c166f902d736fbd3c5d1c487de464e7d  tools/v7-live-pool-proof/src/bin/prove_from_live_bundle.rs
+128da4c124caa5074d544b49a24ad10dacf4c577de9cf205055936ff2adf1477  crates/aspis-pool-wallet-v1/src/live_pool_witness_adapter_v2.rs
+6fbc297a5541082aec8c27b500d4ec3dbaae97a05572396329e76f35e8573930  crates/aspis-pool-wallet-v1/src/lane_forest_durable_v2.rs

@@ -1,0 +1,123 @@
+{
+  "schema": "aspis.v7.live-pool-witness-adapter-evidence.v1",
+  "generatedAt": "2026-09-01T10:33:01Z",
+  "repository": {
+    "base": "97e50660d61bfc07fb22bb0a6cc8a268fe073352",
+    "testedImplementationRevision": "5e5dc29fbc1c3ec5ceaa739dae72af8b0407208c",
+    "branch": "research/v7-live-pool-witness-adapter-20260901"
+  },
+  "classification": "C — ADAPTER COMPLETE; TERMINAL EXECUTION BLOCKED",
+  "genuinelyLiveLifecycleComplete": false,
+  "partlySyntheticLifecycleClaimed": false,
+  "adapter": {
+    "transferComplete": true,
+    "withdrawalComplete": true,
+    "durableCheckpointMembershipExportComplete": true,
+    "productionProverHandoffComplete": true,
+    "insecureFixtureFeatureEnabledInLiveProverCrate": false,
+    "fixtureOnlyEntropyUsed": false,
+    "trustedResultUsed": false,
+    "verifierBypassUsed": false,
+    "productionRuntimeSourceChanged": false,
+    "cryptographicParametersChanged": false
+  },
+  "canonicalWireSizes": {
+    "asq8Bytes": 320,
+    "asf8Bytes": 1880,
+    "expectedAsr8Bytes": 792,
+    "terminalTransactionBytes": null,
+    "reasonTerminalTransactionBytesNull": "No Agave 4.2+ feature-active live terminal transaction was constructed or signed in this environment."
+  },
+  "fieldSources": {
+    "masterPoolVersionIdentityPolicy": "finalized Pool-owned ASM8 account decoded by the canonical statement codec and authenticated against the master PDA",
+    "allEightLiveLanes": "eight finalized Pool-owned ASL8 accounts decoded in lane order and authenticated against lane PDAs",
+    "selectedLiveLaneRootIndexFrontier": "current authenticated ASL8 selected by the canonical nullifier-to-lane function",
+    "checkpointIdentityRootSequences": "finalized Pool-owned ASC8 checkpoint authenticated against its PDA, deployment domain, master sequence, and lane sequences",
+    "historicalLaneRootsAndPairPath": "wallet durable checkpoint snapshot exported by authenticated_spend_membership_v2",
+    "pairCommitmentsSlotAndOccupiedBit": "canonical finalized append event plus tracked-output association; PoolV1PairLeafWitnessV1 constructs the algebraic occupied witness",
+    "noteCommitmentOpeningAndNullifier": "task-owned NoteOpeningV1 and nullifier key, checked by canonical commitment, owner-key, and nullifier helpers",
+    "candidateAfterstate": "canonical pair-forest trace compiler applied to the authenticated current selected lane",
+    "registryProfileReleaseVerifier": "finalized Registry and entry accounts authenticated by select_pair_forest_spend_profile_v2, including exact Registry PDAs and Tag-73 bindings",
+    "withdrawalCustody": "finalized legacy SPL mint, vault PDA/token account, vault authority, destination token account, and balances",
+    "attemptIdentity": "fresh proof-account public key; production entropy is generated for that exact public mask nonce"
+  },
+  "focusedValidation": [
+    {
+      "command": "CARGO_BUILD_JOBS=2 cargo check --locked --manifest-path crates/aspis-pool-wallet-v1/Cargo.toml --features eight-lane-plumbing-v2",
+      "result": "pass",
+      "peakRssBytes": 671367168
+    },
+    {
+      "command": "CARGO_BUILD_JOBS=2 cargo test --locked --manifest-path crates/aspis-pool-wallet-v1/Cargo.toml --features eight-lane-plumbing-v2 retained_checkpoint_exports_authenticated_live_spend_membership -- --nocapture",
+      "result": "1 passed",
+      "peakRssBytes": 853573632
+    },
+    {
+      "command": "CARGO_BUILD_JOBS=2 cargo test --locked --manifest-path crates/aspis-pool-wallet-v1/Cargo.toml --features eight-lane-plumbing-v2 live_pool_witness_adapter_v2::tests --lib -- --nocapture",
+      "result": "2 passed",
+      "peakRssBytes": 809664512
+    },
+    {
+      "command": "CARGO_BUILD_JOBS=2 cargo check --locked --manifest-path tools/v7-live-pool-proof/Cargo.toml --bins",
+      "result": "pass",
+      "peakRssBytes": 160514048
+    },
+    {
+      "command": "CARGO_BUILD_JOBS=2 cargo test --locked --manifest-path crates/aspis-pool-wallet-v1/Cargo.toml --features eight-lane-plumbing-v2 finalized_registry_selection_is_exact_and_does_not_invent_spend_transport --lib -- --nocapture",
+      "result": "1 passed",
+      "peakRssBytes": 100499456
+    }
+  ],
+  "negativeAdapterCases": {
+    "wrongCheckpointIdentity": "pass-rejected",
+    "wrongHistoricalLaneRoot": "pass-rejected",
+    "selectedAlgebraicallyEmptySecondSlot": "pass-rejected",
+    "noteCommitmentOrOpeningMismatch": "covered-by-common-fail-closed-input-path",
+    "wrongRegistryProfileReleasePda": "pass-rejected-by-focused-authenticated-selection-test",
+    "underfundedOrMismatchedWithdrawalCustody": "pass-rejected",
+    "noncanonicalAsq8Asf8Asr8": "covered-by-encode-decode-roundtrip-and-exact-result-binding"
+  },
+  "lifecycleMatrix": {
+    "initializePool": "not-run",
+    "deposit": "not-run",
+    "checkpoint": "not-run",
+    "genuineLiveNoteProofGeneration": "not-run",
+    "transferSamePage": "not-run",
+    "transferRollover": "not-run",
+    "withdrawalSamePage": "not-run",
+    "staleSelectedLaneRejection": "not-run",
+    "replayNullifierRejection": "not-run",
+    "wrongHistoricalCheckpointRejection": "not-run",
+    "wrongRegistryReleaseRejection": "not-run",
+    "malformedAsq8Rejection": "not-run",
+    "malformedCiphertextNonStalling": "not-run",
+    "failedWithdrawalCpiRollback": "not-run"
+  },
+  "measurements": {
+    "simulatedCu": null,
+    "landedCu": null,
+    "signatures": [],
+    "finalizedSlots": [],
+    "transactionBytes": [],
+    "beforeAfterAccountHashes": []
+  },
+  "environment": {
+    "rustc": "rustc 1.93.0 (254b59607 2026-01-19)",
+    "cargo": "cargo 1.93.0 (083ac5135 2025-12-15)",
+    "hostArchitecture": "arm64",
+    "hostOs": "macOS 26.5",
+    "availableLocalAgave": "solana-cli 2.3.0 (src:a2e21dda; feat:3640012085, client:Agave)",
+    "requiredAgave": "4.2.0 or later with TxV1 feature active",
+    "nucReachable": false
+  },
+  "blocker": {
+    "kind": "execution-environment-and-live-bundle-materialization",
+    "smallestExactMissingStep": "Run the existing disposable cluster wrapper on a reachable Agave 4.2+ host, initialize/deposit/checkpoint through the existing canonical builders, persist the finalized wallet checkpoint/event and finalized Registry/account bundle, then feed it to prove-from-live-bundle before terminal TxV1 simulation/submission.",
+    "cryptographicIntegrationMissing": false,
+    "productionProgramChangeRequired": false
+  },
+  "publicDevnetEvidenceModified": false,
+  "publicDevnetUsed": false,
+  "realFundsUsed": false,
+  "mainnetReady": false
+}
