@@ -33,6 +33,9 @@ struct Input {
     checkpoint_account: String,
     registry_account: String,
     registry_entry_account: String,
+    mint_account: Option<String>,
+    vault_account: Option<String>,
+    destination_account: Option<String>,
     secrets_file: String,
     deposit_slot: u64,
     deposit_blockhash: String,
@@ -43,13 +46,26 @@ struct Input {
 
 #[derive(Deserialize)]
 #[serde(rename_all = "camelCase")]
-struct Secret { input_note: Note }
+struct Secret {
+    operation: String,
+    input_note: Note,
+}
 
 #[derive(Deserialize)]
 #[serde(rename_all = "camelCase")]
-struct Note { owner_key_hex: String, value: u32, asset_id: u32, salt_hex: String }
+struct Note {
+    owner_key_hex: String,
+    value: u32,
+    asset_id: u32,
+    salt_hex: String,
+}
 
-struct RpcAccount { address: [u8; 32], owner: [u8; 32], executable: bool, data: Vec<u8> }
+struct RpcAccount {
+    address: [u8; 32],
+    owner: [u8; 32],
+    executable: bool,
+    data: Vec<u8>,
+}
 
 fn hex<const N: usize>(value: &str, label: &str) -> Result<[u8; N]> {
     ensure!(value.len() == 2 * N, "{label} has wrong length");
@@ -62,18 +78,26 @@ fn hex<const N: usize>(value: &str, label: &str) -> Result<[u8; N]> {
 }
 
 fn base58<const N: usize>(value: &str, label: &str) -> Result<[u8; N]> {
-    let bytes = bs58::decode(value).into_vec().with_context(|| format!("invalid {label}"))?;
-    bytes.try_into().map_err(|_| anyhow::anyhow!("{label} has wrong length"))
+    let bytes = bs58::decode(value)
+        .into_vec()
+        .with_context(|| format!("invalid {label}"))?;
+    bytes
+        .try_into()
+        .map_err(|_| anyhow::anyhow!("{label} has wrong length"))
 }
 
 fn rpc(path: &str) -> Result<RpcAccount> {
     let value: Value = serde_json::from_slice(&fs::read(path)?)?;
     let account = &value["result"]["value"];
-    let address = value["requestedAddress"].as_str().context("missing requestedAddress")?;
+    let address = value["requestedAddress"]
+        .as_str()
+        .context("missing requestedAddress")?;
     Ok(RpcAccount {
         address: Pubkey::from_str(address)?.to_bytes(),
         owner: Pubkey::from_str(account["owner"].as_str().context("missing owner")?)?.to_bytes(),
-        executable: account["executable"].as_bool().context("missing executable")?,
+        executable: account["executable"]
+            .as_bool()
+            .context("missing executable")?,
         data: BASE64.decode(account["data"][0].as_str().context("missing data")?)?,
     })
 }
@@ -90,22 +114,53 @@ fn point(slot: u64, hash: &str) -> Result<FinalizedChainPointV1> {
 }
 
 fn main() -> Result<()> {
-    let input_path = PathBuf::from(env::args_os().nth(1)
-        .context("usage: materialize-live-proof-bundle <input.json> <new-output-dir>")?);
+    let input_path = PathBuf::from(
+        env::args_os()
+            .nth(1)
+            .context("usage: materialize-live-proof-bundle <input.json> <new-output-dir>")?,
+    );
     let output = PathBuf::from(env::args_os().nth(2).context("missing output directory")?);
-    ensure!(env::args_os().nth(3).is_none() && !output.exists(), "invalid or existing output");
+    ensure!(
+        env::args_os().nth(3).is_none() && !output.exists(),
+        "invalid or existing output"
+    );
     let input: Input = serde_json::from_slice(&fs::read(&input_path)?)?;
-    ensure!(input.schema == "aspis.v7.live-proof-materialization-input.v1", "wrong schema");
-    ensure!(input.initial_lanes.len() == 8 && input.checkpoint_lanes.len() == 8, "wrong lane count");
+    ensure!(
+        input.schema == "aspis.v7.live-proof-materialization-input.v1",
+        "wrong schema"
+    );
+    ensure!(
+        input.initial_lanes.len() == 8 && input.checkpoint_lanes.len() == 8,
+        "wrong lane count"
+    );
     let program = Pubkey::from_str(&input.program_id)?;
     let initial_master = rpc(&input.initial_master)?;
-    let initial_lanes = input.initial_lanes.iter().map(|path| rpc(path)).collect::<Result<Vec<_>>>()?;
-    let initial_lane_values = initial_lanes.iter().map(|account| (account.address, account.data.clone())).collect::<Vec<_>>();
+    let initial_lanes = input
+        .initial_lanes
+        .iter()
+        .map(|path| rpc(path))
+        .collect::<Result<Vec<_>>>()?;
+    let initial_lane_values = initial_lanes
+        .iter()
+        .map(|account| (account.address, account.data.clone()))
+        .collect::<Vec<_>>();
     let mut durable = LaneForestDurableStateV2::from_authenticated_accounts_v2(
-        program.to_bytes(), initial_master.address, &initial_master.data, &initial_lane_values, None,
-    ).map_err(|error| anyhow::anyhow!("create live durable state: {error:?}"))?;
+        program.to_bytes(),
+        initial_master.address,
+        &initial_master.data,
+        &initial_lane_values,
+        None,
+    )
+    .map_err(|error| anyhow::anyhow!("create live durable state: {error:?}"))?;
     let secret: Secret = serde_json::from_slice(&fs::read(&input.secrets_file)?)?;
-    ensure!(secret.input_note.value == 1_000 && secret.input_note.asset_id == 77, "wrong input note");
+    ensure!(
+        secret.operation == "transfer" || secret.operation == "withdrawal",
+        "operation must be transfer or withdrawal"
+    );
+    ensure!(
+        secret.input_note.value == 1_000 && secret.input_note.asset_id == 77,
+        "wrong input note"
+    );
     let owner = decode_digest_canonical(&hex(&secret.input_note.owner_key_hex, "owner key")?)
         .map_err(|error| anyhow::anyhow!("decode owner: {error:?}"))?;
     let salt = decode_digest_canonical(&hex(&secret.input_note.salt_hex, "salt")?)
@@ -114,32 +169,101 @@ fn main() -> Result<()> {
     let lane_id = pool_v1_pair_forest_deposit_lane_v1(&commitment)
         .map_err(|error| anyhow::anyhow!("route deposit: {error:?}"))?;
     let deposit_point = point(input.deposit_slot, &input.deposit_blockhash)?;
-    let event_id = DepositEventIdV1::new(deposit_point, base58(&input.deposit_signature, "signature")?, 1, 0)
-        .map_err(|error| anyhow::anyhow!("create deposit event: {error:?}"))?;
+    let event_id = DepositEventIdV1::new(
+        deposit_point,
+        base58(&input.deposit_signature, "signature")?,
+        1,
+        0,
+    )
+    .map_err(|error| anyhow::anyhow!("create deposit event: {error:?}"))?;
     let after_lane = rpc(&input.after_deposit_lane)?;
     let after_lane_image: [u8; aspis_statement::pool_v1::POOL_V1_PAIR_FOREST_LANE_ACCOUNT_BYTES] =
-        after_lane.data.clone().try_into().map_err(|_| anyhow::anyhow!("wrong lane image size"))?;
-    durable.ingest_finalized_append_preselected_v2(ForestFinalizedAppendEventV2 {
-        master: initial_master.address, lane_id: LaneIdV2::new(lane_id)
-            .map_err(|error| anyhow::anyhow!("invalid lane: {error:?}"))?, pair_leaf_index: 0,
-        root_sequence: 1, after_lane_address: after_lane.address, after_lane_image,
-        kind: ForestFinalizedAppendKindV2::Deposit { event_id,
-            commitment: aspis_statement::encode_digest_canonical(&commitment), encrypted_note: None },
-    }, &[event_id]).map_err(|error| anyhow::anyhow!("ingest live deposit: {error:?}"))?;
+        after_lane
+            .data
+            .clone()
+            .try_into()
+            .map_err(|_| anyhow::anyhow!("wrong lane image size"))?;
+    durable
+        .ingest_finalized_append_preselected_v2(
+            ForestFinalizedAppendEventV2 {
+                master: initial_master.address,
+                lane_id: LaneIdV2::new(lane_id)
+                    .map_err(|error| anyhow::anyhow!("invalid lane: {error:?}"))?,
+                pair_leaf_index: 0,
+                root_sequence: 1,
+                after_lane_address: after_lane.address,
+                after_lane_image,
+                kind: ForestFinalizedAppendKindV2::Deposit {
+                    event_id,
+                    commitment: aspis_statement::encode_digest_canonical(&commitment),
+                    encrypted_note: None,
+                },
+            },
+            &[event_id],
+        )
+        .map_err(|error| anyhow::anyhow!("ingest live deposit: {error:?}"))?;
     let checkpoint_master = rpc(&input.checkpoint_master)?;
-    let checkpoint_lanes = input.checkpoint_lanes.iter().map(|path| rpc(path)).collect::<Result<Vec<_>>>()?;
-    let checkpoint_lane_values = checkpoint_lanes.iter().map(|account| (account.address, account.data.clone())).collect::<Vec<_>>();
+    let checkpoint_lanes = input
+        .checkpoint_lanes
+        .iter()
+        .map(|path| rpc(path))
+        .collect::<Result<Vec<_>>>()?;
+    let checkpoint_lane_values = checkpoint_lanes
+        .iter()
+        .map(|account| (account.address, account.data.clone()))
+        .collect::<Vec<_>>();
     let checkpoint = rpc(&input.checkpoint_account)?;
     let checkpoint_point = point(input.checkpoint_slot, &input.checkpoint_blockhash)?;
-    durable.ingest_finalized_checkpoint_v2(checkpoint_point, checkpoint_master.address,
-        &checkpoint_master.data, &checkpoint_lane_values, checkpoint.address, &checkpoint.data)
+    durable
+        .ingest_finalized_checkpoint_v2(
+            checkpoint_point,
+            checkpoint_master.address,
+            &checkpoint_master.data,
+            &checkpoint_lane_values,
+            checkpoint.address,
+            &checkpoint.data,
+        )
         .map_err(|error| anyhow::anyhow!("ingest live checkpoint: {error:?}"))?;
     fs::create_dir(&output)?;
     let wallet_file = output.join("wallet-state.bin");
-    fs::write(&wallet_file, encode_lane_forest_durable_state_v2(&durable)
-        .map_err(|error| anyhow::anyhow!("encode wallet state: {error:?}"))?)?;
+    fs::write(
+        &wallet_file,
+        encode_lane_forest_durable_state_v2(&durable)
+            .map_err(|error| anyhow::anyhow!("encode wallet state: {error:?}"))?,
+    )?;
     let registry = rpc(&input.registry_account)?;
     let entry = rpc(&input.registry_entry_account)?;
+    let custody = match secret.operation.as_str() {
+        "transfer" => {
+            ensure!(
+                input.mint_account.is_none()
+                    && input.vault_account.is_none()
+                    && input.destination_account.is_none(),
+                "transfer materialization unexpectedly supplied custody accounts"
+            );
+            Value::Null
+        }
+        "withdrawal" => {
+            let mint = rpc(input
+                .mint_account
+                .as_deref()
+                .context("withdrawal mint account missing")?)?;
+            let vault = rpc(input
+                .vault_account
+                .as_deref()
+                .context("withdrawal vault account missing")?)?;
+            let destination = rpc(input
+                .destination_account
+                .as_deref()
+                .context("withdrawal destination account missing")?)?;
+            json!({
+                "mint": account_json(&mint),
+                "vault": account_json(&vault),
+                "destination": account_json(&destination)
+            })
+        }
+        _ => unreachable!(),
+    };
     let bundle = json!({
         "schema":"aspis.v7.live-pool-proof-bundle.v1","programId":input.program_id,
         "proofAccount":input.proof_account,"finalizedPoint":{"slot":input.checkpoint_slot,
@@ -151,11 +275,17 @@ fn main() -> Result<()> {
         "outputEvent":{"point":{"slot":input.deposit_slot,"blockHashHex":hex::encode(deposit_point.block_hash())},
             "transactionSignatureHex":hex::encode(event_id.transaction_signature()),
             "instructionIndex":1,"eventIndex":0},"checkpointSequence":0,
-        "secretsFile":input.secrets_file,"custody":Value::Null
+        "secretsFile":input.secrets_file,"custody":custody
     });
-    fs::write(output.join("live-bundle.json"), serde_json::to_vec_pretty(&bundle)?)?;
-    println!("{}", json!({"schema":"aspis.v7.live-proof-materialized.v1",
+    fs::write(
+        output.join("live-bundle.json"),
+        serde_json::to_vec_pretty(&bundle)?,
+    )?;
+    println!(
+        "{}",
+        json!({"schema":"aspis.v7.live-proof-materialized.v1",
         "depositLane":lane_id,"checkpointSequence":0,"walletStateBytes":fs::metadata(wallet_file)?.len(),
-        "secretValuesPrinted":false}));
+        "secretValuesPrinted":false})
+    );
     Ok(())
 }

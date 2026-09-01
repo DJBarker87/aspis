@@ -20,10 +20,13 @@ readonly CHECKPOINT_BUILDER=${ASPIS_V7_LIVE_POOL_CHECKPOINT_BUILDER:-}
 readonly MATERIALIZER=${ASPIS_V7_LIVE_PROOF_MATERIALIZER:-}
 readonly PROVER=${ASPIS_V7_LIVE_POOL_PROVER:-}
 readonly PROOF_UPLOAD_CHILD=${ASPIS_V7_PROOF_UPLOAD_CHILD:-}
-readonly TERMINAL_BUILDER=${ASPIS_V7_LIVE_TRANSFER_TERMINAL_BUILDER:-}
+readonly TERMINAL_BUILDER=${ASPIS_V7_LIVE_TERMINAL_BUILDER:-${ASPIS_V7_LIVE_TRANSFER_TERMINAL_BUILDER:-}}
 readonly AGAVE_BIN_DIR=${ASPIS_TXV1_DISPOSABLE_AGAVE_BIN_DIR:-}
+readonly OPERATION=${ASPIS_V7_LIVE_OPERATION:-transfer}
 
 [[ "$RPC_URL" =~ ^http://127\.0\.0\.1:[0-9]+$ ]] || fail "disposable RPC is required"
+[[ "$OPERATION" == transfer || "$OPERATION" == withdrawal ]] \
+  || fail "ASPIS_V7_LIVE_OPERATION must be transfer or withdrawal"
 [[ -f "$PAYER_KEYPAIR" && -x "$BUILDER" ]] || fail "ephemeral payer or prebuilt builder unavailable"
 [[ "$EVIDENCE_DIR" == /* && "$EVIDENCE_DIR" != / && ! -e "$EVIDENCE_DIR" ]] \
   || fail "evidence directory must be new, absolute and non-root"
@@ -44,6 +47,20 @@ rpc() {
 
 account_data_hash() {
   jq -er '.result.value.data[0]' "$1" | openssl base64 -d -A | shasum -a 256 | awk '{print $1}'
+}
+
+token_amount() {
+  local bytes
+  bytes=$(jq -er '.result.value.data[0]' "$1" | openssl base64 -d -A \
+    | od -An -v -tu1 | tr -s ' ' '\n' | sed '/^$/d')
+  mapfile -t token_bytes <<<"$bytes"
+  [[ ${#token_bytes[@]} -ge 72 ]] || fail "short SPL token account: $1"
+  local amount=0 multiplier=1 index
+  for index in $(seq 64 71); do
+    amount=$((amount + token_bytes[index] * multiplier))
+    multiplier=$((multiplier * 256))
+  done
+  printf '%s\n' "$amount"
 }
 
 slot=$(rpc '{"jsonrpc":"2.0","id":1,"method":"getSlot","params":[{"commitment":"finalized"}]}' | jq -er '.result')
@@ -104,7 +121,7 @@ if [[ -n "$SECRET_BUILDER" || -n "$DEPOSIT_BUILDER" ]]; then
   [[ -x "$SECRET_BUILDER" && -x "$DEPOSIT_BUILDER" && -x "$CHECKPOINT_BUILDER" ]] \
     || fail "secret, deposit and checkpoint builders are all required"
   mkdir "$EVIDENCE_DIR/deposit"
-  "$SECRET_BUILDER" transfer "$WORK_DIR/operation-secrets.json" \
+  "$SECRET_BUILDER" "$OPERATION" "$WORK_DIR/operation-secrets.json" \
     >"$EVIDENCE_DIR/deposit/public-operation.json"
   [[ "$(stat -c %a "$WORK_DIR/operation-secrets.json")" == 600 ]] \
     || fail "operation secret file mode is not 0600"
@@ -269,6 +286,27 @@ if [[ -n "$SECRET_BUILDER" || -n "$DEPOSIT_BUILDER" ]]; then
         | jq --arg requestedAddress "$binding_address" '. + {requestedAddress:$requestedAddress}' \
         >"$EVIDENCE_DIR/live-proof-inputs/$binding_name.json"
     done
+    mint_account=""
+    vault_account=""
+    destination_account=""
+    if [[ "$OPERATION" == withdrawal ]]; then
+      mint_address=$(jq -er '.disposableLiveGenesis.mint.id' "$CONFIG")
+      vault_address=$(jq -er '.initializedAccounts[9]' "$EVIDENCE_DIR/signed-request.json")
+      destination_address=$(jq -er '.disposableLiveGenesis.withdrawalDestinationTokenAccount' "$CONFIG")
+      for custody_binding in "mint:$mint_address" "vault:$vault_address" \
+        "destination:$destination_address"; do
+        custody_name=${custody_binding%%:*}; custody_address=${custody_binding##*:}
+        rpc "$(jq -nc --arg address "$custody_address" \
+          '{jsonrpc:"2.0",id:1404,method:"getAccountInfo",params:[$address,{encoding:"base64",commitment:"finalized"}]}')" \
+          | jq --arg requestedAddress "$custody_address" '. + {requestedAddress:$requestedAddress}' \
+          >"$EVIDENCE_DIR/live-proof-inputs/$custody_name.json"
+        jq -e '.result.value != null' "$EVIDENCE_DIR/live-proof-inputs/$custody_name.json" >/dev/null \
+          || fail "withdrawal custody account missing: $custody_name"
+      done
+      mint_account="$EVIDENCE_DIR/live-proof-inputs/mint.json"
+      vault_account="$EVIDENCE_DIR/live-proof-inputs/vault.json"
+      destination_account="$EVIDENCE_DIR/live-proof-inputs/destination.json"
+    fi
     deposit_blockhash_finalized=$(rpc "$(jq -nc --argjson slot "$deposit_slot" \
       '{jsonrpc:"2.0",id:1401,method:"getBlock",params:[$slot,{encoding:"json",transactionDetails:"none",rewards:false,maxSupportedTransactionVersion:1}]}')" \
       | jq -er '.result.blockhash')
@@ -292,6 +330,8 @@ if [[ -n "$SECRET_BUILDER" || -n "$DEPOSIT_BUILDER" ]]; then
       --arg checkpointAccount "$EVIDENCE_DIR/checkpoint/checkpoint-account.json" \
       --arg registry "$EVIDENCE_DIR/live-proof-inputs/registry.json" \
       --arg entry "$EVIDENCE_DIR/live-proof-inputs/entry.json" \
+      --arg mintAccount "$mint_account" --arg vaultAccount "$vault_account" \
+      --arg destinationAccount "$destination_account" \
       --arg secrets "$WORK_DIR/operation-secrets.json" --argjson depositSlot "$deposit_slot" \
       --arg depositBlockhash "$deposit_blockhash_finalized" --arg depositSignature "$deposit_signature" \
       --argjson checkpointSlot "$checkpoint_slot" --arg checkpointBlockhash "$checkpoint_blockhash_finalized" \
@@ -300,6 +340,9 @@ if [[ -n "$SECRET_BUILDER" || -n "$DEPOSIT_BUILDER" ]]; then
         initialLanes:$initialLanes,afterDepositLane:$afterDepositLane,
         checkpointMaster:$checkpointMaster,checkpointLanes:$checkpointLanes,
         checkpointAccount:$checkpointAccount,registryAccount:$registry,registryEntryAccount:$entry,
+        mintAccount:(if $mintAccount == "" then null else $mintAccount end),
+        vaultAccount:(if $vaultAccount == "" then null else $vaultAccount end),
+        destinationAccount:(if $destinationAccount == "" then null else $destinationAccount end),
         secretsFile:$secrets,depositSlot:$depositSlot,depositBlockhash:$depositBlockhash,
         depositSignature:$depositSignature,checkpointSlot:$checkpointSlot,
         checkpointBlockhash:$checkpointBlockhash}' >"$WORK_DIR/materialize-input.json"
@@ -327,7 +370,8 @@ if [[ -n "$SECRET_BUILDER" || -n "$DEPOSIT_BUILDER" ]]; then
         || fail "genuine live proof upload failed validation"
       if [[ -n "$TERMINAL_BUILDER" ]]; then
         [[ -x "$TERMINAL_BUILDER" ]] || fail "terminal TxV1 builder is unavailable"
-        mkdir "$EVIDENCE_DIR/terminal-transfer"
+        readonly TERMINAL_EVIDENCE="$EVIDENCE_DIR/terminal-$OPERATION"
+        mkdir "$TERMINAL_EVIDENCE"
         terminal_context_slot=$(rpc '{"jsonrpc":"2.0","id":1500,"method":"getSlot","params":[{"commitment":"finalized"}]}' | jq -er '.result')
         terminal_blockhash=$(rpc "$(jq -nc --argjson slot "$terminal_context_slot" \
           '{jsonrpc:"2.0",id:1501,method:"getLatestBlockhash",params:[{commitment:"finalized",minContextSlot:$slot}]}')" \
@@ -335,31 +379,32 @@ if [[ -n "$SECRET_BUILDER" || -n "$DEPOSIT_BUILDER" ]]; then
         jq -n --arg bundle "$EVIDENCE_DIR/live-proof-bundle/live-bundle.json" \
           --arg asq8 "$EVIDENCE_DIR/live-proof/asq8.bin" --arg payer "$PAYER_KEYPAIR" \
           --arg blockhash "$terminal_blockhash" --argjson slot "$terminal_context_slot" \
-          '{schema:"aspis.v7.live-transfer-terminal-input.v1",bundle:$bundle,asq8:$asq8,
+          '{schema:"aspis.v7.live-terminal-input.v1",bundle:$bundle,asq8:$asq8,
             payerKeypair:$payer,recentBlockhash:$blockhash,minContextSlot:$slot,requestId:1600}' \
           >"$WORK_DIR/terminal-input.json"
         "$TERMINAL_BUILDER" "$WORK_DIR/terminal-input.json" \
-          >"$EVIDENCE_DIR/terminal-transfer/signed-request.json"
-        jq -e '.instructionCount == 2 and .terminalInstructionCount == 1 and
+          >"$TERMINAL_EVIDENCE/signed-request.json"
+        jq -e --arg operation "$OPERATION" '.operation == $operation and
+          .instructionCount == 2 and .terminalInstructionCount == 1 and
           .ciphertextCarrierRealHpke == true and .serializedTransactionBytes < 4096 and
-          .serializedTransactionBytes <= 3500' "$EVIDENCE_DIR/terminal-transfer/signed-request.json" >/dev/null \
+          .serializedTransactionBytes <= 3500' "$TERMINAL_EVIDENCE/signed-request.json" >/dev/null \
           || fail "terminal TxV1 preflight failed"
         protected_addresses=$(jq -nc --slurpfile init "$EVIDENCE_DIR/signed-request.json" \
-          --slurpfile terminal "$EVIDENCE_DIR/terminal-transfer/signed-request.json" \
+          --slurpfile terminal "$TERMINAL_EVIDENCE/signed-request.json" \
           --arg checkpoint "$checkpoint_address" \
           '($init[0].initializedAccounts[0:10] + [$checkpoint] + $terminal[0].terminalAccounts) | unique')
         rpc "$(jq -nc --argjson addresses "$protected_addresses" \
           '{jsonrpc:"2.0",id:1601,method:"getMultipleAccounts",params:[$addresses,{encoding:"base64",commitment:"finalized"}]}')" \
-          | jq . >"$EVIDENCE_DIR/terminal-transfer/accounts-before.json"
-        terminal_simulation=$(rpc "$(jq -c '.simulationRequest' "$EVIDENCE_DIR/terminal-transfer/signed-request.json")")
-        jq . <<<"$terminal_simulation" >"$EVIDENCE_DIR/terminal-transfer/simulation.json"
+          | jq . >"$TERMINAL_EVIDENCE/accounts-before.json"
+        terminal_simulation=$(rpc "$(jq -c '.simulationRequest' "$TERMINAL_EVIDENCE/signed-request.json")")
+        jq . <<<"$terminal_simulation" >"$TERMINAL_EVIDENCE/simulation.json"
         jq -e '.error | not' <<<"$terminal_simulation" >/dev/null
         jq -e '.result.value.err == null and .result.value.unitsConsumed < 1300000' <<<"$terminal_simulation" >/dev/null \
-          || fail "terminal transfer simulation failed"
-        terminal_send=$(rpc "$(jq -c '.sendRequest' "$EVIDENCE_DIR/terminal-transfer/signed-request.json")")
-        jq . <<<"$terminal_send" >"$EVIDENCE_DIR/terminal-transfer/send.json"
+          || fail "terminal $OPERATION simulation failed"
+        terminal_send=$(rpc "$(jq -c '.sendRequest' "$TERMINAL_EVIDENCE/signed-request.json")")
+        jq . <<<"$terminal_send" >"$TERMINAL_EVIDENCE/send.json"
         terminal_signature=$(jq -er '.result' <<<"$terminal_send")
-        [[ "$terminal_signature" == "$(jq -er '.signature' "$EVIDENCE_DIR/terminal-transfer/signed-request.json")" ]] \
+        [[ "$terminal_signature" == "$(jq -er '.signature' "$TERMINAL_EVIDENCE/signed-request.json")" ]] \
           || fail "terminal submission changed signed wire"
         terminal_finalized=false
         for _ in $(seq 1 600); do
@@ -369,31 +414,58 @@ if [[ -n "$SECRET_BUILDER" || -n "$DEPOSIT_BUILDER" ]]; then
             <<<"$terminal_status" >/dev/null; then terminal_finalized=true; break; fi
           sleep 0.1
         done
-        [[ "$terminal_finalized" == true ]] || fail "terminal transfer did not finalize"
+        [[ "$terminal_finalized" == true ]] || fail "terminal $OPERATION did not finalize"
         rpc "$(jq -nc --arg signature "$terminal_signature" \
           '{jsonrpc:"2.0",id:1800,method:"getTransaction",params:[$signature,{encoding:"json",commitment:"finalized",maxSupportedTransactionVersion:1}]}')" \
-          | jq . >"$EVIDENCE_DIR/terminal-transfer/finalized-transaction.json"
+          | jq . >"$TERMINAL_EVIDENCE/finalized-transaction.json"
         jq -e '.result != null and .result.meta.err == null and .result.meta.computeUnitsConsumed < 1300000' \
-          "$EVIDENCE_DIR/terminal-transfer/finalized-transaction.json" >/dev/null || fail "landed terminal transfer failed"
+          "$TERMINAL_EVIDENCE/finalized-transaction.json" >/dev/null || fail "landed terminal $OPERATION failed"
         rpc "$(jq -nc --argjson addresses "$protected_addresses" \
           '{jsonrpc:"2.0",id:1801,method:"getMultipleAccounts",params:[$addresses,{encoding:"base64",commitment:"finalized"}]}')" \
-          | jq . >"$EVIDENCE_DIR/terminal-transfer/accounts-after.json"
-        terminal_simulated_cu=$(jq -er '.result.value.unitsConsumed' "$EVIDENCE_DIR/terminal-transfer/simulation.json")
-        terminal_landed_cu=$(jq -er '.result.meta.computeUnitsConsumed' "$EVIDENCE_DIR/terminal-transfer/finalized-transaction.json")
-        terminal_slot=$(jq -er '.result.slot' "$EVIDENCE_DIR/terminal-transfer/finalized-transaction.json")
+          | jq . >"$TERMINAL_EVIDENCE/accounts-after.json"
+        terminal_simulated_cu=$(jq -er '.result.value.unitsConsumed' "$TERMINAL_EVIDENCE/simulation.json")
+        terminal_landed_cu=$(jq -er '.result.meta.computeUnitsConsumed' "$TERMINAL_EVIDENCE/finalized-transaction.json")
+        terminal_slot=$(jq -er '.result.slot' "$TERMINAL_EVIDENCE/finalized-transaction.json")
+        custody_json='null'
+        if [[ "$OPERATION" == withdrawal ]]; then
+          vault_before_amount=$(token_amount "$EVIDENCE_DIR/live-proof-inputs/vault.json")
+          destination_before_amount=$(token_amount "$EVIDENCE_DIR/live-proof-inputs/destination.json")
+          rpc "$(jq -nc --arg address "$vault_address" \
+            '{jsonrpc:"2.0",id:1802,method:"getAccountInfo",params:[$address,{encoding:"base64",commitment:"finalized"}]}')" \
+            | jq --arg requestedAddress "$vault_address" '. + {requestedAddress:$requestedAddress}' \
+            >"$TERMINAL_EVIDENCE/vault-after.json"
+          rpc "$(jq -nc --arg address "$destination_address" \
+            '{jsonrpc:"2.0",id:1803,method:"getAccountInfo",params:[$address,{encoding:"base64",commitment:"finalized"}]}')" \
+            | jq --arg requestedAddress "$destination_address" '. + {requestedAddress:$requestedAddress}' \
+            >"$TERMINAL_EVIDENCE/destination-after.json"
+          vault_after_amount=$(token_amount "$TERMINAL_EVIDENCE/vault-after.json")
+          destination_after_amount=$(token_amount "$TERMINAL_EVIDENCE/destination-after.json")
+          [[ $((vault_before_amount - vault_after_amount)) -eq 250 \
+            && $((destination_after_amount - destination_before_amount)) -eq 250 ]] \
+            || fail "withdrawal custody conservation failed"
+          custody_json=$(jq -nc --argjson amount 250 --argjson vaultBefore "$vault_before_amount" \
+            --argjson vaultAfter "$vault_after_amount" --argjson destinationBefore "$destination_before_amount" \
+            --argjson destinationAfter "$destination_after_amount" \
+            '{amount:$amount,vaultBefore:$vaultBefore,vaultAfter:$vaultAfter,
+              destinationBefore:$destinationBefore,destinationAfter:$destinationAfter,
+              vaultDelta:($vaultBefore-$vaultAfter),destinationDelta:($destinationAfter-$destinationBefore),
+              conservation:true,destinationBinding:true}')
+        fi
         jq -n --arg signature "$terminal_signature" --argjson slot "$terminal_slot" \
+          --arg operation "$OPERATION" --argjson custody "$custody_json" \
           --argjson simulatedCu "$terminal_simulated_cu" --argjson landedCu "$terminal_landed_cu" \
-          --arg beforeSha "$(shasum -a 256 "$EVIDENCE_DIR/terminal-transfer/accounts-before.json" | awk '{print $1}')" \
-          --arg afterSha "$(shasum -a 256 "$EVIDENCE_DIR/terminal-transfer/accounts-after.json" | awk '{print $1}')" \
-          --slurpfile request "$EVIDENCE_DIR/terminal-transfer/signed-request.json" \
-          '{schema:"aspis.v7.live-transfer-terminal-finalized.v1",signature:$signature,slot:$slot,
+          --arg beforeSha "$(shasum -a 256 "$TERMINAL_EVIDENCE/accounts-before.json" | awk '{print $1}')" \
+          --arg afterSha "$(shasum -a 256 "$TERMINAL_EVIDENCE/accounts-after.json" | awk '{print $1}')" \
+          --slurpfile request "$TERMINAL_EVIDENCE/signed-request.json" \
+          '{schema:"aspis.v7.live-terminal-finalized.v1",operation:$operation,signature:$signature,slot:$slot,
             simulatedCu:$simulatedCu,landedCu:$landedCu,
             serializedTransactionBytes:$request[0].serializedTransactionBytes,
             signedWireSha256:$request[0].signedWireSha256,selectedLane:$request[0].selectedLane,
             instructionCount:2,terminalInstructionCount:1,byteIdenticalSimulationSubmission:true,
             ciphertextCarrierRealHpke:true,protectedAccountsBeforeJsonSha256:$beforeSha,
-            protectedAccountsAfterJsonSha256:$afterSha,finalized:true,auditOnly:true,
-            disposable:true,mainnetReady:false}' >"$EVIDENCE_DIR/terminal-transfer/terminal-finalized.json"
+            protectedAccountsAfterJsonSha256:$afterSha,custody:$custody,
+            finalized:true,auditOnly:true,disposable:true,mainnetReady:false}' \
+          >"$TERMINAL_EVIDENCE/terminal-finalized.json"
       fi
     fi
   fi
