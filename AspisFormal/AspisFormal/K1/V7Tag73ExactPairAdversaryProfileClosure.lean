@@ -22,6 +22,7 @@ set_option maxHeartbeats 1000000
 
 namespace AspisK1.V7Tag73ExactPairAdversaryProfileClosure
 
+open MeasureTheory
 open AspisK1.V7FsAokExperiment
 open AspisK1.V7Tag73AdaptiveLazyOracle
 open AspisK1.V7Tag73AdaptiveQ16TrialAccounting
@@ -35,7 +36,9 @@ open AspisK1.V7Tag73ExactFixedK12PrefixClassifier
 open AspisK1.V7Tag73ExactFixedK13K14Classifier
 open AspisK1.V7Tag73ExactFixedFullRunFactorization
 open AspisK1.V7Tag73ExactFixedQ16JointEventHandoff
+open AspisK1.V7Tag73ExactFixedInstanceEvent
 open AspisK1.V7Tag73ExactFinal256DigestRootOrigin
+open AspisK1.V7Tag73ExactConcreteK13K14Events
 open AspisK1.V7Tag73ExactFixedQ16SemanticNoninterference
 open AspisK1.V7Tag73ExactFixedQ16VerifierAnchorInvariant
 open AspisK1.V7Tag73ExactFixedQ16ScheduleFunctional
@@ -45,6 +48,9 @@ open AspisK1.V7Tag73ExactParsedProofSourceBinding
 open AspisK1.V7Tag73ExactPlainRomRun
 open AspisK1.V7Tag73ExactSourceAcceptanceModel
 open AspisK1.V7Tag73FoldArmedAlphaZeroController
+open AspisK1.V7Tag73OperationalSemanticReplay
+open AspisK1.V7Tag73Q16FirstCompactUniformity
+open AspisK1.V7Tag73Q16SemanticFrontierBridge
 open AspisK1.V7Tag73TranscriptSchedule
 open AspisPool.AlgorithmicCircleDecoderV7
 open AspisPool.V7MerkleQueryExtractor
@@ -256,6 +262,55 @@ theorem exact_fixed_clean_k13_pair_coordinate_invariant_of_digest_binding
   exact exact_fixed_clean_pair_k13_pre_final_invariant_of_digest_binding
     programmedCover digestBinding
 
+/-- End-to-end K1.3 one-forest probability bound under the exact parsed-source
+provider and the explicit SHA/ROM pre-final transcript-binding boundary. -/
+theorem exact_fixed_clean_pair_k13_query_probability_le_one_forest_of_digest_binding
+    {HiddenTape TapeIdentity Observation Statement Payload Witness : Type}
+    [Fintype HiddenTape]
+    (hiddenLaw : PMF HiddenTape)
+    {parameters : ExactCompilerResourceParameters}
+    {transitionFuel : Nat}
+    {configuration : ExactPlainRomWitnessConfiguration HiddenTape TapeIdentity
+      Observation Statement Tag73K12ParsedProof Payload Witness parameters}
+    {projection : AcceptedTapeProjection Statement Tag73K12ParsedProof Payload}
+    {fixedInstance : PublicInstance Statement}
+    {decoder : ExactDecoderInstantiation QM31Exact}
+    (transitionRoom : 2 ≤ transitionFuel)
+    (programmedCover : 518 ≤ 2 * parameters.forkRequestCap)
+    (source : ExactFixedK13DecodedParsedSourceProvider transitionFuel
+      configuration projection fixedInstance)
+    (digestBinding : ExactTag73PrefinalDigestSemanticBinding transitionFuel
+      configuration projection fixedInstance)
+    (frontierExact : ∀
+      (sample : ExactCompilerSample HiddenTape parameters)
+      (input : ExactK12OperationalInput transitionFuel configuration projection
+        fixedInstance sample)
+      (schedule : QuerySchedule),
+      (exactOperationalTape input).frontierNodes schedule =
+        semanticFrontierNodes schedule.positions)
+    (reference : AdmittedResult SemanticCap203Admitted)
+    (traceExists : Nonempty
+      (FirstAdmittedTrace q16CandidateOutput SemanticCap203Admitted 64
+        reference.1))
+    (foldExposureCap : unifiedFull256ExposureCap parameters ≤ 2 ^ 31)
+    (finalExposureCap : unifiedFull256ExposureCap parameters ≤ 2 ^ 34) :
+    (exactCompilerJointLaw hiddenLaw parameters).toOuterMeasure
+        (exactFixedPlainRomLegalSameTapeEvent transitionFuel configuration
+            projection fixedInstance ∩
+          exactTag73K13QueryEvent transitionFuel configuration projection
+            fixedInstance decoder) ≤ q16SemanticOneForestRawError := by
+  have parsedSource : ExactFixedK13ParsedSourceProvider transitionFuel
+      configuration projection fixedInstance := by
+    intro sample input
+    obtain ⟨decoded, _decode, binding⟩ := source sample input
+    exact ⟨decoded, binding⟩
+  have invariant :=
+    exact_fixed_clean_k13_pair_coordinate_invariant_of_digest_binding
+      (decoder := decoder) source transitionRoom programmedCover digestBinding
+  exact exact_fixed_clean_pair_k13_query_probability_le_one_forest hiddenLaw
+    transitionRoom programmedCover parsedSource frontierExact invariant
+      reference traceExists foldExposureCap finalExposureCap
+
 #print axioms
   ExactFixedCleanK13PairPreFinalInvariantOnAdversaryAnchors
 #print axioms
@@ -266,6 +321,8 @@ theorem exact_fixed_clean_k13_pair_coordinate_invariant_of_digest_binding
   exact_fixed_clean_pair_k13_adversary_bad_invariant_of_pre_final_profile
 #print axioms
   exact_fixed_clean_k13_pair_coordinate_invariant_of_digest_binding
+#print axioms
+  exact_fixed_clean_pair_k13_query_probability_le_one_forest_of_digest_binding
 
 end
 
