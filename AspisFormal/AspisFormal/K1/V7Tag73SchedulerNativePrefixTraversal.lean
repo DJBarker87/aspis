@@ -368,6 +368,80 @@ theorem scheduler_native_prefix_traversal_terminal_factorization
         answer (answers ++ suffix) request requestExact]
       exact ih
 
+/-! ## Recovering the deterministic prefix from a concrete run -/
+
+/-- The list interpreter emits exactly the supplied flat answer list.  This is
+the list-level companion of `run_scheduler_native_answers_are_exact_tape` and
+lets prefix arguments avoid manufacturing a length-indexed tape. -/
+theorem run_scheduler_native_list_run_from_answers_exact
+    {globalOracleCalls : Nat} {Result : Type u}
+    (transitionFuel : Nat) : ∀ (currentTransitionFuel : Nat)
+      (cursor : SchedulerNativeCursor globalOracleCalls Result)
+      (answers : List Digest256),
+      (runSchedulerNativeListRunFrom transitionFuel currentTransitionFuel
+        cursor answers).trace.map UnifiedExposureRecord.answer = answers := by
+  intro currentTransitionFuel cursor answers
+  induction answers generalizing currentTransitionFuel cursor with
+  | nil => rfl
+  | cons answer rest ih =>
+      simp only [runSchedulerNativeListRunFrom]
+      cases request : seekSchedulerNativeExposure currentTransitionFuel cursor
+        <;> simp only [List.map_cons]
+      all_goals simp only [UnifiedExposureRecord.answer]
+      all_goals rw [ih]
+
+/-- A prefix observed in a concrete scheduler trace is not merely compatible
+with the supplied answers: it is the literal deterministic native prefix
+computed from them.  This is the uniqueness direction needed when one run
+exports a chronological prefix and a second run shares the same answer
+prefix. -/
+theorem scheduler_native_prefix_records_eq_of_run_trace_prefix
+    {globalOracleCalls : Nat} {Result : Type u}
+    (transitionFuel : Nat)
+    (cursor : SchedulerNativeCursor globalOracleCalls Result)
+    (answers : List Digest256)
+    (preRecords postRecords : List UnifiedExposureRecord)
+    (traceExact :
+      (runSchedulerNativeListRun transitionFuel cursor answers).trace =
+        preRecords ++ postRecords) :
+    schedulerNativePrefixRecords transitionFuel cursor
+        (preRecords.map UnifiedExposureRecord.answer) = preRecords := by
+  have answersExact : answers =
+      preRecords.map UnifiedExposureRecord.answer ++
+        postRecords.map UnifiedExposureRecord.answer := by
+    calc
+      answers =
+          (runSchedulerNativeListRun transitionFuel cursor answers).trace.map
+            UnifiedExposureRecord.answer :=
+        (run_scheduler_native_list_run_from_answers_exact transitionFuel
+          transitionFuel cursor answers).symm
+      _ = (preRecords ++ postRecords).map UnifiedExposureRecord.answer := by
+        rw [traceExact]
+      _ = preRecords.map UnifiedExposureRecord.answer ++
+          postRecords.map UnifiedExposureRecord.answer := List.map_append
+  obtain ⟨records, finalCursor, traversal⟩ :=
+    scheduler_native_prefix_traversal_exists transitionFuel cursor
+      (preRecords.map UnifiedExposureRecord.answer)
+  have recordsExact :=
+    scheduler_native_prefix_traversal_records_exact traversal
+  have recordsAnswers :=
+    scheduler_native_prefix_traversal_answers_exact traversal
+  have traceFactor :=
+    scheduler_native_prefix_traversal_trace_factorization traversal
+      (postRecords.map UnifiedExposureRecord.answer)
+  rw [← answersExact] at traceFactor
+  have splitExact : preRecords ++ postRecords = records ++
+      (runSchedulerNativeListRunFrom transitionFuel transitionFuel finalCursor
+        (postRecords.map UnifiedExposureRecord.answer)).trace :=
+    traceExact.symm.trans traceFactor
+  have recordsLength : records.length = preRecords.length := by
+    have := congrArg List.length recordsAnswers
+    simpa using this
+  have taken := congrArg (List.take preRecords.length) splitExact
+  have recordsEq : preRecords = records := by
+    simpa [recordsLength] using taken
+  rw [recordsExact, recordsEq]
+
 #print axioms scheduler_native_prefix_traversal_exists
 #print axioms erase_scheduler_native_request_next
 #print axioms erase_scheduler_native_prefix_cursor
@@ -377,6 +451,8 @@ theorem scheduler_native_prefix_traversal_terminal_factorization
 #print axioms scheduler_native_prefix_traversal_cursor_exact
 #print axioms scheduler_native_prefix_traversal_answers_exact
 #print axioms scheduler_native_prefix_traversal_trace_factorization
+#print axioms run_scheduler_native_list_run_from_answers_exact
+#print axioms scheduler_native_prefix_records_eq_of_run_trace_prefix
 #print axioms scheduler_native_prefix_traversal_terminal_factorization
 
 end

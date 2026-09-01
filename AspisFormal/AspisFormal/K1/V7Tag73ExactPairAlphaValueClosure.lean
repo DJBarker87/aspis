@@ -1,5 +1,6 @@
 import AspisFormal.K1.V7Tag73ExactPairAdversaryProfileClosure
 import AspisFormal.K1.V7Tag73ExactFoldArmedFinalPairPrefix
+import AspisFormal.K1.V7Tag73SchedulerNativePrefixTraversal
 
 /-!
 # Pair-specific alpha-zero value closure
@@ -42,6 +43,8 @@ open AspisK1.V7Tag73FoldArmedAlphaZeroController
 open AspisK1.V7Tag73OperationalSemanticReplay
 open AspisK1.V7Tag73OperationalOracleExposure
 open AspisK1.V7Tag73SamplerDecoder
+open AspisK1.V7Tag73SchedulerNativePrefixTraversal
+open AspisK1.V7Tag73SchedulerTraceFactorization
 open AspisK1.V7Tag73SecureCircleMap
 open AspisK1.V7Tag73TranscriptSchedule
 open AspisPool.AlgorithmicCircleDecoderV7
@@ -109,6 +112,107 @@ theorem exact_fixed_clean_pair_k13_has_common_final_absorb_tape_prefix
 
 #print axioms
   exact_fixed_clean_pair_k13_has_common_final_absorb_tape_prefix
+
+/-- The common answer prefix above is also the literal operational trace
+prefix of the right-hand execution.  The proof recovers the deterministic
+native prefix from the left completed-root factorization and replays exactly
+those answers from the common initial cursor; no hash injectivity or supplied
+trace equality is used. -/
+theorem exact_fixed_clean_pair_k13_has_common_final_absorb_trace_prefix
+    {HiddenTape TapeIdentity Observation Statement Payload Witness : Type}
+    {parameters : ExactCompilerResourceParameters}
+    {transitionFuel : Nat}
+    {configuration : ExactPlainRomWitnessConfiguration HiddenTape TapeIdentity
+      Observation Statement Tag73K12ParsedProof Payload Witness parameters}
+    {projection : AcceptedTapeProjection Statement Tag73K12ParsedProof Payload}
+    {fixedInstance : PublicInstance Statement}
+    {decoder : ExactDecoderInstantiation QM31Exact}
+    (foldTrial finalTrial : ExactCompilerExposureTrial parameters)
+    (hidden : HiddenTape)
+    (left right : FreshAnswerTape Digest256
+      (exactCompilerTargetCaps parameters).length)
+    (leftWitness : ExactFixedCleanK13PairTrialWitness transitionFuel
+      configuration projection fixedInstance decoder (hidden, left) foldTrial
+        finalTrial)
+    (programmedCover : 518 ≤ 2 * parameters.forkRequestCap)
+    (contextExact :
+      let router := exactCompilerFoldArmedAlphaFinalWorkQ16Router parameters
+        transitionFuel foldTrial.val finalTrial.val
+        (exactPlainRomCursor configuration hidden).erase
+      (exactCompilerCausalFoldAlphaFinalWorkQ16Coordinates parameters router
+          left).1 =
+        (exactCompilerCausalFoldAlphaFinalWorkQ16Coordinates parameters router
+          right).1)
+    (foldExact :
+      let router := exactCompilerFoldArmedAlphaFinalWorkQ16Router parameters
+        transitionFuel foldTrial.val finalTrial.val
+        (exactPlainRomCursor configuration hidden).erase
+      (exactCompilerCausalFoldAlphaFinalWorkQ16Coordinates parameters router
+          left).2.1 =
+        (exactCompilerCausalFoldAlphaFinalWorkQ16Coordinates parameters router
+          right).2.1)
+    (workExact :
+      let router := exactCompilerFoldArmedAlphaFinalWorkQ16Router parameters
+        transitionFuel foldTrial.val finalTrial.val
+        (exactPlainRomCursor configuration hidden).erase
+      (exactCompilerCausalFoldAlphaFinalWorkQ16Coordinates parameters router
+          left).2.2.1 =
+        (exactCompilerCausalFoldAlphaFinalWorkQ16Coordinates parameters router
+          right).2.2.1) :
+    ∃ completed leftRootRemaining rightTraceRemaining,
+      exactFixedRootRecords leftWitness.joint.input.package.root =
+          completed ++ leftRootRemaining ∧
+        (runSchedulerNativeListRun transitionFuel
+          (exactPlainRomCursor configuration hidden)
+          (freshAnswerTapeToList right)).trace =
+            completed ++ rightTraceRemaining := by
+  obtain ⟨completed, leftRootRemaining, rightTapeRemaining, rootExact,
+      rightTapeExact⟩ :=
+    exact_fixed_clean_pair_k13_has_common_final_absorb_tape_prefix foldTrial
+      finalTrial hidden left right leftWitness programmedCover contextExact
+        foldExact workExact
+  let leftTail := exactFixedComputedClientTailRun transitionFuel configuration
+    (hidden, left) leftWitness.joint.input.package.root
+  have leftTraceExact :
+      (runSchedulerNativeListRun transitionFuel
+        (exactPlainRomCursor configuration hidden)
+        (freshAnswerTapeToList left)).trace =
+          completed ++ (leftRootRemaining ++ leftTail.trace) := by
+    have fullExact := congrArg (fun run => run.trace)
+      leftWitness.joint.input.package.factorization.fullRunExact
+    change
+      (runSchedulerNativeListRun transitionFuel
+        (exactPlainRomCursor configuration hidden)
+        (freshAnswerTapeToList left)).trace =
+          (exactFixedRootRecords leftWitness.joint.input.package.root ++
+            leftTail.trace) at fullExact
+    rw [rootExact] at fullExact
+    simpa only [List.append_assoc] using fullExact
+  have nativePrefix :
+      schedulerNativePrefixRecords transitionFuel
+          (exactPlainRomCursor configuration hidden)
+          (completed.map UnifiedExposureRecord.answer) = completed :=
+    scheduler_native_prefix_records_eq_of_run_trace_prefix transitionFuel
+      (exactPlainRomCursor configuration hidden)
+      (freshAnswerTapeToList left) completed
+        (leftRootRemaining ++ leftTail.trace) leftTraceExact
+  obtain ⟨records, finalCursor, traversal⟩ :=
+    scheduler_native_prefix_traversal_exists transitionFuel
+      (exactPlainRomCursor configuration hidden)
+      (completed.map UnifiedExposureRecord.answer)
+  have recordsExact :=
+    scheduler_native_prefix_traversal_records_exact traversal
+  have rightTrace :=
+    scheduler_native_prefix_traversal_trace_factorization traversal
+      rightTapeRemaining
+  rw [← recordsExact, nativePrefix] at rightTrace
+  rw [← rightTapeExact] at rightTrace
+  exact ⟨completed, leftRootRemaining,
+    (runSchedulerNativeListRunFrom transitionFuel transitionFuel finalCursor
+      rightTapeRemaining).trace, rootExact, rightTrace⟩
+
+#print axioms
+  exact_fixed_clean_pair_k13_has_common_final_absorb_trace_prefix
 
 /-- Output of the hybrid residual/named alpha routing proof. Both deployed
 decoders consume prefixes of one common four-block tape. -/
