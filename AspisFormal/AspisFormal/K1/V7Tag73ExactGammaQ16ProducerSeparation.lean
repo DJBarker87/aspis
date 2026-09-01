@@ -34,8 +34,10 @@ open AspisK1.V7Tag73ExactQ16CausalCoordinateOrder
 open AspisK1.V7Tag73ExactSourceAcceptanceModel
 open AspisK1.V7Tag73FinalWorkQ16CandidateController
 open AspisK1.V7Tag73IndexedControllerTraceAlignment
+open AspisK1.V7Tag73IndexedAlignedRecordReplay
 open AspisK1.V7Tag73OperationalSemanticReplay
 open AspisK1.V7Tag73SchedulerNativeGammaReplay
+open AspisK1.V7Tag73SchedulerCausalQ16Router
 open AspisK1.V7Tag73TranscriptSchedule
 
 noncomputable section
@@ -128,8 +130,149 @@ theorem exact_operational_gamma_chain_avoids_full_dag_producers
   exact ⟨producerInput, initialDigest, outputs, advances, chain, outputsLength,
     advancesLength, by simpa [reached] using avoids⟩
 
+/-- If one source-backed duplex state avoids the completed q16 producer
+inventory, its literal output query is residual for the q16 controller at the
+actual pre-answer prefix.  The completed-to-prefix restriction is monotonic. -/
+theorem exact_gamma_state_output_is_dag_residual_of_completed_avoid
+    {HiddenTape TapeIdentity Observation Statement Payload Result : Type}
+    {parameters : ExactCompilerResourceParameters}
+    {transitionFuel : Nat}
+    {configuration : ExactPlainRomConfiguration HiddenTape TapeIdentity
+      Observation Statement Tag73K12ParsedProof Payload Result parameters}
+    {projection : AcceptedTapeProjection Statement Tag73K12ParsedProof Payload}
+    {fixedInstance : PublicInstance Statement}
+    {sample : ExactCompilerSample HiddenTape parameters}
+    (input : ExactK12OperationalInput transitionFuel configuration projection
+      fixedInstance sample)
+    (trial : ExactCompilerExposureTrial parameters)
+    (state : Digest256)
+    (completedAvoid : ∀ producer ∈
+      (indexedStateAfterRecords transitionFuel
+        (exactDagTrialController transitionFuel trial)
+        (exactFixedRootRecords input.package.root)
+        (exactDagCandidateInitialState input)).memory.producers,
+      state ≠ producer.digest)
+    (output : Digest256) (actor : QueryActor)
+    (prior later : List UnifiedExposureRecord)
+    (decomposition : exactFixedRootRecords input.package.root =
+      prior ++
+        (.machineFresh actor (gammaOutputInput state) output :
+          UnifiedExposureRecord) :: later) :
+    (exactDagTrialController transitionFuel trial).preferredSlot
+      (indexedStateAfterRecords transitionFuel
+        (exactDagTrialController transitionFuel trial) prior
+        (exactDagCandidateInitialState input)) = none := by
+  let controller := exactDagTrialController transitionFuel trial
+  let initial := exactDagCandidateInitialState input
+  let reached := indexedStateAfterRecords transitionFuel controller prior initial
+  let completed := indexedStateAfterRecords transitionFuel controller
+    (exactFixedRootRecords input.package.root) initial
+  have producerGrowth : reached.memory.producers <+:
+      completed.memory.producers := by
+    have growth := dag_indexed_state_producers_prefix transitionFuel trial.val
+      ((.machineFresh actor (gammaOutputInput state) output :
+          UnifiedExposureRecord) :: later) reached
+    have growth' : reached.memory.producers <+:
+        (indexedStateAfterRecords transitionFuel controller
+          ((.machineFresh actor (gammaOutputInput state) output :
+            UnifiedExposureRecord) :: later) reached).memory.producers := by
+      simpa [controller, exactDagTrialController] using growth
+    have completedExact : completed =
+        indexedStateAfterRecords transitionFuel controller
+          ((.machineFresh actor (gammaOutputInput state) output :
+            UnifiedExposureRecord) :: later) reached := by
+      simp [completed, decomposition, reached,
+        indexed_state_after_records_append]
+    rw [completedExact]
+    exact growth'
+  have prefixAvoid : ∀ producer ∈ reached.memory.producers,
+      state ≠ producer.digest := by
+    intro producer producerMember
+    exact completedAvoid producer (producerGrowth.subset producerMember)
+  have anchorWellFormed : Q16DagAnchorWellFormed reached.memory.anchor := by
+    simpa [reached, controller, initial] using
+      exact_dag_candidate_prefix_anchor_well_formed input trial prior
+  have inputExact : unifiedInputBeforeAnswer? transitionFuel reached.cursor =
+      some (gammaOutputInput state) := by
+    have aligned : unifiedRecordAtAnswer transitionFuel reached.cursor output =
+        .machineFresh actor (gammaOutputInput state) output := by
+      have rootAligned := exact_root_records_aligned_for_dag_controller input
+        trial.val prior
+          (.machineFresh actor (gammaOutputInput state) output)
+          later decomposition
+      simpa [reached, controller, initial, exactDagTrialController,
+        UnifiedExposureRecord.answer] using rootAligned
+    exact aligned_machine_record_has_exact_input transitionFuel reached.cursor
+      actor (gammaOutputInput state) output aligned
+  change dagCandidatePreferredSlot transitionFuel trial.val reached = none
+  unfold dagCandidatePreferredSlot
+  rw [inputExact]
+  exact dag_preferred_slot_none_of_gamma_state_avoids_producers
+    trial.val reached.exposureIndex reached.memory state anchorWellFormed
+      prefixAvoid
+
+/-- Every output and advance actually consumed by production gamma is
+non-q16 at its literal pre-answer root state.  This is the operational label
+inventory required by the cross-fibre gamma replay. -/
+theorem exact_operational_gamma_consumed_coordinates_are_not_q16
+    {HiddenTape TapeIdentity Observation Statement Payload Result : Type}
+    {parameters : ExactCompilerResourceParameters}
+    {transitionFuel : Nat}
+    {configuration : ExactPlainRomConfiguration HiddenTape TapeIdentity
+      Observation Statement Tag73K12ParsedProof Payload Result parameters}
+    {projection : AcceptedTapeProjection Statement Tag73K12ParsedProof Payload}
+    {fixedInstance : PublicInstance Statement}
+    {sample : ExactCompilerSample HiddenTape parameters}
+    (transitionRoom : 2 ≤ transitionFuel)
+    (input : ExactK12OperationalInput transitionFuel configuration projection
+      fixedInstance sample)
+    (trial : ExactCompilerExposureTrial parameters) :
+    ∃ (producerInput : ShaInput) (initialDigest : Digest256)
+        (outputs advances : List Digest256),
+      ExactRootOrderedQ16Chain input producerInput initialDigest outputs
+          advances ∧
+      outputs.length =
+          ((exactOperationalTape input).messages.challengeUse .gamma).blocksUsed ∧
+      advances.length = outputs.length ∧
+      (∀ state ∈ initialDigest :: advances,
+        ∀ output actor prior later,
+          exactFixedRootRecords input.package.root =
+              prior ++
+                (.machineFresh actor (gammaOutputInput state) output :
+                  UnifiedExposureRecord) :: later →
+          (exactDagTrialController transitionFuel trial).preferredSlot
+            (indexedStateAfterRecords transitionFuel
+              (exactDagTrialController transitionFuel trial) prior
+              (exactDagCandidateInitialState input)) = none) ∧
+      (∀ state advanced actor prior later,
+        exactFixedRootRecords input.package.root =
+            prior ++
+              (.machineFresh actor (gammaAdvanceInput state) advanced :
+                UnifiedExposureRecord) :: later →
+        (exactDagTrialController transitionFuel trial).preferredSlot
+          (indexedStateAfterRecords transitionFuel
+            (exactDagTrialController transitionFuel trial) prior
+            (exactDagCandidateInitialState input)) = none) := by
+  obtain ⟨producerInput, initialDigest, outputs, advances, chain,
+      outputsLength, advancesLength, avoids⟩ :=
+    exact_operational_gamma_chain_avoids_full_dag_producers transitionRoom
+      input trial
+  refine ⟨producerInput, initialDigest, outputs, advances, chain,
+    outputsLength, advancesLength, ?_, ?_⟩
+  · intro state stateMember output actor prior later decomposition
+    apply exact_gamma_state_output_is_dag_residual_of_completed_avoid input trial
+      state
+    · intro producer producerMember
+      exact avoids state stateMember producer producerMember
+    · exact decomposition
+  · intro state advanced actor prior later decomposition
+    exact exact_alpha_advance_is_residual_at_literal_root_prefix input trial
+      state advanced actor prior later decomposition
+
 #print axioms gamma_boundary_avoids_q16_producer_sources
 #print axioms exact_operational_gamma_chain_avoids_full_dag_producers
+#print axioms exact_gamma_state_output_is_dag_residual_of_completed_avoid
+#print axioms exact_operational_gamma_consumed_coordinates_are_not_q16
 
 end
 
