@@ -61,10 +61,10 @@ structure IndexedUnifiedExposureController
 advance the production cursor exactly once, and then update controller memory.
 -/
 def IndexedUnifiedExposureController.afterAnswer
-    {globalOracleCalls : Nat} {Memory : Type u}
+    {globalOracleCalls : Nat} {Slot : Type} {Memory : Type u}
     (transitionFuel : Nat)
     (controller : IndexedUnifiedExposureController globalOracleCalls
-      Digest256 FinalWorkQ16DigestSlot Memory)
+      Digest256 Slot Memory)
     (state : IndexedUnifiedExposureState globalOracleCalls Memory)
     (answer : Digest256) :
     IndexedUnifiedExposureState globalOracleCalls Memory :=
@@ -73,10 +73,10 @@ def IndexedUnifiedExposureController.afterAnswer
     memory := controller.afterMemory state answer }
 
 @[simp] theorem indexed_after_answer_exposure_index
-    {globalOracleCalls : Nat} {Memory : Type u}
+    {globalOracleCalls : Nat} {Slot : Type} {Memory : Type u}
     (transitionFuel : Nat)
     (controller : IndexedUnifiedExposureController globalOracleCalls
-      Digest256 FinalWorkQ16DigestSlot Memory)
+      Digest256 Slot Memory)
     (state : IndexedUnifiedExposureState globalOracleCalls Memory)
     (answer : Digest256) :
     (controller.afterAnswer transitionFuel state answer).exposureIndex =
@@ -84,10 +84,10 @@ def IndexedUnifiedExposureController.afterAnswer
   rfl
 
 @[simp] theorem indexed_after_answer_cursor
-    {globalOracleCalls : Nat} {Memory : Type u}
+    {globalOracleCalls : Nat} {Slot : Type} {Memory : Type u}
     (transitionFuel : Nat)
     (controller : IndexedUnifiedExposureController globalOracleCalls
-      Digest256 FinalWorkQ16DigestSlot Memory)
+      Digest256 Slot Memory)
     (state : IndexedUnifiedExposureState globalOracleCalls Memory)
     (answer : Digest256) :
     (controller.afterAnswer transitionFuel state answer).cursor =
@@ -97,11 +97,11 @@ def IndexedUnifiedExposureController.afterAnswer
 /-- The counted controller as the generic pre-answer machine used by the
 measure-preserving causal router. -/
 def IndexedUnifiedExposureController.machine
-    {globalOracleCalls : Nat} {Memory : Type u}
+    {globalOracleCalls : Nat} {Slot : Type} {Memory : Type u}
     (transitionFuel : Nat)
     (controller : IndexedUnifiedExposureController globalOracleCalls
-      Digest256 FinalWorkQ16DigestSlot Memory) :
-    PreAnswerSlotMachine Digest256 FinalWorkQ16DigestSlot
+      Digest256 Slot Memory) :
+    PreAnswerSlotMachine Digest256 Slot
       (IndexedUnifiedExposureState globalOracleCalls Memory) where
   preferredSlot := controller.preferredSlot
   afterAnswer := controller.afterAnswer transitionFuel
@@ -147,10 +147,10 @@ def exactCompilerIndexedFinalWorkQ16Coordinates
 state.  This theorem is intentionally small: it is the rewrite used when the
 source layer proves that an indexed exposure receives its literal digest. -/
 theorem indexed_controller_preferred_slot_exact
-    {globalOracleCalls : Nat} {Memory : Type u}
+    {globalOracleCalls : Nat} {Slot : Type} {Memory : Type u}
     (transitionFuel : Nat)
     (controller : IndexedUnifiedExposureController globalOracleCalls
-      Digest256 FinalWorkQ16DigestSlot Memory)
+      Digest256 Slot Memory)
     (state : IndexedUnifiedExposureState globalOracleCalls Memory) :
     (controller.machine transitionFuel).preferredSlot state =
       controller.preferredSlot state := by
