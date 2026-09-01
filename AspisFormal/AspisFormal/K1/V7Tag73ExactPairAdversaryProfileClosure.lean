@@ -96,6 +96,13 @@ def ExactFixedCleanK13PairWordsInvariantOnAdversaryAnchors
         left).2.1 =
       (exactCompilerCausalFoldAlphaFinalWorkQ16Coordinates parameters router
         right).2.1) →
+    (let router := exactCompilerFoldArmedAlphaFinalWorkQ16Router parameters
+      transitionFuel foldTrial.val finalTrial.val
+      (exactPlainRomCursor configuration hidden).erase
+    (exactCompilerCausalFoldAlphaFinalWorkQ16Coordinates parameters router
+        left).2.2.1 =
+      (exactCompilerCausalFoldAlphaFinalWorkQ16Coordinates parameters router
+        right).2.2.1) →
     exactPrefixK12Words leftWitness.joint.input =
       exactPrefixK12Words rightWitness.joint.input
 
@@ -137,6 +144,13 @@ def ExactFixedCleanK13PairTranscriptInvariantOnAdversaryAnchors
         left).2.1 =
       (exactCompilerCausalFoldAlphaFinalWorkQ16Coordinates parameters router
         right).2.1) →
+    (let router := exactCompilerFoldArmedAlphaFinalWorkQ16Router parameters
+      transitionFuel foldTrial.val finalTrial.val
+      (exactPlainRomCursor configuration hidden).erase
+    (exactCompilerCausalFoldAlphaFinalWorkQ16Coordinates parameters router
+        left).2.2.1 =
+      (exactCompilerCausalFoldAlphaFinalWorkQ16Coordinates parameters router
+        right).2.2.1) →
     (exactK13ParsedProof leftWitness.joint.input).gamma =
         (exactK13ParsedProof rightWitness.joint.input).gamma ∧
       exactOperationalChallenge leftWitness.joint.input (.alpha 0) =
@@ -180,6 +194,13 @@ def ExactFixedCleanK13PairPreFinalInvariantOnAdversaryAnchors
         left).2.1 =
       (exactCompilerCausalFoldAlphaFinalWorkQ16Coordinates parameters router
         right).2.1) →
+    (let router := exactCompilerFoldArmedAlphaFinalWorkQ16Router parameters
+      transitionFuel foldTrial.val finalTrial.val
+      (exactPlainRomCursor configuration hidden).erase
+    (exactCompilerCausalFoldAlphaFinalWorkQ16Coordinates parameters router
+        left).2.2.1 =
+      (exactCompilerCausalFoldAlphaFinalWorkQ16Coordinates parameters router
+        right).2.2.1) →
     exactPrefixK12Words leftWitness.joint.input =
         exactPrefixK12Words rightWitness.joint.input ∧
       (exactK13ParsedProof leftWitness.joint.input).gamma =
@@ -207,11 +228,12 @@ theorem exact_fixed_clean_pair_k13_pre_final_invariant_of_components
     ExactFixedCleanK13PairPreFinalInvariantOnAdversaryAnchors transitionFuel
       configuration projection fixedInstance decoder := by
   intro foldTrial finalTrial hidden left right leftWitness rightWitness anchor
-    contextExact foldExact
+    contextExact foldExact workExact
   have wordsExact := wordsInvariant foldTrial finalTrial hidden left right
-    leftWitness rightWitness anchor contextExact foldExact
+    leftWitness rightWitness anchor contextExact foldExact workExact
   obtain ⟨gammaExact, alphaExact⟩ := transcriptInvariant foldTrial finalTrial
     hidden left right leftWitness rightWitness anchor contextExact foldExact
+      workExact
   exact ⟨wordsExact, gammaExact, alphaExact⟩
 
 /-- Once the exact pre-final profile is transported, the existing canonical
@@ -237,10 +259,10 @@ theorem exact_fixed_clean_pair_k13_adversary_bad_invariant_of_pre_final_profile
     ExactFixedCleanK13PairBadInvariantOnAdversaryAnchors transitionFuel
       configuration projection fixedInstance decoder := by
   intro foldTrial finalTrial hidden left right leftWitness rightWitness anchor
-    contextExact foldExact _workExact
+    contextExact foldExact workExact
   obtain ⟨wordsExact, gammaExact, alphaExact⟩ :=
     preFinalInvariant foldTrial finalTrial hidden left right leftWitness
-      rightWitness anchor contextExact foldExact
+      rightWitness anchor contextExact foldExact workExact
   have finalExact :=
     exact_fixed_clean_pair_k13_adversary_anchor_disclosed_final_eq source
       transitionRoom foldTrial finalTrial hidden left right leftWitness

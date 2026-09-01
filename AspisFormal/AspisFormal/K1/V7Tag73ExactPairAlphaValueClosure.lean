@@ -150,6 +150,13 @@ def ExactFixedCleanK13PairAlphaCommonPrefixOnAdversaryAnchors
         left).2.1 =
       (exactCompilerCausalFoldAlphaFinalWorkQ16Coordinates parameters router
         right).2.1) →
+    (let router := exactCompilerFoldArmedAlphaFinalWorkQ16Router parameters
+      transitionFuel foldTrial.val finalTrial.val
+      (exactPlainRomCursor configuration hidden).erase
+    (exactCompilerCausalFoldAlphaFinalWorkQ16Coordinates parameters router
+        left).2.2.1 =
+      (exactCompilerCausalFoldAlphaFinalWorkQ16Coordinates parameters router
+        right).2.2.1) →
     Nonempty (ExactPairAlphaCommonPrefixBinding leftWitness.joint.input
       rightWitness.joint.input)
 
@@ -189,6 +196,13 @@ def ExactFixedCleanK13PairGammaInvariantOnAdversaryAnchors
         left).2.1 =
       (exactCompilerCausalFoldAlphaFinalWorkQ16Coordinates parameters router
         right).2.1) →
+    (let router := exactCompilerFoldArmedAlphaFinalWorkQ16Router parameters
+      transitionFuel foldTrial.val finalTrial.val
+      (exactPlainRomCursor configuration hidden).erase
+    (exactCompilerCausalFoldAlphaFinalWorkQ16Coordinates parameters router
+        left).2.2.1 =
+      (exactCompilerCausalFoldAlphaFinalWorkQ16Coordinates parameters router
+        right).2.2.1) →
     (exactK13ParsedProof leftWitness.joint.input).gamma =
       (exactK13ParsedProof rightWitness.joint.input).gamma
 
@@ -211,11 +225,11 @@ theorem exact_fixed_clean_pair_k13_transcript_invariant_of_gamma_and_alpha_sourc
     ExactFixedCleanK13PairTranscriptInvariantOnAdversaryAnchors transitionFuel
       configuration projection fixedInstance decoder := by
   intro foldTrial finalTrial hidden left right leftWitness rightWitness anchor
-    contextExact foldExact
+    contextExact foldExact workExact
   have gammaExact := gammaInvariant foldTrial finalTrial hidden left right
-    leftWitness rightWitness anchor contextExact foldExact
+    leftWitness rightWitness anchor contextExact foldExact workExact
   obtain ⟨alphaBinding⟩ := alphaSource foldTrial finalTrial hidden left right
-    leftWitness rightWitness anchor contextExact foldExact
+    leftWitness rightWitness anchor contextExact foldExact workExact
   exact ⟨gammaExact,
     exact_pair_operational_alpha_zero_eq_of_common_prefix alphaBinding⟩
 
