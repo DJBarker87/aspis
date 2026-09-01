@@ -1,5 +1,6 @@
 import AspisFormal.K1.V7Tag73AlphaFinalWorkQ16ControllerComposition
 import AspisFormal.K1.V7Tag73IndexedControllerTraceAlignment
+import AspisFormal.K1.V7Tag73IndexedControllerLabeledRecords
 import AspisFormal.K1.V7Tag73SqueezeInputStateInjectivity
 
 /-!
@@ -31,6 +32,7 @@ open AspisK1.V7Tag73ExactCompilerResources
 open AspisK1.V7Tag73FinalWorkQ16CandidateController
 open AspisK1.V7Tag73IndexedExposureCausalRouter
 open AspisK1.V7Tag73IndexedControllerTraceAlignment
+open AspisK1.V7Tag73IndexedControllerLabeledRecords
 open AspisK1.V7Tag73TranscriptSchedule
 open AspisK1.V7Tag73SqueezeInputStateInjectivity
 
@@ -327,6 +329,156 @@ theorem alpha_zero_selected_slot_used_after_answer
     (selected : alphaZeroPreferredSlot transitionFuel state = some slot) :
     slot ∈ (alphaZeroAfterMemory transitionFuel boundaryIndex state answer).usedSlots := by
   simp [alphaZeroAfterMemory, inputExact, selected]
+
+/-- Exact one-step used-set update induced by the pre-answer label. -/
+theorem alpha_zero_after_memory_used_slots
+    {globalOracleCalls : Nat}
+    (transitionFuel boundaryIndex : Nat)
+    (state : IndexedUnifiedExposureState globalOracleCalls
+      AlphaZeroControllerMemory)
+    (answer : Digest256) :
+    (alphaZeroAfterMemory transitionFuel boundaryIndex state answer).usedSlots =
+      match alphaZeroPreferredSlot transitionFuel state with
+      | some slot => insert slot state.memory.usedSlots
+      | none => state.memory.usedSlots := by
+  unfold alphaZeroAfterMemory alphaZeroPreferredSlot
+  cases inputExact : unifiedInputBeforeAnswer? transitionFuel state.cursor with
+  | none => rfl
+  | some input =>
+      simp only [inputExact]
+      cases output : alphaZeroOutputSlot? state.memory.producers input with
+      | none => simp [output]
+      | some slot =>
+          by_cases used : slot ∈ state.memory.usedSlots <;>
+            simp [output, used]
+
+/-- Every slot newly present after a replay prefix was selected at one literal
+earlier pre-answer state in that prefix. -/
+theorem alpha_zero_used_slot_has_prior_record
+    {globalOracleCalls : Nat}
+    (transitionFuel boundaryIndex : Nat) :
+    ∀ (records : List UnifiedExposureRecord)
+      (state : IndexedUnifiedExposureState globalOracleCalls
+        AlphaZeroControllerMemory) (slot : Fin 4),
+      slot ∉ state.memory.usedSlots →
+      slot ∈
+        (indexedStateAfterRecords transitionFuel
+          (alphaZeroCausalController transitionFuel boundaryIndex)
+          records state).memory.usedSlots →
+      ∃ prior record later,
+        records = prior ++ record :: later ∧
+        (alphaZeroCausalController transitionFuel boundaryIndex).preferredSlot
+          (indexedStateAfterRecords transitionFuel
+            (alphaZeroCausalController transitionFuel boundaryIndex)
+            prior state) = some slot := by
+  intro records
+  induction records with
+  | nil =>
+      intro state slot fresh used
+      simp only [indexed_state_after_records_nil] at used
+      exact (fresh used).elim
+  | cons head tail ih =>
+      intro state slot fresh used
+      let controller := alphaZeroCausalController
+        (globalOracleCalls := globalOracleCalls) transitionFuel boundaryIndex
+      let next := controller.afterAnswer transitionFuel state head.answer
+      have tailUsed : slot ∈
+          (indexedStateAfterRecords transitionFuel controller tail
+            next).memory.usedSlots := by
+        simpa [controller, next, indexed_state_after_records_cons] using used
+      cases preferred : controller.preferredSlot state with
+      | none =>
+          have preferred' : alphaZeroPreferredSlot transitionFuel state =
+              none := by
+            simpa [controller, alphaZeroCausalController] using preferred
+          have nextFresh : slot ∉ next.memory.usedSlots := by
+            have nextUsed := alpha_zero_after_memory_used_slots transitionFuel
+              boundaryIndex state head.answer
+            rw [show next.memory.usedSlots = state.memory.usedSlots by
+              simpa [next, controller, alphaZeroCausalController,
+                IndexedUnifiedExposureController.afterAnswer, preferred'] using
+                nextUsed]
+            exact fresh
+          obtain ⟨prior, record, later, decomposition, selected⟩ :=
+            ih next slot nextFresh tailUsed
+          refine ⟨head :: prior, record, later, ?_, ?_⟩
+          · simp [decomposition]
+          · simpa [controller, next, indexed_state_after_records_cons] using
+              selected
+      | some current =>
+          have preferred' : alphaZeroPreferredSlot transitionFuel state =
+              some current := by
+            simpa [controller, alphaZeroCausalController] using preferred
+          by_cases currentExact : current = slot
+          · subst current
+            exact ⟨[], head, tail, by simp, by
+              simpa [controller, indexed_state_after_records_nil] using
+                preferred⟩
+          · have nextFresh : slot ∉ next.memory.usedSlots := by
+              have nextUsed := alpha_zero_after_memory_used_slots
+                transitionFuel boundaryIndex state head.answer
+              rw [show next.memory.usedSlots =
+                  insert current state.memory.usedSlots by
+                simpa [next, controller, alphaZeroCausalController,
+                  IndexedUnifiedExposureController.afterAnswer, preferred']
+                  using nextUsed]
+              have slotNe : slot ≠ current := fun equal =>
+                currentExact equal.symm
+              simp [fresh, slotNe]
+            obtain ⟨prior, record, later, decomposition, selected⟩ :=
+              ih next slot nextFresh tailUsed
+            refine ⟨head :: prior, record, later, ?_, ?_⟩
+            · simp [decomposition]
+            · simpa [controller, next, indexed_state_after_records_cons] using
+                selected
+
+/-- Starting from an empty inventory, no producer can appear before the
+selected boundary ordinal. -/
+theorem alpha_zero_indexed_state_producers_empty_before_boundary
+    {globalOracleCalls : Nat}
+    (transitionFuel boundaryIndex : Nat) :
+    ∀ (records : List UnifiedExposureRecord)
+      (state : IndexedUnifiedExposureState globalOracleCalls
+        AlphaZeroControllerMemory),
+      state.memory.producers = [] →
+      state.exposureIndex + records.length ≤ boundaryIndex →
+      (indexedStateAfterRecords transitionFuel
+        (alphaZeroCausalController transitionFuel boundaryIndex)
+        records state).memory.producers = [] := by
+  intro records
+  induction records with
+  | nil =>
+      intro state empty _before
+      simpa only [indexed_state_after_records_nil] using empty
+  | cons record records ih =>
+      intro state empty before
+      let controller := alphaZeroCausalController
+        (globalOracleCalls := globalOracleCalls) transitionFuel boundaryIndex
+      let next := controller.afterAnswer transitionFuel state record.answer
+      have indexNe : state.exposureIndex ≠ boundaryIndex := by
+        simp only [List.length_cons] at before
+        omega
+      have nextEmpty : next.memory.producers = [] := by
+        unfold next controller alphaZeroCausalController
+        simp only [IndexedUnifiedExposureController.afterAnswer]
+        unfold alphaZeroAfterMemory
+        cases inputExact : unifiedInputBeforeAnswer? transitionFuel state.cursor with
+        | none => exact empty
+        | some input =>
+            simp only [inputExact]
+            have boundaryFalse :
+                (state.exposureIndex = boundaryIndex &&
+                  isAlphaZeroBoundaryInput input) = false := by
+              simp [indexNe]
+            rw [if_neg (Bool.eq_false_iff.mp boundaryFalse)]
+            unfold updateAlphaZeroProducers alphaZeroAdvancedSlot?
+            simp [empty]
+      have nextBefore : next.exposureIndex + records.length ≤ boundaryIndex := by
+        simp only [next, controller, indexed_after_answer_exposure_index,
+          List.length_cons] at before ⊢
+        omega
+      rw [indexed_state_after_records_cons]
+      exact ih next nextEmpty nextBefore
 
 /-- Every producer retained after one answer was either already present or
 was created by that answer and its literal pre-answer input.  This includes
@@ -647,6 +799,9 @@ def exactCompilerConcreteAlphaFinalWorkQ16Router
 #print axioms alpha_zero_after_boundary_has_block_zero_producer
 #print axioms alpha_zero_preferred_of_output_match
 #print axioms alpha_zero_selected_slot_used_after_answer
+#print axioms alpha_zero_after_memory_used_slots
+#print axioms alpha_zero_used_slot_has_prior_record
+#print axioms alpha_zero_indexed_state_producers_empty_before_boundary
 #print axioms alpha_zero_after_memory_member_old_or_current
 #print axioms alpha_zero_after_memory_producer_digests_nodup
 #print axioms alpha_zero_memory_after_advance_contains_producer

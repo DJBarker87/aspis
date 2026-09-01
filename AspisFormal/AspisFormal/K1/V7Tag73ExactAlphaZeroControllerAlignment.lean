@@ -1,4 +1,5 @@
 import AspisFormal.K1.V7Tag73AlphaZeroCausalController
+import AspisFormal.K1.V7Tag73AlphaZeroProducerInvariant
 import AspisFormal.K1.V7Tag73ExactAlphaZeroRootOrder
 import AspisFormal.K1.V7Tag73ExactDagCandidateLabeledRootRouting
 import AspisFormal.K1.V7Tag73ExactRootRecordOrderLift
@@ -25,6 +26,7 @@ namespace AspisK1.V7Tag73ExactAlphaZeroControllerAlignment
 open AspisK1.V7FsAokExperiment
 open AspisK1.V7Tag73AdaptiveLazyOracle
 open AspisK1.V7Tag73AlphaZeroCausalController
+open AspisK1.V7Tag73AlphaZeroProducerInvariant
 open AspisK1.V7Tag73AtomicForkUniformScheduler
 open AspisK1.V7Tag73ExactAlphaZeroPrefixCoordinates
 open AspisK1.V7Tag73ExactAlphaZeroRootOrder
@@ -415,6 +417,53 @@ theorem exact_alpha_zero_prefix_producer_digests_nodup
           inactiveAlphaZeroMemory])
   simpa [controller, initial] using replay
 
+/-- Every exact accepted root prefix also preserves the recursive alpha-chain
+source certificate and uniqueness of logical blocks/source inputs. -/
+theorem exact_alpha_zero_prefix_producer_invariant
+    {HiddenTape TapeIdentity Observation Statement Payload Result : Type}
+    {parameters : ExactCompilerResourceParameters}
+    {transitionFuel : Nat}
+    {configuration : ExactPlainRomConfiguration HiddenTape TapeIdentity
+      Observation Statement Tag73K12ParsedProof Payload Result parameters}
+    {projection : AcceptedTapeProjection Statement Tag73K12ParsedProof Payload}
+    {fixedInstance : PublicInstance Statement}
+    {sample : ExactCompilerSample HiddenTape parameters}
+    (input : ExactK12OperationalInput transitionFuel configuration projection
+      fixedInstance sample)
+    (boundaryIndex : Nat)
+    (prior later : List UnifiedExposureRecord)
+    (decomposition : exactFixedRootRecords input.package.root = prior ++ later) :
+    AlphaZeroMemoryProducerInvariant
+      (indexedStateAfterRecords transitionFuel
+        (alphaZeroCausalController transitionFuel boundaryIndex) prior
+        (exactAlphaZeroInitialState input)).memory := by
+  let controller := alphaZeroCausalController
+    (globalOracleCalls := globalFull256OracleCallCap parameters)
+    transitionFuel boundaryIndex
+  let initial := exactAlphaZeroInitialState input
+  have priorAligned : IndexedRecordsAligned transitionFuel controller initial
+      prior := by
+    apply indexed_records_aligned_segment transitionFuel controller initial
+      (exactFixedRootRecords input.package.root) [] prior later
+      (by simpa [controller, initial] using
+        exact_root_records_aligned_for_alpha_zero_controller input boundaryIndex)
+    simpa using decomposition
+  have priorOnly : OnlyMachineFreshRecords prior := by
+    apply only_machine_fresh_records_segment
+      (exactFixedRootRecords input.package.root) [] prior later
+      (exact_root_records_only_machine_fresh input)
+    simpa using decomposition
+  have priorInputsNodup : (prior.map causalInput?).Nodup := by
+    have rootNodup := exact_root_record_causal_inputs_nodup input
+    rw [decomposition, List.map_append] at rootNodup
+    exact (List.nodup_append.mp rootNodup).1
+  have replay :=
+    aligned_machine_records_preserve_alpha_zero_producer_invariant
+      transitionFuel boundaryIndex prior initial priorAligned priorOnly
+        priorInputsNodup inactive_alpha_zero_memory_producer_invariant (by
+          simp [initial, exactAlphaZeroInitialState, inactiveAlphaZeroMemory])
+  simpa [controller, initial] using replay
+
 /-- The exact fold-nonce root record fixes a boundary ordinal at which the
 returned digest is installed as alpha block zero's producer.  The statement
 retains the literal actor-tagged trace decomposition and the exact replayed
@@ -659,6 +708,249 @@ theorem exact_alpha_installed_producer_available_before_ordered_child
     simpa only [producerRecord, childRecord] using recordsExact,
       reachedAfterBoundary, available⟩
 
+/-- The exact output child of an installed producer cannot have had its
+logical alpha slot consumed by an earlier adversarially scheduled record. -/
+theorem exact_alpha_installed_producer_output_slot_unused
+    {HiddenTape TapeIdentity Observation Statement Payload Result : Type}
+    {parameters : ExactCompilerResourceParameters}
+    {transitionFuel : Nat}
+    {configuration : ExactPlainRomConfiguration HiddenTape TapeIdentity
+      Observation Statement Tag73K12ParsedProof Payload Result parameters}
+    {projection : AcceptedTapeProjection Statement Tag73K12ParsedProof Payload}
+    {fixedInstance : PublicInstance Statement}
+    {sample : ExactCompilerSample HiddenTape parameters}
+    (input : ExactK12OperationalInput transitionFuel configuration projection
+      fixedInstance sample)
+    (boundaryIndex : Nat) (producer : AlphaZeroProducer)
+    (output : Digest256)
+    (installed : ExactAlphaZeroProducerInstalled input boundaryIndex producer)
+    (ordered : ∃ before middle after,
+      exactRootFreshQueries input =
+        before ++ (producer.sourceInput, producer.digest) :: middle ++
+          (gammaOutputInput producer.digest, output) :: after) :
+    ∀ prior between later producerActor outputActor,
+      exactFixedRootRecords input.package.root =
+          prior ++
+            (.machineFresh producerActor producer.sourceInput producer.digest :
+              UnifiedExposureRecord) :: between ++
+            (.machineFresh outputActor (gammaOutputInput producer.digest) output :
+              UnifiedExposureRecord) :: later →
+      producer.block ∉
+        (indexedStateAfterRecords transitionFuel
+          (alphaZeroCausalController transitionFuel boundaryIndex)
+          (prior ++
+            (.machineFresh producerActor producer.sourceInput producer.digest :
+              UnifiedExposureRecord) :: between)
+          (exactAlphaZeroInitialState input)).memory.usedSlots := by
+  intro prior between later producerActor outputActor recordsExact
+  let producerRecord : UnifiedExposureRecord :=
+    .machineFresh producerActor producer.sourceInput producer.digest
+  let outputRecord : UnifiedExposureRecord :=
+    .machineFresh outputActor (gammaOutputInput producer.digest) output
+  let outputPrefix := prior ++ producerRecord :: between
+  have outputRootExact : exactFixedRootRecords input.package.root =
+      outputPrefix ++ outputRecord :: later := by
+    simpa only [outputPrefix, producerRecord, outputRecord, List.cons_append,
+      List.append_assoc] using recordsExact
+  let initial := exactAlphaZeroInitialState input
+  let controller := alphaZeroCausalController
+    (globalOracleCalls := globalFull256OracleCallCap parameters)
+    transitionFuel boundaryIndex
+  let reached := indexedStateAfterRecords transitionFuel controller
+    outputPrefix initial
+  intro slotUsed
+  have initialFresh : producer.block ∉ initial.memory.usedSlots := by
+    simp [initial, exactAlphaZeroInitialState, inactiveAlphaZeroMemory]
+  obtain ⟨usedPrior, usedRecord, usedLater, outputPrefixExact,
+      usedPreferred⟩ :=
+    alpha_zero_used_slot_has_prior_record transitionFuel boundaryIndex
+      outputPrefix initial producer.block initialFresh (by
+        simpa [reached, controller] using slotUsed)
+  have usedMemberPrefix : usedRecord ∈ outputPrefix := by
+    rw [outputPrefixExact]
+    simp
+  have usedMemberRoot : usedRecord ∈
+      exactFixedRootRecords input.package.root := by
+    rw [outputRootExact]
+    simp [usedMemberPrefix]
+  obtain ⟨usedActor, usedInput, usedAnswer, usedRecordExact⟩ :=
+    exact_root_records_only_machine_fresh input usedRecord usedMemberRoot
+  subst usedRecord
+  let usedState := indexedStateAfterRecords transitionFuel controller
+    usedPrior initial
+  have alphaPreferred : alphaZeroPreferredSlot transitionFuel usedState =
+      some producer.block := by
+    simpa [controller, usedState] using usedPreferred
+  obtain ⟨selectedInput, earlierProducer, selectedInputExact,
+      earlierMember, selectedIsOutput, earlierBlock⟩ :=
+    alpha_zero_preferred_slot_has_producer transitionFuel usedState
+      producer.block alphaPreferred
+  have usedRootExact : exactFixedRootRecords input.package.root =
+      usedPrior ++
+        (.machineFresh usedActor usedInput usedAnswer : UnifiedExposureRecord) ::
+          (usedLater ++ outputRecord :: later) := by
+    rw [outputRootExact, outputPrefixExact]
+    simp only [List.cons_append, List.append_assoc]
+  have usedAligned : unifiedRecordAtAnswer transitionFuel usedState.cursor
+      usedAnswer =
+        (.machineFresh usedActor usedInput usedAnswer :
+          UnifiedExposureRecord) := by
+    have rootAligned := exact_root_records_aligned_for_alpha_zero_controller
+      input boundaryIndex usedPrior
+        (.machineFresh usedActor usedInput usedAnswer : UnifiedExposureRecord)
+        (usedLater ++ outputRecord :: later) usedRootExact
+    simpa [usedState, controller, initial, UnifiedExposureRecord.answer] using
+      rootAligned
+  have usedInputExact : unifiedInputBeforeAnswer? transitionFuel usedState.cursor =
+      some usedInput :=
+    aligned_machine_record_has_exact_input transitionFuel usedState.cursor
+      usedActor usedInput usedAnswer usedAligned
+  have selectedInputEq : selectedInput = usedInput := by
+    exact Option.some.inj (selectedInputExact.symm.trans usedInputExact)
+  have usedAfterBoundary : boundaryIndex < usedState.exposureIndex := by
+    by_contra notAfter
+    have usedIndex : usedState.exposureIndex = usedPrior.length := by
+      have count := indexed_state_after_records_exposure_index transitionFuel
+        controller usedPrior initial
+      simpa [usedState, initial, exactAlphaZeroInitialState] using count
+    have beforeOrAt : usedPrior.length ≤ boundaryIndex := by
+      rw [← usedIndex]
+      omega
+    have empty := alpha_zero_indexed_state_producers_empty_before_boundary
+      transitionFuel boundaryIndex usedPrior initial (by
+        simp [initial, exactAlphaZeroInitialState, inactiveAlphaZeroMemory]) (by
+          simpa [initial, exactAlphaZeroInitialState] using beforeOrAt)
+    rw [show usedState.memory.producers = [] by
+      simpa [usedState, controller] using empty] at earlierMember
+    simp at earlierMember
+  have growth : usedState.memory.producers <+: reached.memory.producers := by
+    let remainder :=
+      (.machineFresh usedActor usedInput usedAnswer : UnifiedExposureRecord) ::
+        usedLater
+    have prefixRewrite : outputPrefix = usedPrior ++ remainder := by
+      simpa [remainder] using outputPrefixExact
+    have raw := alpha_zero_indexed_state_producers_prefix_after_boundary
+      transitionFuel boundaryIndex remainder usedState usedAfterBoundary
+    simpa [reached, usedState, controller, initial, prefixRewrite,
+      indexed_state_after_records_append] using raw
+  have earlierReached : earlierProducer ∈ reached.memory.producers :=
+    growth.subset earlierMember
+  have producerReached : producer ∈ reached.memory.producers := by
+    obtain ⟨_before, installedMember⟩ :=
+      installed prior (between ++ outputRecord :: later) producerActor (by
+        simpa only [producerRecord, outputRecord, List.cons_append,
+          List.append_assoc] using recordsExact)
+    let afterProducer := indexedStateAfterRecords transitionFuel controller
+      (prior ++ [producerRecord]) initial
+    have rawGrowth := alpha_zero_indexed_state_producers_prefix_after_boundary
+      transitionFuel boundaryIndex between afterProducer (by
+        have count := indexed_state_after_records_exposure_index transitionFuel
+          controller (prior ++ [producerRecord]) initial
+        have indexExact : afterProducer.exposureIndex = prior.length + 1 := by
+          simpa [afterProducer, initial, exactAlphaZeroInitialState] using count
+        rw [indexExact]
+        omega)
+    have member := rawGrowth.subset (by
+      simpa [afterProducer] using installedMember)
+    simpa [reached, outputPrefix, afterProducer, controller, initial,
+      indexed_state_after_records_append] using member
+  have reachedInvariant : AlphaZeroMemoryProducerInvariant reached.memory := by
+    simpa [reached, controller, initial] using
+      exact_alpha_zero_prefix_producer_invariant input boundaryIndex
+        outputPrefix (outputRecord :: later) outputRootExact
+  have producerExact : earlierProducer = producer :=
+    alpha_zero_producer_eq_of_block_eq earlierProducer producer
+      reached.memory.producers reachedInvariant.blocksNodup earlierReached
+        producerReached earlierBlock
+  have sameInput : usedInput = gammaOutputInput producer.digest := by
+    rw [← producerExact, ← selectedInputEq]
+    simpa [gammaOutputInput] using selectedIsOutput
+  have prefixCollision : usedPrior = outputPrefix := by
+    apply alpha_mapped_nodup_selected_prefix_eq causalInput?
+      (exactFixedRootRecords input.package.root) usedPrior
+        (usedLater ++ outputRecord :: later) outputPrefix later
+      (.machineFresh usedActor usedInput usedAnswer : UnifiedExposureRecord)
+      outputRecord (exact_root_record_causal_inputs_nodup input) usedRootExact
+        outputRootExact
+    simp [outputRecord, causalInput?, sameInput]
+  rw [outputPrefixExact] at prefixCollision
+  have impossible := congrArg List.length prefixCollision
+  simp at impossible
+
+/-- At the literal accepted-root output coordinate, an installed producer's
+block is the alpha controller's pre-answer label.  This is the source-facing
+endpoint needed by the composed 517-slot router. -/
+theorem exact_alpha_installed_producer_output_has_preferred_slot
+    {HiddenTape TapeIdentity Observation Statement Payload Result : Type}
+    {parameters : ExactCompilerResourceParameters}
+    {transitionFuel : Nat}
+    {configuration : ExactPlainRomConfiguration HiddenTape TapeIdentity
+      Observation Statement Tag73K12ParsedProof Payload Result parameters}
+    {projection : AcceptedTapeProjection Statement Tag73K12ParsedProof Payload}
+    {fixedInstance : PublicInstance Statement}
+    {sample : ExactCompilerSample HiddenTape parameters}
+    (input : ExactK12OperationalInput transitionFuel configuration projection
+      fixedInstance sample)
+    (boundaryIndex : Nat) (producer : AlphaZeroProducer)
+    (output : Digest256)
+    (installed : ExactAlphaZeroProducerInstalled input boundaryIndex producer)
+    (ordered : ∃ before middle after,
+      exactRootFreshQueries input =
+        before ++ (producer.sourceInput, producer.digest) :: middle ++
+          (gammaOutputInput producer.digest, output) :: after) :
+    ∃ outputPrefix later outputActor,
+      exactFixedRootRecords input.package.root =
+        outputPrefix ++
+          (.machineFresh outputActor (gammaOutputInput producer.digest) output :
+            UnifiedExposureRecord) :: later ∧
+      alphaZeroPreferredSlot transitionFuel
+        (indexedStateAfterRecords transitionFuel
+          (alphaZeroCausalController transitionFuel boundaryIndex) outputPrefix
+          (exactAlphaZeroInitialState input)) = some producer.block := by
+  obtain ⟨prior, middle, later, producerActor, outputActor, recordsExact,
+      _afterBoundary, producerMember⟩ :=
+    exact_alpha_installed_producer_available_before_ordered_child input
+      boundaryIndex producer (gammaOutputInput producer.digest) output installed
+        ordered
+  let producerRecord : UnifiedExposureRecord :=
+    .machineFresh producerActor producer.sourceInput producer.digest
+  let outputRecord : UnifiedExposureRecord :=
+    .machineFresh outputActor (gammaOutputInput producer.digest) output
+  let outputPrefix := prior ++ producerRecord :: middle
+  have decomposition : exactFixedRootRecords input.package.root =
+      outputPrefix ++ outputRecord :: later := by
+    simpa only [outputPrefix, producerRecord, outputRecord, List.cons_append,
+      List.append_assoc] using recordsExact
+  let reached := indexedStateAfterRecords transitionFuel
+    (alphaZeroCausalController transitionFuel boundaryIndex) outputPrefix
+    (exactAlphaZeroInitialState input)
+  have aligned : unifiedRecordAtAnswer transitionFuel reached.cursor output =
+      outputRecord := by
+    have rootAligned := exact_root_records_aligned_for_alpha_zero_controller
+      input boundaryIndex outputPrefix outputRecord later decomposition
+    simpa [reached, UnifiedExposureRecord.answer] using rootAligned
+  have inputExact : unifiedInputBeforeAnswer? transitionFuel reached.cursor =
+      some (gammaOutputInput producer.digest) := by
+    exact aligned_machine_record_has_exact_input transitionFuel reached.cursor
+      outputActor (gammaOutputInput producer.digest) output aligned
+  have digestNodup :
+      (reached.memory.producers.map AlphaZeroProducer.digest).Nodup := by
+    simpa [reached] using
+      exact_alpha_zero_prefix_producer_digests_nodup input boundaryIndex
+        outputPrefix (outputRecord :: later) decomposition
+  have slotUnused : producer.block ∉ reached.memory.usedSlots := by
+    have exact := exact_alpha_installed_producer_output_slot_unused input
+      boundaryIndex producer output installed ordered prior middle later
+        producerActor outputActor recordsExact
+    simpa [reached, outputPrefix, producerRecord] using exact
+  have preferred : alphaZeroPreferredSlot transitionFuel reached =
+      some producer.block :=
+    alpha_zero_output_is_preferred_of_producer transitionFuel reached producer
+      (by simpa [gammaOutputInput] using inputExact) digestNodup producerMember
+        slotUnused
+  exact ⟨outputPrefix, later, outputActor, by
+    simpa [outputRecord] using decomposition, by simpa [reached] using preferred⟩
+
 /-- An exact advance child below an installed producer is itself installed at
 its unique accepted-root record. -/
 theorem exact_alpha_advance_installs_next_producer
@@ -771,9 +1063,12 @@ theorem exact_alpha_advance_installs_next_producer
 #print axioms alpha_zero_aligned_replay_producer_digests_nodup
 #print axioms exact_root_records_aligned_for_alpha_zero_controller
 #print axioms exact_alpha_zero_prefix_producer_digests_nodup
+#print axioms exact_alpha_zero_prefix_producer_invariant
 #print axioms exact_compiler_alpha_zero_boundary_installs_block_zero
 #print axioms exact_compiler_alpha_zero_initial_producer_installed
 #print axioms exact_alpha_installed_producer_available_before_ordered_child
+#print axioms exact_alpha_installed_producer_output_slot_unused
+#print axioms exact_alpha_installed_producer_output_has_preferred_slot
 #print axioms exact_alpha_advance_installs_next_producer
 
 end
