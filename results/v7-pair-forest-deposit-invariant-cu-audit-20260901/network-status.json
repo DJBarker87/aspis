@@ -1,0 +1,37 @@
+{
+  "schema": "aspis.v7.txv1-network-status-observation.v1",
+  "observedDate": "2026-09-01",
+  "canonicalSource": {
+    "url": "https://solana.com/upgrades/larger-transaction-sizes",
+    "publisher": "Solana Foundation",
+    "testnet": {
+      "active": true,
+      "status": "Live in Epoch 1025"
+    },
+    "devnet": {
+      "active": false,
+      "status": "Not activated"
+    },
+    "mainnet": {
+      "active": false,
+      "status": "Not activated",
+      "explicitActivationDate": null,
+      "scheduleStatus": "tentative Agave v4.2 rollout target only"
+    }
+  },
+  "secondarySource": {
+    "url": "https://github.com/anza-xyz/agave/wiki/Feature-Gate-Tracker-Schedule",
+    "publisher": "Anza",
+    "editedDate": "2026-09-01",
+    "status": "Pending Testnet Activation",
+    "minimumVersion": "Agave v4.2.2",
+    "assessment": "lags the Solana Foundation canonical live-status page"
+  },
+  "executionEvidence": {
+    "publicTestnetV7Executed": false,
+    "publicDevnetV7Executed": false,
+    "publicMainnetV7Executed": false,
+    "existingPublicDevnetEvidenceModified": false
+  },
+  "mainnetReady": false
+}

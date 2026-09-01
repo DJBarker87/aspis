@@ -1,0 +1,12 @@
+{
+  "jsonrpc": "2.0",
+  "result": {
+    "context": {
+      "apiVersion": "4.2.0",
+      "slot": 152
+    },
+    "value": null
+  },
+  "id": 21000,
+  "requestedAddress": "6VPYapRFQUEvcifPe9ZYayF3zYTeaGV6vbKBX7wjxRfq"
+}

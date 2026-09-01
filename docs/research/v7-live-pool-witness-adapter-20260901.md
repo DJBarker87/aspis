@@ -4,6 +4,16 @@
 
 **E — SECURITY OR PROTOCOL DEFECT FOUND**
 
+Post-classification update: the default-off
+`pair-forest-deposit-invariant-audit` feature at
+`74cc65d4f0da48ea8a49e833c0f35398195b3ec4` removes only the redundant
+deposit source-root reconstruction and successor re-encoding validation under
+the audited persisted-lane invariant. A continuous 256-deposit disposable run
+finalized through page rollover at no more than 643,854 CU; index 0 fell by
+472,127 CU and index 1 now lands at 594,743 CU. The feature is not promoted,
+so this document's production-path defect classification remains unchanged.
+See `v7-pair-forest-deposit-invariant-cu-audit-20260901.md`.
+
 The production-shaped transfer and withdrawal adapters pass focused offline
 tests. On a disposable Agave 4.2.0 cluster with TxV1 active at genesis, the
 live path then initialized a fresh eight-lane Pool, deposited a fresh note,

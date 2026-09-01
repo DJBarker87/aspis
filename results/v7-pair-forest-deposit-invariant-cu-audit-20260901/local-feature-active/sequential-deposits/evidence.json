@@ -1,0 +1,336 @@
+{
+  "schema": "aspis.v7.pair-forest-sequential-deposit-cu-audit.v1",
+  "repositoryRevision": "74cc65d4f0da48ea8a49e833c0f35398195b3ec4",
+  "classification": "DISPOSABLE FEATURE-ACTIVE DEPOSIT AUDIT",
+  "auditOnly": true,
+  "mainnetReady": false,
+  "feature": "pair-forest-deposit-invariant-audit",
+  "poolInitialized": {
+    "signature": "26W5cyStkxMkgEF9JHU28Tqh8qhuiuSMKMTJ57uoaydiGWydoRZv1oStNimWsrm1GyFNeBNdhu9ybwyxkVMvwWYk",
+    "slot": 151
+  },
+  "sequentialDeposits": 256,
+  "allFinalized": true,
+  "allPassed": true,
+  "simulationLandedCuExact": true,
+  "measuredSourceIndices": [
+    0,
+    1,
+    2,
+    3,
+    7,
+    15,
+    255
+  ],
+  "measurements": [
+    {
+      "sourceIndex": 0,
+      "successorIndex": 1,
+      "pageMode": "genesis",
+      "serializedTransactionBytes": 651,
+      "signedWireSha256": "bc5e1ac3ab4ba2e67a332fc64bec80f03287b36f06c59ed4749b65efebc16493",
+      "simulationSubmissionByteIdentical": true,
+      "signature": "5UiVU1qiU8Uy3xfmQemh637ADn3wcgYH9euGJFSsyZzKkmPbQsickfzggk5MEZWCdxZRhKkVR4mfDusYAEpjP1Hy",
+      "finalizedSlot": 184,
+      "simulatedCu": 640272,
+      "landedCu": 640272,
+      "accountHashes": {
+        "lane": {
+          "before": "8150fb7a160e065742acae8c3970840c0d6839a66377ff6402524d8db217270c",
+          "after": "f1f3be77b934da56dffac8b2c5e69747684bd42adbb713e978f1135604301d4f"
+        },
+        "currentPage": {
+          "before": "38e0b9de817f645c4bec37c0d4a3e58baecccb040f5718dc069a72c7385a0bed",
+          "after": "6798327d942b2938801f235e5ea40cf420ee38b0a90369a674531678951a612a"
+        },
+        "successorPage": {
+          "before": "38e0b9de817f645c4bec37c0d4a3e58baecccb040f5718dc069a72c7385a0bed",
+          "after": "6798327d942b2938801f235e5ea40cf420ee38b0a90369a674531678951a612a"
+        },
+        "source": {
+          "before": "4bdaf2b624feb824031808e3d4f25c091637594ba377b7361a7dec4d69743a00",
+          "after": "190fd794df2fd8cf1249f03174dfd0e85545cc2071bd1065b828b3e9f00e0fa0"
+        },
+        "vault": {
+          "before": "e7d146130aa15fa00ce6430baeee3a8fd31083852a482170455ed1a2e33fd9a1",
+          "after": "768290f416c8e92a6300a7611f7316435b3085a08b4d7be8237fdf6dee5a339d"
+        }
+      },
+      "custody": {
+        "sourceBefore": 256000,
+        "sourceAfter": 255000,
+        "vaultBefore": 0,
+        "vaultAfter": 1000
+      },
+      "finalized": true,
+      "pass": true
+    },
+    {
+      "sourceIndex": 1,
+      "successorIndex": 2,
+      "pageMode": "same-page",
+      "serializedTransactionBytes": 617,
+      "signedWireSha256": "1eab757ddd9c4830fff3c33cf5dfe68a25fc1d119f0fe57781baad1a2ca47cea",
+      "simulationSubmissionByteIdentical": true,
+      "signature": "3KCVJxuLerVP1rBhKv5NtGSGJYC8H9XoXE8zurzj9KKkACG4hrA6VutKouDfKxd5mCbmxdZRbNqwZYgJjVqXBctQ",
+      "finalizedSlot": 216,
+      "simulatedCu": 594743,
+      "landedCu": 594743,
+      "accountHashes": {
+        "lane": {
+          "before": "f1f3be77b934da56dffac8b2c5e69747684bd42adbb713e978f1135604301d4f",
+          "after": "6c4cd8174f15638e926911a9d438a12496d863805beff6e4ea45b14dd9738a11"
+        },
+        "currentPage": {
+          "before": "6798327d942b2938801f235e5ea40cf420ee38b0a90369a674531678951a612a",
+          "after": "348ef4832101bea5ea4f78c4245350d07564a1f4b4b77d4a1c00c9f918fb5797"
+        },
+        "successorPage": {
+          "before": "6798327d942b2938801f235e5ea40cf420ee38b0a90369a674531678951a612a",
+          "after": "348ef4832101bea5ea4f78c4245350d07564a1f4b4b77d4a1c00c9f918fb5797"
+        },
+        "source": {
+          "before": "190fd794df2fd8cf1249f03174dfd0e85545cc2071bd1065b828b3e9f00e0fa0",
+          "after": "72e3f1a19b974fbdba174640ecba7e0c28e784b4dd86046a6d9b0b0753746572"
+        },
+        "vault": {
+          "before": "768290f416c8e92a6300a7611f7316435b3085a08b4d7be8237fdf6dee5a339d",
+          "after": "982c529a2ec48c81c09e7a91435d57b5c8987b3699a5ed3f0386dbea38200b64"
+        }
+      },
+      "custody": {
+        "sourceBefore": 255000,
+        "sourceAfter": 254000,
+        "vaultBefore": 1000,
+        "vaultAfter": 2000
+      },
+      "finalized": true,
+      "pass": true
+    },
+    {
+      "sourceIndex": 2,
+      "successorIndex": 3,
+      "pageMode": "same-page",
+      "serializedTransactionBytes": 617,
+      "signedWireSha256": "7836edc3ea36f75d3085282d9026ded3145f7274199f689fc932630454d5f35a",
+      "simulationSubmissionByteIdentical": true,
+      "signature": "3xJ7d22XYGP4sgZ46auyyZFotwHPYaMoDBrVe56b9TPze6MJcXwAkkkRwu2o94TpF5kNsFw16R5wxG8xf4MJYUAF",
+      "finalizedSlot": 249,
+      "simulatedCu": 594683,
+      "landedCu": 594683,
+      "accountHashes": {
+        "lane": {
+          "before": "6c4cd8174f15638e926911a9d438a12496d863805beff6e4ea45b14dd9738a11",
+          "after": "90d60aa42fea2c45efb101a8700ec8be896195403a9005e294149af3018021a2"
+        },
+        "currentPage": {
+          "before": "348ef4832101bea5ea4f78c4245350d07564a1f4b4b77d4a1c00c9f918fb5797",
+          "after": "d60212f98c17379963138b64c3c9ec73003f8de41ed05bd4cfb6685c7b0011f5"
+        },
+        "successorPage": {
+          "before": "348ef4832101bea5ea4f78c4245350d07564a1f4b4b77d4a1c00c9f918fb5797",
+          "after": "d60212f98c17379963138b64c3c9ec73003f8de41ed05bd4cfb6685c7b0011f5"
+        },
+        "source": {
+          "before": "72e3f1a19b974fbdba174640ecba7e0c28e784b4dd86046a6d9b0b0753746572",
+          "after": "1e84e2a3036a13dffb829acea06750eae49f710ea0779496eda161fd40951fb1"
+        },
+        "vault": {
+          "before": "982c529a2ec48c81c09e7a91435d57b5c8987b3699a5ed3f0386dbea38200b64",
+          "after": "77bbeaa356df2a2b172b864dca669e71d2af7568af174606a5f5479fa3b9f696"
+        }
+      },
+      "custody": {
+        "sourceBefore": 254000,
+        "sourceAfter": 253000,
+        "vaultBefore": 2000,
+        "vaultAfter": 3000
+      },
+      "finalized": true,
+      "pass": true
+    },
+    {
+      "sourceIndex": 3,
+      "successorIndex": 4,
+      "pageMode": "same-page",
+      "serializedTransactionBytes": 617,
+      "signedWireSha256": "b8332304b7b1dc3171a50c4e51e963ebfc3b84f1bb9b8f20fd4a37308f6bf6d8",
+      "simulationSubmissionByteIdentical": true,
+      "signature": "3gSg7sfDPAbCC557mhXB1ZFGwBF4LHQdyDtxDrjVYP8tLo9hivdEFoyNFtJk6BGSsS5cJtWj2GHXgVowMegRhTJm",
+      "finalizedSlot": 282,
+      "simulatedCu": 594776,
+      "landedCu": 594776,
+      "accountHashes": {
+        "lane": {
+          "before": "90d60aa42fea2c45efb101a8700ec8be896195403a9005e294149af3018021a2",
+          "after": "387f5cddc43bbd692d8d4536f4b015d515ef71866cf1a1b733aaa5c1b9047f07"
+        },
+        "currentPage": {
+          "before": "d60212f98c17379963138b64c3c9ec73003f8de41ed05bd4cfb6685c7b0011f5",
+          "after": "2ccad31f5862dd40be06ff0a49965efcb2b74b6b000926012aa95a6e7f72daa4"
+        },
+        "successorPage": {
+          "before": "d60212f98c17379963138b64c3c9ec73003f8de41ed05bd4cfb6685c7b0011f5",
+          "after": "2ccad31f5862dd40be06ff0a49965efcb2b74b6b000926012aa95a6e7f72daa4"
+        },
+        "source": {
+          "before": "1e84e2a3036a13dffb829acea06750eae49f710ea0779496eda161fd40951fb1",
+          "after": "20c122d8b8e571d2239e3c103145028a263077988183942721a27cb4fa030124"
+        },
+        "vault": {
+          "before": "77bbeaa356df2a2b172b864dca669e71d2af7568af174606a5f5479fa3b9f696",
+          "after": "c6f649fbd009742026888b8bbcebf3732b35105ff2f47923e02f5df70ea75e04"
+        }
+      },
+      "custody": {
+        "sourceBefore": 253000,
+        "sourceAfter": 252000,
+        "vaultBefore": 3000,
+        "vaultAfter": 4000
+      },
+      "finalized": true,
+      "pass": true
+    },
+    {
+      "sourceIndex": 7,
+      "successorIndex": 8,
+      "pageMode": "same-page",
+      "serializedTransactionBytes": 617,
+      "signedWireSha256": "f62e6590013a746bf3941560adf9fd46ad80a775f54f1269a844a3f84d2f6316",
+      "simulationSubmissionByteIdentical": true,
+      "signature": "sEZfvLFitPeGvgPFxPnTsfCKSoBeZ3YS7He9SvguMtewfEoVwvjNvfoVqpfA6E1XEzdU2jeBn3gYWwNPDqeYzJ4",
+      "finalizedSlot": 412,
+      "simulatedCu": 594730,
+      "landedCu": 594730,
+      "accountHashes": {
+        "lane": {
+          "before": "fd805c307c8286a515a62329d0c254df473ffbe3f406de93baca166a6ef363fd",
+          "after": "c25146019d3e2aac302481431a053f34b7aaf9612e75c1663422c2971405a095"
+        },
+        "currentPage": {
+          "before": "056c4e5c15095c13a483cb37272bbb777a602942e7b1e02ab5bcc734559b6787",
+          "after": "66a2550de2b94de1b5a5b7f21516006d4c6f432f431de95f28f6b6b5f2f45224"
+        },
+        "successorPage": {
+          "before": "056c4e5c15095c13a483cb37272bbb777a602942e7b1e02ab5bcc734559b6787",
+          "after": "66a2550de2b94de1b5a5b7f21516006d4c6f432f431de95f28f6b6b5f2f45224"
+        },
+        "source": {
+          "before": "cb45adccd1e851574f73db9a810c8a3ef32564bf6bf56cce82ad346eefe54d18",
+          "after": "69a40680f3c5185a6822c7a4c03922bb0a2b2741cabeb238d002b37396a06e71"
+        },
+        "vault": {
+          "before": "b63435d69a47ce67885ab263ea5c256a609bc7d241d93ff1008082d731a4e7f0",
+          "after": "d5ee1935a9b67df85028d649bd901e074648654d89ade31e0eb87a4edb3741a8"
+        }
+      },
+      "custody": {
+        "sourceBefore": 249000,
+        "sourceAfter": 248000,
+        "vaultBefore": 7000,
+        "vaultAfter": 8000
+      },
+      "finalized": true,
+      "pass": true
+    },
+    {
+      "sourceIndex": 15,
+      "successorIndex": 16,
+      "pageMode": "same-page",
+      "serializedTransactionBytes": 617,
+      "signedWireSha256": "839bdb10fa4ebf79d82a0d13db497827bb167f3000ebe023ebfb772a8c063daa",
+      "simulationSubmissionByteIdentical": true,
+      "signature": "4ZcyBpNDKycTF5xjkhB1ndzjo6RyE1KToVoHLENjoYWAmqqBG4TENm913fRjEmvzbdJvMd1rXQY8Ain2B5u9S1AV",
+      "finalizedSlot": 674,
+      "simulatedCu": 594714,
+      "landedCu": 594714,
+      "accountHashes": {
+        "lane": {
+          "before": "1b7ec91f272b7360cec2d78c722aacf074d31a94ef450a19f73aa8d78212ae90",
+          "after": "c1747f9801a47a429a86adbad818710d3134c81b2655b67974aae430513372cc"
+        },
+        "currentPage": {
+          "before": "997659dd481b5e673671e51c29bc76b100a274ed38f4e6af541f1f6c31f3d766",
+          "after": "196fd0a07adab8f10952af0ce0d614fc13118b7a7ce53655926c4c0bd458c5a5"
+        },
+        "successorPage": {
+          "before": "997659dd481b5e673671e51c29bc76b100a274ed38f4e6af541f1f6c31f3d766",
+          "after": "196fd0a07adab8f10952af0ce0d614fc13118b7a7ce53655926c4c0bd458c5a5"
+        },
+        "source": {
+          "before": "59da1c278a4ec4a046ad534ed1022dedbca692a464b9f36cd2f7ec3a6603c5c9",
+          "after": "12a377986878babdf8df3bbdd268015af2a294bafd0a65b3953ef136b375b3fd"
+        },
+        "vault": {
+          "before": "60e4fb2fd8b7c7a5e4ff94bf8bbeb16f31aa84fa9bed22aea231aa4a215edfc3",
+          "after": "97387be41a76ccdbe20a74f611208113777186abada16dcbd6946a27f74c3263"
+        }
+      },
+      "custody": {
+        "sourceBefore": 241000,
+        "sourceAfter": 240000,
+        "vaultBefore": 15000,
+        "vaultAfter": 16000
+      },
+      "finalized": true,
+      "pass": true
+    },
+    {
+      "sourceIndex": 255,
+      "successorIndex": 256,
+      "pageMode": "rollover",
+      "serializedTransactionBytes": 684,
+      "signedWireSha256": "62da75578ed733f06fa8a2b758bb7b2f39dafda83e7801c6b1cf36e76b2041fc",
+      "simulationSubmissionByteIdentical": true,
+      "signature": "5uNnV7sNVTWDrKV7JQDK6s4pko5sAmNwn3dmoAisS7sKMyxeJ2CqzEC6njFaNn9zPnQEeCUWTv66z8DVroA4EPvT",
+      "finalizedSlot": 8531,
+      "simulatedCu": 643854,
+      "landedCu": 643854,
+      "accountHashes": {
+        "lane": {
+          "before": "be3cf8b15844e3058eb67a88fe6ab9b73aa4820058be5bf0c13dd27c82334529",
+          "after": "fb4c89fb0473caadba85df59f3791197a5e47c52e30020a5d2c3e70a741507a7"
+        },
+        "currentPage": {
+          "before": "6e97b0ae8f58de9a6100df5312c3ee3cfc7d0f93854d1f239697eee48ebee5db",
+          "after": "6e97b0ae8f58de9a6100df5312c3ee3cfc7d0f93854d1f239697eee48ebee5db"
+        },
+        "successorPage": {
+          "before": "38e0b9de817f645c4bec37c0d4a3e58baecccb040f5718dc069a72c7385a0bed",
+          "after": "86e3e42769c7fc660981bb16ac1f1942b7ef72da67c8fe0cf6a6af1cce6a4b4c"
+        },
+        "source": {
+          "before": "9e4bcc03f38095645543370a89f006ca795eb0e8bf2b624c8b75c42d7e7e67c5",
+          "after": "b1e153492a7b0c7f52fa1d4b3cd7a017be6c64cd6cd4c370babf5edf8f452d6f"
+        },
+        "vault": {
+          "before": "ba25487a72a00063a19bd17a37776d13c412dae1a95089d9989ba5b929e019d7",
+          "after": "e5486b9cb73376ef49bfa6b72a3ab7c0c67c851519e06340636bdf760a4b8ea7"
+        }
+      },
+      "custody": {
+        "sourceBefore": 1000,
+        "sourceAfter": 0,
+        "vaultBefore": 255000,
+        "vaultAfter": 256000
+      },
+      "finalized": true,
+      "pass": true
+    }
+  ],
+  "maximumLandedCu": 643854,
+  "maximumSerializedBytes": 684,
+  "custody": {
+    "sourceInitial": 256000,
+    "sourceFinal": 0,
+    "vaultInitial": 0,
+    "vaultFinal": 256000,
+    "conserved": true
+  },
+  "selectedLane": 0,
+  "nonSelectedLanesUnchanged": true,
+  "pageRolloverFinalized": true,
+  "publicTestnetExecution": false,
+  "publicDevnetExecution": false,
+  "publicMainnetExecution": false
+}
