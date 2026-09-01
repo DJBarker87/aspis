@@ -36,6 +36,8 @@ open AspisK1.V7Tag73ExactSourceAcceptanceModel
 open AspisK1.V7Tag73ExactFixedOperationalStateMap
 open AspisK1.V7Tag73CurrentSourceDecodeBridge
 open AspisK1.V7Tag73ExactFixedK12MerkleClassifier
+open AspisK1.V7Tag73OperationalSemanticReplay
+open AspisK1.V7Tag73SemanticRoundReplay
 open AspisK1.V7Tag73ParsedK13K14Classifier
 open AspisK1.V7Tag73RestoredNodeK13Classifier
 open AspisK1.V7Tag73RestoredDerivedK13View
@@ -292,6 +294,56 @@ theorem exact_restored_operational_k13_view_is_intrinsic
   exact restored_operational_k13_view_unique
     (input.stateMap.everyNodeChallengeRecordUniqueness node member).1
     left right
+
+/-- On the literal accepted root, every admissible restored K1.3 provider is
+forced to use the gamma and alpha-zero bytes—and therefore the exact field
+values—decoded by the deployed checked transcript.  No provider-selected
+challenge equality remains at the root interface. -/
+theorem exact_restored_root_operational_data_challenges_are_source_exact
+    {HiddenTape TapeIdentity Observation Statement Payload Result : Type}
+    {parameters : ExactCompilerResourceParameters}
+    {transitionFuel : Nat}
+    {configuration : ExactPlainRomConfiguration HiddenTape TapeIdentity
+      Observation Statement Tag73K12ParsedProof Payload Result parameters}
+    {projection : AcceptedTapeProjection Statement Tag73K12ParsedProof Payload}
+    {fixedInstance : PublicInstance Statement}
+    {sample : ExactCompilerSample HiddenTape parameters}
+    (input : ExactK12OperationalInput transitionFuel configuration projection
+      fixedInstance sample)
+    (data : RestoredOperationalK13Data configuration.machine.environment
+      input.package.root.fixedRoot.base.runtime.node) :
+    data.gammaBytes =
+        (exactOperationalTape input).messages.challengeValue .gamma ∧
+      data.gamma = exactChallengeValue
+        (exactOperationalTape input).messages.challengeValue .gamma ∧
+      data.alphaZeroBytes =
+        (exactOperationalTape input).messages.challengeValue
+          (ChallengeId.alpha 0) ∧
+      data.alphaZero = exactChallengeValue
+        (exactOperationalTape input).messages.challengeValue
+          (ChallengeId.alpha 0) := by
+  have gammaBytes := exact_operational_root_gamma_record_unique input
+    data.gammaBytes data.gammaRecorded
+  have alphaZeroBytes := exact_operational_root_alpha_zero_record_unique input
+    data.alphaZeroBytes data.alphaZeroRecorded
+  have gammaDecoded :
+      decodeTagQM31ExactLE
+          ((exactOperationalTape input).messages.challengeValue .gamma) =
+        some data.gamma := by
+    simpa [gammaBytes] using data.gammaDecoded
+  have alphaZeroDecoded :
+      decodeTagQM31ExactLE
+          ((exactOperationalTape input).messages.challengeValue
+            (ChallengeId.alpha 0)) = some data.alphaZero := by
+    simpa [alphaZeroBytes] using data.alphaZeroDecoded
+  have gammaValue : data.gamma = exactChallengeValue
+      (exactOperationalTape input).messages.challengeValue .gamma := by
+    simp [exactChallengeValue, gammaDecoded]
+  have alphaZeroValue : data.alphaZero = exactChallengeValue
+      (exactOperationalTape input).messages.challengeValue
+        (ChallengeId.alpha 0) := by
+    simp [exactChallengeValue, alphaZeroDecoded]
+  exact ⟨gammaBytes, gammaValue, alphaZeroBytes, alphaZeroValue⟩
 
 /-- Successful restoration-wide K1.3 classification chooses one literal
 accepting node from the returned accumulator and retains its exact corrected
@@ -576,6 +628,8 @@ theorem exact_restored_operational_k13_certificate_has_literal_node
 #print axioms exact_restored_operational_k13_provider_of_source
 #print axioms exact_restored_operational_k13_provider
 #print axioms exact_restored_operational_k13_view_is_intrinsic
+#print axioms
+  exact_restored_root_operational_data_challenges_are_source_exact
 #print axioms exact_restored_operational_k13_error_exposes_done_failure
 #print axioms
   classify_restored_operational_k13_k13_error_has_k12_certificate

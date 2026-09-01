@@ -28,6 +28,8 @@ open AspisK1.V7Tag73AcceptedSemanticExecution
 open AspisK1.V7Tag73FixedFieldMessageBridge
 open AspisK1.V7Tag73SemanticRoundReplay
 open AspisK1.V7Tag73RawProverMessages
+open AspisK1.V7Tag73FutureFreeFullControl
+open AspisK1.V7Tag73ChallengeRecordUniquenessInvariant
 open AspisK1.V7Tag73ExactCompilerResources
 open AspisK1.V7Tag73ExactPlainRomRun
 open AspisK1.V7Tag73ExactSourceAcceptanceModel
@@ -76,6 +78,92 @@ def exactOperationalTable
     (input : ExactK12OperationalInput transitionFuel configuration projection
       fixedInstance sample) : FixedOracleTable :=
   fixedTableOfOracleState (exactK12Runtime input).verifierFinalOracle
+
+/-- The operational K1.2/K1.3 input retains the exact gamma bytes decoded by
+the literal checked Tag-73 run.  This is a theorem about the scheduler-owned
+ledger, not a challenge value supplied by a later extraction interface. -/
+theorem exact_operational_root_gamma_record_exact
+    {HiddenTape TapeIdentity Observation Statement Payload Result : Type}
+    {parameters : ExactCompilerResourceParameters}
+    {transitionFuel : Nat}
+    {configuration : ExactPlainRomConfiguration HiddenTape TapeIdentity
+      Observation Statement Tag73K12ParsedProof Payload Result parameters}
+    {projection : AcceptedTapeProjection Statement Tag73K12ParsedProof Payload}
+    {fixedInstance : PublicInstance Statement}
+    {sample : ExactCompilerSample HiddenTape parameters}
+    (input : ExactK12OperationalInput transitionFuel configuration projection
+      fixedInstance sample) :
+    DecodedChallenge.mk .gamma
+      ((exactOperationalTape input).messages.challengeValue .gamma) ∈
+      (exactK12Runtime input).verifierFinalState.current.decodedChallenges := by
+  exact input.package.root.fixedRoot.base.gammaRecordExact
+
+/-- The same operational input retains the exact alpha-zero bytes used by the
+deployed q16 schedule. -/
+theorem exact_operational_root_alpha_zero_record_exact
+    {HiddenTape TapeIdentity Observation Statement Payload Result : Type}
+    {parameters : ExactCompilerResourceParameters}
+    {transitionFuel : Nat}
+    {configuration : ExactPlainRomConfiguration HiddenTape TapeIdentity
+      Observation Statement Tag73K12ParsedProof Payload Result parameters}
+    {projection : AcceptedTapeProjection Statement Tag73K12ParsedProof Payload}
+    {fixedInstance : PublicInstance Statement}
+    {sample : ExactCompilerSample HiddenTape parameters}
+    (input : ExactK12OperationalInput transitionFuel configuration projection
+      fixedInstance sample) :
+    DecodedChallenge.mk (ChallengeId.alpha 0)
+      ((exactOperationalTape input).messages.challengeValue
+        (ChallengeId.alpha 0)) ∈
+      (exactK12Runtime input).verifierFinalState.current.decodedChallenges := by
+  exact input.package.root.fixedRoot.base.alphaZeroRecordExact
+
+/-- No alternate gamma bytes can inhabit the same accepted operational root.
+This removes a later provider choice: any extracted gamma record is forced to
+be the literal value decoded by the deployed checked run. -/
+theorem exact_operational_root_gamma_record_unique
+    {HiddenTape TapeIdentity Observation Statement Payload Result : Type}
+    {parameters : ExactCompilerResourceParameters}
+    {transitionFuel : Nat}
+    {configuration : ExactPlainRomConfiguration HiddenTape TapeIdentity
+      Observation Statement Tag73K12ParsedProof Payload Result parameters}
+    {projection : AcceptedTapeProjection Statement Tag73K12ParsedProof Payload}
+    {fixedInstance : PublicInstance Statement}
+    {sample : ExactCompilerSample HiddenTape parameters}
+    (input : ExactK12OperationalInput transitionFuel configuration projection
+      fixedInstance sample)
+    (value : Qm31Bytes)
+    (member : DecodedChallenge.mk .gamma value ∈
+      (exactK12Runtime input).verifierFinalState.current.decodedChallenges) :
+    value = (exactOperationalTape input).messages.challengeValue .gamma := by
+  exact decoded_challenge_value_unique
+    (exact_fixed_package_root_challenge_record_uniqueness input.package).1
+    .gamma value
+    ((exactOperationalTape input).messages.challengeValue .gamma) member
+    (exact_operational_root_gamma_record_exact input)
+
+/-- Alpha zero is equally intrinsic to the accepted root ledger. -/
+theorem exact_operational_root_alpha_zero_record_unique
+    {HiddenTape TapeIdentity Observation Statement Payload Result : Type}
+    {parameters : ExactCompilerResourceParameters}
+    {transitionFuel : Nat}
+    {configuration : ExactPlainRomConfiguration HiddenTape TapeIdentity
+      Observation Statement Tag73K12ParsedProof Payload Result parameters}
+    {projection : AcceptedTapeProjection Statement Tag73K12ParsedProof Payload}
+    {fixedInstance : PublicInstance Statement}
+    {sample : ExactCompilerSample HiddenTape parameters}
+    (input : ExactK12OperationalInput transitionFuel configuration projection
+      fixedInstance sample)
+    (value : Qm31Bytes)
+    (member : DecodedChallenge.mk (ChallengeId.alpha 0) value ∈
+      (exactK12Runtime input).verifierFinalState.current.decodedChallenges) :
+    value = (exactOperationalTape input).messages.challengeValue
+      (ChallengeId.alpha 0) := by
+  exact decoded_challenge_value_unique
+    (exact_fixed_package_root_challenge_record_uniqueness input.package).1
+    (ChallengeId.alpha 0) value
+    ((exactOperationalTape input).messages.challengeValue
+      (ChallengeId.alpha 0)) member
+    (exact_operational_root_alpha_zero_record_exact input)
 
 /-- The strict checked refinement stored in the actual operational input
 constructs the complete work-erased evaluator run used by semantic replay. -/
@@ -322,6 +410,10 @@ theorem exact_operational_input_constructs_post_eta_nonzero_challenges
       finalDecoded⟩
 
 #print axioms exact_operational_input_constructs_complete_evaluator
+#print axioms exact_operational_root_gamma_record_exact
+#print axioms exact_operational_root_alpha_zero_record_exact
+#print axioms exact_operational_root_gamma_record_unique
+#print axioms exact_operational_root_alpha_zero_record_unique
 #print axioms exact_operational_input_final_samples_decode
 #print axioms exact_operational_input_constructs_compact_semantic_replay
 #print axioms challenge_record_in_work_erased_final_of_event_mem
