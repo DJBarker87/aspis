@@ -72,14 +72,14 @@ fn signed_request(
         "signature": signature,
         "simulationRequest": {
             "jsonrpc": "2.0", "id": request_id, "method": "simulateTransaction",
-            "params": [wire_base64, {"encoding":"base64", "commitment":"finalized",
+            "params": [wire_base64, {"encoding":"base64", "commitment":"confirmed",
                 "sigVerify":true, "replaceRecentBlockhash":false,
                 "minContextSlot":min_context_slot}]
         },
         "sendRequest": {
             "jsonrpc": "2.0", "id": request_id + 100_000, "method": "sendTransaction",
             "params": [wire_base64, {"encoding":"base64", "skipPreflight":true,
-                "preflightCommitment":"finalized", "minContextSlot":min_context_slot}]
+                "preflightCommitment":"confirmed", "minContextSlot":min_context_slot}]
         }
     }))
 }
