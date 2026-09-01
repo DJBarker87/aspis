@@ -1,0 +1,86 @@
+Started aspis-v7-literal-six-account-helper-aeneas-r1.service - /bin/bash -lc "set -euo pipefail; exec /usr/bin/time -v /home/dombarker/project-offloads/aspis-v7-aeneas-source-unblock-20260830/repro-toolchain/aeneas-d860ac47-tag73-looparity-r1 -sequential -no-progress-bar -abort-on-error -backend lean -namespace V7LiteralCallerExactSixAccountRefsCurrent309bR1 -dest '/home/dombarker/project-offloads/aspis-v7-literal-caller-unblock-20260901.UVlTOZ/generated/current309b-exact-six-account-helper-r1' -subdir V7LiteralCallerExactSixAccountRefsCurrent309bR1 -split-files -emit-json '/home/dombarker/project-offloads/aspis-v7-literal-caller-unblock-20260901.UVlTOZ/extraction/V7LiteralCallerExactSixAccountRefsCurrent309bR1.llbc'".
+[[92mInfo[39m ] Imported: /home/dombarker/project-offloads/aspis-v7-literal-caller-unblock-20260901.UVlTOZ/extraction/V7LiteralCallerExactSixAccountRefsCurrent309bR1.llbc
+[[91mError[39m] Inconsistent projection:
+- pe: Generated_Expressions.PtrMetadata
+- v:
+(Values.VBorrow (Values.VSharedBorrow (0, 0)))
+- ty:
+(Generated_Types.TRef (Generated_Types.RErased,
+   (Generated_Types.TSlice
+      (Generated_Types.TAdt
+         { Generated_Types.id = (Generated_Types.TAdtId 0);
+           generics =
+           { Generated_Types.regions = [Generated_Types.RErased]; types = [];
+             const_generics = []; trait_refs = [] }
+           })),
+   Generated_Types.RShared))
+Source: 'programs/aspis-verifier/src/v7_pair_forest_dispatch.rs', lines 424:8-424:106
+Compiler source: interp/InterpPaths.ml, line 236
+Uncaught exception:
+  
+  (Failure
+    "Inconsistent projection:\
+   \n- pe: Generated_Expressions.PtrMetadata\
+   \n- v:\
+   \n(Values.VBorrow (Values.VSharedBorrow (0, 0)))\
+   \n- ty:\
+   \n(Generated_Types.TRef (Generated_Types.RErased,\
+   \n   (Generated_Types.TSlice\
+   \n      (Generated_Types.TAdt\
+   \n         { Generated_Types.id = (Generated_Types.TAdtId 0);\
+   \n           generics =\
+   \n           { Generated_Types.regions = [Generated_Types.RErased]; types = [];\
+   \n             const_generics = []; trait_refs = [] }\
+   \n           })),\
+   \n   Generated_Types.RShared))\
+   \nSource: 'programs/aspis-verifier/src/v7_pair_forest_dispatch.rs', lines 424:8-424:106\
+   \nCompiler source: interp/InterpPaths.ml, line 236")
+Raised at Aeneas__Errors.craise_opt_span in file "Errors.ml", line 120, characters 4-23
+Called from Aeneas__InterpPaths.access_place in file "interp/InterpPaths.ml", line 274, characters 16-56
+Called from Aeneas__InterpPaths.access_update_place in file "interp/InterpPaths.ml", line 299, characters 8-41
+Called from Aeneas__InterpPaths.try_read_place in file "interp/InterpPaths.ml", line 344, characters 8-52
+Called from Aeneas__InterpPaths.update_ctx_along_read_place.(fun) in file "interp/InterpPaths.ml", line 476, characters 8-40
+Called from Aeneas__InterpExpressions.access_rplace_reorganize_and_read in file "interp/InterpExpressions.ml", line 70, characters 16-68
+Called from Aeneas__InterpExpressions.access_rplace_reorganize.(fun) in file "interp/InterpExpressions.ml", line 121, characters 6-78
+Called from Aeneas__InterpExpressions.eval_operand in file "interp/InterpExpressions.ml", line 619, characters 16-66
+Called from Aeneas__InterpExpressions.eval_rvalue_not_global in file "interp/InterpExpressions.ml", line 1496, characters 34-67
+Called from Aeneas__InterpStatements.eval_statement_raw.(fun) in file "interp/InterpStatements.ml", line 922, characters 27-75
+Called from Aeneas__InterpStatements.eval_statement.(fun) in file "interp/InterpStatements.ml", line 866, characters 10-44
+Called from Aeneas__InterpStatements.eval_statement_list.(fun) in file "interp/InterpStatements.ml", line 875, characters 29-57
+Called from Aeneas__InterpStatements.eval_function_body.(fun) in file "interp/InterpStatements.ml", line 1842, characters 26-52
+Called from Aeneas__Interp.evaluate_function_symbolic in file "interp/Interp.ml", line 605, characters 25-64
+Called from Aeneas__Translate.translate_function_to_symbolics in file "Translate.ml", line 35, characters 8-71
+Called from Aeneas__Translate.translate_function_to_pure_aux in file "Translate.ml", line 132, characters 4-61
+Called from Aeneas__Translate.translate_function_to_pure in file "Translate.ml", lines 288-289, characters 6-41
+Called from Aeneas__Translate.translate_crate_to_pure.process.(fun) in file "Translate.ml", lines 501-502, characters 16-45
+Called from Stdlib__List.filter_map in file "list.ml", line 280, characters 12-15
+Called from Aeneas__Parallel.catch_reraise in file "Parallel.ml", line 17, characters 6-9
+Called from Aeneas__Translate.translate_crate_to_pure in file "Translate.ml", line 519, characters 22-62
+Called from Aeneas__Translate.translate_crate in file "Translate.ml", line 2199, characters 31-71
+Called from Dune__exe__Main in file "Main.ml", lines 743-744, characters 8-37
+Command exited with non-zero status 2
+	Command being timed: "/home/dombarker/project-offloads/aspis-v7-aeneas-source-unblock-20260830/repro-toolchain/aeneas-d860ac47-tag73-looparity-r1 -sequential -no-progress-bar -abort-on-error -backend lean -namespace V7LiteralCallerExactSixAccountRefsCurrent309bR1 -dest /home/dombarker/project-offloads/aspis-v7-literal-caller-unblock-20260901.UVlTOZ/generated/current309b-exact-six-account-helper-r1 -subdir V7LiteralCallerExactSixAccountRefsCurrent309bR1 -split-files -emit-json /home/dombarker/project-offloads/aspis-v7-literal-caller-unblock-20260901.UVlTOZ/extraction/V7LiteralCallerExactSixAccountRefsCurrent309bR1.llbc"
+	User time (seconds): 0.15
+	System time (seconds): 0.01
+	Percent of CPU this job got: 99%
+	Elapsed (wall clock) time (h:mm:ss or m:ss): 0:00.16
+	Average shared text size (kbytes): 0
+	Average unshared data size (kbytes): 0
+	Average stack size (kbytes): 0
+	Average total size (kbytes): 0
+	Maximum resident set size (kbytes): 53328
+	Average resident set size (kbytes): 0
+	Major (requiring I/O) page faults: 0
+	Minor (reclaiming a frame) page faults: 7740
+	Voluntary context switches: 1
+	Involuntary context switches: 5
+	Swaps: 0
+	File system inputs: 0
+	File system outputs: 0
+	Socket messages sent: 0
+	Socket messages received: 0
+	Signals delivered: 0
+	Page size (bytes): 4096
+	Exit status: 2
+aspis-v7-literal-six-account-helper-aeneas-r1.service: Main process exited, code=exited, status=2/INVALIDARGUMENT
+aspis-v7-literal-six-account-helper-aeneas-r1.service: Failed with result 'exit-code'.

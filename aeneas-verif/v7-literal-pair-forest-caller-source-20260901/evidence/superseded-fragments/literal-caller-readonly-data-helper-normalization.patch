@@ -1,0 +1,35 @@
+diff --git a/programs/aspis-verifier/src/v7_pair_forest_dispatch.rs b/programs/aspis-verifier/src/v7_pair_forest_dispatch.rs
+--- a/programs/aspis-verifier/src/v7_pair_forest_dispatch.rs
++++ b/programs/aspis-verifier/src/v7_pair_forest_dispatch.rs
+@@ -10,6 +10,7 @@ extern crate alloc;
+ 
+ use alloc::boxed::Box;
++use core::cell::Ref;
+ 
+ #[cfg(feature = "v7-pair-forest-lane-invariant-audit")]
+ use aspis_core::field::M31;
+ 
+@@ -850,6 +851,14 @@ fn emit_result_v1(statement: &PoolV1PairForestTerminalStatementV1) -> ProgramRes
+     Ok(())
+ }
+ 
++#[inline(always)]
++fn borrow_readonly_account_data<'a>(
++    account: &'a AccountInfo<'_>,
++) -> Result<Ref<'a, [u8]>, ProgramError> {
++    let data = account.try_borrow_data()?;
++    Ok(Ref::map(data, |bytes| &bytes[..]))
++}
++
+ fn process_with_clear_return_data<F>(
+     verifier_program: &Pubkey,
+     accounts: &[AccountInfo<'_>],
+@@ -864,7 +873,7 @@ where
+         validate_v7_pair_forest_asq8_request_v1(verifier_program, accounts, instruction_data)?;
+     let proof_account = accounts.first().ok_or(ProgramError::NotEnoughAccountKeys)?;
+     let proof_account_key = *proof_account.key;
+-    let data = proof_account.try_borrow_data()?;
++    let data = borrow_readonly_account_data(proof_account)?;
+     let (payload_start, payload_end) = uploaded_proof_bounds(&data)?;
+     if payload_end != data.len() {
+         return Err(ProgramError::InvalidAccountData);

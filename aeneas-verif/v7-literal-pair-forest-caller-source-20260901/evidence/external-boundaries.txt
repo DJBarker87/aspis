@@ -1,0 +1,25 @@
+Generated full-caller FunsExternal template: 84 declarations
+
+69 declarations are Rust core/alloc collection, iterator, option, result,
+slice, box, vector, numeric or formatting operations.
+
+15 protocol/platform declaration groups remain:
+
+1. aspis_core.field.qm31_dot3
+2. pair_forest_copy_inactive_row_groups_compiled_v1
+3. pair_forest_copy_inactive_group_masks_compiled_v1
+4. solana_program.program.set_return_data
+5. solana_clock.Clock.get
+6. pair_forest_master_pda_v1
+7. pair_forest_checkpoint_pda_v1
+8. pair_forest_lane_pda_v1
+9. verifier_registry_pda_v1
+10. verifier_entry_pda_v1
+11. readonly_account_metadata_v1 (closed by the focused bridge)
+12. borrow_readonly_account_data
+13. exact_six_account_refs_v1 (current Aeneas PtrMetadata blocker)
+14. verify.sbf_hashv
+15. solana_pubkey equality/new_from_array/to_bytes operations
+
+The two static schedule accessors are exactly items 2 and 3.  No additional
+schedule function was made opaque.

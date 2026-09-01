@@ -1,0 +1,44 @@
+diff --git a/programs/aspis-verifier/src/v7_pair_forest_dispatch.rs b/programs/aspis-verifier/src/v7_pair_forest_dispatch.rs
+--- a/programs/aspis-verifier/src/v7_pair_forest_dispatch.rs
++++ b/programs/aspis-verifier/src/v7_pair_forest_dispatch.rs
+@@ -338,15 +338,37 @@ fn authenticate_asq8_accounts_v1(
+     output_lane: u8,
+ ) -> Result<AuthenticatedV7PairForestAsq8AccountsV1, ProgramError> {
+     #[cfg(feature = "v7-pair-forest-lane-invariant-audit")]
+-    let [proof_account, master_account, checkpoint_account, lane_account, registry_account, entry_account] =
+-        accounts
+-    else {
++    if accounts.len() != 6 {
+         return Err(if accounts.len() < 6 {
+             ProgramError::NotEnoughAccountKeys
+         } else {
+             ProgramError::InvalidArgument
+         });
++    }
++    #[cfg(feature = "v7-pair-forest-lane-invariant-audit")]
++    let Some((proof_account, remaining_accounts)) = accounts.split_first() else {
++        return Err(ProgramError::NotEnoughAccountKeys);
++    };
++    #[cfg(feature = "v7-pair-forest-lane-invariant-audit")]
++    let Some((master_account, remaining_accounts)) = remaining_accounts.split_first() else {
++        return Err(ProgramError::NotEnoughAccountKeys);
++    };
++    #[cfg(feature = "v7-pair-forest-lane-invariant-audit")]
++    let Some((checkpoint_account, remaining_accounts)) = remaining_accounts.split_first() else {
++        return Err(ProgramError::NotEnoughAccountKeys);
+     };
++    #[cfg(feature = "v7-pair-forest-lane-invariant-audit")]
++    let Some((lane_account, remaining_accounts)) = remaining_accounts.split_first() else {
++        return Err(ProgramError::NotEnoughAccountKeys);
++    };
++    #[cfg(feature = "v7-pair-forest-lane-invariant-audit")]
++    let Some((registry_account, remaining_accounts)) = remaining_accounts.split_first() else {
++        return Err(ProgramError::NotEnoughAccountKeys);
++    };
++    #[cfg(feature = "v7-pair-forest-lane-invariant-audit")]
++    let Some((entry_account, _remaining_accounts)) = remaining_accounts.split_first() else {
++        return Err(ProgramError::NotEnoughAccountKeys);
++    };
+     #[cfg(not(feature = "v7-pair-forest-lane-invariant-audit"))]
+     let [proof_account, master_account, checkpoint_account, lane_account] = accounts
+     else {

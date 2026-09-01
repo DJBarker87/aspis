@@ -1,0 +1,72 @@
+Source revision: 309b9c73353366a32671901be64cf8386404fd89
+Canonical extraction patch: PASS
+Patched v7_verifier.rs SHA-256: ede2541418bb566d9dada7598d49b3acb41a3b4636f47446a65f274761b1641c
+Patched v7_pair_forest_dispatch.rs SHA-256: d5a380e7782b1cb9673794470ed3951421d1df6e19b4fff7695ea1d8522e8df3
+Rust candidate cargo check: PASS, 0.40 s, 201,664 KiB, swap 0
+Static schedule focused release test: PASS, 2.03 s, 358,304 KiB, swap 0
+
+Complete caller Charon: PASS
+Unit: aspis-v7-literal-metadata-charon-r2.service
+Invocation: 36167fb6ba1d4cb9b56e0fc4ca00557c
+Wall: 8.45 s
+Peak RSS: 960,960 KiB
+Swap: 0
+LLBC SHA-256 after exact M31 rename: b64831d57bee7ffd15fe2e0a24f20f58fe9b7355f35ab28ccfc64a725b70315b
+
+Exact M31 metadata rename: PASS
+Unit: aspis-v7-literal-m31rename-r1.service
+Invocation: 1610fe2d68934a25b86700750c8c092b
+Wall: 2.56 s
+Peak RSS: 902,344 KiB
+Swap: 0
+
+Complete caller Aeneas translation/emission: PASS
+Unit: aspis-v7-literal-metadata-aeneas-m31ctor-r1.service
+Invocation: 0a7dd932773e4432b24760fba52c5c28
+Wall: 11:21.89
+Peak RSS: 3,136,060 KiB
+Swap: 0
+Generated root: v7_pair_forest_dispatch.process_with_clear_return_data
+
+Literal readonly-metadata helper Charon: PASS
+Unit: aspis-v7-literal-metadata-helper-charon-r1.service
+Invocation: 3b9efa5cc4434ceaa3a5cf5f687f2be7
+Wall: 7.06 s
+Peak RSS: 947,192 KiB
+Swap: 0
+
+Literal readonly-metadata helper Aeneas: PASS
+Unit: aspis-v7-literal-metadata-helper-aeneas-r1.service
+Invocation: e6c291f4900a420aa103b246383f798b
+Wall: 0.24 s
+Peak RSS: 58,256 KiB
+Swap: 0
+
+Focused metadata Lean chain: PASS
+Final bundle replay unit: aspis-v7-literal-metadata-bundle-replay-r1.service
+Final bundle replay invocation: e43fb755c45341f7844cb87d0be69d69
+Wall: 10.32 s
+Peak RSS: 2,724,516 KiB
+Swap: 0
+Strongest theorem: readonly_account_metadata_v1_success_fields
+Axioms: propext, Classical.choice, Quot.sound
+Forbidden constructs: none
+
+Exact-six-account Charon diagnostic: PASS
+Unit: aspis-v7-literal-six-account-helper-charon-r1.service
+Invocation: d9a7004349c74e4a8ef3651f44e32690
+Wall: 7.02 s
+Swap: 0
+
+Exact-six-account Aeneas diagnostic: BLOCKED
+Unit: aspis-v7-literal-six-account-helper-aeneas-r1.service
+Invocation: eaeaa5b67cfe440eaa8b6d2e43c1efa8
+Wall: 0.16 s
+Peak RSS: 53,328 KiB
+Swap: 0
+Error: InterpPaths.ml:236, Inconsistent projection: PtrMetadata
+Source: v7_pair_forest_dispatch.rs lines 424:8-424:106
+
+Classification: useful source-unblock milestone, not literal caller closure.
+The full caller translates and emits; its generated Funs module is not yet
+kernel compiled because the remaining external functions are not all filled.

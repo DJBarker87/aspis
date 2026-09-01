@@ -1,0 +1,35 @@
+diff --git a/programs/aspis-verifier/src/v7_pair_forest_dispatch.rs b/programs/aspis-verifier/src/v7_pair_forest_dispatch.rs
+--- a/programs/aspis-verifier/src/v7_pair_forest_dispatch.rs
++++ b/programs/aspis-verifier/src/v7_pair_forest_dispatch.rs
+@@ -348,14 +348,29 @@ fn authenticate_asq8_accounts_v1(
+         });
+     };
+     #[cfg(not(feature = "v7-pair-forest-lane-invariant-audit"))]
+-    let [proof_account, master_account, checkpoint_account, lane_account] = accounts
+-    else {
++    if accounts.len() != 4 {
+         return Err(if accounts.len() < 4 {
+             ProgramError::NotEnoughAccountKeys
+         } else {
+             ProgramError::InvalidArgument
+         });
++    }
++    #[cfg(not(feature = "v7-pair-forest-lane-invariant-audit"))]
++    let Some((proof_account, remaining_accounts)) = accounts.split_first() else {
++        return Err(ProgramError::NotEnoughAccountKeys);
+     };
++    #[cfg(not(feature = "v7-pair-forest-lane-invariant-audit"))]
++    let Some((master_account, remaining_accounts)) = remaining_accounts.split_first() else {
++        return Err(ProgramError::NotEnoughAccountKeys);
++    };
++    #[cfg(not(feature = "v7-pair-forest-lane-invariant-audit"))]
++    let Some((checkpoint_account, remaining_accounts)) = remaining_accounts.split_first() else {
++        return Err(ProgramError::NotEnoughAccountKeys);
++    };
++    #[cfg(not(feature = "v7-pair-forest-lane-invariant-audit"))]
++    let Some((lane_account, _remaining_accounts)) = remaining_accounts.split_first() else {
++        return Err(ProgramError::NotEnoughAccountKeys);
++    };
+     require_readonly_account(proof_account, verifier_program)?;
+     require_readonly_account(master_account, pool_program)?;
+     require_readonly_account(checkpoint_account, pool_program)?;

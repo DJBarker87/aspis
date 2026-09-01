@@ -1,0 +1,19 @@
+diff --git a/programs/aspis-verifier/src/v7_pair_forest_dispatch.rs b/programs/aspis-verifier/src/v7_pair_forest_dispatch.rs
+--- a/programs/aspis-verifier/src/v7_pair_forest_dispatch.rs
++++ b/programs/aspis-verifier/src/v7_pair_forest_dispatch.rs
+@@ -864,12 +864,13 @@ where
+         validate_v7_pair_forest_asq8_request_v1(verifier_program, accounts, instruction_data)?;
+     let proof_account = accounts.first().ok_or(ProgramError::NotEnoughAccountKeys)?;
+     let proof_account_key = *proof_account.key;
+     let data = proof_account.try_borrow_data()?;
+-    let (payload_start, payload_end) = uploaded_proof_bounds(&data)?;
+-    if payload_end != data.len() {
++    let data_slice: &[u8] = &data;
++    let (payload_start, payload_end) = uploaded_proof_bounds(data_slice)?;
++    if payload_end != data_slice.len() {
+         return Err(ProgramError::InvalidAccountData);
+     }
+-    let payload = &data[payload_start..payload_end];
++    let payload = &data_slice[payload_start..payload_end];
+     let proof = payload
+         .get(POOL_V1_PAIR_VERIFIED_AFTERSTATE_BYTES..)

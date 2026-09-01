@@ -1,0 +1,1 @@
+Started aspis-v7-literal-metadata-rustcheck-r1.service - /usr/bin/time -v -o /home/dombarker/project-offloads/aspis-v7-literal-caller-unblock-20260901.UVlTOZ/logs/metadata-rustcheck-r1.time /home/dombarker/.cargo/bin/cargo check -p aspis-verifier --lib --no-default-features --features v7-pair-forest-one-tx-candidate.

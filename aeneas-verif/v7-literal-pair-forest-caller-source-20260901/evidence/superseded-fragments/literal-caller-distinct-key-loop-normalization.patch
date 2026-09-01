@@ -1,0 +1,61 @@
+diff --git a/programs/aspis-verifier/src/v7_pair_forest_dispatch.rs b/programs/aspis-verifier/src/v7_pair_forest_dispatch.rs
+--- a/programs/aspis-verifier/src/v7_pair_forest_dispatch.rs
++++ b/programs/aspis-verifier/src/v7_pair_forest_dispatch.rs
+@@ -188,14 +188,17 @@ fn require_readonly_account(account: &AccountInfo<'_>, owner: &Pubkey) -> Progr
+     Ok(())
+ }
+ 
+-fn require_distinct_accounts<const N: usize>(accounts: &[&AccountInfo<'_>; N]) -> ProgramResult {
+-    for (index, account) in accounts.iter().enumerate() {
+-        if accounts[..index]
+-            .iter()
+-            .any(|previous| previous.key == account.key)
+-        {
+-            return Err(ProgramError::InvalidArgument);
++fn require_distinct_account_keys<const N: usize>(account_keys: [Pubkey; N]) -> ProgramResult {
++    let mut index = 0usize;
++    while index < N {
++        let mut previous = 0usize;
++        while previous < index {
++            if account_keys[previous] == account_keys[index] {
++                return Err(ProgramError::InvalidArgument);
++            }
++            previous += 1;
+         }
++        index += 1;
+     }
+     Ok(())
+ }
+@@ -468,20 +471,20 @@ fn authenticate_asq8_accounts_v1(
+     require_readonly_account(checkpoint_account, pool_program)?;
+     require_readonly_account(lane_account, pool_program)?;
+     #[cfg(feature = "v7-pair-forest-lane-invariant-audit")]
+-    require_distinct_accounts(&[
+-        proof_account,
+-        master_account,
+-        checkpoint_account,
+-        lane_account,
+-        registry_account,
+-        entry_account,
++    require_distinct_account_keys([
++        *proof_account.key,
++        *master_account.key,
++        *checkpoint_account.key,
++        *lane_account.key,
++        *registry_account.key,
++        *entry_account.key,
+     ])?;
+     #[cfg(not(feature = "v7-pair-forest-lane-invariant-audit"))]
+-    require_distinct_accounts(&[
+-        proof_account,
+-        master_account,
+-        checkpoint_account,
+-        lane_account,
++    require_distinct_account_keys([
++        *proof_account.key,
++        *master_account.key,
++        *checkpoint_account.key,
++        *lane_account.key,
+     ])?;
+ 
+     let master = decode_master_box(&borrow_readonly_account_data(master_account)?)?;

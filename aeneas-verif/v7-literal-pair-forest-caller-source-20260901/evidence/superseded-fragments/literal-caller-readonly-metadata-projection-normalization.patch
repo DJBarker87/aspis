@@ -1,0 +1,236 @@
+--- a/programs/aspis-verifier/src/v7_pair_forest_dispatch.rs
++++ b/programs/aspis-verifier/src/v7_pair_forest_dispatch.rs
+@@ -165,6 +165,26 @@
+     proof_length: usize,
+ }
+ 
++#[derive(Clone, Copy, Debug, PartialEq, Eq)]
++struct ReadonlyAccountMetadataV1 {
++    key: Pubkey,
++    owner: Pubkey,
++    is_signer: bool,
++    is_writable: bool,
++    executable: bool,
++}
++
++#[inline(always)]
++fn readonly_account_metadata_v1(account: &AccountInfo<'_>) -> ReadonlyAccountMetadataV1 {
++    ReadonlyAccountMetadataV1 {
++        key: *account.key,
++        owner: *account.owner,
++        is_signer: account.is_signer,
++        is_writable: account.is_writable,
++        executable: account.executable,
++    }
++}
++
+ fn frontier_nodes_from_proof_length(length: usize) -> Option<usize> {
+     #[cfg(feature = "v7-pair-forest-fixed-canonical-audit")]
+     let body_without_frontiers =
+@@ -181,8 +201,11 @@
+         .then_some(nodes)
+ }
+ 
+-fn require_readonly_account(account: &AccountInfo<'_>, owner: &Pubkey) -> ProgramResult {
+-    if account.owner != owner || account.is_signer || account.is_writable || account.executable {
++fn require_readonly_account(
++    account: &ReadonlyAccountMetadataV1,
++    owner: &Pubkey,
++) -> ProgramResult {
++    if account.owner != *owner || account.is_signer || account.is_writable || account.executable {
+         return Err(ProgramError::InvalidAccountData);
+     }
+     Ok(())
+@@ -208,10 +231,12 @@
+ fn authenticate_invariant_release_registry_v1(
+     verifier_program: &Pubkey,
+     pool_program: &Pubkey,
+-    master_account: &AccountInfo<'_>,
++    master_account: &ReadonlyAccountMetadataV1,
+     master: &PoolV1PairForestMasterV1,
+     registry_account: &AccountInfo<'_>,
++    registry_metadata: &ReadonlyAccountMetadataV1,
+     entry_account: &AccountInfo<'_>,
++    entry_metadata: &ReadonlyAccountMetadataV1,
+ ) -> ProgramResult {
+     if pool_program.to_bytes() != PAIR_FOREST_INVARIANT_POOL_PROGRAM_AUDIT_V1
+         || master.verifier_policy.flags != POOL_V1_VERIFIER_POLICY_FLAG_IMMUTABLE_REGISTRY
+@@ -225,9 +250,9 @@
+     validate_verifier_policy_v1(&master.verifier_policy)
+         .map_err(|_| ProgramError::InvalidAccountData)?;
+     let registry_program = Pubkey::new_from_array(PAIR_FOREST_INVARIANT_REGISTRY_PROGRAM_AUDIT_V1);
+-    require_readonly_account(registry_account, &registry_program)?;
+-    let expected_registry = verifier_registry_pda_v1(master_account.key, &registry_program);
+-    if registry_account.key != &expected_registry {
++    require_readonly_account(registry_metadata, &registry_program)?;
++    let expected_registry = verifier_registry_pda_v1(&master_account.key, &registry_program);
++    if registry_metadata.key != expected_registry {
+         return Err(ProgramError::InvalidAccountData);
+     }
+     let registry = decode_verifier_registry_v1(&borrow_readonly_account_data(registry_account)?)
+@@ -241,9 +266,9 @@
+         return Err(ProgramError::InvalidAccountData);
+     }
+ 
+-    require_readonly_account(entry_account, &registry_program)?;
+-    let expected_entry = verifier_entry_pda_v1(master_account.key, &registry_program);
+-    if entry_account.key != &expected_entry {
++    require_readonly_account(entry_metadata, &registry_program)?;
++    let expected_entry = verifier_entry_pda_v1(&master_account.key, &registry_program);
++    if entry_metadata.key != expected_entry {
+         return Err(ProgramError::InvalidAccountData);
+     }
+     let entry = decode_verifier_registry_entry_v1(&borrow_readonly_account_data(entry_account)?)
+@@ -466,32 +491,40 @@
+     #[cfg(not(feature = "v7-pair-forest-lane-invariant-audit"))]
+     let (proof_account, master_account, checkpoint_account, lane_account) =
+         exact_four_account_refs_v1(accounts);
+-    require_readonly_account(proof_account, verifier_program)?;
+-    require_readonly_account(master_account, pool_program)?;
+-    require_readonly_account(checkpoint_account, pool_program)?;
+-    require_readonly_account(lane_account, pool_program)?;
++    let proof_metadata = readonly_account_metadata_v1(proof_account);
++    let master_metadata = readonly_account_metadata_v1(master_account);
++    let checkpoint_metadata = readonly_account_metadata_v1(checkpoint_account);
++    let lane_metadata = readonly_account_metadata_v1(lane_account);
+     #[cfg(feature = "v7-pair-forest-lane-invariant-audit")]
++    let registry_metadata = readonly_account_metadata_v1(registry_account);
++    #[cfg(feature = "v7-pair-forest-lane-invariant-audit")]
++    let entry_metadata = readonly_account_metadata_v1(entry_account);
++    require_readonly_account(&proof_metadata, verifier_program)?;
++    require_readonly_account(&master_metadata, pool_program)?;
++    require_readonly_account(&checkpoint_metadata, pool_program)?;
++    require_readonly_account(&lane_metadata, pool_program)?;
++    #[cfg(feature = "v7-pair-forest-lane-invariant-audit")]
+     require_distinct_account_keys([
+-        *proof_account.key,
+-        *master_account.key,
+-        *checkpoint_account.key,
+-        *lane_account.key,
+-        *registry_account.key,
+-        *entry_account.key,
++        proof_metadata.key,
++        master_metadata.key,
++        checkpoint_metadata.key,
++        lane_metadata.key,
++        registry_metadata.key,
++        entry_metadata.key,
+     ])?;
+     #[cfg(not(feature = "v7-pair-forest-lane-invariant-audit"))]
+     require_distinct_account_keys([
+-        *proof_account.key,
+-        *master_account.key,
+-        *checkpoint_account.key,
+-        *lane_account.key,
++        proof_metadata.key,
++        master_metadata.key,
++        checkpoint_metadata.key,
++        lane_metadata.key,
+     ])?;
+ 
+     let master = decode_master_box(&borrow_readonly_account_data(master_account)?)?;
+-    if master.identity.pool != master_account.key.to_bytes()
++    if master.identity.pool != master_metadata.key.to_bytes()
+         || master.initialized_lane_mask != POOL_V1_PAIR_FOREST_ALL_LANES_MASK
+         || pair_forest_master_pda_v1(master.identity.asset_mint, pool_program)
+-            != *master_account.key
++            != master_metadata.key
+     {
+         return Err(ProgramError::InvalidAccountData);
+     }
+@@ -499,42 +532,44 @@
+     authenticate_invariant_release_registry_v1(
+         verifier_program,
+         pool_program,
+-        master_account,
++        &master_metadata,
+         &master,
+         registry_account,
++        &registry_metadata,
+         entry_account,
++        &entry_metadata,
+     )?;
+ 
+     let checkpoint = decode_checkpoint_box(&borrow_readonly_account_data(checkpoint_account)?)?;
+-    if checkpoint.master != master_account.key.to_bytes()
++    if checkpoint.master != master_metadata.key.to_bytes()
+         || checkpoint.deployment_domain != master.identity.deployment_domain
+         || pair_forest_checkpoint_pda_v1(
+-            master_account.key,
++            &master_metadata.key,
+             checkpoint.checkpoint_sequence,
+             pool_program,
+-        ) != *checkpoint_account.key
++        ) != checkpoint_metadata.key
+     {
+         return Err(ProgramError::InvalidAccountData);
+     }
+ 
+     let selected_lane = decode_lane_box(&borrow_readonly_account_data(lane_account)?)?;
+-    if selected_lane.master != master_account.key.to_bytes()
++    if selected_lane.master != master_metadata.key.to_bytes()
+         || selected_lane.lane_id != output_lane
+-        || pair_forest_lane_pda_v1(master_account.key, output_lane, pool_program)
+-            != *lane_account.key
++        || pair_forest_lane_pda_v1(&master_metadata.key, output_lane, pool_program)
++            != lane_metadata.key
+     {
+         return Err(ProgramError::InvalidAccountData);
+     }
+ 
+     let live_snapshot = live_snapshot_box(
+-        master_account.key.to_bytes(),
++        master_metadata.key.to_bytes(),
+         master.identity.deployment_domain,
+         &selected_lane,
+     );
+     Ok(AuthenticatedV7PairForestAsq8AccountsV1 {
+-        master_account: master_account.key.to_bytes(),
+-        checkpoint_account: checkpoint_account.key.to_bytes(),
+-        selected_lane_account: lane_account.key.to_bytes(),
++        master_account: master_metadata.key.to_bytes(),
++        checkpoint_account: checkpoint_metadata.key.to_bytes(),
++        selected_lane_account: lane_metadata.key.to_bytes(),
+         master,
+         checkpoint,
+         selected_lane,
+@@ -771,7 +806,7 @@
+     }
+     let supplied = decode_asf8_statement_box_v1(instruction_data)?;
+     let master_account = accounts.get(1).ok_or(ProgramError::NotEnoughAccountKeys)?;
+-    let pool_program = *master_account.owner;
++    let pool_program = readonly_account_metadata_v1(master_account).owner;
+     let request = request_from_asf8_statement_v1(&supplied, pool_program.to_bytes());
+     let output_lane = pool_v1_pair_forest_output_lane_v1(request.public.nullifier())
+         .map_err(|_| ProgramError::InvalidInstructionData)?;
+@@ -973,7 +1008,7 @@
+     let validated =
+         validate_v7_pair_forest_asq8_request_v1(verifier_program, accounts, instruction_data)?;
+     let proof_account = accounts.first().ok_or(ProgramError::NotEnoughAccountKeys)?;
+-    let proof_account_key = *proof_account.key;
++    let proof_account_key = readonly_account_metadata_v1(proof_account).key;
+     let data = borrow_readonly_account_data(proof_account)?;
+     let (payload_start, payload_end) = uploaded_proof_bounds(&data)?;
+     if payload_end != data.len() {
+@@ -1012,8 +1047,8 @@
+     let validated =
+         validate_v7_pair_forest_asf8_request_v1(verifier_program, accounts, instruction_data)?;
+     let proof_account = accounts.first().ok_or(ProgramError::NotEnoughAccountKeys)?;
+-    let proof_account_key = *proof_account.key;
+-    let data = proof_account.try_borrow_data()?;
++    let proof_account_key = readonly_account_metadata_v1(proof_account).key;
++    let data = borrow_readonly_account_data(proof_account)?;
+     let (payload_start, payload_end) = uploaded_proof_bounds(&data)?;
+     if payload_end != data.len() {
+         return Err(ProgramError::InvalidAccountData);
+@@ -1046,8 +1081,8 @@
+     let validated =
+         validate_v7_pair_forest_asq8_request_v1(verifier_program, accounts, instruction_data)?;
+     let proof_account = accounts.first().ok_or(ProgramError::NotEnoughAccountKeys)?;
+-    let proof_account_key = *proof_account.key;
+-    let data = proof_account.try_borrow_data()?;
++    let proof_account_key = readonly_account_metadata_v1(proof_account).key;
++    let data = borrow_readonly_account_data(proof_account)?;
+     let (payload_start, payload_end) = uploaded_proof_bounds(&data)?;
+     if payload_end != data.len() {
+         return Err(ProgramError::InvalidAccountData);
