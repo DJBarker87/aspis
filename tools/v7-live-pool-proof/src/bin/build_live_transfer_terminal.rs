@@ -45,6 +45,11 @@ use solana_signature_v1::Signature as V1Signature;
 use solana_signer::Signer;
 use solana_transaction_v1::versioned::VersionedTransaction as V1VersionedTransaction;
 
+// The pinned successful withdrawal reaches the SPL Token CPI with 71,760 CU
+// remaining. This explicit negative-test budget removes 71,700 CU, leaving the
+// verifier enough to succeed and the genuine Token program too little to finish.
+const WITHDRAWAL_CPI_EXHAUSTION_COMPUTE_LIMIT: u32 = 1_228_300;
+
 struct OsEntropy;
 impl TryRng for OsEntropy {
     type Error = Infallible;
@@ -76,6 +81,7 @@ struct Input {
     min_context_slot: u64,
     request_id: u64,
     carrier_test_mode: Option<String>,
+    withdrawal_cpi_test_mode: Option<String>,
 }
 #[derive(Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -181,10 +187,22 @@ fn main() -> Result<()> {
         }
         Some(_) => anyhow::bail!("unsupported carrier test mode"),
     };
+    let withdrawal_cpi_compute_exhaustion_test = match input.withdrawal_cpi_test_mode.as_deref() {
+        None => false,
+        Some("compute-exhaustion") => {
+            ensure!(
+                input.schema == "aspis.v7.live-terminal-withdrawal-cpi-failure-test-input.v1",
+                "withdrawal CPI failure requires the explicit test schema"
+            );
+            true
+        }
+        Some(_) => anyhow::bail!("unsupported withdrawal CPI test mode"),
+    };
     ensure!(
         (input.schema == "aspis.v7.live-transfer-terminal-input.v1"
             || input.schema == "aspis.v7.live-terminal-input.v1"
-            || input.schema == "aspis.v7.live-terminal-malformed-carrier-test-input.v1")
+            || input.schema == "aspis.v7.live-terminal-malformed-carrier-test-input.v1"
+            || input.schema == "aspis.v7.live-terminal-withdrawal-cpi-failure-test-input.v1")
             && input.min_context_slot > 0,
         "wrong input"
     );
@@ -192,6 +210,15 @@ fn main() -> Result<()> {
         malformed_carrier_test
             == (input.schema == "aspis.v7.live-terminal-malformed-carrier-test-input.v1"),
         "test schema requires an exact carrier mutation"
+    );
+    ensure!(
+        withdrawal_cpi_compute_exhaustion_test
+            == (input.schema == "aspis.v7.live-terminal-withdrawal-cpi-failure-test-input.v1"),
+        "withdrawal CPI test schema requires exact compute-exhaustion mode"
+    );
+    ensure!(
+        !(malformed_carrier_test && withdrawal_cpi_compute_exhaustion_test),
+        "terminal negative-test modes are mutually exclusive"
     );
     let bundle_path = resolve(input_path.parent().unwrap_or(Path::new(".")), &input.bundle);
     let base = bundle_path.parent().unwrap_or(Path::new("."));
@@ -342,6 +369,10 @@ fn main() -> Result<()> {
             ("withdrawal", None, public.change_commitment, pair_index * 2)
         }
     };
+    ensure!(
+        !withdrawal_cpi_compute_exhaustion_test || operation == "withdrawal",
+        "withdrawal CPI failure mode requires a withdrawal statement"
+    );
     getrandom::getrandom(&mut seed)?;
     let (_, change_view) =
         derive_viewing_keypair_v1(&seed).map_err(|e| anyhow::anyhow!("change view: {e:?}"))?;
@@ -376,7 +407,11 @@ fn main() -> Result<()> {
         recent,
         PairForestV1TransactionConfigV2 {
             priority_fee_lamports: 0,
-            compute_unit_limit: 1_300_000,
+            compute_unit_limit: if withdrawal_cpi_compute_exhaustion_test {
+                WITHDRAWAL_CPI_EXHAUSTION_COMPUTE_LIMIT
+            } else {
+                1_300_000
+            },
             loaded_accounts_data_size_limit: 8 * 1024 * 1024,
             heap_size: 256 * 1024,
         },
@@ -434,6 +469,8 @@ fn main() -> Result<()> {
         "ciphertextCarrierRealHpke":!malformed_carrier_test,
         "ciphertextCarrierCanonical":!malformed_carrier_test,
         "carrierTestMode":input.carrier_test_mode,
+        "withdrawalCpiTestMode":input.withdrawal_cpi_test_mode,
+        "computeUnitLimit":if withdrawal_cpi_compute_exhaustion_test { WITHDRAWAL_CPI_EXHAUSTION_COMPUTE_LIMIT } else { 1_300_000 },
         "terminalAccounts":terminal_accounts,"markerAccount":marker_account,
         "simulationRequest":{"jsonrpc":"2.0","id":input.request_id,"method":"simulateTransaction","params":[wire64,{"encoding":"base64","commitment":"finalized","sigVerify":true,"replaceRecentBlockhash":false,"minContextSlot":input.min_context_slot,"innerInstructions":true}]},
         "sendRequest":{"jsonrpc":"2.0","id":input.request_id+100000,"method":"sendTransaction","params":[wire64,{"encoding":"base64","skipPreflight":true,"preflightCommitment":"finalized","maxRetries":0,"minContextSlot":input.min_context_slot}]}})

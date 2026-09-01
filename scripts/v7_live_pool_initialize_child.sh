@@ -32,8 +32,8 @@ readonly WITHDRAWAL_CPI_CASE=${ASPIS_V7_LIVE_WITHDRAWAL_CPI_CASE:-none}
   || fail "ASPIS_V7_LIVE_OPERATION must be transfer or withdrawal"
 [[ "$CIPHERTEXT_CASE" == canonical || "$CIPHERTEXT_CASE" == malformed-magic ]] \
   || fail "ASPIS_V7_LIVE_CIPHERTEXT_CASE must be canonical or malformed-magic"
-[[ "$WITHDRAWAL_CPI_CASE" == none || "$WITHDRAWAL_CPI_CASE" == frozen-destination ]] \
-  || fail "ASPIS_V7_LIVE_WITHDRAWAL_CPI_CASE must be none or frozen-destination"
+[[ "$WITHDRAWAL_CPI_CASE" == none || "$WITHDRAWAL_CPI_CASE" == compute-exhaustion ]] \
+  || fail "ASPIS_V7_LIVE_WITHDRAWAL_CPI_CASE must be none or compute-exhaustion"
 if [[ "$WITHDRAWAL_CPI_CASE" != none ]]; then
   [[ "$OPERATION" == withdrawal && "$CIPHERTEXT_CASE" == canonical ]] \
     || fail "withdrawal CPI failure testing requires canonical withdrawal mode"
@@ -424,18 +424,25 @@ if [[ -n "$SECRET_BUILDER" || -n "$DEPOSIT_BUILDER" ]]; then
           terminal_schema=aspis.v7.live-terminal-malformed-carrier-test-input.v1
           carrier_test_mode='"malformed-magic"'
         fi
+        withdrawal_cpi_test_mode=null
+        if [[ "$WITHDRAWAL_CPI_CASE" == compute-exhaustion ]]; then
+          terminal_schema=aspis.v7.live-terminal-withdrawal-cpi-failure-test-input.v1
+          withdrawal_cpi_test_mode='"compute-exhaustion"'
+        fi
         jq -n --arg schema "$terminal_schema" \
           --argjson carrierTestMode "$carrier_test_mode" \
+          --argjson withdrawalCpiTestMode "$withdrawal_cpi_test_mode" \
           --arg bundle "$EVIDENCE_DIR/live-proof-bundle/live-bundle.json" \
           --arg asq8 "$EVIDENCE_DIR/live-proof/asq8.bin" --arg payer "$PAYER_KEYPAIR" \
           --arg blockhash "$terminal_blockhash" --argjson slot "$terminal_context_slot" \
           '{schema:$schema,bundle:$bundle,asq8:$asq8,payerKeypair:$payer,
             recentBlockhash:$blockhash,minContextSlot:$slot,requestId:1600,
-            carrierTestMode:$carrierTestMode}' \
+            carrierTestMode:$carrierTestMode,withdrawalCpiTestMode:$withdrawalCpiTestMode}' \
           >"$WORK_DIR/terminal-input.json"
         "$TERMINAL_BUILDER" "$WORK_DIR/terminal-input.json" \
           >"$TERMINAL_EVIDENCE/signed-request.json"
-        jq -e --arg operation "$OPERATION" --arg carrierCase "$CIPHERTEXT_CASE" '
+        jq -e --arg operation "$OPERATION" --arg carrierCase "$CIPHERTEXT_CASE" \
+          --arg withdrawalCpiCase "$WITHDRAWAL_CPI_CASE" '
           .operation == $operation and
           .instructionCount == 2 and .terminalInstructionCount == 1 and
           (if $carrierCase == "canonical" then
@@ -444,6 +451,11 @@ if [[ -n "$SECRET_BUILDER" || -n "$DEPOSIT_BUILDER" ]]; then
            else
             .ciphertextCarrierRealHpke == false and .ciphertextCarrierCanonical == false and
               .carrierTestMode == "malformed-magic"
+           end) and
+          (if $withdrawalCpiCase == "none" then
+             .withdrawalCpiTestMode == null and .computeUnitLimit == 1300000
+           else
+             .withdrawalCpiTestMode == "compute-exhaustion" and .computeUnitLimit == 1228300
            end) and .serializedTransactionBytes < 4096 and
           .serializedTransactionBytes <= 3500' "$TERMINAL_EVIDENCE/signed-request.json" >/dev/null \
           || fail "terminal TxV1 preflight failed"
@@ -457,11 +469,12 @@ if [[ -n "$SECRET_BUILDER" || -n "$DEPOSIT_BUILDER" ]]; then
         terminal_simulation=$(rpc "$(jq -c '.simulationRequest' "$TERMINAL_EVIDENCE/signed-request.json")")
         jq . <<<"$terminal_simulation" >"$TERMINAL_EVIDENCE/simulation.json"
         jq -e '.error | not' <<<"$terminal_simulation" >/dev/null
-        if [[ "$WITHDRAWAL_CPI_CASE" == frozen-destination ]]; then
-          [[ "$(token_state "$EVIDENCE_DIR/live-proof-inputs/destination.json")" == 2 ]] \
-            || fail "withdrawal CPI test destination is not frozen"
-          jq -e '.result.value.err != null and .result.value.unitsConsumed < 1300000 and
+        if [[ "$WITHDRAWAL_CPI_CASE" == compute-exhaustion ]]; then
+          [[ "$(token_state "$EVIDENCE_DIR/live-proof-inputs/destination.json")" == 1 ]] \
+            || fail "withdrawal CPI test destination is not initialized"
+          jq -e '.result.value.err != null and .result.value.unitsConsumed <= 1228300 and
             any(.result.value.logs[]; contains("Program 7Q2nGsPg8rbjdxKHK4jxTgEWLTyd9o1X4KMSjCieRmue success")) and
+            any(.result.value.logs[]; contains("Program TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA invoke")) and
             any(.result.value.logs[]; contains("Program TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA failed"))' \
             <<<"$terminal_simulation" >/dev/null \
             || fail "withdrawal simulation did not reach and fail the SPL token CPI"
@@ -483,8 +496,9 @@ if [[ -n "$SECRET_BUILDER" || -n "$DEPOSIT_BUILDER" ]]; then
             '{jsonrpc:"2.0",id:1651,method:"getTransaction",params:[$signature,{encoding:"json",commitment:"finalized",maxSupportedTransactionVersion:1}]}')" \
             | jq . >"$TERMINAL_EVIDENCE/finalized-transaction.json"
           jq -e '.result != null and .result.meta.err != null and
-            .result.meta.computeUnitsConsumed < 1300000 and
+            .result.meta.computeUnitsConsumed <= 1228300 and
             any(.result.meta.logMessages[]; contains("Program 7Q2nGsPg8rbjdxKHK4jxTgEWLTyd9o1X4KMSjCieRmue success")) and
+            any(.result.meta.logMessages[]; contains("Program TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA invoke")) and
             any(.result.meta.logMessages[]; contains("Program TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA failed"))' \
             "$TERMINAL_EVIDENCE/finalized-transaction.json" >/dev/null \
             || fail "landed withdrawal did not fail at the SPL token CPI"
@@ -532,7 +546,7 @@ if [[ -n "$SECRET_BUILDER" || -n "$DEPOSIT_BUILDER" ]]; then
             --slurpfile request "$TERMINAL_EVIDENCE/signed-request.json" \
             '{schema:"aspis.v7.live-terminal-failed-withdrawal-cpi-rollback.v1",
               expected:"SPL token CPI failure with atomic rollback",actual:"finalized-rejected",
-              failureFixture:"frozen-destination-at-genesis",signature:$signature,slot:$slot,
+              failureFixture:"terminal-compute-limit-exhausts-inside-token-cpi",signature:$signature,slot:$slot,
               serializedTransactionBytes:$request[0].serializedTransactionBytes,
               signedWireSha256:$request[0].signedWireSha256,selectedLane:$request[0].selectedLane,
               simulatedError:$simulatedError,landedError:$landedError,

@@ -45,13 +45,6 @@ fn resolve(root: &Path, relative: &str) -> Result<PathBuf> {
 }
 
 fn main() -> Result<()> {
-    let withdrawal_cpi_test_mode = env::var("ASPIS_V7_LIVE_WITHDRAWAL_CPI_CASE").ok();
-    ensure!(
-        withdrawal_cpi_test_mode
-            .as_deref()
-            .is_none_or(|mode| mode == "frozen-destination"),
-        "unsupported withdrawal CPI test mode"
-    );
     let mut args = env::args_os().skip(1);
     let repo = PathBuf::from(args.next().context(
         "usage: prepare-live-genesis <repo-root> <config.json> <payer-pubkey> <source-authority-pubkey> <new-output-dir>",
@@ -129,9 +122,7 @@ fn main() -> Result<()> {
         data[..32].copy_from_slice(&Pubkey::from_str(mint_id)?.to_bytes());
         data[32..64].copy_from_slice(&source_authority.to_bytes());
         data[64..72].copy_from_slice(&amount.to_le_bytes());
-        let frozen_destination = field == "withdrawalDestinationTokenAccount"
-            && withdrawal_cpi_test_mode.as_deref() == Some("frozen-destination");
-        data[108] = if frozen_destination { 2 } else { 1 };
+        data[108] = 1;
         let account = GenesisAccount {
             data: (BASE64.encode(&data), "base64".to_owned()),
             executable: false,
@@ -147,7 +138,7 @@ fn main() -> Result<()> {
             "address":address,
             "file":destination,
             "amount":amount,
-            "accountState":if frozen_destination { "frozen" } else { "initialized" },
+            "accountState":"initialized",
             "dataSha256":format!("{:x}", Sha256::digest(&data))
         }));
     }
@@ -189,7 +180,6 @@ fn main() -> Result<()> {
         "{}",
         serde_json::to_string(&serde_json::json!({
             "schema":"aspis.v7.disposable-live-genesis.v1", "auditOnly":true,
-            "withdrawalCpiTestMode":withdrawal_cpi_test_mode,
             "ephemeralMintAuthority":payer.to_string(),
             "ephemeralTokenAuthority":source_authority.to_string(), "accounts":accounts
         }))?
