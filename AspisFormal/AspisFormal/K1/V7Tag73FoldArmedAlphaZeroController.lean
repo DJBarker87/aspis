@@ -239,6 +239,21 @@ theorem arm_fold_alpha_memory_seen_machine_monotone
   · split <;> exact remember_current_machine_contains_prior
       transitionFuel state answer pair member
 
+/-- Arming changes only the expected boundary, causal cache, and possibly the
+producer seed.  It never consumes or restores an alpha coordinate. -/
+theorem arm_fold_alpha_memory_used_slots
+    {globalOracleCalls : Nat}
+    (transitionFuel : Nat)
+    (state : IndexedUnifiedExposureState globalOracleCalls
+      FoldArmedAlphaZeroMemory)
+    (answer : Digest256) :
+    (armFoldAlphaMemory transitionFuel state answer).alpha.usedSlots =
+      state.memory.alpha.usedSlots := by
+  unfold armFoldAlphaMemory
+  split
+  · rfl
+  · split <;> rfl
+
 /-- Dynamic alpha update.  An exact armed-boundary match resets the producer
 inventory to block zero; every other input follows the ordinary append-only
 advance logic.  The used-slot set is never reset. -/
@@ -281,6 +296,26 @@ theorem fold_armed_alpha_after_memory_seen_machine_monotone
   · exact member
   · exact remember_current_machine_contains_prior transitionFuel state
       answer pair member
+
+/-- The dynamic alpha controller consumes exactly the slot preferred before
+the answer, and never removes an already consumed slot.  Boundary arming may
+replace the producer inventory, but it deliberately cannot reset this
+one-shot inventory. -/
+theorem fold_armed_alpha_after_memory_used_slots
+    {globalOracleCalls : Nat}
+    (transitionFuel : Nat)
+    (state : IndexedUnifiedExposureState globalOracleCalls
+      FoldArmedAlphaZeroMemory)
+    (answer : Digest256) :
+    (foldArmedAlphaAfterMemory transitionFuel state answer).alpha.usedSlots =
+      match alphaZeroPreferredSlot transitionFuel
+          (foldArmedAlphaIndexedState state) with
+      | none => state.memory.alpha.usedSlots
+      | some slot => insert slot state.memory.alpha.usedSlots := by
+  unfold foldArmedAlphaAfterMemory
+  split
+  · simp [alphaZeroPreferredSlot, foldArmedAlphaIndexedState, *]
+  · rfl
 
 def foldArmedAlphaZeroController
     {globalOracleCalls : Nat}
@@ -577,6 +612,8 @@ def exactCompilerFoldArmedAlphaFinalWorkQ16Router
 #print axioms fold_armed_alpha_preferred
 #print axioms fold_armed_alpha_exact_boundary_installs_block_zero
 #print axioms fold_armed_alpha_nonboundary_uses_advance_update
+#print axioms fold_armed_alpha_after_memory_used_slots
+#print axioms arm_fold_alpha_memory_used_slots
 #print axioms fold_armed_complete_preferred_at_fold
 #print axioms fold_armed_complete_literal_fold_step_arms_boundary
 #print axioms exactCompilerFoldArmedAlphaFinalWorkQ16Router
