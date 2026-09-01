@@ -165,7 +165,14 @@ theorem exact_compiler_constructs_alpha_zero_prefix_coordinates
             AspisK1.V7Tag73TranscriptSchedule.Payload.data
               (.final256
                 (exactOperationalTape input).messages.finalValues)) =
-        some afterFinal256.digest := by
+        some afterFinal256.digest ∧
+      tableLookup (exactOperationalTable input)
+          (bytes afterFinal256.digest ++ [domAbsorb, finalWorkNonceLabel] ++
+            bytes
+              (exactOperationalTape input).messages.finalGrinding.selected) =
+        some evaluator.prefixState.digest ∧
+      evaluator.prefixState.digest =
+        (exactOperationalRawTrace input).q16BaseDigest := by
   obtain ⟨evaluator⟩ :=
     exact_operational_input_constructs_complete_evaluator input
   obtain ⟨segments⟩ := complete_evaluator_exposes_semantic_segments
@@ -263,7 +270,7 @@ theorem exact_compiler_constructs_alpha_zero_prefix_coordinates
         (exactOperationalTape input).messages.finalGrinding.selected)]
       afterAlpha = some evaluator.prefixState at suffixRun
   simp only [runMachineEventsWorkErased] at suffixRun
-  obtain ⟨afterFinal256, final256Run, _remainingRun⟩ :=
+  obtain ⟨afterFinal256, final256Run, remainingRun⟩ :=
     Option.bind_eq_some_iff.mp suffixRun
   have final256Absorb : absorbStep (exactOperationalTable input) afterAlpha
       (.final256 (exactOperationalTape input).messages.finalValues) =
@@ -273,12 +280,67 @@ theorem exact_compiler_constructs_alpha_zero_prefix_coordinates
     (exactOperationalTable input) afterAlpha afterFinal256
       (.final256 (exactOperationalTape input).messages.finalValues)
       final256Absorb
+  obtain ⟨afterGrind, grindRun, remainingRun⟩ :=
+    Option.bind_eq_some_iff.mp remainingRun
+  obtain ⟨afterCheck, checkRun, remainingRun⟩ :=
+    Option.bind_eq_some_iff.mp remainingRun
+  have afterCheckExact : afterCheck = afterGrind := by
+    simpa [runMachineEventWorkErased] using (Option.some.inj checkRun).symm
+  subst afterCheck
+  obtain ⟨afterAbsorb, finalNonceRun, finalDone⟩ :=
+    Option.bind_eq_some_iff.mp remainingRun
+  have afterAbsorbExact : afterAbsorb = evaluator.prefixState := by
+    simpa [runMachineEventsWorkErased] using Option.some.inj finalDone
+  subst afterAbsorb
+  have finalNonceAbsorb : absorbStep (exactOperationalTable input) afterGrind
+      (.finalNonce
+        (exactOperationalTape input).messages.finalGrinding.selected) =
+        some evaluator.prefixState := by
+    simpa [runMachineEventWorkErased] using finalNonceRun
+  have stableDigest : afterGrind.digest = afterFinal256.digest :=
+    by
+      change runGrindingChoiceWorkErased (exactOperationalTable input)
+        afterFinal256 .final
+          (exactOperationalTape input).messages.finalGrinding =
+        some afterGrind at grindRun
+      rw [runGrindingChoiceWorkErased] at grindRun
+      obtain ⟨queried, probesRun, grindRun⟩ :=
+        Option.bind_eq_some_iff.mp grindRun
+      obtain ⟨selectedPair, selectedRun, result⟩ :=
+        Option.bind_eq_some_iff.mp grindRun
+      rcases selectedPair with ⟨selectedOutput, afterSelected⟩
+      have afterSelectedExact : afterSelected = afterGrind := by
+        simpa only [pure, Option.some.injEq] using result
+      subst afterSelected
+      have probesDigest := grinding_probes_do_not_advance
+        (exactOperationalTable input) .final
+        (exactOperationalTape input).messages.finalGrinding.probesBeforeSelected
+        afterFinal256 queried probesRun
+      obtain ⟨_lookup, _calls, selectedDigest⟩ := query_step_appends_one
+        (exactOperationalTable input) queried afterGrind
+        (.grind .final
+          (exactOperationalTape input).messages.finalGrinding.selected)
+        selectedOutput selectedRun
+      have selectedUnchanged : afterGrind.digest = queried.digest := by
+        simpa only [RawQueryRole.nextDigest] using selectedDigest
+      exact selectedUnchanged.trans probesDigest
+  have finalNonceLookup := absorb_step_exposes_literal_lookup
+    (exactOperationalTable input) afterGrind evaluator.prefixState
+      (.finalNonce
+        (exactOperationalTape input).messages.finalGrinding.selected)
+      finalNonceAbsorb
+  rw [stableDigest] at finalNonceLookup
+  have q16BaseExact : evaluator.prefixState.digest =
+      (exactOperationalRawTrace input).q16BaseDigest := by
+    simpa using congrArg InteractiveRawTrace.q16BaseDigest evaluator.rawTraceEq
   refine ⟨evaluator, segments, beforeAlphaProducer, beforeAlpha, afterAlpha,
     afterBlocks, afterFinal256, outputs, advances, exactValue,
     producerPrefixRun, boundaryRun, boundaryLookup, squeezeRun,
     afterAlphaExact,
     final256Run, outputsLength, advancesLength, coordinates, terminalExact,
-    callsExact, exactDecode, operationalValue, final256Lookup⟩
+    callsExact, exactDecode, operationalValue, final256Lookup, ?_, q16BaseExact⟩
+  simpa [AspisK1.V7Tag73TranscriptSchedule.Payload.label,
+    AspisK1.V7Tag73TranscriptSchedule.Payload.data] using finalNonceLookup
 
 #print axioms after_semantic_tail_events_alpha_zero_split
 #print axioms before_alpha_zero_tail_producer_split

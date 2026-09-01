@@ -220,6 +220,11 @@ theorem exact_root_ordered_q16_chain_terminal_pair_mem
       advances)
     (nonempty : 0 < outputs.length) :
     ∃ blockDigest blockOutput,
+      tableLookup (exactOperationalTable input)
+          (gammaOutputInput blockDigest) = some blockOutput ∧
+      tableLookup (exactOperationalTable input)
+          (gammaAdvanceInput blockDigest) =
+        some (gammaTerminalDigest digest advances) ∧
       (gammaOutputInput blockDigest, blockOutput) ∈
           exactRootFreshQueries input ∧
       (gammaAdvanceInput blockDigest,
@@ -236,7 +241,8 @@ theorem exact_root_ordered_q16_chain_terminal_pair_mem
           apply List.length_eq_zero_iff.mp
           simpa using exact_root_ordered_q16_chain_lengths tail
         subst advances
-        refine ⟨digest, output, ?_, ?_⟩
+        refine ⟨digest, output, outputFound, ?_, ?_, ?_⟩
+        · simpa [gammaTerminalDigest] using advanceFound
         · obtain ⟨before, middle, after, rootExact⟩ := producerBeforeOutput
           rw [rootExact]
           simp
@@ -247,9 +253,10 @@ theorem exact_root_ordered_q16_chain_terminal_pair_mem
           intro lengthZero
           exact outputsEmpty (List.length_eq_zero_iff.mp lengthZero)
         have tailNonempty : 0 < outputs.length := by omega
-        obtain ⟨blockDigest, blockOutput, outputMember, advanceMember⟩ :=
-          ih tailNonempty
-        exact ⟨blockDigest, blockOutput, outputMember, by
+        obtain ⟨blockDigest, blockOutput, outputLookup, advanceLookup,
+          outputMember, advanceMember⟩ := ih tailNonempty
+        exact ⟨blockDigest, blockOutput, outputLookup, by
+          simpa [gammaTerminalDigest] using advanceLookup, outputMember, by
           simpa [gammaTerminalDigest] using advanceMember⟩
 
 /-- Every literal evaluator duplex chain has the exact strict root ordering
