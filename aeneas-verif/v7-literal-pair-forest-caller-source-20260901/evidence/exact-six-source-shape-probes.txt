@@ -1,0 +1,41 @@
+Exact-six source-shape isolation, source revision 309b9c73353366a32671901be64cf8386404fd89
+
+Literal index shape: REJECTED
+Charon unit: aspis-v7-six-index-charon-r2.service
+Invocation: 38d0764d1e5448c4be2a11f995256357
+Wall / peak / swap: 13.49 s / 517,428 KiB / 0
+Aeneas unit: aspis-v7-six-index-aeneas-r1.service
+Invocation: 7ba486d45f3948298681de86223cba31
+Failure: shared SliceIndexShared<AccountInfo> instantiation was blocked because
+AccountInfo structurally contains mutable borrows.
+
+split_at plus first shape: REJECTED
+Charon unit: aspis-v7-six-split-charon-r1.service
+Invocation: 7de9f9e8239d4461b2d7b56b0e389b9e
+Wall / peak / swap: 13.35 s / 517,172 KiB / 0
+Aeneas unit: aspis-v7-six-split-aeneas-r1.service
+Invocation: 6a013763c74c4af3ba72d06bdbdd7307
+Failure: InterpExpressions.ml:55, "There should be no bottoms in the value".
+
+Six split_first calls: REJECTED
+Charon unit: aspis-v7-six-split-first-charon-r1.service
+Invocation: 2d465c5060fe44b08bdb5e4f5b8b29d2
+Wall / peak / swap: 13.32 s / 517,060 KiB / 0
+Aeneas unit: aspis-v7-six-split-first-aeneas-r1.service
+Invocation: 9e7859f300d049fa88feb111bcd8fd95
+Failure: SymbolicToPureValues.ml:394 internal error.
+
+Redundant exact-length preflight plus literal pattern: ACCEPTED
+Rust unit: aspis-v7-six-len-preflight-rust-r1.service
+Invocation: 3a6442455fd54346aa1f3ad0708c3266
+Wall / peak / swap: 0.45 s / 201,996 KiB / 0
+Charon unit: aspis-v7-six-len-preflight-charon-r1.service
+Invocation: aed3fbe6ec28479489c5faf5050310d5
+Wall / peak / swap: 13.42 s / 516,724 KiB / 0
+Aeneas unit with the pinned two-patch translator:
+aspis-v7-six-len-preflight-shared-index-aeneas-r1.service
+Invocation: 16418d79ea85454db05c39c75f751094
+Wall / peak / swap: 0.30 s / 63,888 KiB / 0
+
+No failed shape was rerun with a larger memory cap. Each failure changed the
+reproducer or translator invariant before the next focused probe.

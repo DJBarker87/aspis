@@ -1,9 +1,10 @@
-Generated full-caller FunsExternal template: 84 declarations
+Generated full-caller FunsExternal template: 83 declarations
+(73 are rendered as Lean axioms.)
 
 69 declarations are Rust core/alloc collection, iterator, option, result,
 slice, box, vector, numeric or formatting operations.
 
-15 protocol/platform declaration groups remain:
+14 protocol/platform declaration groups remain:
 
 1. aspis_core.field.qm31_dot3
 2. pair_forest_copy_inactive_row_groups_compiled_v1
@@ -17,9 +18,14 @@ slice, box, vector, numeric or formatting operations.
 10. verifier_entry_pda_v1
 11. readonly_account_metadata_v1 (closed by the focused bridge)
 12. borrow_readonly_account_data
-13. exact_six_account_refs_v1 (current Aeneas PtrMetadata blocker)
-14. verify.sbf_hashv
-15. solana_pubkey equality/new_from_array/to_bytes operations
+13. verify.sbf_hashv
+14. solana_pubkey equality/new_from_array/to_bytes operations
 
 The two static schedule accessors are exactly items 2 and 3.  No additional
 schedule function was made opaque.
+
+exact_six_account_refs_v1 is now a transparent definition in the complete
+generated Funs module and is independently kernel checked for exact 0-through-5
+order. The smallest remaining production-source opacity is item 12,
+borrow_readonly_account_data; ordinary Rust and platform declarations remain
+separate explicit boundaries even after that helper is closed.

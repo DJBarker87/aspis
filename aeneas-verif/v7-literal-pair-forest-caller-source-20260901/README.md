@@ -14,9 +14,9 @@ The complete current root
 
 `crate::v7_pair_forest_dispatch::process_with_clear_return_data`
 
-now passes Charon and Aeneas through final Lean emission.  The emitted
-definition is in
-`V7LiteralCallerCurrent309bMetadataAccountOpaqueAcceptedToolR1/Funs.lean`.
+now passes Charon and Aeneas through final Lean emission with
+`exact_six_account_refs_v1` transparent.  The strongest emitted definition is
+in `V7LiteralCallerCurrent309bExactSixTransparentSharedIndexR1/Funs.lean`.
 The original `SymbolicToPureTypes` iterator explosion, the nested
 `AccountInfo` borrow join and the M31 type/constructor emitter clash are no
 longer translation blockers.
@@ -45,28 +45,58 @@ Both theorems report exactly `propext`, `Classical.choice` and `Quot.sound`.
 There is no `sorry`, `admit`, `sorryAx`, `native_decide`, project axiom or
 conclusion-shaped premise in the compiled bridge.
 
-## Exact remaining source obstruction
+The formerly blocked six-account helper is now independently translated as
+six literal shared-slice indices, in order `0` through `5`.  Lean proves:
 
-The next finite helper is `exact_six_account_refs_v1`.  Charon translates it,
-but Aeneas rejects the slice-pattern destructure at production-source lines
-424:8--424:106 with:
+- `exact_six_account_refs_v1_literal_order`;
+- `exact_six_account_refs_v1_success_has_literal_order`.
+
+The second theorem applies to every slice whose value is exactly the six
+caller accounts and proves that no account can be permuted, duplicated or
+dropped.  Both the focused helper and the complete caller use the same pinned
+patched Aeneas binary.  The complete caller's external-function template no
+longer declares `exact_six_account_refs_v1`.
+
+## Closed PtrMetadata obstruction
+
+The previous Aeneas failure at the production six-account slice pattern was:
 
 `Inconsistent projection: PtrMetadata`
 
-for a shared `&[AccountInfo]`.  This happens in `InterpPaths.ml:236` before
-Lean emission.  The diagnostic LLBC and complete failure log are frozen.  No
-translator patch and no broader opacity was introduced.
+The accepted extraction-only source normalization adds a redundant
+`accounts.len() != 6` guard immediately before the existing exact-six pattern.
+The only production caller already rejects every non-six input before this
+private helper is called, and the original pattern's `else` branch is also
+unreachable, so the reachable verifier behavior is unchanged.
 
-Consequently, this milestone proves the metadata projection exactly and emits
-the complete caller, but it does **not** yet claim a kernel-checked literal
-`process_with_clear_return_data` accepted-path theorem.  That theorem is still
-blocked by the six-account shared-slice projection and by the remaining
-explicit external functions.
+Two narrowly scoped translator patches then:
+
+1. replace only an identity reborrow of the same immutable shared slice with a
+   copy of that shared reference; and
+2. permit only immutable, single-element slice indexing when the element type
+   structurally contains mutable borrows.
+
+Raw pointers, mutable indexing, arrays, ranges/subslices, mismatched metadata
+origins and all other nested-borrow builtins retain the original fail-closed
+behavior.  The patched tree and static binary hash are pinned in
+`TOOLCHAIN.md`; the build script reproduces and asserts both.
+
+## Exact remaining source boundary
+
+This milestone still does **not** claim a kernel-checked literal
+`process_with_clear_return_data` accepted-path theorem.  The complete emitted
+caller has 83 external function templates (73 rendered as Lean axioms), down
+from 84/74.  The six-account helper is no longer among them.  The smallest
+remaining production-source seam is `borrow_readonly_account_data`, whose
+literal Solana `RefCell`/`AccountInfo` borrow graph remains opaque in the full
+caller.  Closing it will not by itself finish the caller theorem: the remaining
+ordinary Rust-library and explicit platform functions must also be supplied or
+retained as named platform boundaries.
 
 ## Remaining explicit boundaries
 
-The generated whole-caller template has 84 external function declarations:
-69 ordinary Rust/core/alloc operations and 15 protocol/platform functions.
+The generated whole-caller template has 83 external function declarations:
+69 ordinary Rust/core/alloc operations and 14 protocol/platform groups.
 The protocol/platform set is:
 
 - `qm31_dot3`;
@@ -75,7 +105,6 @@ The protocol/platform set is:
 - five exact PDA wrappers;
 - `readonly_account_metadata_v1` (closed in this bundle);
 - `borrow_readonly_account_data`;
-- `exact_six_account_refs_v1` (the immediate Aeneas blocker);
 - `sbf_hashv`;
 - Pubkey equality/construction/byte conversion.
 
@@ -86,12 +115,13 @@ Registry V2 and K1 boundaries are not weakened here.
 
 ## Extraction normalization
 
-`toolchain/literal-caller-current309b-to-accepted-source.patch` is the canonical
-replay patch.  It is an exact diff from the pinned commit to the source mirror
-used for the successful extraction; applying it reproduces source hashes:
+`toolchain/literal-caller-current309b-to-accepted-source.patch` followed by
+`toolchain/literal-caller-exact-six-len-preflight-normalization.patch` is the
+canonical replay sequence.  Applying both to the pinned commit reproduces
+source hashes:
 
 - `v7_verifier.rs`: `ede2541418bb566d9dada7598d49b3acb41a3b4636f47446a65f274761b1641c`;
-- `v7_pair_forest_dispatch.rs`: `d5a380e7782b1cb9673794470ed3951421d1df6e19b4fff7695ea1d8522e8df3`.
+- `v7_pair_forest_dispatch.rs`: `39d280b72c19c8fa0e3f0b8e06bd3df26fe4b7ae0e87e94873b0a59f1737d5a5`.
 
 The older experiment-by-experiment fragments are retained only under
 `evidence/superseded-fragments/`; they are not the replay interface.  Failed

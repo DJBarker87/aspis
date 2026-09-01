@@ -1,0 +1,78 @@
+--- a/src/PrePasses.ml
++++ b/src/PrePasses.ml
+@@ -86,6 +86,66 @@
+     ^ "\n\n"
+     ^ Print.fun_decl_to_string env "" "  " f];
+   f
++
++(** Eliminate identity reborrows of immutable shared slices which rustc emits
++    before indexing a slice.
++
++    The relevant MIR shape is:
++
++    {[
++      tmp = &*(slice_ref) with metadata copy slice_ref.metadata
++    ]}
++
++    where [slice_ref] and [tmp] are both shared references to exactly the same
++    slice type.  This reborrow has the same data pointer and length as
++    [slice_ref].  After body-region erasure, copying [slice_ref] is therefore
++    the same pure value and avoids interpreting pointer metadata as a separate
++    projection.
++
++    This is deliberately not general pointer-metadata support.  The rewrite
++    requires a safe immutable shared slice reference, a dereference of that
++    exact reference, metadata copied or moved from that exact reference, and a
++    shared-slice destination with the same element type.  Raw pointers,
++    mutable references, mismatched data/metadata origins, and every other
++    reborrow remain untouched and fail through the existing interpreter. *)
++let eliminate_identity_shared_slice_reborrows (_crate : crate) (f : fun_decl) :
++    fun_decl =
++  let rewriter =
++    object
++      inherit [_] map_statement as super
++
++      method! visit_statement env st =
++        match st.kind with
++        | Assign
++            ( dest,
++              RvRef
++                ( { kind = PlaceProjection (reference, Deref); ty = TSlice elem_ty },
++                  BShared,
++                  (Copy metadata_place | Move metadata_place) ) ) -> (
++            match (reference.ty, metadata_place.kind, dest.ty) with
++            | ( TRef (_, TSlice reference_elem_ty, RShared),
++                PlaceProjection (metadata_reference, PtrMetadata),
++                TRef (_, TSlice dest_elem_ty, RShared) )
++              when elem_ty = reference_elem_ty
++                   && elem_ty = dest_elem_ty
++                   && metadata_reference = reference ->
++                {
++                  st with
++                  kind = Assign (dest, Use (Copy reference, NoRetag));
++                }
++            | _ -> super#visit_statement env st)
++        | _ -> super#visit_statement env st
++    end
++  in
++  match f.body with
++  | StructuredBody body ->
++      {
++        f with
++        body =
++          StructuredBody
++            { body with body = rewriter#visit_block () body.body };
++      }
++  | _ -> f
+ 
+ (** Eliminate the metadata-only raw pointers which rustc introduces while
+     lowering slice patterns.
+@@ -3281,6 +3341,8 @@
+     [
+       ("fix_closure_lifetimes", fix_closure_lifetimes);
+       ("erase_body_regions", erase_body_regions);
++      ( "eliminate_identity_shared_slice_reborrows",
++        eliminate_identity_shared_slice_reborrows );
+       ( "eliminate_metadata_only_slice_raw_pointers",
+         eliminate_metadata_only_slice_raw_pointers );
+       ("remove_unreachable", remove_unreachable);

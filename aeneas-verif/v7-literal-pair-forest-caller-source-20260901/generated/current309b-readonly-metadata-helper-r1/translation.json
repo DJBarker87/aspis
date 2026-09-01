@@ -1,5 +1,5 @@
 {
-  "aeneas_version": "d860ac47-tag73-looparity-r1",
+  "aeneas_version": "d860ac47-tag73-looparity-shared-index-r1",
   "charon_version": "0.1.223",
   "crate": "aspis_verifier",
   "functions": [

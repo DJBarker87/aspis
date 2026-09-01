@@ -70,3 +70,64 @@ Source: v7_pair_forest_dispatch.rs lines 424:8-424:106
 Classification: useful source-unblock milestone, not literal caller closure.
 The full caller translates and emits; its generated Funs module is not yet
 kernel compiled because the remaining external functions are not all filled.
+
+Exact-six PtrMetadata closure: PASS
+Reachable-domain-equivalent len preflight Rust gate:
+Unit: aspis-v7-six-len-preflight-rust-r1.service
+Invocation: 3a6442455fd54346aa1f3ad0708c3266
+Wall: 0.45 s
+Peak RSS: 201,996 KiB
+Swap: 0
+
+Focused exact-six Charon: PASS
+Unit: aspis-v7-six-len-preflight-charon-r1.service
+Invocation: aed3fbe6ec28479489c5faf5050310d5
+Wall: 13.42 s
+Peak RSS: 516,724 KiB
+Swap: 0
+
+Focused exact-six Aeneas: PASS
+Unit: aspis-v7-six-len-preflight-shared-index-aeneas-r1.service
+Invocation: 16418d79ea85454db05c39c75f751094
+Wall: 0.30 s
+Peak RSS: 63,888 KiB
+Swap: 0
+Emitted operation: six ordered Slice.index_usize calls, indices 0 through 5
+
+Complete caller Charon with exact-six transparent: PASS
+Wrapper unit: aspis-v7-full-six-transparent-charon-r1.service
+Invocation: 6c62a874272e46b6bd3ffbead4231426
+Charon subprocess wall: 14.81 s compile plus extraction
+Peak RSS: 516,628 KiB
+Swap: 0
+Note: the wrapper subsequently exited 2 because the M31 rename script had not
+yet been staged at its requested path. The raw LLBC records has_errors=false;
+the separately executed exact rename produced the frozen LLBC below, which the
+successful complete Aeneas run consumed.
+Frozen renamed LLBC SHA-256: 28a7a6d0bb27bbf066ad14173040c9d169a322a6c5d116fa69b19e4c3d96f782
+
+Complete caller Aeneas with exact-six transparent: PASS
+Unit: aspis-v7-full-six-transparent-aeneas-r1.service
+Invocation: cfe2ec164700440f971e16442920ba02
+Wall: 11:18.57
+Peak RSS: 2,730,736 KiB
+Cgroup peak: 2.5 GiB under High 5 GiB / Max 6 GiB
+Swap: 0
+Generated root: v7_pair_forest_dispatch.process_with_clear_return_data
+External templates: 83 total / 73 rendered Lean axioms
+exact_six_account_refs_v1 external declaration: absent
+
+Focused exact-six and metadata Lean chain: PASS
+Unit: aspis-v7-six-account-bundle-lean-r1.service
+Invocation: b488b97d83bd488d85e7f4a09fe0e584
+Wall: 17.51 s
+Peak RSS: 2,716,024 KiB
+Swap: 0
+Strongest new theorem: exact_six_account_refs_v1_success_has_literal_order
+Axioms: propext, Classical.choice, Quot.sound
+Forbidden constructs: none
+
+Updated classification: exact six-account source obstruction closed; complete
+caller translation/emission green. This is not yet a kernel-checked literal
+caller theorem because the remaining external function templates, beginning
+with borrow_readonly_account_data on the source side, are not all filled.
