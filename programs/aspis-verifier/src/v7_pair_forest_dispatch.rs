@@ -714,7 +714,7 @@ fn statement_digest_v1(
 #[inline(never)]
 fn verify_statement_v1(
     verifier_program: &Pubkey,
-    proof_account: &AccountInfo<'_>,
+    proof_account_key: &Pubkey,
     proof: &[u8],
     frontier_nodes: usize,
     statement: &PoolV1PairForestTerminalStatementV1,
@@ -729,7 +729,7 @@ fn verify_statement_v1(
             frontier_nodes,
             verifier_program,
             V7_POOL_PAIR_FOREST_TAG73_RELEASE_BINDING,
-            proof_account.key,
+            proof_account_key,
             public,
             transition,
             statement_digest,
@@ -741,7 +741,7 @@ fn verify_statement_v1(
             frontier_nodes,
             verifier_program,
             V7_POOL_PAIR_FOREST_TAG73_RELEASE_BINDING,
-            proof_account.key,
+            proof_account_key,
             public,
             transition,
             statement_digest,
@@ -757,7 +757,7 @@ fn verify_statement_v1(
                 frontier_nodes,
                 verifier_program,
                 V7_POOL_PAIR_FOREST_TAG73_RELEASE_BINDING,
-                proof_account.key,
+                proof_account_key,
                 public,
                 transition,
                 statement_digest,
@@ -771,7 +771,7 @@ fn verify_statement_v1(
                 frontier_nodes,
                 verifier_program,
                 V7_POOL_PAIR_FOREST_TAG73_RELEASE_BINDING,
-                proof_account.key,
+                proof_account_key,
                 public,
                 transition,
                 statement_digest,
@@ -791,7 +791,7 @@ fn verify_statement_v1(
 #[inline(never)]
 fn verify_statement_without_work_for_test_v1(
     verifier_program: &Pubkey,
-    proof_account: &AccountInfo<'_>,
+    proof_account_key: &Pubkey,
     proof: &[u8],
     frontier_nodes: usize,
     statement: &PoolV1PairForestTerminalStatementV1,
@@ -806,7 +806,7 @@ fn verify_statement_without_work_for_test_v1(
                 frontier_nodes,
                 verifier_program,
                 V7_POOL_PAIR_FOREST_TAG73_RELEASE_BINDING,
-                proof_account.key,
+                proof_account_key,
                 public,
                 transition,
                 statement_digest,
@@ -820,7 +820,7 @@ fn verify_statement_without_work_for_test_v1(
                 frontier_nodes,
                 verifier_program,
                 V7_POOL_PAIR_FOREST_TAG73_RELEASE_BINDING,
-                proof_account.key,
+                proof_account_key,
                 public,
                 transition,
                 statement_digest,
@@ -862,7 +862,8 @@ where
     clear_return_data();
     let validated =
         validate_v7_pair_forest_asq8_request_v1(verifier_program, accounts, instruction_data)?;
-    let proof_account = &accounts[0];
+    let proof_account = accounts.first().ok_or(ProgramError::NotEnoughAccountKeys)?;
+    let proof_account_key = *proof_account.key;
     let data = proof_account.try_borrow_data()?;
     let (payload_start, payload_end) = uploaded_proof_bounds(&data)?;
     if payload_end != data.len() {
@@ -878,7 +879,7 @@ where
     let statement_digest = statement_digest_v1(&validated.statement)?;
     verify_statement_v1(
         verifier_program,
-        proof_account,
+        &proof_account_key,
         proof,
         validated.frontier_nodes,
         &validated.statement,
@@ -900,7 +901,8 @@ where
     clear_return_data();
     let validated =
         validate_v7_pair_forest_asf8_request_v1(verifier_program, accounts, instruction_data)?;
-    let proof_account = &accounts[0];
+    let proof_account = accounts.first().ok_or(ProgramError::NotEnoughAccountKeys)?;
+    let proof_account_key = *proof_account.key;
     let data = proof_account.try_borrow_data()?;
     let (payload_start, payload_end) = uploaded_proof_bounds(&data)?;
     if payload_end != data.len() {
@@ -915,7 +917,7 @@ where
     let statement_digest = statement_digest_v1(&validated.statement)?;
     verify_statement_v1(
         verifier_program,
-        proof_account,
+        &proof_account_key,
         proof,
         validated.frontier_nodes,
         &validated.statement,
@@ -933,7 +935,8 @@ fn process_without_work_for_test_v1(
     program::set_return_data(&[]);
     let validated =
         validate_v7_pair_forest_asq8_request_v1(verifier_program, accounts, instruction_data)?;
-    let proof_account = &accounts[0];
+    let proof_account = accounts.first().ok_or(ProgramError::NotEnoughAccountKeys)?;
+    let proof_account_key = *proof_account.key;
     let data = proof_account.try_borrow_data()?;
     let (payload_start, payload_end) = uploaded_proof_bounds(&data)?;
     if payload_end != data.len() {
@@ -949,7 +952,7 @@ fn process_without_work_for_test_v1(
     let statement_digest = statement_digest_v1(&validated.statement)?;
     verify_statement_without_work_for_test_v1(
         verifier_program,
-        proof_account,
+        &proof_account_key,
         proof,
         validated.frontier_nodes,
         &validated.statement,
