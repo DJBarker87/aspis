@@ -1,4 +1,6 @@
+import AspisFormal.K1.V7Tag73AdaptiveQ16TrialAccounting
 import AspisFormal.K1.V7Tag73CausalQ16FinalWorkDependentBad
+import AspisFormal.K1.V7Tag73HiddenTapeAveraging
 import AspisFormal.K1.V7Tag73IndexedExposureCausalRouter
 
 /-!
@@ -27,10 +29,12 @@ namespace AspisK1.V7Tag73CausalAlphaFinalWorkQ16Probability
 open MeasureTheory
 open AspisK1.V7FsAokExperiment
 open AspisK1.V7Tag73AdaptiveLazyOracle
+open AspisK1.V7Tag73AdaptiveQ16TrialAccounting
 open AspisK1.V7Tag73CausalQ16CoordinateRouter
 open AspisK1.V7Tag73CausalQ16FinalWorkDependentBad
 open AspisK1.V7Tag73CausalQ16FinalWorkProbability
 open AspisK1.V7Tag73ExactCompilerResources
+open AspisK1.V7Tag73HiddenTapeAveraging
 open AspisK1.V7Tag73IndexedExposureCausalRouter
 open AspisK1.V7Tag73Q16DigestDrawReindex
 open AspisK1.V7Tag73Q16FirstCompactUniformity
@@ -160,6 +164,119 @@ theorem uniform_tape_dependent_alpha_final_work_answer_q16_probability_le
       (fun context work => badCard context.1 context.2 work)
       reference traceExists event covered
 
+/-- Hidden-tape averaging for the corrected 517-slot compiler factor.  The
+four alpha-zero blocks are explicit conditioning data; only final work and
+the q16 forest contribute probability factors. -/
+theorem exact_compiler_causal_alpha_final_work_answer_q16_event_probability_le
+    {HiddenTape : Type} [Fintype HiddenTape]
+    (hiddenLaw : PMF HiddenTape)
+    (parameters : ExactCompilerResourceParameters)
+    (router : HiddenTape →
+      ExactCompilerCausalAlphaFinalWorkQ16Router parameters)
+    (bad : HiddenTape →
+      FreshAnswerTape Digest256
+          ((exactCompilerTargetCaps parameters).length - 517) →
+        AlphaZeroDigestBlocks → Digest256 → Finset (Fin 262144))
+    (badCard : ∀ hidden residual alpha work,
+      (bad hidden residual alpha work).card ≤ 9557)
+    (reference : AdmittedResult SemanticCap203Admitted)
+    (traceExists : Nonempty
+      (FirstAdmittedTrace q16CandidateOutput SemanticCap203Admitted 64
+        reference.1))
+    (event : Set (ExactCompilerSample HiddenTape parameters))
+    (covered : ∀ hidden, jointEventSlice event hidden ⊆
+      exactCompilerCausalAlphaFinalWorkQ16Coordinates parameters
+          (router hidden) ⁻¹'
+        dependentSuccessfulSubtypeEvent finalWorkQ16TotalSucceeds
+          (fun context => successfulFinalWorkQ16TotalEquiv ⁻¹'
+            finalWorkQ16SuccessfulDependentBadEvent
+              (fun work => bad hidden context.1 context.2 work))) :
+    (exactCompilerJointLaw hiddenLaw parameters).toOuterMeasure event ≤
+      ((1 : ENNReal) / (2 : ENNReal) ^ 34) *
+        ((Nat.choose 9557 16 : ENNReal) /
+          (AspisK1.V7Tag73Q16CompactScheduleCount.semanticCompactFavourable :
+            ENNReal)) := by
+  apply joint_event_probability_le_of_every_slice_le
+  intro hidden
+  exact uniform_tape_dependent_alpha_final_work_answer_q16_probability_le
+    (exactCompilerCausalAlphaFinalWorkQ16Coordinates parameters
+      (router hidden))
+    (bad hidden) (badCard hidden) reference traceExists
+    (jointEventSlice event hidden) (covered hidden)
+
+/-! ## Corrected exposure-trial package -/
+
+/-- A finite family of exact 517-slot factors.  This is the probability-ready
+replacement for the old 513-slot package; the source layer supplies a router
+that is fixed by the trial and hidden tape before the uniform answer tape is
+sampled. -/
+structure ExactCompilerCausalAlphaFinalWorkAnswerQ16Trials
+    {HiddenTape Trial : Type}
+    [Fintype HiddenTape] [Fintype Trial]
+    (parameters : ExactCompilerResourceParameters) where
+  event : Trial → Set (ExactCompilerSample HiddenTape parameters)
+  router : Trial → HiddenTape →
+    ExactCompilerCausalAlphaFinalWorkQ16Router parameters
+  bad : Trial → HiddenTape →
+    FreshAnswerTape Digest256
+        ((exactCompilerTargetCaps parameters).length - 517) →
+      AlphaZeroDigestBlocks → Digest256 → Finset (Fin 262144)
+  badCard : ∀ trial hidden residual alpha work,
+    (bad trial hidden residual alpha work).card ≤ 9557
+  reference : AdmittedResult SemanticCap203Admitted
+  traceExists : Nonempty
+    (FirstAdmittedTrace q16CandidateOutput SemanticCap203Admitted 64
+      reference.1)
+  covered : ∀ trial hidden, jointEventSlice (event trial) hidden ⊆
+    exactCompilerCausalAlphaFinalWorkQ16Coordinates parameters
+        (router trial hidden) ⁻¹'
+      dependentSuccessfulSubtypeEvent finalWorkQ16TotalSucceeds
+        (fun context => successfulFinalWorkQ16TotalEquiv ⁻¹'
+          finalWorkQ16SuccessfulDependentBadEvent
+            (fun work => bad trial hidden context.1 context.2 work))
+
+theorem ExactCompilerCausalAlphaFinalWorkAnswerQ16Trials.event_probability_le_product
+    {HiddenTape Trial : Type}
+    [Fintype HiddenTape] [Fintype Trial]
+    {hiddenLaw : PMF HiddenTape}
+    {parameters : ExactCompilerResourceParameters}
+    (trials : ExactCompilerCausalAlphaFinalWorkAnswerQ16Trials
+      (HiddenTape := HiddenTape) (Trial := Trial) parameters)
+    (trial : Trial) :
+    (exactCompilerJointLaw hiddenLaw parameters).toOuterMeasure
+        (trials.event trial) ≤
+      q16SemanticOneForestRawError / (2 : ENNReal) ^ 34 := by
+  have bound :=
+    exact_compiler_causal_alpha_final_work_answer_q16_event_probability_le
+      hiddenLaw parameters (trials.router trial) (trials.bad trial)
+      (trials.badCard trial) trials.reference trials.traceExists
+      (trials.event trial) (trials.covered trial)
+  change
+    (exactCompilerJointLaw hiddenLaw parameters).toOuterMeasure
+        (trials.event trial) ≤
+      ((1 : ENNReal) / (2 : ENNReal) ^ 34) *
+        q16SemanticOneForestRawError at bound
+  calc
+    _ ≤ ((1 : ENNReal) / (2 : ENNReal) ^ 34) *
+          q16SemanticOneForestRawError := bound
+    _ = q16SemanticOneForestRawError / (2 : ENNReal) ^ 34 := by
+      rw [ENNReal.div_eq_inv_mul, ENNReal.div_eq_inv_mul]
+      simp
+
+theorem ExactCompilerCausalAlphaFinalWorkAnswerQ16Trials.failure_union_probability_le_one_forest
+    {HiddenTape Trial : Type}
+    [Fintype HiddenTape] [Fintype Trial]
+    {hiddenLaw : PMF HiddenTape}
+    {parameters : ExactCompilerResourceParameters}
+    (trials : ExactCompilerCausalAlphaFinalWorkAnswerQ16Trials
+      (HiddenTape := HiddenTape) (Trial := Trial) parameters)
+    (trialCap : Fintype.card Trial ≤ 2 ^ 34) :
+    (exactCompilerJointLaw hiddenLaw parameters).toOuterMeasure
+        (⋃ trial, trials.event trial) ≤ q16SemanticOneForestRawError := by
+  exact work_qualified_q16_trial_union_probability_le_one_forest
+    (exactCompilerJointLaw hiddenLaw parameters) trials.event
+    trials.event_probability_le_product trialCap
+
 #print axioms alpha_final_work_q16_digest_slot_card
 #print axioms alphaFinalWorkQ16DigestSlotFunctionEquiv
 #print axioms exact_compiler_tape_has_alpha_final_work_q16_capacity
@@ -167,6 +284,13 @@ theorem uniform_tape_dependent_alpha_final_work_answer_q16_probability_le
 #print axioms exactCompilerCausalAlphaFinalWorkQ16Coordinates
 #print axioms
   uniform_tape_dependent_alpha_final_work_answer_q16_probability_le
+#print axioms
+  exact_compiler_causal_alpha_final_work_answer_q16_event_probability_le
+#print axioms ExactCompilerCausalAlphaFinalWorkAnswerQ16Trials
+#print axioms
+  ExactCompilerCausalAlphaFinalWorkAnswerQ16Trials.event_probability_le_product
+#print axioms
+  ExactCompilerCausalAlphaFinalWorkAnswerQ16Trials.failure_union_probability_le_one_forest
 
 end
 
