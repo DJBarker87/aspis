@@ -18,6 +18,7 @@ bincode = "1.3.3"
 bs58 = "0.5.1"
 getrandom = "0.2.16"
 hex = "0.4.3"
+hpke = { version = "0.14.0", default-features = false, features = ["alloc", "chacha", "x25519"] }
 serde = { version = "1.0.229", features = ["derive"] }
 serde_json = "1.0.145"
 sha2 = "0.10.9"
@@ -27,6 +28,9 @@ solana-message = { version = "=2.4.0", features = ["bincode"] }
 solana-program = "=2.3.0"
 solana-signer = "=2.2.1"
 solana-transaction = { version = "=2.2.3", features = ["bincode"] }
+solana-signature-v1 = { package = "solana-signature", version = "=3.4.1" }
+solana-transaction-v1 = { package = "solana-transaction", version = "=4.1.5", features = ["wincode"] }
+wincode = "=0.5.0"
 
 [[bin]]
 name = "prove-from-live-bundle"
@@ -55,3 +59,7 @@ path = "src/bin/build_live_pool_checkpoint.rs"
 [[bin]]
 name = "materialize-live-proof-bundle"
 path = "src/bin/materialize_live_proof_bundle.rs"
+
+[[bin]]
+name = "build-live-transfer-terminal"
+path = "src/bin/build_live_transfer_terminal.rs"

@@ -20,6 +20,7 @@ readonly CHECKPOINT_BUILDER=${ASPIS_V7_LIVE_POOL_CHECKPOINT_BUILDER:-}
 readonly MATERIALIZER=${ASPIS_V7_LIVE_PROOF_MATERIALIZER:-}
 readonly PROVER=${ASPIS_V7_LIVE_POOL_PROVER:-}
 readonly PROOF_UPLOAD_CHILD=${ASPIS_V7_PROOF_UPLOAD_CHILD:-}
+readonly TERMINAL_BUILDER=${ASPIS_V7_LIVE_TRANSFER_TERMINAL_BUILDER:-}
 readonly AGAVE_BIN_DIR=${ASPIS_TXV1_DISPOSABLE_AGAVE_BIN_DIR:-}
 
 [[ "$RPC_URL" =~ ^http://127\.0\.0\.1:[0-9]+$ ]] || fail "disposable RPC is required"
@@ -324,6 +325,76 @@ if [[ -n "$SECRET_BUILDER" || -n "$DEPOSIT_BUILDER" ]]; then
         .allFinalized == true and .sealed == true and .proofAccount == $proof' \
         --arg proof "$proof_pubkey" "$EVIDENCE_DIR/proof-upload/proof-upload.json" >/dev/null \
         || fail "genuine live proof upload failed validation"
+      if [[ -n "$TERMINAL_BUILDER" ]]; then
+        [[ -x "$TERMINAL_BUILDER" ]] || fail "terminal TxV1 builder is unavailable"
+        mkdir "$EVIDENCE_DIR/terminal-transfer"
+        terminal_context_slot=$(rpc '{"jsonrpc":"2.0","id":1500,"method":"getSlot","params":[{"commitment":"finalized"}]}' | jq -er '.result')
+        terminal_blockhash=$(rpc "$(jq -nc --argjson slot "$terminal_context_slot" \
+          '{jsonrpc:"2.0",id:1501,method:"getLatestBlockhash",params:[{commitment:"finalized",minContextSlot:$slot}]}')" \
+          | jq -er '.result.value.blockhash')
+        jq -n --arg bundle "$EVIDENCE_DIR/live-proof-bundle/live-bundle.json" \
+          --arg asq8 "$EVIDENCE_DIR/live-proof/asq8.bin" --arg payer "$PAYER_KEYPAIR" \
+          --arg blockhash "$terminal_blockhash" --argjson slot "$terminal_context_slot" \
+          '{schema:"aspis.v7.live-transfer-terminal-input.v1",bundle:$bundle,asq8:$asq8,
+            payerKeypair:$payer,recentBlockhash:$blockhash,minContextSlot:$slot,requestId:1600}' \
+          >"$WORK_DIR/terminal-input.json"
+        "$TERMINAL_BUILDER" "$WORK_DIR/terminal-input.json" \
+          >"$EVIDENCE_DIR/terminal-transfer/signed-request.json"
+        jq -e '.instructionCount == 2 and .terminalInstructionCount == 1 and
+          .ciphertextCarrierRealHpke == true and .serializedTransactionBytes < 4096 and
+          .serializedTransactionBytes <= 3500' "$EVIDENCE_DIR/terminal-transfer/signed-request.json" >/dev/null \
+          || fail "terminal TxV1 preflight failed"
+        protected_addresses=$(jq -nc --slurpfile init "$EVIDENCE_DIR/signed-request.json" \
+          --slurpfile terminal "$EVIDENCE_DIR/terminal-transfer/signed-request.json" \
+          --arg checkpoint "$checkpoint_address" \
+          '($init[0].initializedAccounts[0:10] + [$checkpoint] + $terminal[0].terminalAccounts) | unique')
+        rpc "$(jq -nc --argjson addresses "$protected_addresses" \
+          '{jsonrpc:"2.0",id:1601,method:"getMultipleAccounts",params:[$addresses,{encoding:"base64",commitment:"finalized"}]}')" \
+          | jq . >"$EVIDENCE_DIR/terminal-transfer/accounts-before.json"
+        terminal_simulation=$(rpc "$(jq -c '.simulationRequest' "$EVIDENCE_DIR/terminal-transfer/signed-request.json")")
+        jq . <<<"$terminal_simulation" >"$EVIDENCE_DIR/terminal-transfer/simulation.json"
+        jq -e '.error | not' <<<"$terminal_simulation" >/dev/null
+        jq -e '.result.value.err == null and .result.value.unitsConsumed < 1300000' <<<"$terminal_simulation" >/dev/null \
+          || fail "terminal transfer simulation failed"
+        terminal_send=$(rpc "$(jq -c '.sendRequest' "$EVIDENCE_DIR/terminal-transfer/signed-request.json")")
+        jq . <<<"$terminal_send" >"$EVIDENCE_DIR/terminal-transfer/send.json"
+        terminal_signature=$(jq -er '.result' <<<"$terminal_send")
+        [[ "$terminal_signature" == "$(jq -er '.signature' "$EVIDENCE_DIR/terminal-transfer/signed-request.json")" ]] \
+          || fail "terminal submission changed signed wire"
+        terminal_finalized=false
+        for _ in $(seq 1 600); do
+          terminal_status=$(rpc "$(jq -nc --arg signature "$terminal_signature" \
+            '{jsonrpc:"2.0",id:1700,method:"getSignatureStatuses",params:[[$signature],{searchTransactionHistory:true}]}')")
+          if jq -e '.result.value[0] != null and .result.value[0].confirmationStatus == "finalized"' \
+            <<<"$terminal_status" >/dev/null; then terminal_finalized=true; break; fi
+          sleep 0.1
+        done
+        [[ "$terminal_finalized" == true ]] || fail "terminal transfer did not finalize"
+        rpc "$(jq -nc --arg signature "$terminal_signature" \
+          '{jsonrpc:"2.0",id:1800,method:"getTransaction",params:[$signature,{encoding:"json",commitment:"finalized",maxSupportedTransactionVersion:1}]}')" \
+          | jq . >"$EVIDENCE_DIR/terminal-transfer/finalized-transaction.json"
+        jq -e '.result != null and .result.meta.err == null and .result.meta.computeUnitsConsumed < 1300000' \
+          "$EVIDENCE_DIR/terminal-transfer/finalized-transaction.json" >/dev/null || fail "landed terminal transfer failed"
+        rpc "$(jq -nc --argjson addresses "$protected_addresses" \
+          '{jsonrpc:"2.0",id:1801,method:"getMultipleAccounts",params:[$addresses,{encoding:"base64",commitment:"finalized"}]}')" \
+          | jq . >"$EVIDENCE_DIR/terminal-transfer/accounts-after.json"
+        terminal_simulated_cu=$(jq -er '.result.value.unitsConsumed' "$EVIDENCE_DIR/terminal-transfer/simulation.json")
+        terminal_landed_cu=$(jq -er '.result.meta.computeUnitsConsumed' "$EVIDENCE_DIR/terminal-transfer/finalized-transaction.json")
+        terminal_slot=$(jq -er '.result.slot' "$EVIDENCE_DIR/terminal-transfer/finalized-transaction.json")
+        jq -n --arg signature "$terminal_signature" --argjson slot "$terminal_slot" \
+          --argjson simulatedCu "$terminal_simulated_cu" --argjson landedCu "$terminal_landed_cu" \
+          --arg beforeSha "$(shasum -a 256 "$EVIDENCE_DIR/terminal-transfer/accounts-before.json" | awk '{print $1}')" \
+          --arg afterSha "$(shasum -a 256 "$EVIDENCE_DIR/terminal-transfer/accounts-after.json" | awk '{print $1}')" \
+          --slurpfile request "$EVIDENCE_DIR/terminal-transfer/signed-request.json" \
+          '{schema:"aspis.v7.live-transfer-terminal-finalized.v1",signature:$signature,slot:$slot,
+            simulatedCu:$simulatedCu,landedCu:$landedCu,
+            serializedTransactionBytes:$request[0].serializedTransactionBytes,
+            signedWireSha256:$request[0].signedWireSha256,selectedLane:$request[0].selectedLane,
+            instructionCount:2,terminalInstructionCount:1,byteIdenticalSimulationSubmission:true,
+            ciphertextCarrierRealHpke:true,protectedAccountsBeforeJsonSha256:$beforeSha,
+            protectedAccountsAfterJsonSha256:$afterSha,finalized:true,auditOnly:true,
+            disposable:true,mainnetReady:false}' >"$EVIDENCE_DIR/terminal-transfer/terminal-finalized.json"
+      fi
     fi
   fi
 fi

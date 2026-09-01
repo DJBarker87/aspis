@@ -139,6 +139,7 @@ dependencies = [
  "bs58",
  "getrandom 0.2.17",
  "hex",
+ "hpke",
  "serde",
  "serde_json",
  "sha2 0.10.9",
@@ -146,8 +147,11 @@ dependencies = [
  "solana-keypair",
  "solana-message 2.4.0",
  "solana-program",
+ "solana-signature 3.4.1",
  "solana-signer 2.2.1",
  "solana-transaction 2.2.3",
+ "solana-transaction 4.1.5",
+ "wincode",
 ]
 
 [[package]]
