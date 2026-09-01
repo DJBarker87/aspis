@@ -471,6 +471,43 @@ theorem exact_fixed_clean_pair_k13_adversary_anchor_root_priors_eq
     leftAnswer, rightAnswer, rightActor, leftRootExact, rightRootExact,
     leftTrialExact, rightTrialExact, priorExact⟩
 
+/-- Within equal pre-anchor roots, one digest answer identifies one literal
+SHA input.  This is record-answer uniqueness, not SHA injectivity. -/
+theorem exact_equal_root_priors_same_answer_input_eq
+    {HiddenTape TapeIdentity Observation Statement Payload Witness : Type}
+    {parameters : ExactCompilerResourceParameters}
+    {transitionFuel : Nat}
+    {configuration : ExactPlainRomWitnessConfiguration HiddenTape TapeIdentity
+      Observation Statement Tag73K12ParsedProof Payload Witness parameters}
+    {projection : AcceptedTapeProjection Statement Tag73K12ParsedProof Payload}
+    {fixedInstance : PublicInstance Statement}
+    {sample : ExactCompilerSample HiddenTape parameters}
+    (input : ExactK12OperationalInput transitionFuel configuration projection
+      fixedInstance sample)
+    (leftPrior rightPrior : List UnifiedExposureRecord)
+    (leftActor rightActor : QueryActor)
+    (leftInput rightInput : ShaInput) (answer : Digest256)
+    (priorExact : leftPrior = rightPrior)
+    (leftMember :
+      (.machineFresh leftActor leftInput answer : UnifiedExposureRecord) ∈
+        leftPrior)
+    (rightMember :
+      (.machineFresh rightActor rightInput answer : UnifiedExposureRecord) ∈
+        rightPrior)
+    (leftPrefixMember : ∀ record, record ∈ leftPrior →
+      record ∈ exactFixedRootRecords input.package.root) :
+    leftInput = rightInput := by
+  have rightMember' :
+      (.machineFresh rightActor rightInput answer : UnifiedExposureRecord) ∈
+        leftPrior := by
+    simpa [priorExact] using rightMember
+  have recordExact :
+      (.machineFresh leftActor leftInput answer : UnifiedExposureRecord) =
+        .machineFresh rightActor rightInput answer :=
+    List.inj_on_of_nodup_map (exact_root_record_answers_nodup input)
+      (leftPrefixMember _ leftMember) (leftPrefixMember _ rightMember') rfl
+  injection recordExact
+
 /-- The complete-coordinate prefix fixes the selected literal SHA input and
 its source-bound pre-final digest across two clean pair witnesses. -/
 theorem exact_fixed_clean_pair_k13_adversary_anchor_selected_input_and_digest_eq
@@ -991,6 +1028,8 @@ theorem exact_fixed_clean_pair_k13_adversary_anchor_disclosed_final_eq
   exact_fixed_clean_pair_k13_adversary_anchor_has_shared_native_pause
 #print axioms
   exact_fixed_clean_pair_k13_adversary_anchor_root_priors_eq
+#print axioms
+  exact_equal_root_priors_same_answer_input_eq
 #print axioms
   exact_fixed_clean_pair_k13_adversary_anchor_selected_input_and_digest_eq
 #print axioms
