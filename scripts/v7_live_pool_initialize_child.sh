@@ -54,6 +54,28 @@ account_values_hash() {
   jq -cS '.result.value' "$1" | shasum -a 256 | awk '{print $1}'
 }
 
+account_values_fee_normalized_hash() {
+  local file=$1 payer_index=$2
+  jq -cS --argjson payerIndex "$payer_index" \
+    '.result.value | .[$payerIndex].lamports = 0' "$file" \
+    | shasum -a 256 | awk '{print $1}'
+}
+
+assert_failed_transaction_fee_only() {
+  local before=$1 after=$2 payer_index=$3 fee=$4
+  jq -e --argjson payerIndex "$payer_index" --argjson fee "$fee" \
+    --slurpfile before "$before" --slurpfile after "$after" '
+      ($before[0].result.value | length) == ($after[0].result.value | length) and
+      all(range(0; ($before[0].result.value | length));
+        if . == $payerIndex then
+          ($before[0].result.value[.] | .lamports = 0) ==
+            ($after[0].result.value[.] | .lamports = 0) and
+          ($before[0].result.value[.].lamports - $after[0].result.value[.].lamports) == $fee
+        else
+          $before[0].result.value[.] == $after[0].result.value[.]
+        end)' >/dev/null
+}
+
 token_amount() {
   local bytes
   bytes=$(jq -er '.result.value.data[0]' "$1" | openssl base64 -d -A \
@@ -533,17 +555,23 @@ if [[ -n "$SECRET_BUILDER" || -n "$DEPOSIT_BUILDER" ]]; then
         rpc "$(jq -nc --argjson addresses "$protected_addresses" \
           '{jsonrpc:"2.0",id:1855,method:"getMultipleAccounts",params:[$addresses,{encoding:"base64",commitment:"finalized"}]}')" \
           | jq . >"$TERMINAL_EVIDENCE/accounts-after-fresh-replay.json"
-        [[ "$(account_values_hash "$TERMINAL_EVIDENCE/accounts-after.json")" == \
-          "$(account_values_hash "$TERMINAL_EVIDENCE/accounts-after-fresh-replay.json")" ]] \
-          || fail "failed fresh nullifier replay changed finalized state"
+        payer_pubkey=$(NO_DNA=1 "$AGAVE_BIN_DIR/solana-keygen" pubkey "$PAYER_KEYPAIR")
+        payer_index=$(jq -en --argjson addresses "$protected_addresses" --arg payer "$payer_pubkey" \
+          '$addresses | index($payer) // error("payer absent from protected account set")')
+        fresh_replay_fee=$(jq -er '.result.meta.fee' \
+          "$TERMINAL_EVIDENCE/fresh-replay-finalized-transaction.json")
+        assert_failed_transaction_fee_only "$TERMINAL_EVIDENCE/accounts-after.json" \
+          "$TERMINAL_EVIDENCE/accounts-after-fresh-replay.json" "$payer_index" "$fresh_replay_fee" \
+          || fail "failed fresh nullifier replay changed state beyond its payer fee"
         jq -n --arg signature "$fresh_replay_signature" \
           --argjson slot "$(jq -er '.result.slot' "$TERMINAL_EVIDENCE/fresh-replay-finalized-transaction.json")" \
           --argjson simulatedError "$(jq -c '.result.value.err' "$TERMINAL_EVIDENCE/fresh-replay-simulation.json")" \
           --argjson landedError "$(jq -c '.result.meta.err' "$TERMINAL_EVIDENCE/fresh-replay-finalized-transaction.json")" \
           --argjson simulatedCu "$(jq -er '.result.value.unitsConsumed' "$TERMINAL_EVIDENCE/fresh-replay-simulation.json")" \
           --argjson landedCu "$(jq -er '.result.meta.computeUnitsConsumed' "$TERMINAL_EVIDENCE/fresh-replay-finalized-transaction.json")" \
-          --arg before "$(account_values_hash "$TERMINAL_EVIDENCE/accounts-after.json")" \
-          --arg after "$(account_values_hash "$TERMINAL_EVIDENCE/accounts-after-fresh-replay.json")" \
+          --arg before "$(account_values_fee_normalized_hash "$TERMINAL_EVIDENCE/accounts-after.json" "$payer_index")" \
+          --arg after "$(account_values_fee_normalized_hash "$TERMINAL_EVIDENCE/accounts-after-fresh-replay.json" "$payer_index")" \
+          --arg payer "$payer_pubkey" --argjson payerFeeLamports "$fresh_replay_fee" \
           --slurpfile request "$TERMINAL_EVIDENCE/fresh-replay-signed-request.json" \
           '{schema:"aspis.v7.live-terminal-fresh-nullifier-replay-rejection.v1",
             expected:"reject",actual:"finalized-rejected",signature:$signature,slot:$slot,
@@ -551,7 +579,8 @@ if [[ -n "$SECRET_BUILDER" || -n "$DEPOSIT_BUILDER" ]]; then
             signedWireSha256:$request[0].signedWireSha256,simulatedError:$simulatedError,
             landedError:$landedError,simulatedCu:$simulatedCu,landedCu:$landedCu,
             byteIdenticalSimulationSubmission:true,finalizedStateBeforeSha256:$before,
-            finalizedStateAfterSha256:$after,stateUnchanged:true}' \
+            finalizedStateAfterSha256:$after,stateUnchangedExceptPayerFee:true,
+            payer:$payer,payerFeeLamports:$payerFeeLamports}' \
           >"$TERMINAL_EVIDENCE/fresh-nullifier-replay-rejection.json"
         if [[ -n "$PROOF_CLOSE_BUILDER" ]]; then
           [[ -x "$PROOF_CLOSE_BUILDER" ]] || fail "proof close builder is unavailable"

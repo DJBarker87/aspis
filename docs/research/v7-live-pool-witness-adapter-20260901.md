@@ -25,6 +25,8 @@ Tested withdrawal implementation: `c2fd867229b115c1195119a9a81a64c41c99b3b4`
 
 Tested replay/close implementation: `271e29c3` (full revision is in its
 cluster evidence)
+
+Tested fresh-signature replay implementation: `fafd9cca905d7125b838a1201152e02af13da2aa`
 Branch: `research/v7-live-pool-witness-adapter-20260901`
 
 ## Architecture and authenticated field sources
@@ -195,22 +197,36 @@ accounts, while deposit and output routing were sampled until both selected
 the same live-created lane page.
 
 An immediate byte-identical replay was rejected as `AlreadyProcessed` and its
-finalized account-value hash stayed unchanged. This proves duplicate-wire
-rejection only; it is not relabelled as fresh-signature nullifier-marker
-rejection.
+finalized account-value hash stayed unchanged. A second 1,378-byte wire was
+then built from the same proven ASQ8 with a fresh blockhash and signature. Its
+simulation and finalized execution both consumed 28,709 CU and failed in the
+Pool with `NullifierAlreadyConsumed` (`0x4153_2026`) at slot 494. The exact
+wire hash was
+`6ab7c5bd706cfc95f5e51f29743043f808b15a5409c707d43f1787784b5efd24`.
+All protected program/account state was byte-identical after failure; only the
+disposable payer lost the transaction's recorded 5,000-lamport fee.
+
+The encompassing run exited after this successfully finalized negative case
+because the then-current rollback comparator included payer lamports. The
+comparator now requires exact equality for every non-payer account, equality
+of payer owner/data/executable/space, and an exact payer decrease equal to the
+landed transaction fee. This run is not represented as a complete successful
+harness invocation, and its separately established replay result is retained
+with that provenance.
 
 Transfer/withdrawal rollover, different-lane concurrency, stale selected-lane
-rejection, fresh-signature nullifier replay, wrong-checkpoint/release runtime
-cases, malformed-ASQ8/result/ciphertext runtime cases, and failed withdrawal
-CPI rollback remain unexecuted and are explicitly `not-run` in evidence.
+rejection, wrong-checkpoint/release runtime cases, malformed-ASQ8/result/
+ciphertext runtime cases, and failed withdrawal CPI rollback remain
+unexecuted and are explicitly `not-run` in evidence.
 
-The smallest remaining integration is host-side: rebuild the already-proven
-ASQ8 with a fresh blockhash/signature after settlement to reach the Pool's
-nullifier marker rather than RPC duplicate suppression, then add reusable
-mutation and failed-CPI runners. No cryptographic integration or production
-program change is currently indicated.
+The smallest remaining integration is host-side: add reusable terminal
+mutation runners, beginning with failed withdrawal CPI rollback and malformed
+ciphertext non-stalling, followed by stale-lane and authenticated-identity
+rejections. No cryptographic integration or production program change is
+currently indicated.
 
 The result is safe to cherry-pick as host-only, default-off research plumbing.
-It establishes one genuine finalized local transfer, not public-devnet
-lifecycle completion, production identities, or mainnet readiness.
+It establishes genuine finalized local transfer and withdrawal plus finalized
+fresh-signature nullifier replay rejection, not public-devnet lifecycle
+completion, production identities, or mainnet readiness.
 `mainnetReady` remains false.
