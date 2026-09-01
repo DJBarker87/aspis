@@ -32,6 +32,7 @@ open AspisK1.V7Tag73IndexedExposureCausalRouter
 open AspisK1.V7Tag73IndexedControllerTraceAlignment
 open AspisK1.V7Tag73IndexedAlignedRecordReplay
 open AspisK1.V7Tag73OperationalOracleExposure
+open AspisK1.V7Tag73SchedulerNativeGammaReplay
 open AspisK1.V7Tag73TranscriptSchedule
 
 noncomputable section
@@ -700,6 +701,100 @@ theorem fold_armed_complete_alpha_used_slot_has_prior_record
               · simpa [controller, next, indexed_state_after_records_cons]
                   using selected
 
+/-- An emitted complete-router alpha label is exactly the underlying online
+alpha preference.  In particular it cannot be the fold slot or a q16 slot. -/
+theorem fold_armed_complete_alpha_preferred_projects
+    {globalOracleCalls : Nat}
+    (transitionFuel foldExposureIndex finalWorkAnchorIndex : Nat)
+    (state : IndexedUnifiedExposureState globalOracleCalls
+      FoldArmedCompleteMemory)
+    (slot : Fin 4)
+    (preferred :
+      (foldArmedCompleteController transitionFuel foldExposureIndex
+        finalWorkAnchorIndex).preferredSlot state =
+          some (some (Sum.inl slot))) :
+    alphaZeroPreferredSlot transitionFuel
+      (foldArmedAlphaIndexedState (foldArmedAlphaState state)) = some slot := by
+  simp only [foldArmedCompleteController] at preferred
+  split at preferred
+  next atFold => simp at preferred
+  next notFold =>
+    have underlyingPreferred :
+        (alphaFinalWorkQ16DagController transitionFuel finalWorkAnchorIndex
+          (foldArmedAlphaZeroController transitionFuel)).preferredSlot
+            (foldArmedUnderlyingState state) = some (Sum.inl slot) := by
+      cases underlyingExact :
+          (alphaFinalWorkQ16DagController transitionFuel finalWorkAnchorIndex
+            (foldArmedAlphaZeroController transitionFuel)).preferredSlot
+              (foldArmedUnderlyingState state) with
+      | none => simp [underlyingExact] at preferred
+      | some selected =>
+          have selectedExact : selected = Sum.inl slot := by
+            simpa [underlyingExact] using preferred
+          simpa [selectedExact] using underlyingExact
+    change
+      (match
+        (foldArmedAlphaZeroController transitionFuel).preferredSlot
+          (alphaIndexedState (foldArmedUnderlyingState state)) with
+       | some alphaSlot => some (Sum.inl alphaSlot)
+       | none =>
+          ((AspisK1.V7Tag73CausalDagFinalWorkQ16Controller.finalWorkQ16DagController
+            globalOracleCalls transitionFuel finalWorkAnchorIndex).preferredSlot
+              (finalWorkQ16IndexedState
+                (foldArmedUnderlyingState state))).map Sum.inr) =
+        some (Sum.inl slot) at underlyingPreferred
+    cases alphaPreferred :
+        (foldArmedAlphaZeroController transitionFuel).preferredSlot
+          (alphaIndexedState (foldArmedUnderlyingState state)) with
+    | none =>
+        rw [alphaPreferred] at underlyingPreferred
+        cases dagPreferred :
+            (AspisK1.V7Tag73CausalDagFinalWorkQ16Controller.finalWorkQ16DagController
+              globalOracleCalls transitionFuel finalWorkAnchorIndex).preferredSlot
+                (finalWorkQ16IndexedState
+                  (foldArmedUnderlyingState state)) <;> simp_all
+    | some current =>
+        rw [alphaPreferred] at underlyingPreferred
+        have currentExact : current = slot := by
+          exact Sum.inl.inj (Option.some.inj underlyingPreferred)
+        have raw : alphaZeroPreferredSlot transitionFuel
+            (foldArmedAlphaIndexedState (foldArmedAlphaState state)) =
+              some current := by
+          simpa [foldArmedAlphaZeroController, foldArmedAlphaState] using
+            alphaPreferred
+        simpa [currentExact] using raw
+
+/-- Source-free inversion of a complete-router alpha label: the current
+machine input is the output child of a live producer at exactly that block. -/
+theorem fold_armed_complete_alpha_preferred_has_producer
+    {globalOracleCalls : Nat}
+    (transitionFuel foldExposureIndex finalWorkAnchorIndex : Nat)
+    (state : IndexedUnifiedExposureState globalOracleCalls
+      FoldArmedCompleteMemory)
+    (slot : Fin 4)
+    (preferred :
+      (foldArmedCompleteController transitionFuel foldExposureIndex
+        finalWorkAnchorIndex).preferredSlot state =
+          some (some (Sum.inl slot))) :
+    ∃ selectedInput producer,
+      unifiedInputBeforeAnswer? transitionFuel state.cursor =
+          some selectedInput ∧
+      producer ∈ state.memory.2.1.alpha.producers ∧
+      selectedInput = gammaOutputInput producer.digest ∧
+      producer.block = slot := by
+  have projected := fold_armed_complete_alpha_preferred_projects
+    transitionFuel foldExposureIndex finalWorkAnchorIndex state slot preferred
+  obtain ⟨selectedInput, producer, inputExact, producerMember,
+      outputExact, blockExact⟩ :=
+    alpha_zero_preferred_slot_has_producer transitionFuel
+      (foldArmedAlphaIndexedState (foldArmedAlphaState state)) slot projected
+  change producer ∈ state.memory.2.1.alpha.producers at producerMember
+  exact ⟨selectedInput, producer, by
+    simpa [foldArmedAlphaIndexedState, foldArmedAlphaState,
+      foldArmedUnderlyingState, alphaIndexedState] using inputExact,
+    producerMember,
+    by simpa [gammaOutputInput] using outputExact, blockExact⟩
+
 #print axioms AlphaBlockZeroMatchesExpected
 #print axioms alpha_zero_inventory_member_has_block_zero
 #print axioms fold_armed_alpha_producers_prefix_of_nonboundary
@@ -720,6 +815,8 @@ theorem fold_armed_complete_alpha_used_slot_has_prior_record
 #print axioms fold_armed_alpha_used_slot_has_prior_record
 #print axioms fold_armed_complete_alpha_used_slots
 #print axioms fold_armed_complete_alpha_used_slot_has_prior_record
+#print axioms fold_armed_complete_alpha_preferred_projects
+#print axioms fold_armed_complete_alpha_preferred_has_producer
 
 end
 
