@@ -5,6 +5,7 @@ import AspisFormal.K1.V7Tag73ExactAdversaryAnchorSelectedInputInvariant
 import AspisFormal.K1.V7Tag73ExactAdversaryAnchorFinalProfile
 import AspisFormal.K1.V7Tag73ExactAlphaZeroActualTrialPrefinal
 import AspisFormal.K1.V7Tag73IncrementalSamplerControl
+import AspisFormal.K1.V7Tag73FoldArmedPreFinalPrefix
 
 /-!
 # Complete-coordinate K1.3 source noninterference
@@ -60,6 +61,8 @@ open AspisK1.V7Tag73ExactRootRecordOrderLift
 open AspisK1.V7Tag73ExactSourceAcceptanceModel
 open AspisK1.V7Tag73FoldAlphaFinalWorkQ16ControllerComposition
 open AspisK1.V7Tag73FoldAlphaPreFinalPrefix
+open AspisK1.V7Tag73FoldArmedAlphaZeroController
+open AspisK1.V7Tag73FoldArmedPreFinalPrefix
 open AspisK1.V7Tag73FinalWorkQ16CandidateController
 open AspisK1.V7Tag73FixedFieldMessageBridge
 open AspisK1.V7Tag73FutureFreeCheckedRefinementBisimulation
@@ -278,22 +281,16 @@ theorem exact_fixed_clean_pair_k13_adversary_anchor_replays_raw_pre_anchor_tape
     (anchor : ExactFixedK13AdversaryAnchor leftWitness.joint.input finalTrial)
     (programmedCover : 518 ≤ 2 * parameters.forkRequestCap)
     (contextExact :
-      let router := exactCompilerFoldAlphaFinalWorkQ16Router parameters
-        transitionFuel foldTrial.val
-        (alphaFinalWorkQ16DagController transitionFuel finalTrial.val
-          (alphaZeroCausalController transitionFuel 0))
-        (inactiveAlphaZeroMemory, inactiveDagMemory)
+      let router := exactCompilerFoldArmedAlphaFinalWorkQ16Router parameters
+        transitionFuel foldTrial.val finalTrial.val
         (exactPlainRomCursor configuration hidden).erase
       (exactCompilerCausalFoldAlphaFinalWorkQ16Coordinates parameters router
           left).1 =
         (exactCompilerCausalFoldAlphaFinalWorkQ16Coordinates parameters router
           right).1)
     (foldExact :
-      let router := exactCompilerFoldAlphaFinalWorkQ16Router parameters
-        transitionFuel foldTrial.val
-        (alphaFinalWorkQ16DagController transitionFuel finalTrial.val
-          (alphaZeroCausalController transitionFuel 0))
-        (inactiveAlphaZeroMemory, inactiveDagMemory)
+      let router := exactCompilerFoldArmedAlphaFinalWorkQ16Router parameters
+        transitionFuel foldTrial.val finalTrial.val
         (exactPlainRomCursor configuration hidden).erase
       (exactCompilerCausalFoldAlphaFinalWorkQ16Coordinates parameters router
           left).2.1 =
@@ -309,8 +306,8 @@ theorem exact_fixed_clean_pair_k13_adversary_anchor_replays_raw_pre_anchor_tape
         prior.map UnifiedExposureRecord.answer ++ rightRemaining := by
   obtain ⟨prior, later, target, answer, rootExact, trialExact⟩ := anchor
   obtain ⟨rightRemaining, rightPrefix⟩ :=
-    exact_fold_alpha_coordinates_force_pre_final_tape_prefix
-      leftWitness.joint.input foldTrial finalTrial 0 prior
+    exact_fold_armed_coordinates_force_pre_final_tape_prefix
+      leftWitness.joint.input foldTrial finalTrial prior
       ((.machineFresh .adversary target answer : UnifiedExposureRecord) ::
         later)
       (by simpa only [List.cons_append] using rootExact) trialExact
@@ -342,22 +339,16 @@ theorem exact_fixed_clean_pair_k13_adversary_anchor_has_shared_native_pause
     (anchor : ExactFixedK13AdversaryAnchor leftWitness.joint.input finalTrial)
     (programmedCover : 518 ≤ 2 * parameters.forkRequestCap)
     (contextExact :
-      let router := exactCompilerFoldAlphaFinalWorkQ16Router parameters
-        transitionFuel foldTrial.val
-        (alphaFinalWorkQ16DagController transitionFuel finalTrial.val
-          (alphaZeroCausalController transitionFuel 0))
-        (inactiveAlphaZeroMemory, inactiveDagMemory)
+      let router := exactCompilerFoldArmedAlphaFinalWorkQ16Router parameters
+        transitionFuel foldTrial.val finalTrial.val
         (exactPlainRomCursor configuration hidden).erase
       (exactCompilerCausalFoldAlphaFinalWorkQ16Coordinates parameters router
           left).1 =
         (exactCompilerCausalFoldAlphaFinalWorkQ16Coordinates parameters router
           right).1)
     (foldExact :
-      let router := exactCompilerFoldAlphaFinalWorkQ16Router parameters
-        transitionFuel foldTrial.val
-        (alphaFinalWorkQ16DagController transitionFuel finalTrial.val
-          (alphaZeroCausalController transitionFuel 0))
-        (inactiveAlphaZeroMemory, inactiveDagMemory)
+      let router := exactCompilerFoldArmedAlphaFinalWorkQ16Router parameters
+        transitionFuel foldTrial.val finalTrial.val
         (exactPlainRomCursor configuration hidden).erase
       (exactCompilerCausalFoldAlphaFinalWorkQ16Coordinates parameters router
           left).2.1 =
@@ -416,22 +407,16 @@ theorem exact_fixed_clean_pair_k13_adversary_anchor_root_priors_eq
     (anchor : ExactFixedK13AdversaryAnchor leftWitness.joint.input finalTrial)
     (programmedCover : 518 ≤ 2 * parameters.forkRequestCap)
     (contextExact :
-      let router := exactCompilerFoldAlphaFinalWorkQ16Router parameters
-        transitionFuel foldTrial.val
-        (alphaFinalWorkQ16DagController transitionFuel finalTrial.val
-          (alphaZeroCausalController transitionFuel 0))
-        (inactiveAlphaZeroMemory, inactiveDagMemory)
+      let router := exactCompilerFoldArmedAlphaFinalWorkQ16Router parameters
+        transitionFuel foldTrial.val finalTrial.val
         (exactPlainRomCursor configuration hidden).erase
       (exactCompilerCausalFoldAlphaFinalWorkQ16Coordinates parameters router
           left).1 =
         (exactCompilerCausalFoldAlphaFinalWorkQ16Coordinates parameters router
           right).1)
     (foldExact :
-      let router := exactCompilerFoldAlphaFinalWorkQ16Router parameters
-        transitionFuel foldTrial.val
-        (alphaFinalWorkQ16DagController transitionFuel finalTrial.val
-          (alphaZeroCausalController transitionFuel 0))
-        (inactiveAlphaZeroMemory, inactiveDagMemory)
+      let router := exactCompilerFoldArmedAlphaFinalWorkQ16Router parameters
+        transitionFuel foldTrial.val finalTrial.val
         (exactPlainRomCursor configuration hidden).erase
       (exactCompilerCausalFoldAlphaFinalWorkQ16Coordinates parameters router
           left).2.1 =
@@ -462,8 +447,8 @@ theorem exact_fixed_clean_pair_k13_adversary_anchor_root_priors_eq
     exact_fixed_k13_actual_trial_has_selected_prefinal_prefix
       rightWitness.joint.input finalTrial rightWitness.joint.actualTrial
   obtain ⟨rightRemaining, rightTapeFromLeft⟩ :=
-    exact_fold_alpha_coordinates_force_pre_final_tape_prefix
-      leftWitness.joint.input foldTrial finalTrial 0 leftPrior
+    exact_fold_armed_coordinates_force_pre_final_tape_prefix
+      leftWitness.joint.input foldTrial finalTrial leftPrior
       ((.machineFresh .adversary leftInput leftAnswer :
         UnifiedExposureRecord) :: leftLater)
       (by simpa only [List.cons_append] using leftRootExact) leftTrialExact
@@ -607,22 +592,16 @@ theorem exact_fixed_clean_pair_k13_adversary_anchor_selected_input_and_digest_eq
     (anchor : ExactFixedK13AdversaryAnchor leftWitness.joint.input finalTrial)
     (programmedCover : 518 ≤ 2 * parameters.forkRequestCap)
     (contextExact :
-      let router := exactCompilerFoldAlphaFinalWorkQ16Router parameters
-        transitionFuel foldTrial.val
-        (alphaFinalWorkQ16DagController transitionFuel finalTrial.val
-          (alphaZeroCausalController transitionFuel 0))
-        (inactiveAlphaZeroMemory, inactiveDagMemory)
+      let router := exactCompilerFoldArmedAlphaFinalWorkQ16Router parameters
+        transitionFuel foldTrial.val finalTrial.val
         (exactPlainRomCursor configuration hidden).erase
       (exactCompilerCausalFoldAlphaFinalWorkQ16Coordinates parameters router
           left).1 =
         (exactCompilerCausalFoldAlphaFinalWorkQ16Coordinates parameters router
           right).1)
     (foldExact :
-      let router := exactCompilerFoldAlphaFinalWorkQ16Router parameters
-        transitionFuel foldTrial.val
-        (alphaFinalWorkQ16DagController transitionFuel finalTrial.val
-          (alphaZeroCausalController transitionFuel 0))
-        (inactiveAlphaZeroMemory, inactiveDagMemory)
+      let router := exactCompilerFoldArmedAlphaFinalWorkQ16Router parameters
+        transitionFuel foldTrial.val finalTrial.val
         (exactPlainRomCursor configuration hidden).erase
       (exactCompilerCausalFoldAlphaFinalWorkQ16Coordinates parameters router
           left).2.1 =
@@ -646,8 +625,8 @@ theorem exact_fixed_clean_pair_k13_adversary_anchor_selected_input_and_digest_eq
     exact_fixed_k13_actual_trial_has_selected_prefinal_prefix
       rightWitness.joint.input finalTrial rightWitness.joint.actualTrial
   obtain ⟨rightRemaining, rightTapeFromLeft⟩ :=
-    exact_fold_alpha_coordinates_force_pre_final_tape_prefix
-      leftWitness.joint.input foldTrial finalTrial 0 leftPrior
+    exact_fold_armed_coordinates_force_pre_final_tape_prefix
+      leftWitness.joint.input foldTrial finalTrial leftPrior
       ((.machineFresh .adversary leftInput leftAnswer :
         UnifiedExposureRecord) :: leftLater)
       (by simpa only [List.cons_append] using leftRootExact) leftTrialExact
@@ -721,22 +700,16 @@ theorem exact_fixed_clean_pair_k13_adversary_anchor_final256_input_eq
     (anchor : ExactFixedK13AdversaryAnchor leftWitness.joint.input finalTrial)
     (programmedCover : 518 ≤ 2 * parameters.forkRequestCap)
     (contextExact :
-      let router := exactCompilerFoldAlphaFinalWorkQ16Router parameters
-        transitionFuel foldTrial.val
-        (alphaFinalWorkQ16DagController transitionFuel finalTrial.val
-          (alphaZeroCausalController transitionFuel 0))
-        (inactiveAlphaZeroMemory, inactiveDagMemory)
+      let router := exactCompilerFoldArmedAlphaFinalWorkQ16Router parameters
+        transitionFuel foldTrial.val finalTrial.val
         (exactPlainRomCursor configuration hidden).erase
       (exactCompilerCausalFoldAlphaFinalWorkQ16Coordinates parameters router
           left).1 =
         (exactCompilerCausalFoldAlphaFinalWorkQ16Coordinates parameters router
           right).1)
     (foldExact :
-      let router := exactCompilerFoldAlphaFinalWorkQ16Router parameters
-        transitionFuel foldTrial.val
-        (alphaFinalWorkQ16DagController transitionFuel finalTrial.val
-          (alphaZeroCausalController transitionFuel 0))
-        (inactiveAlphaZeroMemory, inactiveDagMemory)
+      let router := exactCompilerFoldArmedAlphaFinalWorkQ16Router parameters
+        transitionFuel foldTrial.val finalTrial.val
         (exactPlainRomCursor configuration hidden).erase
       (exactCompilerCausalFoldAlphaFinalWorkQ16Coordinates parameters router
           left).2.1 =
@@ -830,8 +803,8 @@ theorem exact_fixed_clean_pair_k13_adversary_anchor_final256_input_eq
   have leftTrialExact' : finalTrial.val = leftPrior.length := by
     simpa [leftPrior] using leftTrialExact
   obtain ⟨rightRemaining, rightTapeFromLeft⟩ :=
-    exact_fold_alpha_coordinates_force_pre_final_tape_prefix
-      leftWitness.joint.input foldTrial finalTrial 0 leftPrior
+    exact_fold_armed_coordinates_force_pre_final_tape_prefix
+      leftWitness.joint.input foldTrial finalTrial leftPrior
       ((.machineFresh .adversary leftAnchorInput leftAnchorAnswer :
         UnifiedExposureRecord) :: leftRootLater)
       (by simpa only [List.cons_append] using leftSelectedExact)
@@ -979,22 +952,16 @@ theorem exact_fixed_clean_pair_k13_adversary_anchor_before_final256_digest_eq
     (anchor : ExactFixedK13AdversaryAnchor leftWitness.joint.input finalTrial)
     (programmedCover : 518 ≤ 2 * parameters.forkRequestCap)
     (contextExact :
-      let router := exactCompilerFoldAlphaFinalWorkQ16Router parameters
-        transitionFuel foldTrial.val
-        (alphaFinalWorkQ16DagController transitionFuel finalTrial.val
-          (alphaZeroCausalController transitionFuel 0))
-        (inactiveAlphaZeroMemory, inactiveDagMemory)
+      let router := exactCompilerFoldArmedAlphaFinalWorkQ16Router parameters
+        transitionFuel foldTrial.val finalTrial.val
         (exactPlainRomCursor configuration hidden).erase
       (exactCompilerCausalFoldAlphaFinalWorkQ16Coordinates parameters router
           left).1 =
         (exactCompilerCausalFoldAlphaFinalWorkQ16Coordinates parameters router
           right).1)
     (foldExact :
-      let router := exactCompilerFoldAlphaFinalWorkQ16Router parameters
-        transitionFuel foldTrial.val
-        (alphaFinalWorkQ16DagController transitionFuel finalTrial.val
-          (alphaZeroCausalController transitionFuel 0))
-        (inactiveAlphaZeroMemory, inactiveDagMemory)
+      let router := exactCompilerFoldArmedAlphaFinalWorkQ16Router parameters
+        transitionFuel foldTrial.val finalTrial.val
         (exactPlainRomCursor configuration hidden).erase
       (exactCompilerCausalFoldAlphaFinalWorkQ16Coordinates parameters router
           left).2.1 =
@@ -1042,22 +1009,16 @@ theorem exact_fixed_clean_pair_k13_adversary_anchor_alpha_terminal_eq
     (anchor : ExactFixedK13AdversaryAnchor leftWitness.joint.input finalTrial)
     (programmedCover : 518 ≤ 2 * parameters.forkRequestCap)
     (contextExact :
-      let router := exactCompilerFoldAlphaFinalWorkQ16Router parameters
-        transitionFuel foldTrial.val
-        (alphaFinalWorkQ16DagController transitionFuel finalTrial.val
-          (alphaZeroCausalController transitionFuel 0))
-        (inactiveAlphaZeroMemory, inactiveDagMemory)
+      let router := exactCompilerFoldArmedAlphaFinalWorkQ16Router parameters
+        transitionFuel foldTrial.val finalTrial.val
         (exactPlainRomCursor configuration hidden).erase
       (exactCompilerCausalFoldAlphaFinalWorkQ16Coordinates parameters router
           left).1 =
         (exactCompilerCausalFoldAlphaFinalWorkQ16Coordinates parameters router
           right).1)
     (foldExact :
-      let router := exactCompilerFoldAlphaFinalWorkQ16Router parameters
-        transitionFuel foldTrial.val
-        (alphaFinalWorkQ16DagController transitionFuel finalTrial.val
-          (alphaZeroCausalController transitionFuel 0))
-        (inactiveAlphaZeroMemory, inactiveDagMemory)
+      let router := exactCompilerFoldArmedAlphaFinalWorkQ16Router parameters
+        transitionFuel foldTrial.val finalTrial.val
         (exactPlainRomCursor configuration hidden).erase
       (exactCompilerCausalFoldAlphaFinalWorkQ16Coordinates parameters router
           left).2.1 =
@@ -1375,22 +1336,16 @@ theorem exact_fixed_clean_pair_k13_final256_record_mem_shared_priors
     (anchor : ExactFixedK13AdversaryAnchor leftWitness.joint.input finalTrial)
     (programmedCover : 518 ≤ 2 * parameters.forkRequestCap)
     (contextExact :
-      let router := exactCompilerFoldAlphaFinalWorkQ16Router parameters
-        transitionFuel foldTrial.val
-        (alphaFinalWorkQ16DagController transitionFuel finalTrial.val
-          (alphaZeroCausalController transitionFuel 0))
-        (inactiveAlphaZeroMemory, inactiveDagMemory)
+      let router := exactCompilerFoldArmedAlphaFinalWorkQ16Router parameters
+        transitionFuel foldTrial.val finalTrial.val
         (exactPlainRomCursor configuration hidden).erase
       (exactCompilerCausalFoldAlphaFinalWorkQ16Coordinates parameters router
           left).1 =
         (exactCompilerCausalFoldAlphaFinalWorkQ16Coordinates parameters router
           right).1)
     (foldExact :
-      let router := exactCompilerFoldAlphaFinalWorkQ16Router parameters
-        transitionFuel foldTrial.val
-        (alphaFinalWorkQ16DagController transitionFuel finalTrial.val
-          (alphaZeroCausalController transitionFuel 0))
-        (inactiveAlphaZeroMemory, inactiveDagMemory)
+      let router := exactCompilerFoldArmedAlphaFinalWorkQ16Router parameters
+        transitionFuel foldTrial.val finalTrial.val
         (exactPlainRomCursor configuration hidden).erase
       (exactCompilerCausalFoldAlphaFinalWorkQ16Coordinates parameters router
           left).2.1 =
@@ -1457,22 +1412,16 @@ theorem exact_fixed_clean_pair_k13_alpha_terminal_block_eq
     (anchor : ExactFixedK13AdversaryAnchor leftWitness.joint.input finalTrial)
     (programmedCover : 518 ≤ 2 * parameters.forkRequestCap)
     (contextExact :
-      let router := exactCompilerFoldAlphaFinalWorkQ16Router parameters
-        transitionFuel foldTrial.val
-        (alphaFinalWorkQ16DagController transitionFuel finalTrial.val
-          (alphaZeroCausalController transitionFuel 0))
-        (inactiveAlphaZeroMemory, inactiveDagMemory)
+      let router := exactCompilerFoldArmedAlphaFinalWorkQ16Router parameters
+        transitionFuel foldTrial.val finalTrial.val
         (exactPlainRomCursor configuration hidden).erase
       (exactCompilerCausalFoldAlphaFinalWorkQ16Coordinates parameters router
           left).1 =
         (exactCompilerCausalFoldAlphaFinalWorkQ16Coordinates parameters router
           right).1)
     (foldExact :
-      let router := exactCompilerFoldAlphaFinalWorkQ16Router parameters
-        transitionFuel foldTrial.val
-        (alphaFinalWorkQ16DagController transitionFuel finalTrial.val
-          (alphaZeroCausalController transitionFuel 0))
-        (inactiveAlphaZeroMemory, inactiveDagMemory)
+      let router := exactCompilerFoldArmedAlphaFinalWorkQ16Router parameters
+        transitionFuel foldTrial.val finalTrial.val
         (exactPlainRomCursor configuration hidden).erase
       (exactCompilerCausalFoldAlphaFinalWorkQ16Coordinates parameters router
           left).2.1 =
@@ -1578,22 +1527,16 @@ theorem exact_fixed_clean_pair_k13_adversary_anchor_final_values_eq
     (anchor : ExactFixedK13AdversaryAnchor leftWitness.joint.input finalTrial)
     (programmedCover : 518 ≤ 2 * parameters.forkRequestCap)
     (contextExact :
-      let router := exactCompilerFoldAlphaFinalWorkQ16Router parameters
-        transitionFuel foldTrial.val
-        (alphaFinalWorkQ16DagController transitionFuel finalTrial.val
-          (alphaZeroCausalController transitionFuel 0))
-        (inactiveAlphaZeroMemory, inactiveDagMemory)
+      let router := exactCompilerFoldArmedAlphaFinalWorkQ16Router parameters
+        transitionFuel foldTrial.val finalTrial.val
         (exactPlainRomCursor configuration hidden).erase
       (exactCompilerCausalFoldAlphaFinalWorkQ16Coordinates parameters router
           left).1 =
         (exactCompilerCausalFoldAlphaFinalWorkQ16Coordinates parameters router
           right).1)
     (foldExact :
-      let router := exactCompilerFoldAlphaFinalWorkQ16Router parameters
-        transitionFuel foldTrial.val
-        (alphaFinalWorkQ16DagController transitionFuel finalTrial.val
-          (alphaZeroCausalController transitionFuel 0))
-        (inactiveAlphaZeroMemory, inactiveDagMemory)
+      let router := exactCompilerFoldArmedAlphaFinalWorkQ16Router parameters
+        transitionFuel foldTrial.val finalTrial.val
         (exactPlainRomCursor configuration hidden).erase
       (exactCompilerCausalFoldAlphaFinalWorkQ16Coordinates parameters router
           left).2.1 =
@@ -1688,22 +1631,16 @@ theorem exact_fixed_clean_pair_k13_adversary_anchor_disclosed_final_eq
     (anchor : ExactFixedK13AdversaryAnchor leftWitness.joint.input finalTrial)
     (programmedCover : 518 ≤ 2 * parameters.forkRequestCap)
     (contextExact :
-      let router := exactCompilerFoldAlphaFinalWorkQ16Router parameters
-        transitionFuel foldTrial.val
-        (alphaFinalWorkQ16DagController transitionFuel finalTrial.val
-          (alphaZeroCausalController transitionFuel 0))
-        (inactiveAlphaZeroMemory, inactiveDagMemory)
+      let router := exactCompilerFoldArmedAlphaFinalWorkQ16Router parameters
+        transitionFuel foldTrial.val finalTrial.val
         (exactPlainRomCursor configuration hidden).erase
       (exactCompilerCausalFoldAlphaFinalWorkQ16Coordinates parameters router
           left).1 =
         (exactCompilerCausalFoldAlphaFinalWorkQ16Coordinates parameters router
           right).1)
     (foldExact :
-      let router := exactCompilerFoldAlphaFinalWorkQ16Router parameters
-        transitionFuel foldTrial.val
-        (alphaFinalWorkQ16DagController transitionFuel finalTrial.val
-          (alphaZeroCausalController transitionFuel 0))
-        (inactiveAlphaZeroMemory, inactiveDagMemory)
+      let router := exactCompilerFoldArmedAlphaFinalWorkQ16Router parameters
+        transitionFuel foldTrial.val finalTrial.val
         (exactPlainRomCursor configuration hidden).erase
       (exactCompilerCausalFoldAlphaFinalWorkQ16Coordinates parameters router
           left).2.1 =
