@@ -17,8 +17,10 @@ namespace AspisK1.V7Tag73ExactFoldArmedAlphaProducerAvailability
 open AspisK1.V7FsAokExperiment
 open AspisK1.V7Tag73AdaptiveQ16TrialAccounting
 open AspisK1.V7Tag73AlphaZeroCausalController
+open AspisK1.V7Tag73AlphaZeroProducerInvariant
 open AspisK1.V7Tag73AtomicForkUniformScheduler
 open AspisK1.V7Tag73ExactAcceptedFoldTrialPackage
+open AspisK1.V7Tag73ExactAlphaZeroControllerAlignment
 open AspisK1.V7Tag73ExactCompilerResources
 open AspisK1.V7Tag73ExactFixedK12MerkleClassifier
 open AspisK1.V7Tag73ExactFixedFullRunFactorization
@@ -29,11 +31,14 @@ open AspisK1.V7Tag73ExactPlainRomRun
 open AspisK1.V7Tag73ExactSourceAcceptanceModel
 open AspisK1.V7Tag73FoldArmedAlphaProducerPersistence
 open AspisK1.V7Tag73FoldArmedAlphaZeroController
+open AspisK1.V7Tag73FinalWorkQ16CandidateController
 open AspisK1.V7Tag73IndexedAlignedRecordReplay
 open AspisK1.V7Tag73IndexedControllerTraceAlignment
 open AspisK1.V7Tag73IndexedExposureCausalRouter
 open AspisK1.V7Tag73OperationalOracleExposure
 open AspisK1.V7Tag73OperationalSemanticReplay
+open AspisK1.V7Tag73SchedulerNativeGammaReplay
+open AspisK1.V7Tag73SchedulerCausalQ16Router
 open AspisK1.V7Tag73TranscriptSchedule
 
 noncomputable section
@@ -153,8 +158,210 @@ theorem exact_fold_armed_live_producer_persists_over_post_fold_segment
             finalTrial before)
       seedZero seedRecord seedMember producerMember
 
+/-- At a literal post-fold output child, the live producer's logical block
+cannot already have been consumed.  Any alleged earlier use yields another
+live producer at the same block; accepted-root persistence and block
+uniqueness identify it with the current producer, after which causal-input
+uniqueness says the earlier record is the current record, contradicting strict
+prefix length. -/
+theorem exact_fold_armed_live_producer_output_slot_unused
+    {HiddenTape TapeIdentity Observation Statement Payload Result : Type}
+    {parameters : ExactCompilerResourceParameters}
+    {transitionFuel : Nat}
+    {configuration : ExactPlainRomConfiguration HiddenTape TapeIdentity
+      Observation Statement Tag73K12ParsedProof Payload Result parameters}
+    {projection : AcceptedTapeProjection Statement Tag73K12ParsedProof Payload}
+    {fixedInstance : PublicInstance Statement}
+    {sample : ExactCompilerSample HiddenTape parameters}
+    (input : ExactK12OperationalInput transitionFuel configuration projection
+      fixedInstance sample)
+    (fold : ExactAcceptedFoldTrial input)
+    (finalTrial : ExactCompilerExposureTrial parameters)
+    (before later : List UnifiedExposureRecord)
+    (outputActor : QueryActor) (producer : AlphaZeroProducer)
+    (output : Digest256)
+    (laterExact : fold.later = before ++
+      (.machineFresh outputActor (gammaOutputInput producer.digest) output :
+        UnifiedExposureRecord) :: later) :
+    let controller := foldArmedCompleteController
+      (globalOracleCalls := globalFull256OracleCallCap parameters)
+      transitionFuel fold.trial.val finalTrial.val
+    let initial := foldArmedInitialState
+      (exactPlainRomCursor configuration sample.1).erase
+    let reachedFold := indexedStateAfterRecords transitionFuel controller
+      fold.prior initial
+    let afterFold := controller.afterAnswer transitionFuel reachedFold
+      fold.answer
+    let reached := indexedStateAfterRecords transitionFuel controller before
+      afterFold
+    producer ∈ reached.memory.2.1.alpha.producers →
+      producer.block ∉ reached.memory.2.1.alpha.usedSlots := by
+  let controller := foldArmedCompleteController
+    (globalOracleCalls := globalFull256OracleCallCap parameters)
+    transitionFuel fold.trial.val finalTrial.val
+  let initial := foldArmedInitialState
+    (exactPlainRomCursor configuration sample.1).erase
+  let reachedFold := indexedStateAfterRecords transitionFuel controller
+    fold.prior initial
+  let selected : UnifiedExposureRecord := .machineFresh fold.actor
+    (bytes fold.digest ++ [domGrind] ++
+      bytes (exactOperationalTape input).messages.foldGrinding.selected)
+    fold.answer
+  let outputRecord : UnifiedExposureRecord := .machineFresh outputActor
+    (gammaOutputInput producer.digest) output
+  let afterFold := controller.afterAnswer transitionFuel reachedFold fold.answer
+  let consumedBase := fold.prior ++ [selected]
+  let outputPrefix := consumedBase ++ before
+  let reached := indexedStateAfterRecords transitionFuel controller before
+    afterFold
+  dsimp only
+  intro producerMember slotUsed
+  have outputRootExact : exactFixedRootRecords input.package.root =
+      outputPrefix ++ outputRecord :: later := by
+    rw [fold.rootDecomposition, laterExact]
+    simp [outputPrefix, consumedBase, selected, outputRecord,
+      List.append_assoc]
+  have initialFresh : producer.block ∉ initial.memory.2.1.alpha.usedSlots := by
+    simp [initial, foldArmedInitialState, inactiveFoldArmedAlphaZeroMemory,
+      inactiveAlphaZeroMemory]
+  have outputPrefixState : indexedStateAfterRecords transitionFuel controller
+      outputPrefix initial = reached := by
+    simp [outputPrefix, consumedBase, selected, reached, afterFold, reachedFold,
+      indexed_state_after_records_append, UnifiedExposureRecord.answer]
+  obtain ⟨usedPrior, usedRecord, usedLater, outputPrefixExact,
+      usedPreferred⟩ :=
+    fold_armed_complete_alpha_used_slot_has_prior_record transitionFuel
+      fold.trial.val finalTrial.val outputPrefix initial producer.block
+        initialFresh (by rw [outputPrefixState]; exact slotUsed)
+  have usedMemberRoot : usedRecord ∈
+      exactFixedRootRecords input.package.root := by
+    rw [outputRootExact, outputPrefixExact]
+    simp
+  obtain ⟨usedActor, usedInput, usedAnswer, usedRecordExact⟩ :=
+    exact_root_records_only_machine_fresh input usedRecord usedMemberRoot
+  subst usedRecord
+  let usedState := indexedStateAfterRecords transitionFuel controller usedPrior
+    initial
+  have usedPreferred' : controller.preferredSlot usedState =
+      some (some (Sum.inl producer.block)) := by
+    simpa [controller, usedState] using usedPreferred
+  obtain ⟨selectedInput, earlierProducer, selectedInputExact,
+      earlierMember, selectedIsOutput, earlierBlock⟩ :=
+    fold_armed_complete_alpha_preferred_has_producer transitionFuel
+      fold.trial.val finalTrial.val usedState producer.block usedPreferred'
+  have usedRootExact : exactFixedRootRecords input.package.root =
+      usedPrior ++
+        (.machineFresh usedActor usedInput usedAnswer : UnifiedExposureRecord) ::
+          (usedLater ++ outputRecord :: later) := by
+    rw [outputRootExact, outputPrefixExact]
+    simp [List.append_assoc]
+  have usedAligned : unifiedRecordAtAnswer transitionFuel usedState.cursor
+      usedAnswer = UnifiedExposureRecord.machineFresh usedActor usedInput
+        usedAnswer := by
+    have rootAligned := exact_root_records_aligned_for_fold_armed_controller
+      input fold.trial finalTrial
+    exact rootAligned usedPrior _ (usedLater ++ outputRecord :: later)
+      usedRootExact
+  have usedInputExact : unifiedInputBeforeAnswer? transitionFuel
+      usedState.cursor = some usedInput :=
+    aligned_machine_record_has_exact_input transitionFuel usedState.cursor
+      usedActor usedInput usedAnswer usedAligned
+  have selectedInputEq : selectedInput = usedInput :=
+    Option.some.inj (selectedInputExact.symm.trans usedInputExact)
+  have usedPriorLength : fold.trial.val < usedPrior.length := by
+    by_contra notAfter
+    have beforeOrAt : usedPrior.length ≤ fold.trial.val := by omega
+    have empty := fold_armed_alpha_empty_before_selected_fold transitionFuel
+      fold.trial.val finalTrial.val usedPrior initial (by
+        simpa [initial, foldArmedInitialState] using beforeOrAt) (by
+        simp [initial, foldArmedInitialState,
+          inactiveFoldArmedAlphaZeroMemory]) (by
+        simp [initial, foldArmedInitialState,
+          inactiveFoldArmedAlphaZeroMemory, inactiveAlphaZeroMemory])
+    have impossible : earlierProducer ∈
+        (indexedStateAfterRecords transitionFuel controller usedPrior
+          initial).memory.2.1.alpha.producers := by
+      simpa [usedState, controller] using earlierMember
+    rw [show
+        (indexedStateAfterRecords transitionFuel controller usedPrior
+          initial).memory.2.1.alpha.producers = [] by
+      simpa [controller] using empty.2] at impossible
+    simp at impossible
+  have consumedLength : consumedBase.length ≤ usedPrior.length := by
+    have foldLength : fold.prior.length = fold.trial.val :=
+      fold.trialExact.symm
+    simp [consumedBase, foldLength]
+    omega
+  have appendExact : consumedBase ++ before = usedPrior ++
+      (.machineFresh usedActor usedInput usedAnswer : UnifiedExposureRecord) ::
+        usedLater := by
+    simpa [outputPrefix] using outputPrefixExact
+  obtain ⟨usedBefore, usedPriorExact, beforeExact⟩ : ∃ usedBefore,
+      usedPrior = consumedBase ++ usedBefore ∧
+      before = usedBefore ++
+        (.machineFresh usedActor usedInput usedAnswer :
+          UnifiedExposureRecord) :: usedLater := by
+    rcases List.append_eq_append_iff.mp appendExact with
+      ⟨usedBefore, priorExact, tailExact⟩ |
+      ⟨gap, baseExact, tailExact⟩
+    · exact ⟨usedBefore, priorExact, tailExact⟩
+    · have gapLength : gap.length = 0 := by
+        have lengths := congrArg List.length baseExact
+        simp only [List.length_append] at lengths
+        omega
+      have gapEmpty : gap = [] := List.eq_nil_of_length_eq_zero gapLength
+      subst gap
+      simp only [List.append_nil, List.nil_append] at baseExact tailExact
+      exact ⟨[], by simpa using baseExact.symm, tailExact.symm⟩
+  have consumedBaseState : indexedStateAfterRecords transitionFuel controller
+      consumedBase initial = afterFold := by
+    simp [consumedBase, selected, afterFold, reachedFold,
+      indexed_state_after_records_append, UnifiedExposureRecord.answer]
+  have usedStateExact : usedState =
+      indexedStateAfterRecords transitionFuel controller usedBefore
+        afterFold := by
+    change indexedStateAfterRecords transitionFuel controller usedPrior
+      initial = _
+    rw [usedPriorExact, indexed_state_after_records_append, consumedBaseState]
+  have earlierReached : earlierProducer ∈ reached.memory.2.1.alpha.producers := by
+    have persisted :=
+      exact_fold_armed_live_producer_persists_over_post_fold_segment input fold
+        finalTrial usedBefore
+          ((.machineFresh usedActor usedInput usedAnswer :
+              UnifiedExposureRecord) :: usedLater)
+          (outputRecord :: later) (by
+            simpa [outputRecord, beforeExact, List.append_assoc] using
+              laterExact) earlierProducer
+    have persisted' := persisted (by simpa [usedStateExact] using earlierMember)
+    simpa [reached, beforeExact, indexed_state_after_records_append,
+      usedStateExact] using persisted'
+  have reachedInvariant := exact_fold_armed_post_fold_prefix_invariant input
+    fold finalTrial before (outputRecord :: later) (by
+      simpa [outputRecord] using laterExact)
+  change FoldArmedAlphaPrefixInvariant outputPrefix reached.memory.2.1 at reachedInvariant
+  have producerExact : earlierProducer = producer :=
+    alpha_zero_producer_eq_of_block_eq earlierProducer producer
+      reached.memory.2.1.alpha.producers
+      reachedInvariant.core.producer.blocksNodup earlierReached producerMember
+        earlierBlock
+  have sameInput : usedInput = gammaOutputInput producer.digest := by
+    rw [← producerExact, ← selectedInputEq]
+    simpa [gammaOutputInput] using selectedIsOutput
+  have prefixCollision : usedPrior = outputPrefix := by
+    apply alpha_mapped_nodup_selected_prefix_eq causalInput?
+      (exactFixedRootRecords input.package.root) usedPrior
+        (usedLater ++ outputRecord :: later) outputPrefix later
+      (.machineFresh usedActor usedInput usedAnswer : UnifiedExposureRecord)
+      outputRecord (exact_root_record_causal_inputs_nodup input) usedRootExact
+        outputRootExact
+    simp [outputRecord, causalInput?, sameInput]
+  rw [outputPrefixExact] at prefixCollision
+  have impossible := congrArg List.length prefixCollision
+  simp at impossible
+
 #print axioms
   exact_fold_armed_live_producer_persists_over_post_fold_segment
+#print axioms exact_fold_armed_live_producer_output_slot_unused
 
 end
 
