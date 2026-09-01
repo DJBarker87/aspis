@@ -44,6 +44,7 @@ open AspisK1.V7Tag73Q16DigestDrawReindex
 open AspisK1.V7Tag73Q16FirstCompactUniformity
 open AspisK1.V7Tag73Q16SemanticFrontierBridge
 open AspisK1.V7Tag73RestoredDerivedK13View
+open AspisK1.V7Tag73RestoredNodeK13Classifier
 open AspisK1.V7Tag73SuccessfulSamplerConditioningBridge
 open AspisK1.V7Tag73TranscriptSchedule
 open AspisPool.AlgorithmicCircleDecoderV7
@@ -107,9 +108,10 @@ structure ExactRestoredRootK13JointTrialWitness
     (trial : ExactCompilerExposureTrial parameters) : Type where
   input : ExactK12OperationalInput transitionFuel configuration projection
     fixedInstance sample
-  words : ExtractedWords
+  k12 : RestoredNodeK12Certificate
+    input.package.root.fixedRoot.base.runtime.node
   bad : Finset (Fin 262144)
-  badExact : bad = exactRestoredRootK13IntrinsicBad decoder input words
+  badExact : bad = exactRestoredRootK13IntrinsicBad decoder input k12.words
   badCard : bad.card ≤ 9557
   coordinate :
     exactRestoredRootK13TrialCoordinates transitionFuel configuration trial
@@ -156,18 +158,18 @@ theorem exact_restored_root_query_failure_has_joint_trial_witness
       (exactOperationalTape input).frontierNodes schedule =
         semanticFrontierNodes schedule.positions)
     (member : sample ∈
-      exactTag73RestoredOperationalRootK13QueryEvent transitionFuel
+      exactTag73RestoredOperationalCanonicalRootK13QueryEvent transitionFuel
         configuration projection fixedInstance decoder) :
     ∃ trial : ExactCompilerExposureTrial parameters,
       sample ∈ exactRestoredRootK13JointTrialEvent transitionFuel configuration
         projection fixedInstance decoder trial := by
-  obtain ⟨input, words, bad, trial, badExact, badCard, coordinate⟩ :=
+  obtain ⟨input, k12, bad, trial, badExact, badCard, coordinate⟩ :=
     exact_restored_root_query_failure_has_joint_trial_coordinate
       transitionRoom programmedCover frontierExact member
   refine ⟨trial, ⟨?_⟩⟩
   exact
     { input := input
-      words := words
+      k12 := k12
       bad := bad
       badExact := by
         simpa [exactRestoredRootK13IntrinsicBad] using badExact
@@ -476,7 +478,7 @@ theorem exact_restored_root_k13_query_event_subset_trial_union
       (schedule : QuerySchedule),
       (exactOperationalTape input).frontierNodes schedule =
         semanticFrontierNodes schedule.positions) :
-    exactTag73RestoredOperationalRootK13QueryEvent transitionFuel configuration
+    exactTag73RestoredOperationalCanonicalRootK13QueryEvent transitionFuel configuration
         projection fixedInstance decoder ⊆
       ⋃ trial : ExactCompilerExposureTrial parameters,
         exactRestoredRootK13JointTrialEvent transitionFuel configuration
@@ -517,7 +519,7 @@ theorem exact_restored_root_k13_query_probability_le_exposure_mul
       (FirstAdmittedTrace q16CandidateOutput SemanticCap203Admitted 64
         reference.1)) :
     (exactCompilerJointLaw hiddenLaw parameters).toOuterMeasure
-        (exactTag73RestoredOperationalRootK13QueryEvent transitionFuel
+        (exactTag73RestoredOperationalCanonicalRootK13QueryEvent transitionFuel
           configuration projection fixedInstance decoder) ≤
       ((unifiedFull256ExposureCap parameters : ENNReal) *
         q16SemanticOneForestRawError) / (2 : ENNReal) ^ 34 := by
@@ -565,7 +567,7 @@ theorem exact_restored_root_k13_query_probability_le_one_forest
         reference.1))
     (exposureCap : unifiedFull256ExposureCap parameters ≤ 2 ^ 34) :
     (exactCompilerJointLaw hiddenLaw parameters).toOuterMeasure
-        (exactTag73RestoredOperationalRootK13QueryEvent transitionFuel
+        (exactTag73RestoredOperationalCanonicalRootK13QueryEvent transitionFuel
           configuration projection fixedInstance decoder) ≤
       q16SemanticOneForestRawError := by
   let trials := exactRestoredRootK13ExposureTrials transitionFuel configuration

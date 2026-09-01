@@ -276,6 +276,30 @@ The two focused targets passed on the NUC with zero swap and peak RSS below
 
 ## Current honest status
 
+## Canonical restored-word repair
+
+The restored-root probability event previously projected a total-classifier
+error to `∃ words, QueryPhaseFailure ...`.  That proposition was a valid
+deterministic cover, but it was too broad for probability factorisation: its
+existential word vector no longer retained the `RestoredNodeK12Certificate`
+equation proving that it came from `extractV7Words` on the authenticated two
+trees.
+
+The repaired path now preserves the actual classifier equation at every done
+restoration node.  A returned K1.3 error therefore exposes the exact K1.2
+certificate whose `words` field was passed to `classifyParsedK13`.  The new
+canonical root events retain that certificate, and
+`exact_restored_operational_k13_failure_subset_canonical_root_complete` covers
+every real restoration-wide classifier failure without introducing an
+arbitrary word witness.
+
+The exact final-work/q16 handoff and its finite-trial probability package now
+consume the canonical query event.  The new semantic-noninterference leaf
+proves that equality of the canonical K1.2 words, gamma, disclosed final, and
+one-fold schedule is sufficient for the existing residual-fibre invariant.
+This closes the event-shape/pinning defect; it does not yet prove those four
+cross-fibre equalities on the adversary-first path.
+
 The fixed and restored q16 factorization theorems remain conditional
 accounting results.  K1.3's actual-law measure bound remains open, as do the
 corresponding K1.4 and K1.5 actual-law links.  K1.6 remains green only

@@ -37,6 +37,7 @@ open AspisK1.V7Tag73FinalWorkDigestProbability
 open AspisK1.V7Tag73FutureFreeFullControl
 open AspisK1.V7Tag73OperationalQ16ForestHandoff
 open AspisK1.V7Tag73OperationalSemanticReplay
+open AspisK1.V7Tag73ParsedK13K14Classifier
 open AspisK1.V7Tag73Q16FirstCompactUniformity
 open AspisK1.V7Tag73Q16LedgerCertificate
 open AspisK1.V7Tag73Q16SemanticFrontierBridge
@@ -46,9 +47,11 @@ open AspisK1.V7Tag73RestoredNodeK13Classifier
 open AspisK1.V7Tag73SuccessfulSamplerConditioningBridge
 open AspisK1.V7Tag73TranscriptSchedule
 open AspisPool.AlgorithmicCircleDecoderV7
+open AspisPool.V7CoherentTraceExtraction
 open AspisPool.V7MerkleQueryExtractor
 open AspisV5ComponentCQM31TowerExact
 open AspisV5WithoutReplacementQuerySoundness
+open AspisV6OneFoldCandidateExtraction
 
 noncomputable section
 
@@ -172,14 +175,15 @@ theorem exact_restored_root_query_failure_has_joint_trial_coordinate
       (exactOperationalTape input).frontierNodes schedule =
         semanticFrontierNodes schedule.positions)
     (member : sample ∈
-      exactTag73RestoredOperationalRootK13QueryEvent transitionFuel
+      exactTag73RestoredOperationalCanonicalRootK13QueryEvent transitionFuel
         configuration projection fixedInstance decoder) :
     ∃ (input : ExactK12OperationalInput transitionFuel configuration
           projection fixedInstance sample)
-        (words : ExtractedWords)
+        (k12 : RestoredNodeK12Certificate
+          input.package.root.fixedRoot.base.runtime.node)
         (bad : Finset (Fin 262144))
         (trial : ExactCompilerExposureTrial parameters),
-      bad = restoredOperationalK13ConsistencySet decoder words
+      bad = restoredOperationalK13ConsistencySet decoder k12.words
           ((exact_restored_operational_k13_provider input).data
             input.package.root.fixedRoot.base.runtime.node
             (exact_restoration_accumulator_contains_root input)
@@ -194,9 +198,7 @@ theorem exact_restored_root_query_failure_has_joint_trial_coordinate
         dependentSuccessfulSubtypeEvent finalWorkQ16TotalSucceeds
           (fun _residual => successfulFinalWorkQ16TotalEquiv ⁻¹'
             finalWorkQ16SuccessfulBadEvent bad) := by
-  obtain ⟨input, words, intrinsicBad⟩ :=
-    exact_restored_operational_root_query_event_exposes_intrinsic_bad_set
-      member
+  rcases member with ⟨input, k12, failure⟩
   let node := input.package.root.fixedRoot.base.runtime.node
   let rootMember : node ∈ (exactRestorationAccumulator input).nodes :=
     exact_restoration_accumulator_contains_root input
@@ -204,10 +206,18 @@ theorem exact_restored_root_query_failure_has_joint_trial_coordinate
     exact_restoration_accumulator_root_is_done input
   let data := (exact_restored_operational_k13_provider input).data node
     rootMember rootDone
-  let bad := restoredOperationalK13ConsistencySet decoder words data
+  let bad := restoredOperationalK13ConsistencySet decoder k12.words data
   have badFacts : bad.card ≤ 9557 ∧
       AllInBad bad data.selectedSchedule.positions := by
-    simpa [bad] using intrinsicBad data
+    refine ⟨failure.2, ?_⟩
+    intro ordinal
+    have accepted := accepted_queries_mem_consistencySet
+      (restoredOperationalK13View data).schedule
+      (decoderCodeEncoders decoder)
+      (parsedK13Transcript k12.words (restoredOperationalK13View data))
+      (restoredOperationalK13View data).queries failure.1 ordinal
+    simpa [bad, restoredOperationalK13ConsistencySet,
+      restoredOperationalK13View] using accepted
   have selectedScheduleExact : data.selectedSchedule =
       (exactOperationalTape input).search.selectedSchedule :=
     exact_root_k13_data_selected_schedule_eq_operational input data
@@ -222,23 +232,26 @@ theorem exact_restored_root_query_failure_has_joint_trial_coordinate
       _pairLabeled, _workLabeled, workCoordinate, realized⟩ :=
     exact_compiler_accepted_dag_q16_operational_realization transitionRoom
       programmedCover input (frontierExact input)
-  refine ⟨input, words, bad, trial, rfl, badFacts.1, ?_⟩
+  refine ⟨input, k12, bad, trial, rfl, badFacts.1, ?_⟩
   let router := exactCompilerExposureTrialDagRouter parameters transitionFuel
     trial (exactPlainRomCursor configuration sample.1).erase
   let coordinates := exactCompilerCausalFinalWorkQ16Coordinates parameters
     router sample.2
   have q16Success : q16DigestForestSucceeds coordinates.2.2 :=
-    operational_realization_implies_q16_digest_forest_succeeds realized
+    operational_realization_implies_q16_digest_forest_succeeds realized.2
   have q16Bad : successfulQ16DigestForestEquiv
         ⟨coordinates.2.2, q16Success⟩ ∈
       q16SuccessfulCoordinatesBadEvent bad :=
-    operational_all_in_bad_implies_successful_coordinate_bad realized bad
+    operational_all_in_bad_implies_successful_coordinate_bad realized.2 bad
       allBad
   refine ⟨q16Success, ?_⟩
   change FinalWork34Accepted coordinates.2.1 ∧
     successfulQ16DigestForestEquiv ⟨coordinates.2.2, q16Success⟩ ∈
       q16SuccessfulCoordinatesBadEvent bad
-  exact ⟨workCoordinate ▸ workAccepted, q16Bad⟩
+  have coordinateWorkAccepted : FinalWork34Accepted coordinates.2.1 := by
+    rw [realized.1]
+    exact workAccepted
+  exact ⟨coordinateWorkAccepted, q16Bad⟩
 
 #print axioms exact_root_k13_data_selected_schedule_eq_operational
 #print axioms exact_restored_root_query_failure_has_joint_trial_coordinate

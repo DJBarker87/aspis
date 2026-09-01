@@ -309,7 +309,96 @@ def exactTag73RestoredOperationalK13RootEvent
       ((exact_restored_operational_k13_provider input).data
         input.package.root.fixedRoot.base.runtime.node
         (exact_restoration_accumulator_contains_root input)
-        (exact_restoration_accumulator_root_is_done input))}
+      (exact_restoration_accumulator_root_is_done input))}
+
+/-- Root event retaining the canonical K1.2 extraction certificate selected
+by the actual total classifier.  Unlike the older proposition-only event,
+the word vector is pinned by `k12.extracted` and cannot be chosen separately
+for the probability target. -/
+def exactTag73RestoredOperationalCanonicalRootK13Event
+    {HiddenTape TapeIdentity Observation Statement Payload Witness : Type}
+    {parameters : ExactCompilerResourceParameters}
+    (transitionFuel : Nat)
+    (configuration : ExactPlainRomWitnessConfiguration HiddenTape TapeIdentity
+      Observation Statement Tag73K12ParsedProof Payload Witness parameters)
+    (projection : AcceptedTapeProjection Statement Tag73K12ParsedProof Payload)
+    (fixedInstance : PublicInstance Statement)
+    (predicate : (node : RestoredK13Node Statement Payload) →
+      RestoredOperationalK13Data configuration.machine.environment node →
+      RestoredNodeK12Certificate node → Prop) :
+    Set (ExactCompilerSample HiddenTape parameters) :=
+  {sample | ∃ input : ExactK12OperationalInput transitionFuel configuration
+      projection fixedInstance sample,
+    let node := input.package.root.fixedRoot.base.runtime.node
+    let data := (exact_restored_operational_k13_provider input).data node
+      (exact_restoration_accumulator_contains_root input)
+      (exact_restoration_accumulator_root_is_done input)
+    ∃ k12 : RestoredNodeK12Certificate node, predicate node data k12}
+
+def exactTag73RestoredOperationalCanonicalRootK13IdealRejectedEvent
+    {HiddenTape TapeIdentity Observation Statement Payload Witness : Type}
+    {parameters : ExactCompilerResourceParameters}
+    (transitionFuel : Nat)
+    (configuration : ExactPlainRomWitnessConfiguration HiddenTape TapeIdentity
+      Observation Statement Tag73K12ParsedProof Payload Witness parameters)
+    (projection : AcceptedTapeProjection Statement Tag73K12ParsedProof Payload)
+    (fixedInstance : PublicInstance Statement)
+    (decoder : ExactDecoderInstantiation QM31Exact) :
+    Set (ExactCompilerSample HiddenTape parameters) :=
+  exactTag73RestoredOperationalCanonicalRootK13Event transitionFuel
+    configuration projection fixedInstance fun _node data k12 =>
+      ¬ IdealAccepts (restoredOperationalK13View data).schedule
+        (decoderCodeEncoders decoder)
+        (parsedK13Transcript k12.words (restoredOperationalK13View data))
+        (restoredOperationalK13View data).queries
+
+def exactTag73RestoredOperationalCanonicalRootK13QueryEvent
+    {HiddenTape TapeIdentity Observation Statement Payload Witness : Type}
+    {parameters : ExactCompilerResourceParameters}
+    (transitionFuel : Nat)
+    (configuration : ExactPlainRomWitnessConfiguration HiddenTape TapeIdentity
+      Observation Statement Tag73K12ParsedProof Payload Witness parameters)
+    (projection : AcceptedTapeProjection Statement Tag73K12ParsedProof Payload)
+    (fixedInstance : PublicInstance Statement)
+    (decoder : ExactDecoderInstantiation QM31Exact) :
+    Set (ExactCompilerSample HiddenTape parameters) :=
+  exactTag73RestoredOperationalCanonicalRootK13Event transitionFuel
+    configuration projection fixedInstance fun _node data k12 =>
+      QueryPhaseFailure (restoredOperationalK13View data).schedule
+        (decoderCodeEncoders decoder)
+        (parsedK13Transcript k12.words (restoredOperationalK13View data))
+        (restoredOperationalK13View data).queries
+
+def exactTag73RestoredOperationalCanonicalRootK13OneFoldEvent
+    {HiddenTape TapeIdentity Observation Statement Payload Witness : Type}
+    {parameters : ExactCompilerResourceParameters}
+    (transitionFuel : Nat)
+    (configuration : ExactPlainRomWitnessConfiguration HiddenTape TapeIdentity
+      Observation Statement Tag73K12ParsedProof Payload Witness parameters)
+    (projection : AcceptedTapeProjection Statement Tag73K12ParsedProof Payload)
+    (fixedInstance : PublicInstance Statement)
+    (decoder : ExactDecoderInstantiation QM31Exact) :
+    Set (ExactCompilerSample HiddenTape parameters) :=
+  exactTag73RestoredOperationalCanonicalRootK13Event transitionFuel
+    configuration projection fixedInstance fun _node data k12 =>
+      OneFoldReductionFailure (restoredOperationalK13View data).schedule
+        (decoderCodeEncoders decoder)
+        (parsedK13Transcript k12.words (restoredOperationalK13View data))
+
+def exactTag73RestoredOperationalCanonicalRootK13ListCapEvent
+    {HiddenTape TapeIdentity Observation Statement Payload Witness : Type}
+    {parameters : ExactCompilerResourceParameters}
+    (transitionFuel : Nat)
+    (configuration : ExactPlainRomWitnessConfiguration HiddenTape TapeIdentity
+      Observation Statement Tag73K12ParsedProof Payload Witness parameters)
+    (projection : AcceptedTapeProjection Statement Tag73K12ParsedProof Payload)
+    (fixedInstance : PublicInstance Statement)
+    (decoder : ExactDecoderInstantiation QM31Exact) :
+    Set (ExactCompilerSample HiddenTape parameters) :=
+  exactTag73RestoredOperationalCanonicalRootK13Event transitionFuel
+    configuration projection fixedInstance fun _node data k12 =>
+      InitialListCapFailure (decoderCodeEncoders decoder)
+        (parsedK13Transcript k12.words (restoredOperationalK13View data))
 
 def exactTag73RestoredOperationalRootK12AuthenticationEvent
     {HiddenTape TapeIdentity Observation Statement Payload Witness : Type}
@@ -524,6 +613,87 @@ theorem exact_restored_operational_k13_failure_subset_root_complete
     · exact Or.inr (Or.inl ⟨input, words, oneFold⟩)
     · exact Or.inr (Or.inr ⟨input, words, listCap⟩)
 
+/-- Canonical root cover for the actual restoration-wide classifier.  The
+four algebraic branches retain the precise K1.2 certificate returned before
+K1.3 classification, so their word vector is pinned to authenticated source
+extraction rather than an unconstrained existential. -/
+def exactTag73RestoredOperationalCanonicalRootK13CompleteEvent
+    {HiddenTape TapeIdentity Observation Statement Payload Witness : Type}
+    {parameters : ExactCompilerResourceParameters}
+    (transitionFuel : Nat)
+    (configuration : ExactPlainRomWitnessConfiguration HiddenTape TapeIdentity
+      Observation Statement Tag73K12ParsedProof Payload Witness parameters)
+    (projection : AcceptedTapeProjection Statement Tag73K12ParsedProof Payload)
+    (fixedInstance : PublicInstance Statement)
+    (decoder : ExactDecoderInstantiation QM31Exact) :
+    Set (ExactCompilerSample HiddenTape parameters) :=
+  (((exactTag73RestoredOperationalRootK12AuthenticationEvent transitionFuel
+          configuration projection fixedInstance ∪
+        exactTag73RestoredOperationalRootK12ExtractionEvent transitionFuel
+          configuration projection fixedInstance) ∪
+      exactTag73RestoredOperationalCanonicalRootK13IdealRejectedEvent
+        transitionFuel configuration projection fixedInstance decoder) ∪
+    exactTag73RestoredOperationalCanonicalRootK13QueryEvent transitionFuel
+      configuration projection fixedInstance decoder) ∪
+  (exactTag73RestoredOperationalCanonicalRootK13OneFoldEvent transitionFuel
+      configuration projection fixedInstance decoder ∪
+    exactTag73RestoredOperationalCanonicalRootK13ListCapEvent transitionFuel
+      configuration projection fixedInstance decoder)
+
+theorem exact_restored_operational_k13_failure_subset_canonical_root_complete
+    {HiddenTape TapeIdentity Observation Statement Payload Witness : Type}
+    {parameters : ExactCompilerResourceParameters}
+    {transitionFuel : Nat}
+    {configuration : ExactPlainRomWitnessConfiguration HiddenTape TapeIdentity
+      Observation Statement Tag73K12ParsedProof Payload Witness parameters}
+    {projection : AcceptedTapeProjection Statement Tag73K12ParsedProof Payload}
+    {fixedInstance : PublicInstance Statement}
+    {decoder : ExactDecoderInstantiation QM31Exact} :
+    exactTag73RestoredOperationalK13FailureEvent transitionFuel configuration
+        projection fixedInstance decoder ⊆
+      exactTag73RestoredOperationalCanonicalRootK13CompleteEvent transitionFuel
+        configuration projection fixedInstance decoder := by
+  intro sample member
+  rcases member with ⟨input, ⟨failure⟩⟩
+  let root := input.package.root.fixedRoot.base.runtime.node
+  let rootMember : root ∈ (exactRestorationAccumulator input).nodes :=
+    exact_restoration_accumulator_contains_root input
+  let rootDone : root.verifierFinalState.current.control = .done :=
+    exact_restoration_accumulator_root_is_done input
+  let rootError := failure.everyDoneFailed root rootMember rootDone
+  have classified : classifyRestoredOperationalK13 decoder root
+      ((exact_restored_operational_k13_provider input).data root rootMember
+        rootDone) = .inr rootError := by
+    exact exact_restored_operational_k13_error_done_classified failure root
+      rootMember rootDone
+  change sample ∈ (((_ ∪ _) ∪ _) ∪ _) ∪ (_ ∪ _)
+  cases errorExact : rootError with
+  | k12 error =>
+      cases error with
+      | openingAuthenticationRejected rejected =>
+          exact Or.inl (Or.inl (Or.inl (Or.inl ⟨input, rejected⟩)))
+      | extractionFailure reason failed =>
+          exact Or.inl (Or.inl (Or.inl (Or.inr
+            ⟨input, ⟨reason, failed⟩⟩)))
+  | k13 words error =>
+      have classifiedK13 : classifyRestoredOperationalK13 decoder root
+          ((exact_restored_operational_k13_provider input).data root rootMember
+            rootDone) = .inr (.k13 words error) := by
+        simpa [errorExact] using classified
+      obtain ⟨k12, _k12Classified, wordsExact⟩ :=
+        classify_restored_operational_k13_k13_error_has_k12_certificate
+          classifiedK13
+      subst words
+      cases error with
+      | idealRejected rejected =>
+          exact Or.inl (Or.inl (Or.inr ⟨input, k12, rejected⟩))
+      | queryPhaseFailure query =>
+          exact Or.inl (Or.inr ⟨input, k12, query⟩)
+      | oneFoldReductionFailure oneFold =>
+          exact Or.inr (Or.inl ⟨input, k12, oneFold⟩)
+      | initialListCapFailure listCap =>
+          exact Or.inr (Or.inr ⟨input, k12, listCap⟩)
+
 /-- The root list-cap branch is empty for the production encoder, just as the
 restoration-wide branch is. -/
 theorem exact_restored_operational_root_k13_list_cap_event_eq_empty
@@ -562,9 +732,12 @@ theorem exact_restored_operational_root_k13_list_cap_event_eq_empty
 #print axioms exact_restored_operational_k13_failure_subset_complete
 #print axioms exact_restored_stages_k13_error_subset_complete
 #print axioms exactTag73RestoredOperationalK13RootEvent
+#print axioms exactTag73RestoredOperationalCanonicalRootK13Event
 #print axioms
   exact_restored_operational_root_query_event_exposes_intrinsic_bad_set
 #print axioms exact_restored_operational_k13_failure_subset_root_complete
+#print axioms
+  exact_restored_operational_k13_failure_subset_canonical_root_complete
 #print axioms
   exact_restored_operational_root_k13_list_cap_event_eq_empty
 

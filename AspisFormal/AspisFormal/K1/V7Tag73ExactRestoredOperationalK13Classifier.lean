@@ -36,6 +36,7 @@ open AspisK1.V7Tag73ExactSourceAcceptanceModel
 open AspisK1.V7Tag73ExactFixedOperationalStateMap
 open AspisK1.V7Tag73CurrentSourceDecodeBridge
 open AspisK1.V7Tag73ExactFixedK12MerkleClassifier
+open AspisK1.V7Tag73ParsedK13K14Classifier
 open AspisK1.V7Tag73RestoredNodeK13Classifier
 open AspisK1.V7Tag73RestoredDerivedK13View
 open AspisK1.V7Tag73RestoredQ16LedgerInvariant
@@ -48,6 +49,7 @@ open AspisK1.V7Tag73ChallengeRecordControlInvariant
 open AspisK1.V7Tag73ChallengeRecordUniquenessInvariant
 open AspisK1.V7Tag73SecureCircleMap
 open AspisPool.AlgorithmicCircleDecoderV7
+open AspisPool.V7MerkleQueryExtractor
 open AspisV5ComponentCQM31TowerExact
 
 noncomputable section
@@ -328,10 +330,69 @@ structure ExactRestoredOperationalK13Error
     (input : ExactK12OperationalInput transitionFuel configuration projection
       fixedInstance sample)
     (provider : ExactRestoredOperationalK13DataProvider input) : Type where
-  everyDoneFailed : ∀ (node : RestoredK13Node Statement Payload)
+  everyDoneResult : ∀ (node : RestoredK13Node Statement Payload)
       (member : node ∈ (exactRestorationAccumulator input).nodes)
       (done : node.verifierFinalState.current.control = .done),
-    RestoredOperationalK13Error decoder node (provider.data node member done)
+    { error : RestoredOperationalK13Error decoder node
+        (provider.data node member done) //
+      classifyRestoredOperationalK13 decoder node
+          (provider.data node member done) = .inr error }
+
+/-- The exact error returned by the total node classifier.  This projection
+retains the classifier equation in `everyDoneResult`; unlike the earlier
+bare error field, it cannot carry an arbitrary existential K1.3 word vector. -/
+def ExactRestoredOperationalK13Error.everyDoneFailed
+    {HiddenTape TapeIdentity Observation Statement Payload Result : Type}
+    {parameters : ExactCompilerResourceParameters}
+    {transitionFuel : Nat}
+    {configuration : ExactPlainRomConfiguration HiddenTape TapeIdentity
+      Observation Statement Tag73K12ParsedProof Payload Result parameters}
+    {projection : AcceptedTapeProjection Statement Tag73K12ParsedProof Payload}
+    {fixedInstance : PublicInstance Statement}
+    {sample : ExactCompilerSample HiddenTape parameters}
+    {decoder : ExactDecoderInstantiation QM31Exact}
+    {input : ExactK12OperationalInput transitionFuel configuration projection
+      fixedInstance sample}
+    {provider : ExactRestoredOperationalK13DataProvider input}
+    (failure : ExactRestoredOperationalK13Error decoder input provider)
+    (node : RestoredK13Node Statement Payload)
+    (member : node ∈ (exactRestorationAccumulator input).nodes)
+    (done : node.verifierFinalState.current.control = .done) :
+    RestoredOperationalK13Error decoder node
+      (provider.data node member done) :=
+  (failure.everyDoneResult node member done).1
+
+/-- A K1.3 error returned by the total node classifier carries the unique
+K1.2 certificate that produced its word vector.  This is the source pinning
+needed by the restored probability argument; arbitrary existential words do
+not satisfy this theorem. -/
+theorem classify_restored_operational_k13_k13_error_has_k12_certificate
+    {Statement Payload : Type*}
+    {environment : FutureFreeEnvironment}
+    {decoder : ExactDecoderInstantiation QM31Exact}
+    {node : RestoredK13Node Statement Payload}
+    {data : RestoredOperationalK13Data environment node}
+    {words : ExtractedWords}
+    {error : ParsedK13Error decoder words (restoredOperationalK13View data)}
+    (classified : classifyRestoredOperationalK13 decoder node data =
+      .inr (.k13 words error)) :
+    ∃ k12 : RestoredNodeK12Certificate node,
+      classifyRestoredNodeK12 node = .inl k12 ∧ k12.words = words := by
+  unfold classifyRestoredOperationalK13 at classified
+  cases k12Result : classifyRestoredNodeK12 node with
+  | inl k12 =>
+      cases k13Result : classifyParsedK13 decoder k12.words
+          (restoredOperationalK13View data) with
+      | inl certificate => simp [k12Result, k13Result] at classified
+      | inr returnedError =>
+          have errorExact :
+              RestoredOperationalK13Error.k13 k12.words returnedError =
+                RestoredOperationalK13Error.k13 words error := by
+            simpa [k12Result, k13Result] using classified
+          have wordsExact : k12.words = words := by
+            injection errorExact
+          exact ⟨k12, rfl, wordsExact⟩
+  | inr k12Error => simp [k12Result] at classified
 
 /-- Total restoration-wide classifier.  The choice is over the finite literal
 node store and the already fixed provider data; no transcript value or query
@@ -356,7 +417,7 @@ noncomputable def classifyExactRestoredOperationalK13
       (ExactRestoredOperationalK13Certificate decoder input)
   · exact Sum.inl (Classical.choice succeeds)
   · apply Sum.inr
-    refine { everyDoneFailed := ?_ }
+    refine { everyDoneResult := ?_ }
     intro node member done
     cases classified : classifyRestoredOperationalK13 decoder node
         (provider.data node member done) with
@@ -367,7 +428,7 @@ noncomputable def classifyExactRestoredOperationalK13
             done := done
             data := provider.data node member done
             classified := certificate }⟩).elim
-    | inr error => exact error
+    | inr error => exact ⟨error, rfl⟩
 
 /-- Source-closed restoration-wide classifier used by the concrete stage
 assembly.  The provider is the intrinsic checked-parser provider above, so
@@ -414,6 +475,31 @@ theorem exact_restored_operational_k13_error_exposes_done_failure
         (provider.data node member done)) := by
   rcases provider.hasDone with ⟨⟨node, member, done⟩⟩
   exact ⟨node, member, done, ⟨failure.everyDoneFailed node member done⟩⟩
+
+/-- Each stored error is definitionally the result of the total classifier,
+not merely an inhabitant of the same error type.  This equation preserves the
+canonical K1.2 word source through the restoration-wide failure package. -/
+theorem exact_restored_operational_k13_error_done_classified
+    {HiddenTape TapeIdentity Observation Statement Payload Result : Type}
+    {parameters : ExactCompilerResourceParameters}
+    {transitionFuel : Nat}
+    {configuration : ExactPlainRomConfiguration HiddenTape TapeIdentity
+      Observation Statement Tag73K12ParsedProof Payload Result parameters}
+    {projection : AcceptedTapeProjection Statement Tag73K12ParsedProof Payload}
+    {fixedInstance : PublicInstance Statement}
+    {sample : ExactCompilerSample HiddenTape parameters}
+    {decoder : ExactDecoderInstantiation QM31Exact}
+    {input : ExactK12OperationalInput transitionFuel configuration projection
+      fixedInstance sample}
+    {provider : ExactRestoredOperationalK13DataProvider input}
+    (failure : ExactRestoredOperationalK13Error decoder input provider)
+    (node : RestoredK13Node Statement Payload)
+    (member : node ∈ (exactRestorationAccumulator input).nodes)
+    (done : node.verifierFinalState.current.control = .done) :
+    classifyRestoredOperationalK13 decoder node
+        (provider.data node member done) =
+      .inr (failure.everyDoneFailed node member done) :=
+  (failure.everyDoneResult node member done).2
 
 /-- Exact sample event for failure of the source-closed restoration-wide
 K1.3 classifier.  Its witness is the operational input constructed from that
@@ -491,6 +577,9 @@ theorem exact_restored_operational_k13_certificate_has_literal_node
 #print axioms exact_restored_operational_k13_provider
 #print axioms exact_restored_operational_k13_view_is_intrinsic
 #print axioms exact_restored_operational_k13_error_exposes_done_failure
+#print axioms
+  classify_restored_operational_k13_k13_error_has_k12_certificate
+#print axioms exact_restored_operational_k13_error_done_classified
 #print axioms
   exact_restored_operational_k13_failure_event_exposes_node_failure
 #print axioms exact_restored_operational_k13_certificate_has_literal_node
