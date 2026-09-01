@@ -17,7 +17,8 @@ slice, box, vector, numeric or formatting operations.
 9. verifier_registry_pda_v1
 10. verifier_entry_pda_v1
 11. readonly_account_metadata_v1 (closed by the focused bridge)
-12. borrow_readonly_account_data
+12. borrow_readonly_account_data (closed in the borrow-ready entry model;
+    literal arbitrary RefCell dynamic-borrow state remains platform semantics)
 13. verify.sbf_hashv
 14. solana_pubkey equality/new_from_array/to_bytes operations
 
@@ -26,6 +27,7 @@ schedule function was made opaque.
 
 exact_six_account_refs_v1 is now a transparent definition in the complete
 generated Funs module and is independently kernel checked for exact 0-through-5
-order. The smallest remaining production-source opacity is item 12,
-borrow_readonly_account_data; ordinary Rust and platform declarations remain
-separate explicit boundaries even after that helper is closed.
+order. Item 12 now has an executable, axiom-free definition for the production
+borrow-ready entry state. The smallest remaining source boundary inside it is
+Solana's arbitrary-state RefCell dynamic-borrow check; ordinary Rust and the
+other platform declarations remain separate explicit boundaries.

@@ -17,6 +17,8 @@ test "$(sha256sum "$script_dir/toolchain/aeneas-d860ac47-identity-shared-slice-r
   0e7a1de83e485a650f830c787f6dbb7beef8fa1e652b938e0907d5eb50b210fd
 test "$(sha256sum "$script_dir/toolchain/aeneas-d860ac47-shared-slice-index-nested-borrow.patch" | awk '{print $1}')" = \
   543b5de2bbe9c04995364b8ac4497581582fb471416fd4c3de49d72fe42b3052
+test "$(sha256sum "$script_dir/toolchain/borrow-readonly-owned-result-probe.patch" | awk '{print $1}')" = \
+  861daaa9bc544bd51e783d526d978cde2afa1b06a96024f16475873d9bda6555
 
 replay_base=${TMPDIR:-/tmp}
 replay_base=${replay_base%/}
@@ -38,6 +40,8 @@ git -C "$replay_tmp" apply --check \
   "$script_dir/toolchain/literal-caller-exact-six-len-preflight-normalization.patch"
 git -C "$replay_tmp" apply \
   "$script_dir/toolchain/literal-caller-exact-six-len-preflight-normalization.patch"
+git -C "$replay_tmp" apply --check \
+  "$script_dir/toolchain/borrow-readonly-owned-result-probe.patch"
 
 test "$(sha256sum "$replay_tmp/programs/aspis-verifier/src/v7_verifier.rs" | awk '{print $1}')" = \
   ede2541418bb566d9dada7598d49b3acb41a3b4636f47446a65f274761b1641c
@@ -94,6 +98,14 @@ assert six_helper["translated"]["options"]["opaque"] == [
     "solana_account_info::AccountInfo"
 ]
 
+borrow_probe = json.loads((root / "extraction/borrow-owned-probe-r3/V7LiteralCallerBorrowReadonlyOwnedResultProbeR3.llbc").read_text())
+assert borrow_probe["charon_version"] == "0.1.223"
+assert borrow_probe["has_errors"] is False
+assert borrow_probe["translated"]["options"]["start_from"] == [
+    "crate::v7_pair_forest_dispatch::borrow_readonly_account_data_len_probe"
+]
+assert borrow_probe["translated"]["options"]["opaque"] == []
+
 for relative in [
     "generated/current309b-readonly-metadata-helper-r1/translation.json",
     "generated/full-six-transparent-shared-index-r1/translation.json",
@@ -115,6 +127,12 @@ grep -Fq 'def v7_pair_forest_dispatch.exact_six_account_refs_v1' \
   "$script_dir/generated/full-six-transparent-shared-index-r1/V7LiteralCallerCurrent309bExactSixTransparentSharedIndexR1/Funs.lean"
 ! grep -Fq 'axiom v7_pair_forest_dispatch.exact_six_account_refs_v1' \
   "$script_dir/generated/full-six-transparent-shared-index-r1/V7LiteralCallerCurrent309bExactSixTransparentSharedIndexR1/FunsExternal_Template.lean"
+grep -Fq 'def v7_pair_forest_dispatch.borrow_readonly_account_data' \
+  "$script_dir/proof/V7LiteralCallerReadonlyDataExternal.lean"
+grep -Fq 'def core.cell.Ref.Insts.CoreOpsDerefDeref.deref' \
+  "$script_dir/proof/V7LiteralCallerReadonlyDataExternal.lean"
+grep -Fq 'theorem borrow_readonly_account_data_success_is_exact_view' \
+  "$script_dir/proof/V7LiteralCallerReadonlyDataBridge.lean"
 
 ! grep -REn '(^|[[:space:]])(sorry|admit|native_decide)([[:space:]]|$)' \
   "$script_dir/proof" --include='*.lean'

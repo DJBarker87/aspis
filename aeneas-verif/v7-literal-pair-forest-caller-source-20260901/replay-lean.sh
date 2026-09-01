@@ -31,6 +31,8 @@ cp -R \
   "$replay_tmp/"
 cp "$script_dir/proof/V7LiteralCallerReadonlyMetadataExternal.lean" "$replay_tmp/"
 cp "$script_dir/proof/V7LiteralCallerReadonlyMetadataBridge.lean" "$replay_tmp/"
+cp "$script_dir/proof/V7LiteralCallerReadonlyDataExternal.lean" "$replay_tmp/"
+cp "$script_dir/proof/V7LiteralCallerReadonlyDataBridge.lean" "$replay_tmp/"
 cp "$script_dir/proof/V7LiteralCallerExactSixAccountRefsBridge.lean" "$replay_tmp/"
 
 export LEAN_PATH="$replay_tmp:$backend_path"
@@ -42,6 +44,8 @@ targets=(
   V7LiteralCallerCurrent309bMetadataAccountOpaqueAcceptedToolR1/Types
   V7LiteralCallerReadonlyMetadataExternal
   V7LiteralCallerReadonlyMetadataBridge
+  V7LiteralCallerReadonlyDataExternal
+  V7LiteralCallerReadonlyDataBridge
   V7LiteralCallerExactSixAccountRefsLenPreflightSharedIndexCurrent309bR1/TypesExternal
   V7LiteralCallerExactSixAccountRefsLenPreflightSharedIndexCurrent309bR1/Types
   V7LiteralCallerExactSixAccountRefsLenPreflightSharedIndexCurrent309bR1/Funs

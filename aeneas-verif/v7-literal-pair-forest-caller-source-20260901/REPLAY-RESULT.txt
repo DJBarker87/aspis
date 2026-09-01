@@ -131,3 +131,35 @@ Updated classification: exact six-account source obstruction closed; complete
 caller translation/emission green. This is not yet a kernel-checked literal
 caller theorem because the remaining external function templates, beginning
 with borrow_readonly_account_data on the source side, are not all filled.
+
+Borrow-ready read-only account-data model: PASS
+Diagnostic owned-result Charon unit: aspis-v7-borrow-owned-charon-r3b.service
+Diagnostic owned-result Charon invocation: 0788b89ab5cc4d9ea6a2653d6f3e6dfa
+Diagnostic Charon wall: 3:05.17 (cold dependency compile)
+Diagnostic Charon peak RSS: 917,300 KiB
+Diagnostic Charon swap: 0
+Diagnostic LLBC SHA-256: 419e80a41b4df57d8bf5826424e2338a878307afc80c597331a4c6fb00a42e5f
+
+Diagnostic owned-result Aeneas: expected rejection
+Unit: aspis-v7-borrow-owned-aeneas-r3.service
+Invocation: 0e999169546b48e39a7ab54ed23b145f
+Wall: 0.89 s
+Peak RSS: 61,424 KiB
+Swap: 0
+Error: SymbolicToPureValues.ml:878, nested mutable AEndedProjBorrows loans
+
+Borrow-ready final Lean replay: PASS
+Unit: aspis-v7-borrow-ready-final-replay-r4c.service
+Invocation: a548d5b38be9404db29da60e2333d110
+Wall: 17.66 s
+Peak RSS: 2,745,948 KiB
+Swap: 0
+Strongest new theorem: borrow_readonly_account_data_success_is_exact_view
+Axioms: propext, Classical.choice, Quot.sound
+Forbidden constructs: none
+
+Updated classification: the caller's read-only account data is exact in the
+borrow-ready production-entry model, with no project axiom. Literal arbitrary
+RefCell-borrow-state behavior remains an explicit Solana/Aeneas platform
+boundary. The next finite caller work is the ordinary Rust/platform external
+inventory; no caller-acceptance premise has been introduced.

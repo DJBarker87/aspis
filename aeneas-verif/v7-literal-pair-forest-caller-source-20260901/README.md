@@ -17,9 +17,11 @@ The complete current root
 now passes Charon and Aeneas through final Lean emission with
 `exact_six_account_refs_v1` transparent.  The strongest emitted definition is
 in `V7LiteralCallerCurrent309bExactSixTransparentSharedIndexR1/Funs.lean`.
-The original `SymbolicToPureTypes` iterator explosion, the nested
-`AccountInfo` borrow join and the M31 type/constructor emitter clash are no
-longer translation blockers.
+The original `SymbolicToPureTypes` iterator explosion, the caller-level
+`AccountInfo` projection joins and the M31 type/constructor emitter clash are
+no longer translation blockers.  The literal Solana `RefCell` dynamic-borrow
+implementation remains a separately isolated platform/tool boundary, described
+below.
 
 The accepted Charon profile keeps exactly two static-schedule accessors opaque:
 
@@ -44,6 +46,21 @@ calling that translation and proves:
 Both theorems report exactly `propext`, `Classical.choice` and `Quot.sound`.
 There is no `sorry`, `admit`, `sorryAx`, `native_decide`, project axiom or
 conclusion-shaped premise in the compiled bridge.
+
+The next source seam, `borrow_readonly_account_data`, is now closed in the
+focused **borrow-ready production-entry model**.  `core.cell.Ref` is represented
+by the exact read-only value it guards, and the external helper returns the
+literal account byte slice.  Lean proves:
+
+- `borrow_readonly_account_data_borrow_ready_exact`;
+- `borrow_readonly_account_data_success_is_exact_view`;
+- `readonly_data_guard_deref_is_exact`.
+
+This is not a claim that arbitrary host calls with an already outstanding
+mutable `RefCell` borrow succeed.  That dynamic check is the explicit Solana
+entry-state/platform boundary.  The production verifier starts from freshly
+provided transaction accounts, and the modeled accepted path is restricted to
+that borrow-ready state.
 
 The formerly blocked six-account helper is now independently translated as
 six literal shared-slice indices, in order `0` through `5`.  Lean proves:
@@ -85,13 +102,18 @@ behavior.  The patched tree and static binary hash are pinned in
 
 This milestone still does **not** claim a kernel-checked literal
 `process_with_clear_return_data` accepted-path theorem.  The complete emitted
-caller has 83 external function templates (73 rendered as Lean axioms), down
-from 84/74.  The six-account helper is no longer among them.  The smallest
-remaining production-source seam is `borrow_readonly_account_data`, whose
-literal Solana `RefCell`/`AccountInfo` borrow graph remains opaque in the full
-caller.  Closing it will not by itself finish the caller theorem: the remaining
-ordinary Rust-library and explicit platform functions must also be supplied or
-retained as named platform boundaries.
+caller has 83 generated external function templates (73 rendered as archival
+Lean axioms), down from 84/74.  The six-account helper is no longer among them.
+The accepted compile graph now supplies executable definitions for the metadata
+accessor, borrow-ready account-data view, and read-only guard dereference rather
+than importing those archival axioms.
+
+The literal `AccountInfo::try_borrow_data` implementation itself is not
+translated: current Aeneas cannot synthesize nested mutable ADT write-back
+projections.  This is now the smallest explicit Solana platform boundary, not
+an opaque caller-acceptance premise.  A single-premise literal caller theorem
+also still requires filling or explicitly classifying the remaining ordinary
+Rust-library and platform templates.
 
 ## Remaining explicit boundaries
 
@@ -104,7 +126,8 @@ The protocol/platform set is:
 - Solana `set_return_data` and `Clock::get`;
 - five exact PDA wrappers;
 - `readonly_account_metadata_v1` (closed in this bundle);
-- `borrow_readonly_account_data`;
+- `borrow_readonly_account_data` (closed for borrow-ready production entry;
+  literal `RefCell` dynamic-borrow behavior remains a named platform boundary);
 - `sbf_hashv`;
 - Pubkey equality/construction/byte conversion.
 
@@ -127,6 +150,14 @@ The older experiment-by-experiment fragments are retained only under
 `evidence/superseded-fragments/`; they are not the replay interface.  Failed
 borrow/source shapes and the rejected generic Aeneas patch are under
 `evidence/rejected/`.
+
+`toolchain/borrow-readonly-owned-result-probe.patch` is a diagnostic only.  It
+keeps the exact production borrow and `Ref::map`, consumes the guard locally,
+and returns only an owned length.  Charon succeeds, but Aeneas still fails at
+the same nested mutable projection.  This proves the obstruction is the
+literal Solana `RefCell` borrow itself, rather than the guard escaping the
+helper.  The exact evidence and model scope are in
+`BORROW-READY-BOUNDARY.md`.
 
 ## Replay
 

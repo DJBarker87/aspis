@@ -23,8 +23,16 @@ inductive core.iter.adapters.flatten.Flatten (I : Type) (Clause0_Item : Type)
 @[rust_type "core::iter::adapters::filter_map::FilterMap"]
 inductive core.iter.adapters.filter_map.FilterMap (I : Type) (F : Type) : Type
 
-@[rust_type "core::cell::Ref"]
-inductive core.cell.Ref (T : Type) : Type
+/-!
+The current production caller only obtains shared, read-only views from
+`core::cell::Ref`; it never writes through a data guard.  In the focused
+borrow-ready entry-state model below, the guard carries exactly the viewed
+value.  The literal `RefCell` dynamic-borrow check remains an explicit Solana
+entry-state/platform boundary; it is not silently translated as infallible for
+arbitrary host calls.
+-/
+@[reducible, rust_type "core::cell::Ref"]
+def core.cell.Ref (T : Type) := T
 
 @[rust_type "core::slice::iter::Windows"]
 inductive core.slice.iter.Windows (T : Type) : Type
