@@ -70,6 +70,28 @@ open AspisV5ComponentCQM31TowerExact
 
 noncomputable section
 
+/-- Equality of the complete conditioning context exposes both of its literal
+components: the non-named residual and all four alpha-zero digest blocks. -/
+theorem exact_fold_alpha_context_eq_components
+    (parameters : ExactCompilerResourceParameters)
+    (router : ExactCompilerCausalFoldAlphaFinalWorkQ16Router parameters)
+    (left right : FreshAnswerTape Digest256
+      (exactCompilerTargetCaps parameters).length)
+    (contextExact :
+      (exactCompilerCausalFoldAlphaFinalWorkQ16Coordinates parameters router
+          left).1 =
+        (exactCompilerCausalFoldAlphaFinalWorkQ16Coordinates parameters router
+          right).1) :
+    (exactCompilerCausalFoldAlphaFinalWorkQ16Coordinates parameters router
+        left).1.1 =
+      (exactCompilerCausalFoldAlphaFinalWorkQ16Coordinates parameters router
+        right).1.1 ∧
+    (exactCompilerCausalFoldAlphaFinalWorkQ16Coordinates parameters router
+        left).1.2 =
+      (exactCompilerCausalFoldAlphaFinalWorkQ16Coordinates parameters router
+        right).1.2 := by
+  exact ⟨congrArg Prod.fst contextExact, congrArg Prod.snd contextExact⟩
+
 /-- The source-alignment argument needs only the literal master-tape prefix,
 not the obsolete 513-coordinate representation that originally produced it. -/
 theorem exact_fixed_k13_selected_root_priors_eq_of_right_tape_prefix
@@ -798,6 +820,8 @@ theorem exact_fixed_clean_pair_k13_adversary_anchor_disclosed_final_eq
   exact leftBinding.disclosedFinalExact.trans
     (decodedExact.trans rightBinding.disclosedFinalExact.symm)
 
+#print axioms
+  exact_fold_alpha_context_eq_components
 #print axioms
   exact_fixed_clean_pair_k13_adversary_anchor_replays_raw_pre_anchor_tape
 #print axioms
