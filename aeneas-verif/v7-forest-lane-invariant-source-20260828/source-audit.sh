@@ -23,27 +23,31 @@ git -C "$repo_root" merge-base --is-ancestor 2dae6bea HEAD
 git -C "$repo_root" merge-base --is-ancestor d49af9e3 HEAD
 git -C "$repo_root" merge-base --is-ancestor 37c6ea1f HEAD
 git -C "$repo_root" merge-base --is-ancestor eb3fbcde HEAD
+git -C "$repo_root" merge-base --is-ancestor \
+  74cc65d4f0da48ea8a49e833c0f35398195b3ec4 HEAD
+git -C "$repo_root" merge-base --is-ancestor \
+  5bd2e3e433a13f5b3243cf3762b47b34d73abad9 HEAD
 
 test "$(shasum -a 256 "$pair_source" | awk '{print $1}')" = \
-  4702885ad27659b99ea72dbbb3b96945411616d63392f7d4f9a93cae986085e1
+  8cdf153df70c593380fed33c9d8054ee49c9f9d876238126eae3849a3cbc4620
 test "$(shasum -a 256 "$dispatch_source" | awk '{print $1}')" = \
-  84b6dbfa9ec12d56184bb0c1e250ed731af83fa44c91fbd05505c38ae356c995
+  3c989ba201b622c01e67edec7cba8b17ba30663b386a4f316e757ff06dad7354
 test "$(shasum -a 256 "$manifest" | awk '{print $1}')" = \
-  f5b42a59c788694ce6a0eba02b193e50f9c58028e1ba55bd8827118656f9aa2e
+  4c9c42e6b46b07dec31a013f6fbee0aa5f399af3c7f74071461d116b7d06dc61
 test "$(shasum -a 256 "$pool_verifier_dispatch" | awk '{print $1}')" = \
-  95281016c34355c7f5bbb5e8ac31cacfa9c743699ecfeb1c8ddbae2cc1a3afc8
+  7e45910a3d64e328dc234ede290119770e898bcb48f277d978219740ec891514
 test "$(shasum -a 256 "$verifier_manifest" | awk '{print $1}')" = \
-  e563f04f7871c25b0d3d43094ce61a7f39143508c5193d53e14991013ea4a428
+  7f8d8fe0633a86e26d7693b71abb2ca16f7ed58cbe9b0896ee49b7454318557d
 test "$(shasum -a 256 "$verifier_reader" | awk '{print $1}')" = \
-  276c3eb0d157408e2f132e69001e77c32f306baa86450f1e8fab9cdcb8fbadbb
+  4577c435a5c41a147331ca7d42b65053e181d58dca1b4322ef96b48c85babf77
 test "$(shasum -a 256 "$statement_manifest" | awk '{print $1}')" = \
-  f268aa7a85b32969f57b3a21fcefffd5310c98b522bf467b151232e91e2d537a
+  cf8babeac16a1987ed1dbd05454f77cb0f217779c33d6384a986eccf9e5b5231
 test "$(shasum -a 256 "$semantic_terminal" | awk '{print $1}')" = \
-  0f3cbc9aead222e49ffaaa678e5f952a52c5f93aa28f5de802a3390993157edd
+  efbc5be87e271419d7b09e1bb6e3a83984d42795bc20067ea039814fb89ffa58
 test "$(shasum -a 256 "$copy_terminal" | awk '{print $1}')" = \
-  f6f8018ed3e3ae2a29ec21d12c9ac1b7ffb93024d73d188c66ea514e05c05d86
+  50062fff8b6afbffad3ddbb8eda09992353a9171c4955151cece26a654c6a6d5
 test "$(shasum -a 256 "$copy_constants" | awk '{print $1}')" = \
-  bc4d72deed0c4b17cefa5092aa05bbc5587c76123df69bd4b4e1187f46280cf6
+  cfce7ec499d3cfd54cf91eb88675e45d89ada5ce073fe00c78be5211204fbc50
 
 # Exact lane-account mutation inventory: deposit, authenticated terminal, and
 # the eight-lane initialization loop.  Any fourth byte write fails this audit.
@@ -51,9 +55,9 @@ lane_writes=$(rg -n \
   'lane_data(?:\[lane\])?\.copy_from_slice\((next_lane_image|lane_images\[lane\])\.as_ref\(\)\)' \
   "$pair_source")
 test "$(printf '%s\n' "$lane_writes" | wc -l | tr -d ' ')" = 3
-printf '%s\n' "$lane_writes" | rg -q '^861:'
-printf '%s\n' "$lane_writes" | rg -q '^1403:'
-printf '%s\n' "$lane_writes" | rg -q '^1712:'
+printf '%s\n' "$lane_writes" | rg -q '^980:'
+printf '%s\n' "$lane_writes" | rg -q '^1545:'
+printf '%s\n' "$lane_writes" | rg -q '^1858:'
 
 # Pin the functions that construct each image and the terminal feature routes.
 rg -q '^fn prepare_deposit_append_v1\(' "$pair_source"
@@ -61,6 +65,18 @@ rg -q '^fn next_lane_image_box_v1\(' "$pair_source"
 rg -q '^fn genesis_lane_image_box_v1\(' "$pair_source"
 rg -q '^fn decode_lane_account_from_program_invariant_v1\(' "$pair_source"
 rg -q '^fn encode_lane_from_authenticated_result_v1\(' "$pair_source"
+rg -q '^fn append_pair_leaf_from_program_invariant_v1\(' "$pair_source"
+rg -q '^fn decode_deposit_lane_box_v1\(' "$pair_source"
+rg -q '^fn validate_lane_current_page\(' "$pair_source"
+rg -q '^pair-forest-deposit-invariant-audit = \["pair-forest-account-evidence"\]' \
+  "$manifest"
+candidate_features=$(sed -n \
+  '/^v7-pair-forest-one-tx-candidate = \[/,/^\]/p' "$manifest")
+if printf '%s\n' "$candidate_features" | rg -q \
+    'pair-forest-deposit-invariant-audit'; then
+  echo 'deposit invariant audit unexpectedly enabled in candidate aggregate' >&2
+  exit 1
+fi
 
 for dispatch in \
   process_pair_forest_initialize_with_runtime_v1 \
