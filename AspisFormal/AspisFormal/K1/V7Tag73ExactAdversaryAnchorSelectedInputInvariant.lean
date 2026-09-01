@@ -25,11 +25,13 @@ open AspisK1.V7Tag73CausalFinalWorkQ16UsedForest
 open AspisK1.V7Tag73ExactAdversaryAnchorPrefinalChronology
 open AspisK1.V7Tag73ExactClientKnowledgeComposition
 open AspisK1.V7Tag73ExactCompilerResources
+open AspisK1.V7Tag73ExactCompilerGammaTraceOccurrence
 open AspisK1.V7Tag73ExactCausalRouterTapeAlignment
 open AspisK1.V7Tag73ExactCandidateLabeledRootRouting
 open AspisK1.V7Tag73ExactDagCandidateLabeledRootRouting
 open AspisK1.V7Tag73ExactDagPreAnchorResidualPrefix
 open AspisK1.V7Tag73ExactDagQ16ChainRouting
+open AspisK1.V7Tag73DeterministicRefinement
 open AspisK1.V7Tag73ExactFinal256DigestRootOrigin
 open AspisK1.V7Tag73ExactFixedCleanQ16ProfileInvariant
 open AspisK1.V7Tag73ExactFixedFullRunFactorization
@@ -193,6 +195,112 @@ theorem exact_master_tape_has_root_record_prefix
       input.package.root.full.projection.rootPrefixes.verifier.remaining),
     by simpa only [List.cons_append, List.append_assoc] using tapeExact⟩
 
+/-- Equal residual coordinates identify the complete exact-root record prefix
+before two proof-relevant selected anchors at the same trial index. -/
+theorem exact_fixed_clean_k13_equal_residual_selected_root_priors_eq
+    {HiddenTape TapeIdentity Observation Statement Payload Witness : Type}
+    {parameters : ExactCompilerResourceParameters}
+    {transitionFuel : Nat}
+    {configuration : ExactPlainRomWitnessConfiguration HiddenTape TapeIdentity
+      Observation Statement Tag73K12ParsedProof Payload Witness parameters}
+    {projection : AcceptedTapeProjection Statement Tag73K12ParsedProof Payload}
+    {fixedInstance : PublicInstance Statement}
+    (trial : ExactCompilerExposureTrial parameters) (hidden : HiddenTape)
+    (left right : FreshAnswerTape Digest256
+      (exactCompilerTargetCaps parameters).length)
+    (leftInput : ExactK12OperationalInput transitionFuel configuration projection
+      fixedInstance (hidden, left))
+    (rightInput : ExactK12OperationalInput transitionFuel configuration projection
+      fixedInstance (hidden, right))
+    (leftPrior leftLater rightPrior rightLater : List UnifiedExposureRecord)
+    (leftActor rightActor : QueryActor)
+    (leftTarget rightTarget : ShaInput)
+    (leftAnswer rightAnswer : Digest256)
+    (leftRootExact : exactFixedRootRecords leftInput.package.root =
+      leftPrior ++ (.machineFresh leftActor leftTarget leftAnswer :
+        UnifiedExposureRecord) :: leftLater)
+    (rightRootExact : exactFixedRootRecords rightInput.package.root =
+      rightPrior ++ (.machineFresh rightActor rightTarget rightAnswer :
+        UnifiedExposureRecord) :: rightLater)
+    (leftTrialExact : trial.val = leftPrior.length)
+    (rightTrialExact : trial.val = rightPrior.length)
+    (programmedCover : 513 ≤ 2 * parameters.forkRequestCap)
+    (coordinateExact :
+      (exactFixedK13TrialCoordinates transitionFuel configuration trial
+        (hidden, left)).1 =
+      (exactFixedK13TrialCoordinates transitionFuel configuration trial
+        (hidden, right)).1) :
+    leftPrior = rightPrior := by
+  obtain ⟨_rightRemaining, rightTapeFromLeft⟩ :=
+    exact_dag_residual_coordinate_forces_pre_anchor_tape_prefix
+      leftInput trial leftPrior
+      ((.machineFresh leftActor leftTarget leftAnswer :
+        UnifiedExposureRecord) :: leftLater)
+      (by simpa only [List.cons_append] using leftRootExact)
+      leftTrialExact programmedCover right (by
+        change
+          ((exactCompilerExposureTrialDagRouter parameters transitionFuel trial
+            (exactPlainRomCursor configuration hidden).erase).coordinateEquiv
+              (finalWorkQ16NamedSlotInputTape
+                (exactCompilerFinalWorkQ16InputTape parameters left))).2 =
+          ((exactCompilerExposureTrialDagRouter parameters transitionFuel trial
+            (exactPlainRomCursor configuration hidden).erase).coordinateEquiv
+              (finalWorkQ16NamedSlotInputTape
+                (exactCompilerFinalWorkQ16InputTape parameters right))).2
+        exact coordinateExact)
+  rw [final_work_q16_named_slot_tape_preserves_master_list] at rightTapeFromLeft
+  obtain ⟨_rightSourceRemaining, rightTapeFromRight⟩ :=
+    exact_master_tape_has_root_record_prefix rightInput rightPrior rightLater
+      (.machineFresh rightActor rightTarget rightAnswer) rightRootExact
+  have leftLength : (leftPrior.map UnifiedExposureRecord.answer).length =
+      trial.val := by simp [leftTrialExact]
+  have rightLength : (rightPrior.map UnifiedExposureRecord.answer).length =
+      trial.val := by simp [rightTrialExact]
+  have priorAnswersExact :
+      leftPrior.map UnifiedExposureRecord.answer =
+        rightPrior.map UnifiedExposureRecord.answer := by
+    have leftTake : List.take trial.val (freshAnswerTapeToList right) =
+        leftPrior.map UnifiedExposureRecord.answer := by
+      rw [rightTapeFromLeft, ← leftLength]
+      simp
+    have rightTake : List.take trial.val (freshAnswerTapeToList right) =
+        rightPrior.map UnifiedExposureRecord.answer := by
+      rw [rightTapeFromRight, ← rightLength]
+      simp
+    exact leftTake.symm.trans rightTake
+  let controller := exactDagTrialController transitionFuel trial
+  let initial := exactDagCandidateInitialState leftInput
+  have leftAlignedRaw := exact_root_records_aligned_for_dag_controller
+    leftInput trial.val
+  have rightAlignedRaw := exact_root_records_aligned_for_dag_controller
+    rightInput trial.val
+  have leftAligned : IndexedRecordsAligned transitionFuel controller initial
+      (exactFixedRootRecords leftInput.package.root) := by
+    simpa [controller, initial, exactDagTrialController] using leftAlignedRaw
+  have rightAligned : IndexedRecordsAligned transitionFuel controller initial
+      (exactFixedRootRecords rightInput.package.root) := by
+    simpa [controller, initial, exactDagTrialController,
+      exactDagCandidateInitialState] using rightAlignedRaw
+  have leftPriorAligned : IndexedRecordsAligned transitionFuel controller initial
+      leftPrior := by
+    apply indexed_records_aligned_segment transitionFuel controller initial
+      (exactFixedRootRecords leftInput.package.root) [] leftPrior
+      ((.machineFresh leftActor leftTarget leftAnswer :
+        UnifiedExposureRecord) :: leftLater)
+    · exact leftAligned
+    · simpa only [List.nil_append, List.cons_append] using leftRootExact
+  have rightPriorAligned : IndexedRecordsAligned transitionFuel controller initial
+      rightPrior := by
+    apply indexed_records_aligned_segment transitionFuel controller initial
+      (exactFixedRootRecords rightInput.package.root) [] rightPrior
+      ((.machineFresh rightActor rightTarget rightAnswer :
+        UnifiedExposureRecord) :: rightLater)
+    · exact rightAligned
+    · simpa only [List.nil_append, List.cons_append] using rightRootExact
+  exact indexed_records_aligned_eq_of_answer_maps_eq transitionFuel controller
+    initial leftPrior rightPrior leftPriorAligned rightPriorAligned
+      priorAnswersExact
+
 /-- At equal residual coordinates, an adversary-owned selected anchor and the
 proof-relevant selected anchor of the comparison execution have the identical
 literal SHA input and therefore the identical source-bound pre-final digest.
@@ -327,11 +435,200 @@ theorem exact_fixed_clean_k13_adversary_anchor_selected_input_and_digest_eq
     leftOrigin, rightOrigin⟩
   simpa [selectedInputExact] using rightPrefix
 
+/-- Equal residual fibres have the identical canonical `final256` producer
+input.  The proof transports the already-created producer record across the
+aligned pre-anchor root prefix and uses per-execution answer uniqueness; it
+does not assume that SHA-256 is injective. -/
+theorem exact_fixed_clean_k13_adversary_anchor_final256_input_eq
+    {HiddenTape TapeIdentity Observation Statement Payload Witness : Type}
+    {parameters : ExactCompilerResourceParameters}
+    {transitionFuel : Nat}
+    {configuration : ExactPlainRomWitnessConfiguration HiddenTape TapeIdentity
+      Observation Statement Tag73K12ParsedProof Payload Witness parameters}
+    {projection : AcceptedTapeProjection Statement Tag73K12ParsedProof Payload}
+    {fixedInstance : PublicInstance Statement}
+    {decoder : ExactDecoderInstantiation QM31Exact}
+    (transitionRoom : 2 ≤ transitionFuel)
+    (trial : ExactCompilerExposureTrial parameters) (hidden : HiddenTape)
+    (left right : FreshAnswerTape Digest256
+      (exactCompilerTargetCaps parameters).length)
+    (leftWitness : ExactFixedK13JointTrialWitness transitionFuel configuration
+      projection fixedInstance decoder (hidden, left) trial)
+    (rightWitness : ExactFixedK13JointTrialWitness transitionFuel configuration
+      projection fixedInstance decoder (hidden, right) trial)
+    (anchor : ExactFixedK13AdversaryAnchor leftWitness.input trial)
+    (programmedCover : 513 ≤ 2 * parameters.forkRequestCap)
+    (coordinateExact :
+      (exactFixedK13TrialCoordinates transitionFuel configuration trial
+        (hidden, left)).1 =
+      (exactFixedK13TrialCoordinates transitionFuel configuration trial
+        (hidden, right)).1) :
+    ∃ (leftBefore rightBefore : EvalState) (digest : Digest256),
+      (bytes leftBefore.digest ++
+          [domAbsorb,
+            (AspisK1.V7Tag73TranscriptSchedule.Payload.final256
+              (exactOperationalTape leftWitness.input).messages.finalValues).label] ++
+          (AspisK1.V7Tag73TranscriptSchedule.Payload.final256
+            (exactOperationalTape leftWitness.input).messages.finalValues).data) =
+        (bytes rightBefore.digest ++
+          [domAbsorb,
+            (AspisK1.V7Tag73TranscriptSchedule.Payload.final256
+              (exactOperationalTape rightWitness.input).messages.finalValues).label] ++
+          (AspisK1.V7Tag73TranscriptSchedule.Payload.final256
+            (exactOperationalTape rightWitness.input).messages.finalValues).data) ∧
+      tableLookup (exactOperationalTable leftWitness.input)
+          (bytes leftBefore.digest ++
+            [domAbsorb,
+              (AspisK1.V7Tag73TranscriptSchedule.Payload.final256
+                (exactOperationalTape leftWitness.input).messages.finalValues).label] ++
+            (AspisK1.V7Tag73TranscriptSchedule.Payload.final256
+              (exactOperationalTape leftWitness.input).messages.finalValues).data) =
+        some digest ∧
+      tableLookup (exactOperationalTable rightWitness.input)
+          (bytes rightBefore.digest ++
+            [domAbsorb,
+              (AspisK1.V7Tag73TranscriptSchedule.Payload.final256
+                (exactOperationalTape rightWitness.input).messages.finalValues).label] ++
+            (AspisK1.V7Tag73TranscriptSchedule.Payload.final256
+              (exactOperationalTape rightWitness.input).messages.finalValues).data) =
+        some digest := by
+  obtain ⟨leftRootPrior, leftRootMiddle, leftRootLater, leftProducerInput,
+      leftAnchorInput, leftAnchorAnswer, leftDigest, leftRootExact,
+      leftTrialExact, _leftProducerLookup, leftAnchorPrefix, leftOrigin⟩ :=
+    exact_fixed_k13_adversary_anchor_has_earlier_final256_root_record
+      transitionRoom trial leftWitness anchor
+  obtain ⟨rightPrior, rightLater, rightActor, rightAnchorInput,
+      rightAnchorAnswer, rightDigest, rightRootExact, rightTrialExact,
+      rightAnchorPrefix, rightOrigin⟩ :=
+    exact_fixed_k13_actual_trial_has_selected_prefinal_prefix
+      rightWitness.input trial rightWitness.actualTrial
+  let leftPrior : List UnifiedExposureRecord :=
+    leftRootPrior ++
+      (.machineFresh .adversary leftProducerInput leftDigest :
+        UnifiedExposureRecord) :: leftRootMiddle
+  have leftSelectedExact :
+      exactFixedRootRecords leftWitness.input.package.root =
+        leftPrior ++
+          (.machineFresh .adversary leftAnchorInput leftAnchorAnswer :
+            UnifiedExposureRecord) :: leftRootLater := by
+    simpa [leftPrior, List.append_assoc] using leftRootExact
+  have leftTrialExact' : trial.val = leftPrior.length := by
+    simpa [leftPrior] using leftTrialExact
+  have priorExact : leftPrior = rightPrior :=
+    exact_fixed_clean_k13_equal_residual_selected_root_priors_eq trial hidden
+      left right leftWitness.input rightWitness.input leftPrior leftRootLater
+      rightPrior rightLater .adversary rightActor leftAnchorInput
+      rightAnchorInput leftAnchorAnswer rightAnchorAnswer leftSelectedExact
+      rightRootExact leftTrialExact' rightTrialExact programmedCover
+      coordinateExact
+  let controller := exactDagTrialController transitionFuel trial
+  let initial := exactDagCandidateInitialState leftWitness.input
+  have leftAlignedRaw := exact_root_records_aligned_for_dag_controller
+    leftWitness.input trial.val
+  have rightAlignedRaw := exact_root_records_aligned_for_dag_controller
+    rightWitness.input trial.val
+  have leftAligned : IndexedRecordsAligned transitionFuel controller initial
+      (exactFixedRootRecords leftWitness.input.package.root) := by
+    simpa [controller, initial, exactDagTrialController] using leftAlignedRaw
+  have rightAligned : IndexedRecordsAligned transitionFuel controller initial
+      (exactFixedRootRecords rightWitness.input.package.root) := by
+    simpa [controller, initial, exactDagTrialController,
+      exactDagCandidateInitialState] using rightAlignedRaw
+  have leftSelectedAligned := leftAligned leftPrior
+    (.machineFresh .adversary leftAnchorInput leftAnchorAnswer)
+    leftRootLater leftSelectedExact
+  have rightSelectedAligned := rightAligned rightPrior
+    (.machineFresh rightActor rightAnchorInput rightAnchorAnswer)
+    rightLater rightRootExact
+  have leftInputExact := aligned_machine_record_has_exact_input transitionFuel
+    (indexedStateAfterRecords transitionFuel controller leftPrior initial).cursor
+    .adversary leftAnchorInput leftAnchorAnswer leftSelectedAligned
+  have rightInputExact := aligned_machine_record_has_exact_input transitionFuel
+    (indexedStateAfterRecords transitionFuel controller rightPrior initial).cursor
+    rightActor rightAnchorInput rightAnchorAnswer rightSelectedAligned
+  have anchorInputExact : leftAnchorInput = rightAnchorInput := by
+    rw [priorExact] at leftInputExact
+    exact Option.some.inj (leftInputExact.symm.trans rightInputExact)
+  have digestExact : leftDigest = rightDigest := by
+    apply digest_bytes_injective
+    calc
+      bytes leftDigest = leftAnchorInput.take 32 := leftAnchorPrefix
+      _ = rightAnchorInput.take 32 := by rw [anchorInputExact]
+      _ = bytes rightDigest := rightAnchorPrefix.symm
+  obtain ⟨leftBefore, leftLookup⟩ := leftOrigin
+  obtain ⟨rightBefore, rightLookup⟩ := rightOrigin
+  let leftCanonicalInput : ShaInput :=
+    bytes leftBefore.digest ++
+      [domAbsorb,
+        (AspisK1.V7Tag73TranscriptSchedule.Payload.final256
+          (exactOperationalTape leftWitness.input).messages.finalValues).label] ++
+      (AspisK1.V7Tag73TranscriptSchedule.Payload.final256
+        (exactOperationalTape leftWitness.input).messages.finalValues).data
+  let rightCanonicalInput : ShaInput :=
+    bytes rightBefore.digest ++
+      [domAbsorb,
+        (AspisK1.V7Tag73TranscriptSchedule.Payload.final256
+          (exactOperationalTape rightWitness.input).messages.finalValues).label] ++
+      (AspisK1.V7Tag73TranscriptSchedule.Payload.final256
+        (exactOperationalTape rightWitness.input).messages.finalValues).data
+  obtain ⟨leftCanonicalActor, leftCanonicalMember⟩ :=
+    exact_final_table_lookup_has_root_record leftWitness.input
+      leftCanonicalInput leftDigest (by
+        simpa [leftCanonicalInput] using leftLookup)
+  have leftProducerMember :
+      (.machineFresh .adversary leftProducerInput leftDigest :
+          UnifiedExposureRecord) ∈
+        exactFixedRootRecords leftWitness.input.package.root := by
+    rw [leftRootExact]
+    simp
+  have leftCanonicalRecordExact :
+      (.machineFresh .adversary leftProducerInput leftDigest :
+          UnifiedExposureRecord) =
+        (.machineFresh leftCanonicalActor leftCanonicalInput leftDigest :
+          UnifiedExposureRecord) :=
+    List.inj_on_of_nodup_map
+      (exact_root_record_answers_nodup leftWitness.input)
+      leftProducerMember leftCanonicalMember rfl
+  have leftProducerCanonical : leftProducerInput = leftCanonicalInput := by
+    injection leftCanonicalRecordExact
+  obtain ⟨rightCanonicalActor, rightCanonicalMemberRaw⟩ :=
+    exact_final_table_lookup_has_root_record rightWitness.input
+      rightCanonicalInput rightDigest (by
+        simpa [rightCanonicalInput] using rightLookup)
+  have transportedProducerMember :
+      (.machineFresh .adversary leftProducerInput leftDigest :
+          UnifiedExposureRecord) ∈
+        exactFixedRootRecords rightWitness.input.package.root := by
+    rw [rightRootExact, ← priorExact]
+    simp [leftPrior]
+  have rightCanonicalMember :
+      (.machineFresh rightCanonicalActor rightCanonicalInput leftDigest :
+          UnifiedExposureRecord) ∈
+        exactFixedRootRecords rightWitness.input.package.root := by
+    simpa [digestExact] using rightCanonicalMemberRaw
+  have rightCanonicalRecordExact :
+      (.machineFresh .adversary leftProducerInput leftDigest :
+          UnifiedExposureRecord) =
+        (.machineFresh rightCanonicalActor rightCanonicalInput leftDigest :
+          UnifiedExposureRecord) :=
+    List.inj_on_of_nodup_map
+      (exact_root_record_answers_nodup rightWitness.input)
+      transportedProducerMember rightCanonicalMember rfl
+  have producerInputExact : leftProducerInput = rightCanonicalInput := by
+    injection rightCanonicalRecordExact
+  refine ⟨leftBefore, rightBefore, leftDigest, ?_, ?_, ?_⟩
+  · exact leftProducerCanonical.symm.trans producerInputExact
+  · simpa [leftCanonicalInput] using leftLookup
+  · simpa [rightCanonicalInput, digestExact] using rightLookup
+
 #print axioms indexed_records_aligned_eq_of_answer_maps_eq
 #print axioms exact_fixed_k13_actual_trial_has_selected_prefinal_prefix
 #print axioms exact_master_tape_has_root_record_prefix
+#print axioms exact_fixed_clean_k13_equal_residual_selected_root_priors_eq
 #print axioms
   exact_fixed_clean_k13_adversary_anchor_selected_input_and_digest_eq
+#print axioms
+  exact_fixed_clean_k13_adversary_anchor_final256_input_eq
 
 end
 
