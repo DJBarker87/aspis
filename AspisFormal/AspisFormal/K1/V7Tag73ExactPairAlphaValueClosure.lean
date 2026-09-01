@@ -3,11 +3,14 @@ import AspisFormal.K1.V7Tag73ExactPairAdversaryProfileClosure
 /-!
 # Pair-specific alpha-zero value closure
 
-This leaf separates the remaining source-routing obligation from the finite
-sampler argument.  Once each accepted alpha-zero block list is the literal
-prefix of its four fold-armed router coordinates, equality of the clean pair
-context forces the same first accepted prefix and hence the same operational
-alpha-zero value.
+The fold-armed router has a genuine adversary-first split. Alpha queries first
+exposed before the selected fold occur in the residual coordinate; post-fold
+alpha queries use the four named slots. It would therefore be wrong to identify
+every accepted alpha block with the named `Fin 4` array.
+
+This leaf records the honest source endpoint: hybrid residual/named routing
+must reconstruct one common four-block tape for the two clean fibres. Bounded
+first-success decoding then makes alpha-zero equality mechanical.
 -/
 
 set_option autoImplicit false
@@ -21,7 +24,6 @@ open AspisK1.V7Tag73AdaptiveQ16TrialAccounting
 open AspisK1.V7Tag73CausalFoldAlphaFinalWorkQ16Coordinates
 open AspisK1.V7Tag73ExactClientKnowledgeComposition
 open AspisK1.V7Tag73ExactCompilerResources
-open AspisK1.V7Tag73ExactAcceptedFoldTrialPackage
 open AspisK1.V7Tag73ExactFixedK12MerkleClassifier
 open AspisK1.V7Tag73ExactFixedK13K14Classifier
 open AspisK1.V7Tag73ExactFixedQ16VerifierAnchorInvariant
@@ -36,39 +38,14 @@ open AspisK1.V7Tag73OperationalSemanticReplay
 open AspisK1.V7Tag73SamplerDecoder
 open AspisK1.V7Tag73SecureCircleMap
 open AspisK1.V7Tag73TranscriptSchedule
+open AspisPool.AlgorithmicCircleDecoderV7
 open AspisV5ComponentCQM31TowerExact
 
 noncomputable section
 
-/-- Exact source endpoint still required from the fold-armed controller: the
-deployed bounded decoder consumed a prefix of the four named alpha answers.
-No equality, probability claim, or hash assumption is included. -/
-def ExactFoldArmedAlphaPrefixBinding
-    {HiddenTape TapeIdentity Observation Statement Payload Result : Type}
-    {parameters : ExactCompilerResourceParameters}
-    {transitionFuel : Nat}
-    {configuration : ExactPlainRomConfiguration HiddenTape TapeIdentity
-      Observation Statement Tag73K12ParsedProof Payload Result parameters}
-    {projection : AcceptedTapeProjection Statement Tag73K12ParsedProof Payload}
-    {fixedInstance : PublicInstance Statement}
-    {sample : ExactCompilerSample HiddenTape parameters}
-    (input : ExactK12OperationalInput transitionFuel configuration projection
-      fixedInstance sample)
-    (router : ExactCompilerCausalFoldAlphaFinalWorkQ16Router parameters) : Prop :=
-  ∃ (blocks : List Digest256) (rawValue : Qm31Bytes)
-      (exactValue : QM31Exact),
-    blocks =
-        (List.ofFn
-          (exactCompilerCausalFoldAlphaFinalWorkQ16Coordinates parameters router
-            sample.2).1.2).take blocks.length ∧
-    decodeChallengeParameter exactSecureCircleParameterMap (.alpha 0) blocks =
-        some rawValue ∧
-    decodeTagQM31ExactLE rawValue = some exactValue ∧
-    exactOperationalChallenge input (.alpha 0) = exactValue
-
-/-- Equal complete alpha coordinates force equal operational alpha-zero values
-for two accepted source bindings. -/
-theorem exact_pair_operational_alpha_zero_eq_of_prefix_bindings
+/-- Output of the hybrid residual/named alpha routing proof. Both deployed
+decoders consume prefixes of one common four-block tape. -/
+structure ExactPairAlphaCommonPrefixBinding
     {HiddenTape TapeIdentity Observation Statement Payload Result : Type}
     {parameters : ExactCompilerResourceParameters}
     {transitionFuel : Nat}
@@ -80,69 +57,104 @@ theorem exact_pair_operational_alpha_zero_eq_of_prefix_bindings
     (leftInput : ExactK12OperationalInput transitionFuel configuration projection
       fixedInstance leftSample)
     (rightInput : ExactK12OperationalInput transitionFuel configuration projection
-      fixedInstance rightSample)
-    (leftRouter rightRouter :
-      ExactCompilerCausalFoldAlphaFinalWorkQ16Router parameters)
-    (contextExact :
-      (exactCompilerCausalFoldAlphaFinalWorkQ16Coordinates parameters leftRouter
-          leftSample.2).1 =
-        (exactCompilerCausalFoldAlphaFinalWorkQ16Coordinates parameters rightRouter
-          rightSample.2).1)
-    (leftBinding : ExactFoldArmedAlphaPrefixBinding leftInput leftRouter)
-    (rightBinding : ExactFoldArmedAlphaPrefixBinding rightInput rightRouter) :
+      fixedInstance rightSample) where
+  full : Fin 4 → Digest256
+  leftBlocks : List Digest256
+  rightBlocks : List Digest256
+  leftRaw : Qm31Bytes
+  rightRaw : Qm31Bytes
+  leftValue : QM31Exact
+  rightValue : QM31Exact
+  leftPrefix : leftBlocks = (List.ofFn full).take leftBlocks.length
+  rightPrefix : rightBlocks = (List.ofFn full).take rightBlocks.length
+  leftAccepted :
+    decodeChallengeParameter exactSecureCircleParameterMap (.alpha 0)
+      leftBlocks = some leftRaw
+  rightAccepted :
+    decodeChallengeParameter exactSecureCircleParameterMap (.alpha 0)
+      rightBlocks = some rightRaw
+  leftDecode : decodeTagQM31ExactLE leftRaw = some leftValue
+  rightDecode : decodeTagQM31ExactLE rightRaw = some rightValue
+  leftOperational : exactOperationalChallenge leftInput (.alpha 0) = leftValue
+  rightOperational :
+    exactOperationalChallenge rightInput (.alpha 0) = rightValue
+
+/-- The common-prefix endpoint implies equal operational alpha-zero values;
+no hash injectivity or probability argument appears. -/
+theorem exact_pair_operational_alpha_zero_eq_of_common_prefix
+    {HiddenTape TapeIdentity Observation Statement Payload Result : Type}
+    {parameters : ExactCompilerResourceParameters}
+    {transitionFuel : Nat}
+    {configuration : ExactPlainRomConfiguration HiddenTape TapeIdentity
+      Observation Statement Tag73K12ParsedProof Payload Result parameters}
+    {projection : AcceptedTapeProjection Statement Tag73K12ParsedProof Payload}
+    {fixedInstance : PublicInstance Statement}
+    {leftSample rightSample : ExactCompilerSample HiddenTape parameters}
+    {leftInput : ExactK12OperationalInput transitionFuel configuration projection
+      fixedInstance leftSample}
+    {rightInput : ExactK12OperationalInput transitionFuel configuration projection
+      fixedInstance rightSample}
+    (binding : ExactPairAlphaCommonPrefixBinding leftInput rightInput) :
     exactOperationalChallenge leftInput (.alpha 0) =
       exactOperationalChallenge rightInput (.alpha 0) := by
-  obtain ⟨leftBlocks, leftRaw, leftValue, leftPrefix, leftAccepted,
-      leftDecode, leftOperational⟩ := leftBinding
-  obtain ⟨rightBlocks, rightRaw, rightValue, rightPrefix, rightAccepted,
-      rightDecode, rightOperational⟩ := rightBinding
-  have alphaCoordinatesExact := congrArg Prod.snd contextExact
-  have rightPrefix' :
-      rightBlocks =
-        (List.ofFn
-          (exactCompilerCausalFoldAlphaFinalWorkQ16Coordinates parameters
-            leftRouter leftSample.2).1.2).take rightBlocks.length := by
-    rw [rightPrefix]
-    congr 2
-    exact alphaCoordinatesExact.symm
   obtain ⟨_blocksExact, rawExact⟩ :=
     exact_challenge_prefixes_of_same_four_blocks_eq
-      exactSecureCircleParameterMap (.alpha 0)
-      (exactCompilerCausalFoldAlphaFinalWorkQ16Coordinates parameters leftRouter
-        leftSample.2).1.2
-      leftBlocks rightBlocks leftRaw rightRaw leftPrefix rightPrefix'
-      leftAccepted rightAccepted
-  have valueExact : leftValue = rightValue := by
+      exactSecureCircleParameterMap (.alpha 0) binding.full
+      binding.leftBlocks binding.rightBlocks binding.leftRaw binding.rightRaw
+      binding.leftPrefix binding.rightPrefix binding.leftAccepted
+      binding.rightAccepted
+  have valueExact : binding.leftValue = binding.rightValue := by
     apply Option.some.inj
     calc
-      some leftValue = decodeTagQM31ExactLE leftRaw := leftDecode.symm
-      _ = decodeTagQM31ExactLE rightRaw := by rw [rawExact]
-      _ = some rightValue := rightDecode
-  exact leftOperational.trans (valueExact.trans rightOperational.symm)
+      some binding.leftValue = decodeTagQM31ExactLE binding.leftRaw :=
+        binding.leftDecode.symm
+      _ = decodeTagQM31ExactLE binding.rightRaw := by rw [rawExact]
+      _ = some binding.rightValue := binding.rightDecode
+  exact binding.leftOperational.trans
+    (valueExact.trans binding.rightOperational.symm)
 
-/-- Production-source obligation for alpha routing, stated per accepted input
-and the literal fold/final trial indices.  This is the single endpoint to be
-discharged by the fold-armed controller proof. -/
-def ExactFoldArmedAlphaPrefixSourceProvider
+/-- Deterministic source endpoint still missing from the fold-armed controller.
+Its proof must split each root-ordered alpha query at the fold ordinal:
+residual-prefix replay before the fold and live named-producer routing after it. -/
+def ExactFixedCleanK13PairAlphaCommonPrefixOnAdversaryAnchors
     {HiddenTape TapeIdentity Observation Statement Payload Witness : Type}
     {parameters : ExactCompilerResourceParameters}
     (transitionFuel : Nat)
     (configuration : ExactPlainRomWitnessConfiguration HiddenTape TapeIdentity
       Observation Statement Tag73K12ParsedProof Payload Witness parameters)
     (projection : AcceptedTapeProjection Statement Tag73K12ParsedProof Payload)
-    (fixedInstance : PublicInstance Statement) : Prop :=
-  ∀ (sample : ExactCompilerSample HiddenTape parameters)
-      (input : ExactK12OperationalInput transitionFuel configuration projection
-        fixedInstance sample)
-      (foldTrial finalTrial : ExactCompilerExposureTrial parameters),
-    (exactAcceptedFoldTrial input).trial = foldTrial →
-    ExactFoldArmedAlphaPrefixBinding input
-      (exactCompilerFoldArmedAlphaFinalWorkQ16Router parameters transitionFuel
-        foldTrial.val finalTrial.val
-        (exactPlainRomCursor configuration sample.1).erase)
+    (fixedInstance : PublicInstance Statement)
+    (decoder : ExactDecoderInstantiation QM31Exact) : Prop :=
+  ∀ (foldTrial finalTrial : ExactCompilerExposureTrial parameters)
+      (hidden : HiddenTape)
+      (left right : FreshAnswerTape Digest256
+        (exactCompilerTargetCaps parameters).length)
+      (leftWitness : ExactFixedCleanK13PairTrialWitness transitionFuel
+        configuration projection fixedInstance decoder (hidden, left)
+          foldTrial finalTrial)
+      (rightWitness : ExactFixedCleanK13PairTrialWitness transitionFuel
+        configuration projection fixedInstance decoder (hidden, right)
+          foldTrial finalTrial),
+    ExactFixedK13AdversaryAnchor leftWitness.joint.input finalTrial →
+    (let router := exactCompilerFoldArmedAlphaFinalWorkQ16Router parameters
+      transitionFuel foldTrial.val finalTrial.val
+      (exactPlainRomCursor configuration hidden).erase
+    (exactCompilerCausalFoldAlphaFinalWorkQ16Coordinates parameters router
+        left).1 =
+      (exactCompilerCausalFoldAlphaFinalWorkQ16Coordinates parameters router
+        right).1) →
+    (let router := exactCompilerFoldArmedAlphaFinalWorkQ16Router parameters
+      transitionFuel foldTrial.val finalTrial.val
+      (exactPlainRomCursor configuration hidden).erase
+    (exactCompilerCausalFoldAlphaFinalWorkQ16Coordinates parameters router
+        left).2.1 =
+      (exactCompilerCausalFoldAlphaFinalWorkQ16Coordinates parameters router
+        right).2.1) →
+    Nonempty (ExactPairAlphaCommonPrefixBinding leftWitness.joint.input
+      rightWitness.joint.input)
 
-/-- The only remaining transcript challenge endpoint after alpha routing is
-factored out: pair-specific parsed-gamma equality on the clean fibre. -/
+/-- The only other remaining transcript endpoint is parsed-gamma equality on
+the same clean fibre. -/
 def ExactFixedCleanK13PairGammaInvariantOnAdversaryAnchors
     {HiddenTape TapeIdentity Observation Statement Payload Witness : Type}
     {parameters : ExactCompilerResourceParameters}
@@ -151,8 +163,7 @@ def ExactFixedCleanK13PairGammaInvariantOnAdversaryAnchors
       Observation Statement Tag73K12ParsedProof Payload Witness parameters)
     (projection : AcceptedTapeProjection Statement Tag73K12ParsedProof Payload)
     (fixedInstance : PublicInstance Statement)
-    (decoder : AspisPool.AlgorithmicCircleDecoderV7.ExactDecoderInstantiation
-      QM31Exact) : Prop :=
+    (decoder : ExactDecoderInstantiation QM31Exact) : Prop :=
   ∀ (foldTrial finalTrial : ExactCompilerExposureTrial parameters)
       (hidden : HiddenTape)
       (left right : FreshAnswerTape Digest256
@@ -181,8 +192,8 @@ def ExactFixedCleanK13PairGammaInvariantOnAdversaryAnchors
     (exactK13ParsedProof leftWitness.joint.input).gamma =
       (exactK13ParsedProof rightWitness.joint.input).gamma
 
-/-- The fold-armed alpha source provider plus the remaining gamma endpoint
-construct the exact transcript invariant consumed by K1.3. -/
+/-- The two deterministic endpoints construct the transcript invariant
+consumed by the measured K1.3 probability theorem. -/
 theorem exact_fixed_clean_pair_k13_transcript_invariant_of_gamma_and_alpha_source
     {HiddenTape TapeIdentity Observation Statement Payload Witness : Type}
     {parameters : ExactCompilerResourceParameters}
@@ -191,10 +202,10 @@ theorem exact_fixed_clean_pair_k13_transcript_invariant_of_gamma_and_alpha_sourc
       Observation Statement Tag73K12ParsedProof Payload Witness parameters}
     {projection : AcceptedTapeProjection Statement Tag73K12ParsedProof Payload}
     {fixedInstance : PublicInstance Statement}
-    {decoder : AspisPool.AlgorithmicCircleDecoderV7.ExactDecoderInstantiation
-      QM31Exact}
-    (alphaSource : ExactFoldArmedAlphaPrefixSourceProvider transitionFuel
-      configuration projection fixedInstance)
+    {decoder : ExactDecoderInstantiation QM31Exact}
+    (alphaSource :
+      ExactFixedCleanK13PairAlphaCommonPrefixOnAdversaryAnchors transitionFuel
+        configuration projection fixedInstance decoder)
     (gammaInvariant : ExactFixedCleanK13PairGammaInvariantOnAdversaryAnchors
       transitionFuel configuration projection fixedInstance decoder) :
     ExactFixedCleanK13PairTranscriptInvariantOnAdversaryAnchors transitionFuel
@@ -203,25 +214,14 @@ theorem exact_fixed_clean_pair_k13_transcript_invariant_of_gamma_and_alpha_sourc
     contextExact foldExact
   have gammaExact := gammaInvariant foldTrial finalTrial hidden left right
     leftWitness rightWitness anchor contextExact foldExact
-  let router := exactCompilerFoldArmedAlphaFinalWorkQ16Router parameters
-    transitionFuel foldTrial.val finalTrial.val
-    (exactPlainRomCursor configuration hidden).erase
-  have leftBinding : ExactFoldArmedAlphaPrefixBinding leftWitness.joint.input
-      router := by
-    simpa [router] using alphaSource (hidden, left) leftWitness.joint.input
-      foldTrial finalTrial leftWitness.foldExact
-  have rightBinding : ExactFoldArmedAlphaPrefixBinding rightWitness.joint.input
-      router := by
-    simpa [router] using alphaSource (hidden, right) rightWitness.joint.input
-      foldTrial finalTrial rightWitness.foldExact
-  have alphaExact := exact_pair_operational_alpha_zero_eq_of_prefix_bindings
-    leftWitness.joint.input rightWitness.joint.input router router
-      (by simpa [router] using contextExact) leftBinding rightBinding
-  exact ⟨gammaExact, alphaExact⟩
+  obtain ⟨alphaBinding⟩ := alphaSource foldTrial finalTrial hidden left right
+    leftWitness rightWitness anchor contextExact foldExact
+  exact ⟨gammaExact,
+    exact_pair_operational_alpha_zero_eq_of_common_prefix alphaBinding⟩
 
-#print axioms ExactFoldArmedAlphaPrefixBinding
-#print axioms exact_pair_operational_alpha_zero_eq_of_prefix_bindings
-#print axioms ExactFoldArmedAlphaPrefixSourceProvider
+#print axioms ExactPairAlphaCommonPrefixBinding
+#print axioms exact_pair_operational_alpha_zero_eq_of_common_prefix
+#print axioms ExactFixedCleanK13PairAlphaCommonPrefixOnAdversaryAnchors
 #print axioms ExactFixedCleanK13PairGammaInvariantOnAdversaryAnchors
 #print axioms
   exact_fixed_clean_pair_k13_transcript_invariant_of_gamma_and_alpha_source
