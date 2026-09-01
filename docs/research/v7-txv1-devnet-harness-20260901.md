@@ -2,153 +2,175 @@
 
 ## Result
 
-**BLOCKED BY FEATURE/IDENTITY/ARTIFACT.** Public devnet is the canonical
-devnet cluster and its RPC is new enough to report Agave `4.3.0-beta.2`, but
-the authoritative TxV1 feature account
-`txv1aq4pp281K9um3tnPgkfX8UqtFT6wcVW3hNezGLL` was absent at finalized
-commitment during this audit. No public transaction was built, signed,
-simulated, submitted, or deployed.
+The disposable feature-active cluster and genuine Tag-73 proof-account upload
+are reproducible and finalized. The combined terminal lifecycle matrix remains
+**BLOCKED BY FEATURE/IDENTITY/ARTIFACT**. No terminal transaction was executed
+in this phase, and setup simulation or proof upload is not classified as a
+combined lifecycle.
 
-The new command is
-`scripts/v7_txv1_devnet_lifecycle_harness.sh`. Its configuration and identity
-allowlist are in `config/v7-txv1-devnet-harness-20260901.json`. The captured
-read-only public result is under
-`results/v7-txv1-devnet-harness-20260901/public-devnet-probe-r2/`.
+| Classification | Established |
+|---|---:|
+| PUBLIC DEVNET FEATURE INACTIVE | yes |
+| DISPOSABLE FEATURE-ACTIVE CLUSTER READY | yes |
+| LOCAL FINALIZED LIFECYCLE COMPLETE | no |
+| PUBLIC FINALIZED DEVNET LIFECYCLE COMPLETE | no |
+| MAINNET READY | no |
 
-The result remains explicitly `mainnetReady: false`. The configured Pool,
-Registry, verifier, Registry entry, profile, release, and policy identities are
-the audit-only RC1 identities. The public path never accepts that identity set.
+Public-devnet probe evidence under
+`results/v7-txv1-devnet-harness-20260901/public-devnet-probe-r2/` is unchanged.
+The frozen reference remains 1,201,757 CU, 997 serialized bytes, one terminal
+transaction, and eight lanes; it was not rerun or modified.
 
-## Branch inspection and baseline
+## Branch inspection
 
-The worktree branch was created from registry release-audit HEAD
-`64ec7148885695f801f857e5f1a4bd95f17af6b4`. Remote refs were refreshed before
-implementation. The relevant non-proof development is:
+The isolated branch includes the wallet handoff at `174ce6ac`, Registry V2
+release audit at `64ec7148`, and later relevant remote branch work already
+represented in base `a2db2237`. Inspection covered the TxV1 builder, immutable
+Registry V2 terminal account shapes, proof lifecycle tags 0/1/62/64, Pool
+init/deposit interfaces, eight-lane state and checkpoint types, ciphertext
+carrier, frozen binaries, and earlier finalized local/public-probe evidence.
+No verifier mathematics, cryptographic parameters, Lean/Aeneas files,
+production Pool/verifier source, or frozen SBF/CU implementation changed.
 
-- `research/v7-registry-v2-release-audit-20260831` at `64ec7148`: frozen
-  Registry V2 SBF identities, public feature gate, deterministic Agave bundle,
-  and signed/finalized local 11-case runner;
-- `research/v7-wallet-runtime-handoff-20260831` at `174ce6ac`: finalized TxV1
-  wallet ingestion and the signed `ASC8` ciphertext carrier;
-- `research/v7-registry-v2-caller-source-20260831` and
-  `research/v7-one-tx-activate-20260828`: no later harness/client work not
-  already represented by the two heads above.
-
-The two named heads were merged. Their only substantive merge conflict was in
-wallet transaction plumbing. That exposed an actual compatibility defect: the
-ciphertext-carrier proof-account locator accepted the earlier 9/10 and 14/15
-terminal account layouts, while immutable Registry V2 terminals use 11/12 and
-16/17 accounts. The locator and focused tests now use the immutable layouts.
-No verifier mathematics, Lean/Aeneas proof, cryptographic relation, SBF/CU
-optimization, or production program source was changed.
+The repository's GitHub `Spend integration` workflow (workflow ID
+`313976600`) was manually disabled after failed-run email spam was reported.
+This changed GitHub workflow state only; its YAML and all other workflows were
+left intact.
 
 ## HARNESS TESTED LOCALLY
 
-Focused wallet transaction tests passed:
+`scripts/v7_txv1_disposable_feature_cluster.sh` creates only a validated
+`mktemp -d` ledger, installs strict cleanup traps, binds loopback RPC, requires
+the exact disposable audit-identity acknowledgement, checks Agave 4.2+, and
+fails unless the precise TxV1 feature account is active. It records genesis,
+runtime feature set, feature data, loaders, executable accounts, and freshly
+dumped program hashes. It never accepts an existing ledger.
 
-```text
-CARGO_BUILD_JOBS=2 CARGO_NET_OFFLINE=true /usr/bin/time -lp \
-  cargo test --locked \
-  --manifest-path crates/aspis-pool-wallet-v1/Cargo.toml \
-  --features eight-lane-plumbing-v2 --lib lane_forest_transaction_v1
+The successful run used:
 
-8 passed; 0 failed; 177 filtered out
-wall 60.26 s; maximum RSS 843,186,176 bytes; swaps 0
-```
+- Agave `solana-cli 4.2.0 (src:ac82b5d4; feat:21b0d33a, client:Agave)`;
+- runtime feature set `565236538`;
+- genesis `biNtLxt3kJREjFStDxVZje9xRvp78MKx3QLFHJVrWuB`;
+- feature `txv1aq4pp281K9um3tnPgkfX8UqtFT6wcVW3hNezGLL`, active at slot 0;
+- audit Pool/Registry/verifier hashes `0e94c98d…cd4f6`,
+  `0f14c7b…8f11b`, and `97df1293…cc6d`.
 
-This proves the merged builder retains the exact immutable Registry V2
-terminal shapes, keeps every carrier transaction below the 3,500-byte review
-threshold, binds both required signatures to the exact two-instruction
-`ASC8 -> ASQ8` message, and rejects carrier mutation or instruction reordering.
-It is not a finalized cluster lifecycle result.
+The ledger and disposable payer were destroyed by the wrapper's trap.
 
-The earlier registry release audit contains a real disposable Agave 4.2
-signed/simulated/submitted/finalized 11-case subset. The new
-`run-disposable` mode wraps that runner only after an exact disposable-test
-acknowledgement. It preserves the earlier evidence label as a subset and emits
-`finalizedComplete: false`, because those cases use genesis-loaded fixture
-accounts rather than observing proof upload and Pool init/deposit.
+## Genuine proof and finalized upload
 
-## PUBLIC DEVNET FEATURE ACTIVE
+`tools/v7-txv1-honest-proof` calls
+`build_v7_pool_pair_forest_private_transfer_onefold_proof_production`. It
+generated a mined, cryptographically valid Tag-73 proof without verifier
+bypass, copied verifier result, or trusted ASR8 account. The fixture-only
+entropy feature is explicitly recorded; this is not represented as a
+production wallet entropy path.
 
-False as observed on 2026-09-01. The captured probe recorded:
+| Artifact | Measurement |
+|---|---:|
+| ASQ8 | 320 bytes, SHA-256 `73246bcf…e03f47` |
+| ASF8 | 1,880 bytes, SHA-256 `f6bcd494…05c331` |
+| statement digest | `caf7a432…b89bf9` |
+| proof body | 30,504 bytes, SHA-256 `cba819e2…4ce43` |
+| ASJA + proof payload | 31,192 bytes, SHA-256 `e4ab4c43…b8c13b` |
+| prover | 94.808 s; 197,345,280-byte maximum RSS; zero swaps |
 
-| Field | Value |
-|---|---|
-| RPC | `https://api.devnet.solana.com` |
-| Genesis hash | `EtWTRABZaYq6iMfeYKouRu166VU2xqa1wcaWoxPkrZBG` |
-| RPC core | `4.3.0-beta.2` |
-| Feature set | `2409014235` |
-| Feature account | absent at finalized commitment |
-| Mutation/signing/submission | none |
+The fresh account `HcSnx3qkc7ZJr3NmzVj4vdZ8LtMVuq1U3bn11RG54Cc8`
+was created through the System program, initialized normally, filled by 33
+ordered 960-byte verifier upload instructions, and sealed normally. The 35
+signed legacy setup transactions were each simulated and then submitted using
+the byte-identical base64 wire. All finalized without error in slots 151–185.
 
-The feature account, not the RPC version string, is authoritative. The harness
-requires canonical activated feature data owned by the Feature program and
-records the activation slot when present. An absent, pending, malformed, or
-wrongly owned account fails closed.
+| Setup measurement | Value |
+|---|---:|
+| signed transactions | 35 (1 create/init, 33 upload, 1 finalize) |
+| serialized transaction bytes | 204 minimum, 1,173 maximum |
+| simulation CU | 210,601 sum; 591 minimum; 188,131 maximum |
+| landed CU | 210,601 sum; 591 minimum; 188,131 maximum |
+| landed proof-account SHA-256 | `57f7a916…ce41f0` |
 
-## FINALIZED DEVNET LIFECYCLE COMPLETE
+Exact signed bytes, wire hashes, signatures, simulation responses, finalized
+slots/logs/CU, and the finalized account image are under
+`results/v7-txv1-devnet-harness-20260901/local-feature-active/proof-upload/`.
+The temporary signing key existed only in task-owned mode-0600 directories and
+was destroyed locally and on the NUC after evidence capture. No private key was
+printed or committed.
 
-False. No component measurement or simulation is reported as a combined
-finalized lifecycle. The frozen measured reference remains 1,201,757 CU and a
-997-byte terminal transaction; it was neither rerun nor modified here.
+## PUBLIC DEVNET FEATURE INACTIVE
 
-Before any public execution, the harness checks the genesis hash, feature
-state, program account existence, executable flags, loaders, local frozen
-binary hashes, remotely dumped binary hashes, and exact Registry/entry account
-data hashes. Public execution also requires a non-audit, production-approved
-identity manifest. The current checked-in manifest intentionally cannot pass
-that gate.
+True as observed on 2026-09-01. At finalized commitment, canonical devnet
+genesis was `EtWTRABZaYq6iMfeYKouRu166VU2xqa1wcaWoxPkrZBG`, RPC core reported
+`4.3.0-beta.2`, and the authoritative feature account was absent. No public
+transaction was built, signed, simulated, submitted, or deployed. The feature
+account—not an RPC version string—is the activation authority.
 
-For an admitted execution, the evidence schema reserves exact transaction
-bytes and wire hash, CU, signature, slot, logs, before/after account hashes,
-per-invariant results, toolchain versions, cluster/feature identifiers, and
-program/binary identities. The existing disposable subset already enforces
-simulation of the signed wire followed by byte-identical submission and
-finalized confirmation.
+## Why the terminal matrix is still blocked
 
-## BLOCKED BY FEATURE/IDENTITY/ARTIFACT
+The smallest missing honest integration is a live eight-lane witness adapter.
+There is no executable path that takes a freshly initialized/deposited Pool,
+its finalized checkpoint/history/lane accounts, and a wallet note opening and
+constructs `PoolV1PairForestInputNoteWitnessV1` plus the exact Tag-73
+ASQ8/ASF8 terminal statement. The available mined helper constructs a
+deterministic synthetic tree, checkpoint, witness, and fixture entropy. Its
+valid proof cannot authenticate a separately initialized live Pool snapshot.
 
-Three independent blockers remain:
+Completing that adapter also requires production attempt entropy plumbing and
+a withdrawal-side live witness adapter. Without those pieces, substituting
+genesis-loaded state, mutating the fixture after proving, or pre-authorizing an
+ASR8 would manufacture a green result. None was done.
 
-1. Public devnet has not activated the TxV1 4-KiB feature at finalized
-   commitment.
-2. Only audit-only Pool/Registry/policy identities exist. They are rejected on
-   the public path and accepted only by the exact disposable-test
-   acknowledgement.
-3. The complete lifecycle artifact set is incomplete. The frozen proof account
-   address is a fixture public key without an available disposable signing key,
-   so its exact proof cannot be created/uploaded on a non-genesis cluster.
-   Frozen cases are also missing deposit/init, two different lanes, wrong
-   historical checkpoint, malformed request, and malformed ciphertext-carrier
-   non-stalling fixtures.
+Consequently none of the newly requested terminal cases—init/deposit through
+proof close/refund—was marked complete in this phase. Their exact blocked
+statuses and non-applicable invariant values are in
+`local-feature-active/evidence.json`. The older frozen 11-case local subset
+remains separately valid evidence but was not rerun and does not close this
+live-fixture gap.
 
-Until all three clear, the honest status is neither “PUBLIC DEVNET FEATURE
-ACTIVE” nor “FINALIZED DEVNET LIFECYCLE COMPLETE.”
+## Replay commands
 
-## Commands
-
-Read-only public probe:
-
-```sh
-scripts/v7_txv1_devnet_lifecycle_harness.sh probe \
-  https://api.devnet.solana.com \
-  EtWTRABZaYq6iMfeYKouRu166VU2xqa1wcaWoxPkrZBG \
-  /absolute/new-evidence-directory
-```
-
-Default-off disposable subset (audit identities and ephemeral local funds
-only):
+Disposable feature gate (default-off because it requires the acknowledgement):
 
 ```sh
-scripts/v7_txv1_devnet_lifecycle_harness.sh run-disposable \
+scripts/v7_txv1_disposable_feature_cluster.sh \
   /absolute/agave-4.2+-bin \
-  /absolute/materialized-bundle \
   /absolute/new-evidence-directory \
   I_ACKNOWLEDGE_AUDIT_ONLY_IDENTITIES_AND_DISPOSABLE_FUNDS
 ```
 
-Any transaction at or above 4,096 bytes is rejected. The disposable runner
-also rejects a transaction at or above 3,500 bytes unless
-`ASPIS_TXV1_RESEARCH_OVER_3500` is set to the exact value
-`I_ACKNOWLEDGE_RESEARCH_TX_OVER_3500_BYTES`.
+Generate a fresh proof after creating an uncommitted keypair and retaining
+only its public key in logs:
+
+```sh
+NO_DNA=1 CARGO_BUILD_JOBS=2 cargo run --release --locked \
+  --manifest-path tools/v7-txv1-honest-proof/Cargo.toml -- \
+  <fresh-proof-account-pubkey> <new-proof-output-directory>
+```
+
+Run the normal proof-account upload inside the wrapper:
+
+```sh
+scripts/v7_txv1_disposable_feature_cluster.sh \
+  /absolute/agave-4.2+-bin /absolute/new-run-evidence \
+  I_ACKNOWLEDGE_AUDIT_ONLY_IDENTITIES_AND_DISPOSABLE_FUNDS -- \
+  scripts/v7_txv1_upload_honest_proof_child.sh \
+  /absolute/uncommitted-proof-keypair.json \
+  /absolute/proof-payload.bin \
+  /absolute/new-run-evidence/proof-upload
+```
+
+The successful NUC invocation ran in a user systemd scope with
+`MemoryHigh=8G`, `MemoryMax=12G`, and `MemorySwapMax=0`; the service reported
+zero swap. No SBF build or broad regression suite was run.
+
+Verify the evidence bundle:
+
+```sh
+cd results/v7-txv1-devnet-harness-20260901/local-feature-active
+shasum -a 256 -c SHA256SUMS
+jq -e '.classifications.disposableFeatureActiveClusterReady and
+  (.classifications.localFinalizedLifecycleComplete | not) and
+  (.mainnetReady | not)' evidence.json
+```
+
+Public execution remains fail-closed on feature and production identity
+checks. Audit-only identities are never selected for public devnet or mainnet.

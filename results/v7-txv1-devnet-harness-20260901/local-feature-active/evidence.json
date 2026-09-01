@@ -1,0 +1,128 @@
+{
+  "schema": "aspis.v7.txv1-local-feature-active-evidence.v1",
+  "generatedAt": "2026-09-01T08:48:00Z",
+  "repository": {
+    "branch": "research/v7-txv1-devnet-harness-20260901",
+    "clusterRunRevision": "8676bc2e6041865230aef5d4e87c6220b15afb87"
+  },
+  "classifications": {
+    "publicDevnetFeatureInactive": true,
+    "disposableFeatureActiveClusterReady": true,
+    "localFinalizedLifecycleComplete": false,
+    "publicFinalizedDevnetLifecycleComplete": false,
+    "mainnetReady": false
+  },
+  "toolchain": {
+    "agave": "solana-cli 4.2.0 (src:ac82b5d4; feat:21b0d33a, client:Agave)",
+    "runtimeFeatureSet": 565236538,
+    "rustc": "rustc 1.93.0 (254b59607 2026-01-19)",
+    "cargo": "cargo 1.93.0 (083ac5135 2025-12-15)"
+  },
+  "cluster": {
+    "kind": "disposable-local-validator",
+    "genesisHash": "biNtLxt3kJREjFStDxVZje9xRvp78MKx3QLFHJVrWuB",
+    "rpcUrlDuringRun": "http://127.0.0.1:18901",
+    "ledgerDestroyedAfterRun": true,
+    "feature": {
+      "id": "txv1aq4pp281K9um3tnPgkfX8UqtFT6wcVW3hNezGLL",
+      "active": true,
+      "activationSlot": 0
+    },
+    "auditOnlyIdentitiesExplicitlyAcknowledged": true,
+    "realFundsUsed": false
+  },
+  "programs": [
+    {"name": "pool", "id": "5PjDJaGfSPJj4tFzMRCiuuAasKg5n8dJKXKenhuwZexx", "sha256": "0e94c98d28437f0b01dce546fdefaad21dc10772a4d46991c2a573d8129cd4f6"},
+    {"name": "registry", "id": "5bV6jUfhDHCQVA1WfKBUnXUsboJgoKgkzkKcxr3joew5", "sha256": "0f14c7b74ec6cbe3b3f637b0f24c7e8cdc46fd09f5b2e495fd51ada16ad8f11b"},
+    {"name": "verifier", "id": "7Q2nGsPg8rbjdxKHK4jxTgEWLTyd9o1X4KMSjCieRmue", "sha256": "97df12937d46e25a2eeefeac16ce31925fd473c672d6b656548be9220adbcc6d"}
+  ],
+  "proof": {
+    "kind": "genuine-tag-73-production-prover-with-explicit-insecure-fixture-entropy",
+    "operation": "private-transfer",
+    "proofAccount": "HcSnx3qkc7ZJr3NmzVj4vdZ8LtMVuq1U3bn11RG54Cc8",
+    "proofBytes": 30504,
+    "proofSha256": "cba819e2f9dc0b9409de88678706260b42359dae43a368805f0a70a96bb4ce43",
+    "payloadBytes": 31192,
+    "payloadSha256": "e4ab4c438fa3c33b611d6a14bcfb45fce0ddea7ffb6eaa2b7ae3ca620cb8c13b",
+    "statementSha256": "f6bcd49446f1077d2c5ed4be940e91f0be444efc5ae83024ec0700b8c205c331",
+    "statementDigest": "caf7a43261079647e86ba3a433b940c7034bf8d62716540f7bab8b1d47b89bf9",
+    "powValid": true,
+    "proverElapsedMillis": 94808,
+    "proverPeakRssBytes": 197345280,
+    "keypairCommitted": false,
+    "keypairPrinted": false,
+    "keypairDestroyedAfterRun": true,
+    "verifierBypass": false,
+    "trustedResultAccount": false
+  },
+  "proofUpload": {
+    "finalized": true,
+    "sealed": true,
+    "requestCount": 35,
+    "createInitializeTransactions": 1,
+    "uploadTransactions": 33,
+    "finalizeTransactions": 1,
+    "serializedTransactionBytes": {"minimum": 204, "maximum": 1173},
+    "simulationComputeUnits": {"minimum": 591, "maximum": 188131, "sum": 210601},
+    "landedComputeUnits": {"minimum": 591, "maximum": 188131, "sum": 210601},
+    "finalizedSlotMinimum": 151,
+    "finalizedSlotMaximum": 185,
+    "proofAccountSha256": "57f7a9169063e7f323c20005f29d7a092ec484f283e4d7a19eb2f45e07ce41f0",
+    "allSimulatedBeforeSubmission": true,
+    "allSubmittedByteIdentically": true,
+    "allFinalizedWithoutError": true,
+    "transactionEvidence": "proof-upload/transactions",
+    "signedWireManifest": "proof-upload/signed-requests.json"
+  },
+  "terminalLifecycle": {
+    "executed": false,
+    "serializedTransactionBytes": null,
+    "simulationComputeUnits": null,
+    "landedComputeUnits": null,
+    "signature": null,
+    "finalizedSlot": null,
+    "reason": "No adapter constructs the Tag-73 pair-forest input-note witness and exact ASQ8/ASF8 statement from a freshly initialized and deposited live eight-lane Pool snapshot. The available mined helper constructs a deterministic synthetic fixture, so its checkpoint/lane state cannot be substituted for live finalized accounts."
+  },
+  "cases": {
+    "depositInit": "blocked-live-fixture-adapter",
+    "privateTransferSamePage": "blocked-live-witness-adapter",
+    "privateTransferRollover": "blocked-live-witness-adapter",
+    "withdrawalSamePage": "blocked-live-witness-and-withdrawal-adapter",
+    "withdrawalRollover": "blocked-live-witness-and-withdrawal-adapter",
+    "differentLanes": "blocked-live-witness-adapter",
+    "sameLaneStale": "blocked-live-witness-adapter",
+    "duplicateNullifierReplay": "blocked-terminal-lifecycle",
+    "wrongHistoricalCheckpoint": "blocked-terminal-lifecycle",
+    "wrongRegistryReleaseProfile": "blocked-terminal-lifecycle",
+    "malformedAsq8": "blocked-terminal-lifecycle",
+    "malformedAsr8": "blocked-terminal-lifecycle",
+    "malformedCiphertextCarrier": "blocked-terminal-lifecycle",
+    "missingCiphertextCarrier": "blocked-terminal-lifecycle",
+    "failedWithdrawalCpiRollback": "blocked-terminal-lifecycle",
+    "proofAccountCloseRefund": "blocked-terminal-lifecycle"
+  },
+  "invariants": {
+    "proofGeneratedWithoutVerifierBypass": true,
+    "proofPayloadUploadedAndSealed": true,
+    "setupSimulationSubmissionByteIdentical": true,
+    "terminalExactlyOneTransaction": null,
+    "terminalMessageBelow4096": null,
+    "terminalCombinedLandedCuBelow1300000": null,
+    "asq8Asf8Asr8Binding": null,
+    "selectedLaneOnly": null,
+    "historySemantics": null,
+    "nullifierExactlyOnce": null,
+    "poolVaultConservation": null,
+    "failureRollback": null,
+    "ciphertextNonStalling": null,
+    "proofCloseRefund": null
+  },
+  "frozenReferenceNotRerun": {
+    "terminalTransactionBytes": 997,
+    "combinedComputeUnits": 1201757,
+    "terminalTransactionCount": 1,
+    "lanes": 8
+  },
+  "publicDevnetEvidencePreserved": true,
+  "mainnetReady": false
+}
