@@ -11,6 +11,7 @@ alpha shadowing before, at, and after the selected fold exposure.
 
 set_option autoImplicit false
 set_option maxRecDepth 100000
+set_option maxHeartbeats 1000000
 
 namespace AspisK1.V7Tag73ExactFoldArmedQ16Routing
 
@@ -391,9 +392,167 @@ theorem exact_compiler_fold_armed_q16_forest_realization
       (exactDagOperationalQ16CandidateBlocks input) candidateLengthCap routedAll
         outcomeDecoded frontierRealized
 
+noncomputable def exactAcceptedFoldArmedRouter
+    {HiddenTape TapeIdentity Observation Statement Payload Result : Type}
+    {parameters : ExactCompilerResourceParameters}
+    {transitionFuel : Nat}
+    {configuration : ExactPlainRomConfiguration HiddenTape TapeIdentity
+      Observation Statement Tag73K12ParsedProof Payload Result parameters}
+    {projection : AcceptedTapeProjection Statement Tag73K12ParsedProof Payload}
+    {fixedInstance : PublicInstance Statement}
+    {sample : ExactCompilerSample HiddenTape parameters}
+    (transitionRoom : 2 ≤ transitionFuel)
+    (input : ExactK12OperationalInput transitionFuel configuration projection
+      fixedInstance sample) :
+    ExactCompilerCausalFoldAlphaFinalWorkQ16Router parameters :=
+  exactCompilerFoldArmedAlphaFinalWorkQ16Router parameters transitionFuel
+    (exactAcceptedFoldTrial input).trial.val
+    (exactAcceptedDagInstallation transitionRoom input).finalTrial.val
+    (exactPlainRomCursor configuration sample.1).erase
+
+theorem exact_accepted_fold_armed_coordinate
+    {HiddenTape TapeIdentity Observation Statement Payload Result : Type}
+    {parameters : ExactCompilerResourceParameters}
+    {transitionFuel : Nat}
+    {configuration : ExactPlainRomConfiguration HiddenTape TapeIdentity
+      Observation Statement Tag73K12ParsedProof Payload Result parameters}
+    {projection : AcceptedTapeProjection Statement Tag73K12ParsedProof Payload}
+    {fixedInstance : PublicInstance Statement}
+    {sample : ExactCompilerSample HiddenTape parameters}
+    (transitionRoom : 2 ≤ transitionFuel)
+    (programmedCover : 518 ≤ 2 * parameters.forkRequestCap)
+    (input : ExactK12OperationalInput transitionFuel configuration projection
+      fixedInstance sample) :
+    (exactCompilerCausalFoldAlphaFinalWorkQ16Coordinates parameters
+      (exactAcceptedFoldArmedRouter transitionRoom input) sample.2).2.1 =
+        (exactAcceptedFoldTrial input).answer := by
+  apply exact_compiler_fold_coordinate_eq_of_routed_lookup
+  exact exact_fold_armed_accepted_fold_is_routed programmedCover input
+    (exactAcceptedFoldTrial input)
+    (exactAcceptedDagInstallation transitionRoom input).finalTrial
+
+theorem exact_accepted_fold_armed_final_work_coordinate
+    {HiddenTape TapeIdentity Observation Statement Payload Result : Type}
+    {parameters : ExactCompilerResourceParameters}
+    {transitionFuel : Nat}
+    {configuration : ExactPlainRomConfiguration HiddenTape TapeIdentity
+      Observation Statement Tag73K12ParsedProof Payload Result parameters}
+    {projection : AcceptedTapeProjection Statement Tag73K12ParsedProof Payload}
+    {fixedInstance : PublicInstance Statement}
+    {sample : ExactCompilerSample HiddenTape parameters}
+    (transitionRoom : 2 ≤ transitionFuel)
+    (programmedCover : 518 ≤ 2 * parameters.forkRequestCap)
+    (input : ExactK12OperationalInput transitionFuel configuration projection
+      fixedInstance sample) :
+    (exactCompilerCausalFoldAlphaFinalWorkQ16Coordinates parameters
+      (exactAcceptedFoldArmedRouter transitionRoom input) sample.2).2.2.1 =
+        (exactAcceptedDagInstallation transitionRoom input).workAnswer := by
+  apply exact_compiler_fold_final_work_coordinate_eq_of_routed_lookup
+  exact exact_fold_armed_final_work_is_routed programmedCover input
+    (exactAcceptedFoldTrial input)
+    (exactAcceptedDagInstallation transitionRoom input)
+
+structure ExactAcceptedFoldArmedQ16Anchor
+    {HiddenTape TapeIdentity Observation Statement Payload Result : Type}
+    {parameters : ExactCompilerResourceParameters}
+    {transitionFuel : Nat}
+    {configuration : ExactPlainRomConfiguration HiddenTape TapeIdentity
+      Observation Statement Tag73K12ParsedProof Payload Result parameters}
+    {projection : AcceptedTapeProjection Statement Tag73K12ParsedProof Payload}
+    {fixedInstance : PublicInstance Statement}
+    {sample : ExactCompilerSample HiddenTape parameters}
+    (input : ExactK12OperationalInput transitionFuel configuration projection
+      fixedInstance sample) where
+  fold : ExactAcceptedFoldTrial input
+  source : ExactAcceptedDagInstallation input
+  router : ExactCompilerCausalFoldAlphaFinalWorkQ16Router parameters
+  routerExact : router = exactCompilerFoldArmedAlphaFinalWorkQ16Router
+    parameters transitionFuel fold.trial.val source.finalTrial.val
+    (exactPlainRomCursor configuration sample.1).erase
+  foldCoordinate :
+    (exactCompilerCausalFoldAlphaFinalWorkQ16Coordinates parameters router
+      sample.2).2.1 = fold.answer
+  workCoordinate :
+    (exactCompilerCausalFoldAlphaFinalWorkQ16Coordinates parameters router
+      sample.2).2.2.1 = source.workAnswer
+
+noncomputable def exactAcceptedFoldArmedQ16Anchor
+    {HiddenTape TapeIdentity Observation Statement Payload Result : Type}
+    {parameters : ExactCompilerResourceParameters}
+    {transitionFuel : Nat}
+    {configuration : ExactPlainRomConfiguration HiddenTape TapeIdentity
+      Observation Statement Tag73K12ParsedProof Payload Result parameters}
+    {projection : AcceptedTapeProjection Statement Tag73K12ParsedProof Payload}
+    {fixedInstance : PublicInstance Statement}
+    {sample : ExactCompilerSample HiddenTape parameters}
+    (transitionRoom : 2 ≤ transitionFuel)
+    (programmedCover : 518 ≤ 2 * parameters.forkRequestCap)
+    (input : ExactK12OperationalInput transitionFuel configuration projection
+      fixedInstance sample) : ExactAcceptedFoldArmedQ16Anchor input :=
+  { fold := exactAcceptedFoldTrial input
+    source := exactAcceptedDagInstallation transitionRoom input
+    router := exactAcceptedFoldArmedRouter transitionRoom input
+    routerExact := rfl
+    foldCoordinate := exact_accepted_fold_armed_coordinate transitionRoom
+      programmedCover input
+    workCoordinate := exact_accepted_fold_armed_final_work_coordinate
+      transitionRoom programmedCover input }
+
+structure ExactAcceptedFoldArmedQ16Realization
+    {HiddenTape TapeIdentity Observation Statement Payload Result : Type}
+    {parameters : ExactCompilerResourceParameters}
+    {transitionFuel : Nat}
+    {configuration : ExactPlainRomConfiguration HiddenTape TapeIdentity
+      Observation Statement Tag73K12ParsedProof Payload Result parameters}
+    {projection : AcceptedTapeProjection Statement Tag73K12ParsedProof Payload}
+    {fixedInstance : PublicInstance Statement}
+    {sample : ExactCompilerSample HiddenTape parameters}
+    (input : ExactK12OperationalInput transitionFuel configuration projection
+      fixedInstance sample) where
+  anchor : ExactAcceptedFoldArmedQ16Anchor input
+  forestRealized : OperationalQ16ForestRealization
+    (exactOperationalTape input).frontierNodes
+    (exactOperationalTape input).search
+    (exactCompilerCausalFoldAlphaFinalWorkQ16Coordinates parameters anchor.router
+      sample.2).2.2.2
+
+theorem exact_compiler_accepted_fold_armed_q16_operational_realization
+    {HiddenTape TapeIdentity Observation Statement Payload Result : Type}
+    {parameters : ExactCompilerResourceParameters}
+    {transitionFuel : Nat}
+    {configuration : ExactPlainRomConfiguration HiddenTape TapeIdentity
+      Observation Statement Tag73K12ParsedProof Payload Result parameters}
+    {projection : AcceptedTapeProjection Statement Tag73K12ParsedProof Payload}
+    {fixedInstance : PublicInstance Statement}
+    {sample : ExactCompilerSample HiddenTape parameters}
+    (transitionRoom : 2 ≤ transitionFuel)
+    (programmedCover : 518 ≤ 2 * parameters.forkRequestCap)
+    (input : ExactK12OperationalInput transitionFuel configuration projection
+      fixedInstance sample)
+    (frontierExact : ∀ schedule,
+      (exactOperationalTape input).frontierNodes schedule =
+        semanticFrontierNodes schedule.positions) :
+    Nonempty (ExactAcceptedFoldArmedQ16Realization input) := by
+  let anchor := exactAcceptedFoldArmedQ16Anchor transitionRoom programmedCover
+    input
+  have forestRealized : OperationalQ16ForestRealization
+      (exactOperationalTape input).frontierNodes
+      (exactOperationalTape input).search
+      (exactCompilerCausalFoldAlphaFinalWorkQ16Coordinates parameters
+        anchor.router sample.2).2.2.2 := by
+    rw [anchor.routerExact]
+    exact exact_compiler_fold_armed_q16_forest_realization transitionRoom
+      programmedCover input anchor.fold anchor.source.finalTrial
+        anchor.source.base anchor.source.baseExact anchor.source.installed
+          frontierExact
+  exact ⟨{ anchor := anchor, forestRealized := forestRealized }⟩
+
 #print axioms exact_fold_armed_dag_installed_producer_routes_ordered_output
 #print axioms exact_fold_armed_ordered_q16_chain_routes
 #print axioms exact_compiler_fold_armed_q16_forest_realization
+#print axioms exact_accepted_fold_armed_coordinate
+#print axioms exact_accepted_fold_armed_final_work_coordinate
+#print axioms exact_compiler_accepted_fold_armed_q16_operational_realization
 
 end
 
