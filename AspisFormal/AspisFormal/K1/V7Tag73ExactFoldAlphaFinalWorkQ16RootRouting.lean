@@ -1,5 +1,6 @@
 import AspisFormal.K1.V7Tag73ExactAlphaFinalWorkQ16RootRouting
 import AspisFormal.K1.V7Tag73ExactFoldWorkExposureTrial
+import AspisFormal.K1.V7Tag73FoldAlphaFinalWorkQ16ControllerProjection
 import AspisFormal.K1.V7Tag73FoldAlphaFinalWorkQ16LabelsNodup
 
 /-!
@@ -42,6 +43,7 @@ open AspisK1.V7Tag73ExactPlainRomRun
 open AspisK1.V7Tag73ExactPlainRomTraceResourceCaps
 open AspisK1.V7Tag73ExactSourceAcceptanceModel
 open AspisK1.V7Tag73FoldAlphaFinalWorkQ16ControllerComposition
+open AspisK1.V7Tag73FoldAlphaFinalWorkQ16ControllerProjection
 open AspisK1.V7Tag73FoldAlphaFinalWorkQ16LabelsNodup
 open AspisK1.V7Tag73FullCursorClientLineageLift
 open AspisK1.V7Tag73IndexedControllerLabeledRecords
@@ -302,6 +304,146 @@ theorem exact_fold_work_preferred_at_exposure_trial
   exact fold_controller_preferred_at_fresh_index foldTrial.val underlying
     reached unused atIndex
 
+/-- Any established 517-slot preference at a different literal exposure is
+preserved by the outer fold controller.  The required separation is stated as
+the exact record-prefix inequality, not inferred from raw SHA bytes. -/
+theorem exact_underlying_preferred_lifts_to_518
+    {HiddenTape TapeIdentity Observation Statement Payload Result : Type}
+    {parameters : ExactCompilerResourceParameters}
+    {transitionFuel : Nat}
+    {configuration : ExactPlainRomConfiguration HiddenTape TapeIdentity
+      Observation Statement Tag73K12ParsedProof Payload Result parameters}
+    {projection : AcceptedTapeProjection Statement Tag73K12ParsedProof Payload}
+    {fixedInstance : PublicInstance Statement}
+    {sample : ExactCompilerSample HiddenTape parameters}
+    (input : ExactK12OperationalInput transitionFuel configuration projection
+      fixedInstance sample)
+    (foldTrial finalTrial : ExactCompilerExposureTrial parameters)
+    (boundaryIndex : Nat) (prior : List UnifiedExposureRecord)
+    (slot : AlphaFinalWorkQ16DigestSlot)
+    (distinct : prior.length ≠ foldTrial.val)
+    (preferred :
+      (alphaFinalWorkQ16DagController transitionFuel finalTrial.val
+        (alphaZeroCausalController transitionFuel boundaryIndex)).preferredSlot
+        (indexedStateAfterRecords transitionFuel
+          (alphaFinalWorkQ16DagController transitionFuel finalTrial.val
+            (alphaZeroCausalController transitionFuel boundaryIndex)) prior
+          (exactAlphaFinalWorkQ16InitialState input)) = some slot) :
+    (foldAlphaFinalWorkQ16Controller foldTrial.val
+      (alphaFinalWorkQ16DagController transitionFuel finalTrial.val
+        (alphaZeroCausalController transitionFuel boundaryIndex))).preferredSlot
+      (indexedStateAfterRecords transitionFuel
+        (foldAlphaFinalWorkQ16Controller foldTrial.val
+          (alphaFinalWorkQ16DagController transitionFuel finalTrial.val
+            (alphaZeroCausalController transitionFuel boundaryIndex))) prior
+        (exactFoldAlphaFinalWorkQ16InitialState input)) = some (some slot) := by
+  let underlying : IndexedUnifiedExposureController
+      (globalFull256OracleCallCap parameters) Digest256
+      AlphaFinalWorkQ16DigestSlot
+      (AlphaFinalWorkQ16ControllerMemory AlphaZeroControllerMemory) :=
+    alphaFinalWorkQ16DagController transitionFuel finalTrial.val
+      (alphaZeroCausalController transitionFuel boundaryIndex)
+  let reached := indexedStateAfterRecords transitionFuel
+    (foldAlphaFinalWorkQ16Controller foldTrial.val underlying) prior
+      (exactFoldAlphaFinalWorkQ16InitialState input)
+  apply underlying_preferred_lifts_at_distinct_exposure foldTrial.val underlying
+    reached slot
+  · have count := indexed_state_after_records_exposure_index transitionFuel
+      (foldAlphaFinalWorkQ16Controller foldTrial.val underlying) prior
+      (exactFoldAlphaFinalWorkQ16InitialState input)
+    intro equal
+    apply distinct
+    have reachedIndex : reached.exposureIndex = prior.length := by
+      simpa [reached, exactFoldAlphaFinalWorkQ16InitialState] using count
+    exact reachedIndex.symm.trans equal
+  · rw [underlying_indexed_state_after_fold_records]
+    have initialExact : underlyingIndexedState
+        (exactFoldAlphaFinalWorkQ16InitialState input) =
+        exactAlphaFinalWorkQ16InitialState input := by
+      rfl
+    rw [initialExact]
+    simpa only [underlying] using preferred
+
+/-- A selected answer already justified by the 517-slot accepted-source
+controller is routed at the corresponding right-summand coordinate of the
+complete 518-slot router whenever its literal exposure differs from fold. -/
+theorem exact_underlying_root_answer_is_routed_by_518_router
+    {HiddenTape TapeIdentity Observation Statement Payload Result : Type}
+    {parameters : ExactCompilerResourceParameters}
+    {transitionFuel : Nat}
+    {configuration : ExactPlainRomConfiguration HiddenTape TapeIdentity
+      Observation Statement Tag73K12ParsedProof Payload Result parameters}
+    {projection : AcceptedTapeProjection Statement Tag73K12ParsedProof Payload}
+    {fixedInstance : PublicInstance Statement}
+    {sample : ExactCompilerSample HiddenTape parameters}
+    (programmedCover : 518 ≤ 2 * parameters.forkRequestCap)
+    (input : ExactK12OperationalInput transitionFuel configuration projection
+      fixedInstance sample)
+    (foldTrial finalTrial : ExactCompilerExposureTrial parameters)
+    (boundaryIndex : Nat) (prior later : List UnifiedExposureRecord)
+    (actor : QueryActor) (queryInput : ShaInput) (answer : Digest256)
+    (slot : AlphaFinalWorkQ16DigestSlot)
+    (decomposition : exactFixedRootRecords input.package.root =
+      prior ++ (.machineFresh actor queryInput answer : UnifiedExposureRecord) ::
+        later)
+    (distinct : prior.length ≠ foldTrial.val)
+    (preferred :
+      (alphaFinalWorkQ16DagController transitionFuel finalTrial.val
+        (alphaZeroCausalController transitionFuel boundaryIndex)).preferredSlot
+        (indexedStateAfterRecords transitionFuel
+          (alphaFinalWorkQ16DagController transitionFuel finalTrial.val
+            (alphaZeroCausalController transitionFuel boundaryIndex)) prior
+          (exactAlphaFinalWorkQ16InitialState input)) = some slot) :
+    causalRoutedAnswer? (some slot)
+      (exactCompilerFoldAlphaFinalWorkQ16Router parameters transitionFuel
+        foldTrial.val
+        (alphaFinalWorkQ16DagController transitionFuel finalTrial.val
+          (alphaZeroCausalController transitionFuel boundaryIndex))
+        (inactiveAlphaZeroMemory, inactiveDagMemory)
+        (exactPlainRomCursor configuration sample.1).erase)
+      (foldAlphaFinalWorkQ16NamedSlotInputTape
+        (exactCompilerFoldAlphaFinalWorkQ16InputTape parameters sample.2)) =
+      some answer := by
+  let controller : IndexedUnifiedExposureController
+      (globalFull256OracleCallCap parameters) Digest256
+      FoldAlphaFinalWorkQ16DigestSlot
+      (FoldAlphaFinalWorkQ16ControllerMemory
+        (AlphaFinalWorkQ16ControllerMemory AlphaZeroControllerMemory)) :=
+    foldAlphaFinalWorkQ16Controller foldTrial.val
+      (alphaFinalWorkQ16DagController transitionFuel finalTrial.val
+        (alphaZeroCausalController transitionFuel boundaryIndex))
+  let initial := exactFoldAlphaFinalWorkQ16InitialState input
+  let priorLabels := indexedControllerLabeledRecords transitionFuel controller
+    initial prior
+  let reached := indexedStateAfterRecords transitionFuel controller prior initial
+  let laterLabels := indexedControllerLabeledRecords transitionFuel controller
+    (controller.afterAnswer transitionFuel reached answer) later
+  have lifted := exact_underlying_preferred_lifts_to_518 input foldTrial
+    finalTrial boundaryIndex prior slot distinct preferred
+  have labelsDecomposition :
+      exactFoldAlphaFinalWorkQ16RootLabels input foldTrial finalTrial
+          boundaryIndex =
+        priorLabels ++ (some (some slot), answer) :: laterLabels := by
+    unfold exactFoldAlphaFinalWorkQ16RootLabels
+    rw [decomposition, indexed_controller_labeled_records_append]
+    simpa only [indexedControllerLabeledRecords,
+      UnifiedExposureRecord.answer, controller, initial, reached,
+      laterLabels, priorLabels, lifted]
+  exact machine_labeled_trace_routes_named_answer
+    (exact_fold_alpha_final_work_q16_root_labels_form_trace input foldTrial
+      finalTrial boundaryIndex)
+    (exact_fold_alpha_final_work_q16_root_named_slots_nodup input foldTrial
+      finalTrial boundaryIndex)
+    (fun target _ => Finset.mem_univ target)
+    (exact_fold_alpha_final_work_q16_root_residual_enough input foldTrial
+      finalTrial boundaryIndex programmedCover)
+    (foldAlphaFinalWorkQ16NamedSlotInputTape
+      (exactCompilerFoldAlphaFinalWorkQ16InputTape parameters sample.2))
+    input.package.root.full.projection.rootPrefixes.verifier.remaining
+    (exact_fold_alpha_final_work_q16_root_labels_tape_prefix input foldTrial
+      finalTrial boundaryIndex)
+    priorLabels laterLabels (some slot) answer labelsDecomposition
+
 theorem exact_compiler_accepted_fold_work_is_routed_by_518_router
     {HiddenTape TapeIdentity Observation Statement Payload Result : Type}
     {parameters : ExactCompilerResourceParameters}
@@ -382,6 +524,8 @@ theorem exact_compiler_accepted_fold_work_is_routed_by_518_router
 #print axioms exact_fold_alpha_final_work_q16_root_labels_tape_prefix
 #print axioms exact_fold_alpha_final_work_q16_root_residual_enough
 #print axioms exact_fold_work_preferred_at_exposure_trial
+#print axioms exact_underlying_preferred_lifts_to_518
+#print axioms exact_underlying_root_answer_is_routed_by_518_router
 #print axioms exact_compiler_accepted_fold_work_is_routed_by_518_router
 
 end
