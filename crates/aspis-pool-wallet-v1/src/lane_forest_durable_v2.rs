@@ -1262,7 +1262,7 @@ impl LaneForestDurableStateV2 {
     /// Apply an append whose selected outputs were already authenticated by
     /// the authoritative local-note envelope. This keeps witness selection in
     /// the same atomic candidate without requiring the HPKE viewing key again.
-    pub(crate) fn ingest_finalized_append_preselected_v2(
+    pub fn ingest_finalized_append_preselected_v2(
         &mut self,
         event: ForestFinalizedAppendEventV2,
         selected_output_ids: &[DepositEventIdV1],

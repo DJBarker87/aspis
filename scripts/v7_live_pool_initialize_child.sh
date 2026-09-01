@@ -17,6 +17,9 @@ readonly BUILDER=${ASPIS_V7_LIVE_POOL_INITIALIZE_BUILDER:-}
 readonly SECRET_BUILDER=${ASPIS_V7_LIVE_OPERATION_SECRET_BUILDER:-}
 readonly DEPOSIT_BUILDER=${ASPIS_V7_LIVE_POOL_DEPOSIT_BUILDER:-}
 readonly CHECKPOINT_BUILDER=${ASPIS_V7_LIVE_POOL_CHECKPOINT_BUILDER:-}
+readonly MATERIALIZER=${ASPIS_V7_LIVE_PROOF_MATERIALIZER:-}
+readonly PROVER=${ASPIS_V7_LIVE_POOL_PROVER:-}
+readonly AGAVE_BIN_DIR=${ASPIS_TXV1_DISPOSABLE_AGAVE_BIN_DIR:-}
 
 [[ "$RPC_URL" =~ ^http://127\.0\.0\.1:[0-9]+$ ]] || fail "disposable RPC is required"
 [[ -f "$PAYER_KEYPAIR" && -x "$BUILDER" ]] || fail "ephemeral payer or prebuilt builder unavailable"
@@ -88,7 +91,8 @@ account_index=0
 while IFS= read -r address; do
   rpc "$(jq -nc --arg address "$address" \
     '{jsonrpc:"2.0",id:500,method:"getAccountInfo",params:[$address,{encoding:"base64",commitment:"finalized"}]}')" \
-    | jq . >"$EVIDENCE_DIR/account-$account_index.json"
+    | jq --arg requestedAddress "$address" '. + {requestedAddress:$requestedAddress}' \
+    >"$EVIDENCE_DIR/account-$account_index.json"
   jq -e '.result.value != null' "$EVIDENCE_DIR/account-$account_index.json" >/dev/null \
     || fail "initialized account missing: $address"
   account_index=$((account_index + 1))
@@ -154,7 +158,8 @@ if [[ -n "$SECRET_BUILDER" || -n "$DEPOSIT_BUILDER" ]]; then
     name=${item%%:*}; initialized_index=${item##*:}; address=$(jq -er ".initializedAccounts[$initialized_index]" "$EVIDENCE_DIR/signed-request.json")
     rpc "$(jq -nc --arg address "$address" \
       '{jsonrpc:"2.0",id:901,method:"getAccountInfo",params:[$address,{encoding:"base64",commitment:"finalized"}]}')" \
-      | jq . >"$EVIDENCE_DIR/deposit/$name-after.json"
+      | jq --arg requestedAddress "$address" '. + {requestedAddress:$requestedAddress}' \
+      >"$EVIDENCE_DIR/deposit/$name-after.json"
   done
   rpc "$(jq -nc --arg address "$source_token" \
     '{jsonrpc:"2.0",id:902,method:"getAccountInfo",params:[$address,{encoding:"base64",commitment:"finalized"}]}')" \
@@ -187,7 +192,8 @@ if [[ -n "$SECRET_BUILDER" || -n "$DEPOSIT_BUILDER" ]]; then
   master_address=$(jq -er '.initializedAccounts[0]' "$EVIDENCE_DIR/signed-request.json")
   rpc "$(jq -nc --arg address "$master_address" \
     '{jsonrpc:"2.0",id:1000,method:"getAccountInfo",params:[$address,{encoding:"base64",commitment:"finalized"}]}')" \
-    | jq . >"$EVIDENCE_DIR/checkpoint/master-before.json"
+    | jq --arg requestedAddress "$master_address" '. + {requestedAddress:$requestedAddress}' \
+    >"$EVIDENCE_DIR/checkpoint/master-before.json"
   checkpoint_context_slot=$(rpc '{"jsonrpc":"2.0","id":1001,"method":"getSlot","params":[{"commitment":"finalized"}]}' | jq -er '.result')
   checkpoint_blockhash=$(rpc "$(jq -nc --argjson slot "$checkpoint_context_slot" \
     '{jsonrpc:"2.0",id:1002,method:"getLatestBlockhash",params:[{commitment:"finalized",minContextSlot:$slot}]}')" \
@@ -222,15 +228,18 @@ if [[ -n "$SECRET_BUILDER" || -n "$DEPOSIT_BUILDER" ]]; then
   checkpoint_address=$(jq -er '.checkpointAccount' "$EVIDENCE_DIR/checkpoint/signed-request.json")
   rpc "$(jq -nc --arg address "$checkpoint_address" \
     '{jsonrpc:"2.0",id:1301,method:"getAccountInfo",params:[$address,{encoding:"base64",commitment:"finalized"}]}')" \
-    | jq . >"$EVIDENCE_DIR/checkpoint/checkpoint-account.json"
+    | jq --arg requestedAddress "$checkpoint_address" '. + {requestedAddress:$requestedAddress}' \
+    >"$EVIDENCE_DIR/checkpoint/checkpoint-account.json"
   rpc "$(jq -nc --arg address "$master_address" \
     '{jsonrpc:"2.0",id:1302,method:"getAccountInfo",params:[$address,{encoding:"base64",commitment:"finalized"}]}')" \
-    | jq . >"$EVIDENCE_DIR/checkpoint/master-after.json"
+    | jq --arg requestedAddress "$master_address" '. + {requestedAddress:$requestedAddress}' \
+    >"$EVIDENCE_DIR/checkpoint/master-after.json"
   for lane_index in $(seq 0 7); do
     lane_address=$(jq -er ".initializedAccounts[$((lane_index + 1))]" "$EVIDENCE_DIR/signed-request.json")
     rpc "$(jq -nc --arg address "$lane_address" \
       '{jsonrpc:"2.0",id:1303,method:"getAccountInfo",params:[$address,{encoding:"base64",commitment:"finalized"}]}')" \
-      | jq . >"$EVIDENCE_DIR/checkpoint/lane-$lane_index.json"
+      | jq --arg requestedAddress "$lane_address" '. + {requestedAddress:$requestedAddress}' \
+      >"$EVIDENCE_DIR/checkpoint/lane-$lane_index.json"
   done
   checkpoint_simulated_cu=$(jq -er '.result.value.unitsConsumed' "$EVIDENCE_DIR/checkpoint/simulation.json")
   checkpoint_landed_cu=$(jq -er '.result.meta.computeUnitsConsumed' "$EVIDENCE_DIR/checkpoint/finalized-transaction.json")
@@ -244,6 +253,69 @@ if [[ -n "$SECRET_BUILDER" || -n "$DEPOSIT_BUILDER" ]]; then
       signedWireSha256:$request[0].signedWireSha256,byteIdenticalSimulationSubmission:true,
       finalized:true,auditOnly:true,disposable:true,mainnetReady:false}' \
     >"$EVIDENCE_DIR/checkpoint/checkpoint-finalized.json"
+
+  if [[ -n "$MATERIALIZER" || -n "$PROVER" ]]; then
+    [[ -x "$MATERIALIZER" && -x "$PROVER" && -x "$AGAVE_BIN_DIR/solana-keygen" ]] \
+      || fail "materializer, prover and pinned solana-keygen are required"
+    mkdir "$EVIDENCE_DIR/live-proof-inputs"
+    registry_address=$(jq -er '.identitySet.bindingAccounts[] | select(.name == "registry") | .id' "$CONFIG")
+    entry_address=$(jq -er '.identitySet.bindingAccounts[] | select(.name == "entry") | .id' "$CONFIG")
+    for binding in "registry:$registry_address" "entry:$entry_address"; do
+      binding_name=${binding%%:*}; binding_address=${binding##*:}
+      rpc "$(jq -nc --arg address "$binding_address" \
+        '{jsonrpc:"2.0",id:1400,method:"getAccountInfo",params:[$address,{encoding:"base64",commitment:"finalized"}]}')" \
+        | jq --arg requestedAddress "$binding_address" '. + {requestedAddress:$requestedAddress}' \
+        >"$EVIDENCE_DIR/live-proof-inputs/$binding_name.json"
+    done
+    deposit_blockhash_finalized=$(rpc "$(jq -nc --argjson slot "$deposit_slot" \
+      '{jsonrpc:"2.0",id:1401,method:"getBlock",params:[$slot,{encoding:"json",transactionDetails:"none",rewards:false,maxSupportedTransactionVersion:1}]}')" \
+      | jq -er '.result.blockhash')
+    checkpoint_blockhash_finalized=$(rpc "$(jq -nc --argjson slot "$checkpoint_slot" \
+      '{jsonrpc:"2.0",id:1402,method:"getBlock",params:[$slot,{encoding:"json",transactionDetails:"none",rewards:false,maxSupportedTransactionVersion:1}]}')" \
+      | jq -er '.result.blockhash')
+    genesis_hash=$(rpc '{"jsonrpc":"2.0","id":1403,"method":"getGenesisHash"}' | jq -er '.result')
+    provider_set_digest=$(printf '%s' "$genesis_hash" | shasum -a 256 | awk '{print $1}')
+    proof_keypair="$WORK_DIR/live-proof-account.json"
+    NO_DNA=1 "$AGAVE_BIN_DIR/solana-keygen" new --no-bip39-passphrase --silent \
+      --force --outfile "$proof_keypair"
+    proof_pubkey=$(NO_DNA=1 "$AGAVE_BIN_DIR/solana-keygen" pubkey "$proof_keypair")
+    initial_lanes=$(for lane_index in $(seq 1 8); do printf '%s\n' "$EVIDENCE_DIR/account-$lane_index.json"; done | jq -Rsc 'split("\n")[:-1]')
+    checkpoint_lanes=$(for lane_index in $(seq 0 7); do printf '%s\n' "$EVIDENCE_DIR/checkpoint/lane-$lane_index.json"; done | jq -Rsc 'split("\n")[:-1]')
+    jq -n --arg programId "$(jq -er '.identitySet.programs[] | select(.name == "pool") | .id' "$CONFIG")" \
+      --arg proofAccount "$proof_pubkey" --arg provider "$provider_set_digest" \
+      --arg initialMaster "$EVIDENCE_DIR/account-0.json" --argjson initialLanes "$initial_lanes" \
+      --arg afterDepositLane "$EVIDENCE_DIR/deposit/lane-after.json" \
+      --arg checkpointMaster "$EVIDENCE_DIR/checkpoint/master-after.json" \
+      --argjson checkpointLanes "$checkpoint_lanes" \
+      --arg checkpointAccount "$EVIDENCE_DIR/checkpoint/checkpoint-account.json" \
+      --arg registry "$EVIDENCE_DIR/live-proof-inputs/registry.json" \
+      --arg entry "$EVIDENCE_DIR/live-proof-inputs/entry.json" \
+      --arg secrets "$WORK_DIR/operation-secrets.json" --argjson depositSlot "$deposit_slot" \
+      --arg depositBlockhash "$deposit_blockhash_finalized" --arg depositSignature "$deposit_signature" \
+      --argjson checkpointSlot "$checkpoint_slot" --arg checkpointBlockhash "$checkpoint_blockhash_finalized" \
+      '{schema:"aspis.v7.live-proof-materialization-input.v1",programId:$programId,
+        proofAccount:$proofAccount,providerSetDigestHex:$provider,initialMaster:$initialMaster,
+        initialLanes:$initialLanes,afterDepositLane:$afterDepositLane,
+        checkpointMaster:$checkpointMaster,checkpointLanes:$checkpointLanes,
+        checkpointAccount:$checkpointAccount,registryAccount:$registry,registryEntryAccount:$entry,
+        secretsFile:$secrets,depositSlot:$depositSlot,depositBlockhash:$depositBlockhash,
+        depositSignature:$depositSignature,checkpointSlot:$checkpointSlot,
+        checkpointBlockhash:$checkpointBlockhash}' >"$WORK_DIR/materialize-input.json"
+    "$MATERIALIZER" "$WORK_DIR/materialize-input.json" "$EVIDENCE_DIR/live-proof-bundle" \
+      >"$EVIDENCE_DIR/live-proof-materialized.json"
+    "$PROVER" "$EVIDENCE_DIR/live-proof-bundle/live-bundle.json" \
+      "$EVIDENCE_DIR/live-proof" "$WORK_DIR/live-proof-nonce-ledger" \
+      >"$EVIDENCE_DIR/live-proof.stdout.json"
+    jq -e '.deterministicFixtureEntropy == false and .verifierBypass == false and
+      .trustedResultAccount == false and .proof.powValid == true' \
+      "$EVIDENCE_DIR/live-proof/proof.json" >/dev/null || fail "genuine live proof output invalid"
+    jq -n --arg proofAccount "$proof_pubkey" --arg keypairLocation \
+      'task-owned mktemp; destroyed by parent cleanup trap' --slurpfile proof "$EVIDENCE_DIR/live-proof/proof.json" \
+      '{schema:"aspis.v7.genuine-live-proof-finalized-input.v1",proofAccount:$proofAccount,
+        proofKeypairLocation:$keypairLocation,keypairCommitted:false,keypairPrinted:false,
+        keypairCleanupRequired:true,proof:$proof[0],mainnetReady:false}' \
+      >"$EVIDENCE_DIR/genuine-live-proof.json"
+  fi
 fi
 
 simulated_cu=$(jq -er '.result.value.unitsConsumed' "$EVIDENCE_DIR/simulation.json")
