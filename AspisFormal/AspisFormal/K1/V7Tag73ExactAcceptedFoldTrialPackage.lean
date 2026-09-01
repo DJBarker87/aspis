@@ -32,22 +32,27 @@ open AspisK1.V7Tag73DeterministicRefinement
 open AspisK1.V7Tag73ExactCompilerFinalWorkTraceOccurrence
 open AspisK1.V7Tag73ExactCompilerGammaTraceOccurrence
 open AspisK1.V7Tag73ExactCompilerResources
+open AspisK1.V7Tag73ExactClientKnowledgeComposition
 open AspisK1.V7Tag73ExactDagCandidateLabeledRootRouting
 open AspisK1.V7Tag73ExactFixedFullRunFactorization
 open AspisK1.V7Tag73ExactFixedK12MerkleClassifier
 open AspisK1.V7Tag73ExactFixedOperationalStateMap
+open AspisK1.V7Tag73ExactFixedQ16JointEventHandoff
 open AspisK1.V7Tag73ExactFoldAlphaFinalWorkQ16RootRouting
+open AspisK1.V7Tag73ExactFinal256DigestRootOrigin
 open AspisK1.V7Tag73FinalWorkEarliestExposure
 open AspisK1.V7Tag73ExactFoldWorkExposureTrial
 open AspisK1.V7Tag73ExactPlainRomRun
 open AspisK1.V7Tag73ExactPlainRomTraceResourceCaps
 open AspisK1.V7Tag73ExactSourceAcceptanceModel
 open AspisK1.V7Tag73FoldFinalWorkSourceSeparation
+open AspisK1.V7Tag73FoldOuterSourceSeparation
 open AspisK1.V7Tag73FoldAlphaFinalWorkQ16ControllerComposition
 open AspisK1.V7Tag73IndexedControllerLabeledRecords
 open AspisK1.V7Tag73IndexedControllerTraceAlignment
 open AspisK1.V7Tag73IndexedExposureCausalRouter
 open AspisK1.V7Tag73OperationalSemanticReplay
+open AspisK1.V7Tag73FinalWorkQ16CandidateController
 open AspisK1.V7Tag73SchedulerCausalQ16Router
 open AspisK1.V7Tag73TranscriptSchedule
 
@@ -219,10 +224,123 @@ theorem exact_accepted_fold_trial_is_routed
       finalTrial boundaryIndex)
     priorLabels laterLabels none fold.answer labelsDecomposition
 
+/-- The retained fold trial cannot be the proof-relevant final-work/q16 trial
+from the same accepted execution. -/
+theorem exact_accepted_fold_trial_ne_actual_final_trial
+    {HiddenTape TapeIdentity Observation Statement Payload Witness : Type}
+    {parameters : ExactCompilerResourceParameters}
+    {transitionFuel : Nat}
+    {configuration : ExactPlainRomWitnessConfiguration HiddenTape TapeIdentity
+      Observation Statement Tag73K12ParsedProof Payload Witness parameters}
+    {projection : AcceptedTapeProjection Statement Tag73K12ParsedProof Payload}
+    {fixedInstance : PublicInstance Statement}
+    {sample : ExactCompilerSample HiddenTape parameters}
+    (input : ExactK12OperationalInput transitionFuel configuration projection
+      fixedInstance sample)
+    (fold : ExactAcceptedFoldTrial input)
+    (finalTrial : ExactCompilerExposureTrial parameters)
+    (actual : ExactFixedK13ActualJointTrial input finalTrial) :
+    fold.trial.val ≠ finalTrial.val := by
+  let finalDigest := Classical.choose actual
+  let afterDigest := Classical.choose_spec actual
+  let finalAnswer := Classical.choose afterDigest
+  let afterAnswer := Classical.choose_spec afterDigest
+  let base := Classical.choose afterAnswer
+  let afterBase := Classical.choose_spec afterAnswer
+  have prefinal : ExactOperationalPrefinalDigest input finalDigest :=
+    afterBase.2.1
+  let pairLabeled := afterBase.2.2.2.1
+  have digestDifferent : fold.digest ≠ finalDigest :=
+    exact_relation_fold_digest_ne_operational_prefinal input
+      fold.beforeRelation fold.digest finalDigest fold.relationLookup prefinal
+  have workInputsDifferent :
+      bytes fold.digest ++ [domGrind] ++
+          bytes (exactOperationalTape input).messages.foldGrinding.selected ≠
+        (literalFinalWorkKey finalDigest
+          (exactOperationalTape input).messages.finalGrinding.selected).workInput := by
+    intro equal
+    apply digestDifferent
+    have prefixEqual := congrArg (List.take 32) equal
+    have foldTake : List.take 32
+        (bytes fold.digest ++ [domGrind] ++
+          bytes (exactOperationalTape input).messages.foldGrinding.selected) =
+        bytes fold.digest := by
+      simpa [bytes_length] using
+        (List.take_append_length
+          (l₁ := bytes fold.digest)
+          (l₂ := [domGrind] ++
+            bytes (exactOperationalTape input).messages.foldGrinding.selected))
+    have finalTake : List.take 32
+        (literalFinalWorkKey finalDigest
+          (exactOperationalTape input).messages.finalGrinding.selected).workInput =
+        bytes finalDigest := by
+      simp [RawFinalWorkKey.workInput, literalFinalWorkKey, bytes_length]
+    rw [foldTake, finalTake] at prefixEqual
+    exact List.ofFn_injective prefixEqual
+  intro trialEqual
+  rcases pairLabeled with
+      ⟨finalPrior, middle, later, workActor, absorbActor, recordsExact,
+        finalTrialExact⟩ |
+      ⟨finalPrior, middle, later, workActor, absorbActor, recordsExact,
+        finalTrialExact⟩
+  · have prefixLengthEqual : fold.prior.length = finalPrior.length := by
+      rw [← fold.trialExact, trialEqual, finalTrialExact]
+    have finalDecomposition :
+        exactFixedRootRecords input.package.root =
+          finalPrior ++
+            (.machineFresh workActor
+              (literalFinalWorkKey finalDigest
+                (exactOperationalTape input).messages.finalGrinding.selected).workInput
+              finalAnswer : UnifiedExposureRecord) ::
+            (middle ++
+              (.machineFresh absorbActor
+                (literalFinalWorkKey finalDigest
+                  (exactOperationalTape input).messages.finalGrinding.selected).absorbInput
+                base : UnifiedExposureRecord) :: later) := by
+      simpa only [List.cons_append, List.append_assoc] using recordsExact
+    have recordExact := selected_record_eq_of_equal_prefix_length
+      fold.rootDecomposition finalDecomposition prefixLengthEqual
+    have inputExact :
+        bytes fold.digest ++ [domGrind] ++
+            bytes (exactOperationalTape input).messages.foldGrinding.selected =
+          (literalFinalWorkKey finalDigest
+            (exactOperationalTape input).messages.finalGrinding.selected).workInput := by
+      injection recordExact
+    exact workInputsDifferent inputExact
+  · have prefixLengthEqual : fold.prior.length = finalPrior.length := by
+      rw [← fold.trialExact, trialEqual, finalTrialExact]
+    have finalDecomposition :
+        exactFixedRootRecords input.package.root =
+          finalPrior ++
+            (.machineFresh absorbActor
+              (literalFinalWorkKey finalDigest
+                (exactOperationalTape input).messages.finalGrinding.selected).absorbInput
+              base : UnifiedExposureRecord) ::
+            (middle ++
+              (.machineFresh workActor
+                (literalFinalWorkKey finalDigest
+                  (exactOperationalTape input).messages.finalGrinding.selected).workInput
+                finalAnswer : UnifiedExposureRecord) :: later) := by
+      simpa only [List.cons_append, List.append_assoc] using recordsExact
+    have recordExact := selected_record_eq_of_equal_prefix_length
+      fold.rootDecomposition finalDecomposition prefixLengthEqual
+    have inputExact :
+        bytes fold.digest ++ [domGrind] ++
+            bytes (exactOperationalTape input).messages.foldGrinding.selected =
+          (literalFinalWorkKey finalDigest
+            (exactOperationalTape input).messages.finalGrinding.selected).absorbInput := by
+      injection recordExact
+    have lengthExact := congrArg List.length inputExact
+    have impossible : (41 : Nat) = 42 := by
+      simpa [RawFinalWorkKey.absorbInput, literalFinalWorkKey, bytes_length]
+        using lengthExact
+    omega
+
 #print axioms ExactAcceptedFoldTrial
 #print axioms exact_accepted_fold_trial_exists
 #print axioms exactAcceptedFoldTrial
 #print axioms exact_accepted_fold_trial_is_routed
+#print axioms exact_accepted_fold_trial_ne_actual_final_trial
 
 end
 
