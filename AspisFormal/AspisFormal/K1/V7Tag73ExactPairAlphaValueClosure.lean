@@ -24,6 +24,7 @@ open AspisK1.V7Tag73AdaptiveQ16TrialAccounting
 open AspisK1.V7Tag73CausalFoldAlphaFinalWorkQ16Coordinates
 open AspisK1.V7Tag73ExactClientKnowledgeComposition
 open AspisK1.V7Tag73ExactCompilerResources
+open AspisK1.V7Tag73ExactAdversaryAnchorFinalProfile
 open AspisK1.V7Tag73ExactFixedK12MerkleClassifier
 open AspisK1.V7Tag73ExactFixedK13K14Classifier
 open AspisK1.V7Tag73ExactFixedQ16VerifierAnchorInvariant
@@ -286,6 +287,84 @@ def ExactFixedCleanK13PairGammaInvariantOnAdversaryAnchors
     (exactK13ParsedProof leftWitness.joint.input).gamma =
       (exactK13ParsedProof rightWitness.joint.input).gamma
 
+/-- Source-neutral form of the remaining gamma endpoint.  This is the theorem
+the causal query-DAG replay must establish; it mentions neither the parsed
+proof nor a source-provider certificate. -/
+def ExactFixedCleanK13PairOperationalGammaInvariantOnAdversaryAnchors
+    {HiddenTape TapeIdentity Observation Statement Payload Witness : Type}
+    {parameters : ExactCompilerResourceParameters}
+    (transitionFuel : Nat)
+    (configuration : ExactPlainRomWitnessConfiguration HiddenTape TapeIdentity
+      Observation Statement Tag73K12ParsedProof Payload Witness parameters)
+    (projection : AcceptedTapeProjection Statement Tag73K12ParsedProof Payload)
+    (fixedInstance : PublicInstance Statement)
+    (decoder : ExactDecoderInstantiation QM31Exact) : Prop :=
+  ∀ (foldTrial finalTrial : ExactCompilerExposureTrial parameters)
+      (hidden : HiddenTape)
+      (left right : FreshAnswerTape Digest256
+        (exactCompilerTargetCaps parameters).length)
+      (leftWitness : ExactFixedCleanK13PairTrialWitness transitionFuel
+        configuration projection fixedInstance decoder (hidden, left)
+          foldTrial finalTrial)
+      (rightWitness : ExactFixedCleanK13PairTrialWitness transitionFuel
+        configuration projection fixedInstance decoder (hidden, right)
+          foldTrial finalTrial),
+    ExactFixedK13AdversaryAnchor leftWitness.joint.input finalTrial →
+    (let router := exactCompilerFoldArmedAlphaFinalWorkQ16Router parameters
+      transitionFuel foldTrial.val finalTrial.val
+      (exactPlainRomCursor configuration hidden).erase
+    (exactCompilerCausalFoldAlphaFinalWorkQ16Coordinates parameters router
+        left).1 =
+      (exactCompilerCausalFoldAlphaFinalWorkQ16Coordinates parameters router
+        right).1) →
+    (let router := exactCompilerFoldArmedAlphaFinalWorkQ16Router parameters
+      transitionFuel foldTrial.val finalTrial.val
+      (exactPlainRomCursor configuration hidden).erase
+    (exactCompilerCausalFoldAlphaFinalWorkQ16Coordinates parameters router
+        left).2.1 =
+      (exactCompilerCausalFoldAlphaFinalWorkQ16Coordinates parameters router
+        right).2.1) →
+    (let router := exactCompilerFoldArmedAlphaFinalWorkQ16Router parameters
+      transitionFuel foldTrial.val finalTrial.val
+      (exactPlainRomCursor configuration hidden).erase
+    (exactCompilerCausalFoldAlphaFinalWorkQ16Coordinates parameters router
+        left).2.2.1 =
+      (exactCompilerCausalFoldAlphaFinalWorkQ16Coordinates parameters router
+        right).2.2.1) →
+    exactOperationalChallenge leftWitness.joint.input .gamma =
+      exactOperationalChallenge rightWitness.joint.input .gamma
+
+/-- The current production-source certificate converts the source-neutral
+operational gamma theorem to the parsed gamma equality consumed by K1.3.  The
+provider is already required by the surrounding K1.3 assembly, so this adds
+no trust boundary. -/
+theorem exact_fixed_clean_pair_k13_gamma_invariant_of_operational
+    {HiddenTape TapeIdentity Observation Statement Payload Witness : Type}
+    {parameters : ExactCompilerResourceParameters}
+    {transitionFuel : Nat}
+    {configuration : ExactPlainRomWitnessConfiguration HiddenTape TapeIdentity
+      Observation Statement Tag73K12ParsedProof Payload Witness parameters}
+    {projection : AcceptedTapeProjection Statement Tag73K12ParsedProof Payload}
+    {fixedInstance : PublicInstance Statement}
+    {decoder : ExactDecoderInstantiation QM31Exact}
+    (source : ExactFixedK13DecodedParsedSourceProvider transitionFuel
+      configuration projection fixedInstance)
+    (operational :
+      ExactFixedCleanK13PairOperationalGammaInvariantOnAdversaryAnchors
+        transitionFuel configuration projection fixedInstance decoder) :
+    ExactFixedCleanK13PairGammaInvariantOnAdversaryAnchors transitionFuel
+      configuration projection fixedInstance decoder := by
+  intro foldTrial finalTrial hidden left right leftWitness rightWitness anchor
+    contextExact foldExact workExact
+  obtain ⟨_leftDecoded, _leftDecode, leftBinding⟩ :=
+    source (hidden, left) leftWitness.joint.input
+  obtain ⟨_rightDecoded, _rightDecode, rightBinding⟩ :=
+    source (hidden, right) rightWitness.joint.input
+  exact leftBinding.gammaExact.trans
+    ((operational foldTrial finalTrial hidden left right leftWitness
+      rightWitness anchor contextExact foldExact workExact).trans
+        rightBinding.gammaExact.symm)
+
 /-- The two deterministic endpoints construct the transcript invariant
 consumed by the measured K1.3 probability theorem. -/
 theorem exact_fixed_clean_pair_k13_transcript_invariant_of_gamma_and_alpha_source
@@ -319,6 +398,9 @@ theorem exact_fixed_clean_pair_k13_transcript_invariant_of_gamma_and_alpha_sourc
 #print axioms exact_pair_operational_alpha_zero_eq_of_common_prefix
 #print axioms ExactFixedCleanK13PairAlphaCommonPrefixOnAdversaryAnchors
 #print axioms ExactFixedCleanK13PairGammaInvariantOnAdversaryAnchors
+#print axioms
+  ExactFixedCleanK13PairOperationalGammaInvariantOnAdversaryAnchors
+#print axioms exact_fixed_clean_pair_k13_gamma_invariant_of_operational
 #print axioms
   exact_fixed_clean_pair_k13_transcript_invariant_of_gamma_and_alpha_source
 
