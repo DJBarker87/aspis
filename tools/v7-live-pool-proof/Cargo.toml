@@ -45,3 +45,7 @@ path = "src/bin/create_live_operation_secrets.rs"
 [[bin]]
 name = "build-live-pool-deposit"
 path = "src/bin/build_live_pool_deposit.rs"
+
+[[bin]]
+name = "build-live-pool-checkpoint"
+path = "src/bin/build_live_pool_checkpoint.rs"

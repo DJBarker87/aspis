@@ -16,6 +16,7 @@ readonly SOURCE_AUTHORITY_KEYPAIR=${ASPIS_TXV1_DISPOSABLE_SOURCE_AUTHORITY_KEYPA
 readonly BUILDER=${ASPIS_V7_LIVE_POOL_INITIALIZE_BUILDER:-}
 readonly SECRET_BUILDER=${ASPIS_V7_LIVE_OPERATION_SECRET_BUILDER:-}
 readonly DEPOSIT_BUILDER=${ASPIS_V7_LIVE_POOL_DEPOSIT_BUILDER:-}
+readonly CHECKPOINT_BUILDER=${ASPIS_V7_LIVE_POOL_CHECKPOINT_BUILDER:-}
 
 [[ "$RPC_URL" =~ ^http://127\.0\.0\.1:[0-9]+$ ]] || fail "disposable RPC is required"
 [[ -f "$PAYER_KEYPAIR" && -x "$BUILDER" ]] || fail "ephemeral payer or prebuilt builder unavailable"
@@ -94,8 +95,8 @@ while IFS= read -r address; do
 done < <(jq -r '.initializedAccounts[]' "$EVIDENCE_DIR/signed-request.json")
 
 if [[ -n "$SECRET_BUILDER" || -n "$DEPOSIT_BUILDER" ]]; then
-  [[ -x "$SECRET_BUILDER" && -x "$DEPOSIT_BUILDER" ]] \
-    || fail "both secret and deposit builders are required"
+  [[ -x "$SECRET_BUILDER" && -x "$DEPOSIT_BUILDER" && -x "$CHECKPOINT_BUILDER" ]] \
+    || fail "secret, deposit and checkpoint builders are all required"
   mkdir "$EVIDENCE_DIR/deposit"
   "$SECRET_BUILDER" transfer "$WORK_DIR/operation-secrets.json" \
     >"$EVIDENCE_DIR/deposit/public-operation.json"
@@ -181,6 +182,68 @@ if [[ -n "$SECRET_BUILDER" || -n "$DEPOSIT_BUILDER" ]]; then
         vault:{before:$vaultBefore,after:$vaultAfter},source:{before:$sourceBefore,after:$sourceAfter}},
       secretValuesRecorded:false,secretDestroyedByCleanup:true,finalized:true,auditOnly:true,
       disposable:true,mainnetReady:false}' >"$EVIDENCE_DIR/deposit/deposit-finalized.json"
+
+  mkdir "$EVIDENCE_DIR/checkpoint"
+  master_address=$(jq -er '.initializedAccounts[0]' "$EVIDENCE_DIR/signed-request.json")
+  rpc "$(jq -nc --arg address "$master_address" \
+    '{jsonrpc:"2.0",id:1000,method:"getAccountInfo",params:[$address,{encoding:"base64",commitment:"finalized"}]}')" \
+    | jq . >"$EVIDENCE_DIR/checkpoint/master-before.json"
+  checkpoint_context_slot=$(rpc '{"jsonrpc":"2.0","id":1001,"method":"getSlot","params":[{"commitment":"finalized"}]}' | jq -er '.result')
+  checkpoint_blockhash=$(rpc "$(jq -nc --argjson slot "$checkpoint_context_slot" \
+    '{jsonrpc:"2.0",id:1002,method:"getLatestBlockhash",params:[{commitment:"finalized",minContextSlot:$slot}]}')" \
+    | jq -er '.result.value.blockhash')
+  jq -n --arg config "$CONFIG" --arg payer "$PAYER_KEYPAIR" --arg hash "$checkpoint_blockhash" \
+    --argjson slot "$checkpoint_context_slot" --arg master "$EVIDENCE_DIR/checkpoint/master-before.json" \
+    '{schema:"aspis.v7.live-pool-checkpoint-input.v1",config:$config,payerKeypair:$payer,
+      recentBlockhash:$hash,minContextSlot:$slot,requestId:1100,masterAccount:$master}' \
+    >"$WORK_DIR/checkpoint-input.json"
+  "$CHECKPOINT_BUILDER" "$WORK_DIR/checkpoint-input.json" >"$EVIDENCE_DIR/checkpoint/signed-request.json"
+  checkpoint_simulation=$(rpc "$(jq -c '.simulationRequest' "$EVIDENCE_DIR/checkpoint/signed-request.json")")
+  jq . <<<"$checkpoint_simulation" >"$EVIDENCE_DIR/checkpoint/simulation.json"
+  jq -e '.error | not' <<<"$checkpoint_simulation" >/dev/null
+  jq -e '.result.value.err == null' <<<"$checkpoint_simulation" >/dev/null || fail "checkpoint simulation failed"
+  checkpoint_send=$(rpc "$(jq -c '.sendRequest' "$EVIDENCE_DIR/checkpoint/signed-request.json")")
+  jq . <<<"$checkpoint_send" >"$EVIDENCE_DIR/checkpoint/send.json"
+  checkpoint_signature=$(jq -er '.result' <<<"$checkpoint_send")
+  [[ "$checkpoint_signature" == "$(jq -er '.signature' "$EVIDENCE_DIR/checkpoint/signed-request.json")" ]] \
+    || fail "checkpoint submission changed signed wire"
+  checkpoint_finalized=false
+  for _ in $(seq 1 600); do
+    checkpoint_status=$(rpc "$(jq -nc --arg signature "$checkpoint_signature" \
+      '{jsonrpc:"2.0",id:1200,method:"getSignatureStatuses",params:[[$signature],{searchTransactionHistory:true}]}')")
+    if jq -e '.result.value[0] != null and .result.value[0].confirmationStatus == "finalized"' \
+      <<<"$checkpoint_status" >/dev/null; then checkpoint_finalized=true; break; fi
+    sleep 0.1
+  done
+  [[ "$checkpoint_finalized" == true ]] || fail "checkpoint did not finalize"
+  rpc "$(jq -nc --arg signature "$checkpoint_signature" \
+    '{jsonrpc:"2.0",id:1300,method:"getTransaction",params:[$signature,{encoding:"json",commitment:"finalized",maxSupportedTransactionVersion:1}]}')" \
+    | jq . >"$EVIDENCE_DIR/checkpoint/finalized-transaction.json"
+  checkpoint_address=$(jq -er '.checkpointAccount' "$EVIDENCE_DIR/checkpoint/signed-request.json")
+  rpc "$(jq -nc --arg address "$checkpoint_address" \
+    '{jsonrpc:"2.0",id:1301,method:"getAccountInfo",params:[$address,{encoding:"base64",commitment:"finalized"}]}')" \
+    | jq . >"$EVIDENCE_DIR/checkpoint/checkpoint-account.json"
+  rpc "$(jq -nc --arg address "$master_address" \
+    '{jsonrpc:"2.0",id:1302,method:"getAccountInfo",params:[$address,{encoding:"base64",commitment:"finalized"}]}')" \
+    | jq . >"$EVIDENCE_DIR/checkpoint/master-after.json"
+  for lane_index in $(seq 0 7); do
+    lane_address=$(jq -er ".initializedAccounts[$((lane_index + 1))]" "$EVIDENCE_DIR/signed-request.json")
+    rpc "$(jq -nc --arg address "$lane_address" \
+      '{jsonrpc:"2.0",id:1303,method:"getAccountInfo",params:[$address,{encoding:"base64",commitment:"finalized"}]}')" \
+      | jq . >"$EVIDENCE_DIR/checkpoint/lane-$lane_index.json"
+  done
+  checkpoint_simulated_cu=$(jq -er '.result.value.unitsConsumed' "$EVIDENCE_DIR/checkpoint/simulation.json")
+  checkpoint_landed_cu=$(jq -er '.result.meta.computeUnitsConsumed' "$EVIDENCE_DIR/checkpoint/finalized-transaction.json")
+  checkpoint_slot=$(jq -er '.result.slot' "$EVIDENCE_DIR/checkpoint/finalized-transaction.json")
+  jq -n --arg signature "$checkpoint_signature" --argjson slot "$checkpoint_slot" \
+    --arg checkpointAccount "$checkpoint_address" --argjson simulatedCu "$checkpoint_simulated_cu" \
+    --argjson landedCu "$checkpoint_landed_cu" --slurpfile request "$EVIDENCE_DIR/checkpoint/signed-request.json" \
+    '{schema:"aspis.v7.live-pool-checkpoint-finalized.v1",signature:$signature,slot:$slot,
+      checkpointAccount:$checkpointAccount,simulatedCu:$simulatedCu,landedCu:$landedCu,
+      serializedTransactionBytes:$request[0].serializedTransactionBytes,
+      signedWireSha256:$request[0].signedWireSha256,byteIdenticalSimulationSubmission:true,
+      finalized:true,auditOnly:true,disposable:true,mainnetReady:false}' \
+    >"$EVIDENCE_DIR/checkpoint/checkpoint-finalized.json"
 fi
 
 simulated_cu=$(jq -er '.result.value.unitsConsumed' "$EVIDENCE_DIR/simulation.json")
