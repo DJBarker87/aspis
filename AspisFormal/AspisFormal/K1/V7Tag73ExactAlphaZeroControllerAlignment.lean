@@ -1,6 +1,8 @@
 import AspisFormal.K1.V7Tag73AlphaZeroCausalController
 import AspisFormal.K1.V7Tag73ExactAlphaZeroRootOrder
 import AspisFormal.K1.V7Tag73ExactDagCandidateLabeledRootRouting
+import AspisFormal.K1.V7Tag73ExactDagQ16ChainRouting
+import AspisFormal.K1.V7Tag73ExactRootRecordOrderLift
 
 /-!
 # Exact accepted-source alignment of the alpha-zero controller
@@ -30,12 +32,14 @@ open AspisK1.V7Tag73ExactAlphaZeroRootOrder
 open AspisK1.V7Tag73ExactCompilerGammaTraceOccurrence
 open AspisK1.V7Tag73ExactCompilerResources
 open AspisK1.V7Tag73ExactDagCandidateLabeledRootRouting
+open AspisK1.V7Tag73ExactDagQ16ChainRouting
 open AspisK1.V7Tag73ExactFixedFullRunFactorization
 open AspisK1.V7Tag73ExactFixedK12MerkleClassifier
 open AspisK1.V7Tag73ExactFixedOperationalStateMap
 open AspisK1.V7Tag73ExactPlainRomRun
 open AspisK1.V7Tag73ExactProbabilityCoverageAudit
 open AspisK1.V7Tag73ExactSourceAcceptanceModel
+open AspisK1.V7Tag73ExactRootRecordOrderLift
 open AspisK1.V7Tag73FinalWorkQ16CandidateController
 open AspisK1.V7Tag73FullCursorClientLineageLift
 open AspisK1.V7Tag73IndexedAlignedRecordReplay
@@ -66,6 +70,35 @@ def exactAlphaZeroInitialState
   { exposureIndex := 0
     cursor := (exactPlainRomCursor configuration sample.1).erase
     memory := inactiveAlphaZeroMemory }
+
+/-- A literal exact-root coordinate has installed its alpha producer after
+any actor-tagged decomposition selecting that same source coordinate. -/
+def ExactAlphaZeroProducerInstalled
+    {HiddenTape TapeIdentity Observation Statement Payload Result : Type}
+    {parameters : ExactCompilerResourceParameters}
+    {transitionFuel : Nat}
+    {configuration : ExactPlainRomConfiguration HiddenTape TapeIdentity
+      Observation Statement Tag73K12ParsedProof Payload Result parameters}
+    {projection : AcceptedTapeProjection Statement Tag73K12ParsedProof Payload}
+    {fixedInstance : PublicInstance Statement}
+    {sample : ExactCompilerSample HiddenTape parameters}
+    (input : ExactK12OperationalInput transitionFuel configuration projection
+      fixedInstance sample)
+    (boundaryIndex : Nat)
+    (producer : AlphaZeroProducer) : Prop :=
+  ∀ prior later actor,
+    exactFixedRootRecords input.package.root =
+      prior ++
+        (.machineFresh actor producer.sourceInput producer.digest :
+          UnifiedExposureRecord) :: later →
+    boundaryIndex ≤ prior.length ∧
+      producer ∈
+        (indexedStateAfterRecords transitionFuel
+          (alphaZeroCausalController transitionFuel boundaryIndex)
+          (prior ++
+            [(.machineFresh actor producer.sourceInput producer.digest :
+              UnifiedExposureRecord)])
+          (exactAlphaZeroInitialState input)).memory.producers
 
 /-- The complete accepted root prefix is cursor-aligned with the alpha
 controller for any fixed boundary ordinal. -/
@@ -152,7 +185,7 @@ theorem exact_compiler_alpha_zero_boundary_installs_block_zero
           [(.machineFresh actor producerInput beforeAlphaDigest :
             UnifiedExposureRecord)])
         (exactAlphaZeroInitialState input)).memory.producers =
-          [{ digest := beforeAlphaDigest, block := ⟨0, by omega⟩ }] := by
+          [{ digest := beforeAlphaDigest, block := 0, sourceInput := producerInput }] := by
   obtain ⟨producerInput, _final256Input, beforeAlpha, _afterAlpha,
       _afterBlocks, _afterFinal256, _outputs, _advances, _exactValue,
       _workAnswer, _q16Base, producerLookup,
@@ -193,7 +226,7 @@ theorem exact_compiler_alpha_zero_boundary_installs_block_zero
   have installed :
       (alphaZeroAfterMemory transitionFuel boundaryIndex reached
         beforeAlpha.digest).producers =
-        [{ digest := beforeAlpha.digest, block := ⟨0, by omega⟩ }] :=
+        [{ digest := beforeAlpha.digest, block := 0, sourceInput := producerInput }] :=
     alpha_zero_after_boundary_has_block_zero_producer transitionFuel
       boundaryIndex reached producerInput beforeAlpha.digest inputExact
       reachedIndex boundary
@@ -204,12 +237,69 @@ theorem exact_compiler_alpha_zero_boundary_installs_block_zero
   change
     (alphaZeroAfterMemory transitionFuel boundaryIndex reached
       beforeAlpha.digest).producers =
-        [{ digest := beforeAlpha.digest, block := ⟨0, by omega⟩ }]
+        [{ digest := beforeAlpha.digest, block := 0, sourceInput := producerInput }]
   exact installed
 
+/-- The boundary producer is installed independently of which actor made the
+unique first exposure of its source coordinate. -/
+theorem exact_compiler_alpha_zero_initial_producer_installed
+    {HiddenTape TapeIdentity Observation Statement Payload Result : Type}
+    {parameters : ExactCompilerResourceParameters}
+    {transitionFuel : Nat}
+    {configuration : ExactPlainRomConfiguration HiddenTape TapeIdentity
+      Observation Statement Tag73K12ParsedProof Payload Result parameters}
+    {projection : AcceptedTapeProjection Statement Tag73K12ParsedProof Payload}
+    {fixedInstance : PublicInstance Statement}
+    {sample : ExactCompilerSample HiddenTape parameters}
+    (transitionRoom : 2 ≤ transitionFuel)
+    (input : ExactK12OperationalInput transitionFuel configuration projection
+      fixedInstance sample) :
+    ∃ boundaryIndex producer,
+      producer.block = (0 : Fin 4) ∧
+      ExactAlphaZeroProducerInstalled input boundaryIndex producer := by
+  obtain ⟨boundaryIndex, prior, later, actor, producerInput,
+      beforeAlphaDigest, rootExact, indexExact, _boundary, installedExact⟩ :=
+    exact_compiler_alpha_zero_boundary_installs_block_zero transitionRoom input
+  let producer : AlphaZeroProducer :=
+    { digest := beforeAlphaDigest, block := 0, sourceInput := producerInput }
+  refine ⟨boundaryIndex, producer, rfl, ?_⟩
+  intro arbitraryPrior arbitraryLater arbitraryActor arbitraryExact
+  have prefixExact : prior = arbitraryPrior := by
+    apply mapped_nodup_selected_prefix_eq UnifiedExposureRecord.answer
+      (exactFixedRootRecords input.package.root) prior later arbitraryPrior
+        arbitraryLater
+      (.machineFresh actor producerInput beforeAlphaDigest :
+        UnifiedExposureRecord)
+      (.machineFresh arbitraryActor producer.sourceInput producer.digest :
+        UnifiedExposureRecord)
+      (exact_root_record_answers_nodup input) rootExact arbitraryExact
+    rfl
+  subst arbitraryPrior
+  refine ⟨by omega, ?_⟩
+  have canonicalMember : producer ∈
+      (indexedStateAfterRecords transitionFuel
+        (alphaZeroCausalController transitionFuel boundaryIndex)
+        (prior ++
+          [(.machineFresh actor producerInput beforeAlphaDigest :
+            UnifiedExposureRecord)])
+        (exactAlphaZeroInitialState input)).memory.producers := by
+    rw [installedExact]
+    simp [producer]
+  rw [indexed_state_after_records_append,
+    indexed_state_after_records_cons, indexed_state_after_records_nil] at canonicalMember ⊢
+  change producer ∈
+    ((alphaZeroCausalController transitionFuel boundaryIndex).afterAnswer
+      transitionFuel
+      (indexedStateAfterRecords transitionFuel
+        (alphaZeroCausalController transitionFuel boundaryIndex) prior
+        (exactAlphaZeroInitialState input)) beforeAlphaDigest).memory.producers at canonicalMember ⊢
+  exact canonicalMember
+
 #print axioms exactAlphaZeroInitialState
+#print axioms ExactAlphaZeroProducerInstalled
 #print axioms exact_root_records_aligned_for_alpha_zero_controller
 #print axioms exact_compiler_alpha_zero_boundary_installs_block_zero
+#print axioms exact_compiler_alpha_zero_initial_producer_installed
 
 end
 

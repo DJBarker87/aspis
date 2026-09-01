@@ -1,4 +1,6 @@
 import AspisFormal.K1.V7Tag73AlphaFinalWorkQ16ControllerComposition
+import AspisFormal.K1.V7Tag73IndexedControllerTraceAlignment
+import AspisFormal.K1.V7Tag73SqueezeInputStateInjectivity
 
 /-!
 # Pre-answer causal controller for the four alpha-zero blocks
@@ -28,7 +30,9 @@ open AspisK1.V7Tag73CausalAlphaFinalWorkQ16Probability
 open AspisK1.V7Tag73ExactCompilerResources
 open AspisK1.V7Tag73FinalWorkQ16CandidateController
 open AspisK1.V7Tag73IndexedExposureCausalRouter
+open AspisK1.V7Tag73IndexedControllerTraceAlignment
 open AspisK1.V7Tag73TranscriptSchedule
+open AspisK1.V7Tag73SqueezeInputStateInjectivity
 
 noncomputable section
 
@@ -54,6 +58,7 @@ def isAlphaZeroBoundaryInput (input : ShaInput) : Bool :=
 structure AlphaZeroProducer where
   digest : Digest256
   block : Fin 4
+  sourceInput : ShaInput
   deriving DecidableEq, Repr
 
 structure AlphaZeroControllerMemory where
@@ -85,18 +90,99 @@ def alphaZeroAdvancedSlot? (producers : List AlphaZeroProducer)
       else
         none
 
+/-- A producer whose digest is unique in the inventory is the deterministic
+output sibling selected by the executable scan. -/
+theorem alpha_zero_output_slot_of_digest_nodup
+    (producer : AlphaZeroProducer) :
+    ∀ (producers : List AlphaZeroProducer),
+      (producers.map AlphaZeroProducer.digest).Nodup →
+      producer ∈ producers →
+      alphaZeroOutputSlot? producers
+          (bytes producer.digest ++ [domSqueeze]) = some producer.block := by
+  intro producers
+  induction producers with
+  | nil => simp
+  | cons head tail ih =>
+      intro nodup member
+      have nodup' : head.digest ∉
+            tail.map AlphaZeroProducer.digest ∧
+          (tail.map AlphaZeroProducer.digest).Nodup := by
+        simpa only [List.map_cons] using List.nodup_cons.mp nodup
+      have tailNodup := nodup'.2
+      rw [List.mem_cons] at member
+      rcases member with equal | member
+      · subst head
+        simp [alphaZeroOutputSlot?]
+      · have digestNe : producer.digest ≠ head.digest := by
+          intro equal
+          apply nodup'.1
+          rw [List.mem_map]
+          exact ⟨producer, member, equal⟩
+        have bytesNe : bytes producer.digest ≠ bytes head.digest := by
+          intro equal
+          exact digestNe (digest_bytes_injective equal)
+        have reduce : alphaZeroOutputSlot? (head :: tail)
+              (bytes producer.digest ++ [domSqueeze]) =
+            alphaZeroOutputSlot? tail
+              (bytes producer.digest ++ [domSqueeze]) := by
+          simp [alphaZeroOutputSlot?, bytesNe]
+        rw [reduce]
+        exact ih tailNodup member
+
+/-- The analogous deterministic scan for the advance-derived next block. -/
+theorem alpha_zero_advanced_slot_of_digest_nodup
+    (producer : AlphaZeroProducer)
+    (bounded : producer.block.val + 1 < 4) :
+    ∀ (producers : List AlphaZeroProducer),
+      (producers.map AlphaZeroProducer.digest).Nodup →
+      producer ∈ producers →
+      alphaZeroAdvancedSlot? producers
+          (bytes producer.digest ++ [domAdvance]) =
+        some ⟨producer.block.val + 1, bounded⟩ := by
+  intro producers
+  induction producers with
+  | nil => simp
+  | cons head tail ih =>
+      intro nodup member
+      have nodup' : head.digest ∉
+            tail.map AlphaZeroProducer.digest ∧
+          (tail.map AlphaZeroProducer.digest).Nodup := by
+        simpa only [List.map_cons] using List.nodup_cons.mp nodup
+      have tailNodup := nodup'.2
+      rw [List.mem_cons] at member
+      rcases member with equal | member
+      · subst head
+        simp [alphaZeroAdvancedSlot?, bounded]
+      · have digestNe : producer.digest ≠ head.digest := by
+          intro equal
+          apply nodup'.1
+          rw [List.mem_map]
+          exact ⟨producer, member, equal⟩
+        have bytesNe : bytes producer.digest ≠ bytes head.digest := by
+          intro equal
+          exact digestNe (digest_bytes_injective equal)
+        have reduce : alphaZeroAdvancedSlot? (head :: tail)
+              (bytes producer.digest ++ [domAdvance]) =
+            alphaZeroAdvancedSlot? tail
+              (bytes producer.digest ++ [domAdvance]) := by
+          simp [alphaZeroAdvancedSlot?, bytesNe]
+        rw [reduce]
+        exact ih tailNodup member
+
 def updateAlphaZeroProducers (producers : List AlphaZeroProducer)
     (input : ShaInput) (answer : Digest256) : List AlphaZeroProducer :=
   match alphaZeroAdvancedSlot? producers input with
   | none => producers
-  | some block => producers ++ [{ digest := answer, block := block }]
+  | some block => producers ++
+      [{ digest := answer, block := block, sourceInput := input }]
 
 theorem update_alpha_zero_producers_eq_or_append
     (producers : List AlphaZeroProducer) (input : ShaInput)
     (answer : Digest256) :
     updateAlphaZeroProducers producers input answer = producers ∨
       ∃ block, updateAlphaZeroProducers producers input answer =
-        producers ++ [{ digest := answer, block := block }] := by
+        producers ++
+          [{ digest := answer, block := block, sourceInput := input }] := by
   unfold updateAlphaZeroProducers
   cases advanced : alphaZeroAdvancedSlot? producers input with
   | none => exact Or.inl rfl
@@ -111,6 +197,25 @@ theorem update_alpha_zero_producers_prefix
   · rw [unchanged]
   · rw [appended]
     exact List.prefix_append _ _
+
+/-- Every newly appended producer carries exactly the current root answer and
+its literal source input. -/
+theorem update_alpha_zero_producers_new_digest
+    (producers : List AlphaZeroProducer) (input : ShaInput)
+    (answer : Digest256) (producer : AlphaZeroProducer)
+    (member : producer ∈ updateAlphaZeroProducers producers input answer) :
+    producer ∈ producers ∨
+      (producer.digest = answer ∧ producer.sourceInput = input) := by
+  rcases update_alpha_zero_producers_eq_or_append producers input answer with
+    unchanged | ⟨block, appended⟩
+  · rw [unchanged] at member
+    exact Or.inl member
+  · rw [appended, List.mem_append] at member
+    rcases member with old | added
+    · exact Or.inl old
+    · simp only [List.mem_singleton] at added
+      subst producer
+      exact Or.inr ⟨rfl, rfl⟩
 
 /-! ## Indexed pre-answer controller -/
 
@@ -146,7 +251,7 @@ def alphaZeroAfterMemory
       let nextProducers :=
         if state.exposureIndex = boundaryIndex &&
             isAlphaZeroBoundaryInput input then
-          [{ digest := answer, block := ⟨0, by omega⟩ }]
+          [{ digest := answer, block := 0, sourceInput := input }]
         else
           updateAlphaZeroProducers state.memory.producers input answer
       { producers := nextProducers, usedSlots := nextUsed }
@@ -192,7 +297,7 @@ theorem alpha_zero_after_boundary_has_block_zero_producer
     (indexExact : state.exposureIndex = boundaryIndex)
     (boundary : isAlphaZeroBoundaryInput input = true) :
     (alphaZeroAfterMemory transitionFuel boundaryIndex state answer).producers =
-      [{ digest := answer, block := ⟨0, by omega⟩ }] := by
+      [{ digest := answer, block := 0, sourceInput := input }] := by
   simp [alphaZeroAfterMemory, inputExact, indexExact, boundary]
 
 /-- A known unused producer labels its output sibling before the answer. -/
@@ -223,6 +328,192 @@ theorem alpha_zero_selected_slot_used_after_answer
     slot ∈ (alphaZeroAfterMemory transitionFuel boundaryIndex state answer).usedSlots := by
   simp [alphaZeroAfterMemory, inputExact, selected]
 
+/-- Once the unique boundary record has been consumed, every later memory
+step preserves the existing producer inventory as a prefix. -/
+theorem alpha_zero_after_memory_producers_prefix_of_index_ne
+    {globalOracleCalls : Nat}
+    (transitionFuel boundaryIndex : Nat)
+    (state : IndexedUnifiedExposureState globalOracleCalls
+      AlphaZeroControllerMemory)
+    (answer : Digest256)
+    (indexNe : state.exposureIndex ≠ boundaryIndex) :
+    state.memory.producers <+:
+      (alphaZeroAfterMemory transitionFuel boundaryIndex state answer).producers := by
+  unfold alphaZeroAfterMemory
+  cases inputExact : unifiedInputBeforeAnswer? transitionFuel state.cursor with
+  | none => exact List.prefix_refl _
+  | some input =>
+      simp only [inputExact]
+      have boundaryFalse :
+          (state.exposureIndex = boundaryIndex &&
+            isAlphaZeroBoundaryInput input) = false := by
+        simp [indexNe]
+      rw [if_neg]
+      exact update_alpha_zero_producers_prefix state.memory.producers input
+        answer
+      exact Bool.eq_false_iff.mp boundaryFalse
+
+/-- Away from the unique boundary reset, one controller step either preserves
+the inventory or appends exactly the current answer/source pair. -/
+theorem alpha_zero_after_memory_producers_eq_or_append_of_index_ne
+    {globalOracleCalls : Nat}
+    (transitionFuel boundaryIndex : Nat)
+    (state : IndexedUnifiedExposureState globalOracleCalls
+      AlphaZeroControllerMemory)
+    (answer : Digest256)
+    (indexNe : state.exposureIndex ≠ boundaryIndex) :
+    (alphaZeroAfterMemory transitionFuel boundaryIndex state answer).producers =
+        state.memory.producers ∨
+      ∃ block,
+        (alphaZeroAfterMemory transitionFuel boundaryIndex state answer).producers =
+          state.memory.producers ++
+            [{ digest := answer, block := block, sourceInput := Option.getD
+                (unifiedInputBeforeAnswer? transitionFuel state.cursor) [] }] := by
+  unfold alphaZeroAfterMemory
+  cases inputExact : unifiedInputBeforeAnswer? transitionFuel state.cursor with
+  | none => exact Or.inl rfl
+  | some input =>
+      simp only [inputExact]
+      have boundaryFalse :
+          (state.exposureIndex = boundaryIndex &&
+            isAlphaZeroBoundaryInput input) = false := by
+        simp [indexNe]
+      rw [if_neg]
+      simpa using update_alpha_zero_producers_eq_or_append
+        state.memory.producers input answer
+      exact Bool.eq_false_iff.mp boundaryFalse
+
+/-- A fresh exact-root answer preserves uniqueness of producer digests after
+the selected boundary. -/
+theorem alpha_zero_after_memory_producer_digests_nodup_of_index_ne
+    {globalOracleCalls : Nat}
+    (transitionFuel boundaryIndex : Nat)
+    (state : IndexedUnifiedExposureState globalOracleCalls
+      AlphaZeroControllerMemory)
+    (answer : Digest256)
+    (indexNe : state.exposureIndex ≠ boundaryIndex)
+    (currentNodup :
+      (state.memory.producers.map AlphaZeroProducer.digest).Nodup)
+    (answerFresh :
+      answer ∉ state.memory.producers.map AlphaZeroProducer.digest) :
+    ((alphaZeroAfterMemory transitionFuel boundaryIndex state answer).producers.map
+      AlphaZeroProducer.digest).Nodup := by
+  rcases alpha_zero_after_memory_producers_eq_or_append_of_index_ne
+      transitionFuel boundaryIndex state answer indexNe with
+    unchanged | ⟨block, appended⟩
+  · simpa [unchanged] using currentNodup
+  · rw [appended, List.map_append]
+    simp only [List.map_singleton]
+    rw [List.nodup_append]
+    refine ⟨currentNodup, by simp, ?_⟩
+    intro prior priorMember singleton singletonMember
+    simp only [List.mem_singleton] at singletonMember
+    subst singleton
+    exact fun equal => answerFresh (equal ▸ priorMember)
+
+/-- Producer monotonicity through an arbitrary replay suffix strictly after
+the selected boundary ordinal. -/
+theorem alpha_zero_indexed_state_producers_prefix_after_boundary
+    {globalOracleCalls : Nat}
+    (transitionFuel boundaryIndex : Nat) :
+    ∀ (records : List UnifiedExposureRecord)
+      (state : IndexedUnifiedExposureState globalOracleCalls
+        AlphaZeroControllerMemory),
+      boundaryIndex < state.exposureIndex →
+      state.memory.producers <+:
+        (indexedStateAfterRecords transitionFuel
+          (alphaZeroCausalController transitionFuel boundaryIndex)
+          records state).memory.producers := by
+  intro records
+  induction records with
+  | nil =>
+      intro state _afterBoundary
+      exact List.prefix_refl _
+  | cons record records ih =>
+      intro state afterBoundary
+      let controller := alphaZeroCausalController
+        (globalOracleCalls := globalOracleCalls) transitionFuel boundaryIndex
+      let next := controller.afterAnswer transitionFuel state record.answer
+      have oneStep : state.memory.producers <+: next.memory.producers := by
+        simpa [next, controller, alphaZeroCausalController,
+          IndexedUnifiedExposureController.afterAnswer] using
+          alpha_zero_after_memory_producers_prefix_of_index_ne transitionFuel
+            boundaryIndex state record.answer (Nat.ne_of_gt afterBoundary)
+      have nextAfterBoundary : boundaryIndex < next.exposureIndex := by
+        simp [next]
+        omega
+      rw [indexed_state_after_records_cons]
+      exact oneStep.trans (ih next nextAfterBoundary)
+
+/-- Exact-root answer uniqueness lifts to producer-digest uniqueness through
+any replay suffix that starts strictly after the selected boundary. -/
+theorem alpha_zero_indexed_state_producer_digests_nodup_after_boundary
+    {globalOracleCalls : Nat}
+    (transitionFuel boundaryIndex : Nat) :
+    ∀ (records : List UnifiedExposureRecord)
+      (state : IndexedUnifiedExposureState globalOracleCalls
+        AlphaZeroControllerMemory),
+      boundaryIndex < state.exposureIndex →
+      (records.map UnifiedExposureRecord.answer).Nodup →
+      (state.memory.producers.map AlphaZeroProducer.digest).Nodup →
+      (∀ producer ∈ state.memory.producers,
+        producer.digest ∉ records.map UnifiedExposureRecord.answer) →
+      ((indexedStateAfterRecords transitionFuel
+        (alphaZeroCausalController transitionFuel boundaryIndex)
+        records state).memory.producers.map AlphaZeroProducer.digest).Nodup := by
+  intro records
+  induction records with
+  | nil =>
+      intro state _afterBoundary _recordsNodup producerNodup _disjoint
+      simpa only [indexed_state_after_records_nil] using producerNodup
+  | cons record records ih =>
+      intro state afterBoundary recordsNodup producerNodup disjoint
+      have splitNodup := List.nodup_cons.mp recordsNodup
+      let controller := alphaZeroCausalController
+        (globalOracleCalls := globalOracleCalls) transitionFuel boundaryIndex
+      let next := controller.afterAnswer transitionFuel state record.answer
+      have answerFresh : record.answer ∉
+          state.memory.producers.map AlphaZeroProducer.digest := by
+        intro answerMember
+        obtain ⟨producer, producerMember, producerDigest⟩ :=
+          List.mem_map.mp answerMember
+        apply disjoint producer producerMember
+        simp only [List.map_cons, List.mem_cons]
+        exact Or.inl producerDigest
+      have nextNodup :
+          (next.memory.producers.map AlphaZeroProducer.digest).Nodup := by
+        simpa [next, controller, alphaZeroCausalController,
+          IndexedUnifiedExposureController.afterAnswer] using
+          alpha_zero_after_memory_producer_digests_nodup_of_index_ne
+            transitionFuel boundaryIndex state record.answer
+              (Nat.ne_of_gt afterBoundary) producerNodup answerFresh
+      have nextDisjoint : ∀ producer ∈ next.memory.producers,
+          producer.digest ∉ records.map UnifiedExposureRecord.answer := by
+        intro producer producerMember tailMember
+        change producer ∈
+          (alphaZeroAfterMemory transitionFuel boundaryIndex state
+            record.answer).producers at producerMember
+        rcases alpha_zero_after_memory_producers_eq_or_append_of_index_ne
+            transitionFuel boundaryIndex state record.answer
+              (Nat.ne_of_gt afterBoundary) with unchanged | ⟨block, appended⟩
+        · rw [unchanged] at producerMember
+          exact disjoint producer producerMember (by
+            simpa only [List.map_cons] using
+              List.mem_cons_of_mem record.answer tailMember)
+        · rw [appended, List.mem_append] at producerMember
+          rcases producerMember with old | added
+          · exact disjoint producer old (by
+              simpa only [List.map_cons] using
+                List.mem_cons_of_mem record.answer tailMember)
+          · simp only [List.mem_singleton] at added
+            subst producer
+            exact splitNodup.1 tailMember
+      have nextAfterBoundary : boundaryIndex < next.exposureIndex := by
+        simp [next]
+        omega
+      rw [indexed_state_after_records_cons]
+      exact ih next nextAfterBoundary splitNodup.2 nextNodup nextDisjoint
+
 /-- Plug the concrete alpha controller into the existing composed 517-slot
 router. -/
 def exactCompilerConcreteAlphaFinalWorkQ16Router
@@ -239,12 +530,20 @@ def exactCompilerConcreteAlphaFinalWorkQ16Router
 #print axioms literal_fold_nonce_is_alpha_zero_boundary
 #print axioms alphaZeroOutputSlot?
 #print axioms alphaZeroAdvancedSlot?
+#print axioms alpha_zero_output_slot_of_digest_nodup
+#print axioms alpha_zero_advanced_slot_of_digest_nodup
 #print axioms updateAlphaZeroProducers
 #print axioms update_alpha_zero_producers_prefix
+#print axioms update_alpha_zero_producers_new_digest
 #print axioms alphaZeroCausalController
 #print axioms alpha_zero_after_boundary_has_block_zero_producer
 #print axioms alpha_zero_preferred_of_output_match
 #print axioms alpha_zero_selected_slot_used_after_answer
+#print axioms alpha_zero_after_memory_producers_prefix_of_index_ne
+#print axioms alpha_zero_after_memory_producers_eq_or_append_of_index_ne
+#print axioms alpha_zero_after_memory_producer_digests_nodup_of_index_ne
+#print axioms alpha_zero_indexed_state_producers_prefix_after_boundary
+#print axioms alpha_zero_indexed_state_producer_digests_nodup_after_boundary
 #print axioms exactCompilerConcreteAlphaFinalWorkQ16Router
 
 end
