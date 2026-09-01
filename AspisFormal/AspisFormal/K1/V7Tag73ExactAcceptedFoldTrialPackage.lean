@@ -368,6 +368,87 @@ theorem exact_accepted_fold_trial_ne_root_record_of_input_length
   rw [← inputExact]
   simp [bytes_length]
 
+/-- Distinct literal SHA inputs select distinct first-creation records in the
+exact root and therefore distinct exposure indices. -/
+theorem exact_accepted_fold_trial_ne_root_record_of_input_ne
+    {HiddenTape TapeIdentity Observation Statement Payload Result : Type}
+    {parameters : ExactCompilerResourceParameters}
+    {transitionFuel : Nat}
+    {configuration : ExactPlainRomConfiguration HiddenTape TapeIdentity
+      Observation Statement Tag73K12ParsedProof Payload Result parameters}
+    {projection : AcceptedTapeProjection Statement Tag73K12ParsedProof Payload}
+    {fixedInstance : PublicInstance Statement}
+    {sample : ExactCompilerSample HiddenTape parameters}
+    (input : ExactK12OperationalInput transitionFuel configuration projection
+      fixedInstance sample)
+    (fold : ExactAcceptedFoldTrial input)
+    (prior later : List UnifiedExposureRecord)
+    (actor : QueryActor) (queryInput : ShaInput) (answer : Digest256)
+    (decomposition : exactFixedRootRecords input.package.root =
+      prior ++ (.machineFresh actor queryInput answer : UnifiedExposureRecord) ::
+        later)
+    (inputDifferent :
+      bytes fold.digest ++ [domGrind] ++
+          bytes (exactOperationalTape input).messages.foldGrinding.selected ≠
+        queryInput) :
+    fold.trial.val ≠ prior.length := by
+  intro trialEqual
+  have prefixLengthEqual : fold.prior.length = prior.length := by
+    rw [← fold.trialExact, trialEqual]
+  have recordExact := selected_record_eq_of_equal_prefix_length
+    fold.rootDecomposition decomposition prefixLengthEqual
+  apply inputDifferent
+  injection recordExact
+
+/-- In particular, a final-work record whose digest came from the exact
+`final256` absorption cannot occupy the retained fold trial. -/
+theorem exact_accepted_fold_trial_ne_final_work_record
+    {HiddenTape TapeIdentity Observation Statement Payload Result : Type}
+    {parameters : ExactCompilerResourceParameters}
+    {transitionFuel : Nat}
+    {configuration : ExactPlainRomConfiguration HiddenTape TapeIdentity
+      Observation Statement Tag73K12ParsedProof Payload Result parameters}
+    {projection : AcceptedTapeProjection Statement Tag73K12ParsedProof Payload}
+    {fixedInstance : PublicInstance Statement}
+    {sample : ExactCompilerSample HiddenTape parameters}
+    (input : ExactK12OperationalInput transitionFuel configuration projection
+      fixedInstance sample)
+    (fold : ExactAcceptedFoldTrial input)
+    (finalDigest answer : Digest256)
+    (prefinal : ExactOperationalPrefinalDigest input finalDigest)
+    (prior later : List UnifiedExposureRecord) (actor : QueryActor)
+    (decomposition : exactFixedRootRecords input.package.root =
+      prior ++
+        (.machineFresh actor
+          (literalFinalWorkKey finalDigest
+            (exactOperationalTape input).messages.finalGrinding.selected).workInput
+          answer : UnifiedExposureRecord) :: later) :
+    fold.trial.val ≠ prior.length := by
+  apply exact_accepted_fold_trial_ne_root_record_of_input_ne input fold prior
+    later actor _ answer decomposition
+  have digestDifferent : fold.digest ≠ finalDigest :=
+    exact_relation_fold_digest_ne_operational_prefinal input
+      fold.beforeRelation fold.digest finalDigest fold.relationLookup prefinal
+  intro inputEqual
+  apply digestDifferent
+  have prefixEqual := congrArg (List.take 32) inputEqual
+  have foldTake : List.take 32
+      (bytes fold.digest ++ [domGrind] ++
+        bytes (exactOperationalTape input).messages.foldGrinding.selected) =
+      bytes fold.digest := by
+    simpa [bytes_length] using
+      (List.take_append_length
+        (l₁ := bytes fold.digest)
+        (l₂ := [domGrind] ++
+          bytes (exactOperationalTape input).messages.foldGrinding.selected))
+  have finalTake : List.take 32
+      (literalFinalWorkKey finalDigest
+        (exactOperationalTape input).messages.finalGrinding.selected).workInput =
+      bytes finalDigest := by
+    simp [RawFinalWorkKey.workInput, literalFinalWorkKey, bytes_length]
+  rw [foldTake, finalTake] at prefixEqual
+  exact List.ofFn_injective prefixEqual
+
 /-- The retained fold trial cannot be the proof-relevant final-work/q16 trial
 from the same accepted execution. -/
 theorem exact_accepted_fold_trial_ne_actual_final_trial
@@ -396,6 +477,8 @@ theorem exact_accepted_fold_trial_ne_actual_final_trial
 #print axioms exact_accepted_fold_trial_is_routed
 #print axioms exact_accepted_fold_trial_ne_final_pair_trial
 #print axioms exact_accepted_fold_trial_ne_root_record_of_input_length
+#print axioms exact_accepted_fold_trial_ne_root_record_of_input_ne
+#print axioms exact_accepted_fold_trial_ne_final_work_record
 #print axioms exact_accepted_fold_trial_ne_actual_final_trial
 
 end
