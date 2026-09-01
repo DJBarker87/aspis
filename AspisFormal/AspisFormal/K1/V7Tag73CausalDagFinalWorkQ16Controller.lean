@@ -385,6 +385,46 @@ def dagCandidatePreferredSlot
       dagPreferredSlotForInput anchorIndex state.exposureIndex state.memory input
   | none => none
 
+/-- With no causal q16 producer installed, the online DAG controller can
+select only residual or the final-work coordinate.  This is the exact
+pre-q16-base label classification needed by adversary-first prefix replay. -/
+theorem dag_candidate_preferred_slot_without_producers
+    {globalOracleCalls : Nat}
+    (transitionFuel anchorIndex : Nat)
+    (state : IndexedUnifiedExposureState globalOracleCalls
+      FinalWorkQ16DagMemory)
+    (producersEmpty : state.memory.producers = []) :
+    dagCandidatePreferredSlot transitionFuel anchorIndex state = none ∨
+      dagCandidatePreferredSlot transitionFuel anchorIndex state = some none := by
+  unfold dagCandidatePreferredSlot
+  cases inputExact : unifiedInputBeforeAnswer? transitionFuel state.cursor with
+  | none => simp
+  | some input =>
+      cases anchorExact : state.memory.anchor with
+      | inactive =>
+          by_cases atAnchor : state.exposureIndex = anchorIndex
+          · cases parserExact : rawFinalWorkKeyOfWorkInput? input with
+            | none =>
+                simp [dagPreferredSlotForInput, dagRawPreferredSlot,
+                  anchorExact, atAnchor, parserExact]
+            | some key =>
+                by_cases used : none ∈ state.memory.usedSlots
+                · simp [dagPreferredSlotForInput, dagRawPreferredSlot,
+                    anchorExact, atAnchor, parserExact, used]
+                · simp [dagPreferredSlotForInput, dagRawPreferredSlot,
+                    anchorExact, atAnchor, parserExact, used]
+          · simp [dagPreferredSlotForInput, dagRawPreferredSlot,
+              anchorExact, atAnchor]
+      | tracked key workSeen =>
+          by_cases work : workSeen = false ∧ input = key.workInput
+          · by_cases used : none ∈ state.memory.usedSlots
+            · simp [dagPreferredSlotForInput, dagRawPreferredSlot,
+                anchorExact, work, used]
+            · simp [dagPreferredSlotForInput, dagRawPreferredSlot,
+                anchorExact, work, used]
+          · simp [dagPreferredSlotForInput, dagRawPreferredSlot, anchorExact,
+              producersEmpty, q16DagOutputSlot?, work]
+
 def dagCandidateAfterMemory
     {globalOracleCalls : Nat}
     (transitionFuel anchorIndex : Nat)
@@ -850,6 +890,7 @@ theorem dag_labeled_records_named_slots_nodup
 #print axioms dagCoreMemoryAfterInput
 #print axioms dagMemoryAfterInput
 #print axioms finalWorkQ16DagController
+#print axioms dag_candidate_preferred_slot_without_producers
 #print axioms dag_preferred_slot_for_input_mem_iff
 #print axioms dag_memory_after_input_used_slots
 #print axioms dag_memory_used_slots_mono

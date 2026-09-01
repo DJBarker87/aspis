@@ -93,6 +93,84 @@ theorem fold_armed_pre_final_dag_memory_stays_inactive_one_step
       inactiveDagMemory, dagMemoryAfterInput, dagCoreMemoryAfterInput,
       dagPreferredSlotForInput, dagRawPreferredSlot]
 
+/-- Pointwise label shape at any state whose DAG has no q16 producer.  Alpha
+and final-work labels remain possible, but a q16 branch label cannot yet be
+emitted. -/
+theorem fold_armed_preferred_slot_without_q16_producers
+    {globalOracleCalls : Nat}
+    (transitionFuel foldExposureIndex finalExposureIndex : Nat)
+    (state : IndexedUnifiedExposureState globalOracleCalls
+      FoldArmedPreFinalMemory)
+    (producersEmpty :
+      (foldArmedPreFinalDagState state).memory.producers = [])
+    (slot : FoldAlphaFinalWorkQ16DigestSlot)
+    (preferred :
+      (foldArmedCompleteController transitionFuel foldExposureIndex
+        finalExposureIndex).preferredSlot state = some slot) :
+    slot = none ∨ (∃ alpha : Fin 4, slot = some (Sum.inl alpha)) ∨
+      slot = some (Sum.inr none) := by
+  let controller := foldArmedCompleteController
+    (globalOracleCalls := globalOracleCalls) transitionFuel foldExposureIndex
+      finalExposureIndex
+  by_cases atFold : state.memory.1 = false ∧
+      state.exposureIndex = foldExposureIndex
+  · have foldPreferred : controller.preferredSlot state = some none := by
+      simpa [controller] using
+        fold_armed_complete_preferred_at_fold transitionFuel foldExposureIndex
+          finalExposureIndex state atFold.1 atFold.2
+    rw [foldPreferred] at preferred
+    exact Or.inl (Option.some.inj preferred).symm
+  · have outerUnderlying : controller.preferredSlot state =
+        ((alphaFinalWorkQ16DagController transitionFuel finalExposureIndex
+          (foldArmedAlphaZeroController transitionFuel)).preferredSlot
+            (foldArmedUnderlyingState state)).map some := by
+      simp [controller, foldArmedCompleteController, atFold]
+    cases alphaPreferred : alphaZeroPreferredSlot transitionFuel
+        (foldArmedAlphaIndexedState
+          (alphaIndexedState (foldArmedUnderlyingState state))) with
+    | some alpha =>
+        have underlying := alpha_final_work_q16_preferred_of_alpha
+          transitionFuel finalExposureIndex
+            (foldArmedAlphaZeroController transitionFuel)
+            (foldArmedUnderlyingState state) alpha (by
+              simpa [foldArmedAlphaZeroController] using alphaPreferred)
+        rw [outerUnderlying, underlying] at preferred
+        exact Or.inr (Or.inl ⟨alpha, (Option.some.inj preferred).symm⟩)
+    | none =>
+        have alphaNone :
+            (foldArmedAlphaZeroController transitionFuel).preferredSlot
+                (alphaIndexedState (foldArmedUnderlyingState state)) = none := by
+          simpa [foldArmedAlphaZeroController] using alphaPreferred
+        rcases dag_candidate_preferred_slot_without_producers transitionFuel
+            finalExposureIndex (foldArmedPreFinalDagState state)
+              producersEmpty with dagNone | dagFinal
+        · have dagNone' : dagCandidatePreferredSlot transitionFuel
+              finalExposureIndex
+              (finalWorkQ16IndexedState (foldArmedUnderlyingState state)) =
+                none := by
+            simpa [foldArmedPreFinalDagState] using dagNone
+          have underlyingNone :
+              (alphaFinalWorkQ16DagController transitionFuel
+                finalExposureIndex
+                (foldArmedAlphaZeroController transitionFuel)).preferredSlot
+                  (foldArmedUnderlyingState state) = none := by
+            simp [alphaFinalWorkQ16DagController,
+              foldArmedAlphaZeroController, alphaPreferred,
+              finalWorkQ16DagController, dagNone']
+          rw [outerUnderlying, underlyingNone] at preferred
+          simp at preferred
+        · rw [outerUnderlying] at preferred
+          have underlying :
+              (alphaFinalWorkQ16DagController transitionFuel
+                finalExposureIndex
+                (foldArmedAlphaZeroController transitionFuel)).preferredSlot
+                  (foldArmedUnderlyingState state) = some (Sum.inr none) :=
+            alpha_final_work_q16_preferred_of_dag transitionFuel
+              finalExposureIndex (foldArmedAlphaZeroController transitionFuel)
+                (foldArmedUnderlyingState state) none alphaNone dagFinal
+          rw [underlying] at preferred
+          exact Or.inr (Or.inr (Option.some.inj preferred).symm)
+
 /-- Strictly before final work, the inactive DAG cannot emit a final/q16
 label.  Dynamic alpha arming changes producers but not this label shape. -/
 theorem fold_armed_pre_final_named_slots_only_fold_or_alpha
@@ -382,6 +460,7 @@ theorem exact_fold_armed_coordinates_force_pre_final_tape_prefix
   exact rightPrefix
 
 #print axioms fold_armed_pre_final_named_slots_only_fold_or_alpha
+#print axioms fold_armed_preferred_slot_without_q16_producers
 #print axioms exact_fold_armed_coordinates_force_pre_final_tape_prefix
 
 end
