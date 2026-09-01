@@ -123,7 +123,12 @@ theorem exact_operational_final256_and_work_lookups
           (bytes prefinalDigest ++ [domAbsorb, finalWorkNonceLabel] ++
             bytes (exactOperationalTape input).messages.finalGrinding.selected) =
         some q16Base ∧
-      q16Base = (exactOperationalRawTrace input).q16BaseDigest := by
+      q16Base = (exactOperationalRawTrace input).q16BaseDigest ∧
+      ∃ afterC2 : EvalState,
+        runMachineEvents (exactOperationalTable input)
+            (prefixAfterC2BeforeFinal256
+              (exactOperationalTape input).messages) afterC2 =
+          some beforeFinal256 := by
   have strict := input.package.root.fixedRoot.base.strictRefinement
   have refined := (checked_refinement_is_well_formed
     (exactOperationalTable input) exactDeterministicDecoders
@@ -207,9 +212,9 @@ theorem exact_operational_final256_and_work_lookups
   rw [stableDigest] at absorbLookup
   refine ⟨beforeFinal256, beforeFinalWork.digest, workAnswer,
     prefixState.digest, final256Lookup, workLookup, workAccepted, ?_,
-    q16BaseExact⟩
+    q16BaseExact, ⟨afterC2, beforeFinal256Run⟩⟩
   simpa [AspisK1.V7Tag73TranscriptSchedule.Payload.label,
-    AspisK1.V7Tag73TranscriptSchedule.Payload.data] using absorbLookup
+      AspisK1.V7Tag73TranscriptSchedule.Payload.data] using absorbLookup
 
 /-- A digest is the exact state produced by the deployed `final256`
 absorption in this accepted execution.  This predicate makes the source
@@ -263,7 +268,7 @@ theorem exact_operational_final_work_pair_with_prefinal_origin
         some q16Base ∧
       q16Base = (exactOperationalRawTrace input).q16BaseDigest := by
   obtain ⟨beforeFinal256, digest, workAnswer, q16Base, final256Lookup,
-      workLookup, workAccepted, absorbLookup, baseExact⟩ :=
+      workLookup, workAccepted, absorbLookup, baseExact, _prefixRun⟩ :=
     exact_operational_final256_and_work_lookups input
   exact ⟨digest, workAnswer, q16Base, ⟨beforeFinal256, final256Lookup⟩,
     workLookup, workAccepted, absorbLookup, baseExact⟩
@@ -288,7 +293,7 @@ theorem exact_operational_prefinal_digest_has_root_record
         (bytes prefinalDigest ++ [domGrind] ++
           bytes (exactOperationalTape input).messages.finalGrinding.selected) := by
   obtain ⟨beforeFinal256, prefinalDigest, workAnswer, q16Base, final256Lookup,
-      _workLookup, _workAccepted, _absorbLookup, _baseExact⟩ :=
+      _workLookup, _workAccepted, _absorbLookup, _baseExact, _prefixRun⟩ :=
     exact_operational_final256_and_work_lookups input
   obtain ⟨actor, rootMember⟩ := exact_final_table_lookup_has_root_record input
     (bytes beforeFinal256.digest ++
