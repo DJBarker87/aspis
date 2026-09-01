@@ -29,6 +29,9 @@ cluster evidence)
 Tested fresh-signature replay implementation: `fafd9cca905d7125b838a1201152e02af13da2aa`
 
 Tested malformed-carrier implementation: `6380691e7780ec92ea7f6a852ba51dc3a39fa686`
+
+Tested failed-withdrawal-CPI implementation:
+`8c8f8dbb5e7f425f1665609f7ad43964d9654169`
 Branch: `research/v7-live-pool-witness-adapter-20260901`
 
 ## Architecture and authenticated field sources
@@ -237,19 +240,40 @@ subtracting the approximately 5e17-lamport balances in `jq` rounds the exact
 structural normalization and Bash integer arithmetic for the fee delta. No
 terminal failure is hidden or relabelled.
 
+The failed-withdrawal-CPI runner first simulated, but did not submit, a
+canonical 1,300,000-CU withdrawal wire using the same genuine proof and live
+state. It measured 51,650 CU available at entry to SPL Token and built a
+second signed TxV1 wire with a calibrated 1,248,410-CU limit, leaving exactly
+60 CU at Token entry. The genuine verifier succeeded before the Token CPI;
+the real Token program then consumed 4 of 60 CU and failed with
+`ProgramFailedToComplete`. The exact 1,543-byte failure wire had SHA-256
+`8a3bcb3508b5d4dd71d6b8ae593d8699bbb982236f0a697031e1097e9818615a`,
+used 1,248,410 CU in both simulation and finalized execution, and finalized
+at slot 557 with signature
+`66zCM8eW9VTEiUmEUjPwNQDmgx8YdEQuJvoCUGJPebeP9e3gMraUHvbjpku73tEFCdjg6eF9GV2UtBFUSjYeHef6`.
+Every protected account was byte-identical after fee normalization: both
+hashes were
+`585d11641e51f2eb68564d9ceba50c7235030e46719edcc4c7e41c6314828b27`.
+The vault stayed at 1,000, the destination stayed at 0, and only the
+disposable payer's recorded 5,000-lamport fee changed. This is a genuine
+finalized CPI failure and atomic rollback, not a pre-verifier rejection. Full
+evidence is under
+`results/v7-live-pool-witness-adapter-20260901/local-feature-active-live-failed-withdrawal-cpi-rollback/`.
+
 Transfer/withdrawal rollover, different-lane concurrency, stale selected-lane
 rejection, wrong-checkpoint/release runtime cases, malformed-ASQ8/result
-runtime cases, missing-ciphertext runtime behavior, and failed withdrawal CPI rollback remain
-unexecuted and are explicitly `not-run` in evidence.
+runtime cases, and missing-ciphertext runtime behavior remain unexecuted and
+are explicitly `not-run` in evidence.
 
-The smallest remaining integration is host-side: add reusable terminal
-mutation runners, beginning with failed withdrawal CPI rollback, followed by
-stale-lane and authenticated-identity rejections. No cryptographic integration
-or production program change is currently indicated.
+The smallest remaining integration is host-side: add stale-lane and
+authenticated checkpoint/Registry identity rejection runners. Rollover and
+simultaneously valid different-lane cases also remain. No cryptographic
+integration or production program change is currently indicated.
 
 The result is safe to cherry-pick as host-only, default-off research plumbing.
 It establishes genuine finalized local transfer and withdrawal, finalized
 fresh-signature nullifier replay rejection, and finalized malformed-carrier
-non-stalling, not public-devnet lifecycle completion, production identities,
-or mainnet readiness.
+non-stalling, plus finalized failed-withdrawal-CPI atomic rollback. It does
+not establish public-devnet lifecycle completion, production identities, or
+mainnet readiness.
 `mainnetReady` remains false.
