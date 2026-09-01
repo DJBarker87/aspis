@@ -1,0 +1,47 @@
+{
+  "schema": "aspis.v7.registry-v2-disposable-agave-txv1-finalized-case.v1",
+  "case": "malformed-result-rejection",
+  "expectedOutcome": "failure",
+  "agave": "solana-cli 4.2.0 (src:ac82b5d4; feat:21b0d33a, client:Agave)",
+  "cluster": "disposable-local-validator",
+  "localTestPayer": "F7maZWq6BqhJGxNn7hWPYHPZ6igcsB5RTY8piKGovinv",
+  "signature": "4Moqfjwat5XsvPgq94AwrzVBp2wLQuzQWUvZt5WWH6T5JytxS2yFJGStga7zo1whAWgRhcu9UYdLiXV1SPmFoapj",
+  "signed": true,
+  "submitted": true,
+  "finalized": true,
+  "sameSignedBytesSimulatedAndSubmitted": true,
+  "packetBytes": 833,
+  "transactionHeadroomTo4096Bytes": 3263,
+  "signedWireSha256": "b213c4a1f768155de323d830cac5abc65e1e4922906db1a505c00b932da1ee42",
+  "simulationUnitsConsumed": 47002,
+  "landedUnitsConsumed": 47002,
+  "landedError": {
+    "InstructionError": [
+      0,
+      {
+        "Custom": 1095966765
+      }
+    ]
+  },
+  "protectedStateRollbackPreserved": true,
+  "protectedStateChangedOnSuccess": null,
+  "simulationMatchesFrozenExpectedState": null,
+  "landedStateMatchesFrozenExpectedState": null,
+  "simulationRuntimeMetadataValid": null,
+  "landedRuntimeMetadataValid": null,
+  "returnDataBytes": null,
+  "localEphemeralKeyOnly": true,
+  "realFundsUsed": false,
+  "publicClusterUsed": false,
+  "deployed": false,
+  "receipts": {
+    "signedRequest": "malformed-result-rejection.signed-request.json",
+    "simulation": "malformed-result-rejection.simulation.json",
+    "send": "malformed-result-rejection.send.json",
+    "finalizedStatus": "malformed-result-rejection.finalized-status.json",
+    "transaction": "malformed-result-rejection.transaction.json",
+    "protectedStateBefore": "malformed-result-rejection.before.json",
+    "protectedStateAfter": "malformed-result-rejection.after.json",
+    "validatorLog": "malformed-result-rejection.validator.log"
+  }
+}

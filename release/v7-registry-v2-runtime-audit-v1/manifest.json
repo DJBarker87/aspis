@@ -1,0 +1,200 @@
+{
+  "schema": "aspis.v7.registry-v2-runtime-audit-inputs.v1",
+  "releaseEvidence": {
+    "commit": "7179f7c550fe0461f4251dea5268af73876da91d",
+    "tree": "72d8ccd295994277bcb5f9df922c2a1483ac0443",
+    "productionSourceParent": "4722228b991ebb72850b8d79dd54b0fee4899462",
+    "productionInputsUnchangedFromParent": true,
+    "bundle": "results/v7-pair-forest-registry-v2-litesvm-20260830",
+    "bundleTree": "8935a666426a814da518d9ca9046a347f4793d83",
+    "inventory": "results/v7-pair-forest-registry-v2-litesvm-20260830/MANIFEST.sha256",
+    "inventorySha256": "fc0952a7d1075c38dd370ef16ca984e3aebe0572c89d0082cfaf40636ff7b27e",
+    "classification": "ONE_PINNED_LINUX_BUILD_PLUS_REAL_COMBINED_LITESVM_MEASUREMENT",
+    "independentSbfBuildEqualityComplete": false,
+    "publicClusterReceiptComplete": false
+  },
+  "source": {
+    "cargoLockBlob": "8d2cee1604e60153dad98c0ef6826e995729f46a",
+    "cargoLockBytes": 116375,
+    "cargoLockSha256": "a1d2fc87435e98734f74a0fb1f070f1eaa5e5fe19266967092a7ea7849f8a91d",
+    "poolTree": "0bebca6b10c61e1d97949da10e6b4901d5117fa0",
+    "verifierTree": "0b9627c523ac47682f3c987abd68ae2027ac5eb2",
+    "registryTree": "50edc0c660f12c68baa6298f8f01e3422ea8b70b",
+    "walletTree": "7e6e50c4dcae05527ded1b72de0afc5b09cd8fec",
+    "txv1BuilderBlob": "f3b234ad0a048b8e0960169568ebe783429bad7a",
+    "txv1BuilderSha256": "c416304a9edb85208c50a68e0307c5db5cb701d12cee9c3022195135a67abb0b"
+  },
+  "toolchain": {
+    "host": "Linux x86_64",
+    "cargoBuildSbfVersion": "solana-cargo-build-sbf 2.3.0\nplatform-tools v1.48\nrustc 1.84.1",
+    "cargoBuildSbfSha256": "b2ee45538a199c00833811383b88dd286380e7d2dbc16e10ddbf94ac51e183cb",
+    "platformTools": "v1.48",
+    "platformRustc": "rustc 1.84.1-dev",
+    "platformRustcSha256": "89fd4ccdd6e678a24c2cda074b498b46a352fcfce21018119c9526751afc678d",
+    "clang19Sha256": "591471c0944f680420ab0c28193c57a1b6f9553c7f86c0a158338a317eb7bfa3",
+    "llvmObjdumpSha256": "f83c9ce83cf03beb282137f9b428c7214e74adb460b6c609c5fd7f63a3e04363",
+    "architecture": "v0",
+    "offlineAndLocked": true,
+    "requiredCgroup": {
+      "memoryHighBytesAtMost": 10737418240,
+      "memoryMaxBytesAtMost": 12884901888,
+      "memorySwapMaxBytes": 0
+    }
+  },
+  "programs": [
+    {
+      "name": "aspis-pool",
+      "manifest": "programs/aspis-pool/Cargo.toml",
+      "manifestSha256": "faf0bffabea687d358bd67ba510afc9038f97313a184564532c99cdea565b9c5",
+      "features": "v7-pair-forest-one-tx-candidate",
+      "output": "aspis_pool.so",
+      "expectedBytes": 534608,
+      "expectedSha256": "0e94c98d28437f0b01dce546fdefaad21dc10772a4d46991c2a573d8129cd4f6"
+    },
+    {
+      "name": "aspis-verifier",
+      "manifest": "programs/aspis-verifier/Cargo.toml",
+      "manifestSha256": "7f8d8fe0633a86e26d7693b71abb2ca16f7ed58cbe9b0896ee49b7454318557d",
+      "features": "v7-pair-forest-one-tx-candidate",
+      "output": "aspis_verifier.so",
+      "expectedBytes": 1819480,
+      "expectedSha256": "97df12937d46e25a2eeefeac16ce31925fd473c672d6b656548be9220adbcc6d"
+    },
+    {
+      "name": "aspis-registry",
+      "manifest": "programs/aspis-registry/Cargo.toml",
+      "manifestSha256": "0274a9c4f8891b4431a6fffe60c94e52eb5a4a026c7178cbad3a519f04c23363",
+      "features": "",
+      "output": "aspis_registry.so",
+      "expectedBytes": 189824,
+      "expectedSha256": "0f14c7b74ec6cbe3b3f637b0f24c7e8cdc46fd09f5b2e495fd51ada16ad8f11b"
+    }
+  ],
+  "terminalCases": [
+    {
+      "file": "production-transfer-same-success.json",
+      "sha256": "ffec3da43060de3b589f259ec29f81d4799708e277acc1de492ddea2adef4836",
+      "scenario": "success",
+      "operation": "private-transfer",
+      "outcome": "accepted",
+      "computeUnits": 1161460,
+      "serializedTransactionBytes": 845
+    },
+    {
+      "file": "production-transfer-rollover-success.json",
+      "sha256": "4222fbc4984f4ec5b3163d7117a93c3837d51e62429440d48aa33a7f88c460fa",
+      "scenario": "success",
+      "operation": "private-transfer",
+      "outcome": "accepted",
+      "computeUnits": 1207174,
+      "serializedTransactionBytes": 878
+    },
+    {
+      "file": "production-withdrawal-same-success.json",
+      "sha256": "2c0254f23f275681ad11ece6e6afe7567e022f6ed39b41ea2e83562810d1661c",
+      "scenario": "success",
+      "operation": "withdrawal",
+      "outcome": "accepted",
+      "computeUnits": 1153110,
+      "serializedTransactionBytes": 1010
+    },
+    {
+      "file": "production-withdrawal-rollover-success.json",
+      "sha256": "36f7fdf28d88b33ca01d5a32c155e2dc771708f0e5fe1412d8b1ac6f2ea4ccaa",
+      "scenario": "success",
+      "operation": "withdrawal",
+      "outcome": "accepted",
+      "computeUnits": 1218822,
+      "serializedTransactionBytes": 1043
+    },
+    {
+      "file": "production-proof-rejection.json",
+      "sha256": "47fd5a169786f63d7e8b46da740ef75a3f56b9f6307acceba54f91c0c39f08cc",
+      "scenario": "proof-rejection",
+      "operation": "private-transfer",
+      "outcome": "rejected",
+      "computeUnits": 975390,
+      "serializedTransactionBytes": 845
+    },
+    {
+      "file": "production-wrong-release.json",
+      "sha256": "a5ab1fa78f191b83b4d75d5f2432d48060771aab9a898b88140cc6563de826cf",
+      "scenario": "wrong-release",
+      "operation": "private-transfer",
+      "outcome": "rejected",
+      "computeUnits": 36629,
+      "serializedTransactionBytes": 845
+    },
+    {
+      "file": "production-stale-lane.json",
+      "sha256": "e6038274b2b99684a493446ac6afa3bf9402af90997bf2d3adc036505e686372",
+      "scenario": "stale-lane",
+      "operation": "private-transfer",
+      "outcome": "rejected",
+      "computeUnits": 72167,
+      "serializedTransactionBytes": 845
+    },
+    {
+      "file": "production-replay-nullifier.json",
+      "sha256": "f5cfa7e60bfad3598ee000c49c1dda5aa8a6f47a921f42646ae929df9da0f1f2",
+      "scenario": "replay-nullifier",
+      "operation": "private-transfer",
+      "outcome": "accepted",
+      "computeUnits": 1161460,
+      "serializedTransactionBytes": 845,
+      "replayComputeUnits": 23727
+    },
+    {
+      "file": "production-malformed-result.json",
+      "sha256": "ac2e510213dad2cea3a24e8e45f39bfe41e80897665a67309f9d637df17e2496",
+      "scenario": "malformed-result",
+      "operation": "private-transfer",
+      "outcome": "rejected",
+      "computeUnits": 47114,
+      "serializedTransactionBytes": 845,
+      "scheduleComputeUnits": 29804,
+      "selectedVerifier": "result-double"
+    },
+    {
+      "file": "production-mutated-result.json",
+      "sha256": "75dcdd8a877f8bb5925e9fd05c61879f5ab7e0fbbfb56f66145856477ddd9cc8",
+      "scenario": "mutated-result",
+      "operation": "private-transfer",
+      "outcome": "rejected",
+      "computeUnits": 50151,
+      "serializedTransactionBytes": 845,
+      "scheduleComputeUnits": 29804,
+      "selectedVerifier": "result-double"
+    },
+    {
+      "file": "production-withdrawal-cpi-failure.json",
+      "sha256": "f68a47965f04c4de383d321e44b68c5015611d563cb7254ba997c097c8ee94ab",
+      "scenario": "withdrawal-cpi-failure",
+      "operation": "withdrawal",
+      "outcome": "rejected",
+      "computeUnits": 1151875,
+      "serializedTransactionBytes": 1010
+    }
+  ],
+  "governance": {
+    "initialize": { "computeUnits": 106065, "serializedTransactionBytes": 504 },
+    "schedule": { "computeUnits": 929136, "serializedTransactionBytes": 617 },
+    "activate": { "computeUnits": 12794, "serializedTransactionBytes": 373 },
+    "freeze": { "computeUnits": 4914, "serializedTransactionBytes": 340 }
+  },
+  "txv1": {
+    "featureId": "txv1aq4pp281K9um3tnPgkfX8UqtFT6wcVW3hNezGLL",
+    "featureOwner": "Feature111111111111111111111111111111111111",
+    "maximumSerializedBytesExclusive": 4096,
+    "instructionBytes": 320,
+    "proofEmbeddedInTransaction": false
+  },
+  "agave": {
+    "minimumVersion": "4.2.0",
+    "frozenReleaseTag": "v4.2.0",
+    "frozenReleaseCommit": "ac82b5d438b0c2303dc7169f52c748977713a111",
+    "officialLinuxArchiveSha256": "1f5eb13bcf3694dbd3cf634602aee5edcf8eab519acac75778391c979c3002b0",
+    "solanaSha256": "b6134ccddcb3456e49c0c15bc028c2902184a8fef6f6e6e665d9f8ae5bea8d10",
+    "solanaTestValidatorSha256": "78ee817e9a4fade8a6606ee663060d39728017c79ebac7a7cd35b2a985066f6a"
+  }
+}

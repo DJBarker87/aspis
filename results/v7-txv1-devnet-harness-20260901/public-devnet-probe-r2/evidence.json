@@ -1,0 +1,167 @@
+{
+  "schema": "aspis.v7.txv1-devnet-lifecycle-evidence.v1",
+  "generatedAt": "2026-09-01T08:08:31Z",
+  "repository": {
+    "revision": "b075d46867f895b6efedc3250978d02e8d0589ee",
+    "dirty": true
+  },
+  "status": "BLOCKED BY FEATURE/IDENTITY/ARTIFACT",
+  "cluster": {
+    "rpcUrl": "https://api.devnet.solana.com",
+    "genesisHash": "EtWTRABZaYq6iMfeYKouRu166VU2xqa1wcaWoxPkrZBG",
+    "expectedGenesisHash": "EtWTRABZaYq6iMfeYKouRu166VU2xqa1wcaWoxPkrZBG",
+    "identityVerified": true,
+    "coreVersion": "4.3.0-beta.2",
+    "featureSet": 2409014235,
+    "finalizedSlot": 491361925
+  },
+  "feature": {
+    "id": "txv1aq4pp281K9um3tnPgkfX8UqtFT6wcVW3hNezGLL",
+    "accountPresent": false,
+    "activeAtFinalizedCommitment": false,
+    "activationSlot": null,
+    "reason": "feature account is absent at finalized commitment"
+  },
+  "identities": {
+    "set": {
+      "name": "registry-v2-audit-only-rc1",
+      "auditOnly": true,
+      "productionApproved": false,
+      "programSourceCommit": "7179f7c550fe0461f4251dea5268af73876da91d",
+      "programSourceTree": "72d8ccd295994277bcb5f9df922c2a1483ac0443",
+      "policyBindingHex": "0707070707070707070707070707070707070707070707070707070707070707",
+      "profileBindingHex": "a179f8d7e37024eb54e3db17f396b398a1beb2da0c8bfaf62b335f2ba4ea5c26",
+      "releaseBindingHex": "add09663c6a548380e1a7e5394c8426e6e48bac24a8c536a045fbf9dbe9fba1c",
+      "bindingAccounts": [
+        {
+          "name": "registry",
+          "id": "JBz8KKzyZ6FzTU7WmLywurr49xJPpQcA9ECNg2SZX6iH",
+          "owner": "5bV6jUfhDHCQVA1WfKBUnXUsboJgoKgkzkKcxr3joew5",
+          "dataSha256": "cb0aa4373e923eace3187333a5485728240a36c2ff8ecdf7c33779e8226d604c"
+        },
+        {
+          "name": "entry",
+          "id": "9zQXTg6QqijGAG3kyWf94CQA3KdFq3VoYBLAUrhge1WB",
+          "owner": "5bV6jUfhDHCQVA1WfKBUnXUsboJgoKgkzkKcxr3joew5",
+          "dataSha256": "e82965fc06929e94d9318b355d8c387d8d87cd34c459c612fe1923ae133fd81e"
+        }
+      ],
+      "programs": [
+        {
+          "name": "pool",
+          "id": "5PjDJaGfSPJj4tFzMRCiuuAasKg5n8dJKXKenhuwZexx",
+          "loader": "BPFLoader2111111111111111111111111111111111",
+          "binary": "results/v7-registry-v2-release-audit-20260831/agave-11-case-bundle/sbf/aspis_pool.so",
+          "sha256": "0e94c98d28437f0b01dce546fdefaad21dc10772a4d46991c2a573d8129cd4f6"
+        },
+        {
+          "name": "registry",
+          "id": "5bV6jUfhDHCQVA1WfKBUnXUsboJgoKgkzkKcxr3joew5",
+          "loader": "BPFLoaderUpgradeab1e11111111111111111111111",
+          "binary": "results/v7-registry-v2-release-audit-20260831/agave-11-case-bundle/sbf/aspis_registry.so",
+          "sha256": "0f14c7b74ec6cbe3b3f637b0f24c7e8cdc46fd09f5b2e495fd51ada16ad8f11b"
+        },
+        {
+          "name": "verifier",
+          "id": "7Q2nGsPg8rbjdxKHK4jxTgEWLTyd9o1X4KMSjCieRmue",
+          "loader": "BPFLoaderUpgradeab1e11111111111111111111111",
+          "binary": "results/v7-registry-v2-release-audit-20260831/agave-11-case-bundle/sbf/aspis_verifier.so",
+          "sha256": "97df12937d46e25a2eeefeac16ce31925fd473c672d6b656548be9220adbcc6d"
+        }
+      ]
+    },
+    "allProgramAccountsPresent": false,
+    "programOwnersLoadersExecutableValid": false,
+    "registryProfileReleasePolicyDataHashesValid": false,
+    "localBinaryHashesValid": true,
+    "remoteBinaryHashesValid": false,
+    "acceptedForPublicExecution": false
+  },
+  "toolchain": {
+    "solanaCliVersion": null
+  },
+  "transaction": {
+    "version": 1,
+    "byteCeilingExclusive": 4096,
+    "researchReviewThresholdExclusive": 3500,
+    "serializedBytes": null,
+    "signedWireSha256": null,
+    "exactBytesSimulatedAndSubmitted": false
+  },
+  "lifecycle": {
+    "requiredCases": [
+      "deposit-init",
+      "transfer-same-page",
+      "transfer-rollover",
+      "withdrawal-same-page",
+      "withdrawal-rollover",
+      "different-lanes",
+      "stale-selected-lane-rejection",
+      "replay-nullifier-rejection",
+      "wrong-historical-checkpoint-rejection",
+      "wrong-registry-release-profile-rejection",
+      "malformed-request-rejection",
+      "malformed-result-rejection",
+      "malformed-ciphertext-carrier-nonstalling",
+      "failed-withdrawal-cpi-rollback"
+    ],
+    "availableFrozenCases": [
+      "transfer-same-page",
+      "transfer-rollover",
+      "withdrawal-same-page",
+      "withdrawal-rollover",
+      "stale-selected-lane-rejection",
+      "replay-nullifier-rejection",
+      "wrong-registry-release-profile-rejection",
+      "malformed-result-rejection",
+      "failed-withdrawal-cpi-rollback"
+    ],
+    "missingCases": [
+      "deposit-init",
+      "different-lanes",
+      "wrong-historical-checkpoint-rejection",
+      "malformed-request-rejection",
+      "malformed-ciphertext-carrier-nonstalling"
+    ],
+    "finalizedComplete": false
+  },
+  "measurements": {
+    "computeUnits": null,
+    "signatures": [],
+    "slots": [],
+    "beforeAfterAccountHashes": []
+  },
+  "invariants": [
+    {
+      "name": "authoritative-cluster-identity",
+      "pass": true
+    },
+    {
+      "name": "txv1-feature-finalized-active",
+      "pass": false
+    },
+    {
+      "name": "production-identities",
+      "pass": false
+    },
+    {
+      "name": "complete-required-case-artifacts",
+      "pass": false
+    },
+    {
+      "name": "finalized-combined-lifecycle",
+      "pass": false
+    }
+  ],
+  "artifactBlockers": [
+    "No production Pool/Registry/policy identity set exists.",
+    "The frozen proof account address is a fixture public key without an available disposable signing key, so the exact frozen proof cannot yet be created and uploaded on a non-genesis cluster.",
+    "Frozen cases are missing deposit/init, different-lane pairing, wrong historical checkpoint, malformed request, and malformed ciphertext-carrier non-stalling inputs."
+  ],
+  "mutationAttempted": false,
+  "signed": false,
+  "submitted": false,
+  "deployed": false,
+  "realFundsUsed": false,
+  "mainnetReady": false
+}

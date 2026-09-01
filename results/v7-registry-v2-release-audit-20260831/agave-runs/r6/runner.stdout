@@ -1,0 +1,11 @@
+simulate-only: transfer-same-page
+simulate-only: transfer-rollover
+simulate-only: withdrawal-same-page
+simulate-only: withdrawal-rollover
+simulate-only: strict-proof-mutation-rejection
+simulate-only: wrong-registry-release-rejection
+simulate-only: stale-selected-lane-rejection
+simulate-only: replay-nullifier-rejection
+simulate-only: malformed-result-rejection
+simulate-only: mutated-result-rejection
+simulate-only: failed-withdrawal-cpi-rollback

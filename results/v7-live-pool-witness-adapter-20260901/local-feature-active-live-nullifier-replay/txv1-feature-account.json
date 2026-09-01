@@ -1,0 +1,21 @@
+{
+  "jsonrpc": "2.0",
+  "result": {
+    "context": {
+      "apiVersion": "4.2.0",
+      "slot": 150
+    },
+    "value": {
+      "data": [
+        "AQAAAAAAAAAA",
+        "base64"
+      ],
+      "executable": false,
+      "lamports": 953520,
+      "owner": "Feature111111111111111111111111111111111111",
+      "rentEpoch": 0,
+      "space": 9
+    }
+  },
+  "id": 5
+}

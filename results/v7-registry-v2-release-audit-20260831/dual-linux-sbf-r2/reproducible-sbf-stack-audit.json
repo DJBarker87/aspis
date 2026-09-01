@@ -1,0 +1,130 @@
+{
+  "schema": "aspis.v7.registry-v2-reproducible-sbf-stack-audit.v1",
+  "source": {
+    "commit": "7179f7c550fe0461f4251dea5268af73876da91d",
+    "tree": "72d8ccd295994277bcb5f9df922c2a1483ac0443",
+    "independentCopies": 2,
+    "sourceArchiveSha256": "778f39071cf1b30a4128bed862538e894d7b784cb11eb265bc48ddcdd68559dd",
+    "sourceArchivesByteIdentical": true
+  },
+  "toolchain": {
+    "cargoBuildSbfSha256": "b2ee45538a199c00833811383b88dd286380e7d2dbc16e10ddbf94ac51e183cb",
+    "llvmObjdumpSha256": "f83c9ce83cf03beb282137f9b428c7214e74adb460b6c609c5fd7f63a3e04363",
+    "platformTools": "v1.48",
+    "architecture": "v0",
+    "offline": true,
+    "locked": true
+  },
+  "cgroup": {
+    "path": "/user.slice/user-1000.slice/user@1000.service/app.slice/aspis-v7-registry-v2-dual-sbf-ea98c0b-r2.service",
+    "memoryHighBytes": 10737418240,
+    "memoryMaxBytes": 12884901888,
+    "memoryPeakBytes": 1144864768,
+    "memorySwapMaxBytes": 0,
+    "memorySwapCurrentBytes": 0,
+    "memorySwapPeakBytes": 0
+  },
+  "builds": [
+    {
+      "copy": "a",
+      "program": "aspis-pool",
+      "elapsed": "1:39.58",
+      "maximumResidentSetKiB": 566056,
+      "swaps": 0,
+      "exitStatus": 0,
+      "logSha256": "196635dbddff9ad1bb31373af684b8f763447e82833c15d9380499614301c473",
+      "timeSha256": "16295ef20c1915b1b31faf482d025b7dd1ab6e5cb7d44ed64cc33f9b328ef86b"
+    },
+    {
+      "copy": "b",
+      "program": "aspis-pool",
+      "elapsed": "1:40.12",
+      "maximumResidentSetKiB": 564884,
+      "swaps": 0,
+      "exitStatus": 0,
+      "logSha256": "4fd561a65dbf925af8341653395017e02cec16af81c62e87cbe27228564fbbd0",
+      "timeSha256": "8be0e525974a4769952d0260495798acc315a323541cbc8494d2621f2191b08a"
+    },
+    {
+      "copy": "a",
+      "program": "aspis-verifier",
+      "elapsed": "0:36.47",
+      "maximumResidentSetKiB": 571328,
+      "swaps": 0,
+      "exitStatus": 0,
+      "logSha256": "90dec197acede7a1d8eacc21abf95bcaf84e29e6e95686951054bc357d268fe4",
+      "timeSha256": "bd81d741f6a188905dc294a1de3a05ffc800c2071f862855ee85ba650e8ef3b0"
+    },
+    {
+      "copy": "b",
+      "program": "aspis-verifier",
+      "elapsed": "0:36.13",
+      "maximumResidentSetKiB": 569992,
+      "swaps": 0,
+      "exitStatus": 0,
+      "logSha256": "96433da4cf2fdb2fe88c2dd5b5d5ed2577ea833ca5c701eed7deeecc245e0839",
+      "timeSha256": "a94600de2da28e55401218cd75a0dc1a1a6bf73a77d9a0b1416f853da41bbf4b"
+    },
+    {
+      "copy": "a",
+      "program": "aspis-registry",
+      "elapsed": "0:01.31",
+      "maximumResidentSetKiB": 219568,
+      "swaps": 0,
+      "exitStatus": 0,
+      "logSha256": "bab78bf18b734003e9a41951a920412de035eade4949551ff7f91715248e1ef3",
+      "timeSha256": "56619478c3834c690e1c6715daf148b17a7f4a11106a791e43d244abe1dd57f5"
+    },
+    {
+      "copy": "b",
+      "program": "aspis-registry",
+      "elapsed": "0:01.34",
+      "maximumResidentSetKiB": 220060,
+      "swaps": 0,
+      "exitStatus": 0,
+      "logSha256": "10d427f3c0d99c495af214c918817ed33652b205ad9b2c955aa6101c84f90e8c",
+      "timeSha256": "5f8101244f286146529ed39244157995649845e0a625862b17351e26fdb9a5df"
+    }
+  ],
+  "programs": [
+    {
+      "name": "aspis-pool",
+      "output": "aspis_pool.so",
+      "bytes": 534608,
+      "sha256": "0e94c98d28437f0b01dce546fdefaad21dc10772a4d46991c2a573d8129cd4f6",
+      "buildsByteIdentical": true,
+      "matchesFrozenRegistryV2Artifact": true,
+      "maximumObservedStackAccessBytes": 4096,
+      "stackLimitBytes": 4096,
+      "stackGatePassed": true
+    },
+    {
+      "name": "aspis-verifier",
+      "output": "aspis_verifier.so",
+      "bytes": 1819480,
+      "sha256": "97df12937d46e25a2eeefeac16ce31925fd473c672d6b656548be9220adbcc6d",
+      "buildsByteIdentical": true,
+      "matchesFrozenRegistryV2Artifact": true,
+      "maximumObservedStackAccessBytes": 4096,
+      "stackLimitBytes": 4096,
+      "stackGatePassed": true
+    },
+    {
+      "name": "aspis-registry",
+      "output": "aspis_registry.so",
+      "bytes": 189824,
+      "sha256": "0f14c7b74ec6cbe3b3f637b0f24c7e8cdc46fd09f5b2e495fd51ada16ad8f11b",
+      "buildsByteIdentical": true,
+      "matchesFrozenRegistryV2Artifact": true,
+      "maximumObservedStackAccessBytes": 4096,
+      "stackLimitBytes": 4096,
+      "stackGatePassed": true
+    }
+  ],
+  "allBuildsByteIdentical": true,
+  "allArtifactsMatchFrozenRegistryV2Evidence": true,
+  "allStackGatesPassed": true,
+  "signed": false,
+  "submitted": false,
+  "deployed": false
+}

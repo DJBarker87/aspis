@@ -1,0 +1,89 @@
+V7 Pool nullifier-marker Rust-to-Lean/Aeneas bridge: PASS
+Date: 2026-08-30
+
+Pinned revision and provenance
+------------------------------
+Production lifecycle base:
+  da77d5f5a22681200cceec8e90fc69ac2cc81ad8
+Branch:
+  research/v7-pool-runtime-close-20260830
+Production source hashes:
+  evidence/source-sha256.txt
+Charon executable SHA-256:
+  d785c5f18053c4d310c7388dfdb0b59adfc9854c28b632a34a8f6301ba1c4b43
+Aeneas executable/version/SHA-256:
+  b59d518
+  fbb8dac1a9a57e635a762e04b95aeb46dbd2dab2be5ed54fa9e0b1321c1962cf
+Lean:
+  4.31.0
+
+Focused replay
+--------------
+Production source/control-flow audit:
+  PASS
+
+Projected Rust tests:
+  5 passed; 0 failed
+  wall: 1.02 seconds
+  peak RSS: 124,469,248 bytes
+  swaps: 0
+
+Clean Charon/Aeneas extraction:
+  PASS
+  exact generated Types.lean, Funs.lean and translation.json equality
+  wall: 1.23 seconds
+  peak RSS: 155,992,064 bytes
+  swaps: 0
+  Raw LLBC embeds replay-path metadata and is not byte-stable; generated
+  translation equality is the release reproducibility gate.
+
+Lean generated/source/path/caller replay:
+  PASS
+  wall: 10.36 seconds
+  peak RSS: 2,280,800,256 bytes
+  swaps: 0
+  threads: 1
+
+One-time local Aeneas Lean-backend dependency build:
+  PASS
+  wall: 376.59 seconds
+  peak RSS: 5,348,622,336 bytes
+  swaps: 0
+  This cold prerequisite was not repeated after focused targets were green.
+
+Principal theorem results
+-------------------------
+  translated_payer_and_system_success_is_exact
+  translated_successful_plan_is_exactly_classified
+  translated_rejected_atomic_marker_terminal_is_exact_prestate
+  translated_accepted_atomic_marker_terminal_is_exact
+  translated_create_account_reservation_is_exact
+  translated_transfer_allocate_assign_reservation_is_exact
+  translated_allocate_assign_reservation_is_exact
+  translated_already_program_owned_reservation_is_exact
+  translated_accepted_create_account_path_is_exact
+  translated_accepted_transfer_allocate_assign_path_is_exact
+  translated_accepted_allocate_assign_path_is_exact
+  translated_accepted_already_program_owned_path_is_exact
+  translated_spent_replay_is_exact_and_atomic
+  translated_accepted_marker_is_consumed_exactly
+  translated_successful_reservation_path_is_exactly_classified
+  translated_accepted_atomic_has_one_exact_marker_lifecycle
+
+The complete printed axiom union is exactly:
+  propext
+  Classical.choice
+  Quot.sound
+
+There is no sorry, admit, sorryAx, native_decide, project-specific axiom or
+conclusion-shaped restore premise in compiled generated/proof source.
+
+Explicit remaining boundaries
+-----------------------------
+  Solana PDA derivation/System CPI/Rent sysvar/atomic rollback behavior
+  fixed-width projection correspondence to hash-pinned production source
+  Charon/Aeneas/compiler and Lean kernel
+  verifier cryptography (unchanged, composed in the separate verifier bridge)
+
+No production Rust, proof relation, wire format or deployment state changed.
+Nothing was pushed, merged, deployed, signed or submitted.

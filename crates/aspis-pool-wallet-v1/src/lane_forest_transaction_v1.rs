@@ -23,6 +23,7 @@ use aspis_statement::{
         root_history_location, PoolV1PairForestLaneStateV1, PoolV1PairForestMasterV1,
         PoolV1PairForestTerminalPaymentV1, PoolV1PairForestTerminalRequestV1,
         POOL_V1_PAIR_CAPACITY, POOL_V1_PAIR_FOREST_TERMINAL_VERSION,
+        POOL_V1_VERIFIER_POLICY_FLAG_IMMUTABLE_DEPLOYMENT,
     },
 };
 use base64::{engine::general_purpose::STANDARD as BASE64_STANDARD, Engine as _};
@@ -35,11 +36,18 @@ use solana_program::{
     instruction::{AccountMeta, Instruction},
     pubkey::Pubkey,
 };
+use solana_sdk_ids::system_program;
 use solana_signature_v1::Signature as V1Signature;
 use solana_transaction::versioned::VersionedTransaction as LegacyVersionedTransaction;
 use solana_transaction_v1::versioned::VersionedTransaction as V1VersionedTransaction;
 
-use crate::lane_forest_client_v2::PairForestSpendProfileSelectionV2;
+use crate::lane_forest_client_v2::{
+    PairForestSpendProfileSelectionV2, PairForestVerifierRegistryFamilyV2,
+};
+use crate::tx_v1_ciphertext_carrier_v2::{
+    build_tx_v1_ciphertext_carrier_instruction_v2, TxV1CiphertextCarrierV2,
+    POOL_V1_TX_V1_CIPHERTEXT_CARRIER_PROGRAM_V2,
+};
 
 pub const SOLANA_LEGACY_V0_TRANSACTION_MAX_BYTES_V2: usize = 1_232;
 pub const SOLANA_V1_TRANSACTION_MAX_BYTES_V2: usize = 4_096;
@@ -75,6 +83,9 @@ pub enum PairForestTransactionV1ErrorV2 {
     SanitizeFailed,
     SerializationFailed,
     TransactionTooLarge,
+    InvalidCarrier,
+    SignedMessageMismatch,
+    InvalidSignature,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -377,21 +388,28 @@ fn terminal_request_identity_v2(
 
 /// Build the exact one-terminal `ASQ8` top-level Pool instruction.
 ///
-/// Same-page/genesis transfer: 9 accounts. Rollover transfer: 10.
-/// Withdrawal appends the exact five legacy SPL custody accounts: 14 or 15.
+/// Same-page/genesis transfer: 11 accounts. Rollover transfer: 12.
+/// Withdrawal appends the exact five legacy SPL custody accounts: 16 or 17.
+/// The marker payer is normally also the transaction fee payer; it remains an
+/// explicit writable signer because the Pool atomically creates the canonical
+/// nullifier PDA immediately before verifier CPI.
 #[allow(clippy::too_many_arguments)]
 pub fn build_pair_forest_terminal_instruction_v1_4k_v2(
     pool_program: Pubkey,
     master: &PoolV1PairForestMasterV1,
     lane: &PoolV1PairForestLaneStateV1,
     profile: PairForestSpendProfileSelectionV2,
+    marker_payer: Pubkey,
     proof_account: Pubkey,
     request: &PoolV1PairForestTerminalRequestV1,
 ) -> Result<Instruction, PairForestTransactionV1ErrorV2> {
     if pool_program == Pubkey::default() {
         return Err(PairForestTransactionV1ErrorV2::UnpinnedProgram);
     }
-    if proof_account == Pubkey::default() || profile.verifier_program == [0u8; 32] {
+    if marker_payer == Pubkey::default()
+        || proof_account == Pubkey::default()
+        || profile.verifier_program == [0u8; 32]
+    {
         return Err(PairForestTransactionV1ErrorV2::ZeroAccount);
     }
     let mint = Pubkey::new_from_array(master.identity.asset_mint);
@@ -441,16 +459,39 @@ pub fn build_pair_forest_terminal_instruction_v1_4k_v2(
         return Err(PairForestTransactionV1ErrorV2::WrongProfile);
     }
     let registry_program = Pubkey::new_from_array(profile.registry_program);
-    let registry_address =
-        aspis_registry::pool_v1_verifier_registry_address(&registry_program, &master_address).0;
-    let entry_address = aspis_registry::pool_v1_verifier_entry_address(
-        &registry_program,
-        &master_address,
-        &request.verifier_profile,
-        &request.verifier_release,
-    )
-    .0;
-    if profile.registry_address != registry_address.to_bytes()
+    let immutable_deployment =
+        master.verifier_policy.flags & POOL_V1_VERIFIER_POLICY_FLAG_IMMUTABLE_DEPLOYMENT != 0;
+    let (expected_family, registry_address, entry_address) = if immutable_deployment {
+        (
+            PairForestVerifierRegistryFamilyV2::ImmutableDeploymentV2,
+            aspis_registry::pool_v1_verifier_registry_v2_address(
+                &registry_program,
+                &master_address,
+            )
+            .0,
+            aspis_registry::pool_v1_verifier_entry_v2_address(
+                &registry_program,
+                &master_address,
+                &request.verifier_profile,
+                &request.verifier_release,
+            )
+            .0,
+        )
+    } else {
+        (
+            PairForestVerifierRegistryFamilyV2::LegacyV1,
+            aspis_registry::pool_v1_verifier_registry_address(&registry_program, &master_address).0,
+            aspis_registry::pool_v1_verifier_entry_address(
+                &registry_program,
+                &master_address,
+                &request.verifier_profile,
+                &request.verifier_release,
+            )
+            .0,
+        )
+    };
+    if profile.registry_family != expected_family
+        || profile.registry_address != registry_address.to_bytes()
         || profile.entry_address != entry_address.to_bytes()
     {
         return Err(PairForestTransactionV1ErrorV2::WrongProfile);
@@ -501,6 +542,8 @@ pub fn build_pair_forest_terminal_instruction_v1_4k_v2(
     }
     accounts.extend([
         AccountMeta::new(marker, false),
+        AccountMeta::new(marker_payer, true),
+        AccountMeta::new_readonly(system_program::id(), false),
         AccountMeta::new_readonly(registry_address, false),
         AccountMeta::new_readonly(entry_address, false),
         AccountMeta::new_readonly(Pubkey::new_from_array(profile.verifier_program), false),
@@ -563,21 +606,48 @@ pub fn build_exact_pair_forest_v1_transaction_v2(
     config: PairForestV1TransactionConfigV2,
     lookup_tables: &[AddressLookupTableAccount],
 ) -> Result<ExactUnsignedPairForestV1TransactionV2, PairForestTransactionV1ErrorV2> {
-    if instruction.program_id == Pubkey::default() || fee_payer == Pubkey::default() {
+    build_exact_pair_forest_v1_instructions_v2(
+        core::slice::from_ref(instruction),
+        fee_payer,
+        recent_blockhash,
+        config,
+        lookup_tables,
+    )
+}
+
+fn build_exact_pair_forest_v1_instructions_v2(
+    instructions: &[Instruction],
+    fee_payer: Pubkey,
+    recent_blockhash: [u8; 32],
+    config: PairForestV1TransactionConfigV2,
+    lookup_tables: &[AddressLookupTableAccount],
+) -> Result<ExactUnsignedPairForestV1TransactionV2, PairForestTransactionV1ErrorV2> {
+    if instructions.is_empty()
+        || instructions
+            .iter()
+            .any(|instruction| instruction.program_id == Pubkey::default())
+        || fee_payer == Pubkey::default()
+    {
         return Err(PairForestTransactionV1ErrorV2::UnpinnedProgram);
     }
     if !lookup_tables.is_empty() {
         return Err(PairForestTransactionV1ErrorV2::AddressLookupTableForbidden);
     }
-    if instruction.program_id == solana_sdk_ids::compute_budget::id() {
+    if instructions
+        .iter()
+        .any(|instruction| instruction.program_id == solana_sdk_ids::compute_budget::id())
+    {
         return Err(PairForestTransactionV1ErrorV2::ComputeBudgetInstructionForbidden);
     }
     config.validate_v2()?;
-    let instruction = to_v1_instruction_v2(instruction)?;
+    let instructions = instructions
+        .iter()
+        .map(to_v1_instruction_v2)
+        .collect::<Result<Vec<_>, _>>()?;
     let payer = Address::from(fee_payer.to_bytes());
     let message = v1::Message::try_compile_with_config(
         &payer,
-        &[instruction],
+        &instructions,
         V1Hash::new_from_array(recent_blockhash),
         config.as_solana_v1(),
     )
@@ -621,9 +691,113 @@ pub fn build_exact_pair_forest_v1_transaction_v2(
         placeholder_signature_wire,
         required_signatures: signatures as u8,
         inline_addresses: addresses as u8,
-        instruction_count: 1,
+        instruction_count: u8::try_from(instructions.len())
+            .map_err(|_| PairForestTransactionV1ErrorV2::TooManyInstructions)?,
         config,
     })
+}
+
+fn terminal_proof_account_v2(
+    instruction: &Instruction,
+) -> Result<Pubkey, PairForestTransactionV1ErrorV2> {
+    let request =
+        aspis_statement::pool_v1::decode_pool_v1_pair_forest_terminal_request_v1(&instruction.data)
+            .map_err(|_| PairForestTransactionV1ErrorV2::WrongRequest)?;
+    let proof_index = match request.public {
+        PoolV1PairForestTerminalPaymentV1::PrivateTransfer(_) => {
+            if !matches!(instruction.accounts.len(), 11 | 12) {
+                return Err(PairForestTransactionV1ErrorV2::WrongRequest);
+            }
+            instruction.accounts.len() - 1
+        }
+        PoolV1PairForestTerminalPaymentV1::Withdrawal(_) => {
+            if !matches!(instruction.accounts.len(), 16 | 17) {
+                return Err(PairForestTransactionV1ErrorV2::WrongRequest);
+            }
+            instruction.accounts.len() - 6
+        }
+    };
+    let proof = &instruction.accounts[proof_index];
+    if proof.pubkey == Pubkey::default() || proof.is_signer || proof.is_writable {
+        return Err(PairForestTransactionV1ErrorV2::WrongRequest);
+    }
+    Ok(proof.pubkey)
+}
+
+/// Compile the canonical two-instruction wallet delivery transaction:
+/// `SPL Noop(ASC8)` immediately followed by terminal-last `Pool(ASQ8)`.
+///
+/// The carrier account list contains exactly one readonly wallet/proof
+/// authority signer. Its Solana signature therefore commits to both
+/// instructions and prevents a fee-paying relayer from changing carrier bytes
+/// after authority approval.
+#[allow(clippy::too_many_arguments)]
+pub fn build_exact_pair_forest_v1_carrier_transaction_v2(
+    carrier: &TxV1CiphertextCarrierV2,
+    wallet_proof_authority: Pubkey,
+    terminal_instruction: &Instruction,
+    fee_payer: Pubkey,
+    recent_blockhash: [u8; 32],
+    config: PairForestV1TransactionConfigV2,
+    lookup_tables: &[AddressLookupTableAccount],
+) -> Result<ExactUnsignedPairForestV1TransactionV2, PairForestTransactionV1ErrorV2> {
+    if terminal_instruction.program_id == POOL_V1_TX_V1_CIPHERTEXT_CARRIER_PROGRAM_V2 {
+        return Err(PairForestTransactionV1ErrorV2::InvalidCarrier);
+    }
+    let proof_account = terminal_proof_account_v2(terminal_instruction)?;
+    carrier
+        .validate_terminal_v2(&terminal_instruction.data, proof_account.to_bytes(), 0, 1)
+        .map_err(|_| PairForestTransactionV1ErrorV2::InvalidCarrier)?;
+    let carrier_instruction =
+        build_tx_v1_ciphertext_carrier_instruction_v2(carrier, wallet_proof_authority)
+            .map_err(|_| PairForestTransactionV1ErrorV2::InvalidCarrier)?;
+    build_exact_pair_forest_v1_instructions_v2(
+        &[carrier_instruction, terminal_instruction.clone()],
+        fee_payer,
+        recent_blockhash,
+        config,
+        lookup_tables,
+    )
+}
+
+/// Verify a signer-produced TxV1 wire against the exact wallet-reviewed
+/// message. All required Ed25519 signatures are checked against the canonical
+/// signer prefix, so neither a fee payer nor a transport can replace ASC8,
+/// ASQ8, accounts, ordering, blockhash, or resource configuration.
+pub fn validate_signed_pair_forest_v1_carrier_transaction_v2(
+    expected: &ExactUnsignedPairForestV1TransactionV2,
+    signed_wire: &[u8],
+) -> Result<(), PairForestTransactionV1ErrorV2> {
+    if signed_wire.len() > SOLANA_V1_TRANSACTION_MAX_BYTES_V2 {
+        return Err(PairForestTransactionV1ErrorV2::TransactionTooLarge);
+    }
+    let transaction: V1VersionedTransaction = wincode::deserialize(signed_wire)
+        .map_err(|_| PairForestTransactionV1ErrorV2::SerializationFailed)?;
+    transaction
+        .sanitize()
+        .map_err(|_| PairForestTransactionV1ErrorV2::SanitizeFailed)?;
+    if wincode::serialize(&transaction)
+        .map_err(|_| PairForestTransactionV1ErrorV2::SerializationFailed)?
+        != signed_wire
+        || transaction.message.serialize() != expected.signable_message
+        || transaction.signatures.len() != usize::from(expected.required_signatures)
+        || expected.instruction_count != 2
+    {
+        return Err(PairForestTransactionV1ErrorV2::SignedMessageMismatch);
+    }
+    let required = usize::from(transaction.message.header().num_required_signatures);
+    let keys = transaction.message.static_account_keys();
+    if required != transaction.signatures.len()
+        || keys.len() < required
+        || transaction
+            .signatures
+            .iter()
+            .zip(&keys[..required])
+            .any(|(signature, key)| !signature.verify(key.as_ref(), &expected.signable_message))
+    {
+        return Err(PairForestTransactionV1ErrorV2::InvalidSignature);
+    }
+    Ok(())
 }
 
 /// Size the same instruction under v0's real 1,232-byte envelope.
@@ -667,7 +841,10 @@ mod tests {
         IncrementalMerkleTreeV1, PoolIdentityV1, PoolV1PrivateTransferPublicV1,
         PoolV1WithdrawalPublicV1, VerifierPolicyV1, POOL_V1_ENCRYPTED_NOTE_PAYLOAD_MAX_BYTES,
         POOL_V1_PAIR_FOREST_ALL_LANES_MASK, POOL_V1_PAIR_TREE_DEPTH, POOL_V1_ROOT_HISTORY_CAPACITY,
+        POOL_V1_VERIFIER_POLICY_FLAG_IMMUTABLE_REGISTRY,
     };
+    use solana_keypair::Keypair;
+    use solana_signer::Signer;
 
     use crate::{
         lane_forest_client_v2::{
@@ -675,6 +852,7 @@ mod tests {
             build_pair_forest_initialize_instruction_v2,
         },
         scan_state::FinalizedChainPointV1,
+        tx_v1_ciphertext_carrier_v2::structurally_valid_test_note_envelope_v2,
     };
 
     fn key(seed: u8) -> Pubkey {
@@ -744,6 +922,7 @@ mod tests {
     ) -> PairForestSpendProfileSelectionV2 {
         let pool = Pubkey::new_from_array(master.identity.pool);
         PairForestSpendProfileSelectionV2 {
+            registry_family: PairForestVerifierRegistryFamilyV2::LegacyV1,
             finalized_point: FinalizedChainPointV1::new(10, [11; 32]).unwrap(),
             provider_set_digest: [12; 32],
             registry_program: registry_program.to_bytes(),
@@ -782,8 +961,9 @@ mod tests {
         }
     }
 
-    fn terminal_fixture(
+    fn terminal_fixture_at_sequence(
         withdrawal: bool,
+        sequence: u64,
     ) -> (
         Pubkey,
         PoolV1PairForestMasterV1,
@@ -826,7 +1006,7 @@ mod tests {
         (
             program,
             master,
-            lane(&master, lane_id, rollover_sequence()),
+            lane(&master, lane_id, sequence),
             profile(&master, registry_program, profile_binding, release_binding),
             PoolV1PairForestTerminalRequestV1 {
                 verifier_profile: profile_binding,
@@ -837,18 +1017,117 @@ mod tests {
         )
     }
 
+    fn terminal_fixture(
+        withdrawal: bool,
+        rollover: bool,
+    ) -> (
+        Pubkey,
+        PoolV1PairForestMasterV1,
+        PoolV1PairForestLaneStateV1,
+        PairForestSpendProfileSelectionV2,
+        PoolV1PairForestTerminalRequestV1,
+    ) {
+        terminal_fixture_at_sequence(withdrawal, if rollover { rollover_sequence() } else { 0 })
+    }
+
+    fn immutable_terminal_fixture(
+        withdrawal: bool,
+        rollover: bool,
+    ) -> (
+        Pubkey,
+        PoolV1PairForestMasterV1,
+        PoolV1PairForestLaneStateV1,
+        PairForestSpendProfileSelectionV2,
+        PoolV1PairForestTerminalRequestV1,
+    ) {
+        let (program, mut master, lane, mut profile, request) =
+            terminal_fixture(withdrawal, rollover);
+        master.verifier_policy.flags = POOL_V1_VERIFIER_POLICY_FLAG_IMMUTABLE_REGISTRY
+            | POOL_V1_VERIFIER_POLICY_FLAG_IMMUTABLE_DEPLOYMENT;
+        master.verifier_policy.registry_authority = [0u8; 32];
+        let registry_program = Pubkey::new_from_array(profile.registry_program);
+        let pool = Pubkey::new_from_array(master.identity.pool);
+        profile.registry_family = PairForestVerifierRegistryFamilyV2::ImmutableDeploymentV2;
+        profile.registry_address =
+            aspis_registry::pool_v1_verifier_registry_v2_address(&registry_program, &pool)
+                .0
+                .to_bytes();
+        profile.entry_address = aspis_registry::pool_v1_verifier_entry_v2_address(
+            &registry_program,
+            &pool,
+            &profile.profile_binding,
+            &profile.release_binding,
+        )
+        .0
+        .to_bytes();
+        (program, master, lane, profile, request)
+    }
+
+    fn carrier(
+        request: &PoolV1PairForestTerminalRequestV1,
+        proof_account: Pubkey,
+        withdrawal: bool,
+    ) -> TxV1CiphertextCarrierV2 {
+        TxV1CiphertextCarrierV2::from_terminal_v2(
+            request,
+            proof_account.to_bytes(),
+            0,
+            1,
+            (!withdrawal).then(|| structurally_valid_test_note_envelope_v2(0xa1)),
+            structurally_valid_test_note_envelope_v2(0xa2),
+        )
+        .unwrap()
+    }
+
+    fn sign_exact_carrier_transaction(
+        expected: &ExactUnsignedPairForestV1TransactionV2,
+        fee_payer: &Keypair,
+        authority: &Keypair,
+    ) -> Vec<u8> {
+        let mut transaction: V1VersionedTransaction =
+            wincode::deserialize(expected.placeholder_signature_wire_v2()).unwrap();
+        let message = transaction.message.serialize();
+        let signer_keys = transaction.message.static_account_keys()
+            [..usize::from(transaction.message.header().num_required_signatures)]
+            .to_vec();
+        for (signature, key) in transaction.signatures.iter_mut().zip(signer_keys) {
+            let signer = if key.to_bytes() == fee_payer.pubkey().to_bytes() {
+                fee_payer
+            } else if key.to_bytes() == authority.pubkey().to_bytes() {
+                authority
+            } else {
+                panic!("unexpected required signer")
+            };
+            let bytes: [u8; 64] = signer.sign_message(&message).as_ref().try_into().unwrap();
+            *signature = V1Signature::from(bytes);
+        }
+        wincode::serialize(&transaction).unwrap()
+    }
+
     #[test]
     fn max_shape_terminal_wires_are_tx_v1_and_never_embed_the_proof() {
-        for (withdrawal, expected_accounts, expected_v1, expected_v0, expected_addresses) in
-            [(false, 10, 844, 822, 12), (true, 15, 1_009, 987, 17)]
-        {
-            let (program, master, lane, profile, request) = terminal_fixture(withdrawal);
+        for (
+            withdrawal,
+            rollover,
+            expected_accounts,
+            expected_v1,
+            expected_v0,
+            expected_addresses,
+        ) in [
+            (false, false, 11, 845, 823, 12),
+            (false, true, 12, 878, 856, 13),
+            (true, false, 16, 1_010, 988, 17),
+            (true, true, 17, 1_043, 1_021, 18),
+        ] {
+            let (program, master, lane, profile, request) = terminal_fixture(withdrawal, rollover);
             let proof_account = key(21);
+            let marker_payer = key(22);
             let instruction = build_pair_forest_terminal_instruction_v1_4k_v2(
                 program,
                 &master,
                 &lane,
                 profile,
+                marker_payer,
                 proof_account,
                 &request,
             )
@@ -857,7 +1136,7 @@ mod tests {
             assert_eq!(instruction.data.len(), 320);
             let transaction = build_exact_pair_forest_v1_transaction_v2(
                 &instruction,
-                key(22),
+                marker_payer,
                 [23; 32],
                 config(),
                 &[],
@@ -872,10 +1151,180 @@ mod tests {
                 .windows(64)
                 .any(|window| window == [0x5a; 64]));
             let v0 =
-                compare_exact_pair_forest_v0_size_v2(&instruction, key(22), [23; 32], &[]).unwrap();
+                compare_exact_pair_forest_v0_size_v2(&instruction, marker_payer, [23; 32], &[])
+                    .unwrap();
             assert_eq!(v0.serialized_wire_bytes, expected_v0);
             assert!(!v0.eligible_for_four_kib);
         }
+    }
+
+    #[test]
+    fn immutable_registry_v2_terminal_wires_preserve_account_count_and_exact_four_kib_sizes() {
+        for (withdrawal, rollover, expected_accounts, expected_v1, expected_addresses) in [
+            (false, false, 11, 845, 12),
+            (false, true, 12, 878, 13),
+            (true, false, 16, 1_010, 17),
+            (true, true, 17, 1_043, 18),
+        ] {
+            let (program, master, lane, profile, request) =
+                immutable_terminal_fixture(withdrawal, rollover);
+            let registry = Pubkey::new_from_array(profile.registry_address);
+            let entry = Pubkey::new_from_array(profile.entry_address);
+            let proof_account = key(21);
+            let marker_payer = key(22);
+            let instruction = build_pair_forest_terminal_instruction_v1_4k_v2(
+                program,
+                &master,
+                &lane,
+                profile,
+                marker_payer,
+                proof_account,
+                &request,
+            )
+            .unwrap();
+            assert_eq!(instruction.accounts.len(), expected_accounts);
+            assert_eq!(instruction.data.len(), 320);
+            assert!(instruction
+                .accounts
+                .iter()
+                .any(|meta| meta.pubkey == registry));
+            assert!(instruction.accounts.iter().any(|meta| meta.pubkey == entry));
+            assert!(!instruction.accounts.iter().any(|meta| {
+                meta.pubkey
+                    == aspis_registry::pool_v1_verifier_registry_address(
+                        &Pubkey::new_from_array(profile.registry_program),
+                        &Pubkey::new_from_array(master.identity.pool),
+                    )
+                    .0
+            }));
+            let transaction = build_exact_pair_forest_v1_transaction_v2(
+                &instruction,
+                marker_payer,
+                [23; 32],
+                config(),
+                &[],
+            )
+            .unwrap();
+            assert_eq!(transaction.serialized_wire_bytes_v2(), expected_v1);
+            assert_eq!(transaction.inline_addresses_v2(), expected_addresses);
+            assert_eq!(
+                SOLANA_V1_TRANSACTION_MAX_BYTES_V2 - transaction.serialized_wire_bytes_v2(),
+                SOLANA_V1_TRANSACTION_MAX_BYTES_V2 - expected_v1
+            );
+        }
+    }
+
+    #[test]
+    fn ciphertext_carrier_wires_fit_four_kib_for_every_terminal_shape() {
+        for (withdrawal, rollover, expected_accounts) in [
+            (false, false, 11),
+            (false, true, 12),
+            (true, false, 16),
+            (true, true, 17),
+        ] {
+            let (program, master, lane, profile, request) =
+                immutable_terminal_fixture(withdrawal, rollover);
+            let proof_account = key(21);
+            let marker_payer = key(22);
+            let instruction = build_pair_forest_terminal_instruction_v1_4k_v2(
+                program,
+                &master,
+                &lane,
+                profile,
+                marker_payer,
+                proof_account,
+                &request,
+            )
+            .unwrap();
+            assert_eq!(instruction.accounts.len(), expected_accounts);
+            let transaction = build_exact_pair_forest_v1_carrier_transaction_v2(
+                &carrier(&request, proof_account, withdrawal),
+                key(24),
+                &instruction,
+                marker_payer,
+                [23; 32],
+                config(),
+                &[],
+            )
+            .unwrap();
+            assert_eq!(transaction.required_signatures_v2(), 2);
+            assert_eq!(transaction.instruction_count_v2(), 2);
+            assert!(transaction.serialized_wire_bytes_v2() < 3_500);
+        }
+    }
+
+    #[test]
+    fn immutable_registry_policy_rejects_legacy_selection_without_fallback() {
+        let (program, master, lane, mut profile, request) =
+            immutable_terminal_fixture(false, false);
+        profile.registry_family = PairForestVerifierRegistryFamilyV2::LegacyV1;
+        assert_eq!(
+            build_pair_forest_terminal_instruction_v1_4k_v2(
+                program,
+                &master,
+                &lane,
+                profile,
+                key(22),
+                key(21),
+                &request,
+            ),
+            Err(PairForestTransactionV1ErrorV2::WrongProfile)
+        );
+    }
+
+    #[test]
+    fn authority_signature_prevents_relayer_carrier_or_order_mutation() {
+        let (program, master, lane, profile, request) = immutable_terminal_fixture(false, false);
+        let proof_account = key(21);
+        let fee_payer = Keypair::new_from_array([0xb1; 32]);
+        let terminal = build_pair_forest_terminal_instruction_v1_4k_v2(
+            program,
+            &master,
+            &lane,
+            profile,
+            fee_payer.pubkey(),
+            proof_account,
+            &request,
+        )
+        .unwrap();
+        let authority = Keypair::new_from_array([0xb2; 32]);
+        let expected = build_exact_pair_forest_v1_carrier_transaction_v2(
+            &carrier(&request, proof_account, false),
+            authority.pubkey(),
+            &terminal,
+            fee_payer.pubkey(),
+            [0xb3; 32],
+            config(),
+            &[],
+        )
+        .unwrap();
+        let signed = sign_exact_carrier_transaction(&expected, &fee_payer, &authority);
+        assert_eq!(
+            validate_signed_pair_forest_v1_carrier_transaction_v2(&expected, &signed),
+            Ok(())
+        );
+
+        let mut mutated: V1VersionedTransaction = wincode::deserialize(&signed).unwrap();
+        let V1VersionedMessage::V1(message) = &mut mutated.message else {
+            panic!("expected v1")
+        };
+        message.instructions[0].data[200] ^= 1;
+        let mutated = wincode::serialize(&mutated).unwrap();
+        assert_eq!(
+            validate_signed_pair_forest_v1_carrier_transaction_v2(&expected, &mutated),
+            Err(PairForestTransactionV1ErrorV2::SignedMessageMismatch)
+        );
+
+        let mut reordered: V1VersionedTransaction = wincode::deserialize(&signed).unwrap();
+        let V1VersionedMessage::V1(message) = &mut reordered.message else {
+            panic!("expected v1")
+        };
+        message.instructions.swap(0, 1);
+        let reordered = wincode::serialize(&reordered).unwrap();
+        assert_eq!(
+            validate_signed_pair_forest_v1_carrier_transaction_v2(&expected, &reordered),
+            Err(PairForestTransactionV1ErrorV2::SignedMessageMismatch)
+        );
     }
 
     #[test]
@@ -954,12 +1403,13 @@ mod tests {
             Err(PairForestTransactionV1ErrorV2::ComputeBudgetInstructionForbidden)
         );
 
-        let (program, master, lane, profile, request) = terminal_fixture(false);
+        let (program, master, lane, profile, request) = terminal_fixture(false, false);
         let instruction = build_pair_forest_terminal_instruction_v1_4k_v2(
             program,
             &master,
             &lane,
             profile,
+            key(55),
             key(52),
             &request,
         )

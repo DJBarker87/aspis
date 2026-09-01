@@ -204,6 +204,7 @@ aspis-core = { path = "../../crates/aspis-core" }
 aspis-statement = { path = "../../crates/aspis-statement" }
 borsh.workspace = true
 solana-program.workspace = true
+solana-sdk-ids = "2.2.1"
 
 [dev-dependencies]
 aspis-prover = { path = "../../crates/aspis-prover", features = ["insecure-spend-fixture"] }

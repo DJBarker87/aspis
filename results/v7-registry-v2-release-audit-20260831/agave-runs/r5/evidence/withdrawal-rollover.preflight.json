@@ -1,0 +1,62 @@
+{
+  "inputPath": "/tmp/aspis-v7-txv1-preflight.v4L2LO/withdrawal-rollover.input.json",
+  "schema": "aspis.v7.txv1-simulation-preflight.v1",
+  "simulationRequest": {
+    "id": 1003,
+    "jsonrpc": "2.0",
+    "method": "simulateTransaction",
+    "params": [
+      "gQEADAwAAAA7oEe3iPS3w8CURYfgDhEE+wncpbRGVWICpat7fSyqLwESiojj3XQJ8ZX9UtstPLpdcspnCb8dlBIb83SIAbQPb1wgSefPAU2IdS/OYn0N7XCwu3pB+L2NtBktjjQIyk4QHElJSUlJSUlJSUlJSUlJSUlJSUlJSUlJSUlJSUlJSUlJYVQaeAfzDYoeEw9GCWmviF6jclW47OUYnV8qH03fno158+Eg9HuPPBwQ+lqLjwLl/ZoB3iKzAZEOFttA7Yz3VOHqviO09lTzzewJJ9W3V9WohgviwfwcZOs+27NortxLAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAG3fbh12Whk9nL4UbO63msHLSF7V9bN5E6jPWFfv8AqSIIxjc90xOy8nalLRT+kxk3ndN8mKo7WLZN/JgtGlI/QUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkVFRUVFRUVFRUVFRUVFRUVFRUVFRUVFRUVFRUVFRUVFTVMdkZ8obeznBxv2Q5FESCvsuMLGReh2fz8hnxzP44VfDH5UVLi/LH/tVfoaQQui6rTBlaK+ZPfi/TsA4ZeajYWSM5cIkEtxe2wEt6Ul75a4DRkZ92trBFjGNlCv5BGUtdXup/PsVQrI1zhZljH5oeL66Q9QFX8bwLa/l4F3Tq7EZlSqaCvbMLpriVNe9k0AX8IX0y2FhmzCTKdIz3LAzf9nFB0Tw0h5uM9dqZkkjqvIXE9ruqnG0nPB5ezv1lEeINYTAAAAAAQJEUABCBABDwUDAAYRDg0LCgQCDAdBU1E4AQIBAKF5+NfjcCTrVOPbF/OWs5ihvrLaDIv69iszXyuk6lwmrdCWY8alSDgOGn5TlMhCbm5IusJKjFNqBF+/nb6fuhxBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFTV1ABAgEAIgjGNz3TE7LydqUtFP6TGTed03yYqjtYtk38mC0aUj8FBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBSoAAAAAAAAAVfY+BJ9QdSHd74B42IONMWPvZiP9lJMGgHhDZ1axnTjbG4IATJCJBhRgsmGkJQYAgI/acKKksBQZusAT0a9udU0AAAD6AAAASUlJSUlJSUlJSUlJSUlJSUlJSUlJSUlJSUlJSUlJSUmDVLsPYLImeEOfvn4ERcVP23j5AwF8lhu2BJlrZaWHaQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=",
+      {
+        "accounts": {
+          "addresses": [
+            "3Hrd4YKTTF2eaoWjdwzBwagmH9SeuenwiVyQajm72C8N",
+            "EDfQpAnRQVqFmGZuY2ocZoX7gBp5H1N3MWWMLmuWTmD6",
+            "3B3QhxztFR6kSo3m3kpTaU9JsQyJH6ScoT94gwnFXQYj",
+            "DEozmkY3H2YccnEAqHyENJp2Hs1HAFjBq6xqdJDFeZk9",
+            "GCtLhcW4k4mYZRnGecvcx1CEWyiYQzs4UjuDUEaBirqY",
+            "7YvvqJNdXZt3aNMkCebG4To2f1VJe1TbxHBtY41D4Jy2",
+            "JBz8KKzyZ6FzTU7WmLywurr49xJPpQcA9ECNg2SZX6iH",
+            "9zQXTg6QqijGAG3kyWf94CQA3KdFq3VoYBLAUrhge1WB",
+            "5fQPsn8hoaVddFG26cWQ5QFdqxWtUPNaZ9zH2E6LYzFn",
+            "5TeWSsjg2gbxCyWVniXeCmwM7UtHTCK7svzJr5xYJzHf",
+            "9D428z6FiWBzKX9i72tc26RGybMbGV9FLUa8EAAvf7kX",
+            "5w5aSyzkAmgYBcG3qop5EuLgpbMhAe7rnneuFkGjYKYc",
+            "6CquEHN9aS4cvEjUnZPhr1azMBmbiF5pMfdjVu8RQx6p"
+          ],
+          "encoding": "base64"
+        },
+        "commitment": "finalized",
+        "encoding": "base64",
+        "innerInstructions": true,
+        "minContextSlot": 150,
+        "replaceRecentBlockhash": false,
+        "sigVerify": false
+      }
+    ]
+  },
+  "summary": {
+    "case": {
+      "history_path": "rollover",
+      "operation": "withdrawal"
+    },
+    "compute_unit_limit": 1300000,
+    "fee_payer": "AKnL4NNf3DGWZJS6cPknBuEGnVsV4A4m5tgebLHaRSZ9",
+    "headroom_to_4096_bytes": 3065,
+    "heap_size_present": false,
+    "inline_addresses": 18,
+    "instruction_accounts": 17,
+    "instruction_data_bytes": 320,
+    "loaded_accounts_data_size_limit": 67108864,
+    "min_context_slot": 150,
+    "placeholder_signatures_are_zero": true,
+    "placeholder_wire_sha256": "5e259f400be009ae520eb157e9956b01ffa6e8b79f26ab482544e71f4e6a7deb",
+    "pool_program": "5PjDJaGfSPJj4tFzMRCiuuAasKg5n8dJKXKenhuwZexx",
+    "priority_fee_present": false,
+    "required_signatures": 1,
+    "schema": "aspis.v7.txv1-simulation-summary.v1",
+    "serialized_transaction_bytes": 1031,
+    "signable_message_sha256": "16cbf431ff114fc0c859ca04cf85554aba2bec505a10c26ebe30c473a5959b6f",
+    "simulation_only": true
+  }
+}

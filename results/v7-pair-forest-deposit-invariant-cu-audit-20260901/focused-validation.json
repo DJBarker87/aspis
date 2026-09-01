@@ -1,0 +1,69 @@
+{
+  "schema": "aspis.v7.pair-forest-deposit-invariant-focused-validation.v1",
+  "repositoryRevision": "74cc65d4f0da48ea8a49e833c0f35398195b3ec4",
+  "broadRegressionRun": false,
+  "verifierBuildRun": false,
+  "cuProfilerRun": false,
+  "commands": [
+    {
+      "command": "NO_DNA=1 cargo test -q -p aspis-pool --lib --no-default-features --features pair-forest-deposit-invariant-audit deposit_invariant -- --nocapture",
+      "testsPassed": 2,
+      "testsFailed": 0,
+      "wallSeconds": 0.48,
+      "maximumResidentSetBytes": 87031808,
+      "swaps": 0
+    },
+    {
+      "command": "focused individual audit-feature tests: program_invariant_lane_decoder_keeps_exact_boundary; authenticated_result_encoder_is_byte_exact_for_valid_lanes; pair_forest_lane_persistence_surface_remains_closed; vault_deposit_routes_one_occupied_empty_pair_and_creates_lane_history; vault_deposit_rollover_preserves_full_history_and_starts_next_page",
+      "testsPassed": 5,
+      "testsFailed": 0,
+      "exitStatus": 0,
+      "swaps": 0
+    },
+    {
+      "command": "NO_DNA=1 cargo test -q -p aspis-pool --lib --no-default-features --features pair-forest-account-evidence vault_deposit_routes_one_occupied_empty_pair_and_creates_lane_history -- --nocapture",
+      "testsPassed": 1,
+      "testsFailed": 0,
+      "wallSeconds": 2.18,
+      "maximumResidentSetBytes": 401719296,
+      "swaps": 0
+    },
+    {
+      "command": "NO_DNA=1 cargo test -q -p aspis-pool --lib --no-default-features --features pair-forest-account-evidence vault_deposit_rollover_preserves_full_history_and_starts_next_page -- --nocapture",
+      "testsPassed": 1,
+      "testsFailed": 0,
+      "wallSeconds": 0.29,
+      "maximumResidentSetBytes": 87080960,
+      "swaps": 0
+    },
+    {
+      "command": "cargo check -q --locked --manifest-path tools/v7-live-pool-proof/Cargo.toml --bin prepare-live-genesis --bin build-live-pool-deposit",
+      "exitStatus": 0,
+      "wallSeconds": 21.96,
+      "maximumResidentSetBytes": 535560192,
+      "swaps": 0
+    },
+    {
+      "command": "NO_DNA=1 cargo check -q -p aspis-pool --no-default-features --features v7-pair-forest-one-tx-candidate,pair-forest-deposit-invariant-audit",
+      "exitStatus": 0,
+      "wallSeconds": 7.98,
+      "maximumResidentSetBytes": 462225408,
+      "swaps": 0
+    },
+    {
+      "command": "bash -n scripts/v7_pair_forest_deposit_cu_audit.sh scripts/v7_pair_forest_deposit_cu_child.sh scripts/v7_txv1_disposable_feature_cluster.sh",
+      "exitStatus": 0
+    },
+    {
+      "command": "git diff --check",
+      "exitStatus": 0
+    }
+  ],
+  "discardedPreflight": {
+    "description": "The first pair-domain append implementation incorrectly reused ordinary-tree empty roots. The exact-equivalence test failed at source index 0, so the implementation was replaced rather than its checks weakened.",
+    "rerunUnchanged": false
+  },
+  "maximumObservedLocalResidentSetBytes": 943734784,
+  "resourceCeilingBytes": 12884901888,
+  "pass": true
+}

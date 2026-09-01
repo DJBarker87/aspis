@@ -1,0 +1,115 @@
+{
+  "schema": "aspis.v7.registry-v2-runtime-input-audit.v1",
+  "evidenceCommit": "7179f7c550fe0461f4251dea5268af73876da91d",
+  "evidenceTree": "72d8ccd295994277bcb5f9df922c2a1483ac0443",
+  "productionSourceParent": "4722228b991ebb72850b8d79dd54b0fee4899462",
+  "productionInputsUnchangedFromParent": true,
+  "bundle": "results/v7-pair-forest-registry-v2-litesvm-20260830",
+  "bundleInventorySha256": "fc0952a7d1075c38dd370ef16ca984e3aebe0572c89d0082cfaf40636ff7b27e",
+  "checkedTerminalCases": [
+    {
+      "file": "production-transfer-same-success.json",
+      "scenario": "success",
+      "operation": "private-transfer",
+      "outcome": "accepted",
+      "computeUnits": 1161460,
+      "serializedTransactionBytes": 845
+    },
+    {
+      "file": "production-transfer-rollover-success.json",
+      "scenario": "success",
+      "operation": "private-transfer",
+      "outcome": "accepted",
+      "computeUnits": 1207174,
+      "serializedTransactionBytes": 878
+    },
+    {
+      "file": "production-withdrawal-same-success.json",
+      "scenario": "success",
+      "operation": "withdrawal",
+      "outcome": "accepted",
+      "computeUnits": 1153110,
+      "serializedTransactionBytes": 1010
+    },
+    {
+      "file": "production-withdrawal-rollover-success.json",
+      "scenario": "success",
+      "operation": "withdrawal",
+      "outcome": "accepted",
+      "computeUnits": 1218822,
+      "serializedTransactionBytes": 1043
+    },
+    {
+      "file": "production-proof-rejection.json",
+      "scenario": "proof-rejection",
+      "operation": "private-transfer",
+      "outcome": "rejected",
+      "computeUnits": 975390,
+      "serializedTransactionBytes": 845
+    },
+    {
+      "file": "production-wrong-release.json",
+      "scenario": "wrong-release",
+      "operation": "private-transfer",
+      "outcome": "rejected",
+      "computeUnits": 36629,
+      "serializedTransactionBytes": 845
+    },
+    {
+      "file": "production-stale-lane.json",
+      "scenario": "stale-lane",
+      "operation": "private-transfer",
+      "outcome": "rejected",
+      "computeUnits": 72167,
+      "serializedTransactionBytes": 845
+    },
+    {
+      "file": "production-replay-nullifier.json",
+      "scenario": "replay-nullifier",
+      "operation": "private-transfer",
+      "outcome": "accepted",
+      "computeUnits": 1161460,
+      "serializedTransactionBytes": 845,
+      "replayComputeUnits": 23727
+    },
+    {
+      "file": "production-malformed-result.json",
+      "scenario": "malformed-result",
+      "operation": "private-transfer",
+      "outcome": "rejected",
+      "computeUnits": 47114,
+      "serializedTransactionBytes": 845
+    },
+    {
+      "file": "production-mutated-result.json",
+      "scenario": "mutated-result",
+      "operation": "private-transfer",
+      "outcome": "rejected",
+      "computeUnits": 50151,
+      "serializedTransactionBytes": 845
+    },
+    {
+      "file": "production-withdrawal-cpi-failure.json",
+      "scenario": "withdrawal-cpi-failure",
+      "operation": "withdrawal",
+      "outcome": "rejected",
+      "computeUnits": 1151875,
+      "serializedTransactionBytes": 1010
+    }
+  ],
+  "worstCombinedCu": 1218822,
+  "largestTerminalTransactionBytes": 1043,
+  "headroom": {
+    "to1300000Cu": 81178,
+    "to4096Bytes": 3053
+  },
+  "provenance": {
+    "measurement": "REAL COMBINED LITESVM 0.16.0 EXECUTION; NOT A COMPONENT SUM",
+    "sbf": "ONE PINNED LINUX BUILD; DUAL A/B REPRODUCTION STILL REQUIRED",
+    "publicCluster": "NO DEVNET OR MAINNET RECEIPT",
+    "deployment": false,
+    "signing": false,
+    "submission": false
+  },
+  "pass": true
+}

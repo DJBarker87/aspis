@@ -11,9 +11,9 @@ use alloc::{boxed::Box, vec, vec::Vec};
 
 use aspis_statement::pool_v1::{
     decode_pool_v1_pair_forest_terminal_result_v1, encode_pool_v1_pair_forest_terminal_request_v1,
-    encode_pool_v1_pair_forest_terminal_result_v1,
-    PoolV1PairForestTerminalRequestV1, PoolV1PairForestTerminalResultV1,
-    POOL_V1_PAIR_FOREST_TERMINAL_RESULT_BYTES, POOL_V1_PAIR_FOREST_TERMINAL_VERSION,
+    encode_pool_v1_pair_forest_terminal_result_v1, PoolV1PairForestTerminalRequestV1,
+    PoolV1PairForestTerminalResultV1, POOL_V1_PAIR_FOREST_TERMINAL_RESULT_BYTES,
+    POOL_V1_PAIR_FOREST_TERMINAL_VERSION,
 };
 use solana_program::{
     account_info::AccountInfo,
@@ -147,6 +147,9 @@ fn plan_pair_forest_terminal_dispatch_with_bytes_v1(
         },
         current_slot,
     )?;
+    if !authenticated.matches_verifier_owner(verifier_program.owner) {
+        return Err(PoolV1ProgramError::InvalidVerifierProgramAccount.into());
+    }
     if !authenticated.matches(
         master.key.to_bytes(),
         selected.to_bytes(),
@@ -422,6 +425,37 @@ mod tests {
         invoked: Option<Instruction>,
     }
 
+    #[derive(Clone, Copy)]
+    enum ControlledReturn {
+        InvokeError,
+        Missing,
+        WrongProgram,
+        WrongLength,
+        Malformed,
+    }
+
+    struct ControlledRuntime {
+        mode: ControlledReturn,
+        returned: Option<(Pubkey, Vec<u8>)>,
+    }
+
+    fn canonical_result_for(instruction: &Instruction) -> Vec<u8> {
+        encode_pool_v1_pair_forest_terminal_result_v1(&PoolV1PairForestTerminalResultV1 {
+            transition_kind: PoolV1TransitionKind::PrivateTransfer,
+            master_account: instruction.accounts[1].pubkey.to_bytes(),
+            selected_lane_account: instruction.accounts[3].pubkey.to_bytes(),
+            output_lane: 1,
+            nullifier: [M31::ONE; 8],
+            verified_afterstate: PoolV1PairVerifiedAfterstateV1 {
+                next_pair_index: 1,
+                next_root: [M31(2); 8],
+                next_frontier: core::array::from_fn(|_| [M31::ZERO; 8]),
+            },
+        })
+        .unwrap()
+        .to_vec()
+    }
+
     impl PairForestVerifierRuntimeV1 for MockRuntime {
         fn clear_return_data(&mut self) {
             self.returned = None;
@@ -429,30 +463,250 @@ mod tests {
 
         fn invoke(&mut self, instruction: &Instruction, _: &[AccountInfo<'_>]) -> ProgramResult {
             self.invoked = Some(instruction.clone());
-            let result = PoolV1PairForestTerminalResultV1 {
-                transition_kind: PoolV1TransitionKind::PrivateTransfer,
-                master_account: instruction.accounts[1].pubkey.to_bytes(),
-                selected_lane_account: instruction.accounts[3].pubkey.to_bytes(),
-                output_lane: 1,
-                nullifier: [M31::ONE; 8],
-                verified_afterstate: PoolV1PairVerifiedAfterstateV1 {
-                    next_pair_index: 1,
-                    next_root: [M31(2); 8],
-                    next_frontier: core::array::from_fn(|_| [M31::ZERO; 8]),
-                },
-            };
-            self.returned = Some((
-                instruction.program_id,
-                encode_pool_v1_pair_forest_terminal_result_v1(&result)
-                    .unwrap()
-                    .to_vec(),
-            ));
+            self.returned = Some((instruction.program_id, canonical_result_for(instruction)));
             Ok(())
         }
 
         fn get_return_data(&mut self) -> Option<(Pubkey, Vec<u8>)> {
             self.returned.clone()
         }
+    }
+
+    impl PairForestVerifierRuntimeV1 for ControlledRuntime {
+        fn clear_return_data(&mut self) {
+            self.returned = None;
+        }
+
+        fn invoke(&mut self, instruction: &Instruction, _: &[AccountInfo<'_>]) -> ProgramResult {
+            if matches!(self.mode, ControlledReturn::InvokeError) {
+                return Err(ProgramError::InvalidAccountData);
+            }
+            if matches!(self.mode, ControlledReturn::Missing) {
+                return Ok(());
+            }
+            let mut bytes = canonical_result_for(instruction);
+            let program = if matches!(self.mode, ControlledReturn::WrongProgram) {
+                Pubkey::new_unique()
+            } else {
+                instruction.program_id
+            };
+            if matches!(self.mode, ControlledReturn::WrongLength) {
+                bytes.pop();
+            } else if matches!(self.mode, ControlledReturn::Malformed) {
+                bytes.fill(0xff);
+            }
+            self.returned = Some((program, bytes));
+            Ok(())
+        }
+
+        fn get_return_data(&mut self) -> Option<(Pubkey, Vec<u8>)> {
+            self.returned.clone()
+        }
+    }
+
+    #[test]
+    fn selected_verifier_requires_exact_readonly_executable_supported_loader_account() {
+        let selected = Pubkey::new_unique();
+        let supported = [
+            bpf_loader::id(),
+            bpf_loader_upgradeable::id(),
+            loader_v4::id(),
+        ];
+        for loader in supported {
+            let mut lamports = 1;
+            let mut data = [];
+            let verifier = account(&selected, &loader, &mut lamports, &mut data, false, true);
+            assert_eq!(require_verifier_program(&verifier, &selected), Ok(()));
+        }
+
+        let unsupported = Pubkey::new_unique();
+        let mut lamports = 1;
+        let mut data = [];
+        let mut verifier = account(
+            &selected,
+            &unsupported,
+            &mut lamports,
+            &mut data,
+            false,
+            true,
+        );
+        assert_eq!(
+            require_verifier_program(&verifier, &selected),
+            Err(PoolV1ProgramError::InvalidVerifierProgramAccount.into())
+        );
+        let legacy_loader = bpf_loader::id();
+        verifier.owner = &legacy_loader;
+        verifier.executable = false;
+        assert_eq!(
+            require_verifier_program(&verifier, &selected),
+            Err(PoolV1ProgramError::InvalidVerifierProgramAccount.into())
+        );
+        verifier.executable = true;
+        verifier.is_writable = true;
+        assert_eq!(
+            require_verifier_program(&verifier, &selected),
+            Err(PoolV1ProgramError::InvalidVerifierProgramAccount.into())
+        );
+        verifier.is_writable = false;
+        verifier.is_signer = true;
+        assert_eq!(
+            require_verifier_program(&verifier, &selected),
+            Err(PoolV1ProgramError::InvalidVerifierProgramAccount.into())
+        );
+        verifier.is_signer = false;
+        assert_eq!(
+            require_verifier_program(&verifier, &Pubkey::new_unique()),
+            Err(PoolV1ProgramError::InvalidVerifierProgramAccount.into())
+        );
+    }
+
+    #[test]
+    fn verifier_cpi_failures_and_malformed_return_data_leave_all_inputs_unchanged() {
+        let selected = Pubkey::new_unique();
+        let loader = bpf_loader::id();
+        let proof_key = Pubkey::new_unique();
+        let master_key = Pubkey::new_unique();
+        let checkpoint_key = Pubkey::new_unique();
+        let lane_key = Pubkey::new_unique();
+        let registry_key = Pubkey::new_unique();
+        let entry_key = Pubkey::new_unique();
+        let pool_program = Pubkey::new_unique();
+        let registry_program = Pubkey::new_unique();
+        let mut proof_lamports = 1;
+        let mut master_lamports = 1;
+        let mut checkpoint_lamports = 1;
+        let mut lane_lamports = 1;
+        let mut registry_lamports = 1;
+        let mut entry_lamports = 1;
+        let mut verifier_lamports = 1;
+        let mut proof_data = [1u8; 3];
+        let mut master_data = [2u8; 3];
+        let mut checkpoint_data = [3u8; 3];
+        let mut lane_data = [4u8; 3];
+        let mut registry_data = [5u8; 3];
+        let mut entry_data = [6u8; 3];
+        let mut verifier_data = [];
+        let before = (
+            proof_data,
+            master_data,
+            checkpoint_data,
+            lane_data,
+            registry_data,
+            entry_data,
+        );
+        let proof = account(
+            &proof_key,
+            &selected,
+            &mut proof_lamports,
+            &mut proof_data,
+            false,
+            false,
+        );
+        let master = account(
+            &master_key,
+            &pool_program,
+            &mut master_lamports,
+            &mut master_data,
+            false,
+            false,
+        );
+        let checkpoint = account(
+            &checkpoint_key,
+            &pool_program,
+            &mut checkpoint_lamports,
+            &mut checkpoint_data,
+            false,
+            false,
+        );
+        let lane = account(
+            &lane_key,
+            &pool_program,
+            &mut lane_lamports,
+            &mut lane_data,
+            true,
+            false,
+        );
+        let registry = account(
+            &registry_key,
+            &registry_program,
+            &mut registry_lamports,
+            &mut registry_data,
+            false,
+            false,
+        );
+        let entry = account(
+            &entry_key,
+            &registry_program,
+            &mut entry_lamports,
+            &mut entry_data,
+            false,
+            false,
+        );
+        let verifier = account(
+            &selected,
+            &loader,
+            &mut verifier_lamports,
+            &mut verifier_data,
+            false,
+            true,
+        );
+        let plan = PlannedPairForestDispatchV1 {
+            selected_verifier: selected,
+            request_bytes: vec![0u8; POOL_V1_PAIR_FOREST_TERMINAL_REQUEST_BYTES],
+        };
+
+        for (mode, expected) in [
+            (
+                ControlledReturn::InvokeError,
+                ProgramError::InvalidAccountData,
+            ),
+            (
+                ControlledReturn::Missing,
+                PoolV1ProgramError::MissingVerifierReturnData.into(),
+            ),
+            (
+                ControlledReturn::WrongProgram,
+                PoolV1ProgramError::InvalidVerifierReturnProgram.into(),
+            ),
+            (
+                ControlledReturn::WrongLength,
+                PoolV1ProgramError::InvalidVerifierReturnData.into(),
+            ),
+            (
+                ControlledReturn::Malformed,
+                PoolV1ProgramError::InvalidVerifierReturnData.into(),
+            ),
+        ] {
+            let mut runtime = ControlledRuntime {
+                mode,
+                returned: Some((Pubkey::new_unique(), vec![9u8; 17])),
+            };
+            assert_eq!(
+                invoke_pair_forest_terminal_with_runtime_v1(
+                    plan.clone(),
+                    &proof,
+                    &master,
+                    &checkpoint,
+                    &lane,
+                    &[registry.clone(), entry.clone()],
+                    &verifier,
+                    &mut runtime,
+                ),
+                Err(expected)
+            );
+        }
+        drop((proof, master, checkpoint, lane, registry, entry, verifier));
+        assert_eq!(
+            (
+                proof_data,
+                master_data,
+                checkpoint_data,
+                lane_data,
+                registry_data,
+                entry_data,
+            ),
+            before
+        );
     }
 
     #[test]

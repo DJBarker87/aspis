@@ -525,14 +525,17 @@ mod tests {
         );
 
         let (_, _, ingest) = agreed_block_v1(41, LANDED_SLOT, SIGNATURE);
+        // The provider set is part of the startup receipt digest. Changing it
+        // therefore fails the receipt binding before the redundant provider
+        // equality checks can run.
         let wrong_provider = OperatorStartupReceiptV1::test_only_v1(
-            *startup.receipt_digest(),
+            *startup.manifest_digest(),
             [0x98; 32],
             startup.checkpoint(),
         );
         assert_eq!(
             join_successful_relayer_finality_v1(&wrong_provider, hint, &plan, ingest).err(),
-            Some(RelayerFinalityJoinErrorV1::ProviderSetMismatch)
+            Some(RelayerFinalityJoinErrorV1::StartupReceiptMismatch)
         );
 
         let (_, _, ingest) = agreed_block_v1(41, LANDED_SLOT, SIGNATURE);
@@ -700,3 +703,7 @@ mod tests {
         );
     }
 }
+
+#[cfg(test)]
+#[path = "v7_relayer_finality_replay_tests.rs"]
+mod v7_relayer_finality_replay_tests;

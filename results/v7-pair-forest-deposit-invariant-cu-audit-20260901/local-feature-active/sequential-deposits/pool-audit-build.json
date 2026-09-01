@@ -1,0 +1,53 @@
+{
+  "schema": "aspis.v7.pair-forest-deposit-invariant-sbf-build.v1",
+  "generatedAt": "2026-09-01T18:37:09Z",
+  "repositoryRevision": "74cc65d4f0da48ea8a49e833c0f35398195b3ec4",
+  "host": "nuc.local",
+  "feature": "pair-forest-deposit-invariant-audit",
+  "cargoFeatures": [
+    "v7-pair-forest-one-tx-candidate",
+    "pair-forest-deposit-invariant-audit"
+  ],
+  "defaultOff": true,
+  "productionApproved": false,
+  "command": "NO_DNA=1 cargo-build-sbf --manifest-path programs/aspis-pool/Cargo.toml --no-default-features --features v7-pair-forest-one-tx-candidate,pair-forest-deposit-invariant-audit",
+  "toolchain": {
+    "cargoBuildSbf": "solana-cargo-build-sbf 2.3.0",
+    "platformTools": "v1.48",
+    "sbfRustc": "rustc 1.84.1",
+    "hostRustc": "rustc 1.94.1 (e408947bf 2026-03-25)"
+  },
+  "resourceLimits": {
+    "memoryHighBytes": 8589934592,
+    "memoryMaxBytes": 12884901888,
+    "memorySwapMaxBytes": 0
+  },
+  "resourceUsage": {
+    "wallSeconds": 30.89,
+    "maximumResidentSetBytes": 558194688,
+    "swaps": 0
+  },
+  "artifact": {
+    "relativePath": "results/v7-pair-forest-deposit-invariant-cu-audit-20260901/artifacts/aspis_pool.so",
+    "bytes": 536752,
+    "sha256": "9cd1401327493134ca42ed13a7e72d7e6c375c488f7aa2ede42b39f402b6c89d"
+  },
+  "preflightFailures": [
+    {
+      "attempt": 1,
+      "reason": "transient service PATH did not expose cargo-build-sbf",
+      "exitStatus": 101,
+      "wallSeconds": 0.01,
+      "maximumResidentSetBytes": 17641472,
+      "swaps": 0
+    },
+    {
+      "attempt": 2,
+      "reason": "direct cargo-build-sbf could not find cargo because PATH was still incomplete",
+      "exitStatus": 1,
+      "wallSeconds": 0.03,
+      "maximumResidentSetBytes": 73531392,
+      "swaps": 0
+    }
+  ]
+}

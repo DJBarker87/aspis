@@ -1,0 +1,20 @@
+{
+  "schema": "aspis.v7.live-transfer-terminal-finalized.v1",
+  "signature": "36xzE8aH8EwQ5vn8Y7H6gCnRqfNKJTWH6DxesKz2gH5swp66tLuq6xsSwUQgevgNGmYTZiuCKJAxMVPvZTrkZtgr",
+  "slot": 563,
+  "simulatedCu": 1199794,
+  "landedCu": 1199794,
+  "serializedTransactionBytes": 1378,
+  "signedWireSha256": "6a6e30d8449b8f3ee65840adae3ad250a65e32288c9f32cc27e8dd376ec4d338",
+  "selectedLane": 5,
+  "instructionCount": 2,
+  "terminalInstructionCount": 1,
+  "byteIdenticalSimulationSubmission": true,
+  "ciphertextCarrierRealHpke": true,
+  "protectedAccountsBeforeJsonSha256": "111b67cf8f81be3beafaaa4e114dc3e767f6ab11775e1fdb8b89c9972cf25003",
+  "protectedAccountsAfterJsonSha256": "4761c2c1dc446432f01d29832a40f6c2dcdbd976ec8869875c70ad3293e57611",
+  "finalized": true,
+  "auditOnly": true,
+  "disposable": true,
+  "mainnetReady": false
+}

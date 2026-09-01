@@ -1,0 +1,125 @@
+V7 REGISTRY / OPERATOR / SELECTED-VERIFIER SOURCE CLOSURE
+=========================================================
+
+Result: PASS for the exact current V1 guarantee.
+Mainnet deployment-identity result: NOT CLOSED; see HARD BOUNDARY below.
+
+Frozen repository parent
+------------------------
+
+5f993765647266252989682d077a9415481fcef6
+
+The production-source and harness SHA-256 values used by the replay are in
+evidence/source-sha256.txt.  The extraction script also pins the exact Charon
+and Aeneas executable hashes and versions.
+
+Focused Rust replay
+-------------------
+
+Target:
+  cargo test -p aspis-registry --lib
+Result:
+  12 passed; 0 failed
+  wall 0.25 s
+  peak RSS 87,228,416 bytes
+  swaps 0
+
+Target:
+  cargo test -p aspis-pool --features pair-forest-account-evidence \
+    pair_forest_dispatch::tests
+Result:
+  3 passed; 0 failed; 97 filtered out
+  wall 0.16 s
+  peak RSS 86,458,368 bytes
+  swaps 0
+
+Target:
+  cargo test --manifest-path \
+    aeneas-verif/v7-registry-operator-source-20260830/harness/Cargo.toml
+Result:
+  compile/test/doc-test success
+  wall 0.57 s
+  peak RSS 117,047,296 bytes
+  swaps 0
+
+Charon / Aeneas extraction replay
+---------------------------------
+
+Target:
+  replay-extraction.sh
+Result:
+  generated Types.lean, Funs.lean and translation.json byte-identical to the
+  frozen bundle
+  wall 2.37 s
+  peak RSS 164,593,664 bytes
+  swaps 0
+
+The raw LLBC contains temporary absolute source paths and therefore is not the
+byte-stability comparison.  The generated Lean/JSON outputs are the frozen,
+byte-identical replay products.
+
+Focused Lean replay
+-------------------
+
+Target:
+  replay-lean.sh
+Result:
+  PASS
+  wall 10.25 s
+  peak RSS 2,257,600,512 bytes
+  swaps 0
+
+Principal results:
+
+  translated_operator_rejection_is_exact_rollback
+  translated_operator_success_is_exact_apply
+  translated_operator_preserves_unrelated_pool_state
+  translated_frozen_registry_rejects_authority_gate
+  translated_generation_mismatch_rejects_authority_gate
+  translated_compatible_replacement_success_binds_exact_relation
+  translated_registry_authentication_success_is_exact
+  translated_entry_authentication_success_is_exact
+  translated_verifier_account_authentication_success_is_exact
+  translated_verifier_return_authentication_success_is_exact
+  translated_selected_verifier_success_has_exact_guarantee
+  current_v1_selection_is_independent_of_programdata_code_hash_and_authority
+  translated_combined_root_keeps_operator_and_selection_separate
+
+The complete reported axiom union for the nine exported audit targets is:
+
+  propext
+  Classical.choice
+  Quot.sound
+
+There is no sorry, admit, sorryAx, native_decide or project-specific axiom in
+the compiled source bundle.
+
+Exact current guarantee
+-----------------------
+
+The current V1 path kernel-checks the projected operator control flow,
+fail-closed rejection and exact rollback, unrelated Pool-state preservation,
+registry/entry/verifier account authentication, supported-loader selection,
+and exact selected-program ASR8 return binding.  It keeps the mutating
+operator family separate from the read-only selected-verifier family.
+
+Hard mainnet boundary
+---------------------
+
+V1 receives no ProgramData account, hashes no executable payload and does not
+authenticate an upgrade authority.  A frozen registry therefore does not make
+an upgradeable selected verifier immutable.  The Lean result
+current_v1_selection_is_independent_of_programdata_code_hash_and_authority
+proves this omission is real rather than hiding it behind a theorem premise.
+
+Mainnet activation remains blocked until V2, or an equivalently strong
+immutable-deployment certificate, is implemented, source-bridged, measured
+and exercised in the finalized devnet lifecycle.  The minimal V2 account,
+state, compatibility, transaction-size and CU design is documented in
+docs/research/v7-registry-operator-closure-20260830.md.
+
+Remaining trust boundary
+------------------------
+
+Ordinary Solana account/PDA/System-CPI/transaction rollback semantics and the
+Charon/Aeneas/compiler toolchain remain source-tool trust boundaries.

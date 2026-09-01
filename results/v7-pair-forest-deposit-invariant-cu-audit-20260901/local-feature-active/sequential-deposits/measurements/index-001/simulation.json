@@ -1,0 +1,112 @@
+{
+  "jsonrpc": "2.0",
+  "result": {
+    "context": {
+      "apiVersion": "4.2.0",
+      "slot": 215
+    },
+    "value": {
+      "accounts": null,
+      "err": null,
+      "fee": 10000,
+      "innerInstructions": null,
+      "loadedAccountsDataSize": 656124,
+      "loadedAddresses": {
+        "readonly": [],
+        "writable": []
+      },
+      "logs": [
+        "Program ComputeBudget111111111111111111111111111111 invoke [1]",
+        "Program ComputeBudget111111111111111111111111111111 success",
+        "Program 5PjDJaGfSPJj4tFzMRCiuuAasKg5n8dJKXKenhuwZexx invoke [1]",
+        "Program TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA invoke [2]",
+        "Program TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA consumed 105 of 806946 compute units",
+        "Program TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA success",
+        "Program 5PjDJaGfSPJj4tFzMRCiuuAasKg5n8dJKXKenhuwZexx consumed 594593 of 1399850 compute units",
+        "Program 5PjDJaGfSPJj4tFzMRCiuuAasKg5n8dJKXKenhuwZexx success"
+      ],
+      "postBalances": [
+        499999999886130280,
+        0,
+        2039280,
+        58352640,
+        2039280,
+        6236160,
+        1,
+        1141440,
+        3563520,
+        1141440,
+        1000000000
+      ],
+      "postTokenBalances": [
+        {
+          "accountIndex": 2,
+          "mint": "5TeWSsjg2gbxCyWVniXeCmwM7UtHTCK7svzJr5xYJzHf",
+          "owner": "59wpSA9enH7nxYBx4nDUYj5B95CCfMBwewERPTJuBTss",
+          "programId": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA",
+          "uiTokenAmount": {
+            "amount": "254000",
+            "decimals": 6,
+            "uiAmount": 0.254,
+            "uiAmountString": "0.254"
+          }
+        },
+        {
+          "accountIndex": 4,
+          "mint": "5TeWSsjg2gbxCyWVniXeCmwM7UtHTCK7svzJr5xYJzHf",
+          "owner": "6CquEHN9aS4cvEjUnZPhr1azMBmbiF5pMfdjVu8RQx6p",
+          "programId": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA",
+          "uiTokenAmount": {
+            "amount": "2000",
+            "decimals": 6,
+            "uiAmount": 0.002,
+            "uiAmountString": "0.002"
+          }
+        }
+      ],
+      "preBalances": [
+        499999999886140280,
+        0,
+        2039280,
+        58352640,
+        2039280,
+        6236160,
+        1,
+        1141440,
+        3563520,
+        1141440,
+        1000000000
+      ],
+      "preTokenBalances": [
+        {
+          "accountIndex": 2,
+          "mint": "5TeWSsjg2gbxCyWVniXeCmwM7UtHTCK7svzJr5xYJzHf",
+          "owner": "59wpSA9enH7nxYBx4nDUYj5B95CCfMBwewERPTJuBTss",
+          "programId": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA",
+          "uiTokenAmount": {
+            "amount": "255000",
+            "decimals": 6,
+            "uiAmount": 0.255,
+            "uiAmountString": "0.255"
+          }
+        },
+        {
+          "accountIndex": 4,
+          "mint": "5TeWSsjg2gbxCyWVniXeCmwM7UtHTCK7svzJr5xYJzHf",
+          "owner": "6CquEHN9aS4cvEjUnZPhr1azMBmbiF5pMfdjVu8RQx6p",
+          "programId": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA",
+          "uiTokenAmount": {
+            "amount": "1000",
+            "decimals": 6,
+            "uiAmount": 0.001,
+            "uiAmountString": "0.001"
+          }
+        }
+      ],
+      "replacementBlockhash": null,
+      "returnData": null,
+      "unitsConsumed": 594743
+    }
+  },
+  "id": 10001
+}

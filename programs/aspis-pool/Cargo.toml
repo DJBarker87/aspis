@@ -48,6 +48,11 @@ pair-forest-full-asf8-audit = ["pair-forest-account-evidence"]
 # invariant. They are not release features until Rust-to-Lean/Aeneas closure.
 pair-forest-source-invariant-audit = ["pair-forest-account-evidence"]
 pair-forest-source-result-invariant-audit = ["pair-forest-source-invariant-audit"]
+# Deposit-only audit of the same inductive Pool-write invariant.  This does
+# not enable the terminal source/result features and is intentionally absent
+# from both `default` and `v7-pair-forest-one-tx-candidate` until sequential
+# live CU evidence and the persisted-state proof have been reviewed.
+pair-forest-deposit-invariant-audit = ["pair-forest-account-evidence"]
 
 [dependencies]
 aspis-core.workspace = true

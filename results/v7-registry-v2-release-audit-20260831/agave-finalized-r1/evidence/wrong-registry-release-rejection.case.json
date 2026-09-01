@@ -1,0 +1,47 @@
+{
+  "schema": "aspis.v7.registry-v2-disposable-agave-txv1-finalized-case.v1",
+  "case": "wrong-registry-release-rejection",
+  "expectedOutcome": "failure",
+  "agave": "solana-cli 4.2.0 (src:ac82b5d4; feat:21b0d33a, client:Agave)",
+  "cluster": "disposable-local-validator",
+  "localTestPayer": "F7maZWq6BqhJGxNn7hWPYHPZ6igcsB5RTY8piKGovinv",
+  "signature": "5Arguym51VtgHfr5dw6c29KDFD3pb8y866KSqvAMbzkCL9jPfRMCmy5GxMiZcS6CEpvgZWnBinHbDenCPQ33DDL9",
+  "signed": true,
+  "submitted": true,
+  "finalized": true,
+  "sameSignedBytesSimulatedAndSubmitted": true,
+  "packetBytes": 833,
+  "transactionHeadroomTo4096Bytes": 3263,
+  "signedWireSha256": "72689df6aba9a80cc88dbd69eea062375740a69169f6c5468c2bb0f537a33b7e",
+  "simulationUnitsConsumed": 36573,
+  "landedUnitsConsumed": 36573,
+  "landedError": {
+    "InstructionError": [
+      0,
+      {
+        "Custom": 1095966731
+      }
+    ]
+  },
+  "protectedStateRollbackPreserved": true,
+  "protectedStateChangedOnSuccess": null,
+  "simulationMatchesFrozenExpectedState": null,
+  "landedStateMatchesFrozenExpectedState": null,
+  "simulationRuntimeMetadataValid": null,
+  "landedRuntimeMetadataValid": null,
+  "returnDataBytes": null,
+  "localEphemeralKeyOnly": true,
+  "realFundsUsed": false,
+  "publicClusterUsed": false,
+  "deployed": false,
+  "receipts": {
+    "signedRequest": "wrong-registry-release-rejection.signed-request.json",
+    "simulation": "wrong-registry-release-rejection.simulation.json",
+    "send": "wrong-registry-release-rejection.send.json",
+    "finalizedStatus": "wrong-registry-release-rejection.finalized-status.json",
+    "transaction": "wrong-registry-release-rejection.transaction.json",
+    "protectedStateBefore": "wrong-registry-release-rejection.before.json",
+    "protectedStateAfter": "wrong-registry-release-rejection.after.json",
+    "validatorLog": "wrong-registry-release-rejection.validator.log"
+  }
+}

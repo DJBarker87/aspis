@@ -1,0 +1,143 @@
+{
+  "schema": "aspis.v7.pair-forest-deposit-invariant-cu-audit-summary.v1",
+  "repositoryRevision": "74cc65d4f0da48ea8a49e833c0f35398195b3ec4",
+  "branch": "research/v7-live-pool-witness-adapter-20260901",
+  "classification": "DEFAULT-OFF DISPOSABLE FEATURE-ACTIVE DEPOSIT AUDIT COMPLETE",
+  "promotionProposed": false,
+  "mainnetReady": false,
+  "cluster": {
+    "kind": "disposable-local-validator",
+    "agave": "solana-cli 4.2.0 (src:ac82b5d4; feat:21b0d33a, client:Agave)",
+    "runtimeFeatureSet": 565236538,
+    "genesisHash": "DCogTpXc2KXqM1NMR71eAxxYUxoD9ZByEjbrRy891CtQ",
+    "txv1FeatureId": "txv1aq4pp281K9um3tnPgkfX8UqtFT6wcVW3hNezGLL",
+    "txv1FeatureActiveAtSlot": 0,
+    "auditOnlyIdentities": true,
+    "realFundsUsed": false
+  },
+  "program": {
+    "id": "5PjDJaGfSPJj4tFzMRCiuuAasKg5n8dJKXKenhuwZexx",
+    "feature": "pair-forest-deposit-invariant-audit",
+    "defaultOff": true,
+    "binaryBytes": 536752,
+    "binarySha256": "9cd1401327493134ca42ed13a7e72d7e6c375c488f7aa2ede42b39f402b6c89d"
+  },
+  "run": {
+    "poolInitialize": {
+      "serializedTransactionBytes": 784,
+      "simulatedCu": 131942,
+      "landedCu": 131942,
+      "signature": "26W5cyStkxMkgEF9JHU28Tqh8qhuiuSMKMTJ57uoaydiGWydoRZv1oStNimWsrm1GyFNeBNdhu9ybwyxkVMvwWYk",
+      "finalizedSlot": 151
+    },
+    "sequentialDeposits": 256,
+    "allFinalized": true,
+    "allSimulationSubmissionByteIdentical": true,
+    "allSimulatedLandedCuEqual": true,
+    "allCustodyDeltasExact": true,
+    "nonSelectedLanesUnchanged": true,
+    "sourceInitial": 256000,
+    "sourceFinal": 0,
+    "vaultInitial": 0,
+    "vaultFinal": 256000,
+    "samePageCuRange": {
+      "minimum": 594215,
+      "maximum": 594776
+    },
+    "maximumLandedCu": 643854,
+    "maximumSerializedTransactionBytes": 684,
+    "wallSeconds": 3517.71,
+    "maximumResidentSetBytes": 1480093696,
+    "maximumCgroupChargeBytes": 6742413312,
+    "swaps": 0
+  },
+  "measurements": [
+    {
+      "sourceIndex": 0,
+      "pageMode": "genesis",
+      "serializedTransactionBytes": 651,
+      "simulatedCu": 640272,
+      "landedCu": 640272,
+      "signature": "5UiVU1qiU8Uy3xfmQemh637ADn3wcgYH9euGJFSsyZzKkmPbQsickfzggk5MEZWCdxZRhKkVR4mfDusYAEpjP1Hy",
+      "finalizedSlot": 184,
+      "genericBaselineCu": 1112399,
+      "cuDelta": -472127,
+      "cuDeltaPercent": -42.442235
+    },
+    {
+      "sourceIndex": 1,
+      "pageMode": "same-page",
+      "serializedTransactionBytes": 617,
+      "simulatedCu": 594743,
+      "landedCu": 594743,
+      "signature": "3KCVJxuLerVP1rBhKv5NtGSGJYC8H9XoXE8zurzj9KKkACG4hrA6VutKouDfKxd5mCbmxdZRbNqwZYgJjVqXBctQ",
+      "finalizedSlot": 216,
+      "genericBaselineResult": "simulation failed at 1400000 CU ceiling; Pool consumed all 1399850 CU available before Token CPI",
+      "ceilingHeadroomCu": 805257,
+      "exactSuccessfulBaselineDeltaAvailable": false
+    },
+    {
+      "sourceIndex": 2,
+      "pageMode": "same-page",
+      "serializedTransactionBytes": 617,
+      "simulatedCu": 594683,
+      "landedCu": 594683,
+      "signature": "3xJ7d22XYGP4sgZ46auyyZFotwHPYaMoDBrVe56b9TPze6MJcXwAkkkRwu2o94TpF5kNsFw16R5wxG8xf4MJYUAF",
+      "finalizedSlot": 249,
+      "genericBaselineUnavailable": true
+    },
+    {
+      "sourceIndex": 3,
+      "pageMode": "same-page",
+      "serializedTransactionBytes": 617,
+      "simulatedCu": 594776,
+      "landedCu": 594776,
+      "signature": "3gSg7sfDPAbCC557mhXB1ZFGwBF4LHQdyDtxDrjVYP8tLo9hivdEFoyNFtJk6BGSsS5cJtWj2GHXgVowMegRhTJm",
+      "finalizedSlot": 282,
+      "genericBaselineUnavailable": true
+    },
+    {
+      "sourceIndex": 7,
+      "pageMode": "same-page",
+      "serializedTransactionBytes": 617,
+      "simulatedCu": 594730,
+      "landedCu": 594730,
+      "signature": "sEZfvLFitPeGvgPFxPnTsfCKSoBeZ3YS7He9SvguMtewfEoVwvjNvfoVqpfA6E1XEzdU2jeBn3gYWwNPDqeYzJ4",
+      "finalizedSlot": 412,
+      "genericBaselineUnavailable": true
+    },
+    {
+      "sourceIndex": 15,
+      "pageMode": "same-page",
+      "serializedTransactionBytes": 617,
+      "simulatedCu": 594714,
+      "landedCu": 594714,
+      "signature": "4ZcyBpNDKycTF5xjkhB1ndzjo6RyE1KToVoHLENjoYWAmqqBG4TENm913fRjEmvzbdJvMd1rXQY8Ain2B5u9S1AV",
+      "finalizedSlot": 674,
+      "genericBaselineUnavailable": true
+    },
+    {
+      "sourceIndex": 255,
+      "pageMode": "rollover",
+      "serializedTransactionBytes": 684,
+      "simulatedCu": 643854,
+      "landedCu": 643854,
+      "signature": "5uNnV7sNVTWDrKV7JQDK6s4pko5sAmNwn3dmoAisS7sKMyxeJ2CqzEC6njFaNn9zPnQEeCUWTv66z8DVroA4EPvT",
+      "finalizedSlot": 8531,
+      "genericBaselineUnavailable": true
+    }
+  ],
+  "networkStatus": {
+    "publicTestnetTxv1FeatureActive": true,
+    "publicTestnetActivationEpoch": 1025,
+    "publicTestnetV7ExecutionPerformed": false,
+    "publicDevnetTxv1FeatureActive": false,
+    "publicDevnetEvidenceModified": false,
+    "publicMainnetTxv1FeatureActive": false
+  },
+  "verifierModified": false,
+  "txv1Modified": false,
+  "treeDepthModified": false,
+  "proofFormatModified": false,
+  "cpiOrderingModified": false
+}

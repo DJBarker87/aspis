@@ -14,5 +14,7 @@ no-entrypoint = []
 
 [dependencies]
 aspis-statement = { workspace = true, features = ["pool-v1-kernel"] }
+bincode.workspace = true
+solana-loader-v3-interface.workspace = true
 solana-program.workspace = true
 solana-sdk-ids = "2.2.1"

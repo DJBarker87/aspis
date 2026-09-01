@@ -1,0 +1,75 @@
+{
+  "jsonrpc": "2.0",
+  "result": {
+    "context": {
+      "apiVersion": "4.2.0",
+      "slot": 150
+    },
+    "value": {
+      "accounts": [
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null
+      ],
+      "err": {
+        "InstructionError": [
+          0,
+          {
+            "Custom": 1095966758
+          }
+        ]
+      },
+      "fee": 5000,
+      "innerInstructions": [],
+      "loadedAccountsDataSize": 2396999,
+      "loadedAddresses": {
+        "readonly": [],
+        "writable": []
+      },
+      "logs": [
+        "Program 5PjDJaGfSPJj4tFzMRCiuuAasKg5n8dJKXKenhuwZexx invoke [1]",
+        "Program 5PjDJaGfSPJj4tFzMRCiuuAasKg5n8dJKXKenhuwZexx consumed 23671 of 1300000 compute units",
+        "Program 5PjDJaGfSPJj4tFzMRCiuuAasKg5n8dJKXKenhuwZexx failed: custom program error: 0x41532026"
+      ],
+      "postBalances": [
+        9999995000,
+        1000000000,
+        2338560,
+        1000000000,
+        1,
+        1000000000,
+        1141440,
+        1000000000,
+        1141440,
+        1000000000,
+        1000000000,
+        1000000000
+      ],
+      "postTokenBalances": [],
+      "preBalances": [
+        10000000000,
+        1000000000,
+        2338560,
+        1000000000,
+        1,
+        1000000000,
+        1141440,
+        1000000000,
+        1141440,
+        1000000000,
+        1000000000,
+        1000000000
+      ],
+      "preTokenBalances": [],
+      "replacementBlockhash": null,
+      "returnData": null,
+      "unitsConsumed": 23671
+    }
+  },
+  "id": 1007
+}

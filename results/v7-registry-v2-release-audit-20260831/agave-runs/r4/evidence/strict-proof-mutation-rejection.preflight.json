@@ -1,0 +1,57 @@
+{
+  "inputPath": "/tmp/aspis-v7-txv1-preflight.wNQ3rA/strict-proof-mutation-rejection.input.json",
+  "schema": "aspis.v7.txv1-simulation-preflight.v1",
+  "simulationRequest": {
+    "id": 1004,
+    "jsonrpc": "2.0",
+    "method": "simulateTransaction",
+    "params": [
+      "gQEACAwAAAAn/7/SyVJ/I6SmVy5KpgsEAUVD+1i0WsVi/m8lUsT8zQEMiojj3XQJ8ZX9UtstPLpdcspnCb8dlBIb83SIAbQPb1wgSefPAU2IdS/OYn0N7XCwu3pB+L2NtBktjjQIyk4QHGFUGngH8w2KHhMPRglpr4heo3JVuOzlGJ1fKh9N356NtdXup/PsVQrI1zhZljH5oeL66Q9QFX8bwLa/l4F3Tq4AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAACIIxjc90xOy8nalLRT+kxk3ndN8mKo7WLZN/JgtGlI/QUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFFRUVFRUVFRUVFRUVFRUVFRUVFRUVFRUVFRUVFRUVFRV8MflRUuL8sf+1V+hpBC6LqtMGVor5k9+L9OwDhl5qNhZIzlwiQS3F7bAS3pSXvlrgNGRn3a2sEWMY2UK/kEZTEZlSqaCvbMLpriVNe9k0AX8IX0y2FhmzCTKdIz3LAzf9nFB0Tw0h5uM9dqZkkjqvIXE9ruqnG0nPB5ezv1lEeINYTAAAAAAQGC0ABBQoBAwIABAsJCAdBU1E4AQEBAKF5+NfjcCTrVOPbF/OWs5ihvrLaDIv69iszXyuk6lwmrdCWY8alSDgOGn5TlMhCbm5IusJKjFNqBF+/nb6fuhxBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFTQ1ABAQEAIgjGNz3TE7LydqUtFP6TGTed03yYqjtYtk38mC0aUj8FBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBSoAAAAAAAAAVfY+BJ9QdSHd74B42IONMWPvZiP9lJMGgHhDZ1axnTjbG4IATJCJBhRgsmGkJQYAgI/acKKksBQZusAT0a9udU0AAAAAAAAAJl8GVhWQQBeQJg4sEyzMciKkChkxp7ovH/CYOEh8dgQjFYgGQRNOeHEmDUb6MeAgCIYwFwFTkSEjwFFVzRnsFAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=",
+      {
+        "accounts": {
+          "addresses": [
+            "3Hrd4YKTTF2eaoWjdwzBwagmH9SeuenwiVyQajm72C8N",
+            "EDfQpAnRQVqFmGZuY2ocZoX7gBp5H1N3MWWMLmuWTmD6",
+            "3B3QhxztFR6kSo3m3kpTaU9JsQyJH6ScoT94gwnFXQYj",
+            "DEozmkY3H2YccnEAqHyENJp2Hs1HAFjBq6xqdJDFeZk9",
+            "7YvvqJNdXZt3aNMkCebG4To2f1VJe1TbxHBtY41D4Jy2",
+            "JBz8KKzyZ6FzTU7WmLywurr49xJPpQcA9ECNg2SZX6iH",
+            "9zQXTg6QqijGAG3kyWf94CQA3KdFq3VoYBLAUrhge1WB",
+            "5fQPsn8hoaVddFG26cWQ5QFdqxWtUPNaZ9zH2E6LYzFn"
+          ],
+          "encoding": "base64"
+        },
+        "commitment": "finalized",
+        "encoding": "base64",
+        "innerInstructions": true,
+        "minContextSlot": 150,
+        "replaceRecentBlockhash": false,
+        "sigVerify": false
+      }
+    ]
+  },
+  "summary": {
+    "case": {
+      "history_path": "same-page",
+      "operation": "private-transfer"
+    },
+    "compute_unit_limit": 1300000,
+    "fee_payer": "AKnL4NNf3DGWZJS6cPknBuEGnVsV4A4m5tgebLHaRSZ9",
+    "headroom_to_4096_bytes": 3263,
+    "heap_size_present": false,
+    "inline_addresses": 12,
+    "instruction_accounts": 11,
+    "instruction_data_bytes": 320,
+    "loaded_accounts_data_size_limit": 67108864,
+    "min_context_slot": 150,
+    "placeholder_signatures_are_zero": true,
+    "placeholder_wire_sha256": "59bc0be36ec0f158df85eae39f8cbb789ca61924640c1cf9258aaf3616b5e2f0",
+    "pool_program": "5PjDJaGfSPJj4tFzMRCiuuAasKg5n8dJKXKenhuwZexx",
+    "priority_fee_present": false,
+    "required_signatures": 1,
+    "schema": "aspis.v7.txv1-simulation-summary.v1",
+    "serialized_transaction_bytes": 833,
+    "signable_message_sha256": "55c4e4282852d3c724a8c93bfc800f04cbac68ff3a2a1846ede4b266d49af3da",
+    "simulation_only": true
+  }
+}

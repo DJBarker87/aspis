@@ -67,6 +67,9 @@ pub enum DurableStateErrorV1 {
     UnsafePath,
     InsecurePermissions,
     AlreadyLocked,
+    MigrationInProgress,
+    LegacyStoreRetired,
+    AuthorityConflict,
     Io(io::ErrorKind),
     ImageTooLarge,
     WrongMagic,
@@ -100,6 +103,19 @@ pub enum DurableStateErrorV1 {
     Admission(RelayerAdmissionErrorV1),
 }
 
+pub(crate) fn check_legacy_writer_authority_v2(path: &Path) -> Result<(), DurableStateErrorV1> {
+    use crate::wallet_store_migration_v2::{
+        check_legacy_wallet_store_writer_allowed_v2, WalletStoreMigrationErrorV2,
+    };
+
+    check_legacy_wallet_store_writer_allowed_v2(path).map_err(|error| match error {
+        WalletStoreMigrationErrorV2::MigrationInProgress
+        | WalletStoreMigrationErrorV2::AuthorityBusy => DurableStateErrorV1::MigrationInProgress,
+        WalletStoreMigrationErrorV2::LegacyRetired => DurableStateErrorV1::LegacyStoreRetired,
+        _ => DurableStateErrorV1::AuthorityConflict,
+    })
+}
+
 impl From<io::Error> for DurableStateErrorV1 {
     fn from(error: io::Error) -> Self {
         Self::Io(error.kind())
@@ -127,6 +143,17 @@ impl From<RelayerAdmissionErrorV1> for DurableStateErrorV1 {
 pub(crate) struct AtomicStateFileV1 {
     path: PathBuf,
     _lock: File,
+}
+
+/// Testable boundaries inside one atomic same-directory replacement. A hook
+/// error means the target may already have changed; callers must discard any
+/// cached state, reopen the file, and run format-specific recovery.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub(crate) enum AtomicReplaceBoundaryV1 {
+    TemporaryWrite,
+    TemporaryFileSync,
+    TargetRename,
+    ParentDirectorySync,
 }
 
 impl AtomicStateFileV1 {
@@ -186,7 +213,22 @@ impl AtomicStateFileV1 {
         Ok(Some(bytes))
     }
 
+    pub(crate) fn path_v1(&self) -> &Path {
+        &self.path
+    }
+
     pub(crate) fn replace(&self, bytes: &[u8]) -> Result<(), DurableStateErrorV1> {
+        self.replace_with_fault_v1(bytes, |_| Ok(()))
+    }
+
+    pub(crate) fn replace_with_fault_v1<F>(
+        &self,
+        bytes: &[u8],
+        mut after_boundary: F,
+    ) -> Result<(), DurableStateErrorV1>
+    where
+        F: FnMut(AtomicReplaceBoundaryV1) -> Result<(), DurableStateErrorV1>,
+    {
         if bytes.len() > MAX_DURABLE_IMAGE_BYTES {
             return Err(DurableStateErrorV1::ImageTooLarge);
         }
@@ -202,11 +244,15 @@ impl AtomicStateFileV1 {
         let mut file = options.open(&temporary)?;
         set_private_permissions_v1(&file)?;
         file.write_all(bytes)?;
+        after_boundary(AtomicReplaceBoundaryV1::TemporaryWrite)?;
         file.sync_all()?;
+        after_boundary(AtomicReplaceBoundaryV1::TemporaryFileSync)?;
         drop(file);
         fs::rename(&temporary, &self.path)?;
+        after_boundary(AtomicReplaceBoundaryV1::TargetRename)?;
         validate_regular_private_file_v1(&self.path, false)?;
         File::open(self.path.parent().ok_or(DurableStateErrorV1::InvalidPath)?)?.sync_all()?;
+        after_boundary(AtomicReplaceBoundaryV1::ParentDirectorySync)?;
         Ok(())
     }
 }
@@ -343,10 +389,12 @@ impl DurableWalletStateV1 {
         initial_scan_state: ScanStateV1,
         note_cipher_id: [u8; 32],
     ) -> Result<Self, DurableStateErrorV1> {
+        check_legacy_writer_authority_v2(path.as_ref())?;
         if note_cipher_id == [0u8; 32] {
             return Err(DurableStateErrorV1::InvalidCipherId);
         }
         let file = AtomicStateFileV1::acquire(path.as_ref())?;
+        check_legacy_writer_authority_v2(path.as_ref())?;
         if let Some(bytes) = file.read_optional()? {
             let (scan_state, stored_cipher_id, notes, base_prepared_plans, lifecycle) =
                 decode_wallet_image_v1(&bytes)?;
@@ -391,6 +439,20 @@ impl DurableWalletStateV1 {
 
     pub fn notes(&self) -> &[StoredSealedNoteV1] {
         &self.notes
+    }
+
+    /// Exact locked source image used by the one-way V2 migration. The
+    /// migration coordinator hashes these bytes before its durable prepare
+    /// decision, so a later recovery never aliases a semantically similar but
+    /// physically different legacy source.
+    pub(crate) fn migration_source_image_v1(&self) -> Result<Vec<u8>, DurableStateErrorV1> {
+        self.file
+            .read_optional()?
+            .ok_or(DurableStateErrorV1::Truncated)
+    }
+
+    pub(crate) fn migration_source_path_v1(&self) -> &Path {
+        self.file.path_v1()
     }
 
     /// Atomically replace every opaque note ciphertext and advance the
@@ -446,6 +508,13 @@ impl DurableWalletStateV1 {
     /// `ASPX`. All fields are public account/reconciliation metadata.
     pub fn active_prepared_plans(&self) -> &[AuthenticatedPreparedSettlementV1] {
         &self.active_prepared_plans
+    }
+
+    /// Activation gates must reject closed as well as active plan history;
+    /// neither the base records nor their finalized lifecycle may be silently
+    /// dropped when moving to a different authoritative wallet format.
+    pub fn has_prepared_plan_history_v1(&self) -> bool {
+        !self.base_prepared_plans.is_empty() || !self.prepared_plan_lifecycle.is_empty()
     }
 
     /// Advance the rollback anchor and durably commit it without deleting
@@ -1424,9 +1493,11 @@ impl DurableRelayerStateV1 {
         path: impl AsRef<Path>,
         policy: RelayerPolicyV1,
     ) -> Result<Self, DurableStateErrorV1> {
+        check_legacy_writer_authority_v2(path.as_ref())?;
         validate_policy_shape_v1(policy)?;
         let policy_id = relayer_policy_id_v1(policy);
         let file = AtomicStateFileV1::acquire(path.as_ref())?;
+        check_legacy_writer_authority_v2(path.as_ref())?;
         if let Some(bytes) = file.read_optional()? {
             let (stored_policy_id, rate_window_start_slot, admissions_in_window, entries) =
                 decode_relayer_image_v1(&bytes)?;
@@ -1464,6 +1535,16 @@ impl DurableRelayerStateV1 {
 
     pub fn rate_window(&self) -> (u64, u32) {
         (self.rate_window_start_slot, self.admissions_in_window)
+    }
+
+    pub(crate) fn migration_source_image_v1(&self) -> Result<Vec<u8>, DurableStateErrorV1> {
+        self.file
+            .read_optional()?
+            .ok_or(DurableStateErrorV1::Truncated)
+    }
+
+    pub(crate) fn migration_source_path_v1(&self) -> &Path {
+        self.file.path_v1()
     }
 
     /// Apply an operator-authenticated policy revision. Historical admission

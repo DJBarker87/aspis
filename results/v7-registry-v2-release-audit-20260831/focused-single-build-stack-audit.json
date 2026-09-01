@@ -1,0 +1,42 @@
+{
+  "schema": "aspis.v7.registry-v2-single-build-stack-corroboration.v1",
+  "capturedAt": "2026-08-31",
+  "host": "Linux nuc 6.8.0-110-generic #110-Ubuntu SMP PREEMPT_DYNAMIC Thu Mar 19 15:09:20 UTC 2026 x86_64 x86_64 x86_64 GNU/Linux",
+  "source": {
+    "releaseEvidenceCommit": "7179f7c550fe0461f4251dea5268af73876da91d",
+    "productionSourceParent": "4722228b991ebb72850b8d79dd54b0fee4899462",
+    "poolTree": "0bebca6b10c61e1d97949da10e6b4901d5117fa0"
+  },
+  "tool": {
+    "name": "llvm-objdump",
+    "version": "LLVM 19.1.7-rust-dev; optimized build",
+    "platformTools": "v1.48",
+    "bytes": 17619584,
+    "sha256": "f83c9ce83cf03beb282137f9b428c7214e74adb460b6c609c5fd7f63a3e04363"
+  },
+  "pool": {
+    "strippedSbf": {
+      "bytes": 534608,
+      "sha256": "0e94c98d28437f0b01dce546fdefaad21dc10772a4d46991c2a573d8129cd4f6",
+      "matchesCommittedRegistryV2Artifact": true
+    },
+    "sameBuildUnstrippedSbf": {
+      "bytes": 601176,
+      "sha256": "ff302fc13a3375ebcaaf91241e0082c82bc5dcd1b287dd0df5d29863332c1ef2"
+    },
+    "stack": {
+      "globalMaximumObservedAccessBytes": 4096,
+      "checkpointPlannerMaximumObservedAccessBytes": 2912,
+      "checkpointLaneDecoderMaximumObservedAccessBytes": 3024,
+      "maximumAllowedAccessBytes": 4096,
+      "buildLogOverflowDiagnostics": false,
+      "focusedGatePassed": true
+    }
+  },
+  "commandShape": "llvm-objdump --disassemble --demangle <same-build-unstripped-pool-sbf> | parse every `r10 - 0xHEX` access per symbol",
+  "classification": "SINGLE-BUILD STACK CORROBORATION; NOT INDEPENDENT A/B REPRODUCIBILITY EVIDENCE",
+  "independentBuildCopies": 1,
+  "signed": false,
+  "submitted": false,
+  "deployed": false
+}

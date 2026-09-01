@@ -1,0 +1,31 @@
+{
+  "jsonrpc": "2.0",
+  "result": {
+    "context": {
+      "apiVersion": "4.2.0",
+      "slot": 182
+    },
+    "value": [
+      {
+        "confirmationStatus": "finalized",
+        "confirmations": null,
+        "err": {
+          "InstructionError": [
+            0,
+            "InvalidAccountData"
+          ]
+        },
+        "slot": 151,
+        "status": {
+          "Err": {
+            "InstructionError": [
+              0,
+              "InvalidAccountData"
+            ]
+          }
+        }
+      }
+    ]
+  },
+  "id": 6
+}

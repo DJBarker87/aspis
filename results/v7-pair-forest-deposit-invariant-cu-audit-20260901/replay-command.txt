@@ -1,0 +1,12 @@
+# Run from an exact checkout of the recorded repository revision. Build only
+# the changed Pool SBF and four focused harness binaries; do not rebuild the
+# verifier or run a broad suite.
+systemd-run --user --wait --collect --pipe --unit=aspis-v7-deposit-audit-build -p MemoryHigh=8G -p MemoryMax=12G -p MemorySwapMax=0 -p OOMPolicy=stop --working-directory=/absolute/repo /usr/bin/time -v env NO_DNA=1 PATH=/absolute/cargo-bin:/absolute/solana-active-release/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin cargo-build-sbf --manifest-path programs/aspis-pool/Cargo.toml --no-default-features --features v7-pair-forest-one-tx-candidate,pair-forest-deposit-invariant-audit
+
+systemd-run --user --wait --collect --pipe --unit=aspis-v7-deposit-audit-builders -p MemoryHigh=8G -p MemoryMax=12G -p MemorySwapMax=0 -p OOMPolicy=stop --working-directory=/absolute/repo /usr/bin/time -v env NO_DNA=1 PATH=/absolute/cargo-bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin cargo build --release --locked --manifest-path tools/v7-live-pool-proof/Cargo.toml --bin prepare-live-genesis --bin build-live-pool-initialize --bin create-live-operation-secrets --bin build-live-pool-deposit
+
+systemd-run --user --wait --collect --pipe --unit=aspis-v7-deposit-cu-audit -p MemoryHigh=8G -p MemoryMax=12G -p MemorySwapMax=0 -p OOMPolicy=stop --working-directory=/absolute/repo /usr/bin/time -v env NO_DNA=1 PATH=/absolute/cargo-bin:/absolute/solana-active-release/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin ASPIS_TXV1_LOCAL_RPC_PORT=18924 ./scripts/v7_pair_forest_deposit_cu_audit.sh /absolute/agave-4.2.0/bin results/v7-pair-forest-deposit-invariant-cu-audit-20260901/artifacts/aspis_pool.so /absolute/repo/results/v7-pair-forest-deposit-invariant-cu-audit-20260901/pool-audit-build.json /absolute/repo/tools/v7-live-pool-proof/target/release /absolute/new-evidence I_ACKNOWLEDGE_256_DISPOSABLE_SEQUENTIAL_DEPOSITS
+
+# Verify the committed evidence after replay.
+(cd results/v7-pair-forest-deposit-invariant-cu-audit-20260901/local-feature-active && shasum -a 256 -c SHA256SUMS)
+jq -e '.sequentialDeposits == 256 and .allFinalized and .allPassed and .simulationLandedCuExact and .custody.conserved and .nonSelectedLanesUnchanged and .pageRolloverFinalized and .mainnetReady == false' results/v7-pair-forest-deposit-invariant-cu-audit-20260901/local-feature-active/sequential-deposits/evidence.json

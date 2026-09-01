@@ -1,0 +1,16 @@
+{
+  "schema": "aspis.v7.deterministic-agave-bundle-offline-audit.v1",
+  "cases": 11,
+  "exactRequiredCaseSet": true,
+  "allNegativeCasesRequireRollback": true,
+  "hashesAndLengthsMatch": true,
+  "canonicalAsq8InputsMatch": true,
+  "deterministicTokenFailureTestDoublePinned": true,
+  "bundleSha256": "1d27eed3e3022172170c351e70f409ed8cdbd83e755c9147a1478c0932d5321d",
+  "templateInventorySha256": "84b45dd5e1fb316501c833b00c4df5bc4f678a3dc466fda06a6cbc8e7d29a0d0",
+  "sbfMaterializedAndMatched": true,
+  "agaveExecutionPerformed": false,
+  "signed": false,
+  "submitted": false,
+  "deployed": false
+}

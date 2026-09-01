@@ -1,0 +1,164 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Aspis V7 Registry V2 mainnet readiness</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      --bg: #0a0d14;
+      --panel: #121827;
+      --line: #29344b;
+      --text: #e7ecf5;
+      --muted: #a7b0c2;
+      --red: #ff6b6b;
+      --green: #59d39b;
+      --amber: #ffc857;
+      --blue: #76a9ff;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      background: radial-gradient(circle at top right, #17213b 0, var(--bg) 36rem);
+      color: var(--text);
+      font: 16px/1.55 ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+    main { width: min(1120px, calc(100% - 32px)); margin: 40px auto 80px; }
+    header, section {
+      background: color-mix(in srgb, var(--panel) 94%, transparent);
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      padding: 24px;
+      margin: 16px 0;
+    }
+    h1, h2 { line-height: 1.15; margin: 0 0 14px; }
+    h1 { font-size: clamp(2rem, 5vw, 3.6rem); letter-spacing: -0.04em; }
+    h2 { font-size: 1.35rem; }
+    p { max-width: 84ch; }
+    a { color: var(--blue); }
+    code { color: #d9e4ff; overflow-wrap: anywhere; }
+    .eyebrow { color: var(--muted); letter-spacing: .11em; text-transform: uppercase; font-size: .78rem; }
+    .decision { display: inline-flex; gap: 10px; align-items: center; color: var(--red); font-weight: 800; font-size: 1.1rem; }
+    .dot { width: 11px; height: 11px; border-radius: 50%; background: currentColor; box-shadow: 0 0 18px currentColor; }
+    .lead { font-size: 1.18rem; color: #cbd4e6; }
+    .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px; }
+    .card { background: #0e1421; border: 1px solid var(--line); border-radius: 10px; padding: 16px; }
+    .value { font-size: 1.5rem; font-weight: 750; margin-top: 5px; }
+    .green { color: var(--green); }
+    .amber { color: var(--amber); }
+    .red { color: var(--red); }
+    .muted { color: var(--muted); }
+    .table-wrap { overflow-x: auto; }
+    table { width: 100%; border-collapse: collapse; min-width: 700px; }
+    th, td { text-align: left; padding: 11px 10px; border-bottom: 1px solid var(--line); vertical-align: top; }
+    th { color: var(--muted); font-size: .8rem; text-transform: uppercase; letter-spacing: .06em; }
+    td.num { text-align: right; font-variant-numeric: tabular-nums; }
+    ul, ol { padding-left: 1.25rem; }
+    li { margin: .45rem 0; }
+    .callout { border-left: 4px solid var(--red); padding-left: 16px; }
+    footer { color: var(--muted); text-align: center; margin-top: 28px; font-size: .9rem; }
+  </style>
+</head>
+<body>
+<main>
+  <header>
+    <div class="eyebrow">Aspis · V7 · Registry V2 · 1 September 2026</div>
+    <h1>Mainnet readiness</h1>
+    <p class="decision"><span class="dot"></span>NO GO — operational evidence, not a deployable release</p>
+    <p class="lead">The full one-transaction path is locally green and below 1.3M CU. Promotion is blocked by audit-only program identities, incomplete exact-source formal consolidation, inactive public-devnet TxV1, and an unapproved irreversible authority ceremony.</p>
+  </header>
+
+  <section>
+    <h2>Measured local release envelope</h2>
+    <div class="grid">
+      <div class="card"><div class="muted">Worst honest CU</div><div class="value green">1,218,654</div><div>81,346 below 1.3M</div></div>
+      <div class="card"><div class="muted">Largest TxV1 packet</div><div class="value green">1,031 B</div><div>3,065 B below 4,096</div></div>
+      <div class="card"><div class="muted">Finalized cases</div><div class="value green">11 / 11</div><div>4 honest, 7 fail-closed</div></div>
+      <div class="card"><div class="muted">Negative rollback</div><div class="value green">7 / 7</div><div>protected state byte-exact</div></div>
+    </div>
+    <p>These are combined, landed Agave 4.2.0 measurements of the exact signed bytes also simulated. The cluster was disposable and local; no public deployment, real keys or real funds were used.</p>
+  </section>
+
+  <section>
+    <h2>Finalized case inventory</h2>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Case</th><th>Outcome</th><th class="num">Packet</th><th class="num">Landed CU</th></tr></thead>
+        <tbody>
+          <tr><td>Transfer, same page</td><td class="green">Success</td><td class="num">833 B</td><td class="num">1,161,348</td></tr>
+          <tr><td>Transfer, rollover</td><td class="green">Success</td><td class="num">866 B</td><td class="num">1,207,062</td></tr>
+          <tr><td>Withdrawal, same page</td><td class="green">Success</td><td class="num">998 B</td><td class="num">1,152,942</td></tr>
+          <tr><td>Withdrawal, rollover</td><td class="green">Success</td><td class="num">1,031 B</td><td class="num">1,218,654</td></tr>
+          <tr><td>Strict proof mutation</td><td>Rejected + rollback</td><td class="num">833 B</td><td class="num">975,278</td></tr>
+          <tr><td>Wrong Registry/release</td><td>Rejected + rollback</td><td class="num">833 B</td><td class="num">36,573</td></tr>
+          <tr><td>Stale selected lane</td><td>Rejected + rollback</td><td class="num">833 B</td><td class="num">72,055</td></tr>
+          <tr><td>Replay/nullifier</td><td>Rejected + rollback</td><td class="num">833 B</td><td class="num">23,671</td></tr>
+          <tr><td>Malformed result</td><td>Rejected + rollback</td><td class="num">833 B</td><td class="num">47,002</td></tr>
+          <tr><td>Mutated result</td><td>Rejected + rollback</td><td class="num">833 B</td><td class="num">50,039</td></tr>
+          <tr><td>Failed withdrawal CPI</td><td>Rejected + rollback</td><td class="num">998 B</td><td class="num">1,151,707</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <section>
+    <h2>Reproducible binaries</h2>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Program</th><th class="num">Bytes</th><th>SHA-256</th><th>Gate</th></tr></thead>
+        <tbody>
+          <tr><td>Pool</td><td class="num">534,608</td><td><code>0e94c98d28437f0b01dce546fdefaad21dc10772a4d46991c2a573d8129cd4f6</code></td><td class="green">A/B identical</td></tr>
+          <tr><td>Verifier</td><td class="num">1,819,480</td><td><code>97df12937d46e25a2eeefeac16ce31925fd473c672d6b656548be9220adbcc6d</code></td><td class="green">A/B identical</td></tr>
+          <tr><td>Registry</td><td class="num">189,824</td><td><code>0f14c7b74ec6cbe3b3f637b0f24c7e8cdc46fd09f5b2e495fd51ada16ad8f11b</code></td><td class="green">A/B identical</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p class="muted">Source commit <code>7179f7c550fe0461f4251dea5268af73876da91d</code>; offline, locked Linux builds; stack gate green; zero swap.</p>
+  </section>
+
+  <section class="callout">
+    <h2>The identity blocker</h2>
+    <p>The measured Pool ID is fixture <code>[0x41; 32]</code>; the Registry ID is fixture <code>[0x44; 32]</code>; policy is fixture <code>[7; 32]</code>. The verifier source explicitly hard-codes these audit values. Its ID <code>7Q2n…Rmue</code> is historical V5, and its ProgramData was closed at slot 435,019,804.</p>
+    <p>Production IDs, policy and custody must be selected first. The verifier must then be rebuilt, and every identity-bound proof/statement, formal/source binding, SBF audit and lifecycle receipt must be regenerated. The current CU evidence remains useful engineering evidence but cannot authenticate a mainnet deployment.</p>
+  </section>
+
+  <section>
+    <h2>Public devnet</h2>
+    <div class="grid">
+      <div class="card"><div class="muted">Finalized slot checked</div><div class="value">491,160,606</div></div>
+      <div class="card"><div class="muted">TxV1 feature</div><div class="value amber">Inactive</div><div>feature account absent</div></div>
+      <div class="card"><div class="muted">Public writes</div><div class="value green">0</div><div>gate failed closed</div></div>
+    </div>
+  </section>
+
+  <section>
+    <h2>Open P0 gates</h2>
+    <ol>
+      <li>Select and custody deployable Pool, verifier and Registry identities; replace every audit constant.</li>
+      <li>Consolidate complete K1 and source closure onto the exact release source.</li>
+      <li>Regenerate identity-bound proofs, statements, binaries, PDAs and the signed lifecycle.</li>
+      <li>Wait for TxV1 activation and land the finalized public-devnet lifecycle.</li>
+      <li>Approve immutable ProgramData and Registry freeze with no post-final rescue path.</li>
+      <li>Freeze mint/domain/policy/canary limits and configure independent RPC/monitoring.</li>
+      <li>Implement and audit the offline/multisig governance ceremony executable; do not hand-encode bytes.</li>
+    </ol>
+  </section>
+
+  <section>
+    <h2>Evidence</h2>
+    <ul>
+      <li><a href="../../release/v7-registry-v2-mainnet-rc1/manifest.json">Machine-readable manifest</a></li>
+      <li><a href="../../release/v7-registry-v2-mainnet-rc1/statement-inventory.json">Statement and proof hashes</a></li>
+      <li><a href="../../release/v7-registry-v2-mainnet-rc1/runbook.md">Disabled production ceremony and rollback runbook</a></li>
+      <li><a href="../../results/v7-registry-v2-release-audit-20260831/agave-finalized-r1/evidence/suite.json">Signed/finalized local suite</a></li>
+      <li><a href="../../results/v7-registry-v2-release-audit-20260831/dual-linux-sbf-r2/reproducible-sbf-stack-audit.json">Dual-SBF and stack audit</a></li>
+      <li><a href="../../results/v7-registry-v2-release-audit-20260831/devnet-feature-gate-r2/gate.json">Public-devnet feature gate</a></li>
+      <li><a href="v7-registry-v2-mainnet-readiness-20260901.md">Full text report</a></li>
+    </ul>
+  </section>
+
+  <footer>Generated from frozen repository evidence. No deployment, signing or public submission is authorized by this report.</footer>
+</main>
+</body>
+</html>

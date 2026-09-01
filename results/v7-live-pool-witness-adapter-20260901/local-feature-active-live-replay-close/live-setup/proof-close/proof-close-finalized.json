@@ -1,0 +1,15 @@
+{
+  "schema": "aspis.v7.live-proof-close-finalized.v1",
+  "signature": "2nkWwG6SPoUAvQiX6GYwcpq9CWU5xMtMh2DztufrhzLnkXnML9gHsGeBjywBbkYR8dLkwif4zXoCaPQCg9CDGuAz",
+  "slot": 846,
+  "simulatedCu": 782,
+  "landedCu": 782,
+  "serializedTransactionBytes": 268,
+  "signedWireSha256": "e20ffb6a6d26db54d5f79090973c714161d98ef05a5e52c5e41dd8e52a55f8be",
+  "byteIdenticalSimulationSubmission": true,
+  "proofAccount": "HFMhVx8kU71wurZYZuFnpNfgAP31yPmE5zfjWQ38XLCN",
+  "refundAccount": "FEzUTXPSXmmn26ZMoqggPSzykqmstswUiLr1xhzrU8YT",
+  "proofAccountDrained": true,
+  "rentRefundLamports": 220130880,
+  "finalized": true
+}

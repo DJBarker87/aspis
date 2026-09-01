@@ -1,0 +1,5 @@
+simulate-only: transfer-same-page
+simulate-only: transfer-rollover
+simulate-only: withdrawal-same-page
+simulate-only: withdrawal-rollover
+simulate-only: strict-proof-mutation-rejection

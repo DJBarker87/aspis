@@ -1,0 +1,83 @@
+{
+  "schema": "aspis.v7.live-stale-selected-lane-blocker.v1",
+  "repositoryRevision": "348ada86a0dabf4013d3b3ca0ca840ce3c479d42",
+  "classification": "E — SECURITY OR PROTOCOL DEFECT FOUND",
+  "cluster": {
+    "kind": "disposable-local-validator",
+    "agave": "solana-cli 4.2.0 (src:ac82b5d4; feat:21b0d33a, client:Agave)",
+    "genesisHash": "GH1AwdsdC4NFW3XGtfUTea5tfQE3AW7LaQBphD5UZ2DU",
+    "rpcUrlDuringRun": "http://127.0.0.1:18923",
+    "featureId": "txv1aq4pp281K9um3tnPgkfX8UqtFT6wcVW3hNezGLL",
+    "featureActive": true,
+    "featureActivationSlot": 0,
+    "runtimeFeatureSet": 565236538,
+    "auditOnlyIdentities": true,
+    "publicDevnetUsed": false,
+    "realFundsUsed": false
+  },
+  "freshLiveFixture": {
+    "poolInitialized": true,
+    "depositFinalized": true,
+    "depositSelectedLane": 4,
+    "depositBytes": 651,
+    "depositSimulatedCu": 1112399,
+    "depositLandedCu": 1112399,
+    "depositSignature": "5DGr9cCWZXpPKnjDxwFQsTMc3ELrxDBiaNwKLsy8KLjdEBoT2crv6GEfYJUXmjkfBbmSQNif5qoyHpJhsAYXhYqG",
+    "depositSlot": 183,
+    "checkpointFinalized": true
+  },
+  "genuineProof": {
+    "proofAccount": "7PF23Zr2jMjs5RPunff5kgDZMRRjTBpZKgbPE3VMw9Pp",
+    "proofBytes": 30824,
+    "proofSha256": "664275925c86eaaf51f2c60eab520b9b124e905f09bce25e1319deb00157ab24",
+    "proofPayloadBytes": 31512,
+    "proofPayloadSha256": "80821cda1c045c00a31bad4592aa9e59114c41e8197c27d7e6dd711bc71e2763",
+    "asq8Sha256": "aec88a712fa200f6c7f998b1ae8cf819b2655239824fb24a24cf096339eda23e",
+    "asf8Sha256": "480b3b9fd78f5455e925801517f132d427b5dba6fa2e0522416ac6624e76c8b1",
+    "expectedAsr8Sha256": "65af6e1ada4b9b6e4c5c70d344d57d596d34f9c91d54274ba4fe6fbae8faf48c",
+    "powValid": true,
+    "fixtureEntropyUsed": false,
+    "trustedResultUsed": false,
+    "verifierBypassUsed": false
+  },
+  "prebuiltTerminal": {
+    "selectedLane": 4,
+    "serializedTransactionBytes": 1378,
+    "below4096": true,
+    "atOrBelow3500": true,
+    "signedWireSha256": "acb3d5e047d3b6f773075342fd6bf9a24a2ed368d353a275c079047bc7525d3c",
+    "simulated": false,
+    "submitted": false,
+    "landed": false,
+    "reason": "the independent live-lane mutation prerequisite could not land"
+  },
+  "stalingDeposit": {
+    "source": "fresh random genuine note routed to authenticated selected lane 4",
+    "selectedLane": 4,
+    "requiredAuthenticatedBeforeIndex": 1,
+    "serializedTransactionBytes": 617,
+    "signedWireSha256": "bada4aafed0d8e73399bc42b2ddb8f66d5165e9d5daed73ebaa176f58b8df4be",
+    "simulationError": {"InstructionError": [1, "ProgramFailedToComplete"]},
+    "simulationCu": 1400000,
+    "poolProgramAvailableCu": 1399850,
+    "poolProgramConsumedCu": 1399850,
+    "submitted": false,
+    "landed": false
+  },
+  "defect": {
+    "kind": "runtime-liveness",
+    "finding": "the audited Pool artifact cannot complete a same-page deposit at authenticated lane index 1 within Solana's 1,400,000-CU transaction ceiling",
+    "smallestExactBlocker": "a second honest same-lane state mutation cannot be landed by the normal deposit flow, so the already-signed terminal cannot be tested solely for stale selected-lane rejection by this route",
+    "productionRuntimeSourceChanged": false,
+    "cuOptimizationAttempted": false,
+    "frozenSbfRebuilt": false
+  },
+  "secrets": {
+    "printed": false,
+    "committed": false,
+    "taskOwnedKeyDirectoryDestroyed": true
+  },
+  "staleSelectedLaneRejectionFinalized": false,
+  "publicDevnetEvidenceChanged": false,
+  "mainnetReady": false
+}

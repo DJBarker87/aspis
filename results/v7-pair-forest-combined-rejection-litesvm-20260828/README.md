@@ -9,6 +9,13 @@ TxV1 -> Pool ASQ8 -> registry/entry authentication -> selected verifier
      -> exact ASR8 -> lane/history/nullifier settlement
 ```
 
+The harness source has since been upgraded to create and authenticate the
+immutable Registry V2 lifecycle and to cover transfer/withdrawal rollover plus
+adversarial return/custody cases. The current executable evidence and replay
+instructions are in
+`results/v7-pair-forest-registry-v2-litesvm-20260830/`. The measurements below
+remain the frozen Registry V1 optimisation chronology.
+
 The selected strict-work canonical-fixed fixtures are 30,720--30,824 bytes.
 All three production 35/31/34-bit work checks execute; there is no threshold bypass.
 The Pool begins with 13 populated pairs in lane 3. A successful run checks the
@@ -110,9 +117,10 @@ uninstrumented 2,069,373-CU row is the release-relevant total.
 
 ```text
 aspis-v7-pair-forest-combined-rejection \
-  <aspis_pool.so> <aspis_verifier.so> <evidence.json> \
-  <proof-body-or-payload.bin> <success|failure> [runtime-compute-limit] \
-  [asq8|asf8]
+  <aspis_pool.so> <aspis_verifier.so> <aspis_registry.so> \
+  <result-double.so> <evidence.json> <proof-body-or-payload.bin> \
+  <scenario> [runtime-compute-limit] [asq8|asf8] [populated-pairs] \
+  [transfer|withdrawal]
 ```
 
 The input can be either the proof body alone or the complete payload excluding

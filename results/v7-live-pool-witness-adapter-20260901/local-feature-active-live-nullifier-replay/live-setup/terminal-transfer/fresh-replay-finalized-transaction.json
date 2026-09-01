@@ -1,0 +1,141 @@
+{
+  "jsonrpc": "2.0",
+  "result": {
+    "blockTime": 1788268277,
+    "meta": {
+      "computeUnitsConsumed": 28709,
+      "costUnits": 31433,
+      "err": {
+        "InstructionError": [
+          1,
+          {
+            "Custom": 1095966758
+          }
+        ]
+      },
+      "fee": 5000,
+      "innerInstructions": [],
+      "loadedAddresses": {
+        "readonly": [],
+        "writable": []
+      },
+      "logMessages": [
+        "Program noopb9bkMVfRPU8AsbpTUg8AQkHtKwMYZiFUjNRtMmV invoke [1]",
+        "Program noopb9bkMVfRPU8AsbpTUg8AQkHtKwMYZiFUjNRtMmV consumed 364 of 1300000 compute units",
+        "Program noopb9bkMVfRPU8AsbpTUg8AQkHtKwMYZiFUjNRtMmV success",
+        "Program 5PjDJaGfSPJj4tFzMRCiuuAasKg5n8dJKXKenhuwZexx invoke [1]",
+        "Program 5PjDJaGfSPJj4tFzMRCiuuAasKg5n8dJKXKenhuwZexx consumed 28233 of 1299580 compute units",
+        "Program 5PjDJaGfSPJj4tFzMRCiuuAasKg5n8dJKXKenhuwZexx failed: custom program error: 0x41532026"
+      ],
+      "postBalances": [
+        499999999660886720,
+        2338560,
+        6236160,
+        58352640,
+        1,
+        1141440,
+        3563520,
+        1141440,
+        1141440,
+        2227200,
+        220492800,
+        1000000000,
+        1000000000
+      ],
+      "postTokenBalances": [],
+      "preBalances": [
+        499999999660891720,
+        2338560,
+        6236160,
+        58352640,
+        1,
+        1141440,
+        3563520,
+        1141440,
+        1141440,
+        2227200,
+        220492800,
+        1000000000,
+        1000000000
+      ],
+      "preTokenBalances": [],
+      "rewards": [],
+      "status": {
+        "Err": {
+          "InstructionError": [
+            1,
+            {
+              "Custom": 1095966758
+            }
+          ]
+        }
+      }
+    },
+    "slot": 494,
+    "transaction": {
+      "message": {
+        "accountKeys": [
+          "7RhN4SGdMSPnronJpzLawb4LtGU141Gq83meSskeZYnx",
+          "2yaXGEAadkFPN4RCjUna2NUyynNhQBAaeAfCMd28z41X",
+          "3B3QhxztFR6kSo3m3kpTaU9JsQyJH6ScoT94gwnFXQYj",
+          "DEozmkY3H2YccnEAqHyENJp2Hs1HAFjBq6xqdJDFeZk9",
+          "11111111111111111111111111111111",
+          "noopb9bkMVfRPU8AsbpTUg8AQkHtKwMYZiFUjNRtMmV",
+          "3Hrd4YKTTF2eaoWjdwzBwagmH9SeuenwiVyQajm72C8N",
+          "5PjDJaGfSPJj4tFzMRCiuuAasKg5n8dJKXKenhuwZexx",
+          "7Q2nGsPg8rbjdxKHK4jxTgEWLTyd9o1X4KMSjCieRmue",
+          "9ZiDxh6meBcjSAEmkh4syiy85gMaF8hubkraFcej6cbQ",
+          "9pUexCqi6mSHTq2uR58Xjibg3YVifuafCEzsPcF18Xkt",
+          "9zQXTg6QqijGAG3kyWf94CQA3KdFq3VoYBLAUrhge1WB",
+          "JBz8KKzyZ6FzTU7WmLywurr49xJPpQcA9ECNg2SZX6iH"
+        ],
+        "header": {
+          "numReadonlySignedAccounts": 0,
+          "numReadonlyUnsignedAccounts": 9,
+          "numRequiredSignatures": 1
+        },
+        "instructions": [
+          {
+            "accounts": [
+              0
+            ],
+            "data": "28YciNRzRTdkMUGr7M9cFhNioTdGScGSSgmtyEXY1fB3cU2p9kMi5UpyDXQYYAiQcEvApotz7mHzp5SQusEnzEXK8ACxL4TrybfMtXRKs9cb9tQMKrcj4tZDP3hRi1gBN726RWz8LxZ397q5rota1f9R23ZUEH5aTwHmjuxUpabPQCJ8fT2BDyN1N1rzu52qygztWcCUbAhaVPvaJYD9z4Q3wWc7wUj9bS7rAVaBMkZfwnkZUsBTA4xVZFEzsKq9aWTurDRpadM2rEX6udWBfsjP1n1RcaXrbwqw5T6rBmnJ2YSLmx8B4S58G43syFqNFosUwbZjy3kta6r83Cxb7QuvnAGoo6w3hbJS7RZcvqV3iQcqWvuRDdqLmUuEfC7C7tFHZz8URunucA6NATj4bK3EPbHKB3H4jURFGX7QGHbeUfU9yRzQsR5TaAPV3fHkqAtvRscHrvLDut46Ssfx4apY2NsjnrZ3dUUyvJx9FKXnTb1pD9qGeKTaJszXtij8KgZ4JzhGvpxh8J1SMPeHXXr28KxknpbbrXgh3w4kJX5qdQ6V6T4dyh6hNZTbL93xFdwawchUkmPPY6cz8ZT19ajaq4WafSgyShtDpVgH3kmfSf4rsiQDqZZjKjpBqgi5HgqT877sj1x8objYk7dBm9388Wixcc3vdbGQ7C",
+            "programIdIndex": 5,
+            "stackHeight": 1
+          },
+          {
+            "accounts": [
+              6,
+              9,
+              2,
+              3,
+              1,
+              0,
+              4,
+              12,
+              11,
+              8,
+              10
+            ],
+            "data": "GTJVmTUtwd44oquk64RWd62hps5Zi8wvyZokUHwen8q3syVZUEVLMXGwnoRqFxuPWTbrea26LC8YdGWEpqFXF8yyjnxR8ikUMqeomp3GH9aPEmga28SZ1Avw9ttrQzrWKpP2WKyv1E5MELNpmNkqFSxw1zKLjrxXRFPncC5FFFZgCcWyhMrn5QMESxa3sfTNMJR3agSUuUaNLt8tgHJbi488vayo1nCNVeBXYzRidHLvqXBkLeoaaM5kuhw22XkFKL4qnkPTkcrofstJrHQyyC16MriQMPsE9SPRLztdfvmxQEY78KUMcuoovNATGiTMs5s1J6Lkwxf5qpvjUUWxszcSozV1xjoQq4oyZ4ZzwEzjkXp1LKGGvWuwLtG9gE8PpVBU5JXzpZhLgVVtt89dXgUMyZtG9rwsBLKshusXHQ8Vex4zTPtTC",
+            "programIdIndex": 7,
+            "stackHeight": 1
+          }
+        ],
+        "recentBlockhash": "38v2YCdveXm8vEBL5fhKfaCP1eZqtDCkXwGCNJMsZkGY",
+        "transactionConfig": {
+          "computeUnitLimit": 1300000,
+          "heapSize": 262144,
+          "loadedAccountsDataSizeLimit": 8388608,
+          "priorityFee": 0
+        }
+      },
+      "signatures": [
+        "3usqKg4aEmMkhAGmYKCLstP2zX1UfvgSnNHZjfvaTvVLzoNGMn1DUEpQAfNEQ8j6obG1TkRDDGemJ1GKNq451YPJ"
+      ]
+    },
+    "transactionIndex": 1,
+    "version": 1
+  },
+  "id": 1854
+}

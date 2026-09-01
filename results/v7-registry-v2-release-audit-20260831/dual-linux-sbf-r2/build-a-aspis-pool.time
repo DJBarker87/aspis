@@ -1,0 +1,23 @@
+	Command being timed: "/home/dombarker/.local/share/solana/install/releases/2.3.0/solana-release/bin/cargo-build-sbf --manifest-path programs/aspis-pool/Cargo.toml --no-default-features --features v7-pair-forest-one-tx-candidate --arch v0 --offline --skip-tools-install --tools-version v1.48 --sbf-sdk /home/dombarker/.local/share/solana/install/releases/2.3.0/solana-release/bin/platform-tools-sdk/sbf --sbf-out-dir /home/dombarker/project-offloads/aspis-v7-registry-v2-release-audit-a7c91a2-20260831/dual-sbf-r2/sbf-a-aspis-pool -- --locked"
+	User time (seconds): 93.90
+	System time (seconds): 6.17
+	Percent of CPU this job got: 100%
+	Elapsed (wall clock) time (h:mm:ss or m:ss): 1:39.58
+	Average shared text size (kbytes): 0
+	Average unshared data size (kbytes): 0
+	Average stack size (kbytes): 0
+	Average total size (kbytes): 0
+	Maximum resident set size (kbytes): 566056
+	Average resident set size (kbytes): 0
+	Major (requiring I/O) page faults: 414
+	Minor (reclaiming a frame) page faults: 2239964
+	Voluntary context switches: 27344
+	Involuntary context switches: 1916
+	Swaps: 0
+	File system inputs: 8
+	File system outputs: 726424
+	Socket messages sent: 0
+	Socket messages received: 0
+	Signals delivered: 0
+	Page size (bytes): 4096
+	Exit status: 0

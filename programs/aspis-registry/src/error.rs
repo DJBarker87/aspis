@@ -27,6 +27,10 @@ pub enum RegistryProgramErrorV1 {
     ReplacementNotActive = 0x4153_3016,
     IncompatibleReplacement = 0x4153_3017,
     InvalidRetirementSlot = 0x4153_3018,
+    InvalidVerifierProgram = 0x4153_3019,
+    InvalidProgramData = 0x4153_301A,
+    VerifierNotImmutable = 0x4153_301B,
+    ExecutableHashMismatch = 0x4153_301C,
 }
 
 impl From<RegistryProgramErrorV1> for ProgramError {

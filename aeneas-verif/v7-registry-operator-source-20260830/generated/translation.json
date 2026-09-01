@@ -1,0 +1,525 @@
+{
+  "aeneas_version": "b59d518",
+  "charon_version": "0.1.223",
+  "crate": "v7_registry_operator_source",
+  "functions": [
+    {
+      "def_id": 33,
+      "lean_name": "V7RegistryOperatorGenerated.EntryStatus.Insts.CoreCmpPartialEqEntryStatus.eq",
+      "lean_file": "V7RegistryOperator/Funs.lean",
+      "rust_name": "v7_registry_operator_source::{impl core::cmp::PartialEq<v7_registry_operator_source::EntryStatus> for v7_registry_operator_source::EntryStatus}::eq",
+      "is_local": true,
+      "source": { "file": "src/lib.rs", "begin_line": 56, "end_line": 56 },
+      "is_opaque": false,
+      "can_fail": true,
+      "can_diverge": false,
+      "is_rec": false,
+      "reducible": false
+    },
+    {
+      "def_id": 19,
+      "lean_name": "V7RegistryOperatorGenerated.SupportedLoader.Insts.CoreCmpPartialEqSupportedLoader.eq",
+      "lean_file": "V7RegistryOperator/Funs.lean",
+      "rust_name": "v7_registry_operator_source::{impl core::cmp::PartialEq<v7_registry_operator_source::SupportedLoader> for v7_registry_operator_source::SupportedLoader}::eq",
+      "is_local": true,
+      "source": { "file": "src/lib.rs", "begin_line": 70, "end_line": 70 },
+      "is_opaque": false,
+      "can_fail": true,
+      "can_diverge": false,
+      "is_rec": false,
+      "reducible": false
+    },
+    {
+      "def_id": 24,
+      "lean_name": "V7RegistryOperatorGenerated.valid_creation",
+      "lean_file": "V7RegistryOperator/Funs.lean",
+      "rust_name": "v7_registry_operator_source::valid_creation",
+      "is_local": true,
+      "source": { "file": "src/lib.rs", "begin_line": 255, "end_line": 286 },
+      "is_opaque": false,
+      "can_fail": true,
+      "can_diverge": false,
+      "is_rec": false,
+      "reducible": false
+    },
+    {
+      "def_id": 21,
+      "lean_name": "V7RegistryOperatorGenerated.require_authority",
+      "lean_file": "V7RegistryOperator/Funs.lean",
+      "rust_name": "v7_registry_operator_source::require_authority",
+      "is_local": true,
+      "source": { "file": "src/lib.rs", "begin_line": 288, "end_line": 317 },
+      "is_opaque": false,
+      "can_fail": true,
+      "can_diverge": false,
+      "is_rec": false,
+      "reducible": false
+    },
+    {
+      "def_id": 22,
+      "lean_name": "V7RegistryOperatorGenerated.next_generation",
+      "lean_file": "V7RegistryOperator/Funs.lean",
+      "rust_name": "v7_registry_operator_source::next_generation",
+      "is_local": true,
+      "source": { "file": "src/lib.rs", "begin_line": 319, "end_line": 328 },
+      "is_opaque": false,
+      "can_fail": true,
+      "can_diverge": false,
+      "is_rec": false,
+      "reducible": false
+    },
+    {
+      "def_id": 20,
+      "lean_name": "V7RegistryOperatorGenerated.require_registry",
+      "lean_file": "V7RegistryOperator/Funs.lean",
+      "rust_name": "v7_registry_operator_source::require_registry",
+      "is_local": true,
+      "source": { "file": "src/lib.rs", "begin_line": 330, "end_line": 335 },
+      "is_opaque": false,
+      "can_fail": true,
+      "can_diverge": false,
+      "is_rec": false,
+      "reducible": false
+    },
+    {
+      "def_id": 25,
+      "lean_name": "V7RegistryOperatorGenerated.target_entry",
+      "lean_file": "V7RegistryOperator/Funs.lean",
+      "rust_name": "v7_registry_operator_source::target_entry",
+      "is_local": true,
+      "source": { "file": "src/lib.rs", "begin_line": 347, "end_line": 352 },
+      "is_opaque": false,
+      "can_fail": true,
+      "can_diverge": false,
+      "is_rec": false,
+      "reducible": false
+    },
+    {
+      "def_id": 28,
+      "lean_name": "V7RegistryOperatorGenerated.require_target_entry",
+      "lean_file": "V7RegistryOperator/Funs.lean",
+      "rust_name": "v7_registry_operator_source::require_target_entry",
+      "is_local": true,
+      "source": { "file": "src/lib.rs", "begin_line": 337, "end_line": 345 },
+      "is_opaque": false,
+      "can_fail": true,
+      "can_diverge": false,
+      "is_rec": false,
+      "reducible": false
+    },
+    {
+      "def_id": 27,
+      "lean_name": "V7RegistryOperatorGenerated.replace_target",
+      "lean_file": "V7RegistryOperator/Funs.lean",
+      "rust_name": "v7_registry_operator_source::replace_target",
+      "is_local": true,
+      "source": { "file": "src/lib.rs", "begin_line": 354, "end_line": 365 },
+      "is_opaque": false,
+      "can_fail": true,
+      "can_diverge": false,
+      "is_rec": false,
+      "reducible": false
+    },
+    {
+      "def_id": 29,
+      "lean_name": "V7RegistryOperatorGenerated.entry_matches_registry",
+      "lean_file": "V7RegistryOperator/Funs.lean",
+      "rust_name": "v7_registry_operator_source::entry_matches_registry",
+      "is_local": true,
+      "source": { "file": "src/lib.rs", "begin_line": 367, "end_line": 369 },
+      "is_opaque": false,
+      "can_fail": true,
+      "can_diverge": false,
+      "is_rec": false,
+      "reducible": false
+    },
+    {
+      "def_id": 30,
+      "lean_name": "V7RegistryOperatorGenerated.active_at",
+      "lean_file": "V7RegistryOperator/Funs.lean",
+      "rust_name": "v7_registry_operator_source::active_at",
+      "is_local": true,
+      "source": { "file": "src/lib.rs", "begin_line": 371, "end_line": 375 },
+      "is_opaque": false,
+      "can_fail": true,
+      "can_diverge": false,
+      "is_rec": false,
+      "reducible": false
+    },
+    {
+      "def_id": 31,
+      "lean_name": "V7RegistryOperatorGenerated.exact_replacement",
+      "lean_file": "V7RegistryOperator/Funs.lean",
+      "rust_name": "v7_registry_operator_source::exact_replacement",
+      "is_local": true,
+      "source": { "file": "src/lib.rs", "begin_line": 377, "end_line": 384 },
+      "is_opaque": false,
+      "can_fail": true,
+      "can_diverge": false,
+      "is_rec": false,
+      "reducible": false
+    },
+    {
+      "def_id": 11,
+      "lean_name": "V7RegistryOperatorGenerated.apply_initialize",
+      "lean_file": "V7RegistryOperator/Funs.lean",
+      "rust_name": "v7_registry_operator_source::apply_initialize",
+      "is_local": true,
+      "source": { "file": "src/lib.rs", "begin_line": 386, "end_line": 425 },
+      "is_opaque": false,
+      "can_fail": true,
+      "can_diverge": false,
+      "is_rec": false,
+      "reducible": false
+    },
+    {
+      "def_id": 12,
+      "lean_name": "V7RegistryOperatorGenerated.schedule",
+      "lean_file": "V7RegistryOperator/Funs.lean",
+      "rust_name": "v7_registry_operator_source::schedule",
+      "is_local": true,
+      "source": { "file": "src/lib.rs", "begin_line": 427, "end_line": 471 },
+      "is_opaque": false,
+      "can_fail": true,
+      "can_diverge": false,
+      "is_rec": false,
+      "reducible": false
+    },
+    {
+      "def_id": 13,
+      "lean_name": "V7RegistryOperatorGenerated.pause_change",
+      "lean_file": "V7RegistryOperator/Funs.lean",
+      "rust_name": "v7_registry_operator_source::pause_change",
+      "is_local": true,
+      "source": { "file": "src/lib.rs", "begin_line": 473, "end_line": 496 },
+      "is_opaque": false,
+      "can_fail": true,
+      "can_diverge": false,
+      "is_rec": false,
+      "reducible": false
+    },
+    {
+      "def_id": 14,
+      "lean_name": "V7RegistryOperatorGenerated.activate",
+      "lean_file": "V7RegistryOperator/Funs.lean",
+      "rust_name": "v7_registry_operator_source::activate",
+      "is_local": true,
+      "source": { "file": "src/lib.rs", "begin_line": 498, "end_line": 530 },
+      "is_opaque": false,
+      "can_fail": true,
+      "can_diverge": false,
+      "is_rec": false,
+      "reducible": false
+    },
+    {
+      "def_id": 15,
+      "lean_name": "V7RegistryOperatorGenerated.retire",
+      "lean_file": "V7RegistryOperator/Funs.lean",
+      "rust_name": "v7_registry_operator_source::retire",
+      "is_local": true,
+      "source": { "file": "src/lib.rs", "begin_line": 532, "end_line": 576 },
+      "is_opaque": false,
+      "can_fail": true,
+      "can_diverge": false,
+      "is_rec": false,
+      "reducible": false
+    },
+    {
+      "def_id": 10,
+      "lean_name": "V7RegistryOperatorGenerated.freeze",
+      "lean_file": "V7RegistryOperator/Funs.lean",
+      "rust_name": "v7_registry_operator_source::freeze",
+      "is_local": true,
+      "source": { "file": "src/lib.rs", "begin_line": 578, "end_line": 594 },
+      "is_opaque": false,
+      "can_fail": true,
+      "can_diverge": false,
+      "is_rec": false,
+      "reducible": false
+    },
+    {
+      "def_id": 3,
+      "lean_name": "V7RegistryOperatorGenerated.apply_operator",
+      "lean_file": "V7RegistryOperator/Funs.lean",
+      "rust_name": "v7_registry_operator_source::apply_operator",
+      "is_local": true,
+      "source": { "file": "src/lib.rs", "begin_line": 596, "end_line": 609 },
+      "is_opaque": false,
+      "can_fail": true,
+      "can_diverge": false,
+      "is_rec": false,
+      "reducible": false
+    },
+    {
+      "def_id": 1,
+      "lean_name": "V7RegistryOperatorGenerated.execute_atomic_registry_operation",
+      "lean_file": "V7RegistryOperator/Funs.lean",
+      "rust_name": "v7_registry_operator_source::execute_atomic_registry_operation",
+      "is_local": true,
+      "source": { "file": "src/lib.rs", "begin_line": 611, "end_line": 637 },
+      "is_opaque": false,
+      "can_fail": true,
+      "can_diverge": false,
+      "is_rec": false,
+      "reducible": false
+    },
+    {
+      "def_id": 4,
+      "lean_name": "V7RegistryOperatorGenerated.authenticate_registry",
+      "lean_file": "V7RegistryOperator/Funs.lean",
+      "rust_name": "v7_registry_operator_source::authenticate_registry",
+      "is_local": true,
+      "source": { "file": "src/lib.rs", "begin_line": 639, "end_line": 657 },
+      "is_opaque": false,
+      "can_fail": true,
+      "can_diverge": false,
+      "is_rec": false,
+      "reducible": false
+    },
+    {
+      "def_id": 6,
+      "lean_name": "V7RegistryOperatorGenerated.authenticate_entry",
+      "lean_file": "V7RegistryOperator/Funs.lean",
+      "rust_name": "v7_registry_operator_source::authenticate_entry",
+      "is_local": true,
+      "source": { "file": "src/lib.rs", "begin_line": 659, "end_line": 687 },
+      "is_opaque": false,
+      "can_fail": true,
+      "can_diverge": false,
+      "is_rec": false,
+      "reducible": false
+    },
+    {
+      "def_id": 8,
+      "lean_name": "V7RegistryOperatorGenerated.authenticate_verifier_accounts",
+      "lean_file": "V7RegistryOperator/Funs.lean",
+      "rust_name": "v7_registry_operator_source::authenticate_verifier_accounts",
+      "is_local": true,
+      "source": { "file": "src/lib.rs", "begin_line": 689, "end_line": 705 },
+      "is_opaque": false,
+      "can_fail": true,
+      "can_diverge": false,
+      "is_rec": false,
+      "reducible": false
+    },
+    {
+      "def_id": 9,
+      "lean_name": "V7RegistryOperatorGenerated.authenticate_verifier_return",
+      "lean_file": "V7RegistryOperator/Funs.lean",
+      "rust_name": "v7_registry_operator_source::authenticate_verifier_return",
+      "is_local": true,
+      "source": { "file": "src/lib.rs", "begin_line": 707, "end_line": 727 },
+      "is_opaque": false,
+      "can_fail": true,
+      "can_diverge": false,
+      "is_rec": false,
+      "reducible": false
+    },
+    {
+      "def_id": 2,
+      "lean_name": "V7RegistryOperatorGenerated.authenticate_and_invoke_selected_verifier",
+      "lean_file": "V7RegistryOperator/Funs.lean",
+      "rust_name": "v7_registry_operator_source::authenticate_and_invoke_selected_verifier",
+      "is_local": true,
+      "source": { "file": "src/lib.rs", "begin_line": 729, "end_line": 746 },
+      "is_opaque": false,
+      "can_fail": true,
+      "can_diverge": false,
+      "is_rec": false,
+      "reducible": false
+    },
+    {
+      "def_id": 0,
+      "lean_name": "V7RegistryOperatorGenerated.registry_operator_and_selected_verifier_source_roots",
+      "lean_file": "V7RegistryOperator/Funs.lean",
+      "rust_name": "v7_registry_operator_source::registry_operator_and_selected_verifier_source_roots",
+      "is_local": true,
+      "source": { "file": "src/lib.rs", "begin_line": 751, "end_line": 760 },
+      "is_opaque": false,
+      "can_fail": true,
+      "can_diverge": false,
+      "is_rec": false,
+      "reducible": false
+    }
+  ],
+  "types": [
+    {
+      "def_id": 15,
+      "lean_name": "V7RegistryOperatorGenerated.RegistryError",
+      "lean_file": "V7RegistryOperator/Types.lean",
+      "rust_name": "v7_registry_operator_source::RegistryError",
+      "is_local": true,
+      "source": { "file": "src/lib.rs", "begin_line": 8, "end_line": 34 }
+    },
+    {
+      "def_id": 7,
+      "lean_name": "V7RegistryOperatorGenerated.SelectionError",
+      "lean_file": "V7RegistryOperator/Types.lean",
+      "rust_name": "v7_registry_operator_source::SelectionError",
+      "is_local": true,
+      "source": { "file": "src/lib.rs", "begin_line": 37, "end_line": 54 }
+    },
+    {
+      "def_id": 18,
+      "lean_name": "V7RegistryOperatorGenerated.EntryStatus",
+      "lean_file": "V7RegistryOperator/Types.lean",
+      "rust_name": "v7_registry_operator_source::EntryStatus",
+      "is_local": true,
+      "source": { "file": "src/lib.rs", "begin_line": 57, "end_line": 62 }
+    },
+    {
+      "def_id": 21,
+      "lean_name": "V7RegistryOperatorGenerated.EntryTarget",
+      "lean_file": "V7RegistryOperator/Types.lean",
+      "rust_name": "v7_registry_operator_source::EntryTarget",
+      "is_local": true,
+      "source": { "file": "src/lib.rs", "begin_line": 65, "end_line": 68 }
+    },
+    {
+      "def_id": 14,
+      "lean_name": "V7RegistryOperatorGenerated.SupportedLoader",
+      "lean_file": "V7RegistryOperator/Types.lean",
+      "rust_name": "v7_registry_operator_source::SupportedLoader",
+      "is_local": true,
+      "source": { "file": "src/lib.rs", "begin_line": 71, "end_line": 76 }
+    },
+    {
+      "def_id": 9,
+      "lean_name": "V7RegistryOperatorGenerated.Registry",
+      "lean_file": "V7RegistryOperator/Types.lean",
+      "rust_name": "v7_registry_operator_source::Registry",
+      "is_local": true,
+      "source": { "file": "src/lib.rs", "begin_line": 79, "end_line": 87 }
+    },
+    {
+      "def_id": 10,
+      "lean_name": "V7RegistryOperatorGenerated.Entry",
+      "lean_file": "V7RegistryOperator/Types.lean",
+      "rust_name": "v7_registry_operator_source::Entry",
+      "is_local": true,
+      "source": { "file": "src/lib.rs", "begin_line": 90, "end_line": 100 }
+    },
+    {
+      "def_id": 0,
+      "lean_name": "V7RegistryOperatorGenerated.RegistrySystem",
+      "lean_file": "V7RegistryOperator/Types.lean",
+      "rust_name": "v7_registry_operator_source::RegistrySystem",
+      "is_local": true,
+      "source": { "file": "src/lib.rs", "begin_line": 103, "end_line": 110 }
+    },
+    {
+      "def_id": 20,
+      "lean_name": "V7RegistryOperatorGenerated.AuthorityGate",
+      "lean_file": "V7RegistryOperator/Types.lean",
+      "rust_name": "v7_registry_operator_source::AuthorityGate",
+      "is_local": true,
+      "source": { "file": "src/lib.rs", "begin_line": 113, "end_line": 124 }
+    },
+    {
+      "def_id": 19,
+      "lean_name": "V7RegistryOperatorGenerated.CreationGate",
+      "lean_file": "V7RegistryOperator/Types.lean",
+      "rust_name": "v7_registry_operator_source::CreationGate",
+      "is_local": true,
+      "source": { "file": "src/lib.rs", "begin_line": 127, "end_line": 144 }
+    },
+    {
+      "def_id": 11,
+      "lean_name": "V7RegistryOperatorGenerated.InitializeInput",
+      "lean_file": "V7RegistryOperator/Types.lean",
+      "rust_name": "v7_registry_operator_source::InitializeInput",
+      "is_local": true,
+      "source": { "file": "src/lib.rs", "begin_line": 147, "end_line": 159 }
+    },
+    {
+      "def_id": 12,
+      "lean_name": "V7RegistryOperatorGenerated.ScheduleInput",
+      "lean_file": "V7RegistryOperator/Types.lean",
+      "rust_name": "v7_registry_operator_source::ScheduleInput",
+      "is_local": true,
+      "source": { "file": "src/lib.rs", "begin_line": 162, "end_line": 173 }
+    },
+    {
+      "def_id": 13,
+      "lean_name": "V7RegistryOperatorGenerated.SimpleMutationInput",
+      "lean_file": "V7RegistryOperator/Types.lean",
+      "rust_name": "v7_registry_operator_source::SimpleMutationInput",
+      "is_local": true,
+      "source": { "file": "src/lib.rs", "begin_line": 176, "end_line": 181 }
+    },
+    {
+      "def_id": 1,
+      "lean_name": "V7RegistryOperatorGenerated.RegistryOperation",
+      "lean_file": "V7RegistryOperator/Types.lean",
+      "rust_name": "v7_registry_operator_source::RegistryOperation",
+      "is_local": true,
+      "source": { "file": "src/lib.rs", "begin_line": 184, "end_line": 192 }
+    },
+    {
+      "def_id": 4,
+      "lean_name": "V7RegistryOperatorGenerated.RegistryOutcome",
+      "lean_file": "V7RegistryOperator/Types.lean",
+      "rust_name": "v7_registry_operator_source::RegistryOutcome",
+      "is_local": true,
+      "source": { "file": "src/lib.rs", "begin_line": 195, "end_line": 199 }
+    },
+    {
+      "def_id": 2,
+      "lean_name": "V7RegistryOperatorGenerated.SelectionInput",
+      "lean_file": "V7RegistryOperator/Types.lean",
+      "rust_name": "v7_registry_operator_source::SelectionInput",
+      "is_local": true,
+      "source": { "file": "src/lib.rs", "begin_line": 202, "end_line": 235 }
+    },
+    {
+      "def_id": 6,
+      "lean_name": "V7RegistryOperatorGenerated.AuthenticatedSelection",
+      "lean_file": "V7RegistryOperator/Types.lean",
+      "rust_name": "v7_registry_operator_source::AuthenticatedSelection",
+      "is_local": true,
+      "source": { "file": "src/lib.rs", "begin_line": 238, "end_line": 247 }
+    },
+    {
+      "def_id": 3,
+      "lean_name": "V7RegistryOperatorGenerated.SourceRoots",
+      "lean_file": "V7RegistryOperator/Types.lean",
+      "rust_name": "v7_registry_operator_source::SourceRoots",
+      "is_local": true,
+      "source": { "file": "src/lib.rs", "begin_line": 250, "end_line": 253 }
+    }
+  ],
+  "globals": [
+    {
+      "def_id": 1,
+      "lean_name": "V7RegistryOperatorGenerated.NO_RETIREMENT_SLOT",
+      "lean_file": "V7RegistryOperator/Funs.lean",
+      "rust_name": "v7_registry_operator_source::NO_RETIREMENT_SLOT",
+      "is_local": true,
+      "source": { "file": "src/lib.rs", "begin_line": 3, "end_line": 3 },
+      "can_fail": false
+    },
+    {
+      "def_id": 3,
+      "lean_name": "V7RegistryOperatorGenerated.ASR8_BYTES",
+      "lean_file": "V7RegistryOperator/Funs.lean",
+      "rust_name": "v7_registry_operator_source::ASR8_BYTES",
+      "is_local": true,
+      "source": { "file": "src/lib.rs", "begin_line": 4, "end_line": 4 },
+      "can_fail": false
+    }
+  ],
+  "trait_decls": [],
+  "trait_impls": [
+    {
+      "def_id": 4,
+      "lean_name": "V7RegistryOperatorGenerated.EntryStatus.Insts.CoreCmpPartialEqEntryStatus",
+      "lean_file": "V7RegistryOperator/Funs.lean",
+      "rust_name": "v7_registry_operator_source::{impl core::cmp::PartialEq<v7_registry_operator_source::EntryStatus> for v7_registry_operator_source::EntryStatus}",
+      "is_local": true,
+      "source": { "file": "src/lib.rs", "begin_line": 56, "end_line": 56 },
+      "impl_trait_def_id": 4,
+      "impl_trait_rust_name": "core::cmp::PartialEq",
+      "impl_trait_is_builtin": true
+    }
+  ]
+}

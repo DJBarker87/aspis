@@ -1,0 +1,58 @@
+{
+  "inputPath": "/tmp/aspis-v7-txv1-preflight.IKFuOJ/transfer-rollover.input.json",
+  "schema": "aspis.v7.txv1-simulation-preflight.v1",
+  "simulationRequest": {
+    "id": 1001,
+    "jsonrpc": "2.0",
+    "method": "simulateTransaction",
+    "params": [
+      "gQEACQwAAAAw5pWieQInJh8BwqEfsy9XWecZY0h9fVM3hUheUgmKlgENiojj3XQJ8ZX9UtstPLpdcspnCb8dlBIb83SIAbQPb1wgSefPAU2IdS/OYn0N7XCwu3pB+L2NtBktjjQIyk4QHGFUGngH8w2KHhMPRglpr4heo3JVuOzlGJ1fKh9N356N4eq+I7T2VPPN7Akn1bdX1aiGC+LB/Bxk6z7bs2iu3EsAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAACIIxjc90xOy8nalLRT+kxk3ndN8mKo7WLZN/JgtGlI/QUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFFRUVFRUVFRUVFRUVFRUVFRUVFRUVFRUVFRUVFRUVFRV8MflRUuL8sf+1V+hpBC6LqtMGVor5k9+L9OwDhl5qNhZIzlwiQS3F7bAS3pSXvlrgNGRn3a2sEWMY2UK/kEZS11e6n8+xVCsjXOFmWMfmh4vrpD1AVfxvAtr+XgXdOrsRmVKpoK9swumuJU172TQBfwhfTLYWGbMJMp0jPcsDN/2cUHRPDSHm4z12pmSSOq8hcT2u6qcbSc8Hl7O/WUR4g1hMAAAAABAYMQAEFCwEKAwIABAwJCAdBU1E4AQEBAKF5+NfjcCTrVOPbF/OWs5ihvrLaDIv69iszXyuk6lwmrdCWY8alSDgOGn5TlMhCbm5IusJKjFNqBF+/nb6fuhxBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFTQ1ABAQEAIgjGNz3TE7LydqUtFP6TGTed03yYqjtYtk38mC0aUj8FBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBSoAAAAAAAAAVfY+BJ9QdSHd74B42IONMWPvZiP9lJMGgHhDZ1axnTjbG4IATJCJBhRgsmGkJQYAgI/acKKksBQZusAT0a9udU0AAAAAAAAAJl8GVhWQQBeQJg4sEyzMciKkChkxp7ovH/CYOEh8dgQjFYgGQRNOeHEmDUb6MeAgCIYwFwFTkSEjwFFVzRnsFAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=",
+      {
+        "accounts": {
+          "addresses": [
+            "3Hrd4YKTTF2eaoWjdwzBwagmH9SeuenwiVyQajm72C8N",
+            "EDfQpAnRQVqFmGZuY2ocZoX7gBp5H1N3MWWMLmuWTmD6",
+            "3B3QhxztFR6kSo3m3kpTaU9JsQyJH6ScoT94gwnFXQYj",
+            "DEozmkY3H2YccnEAqHyENJp2Hs1HAFjBq6xqdJDFeZk9",
+            "GCtLhcW4k4mYZRnGecvcx1CEWyiYQzs4UjuDUEaBirqY",
+            "7YvvqJNdXZt3aNMkCebG4To2f1VJe1TbxHBtY41D4Jy2",
+            "JBz8KKzyZ6FzTU7WmLywurr49xJPpQcA9ECNg2SZX6iH",
+            "9zQXTg6QqijGAG3kyWf94CQA3KdFq3VoYBLAUrhge1WB",
+            "5fQPsn8hoaVddFG26cWQ5QFdqxWtUPNaZ9zH2E6LYzFn"
+          ],
+          "encoding": "base64"
+        },
+        "commitment": "finalized",
+        "encoding": "base64",
+        "innerInstructions": true,
+        "minContextSlot": 150,
+        "replaceRecentBlockhash": false,
+        "sigVerify": false
+      }
+    ]
+  },
+  "summary": {
+    "case": {
+      "history_path": "rollover",
+      "operation": "private-transfer"
+    },
+    "compute_unit_limit": 1300000,
+    "fee_payer": "AKnL4NNf3DGWZJS6cPknBuEGnVsV4A4m5tgebLHaRSZ9",
+    "headroom_to_4096_bytes": 3230,
+    "heap_size_present": false,
+    "inline_addresses": 13,
+    "instruction_accounts": 12,
+    "instruction_data_bytes": 320,
+    "loaded_accounts_data_size_limit": 67108864,
+    "min_context_slot": 150,
+    "placeholder_signatures_are_zero": true,
+    "placeholder_wire_sha256": "cf111a61cb79f6f5a6f2eb5c082bceefe30a9464ea04f751c230f8ef49a60dc2",
+    "pool_program": "5PjDJaGfSPJj4tFzMRCiuuAasKg5n8dJKXKenhuwZexx",
+    "priority_fee_present": false,
+    "required_signatures": 1,
+    "schema": "aspis.v7.txv1-simulation-summary.v1",
+    "serialized_transaction_bytes": 866,
+    "signable_message_sha256": "3161a5f4e91a405a92c079da885bc61b8da5165737679b0d0da5df9b4101ab00",
+    "simulation_only": true
+  }
+}

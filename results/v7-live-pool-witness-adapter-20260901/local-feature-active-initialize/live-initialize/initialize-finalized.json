@@ -1,0 +1,27 @@
+{
+  "schema": "aspis.v7.live-pool-initialize-finalized.v1",
+  "operation": "initialize",
+  "signature": "3fKiv5Gqtx8wHLZMnAGXmxzMaXgGeXjiSLwySh4LaNSiPodi3idQ2BAAChtjx9MbRQ9DBeYKZqSeCSCqa9Pby8TC",
+  "slot": 151,
+  "simulatedCu": 131942,
+  "landedCu": 131942,
+  "byteIdenticalSimulationSubmission": true,
+  "serializedTransactionBytes": 784,
+  "signedWireSha256": "58f38b16717ba55712dfe18557fe67c79d1f5a80c3556de1b42727c27175e40e",
+  "initializedAccounts": [
+    "3Hrd4YKTTF2eaoWjdwzBwagmH9SeuenwiVyQajm72C8N",
+    "EWAWegMJFS9Dgxy4vmdoWWk4KqiH1tGko6bpDYsfwdPT",
+    "HZnVqKEV4J8sB9SrK8BS2Ds8cLyQCTwXN62wdUhWbHsH",
+    "BVinTuDJuEQ7sBaePzuWpwRTYvVFcfCQJcYKJqVFTtPY",
+    "3B3QhxztFR6kSo3m3kpTaU9JsQyJH6ScoT94gwnFXQYj",
+    "8EkMVrGuAmYEeZMGiJQJHAZFWuG77J5Dwhc65Ju3LB95",
+    "AsZpeSN85h6WWG3Kf9SjMZtgqM4kbBEhCRoXhX1T5jMe",
+    "6Cp7KLYgxPtXKUbojf982VujgZ9FWn7YkrguyRWNbDYo",
+    "DBkNZFhoio2nawZpA8rzHJqsE7VrvTtm4uu5voB1ggby",
+    "9D428z6FiWBzKX9i72tc26RGybMbGV9FLUa8EAAvf7kX"
+  ],
+  "finalized": true,
+  "auditOnly": true,
+  "disposable": true,
+  "mainnetReady": false
+}

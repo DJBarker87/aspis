@@ -1,0 +1,14 @@
+{
+  "schema": "aspis.v7.registry-v2-agave-suite-materialization-result.v1",
+  "unit": "aspis-v7-registry-v2-agave-suite-materialize-r7",
+  "invocation": "23e90b1e5c8940008e2ffcac0b206be5",
+  "memoryHighBytes": 10737418240,
+  "memoryMaxBytes": 12884901888,
+  "memorySwapMaxBytes": 0,
+  "wall": "0:00.12",
+  "maximumProcessResidentSetKiB": 7920,
+  "swaps": 0,
+  "exitStatus": 0,
+  "suiteSha256": "3bd0af676e940f5b0221d600525a3bd2e108f48b5490222f2d3504170d998aee",
+  "pass": true
+}

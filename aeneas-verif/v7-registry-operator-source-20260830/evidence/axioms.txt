@@ -1,0 +1,27 @@
+'V7RegistryOperatorGenerated.translated_operator_rejection_is_exact_rollback' depends on axioms: [propext,
+ Classical.choice,
+ Quot.sound]
+'V7RegistryOperatorGenerated.translated_operator_success_is_exact_apply' depends on axioms: [propext,
+ Classical.choice,
+ Quot.sound]
+'V7RegistryOperatorGenerated.translated_operator_preserves_unrelated_pool_state' depends on axioms: [propext,
+ Classical.choice,
+ Quot.sound]
+'V7RegistryOperatorGenerated.translated_frozen_registry_rejects_authority_gate' depends on axioms: [propext,
+ Classical.choice,
+ Quot.sound]
+'V7RegistryOperatorGenerated.translated_generation_mismatch_rejects_authority_gate' depends on axioms: [propext,
+ Classical.choice,
+ Quot.sound]
+'V7RegistryOperatorGenerated.translated_compatible_replacement_success_binds_exact_relation' depends on axioms: [propext,
+ Classical.choice,
+ Quot.sound]
+'V7RegistryOperatorGenerated.translated_selected_verifier_success_has_exact_guarantee' depends on axioms: [propext,
+ Classical.choice,
+ Quot.sound]
+'V7RegistryOperatorGenerated.current_v1_selection_is_independent_of_programdata_code_hash_and_authority' depends on axioms: [propext,
+ Classical.choice,
+ Quot.sound]
+'V7RegistryOperatorGenerated.translated_combined_root_keeps_operator_and_selection_separate' depends on axioms: [propext,
+ Classical.choice,
+ Quot.sound]

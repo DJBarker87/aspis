@@ -1,0 +1,108 @@
+{
+  "schema": "aspis.v7.pair-forest-lane-persisted-state-induction.v1",
+  "repositoryRevision": "74cc65d4f0da48ea8a49e833c0f35398195b3ec4",
+  "source": {
+    "path": "programs/aspis-pool/src/pair_forest.rs",
+    "gitBlob": "68a329cc7a1cd0098a8d10289f67e19e37246d61"
+  },
+  "claim": "Under a fixed authenticated Pool program binary and the Solana owner/atomicity rules, every reachable persisted canonical pair-forest lane is either its strict genesis image or the byte-exact output of an authenticated Pool transition.",
+  "assumptions": [
+    "The Pool program binary and program ID are authenticated before use.",
+    "Only the owning Solana program can mutate account data.",
+    "A failed transaction rolls back account creation, CPI effects and program writes atomically.",
+    "Program upgrade or arbitrary genesis injection of an already Pool-owned lane account is outside the fixed-binary reachable-state claim."
+  ],
+  "baseCase": {
+    "instruction": "AS8I",
+    "freshness": "canonical lane PDA is fresh System-owned/empty or exact-size rent-exempt Pool-owned zero data",
+    "image": "strict canonical pair-domain genesis lane image",
+    "persistLine": 1858,
+    "pass": true
+  },
+  "inductiveCases": [
+    {
+      "instruction": "AS8D",
+      "authentication": "canonical Pool owner/PDA/master/lane identity, exact wire/account cardinality, capacity, canonical fields and inactive frontier, retained current history root, exact SPL custody delta",
+      "successor": "checked pair-domain occupied/empty append; strict-equivalent canonical byte image",
+      "persistLine": 980,
+      "rollbackOnFailure": true,
+      "pass": true
+    },
+    {
+      "instruction": "ASQ8/ASF8",
+      "authentication": "canonical Pool owner/PDA/master/lane/checkpoint, Registry release/profile/program selection, proof-account identity, verifier return program and exact ASR8 afterstate binding",
+      "successor": "verifier-authenticated canonical next lane encoded byte-exactly",
+      "persistLine": 1545,
+      "rollbackOnFailure": true,
+      "pass": true
+    }
+  ],
+  "readOnlyCase": {
+    "instruction": "AS8C",
+    "laneEffect": "read-only; writes only checkpoint/master metadata",
+    "pass": true
+  },
+  "writeSurface": {
+    "productionLaneWriteCount": 3,
+    "genesisWrites": 1,
+    "authenticatedTransitionWrites": 2,
+    "rawAppendInstruction": false,
+    "checkpointWritesLane": false,
+    "closeOrReallocLanePath": false,
+    "sourceRegressionTest": "pair_forest_lane_persistence_surface_remains_closed",
+    "pass": true
+  },
+  "depositAuditBoundary": {
+    "omittedChecks": [
+      "source root reconstruction from the already persisted active frontier",
+      "successor root reconstruction during re-encoding after the checked append already produced it"
+    ],
+    "preservedChecks": [
+      "canonical account length, magic, versions and format binding",
+      "Pool ownership and canonical lane/master PDA identity",
+      "canonical digest encodings",
+      "capacity",
+      "inactive-frontier empties",
+      "strict genesis root",
+      "retained current history-page PDA, header, fill and root equality",
+      "fresh and rollover page identity/zero/rent checks",
+      "exact SPL custody delta before persistence"
+    ],
+    "defaultOff": true,
+    "productionApproved": false
+  },
+  "focusedTests": [
+    {
+      "name": "deposit_invariant_append_is_byte_exact_at_measured_boundaries",
+      "indices": [0, 1, 2, 3, 7, 15, 255],
+      "result": "pass"
+    },
+    {
+      "name": "deposit_invariant_source_root_still_requires_exact_retained_history",
+      "result": "pass"
+    },
+    {
+      "name": "program_invariant_lane_decoder_keeps_exact_boundary",
+      "result": "pass"
+    },
+    {
+      "name": "authenticated_result_encoder_is_byte_exact_for_valid_lanes",
+      "result": "pass"
+    },
+    {
+      "name": "vault_deposit_routes_one_occupied_empty_pair_and_creates_lane_history",
+      "result": "pass"
+    },
+    {
+      "name": "vault_deposit_rollover_preserves_full_history_and_starts_next_page",
+      "result": "pass"
+    }
+  ],
+  "verifierModified": false,
+  "txv1Modified": false,
+  "treeDepthModified": false,
+  "proofFormatModified": false,
+  "cpiOrderingModified": false,
+  "mainnetReady": false,
+  "pass": true
+}

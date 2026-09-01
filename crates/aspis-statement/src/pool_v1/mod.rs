@@ -98,8 +98,9 @@ pub use format::{
     POOL_V1_DIGEST_ENCODING_VERSION, POOL_V1_FORMAT_BINDING, POOL_V1_FORMAT_VERSION,
     POOL_V1_IDENTITY_BYTES, POOL_V1_NOTE_COMMITMENT_VERSION, POOL_V1_NULLIFIER_FORMAT_VERSION,
     POOL_V1_TREE_DEPTH, POOL_V1_TREE_HASH_VERSION, POOL_V1_VERIFIER_POLICY_BYTES,
-    POOL_V1_VERIFIER_POLICY_FLAGS_MASK, POOL_V1_VERIFIER_POLICY_FLAG_IMMUTABLE_REGISTRY,
-    POOL_V1_VERIFIER_POLICY_MAGIC, POOL_V1_VERIFIER_POLICY_VERSION,
+    POOL_V1_VERIFIER_POLICY_FLAGS_MASK, POOL_V1_VERIFIER_POLICY_FLAG_IMMUTABLE_DEPLOYMENT,
+    POOL_V1_VERIFIER_POLICY_FLAG_IMMUTABLE_REGISTRY, POOL_V1_VERIFIER_POLICY_MAGIC,
+    POOL_V1_VERIFIER_POLICY_VERSION,
 };
 pub use historical_anchor::{
     decode_historical_anchor_envelope_v1, encode_historical_anchor_envelope_v1,
@@ -405,13 +406,20 @@ pub use verifier_dispatch::{
     POOL_V1_VERIFIER_STATEMENT_PAYLOAD_MAX_BYTES,
 };
 pub use verifier_registry::{
-    decode_verifier_registry_entry_v1, decode_verifier_registry_v1,
-    encode_verifier_registry_entry_v1, encode_verifier_registry_v1,
-    validate_verifier_registry_entry_v1, validate_verifier_registry_v1,
+    decode_verifier_registry_entry_v1, decode_verifier_registry_entry_v2,
+    decode_verifier_registry_v1, decode_verifier_registry_v2, encode_verifier_registry_entry_v1,
+    encode_verifier_registry_entry_v2, encode_verifier_registry_v1, encode_verifier_registry_v2,
+    validate_verifier_registry_entry_v1, validate_verifier_registry_entry_v2,
+    validate_verifier_registry_v1, validate_verifier_registry_v2,
     PoolV1VerifierRegistryFormatError, VerifierEntryStatusV1, VerifierRegistryEntryV1,
-    VerifierRegistryV1, POOL_V1_VERIFIER_ENTRY_BYTES, POOL_V1_VERIFIER_ENTRY_MAGIC,
-    POOL_V1_VERIFIER_ENTRY_NO_RETIREMENT_SLOT, POOL_V1_VERIFIER_ENTRY_VERSION,
+    VerifierRegistryEntryV2, VerifierRegistryV1, VerifierRegistryV2,
+    POOL_V1_VERIFIER_DEPLOYMENT_MODE_IMMUTABLE_LOADER_V3, POOL_V1_VERIFIER_ENTRY_BYTES,
+    POOL_V1_VERIFIER_ENTRY_MAGIC, POOL_V1_VERIFIER_ENTRY_NO_RETIREMENT_SLOT,
+    POOL_V1_VERIFIER_ENTRY_V2_BYTES, POOL_V1_VERIFIER_ENTRY_V2_MAGIC,
+    POOL_V1_VERIFIER_ENTRY_V2_VERSION, POOL_V1_VERIFIER_ENTRY_VERSION,
     POOL_V1_VERIFIER_REGISTRY_BYTES, POOL_V1_VERIFIER_REGISTRY_FLAGS_MASK,
     POOL_V1_VERIFIER_REGISTRY_FLAG_IMMUTABLE, POOL_V1_VERIFIER_REGISTRY_FLAG_PAUSED,
-    POOL_V1_VERIFIER_REGISTRY_MAGIC, POOL_V1_VERIFIER_REGISTRY_VERSION,
+    POOL_V1_VERIFIER_REGISTRY_MAGIC, POOL_V1_VERIFIER_REGISTRY_V2_BYTES,
+    POOL_V1_VERIFIER_REGISTRY_V2_MAGIC, POOL_V1_VERIFIER_REGISTRY_V2_VERSION,
+    POOL_V1_VERIFIER_REGISTRY_VERSION,
 };

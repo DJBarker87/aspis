@@ -1,0 +1,41 @@
+{
+  "schema": "aspis.v7.live-terminal-failed-withdrawal-cpi-rollback.v1",
+  "expected": "SPL token CPI failure with atomic rollback",
+  "actual": "finalized-rejected",
+  "failureFixture": "terminal-compute-limit-exhausts-inside-token-cpi",
+  "signature": "66zCM8eW9VTEiUmEUjPwNQDmgx8YdEQuJvoCUGJPebeP9e3gMraUHvbjpku73tEFCdjg6eF9GV2UtBFUSjYeHef6",
+  "slot": 557,
+  "serializedTransactionBytes": 1543,
+  "signedWireSha256": "8a3bcb3508b5d4dd71d6b8ae593d8699bbb982236f0a697031e1097e9818615a",
+  "selectedLane": 6,
+  "simulatedError": {
+    "InstructionError": [
+      1,
+      "ProgramFailedToComplete"
+    ]
+  },
+  "landedError": {
+    "InstructionError": [
+      1,
+      "ProgramFailedToComplete"
+    ]
+  },
+  "simulatedCu": 1248410,
+  "landedCu": 1248410,
+  "calibratedComputeUnitLimit": 1248410,
+  "calibrationTokenEntryCu": 51650,
+  "calibrationSubmitted": false,
+  "verifierSucceededBeforeCpiFailure": true,
+  "byteIdenticalSimulationSubmission": true,
+  "feeNormalizedProtectedStateBeforeSha256": "585d11641e51f2eb68564d9ceba50c7235030e46719edcc4c7e41c6314828b27",
+  "feeNormalizedProtectedStateAfterSha256": "585d11641e51f2eb68564d9ceba50c7235030e46719edcc4c7e41c6314828b27",
+  "stateUnchangedExceptPayerFee": true,
+  "payer": "AEH7CF1C8uRnMyzLUcY6TQoGk1gqKcvUu1ypZVrGeYwW",
+  "payerFeeLamports": 5000,
+  "vaultAmountBeforeAndAfter": 1000,
+  "destinationAmountBeforeAndAfter": 0,
+  "finalized": true,
+  "auditOnly": true,
+  "disposable": true,
+  "mainnetReady": false
+}

@@ -63,14 +63,15 @@ use crate::{
         PoolInstructionFormatErrorV1, POOL_V1_INITIALIZE_INSTRUCTION_BYTES,
         POOL_V1_INITIALIZE_INSTRUCTION_MAGIC, POOL_V1_INSTRUCTION_VERSION,
     },
-    nullifier::{plan_nullifier_marker_consumption_v1, NullifierMarkerPreparationV1},
+    nullifier::plan_nullifier_marker_consumption_v1,
     pair_forest_dispatch::{
         dispatch_pair_forest_terminal_readonly_v1, AuthenticatedPairForestResultV1,
     },
     processor::{
-        create_or_allocate_pda, initialize_vault_account, plan_fresh_program_pda,
-        plan_vault_initialization, require_payer_and_system_program, require_token_program_account,
-        require_unique_accounts, FreshPdaPreparationV1, PoolCpiRuntimeV1,
+        create_nullifier_marker_if_needed_v1, create_or_allocate_pda, initialize_vault_account,
+        plan_fresh_program_pda, plan_vault_initialization, require_payer_and_system_program,
+        require_token_program_account, require_unique_accounts, FreshPdaPreparationV1,
+        PoolCpiRuntimeV1,
     },
     state::PoolInitializationV1,
     vault::{
@@ -364,9 +365,14 @@ fn decode_lane_account(
 
 /// Decode the complete canonical lane byte image while treating only the
 /// persisted active root/frontier relation as an inductive Pool-owned state
-/// invariant. This remains private and is used only by the named default-off
-/// terminal CU feature; checkpoint and deposit keep the generic strict codec.
-#[cfg(feature = "pair-forest-source-invariant-audit")]
+/// invariant. This remains private and is used only by named default-off
+/// terminal or deposit audit features. Checkpoint keeps the generic strict
+/// codec, and each caller must independently authenticate the retained
+/// history root before any CPI or persistence.
+#[cfg(any(
+    feature = "pair-forest-source-invariant-audit",
+    feature = "pair-forest-deposit-invariant-audit"
+))]
 fn decode_lane_account_from_program_invariant_v1(
     program_id: &Pubkey,
     master: &Pubkey,
@@ -439,11 +445,15 @@ fn decode_lane_account_from_program_invariant_v1(
     })
 }
 
-/// Byte-exact encoder for a verifier-authenticated next lane. It retains all
-/// canonical field, capacity, inactive-frontier and genesis checks, omitting
-/// only a second root/frontier Poseidon reconstruction already enforced by
-/// the selected verifier relation.
-#[cfg(feature = "pair-forest-source-result-invariant-audit")]
+/// Byte-exact encoder for an authenticated Pool transition output. It retains
+/// all canonical field, capacity, inactive-frontier and genesis checks,
+/// omitting only a second root/frontier Poseidon reconstruction already
+/// enforced either by the selected verifier relation or by the Pool's checked
+/// deposit append construction.
+#[cfg(any(
+    feature = "pair-forest-source-result-invariant-audit",
+    feature = "pair-forest-deposit-invariant-audit"
+))]
 fn encode_lane_from_authenticated_result_v1(
     lane: &PoolV1PairForestLaneStateV1,
 ) -> Result<[u8; POOL_V1_PAIR_FOREST_LANE_ACCOUNT_BYTES], ProgramError> {
@@ -520,6 +530,33 @@ fn decode_checkpoint_master_box_v1(
     )?))
 }
 
+/// Decode the fixed lane snapshot in a separate SBF frame.  Each decoded lane
+/// is a large value (root plus the complete depth-20 frontier); keeping the
+/// loop in the checkpoint planner made the compiler retain its by-value
+/// decode scratch alongside the planner's pure plan and two output images.
+/// The returned allocation and the accepted bytes are unchanged.
+#[inline(never)]
+fn decode_checkpoint_lanes_box_v1(
+    program_id: &Pubkey,
+    master: &Pubkey,
+    lane_accounts: &[AccountInfo<'_>],
+) -> Result<Box<[PoolV1PairForestLaneStateV1; POOL_V1_PAIR_FOREST_LANE_COUNT]>, ProgramError> {
+    let mut lane_states = Vec::with_capacity(POOL_V1_PAIR_FOREST_LANE_COUNT);
+    for lane in 0..POOL_V1_PAIR_FOREST_LANE_COUNT {
+        lane_states.push(decode_lane_account(
+            program_id,
+            master,
+            lane as u8,
+            &lane_accounts[lane],
+            false,
+        )?);
+    }
+    lane_states
+        .into_boxed_slice()
+        .try_into()
+        .map_err(|_| ProgramError::InvalidAccountData)
+}
+
 /// Authenticate the exact fixed-order account snapshot and prepare, without
 /// mutation, one master update plus one immutable checkpoint image.
 pub fn plan_pair_forest_checkpoint_accounts_v1(
@@ -537,21 +574,8 @@ pub fn plan_pair_forest_checkpoint_accounts_v1(
     }
     require_alias_free(master_account, lane_accounts, checkpoint_account)?;
     let master = decode_checkpoint_master_box_v1(program_id, master_account)?;
-    let mut lane_states = Vec::with_capacity(POOL_V1_PAIR_FOREST_LANE_COUNT);
-    for lane in 0..POOL_V1_PAIR_FOREST_LANE_COUNT {
-        lane_states.push(decode_lane_account(
-            program_id,
-            master_account.key,
-            lane as u8,
-            &lane_accounts[lane],
-            false,
-        )?);
-    }
-    let lane_states: Box<[PoolV1PairForestLaneStateV1; POOL_V1_PAIR_FOREST_LANE_COUNT]> =
-        lane_states
-            .into_boxed_slice()
-            .try_into()
-            .map_err(|_| ProgramError::InvalidAccountData)?;
+    let lane_states =
+        decode_checkpoint_lanes_box_v1(program_id, master_account.key, lane_accounts)?;
     let lane_roots = lane_states.each_ref().map(|lane| lane.tree.root);
     let global_root = pool_v1_pair_forest_global_root_v1(&lane_roots);
     let pure = plan_pool_v1_pair_forest_checkpoint_v1(&master, &lane_states, global_root)
@@ -643,6 +667,62 @@ fn validate_lane_current_page(
     Ok(header)
 }
 
+/// Apply the pair-state module's established binary-carry construction using
+/// the pair-leaf empty-root domain. The source root/frontier relation is the
+/// one inductive Pool-owned lane invariant; capacity, canonical inactive
+/// slots and the retained current root are checked by the deposit caller
+/// before this helper's result can be persisted.
+#[cfg(feature = "pair-forest-deposit-invariant-audit")]
+fn append_pair_leaf_from_program_invariant_v1(
+    source: &IncrementalMerkleTreeV1,
+    pair_leaf: Digest,
+) -> Result<(IncrementalMerkleTreeV1, AppendOneV1), ProgramError> {
+    if source.next_leaf_index >= POOL_V1_PAIR_CAPACITY {
+        return Err(PoolV1ProgramError::TreeFull.into());
+    }
+    if pair_leaf.iter().any(|limb| limb.0 >= aspis_core::field::P) {
+        return Err(PoolV1ProgramError::NonCanonicalLeaf.into());
+    }
+    let leaf_index = source.next_leaf_index;
+    let mut frontier = source.frontier;
+    let mut carry = pair_leaf;
+    let mut carry_level = 0usize;
+    while carry_level < POOL_V1_PAIR_TREE_DEPTH && (leaf_index >> carry_level) & 1 == 1 {
+        carry = pool_v1_tree_parent(&frontier[carry_level], &carry);
+        frontier[carry_level] = POOL_V1_PAIR_EMPTY_ROOTS[carry_level];
+        carry_level += 1;
+    }
+    let next_leaf_index = leaf_index
+        .checked_add(1)
+        .ok_or(PoolV1ProgramError::ArithmeticOverflow)?;
+    let root = if carry_level == POOL_V1_PAIR_TREE_DEPTH {
+        carry
+    } else {
+        frontier[carry_level] = carry;
+        let mut node = POOL_V1_PAIR_EMPTY_ROOTS[carry_level];
+        for level in carry_level..POOL_V1_PAIR_TREE_DEPTH {
+            node = if (next_leaf_index >> level) & 1 == 0 {
+                pool_v1_tree_parent(&node, &POOL_V1_PAIR_EMPTY_ROOTS[level])
+            } else {
+                pool_v1_tree_parent(&frontier[level], &node)
+            };
+        }
+        node
+    };
+    let next = IncrementalMerkleTreeV1 {
+        next_leaf_index,
+        root,
+        frontier,
+    };
+    let receipt = AppendOneV1 {
+        leaf_index,
+        root_sequence: next_leaf_index,
+        root,
+        history: root_history_location(next_leaf_index),
+    };
+    Ok((next, receipt))
+}
+
 #[inline(never)]
 fn prepare_deposit_append_v1(
     lane: &PoolV1PairForestLaneStateV1,
@@ -655,20 +735,52 @@ fn prepare_deposit_append_v1(
     ),
     ProgramError,
 > {
+    #[cfg(not(feature = "pair-forest-deposit-invariant-audit"))]
     let (next_tree, append) = lane
         .tree
         .append_one_with_empty_roots(pair_leaf, &POOL_V1_PAIR_EMPTY_ROOTS)
         .map_err(|_| PoolV1ProgramError::StateHistoryMismatch)?;
+    #[cfg(feature = "pair-forest-deposit-invariant-audit")]
+    let (next_tree, append) = append_pair_leaf_from_program_invariant_v1(&lane.tree, pair_leaf)?;
     let next_lane = Box::new(PoolV1PairForestLaneStateV1 {
         master: lane.master,
         lane_id,
         tree: next_tree,
     });
+    #[cfg(not(feature = "pair-forest-deposit-invariant-audit"))]
     let next_lane_image = Box::new(
         encode_pool_v1_pair_forest_lane_state_v1(&next_lane, &POOL_V1_PAIR_EMPTY_ROOTS)
             .map_err(|_| PoolV1ProgramError::StateHistoryMismatch)?,
     );
+    #[cfg(feature = "pair-forest-deposit-invariant-audit")]
+    let next_lane_image = Box::new(encode_lane_from_authenticated_result_v1(&next_lane)?);
     Ok((append, next_lane_image))
+}
+
+#[inline(never)]
+fn decode_deposit_lane_box_v1(
+    program_id: &Pubkey,
+    master: &Pubkey,
+    lane_id: u8,
+    lane_account: &AccountInfo<'_>,
+) -> Result<Box<PoolV1PairForestLaneStateV1>, ProgramError> {
+    #[cfg(feature = "pair-forest-deposit-invariant-audit")]
+    return Ok(Box::new(decode_lane_account_from_program_invariant_v1(
+        program_id,
+        master,
+        lane_id,
+        lane_account,
+        true,
+    )?));
+
+    #[cfg(not(feature = "pair-forest-deposit-invariant-audit"))]
+    Ok(Box::new(decode_lane_account(
+        program_id,
+        master,
+        lane_id,
+        lane_account,
+        true,
+    )?))
 }
 
 /// Apply one vault-backed public deposit to its deterministic pair-forest
@@ -710,7 +822,7 @@ pub(crate) fn process_pair_forest_deposit_with_runtime_v1<'info, R: PoolCpiRunti
     if master.initialized_lane_mask & (1u8 << lane_id) == 0 {
         return Err(PoolV1ProgramError::StateHistoryMismatch.into());
     }
-    let lane = decode_terminal_lane_box_v1(program_id, master_account.key, lane_id, lane_account)?;
+    let lane = decode_deposit_lane_box_v1(program_id, master_account.key, lane_id, lane_account)?;
     if lane.tree.next_leaf_index >= POOL_V1_PAIR_CAPACITY {
         return Err(PoolV1ProgramError::TreeFull.into());
     }
@@ -901,6 +1013,8 @@ enum PairForestSpendPageV1 {
 struct PairForestSpendLayoutV1 {
     page: PairForestSpendPageV1,
     marker_index: usize,
+    payer_index: usize,
+    system_program_index: usize,
     registry_start: usize,
     verifier_index: usize,
     proof_index: usize,
@@ -956,10 +1070,12 @@ fn plan_pair_forest_spend_layout_v1(
         )
     };
     let marker_index = cursor;
-    let registry_start = cursor + 1;
-    let verifier_index = cursor + 3;
-    let proof_index = cursor + 4;
-    let token_start: usize = cursor + 5;
+    let payer_index = cursor + 1;
+    let system_program_index = cursor + 2;
+    let registry_start = cursor + 3;
+    let verifier_index = cursor + 5;
+    let proof_index = cursor + 6;
+    let token_start: usize = cursor + 7;
     let expected = token_start
         .checked_add(if withdrawal { 5 } else { 0 })
         .ok_or(PoolV1ProgramError::ArithmeticOverflow)?;
@@ -968,6 +1084,8 @@ fn plan_pair_forest_spend_layout_v1(
     Ok(PairForestSpendLayoutV1 {
         page,
         marker_index,
+        payer_index,
+        system_program_index,
         registry_start,
         verifier_index,
         proof_index,
@@ -1268,6 +1386,7 @@ pub(crate) fn process_pair_forest_terminal_with_verifier_v1<'info, R, V, S>(
     accounts: &[AccountInfo<'info>],
     instruction_data: &[u8],
     current_slot: u64,
+    rent: &Rent,
     runtime: &mut R,
     verify: V,
     set_return_data: S,
@@ -1315,6 +1434,9 @@ where
         PoolV1PairForestTerminalPaymentV1::Withdrawal(_)
     );
     let layout = plan_pair_forest_spend_layout_v1(program_id, accounts, &lane, withdrawal)?;
+    let payer = &accounts[layout.payer_index];
+    let system_program_account = &accounts[layout.system_program_index];
+    require_payer_and_system_program(payer, system_program_account)?;
 
     let marker = &accounts[layout.marker_index];
     let marker_payload = PoolV1NullifierMarkerV1 {
@@ -1328,13 +1450,11 @@ where
         verifier_release: request.verifier_release,
     };
     let planned_marker = plan_nullifier_marker_consumption_v1(program_id, marker, marker_payload)?;
-    if planned_marker.preparation() != NullifierMarkerPreparationV1::PopulateProgramOwnedZeroed {
-        return Err(PoolV1ProgramError::InvalidNullifierMarkerAccount.into());
-    }
 
     let withdrawal_plan =
         if let PoolV1PairForestTerminalPaymentV1::Withdrawal(public) = request.public {
             let token_accounts = &accounts[layout.token_start..layout.token_start + 5];
+            require_token_program_account(&token_accounts[4])?;
             Some(plan_legacy_withdrawal_transfer_from_identity_v1(
                 program_id,
                 master_account.key,
@@ -1346,6 +1466,21 @@ where
         } else {
             None
         };
+
+    // Reserve the exact nullifier PDA immediately before verifier CPI. Solana
+    // rolls this System CPI back with every later write if verification or
+    // settlement fails. Replanning authenticates the resulting owner, size,
+    // zero image, rent reserve, canonical seeds and intended marker payload.
+    let ready_marker = create_nullifier_marker_if_needed_v1(
+        runtime,
+        program_id,
+        master_account.key,
+        marker,
+        payer,
+        system_program_account,
+        planned_marker,
+        rent,
+    )?;
 
     let authenticated = verify(
         program_id,
@@ -1429,7 +1564,7 @@ where
             &[result.verified_afterstate.next_root],
         ),
     }
-    marker_data.copy_from_slice(&planned_marker.encoded_marker());
+    marker_data.copy_from_slice(&ready_marker.encoded_marker());
     set_return_data(result_bytes.as_ref());
     Ok(())
 }
@@ -1439,6 +1574,7 @@ pub(crate) fn process_pair_forest_terminal_v1<'info, R: PoolCpiRuntimeV1>(
     accounts: &[AccountInfo<'info>],
     instruction_data: &[u8],
     current_slot: u64,
+    rent: &Rent,
     runtime: &mut R,
 ) -> ProgramResult {
     process_pair_forest_terminal_with_verifier_v1(
@@ -1446,6 +1582,7 @@ pub(crate) fn process_pair_forest_terminal_v1<'info, R: PoolCpiRuntimeV1>(
         accounts,
         instruction_data,
         current_slot,
+        rent,
         runtime,
         dispatch_pair_forest_terminal_readonly_v1,
         solana_program::program::set_return_data,
@@ -1504,6 +1641,7 @@ pub(crate) fn process_pair_forest_terminal_full_asf8_v1<'info, R: PoolCpiRuntime
     accounts: &[AccountInfo<'info>],
     instruction_data: &[u8],
     current_slot: u64,
+    rent: &Rent,
     runtime: &mut R,
 ) -> ProgramResult {
     let statement = decode_terminal_statement_box_v1(instruction_data)?;
@@ -1513,6 +1651,7 @@ pub(crate) fn process_pair_forest_terminal_full_asf8_v1<'info, R: PoolCpiRuntime
         accounts,
         compact.as_ref(),
         current_slot,
+        rent,
         runtime,
         |pool_program,
          master,
@@ -1887,6 +2026,122 @@ mod tests {
         calls: usize,
     }
 
+    struct MarkerSystemCpi {
+        pool_program: Pubkey,
+        calls: usize,
+    }
+
+    impl MarkerSystemCpi {
+        fn apply_system_instruction<'info>(
+            &mut self,
+            instruction: &Instruction,
+            infos: &[AccountInfo<'info>],
+        ) -> ProgramResult {
+            if instruction.program_id != system_program::id() || instruction.data.len() < 4 {
+                return Err(ProgramError::IncorrectProgramId);
+            }
+            self.calls += 1;
+            let discriminant = u32::from_le_bytes(instruction.data[..4].try_into().unwrap());
+            match discriminant {
+                // SystemInstruction::CreateAccount.
+                0 => {
+                    if instruction.data.len() != 52 || infos.len() != 3 {
+                        return Err(ProgramError::InvalidInstructionData);
+                    }
+                    let lamports = u64::from_le_bytes(instruction.data[4..12].try_into().unwrap());
+                    let space = u64::from_le_bytes(instruction.data[12..20].try_into().unwrap());
+                    let owner =
+                        Pubkey::new_from_array(instruction.data[20..52].try_into().unwrap());
+                    if owner != self.pool_program
+                        || instruction.accounts.len() != 2
+                        || instruction.accounts[0].pubkey != *infos[0].key
+                        || instruction.accounts[1].pubkey != *infos[1].key
+                    {
+                        return Err(ProgramError::InvalidInstructionData);
+                    }
+                    let mut payer_lamports = infos[0].try_borrow_mut_lamports()?;
+                    if **payer_lamports < lamports {
+                        return Err(ProgramError::InsufficientFunds);
+                    }
+                    **payer_lamports -= lamports;
+                    **infos[1].try_borrow_mut_lamports()? = lamports;
+                    infos[1].assign(&owner);
+                    let data: &'static mut [u8] =
+                        Box::leak(vec![0u8; usize::try_from(space).unwrap()].into_boxed_slice());
+                    *infos[1].data.borrow_mut() = data;
+                    Ok(())
+                }
+                // SystemInstruction::Transfer.
+                2 => {
+                    if instruction.data.len() != 12 || infos.len() != 3 {
+                        return Err(ProgramError::InvalidInstructionData);
+                    }
+                    let lamports = u64::from_le_bytes(instruction.data[4..12].try_into().unwrap());
+                    let mut payer_lamports = infos[0].try_borrow_mut_lamports()?;
+                    if **payer_lamports < lamports {
+                        return Err(ProgramError::InsufficientFunds);
+                    }
+                    **payer_lamports -= lamports;
+                    let mut marker_lamports = infos[1].try_borrow_mut_lamports()?;
+                    **marker_lamports = (**marker_lamports)
+                        .checked_add(lamports)
+                        .ok_or(PoolV1ProgramError::ArithmeticOverflow)?;
+                    Ok(())
+                }
+                // SystemInstruction::Allocate.
+                8 => {
+                    if instruction.data.len() != 12 || infos.len() != 3 {
+                        return Err(ProgramError::InvalidInstructionData);
+                    }
+                    let space = u64::from_le_bytes(instruction.data[4..12].try_into().unwrap());
+                    let data: &'static mut [u8] =
+                        Box::leak(vec![0u8; usize::try_from(space).unwrap()].into_boxed_slice());
+                    *infos[1].data.borrow_mut() = data;
+                    Ok(())
+                }
+                // SystemInstruction::Assign.
+                1 => {
+                    if instruction.data.len() != 36 || infos.len() != 3 {
+                        return Err(ProgramError::InvalidInstructionData);
+                    }
+                    let owner = Pubkey::new_from_array(instruction.data[4..36].try_into().unwrap());
+                    if owner != self.pool_program {
+                        return Err(ProgramError::InvalidInstructionData);
+                    }
+                    infos[1].assign(&owner);
+                    Ok(())
+                }
+                _ => Err(ProgramError::InvalidInstructionData),
+            }
+        }
+    }
+
+    impl PoolCpiRuntimeV1 for MarkerSystemCpi {
+        fn invoke<'info>(
+            &mut self,
+            instruction: &Instruction,
+            infos: &[AccountInfo<'info>],
+        ) -> ProgramResult {
+            self.apply_system_instruction(instruction, infos)
+        }
+
+        fn invoke_signed<'info>(
+            &mut self,
+            instruction: &Instruction,
+            infos: &[AccountInfo<'info>],
+            signer_seeds: &[&[&[u8]]],
+        ) -> ProgramResult {
+            if signer_seeds.len() != 1
+                || Pubkey::create_program_address(signer_seeds[0], &self.pool_program)
+                    .map_err(|_| ProgramError::InvalidSeeds)?
+                    != *infos[1].key
+            {
+                return Err(ProgramError::InvalidSeeds);
+            }
+            self.apply_system_instruction(instruction, infos)
+        }
+    }
+
     impl PoolCpiRuntimeV1 for WithdrawalCpi {
         fn invoke<'info>(&mut self, _: &Instruction, _: &[AccountInfo<'info>]) -> ProgramResult {
             panic!("unexpected unsigned CPI")
@@ -2013,9 +2268,12 @@ mod tests {
         }
     }
 
-    #[cfg(feature = "pair-forest-source-invariant-audit")]
+    #[cfg(any(
+        feature = "pair-forest-source-invariant-audit",
+        feature = "pair-forest-deposit-invariant-audit"
+    ))]
     #[test]
-    fn terminal_program_invariant_lane_decoder_keeps_exact_boundary() {
+    fn program_invariant_lane_decoder_keeps_exact_boundary() {
         let program_id = Pubkey::new_unique();
         let master = Pubkey::new_unique();
         let lane_id = 3;
@@ -2055,8 +2313,8 @@ mod tests {
 
         // The one explicit boundary is real: a canonical but inconsistent
         // active root is accepted here and rejected by the generic codec.
-        // The terminal path additionally binds this root to the Pool-owned
-        // current history entry before CPI.
+        // Every invariant-backed caller additionally binds this root to the
+        // Pool-owned current history entry before CPI.
         let root_start = POOL_V1_PAIR_FOREST_LANE_HEADER_BYTES + 16;
         account.data[root_start..root_start + 32]
             .copy_from_slice(&encode_digest_canonical(&digest(90_000)));
@@ -2088,7 +2346,10 @@ mod tests {
         .is_err());
     }
 
-    #[cfg(feature = "pair-forest-source-result-invariant-audit")]
+    #[cfg(any(
+        feature = "pair-forest-source-result-invariant-audit",
+        feature = "pair-forest-deposit-invariant-audit"
+    ))]
     #[test]
     fn authenticated_result_encoder_is_byte_exact_for_valid_lanes() {
         let master = Pubkey::new_unique();
@@ -2106,6 +2367,70 @@ mod tests {
         );
         lane.tree.frontier[0] = digest(99_000);
         assert!(encode_lane_from_authenticated_result_v1(&lane).is_err());
+    }
+
+    #[cfg(feature = "pair-forest-deposit-invariant-audit")]
+    #[test]
+    fn deposit_invariant_append_is_byte_exact_at_measured_boundaries() {
+        let master = Pubkey::new_unique();
+        let lane_id = 2;
+        let mut lane = lane_state(master, lane_id);
+        let measured = [0u64, 1, 2, 3, 7, 15, 255];
+
+        for source_index in 0u64..=255 {
+            let pair_leaf = digest(40_000 + source_index as u32);
+            if measured.contains(&source_index) {
+                let (strict_tree, strict_receipt) = lane
+                    .tree
+                    .append_one_with_empty_roots(pair_leaf, &POOL_V1_PAIR_EMPTY_ROOTS)
+                    .unwrap();
+                let strict_lane = PoolV1PairForestLaneStateV1 {
+                    master: master.to_bytes(),
+                    lane_id,
+                    tree: strict_tree,
+                };
+                let strict_image = encode_pool_v1_pair_forest_lane_state_v1(
+                    &strict_lane,
+                    &POOL_V1_PAIR_EMPTY_ROOTS,
+                )
+                .unwrap();
+                let (audit_receipt, audit_image) =
+                    prepare_deposit_append_v1(&lane, lane_id, pair_leaf).unwrap();
+                assert_eq!(audit_receipt, strict_receipt, "receipt at {source_index}");
+                assert_eq!(
+                    audit_image.as_ref(),
+                    &strict_image,
+                    "image at {source_index}"
+                );
+                assert_eq!(
+                    decode_pool_v1_pair_forest_lane_state_v1(
+                        audit_image.as_ref(),
+                        &POOL_V1_PAIR_EMPTY_ROOTS,
+                    )
+                    .unwrap(),
+                    strict_lane,
+                    "strict successor decode at {source_index}",
+                );
+            }
+
+            lane.tree = append_pair_leaf_from_program_invariant_v1(&lane.tree, pair_leaf)
+                .unwrap()
+                .0;
+        }
+    }
+
+    #[test]
+    fn pair_forest_lane_persistence_surface_remains_closed() {
+        let source = include_str!("pair_forest.rs");
+        let transition_write =
+            ["lane_data", ".copy_from_slice(next_lane_image.as_ref());"].concat();
+        let genesis_write = [
+            "lane_data[lane]",
+            ".copy_from_slice(lane_images[lane].as_ref());",
+        ]
+        .concat();
+        assert_eq!(source.matches(&transition_write).count(), 2);
+        assert_eq!(source.matches(&genesis_write).count(), 1);
     }
 
     fn fixtures(program_id: Pubkey) -> (TestAccount, [TestAccount; 8], TestAccount, Pubkey) {
@@ -2242,11 +2567,29 @@ mod tests {
             TestAccount {
                 key: marker_key,
                 owner: program_id,
-                lamports: 1,
+                lamports: rent_lamports(POOL_V1_NULLIFIER_MARKER_ACCOUNT_BYTES),
                 data: vec![0; POOL_V1_NULLIFIER_MARKER_ACCOUNT_BYTES],
                 signer: false,
                 writable: true,
                 executable: false,
+            },
+            TestAccount {
+                key: Pubkey::new_unique(),
+                owner: system_program::id(),
+                lamports: 10 * rent_lamports(POOL_V1_NULLIFIER_MARKER_ACCOUNT_BYTES),
+                data: vec![],
+                signer: true,
+                writable: true,
+                executable: false,
+            },
+            TestAccount {
+                key: system_program::id(),
+                owner: native_loader::id(),
+                lamports: 1,
+                data: vec![],
+                signer: false,
+                writable: false,
+                executable: true,
             },
             TestAccount {
                 key: Pubkey::new_unique(),
@@ -2285,6 +2628,94 @@ mod tests {
                 executable: false,
             },
         ]
+    }
+
+    fn system_marker_terminal_transfer_fixture(
+        program_id: Pubkey,
+    ) -> (
+        Vec<TestAccount>,
+        [u8; aspis_statement::pool_v1::POOL_V1_PAIR_FOREST_TERMINAL_REQUEST_BYTES],
+        PoolV1PairForestTerminalResultV1,
+    ) {
+        let mint = Pubkey::new_unique();
+        let (master_key, mut master_state) = master(program_id, mint);
+        master_state.identity.token_program = LEGACY_SPL_TOKEN_PROGRAM_ID.to_bytes();
+        master_state.has_checkpoint = true;
+        master_state.next_checkpoint_sequence = 1;
+        let nullifier = digest(77);
+        let lane_id =
+            aspis_statement::pool_v1::pool_v1_pair_forest_output_lane_v1(&nullifier).unwrap();
+        let lane_key = pool_v1_pair_forest_lane_address(&program_id, &master_key, lane_id)
+            .unwrap()
+            .0;
+        let lane = genesis_lane_state(&master_key, lane_id);
+        let next_tree = lane
+            .tree
+            .append_one_with_empty_roots(digest(9_777), &POOL_V1_PAIR_EMPTY_ROOTS)
+            .unwrap()
+            .0;
+        let checkpoint = PoolV1PairForestCheckpointV1 {
+            master: master_key.to_bytes(),
+            deployment_domain: master_state.identity.deployment_domain,
+            checkpoint_sequence: 0,
+            global_root: digest(7_777),
+            lane_sequences: [0; 8],
+        };
+        let checkpoint_key = pool_v1_pair_forest_checkpoint_address(&program_id, &master_key, 0).0;
+        let request = PoolV1PairForestTerminalRequestV1 {
+            verifier_profile: [81; 32],
+            verifier_release: [82; 32],
+            pool_program: program_id.to_bytes(),
+            public: PoolV1PairForestTerminalPaymentV1::PrivateTransfer(
+                PoolV1PrivateTransferPublicV1 {
+                    pool: master_key.to_bytes(),
+                    deployment_domain: master_state.identity.deployment_domain,
+                    anchor_sequence: 0,
+                    anchor_root: checkpoint.global_root,
+                    nullifier,
+                    asset_id: master_state.identity.asset_id,
+                    recipient_commitment: digest(8_001),
+                    change_commitment: digest(8_002),
+                },
+            ),
+        };
+        let result = PoolV1PairForestTerminalResultV1 {
+            transition_kind: PoolV1TransitionKind::PrivateTransfer,
+            master_account: master_key.to_bytes(),
+            selected_lane_account: lane_key.to_bytes(),
+            output_lane: lane_id,
+            nullifier,
+            verified_afterstate: PoolV1PairVerifiedAfterstateV1 {
+                next_pair_index: next_tree.next_leaf_index,
+                next_root: next_tree.root,
+                next_frontier: next_tree.frontier,
+            },
+        };
+        let marker_key = crate::pool_v1_nullifier_marker_address(
+            &program_id,
+            &master_key,
+            &aspis_statement::encode_digest_canonical(&nullifier),
+        )
+        .unwrap()
+        .0;
+        let mut accounts = terminal_base_accounts(
+            program_id,
+            master_key,
+            &master_state,
+            checkpoint_key,
+            &checkpoint,
+            lane_key,
+            &lane,
+            marker_key,
+        );
+        accounts[4].owner = system_program::id();
+        accounts[4].lamports = 0;
+        accounts[4].data.clear();
+        (
+            accounts,
+            encode_pool_v1_pair_forest_terminal_request_v1(&request).unwrap(),
+            result,
+        )
     }
 
     fn initialization_accounts(program_id: Pubkey, mint: Pubkey) -> Vec<TestAccount> {
@@ -2638,6 +3069,51 @@ mod tests {
             read_retained_root(&accounts[2].data, page, 2).unwrap(),
             lane.tree.root
         );
+    }
+
+    #[cfg(feature = "pair-forest-deposit-invariant-audit")]
+    #[test]
+    fn deposit_invariant_source_root_still_requires_exact_retained_history() {
+        let program_id = Pubkey::new_unique();
+        let mint = Pubkey::new_unique();
+        let (mut accounts, instruction, _, _) = genesis_deposit_fixture(program_id, mint);
+        let mut runtime = DepositCpi {
+            apply_exact_delta: true,
+            calls: 0,
+        };
+        let infos: Vec<_> = accounts.iter_mut().map(TestAccount::info).collect();
+        process_pair_forest_deposit_with_runtime_v1(
+            &program_id,
+            &infos,
+            &instruction,
+            &Rent::default(),
+            &mut runtime,
+        )
+        .unwrap();
+        drop(infos);
+        assert_eq!(runtime.calls, 1);
+
+        accounts.truncate(FOREST_DEPOSIT_SAME_PAGE_ACCOUNT_COUNT);
+        let root_start = POOL_V1_PAIR_FOREST_LANE_HEADER_BYTES + 16;
+        accounts[1].data[root_start..root_start + 32]
+            .copy_from_slice(&encode_digest_canonical(&digest(92_000)));
+        let lane_before = accounts[1].data.clone();
+        let page_before = accounts[2].data.clone();
+        let infos: Vec<_> = accounts.iter_mut().map(TestAccount::info).collect();
+        assert_eq!(
+            process_pair_forest_deposit_with_runtime_v1(
+                &program_id,
+                &infos,
+                &instruction,
+                &Rent::default(),
+                &mut runtime,
+            ),
+            Err(PoolV1ProgramError::StateHistoryMismatch.into())
+        );
+        drop(infos);
+        assert_eq!(runtime.calls, 1, "history mismatch must precede token CPI");
+        assert_eq!(accounts[1].data, lane_before);
+        assert_eq!(accounts[2].data, page_before);
     }
 
     #[test]
@@ -3118,6 +3594,284 @@ mod tests {
     }
 
     #[test]
+    fn terminal_marker_creation_fails_closed_rolls_back_and_rejects_replay() {
+        let program_id = Pubkey::new_unique();
+        let rent = Rent::default();
+
+        // Payer authentication is not implied by its position in the account
+        // list: it must be a writable System-owned signer.
+        {
+            let (mut accounts, instruction, _) =
+                system_marker_terminal_transfer_fixture(program_id);
+            accounts[5].signer = false;
+            let before = accounts
+                .iter()
+                .map(|account| (account.owner, account.lamports, account.data.clone()))
+                .collect::<Vec<_>>();
+            let infos: Vec<_> = accounts.iter_mut().map(TestAccount::info).collect();
+            assert_eq!(
+                process_pair_forest_terminal_with_verifier_v1(
+                    &program_id,
+                    &infos,
+                    &instruction,
+                    1,
+                    &rent,
+                    &mut NoCpi,
+                    |_, _, _, _, _, _, _, _, _, _| panic!("unsigned payer reached verifier"),
+                    |_| {},
+                ),
+                Err(PoolV1ProgramError::InvalidPayer.into()),
+            );
+            drop(infos);
+            assert_eq!(
+                accounts
+                    .iter()
+                    .map(|account| (account.owner, account.lamports, account.data.clone()))
+                    .collect::<Vec<_>>(),
+                before,
+            );
+        }
+
+        // A lookalike account at the System Program address but under the
+        // wrong loader is rejected before marker allocation or verification.
+        {
+            let (mut accounts, instruction, _) =
+                system_marker_terminal_transfer_fixture(program_id);
+            accounts[6].owner = Pubkey::new_unique();
+            let infos: Vec<_> = accounts.iter_mut().map(TestAccount::info).collect();
+            assert_eq!(
+                process_pair_forest_terminal_with_verifier_v1(
+                    &program_id,
+                    &infos,
+                    &instruction,
+                    1,
+                    &rent,
+                    &mut NoCpi,
+                    |_, _, _, _, _, _, _, _, _, _| panic!(
+                        "spoofed System Program reached verifier"
+                    ),
+                    |_| {},
+                ),
+                Err(PoolV1ProgramError::InvalidSystemProgram.into()),
+            );
+        }
+
+        // The writable marker must be the exact PDA for this Pool and
+        // canonical nullifier; an arbitrary fresh writable account is not a
+        // substitute.
+        {
+            let (mut accounts, instruction, _) =
+                system_marker_terminal_transfer_fixture(program_id);
+            accounts[4].key = Pubkey::new_unique();
+            let infos: Vec<_> = accounts.iter_mut().map(TestAccount::info).collect();
+            assert_eq!(
+                process_pair_forest_terminal_with_verifier_v1(
+                    &program_id,
+                    &infos,
+                    &instruction,
+                    1,
+                    &rent,
+                    &mut NoCpi,
+                    |_, _, _, _, _, _, _, _, _, _| panic!("wrong marker reached verifier"),
+                    |_| {},
+                ),
+                Err(PoolV1ProgramError::InvalidNullifierMarkerAddress.into()),
+            );
+        }
+
+        // A pre-existing Pool-owned marker is accepted only at the exact size
+        // and all-zero state. Malformed nonzero bytes are never overwritten.
+        {
+            let (mut accounts, instruction, _) =
+                system_marker_terminal_transfer_fixture(program_id);
+            accounts[4].owner = program_id;
+            accounts[4].lamports = rent_lamports(POOL_V1_NULLIFIER_MARKER_ACCOUNT_BYTES);
+            accounts[4].data = vec![0u8; POOL_V1_NULLIFIER_MARKER_ACCOUNT_BYTES];
+            accounts[4].data[0] = 1;
+            let before = accounts[4].data.clone();
+            let infos: Vec<_> = accounts.iter_mut().map(TestAccount::info).collect();
+            assert_eq!(
+                process_pair_forest_terminal_with_verifier_v1(
+                    &program_id,
+                    &infos,
+                    &instruction,
+                    1,
+                    &rent,
+                    &mut NoCpi,
+                    |_, _, _, _, _, _, _, _, _, _| panic!("malformed marker reached verifier"),
+                    |_| {},
+                ),
+                Err(PoolV1ProgramError::InvalidNullifierMarkerAccount.into()),
+            );
+            drop(infos);
+            assert_eq!(accounts[4].data, before);
+        }
+
+        // The System CPI propagates insufficient payer funds before verifier
+        // execution, leaving the fresh marker and Pool state untouched.
+        {
+            let (mut accounts, instruction, _) =
+                system_marker_terminal_transfer_fixture(program_id);
+            accounts[5].lamports = 0;
+            let before = accounts
+                .iter()
+                .map(|account| (account.owner, account.lamports, account.data.clone()))
+                .collect::<Vec<_>>();
+            let infos: Vec<_> = accounts.iter_mut().map(TestAccount::info).collect();
+            let mut runtime = MarkerSystemCpi {
+                pool_program: program_id,
+                calls: 0,
+            };
+            assert_eq!(
+                process_pair_forest_terminal_with_verifier_v1(
+                    &program_id,
+                    &infos,
+                    &instruction,
+                    1,
+                    &rent,
+                    &mut runtime,
+                    |_, _, _, _, _, _, _, _, _, _| panic!("unfunded marker reached verifier"),
+                    |_| {},
+                ),
+                Err(ProgramError::InsufficientFunds),
+            );
+            drop(infos);
+            assert_eq!(runtime.calls, 1);
+            assert_eq!(
+                accounts
+                    .iter()
+                    .map(|account| (account.owner, account.lamports, account.data.clone()))
+                    .collect::<Vec<_>>(),
+                before,
+            );
+        }
+
+        // Marker creation deliberately precedes verifier CPI. The host mock
+        // exposes the intermediate created account; the rollback block models
+        // Solana's instruction journal and confirms the complete original
+        // account images are restored when the verifier fails.
+        {
+            let (mut accounts, instruction, _) =
+                system_marker_terminal_transfer_fixture(program_id);
+            let before = accounts
+                .iter()
+                .map(|account| (account.owner, account.lamports, account.data.clone()))
+                .collect::<Vec<_>>();
+            let payer_before = accounts[5].lamports;
+            let infos: Vec<_> = accounts.iter_mut().map(TestAccount::info).collect();
+            let mut runtime = MarkerSystemCpi {
+                pool_program: program_id,
+                calls: 0,
+            };
+            let verifier_error = ProgramError::Custom(0xfeed_0073);
+            assert_eq!(
+                process_pair_forest_terminal_with_verifier_v1(
+                    &program_id,
+                    &infos,
+                    &instruction,
+                    1,
+                    &rent,
+                    &mut runtime,
+                    |_, _, _, _, _, _, _, _, _, _| Err(verifier_error.clone()),
+                    |_| {},
+                ),
+                Err(verifier_error),
+            );
+            assert_eq!(runtime.calls, 1);
+            assert_eq!(*infos[4].owner, program_id);
+            assert_eq!(infos[4].data_len(), POOL_V1_NULLIFIER_MARKER_ACCOUNT_BYTES);
+            assert!(infos[4]
+                .try_borrow_data()
+                .unwrap()
+                .iter()
+                .all(|byte| *byte == 0));
+            assert!(rent.is_exempt(infos[4].lamports(), infos[4].data_len()));
+            drop(infos);
+            assert_eq!(accounts[2].data, before[2].2);
+            assert_eq!(accounts[3].data, before[3].2);
+
+            // Host-only transaction-journal rollback for the System CPI. A
+            // validator/LiteSVM replay remains the runtime release gate.
+            accounts[4].owner = before[4].0;
+            accounts[4].lamports = before[4].1;
+            accounts[4].data.clone_from(&before[4].2);
+            accounts[5].lamports = payer_before;
+            assert_eq!(
+                accounts
+                    .iter()
+                    .map(|account| (account.owner, account.lamports, account.data.clone()))
+                    .collect::<Vec<_>>(),
+                before,
+            );
+        }
+
+        // A successful terminal also tolerates a griefing lamport sent to the
+        // otherwise-empty PDA: it tops up, allocates and assigns the account,
+        // then consumes the marker in this same instruction. The exact same
+        // request rejects before another System CPI or verifier call.
+        {
+            let (mut accounts, instruction, result) =
+                system_marker_terminal_transfer_fixture(program_id);
+            accounts[4].lamports = 1;
+            let payer_and_marker_lamports = accounts[4].lamports + accounts[5].lamports;
+            let infos: Vec<_> = accounts.iter_mut().map(TestAccount::info).collect();
+            let mut runtime = MarkerSystemCpi {
+                pool_program: program_id,
+                calls: 0,
+            };
+            process_pair_forest_terminal_with_verifier_v1(
+                &program_id,
+                &infos,
+                &instruction,
+                1,
+                &rent,
+                &mut runtime,
+                |_, _, _, _, _, _, _, _, _, _| {
+                    Ok(AuthenticatedPairForestResultV1::for_test(result))
+                },
+                |_| {},
+            )
+            .unwrap();
+            assert_eq!(runtime.calls, 3);
+            assert_eq!(*infos[4].owner, program_id);
+            assert_eq!(
+                infos[4].lamports() + infos[5].lamports(),
+                payer_and_marker_lamports
+            );
+            let decoded_marker = aspis_statement::pool_v1::decode_pool_v1_nullifier_marker(
+                &infos[4].try_borrow_data().unwrap(),
+            )
+            .unwrap();
+            assert_eq!(decoded_marker.nullifier, result.nullifier);
+            let before_replay = infos
+                .iter()
+                .map(|account| account.try_borrow_data().unwrap().to_vec())
+                .collect::<Vec<_>>();
+            assert_eq!(
+                process_pair_forest_terminal_with_verifier_v1(
+                    &program_id,
+                    &infos,
+                    &instruction,
+                    2,
+                    &rent,
+                    &mut runtime,
+                    |_, _, _, _, _, _, _, _, _, _| panic!("replay reached verifier"),
+                    |_| {},
+                ),
+                Err(PoolV1ProgramError::NullifierAlreadyConsumed.into()),
+            );
+            assert_eq!(runtime.calls, 3);
+            assert_eq!(
+                infos
+                    .iter()
+                    .map(|account| account.try_borrow_data().unwrap().to_vec())
+                    .collect::<Vec<_>>(),
+                before_replay,
+            );
+        }
+    }
+
+    #[test]
     fn one_terminal_transfer_updates_only_selected_lane_history_and_marker() {
         let program_id = Pubkey::new_unique();
         let mint = Pubkey::new_unique();
@@ -3231,11 +3985,29 @@ mod tests {
             TestAccount {
                 key: marker_key,
                 owner: program_id,
-                lamports: 1,
+                lamports: rent_lamports(POOL_V1_NULLIFIER_MARKER_ACCOUNT_BYTES),
                 data: vec![0; POOL_V1_NULLIFIER_MARKER_ACCOUNT_BYTES],
                 signer: false,
                 writable: true,
                 executable: false,
+            },
+            TestAccount {
+                key: Pubkey::new_unique(),
+                owner: system_program::id(),
+                lamports: 10 * rent_lamports(POOL_V1_NULLIFIER_MARKER_ACCOUNT_BYTES),
+                data: vec![],
+                signer: true,
+                writable: true,
+                executable: false,
+            },
+            TestAccount {
+                key: system_program::id(),
+                owner: native_loader::id(),
+                lamports: 1,
+                data: vec![],
+                signer: false,
+                writable: false,
+                executable: true,
             },
             TestAccount {
                 key: Pubkey::new_unique(),
@@ -3306,6 +4078,7 @@ mod tests {
                 &infos,
                 &bad_instruction,
                 1,
+                &Rent::default(),
                 &mut NoCpi,
                 |_, _, _, _, _, _, _, _, _, _| panic!("bad request reached verifier"),
                 |_| {},
@@ -3319,6 +4092,7 @@ mod tests {
             &infos,
             &instruction,
             1,
+            &Rent::default(),
             &mut no_cpi,
             |_, _, _, _, _, _, _, _, got, _| {
                 assert_eq!(got, &request);
@@ -3348,6 +4122,7 @@ mod tests {
             &infos,
             &instruction,
             2,
+            &Rent::default(),
             &mut no_cpi,
             |_, _, _, _, _, _, _, _, _, _| panic!("stale replay reached verifier"),
             |_| {},
@@ -3364,7 +4139,7 @@ mod tests {
     }
 
     #[test]
-    fn one_terminal_withdrawal_checks_custody_delta_and_failure_precedes_pool_writes() {
+    fn one_terminal_withdrawal_authenticates_loader_and_checks_custody_delta_before_writes() {
         let program_id = Pubkey::new_unique();
         let mint = Pubkey::new_unique();
         let (master_key, mut master_state) = master(program_id, mint);
@@ -3477,7 +4252,7 @@ mod tests {
             },
             TestAccount {
                 key: LEGACY_SPL_TOKEN_PROGRAM_ID,
-                owner: native_loader::id(),
+                owner: bpf_loader::id(),
                 lamports: 1,
                 data: vec![],
                 signer: false,
@@ -3486,6 +4261,45 @@ mod tests {
             },
         ]);
         let instruction = encode_pool_v1_pair_forest_terminal_request_v1(&request).unwrap();
+
+        // The fixed token-program address and executable bit are insufficient:
+        // authenticate that the program is itself owned by a supported loader,
+        // and reject before either verifier execution or custody CPI.
+        let token_program_index = accounts.len() - 1;
+        accounts[token_program_index].owner = native_loader::id();
+        let invalid_loader_before = accounts
+            .iter()
+            .map(|account| account.data.clone())
+            .collect::<Vec<_>>();
+        let infos: Vec<_> = accounts.iter_mut().map(TestAccount::info).collect();
+        let mut invalid_loader_cpi = WithdrawalCpi {
+            fail: false,
+            calls: 0,
+        };
+        assert_eq!(
+            process_pair_forest_terminal_with_verifier_v1(
+                &program_id,
+                &infos,
+                &instruction,
+                1,
+                &Rent::default(),
+                &mut invalid_loader_cpi,
+                |_, _, _, _, _, _, _, _, _, _| panic!("invalid loader reached verifier"),
+                |_| {},
+            ),
+            Err(PoolV1ProgramError::InvalidTokenProgram.into()),
+        );
+        drop(infos);
+        assert_eq!(invalid_loader_cpi.calls, 0);
+        assert_eq!(
+            accounts
+                .iter()
+                .map(|account| account.data.clone())
+                .collect::<Vec<_>>(),
+            invalid_loader_before,
+        );
+        accounts[token_program_index].owner = bpf_loader::id();
+
         let before = accounts
             .iter()
             .map(|account| account.data.clone())
@@ -3500,6 +4314,7 @@ mod tests {
             &infos,
             &instruction,
             1,
+            &Rent::default(),
             &mut failing,
             |_, _, _, _, _, _, _, _, _, _| Ok(AuthenticatedPairForestResultV1::for_test(result)),
             |_| {},
@@ -3522,6 +4337,7 @@ mod tests {
             &infos,
             &instruction,
             1,
+            &Rent::default(),
             &mut success,
             |_, _, _, _, _, _, _, _, _, _| Ok(AuthenticatedPairForestResultV1::for_test(result)),
             |_| {},
@@ -3530,11 +4346,11 @@ mod tests {
         drop(infos);
         assert_eq!(success.calls, 1);
         assert_eq!(
-            u64::from_le_bytes(accounts[10].data[64..72].try_into().unwrap()),
+            u64::from_le_bytes(accounts[12].data[64..72].try_into().unwrap()),
             75
         );
         assert_eq!(
-            u64::from_le_bytes(accounts[11].data[64..72].try_into().unwrap()),
+            u64::from_le_bytes(accounts[13].data[64..72].try_into().unwrap()),
             35
         );
         assert!(accounts[4].data.iter().any(|byte| *byte != 0));

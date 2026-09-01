@@ -1,0 +1,1280 @@
+   Compiling proc-macro2 v1.0.107
+   Compiling unicode-ident v1.0.24
+   Compiling quote v1.0.47
+   Compiling libc v0.2.189
+   Compiling cfg-if v1.0.4
+   Compiling version_check v0.9.5
+   Compiling typenum v1.20.1
+   Compiling subtle v2.6.1
+   Compiling const-oid v0.9.6
+   Compiling serde_core v1.0.229
+   Compiling serde v1.0.229
+   Compiling generic-array v0.14.7
+   Compiling autocfg v1.5.1
+   Compiling semver v1.0.28
+   Compiling num-traits v0.2.19
+   Compiling rustc_version v0.4.1
+   Compiling curve25519-dalek v4.1.3
+   Compiling syn v2.0.119
+   Compiling syn v3.0.4
+   Compiling getrandom v0.2.17
+   Compiling cpufeatures v0.2.17
+   Compiling rand_core v0.6.4
+   Compiling zerocopy v0.8.56
+   Compiling thiserror v2.0.20
+   Compiling feature-probe v0.1.1
+   Compiling bv v0.11.1
+   Compiling strsim v0.11.1
+   Compiling ident_case v1.0.1
+   Compiling getrandom v0.3.4
+   Compiling darling_core v0.23.0
+   Compiling wincode v0.5.5
+   Compiling serde_derive v1.0.229
+   Compiling bytemuck_derive v1.12.0
+   Compiling thiserror-impl v2.0.20
+   Compiling zeroize_derive v1.5.0
+   Compiling pastey v0.2.3
+   Compiling bytemuck v1.25.2
+   Compiling five8_core v1.0.0
+   Compiling zeroize v1.9.0
+   Compiling solana-sanitize v3.0.1
+   Compiling five8 v1.0.0
+   Compiling solana-program-error v3.0.1
+   Compiling once_cell v1.21.4
+   Compiling five8_const v1.0.0
+   Compiling ahash v0.8.12
+   Compiling sha2-const-stable v0.1.0
+   Compiling darling_macro v0.23.0
+   Compiling solana-atomic-u64 v3.0.1
+   Compiling syn v1.0.109
+   Compiling winnow v1.0.4
+   Compiling darling v0.23.0
+   Compiling hashbrown v0.17.1
+   Compiling equivalent v1.0.2
+   Compiling toml_datetime v1.1.1+spec-1.1.0
+   Compiling crypto-common v0.1.7
+   Compiling block-buffer v0.10.4
+   Compiling cfg_aliases v0.2.2
+   Compiling indexmap v2.14.0
+   Compiling digest v0.10.7
+   Compiling borsh v1.8.1
+   Compiling wincode-derive v0.4.6
+   Compiling sha2 v0.10.9
+   Compiling bs58 v0.5.1
+   Compiling toml_parser v1.1.3+spec-1.1.0
+   Compiling solana-instruction-error v2.4.0
+   Compiling memchr v2.8.3
+   Compiling toml_edit v0.25.13+spec-1.1.0
+   Compiling bincode v1.3.3
+   Compiling ppv-lite86 v0.2.21
+   Compiling proc-macro-crate v3.5.0
+   Compiling hashbrown v0.13.2
+   Compiling rand_chacha v0.3.1
+   Compiling rand v0.8.8
+   Compiling borsh-derive v1.8.1
+   Compiling five8_core v0.1.2
+   Compiling five8 v0.2.1
+   Compiling solana-sanitize v2.2.1
+   Compiling solana-atomic-u64 v2.2.1
+   Compiling five8_const v0.1.4
+   Compiling solana-decode-error v2.3.0
+   Compiling num-integer v0.1.47
+   Compiling zmij v1.0.23
+   Compiling find-msvc-tools v0.1.11
+   Compiling shlex v2.0.1
+   Compiling cc v1.4.4
+   Compiling borsh-derive-internal v0.10.4
+   Compiling borsh-schema-derive-internal v0.10.4
+   Compiling arrayvec v0.7.8
+   Compiling serde_json v1.0.151
+   Compiling itoa v1.0.18
+   Compiling either v1.18.0
+   Compiling solana-sdk-macro v3.0.1
+   Compiling solana-hash v4.5.0
+   Compiling solana-sha256-hasher v3.1.0
+   Compiling solana-address v2.6.1
+   Compiling toml v0.5.11
+   Compiling log v0.4.34
+   Compiling lazy_static v1.5.0
+   Compiling signature v2.2.0
+   Compiling hybrid-array v0.4.14
+   Compiling solana-pubkey v4.2.1
+   Compiling solana-sdk-ids v3.1.0
+   Compiling solana-instruction v3.4.0
+   Compiling solana-sysvar-id v3.1.0
+   Compiling solana-hash v2.3.0
+   Compiling solana-get-sysvar v1.0.0
+   Compiling cmov v0.5.4
+   Compiling blake3 v1.8.7
+   Compiling solana-sha256-hasher v2.3.0
+   Compiling ctutils v0.4.2
+   Compiling base64 v0.22.1
+   Compiling crypto-common v0.2.2
+   Compiling block-buffer v0.12.1
+   Compiling crunchy v0.2.4
+   Compiling proc-macro-crate v0.1.5
+   Compiling constant_time_eq v0.4.2
+   Compiling ed25519 v2.2.3
+   Compiling serde_bytes v0.11.19
+   Compiling ed25519-dalek v2.2.0
+   Compiling solana-epoch-schedule v3.2.0
+   Compiling borsh-derive v0.10.4
+   Compiling solana-transaction-error v3.3.2
+   Compiling solana-program-memory v3.1.0
+   Compiling digest v0.11.3
+   Compiling solana-account-info v3.1.1
+   Compiling borsh v0.10.4
+   Compiling solana-signature v3.4.1
+   Compiling solana-clock v3.1.1
+   Compiling solana-signer v3.0.1
+   Compiling num-bigint v0.4.8
+   Compiling bitflags v2.13.1
+   Compiling solana-slot-hashes v3.1.0
+   Compiling solana-rent v4.3.0
+   Compiling solana-fee-calculator v3.2.2
+   Compiling solana-pubkey v2.4.0
+   Compiling rand_core v0.9.5
+   Compiling solana-define-syscall v4.0.1
+   Compiling solana-program-entrypoint v3.1.1
+   Compiling solana-instruction v2.3.3
+   Compiling solana-sdk-ids v2.2.1
+   Compiling rand_chacha v0.9.0
+   Compiling digest v0.9.0
+   Compiling solana-stake-history v1.0.0
+   Compiling solana-last-restart-slot v3.1.0
+   Compiling solana-epoch-rewards v3.1.0
+   Compiling solana-slot-history v3.1.0
+   Compiling solana-sysvar v4.1.0
+   Compiling rand v0.9.5
+   Compiling solana-short-vec v3.2.2
+   Compiling hmac v0.12.1
+   Compiling byteorder v1.5.0
+   Compiling solana-sysvar-id v2.2.1
+   Compiling num-bigint v0.2.6
+   Compiling radium v0.7.0
+   Compiling solana-msg v3.1.0
+   Compiling paste v1.0.15
+   Compiling solana-system-interface v3.2.0
+   Compiling solana-account v4.3.2
+   Compiling solana-message v4.4.1
+   Compiling num-rational v0.2.4
+   Compiling num-complex v0.2.4
+   Compiling solana-svm-feature-set v4.2.1
+   Compiling void v1.0.2
+   Compiling tap v1.0.1
+   Compiling unreachable v1.0.0
+   Compiling wyz v0.5.1
+   Compiling solana-transaction v4.1.5
+   Compiling solana-serialize-utils v3.1.2
+   Compiling ascii v0.9.3
+   Compiling funty v2.0.0
+   Compiling solana-svm-transaction v4.2.0
+   Compiling combine v3.8.1
+   Compiling hash32 v0.3.1
+   Compiling bitvec v1.1.1
+   Compiling num-iter v0.1.46
+   Compiling solana-sdk-macro v2.2.1
+   Compiling enum-iterator-derive v1.5.0
+   Compiling rustc-demangle v0.1.28
+   Compiling opaque-debug v0.3.1
+   Compiling num v0.2.1
+   Compiling solana-instructions-sysvar v4.0.0
+   Compiling enum-iterator v2.3.0
+   Compiling solana-cpi v3.1.0
+   Compiling itertools v0.14.0
+   Compiling solana-precompile-error v3.0.0
+   Compiling rand_xorshift v0.3.0
+   Compiling keccak v0.1.6
+   Compiling eager v0.1.0
+   Compiling solana-fee-structure v3.0.0
+   Compiling solana-svm-callback v4.2.1
+   Compiling solana-stake-interface v4.3.0
+   Compiling ff v0.13.1
+   Compiling percentage v0.1.0
+   Compiling group v0.13.0
+   Compiling solana-svm-type-overrides v4.2.1
+   Compiling solana-loader-v3-interface v7.0.0
+   Compiling solana-stable-layout v3.0.1
+   Compiling solana-svm-log-collector v4.2.1
+   Compiling pbkdf2 v0.11.0
+   Compiling enum-ordinalize-derive v4.4.2
+   Compiling solana-svm-measure v4.2.1
+   Compiling solana-msg v2.2.1
+   Compiling solana-program-error v2.2.2
+   Compiling solana-seed-phrase v3.0.0
+   Compiling sha3 v0.10.9
+   Compiling ark-std v0.5.0
+   Compiling ark-serialize-derive v0.5.0
+   Compiling ark-ff-macros v0.5.0
+   Compiling enum-ordinalize v4.4.2
+   Compiling solana-system-interface v1.0.0
+   Compiling solana-svm-timings v4.2.1
+   Compiling ark-serialize-derive v0.4.2
+   Compiling solana-sbpf v0.21.1
+   Compiling ark-serialize v0.5.0
+   Compiling itertools v0.13.0
+   Compiling educe v0.6.0
+   Compiling ark-std v0.4.0
+   Compiling block-buffer v0.9.0
+   Compiling der v0.7.10
+   Compiling ark-ff-asm v0.5.0
+   Compiling allocator-api2 v0.2.21
+   Compiling solana-program-memory v2.3.1
+   Compiling solana-account-info v2.3.0
+   Compiling ark-serialize v0.4.2
+   Compiling sha2 v0.9.9
+   Compiling hashbrown v0.15.5
+   Compiling solana-clock v2.2.3
+   Compiling ark-ff-macros v0.4.2
+   Compiling ark-ff-asm v0.4.2
+   Compiling derivative v2.2.0
+   Compiling blst v0.3.17
+   Compiling itertools v0.10.5
+   Compiling num-derive v0.4.2
+   Compiling num_cpus v1.17.0
+   Compiling arrayref v0.3.9
+   Compiling getrandom v0.1.16
+   Compiling threadpool v1.8.1
+   Compiling solana-transaction-context v4.2.1
+   Compiling ark-ff v0.5.0
+   Compiling spki v0.7.3
+   Compiling solana-program-runtime v4.2.1
+   Compiling ark-ff v0.4.2
+   Compiling solana-keypair v3.1.2
+   Compiling libsecp256k1-core v0.3.0
+   Compiling libsecp256k1-core v0.2.2
+   Compiling base16ct v0.2.0
+   Compiling thiserror v1.0.69
+   Compiling sec1 v0.7.3
+   Compiling agave-feature-set v4.2.1
+   Compiling pkcs8 v0.10.2
+   Compiling pairing v0.23.0
+   Compiling solana-packet v4.2.0
+   Compiling crypto-bigint v0.5.5
+   Compiling inout v0.1.4
+   Compiling thiserror-impl v1.0.69
+   Compiling byte-slice-cast v1.2.3
+   Compiling elliptic-curve v0.13.8
+   Compiling blstrs v0.7.1
+   Compiling cipher v0.4.4
+   Compiling rand_core v0.5.1
+   Compiling libsecp256k1-gen-ecmult v0.2.1
+   Compiling libsecp256k1-gen-genmult v0.2.1
+   Compiling libsecp256k1-gen-ecmult v0.3.0
+   Compiling libsecp256k1-gen-genmult v0.3.0
+   Compiling rfc6979 v0.4.0
+   Compiling percent-encoding v2.3.2
+   Compiling fnv v1.0.7
+   Compiling uriparse v0.6.4
+   Compiling qstring v0.7.2
+   Compiling ecdsa v0.16.9
+   Compiling libsecp256k1 v0.7.2
+   Compiling libsecp256k1 v0.6.0
+   Compiling rand_chacha v0.2.2
+   Compiling solana-rent v2.2.1
+   Compiling solana-slot-hashes v2.2.1
+   Compiling solana-serialize-utils v2.2.1
+   Compiling solana-fee-calculator v2.2.1
+   Compiling solana-short-vec v2.2.1
+   Compiling serde_with_macros v3.22.0
+   Compiling universal-hash v0.5.1
+   Compiling derivation-path v0.2.0
+   Compiling solana-derivation-path v3.0.0
+   Compiling polyval v0.6.2
+   Compiling k256 v0.13.4
+   Compiling rand v0.7.3
+   Compiling serde_with v3.22.0
+   Compiling ctr v0.9.2
+   Compiling aes v0.8.4
+   Compiling solana-cpi v2.2.1
+   Compiling solana-bincode v2.2.1
+   Compiling solana-transaction-error v2.2.1
+   Compiling solana-bincode v3.1.0
+   Compiling aead v0.5.2
+   Compiling cfg_eval v0.1.2
+   Compiling memoffset v0.9.1
+   Compiling aspis-core v0.1.0 (/Users/dominic/ZK/.worktrees/ZK-v7-pool-runtime-close-20260830/crates/aspis-core)
+   Compiling base64 v0.12.3
+   Compiling solana-hash-512 v1.1.0
+   Compiling solana-sha512-hasher v1.0.1
+   Compiling aes-gcm-siv v0.11.1
+   Compiling solana-message v2.4.0
+   Compiling solana-stake-interface v1.2.1
+   Compiling solana-secp256k1-recover v3.3.0
+   Compiling solana-seed-derivable v3.0.0
+   Compiling solana-nonce v2.2.1
+   Compiling solana-address-lookup-table-interface v2.2.2
+   Compiling solana-instructions-sysvar v2.2.2
+   Compiling solana-bls12-381-syscall v0.1.1
+   Compiling solana-account v2.2.1
+   Compiling solana-program-entrypoint v2.3.0
+   Compiling ark-poly v0.5.0
+   Compiling solana-keccak-hasher v3.1.0
+   Compiling solana-keccak-hasher v2.2.1
+   Compiling merlin v3.0.0
+   Compiling solana-epoch-schedule v2.2.1
+   Compiling solana-last-restart-slot v2.2.1
+   Compiling solana-epoch-rewards v2.2.1
+   Compiling solana-slot-history v2.2.1
+   Compiling solana-nonce v3.2.1
+   Compiling solana-blake3-hasher v3.1.0
+   Compiling solana-curve25519 v4.0.1
+   Compiling solana-serde-varint v3.0.1
+   Compiling solana-serde-varint v2.2.2
+   Compiling solana-vote-interface v6.0.3
+   Compiling solana-vote-interface v2.2.6
+   Compiling ark-poly v0.4.2
+   Compiling solana-nonce-account v4.1.1
+   Compiling solana-sysvar v2.3.0
+   Compiling ark-ec v0.5.0
+   Compiling solana-zk-sdk v5.0.1
+   Compiling solana-example-mocks v2.2.1
+   Compiling solana-secp256k1-recover v2.2.1
+   Compiling solana-feature-gate-interface v2.2.2
+   Compiling solana-bls-signatures v3.3.0
+   Compiling solana-builtins-default-costs v4.2.1
+warning: unexpected `cfg` condition value: `solana`
+   --> /Users/dominic/ZK/.worktrees/ZK-v7-pool-runtime-close-20260830/crates/aspis-core/src/circle_prefix.rs:585:11
+    |
+585 | #[cfg(not(target_os = "solana"))]
+    |           ^^^^^^^^^^^^^^^^^^^^
+    |
+    = note: expected values for `target_os` are: `aix`, `amdhsa`, `android`, `cuda`, `cygwin`, `dragonfly`, `emscripten`, `espidf`, `freebsd`, `fuchsia`, `haiku`, `helenos`, `hermit`, `horizon`, `hurd`, `illumos`, `ios`, `l4re`, `linux`, `lynxos178`, `macos`, `managarm`, `motor`, `netbsd`, `none`, `nto`, `nuttx`, `openbsd`, `psp`, `psx`, `qurt`, `redox`, `rtems`, `solaris`, and `solid_asp3` and 14 more
+    = note: see <https://doc.rust-lang.org/nightly/rustc/check-cfg/cargo-specifics.html> for more information about checking conditional configuration
+    = note: `#[warn(unexpected_cfgs)]` on by default
+
+warning: unexpected `cfg` condition value: `solana`
+   --> /Users/dominic/ZK/.worktrees/ZK-v7-pool-runtime-close-20260830/crates/aspis-core/src/circle_prefix.rs:594:11
+    |
+594 | #[cfg(not(target_os = "solana"))]
+    |           ^^^^^^^^^^^^^^^^^^^^
+    |
+    = note: expected values for `target_os` are: `aix`, `amdhsa`, `android`, `cuda`, `cygwin`, `dragonfly`, `emscripten`, `espidf`, `freebsd`, `fuchsia`, `haiku`, `helenos`, `hermit`, `horizon`, `hurd`, `illumos`, `ios`, `l4re`, `linux`, `lynxos178`, `macos`, `managarm`, `motor`, `netbsd`, `none`, `nto`, `nuttx`, `openbsd`, `psp`, `psx`, `qurt`, `redox`, `rtems`, `solaris`, and `solid_asp3` and 14 more
+    = note: see <https://doc.rust-lang.org/nightly/rustc/check-cfg/cargo-specifics.html> for more information about checking conditional configuration
+
+warning: unexpected `cfg` condition value: `solana`
+   --> /Users/dominic/ZK/.worktrees/ZK-v7-pool-runtime-close-20260830/crates/aspis-core/src/circle_prefix.rs:638:11
+    |
+638 | #[cfg(not(target_os = "solana"))]
+    |           ^^^^^^^^^^^^^^^^^^^^
+    |
+    = note: expected values for `target_os` are: `aix`, `amdhsa`, `android`, `cuda`, `cygwin`, `dragonfly`, `emscripten`, `espidf`, `freebsd`, `fuchsia`, `haiku`, `helenos`, `hermit`, `horizon`, `hurd`, `illumos`, `ios`, `l4re`, `linux`, `lynxos178`, `macos`, `managarm`, `motor`, `netbsd`, `none`, `nto`, `nuttx`, `openbsd`, `psp`, `psx`, `qurt`, `redox`, `rtems`, `solaris`, and `solid_asp3` and 14 more
+    = note: see <https://doc.rust-lang.org/nightly/rustc/check-cfg/cargo-specifics.html> for more information about checking conditional configuration
+
+   Compiling ark-ec v0.4.2
+   Compiling solana-compute-budget v4.2.1
+   Compiling solana-loader-v3-interface v5.0.0
+   Compiling solana-loader-v4-interface v2.2.1
+   Compiling solana-program-pack v2.2.1
+   Compiling ark-bn254 v0.5.0
+   Compiling solana-big-mod-exp v2.2.1
+   Compiling solana-loader-v2-interface v2.2.1
+   Compiling solana-stable-layout v2.2.1
+   Compiling light-poseidon v0.4.0
+   Compiling solana-bn254 v3.2.1
+   Compiling solana-borsh v2.2.1
+   Compiling ark-bn254 v0.4.0
+   Compiling solana-blake3-hasher v2.2.1
+   Compiling light-poseidon v0.2.0
+   Compiling solana-compute-budget-interface v3.0.0
+   Compiling solana-borsh v3.0.2
+   Compiling solana-address v1.1.0
+   Compiling qualifier_attr v0.2.2
+   Compiling solana-program-option v2.2.1
+   Compiling solana-native-token v2.3.0
+   Compiling solana-pubkey v3.0.0
+   Compiling solana-compute-budget-instruction v4.2.1
+   Compiling solana-zk-elgamal-proof-program v4.2.1
+   Compiling solana-vote-program v4.2.1
+   Compiling solana-system-program v4.2.1
+   Compiling solana-program v2.3.0
+   Compiling solana-poseidon v4.0.0
+   Compiling agave-transaction-view v4.2.1
+warning: function `verify_circle_layer0_opening_from_proof_deferred_canonical_for_depth_and_c2_leaf_bytes` is never used
+   --> /Users/dominic/ZK/.worktrees/ZK-v7-pool-runtime-close-20260830/crates/aspis-core/src/circle_merkle.rs:419:15
+    |
+419 | pub(crate) fn verify_circle_layer0_opening_from_proof_deferred_canonical_for_depth_and_c2_leaf_bytes<
+    |               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+    = note: `#[warn(dead_code)]` (part of `#[warn(unused)]`) on by default
+
+warning: function `verify_circle_openings_deferred_canonical` is never used
+   --> /Users/dominic/ZK/.worktrees/ZK-v7-pool-runtime-close-20260830/crates/aspis-core/src/circle_openings.rs:993:15
+    |
+993 | pub(crate) fn verify_circle_openings_deferred_canonical<'a>(
+    |               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: function `verify_radix4_minimal_subtree_prevalidated_in_place` is never used
+   --> /Users/dominic/ZK/.worktrees/ZK-v7-pool-runtime-close-20260830/crates/aspis-core/src/merkle.rs:329:15
+    |
+329 | pub(crate) fn verify_radix4_minimal_subtree_prevalidated_in_place(
+    |               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+   Compiling solana-syscalls v4.2.1
+   Compiling solana-compute-budget-program v4.2.1
+   Compiling solana-zk-token-proof-program v4.2.1
+   Compiling anyhow v1.0.104
+   Compiling solana-bpf-loader-program v4.2.1
+   Compiling aspis-statement v0.1.0 (/Users/dominic/ZK/.worktrees/ZK-v7-pool-runtime-close-20260830/crates/aspis-statement)
+warning: unexpected `cfg` condition value: `solana`
+  --> /Users/dominic/ZK/.worktrees/ZK-v7-pool-runtime-close-20260830/crates/aspis-statement/src/lib.rs:14:11
+   |
+14 | #[cfg(not(target_os = "solana"))]
+   |           ^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: expected values for `target_os` are: `aix`, `amdhsa`, `android`, `cuda`, `cygwin`, `dragonfly`, `emscripten`, `espidf`, `freebsd`, `fuchsia`, `haiku`, `helenos`, `hermit`, `horizon`, `hurd`, `illumos`, `ios`, `l4re`, `linux`, `lynxos178`, `macos`, `managarm`, `motor`, `netbsd`, `none`, `nto`, `nuttx`, `openbsd`, `psp`, `psx`, `qurt`, `redox`, `rtems`, `solaris`, and `solid_asp3` and 14 more
+   = note: see <https://doc.rust-lang.org/nightly/rustc/check-cfg/cargo-specifics.html> for more information about checking conditional configuration
+   = note: `#[warn(unexpected_cfgs)]` on by default
+
+warning: unexpected `cfg` condition value: `solana`
+  --> /Users/dominic/ZK/.worktrees/ZK-v7-pool-runtime-close-20260830/crates/aspis-statement/src/lib.rs:17:11
+   |
+17 | #[cfg(not(target_os = "solana"))]
+   |           ^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: expected values for `target_os` are: `aix`, `amdhsa`, `android`, `cuda`, `cygwin`, `dragonfly`, `emscripten`, `espidf`, `freebsd`, `fuchsia`, `haiku`, `helenos`, `hermit`, `horizon`, `hurd`, `illumos`, `ios`, `l4re`, `linux`, `lynxos178`, `macos`, `managarm`, `motor`, `netbsd`, `none`, `nto`, `nuttx`, `openbsd`, `psp`, `psx`, `qurt`, `redox`, `rtems`, `solaris`, and `solid_asp3` and 14 more
+   = note: see <https://doc.rust-lang.org/nightly/rustc/check-cfg/cargo-specifics.html> for more information about checking conditional configuration
+
+warning: unexpected `cfg` condition value: `solana`
+  --> /Users/dominic/ZK/.worktrees/ZK-v7-pool-runtime-close-20260830/crates/aspis-statement/src/lib.rs:24:15
+   |
+24 | #[cfg(any(not(target_os = "solana"), feature = "pool-v1-kernel"))]
+   |               ^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: expected values for `target_os` are: `aix`, `amdhsa`, `android`, `cuda`, `cygwin`, `dragonfly`, `emscripten`, `espidf`, `freebsd`, `fuchsia`, `haiku`, `helenos`, `hermit`, `horizon`, `hurd`, `illumos`, `ios`, `l4re`, `linux`, `lynxos178`, `macos`, `managarm`, `motor`, `netbsd`, `none`, `nto`, `nuttx`, `openbsd`, `psp`, `psx`, `qurt`, `redox`, `rtems`, `solaris`, and `solid_asp3` and 14 more
+   = note: see <https://doc.rust-lang.org/nightly/rustc/check-cfg/cargo-specifics.html> for more information about checking conditional configuration
+
+warning: unexpected `cfg` condition value: `solana`
+  --> /Users/dominic/ZK/.worktrees/ZK-v7-pool-runtime-close-20260830/crates/aspis-statement/src/lib.rs:28:11
+   |
+28 | #[cfg(not(target_os = "solana"))]
+   |           ^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: expected values for `target_os` are: `aix`, `amdhsa`, `android`, `cuda`, `cygwin`, `dragonfly`, `emscripten`, `espidf`, `freebsd`, `fuchsia`, `haiku`, `helenos`, `hermit`, `horizon`, `hurd`, `illumos`, `ios`, `l4re`, `linux`, `lynxos178`, `macos`, `managarm`, `motor`, `netbsd`, `none`, `nto`, `nuttx`, `openbsd`, `psp`, `psx`, `qurt`, `redox`, `rtems`, `solaris`, and `solid_asp3` and 14 more
+   = note: see <https://doc.rust-lang.org/nightly/rustc/check-cfg/cargo-specifics.html> for more information about checking conditional configuration
+
+warning: unexpected `cfg` condition value: `solana`
+  --> /Users/dominic/ZK/.worktrees/ZK-v7-pool-runtime-close-20260830/crates/aspis-statement/src/lib.rs:31:11
+   |
+31 | #[cfg(not(target_os = "solana"))]
+   |           ^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: expected values for `target_os` are: `aix`, `amdhsa`, `android`, `cuda`, `cygwin`, `dragonfly`, `emscripten`, `espidf`, `freebsd`, `fuchsia`, `haiku`, `helenos`, `hermit`, `horizon`, `hurd`, `illumos`, `ios`, `l4re`, `linux`, `lynxos178`, `macos`, `managarm`, `motor`, `netbsd`, `none`, `nto`, `nuttx`, `openbsd`, `psp`, `psx`, `qurt`, `redox`, `rtems`, `solaris`, and `solid_asp3` and 14 more
+   = note: see <https://doc.rust-lang.org/nightly/rustc/check-cfg/cargo-specifics.html> for more information about checking conditional configuration
+
+warning: unexpected `cfg` condition value: `solana`
+  --> /Users/dominic/ZK/.worktrees/ZK-v7-pool-runtime-close-20260830/crates/aspis-statement/src/lib.rs:35:11
+   |
+35 | #[cfg(not(target_os = "solana"))]
+   |           ^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: expected values for `target_os` are: `aix`, `amdhsa`, `android`, `cuda`, `cygwin`, `dragonfly`, `emscripten`, `espidf`, `freebsd`, `fuchsia`, `haiku`, `helenos`, `hermit`, `horizon`, `hurd`, `illumos`, `ios`, `l4re`, `linux`, `lynxos178`, `macos`, `managarm`, `motor`, `netbsd`, `none`, `nto`, `nuttx`, `openbsd`, `psp`, `psx`, `qurt`, `redox`, `rtems`, `solaris`, and `solid_asp3` and 14 more
+   = note: see <https://doc.rust-lang.org/nightly/rustc/check-cfg/cargo-specifics.html> for more information about checking conditional configuration
+
+warning: unexpected `cfg` condition value: `solana`
+  --> /Users/dominic/ZK/.worktrees/ZK-v7-pool-runtime-close-20260830/crates/aspis-statement/src/lib.rs:67:11
+   |
+67 | #[cfg(not(target_os = "solana"))]
+   |           ^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: expected values for `target_os` are: `aix`, `amdhsa`, `android`, `cuda`, `cygwin`, `dragonfly`, `emscripten`, `espidf`, `freebsd`, `fuchsia`, `haiku`, `helenos`, `hermit`, `horizon`, `hurd`, `illumos`, `ios`, `l4re`, `linux`, `lynxos178`, `macos`, `managarm`, `motor`, `netbsd`, `none`, `nto`, `nuttx`, `openbsd`, `psp`, `psx`, `qurt`, `redox`, `rtems`, `solaris`, and `solid_asp3` and 14 more
+   = note: see <https://doc.rust-lang.org/nightly/rustc/check-cfg/cargo-specifics.html> for more information about checking conditional configuration
+
+warning: unexpected `cfg` condition value: `solana`
+   --> /Users/dominic/ZK/.worktrees/ZK-v7-pool-runtime-close-20260830/crates/aspis-statement/src/lib.rs:117:11
+    |
+117 | #[cfg(not(target_os = "solana"))]
+    |           ^^^^^^^^^^^^^^^^^^^^
+    |
+    = note: expected values for `target_os` are: `aix`, `amdhsa`, `android`, `cuda`, `cygwin`, `dragonfly`, `emscripten`, `espidf`, `freebsd`, `fuchsia`, `haiku`, `helenos`, `hermit`, `horizon`, `hurd`, `illumos`, `ios`, `l4re`, `linux`, `lynxos178`, `macos`, `managarm`, `motor`, `netbsd`, `none`, `nto`, `nuttx`, `openbsd`, `psp`, `psx`, `qurt`, `redox`, `rtems`, `solaris`, and `solid_asp3` and 14 more
+    = note: see <https://doc.rust-lang.org/nightly/rustc/check-cfg/cargo-specifics.html> for more information about checking conditional configuration
+
+warning: unexpected `cfg` condition value: `solana`
+   --> /Users/dominic/ZK/.worktrees/ZK-v7-pool-runtime-close-20260830/crates/aspis-statement/src/lib.rs:119:11
+    |
+119 | #[cfg(not(target_os = "solana"))]
+    |           ^^^^^^^^^^^^^^^^^^^^
+    |
+    = note: expected values for `target_os` are: `aix`, `amdhsa`, `android`, `cuda`, `cygwin`, `dragonfly`, `emscripten`, `espidf`, `freebsd`, `fuchsia`, `haiku`, `helenos`, `hermit`, `horizon`, `hurd`, `illumos`, `ios`, `l4re`, `linux`, `lynxos178`, `macos`, `managarm`, `motor`, `netbsd`, `none`, `nto`, `nuttx`, `openbsd`, `psp`, `psx`, `qurt`, `redox`, `rtems`, `solaris`, and `solid_asp3` and 14 more
+    = note: see <https://doc.rust-lang.org/nightly/rustc/check-cfg/cargo-specifics.html> for more information about checking conditional configuration
+
+warning: unexpected `cfg` condition value: `solana`
+   --> /Users/dominic/ZK/.worktrees/ZK-v7-pool-runtime-close-20260830/crates/aspis-statement/src/lib.rs:129:11
+    |
+129 | #[cfg(not(target_os = "solana"))]
+    |           ^^^^^^^^^^^^^^^^^^^^
+    |
+    = note: expected values for `target_os` are: `aix`, `amdhsa`, `android`, `cuda`, `cygwin`, `dragonfly`, `emscripten`, `espidf`, `freebsd`, `fuchsia`, `haiku`, `helenos`, `hermit`, `horizon`, `hurd`, `illumos`, `ios`, `l4re`, `linux`, `lynxos178`, `macos`, `managarm`, `motor`, `netbsd`, `none`, `nto`, `nuttx`, `openbsd`, `psp`, `psx`, `qurt`, `redox`, `rtems`, `solaris`, and `solid_asp3` and 14 more
+    = note: see <https://doc.rust-lang.org/nightly/rustc/check-cfg/cargo-specifics.html> for more information about checking conditional configuration
+
+warning: unexpected `cfg` condition value: `solana`
+   --> /Users/dominic/ZK/.worktrees/ZK-v7-pool-runtime-close-20260830/crates/aspis-statement/src/lib.rs:153:11
+    |
+153 | #[cfg(not(target_os = "solana"))]
+    |           ^^^^^^^^^^^^^^^^^^^^
+    |
+    = note: expected values for `target_os` are: `aix`, `amdhsa`, `android`, `cuda`, `cygwin`, `dragonfly`, `emscripten`, `espidf`, `freebsd`, `fuchsia`, `haiku`, `helenos`, `hermit`, `horizon`, `hurd`, `illumos`, `ios`, `l4re`, `linux`, `lynxos178`, `macos`, `managarm`, `motor`, `netbsd`, `none`, `nto`, `nuttx`, `openbsd`, `psp`, `psx`, `qurt`, `redox`, `rtems`, `solaris`, and `solid_asp3` and 14 more
+    = note: see <https://doc.rust-lang.org/nightly/rustc/check-cfg/cargo-specifics.html> for more information about checking conditional configuration
+
+warning: unexpected `cfg` condition value: `solana`
+   --> /Users/dominic/ZK/.worktrees/ZK-v7-pool-runtime-close-20260830/crates/aspis-statement/src/constraints_v4.rs:723:11
+    |
+723 | #[cfg(not(target_os = "solana"))]
+    |           ^^^^^^^^^^^^^^^^^^^^
+    |
+    = note: expected values for `target_os` are: `aix`, `amdhsa`, `android`, `cuda`, `cygwin`, `dragonfly`, `emscripten`, `espidf`, `freebsd`, `fuchsia`, `haiku`, `helenos`, `hermit`, `horizon`, `hurd`, `illumos`, `ios`, `l4re`, `linux`, `lynxos178`, `macos`, `managarm`, `motor`, `netbsd`, `none`, `nto`, `nuttx`, `openbsd`, `psp`, `psx`, `qurt`, `redox`, `rtems`, `solaris`, and `solid_asp3` and 14 more
+    = note: see <https://doc.rust-lang.org/nightly/rustc/check-cfg/cargo-specifics.html> for more information about checking conditional configuration
+
+warning: unexpected `cfg` condition value: `solana`
+   --> /Users/dominic/ZK/.worktrees/ZK-v7-pool-runtime-close-20260830/crates/aspis-statement/src/constraints_v4.rs:734:11
+    |
+734 | #[cfg(not(target_os = "solana"))]
+    |           ^^^^^^^^^^^^^^^^^^^^
+    |
+    = note: expected values for `target_os` are: `aix`, `amdhsa`, `android`, `cuda`, `cygwin`, `dragonfly`, `emscripten`, `espidf`, `freebsd`, `fuchsia`, `haiku`, `helenos`, `hermit`, `horizon`, `hurd`, `illumos`, `ios`, `l4re`, `linux`, `lynxos178`, `macos`, `managarm`, `motor`, `netbsd`, `none`, `nto`, `nuttx`, `openbsd`, `psp`, `psx`, `qurt`, `redox`, `rtems`, `solaris`, and `solid_asp3` and 14 more
+    = note: see <https://doc.rust-lang.org/nightly/rustc/check-cfg/cargo-specifics.html> for more information about checking conditional configuration
+
+warning: unexpected `cfg` condition value: `solana`
+   --> /Users/dominic/ZK/.worktrees/ZK-v7-pool-runtime-close-20260830/crates/aspis-statement/src/constraints_v4.rs:749:11
+    |
+749 | #[cfg(not(target_os = "solana"))]
+    |           ^^^^^^^^^^^^^^^^^^^^
+    |
+    = note: expected values for `target_os` are: `aix`, `amdhsa`, `android`, `cuda`, `cygwin`, `dragonfly`, `emscripten`, `espidf`, `freebsd`, `fuchsia`, `haiku`, `helenos`, `hermit`, `horizon`, `hurd`, `illumos`, `ios`, `l4re`, `linux`, `lynxos178`, `macos`, `managarm`, `motor`, `netbsd`, `none`, `nto`, `nuttx`, `openbsd`, `psp`, `psx`, `qurt`, `redox`, `rtems`, `solaris`, and `solid_asp3` and 14 more
+    = note: see <https://doc.rust-lang.org/nightly/rustc/check-cfg/cargo-specifics.html> for more information about checking conditional configuration
+
+warning: unexpected `cfg` condition value: `solana`
+    --> /Users/dominic/ZK/.worktrees/ZK-v7-pool-runtime-close-20260830/crates/aspis-statement/src/constraints_v4.rs:2602:11
+     |
+2602 | #[cfg(not(target_os = "solana"))]
+     |           ^^^^^^^^^^^^^^^^^^^^
+     |
+     = note: expected values for `target_os` are: `aix`, `amdhsa`, `android`, `cuda`, `cygwin`, `dragonfly`, `emscripten`, `espidf`, `freebsd`, `fuchsia`, `haiku`, `helenos`, `hermit`, `horizon`, `hurd`, `illumos`, `ios`, `l4re`, `linux`, `lynxos178`, `macos`, `managarm`, `motor`, `netbsd`, `none`, `nto`, `nuttx`, `openbsd`, `psp`, `psx`, `qurt`, `redox`, `rtems`, `solaris`, and `solid_asp3` and 14 more
+     = note: see <https://doc.rust-lang.org/nightly/rustc/check-cfg/cargo-specifics.html> for more information about checking conditional configuration
+
+warning: unexpected `cfg` condition value: `solana`
+    --> /Users/dominic/ZK/.worktrees/ZK-v7-pool-runtime-close-20260830/crates/aspis-statement/src/constraints_v4.rs:2766:11
+     |
+2766 | #[cfg(not(target_os = "solana"))]
+     |           ^^^^^^^^^^^^^^^^^^^^
+     |
+     = note: expected values for `target_os` are: `aix`, `amdhsa`, `android`, `cuda`, `cygwin`, `dragonfly`, `emscripten`, `espidf`, `freebsd`, `fuchsia`, `haiku`, `helenos`, `hermit`, `horizon`, `hurd`, `illumos`, `ios`, `l4re`, `linux`, `lynxos178`, `macos`, `managarm`, `motor`, `netbsd`, `none`, `nto`, `nuttx`, `openbsd`, `psp`, `psx`, `qurt`, `redox`, `rtems`, `solaris`, and `solid_asp3` and 14 more
+     = note: see <https://doc.rust-lang.org/nightly/rustc/check-cfg/cargo-specifics.html> for more information about checking conditional configuration
+
+warning: unexpected `cfg` condition value: `solana`
+    --> /Users/dominic/ZK/.worktrees/ZK-v7-pool-runtime-close-20260830/crates/aspis-statement/src/constraints_v4.rs:2776:11
+     |
+2776 | #[cfg(not(target_os = "solana"))]
+     |           ^^^^^^^^^^^^^^^^^^^^
+     |
+     = note: expected values for `target_os` are: `aix`, `amdhsa`, `android`, `cuda`, `cygwin`, `dragonfly`, `emscripten`, `espidf`, `freebsd`, `fuchsia`, `haiku`, `helenos`, `hermit`, `horizon`, `hurd`, `illumos`, `ios`, `l4re`, `linux`, `lynxos178`, `macos`, `managarm`, `motor`, `netbsd`, `none`, `nto`, `nuttx`, `openbsd`, `psp`, `psx`, `qurt`, `redox`, `rtems`, `solaris`, and `solid_asp3` and 14 more
+     = note: see <https://doc.rust-lang.org/nightly/rustc/check-cfg/cargo-specifics.html> for more information about checking conditional configuration
+
+warning: unexpected `cfg` condition value: `solana`
+    --> /Users/dominic/ZK/.worktrees/ZK-v7-pool-runtime-close-20260830/crates/aspis-statement/src/constraints_v4.rs:2790:11
+     |
+2790 | #[cfg(not(target_os = "solana"))]
+     |           ^^^^^^^^^^^^^^^^^^^^
+     |
+     = note: expected values for `target_os` are: `aix`, `amdhsa`, `android`, `cuda`, `cygwin`, `dragonfly`, `emscripten`, `espidf`, `freebsd`, `fuchsia`, `haiku`, `helenos`, `hermit`, `horizon`, `hurd`, `illumos`, `ios`, `l4re`, `linux`, `lynxos178`, `macos`, `managarm`, `motor`, `netbsd`, `none`, `nto`, `nuttx`, `openbsd`, `psp`, `psx`, `qurt`, `redox`, `rtems`, `solaris`, and `solid_asp3` and 14 more
+     = note: see <https://doc.rust-lang.org/nightly/rustc/check-cfg/cargo-specifics.html> for more information about checking conditional configuration
+
+warning: unused imports: `visit_copy_exceptional_terminal_links` and `visit_copy_terminal_links`
+  --> /Users/dominic/ZK/.worktrees/ZK-v7-pool-runtime-close-20260830/crates/aspis-statement/src/constraints_v4.rs:32:5
+   |
+32 |     visit_copy_exceptional_terminal_links, visit_copy_links, visit_copy_terminal_links,
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^                    ^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: `#[warn(unused_imports)]` (part of `#[warn(unused)]`) on by default
+
+warning: unexpected `cfg` condition value: `solana`
+  --> /Users/dominic/ZK/.worktrees/ZK-v7-pool-runtime-close-20260830/crates/aspis-statement/src/pool_v1/mod.rs:16:11
+   |
+16 | #[cfg(not(target_os = "solana"))]
+   |           ^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: expected values for `target_os` are: `aix`, `amdhsa`, `android`, `cuda`, `cygwin`, `dragonfly`, `emscripten`, `espidf`, `freebsd`, `fuchsia`, `haiku`, `helenos`, `hermit`, `horizon`, `hurd`, `illumos`, `ios`, `l4re`, `linux`, `lynxos178`, `macos`, `managarm`, `motor`, `netbsd`, `none`, `nto`, `nuttx`, `openbsd`, `psp`, `psx`, `qurt`, `redox`, `rtems`, `solaris`, and `solid_asp3` and 14 more
+   = note: see <https://doc.rust-lang.org/nightly/rustc/check-cfg/cargo-specifics.html> for more information about checking conditional configuration
+
+warning: unexpected `cfg` condition value: `solana`
+  --> /Users/dominic/ZK/.worktrees/ZK-v7-pool-runtime-close-20260830/crates/aspis-statement/src/pool_v1/mod.rs:19:11
+   |
+19 | #[cfg(not(target_os = "solana"))]
+   |           ^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: expected values for `target_os` are: `aix`, `amdhsa`, `android`, `cuda`, `cygwin`, `dragonfly`, `emscripten`, `espidf`, `freebsd`, `fuchsia`, `haiku`, `helenos`, `hermit`, `horizon`, `hurd`, `illumos`, `ios`, `l4re`, `linux`, `lynxos178`, `macos`, `managarm`, `motor`, `netbsd`, `none`, `nto`, `nuttx`, `openbsd`, `psp`, `psx`, `qurt`, `redox`, `rtems`, `solaris`, and `solid_asp3` and 14 more
+   = note: see <https://doc.rust-lang.org/nightly/rustc/check-cfg/cargo-specifics.html> for more information about checking conditional configuration
+
+warning: unexpected `cfg` condition value: `solana`
+  --> /Users/dominic/ZK/.worktrees/ZK-v7-pool-runtime-close-20260830/crates/aspis-statement/src/pool_v1/mod.rs:22:11
+   |
+22 | #[cfg(not(target_os = "solana"))]
+   |           ^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: expected values for `target_os` are: `aix`, `amdhsa`, `android`, `cuda`, `cygwin`, `dragonfly`, `emscripten`, `espidf`, `freebsd`, `fuchsia`, `haiku`, `helenos`, `hermit`, `horizon`, `hurd`, `illumos`, `ios`, `l4re`, `linux`, `lynxos178`, `macos`, `managarm`, `motor`, `netbsd`, `none`, `nto`, `nuttx`, `openbsd`, `psp`, `psx`, `qurt`, `redox`, `rtems`, `solaris`, and `solid_asp3` and 14 more
+   = note: see <https://doc.rust-lang.org/nightly/rustc/check-cfg/cargo-specifics.html> for more information about checking conditional configuration
+
+warning: unexpected `cfg` condition value: `solana`
+  --> /Users/dominic/ZK/.worktrees/ZK-v7-pool-runtime-close-20260830/crates/aspis-statement/src/pool_v1/mod.rs:24:11
+   |
+24 | #[cfg(not(target_os = "solana"))]
+   |           ^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: expected values for `target_os` are: `aix`, `amdhsa`, `android`, `cuda`, `cygwin`, `dragonfly`, `emscripten`, `espidf`, `freebsd`, `fuchsia`, `haiku`, `helenos`, `hermit`, `horizon`, `hurd`, `illumos`, `ios`, `l4re`, `linux`, `lynxos178`, `macos`, `managarm`, `motor`, `netbsd`, `none`, `nto`, `nuttx`, `openbsd`, `psp`, `psx`, `qurt`, `redox`, `rtems`, `solaris`, and `solid_asp3` and 14 more
+   = note: see <https://doc.rust-lang.org/nightly/rustc/check-cfg/cargo-specifics.html> for more information about checking conditional configuration
+
+warning: unexpected `cfg` condition value: `solana`
+  --> /Users/dominic/ZK/.worktrees/ZK-v7-pool-runtime-close-20260830/crates/aspis-statement/src/pool_v1/mod.rs:28:11
+   |
+28 | #[cfg(not(target_os = "solana"))]
+   |           ^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: expected values for `target_os` are: `aix`, `amdhsa`, `android`, `cuda`, `cygwin`, `dragonfly`, `emscripten`, `espidf`, `freebsd`, `fuchsia`, `haiku`, `helenos`, `hermit`, `horizon`, `hurd`, `illumos`, `ios`, `l4re`, `linux`, `lynxos178`, `macos`, `managarm`, `motor`, `netbsd`, `none`, `nto`, `nuttx`, `openbsd`, `psp`, `psx`, `qurt`, `redox`, `rtems`, `solaris`, and `solid_asp3` and 14 more
+   = note: see <https://doc.rust-lang.org/nightly/rustc/check-cfg/cargo-specifics.html> for more information about checking conditional configuration
+
+warning: unexpected `cfg` condition value: `solana`
+  --> /Users/dominic/ZK/.worktrees/ZK-v7-pool-runtime-close-20260830/crates/aspis-statement/src/pool_v1/mod.rs:31:11
+   |
+31 | #[cfg(not(target_os = "solana"))]
+   |           ^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: expected values for `target_os` are: `aix`, `amdhsa`, `android`, `cuda`, `cygwin`, `dragonfly`, `emscripten`, `espidf`, `freebsd`, `fuchsia`, `haiku`, `helenos`, `hermit`, `horizon`, `hurd`, `illumos`, `ios`, `l4re`, `linux`, `lynxos178`, `macos`, `managarm`, `motor`, `netbsd`, `none`, `nto`, `nuttx`, `openbsd`, `psp`, `psx`, `qurt`, `redox`, `rtems`, `solaris`, and `solid_asp3` and 14 more
+   = note: see <https://doc.rust-lang.org/nightly/rustc/check-cfg/cargo-specifics.html> for more information about checking conditional configuration
+
+warning: unexpected `cfg` condition value: `solana`
+  --> /Users/dominic/ZK/.worktrees/ZK-v7-pool-runtime-close-20260830/crates/aspis-statement/src/pool_v1/mod.rs:33:11
+   |
+33 | #[cfg(not(target_os = "solana"))]
+   |           ^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: expected values for `target_os` are: `aix`, `amdhsa`, `android`, `cuda`, `cygwin`, `dragonfly`, `emscripten`, `espidf`, `freebsd`, `fuchsia`, `haiku`, `helenos`, `hermit`, `horizon`, `hurd`, `illumos`, `ios`, `l4re`, `linux`, `lynxos178`, `macos`, `managarm`, `motor`, `netbsd`, `none`, `nto`, `nuttx`, `openbsd`, `psp`, `psx`, `qurt`, `redox`, `rtems`, `solaris`, and `solid_asp3` and 14 more
+   = note: see <https://doc.rust-lang.org/nightly/rustc/check-cfg/cargo-specifics.html> for more information about checking conditional configuration
+
+warning: unexpected `cfg` condition value: `solana`
+  --> /Users/dominic/ZK/.worktrees/ZK-v7-pool-runtime-close-20260830/crates/aspis-statement/src/pool_v1/mod.rs:36:11
+   |
+36 | #[cfg(not(target_os = "solana"))]
+   |           ^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: expected values for `target_os` are: `aix`, `amdhsa`, `android`, `cuda`, `cygwin`, `dragonfly`, `emscripten`, `espidf`, `freebsd`, `fuchsia`, `haiku`, `helenos`, `hermit`, `horizon`, `hurd`, `illumos`, `ios`, `l4re`, `linux`, `lynxos178`, `macos`, `managarm`, `motor`, `netbsd`, `none`, `nto`, `nuttx`, `openbsd`, `psp`, `psx`, `qurt`, `redox`, `rtems`, `solaris`, and `solid_asp3` and 14 more
+   = note: see <https://doc.rust-lang.org/nightly/rustc/check-cfg/cargo-specifics.html> for more information about checking conditional configuration
+
+warning: unexpected `cfg` condition value: `solana`
+  --> /Users/dominic/ZK/.worktrees/ZK-v7-pool-runtime-close-20260830/crates/aspis-statement/src/pool_v1/mod.rs:38:11
+   |
+38 | #[cfg(not(target_os = "solana"))]
+   |           ^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: expected values for `target_os` are: `aix`, `amdhsa`, `android`, `cuda`, `cygwin`, `dragonfly`, `emscripten`, `espidf`, `freebsd`, `fuchsia`, `haiku`, `helenos`, `hermit`, `horizon`, `hurd`, `illumos`, `ios`, `l4re`, `linux`, `lynxos178`, `macos`, `managarm`, `motor`, `netbsd`, `none`, `nto`, `nuttx`, `openbsd`, `psp`, `psx`, `qurt`, `redox`, `rtems`, `solaris`, and `solid_asp3` and 14 more
+   = note: see <https://doc.rust-lang.org/nightly/rustc/check-cfg/cargo-specifics.html> for more information about checking conditional configuration
+
+warning: unexpected `cfg` condition value: `solana`
+  --> /Users/dominic/ZK/.worktrees/ZK-v7-pool-runtime-close-20260830/crates/aspis-statement/src/pool_v1/mod.rs:41:11
+   |
+41 | #[cfg(not(target_os = "solana"))]
+   |           ^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: expected values for `target_os` are: `aix`, `amdhsa`, `android`, `cuda`, `cygwin`, `dragonfly`, `emscripten`, `espidf`, `freebsd`, `fuchsia`, `haiku`, `helenos`, `hermit`, `horizon`, `hurd`, `illumos`, `ios`, `l4re`, `linux`, `lynxos178`, `macos`, `managarm`, `motor`, `netbsd`, `none`, `nto`, `nuttx`, `openbsd`, `psp`, `psx`, `qurt`, `redox`, `rtems`, `solaris`, and `solid_asp3` and 14 more
+   = note: see <https://doc.rust-lang.org/nightly/rustc/check-cfg/cargo-specifics.html> for more information about checking conditional configuration
+
+warning: unexpected `cfg` condition value: `solana`
+  --> /Users/dominic/ZK/.worktrees/ZK-v7-pool-runtime-close-20260830/crates/aspis-statement/src/pool_v1/mod.rs:43:11
+   |
+43 | #[cfg(not(target_os = "solana"))]
+   |           ^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: expected values for `target_os` are: `aix`, `amdhsa`, `android`, `cuda`, `cygwin`, `dragonfly`, `emscripten`, `espidf`, `freebsd`, `fuchsia`, `haiku`, `helenos`, `hermit`, `horizon`, `hurd`, `illumos`, `ios`, `l4re`, `linux`, `lynxos178`, `macos`, `managarm`, `motor`, `netbsd`, `none`, `nto`, `nuttx`, `openbsd`, `psp`, `psx`, `qurt`, `redox`, `rtems`, `solaris`, and `solid_asp3` and 14 more
+   = note: see <https://doc.rust-lang.org/nightly/rustc/check-cfg/cargo-specifics.html> for more information about checking conditional configuration
+
+warning: unexpected `cfg` condition value: `solana`
+  --> /Users/dominic/ZK/.worktrees/ZK-v7-pool-runtime-close-20260830/crates/aspis-statement/src/pool_v1/mod.rs:46:11
+   |
+46 | #[cfg(not(target_os = "solana"))]
+   |           ^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: expected values for `target_os` are: `aix`, `amdhsa`, `android`, `cuda`, `cygwin`, `dragonfly`, `emscripten`, `espidf`, `freebsd`, `fuchsia`, `haiku`, `helenos`, `hermit`, `horizon`, `hurd`, `illumos`, `ios`, `l4re`, `linux`, `lynxos178`, `macos`, `managarm`, `motor`, `netbsd`, `none`, `nto`, `nuttx`, `openbsd`, `psp`, `psx`, `qurt`, `redox`, `rtems`, `solaris`, and `solid_asp3` and 14 more
+   = note: see <https://doc.rust-lang.org/nightly/rustc/check-cfg/cargo-specifics.html> for more information about checking conditional configuration
+
+warning: unexpected `cfg` condition value: `solana`
+   --> /Users/dominic/ZK/.worktrees/ZK-v7-pool-runtime-close-20260830/crates/aspis-statement/src/pool_v1/mod.rs:123:11
+    |
+123 | #[cfg(not(target_os = "solana"))]
+    |           ^^^^^^^^^^^^^^^^^^^^
+    |
+    = note: expected values for `target_os` are: `aix`, `amdhsa`, `android`, `cuda`, `cygwin`, `dragonfly`, `emscripten`, `espidf`, `freebsd`, `fuchsia`, `haiku`, `helenos`, `hermit`, `horizon`, `hurd`, `illumos`, `ios`, `l4re`, `linux`, `lynxos178`, `macos`, `managarm`, `motor`, `netbsd`, `none`, `nto`, `nuttx`, `openbsd`, `psp`, `psx`, `qurt`, `redox`, `rtems`, `solaris`, and `solid_asp3` and 14 more
+    = note: see <https://doc.rust-lang.org/nightly/rustc/check-cfg/cargo-specifics.html> for more information about checking conditional configuration
+
+warning: unexpected `cfg` condition value: `solana`
+   --> /Users/dominic/ZK/.worktrees/ZK-v7-pool-runtime-close-20260830/crates/aspis-statement/src/pool_v1/mod.rs:173:11
+    |
+173 | #[cfg(not(target_os = "solana"))]
+    |           ^^^^^^^^^^^^^^^^^^^^
+    |
+    = note: expected values for `target_os` are: `aix`, `amdhsa`, `android`, `cuda`, `cygwin`, `dragonfly`, `emscripten`, `espidf`, `freebsd`, `fuchsia`, `haiku`, `helenos`, `hermit`, `horizon`, `hurd`, `illumos`, `ios`, `l4re`, `linux`, `lynxos178`, `macos`, `managarm`, `motor`, `netbsd`, `none`, `nto`, `nuttx`, `openbsd`, `psp`, `psx`, `qurt`, `redox`, `rtems`, `solaris`, and `solid_asp3` and 14 more
+    = note: see <https://doc.rust-lang.org/nightly/rustc/check-cfg/cargo-specifics.html> for more information about checking conditional configuration
+
+warning: unexpected `cfg` condition value: `solana`
+   --> /Users/dominic/ZK/.worktrees/ZK-v7-pool-runtime-close-20260830/crates/aspis-statement/src/pool_v1/mod.rs:190:11
+    |
+190 | #[cfg(not(target_os = "solana"))]
+    |           ^^^^^^^^^^^^^^^^^^^^
+    |
+    = note: expected values for `target_os` are: `aix`, `amdhsa`, `android`, `cuda`, `cygwin`, `dragonfly`, `emscripten`, `espidf`, `freebsd`, `fuchsia`, `haiku`, `helenos`, `hermit`, `horizon`, `hurd`, `illumos`, `ios`, `l4re`, `linux`, `lynxos178`, `macos`, `managarm`, `motor`, `netbsd`, `none`, `nto`, `nuttx`, `openbsd`, `psp`, `psx`, `qurt`, `redox`, `rtems`, `solaris`, and `solid_asp3` and 14 more
+    = note: see <https://doc.rust-lang.org/nightly/rustc/check-cfg/cargo-specifics.html> for more information about checking conditional configuration
+
+warning: unexpected `cfg` condition value: `solana`
+   --> /Users/dominic/ZK/.worktrees/ZK-v7-pool-runtime-close-20260830/crates/aspis-statement/src/pool_v1/mod.rs:231:11
+    |
+231 | #[cfg(not(target_os = "solana"))]
+    |           ^^^^^^^^^^^^^^^^^^^^
+    |
+    = note: expected values for `target_os` are: `aix`, `amdhsa`, `android`, `cuda`, `cygwin`, `dragonfly`, `emscripten`, `espidf`, `freebsd`, `fuchsia`, `haiku`, `helenos`, `hermit`, `horizon`, `hurd`, `illumos`, `ios`, `l4re`, `linux`, `lynxos178`, `macos`, `managarm`, `motor`, `netbsd`, `none`, `nto`, `nuttx`, `openbsd`, `psp`, `psx`, `qurt`, `redox`, `rtems`, `solaris`, and `solid_asp3` and 14 more
+    = note: see <https://doc.rust-lang.org/nightly/rustc/check-cfg/cargo-specifics.html> for more information about checking conditional configuration
+
+warning: unexpected `cfg` condition value: `solana`
+   --> /Users/dominic/ZK/.worktrees/ZK-v7-pool-runtime-close-20260830/crates/aspis-statement/src/pool_v1/mod.rs:235:11
+    |
+235 | #[cfg(not(target_os = "solana"))]
+    |           ^^^^^^^^^^^^^^^^^^^^
+    |
+    = note: expected values for `target_os` are: `aix`, `amdhsa`, `android`, `cuda`, `cygwin`, `dragonfly`, `emscripten`, `espidf`, `freebsd`, `fuchsia`, `haiku`, `helenos`, `hermit`, `horizon`, `hurd`, `illumos`, `ios`, `l4re`, `linux`, `lynxos178`, `macos`, `managarm`, `motor`, `netbsd`, `none`, `nto`, `nuttx`, `openbsd`, `psp`, `psx`, `qurt`, `redox`, `rtems`, `solaris`, and `solid_asp3` and 14 more
+    = note: see <https://doc.rust-lang.org/nightly/rustc/check-cfg/cargo-specifics.html> for more information about checking conditional configuration
+
+warning: unexpected `cfg` condition value: `solana`
+   --> /Users/dominic/ZK/.worktrees/ZK-v7-pool-runtime-close-20260830/crates/aspis-statement/src/pool_v1/mod.rs:258:11
+    |
+258 | #[cfg(not(target_os = "solana"))]
+    |           ^^^^^^^^^^^^^^^^^^^^
+    |
+    = note: expected values for `target_os` are: `aix`, `amdhsa`, `android`, `cuda`, `cygwin`, `dragonfly`, `emscripten`, `espidf`, `freebsd`, `fuchsia`, `haiku`, `helenos`, `hermit`, `horizon`, `hurd`, `illumos`, `ios`, `l4re`, `linux`, `lynxos178`, `macos`, `managarm`, `motor`, `netbsd`, `none`, `nto`, `nuttx`, `openbsd`, `psp`, `psx`, `qurt`, `redox`, `rtems`, `solaris`, and `solid_asp3` and 14 more
+    = note: see <https://doc.rust-lang.org/nightly/rustc/check-cfg/cargo-specifics.html> for more information about checking conditional configuration
+
+warning: unexpected `cfg` condition value: `solana`
+   --> /Users/dominic/ZK/.worktrees/ZK-v7-pool-runtime-close-20260830/crates/aspis-statement/src/pool_v1/mod.rs:301:11
+    |
+301 | #[cfg(not(target_os = "solana"))]
+    |           ^^^^^^^^^^^^^^^^^^^^
+    |
+    = note: expected values for `target_os` are: `aix`, `amdhsa`, `android`, `cuda`, `cygwin`, `dragonfly`, `emscripten`, `espidf`, `freebsd`, `fuchsia`, `haiku`, `helenos`, `hermit`, `horizon`, `hurd`, `illumos`, `ios`, `l4re`, `linux`, `lynxos178`, `macos`, `managarm`, `motor`, `netbsd`, `none`, `nto`, `nuttx`, `openbsd`, `psp`, `psx`, `qurt`, `redox`, `rtems`, `solaris`, and `solid_asp3` and 14 more
+    = note: see <https://doc.rust-lang.org/nightly/rustc/check-cfg/cargo-specifics.html> for more information about checking conditional configuration
+
+warning: unexpected `cfg` condition value: `solana`
+   --> /Users/dominic/ZK/.worktrees/ZK-v7-pool-runtime-close-20260830/crates/aspis-statement/src/pool_v1/mod.rs:313:11
+    |
+313 | #[cfg(not(target_os = "solana"))]
+    |           ^^^^^^^^^^^^^^^^^^^^
+    |
+    = note: expected values for `target_os` are: `aix`, `amdhsa`, `android`, `cuda`, `cygwin`, `dragonfly`, `emscripten`, `espidf`, `freebsd`, `fuchsia`, `haiku`, `helenos`, `hermit`, `horizon`, `hurd`, `illumos`, `ios`, `l4re`, `linux`, `lynxos178`, `macos`, `managarm`, `motor`, `netbsd`, `none`, `nto`, `nuttx`, `openbsd`, `psp`, `psx`, `qurt`, `redox`, `rtems`, `solaris`, and `solid_asp3` and 14 more
+    = note: see <https://doc.rust-lang.org/nightly/rustc/check-cfg/cargo-specifics.html> for more information about checking conditional configuration
+
+warning: unexpected `cfg` condition value: `solana`
+   --> /Users/dominic/ZK/.worktrees/ZK-v7-pool-runtime-close-20260830/crates/aspis-statement/src/pool_v1/mod.rs:359:11
+    |
+359 | #[cfg(not(target_os = "solana"))]
+    |           ^^^^^^^^^^^^^^^^^^^^
+    |
+    = note: expected values for `target_os` are: `aix`, `amdhsa`, `android`, `cuda`, `cygwin`, `dragonfly`, `emscripten`, `espidf`, `freebsd`, `fuchsia`, `haiku`, `helenos`, `hermit`, `horizon`, `hurd`, `illumos`, `ios`, `l4re`, `linux`, `lynxos178`, `macos`, `managarm`, `motor`, `netbsd`, `none`, `nto`, `nuttx`, `openbsd`, `psp`, `psx`, `qurt`, `redox`, `rtems`, `solaris`, and `solid_asp3` and 14 more
+    = note: see <https://doc.rust-lang.org/nightly/rustc/check-cfg/cargo-specifics.html> for more information about checking conditional configuration
+
+warning: unused import: `vec`
+ --> /Users/dominic/ZK/.worktrees/ZK-v7-pool-runtime-close-20260830/crates/aspis-statement/src/pool_v1/pair_forest_copy_terminal.rs:8:25
+  |
+8 | use alloc::{boxed::Box, vec};
+  |                         ^^^
+
+warning: unexpected `cfg` condition value: `solana`
+   --> /Users/dominic/ZK/.worktrees/ZK-v7-pool-runtime-close-20260830/crates/aspis-statement/src/pool_v1/pair_forest_terminal.rs:626:11
+    |
+626 | #[cfg(not(target_os = "solana"))]
+    |           ^^^^^^^^^^^^^^^^^^^^
+    |
+    = note: expected values for `target_os` are: `aix`, `amdhsa`, `android`, `cuda`, `cygwin`, `dragonfly`, `emscripten`, `espidf`, `freebsd`, `fuchsia`, `haiku`, `helenos`, `hermit`, `horizon`, `hurd`, `illumos`, `ios`, `l4re`, `linux`, `lynxos178`, `macos`, `managarm`, `motor`, `netbsd`, `none`, `nto`, `nuttx`, `openbsd`, `psp`, `psx`, `qurt`, `redox`, `rtems`, `solaris`, and `solid_asp3` and 14 more
+    = note: see <https://doc.rust-lang.org/nightly/rustc/check-cfg/cargo-specifics.html> for more information about checking conditional configuration
+
+warning: unexpected `cfg` condition value: `solana`
+   --> /Users/dominic/ZK/.worktrees/ZK-v7-pool-runtime-close-20260830/crates/aspis-statement/src/pool_v1/pair_forest_terminal.rs:803:11
+    |
+803 | #[cfg(not(target_os = "solana"))]
+    |           ^^^^^^^^^^^^^^^^^^^^
+    |
+    = note: expected values for `target_os` are: `aix`, `amdhsa`, `android`, `cuda`, `cygwin`, `dragonfly`, `emscripten`, `espidf`, `freebsd`, `fuchsia`, `haiku`, `helenos`, `hermit`, `horizon`, `hurd`, `illumos`, `ios`, `l4re`, `linux`, `lynxos178`, `macos`, `managarm`, `motor`, `netbsd`, `none`, `nto`, `nuttx`, `openbsd`, `psp`, `psx`, `qurt`, `redox`, `rtems`, `solaris`, and `solid_asp3` and 14 more
+    = note: see <https://doc.rust-lang.org/nightly/rustc/check-cfg/cargo-specifics.html> for more information about checking conditional configuration
+
+warning: unused import: `decode_pool_v1_pair_late_public_statement_v1`
+  --> /Users/dominic/ZK/.worktrees/ZK-v7-pool-runtime-close-20260830/crates/aspis-statement/src/pool_v1/pair_forest_terminal.rs:15:5
+   |
+15 |     decode_pool_v1_pair_late_public_statement_v1, decode_pool_v1_pair_verified_afterstate_v1,
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: unused import: `pool_v1_note_commitment`
+  --> /Users/dominic/ZK/.worktrees/ZK-v7-pool-runtime-close-20260830/crates/aspis-statement/src/pool_v1/pair_trace.rs:50:5
+   |
+50 |     pool_v1_note_commitment, pool_v1_nullifier, pool_v1_tree_parent,
+   |     ^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: unexpected `cfg` condition value: `solana`
+   --> /Users/dominic/ZK/.worktrees/ZK-v7-pool-runtime-close-20260830/crates/aspis-statement/src/pool_v1/root_history.rs:297:15
+    |
+297 |     #[cfg(not(target_os = "solana"))]
+    |               ^^^^^^^^^^^^^^^^^^^^
+    |
+    = note: expected values for `target_os` are: `aix`, `amdhsa`, `android`, `cuda`, `cygwin`, `dragonfly`, `emscripten`, `espidf`, `freebsd`, `fuchsia`, `haiku`, `helenos`, `hermit`, `horizon`, `hurd`, `illumos`, `ios`, `l4re`, `linux`, `lynxos178`, `macos`, `managarm`, `motor`, `netbsd`, `none`, `nto`, `nuttx`, `openbsd`, `psp`, `psx`, `qurt`, `redox`, `rtems`, `solaris`, and `solid_asp3` and 14 more
+    = note: see <https://doc.rust-lang.org/nightly/rustc/check-cfg/cargo-specifics.html> for more information about checking conditional configuration
+
+warning: unexpected `cfg` condition value: `solana`
+   --> /Users/dominic/ZK/.worktrees/ZK-v7-pool-runtime-close-20260830/crates/aspis-statement/src/pool_v1/root_history.rs:312:15
+    |
+312 |     #[cfg(not(target_os = "solana"))]
+    |               ^^^^^^^^^^^^^^^^^^^^
+    |
+    = note: expected values for `target_os` are: `aix`, `amdhsa`, `android`, `cuda`, `cygwin`, `dragonfly`, `emscripten`, `espidf`, `freebsd`, `fuchsia`, `haiku`, `helenos`, `hermit`, `horizon`, `hurd`, `illumos`, `ios`, `l4re`, `linux`, `lynxos178`, `macos`, `managarm`, `motor`, `netbsd`, `none`, `nto`, `nuttx`, `openbsd`, `psp`, `psx`, `qurt`, `redox`, `rtems`, `solaris`, and `solid_asp3` and 14 more
+    = note: see <https://doc.rust-lang.org/nightly/rustc/check-cfg/cargo-specifics.html> for more information about checking conditional configuration
+
+warning: unexpected `cfg` condition value: `solana`
+   --> /Users/dominic/ZK/.worktrees/ZK-v7-pool-runtime-close-20260830/crates/aspis-statement/src/pool_v1/root_history.rs:407:15
+    |
+407 |     #[cfg(not(target_os = "solana"))]
+    |               ^^^^^^^^^^^^^^^^^^^^
+    |
+    = note: expected values for `target_os` are: `aix`, `amdhsa`, `android`, `cuda`, `cygwin`, `dragonfly`, `emscripten`, `espidf`, `freebsd`, `fuchsia`, `haiku`, `helenos`, `hermit`, `horizon`, `hurd`, `illumos`, `ios`, `l4re`, `linux`, `lynxos178`, `macos`, `managarm`, `motor`, `netbsd`, `none`, `nto`, `nuttx`, `openbsd`, `psp`, `psx`, `qurt`, `redox`, `rtems`, `solaris`, and `solid_asp3` and 14 more
+    = note: see <https://doc.rust-lang.org/nightly/rustc/check-cfg/cargo-specifics.html> for more information about checking conditional configuration
+
+warning: unexpected `cfg` condition value: `solana`
+   --> /Users/dominic/ZK/.worktrees/ZK-v7-pool-runtime-close-20260830/crates/aspis-statement/src/pool_v1/root_history.rs:421:15
+    |
+421 |     #[cfg(not(target_os = "solana"))]
+    |               ^^^^^^^^^^^^^^^^^^^^
+    |
+    = note: expected values for `target_os` are: `aix`, `amdhsa`, `android`, `cuda`, `cygwin`, `dragonfly`, `emscripten`, `espidf`, `freebsd`, `fuchsia`, `haiku`, `helenos`, `hermit`, `horizon`, `hurd`, `illumos`, `ios`, `l4re`, `linux`, `lynxos178`, `macos`, `managarm`, `motor`, `netbsd`, `none`, `nto`, `nuttx`, `openbsd`, `psp`, `psx`, `qurt`, `redox`, `rtems`, `solaris`, and `solid_asp3` and 14 more
+    = note: see <https://doc.rust-lang.org/nightly/rustc/check-cfg/cargo-specifics.html> for more information about checking conditional configuration
+
+warning: unexpected `cfg` condition value: `solana`
+   --> /Users/dominic/ZK/.worktrees/ZK-v7-pool-runtime-close-20260830/crates/aspis-statement/src/state_only_poseidon.rs:639:11
+    |
+639 | #[cfg(not(target_os = "solana"))]
+    |           ^^^^^^^^^^^^^^^^^^^^
+    |
+    = note: expected values for `target_os` are: `aix`, `amdhsa`, `android`, `cuda`, `cygwin`, `dragonfly`, `emscripten`, `espidf`, `freebsd`, `fuchsia`, `haiku`, `helenos`, `hermit`, `horizon`, `hurd`, `illumos`, `ios`, `l4re`, `linux`, `lynxos178`, `macos`, `managarm`, `motor`, `netbsd`, `none`, `nto`, `nuttx`, `openbsd`, `psp`, `psx`, `qurt`, `redox`, `rtems`, `solaris`, and `solid_asp3` and 14 more
+    = note: see <https://doc.rust-lang.org/nightly/rustc/check-cfg/cargo-specifics.html> for more information about checking conditional configuration
+
+warning: unused imports: `trace_round_constant` and `trace_round_descriptor`
+  --> /Users/dominic/ZK/.worktrees/ZK-v7-pool-runtime-close-20260830/crates/aspis-statement/src/state_only_poseidon.rs:18:5
+   |
+18 |     trace_round_constant, trace_round_descriptor, EXTERNAL_FINAL, EXTERNAL_INITIAL, INTERNAL,
+   |     ^^^^^^^^^^^^^^^^^^^^  ^^^^^^^^^^^^^^^^^^^^^^
+
+   Compiling solana-builtins v4.2.1
+   Compiling solana-runtime-transaction v4.2.1
+   Compiling solana-loader-v4-interface v3.1.0
+   Compiling solana-fee v4.2.1
+   Compiling agave-reserved-account-keys v4.2.1
+   Compiling solana-feature-gate-interface v4.0.0
+   Compiling solana-loader-v3-interface v8.0.1
+   Compiling solana-address-lookup-table-interface v3.1.0
+   Compiling itertools v0.15.0
+   Compiling ansi_term v0.12.1
+   Compiling solana-native-token v3.0.0
+warning: type `CompiledCopyLink` is more private than the item `COMPILED_COPY_LINKS`
+   --> /Users/dominic/ZK/.worktrees/ZK-v7-pool-runtime-close-20260830/crates/aspis-statement/src/state_only_terminal_constants.rs:850:1
+    |
+850 | pub(crate) const COMPILED_COPY_LINKS: [CompiledCopyLink; 102] = [
+    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ constant `COMPILED_COPY_LINKS` is reachable at visibility `pub(crate)`
+    |
+note: but type `CompiledCopyLink` is only usable at visibility `pub(self)`
+   --> /Users/dominic/ZK/.worktrees/ZK-v7-pool-runtime-close-20260830/crates/aspis-statement/src/state_only_terminal.rs:88:1
+    |
+ 88 | struct CompiledCopyLink {
+    | ^^^^^^^^^^^^^^^^^^^^^^^
+    = note: `#[warn(private_interfaces)]` on by default
+
+warning: fields `kinds`, `columns`, and `scales` are never read
+  --> /Users/dominic/ZK/.worktrees/ZK-v7-pool-runtime-close-20260830/crates/aspis-statement/src/atomic_state_only_terminal.rs:59:5
+   |
+57 | struct CompiledAtomicPattern {
+   |        --------------------- fields in this struct
+58 |     /// 0 = zero, 1 = constant, 2 = affine local cell.
+59 |     kinds: [u8; 16],
+   |     ^^^^^
+60 |     columns: [u8; 16],
+   |     ^^^^^^^
+61 |     scales: [u32; 16],
+   |     ^^^^^^
+   |
+   = note: `CompiledAtomicPattern` has a derived impl for the trait `Clone`, but this is intentionally ignored during dead code analysis
+   = note: `#[warn(dead_code)]` (part of `#[warn(unused)]`) on by default
+
+warning: fields `row`, `slot`, and `pattern` are never read
+  --> /Users/dominic/ZK/.worktrees/ZK-v7-pool-runtime-close-20260830/crates/aspis-statement/src/atomic_state_only_terminal.rs:67:5
+   |
+66 | struct CompiledAtomicCopyEndpoint {
+   |        -------------------------- fields in this struct
+67 |     row: u16,
+   |     ^^^
+68 |     slot: u8,
+   |     ^^^^
+69 |     pattern: u8,
+   |     ^^^^^^^
+   |
+   = note: `CompiledAtomicCopyEndpoint` has a derived impl for the trait `Clone`, but this is intentionally ignored during dead code analysis
+
+warning: fields `tag`, `producer`, and `consumer` are never read
+  --> /Users/dominic/ZK/.worktrees/ZK-v7-pool-runtime-close-20260830/crates/aspis-statement/src/atomic_state_only_terminal.rs:74:5
+   |
+73 | struct CompiledAtomicCopyLink {
+   |        ---------------------- fields in this struct
+74 |     tag: u32,
+   |     ^^^
+75 |     producer: CompiledAtomicCopyEndpoint,
+   |     ^^^^^^^^
+76 |     consumer: CompiledAtomicCopyEndpoint,
+   |     ^^^^^^^^
+   |
+   = note: `CompiledAtomicCopyLink` has a derived impl for the trait `Clone`, but this is intentionally ignored during dead code analysis
+
+warning: struct `AtomicSemanticSelectors` is never constructed
+   --> /Users/dominic/ZK/.worktrees/ZK-v7-pool-runtime-close-20260830/crates/aspis-statement/src/atomic_state_only_terminal.rs:297:8
+    |
+297 | struct AtomicSemanticSelectors {
+    |        ^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: associated items `at_point`, `row`, and `poseidon` are never used
+   --> /Users/dominic/ZK/.worktrees/ZK-v7-pool-runtime-close-20260830/crates/aspis-statement/src/atomic_state_only_terminal.rs:305:8
+    |
+304 | impl AtomicSemanticSelectors {
+    | ---------------------------- associated items in this implementation
+305 |     fn at_point(point: &[QM31; 10]) -> Self {
+    |        ^^^^^^^^
+...
+327 |     fn row(&self, row: usize) -> QM31 {
+    |        ^^^
+...
+331 |     fn poseidon(&self) -> StateOnlyPoseidonSelectors {
+    |        ^^^^^^^^
+
+warning: constant `COMPILED_ATOMIC_COPY_ACTIVE_ROWS` is never used
+ --> /Users/dominic/ZK/.worktrees/ZK-v7-pool-runtime-close-20260830/crates/aspis-statement/src/atomic_state_only_terminal_constants_legacy_partition.rs:6:18
+  |
+6 | pub(crate) const COMPILED_ATOMIC_COPY_ACTIVE_ROWS: [u16; 210] = [11, 12, 27, 28, 32, 43, 44, 48, 59, 60, 64, 75, 76, 80, 91, 92, 96, 107,...
+  |                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: constant `COMPILED_ATOMIC_COPY_ACTIVE_ROWS_FINGERPRINT` is never used
+ --> /Users/dominic/ZK/.worktrees/ZK-v7-pool-runtime-close-20260830/crates/aspis-statement/src/atomic_state_only_terminal_constants_legacy_partition.rs:7:18
+  |
+7 | pub(crate) const COMPILED_ATOMIC_COPY_ACTIVE_ROWS_FINGERPRINT: u64 = 0xfc90f89be110b6f5;
+  |                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: constant `ATOMIC_COPY_PATTERNS` is never used
+  --> /Users/dominic/ZK/.worktrees/ZK-v7-pool-runtime-close-20260830/crates/aspis-statement/src/atomic_state_only_terminal_constants_legacy_partition.rs:16:18
+   |
+16 | pub(crate) const ATOMIC_COPY_PATTERNS: [CompiledAtomicPattern; 15] = [
+   |                  ^^^^^^^^^^^^^^^^^^^^
+
+warning: constant `COMPILED_ATOMIC_COPY_LINKS` is never used
+  --> /Users/dominic/ZK/.worktrees/ZK-v7-pool-runtime-close-20260830/crates/aspis-statement/src/atomic_state_only_terminal_constants_legacy_partition.rs:40:18
+   |
+40 | pub(crate) const COMPILED_ATOMIC_COPY_LINKS: [CompiledAtomicCopyLink; 183] = [
+   |                  ^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: function `compose_direct_range_terminal_packed_residuals` is never used
+   --> /Users/dominic/ZK/.worktrees/ZK-v7-pool-runtime-close-20260830/crates/aspis-statement/src/constraints_v4.rs:371:4
+    |
+371 | fn compose_direct_range_terminal_packed_residuals(
+    |    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: function `eq_row` is never used
+   --> /Users/dominic/ZK/.worktrees/ZK-v7-pool-runtime-close-20260830/crates/aspis-statement/src/constraints_v4.rs:588:4
+    |
+588 | fn eq_row(point: &[QM31; 10], row: usize) -> QM31 {
+    |    ^^^^^^
+
+warning: function `compress_opened_tuple` is never used
+    --> /Users/dominic/ZK/.worktrees/ZK-v7-pool-runtime-close-20260830/crates/aspis-statement/src/constraints_v4.rs:1184:4
+     |
+1184 | fn compress_opened_tuple(
+     |    ^^^^^^^^^^^^^^^^^^^^^
+
+warning: constant `COPY_ROUTING_EXPANDED_FACTOR_SUPPORT` is never used
+    --> /Users/dominic/ZK/.worktrees/ZK-v7-pool-runtime-close-20260830/crates/aspis-statement/src/constraints_v4.rs:1203:7
+     |
+1203 | const COPY_ROUTING_EXPANDED_FACTOR_SUPPORT: usize = 674;
+     |       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: function `evaluate_exceptional_copy_routing_direct` is never used
+    --> /Users/dominic/ZK/.worktrees/ZK-v7-pool-runtime-close-20260830/crates/aspis-statement/src/constraints_v4.rs:1717:4
+     |
+1717 | fn evaluate_exceptional_copy_routing_direct(
+     |    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: function `lift` is never used
+  --> /Users/dominic/ZK/.worktrees/ZK-v7-pool-runtime-close-20260830/crates/aspis-statement/src/direct_range_hiding_v4.rs:67:4
+   |
+67 | fn lift(value: M31) -> QM31 {
+   |    ^^^^
+
+warning: function `merkle_node_sponge_v2` is never used
+   --> /Users/dominic/ZK/.worktrees/ZK-v7-pool-runtime-close-20260830/crates/aspis-statement/src/poseidon2.rs:480:15
+    |
+480 | pub(crate) fn merkle_node_sponge_v2(left: &Digest, right: &Digest) -> Digest {
+    |               ^^^^^^^^^^^^^^^^^^^^^
+
+warning: fields `row`, `slot`, `present`, and `columns` are never read
+  --> /Users/dominic/ZK/.worktrees/ZK-v7-pool-runtime-close-20260830/crates/aspis-statement/src/state_only_terminal.rs:81:5
+   |
+80 | struct CompiledCopyEndpoint {
+   |        -------------------- fields in this struct
+81 |     row: u16,
+   |     ^^^
+82 |     slot: u8,
+   |     ^^^^
+83 |     present: u16,
+   |     ^^^^^^^
+84 |     columns: u64,
+   |     ^^^^^^^
+   |
+   = note: `CompiledCopyEndpoint` has a derived impl for the trait `Clone`, but this is intentionally ignored during dead code analysis
+
+warning: fields `tag`, `producer`, and `consumer` are never read
+  --> /Users/dominic/ZK/.worktrees/ZK-v7-pool-runtime-close-20260830/crates/aspis-statement/src/state_only_terminal.rs:89:5
+   |
+88 | struct CompiledCopyLink {
+   |        ---------------- fields in this struct
+89 |     tag: u32,
+   |     ^^^
+90 |     producer: CompiledCopyEndpoint,
+   |     ^^^^^^^^
+91 |     consumer: CompiledCopyEndpoint,
+   |     ^^^^^^^^
+   |
+   = note: `CompiledCopyLink` has a derived impl for the trait `Clone`, but this is intentionally ignored during dead code analysis
+
+warning: function `append_link` is never used
+    --> /Users/dominic/ZK/.worktrees/ZK-v7-pool-runtime-close-20260830/crates/aspis-statement/src/trace_v4.rs:1017:4
+     |
+1017 | fn append_link(
+     |    ^^^^^^^^^^^
+
+warning: function `append_intra_permutation_links` is never used
+    --> /Users/dominic/ZK/.worktrees/ZK-v7-pool-runtime-close-20260830/crates/aspis-statement/src/trace_v4.rs:1048:4
+     |
+1048 | fn append_intra_permutation_links(layout: &mut CopyLayout) {
+     |    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: function `append_sponge_continuation_links` is never used
+    --> /Users/dominic/ZK/.worktrees/ZK-v7-pool-runtime-close-20260830/crates/aspis-statement/src/trace_v4.rs:1067:4
+     |
+1067 | fn append_sponge_continuation_links(layout: &mut CopyLayout) {
+     |    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: function `append_merkle_level_links` is never used
+    --> /Users/dominic/ZK/.worktrees/ZK-v7-pool-runtime-close-20260830/crates/aspis-statement/src/trace_v4.rs:1090:4
+     |
+1090 | fn append_merkle_level_links(layout: &mut CopyLayout) {
+     |    ^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: function `append_semantic_ingress_links` is never used
+    --> /Users/dominic/ZK/.worktrees/ZK-v7-pool-runtime-close-20260830/crates/aspis-statement/src/trace_v4.rs:1107:4
+     |
+1107 | fn append_semantic_ingress_links(layout: &mut CopyLayout) {
+     |    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: function `append_absorption_links` is never used
+    --> /Users/dominic/ZK/.worktrees/ZK-v7-pool-runtime-close-20260830/crates/aspis-statement/src/trace_v4.rs:1163:4
+     |
+1163 | fn append_absorption_links(layout: &mut CopyLayout) {
+     |    ^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: function `append_value_reconstruction_links` is never used
+    --> /Users/dominic/ZK/.worktrees/ZK-v7-pool-runtime-close-20260830/crates/aspis-statement/src/trace_v4.rs:1190:4
+     |
+1190 | fn append_value_reconstruction_links(layout: &mut CopyLayout) {
+     |    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+   Compiling litesvm v0.16.0
+warning: `aspis-core` (lib) generated 6 warnings
+warning: `aspis-statement` (lib) generated 77 warnings (run `cargo fix --lib -p aspis-statement` to apply 5 suggestions)
+   Compiling aspis-registry v0.1.0 (/Users/dominic/ZK/.worktrees/ZK-v7-pool-runtime-close-20260830/programs/aspis-registry)
+   Compiling aspis-pool v0.1.0 (/Users/dominic/ZK/.worktrees/ZK-v7-pool-runtime-close-20260830/programs/aspis-pool)
+warning: unused import: `aspis_core::field::M31`
+  --> /Users/dominic/ZK/.worktrees/ZK-v7-pool-runtime-close-20260830/programs/aspis-pool/src/pair_forest.rs:14:5
+   |
+14 | use aspis_core::field::M31;
+   |     ^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: `#[warn(unused_imports)]` (part of `#[warn(unused)]`) on by default
+
+warning: unused imports: `POOL_V1_PAIR_FOREST_ACCOUNT_FORMAT_BINDING`, `POOL_V1_PAIR_FOREST_LANE_HEADER_BYTES`, `POOL_V1_PAIR_FOREST_LANE_MAGIC`, `POOL_V1_PAIR_FOREST_LANE_VERSION`, `POOL_V1_TREE_HASH_VERSION`, `POOL_V1_TREE_STATE_MAGIC`, `POOL_V1_TREE_STATE_VERSION`, `decode_digest_canonical`, `decode_pool_v1_pair_forest_terminal_statement_v1`, `encode_digest_canonical`, and `encode_pool_v1_pair_forest_terminal_request_v1`
+  --> /Users/dominic/ZK/.worktrees/ZK-v7-pool-runtime-close-20260830/programs/aspis-pool/src/pair_forest.rs:17:5
+   |
+17 |     decode_digest_canonical, encode_digest_canonical,
+   |     ^^^^^^^^^^^^^^^^^^^^^^^  ^^^^^^^^^^^^^^^^^^^^^^^
+...
+21 |         decode_pool_v1_pair_forest_terminal_statement_v1, encode_pool_v1_pair_forest_checkpoint_v1,
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+22 |         encode_pool_v1_pair_forest_lane_state_v1, encode_pool_v1_pair_forest_master_v1,
+23 |         encode_pool_v1_pair_forest_terminal_request_v1,
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+...
+32 |         POOL_V1_PAIR_FOREST_ACCOUNT_FORMAT_BINDING, POOL_V1_PAIR_FOREST_CHECKPOINT_ACCOUNT_BYTES,
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+33 |         POOL_V1_PAIR_FOREST_LANE_ACCOUNT_BYTES, POOL_V1_PAIR_FOREST_LANE_COUNT,
+34 |         POOL_V1_PAIR_FOREST_LANE_HEADER_BYTES, POOL_V1_PAIR_FOREST_LANE_MAGIC,
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+35 |         POOL_V1_PAIR_FOREST_LANE_VERSION, POOL_V1_PAIR_FOREST_MASTER_ACCOUNT_BYTES,
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+...
+38 |         POOL_V1_ROOT_HISTORY_PAGE_SEED, POOL_V1_TREE_HASH_VERSION, POOL_V1_TREE_STATE_MAGIC,
+   |                                         ^^^^^^^^^^^^^^^^^^^^^^^^^  ^^^^^^^^^^^^^^^^^^^^^^^^
+39 |         POOL_V1_TREE_STATE_VERSION,
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: unused import: `encode_pool_v1_pair_forest_terminal_result_v1`
+  --> /Users/dominic/ZK/.worktrees/ZK-v7-pool-runtime-close-20260830/programs/aspis-pool/src/pair_forest_dispatch.rs:14:5
+   |
+14 |     encode_pool_v1_pair_forest_terminal_result_v1, PoolV1PairForestTerminalRequestV1,
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: unused variable: `registry_accounts`
+   --> /Users/dominic/ZK/.worktrees/ZK-v7-pool-runtime-close-20260830/programs/aspis-pool/src/pair_forest_dispatch.rs:222:5
+    |
+222 |     registry_accounts: &[AccountInfo<'info>],
+    |     ^^^^^^^^^^^^^^^^^ help: if this is intentional, prefix it with an underscore: `_registry_accounts`
+    |
+    = note: `#[warn(unused_variables)]` (part of `#[warn(unused)]`) on by default
+
+warning: function `pair_cu_checkpoint` is never used
+  --> /Users/dominic/ZK/.worktrees/ZK-v7-pool-runtime-close-20260830/programs/aspis-pool/src/pair_dispatch.rs:37:4
+   |
+37 | fn pair_cu_checkpoint(label: &str) {
+   |    ^^^^^^^^^^^^^^^^^^
+   |
+   = note: `#[warn(dead_code)]` (part of `#[warn(unused)]`) on by default
+
+warning: struct `AuthenticatedPairAfterstateV1` is never constructed
+  --> /Users/dominic/ZK/.worktrees/ZK-v7-pool-runtime-close-20260830/programs/aspis-pool/src/pair_dispatch.rs:67:19
+   |
+67 | pub(crate) struct AuthenticatedPairAfterstateV1(Box<PoolV1PairVerifiedAfterstateV1>);
+   |                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: method `value` is never used
+  --> /Users/dominic/ZK/.worktrees/ZK-v7-pool-runtime-close-20260830/programs/aspis-pool/src/pair_dispatch.rs:70:19
+   |
+69 | impl AuthenticatedPairAfterstateV1 {
+   | ---------------------------------- method in this implementation
+70 |     pub(crate) fn value(&self) -> &PoolV1PairVerifiedAfterstateV1 {
+   |                   ^^^^^
+
+warning: function `authenticate_pair_verified_afterstate_return_v1` is never used
+  --> /Users/dominic/ZK/.worktrees/ZK-v7-pool-runtime-close-20260830/programs/aspis-pool/src/pair_dispatch.rs:78:15
+   |
+78 | pub(crate) fn authenticate_pair_verified_afterstate_return_v1(
+   |               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: function `invoke_pair_afterstate_verifier_with_runtime_v1` is never used
+   --> /Users/dominic/ZK/.worktrees/ZK-v7-pool-runtime-close-20260830/programs/aspis-pool/src/pair_dispatch.rs:286:4
+    |
+286 | fn invoke_pair_afterstate_verifier_with_runtime_v1<'info, R: PairVerifierRuntimeV1>(
+    |    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: method `exact_bytes` is never used
+  --> /Users/dominic/ZK/.worktrees/ZK-v7-pool-runtime-close-20260830/programs/aspis-pool/src/pair_forest_dispatch.rs:45:19
+   |
+40 | impl AuthenticatedPairForestResultV1 {
+   | ------------------------------------ method in this implementation
+...
+45 |     pub(crate) fn exact_bytes(&self) -> &[u8] {
+   |                   ^^^^^^^^^^^
+
+warning: function `pair_cu_checkpoint` is never used
+  --> /Users/dominic/ZK/.worktrees/ZK-v7-pool-runtime-close-20260830/programs/aspis-pool/src/pair_processor.rs:50:4
+   |
+50 | fn pair_cu_checkpoint(label: &str) {
+   |    ^^^^^^^^^^^^^^^^^^
+
+warning: struct `PairSpendLayoutV1` is never constructed
+  --> /Users/dominic/ZK/.worktrees/ZK-v7-pool-runtime-close-20260830/programs/aspis-pool/src/pair_processor.rs:61:8
+   |
+61 | struct PairSpendLayoutV1 {
+   |        ^^^^^^^^^^^^^^^^^
+
+warning: struct `ValidatedPairHistoryV1` is never constructed
+  --> /Users/dominic/ZK/.worktrees/ZK-v7-pool-runtime-close-20260830/programs/aspis-pool/src/pair_processor.rs:78:8
+   |
+78 | struct ValidatedPairHistoryV1 {
+   |        ^^^^^^^^^^^^^^^^^^^^^^
+
+warning: function `require_unique` is never used
+  --> /Users/dominic/ZK/.worktrees/ZK-v7-pool-runtime-close-20260830/programs/aspis-pool/src/pair_processor.rs:82:4
+   |
+82 | fn require_unique(accounts: &[AccountInfo<'_>]) -> ProgramResult {
+   |    ^^^^^^^^^^^^^^
+
+warning: function `plan_layout` is never used
+  --> /Users/dominic/ZK/.worktrees/ZK-v7-pool-runtime-close-20260830/programs/aspis-pool/src/pair_processor.rs:94:4
+   |
+94 | fn plan_layout(
+   |    ^^^^^^^^^^^
+
+warning: function `validate_history` is never used
+   --> /Users/dominic/ZK/.worktrees/ZK-v7-pool-runtime-close-20260830/programs/aspis-pool/src/pair_processor.rs:180:4
+    |
+180 | fn validate_history(
+    |    ^^^^^^^^^^^^^^^^
+
+warning: function `process_pair_private_transfer_with_verifier_v1` is never used
+   --> /Users/dominic/ZK/.worktrees/ZK-v7-pool-runtime-close-20260830/programs/aspis-pool/src/pair_processor.rs:277:15
+    |
+277 | pub(crate) fn process_pair_private_transfer_with_verifier_v1<'info, V, S>(
+    |               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: function `process_pair_withdrawal_with_verifier_v1` is never used
+   --> /Users/dominic/ZK/.worktrees/ZK-v7-pool-runtime-close-20260830/programs/aspis-pool/src/pair_processor.rs:418:15
+    |
+418 | pub(crate) fn process_pair_withdrawal_with_verifier_v1<'info, R, V, S>(
+    |               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: function `exact` is never used
+  --> /Users/dominic/ZK/.worktrees/ZK-v7-pool-runtime-close-20260830/programs/aspis-pool/src/pair_state.rs:56:4
+   |
+56 | fn exact<const N: usize>(bytes: &[u8]) -> Result<[u8; N], ProgramError> {
+   |    ^^^^^
+
+warning: struct `CanonicalPairPoolStateV1` is never constructed
+  --> /Users/dominic/ZK/.worktrees/ZK-v7-pool-runtime-close-20260830/programs/aspis-pool/src/pair_state.rs:96:19
+   |
+96 | pub(crate) struct CanonicalPairPoolStateV1 {
+   |                   ^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: associated items `decode_account_from_program_invariant` and `require_same_account` are never used
+   --> /Users/dominic/ZK/.worktrees/ZK-v7-pool-runtime-close-20260830/programs/aspis-pool/src/pair_state.rs:111:19
+    |
+110 | impl CanonicalPairPoolStateV1 {
+    | ----------------------------- associated items in this implementation
+111 |     pub(crate) fn decode_account_from_program_invariant(
+    |                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+...
+134 |     pub(crate) fn require_same_account(
+    |                   ^^^^^^^^^^^^^^^^^^^^
+
+warning: associated items `apply_authenticated_afterstate_from_program_invariant` and `decode_from_program_invariant` are never used
+   --> /Users/dominic/ZK/.worktrees/ZK-v7-pool-runtime-close-20260830/programs/aspis-pool/src/pair_state.rs:188:19
+    |
+151 | impl PairPoolStateV1 {
+    | -------------------- associated items in this implementation
+...
+188 |     pub(crate) fn apply_authenticated_afterstate_from_program_invariant(
+    |                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+...
+369 |     pub(crate) fn decode_from_program_invariant(
+    |                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: method `transition_kind` is never used
+  --> /Users/dominic/ZK/.worktrees/ZK-v7-pool-runtime-close-20260830/programs/aspis-pool/src/prepared_settlement.rs:88:19
+   |
+87 | impl AuthenticatedPreparedSettlementActionV1 {
+   | -------------------------------------------- method in this implementation
+88 |     pub(crate) fn transition_kind(self) -> PoolV1TransitionKind {
+   |                   ^^^^^^^^^^^^^^^
+
+warning: `aspis-pool` (lib) generated 23 warnings (run `cargo fix --lib -p aspis-pool` to apply 4 suggestions)
+   Compiling aspis-v7-pair-forest-combined-rejection v0.1.0 (/Users/dominic/ZK/.worktrees/ZK-v7-pool-runtime-close-20260830/results/v7-pair-forest-combined-rejection-litesvm-20260828/harness)
+    Finished `release` profile [optimized] target(s) in 59.98s

@@ -1,0 +1,63 @@
+{
+  "schema": "aspis.v7.txv1-disposable-feature-cluster.v1",
+  "generatedAt": "2026-09-01T12:49:58Z",
+  "repository": {
+    "revision": "271e29c30e466c6e1e9158f5ac24593d3bec9ed3"
+  },
+  "classification": "DISPOSABLE FEATURE-ACTIVE CLUSTER READY",
+  "agave": {
+    "version": "solana-cli 4.2.0 (src:ac82b5d4; feat:21b0d33a, client:Agave)",
+    "coreVersion": "4.2.0",
+    "runtimeFeatureSet": 565236538
+  },
+  "cluster": {
+    "kind": "disposable-local-validator",
+    "rpcUrl": "http://127.0.0.1:18915",
+    "genesisHash": "3MT5GGTQ6Aw7L6tFcF16RudSuZskJZCwxBVL8ervNRy4",
+    "feature": {
+      "id": "txv1aq4pp281K9um3tnPgkfX8UqtFT6wcVW3hNezGLL",
+      "active": true,
+      "activationSlot": 0
+    }
+  },
+  "identities": {
+    "auditOnly": true,
+    "explicitlyAcknowledged": true,
+    "configuredPrograms": [
+      {
+        "name": "pool",
+        "id": "5PjDJaGfSPJj4tFzMRCiuuAasKg5n8dJKXKenhuwZexx",
+        "loader": "BPFLoader2111111111111111111111111111111111",
+        "binary": "results/v7-registry-v2-release-audit-20260831/agave-11-case-bundle/sbf/aspis_pool.so",
+        "sha256": "0e94c98d28437f0b01dce546fdefaad21dc10772a4d46991c2a573d8129cd4f6"
+      },
+      {
+        "name": "registry",
+        "id": "5bV6jUfhDHCQVA1WfKBUnXUsboJgoKgkzkKcxr3joew5",
+        "loader": "BPFLoaderUpgradeab1e11111111111111111111111",
+        "binary": "results/v7-registry-v2-release-audit-20260831/agave-11-case-bundle/sbf/aspis_registry.so",
+        "sha256": "0f14c7b74ec6cbe3b3f637b0f24c7e8cdc46fd09f5b2e495fd51ada16ad8f11b"
+      },
+      {
+        "name": "verifier",
+        "id": "7Q2nGsPg8rbjdxKHK4jxTgEWLTyd9o1X4KMSjCieRmue",
+        "loader": "BPFLoaderUpgradeab1e11111111111111111111111",
+        "binary": "results/v7-registry-v2-release-audit-20260831/agave-11-case-bundle/sbf/aspis_verifier.so",
+        "sha256": "97df12937d46e25a2eeefeac16ce31925fd473c672d6b656548be9220adbcc6d"
+      }
+    ],
+    "observedAgaveGenesisProgramOwner": "BPFLoaderUpgradeab1e11111111111111111111111",
+    "loaderDistinctionRecorded": true
+  },
+  "wallet": {
+    "pubkey": "FEzUTXPSXmmn26ZMoqggPSzykqmstswUiLr1xhzrU8YT",
+    "ephemeral": true,
+    "keypairCommitted": false,
+    "cleanupRequired": true
+  },
+  "localFinalizedLifecycleComplete": false,
+  "publicFinalizedDevnetLifecycleComplete": false,
+  "publicDevnetFeatureActive": false,
+  "mainnetReady": false,
+  "realFundsUsed": false
+}

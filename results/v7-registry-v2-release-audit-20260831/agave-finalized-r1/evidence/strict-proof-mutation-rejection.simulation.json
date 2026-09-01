@@ -1,0 +1,112 @@
+{
+  "jsonrpc": "2.0",
+  "result": {
+    "context": {
+      "apiVersion": "4.2.0",
+      "slot": 150
+    },
+    "value": {
+      "accounts": [
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null
+      ],
+      "err": {
+        "InstructionError": [
+          0,
+          "InvalidAccountData"
+        ]
+      },
+      "fee": 5000,
+      "innerInstructions": [
+        {
+          "index": 0,
+          "instructions": [
+            {
+              "parsed": {
+                "info": {
+                  "lamports": 2338560,
+                  "newAccount": "7YvvqJNdXZt3aNMkCebG4To2f1VJe1TbxHBtY41D4Jy2",
+                  "owner": "5PjDJaGfSPJj4tFzMRCiuuAasKg5n8dJKXKenhuwZexx",
+                  "source": "F7maZWq6BqhJGxNn7hWPYHPZ6igcsB5RTY8piKGovinv",
+                  "space": 208
+                },
+                "type": "createAccount"
+              },
+              "program": "system",
+              "programId": "11111111111111111111111111111111",
+              "stackHeight": 2
+            },
+            {
+              "accounts": [
+                "5fQPsn8hoaVddFG26cWQ5QFdqxWtUPNaZ9zH2E6LYzFn",
+                "3Hrd4YKTTF2eaoWjdwzBwagmH9SeuenwiVyQajm72C8N",
+                "EDfQpAnRQVqFmGZuY2ocZoX7gBp5H1N3MWWMLmuWTmD6",
+                "3B3QhxztFR6kSo3m3kpTaU9JsQyJH6ScoT94gwnFXQYj",
+                "JBz8KKzyZ6FzTU7WmLywurr49xJPpQcA9ECNg2SZX6iH",
+                "9zQXTg6QqijGAG3kyWf94CQA3KdFq3VoYBLAUrhge1WB"
+              ],
+              "data": "GTJVmTUtwd44oquk64RWd62hps5Zi8wvyZokUHwen8q3syVZUEVLMXGwnoRqFxuPWTbrea26LC8YdGWEpqFXF8yyjnxR8ikUMqeomp3GH9aPEmga28SZ1Avw9ttrQzrWKpP2WKyv1E5MELNpmNkqFSxw1zKLjrxXRFPncC5FFFZgCcWyhMrn5QMESxa3sfTNMJR3agSUuUaNLt8tgHJbi488vayo1nCNVeBXYzRidHLvqXBkNzfiKfdzCmnGEjxDmX4ma3t3JY3MDutH2PJ685sc5RSnZnnP1BkrKCZU87VkJA11DmPDmrJE7czNN8ujsuZK3NWt9fpgDd81eLVkU1FFhRx1Mf2TajUAfTKatNyFpbuYgTC8nubvBYGsRh7MBwqQtvq9VCVBe1uEUcPwQvAXhYYR5jPEHjFWaUDj115MtSHtaWtJP",
+              "programId": "7Q2nGsPg8rbjdxKHK4jxTgEWLTyd9o1X4KMSjCieRmue",
+              "stackHeight": 2
+            }
+          ]
+        }
+      ],
+      "loadedAccountsDataSize": 2396727,
+      "loadedAddresses": {
+        "readonly": [],
+        "writable": []
+      },
+      "logs": [
+        "Program 5PjDJaGfSPJj4tFzMRCiuuAasKg5n8dJKXKenhuwZexx invoke [1]",
+        "Program 11111111111111111111111111111111 invoke [2]",
+        "Program 11111111111111111111111111111111 success",
+        "Program 7Q2nGsPg8rbjdxKHK4jxTgEWLTyd9o1X4KMSjCieRmue invoke [2]",
+        "Program 7Q2nGsPg8rbjdxKHK4jxTgEWLTyd9o1X4KMSjCieRmue consumed 930395 of 1255117 compute units",
+        "Program 7Q2nGsPg8rbjdxKHK4jxTgEWLTyd9o1X4KMSjCieRmue failed: invalid account data for instruction",
+        "Program 5PjDJaGfSPJj4tFzMRCiuuAasKg5n8dJKXKenhuwZexx consumed 975278 of 1300000 compute units",
+        "Program 5PjDJaGfSPJj4tFzMRCiuuAasKg5n8dJKXKenhuwZexx failed: invalid account data for instruction"
+      ],
+      "postBalances": [
+        499999999999995000,
+        1000000000,
+        0,
+        1000000000,
+        1,
+        1000000000,
+        1141440,
+        1000000000,
+        1141440,
+        1000000000,
+        1000000000,
+        1000000000
+      ],
+      "postTokenBalances": [],
+      "preBalances": [
+        500000000000000000,
+        1000000000,
+        0,
+        1000000000,
+        1,
+        1000000000,
+        1141440,
+        1000000000,
+        1141440,
+        1000000000,
+        1000000000,
+        1000000000
+      ],
+      "preTokenBalances": [],
+      "replacementBlockhash": null,
+      "returnData": null,
+      "unitsConsumed": 975278
+    }
+  },
+  "id": 1004
+}

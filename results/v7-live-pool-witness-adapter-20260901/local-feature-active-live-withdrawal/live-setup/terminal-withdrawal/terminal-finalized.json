@@ -1,0 +1,32 @@
+{
+  "schema": "aspis.v7.live-terminal-finalized.v1",
+  "operation": "withdrawal",
+  "signature": "2eUXrCsm7z6APJHAJmQBT1mZWWMB8f9zrRdXjQsiK9yiqxKBrKwgHZDJkxtDikBuM7AMk9WNgvxqvs33x1scZtXZ",
+  "slot": 672,
+  "simulatedCu": 1230370,
+  "landedCu": 1230370,
+  "serializedTransactionBytes": 1543,
+  "signedWireSha256": "49fe32f50bacc3b12d59cc871b9bd355a04857dc0429e27617fd0dc5928410af",
+  "selectedLane": 5,
+  "instructionCount": 2,
+  "terminalInstructionCount": 1,
+  "byteIdenticalSimulationSubmission": true,
+  "ciphertextCarrierRealHpke": true,
+  "protectedAccountsBeforeJsonSha256": "8887643cdee851171d258d3f7e287fe0f87b90f3d6970abf87b06e25c4998e58",
+  "protectedAccountsAfterJsonSha256": "664b79ca2f565dbcc5e90dd6cb2eb282b323624d60d37ef1024538da1fb53f51",
+  "custody": {
+    "amount": 250,
+    "vaultBefore": 1000,
+    "vaultAfter": 750,
+    "destinationBefore": 0,
+    "destinationAfter": 250,
+    "vaultDelta": 250,
+    "destinationDelta": 250,
+    "conservation": true,
+    "destinationBinding": true
+  },
+  "finalized": true,
+  "auditOnly": true,
+  "disposable": true,
+  "mainnetReady": false
+}
