@@ -260,6 +260,15 @@ theorem fold_armed_complete_literal_fold_step_arms_boundary
 
 /-- Compile the fold-armed controller into the same 518-coordinate shape used
 by the K1.3 probability theorem. -/
+def foldArmedInitialState
+    {globalOracleCalls : Nat}
+    (cursor : UnifiedExposureCursor globalOracleCalls) :
+    IndexedUnifiedExposureState globalOracleCalls FoldArmedCompleteMemory :=
+  { exposureIndex := 0
+    cursor := cursor
+    memory := (false,
+      (inactiveFoldArmedAlphaZeroMemory, inactiveDagMemory)) }
+
 def exactCompilerFoldArmedAlphaFinalWorkQ16Router
     (parameters : ExactCompilerResourceParameters)
     (transitionFuel foldExposureIndex finalWorkAnchorIndex : Nat)
@@ -269,10 +278,7 @@ def exactCompilerFoldArmedAlphaFinalWorkQ16Router
   ((foldArmedCompleteController transitionFuel foldExposureIndex
     finalWorkAnchorIndex).machine transitionFuel).fullRouter
       ((exactCompilerTargetCaps parameters).length - 518)
-      { exposureIndex := 0
-        cursor := cursor
-        memory := (false,
-          (inactiveFoldArmedAlphaZeroMemory, inactiveDagMemory)) }
+      (foldArmedInitialState cursor)
 
 #print axioms literal_fold_work_arms_exact_alpha_boundary
 #print axioms fold_armed_alpha_preferred
