@@ -34,6 +34,7 @@ compile "$work_tmp/V7ForestLaneInvariant/Funs.lean"
 compile "$work_tmp/V7ForestLaneEncoderBridge.lean"
 compile "$work_tmp/V7ForestLaneHotDecodeBridge.lean"
 compile "$work_tmp/V7ForestLaneWriterInvariant.lean"
+compile "$work_tmp/V7ForestLanePersistedReachability.lean"
 compile "$work_tmp/V7ForestLaneCallerBridge.lean"
 compile "$work_tmp/V7ForestVerifierAsq8ReaderBridge.lean"
 compile "$work_tmp/V7SelectedTerminalCutsBridge.lean"
@@ -44,6 +45,7 @@ if rg -n '\b(sorry|admit|native_decide)\b|^[[:space:]]*axiom[[:space:]]' \
     "$work_tmp/V7ForestLaneInvariant/Funs.lean" \
     "$work_tmp/V7ForestLaneInvariant/FunsExternal.lean" \
     "$work_tmp"/V7ForestLane*Bridge.lean \
+    "$work_tmp/V7ForestLanePersistedReachability.lean" \
     "$work_tmp/V7ForestVerifierAsq8ReaderBridge.lean" \
     "$work_tmp/V7SelectedTerminalCutsBridge.lean" \
     "$work_tmp/V7EndpointSelectorCacheBridge.lean" \

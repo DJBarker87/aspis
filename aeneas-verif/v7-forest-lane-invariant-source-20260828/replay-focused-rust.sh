@@ -15,6 +15,15 @@ export RUSTFLAGS=${RUSTFLAGS:--Awarnings}
   cargo test -p aspis-pool --no-default-features \
     --features pair-forest-source-result-invariant-audit \
     authenticated_result_encoder_is_byte_exact_for_valid_lanes
+  cargo test --release -p aspis-pool --no-default-features \
+    --features pair-forest-deposit-invariant-audit \
+    deposit_invariant_append_is_byte_exact_at_measured_boundaries
+  cargo test --release -p aspis-pool --no-default-features \
+    --features pair-forest-deposit-invariant-audit \
+    deposit_invariant_source_root_still_requires_exact_retained_history
+  cargo test --release -p aspis-pool --no-default-features \
+    --features pair-forest-deposit-invariant-audit \
+    pair_forest_lane_persistence_surface_remains_closed
   cargo test -p aspis-statement --no-default-features \
     --features pool-v1-pair-forest-packed-digest-audit \
     packed_public_digest_matches_all_transfer_and_withdrawal_bindings
