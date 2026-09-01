@@ -1,123 +1,48 @@
 {
   "schema": "aspis.v7.live-pool-witness-adapter-evidence.v1",
-  "generatedAt": "2026-09-01T10:33:01Z",
-  "repository": {
-    "base": "97e50660d61bfc07fb22bb0a6cc8a268fe073352",
-    "testedImplementationRevision": "5e5dc29fbc1c3ec5ceaa739dae72af8b0407208c",
-    "branch": "research/v7-live-pool-witness-adapter-20260901"
-  },
-  "classification": "C — ADAPTER COMPLETE; TERMINAL EXECUTION BLOCKED",
-  "genuinelyLiveLifecycleComplete": false,
+  "generatedAt": "2026-09-01T12:05:00Z",
+  "repository": {"base":"97e50660d61bfc07fb22bb0a6cc8a268fe073352","testedImplementationRevision":"14389d767d375db88b97a1aae2ff323145fdbaf0","branch":"research/v7-live-pool-witness-adapter-20260901"},
+  "classification": "B — LIVE TRANSFER COMPLETE; WITHDRAWAL BLOCKED",
+  "genuinelyLiveTransferComplete": true,
+  "genuinelyLiveWithdrawalComplete": false,
   "partlySyntheticLifecycleClaimed": false,
-  "adapter": {
-    "transferComplete": true,
-    "withdrawalComplete": true,
-    "durableCheckpointMembershipExportComplete": true,
-    "productionProverHandoffComplete": true,
-    "insecureFixtureFeatureEnabledInLiveProverCrate": false,
-    "fixtureOnlyEntropyUsed": false,
-    "trustedResultUsed": false,
-    "verifierBypassUsed": false,
-    "productionRuntimeSourceChanged": false,
-    "cryptographicParametersChanged": false
-  },
-  "canonicalWireSizes": {
-    "asq8Bytes": 320,
-    "asf8Bytes": 1880,
-    "expectedAsr8Bytes": 792,
-    "terminalTransactionBytes": null,
-    "reasonTerminalTransactionBytesNull": "No Agave 4.2+ feature-active live terminal transaction was constructed or signed in this environment."
-  },
-  "fieldSources": {
-    "masterPoolVersionIdentityPolicy": "finalized Pool-owned ASM8 account decoded by the canonical statement codec and authenticated against the master PDA",
-    "allEightLiveLanes": "eight finalized Pool-owned ASL8 accounts decoded in lane order and authenticated against lane PDAs",
-    "selectedLiveLaneRootIndexFrontier": "current authenticated ASL8 selected by the canonical nullifier-to-lane function",
-    "checkpointIdentityRootSequences": "finalized Pool-owned ASC8 checkpoint authenticated against its PDA, deployment domain, master sequence, and lane sequences",
-    "historicalLaneRootsAndPairPath": "wallet durable checkpoint snapshot exported by authenticated_spend_membership_v2",
-    "pairCommitmentsSlotAndOccupiedBit": "canonical finalized append event plus tracked-output association; PoolV1PairLeafWitnessV1 constructs the algebraic occupied witness",
-    "noteCommitmentOpeningAndNullifier": "task-owned NoteOpeningV1 and nullifier key, checked by canonical commitment, owner-key, and nullifier helpers",
-    "candidateAfterstate": "canonical pair-forest trace compiler applied to the authenticated current selected lane",
-    "registryProfileReleaseVerifier": "finalized Registry and entry accounts authenticated by select_pair_forest_spend_profile_v2, including exact Registry PDAs and Tag-73 bindings",
-    "withdrawalCustody": "finalized legacy SPL mint, vault PDA/token account, vault authority, destination token account, and balances",
-    "attemptIdentity": "fresh proof-account public key; production entropy is generated for that exact public mask nonce"
-  },
-  "focusedValidation": [
-    {
-      "command": "CARGO_BUILD_JOBS=2 cargo check --locked --manifest-path crates/aspis-pool-wallet-v1/Cargo.toml --features eight-lane-plumbing-v2",
-      "result": "pass",
-      "peakRssBytes": 671367168
-    },
-    {
-      "command": "CARGO_BUILD_JOBS=2 cargo test --locked --manifest-path crates/aspis-pool-wallet-v1/Cargo.toml --features eight-lane-plumbing-v2 retained_checkpoint_exports_authenticated_live_spend_membership -- --nocapture",
-      "result": "1 passed",
-      "peakRssBytes": 853573632
-    },
-    {
-      "command": "CARGO_BUILD_JOBS=2 cargo test --locked --manifest-path crates/aspis-pool-wallet-v1/Cargo.toml --features eight-lane-plumbing-v2 live_pool_witness_adapter_v2::tests --lib -- --nocapture",
-      "result": "2 passed",
-      "peakRssBytes": 809664512
-    },
-    {
-      "command": "CARGO_BUILD_JOBS=2 cargo check --locked --manifest-path tools/v7-live-pool-proof/Cargo.toml --bins",
-      "result": "pass",
-      "peakRssBytes": 160514048
-    },
-    {
-      "command": "CARGO_BUILD_JOBS=2 cargo test --locked --manifest-path crates/aspis-pool-wallet-v1/Cargo.toml --features eight-lane-plumbing-v2 finalized_registry_selection_is_exact_and_does_not_invent_spend_transport --lib -- --nocapture",
-      "result": "1 passed",
-      "peakRssBytes": 100499456
-    }
+  "cluster": {"kind":"disposable-local-validator","agave":"solana-cli 4.2.0 (src:ac82b5d4; feat:21b0d33a, client:Agave)","genesisHash":"GcgcXEk2fnmGb3zBbALLy41dyyeNexXLwQ68eagpt8fc","rpcUrlDuringRun":"http://127.0.0.1:18912","featureId":"txv1aq4pp281K9um3tnPgkfX8UqtFT6wcVW3hNezGLL","featureActive":true,"featureActivationSlot":0,"runtimeFeatureSet":565236538,"auditOnlyIdentities":true,"publicDevnetUsed":false,"realFundsUsed":false},
+  "programs": [
+    {"name":"pool","id":"5PjDJaGfSPJj4tFzMRCiuuAasKg5n8dJKXKenhuwZexx","sha256":"0e94c98d28437f0b01dce546fdefaad21dc10772a4d46991c2a573d8129cd4f6"},
+    {"name":"registry","id":"5bV6jUfhDHCQVA1WfKBUnXUsboJgoKgkzkKcxr3joew5","sha256":"0f14c7b74ec6cbe3b3f637b0f24c7e8cdc46fd09f5b2e495fd51ada16ad8f11b"},
+    {"name":"verifier","id":"7Q2nGsPg8rbjdxKHK4jxTgEWLTyd9o1X4KMSjCieRmue","sha256":"97df12937d46e25a2eeefeac16ce31925fd473c672d6b656548be9220adbcc6d"},
+    {"name":"spl-noop","id":"noopb9bkMVfRPU8AsbpTUg8AQkHtKwMYZiFUjNRtMmV","sha256":"3ebf49dd7d38bd45422caa3482446cd2d4867f956b040b1b75d6aafabdce8db7"}
   ],
-  "negativeAdapterCases": {
-    "wrongCheckpointIdentity": "pass-rejected",
-    "wrongHistoricalLaneRoot": "pass-rejected",
-    "selectedAlgebraicallyEmptySecondSlot": "pass-rejected",
-    "noteCommitmentOrOpeningMismatch": "covered-by-common-fail-closed-input-path",
-    "wrongRegistryProfileReleasePda": "pass-rejected-by-focused-authenticated-selection-test",
-    "underfundedOrMismatchedWithdrawalCustody": "pass-rejected",
-    "noncanonicalAsq8Asf8Asr8": "covered-by-encode-decode-roundtrip-and-exact-result-binding"
+  "adapter": {"transferComplete":true,"withdrawalCompleteOffline":true,"durableCheckpointMembershipExportComplete":true,"productionProverHandoffComplete":true,"insecureFixtureFeatureEnabledInLiveProverCrate":false,"fixtureOnlyEntropyUsed":false,"trustedResultUsed":false,"verifierBypassUsed":false,"productionRuntimeSourceChanged":false,"cryptographicParametersChanged":false},
+  "proof": {"account":"6xyX2V84p1TLxRHMceX9sPqxv2iUpVu68VVQVGJ8CNh2","bodyBytes":30720,"bodySha256":"de64d59936a84ced7ff8173db307196029b0997b8866ac69f1a02212a44c23ac","payloadBytes":31408,"payloadSha256":"e94aba876143295ee7ef1ce5fbbb0a4ca6407129d3825dc1f1916dfbacf54406","wireFormat":"tag73-canonical-fixed-audit","canonicalFixedDeltaBytes":320,"powValid":true,"generationMillis":219885,"uploadTransactions":35,"allUploadTransactionsFinalized":true,"sealed":true,"closedAfterTerminal":false},
+  "canonicalWireSizes": {"asq8Bytes":320,"asf8Bytes":1880,"expectedAsr8Bytes":792,"terminalTransactionBytes":1378,"below4096":true,"atOrBelow3500":true},
+  "finalizedTransactions": {
+    "initialize": {"bytes":784,"simulatedCu":131942,"landedCu":131942,"slot":151,"signature":"4Rd9MGUEtw2WJvnRTLbptnATN3e7SdnEzi6J9eahRbW6tkZNN4PrbgVQCXELcFofmGcSVZ87FioYTwHYj6dwj7oK","wireSha256":"323a28a36e16bf0eb73de5a90579972a306526c9721930e7a0efd69811cdc47f"},
+    "deposit": {"bytes":651,"simulatedCu":1112379,"landedCu":1112379,"slot":183,"selectedLane":5,"signature":"a9ZeXdPakSTnBQrQqxepwajrrAyTc5jVzFZPo4s75dRfpX1xg5u37c4kferxn9wCZnfprn9UNxuzvxRRnVUR79u","wireSha256":"e6ca7081c1d88e1ef0781426b8c95c48d7b34fe743141ddf8b7901160483f552"},
+    "checkpoint": {"bytes":581,"simulatedCu":703262,"landedCu":703262,"slot":215,"signature":"52cxFBek5nC1fhHVFSw84464y7gUPTctnEmxZ5c28dxojxwRaumLupmLMA5Scxm2XQwDMxznUW5yQgN4MTLCuVNh","wireSha256":"2eda3800234ed80da90dbbd74511200347c0e79f6548b43862f388acf642f516"},
+    "transferSamePage": {"bytes":1378,"simulatedCu":1199794,"landedCu":1199794,"slot":563,"selectedLane":5,"signature":"36xzE8aH8EwQ5vn8Y7H6gCnRqfNKJTWH6DxesKz2gH5swp66tLuq6xsSwUQgevgNGmYTZiuCKJAxMVPvZTrkZtgr","wireSha256":"6a6e30d8449b8f3ee65840adae3ad250a65e32288c9f32cc27e8dd376ec4d338","topLevelInstructions":2,"terminalTransactions":1,"byteIdenticalSimulationSubmission":true,"realHpkeCiphertextCarrier":true}
   },
-  "lifecycleMatrix": {
-    "initializePool": "not-run",
-    "deposit": "not-run",
-    "checkpoint": "not-run",
-    "genuineLiveNoteProofGeneration": "not-run",
-    "transferSamePage": "not-run",
-    "transferRollover": "not-run",
-    "withdrawalSamePage": "not-run",
-    "staleSelectedLaneRejection": "not-run",
-    "replayNullifierRejection": "not-run",
-    "wrongHistoricalCheckpointRejection": "not-run",
-    "wrongRegistryReleaseRejection": "not-run",
-    "malformedAsq8Rejection": "not-run",
-    "malformedCiphertextNonStalling": "not-run",
-    "failedWithdrawalCpiRollback": "not-run"
+  "terminalAccountDataSha256": {
+    "master": {"before":"1b4a965ab60afb514ec1c66738b7b35debe3e957dceaee63e7a72f57ac98bc88","after":"1b4a965ab60afb514ec1c66738b7b35debe3e957dceaee63e7a72f57ac98bc88"},
+    "selectedLane": {"address":"AsZpeSN85h6WWG3Kf9SjMZtgqM4kbBEhCRoXhX1T5jMe","before":"cd3d59c4e6ff33fb7460ab229835aff8dc4354cb513099861bbc736c46871d54","after":"534852e0464843bdf03153ee16019eb98f181d1d301779fe7a4d36c0dd8f5834"},
+    "checkpoint": {"before":"7825860b168eba1015d25f01ed3aaf64e6424abfdb86fd52c2618abb5c0c9da5","after":"7825860b168eba1015d25f01ed3aaf64e6424abfdb86fd52c2618abb5c0c9da5"},
+    "vault": {"before":"157dbe7d3d37dc6eacf793405a81940a7d07765eb9704d1fc08723a5a73e6f85","after":"157dbe7d3d37dc6eacf793405a81940a7d07765eb9704d1fc08723a5a73e6f85"},
+    "proof": {"before":"257cd7773cf64097c88438f6f106b617ebd49f2f05165ba4bfc877fa1276398e","after":"257cd7773cf64097c88438f6f106b617ebd49f2f05165ba4bfc877fa1276398e"},
+    "marker": {"address":"4ZfuzmeafRPecNrSaz4GdhiNthj6fNKnrrzjY8n6FAg4","before":null,"after":"e2ca9635614cdc0d3f3b777481ed23af1956e61403c1a53e1191c8d6b4e9a433"},
+    "currentHistoryPage": {"address":"C4yCiv5WuKmDmDg7xku4mesPPRzxUx47NpNPAAACaosF","before":"34f3c44e72fea61cdf2e6d5897cf1e956f395eaf7ba1eadbcb8b1392091c51c8","after":"11a65918928e29330f3ee8f66cf720e9800249af6b7f0355ce22b3ce55ac3a33"},
+    "nonSelectedLanesUnchanged": true
   },
-  "measurements": {
-    "simulatedCu": null,
-    "landedCu": null,
-    "signatures": [],
-    "finalizedSlots": [],
-    "transactionBytes": [],
-    "beforeAfterAccountHashes": []
-  },
-  "environment": {
-    "rustc": "rustc 1.93.0 (254b59607 2026-01-19)",
-    "cargo": "cargo 1.93.0 (083ac5135 2025-12-15)",
-    "hostArchitecture": "arm64",
-    "hostOs": "macOS 26.5",
-    "availableLocalAgave": "solana-cli 2.3.0 (src:a2e21dda; feat:3640012085, client:Agave)",
-    "requiredAgave": "4.2.0 or later with TxV1 feature active",
-    "nucReachable": false
-  },
-  "blocker": {
-    "kind": "execution-environment-and-live-bundle-materialization",
-    "smallestExactMissingStep": "Run the existing disposable cluster wrapper on a reachable Agave 4.2+ host, initialize/deposit/checkpoint through the existing canonical builders, persist the finalized wallet checkpoint/event and finalized Registry/account bundle, then feed it to prove-from-live-bundle before terminal TxV1 simulation/submission.",
-    "cryptographicIntegrationMissing": false,
-    "productionProgramChangeRequired": false
-  },
+  "invariants": {"exactlyOneTerminalTransaction":"pass","messageBelow4096":"pass","combinedLandedCuBelow1300000":"pass","exactRegistryProfileReleaseProgramAuthentication":"pass","asq8ToAsf8AndAsr8Binding":"pass","onlySelectedLaneChanges":"pass","historicalCheckpointUnchanged":"pass","nullifierMarkerCreatedExactlyOnce":"pass-for-first-spend-only","transferVaultConservation":"pass","ciphertextCarrierCannotStallSettlement":"pass-for-valid-real-hpke-carrier","proofAccountCloseRefund":"not-run"},
+  "lifecycleMatrix": {"initializePool":"finalized-pass","deposit":"finalized-pass","checkpoint":"finalized-pass","genuineLiveNoteProofGeneration":"pass","transferSamePage":"finalized-pass","transferRollover":"not-run","withdrawalSamePage":"not-run","staleSelectedLaneRejection":"not-run","replayNullifierRejection":"not-run","wrongHistoricalCheckpointRejection":"not-run","wrongRegistryReleaseRejection":"not-run","malformedAsq8Rejection":"not-run","malformedCiphertextNonStalling":"not-run","failedWithdrawalCpiRollback":"not-run"},
+  "focusedValidation": [
+    {"command":"cargo check --manifest-path tools/v7-live-pool-proof/Cargo.toml --bins","result":"pass"},
+    {"command":"cargo test --locked --manifest-path crates/aspis-core/Cargo.toml --features v7-fixed-canonical-audit canonical_fixed_delta_is_exactly_320_bytes --lib","result":"1 passed"},
+    {"command":"bash -n scripts/v7_txv1_disposable_feature_cluster.sh scripts/v7_live_pool_initialize_child.sh scripts/v7_txv1_upload_honest_proof_child.sh","result":"pass"},
+    {"command":"shasum -a 256 -c local-feature-active-live-transfer/SHA256SUMS","result":"all pass"}
+  ],
+  "resourceUsage": {"systemdMemoryHighBytes":8589934592,"systemdMemoryMaxBytes":12884901888,"memorySwapMaxBytes":0,"observedPeak":"1.3G","wallTime":"5min 3.129s","cpuTime":"1h 4min 36.305s"},
+  "blocker": {"kind":"remaining-terminal-harness-matrix","smallestExactMissingStep":"Generalize the live child and terminal builder from transfer-only to withdrawal custody accounts, then add proof-close and fail-closed negative-case runners; the offline withdrawal witness/statement adapter is already complete.","cryptographicIntegrationMissing":false,"productionProgramChangeRequired":false},
   "publicDevnetEvidenceModified": false,
-  "publicDevnetUsed": false,
-  "realFundsUsed": false,
+  "publicFinalizedDevnetLifecycleComplete": false,
   "mainnetReady": false
 }

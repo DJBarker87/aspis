@@ -2,23 +2,21 @@
 
 ## Classification
 
-**C — ADAPTER COMPLETE; TERMINAL EXECUTION BLOCKED**
+**B — LIVE TRANSFER COMPLETE; WITHDRAWAL BLOCKED**
 
-The production-shaped transfer and withdrawal adapters are complete and pass
-focused offline tests. They consume canonical finalized Pool/Registry account
-images plus the wallet's authenticated retained checkpoint, construct the
-exact Tag-73 witness, ASQ8 request, ASF8 semantic statement, expected ASR8,
-and hand those values to the production prover with fresh attempt entropy.
+The production-shaped transfer and withdrawal adapters pass focused offline
+tests. On a disposable Agave 4.2.0 cluster with TxV1 active at genesis, the
+live path then initialized a fresh eight-lane Pool, deposited a fresh note,
+finalized checkpoint 0, reconstructed its membership from those accounts,
+generated and sealed a genuine Tag-73 proof, simulated the exact signed TxV1
+wire, submitted the same bytes, and finalized the same-page transfer.
 
-No live terminal transaction was simulated or landed in this work. The local
-host has Agave 2.3.0 rather than the required 4.2+, and the NUC was not
-reachable from this session. Accordingly there are no transaction-byte, CU,
-signature, finalized-slot, or pre/post-account-hash measurements. Existing
-public-devnet evidence was not changed, and no synthetic result is reported as
-a live lifecycle.
+The live withdrawal runner and remaining negative matrix are not complete, so
+this is not a complete lifecycle claim. Public devnet was not used or changed;
+all identities and funds were explicitly disposable and audit-only.
 
 Base: `97e50660d61bfc07fb22bb0a6cc8a268fe073352`  
-Tested implementation: `5e5dc29fbc1c3ec5ceaa739dae72af8b0407208c`  
+Tested implementation: `14389d767d375db88b97a1aae2ff323145fdbaf0`
 Branch: `research/v7-live-pool-witness-adapter-20260901`
 
 ## Architecture and authenticated field sources
@@ -66,6 +64,11 @@ as the exact public attempt nonce via `generate_for_mask_nonce`; the two
 private seeds come from OS entropy and the nonce is burned through
 `DurableStateOnlyMaskNonceStore` before the genuine Tag-73 transfer or
 withdrawal prover entry point runs. No ASR8 can be supplied by the caller.
+The frozen one-transaction verifier consumes the repository's existing
+canonical-fixed audit wire, so the adapter transcodes only the 641 packed
+fixed QM31 values after proving. This adds exactly 320 bytes; roots, work
+nonces, queries, private salts and Merkle frontiers remain byte-identical. The
+accepted live proof was 30,720 bytes and its ASJA payload was 31,408 bytes.
 
 ## Fixture constants eliminated
 
@@ -98,9 +101,39 @@ slot, and an underfunded withdrawal vault. Existing canonical codecs and
 Registry selection tests cover malformed wire and Registry account inputs.
 
 Canonical adapter outputs are 320-byte ASQ8, 1,880-byte ASF8 and 792-byte
-expected ASR8. These are protocol wires, not transaction-size measurements.
-The frozen 997-byte / 1,201,757-CU baseline was neither rerun nor attributed to
-this adapter run.
+expected ASR8. The genuine signed terminal TxV1 was 1,378 serialized bytes and
+used 1,199,794 CU in both exact-wire simulation and finalized execution. The
+frozen 997-byte / 1,201,757-CU reference remains a separate prior measurement;
+it is not relabelled as this live run.
+
+## Finalized disposable-cluster evidence
+
+Agave reported `solana-cli 4.2.0`, runtime feature set `565236538`, and TxV1
+feature `txv1aq4pp281K9um3tnPgkfX8UqtFT6wcVW3hNezGLL` active at slot 0. The
+fresh ledger genesis hash was
+`GcgcXEk2fnmGb3zBbALLy41dyyeNexXLwQ68eagpt8fc`.
+
+| Operation | Bytes | Simulated CU | Landed CU | Finalized slot |
+| --- | ---: | ---: | ---: | ---: |
+| Pool initialize | 784 | 131,942 | 131,942 | 151 |
+| Deposit | 651 | 1,112,379 | 1,112,379 | 183 |
+| Checkpoint | 581 | 703,262 | 703,262 | 215 |
+| Terminal transfer | 1,378 | 1,199,794 | 1,199,794 | 563 |
+
+The terminal signature is
+`36xzE8aH8EwQ5vn8Y7H6gCnRqfNKJTWH6DxesKz2gH5swp66tLuq6xsSwUQgevgNGmYTZiuCKJAxMVPvZTrkZtgr`;
+its signed-wire SHA-256 is
+`6a6e30d8449b8f3ee65840adae3ad250a65e32288c9f32cc27e8dd376ec4d338`.
+It contained SPL Noop ciphertext carrier followed by exactly one terminal
+ASQ8. The selected verifier returned exact ASR8 and consumed 1,132,448 CU.
+
+Before/after hashes prove that selected lane 5 and its live history page
+changed, the nullifier marker was absent then created, and master, checkpoint,
+vault, proof account and all seven non-selected lanes were unchanged. Exact
+per-account hashes and all RPC responses are in
+`results/v7-live-pool-witness-adapter-20260901/local-feature-active-live-transfer/`.
+The proof account remained sealed and was not closed; close/refund is still a
+missing matrix case.
 
 ## Replay and secret handling
 
@@ -127,20 +160,25 @@ Exact focused commands are also in
 
 ## Lifecycle matrix and blocker
 
-No requested live cluster case is marked executed. Init, deposit, checkpoint,
-genuine live-note proof generation, transfer, withdrawal, stale-lane, replay,
-wrong-checkpoint/release, malformed-ASQ8/ciphertext, and failed-CPI rollback
-remain `not-run` in the evidence JSON.
+Finalized live cases are Pool initialize, deposit, checkpoint, genuine
+live-note proof generation/upload, and same-page private transfer. The
+transfer proves the adapter no longer depends on the deterministic Pool root:
+the input note and append before-state came from independently created live
+accounts, while deposit and output routing were sampled until both selected
+the same live-created lane page.
 
-The smallest remaining step is operational and concrete: on a reachable
-Agave 4.2+ host, run the existing disposable feature-cluster wrapper; submit
-init, deposit and checkpoint with the existing canonical builders; persist
-the finalized scanner/durable-wallet state and finalized Pool/Registry account
-bundle; invoke `prove-from-live-bundle`; upload that proof; then use the
-existing TxV1 builder's byte-identical simulate/send/finalize path. This does
-not require verifier mathematics, cryptographic parameters, production Pool
-source, or frozen SBF/CU changes.
+Transfer rollover, withdrawal, different-lane concurrency, stale/replay,
+wrong-checkpoint/release, malformed-ASQ8/result/ciphertext, failed withdrawal
+CPI rollback, and proof close/refund remain unexecuted and are explicitly
+`not-run` in machine-readable evidence.
+
+The smallest remaining integration is host-side: generalize the live child
+and terminal builder from transfer-only to the already implemented withdrawal
+plan and its five custody accounts, then add reusable mutation/replay and
+proof-close runners. No cryptographic integration or production program
+change is currently indicated.
 
 The result is safe to cherry-pick as host-only, default-off research plumbing.
-It does not establish public devnet lifecycle completion, production
-identities, or mainnet readiness. `mainnetReady` remains false.
+It establishes one genuine finalized local transfer, not public-devnet
+lifecycle completion, production identities, or mainnet readiness.
+`mainnetReady` remains false.
