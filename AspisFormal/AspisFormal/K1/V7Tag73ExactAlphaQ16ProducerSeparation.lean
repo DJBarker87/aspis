@@ -1,5 +1,6 @@
 import AspisFormal.K1.V7Tag73ExactAlphaZeroRootOrder
 import AspisFormal.K1.V7Tag73ExactDagProducerRecordProvenance
+import AspisFormal.K1.V7Tag73IndexedAlignedRecordReplay
 
 /-!
 # Alpha-chain separation from causal-DAG q16 producers
@@ -37,8 +38,10 @@ open AspisK1.V7Tag73ExactQ16CausalCoordinateOrder
 open AspisK1.V7Tag73ExactSourceAcceptanceModel
 open AspisK1.V7Tag73FinalWorkQ16CandidateController
 open AspisK1.V7Tag73IndexedControllerTraceAlignment
+open AspisK1.V7Tag73IndexedAlignedRecordReplay
 open AspisK1.V7Tag73OperationalSemanticReplay
 open AspisK1.V7Tag73SchedulerNativeGammaReplay
+open AspisK1.V7Tag73SchedulerCausalQ16Router
 open AspisK1.V7Tag73SqueezeInputStateInjectivity
 open AspisK1.V7Tag73TranscriptSchedule
 
@@ -317,6 +320,99 @@ theorem exact_alpha_chain_avoids_full_dag_producers
         (exactOperationalTape input).messages producerDigest base
         reached.memory.producers inventory producer producerMember
 
+/-- Every consumed alpha output is residual at its literal pre-answer root
+prefix.  The important point is temporal: the proof restricts the avoidance
+result for the complete producer inventory to the monotone inventory already
+installed when this exact alpha coordinate was first exposed.  It therefore
+does not classify the coordinate retrospectively and is independent of which
+actor made the first query. -/
+theorem exact_alpha_output_is_residual_at_literal_root_prefix
+    {HiddenTape TapeIdentity Observation Statement Payload Result : Type}
+    {parameters : ExactCompilerResourceParameters}
+    {transitionFuel : Nat}
+    {configuration : ExactPlainRomConfiguration HiddenTape TapeIdentity
+      Observation Statement Tag73K12ParsedProof Payload Result parameters}
+    {projection : AcceptedTapeProjection Statement Tag73K12ParsedProof Payload}
+    {fixedInstance : PublicInstance Statement}
+    {sample : ExactCompilerSample HiddenTape parameters}
+    (input : ExactK12OperationalInput transitionFuel configuration projection
+      fixedInstance sample)
+    (trial : ExactCompilerExposureTrial parameters)
+    {producerInput : ShaInput} {digest : Digest256}
+    {outputs advances : List Digest256}
+    (chain : ExactRootOrderedQ16Chain input producerInput digest outputs
+      advances)
+    (boundary : ∃ (producerDigest : Digest256),
+      producerInput =
+        bytes producerDigest ++
+          [domAbsorb,
+            (alphaZeroBoundaryPayload
+              (exactOperationalTape input).messages).label] ++
+          (alphaZeroBoundaryPayload
+            (exactOperationalTape input).messages).data)
+    (state : Digest256)
+    (stateMember : state ∈ digest :: advances)
+    (output : Digest256) (actor : QueryActor)
+    (prior later : List UnifiedExposureRecord)
+    (decomposition : exactFixedRootRecords input.package.root =
+      prior ++
+        (.machineFresh actor (gammaOutputInput state) output :
+          UnifiedExposureRecord) :: later) :
+    (exactDagTrialController transitionFuel trial).preferredSlot
+      (indexedStateAfterRecords transitionFuel
+        (exactDagTrialController transitionFuel trial) prior
+        (exactDagCandidateInitialState input)) = none := by
+  let controller := exactDagTrialController transitionFuel trial
+  let initial := exactDagCandidateInitialState input
+  let reached := indexedStateAfterRecords transitionFuel controller prior initial
+  let completed := indexedStateAfterRecords transitionFuel controller
+    (exactFixedRootRecords input.package.root) initial
+  have fullAvoid := exact_alpha_chain_avoids_full_dag_producers input trial
+    chain boundary state stateMember
+  have producerGrowth : reached.memory.producers <+:
+      completed.memory.producers := by
+    have growth := dag_indexed_state_producers_prefix transitionFuel trial.val
+      ((.machineFresh actor (gammaOutputInput state) output :
+          UnifiedExposureRecord) :: later) reached
+    have growth' : reached.memory.producers <+:
+        (indexedStateAfterRecords transitionFuel controller
+          ((.machineFresh actor (gammaOutputInput state) output :
+            UnifiedExposureRecord) :: later) reached).memory.producers := by
+      simpa [controller, exactDagTrialController] using growth
+    have completedExact : completed =
+        indexedStateAfterRecords transitionFuel controller
+          ((.machineFresh actor (gammaOutputInput state) output :
+            UnifiedExposureRecord) :: later) reached := by
+      simp [completed, decomposition, reached,
+        indexed_state_after_records_append]
+    rw [completedExact]
+    exact growth'
+  have prefixAvoid : ∀ producer ∈ reached.memory.producers,
+      state ≠ producer.digest := by
+    intro producer producerMember
+    exact fullAvoid producer (producerGrowth.subset producerMember)
+  have anchorWellFormed : Q16DagAnchorWellFormed reached.memory.anchor := by
+    simpa [reached, controller, initial] using
+      exact_dag_candidate_prefix_anchor_well_formed input trial prior
+  have inputExact : unifiedInputBeforeAnswer? transitionFuel reached.cursor =
+      some (gammaOutputInput state) := by
+    have aligned : unifiedRecordAtAnswer transitionFuel reached.cursor output =
+        .machineFresh actor (gammaOutputInput state) output := by
+      have rootAligned := exact_root_records_aligned_for_dag_controller input
+        trial.val prior
+          (.machineFresh actor (gammaOutputInput state) output)
+          later decomposition
+      simpa [reached, controller, initial, exactDagTrialController,
+        UnifiedExposureRecord.answer] using rootAligned
+    exact aligned_machine_record_has_exact_input transitionFuel reached.cursor
+      actor (gammaOutputInput state) output aligned
+  change dagCandidatePreferredSlot transitionFuel trial.val reached = none
+  unfold dagCandidatePreferredSlot
+  rw [inputExact]
+  exact dag_preferred_slot_none_of_gamma_state_avoids_producers
+    trial.val reached.exposureIndex reached.memory state anchorWellFormed
+      prefixAvoid
+
 #print axioms clean_root_answer_eq_fixes_source_input
 #print axioms gamma_advance_input_ne_q16_candidate
 #print axioms raw_final_work_key_of_gamma_output_input_none
@@ -324,6 +420,7 @@ theorem exact_alpha_chain_avoids_full_dag_producers
 #print axioms alpha_zero_boundary_avoids_q16_producer_sources
 #print axioms exact_root_ordered_chain_avoids_q16_producers
 #print axioms exact_alpha_chain_avoids_full_dag_producers
+#print axioms exact_alpha_output_is_residual_at_literal_root_prefix
 
 end
 
