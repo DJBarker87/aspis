@@ -26,6 +26,7 @@ set_option autoImplicit false
 namespace AspisK1.V7Tag73ExactLegalSameTapeEvent
 
 open AspisK1.V7Tag73RawSameTapeSource
+open AspisK1.V7Tag73TranscriptSchedule
 open AspisK1.V7Tag73DeterministicRefinement
 open AspisK1.V7Tag73FutureFreeFullControl
 open AspisK1.V7Tag73RawFutureFreeDriver
@@ -155,6 +156,51 @@ def ExactCleanSourceRootProjection.selectedQ16Ledger
   rw [root.environmentExact, finalStateExact] at certificate
   exact certificate
 
+/-- The literal gamma decoded by the canonical checked tape is retained in
+the actual scheduler root after exact final-state alignment. -/
+theorem ExactCleanSourceRootProjection.gammaRecordExact
+    {HiddenTape TapeIdentity Observation Statement Proof Payload Result : Type}
+    {parameters : ExactCompilerResourceParameters}
+    {transitionFuel : Nat}
+    {configuration : ExactPlainRomConfiguration HiddenTape TapeIdentity
+      Observation Statement Proof Payload Result parameters}
+    {projection : AcceptedTapeProjection Statement Proof Payload}
+    {sample : ExactCompilerSample HiddenTape parameters}
+    (root : ExactCleanSourceRootProjection transitionFuel configuration
+      projection sample) :
+    DecodedChallenge.mk .gamma
+      (root.tape.messages.challengeValue .gamma) ∈
+      root.runtime.verifierFinalState.current.decodedChallenges := by
+  have member := root.canonical.construction.gammaRecordExact
+  have finalStateExact : root.canonical.construction.complete.final =
+      root.runtime.verifierFinalState :=
+    root.actualPathAlignment.finalStateExact.symm.trans
+      root.projected.finalStateExact
+  rw [finalStateExact] at member
+  exact member
+
+/-- The same source alignment retains the literal alpha-zero bytes. -/
+theorem ExactCleanSourceRootProjection.alphaZeroRecordExact
+    {HiddenTape TapeIdentity Observation Statement Proof Payload Result : Type}
+    {parameters : ExactCompilerResourceParameters}
+    {transitionFuel : Nat}
+    {configuration : ExactPlainRomConfiguration HiddenTape TapeIdentity
+      Observation Statement Proof Payload Result parameters}
+    {projection : AcceptedTapeProjection Statement Proof Payload}
+    {sample : ExactCompilerSample HiddenTape parameters}
+    (root : ExactCleanSourceRootProjection transitionFuel configuration
+      projection sample) :
+    DecodedChallenge.mk (ChallengeId.alpha 0)
+      (root.tape.messages.challengeValue (ChallengeId.alpha 0)) ∈
+      root.runtime.verifierFinalState.current.decodedChallenges := by
+  have member := root.canonical.construction.alphaZeroRecordExact
+  have finalStateExact : root.canonical.construction.complete.final =
+      root.runtime.verifierFinalState :=
+    root.actualPathAlignment.finalStateExact.symm.trans
+      root.projected.finalStateExact
+  rw [finalStateExact] at member
+  exact member
+
 /-- Membership in the concrete clean-source event proves that an exact
 ROM-free root certificate is inhabited.  `Nonempty` is essential here: the
 source event is proposition-valued, so Lean may eliminate its existential
@@ -221,6 +267,8 @@ noncomputable def legal_same_tape_event_constructs_exact_clean_root
 #print axioms legal_same_tape_event_has_exact_clean_root
 #print axioms legal_same_tape_event_constructs_exact_clean_root
 #print axioms ExactCleanSourceRootProjection.selectedQ16Ledger
+#print axioms ExactCleanSourceRootProjection.gammaRecordExact
+#print axioms ExactCleanSourceRootProjection.alphaZeroRecordExact
 
 end
 
