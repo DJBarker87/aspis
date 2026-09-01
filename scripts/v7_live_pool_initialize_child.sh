@@ -489,6 +489,70 @@ if [[ -n "$SECRET_BUILDER" || -n "$DEPOSIT_BUILDER" ]]; then
             actual:"rejected",error:$error,finalizedStateBeforeSha256:$before,
             finalizedStateAfterSha256:$after,stateUnchanged:true}' \
           >"$TERMINAL_EVIDENCE/replay-rejection.json"
+        fresh_replay_slot=$(rpc '{"jsonrpc":"2.0","id":1850,"method":"getSlot","params":[{"commitment":"finalized"}]}' | jq -er '.result')
+        fresh_replay_blockhash=$(rpc "$(jq -nc --argjson slot "$fresh_replay_slot" \
+          '{jsonrpc:"2.0",id:1851,method:"getLatestBlockhash",params:[{commitment:"finalized",minContextSlot:$slot}]}')" \
+          | jq -er '.result.value.blockhash')
+        jq -n --arg bundle "$EVIDENCE_DIR/live-proof-bundle/live-bundle.json" \
+          --arg asq8 "$EVIDENCE_DIR/live-proof/asq8.bin" --arg payer "$PAYER_KEYPAIR" \
+          --arg blockhash "$fresh_replay_blockhash" --argjson slot "$fresh_replay_slot" \
+          '{schema:"aspis.v7.live-terminal-input.v1",bundle:$bundle,asq8:$asq8,
+            payerKeypair:$payer,recentBlockhash:$blockhash,minContextSlot:$slot,requestId:1852}' \
+          >"$WORK_DIR/fresh-replay-input.json"
+        "$TERMINAL_BUILDER" "$WORK_DIR/fresh-replay-input.json" \
+          >"$TERMINAL_EVIDENCE/fresh-replay-signed-request.json"
+        [[ "$(jq -er '.signedWireSha256' "$TERMINAL_EVIDENCE/fresh-replay-signed-request.json")" != \
+          "$(jq -er '.signedWireSha256' "$TERMINAL_EVIDENCE/signed-request.json")" ]] \
+          || fail "fresh replay unexpectedly reused original signed wire"
+        fresh_replay_simulation=$(rpc "$(jq -c '.simulationRequest' "$TERMINAL_EVIDENCE/fresh-replay-signed-request.json")")
+        jq . <<<"$fresh_replay_simulation" >"$TERMINAL_EVIDENCE/fresh-replay-simulation.json"
+        jq -e '.error | not' <<<"$fresh_replay_simulation" >/dev/null
+        jq -e '.result.value.err != null' <<<"$fresh_replay_simulation" >/dev/null \
+          || fail "fresh-signature nullifier replay simulation was not rejected"
+        fresh_replay_send=$(rpc "$(jq -c '.sendRequest' "$TERMINAL_EVIDENCE/fresh-replay-signed-request.json")")
+        jq . <<<"$fresh_replay_send" >"$TERMINAL_EVIDENCE/fresh-replay-send.json"
+        fresh_replay_signature=$(jq -er '.result' <<<"$fresh_replay_send")
+        [[ "$fresh_replay_signature" == \
+          "$(jq -er '.signature' "$TERMINAL_EVIDENCE/fresh-replay-signed-request.json")" ]] \
+          || fail "fresh replay submission changed signed wire"
+        fresh_replay_finalized=false
+        for _ in $(seq 1 600); do
+          fresh_replay_status=$(rpc "$(jq -nc --arg signature "$fresh_replay_signature" \
+            '{jsonrpc:"2.0",id:1853,method:"getSignatureStatuses",params:[[$signature],{searchTransactionHistory:true}]}')")
+          if jq -e '.result.value[0] != null and .result.value[0].confirmationStatus == "finalized"' \
+            <<<"$fresh_replay_status" >/dev/null; then fresh_replay_finalized=true; break; fi
+          sleep 0.1
+        done
+        [[ "$fresh_replay_finalized" == true ]] || fail "fresh nullifier replay did not finalize"
+        rpc "$(jq -nc --arg signature "$fresh_replay_signature" \
+          '{jsonrpc:"2.0",id:1854,method:"getTransaction",params:[$signature,{encoding:"json",commitment:"finalized",maxSupportedTransactionVersion:1}]}')" \
+          | jq . >"$TERMINAL_EVIDENCE/fresh-replay-finalized-transaction.json"
+        jq -e '.result != null and .result.meta.err != null' \
+          "$TERMINAL_EVIDENCE/fresh-replay-finalized-transaction.json" >/dev/null \
+          || fail "fresh nullifier replay did not land as a failed transaction"
+        rpc "$(jq -nc --argjson addresses "$protected_addresses" \
+          '{jsonrpc:"2.0",id:1855,method:"getMultipleAccounts",params:[$addresses,{encoding:"base64",commitment:"finalized"}]}')" \
+          | jq . >"$TERMINAL_EVIDENCE/accounts-after-fresh-replay.json"
+        [[ "$(account_values_hash "$TERMINAL_EVIDENCE/accounts-after.json")" == \
+          "$(account_values_hash "$TERMINAL_EVIDENCE/accounts-after-fresh-replay.json")" ]] \
+          || fail "failed fresh nullifier replay changed finalized state"
+        jq -n --arg signature "$fresh_replay_signature" \
+          --argjson slot "$(jq -er '.result.slot' "$TERMINAL_EVIDENCE/fresh-replay-finalized-transaction.json")" \
+          --argjson simulatedError "$(jq -c '.result.value.err' "$TERMINAL_EVIDENCE/fresh-replay-simulation.json")" \
+          --argjson landedError "$(jq -c '.result.meta.err' "$TERMINAL_EVIDENCE/fresh-replay-finalized-transaction.json")" \
+          --argjson simulatedCu "$(jq -er '.result.value.unitsConsumed' "$TERMINAL_EVIDENCE/fresh-replay-simulation.json")" \
+          --argjson landedCu "$(jq -er '.result.meta.computeUnitsConsumed' "$TERMINAL_EVIDENCE/fresh-replay-finalized-transaction.json")" \
+          --arg before "$(account_values_hash "$TERMINAL_EVIDENCE/accounts-after.json")" \
+          --arg after "$(account_values_hash "$TERMINAL_EVIDENCE/accounts-after-fresh-replay.json")" \
+          --slurpfile request "$TERMINAL_EVIDENCE/fresh-replay-signed-request.json" \
+          '{schema:"aspis.v7.live-terminal-fresh-nullifier-replay-rejection.v1",
+            expected:"reject",actual:"finalized-rejected",signature:$signature,slot:$slot,
+            serializedTransactionBytes:$request[0].serializedTransactionBytes,
+            signedWireSha256:$request[0].signedWireSha256,simulatedError:$simulatedError,
+            landedError:$landedError,simulatedCu:$simulatedCu,landedCu:$landedCu,
+            byteIdenticalSimulationSubmission:true,finalizedStateBeforeSha256:$before,
+            finalizedStateAfterSha256:$after,stateUnchanged:true}' \
+          >"$TERMINAL_EVIDENCE/fresh-nullifier-replay-rejection.json"
         if [[ -n "$PROOF_CLOSE_BUILDER" ]]; then
           [[ -x "$PROOF_CLOSE_BUILDER" ]] || fail "proof close builder is unavailable"
           mkdir "$EVIDENCE_DIR/proof-close"
