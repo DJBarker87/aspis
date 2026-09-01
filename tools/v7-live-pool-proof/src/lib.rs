@@ -6,6 +6,7 @@
 
 use std::{io, path::Path};
 
+use aspis_core::v7_fixed_canonical_audit::transcode_tag73_to_canonical_fixed;
 use aspis_pool_wallet_v1::live_pool_witness_adapter_v2::{
     LivePairForestTransferPlanV2, LivePairForestWithdrawalPlanV2,
 };
@@ -28,6 +29,7 @@ pub enum LivePoolProofErrorV1 {
     NonceLedger(io::Error),
     Entropy,
     Prover(V6ProverError),
+    ProverWire(aspis_core::v6_onefold::V6WireError),
     Afterstate(PoolV1PairVerifierTransportErrorV1),
 }
 
@@ -38,8 +40,15 @@ pub struct BuiltLivePoolProofV1 {
 
 fn payload(
     afterstate: &aspis_statement::pool_v1::PoolV1PairVerifiedAfterstateV1,
-    proof: BuiltV7CompactOneFoldProof,
+    mut proof: BuiltV7CompactOneFoldProof,
 ) -> Result<BuiltLivePoolProofV1, LivePoolProofErrorV1> {
+    // The frozen one-transaction candidate verifier consumes the audit wire
+    // whose 641 fixed QM31 values are canonical 16-byte records. The honest
+    // prover emits the equivalent packed Tag-73 wire, so transcode only that
+    // fixed section before upload. Roots, work nonces, query records, salts,
+    // and both Merkle frontiers remain byte-identical.
+    proof.bytes = transcode_tag73_to_canonical_fixed(&proof.bytes, proof.frontier_nodes)
+        .map_err(LivePoolProofErrorV1::ProverWire)?;
     let candidate = encode_pool_v1_pair_verified_afterstate_v1(afterstate)
         .map_err(LivePoolProofErrorV1::Afterstate)?;
     let mut proof_payload = Vec::with_capacity(candidate.len() + proof.bytes.len());

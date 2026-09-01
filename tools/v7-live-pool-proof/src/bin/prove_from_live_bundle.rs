@@ -384,7 +384,9 @@ fn main() -> Result<()> {
         "asq8":{"bytes":asq8.len(),"sha256":sha256_hex(&asq8)},
         "asf8":{"bytes":asf8.len(),"sha256":sha256_hex(&asf8)},
         "expectedAsr8":{"bytes":asr8.len(),"sha256":sha256_hex(&asr8)},
-        "proof":{"bytes":built.proof.bytes.len(),"sha256":sha256_hex(&built.proof.bytes),"powValid":built.proof.pow_valid},
+        "proof":{"bytes":built.proof.bytes.len(),"sha256":sha256_hex(&built.proof.bytes),
+            "powValid":built.proof.pow_valid,"wireFormat":"tag73-canonical-fixed-audit",
+            "canonicalFixedDeltaBytes":aspis_core::v7_fixed_canonical_audit::V7_CANONICAL_FIXED_DELTA_BYTES},
         "proofPayload":{"bytes":built.proof_payload.len(),"sha256":sha256_hex(&built.proof_payload)},
         "elapsedMillis":started.elapsed().as_millis(),
         "deterministicFixtureEntropy":false,"verifierBypass":false,"trustedResultAccount":false
