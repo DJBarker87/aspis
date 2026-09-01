@@ -1,3 +1,4 @@
+import AspisFormal.K1.V7Tag73ExactFixedQ16JointEventHandoff
 import AspisFormal.K1.V7Tag73ExactRestoredQ16JointEventHandoff
 
 /-!
@@ -30,6 +31,7 @@ open AspisK1.V7Tag73ExactClientKnowledgeComposition
 open AspisK1.V7Tag73ExactCompilerResources
 open AspisK1.V7Tag73ExactDagCandidateLabeledRootRouting
 open AspisK1.V7Tag73ExactFixedK12MerkleClassifier
+open AspisK1.V7Tag73ExactFixedQ16JointEventHandoff
 open AspisK1.V7Tag73ExactFixedOperationalStateMap
 open AspisK1.V7Tag73ExactPlainRomRun
 open AspisK1.V7Tag73ExactRestoredOperationalK13Classifier
@@ -113,6 +115,7 @@ structure ExactRestoredRootK13JointTrialWitness
   bad : Finset (Fin 262144)
   badExact : bad = exactRestoredRootK13IntrinsicBad decoder input k12.words
   badCard : bad.card ≤ 9557
+  actualTrial : ExactFixedK13ActualJointTrial input trial
   coordinate :
     exactRestoredRootK13TrialCoordinates transitionFuel configuration trial
         sample ∈
@@ -163,7 +166,8 @@ theorem exact_restored_root_query_failure_has_joint_trial_witness
     ∃ trial : ExactCompilerExposureTrial parameters,
       sample ∈ exactRestoredRootK13JointTrialEvent transitionFuel configuration
         projection fixedInstance decoder trial := by
-  obtain ⟨input, k12, bad, trial, badExact, badCard, coordinate⟩ :=
+  obtain ⟨input, k12, bad, trial, badExact, badCard, actualTrial,
+      coordinate⟩ :=
     exact_restored_root_query_failure_has_joint_trial_coordinate
       transitionRoom programmedCover frontierExact member
   refine ⟨trial, ⟨?_⟩⟩
@@ -174,6 +178,7 @@ theorem exact_restored_root_query_failure_has_joint_trial_witness
       badExact := by
         simpa [exactRestoredRootK13IntrinsicBad] using badExact
       badCard := badCard
+      actualTrial := actualTrial
       coordinate := by
         simpa [exactRestoredRootK13TrialCoordinates] using coordinate }
 

@@ -1,4 +1,5 @@
 import AspisFormal.K1.V7Tag73ExactDagQ16ChainRouting
+import AspisFormal.K1.V7Tag73ExactFixedQ16JointEventHandoff
 import AspisFormal.K1.V7Tag73ExactRestoredOperationalK13Events
 
 /-!
@@ -28,6 +29,7 @@ open AspisK1.V7Tag73ExactCompilerResources
 open AspisK1.V7Tag73ExactDagCandidateLabeledRootRouting
 open AspisK1.V7Tag73ExactDagQ16ChainRouting
 open AspisK1.V7Tag73ExactFixedK12MerkleClassifier
+open AspisK1.V7Tag73ExactFixedQ16JointEventHandoff
 open AspisK1.V7Tag73ExactFixedOperationalStateMap
 open AspisK1.V7Tag73ExactPlainRomRun
 open AspisK1.V7Tag73ExactRestoredOperationalK13Classifier
@@ -189,6 +191,7 @@ theorem exact_restored_root_query_failure_has_joint_trial_coordinate
             (exact_restoration_accumulator_contains_root input)
             (exact_restoration_accumulator_root_is_done input)) ∧
       bad.card ≤ 9557 ∧
+      ExactFixedK13ActualJointTrial input trial ∧
       let router := exactCompilerExposureTrialDagRouter parameters
         transitionFuel trial
           (exactPlainRomCursor configuration sample.1).erase
@@ -228,28 +231,31 @@ theorem exact_restored_root_query_failure_has_joint_trial_coordinate
       (exactOperationalTape input).search.selectedSchedule.positions
     rw [← selectedScheduleExact]
     exact badFacts.2
-  obtain ⟨_digest, _workAnswer, _base, trial, workAccepted, _baseExact,
-      _pairLabeled, _workLabeled, workCoordinate, realized⟩ :=
+  obtain ⟨digest, workAnswer, base, trial, workAccepted, prefinalOrigin,
+      baseExact, pairLabeled, workLabeled, workCoordinate, realized⟩ :=
     exact_compiler_accepted_dag_q16_operational_realization transitionRoom
       programmedCover input (frontierExact input)
-  refine ⟨input, k12, bad, trial, rfl, badFacts.1, ?_⟩
+  have actualTrial : ExactFixedK13ActualJointTrial input trial :=
+    ⟨digest, workAnswer, base, workAccepted, prefinalOrigin, baseExact,
+      pairLabeled, workLabeled, workCoordinate, realized⟩
+  refine ⟨input, k12, bad, trial, rfl, badFacts.1, actualTrial, ?_⟩
   let router := exactCompilerExposureTrialDagRouter parameters transitionFuel
     trial (exactPlainRomCursor configuration sample.1).erase
   let coordinates := exactCompilerCausalFinalWorkQ16Coordinates parameters
     router sample.2
   have q16Success : q16DigestForestSucceeds coordinates.2.2 :=
-    operational_realization_implies_q16_digest_forest_succeeds realized.2
+    operational_realization_implies_q16_digest_forest_succeeds realized
   have q16Bad : successfulQ16DigestForestEquiv
         ⟨coordinates.2.2, q16Success⟩ ∈
       q16SuccessfulCoordinatesBadEvent bad :=
-    operational_all_in_bad_implies_successful_coordinate_bad realized.2 bad
+    operational_all_in_bad_implies_successful_coordinate_bad realized bad
       allBad
   refine ⟨q16Success, ?_⟩
   change FinalWork34Accepted coordinates.2.1 ∧
     successfulQ16DigestForestEquiv ⟨coordinates.2.2, q16Success⟩ ∈
       q16SuccessfulCoordinatesBadEvent bad
   have coordinateWorkAccepted : FinalWork34Accepted coordinates.2.1 := by
-    rw [realized.1]
+    rw [workCoordinate]
     exact workAccepted
   exact ⟨coordinateWorkAccepted, q16Bad⟩
 
