@@ -54,7 +54,7 @@ theorem fold_armed_alpha_empty_before_selected_fold
     ∀ (records : List UnifiedExposureRecord)
       (state : IndexedUnifiedExposureState globalOracleCalls
         FoldArmedCompleteMemory),
-      state.exposureIndex + records.length = foldExposureIndex →
+      state.exposureIndex + records.length ≤ foldExposureIndex →
       state.memory.2.1.expectedBoundary = none →
       state.memory.2.1.alpha.producers = [] →
       let reached := indexedStateAfterRecords transitionFuel
@@ -113,7 +113,7 @@ theorem fold_armed_alpha_empty_before_selected_fold
             rw [show (foldArmedAlphaState state).memory.alpha.producers = [] by
               exact producersEmpty]
             simp [updateAlphaZeroProducers, alphaZeroAdvancedSlot?]
-      have nextEnd : next.exposureIndex + tail.length = foldExposureIndex := by
+      have nextEnd : next.exposureIndex + tail.length ≤ foldExposureIndex := by
         simp only [next, controller, indexed_after_answer_exposure_index,
           List.length_cons] at endExact ⊢
         omega
@@ -145,7 +145,8 @@ theorem exact_fold_armed_reached_fold_alpha_empty
     fold.trial.val finalTrial.val fold.prior
       (foldArmedInitialState
         (exactPlainRomCursor configuration sample.1).erase)
-  · simpa [foldArmedInitialState] using fold.trialExact.symm
+  · have exact : fold.prior.length = fold.trial.val := fold.trialExact.symm
+    simpa [foldArmedInitialState, exact]
   · rfl
   · rfl
 
