@@ -34,6 +34,7 @@ open AspisK1.V7Tag73ExactQ16CausalCoordinateOrder
 open AspisK1.V7Tag73ExactSourceAcceptanceModel
 open AspisK1.V7Tag73FinalWorkDigestProbability
 open AspisK1.V7Tag73OperationalSemanticReplay
+open AspisK1.V7Tag73SamplerDecoder
 open AspisK1.V7Tag73SecureCircleMap
 open AspisK1.V7Tag73SqueezeInputStateInjectivity
 open AspisK1.V7Tag73TranscriptSchedule
@@ -147,6 +148,9 @@ theorem exact_compiler_alpha_zero_chain_has_root_order
               (exactOperationalTape input).messages.finalGrinding.selected) =
         some q16Base ∧
       q16Base = (exactOperationalRawTrace input).q16BaseDigest ∧
+      decodeChallengeParameter exactSecureCircleParameterMap (.alpha 0)
+          outputs =
+        some ((exactOperationalTape input).messages.challengeValue (.alpha 0)) ∧
       decodeTagQM31ExactLE
           ((exactOperationalTape input).messages.challengeValue (.alpha 0)) =
         some exactValue ∧
@@ -155,8 +159,9 @@ theorem exact_compiler_alpha_zero_chain_has_root_order
       afterAlpha, afterBlocks, afterFinal256, outputs, advances, exactValue,
       _producerPrefixRun, _boundaryRun, boundaryLookup, _squeezeRun,
       afterAlphaExact, _final256Run, outputsLength, advancesLength,
-      coordinates, terminalExact, _callsExact, exactDecode, operationalValue,
-      final256Lookup, alphaFinalNonceLookup, alphaQ16BaseExact⟩ :=
+      coordinates, terminalExact, _callsExact, acceptedParameter, exactDecode,
+      operationalValue, final256Lookup, alphaFinalNonceLookup,
+      alphaQ16BaseExact⟩ :=
     exact_compiler_constructs_alpha_zero_prefix_coordinates input
   obtain ⟨strictBeforeFinal256, strictPrefinalDigest, workAnswer, q16Base,
       _strictFinal256Lookup, workLookup, workAccepted, strictFinalNonceLookup,
@@ -198,7 +203,7 @@ theorem exact_compiler_alpha_zero_chain_has_root_order
     ⟨beforeAlphaProducer.digest, rfl⟩, ordered, outputsLength, outputsPositive,
     advancesLength, terminalExact,
     afterDigest, rfl, ?_, ?_, workAccepted, ?_, strictQ16BaseExact,
-    exactDecode, operationalValue⟩
+    acceptedParameter, exactDecode, operationalValue⟩
   · simpa [producerInput] using boundaryLookup
   · simpa [final256Input] using final256Lookup
   · simpa [prefinalExact] using workLookup

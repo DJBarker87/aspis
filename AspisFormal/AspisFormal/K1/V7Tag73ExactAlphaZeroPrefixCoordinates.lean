@@ -152,6 +152,9 @@ theorem exact_compiler_constructs_alpha_zero_prefix_coordinates
       afterBlocks.calls = beforeAlpha.calls ++
         gammaConsumedRawCallsFrom (.challenge (.alpha 0)) 0
           beforeAlpha.digest outputs advances ∧
+      decodeChallengeParameter exactSecureCircleParameterMap (.alpha 0)
+          outputs =
+        some ((exactOperationalTape input).messages.challengeValue (.alpha 0)) ∧
       decodeTagQM31ExactLE
           ((exactOperationalTape input).messages.challengeValue (.alpha 0)) =
         some exactValue ∧
@@ -338,7 +341,8 @@ theorem exact_compiler_constructs_alpha_zero_prefix_coordinates
     producerPrefixRun, boundaryRun, boundaryLookup, squeezeRun,
     afterAlphaExact,
     final256Run, outputsLength, advancesLength, coordinates, terminalExact,
-    callsExact, exactDecode, operationalValue, final256Lookup, ?_, q16BaseExact⟩
+    callsExact, acceptedParameter, exactDecode, operationalValue,
+    final256Lookup, ?_, q16BaseExact⟩
   simpa [AspisK1.V7Tag73TranscriptSchedule.Payload.label,
     AspisK1.V7Tag73TranscriptSchedule.Payload.data] using finalNonceLookup
 

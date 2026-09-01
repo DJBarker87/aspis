@@ -502,7 +502,8 @@ theorem exact_compiler_alpha_zero_boundary_installs_block_zero
       ⟨producerDigest, producerInputExact⟩, _ordered, _outputsLength,
       _outputsPositive, _advancesLength, _terminalExact, _afterAlphaExact,
       _final256InputExact, _final256Lookup, _workLookup, _workAccepted,
-      _finalNonceLookup, _q16BaseExact, _exactDecode, _operationalExact⟩ :=
+      _finalNonceLookup, _q16BaseExact, _acceptedParameter, _exactDecode,
+      _operationalExact⟩ :=
     exact_compiler_alpha_zero_chain_has_root_order transitionRoom input
   obtain ⟨actor, rootMember⟩ :=
     exact_final_table_lookup_has_root_record input producerInput

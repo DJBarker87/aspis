@@ -115,7 +115,8 @@ theorem exact_fixed_clean_k13_adversary_anchor_alpha_terminal_eq
       _leftOutputsLength, leftOutputsPositive, leftAdvancesLength,
       leftTerminalExact, leftAfterAlphaExact, leftFinal256InputExact,
       leftFinal256Lookup, _leftWorkLookup, _leftWorkAccepted,
-      leftFinalNonceLookup, leftQ16BaseExact, leftDecode, leftOperational⟩ :=
+      leftFinalNonceLookup, leftQ16BaseExact, _leftAcceptedParameter,
+      leftDecode, leftOperational⟩ :=
     exact_compiler_alpha_zero_chain_has_root_order transitionRoom
       leftWitness.input
   obtain ⟨rightProducer, rightFinal256Input, rightBeforeAlpha, rightAfterAlpha,
@@ -126,7 +127,7 @@ theorem exact_fixed_clean_k13_adversary_anchor_alpha_terminal_eq
       rightAdvancesLength, rightTerminalExact, rightAfterAlphaExact,
       rightFinal256InputExact, rightFinal256Lookup, _rightWorkLookup,
       _rightWorkAccepted, rightFinalNonceLookup, rightQ16BaseExact,
-      rightDecode, rightOperational⟩ :=
+      _rightAcceptedParameter, rightDecode, rightOperational⟩ :=
     exact_compiler_alpha_zero_chain_has_root_order transitionRoom
       rightWitness.input
   have leftPrefinalExact : leftAfterFinal256.digest = digest :=

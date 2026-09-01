@@ -233,7 +233,7 @@ theorem exact_fixed_k13_actual_trial_has_alpha_zero_terminal_profile
       outputsPositive,
       advancesLength, terminalExact, afterAlphaExact, _final256InputExact,
       _final256Lookup, _workLookup, _workAccepted, finalNonceLookup,
-      q16BaseExact, exactDecode, operationalExact⟩ :=
+      q16BaseExact, _acceptedParameter, exactDecode, operationalExact⟩ :=
     exact_compiler_alpha_zero_chain_has_root_order transitionRoom input
   obtain ⟨prefinalDigest, prefinalOrigin, prefinalExact⟩ :=
     exact_fixed_k13_actual_trial_prefinal_eq_of_q16_base_lookup input trial
