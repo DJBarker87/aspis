@@ -28,6 +28,7 @@ open AspisK1.V7Tag73AlphaZeroCausalController
 open AspisK1.V7Tag73AtomicForkUniformScheduler
 open AspisK1.V7Tag73CausalDagFinalWorkQ16Controller
 open AspisK1.V7Tag73CausalFoldAlphaFinalWorkQ16Coordinates
+open AspisK1.V7Tag73CausalSlotRouterLookup
 open AspisK1.V7Tag73DeterministicRefinement
 open AspisK1.V7Tag73ExactAdversaryAnchorPrefinalChronology
 open AspisK1.V7Tag73ExactAdversaryAnchorFinalProfile
@@ -44,6 +45,7 @@ open AspisK1.V7Tag73ExactFixedOperationalStateMap
 open AspisK1.V7Tag73ExactFixedQ16JointEventHandoff
 open AspisK1.V7Tag73ExactFixedQ16VerifierAnchorInvariant
 open AspisK1.V7Tag73ExactFinal256DigestRootOrigin
+open AspisK1.V7Tag73ExactFoldAlphaFinalWorkQ16RootRouting
 open AspisK1.V7Tag73ExactPairTrialProbabilityClosure
 open AspisK1.V7Tag73ExactParsedProofSourceBinding
 open AspisK1.V7Tag73ExactPlainRomRun
@@ -135,6 +137,30 @@ theorem exact_challenge_prefixes_of_same_four_blocks_eq
     refine ⟨blocksExact, decodeChallengeParameter_functional circleMap id leftBlocks
       leftValue rightValue leftAccepted ?_⟩
     simpa [blocksExact] using rightAccepted
+
+/-- A routed alpha-zero answer is literally the corresponding component of
+the complete 518-coordinate context. -/
+theorem exact_fold_alpha_coordinate_eq_of_routed_lookup
+    (parameters : ExactCompilerResourceParameters)
+    (router : ExactCompilerCausalFoldAlphaFinalWorkQ16Router parameters)
+    (tape : FreshAnswerTape Digest256
+      (exactCompilerTargetCaps parameters).length)
+    (block : Fin 4) (answer : Digest256)
+    (routed :
+      causalRoutedAnswer? (some (Sum.inl block)) router
+          (foldAlphaFinalWorkQ16NamedSlotInputTape
+            (exactCompilerFoldAlphaFinalWorkQ16InputTape parameters tape)) =
+        some answer) :
+    (exactCompilerCausalFoldAlphaFinalWorkQ16Coordinates parameters router
+      tape).1.2 block = answer := by
+  change (router.coordinateEquiv
+      (foldAlphaFinalWorkQ16NamedSlotInputTape
+        (exactCompilerFoldAlphaFinalWorkQ16InputTape parameters tape))).1
+        ⟨some (Sum.inl block), Finset.mem_univ _⟩ = answer
+  exact coordinate_eq_of_causalRoutedAnswer?_eq_some router
+    (foldAlphaFinalWorkQ16NamedSlotInputTape
+      (exactCompilerFoldAlphaFinalWorkQ16InputTape parameters tape))
+    (some (Sum.inl block)) (Finset.mem_univ _) answer routed
 
 /-- The source-alignment argument needs only the literal master-tape prefix,
 not the obsolete 513-coordinate representation that originally produced it. -/
@@ -355,6 +381,95 @@ theorem exact_fixed_clean_pair_k13_adversary_anchor_has_shared_native_pause
     exact rightPrefix
   exact ⟨queryPrior, queryLater, target, answer, requestState, rightRemaining,
     adversaryExact, rightPrefix', requestExact⟩
+
+/-- The two accepted executions have the identical literal combined-root
+record prefix before the selected final-work exposure.  In particular this
+transports inputs and actors, not merely the answer tape. -/
+theorem exact_fixed_clean_pair_k13_adversary_anchor_root_priors_eq
+    {HiddenTape TapeIdentity Observation Statement Payload Witness : Type}
+    {parameters : ExactCompilerResourceParameters}
+    {transitionFuel : Nat}
+    {configuration : ExactPlainRomWitnessConfiguration HiddenTape TapeIdentity
+      Observation Statement Tag73K12ParsedProof Payload Witness parameters}
+    {projection : AcceptedTapeProjection Statement Tag73K12ParsedProof Payload}
+    {fixedInstance : PublicInstance Statement}
+    {decoder : ExactDecoderInstantiation QM31Exact}
+    (foldTrial finalTrial : ExactCompilerExposureTrial parameters)
+    (hidden : HiddenTape)
+    (left right : FreshAnswerTape Digest256
+      (exactCompilerTargetCaps parameters).length)
+    (leftWitness : ExactFixedCleanK13PairTrialWitness transitionFuel
+      configuration projection fixedInstance decoder (hidden, left) foldTrial
+        finalTrial)
+    (rightWitness : ExactFixedCleanK13PairTrialWitness transitionFuel
+      configuration projection fixedInstance decoder (hidden, right) foldTrial
+        finalTrial)
+    (anchor : ExactFixedK13AdversaryAnchor leftWitness.joint.input finalTrial)
+    (programmedCover : 518 ≤ 2 * parameters.forkRequestCap)
+    (contextExact :
+      let router := exactCompilerFoldAlphaFinalWorkQ16Router parameters
+        transitionFuel foldTrial.val
+        (alphaFinalWorkQ16DagController transitionFuel finalTrial.val
+          (alphaZeroCausalController transitionFuel 0))
+        (inactiveAlphaZeroMemory, inactiveDagMemory)
+        (exactPlainRomCursor configuration hidden).erase
+      (exactCompilerCausalFoldAlphaFinalWorkQ16Coordinates parameters router
+          left).1 =
+        (exactCompilerCausalFoldAlphaFinalWorkQ16Coordinates parameters router
+          right).1)
+    (foldExact :
+      let router := exactCompilerFoldAlphaFinalWorkQ16Router parameters
+        transitionFuel foldTrial.val
+        (alphaFinalWorkQ16DagController transitionFuel finalTrial.val
+          (alphaZeroCausalController transitionFuel 0))
+        (inactiveAlphaZeroMemory, inactiveDagMemory)
+        (exactPlainRomCursor configuration hidden).erase
+      (exactCompilerCausalFoldAlphaFinalWorkQ16Coordinates parameters router
+          left).2.1 =
+        (exactCompilerCausalFoldAlphaFinalWorkQ16Coordinates parameters router
+          right).2.1) :
+    ∃ leftPrior leftLater rightPrior rightLater leftInput rightInput
+        leftAnswer rightAnswer rightActor,
+      exactFixedRootRecords leftWitness.joint.input.package.root =
+        leftPrior ++
+          (.machineFresh .adversary leftInput leftAnswer :
+            UnifiedExposureRecord) :: leftLater ∧
+      exactFixedRootRecords rightWitness.joint.input.package.root =
+        rightPrior ++
+          (.machineFresh rightActor rightInput rightAnswer :
+            UnifiedExposureRecord) :: rightLater ∧
+      finalTrial.val = leftPrior.length ∧
+      finalTrial.val = rightPrior.length ∧
+      leftPrior = rightPrior := by
+  obtain ⟨leftPrior, leftLater, leftInput, leftAnswer, _leftDigest, _leftBase,
+      _leftAbsorbActor, leftRootExact, leftTrialExact, _leftPrefix, _leftOrigin,
+      _leftKind, _leftBaseExact, _leftAbsorbMember⟩ :=
+    exact_fixed_k13_adversary_anchor_has_prefinal_digest_prefix finalTrial
+      leftWitness.joint anchor
+  obtain ⟨rightPrior, rightLater, rightActor, rightInput, rightAnswer,
+      _rightDigest, _rightBase, _rightAbsorbActor, rightRootExact,
+      rightTrialExact, _rightPrefix, _rightOrigin, _rightBaseExact,
+      _rightAbsorbMember⟩ :=
+    exact_fixed_k13_actual_trial_has_selected_prefinal_prefix
+      rightWitness.joint.input finalTrial rightWitness.joint.actualTrial
+  obtain ⟨rightRemaining, rightTapeFromLeft⟩ :=
+    exact_fold_alpha_coordinates_force_pre_final_tape_prefix
+      leftWitness.joint.input foldTrial finalTrial 0 leftPrior
+      ((.machineFresh .adversary leftInput leftAnswer :
+        UnifiedExposureRecord) :: leftLater)
+      (by simpa only [List.cons_append] using leftRootExact) leftTrialExact
+      programmedCover right contextExact foldExact
+  rw [fold_alpha_final_work_q16_named_slot_tape_preserves_master_list]
+    at rightTapeFromLeft
+  have priorExact : leftPrior = rightPrior :=
+    exact_fixed_k13_selected_root_priors_eq_of_right_tape_prefix finalTrial
+      hidden left right leftWitness.joint.input rightWitness.joint.input
+      leftPrior leftLater rightPrior rightLater .adversary rightActor leftInput
+      rightInput leftAnswer rightAnswer leftRootExact rightRootExact
+      leftTrialExact rightTrialExact ⟨rightRemaining, rightTapeFromLeft⟩
+  exact ⟨leftPrior, leftLater, rightPrior, rightLater, leftInput, rightInput,
+    leftAnswer, rightAnswer, rightActor, leftRootExact, rightRootExact,
+    leftTrialExact, rightTrialExact, priorExact⟩
 
 /-- The complete-coordinate prefix fixes the selected literal SHA input and
 its source-bound pre-final digest across two clean pair witnesses. -/
@@ -869,9 +984,13 @@ theorem exact_fixed_clean_pair_k13_adversary_anchor_disclosed_final_eq
 #print axioms
   exact_challenge_prefixes_of_same_four_blocks_eq
 #print axioms
+  exact_fold_alpha_coordinate_eq_of_routed_lookup
+#print axioms
   exact_fixed_clean_pair_k13_adversary_anchor_replays_raw_pre_anchor_tape
 #print axioms
   exact_fixed_clean_pair_k13_adversary_anchor_has_shared_native_pause
+#print axioms
+  exact_fixed_clean_pair_k13_adversary_anchor_root_priors_eq
 #print axioms
   exact_fixed_clean_pair_k13_adversary_anchor_selected_input_and_digest_eq
 #print axioms
