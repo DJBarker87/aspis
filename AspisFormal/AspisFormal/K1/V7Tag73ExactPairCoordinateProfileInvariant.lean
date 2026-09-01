@@ -3,6 +3,7 @@ import AspisFormal.K1.V7Tag73FoldAlphaPreFinalPrefix
 import AspisFormal.K1.V7Tag73ExactFixedCleanQ16ProfileInvariant
 import AspisFormal.K1.V7Tag73ExactAdversaryAnchorSelectedInputInvariant
 import AspisFormal.K1.V7Tag73ExactAdversaryAnchorFinalProfile
+import AspisFormal.K1.V7Tag73IncrementalSamplerControl
 
 /-!
 # Complete-coordinate K1.3 source noninterference
@@ -55,6 +56,7 @@ open AspisK1.V7Tag73FixedFieldMessageBridge
 open AspisK1.V7Tag73FutureFreeCheckedRefinementBisimulation
 open AspisK1.V7Tag73IndexedAlignedRecordReplay
 open AspisK1.V7Tag73IndexedControllerTraceAlignment
+open AspisK1.V7Tag73IncrementalSamplerControl
 open AspisK1.V7Tag73NoPairOccurrenceTrichotomy
 open AspisK1.V7Tag73OperationalOracleExposure
 open AspisK1.V7Tag73OperationalSemanticReplay
@@ -63,6 +65,7 @@ open AspisK1.V7Tag73RawProverMessages
 open AspisK1.V7Tag73SchedulerCausalStateAlignment
 open AspisK1.V7Tag73SchedulerNativeResult
 open AspisK1.V7Tag73SchedulerNativePrefixTraversal
+open AspisK1.V7Tag73SamplerDecoder
 open AspisK1.V7Tag73SqueezeInputStateInjectivity
 open AspisK1.V7Tag73TranscriptSchedule
 open AspisPool.AlgorithmicCircleDecoderV7
@@ -91,6 +94,47 @@ theorem exact_fold_alpha_context_eq_components
       (exactCompilerCausalFoldAlphaFinalWorkQ16Coordinates parameters router
         right).1.2 := by
   exact ⟨congrArg Prod.fst contextExact, congrArg Prod.snd contextExact⟩
+
+/-- Two exact accepted challenge prefixes of one four-block tape are the same
+prefix and decode to the same value.  This is the deployed first-success
+property, not an independence or fixed-length assumption. -/
+theorem exact_challenge_prefixes_of_same_four_blocks_eq
+    (circleMap : SecureCircleParameterMap) (id : ChallengeId)
+    (full : Fin 4 → Digest256)
+    (leftBlocks rightBlocks : List Digest256)
+    (leftValue rightValue : Qm31Bytes)
+    (leftPrefix : leftBlocks = (List.ofFn full).take leftBlocks.length)
+    (rightPrefix : rightBlocks = (List.ofFn full).take rightBlocks.length)
+    (leftAccepted : decodeChallengeParameter circleMap id leftBlocks =
+      some leftValue)
+    (rightAccepted : decodeChallengeParameter circleMap id rightBlocks =
+      some rightValue) :
+    leftBlocks = rightBlocks ∧ leftValue = rightValue := by
+  rcases Nat.le_total leftBlocks.length rightBlocks.length with leftLe | rightLe
+  · have isPrefix : leftBlocks <+: rightBlocks := by
+      rw [leftPrefix, rightPrefix]
+      exact List.take_prefix_take_left leftLe
+    obtain ⟨suffix, rightExact⟩ := isPrefix
+    have suffixNil := decodeChallengeParameter_accepted_prefix_suffix_nil
+      circleMap id leftBlocks suffix leftValue rightValue leftAccepted (by
+        simpa [rightExact] using rightAccepted)
+    subst suffix
+    have blocksExact : leftBlocks = rightBlocks := by simpa using rightExact
+    refine ⟨blocksExact, decodeChallengeParameter_functional circleMap id leftBlocks
+      leftValue rightValue leftAccepted ?_⟩
+    simpa [blocksExact] using rightAccepted
+  · have isPrefix : rightBlocks <+: leftBlocks := by
+      rw [leftPrefix, rightPrefix]
+      exact List.take_prefix_take_left rightLe
+    obtain ⟨suffix, leftExact⟩ := isPrefix
+    have suffixNil := decodeChallengeParameter_accepted_prefix_suffix_nil
+      circleMap id rightBlocks suffix rightValue leftValue rightAccepted (by
+        simpa [leftExact] using leftAccepted)
+    subst suffix
+    have blocksExact : leftBlocks = rightBlocks := by simpa using leftExact.symm
+    refine ⟨blocksExact, decodeChallengeParameter_functional circleMap id leftBlocks
+      leftValue rightValue leftAccepted ?_⟩
+    simpa [blocksExact] using rightAccepted
 
 /-- The source-alignment argument needs only the literal master-tape prefix,
 not the obsolete 513-coordinate representation that originally produced it. -/
@@ -822,6 +866,8 @@ theorem exact_fixed_clean_pair_k13_adversary_anchor_disclosed_final_eq
 
 #print axioms
   exact_fold_alpha_context_eq_components
+#print axioms
+  exact_challenge_prefixes_of_same_four_blocks_eq
 #print axioms
   exact_fixed_clean_pair_k13_adversary_anchor_replays_raw_pre_anchor_tape
 #print axioms
