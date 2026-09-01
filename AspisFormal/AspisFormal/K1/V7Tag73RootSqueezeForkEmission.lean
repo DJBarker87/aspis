@@ -26,12 +26,14 @@ open AspisK1.V7Tag73ConcreteRestorationClient
 open AspisK1.V7Tag73FutureFreeFullControl
 open AspisK1.V7Tag73OperationalCausalInjection
 open AspisK1.V7Tag73PreparedRestorationRoles
+open AspisK1.V7Tag73RawSameTapeSource
 open AspisK1.V7Tag73RawStrictReplacementSuffix
 open AspisK1.V7Tag73RootSqueezePreparationClosure
 open AspisK1.V7Tag73SchedulerNativePlainRomExperiment
 open AspisK1.V7Tag73SchedulerNativeResult
 open AspisK1.V7Tag73SequentialOracleRuns
 open AspisK1.V7Tag73TotalizedMachineReflection
+open AspisK1.V7Tag73TranscriptSchedule
 open AspisK1.V7Tag73UniformRawVerifierExecution
 
 noncomputable section
@@ -107,6 +109,45 @@ theorem run_machine_preserves_history_total_coherent
                   limits actor state nextState input output coherent queried
               simpa [runMachine, queried] using
                 inductionHypothesis nextState (next output) nextCoherent
+
+/-- Observe only the first, output-answer phase of a restoration pair fork.
+Unlike the legacy header observer, this deliberately rejects `.forkAdvance`,
+so the resulting theorem is usable by a pre-answer alpha-output router. -/
+def schedulerNativePairForkHeader?
+    {globalOracleCalls : Nat} {Result : Type*}
+    (cursor : SchedulerNativeCursor globalOracleCalls Result) :
+    Option PreparedForkHeader :=
+  match cursor with
+  | .forkPair frozenHistory _pairRoom outputInput advanceInput template _next =>
+      some { frozenHistory, outputInput, advanceInput, template }
+  | .machine .. | .forkAdvance .. | .returned .. | .failed .. => none
+
+/-- The guarded prepared dispatcher starts at `.forkPair`, not midway through
+the answer-dependent `.forkAdvance` phase. -/
+theorem dispatch_prepared_restoration_emits_pair_fork_header
+    {Statement Proof Payload Result : Type u}
+    {globalOracleCalls : Nat}
+    (startProgram : OracleMachine
+      (CheckedRawTag73AdversaryReturnedValue Statement Proof Payload))
+    (environment : FutureFreeEnvironment)
+    (configuration : ConcreteRestorationConfiguration)
+    (prepared : PreparedConcreteRestoration Statement Proof Payload)
+    (accumulator : ConcreteRestorationAccumulator Statement Proof Payload)
+    (resume : ConcreteRestorationReply →
+      ConcreteRestorationAccumulator Statement Proof Payload →
+        SchedulerNativeCursor globalOracleCalls
+          (ConcreteRestorationClientRun Statement Proof Payload Result))
+    (prefixCoherent : HistoryTotalCoherent prepared.programmingBase)
+    (globalLimit : configuration.oracleLimits.totalCalls ≤ globalOracleCalls)
+    (pairRoom : prepared.programmingBase.history.length + 2 ≤
+      globalOracleCalls) :
+    schedulerNativePairForkHeader?
+        (dispatchPreparedRestoration startProgram environment configuration
+          prepared accumulator resume) =
+      some (preparedForkHeader configuration prepared) := by
+  unfold dispatchPreparedRestoration
+  rw [dif_pos prefixCoherent, dif_pos globalLimit, dif_pos pairRoom]
+  rfl
 
 /-- A literal root squeeze prepares successfully in every live accumulator
 that still stores the completed root at index zero.  Its programming base is
@@ -267,7 +308,7 @@ theorem literal_root_squeeze_dispatch_emits_fork
       HistoryTotalCoherent prepared.programmingBase ∧
       (configuration.oracleLimits.totalCalls ≤ globalOracleCalls →
         prepared.programmingBase.history.length + 2 ≤ globalOracleCalls →
-        schedulerNativeForkHeader?
+        schedulerNativePairForkHeader?
             (dispatchOneConcreteRestoration
               (machine.blackBox.start hidden machine.observation) environment
               configuration accumulator
@@ -283,15 +324,82 @@ theorem literal_root_squeeze_dispatch_emits_fork
   intro globalLimit pairRoom
   unfold dispatchOneConcreteRestoration dispatchConcreteRestoration
   rw [ready]
-  exact dispatch_prepared_restoration_emits_role_erased_fork
+  exact dispatch_prepared_restoration_emits_pair_fork_header
     (machine.blackBox.start hidden machine.observation) environment
     configuration prepared accumulator resume coherent globalLimit pairRoom
+
+/-- Typed form of the root result.  The owner and block are computed from the
+selected verifier transition before either uniform fork answer is exposed,
+while the executable cursor is proved to start at the matching `.forkPair`. -/
+theorem literal_root_squeeze_dispatch_emits_typed_fork
+    {HiddenTape TapeIdentity Observation Statement Proof Payload Result : Type u}
+    {globalOracleCalls : Nat}
+    (machine : UniformRawVerifierMachine HiddenTape TapeIdentity Observation
+      Statement Proof Payload)
+    (hidden : HiddenTape)
+    (runtime : SchedulerNativePlainRomRootRuntime TapeIdentity Statement Proof
+      Payload)
+    (runs : RootProjectedTotalizedRuns machine hidden runtime)
+    (configuration : ConcreteRestorationConfiguration)
+    (limitsExact : configuration.oracleLimits = machine.adversaryLimits)
+    (transitionIndex : Nat)
+    (transition : FutureFreeTransition)
+    (transitionExact : verifierTransitionAt? runtime.node transitionIndex =
+      some transition)
+    (outputInput advanceInput : ShaInput)
+    (pairExact : squeezePairInputsOfTransition transition =
+      some (outputInput, advanceInput))
+    (environment : FutureFreeEnvironment)
+    (accumulator : ConcreteRestorationAccumulator Statement Proof Payload)
+    (rootStored : accumulator.node? 0 = some runtime.node)
+    (resume : ConcreteRestorationReply →
+      ConcreteRestorationAccumulator Statement Proof Payload →
+        SchedulerNativeCursor globalOracleCalls
+          (ConcreteRestorationClientRun Statement Proof Payload Result)) :
+    ∃ (prepared : PreparedConcreteRestoration Statement Proof Payload)
+        (role : PreparedRestorationPairRole),
+      prepareConcreteRestorationFromStartProgram
+          (machine.blackBox.start hidden machine.observation) configuration
+          accumulator
+          { nodeId := 0, verifierTransitionIndex := transitionIndex } =
+        .ready prepared ∧
+      HistoryTotalCoherent prepared.programmingBase ∧
+      preparedRestorationPairRole? prepared = some role ∧
+      role.inputs = (prepared.outputInput, prepared.advanceInput) ∧
+      role.outputInput =
+        bytes prepared.transition.before.core.digest ++ [domSqueeze] ∧
+      role.advanceInput =
+        bytes prepared.transition.before.core.digest ++ [domAdvance] ∧
+      (configuration.oracleLimits.totalCalls ≤ globalOracleCalls →
+        prepared.programmingBase.history.length + 2 ≤ globalOracleCalls →
+        schedulerNativePairForkHeader?
+            (dispatchOneConcreteRestoration
+              (machine.blackBox.start hidden machine.observation) environment
+              configuration accumulator
+              { nodeId := 0, verifierTransitionIndex := transitionIndex }
+              resume) =
+          some (preparedForkHeader configuration prepared)) := by
+  obtain ⟨prepared, ready, coherent, emits⟩ :=
+    literal_root_squeeze_dispatch_emits_fork machine hidden runtime runs
+      configuration limitsExact transitionIndex transition transitionExact
+      outputInput advanceInput pairExact environment accumulator rootStored
+      resume
+  obtain ⟨role, projected, inputs, outputExact, advanceExact⟩ :=
+    ready_preparation_has_pair_role
+      (machine.blackBox.start hidden machine.observation) configuration
+      accumulator { nodeId := 0, verifierTransitionIndex := transitionIndex }
+      prepared ready
+  exact ⟨prepared, role, ready, coherent, projected, inputs, outputExact,
+    advanceExact, emits⟩
 
 #print axioms successful_query_preserves_history_total_coherent
 #print axioms run_prefix_preserves_history_total_coherent
 #print axioms run_machine_preserves_history_total_coherent
+#print axioms schedulerNativePairForkHeader?
+#print axioms dispatch_prepared_restoration_emits_pair_fork_header
 #print axioms literal_root_squeeze_request_prepares_ready_coherent
 #print axioms literal_root_squeeze_dispatch_emits_fork
+#print axioms literal_root_squeeze_dispatch_emits_typed_fork
 
 end
 
