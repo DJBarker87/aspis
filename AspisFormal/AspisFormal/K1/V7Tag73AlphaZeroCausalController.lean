@@ -328,6 +328,114 @@ theorem alpha_zero_selected_slot_used_after_answer
     slot ∈ (alphaZeroAfterMemory transitionFuel boundaryIndex state answer).usedSlots := by
   simp [alphaZeroAfterMemory, inputExact, selected]
 
+/-- Every producer retained after one answer was either already present or
+was created by that answer and its literal pre-answer input.  This includes
+the unique boundary reset. -/
+theorem alpha_zero_after_memory_member_old_or_current
+    {globalOracleCalls : Nat}
+    (transitionFuel boundaryIndex : Nat)
+    (state : IndexedUnifiedExposureState globalOracleCalls
+      AlphaZeroControllerMemory)
+    (input : ShaInput) (answer : Digest256) (producer : AlphaZeroProducer)
+    (inputExact : unifiedInputBeforeAnswer? transitionFuel state.cursor =
+      some input)
+    (member : producer ∈
+      (alphaZeroAfterMemory transitionFuel boundaryIndex state answer).producers) :
+    producer ∈ state.memory.producers ∨
+      (producer.sourceInput = input ∧ producer.digest = answer) := by
+  unfold alphaZeroAfterMemory at member
+  rw [inputExact] at member
+  change producer ∈
+    (if (state.exposureIndex = boundaryIndex &&
+        isAlphaZeroBoundaryInput input) then
+      [{ digest := answer, block := 0, sourceInput := input }]
+    else updateAlphaZeroProducers state.memory.producers input answer) at member
+  split at member
+  · simp only [List.mem_singleton] at member
+    subst producer
+    exact Or.inr ⟨rfl, rfl⟩
+  · rcases update_alpha_zero_producers_new_digest state.memory.producers input
+      answer producer member with old | ⟨digestExact, sourceExact⟩
+    · exact Or.inl old
+    · exact Or.inr ⟨sourceExact, digestExact⟩
+
+/-- A fresh root answer preserves producer-digest uniqueness, including at
+the unique boundary reset where the inventory becomes a singleton. -/
+theorem alpha_zero_after_memory_producer_digests_nodup
+    {globalOracleCalls : Nat}
+    (transitionFuel boundaryIndex : Nat)
+    (state : IndexedUnifiedExposureState globalOracleCalls
+      AlphaZeroControllerMemory)
+    (input : ShaInput) (answer : Digest256)
+    (inputExact : unifiedInputBeforeAnswer? transitionFuel state.cursor =
+      some input)
+    (currentNodup :
+      (state.memory.producers.map AlphaZeroProducer.digest).Nodup)
+    (answerFresh :
+      answer ∉ state.memory.producers.map AlphaZeroProducer.digest) :
+    ((alphaZeroAfterMemory transitionFuel boundaryIndex state answer).producers.map
+      AlphaZeroProducer.digest).Nodup := by
+  unfold alphaZeroAfterMemory
+  rw [inputExact]
+  change
+    ((if (state.exposureIndex = boundaryIndex &&
+        isAlphaZeroBoundaryInput input) then
+      [{ digest := answer, block := 0, sourceInput := input }]
+    else updateAlphaZeroProducers state.memory.producers input answer).map
+      AlphaZeroProducer.digest).Nodup
+  split
+  · simp
+  · rcases update_alpha_zero_producers_eq_or_append state.memory.producers
+      input answer with unchanged | ⟨block, appended⟩
+    · simpa [unchanged] using currentNodup
+    · rw [appended, List.map_append]
+      simp only [List.map_singleton]
+      rw [List.nodup_append]
+      refine ⟨currentNodup, by simp, ?_⟩
+      intro prior priorMember singleton singletonMember
+      simp only [List.mem_singleton] at singletonMember
+      subst singleton
+      exact fun equal => answerFresh (equal ▸ priorMember)
+
+/-- A fresh advance sibling below a known producer appends the exact next
+block producer, provided the unique boundary reset is already behind us. -/
+theorem alpha_zero_memory_after_advance_contains_producer
+    {globalOracleCalls : Nat}
+    (transitionFuel boundaryIndex : Nat)
+    (state : IndexedUnifiedExposureState globalOracleCalls
+      AlphaZeroControllerMemory)
+    (input : ShaInput) (answer : Digest256) (parent : AlphaZeroProducer)
+    (bounded : parent.block.val + 1 < 4)
+    (indexNe : state.exposureIndex ≠ boundaryIndex)
+    (inputExact : unifiedInputBeforeAnswer? transitionFuel state.cursor =
+      some input)
+    (inputIsAdvance : input = bytes parent.digest ++ [domAdvance])
+    (digestNodup :
+      (state.memory.producers.map AlphaZeroProducer.digest).Nodup)
+    (parentMember : parent ∈ state.memory.producers) :
+    ({ digest := answer, block := ⟨parent.block.val + 1, bounded⟩, sourceInput := input } : AlphaZeroProducer) ∈
+        (alphaZeroAfterMemory transitionFuel boundaryIndex state answer).producers := by
+  have advanced : alphaZeroAdvancedSlot? state.memory.producers input =
+      some ⟨parent.block.val + 1, bounded⟩ := by
+    rw [inputIsAdvance]
+    exact alpha_zero_advanced_slot_of_digest_nodup parent bounded
+      state.memory.producers digestNodup parentMember
+  unfold alphaZeroAfterMemory
+  rw [inputExact]
+  change ({ digest := answer, block := ⟨parent.block.val + 1, bounded⟩, sourceInput := input } : AlphaZeroProducer) ∈
+    (if (state.exposureIndex = boundaryIndex &&
+        isAlphaZeroBoundaryInput input) then
+      [{ digest := answer, block := 0, sourceInput := input }]
+    else updateAlphaZeroProducers state.memory.producers input answer)
+  have boundaryFalse :
+      (state.exposureIndex = boundaryIndex &&
+        isAlphaZeroBoundaryInput input) = false := by
+    simp [indexNe]
+  rw [if_neg (Bool.eq_false_iff.mp boundaryFalse)]
+  unfold updateAlphaZeroProducers
+  rw [advanced]
+  simp
+
 /-- Once the unique boundary record has been consumed, every later memory
 step preserves the existing producer inventory as a prefix. -/
 theorem alpha_zero_after_memory_producers_prefix_of_index_ne
@@ -539,6 +647,9 @@ def exactCompilerConcreteAlphaFinalWorkQ16Router
 #print axioms alpha_zero_after_boundary_has_block_zero_producer
 #print axioms alpha_zero_preferred_of_output_match
 #print axioms alpha_zero_selected_slot_used_after_answer
+#print axioms alpha_zero_after_memory_member_old_or_current
+#print axioms alpha_zero_after_memory_producer_digests_nodup
+#print axioms alpha_zero_memory_after_advance_contains_producer
 #print axioms alpha_zero_after_memory_producers_prefix_of_index_ne
 #print axioms alpha_zero_after_memory_producers_eq_or_append_of_index_ne
 #print axioms alpha_zero_after_memory_producer_digests_nodup_of_index_ne
