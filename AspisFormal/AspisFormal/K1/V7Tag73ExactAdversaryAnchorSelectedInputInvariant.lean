@@ -650,6 +650,45 @@ theorem exact_fixed_clean_k13_adversary_anchor_final256_input_eq
   · simpa [leftCanonicalInput] using leftLookup
   · simpa [rightCanonicalInput, digestExact] using rightLookup
 
+/-- Equal canonical `final256` producer inputs also fix the exact transcript
+state immediately before that absorption.  This is a serialization result,
+not an inversion of SHA-256. -/
+theorem exact_fixed_clean_k13_adversary_anchor_before_final256_digest_eq
+    {HiddenTape TapeIdentity Observation Statement Payload Witness : Type}
+    {parameters : ExactCompilerResourceParameters}
+    {transitionFuel : Nat}
+    {configuration : ExactPlainRomWitnessConfiguration HiddenTape TapeIdentity
+      Observation Statement Tag73K12ParsedProof Payload Witness parameters}
+    {projection : AcceptedTapeProjection Statement Tag73K12ParsedProof Payload}
+    {fixedInstance : PublicInstance Statement}
+    {decoder : ExactDecoderInstantiation QM31Exact}
+    (transitionRoom : 2 ≤ transitionFuel)
+    (trial : ExactCompilerExposureTrial parameters) (hidden : HiddenTape)
+    (left right : FreshAnswerTape Digest256
+      (exactCompilerTargetCaps parameters).length)
+    (leftWitness : ExactFixedK13JointTrialWitness transitionFuel configuration
+      projection fixedInstance decoder (hidden, left) trial)
+    (rightWitness : ExactFixedK13JointTrialWitness transitionFuel configuration
+      projection fixedInstance decoder (hidden, right) trial)
+    (anchor : ExactFixedK13AdversaryAnchor leftWitness.input trial)
+    (programmedCover : 513 ≤ 2 * parameters.forkRequestCap)
+    (coordinateExact :
+      (exactFixedK13TrialCoordinates transitionFuel configuration trial
+        (hidden, left)).1 =
+      (exactFixedK13TrialCoordinates transitionFuel configuration trial
+        (hidden, right)).1) :
+    ∃ leftBefore rightBefore : EvalState,
+      leftBefore.digest = rightBefore.digest := by
+  obtain ⟨leftBefore, rightBefore, _digest, inputExact, _leftLookup,
+      _rightLookup⟩ :=
+    exact_fixed_clean_k13_adversary_anchor_final256_input_eq transitionRoom
+      trial hidden left right leftWitness rightWitness anchor programmedCover
+      coordinateExact
+  refine ⟨leftBefore, rightBefore, ?_⟩
+  apply digest_bytes_injective
+  have prefixExact := congrArg (List.take 32) inputExact
+  simpa using prefixExact
+
 /-- The canonical final-256 producer equality fixes every serialized prover
 field block before q16. -/
 theorem exact_fixed_clean_k13_adversary_anchor_final_values_eq
@@ -751,6 +790,8 @@ theorem exact_fixed_clean_k13_adversary_anchor_final_values_eq
   exact_fixed_clean_k13_adversary_anchor_selected_input_and_digest_eq
 #print axioms
   exact_fixed_clean_k13_adversary_anchor_final256_input_eq
+#print axioms
+  exact_fixed_clean_k13_adversary_anchor_before_final256_digest_eq
 #print axioms
   exact_fixed_clean_k13_adversary_anchor_final_values_eq
 
