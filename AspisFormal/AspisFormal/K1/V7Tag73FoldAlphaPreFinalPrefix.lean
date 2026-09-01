@@ -36,6 +36,7 @@ open AspisK1.V7Tag73ExactPlainRomRun
 open AspisK1.V7Tag73ExactSourceAcceptanceModel
 open AspisK1.V7Tag73ExactDagQ16ChainRouting
 open AspisK1.V7Tag73ExactFoldAlphaFinalWorkQ16RootRouting
+open AspisK1.V7Tag73ExactCausalRouterTapeAlignment
 open AspisK1.V7Tag73FoldAlphaFinalWorkQ16ControllerComposition
 open AspisK1.V7Tag73FoldAlphaFinalWorkQ16ControllerProjection
 open AspisK1.V7Tag73FinalWorkQ16CandidateController
@@ -46,6 +47,18 @@ open AspisK1.V7Tag73OperationalOracleExposure
 open AspisK1.V7Tag73TranscriptSchedule
 
 noncomputable section
+
+theorem fold_alpha_final_work_q16_named_slot_tape_preserves_master_list
+    (parameters : ExactCompilerResourceParameters)
+    (tape : FreshAnswerTape Digest256
+      (exactCompilerTargetCaps parameters).length) :
+    freshAnswerTapeToList
+        (foldAlphaFinalWorkQ16NamedSlotInputTape
+          (exactCompilerFoldAlphaFinalWorkQ16InputTape parameters tape)) =
+      freshAnswerTapeToList tape := by
+  unfold foldAlphaFinalWorkQ16NamedSlotInputTape
+    exactCompilerFoldAlphaFinalWorkQ16InputTape
+  rw [fresh_answer_tape_to_list_cast, fresh_answer_tape_to_list_cast]
 
 abbrev CompletePreFinalMemory :=
   FoldAlphaFinalWorkQ16ControllerMemory
@@ -445,6 +458,7 @@ theorem exact_fold_alpha_coordinates_force_pre_final_tape_prefix
   exact rightPrefix
 
 #print axioms complete_pre_final_named_slots_only_fold_or_alpha
+#print axioms fold_alpha_final_work_q16_named_slot_tape_preserves_master_list
 #print axioms exact_fold_alpha_coordinates_force_pre_final_tape_prefix
 
 end
