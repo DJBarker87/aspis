@@ -45,6 +45,62 @@ open AspisV5ComponentCQM31TowerExact
 
 noncomputable section
 
+/-- A canonical final-nonce lookup and an already-recorded final-nonce query
+with the same q16-base answer carry the same pre-final digest. -/
+theorem final_nonce_lookup_and_root_record_fix_digest
+    {HiddenTape TapeIdentity Observation Statement Payload Result : Type}
+    {parameters : ExactCompilerResourceParameters}
+    {transitionFuel : Nat}
+    {configuration : ExactPlainRomConfiguration HiddenTape TapeIdentity
+      Observation Statement Tag73K12ParsedProof Payload Result parameters}
+    {projection : AcceptedTapeProjection Statement Tag73K12ParsedProof Payload}
+    {fixedInstance : PublicInstance Statement}
+    {sample : ExactCompilerSample HiddenTape parameters}
+    (input : ExactK12OperationalInput transitionFuel configuration projection
+      fixedInstance sample)
+    (candidateDigest selectedDigest candidateBase selectedBase : Digest256)
+    (selectedActor : QueryActor)
+    (candidateLookup : tableLookup (exactOperationalTable input)
+        (bytes candidateDigest ++ [domAbsorb, finalWorkNonceLabel] ++
+          bytes (exactOperationalTape input).messages.finalGrinding.selected) =
+      some candidateBase)
+    (baseExact : candidateBase = selectedBase)
+    (selectedMember :
+      (.machineFresh selectedActor
+        (literalFinalWorkKey selectedDigest
+          (exactOperationalTape input).messages.finalGrinding.selected).absorbInput
+        selectedBase : UnifiedExposureRecord) ∈
+        exactFixedRootRecords input.package.root) :
+    candidateDigest = selectedDigest := by
+  let candidateInput : ShaInput :=
+    bytes candidateDigest ++ [domAbsorb, finalWorkNonceLabel] ++
+      bytes (exactOperationalTape input).messages.finalGrinding.selected
+  obtain ⟨candidateActor, candidateMemberRaw⟩ :=
+    exact_final_table_lookup_has_root_record input candidateInput candidateBase
+      (by simpa [candidateInput] using candidateLookup)
+  have candidateMember :
+      (.machineFresh candidateActor candidateInput selectedBase :
+          UnifiedExposureRecord) ∈
+        exactFixedRootRecords input.package.root := by
+    simpa [baseExact] using candidateMemberRaw
+  have recordExact :
+      (.machineFresh candidateActor candidateInput selectedBase :
+          UnifiedExposureRecord) =
+        (.machineFresh selectedActor
+          (literalFinalWorkKey selectedDigest
+            (exactOperationalTape input).messages.finalGrinding.selected).absorbInput
+          selectedBase : UnifiedExposureRecord) :=
+    List.inj_on_of_nodup_map (exact_root_record_answers_nodup input)
+      candidateMember selectedMember rfl
+  have inputExact : candidateInput =
+      (literalFinalWorkKey selectedDigest
+        (exactOperationalTape input).messages.finalGrinding.selected).absorbInput := by
+    injection recordExact
+  apply digest_bytes_injective
+  have prefixExact := congrArg (List.take 32) inputExact
+  simpa [candidateInput, RawFinalWorkKey.absorbInput, literalFinalWorkKey]
+    using prefixExact
+
 /-- Any final-nonce lookup returning the accepted trial's q16 base starts from
 the exact pre-final digest carried by that trial. -/
 theorem exact_fixed_k13_actual_trial_prefinal_eq_of_q16_base_lookup
@@ -188,6 +244,7 @@ theorem exact_fixed_k13_actual_trial_has_alpha_zero_terminal_profile
 
 #print axioms exact_fixed_k13_actual_trial_prefinal_eq_of_q16_base_lookup
 #print axioms exact_fixed_k13_actual_trial_has_alpha_zero_terminal_profile
+#print axioms final_nonce_lookup_and_root_record_fix_digest
 
 end
 

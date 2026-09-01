@@ -287,7 +287,7 @@ theorem exact_fixed_k13_adversary_anchor_has_prefinal_digest_prefix
     (witness : ExactFixedK13JointTrialWitness transitionFuel configuration
       projection fixedInstance decoder sample trial)
     (anchor : ExactFixedK13AdversaryAnchor witness.input trial) :
-    ∃ prior later target answer digest,
+    ∃ prior later target answer digest base absorbActor,
       exactFixedRootRecords witness.input.package.root =
           prior ++
             (.machineFresh .adversary target answer : UnifiedExposureRecord) ::
@@ -300,18 +300,32 @@ theorem exact_fixed_k13_adversary_anchor_has_prefinal_digest_prefix
             (exactOperationalTape witness.input).messages.finalGrinding.selected).workInput ∨
         target =
           (literalFinalWorkKey digest
-            (exactOperationalTape witness.input).messages.finalGrinding.selected).absorbInput) := by
+            (exactOperationalTape witness.input).messages.finalGrinding.selected).absorbInput) ∧
+      base = (exactOperationalRawTrace witness.input).q16BaseDigest ∧
+      (.machineFresh absorbActor
+        (literalFinalWorkKey digest
+          (exactOperationalTape witness.input).messages.finalGrinding.selected).absorbInput
+        base : UnifiedExposureRecord) ∈
+        exactFixedRootRecords witness.input.package.root := by
   obtain ⟨anchorPrior, anchorLater, target, answer, anchorExact,
       anchorIndex⟩ := anchor
   obtain ⟨digest, workAnswer, base, _workAccepted, prefinalOrigin,
-      _baseExact, pairLabeled, _workLabeled, _workCoordinate, _realized⟩ :=
+      baseExact, pairLabeled, _workLabeled, _workCoordinate, _realized⟩ :=
     witness.actualTrial
   rcases pairLabeled with
       ⟨pairPrior, middle, pairLater, workActor, absorbActor, pairExact,
         pairIndex⟩ |
       ⟨pairPrior, middle, pairLater, workActor, absorbActor, pairExact,
         pairIndex⟩
-  · have pairHeadExact :
+  · have absorbMember :
+        (.machineFresh absorbActor
+          (literalFinalWorkKey digest
+            (exactOperationalTape witness.input).messages.finalGrinding.selected).absorbInput
+          base : UnifiedExposureRecord) ∈
+        exactFixedRootRecords witness.input.package.root := by
+      rw [pairExact]
+      simp
+    have pairHeadExact :
         exactFixedRootRecords witness.input.package.root =
           pairPrior ++
             (.machineFresh workActor
@@ -336,9 +350,18 @@ theorem exact_fixed_k13_adversary_anchor_has_prefinal_digest_prefix
     refine ⟨anchorPrior, anchorLater,
       (literalFinalWorkKey digest
         (exactOperationalTape witness.input).messages.finalGrinding.selected).workInput,
-      answer, digest, anchorExact, anchorIndex, ?_, prefinalOrigin, Or.inl rfl⟩
+      answer, digest, base, absorbActor, anchorExact, anchorIndex, ?_,
+      prefinalOrigin, Or.inl rfl, baseExact, absorbMember⟩
     simp [HasLiteralStatePrefix, RawFinalWorkKey.workInput, literalFinalWorkKey]
-  · have pairHeadExact :
+  · have absorbMember :
+        (.machineFresh absorbActor
+          (literalFinalWorkKey digest
+            (exactOperationalTape witness.input).messages.finalGrinding.selected).absorbInput
+          base : UnifiedExposureRecord) ∈
+        exactFixedRootRecords witness.input.package.root := by
+      rw [pairExact]
+      simp
+    have pairHeadExact :
         exactFixedRootRecords witness.input.package.root =
           pairPrior ++
             (.machineFresh absorbActor
@@ -363,7 +386,8 @@ theorem exact_fixed_k13_adversary_anchor_has_prefinal_digest_prefix
     refine ⟨anchorPrior, anchorLater,
       (literalFinalWorkKey digest
         (exactOperationalTape witness.input).messages.finalGrinding.selected).absorbInput,
-      answer, digest, anchorExact, anchorIndex, ?_, prefinalOrigin, Or.inr rfl⟩
+      answer, digest, base, absorbActor, anchorExact, anchorIndex, ?_,
+      prefinalOrigin, Or.inr rfl, baseExact, absorbMember⟩
     simp [HasLiteralStatePrefix, RawFinalWorkKey.absorbInput, literalFinalWorkKey]
 
 /-- Equality of the four q16 semantic inputs is required only between two

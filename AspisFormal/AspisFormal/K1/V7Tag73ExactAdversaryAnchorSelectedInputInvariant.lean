@@ -157,20 +157,34 @@ theorem exact_fixed_k13_actual_trial_has_selected_prefinal_prefix
       fixedInstance sample)
     (trial : ExactCompilerExposureTrial parameters)
     (actual : ExactFixedK13ActualJointTrial input trial) :
-    ∃ prior later actor target answer digest,
+    ∃ prior later actor target answer digest base absorbActor,
       exactFixedRootRecords input.package.root =
         prior ++ (.machineFresh actor target answer : UnifiedExposureRecord) ::
           later ∧
       trial.val = prior.length ∧
       HasLiteralStatePrefix digest target ∧
-      ExactOperationalPrefinalDigest input digest := by
+      ExactOperationalPrefinalDigest input digest ∧
+      base = (exactOperationalRawTrace input).q16BaseDigest ∧
+      (.machineFresh absorbActor
+        (literalFinalWorkKey digest
+          (exactOperationalTape input).messages.finalGrinding.selected).absorbInput
+        base : UnifiedExposureRecord) ∈
+        exactFixedRootRecords input.package.root := by
   obtain ⟨digest, workAnswer, base, _workAccepted, prefinalOrigin,
-      _baseExact, pairLabeled, _workLabeled, _workCoordinate, _realized⟩ :=
+      baseExact, pairLabeled, _workLabeled, _workCoordinate, _realized⟩ :=
     actual
   rcases pairLabeled with
       ⟨prior, middle, later, workActor, absorbActor, pairExact, trialExact⟩ |
       ⟨prior, middle, later, workActor, absorbActor, pairExact, trialExact⟩
-  · refine ⟨prior,
+  · have absorbMember :
+        (.machineFresh absorbActor
+          (literalFinalWorkKey digest
+            (exactOperationalTape input).messages.finalGrinding.selected).absorbInput
+          base : UnifiedExposureRecord) ∈
+        exactFixedRootRecords input.package.root := by
+      rw [pairExact]
+      simp
+    refine ⟨prior,
       middle ++ (.machineFresh absorbActor
         (literalFinalWorkKey digest
           (exactOperationalTape input).messages.finalGrinding.selected).absorbInput
@@ -178,11 +192,20 @@ theorem exact_fixed_k13_actual_trial_has_selected_prefinal_prefix
       workActor,
       (literalFinalWorkKey digest
         (exactOperationalTape input).messages.finalGrinding.selected).workInput,
-      workAnswer, digest, ?_, trialExact, ?_, prefinalOrigin⟩
+      workAnswer, digest, base, absorbActor, ?_, trialExact, ?_,
+      prefinalOrigin, baseExact, absorbMember⟩
     · simpa only [List.cons_append, List.append_assoc] using pairExact
     · simp [HasLiteralStatePrefix, RawFinalWorkKey.workInput,
         literalFinalWorkKey]
-  · refine ⟨prior,
+  · have absorbMember :
+        (.machineFresh absorbActor
+          (literalFinalWorkKey digest
+            (exactOperationalTape input).messages.finalGrinding.selected).absorbInput
+          base : UnifiedExposureRecord) ∈
+        exactFixedRootRecords input.package.root := by
+      rw [pairExact]
+      simp
+    refine ⟨prior,
       middle ++ (.machineFresh workActor
         (literalFinalWorkKey digest
           (exactOperationalTape input).messages.finalGrinding.selected).workInput
@@ -190,7 +213,8 @@ theorem exact_fixed_k13_actual_trial_has_selected_prefinal_prefix
       absorbActor,
       (literalFinalWorkKey digest
         (exactOperationalTape input).messages.finalGrinding.selected).absorbInput,
-      base, digest, ?_, trialExact, ?_, prefinalOrigin⟩
+      base, digest, base, absorbActor, ?_, trialExact, ?_, prefinalOrigin,
+      baseExact, absorbMember⟩
     · simpa only [List.cons_append, List.append_assoc] using pairExact
     · simp [HasLiteralStatePrefix, RawFinalWorkKey.absorbInput,
         literalFinalWorkKey]
@@ -357,18 +381,36 @@ theorem exact_fixed_clean_k13_adversary_anchor_selected_input_and_digest_eq
         (hidden, left)).1 =
       (exactFixedK13TrialCoordinates transitionFuel configuration trial
         (hidden, right)).1) :
-    ∃ selectedInput leftDigest rightDigest,
+    ∃ selectedInput leftDigest rightDigest leftBase rightBase
+        leftAbsorbActor rightAbsorbActor,
       HasLiteralStatePrefix leftDigest selectedInput ∧
       HasLiteralStatePrefix rightDigest selectedInput ∧
       leftDigest = rightDigest ∧
       ExactOperationalPrefinalDigest leftWitness.input leftDigest ∧
-      ExactOperationalPrefinalDigest rightWitness.input rightDigest := by
-  obtain ⟨leftPrior, leftLater, leftInput, leftAnswer, leftDigest,
-      leftRootExact, leftTrialExact, leftPrefix, leftOrigin, _leftKind⟩ :=
+      ExactOperationalPrefinalDigest rightWitness.input rightDigest ∧
+      leftBase =
+        (exactOperationalRawTrace leftWitness.input).q16BaseDigest ∧
+      rightBase =
+        (exactOperationalRawTrace rightWitness.input).q16BaseDigest ∧
+      (.machineFresh leftAbsorbActor
+        (literalFinalWorkKey leftDigest
+          (exactOperationalTape leftWitness.input).messages.finalGrinding.selected).absorbInput
+        leftBase : UnifiedExposureRecord) ∈
+        exactFixedRootRecords leftWitness.input.package.root ∧
+      (.machineFresh rightAbsorbActor
+        (literalFinalWorkKey rightDigest
+          (exactOperationalTape rightWitness.input).messages.finalGrinding.selected).absorbInput
+        rightBase : UnifiedExposureRecord) ∈
+        exactFixedRootRecords rightWitness.input.package.root := by
+  obtain ⟨leftPrior, leftLater, leftInput, leftAnswer, leftDigest, leftBase,
+      leftAbsorbActor, leftRootExact, leftTrialExact, leftPrefix, leftOrigin,
+      _leftKind, leftBaseExact, leftAbsorbMember⟩ :=
     exact_fixed_k13_adversary_anchor_has_prefinal_digest_prefix trial
       leftWitness anchor
   obtain ⟨rightPrior, rightLater, rightActor, rightInput, rightAnswer,
-      rightDigest, rightRootExact, rightTrialExact, rightPrefix, rightOrigin⟩ :=
+      rightDigest, rightBase, rightAbsorbActor, rightRootExact,
+      rightTrialExact, rightPrefix, rightOrigin, rightBaseExact,
+      rightAbsorbMember⟩ :=
     exact_fixed_k13_actual_trial_has_selected_prefinal_prefix
       rightWitness.input trial rightWitness.actualTrial
   obtain ⟨rightRemaining, rightTapeFromLeft⟩ :=
@@ -460,8 +502,10 @@ theorem exact_fixed_clean_k13_adversary_anchor_selected_input_and_digest_eq
       bytes leftDigest = leftInput.take 32 := leftPrefix
       _ = rightInput.take 32 := by rw [selectedInputExact]
       _ = bytes rightDigest := rightPrefix.symm
-  refine ⟨leftInput, leftDigest, rightDigest, leftPrefix, ?_, digestExact,
-    leftOrigin, rightOrigin⟩
+  refine ⟨leftInput, leftDigest, rightDigest, leftBase, rightBase,
+    leftAbsorbActor, rightAbsorbActor, leftPrefix, ?_, digestExact,
+    leftOrigin, rightOrigin, leftBaseExact, rightBaseExact, leftAbsorbMember,
+    rightAbsorbMember⟩
   simpa [selectedInputExact] using rightPrefix
 
 /-- Equal residual fibres have the identical canonical `final256` producer
@@ -527,8 +571,9 @@ theorem exact_fixed_clean_k13_adversary_anchor_final256_input_eq
     exact_fixed_k13_adversary_anchor_has_earlier_final256_root_record
       transitionRoom trial leftWitness anchor
   obtain ⟨rightPrior, rightLater, rightActor, rightAnchorInput,
-      rightAnchorAnswer, rightDigest, rightRootExact, rightTrialExact,
-      rightAnchorPrefix, rightOrigin⟩ :=
+      rightAnchorAnswer, rightDigest, _rightBase, _rightAbsorbActor,
+      rightRootExact, rightTrialExact, rightAnchorPrefix, rightOrigin,
+      _rightBaseExact, _rightAbsorbMember⟩ :=
     exact_fixed_k13_actual_trial_has_selected_prefinal_prefix
       rightWitness.input trial rightWitness.actualTrial
   let leftPrior : List UnifiedExposureRecord :=

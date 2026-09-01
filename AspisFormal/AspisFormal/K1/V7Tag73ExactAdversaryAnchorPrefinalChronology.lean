@@ -226,8 +226,9 @@ theorem exact_fixed_k13_adversary_anchor_prefinal_is_not_later_root_answer
       (∀ verifierPrior producerInput verifierLater,
         witness.input.package.root.full.projection.rootPrefixes.verifier.freshQueries ≠
           verifierPrior ++ (producerInput, digest) :: verifierLater) := by
-  obtain ⟨rootPrior, rootLater, anchorInput, anchorAnswer, digest, rootExact,
-      trialExact, statePrefix, prefinalOrigin, anchorKind⟩ :=
+  obtain ⟨rootPrior, rootLater, anchorInput, anchorAnswer, digest, _base,
+      _absorbActor, rootExact, trialExact, statePrefix, prefinalOrigin,
+      anchorKind, _baseExact, _absorbMember⟩ :=
     exact_fixed_k13_adversary_anchor_has_prefinal_digest_prefix trial witness
       anchor
   obtain ⟨queryPrior, queryLater, adversaryExact, rootPriorExact⟩ :=
