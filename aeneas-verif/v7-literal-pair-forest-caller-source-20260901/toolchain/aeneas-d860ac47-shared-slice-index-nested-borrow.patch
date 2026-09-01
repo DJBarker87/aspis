@@ -1,0 +1,21 @@
+--- a/src/interp/InterpStatements.ml
++++ b/src/interp/InterpStatements.ml
+@@ -726,6 +726,18 @@
+           (lazy
+             ("Instantiating [Box::new] with nested borrows is not allowed for \
+               now (" ^ fn_ptr_to_string ctx func ^ ")"))
++      else if
++        fid
++        = Index
++            { is_array = false; mutability = RShared; is_range = false }
++      then
++        (* A shared single-element slice index neither moves nor mutates its
++           element.  Its result is an immutable reborrow of the selected
++           element, so instantiating it at a type which structurally contains
++           mutable borrows does not grant access to those nested borrows.  Keep
++           the general restriction below for mutable indexing, subslicing,
++           arrays, and every other builtin. *)
++        ()
+       else
+         [%classert] span
+           (List.for_all

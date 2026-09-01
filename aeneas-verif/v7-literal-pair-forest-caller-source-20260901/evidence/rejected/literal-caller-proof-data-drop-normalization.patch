@@ -1,0 +1,10 @@
+diff --git a/programs/aspis-verifier/src/v7_pair_forest_dispatch.rs b/programs/aspis-verifier/src/v7_pair_forest_dispatch.rs
+--- a/programs/aspis-verifier/src/v7_pair_forest_dispatch.rs
++++ b/programs/aspis-verifier/src/v7_pair_forest_dispatch.rs
+@@ -885,6 +885,7 @@ where
+         &validated.statement,
+         statement_digest,
+     )?;
++    drop(data);
+     emit_result_v1(&validated.statement)
+ }

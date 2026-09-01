@@ -1,0 +1,265 @@
+Source revision: 309b9c73353366a32671901be64cf8386404fd89
+Canonical extraction patch: PASS
+Patched v7_verifier.rs SHA-256: ede2541418bb566d9dada7598d49b3acb41a3b4636f47446a65f274761b1641c
+Patched v7_pair_forest_dispatch.rs SHA-256: d5a380e7782b1cb9673794470ed3951421d1df6e19b4fff7695ea1d8522e8df3
+Rust candidate cargo check: PASS, 0.40 s, 201,664 KiB, swap 0
+Static schedule focused release test: PASS, 2.03 s, 358,304 KiB, swap 0
+
+Complete caller Charon: PASS
+Unit: aspis-v7-literal-metadata-charon-r2.service
+Invocation: 36167fb6ba1d4cb9b56e0fc4ca00557c
+Wall: 8.45 s
+Peak RSS: 960,960 KiB
+Swap: 0
+LLBC SHA-256 after exact M31 rename: b64831d57bee7ffd15fe2e0a24f20f58fe9b7355f35ab28ccfc64a725b70315b
+
+Exact M31 metadata rename: PASS
+Unit: aspis-v7-literal-m31rename-r1.service
+Invocation: 1610fe2d68934a25b86700750c8c092b
+Wall: 2.56 s
+Peak RSS: 902,344 KiB
+Swap: 0
+
+Complete caller Aeneas translation/emission: PASS
+Unit: aspis-v7-literal-metadata-aeneas-m31ctor-r1.service
+Invocation: 0a7dd932773e4432b24760fba52c5c28
+Wall: 11:21.89
+Peak RSS: 3,136,060 KiB
+Swap: 0
+Generated root: v7_pair_forest_dispatch.process_with_clear_return_data
+
+Literal readonly-metadata helper Charon: PASS
+Unit: aspis-v7-literal-metadata-helper-charon-r1.service
+Invocation: 3b9efa5cc4434ceaa3a5cf5f687f2be7
+Wall: 7.06 s
+Peak RSS: 947,192 KiB
+Swap: 0
+
+Literal readonly-metadata helper Aeneas: PASS
+Unit: aspis-v7-literal-metadata-helper-aeneas-r1.service
+Invocation: e6c291f4900a420aa103b246383f798b
+Wall: 0.24 s
+Peak RSS: 58,256 KiB
+Swap: 0
+
+Focused metadata Lean chain: PASS
+Final bundle replay unit: aspis-v7-literal-metadata-bundle-replay-r1.service
+Final bundle replay invocation: e43fb755c45341f7844cb87d0be69d69
+Wall: 10.32 s
+Peak RSS: 2,724,516 KiB
+Swap: 0
+Strongest theorem: readonly_account_metadata_v1_success_fields
+Axioms: propext, Classical.choice, Quot.sound
+Forbidden constructs: none
+
+Exact-six-account Charon diagnostic: PASS
+Unit: aspis-v7-literal-six-account-helper-charon-r1.service
+Invocation: d9a7004349c74e4a8ef3651f44e32690
+Wall: 7.02 s
+Swap: 0
+
+Exact-six-account Aeneas diagnostic: BLOCKED
+Unit: aspis-v7-literal-six-account-helper-aeneas-r1.service
+Invocation: eaeaa5b67cfe440eaa8b6d2e43c1efa8
+Wall: 0.16 s
+Peak RSS: 53,328 KiB
+Swap: 0
+Error: InterpPaths.ml:236, Inconsistent projection: PtrMetadata
+Source: v7_pair_forest_dispatch.rs lines 424:8-424:106
+
+Classification: useful source-unblock milestone, not literal caller closure.
+The full caller translates and emits; its generated Funs module is not yet
+kernel compiled because the remaining external functions are not all filled.
+
+Exact-six PtrMetadata closure: PASS
+Reachable-domain-equivalent len preflight Rust gate:
+Unit: aspis-v7-six-len-preflight-rust-r1.service
+Invocation: 3a6442455fd54346aa1f3ad0708c3266
+Wall: 0.45 s
+Peak RSS: 201,996 KiB
+Swap: 0
+
+Focused exact-six Charon: PASS
+Unit: aspis-v7-six-len-preflight-charon-r1.service
+Invocation: aed3fbe6ec28479489c5faf5050310d5
+Wall: 13.42 s
+Peak RSS: 516,724 KiB
+Swap: 0
+
+Focused exact-six Aeneas: PASS
+Unit: aspis-v7-six-len-preflight-shared-index-aeneas-r1.service
+Invocation: 16418d79ea85454db05c39c75f751094
+Wall: 0.30 s
+Peak RSS: 63,888 KiB
+Swap: 0
+Emitted operation: six ordered Slice.index_usize calls, indices 0 through 5
+
+Complete caller Charon with exact-six transparent: PASS
+Wrapper unit: aspis-v7-full-six-transparent-charon-r1.service
+Invocation: 6c62a874272e46b6bd3ffbead4231426
+Charon subprocess wall: 14.81 s compile plus extraction
+Peak RSS: 516,628 KiB
+Swap: 0
+Note: the wrapper subsequently exited 2 because the M31 rename script had not
+yet been staged at its requested path. The raw LLBC records has_errors=false;
+the separately executed exact rename produced the frozen LLBC below, which the
+successful complete Aeneas run consumed.
+Frozen renamed LLBC SHA-256: 28a7a6d0bb27bbf066ad14173040c9d169a322a6c5d116fa69b19e4c3d96f782
+
+Complete caller Aeneas with exact-six transparent: PASS
+Unit: aspis-v7-full-six-transparent-aeneas-r1.service
+Invocation: cfe2ec164700440f971e16442920ba02
+Wall: 11:18.57
+Peak RSS: 2,730,736 KiB
+Cgroup peak: 2.5 GiB under High 5 GiB / Max 6 GiB
+Swap: 0
+Generated root: v7_pair_forest_dispatch.process_with_clear_return_data
+External templates: 83 total / 73 rendered Lean axioms
+exact_six_account_refs_v1 external declaration: absent
+
+Focused exact-six and metadata Lean chain: PASS
+Unit: aspis-v7-six-account-bundle-lean-r1.service
+Invocation: b488b97d83bd488d85e7f4a09fe0e584
+Wall: 17.51 s
+Peak RSS: 2,716,024 KiB
+Swap: 0
+Strongest new theorem: exact_six_account_refs_v1_success_has_literal_order
+Axioms: propext, Classical.choice, Quot.sound
+Forbidden constructs: none
+
+Updated classification: exact six-account source obstruction closed; complete
+caller translation/emission green. This is not yet a kernel-checked literal
+caller theorem because the remaining external function templates, beginning
+with borrow_readonly_account_data on the source side, are not all filled.
+
+Borrow-ready read-only account-data model: PASS
+Diagnostic owned-result Charon unit: aspis-v7-borrow-owned-charon-r3b.service
+Diagnostic owned-result Charon invocation: 0788b89ab5cc4d9ea6a2653d6f3e6dfa
+Diagnostic Charon wall: 3:05.17 (cold dependency compile)
+Diagnostic Charon peak RSS: 917,300 KiB
+Diagnostic Charon swap: 0
+Diagnostic LLBC SHA-256: 419e80a41b4df57d8bf5826424e2338a878307afc80c597331a4c6fb00a42e5f
+
+Diagnostic owned-result Aeneas: expected rejection
+Unit: aspis-v7-borrow-owned-aeneas-r3.service
+Invocation: 0e999169546b48e39a7ab54ed23b145f
+Wall: 0.89 s
+Peak RSS: 61,424 KiB
+Swap: 0
+Error: SymbolicToPureValues.ml:878, nested mutable AEndedProjBorrows loans
+
+Borrow-ready final Lean replay: PASS
+Unit: aspis-v7-borrow-ready-final-replay-r4c.service
+Invocation: a548d5b38be9404db29da60e2333d110
+Wall: 17.66 s
+Peak RSS: 2,745,948 KiB
+Swap: 0
+Strongest new theorem: borrow_readonly_account_data_success_is_exact_view
+Axioms: propext, Classical.choice, Quot.sound
+Forbidden constructs: none
+
+Updated classification: the caller's read-only account data is exact in the
+borrow-ready production-entry model, with no project axiom. Literal arbitrary
+RefCell-borrow-state behavior remains an explicit Solana/Aeneas platform
+boundary. The next finite caller work is the ordinary Rust/platform external
+inventory; no caller-acceptance premise has been introduced.
+
+Deterministic core-primitives focused Lean chain: PASS
+External unit: aspis-v7-core-primitives-external-r1.service
+External invocation: 398956ab07ef4cb7a55081cc0c1c86d7
+External wall: 1.51 s
+External peak RSS: 2,545,644 KiB
+External swap: 0
+Bridge unit: aspis-v7-core-primitives-bridge-r1.service
+Bridge invocation: 58daddc891114b01bb5646fe96e0a522
+Bridge wall: 1.50 s
+Bridge peak RSS: 2,544,840 KiB
+Bridge swap: 0
+
+Complete focused Lean replay including core primitives: PASS
+Unit: aspis-v7-core-primitives-final-replay-r1.service
+Invocation: e9e1d2d441ed4396b62dc2c88fc629c1
+Wall: 19.68 s
+Peak RSS: 2,752,624 KiB
+Swap: 0
+New executable external definitions: 12
+Remaining ordinary external templates: 57
+Axioms: propext, Classical.choice, Quot.sound
+Forbidden constructs: none
+
+Updated classification: twelve deterministic Rust core operations now have
+executable, signature-matched definitions and focused branch/rejection
+theorems. The archival generated external template remains only an inventory;
+the accepted focused graph does not import those twelve axioms. Literal
+arbitrary-state RefCell borrow behavior remains the smallest platform boundary,
+and 57 ordinary Rust templates plus the remaining named platform groups still
+separate this milestone from a literal whole-caller theorem.
+
+Extended deterministic core-primitives focused chain: PASS
+External unit: aspis-v7-core-primitives-external-r3.service
+External invocation: a03a3f586da34d96a79e9c50051fa683
+External wall: 1.54 s
+External peak RSS: 2,555,624 KiB
+External swap: 0
+Bridge unit: aspis-v7-core-primitives-bridge-r3.service
+Bridge invocation: 647bbf76a6e64d91b025c22e9f35e28f
+Bridge wall: 1.51 s
+Bridge peak RSS: 2,565,148 KiB
+Bridge swap: 0
+
+Complete focused Lean replay including all 27 core definitions: PASS
+Unit: aspis-v7-core-primitives-final-replay-r3.service
+Invocation: f7835d08886e4d53bf77c6af164d3e94
+Wall: 19.71 s
+Peak RSS: 2,747,876 KiB
+Swap: 0
+Executable ordinary external definitions: 27
+Remaining ordinary external templates: 42
+Axioms: propext, Classical.choice, Quot.sound
+Forbidden constructs: none
+
+Updated classification: range clone, option try/equality, result mapping, boxed
+identity and five owned-vector operations join the first twelve deterministic
+core definitions. The literal RefCell dynamic check remains the smallest
+platform boundary. Forty-two ordinary templates and the named platform groups
+still separate this focused source graph from a literal whole-caller theorem.
+
+Finite Windows and conversion cluster: PASS
+TypesExternal unit: aspis-v7-windows-typesexternal-r1.service
+TypesExternal invocation: 8c978b8cbd06439cb13bd78bcea1d09e
+TypesExternal wall: 1.50 s
+TypesExternal peak RSS: 2,549,904 KiB
+TypesExternal swap: 0
+Dependent Types unit: aspis-v7-windows-types-r1.service
+Dependent Types invocation: 81981bfac626438680f52d7ee98f9249
+Dependent Types wall: 3.43 s
+Dependent Types peak RSS: 2,750,084 KiB
+Dependent Types swap: 0
+External unit: aspis-v7-core-primitives-external-r5.service
+External invocation: 3896d22148384ae283e489fe1cc07c3a
+External wall: 1.63 s
+External peak RSS: 2,560,308 KiB
+External swap: 0
+Bridge unit: aspis-v7-core-primitives-bridge-r4.service
+Bridge invocation: 2665628b595c421b82a796d7a85f6473
+Bridge wall: 1.53 s
+Bridge peak RSS: 2,567,868 KiB
+Bridge swap: 0
+
+Complete focused Lean replay including all 34 core definitions: PASS
+Unit: aspis-v7-core-primitives-final-replay-r4.service
+Invocation: b0e5be82b4ea4b5b905f48af5c6c2181
+Wall: 20.20 s
+Peak RSS: 2,756,236 KiB
+Swap: 0
+Executable ordinary external definitions: 34
+Remaining ordinary external templates: 35
+Axioms: propext, Classical.choice, Quot.sound
+Forbidden constructs: none
+
+Updated classification: the external `Windows` type is no longer an empty
+carrier; its exact slice/width/index state supports executable creation and
+iteration. Slice/array equality, both fixed-size conversions, and shared-vector
+iteration are also explicit. The Solana RefCell entry-state check remains the
+smallest platform boundary. Thirty-five ordinary templates plus the named
+platform groups still separate this graph from the literal whole caller.

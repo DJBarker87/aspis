@@ -1,0 +1,22 @@
+diff --git a/programs/aspis-verifier/src/v7_pair_forest_dispatch.rs b/programs/aspis-verifier/src/v7_pair_forest_dispatch.rs
+--- a/programs/aspis-verifier/src/v7_pair_forest_dispatch.rs
++++ b/programs/aspis-verifier/src/v7_pair_forest_dispatch.rs
+@@ -999,6 +999,18 @@ fn borrow_readonly_account_data<'a>(
+     Ok(Ref::map(data, |bytes| &bytes[..]))
+ }
+ 
++// Extraction-only diagnostic: keep the exact production borrow and projection,
++// but consume the guard locally so no nested-borrow value crosses the return.
++#[cfg(feature = "v7-pair-forest-lane-invariant-audit")]
++#[inline(never)]
++fn borrow_readonly_account_data_len_probe(
++    account: &AccountInfo<'_>,
++) -> Result<usize, ProgramError> {
++    let data = account.try_borrow_data()?;
++    let data = Ref::map(data, |bytes| &bytes[..]);
++    Ok(data.len())
++}
++
+ fn process_with_clear_return_data<F>(
+     verifier_program: &Pubkey,
+     accounts: &[AccountInfo<'_>],

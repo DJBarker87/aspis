@@ -1,0 +1,22 @@
+--- a/programs/aspis-verifier/src/v7_pair_forest_dispatch.rs
++++ b/programs/aspis-verifier/src/v7_pair_forest_dispatch.rs
+@@ -418,11 +418,15 @@ fn exact_six_account_refs_v1<'accounts, 'info>(
+     &'accounts AccountInfo<'info>,
+     &'accounts AccountInfo<'info>,
+ ) {
+-    let [proof_account, master_account, checkpoint_account, lane_account, registry_account, entry_account] =
+-        accounts
+-    else {
++    if accounts.len() != 6 {
+         unreachable!();
+-    };
++    }
++    let proof_account = &accounts[0];
++    let master_account = &accounts[1];
++    let checkpoint_account = &accounts[2];
++    let lane_account = &accounts[3];
++    let registry_account = &accounts[4];
++    let entry_account = &accounts[5];
+     (
+         proof_account,
+         master_account,

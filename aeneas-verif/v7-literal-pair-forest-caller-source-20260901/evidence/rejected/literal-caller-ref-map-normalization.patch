@@ -1,0 +1,17 @@
+diff --git a/programs/aspis-verifier/src/v7_pair_forest_dispatch.rs b/programs/aspis-verifier/src/v7_pair_forest_dispatch.rs
+--- a/programs/aspis-verifier/src/v7_pair_forest_dispatch.rs
++++ b/programs/aspis-verifier/src/v7_pair_forest_dispatch.rs
+@@ -10,6 +10,7 @@ extern crate alloc;
+ 
+ use alloc::boxed::Box;
++use core::cell::Ref;
+ 
+ #[cfg(feature = "v7-pair-forest-lane-invariant-audit")]
+ use aspis_core::field::M31;
+@@ -865,6 +866,7 @@ where
+     let proof_account = accounts.first().ok_or(ProgramError::NotEnoughAccountKeys)?;
+     let proof_account_key = *proof_account.key;
+     let data = proof_account.try_borrow_data()?;
++    let data = Ref::map(data, |bytes| &bytes[..]);
+     let (payload_start, payload_end) = uploaded_proof_bounds(&data)?;
+     if payload_end != data.len() {

@@ -1,0 +1,89 @@
+{
+  "aeneas_version": "d860ac47-tag73-looparity-shared-index-r1",
+  "charon_version": "0.1.223",
+  "crate": "aspis_verifier",
+  "functions": [
+    {
+      "def_id": 0,
+      "lean_name": "V7LiteralCallerReadonlyMetadataHelperCurrent309bR1.v7_pair_forest_dispatch.readonly_account_metadata_v1",
+      "lean_file": "V7LiteralCallerReadonlyMetadataHelperCurrent309bR1/Funs.lean",
+      "rust_name": "aspis_verifier::v7_pair_forest_dispatch::readonly_account_metadata_v1",
+      "is_local": true,
+      "source": {
+        "file": "programs/aspis-verifier/src/v7_pair_forest_dispatch.rs",
+        "begin_line": 178,
+        "end_line": 186
+      },
+      "is_opaque": false,
+      "can_fail": true,
+      "can_diverge": false,
+      "is_rec": false,
+      "reducible": false
+    }
+  ],
+  "types": [
+    {
+      "def_id": 4,
+      "lean_name": "V7LiteralCallerReadonlyMetadataHelperCurrent309bR1.core.cell.RefCell",
+      "lean_file": "V7LiteralCallerReadonlyMetadataHelperCurrent309bR1/TypesExternal_Template.lean",
+      "rust_name": "core::cell::RefCell",
+      "is_local": false,
+      "source": {
+        "file": "/rustc/library/core/src/cell.rs",
+        "begin_line": 849,
+        "end_line": 849
+      }
+    },
+    {
+      "def_id": 3,
+      "lean_name": "V7LiteralCallerReadonlyMetadataHelperCurrent309bR1.alloc.rc.Rc",
+      "lean_file": "V7LiteralCallerReadonlyMetadataHelperCurrent309bR1/TypesExternal_Template.lean",
+      "rust_name": "alloc::rc::Rc",
+      "is_local": false,
+      "source": {
+        "file": "/rustc/library/alloc/src/rc.rs",
+        "begin_line": 320,
+        "end_line": 323
+      }
+    },
+    {
+      "def_id": 2,
+      "lean_name": "V7LiteralCallerReadonlyMetadataHelperCurrent309bR1.solana_pubkey.Pubkey",
+      "lean_file": "V7LiteralCallerReadonlyMetadataHelperCurrent309bR1/TypesExternal_Template.lean",
+      "rust_name": "solana_pubkey::Pubkey",
+      "is_local": false,
+      "source": {
+        "file": "/cargo/registry/src/index.crates.io-1949cf8c6b5b557f/solana-pubkey-2.4.0/src/lib.rs",
+        "begin_line": 166,
+        "end_line": 166
+      }
+    },
+    {
+      "def_id": 0,
+      "lean_name": "V7LiteralCallerReadonlyMetadataHelperCurrent309bR1.solana_account_info.AccountInfo",
+      "lean_file": "V7LiteralCallerReadonlyMetadataHelperCurrent309bR1/Types.lean",
+      "rust_name": "solana_account_info::AccountInfo",
+      "is_local": false,
+      "source": {
+        "file": "/cargo/registry/src/index.crates.io-1949cf8c6b5b557f/solana-account-info-2.3.0/src/lib.rs",
+        "begin_line": 22,
+        "end_line": 22
+      }
+    },
+    {
+      "def_id": 1,
+      "lean_name": "V7LiteralCallerReadonlyMetadataHelperCurrent309bR1.v7_pair_forest_dispatch.ReadonlyAccountMetadataV1",
+      "lean_file": "V7LiteralCallerReadonlyMetadataHelperCurrent309bR1/Types.lean",
+      "rust_name": "aspis_verifier::v7_pair_forest_dispatch::ReadonlyAccountMetadataV1",
+      "is_local": true,
+      "source": {
+        "file": "programs/aspis-verifier/src/v7_pair_forest_dispatch.rs",
+        "begin_line": 169,
+        "end_line": 175
+      }
+    }
+  ],
+  "globals": [],
+  "trait_decls": [],
+  "trait_impls": []
+}

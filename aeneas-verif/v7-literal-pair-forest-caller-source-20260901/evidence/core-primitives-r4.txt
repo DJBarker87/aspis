@@ -1,0 +1,62 @@
+V7 literal caller finite Windows and conversion evidence
+Date: 2026-09-01
+
+TypesExternal target: V7LiteralCallerCurrent309bMetadataAccountOpaqueAcceptedToolR1/TypesExternal.lean
+Unit: aspis-v7-windows-typesexternal-r1.service
+Invocation: 8c978b8cbd06439cb13bd78bcea1d09e
+Exit: 0
+Wall: 1.50 s
+Peak RSS: 2,549,904 KiB
+MemoryHigh: 3 GiB
+MemoryMax: 4 GiB
+MemorySwapMax: 0
+Observed swaps: 0
+
+Dependent Types target: V7LiteralCallerCurrent309bMetadataAccountOpaqueAcceptedToolR1/Types.lean
+Unit: aspis-v7-windows-types-r1.service
+Invocation: 81981bfac626438680f52d7ee98f9249
+Exit: 0
+Wall: 3.43 s
+Peak RSS: 2,750,084 KiB
+MemoryHigh: 3 GiB
+MemoryMax: 4 GiB
+MemorySwapMax: 0
+Observed swaps: 0
+
+Focused external target: V7LiteralCallerCorePrimitivesExternal.lean
+Unit: aspis-v7-core-primitives-external-r5.service
+Invocation: 3896d22148384ae283e489fe1cc07c3a
+Exit: 0
+Wall: 1.63 s
+Peak RSS: 2,560,308 KiB
+Observed swaps: 0
+
+Focused bridge target: V7LiteralCallerCorePrimitivesBridge.lean
+Unit: aspis-v7-core-primitives-bridge-r4.service
+Invocation: 2665628b595c421b82a796d7a85f6473
+Exit: 0
+Wall: 1.53 s
+Peak RSS: 2,567,868 KiB
+Observed swaps: 0
+
+Dependent focused replay: replay-lean.sh
+Unit: aspis-v7-core-primitives-final-replay-r4.service
+Invocation: b0e5be82b4ea4b5b905f48af5c6c2181
+Exit: 0
+Wall: 20.20 s
+Peak RSS: 2,756,236 KiB
+MemoryHigh: 3 GiB
+MemoryMax: 4 GiB
+MemorySwapMax: 0
+Observed swaps: 0
+
+Accepted executable ordinary external definitions: 34
+Remaining ordinary external templates: 35
+#print axioms union: propext, Classical.choice, Quot.sound
+Forbidden constructs: none
+
+The exact finite `Windows` carrier has fields `slice`, `width`, and `index`.
+This replaces the earlier empty carrier only for the ordinary Rust slice
+library state and does not alter the production source, verifier relation, or
+cryptographic boundary. The arbitrary-state Solana RefCell check remains an
+explicit platform/entry-state boundary.

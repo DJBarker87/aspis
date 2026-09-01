@@ -1,0 +1,23 @@
+	Command being timed: "/home/dombarker/project-offloads/aspis-v7-aeneas-source-unblock-20260830/repro-toolchain/aeneas-d860ac47-tag73-looparity-r1 -sequential -no-progress-bar -abort-on-error -backend lean -namespace V7LiteralCallerCurrent309bMetadataAccountOpaqueAcceptedToolR1 -dest /home/dombarker/project-offloads/aspis-v7-literal-caller-unblock-20260901.UVlTOZ/generated/current309b-metadata-accountopaque-m31ctor-acceptedtool-r1 -subdir V7LiteralCallerCurrent309bMetadataAccountOpaqueAcceptedToolR1 -split-files -emit-json /home/dombarker/project-offloads/aspis-v7-literal-caller-unblock-20260901.UVlTOZ/extraction/V7LiteralCallerCurrent309bMetadataAccountOpaqueM31CtorR1.llbc"
+	User time (seconds): 680.50
+	System time (seconds): 1.33
+	Percent of CPU this job got: 99%
+	Elapsed (wall clock) time (h:mm:ss or m:ss): 11:21.89
+	Average shared text size (kbytes): 0
+	Average unshared data size (kbytes): 0
+	Average stack size (kbytes): 0
+	Average total size (kbytes): 0
+	Maximum resident set size (kbytes): 3136060
+	Average resident set size (kbytes): 0
+	Major (requiring I/O) page faults: 0
+	Minor (reclaiming a frame) page faults: 1098553
+	Voluntary context switches: 119
+	Involuntary context switches: 3226
+	Swaps: 0
+	File system inputs: 0
+	File system outputs: 8624
+	Socket messages sent: 0
+	Socket messages received: 0
+	Signals delivered: 0
+	Page size (bytes): 4096
+	Exit status: 0

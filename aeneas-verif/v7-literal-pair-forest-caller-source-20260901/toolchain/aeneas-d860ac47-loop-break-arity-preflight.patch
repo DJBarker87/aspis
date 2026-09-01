@@ -1,0 +1,85 @@
+diff --git a/src/pure/PureMicroPassesLoops.ml b/src/pure/PureMicroPassesLoops.ml
+--- a/src/pure/PureMicroPassesLoops.ml
++++ b/src/pure/PureMicroPassesLoops.ml
+@@ -1791,5 +1791,48 @@ let reorder_loop_outputs (ctx : ctx) (def : fun_decl) =
+   let span = def.item_meta.span in
+ 
++  (* Reordering a loop is only a simplification.  A loop body can contain a
++     function-level early return encoded with the same [LoopResult::Break]
++     constructor but a different payload arity.  Such a break does not belong
++     to the loop output tuple and must not be rewritten.  Conservatively skip
++     this optional reordering whenever the body contains one. *)
++  let loop_break_arities_match (output_indices : int list) (loop : loop) =
++    let expected = List.length output_indices in
++    let rec check (e : texpr) =
++      match e.e with
++      | FVar _
++      | BVar _
++      | CVar _
++      | Const _
++      | Lambda _
++      | StructUpdate _
++      | Loop _
++      | EError _ -> true
++      | App _ | Qualif _ -> (
++          match
++            opt_destruct_loop_result_decompose_outputs ctx span
++              ~intro_let:true ~opened_vars:false e
++          with
++          | Some ({ variant_id; args; _ }, _)
++            when variant_id = loop_result_break_id ->
++              List.length args = expected
++          | _ -> true)
++      | Let (_, pat, _, next) ->
++          let _, _, next = open_binder ctx span pat next in
++          check next
++      | Switch (_, switch) -> (
++          match switch with
++          | If (e0, e1) -> check e0 && check e1
++          | Match branches ->
++              List.for_all
++                (fun ({ pat; branch } : match_branch) ->
++                  let _, _, branch = open_binder ctx span pat branch in
++                  check branch)
++                branches)
++      | Meta (_, e) -> check e
++    in
++    check loop.loop_body.loop_body
++  in
++
+   (* Helper to update the breaks in a loop body. *)
+   let update_and_close_loop_body (explore : texpr -> texpr)
+       (output_indices : int list) (num_output_backs : int) (loop : loop) : texpr
+@@ -2192,6 +2235,7 @@ let reorder_loop_outputs (ctx : ctx) (def : fun_decl) =
+                implemented by [loops_to_recursive] *)
+             match compute_outputs_indices_to_reorder_backs loop with
+-            | Some (output_indices, num_output_backs) ->
++            | Some (output_indices, num_output_backs)
++              when loop_break_arities_match output_indices loop ->
+                 (* Apply the update to the loop body - note that this *closes* the loop body *)
+                 let loop =
+                   update_and_close_loop_body explore output_indices
+@@ -2207,11 +2251,12 @@ let reorder_loop_outputs (ctx : ctx) (def : fun_decl) =
+                 let e = update_let monadic pat loop next output_indices in
+                 [%ldebug "let-expression:\n" ^ texpr_to_string ctx e];
+                 e
+-            | None -> (
++            | None | Some _ -> (
+                 match
+                   compute_outputs_indices_if_followed_by_ok loop pat next
+                 with
+-                | Some (output_indices, num_output_backs) ->
++                | Some (output_indices, num_output_backs)
++                  when loop_break_arities_match output_indices loop ->
+                     (* Apply the update to the loop body - note that this *closes* the loop body *)
+                     let loop =
+                       update_and_close_loop_body explore output_indices
+@@ -2222,7 +2267,7 @@ let reorder_loop_outputs (ctx : ctx) (def : fun_decl) =
+                     let e = update_let monadic pat loop next output_indices in
+                     [%ldebug "let-expression:\n" ^ texpr_to_string ctx e];
+                     e
+-                | None ->
++                | None | Some _ ->
+                     (* Do not reorder the output but recursively explore the loop body *)
+                     let loop_body =
+                       {

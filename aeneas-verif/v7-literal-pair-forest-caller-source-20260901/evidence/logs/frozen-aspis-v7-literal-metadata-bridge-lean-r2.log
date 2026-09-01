@@ -1,0 +1,152 @@
+Started aspis-v7-literal-metadata-bridge-lean-r2.service - /bin/bash -lc "set -euo pipefail\nROOT='/home/dombarker/project-offloads/aspis-v7-literal-caller-unblock-20260901.UVlTOZ/lean-metadata-bridge-r1'\nBACKEND=/home/dombarker/project-offloads/aeneas-d860-v6/backends/lean\nLEAN=/home/dombarker/.elan/toolchains/leanprover--lean4---v4.31.0/bin/lean\nBACKEND_PATH=\$(cd \"\$BACKEND\" && /home/dombarker/.elan/bin/lake env printenv LEAN_PATH)\nexport LEAN_PATH=\"\$ROOT:\$BACKEND_PATH\"\nfor TARGET in   V7LiteralCallerReadonlyMetadataHelperCurrent309bR1/Types   V7LiteralCallerReadonlyMetadataHelperCurrent309bR1/Funs   V7LiteralCallerCurrent309bMetadataAccountOpaqueAcceptedToolR1/TypesExternal   V7LiteralCallerCurrent309bMetadataAccountOpaqueAcceptedToolR1/Types   V7LiteralCallerReadonlyMetadataExternal   V7LiteralCallerReadonlyMetadataBridge\ndo\n  echo \"LEAN_TARGET=\$TARGET\"\n  /usr/bin/time -v \"\$LEAN\" -o \"\$ROOT/\$TARGET.olean\" \"\$ROOT/\$TARGET.lean\"\ndone".
+LEAN_TARGET=V7LiteralCallerReadonlyMetadataHelperCurrent309bR1/Types
+	Command being timed: "/home/dombarker/.elan/toolchains/leanprover--lean4---v4.31.0/bin/lean -o /home/dombarker/project-offloads/aspis-v7-literal-caller-unblock-20260901.UVlTOZ/lean-metadata-bridge-r1/V7LiteralCallerReadonlyMetadataHelperCurrent309bR1/Types.olean /home/dombarker/project-offloads/aspis-v7-literal-caller-unblock-20260901.UVlTOZ/lean-metadata-bridge-r1/V7LiteralCallerReadonlyMetadataHelperCurrent309bR1/Types.lean"
+	User time (seconds): 0.82
+	System time (seconds): 0.68
+	Percent of CPU this job got: 115%
+	Elapsed (wall clock) time (h:mm:ss or m:ss): 0:01.30
+	Average shared text size (kbytes): 0
+	Average unshared data size (kbytes): 0
+	Average stack size (kbytes): 0
+	Average total size (kbytes): 0
+	Maximum resident set size (kbytes): 2515572
+	Average resident set size (kbytes): 0
+	Major (requiring I/O) page faults: 0
+	Minor (reclaiming a frame) page faults: 85685
+	Voluntary context switches: 1031
+	Involuntary context switches: 72
+	Swaps: 0
+	File system inputs: 8
+	File system outputs: 176
+	Socket messages sent: 0
+	Socket messages received: 0
+	Signals delivered: 0
+	Page size (bytes): 4096
+	Exit status: 0
+LEAN_TARGET=V7LiteralCallerReadonlyMetadataHelperCurrent309bR1/Funs
+	Command being timed: "/home/dombarker/.elan/toolchains/leanprover--lean4---v4.31.0/bin/lean -o /home/dombarker/project-offloads/aspis-v7-literal-caller-unblock-20260901.UVlTOZ/lean-metadata-bridge-r1/V7LiteralCallerReadonlyMetadataHelperCurrent309bR1/Funs.olean /home/dombarker/project-offloads/aspis-v7-literal-caller-unblock-20260901.UVlTOZ/lean-metadata-bridge-r1/V7LiteralCallerReadonlyMetadataHelperCurrent309bR1/Funs.lean"
+	User time (seconds): 0.79
+	System time (seconds): 0.60
+	Percent of CPU this job got: 111%
+	Elapsed (wall clock) time (h:mm:ss or m:ss): 0:01.25
+	Average shared text size (kbytes): 0
+	Average unshared data size (kbytes): 0
+	Average stack size (kbytes): 0
+	Average total size (kbytes): 0
+	Maximum resident set size (kbytes): 2512332
+	Average resident set size (kbytes): 0
+	Major (requiring I/O) page faults: 0
+	Minor (reclaiming a frame) page faults: 80848
+	Voluntary context switches: 1089
+	Involuntary context switches: 78
+	Swaps: 0
+	File system inputs: 8
+	File system outputs: 32
+	Socket messages sent: 0
+	Socket messages received: 0
+	Signals delivered: 0
+	Page size (bytes): 4096
+	Exit status: 0
+LEAN_TARGET=V7LiteralCallerCurrent309bMetadataAccountOpaqueAcceptedToolR1/TypesExternal
+	Command being timed: "/home/dombarker/.elan/toolchains/leanprover--lean4---v4.31.0/bin/lean -o /home/dombarker/project-offloads/aspis-v7-literal-caller-unblock-20260901.UVlTOZ/lean-metadata-bridge-r1/V7LiteralCallerCurrent309bMetadataAccountOpaqueAcceptedToolR1/TypesExternal.olean /home/dombarker/project-offloads/aspis-v7-literal-caller-unblock-20260901.UVlTOZ/lean-metadata-bridge-r1/V7LiteralCallerCurrent309bMetadataAccountOpaqueAcceptedToolR1/TypesExternal.lean"
+	User time (seconds): 0.83
+	System time (seconds): 0.49
+	Percent of CPU this job got: 105%
+	Elapsed (wall clock) time (h:mm:ss or m:ss): 0:01.26
+	Average shared text size (kbytes): 0
+	Average unshared data size (kbytes): 0
+	Average stack size (kbytes): 0
+	Average total size (kbytes): 0
+	Maximum resident set size (kbytes): 2517216
+	Average resident set size (kbytes): 0
+	Major (requiring I/O) page faults: 0
+	Minor (reclaiming a frame) page faults: 69405
+	Voluntary context switches: 486
+	Involuntary context switches: 70
+	Swaps: 0
+	File system inputs: 16
+	File system outputs: 168
+	Socket messages sent: 0
+	Socket messages received: 0
+	Signals delivered: 0
+	Page size (bytes): 4096
+	Exit status: 0
+LEAN_TARGET=V7LiteralCallerCurrent309bMetadataAccountOpaqueAcceptedToolR1/Types
+	Command being timed: "/home/dombarker/.elan/toolchains/leanprover--lean4---v4.31.0/bin/lean -o /home/dombarker/project-offloads/aspis-v7-literal-caller-unblock-20260901.UVlTOZ/lean-metadata-bridge-r1/V7LiteralCallerCurrent309bMetadataAccountOpaqueAcceptedToolR1/Types.olean /home/dombarker/project-offloads/aspis-v7-literal-caller-unblock-20260901.UVlTOZ/lean-metadata-bridge-r1/V7LiteralCallerCurrent309bMetadataAccountOpaqueAcceptedToolR1/Types.lean"
+	User time (seconds): 4.13
+	System time (seconds): 1.07
+	Percent of CPU this job got: 161%
+	Elapsed (wall clock) time (h:mm:ss or m:ss): 0:03.22
+	Average shared text size (kbytes): 0
+	Average unshared data size (kbytes): 0
+	Average stack size (kbytes): 0
+	Average total size (kbytes): 0
+	Maximum resident set size (kbytes): 2732904
+	Average resident set size (kbytes): 0
+	Major (requiring I/O) page faults: 0
+	Minor (reclaiming a frame) page faults: 111247
+	Voluntary context switches: 16336
+	Involuntary context switches: 188
+	Swaps: 0
+	File system inputs: 272
+	File system outputs: 8424
+	Socket messages sent: 0
+	Socket messages received: 0
+	Signals delivered: 0
+	Page size (bytes): 4096
+	Exit status: 0
+LEAN_TARGET=V7LiteralCallerReadonlyMetadataExternal
+	Command being timed: "/home/dombarker/.elan/toolchains/leanprover--lean4---v4.31.0/bin/lean -o /home/dombarker/project-offloads/aspis-v7-literal-caller-unblock-20260901.UVlTOZ/lean-metadata-bridge-r1/V7LiteralCallerReadonlyMetadataExternal.olean /home/dombarker/project-offloads/aspis-v7-literal-caller-unblock-20260901.UVlTOZ/lean-metadata-bridge-r1/V7LiteralCallerReadonlyMetadataExternal.lean"
+	User time (seconds): 0.76
+	System time (seconds): 0.36
+	Percent of CPU this job got: 101%
+	Elapsed (wall clock) time (h:mm:ss or m:ss): 0:01.10
+	Average shared text size (kbytes): 0
+	Average unshared data size (kbytes): 0
+	Average stack size (kbytes): 0
+	Average total size (kbytes): 0
+	Maximum resident set size (kbytes): 2540104
+	Average resident set size (kbytes): 0
+	Major (requiring I/O) page faults: 0
+	Minor (reclaiming a frame) page faults: 62948
+	Voluntary context switches: 2809
+	Involuntary context switches: 56
+	Swaps: 0
+	File system inputs: 496
+	File system outputs: 40
+	Socket messages sent: 0
+	Socket messages received: 0
+	Signals delivered: 0
+	Page size (bytes): 4096
+	Exit status: 0
+LEAN_TARGET=V7LiteralCallerReadonlyMetadataBridge
+'V7LiteralCallerCurrent309bMetadataAccountOpaqueAcceptedToolR1.readonly_account_metadata_v1_exact' depends on axioms: [propext,
+ Classical.choice,
+ Quot.sound]
+'V7LiteralCallerCurrent309bMetadataAccountOpaqueAcceptedToolR1.readonly_account_metadata_v1_success_fields' depends on axioms: [propext,
+ Classical.choice,
+ Quot.sound]
+	Command being timed: "/home/dombarker/.elan/toolchains/leanprover--lean4---v4.31.0/bin/lean -o /home/dombarker/project-offloads/aspis-v7-literal-caller-unblock-20260901.UVlTOZ/lean-metadata-bridge-r1/V7LiteralCallerReadonlyMetadataBridge.olean /home/dombarker/project-offloads/aspis-v7-literal-caller-unblock-20260901.UVlTOZ/lean-metadata-bridge-r1/V7LiteralCallerReadonlyMetadataBridge.lean"
+	User time (seconds): 0.80
+	System time (seconds): 0.38
+	Percent of CPU this job got: 102%
+	Elapsed (wall clock) time (h:mm:ss or m:ss): 0:01.15
+	Average shared text size (kbytes): 0
+	Average unshared data size (kbytes): 0
+	Average stack size (kbytes): 0
+	Average total size (kbytes): 0
+	Maximum resident set size (kbytes): 2535100
+	Average resident set size (kbytes): 0
+	Major (requiring I/O) page faults: 0
+	Minor (reclaiming a frame) page faults: 63207
+	Voluntary context switches: 1413
+	Involuntary context switches: 72
+	Swaps: 0
+	File system inputs: 8
+	File system outputs: 56
+	Socket messages sent: 0
+	Socket messages received: 0
+	Signals delivered: 0
+	Page size (bytes): 4096
+	Exit status: 0
+aspis-v7-literal-metadata-bridge-lean-r2.service: Consumed 12.163s CPU time, 512.0K memory peak, 0B memory swap peak.

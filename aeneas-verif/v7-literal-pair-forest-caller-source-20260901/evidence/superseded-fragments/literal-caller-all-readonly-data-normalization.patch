@@ -1,0 +1,57 @@
+diff --git a/programs/aspis-verifier/src/v7_pair_forest_dispatch.rs b/programs/aspis-verifier/src/v7_pair_forest_dispatch.rs
+--- a/programs/aspis-verifier/src/v7_pair_forest_dispatch.rs
++++ b/programs/aspis-verifier/src/v7_pair_forest_dispatch.rs
+@@ -227,7 +227,7 @@ fn authenticate_invariant_release_registry_v1(
+     if registry_account.key != &expected_registry {
+         return Err(ProgramError::InvalidAccountData);
+     }
+-    let registry = decode_verifier_registry_v1(&registry_account.try_borrow_data()?)
++    let registry = decode_verifier_registry_v1(&borrow_readonly_account_data(registry_account)?)
+         .map_err(|_| ProgramError::InvalidAccountData)?;
+     if registry.pool != master_account.key.to_bytes()
+         || registry.authority != master.verifier_policy.registry_authority
+@@ -243,7 +243,7 @@ fn authenticate_invariant_release_registry_v1(
+     if entry_account.key != &expected_entry {
+         return Err(ProgramError::InvalidAccountData);
+     }
+-    let entry = decode_verifier_registry_entry_v1(&entry_account.try_borrow_data()?)
++    let entry = decode_verifier_registry_entry_v1(&borrow_readonly_account_data(entry_account)?)
+         .map_err(|_| ProgramError::InvalidAccountData)?;
+     let current_slot = Clock::get()?.slot;
+     if entry.pool != master_account.key.to_bytes()
+@@ -484,7 +484,7 @@ fn authenticate_asq8_accounts_v1(
+         lane_account,
+     ])?;
+ 
+-    let master = decode_master_box(&master_account.try_borrow_data()?)?;
++    let master = decode_master_box(&borrow_readonly_account_data(master_account)?)?;
+     if master.identity.pool != master_account.key.to_bytes()
+         || master.initialized_lane_mask != POOL_V1_PAIR_FOREST_ALL_LANES_MASK
+         || pair_forest_master_pda_v1(master.identity.asset_mint, pool_program)
+@@ -502,7 +502,7 @@ fn authenticate_asq8_accounts_v1(
+         entry_account,
+     )?;
+ 
+-    let checkpoint = decode_checkpoint_box(&checkpoint_account.try_borrow_data()?)?;
++    let checkpoint = decode_checkpoint_box(&borrow_readonly_account_data(checkpoint_account)?)?;
+     if checkpoint.master != master_account.key.to_bytes()
+         || checkpoint.deployment_domain != master.identity.deployment_domain
+         || pair_forest_checkpoint_pda_v1(
+@@ -514,7 +514,7 @@ fn authenticate_asq8_accounts_v1(
+         return Err(ProgramError::InvalidAccountData);
+     }
+ 
+-    let selected_lane = decode_lane_box(&lane_account.try_borrow_data()?)?;
++    let selected_lane = decode_lane_box(&borrow_readonly_account_data(lane_account)?)?;
+     if selected_lane.master != master_account.key.to_bytes()
+         || selected_lane.lane_id != output_lane
+         || pair_forest_lane_pda_v1(master_account.key, output_lane, pool_program)
+@@ -543,7 +543,7 @@ fn scan_asq8_proof_v1(
+ fn scan_asq8_proof_v1(
+     proof_account: &AccountInfo<'_>,
+ ) -> Result<ScannedV7PairForestAsq8ProofV1, ProgramError> {
+-    let data = proof_account.try_borrow_data()?;
++    let data = borrow_readonly_account_data(proof_account)?;
+     if !proof_account_finalized(&data) {
+         return Err(ProgramError::InvalidAccountData);
+     }

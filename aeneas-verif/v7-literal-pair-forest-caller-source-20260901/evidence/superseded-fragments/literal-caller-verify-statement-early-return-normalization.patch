@@ -1,0 +1,105 @@
+diff --git a/programs/aspis-verifier/src/v7_pair_forest_dispatch.rs b/programs/aspis-verifier/src/v7_pair_forest_dispatch.rs
+--- a/programs/aspis-verifier/src/v7_pair_forest_dispatch.rs
++++ b/programs/aspis-verifier/src/v7_pair_forest_dispatch.rs
+@@ -722,36 +722,9 @@ fn verify_statement_v1(
+ ) -> ProgramResult {
+     let transition = &statement.common().lane_transition;
+     #[cfg(feature = "v7-pair-forest-fixed-canonical-audit")]
+-    let verified = match statement {
+-        PoolV1PairForestTerminalStatementV1::PrivateTransfer { public, .. } => crate::v7_verifier::verify_v7_pool_pair_forest_private_transfer_canonical_with_statement_digest(
+-            crate::verify::sbf_hashv,
+-            proof,
+-            frontier_nodes,
+-            verifier_program,
+-            V7_POOL_PAIR_FOREST_TAG73_RELEASE_BINDING,
+-            proof_account_key,
+-            public,
+-            transition,
+-            statement_digest,
+-            true,
+-        ),
+-        PoolV1PairForestTerminalStatementV1::Withdrawal { public, .. } => crate::v7_verifier::verify_v7_pool_pair_forest_withdrawal_canonical_with_statement_digest(
+-            crate::verify::sbf_hashv,
+-            proof,
+-            frontier_nodes,
+-            verifier_program,
+-            V7_POOL_PAIR_FOREST_TAG73_RELEASE_BINDING,
+-            proof_account_key,
+-            public,
+-            transition,
+-            statement_digest,
+-            true,
+-        ),
+-    };
+-    #[cfg(not(feature = "v7-pair-forest-fixed-canonical-audit"))]
+-    let verified = match statement {
++    match statement {
+         PoolV1PairForestTerminalStatementV1::PrivateTransfer { public, .. } => {
+-            crate::v7_verifier::verify_v7_pool_pair_forest_private_transfer_with_statement_digest(
++            return crate::v7_verifier::verify_v7_pool_pair_forest_private_transfer_canonical_with_statement_digest(
+                 crate::verify::sbf_hashv,
+                 proof,
+                 frontier_nodes,
+@@ -763,9 +736,11 @@ fn verify_statement_v1(
+                 statement_digest,
+                 true,
+             )
++            .map(|_| ())
++            .map_err(|_| ProgramError::InvalidAccountData);
+         }
+         PoolV1PairForestTerminalStatementV1::Withdrawal { public, .. } => {
+-            crate::v7_verifier::verify_v7_pool_pair_forest_withdrawal_with_statement_digest(
++            return crate::v7_verifier::verify_v7_pool_pair_forest_withdrawal_canonical_with_statement_digest(
+                 crate::verify::sbf_hashv,
+                 proof,
+                 frontier_nodes,
+@@ -777,11 +752,45 @@ fn verify_statement_v1(
+                 statement_digest,
+                 true,
+             )
++            .map(|_| ())
++            .map_err(|_| ProgramError::InvalidAccountData);
+         }
+-    };
+-    verified
+-        .map(|_| ())
+-        .map_err(|_| ProgramError::InvalidAccountData)
++    }
++    #[cfg(not(feature = "v7-pair-forest-fixed-canonical-audit"))]
++    match statement {
++        PoolV1PairForestTerminalStatementV1::PrivateTransfer { public, .. } => {
++            return crate::v7_verifier::verify_v7_pool_pair_forest_private_transfer_with_statement_digest(
++                crate::verify::sbf_hashv,
++                proof,
++                frontier_nodes,
++                verifier_program,
++                V7_POOL_PAIR_FOREST_TAG73_RELEASE_BINDING,
++                proof_account_key,
++                public,
++                transition,
++                statement_digest,
++                true,
++            )
++            .map(|_| ())
++            .map_err(|_| ProgramError::InvalidAccountData);
++        }
++        PoolV1PairForestTerminalStatementV1::Withdrawal { public, .. } => {
++            return crate::v7_verifier::verify_v7_pool_pair_forest_withdrawal_with_statement_digest(
++                crate::verify::sbf_hashv,
++                proof,
++                frontier_nodes,
++                verifier_program,
++                V7_POOL_PAIR_FOREST_TAG73_RELEASE_BINDING,
++                proof_account_key,
++                public,
++                transition,
++                statement_digest,
++                true,
++            )
++            .map(|_| ())
++            .map_err(|_| ProgramError::InvalidAccountData);
++        }
++    }
+ }
+ 
+ /// Unmined-proof counterpart used only by the host integration test.  The

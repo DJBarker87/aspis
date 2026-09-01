@@ -1,0 +1,69 @@
+Sep 01 14:19:15 nuc systemd[1563704]: Started aspis-v7-core-primitives-final-replay-r1.service - /usr/bin/time -v /usr/bin/env AENEAS_LEAN_BACKEND=/home/dombarker/project-offloads/aeneas-d860-v6/backends/lean LEAN_BIN=/home/dombarker/.elan/toolchains/leanprover--lean4---v4.31.0/bin/lean LAKE_BIN=/home/dombarker/.elan/bin/lake /home/dombarker/project-offloads/aspis-v7-literal-caller-unblock-20260901.UVlTOZ/bundle-replay-borrow-ready-r4/replay-lean.sh.
+Sep 01 14:19:16 nuc time[3723527]: LEAN_TARGET=V7LiteralCallerReadonlyMetadataHelperCurrent309bR1/TypesExternal
+Sep 01 14:19:17 nuc time[3723527]: LEAN_TARGET=V7LiteralCallerReadonlyMetadataHelperCurrent309bR1/Types
+Sep 01 14:19:18 nuc time[3723527]: LEAN_TARGET=V7LiteralCallerReadonlyMetadataHelperCurrent309bR1/Funs
+Sep 01 14:19:19 nuc time[3723527]: LEAN_TARGET=V7LiteralCallerCurrent309bMetadataAccountOpaqueAcceptedToolR1/TypesExternal
+Sep 01 14:19:20 nuc time[3723527]: LEAN_TARGET=V7LiteralCallerCurrent309bMetadataAccountOpaqueAcceptedToolR1/Types
+Sep 01 14:19:23 nuc time[3723527]: LEAN_TARGET=V7LiteralCallerReadonlyMetadataExternal
+Sep 01 14:19:24 nuc time[3723527]: LEAN_TARGET=V7LiteralCallerReadonlyMetadataBridge
+Sep 01 14:19:25 nuc time[3723756]: 'V7LiteralCallerCurrent309bMetadataAccountOpaqueAcceptedToolR1.readonly_account_metadata_v1_exact' depends on axioms: [propext,
+Sep 01 14:19:25 nuc time[3723756]:  Classical.choice,
+Sep 01 14:19:25 nuc time[3723756]:  Quot.sound]
+Sep 01 14:19:25 nuc time[3723756]: 'V7LiteralCallerCurrent309bMetadataAccountOpaqueAcceptedToolR1.readonly_account_metadata_v1_success_fields' depends on axioms: [propext,
+Sep 01 14:19:25 nuc time[3723756]:  Classical.choice,
+Sep 01 14:19:25 nuc time[3723756]:  Quot.sound]
+Sep 01 14:19:25 nuc time[3723527]: LEAN_TARGET=V7LiteralCallerReadonlyDataExternal
+Sep 01 14:19:27 nuc time[3723527]: LEAN_TARGET=V7LiteralCallerReadonlyDataBridge
+Sep 01 14:19:28 nuc time[3723800]: 'V7LiteralCallerCurrent309bMetadataAccountOpaqueAcceptedToolR1.borrow_readonly_account_data_borrow_ready_exact' depends on axioms: [propext,
+Sep 01 14:19:28 nuc time[3723800]:  Classical.choice,
+Sep 01 14:19:28 nuc time[3723800]:  Quot.sound]
+Sep 01 14:19:28 nuc time[3723800]: 'V7LiteralCallerCurrent309bMetadataAccountOpaqueAcceptedToolR1.borrow_readonly_account_data_success_is_exact_view' depends on axioms: [propext,
+Sep 01 14:19:28 nuc time[3723800]:  Classical.choice,
+Sep 01 14:19:28 nuc time[3723800]:  Quot.sound]
+Sep 01 14:19:28 nuc time[3723800]: 'V7LiteralCallerCurrent309bMetadataAccountOpaqueAcceptedToolR1.readonly_data_guard_deref_is_exact' depends on axioms: [propext]
+Sep 01 14:19:28 nuc time[3723527]: LEAN_TARGET=V7LiteralCallerCorePrimitivesExternal
+Sep 01 14:19:29 nuc time[3723527]: LEAN_TARGET=V7LiteralCallerCorePrimitivesBridge
+Sep 01 14:19:30 nuc time[3723827]: 'V7LiteralCallerCurrent309bMetadataAccountOpaqueAcceptedToolR1.bool_then_some_true_exact' does not depend on any axioms
+Sep 01 14:19:30 nuc time[3723827]: 'V7LiteralCallerCurrent309bMetadataAccountOpaqueAcceptedToolR1.bool_then_some_false_exact' does not depend on any axioms
+Sep 01 14:19:30 nuc time[3723827]: 'V7LiteralCallerCurrent309bMetadataAccountOpaqueAcceptedToolR1.option_as_ref_exact' does not depend on any axioms
+Sep 01 14:19:30 nuc time[3723827]: 'V7LiteralCallerCurrent309bMetadataAccountOpaqueAcceptedToolR1.option_ok_or_some_exact' does not depend on any axioms
+Sep 01 14:19:30 nuc time[3723827]: 'V7LiteralCallerCurrent309bMetadataAccountOpaqueAcceptedToolR1.option_ok_or_none_exact' does not depend on any axioms
+Sep 01 14:19:30 nuc time[3723827]: 'V7LiteralCallerCurrent309bMetadataAccountOpaqueAcceptedToolR1.slice_first_exact' depends on axioms: [propext]
+Sep 01 14:19:30 nuc time[3723827]: 'V7LiteralCallerCurrent309bMetadataAccountOpaqueAcceptedToolR1.slice_last_exact' depends on axioms: [propext]
+Sep 01 14:19:30 nuc time[3723827]: 'V7LiteralCallerCurrent309bMetadataAccountOpaqueAcceptedToolR1.u32_checked_shl_out_of_range' depends on axioms: [propext]
+Sep 01 14:19:30 nuc time[3723827]: 'V7LiteralCallerCurrent309bMetadataAccountOpaqueAcceptedToolR1.usize_checked_shl_out_of_range' depends on axioms: [propext]
+Sep 01 14:19:30 nuc time[3723527]: LEAN_TARGET=V7LiteralCallerExactSixAccountRefsLenPreflightSharedIndexCurrent309bR1/TypesExternal
+Sep 01 14:19:31 nuc time[3723527]: LEAN_TARGET=V7LiteralCallerExactSixAccountRefsLenPreflightSharedIndexCurrent309bR1/Types
+Sep 01 14:19:32 nuc time[3723527]: LEAN_TARGET=V7LiteralCallerExactSixAccountRefsLenPreflightSharedIndexCurrent309bR1/Funs
+Sep 01 14:19:34 nuc time[3723527]: LEAN_TARGET=V7LiteralCallerExactSixAccountRefsBridge
+Sep 01 14:19:35 nuc time[3723942]: 'V7LiteralCallerExactSixAccountRefsLenPreflightSharedIndexCurrent309bR1.exact_six_account_refs_v1_literal_order' depends on axioms: [propext,
+Sep 01 14:19:35 nuc time[3723942]:  Classical.choice,
+Sep 01 14:19:35 nuc time[3723942]:  Quot.sound]
+Sep 01 14:19:35 nuc time[3723942]: 'V7LiteralCallerExactSixAccountRefsLenPreflightSharedIndexCurrent309bR1.exact_six_account_refs_v1_success_has_literal_order' depends on axioms: [propext,
+Sep 01 14:19:35 nuc time[3723942]:  Classical.choice,
+Sep 01 14:19:35 nuc time[3723942]:  Quot.sound]
+Sep 01 14:19:35 nuc time[3723527]: V7 literal readonly-metadata and exact-six Lean replay: PASS
+Sep 01 14:19:35 nuc time[3723526]:         Command being timed: "/usr/bin/env AENEAS_LEAN_BACKEND=/home/dombarker/project-offloads/aeneas-d860-v6/backends/lean LEAN_BIN=/home/dombarker/.elan/toolchains/leanprover--lean4---v4.31.0/bin/lean LAKE_BIN=/home/dombarker/.elan/bin/lake /home/dombarker/project-offloads/aspis-v7-literal-caller-unblock-20260901.UVlTOZ/bundle-replay-borrow-ready-r4/replay-lean.sh"
+Sep 01 14:19:35 nuc time[3723526]:         User time (seconds): 15.59
+Sep 01 14:19:35 nuc time[3723526]:         System time (seconds): 6.42
+Sep 01 14:19:35 nuc time[3723526]:         Percent of CPU this job got: 111%
+Sep 01 14:19:35 nuc time[3723526]:         Elapsed (wall clock) time (h:mm:ss or m:ss): 0:19.68
+Sep 01 14:19:35 nuc time[3723526]:         Average shared text size (kbytes): 0
+Sep 01 14:19:35 nuc time[3723526]:         Average unshared data size (kbytes): 0
+Sep 01 14:19:35 nuc time[3723526]:         Average stack size (kbytes): 0
+Sep 01 14:19:35 nuc time[3723526]:         Average total size (kbytes): 0
+Sep 01 14:19:35 nuc time[3723526]:         Maximum resident set size (kbytes): 2752624
+Sep 01 14:19:35 nuc time[3723526]:         Average resident set size (kbytes): 0
+Sep 01 14:19:35 nuc time[3723526]:         Major (requiring I/O) page faults: 0
+Sep 01 14:19:35 nuc time[3723526]:         Minor (reclaiming a frame) page faults: 990912
+Sep 01 14:19:35 nuc time[3723526]:         Voluntary context switches: 80031
+Sep 01 14:19:35 nuc time[3723526]:         Involuntary context switches: 1260
+Sep 01 14:19:35 nuc time[3723526]:         Swaps: 0
+Sep 01 14:19:35 nuc time[3723526]:         File system inputs: 72
+Sep 01 14:19:35 nuc time[3723526]:         File system outputs: 15704
+Sep 01 14:19:35 nuc time[3723526]:         Socket messages sent: 0
+Sep 01 14:19:35 nuc time[3723526]:         Socket messages received: 0
+Sep 01 14:19:35 nuc time[3723526]:         Signals delivered: 0
+Sep 01 14:19:35 nuc time[3723526]:         Page size (bytes): 4096
+Sep 01 14:19:35 nuc time[3723526]:         Exit status: 0
+Sep 01 14:19:35 nuc systemd[1563704]: aspis-v7-core-primitives-final-replay-r1.service: Consumed 22.035s CPU time, 256.0K memory peak, 0B memory swap peak.

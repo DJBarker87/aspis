@@ -1,0 +1,74 @@
+Generated full-caller FunsExternal template: 83 declarations
+(73 are rendered as Lean axioms.)
+
+69 declarations are Rust core/alloc collection, iterator, option, result,
+slice, box, vector, numeric or formatting operations. The focused accepted
+graph now supplies executable definitions for 12 of them:
+
+- core.bool.Bool.then_some
+- core.num.U16.count_ones
+- core.num.U16.trailing_zeros
+- core.num.U64.trailing_ones
+- core.num.Usize.reverse_bits
+- core.num.Usize.checked_shl
+- core.num.U32.checked_shl
+- core.num.U32.is_power_of_two
+- core.option.Option.as_ref
+- core.option.Option.ok_or
+- core.slice.Slice.first
+- core.slice.Slice.last
+- core.ops.range.Range.Insts.CoreCloneClone.clone
+- core.option.Option.is_some_and
+- core.option.Option.Insts.CoreCmpPartialEqOption.eq
+- core.option.Option.Insts.CoreOpsTry_traitTry.branch
+- core.option.Option.Insts.CoreOpsTry_traitFromResidualOptionInfallible.from_residual
+- core.result.Result.is_ok_and
+- core.result.Result.ok
+- core.result.Result.map
+- core.result.Result.map_err
+- Box.Insts.CoreConvertAsRef.as_ref
+- alloc.vec.Vec.into_boxed_slice
+- alloc.vec.Vec.truncate
+- alloc.vec.Vec.remove
+- alloc.vec.Vec.clear
+- alloc.vec.Vec.is_empty
+- Slice.Insts.CoreCmpPartialEqArray.eq
+- Slice.Insts.CoreCmpPartialEqArray.ne
+- core.slice.iter.Windows.Insts.CoreIterTraitsIteratorIteratorSharedASlice.next
+- core.slice.Slice.windows
+- BoxArray.Insts.CoreConvertTryFromBoxSliceBoxSlice.try_from
+- SharedAVec.Insts.CoreIterTraitsCollectIntoIteratorSharedATIter.into_iter
+- Array.Insts.CoreConvertTryFromVecVec.try_from
+
+The archival generated template still lists these declarations, but it is not
+imported by the focused accepted graph. 35 ordinary templates remain to fill or
+classify.
+
+14 protocol/platform declaration groups remain:
+
+1. aspis_core.field.qm31_dot3
+2. pair_forest_copy_inactive_row_groups_compiled_v1
+3. pair_forest_copy_inactive_group_masks_compiled_v1
+4. solana_program.program.set_return_data
+5. solana_clock.Clock.get
+6. pair_forest_master_pda_v1
+7. pair_forest_checkpoint_pda_v1
+8. pair_forest_lane_pda_v1
+9. verifier_registry_pda_v1
+10. verifier_entry_pda_v1
+11. readonly_account_metadata_v1 (closed by the focused bridge)
+12. borrow_readonly_account_data (closed in the borrow-ready entry model;
+    literal arbitrary RefCell dynamic-borrow state remains platform semantics)
+13. verify.sbf_hashv
+14. solana_pubkey equality/new_from_array/to_bytes operations
+
+The two static schedule accessors are exactly items 2 and 3.  No additional
+schedule function was made opaque.
+
+exact_six_account_refs_v1 is now a transparent definition in the complete
+generated Funs module and is independently kernel checked for exact 0-through-5
+order. Item 12 now has an executable, axiom-free definition for the production
+borrow-ready entry state. The smallest remaining source boundary inside it is
+Solana's arbitrary-state RefCell dynamic-borrow check; ordinary Rust and the
+other platform declarations remain separate explicit boundaries. The new core
+cluster changes neither that platform boundary nor any protocol theorem.

@@ -1,0 +1,118 @@
+{
+  "aeneas_version": "b59d5188-lean432-extended",
+  "charon_version": "0.1.223",
+  "crate": "v7_registry_v2_deployment_certificate_source",
+  "functions": [
+    {
+      "def_id": 1,
+      "lean_name": "V7RegistryV2DeploymentCertificateGenerated.authenticate_immutable_loader_v3_deployment_projection",
+      "lean_file": "V7RegistryV2DeploymentCertificate/Funs.lean",
+      "rust_name": "v7_registry_v2_deployment_certificate_source::authenticate_immutable_loader_v3_deployment_projection",
+      "is_local": true,
+      "source": { "file": "src/lib.rs", "begin_line": 81, "end_line": 139 },
+      "is_opaque": false,
+      "can_fail": true,
+      "can_diverge": false,
+      "is_rec": false,
+      "reducible": false
+    },
+    {
+      "def_id": 3,
+      "lean_name": "V7RegistryV2DeploymentCertificateGenerated.bind_expected_executable_sha256",
+      "lean_file": "V7RegistryV2DeploymentCertificate/Funs.lean",
+      "rust_name": "v7_registry_v2_deployment_certificate_source::bind_expected_executable_sha256",
+      "is_local": true,
+      "source": { "file": "src/lib.rs", "begin_line": 143, "end_line": 151 },
+      "is_opaque": false,
+      "can_fail": true,
+      "can_diverge": false,
+      "is_rec": false,
+      "reducible": false
+    },
+    {
+      "def_id": 0,
+      "lean_name": "V7RegistryV2DeploymentCertificateGenerated.deployment_certificate_source_roots",
+      "lean_file": "V7RegistryV2DeploymentCertificate/Funs.lean",
+      "rust_name": "v7_registry_v2_deployment_certificate_source::deployment_certificate_source_roots",
+      "is_local": true,
+      "source": { "file": "src/lib.rs", "begin_line": 153, "end_line": 159 },
+      "is_opaque": false,
+      "can_fail": true,
+      "can_diverge": false,
+      "is_rec": false,
+      "reducible": false
+    }
+  ],
+  "types": [
+    {
+      "def_id": 6,
+      "lean_name": "V7RegistryV2DeploymentCertificateGenerated.AccountHeader",
+      "lean_file": "V7RegistryV2DeploymentCertificate/Types.lean",
+      "rust_name": "v7_registry_v2_deployment_certificate_source::AccountHeader",
+      "is_local": true,
+      "source": { "file": "src/lib.rs", "begin_line": 9, "end_line": 15 }
+    },
+    {
+      "def_id": 7,
+      "lean_name": "V7RegistryV2DeploymentCertificateGenerated.ProgramDecode",
+      "lean_file": "V7RegistryV2DeploymentCertificate/Types.lean",
+      "rust_name": "v7_registry_v2_deployment_certificate_source::ProgramDecode",
+      "is_local": true,
+      "source": { "file": "src/lib.rs", "begin_line": 21, "end_line": 25 }
+    },
+    {
+      "def_id": 8,
+      "lean_name": "V7RegistryV2DeploymentCertificateGenerated.ProgramDataDecode",
+      "lean_file": "V7RegistryV2DeploymentCertificate/Types.lean",
+      "rust_name": "v7_registry_v2_deployment_certificate_source::ProgramDataDecode",
+      "is_local": true,
+      "source": { "file": "src/lib.rs", "begin_line": 30, "end_line": 35 }
+    },
+    {
+      "def_id": 3,
+      "lean_name": "V7RegistryV2DeploymentCertificateGenerated.DeploymentError",
+      "lean_file": "V7RegistryV2DeploymentCertificate/Types.lean",
+      "rust_name": "v7_registry_v2_deployment_certificate_source::DeploymentError",
+      "is_local": true,
+      "source": { "file": "src/lib.rs", "begin_line": 38, "end_line": 43 }
+    },
+    {
+      "def_id": 0,
+      "lean_name": "V7RegistryV2DeploymentCertificateGenerated.DeploymentObservation",
+      "lean_file": "V7RegistryV2DeploymentCertificate/Types.lean",
+      "rust_name": "v7_registry_v2_deployment_certificate_source::DeploymentObservation",
+      "is_local": true,
+      "source": { "file": "src/lib.rs", "begin_line": 56, "end_line": 67 }
+    },
+    {
+      "def_id": 2,
+      "lean_name": "V7RegistryV2DeploymentCertificateGenerated.ImmutableDeploymentCertificate",
+      "lean_file": "V7RegistryV2DeploymentCertificate/Types.lean",
+      "rust_name": "v7_registry_v2_deployment_certificate_source::ImmutableDeploymentCertificate",
+      "is_local": true,
+      "source": { "file": "src/lib.rs", "begin_line": 70, "end_line": 75 }
+    }
+  ],
+  "globals": [
+    {
+      "def_id": 0,
+      "lean_name": "V7RegistryV2DeploymentCertificateGenerated.LOADER_V3_PROGRAM_BYTES",
+      "lean_file": "V7RegistryV2DeploymentCertificate/Funs.lean",
+      "rust_name": "v7_registry_v2_deployment_certificate_source::LOADER_V3_PROGRAM_BYTES",
+      "is_local": true,
+      "source": { "file": "src/lib.rs", "begin_line": 3, "end_line": 3 },
+      "can_fail": false
+    },
+    {
+      "def_id": 1,
+      "lean_name": "V7RegistryV2DeploymentCertificateGenerated.LOADER_V3_PROGRAMDATA_METADATA_BYTES",
+      "lean_file": "V7RegistryV2DeploymentCertificate/Funs.lean",
+      "rust_name": "v7_registry_v2_deployment_certificate_source::LOADER_V3_PROGRAMDATA_METADATA_BYTES",
+      "is_local": true,
+      "source": { "file": "src/lib.rs", "begin_line": 4, "end_line": 4 },
+      "can_fail": false
+    }
+  ],
+  "trait_decls": [],
+  "trait_impls": []
+}

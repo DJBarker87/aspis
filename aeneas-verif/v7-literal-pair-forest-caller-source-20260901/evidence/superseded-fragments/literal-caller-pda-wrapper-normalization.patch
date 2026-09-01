@@ -1,0 +1,160 @@
+diff --git a/programs/aspis-verifier/src/v7_pair_forest_dispatch.rs b/programs/aspis-verifier/src/v7_pair_forest_dispatch.rs
+--- a/programs/aspis-verifier/src/v7_pair_forest_dispatch.rs
++++ b/programs/aspis-verifier/src/v7_pair_forest_dispatch.rs
+@@ -76,6 +76,70 @@ const PAIR_FOREST_INVARIANT_REGISTRY_PROGRAM_AUDIT_V1: [u8; 32] = [0x44; 32];
+ #[cfg(feature = "v7-pair-forest-lane-invariant-audit")]
+ const PAIR_FOREST_INVARIANT_POLICY_BINDING_AUDIT_V1: [u8; 32] = [7; 32];
++
++fn pair_forest_master_pda_v1(asset_mint: [u8; 32], pool_program: &Pubkey) -> Pubkey {
++    let asset_mint = Pubkey::new_from_array(asset_mint);
++    Pubkey::find_program_address(
++        &[PAIR_FOREST_MASTER_SEED, asset_mint.as_ref()],
++        pool_program,
++    )
++    .0
++}
++
++fn pair_forest_checkpoint_pda_v1(
++    master_account: &Pubkey,
++    checkpoint_sequence: u64,
++    pool_program: &Pubkey,
++) -> Pubkey {
++    Pubkey::find_program_address(
++        &[
++            PAIR_FOREST_CHECKPOINT_SEED,
++            master_account.as_ref(),
++            &checkpoint_sequence.to_le_bytes(),
++        ],
++        pool_program,
++    )
++    .0
++}
++
++fn pair_forest_lane_pda_v1(
++    master_account: &Pubkey,
++    output_lane: u8,
++    pool_program: &Pubkey,
++) -> Pubkey {
++    Pubkey::find_program_address(
++        &[
++            PAIR_FOREST_LANE_SEED,
++            master_account.as_ref(),
++            &[output_lane],
++        ],
++        pool_program,
++    )
++    .0
++}
++
++#[cfg(feature = "v7-pair-forest-lane-invariant-audit")]
++fn verifier_registry_pda_v1(master_account: &Pubkey, registry_program: &Pubkey) -> Pubkey {
++    Pubkey::find_program_address(
++        &[VERIFIER_REGISTRY_SEED, master_account.as_ref()],
++        registry_program,
++    )
++    .0
++}
++
++#[cfg(feature = "v7-pair-forest-lane-invariant-audit")]
++fn verifier_entry_pda_v1(master_account: &Pubkey, registry_program: &Pubkey) -> Pubkey {
++    Pubkey::find_program_address(
++        &[
++            VERIFIER_ENTRY_SEED,
++            master_account.as_ref(),
++            &V7_POOL_PAIR_FOREST_TAG73_PROFILE_BINDING,
++            &V7_POOL_PAIR_FOREST_TAG73_RELEASE_BINDING,
++        ],
++        registry_program,
++    )
++    .0
++}
+ 
+ #[derive(Clone, Debug, PartialEq, Eq)]
+ pub struct ValidatedV7PairForestAsq8V1 {
+     pub statement: Box<PoolV1PairForestTerminalStatementV1>,
+@@ -158,11 +222,7 @@ fn authenticate_invariant_release_registry_v1(
+         .map_err(|_| ProgramError::InvalidAccountData)?;
+     let registry_program = Pubkey::new_from_array(PAIR_FOREST_INVARIANT_REGISTRY_PROGRAM_AUDIT_V1);
+     require_readonly_account(registry_account, &registry_program)?;
+-    let expected_registry = Pubkey::find_program_address(
+-        &[VERIFIER_REGISTRY_SEED, master_account.key.as_ref()],
+-        &registry_program,
+-    )
+-    .0;
++    let expected_registry = verifier_registry_pda_v1(master_account.key, &registry_program);
+     if registry_account.key != &expected_registry {
+         return Err(ProgramError::InvalidAccountData);
+     }
+@@ -178,16 +238,7 @@ fn authenticate_invariant_release_registry_v1(
+     }
+ 
+     require_readonly_account(entry_account, &registry_program)?;
+-    let expected_entry = Pubkey::find_program_address(
+-        &[
+-            VERIFIER_ENTRY_SEED,
+-            master_account.key.as_ref(),
+-            &V7_POOL_PAIR_FOREST_TAG73_PROFILE_BINDING,
+-            &V7_POOL_PAIR_FOREST_TAG73_RELEASE_BINDING,
+-        ],
+-        &registry_program,
+-    )
+-    .0;
++    let expected_entry = verifier_entry_pda_v1(master_account.key, &registry_program);
+     if entry_account.key != &expected_entry {
+         return Err(ProgramError::InvalidAccountData);
+     }
+@@ -380,14 +431,8 @@ fn authenticate_asq8_accounts_v1(
+     let master = decode_master_box(&master_account.try_borrow_data()?)?;
+     if master.identity.pool != master_account.key.to_bytes()
+         || master.initialized_lane_mask != POOL_V1_PAIR_FOREST_ALL_LANES_MASK
+-        || Pubkey::find_program_address(
+-            &[
+-                PAIR_FOREST_MASTER_SEED,
+-                Pubkey::new_from_array(master.identity.asset_mint).as_ref(),
+-            ],
+-            pool_program,
+-        )
+-        .0 != *master_account.key
++        || pair_forest_master_pda_v1(master.identity.asset_mint, pool_program)
++            != *master_account.key
+     {
+         return Err(ProgramError::InvalidAccountData);
+     }
+@@ -404,15 +449,11 @@ fn authenticate_asq8_accounts_v1(
+     let checkpoint = decode_checkpoint_box(&checkpoint_account.try_borrow_data()?)?;
+     if checkpoint.master != master_account.key.to_bytes()
+         || checkpoint.deployment_domain != master.identity.deployment_domain
+-        || Pubkey::find_program_address(
+-            &[
+-                PAIR_FOREST_CHECKPOINT_SEED,
+-                master_account.key.as_ref(),
+-                &checkpoint.checkpoint_sequence.to_le_bytes(),
+-            ],
++        || pair_forest_checkpoint_pda_v1(
++            master_account.key,
++            checkpoint.checkpoint_sequence,
+             pool_program,
+-        )
+-        .0 != *checkpoint_account.key
++        ) != *checkpoint_account.key
+     {
+         return Err(ProgramError::InvalidAccountData);
+     }
+@@ -420,15 +461,8 @@ fn authenticate_asq8_accounts_v1(
+     let selected_lane = decode_lane_box(&lane_account.try_borrow_data()?)?;
+     if selected_lane.master != master_account.key.to_bytes()
+         || selected_lane.lane_id != output_lane
+-        || Pubkey::find_program_address(
+-            &[
+-                PAIR_FOREST_LANE_SEED,
+-                master_account.key.as_ref(),
+-                &[output_lane],
+-            ],
+-            pool_program,
+-        )
+-        .0 != *lane_account.key
++        || pair_forest_lane_pda_v1(master_account.key, output_lane, pool_program)
++            != *lane_account.key
+     {
+         return Err(ProgramError::InvalidAccountData);
+     }

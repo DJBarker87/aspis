@@ -1,0 +1,118 @@
+diff --git a/programs/aspis-verifier/src/v7_pair_forest_dispatch.rs b/programs/aspis-verifier/src/v7_pair_forest_dispatch.rs
+--- a/programs/aspis-verifier/src/v7_pair_forest_dispatch.rs
++++ b/programs/aspis-verifier/src/v7_pair_forest_dispatch.rs
+@@ -382,6 +382,52 @@ fn live_snapshot_box(
+     })
+ }
+ 
++#[cfg(feature = "v7-pair-forest-lane-invariant-audit")]
++fn exact_six_account_refs_v1<'accounts, 'info>(
++    accounts: &'accounts [AccountInfo<'info>],
++) -> (
++    &'accounts AccountInfo<'info>,
++    &'accounts AccountInfo<'info>,
++    &'accounts AccountInfo<'info>,
++    &'accounts AccountInfo<'info>,
++    &'accounts AccountInfo<'info>,
++    &'accounts AccountInfo<'info>,
++) {
++    let [proof_account, master_account, checkpoint_account, lane_account, registry_account, entry_account] =
++        accounts
++    else {
++        unreachable!();
++    };
++    (
++        proof_account,
++        master_account,
++        checkpoint_account,
++        lane_account,
++        registry_account,
++        entry_account,
++    )
++}
++
++#[cfg(not(feature = "v7-pair-forest-lane-invariant-audit"))]
++fn exact_four_account_refs_v1<'accounts, 'info>(
++    accounts: &'accounts [AccountInfo<'info>],
++) -> (
++    &'accounts AccountInfo<'info>,
++    &'accounts AccountInfo<'info>,
++    &'accounts AccountInfo<'info>,
++    &'accounts AccountInfo<'info>,
++) {
++    let [proof_account, master_account, checkpoint_account, lane_account] = accounts else {
++        unreachable!();
++    };
++    (
++        proof_account,
++        master_account,
++        checkpoint_account,
++        lane_account,
++    )
++}
++
+ #[inline(never)]
+ fn authenticate_asq8_accounts_v1(
+     verifier_program: &Pubkey,
+@@ -398,29 +444,14 @@ fn authenticate_asq8_accounts_v1(
+         });
+     }
+     #[cfg(feature = "v7-pair-forest-lane-invariant-audit")]
+-    let Some((proof_account, remaining_accounts)) = accounts.split_first() else {
+-        return Err(ProgramError::NotEnoughAccountKeys);
+-    };
+-    #[cfg(feature = "v7-pair-forest-lane-invariant-audit")]
+-    let Some((master_account, remaining_accounts)) = remaining_accounts.split_first() else {
+-        return Err(ProgramError::NotEnoughAccountKeys);
+-    };
+-    #[cfg(feature = "v7-pair-forest-lane-invariant-audit")]
+-    let Some((checkpoint_account, remaining_accounts)) = remaining_accounts.split_first() else {
+-        return Err(ProgramError::NotEnoughAccountKeys);
+-    };
+-    #[cfg(feature = "v7-pair-forest-lane-invariant-audit")]
+-    let Some((lane_account, remaining_accounts)) = remaining_accounts.split_first() else {
+-        return Err(ProgramError::NotEnoughAccountKeys);
+-    };
+-    #[cfg(feature = "v7-pair-forest-lane-invariant-audit")]
+-    let Some((registry_account, remaining_accounts)) = remaining_accounts.split_first() else {
+-        return Err(ProgramError::NotEnoughAccountKeys);
+-    };
+-    #[cfg(feature = "v7-pair-forest-lane-invariant-audit")]
+-    let Some((entry_account, _remaining_accounts)) = remaining_accounts.split_first() else {
+-        return Err(ProgramError::NotEnoughAccountKeys);
+-    };
++    let (
++        proof_account,
++        master_account,
++        checkpoint_account,
++        lane_account,
++        registry_account,
++        entry_account,
++    ) = exact_six_account_refs_v1(accounts);
+     #[cfg(not(feature = "v7-pair-forest-lane-invariant-audit"))]
+     if accounts.len() != 4 {
+         return Err(if accounts.len() < 4 {
+@@ -430,21 +461,8 @@ fn authenticate_asq8_accounts_v1(
+         });
+     }
+     #[cfg(not(feature = "v7-pair-forest-lane-invariant-audit"))]
+-    let Some((proof_account, remaining_accounts)) = accounts.split_first() else {
+-        return Err(ProgramError::NotEnoughAccountKeys);
+-    };
+-    #[cfg(not(feature = "v7-pair-forest-lane-invariant-audit"))]
+-    let Some((master_account, remaining_accounts)) = remaining_accounts.split_first() else {
+-        return Err(ProgramError::NotEnoughAccountKeys);
+-    };
+-    #[cfg(not(feature = "v7-pair-forest-lane-invariant-audit"))]
+-    let Some((checkpoint_account, remaining_accounts)) = remaining_accounts.split_first() else {
+-        return Err(ProgramError::NotEnoughAccountKeys);
+-    };
+-    #[cfg(not(feature = "v7-pair-forest-lane-invariant-audit"))]
+-    let Some((lane_account, _remaining_accounts)) = remaining_accounts.split_first() else {
+-        return Err(ProgramError::NotEnoughAccountKeys);
+-    };
++    let (proof_account, master_account, checkpoint_account, lane_account) =
++        exact_four_account_refs_v1(accounts);
+     require_readonly_account(proof_account, verifier_program)?;
+     require_readonly_account(master_account, pool_program)?;
+     require_readonly_account(checkpoint_account, pool_program)?;

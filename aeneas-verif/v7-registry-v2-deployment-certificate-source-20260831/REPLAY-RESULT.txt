@@ -1,0 +1,132 @@
+V7 REGISTRY V2 DEPLOYMENT CERTIFICATE SOURCE REPLAY
+===================================================
+
+Base/source revision:
+  9a5fd7aec741242b840d934e4eaaeb3c41e6016c
+
+Pinned source hashes:
+  programs/aspis-registry/src/processor.rs
+    b0bf5c9c7c0cbe532ccdedde1fb8692b0691d1aafa8b17c69a9f43183442fc84
+  programs/aspis-registry/src/processor_tests.rs
+    663a47babc8fdb06e3635b81151fa1d87bf0657078c08c7df88d2d1fa34017b9
+  programs/aspis-pool/src/registry.rs
+    99c166a1f6641631937450fe7e59e08cb6422e588d8c49b90f66f9a4cb85ed8a
+  crates/aspis-statement/src/pool_v1/verifier_registry.rs
+    124c28d21857b2e009c19674f04f0f4d50e7feaa61a62f3900532f20b5267cb2
+  Cargo.lock
+    a1d2fc87435e98734f74a0fb1f070f1eaa5e5fe19266967092a7ea7849f8a91d
+
+Toolchain:
+  Charon: 0.1.223
+  binary SHA-256:
+    b2b0961a3c55aca64752b2fa4a4701ba0c06b860236979e5727c07de8ac2310c
+  Aeneas: b59d5188-lean432-extended
+  binary SHA-256:
+    4632746db1bf6c3953f2971078965a2a5a8ad6cf5f75636b46b397bc50c550b5
+  Lean: 4.31.0
+
+Literal production helper gate
+------------------------------
+
+Charon root:
+  aspis_registry::processor::authenticate_immutable_loader_v3_deployment_v2
+unit/invocation:
+  aspis-v7-registry-v2-deploy-charon-01
+  877ebec4fd864a9fa763efbd90a6a7ed
+exit: 0
+wall: 55.15 s
+peak RSS: 555,828 KiB
+swaps: 0
+LLBC SHA-256:
+  f6430f5f53f0640344c39014d07ca0c0117d4f163b6c187f73bc08e647b8ae78
+
+Aeneas unit/invocation:
+  aspis-v7-registry-v2-deploy-aeneas-01
+  f770486ca7e34b148fb0a37a69eb3770
+exit: 2 (audited translator limitation)
+wall: 0.88 s
+peak RSS: 183,392 KiB
+swaps: 0
+failure:
+  AccountInfo shared-borrow give-back at SymbolicToPureValues.ml:878
+
+Focused translated projection
+-----------------------------
+
+Harness Charon unit/invocation:
+  aspis-v7-registry-v2-cert-charon-01
+  95c36c44357e410f8c5c1e765bb2ba22
+exit: 0
+wall: 0.27 s
+peak RSS: 135,168 KiB
+swaps: 0
+LLBC SHA-256:
+  ae6a0889806f7b9bdc3c6495b6c820274f063c8bfb1f4a66738c79bf0eedbfa0
+
+Harness Aeneas unit/invocation:
+  aspis-v7-registry-v2-cert-aeneas-01
+  b3dace695bec4ba987ce4cb906b1d6c0
+exit: 0
+wall: 0.31 s
+peak RSS: 70,400 KiB
+swaps: 0
+
+Focused production V2 Rust tests:
+  unit/invocation:
+    aspis-v7-registry-v2-production-tests-09
+    656cad2ff6cf4052b5423eac3a53307c
+  exit: 0
+  wall: 49.61 s
+  peak RSS: 571,420 KiB
+  swaps: 0
+  result: 5 passed, 0 failed
+
+Focused Lean proof:
+  unit/invocation:
+    aspis-v7-registry-v2-cert-proof-08
+    35324df9c316448088c0e07d591f4c83
+  exit: 0
+  wall: 2.62 s
+  peak RSS: 2,547,668 KiB
+  swaps: 0
+  #print axioms union:
+    propext
+    Classical.choice
+    Quot.sound
+
+There is no sorry, admit, sorryAx, native_decide or project-specific axiom in
+the green compiled proof.
+
+Final extraction replay:
+  unit/invocation:
+    aspis-v7-registry-v2-cert-extraction-final-14
+    1bc73867ea39451b97878facb98a4c75
+  cgroup: MemoryHigh=2G, MemoryMax=3G, MemorySwapMax=0
+  exit: 0
+  wall: 1.67 s
+  peak RSS: 135,696 KiB
+  swaps: 0
+  generated Types/Funs/translation manifest: byte-identical
+  run-specific LLBC SHA-256:
+    bc9980735043163ec65b933e4edece454effe3dc55d7e0b58b3071f9e027e326
+
+Final clean dependency/bridge replay:
+  unit/invocation:
+    aspis-v7-registry-v2-cert-lean-final-13
+    890b2e33fec5421a8f27b9ec319381a5
+  cgroup: MemoryHigh=4G, MemoryMax=6G, MemorySwapMax=0
+  exit: 0
+  wall: 37.75 s
+  peak RSS: 2,665,508 KiB
+  swaps: 0
+  forbidden compiled constructs: none
+  #print axioms union:
+    propext
+    Classical.choice
+    Quot.sound
+
+RESULT: PASS for the finite Registry V2 256-bit projection and the exact
+        post-primitive loader-v3 immutable-deployment certificate control flow.
+RESULT: literal production helper Charon extraction is green; the complete
+        helper remains explicitly blocked in Aeneas at the AccountInfo shared-
+        borrow give-back described above.

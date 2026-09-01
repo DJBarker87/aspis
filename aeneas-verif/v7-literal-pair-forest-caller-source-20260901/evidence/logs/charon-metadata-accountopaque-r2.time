@@ -1,0 +1,23 @@
+	Command being timed: "/home/dombarker/project-offloads/ZK-v5-formal/toolchains/charon/bin/charon cargo --preset aeneas --mir built --sysroot default --start-from crate::v7_pair_forest_dispatch::process_with_clear_return_data --include aspis_core --include aspis_statement --opaque solana_account_info::AccountInfo --opaque crate::v7_pair_forest_dispatch::exact_six_account_refs_v1 --opaque crate::v7_pair_forest_dispatch::readonly_account_metadata_v1 --opaque crate::v7_pair_forest_dispatch::borrow_readonly_account_data --opaque crate::v7_pair_forest_dispatch::pair_forest_master_pda_v1 --opaque crate::v7_pair_forest_dispatch::pair_forest_checkpoint_pda_v1 --opaque crate::v7_pair_forest_dispatch::pair_forest_lane_pda_v1 --opaque crate::v7_pair_forest_dispatch::verifier_registry_pda_v1 --opaque crate::v7_pair_forest_dispatch::verifier_entry_pda_v1 --opaque aspis_statement::pool_v1::pair_forest_copy_terminal::pool_v1_pair_forest_copy_inactive_row_groups_compiled_v1 --opaque aspis_statement::pool_v1::pair_forest_copy_terminal::pool_v1_pair_forest_copy_inactive_group_masks_compiled_v1 --opaque aspis_core::v6_onefold::gamma_combine_v6_c1_slot_major --opaque aspis_core::field::qm31_dot3 --opaque crate::verify::sbf_hashv --dest-file /home/dombarker/project-offloads/aspis-v7-literal-caller-unblock-20260901.UVlTOZ/extraction/V7LiteralCallerCurrent309bMetadataAccountOpaqueR1.llbc -- --package aspis-verifier --lib --no-default-features --features v7-pair-forest-one-tx-candidate"
+	User time (seconds): 17.50
+	System time (seconds): 1.77
+	Percent of CPU this job got: 227%
+	Elapsed (wall clock) time (h:mm:ss or m:ss): 0:08.45
+	Average shared text size (kbytes): 0
+	Average unshared data size (kbytes): 0
+	Average stack size (kbytes): 0
+	Average total size (kbytes): 0
+	Maximum resident set size (kbytes): 960960
+	Average resident set size (kbytes): 0
+	Major (requiring I/O) page faults: 133
+	Minor (reclaiming a frame) page faults: 663008
+	Voluntary context switches: 103917
+	Involuntary context switches: 1824
+	Swaps: 0
+	File system inputs: 11240
+	File system outputs: 995168
+	Socket messages sent: 0
+	Socket messages received: 0
+	Signals delivered: 0
+	Page size (bytes): 4096
+	Exit status: 0

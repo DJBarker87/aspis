@@ -1,0 +1,51 @@
+Pinned runtime milestone:
+  7179f7c550fe0461f4251dea5268af73876da91d
+Pinned production-source revision:
+  4722228b991ebb72850b8d79dd54b0fee4899462
+
+Production source:
+  0b5a2824cb6b9a31971d75dd5bb0fcc224aece6873ac12f54b6a81822275ce0b  programs/aspis-pool/src/pair_forest.rs
+  7e45910a3d64e328dc234ede290119770e898bcb48f277d978219740ec891514  programs/aspis-pool/src/pair_forest_dispatch.rs
+  99c166a1f6641631937450fe7e59e08cb6422e588d8c49b90f66f9a4cb85ed8a  programs/aspis-pool/src/registry.rs
+  7d754900fecb4d6ba4511029a3617e90f91c697fc415fabd8aa4b2c0c519107a  programs/aspis-pool/src/history.rs
+  274398d59536f19fa25dd11269945893fe02a03e5668655244b7be2f32e26c6f  programs/aspis-pool/src/nullifier.rs
+  d7889cbdec8c3987cfa5aaad3984475e18e390c84712826847de611680d90463  programs/aspis-pool/src/vault.rs
+  3c989ba201b622c01e67edec7cba8b17ba30663b386a4f316e757ff06dad7354  programs/aspis-pool/src/processor.rs
+  22f88dc409dbc90bed8eecfbb8ecf0a209bb51313194ae3456ac303e36c1a5f5  programs/aspis-verifier/src/v7_pair_forest_dispatch.rs
+  9d6a22dd2fcdef947e53a570b712b8e70056cc71aa8d60692662d78204e62d11  programs/aspis-registry/src/instruction.rs
+  b0bf5c9c7c0cbe532ccdedde1fb8692b0691d1aafa8b17c69a9f43183442fc84  programs/aspis-registry/src/processor.rs
+  d10c75884cde37792647736ed87d326b8f889ea9a17a363f14efc98b801b7175  crates/aspis-statement/src/pool_v1/pair_forest_accounts.rs
+  becc01f162f23cd9b4a7fd3780be5a441c9b7265f3078282244cc938da63a16c  crates/aspis-statement/src/pool_v1/pair_forest_terminal.rs
+  124c28d21857b2e009c19674f04f0f4d50e7feaa61a62f3900532f20b5267cb2  crates/aspis-statement/src/pool_v1/verifier_registry.rs
+  209bf45ab1fbf03fa6a5b524e6b2079068537368b02837e320d708ca5128f88d  crates/aspis-statement/src/pool_v1/format.rs
+  faf0bffabea687d358bd67ba510afc9038f97313a184564532c99cdea565b9c5  programs/aspis-pool/Cargo.toml
+  7f8d8fe0633a86e26d7693b71abb2ca16f7ed58cbe9b0896ee49b7454318557d  programs/aspis-verifier/Cargo.toml
+  0274a9c4f8891b4431a6fffe60c94e52eb5a4a026c7178cbad3a519f04c23363  programs/aspis-registry/Cargo.toml
+
+Tools:
+  b2b0961a3c55aca64752b2fa4a4701ba0c06b860236979e5727c07de8ac2310c  Charon 0.1.223
+  4632746db1bf6c3953f2971078965a2a5a8ad6cf5f75636b46b397bc50c550b5  Aeneas b59d5188-lean432-extended
+  e8baaa71855a616dc351028f3ad2200051b0671f423a1696a100e809302d5550  Lean 4.31.0 commit 68218e876d2a38b1985b8590fff244a83c321783
+
+Focused source and artifacts:
+  7c154bb99a8d5d2c075dfcbf41f712a5a6b9cdd02d4f3b49463b89dcd0cd50d2  harness/Cargo.toml
+  11e9a4a61804546037d1c0e9bde40342af9045b44649b194ac6e7655d23e0c75  harness/Cargo.lock
+  d40539bea731d315404a29501c7db391f8a8b8ec8e26bd5d99a7c75a729985e7  harness/src/lib.rs
+  b1c335835f5b351c4c23c38b6bd6c5ebc44174ca950dcfa23e795c4c4c4b13f1  extraction/V7RegistryV2OneTerminalCaller.llbc
+  9b79108f675088086bbf6e247f437afb78600d4e5e8cf2b9f834e3c55a3a3c42  generated/V7RegistryV2OneTerminalCaller/Types.lean
+  b80417eca46fe0c9783da41b252de5a4df1b7ed7e1654472f8b9adff090a4d06  generated/V7RegistryV2OneTerminalCaller/Funs.lean
+  a5eb3c01dac88ad830b640c7aca129c60b4ec39380e511a35e36358b74f81a9c  generated/V7RegistryV2OneTerminalCaller/FunsExternal.lean
+  ac4d6eea9dd95333038dfdb92f97341b5784571783775581febd0afaebf812da  generated/V7RegistryV2OneTerminalCaller/FunsExternal_Template.lean
+  fb7c5ffe6d10feebe4698b4acecb49c9fee5b804b91615a4eea6315fcafbc432  generated/translation.json
+  8bcfd3d59d0d0c61f438d0ba606739e07e969edf971e84a5ad74d584e3773ab1  proof/V7RegistryV2OneTerminalCallerSourceBridge.lean
+  5215a8f6b08126b07b2c16bfb3432382d14562263ea5136b682dbc03e97e0693  source-audit.sh
+  5249e82f4e698f0c3e8ff6c9dd3c4d0e5f645c746b64ee87f187739d9dd5fa26  replay-rust.sh
+  444c26cf1446f787494cfcd0e2b8e3ef8906a5c7194252acaeb26a9f69f23690  replay-extraction.sh
+  236b0aff1452c49ad2543d57711b6697d26de0e510d3fabafc9c89c7fdfaa1e2  replay-lean.sh
+
+Raw LLBC serialization embeds its destination and unordered maps. The final
+clean replay emitted SHA-256
+2602d87bd008349ab2396ee590ba063459c8551e49d5a1188a33a54c95075979;
+replay acceptance therefore requires exact equality of generated Types,
+Funs, external template and translation JSON rather than cross-directory LLBC
+byte equality.

@@ -1,0 +1,13 @@
+diff --git a/programs/aspis-verifier/src/v7_verifier.rs b/programs/aspis-verifier/src/v7_verifier.rs
+--- a/programs/aspis-verifier/src/v7_verifier.rs
++++ b/programs/aspis-verifier/src/v7_verifier.rs
+@@ -95,7 +95,8 @@ fn pool_inactive_schedule(active: &[u16; 64]) -> ([u8; 64], [u16; 64], usize) {
+     let mut row_groups = [0u8; 64];
+     let mut group_masks = [0u16; 64];
+     let mut group_count = 0usize;
+-    for (row, active_mask) in active.iter().copied().enumerate() {
++    for row in 0..active.len() {
++        let active_mask = active[row];
+         let inactive_mask = !active_mask;
+         let group = group_masks[..group_count]
+             .iter()

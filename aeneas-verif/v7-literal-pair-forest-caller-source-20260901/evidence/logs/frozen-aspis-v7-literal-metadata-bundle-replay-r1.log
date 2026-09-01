@@ -1,0 +1,16 @@
+Started aspis-v7-literal-metadata-bundle-replay-r1.service - /usr/bin/time -v -o /home/dombarker/project-offloads/aspis-v7-literal-caller-unblock-20260901.UVlTOZ/logs/metadata-bundle-replay-r1.time /usr/bin/env AENEAS_LEAN_BACKEND=/home/dombarker/project-offloads/aeneas-d860-v6/backends/lean LEAN_BIN=/home/dombarker/.elan/toolchains/leanprover--lean4---v4.31.0/bin/lean LAKE_BIN=/home/dombarker/.elan/bin/lake /home/dombarker/project-offloads/aspis-v7-literal-caller-unblock-20260901.UVlTOZ/bundle-replay-r1/replay-lean.sh.
+LEAN_TARGET=V7LiteralCallerReadonlyMetadataHelperCurrent309bR1/TypesExternal
+LEAN_TARGET=V7LiteralCallerReadonlyMetadataHelperCurrent309bR1/Types
+LEAN_TARGET=V7LiteralCallerReadonlyMetadataHelperCurrent309bR1/Funs
+LEAN_TARGET=V7LiteralCallerCurrent309bMetadataAccountOpaqueAcceptedToolR1/TypesExternal
+LEAN_TARGET=V7LiteralCallerCurrent309bMetadataAccountOpaqueAcceptedToolR1/Types
+LEAN_TARGET=V7LiteralCallerReadonlyMetadataExternal
+LEAN_TARGET=V7LiteralCallerReadonlyMetadataBridge
+'V7LiteralCallerCurrent309bMetadataAccountOpaqueAcceptedToolR1.readonly_account_metadata_v1_exact' depends on axioms: [propext,
+ Classical.choice,
+ Quot.sound]
+'V7LiteralCallerCurrent309bMetadataAccountOpaqueAcceptedToolR1.readonly_account_metadata_v1_success_fields' depends on axioms: [propext,
+ Classical.choice,
+ Quot.sound]
+V7 literal readonly-metadata Lean replay: PASS
+aspis-v7-literal-metadata-bundle-replay-r1.service: Consumed 12.293s CPU time, 256.0K memory peak, 0B memory swap peak.

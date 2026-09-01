@@ -1,0 +1,63 @@
+All commands ran from the hash-pinned repository root with CARGO_BUILD_JOBS=1,
+under MemoryHigh=4G, MemoryMax=6G and MemorySwapMax=0 systemd user units.
+
+CHARON_BIN=/home/dombarker/project-offloads/ZK-v5-formal/toolchains/charon/bin/charon
+AENEAS_BIN=/home/dombarker/project-offloads/v7-tag73-challenge-qm31-source-20260825-work/toolchain/output/aeneas-b59d5188-lean432-extended-static
+
+# Complete generic caller (Charon succeeds; Aeneas reaches the HRTB gate).
+$CHARON_BIN cargo --preset aeneas --mir built --sysroot default \
+  --start-from aspis_pool::pair_forest::process_pair_forest_terminal_with_verifier_v1 \
+  --dest-file CurrentLiteralCaller03.llbc -- \
+  --manifest-path programs/aspis-pool/Cargo.toml --lib \
+  --features v7-pair-forest-one-tx-candidate
+$AENEAS_BIN -sequential -no-progress-bar -abort-on-error -backend lean \
+  -namespace V7RegistryV2LiteralCallerGenerated -dest generated-literal-03 \
+  -subdir V7RegistryV2LiteralCaller -split-files -emit-json \
+  CurrentLiteralCaller03.llbc
+
+# Complete concrete wrapper (Charon succeeds; same Aeneas HRTB gate).
+$CHARON_BIN cargo --preset aeneas --mir built --sysroot default \
+  --start-from aspis_pool::pair_forest::process_pair_forest_terminal_v1 \
+  --dest-file CurrentConcreteCaller04.llbc -- \
+  --manifest-path programs/aspis-pool/Cargo.toml --lib \
+  --features v7-pair-forest-one-tx-candidate
+$AENEAS_BIN -sequential -no-progress-bar -abort-on-error -backend lean \
+  -namespace V7RegistryV2ConcreteCallerGenerated -dest generated-concrete-04 \
+  -subdir V7RegistryV2ConcreteCaller -split-files -emit-json \
+  CurrentConcreteCaller04.llbc
+
+# Apply toolchain/specialize-production-callbacks-for-extraction.patch to a
+# disposable source copy only. Charon succeeds; Aeneas reaches the independent
+# AccountInfo shared-borrow join gate.
+$CHARON_BIN cargo --preset aeneas --mir built --sysroot default \
+  --start-from aspis_pool::pair_forest::process_pair_forest_terminal_v1 \
+  --dest-file SpecializedConcreteCaller05.llbc -- \
+  --manifest-path programs/aspis-pool/Cargo.toml --lib \
+  --features v7-pair-forest-one-tx-candidate
+$AENEAS_BIN -sequential -no-progress-bar -abort-on-error -backend lean \
+  -namespace V7RegistryV2SpecializedLiteralCallerGenerated \
+  -dest generated-specialized-05 -subdir V7RegistryV2SpecializedLiteralCaller \
+  -split-files -emit-json SpecializedConcreteCaller05.llbc
+
+# Exact Registry V2 codecs.
+$CHARON_BIN cargo --preset aeneas --mir built --sysroot default \
+  --start-from aspis_statement::pool_v1::verifier_registry::decode_verifier_registry_v2 \
+  --start-from aspis_statement::pool_v1::verifier_registry::decode_verifier_registry_entry_v2 \
+  --dest-file RegistryV2Codecs09.llbc -- \
+  --manifest-path crates/aspis-statement/Cargo.toml --lib \
+  --features pool-v1-kernel
+$AENEAS_BIN -sequential -no-progress-bar -abort-on-error -backend lean \
+  -namespace V7RegistryV2ProductionCodecsGenerated -dest generated-codecs-09 \
+  -subdir V7RegistryV2ProductionCodecs -split-files -emit-json \
+  RegistryV2Codecs09.llbc
+
+# Exact literal readonly AccountInfo gate.
+$CHARON_BIN cargo --preset aeneas --mir built --sysroot default \
+  --start-from aspis_pool::registry::require_readonly_registry_account \
+  --dest-file RegistryV2Readonly11.llbc -- \
+  --manifest-path programs/aspis-pool/Cargo.toml --lib \
+  --features v7-pair-forest-one-tx-candidate
+$AENEAS_BIN -sequential -no-progress-bar -abort-on-error -backend lean \
+  -namespace V7RegistryV2ProductionReadonlyGenerated -dest generated-readonly-11 \
+  -subdir V7RegistryV2ProductionReadonly -split-files -emit-json \
+  RegistryV2Readonly11.llbc
