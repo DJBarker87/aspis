@@ -207,7 +207,7 @@ theorem exact_fixed_k13_adversary_anchor_prefinal_is_not_later_root_answer
     (witness : ExactFixedK13JointTrialWitness transitionFuel configuration
       projection fixedInstance decoder sample trial)
     (anchor : ExactFixedK13AdversaryAnchor witness.input trial) :
-    ∃ queryPrior queryLater anchorInput anchorAnswer digest,
+    ∃ queryPrior queryLater anchorInput anchorAnswer digest base absorbActor,
       witness.input.package.root.full.projection.rootPrefixes.adversary.freshQueries =
           queryPrior ++ (anchorInput, anchorAnswer) :: queryLater ∧
       trial.val = queryPrior.length ∧
@@ -219,6 +219,12 @@ theorem exact_fixed_k13_adversary_anchor_prefinal_is_not_later_root_answer
         anchorInput =
           (literalFinalWorkKey digest
             (exactOperationalTape witness.input).messages.finalGrinding.selected).absorbInput) ∧
+      base = (exactOperationalRawTrace witness.input).q16BaseDigest ∧
+      (.machineFresh absorbActor
+        (literalFinalWorkKey digest
+          (exactOperationalTape witness.input).messages.finalGrinding.selected).absorbInput
+        base : UnifiedExposureRecord) ∈
+        exactFixedRootRecords witness.input.package.root ∧
       (∀ between producerInput producerLater,
         witness.input.package.root.full.projection.rootPrefixes.adversary.freshQueries ≠
           queryPrior ++ (anchorInput, anchorAnswer) ::
@@ -226,16 +232,17 @@ theorem exact_fixed_k13_adversary_anchor_prefinal_is_not_later_root_answer
       (∀ verifierPrior producerInput verifierLater,
         witness.input.package.root.full.projection.rootPrefixes.verifier.freshQueries ≠
           verifierPrior ++ (producerInput, digest) :: verifierLater) := by
-  obtain ⟨rootPrior, rootLater, anchorInput, anchorAnswer, digest, _base,
-      _absorbActor, rootExact, trialExact, statePrefix, prefinalOrigin,
-      anchorKind, _baseExact, _absorbMember⟩ :=
+  obtain ⟨rootPrior, rootLater, anchorInput, anchorAnswer, digest, base,
+      absorbActor, rootExact, trialExact, statePrefix, prefinalOrigin,
+      anchorKind, baseExact, absorbMember⟩ :=
     exact_fixed_k13_adversary_anchor_has_prefinal_digest_prefix trial witness
       anchor
   obtain ⟨queryPrior, queryLater, adversaryExact, rootPriorExact⟩ :=
     exact_fixed_k13_adversary_anchor_has_literal_adversary_prefix witness.input
       rootPrior rootLater anchorInput anchorAnswer rootExact
-  refine ⟨queryPrior, queryLater, anchorInput, anchorAnswer, digest,
-    adversaryExact, ?_, statePrefix, prefinalOrigin, anchorKind, ?_, ?_⟩
+  refine ⟨queryPrior, queryLater, anchorInput, anchorAnswer, digest, base,
+    absorbActor, adversaryExact, ?_, statePrefix, prefinalOrigin, anchorKind,
+    baseExact, absorbMember, ?_, ?_⟩
   · rw [rootPriorExact] at trialExact
     simpa only [projected_machine_fresh_records_length] using trialExact
   · intro between producerInput producerLater laterExact
@@ -270,7 +277,7 @@ theorem exact_fixed_k13_adversary_anchor_has_earlier_final256_producer
       projection fixedInstance decoder sample trial)
     (anchor : ExactFixedK13AdversaryAnchor witness.input trial) :
     ∃ producerPrior middle anchorLater producerInput anchorInput
-        anchorAnswer digest,
+        anchorAnswer digest base absorbActor,
       witness.input.package.root.full.projection.rootPrefixes.adversary.freshQueries =
         producerPrior ++ (producerInput, digest) ::
           middle ++ (anchorInput, anchorAnswer) :: anchorLater ∧
@@ -279,10 +286,17 @@ theorem exact_fixed_k13_adversary_anchor_has_earlier_final256_producer
       tableLookup (exactOperationalTable witness.input) producerInput =
         some digest ∧
       HasLiteralStatePrefix digest anchorInput ∧
-      ExactOperationalPrefinalDigest witness.input digest := by
-  obtain ⟨queryPrior, queryLater, anchorInput, anchorAnswer, digest,
+      ExactOperationalPrefinalDigest witness.input digest ∧
+      base = (exactOperationalRawTrace witness.input).q16BaseDigest ∧
+      (.machineFresh absorbActor
+        (literalFinalWorkKey digest
+          (exactOperationalTape witness.input).messages.finalGrinding.selected).absorbInput
+        base : UnifiedExposureRecord) ∈
+        exactFixedRootRecords witness.input.package.root := by
+  obtain ⟨queryPrior, queryLater, anchorInput, anchorAnswer, digest, base,
+      absorbActor,
       adversaryExact, trialExact, statePrefix, prefinalOrigin, _anchorKind,
-      notLaterAdversary, notVerifier⟩ :=
+      baseExact, absorbMember, notLaterAdversary, notVerifier⟩ :=
     exact_fixed_k13_adversary_anchor_prefinal_is_not_later_root_answer
       transitionRoom trial witness anchor
   obtain ⟨beforeFinal256, producerLookup⟩ := prefinalOrigin
@@ -341,9 +355,10 @@ theorem exact_fixed_k13_adversary_anchor_has_earlier_final256_producer
           (adversaryExact.symm.trans (by
             simpa only [List.cons_append, List.append_assoc] using exact))
       exact ⟨producerPrior, middle, anchorLater, producerInput, anchorInput,
-        anchorAnswer, digest, exact, by simpa [queryPriorExact] using trialExact,
+        anchorAnswer, digest, base, absorbActor, exact,
+        by simpa [queryPriorExact] using trialExact,
         by simpa [producerInput] using producerLookup, statePrefix,
-        ⟨beforeFinal256, producerLookup⟩⟩
+        ⟨beforeFinal256, producerLookup⟩, baseExact, absorbMember⟩
     · obtain ⟨beforeAnchor, middle, producerLater, exact⟩ := anchorFirst
       exfalso
       exact exact_root_adversary_prefix_cannot_reference_later_adversary_answer
@@ -371,7 +386,7 @@ theorem exact_fixed_k13_adversary_anchor_has_earlier_final256_root_record
       projection fixedInstance decoder sample trial)
     (anchor : ExactFixedK13AdversaryAnchor witness.input trial) :
     ∃ rootPrior rootMiddle rootLater producerInput anchorInput anchorAnswer
-        digest,
+        digest base absorbActor,
       exactFixedRootRecords witness.input.package.root =
         rootPrior ++
           (.machineFresh .adversary producerInput digest :
@@ -385,10 +400,16 @@ theorem exact_fixed_k13_adversary_anchor_has_earlier_final256_root_record
       tableLookup (exactOperationalTable witness.input) producerInput =
         some digest ∧
       HasLiteralStatePrefix digest anchorInput ∧
-      ExactOperationalPrefinalDigest witness.input digest := by
+      ExactOperationalPrefinalDigest witness.input digest ∧
+      base = (exactOperationalRawTrace witness.input).q16BaseDigest ∧
+      (.machineFresh absorbActor
+        (literalFinalWorkKey digest
+          (exactOperationalTape witness.input).messages.finalGrinding.selected).absorbInput
+        base : UnifiedExposureRecord) ∈
+        exactFixedRootRecords witness.input.package.root := by
   obtain ⟨producerPrior, middle, anchorLater, producerInput, anchorInput,
-      anchorAnswer, digest, adversaryExact, trialExact, producerLookup,
-      statePrefix, prefinalOrigin⟩ :=
+      anchorAnswer, digest, base, absorbActor, adversaryExact, trialExact,
+      producerLookup, statePrefix, prefinalOrigin, baseExact, absorbMember⟩ :=
     exact_fixed_k13_adversary_anchor_has_earlier_final256_producer
       transitionRoom trial witness anchor
   refine ⟨projectedMachineFreshRecords .adversary producerPrior,
@@ -396,8 +417,8 @@ theorem exact_fixed_k13_adversary_anchor_has_earlier_final256_root_record
     projectedMachineFreshRecords .adversary anchorLater ++
     projectedMachineFreshRecords .verifier
         witness.input.package.root.full.projection.rootPrefixes.verifier.freshQueries,
-    producerInput, anchorInput, anchorAnswer, digest, ?_, ?_, producerLookup,
-    statePrefix, prefinalOrigin⟩
+    producerInput, anchorInput, anchorAnswer, digest, base, absorbActor, ?_, ?_,
+    producerLookup, statePrefix, prefinalOrigin, baseExact, absorbMember⟩
   · unfold exactFixedRootRecords fullProjectedRootRecords
     rw [adversaryExact]
     simp only [projected_machine_fresh_records_append,

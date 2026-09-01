@@ -536,7 +536,8 @@ theorem exact_fixed_clean_k13_adversary_anchor_final256_input_eq
         (hidden, left)).1 =
       (exactFixedK13TrialCoordinates transitionFuel configuration trial
         (hidden, right)).1) :
-    ∃ (leftBefore rightBefore : EvalState) (digest : Digest256),
+    ∃ (leftBefore rightBefore : EvalState) (digest leftBase rightBase : Digest256)
+        (leftAbsorbActor rightAbsorbActor : QueryActor),
       (bytes leftBefore.digest ++
           [domAbsorb,
             (AspisK1.V7Tag73TranscriptSchedule.Payload.final256
@@ -564,16 +565,29 @@ theorem exact_fixed_clean_k13_adversary_anchor_final256_input_eq
                 (exactOperationalTape rightWitness.input).messages.finalValues).label] ++
             (AspisK1.V7Tag73TranscriptSchedule.Payload.final256
               (exactOperationalTape rightWitness.input).messages.finalValues).data) =
-        some digest := by
+        some digest ∧
+      leftBase = (exactOperationalRawTrace leftWitness.input).q16BaseDigest ∧
+      rightBase = (exactOperationalRawTrace rightWitness.input).q16BaseDigest ∧
+      (.machineFresh leftAbsorbActor
+        (literalFinalWorkKey digest
+          (exactOperationalTape leftWitness.input).messages.finalGrinding.selected).absorbInput
+        leftBase : UnifiedExposureRecord) ∈
+        exactFixedRootRecords leftWitness.input.package.root ∧
+      (.machineFresh rightAbsorbActor
+        (literalFinalWorkKey digest
+          (exactOperationalTape rightWitness.input).messages.finalGrinding.selected).absorbInput
+        rightBase : UnifiedExposureRecord) ∈
+        exactFixedRootRecords rightWitness.input.package.root := by
   obtain ⟨leftRootPrior, leftRootMiddle, leftRootLater, leftProducerInput,
-      leftAnchorInput, leftAnchorAnswer, leftDigest, leftRootExact,
-      leftTrialExact, _leftProducerLookup, leftAnchorPrefix, leftOrigin⟩ :=
+      leftAnchorInput, leftAnchorAnswer, leftDigest, leftBase, leftAbsorbActor,
+      leftRootExact, leftTrialExact, _leftProducerLookup, leftAnchorPrefix,
+      leftOrigin, leftBaseExact, leftAbsorbMember⟩ :=
     exact_fixed_k13_adversary_anchor_has_earlier_final256_root_record
       transitionRoom trial leftWitness anchor
   obtain ⟨rightPrior, rightLater, rightActor, rightAnchorInput,
-      rightAnchorAnswer, rightDigest, _rightBase, _rightAbsorbActor,
+      rightAnchorAnswer, rightDigest, rightBase, rightAbsorbActor,
       rightRootExact, rightTrialExact, rightAnchorPrefix, rightOrigin,
-      _rightBaseExact, _rightAbsorbMember⟩ :=
+      rightBaseExact, rightAbsorbMember⟩ :=
     exact_fixed_k13_actual_trial_has_selected_prefinal_prefix
       rightWitness.input trial rightWitness.actualTrial
   let leftPrior : List UnifiedExposureRecord :=
@@ -690,10 +704,13 @@ theorem exact_fixed_clean_k13_adversary_anchor_final256_input_eq
       transportedProducerMember rightCanonicalMember rfl
   have producerInputExact : leftProducerInput = rightCanonicalInput := by
     injection rightCanonicalRecordExact
-  refine ⟨leftBefore, rightBefore, leftDigest, ?_, ?_, ?_⟩
+  refine ⟨leftBefore, rightBefore, leftDigest, leftBase, rightBase,
+    leftAbsorbActor, rightAbsorbActor, ?_, ?_, ?_, leftBaseExact,
+    rightBaseExact, leftAbsorbMember, ?_⟩
   · exact leftProducerCanonical.symm.trans producerInputExact
   · simpa [leftCanonicalInput] using leftLookup
   · simpa [rightCanonicalInput, digestExact] using rightLookup
+  · simpa [digestExact] using rightAbsorbMember
 
 /-- Equal canonical `final256` producer inputs also fix the exact transcript
 state immediately before that absorption.  This is a serialization result,
@@ -724,8 +741,10 @@ theorem exact_fixed_clean_k13_adversary_anchor_before_final256_digest_eq
         (hidden, right)).1) :
     ∃ leftBefore rightBefore : EvalState,
       leftBefore.digest = rightBefore.digest := by
-  obtain ⟨leftBefore, rightBefore, _digest, inputExact, _leftLookup,
-      _rightLookup⟩ :=
+  obtain ⟨leftBefore, rightBefore, _digest, _leftBase, _rightBase,
+      _leftAbsorbActor, _rightAbsorbActor, inputExact, _leftLookup,
+      _rightLookup, _leftBaseExact, _rightBaseExact, _leftAbsorbMember,
+      _rightAbsorbMember⟩ :=
     exact_fixed_clean_k13_adversary_anchor_final256_input_eq transitionRoom
       trial hidden left right leftWitness rightWitness anchor programmedCover
       coordinateExact
@@ -762,8 +781,10 @@ theorem exact_fixed_clean_k13_adversary_anchor_final_values_eq
         (hidden, right)).1) :
     (exactOperationalTape leftWitness.input).messages.finalValues =
       (exactOperationalTape rightWitness.input).messages.finalValues := by
-  obtain ⟨leftBefore, rightBefore, digest, inputExact, _leftLookup,
-      _rightLookup⟩ :=
+  obtain ⟨leftBefore, rightBefore, digest, _leftBase, _rightBase,
+      _leftAbsorbActor, _rightAbsorbActor, inputExact, _leftLookup,
+      _rightLookup, _leftBaseExact, _rightBaseExact, _leftAbsorbMember,
+      _rightAbsorbMember⟩ :=
     exact_fixed_clean_k13_adversary_anchor_final256_input_eq transitionRoom
       trial hidden left right leftWitness rightWitness anchor programmedCover
       coordinateExact
