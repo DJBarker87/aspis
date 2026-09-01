@@ -37,7 +37,7 @@ use sha2::{Digest as _, Sha256};
 use solana_program::pubkey::Pubkey;
 
 use crate::{
-    durable_state::{AtomicStateFileV1, DurableStateErrorV1},
+    durable_state::{check_legacy_writer_authority_v2, AtomicStateFileV1, DurableStateErrorV1},
     lane_forest_v2::{lane_forest_global_root_v2, LaneIdV2, PairSlotV2, POOL_V1_LANE_COUNT_V2},
     scan_note_v1,
     scan_state::{DepositEventIdV1, FinalizedChainPointV1},
@@ -324,7 +324,7 @@ impl ForestFinalizedAppendEventV2 {
         }
     }
 
-    fn event_ids(&self) -> (DepositEventIdV1, Option<DepositEventIdV1>) {
+    pub(crate) fn event_ids(&self) -> (DepositEventIdV1, Option<DepositEventIdV1>) {
         match self.kind {
             ForestFinalizedAppendKindV2::Deposit { event_id, .. } => (event_id, None),
             ForestFinalizedAppendKindV2::PrivateTransfer {
@@ -958,10 +958,97 @@ impl LaneForestDurableStateV2 {
     }
 
     pub fn contains_event_id_v2(&self, event_id: DepositEventIdV1) -> bool {
-        self.core.events.iter().any(|event| {
+        self.retained_event_v2(event_id).is_some()
+    }
+
+    pub(crate) fn retained_event_v2(
+        &self,
+        event_id: DepositEventIdV1,
+    ) -> Option<&ForestFinalizedAppendEventV2> {
+        self.core.events.iter().find(|event| {
             let (first, second) = event.event_ids();
             first == event_id || second == Some(event_id)
         })
+    }
+
+    pub(crate) fn migration_tracked_output_v2(
+        &self,
+        event_id: DepositEventIdV1,
+    ) -> Option<&ForestTrackedOutputV2> {
+        self.core
+            .lanes
+            .iter()
+            .flat_map(|lane| lane.tracked_outputs.iter())
+            .find(|output| output.output_event_id == event_id)
+    }
+
+    pub(crate) fn migration_tracked_outputs_v2(
+        &self,
+    ) -> impl Iterator<Item = &ForestTrackedOutputV2> {
+        self.core
+            .lanes
+            .iter()
+            .flat_map(|lane| lane.tracked_outputs.iter())
+    }
+
+    pub(crate) fn migration_events_v2(
+        &self,
+    ) -> impl Iterator<Item = &ForestFinalizedAppendEventV2> {
+        self.core.events.iter()
+    }
+
+    pub(crate) fn migration_checkpoint_points_v2(
+        &self,
+    ) -> impl Iterator<Item = FinalizedChainPointV1> + '_ {
+        self.checkpoints.iter().map(|checkpoint| checkpoint.point)
+    }
+
+    /// Close the decoder's intentionally structural tracked-output boundary
+    /// before migration: each retained local witness association must match
+    /// the exact canonical event, lane, pair index, slot and commitment.
+    pub(crate) fn validate_migration_tracking_v2(&self) -> Result<(), LaneForestDurableErrorV2> {
+        for output in self.migration_tracked_outputs_v2() {
+            let event = self
+                .retained_event_v2(output.output_event_id)
+                .ok_or(LaneForestDurableErrorV2::WitnessMismatch)?;
+            let expected = match &event.kind {
+                ForestFinalizedAppendKindV2::Deposit {
+                    event_id,
+                    commitment,
+                    ..
+                } if *event_id == output.output_event_id => (PairSlotV2::First, *commitment),
+                ForestFinalizedAppendKindV2::PrivateTransfer {
+                    recipient_event_id,
+                    recipient_commitment,
+                    ..
+                } if *recipient_event_id == output.output_event_id => {
+                    (PairSlotV2::First, *recipient_commitment)
+                }
+                ForestFinalizedAppendKindV2::PrivateTransfer {
+                    change_event_id,
+                    change_commitment,
+                    ..
+                } if *change_event_id == output.output_event_id => {
+                    (PairSlotV2::Second, *change_commitment)
+                }
+                ForestFinalizedAppendKindV2::Withdrawal {
+                    event_id,
+                    change_commitment,
+                    ..
+                } if *event_id == output.output_event_id => (PairSlotV2::First, *change_commitment),
+                _ => return Err(LaneForestDurableErrorV2::WitnessMismatch),
+            };
+            let (first, _) = event.event_ids();
+            if output.witness_event_id != first
+                || output.lane_id != event.lane_id
+                || output.pair_leaf_index != event.pair_leaf_index
+                || output.slot != expected.0
+                || output.commitment != expected.1
+            {
+                return Err(LaneForestDurableErrorV2::WitnessMismatch);
+            }
+        }
+        Ok(())
     }
 
     pub fn lane_page_cursors_v2(
@@ -984,6 +1071,10 @@ impl LaneForestDurableStateV2 {
 
     pub fn checkpoint_count(&self) -> usize {
         self.checkpoints.len()
+    }
+
+    pub fn retained_event_count_v2(&self) -> usize {
+        self.core.events.len()
     }
 
     pub fn finalized_head_v2(&self) -> Option<FinalizedChainPointV1> {
@@ -1035,10 +1126,37 @@ impl LaneForestDurableStateV2 {
         self.finalized_head = Some(point);
     }
 
+    /// Ingest one finalized append. An exact canonical replay is a no-op that
+    /// returns an empty association vector; conflicting identity reuse errors.
     pub fn ingest_finalized_append_v2(
         &mut self,
         event: ForestFinalizedAppendEventV2,
         viewing_secret: Option<&ViewingSecretKeyV1>,
+    ) -> Result<Vec<ForestNoteAssociationV2>, LaneForestDurableErrorV2> {
+        self.ingest_finalized_append_inner_v2(event, viewing_secret, None)
+    }
+
+    /// Apply an append whose selected outputs were already authenticated by
+    /// the authoritative local-note envelope. This keeps witness selection in
+    /// the same atomic candidate without requiring the HPKE viewing key again.
+    pub(crate) fn ingest_finalized_append_preselected_v2(
+        &mut self,
+        event: ForestFinalizedAppendEventV2,
+        selected_output_ids: &[DepositEventIdV1],
+    ) -> Result<(), LaneForestDurableErrorV2> {
+        let selected = selected_output_ids.iter().copied().collect::<HashSet<_>>();
+        if selected.len() != selected_output_ids.len() {
+            return Err(LaneForestDurableErrorV2::DuplicateEvent);
+        }
+        self.ingest_finalized_append_inner_v2(event, None, Some(&selected))?;
+        Ok(())
+    }
+
+    fn ingest_finalized_append_inner_v2(
+        &mut self,
+        event: ForestFinalizedAppendEventV2,
+        viewing_secret: Option<&ViewingSecretKeyV1>,
+        preselected: Option<&HashSet<DepositEventIdV1>>,
     ) -> Result<Vec<ForestNoteAssociationV2>, LaneForestDurableErrorV2> {
         if event.master != self.core.master.address {
             return Err(LaneForestDurableErrorV2::MasterMismatch);
@@ -1046,7 +1164,14 @@ impl LaneForestDurableStateV2 {
         let event_wire = encode_forest_finalized_append_event_v2(&event)?;
         let event = decode_forest_finalized_append_event_v2(&event_wire)?;
         let (first_id, second_id) = event.event_ids();
-        if self.core.events.iter().any(|previous| {
+        if preselected.is_some_and(|selected| {
+            selected
+                .iter()
+                .any(|event_id| *event_id != first_id && Some(*event_id) != second_id)
+        }) {
+            return Err(LaneForestDurableErrorV2::InvalidEvent);
+        }
+        if let Some(previous) = self.core.events.iter().find(|previous| {
             let (previous_first, previous_second) = previous.event_ids();
             previous_first == first_id
                 || previous_second == Some(first_id)
@@ -1054,7 +1179,25 @@ impl LaneForestDurableStateV2 {
                     previous_first == second || previous_second == Some(second)
                 })
         }) {
-            return Err(LaneForestDurableErrorV2::DuplicateEvent);
+            // Every newly accepted append produces one or two associations,
+            // so an empty vector is an unambiguous exact-replay no-op.  Any
+            // reuse of either stable output identity with different canonical
+            // event data remains a fail-closed conflict.
+            if previous != &event {
+                return Err(LaneForestDurableErrorV2::DuplicateEvent);
+            }
+            if let Some(selected) = preselected {
+                let retained = self.core.lanes[event.lane_id.index()]
+                    .tracked_outputs
+                    .iter()
+                    .filter(|output| output.witness_event_id == first_id)
+                    .map(|output| output.output_event_id)
+                    .collect::<HashSet<_>>();
+                if &retained != selected {
+                    return Err(LaneForestDurableErrorV2::DuplicateEvent);
+                }
+            }
+            return Ok(Vec::new());
         }
         if self
             .core
@@ -1205,9 +1348,9 @@ impl LaneForestDurableStateV2 {
                     }
                 }
             };
-            track.push(matches!(
-                outcome,
-                ForestNoteAssociationOutcomeV2::Recovered(_)
+            track.push(preselected.map_or_else(
+                || matches!(outcome, ForestNoteAssociationOutcomeV2::Recovered(_)),
+                |selected| selected.contains(&event_id),
             ));
             associations.push(ForestNoteAssociationV2 {
                 output_event_id: event_id,
@@ -1374,17 +1517,18 @@ impl LaneForestDurableStateV2 {
         &mut self,
         checkpoint_sequence: u64,
     ) -> Result<(), LaneForestDurableErrorV2> {
-        let index = self
+        if !self
             .checkpoints
             .iter()
-            .position(|snapshot| {
-                snapshot.checkpoint.value.checkpoint_sequence == checkpoint_sequence
-            })
-            .ok_or(LaneForestDurableErrorV2::InvalidRollback)?;
-        self.core = self.checkpoints[index].core.clone();
-        self.finalized_head = Some(self.checkpoints[index].point);
-        self.checkpoints.truncate(index + 1);
-        Ok(())
+            .any(|snapshot| snapshot.checkpoint.value.checkpoint_sequence == checkpoint_sequence)
+        {
+            return Err(LaneForestDurableErrorV2::InvalidRollback);
+        }
+        // This state retains finalized events only. Removing any suffix could
+        // lose a finalized note or resurrect a spend in the authoritative V2
+        // wallet envelope. Confirmed/tentative observations are reorged by the
+        // coordinator without mutating this finalized forest.
+        Err(LaneForestDurableErrorV2::InvalidRollback)
     }
 }
 
@@ -1840,7 +1984,9 @@ impl DurableLaneForestWalletFileV2 {
         path: impl AsRef<Path>,
         initial: LaneForestDurableStateV2,
     ) -> Result<Self, LaneForestDurableErrorV2> {
+        check_legacy_writer_authority_v2(path.as_ref())?;
         let file = AtomicStateFileV1::acquire(path.as_ref())?;
+        check_legacy_writer_authority_v2(path.as_ref())?;
         let state = match file.read_optional()? {
             Some(bytes) => {
                 let stored = decode_lane_forest_durable_state_v2(&bytes)?;
@@ -1861,6 +2007,16 @@ impl DurableLaneForestWalletFileV2 {
 
     pub fn state(&self) -> &LaneForestDurableStateV2 {
         &self.state
+    }
+
+    pub(crate) fn migration_source_image_v2(&self) -> Result<Vec<u8>, LaneForestDurableErrorV2> {
+        self.file
+            .read_optional()?
+            .ok_or(LaneForestDurableErrorV2::InvalidDurableImage)
+    }
+
+    pub(crate) fn migration_source_path_v2(&self) -> &Path {
+        self.file.path_v1()
     }
 
     pub fn replace_state_v2(
@@ -2217,6 +2373,40 @@ mod tests {
     }
 
     #[test]
+    fn preauthenticated_local_note_selection_updates_the_same_witness_candidate() {
+        let (_, _, _, _, mut state) = fixtures();
+        let output_id = event(19, 1, 0);
+        let append = deposit_event(
+            &state,
+            output_id,
+            encode_digest_canonical(&digest(49)),
+            None,
+        );
+        let lane_id = append.lane_id;
+        let before = state.clone();
+        assert_eq!(
+            state.ingest_finalized_append_preselected_v2(append.clone(), &[event(19, 2, 0)],),
+            Err(LaneForestDurableErrorV2::InvalidEvent)
+        );
+        assert_eq!(state, before);
+
+        state
+            .ingest_finalized_append_preselected_v2(append.clone(), &[output_id])
+            .unwrap();
+        assert_eq!(state.tracked_outputs(lane_id).len(), 1);
+        assert_eq!(state.lane(lane_id).1.tracked().len(), 1);
+        state
+            .ingest_finalized_append_preselected_v2(append.clone(), &[output_id])
+            .unwrap();
+        assert_eq!(state.tracked_outputs(lane_id).len(), 1);
+        assert_eq!(
+            state.ingest_finalized_append_preselected_v2(append, &[]),
+            Err(LaneForestDurableErrorV2::DuplicateEvent)
+        );
+        assert_eq!(state.tracked_outputs(lane_id).len(), 1);
+    }
+
+    #[test]
     fn encrypted_deposit_hook_tracks_pair_witness_and_private_transfer_is_one_append() {
         let (_, _, _, _, mut state) = fixtures();
         let (secret, public) = derive_viewing_keypair_v1(&[0x42; 32]).unwrap();
@@ -2295,7 +2485,7 @@ mod tests {
     }
 
     #[test]
-    fn checkpoint_durable_roundtrip_and_all_lane_rollback_are_atomic() {
+    fn checkpoint_durable_roundtrip_and_finalized_rollback_is_rejected() {
         let (_, _, _, _, mut state) = fixtures();
         let first = deposit_event(
             &state,
@@ -2336,8 +2526,13 @@ mod tests {
             None,
         );
         state.ingest_finalized_append_v2(second, None).unwrap();
-        state.rollback_to_finalized_checkpoint_v2(0).unwrap();
-        assert_eq!(state, at_checkpoint);
+        let after_second = state.clone();
+        assert_eq!(
+            state.rollback_to_finalized_checkpoint_v2(0),
+            Err(LaneForestDurableErrorV2::InvalidRollback)
+        );
+        assert_eq!(state, after_second);
+        assert_ne!(state, at_checkpoint);
     }
 
     #[test]

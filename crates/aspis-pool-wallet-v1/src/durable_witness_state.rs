@@ -14,7 +14,7 @@ use aspis_statement::encode_digest_canonical;
 use sha2::{Digest as _, Sha256};
 
 use crate::{
-    durable_state::{AtomicStateFileV1, DurableStateErrorV1},
+    durable_state::{check_legacy_writer_authority_v2, AtomicStateFileV1, DurableStateErrorV1},
     finalized_indexer::{FinalizedAppendEvidenceV1, FinalizedBlockIngestResultV1},
     scan_state::{
         DepositEventIdV1, DepositScanIdentityV1, FinalizedBlockAdvanceV1, FinalizedChainPointV1,
@@ -78,6 +78,14 @@ struct RetainedWitnessBlockV1 {
     tracked: Vec<DepositEventIdV1>,
 }
 
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub(crate) struct WitnessMigrationBlockV1 {
+    pub point: FinalizedChainPointV1,
+    pub parent: FinalizedChainPointV1,
+    pub appends: Vec<FinalizedAppendEvidenceV1>,
+    pub tracked: Vec<DepositEventIdV1>,
+}
+
 pub struct DurableWalletWitnessStateV1 {
     file: AtomicStateFileV1,
     identity_digest: [u8; 32],
@@ -95,8 +103,10 @@ impl DurableWalletWitnessStateV1 {
         scan_state: &ScanStateV1,
         initial_witness_state: WalletWitnessStateV1,
     ) -> Result<Self, DurableWitnessErrorV1> {
+        check_legacy_writer_authority_v2(path.as_ref())?;
         let identity_digest = witness_identity_digest_v1(scan_state.identity());
         let file = AtomicStateFileV1::acquire(path.as_ref())?;
+        check_legacy_writer_authority_v2(path.as_ref())?;
         if let Some(bytes) = file.read_optional()? {
             let (stored_identity, anchor_point, anchor_state, blocks) =
                 decode_witness_journal_v1(&bytes)?;
@@ -150,6 +160,28 @@ impl DurableWalletWitnessStateV1 {
 
     pub fn retained_block_count(&self) -> usize {
         self.blocks.len()
+    }
+
+    pub(crate) fn migration_blocks_v1(&self) -> Vec<WitnessMigrationBlockV1> {
+        self.blocks
+            .iter()
+            .map(|block| WitnessMigrationBlockV1 {
+                point: block.point,
+                parent: block.parent,
+                appends: block.appends.clone(),
+                tracked: block.tracked.clone(),
+            })
+            .collect()
+    }
+
+    pub(crate) fn migration_source_image_v1(&self) -> Result<Vec<u8>, DurableWitnessErrorV1> {
+        self.file
+            .read_optional()?
+            .ok_or(DurableWitnessErrorV1::InvalidBlockJournal)
+    }
+
+    pub(crate) fn migration_source_path_v1(&self) -> &Path {
+        self.file.path_v1()
     }
 
     /// Commit the same finalized transition as the scan cursor. All replay,

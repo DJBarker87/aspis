@@ -454,6 +454,20 @@ struct ProcessedDepositEventV1 {
     root: [u8; 32],
 }
 
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub(crate) struct ScanMigrationBlockV1 {
+    pub block: FinalizedBlockV1,
+    pub events: Vec<ScanMigrationEventV1>,
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub(crate) struct ScanMigrationEventV1 {
+    pub event_id: DepositEventIdV1,
+    pub leaf_index: u64,
+    pub note_commitment: [u8; 32],
+    pub root: [u8; 32],
+}
+
 /// Serializable scan cursor with retained block checkpoints and event
 /// fingerprints for idempotence. Persist the result of
 /// [`encode_scan_state_v1`] atomically with any secure note-store update.
@@ -552,6 +566,28 @@ impl ScanStateV1 {
             .iter()
             .filter(|event| event.id.point == point)
             .map(|event| event.id)
+            .collect()
+    }
+
+    /// Canonical immutable view used only to prove exact ASDW/ASWJ agreement
+    /// before a one-way V2 ownership transfer.
+    pub(crate) fn migration_blocks_v1(&self) -> Vec<ScanMigrationBlockV1> {
+        self.blocks
+            .iter()
+            .map(|checkpoint| ScanMigrationBlockV1 {
+                block: checkpoint.block,
+                events: self
+                    .processed_events
+                    .iter()
+                    .filter(|event| event.id.point == checkpoint.block.point)
+                    .map(|event| ScanMigrationEventV1 {
+                        event_id: event.id,
+                        leaf_index: event.leaf_index,
+                        note_commitment: event.note_commitment,
+                        root: event.root,
+                    })
+                    .collect(),
+            })
             .collect()
     }
 
