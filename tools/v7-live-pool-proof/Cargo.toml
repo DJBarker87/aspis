@@ -1,0 +1,22 @@
+[package]
+name = "aspis-v7-live-pool-proof"
+version = "0.1.0"
+edition = "2021"
+publish = false
+
+[workspace]
+
+[dependencies]
+anyhow = "1.0.100"
+aspis-prover = { path = "../../crates/aspis-prover" }
+aspis-pool-wallet-v1 = { path = "../../crates/aspis-pool-wallet-v1", features = ["eight-lane-plumbing-v2"] }
+aspis-statement = { path = "../../crates/aspis-statement", features = ["pool-v1-kernel"] }
+base64 = "0.22.1"
+serde = { version = "1.0.229", features = ["derive"] }
+serde_json = "1.0.145"
+sha2 = "0.10.9"
+solana-program = "=2.3.0"
+
+[[bin]]
+name = "prove-from-live-bundle"
+path = "src/bin/prove_from_live_bundle.rs"

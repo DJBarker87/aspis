@@ -135,6 +135,7 @@ impl From<AuthenticatedForestSpendMembershipV2> for LivePairForestMembershipSour
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct LivePairForestTransferPlanV2 {
     pub attempt_id: [u8; 32],
+    pub verifier_program: [u8; 32],
     pub output_lane: u8,
     pub selected_lane: PoolV1PairForestLaneStateV1,
     pub witness: PoolV1PairForestPrivateTransferWitnessV1,
@@ -153,6 +154,7 @@ pub struct LivePairForestTransferPlanV2 {
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct LivePairForestWithdrawalPlanV2 {
     pub attempt_id: [u8; 32],
+    pub verifier_program: [u8; 32],
     pub output_lane: u8,
     pub selected_lane: PoolV1PairForestLaneStateV1,
     pub witness: PoolV1PairForestWithdrawalWitnessV1,
@@ -669,6 +671,7 @@ pub fn build_live_pair_forest_transfer_plan_v2(
         )?;
     Ok(LivePairForestTransferPlanV2 {
         attempt_id: proof_account,
+        verifier_program: snapshot.profile.verifier_program,
         output_lane,
         selected_lane,
         witness,
@@ -806,6 +809,7 @@ pub fn build_live_pair_forest_withdrawal_plan_v2(
         )?;
     Ok(LivePairForestWithdrawalPlanV2 {
         attempt_id: proof_account,
+        verifier_program: snapshot.profile.verifier_program,
         output_lane,
         selected_lane,
         witness,
