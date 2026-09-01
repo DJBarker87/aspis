@@ -29,12 +29,15 @@ open AspisK1.V7Tag73ExactFixedCleanQ16ProfileInvariant
 open AspisK1.V7Tag73ExactFixedK12MerkleClassifier
 open AspisK1.V7Tag73ExactFixedQ16JointEventHandoff
 open AspisK1.V7Tag73ExactFixedQ16VerifierAnchorInvariant
+open AspisK1.V7Tag73ExactFinal256DigestRootOrigin
 open AspisK1.V7Tag73ExactPlainRomRun
 open AspisK1.V7Tag73ExactRootQueryCausalOrder
 open AspisK1.V7Tag73ExactSourceAcceptanceModel
+open AspisK1.V7Tag73FinalWorkQ16CandidateController
 open AspisK1.V7Tag73NoPairOccurrenceTrichotomy
 open AspisK1.V7Tag73OperationalCausalInjection
 open AspisK1.V7Tag73OperationalOracleExposure
+open AspisK1.V7Tag73OperationalSemanticReplay
 open AspisK1.V7Tag73TranscriptSchedule
 open AspisPool.AlgorithmicCircleDecoderV7
 open AspisV5ComponentCQM31TowerExact
@@ -126,6 +129,13 @@ theorem exact_fixed_k13_adversary_anchor_prefinal_is_not_later_root_answer
       witness.input.package.root.full.projection.rootPrefixes.adversary.freshQueries =
           queryPrior ++ (anchorInput, anchorAnswer) :: queryLater ∧
       HasLiteralStatePrefix digest anchorInput ∧
+      ExactOperationalPrefinalDigest witness.input digest ∧
+      (anchorInput =
+          (literalFinalWorkKey digest
+            (exactOperationalTape witness.input).messages.finalGrinding.selected).workInput ∨
+        anchorInput =
+          (literalFinalWorkKey digest
+            (exactOperationalTape witness.input).messages.finalGrinding.selected).absorbInput) ∧
       (∀ between producerInput producerLater,
         witness.input.package.root.full.projection.rootPrefixes.adversary.freshQueries ≠
           queryPrior ++ (anchorInput, anchorAnswer) ::
@@ -134,14 +144,14 @@ theorem exact_fixed_k13_adversary_anchor_prefinal_is_not_later_root_answer
         witness.input.package.root.full.projection.rootPrefixes.verifier.freshQueries ≠
           verifierPrior ++ (producerInput, digest) :: verifierLater) := by
   obtain ⟨rootPrior, rootLater, anchorInput, anchorAnswer, digest, rootExact,
-      _trialExact, statePrefix⟩ :=
+      _trialExact, statePrefix, prefinalOrigin, anchorKind⟩ :=
     exact_fixed_k13_adversary_anchor_has_prefinal_digest_prefix trial witness
       anchor
   obtain ⟨queryPrior, queryLater, adversaryExact, _rootPriorExact⟩ :=
     exact_fixed_k13_adversary_anchor_has_literal_adversary_prefix witness.input
       rootPrior rootLater anchorInput anchorAnswer rootExact
   refine ⟨queryPrior, queryLater, anchorInput, anchorAnswer, digest,
-    adversaryExact, statePrefix, ?_, ?_⟩
+    adversaryExact, statePrefix, prefinalOrigin, anchorKind, ?_, ?_⟩
   · intro between producerInput producerLater laterExact
     exact exact_root_adversary_prefix_cannot_reference_later_adversary_answer
       transitionRoom witness.input queryPrior between producerLater anchorInput

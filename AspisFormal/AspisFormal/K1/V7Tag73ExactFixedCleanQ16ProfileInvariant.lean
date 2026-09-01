@@ -48,6 +48,7 @@ open AspisK1.V7Tag73ExactFixedQ16ScheduleFunctional
 open AspisK1.V7Tag73ExactFixedQ16SemanticNoninterference
 open AspisK1.V7Tag73ExactFixedQ16VerifierAnchorInvariant
 open AspisK1.V7Tag73ExactFixedQ16VerifierDerivedProfile
+open AspisK1.V7Tag73ExactFinal256DigestRootOrigin
 open AspisK1.V7Tag73ExactParsedProofSourceBinding
 open AspisK1.V7Tag73ExactPlainRomRun
 open AspisK1.V7Tag73ExactRootPriorQueryHistory
@@ -292,10 +293,17 @@ theorem exact_fixed_k13_adversary_anchor_has_prefinal_digest_prefix
             (.machineFresh .adversary target answer : UnifiedExposureRecord) ::
               later ∧
       trial.val = prior.length ∧
-      HasLiteralStatePrefix digest target := by
+      HasLiteralStatePrefix digest target ∧
+      ExactOperationalPrefinalDigest witness.input digest ∧
+      (target =
+          (literalFinalWorkKey digest
+            (exactOperationalTape witness.input).messages.finalGrinding.selected).workInput ∨
+        target =
+          (literalFinalWorkKey digest
+            (exactOperationalTape witness.input).messages.finalGrinding.selected).absorbInput) := by
   obtain ⟨anchorPrior, anchorLater, target, answer, anchorExact,
       anchorIndex⟩ := anchor
-  obtain ⟨digest, workAnswer, base, _workAccepted, _prefinalOrigin,
+  obtain ⟨digest, workAnswer, base, _workAccepted, prefinalOrigin,
       _baseExact, pairLabeled, _workLabeled, _workCoordinate, _realized⟩ :=
     witness.actualTrial
   rcases pairLabeled with
@@ -328,9 +336,8 @@ theorem exact_fixed_k13_adversary_anchor_has_prefinal_digest_prefix
     refine ⟨anchorPrior, anchorLater,
       (literalFinalWorkKey digest
         (exactOperationalTape witness.input).messages.finalGrinding.selected).workInput,
-      answer, digest, anchorExact, anchorIndex, ?_⟩
-    simp [HasLiteralStatePrefix, RawFinalWorkKey.workInput,
-      literalFinalWorkKey]
+      answer, digest, anchorExact, anchorIndex, ?_, prefinalOrigin, Or.inl rfl⟩
+    simp [HasLiteralStatePrefix, RawFinalWorkKey.workInput, literalFinalWorkKey]
   · have pairHeadExact :
         exactFixedRootRecords witness.input.package.root =
           pairPrior ++
@@ -356,9 +363,8 @@ theorem exact_fixed_k13_adversary_anchor_has_prefinal_digest_prefix
     refine ⟨anchorPrior, anchorLater,
       (literalFinalWorkKey digest
         (exactOperationalTape witness.input).messages.finalGrinding.selected).absorbInput,
-      answer, digest, anchorExact, anchorIndex, ?_⟩
-    simp [HasLiteralStatePrefix, RawFinalWorkKey.absorbInput,
-      literalFinalWorkKey]
+      answer, digest, anchorExact, anchorIndex, ?_, prefinalOrigin, Or.inr rfl⟩
+    simp [HasLiteralStatePrefix, RawFinalWorkKey.absorbInput, literalFinalWorkKey]
 
 /-- Equality of the four q16 semantic inputs is required only between two
 accepted, target-clean members of the same residual fibre. -/
