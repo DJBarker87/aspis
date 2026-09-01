@@ -16,6 +16,14 @@ Branch: `research/v7-live-pool-witness-adapter-20260901`
 Promotion status: **not proposed**. CU deltas and the invariant review must be
 reviewed first; production identities and release approval remain absent.
 
+Formal closure follow-up: validated implementation commit
+`4915d88114896fa2cf618451f685de777edc4679` adds the main Lean persisted-lane
+reachability induction and the translated writer/byte-image induction. Its
+focused source, Lean, Aeneas and Rust gates are green; see
+`docs/research/v7-persisted-lane-source-formal-closure-20260901.md`. This closes
+the named source/formal invariant boundary but does not enable the feature or
+change the promotion status above.
+
 ## Why the second deposit hit 1.4M CU
 
 The frozen generic deposit path validates the same depth-20 relation more than

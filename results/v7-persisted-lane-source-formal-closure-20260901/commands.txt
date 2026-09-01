@@ -1,0 +1,19 @@
+# Source/write inventory (local isolated worktree)
+/usr/bin/time -l ./aeneas-verif/v7-forest-lane-invariant-source-20260828/source-audit.sh
+
+# Main mathematical target (NUC task-owned copy, Lean 4.32.0)
+lake env lean -j1 --root=<task>/AspisFormal -o <task>/formal-local/AspisFormal/Pool/V7PairForestLaneInvariant.olean <task>/AspisFormal/AspisFormal/Pool/V7PairForestLaneInvariant.lean
+lean -j1 --root=<task>/AspisFormal -o <task>/formal-local/AspisFormal/Pool/V7PairForestPersistedReachability.olean <task>/AspisFormal/AspisFormal/Pool/V7PairForestPersistedReachability.lean
+
+# Translated source proof (NUC task-owned copy, Lean 4.31.0)
+AENEAS_LEAN_BACKEND=/home/dombarker/project-offloads/aeneas-d860-v6/backends/lean ./aeneas-verif/v7-forest-lane-invariant-source-20260828/replay-lean.sh
+
+# Optimized focused production checks (NUC task-owned source/target)
+CARGO_TARGET_DIR=<task>/cargo-target ./aeneas-verif/v7-forest-lane-invariant-source-20260828/replay-focused-rust.sh
+
+# Corrected exact source-invariant decoder selection
+CARGO_BUILD_JOBS=1 CARGO_TARGET_DIR=<task>/cargo-target RUSTFLAGS=-Awarnings cargo test --release -p aspis-pool --no-default-features --features pair-forest-source-invariant-audit program_invariant_lane_decoder_keeps_exact_boundary -- --nocapture
+
+# All NUC commands above ran in their own systemd user scope with
+# MemorySwapMax=0 and an explicit MemoryHigh/MemoryMax. No SBF/CU/prover replay
+# was performed; existing finalized measurements are referenced by checksum.

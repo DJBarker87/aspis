@@ -1,10 +1,12 @@
 # V7 eight-lane Pool invariant fast-path source bridge
 
 This focused bundle records the exact source boundary for the default-off
-eight-lane Pool CU experiment introduced at production source commit
+eight-lane Pool CU experiments introduced at production source commit
 `86d072be`, extended by the authenticated verifier-side source port
-`a789a9c6`, and extended again by the default-off selected terminal cuts at
-`2dae6bea`, `d49af9e3`, `37c6ea1f` and `eb3fbcde`.  It exists because the optimized terminal path removes two
+`a789a9c6`, the selected terminal cuts at `2dae6bea`, `d49af9e3`, `37c6ea1f`
+and `eb3fbcde`, and the deposit-only invariant audit at `74cc65d4`.  The
+finalized sequential-deposit evidence is commit `5bd2e3e4`.  It exists because
+the optimized terminal path removes two
 duplicate 20-level Poseidon reconstructions from Pool code:
 
 1. decoding the selected live lane before verifier CPI; and
@@ -75,6 +77,14 @@ The strongest preservation theorem is
 premise is the single explicit inductive capability, with separate
 initialization, checked-deposit and authenticated-settlement preservation
 fields.
+
+`TranslatedPersistedLaneReachable` now closes the writer history itself.
+`translated_reachable_is_genesis_or_byte_exact_authenticated_output` proves
+that every reachable translated lane is either an initialization output or a
+byte-exact strict-codec image produced by a checked deposit/authenticated ASR8
+write from a reachable predecessor.  The companion theorem
+`translated_reachable_preserves_program_owned_invariant` carries the named
+capability through exactly that induction.
 
 Activation is stricter than Pool ownership:
 
@@ -148,10 +158,21 @@ The generated Lean code is transparent except for the standard Rust
 that equality transparently.  The generated `_Template.lean` retains the
 ordinary Aeneas template axiom but is not imported or compiled.
 
-The cryptographic statement that the active root equals reconstruction from
-the active frontier is intentionally not proved by this source bundle.  It is
-the one named inductive capability that the main mathematical proof must
-instantiate for genesis and both production mutations.
+The source bundle keeps the active-root reconstruction as a named capability;
+it does not manufacture Poseidon semantics from a Boolean.  The main
+mathematical project now discharges that capability boundary in
+`Pool/V7PairForestPersistedReachability.lean`: genesis establishes the full
+frontier/root invariant, exact deposit and authenticated terminal appends
+preserve it, and every reachable lane is genesis or an authenticated
+transition output.  The source inventory audit then binds the translated
+three-constructor writer model to the complete hash-pinned production
+persistence surface.
+
+These are two focused Lean projects (main mathematics on Lean 4.32 and the
+Aeneas backend on Lean 4.31), so the closure is an explicit theorem/source
+correspondence rather than a misleading cross-version `.olean` import.  The
+machine-readable evidence pins both theorem sets, their axiom audits, the
+source hashes and the byte-exact Rust boundary tests.
 
 ## Principal theorems
 
@@ -162,6 +183,10 @@ instantiate for genesis and both production mutations.
 - `initialization_success_has_exact_source_relation`
 - `checked_deposit_success_has_exact_source_relation`
 - `authenticated_settlement_success_has_exact_source_relation`
+- `checked_deposit_success_has_byte_exact_strict_image`
+- `authenticated_settlement_success_has_byte_exact_strict_image`
+- `translated_reachable_is_genesis_or_byte_exact_authenticated_output`
+- `translated_reachable_preserves_program_owned_invariant`
 - `translated_production_lane_write_preserves_program_owned_invariant`
 - `translated_write_renews_activation`
 - `translated_hot_decode_has_complete_activation_boundary`
@@ -196,7 +221,7 @@ AENEAS_BIN=<local-tool>/aeneas/bin/aeneas \
 AENEAS_LEAN_BACKEND=<local-tool>/aeneas/backends/lean \
 ./replay-lean.sh
 
-./replay-focused-rust.sh
+./replay-focused-rust.sh  # arithmetic tests use optimized release binaries
 ```
 
 The scripts are intentionally focused: no broad regression, devnet, deploy,

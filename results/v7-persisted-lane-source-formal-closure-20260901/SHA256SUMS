@@ -1,0 +1,12 @@
+ced625d28842db5adfb52b978029d2452cf264aa9870fb042472dcf8a1af18c2  AspisFormal/AspisFormal/Pool/V7PairForestPersistedReachability.lean
+eab179dc303143f31e09e6c69fcfbee0fb653067a95428f2ab442f917152693a  aeneas-verif/v7-forest-lane-invariant-source-20260828/proof/V7ForestLanePersistedReachability.lean
+5bfe844f02580cae189c3f1c4c05be21a03d2414ccee21ef179dfd0c09b9fa14  aeneas-verif/v7-forest-lane-invariant-source-20260828/source-audit.sh
+e83922f8248da023a2fbe17e0d424daee4b1e12bc9cd228a3162c478d7df2bbb  aeneas-verif/v7-forest-lane-invariant-source-20260828/replay-lean.sh
+4cf37c1bc3212fc7af1fb87ee2693605e3672dbd6a9b3d9e7f5e7e0111f6c254  aeneas-verif/v7-forest-lane-invariant-source-20260828/replay-focused-rust.sh
+53b58ec7b417a9d78c3ccd73d01de25e7ad58cbca0c4d44353ef195c32cd9e7c  aeneas-verif/v7-forest-lane-invariant-source-20260828/README.md
+2cdba03bea4e4d01ab081e5cfd375c5205e2e61fe4a7f7c4f0fa17fc29d2a991  aeneas-verif/v7-forest-lane-invariant-source-20260828/REPLAY-RESULT.txt
+0668c8ee1424a0e917bf4cca28db1c0454c85d0978dce87ba6fbef584e73dc1e  docs/research/v7-persisted-lane-source-formal-closure-20260901.md
+5237f67e437508c1267ff7d7ec67890d49d4f3feec3d62b0baec020cfa69e368  results/v7-persisted-lane-source-formal-closure-20260901/commands.txt
+dd61265123d987b121ec13f2fe5bb8c6b094dc6a94192da864454fbab8e7b20b  results/v7-persisted-lane-source-formal-closure-20260901/summary.json
+b79195ad70975a797c18c58a2c4bb7afcf6c5c801a329b9b4e018af2b3f901b8  results/v7-pair-forest-deposit-invariant-cu-audit-20260901/summary.json
+9c8e0a1b7582295ae235d525563f9c30c46bf9d53912be096780f56105bcae0b  results/v7-pair-forest-deposit-invariant-cu-audit-20260901/local-feature-active/sequential-deposits/evidence.json

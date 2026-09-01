@@ -1,0 +1,180 @@
+{
+  "schema": "aspis.v7.persisted-lane-source-formal-closure.v1",
+  "date": "2026-09-01",
+  "branch": "research/v7-persisted-lane-source-formal-closure-20260901",
+  "baseRevision": "fc5c5b8ddff7f3387861e3a811ec43bb0d0d7b39",
+  "validatedImplementationRevision": "4915d88114896fa2cf618451f685de777edc4679",
+  "integratedCommits": {
+    "defaultOffDepositSource": "74cc65d4f0da48ea8a49e833c0f35398195b3ec4",
+    "sequentialDepositEvidence": "5bd2e3e433a13f5b3243cf3762b47b34d73abad9",
+    "bothAreAncestors": true
+  },
+  "classification": "PERSISTED-LANE SOURCE/FORMAL CLOSURE COMPLETE; DEPOSIT AUDIT REMAINS DEFAULT-OFF",
+  "allFocusedGatesPassed": true,
+  "promotionProposed": false,
+  "mainnetReady": false,
+  "feature": {
+    "name": "pair-forest-deposit-invariant-audit",
+    "defaultOff": true,
+    "inCandidateAggregate": false
+  },
+  "sourceInventory": {
+    "status": "PASS",
+    "laneByteWriteCount": 3,
+    "writers": [
+      "checked deposit successor",
+      "authenticated terminal successor",
+      "eight-lane genesis initialization"
+    ],
+    "checkpointWritesLane": false,
+    "wallSeconds": 1.36,
+    "maximumResidentSetBytes": 7110656,
+    "swaps": 0
+  },
+  "mainFormal": {
+    "leanVersion": "4.32.0",
+    "predecessorTarget": "AspisFormal.Pool.V7PairForestLaneInvariant",
+    "changedTarget": "AspisFormal.Pool.V7PairForestPersistedReachability",
+    "predecessor": {
+      "status": "PASS",
+      "exitStatus": 0,
+      "wallSeconds": 13.97,
+      "maximumResidentSetKiB": 6366408,
+      "swaps": 0
+    },
+    "changedTargetResult": {
+      "status": "PASS",
+      "exitStatus": 0,
+      "wallSeconds": 4.50,
+      "maximumResidentSetKiB": 6447500,
+      "swaps": 0
+    },
+    "principalTheorems": [
+      "authenticated_transition_preserves_invariant",
+      "persisted_lane_reachable_has_invariant",
+      "persisted_lane_reachable_is_genesis_or_authenticated_output",
+      "accepted_deposit_yields_authenticated_lane_transition",
+      "accepted_deposit_extends_persisted_reachability",
+      "accepted_terminal_yields_authenticated_lane_transition",
+      "accepted_terminal_extends_persisted_reachability"
+    ],
+    "classificationTheoremAxioms": [],
+    "allPrintedAxiomsSubsetOf": [
+      "propext",
+      "Classical.choice",
+      "Quot.sound"
+    ],
+    "forbiddenConstructsFound": false
+  },
+  "translatedSourceFormal": {
+    "leanVersion": "4.31.0",
+    "backendPath": "/home/dombarker/project-offloads/aeneas-d860-v6/backends/lean",
+    "backendLakefileSha256": "43504207e4a34e55be916327f7ef3189981fc68752abea691a3c4dda680087c6",
+    "status": "PASS",
+    "exitStatus": 0,
+    "wallSeconds": 20.24,
+    "maximumResidentSetKiB": 2573640,
+    "swaps": 0,
+    "principalTheorems": [
+      "checked_deposit_success_has_byte_exact_strict_image",
+      "authenticated_settlement_success_has_byte_exact_strict_image",
+      "translated_reachable_is_genesis_or_byte_exact_authenticated_output",
+      "translated_reachable_preserves_program_owned_invariant"
+    ],
+    "allPrintedAxiomsSubsetOf": [
+      "propext",
+      "Classical.choice",
+      "Quot.sound"
+    ],
+    "forbiddenConstructsFound": false
+  },
+  "focusedRust": {
+    "cargoVersion": "1.94.1",
+    "rustcVersion": "1.94.1",
+    "optimizedArithmeticTests": true,
+    "buildJobs": 1,
+    "status": "PASS",
+    "focusedReplay": {
+      "exitStatus": 0,
+      "wallSeconds": 363.23,
+      "maximumResidentSetKiB": 615268,
+      "swaps": 0
+    },
+    "correctedExactSourceDecoder": {
+      "exitStatus": 0,
+      "selectedTests": 1,
+      "passedTests": 1,
+      "wallSeconds": 2.68,
+      "maximumResidentSetKiB": 263708,
+      "swaps": 0
+    },
+    "newClosureTests": [
+      {
+        "name": "program_invariant_lane_decoder_keeps_exact_boundary",
+        "passed": true
+      },
+      {
+        "name": "authenticated_result_encoder_is_byte_exact_for_valid_lanes",
+        "passed": true
+      },
+      {
+        "name": "deposit_invariant_append_is_byte_exact_at_measured_boundaries",
+        "passed": true,
+        "sourceIndices": [0, 1, 2, 3, 7, 15, 255]
+      },
+      {
+        "name": "deposit_invariant_source_root_still_requires_exact_retained_history",
+        "passed": true
+      },
+      {
+        "name": "pair_forest_lane_persistence_surface_remains_closed",
+        "passed": true
+      }
+    ]
+  },
+  "existingFinalizedDepositEvidence": {
+    "rerun": false,
+    "reason": "integrated finalized evidence is unchanged; frozen/SBF reruns were prohibited",
+    "summaryPath": "results/v7-pair-forest-deposit-invariant-cu-audit-20260901/summary.json",
+    "summarySha256": "b79195ad70975a797c18c58a2c4bb7afcf6c5c801a329b9b4e018af2b3f901b8",
+    "sequentialEvidencePath": "results/v7-pair-forest-deposit-invariant-cu-audit-20260901/local-feature-active/sequential-deposits/evidence.json",
+    "sequentialEvidenceSha256": "9c8e0a1b7582295ae235d525563f9c30c46bf9d53912be096780f56105bcae0b",
+    "sequentialDepositsFinalized": 256,
+    "measurements": [
+      {"sourceIndex": 0, "bytes": 651, "simulatedCu": 640272, "landedCu": 640272},
+      {"sourceIndex": 1, "bytes": 617, "simulatedCu": 594743, "landedCu": 594743},
+      {"sourceIndex": 2, "bytes": 617, "simulatedCu": 594683, "landedCu": 594683},
+      {"sourceIndex": 3, "bytes": 617, "simulatedCu": 594776, "landedCu": 594776},
+      {"sourceIndex": 7, "bytes": 617, "simulatedCu": 594730, "landedCu": 594730},
+      {"sourceIndex": 15, "bytes": 617, "simulatedCu": 594714, "landedCu": 594714},
+      {"sourceIndex": 255, "pageRollover": true, "bytes": 684, "simulatedCu": 643854, "landedCu": 643854}
+    ],
+    "exactGenericIndex0": {
+      "landedCu": 1112399,
+      "auditDeltaCu": -472127,
+      "auditDeltaPercent": -42.442235
+    },
+    "genericIndex1": {
+      "result": "hit 1400000 transaction CU ceiling before Token CPI",
+      "auditCeilingHeadroomCu": 805257
+    }
+  },
+  "network": {
+    "publicTestnetTxv1FeatureActive": true,
+    "publicTestnetActivationEpoch": 1025,
+    "publicTestnetV7ExecutionPerformed": false,
+    "publicDevnetTxv1FeatureActive": false,
+    "publicDevnetEvidenceModified": false,
+    "publicMainnetTxv1FeatureActive": false
+  },
+  "scope": {
+    "verifierModified": false,
+    "txv1Modified": false,
+    "treeDepthModified": false,
+    "proofFormatModified": false,
+    "cryptographicRelationModified": false,
+    "cpiOrderingModified": false,
+    "productionDeploymentModified": false,
+    "k13OrQ16Modified": false
+  }
+}
