@@ -8,6 +8,7 @@ set -euo pipefail
 
 readonly FEATURE_ID="txv1aq4pp281K9um3tnPgkfX8UqtFT6wcVW3hNezGLL"
 readonly FEATURE_OWNER="Feature111111111111111111111111111111111111"
+readonly AGAVE_GENESIS_PROGRAM_OWNER="BPFLoaderUpgradeab1e11111111111111111111111"
 readonly DISPOSABLE_ACK="I_ACKNOWLEDGE_AUDIT_ONLY_IDENTITIES_AND_DISPOSABLE_FUNDS"
 readonly REPO_ROOT=$(cd "$(dirname "$0")/.." && pwd)
 readonly CONFIG="$REPO_ROOT/config/v7-txv1-devnet-harness-20260901.json"
@@ -134,7 +135,7 @@ rpc() {
 
 for _ in $(seq 1 150); do
   if rpc '{"jsonrpc":"2.0","id":1,"method":"getHealth"}' \
-    | jq -e '.result == "ok"' >/dev/null 2>&1; then
+    2>/dev/null | jq -e '.result == "ok"' >/dev/null 2>&1; then
     break
   fi
   sleep 0.2
@@ -171,13 +172,13 @@ for byte_index in {1..8}; do
 done
 [[ $activation_slot -eq 0 ]] || fail "TxV1 feature was not activated at genesis"
 
-while IFS=$'\t' read -r name id expected_owner expected_sha; do
+while IFS=$'\t' read -r name id configured_loader expected_sha; do
   rpc "{\"jsonrpc\":\"2.0\",\"id\":6,\"method\":\"getAccountInfo\",\"params\":[\"$id\",{\"encoding\":\"base64\",\"commitment\":\"finalized\"}]}" \
     | jq . >"$EVIDENCE_DIR/program-accounts/$name.json"
-  jq -e --arg owner "$expected_owner" \
+  jq -e --arg owner "$AGAVE_GENESIS_PROGRAM_OWNER" \
     '.result.value != null and .result.value.executable == true and .result.value.owner == $owner' \
     "$EVIDENCE_DIR/program-accounts/$name.json" >/dev/null \
-    || fail "$name program account owner/loader/executable gate failed"
+    || fail "$name program account observed Agave genesis loader/executable gate failed"
   dumped="$WORK_DIR/$name.so"
   NO_DNA=1 "$AGAVE_BIN_DIR/solana" program dump --url "$RPC_URL" "$id" "$dumped" \
     >"$EVIDENCE_DIR/program-binary-hashes/$name.dump.log" 2>&1
@@ -200,7 +201,10 @@ jq -n --arg generatedAt "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
     agave:{version:$agave,coreVersion:$coreVersion,runtimeFeatureSet:$runtimeFeatureSet},
     cluster:{kind:"disposable-local-validator",rpcUrl:$rpcUrl,genesisHash:$genesisHash,
       feature:{id:$featureId,active:true,activationSlot:$activationSlot}},
-    identities:{auditOnly:true,explicitlyAcknowledged:true,programs:$config[0].identitySet.programs},
+    identities:{auditOnly:true,explicitlyAcknowledged:true,
+      configuredPrograms:$config[0].identitySet.programs,
+      observedAgaveGenesisProgramOwner:"BPFLoaderUpgradeab1e11111111111111111111111",
+      loaderDistinctionRecorded:true},
     wallet:{pubkey:$payerPubkey,ephemeral:true,keypairCommitted:false,cleanupRequired:true},
     localFinalizedLifecycleComplete:false,publicFinalizedDevnetLifecycleComplete:false,
     publicDevnetFeatureActive:false,mainnetReady:false,realFundsUsed:false}' \
