@@ -45,6 +45,15 @@ fn resolve(root: &Path, relative: &str) -> Result<PathBuf> {
 }
 
 fn main() -> Result<()> {
+    let selected_lane_test_mode = env::var("ASPIS_V7_LIVE_SELECTED_LANE_CASE")
+        .ok()
+        .filter(|mode| mode != "none");
+    ensure!(
+        selected_lane_test_mode
+            .as_deref()
+            .is_none_or(|mode| mode == "stale-after-deposit"),
+        "unsupported selected-lane test mode"
+    );
     let mut args = env::args_os().skip(1);
     let repo = PathBuf::from(args.next().context(
         "usage: prepare-live-genesis <repo-root> <config.json> <payer-pubkey> <source-authority-pubkey> <new-output-dir>",
@@ -102,8 +111,18 @@ fn main() -> Result<()> {
         "kind":"disposable-mint-with-ephemeral-authority", "address":mint_id,
         "file":mint_output, "dataSha256":format!("{:x}", Sha256::digest(&mint_data))
     })];
+    let source_amount = if selected_lane_test_mode.as_deref() == Some("stale-after-deposit") {
+        2_000_u64
+    } else {
+        1_000_u64
+    };
     for (field, address_byte, amount, filename) in [
-        ("sourceTokenAccount", 0x43, 1_000_u64, "source-token.json"),
+        (
+            "sourceTokenAccount",
+            0x43,
+            source_amount,
+            "source-token.json",
+        ),
         (
             "withdrawalDestinationTokenAccount",
             0x46,
@@ -180,6 +199,7 @@ fn main() -> Result<()> {
         "{}",
         serde_json::to_string(&serde_json::json!({
             "schema":"aspis.v7.disposable-live-genesis.v1", "auditOnly":true,
+            "selectedLaneTestMode":selected_lane_test_mode,
             "ephemeralMintAuthority":payer.to_string(),
             "ephemeralTokenAuthority":source_authority.to_string(), "accounts":accounts
         }))?

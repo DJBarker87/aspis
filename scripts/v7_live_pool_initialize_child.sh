@@ -26,6 +26,7 @@ readonly AGAVE_BIN_DIR=${ASPIS_TXV1_DISPOSABLE_AGAVE_BIN_DIR:-}
 readonly OPERATION=${ASPIS_V7_LIVE_OPERATION:-transfer}
 readonly CIPHERTEXT_CASE=${ASPIS_V7_LIVE_CIPHERTEXT_CASE:-canonical}
 readonly WITHDRAWAL_CPI_CASE=${ASPIS_V7_LIVE_WITHDRAWAL_CPI_CASE:-none}
+readonly SELECTED_LANE_CASE=${ASPIS_V7_LIVE_SELECTED_LANE_CASE:-none}
 
 [[ "$RPC_URL" =~ ^http://127\.0\.0\.1:[0-9]+$ ]] || fail "disposable RPC is required"
 [[ "$OPERATION" == transfer || "$OPERATION" == withdrawal ]] \
@@ -37,6 +38,12 @@ readonly WITHDRAWAL_CPI_CASE=${ASPIS_V7_LIVE_WITHDRAWAL_CPI_CASE:-none}
 if [[ "$WITHDRAWAL_CPI_CASE" != none ]]; then
   [[ "$OPERATION" == withdrawal && "$CIPHERTEXT_CASE" == canonical ]] \
     || fail "withdrawal CPI failure testing requires canonical withdrawal mode"
+fi
+[[ "$SELECTED_LANE_CASE" == none || "$SELECTED_LANE_CASE" == stale-after-deposit ]] \
+  || fail "ASPIS_V7_LIVE_SELECTED_LANE_CASE must be none or stale-after-deposit"
+if [[ "$SELECTED_LANE_CASE" != none ]]; then
+  [[ "$OPERATION" == transfer && "$CIPHERTEXT_CASE" == canonical && "$WITHDRAWAL_CPI_CASE" == none ]] \
+    || fail "selected-lane testing requires canonical transfer mode"
 fi
 [[ -f "$PAYER_KEYPAIR" && -x "$BUILDER" ]] || fail "ephemeral payer or prebuilt builder unavailable"
 [[ "$EVIDENCE_DIR" == /* && "$EVIDENCE_DIR" != / && ! -e "$EVIDENCE_DIR" ]] \
@@ -495,6 +502,125 @@ if [[ -n "$SECRET_BUILDER" || -n "$DEPOSIT_BUILDER" ]]; then
            end) and .serializedTransactionBytes < 4096 and
           .serializedTransactionBytes <= 3500' "$TERMINAL_EVIDENCE/signed-request.json" >/dev/null \
           || fail "terminal TxV1 preflight failed"
+        if [[ "$SELECTED_LANE_CASE" == stale-after-deposit ]]; then
+          readonly STALING_EVIDENCE="$TERMINAL_EVIDENCE/staling-deposit"
+          mkdir "$STALING_EVIDENCE"
+          "$SECRET_BUILDER" transfer "$WORK_DIR/staling-deposit-secrets.json" "$selected_lane" \
+            >"$STALING_EVIDENCE/public-operation.json"
+          [[ "$(stat -c %a "$WORK_DIR/staling-deposit-secrets.json")" == 600 ]] \
+            || fail "staling deposit secret file mode is not 0600"
+          jq -e --argjson lane "$selected_lane" '
+            .operation == "transfer" and .depositLane == $lane and
+            .outputLane == $lane and .requiredLane == $lane
+          ' "$STALING_EVIDENCE/public-operation.json" >/dev/null \
+            || fail "staling deposit was not routed to the selected live lane"
+          rpc "$(jq -nc --arg address "$master_address" \
+            '{jsonrpc:"2.0",id:1570,method:"getAccountInfo",params:[$address,{encoding:"base64",commitment:"finalized"}]}')" \
+            | jq --arg requestedAddress "$master_address" '. + {requestedAddress:$requestedAddress}' \
+            >"$STALING_EVIDENCE/master-before.json"
+          staling_lane_files='[]'
+          for lane_index in $(seq 0 7); do
+            lane_address=$(jq -er ".initializedAccounts[$((lane_index + 1))]" "$EVIDENCE_DIR/signed-request.json")
+            lane_file="$STALING_EVIDENCE/lane-$lane_index-before.json"
+            rpc "$(jq -nc --arg address "$lane_address" \
+              '{jsonrpc:"2.0",id:1571,method:"getAccountInfo",params:[$address,{encoding:"base64",commitment:"finalized"}]}')" \
+              | jq --arg requestedAddress "$lane_address" '. + {requestedAddress:$requestedAddress}' \
+              >"$lane_file"
+            staling_lane_files=$(jq -nc --argjson files "$staling_lane_files" --arg file "$lane_file" \
+              '$files + [$file]')
+          done
+          rpc "$(jq -nc --arg address "$source_token" \
+            '{jsonrpc:"2.0",id:1572,method:"getAccountInfo",params:[$address,{encoding:"base64",commitment:"finalized"}]}')" \
+            | jq --arg requestedAddress "$source_token" '. + {requestedAddress:$requestedAddress}' \
+            >"$STALING_EVIDENCE/source-before.json"
+          staling_vault_address=$(jq -er '.initializedAccounts[9]' "$EVIDENCE_DIR/signed-request.json")
+          rpc "$(jq -nc --arg address "$staling_vault_address" \
+            '{jsonrpc:"2.0",id:1573,method:"getAccountInfo",params:[$address,{encoding:"base64",commitment:"finalized"}]}')" \
+            | jq --arg requestedAddress "$staling_vault_address" '. + {requestedAddress:$requestedAddress}' \
+            >"$STALING_EVIDENCE/vault-before.json"
+          staling_slot=$(rpc '{"jsonrpc":"2.0","id":1574,"method":"getSlot","params":[{"commitment":"finalized"}]}' | jq -er '.result')
+          staling_blockhash=$(rpc "$(jq -nc --argjson slot "$staling_slot" \
+            '{jsonrpc:"2.0",id:1575,method:"getLatestBlockhash",params:[{commitment:"finalized",minContextSlot:$slot}]}')" \
+            | jq -er '.result.value.blockhash')
+          jq -n --arg config "$CONFIG" --arg payer "$PAYER_KEYPAIR" \
+            --arg sourceAuthority "$SOURCE_AUTHORITY_KEYPAIR" --arg hash "$staling_blockhash" \
+            --argjson slot "$staling_slot" --arg master "$STALING_EVIDENCE/master-before.json" \
+            --argjson lanes "$staling_lane_files" --arg secrets "$WORK_DIR/staling-deposit-secrets.json" \
+            '{schema:"aspis.v7.live-pool-staling-deposit-input.v1",config:$config,
+              payerKeypair:$payer,sourceAuthorityKeypair:$sourceAuthority,
+              recentBlockhash:$hash,minContextSlot:$slot,requestId:1576,
+              masterAccount:$master,laneAccounts:$lanes,secretsFile:$secrets}' \
+            >"$WORK_DIR/staling-deposit-input.json"
+          "$DEPOSIT_BUILDER" "$WORK_DIR/staling-deposit-input.json" \
+            >"$STALING_EVIDENCE/signed-request.json"
+          jq -e --argjson lane "$selected_lane" '
+            .operation == "deposit" and .selectedLane == $lane and
+            .serializedTransactionBytes < 1232
+          ' "$STALING_EVIDENCE/signed-request.json" >/dev/null \
+            || fail "staling deposit signed request invalid"
+          staling_simulation=$(rpc "$(jq -c '.simulationRequest' "$STALING_EVIDENCE/signed-request.json")")
+          jq . <<<"$staling_simulation" >"$STALING_EVIDENCE/simulation.json"
+          jq -e '.error | not' <<<"$staling_simulation" >/dev/null
+          jq -e '.result.value.err == null' <<<"$staling_simulation" >/dev/null \
+            || fail "staling deposit simulation failed"
+          staling_send=$(rpc "$(jq -c '.sendRequest' "$STALING_EVIDENCE/signed-request.json")")
+          jq . <<<"$staling_send" >"$STALING_EVIDENCE/send.json"
+          staling_signature=$(jq -er '.result' <<<"$staling_send")
+          [[ "$staling_signature" == "$(jq -er '.signature' "$STALING_EVIDENCE/signed-request.json")" ]] \
+            || fail "staling deposit submission changed signed wire"
+          staling_finalized=false
+          for _ in $(seq 1 600); do
+            staling_status=$(rpc "$(jq -nc --arg signature "$staling_signature" \
+              '{jsonrpc:"2.0",id:1577,method:"getSignatureStatuses",params:[[$signature],{searchTransactionHistory:true}]}')")
+            if jq -e '.result.value[0] != null and .result.value[0].confirmationStatus == "finalized"' \
+              <<<"$staling_status" >/dev/null; then staling_finalized=true; break; fi
+            sleep 0.1
+          done
+          [[ "$staling_finalized" == true ]] || fail "staling deposit did not finalize"
+          rpc "$(jq -nc --arg signature "$staling_signature" \
+            '{jsonrpc:"2.0",id:1578,method:"getTransaction",params:[$signature,{encoding:"json",commitment:"finalized",maxSupportedTransactionVersion:1}]}')" \
+            | jq . >"$STALING_EVIDENCE/finalized-transaction.json"
+          jq -e '.result != null and .result.meta.err == null' \
+            "$STALING_EVIDENCE/finalized-transaction.json" >/dev/null \
+            || fail "staling deposit did not land successfully"
+          selected_lane_address=$(jq -er ".initializedAccounts[$((selected_lane + 1))]" \
+            "$EVIDENCE_DIR/signed-request.json")
+          for item in "lane:$selected_lane_address" "source:$source_token" "vault:$staling_vault_address"; do
+            item_name=${item%%:*}; item_address=${item#*:}
+            rpc "$(jq -nc --arg address "$item_address" \
+              '{jsonrpc:"2.0",id:1579,method:"getAccountInfo",params:[$address,{encoding:"base64",commitment:"finalized"}]}')" \
+              | jq --arg requestedAddress "$item_address" '. + {requestedAddress:$requestedAddress}' \
+              >"$STALING_EVIDENCE/$item_name-after.json"
+          done
+          staling_source_before=$(token_amount "$STALING_EVIDENCE/source-before.json")
+          staling_source_after=$(token_amount "$STALING_EVIDENCE/source-after.json")
+          staling_vault_before=$(token_amount "$STALING_EVIDENCE/vault-before.json")
+          staling_vault_after=$(token_amount "$STALING_EVIDENCE/vault-after.json")
+          [[ "$staling_source_before" == 1000 && "$staling_source_after" == 0 &&
+            "$staling_vault_before" == 1000 && "$staling_vault_after" == 2000 ]] \
+            || fail "staling deposit custody delta is not exactly 1,000"
+          staling_simulated_cu=$(jq -er '.result.value.unitsConsumed' "$STALING_EVIDENCE/simulation.json")
+          staling_landed_cu=$(jq -er '.result.meta.computeUnitsConsumed' "$STALING_EVIDENCE/finalized-transaction.json")
+          [[ "$staling_simulated_cu" == "$staling_landed_cu" ]] \
+            || fail "staling deposit simulation and landed CU differ"
+          jq -n --arg signature "$staling_signature" \
+            --argjson slot "$(jq -er '.result.slot' "$STALING_EVIDENCE/finalized-transaction.json")" \
+            --argjson selectedLane "$selected_lane" --argjson simulatedCu "$staling_simulated_cu" \
+            --argjson landedCu "$staling_landed_cu" \
+            --arg laneBefore "$(account_data_hash "$STALING_EVIDENCE/lane-$selected_lane-before.json")" \
+            --arg laneAfter "$(account_data_hash "$STALING_EVIDENCE/lane-after.json")" \
+            --slurpfile request "$STALING_EVIDENCE/signed-request.json" \
+            '{schema:"aspis.v7.live-selected-lane-staling-deposit-finalized.v1",
+              signature:$signature,slot:$slot,selectedLane:$selectedLane,
+              serializedTransactionBytes:$request[0].serializedTransactionBytes,
+              signedWireSha256:$request[0].signedWireSha256,
+              simulatedCu:$simulatedCu,landedCu:$landedCu,
+              laneDataSha256:{before:$laneBefore,after:$laneAfter},
+              sourceAmount:{before:1000,after:0},vaultAmount:{before:1000,after:2000},
+              byteIdenticalSimulationSubmission:true,finalized:true,
+              auditOnly:true,disposable:true,mainnetReady:false}' \
+            >"$STALING_EVIDENCE/staling-deposit-finalized.json"
+        fi
         protected_addresses=$(jq -nc --slurpfile init "$EVIDENCE_DIR/signed-request.json" \
           --slurpfile terminal "$TERMINAL_EVIDENCE/signed-request.json" \
           --arg checkpoint "$checkpoint_address" \
@@ -505,6 +631,81 @@ if [[ -n "$SECRET_BUILDER" || -n "$DEPOSIT_BUILDER" ]]; then
         terminal_simulation=$(rpc "$(jq -c '.simulationRequest' "$TERMINAL_EVIDENCE/signed-request.json")")
         jq . <<<"$terminal_simulation" >"$TERMINAL_EVIDENCE/simulation.json"
         jq -e '.error | not' <<<"$terminal_simulation" >/dev/null
+        if [[ "$SELECTED_LANE_CASE" == stale-after-deposit ]]; then
+          jq -e '.result.value.err != null and .result.value.unitsConsumed < 1300000 and
+            any(.result.value.logs[]; contains("Program 7Q2nGsPg8rbjdxKHK4jxTgEWLTyd9o1X4KMSjCieRmue invoke")) and
+            any(.result.value.logs[]; contains("Program 5PjDJaGfSPJj4tFzMRCiuuAasKg5n8dJKXKenhuwZexx failed"))' \
+            <<<"$terminal_simulation" >/dev/null \
+            || fail "stale selected-lane simulation did not reach verifier and reject"
+          stale_send=$(rpc "$(jq -c '.sendRequest' "$TERMINAL_EVIDENCE/signed-request.json")")
+          jq . <<<"$stale_send" >"$TERMINAL_EVIDENCE/send.json"
+          stale_signature=$(jq -er '.result' <<<"$stale_send")
+          [[ "$stale_signature" == "$(jq -er '.signature' "$TERMINAL_EVIDENCE/signed-request.json")" ]] \
+            || fail "stale selected-lane submission changed signed wire"
+          stale_finalized=false
+          for _ in $(seq 1 600); do
+            stale_status=$(rpc "$(jq -nc --arg signature "$stale_signature" \
+              '{jsonrpc:"2.0",id:1660,method:"getSignatureStatuses",params:[[$signature],{searchTransactionHistory:true}]}')")
+            if jq -e '.result.value[0] != null and .result.value[0].confirmationStatus == "finalized"' \
+              <<<"$stale_status" >/dev/null; then stale_finalized=true; break; fi
+            sleep 0.1
+          done
+          [[ "$stale_finalized" == true ]] || fail "stale selected-lane rejection did not finalize"
+          rpc "$(jq -nc --arg signature "$stale_signature" \
+            '{jsonrpc:"2.0",id:1661,method:"getTransaction",params:[$signature,{encoding:"json",commitment:"finalized",maxSupportedTransactionVersion:1}]}')" \
+            | jq . >"$TERMINAL_EVIDENCE/finalized-transaction.json"
+          jq -e '.result != null and .result.meta.err != null and
+            .result.meta.computeUnitsConsumed < 1300000 and
+            any(.result.meta.logMessages[]; contains("Program 7Q2nGsPg8rbjdxKHK4jxTgEWLTyd9o1X4KMSjCieRmue invoke")) and
+            any(.result.meta.logMessages[]; contains("Program 5PjDJaGfSPJj4tFzMRCiuuAasKg5n8dJKXKenhuwZexx failed"))' \
+            "$TERMINAL_EVIDENCE/finalized-transaction.json" >/dev/null \
+            || fail "landed stale selected-lane transaction did not reject after verifier invocation"
+          [[ "$(jq -c '.result.value.err' "$TERMINAL_EVIDENCE/simulation.json")" == \
+            "$(jq -c '.result.meta.err' "$TERMINAL_EVIDENCE/finalized-transaction.json")" ]] \
+            || fail "stale selected-lane simulation and landed errors differ"
+          [[ "$(jq -er '.result.value.unitsConsumed' "$TERMINAL_EVIDENCE/simulation.json")" == \
+            "$(jq -er '.result.meta.computeUnitsConsumed' "$TERMINAL_EVIDENCE/finalized-transaction.json")" ]] \
+            || fail "stale selected-lane simulation and landed CU differ"
+          rpc "$(jq -nc --argjson addresses "$protected_addresses" \
+            '{jsonrpc:"2.0",id:1662,method:"getMultipleAccounts",params:[$addresses,{encoding:"base64",commitment:"finalized"}]}')" \
+            | jq . >"$TERMINAL_EVIDENCE/accounts-after.json"
+          payer_pubkey=$(NO_DNA=1 "$AGAVE_BIN_DIR/solana-keygen" pubkey "$PAYER_KEYPAIR")
+          payer_index=$(jq -en --argjson addresses "$protected_addresses" --arg payer "$payer_pubkey" \
+            '$addresses | index($payer) // error("payer absent from protected account set")')
+          stale_fee=$(jq -er '.result.meta.fee' "$TERMINAL_EVIDENCE/finalized-transaction.json")
+          assert_failed_transaction_fee_only "$TERMINAL_EVIDENCE/accounts-before.json" \
+            "$TERMINAL_EVIDENCE/accounts-after.json" "$payer_index" "$stale_fee" \
+            || fail "stale selected-lane rejection changed state beyond its payer fee"
+          jq -n --arg signature "$stale_signature" \
+            --argjson slot "$(jq -er '.result.slot' "$TERMINAL_EVIDENCE/finalized-transaction.json")" \
+            --argjson simulatedError "$(jq -c '.result.value.err' "$TERMINAL_EVIDENCE/simulation.json")" \
+            --argjson landedError "$(jq -c '.result.meta.err' "$TERMINAL_EVIDENCE/finalized-transaction.json")" \
+            --argjson simulatedCu "$(jq -er '.result.value.unitsConsumed' "$TERMINAL_EVIDENCE/simulation.json")" \
+            --argjson landedCu "$(jq -er '.result.meta.computeUnitsConsumed' "$TERMINAL_EVIDENCE/finalized-transaction.json")" \
+            --arg before "$(account_values_fee_normalized_hash "$TERMINAL_EVIDENCE/accounts-before.json" "$payer_index")" \
+            --arg after "$(account_values_fee_normalized_hash "$TERMINAL_EVIDENCE/accounts-after.json" "$payer_index")" \
+            --arg payer "$payer_pubkey" --argjson payerFeeLamports "$stale_fee" \
+            --slurpfile request "$TERMINAL_EVIDENCE/signed-request.json" \
+            --slurpfile staling "$STALING_EVIDENCE/staling-deposit-finalized.json" \
+            '{schema:"aspis.v7.live-terminal-stale-selected-lane-rejection.v1",
+              expected:"reject proof whose selected live-lane snapshot was superseded",
+              actual:"finalized-rejected",signature:$signature,slot:$slot,
+              serializedTransactionBytes:$request[0].serializedTransactionBytes,
+              signedWireSha256:$request[0].signedWireSha256,selectedLane:$request[0].selectedLane,
+              simulatedError:$simulatedError,landedError:$landedError,
+              simulatedCu:$simulatedCu,landedCu:$landedCu,
+              proofGeneratedBeforeStalingDeposit:true,
+              stalingDepositSignature:$staling[0].signature,
+              stalingDepositSlot:$staling[0].slot,
+              selectedLaneChangedAfterProof:($staling[0].laneDataSha256.before != $staling[0].laneDataSha256.after),
+              verifierInvoked:true,byteIdenticalSimulationSubmission:true,
+              feeNormalizedProtectedStateBeforeSha256:$before,
+              feeNormalizedProtectedStateAfterSha256:$after,
+              stateUnchangedExceptPayerFee:true,payer:$payer,payerFeeLamports:$payerFeeLamports,
+              finalized:true,auditOnly:true,disposable:true,mainnetReady:false}' \
+            >"$TERMINAL_EVIDENCE/stale-selected-lane-rejection.json"
+          exit 0
+        fi
         if [[ "$WITHDRAWAL_CPI_CASE" == compute-exhaustion ]]; then
           [[ "$(token_state "$EVIDENCE_DIR/live-proof-inputs/destination.json")" == 1 ]] \
             || fail "withdrawal CPI test destination is not initialized"
