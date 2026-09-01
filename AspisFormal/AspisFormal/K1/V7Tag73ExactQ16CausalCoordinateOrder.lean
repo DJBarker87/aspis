@@ -177,6 +177,81 @@ inductive ExactRootOrderedQ16Chain
       ExactRootOrderedQ16Chain input producerInput digest
         (output :: outputs) (advanced :: advances)
 
+/-- Root ordering preserves the one-output/one-advance shape of every
+consumed duplex block. -/
+theorem exact_root_ordered_q16_chain_lengths
+    {HiddenTape TapeIdentity Observation Statement Payload Result : Type}
+    {parameters : ExactCompilerResourceParameters}
+    {transitionFuel : Nat}
+    {configuration : ExactPlainRomConfiguration HiddenTape TapeIdentity
+      Observation Statement Tag73K12ParsedProof Payload Result parameters}
+    {projection : AcceptedTapeProjection Statement Tag73K12ParsedProof Payload}
+    {fixedInstance : PublicInstance Statement}
+    {sample : ExactCompilerSample HiddenTape parameters}
+    {input : ExactK12OperationalInput transitionFuel configuration projection
+      fixedInstance sample}
+    {producerInput : ShaInput} {digest : Digest256}
+    {outputs advances : List Digest256}
+    (chain : ExactRootOrderedQ16Chain input producerInput digest outputs
+      advances) :
+    advances.length = outputs.length := by
+  induction chain with
+  | done => rfl
+  | next _ _ _ _ _ tail ih => simp [ih]
+
+/-- A nonempty ordered chain exposes the last consumed output/advance pair in
+the literal root chronology.  The advance answer is exactly the terminal
+digest.  This is the reverse-induction handle used to transport a sampler
+chain from its already-fixed successor state. -/
+theorem exact_root_ordered_q16_chain_terminal_pair_mem
+    {HiddenTape TapeIdentity Observation Statement Payload Result : Type}
+    {parameters : ExactCompilerResourceParameters}
+    {transitionFuel : Nat}
+    {configuration : ExactPlainRomConfiguration HiddenTape TapeIdentity
+      Observation Statement Tag73K12ParsedProof Payload Result parameters}
+    {projection : AcceptedTapeProjection Statement Tag73K12ParsedProof Payload}
+    {fixedInstance : PublicInstance Statement}
+    {sample : ExactCompilerSample HiddenTape parameters}
+    {input : ExactK12OperationalInput transitionFuel configuration projection
+      fixedInstance sample}
+    {producerInput : ShaInput} {digest : Digest256}
+    {outputs advances : List Digest256}
+    (chain : ExactRootOrderedQ16Chain input producerInput digest outputs
+      advances)
+    (nonempty : 0 < outputs.length) :
+    ∃ blockDigest blockOutput,
+      (gammaOutputInput blockDigest, blockOutput) ∈
+          exactRootFreshQueries input ∧
+      (gammaAdvanceInput blockDigest,
+          gammaTerminalDigest digest advances) ∈
+        exactRootFreshQueries input := by
+  induction chain with
+  | done => simp at nonempty
+  | @next producerInput digest output advanced outputs advances producerFound
+      outputFound advanceFound producerBeforeOutput producerBeforeAdvance tail
+      ih =>
+      by_cases outputsEmpty : outputs = []
+      · subst outputs
+        have advancesEmpty : advances = [] := by
+          apply List.length_eq_zero_iff.mp
+          simpa using exact_root_ordered_q16_chain_lengths tail
+        subst advances
+        refine ⟨digest, output, ?_, ?_⟩
+        · obtain ⟨before, middle, after, rootExact⟩ := producerBeforeOutput
+          rw [rootExact]
+          simp
+        · obtain ⟨before, middle, after, rootExact⟩ := producerBeforeAdvance
+          rw [rootExact]
+          simp [gammaTerminalDigest]
+      · have tailLengthNe : outputs.length ≠ 0 := by
+          intro lengthZero
+          exact outputsEmpty (List.length_eq_zero_iff.mp lengthZero)
+        have tailNonempty : 0 < outputs.length := by omega
+        obtain ⟨blockDigest, blockOutput, outputMember, advanceMember⟩ :=
+          ih tailNonempty
+        exact ⟨blockDigest, blockOutput, outputMember, by
+          simpa [gammaTerminalDigest] using advanceMember⟩
+
 /-- Every literal evaluator duplex chain has the exact strict root ordering
 required by the causal controller. -/
 theorem gamma_table_coordinate_chain_has_exact_root_order
@@ -255,6 +330,8 @@ theorem exact_operational_q16_branch_has_exact_root_order
 
 #print axioms exact_operational_q16_after_state_uses_shared_base
 #print axioms exact_operational_q16_candidate_absorb_lookup
+#print axioms exact_root_ordered_q16_chain_lengths
+#print axioms exact_root_ordered_q16_chain_terminal_pair_mem
 #print axioms gamma_table_coordinate_chain_has_exact_root_order
 #print axioms exact_operational_q16_branch_has_exact_root_order
 

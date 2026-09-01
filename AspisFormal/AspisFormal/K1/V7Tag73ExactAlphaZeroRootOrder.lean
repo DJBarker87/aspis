@@ -55,6 +55,11 @@ theorem exact_compiler_alpha_zero_chain_has_root_order
           some beforeAlpha.digest ∧
       ExactRootOrderedQ16Chain input producerInput beforeAlpha.digest
           outputs advances ∧
+      outputs.length =
+          ((exactOperationalTape input).messages.challengeUse
+            (.alpha 0)).blocksUsed ∧
+      0 < outputs.length ∧
+      advances.length = outputs.length ∧
       afterBlocks.digest =
           gammaTerminalDigest beforeAlpha.digest advances ∧
       afterAlpha.digest = afterBlocks.digest ∧
@@ -74,7 +79,7 @@ theorem exact_compiler_alpha_zero_chain_has_root_order
   obtain ⟨_evaluator, _segments, beforeAlphaProducer, beforeAlpha,
       afterAlpha, afterBlocks, afterFinal256, outputs, advances, exactValue,
       _producerPrefixRun, _boundaryRun, boundaryLookup, _squeezeRun,
-      afterAlphaExact, _final256Run, _outputsLength, _advancesLength,
+      afterAlphaExact, _final256Run, outputsLength, advancesLength,
       coordinates, terminalExact, _callsExact, exactDecode, operationalValue,
       final256Lookup⟩ :=
     exact_compiler_constructs_alpha_zero_prefix_coordinates input
@@ -99,9 +104,14 @@ theorem exact_compiler_alpha_zero_chain_has_root_order
         simpa [producerInput] using boundaryLookup) coordinates
   have afterDigest : afterAlpha.digest = afterBlocks.digest := by
     simpa using congrArg EvalState.digest afterAlphaExact
+  have outputsPositive : 0 < outputs.length := by
+    rw [outputsLength]
+    exact ((exactOperationalTape input).messages.challengeUse
+      (.alpha 0)).consumesBlock
   refine ⟨producerInput, final256Input, beforeAlpha, afterAlpha, afterBlocks,
-    afterFinal256, outputs, advances, exactValue, ?_, ordered, terminalExact,
-    afterDigest, rfl, ?_, exactDecode, operationalValue⟩
+    afterFinal256, outputs, advances, exactValue, ?_, ordered, outputsLength,
+    outputsPositive, advancesLength, terminalExact, afterDigest, rfl, ?_,
+    exactDecode, operationalValue⟩
   · simpa [producerInput] using boundaryLookup
   · simpa [final256Input] using final256Lookup
 
