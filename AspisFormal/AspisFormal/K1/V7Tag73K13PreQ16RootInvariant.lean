@@ -25,6 +25,8 @@ open AspisK1.V7Tag73AdaptiveQ16TrialAccounting
 open AspisK1.V7Tag73AtomicForkUniformScheduler
 open AspisK1.V7Tag73CausalQ16FinalWorkProbability
 open AspisK1.V7Tag73CausalFinalWorkQ16UsedForest
+open AspisK1.V7Tag73DeterministicRefinement
+open AspisK1.V7Tag73ExactAdversaryAnchorFinalProfile
 open AspisK1.V7Tag73ExactAdversaryAnchorSelectedInputInvariant
 open AspisK1.V7Tag73ExactClientKnowledgeComposition
 open AspisK1.V7Tag73ExactCompilerResources
@@ -35,20 +37,27 @@ open AspisK1.V7Tag73ExactFixedFullRunFactorization
 open AspisK1.V7Tag73ExactFixedQ16JointEventHandoff
 open AspisK1.V7Tag73ExactFixedQ16VerifierAnchorInvariant
 open AspisK1.V7Tag73ExactPairRootAbsorbChainClosure
+open AspisK1.V7Tag73ExactPairCoordinateProfileInvariant
 open AspisK1.V7Tag73ExactPlainRomRun
+open AspisK1.V7Tag73ExactRootLookupCausalOrder
+open AspisK1.V7Tag73ExactRootRecordOrderLift
 open AspisK1.V7Tag73ExactRootCausalChain
 open AspisK1.V7Tag73ExactSourceAcceptanceModel
+open AspisK1.V7Tag73FixedFieldMessageBridge
+open AspisK1.V7Tag73FutureFreeCheckedRefinementBisimulation
 open AspisK1.V7Tag73IndexedAlignedRecordReplay
 open AspisK1.V7Tag73IndexedControllerTraceAlignment
 open AspisK1.V7Tag73K13PreQ16JointEventHandoff
 open AspisK1.V7Tag73K13PreQ16MerkleWordSource
 open AspisK1.V7Tag73K13PreQ16QueryHandoff
+open AspisK1.V7Tag73K13PreQ16ViewAgreement
 open AspisK1.V7Tag73K13PreQ16TrialProbability
 open AspisK1.V7Tag73NoPairOccurrenceTrichotomy
 open AspisK1.V7Tag73OperationalSemanticReplay
 open AspisK1.V7Tag73ParsedK13K14Classifier
 open AspisK1.V7Tag73Q16FirstCompactUniformity
 open AspisK1.V7Tag73Q16SemanticFrontierBridge
+open AspisK1.V7Tag73RawProverMessages
 open AspisK1.V7Tag73SuccessfulSamplerConditioningBridge
 open AspisK1.V7Tag73RootAbsorbInputInjectivity
 open AspisK1.V7Tag73TranscriptSchedule
@@ -281,6 +290,349 @@ theorem exact_preQ16_k13_words_eq
       rightWitness.trialExact programmedCover residualExact
   · exact exact_preQ16_k13_roots_eq transitionRoom programmedCover trial
       hidden left right leftWitness rightWitness residualExact
+
+/-- Equal residuals reach the same literal selected pre-answer input. -/
+theorem exact_preQ16_k13_selected_input_eq
+    {HiddenTape TapeIdentity Observation Statement Payload Witness : Type}
+    {parameters : ExactCompilerResourceParameters}
+    {transitionFuel : Nat}
+    {configuration : ExactPlainRomWitnessConfiguration HiddenTape TapeIdentity
+      Observation Statement Tag73K12ParsedProof Payload Witness parameters}
+    {projection : AcceptedTapeProjection Statement Tag73K12ParsedProof Payload}
+    {fixedInstance : PublicInstance Statement}
+    {decoder : ExactDecoderInstantiation QM31Exact}
+    (programmedCover : 513 ≤ 2 * parameters.forkRequestCap)
+    (trial : ExactCompilerExposureTrial parameters) (hidden : HiddenTape)
+    (left right : FreshAnswerTape Digest256
+      (exactCompilerTargetCaps parameters).length)
+    (leftWitness : ExactPreQ16K13JointTrialWitness transitionFuel configuration
+      projection fixedInstance decoder (hidden, left) trial)
+    (rightWitness : ExactPreQ16K13JointTrialWitness transitionFuel configuration
+      projection fixedInstance decoder (hidden, right) trial)
+    (residualExact :
+      (exactFixedK13TrialCoordinates transitionFuel configuration trial
+        (hidden, left)).1 =
+      (exactFixedK13TrialCoordinates transitionFuel configuration trial
+        (hidden, right)).1) :
+    leftWitness.pivotInput = rightWitness.pivotInput := by
+  have priorExact : leftWitness.prior = rightWitness.prior :=
+    exact_fixed_clean_k13_equal_residual_selected_root_priors_eq trial hidden
+      left right leftWitness.input rightWitness.input leftWitness.prior
+      leftWitness.later rightWitness.prior rightWitness.later
+      leftWitness.pivotActor rightWitness.pivotActor leftWitness.pivotInput
+      rightWitness.pivotInput leftWitness.pivotAnswer rightWitness.pivotAnswer
+      leftWitness.rootExact rightWitness.rootExact leftWitness.trialExact
+      rightWitness.trialExact programmedCover residualExact
+  let controller := exactDagTrialController transitionFuel trial
+  let initial := exactDagCandidateInitialState leftWitness.input
+  have leftAlignedRaw := exact_root_records_aligned_for_dag_controller
+    leftWitness.input trial.val
+  have rightAlignedRaw := exact_root_records_aligned_for_dag_controller
+    rightWitness.input trial.val
+  have leftAligned : IndexedRecordsAligned transitionFuel controller initial
+      (exactFixedRootRecords leftWitness.input.package.root) := by
+    simpa [controller, initial, exactDagTrialController] using leftAlignedRaw
+  have rightAligned : IndexedRecordsAligned transitionFuel controller initial
+      (exactFixedRootRecords rightWitness.input.package.root) := by
+    simpa [controller, initial, exactDagTrialController,
+      exactDagCandidateInitialState] using rightAlignedRaw
+  have leftSelected := leftAligned leftWitness.prior
+    (.machineFresh leftWitness.pivotActor leftWitness.pivotInput
+      leftWitness.pivotAnswer) leftWitness.later leftWitness.rootExact
+  have rightSelected := rightAligned rightWitness.prior
+    (.machineFresh rightWitness.pivotActor rightWitness.pivotInput
+      rightWitness.pivotAnswer) rightWitness.later rightWitness.rootExact
+  have leftInput := aligned_machine_record_has_exact_input transitionFuel
+    (indexedStateAfterRecords transitionFuel controller leftWitness.prior
+      initial).cursor leftWitness.pivotActor leftWitness.pivotInput
+      leftWitness.pivotAnswer leftSelected
+  have rightInput := aligned_machine_record_has_exact_input transitionFuel
+    (indexedStateAfterRecords transitionFuel controller rightWitness.prior
+      initial).cursor rightWitness.pivotActor rightWitness.pivotInput
+      rightWitness.pivotAnswer rightSelected
+  rw [priorExact] at leftInput
+  exact Option.some.inj (leftInput.symm.trans rightInput)
+
+/-- The canonical final256 producer record lies in the literal prefix before
+every corrected selected trial. -/
+theorem exact_preQ16_k13_final256_record_mem_prior
+    {HiddenTape TapeIdentity Observation Statement Payload Witness : Type}
+    {parameters : ExactCompilerResourceParameters}
+    {transitionFuel : Nat}
+    {configuration : ExactPlainRomWitnessConfiguration HiddenTape TapeIdentity
+      Observation Statement Tag73K12ParsedProof Payload Witness parameters}
+    {projection : AcceptedTapeProjection Statement Tag73K12ParsedProof Payload}
+    {fixedInstance : PublicInstance Statement}
+    {decoder : ExactDecoderInstantiation QM31Exact}
+    {sample : ExactCompilerSample HiddenTape parameters}
+    (transitionRoom : 2 ≤ transitionFuel)
+    (trial : ExactCompilerExposureTrial parameters)
+    (witness : ExactPreQ16K13JointTrialWitness transitionFuel configuration
+      projection fixedInstance decoder sample trial) :
+    ∃ before : EvalState, ∃ digest : Digest256, ∃ actor : QueryActor,
+      let producerInput := bytes before.digest ++
+        [domAbsorb,
+          (AspisK1.V7Tag73TranscriptSchedule.Payload.final256
+            (exactOperationalTape witness.input).messages.finalValues).label] ++
+        (AspisK1.V7Tag73TranscriptSchedule.Payload.final256
+          (exactOperationalTape witness.input).messages.finalValues).data
+      tableLookup (exactOperationalTable witness.input) producerInput =
+          some digest ∧
+        (.machineFresh actor producerInput digest : UnifiedExposureRecord) ∈
+          witness.prior ∧
+        HasLiteralStatePrefix digest witness.pivotInput := by
+  classical
+  obtain ⟨actualPrior, actualLater, selectedActor, selectedInput,
+      selectedAnswer, digest, _base, _absorbActor, actualRootExact,
+      actualTrialExact, selectedPrefix, prefinalOrigin, _baseExact,
+      _absorbMember⟩ :=
+    exact_fixed_k13_actual_trial_has_selected_prefinal_prefix witness.input
+      trial witness.actualTrial
+  obtain ⟨before, producerLookup⟩ := prefinalOrigin
+  let producerInput := bytes before.digest ++
+    [domAbsorb,
+      (AspisK1.V7Tag73TranscriptSchedule.Payload.final256
+        (exactOperationalTape witness.input).messages.finalValues).label] ++
+    (AspisK1.V7Tag73TranscriptSchedule.Payload.final256
+      (exactOperationalTape witness.input).messages.finalValues).data
+  have selectedMember :
+      (.machineFresh selectedActor selectedInput selectedAnswer :
+        UnifiedExposureRecord) ∈
+        exactFixedRootRecords witness.input.package.root := by
+    rw [actualRootExact]
+    simp
+  have selectedLookup := exact_root_machineFresh_has_operational_lookup
+    witness.input selectedActor selectedInput selectedAnswer selectedMember
+  obtain ⟨beforePairs, middlePairs, afterPairs, pairOrder⟩ :=
+    exact_compiler_literal_dependency_has_strict_root_order transitionRoom
+      witness.input producerInput selectedInput digest selectedAnswer
+      (by simpa [producerInput] using producerLookup) selectedLookup
+      selectedPrefix
+  obtain ⟨beforeRecords, middleRecords, afterRecords, producerActor,
+      orderedSelectedActor, recordOrder⟩ :=
+    exact_root_pair_order_lifts_to_records witness.input producerInput
+      selectedInput digest selectedAnswer beforePairs middlePairs afterPairs
+      pairOrder
+  have producerMemberActual :
+      (.machineFresh producerActor producerInput digest :
+        UnifiedExposureRecord) ∈ actualPrior := by
+    have rootNodup :
+        (exactFixedRootRecords witness.input.package.root).Nodup :=
+      List.Nodup.of_map UnifiedExposureRecord.answer
+        (exact_root_record_answers_nodup witness.input)
+    have orderedSelectedMember :
+        (.machineFresh orderedSelectedActor selectedInput selectedAnswer :
+          UnifiedExposureRecord) ∈
+          exactFixedRootRecords witness.input.package.root := by
+      rw [recordOrder]
+      simp
+    have selectedRecordExact :
+        (.machineFresh orderedSelectedActor selectedInput selectedAnswer :
+            UnifiedExposureRecord) =
+          .machineFresh selectedActor selectedInput selectedAnswer :=
+      List.inj_on_of_nodup_map
+        (exact_root_record_answers_nodup witness.input)
+        orderedSelectedMember selectedMember rfl
+    have recordOrder' : exactFixedRootRecords witness.input.package.root =
+        beforeRecords ++
+          (.machineFresh producerActor producerInput digest :
+            UnifiedExposureRecord) :: middleRecords ++
+          (.machineFresh selectedActor selectedInput selectedAnswer :
+            UnifiedExposureRecord) :: afterRecords := by
+      simpa [selectedRecordExact] using recordOrder
+    exact mem_canonical_prefix_of_strictly_before_pivot
+      (exactFixedRootRecords witness.input.package.root) actualPrior actualLater
+      beforeRecords middleRecords afterRecords
+      (.machineFresh producerActor producerInput digest)
+      (.machineFresh selectedActor selectedInput selectedAnswer) rootNodup
+      actualRootExact recordOrder'
+  have prefixExact : witness.prior = actualPrior :=
+    equal_prefixes_of_equal_decomposition_lengths
+      (exactFixedRootRecords witness.input.package.root) witness.prior
+      witness.later actualPrior actualLater
+      (.machineFresh witness.pivotActor witness.pivotInput witness.pivotAnswer)
+      (.machineFresh selectedActor selectedInput selectedAnswer)
+      witness.rootExact actualRootExact (by
+        rw [← witness.trialExact, ← actualTrialExact])
+  have witnessAt :
+      (exactFixedRootRecords witness.input.package.root)[trial.val]? =
+        some (.machineFresh witness.pivotActor witness.pivotInput
+          witness.pivotAnswer : UnifiedExposureRecord) := by
+    rw [witness.rootExact, witness.trialExact]
+    simp
+  have actualAt :
+      (exactFixedRootRecords witness.input.package.root)[trial.val]? =
+        some (.machineFresh selectedActor selectedInput selectedAnswer :
+          UnifiedExposureRecord) := by
+    rw [actualRootExact, actualTrialExact]
+    simp
+  have selectedRecordExact :
+      (.machineFresh witness.pivotActor witness.pivotInput witness.pivotAnswer :
+          UnifiedExposureRecord) =
+        .machineFresh selectedActor selectedInput selectedAnswer := by
+    rw [witnessAt] at actualAt
+    exact Option.some.inj actualAt
+  have selectedInputExact : witness.pivotInput = selectedInput := by
+    injection selectedRecordExact
+  refine ⟨before, digest, producerActor, ?_, ?_, ?_⟩
+  · simpa [producerInput] using producerLookup
+  · rw [prefixExact]
+    exact producerMemberActual
+  · simpa [selectedInputExact] using selectedPrefix
+
+/-- Equal residuals fix the complete serialized final256 vector before q16,
+including in the adversary-first cache-hit branch. -/
+theorem exact_preQ16_k13_final_values_eq
+    {HiddenTape TapeIdentity Observation Statement Payload Witness : Type}
+    {parameters : ExactCompilerResourceParameters}
+    {transitionFuel : Nat}
+    {configuration : ExactPlainRomWitnessConfiguration HiddenTape TapeIdentity
+      Observation Statement Tag73K12ParsedProof Payload Witness parameters}
+    {projection : AcceptedTapeProjection Statement Tag73K12ParsedProof Payload}
+    {fixedInstance : PublicInstance Statement}
+    {decoder : ExactDecoderInstantiation QM31Exact}
+    (transitionRoom : 2 ≤ transitionFuel)
+    (programmedCover : 513 ≤ 2 * parameters.forkRequestCap)
+    (trial : ExactCompilerExposureTrial parameters) (hidden : HiddenTape)
+    (left right : FreshAnswerTape Digest256
+      (exactCompilerTargetCaps parameters).length)
+    (leftWitness : ExactPreQ16K13JointTrialWitness transitionFuel configuration
+      projection fixedInstance decoder (hidden, left) trial)
+    (rightWitness : ExactPreQ16K13JointTrialWitness transitionFuel configuration
+      projection fixedInstance decoder (hidden, right) trial)
+    (residualExact :
+      (exactFixedK13TrialCoordinates transitionFuel configuration trial
+        (hidden, left)).1 =
+      (exactFixedK13TrialCoordinates transitionFuel configuration trial
+        (hidden, right)).1) :
+    (exactOperationalTape leftWitness.input).messages.finalValues =
+      (exactOperationalTape rightWitness.input).messages.finalValues := by
+  classical
+  obtain ⟨leftBefore, leftDigest, leftActor, leftLookup, leftMember,
+      leftPrefix⟩ :=
+    exact_preQ16_k13_final256_record_mem_prior transitionRoom trial leftWitness
+  obtain ⟨rightBefore, rightDigest, rightActor, rightLookup, rightMember,
+      rightPrefix⟩ :=
+    exact_preQ16_k13_final256_record_mem_prior transitionRoom trial rightWitness
+  have selectedInputExact := exact_preQ16_k13_selected_input_eq programmedCover
+    trial hidden left right leftWitness rightWitness residualExact
+  have digestExact : leftDigest = rightDigest :=
+    literal_prefix_input_eq_fixes_digest leftPrefix rightPrefix
+      selectedInputExact
+  have priorExact : leftWitness.prior = rightWitness.prior :=
+    exact_fixed_clean_k13_equal_residual_selected_root_priors_eq trial hidden
+      left right leftWitness.input rightWitness.input leftWitness.prior
+      leftWitness.later rightWitness.prior rightWitness.later
+      leftWitness.pivotActor rightWitness.pivotActor leftWitness.pivotInput
+      rightWitness.pivotInput leftWitness.pivotAnswer rightWitness.pivotAnswer
+      leftWitness.rootExact rightWitness.rootExact leftWitness.trialExact
+      rightWitness.trialExact programmedCover residualExact
+  let leftInput := bytes leftBefore.digest ++
+    [domAbsorb,
+      (AspisK1.V7Tag73TranscriptSchedule.Payload.final256
+        (exactOperationalTape leftWitness.input).messages.finalValues).label] ++
+    (AspisK1.V7Tag73TranscriptSchedule.Payload.final256
+      (exactOperationalTape leftWitness.input).messages.finalValues).data
+  let rightInput := bytes rightBefore.digest ++
+    [domAbsorb,
+      (AspisK1.V7Tag73TranscriptSchedule.Payload.final256
+        (exactOperationalTape rightWitness.input).messages.finalValues).label] ++
+    (AspisK1.V7Tag73TranscriptSchedule.Payload.final256
+      (exactOperationalTape rightWitness.input).messages.finalValues).data
+  have rightMemberCommon :
+      (.machineFresh rightActor rightInput leftDigest :
+        UnifiedExposureRecord) ∈ leftWitness.prior := by
+    rw [priorExact]
+    simpa [rightInput, digestExact] using rightMember
+  have priorAnswersNodup :
+      (leftWitness.prior.map UnifiedExposureRecord.answer).Nodup := by
+    have fullNodup := exact_root_record_answers_nodup leftWitness.input
+    rw [leftWitness.rootExact, List.map_append, List.map_cons] at fullNodup
+    exact (List.nodup_append.mp fullNodup).1
+  have inputExact : leftInput = rightInput := by
+    have recordExact :
+        (.machineFresh leftActor leftInput leftDigest :
+            UnifiedExposureRecord) =
+          .machineFresh rightActor rightInput leftDigest :=
+      List.inj_on_of_nodup_map priorAnswersNodup
+        (by simpa [leftInput] using leftMember) rightMemberCommon rfl
+    injection recordExact
+  have leftDrop : List.drop 34 leftInput =
+      encodeBlocks
+        (exactOperationalTape leftWitness.input).messages.finalValues := by
+    simp only [leftInput, AspisK1.V7Tag73TranscriptSchedule.Payload.label,
+      AspisK1.V7Tag73TranscriptSchedule.Payload.data]
+    convert (List.drop_append_length
+      (l₁ := bytes leftBefore.digest ++ [domAbsorb, final256Label])
+      (l₂ := encodeBlocks
+        (exactOperationalTape leftWitness.input).messages.finalValues)) using 1 <;>
+      simp
+  have rightDrop : List.drop 34 rightInput =
+      encodeBlocks
+        (exactOperationalTape rightWitness.input).messages.finalValues := by
+    simp only [rightInput, AspisK1.V7Tag73TranscriptSchedule.Payload.label,
+      AspisK1.V7Tag73TranscriptSchedule.Payload.data]
+    convert (List.drop_append_length
+      (l₁ := bytes rightBefore.digest ++ [domAbsorb, final256Label])
+      (l₂ := encodeBlocks
+        (exactOperationalTape rightWitness.input).messages.finalValues)) using 1 <;>
+      simp
+  apply encode_blocks_injective 16 256
+  calc
+    encodeBlocks
+        (exactOperationalTape leftWitness.input).messages.finalValues =
+      List.drop 34 leftInput := leftDrop.symm
+    _ = List.drop 34 rightInput := by rw [inputExact]
+    _ = encodeBlocks
+        (exactOperationalTape rightWitness.input).messages.finalValues :=
+      rightDrop
+
+/-- Canonical production decoding transports the serialized equality to the
+mathematical disclosed terminal vector. -/
+theorem exact_preQ16_k13_disclosed_final_eq
+    {HiddenTape TapeIdentity Observation Statement Payload Witness : Type}
+    {parameters : ExactCompilerResourceParameters}
+    {transitionFuel : Nat}
+    {configuration : ExactPlainRomWitnessConfiguration HiddenTape TapeIdentity
+      Observation Statement Tag73K12ParsedProof Payload Witness parameters}
+    {projection : AcceptedTapeProjection Statement Tag73K12ParsedProof Payload}
+    {fixedInstance : PublicInstance Statement}
+    {decoder : ExactDecoderInstantiation QM31Exact}
+    (source : ExactFixedK13DecodedParsedSourceProvider transitionFuel
+      configuration projection fixedInstance)
+    (transitionRoom : 2 ≤ transitionFuel)
+    (programmedCover : 513 ≤ 2 * parameters.forkRequestCap)
+    (trial : ExactCompilerExposureTrial parameters) (hidden : HiddenTape)
+    (left right : FreshAnswerTape Digest256
+      (exactCompilerTargetCaps parameters).length)
+    (leftWitness : ExactPreQ16K13JointTrialWitness transitionFuel configuration
+      projection fixedInstance decoder (hidden, left) trial)
+    (rightWitness : ExactPreQ16K13JointTrialWitness transitionFuel configuration
+      projection fixedInstance decoder (hidden, right) trial)
+    (residualExact :
+      (exactFixedK13TrialCoordinates transitionFuel configuration trial
+        (hidden, left)).1 =
+      (exactFixedK13TrialCoordinates transitionFuel configuration trial
+        (hidden, right)).1) :
+    (exactK13ParsedProof leftWitness.input).disclosedFinal =
+      (exactK13ParsedProof rightWitness.input).disclosedFinal := by
+  obtain ⟨leftDecoded, leftDecode, leftBinding⟩ :=
+    source (hidden, left) leftWitness.input
+  obtain ⟨rightDecoded, rightDecode, rightBinding⟩ :=
+    source (hidden, right) rightWitness.input
+  have operationalFinalExact := exact_preQ16_k13_final_values_eq
+    transitionRoom programmedCover trial hidden left right leftWitness
+    rightWitness residualExact
+  have rawFinalExact :
+      (fixedTapeRawMessages
+        (exactOperationalTape leftWitness.input)).finalValues =
+      (fixedTapeRawMessages
+        (exactOperationalTape rightWitness.input)).finalValues := by
+    simpa [fixedTapeRawMessages, rawOfMessages] using operationalFinalExact
+  have decodedExact := decoded_final_message_eq_of_final_values_eq leftDecode
+    rightDecode rawFinalExact
+  exact leftBinding.disclosedFinalExact.trans
+    (decodedExact.trans rightBinding.disclosedFinalExact.symm)
 
 /-- Production/source endpoint for the three parsed semantic fields used by
 the corrected consistency set.  This is deliberately separated from the
