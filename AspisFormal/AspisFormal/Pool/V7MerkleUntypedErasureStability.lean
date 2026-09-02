@@ -166,6 +166,102 @@ theorem resolveFirst_erase_miss
   simpa [resolveFirst] using resolveFirstAux_erase_miss truncateSha256 target
     0 pre suffix pivot miss
 
+/-- The index embedding across one erased pivot is strictly monotone. -/
+theorem liftErasedIndex_strictMono (pivot : Nat) :
+    StrictMono (liftErasedIndex pivot) := by
+  intro left right less
+  unfold liftErasedIndex
+  split <;> split <;> omega
+
+/-- Hence the embedding reflects strict order as well as preserving it. -/
+theorem liftErasedIndex_lt_iff (pivot left right : Nat) :
+    liftErasedIndex pivot left < liftErasedIndex pivot right ↔ left < right := by
+  constructor
+  · intro lifted
+    by_contra notLess
+    have reverse : right ≤ left := Nat.le_of_not_gt notLess
+    have monotone := (liftErasedIndex_strictMono pivot).monotone reverse
+    omega
+  · intro less
+    exact liftErasedIndex_strictMono pivot less
+
+/-- If a child is an earlier reference in the original log, erasing one
+target-missing query preserves the same earlier edge after transporting both
+absolute indices.  The proof resolves the child on the complete log first;
+this avoids any assumption about whether the erased query lies before or
+after the parent. -/
+theorem classifyReference_erase_miss_earlier
+    (truncateSha256 : RawHashInput → Digest208) (target : Digest208)
+    (pre suffix : OrderedRawQueryLog) (pivot : RawHashInput)
+    (parentIndex childIndex : Nat)
+    (parentBound : parentIndex < (pre ++ suffix).length)
+    (miss : truncateSha256 pivot ≠ target)
+    (earlier : classifyReference truncateSha256 target
+      (liftErasedIndex pre.length parentIndex) (pre ++ pivot :: suffix) =
+        .earlier (liftErasedIndex pre.length childIndex)) :
+    classifyReference truncateSha256 target parentIndex (pre ++ suffix) =
+      .earlier childIndex := by
+  have fullChildBefore :
+      liftErasedIndex pre.length childIndex <
+        liftErasedIndex pre.length parentIndex :=
+    earlier_index_lt_parent truncateSha256 target
+      (liftErasedIndex pre.length parentIndex)
+      (liftErasedIndex pre.length childIndex) (pre ++ pivot :: suffix) earlier
+  have childBefore : childIndex < parentIndex :=
+    (liftErasedIndex_lt_iff pre.length childIndex parentIndex).mp
+      fullChildBefore
+  have fullPrefixResolved : resolveFirstAux truncateSha256 target 0
+      (List.take (liftErasedIndex pre.length parentIndex)
+        (pre ++ pivot :: suffix)) =
+        some (liftErasedIndex pre.length childIndex) := by
+    unfold classifyReference at earlier
+    generalize resolvedExact : resolveFirstAux truncateSha256 target 0
+      (List.take (liftErasedIndex pre.length parentIndex)
+        (pre ++ pivot :: suffix)) = resolved at earlier
+    cases resolved with
+    | none =>
+        cases forward : resolveFirstAux truncateSha256 target
+            (liftErasedIndex pre.length parentIndex)
+            (List.drop (liftErasedIndex pre.length parentIndex)
+              (pre ++ pivot :: suffix)) <;> simp [forward] at earlier
+    | some index =>
+        simpa using earlier
+  have fullResolved : resolveFirst truncateSha256 target
+      (pre ++ pivot :: suffix) =
+        some (liftErasedIndex pre.length childIndex) := by
+    have appended := resolveFirstAux_append_of_some truncateSha256 target 0
+      (List.take (liftErasedIndex pre.length parentIndex)
+        (pre ++ pivot :: suffix))
+      (List.drop (liftErasedIndex pre.length parentIndex)
+        (pre ++ pivot :: suffix))
+      (liftErasedIndex pre.length childIndex) fullPrefixResolved
+    simpa [resolveFirst, List.take_append_drop] using appended
+  have erasedResolvedMap := resolveFirst_erase_miss truncateSha256 target pre
+    suffix pivot miss
+  rw [fullResolved] at erasedResolvedMap
+  cases shortResolved : resolveFirst truncateSha256 target (pre ++ suffix) with
+  | none => simp [shortResolved] at erasedResolvedMap
+  | some shortIndex =>
+      have liftedExact : liftErasedIndex pre.length shortIndex =
+          liftErasedIndex pre.length childIndex := by
+        simpa [shortResolved] using erasedResolvedMap.symm
+      have shortIndexExact : shortIndex = childIndex :=
+        (liftErasedIndex_strictMono pre.length).injective liftedExact
+      subst shortIndex
+      have prefixLength : (List.take parentIndex (pre ++ suffix)).length =
+          parentIndex := by
+        rw [List.length_take, Nat.min_eq_left (Nat.le_of_lt parentBound)]
+      have shortPrefixResolved : resolveFirstAux truncateSha256 target 0
+          (List.take parentIndex (pre ++ suffix)) = some childIndex := by
+        apply resolveFirstAux_prefix_of_append_some truncateSha256 target 0
+          (List.take parentIndex (pre ++ suffix))
+          (List.drop parentIndex (pre ++ suffix)) childIndex
+        · simpa [resolveFirst, List.take_append_drop] using shortResolved
+        · rw [prefixLength]
+          simpa using childBefore
+      unfold classifyReference
+      rw [shortPrefixResolved]
+
 #print axioms eraseIdx_pivot_append
 #print axioms truncate_injective_on_log_of_no_collision
 #print axioms untyped_pivot_digest_ne_typed_member
@@ -173,5 +269,8 @@ theorem resolveFirst_erase_miss
 #print axioms resolveFirstAux_offset_add
 #print axioms resolveFirstAux_erase_miss
 #print axioms resolveFirst_erase_miss
+#print axioms liftErasedIndex_strictMono
+#print axioms liftErasedIndex_lt_iff
+#print axioms classifyReference_erase_miss_earlier
 
 end AspisPool.V7MerkleUntypedErasureStability
