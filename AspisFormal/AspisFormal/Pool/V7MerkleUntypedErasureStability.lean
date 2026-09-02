@@ -265,6 +265,32 @@ theorem liftErasedIndex_lt_iff (pivot left right : Nat) :
   · intro less
     exact liftErasedIndex_strictMono pivot less
 
+/-- Concrete successful-root form of `resolveFirst_erase_miss`. -/
+theorem resolveFirst_erase_miss_some
+    (truncateSha256 : RawHashInput → Digest208) (target : Digest208)
+    (pre suffix : OrderedRawQueryLog) (pivot : RawHashInput) (index : Nat)
+    (miss : truncateSha256 pivot ≠ target)
+    (resolved : resolveFirst truncateSha256 target
+      (pre ++ pivot :: suffix) = some index)
+    (notPivot : index ≠ pre.length) :
+    resolveFirst truncateSha256 target (pre ++ suffix) =
+      some (lowerErasedIndex pre.length index) := by
+  have transported := resolveFirst_erase_miss truncateSha256 target pre suffix
+    pivot miss
+  rw [resolved] at transported
+  cases shortResolved : resolveFirst truncateSha256 target (pre ++ suffix) with
+  | none => simp [shortResolved] at transported
+  | some shortIndex =>
+      have liftedExact : liftErasedIndex pre.length shortIndex = index := by
+        simpa [shortResolved] using transported.symm
+      have targetLifted : liftErasedIndex pre.length
+          (lowerErasedIndex pre.length index) = index :=
+        liftErasedIndex_lowerErasedIndex_of_ne pre.length index notPivot
+      have shortExact : shortIndex = lowerErasedIndex pre.length index :=
+        (liftErasedIndex_strictMono pre.length).injective
+          (liftedExact.trans targetLifted.symm)
+      simpa [shortExact] using shortResolved
+
 /-- If a child is an earlier reference in the original log, erasing one
 target-missing query preserves the same earlier edge after transporting both
 absolute indices.  The proof resolves the child on the complete log first;
@@ -697,6 +723,87 @@ theorem extractC2Subtree_success_erase_untyped
           · simp only [digestExact, ↓reduceIte] at success ⊢
             simp at success
 
+/-! ## Complete two-tree transport -/
+
+/-- A successful complete two-tree extraction survives erasure of one
+untyped, collision-free query at an arbitrary chronological position. -/
+theorem extractCompleteWords_success_erase_untyped_raw
+    (truncateSha256 : RawHashInput → Digest208)
+    (roots : Roots) (pre suffix : OrderedRawQueryLog) (pivot : RawHashInput)
+    (words : ExtractedWords)
+    (noCollision : hasRawTruncatedCollision truncateSha256
+      (pre ++ pivot :: suffix) = false)
+    (pivotUntyped : parseTypedPreimage pivot = none)
+    (success : extractCompleteWords truncateSha256 roots
+      (pre ++ pivot :: suffix) = .words words) :
+    extractCompleteWords truncateSha256 roots (pre ++ suffix) =
+      .words words := by
+  obtain ⟨c1Index, c2Index, c1Resolved, c2Resolved, c1Run, c2Run⟩ :=
+    extractCompleteWords_success_yields_root_queries truncateSha256 roots
+      (pre ++ pivot :: suffix) words success
+  obtain ⟨c1Input, c1InputExact, c1DigestExact, c1Typed⟩ :=
+    extractC1Subtree_success_outer_exact truncateSha256
+      (pre ++ pivot :: suffix) treeDepth roots.c1 c1Index words.c1 c1Run
+  obtain ⟨c2Input, c2InputExact, c2DigestExact, c2Typed⟩ :=
+    extractC2Subtree_success_outer_exact truncateSha256
+      (pre ++ pivot :: suffix) treeDepth roots.c2 c2Index words.c2 c2Run
+  have c1Mem : c1Input ∈ pre ++ pivot :: suffix :=
+    List.mem_of_getElem? c1InputExact
+  have c2Mem : c2Input ∈ pre ++ pivot :: suffix :=
+    List.mem_of_getElem? c2InputExact
+  have c1NotPivot : c1Index ≠ pre.length := by
+    intro indexExact
+    have pivotAt : (pre ++ pivot :: suffix)[pre.length]? = some pivot := by simp
+    have inputExact : c1Input = pivot := by
+      apply Option.some.inj
+      exact c1InputExact.symm.trans (by simpa [indexExact] using pivotAt)
+    subst c1Input
+    exact c1Typed pivotUntyped
+  have c2NotPivot : c2Index ≠ pre.length := by
+    intro indexExact
+    have pivotAt : (pre ++ pivot :: suffix)[pre.length]? = some pivot := by simp
+    have inputExact : c2Input = pivot := by
+      apply Option.some.inj
+      exact c2InputExact.symm.trans (by simpa [indexExact] using pivotAt)
+    subst c2Input
+    exact c2Typed pivotUntyped
+  have c1Miss : truncateSha256 pivot ≠ roots.c1 :=
+    untyped_pivot_ne_typed_target truncateSha256 pre suffix pivot c1Input
+      roots.c1 noCollision pivotUntyped c1Mem c1Typed c1DigestExact
+  have c2Miss : truncateSha256 pivot ≠ roots.c2 :=
+    untyped_pivot_ne_typed_target truncateSha256 pre suffix pivot c2Input
+      roots.c2 noCollision pivotUntyped c2Mem c2Typed c2DigestExact
+  let c1Short := lowerErasedIndex pre.length c1Index
+  let c2Short := lowerErasedIndex pre.length c2Index
+  have c1ResolvedShort : resolveFirst truncateSha256 roots.c1
+      (pre ++ suffix) = some c1Short :=
+    resolveFirst_erase_miss_some truncateSha256 roots.c1 pre suffix pivot
+      c1Index c1Miss c1Resolved c1NotPivot
+  have c2ResolvedShort : resolveFirst truncateSha256 roots.c2
+      (pre ++ suffix) = some c2Short :=
+    resolveFirst_erase_miss_some truncateSha256 roots.c2 pre suffix pivot
+      c2Index c2Miss c2Resolved c2NotPivot
+  have c1Bound : c1Short < (pre ++ suffix).length := by
+    simpa using (resolveFirstAux_some_bounds truncateSha256 roots.c1 0
+      (pre ++ suffix) c1Short (by simpa [resolveFirst] using
+        c1ResolvedShort)).2
+  have c2Bound : c2Short < (pre ++ suffix).length := by
+    simpa using (resolveFirstAux_some_bounds truncateSha256 roots.c2 0
+      (pre ++ suffix) c2Short (by simpa [resolveFirst] using
+        c2ResolvedShort)).2
+  have c1Lifted : liftErasedIndex pre.length c1Short = c1Index :=
+    liftErasedIndex_lowerErasedIndex_of_ne pre.length c1Index c1NotPivot
+  have c2Lifted : liftErasedIndex pre.length c2Short = c2Index :=
+    liftErasedIndex_lowerErasedIndex_of_ne pre.length c2Index c2NotPivot
+  have c1RunShort := extractC1Subtree_success_erase_untyped truncateSha256 pre
+    suffix pivot noCollision pivotUntyped treeDepth roots.c1 c1Short words.c1
+      c1Bound (by simpa [c1Lifted] using c1Run)
+  have c2RunShort := extractC2Subtree_success_erase_untyped truncateSha256 pre
+    suffix pivot noCollision pivotUntyped treeDepth roots.c2 c2Short words.c2
+      c2Bound (by simpa [c2Lifted] using c2Run)
+  simp [extractCompleteWords, c1ResolvedShort, c2ResolvedShort, c1RunShort,
+    c2RunShort]
+
 #print axioms eraseIdx_pivot_append
 #print axioms truncate_injective_on_log_of_no_collision
 #print axioms untyped_pivot_digest_ne_typed_member
@@ -704,6 +811,7 @@ theorem extractC2Subtree_success_erase_untyped
 #print axioms resolveFirstAux_offset_add
 #print axioms resolveFirstAux_erase_miss
 #print axioms resolveFirst_erase_miss
+#print axioms resolveFirst_erase_miss_some
 #print axioms liftErasedIndex_strictMono
 #print axioms liftErasedIndex_lt_iff
 #print axioms lowerErasedIndex_liftErasedIndex
@@ -714,5 +822,6 @@ theorem extractC2Subtree_success_erase_untyped
 #print axioms classifyReference_erase_miss_earlier
 #print axioms extractC1Subtree_success_erase_untyped
 #print axioms extractC2Subtree_success_erase_untyped
+#print axioms extractCompleteWords_success_erase_untyped_raw
 
 end AspisPool.V7MerkleUntypedErasureStability
