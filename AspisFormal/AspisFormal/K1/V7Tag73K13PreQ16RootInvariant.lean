@@ -480,6 +480,114 @@ theorem exact_preQ16_k13_final256_record_mem_prior
     exact producerMemberActual
   · simpa [selectedInputExact] using selectedPrefix
 
+/-- Equal residuals identify the two retained `final256` creation records,
+including their common oracle answer.  This is the terminal record from which
+the accepted alpha chain can be replayed backwards without hash injectivity. -/
+theorem exact_preQ16_k13_common_final256_record
+    {HiddenTape TapeIdentity Observation Statement Payload Witness : Type}
+    {parameters : ExactCompilerResourceParameters}
+    {transitionFuel : Nat}
+    {configuration : ExactPlainRomWitnessConfiguration HiddenTape TapeIdentity
+      Observation Statement Tag73K12ParsedProof Payload Witness parameters}
+    {projection : AcceptedTapeProjection Statement Tag73K12ParsedProof Payload}
+    {fixedInstance : PublicInstance Statement}
+    {decoder : ExactDecoderInstantiation QM31Exact}
+    (transitionRoom : 2 ≤ transitionFuel)
+    (programmedCover : 513 ≤ 2 * parameters.forkRequestCap)
+    (trial : ExactCompilerExposureTrial parameters) (hidden : HiddenTape)
+    (left right : FreshAnswerTape Digest256
+      (exactCompilerTargetCaps parameters).length)
+    (leftWitness : ExactPreQ16K13JointTrialWitness transitionFuel configuration
+      projection fixedInstance decoder (hidden, left) trial)
+    (rightWitness : ExactPreQ16K13JointTrialWitness transitionFuel configuration
+      projection fixedInstance decoder (hidden, right) trial)
+    (residualExact :
+      (exactFixedK13TrialCoordinates transitionFuel configuration trial
+        (hidden, left)).1 =
+      (exactFixedK13TrialCoordinates transitionFuel configuration trial
+        (hidden, right)).1) :
+    ∃ (leftBefore rightBefore : EvalState) (digest : Digest256)
+        (leftActor rightActor : QueryActor),
+      let leftInput := bytes leftBefore.digest ++
+        [domAbsorb,
+          (AspisK1.V7Tag73TranscriptSchedule.Payload.final256
+            (exactOperationalTape leftWitness.input).messages.finalValues).label] ++
+        (AspisK1.V7Tag73TranscriptSchedule.Payload.final256
+          (exactOperationalTape leftWitness.input).messages.finalValues).data
+      let rightInput := bytes rightBefore.digest ++
+        [domAbsorb,
+          (AspisK1.V7Tag73TranscriptSchedule.Payload.final256
+            (exactOperationalTape rightWitness.input).messages.finalValues).label] ++
+        (AspisK1.V7Tag73TranscriptSchedule.Payload.final256
+          (exactOperationalTape rightWitness.input).messages.finalValues).data
+      leftInput = rightInput ∧
+        tableLookup (exactOperationalTable leftWitness.input) leftInput =
+          some digest ∧
+        tableLookup (exactOperationalTable rightWitness.input) rightInput =
+          some digest ∧
+        (.machineFresh leftActor leftInput digest : UnifiedExposureRecord) ∈
+          leftWitness.prior ∧
+        (.machineFresh rightActor rightInput digest : UnifiedExposureRecord) ∈
+          rightWitness.prior ∧
+        HasLiteralStatePrefix digest leftWitness.pivotInput ∧
+        HasLiteralStatePrefix digest rightWitness.pivotInput := by
+  classical
+  obtain ⟨leftBefore, leftDigest, leftActor, leftLookup, leftMember,
+      leftPrefix⟩ :=
+    exact_preQ16_k13_final256_record_mem_prior transitionRoom trial leftWitness
+  obtain ⟨rightBefore, rightDigest, rightActor, rightLookup, rightMember,
+      rightPrefix⟩ :=
+    exact_preQ16_k13_final256_record_mem_prior transitionRoom trial rightWitness
+  have selectedInputExact := exact_preQ16_k13_selected_input_eq programmedCover
+    trial hidden left right leftWitness rightWitness residualExact
+  have digestExact : leftDigest = rightDigest :=
+    literal_prefix_input_eq_fixes_digest leftPrefix rightPrefix
+      selectedInputExact
+  have priorExact : leftWitness.prior = rightWitness.prior :=
+    exact_fixed_clean_k13_equal_residual_selected_root_priors_eq trial hidden
+      left right leftWitness.input rightWitness.input leftWitness.prior
+      leftWitness.later rightWitness.prior rightWitness.later
+      leftWitness.pivotActor rightWitness.pivotActor leftWitness.pivotInput
+      rightWitness.pivotInput leftWitness.pivotAnswer rightWitness.pivotAnswer
+      leftWitness.rootExact rightWitness.rootExact leftWitness.trialExact
+      rightWitness.trialExact programmedCover residualExact
+  let leftInput := bytes leftBefore.digest ++
+    [domAbsorb,
+      (AspisK1.V7Tag73TranscriptSchedule.Payload.final256
+        (exactOperationalTape leftWitness.input).messages.finalValues).label] ++
+    (AspisK1.V7Tag73TranscriptSchedule.Payload.final256
+      (exactOperationalTape leftWitness.input).messages.finalValues).data
+  let rightInput := bytes rightBefore.digest ++
+    [domAbsorb,
+      (AspisK1.V7Tag73TranscriptSchedule.Payload.final256
+        (exactOperationalTape rightWitness.input).messages.finalValues).label] ++
+    (AspisK1.V7Tag73TranscriptSchedule.Payload.final256
+      (exactOperationalTape rightWitness.input).messages.finalValues).data
+  have rightMemberCommon :
+      (.machineFresh rightActor rightInput leftDigest :
+        UnifiedExposureRecord) ∈ leftWitness.prior := by
+    rw [priorExact]
+    simpa [rightInput, digestExact] using rightMember
+  have priorAnswersNodup :
+      (leftWitness.prior.map UnifiedExposureRecord.answer).Nodup := by
+    have fullNodup := exact_root_record_answers_nodup leftWitness.input
+    rw [leftWitness.rootExact, List.map_append, List.map_cons] at fullNodup
+    exact (List.nodup_append.mp fullNodup).1
+  have inputExact : leftInput = rightInput := by
+    have recordExact :
+        (.machineFresh leftActor leftInput leftDigest :
+            UnifiedExposureRecord) =
+          .machineFresh rightActor rightInput leftDigest :=
+      List.inj_on_of_nodup_map priorAnswersNodup
+        (by simpa [leftInput] using leftMember) rightMemberCommon rfl
+    injection recordExact
+  refine ⟨leftBefore, rightBefore, leftDigest, leftActor, rightActor, ?_⟩
+  exact ⟨inputExact, by simpa [leftInput] using leftLookup,
+    by simpa [rightInput, digestExact] using rightLookup,
+    by simpa [leftInput] using leftMember,
+    by simpa [rightInput, digestExact] using rightMember,
+    leftPrefix, by simpa [digestExact] using rightPrefix⟩
+
 /-- Equal residuals fix the complete canonical final256 producer input and
 the serialized vector it carries before q16. -/
 theorem exact_preQ16_k13_final256_input_and_values_eq
@@ -933,6 +1041,7 @@ theorem exact_preQ16_k13_trial_union_probability_le_one_forest_of_source
 
 #print axioms exact_preQ16_k13_roots_eq
 #print axioms exact_preQ16_k13_words_eq
+#print axioms exact_preQ16_k13_common_final256_record
 #print axioms exact_preQ16_k13_final256_input_and_values_eq
 #print axioms exact_preQ16_k13_before_final256_digest_eq
 #print axioms ExactPreQ16K13ParsedProfileSourceInvariant
