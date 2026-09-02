@@ -480,9 +480,9 @@ theorem exact_preQ16_k13_final256_record_mem_prior
     exact producerMemberActual
   · simpa [selectedInputExact] using selectedPrefix
 
-/-- Equal residuals fix the complete serialized final256 vector before q16,
-including in the adversary-first cache-hit branch. -/
-theorem exact_preQ16_k13_final_values_eq
+/-- Equal residuals fix the complete canonical final256 producer input and
+the serialized vector it carries before q16. -/
+theorem exact_preQ16_k13_final256_input_and_values_eq
     {HiddenTape TapeIdentity Observation Statement Payload Witness : Type}
     {parameters : ExactCompilerResourceParameters}
     {transitionFuel : Nat}
@@ -505,8 +505,21 @@ theorem exact_preQ16_k13_final_values_eq
         (hidden, left)).1 =
       (exactFixedK13TrialCoordinates transitionFuel configuration trial
         (hidden, right)).1) :
-    (exactOperationalTape leftWitness.input).messages.finalValues =
-      (exactOperationalTape rightWitness.input).messages.finalValues := by
+    ∃ leftBefore rightBefore : EvalState,
+      (bytes leftBefore.digest ++
+          [domAbsorb,
+            (AspisK1.V7Tag73TranscriptSchedule.Payload.final256
+              (exactOperationalTape leftWitness.input).messages.finalValues).label] ++
+          (AspisK1.V7Tag73TranscriptSchedule.Payload.final256
+            (exactOperationalTape leftWitness.input).messages.finalValues).data) =
+        (bytes rightBefore.digest ++
+          [domAbsorb,
+            (AspisK1.V7Tag73TranscriptSchedule.Payload.final256
+              (exactOperationalTape rightWitness.input).messages.finalValues).label] ++
+          (AspisK1.V7Tag73TranscriptSchedule.Payload.final256
+            (exactOperationalTape rightWitness.input).messages.finalValues).data) ∧
+      (exactOperationalTape leftWitness.input).messages.finalValues =
+        (exactOperationalTape rightWitness.input).messages.finalValues := by
   classical
   obtain ⟨leftBefore, leftDigest, leftActor, leftLookup, leftMember,
       leftPrefix⟩ :=
@@ -577,6 +590,7 @@ theorem exact_preQ16_k13_final_values_eq
       (l₂ := encodeBlocks
         (exactOperationalTape rightWitness.input).messages.finalValues)) using 1 <;>
       simp
+  refine ⟨leftBefore, rightBefore, inputExact, ?_⟩
   apply encode_blocks_injective 16 256
   calc
     encodeBlocks
@@ -586,6 +600,85 @@ theorem exact_preQ16_k13_final_values_eq
     _ = encodeBlocks
         (exactOperationalTape rightWitness.input).messages.finalValues :=
       rightDrop
+
+/-- Projection of the stronger producer-input theorem. -/
+theorem exact_preQ16_k13_final_values_eq
+    {HiddenTape TapeIdentity Observation Statement Payload Witness : Type}
+    {parameters : ExactCompilerResourceParameters}
+    {transitionFuel : Nat}
+    {configuration : ExactPlainRomWitnessConfiguration HiddenTape TapeIdentity
+      Observation Statement Tag73K12ParsedProof Payload Witness parameters}
+    {projection : AcceptedTapeProjection Statement Tag73K12ParsedProof Payload}
+    {fixedInstance : PublicInstance Statement}
+    {decoder : ExactDecoderInstantiation QM31Exact}
+    (transitionRoom : 2 ≤ transitionFuel)
+    (programmedCover : 513 ≤ 2 * parameters.forkRequestCap)
+    (trial : ExactCompilerExposureTrial parameters) (hidden : HiddenTape)
+    (left right : FreshAnswerTape Digest256
+      (exactCompilerTargetCaps parameters).length)
+    (leftWitness : ExactPreQ16K13JointTrialWitness transitionFuel configuration
+      projection fixedInstance decoder (hidden, left) trial)
+    (rightWitness : ExactPreQ16K13JointTrialWitness transitionFuel configuration
+      projection fixedInstance decoder (hidden, right) trial)
+    (residualExact :
+      (exactFixedK13TrialCoordinates transitionFuel configuration trial
+        (hidden, left)).1 =
+      (exactFixedK13TrialCoordinates transitionFuel configuration trial
+        (hidden, right)).1) :
+    (exactOperationalTape leftWitness.input).messages.finalValues =
+      (exactOperationalTape rightWitness.input).messages.finalValues := by
+  obtain ⟨_leftBefore, _rightBefore, _inputExact, valuesExact⟩ :=
+    exact_preQ16_k13_final256_input_and_values_eq transitionRoom
+      programmedCover trial hidden left right leftWitness rightWitness
+      residualExact
+  exact valuesExact
+
+/-- Equality of the canonical producer input also fixes the transcript digest
+immediately after the gamma/alpha chain and before final256. -/
+theorem exact_preQ16_k13_before_final256_digest_eq
+    {HiddenTape TapeIdentity Observation Statement Payload Witness : Type}
+    {parameters : ExactCompilerResourceParameters}
+    {transitionFuel : Nat}
+    {configuration : ExactPlainRomWitnessConfiguration HiddenTape TapeIdentity
+      Observation Statement Tag73K12ParsedProof Payload Witness parameters}
+    {projection : AcceptedTapeProjection Statement Tag73K12ParsedProof Payload}
+    {fixedInstance : PublicInstance Statement}
+    {decoder : ExactDecoderInstantiation QM31Exact}
+    (transitionRoom : 2 ≤ transitionFuel)
+    (programmedCover : 513 ≤ 2 * parameters.forkRequestCap)
+    (trial : ExactCompilerExposureTrial parameters) (hidden : HiddenTape)
+    (left right : FreshAnswerTape Digest256
+      (exactCompilerTargetCaps parameters).length)
+    (leftWitness : ExactPreQ16K13JointTrialWitness transitionFuel configuration
+      projection fixedInstance decoder (hidden, left) trial)
+    (rightWitness : ExactPreQ16K13JointTrialWitness transitionFuel configuration
+      projection fixedInstance decoder (hidden, right) trial)
+    (residualExact :
+      (exactFixedK13TrialCoordinates transitionFuel configuration trial
+        (hidden, left)).1 =
+      (exactFixedK13TrialCoordinates transitionFuel configuration trial
+        (hidden, right)).1) :
+    ∃ leftBefore rightBefore : EvalState,
+      leftBefore.digest = rightBefore.digest := by
+  obtain ⟨leftBefore, rightBefore, inputExact, _valuesExact⟩ :=
+    exact_preQ16_k13_final256_input_and_values_eq transitionRoom
+      programmedCover trial hidden left right leftWitness rightWitness
+      residualExact
+  refine ⟨leftBefore, rightBefore, ?_⟩
+  have bytesExact : bytes leftBefore.digest = bytes rightBefore.digest := by
+    calc
+      bytes leftBefore.digest = List.take 32
+          (bytes leftBefore.digest ++ [domAbsorb, final256Label] ++
+            encodeBlocks
+              (exactOperationalTape leftWitness.input).messages.finalValues) := by
+            simp
+      _ = List.take 32
+          (bytes rightBefore.digest ++ [domAbsorb, final256Label] ++
+            encodeBlocks
+              (exactOperationalTape rightWitness.input).messages.finalValues) := by
+            exact congrArg (List.take 32) inputExact
+      _ = bytes rightBefore.digest := by simp
+  exact List.ofFn_injective bytesExact
 
 /-- Canonical production decoding transports the serialized equality to the
 mathematical disclosed terminal vector. -/
@@ -840,6 +933,8 @@ theorem exact_preQ16_k13_trial_union_probability_le_one_forest_of_source
 
 #print axioms exact_preQ16_k13_roots_eq
 #print axioms exact_preQ16_k13_words_eq
+#print axioms exact_preQ16_k13_final256_input_and_values_eq
+#print axioms exact_preQ16_k13_before_final256_digest_eq
 #print axioms ExactPreQ16K13ParsedProfileSourceInvariant
 #print axioms exact_preQ16_k13_residual_work_invariant_of_source
 #print axioms
