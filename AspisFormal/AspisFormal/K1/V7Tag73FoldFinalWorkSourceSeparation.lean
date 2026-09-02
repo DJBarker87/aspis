@@ -137,6 +137,9 @@ theorem exact_operational_relation_zero_and_fold_work_lookups
           (bytes foldDigest ++ [domAbsorb, foldWorkNonceLabel, 0] ++
             bytes (exactOperationalTape input).messages.foldGrinding.selected) =
         some boundaryAnswer ∧
+      outputs.length =
+        ((exactOperationalTape input).messages.challengeUse
+          (.alpha 0)).blocksUsed ∧
       GammaTableCoordinateChain (exactOperationalTable input) boundaryAnswer
         outputs advances := by
   have strict := input.package.root.fixedRoot.base.strictRefinement
@@ -208,6 +211,10 @@ theorem exact_operational_relation_zero_and_fold_work_lookups
       (.challenge (.alpha 0))
       ((exactOperationalTape input).messages.challengeUse
         (.alpha 0)).blocksUsed afterFoldNonce afterBlocks outputs squeezeRun
+  have outputsLength := (squeeze_many_exact_sizes
+    (exactOperationalTable input) (.challenge (.alpha 0))
+    ((exactOperationalTape input).messages.challengeUse
+      (.alpha 0)).blocksUsed afterFoldNonce afterBlocks outputs squeezeRun).1
   obtain ⟨workAnswer, workLookup, workAccepted⟩ :=
     run_grinding_choice_exposes_selected_lookup
       (exactOperationalTable input) beforeFoldWork afterFoldGrind .fold
@@ -226,7 +233,7 @@ theorem exact_operational_relation_zero_and_fold_work_lookups
     workAccepted, by
       simpa [AspisK1.V7Tag73TranscriptSchedule.Payload.label,
         AspisK1.V7Tag73TranscriptSchedule.Payload.data] using boundaryLookup,
-    coordinates⟩
+    outputsLength, coordinates⟩
 
 @[simp] theorem relation_zero_absorb_input_length
     (digest : Digest256) (relation : Fin 6 → Qm31Bytes) :
@@ -276,7 +283,7 @@ theorem exact_fold_digest_ne_final_digest
       foldDigest ≠ finalDigest := by
   obtain ⟨beforeRelation, foldDigest, foldAnswer, _boundaryAnswer,
       _outputs, _advances, relationLookup, foldLookup, foldAccepted,
-      _boundaryLookup, _coordinates⟩ :=
+      _boundaryLookup, _outputsLength, _coordinates⟩ :=
     exact_operational_relation_zero_and_fold_work_lookups input
   obtain ⟨beforeFinal256, finalDigest, finalAnswer, _q16Base, final256Lookup,
       finalLookup, finalAccepted, _absorbLookup, _baseExact, _prefixRun⟩ :=
@@ -397,7 +404,7 @@ theorem exact_fold_and_final_have_distinct_exposure_trials
         finalTrial.val := by
   obtain ⟨beforeRelation, foldDigest, foldAnswer, _boundaryAnswer,
       _outputs, _advances, relationLookup, foldLookup, foldAccepted,
-      _boundaryLookup, _coordinates⟩ :=
+      _boundaryLookup, _outputsLength, _coordinates⟩ :=
     exact_operational_relation_zero_and_fold_work_lookups input
   obtain ⟨beforeFinal256, finalDigest, finalAnswer, q16Base, final256Lookup,
       finalLookup, finalAccepted, absorbLookup, _baseExact, _prefixRun⟩ :=
@@ -631,7 +638,7 @@ theorem exact_actual_k13_trial_has_distinct_fold_trial
   let pairLabeled := afterBase.2.2.2.1
   obtain ⟨beforeRelation, foldDigest, foldAnswer, _boundaryAnswer,
       _outputs, _advances, relationLookup, foldLookup, foldAccepted,
-      _boundaryLookup, _coordinates⟩ :=
+      _boundaryLookup, _outputsLength, _coordinates⟩ :=
     exact_operational_relation_zero_and_fold_work_lookups input
   have digestDifferent : foldDigest ≠ finalDigest :=
     exact_relation_fold_digest_ne_operational_prefinal input beforeRelation

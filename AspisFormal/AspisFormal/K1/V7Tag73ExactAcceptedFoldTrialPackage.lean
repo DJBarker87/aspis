@@ -101,6 +101,9 @@ structure ExactAcceptedFoldTrial
         (bytes digest ++ [domAbsorb, foldWorkNonceLabel, 0] ++
           bytes (exactOperationalTape input).messages.foldGrinding.selected) =
       some boundaryAnswer
+  alphaOutputsLength : alphaOutputs.length =
+    ((exactOperationalTape input).messages.challengeUse
+      (.alpha 0)).blocksUsed
   alphaCoordinates : GammaTableCoordinateChain (exactOperationalTable input)
     boundaryAnswer alphaOutputs alphaAdvances
   rootDecomposition :
@@ -131,7 +134,8 @@ theorem exact_accepted_fold_trial_exists
   have workLookup := facts.2.1
   have accepted := facts.2.2.1
   have boundaryLookup := facts.2.2.2.1
-  have coordinates := facts.2.2.2.2
+  have outputsLength := facts.2.2.2.2.1
+  have coordinates := facts.2.2.2.2.2
   obtain ⟨actor, member⟩ :=
     exact_final_table_lookup_has_root_record input _ answer workLookup
   obtain ⟨prior, later, decomposition⟩ := (List.mem_iff_append).mp member
@@ -162,6 +166,7 @@ theorem exact_accepted_fold_trial_exists
       relationLookup := relationLookup
       workLookup := workLookup
       boundaryLookup := boundaryLookup
+      alphaOutputsLength := outputsLength
       alphaCoordinates := coordinates
       rootDecomposition := decomposition
       trialExact := rfl }⟩
