@@ -20,9 +20,12 @@ open AspisK1.V7Tag73AdaptiveLazyOracle
 open AspisK1.V7Tag73AdaptiveQ16TrialAccounting
 open AspisK1.V7Tag73AtomicForkUniformScheduler
 open AspisK1.V7Tag73CausalFoldAlphaFinalWorkQ16Coordinates
+open AspisK1.V7Tag73CheckedRefinementFullFutureFreePath
 open AspisK1.V7Tag73DeterministicRefinement
 open AspisK1.V7Tag73ExactAlphaZeroPrefixCoordinates
 open AspisK1.V7Tag73ExactCompilerGammaPrefixCoordinates
+open AspisK1.V7Tag73ExactCompilerGammaTraceOccurrence
+open AspisK1.V7Tag73ExactCompilerFinalWorkTraceOccurrence
 open AspisK1.V7Tag73ExactCompilerResources
 open AspisK1.V7Tag73ExactClientKnowledgeComposition
 open AspisK1.V7Tag73ExactFixedK13K14Classifier
@@ -64,6 +67,99 @@ theorem alpha_zero_boundary_ne_gamma_advance
   simp [alphaZeroBoundaryPayload,
     AspisK1.V7Tag73TranscriptSchedule.Payload.data,
     gammaAdvanceInput] at lengths
+
+/-- Erasing only the leading-zero check does not change the transcript digest
+during a grinding search. -/
+theorem grinding_choice_work_erased_does_not_advance
+    (table : FixedOracleTable) (state next : EvalState)
+    (stage : WorkStage) (choice : GrindingChoice stage)
+    (run : runGrindingChoiceWorkErased table state stage choice = some next) :
+    next.digest = state.digest := by
+  rw [runGrindingChoiceWorkErased] at run
+  obtain ⟨queried, probesRun, run⟩ := Option.bind_eq_some_iff.mp run
+  obtain ⟨selectedPair, selectedRun, result⟩ :=
+    Option.bind_eq_some_iff.mp run
+  rcases selectedPair with ⟨output, afterSelected⟩
+  have nextExact : afterSelected = next := Option.some.inj result
+  subst next
+  exact (grind_probe_does_not_advance table queried afterSelected stage
+    choice.selected output selectedRun).trans
+      (grinding_probes_do_not_advance table stage choice.probesBeforeSelected
+        state queried probesRun)
+
+/-- The work-erased semantic prefix and the retained fold package identify
+the same state before the selected fold-nonce absorption.  This is a source
+schedule fact; it compares two lookups at one literal relation-round input. -/
+theorem before_alpha_zero_producer_run_fixes_fold_digest
+    (table : FixedOracleTable) (messages : Messages)
+    (start beforeAlphaProducer beforeRelation : EvalState)
+    (foldDigest : Digest256)
+    (run : runMachineEventsWorkErased table
+        (beforeAlphaZeroProducerTailEvents messages) start =
+      some beforeAlphaProducer)
+    (relationLookup : tableLookup table
+        (bytes beforeRelation.digest ++
+          [domAbsorb,
+            (AspisK1.V7Tag73TranscriptSchedule.Payload.relationRound 0
+              (messages.relationSent 0)).label] ++
+          (AspisK1.V7Tag73TranscriptSchedule.Payload.relationRound 0
+            (messages.relationSent 0)).data) = some foldDigest)
+    (prefixRun : runMachineEventsWorkErased table
+        (beforeGammaTailEvents messages ++
+          [challengeEvent messages .gamma,
+           .absorb (.inactiveClaim messages.inactiveClaim),
+           challengeEvent messages .kappa] ++
+          oodEvents messages) start = some beforeRelation) :
+    beforeAlphaProducer.digest = foldDigest := by
+  let prefixEvents := beforeGammaTailEvents messages ++
+    [challengeEvent messages .gamma,
+     .absorb (.inactiveClaim messages.inactiveClaim),
+     challengeEvent messages .kappa] ++ oodEvents messages
+  have eventsExact : beforeAlphaZeroProducerTailEvents messages =
+      prefixEvents ++
+        [.absorb (.relationRound 0 (messages.relationSent 0)),
+         .grind .fold messages.foldGrinding,
+         .check .foldWork] := by
+    simp [beforeAlphaZeroProducerTailEvents, prefixEvents, List.append_assoc]
+  rw [eventsExact] at run
+  obtain ⟨middle, prefixRun', suffixRun⟩ :=
+    (run_machine_events_work_erased_append_iff table prefixEvents _ start
+      beforeAlphaProducer).mp run
+  have middleExact : middle = beforeRelation := by
+    have same : some middle = some beforeRelation := prefixRun'.symm.trans (by
+      simpa [prefixEvents] using prefixRun)
+    exact Option.some.inj same
+  subst middle
+  simp only [runMachineEventsWorkErased] at suffixRun
+  obtain ⟨afterRelation, absorbRun, suffixRun⟩ :=
+    Option.bind_eq_some_iff.mp suffixRun
+  obtain ⟨afterGrind, grindRun, suffixRun⟩ :=
+    Option.bind_eq_some_iff.mp suffixRun
+  obtain ⟨afterCheck, checkRun, done⟩ :=
+    Option.bind_eq_some_iff.mp suffixRun
+  have afterCheckExact : afterCheck = beforeAlphaProducer := by
+    simpa [runMachineEventsWorkErased] using Option.some.inj done
+  have checkExact : afterGrind = afterCheck := by
+    simpa [runMachineEventWorkErased] using Option.some.inj checkRun
+  have grindDigest : afterGrind.digest = afterRelation.digest :=
+    grinding_choice_work_erased_does_not_advance table afterRelation
+      afterGrind .fold messages.foldGrinding (by
+        simpa [runMachineEventWorkErased] using grindRun)
+  have literalLookup := absorb_step_exposes_literal_lookup table beforeRelation
+    afterRelation (.relationRound 0 (messages.relationSent 0)) absorbRun
+  have literalLookup' : tableLookup table
+      (bytes beforeRelation.digest ++
+        [domAbsorb,
+          (AspisK1.V7Tag73TranscriptSchedule.Payload.relationRound 0
+            (messages.relationSent 0)).label] ++
+        (AspisK1.V7Tag73TranscriptSchedule.Payload.relationRound 0
+          (messages.relationSent 0)).data) = some afterRelation.digest := by
+    simpa [AspisK1.V7Tag73TranscriptSchedule.Payload.label,
+      AspisK1.V7Tag73TranscriptSchedule.Payload.data] using literalLookup
+  have digestExact : afterRelation.digest = foldDigest := by
+    apply Option.some.inj
+    exact literalLookup'.symm.trans relationLookup
+  rw [← afterCheckExact, ← checkExact, grindDigest, digestExact]
 
 /-- Every consumed duplex output is looked up at the state in the matching
 position of the initial/advance chain.  This is the pointwise bridge needed
@@ -570,6 +666,8 @@ theorem exact_fixed_clean_pair_k13_alpha_advance_states_eq
     leftAdvances, rightOutputs, rightAdvances, initialExact, advancesExact,
     lengthsExact, pointwise'⟩
 
+#print axioms grinding_choice_work_erased_does_not_advance
+#print axioms before_alpha_zero_producer_run_fixes_fold_digest
 #print axioms exact_root_ordered_q16_chain_output_lookup_at_state
 #print axioms exact_pair_ordered_chains_output_lookups_at_common_states
 #print axioms exact_equal_root_priors_ordered_chain_advance_states_eq
