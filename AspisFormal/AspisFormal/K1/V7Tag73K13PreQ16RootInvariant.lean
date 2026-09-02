@@ -18,6 +18,7 @@ set_option maxHeartbeats 800000
 
 namespace AspisK1.V7Tag73K13PreQ16RootInvariant
 
+open MeasureTheory
 open AspisK1.V7FsAokExperiment
 open AspisK1.V7Tag73AdaptiveLazyOracle
 open AspisK1.V7Tag73AdaptiveQ16TrialAccounting
@@ -27,6 +28,7 @@ open AspisK1.V7Tag73ExactClientKnowledgeComposition
 open AspisK1.V7Tag73ExactCompilerResources
 open AspisK1.V7Tag73ExactDagCandidateLabeledRootRouting
 open AspisK1.V7Tag73ExactFixedK12MerkleClassifier
+open AspisK1.V7Tag73ExactFixedK13K14Classifier
 open AspisK1.V7Tag73ExactFixedFullRunFactorization
 open AspisK1.V7Tag73ExactFixedQ16JointEventHandoff
 open AspisK1.V7Tag73ExactPairRootAbsorbChainClosure
@@ -37,9 +39,14 @@ open AspisK1.V7Tag73IndexedAlignedRecordReplay
 open AspisK1.V7Tag73IndexedControllerTraceAlignment
 open AspisK1.V7Tag73K13PreQ16JointEventHandoff
 open AspisK1.V7Tag73K13PreQ16MerkleWordSource
+open AspisK1.V7Tag73K13PreQ16QueryHandoff
 open AspisK1.V7Tag73K13PreQ16TrialProbability
 open AspisK1.V7Tag73NoPairOccurrenceTrichotomy
 open AspisK1.V7Tag73OperationalSemanticReplay
+open AspisK1.V7Tag73ParsedK13K14Classifier
+open AspisK1.V7Tag73Q16FirstCompactUniformity
+open AspisK1.V7Tag73Q16SemanticFrontierBridge
+open AspisK1.V7Tag73SuccessfulSamplerConditioningBridge
 open AspisK1.V7Tag73RootAbsorbInputInjectivity
 open AspisK1.V7Tag73TranscriptSchedule
 open AspisPool.AlgorithmicCircleDecoderV7
@@ -272,8 +279,124 @@ theorem exact_preQ16_k13_words_eq
   · exact exact_preQ16_k13_roots_eq transitionRoom programmedCover trial
       hidden left right leftWitness rightWitness residualExact
 
+/-- Production/source endpoint for the three parsed semantic fields used by
+the corrected consistency set.  This is deliberately separated from the
+mathematical word proof above and is the exact Rust/Aeneas obligation: a
+shared completed pre-q16 source prefix must decode to the same schedule,
+gamma and disclosed terminal vector. -/
+def ExactPreQ16K13ParsedProfileSourceInvariant
+    {HiddenTape TapeIdentity Observation Statement Payload Witness : Type}
+    {parameters : ExactCompilerResourceParameters}
+    (transitionFuel : Nat)
+    (configuration : ExactPlainRomWitnessConfiguration HiddenTape TapeIdentity
+      Observation Statement Tag73K12ParsedProof Payload Witness parameters)
+    (projection : AcceptedTapeProjection Statement Tag73K12ParsedProof Payload)
+    (fixedInstance : PublicInstance Statement)
+    (decoder : ExactDecoderInstantiation QM31Exact) : Prop :=
+  ∀ (trial : ExactCompilerExposureTrial parameters) (hidden : HiddenTape)
+      (left right : FreshAnswerTape Digest256
+        (exactCompilerTargetCaps parameters).length)
+      (leftWitness : ExactPreQ16K13JointTrialWitness transitionFuel
+        configuration projection fixedInstance decoder (hidden, left) trial)
+      (rightWitness : ExactPreQ16K13JointTrialWitness transitionFuel
+        configuration projection fixedInstance decoder (hidden, right) trial),
+    leftWitness.prior = rightWitness.prior →
+    (exactK13ParsedProof leftWitness.input).schedule =
+        (exactK13ParsedProof rightWitness.input).schedule ∧
+      (exactK13ParsedProof leftWitness.input).gamma =
+        (exactK13ParsedProof rightWitness.input).gamma ∧
+      (exactK13ParsedProof leftWitness.input).disclosedFinal =
+        (exactK13ParsedProof rightWitness.input).disclosedFinal
+
+/-- The root/word theorem plus the exact parsed-source endpoint discharge the
+only premise of the corrected finite-measure wrapper. -/
+theorem exact_preQ16_k13_residual_work_invariant_of_source
+    {HiddenTape TapeIdentity Observation Statement Payload Witness : Type}
+    {parameters : ExactCompilerResourceParameters}
+    {transitionFuel : Nat}
+    {configuration : ExactPlainRomWitnessConfiguration HiddenTape TapeIdentity
+      Observation Statement Tag73K12ParsedProof Payload Witness parameters}
+    {projection : AcceptedTapeProjection Statement Tag73K12ParsedProof Payload}
+    {fixedInstance : PublicInstance Statement}
+    {decoder : ExactDecoderInstantiation QM31Exact}
+    (transitionRoom : 2 ≤ transitionFuel)
+    (programmedCover : 513 ≤ 2 * parameters.forkRequestCap)
+    (sourceInvariant : ExactPreQ16K13ParsedProfileSourceInvariant transitionFuel
+      configuration projection fixedInstance decoder) :
+    ExactPreQ16K13ResidualWorkInvariant transitionFuel configuration projection
+      fixedInstance decoder := by
+  intro trial hidden left right leftMember rightMember residualExact _workExact
+  have leftMember' : Nonempty (ExactPreQ16K13JointTrialWitness transitionFuel
+      configuration projection fixedInstance decoder (hidden, left) trial) :=
+    leftMember
+  have rightMember' : Nonempty (ExactPreQ16K13JointTrialWitness transitionFuel
+      configuration projection fixedInstance decoder (hidden, right) trial) :=
+    rightMember
+  let leftWitness := Classical.choice leftMember'
+  let rightWitness := Classical.choice rightMember'
+  have priorExact : leftWitness.prior = rightWitness.prior :=
+    exact_fixed_clean_k13_equal_residual_selected_root_priors_eq trial hidden
+      left right leftWitness.input rightWitness.input leftWitness.prior
+      leftWitness.later rightWitness.prior rightWitness.later
+      leftWitness.pivotActor rightWitness.pivotActor leftWitness.pivotInput
+      rightWitness.pivotInput leftWitness.pivotAnswer rightWitness.pivotAnswer
+      leftWitness.rootExact rightWitness.rootExact leftWitness.trialExact
+      rightWitness.trialExact programmedCover residualExact
+  obtain ⟨scheduleExact, gammaExact, finalExact⟩ :=
+    sourceInvariant trial hidden left right leftWitness rightWitness priorExact
+  have wordsExact := exact_preQ16_k13_words_eq transitionRoom programmedCover
+    trial hidden left right leftWitness rightWitness residualExact
+  have leftPointwise :
+      exactPreQ16K13PointwiseBad transitionFuel configuration projection
+          fixedInstance decoder trial (hidden, left) = leftWitness.bad := by
+    rw [exactPreQ16K13PointwiseBad, dif_pos leftMember']
+  have rightPointwise :
+      exactPreQ16K13PointwiseBad transitionFuel configuration projection
+          fixedInstance decoder trial (hidden, right) = rightWitness.bad := by
+    rw [exactPreQ16K13PointwiseBad, dif_pos rightMember']
+  rw [leftPointwise, rightPointwise, leftWitness.badExact,
+    rightWitness.badExact]
+  unfold exactPreQ16K13Bad
+  rw [scheduleExact, wordsExact]
+  unfold parsedK13Transcript
+  rw [gammaExact, finalExact]
+
+/-- Corrected one-forest probability theorem with only the exact production
+parsed-profile source obligation exposed. -/
+theorem exact_preQ16_k13_trial_union_probability_le_one_forest_of_source
+    {HiddenTape TapeIdentity Observation Statement Payload Witness : Type}
+    [Fintype HiddenTape]
+    (hiddenLaw : PMF HiddenTape)
+    {parameters : ExactCompilerResourceParameters}
+    {transitionFuel : Nat}
+    {configuration : ExactPlainRomWitnessConfiguration HiddenTape TapeIdentity
+      Observation Statement Tag73K12ParsedProof Payload Witness parameters}
+    {projection : AcceptedTapeProjection Statement Tag73K12ParsedProof Payload}
+    {fixedInstance : PublicInstance Statement}
+    {decoder : ExactDecoderInstantiation QM31Exact}
+    (transitionRoom : 2 ≤ transitionFuel)
+    (programmedCover : 513 ≤ 2 * parameters.forkRequestCap)
+    (sourceInvariant : ExactPreQ16K13ParsedProfileSourceInvariant transitionFuel
+      configuration projection fixedInstance decoder)
+    (reference : AdmittedResult SemanticCap203Admitted)
+    (traceExists : Nonempty
+      (FirstAdmittedTrace q16CandidateOutput SemanticCap203Admitted 64
+        reference.1))
+    (exposureCap : unifiedFull256ExposureCap parameters ≤ 2 ^ 34) :
+    (exactCompilerJointLaw hiddenLaw parameters).toOuterMeasure
+        (⋃ trial : ExactCompilerExposureTrial parameters,
+          exactPreQ16K13JointTrialEvent transitionFuel configuration projection
+            fixedInstance decoder trial) ≤ q16SemanticOneForestRawError := by
+  apply exact_preQ16_k13_trial_union_probability_le_one_forest hiddenLaw
+    (exact_preQ16_k13_residual_work_invariant_of_source transitionRoom
+      programmedCover sourceInvariant) reference traceExists exposureCap
+
 #print axioms exact_preQ16_k13_roots_eq
 #print axioms exact_preQ16_k13_words_eq
+#print axioms ExactPreQ16K13ParsedProfileSourceInvariant
+#print axioms exact_preQ16_k13_residual_work_invariant_of_source
+#print axioms
+  exact_preQ16_k13_trial_union_probability_le_one_forest_of_source
 
 end
 
