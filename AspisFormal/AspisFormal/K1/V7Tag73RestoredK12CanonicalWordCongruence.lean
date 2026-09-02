@@ -348,6 +348,83 @@ def ExactRestoredRootCommittedPreQ16Invariant
       (exactRestoredRootK13View leftWitness.input).schedule =
         (exactRestoredRootK13View rightWitness.input).schedule
 
+/-- Source-shaped form of the remaining restored q16 noninterference gate.
+Unlike the older whole-log equality condition, it asks only for the
+authenticated hash view, roots, retained typed-Merkle subsequence, and the
+three semantic transcript fields. -/
+def ExactRestoredRootTypedPreQ16SourceInvariant
+    {HiddenTape TapeIdentity Observation Statement Payload Witness : Type}
+    {parameters : AspisK1.V7Tag73ExactCompilerResources.ExactCompilerResourceParameters}
+    (transitionFuel : Nat)
+    (configuration : AspisK1.V7Tag73ExactClientKnowledgeComposition.ExactPlainRomWitnessConfiguration
+      HiddenTape TapeIdentity Observation Statement Tag73K12ParsedProof Payload
+      Witness parameters)
+    (projection :
+      AspisK1.V7Tag73ExactSourceAcceptanceModel.AcceptedTapeProjection Statement
+        Tag73K12ParsedProof Payload)
+    (fixedInstance : AspisK1.V7FsAokExperiment.PublicInstance Statement)
+    (decoder : AspisPool.AlgorithmicCircleDecoderV7.ExactDecoderInstantiation
+      AspisV5ComponentCQM31TowerExact.QM31Exact) : Prop :=
+  ∀ (trial : AspisK1.V7Tag73AdaptiveQ16TrialAccounting.ExactCompilerExposureTrial
+        parameters)
+      (hidden : HiddenTape)
+      (left right : AspisK1.V7Tag73AdaptiveLazyOracle.FreshAnswerTape
+        AspisK1.V7Tag73TranscriptSchedule.Digest256
+        (AspisK1.V7Tag73ExactCompilerResources.exactCompilerTargetCaps
+          parameters).length)
+      (leftWitness : ExactRestoredRootK13JointTrialWitness transitionFuel
+        configuration projection fixedInstance decoder (hidden, left) trial)
+      (rightWitness : ExactRestoredRootK13JointTrialWitness transitionFuel
+        configuration projection fixedInstance decoder (hidden, right) trial),
+    (exactRestoredRootK13TrialCoordinates transitionFuel configuration trial
+        (hidden, left)).1 =
+      (exactRestoredRootK13TrialCoordinates transitionFuel configuration trial
+        (hidden, right)).1 →
+    let leftNode := leftWitness.input.package.root.fixedRoot.base.runtime.node
+    let rightNode := rightWitness.input.package.root.fixedRoot.base.runtime.node
+    restoredNodeK12Truncate leftNode = restoredNodeK12Truncate rightNode ∧
+      restoredNodeK12Roots leftNode = restoredNodeK12Roots rightNode ∧
+      retainTypedMerkleQueries (deduplicateFirst
+          (restoredNodeK12OrderedQueries leftNode)) =
+        retainTypedMerkleQueries (deduplicateFirst
+          (restoredNodeK12OrderedQueries rightNode)) ∧
+      (exactRestoredRootK13View leftWitness.input).gamma =
+        (exactRestoredRootK13View rightWitness.input).gamma ∧
+      (exactRestoredRootK13View leftWitness.input).disclosedFinal =
+        (exactRestoredRootK13View rightWitness.input).disclosedFinal ∧
+      (exactRestoredRootK13View leftWitness.input).schedule =
+        (exactRestoredRootK13View rightWitness.input).schedule
+
+/-- Typed source noninterference is sufficient for the exact committed
+candidate invariant consumed by the restored one-forest probability bound. -/
+theorem exact_restored_committed_invariant_of_typed_source
+    {HiddenTape TapeIdentity Observation Statement Payload Witness : Type}
+    {parameters : AspisK1.V7Tag73ExactCompilerResources.ExactCompilerResourceParameters}
+    {transitionFuel : Nat}
+    {configuration : AspisK1.V7Tag73ExactClientKnowledgeComposition.ExactPlainRomWitnessConfiguration
+      HiddenTape TapeIdentity Observation Statement Tag73K12ParsedProof Payload
+      Witness parameters}
+    {projection :
+      AspisK1.V7Tag73ExactSourceAcceptanceModel.AcceptedTapeProjection Statement
+        Tag73K12ParsedProof Payload}
+    {fixedInstance : AspisK1.V7FsAokExperiment.PublicInstance Statement}
+    {decoder : AspisPool.AlgorithmicCircleDecoderV7.ExactDecoderInstantiation
+      AspisV5ComponentCQM31TowerExact.QM31Exact}
+    (source : ExactRestoredRootTypedPreQ16SourceInvariant transitionFuel
+      configuration projection fixedInstance decoder) :
+    ExactRestoredRootCommittedPreQ16Invariant transitionFuel configuration
+      projection fixedInstance decoder := by
+  intro trial hidden left right leftWitness rightWitness residualExact
+  obtain ⟨truncateExact, rootsExact, typedQueriesExact, gammaExact,
+      finalExact, scheduleExact⟩ := source trial hidden left right leftWitness
+        rightWitness residualExact
+  obtain ⟨candidate, leftGraph, rightGraph⟩ :=
+    restored_root_common_complete_candidate_of_typed_source leftWitness.input
+      rightWitness.input leftWitness.k12 rightWitness.k12 truncateExact
+        rootsExact typedQueriesExact
+  exact ⟨candidate, leftGraph, rightGraph, gammaExact, finalExact,
+    scheduleExact⟩
+
 theorem exact_restored_pre_q16_semantics_of_committed_invariant
     {HiddenTape TapeIdentity Observation Statement Payload Witness : Type}
     {parameters : AspisK1.V7Tag73ExactCompilerResources.ExactCompilerResourceParameters}
@@ -423,6 +500,8 @@ theorem exact_restored_root_residual_invariant_of_committed_invariant
 #print axioms restored_root_k12_truncate_eq_exact
 #print axioms restored_root_k12_certificate_words_eq_of_exact_source
 #print axioms restored_root_common_complete_candidate_of_typed_source
+#print axioms ExactRestoredRootTypedPreQ16SourceInvariant
+#print axioms exact_restored_committed_invariant_of_typed_source
 #print axioms exact_restored_pre_q16_semantics_of_committed_invariant
 #print axioms exact_restored_root_residual_invariant_of_committed_invariant
 
