@@ -3,6 +3,7 @@ import AspisFormal.K1.V7Tag73ParsedK13K14Classifier
 import AspisFormal.K1.V7Tag73ExactPairCoordinateProfileInvariant
 import AspisFormal.K1.V7Tag73ExactPairRootAbsorbChainClosure
 import AspisFormal.K1.V7Tag73RootAbsorbInputInjectivity
+import AspisFormal.K1.V7Tag73ExactFixedQ16ScheduleFunctional
 
 /-!
 # Semantic profile for corrected pre-q16 pair trials
@@ -42,7 +43,10 @@ open AspisK1.V7Tag73ExactDagVerifierAnchorPrefix
 open AspisK1.V7Tag73ExactPairCoordinateProfileInvariant
 open AspisK1.V7Tag73ExactPairRootAbsorbChainClosure
 open AspisK1.V7Tag73ExactFixedQ16JointEventHandoff
+open AspisK1.V7Tag73ExactFixedQ16ScheduleFunctional
 open AspisK1.V7Tag73ExactFixedQ16VerifierAnchorInvariant
+open AspisK1.V7Tag73ExactAdversaryAnchorFinalProfile
+open AspisK1.V7Tag73ExactParsedProofSourceBinding
 open AspisK1.V7Tag73ExactPlainRomRun
 open AspisK1.V7Tag73ExactSourceAcceptanceModel
 open AspisK1.V7Tag73FoldArmedAlphaZeroController
@@ -602,6 +606,175 @@ def ExactPreQ16CleanK13PairSemanticInvariantOnAdversaryAnchors
       (exactK13ParsedProof leftWitness.joint.input).disclosedFinal =
         (exactK13ParsedProof rightWitness.joint.input).disclosedFinal
 
+/-- The genuinely unresolved adversary-first payload after chronology and the
+two committed roots have been recovered from the selected record prefix.  It
+is deliberately smaller than the full semantic profile, so subsequent source
+and replay lemmas cannot accidentally reintroduce the obsolete intrinsic-bad
+witness. -/
+def ExactPreQ16CleanK13PairRemainingInvariantOnAdversaryAnchors
+    {HiddenTape TapeIdentity Observation Statement Payload Witness : Type}
+    {parameters : ExactCompilerResourceParameters}
+    (transitionFuel : Nat)
+    (configuration : ExactPlainRomWitnessConfiguration HiddenTape TapeIdentity
+      Observation Statement Tag73K12ParsedProof Payload Witness parameters)
+    (projection : AcceptedTapeProjection Statement Tag73K12ParsedProof Payload)
+    (fixedInstance : PublicInstance Statement)
+    (decoder : ExactDecoderInstantiation QM31Exact) : Prop :=
+  ∀ (foldTrial finalTrial : ExactCompilerExposureTrial parameters)
+      (hidden : HiddenTape)
+      (left right : FreshAnswerTape Digest256
+        (exactCompilerTargetCaps parameters).length)
+      (leftWitness : ExactPreQ16CleanK13PairTrialWitness transitionFuel
+        configuration projection fixedInstance decoder (hidden, left)
+          foldTrial finalTrial)
+      (rightWitness : ExactPreQ16CleanK13PairTrialWitness transitionFuel
+        configuration projection fixedInstance decoder (hidden, right)
+          foldTrial finalTrial),
+    leftWitness.joint.pivotActor = .adversary →
+    (let router := exactCompilerFoldArmedAlphaFinalWorkQ16Router parameters
+      transitionFuel foldTrial.val finalTrial.val
+      (exactPlainRomCursor configuration hidden).erase
+    (exactCompilerCausalFoldAlphaFinalWorkQ16Coordinates parameters router
+        left).1 =
+      (exactCompilerCausalFoldAlphaFinalWorkQ16Coordinates parameters router
+        right).1) →
+    (let router := exactCompilerFoldArmedAlphaFinalWorkQ16Router parameters
+      transitionFuel foldTrial.val finalTrial.val
+      (exactPlainRomCursor configuration hidden).erase
+    (exactCompilerCausalFoldAlphaFinalWorkQ16Coordinates parameters router
+        left).2.1 =
+      (exactCompilerCausalFoldAlphaFinalWorkQ16Coordinates parameters router
+        right).2.1) →
+    (let router := exactCompilerFoldArmedAlphaFinalWorkQ16Router parameters
+      transitionFuel foldTrial.val finalTrial.val
+      (exactPlainRomCursor configuration hidden).erase
+    (exactCompilerCausalFoldAlphaFinalWorkQ16Coordinates parameters router
+        left).2.2.1 =
+      (exactCompilerCausalFoldAlphaFinalWorkQ16Coordinates parameters router
+        right).2.2.1) →
+    (exactK13ParsedProof leftWitness.joint.input).schedule =
+        (exactK13ParsedProof rightWitness.joint.input).schedule ∧
+      (exactK13ParsedProof leftWitness.joint.input).gamma =
+        (exactK13ParsedProof rightWitness.joint.input).gamma ∧
+      (exactK13ParsedProof leftWitness.joint.input).disclosedFinal =
+        (exactK13ParsedProof rightWitness.joint.input).disclosedFinal
+
+/-- Source-neutral payload from which the parsed schedule is functional.  The
+schedule itself is intentionally absent: canonical source decoding derives it
+from the operational alpha-zero value. -/
+def ExactPreQ16CleanK13PairOperationalRemainingOnAdversaryAnchors
+    {HiddenTape TapeIdentity Observation Statement Payload Witness : Type}
+    {parameters : ExactCompilerResourceParameters}
+    (transitionFuel : Nat)
+    (configuration : ExactPlainRomWitnessConfiguration HiddenTape TapeIdentity
+      Observation Statement Tag73K12ParsedProof Payload Witness parameters)
+    (projection : AcceptedTapeProjection Statement Tag73K12ParsedProof Payload)
+    (fixedInstance : PublicInstance Statement)
+    (decoder : ExactDecoderInstantiation QM31Exact) : Prop :=
+  ∀ (foldTrial finalTrial : ExactCompilerExposureTrial parameters)
+      (hidden : HiddenTape)
+      (left right : FreshAnswerTape Digest256
+        (exactCompilerTargetCaps parameters).length)
+      (leftWitness : ExactPreQ16CleanK13PairTrialWitness transitionFuel
+        configuration projection fixedInstance decoder (hidden, left)
+          foldTrial finalTrial)
+      (rightWitness : ExactPreQ16CleanK13PairTrialWitness transitionFuel
+        configuration projection fixedInstance decoder (hidden, right)
+          foldTrial finalTrial),
+    leftWitness.joint.pivotActor = .adversary →
+    (let router := exactCompilerFoldArmedAlphaFinalWorkQ16Router parameters
+      transitionFuel foldTrial.val finalTrial.val
+      (exactPlainRomCursor configuration hidden).erase
+    (exactCompilerCausalFoldAlphaFinalWorkQ16Coordinates parameters router
+        left).1 =
+      (exactCompilerCausalFoldAlphaFinalWorkQ16Coordinates parameters router
+        right).1) →
+    (let router := exactCompilerFoldArmedAlphaFinalWorkQ16Router parameters
+      transitionFuel foldTrial.val finalTrial.val
+      (exactPlainRomCursor configuration hidden).erase
+    (exactCompilerCausalFoldAlphaFinalWorkQ16Coordinates parameters router
+        left).2.1 =
+      (exactCompilerCausalFoldAlphaFinalWorkQ16Coordinates parameters router
+        right).2.1) →
+    (let router := exactCompilerFoldArmedAlphaFinalWorkQ16Router parameters
+      transitionFuel foldTrial.val finalTrial.val
+      (exactPlainRomCursor configuration hidden).erase
+    (exactCompilerCausalFoldAlphaFinalWorkQ16Coordinates parameters router
+        left).2.2.1 =
+      (exactCompilerCausalFoldAlphaFinalWorkQ16Coordinates parameters router
+        right).2.2.1) →
+    exactOperationalChallenge leftWitness.joint.input (.alpha 0) =
+        exactOperationalChallenge rightWitness.joint.input (.alpha 0) ∧
+      (exactK13ParsedProof leftWitness.joint.input).gamma =
+        (exactK13ParsedProof rightWitness.joint.input).gamma ∧
+      (exactK13ParsedProof leftWitness.joint.input).disclosedFinal =
+        (exactK13ParsedProof rightWitness.joint.input).disclosedFinal
+
+/-- Canonical source decoding turns operational alpha equality into exact
+schedule equality.  Thus the remaining causal work is alpha, gamma, and the
+final vector, rather than an independent schedule theorem. -/
+theorem exact_preQ16_clean_pair_remaining_of_operational
+    {HiddenTape TapeIdentity Observation Statement Payload Witness : Type}
+    {parameters : ExactCompilerResourceParameters}
+    {transitionFuel : Nat}
+    {configuration : ExactPlainRomWitnessConfiguration HiddenTape TapeIdentity
+      Observation Statement Tag73K12ParsedProof Payload Witness parameters}
+    {projection : AcceptedTapeProjection Statement Tag73K12ParsedProof Payload}
+    {fixedInstance : PublicInstance Statement}
+    {decoder : ExactDecoderInstantiation QM31Exact}
+    (source : ExactFixedK13DecodedParsedSourceProvider transitionFuel
+      configuration projection fixedInstance)
+    (operational :
+      ExactPreQ16CleanK13PairOperationalRemainingOnAdversaryAnchors
+        transitionFuel configuration projection fixedInstance decoder) :
+    ExactPreQ16CleanK13PairRemainingInvariantOnAdversaryAnchors transitionFuel
+      configuration projection fixedInstance decoder := by
+  intro foldTrial finalTrial hidden left right leftWitness rightWitness actorExact
+    contextExact foldExact workExact
+  obtain ⟨alphaExact, gammaExact, finalExact⟩ := operational foldTrial
+    finalTrial hidden left right leftWitness rightWitness actorExact contextExact
+      foldExact workExact
+  obtain ⟨leftDecoded, _leftDecode, leftBinding⟩ :=
+    source (hidden, left) leftWitness.joint.input
+  obtain ⟨rightDecoded, _rightDecode, rightBinding⟩ :=
+    source (hidden, right) rightWitness.joint.input
+  have scheduleExact := exact_fixed_k13_schedule_eq_of_source_bindings
+    leftWitness.joint.input leftDecoded leftBinding rightWitness.joint.input
+      rightDecoded rightBinding alphaExact
+  exact ⟨scheduleExact, gammaExact, finalExact⟩
+
+/-- Chronology and root-chain recovery close the first two fields of the
+adversary profile.  Consequently schedule, gamma, and the disclosed final
+vector are exactly the remaining deterministic obligation. -/
+theorem exact_preQ16_clean_pair_adversary_semantic_of_remaining
+    {HiddenTape TapeIdentity Observation Statement Payload Witness : Type}
+    {parameters : ExactCompilerResourceParameters}
+    {transitionFuel : Nat}
+    {configuration : ExactPlainRomWitnessConfiguration HiddenTape TapeIdentity
+      Observation Statement Tag73K12ParsedProof Payload Witness parameters}
+    {projection : AcceptedTapeProjection Statement Tag73K12ParsedProof Payload}
+    {fixedInstance : PublicInstance Statement}
+    {decoder : ExactDecoderInstantiation QM31Exact}
+    (transitionRoom : 2 ≤ transitionFuel)
+    (programmedCover : 518 ≤ 2 * parameters.forkRequestCap)
+    (remaining :
+      ExactPreQ16CleanK13PairRemainingInvariantOnAdversaryAnchors transitionFuel
+        configuration projection fixedInstance decoder) :
+    ExactPreQ16CleanK13PairSemanticInvariantOnAdversaryAnchors transitionFuel
+      configuration projection fixedInstance decoder := by
+  intro foldTrial finalTrial hidden left right leftWitness rightWitness actorExact
+    contextExact foldExact workExact
+  have priorExact := exact_preQ16_clean_pair_selected_priors_eq foldTrial
+    finalTrial hidden left right leftWitness rightWitness programmedCover
+      contextExact foldExact
+  have rootsExact := exact_preQ16_clean_pair_adversary_roots_eq transitionRoom
+    foldTrial finalTrial hidden left right leftWitness rightWitness actorExact
+      programmedCover contextExact foldExact
+  obtain ⟨scheduleExact, gammaExact, finalExact⟩ := remaining foldTrial
+    finalTrial hidden left right leftWitness rightWitness actorExact contextExact
+      foldExact workExact
+  exact ⟨priorExact, rootsExact, scheduleExact, gammaExact, finalExact⟩
+
 /-- Verifier-first is closed above, so the adversary-first endpoint suffices
 for the complete corrected semantic invariant. -/
 theorem exact_preQ16_clean_pair_semantic_invariant_of_adversary_anchors
@@ -687,6 +860,12 @@ theorem exact_preQ16_clean_k13_pair_coordinate_invariant_of_semantic
 #print axioms exact_preQ16_clean_pair_adversary_roots_eq
 #print axioms exact_preQ16_clean_pair_verifier_semantic_profile
 #print axioms ExactPreQ16CleanK13PairSemanticInvariantOnAdversaryAnchors
+#print axioms
+  ExactPreQ16CleanK13PairRemainingInvariantOnAdversaryAnchors
+#print axioms
+  ExactPreQ16CleanK13PairOperationalRemainingOnAdversaryAnchors
+#print axioms exact_preQ16_clean_pair_remaining_of_operational
+#print axioms exact_preQ16_clean_pair_adversary_semantic_of_remaining
 #print axioms
   exact_preQ16_clean_pair_semantic_invariant_of_adversary_anchors
 #print axioms exact_preQ16_clean_k13_pair_coordinate_invariant_of_semantic
