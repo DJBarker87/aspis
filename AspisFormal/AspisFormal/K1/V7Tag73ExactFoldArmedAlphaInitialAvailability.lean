@@ -357,6 +357,8 @@ theorem exact_accepted_fold_alpha_block_zero_residual_or_routed
     ∃ output advanced tailOutputs tailAdvances,
       fold.alphaOutputs = output :: tailOutputs ∧
       fold.alphaAdvances = advanced :: tailAdvances ∧
+      tableLookup (exactOperationalTable input)
+          (gammaOutputInput fold.boundaryAnswer) = some output ∧
       ((∃ actor,
           (.machineFresh actor (gammaOutputInput fold.boundaryAnswer) output :
             UnifiedExposureRecord) ∈ fold.prior) ∨
@@ -391,7 +393,7 @@ theorem exact_accepted_fold_alpha_block_zero_residual_or_routed
   rw [fold.rootDecomposition, List.mem_append] at outputMember
   rcases outputMember with beforeFold | atOrAfterFold
   · exact ⟨output, advanced, tailOutputs, tailAdvances, outputsExact,
-      advancesExact, Or.inl ⟨outputActor, beforeFold⟩⟩
+      advancesExact, outputLookup, Or.inl ⟨outputActor, beforeFold⟩⟩
   · simp only [List.mem_cons] at atOrAfterFold
     rcases atOrAfterFold with atFold | afterFold
     · have inputExact := congrArg causalInput? atFold
@@ -404,7 +406,7 @@ theorem exact_accepted_fold_alpha_block_zero_residual_or_routed
         programmedCover input fold finalTrial before later outputActor output
           laterExact ordered
       exact ⟨output, advanced, tailOutputs, tailAdvances, outputsExact,
-        advancesExact, Or.inr routed⟩
+        advancesExact, outputLookup, Or.inr routed⟩
 
 #print axioms
   exact_fold_armed_initial_producer_available_before_post_fold_output

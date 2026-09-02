@@ -19,19 +19,24 @@ namespace AspisK1.V7Tag73ExactPairAlphaHybridEquality
 
 open AspisK1.V7FsAokExperiment
 open AspisK1.V7Tag73AdaptiveLazyOracle
+open AspisK1.V7Tag73AdaptiveQ16TrialAccounting
 open AspisK1.V7Tag73AtomicForkUniformScheduler
 open AspisK1.V7Tag73CausalFoldAlphaFinalWorkQ16Coordinates
 open AspisK1.V7Tag73CausalSlotRouterLookup
 open AspisK1.V7Tag73DeterministicRefinement
 open AspisK1.V7Tag73ExactCompilerResources
+open AspisK1.V7Tag73ExactAcceptedFoldTrialPackage
 open AspisK1.V7Tag73ExactFinalWorkPairControllerCompletion
 open AspisK1.V7Tag73ExactFixedFullRunFactorization
 open AspisK1.V7Tag73ExactFixedK12MerkleClassifier
 open AspisK1.V7Tag73ExactFoldAlphaFinalWorkQ16RootRouting
+open AspisK1.V7Tag73ExactFoldArmedAlphaInitialAvailability
 open AspisK1.V7Tag73ExactPairCoordinateProfileInvariant
 open AspisK1.V7Tag73ExactPlainRomRun
 open AspisK1.V7Tag73ExactSourceAcceptanceModel
+open AspisK1.V7Tag73FoldArmedAlphaZeroController
 open AspisK1.V7Tag73OperationalSemanticReplay
+open AspisK1.V7Tag73SchedulerNativeGammaReplay
 open AspisK1.V7Tag73TranscriptSchedule
 
 noncomputable section
@@ -156,9 +161,111 @@ theorem exact_pair_alpha_answer_eq_of_cached_or_routed
       exact leftCoordinate.symm.trans
         (alphaCoordinatesExact.trans rightCoordinate)
 
+/-- Deployed block-zero corollary.  Once the two selected-fold prefixes are
+identified, the literal accepted chains and the complete-coordinate context
+determine one common first alpha output.  The result deliberately retains the
+two list decompositions needed by the later decoder-prefix constructor. -/
+theorem exact_pair_fold_alpha_block_zero_eq_of_shared_fold_prior
+    {HiddenTape TapeIdentity Observation Statement Payload Result : Type}
+    {parameters : ExactCompilerResourceParameters}
+    {transitionFuel : Nat}
+    {configuration : ExactPlainRomConfiguration HiddenTape TapeIdentity
+      Observation Statement Tag73K12ParsedProof Payload Result parameters}
+    {projection : AcceptedTapeProjection Statement Tag73K12ParsedProof Payload}
+    {fixedInstance : PublicInstance Statement}
+    {hidden : HiddenTape}
+    {left right : FreshAnswerTape Digest256
+      (exactCompilerTargetCaps parameters).length}
+    (transitionRoom : 2 ≤ transitionFuel)
+    (programmedCover : 518 ≤ 2 * parameters.forkRequestCap)
+    (foldTrial finalTrial : ExactCompilerExposureTrial parameters)
+    (leftInput : ExactK12OperationalInput transitionFuel configuration
+      projection fixedInstance (hidden, left))
+    (rightInput : ExactK12OperationalInput transitionFuel configuration
+      projection fixedInstance (hidden, right))
+    (leftFold : ExactAcceptedFoldTrial leftInput)
+    (rightFold : ExactAcceptedFoldTrial rightInput)
+    (leftTrialExact : leftFold.trial = foldTrial)
+    (rightTrialExact : rightFold.trial = foldTrial)
+    (initialExact : leftFold.boundaryAnswer = rightFold.boundaryAnswer)
+    (priorExact : leftFold.prior = rightFold.prior)
+    (contextExact :
+      let router := exactCompilerFoldArmedAlphaFinalWorkQ16Router parameters
+        transitionFuel foldTrial.val finalTrial.val
+        (exactPlainRomCursor configuration hidden).erase
+      (exactCompilerCausalFoldAlphaFinalWorkQ16Coordinates parameters router
+          left).1 =
+        (exactCompilerCausalFoldAlphaFinalWorkQ16Coordinates parameters router
+          right).1) :
+    ∃ leftOutput rightOutput leftAdvanced rightAdvanced
+        leftTailOutputs rightTailOutputs leftTailAdvances rightTailAdvances,
+      leftFold.alphaOutputs = leftOutput :: leftTailOutputs ∧
+      rightFold.alphaOutputs = rightOutput :: rightTailOutputs ∧
+      leftFold.alphaAdvances = leftAdvanced :: leftTailAdvances ∧
+      rightFold.alphaAdvances = rightAdvanced :: rightTailAdvances ∧
+      leftOutput = rightOutput := by
+  obtain ⟨leftOutput, leftAdvanced, leftTailOutputs, leftTailAdvances,
+      leftOutputsExact, leftAdvancesExact, leftLookup, leftDisposition⟩ :=
+    exact_accepted_fold_alpha_block_zero_residual_or_routed transitionRoom
+      programmedCover leftInput leftFold finalTrial
+  obtain ⟨rightOutput, rightAdvanced, rightTailOutputs, rightTailAdvances,
+      rightOutputsExact, rightAdvancesExact, rightLookup, rightDisposition⟩ :=
+    exact_accepted_fold_alpha_block_zero_residual_or_routed transitionRoom
+      programmedCover rightInput rightFold finalTrial
+  let router := exactCompilerFoldArmedAlphaFinalWorkQ16Router parameters
+    transitionFuel foldTrial.val finalTrial.val
+    (exactPlainRomCursor configuration hidden).erase
+  have leftLookup' : tableLookup (exactOperationalTable leftInput)
+      (gammaOutputInput rightFold.boundaryAnswer) = some leftOutput := by
+    simpa only [initialExact] using leftLookup
+  have leftDisposition' :
+      (∃ actor,
+        (.machineFresh actor (gammaOutputInput rightFold.boundaryAnswer)
+          leftOutput : UnifiedExposureRecord) ∈ leftFold.prior) ∨
+      causalRoutedAnswer? (some (Sum.inl (0 : Fin 4))) router
+          (foldAlphaFinalWorkQ16NamedSlotInputTape
+            (exactCompilerFoldAlphaFinalWorkQ16InputTape parameters left)) =
+        some leftOutput := by
+    rw [leftTrialExact, initialExact] at leftDisposition
+    exact leftDisposition
+  have rightDisposition' :
+      (∃ actor,
+        (.machineFresh actor (gammaOutputInput rightFold.boundaryAnswer)
+          rightOutput : UnifiedExposureRecord) ∈ rightFold.prior) ∨
+      causalRoutedAnswer? (some (Sum.inl (0 : Fin 4))) router
+          (foldAlphaFinalWorkQ16NamedSlotInputTape
+            (exactCompilerFoldAlphaFinalWorkQ16InputTape parameters right)) =
+        some rightOutput := by
+    rw [rightTrialExact] at rightDisposition
+    exact rightDisposition
+  have alphaCoordinatesExact :
+      (exactCompilerCausalFoldAlphaFinalWorkQ16Coordinates parameters router
+          left).1.2 (0 : Fin 4) =
+        (exactCompilerCausalFoldAlphaFinalWorkQ16Coordinates parameters router
+          right).1.2 (0 : Fin 4) := by
+    exact congrFun (congrArg Prod.snd contextExact) 0
+  have outputExact := exact_pair_alpha_answer_eq_of_cached_or_routed
+    leftInput rightInput router leftFold.prior rightFold.prior 0
+      (gammaOutputInput rightFold.boundaryAnswer) leftOutput rightOutput
+      leftLookup' rightLookup priorExact
+      (by
+        intro record member
+        rw [leftFold.rootDecomposition]
+        exact List.mem_append_left _ member)
+      (by
+        intro record member
+        rw [rightFold.rootDecomposition]
+        exact List.mem_append_left _ member)
+      leftDisposition' rightDisposition' alphaCoordinatesExact
+  exact ⟨leftOutput, rightOutput, leftAdvanced, rightAdvanced,
+    leftTailOutputs, rightTailOutputs, leftTailAdvances, rightTailAdvances,
+    leftOutputsExact, rightOutputsExact, leftAdvancesExact, rightAdvancesExact,
+    outputExact⟩
+
 #print axioms
   exact_shared_prior_record_and_root_record_same_input_answer_eq
 #print axioms exact_pair_alpha_answer_eq_of_cached_or_routed
+#print axioms exact_pair_fold_alpha_block_zero_eq_of_shared_fold_prior
 
 end
 
