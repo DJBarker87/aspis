@@ -24,6 +24,8 @@ open AspisK1.V7Tag73CausalSlotRouterLookup
 open AspisK1.V7Tag73ExactAcceptedFoldTrialPackage
 open AspisK1.V7Tag73ExactAlphaZeroControllerAlignment
 open AspisK1.V7Tag73ExactCompilerResources
+open AspisK1.V7Tag73ExactCompilerGammaPrefixCoordinates
+open AspisK1.V7Tag73ExactCompilerGammaTraceOccurrence
 open AspisK1.V7Tag73DeterministicRefinement
 open AspisK1.V7Tag73ExactFinalWorkPairControllerCompletion
 open AspisK1.V7Tag73ExactFixedK12MerkleClassifier
@@ -39,12 +41,31 @@ open AspisK1.V7Tag73FoldArmedAlphaZeroController
 open AspisK1.V7Tag73IndexedAlignedRecordReplay
 open AspisK1.V7Tag73IndexedControllerTraceAlignment
 open AspisK1.V7Tag73IndexedExposureCausalRouter
+open AspisK1.V7Tag73NoPairOccurrenceTrichotomy
 open AspisK1.V7Tag73OperationalOracleExposure
 open AspisK1.V7Tag73OperationalSemanticReplay
 open AspisK1.V7Tag73SchedulerNativeGammaReplay
 open AspisK1.V7Tag73TranscriptSchedule
 
 noncomputable section
+
+/-- A nonempty duplex certificate exposes its literal first output, advance,
+and remaining source chain. -/
+theorem gamma_table_coordinate_chain_nonempty_head
+    (table : FixedOracleTable) (digest : Digest256)
+    (outputs advances : List Digest256)
+    (chain : GammaTableCoordinateChain table digest outputs advances)
+    (positive : 0 < outputs.length) :
+    ∃ output advanced tailOutputs tailAdvances,
+      outputs = output :: tailOutputs ∧
+      advances = advanced :: tailAdvances ∧
+      tableLookup table (gammaOutputInput digest) = some output ∧
+      tableLookup table (gammaAdvanceInput digest) = some advanced ∧
+      GammaTableCoordinateChain table advanced tailOutputs tailAdvances := by
+  cases chain with
+  | done => simp at positive
+  | next outputLookup advanceLookup tail =>
+      exact ⟨_, _, _, _, rfl, rfl, outputLookup, advanceLookup, tail⟩
 
 /-- If the deployed block-zero output is first exposed in the literal root
 suffix after the selected fold record, its source producer is live at that
@@ -314,9 +335,81 @@ theorem exact_fold_armed_post_fold_block_zero_output_is_routed
       (by simpa [producer] using laterExact) (by simpa [producer] using member)
   exact routed
 
+/-- Exhaustive causal classification of the deployed first alpha block.  It
+is either an adversary/verifier first-creation record strictly before the fold,
+or the named post-fold alpha-zero coordinate.  The selected fold record itself
+cannot alias the 33-byte duplex output input. -/
+theorem exact_accepted_fold_alpha_block_zero_residual_or_routed
+    {HiddenTape TapeIdentity Observation Statement Payload Result : Type}
+    {parameters : ExactCompilerResourceParameters}
+    {transitionFuel : Nat}
+    {configuration : ExactPlainRomConfiguration HiddenTape TapeIdentity
+      Observation Statement Tag73K12ParsedProof Payload Result parameters}
+    {projection : AcceptedTapeProjection Statement Tag73K12ParsedProof Payload}
+    {fixedInstance : PublicInstance Statement}
+    {sample : ExactCompilerSample HiddenTape parameters}
+    (transitionRoom : 2 ≤ transitionFuel)
+    (programmedCover : 518 ≤ 2 * parameters.forkRequestCap)
+    (input : ExactK12OperationalInput transitionFuel configuration projection
+      fixedInstance sample)
+    (fold : ExactAcceptedFoldTrial input)
+    (finalTrial : ExactCompilerExposureTrial parameters) :
+    ∃ output advanced tailOutputs tailAdvances,
+      fold.alphaOutputs = output :: tailOutputs ∧
+      fold.alphaAdvances = advanced :: tailAdvances ∧
+      ((∃ actor,
+          (.machineFresh actor (gammaOutputInput fold.boundaryAnswer) output :
+            UnifiedExposureRecord) ∈ fold.prior) ∨
+        causalRoutedAnswer? (some (Sum.inl (0 : Fin 4)))
+          (exactCompilerFoldArmedAlphaFinalWorkQ16Router parameters
+            transitionFuel fold.trial.val finalTrial.val
+            (exactPlainRomCursor configuration sample.1).erase)
+          (foldAlphaFinalWorkQ16NamedSlotInputTape
+            (exactCompilerFoldAlphaFinalWorkQ16InputTape parameters sample.2)) =
+          some output) := by
+  have positive : 0 < fold.alphaOutputs.length := by
+    rw [fold.alphaOutputsLength]
+    exact ((exactOperationalTape input).messages.challengeUse
+      (.alpha 0)).consumesBlock
+  obtain ⟨output, advanced, tailOutputs, tailAdvances, outputsExact,
+      advancesExact, outputLookup, _advanceLookup, _tail⟩ :=
+    gamma_table_coordinate_chain_nonempty_head (exactOperationalTable input)
+      fold.boundaryAnswer fold.alphaOutputs fold.alphaAdvances
+      fold.alphaCoordinates positive
+  obtain ⟨outputActor, outputMember⟩ :=
+    exact_final_table_lookup_has_root_record input
+      (gammaOutputInput fold.boundaryAnswer) output outputLookup
+  have dependency : HasLiteralStatePrefix fold.boundaryAnswer
+      (gammaOutputInput fold.boundaryAnswer) := by
+    simp [HasLiteralStatePrefix, gammaOutputInput]
+  have ordered :=
+    exact_compiler_literal_dependency_has_strict_root_order transitionRoom input
+      (bytes fold.digest ++ [domAbsorb, foldWorkNonceLabel, 0] ++
+        bytes (exactOperationalTape input).messages.foldGrinding.selected)
+      (gammaOutputInput fold.boundaryAnswer) fold.boundaryAnswer output
+      fold.boundaryLookup outputLookup dependency
+  rw [fold.rootDecomposition, List.mem_append] at outputMember
+  rcases outputMember with beforeFold | atOrAfterFold
+  · exact ⟨output, advanced, tailOutputs, tailAdvances, outputsExact,
+      advancesExact, Or.inl ⟨outputActor, beforeFold⟩⟩
+  · simp only [List.mem_cons] at atOrAfterFold
+    rcases atOrAfterFold with atFold | afterFold
+    · have inputExact := congrArg causalInput? atFold
+      have lengthExact := congrArg (fun value => (value.getD []).length)
+        inputExact
+      simp [causalInput?, gammaOutputInput, bytes_length] at lengthExact
+    · obtain ⟨before, later, laterExact⟩ :=
+        (List.mem_iff_append).mp afterFold
+      have routed := exact_fold_armed_post_fold_block_zero_output_is_routed
+        programmedCover input fold finalTrial before later outputActor output
+          laterExact ordered
+      exact ⟨output, advanced, tailOutputs, tailAdvances, outputsExact,
+        advancesExact, Or.inr routed⟩
+
 #print axioms
   exact_fold_armed_initial_producer_available_before_post_fold_output
 #print axioms exact_fold_armed_post_fold_block_zero_output_is_routed
+#print axioms exact_accepted_fold_alpha_block_zero_residual_or_routed
 
 end
 
