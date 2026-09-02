@@ -7,9 +7,9 @@ publish = false
 [workspace]
 
 [features]
-# Default-off measurement policy. This forwards only the honest-prover nonce
-# selection feature; verifier, Pool, statement, and wire dependencies are
-# unchanged.
+# Default-off counter-20 measurement policy. This forwards only the
+# honest-prover nonce selection feature; verifier, Pool, statement, and wire
+# dependencies are unchanged.
 v7-final-nonce-cutoff-audit = ["aspis-prover/v7-final-nonce-cutoff-audit"]
 
 [dependencies]

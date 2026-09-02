@@ -17,8 +17,9 @@ v5-mask = []
 insecure-spend-fixture = []
 # Measurement-only honest-prover policy.  It may search beyond the ordinary
 # minimum valid final-work nonce until the unchanged V7 first-cap-203 schedule
-# lands at or below an explicitly acknowledged counter cutoff.  No verifier,
-# transcript, relation, or proof byte changes are enabled by this feature.
+# lands at or below the explicitly acknowledged inclusive counter-20 policy.
+# No verifier, transcript, relation, or proof byte changes are enabled by this
+# feature.
 v7-final-nonce-cutoff-audit = []
 
 [dependencies]

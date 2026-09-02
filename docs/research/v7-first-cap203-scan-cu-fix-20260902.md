@@ -15,7 +15,7 @@ it was a valid low-cost sample, not the maximum cost of every valid proof.
 
 This branch adds a default-off honest-prover audit policy that publishes only
 an ordinary work-valid final nonce whose unchanged first-cap-203 counter is at
-or below an explicit cutoff. It also rejects an unpublished nonce when any q16
+or below the selected inclusive cutoff of **20**. It also rejects an unpublished nonce when any q16
 candidate the verifier would evaluate needs more than the minimum two squeeze
 blocks. That second condition removes the rare without-replacement collision
 tail from the counter-based CU calibration.
@@ -42,10 +42,11 @@ The feature `v7-final-nonce-cutoff-audit` is absent from default features and
 does nothing unless both of these are supplied:
 
 ```text
-ASPIS_V7_EXPERIMENTAL_MAX_COMPACT_COUNTER=<0..63>
+ASPIS_V7_EXPERIMENTAL_MAX_COMPACT_COUNTER=20
 ASPIS_V7_EXPERIMENTAL_FINAL_NONCE_CUTOFF_ACK=I_ACKNOWLEDGE_MEASUREMENT_ONLY_FINAL_NONCE_SELECTION
 ```
 
+The cutoff variable must be exactly `20`; every other value fails closed.
 With the feature and acknowledgement enabled, the prover:
 
 1. finds the minimum final-work nonce at or above the current search cursor;

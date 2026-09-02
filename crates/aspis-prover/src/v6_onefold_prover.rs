@@ -749,6 +749,20 @@ fn work_nonce(
 const V7_FINAL_NONCE_CUTOFF_ACK: &str = "I_ACKNOWLEDGE_MEASUREMENT_ONLY_FINAL_NONCE_SELECTION";
 
 #[cfg(feature = "v7-final-nonce-cutoff-audit")]
+const V7_FINAL_NONCE_COUNTER_CUTOFF: u8 = 20;
+
+#[cfg(feature = "v7-final-nonce-cutoff-audit")]
+fn parse_v7_final_nonce_cutoff(raw: &str) -> Result<u8, V6ProverError> {
+    let cutoff = raw
+        .parse::<u8>()
+        .map_err(|_| V6ProverError::Stage("V7 final nonce cutoff parse"))?;
+    if cutoff != V7_FINAL_NONCE_COUNTER_CUTOFF {
+        return Err(V6ProverError::Stage("V7 final nonce cutoff policy"));
+    }
+    Ok(cutoff)
+}
+
+#[cfg(feature = "v7-final-nonce-cutoff-audit")]
 fn requested_v7_final_nonce_cutoff() -> Result<Option<u8>, V6ProverError> {
     let Some(raw) = std::env::var_os("ASPIS_V7_EXPERIMENTAL_MAX_COMPACT_COUNTER") else {
         return Ok(None);
@@ -760,15 +774,10 @@ fn requested_v7_final_nonce_cutoff() -> Result<Option<u8>, V6ProverError> {
             "V7 final nonce cutoff acknowledgement",
         ));
     }
-    let cutoff = raw
+    let raw = raw
         .to_str()
-        .ok_or(V6ProverError::Stage("V7 final nonce cutoff UTF-8"))?
-        .parse::<u8>()
-        .map_err(|_| V6ProverError::Stage("V7 final nonce cutoff parse"))?;
-    if usize::from(cutoff) >= aspis_core::v7_onefold::V7_COMPACT_QUERY_CANDIDATES {
-        return Err(V6ProverError::Stage("V7 final nonce cutoff range"));
-    }
-    Ok(Some(cutoff))
+        .ok_or(V6ProverError::Stage("V7 final nonce cutoff UTF-8"))?;
+    parse_v7_final_nonce_cutoff(raw).map(Some)
 }
 
 #[cfg(feature = "v7-final-nonce-cutoff-audit")]
@@ -791,7 +800,6 @@ fn v7_compact_candidates_use_minimum_query_draws(
 fn select_v7_final_nonce_at_counter_cutoff(
     transcript: &Transcript,
     bits: u8,
-    cutoff: u8,
 ) -> Result<(u64, u32), V6ProverError> {
     let mut start = 0u64;
     let mut valid_nonces_tested = 0u32;
@@ -804,7 +812,7 @@ fn select_v7_final_nonce_at_counter_cutoff(
         let mut post_nonce = transcript.clone();
         absorb_work(&mut post_nonce, 2, nonce);
         if let Ok(schedule) = derive_first_v7_compact_queries(&post_nonce) {
-            if schedule.counter <= cutoff
+            if schedule.counter <= V7_FINAL_NONCE_COUNTER_CUTOFF
                 && v7_compact_candidates_use_minimum_query_draws(&post_nonce, schedule.counter)
             {
                 return Ok((nonce, valid_nonces_tested));
@@ -1588,7 +1596,7 @@ fn build_onefold_proof_with_pow_mode(
         match (profile, pow_mode, cutoff) {
             (OneFoldBuildProfile::V7Compact, StateOnlyPowMode::Mine, Some(cutoff)) => {
                 let (nonce, tested) =
-                    select_v7_final_nonce_at_counter_cutoff(&transcript, work_bits[2], cutoff)?;
+                    select_v7_final_nonce_at_counter_cutoff(&transcript, work_bits[2])?;
                 (nonce, tested, Some(cutoff))
             }
             (_, _, Some(_)) => {
@@ -2600,16 +2608,14 @@ mod tests {
         transcript.absorb(label::PROFILE, b"aspis-v7-cutoff-selector-kat-v1");
         transcript.absorb(label::STATEMENT, &[0x5a; 32]);
 
-        let cutoff = 20;
-        let (nonce, tested) =
-            select_v7_final_nonce_at_counter_cutoff(&transcript, 8, cutoff).unwrap();
+        let (nonce, tested) = select_v7_final_nonce_at_counter_cutoff(&transcript, 8).unwrap();
         assert!(tested >= 1);
         assert!(transcript.grinding_ok(nonce, 8));
 
         let mut post_nonce = transcript;
         absorb_work(&mut post_nonce, 2, nonce);
         let schedule = derive_first_v7_compact_queries(&post_nonce).unwrap();
-        assert!(schedule.counter <= cutoff);
+        assert!(schedule.counter <= V7_FINAL_NONCE_COUNTER_CUTOFF);
         assert!(v7_compact_candidates_use_minimum_query_draws(
             &post_nonce,
             schedule.counter
@@ -2619,7 +2625,6 @@ mod tests {
     #[cfg(feature = "v7-final-nonce-cutoff-audit")]
     #[test]
     fn v7_final_nonce_selector_retries_an_over_cutoff_first_nonce() {
-        let cutoff = 20;
         let (transcript, first_nonce, first_counter) = (0u8..=u8::MAX)
             .find_map(|seed| {
                 let mut transcript = Transcript::new(HOST_HASH);
@@ -2630,23 +2635,36 @@ mod tests {
                 let mut post_nonce = transcript.clone();
                 absorb_work(&mut post_nonce, 2, first_nonce);
                 let first_counter = derive_first_v7_compact_queries(&post_nonce).ok()?.counter;
-                (first_counter > cutoff).then_some((transcript, first_nonce, first_counter))
+                (first_counter > V7_FINAL_NONCE_COUNTER_CUTOFF).then_some((
+                    transcript,
+                    first_nonce,
+                    first_counter,
+                ))
             })
             .expect("deterministic KAT seeds must include an over-cutoff first nonce");
 
         let (selected_nonce, tested) =
-            select_v7_final_nonce_at_counter_cutoff(&transcript, 8, cutoff).unwrap();
-        assert!(first_counter > cutoff);
+            select_v7_final_nonce_at_counter_cutoff(&transcript, 8).unwrap();
+        assert!(first_counter > V7_FINAL_NONCE_COUNTER_CUTOFF);
         assert!(tested > 1);
         assert!(selected_nonce > first_nonce);
         let mut post_nonce = transcript;
         absorb_work(&mut post_nonce, 2, selected_nonce);
         let selected = derive_first_v7_compact_queries(&post_nonce).unwrap();
-        assert!(selected.counter <= cutoff);
+        assert!(selected.counter <= V7_FINAL_NONCE_COUNTER_CUTOFF);
         assert!(v7_compact_candidates_use_minimum_query_draws(
             &post_nonce,
             selected.counter
         ));
+    }
+
+    #[cfg(feature = "v7-final-nonce-cutoff-audit")]
+    #[test]
+    fn v7_final_nonce_cutoff_policy_is_exactly_twenty() {
+        assert_eq!(parse_v7_final_nonce_cutoff("20").unwrap(), 20);
+        assert!(parse_v7_final_nonce_cutoff("19").is_err());
+        assert!(parse_v7_final_nonce_cutoff("21").is_err());
+        assert!(parse_v7_final_nonce_cutoff("63").is_err());
     }
 
     fn digest(seed: u32) -> Digest {

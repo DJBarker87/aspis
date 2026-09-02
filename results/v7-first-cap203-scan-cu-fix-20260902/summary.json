@@ -21,12 +21,14 @@
     "cargoFeature": "v7-final-nonce-cutoff-audit",
     "defaultOff": true,
     "explicitAcknowledgementRequired": true,
+    "fixedInclusiveCutoff": 20,
+    "otherCutoffsRejected": true,
     "environment": {
       "cutoff": "ASPIS_V7_EXPERIMENTAL_MAX_COMPACT_COUNTER",
       "acknowledgement": "ASPIS_V7_EXPERIMENTAL_FINAL_NONCE_CUTOFF_ACK"
     },
     "measuredInclusiveCutoff": 20,
-    "selection": "Inspect ordinary work-valid final nonces in ascending order and publish the first whose unchanged first-cap-203 schedule has counter <= cutoff and whose evaluated q16 candidates each use the minimum 16 distinct draws.",
+    "selection": "Inspect ordinary work-valid final nonces in ascending order and publish the first whose unchanged first-cap-203 schedule has counter <= 20 and whose evaluated q16 candidates each use the minimum 16 distinct draws.",
     "minimumQuerySqueezeBlocksPerCandidate": 2,
     "proofBytesChanged": false,
     "proofFormatChanged": false,
