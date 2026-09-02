@@ -3,6 +3,7 @@ import AspisFormal.K1.V7Tag73ExactFixedFullRunFactorization
 import AspisFormal.K1.V7Tag73IndexedAlignedRecordReplay
 import AspisFormal.Pool.V7MerklePartialPathExtractor
 import AspisFormal.Pool.V7MerklePrefixTargetCongruence
+import AspisFormal.Pool.V7MerkleFirstUnresolvedBinding
 
 /-!
 # Merkle word source fixed before Tag-73 q16
@@ -36,6 +37,8 @@ open AspisK1.V7Tag73IndexedAlignedRecordReplay
 open AspisK1.V7Tag73TranscriptSchedule
 open AspisPool.V7MerklePartialPathExtractor
 open AspisPool.V7MerklePrefixTargetCongruence
+open AspisPool.V7MerkleFirstUnresolvedBinding
+open AspisPool.V7MerkleOpeningBinding
 open AspisPool.V7MerkleQueryExtractor
 open AspisPool.V7MerkleQueryGrammar
 
@@ -137,6 +140,47 @@ theorem preQ16PrefixWords_eq_extract_of_view_agreement
   exact (exposurePrefixTruncate_eq_of_lookup records rawInput digest found).trans
     (agree rawInput digest found).symm
 
+/-- Accepted deployed openings are projections of the word fixed before q16,
+unless the subsequent shared-oracle log hits one of the causally fixed
+first-unresolved targets or contains a 208-bit collision.  The supplied total
+view remains authenticated: only its agreement with actual chronological
+first answers is used. -/
+theorem accepted_openings_yield_preQ16_projections_or_counted_failure
+    (records : List UnifiedExposureRecord) (roots : Roots)
+    (view : RawHashInput → AspisPool.V7MerkleQueryGrammar.Digest208)
+    (fullLog : OrderedRawQueryLog) (proof : TwoTreeOpeningProof)
+    (agree : ∀ rawInput digest,
+      exposurePrefixLookup records (rawHashInputToRuntimeInput rawInput) =
+          some digest →
+        view rawInput = runtimeDigest256PrefixToMerkleDigest digest)
+    (accepted : accepted_two_tree_openings view roots proof)
+    (prefixIncluded : TraceIncludedInLog (exposurePrefixRawQueries records)
+      fullLog)
+    (c1SuppliedCovered : ∀ ordinal : Fin disclosedQueryPairs,
+      TraceIncludedInLog
+        (openingInputTrace view (proof ordinal).position
+          (.c1Leaf (proof ordinal).c1Value (proof ordinal).sharedSalt)
+          (proof ordinal).c1Siblings) fullLog)
+    (c2SuppliedCovered : ∀ ordinal : Fin disclosedQueryPairs,
+      TraceIncludedInLog
+        (openingInputTrace view (proof ordinal).position
+          (.c2Leaf (proof ordinal).c2Value (proof ordinal).sharedSalt)
+          (proof ordinal).c2Siblings) fullLog) :
+    disclosuresAreProjections (preQ16PrefixWords records roots) proof ∨
+      PrefixResolutionLateTargetHit view (exposurePrefixRawQueries records)
+        fullLog roots proof ∨
+      RawLogTruncatedDigestCollision view fullLog := by
+  rcases accepted_openings_yield_prefix_projections_or_late_hit_or_collision
+      view (exposurePrefixRawQueries records) fullLog roots proof accepted
+      prefixIncluded c1SuppliedCovered c2SuppliedCovered with
+    projections | lateHit | collision
+  · exact Or.inl (by
+      rw [preQ16PrefixWords_eq_extract_of_view_agreement records roots view
+        agree]
+      exact projections)
+  · exact Or.inr (Or.inl lateHit)
+  · exact Or.inr (Or.inr collision)
+
 /-- The selected trial index cuts the exact root record list immediately
 before the routed final-work/q16 coordinate. -/
 def exactTrialPreQ16Words
@@ -230,6 +274,7 @@ theorem exactTrialPreQ16Words_eq_of_common_anchor_prior
 #print axioms exposurePrefixRawQueries_member_has_lookup
 #print axioms exposurePrefixTruncate_eq_of_lookup
 #print axioms preQ16PrefixWords_eq_extract_of_view_agreement
+#print axioms accepted_openings_yield_preQ16_projections_or_counted_failure
 #print axioms exactTrialPreQ16Words_eq_of_anchor
 #print axioms exactTrialPreQ16Words_eq_of_common_anchor_prior
 

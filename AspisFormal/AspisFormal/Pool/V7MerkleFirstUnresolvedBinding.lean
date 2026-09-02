@@ -496,11 +496,53 @@ theorem accepted_prefixResolutionFailure_yields_late_hit_or_collision
       exact ⟨target, targetIn, input, pathIncluded input inputInPath,
         inputNotPrefix, inputDigest⟩
     · exact Or.inr collision
+
+/-- An accepted two-tree opening is already a projection of the word fixed by
+the chosen chronological prefix, unless the remaining shared-oracle execution
+hits a first-unresolved 208-bit target or contains a truncated-digest
+collision.  This prefix-agnostic gate also applies when the Fiat--Shamir q16
+coordinate was exposed before prover return. -/
+theorem accepted_openings_yield_prefix_projections_or_late_hit_or_collision
+    (truncateSha256 : RawHashInput → Digest208)
+    (prefixLog fullLog : OrderedRawQueryLog) (roots : Roots)
+    (proof : TwoTreeOpeningProof)
+    (accepted : accepted_two_tree_openings truncateSha256 roots proof)
+    (prefixIncluded : TraceIncludedInLog prefixLog fullLog)
+    (c1SuppliedCovered : ∀ ordinal : Fin disclosedQueryPairs,
+      TraceIncludedInLog
+        (openingInputTrace truncateSha256 (proof ordinal).position
+          (.c1Leaf (proof ordinal).c1Value (proof ordinal).sharedSalt)
+          (proof ordinal).c1Siblings) fullLog)
+    (c2SuppliedCovered : ∀ ordinal : Fin disclosedQueryPairs,
+      TraceIncludedInLog
+        (openingInputTrace truncateSha256 (proof ordinal).position
+          (.c2Leaf (proof ordinal).c2Value (proof ordinal).sharedSalt)
+          (proof ordinal).c2Siblings) fullLog) :
+    disclosuresAreProjections
+        (extractPrefixFixedWords truncateSha256 prefixLog roots) proof ∨
+      PrefixResolutionLateTargetHit truncateSha256 prefixLog fullLog roots
+        proof ∨
+      RawLogTruncatedDigestCollision truncateSha256 fullLog := by
+  by_cases resolutionFailure : PrefixPathResolutionFailure truncateSha256
+      prefixLog roots proof
+  · rcases accepted_prefixResolutionFailure_yields_late_hit_or_collision
+        truncateSha256 prefixLog fullLog roots proof accepted prefixIncluded
+        c1SuppliedCovered c2SuppliedCovered resolutionFailure with
+      lateHit | collision
+    · exact Or.inr (Or.inl lateHit)
+    · exact Or.inr (Or.inr collision)
+  · by_cases collision : RawLogTruncatedDigestCollision truncateSha256 fullLog
+    · exact Or.inr (Or.inr collision)
+    · exact Or.inl (accepted_openings_are_prefix_fixed_projections
+        truncateSha256 prefixLog fullLog roots proof accepted prefixIncluded
+        resolutionFailure c1SuppliedCovered c2SuppliedCovered collision)
+
 #print axioms resolveInput_none_excludes_matching_member
 #print axioms authenticatingPath_of_bottomUpOpening
 #print axioms acceptedC1Opening_yields_authenticatingPath
 #print axioms acceptedC2Opening_yields_authenticatingPath
 #print axioms firstUnresolvedTarget_yields_later_hit_or_collision
 #print axioms accepted_prefixResolutionFailure_yields_late_hit_or_collision
+#print axioms accepted_openings_yield_prefix_projections_or_late_hit_or_collision
 
 end AspisPool.V7MerkleFirstUnresolvedBinding
