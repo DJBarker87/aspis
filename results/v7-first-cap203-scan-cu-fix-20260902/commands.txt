@@ -13,4 +13,4 @@ env NO_DNA=1 ASPIS_TXV1_SOURCE_REVISION=0a2c37b14ff592ecb9884ac97063eff6e721c7b4
 
 # Evidence replay
 (cd results/v7-first-cap203-scan-cu-fix-20260902/live-cutoff20-minimum-draw-withdrawal && shasum -a 256 -c SHA256SUMS)
-jq -e '.classification == "MEASUREMENT GREEN; RELEASE PROMOTION BLOCKED BY FINAL-NONCE FORMAL BRIDGE" and .mainnetReady == false and .liveFinalizedMeasurement.terminal.simulatedCu == .liveFinalizedMeasurement.terminal.landedCu and .liveFinalizedMeasurement.terminal.serializedTransactionBytes < 4096 and .liveFinalizedMeasurement.proof.counter <= .liveFinalizedMeasurement.proof.inclusiveCutoff' results/v7-first-cap203-scan-cu-fix-20260902/summary.json
+jq -e '.classification == "FORMAL PUBLICATION BRIDGE GREEN; RELEASE PROMOTION BLOCKED BY ALL-REACHABLE CU BOUND" and .mainnetReady == false and .liveFinalizedMeasurement.terminal.simulatedCu == .liveFinalizedMeasurement.terminal.landedCu and .liveFinalizedMeasurement.terminal.serializedTransactionBytes < 4096 and .liveFinalizedMeasurement.proof.counter <= .liveFinalizedMeasurement.proof.inclusiveCutoff' results/v7-first-cap203-scan-cu-fix-20260902/summary.json
