@@ -174,6 +174,14 @@ correspondence rather than a misleading cross-version `.olean` import.  The
 machine-readable evidence pins both theorem sets, their axiom audits, the
 source hashes and the byte-exact Rust boundary tests.
 
+After the persisted-state closure and sequential CU review completed, the
+deposit-only switch was added to `v7-pair-forest-one-tx-candidate` on
+2026-09-02. The aggregate itself remains default-off, and Cargo `default`
+remains empty. Promotion adds no writer or decoder implementation: it selects
+the already audited deposit path. The focused replay now also requires direct
+capacity/noncanonical-leaf rejection and alias/token-delta rollback under the
+aggregate feature.
+
 ## Principal theorems
 
 - `hot_decode_success_requires_capability_and_exact_length`

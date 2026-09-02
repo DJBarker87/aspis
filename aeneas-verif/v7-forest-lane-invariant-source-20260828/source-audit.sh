@@ -29,11 +29,11 @@ git -C "$repo_root" merge-base --is-ancestor \
   5bd2e3e433a13f5b3243cf3762b47b34d73abad9 HEAD
 
 test "$(shasum -a 256 "$pair_source" | awk '{print $1}')" = \
-  8cdf153df70c593380fed33c9d8054ee49c9f9d876238126eae3849a3cbc4620
+  d96b352bae081a72d6e887759a356674598e0bf3a177c8d103885f02bc344c30
 test "$(shasum -a 256 "$dispatch_source" | awk '{print $1}')" = \
   3c989ba201b622c01e67edec7cba8b17ba30663b386a4f316e757ff06dad7354
 test "$(shasum -a 256 "$manifest" | awk '{print $1}')" = \
-  4c9c42e6b46b07dec31a013f6fbee0aa5f399af3c7f74071461d116b7d06dc61
+  584b66f4541af3a5ff2d1b1d0fe541737038a9994001e5de76737641b6f61971
 test "$(shasum -a 256 "$pool_verifier_dispatch" | awk '{print $1}')" = \
   7e45910a3d64e328dc234ede290119770e898bcb48f277d978219740ec891514
 test "$(shasum -a 256 "$verifier_manifest" | awk '{print $1}')" = \
@@ -72,11 +72,9 @@ rg -q '^pair-forest-deposit-invariant-audit = \["pair-forest-account-evidence"\]
   "$manifest"
 candidate_features=$(sed -n \
   '/^v7-pair-forest-one-tx-candidate = \[/,/^\]/p' "$manifest")
-if printf '%s\n' "$candidate_features" | rg -q \
-    'pair-forest-deposit-invariant-audit'; then
-  echo 'deposit invariant audit unexpectedly enabled in candidate aggregate' >&2
-  exit 1
-fi
+test "$(printf '%s\n' "$candidate_features" | \
+  rg -c '"pair-forest-deposit-invariant-audit",')" = 1
+rg -q '^default = \[\]$' "$manifest"
 
 for dispatch in \
   process_pair_forest_initialize_with_runtime_v1 \

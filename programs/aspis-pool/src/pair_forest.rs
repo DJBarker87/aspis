@@ -2311,11 +2311,40 @@ mod tests {
             lane,
         );
 
+        // Canonical digest encoding and capacity remain fail-closed even
+        // though this decoder consumes the persisted root/frontier invariant.
+        let root_start = POOL_V1_PAIR_FOREST_LANE_HEADER_BYTES + 16;
+        let canonical_root = account.data[root_start..root_start + 32].to_vec();
+        account.data[root_start..root_start + 4]
+            .copy_from_slice(&aspis_core::field::P.to_le_bytes());
+        assert!(decode_lane_account_from_program_invariant_v1(
+            &program_id,
+            &master,
+            lane_id,
+            &account.info(),
+            true,
+        )
+        .is_err());
+        account.data[root_start..root_start + 32].copy_from_slice(&canonical_root);
+
+        let index_start = POOL_V1_PAIR_FOREST_LANE_HEADER_BYTES + 8;
+        let canonical_index = account.data[index_start..index_start + 8].to_vec();
+        account.data[index_start..index_start + 8]
+            .copy_from_slice(&(POOL_V1_PAIR_CAPACITY + 1).to_le_bytes());
+        assert!(decode_lane_account_from_program_invariant_v1(
+            &program_id,
+            &master,
+            lane_id,
+            &account.info(),
+            true,
+        )
+        .is_err());
+        account.data[index_start..index_start + 8].copy_from_slice(&canonical_index);
+
         // The one explicit boundary is real: a canonical but inconsistent
         // active root is accepted here and rejected by the generic codec.
         // Every invariant-backed caller additionally binds this root to the
         // Pool-owned current history entry before CPI.
-        let root_start = POOL_V1_PAIR_FOREST_LANE_HEADER_BYTES + 16;
         account.data[root_start..root_start + 32]
             .copy_from_slice(&encode_digest_canonical(&digest(90_000)));
         assert!(
@@ -2417,6 +2446,30 @@ mod tests {
                 .unwrap()
                 .0;
         }
+    }
+
+    #[cfg(feature = "pair-forest-deposit-invariant-audit")]
+    #[test]
+    fn deposit_invariant_append_rejects_full_tree_and_noncanonical_leaf() {
+        let master = Pubkey::new_unique();
+        let mut full = lane_state(master, 0).tree;
+        full.next_leaf_index = POOL_V1_PAIR_CAPACITY;
+        assert_eq!(
+            append_pair_leaf_from_program_invariant_v1(&full, digest(50_000)),
+            Err(PoolV1ProgramError::TreeFull.into()),
+        );
+
+        let genesis = lane_state(master, 0).tree;
+        let mut noncanonical = digest(50_001);
+        noncanonical[0] = M31(aspis_core::field::P);
+        assert_eq!(
+            append_pair_leaf_from_program_invariant_v1(&genesis, noncanonical),
+            Err(PoolV1ProgramError::NonCanonicalLeaf.into()),
+        );
+
+        let mut oversized_lane = lane_state(master, 0);
+        oversized_lane.tree.next_leaf_index = POOL_V1_PAIR_CAPACITY + 1;
+        assert!(encode_lane_from_authenticated_result_v1(&oversized_lane).is_err());
     }
 
     #[test]
