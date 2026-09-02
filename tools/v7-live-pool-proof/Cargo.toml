@@ -6,6 +6,12 @@ publish = false
 
 [workspace]
 
+[features]
+# Default-off measurement policy. This forwards only the honest-prover nonce
+# selection feature; verifier, Pool, statement, and wire dependencies are
+# unchanged.
+v7-final-nonce-cutoff-audit = ["aspis-prover/v7-final-nonce-cutoff-audit"]
+
 [dependencies]
 anyhow = "1.0.100"
 aspis-core = { path = "../../crates/aspis-core", features = ["v7-fixed-canonical-audit"] }

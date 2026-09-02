@@ -362,6 +362,12 @@ fn main() -> Result<()> {
         built.proof.pow_valid,
         "production prover returned unmined work"
     );
+    if let Some(cutoff) = built.proof.final_work_counter_cutoff {
+        ensure!(
+            built.proof.compact_counter <= cutoff,
+            "selected compact counter exceeds acknowledged cutoff"
+        );
+    }
     fs::create_dir(&output_dir)?;
     fs::write(output_dir.join("asq8.bin"), &asq8)?;
     fs::write(output_dir.join("asf8.bin"), &asf8)?;
@@ -389,6 +395,15 @@ fn main() -> Result<()> {
             "compactCounter":built.proof.compact_counter,
             "frontierNodes":built.proof.frontier_nodes,
             "canonicalFixedDeltaBytes":aspis_core::v7_fixed_canonical_audit::V7_CANONICAL_FIXED_DELTA_BYTES},
+        "finalNonceSelection":{
+            "enabled":built.proof.final_work_counter_cutoff.is_some(),
+            "maxCompactCounter":built.proof.final_work_counter_cutoff,
+            "validWorkNoncesTested":built.proof.final_work_valid_nonces_tested,
+            "selectedCounter":built.proof.compact_counter,
+            "proofFormatChanged":false,
+            "verifierChanged":false,
+            "formalReleaseApproved":false
+        },
         "proofPayload":{"bytes":built.proof_payload.len(),"sha256":sha256_hex(&built.proof_payload)},
         "elapsedMillis":started.elapsed().as_millis(),
         "deterministicFixtureEntropy":false,"verifierBypass":false,"trustedResultAccount":false

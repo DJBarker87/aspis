@@ -15,6 +15,11 @@ v5-mask = []
 # any production crate or aggregate feature: it exposes fixed attempt entropy
 # so that an expensive full-profile proof can be reproduced byte-for-byte.
 insecure-spend-fixture = []
+# Measurement-only honest-prover policy.  It may search beyond the ordinary
+# minimum valid final-work nonce until the unchanged V7 first-cap-203 schedule
+# lands at or below an explicitly acknowledged counter cutoff.  No verifier,
+# transcript, relation, or proof byte changes are enabled by this feature.
+v7-final-nonce-cutoff-audit = []
 
 [dependencies]
 aspis-core = { path = "../aspis-core" }
