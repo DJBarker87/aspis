@@ -1,4 +1,9 @@
+import AspisFormal.K1.V7Tag73ExactAdversaryAnchorPrefinalChronology
+import AspisFormal.K1.V7Tag73ExactCompilerGammaPrefixCoordinates
+import AspisFormal.K1.V7Tag73ExactDagCandidateLabeledRootRouting
+import AspisFormal.K1.V7Tag73ExactQ16CausalCoordinateOrder
 import AspisFormal.K1.V7Tag73ExactRootLookupCausalOrder
+import AspisFormal.K1.V7Tag73ExactRootRecordOrderLift
 import AspisFormal.K1.V7Tag73SqueezeInputStateInjectivity
 
 /-!
@@ -25,11 +30,22 @@ namespace AspisK1.V7Tag73ExactRootCausalChain
 open AspisK1.V7FsAokExperiment
 open AspisK1.V7Tag73DeterministicRefinement
 open AspisK1.V7Tag73AtomicForkUniformScheduler
+open AspisK1.V7Tag73ExactAdversaryAnchorPrefinalChronology
 open AspisK1.V7Tag73ExactCompilerResources
+open AspisK1.V7Tag73ExactCompilerGammaPrefixCoordinates
+open AspisK1.V7Tag73ExactCompilerFinalWorkTraceOccurrence
+open AspisK1.V7Tag73ExactDagCandidateLabeledRootRouting
+open AspisK1.V7Tag73ExactFixedFullRunFactorization
+open AspisK1.V7Tag73ExactFixedK12MerkleClassifier
 open AspisK1.V7Tag73ExactPlainRomRun
+open AspisK1.V7Tag73ExactQ16CausalCoordinateOrder
 open AspisK1.V7Tag73ExactRootLookupCausalOrder
+open AspisK1.V7Tag73ExactRootRecordOrderLift
+open AspisK1.V7Tag73ExactSourceAcceptanceModel
 open AspisK1.V7Tag73NoPairOccurrenceTrichotomy
+open AspisK1.V7Tag73OperationalSemanticReplay
 open AspisK1.V7Tag73SqueezeInputStateInjectivity
+open AspisK1.V7Tag73SchedulerNativeGammaReplay
 open AspisK1.V7Tag73TranscriptSchedule
 
 noncomputable section
@@ -54,6 +70,395 @@ inductive ExactRetainedDigestChain
       (member : (.machineFresh actor input next : UnifiedExposureRecord) ∈
         prior) :
       ExactRetainedDigestChain prior boundaryInput allowedInput initial next
+
+/-- The lookup-only form of a causal digest chain.  It is extracted directly
+from a successful evaluator run before chronology is used to retain every
+record inside a selected pre-anchor prefix. -/
+inductive ExactLookupDigestChain
+    (table : FixedOracleTable) (boundaryInput : ShaInput)
+    (allowedInput : ShaInput → Prop) : Digest256 → Digest256 → Prop
+  | boundary (initial : Digest256)
+      (lookup : tableLookup table boundaryInput = some initial) :
+      ExactLookupDigestChain table boundaryInput allowedInput initial initial
+  | step (initial current next : Digest256) (input : ShaInput)
+      (chain : ExactLookupDigestChain table boundaryInput allowedInput initial
+        current)
+      (causalPrefix : HasLiteralStatePrefix current input)
+      (allowed : allowedInput input)
+      (lookup : tableLookup table input = some next) :
+      ExactLookupDigestChain table boundaryInput allowedInput initial next
+
+theorem exact_lookup_digest_chain_terminal_lookup
+    {table : FixedOracleTable} {boundaryInput : ShaInput}
+    {allowedInput : ShaInput → Prop} {initial terminal : Digest256}
+    (chain : ExactLookupDigestChain table boundaryInput allowedInput initial
+      terminal) :
+    ∃ input, tableLookup table input = some terminal := by
+  cases chain with
+  | boundary lookup => exact ⟨boundaryInput, lookup⟩
+  | step current next input previous causalPrefix allowed lookup =>
+      exact ⟨input, lookup⟩
+
+/-- State-changing inputs permitted after the C2-root boundary.  Duplex
+advances have the fixed 33-byte shape.  Later absorptions have a label other
+than the unique C2-root label at byte 33. -/
+def IsPostC2StateInput (input : ShaInput) : Prop :=
+  (∃ state : Digest256, input = gammaAdvanceInput state) ∨
+    ∃ (state : Digest256)
+        (payload : AspisK1.V7Tag73TranscriptSchedule.Payload),
+      payload.label ≠ c2RootLabel ∧
+      input = bytes state ++ [domAbsorb, payload.label] ++ payload.data
+
+/-- Event-local grammar condition used while extracting the post-C2 chain. -/
+def IsPostC2MachineEvent : MachineEvent → Prop
+  | .absorb payload => payload.label ≠ c2RootLabel
+  | .challenge _ _ | .grind _ _ | .check _ => True
+
+theorem c2_absorb_input_avoids_post_c2_state_input
+    (before salt : Digest256) (root : Digest208) :
+    ∀ input, IsPostC2StateInput input →
+      bytes before ++ [domAbsorb, c2RootLabel] ++
+          (AspisK1.V7Tag73TranscriptSchedule.Payload.c2Root root salt).data ≠
+        input := by
+  intro input allowed equal
+  rcases allowed with ⟨state, inputExact⟩ |
+      ⟨state, payload, labelNe, inputExact⟩
+  · rw [inputExact] at equal
+    have lengths := congrArg List.length equal
+    simp [gammaAdvanceInput,
+      AspisK1.V7Tag73TranscriptSchedule.Payload.data] at lengths
+  · rw [inputExact] at equal
+    have leftDrop :
+        (bytes before ++ [domAbsorb, c2RootLabel] ++
+          (AspisK1.V7Tag73TranscriptSchedule.Payload.c2Root root salt).data).drop
+            33 =
+          c2RootLabel ::
+            (AspisK1.V7Tag73TranscriptSchedule.Payload.c2Root root salt).data := by
+      convert List.drop_append_length
+        (l₁ := bytes before ++ [domAbsorb])
+        (l₂ := c2RootLabel ::
+          (AspisK1.V7Tag73TranscriptSchedule.Payload.c2Root root salt).data)
+        using 1 <;> simp
+    have rightDrop :
+        (bytes state ++ [domAbsorb, payload.label] ++ payload.data).drop 33 =
+          payload.label :: payload.data := by
+      convert List.drop_append_length
+        (l₁ := bytes state ++ [domAbsorb])
+        (l₂ := payload.label :: payload.data) using 1 <;> simp
+    have dropped := congrArg (List.drop 33) equal
+    rw [leftDrop, rightDrop] at dropped
+    exact labelNe (List.cons.inj dropped).1.symm
+
+/-- Append all state-changing advance halves of one ordered duplex chain to
+an existing lookup chain.  Output halves do not change the transcript state
+and therefore do not appear in this state chain. -/
+theorem exact_lookup_digest_chain_append_ordered_q16
+    {HiddenTape TapeIdentity Observation Statement Payload Result : Type}
+    {parameters : ExactCompilerResourceParameters}
+    {transitionFuel : Nat}
+    {configuration : ExactPlainRomConfiguration HiddenTape TapeIdentity
+      Observation Statement Tag73K12ParsedProof Payload Result parameters}
+    {projection : AcceptedTapeProjection Statement Tag73K12ParsedProof Payload}
+    {fixedInstance : PublicInstance Statement}
+    {sample : ExactCompilerSample HiddenTape parameters}
+    {input : ExactK12OperationalInput transitionFuel configuration projection
+      fixedInstance sample}
+    {boundaryInput : ShaInput} {initial digest : Digest256}
+    (prefixChain : ExactLookupDigestChain (exactOperationalTable input)
+      boundaryInput IsPostC2StateInput initial digest)
+    {producerInput : ShaInput} {outputs advances : List Digest256}
+    (ordered : ExactRootOrderedQ16Chain input producerInput digest outputs
+      advances) :
+    ExactLookupDigestChain (exactOperationalTable input) boundaryInput
+      IsPostC2StateInput initial (gammaTerminalDigest digest advances) := by
+  induction ordered generalizing initial with
+  | done producerInput digest producerFound =>
+      simpa [gammaTerminalDigest] using prefixChain
+  | @next producerInput digest output advanced outputs advances producerFound
+      outputFound advanceFound producerBeforeOutput producerBeforeAdvance tail
+      ih =>
+      have causalPrefix : HasLiteralStatePrefix digest
+          (gammaAdvanceInput digest) := by
+        simp [HasLiteralStatePrefix, gammaAdvanceInput]
+      have allowed : IsPostC2StateInput (gammaAdvanceInput digest) := by
+        exact Or.inl ⟨digest, rfl⟩
+      have advancedPrefix : ExactLookupDigestChain
+          (exactOperationalTable input) boundaryInput IsPostC2StateInput
+          initial advanced :=
+        .step initial digest advanced (gammaAdvanceInput digest) prefixChain
+          causalPrefix allowed advanceFound
+      simpa [gammaTerminalDigest] using ih advancedPrefix
+
+/-- Extend a post-C2 lookup chain across one successful machine event. -/
+theorem exact_lookup_digest_chain_through_machine_event
+    {HiddenTape TapeIdentity Observation Statement Payload Result : Type}
+    {parameters : ExactCompilerResourceParameters}
+    {transitionFuel : Nat}
+    {configuration : ExactPlainRomConfiguration HiddenTape TapeIdentity
+      Observation Statement Tag73K12ParsedProof Payload Result parameters}
+    {projection : AcceptedTapeProjection Statement Tag73K12ParsedProof Payload}
+    {fixedInstance : PublicInstance Statement}
+    {sample : ExactCompilerSample HiddenTape parameters}
+    (transitionRoom : 2 ≤ transitionFuel)
+    (input : ExactK12OperationalInput transitionFuel configuration projection
+      fixedInstance sample)
+    {boundaryInput : ShaInput} {initial : Digest256}
+    (state next : EvalState) (event : MachineEvent)
+    (chain : ExactLookupDigestChain (exactOperationalTable input)
+      boundaryInput IsPostC2StateInput initial state.digest)
+    (allowedEvent : IsPostC2MachineEvent event)
+    (run : runMachineEvent (exactOperationalTable input) state event =
+      some next) :
+    ExactLookupDigestChain (exactOperationalTable input) boundaryInput
+      IsPostC2StateInput initial next.digest := by
+  cases event with
+  | absorb payload =>
+      let absorbInput :=
+        bytes state.digest ++ [domAbsorb, payload.label] ++ payload.data
+      have lookup : tableLookup (exactOperationalTable input) absorbInput =
+          some next.digest := by
+        simpa [absorbInput] using absorb_step_exposes_literal_lookup
+          (exactOperationalTable input) state next payload run
+      have causalPrefix : HasLiteralStatePrefix state.digest absorbInput := by
+        simp [HasLiteralStatePrefix, absorbInput]
+      have allowed : IsPostC2StateInput absorbInput := by
+        unfold IsPostC2MachineEvent at allowedEvent
+        exact Or.inr ⟨state.digest, payload, allowedEvent, rfl⟩
+      exact .step initial state.digest next.digest absorbInput chain causalPrefix
+        allowed lookup
+  | challenge id use =>
+      rw [runMachineEvent] at run
+      obtain ⟨samplePair, squeezeRun, result⟩ :=
+        Option.bind_eq_some_iff.mp run
+      rcases samplePair with ⟨outputs, sampled⟩
+      have nextExact :
+          { sampled with
+              samples := sampled.samples ++ [{ id := id, blocks := outputs }] } =
+            next := by
+        simpa only [pure, Option.some.injEq] using result
+      subst next
+      obtain ⟨advances, _advancesLength, coordinates, terminalExact,
+          _callsExact⟩ :=
+        squeeze_many_coordinates_with_terminal (exactOperationalTable input)
+          (.challenge id) use.blocksUsed state sampled outputs squeezeRun
+      obtain ⟨producerInput, producerLookup⟩ :=
+        exact_lookup_digest_chain_terminal_lookup chain
+      have ordered := gamma_table_coordinate_chain_has_exact_root_order
+        transitionRoom input producerInput state.digest producerLookup
+          coordinates
+      have appended := exact_lookup_digest_chain_append_ordered_q16 chain
+        ordered
+      simpa [terminalExact] using appended
+  | grind stage choice =>
+      have digestExact := grinding_choice_does_not_advance
+        (exactOperationalTable input) state next stage choice run
+      simpa [digestExact] using chain
+  | check checkpoint =>
+      have nextExact : next = state := by
+        simpa [runMachineEvent] using (Option.some.inj run).symm
+      subst next
+      exact chain
+
+/-- Iterate the event-local extraction over a successful post-C2 event list. -/
+theorem exact_lookup_digest_chain_through_machine_events
+    {HiddenTape TapeIdentity Observation Statement Payload Result : Type}
+    {parameters : ExactCompilerResourceParameters}
+    {transitionFuel : Nat}
+    {configuration : ExactPlainRomConfiguration HiddenTape TapeIdentity
+      Observation Statement Tag73K12ParsedProof Payload Result parameters}
+    {projection : AcceptedTapeProjection Statement Tag73K12ParsedProof Payload}
+    {fixedInstance : PublicInstance Statement}
+    {sample : ExactCompilerSample HiddenTape parameters}
+    (transitionRoom : 2 ≤ transitionFuel)
+    (input : ExactK12OperationalInput transitionFuel configuration projection
+      fixedInstance sample)
+    {boundaryInput : ShaInput} {initial : Digest256}
+    (events : List MachineEvent) (state final : EvalState)
+    (chain : ExactLookupDigestChain (exactOperationalTable input)
+      boundaryInput IsPostC2StateInput initial state.digest)
+    (allowedEvents : ∀ event, event ∈ events → IsPostC2MachineEvent event)
+    (run : runMachineEvents (exactOperationalTable input) events state =
+      some final) :
+    ExactLookupDigestChain (exactOperationalTable input) boundaryInput
+      IsPostC2StateInput initial final.digest := by
+  induction events generalizing state with
+  | nil =>
+      have finalExact : final = state := by
+        simpa [runMachineEvents] using (Option.some.inj run).symm
+      subst final
+      exact chain
+  | cons event rest ih =>
+      rw [runMachineEvents] at run
+      obtain ⟨next, eventRun, restRun⟩ := Option.bind_eq_some_iff.mp run
+      have eventAllowed : IsPostC2MachineEvent event :=
+        allowedEvents event (by simp)
+      have nextChain := exact_lookup_digest_chain_through_machine_event
+        transitionRoom input state next event chain eventAllowed eventRun
+      apply ih next nextChain
+      · intro later laterMember
+        exact allowedEvents later (by simp [laterMember])
+      · exact restRun
+
+private theorem mem_prefix_of_strict_record_order
+    {Record : Type} [DecidableEq Record]
+    (records prior anchorLater before middle after : List Record)
+    (first second anchorRecord : Record)
+    (recordsNodup : records.Nodup)
+    (anchorExact : records = prior ++ anchorRecord :: anchorLater)
+    (orderedExact : records =
+      before ++ first :: middle ++ second :: after)
+    (secondMember : second ∈ prior) :
+    first ∈ prior := by
+  obtain ⟨insideBefore, insideAfter, priorExact⟩ :=
+    (List.mem_iff_append).mp secondMember
+  have secondPivotExact : records =
+      insideBefore ++ second :: (insideAfter ++ anchorRecord :: anchorLater) := by
+    rw [anchorExact, priorExact]
+    simp only [List.cons_append, List.append_assoc]
+  have orderedExact' : records =
+      (before ++ first :: middle) ++ second :: after := by
+    simpa only [List.cons_append, List.append_assoc] using orderedExact
+  have prefixExact : insideBefore = before ++ first :: middle :=
+    nodup_equal_pivot_prefixes second insideBefore
+      (insideAfter ++ anchorRecord :: anchorLater)
+      (before ++ first :: middle) after
+      (by simpa only [← secondPivotExact] using recordsNodup)
+      (secondPivotExact.symm.trans orderedExact')
+  rw [priorExact, prefixExact]
+  simp
+
+private theorem equal_answer_root_records
+    {HiddenTape TapeIdentity Observation Statement Payload Result : Type}
+    {parameters : ExactCompilerResourceParameters}
+    {transitionFuel : Nat}
+    {configuration : ExactPlainRomConfiguration HiddenTape TapeIdentity
+      Observation Statement Tag73K12ParsedProof Payload Result parameters}
+    {projection : AcceptedTapeProjection Statement Tag73K12ParsedProof Payload}
+    {fixedInstance : PublicInstance Statement}
+    {sample : ExactCompilerSample HiddenTape parameters}
+    (input : ExactK12OperationalInput transitionFuel configuration projection
+      fixedInstance sample)
+    {leftActor rightActor : QueryActor} {leftInput rightInput : ShaInput}
+    {answer : Digest256}
+    (leftMember :
+      (.machineFresh leftActor leftInput answer : UnifiedExposureRecord) ∈
+        exactFixedRootRecords input.package.root)
+    (rightMember :
+      (.machineFresh rightActor rightInput answer : UnifiedExposureRecord) ∈
+        exactFixedRootRecords input.package.root) :
+    (.machineFresh leftActor leftInput answer : UnifiedExposureRecord) =
+      .machineFresh rightActor rightInput answer := by
+  exact List.inj_on_of_nodup_map (exact_root_record_answers_nodup input)
+    leftMember rightMember rfl
+
+/-- A lookup-only causal chain whose terminal answer feeds a retained consumer
+can be moved wholesale into that consumer's canonical pre-anchor prefix. -/
+theorem exact_lookup_digest_chain_retained_before_consumer
+    {HiddenTape TapeIdentity Observation Statement Payload Result : Type}
+    {parameters : ExactCompilerResourceParameters}
+    {transitionFuel : Nat}
+    {configuration : ExactPlainRomConfiguration HiddenTape TapeIdentity
+      Observation Statement Tag73K12ParsedProof Payload Result parameters}
+    {projection : AcceptedTapeProjection Statement Tag73K12ParsedProof Payload}
+    {fixedInstance : PublicInstance Statement}
+    {sample : ExactCompilerSample HiddenTape parameters}
+    (transitionRoom : 2 ≤ transitionFuel)
+    (input : ExactK12OperationalInput transitionFuel configuration projection
+      fixedInstance sample)
+    (prior anchorLater : List UnifiedExposureRecord)
+    (anchorRecord : UnifiedExposureRecord)
+    (anchorExact : exactFixedRootRecords input.package.root =
+      prior ++ anchorRecord :: anchorLater)
+    {boundaryInput : ShaInput} {allowedInput : ShaInput → Prop}
+    {initial terminal : Digest256}
+    (chain : ExactLookupDigestChain (exactOperationalTable input)
+      boundaryInput allowedInput initial terminal)
+    (consumerInput : ShaInput) (consumerAnswer : Digest256)
+    (consumerActor : QueryActor)
+    (consumerLookup : tableLookup (exactOperationalTable input) consumerInput =
+      some consumerAnswer)
+    (consumerMember :
+      (.machineFresh consumerActor consumerInput consumerAnswer :
+        UnifiedExposureRecord) ∈ prior)
+    (terminalPrefix : HasLiteralStatePrefix terminal consumerInput) :
+    ExactRetainedDigestChain prior boundaryInput allowedInput initial
+      terminal := by
+  classical
+  induction chain generalizing consumerInput consumerAnswer consumerActor with
+  | boundary boundaryLookup =>
+      obtain ⟨before, middle, after, pairOrder⟩ :=
+        exact_compiler_literal_dependency_has_strict_root_order transitionRoom
+          input boundaryInput consumerInput initial consumerAnswer
+          boundaryLookup consumerLookup terminalPrefix
+      obtain ⟨beforeRecords, middleRecords, afterRecords, boundaryActor,
+          orderedConsumerActor, recordOrder⟩ :=
+        exact_root_pair_order_lifts_to_records input boundaryInput
+          consumerInput initial consumerAnswer before middle after pairOrder
+      have orderedConsumerRootMember :
+          (.machineFresh orderedConsumerActor consumerInput consumerAnswer :
+            UnifiedExposureRecord) ∈ exactFixedRootRecords input.package.root := by
+        rw [recordOrder]
+        simp
+      have consumerRootMember :
+          (.machineFresh consumerActor consumerInput consumerAnswer :
+            UnifiedExposureRecord) ∈ exactFixedRootRecords input.package.root := by
+        rw [anchorExact]
+        exact List.mem_append_left _ consumerMember
+      have consumerRecordExact := equal_answer_root_records input
+        orderedConsumerRootMember consumerRootMember
+      have orderedConsumerMember :
+          (.machineFresh orderedConsumerActor consumerInput consumerAnswer :
+            UnifiedExposureRecord) ∈ prior := by
+        simpa [consumerRecordExact] using consumerMember
+      have rootNodup : (exactFixedRootRecords input.package.root).Nodup :=
+        List.Nodup.of_map UnifiedExposureRecord.answer
+          (exact_root_record_answers_nodup input)
+      have boundaryMember := mem_prefix_of_strict_record_order
+        (exactFixedRootRecords input.package.root) prior anchorLater
+        beforeRecords middleRecords afterRecords
+        (.machineFresh boundaryActor boundaryInput initial)
+        (.machineFresh orderedConsumerActor consumerInput consumerAnswer)
+        anchorRecord rootNodup anchorExact recordOrder orderedConsumerMember
+      exact .boundary initial boundaryActor boundaryMember
+  | step current next stepInput previous causalPrefix allowed
+      stepLookup ih =>
+      obtain ⟨before, middle, after, pairOrder⟩ :=
+        exact_compiler_literal_dependency_has_strict_root_order transitionRoom
+          input stepInput consumerInput next consumerAnswer stepLookup
+          consumerLookup terminalPrefix
+      obtain ⟨beforeRecords, middleRecords, afterRecords, stepActor,
+          orderedConsumerActor, recordOrder⟩ :=
+        exact_root_pair_order_lifts_to_records input stepInput consumerInput
+          next consumerAnswer before middle after pairOrder
+      have orderedConsumerRootMember :
+          (.machineFresh orderedConsumerActor consumerInput consumerAnswer :
+            UnifiedExposureRecord) ∈ exactFixedRootRecords input.package.root := by
+        rw [recordOrder]
+        simp
+      have consumerRootMember :
+          (.machineFresh consumerActor consumerInput consumerAnswer :
+            UnifiedExposureRecord) ∈ exactFixedRootRecords input.package.root := by
+        rw [anchorExact]
+        exact List.mem_append_left _ consumerMember
+      have consumerRecordExact := equal_answer_root_records input
+        orderedConsumerRootMember consumerRootMember
+      have orderedConsumerMember :
+          (.machineFresh orderedConsumerActor consumerInput consumerAnswer :
+            UnifiedExposureRecord) ∈ prior := by
+        simpa [consumerRecordExact] using consumerMember
+      have rootNodup : (exactFixedRootRecords input.package.root).Nodup :=
+        List.Nodup.of_map UnifiedExposureRecord.answer
+          (exact_root_record_answers_nodup input)
+      have stepMember := mem_prefix_of_strict_record_order
+        (exactFixedRootRecords input.package.root) prior anchorLater
+        beforeRecords middleRecords afterRecords
+        (.machineFresh stepActor stepInput next)
+        (.machineFresh orderedConsumerActor consumerInput consumerAnswer)
+        anchorRecord rootNodup anchorExact recordOrder orderedConsumerMember
+      have retainedPrevious := ih stepInput next stepActor stepLookup stepMember
+        causalPrefix
+      exact .step initial current next stepInput stepActor retainedPrevious
+        causalPrefix allowed stepMember
 
 private theorem equal_answer_records_fix_input
     {prior : List UnifiedExposureRecord}
@@ -149,6 +554,10 @@ theorem exact_retained_digest_chains_boundary_input_eq
           exact ih rightPrevious leftBoundaryAvoidsRight
             rightBoundaryAvoidsLeft
 
+#print axioms exact_lookup_digest_chain_retained_before_consumer
+#print axioms exact_lookup_digest_chain_append_ordered_q16
+#print axioms exact_lookup_digest_chain_through_machine_event
+#print axioms exact_lookup_digest_chain_through_machine_events
 #print axioms exact_retained_digest_chains_boundary_input_eq
 
 end
