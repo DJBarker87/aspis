@@ -2,6 +2,7 @@ import AspisFormal.K1.V7Tag73ExactPairCoordinateProfileInvariant
 import AspisFormal.K1.V7Tag73ExactCompilerGammaPrefixCoordinates
 import AspisFormal.K1.V7Tag73ExactQ16CausalCoordinateOrder
 import AspisFormal.K1.V7Tag73ExactFinal256DigestRootOrigin
+import AspisFormal.K1.V7Tag73ExactRootCausalChain
 
 /-!
 # Root order through the accepted linear Tag-73 transcript
@@ -29,6 +30,7 @@ open AspisK1.V7Tag73ExactPairCoordinateProfileInvariant
 open AspisK1.V7Tag73ExactPlainRomRun
 open AspisK1.V7Tag73ExactQ16CausalCoordinateOrder
 open AspisK1.V7Tag73ExactRootFreshInputUniqueness
+open AspisK1.V7Tag73ExactRootCausalChain
 open AspisK1.V7Tag73ExactRootLookupCausalOrder
 open AspisK1.V7Tag73ExactSourceAcceptanceModel
 open AspisK1.V7Tag73NoPairOccurrenceTrichotomy
@@ -460,7 +462,15 @@ theorem exact_operational_root_absorbs_before_final256
       ExactRootPairBefore input (c1Input, c1Answer)
         (nonceInput, q16Base) ∧
       ExactRootPairBefore input (c2Input, c2Answer)
-        (nonceInput, q16Base) := by
+        (nonceInput, q16Base) ∧
+      ExactRootPairBefore input (final256Input, prefinalDigest)
+        (workInput, workAnswer) ∧
+      ExactRootPairBefore input (final256Input, prefinalDigest)
+        (nonceInput, q16Base) ∧
+      ExactLookupDigestChain (exactOperationalTable input) c2Input
+        IsPostC2StateInput c2Answer beforeFinal256.digest ∧
+      ExactLookupDigestChain (exactOperationalTable input) c1Input
+        IsPostC1StateInput c1Answer beforeFinal256.digest := by
   have strict := input.package.root.fixedRoot.base.strictRefinement
   have refined := (checked_refinement_is_well_formed
     (exactOperationalTable input) exactDeterministicDecoders
@@ -642,12 +652,54 @@ theorem exact_operational_root_absorbs_before_final256
     final256BeforeNonce
   have c2BeforeNonce := exact_root_pair_before_trans c2BeforeFinal256
     final256BeforeNonce
+  have initialChain : ExactLookupDigestChain (exactOperationalTable input)
+      c2Input IsPostC2StateInput afterC2.digest afterC2.digest :=
+    .boundary afterC2.digest c2Lookup
+  have fullChain := exact_lookup_digest_chain_through_machine_events
+    transitionRoom input
+    (prefixAfterC2BeforeFinal256 (exactOperationalTape input).messages)
+    afterC2 beforeFinal256 initialChain
+    (prefix_after_c2_before_final256_is_post_c2
+      (exactOperationalTape input).messages) beforeFinal256Run
+  have initialC1Chain : ExactLookupDigestChain (exactOperationalTable input)
+      c1Input IsPostC1StateInput afterC1.digest afterC1.digest :=
+    .boundary afterC1.digest c1Lookup
+  have phaseChain := exact_lookup_digest_chain_through_machine_events
+    transitionRoom input
+    [challengeEvent (exactOperationalTape input).messages .lambda,
+     challengeEvent (exactOperationalTape input).messages .chi]
+    afterC1 afterPhaseChallenges initialC1Chain (by
+      intro event member
+      simp [IsPostC1MachineEvent, IsPostRootMachineEvent] at member ⊢
+      rcases member with rfl | rfl <;> trivial) phaseRun
+  have c2CausalPrefix : HasLiteralStatePrefix afterPhaseChallenges.digest
+      c2Input := by
+    unfold HasLiteralStatePrefix c2Input
+    rw [c2BeforeExact]
+    simp
+  have c2AllowedForC1 : IsPostC1StateInput c2Input := by
+    exact Or.inr ⟨withC2SaltQuery.digest,
+      AspisK1.V7Tag73TranscriptSchedule.Payload.c2Root
+        (exactOperationalTape input).messages.c2.root c2Salt,
+      by simp [AspisK1.V7Tag73TranscriptSchedule.Payload.label, c1RootLabel,
+        c2RootLabel], rfl⟩
+  have afterC2Chain : ExactLookupDigestChain (exactOperationalTable input)
+      c1Input IsPostC1StateInput afterC1.digest afterC2.digest :=
+    .step afterC1.digest afterPhaseChallenges.digest afterC2.digest c2Input
+      phaseChain c2CausalPrefix c2AllowedForC1 c2Lookup
+  have fullC1Chain := exact_lookup_digest_chain_through_machine_events
+    transitionRoom input
+    (prefixAfterC2BeforeFinal256 (exactOperationalTape input).messages)
+    afterC2 beforeFinal256 afterC2Chain
+    (prefix_after_c2_before_final256_is_post_c1
+      (exactOperationalTape input).messages) beforeFinal256Run
   exact ⟨withC1SaltQuery.digest, withC2SaltQuery.digest, c1Salt, c2Salt,
     afterC1.digest, afterC2.digest, beforeFinal256, beforeFinalWork.digest,
     workAnswer, prefixState.digest, c1Lookup, c2Lookup, final256Lookup,
     workLookup, workAccepted, nonceLookup, q16BaseExact, c1BeforeFinal256,
     c2BeforeFinal256, c1BeforeWork, c2BeforeWork, c1BeforeNonce,
-    c2BeforeNonce⟩
+    c2BeforeNonce, final256BeforeWork, final256BeforeNonce, fullChain,
+    fullC1Chain⟩
 
 #print axioms exact_root_fresh_queries_nodup
 #print axioms exact_root_pair_before_trans

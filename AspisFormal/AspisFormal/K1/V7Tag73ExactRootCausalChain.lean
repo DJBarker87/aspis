@@ -1,6 +1,7 @@
 import AspisFormal.K1.V7Tag73ExactAdversaryAnchorPrefinalChronology
 import AspisFormal.K1.V7Tag73ExactCompilerGammaPrefixCoordinates
 import AspisFormal.K1.V7Tag73ExactDagCandidateLabeledRootRouting
+import AspisFormal.K1.V7Tag73ExactFinal256DigestRootOrigin
 import AspisFormal.K1.V7Tag73ExactQ16CausalCoordinateOrder
 import AspisFormal.K1.V7Tag73ExactRootLookupCausalOrder
 import AspisFormal.K1.V7Tag73ExactRootRecordOrderLift
@@ -37,6 +38,7 @@ open AspisK1.V7Tag73ExactCompilerFinalWorkTraceOccurrence
 open AspisK1.V7Tag73ExactDagCandidateLabeledRootRouting
 open AspisK1.V7Tag73ExactFixedFullRunFactorization
 open AspisK1.V7Tag73ExactFixedK12MerkleClassifier
+open AspisK1.V7Tag73ExactFinal256DigestRootOrigin
 open AspisK1.V7Tag73ExactPlainRomRun
 open AspisK1.V7Tag73ExactQ16CausalCoordinateOrder
 open AspisK1.V7Tag73ExactRootLookupCausalOrder
@@ -99,46 +101,70 @@ theorem exact_lookup_digest_chain_terminal_lookup
   | step current next input previous causalPrefix allowed lookup =>
       exact ⟨input, lookup⟩
 
-/-- State-changing inputs permitted after the C2-root boundary.  Duplex
-advances have the fixed 33-byte shape.  Later absorptions have a label other
-than the unique C2-root label at byte 33. -/
-def IsPostC2StateInput (input : ShaInput) : Prop :=
+/-- State-changing inputs permitted after an absorption boundary with the
+given forbidden label.  Duplex advances have their fixed shape; later
+absorptions must use a different label. -/
+def IsPostRootStateInput (forbiddenLabel : UInt8) (input : ShaInput) : Prop :=
   (∃ state : Digest256, input = gammaAdvanceInput state) ∨
     ∃ (state : Digest256)
         (payload : AspisK1.V7Tag73TranscriptSchedule.Payload),
-      payload.label ≠ c2RootLabel ∧
+      payload.label ≠ forbiddenLabel ∧
       input = bytes state ++ [domAbsorb, payload.label] ++ payload.data
 
-/-- Event-local grammar condition used while extracting the post-C2 chain. -/
-def IsPostC2MachineEvent : MachineEvent → Prop
-  | .absorb payload => payload.label ≠ c2RootLabel
+/-- Event-local grammar condition used while extracting a post-root chain. -/
+def IsPostRootMachineEvent (forbiddenLabel : UInt8) : MachineEvent → Prop
+  | .absorb payload => payload.label ≠ forbiddenLabel
   | .challenge _ _ | .grind _ _ | .check _ => True
 
-theorem c2_absorb_input_avoids_post_c2_state_input
-    (before salt : Digest256) (root : Digest208) :
-    ∀ input, IsPostC2StateInput input →
-      bytes before ++ [domAbsorb, c2RootLabel] ++
-          (AspisK1.V7Tag73TranscriptSchedule.Payload.c2Root root salt).data ≠
-        input := by
+abbrev IsPostC2StateInput := IsPostRootStateInput c2RootLabel
+abbrev IsPostC2MachineEvent := IsPostRootMachineEvent c2RootLabel
+abbrev IsPostC1StateInput := IsPostRootStateInput c1RootLabel
+abbrev IsPostC1MachineEvent := IsPostRootMachineEvent c1RootLabel
+
+theorem prefix_after_c2_before_final256_is_post_c2
+    (messages : Messages) :
+    ∀ event, event ∈ prefixAfterC2BeforeFinal256 messages →
+      IsPostC2MachineEvent event := by
+  simp [prefixAfterC2BeforeFinal256, semanticEvents, oodEvents,
+    IsPostC2MachineEvent, IsPostRootMachineEvent, challengeEvent,
+    AspisK1.V7Tag73TranscriptSchedule.Payload.label, c2RootLabel,
+    constraintRegistryLabel, helperSumLabel, initialMaskClaimLabel,
+    semanticRoundLabel, pointClaimsLabel, batchWorkNonceLabel,
+    inactiveClaimLabel, circleOodValueLabel, relationRoundLabel,
+    foldWorkNonceLabel]
+
+theorem prefix_after_c2_before_final256_is_post_c1
+    (messages : Messages) :
+    ∀ event, event ∈ prefixAfterC2BeforeFinal256 messages →
+      IsPostC1MachineEvent event := by
+  simp [prefixAfterC2BeforeFinal256, semanticEvents, oodEvents,
+    IsPostC1MachineEvent, IsPostRootMachineEvent, challengeEvent,
+    AspisK1.V7Tag73TranscriptSchedule.Payload.label, c1RootLabel,
+    constraintRegistryLabel, helperSumLabel, initialMaskClaimLabel,
+    semanticRoundLabel, pointClaimsLabel, batchWorkNonceLabel,
+    inactiveClaimLabel, circleOodValueLabel, relationRoundLabel,
+    foldWorkNonceLabel]
+
+theorem absorb_input_avoids_post_root_state_input
+    (forbiddenLabel : UInt8) (before : Digest256)
+    (boundaryData : ByteString) (boundaryNonempty : boundaryData ≠ []) :
+    ∀ input, IsPostRootStateInput forbiddenLabel input →
+      bytes before ++ [domAbsorb, forbiddenLabel] ++ boundaryData ≠ input := by
   intro input allowed equal
   rcases allowed with ⟨state, inputExact⟩ |
       ⟨state, payload, labelNe, inputExact⟩
   · rw [inputExact] at equal
     have lengths := congrArg List.length equal
-    simp [gammaAdvanceInput,
-      AspisK1.V7Tag73TranscriptSchedule.Payload.data] at lengths
+    simp [gammaAdvanceInput] at lengths
+    have emptyLength : boundaryData.length = 0 := by omega
+    exact boundaryNonempty (List.length_eq_zero_iff.mp emptyLength)
   · rw [inputExact] at equal
     have leftDrop :
-        (bytes before ++ [domAbsorb, c2RootLabel] ++
-          (AspisK1.V7Tag73TranscriptSchedule.Payload.c2Root root salt).data).drop
-            33 =
-          c2RootLabel ::
-            (AspisK1.V7Tag73TranscriptSchedule.Payload.c2Root root salt).data := by
+        (bytes before ++ [domAbsorb, forbiddenLabel] ++ boundaryData).drop 33 =
+          forbiddenLabel :: boundaryData := by
       convert List.drop_append_length
         (l₁ := bytes before ++ [domAbsorb])
-        (l₂ := c2RootLabel ::
-          (AspisK1.V7Tag73TranscriptSchedule.Payload.c2Root root salt).data)
-        using 1 <;> simp
+        (l₂ := forbiddenLabel :: boundaryData) using 1 <;> simp
     have rightDrop :
         (bytes state ++ [domAbsorb, payload.label] ++ payload.data).drop 33 =
           payload.label :: payload.data := by
@@ -148,6 +174,18 @@ theorem c2_absorb_input_avoids_post_c2_state_input
     have dropped := congrArg (List.drop 33) equal
     rw [leftDrop, rightDrop] at dropped
     exact labelNe (List.cons.inj dropped).1.symm
+
+theorem c2_absorb_input_avoids_post_c2_state_input
+    (before salt : Digest256) (root : Digest208) :
+    ∀ input, IsPostC2StateInput input →
+      bytes before ++ [domAbsorb, c2RootLabel] ++
+          (AspisK1.V7Tag73TranscriptSchedule.Payload.c2Root root salt).data ≠
+        input :=
+  absorb_input_avoids_post_root_state_input c2RootLabel before
+    (AspisK1.V7Tag73TranscriptSchedule.Payload.c2Root root salt).data (by
+      intro empty
+      have lengths := congrArg List.length empty
+      simp [AspisK1.V7Tag73TranscriptSchedule.Payload.data] at lengths)
 
 /-- Append all state-changing advance halves of one ordered duplex chain to
 an existing lookup chain.  Output halves do not change the transcript state
@@ -163,14 +201,16 @@ theorem exact_lookup_digest_chain_append_ordered_q16
     {sample : ExactCompilerSample HiddenTape parameters}
     {input : ExactK12OperationalInput transitionFuel configuration projection
       fixedInstance sample}
-    {boundaryInput : ShaInput} {initial digest : Digest256}
+    {forbiddenLabel : UInt8} {boundaryInput : ShaInput}
+    {initial digest : Digest256}
     (prefixChain : ExactLookupDigestChain (exactOperationalTable input)
-      boundaryInput IsPostC2StateInput initial digest)
+      boundaryInput (IsPostRootStateInput forbiddenLabel) initial digest)
     {producerInput : ShaInput} {outputs advances : List Digest256}
     (ordered : ExactRootOrderedQ16Chain input producerInput digest outputs
       advances) :
     ExactLookupDigestChain (exactOperationalTable input) boundaryInput
-      IsPostC2StateInput initial (gammaTerminalDigest digest advances) := by
+      (IsPostRootStateInput forbiddenLabel) initial
+        (gammaTerminalDigest digest advances) := by
   induction ordered generalizing initial with
   | done producerInput digest producerFound =>
       simpa [gammaTerminalDigest] using prefixChain
@@ -180,11 +220,12 @@ theorem exact_lookup_digest_chain_append_ordered_q16
       have causalPrefix : HasLiteralStatePrefix digest
           (gammaAdvanceInput digest) := by
         simp [HasLiteralStatePrefix, gammaAdvanceInput]
-      have allowed : IsPostC2StateInput (gammaAdvanceInput digest) := by
+      have allowed : IsPostRootStateInput forbiddenLabel
+          (gammaAdvanceInput digest) := by
         exact Or.inl ⟨digest, rfl⟩
       have advancedPrefix : ExactLookupDigestChain
-          (exactOperationalTable input) boundaryInput IsPostC2StateInput
-          initial advanced :=
+          (exactOperationalTable input) boundaryInput
+          (IsPostRootStateInput forbiddenLabel) initial advanced :=
         .step initial digest advanced (gammaAdvanceInput digest) prefixChain
           causalPrefix allowed advanceFound
       simpa [gammaTerminalDigest] using ih advancedPrefix
@@ -202,15 +243,16 @@ theorem exact_lookup_digest_chain_through_machine_event
     (transitionRoom : 2 ≤ transitionFuel)
     (input : ExactK12OperationalInput transitionFuel configuration projection
       fixedInstance sample)
-    {boundaryInput : ShaInput} {initial : Digest256}
+    {forbiddenLabel : UInt8} {boundaryInput : ShaInput}
+    {initial : Digest256}
     (state next : EvalState) (event : MachineEvent)
     (chain : ExactLookupDigestChain (exactOperationalTable input)
-      boundaryInput IsPostC2StateInput initial state.digest)
-    (allowedEvent : IsPostC2MachineEvent event)
+      boundaryInput (IsPostRootStateInput forbiddenLabel) initial state.digest)
+    (allowedEvent : IsPostRootMachineEvent forbiddenLabel event)
     (run : runMachineEvent (exactOperationalTable input) state event =
       some next) :
     ExactLookupDigestChain (exactOperationalTable input) boundaryInput
-      IsPostC2StateInput initial next.digest := by
+      (IsPostRootStateInput forbiddenLabel) initial next.digest := by
   cases event with
   | absorb payload =>
       let absorbInput :=
@@ -221,8 +263,8 @@ theorem exact_lookup_digest_chain_through_machine_event
           (exactOperationalTable input) state next payload run
       have causalPrefix : HasLiteralStatePrefix state.digest absorbInput := by
         simp [HasLiteralStatePrefix, absorbInput]
-      have allowed : IsPostC2StateInput absorbInput := by
-        unfold IsPostC2MachineEvent at allowedEvent
+      have allowed : IsPostRootStateInput forbiddenLabel absorbInput := by
+        unfold IsPostRootMachineEvent at allowedEvent
         exact Or.inr ⟨state.digest, payload, allowedEvent, rfl⟩
       exact .step initial state.digest next.digest absorbInput chain causalPrefix
         allowed lookup
@@ -272,15 +314,17 @@ theorem exact_lookup_digest_chain_through_machine_events
     (transitionRoom : 2 ≤ transitionFuel)
     (input : ExactK12OperationalInput transitionFuel configuration projection
       fixedInstance sample)
-    {boundaryInput : ShaInput} {initial : Digest256}
+    {forbiddenLabel : UInt8} {boundaryInput : ShaInput}
+    {initial : Digest256}
     (events : List MachineEvent) (state final : EvalState)
     (chain : ExactLookupDigestChain (exactOperationalTable input)
-      boundaryInput IsPostC2StateInput initial state.digest)
-    (allowedEvents : ∀ event, event ∈ events → IsPostC2MachineEvent event)
+      boundaryInput (IsPostRootStateInput forbiddenLabel) initial state.digest)
+    (allowedEvents : ∀ event, event ∈ events →
+      IsPostRootMachineEvent forbiddenLabel event)
     (run : runMachineEvents (exactOperationalTable input) events state =
       some final) :
     ExactLookupDigestChain (exactOperationalTable input) boundaryInput
-      IsPostC2StateInput initial final.digest := by
+      (IsPostRootStateInput forbiddenLabel) initial final.digest := by
   induction events generalizing state with
   | nil =>
       have finalExact : final = state := by
@@ -290,7 +334,7 @@ theorem exact_lookup_digest_chain_through_machine_events
   | cons event rest ih =>
       rw [runMachineEvents] at run
       obtain ⟨next, eventRun, restRun⟩ := Option.bind_eq_some_iff.mp run
-      have eventAllowed : IsPostC2MachineEvent event :=
+      have eventAllowed : IsPostRootMachineEvent forbiddenLabel event :=
         allowedEvents event (by simp)
       have nextChain := exact_lookup_digest_chain_through_machine_event
         transitionRoom input state next event chain eventAllowed eventRun
@@ -479,7 +523,7 @@ private theorem equal_answer_records_fix_input
     rfl
   injection recordExact
 
-private theorem literal_prefix_input_eq_fixes_digest
+theorem literal_prefix_input_eq_fixes_digest
     {leftDigest rightDigest : Digest256} {leftInput rightInput : ShaInput}
     (leftPrefix : HasLiteralStatePrefix leftDigest leftInput)
     (rightPrefix : HasLiteralStatePrefix rightDigest rightInput)
