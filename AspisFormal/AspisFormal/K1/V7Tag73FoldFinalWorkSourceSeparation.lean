@@ -29,6 +29,7 @@ open AspisK1.V7Tag73CausalFoldAlphaFinalWorkQ16Probability
 open AspisK1.V7Tag73DeterministicRefinement
 open AspisK1.V7Tag73ExactCompilerFinalWorkTraceOccurrence
 open AspisK1.V7Tag73ExactCompilerFoldWorkTraceOccurrence
+open AspisK1.V7Tag73ExactCompilerGammaPrefixCoordinates
 open AspisK1.V7Tag73ExactCompilerGammaTraceOccurrence
 open AspisK1.V7Tag73ExactCompilerResources
 open AspisK1.V7Tag73ExactClientKnowledgeComposition
@@ -117,7 +118,8 @@ theorem exact_operational_relation_zero_and_fold_work_lookups
     (input : ExactK12OperationalInput transitionFuel configuration projection
       fixedInstance sample) :
     ∃ (beforeRelation : EvalState)
-        (foldDigest workAnswer boundaryAnswer : Digest256),
+        (foldDigest workAnswer boundaryAnswer : Digest256)
+        (outputs advances : List Digest256),
       tableLookup (exactOperationalTable input)
           (bytes beforeRelation.digest ++
             [domAbsorb,
@@ -134,7 +136,9 @@ theorem exact_operational_relation_zero_and_fold_work_lookups
       tableLookup (exactOperationalTable input)
           (bytes foldDigest ++ [domAbsorb, foldWorkNonceLabel, 0] ++
             bytes (exactOperationalTape input).messages.foldGrinding.selected) =
-        some boundaryAnswer := by
+        some boundaryAnswer ∧
+      GammaTableCoordinateChain (exactOperationalTable input) boundaryAnswer
+        outputs advances := by
   have strict := input.package.root.fixedRoot.base.strictRefinement
   have refined := (checked_refinement_is_well_formed
     (exactOperationalTable input) exactDeterministicDecoders
@@ -190,8 +194,20 @@ theorem exact_operational_relation_zero_and_fold_work_lookups
   have afterFoldCheckExact : afterFoldCheck = afterFoldGrind := by
     simpa [runMachineEvent] using (Option.some.inj foldCheckRun).symm
   subst afterFoldCheck
-  obtain ⟨afterFoldNonce, foldNonceRun, _suffixRun⟩ :=
+  obtain ⟨afterFoldNonce, foldNonceRun, suffixRun⟩ :=
     Option.bind_eq_some_iff.mp suffixRun
+  obtain ⟨afterAlpha, alphaRun, _suffixRun⟩ :=
+    Option.bind_eq_some_iff.mp suffixRun
+  simp only [runMachineEvent] at alphaRun
+  obtain ⟨alphaPair, squeezeRun, _alphaDone⟩ :=
+    Option.bind_eq_some_iff.mp alphaRun
+  rcases alphaPair with ⟨outputs, afterBlocks⟩
+  obtain ⟨advances, _advancesLength, coordinates, _terminalExact,
+      _callsExact⟩ :=
+    squeeze_many_coordinates_with_terminal (exactOperationalTable input)
+      (.challenge (.alpha 0))
+      ((exactOperationalTape input).messages.challengeUse
+        (.alpha 0)).blocksUsed afterFoldNonce afterBlocks outputs squeezeRun
   obtain ⟨workAnswer, workLookup, workAccepted⟩ :=
     run_grinding_choice_exposes_selected_lookup
       (exactOperationalTable input) beforeFoldWork afterFoldGrind .fold
@@ -206,9 +222,11 @@ theorem exact_operational_relation_zero_and_fold_work_lookups
       (exactOperationalTape input).messages.foldGrinding.selected) foldNonceRun
   rw [stableDigest] at boundaryLookup
   exact ⟨beforeRelation, beforeFoldWork.digest, workAnswer,
-    afterFoldNonce.digest, relationLookup, workLookup, workAccepted, by
+    afterFoldNonce.digest, outputs, advances, relationLookup, workLookup,
+    workAccepted, by
       simpa [AspisK1.V7Tag73TranscriptSchedule.Payload.label,
-        AspisK1.V7Tag73TranscriptSchedule.Payload.data] using boundaryLookup⟩
+        AspisK1.V7Tag73TranscriptSchedule.Payload.data] using boundaryLookup,
+    coordinates⟩
 
 @[simp] theorem relation_zero_absorb_input_length
     (digest : Digest256) (relation : Fin 6 → Qm31Bytes) :
@@ -257,7 +275,8 @@ theorem exact_fold_digest_ne_final_digest
       FinalWork34Accepted finalAnswer ∧
       foldDigest ≠ finalDigest := by
   obtain ⟨beforeRelation, foldDigest, foldAnswer, _boundaryAnswer,
-      relationLookup, foldLookup, foldAccepted, _boundaryLookup⟩ :=
+      _outputs, _advances, relationLookup, foldLookup, foldAccepted,
+      _boundaryLookup, _coordinates⟩ :=
     exact_operational_relation_zero_and_fold_work_lookups input
   obtain ⟨beforeFinal256, finalDigest, finalAnswer, _q16Base, final256Lookup,
       finalLookup, finalAccepted, _absorbLookup, _baseExact, _prefixRun⟩ :=
@@ -377,7 +396,8 @@ theorem exact_fold_and_final_have_distinct_exposure_trials
         (runExactPlainRom transitionFuel configuration sample).trace
         finalTrial.val := by
   obtain ⟨beforeRelation, foldDigest, foldAnswer, _boundaryAnswer,
-      relationLookup, foldLookup, foldAccepted, _boundaryLookup⟩ :=
+      _outputs, _advances, relationLookup, foldLookup, foldAccepted,
+      _boundaryLookup, _coordinates⟩ :=
     exact_operational_relation_zero_and_fold_work_lookups input
   obtain ⟨beforeFinal256, finalDigest, finalAnswer, q16Base, final256Lookup,
       finalLookup, finalAccepted, absorbLookup, _baseExact, _prefixRun⟩ :=
@@ -610,7 +630,8 @@ theorem exact_actual_k13_trial_has_distinct_fold_trial
     afterBase.2.1
   let pairLabeled := afterBase.2.2.2.1
   obtain ⟨beforeRelation, foldDigest, foldAnswer, _boundaryAnswer,
-      relationLookup, foldLookup, foldAccepted, _boundaryLookup⟩ :=
+      _outputs, _advances, relationLookup, foldLookup, foldAccepted,
+      _boundaryLookup, _coordinates⟩ :=
     exact_operational_relation_zero_and_fold_work_lookups input
   have digestDifferent : foldDigest ≠ finalDigest :=
     exact_relation_fold_digest_ne_operational_prefinal input beforeRelation

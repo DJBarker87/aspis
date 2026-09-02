@@ -30,6 +30,7 @@ open AspisK1.V7Tag73CausalMachineLabeledTraceRouting
 open AspisK1.V7Tag73CausalSlotRouterLookup
 open AspisK1.V7Tag73DeterministicRefinement
 open AspisK1.V7Tag73ExactCompilerFinalWorkTraceOccurrence
+open AspisK1.V7Tag73ExactCompilerGammaPrefixCoordinates
 open AspisK1.V7Tag73ExactCompilerGammaTraceOccurrence
 open AspisK1.V7Tag73ExactCompilerResources
 open AspisK1.V7Tag73ExactClientKnowledgeComposition
@@ -74,6 +75,8 @@ structure ExactAcceptedFoldTrial
   digest : Digest256
   answer : Digest256
   boundaryAnswer : Digest256
+  alphaOutputs : List Digest256
+  alphaAdvances : List Digest256
   trial : ExactCompilerExposureTrial parameters
   prior : List UnifiedExposureRecord
   later : List UnifiedExposureRecord
@@ -98,6 +101,8 @@ structure ExactAcceptedFoldTrial
         (bytes digest ++ [domAbsorb, foldWorkNonceLabel, 0] ++
           bytes (exactOperationalTape input).messages.foldGrinding.selected) =
       some boundaryAnswer
+  alphaCoordinates : GammaTableCoordinateChain (exactOperationalTable input)
+    boundaryAnswer alphaOutputs alphaAdvances
   rootDecomposition :
     exactFixedRootRecords input.package.root =
       prior ++
@@ -119,9 +124,14 @@ theorem exact_accepted_fold_trial_exists
     (input : ExactK12OperationalInput transitionFuel configuration projection
       fixedInstance sample) :
     Nonempty (ExactAcceptedFoldTrial input) := by
-  obtain ⟨beforeRelation, digest, answer, boundaryAnswer, relationLookup,
-      workLookup, accepted, boundaryLookup⟩ :=
+  obtain ⟨beforeRelation, digest, answer, boundaryAnswer, outputs,
+      advances, facts⟩ :=
     exact_operational_relation_zero_and_fold_work_lookups input
+  have relationLookup := facts.1
+  have workLookup := facts.2.1
+  have accepted := facts.2.2.1
+  have boundaryLookup := facts.2.2.2.1
+  have coordinates := facts.2.2.2.2
   obtain ⟨actor, member⟩ :=
     exact_final_table_lookup_has_root_record input _ answer workLookup
   obtain ⟨prior, later, decomposition⟩ := (List.mem_iff_append).mp member
@@ -142,6 +152,8 @@ theorem exact_accepted_fold_trial_exists
       digest := digest
       answer := answer
       boundaryAnswer := boundaryAnswer
+      alphaOutputs := outputs
+      alphaAdvances := advances
       trial := trial
       prior := prior
       later := later
@@ -150,6 +162,7 @@ theorem exact_accepted_fold_trial_exists
       relationLookup := relationLookup
       workLookup := workLookup
       boundaryLookup := boundaryLookup
+      alphaCoordinates := coordinates
       rootDecomposition := decomposition
       trialExact := rfl }⟩
 
