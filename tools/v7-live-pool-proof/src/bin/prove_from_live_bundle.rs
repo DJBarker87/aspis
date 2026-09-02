@@ -400,6 +400,8 @@ fn main() -> Result<()> {
             "maxCompactCounter":built.proof.final_work_counter_cutoff,
             "validWorkNoncesTested":built.proof.final_work_valid_nonces_tested,
             "selectedCounter":built.proof.compact_counter,
+            "minimumQueryDrawsPerEvaluatedCandidateRequired":
+                built.proof.final_work_counter_cutoff.is_some(),
             "proofFormatChanged":false,
             "verifierChanged":false,
             "formalReleaseApproved":false

@@ -772,6 +772,22 @@ fn requested_v7_final_nonce_cutoff() -> Result<Option<u8>, V6ProverError> {
 }
 
 #[cfg(feature = "v7-final-nonce-cutoff-audit")]
+fn v7_compact_candidates_use_minimum_query_draws(
+    transcript: &Transcript,
+    accepted_counter: u8,
+) -> bool {
+    (0..=accepted_counter).all(|counter| {
+        let mut candidate = transcript.clone();
+        candidate.absorb(label::V7_QUERY_CANDIDATE, &[counter]);
+        let queries = candidate.challenge_queries(V6_QUERY_COUNT, 1 << 18);
+        queries
+            .iter()
+            .enumerate()
+            .all(|(index, query)| !queries[..index].contains(query))
+    })
+}
+
+#[cfg(feature = "v7-final-nonce-cutoff-audit")]
 fn select_v7_final_nonce_at_counter_cutoff(
     transcript: &Transcript,
     bits: u8,
@@ -787,11 +803,12 @@ fn select_v7_final_nonce_at_counter_cutoff(
             .ok_or(V6ProverError::Stage("V7 cutoff valid nonce count"))?;
         let mut post_nonce = transcript.clone();
         absorb_work(&mut post_nonce, 2, nonce);
-        if derive_first_v7_compact_queries(&post_nonce)
-            .map(|schedule| schedule.counter <= cutoff)
-            .unwrap_or(false)
-        {
-            return Ok((nonce, valid_nonces_tested));
+        if let Ok(schedule) = derive_first_v7_compact_queries(&post_nonce) {
+            if schedule.counter <= cutoff
+                && v7_compact_candidates_use_minimum_query_draws(&post_nonce, schedule.counter)
+            {
+                return Ok((nonce, valid_nonces_tested));
+            }
         }
         start = nonce
             .checked_add(1)
@@ -2593,6 +2610,43 @@ mod tests {
         absorb_work(&mut post_nonce, 2, nonce);
         let schedule = derive_first_v7_compact_queries(&post_nonce).unwrap();
         assert!(schedule.counter <= cutoff);
+        assert!(v7_compact_candidates_use_minimum_query_draws(
+            &post_nonce,
+            schedule.counter
+        ));
+    }
+
+    #[cfg(feature = "v7-final-nonce-cutoff-audit")]
+    #[test]
+    fn v7_final_nonce_selector_retries_an_over_cutoff_first_nonce() {
+        let cutoff = 20;
+        let (transcript, first_nonce, first_counter) = (0u8..=u8::MAX)
+            .find_map(|seed| {
+                let mut transcript = Transcript::new(HOST_HASH);
+                transcript.absorb(label::PROFILE, b"aspis-v7-cutoff-retry-kat-v1");
+                transcript.absorb(label::STATEMENT, &[seed; 32]);
+                let first_nonce =
+                    crate::pow::find_grinding_nonce_unpublished_from(&transcript, 8, 0).ok()?;
+                let mut post_nonce = transcript.clone();
+                absorb_work(&mut post_nonce, 2, first_nonce);
+                let first_counter = derive_first_v7_compact_queries(&post_nonce).ok()?.counter;
+                (first_counter > cutoff).then_some((transcript, first_nonce, first_counter))
+            })
+            .expect("deterministic KAT seeds must include an over-cutoff first nonce");
+
+        let (selected_nonce, tested) =
+            select_v7_final_nonce_at_counter_cutoff(&transcript, 8, cutoff).unwrap();
+        assert!(first_counter > cutoff);
+        assert!(tested > 1);
+        assert!(selected_nonce > first_nonce);
+        let mut post_nonce = transcript;
+        absorb_work(&mut post_nonce, 2, selected_nonce);
+        let selected = derive_first_v7_compact_queries(&post_nonce).unwrap();
+        assert!(selected.counter <= cutoff);
+        assert!(v7_compact_candidates_use_minimum_query_draws(
+            &post_nonce,
+            selected.counter
+        ));
     }
 
     fn digest(seed: u32) -> Digest {
