@@ -98,6 +98,17 @@ def gammaTerminalDigest : Digest256 → List Digest256 → Digest256
   | initial, [] => initial
   | _initial, advanced :: advances => gammaTerminalDigest advanced advances
 
+/-- Appending one final advance makes that answer the exact terminal digest,
+independently of the preceding chain. -/
+@[simp] theorem gamma_terminal_digest_append_singleton
+    (initial last : Digest256) (priorAdvances : List Digest256) :
+    gammaTerminalDigest initial (priorAdvances ++ [last]) = last := by
+  induction priorAdvances generalizing initial with
+  | nil => rfl
+  | cons advanced rest ih =>
+      simp only [List.cons_append, gammaTerminalDigest]
+      exact ih advanced
+
 @[simp] theorem gamma_consumed_coordinates_length
     (table : FixedOracleTable) (digest : Digest256)
     (outputs advances : List Digest256)
