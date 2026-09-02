@@ -20,6 +20,7 @@ open AspisK1.V7Tag73AdaptiveLazyOracle
 open AspisK1.V7Tag73AdaptiveQ16TrialAccounting
 open AspisK1.V7Tag73AlphaZeroCausalController
 open AspisK1.V7Tag73AtomicForkUniformScheduler
+open AspisK1.V7Tag73CausalSlotRouterLookup
 open AspisK1.V7Tag73ExactAcceptedFoldTrialPackage
 open AspisK1.V7Tag73ExactAlphaZeroControllerAlignment
 open AspisK1.V7Tag73ExactCompilerResources
@@ -27,6 +28,7 @@ open AspisK1.V7Tag73DeterministicRefinement
 open AspisK1.V7Tag73ExactFinalWorkPairControllerCompletion
 open AspisK1.V7Tag73ExactFixedK12MerkleClassifier
 open AspisK1.V7Tag73ExactFixedFullRunFactorization
+open AspisK1.V7Tag73ExactFoldAlphaFinalWorkQ16RootRouting
 open AspisK1.V7Tag73ExactFoldArmedAlphaProducerAvailability
 open AspisK1.V7Tag73ExactFoldArmedAlphaSourceAlignment
 open AspisK1.V7Tag73ExactPlainRomRun
@@ -264,8 +266,57 @@ theorem exact_fold_armed_initial_producer_available_before_post_fold_output
     simpa [producer, beforeExact, controller, initial, reachedFold, afterFold,
       indexed_state_after_records_append] using persisted'
 
+/-- Consequently, a deployed block-zero output first exposed after the fold
+is carried by the literal alpha-zero named coordinate of the complete router. -/
+theorem exact_fold_armed_post_fold_block_zero_output_is_routed
+    {HiddenTape TapeIdentity Observation Statement Payload Result : Type}
+    {parameters : ExactCompilerResourceParameters}
+    {transitionFuel : Nat}
+    {configuration : ExactPlainRomConfiguration HiddenTape TapeIdentity
+      Observation Statement Tag73K12ParsedProof Payload Result parameters}
+    {projection : AcceptedTapeProjection Statement Tag73K12ParsedProof Payload}
+    {fixedInstance : PublicInstance Statement}
+    {sample : ExactCompilerSample HiddenTape parameters}
+    (programmedCover : 518 ≤ 2 * parameters.forkRequestCap)
+    (input : ExactK12OperationalInput transitionFuel configuration projection
+      fixedInstance sample)
+    (fold : ExactAcceptedFoldTrial input)
+    (finalTrial : ExactCompilerExposureTrial parameters)
+    (before later : List UnifiedExposureRecord)
+    (outputActor : QueryActor) (output : Digest256)
+    (laterExact : fold.later = before ++
+      (.machineFresh outputActor (gammaOutputInput fold.boundaryAnswer) output :
+        UnifiedExposureRecord) :: later)
+    (ordered : ∃ rootBefore rootMiddle rootAfter,
+      exactRootFreshQueries input =
+        rootBefore ++
+          (bytes fold.digest ++ [domAbsorb, foldWorkNonceLabel, 0] ++
+            bytes (exactOperationalTape input).messages.foldGrinding.selected,
+            fold.boundaryAnswer) :: rootMiddle ++
+          (gammaOutputInput fold.boundaryAnswer, output) :: rootAfter) :
+    causalRoutedAnswer? (some (Sum.inl (0 : Fin 4)))
+      (exactCompilerFoldArmedAlphaFinalWorkQ16Router parameters transitionFuel
+        fold.trial.val finalTrial.val
+        (exactPlainRomCursor configuration sample.1).erase)
+      (foldAlphaFinalWorkQ16NamedSlotInputTape
+        (exactCompilerFoldAlphaFinalWorkQ16InputTape parameters sample.2)) =
+      some output := by
+  let producer : AlphaZeroProducer :=
+    { digest := fold.boundaryAnswer, block := 0,
+      sourceInput := bytes fold.digest ++
+        [domAbsorb, foldWorkNonceLabel, 0] ++
+        bytes (exactOperationalTape input).messages.foldGrinding.selected }
+  have member :=
+    exact_fold_armed_initial_producer_available_before_post_fold_output input
+      fold finalTrial before later outputActor output laterExact ordered
+  have routed := exact_fold_armed_live_producer_output_is_routed
+    programmedCover input fold finalTrial before later outputActor producer output
+      (by simpa [producer] using laterExact) (by simpa [producer] using member)
+  exact routed
+
 #print axioms
   exact_fold_armed_initial_producer_available_before_post_fold_output
+#print axioms exact_fold_armed_post_fold_block_zero_output_is_routed
 
 end
 
