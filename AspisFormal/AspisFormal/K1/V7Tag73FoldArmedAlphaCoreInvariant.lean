@@ -68,6 +68,115 @@ theorem inactive_fold_armed_alpha_core_invariant :
   intro target impossible
   simp [inactiveFoldArmedAlphaZeroMemory] at impossible
 
+theorem replay_seen_alpha_pass_preserves_producer_invariant
+    (seen : List (ShaInput × Digest256))
+    (producers : List AlphaZeroProducer)
+    (usedSlots : Finset (Fin 4))
+    (valid : AlphaZeroMemoryProducerInvariant
+      { producers := producers, usedSlots := usedSlots }) :
+    AlphaZeroMemoryProducerInvariant
+      { producers := replaySeenAlphaPass seen producers,
+        usedSlots := usedSlots } := by
+  induction seen generalizing producers with
+  | nil => simpa [replaySeenAlphaPass] using valid
+  | cons pair tail ih =>
+      simp only [replaySeenAlphaPass, List.foldl_cons]
+      by_cases used : pair.1 ∈ producers.map AlphaZeroProducer.sourceInput
+      · simp only [used, if_pos]
+        exact ih producers valid
+      · simp only [used, if_neg]
+        apply ih (updateAlphaZeroProducers producers pair.1 pair.2)
+        exact
+          { inventoryValid :=
+              update_alpha_zero_producers_preserves_inventory_valid
+                producers pair.1 pair.2 valid.inventoryValid
+            blocksNodup := update_alpha_zero_producers_blocks_nodup
+              producers pair.1 pair.2 valid.inventoryValid valid.blocksNodup used
+            sourceInputsNodup :=
+              update_alpha_zero_producers_source_inputs_nodup
+                producers pair.1 pair.2 valid.sourceInputsNodup used }
+
+theorem replay_seen_alpha_closure_preserves_producer_invariant
+    (fuel : Nat) (seen : List (ShaInput × Digest256))
+    (producers : List AlphaZeroProducer)
+    (usedSlots : Finset (Fin 4))
+    (valid : AlphaZeroMemoryProducerInvariant
+      { producers := producers, usedSlots := usedSlots }) :
+    AlphaZeroMemoryProducerInvariant
+      { producers := replaySeenAlphaClosure fuel seen producers,
+        usedSlots := usedSlots } := by
+  induction fuel generalizing producers with
+  | zero => exact valid
+  | succ fuel ih =>
+      simp only [replaySeenAlphaClosure]
+      exact ih (replaySeenAlphaPass seen producers)
+        (replay_seen_alpha_pass_preserves_producer_invariant seen producers
+          usedSlots valid)
+
+theorem replay_seen_alpha_pass_preserves_block_zero_boundary
+    (seen : List (ShaInput × Digest256))
+    (producers : List AlphaZeroProducer)
+    (valid : AlphaZeroBlockZeroBoundaryValid producers) :
+    AlphaZeroBlockZeroBoundaryValid
+      (replaySeenAlphaPass seen producers) := by
+  induction seen generalizing producers with
+  | nil => simpa [replaySeenAlphaPass] using valid
+  | cons pair tail ih =>
+      simp only [replaySeenAlphaPass, List.foldl_cons]
+      by_cases used : pair.1 ∈ producers.map AlphaZeroProducer.sourceInput
+      · simp only [used, if_pos]
+        exact ih producers valid
+      · simp only [used, if_neg]
+        exact ih (updateAlphaZeroProducers producers pair.1 pair.2)
+          (update_alpha_zero_producers_preserves_block_zero_boundary
+            producers pair.1 pair.2 valid)
+
+theorem replay_seen_alpha_closure_preserves_block_zero_boundary
+    (fuel : Nat) (seen : List (ShaInput × Digest256))
+    (producers : List AlphaZeroProducer)
+    (valid : AlphaZeroBlockZeroBoundaryValid producers) :
+    AlphaZeroBlockZeroBoundaryValid
+      (replaySeenAlphaClosure fuel seen producers) := by
+  induction fuel generalizing producers with
+  | zero => exact valid
+  | succ fuel ih =>
+      simp only [replaySeenAlphaClosure]
+      exact ih (replaySeenAlphaPass seen producers)
+        (replay_seen_alpha_pass_preserves_block_zero_boundary seen producers
+          valid)
+
+theorem cached_alpha_producer_closure_invariant
+    (seen : List (ShaInput × Digest256))
+    (target : ShaInput) (boundaryAnswer : Digest256)
+    (usedSlots : Finset (Fin 4))
+    (targetLength : target.length = 43) :
+    AlphaZeroMemoryProducerInvariant
+        { producers := cachedAlphaProducerClosure seen target boundaryAnswer,
+          usedSlots := usedSlots } ∧
+      AlphaZeroBlockZeroBoundaryValid
+        (cachedAlphaProducerClosure seen target boundaryAnswer) := by
+  let seed : AlphaZeroProducer :=
+    { digest := boundaryAnswer, block := 0, sourceInput := target }
+  have seedProducer : AlphaZeroMemoryProducerInvariant
+      { producers := [seed], usedSlots := usedSlots } := by
+    constructor
+    · intro producer member
+      simp only [List.mem_singleton] at member
+      subst producer
+      exact Or.inl rfl
+    · simp
+    · simp
+  have seedBoundary : AlphaZeroBlockZeroBoundaryValid [seed] := by
+    intro producer member _zero
+    simp only [List.mem_singleton] at member
+    subst producer
+    exact targetLength
+  exact ⟨
+    replay_seen_alpha_closure_preserves_producer_invariant 3 seen [seed]
+      usedSlots seedProducer,
+    replay_seen_alpha_closure_preserves_block_zero_boundary 3 seen [seed]
+      seedBoundary⟩
+
 /-- Arming at the selected fold preserves the recursive producer inventory.
 If the boundary was queried earlier, its cached answer becomes the unique
 block-zero seed; otherwise the existing (pre-fold empty in the exact replay)
@@ -104,21 +213,15 @@ theorem arm_fold_alpha_memory_preserves_core
             simp [parsed, cached] at selectedExact
             simpa [selectedExact] using targetLength
       | some boundaryAnswer =>
+          have closed := cached_alpha_producer_closure_invariant
+            state.memory.seenMachine target boundaryAnswer
+              state.memory.alpha.usedSlots targetLength
           refine
             { producer := ?_
               blockZeroBoundary := ?_
               expectedBoundaryLength := ?_ }
-          · constructor
-            · intro producer member
-              simp [parsed, cached] at member
-              subst producer
-              exact Or.inl rfl
-            · simp [parsed, cached]
-            · simp [parsed, cached]
-          · intro producer member blockZero
-            simp [parsed, cached] at member
-            subst producer
-            exact targetLength
+          · simpa [parsed, cached] using closed.1
+          · simpa [parsed, cached] using closed.2
           · intro selected selectedExact
             simp [parsed, cached] at selectedExact
             simpa [selectedExact] using targetLength

@@ -140,6 +140,35 @@ def seenMachineAnswer? (memory : FoldArmedAlphaZeroMemory)
     (target : ShaInput) : Option Digest256 :=
   (memory.seenMachine.find? (fun pair => pair.1 = target)).map Prod.snd
 
+/-- Replay one bounded alpha-producer discovery pass over coordinates whose
+answers were exposed before the fold controller was armed.  A source input is
+used at most once, making repeated passes idempotent on already discovered
+edges.  This is deliberately an after-the-fact inventory update: earlier
+answers keep their original residual coordinates, while later children can be
+labelled from facts already present in the causal memory. -/
+def replaySeenAlphaPass (seen : List (ShaInput × Digest256))
+    (producers : List AlphaZeroProducer) : List AlphaZeroProducer :=
+  seen.foldl (fun current pair =>
+    if pair.1 ∈ current.map AlphaZeroProducer.sourceInput then
+      current
+    else
+      updateAlphaZeroProducers current pair.1 pair.2) producers
+
+/-- Iterate cached discovery through the maximum three advance edges following
+block zero.  Three passes suffice even for reverse-ordered adversarial
+prequeries and cannot change the deployed four-block cap. -/
+def replaySeenAlphaClosure : Nat → List (ShaInput × Digest256) →
+    List AlphaZeroProducer → List AlphaZeroProducer
+  | 0, _seen, producers => producers
+  | fuel + 1, seen, producers =>
+      replaySeenAlphaClosure fuel seen (replaySeenAlphaPass seen producers)
+
+def cachedAlphaProducerClosure (seen : List (ShaInput × Digest256))
+    (target : ShaInput) (boundaryAnswer : Digest256) :
+    List AlphaZeroProducer :=
+  replaySeenAlphaClosure 3 seen
+    [{ digest := boundaryAnswer, block := 0, sourceInput := target }]
+
 /-- Append the current coordinate exactly when the unified scheduler is at a
 machine-fresh exposure. -/
 def rememberCurrentMachine
@@ -186,7 +215,8 @@ def armFoldAlphaMemory
           { expectedBoundary := some target
             seenMachine := rememberCurrentMachine transitionFuel state answer
             alpha :=
-              { producers := [⟨boundaryAnswer, 0, target⟩]
+              { producers := cachedAlphaProducerClosure
+                  state.memory.seenMachine target boundaryAnswer
                 usedSlots := state.memory.alpha.usedSlots } }
 
 theorem arm_fold_alpha_memory_expected_boundary
@@ -201,7 +231,99 @@ theorem arm_fold_alpha_memory_expected_boundary
   simp only [armFoldAlphaMemory, armed]
   split <;> rfl
 
-theorem arm_fold_alpha_memory_cached_installs_block_zero
+theorem replay_seen_alpha_pass_prefix
+    (seen : List (ShaInput × Digest256))
+    (producers : List AlphaZeroProducer) :
+    producers <+: replaySeenAlphaPass seen producers := by
+  induction seen generalizing producers with
+  | nil => simp [replaySeenAlphaPass]
+  | cons pair tail ih =>
+      simp only [replaySeenAlphaPass, List.foldl_cons]
+      split
+      · exact List.IsPrefix.trans (List.prefix_refl _) (ih producers)
+      · exact List.IsPrefix.trans
+          (update_alpha_zero_producers_prefix producers pair.1 pair.2)
+          (ih (updateAlphaZeroProducers producers pair.1 pair.2))
+
+theorem replay_seen_alpha_pass_member_old_or_seen
+    (seen : List (ShaInput × Digest256))
+    (producers : List AlphaZeroProducer) (producer : AlphaZeroProducer)
+    (member : producer ∈ replaySeenAlphaPass seen producers) :
+    producer ∈ producers ∨
+      (producer.sourceInput, producer.digest) ∈ seen := by
+  induction seen generalizing producers with
+  | nil => exact Or.inl (by simpa [replaySeenAlphaPass] using member)
+  | cons pair tail ih =>
+      simp only [replaySeenAlphaPass, List.foldl_cons] at member
+      rcases ih _ member with nextMember | tailMember
+      · by_cases used : pair.1 ∈
+            producers.map AlphaZeroProducer.sourceInput
+        · left
+          simpa [used] using nextMember
+        · have updated : producer ∈
+              updateAlphaZeroProducers producers pair.1 pair.2 := by
+            simpa [used] using nextMember
+          rcases update_alpha_zero_producers_new_digest producers pair.1
+              pair.2 producer updated with old | ⟨digest, source⟩
+          · exact Or.inl old
+          · right
+            simp only [List.mem_cons]
+            left
+            cases pair
+            simp_all
+      · exact Or.inr (List.mem_cons_of_mem _ tailMember)
+
+theorem replay_seen_alpha_closure_prefix
+    (fuel : Nat) (seen : List (ShaInput × Digest256))
+    (producers : List AlphaZeroProducer) :
+    producers <+: replaySeenAlphaClosure fuel seen producers := by
+  induction fuel generalizing producers with
+  | zero => exact List.prefix_refl _
+  | succ fuel ih =>
+      simp only [replaySeenAlphaClosure]
+      exact List.IsPrefix.trans (replay_seen_alpha_pass_prefix seen producers)
+        (ih (replaySeenAlphaPass seen producers))
+
+theorem replay_seen_alpha_closure_member_old_or_seen
+    (fuel : Nat) (seen : List (ShaInput × Digest256))
+    (producers : List AlphaZeroProducer) (producer : AlphaZeroProducer)
+    (member : producer ∈ replaySeenAlphaClosure fuel seen producers) :
+    producer ∈ producers ∨
+      (producer.sourceInput, producer.digest) ∈ seen := by
+  induction fuel generalizing producers with
+  | zero => exact Or.inl member
+  | succ fuel ih =>
+      simp only [replaySeenAlphaClosure] at member
+      rcases ih _ member with passMember | seenMember
+      · exact replay_seen_alpha_pass_member_old_or_seen seen producers
+          producer passMember
+      · exact Or.inr seenMember
+
+theorem cached_alpha_producer_closure_member_seed_or_seen
+    (seen : List (ShaInput × Digest256))
+    (target : ShaInput) (boundaryAnswer : Digest256)
+    (producer : AlphaZeroProducer)
+    (member : producer ∈
+      cachedAlphaProducerClosure seen target boundaryAnswer) :
+    producer = (⟨boundaryAnswer, 0, target⟩ : AlphaZeroProducer) ∨
+      (producer.sourceInput, producer.digest) ∈ seen := by
+  rcases replay_seen_alpha_closure_member_old_or_seen 3 seen
+      [{ digest := boundaryAnswer, block := 0, sourceInput := target }]
+      producer member with seed | seenMember
+  · left
+    simpa using seed
+  · exact Or.inr seenMember
+
+theorem cached_alpha_producer_closure_contains_block_zero
+    (seen : List (ShaInput × Digest256))
+    (target : ShaInput) (boundaryAnswer : Digest256) :
+    ({ digest := boundaryAnswer, block := 0, sourceInput := target } :
+        AlphaZeroProducer) ∈
+      cachedAlphaProducerClosure seen target boundaryAnswer := by
+  apply (replay_seen_alpha_closure_prefix 3 seen [_]).subset
+  simp
+
+theorem arm_fold_alpha_memory_cached_contains_block_zero
     {globalOracleCalls : Nat}
     (transitionFuel : Nat)
     (state : IndexedUnifiedExposureState globalOracleCalls
@@ -209,9 +331,12 @@ theorem arm_fold_alpha_memory_cached_installs_block_zero
     (target : ShaInput) (answer boundaryAnswer : Digest256)
     (armed : armFoldAlphaBoundary transitionFuel state = some target)
     (cached : seenMachineAnswer? state.memory target = some boundaryAnswer) :
-    (armFoldAlphaMemory transitionFuel state answer).alpha.producers =
-      [{ digest := boundaryAnswer, block := 0, sourceInput := target }] := by
-  simp [armFoldAlphaMemory, armed, cached]
+    ({ digest := boundaryAnswer, block := 0, sourceInput := target } :
+        AlphaZeroProducer) ∈
+      (armFoldAlphaMemory transitionFuel state answer).alpha.producers := by
+  simp only [armFoldAlphaMemory, armed, cached]
+  exact cached_alpha_producer_closure_contains_block_zero
+    state.memory.seenMachine target boundaryAnswer
 
 theorem arm_fold_alpha_memory_uncached_retains_inventory
     {globalOracleCalls : Nat}
@@ -554,7 +679,7 @@ theorem fold_armed_complete_literal_fold_step_arms_boundary
 
 /-- If the literal fold boundary was already exposed, processing the selected
 fold-work answer installs that retained boundary answer as alpha block zero. -/
-theorem fold_armed_complete_literal_fold_step_cached_installs_block_zero
+theorem fold_armed_complete_literal_fold_step_cached_contains_block_zero
     {globalOracleCalls : Nat}
     (transitionFuel foldExposureIndex finalWorkAnchorIndex : Nat)
     (state : IndexedUnifiedExposureState globalOracleCalls
@@ -566,10 +691,12 @@ theorem fold_armed_complete_literal_fold_step_cached_installs_block_zero
     (cached : seenMachineAnswer? (foldArmedAlphaState state).memory
         (bytes digest ++ [domAbsorb, foldWorkNonceLabel, 0] ++ bytes nonce) =
       some boundaryAnswer) :
-    ((foldArmedCompleteController transitionFuel foldExposureIndex
-      finalWorkAnchorIndex).afterMemory state answer).2.1.alpha.producers =
-      [⟨boundaryAnswer, 0,
-        bytes digest ++ [domAbsorb, foldWorkNonceLabel, 0] ++ bytes nonce⟩] := by
+    ({ digest := boundaryAnswer, block := 0,
+        sourceInput := bytes digest ++
+          [domAbsorb, foldWorkNonceLabel, 0] ++ bytes nonce } :
+      AlphaZeroProducer) ∈
+      ((foldArmedCompleteController transitionFuel foldExposureIndex
+        finalWorkAnchorIndex).afterMemory state answer).2.1.alpha.producers := by
   have projectedInputExact :
       unifiedInputBeforeAnswer? transitionFuel
           (foldArmedAlphaState state).cursor =
@@ -583,7 +710,7 @@ theorem fold_armed_complete_literal_fold_step_cached_installs_block_zero
     simp only [armFoldAlphaBoundary, projectedInputExact, Option.bind_some]
     exact literal_fold_work_arms_exact_alpha_boundary digest nonce
   simp only [foldArmedCompleteController, atFold, if_pos]
-  exact arm_fold_alpha_memory_cached_installs_block_zero transitionFuel
+  exact arm_fold_alpha_memory_cached_contains_block_zero transitionFuel
     (foldArmedAlphaState state) _ answer boundaryAnswer armedExact cached
 
 /-- Compile the fold-armed controller into the same 518-coordinate shape used

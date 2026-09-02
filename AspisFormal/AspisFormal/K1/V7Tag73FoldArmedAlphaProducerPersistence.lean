@@ -24,6 +24,7 @@ open AspisK1.V7Tag73ExactAcceptedFoldTrialPackage
 open AspisK1.V7Tag73ExactCompilerResources
 open AspisK1.V7Tag73ExactFixedK12MerkleClassifier
 open AspisK1.V7Tag73ExactFoldArmedAlphaPrefixInvariant
+open AspisK1.V7Tag73FoldArmedAlphaCoreInvariant
 open AspisK1.V7Tag73ExactPlainRomRun
 open AspisK1.V7Tag73ExactSourceAcceptanceModel
 open AspisK1.V7Tag73FinalWorkQ16CandidateController
@@ -193,7 +194,28 @@ theorem arm_fold_alpha_memory_empty_block_zero_expected
       simp at member
     next boundaryAnswer cached =>
       intro producer member _blockZero
-      simp only [List.mem_singleton] at member
+      let seed : AlphaZeroProducer := ⟨boundaryAnswer, 0, target⟩
+      have closed := cached_alpha_producer_closure_invariant
+        state.memory.seenMachine target boundaryAnswer
+          state.memory.alpha.usedSlots (by
+            unfold armFoldAlphaBoundary at armed
+            cases inputExact : unifiedInputBeforeAnswer? transitionFuel
+                state.cursor with
+            | none => simp [inputExact] at armed
+            | some input =>
+                simp only [inputExact, Option.bind_some] at armed
+                exact fold_work_input_to_alpha_boundary_length input target
+                  armed)
+      have seedMember : seed ∈ cachedAlphaProducerClosure
+          state.memory.seenMachine target boundaryAnswer := by
+        exact cached_alpha_producer_closure_contains_block_zero
+          state.memory.seenMachine target boundaryAnswer
+      have blockEq : producer.block = seed.block := Fin.ext (by
+        simpa [seed] using _blockZero)
+      have producerEq : producer = seed :=
+        alpha_zero_producer_eq_of_block_eq producer seed
+          (cachedAlphaProducerClosure state.memory.seenMachine target
+            boundaryAnswer) closed.1.blocksNodup member seedMember blockEq
       subst producer
       rfl
 

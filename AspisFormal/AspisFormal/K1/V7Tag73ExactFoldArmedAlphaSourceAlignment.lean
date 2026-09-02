@@ -20,6 +20,7 @@ open AspisK1.V7FsAokExperiment
 open AspisK1.V7Tag73AdaptiveLazyOracle
 open AspisK1.V7Tag73AdaptiveQ16TrialAccounting
 open AspisK1.V7Tag73AlphaFinalWorkQ16ControllerComposition
+open AspisK1.V7Tag73AlphaZeroCausalController
 open AspisK1.V7Tag73AtomicForkUniformScheduler
 open AspisK1.V7Tag73ExactAcceptedFoldTrialPackage
 open AspisK1.V7Tag73ExactCompilerResources
@@ -727,10 +728,11 @@ theorem exact_fold_step_cached_or_future_armed
       fold.prior initial
     let afterFold := controller.afterMemory reached fold.answer
     ∃ boundaryActor,
-      (afterFold.2.1.alpha.producers =
-        [⟨fold.boundaryAnswer, 0,
-          bytes fold.digest ++ [domAbsorb, foldWorkNonceLabel, 0] ++
-            bytes (exactOperationalTape input).messages.foldGrinding.selected⟩]) ∨
+      (({ digest := fold.boundaryAnswer, block := 0,
+          sourceInput := bytes fold.digest ++
+            [domAbsorb, foldWorkNonceLabel, 0] ++
+            bytes (exactOperationalTape input).messages.foldGrinding.selected } :
+          AlphaZeroProducer) ∈ afterFold.2.1.alpha.producers) ∨
       (seenMachineAnswer? reached.memory.2.1
           (bytes fold.digest ++ [domAbsorb, foldWorkNonceLabel, 0] ++
             bytes (exactOperationalTape input).messages.foldGrinding.selected) =
@@ -772,7 +774,7 @@ theorem exact_fold_step_cached_or_future_armed
   · have cached := exact_fold_boundary_before_is_cached input fold finalTrial
       boundaryActor before
     refine ⟨boundaryActor, Or.inl ?_⟩
-    exact fold_armed_complete_literal_fold_step_cached_installs_block_zero
+    exact fold_armed_complete_literal_fold_step_cached_contains_block_zero
       transitionFuel fold.trial.val finalTrial.val reached fold.digest
         fold.answer fold.boundaryAnswer
         (exactOperationalTape input).messages.foldGrinding.selected atFold

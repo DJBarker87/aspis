@@ -130,14 +130,9 @@ theorem exact_fold_armed_initial_producer_available_before_post_fold_output
   obtain ⟨boundaryActor, cached | future⟩ :=
     exact_fold_step_cached_or_future_armed input fold finalTrial
   · have initialMember : producer ∈ afterFold.memory.2.1.alpha.producers := by
-      have cached' :
-          (controller.afterMemory reachedFold fold.answer).2.1.alpha.producers =
-            [producer] := by
-        simpa [controller, reachedFold, initial, producer] using cached
       change producer ∈
         (controller.afterMemory reachedFold fold.answer).2.1.alpha.producers
-      rw [cached']
-      simp
+      simpa [controller, reachedFold, initial, producer] using cached
     have persisted :=
       exact_fold_armed_live_producer_persists_over_post_fold_segment input fold
         finalTrial [] before (outputRecord :: later) (by

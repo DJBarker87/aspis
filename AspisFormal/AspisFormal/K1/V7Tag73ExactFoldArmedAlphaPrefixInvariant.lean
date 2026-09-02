@@ -489,18 +489,48 @@ theorem exact_fold_armed_after_fold_alpha_sources_literal
       change seenMachineAnswer? reached.memory.2.1 target =
         some fold.boundaryAnswer
       simpa [reached, controller, initial, target] using cached
-    have installed := arm_fold_alpha_memory_cached_installs_block_zero
-      transitionFuel (foldArmedAlphaState reached) target fold.answer
-        fold.boundaryAnswer armedExact cached'
     dsimp only
     rw [alphaMemoryExact]
     intro producer member
-    rw [installed] at member
-    simp only [List.mem_singleton] at member
-    subst producer
-    exact ⟨boundaryActor, by
-      rw [List.mem_append]
-      exact Or.inl (by simpa [target] using before)⟩
+    have closureMember : producer ∈ cachedAlphaProducerClosure
+        (foldArmedAlphaState reached).memory.seenMachine target
+          fold.boundaryAnswer := by
+      simpa [armFoldAlphaMemory, armedExact, cached'] using member
+    rcases cached_alpha_producer_closure_member_seed_or_seen
+        (foldArmedAlphaState reached).memory.seenMachine target
+          fold.boundaryAnswer producer
+          closureMember with seed | seen
+    · subst producer
+      exact ⟨boundaryActor, by
+        rw [List.mem_append]
+        exact Or.inl (by simpa [target] using before)⟩
+    · have seen' : (producer.sourceInput, producer.digest) ∈
+          reached.memory.2.1.seenMachine := by
+        simpa [foldArmedAlphaState, foldArmedUnderlyingState,
+          alphaIndexedState] using seen
+      have seenExact := exact_fold_reached_seen_machine_exact input fold
+          finalTrial
+      change reached.memory.2.1.seenMachine =
+          fold.prior.filterMap machineFreshPair? at seenExact
+      rw [seenExact] at seen'
+      obtain ⟨record, recordMember, pairExact⟩ := List.mem_filterMap.mp seen'
+      cases record with
+      | machineFresh actor recordInput recordAnswer =>
+          have pairEq : (recordInput, recordAnswer) =
+              (producer.sourceInput, producer.digest) := by
+            simpa [machineFreshPair?, machineFreshInput?,
+              UnifiedExposureRecord.answer] using pairExact
+          have inputEq : recordInput = producer.sourceInput :=
+            congrArg Prod.fst pairEq
+          have answerEq : recordAnswer = producer.digest :=
+            congrArg Prod.snd pairEq
+          exact ⟨actor, List.mem_append_left _ (by
+            simpa [inputEq, answerEq] using recordMember)⟩
+      | padding value => simp [machineFreshPair?, machineFreshInput?] at pairExact
+      | forkOutput actor input output advance answer =>
+          simp [machineFreshPair?, machineFreshInput?] at pairExact
+      | forkAdvance answer =>
+          simp [machineFreshPair?, machineFreshInput?] at pairExact
   · have uncached := exact_fold_boundary_after_is_uncached input fold finalTrial
       boundaryActor after
     have uncached' : seenMachineAnswer? (foldArmedAlphaState reached).memory
