@@ -9,7 +9,7 @@ fail() {
 [[ $# -eq 1 ]] || fail "usage: $0 <new-evidence-dir>"
 readonly EVIDENCE_DIR=$1
 readonly REPO_ROOT=$(cd "$(dirname "$0")/.." && pwd)
-readonly CONFIG="$REPO_ROOT/config/v7-txv1-devnet-harness-20260901.json"
+readonly CONFIG=${ASPIS_TXV1_HARNESS_CONFIG:-$REPO_ROOT/config/v7-txv1-devnet-harness-20260901.json}
 readonly RPC_URL=${ASPIS_TXV1_DISPOSABLE_RPC_URL:-}
 readonly PAYER_KEYPAIR=${ASPIS_TXV1_DISPOSABLE_PAYER_KEYPAIR:-}
 readonly SOURCE_AUTHORITY_KEYPAIR=${ASPIS_TXV1_DISPOSABLE_SOURCE_AUTHORITY_KEYPAIR:-}

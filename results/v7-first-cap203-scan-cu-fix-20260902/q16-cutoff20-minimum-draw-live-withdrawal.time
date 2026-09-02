@@ -1,0 +1,23 @@
+	Command being timed: "env PATH=/home/dombarker/.cargo/bin:/usr/local/bin:/usr/bin:/bin NO_DNA=1 ASPIS_TXV1_SOURCE_REVISION=0a2c37b14ff592ecb9884ac97063eff6e721c7b4 ASPIS_TXV1_LOCAL_RPC_PORT=19029 ASPIS_TXV1_HARNESS_CONFIG=/home/dombarker/project-offloads/aspis-v7-q16-cutoff-20260902.YdLGoe/config/v7-deposit-promoted-live.json ASPIS_V7_LIVE_OPERATION=withdrawal ASPIS_V7_EXPERIMENTAL_MAX_COMPACT_COUNTER=20 ASPIS_V7_EXPERIMENTAL_FINAL_NONCE_CUTOFF_ACK=I_ACKNOWLEDGE_MEASUREMENT_ONLY_FINAL_NONCE_SELECTION ASPIS_TXV1_LIVE_GENESIS_PREPARER=/home/dombarker/project-offloads/aspis-v7-q16-cutoff-20260902.YdLGoe/tools/v7-live-pool-proof/target/release/prepare-live-genesis ASPIS_TXV1_SPL_NOOP_BINARY=/home/dombarker/project-offloads/aspis-v7-q16-cutoff-20260902.YdLGoe/spl_noop.so ASPIS_V7_LIVE_POOL_INITIALIZE_BUILDER=/home/dombarker/project-offloads/aspis-v7-q16-cutoff-20260902.YdLGoe/tools/v7-live-pool-proof/target/release/build-live-pool-initialize ASPIS_V7_LIVE_OPERATION_SECRET_BUILDER=/home/dombarker/project-offloads/aspis-v7-q16-cutoff-20260902.YdLGoe/tools/v7-live-pool-proof/target/release/create-live-operation-secrets ASPIS_V7_LIVE_POOL_DEPOSIT_BUILDER=/home/dombarker/project-offloads/aspis-v7-q16-cutoff-20260902.YdLGoe/tools/v7-live-pool-proof/target/release/build-live-pool-deposit ASPIS_V7_LIVE_POOL_CHECKPOINT_BUILDER=/home/dombarker/project-offloads/aspis-v7-q16-cutoff-20260902.YdLGoe/tools/v7-live-pool-proof/target/release/build-live-pool-checkpoint ASPIS_V7_LIVE_PROOF_MATERIALIZER=/home/dombarker/project-offloads/aspis-v7-q16-cutoff-20260902.YdLGoe/tools/v7-live-pool-proof/target/release/materialize-live-proof-bundle ASPIS_V7_LIVE_POOL_PROVER=/home/dombarker/project-offloads/aspis-v7-q16-cutoff-20260902.YdLGoe/tools/v7-live-pool-proof/target/release/prove-from-live-bundle ASPIS_V7_PROOF_UPLOAD_CHILD=/home/dombarker/project-offloads/aspis-v7-q16-cutoff-20260902.YdLGoe/scripts/v7_txv1_upload_honest_proof_child.sh ASPIS_V7_LIVE_TERMINAL_BUILDER=/home/dombarker/project-offloads/aspis-v7-q16-cutoff-20260902.YdLGoe/tools/v7-live-pool-proof/target/release/build-live-transfer-terminal /home/dombarker/project-offloads/aspis-v7-q16-cutoff-20260902.YdLGoe/scripts/v7_txv1_disposable_feature_cluster.sh /home/dombarker/project-offloads/aspis-v7-agave-v4.2.0-runtime-20260830-r1/extracted/solana-release/bin /home/dombarker/project-offloads/aspis-v7-q16-cutoff-20260902.YdLGoe/evidence-cutoff20-minimum-draw-live-withdrawal I_ACKNOWLEDGE_AUDIT_ONLY_IDENTITIES_AND_DISPOSABLE_FUNDS -- /home/dombarker/project-offloads/aspis-v7-q16-cutoff-20260902.YdLGoe/scripts/v7_live_pool_initialize_child.sh /home/dombarker/project-offloads/aspis-v7-q16-cutoff-20260902.YdLGoe/evidence-cutoff20-minimum-draw-live-withdrawal/live-setup"
+	User time (seconds): 1632.54
+	System time (seconds): 16.48
+	Percent of CPU this job got: 840%
+	Elapsed (wall clock) time (h:mm:ss or m:ss): 3:16.30
+	Average shared text size (kbytes): 0
+	Average unshared data size (kbytes): 0
+	Average stack size (kbytes): 0
+	Average total size (kbytes): 0
+	Maximum resident set size (kbytes): 820628
+	Average resident set size (kbytes): 0
+	Major (requiring I/O) page faults: 22
+	Minor (reclaiming a frame) page faults: 2545460
+	Voluntary context switches: 1437953
+	Involuntary context switches: 1062550
+	Swaps: 0
+	File system inputs: 192
+	File system outputs: 728168
+	Socket messages sent: 0
+	Socket messages received: 0
+	Signals delivered: 0
+	Page size (bytes): 4096
+	Exit status: 0

@@ -1,0 +1,25 @@
+git -C /Users/dominic/ZK/.worktrees/ZK-v7-deposit-invariant-promotion-20260902 status --short --branch
+
+NO_DNA=1 CARGO_BUILD_JOBS=2 cargo check --manifest-path tools/v7-live-pool-proof/Cargo.toml --bin inspect-live-proof --bin prove-from-live-bundle
+NO_DNA=1 CARGO_BUILD_JOBS=2 cargo check --locked --manifest-path tools/v7-live-pool-proof/Cargo.toml --bin inspect-live-proof --bin prove-from-live-bundle
+
+systemd-run --user --wait --collect --pipe --unit=aspis-v7-query-attribution -p MemoryHigh=1G -p MemoryMax=2G -p MemorySwapMax=0 -p OOMPolicy=stop /usr/bin/time -v bash -c 'set -euo pipefail
+root=/home/dombarker/project-offloads/aspis-v7-deposit-promotion-live-rerun-20260902.BI0EZw
+inspector=$root/tools/v7-live-pool-proof/target/release/inspect-live-proof
+verifier=7Q2nGsPg8rbjdxKHK4jxTgEWLTyd9o1X4KMSjCieRmue
+for item in new-transfer:evidence-transfer new-withdrawal:evidence-withdrawal-rerun old-transfer:results/v7-live-pool-witness-adapter-20260901/local-feature-active-live-transfer old-withdrawal:results/v7-live-pool-witness-adapter-20260901/local-feature-active-live-withdrawal failed-withdrawal:results/v7-live-pool-witness-adapter-20260901/local-feature-active-live-failed-withdrawal-cpi-rollback malformed-carrier:results/v7-live-pool-witness-adapter-20260901/local-feature-active-live-malformed-carrier nullifier-replay:results/v7-live-pool-witness-adapter-20260901/local-feature-active-live-nullifier-replay replay-close:results/v7-live-pool-witness-adapter-20260901/local-feature-active-live-replay-close stale-proof:results/v7-live-pool-witness-adapter-20260901/local-feature-active-live-stale-selected-lane-blocked
+do
+  label=${item%%:*}
+  rel=${item#*:}
+  dir=$root/$rel/live-setup
+  attempt=$(jq -r .proof.attemptId $dir/genuine-live-proof.json)
+  printf "%s " "$label"
+  $inspector $dir/live-proof/asf8.bin $dir/live-proof/proof-body.bin $verifier $attempt
+done'
+
+(cd results/v7-deposit-invariant-promotion-20260902/local-feature-active-transfer && shasum -a 256 -c SHA256SUMS)
+(cd results/v7-deposit-invariant-promotion-20260902/local-feature-active-withdrawal && shasum -a 256 -c SHA256SUMS)
+(cd results/v7-deposit-invariant-promotion-20260902/local-feature-active-stale-selected-lane && shasum -a 256 -c SHA256SUMS)
+jq empty results/v7-deposit-invariant-promotion-20260902/summary.json results/v7-deposit-invariant-promotion-20260902/cu-regression-attribution.json
+(cd results/v7-deposit-invariant-promotion-20260902 && shasum -a 256 -c SHA256SUMS)
+git diff --check

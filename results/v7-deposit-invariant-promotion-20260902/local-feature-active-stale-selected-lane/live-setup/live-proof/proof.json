@@ -1,0 +1,52 @@
+{
+  "asf8": {
+    "bytes": 1880,
+    "sha256": "81d3a653b2069c17dcbae4d6457933d18649cccae901fe2c653eeeab2e72aa29"
+  },
+  "asq8": {
+    "bytes": 320,
+    "sha256": "7e1faf2df4e2c946d3a77b5082c8296d1b90e33c440aceeba28507697008efe7"
+  },
+  "attemptId": "G3135wF4JHUMAM9nFWhzfGo4aejeSYJbAXDWGmXpYxMP",
+  "checkpointSequence": 0,
+  "deterministicFixtureEntropy": false,
+  "elapsedMillis": 58564,
+  "expectedAsr8": {
+    "bytes": 792,
+    "sha256": "18c59ab0d5486ba36fe1c218ee86e21e58d03ffc6fc5a8dfcc9cdae510b5a8ba"
+  },
+  "finalizedSlot": 215,
+  "operation": "transfer",
+  "programId": "5PjDJaGfSPJj4tFzMRCiuuAasKg5n8dJKXKenhuwZexx",
+  "proof": {
+    "bytes": 30824,
+    "canonicalFixedDeltaBytes": 320,
+    "powValid": true,
+    "sha256": "639061694776f7f1c453600e346a70cf4f4f00a47c903214bc430e134d18aa72",
+    "wireFormat": "tag73-canonical-fixed-audit"
+  },
+  "proofAccount": "G3135wF4JHUMAM9nFWhzfGo4aejeSYJbAXDWGmXpYxMP",
+  "proofPayload": {
+    "bytes": 31512,
+    "sha256": "bc3759c847cf20147f5617bbfb5767505eaac412f51870d0bee2240aab68dbc7"
+  },
+  "schema": "aspis.v7.live-pool-proof-output.v1",
+  "sources": {
+    "checkpoint": "9ZiDxh6meBcjSAEmkh4syiy85gMaF8hubkraFcej6cbQ",
+    "lanes": [
+      "EWAWegMJFS9Dgxy4vmdoWWk4KqiH1tGko6bpDYsfwdPT",
+      "HZnVqKEV4J8sB9SrK8BS2Ds8cLyQCTwXN62wdUhWbHsH",
+      "BVinTuDJuEQ7sBaePzuWpwRTYvVFcfCQJcYKJqVFTtPY",
+      "3B3QhxztFR6kSo3m3kpTaU9JsQyJH6ScoT94gwnFXQYj",
+      "8EkMVrGuAmYEeZMGiJQJHAZFWuG77J5Dwhc65Ju3LB95",
+      "AsZpeSN85h6WWG3Kf9SjMZtgqM4kbBEhCRoXhX1T5jMe",
+      "6Cp7KLYgxPtXKUbojf982VujgZ9FWn7YkrguyRWNbDYo",
+      "DBkNZFhoio2nawZpA8rzHJqsE7VrvTtm4uu5voB1ggby"
+    ],
+    "master": "3Hrd4YKTTF2eaoWjdwzBwagmH9SeuenwiVyQajm72C8N",
+    "secretsFileCommitted": false,
+    "walletStateSha256": "e8ef7d74a31bcd6df8f73330fa6f3124810cdd40b08b4a0b30062b6dac6d1239"
+  },
+  "trustedResultAccount": false,
+  "verifierBypass": false
+}

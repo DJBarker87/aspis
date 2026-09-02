@@ -159,6 +159,14 @@ fn find_grinding_nonce_cpu_parallel_quiet(
     transcript: &Transcript,
     bits: u8,
 ) -> Result<u64, UnpublishedPowError> {
+    find_grinding_nonce_cpu_parallel_quiet_from(transcript, bits, 0)
+}
+
+fn find_grinding_nonce_cpu_parallel_quiet_from(
+    transcript: &Transcript,
+    bits: u8,
+    start: u64,
+) -> Result<u64, UnpublishedPowError> {
     let workers = std::thread::available_parallelism()
         .map(|count| count.get())
         .unwrap_or(1)
@@ -171,7 +179,9 @@ fn find_grinding_nonce_cpu_parallel_quiet(
             let result = Arc::clone(&result);
             let transcript = transcript.clone();
             scope.spawn(move || {
-                let mut nonce = worker as u64;
+                let Some(mut nonce) = start.checked_add(worker as u64) else {
+                    return;
+                };
                 let stride = workers as u64;
                 loop {
                     if found.load(Ordering::Acquire) && nonce >= result.load(Ordering::Acquire) {
@@ -198,6 +208,60 @@ fn find_grinding_nonce_cpu_parallel_quiet(
         return Err(UnpublishedPowError::NonceRejected);
     }
     Ok(nonce)
+}
+
+/// Measurement-only companion that returns the minimum valid work nonce at
+/// or above `start`.  The consensus predicate is unchanged.  This exists only
+/// for the default-off V7 final-nonce cutoff experiment, where an unpublished
+/// valid nonce may be discarded after its public q16 schedule is inspected.
+#[cfg(feature = "v7-final-nonce-cutoff-audit")]
+pub(crate) fn find_grinding_nonce_unpublished_from(
+    transcript: &Transcript,
+    bits: u8,
+    start: u64,
+) -> Result<u64, UnpublishedPowError> {
+    if bits > 63 {
+        return Err(UnpublishedPowError::Difficulty);
+    }
+    if bits == 0 {
+        return Ok(start);
+    }
+    if let Some(miner) = std::env::var_os("ASPIS_POW_MINER") {
+        let state = transcript.diagnostic_state();
+        let output = Command::new(miner)
+            .arg("--state")
+            .arg(hex(&state))
+            .arg("--bits")
+            .arg(bits.to_string())
+            .arg("--start")
+            .arg(start.to_string())
+            .stderr(Stdio::null())
+            .output()
+            .map_err(|_| UnpublishedPowError::Spawn)?;
+        if !output.status.success() {
+            return Err(UnpublishedPowError::ProcessFailed);
+        }
+        let stdout = String::from_utf8(output.stdout).map_err(|_| UnpublishedPowError::Utf8)?;
+        let nonce = stdout
+            .lines()
+            .find_map(|line| line.strip_prefix("nonce="))
+            .ok_or(UnpublishedPowError::MissingNonce)?
+            .parse::<u64>()
+            .map_err(|_| UnpublishedPowError::InvalidNonce)?;
+        if nonce < start {
+            return Err(UnpublishedPowError::InvalidNonce);
+        }
+        if !transcript.grinding_ok(nonce, bits) {
+            return Err(UnpublishedPowError::NonceRejected);
+        }
+        return Ok(nonce);
+    }
+    if bits <= 20 {
+        return (start..)
+            .find(|nonce| transcript.grinding_ok(*nonce, bits))
+            .ok_or(UnpublishedPowError::Exhausted);
+    }
+    find_grinding_nonce_cpu_parallel_quiet_from(transcript, bits, start)
 }
 
 fn find_grinding_nonce_cpu(transcript: &Transcript, bits: u8) -> u64 {
@@ -308,6 +372,21 @@ mod tests {
         assert_eq!(parallel, nonce);
         let unpublished = find_grinding_nonce_cpu_parallel_quiet(&transcript, 16).unwrap();
         assert_eq!(unpublished, nonce);
+    }
+
+    #[cfg(feature = "v7-final-nonce-cutoff-audit")]
+    #[test]
+    fn unpublished_range_miner_advances_between_valid_nonces() {
+        let mut transcript = Transcript::new(HOST_HASH);
+        transcript.absorb(label::PROFILE, b"aspis-pow-kat-v1");
+        transcript.absorb(label::STATEMENT, &[0xa5; 32]);
+
+        let first = find_grinding_nonce_unpublished_from(&transcript, 16, 0).unwrap();
+        assert_eq!(first, 100_214);
+        let second = find_grinding_nonce_unpublished_from(&transcript, 16, first + 1).unwrap();
+        assert!(second > first);
+        assert!(transcript.grinding_ok(second, 16));
+        assert!(!(first + 1..second).any(|candidate| transcript.grinding_ok(candidate, 16)));
     }
 
     /// Build `tools/aspis-pow-metal.swift`, set `ASPIS_POW_MINER` to the

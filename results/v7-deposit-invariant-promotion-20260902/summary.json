@@ -1,0 +1,122 @@
+{
+  "schema": "aspis.v7.deposit-invariant-promotion-summary.v1",
+  "generatedAt": "2026-09-02T10:35:35Z",
+  "repository": {
+    "branch": "research/v7-deposit-invariant-promotion-20260902",
+    "baseRevision": "3178834ee04e0f06e85b95c92d0d14a69d4518ae",
+    "measuredImplementationRevision": "44c55bcbc2d50269eb77977850371224336a6f0f"
+  },
+  "classification": "DEFAULT-OFF DEPOSIT PROMOTION GREEN; TERMINAL UNIVERSAL-CU GATE BLOCKED BY Q16 COUNTER VARIANCE",
+  "depositPromotion": {
+    "feature": "pair-forest-deposit-invariant-audit",
+    "defaultOff": true,
+    "includedInDefaultOffCandidateAggregate": true,
+    "persistedLaneSourceFormalClosure": "pass",
+    "sequentialDepositsFinalized": 256,
+    "allSequentialDepositsPassed": true,
+    "allSimulationSubmissionByteIdentical": true,
+    "allSimulatedLandedCuEqual": true,
+    "allCustodyDeltasExact": true,
+    "nonSelectedLanesUnchanged": true,
+    "maximumLandedCu": 643854,
+    "maximumSerializedTransactionBytes": 684,
+    "programBinarySha256": "9cd1401327493134ca42ed13a7e72d7e6c375c488f7aa2ede42b39f402b6c89d",
+    "evidence": "results/v7-pair-forest-deposit-invariant-cu-audit-20260901/summary.json"
+  },
+  "promotedCandidateLiveRerun": {
+    "cluster": "disposable Agave 4.2.0 with TxV1 feature active at genesis",
+    "auditOnlyIdentities": true,
+    "realFundsUsed": false,
+    "verifierBinarySha256": "97df12937d46e25a2eeefeac16ce31925fd473c672d6b656548be9220adbcc6d",
+    "transferSamePage": {
+      "result": "finalized-pass",
+      "bytes": 1378,
+      "simulatedCu": 1245883,
+      "landedCu": 1245883,
+      "compactCounter": 25,
+      "frontierNodes": 197,
+      "signature": "4Y14qK2QM4EoSjkK2tbYpEZQDUo6kJ2cE2pM1zgjZTCe7dDLSPZrNMfBnoCxxNhuk3BM3AvJhfcwQkUQYPU65NB5",
+      "slot": 592,
+      "wireSha256": "c53372d17277b1540f0d1b258a7de4323042e20e791ac096aaf4e393a97c4657",
+      "selectedLane": 1,
+      "byteIdenticalSimulationSubmission": true,
+      "terminalTransactionCount": 1
+    },
+    "withdrawalSamePage": {
+      "result": "finalized-pass",
+      "bytes": 1543,
+      "simulatedCu": 1284170,
+      "landedCu": 1284170,
+      "compactCounter": 26,
+      "frontierNodes": 201,
+      "signature": "3EdqpeURyA8Ai7QbUTqrxHSsE5hzA5SKVnowdfcqGu27h4yoGLA86e9qG6nSUwZE2GbWLGBJUARMN7moPwSEwKvd",
+      "slot": 761,
+      "wireSha256": "771719a95e46db79c29870dbfd2a9347d4cead4956d854e9a70ed9d757551366",
+      "selectedLane": 4,
+      "byteIdenticalSimulationSubmission": true,
+      "terminalTransactionCount": 1,
+      "vaultBefore": 1000,
+      "vaultAfter": 750,
+      "destinationBefore": 0,
+      "destinationAfter": 250,
+      "custodyConservation": true,
+      "destinationBinding": true
+    },
+    "freshNullifierReplayTransfer": {
+      "result": "finalized-rejected",
+      "bytes": 1378,
+      "simulatedCu": 27322,
+      "landedCu": 27322,
+      "stateUnchangedExceptPayerFee": true,
+      "signature": "3bTtqGBHRGJRz4NfDE46A7WcLBygaipo4zNQUaaLfVXYoJenVCzPY5ZDzUjvKeFcimvSMQoP5Fm3Mwu9VwzmKVQx",
+      "slot": 624
+    },
+    "freshNullifierReplayWithdrawal": {
+      "result": "finalized-rejected",
+      "bytes": 1543,
+      "simulatedCu": 40669,
+      "landedCu": 40669,
+      "stateUnchangedExceptPayerFee": true,
+      "signature": "3AJ8yGv35Zn4p5qgZUTiEAQHQW8YJqkFrPh1ir2zXXmTRK1ie9iPt17SkPbUQMj6Han2UX8YyKv7wasJtr82KzzV",
+      "slot": 793
+    },
+    "staleSelectedLane": {
+      "result": "finalized-rejected",
+      "bytes": 1378,
+      "simulatedCu": 78825,
+      "landedCu": 78825,
+      "stateUnchangedExceptPayerFee": true,
+      "proofGeneratedBeforeStalingDeposit": true,
+      "stalingDepositLandedCu": 593237,
+      "signature": "39zFUXSKYupffx5Lys7bbAH3BvboVxDXRBAmdfkHRQXpSQuSzUwaduqKtzznE2WvAENZZPJdS4ULQVfDbpVCasDr",
+      "slot": 582
+    }
+  },
+  "terminalCuGate": {
+    "projectCeiling": 1300000,
+    "measuredTransferPass": true,
+    "measuredWithdrawalPass": true,
+    "universalAcrossReachableHonestProofs": false,
+    "blocker": "the transcript-dependent first-cap203 counter is 0..63 and costs about 3983 verifier CU per rejected candidate; current K1.3-K1.5/final-nonce selection closure is independent and incomplete",
+    "attributionEvidence": "results/v7-deposit-invariant-promotion-20260902/cu-regression-attribution.json"
+  },
+  "network": {
+    "publicTestnetTxv1FeatureActive": true,
+    "publicTestnetActivationEpoch": 1025,
+    "publicTestnetV7ExecutionPerformed": false,
+    "publicDevnetTxv1FeatureActive": false,
+    "publicDevnetEvidenceModified": false,
+    "publicMainnetTxv1FeatureActive": false
+  },
+  "scope": {
+    "verifierModified": false,
+    "txv1Modified": false,
+    "treeDepthModified": false,
+    "proofFormatModified": false,
+    "cryptographicRelationModified": false,
+    "cpiOrderingModified": false,
+    "productionDeploymentPerformed": false,
+    "k13OrQ16Modified": false
+  },
+  "mainnetReady": false
+}

@@ -159,6 +159,11 @@ pub struct BuiltV7CompactOneFoldProof {
     pub work_nonces: [u64; 3],
     pub pow_valid: bool,
     pub transcript_state_after_queries: [u8; 32],
+    /// Number of ordinary valid final-work nonces inspected by the
+    /// measurement-only cutoff policy. One on the production path.
+    pub final_work_valid_nonces_tested: u32,
+    /// Explicit audit cutoff when final-nonce selection was enabled.
+    pub final_work_counter_cutoff: Option<u8>,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -211,6 +216,8 @@ struct BuiltOneFoldProof {
     work_nonces: [u64; 3],
     pow_valid: bool,
     transcript_state_after_queries: [u8; 32],
+    final_work_valid_nonces_tested: u32,
+    final_work_counter_cutoff: Option<u8>,
 }
 
 impl From<BuiltOneFoldProof> for BuiltV6OneFoldProof {
@@ -239,6 +246,8 @@ impl From<BuiltOneFoldProof> for BuiltV7CompactOneFoldProof {
             work_nonces: proof.work_nonces,
             pow_valid: proof.pow_valid,
             transcript_state_after_queries: proof.transcript_state_after_queries,
+            final_work_valid_nonces_tested: proof.final_work_valid_nonces_tested,
+            final_work_counter_cutoff: proof.final_work_counter_cutoff,
         }
     }
 }
@@ -733,6 +742,85 @@ fn work_nonce(
         StateOnlyPowMode::UnminedZero => Ok(0),
         StateOnlyPowMode::Mine => crate::pow::find_grinding_nonce_unpublished(transcript, bits)
             .map_err(|_| V6ProverError::Stage("V6 work mining")),
+    }
+}
+
+#[cfg(feature = "v7-final-nonce-cutoff-audit")]
+const V7_FINAL_NONCE_CUTOFF_ACK: &str = "I_ACKNOWLEDGE_MEASUREMENT_ONLY_FINAL_NONCE_SELECTION";
+
+#[cfg(feature = "v7-final-nonce-cutoff-audit")]
+const V7_FINAL_NONCE_COUNTER_CUTOFF: u8 = 20;
+
+#[cfg(feature = "v7-final-nonce-cutoff-audit")]
+fn parse_v7_final_nonce_cutoff(raw: &str) -> Result<u8, V6ProverError> {
+    let cutoff = raw
+        .parse::<u8>()
+        .map_err(|_| V6ProverError::Stage("V7 final nonce cutoff parse"))?;
+    if cutoff != V7_FINAL_NONCE_COUNTER_CUTOFF {
+        return Err(V6ProverError::Stage("V7 final nonce cutoff policy"));
+    }
+    Ok(cutoff)
+}
+
+#[cfg(feature = "v7-final-nonce-cutoff-audit")]
+fn requested_v7_final_nonce_cutoff() -> Result<Option<u8>, V6ProverError> {
+    let Some(raw) = std::env::var_os("ASPIS_V7_EXPERIMENTAL_MAX_COMPACT_COUNTER") else {
+        return Ok(None);
+    };
+    if std::env::var("ASPIS_V7_EXPERIMENTAL_FINAL_NONCE_CUTOFF_ACK").as_deref()
+        != Ok(V7_FINAL_NONCE_CUTOFF_ACK)
+    {
+        return Err(V6ProverError::Stage(
+            "V7 final nonce cutoff acknowledgement",
+        ));
+    }
+    let raw = raw
+        .to_str()
+        .ok_or(V6ProverError::Stage("V7 final nonce cutoff UTF-8"))?;
+    parse_v7_final_nonce_cutoff(raw).map(Some)
+}
+
+#[cfg(feature = "v7-final-nonce-cutoff-audit")]
+fn v7_compact_candidates_use_minimum_query_draws(
+    transcript: &Transcript,
+    accepted_counter: u8,
+) -> bool {
+    (0..=accepted_counter).all(|counter| {
+        let mut candidate = transcript.clone();
+        candidate.absorb(label::V7_QUERY_CANDIDATE, &[counter]);
+        let queries = candidate.challenge_queries(V6_QUERY_COUNT, 1 << 18);
+        queries
+            .iter()
+            .enumerate()
+            .all(|(index, query)| !queries[..index].contains(query))
+    })
+}
+
+#[cfg(feature = "v7-final-nonce-cutoff-audit")]
+fn select_v7_final_nonce_at_counter_cutoff(
+    transcript: &Transcript,
+    bits: u8,
+) -> Result<(u64, u32), V6ProverError> {
+    let mut start = 0u64;
+    let mut valid_nonces_tested = 0u32;
+    loop {
+        let nonce = crate::pow::find_grinding_nonce_unpublished_from(transcript, bits, start)
+            .map_err(|_| V6ProverError::Stage("V7 cutoff final work mining"))?;
+        valid_nonces_tested = valid_nonces_tested
+            .checked_add(1)
+            .ok_or(V6ProverError::Stage("V7 cutoff valid nonce count"))?;
+        let mut post_nonce = transcript.clone();
+        absorb_work(&mut post_nonce, 2, nonce);
+        if let Ok(schedule) = derive_first_v7_compact_queries(&post_nonce) {
+            if schedule.counter <= V7_FINAL_NONCE_COUNTER_CUTOFF
+                && v7_compact_candidates_use_minimum_query_draws(&post_nonce, schedule.counter)
+            {
+                return Ok((nonce, valid_nonces_tested));
+            }
+        }
+        start = nonce
+            .checked_add(1)
+            .ok_or(V6ProverError::Stage("V7 cutoff nonce space exhausted"))?;
     }
 }
 
@@ -1502,7 +1590,26 @@ fn build_onefold_proof_with_pow_mode(
     }
     absorb_final256(&mut transcript, &mut fields, &relation_values);
 
-    let final_nonce = work_nonce(&transcript, work_bits[2], pow_mode)?;
+    #[cfg(feature = "v7-final-nonce-cutoff-audit")]
+    let (final_nonce, final_work_valid_nonces_tested, final_work_counter_cutoff) = {
+        let cutoff = requested_v7_final_nonce_cutoff()?;
+        match (profile, pow_mode, cutoff) {
+            (OneFoldBuildProfile::V7Compact, StateOnlyPowMode::Mine, Some(cutoff)) => {
+                let (nonce, tested) =
+                    select_v7_final_nonce_at_counter_cutoff(&transcript, work_bits[2])?;
+                (nonce, tested, Some(cutoff))
+            }
+            (_, _, Some(_)) => {
+                return Err(V6ProverError::Stage(
+                    "V7 final nonce cutoff requires mined compact V7",
+                ));
+            }
+            (_, _, None) => (work_nonce(&transcript, work_bits[2], pow_mode)?, 1, None),
+        }
+    };
+    #[cfg(not(feature = "v7-final-nonce-cutoff-audit"))]
+    let (final_nonce, final_work_valid_nonces_tested, final_work_counter_cutoff) =
+        (work_nonce(&transcript, work_bits[2], pow_mode)?, 1, None);
     pow_valid &= transcript.grinding_ok(final_nonce, work_bits[2]);
     absorb_work(&mut transcript, 2, final_nonce);
     let (
@@ -1660,6 +1767,8 @@ fn build_onefold_proof_with_pow_mode(
         work_nonces: [batch_nonce, fold_nonce, final_nonce],
         pow_valid,
         transcript_state_after_queries: state_after_queries,
+        final_work_valid_nonces_tested,
+        final_work_counter_cutoff,
     })
 }
 
@@ -2491,6 +2600,72 @@ mod tests {
         },
         Digest, MerklePath, SpendPublic,
     };
+
+    #[cfg(feature = "v7-final-nonce-cutoff-audit")]
+    #[test]
+    fn v7_final_nonce_selector_returns_ordinary_bounded_schedule() {
+        let mut transcript = Transcript::new(HOST_HASH);
+        transcript.absorb(label::PROFILE, b"aspis-v7-cutoff-selector-kat-v1");
+        transcript.absorb(label::STATEMENT, &[0x5a; 32]);
+
+        let (nonce, tested) = select_v7_final_nonce_at_counter_cutoff(&transcript, 8).unwrap();
+        assert!(tested >= 1);
+        assert!(transcript.grinding_ok(nonce, 8));
+
+        let mut post_nonce = transcript;
+        absorb_work(&mut post_nonce, 2, nonce);
+        let schedule = derive_first_v7_compact_queries(&post_nonce).unwrap();
+        assert!(schedule.counter <= V7_FINAL_NONCE_COUNTER_CUTOFF);
+        assert!(v7_compact_candidates_use_minimum_query_draws(
+            &post_nonce,
+            schedule.counter
+        ));
+    }
+
+    #[cfg(feature = "v7-final-nonce-cutoff-audit")]
+    #[test]
+    fn v7_final_nonce_selector_retries_an_over_cutoff_first_nonce() {
+        let (transcript, first_nonce, first_counter) = (0u8..=u8::MAX)
+            .find_map(|seed| {
+                let mut transcript = Transcript::new(HOST_HASH);
+                transcript.absorb(label::PROFILE, b"aspis-v7-cutoff-retry-kat-v1");
+                transcript.absorb(label::STATEMENT, &[seed; 32]);
+                let first_nonce =
+                    crate::pow::find_grinding_nonce_unpublished_from(&transcript, 8, 0).ok()?;
+                let mut post_nonce = transcript.clone();
+                absorb_work(&mut post_nonce, 2, first_nonce);
+                let first_counter = derive_first_v7_compact_queries(&post_nonce).ok()?.counter;
+                (first_counter > V7_FINAL_NONCE_COUNTER_CUTOFF).then_some((
+                    transcript,
+                    first_nonce,
+                    first_counter,
+                ))
+            })
+            .expect("deterministic KAT seeds must include an over-cutoff first nonce");
+
+        let (selected_nonce, tested) =
+            select_v7_final_nonce_at_counter_cutoff(&transcript, 8).unwrap();
+        assert!(first_counter > V7_FINAL_NONCE_COUNTER_CUTOFF);
+        assert!(tested > 1);
+        assert!(selected_nonce > first_nonce);
+        let mut post_nonce = transcript;
+        absorb_work(&mut post_nonce, 2, selected_nonce);
+        let selected = derive_first_v7_compact_queries(&post_nonce).unwrap();
+        assert!(selected.counter <= V7_FINAL_NONCE_COUNTER_CUTOFF);
+        assert!(v7_compact_candidates_use_minimum_query_draws(
+            &post_nonce,
+            selected.counter
+        ));
+    }
+
+    #[cfg(feature = "v7-final-nonce-cutoff-audit")]
+    #[test]
+    fn v7_final_nonce_cutoff_policy_is_exactly_twenty() {
+        assert_eq!(parse_v7_final_nonce_cutoff("20").unwrap(), 20);
+        assert!(parse_v7_final_nonce_cutoff("19").is_err());
+        assert!(parse_v7_final_nonce_cutoff("21").is_err());
+        assert!(parse_v7_final_nonce_cutoff("63").is_err());
+    }
 
     fn digest(seed: u32) -> Digest {
         core::array::from_fn(|index| M31(seed + 17 * index as u32))

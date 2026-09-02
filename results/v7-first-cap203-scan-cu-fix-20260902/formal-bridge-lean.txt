@@ -1,0 +1,32 @@
+target: AspisFormal/K1/V7Tag73Cutoff20FinalNoncePublicationBridge.lean
+source revision before formal change: 1f3883e51b08354749b07c1b7ee297cc3ed89bd1
+toolchain: leanprover/lean4:v4.32.0
+command: LEAN_PATH=<read-only-pinned-repository-olean-cache> /usr/bin/time -lp lake env lean AspisFormal/K1/V7Tag73Cutoff20FinalNoncePublicationBridge.lean
+exit status: 0
+wall seconds: 15.63
+maximum resident set bytes: 5678252032
+swaps: 0
+
+#print axioms cutoff20_publication_counter_lt_twenty_one
+[propext, Classical.choice, Quot.sound]
+
+#print axioms cutoff20_publication_scanned_candidate_uses_minimum_draws
+[propext, Classical.choice, Quot.sound]
+
+#print axioms cutoff20_publication_is_ordinary_first_cap203
+[propext, Classical.choice, Quot.sound]
+
+#print axioms cutoff20_filtered_event_subset
+[propext, Classical.choice, Quot.sound]
+
+#print axioms cutoff20_published_failure_union_probability_le_one_forest
+[propext, Classical.choice, Quot.sound]
+
+#print axioms exact_fixed_clean_cutoff20_published_k13_query_probability_le_one_forest
+[propext, Classical.choice, Quot.sound]
+
+Resource-policy note: an initial cold repository dependency build was stopped
+when Lake ignored the attempted worker limit and aggregate child RSS crossed
+the 8-GiB review threshold. It was not rerun with a larger cap. The successful
+focused elaboration reused the existing pinned repository OLean graph
+read-only. No generated certificate or broad formal manifest was replayed.

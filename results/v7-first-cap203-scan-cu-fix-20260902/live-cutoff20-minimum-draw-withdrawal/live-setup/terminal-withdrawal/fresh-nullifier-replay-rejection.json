@@ -1,0 +1,33 @@
+{
+  "schema": "aspis.v7.live-terminal-fresh-nullifier-replay-rejection.v1",
+  "expected": "reject",
+  "actual": "finalized-rejected",
+  "signature": "dkyQHsZoZgXckFyji1DSDrj1UkKg8qFfmCfwp3Be4ELtSRyEwYqfoYu4BoMdv1ku3smFPCUaqgZcXkpVWiJx6pf",
+  "slot": 477,
+  "serializedTransactionBytes": 1543,
+  "signedWireSha256": "0cf5a3289c9f530de8b501c3447ce3dc6eb66884f08b80c9c51551400fcbd00a",
+  "simulatedError": {
+    "InstructionError": [
+      1,
+      {
+        "Custom": 1095966758
+      }
+    ]
+  },
+  "landedError": {
+    "InstructionError": [
+      1,
+      {
+        "Custom": 1095966758
+      }
+    ]
+  },
+  "simulatedCu": 30169,
+  "landedCu": 30169,
+  "byteIdenticalSimulationSubmission": true,
+  "finalizedStateBeforeSha256": "d5d6db571a45f504f9a539107006101ada07b6f8de8d5767f84d982e51d2ce5e",
+  "finalizedStateAfterSha256": "d5d6db571a45f504f9a539107006101ada07b6f8de8d5767f84d982e51d2ce5e",
+  "stateUnchangedExceptPayerFee": true,
+  "payer": "EL9GwFQVo8gaBvpQtLzAdwNk83CbsYwVeYYEYLfxgAgM",
+  "payerFeeLamports": 5000
+}

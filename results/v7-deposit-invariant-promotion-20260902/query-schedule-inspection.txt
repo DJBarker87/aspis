@@ -1,0 +1,24 @@
+schema=aspis.v7.query-schedule-inspection.v1
+date=2026-09-02
+host=dombarker@nuc.local
+binary=tools/v7-live-pool-proof/target/release/inspect-live-proof
+build_profile=release
+full_work_checks=true
+cgroup_memory_high=1G
+cgroup_memory_max=2G
+cgroup_swap_max=0
+
+new-transfer {"proofBytes":30512,"frontierNodes":197,"compactCounter":25}
+new-withdrawal {"proofBytes":30720,"frontierNodes":201,"compactCounter":26}
+old-transfer {"proofBytes":30720,"frontierNodes":201,"compactCounter":10}
+old-withdrawal {"proofBytes":30564,"frontierNodes":198,"compactCounter":14}
+failed-withdrawal {"proofBytes":30304,"frontierNodes":193,"compactCounter":22}
+malformed-carrier {"proofBytes":30668,"frontierNodes":200,"compactCounter":32}
+nullifier-replay {"proofBytes":30824,"frontierNodes":203,"compactCounter":0}
+replay-close {"proofBytes":30772,"frontierNodes":202,"compactCounter":11}
+stale-proof {"proofBytes":30824,"frontierNodes":203,"compactCounter":4}
+
+exit_status=0
+wall_seconds=0.03
+maximum_resident_set_kib=3520
+swaps=0

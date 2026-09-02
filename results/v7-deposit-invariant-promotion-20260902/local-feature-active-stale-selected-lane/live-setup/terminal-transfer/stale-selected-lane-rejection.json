@@ -1,0 +1,39 @@
+{
+  "schema": "aspis.v7.live-terminal-stale-selected-lane-rejection.v1",
+  "expected": "reject proof whose selected live-lane snapshot was superseded",
+  "actual": "finalized-rejected",
+  "signature": "39zFUXSKYupffx5Lys7bbAH3BvboVxDXRBAmdfkHRQXpSQuSzUwaduqKtzznE2WvAENZZPJdS4ULQVfDbpVCasDr",
+  "slot": 582,
+  "serializedTransactionBytes": 1378,
+  "signedWireSha256": "de073fafcf7c2f42b3df661af70c61d66892cd02b4222d9c6541336a7a34f6e7",
+  "selectedLane": 3,
+  "simulatedError": {
+    "InstructionError": [
+      1,
+      "InvalidAccountData"
+    ]
+  },
+  "landedError": {
+    "InstructionError": [
+      1,
+      "InvalidAccountData"
+    ]
+  },
+  "simulatedCu": 78825,
+  "landedCu": 78825,
+  "proofGeneratedBeforeStalingDeposit": true,
+  "stalingDepositSignature": "4Emf789isH7Lu6CZ7DNpqMdsScgackiTEGzgWy4Kb4kmhymJRhwNGmKAHzGC3LZCqsaS8WScyWTtHbfd2y5CfZNf",
+  "stalingDepositSlot": 550,
+  "selectedLaneChangedAfterProof": true,
+  "verifierInvoked": true,
+  "byteIdenticalSimulationSubmission": true,
+  "feeNormalizedProtectedStateBeforeSha256": "d3d1431fec7ef21cba25bb30f5d4d7895948f5fdd0fe95c57abadff5b94018de",
+  "feeNormalizedProtectedStateAfterSha256": "d3d1431fec7ef21cba25bb30f5d4d7895948f5fdd0fe95c57abadff5b94018de",
+  "stateUnchangedExceptPayerFee": true,
+  "payer": "35czqVY6JU5RKt8prtPEWwnDf6idkBZJuqdaYTwkRcDN",
+  "payerFeeLamports": 5000,
+  "finalized": true,
+  "auditOnly": true,
+  "disposable": true,
+  "mainnetReady": false
+}

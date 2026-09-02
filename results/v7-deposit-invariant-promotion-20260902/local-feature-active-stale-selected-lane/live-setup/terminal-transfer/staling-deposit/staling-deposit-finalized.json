@@ -1,0 +1,27 @@
+{
+  "schema": "aspis.v7.live-selected-lane-staling-deposit-finalized.v1",
+  "signature": "4Emf789isH7Lu6CZ7DNpqMdsScgackiTEGzgWy4Kb4kmhymJRhwNGmKAHzGC3LZCqsaS8WScyWTtHbfd2y5CfZNf",
+  "slot": 550,
+  "selectedLane": 3,
+  "serializedTransactionBytes": 617,
+  "signedWireSha256": "24eb137aad6e17fbee9faffa6b5eaa3d0245841c8ff90ffa41dc84be91aaa250",
+  "simulatedCu": 593237,
+  "landedCu": 593237,
+  "laneDataSha256": {
+    "before": "4664c7979a0cbd1353207087ed6463100c5da354f5193699af797db6a91279ac",
+    "after": "b702ec82e2ffc0f88c5c1ee5c479384124e8e10d080192f60110254d2223db15"
+  },
+  "sourceAmount": {
+    "before": 1000,
+    "after": 0
+  },
+  "vaultAmount": {
+    "before": 1000,
+    "after": 2000
+  },
+  "byteIdenticalSimulationSubmission": true,
+  "finalized": true,
+  "auditOnly": true,
+  "disposable": true,
+  "mainnetReady": false
+}

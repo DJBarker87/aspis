@@ -39,6 +39,7 @@ v7-pair-forest-one-tx-candidate = [
     "pair-forest-verifier-lane-invariant-audit",
     "pair-forest-direct-result-audit",
     "pair-forest-history-page-invariant-audit",
+    "pair-forest-deposit-invariant-audit",
 ]
 # Audit-only full 1,880-byte ASF8 top-level transport. It shares the exact
 # account order, registry authentication, ASR8 validation, and settlement path
@@ -48,10 +49,11 @@ pair-forest-full-asf8-audit = ["pair-forest-account-evidence"]
 # invariant. They are not release features until Rust-to-Lean/Aeneas closure.
 pair-forest-source-invariant-audit = ["pair-forest-account-evidence"]
 pair-forest-source-result-invariant-audit = ["pair-forest-source-invariant-audit"]
-# Deposit-only audit of the same inductive Pool-write invariant.  This does
-# not enable the terminal source/result features and is intentionally absent
-# from both `default` and `v7-pair-forest-one-tx-candidate` until sequential
-# live CU evidence and the persisted-state proof have been reviewed.
+# Deposit-only switch for the same inductive Pool-write invariant. It does not
+# enable the terminal source/result features directly. Following sequential
+# live CU evidence and persisted-state source/formal closure, it is included
+# by the default-off V7 candidate aggregate while remaining absent from
+# `default`.
 pair-forest-deposit-invariant-audit = ["pair-forest-account-evidence"]
 
 [dependencies]

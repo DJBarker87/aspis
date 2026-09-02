@@ -13,7 +13,9 @@ for test_name in \
   program_invariant_lane_decoder_keeps_exact_boundary \
   authenticated_result_encoder_is_byte_exact_for_valid_lanes \
   deposit_invariant_append_is_byte_exact_at_measured_boundaries \
+  deposit_invariant_append_rejects_full_tree_and_noncanonical_leaf \
   deposit_invariant_source_root_still_requires_exact_retained_history \
+  deposit_alias_or_bad_token_delta_fails_without_pool_writes \
   pair_forest_lane_persistence_surface_remains_closed \
   one_terminal_transfer_updates_only_selected_lane_history_and_marker; do
   rg -q "fn ${test_name}\\(" "$pool_source"
@@ -38,8 +40,14 @@ done
     --features pair-forest-deposit-invariant-audit \
     deposit_invariant_append_is_byte_exact_at_measured_boundaries
   cargo test --release -p aspis-pool --no-default-features \
+    --features v7-pair-forest-one-tx-candidate \
+    deposit_invariant_append_rejects_full_tree_and_noncanonical_leaf
+  cargo test --release -p aspis-pool --no-default-features \
     --features pair-forest-deposit-invariant-audit \
     deposit_invariant_source_root_still_requires_exact_retained_history
+  cargo test --release -p aspis-pool --no-default-features \
+    --features v7-pair-forest-one-tx-candidate \
+    deposit_alias_or_bad_token_delta_fails_without_pool_writes
   cargo test --release -p aspis-pool --no-default-features \
     --features pair-forest-deposit-invariant-audit \
     pair_forest_lane_persistence_surface_remains_closed

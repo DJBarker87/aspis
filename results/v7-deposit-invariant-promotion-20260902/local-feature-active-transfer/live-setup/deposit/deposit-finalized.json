@@ -1,0 +1,31 @@
+{
+  "schema": "aspis.v7.live-pool-deposit-finalized.v1",
+  "signature": "5t2b312ifBif6fkCa7nbNG5vnBW1HFStR9U4Ay4CN7tFwsLmTsm6rK584PgwTun97JD6RUG4UCXmzdg1Bd1HV7DR",
+  "slot": 183,
+  "selectedLane": 1,
+  "simulatedCu": 638742,
+  "landedCu": 638742,
+  "serializedTransactionBytes": 651,
+  "signedWireSha256": "9e404bd3a4a68a41b927815c28513b0dbcf4e4487cde0e595fb847c8e7948fde",
+  "byteIdenticalSimulationSubmission": true,
+  "accountDataSha256": {
+    "lane": {
+      "before": "b3f4b16ef49260ade47a38fa1a4e2a409b178526c0df18b03f3bbb893493a3cd",
+      "after": "5155bdc4d22f910d1f171ae5fc2f0f1726b94d3fc6ac8278fd2c7de5307b62a1"
+    },
+    "vault": {
+      "before": "2eebfd6b7e9f007c847dd0a6da5882b8b95ce115789b2e26043cfee6b6f1f209",
+      "after": "157dbe7d3d37dc6eacf793405a81940a7d07765eb9704d1fc08723a5a73e6f85"
+    },
+    "source": {
+      "before": "32440c84e783f56b2fc858be6e591960f517478fa6cce3fe1c8d0e14f89659f6",
+      "after": "3861089b8d0cf3c678055ef609e1bd92c77316c0eb0ed7cceb8b384bde03218c"
+    }
+  },
+  "secretValuesRecorded": false,
+  "secretDestroyedByCleanup": true,
+  "finalized": true,
+  "auditOnly": true,
+  "disposable": true,
+  "mainnetReady": false
+}

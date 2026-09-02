@@ -1,0 +1,11 @@
+{
+  "ledgerTemplate": "${TMPDIR:-/tmp}/aspis-v7-txv1-feature-cluster.XXXXXX/ledger",
+  "rpcUrl": "http://127.0.0.1:18934",
+  "bindAddress": "127.0.0.1",
+  "reset": true,
+  "warpSlot": 150,
+  "featureId": "txv1aq4pp281K9um3tnPgkfX8UqtFT6wcVW3hNezGLL",
+  "activationMechanism": "Agave test-validator default genesis feature set; feature is not passed to --deactivate-feature",
+  "existingLedgerAllowed": false,
+  "cleanup": "EXIT/INT/TERM trap removes only the validated mktemp task directory"
+}

@@ -1,0 +1,117 @@
+{
+  "jsonrpc": "2.0",
+  "result": {
+    "context": {
+      "apiVersion": "4.2.0",
+      "slot": 761
+    },
+    "value": {
+      "accounts": null,
+      "err": "AlreadyProcessed",
+      "fee": null,
+      "innerInstructions": null,
+      "loadedAccountsDataSize": 0,
+      "loadedAddresses": {
+        "readonly": [],
+        "writable": []
+      },
+      "logs": [],
+      "postBalances": [
+        499999999661615560,
+        2039280,
+        6236160,
+        2039280,
+        2338560,
+        58352640,
+        1,
+        1141440,
+        1141440,
+        3563520,
+        1141440,
+        1000000000,
+        0,
+        1141440,
+        219768960,
+        2227200,
+        1000000000,
+        1000000000
+      ],
+      "postTokenBalances": [
+        {
+          "accountIndex": 1,
+          "mint": "5TeWSsjg2gbxCyWVniXeCmwM7UtHTCK7svzJr5xYJzHf",
+          "owner": "21bU5PJjyq5YFM8cNX96CQ29HGHFpLikKTDCvzbPdbNf",
+          "programId": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA",
+          "uiTokenAmount": {
+            "amount": "250",
+            "decimals": 6,
+            "uiAmount": 0.00025,
+            "uiAmountString": "0.00025"
+          }
+        },
+        {
+          "accountIndex": 3,
+          "mint": "5TeWSsjg2gbxCyWVniXeCmwM7UtHTCK7svzJr5xYJzHf",
+          "owner": "6CquEHN9aS4cvEjUnZPhr1azMBmbiF5pMfdjVu8RQx6p",
+          "programId": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA",
+          "uiTokenAmount": {
+            "amount": "750",
+            "decimals": 6,
+            "uiAmount": 0.00075,
+            "uiAmountString": "0.00075"
+          }
+        }
+      ],
+      "preBalances": [
+        499999999661615560,
+        2039280,
+        6236160,
+        2039280,
+        2338560,
+        58352640,
+        1,
+        1141440,
+        1141440,
+        3563520,
+        1141440,
+        1000000000,
+        0,
+        1141440,
+        219768960,
+        2227200,
+        1000000000,
+        1000000000
+      ],
+      "preTokenBalances": [
+        {
+          "accountIndex": 1,
+          "mint": "5TeWSsjg2gbxCyWVniXeCmwM7UtHTCK7svzJr5xYJzHf",
+          "owner": "21bU5PJjyq5YFM8cNX96CQ29HGHFpLikKTDCvzbPdbNf",
+          "programId": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA",
+          "uiTokenAmount": {
+            "amount": "250",
+            "decimals": 6,
+            "uiAmount": 0.00025,
+            "uiAmountString": "0.00025"
+          }
+        },
+        {
+          "accountIndex": 3,
+          "mint": "5TeWSsjg2gbxCyWVniXeCmwM7UtHTCK7svzJr5xYJzHf",
+          "owner": "6CquEHN9aS4cvEjUnZPhr1azMBmbiF5pMfdjVu8RQx6p",
+          "programId": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA",
+          "uiTokenAmount": {
+            "amount": "750",
+            "decimals": 6,
+            "uiAmount": 0.00075,
+            "uiAmountString": "0.00075"
+          }
+        }
+      ],
+      "replacementBlockhash": null,
+      "returnData": null,
+      "unitsConsumed": 0
+    }
+  },
+  "id": 1600
+}
