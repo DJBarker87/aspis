@@ -16,6 +16,7 @@ set_option maxRecDepth 100000
 namespace AspisK1.V7Tag73K13PreQ16ViewAgreement
 
 open AspisK1.V7FsAokExperiment
+open AspisK1.V7FsStateRestorationCoupling
 open AspisK1.V7Tag73AdaptiveLazyOracle
 open AspisK1.V7Tag73AtomicForkUniformScheduler
 open AspisK1.V7Tag73ConcreteRestorationClient
@@ -24,6 +25,7 @@ open AspisK1.V7Tag73ExactCompilerGammaTraceOccurrence
 open AspisK1.V7Tag73ExactCompilerResources
 open AspisK1.V7Tag73ExactFixedFullRunFactorization
 open AspisK1.V7Tag73ExactFixedK12MerkleClassifier
+open AspisK1.V7Tag73ExactFixedK12PrefixClassifier
 open AspisK1.V7Tag73ExactFinalWorkPairControllerCompletion
 open AspisK1.V7Tag73ExactPlainRomRun
 open AspisK1.V7Tag73ExactRootRecordOrderLift
@@ -35,11 +37,17 @@ open AspisK1.V7Tag73K13PreQ16MerkleWordSource
 open AspisK1.V7Tag73OperationalCausalInjection
 open AspisK1.V7Tag73OperationalOracleExposure
 open AspisK1.V7Tag73OperationalSemanticReplay
+open AspisK1.V7Tag73ProjectedFreshController
 open AspisK1.V7Tag73RawFutureFreeDriver
 open AspisK1.V7Tag73SchedulerNativePlainRomExperiment
 open AspisK1.V7Tag73SchedulerTraceFactorization
 open AspisK1.V7Tag73SharedOracleVerifierRunner
 open AspisK1.V7Tag73TranscriptSchedule
+open AspisPool.V7MerkleOpeningBinding
+open AspisPool.V7MerkleFirstUnresolvedBinding
+open AspisPool.V7MerklePartialPathExtractor
+open AspisPool.V7MerkleQueryExtractor
+open AspisPool.V7MerkleQueryGrammar
 
 noncomputable section
 
@@ -160,6 +168,153 @@ theorem exact_root_machineFresh_has_operational_lookup
   unfold exactRootFreshQueries at lookup
   simpa using lookup
 
+/-- Every fresh coordinate in the combined adversary/verifier root prefix is
+present in the deployed ordered raw-query log. -/
+theorem exactRootFreshQuery_raw_input_mem_exactK12OrderedQueries
+    {HiddenTape TapeIdentity Observation Statement Payload Result : Type}
+    {parameters : ExactCompilerResourceParameters}
+    {transitionFuel : Nat}
+    {configuration : ExactPlainRomConfiguration HiddenTape TapeIdentity
+      Observation Statement Tag73K12ParsedProof Payload Result parameters}
+    {projection : AcceptedTapeProjection Statement Tag73K12ParsedProof Payload}
+    {fixedInstance : PublicInstance Statement}
+    {sample : ExactCompilerSample HiddenTape parameters}
+    (input : ExactK12OperationalInput transitionFuel configuration projection
+      fixedInstance sample)
+    (queryInput : ShaInput) (answer : Digest256)
+    (member : (queryInput, answer) ∈ exactRootFreshQueries input) :
+    runtimeInputToRawHashInput queryInput ∈ exactK12OrderedQueries input := by
+  let prefixes := input.package.root.full.projection.rootPrefixes
+  have runtimeExact : (exactK12Runtime input).verifierFinalOracle =
+      prefixes.verifier.finalState := by
+    have exact := congrArg
+      (fun runtime => runtime.verifierFinalOracle) prefixes.runtimeExact
+    simpa [exactK12Runtime, prefixes, operationalRootRuntime] using exact
+  have adversaryEnumeration :=
+    projected_fresh_returned_trace_fresh_query_enumeration_exact
+      configuration.machine.adversaryLimits .adversary
+      configuration.machine.adversaryFuel emptyOracle
+      (schedulerStageProgram
+        (SchedulerNativePlainRomResult TapeIdentity Statement
+          Tag73K12ParsedProof Payload Result)
+        (totalizeOracleMachine configuration.machine.adversaryFuel
+          (configuration.machine.blackBox.start sample.1
+            configuration.machine.observation)))
+      prefixes.adversary.freshQueries prefixes.adversary.result
+      prefixes.adversary.finalState prefixes.adversary.steps
+      prefixes.adversary.trace
+  have verifierEnumeration :=
+    projected_fresh_returned_trace_fresh_query_enumeration_exact
+      configuration.machine.verifierLimits .verifier
+      configuration.machine.verifierFuel prefixes.adversary.finalState
+      (schedulerStageProgram
+        (SchedulerNativePlainRomResult TapeIdentity Statement
+          Tag73K12ParsedProof Payload Result)
+        (totalizeOracleMachine configuration.machine.verifierFuel
+          (initialRawFutureFreeProgram configuration.machine.environment
+            prefixes.adversaryValue.rawMessages
+            configuration.machine.driverFuel)))
+      prefixes.verifier.freshQueries prefixes.verifier.result
+      prefixes.verifier.finalState prefixes.verifier.steps
+      prefixes.verifier.trace
+  unfold exactRootFreshQueries at member
+  rcases List.mem_append.mp member with adversaryMember | verifierMember
+  · have enumerated : (queryInput, answer) ∈
+        freshQueryEnumeration
+          (historySince emptyOracle prefixes.adversary.finalState) := by
+      rw [adversaryEnumeration]
+      exact adversaryMember
+    have rawMember := freshQueryEnumeration_raw_input_mem_history
+      (historySince emptyOracle prefixes.adversary.finalState) queryInput answer
+      enumerated
+    have rawFinal : runtimeInputToRawHashInput queryInput ∈
+        prefixes.verifier.finalState.history.map
+          (fun record => runtimeInputToRawHashInput record.input) := by
+      have rawAdversary : runtimeInputToRawHashInput queryInput ∈
+          prefixes.adversary.finalState.history.map
+            (fun record => runtimeInputToRawHashInput record.input) := by
+        simpa [historySince, emptyOracle] using rawMember
+      obtain ⟨appended, historyExact, _answersExact⟩ :=
+        projected_fresh_returned_trace_preserves_suffix
+          configuration.machine.verifierLimits .verifier
+          prefixes.adversary.finalState.history []
+          configuration.machine.verifierFuel prefixes.adversary.finalState
+          (schedulerStageProgram
+            (SchedulerNativePlainRomResult TapeIdentity Statement
+              Tag73K12ParsedProof Payload Result)
+            (totalizeOracleMachine configuration.machine.verifierFuel
+              (initialRawFutureFreeProgram configuration.machine.environment
+                prefixes.adversaryValue.rawMessages
+                configuration.machine.driverFuel)))
+          prefixes.verifier.freshQueries prefixes.verifier.result
+          prefixes.verifier.finalState prefixes.verifier.steps
+          (projected_fresh_suffix_initial prefixes.adversary.finalState)
+          prefixes.verifier.trace
+      rw [historyExact, List.map_append]
+      exact List.mem_append_left _ rawAdversary
+    simpa [exactK12OrderedQueries, runtimeExact] using rawFinal
+  · have enumerated : (queryInput, answer) ∈
+        freshQueryEnumeration
+          (historySince prefixes.adversary.finalState
+            prefixes.verifier.finalState) := by
+      rw [verifierEnumeration]
+      exact verifierMember
+    have rawMember := freshQueryEnumeration_raw_input_mem_history
+      (historySince prefixes.adversary.finalState prefixes.verifier.finalState)
+      queryInput answer enumerated
+    have rawFinal : runtimeInputToRawHashInput queryInput ∈
+        prefixes.verifier.finalState.history.map
+          (fun record => runtimeInputToRawHashInput record.input) := by
+      unfold historySince at rawMember
+      rw [List.map_drop] at rawMember
+      exact List.mem_of_mem_drop rawMember
+    simpa [exactK12OrderedQueries, runtimeExact] using rawFinal
+
+/-- Consequently, every raw input advertised by an exact root prefix is
+included in the deployed full log used by the K1.2/K1.3 classifier. -/
+theorem exposurePrefixRawQueries_included_in_exactK12OrderedQueries
+    {HiddenTape TapeIdentity Observation Statement Payload Result : Type}
+    {parameters : ExactCompilerResourceParameters}
+    {transitionFuel : Nat}
+    {configuration : ExactPlainRomConfiguration HiddenTape TapeIdentity
+      Observation Statement Tag73K12ParsedProof Payload Result parameters}
+    {projection : AcceptedTapeProjection Statement Tag73K12ParsedProof Payload}
+    {fixedInstance : PublicInstance Statement}
+    {sample : ExactCompilerSample HiddenTape parameters}
+    (input : ExactK12OperationalInput transitionFuel configuration projection
+      fixedInstance sample)
+    (prior later : List UnifiedExposureRecord) (pivot : UnifiedExposureRecord)
+    (rootExact : exactFixedRootRecords input.package.root =
+      prior ++ pivot :: later) :
+    TraceIncludedInLog (exposurePrefixRawQueries prior)
+      (exactK12OrderedQueries input) := by
+  intro rawInput rawMember
+  unfold exposurePrefixRawQueries at rawMember
+  obtain ⟨queryInput, inputMember, rawExact⟩ := List.mem_map.mp rawMember
+  obtain ⟨record, recordMember, inputExact⟩ :=
+    List.mem_filterMap.mp inputMember
+  obtain ⟨actor, recordInput, answer, recordExact⟩ :=
+    exact_root_records_only_machine_fresh input record (by
+      rw [rootExact]
+      exact List.mem_append_left _ recordMember)
+  subst record
+  simp only [causalInput?, Option.some.injEq] at inputExact
+  subst recordInput
+  subst rawInput
+  have rootMember :
+      (.machineFresh actor queryInput answer : UnifiedExposureRecord) ∈
+        exactFixedRootRecords input.package.root := by
+    rw [rootExact]
+    exact List.mem_append_left _ recordMember
+  have mappedMember : some (queryInput, answer) ∈
+      (exactFixedRootRecords input.package.root).map machineFreshPair? :=
+    List.mem_map.mpr ⟨_, rootMember, rfl⟩
+  rw [exact_root_records_map_pair input] at mappedMember
+  have pairMember : (queryInput, answer) ∈ exactRootFreshQueries input := by
+    simpa using mappedMember
+  exact exactRootFreshQuery_raw_input_mem_exactK12OrderedQueries input
+    queryInput answer pairMember
+
 /-- A prefix lookup identifies a literal machine-fresh record in that prefix. -/
 theorem exposurePrefixLookup_has_machineFresh_record :
     ∀ (records : List UnifiedExposureRecord),
@@ -245,11 +400,54 @@ theorem exactK12Truncate_agrees_on_root_prefix
         simpa [selected] using tableFound
       simp [exactK12Truncate, selected, outputExact]
 
+/-- Accepted deployed openings are projections of the word fixed before the
+selected q16 coordinate, unless the run enters one of the two explicit
+counted Merkle events. -/
+theorem exact_accepted_openings_yield_preQ16_projections_or_counted_failure
+    {HiddenTape TapeIdentity Observation Statement Payload Result : Type}
+    {parameters : ExactCompilerResourceParameters}
+    {transitionFuel : Nat}
+    {configuration : ExactPlainRomConfiguration HiddenTape TapeIdentity
+      Observation Statement Tag73K12ParsedProof Payload Result parameters}
+    {projection : AcceptedTapeProjection Statement Tag73K12ParsedProof Payload}
+    {fixedInstance : PublicInstance Statement}
+    {sample : ExactCompilerSample HiddenTape parameters}
+    (input : ExactK12OperationalInput transitionFuel configuration projection
+      fixedInstance sample)
+    (prior later : List UnifiedExposureRecord) (pivot : UnifiedExposureRecord)
+    (rootExact : exactFixedRootRecords input.package.root =
+      prior ++ pivot :: later)
+    (accepted : accepted_two_tree_openings (exactK12Truncate input)
+      (exactK12Roots input) (exactK12Openings input))
+    (supplied : ExactPrefixK12SuppliedCoverage input) :
+    disclosuresAreProjections
+        (preQ16PrefixWords prior (exactK12Roots input))
+        (exactK12Openings input) ∨
+      PrefixResolutionLateTargetHit (exactK12Truncate input)
+        (exposurePrefixRawQueries prior) (exactK12OrderedQueries input)
+        (exactK12Roots input) (exactK12Openings input) ∨
+      RawLogTruncatedDigestCollision (exactK12Truncate input)
+        (exactK12OrderedQueries input) := by
+  apply accepted_openings_yield_preQ16_projections_or_counted_failure prior
+    (exactK12Roots input) (exactK12Truncate input)
+    (exactK12OrderedQueries input) (exactK12Openings input)
+  · exact exactK12Truncate_agrees_on_root_prefix input prior later pivot
+      rootExact
+  · exact accepted
+  · exact exposurePrefixRawQueries_included_in_exactK12OrderedQueries input
+      prior later pivot rootExact
+  · exact supplied.1
+  · exact supplied.2
+
 #print axioms pairTableLookup_of_mem
 #print axioms freshQueryEnumeration_raw_input_mem_history
 #print axioms exact_root_machineFresh_has_operational_lookup
+#print axioms exactRootFreshQuery_raw_input_mem_exactK12OrderedQueries
+#print axioms exposurePrefixRawQueries_included_in_exactK12OrderedQueries
 #print axioms exposurePrefixLookup_has_machineFresh_record
 #print axioms exactK12Truncate_agrees_on_root_prefix
+#print axioms
+  exact_accepted_openings_yield_preQ16_projections_or_counted_failure
 
 end
 
