@@ -82,6 +82,9 @@ structure ExactPreQ16K13JointTrialWitness
   bad : Finset (Fin 262144)
   badExact : bad = exactPreQ16K13Bad decoder input prior
   badCard : bad.card ≤ 9557
+  allBad : AllInBad bad
+    (semanticScheduleOfOperational
+      (exactOperationalTape input).search.selectedSchedule)
   actualTrial : ExactFixedK13ActualJointTrial input trial
   coordinate :
     exactFixedK13TrialCoordinates transitionFuel configuration trial sample ∈
@@ -190,6 +193,7 @@ theorem preQ16_query_failure_has_joint_trial_witness
     bad := bad
     badExact := rfl
     badCard := badCard
+    allBad := allBad
     actualTrial := actual
     coordinate := ?_ }⟩
   refine ⟨q16Success, ?_⟩
