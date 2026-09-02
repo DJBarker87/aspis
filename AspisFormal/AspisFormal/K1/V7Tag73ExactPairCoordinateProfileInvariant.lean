@@ -1803,6 +1803,172 @@ theorem exact_alpha_terminal_predecessor_mem_anchor_prior
     advancesExact, prefixChain, producerLookup, outputLookup, advanceLookup,
     predecessorExact, terminalExact, producerMember, advanceMember⟩
 
+/-- Generic recursive form of the predecessor step.  The caller supplies any
+already-established pre-anchor record producing the chain's terminal state;
+if the chain is nonempty, answer uniqueness identifies that record with the
+last advance query and strict root order places the preceding producer in the
+same prefix. -/
+theorem exact_ordered_chain_predecessor_mem_of_terminal_record
+    {HiddenTape TapeIdentity Observation Statement Payload Result : Type}
+    {parameters : ExactCompilerResourceParameters}
+    {transitionFuel : Nat}
+    {configuration : ExactPlainRomConfiguration HiddenTape TapeIdentity
+      Observation Statement Tag73K12ParsedProof Payload Result parameters}
+    {projection : AcceptedTapeProjection Statement Tag73K12ParsedProof Payload}
+    {fixedInstance : PublicInstance Statement}
+    {sample : ExactCompilerSample HiddenTape parameters}
+    (input : ExactK12OperationalInput transitionFuel configuration projection
+      fixedInstance sample)
+    (prior anchorLater : List UnifiedExposureRecord)
+    (anchorRecord : UnifiedExposureRecord)
+    (rootExact : exactFixedRootRecords input.package.root =
+      prior ++ anchorRecord :: anchorLater)
+    (producerInput : ShaInput) (initialDigest : Digest256)
+    (outputs advances : List Digest256)
+    (chain : ExactRootOrderedQ16Chain input producerInput initialDigest
+      outputs advances)
+    (nonempty : 0 < outputs.length)
+    (terminalInput : ShaInput) (terminalAnswer : Digest256)
+    (terminalExact :
+      gammaTerminalDigest initialDigest advances = terminalAnswer)
+    (terminalLookup : tableLookup (exactOperationalTable input) terminalInput =
+      some terminalAnswer)
+    (terminalActor : QueryActor)
+    (terminalMember :
+      (.machineFresh terminalActor terminalInput terminalAnswer :
+        UnifiedExposureRecord) ∈ prior) :
+    ∃ prefixOutputs prefixAdvances blockProducerInput blockDigest blockOutput
+        blockAdvance producerActor advanceActor,
+      outputs = prefixOutputs ++ [blockOutput] ∧
+      advances = prefixAdvances ++ [blockAdvance] ∧
+      ExactRootOrderedQ16Chain input producerInput initialDigest prefixOutputs
+        prefixAdvances ∧
+      tableLookup (exactOperationalTable input) blockProducerInput =
+        some blockDigest ∧
+      tableLookup (exactOperationalTable input)
+        (gammaOutputInput blockDigest) = some blockOutput ∧
+      tableLookup (exactOperationalTable input)
+        (gammaAdvanceInput blockDigest) = some blockAdvance ∧
+      gammaTerminalDigest initialDigest prefixAdvances = blockDigest ∧
+      blockAdvance = terminalAnswer ∧
+      (.machineFresh producerActor blockProducerInput blockDigest :
+        UnifiedExposureRecord) ∈ prior ∧
+      (.machineFresh advanceActor (gammaAdvanceInput blockDigest) blockAdvance :
+        UnifiedExposureRecord) ∈ prior := by
+  classical
+  obtain ⟨prefixOutputs, prefixAdvances, blockProducerInput, blockDigest,
+      blockOutput, blockAdvance, outputsExact, advancesExact, prefixChain,
+      producerLookup, outputLookup, advanceLookup, producerOrder,
+      predecessorExact, chainTerminalExact⟩ :=
+    exact_root_ordered_q16_chain_unsnoc_with_order chain nonempty
+  have blockAdvanceExact : blockAdvance = terminalAnswer :=
+    chainTerminalExact.symm.trans terminalExact
+  obtain ⟨advanceActor, advanceRootMember⟩ :=
+    exact_final_table_lookup_has_root_record input
+      (gammaAdvanceInput blockDigest) blockAdvance advanceLookup
+  have terminalRootMember :
+      (.machineFresh terminalActor terminalInput terminalAnswer :
+        UnifiedExposureRecord) ∈ exactFixedRootRecords input.package.root := by
+    rw [rootExact]
+    exact List.mem_append_left _ terminalMember
+  have advanceRecordExact :
+      (.machineFresh advanceActor (gammaAdvanceInput blockDigest) blockAdvance :
+        UnifiedExposureRecord) =
+      .machineFresh terminalActor terminalInput terminalAnswer := by
+    apply List.inj_on_of_nodup_map (exact_root_record_answers_nodup input)
+      advanceRootMember terminalRootMember
+    simp only [UnifiedExposureRecord.answer, blockAdvanceExact]
+  have advanceMember :
+      (.machineFresh advanceActor (gammaAdvanceInput blockDigest) blockAdvance :
+        UnifiedExposureRecord) ∈ prior := by
+    rw [advanceRecordExact]
+    exact terminalMember
+  obtain ⟨pairBefore, pairMiddle, pairAfter, producerOrderExact⟩ :=
+    producerOrder
+  obtain ⟨beforeRecords, middleRecords, afterRecords, producerActor,
+      orderedAdvanceActor, recordOrder⟩ :=
+    exact_root_pair_order_lifts_to_records input blockProducerInput
+      (gammaAdvanceInput blockDigest) blockDigest blockAdvance pairBefore
+        pairMiddle pairAfter producerOrderExact
+  have orderedAdvanceRoot :
+      (.machineFresh orderedAdvanceActor (gammaAdvanceInput blockDigest)
+          blockAdvance : UnifiedExposureRecord) ∈
+        exactFixedRootRecords input.package.root := by
+    rw [recordOrder]
+    simp
+  have orderedAdvanceExact :
+      (.machineFresh orderedAdvanceActor (gammaAdvanceInput blockDigest)
+          blockAdvance : UnifiedExposureRecord) =
+        .machineFresh advanceActor (gammaAdvanceInput blockDigest)
+          blockAdvance := by
+    apply List.inj_on_of_nodup_map (exact_root_record_answers_nodup input)
+      orderedAdvanceRoot advanceRootMember
+    rfl
+  have orderedAdvanceMember :
+      (.machineFresh orderedAdvanceActor (gammaAdvanceInput blockDigest)
+          blockAdvance : UnifiedExposureRecord) ∈ prior := by
+    simpa [orderedAdvanceExact] using advanceMember
+  have rootNodup : (exactFixedRootRecords input.package.root).Nodup :=
+    List.Nodup.of_map UnifiedExposureRecord.answer
+      (exact_root_record_answers_nodup input)
+  have producerMember := mem_prefix_of_strict_order_and_later_mem
+    (exactFixedRootRecords input.package.root) prior anchorLater beforeRecords
+      middleRecords afterRecords
+      (.machineFresh producerActor blockProducerInput blockDigest)
+      (.machineFresh orderedAdvanceActor (gammaAdvanceInput blockDigest)
+        blockAdvance)
+      anchorRecord rootNodup rootExact recordOrder orderedAdvanceMember
+  exact ⟨prefixOutputs, prefixAdvances, blockProducerInput, blockDigest,
+    blockOutput, blockAdvance, producerActor, advanceActor, outputsExact,
+    advancesExact, prefixChain, producerLookup, outputLookup, advanceLookup,
+    predecessorExact, blockAdvanceExact, producerMember, advanceMember⟩
+
+/-- If an ordered chain consumed no blocks, any retained root record producing
+its stated terminal answer is necessarily the chain's boundary producer. -/
+theorem exact_empty_ordered_chain_terminal_input_eq_producer
+    {HiddenTape TapeIdentity Observation Statement Payload Result : Type}
+    {parameters : ExactCompilerResourceParameters}
+    {transitionFuel : Nat}
+    {configuration : ExactPlainRomConfiguration HiddenTape TapeIdentity
+      Observation Statement Tag73K12ParsedProof Payload Result parameters}
+    {projection : AcceptedTapeProjection Statement Tag73K12ParsedProof Payload}
+    {fixedInstance : PublicInstance Statement}
+    {sample : ExactCompilerSample HiddenTape parameters}
+    (input : ExactK12OperationalInput transitionFuel configuration projection
+      fixedInstance sample)
+    (producerInput : ShaInput) (initialDigest : Digest256)
+    (outputs advances : List Digest256)
+    (chain : ExactRootOrderedQ16Chain input producerInput initialDigest outputs
+      advances)
+    (outputsEmpty : outputs = [])
+    (terminalInput : ShaInput) (terminalAnswer : Digest256)
+    (terminalExact :
+      gammaTerminalDigest initialDigest advances = terminalAnswer)
+    (terminalLookup : tableLookup (exactOperationalTable input) terminalInput =
+      some terminalAnswer) :
+    terminalInput = producerInput := by
+  have advancesEmpty : advances = [] := by
+    apply List.length_eq_zero_iff.mp
+    rw [exact_root_ordered_q16_chain_lengths chain, outputsEmpty]
+    rfl
+  have initialExact : initialDigest = terminalAnswer := by
+    simpa [advancesEmpty, gammaTerminalDigest] using terminalExact
+  have producerLookup := exact_root_ordered_q16_chain_producer_lookup chain
+  obtain ⟨terminalActor, terminalMember⟩ :=
+    exact_final_table_lookup_has_root_record input terminalInput terminalAnswer
+      terminalLookup
+  obtain ⟨producerActor, producerMember⟩ :=
+    exact_final_table_lookup_has_root_record input producerInput initialDigest
+      producerLookup
+  have recordExact :
+      (.machineFresh terminalActor terminalInput terminalAnswer :
+        UnifiedExposureRecord) =
+      .machineFresh producerActor producerInput initialDigest := by
+    apply List.inj_on_of_nodup_map (exact_root_record_answers_nodup input)
+      terminalMember producerMember
+    simp only [UnifiedExposureRecord.answer, initialExact]
+  injection recordExact
+
 /-- The canonical `final256` producer itself lies in the shared pre-anchor
 root prefix.  Thus both executions literally retain the same actor-tagged
 producer record, not merely the same final digest. -/
@@ -2202,6 +2368,10 @@ theorem exact_fixed_clean_pair_k13_adversary_anchor_disclosed_final_eq
   exact_alpha_terminal_advance_mem_anchor_prior
 #print axioms
   exact_alpha_terminal_predecessor_mem_anchor_prior
+#print axioms
+  exact_ordered_chain_predecessor_mem_of_terminal_record
+#print axioms
+  exact_empty_ordered_chain_terminal_input_eq_producer
 #print axioms
   exact_fixed_clean_pair_k13_final256_record_mem_shared_priors
 #print axioms

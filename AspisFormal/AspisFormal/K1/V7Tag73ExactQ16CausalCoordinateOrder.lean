@@ -177,6 +177,25 @@ inductive ExactRootOrderedQ16Chain
       ExactRootOrderedQ16Chain input producerInput digest
         (output :: outputs) (advanced :: advances)
 
+/-- Every ordered chain retains the lookup that produced its initial state. -/
+theorem exact_root_ordered_q16_chain_producer_lookup
+    {HiddenTape TapeIdentity Observation Statement Payload Result : Type}
+    {parameters : ExactCompilerResourceParameters}
+    {transitionFuel : Nat}
+    {configuration : ExactPlainRomConfiguration HiddenTape TapeIdentity
+      Observation Statement Tag73K12ParsedProof Payload Result parameters}
+    {projection : AcceptedTapeProjection Statement Tag73K12ParsedProof Payload}
+    {fixedInstance : PublicInstance Statement}
+    {sample : ExactCompilerSample HiddenTape parameters}
+    {input : ExactK12OperationalInput transitionFuel configuration projection
+      fixedInstance sample}
+    {producerInput : ShaInput} {digest : Digest256}
+    {outputs advances : List Digest256}
+    (chain : ExactRootOrderedQ16Chain input producerInput digest outputs
+      advances) :
+    tableLookup (exactOperationalTable input) producerInput = some digest := by
+  cases chain <;> assumption
+
 /-- Root ordering preserves the one-output/one-advance shape of every
 consumed duplex block. -/
 theorem exact_root_ordered_q16_chain_lengths
@@ -481,6 +500,7 @@ theorem exact_operational_q16_branch_has_exact_root_order
 #print axioms exact_operational_q16_after_state_uses_shared_base
 #print axioms exact_operational_q16_candidate_absorb_lookup
 #print axioms exact_root_ordered_q16_chain_lengths
+#print axioms exact_root_ordered_q16_chain_producer_lookup
 #print axioms exact_root_ordered_q16_chain_terminal_pair_mem
 #print axioms exact_root_ordered_q16_chain_unsnoc
 #print axioms exact_root_ordered_q16_chain_unsnoc_with_order
