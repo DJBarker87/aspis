@@ -4,6 +4,9 @@ import AspisFormal.K1.V7Tag73ExactPairCoordinateProfileInvariant
 import AspisFormal.K1.V7Tag73ExactPairRootAbsorbChainClosure
 import AspisFormal.K1.V7Tag73RootAbsorbInputInjectivity
 import AspisFormal.K1.V7Tag73ExactFixedQ16ScheduleFunctional
+import AspisFormal.K1.V7Tag73ExactFoldArmedFinalPairPrefix
+import AspisFormal.K1.V7Tag73SchedulerNativePrefixTraversal
+import AspisFormal.K1.V7Tag73SchedulerTraceFactorization
 
 /-!
 # Semantic profile for corrected pre-q16 pair trials
@@ -45,6 +48,7 @@ open AspisK1.V7Tag73ExactPairRootAbsorbChainClosure
 open AspisK1.V7Tag73ExactFixedQ16JointEventHandoff
 open AspisK1.V7Tag73ExactFixedQ16ScheduleFunctional
 open AspisK1.V7Tag73ExactFixedQ16VerifierAnchorInvariant
+open AspisK1.V7Tag73ExactFoldArmedFinalPairPrefix
 open AspisK1.V7Tag73ExactAdversaryAnchorFinalProfile
 open AspisK1.V7Tag73ExactParsedProofSourceBinding
 open AspisK1.V7Tag73ExactPlainRomRun
@@ -60,6 +64,8 @@ open AspisK1.V7Tag73K12BudgetedSchedulerTree
 open AspisK1.V7Tag73OperationalOracleExposure
 open AspisK1.V7Tag73OperationalSemanticReplay
 open AspisK1.V7Tag73SchedulerNativePlainRomExperiment
+open AspisK1.V7Tag73SchedulerNativePrefixTraversal
+open AspisK1.V7Tag73SchedulerTraceFactorization
 open AspisK1.V7Tag73ParsedK13K14Classifier
 open AspisK1.V7Tag73ProjectedMachineNativeRequestPrefix
 open AspisK1.V7Tag73RootAbsorbInputInjectivity
@@ -68,6 +74,159 @@ open AspisPool.AlgorithmicCircleDecoderV7
 open AspisV5ComponentCQM31TowerExact
 
 noncomputable section
+
+/-- The corrected witness retains the same literal accepted final-work pair as
+the deployed execution. Equal non-q16 coordinates therefore expose a common
+answer prefix through the final nonce absorb, without using the obsolete
+q16-dependent consistency set. -/
+theorem exact_preQ16_clean_pair_has_common_final_absorb_tape_prefix
+    {HiddenTape TapeIdentity Observation Statement Payload Witness : Type}
+    {parameters : ExactCompilerResourceParameters}
+    {transitionFuel : Nat}
+    {configuration : ExactPlainRomWitnessConfiguration HiddenTape TapeIdentity
+      Observation Statement Tag73K12ParsedProof Payload Witness parameters}
+    {projection : AcceptedTapeProjection Statement Tag73K12ParsedProof Payload}
+    {fixedInstance : PublicInstance Statement}
+    {decoder : ExactDecoderInstantiation QM31Exact}
+    (foldTrial finalTrial : ExactCompilerExposureTrial parameters)
+    (hidden : HiddenTape)
+    (left right : FreshAnswerTape Digest256
+      (exactCompilerTargetCaps parameters).length)
+    (leftWitness : ExactPreQ16CleanK13PairTrialWitness transitionFuel
+      configuration projection fixedInstance decoder (hidden, left) foldTrial
+        finalTrial)
+    (programmedCover : 518 ≤ 2 * parameters.forkRequestCap)
+    (contextExact :
+      let router := exactCompilerFoldArmedAlphaFinalWorkQ16Router parameters
+        transitionFuel foldTrial.val finalTrial.val
+        (exactPlainRomCursor configuration hidden).erase
+      (exactCompilerCausalFoldAlphaFinalWorkQ16Coordinates parameters router
+          left).1 =
+        (exactCompilerCausalFoldAlphaFinalWorkQ16Coordinates parameters router
+          right).1)
+    (foldExact :
+      let router := exactCompilerFoldArmedAlphaFinalWorkQ16Router parameters
+        transitionFuel foldTrial.val finalTrial.val
+        (exactPlainRomCursor configuration hidden).erase
+      (exactCompilerCausalFoldAlphaFinalWorkQ16Coordinates parameters router
+          left).2.1 =
+        (exactCompilerCausalFoldAlphaFinalWorkQ16Coordinates parameters router
+          right).2.1)
+    (workExact :
+      let router := exactCompilerFoldArmedAlphaFinalWorkQ16Router parameters
+        transitionFuel foldTrial.val finalTrial.val
+        (exactPlainRomCursor configuration hidden).erase
+      (exactCompilerCausalFoldAlphaFinalWorkQ16Coordinates parameters router
+          left).2.2.1 =
+        (exactCompilerCausalFoldAlphaFinalWorkQ16Coordinates parameters router
+          right).2.2.1) :
+    ∃ completed rootRemaining tapeRemaining,
+      exactFixedRootRecords leftWitness.joint.input.package.root =
+          completed ++ rootRemaining ∧
+        freshAnswerTapeToList right =
+          completed.map UnifiedExposureRecord.answer ++ tapeRemaining := by
+  obtain ⟨digest, workAnswer, base, _workAccepted, _prefinal, _baseExact,
+      pairLabeled, _workLabeled, _workCoordinate, _forest⟩ :=
+    leftWitness.joint.actualTrial
+  exact exact_fold_armed_coordinates_force_final_pair_tape_prefix
+    leftWitness.joint.input foldTrial finalTrial digest workAnswer base
+      (exactOperationalTape leftWitness.joint.input).messages.finalGrinding.selected
+      pairLabeled programmedCover right contextExact foldExact workExact
+
+/-- The common answer prefix is also a common native scheduler trace prefix.
+This supplies the corrected causal bridge used by alpha and gamma replay. -/
+theorem exact_preQ16_clean_pair_has_common_final_absorb_trace_prefix
+    {HiddenTape TapeIdentity Observation Statement Payload Witness : Type}
+    {parameters : ExactCompilerResourceParameters}
+    {transitionFuel : Nat}
+    {configuration : ExactPlainRomWitnessConfiguration HiddenTape TapeIdentity
+      Observation Statement Tag73K12ParsedProof Payload Witness parameters}
+    {projection : AcceptedTapeProjection Statement Tag73K12ParsedProof Payload}
+    {fixedInstance : PublicInstance Statement}
+    {decoder : ExactDecoderInstantiation QM31Exact}
+    (foldTrial finalTrial : ExactCompilerExposureTrial parameters)
+    (hidden : HiddenTape)
+    (left right : FreshAnswerTape Digest256
+      (exactCompilerTargetCaps parameters).length)
+    (leftWitness : ExactPreQ16CleanK13PairTrialWitness transitionFuel
+      configuration projection fixedInstance decoder (hidden, left) foldTrial
+        finalTrial)
+    (programmedCover : 518 ≤ 2 * parameters.forkRequestCap)
+    (contextExact :
+      let router := exactCompilerFoldArmedAlphaFinalWorkQ16Router parameters
+        transitionFuel foldTrial.val finalTrial.val
+        (exactPlainRomCursor configuration hidden).erase
+      (exactCompilerCausalFoldAlphaFinalWorkQ16Coordinates parameters router
+          left).1 =
+        (exactCompilerCausalFoldAlphaFinalWorkQ16Coordinates parameters router
+          right).1)
+    (foldExact :
+      let router := exactCompilerFoldArmedAlphaFinalWorkQ16Router parameters
+        transitionFuel foldTrial.val finalTrial.val
+        (exactPlainRomCursor configuration hidden).erase
+      (exactCompilerCausalFoldAlphaFinalWorkQ16Coordinates parameters router
+          left).2.1 =
+        (exactCompilerCausalFoldAlphaFinalWorkQ16Coordinates parameters router
+          right).2.1)
+    (workExact :
+      let router := exactCompilerFoldArmedAlphaFinalWorkQ16Router parameters
+        transitionFuel foldTrial.val finalTrial.val
+        (exactPlainRomCursor configuration hidden).erase
+      (exactCompilerCausalFoldAlphaFinalWorkQ16Coordinates parameters router
+          left).2.2.1 =
+        (exactCompilerCausalFoldAlphaFinalWorkQ16Coordinates parameters router
+          right).2.2.1) :
+    ∃ completed leftRootRemaining rightTraceRemaining,
+      exactFixedRootRecords leftWitness.joint.input.package.root =
+          completed ++ leftRootRemaining ∧
+        (runSchedulerNativeListRun transitionFuel
+          (exactPlainRomCursor configuration hidden)
+          (freshAnswerTapeToList right)).trace =
+            completed ++ rightTraceRemaining := by
+  obtain ⟨completed, leftRootRemaining, rightTapeRemaining, rootExact,
+      rightTapeExact⟩ :=
+    exact_preQ16_clean_pair_has_common_final_absorb_tape_prefix foldTrial
+      finalTrial hidden left right leftWitness programmedCover contextExact
+        foldExact workExact
+  let leftTail := exactFixedComputedClientTailRun transitionFuel configuration
+    (hidden, left) leftWitness.joint.input.package.root
+  have leftTraceExact :
+      (runSchedulerNativeListRun transitionFuel
+        (exactPlainRomCursor configuration hidden)
+        (freshAnswerTapeToList left)).trace =
+          completed ++ (leftRootRemaining ++ leftTail.trace) := by
+    have fullExact := congrArg (fun run => run.trace)
+      leftWitness.joint.input.package.factorization.fullRunExact
+    change
+      (runSchedulerNativeListRun transitionFuel
+        (exactPlainRomCursor configuration hidden)
+        (freshAnswerTapeToList left)).trace =
+          (exactFixedRootRecords leftWitness.joint.input.package.root ++
+            leftTail.trace) at fullExact
+    rw [rootExact] at fullExact
+    simpa only [List.append_assoc] using fullExact
+  have nativePrefix :
+      schedulerNativePrefixRecords transitionFuel
+          (exactPlainRomCursor configuration hidden)
+          (completed.map UnifiedExposureRecord.answer) = completed :=
+    scheduler_native_prefix_records_eq_of_run_trace_prefix transitionFuel
+      (exactPlainRomCursor configuration hidden)
+      (freshAnswerTapeToList left) completed
+        (leftRootRemaining ++ leftTail.trace) leftTraceExact
+  obtain ⟨records, finalCursor, traversal⟩ :=
+    scheduler_native_prefix_traversal_exists transitionFuel
+      (exactPlainRomCursor configuration hidden)
+      (completed.map UnifiedExposureRecord.answer)
+  have recordsExact :=
+    scheduler_native_prefix_traversal_records_exact traversal
+  have rightTrace :=
+    scheduler_native_prefix_traversal_trace_factorization traversal
+      rightTapeRemaining
+  rw [← recordsExact, nativePrefix] at rightTrace
+  rw [← rightTapeExact] at rightTrace
+  exact ⟨completed, leftRootRemaining,
+    (runSchedulerNativeListRunFrom transitionFuel transitionFuel finalCursor
+      rightTapeRemaining).trace, rootExact, rightTrace⟩
 
 /-- Pure congruence for the corrected consistency set.  No execution,
 probability, hash, or source premise is hidden here. -/
@@ -855,6 +1014,8 @@ theorem exact_preQ16_clean_k13_pair_coordinate_invariant_of_semantic
   exact leftPointwise.trans (badExact.trans rightPointwise.symm)
 
 #print axioms exact_preQ16_k13_bad_congr_of_semantic_fields
+#print axioms exact_preQ16_clean_pair_has_common_final_absorb_tape_prefix
+#print axioms exact_preQ16_clean_pair_has_common_final_absorb_trace_prefix
 #print axioms ExactPreQ16CleanK13PairSemanticInvariant
 #print axioms exact_preQ16_clean_pair_selected_priors_eq
 #print axioms exact_preQ16_clean_pair_adversary_roots_eq
