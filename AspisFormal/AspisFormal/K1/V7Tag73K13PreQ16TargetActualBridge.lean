@@ -1,6 +1,7 @@
 import AspisFormal.K1.V7Tag73K13PreQ16TargetSchedulerTree
 import AspisFormal.K1.V7Tag73K12CollisionSchedulerTree
 import AspisFormal.K1.V7Tag73ExactCompilerGammaTraceOccurrence
+import AspisFormal.K1.V7Tag73ExactCausalRouterTapeAlignment
 
 /-!
 # Actual-run bridge for the pre-q16 Merkle target tree
@@ -19,11 +20,14 @@ namespace AspisK1.V7Tag73K13PreQ16TargetActualBridge
 
 open AspisK1.V7FsAokExperiment
 open AspisK1.V7Tag73AdaptiveQ16TrialAccounting
+open AspisK1.V7Tag73AdaptiveLazyOracle
 open AspisK1.V7Tag73AtomicForkUniformScheduler
+open AspisK1.V7Tag73CausalQ16CoordinateRouter
 open AspisK1.V7Tag73DeterministicRefinement
 open AspisK1.V7Tag73ExactClientKnowledgeComposition
 open AspisK1.V7Tag73ExactCompilerGammaTraceOccurrence
 open AspisK1.V7Tag73ExactCompilerResources
+open AspisK1.V7Tag73ExactCausalRouterTapeAlignment
 open AspisK1.V7Tag73ExactFixedFullRunFactorization
 open AspisK1.V7Tag73ExactFixedK12MerkleClassifier
 open AspisK1.V7Tag73ExactFixedOperationalStateMap
@@ -47,6 +51,44 @@ open AspisPool.V7MerklePartialPathExtractor
 open AspisPool.V7MerkleQueryExtractor
 
 noncomputable section
+
+/-- A chronological list determines its length-indexed fresh-answer tape. -/
+theorem freshAnswerTape_eq_of_toList_eq
+    {Output : Type} : ∀ {steps : Nat}
+      (left right : FreshAnswerTape Output steps),
+      freshAnswerTapeToList left = freshAnswerTapeToList right → left = right
+  | 0, left, right, _ => by cases left; cases right; rfl
+  | steps + 1, left, right, equal => by
+      rcases left with ⟨leftHead, leftTail⟩
+      rcases right with ⟨rightHead, rightTail⟩
+      simp only [freshAnswerTapeToList, List.cons.injEq] at equal
+      rw [equal.1, freshAnswerTape_eq_of_toList_eq leftTail rightTail equal.2]
+
+def preQ16MasterLengthEq (parameters : ExactCompilerResourceParameters) :
+    (exactCompilerTargetCaps parameters).length =
+      (preQ16MerkleTargetCapsFrom 0
+        (unifiedFull256ExposureCap parameters)).length :=
+  (exact_compiler_target_caps_length parameters).trans
+    (pre_q16_merkle_target_caps_from_length 0
+      (unifiedFull256ExposureCap parameters)).symm
+
+/-- The two head/tail reindexings used by the operational scheduler and the
+Merkle target tree are exactly the canonical length cast of the compiler
+master tape; no coordinate is permuted or altered. -/
+theorem exactCompilerPreQ16MerkleTargetTape_eq_castMaster
+    (parameters : ExactCompilerResourceParameters)
+    (masterTape : FreshAnswerTape Digest256
+      (exactCompilerTargetCaps parameters).length) :
+    preQ16MerkleTargetTapeFrom 0
+        (operationalTapeCoordinates (globalFull256OracleCallCap parameters) 1
+          (unifiedFull256ExposureCap parameters)
+          (exactCompilerOperationalIndexedTape parameters masterTape)) =
+      castFreshAnswerTape (preQ16MasterLengthEq parameters) masterTape := by
+  apply freshAnswerTape_eq_of_toList_eq
+  rw [pre_q16_merkle_target_tape_from_to_list,
+    fresh_answer_tape_to_list_cast]
+  exact exact_compiler_master_coordinates_are_literal_master_tape parameters
+    masterTape
 
 theorem preQ16FullMerkleTargets_append_left
     (records later : List UnifiedExposureRecord) :
@@ -222,9 +264,48 @@ theorem exact_actual_late_target_implies_preQ16_scheduler_hit
   · exact traceExact
   · simpa only [hitRecord, UnifiedExposureRecord.answer] using answerTargetLater
 
+/-- Release-facing form on the literal master tape sampled by the compiler. -/
+theorem exact_actual_late_target_implies_master_scheduler_hit
+    {HiddenTape TapeIdentity Observation Statement Payload Witness : Type}
+    {parameters : ExactCompilerResourceParameters}
+    {transitionFuel : Nat}
+    {configuration : ExactPlainRomWitnessConfiguration HiddenTape TapeIdentity
+      Observation Statement Tag73K12ParsedProof Payload Witness parameters}
+    {projection : AcceptedTapeProjection Statement Tag73K12ParsedProof Payload}
+    {fixedInstance : PublicInstance Statement}
+    {sample : ExactCompilerSample HiddenTape parameters}
+    (transitionRoom : 2 ≤ transitionFuel)
+    (input : ExactK12OperationalInput transitionFuel configuration projection
+      fixedInstance sample)
+    (trial : ExactCompilerExposureTrial parameters)
+    (actual : ExactFixedK13ActualJointTrial input trial)
+    (prior later : List UnifiedExposureRecord)
+    (pivotActor : QueryActor) (pivotInput : ShaInput) (pivotAnswer : Digest256)
+    (rootExact : exactFixedRootRecords input.package.root =
+      prior ++ (.machineFresh pivotActor pivotInput pivotAnswer :
+        UnifiedExposureRecord) :: later)
+    (trialExact : trial.val = prior.length)
+    (lateHit : PrefixResolutionLateTargetHit (exactK12Truncate input)
+      (exposurePrefixRawQueries prior) (exactK12OrderedQueries input)
+      (exactK12Roots input) (exactK12Openings input)) :
+    (preQ16MerkleTargetTree
+      (globalFull256OracleCallCap parameters)
+      (unifiedFull256ExposureCap parameters) transitionFuel
+      (exactPlainRomCursor configuration sample.1).erase).everHits
+        (castFreshAnswerTape (preQ16MasterLengthEq parameters) sample.2) := by
+  have hit := exact_actual_late_target_implies_preQ16_scheduler_hit
+    transitionRoom input trial actual prior later pivotActor pivotInput
+      pivotAnswer rootExact trialExact lateHit
+  rw [exactCompilerPreQ16MerkleTargetTape_eq_castMaster parameters sample.2]
+    at hit
+  exact hit
+
+#print axioms freshAnswerTape_eq_of_toList_eq
+#print axioms exactCompilerPreQ16MerkleTargetTape_eq_castMaster
 #print axioms preQ16FullMerkleTargets_append_left
 #print axioms exact_actual_late_target_has_post_prefix_root_record
 #print axioms exact_actual_late_target_implies_preQ16_scheduler_hit
+#print axioms exact_actual_late_target_implies_master_scheduler_hit
 
 end
 
