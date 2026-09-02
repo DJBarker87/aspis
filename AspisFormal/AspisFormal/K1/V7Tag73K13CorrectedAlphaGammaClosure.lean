@@ -433,9 +433,65 @@ theorem exact_preQ16_clean_pair_alpha_advance_states_eq
   intro index leftIndex rightIndex
   exact pointwise index leftIndex
 
+/-- Once the causal router has identified equal answers at every consumed
+alpha coordinate, the deployed first-success decoder forces one common
+alpha-zero value.  This lemma deliberately separates the remaining causal
+answer-routing problem from list extensionality and field decoding. -/
+theorem exact_operational_alpha_zero_eq_of_pointwise_outputs
+    {HiddenTape TapeIdentity Observation Statement Payload Witness : Type}
+    {parameters : ExactCompilerResourceParameters}
+    {transitionFuel : Nat}
+    {configuration : ExactPlainRomWitnessConfiguration HiddenTape TapeIdentity
+      Observation Statement Tag73K12ParsedProof Payload Witness parameters}
+    {projection : AcceptedTapeProjection Statement Tag73K12ParsedProof Payload}
+    {fixedInstance : PublicInstance Statement}
+    {leftSample rightSample : ExactCompilerSample HiddenTape parameters}
+    (leftInput : ExactK12OperationalInput transitionFuel configuration
+      projection fixedInstance leftSample)
+    (rightInput : ExactK12OperationalInput transitionFuel configuration
+      projection fixedInstance rightSample)
+    (leftOutputs rightOutputs : List Digest256)
+    (leftRaw rightRaw : Qm31Bytes)
+    (leftValue rightValue : QM31Exact)
+    (lengthsExact : leftOutputs.length = rightOutputs.length)
+    (pointwise : ∀ index (leftBound : index < leftOutputs.length),
+      let rightBound : index < rightOutputs.length := by omega
+      leftOutputs[index] = rightOutputs[index])
+    (leftAccepted :
+      decodeChallengeParameter exactSecureCircleParameterMap (.alpha 0)
+        leftOutputs = some leftRaw)
+    (rightAccepted :
+      decodeChallengeParameter exactSecureCircleParameterMap (.alpha 0)
+        rightOutputs = some rightRaw)
+    (leftDecode : decodeTagQM31ExactLE leftRaw = some leftValue)
+    (rightDecode : decodeTagQM31ExactLE rightRaw = some rightValue)
+    (leftOperational : exactOperationalChallenge leftInput (.alpha 0) =
+      leftValue)
+    (rightOperational : exactOperationalChallenge rightInput (.alpha 0) =
+      rightValue) :
+    exactOperationalChallenge leftInput (.alpha 0) =
+      exactOperationalChallenge rightInput (.alpha 0) := by
+  have outputsExact : leftOutputs = rightOutputs := by
+    apply List.ext_getElem
+    · exact lengthsExact
+    · intro index leftBound rightBound
+      exact pointwise index leftBound
+  have rawExact : leftRaw = rightRaw := by
+    apply decodeChallengeParameter_functional exactSecureCircleParameterMap
+      (.alpha 0) leftOutputs leftRaw rightRaw leftAccepted
+    simpa [outputsExact] using rightAccepted
+  have valueExact : leftValue = rightValue := by
+    apply Option.some.inj
+    calc
+      some leftValue = decodeTagQM31ExactLE leftRaw := leftDecode.symm
+      _ = decodeTagQM31ExactLE rightRaw := by rw [rawExact]
+      _ = some rightValue := rightDecode
+  exact leftOperational.trans (valueExact.trans rightOperational.symm)
+
 #print axioms exact_preQ16_clean_pair_common_final256_record
 #print axioms exact_preQ16_alpha_chain_reaches_final256_record
 #print axioms exact_preQ16_clean_pair_alpha_advance_states_eq
+#print axioms exact_operational_alpha_zero_eq_of_pointwise_outputs
 
 end
 
