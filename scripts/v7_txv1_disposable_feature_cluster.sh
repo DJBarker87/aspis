@@ -53,6 +53,16 @@ jq -e '.mainnetReady == false and .identitySet.auditOnly == true and
   .identitySet.productionApproved == false' "$CONFIG" >/dev/null \
   || fail "configuration does not identify an audit-only disposable identity set"
 
+if [[ -n "${ASPIS_TXV1_SOURCE_REVISION:-}" ]]; then
+  readonly REPOSITORY_REVISION=$ASPIS_TXV1_SOURCE_REVISION
+  [[ "$REPOSITORY_REVISION" =~ ^[0-9a-f]{40}$ ]] \
+    || fail "explicit source revision must be a lowercase 40-hex commit"
+else
+  readonly REPOSITORY_REVISION=$(git -C "$REPO_ROOT" rev-parse --verify HEAD)
+  [[ "$REPOSITORY_REVISION" =~ ^[0-9a-f]{40}$ ]] \
+    || fail "repository revision is unavailable; archive runs must set ASPIS_TXV1_SOURCE_REVISION"
+fi
+
 for command_name in awk curl date find git grep jq od openssl sed seq shasum sort tr wc xargs; do
   command -v "$command_name" >/dev/null || fail "missing required command: $command_name"
 done
@@ -236,7 +246,7 @@ if [[ -n "${ASPIS_TXV1_SPL_NOOP_BINARY:-}" ]]; then
 fi
 
 jq -n --arg generatedAt "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
-  --arg revision "$(git -C "$REPO_ROOT" rev-parse HEAD)" \
+  --arg revision "$REPOSITORY_REVISION" \
   --arg agave "$VERSION_OUTPUT" --arg rpcUrl "$RPC_URL" \
   --arg genesisHash "$(jq -er '.result' "$EVIDENCE_DIR/get-genesis-hash.json")" \
   --arg coreVersion "$(jq -er '.result."solana-core"' "$EVIDENCE_DIR/get-version.json")" \
