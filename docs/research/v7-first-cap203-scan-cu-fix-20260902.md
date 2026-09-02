@@ -2,8 +2,8 @@
 
 ## Result
 
-**MEASUREMENT GREEN; RELEASE PROMOTION BLOCKED BY FINAL-NONCE FORMAL
-BRIDGE.**
+**FORMAL PUBLICATION BRIDGE GREEN; RELEASE PROMOTION BLOCKED BY THE
+ALL-REACHABLE CU BOUND.**
 
 The large CU variation was not a verifier-code regression and it was not a
 proof-generation failure. The verifier derives q16 query candidates in order
@@ -167,11 +167,36 @@ has all three canonical work witnesses, the exact ASQ8/ASF8/ASR8 binding, the
 same proof bytes, and the same verifier replay. The change is solely which
 otherwise valid final nonce an honest prover elects to publish.
 
-That publication conditioning is why this remains an audit feature. The
-generic first-acceptable-among-N q16 theorem makes the intended argument
-plausible, but the real lazy-ROM/final-nonce bridge must cover both the counter
-cutoff and the minimum-draw predicate. Until that closure exists, this branch
-is not authorization to enable the policy by default or to deploy it.
+The publication conditioning is now covered by
+`V7Tag73Cutoff20FinalNoncePublicationBridge.lean`. The formal predicate is the
+exact inclusive `counter <= 20` policy and requires the first sixteen raw q16
+draws to be injective for every candidate from zero through the selected
+counter. Erasing that predicate produces the unchanged ordinary sixty-four
+candidate first-cap-203 trace.
+
+The security argument does not assume that a qualifying nonce is the first
+work-valid nonce, nor that the publication decision is independent of the
+random oracle. The existing causal theorem already inventories every genuine
+work-qualified final-nonce/q16 trial, proves the exact per-trial
+`2^-34 * epsilon_q16` product, and unions at most `2^34` adaptive trials. The
+new theorem intersects that already-covered failure union with the publication
+event. By monotonicity this can only shrink the bad event, leaving the original
+one-forest q16 bound unchanged and spending no additional soundness factor.
+
+The production-facing endpoint is
+`exact_fixed_clean_cutoff20_published_k13_query_probability_le_one_forest`.
+It consumes the existing operational source cover, exact causal routing,
+work-dependent residual invariant, frontier semantics and exposure cap. Its
+`#print axioms` result is exactly `propext`, `Classical.choice`, and
+`Quot.sound`.
+
+This is a cryptographic publication-policy closure, not a source extraction of
+the off-chain Rust loop. The Rust-to-predicate correspondence remains covered
+by the focused selector tests. A bug in that loop can violate the intended CU
+policy or liveness, but it cannot expand verifier acceptance; byte-identical
+simulation therefore remains mandatory. The feature remains default-off until
+the separate all-reachable CU question is closed or simulation is explicitly
+adopted as the release admission rule.
 
 ## Focused validation and resources
 
@@ -183,7 +208,17 @@ v7_final_nonce_selector_returns_ordinary_bounded_schedule: passed
 v7_final_nonce_selector_retries_an_over_cutoff_first_nonce: passed
 default aspis-prover cargo check: passed
 feature-enabled prove-from-live-bundle cargo check: passed
+lake env lean AspisFormal/K1/V7Tag73Cutoff20FinalNoncePublicationBridge.lean: passed
 ```
+
+The focused Lean bridge ran against the pinned Lean 4.32.0 dependency graph:
+exit 0, 15.63 seconds wall time, 5,678,252,032-byte maximum resident set,
+zero swaps. A first cold-cache attempt was stopped before theorem elaboration
+when Lake ignored the attempted worker limit and aggregate child RSS crossed
+the repository's 8-GiB review threshold. The successful command reused the
+already-built pinned repository OLean graph read-only and elaborated only the
+new source file. No generated certificate, bridge consumer, package-wide
+target, or frozen manifest was replayed because none was changed.
 
 The final NUC proof-tool build was optimized, offline, and locked: 9.43 s,
 514,300 KiB maximum RSS, zero swap. The disposable lifecycle took 196.30 s,
@@ -197,13 +232,14 @@ account images, transaction logs, and resource files are under
 
 ## Remaining blocker
 
-The smallest remaining promotion blocker is precise:
-
-1. close the lazy-ROM/final-nonce theorem for the exact publication predicate
-   used here; and
-2. either prove an all-reachable current-binary CU upper bound or retain exact
-   byte-identical simulation as an explicit release/runtime admission rule.
+The final-nonce/q16 soundness bridge is closed. The remaining promotion blocker
+is to either prove an all-reachable current-binary CU upper bound for cutoff 20
+or retain exact byte-identical simulation as an explicit release/runtime
+admission rule. The current 1,299,084-CU maximum is still a calibrated envelope
+with only 916 CU of modeled room below the 1.30M harness gate; it is not yet an
+all-reachable theorem.
 
 No production deployment, public transaction, production identity selection,
-release signing, verifier/Pool source edit, cryptographic-parameter edit, or
-formal-file edit was performed.
+release signing, verifier/Pool source edit, or cryptographic-parameter edit was
+performed. The only formal source addition is the publication bridge described
+above.

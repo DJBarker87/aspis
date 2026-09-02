@@ -6,7 +6,7 @@
     "baseRevision": "44602d36d7b10f0a1d97f978fe632863c7ec7e0a",
     "measuredImplementationRevision": "0a2c37b14ff592ecb9884ac97063eff6e721c7b4"
   },
-  "classification": "MEASUREMENT GREEN; RELEASE PROMOTION BLOCKED BY FINAL-NONCE FORMAL BRIDGE",
+  "classification": "FORMAL PUBLICATION BRIDGE GREEN; RELEASE PROMOTION BLOCKED BY ALL-REACHABLE CU BOUND",
   "finding": {
     "cause": "The verifier derives the first q16 candidate with a frontier of at most 203 nodes. Every rejected candidate is recomputed on chain, so a valid proof with a later first acceptable candidate consumes more CU even though the verifier, relation, and proof format are unchanged.",
     "verifierRegression": false,
@@ -40,6 +40,55 @@
     "workPredicateChanged": false,
     "candidateCountChanged": false,
     "formalReleaseApproved": false
+  },
+  "formalPublicationBridge": {
+    "complete": true,
+    "sourceFile": "AspisFormal/AspisFormal/K1/V7Tag73Cutoff20FinalNoncePublicationBridge.lean",
+    "sourceSha256": "f3a3a7377e6b58bf642097e3693cf57e6ff889deab0f45d44015fbca51d10328",
+    "validationLog": "formal-bridge-lean.txt",
+    "validationLogSha256": "5d04ab339d3526ae2e6a3c80e1a1554e48437d1eb07a7bb44ed8a7c7b57ffcd7",
+    "validatedAgainstRevision": "1f3883e51b08354749b07c1b7ee297cc3ed89bd1",
+    "predicate": {
+      "inclusiveCounterCutoff": 20,
+      "ordinaryVerifierCandidateCount": 64,
+      "minimumRawDraws": 16,
+      "minimumDrawPredicate": "The first 16 low-18-bit draws are injective for every candidate from counter 0 through the selected counter."
+    },
+    "theorems": [
+      "cutoff20_publication_counter_lt_twenty_one",
+      "cutoff20_publication_scanned_candidate_uses_minimum_draws",
+      "cutoff20_publication_is_ordinary_first_cap203",
+      "cutoff20_filtered_event_subset",
+      "cutoff20_published_failure_union_probability_le_one_forest",
+      "exact_fixed_clean_cutoff20_published_k13_query_probability_le_one_forest"
+    ],
+    "strongestGuarantee": "For any whole-transcript-dependent publication decoder, intersecting the exact accepted-source clean K1.3 q16 failure event with the cutoff-20 publication event remains bounded by the existing one-forest semantic q16 error.",
+    "adaptiveFinalNonceTrialsCovered": true,
+    "finalWorkBits": 34,
+    "maximumCoveredTrials": 17179869184,
+    "additionalSoundnessFactor": false,
+    "verifierAcceptedLanguageExpanded": false,
+    "rustSourceExtractionClaimed": false,
+    "rustPredicateCorrespondenceValidation": "Focused selector tests; the off-chain Rust loop is not Aeneas-extracted in this result.",
+    "lean": {
+      "toolchain": "leanprover/lean4:v4.32.0",
+      "command": "LEAN_PATH=<read-only-pinned-repository-olean-cache> /usr/bin/time -lp lake env lean AspisFormal/K1/V7Tag73Cutoff20FinalNoncePublicationBridge.lean",
+      "exitStatus": 0,
+      "wallSeconds": 15.63,
+      "maximumResidentSetBytes": 5678252032,
+      "swaps": 0,
+      "axioms": [
+        "propext",
+        "Classical.choice",
+        "Quot.sound"
+      ]
+    },
+    "resourceReview": {
+      "coldBuildStopped": true,
+      "reason": "Lake ignored the attempted worker limit and aggregate child RSS crossed the repository 8 GiB review threshold.",
+      "restartedUnchangedWithLargerCap": false,
+      "successfulStrategy": "Reuse the existing pinned repository OLean graph read-only and elaborate only the changed file."
+    }
   },
   "freshCandidateModel": {
     "compactProbabilityPerCandidate": 0.0913,
@@ -176,9 +225,9 @@
     "replayStateRolledBack": true,
     "ephemeralKeysDestroyed": true,
     "exactAllReachableCuTheorem": false,
-    "finalNonceLazyRomBridge": false
+    "finalNonceLazyRomBridge": true
   },
-  "remainingBlocker": "Before promotion, prove the honest final-nonce publication rule (counter cutoff plus minimum-draw predicate) against the real lazy-ROM/final-nonce model and finish an all-reachable current-binary CU envelope or retain exact byte-identical simulation as a mandatory runtime gate.",
+  "remainingBlocker": "Before promotion, finish an all-reachable current-binary CU envelope for cutoff 20 or retain exact byte-identical simulation as a mandatory runtime gate. The current 1,299,084-CU maximum remains a calibrated envelope, not an all-reachable theorem.",
   "publicNetworkEvidenceChanged": false,
   "publicFinalizedDevnetLifecycleComplete": false,
   "publicFinalizedTestnetLifecycleComplete": false,
