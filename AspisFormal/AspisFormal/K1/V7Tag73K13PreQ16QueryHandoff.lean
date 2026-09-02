@@ -256,6 +256,64 @@ theorem classify_preQ16_k13_of_accepts
             (decoderCodeEncoders decoder) (parsedK13Transcript words proof)
             overlap) failure)
 
+/-- The q16-independent bad set selected by the corrected classifier. -/
+def exactPreQ16K13Bad
+    {HiddenTape TapeIdentity Observation Statement Payload Result : Type}
+    {parameters : ExactCompilerResourceParameters}
+    {transitionFuel : Nat}
+    {configuration : ExactPlainRomConfiguration HiddenTape TapeIdentity
+      Observation Statement Tag73K12ParsedProof Payload Result parameters}
+    {projection : AcceptedTapeProjection Statement Tag73K12ParsedProof Payload}
+    {fixedInstance : PublicInstance Statement}
+    {sample : ExactCompilerSample HiddenTape parameters}
+    (decoder : ExactDecoderInstantiation QM31Exact)
+    (input : ExactK12OperationalInput transitionFuel configuration projection
+      fixedInstance sample)
+    (prior : List UnifiedExposureRecord) : Finset (Fin 262144) :=
+  consistencySet (exactK13ParsedProof input).schedule
+    (exactK13Encoders decoder)
+    (parsedK13Transcript
+      (preQ16PrefixWords prior (exactK12Roots input))
+      (exactK13ParsedProof input))
+
+/-- A corrected small-set branch supplies exactly the cardinality and literal
+selected-schedule membership consumed by the q16 forest theorem. -/
+theorem preQ16_query_failure_exposes_literal_q16_bad_set
+    {HiddenTape TapeIdentity Observation Statement Payload Result : Type}
+    {parameters : ExactCompilerResourceParameters}
+    {transitionFuel : Nat}
+    {configuration : ExactPlainRomConfiguration HiddenTape TapeIdentity
+      Observation Statement Tag73K12ParsedProof Payload Result parameters}
+    {projection : AcceptedTapeProjection Statement Tag73K12ParsedProof Payload}
+    {fixedInstance : PublicInstance Statement}
+    {sample : ExactCompilerSample HiddenTape parameters}
+    {decoder : ExactDecoderInstantiation QM31Exact}
+    (input : ExactK12OperationalInput transitionFuel configuration projection
+      fixedInstance sample)
+    (prior : List UnifiedExposureRecord)
+    (decoded : Fin 641 → QM31Exact)
+    (source : ExactParsedProofSourceBinding input decoded)
+    (failure : QueryPhaseFailure (exactK13ParsedProof input).schedule
+      (exactK13Encoders decoder)
+      (parsedK13Transcript
+        (preQ16PrefixWords prior (exactK12Roots input))
+        (exactK13ParsedProof input))
+      (exactK13ParsedProof input).queries) :
+    (exactPreQ16K13Bad decoder input prior).card ≤ 9557 ∧
+      AllInBad (exactPreQ16K13Bad decoder input prior)
+        (exactOperationalTape input).search.selectedSchedule.positions := by
+  constructor
+  · exact failure.2
+  · intro ordinal
+    have member := accepted_queries_mem_consistencySet
+      (exactK13ParsedProof input).schedule (exactK13Encoders decoder)
+      (parsedK13Transcript
+        (preQ16PrefixWords prior (exactK12Roots input))
+        (exactK13ParsedProof input))
+      (exactK13ParsedProof input).queries failure.1 ordinal
+    rw [source.selectedQueriesExact] at member
+    exact member
+
 /-- Complete deterministic correction of the old q16-dependent classifier.
 An accepted run either classifies against the pre-q16 completion, or enters
 one of the two explicit Merkle failure events already exposed by K1.2. -/
@@ -318,6 +376,7 @@ theorem exact_preQ16_k13_classification_or_counted_merkle_failure
 #print axioms query_consistent_of_shared_projected_opening
 #print axioms exact_ideal_accepts_transfers_to_preQ16_completion
 #print axioms classify_preQ16_k13_of_accepts
+#print axioms preQ16_query_failure_exposes_literal_q16_bad_set
 #print axioms exact_preQ16_k13_classification_or_counted_merkle_failure
 
 end
