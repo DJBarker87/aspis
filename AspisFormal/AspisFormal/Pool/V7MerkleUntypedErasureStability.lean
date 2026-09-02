@@ -1,4 +1,5 @@
 import AspisFormal.Pool.V7MerkleCompletePrefixStability
+import AspisFormal.Pool.V7MerkleExtractedTreeCoverage
 import AspisFormal.Pool.V7MerkleRawCollisionPredicate
 
 /-!
@@ -28,6 +29,7 @@ namespace AspisPool.V7MerkleUntypedErasureStability
 open AspisPool.V7MerkleQueryGrammar
 open AspisPool.V7MerkleQueryExtractor
 open AspisPool.V7MerkleCompletePrefixStability
+open AspisPool.V7MerkleExtractedTreeCoverage
 open AspisPool.V7MerkleRawCollisionPredicate
 
 /-- Erasing the distinguished pivot preserves the exact order of all other
@@ -804,6 +806,124 @@ theorem extractCompleteWords_success_erase_untyped_raw
   simp [extractCompleteWords, c1ResolvedShort, c2ResolvedShort, c1RunShort,
     c2RunShort]
 
+/-! ## Iterated erasure -/
+
+/-- Keep exactly the inputs which parse under the Merkle query grammar. -/
+def retainTypedMerkleQueries (log : OrderedRawQueryLog) : OrderedRawQueryLog :=
+  log.filter fun input => decide (parseTypedPreimage input ≠ none)
+
+/-- Collision-freedom is inherited when one query is erased. -/
+theorem no_collision_after_erasing_one
+    (truncateSha256 : RawHashInput → Digest208)
+    (pre suffix : OrderedRawQueryLog) (pivot : RawHashInput)
+    (noCollision : hasRawTruncatedCollision truncateSha256
+      (pre ++ pivot :: suffix) = false) :
+    hasRawTruncatedCollision truncateSha256 (pre ++ suffix) = false := by
+  rw [no_raw_truncated_collision_iff] at noCollision ⊢
+  intro shortenedCollision
+  apply noCollision
+  rcases shortenedCollision with
+    ⟨left, leftMem, right, rightMem, distinct, digestExact⟩
+  have liftMember : ∀ input, input ∈ pre ++ suffix →
+      input ∈ pre ++ pivot :: suffix := by
+    intro input member
+    simp only [List.mem_append, List.mem_cons] at member ⊢
+    rcases member with member | member
+    · exact Or.inl member
+    · exact Or.inr (Or.inr member)
+  exact ⟨left, liftMember left leftMem, right, liftMember right rightMem,
+    distinct, digestExact⟩
+
+/-- The collision universe contains the shared log, so the production
+collision gate implies collision-freedom on that log itself. -/
+theorem no_shared_collision_of_no_universe_collision
+    (truncateSha256 : RawHashInput → Digest208)
+    (log : OrderedRawQueryLog)
+    (noCollision : hasRawTruncatedCollision truncateSha256
+      (collisionUniverse truncateSha256 log) = false) :
+    hasRawTruncatedCollision truncateSha256 log = false := by
+  rw [no_raw_truncated_collision_iff] at noCollision ⊢
+  intro sharedCollision
+  apply noCollision
+  rcases sharedCollision with
+    ⟨left, leftMem, right, rightMem, distinct, digestExact⟩
+  exact ⟨left, shared_log_mem_collisionUniverse truncateSha256 log leftMem,
+    right, shared_log_mem_collisionUniverse truncateSha256 log rightMem,
+    distinct, digestExact⟩
+
+/-- Starting after an already retained prefix, erase every remaining untyped
+query while preserving a successful complete two-tree extraction. -/
+theorem extractCompleteWords_success_retain_typed_aux
+    (truncateSha256 : RawHashInput → Digest208) (roots : Roots) :
+    ∀ (scan kept : OrderedRawQueryLog) (words : ExtractedWords),
+      hasRawTruncatedCollision truncateSha256 (kept ++ scan) = false →
+      extractCompleteWords truncateSha256 roots (kept ++ scan) = .words words →
+      extractCompleteWords truncateSha256 roots
+        (kept ++ retainTypedMerkleQueries scan) = .words words := by
+  intro scan
+  induction scan with
+  | nil =>
+      intro kept words noCollision success
+      simpa [retainTypedMerkleQueries] using success
+  | cons head tail ih =>
+      intro kept words noCollision success
+      by_cases untyped : parseTypedPreimage head = none
+      · have erased := extractCompleteWords_success_erase_untyped_raw
+          truncateSha256 roots kept tail head words noCollision untyped success
+        have erasedCollision := no_collision_after_erasing_one truncateSha256
+          kept tail head noCollision
+        have retained := ih kept words erasedCollision erased
+        simpa [retainTypedMerkleQueries, untyped] using retained
+      · have retained := ih (kept ++ [head]) words (by
+            simpa [List.append_assoc] using noCollision) (by
+            simpa [List.append_assoc] using success)
+        simpa [retainTypedMerkleQueries, untyped, List.append_assoc] using
+          retained
+
+/-- Erasing all non-Merkle transcript queries preserves the exact complete
+two-tree candidate. -/
+theorem extractCompleteWords_success_retain_typed
+    (truncateSha256 : RawHashInput → Digest208)
+    (roots : Roots) (log : OrderedRawQueryLog) (words : ExtractedWords)
+    (noCollision : hasRawTruncatedCollision truncateSha256 log = false)
+    (success : extractCompleteWords truncateSha256 roots log = .words words) :
+    extractCompleteWords truncateSha256 roots (retainTypedMerkleQueries log) =
+      .words words := by
+  simpa using extractCompleteWords_success_retain_typed_aux truncateSha256
+    roots log [] words (by simpa using noCollision) (by simpa using success)
+
+/-- Every successful production extraction fixes its returned complete words
+already on the retained typed-Merkle subsequence.  All transcript-only SHA
+queries have been removed. -/
+theorem extractV7Words_success_yields_typed_complete
+    (truncateSha256 : RawHashInput → Digest208)
+    (roots : Roots) (proof : TwoTreeOpeningProof)
+    (orderedQueries : OrderedRawQueryLog) (words : ExtractedWords)
+    (success : extractV7Words truncateSha256 roots proof orderedQueries =
+      .words words) :
+    extractCompleteWords truncateSha256 roots
+      (retainTypedMerkleQueries (deduplicateFirst orderedQueries)) =
+        .words words := by
+  by_cases collision : hasRawTruncatedCollision truncateSha256
+      (collisionUniverse truncateSha256 (deduplicateFirst orderedQueries))
+  · simp [extractV7Words, collision] at success
+  · cases graph : extractCompleteWords truncateSha256 roots
+        (deduplicateFirst orderedQueries) with
+    | failure reason => simp [extractV7Words, collision, graph] at success
+    | words candidate =>
+        have finished : finishExtraction truncateSha256 roots proof candidate =
+            .words words := by
+          simpa [extractV7Words, collision, graph] using success
+        have candidateExact := (finishExtraction_success_yields_match
+          truncateSha256 roots proof candidate words finished).1
+        subst candidate
+        apply extractCompleteWords_success_retain_typed truncateSha256 roots
+          (deduplicateFirst orderedQueries) words
+        · exact no_shared_collision_of_no_universe_collision truncateSha256
+            (deduplicateFirst orderedQueries)
+            (Bool.eq_false_of_not_eq_true collision)
+        · exact graph
+
 #print axioms eraseIdx_pivot_append
 #print axioms truncate_injective_on_log_of_no_collision
 #print axioms untyped_pivot_digest_ne_typed_member
@@ -823,5 +943,11 @@ theorem extractCompleteWords_success_erase_untyped_raw
 #print axioms extractC1Subtree_success_erase_untyped
 #print axioms extractC2Subtree_success_erase_untyped
 #print axioms extractCompleteWords_success_erase_untyped_raw
+#print axioms retainTypedMerkleQueries
+#print axioms no_collision_after_erasing_one
+#print axioms no_shared_collision_of_no_universe_collision
+#print axioms extractCompleteWords_success_retain_typed_aux
+#print axioms extractCompleteWords_success_retain_typed
+#print axioms extractV7Words_success_yields_typed_complete
 
 end AspisPool.V7MerkleUntypedErasureStability
