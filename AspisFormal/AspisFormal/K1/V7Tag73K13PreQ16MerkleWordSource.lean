@@ -2,6 +2,7 @@ import AspisFormal.K1.V7Tag73ExactFixedQ16JointEventHandoff
 import AspisFormal.K1.V7Tag73ExactFixedFullRunFactorization
 import AspisFormal.K1.V7Tag73IndexedAlignedRecordReplay
 import AspisFormal.Pool.V7MerklePartialPathExtractor
+import AspisFormal.Pool.V7MerklePrefixTargetCongruence
 
 /-!
 # Merkle word source fixed before Tag-73 q16
@@ -34,6 +35,7 @@ open AspisK1.V7Tag73ExactSourceAcceptanceModel
 open AspisK1.V7Tag73IndexedAlignedRecordReplay
 open AspisK1.V7Tag73TranscriptSchedule
 open AspisPool.V7MerklePartialPathExtractor
+open AspisPool.V7MerklePrefixTargetCongruence
 open AspisPool.V7MerkleQueryExtractor
 open AspisPool.V7MerkleQueryGrammar
 
@@ -68,6 +70,72 @@ def preQ16PrefixWords (records : List UnifiedExposureRecord) (roots : Roots) :
     ExtractedWords :=
   extractPrefixFixedWords (exposurePrefixTruncate records)
     (exposurePrefixRawQueries records) roots
+
+/-- Every raw input advertised by the chronological prefix log has an actual
+first answer in that same prefix.  This is deliberately independent of the
+final oracle table: it is the finite-domain fact needed before comparing the
+pre-q16 view with the deployed 208-bit view. -/
+theorem exposurePrefixRawQueries_member_has_lookup
+    (records : List UnifiedExposureRecord) (rawInput : RawHashInput)
+    (member : rawInput ∈ exposurePrefixRawQueries records) :
+    ∃ digest,
+      exposurePrefixLookup records (rawHashInputToRuntimeInput rawInput) =
+        some digest := by
+  induction records with
+  | nil => simp [exposurePrefixRawQueries] at member
+  | cons record rest ih =>
+      simp only [exposurePrefixRawQueries, List.filterMap_cons] at member
+      cases inputExact : causalInput? record with
+      | none =>
+          simp only [inputExact, Option.toList_none, List.nil_append,
+            List.map_cons, List.mem_cons] at member
+          have tail := ih member
+          simpa [exposurePrefixLookup, inputExact] using tail
+      | some input =>
+          simp only [inputExact, Option.toList_some, List.singleton_append,
+            List.map_cons, List.mem_cons] at member
+          rcases member with rawExact | tailMember
+          · subst rawInput
+            refine ⟨record.answer, ?_⟩
+            simp [exposurePrefixLookup, inputExact]
+          · obtain ⟨digest, found⟩ := ih tailMember
+            by_cases same : causalInput? record =
+                some (rawHashInputToRuntimeInput rawInput)
+            · simp [exposurePrefixLookup, same]
+            · refine ⟨digest, ?_⟩
+              simpa [exposurePrefixLookup, same] using found
+
+/-- On its finite advertised log, the prefix-local total view is exactly the
+truncation of the first chronological answer. -/
+theorem exposurePrefixTruncate_eq_of_lookup
+    (records : List UnifiedExposureRecord) (rawInput : RawHashInput)
+    (digest : Digest256)
+    (found : exposurePrefixLookup records
+      (rawHashInputToRuntimeInput rawInput) = some digest) :
+    exposurePrefixTruncate records rawInput =
+      runtimeDigest256PrefixToMerkleDigest digest := by
+  simp [exposurePrefixTruncate, found]
+
+/-- Any total 208-bit view agreeing with the chronological first answers on
+the advertised prefix yields exactly the same canonical pre-q16 word.  This
+isolates the remaining source obligation from the Merkle path recursion and
+prevents later verifier-only queries from entering the deterministic word. -/
+theorem preQ16PrefixWords_eq_extract_of_view_agreement
+    (records : List UnifiedExposureRecord) (roots : Roots)
+    (view : RawHashInput → AspisPool.V7MerkleQueryGrammar.Digest208)
+    (agree : ∀ rawInput digest,
+      exposurePrefixLookup records (rawHashInputToRuntimeInput rawInput) =
+          some digest →
+        view rawInput = runtimeDigest256PrefixToMerkleDigest digest) :
+    preQ16PrefixWords records roots =
+      extractPrefixFixedWords view (exposurePrefixRawQueries records) roots := by
+  unfold preQ16PrefixWords
+  apply extractPrefixFixedWords_eq_of_agree_on_log
+  intro rawInput member
+  obtain ⟨digest, found⟩ :=
+    exposurePrefixRawQueries_member_has_lookup records rawInput member
+  exact (exposurePrefixTruncate_eq_of_lookup records rawInput digest found).trans
+    (agree rawInput digest found).symm
 
 /-- The selected trial index cuts the exact root record list immediately
 before the routed final-work/q16 coordinate. -/
@@ -159,6 +227,9 @@ theorem exactTrialPreQ16Words_eq_of_common_anchor_prior
   exact preQ16PrefixWords_congr priorExact rootsExact
 
 #print axioms preQ16PrefixWords_congr
+#print axioms exposurePrefixRawQueries_member_has_lookup
+#print axioms exposurePrefixTruncate_eq_of_lookup
+#print axioms preQ16PrefixWords_eq_extract_of_view_agreement
 #print axioms exactTrialPreQ16Words_eq_of_anchor
 #print axioms exactTrialPreQ16Words_eq_of_common_anchor_prior
 
