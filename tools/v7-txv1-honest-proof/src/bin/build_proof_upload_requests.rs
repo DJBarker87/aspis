@@ -21,6 +21,7 @@ const AUTHENTICATED_COUNTER_SCHEMA: &str =
     "aspis.v7.txv1-proof-upload-for-authenticated-counter-input.v1";
 const VERIFIER_PROGRAM: &str = "7Q2nGsPg8rbjdxKHK4jxTgEWLTyd9o1X4KMSjCieRmue";
 const HEADER_BYTES: u64 = 40;
+const AUTHENTICATED_COUNTER_TRAILER_BYTES: u64 = 36;
 const CHUNK_BYTES: usize = 960;
 
 #[derive(Deserialize)]
@@ -121,12 +122,19 @@ fn main() -> Result<()> {
     ensure!(!payload.is_empty(), "empty proof payload");
     let payload_len = u32::try_from(payload.len()).context("proof payload too large")?;
     let verifier = Pubkey::from_str(VERIFIER_PROGRAM)?;
+    let proof_account_bytes = HEADER_BYTES
+        + u64::from(payload_len)
+        + if authenticated_counter {
+            AUTHENTICATED_COUNTER_TRAILER_BYTES
+        } else {
+            0
+        };
 
     let create = system_instruction::create_account(
         &payer.pubkey(),
         &proof.pubkey(),
         input.rent_lamports,
-        HEADER_BYTES + u64::from(payload_len),
+        proof_account_bytes,
         &verifier,
     );
     let mut init_data = vec![0u8];
@@ -201,6 +209,8 @@ fn main() -> Result<()> {
             "proofAccount": proof.pubkey().to_string(),
             "proofPayloadBytes": payload.len(),
             "proofPayloadSha256": sha256_hex(&payload),
+            "proofAccountBytes": proof_account_bytes,
+            "authenticatedCounterTrailerBytes": if authenticated_counter { AUTHENTICATED_COUNTER_TRAILER_BYTES } else { 0 },
             "uploadChunkBytes": CHUNK_BYTES,
             "finalizationMode": if authenticated_counter { "authenticated-counter" } else { "legacy-seal" },
             "uploadedUnsealed": authenticated_counter,

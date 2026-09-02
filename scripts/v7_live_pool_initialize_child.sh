@@ -495,17 +495,29 @@ if [[ -n "$SECRET_BUILDER" || -n "$DEPOSIT_BUILDER" ]]; then
           | jq . >"$COUNTER_SEAL_EVIDENCE/proof-account.json"
         jq -er '.result.value.data[0]' "$COUNTER_SEAL_EVIDENCE/proof-account.json" \
           | openssl base64 -d -A >"$WORK_DIR/authenticated-proof-account.bin"
-        counter_magic=$(od -An -v -tx1 -N3 "$WORK_DIR/authenticated-proof-account.bin" | tr -d ' \n')
-        [[ "$counter_magic" == 415343 ]] || fail "proof account lacks ASC authenticated seal"
-        authenticated_counter=$(od -An -v -tu1 -j3 -N1 "$WORK_DIR/authenticated-proof-account.bin" | tr -d '[:space:]')
+        proof_magic=$(od -An -v -tx1 -N4 "$WORK_DIR/authenticated-proof-account.bin" | tr -d ' \n')
+        [[ "$proof_magic" == 41535055 ]] || fail "authenticated proof lost the production ASPU header"
+        sealed_authority=$(od -An -v -tx1 -j8 -N32 "$WORK_DIR/authenticated-proof-account.bin" | tr -d ' \n')
+        [[ "$sealed_authority" == "$(printf '00%.0s' {1..32})" ]] \
+          || fail "authenticated proof upload authority was not zeroed"
+        counter_payload_bytes=$(jq -er '.proofPayload.bytes' \
+          "$EVIDENCE_DIR/proof-upload/proof-upload.json")
+        counter_trailer_start=$((40 + counter_payload_bytes))
+        counter_magic=$(od -An -v -tx1 -j"$counter_trailer_start" -N3 \
+          "$WORK_DIR/authenticated-proof-account.bin" | tr -d ' \n')
+        [[ "$counter_magic" == 415343 ]] || fail "proof account lacks ASC authenticated trailer"
+        authenticated_counter=$(od -An -v -tu1 -j"$((counter_trailer_start + 3))" -N1 \
+          "$WORK_DIR/authenticated-proof-account.bin" | tr -d '[:space:]')
         [[ "$authenticated_counter" =~ ^[0-9]+$ && "$authenticated_counter" -lt 64 ]] \
           || fail "authenticated counter is outside the fixed 64-candidate schedule"
-        statement_digest=$(od -An -v -tx1 -j8 -N32 "$WORK_DIR/authenticated-proof-account.bin" | tr -d ' \n')
+        statement_digest=$(od -An -v -tx1 -j"$((counter_trailer_start + 4))" -N32 \
+          "$WORK_DIR/authenticated-proof-account.bin" | tr -d ' \n')
         [[ "$statement_digest" =~ ^[0-9a-f]{64}$ && \
           "$statement_digest" != "$(printf '00%.0s' {1..32})" ]] \
           || fail "authenticated statement digest is absent"
-        tail -c +41 "$WORK_DIR/authenticated-proof-account.bin" \
-          >"$WORK_DIR/authenticated-proof-payload.bin"
+        dd if="$WORK_DIR/authenticated-proof-account.bin" \
+          of="$WORK_DIR/authenticated-proof-payload.bin" bs=1 skip=40 \
+          count="$counter_payload_bytes" status=none
         [[ "$(shasum -a 256 "$WORK_DIR/authenticated-proof-payload.bin" | awk '{print $1}')" == \
           "$(shasum -a 256 "$EVIDENCE_DIR/live-proof/proof-payload.bin" | awk '{print $1}')" ]] \
           || fail "authenticated sealing changed the proof body"

@@ -573,9 +573,23 @@ fn scan_asq8_proof_v1(
         return Err(ProgramError::InvalidAccountData);
     }
     let (payload_start, payload_end) = uploaded_proof_bounds(&data)?;
-    if payload_end != data.len()
-        || payload_end - payload_start <= POOL_V1_PAIR_VERIFIED_AFTERSTATE_BYTES
-    {
+    #[cfg(feature = "v7-pair-forest-authenticated-query-counter-audit")]
+    let valid_account_len =
+        if crate::lifecycle::proof_account_has_authenticated_query_counter(&data) {
+            payload_end
+                .checked_add(crate::lifecycle::PROOF_ACCOUNT_AUTHENTICATED_COUNTER_TRAILER_LEN)
+                == Some(data.len())
+        } else if require_finalized {
+            payload_end == data.len()
+        } else {
+            payload_end
+                .checked_add(crate::lifecycle::PROOF_ACCOUNT_AUTHENTICATED_COUNTER_TRAILER_LEN)
+                == Some(data.len())
+                && data[payload_end..].iter().all(|byte| *byte == 0)
+        };
+    #[cfg(not(feature = "v7-pair-forest-authenticated-query-counter-audit"))]
+    let valid_account_len = payload_end == data.len();
+    if !valid_account_len || payload_end - payload_start <= POOL_V1_PAIR_VERIFIED_AFTERSTATE_BYTES {
         return Err(ProgramError::InvalidAccountData);
     }
     let payload = &data[payload_start..payload_end];
@@ -923,7 +937,10 @@ fn verify_statement_full_v1(
     verified
 }
 
-#[cfg(not(feature = "v7-pair-forest-authenticated-query-counter-audit"))]
+#[cfg(any(
+    not(feature = "v7-pair-forest-authenticated-query-counter-audit"),
+    test
+))]
 #[inline(never)]
 fn verify_statement_v1(
     verifier_program: &Pubkey,
@@ -1072,7 +1089,12 @@ where
     let proof_account_key = *proof_account.key;
     let data = proof_account.try_borrow_data()?;
     let (payload_start, payload_end) = uploaded_proof_bounds(&data)?;
-    if payload_end != data.len() {
+    #[cfg(feature = "v7-pair-forest-authenticated-query-counter-audit")]
+    let exact_account_shape =
+        crate::lifecycle::proof_account_has_authenticated_query_counter(&data);
+    #[cfg(not(feature = "v7-pair-forest-authenticated-query-counter-audit"))]
+    let exact_account_shape = payload_end == data.len();
+    if !exact_account_shape {
         return Err(ProgramError::InvalidAccountData);
     }
     let payload = &data[payload_start..payload_end];
@@ -1150,7 +1172,11 @@ pub fn process_v7_pair_forest_authenticate_query_counter_instruction(
     let compact_counter = {
         let data = proof_account.try_borrow_data()?;
         let (payload_start, payload_end) = uploaded_proof_bounds(&data)?;
-        if payload_end != data.len() {
+        if payload_end
+            .checked_add(crate::lifecycle::PROOF_ACCOUNT_AUTHENTICATED_COUNTER_TRAILER_LEN)
+            != Some(data.len())
+            || data[payload_end..].iter().any(|byte| *byte != 0)
+        {
             return Err(ProgramError::InvalidAccountData);
         }
         let proof = data[payload_start..payload_end]
