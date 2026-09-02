@@ -79,6 +79,31 @@ theorem advance_input_ne_output_input
       bytes outputState ++ [domSqueeze] := by
   exact (output_input_ne_advance_input outputState advanceState).symm
 
+/-! ## Fixed state prefixes with non-singleton suffixes are not duplex inputs -/
+
+/-- Any input consisting of one serialized digest followed by a suffix whose
+length is not one cannot be a deployed output-half input.  This is the base
+case needed when backwards transcript induction reaches an absorption
+boundary on one side while the other side still claims another duplex block. -/
+theorem digest_suffix_ne_output_input_of_length_ne_one
+    (boundaryState outputState : Digest256) (suffix : ByteString)
+    (suffixLength : suffix.length ≠ 1) :
+    bytes boundaryState ++ suffix ≠ bytes outputState ++ [domSqueeze] := by
+  intro equal
+  have lengths := congrArg List.length equal
+  simp only [List.length_append, bytes_length, List.length_singleton] at lengths
+  exact suffixLength (Nat.add_left_cancel lengths)
+
+/-- The analogous separation from an advance-half input. -/
+theorem digest_suffix_ne_advance_input_of_length_ne_one
+    (boundaryState advanceState : Digest256) (suffix : ByteString)
+    (suffixLength : suffix.length ≠ 1) :
+    bytes boundaryState ++ suffix ≠ bytes advanceState ++ [domAdvance] := by
+  intro equal
+  have lengths := congrArg List.length equal
+  simp only [List.length_append, bytes_length, List.length_singleton] at lengths
+  exact suffixLength (Nat.add_left_cancel lengths)
+
 /-! ## Classification of an overlap with one earlier pair -/
 
 theorem output_input_overlap_classification
@@ -133,6 +158,8 @@ theorem pair_input_overlap_implies_state_eq
 #print axioms advance_input_eq_implies_state_eq
 #print axioms output_input_ne_advance_input
 #print axioms advance_input_ne_output_input
+#print axioms digest_suffix_ne_output_input_of_length_ne_one
+#print axioms digest_suffix_ne_advance_input_of_length_ne_one
 #print axioms pair_input_overlap_implies_state_eq
 
 end AspisK1.V7Tag73SqueezeInputStateInjectivity

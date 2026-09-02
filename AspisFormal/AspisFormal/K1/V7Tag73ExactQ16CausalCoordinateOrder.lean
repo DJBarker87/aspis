@@ -326,6 +326,82 @@ theorem exact_root_ordered_q16_chain_unsnoc
           exact gamma_terminal_digest_append_singleton digest blockAdvance
             (advanced :: prefixAdvances)
 
+/-- Ordered form of `exact_root_ordered_q16_chain_unsnoc`.  In addition to
+the shortened chain it retains the literal query producing the final block
+state and its strict root order before the final advance query.  That order is
+what lets a backwards cross-fibre proof move pre-anchor membership from the
+successor answer to its predecessor without assuming SHA-256 injectivity. -/
+theorem exact_root_ordered_q16_chain_unsnoc_with_order
+    {HiddenTape TapeIdentity Observation Statement Payload Result : Type}
+    {parameters : ExactCompilerResourceParameters}
+    {transitionFuel : Nat}
+    {configuration : ExactPlainRomConfiguration HiddenTape TapeIdentity
+      Observation Statement Tag73K12ParsedProof Payload Result parameters}
+    {projection : AcceptedTapeProjection Statement Tag73K12ParsedProof Payload}
+    {fixedInstance : PublicInstance Statement}
+    {sample : ExactCompilerSample HiddenTape parameters}
+    {input : ExactK12OperationalInput transitionFuel configuration projection
+      fixedInstance sample}
+    {producerInput : ShaInput} {digest : Digest256}
+    {outputs advances : List Digest256}
+    (chain : ExactRootOrderedQ16Chain input producerInput digest outputs
+      advances)
+    (nonempty : 0 < outputs.length) :
+    ∃ prefixOutputs prefixAdvances blockProducerInput blockDigest blockOutput
+        blockAdvance,
+      outputs = prefixOutputs ++ [blockOutput] ∧
+      advances = prefixAdvances ++ [blockAdvance] ∧
+      ExactRootOrderedQ16Chain input producerInput digest prefixOutputs
+        prefixAdvances ∧
+      tableLookup (exactOperationalTable input) blockProducerInput =
+        some blockDigest ∧
+      tableLookup (exactOperationalTable input)
+        (gammaOutputInput blockDigest) = some blockOutput ∧
+      tableLookup (exactOperationalTable input)
+        (gammaAdvanceInput blockDigest) = some blockAdvance ∧
+      (∃ before middle after,
+        exactRootFreshQueries input =
+          before ++ (blockProducerInput, blockDigest) :: middle ++
+            (gammaAdvanceInput blockDigest, blockAdvance) :: after) ∧
+      gammaTerminalDigest digest prefixAdvances = blockDigest ∧
+      gammaTerminalDigest digest advances = blockAdvance := by
+  induction chain with
+  | done => simp at nonempty
+  | @next producerInput digest output advanced outputs advances producerFound
+      outputFound advanceFound producerBeforeOutput producerBeforeAdvance tail
+      ih =>
+      by_cases outputsEmpty : outputs = []
+      · subst outputs
+        have advancesEmpty : advances = [] := by
+          apply List.length_eq_zero_iff.mp
+          simpa using exact_root_ordered_q16_chain_lengths tail
+        subst advances
+        exact ⟨[], [], producerInput, digest, output, advanced, rfl, rfl,
+          .done producerInput digest producerFound, producerFound, outputFound,
+          advanceFound, producerBeforeAdvance, rfl, rfl⟩
+      · have tailNonempty : 0 < outputs.length := by
+          exact Nat.pos_of_ne_zero (fun lengthZero =>
+            outputsEmpty (List.length_eq_zero_iff.mp lengthZero))
+        obtain ⟨prefixOutputs, prefixAdvances, blockProducerInput,
+            blockDigest, blockOutput, blockAdvance, outputsExact,
+            advancesExact, prefixChain, producerLookup, outputLookup,
+            advanceLookup, producerOrder, predecessorExact, terminalExact⟩ :=
+          ih tailNonempty
+        refine ⟨output :: prefixOutputs, advanced :: prefixAdvances,
+          blockProducerInput, blockDigest, blockOutput, blockAdvance, ?_, ?_,
+          ?_, producerLookup, outputLookup, advanceLookup, producerOrder, ?_,
+          ?_⟩
+        · simp only [List.cons_append]
+          rw [outputsExact]
+        · simp only [List.cons_append]
+          rw [advancesExact]
+        · exact .next producerFound outputFound advanceFound
+            producerBeforeOutput producerBeforeAdvance prefixChain
+        · simpa [gammaTerminalDigest] using predecessorExact
+        · rw [advancesExact]
+          exact gamma_terminal_digest_append_singleton digest blockAdvance
+            (advanced :: prefixAdvances)
+
 /-- Every literal evaluator duplex chain has the exact strict root ordering
 required by the causal controller. -/
 theorem gamma_table_coordinate_chain_has_exact_root_order
@@ -407,6 +483,7 @@ theorem exact_operational_q16_branch_has_exact_root_order
 #print axioms exact_root_ordered_q16_chain_lengths
 #print axioms exact_root_ordered_q16_chain_terminal_pair_mem
 #print axioms exact_root_ordered_q16_chain_unsnoc
+#print axioms exact_root_ordered_q16_chain_unsnoc_with_order
 #print axioms gamma_table_coordinate_chain_has_exact_root_order
 #print axioms exact_operational_q16_branch_has_exact_root_order
 

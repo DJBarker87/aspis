@@ -1666,6 +1666,143 @@ theorem exact_alpha_terminal_advance_mem_anchor_prior
   exact ⟨blockDigest, blockOutput, advanceActor, outputLookup, advanceLookup,
     advanceMember⟩
 
+/-- Strengthened backwards step for an accepted alpha chain.  Besides placing
+the terminal advance before the anchor, it peels that block, retains the
+shortened ordered chain, and places the query producing the predecessor state
+in the same canonical prefix.  This is the induction step required to walk
+from the already-fixed post-alpha state back toward gamma. -/
+theorem exact_alpha_terminal_predecessor_mem_anchor_prior
+    {HiddenTape TapeIdentity Observation Statement Payload Result : Type}
+    {parameters : ExactCompilerResourceParameters}
+    {transitionFuel : Nat}
+    {configuration : ExactPlainRomConfiguration HiddenTape TapeIdentity
+      Observation Statement Tag73K12ParsedProof Payload Result parameters}
+    {projection : AcceptedTapeProjection Statement Tag73K12ParsedProof Payload}
+    {fixedInstance : PublicInstance Statement}
+    {sample : ExactCompilerSample HiddenTape parameters}
+    (transitionRoom : 2 ≤ transitionFuel)
+    (input : ExactK12OperationalInput transitionFuel configuration projection
+      fixedInstance sample)
+    (prior anchorLater : List UnifiedExposureRecord)
+    (anchorRecord : UnifiedExposureRecord)
+    (rootExact : exactFixedRootRecords input.package.root =
+      prior ++ anchorRecord :: anchorLater)
+    (producerInput : ShaInput) (initialDigest : Digest256)
+    (outputs advances : List Digest256)
+    (chain : ExactRootOrderedQ16Chain input producerInput initialDigest
+      outputs advances)
+    (nonempty : 0 < outputs.length)
+    (final256Input : ShaInput) (prefinalDigest : Digest256)
+    (final256Prefix :
+      HasLiteralStatePrefix (gammaTerminalDigest initialDigest advances)
+        final256Input)
+    (final256Lookup : tableLookup (exactOperationalTable input) final256Input =
+      some prefinalDigest)
+    (final256Actor : QueryActor)
+    (final256Member :
+      (.machineFresh final256Actor final256Input prefinalDigest :
+        UnifiedExposureRecord) ∈ prior) :
+    ∃ prefixOutputs prefixAdvances blockProducerInput blockDigest blockOutput
+        blockAdvance producerActor advanceActor,
+      outputs = prefixOutputs ++ [blockOutput] ∧
+      advances = prefixAdvances ++ [blockAdvance] ∧
+      ExactRootOrderedQ16Chain input producerInput initialDigest prefixOutputs
+        prefixAdvances ∧
+      tableLookup (exactOperationalTable input) blockProducerInput =
+        some blockDigest ∧
+      tableLookup (exactOperationalTable input)
+        (gammaOutputInput blockDigest) = some blockOutput ∧
+      tableLookup (exactOperationalTable input)
+        (gammaAdvanceInput blockDigest) = some blockAdvance ∧
+      gammaTerminalDigest initialDigest prefixAdvances = blockDigest ∧
+      gammaTerminalDigest initialDigest advances = blockAdvance ∧
+      (.machineFresh producerActor blockProducerInput blockDigest :
+        UnifiedExposureRecord) ∈ prior ∧
+      (.machineFresh advanceActor (gammaAdvanceInput blockDigest) blockAdvance :
+        UnifiedExposureRecord) ∈ prior := by
+  classical
+  obtain ⟨prefixOutputs, prefixAdvances, blockProducerInput, blockDigest,
+      blockOutput, blockAdvance, outputsExact, advancesExact, prefixChain,
+      producerLookup, outputLookup, advanceLookup, producerOrder,
+      predecessorExact, terminalExact⟩ :=
+    exact_root_ordered_q16_chain_unsnoc_with_order chain nonempty
+  obtain ⟨locatedDigest, _locatedOutput, locatedAdvanceActor,
+      _locatedOutputLookup, locatedAdvanceLookup, locatedAdvanceMember⟩ :=
+    exact_alpha_terminal_advance_mem_anchor_prior transitionRoom input prior
+      anchorLater anchorRecord rootExact producerInput initialDigest outputs
+      advances chain nonempty final256Input prefinalDigest final256Prefix
+      final256Lookup final256Actor final256Member
+  have locatedAdvanceRoot :
+      (.machineFresh locatedAdvanceActor (gammaAdvanceInput locatedDigest)
+          (gammaTerminalDigest initialDigest advances) :
+        UnifiedExposureRecord) ∈ exactFixedRootRecords input.package.root := by
+    rw [rootExact]
+    exact List.mem_append_left _ locatedAdvanceMember
+  obtain ⟨unsnocAdvanceActor, unsnocAdvanceRoot⟩ :=
+    exact_final_table_lookup_has_root_record input
+      (gammaAdvanceInput blockDigest) blockAdvance advanceLookup
+  have advanceRecordExact :
+      (.machineFresh unsnocAdvanceActor (gammaAdvanceInput blockDigest)
+          blockAdvance : UnifiedExposureRecord) =
+        .machineFresh locatedAdvanceActor (gammaAdvanceInput locatedDigest)
+          (gammaTerminalDigest initialDigest advances) := by
+    apply List.inj_on_of_nodup_map (exact_root_record_answers_nodup input)
+      unsnocAdvanceRoot locatedAdvanceRoot
+    simp only [UnifiedExposureRecord.answer, terminalExact]
+  have advanceInputExact :
+      gammaAdvanceInput blockDigest = gammaAdvanceInput locatedDigest := by
+    injection advanceRecordExact
+  have blockDigestExact : blockDigest = locatedDigest :=
+    advance_input_eq_implies_state_eq blockDigest locatedDigest advanceInputExact
+  have advanceMember :
+      (.machineFresh unsnocAdvanceActor (gammaAdvanceInput blockDigest)
+          blockAdvance : UnifiedExposureRecord) ∈ prior := by
+    rw [advanceRecordExact]
+    simpa only [terminalExact] using locatedAdvanceMember
+  obtain ⟨pairBefore, pairMiddle, pairAfter, producerOrderExact⟩ :=
+    producerOrder
+  obtain ⟨beforeRecords, middleRecords, afterRecords, producerActor,
+      orderedAdvanceActor, recordOrder⟩ :=
+    exact_root_pair_order_lifts_to_records input blockProducerInput
+      (gammaAdvanceInput blockDigest) blockDigest blockAdvance pairBefore
+        pairMiddle pairAfter producerOrderExact
+  have orderedAdvanceRoot :
+      (.machineFresh orderedAdvanceActor (gammaAdvanceInput blockDigest)
+          blockAdvance : UnifiedExposureRecord) ∈
+        exactFixedRootRecords input.package.root := by
+    rw [recordOrder]
+    simp
+  have unsnocAdvanceRoot' :
+      (.machineFresh unsnocAdvanceActor (gammaAdvanceInput blockDigest)
+          blockAdvance : UnifiedExposureRecord) ∈
+        exactFixedRootRecords input.package.root := unsnocAdvanceRoot
+  have orderedAdvanceExact :
+      (.machineFresh orderedAdvanceActor (gammaAdvanceInput blockDigest)
+          blockAdvance : UnifiedExposureRecord) =
+        .machineFresh unsnocAdvanceActor (gammaAdvanceInput blockDigest)
+          blockAdvance := by
+    apply List.inj_on_of_nodup_map (exact_root_record_answers_nodup input)
+      orderedAdvanceRoot unsnocAdvanceRoot'
+    rfl
+  have orderedAdvanceMember :
+      (.machineFresh orderedAdvanceActor (gammaAdvanceInput blockDigest)
+          blockAdvance : UnifiedExposureRecord) ∈ prior := by
+    simpa [orderedAdvanceExact] using advanceMember
+  have rootNodup : (exactFixedRootRecords input.package.root).Nodup :=
+    List.Nodup.of_map UnifiedExposureRecord.answer
+      (exact_root_record_answers_nodup input)
+  have producerMember := mem_prefix_of_strict_order_and_later_mem
+    (exactFixedRootRecords input.package.root) prior anchorLater beforeRecords
+      middleRecords afterRecords
+      (.machineFresh producerActor blockProducerInput blockDigest)
+      (.machineFresh orderedAdvanceActor (gammaAdvanceInput blockDigest)
+        blockAdvance)
+      anchorRecord rootNodup rootExact recordOrder orderedAdvanceMember
+  exact ⟨prefixOutputs, prefixAdvances, blockProducerInput, blockDigest,
+    blockOutput, blockAdvance, producerActor, unsnocAdvanceActor, outputsExact,
+    advancesExact, prefixChain, producerLookup, outputLookup, advanceLookup,
+    predecessorExact, terminalExact, producerMember, advanceMember⟩
+
 /-- The canonical `final256` producer itself lies in the shared pre-anchor
 root prefix.  Thus both executions literally retain the same actor-tagged
 producer record, not merely the same final digest. -/
@@ -2063,6 +2200,8 @@ theorem exact_fixed_clean_pair_k13_adversary_anchor_disclosed_final_eq
   exact_fixed_clean_pair_k13_adversary_anchor_alpha_terminal_eq
 #print axioms
   exact_alpha_terminal_advance_mem_anchor_prior
+#print axioms
+  exact_alpha_terminal_predecessor_mem_anchor_prior
 #print axioms
   exact_fixed_clean_pair_k13_final256_record_mem_shared_priors
 #print axioms
