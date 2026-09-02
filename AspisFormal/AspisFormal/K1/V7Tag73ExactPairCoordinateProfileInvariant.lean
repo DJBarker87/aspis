@@ -36,6 +36,7 @@ open AspisK1.V7Tag73ExactAdversaryAnchorPrefinalChronology
 open AspisK1.V7Tag73ExactAdversaryAnchorFinalProfile
 open AspisK1.V7Tag73ExactAdversaryAnchorSelectedInputInvariant
 open AspisK1.V7Tag73ExactAlphaZeroActualTrialPrefinal
+open AspisK1.V7Tag73ExactAlphaZeroPrefixCoordinates
 open AspisK1.V7Tag73ExactAlphaZeroRootOrder
 open AspisK1.V7Tag73ExactClientKnowledgeComposition
 open AspisK1.V7Tag73ExactCompilerGammaTraceOccurrence
@@ -1391,6 +1392,20 @@ theorem exact_fixed_clean_pair_k13_adversary_anchor_alpha_terminal_eq
           leftBeforeAlpha.digest leftOutputs leftAdvances ∧
       ExactRootOrderedQ16Chain rightWitness.joint.input rightProducer
           rightBeforeAlpha.digest rightOutputs rightAdvances ∧
+      (∃ (producerDigest : Digest256),
+        leftProducer = bytes producerDigest ++
+          [domAbsorb,
+            (alphaZeroBoundaryPayload
+              (exactOperationalTape leftWitness.joint.input).messages).label] ++
+          (alphaZeroBoundaryPayload
+            (exactOperationalTape leftWitness.joint.input).messages).data) ∧
+      (∃ (producerDigest : Digest256),
+        rightProducer = bytes producerDigest ++
+          [domAbsorb,
+            (alphaZeroBoundaryPayload
+              (exactOperationalTape rightWitness.joint.input).messages).label] ++
+          (alphaZeroBoundaryPayload
+            (exactOperationalTape rightWitness.joint.input).messages).data) ∧
       0 < leftOutputs.length ∧
       0 < rightOutputs.length ∧
       leftAdvances.length = leftOutputs.length ∧
@@ -1441,7 +1456,7 @@ theorem exact_fixed_clean_pair_k13_adversary_anchor_alpha_terminal_eq
       rightWitness anchor programmedCover contextExact foldExact
   obtain ⟨leftProducer, leftFinal256Input, leftBeforeAlpha, leftAfterAlpha,
       leftAfterBlocks, leftAfterFinal256, leftOutputs, leftAdvances, leftValue,
-      _leftWorkAnswer, leftQ16Base, _leftProducerLookup, _leftProducerBoundary,
+      _leftWorkAnswer, leftQ16Base, _leftProducerLookup, leftProducerBoundary,
       leftOrdered, _leftOutputsLength, leftOutputsPositive,
       leftAdvancesLength, leftTerminalExact, leftAfterAlphaExact,
       leftFinal256InputExact, leftFinal256Lookup, _leftWorkLookup,
@@ -1452,7 +1467,7 @@ theorem exact_fixed_clean_pair_k13_adversary_anchor_alpha_terminal_eq
   obtain ⟨rightProducer, rightFinal256Input, rightBeforeAlpha, rightAfterAlpha,
       rightAfterBlocks, rightAfterFinal256, rightOutputs, rightAdvances,
       rightValue, _rightWorkAnswer, rightQ16Base, _rightProducerLookup,
-      _rightProducerBoundary, rightOrdered, _rightOutputsLength,
+      rightProducerBoundary, rightOrdered, _rightOutputsLength,
       rightOutputsPositive, rightAdvancesLength, rightTerminalExact,
       rightAfterAlphaExact, rightFinal256InputExact, rightFinal256Lookup,
       _rightWorkLookup, _rightWorkAccepted, rightFinalNonceLookup,
@@ -1565,8 +1580,8 @@ theorem exact_fixed_clean_pair_k13_adversary_anchor_alpha_terminal_eq
     leftAfterFinal256, rightAfterFinal256, leftOutputs, leftAdvances,
     rightOutputs, rightAdvances, leftValue, rightValue, digest, leftPrior,
     rightPrior, leftLater, rightLater, leftAnchorRecord, rightAnchorRecord,
-    leftOrdered,
-    rightOrdered, leftOutputsPositive, rightOutputsPositive,
+    leftOrdered, rightOrdered, leftProducerBoundary, rightProducerBoundary,
+    leftOutputsPositive, rightOutputsPositive,
     leftAdvancesLength, rightAdvancesLength, leftTerminalExact,
     rightTerminalExact, leftAfterAlphaExact, rightAfterAlphaExact,
     alphaTerminalExact, leftPrefinalExact, rightPrefinalExact,
@@ -2093,8 +2108,8 @@ theorem exact_fixed_clean_pair_k13_alpha_terminal_block_eq
       _rightAfterFinal256, leftOutputs, leftAdvances, rightOutputs,
       rightAdvances, _leftValue, _rightValue, prefinalDigest, leftPrior,
       rightPrior, leftLater, rightLater, leftAnchorRecord, rightAnchorRecord,
-      leftChain,
-      rightChain, leftPositive, rightPositive, _leftLengths, _rightLengths,
+      leftChain, rightChain, _leftBoundary, _rightBoundary, leftPositive,
+      rightPositive, _leftLengths, _rightLengths,
       leftTerminal, rightTerminal, leftAfterExact, rightAfterExact,
       alphaTerminalExact, _leftPrefinal, _rightPrefinal, _prefinalExact,
       leftFinal256Prefix, rightFinal256Prefix, leftFinal256Lookup,
