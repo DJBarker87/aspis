@@ -7,6 +7,10 @@
 //! Finalization (tag 62) irreversibly zeroes the upload-authority field; the
 //! production verification tags accept only sealed accounts. Closing
 //! (tag 64) refunds every lamport of a sealed account and tombstones it.
+//! Under the default-off authenticated-counter audit, a specialized seal
+//! changes the four-byte magic to `ASC || counter` and replaces the authority
+//! with the complete statement digest. The proof body and its offsets do not
+//! change. Only the verifier program can perform either irreversible seal.
 
 use solana_program::{
     account_info::{next_account_info, AccountInfo},
@@ -20,6 +24,8 @@ use solana_program::{
 use crate::atomic_payment;
 
 pub(crate) const PROOF_ACCOUNT_MAGIC: [u8; 4] = *b"ASPU";
+#[cfg(feature = "v7-pair-forest-authenticated-query-counter-audit")]
+pub(crate) const PROOF_ACCOUNT_AUTHENTICATED_COUNTER_PREFIX: [u8; 3] = *b"ASC";
 pub const PROOF_ACCOUNT_HEADER_LEN: usize = 40;
 pub(crate) const AUTHORITY_OFFSET: usize = 8;
 
@@ -34,8 +40,56 @@ pub(crate) fn proof_account_finalized(data: &[u8]) -> bool {
             .all(|byte| *byte == 0)
 }
 
+#[cfg(feature = "v7-pair-forest-authenticated-query-counter-audit")]
+pub(crate) fn proof_account_has_authenticated_query_counter(data: &[u8]) -> bool {
+    data.len() >= PROOF_ACCOUNT_HEADER_LEN
+        && data[..3] == PROOF_ACCOUNT_AUTHENTICATED_COUNTER_PREFIX
+        && usize::from(data[3]) < aspis_core::v7_onefold::V7_COMPACT_QUERY_CANDIDATES
+}
+
+/// Return the exact counter only when the immutable proof-account seal binds
+/// it to the caller's complete 256-bit statement digest.
+#[cfg(feature = "v7-pair-forest-authenticated-query-counter-audit")]
+pub(crate) fn authenticated_query_counter(
+    data: &[u8],
+    statement_digest: &[u8; 32],
+) -> Result<u8, ProgramError> {
+    if !proof_account_has_authenticated_query_counter(data)
+        || data[AUTHORITY_OFFSET..AUTHORITY_OFFSET + 32] != statement_digest[..]
+    {
+        return Err(ProgramError::InvalidAccountData);
+    }
+    Ok(data[3])
+}
+
+/// Irreversibly replace an authorized upload header with the authenticated
+/// counter seal. The caller must first run `require_upload_authority` and the
+/// unchanged full verifier against the same account, statement, and digest.
+#[cfg(feature = "v7-pair-forest-authenticated-query-counter-audit")]
+pub(crate) fn write_authenticated_query_counter_seal(
+    data: &mut [u8],
+    counter: u8,
+    statement_digest: &[u8; 32],
+) -> ProgramResult {
+    if !proof_account_initialized(data)
+        || usize::from(counter) >= aspis_core::v7_onefold::V7_COMPACT_QUERY_CANDIDATES
+    {
+        return Err(ProgramError::InvalidAccountData);
+    }
+    data[..3].copy_from_slice(&PROOF_ACCOUNT_AUTHENTICATED_COUNTER_PREFIX);
+    data[3] = counter;
+    data[AUTHORITY_OFFSET..AUTHORITY_OFFSET + 32].copy_from_slice(statement_digest);
+    Ok(())
+}
+
 pub(crate) fn proof_len(data: &[u8]) -> Result<usize, ProgramError> {
-    if data.len() < PROOF_ACCOUNT_HEADER_LEN || data[0..4] != PROOF_ACCOUNT_MAGIC {
+    #[cfg(feature = "v7-pair-forest-authenticated-query-counter-audit")]
+    let valid_magic = data.len() >= PROOF_ACCOUNT_HEADER_LEN
+        && (data[0..4] == PROOF_ACCOUNT_MAGIC
+            || proof_account_has_authenticated_query_counter(data));
+    #[cfg(not(feature = "v7-pair-forest-authenticated-query-counter-audit"))]
+    let valid_magic = data.len() >= PROOF_ACCOUNT_HEADER_LEN && data[0..4] == PROOF_ACCOUNT_MAGIC;
+    if !valid_magic {
         return Err(ProgramError::InvalidAccountData);
     }
     Ok(u32::from_le_bytes(data[4..8].try_into().unwrap()) as usize)
@@ -238,7 +292,12 @@ pub(crate) fn close_finalized_proof_account(
 ) -> ProgramResult {
     let data = proof_account.try_borrow_data()?;
     uploaded_proof_bounds(&data)?;
-    if !proof_account_finalized(&data) {
+    #[cfg(feature = "v7-pair-forest-authenticated-query-counter-audit")]
+    let sealed =
+        proof_account_finalized(&data) || proof_account_has_authenticated_query_counter(&data);
+    #[cfg(not(feature = "v7-pair-forest-authenticated-query-counter-audit"))]
+    let sealed = proof_account_finalized(&data);
+    if !sealed {
         return Err(ProgramError::InvalidAccountData);
     }
     drop(data);
@@ -989,5 +1048,64 @@ mod tests {
             Err(ProgramError::ArithmeticOverflow)
         );
         assert!(overflow_pool_data.iter().all(|byte| *byte == 0));
+    }
+
+    #[cfg(feature = "v7-pair-forest-authenticated-query-counter-audit")]
+    #[test]
+    fn authenticated_counter_seal_is_statement_bound_immutable_and_body_preserving() {
+        let authority = [0x61u8; 32];
+        let statement_digest = [0x73u8; 32];
+        let mut data = vec![0u8; PROOF_ACCOUNT_HEADER_LEN + 19];
+        data[..4].copy_from_slice(&PROOF_ACCOUNT_MAGIC);
+        data[4..8].copy_from_slice(&19u32.to_le_bytes());
+        data[AUTHORITY_OFFSET..AUTHORITY_OFFSET + 32].copy_from_slice(&authority);
+        data[PROOF_ACCOUNT_HEADER_LEN..].fill(0xa5);
+        let body_before = data[PROOF_ACCOUNT_HEADER_LEN..].to_vec();
+
+        write_authenticated_query_counter_seal(&mut data, 37, &statement_digest).unwrap();
+        assert!(proof_account_has_authenticated_query_counter(&data));
+        assert!(
+            !proof_account_finalized(&data),
+            "the specialized seal must not be accepted by unrelated verifier paths"
+        );
+        assert_eq!(
+            authenticated_query_counter(&data, &statement_digest),
+            Ok(37)
+        );
+        assert_eq!(
+            authenticated_query_counter(&data, &[0x74; 32]),
+            Err(ProgramError::InvalidAccountData)
+        );
+        assert_eq!(uploaded_proof_bounds(&data), Ok((40, 59)));
+        assert_eq!(&data[PROOF_ACCOUNT_HEADER_LEN..], body_before.as_slice());
+        assert!(!proof_account_initialized(&data));
+        assert_eq!(
+            write_authenticated_query_counter_seal(&mut data, 1, &statement_digest),
+            Err(ProgramError::InvalidAccountData),
+            "a certified account cannot be rewritten"
+        );
+
+        let mut bad_counter = data.clone();
+        bad_counter[3] = aspis_core::v7_onefold::V7_COMPACT_QUERY_CANDIDATES as u8;
+        assert!(!proof_account_finalized(&bad_counter));
+        assert!(!proof_account_has_authenticated_query_counter(&bad_counter));
+        assert_eq!(
+            uploaded_proof_bounds(&bad_counter),
+            Err(ProgramError::InvalidAccountData)
+        );
+        assert_eq!(
+            authenticated_query_counter(&bad_counter, &statement_digest),
+            Err(ProgramError::InvalidAccountData)
+        );
+
+        let mut legacy = vec![0u8; PROOF_ACCOUNT_HEADER_LEN + 1];
+        legacy[..4].copy_from_slice(&PROOF_ACCOUNT_MAGIC);
+        legacy[4..8].copy_from_slice(&1u32.to_le_bytes());
+        assert!(proof_account_finalized(&legacy));
+        assert_eq!(
+            authenticated_query_counter(&legacy, &[0u8; 32]),
+            Err(ProgramError::InvalidAccountData),
+            "the audit terminal must not silently accept an ordinary seal"
+        );
     }
 }

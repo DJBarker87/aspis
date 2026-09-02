@@ -66,6 +66,8 @@ fn production_require_empty(input: &[u8]) -> ProgramResult {
 /// - 75: verify that Tag-73 proof and finalize its exact pending receipt.
 /// - 76: close a canonical pending or finalized Pool authorization receipt
 ///   and refund its embedded authority.
+/// - 77: audit-only full verification plus immutable first-cap203 counter
+///   certification in the uploaded pair-forest proof account.
 /// - `ASVQ`: exact Pool-selected Tag-73 read-only profile dispatch, enabled by
 ///   `v7-pool-dispatch-profile`. This is a four-byte discriminator rather than
 ///   another numeric prefix because `ASVQ` is already the frozen CPI request.
@@ -293,6 +295,14 @@ pub fn process_spend_production_instruction(
             accounts,
             instruction_data,
         ),
+        #[cfg(feature = "v7-pair-forest-authenticated-query-counter-audit")]
+        crate::v7_pair_forest_dispatch::V7_PAIR_FOREST_AUTHENTICATE_QUERY_COUNTER_TAG => {
+            crate::v7_pair_forest_dispatch::process_v7_pair_forest_authenticate_query_counter_instruction(
+                program_id,
+                accounts,
+                wire,
+            )
+        }
         #[cfg(feature = "v7-pool-dispatch-profile")]
         crate::v7_pool_receipt::V7_POOL_RECEIPT_INITIALIZE_TAG => {
             crate::v7_pool_receipt::process_v7_pool_receipt_initialize_instruction(

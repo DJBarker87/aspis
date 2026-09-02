@@ -194,6 +194,14 @@ v7-pair-forest-one-tx-candidate = [
     "v7-pair-forest-active-mask-basis-audit",
     "v7-gamma-four-slot-block-audit",
 ]
+# Audit-only proof-account certificate for the exact first cap-203 query
+# counter. Certification runs the unchanged full verifier while the upload is
+# sealed; the terminal verifier authenticates the co-resident statement digest
+# and re-derives only that certified candidate.
+v7-pair-forest-authenticated-query-counter-audit = [
+    "v7-pair-forest-one-tx-candidate",
+    "aspis-core/v7-authenticated-query-counter-audit",
+]
 # Adds compute-unit checkpoints to the selected pair-forest verifier without
 # changing its wire, transcript, arithmetic, work, q16, or Merkle schedule.
 # Use only for matched diagnostic builds; marker calls inflate total CU.

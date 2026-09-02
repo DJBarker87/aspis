@@ -19,8 +19,11 @@ use aspis_pool_wallet_v1::{
     lane_forest_rpc_v2::FinalizedForestAccountV2,
     lane_forest_transaction_v1::{
         build_exact_pair_forest_v1_carrier_transaction_v2,
+        build_exact_pair_forest_v1_transaction_v2,
+        build_pair_forest_authenticated_query_counter_seal_instruction_v2,
         build_pair_forest_terminal_instruction_v1_4k_v2,
-        validate_signed_pair_forest_v1_carrier_transaction_v2, PairForestV1TransactionConfigV2,
+        validate_signed_pair_forest_v1_carrier_transaction_v2,
+        validate_signed_pair_forest_v1_transaction_v2, PairForestV1TransactionConfigV2,
     },
     tx_v1_ciphertext_carrier_v2::TxV1CiphertextCarrierV2,
     NoteContextV1, NoteOpeningV1,
@@ -78,6 +81,7 @@ struct Input {
     carrier_test_mode: Option<String>,
     withdrawal_cpi_test_mode: Option<String>,
     compute_unit_limit: Option<u32>,
+    transaction_kind: Option<String>,
 }
 #[derive(Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -172,6 +176,17 @@ fn main() -> Result<()> {
     );
     ensure!(env::args_os().nth(2).is_none(), "extra argument");
     let input: Input = serde_json::from_slice(&fs::read(&input_path)?)?;
+    let authenticated_counter_seal = match input.transaction_kind.as_deref() {
+        None => false,
+        Some("authenticated-counter-seal") => {
+            ensure!(
+                input.schema == "aspis.v7.live-authenticated-query-counter-seal-input.v1",
+                "authenticated-counter sealing requires its explicit schema"
+            );
+            true
+        }
+        Some(_) => anyhow::bail!("unsupported transaction kind"),
+    };
     let malformed_carrier_test = match input.carrier_test_mode.as_deref() {
         None => false,
         Some("malformed-magic") => {
@@ -195,12 +210,18 @@ fn main() -> Result<()> {
         Some(_) => anyhow::bail!("unsupported withdrawal CPI test mode"),
     };
     ensure!(
-        (input.schema == "aspis.v7.live-transfer-terminal-input.v1"
+        (authenticated_counter_seal
+            || input.schema == "aspis.v7.live-transfer-terminal-input.v1"
             || input.schema == "aspis.v7.live-terminal-input.v1"
             || input.schema == "aspis.v7.live-terminal-malformed-carrier-test-input.v1"
             || input.schema == "aspis.v7.live-terminal-withdrawal-cpi-failure-test-input.v1")
             && input.min_context_slot > 0,
         "wrong input"
+    );
+    ensure!(
+        authenticated_counter_seal
+            || input.schema != "aspis.v7.live-authenticated-query-counter-seal-input.v1",
+        "counter-seal schema requires the exact transaction kind"
     );
     ensure!(
         malformed_carrier_test
@@ -307,6 +328,74 @@ fn main() -> Result<()> {
         .map(|account| account.pubkey.to_string())
         .collect::<Vec<_>>();
     let marker_account = terminal.accounts[4].pubkey.to_string();
+    if authenticated_counter_seal {
+        ensure!(
+            input.carrier_test_mode.is_none()
+                && input.withdrawal_cpi_test_mode.is_none()
+                && input.compute_unit_limit.is_none(),
+            "counter sealing does not accept terminal test overrides"
+        );
+        let seal = build_pair_forest_authenticated_query_counter_seal_instruction_v2(
+            &terminal,
+            payer.pubkey(),
+        )
+        .map_err(|e| anyhow::anyhow!("counter-seal instruction: {e:?}"))?;
+        let recent = bs58::decode(&input.recent_blockhash).into_vec()?;
+        let recent: [u8; 32] = recent
+            .try_into()
+            .map_err(|_| anyhow::anyhow!("blockhash length"))?;
+        let expected = build_exact_pair_forest_v1_transaction_v2(
+            &seal,
+            payer.pubkey(),
+            recent,
+            PairForestV1TransactionConfigV2 {
+                priority_fee_lamports: 0,
+                compute_unit_limit: 1_400_000,
+                loaded_accounts_data_size_limit: 8 * 1024 * 1024,
+                heap_size: 256 * 1024,
+            },
+            &[],
+        )
+        .map_err(|e| anyhow::anyhow!("build counter-seal TxV1: {e:?}"))?;
+        ensure!(
+            expected.required_signatures_v2() == 1,
+            "unexpected counter-seal signatures"
+        );
+        let mut transaction: V1VersionedTransaction =
+            wincode::deserialize(expected.placeholder_signature_wire_v2())?;
+        let message = transaction.message.serialize();
+        let signed = payer.sign_message(&message);
+        let bytes: [u8; 64] = signed.as_ref().try_into()?;
+        transaction.signatures[0] = V1Signature::from(bytes);
+        let wire = wincode::serialize(&transaction)?;
+        validate_signed_pair_forest_v1_transaction_v2(&expected, &wire)
+            .map_err(|e| anyhow::anyhow!("validate signed counter-seal TxV1: {e:?}"))?;
+        ensure!(
+            wire.len() < 4096 && wire.len() <= 3500,
+            "counter-seal TxV1 size policy failed"
+        );
+        let wire64 = BASE64.encode(&wire);
+        let signature = transaction.signatures[0].to_string();
+        println!(
+            "{}",
+            json!({
+                "schema":"aspis.v7.live-authenticated-query-counter-seal-signed.v1",
+                "transactionKind":"authenticated-counter-seal",
+                "signature":signature,
+                "selectedLane":lane_id,
+                "proofAccount":proof.to_string(),
+                "asq8Sha256":format!("{:x}", Sha256::digest(&asq8)),
+                "serializedTransactionBytes":wire.len(),
+                "signedWireSha256":format!("{:x}",Sha256::digest(&wire)),
+                "instructionCount":1,
+                "computeUnitLimit":1_400_000,
+                "terminalAccounts":terminal_accounts,
+                "simulationRequest":{"jsonrpc":"2.0","id":input.request_id,"method":"simulateTransaction","params":[wire64,{"encoding":"base64","commitment":"finalized","sigVerify":true,"replaceRecentBlockhash":false,"minContextSlot":input.min_context_slot,"innerInstructions":true}]},
+                "sendRequest":{"jsonrpc":"2.0","id":input.request_id+100000,"method":"sendTransaction","params":[wire64,{"encoding":"base64","skipPreflight":true,"preflightCommitment":"finalized","maxRetries":0,"minContextSlot":input.min_context_slot}]}
+            })
+        );
+        return Ok(());
+    }
     let secrets: Secret = serde_json::from_slice(&fs::read(resolve(base, &bundle.secrets_file))?)?;
     let change = note(secrets.change_note)?;
     let pair_index = lane.value.tree.next_leaf_index;

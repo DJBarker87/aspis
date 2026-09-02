@@ -58,6 +58,10 @@ pub const SOLANA_V1_VERSION_PREFIX_V2: u8 = 0x81;
 pub const SOLANA_TX_V1_FEATURE_ID_V2: &str = "txv1aq4pp281K9um3tnPgkfX8UqtFT6wcVW3hNezGLL";
 pub const SOLANA_DEVNET_GENESIS_HASH_V2: &str = "EtWTRABZaYq6iMfeYKouRu166VU2xqa1wcaWoxPkrZBG";
 pub const SOLANA_PUBLIC_DEVNET_RPC_V2: &str = "https://api.devnet.solana.com";
+/// Default-off verifier instruction that seals a proof with its authenticated
+/// first-cap203 counter after complete verification against the live ASQ8
+/// statement. It is not part of the released verifier surface.
+pub const V7_PAIR_FOREST_AUTHENTICATE_QUERY_COUNTER_TAG_V2: u8 = 77;
 const SOLANA_FEATURE_PROGRAM_ID_V2: &str = "Feature111111111111111111111111111111111111";
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -574,6 +578,83 @@ pub fn build_pair_forest_terminal_instruction_v1_4k_v2(
     })
 }
 
+/// Build the audit-only proof certification instruction from an already
+/// validated terminal Pool instruction. The proof is writable only during
+/// this pre-settlement seal; every Pool, Registry, and lane input is readonly.
+/// The exact ASQ8 bytes are reused so certification and terminal execution
+/// cannot silently diverge at the builder boundary.
+pub fn build_pair_forest_authenticated_query_counter_seal_instruction_v2(
+    terminal_instruction: &Instruction,
+    upload_authority: Pubkey,
+) -> Result<Instruction, PairForestTransactionV1ErrorV2> {
+    if upload_authority == Pubkey::default()
+        || terminal_instruction.program_id == Pubkey::default()
+        || terminal_instruction.data.len()
+            != aspis_statement::pool_v1::POOL_V1_PAIR_FOREST_TERMINAL_REQUEST_BYTES
+    {
+        return Err(PairForestTransactionV1ErrorV2::WrongRequest);
+    }
+    let request = aspis_statement::pool_v1::decode_pool_v1_pair_forest_terminal_request_v1(
+        &terminal_instruction.data,
+    )
+    .map_err(|_| PairForestTransactionV1ErrorV2::WrongRequest)?;
+    let proof_index = match request.public {
+        PoolV1PairForestTerminalPaymentV1::PrivateTransfer(_) => {
+            if !matches!(terminal_instruction.accounts.len(), 11 | 12) {
+                return Err(PairForestTransactionV1ErrorV2::WrongRequest);
+            }
+            terminal_instruction.accounts.len() - 1
+        }
+        PoolV1PairForestTerminalPaymentV1::Withdrawal(_) => {
+            if !matches!(terminal_instruction.accounts.len(), 16 | 17) {
+                return Err(PairForestTransactionV1ErrorV2::WrongRequest);
+            }
+            terminal_instruction.accounts.len() - 6
+        }
+    };
+    if proof_index < 4 {
+        return Err(PairForestTransactionV1ErrorV2::WrongRequest);
+    }
+    let registry_index = proof_index - 3;
+    let entry_index = proof_index - 2;
+    let verifier_index = proof_index - 1;
+    let proof = &terminal_instruction.accounts[proof_index];
+    let registry = &terminal_instruction.accounts[registry_index];
+    let entry = &terminal_instruction.accounts[entry_index];
+    let verifier = &terminal_instruction.accounts[verifier_index];
+    if proof.pubkey == Pubkey::default()
+        || proof.is_signer
+        || proof.is_writable
+        || registry.is_signer
+        || registry.is_writable
+        || entry.is_signer
+        || entry.is_writable
+        || verifier.pubkey == Pubkey::default()
+        || verifier.is_signer
+        || verifier.is_writable
+    {
+        return Err(PairForestTransactionV1ErrorV2::WrongRequest);
+    }
+    let accounts = vec![
+        AccountMeta::new(proof.pubkey, false),
+        AccountMeta::new_readonly(terminal_instruction.accounts[0].pubkey, false),
+        AccountMeta::new_readonly(terminal_instruction.accounts[1].pubkey, false),
+        AccountMeta::new_readonly(terminal_instruction.accounts[2].pubkey, false),
+        AccountMeta::new_readonly(registry.pubkey, false),
+        AccountMeta::new_readonly(entry.pubkey, false),
+        AccountMeta::new_readonly(upload_authority, true),
+    ];
+    require_unique_metas_v2(&accounts)?;
+    let mut data = Vec::with_capacity(1 + terminal_instruction.data.len());
+    data.push(V7_PAIR_FOREST_AUTHENTICATE_QUERY_COUNTER_TAG_V2);
+    data.extend_from_slice(&terminal_instruction.data);
+    Ok(Instruction {
+        program_id: verifier.pubkey,
+        accounts,
+        data,
+    })
+}
+
 pub(crate) fn to_v1_instruction_v2(
     instruction: &Instruction,
 ) -> Result<V1Instruction, PairForestTransactionV1ErrorV2> {
@@ -768,6 +849,18 @@ pub fn validate_signed_pair_forest_v1_carrier_transaction_v2(
     expected: &ExactUnsignedPairForestV1TransactionV2,
     signed_wire: &[u8],
 ) -> Result<(), PairForestTransactionV1ErrorV2> {
+    if expected.instruction_count != 2 {
+        return Err(PairForestTransactionV1ErrorV2::SignedMessageMismatch);
+    }
+    validate_signed_pair_forest_v1_transaction_v2(expected, signed_wire)
+}
+
+/// Verify a signer-produced TxV1 wire against any exact transaction compiled
+/// by this module, including the audit-only authenticated-counter seal.
+pub fn validate_signed_pair_forest_v1_transaction_v2(
+    expected: &ExactUnsignedPairForestV1TransactionV2,
+    signed_wire: &[u8],
+) -> Result<(), PairForestTransactionV1ErrorV2> {
     if signed_wire.len() > SOLANA_V1_TRANSACTION_MAX_BYTES_V2 {
         return Err(PairForestTransactionV1ErrorV2::TransactionTooLarge);
     }
@@ -781,7 +874,6 @@ pub fn validate_signed_pair_forest_v1_carrier_transaction_v2(
         != signed_wire
         || transaction.message.serialize() != expected.signable_message
         || transaction.signatures.len() != usize::from(expected.required_signatures)
-        || expected.instruction_count != 2
     {
         return Err(PairForestTransactionV1ErrorV2::SignedMessageMismatch);
     }
@@ -1079,7 +1171,7 @@ mod tests {
         .unwrap()
     }
 
-    fn sign_exact_carrier_transaction(
+    fn sign_exact_transaction(
         expected: &ExactUnsignedPairForestV1TransactionV2,
         fee_payer: &Keypair,
         authority: &Keypair,
@@ -1155,6 +1247,84 @@ mod tests {
                     .unwrap();
             assert_eq!(v0.serialized_wire_bytes, expected_v0);
             assert!(!v0.eligible_for_four_kib);
+        }
+    }
+
+    #[test]
+    fn authenticated_counter_seal_reuses_exact_asq8_and_readonly_live_accounts() {
+        for (withdrawal, rollover) in [(false, false), (false, true), (true, false), (true, true)] {
+            let (program, master, lane, profile, request) =
+                immutable_terminal_fixture(withdrawal, rollover);
+            let proof_account = key(21);
+            let fee_payer = Keypair::new_from_array([0x22; 32]);
+            let upload_authority = Keypair::new_from_array([0x24; 32]);
+            let terminal = build_pair_forest_terminal_instruction_v1_4k_v2(
+                program,
+                &master,
+                &lane,
+                profile,
+                fee_payer.pubkey(),
+                proof_account,
+                &request,
+            )
+            .unwrap();
+            let seal = build_pair_forest_authenticated_query_counter_seal_instruction_v2(
+                &terminal,
+                upload_authority.pubkey(),
+            )
+            .unwrap();
+            assert_eq!(
+                seal.program_id,
+                Pubkey::new_from_array(profile.verifier_program)
+            );
+            assert_eq!(
+                seal.data[0],
+                V7_PAIR_FOREST_AUTHENTICATE_QUERY_COUNTER_TAG_V2
+            );
+            assert_eq!(&seal.data[1..], terminal.data.as_slice());
+            assert_eq!(seal.accounts.len(), 7);
+            assert_eq!(seal.accounts[0], AccountMeta::new(proof_account, false));
+            assert!(seal.accounts[1..6]
+                .iter()
+                .all(|meta| !meta.is_signer && !meta.is_writable));
+            assert_eq!(
+                seal.accounts[6],
+                AccountMeta::new_readonly(upload_authority.pubkey(), true)
+            );
+            let transaction = build_exact_pair_forest_v1_transaction_v2(
+                &seal,
+                fee_payer.pubkey(),
+                [23; 32],
+                config(),
+                &[],
+            )
+            .unwrap();
+            assert_eq!(transaction.required_signatures_v2(), 2);
+            assert!(transaction.serialized_wire_bytes_v2() < 1_232);
+            let signed = sign_exact_transaction(&transaction, &fee_payer, &upload_authority);
+            assert_eq!(
+                validate_signed_pair_forest_v1_transaction_v2(&transaction, &signed),
+                Ok(())
+            );
+            assert_eq!(
+                validate_signed_pair_forest_v1_carrier_transaction_v2(&transaction, &signed),
+                Err(PairForestTransactionV1ErrorV2::SignedMessageMismatch)
+            );
+
+            let mut malformed = terminal.clone();
+            let proof_index = if withdrawal {
+                malformed.accounts.len() - 6
+            } else {
+                malformed.accounts.len() - 1
+            };
+            malformed.accounts[proof_index].is_writable = true;
+            assert_eq!(
+                build_pair_forest_authenticated_query_counter_seal_instruction_v2(
+                    &malformed,
+                    upload_authority.pubkey(),
+                ),
+                Err(PairForestTransactionV1ErrorV2::WrongRequest)
+            );
         }
     }
 
@@ -1298,7 +1468,7 @@ mod tests {
             &[],
         )
         .unwrap();
-        let signed = sign_exact_carrier_transaction(&expected, &fee_payer, &authority);
+        let signed = sign_exact_transaction(&expected, &fee_payer, &authority);
         assert_eq!(
             validate_signed_pair_forest_v1_carrier_transaction_v2(&expected, &signed),
             Ok(())

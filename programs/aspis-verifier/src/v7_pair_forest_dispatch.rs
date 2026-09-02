@@ -64,6 +64,8 @@ use crate::{
 const PAIR_FOREST_MASTER_SEED: &[u8] = b"aspis-pair-forest-master-v1";
 const PAIR_FOREST_LANE_SEED: &[u8] = b"aspis-pair-forest-lane-v1";
 const PAIR_FOREST_CHECKPOINT_SEED: &[u8] = b"aspis-pair-forest-checkpoint-v1";
+#[cfg(feature = "v7-pair-forest-authenticated-query-counter-audit")]
+pub const V7_PAIR_FOREST_AUTHENTICATE_QUERY_COUNTER_TAG: u8 = 77;
 #[cfg(feature = "v7-pair-forest-lane-invariant-audit")]
 const VERIFIER_REGISTRY_SEED: &[u8] = b"aspis-verifier-registry-v1";
 #[cfg(feature = "v7-pair-forest-lane-invariant-audit")]
@@ -126,6 +128,21 @@ fn frontier_nodes_from_proof_length(length: usize) -> Option<usize> {
 
 fn require_readonly_account(account: &AccountInfo<'_>, owner: &Pubkey) -> ProgramResult {
     if account.owner != owner || account.is_signer || account.is_writable || account.executable {
+        return Err(ProgramError::InvalidAccountData);
+    }
+    Ok(())
+}
+
+fn require_proof_account(
+    account: &AccountInfo<'_>,
+    owner: &Pubkey,
+    writable: bool,
+) -> ProgramResult {
+    if account.owner != owner
+        || account.is_signer
+        || account.is_writable != writable
+        || account.executable
+    {
         return Err(ProgramError::InvalidAccountData);
     }
     Ok(())
@@ -427,6 +444,7 @@ fn authenticate_asq8_accounts_v1(
     accounts: &[AccountInfo<'_>],
     pool_program: &Pubkey,
     output_lane: u8,
+    proof_writable: bool,
 ) -> Result<AuthenticatedV7PairForestAsq8AccountsV1, ProgramError> {
     #[cfg(feature = "v7-pair-forest-lane-invariant-audit")]
     let [proof_account, master_account, checkpoint_account, lane_account, registry_account, entry_account] =
@@ -447,7 +465,7 @@ fn authenticate_asq8_accounts_v1(
             ProgramError::InvalidArgument
         });
     };
-    require_readonly_account(proof_account, verifier_program)?;
+    require_proof_account(proof_account, verifier_program, proof_writable)?;
     require_readonly_account(master_account, pool_program)?;
     require_readonly_account(checkpoint_account, pool_program)?;
     require_readonly_account(lane_account, pool_program)?;
@@ -543,9 +561,15 @@ fn authenticate_asq8_accounts_v1(
 #[inline(never)]
 fn scan_asq8_proof_v1(
     proof_account: &AccountInfo<'_>,
+    require_finalized: bool,
 ) -> Result<ScannedV7PairForestAsq8ProofV1, ProgramError> {
     let data = proof_account.try_borrow_data()?;
-    if !proof_account_finalized(&data) {
+    #[cfg(feature = "v7-pair-forest-authenticated-query-counter-audit")]
+    let terminal_sealed = proof_account_finalized(&data)
+        || crate::lifecycle::proof_account_has_authenticated_query_counter(&data);
+    #[cfg(not(feature = "v7-pair-forest-authenticated-query-counter-audit"))]
+    let terminal_sealed = proof_account_finalized(&data);
+    if require_finalized && !terminal_sealed {
         return Err(ProgramError::InvalidAccountData);
     }
     let (payload_start, payload_end) = uploaded_proof_bounds(&data)?;
@@ -656,6 +680,22 @@ pub fn validate_v7_pair_forest_asq8_request_v1(
     accounts: &[AccountInfo<'_>],
     instruction_data: &[u8],
 ) -> Result<ValidatedV7PairForestAsq8V1, ProgramError> {
+    validate_v7_pair_forest_asq8_request_impl_v1(
+        verifier_program,
+        accounts,
+        instruction_data,
+        false,
+        true,
+    )
+}
+
+fn validate_v7_pair_forest_asq8_request_impl_v1(
+    verifier_program: &Pubkey,
+    accounts: &[AccountInfo<'_>],
+    instruction_data: &[u8],
+    proof_writable: bool,
+    require_finalized: bool,
+) -> Result<ValidatedV7PairForestAsq8V1, ProgramError> {
     if instruction_data.len() != POOL_V1_PAIR_FOREST_TERMINAL_REQUEST_BYTES {
         return Err(ProgramError::InvalidInstructionData);
     }
@@ -669,10 +709,15 @@ pub fn validate_v7_pair_forest_asq8_request_v1(
     let pool_program = Pubkey::new_from_array(request.pool_program);
     let output_lane = pool_v1_pair_forest_output_lane_v1(request.public.nullifier())
         .map_err(|_| ProgramError::InvalidInstructionData)?;
-    let authenticated =
-        authenticate_asq8_accounts_v1(verifier_program, accounts, &pool_program, output_lane)?;
+    let authenticated = authenticate_asq8_accounts_v1(
+        verifier_program,
+        accounts,
+        &pool_program,
+        output_lane,
+        proof_writable,
+    )?;
     let proof_account = accounts.first().ok_or(ProgramError::NotEnoughAccountKeys)?;
-    let scanned = scan_asq8_proof_v1(proof_account)?;
+    let scanned = scan_asq8_proof_v1(proof_account, require_finalized)?;
     let statement =
         reconstruct_asq8_statement_box_v1(&request, &authenticated, &scanned.candidate_afterstate)?;
     Ok(ValidatedV7PairForestAsq8V1 {
@@ -773,10 +818,15 @@ pub fn validate_v7_pair_forest_asf8_request_v1(
     let request = request_from_asf8_statement_v1(&supplied, pool_program.to_bytes());
     let output_lane = pool_v1_pair_forest_output_lane_v1(request.public.nullifier())
         .map_err(|_| ProgramError::InvalidInstructionData)?;
-    let authenticated =
-        authenticate_asq8_accounts_v1(verifier_program, accounts, &pool_program, output_lane)?;
+    let authenticated = authenticate_asq8_accounts_v1(
+        verifier_program,
+        accounts,
+        &pool_program,
+        output_lane,
+        false,
+    )?;
     let proof_account = accounts.first().ok_or(ProgramError::NotEnoughAccountKeys)?;
-    let scanned = scan_asq8_proof_v1(proof_account)?;
+    let scanned = scan_asq8_proof_v1(proof_account, true)?;
     authenticate_supplied_asf8_statement_v1(
         &supplied,
         &request,
@@ -803,14 +853,14 @@ fn statement_digest_v1(
 }
 
 #[inline(never)]
-fn verify_statement_v1(
+fn verify_statement_full_v1(
     verifier_program: &Pubkey,
     proof_account_key: &Pubkey,
     proof: &[u8],
     frontier_nodes: usize,
     statement: &PoolV1PairForestTerminalStatementV1,
     statement_digest: [u8; 32],
-) -> ProgramResult {
+) -> Result<crate::v7_verifier::VerifiedV7ReadOnly, crate::v7_verifier::V7VerifyError> {
     let transition = &statement.common().lane_transition;
     #[cfg(feature = "v7-pair-forest-fixed-canonical-audit")]
     let verified = match statement {
@@ -869,6 +919,71 @@ fn verify_statement_v1(
                 true,
             )
         }
+    };
+    verified
+}
+
+#[cfg(not(feature = "v7-pair-forest-authenticated-query-counter-audit"))]
+#[inline(never)]
+fn verify_statement_v1(
+    verifier_program: &Pubkey,
+    proof_account_key: &Pubkey,
+    proof: &[u8],
+    frontier_nodes: usize,
+    statement: &PoolV1PairForestTerminalStatementV1,
+    statement_digest: [u8; 32],
+) -> ProgramResult {
+    verify_statement_full_v1(
+        verifier_program,
+        proof_account_key,
+        proof,
+        frontier_nodes,
+        statement,
+        statement_digest,
+    )
+    .map(|_| ())
+    .map_err(|_| ProgramError::InvalidAccountData)
+}
+
+#[cfg(feature = "v7-pair-forest-authenticated-query-counter-audit")]
+#[inline(never)]
+fn verify_statement_with_authenticated_query_counter_v1(
+    verifier_program: &Pubkey,
+    proof_account_key: &Pubkey,
+    proof: &[u8],
+    frontier_nodes: usize,
+    statement: &PoolV1PairForestTerminalStatementV1,
+    statement_digest: [u8; 32],
+    authenticated_counter: u8,
+) -> ProgramResult {
+    let transition = &statement.common().lane_transition;
+    let verified = match statement {
+        PoolV1PairForestTerminalStatementV1::PrivateTransfer { public, .. } => crate::v7_verifier::verify_v7_pool_pair_forest_private_transfer_canonical_with_statement_digest_and_authenticated_counter(
+            crate::verify::sbf_hashv,
+            proof,
+            frontier_nodes,
+            verifier_program,
+            V7_POOL_PAIR_FOREST_TAG73_RELEASE_BINDING,
+            proof_account_key,
+            public,
+            transition,
+            statement_digest,
+            authenticated_counter,
+            true,
+        ),
+        PoolV1PairForestTerminalStatementV1::Withdrawal { public, .. } => crate::v7_verifier::verify_v7_pool_pair_forest_withdrawal_canonical_with_statement_digest_and_authenticated_counter(
+            crate::verify::sbf_hashv,
+            proof,
+            frontier_nodes,
+            verifier_program,
+            V7_POOL_PAIR_FOREST_TAG73_RELEASE_BINDING,
+            proof_account_key,
+            public,
+            transition,
+            statement_digest,
+            authenticated_counter,
+            true,
+        ),
     };
     verified
         .map(|_| ())
@@ -968,6 +1083,20 @@ where
         return Err(ProgramError::InvalidAccountData);
     }
     let statement_digest = statement_digest_v1(&validated.statement)?;
+    #[cfg(feature = "v7-pair-forest-authenticated-query-counter-audit")]
+    let authenticated_counter =
+        crate::lifecycle::authenticated_query_counter(&data, &statement_digest)?;
+    #[cfg(feature = "v7-pair-forest-authenticated-query-counter-audit")]
+    verify_statement_with_authenticated_query_counter_v1(
+        verifier_program,
+        &proof_account_key,
+        proof,
+        validated.frontier_nodes,
+        &validated.statement,
+        statement_digest,
+        authenticated_counter,
+    )?;
+    #[cfg(not(feature = "v7-pair-forest-authenticated-query-counter-audit"))]
     verify_statement_v1(
         verifier_program,
         &proof_account_key,
@@ -977,6 +1106,78 @@ where
         statement_digest,
     )?;
     emit_result_v1(&validated.statement)
+}
+
+/// Audit-only seal for an uploaded pair-forest proof. The unchanged verifier
+/// establishes the first acceptable query counter against the exact live
+/// statement before the proof account becomes immutable. The terminal path
+/// later authenticates that co-resident counter and complete statement digest
+/// but still re-runs every proof check and re-derives the selected queries.
+#[cfg(feature = "v7-pair-forest-authenticated-query-counter-audit")]
+pub fn process_v7_pair_forest_authenticate_query_counter_instruction(
+    verifier_program: &Pubkey,
+    accounts: &[AccountInfo<'_>],
+    instruction_data: &[u8],
+) -> ProgramResult {
+    #[cfg(feature = "v7-pair-forest-lane-invariant-audit")]
+    const VERIFICATION_ACCOUNT_COUNT: usize = 6;
+    #[cfg(not(feature = "v7-pair-forest-lane-invariant-audit"))]
+    const VERIFICATION_ACCOUNT_COUNT: usize = 4;
+
+    if accounts.len() != VERIFICATION_ACCOUNT_COUNT + 1 {
+        return Err(if accounts.len() < VERIFICATION_ACCOUNT_COUNT + 1 {
+            ProgramError::NotEnoughAccountKeys
+        } else {
+            ProgramError::InvalidArgument
+        });
+    }
+    let verification_accounts = &accounts[..VERIFICATION_ACCOUNT_COUNT];
+    let authority = &accounts[VERIFICATION_ACCOUNT_COUNT];
+    let proof_account = &verification_accounts[0];
+    {
+        let data = proof_account.try_borrow_data()?;
+        crate::lifecycle::require_upload_authority(&data, authority)?;
+    }
+    let validated = validate_v7_pair_forest_asq8_request_impl_v1(
+        verifier_program,
+        verification_accounts,
+        instruction_data,
+        true,
+        false,
+    )?;
+    let proof_account_key = *proof_account.key;
+    let statement_digest = statement_digest_v1(&validated.statement)?;
+    let compact_counter = {
+        let data = proof_account.try_borrow_data()?;
+        let (payload_start, payload_end) = uploaded_proof_bounds(&data)?;
+        if payload_end != data.len() {
+            return Err(ProgramError::InvalidAccountData);
+        }
+        let proof = data[payload_start..payload_end]
+            .get(POOL_V1_PAIR_VERIFIED_AFTERSTATE_BYTES..)
+            .ok_or(ProgramError::InvalidAccountData)?;
+        if proof.len() != validated.proof_length {
+            return Err(ProgramError::InvalidAccountData);
+        }
+        verify_statement_full_v1(
+            verifier_program,
+            &proof_account_key,
+            proof,
+            validated.frontier_nodes,
+            &validated.statement,
+            statement_digest,
+        )
+        .map_err(|_| ProgramError::InvalidAccountData)?
+        .transcript
+        .compact_counter
+    };
+    let mut data = proof_account.try_borrow_mut_data()?;
+    crate::lifecycle::require_upload_authority(&data, authority)?;
+    crate::lifecycle::write_authenticated_query_counter_seal(
+        &mut data,
+        compact_counter,
+        &statement_digest,
+    )
 }
 
 #[cfg(any(feature = "v7-pair-forest-asf8-audit", test))]

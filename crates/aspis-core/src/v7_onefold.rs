@@ -97,6 +97,25 @@ fn derive_v7_compact_candidate(
     }
 }
 
+/// Derive exactly one V7 compact schedule whose counter was authenticated by
+/// an external, immutable verifier-owned state transition.
+///
+/// This helper deliberately does not establish that `counter` is the first
+/// acceptable candidate. Callers may use it only after authenticating a
+/// persisted certificate produced by [`derive_first_v7_compact_queries`]. It
+/// still derives the query bytes from the canonical transcript, requires the
+/// cap-203 frontier, and returns the exact post-query transcript state.
+#[cfg(any(feature = "v7-authenticated-query-counter-audit", test))]
+pub fn derive_v7_compact_queries_at_authenticated_counter(
+    transcript: &Transcript,
+    counter: u8,
+) -> Result<V7CompactQuerySchedule, V6WireError> {
+    if usize::from(counter) >= V7_COMPACT_QUERY_CANDIDATES {
+        return Err(V6WireError::InvalidQuerySchedule);
+    }
+    derive_v7_compact_candidate(transcript, counter)?.ok_or(V6WireError::InvalidQuerySchedule)
+}
+
 /// Derive the first cap-203 schedule in the sole V7 counter stream.
 pub fn derive_first_v7_compact_queries(
     transcript: &Transcript,
@@ -379,10 +398,81 @@ mod tests {
                 .unwrap()
                 .try_into()
                 .unwrap();
+            assert!(binary_frontier_nodes(queries, 18).unwrap() > V7_COMPACT_FRONTIER_CAP_PER_TREE);
+        }
+        let authenticated =
+            derive_v7_compact_queries_at_authenticated_counter(&transcript, selected.counter)
+                .unwrap();
+        assert_eq!(authenticated.queries, selected.queries);
+        assert_eq!(authenticated.frontier_nodes, selected.frontier_nodes);
+        assert_eq!(authenticated.transcript_state, selected.transcript_state);
+    }
+
+    #[test]
+    fn authenticated_counter_derivation_rejects_out_of_range_and_over_cap() {
+        let mut transcript = Transcript::new(test_hash);
+        transcript.absorb(label::PROFILE, b"aspis-v7-authenticated-counter-r0");
+        transcript.absorb(label::STATEMENT, &[0xa7; 32]);
+        assert!(derive_v7_compact_queries_at_authenticated_counter(
+            &transcript,
+            V7_COMPACT_QUERY_CANDIDATES as u8,
+        )
+        .is_err());
+
+        let selected = derive_first_v7_compact_queries(&transcript).unwrap();
+        for counter in 0..selected.counter {
             assert!(
-                binary_frontier_nodes(queries, 18).unwrap()
-                    > V7_COMPACT_FRONTIER_CAP_PER_TREE
+                derive_v7_compact_queries_at_authenticated_counter(&transcript, counter).is_err()
             );
         }
+    }
+
+    #[test]
+    fn authenticated_counter_matches_first_scan_for_independent_transcript_states() {
+        let mut accepted_states = 0usize;
+        let mut rejected_states = 0usize;
+        for seed in 0u32..4096 {
+            let mut transcript = Transcript::new(test_hash);
+            transcript.absorb(label::PROFILE, b"aspis-v7-authenticated-counter-sweep-r0");
+            transcript.absorb(label::STATEMENT, &seed.to_le_bytes());
+            transcript.absorb(label::ROOT, &test_hash(&[b"root", &seed.to_le_bytes()]));
+            match derive_first_v7_compact_queries(&transcript) {
+                Ok(selected) => {
+                    accepted_states += 1;
+                    let authenticated = derive_v7_compact_queries_at_authenticated_counter(
+                        &transcript,
+                        selected.counter,
+                    )
+                    .unwrap();
+                    assert_eq!(authenticated.queries, selected.queries, "seed {seed}");
+                    assert_eq!(
+                        authenticated.frontier_nodes, selected.frontier_nodes,
+                        "seed {seed}"
+                    );
+                    assert_eq!(
+                        authenticated.transcript_state, selected.transcript_state,
+                        "seed {seed}"
+                    );
+                    assert_eq!(
+                        authenticated.accepted_transcript.diagnostic_state(),
+                        selected.accepted_transcript.diagnostic_state(),
+                        "seed {seed}"
+                    );
+                }
+                Err(V6WireError::InvalidQuerySchedule) => {
+                    rejected_states += 1;
+                    for counter in 0..V7_COMPACT_QUERY_CANDIDATES as u8 {
+                        assert!(derive_v7_compact_queries_at_authenticated_counter(
+                            &transcript,
+                            counter,
+                        )
+                        .is_err());
+                    }
+                }
+                Err(error) => panic!("unexpected first-scan error for seed {seed}: {error:?}"),
+            }
+        }
+        assert!(accepted_states > 0);
+        assert!(rejected_states > 0);
     }
 }

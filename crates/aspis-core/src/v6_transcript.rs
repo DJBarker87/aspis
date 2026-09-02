@@ -40,6 +40,8 @@ use crate::v6_query_batch::{
 #[cfg(feature = "v7-fixed-canonical-audit")]
 use crate::v7_fixed_canonical_audit::V7CanonicalOneFoldWire;
 use crate::v7_merkle208::{V7_C1_TREE_TAG, V7_C2_TREE_TAG, V7_MERKLE_DIGEST_BYTES};
+#[cfg(feature = "v7-authenticated-query-counter-audit")]
+use crate::v7_onefold::derive_v7_compact_queries_at_authenticated_counter;
 use crate::v7_onefold::{
     derive_first_v7_compact_queries, V7CompactOneFoldWire, V7_COMPACT_BATCH_WORK_BITS,
     V7_COMPACT_FINAL_WORK_BITS, V7_COMPACT_FOLD_WORK_BITS, V7_COMPACT_PROFILE_BINDING,
@@ -1232,6 +1234,85 @@ where
     TerminalCheck: FnOnce(&V6SemanticView<'_>) -> bool,
     QueryFold: FnOnce(&V6QueryBatchView<'_>) -> Result<V6AuthenticatedQueryBatch, V6WireError>,
 {
+    verify_v7_canonical_transcript_and_relation_prepared_with_hiding_context_impl(
+        hash,
+        wire,
+        context,
+        hiding_context,
+        inactive_row_groups,
+        inactive_group_masks,
+        check_pow,
+        None,
+        terminal_check,
+        query_fold,
+    )
+}
+
+/// Audit-only V7 verifier entry that consumes a first-cap203 counter already
+/// established by an immutable verifier-owned proof-account certificate.
+/// It re-derives the selected queries, frontier, and transcript state exactly;
+/// only the repeated scan of earlier rejected counters is omitted.
+#[cfg(all(
+    feature = "v7-fixed-canonical-audit",
+    feature = "v7-authenticated-query-counter-audit"
+))]
+#[allow(clippy::too_many_arguments)]
+#[inline(never)]
+pub fn verify_v7_canonical_transcript_and_relation_prepared_with_hiding_context_and_authenticated_counter<
+    TerminalCheck,
+    QueryFold,
+>(
+    hash: HashFn,
+    wire: &V7CanonicalOneFoldWire<'_>,
+    context: &V6TranscriptContext,
+    hiding_context: StateOnlyHidingContext,
+    inactive_row_groups: &[u8; 64],
+    inactive_group_masks: &[u16],
+    check_pow: bool,
+    authenticated_counter: u8,
+    terminal_check: TerminalCheck,
+    query_fold: QueryFold,
+) -> Result<V6VerifiedTranscript, V6TranscriptError>
+where
+    TerminalCheck: FnOnce(&V6SemanticView<'_>) -> bool,
+    QueryFold: FnOnce(&V6QueryBatchView<'_>) -> Result<V6AuthenticatedQueryBatch, V6WireError>,
+{
+    verify_v7_canonical_transcript_and_relation_prepared_with_hiding_context_impl(
+        hash,
+        wire,
+        context,
+        hiding_context,
+        inactive_row_groups,
+        inactive_group_masks,
+        check_pow,
+        Some(authenticated_counter),
+        terminal_check,
+        query_fold,
+    )
+}
+
+#[cfg(feature = "v7-fixed-canonical-audit")]
+#[allow(clippy::too_many_arguments)]
+#[inline(never)]
+fn verify_v7_canonical_transcript_and_relation_prepared_with_hiding_context_impl<
+    TerminalCheck,
+    QueryFold,
+>(
+    hash: HashFn,
+    wire: &V7CanonicalOneFoldWire<'_>,
+    context: &V6TranscriptContext,
+    hiding_context: StateOnlyHidingContext,
+    inactive_row_groups: &[u8; 64],
+    inactive_group_masks: &[u16],
+    check_pow: bool,
+    authenticated_counter: Option<u8>,
+    terminal_check: TerminalCheck,
+    query_fold: QueryFold,
+) -> Result<V6VerifiedTranscript, V6TranscriptError>
+where
+    TerminalCheck: FnOnce(&V6SemanticView<'_>) -> bool,
+    QueryFold: FnOnce(&V6QueryBatchView<'_>) -> Result<V6AuthenticatedQueryBatch, V6WireError>,
+{
     let mut fields = wire.fixed_reader()?;
     let (mut transcript, lambda, chi, batching) =
         begin_v7_canonical_transcript_with_hiding_context(hash, context, wire, hiding_context)?;
@@ -1267,8 +1348,21 @@ where
         true,
         false,
         |candidate_transcript| {
-            let schedule = derive_first_v7_compact_queries(candidate_transcript)
-                .map_err(V6TranscriptError::Wire)?;
+            #[cfg(feature = "v7-authenticated-query-counter-audit")]
+            let schedule = match authenticated_counter {
+                Some(counter) => derive_v7_compact_queries_at_authenticated_counter(
+                    candidate_transcript,
+                    counter,
+                ),
+                None => derive_first_v7_compact_queries(candidate_transcript),
+            }
+            .map_err(V6TranscriptError::Wire)?;
+            #[cfg(not(feature = "v7-authenticated-query-counter-audit"))]
+            let schedule = {
+                let _ = authenticated_counter;
+                derive_first_v7_compact_queries(candidate_transcript)
+                    .map_err(V6TranscriptError::Wire)?
+            };
             Ok((
                 schedule.queries,
                 schedule.counter,

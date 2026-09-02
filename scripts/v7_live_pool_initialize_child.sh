@@ -27,6 +27,7 @@ readonly OPERATION=${ASPIS_V7_LIVE_OPERATION:-transfer}
 readonly CIPHERTEXT_CASE=${ASPIS_V7_LIVE_CIPHERTEXT_CASE:-canonical}
 readonly WITHDRAWAL_CPI_CASE=${ASPIS_V7_LIVE_WITHDRAWAL_CPI_CASE:-none}
 readonly SELECTED_LANE_CASE=${ASPIS_V7_LIVE_SELECTED_LANE_CASE:-none}
+readonly AUTHENTICATED_COUNTER_AUDIT=${ASPIS_V7_AUTHENTICATED_QUERY_COUNTER_AUDIT:-false}
 
 [[ "$RPC_URL" =~ ^http://127\.0\.0\.1:[0-9]+$ ]] || fail "disposable RPC is required"
 [[ "$OPERATION" == transfer || "$OPERATION" == withdrawal ]] \
@@ -41,6 +42,12 @@ if [[ "$WITHDRAWAL_CPI_CASE" != none ]]; then
 fi
 [[ "$SELECTED_LANE_CASE" == none || "$SELECTED_LANE_CASE" == stale-after-deposit ]] \
   || fail "ASPIS_V7_LIVE_SELECTED_LANE_CASE must be none or stale-after-deposit"
+[[ "$AUTHENTICATED_COUNTER_AUDIT" == false || "$AUTHENTICATED_COUNTER_AUDIT" == true ]] \
+  || fail "ASPIS_V7_AUTHENTICATED_QUERY_COUNTER_AUDIT must be true or false"
+if [[ "$AUTHENTICATED_COUNTER_AUDIT" == true ]]; then
+  [[ -x "$TERMINAL_BUILDER" ]] \
+    || fail "authenticated-counter audit requires the live TxV1 builder"
+fi
 if [[ "$SELECTED_LANE_CASE" != none ]]; then
   [[ "$OPERATION" == transfer && "$CIPHERTEXT_CASE" == canonical && "$WITHDRAWAL_CPI_CASE" == none ]] \
     || fail "selected-lane testing requires canonical transfer mode"
@@ -413,10 +420,122 @@ if [[ -n "$SECRET_BUILDER" || -n "$DEPOSIT_BUILDER" ]]; then
       [[ -x "$PROOF_UPLOAD_CHILD" ]] || fail "proof upload child is not executable"
       "$PROOF_UPLOAD_CHILD" "$proof_keypair" "$EVIDENCE_DIR/live-proof/proof-payload.bin" \
         "$EVIDENCE_DIR/proof-upload" >"$EVIDENCE_DIR/proof-upload.stdout"
-      jq -e '.allSimulatedBeforeSubmission == true and .allSubmittedByteIdentically == true and
-        .allFinalized == true and .sealed == true and .proofAccount == $proof' \
-        --arg proof "$proof_pubkey" "$EVIDENCE_DIR/proof-upload/proof-upload.json" >/dev/null \
-        || fail "genuine live proof upload failed validation"
+      if [[ "$AUTHENTICATED_COUNTER_AUDIT" == true ]]; then
+        jq -e '.allSimulatedBeforeSubmission == true and .allSubmittedByteIdentically == true and
+          .allFinalized == true and .sealed == false and .uploadedUnsealed == true and
+          .readyForAuthenticatedCounterSeal == true and .proofAccount == $proof' \
+          --arg proof "$proof_pubkey" "$EVIDENCE_DIR/proof-upload/proof-upload.json" >/dev/null \
+          || fail "genuine live proof upload was not left ready for authenticated sealing"
+
+        readonly COUNTER_SEAL_EVIDENCE="$EVIDENCE_DIR/authenticated-query-counter-seal"
+        mkdir "$COUNTER_SEAL_EVIDENCE"
+        counter_seal_slot=$(rpc '{"jsonrpc":"2.0","id":1450,"method":"getSlot","params":[{"commitment":"finalized"}]}' | jq -er '.result')
+        counter_seal_blockhash=$(rpc "$(jq -nc --argjson slot "$counter_seal_slot" \
+          '{jsonrpc:"2.0",id:1451,method:"getLatestBlockhash",params:[{commitment:"finalized",minContextSlot:$slot}]}')" \
+          | jq -er '.result.value.blockhash')
+        jq -n --arg bundle "$EVIDENCE_DIR/live-proof-bundle/live-bundle.json" \
+          --arg asq8 "$EVIDENCE_DIR/live-proof/asq8.bin" --arg payer "$PAYER_KEYPAIR" \
+          --arg blockhash "$counter_seal_blockhash" --argjson slot "$counter_seal_slot" \
+          '{schema:"aspis.v7.live-authenticated-query-counter-seal-input.v1",
+            transactionKind:"authenticated-counter-seal",bundle:$bundle,asq8:$asq8,
+            payerKeypair:$payer,recentBlockhash:$blockhash,minContextSlot:$slot,requestId:1452,
+            carrierTestMode:null,withdrawalCpiTestMode:null,computeUnitLimit:null}' \
+          >"$WORK_DIR/counter-seal-input.json"
+        "$TERMINAL_BUILDER" "$WORK_DIR/counter-seal-input.json" \
+          >"$COUNTER_SEAL_EVIDENCE/signed-request.json"
+        jq -e --arg proof "$proof_pubkey" '
+          .schema == "aspis.v7.live-authenticated-query-counter-seal-signed.v1" and
+          .transactionKind == "authenticated-counter-seal" and .proofAccount == $proof and
+          .instructionCount == 1 and .computeUnitLimit == 1400000 and
+          .serializedTransactionBytes < 4096 and .serializedTransactionBytes <= 3500 and
+          (.signedWireSha256 | test("^[0-9a-f]{64}$")) and
+          (.asq8Sha256 | test("^[0-9a-f]{64}$"))
+        ' "$COUNTER_SEAL_EVIDENCE/signed-request.json" >/dev/null \
+          || fail "authenticated-counter TxV1 preflight failed"
+        counter_seal_simulation=$(rpc "$(jq -c '.simulationRequest' \
+          "$COUNTER_SEAL_EVIDENCE/signed-request.json")")
+        jq . <<<"$counter_seal_simulation" >"$COUNTER_SEAL_EVIDENCE/simulation.json"
+        jq -e '.error | not' <<<"$counter_seal_simulation" >/dev/null
+        jq -e '.result.value.err == null and .result.value.unitsConsumed < 1400000 and
+          any(.result.value.logs[]; contains("Program 7Q2nGsPg8rbjdxKHK4jxTgEWLTyd9o1X4KMSjCieRmue success"))' \
+          <<<"$counter_seal_simulation" >/dev/null \
+          || fail "authenticated-counter full-proof simulation failed"
+        counter_seal_send=$(rpc "$(jq -c '.sendRequest' \
+          "$COUNTER_SEAL_EVIDENCE/signed-request.json")")
+        jq . <<<"$counter_seal_send" >"$COUNTER_SEAL_EVIDENCE/send.json"
+        counter_seal_signature=$(jq -er '.result' <<<"$counter_seal_send")
+        [[ "$counter_seal_signature" == "$(jq -er '.signature' \
+          "$COUNTER_SEAL_EVIDENCE/signed-request.json")" ]] \
+          || fail "authenticated-counter submission changed signed wire"
+        counter_seal_finalized=false
+        for _ in $(seq 1 600); do
+          counter_seal_status=$(rpc "$(jq -nc --arg signature "$counter_seal_signature" \
+            '{jsonrpc:"2.0",id:1453,method:"getSignatureStatuses",params:[[$signature],{searchTransactionHistory:true}]}')")
+          if jq -e '.result.value[0] != null and .result.value[0].confirmationStatus == "finalized"' \
+            <<<"$counter_seal_status" >/dev/null; then counter_seal_finalized=true; break; fi
+          sleep 0.1
+        done
+        [[ "$counter_seal_finalized" == true ]] \
+          || fail "authenticated-counter transaction did not finalize"
+        rpc "$(jq -nc --arg signature "$counter_seal_signature" \
+          '{jsonrpc:"2.0",id:1454,method:"getTransaction",params:[$signature,{encoding:"json",commitment:"finalized",maxSupportedTransactionVersion:1}]}')" \
+          | jq . >"$COUNTER_SEAL_EVIDENCE/finalized-transaction.json"
+        jq -e '.result != null and .result.meta.err == null and
+          .result.meta.computeUnitsConsumed < 1400000' \
+          "$COUNTER_SEAL_EVIDENCE/finalized-transaction.json" >/dev/null \
+          || fail "authenticated-counter landed transaction failed"
+        counter_seal_simulated_cu=$(jq -er '.result.value.unitsConsumed' \
+          "$COUNTER_SEAL_EVIDENCE/simulation.json")
+        counter_seal_landed_cu=$(jq -er '.result.meta.computeUnitsConsumed' \
+          "$COUNTER_SEAL_EVIDENCE/finalized-transaction.json")
+        [[ "$counter_seal_simulated_cu" == "$counter_seal_landed_cu" ]] \
+          || fail "authenticated-counter simulation and landed CU differ"
+        rpc "$(jq -nc --arg proof "$proof_pubkey" \
+          '{jsonrpc:"2.0",id:1455,method:"getAccountInfo",params:[$proof,{encoding:"base64",commitment:"finalized"}]}')" \
+          | jq . >"$COUNTER_SEAL_EVIDENCE/proof-account.json"
+        jq -er '.result.value.data[0]' "$COUNTER_SEAL_EVIDENCE/proof-account.json" \
+          | openssl base64 -d -A >"$WORK_DIR/authenticated-proof-account.bin"
+        counter_magic=$(od -An -v -tx1 -N3 "$WORK_DIR/authenticated-proof-account.bin" | tr -d ' \n')
+        [[ "$counter_magic" == 415343 ]] || fail "proof account lacks ASC authenticated seal"
+        authenticated_counter=$(od -An -v -tu1 -j3 -N1 "$WORK_DIR/authenticated-proof-account.bin" | tr -d '[:space:]')
+        [[ "$authenticated_counter" =~ ^[0-9]+$ && "$authenticated_counter" -lt 64 ]] \
+          || fail "authenticated counter is outside the fixed 64-candidate schedule"
+        statement_digest=$(od -An -v -tx1 -j8 -N32 "$WORK_DIR/authenticated-proof-account.bin" | tr -d ' \n')
+        [[ "$statement_digest" =~ ^[0-9a-f]{64}$ && \
+          "$statement_digest" != "$(printf '00%.0s' {1..32})" ]] \
+          || fail "authenticated statement digest is absent"
+        tail -c +41 "$WORK_DIR/authenticated-proof-account.bin" \
+          >"$WORK_DIR/authenticated-proof-payload.bin"
+        [[ "$(shasum -a 256 "$WORK_DIR/authenticated-proof-payload.bin" | awk '{print $1}')" == \
+          "$(shasum -a 256 "$EVIDENCE_DIR/live-proof/proof-payload.bin" | awk '{print $1}')" ]] \
+          || fail "authenticated sealing changed the proof body"
+        jq -n --arg signature "$counter_seal_signature" \
+          --argjson slot "$(jq -er '.result.slot' "$COUNTER_SEAL_EVIDENCE/finalized-transaction.json")" \
+          --argjson counter "$authenticated_counter" --arg statementDigestHex "$statement_digest" \
+          --arg beforeSha "$(jq -er '.proofAccountSha256' "$EVIDENCE_DIR/proof-upload/proof-upload.json")" \
+          --arg afterSha "$(shasum -a 256 "$WORK_DIR/authenticated-proof-account.bin" | awk '{print $1}')" \
+          --arg payloadSha "$(shasum -a 256 "$EVIDENCE_DIR/live-proof/proof-payload.bin" | awk '{print $1}')" \
+          --argjson simulatedCu "$counter_seal_simulated_cu" --argjson landedCu "$counter_seal_landed_cu" \
+          --slurpfile request "$COUNTER_SEAL_EVIDENCE/signed-request.json" \
+          '{schema:"aspis.v7.live-authenticated-query-counter-seal-finalized.v1",
+            signature:$signature,slot:$slot,authenticatedCounter:$counter,
+            statementDigestHex:$statementDigestHex,
+            serializedTransactionBytes:$request[0].serializedTransactionBytes,
+            signedWireSha256:$request[0].signedWireSha256,
+            simulatedCu:$simulatedCu,landedCu:$landedCu,
+            proofAccountSha256:{before:$beforeSha,after:$afterSha},
+            proofPayloadSha256:{before:$payloadSha,after:$payloadSha},
+            proofBodyByteIdentical:true,fullProofVerifiedBeforeSeal:true,
+            liveAccountsReadonly:true,simulationSubmissionByteIdentical:true,
+            finalized:true,auditOnly:true,disposable:true,mainnetReady:false}' \
+          >"$COUNTER_SEAL_EVIDENCE/finalized.json"
+      else
+        jq -e '.allSimulatedBeforeSubmission == true and .allSubmittedByteIdentically == true and
+          .allFinalized == true and .sealed == true and .uploadedUnsealed == false and
+          .proofAccount == $proof' --arg proof "$proof_pubkey" \
+          "$EVIDENCE_DIR/proof-upload/proof-upload.json" >/dev/null \
+          || fail "genuine live proof upload failed validation"
+      fi
       if [[ -n "$TERMINAL_BUILDER" ]]; then
         [[ -x "$TERMINAL_BUILDER" ]] || fail "terminal TxV1 builder is unavailable"
         readonly TERMINAL_EVIDENCE="$EVIDENCE_DIR/terminal-$OPERATION"
