@@ -321,7 +321,9 @@ theorem exact_preQ16_clean_pair_alpha_advance_states_eq
       configuration projection fixedInstance decoder (hidden, right) foldTrial
         finalTrial)
     (priorExact : leftWitness.joint.prior = rightWitness.joint.prior) :
-    ∃ (leftOutputs leftAdvances rightOutputs rightAdvances : List Digest256),
+    ∃ (leftInitial rightInitial : Digest256)
+        (leftOutputs leftAdvances rightOutputs rightAdvances : List Digest256),
+      leftInitial = rightInitial ∧
       leftAdvances = rightAdvances ∧
       leftOutputs.length = rightOutputs.length ∧
       (∀ index (leftBound : index < leftOutputs.length),
@@ -428,8 +430,9 @@ theorem exact_preQ16_clean_pair_alpha_advance_states_eq
       rightAdvanceMemberCommon 4 leftBound rightBound
   have pointwise := exact_pair_ordered_chains_output_lookups_at_common_states
     leftChain rightChain initialExact advancesExact lengthsExact
-  refine ⟨leftOutputs, leftAdvances, rightOutputs, rightAdvances,
-    advancesExact, lengthsExact, ?_⟩
+  refine ⟨leftBeforeAlpha.digest, rightBeforeAlpha.digest, leftOutputs,
+    leftAdvances, rightOutputs, rightAdvances, initialExact, advancesExact,
+    lengthsExact, ?_⟩
   intro index leftIndex rightIndex
   exact pointwise index leftIndex
 

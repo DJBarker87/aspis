@@ -55,8 +55,12 @@ open AspisK1.V7Tag73IndexedControllerTraceAlignment
 open AspisK1.V7Tag73IndexedExposureCausalRouter
 open AspisK1.V7Tag73OperationalSemanticReplay
 open AspisK1.V7Tag73FinalWorkQ16CandidateController
+open AspisK1.V7Tag73SamplerDecoder
+open AspisK1.V7Tag73SecureCircleMap
 open AspisK1.V7Tag73SchedulerCausalQ16Router
+open AspisK1.V7Tag73SemanticRoundReplay
 open AspisK1.V7Tag73TranscriptSchedule
+open AspisV5ComponentCQM31TowerExact
 
 noncomputable section
 
@@ -77,6 +81,9 @@ structure ExactAcceptedFoldTrial
   boundaryAnswer : Digest256
   alphaOutputs : List Digest256
   alphaAdvances : List Digest256
+  alphaExactValue : QM31Exact
+  afterFinal256Digest : Digest256
+  q16Base : Digest256
   trial : ExactCompilerExposureTrial parameters
   prior : List UnifiedExposureRecord
   later : List UnifiedExposureRecord
@@ -106,6 +113,34 @@ structure ExactAcceptedFoldTrial
       (.alpha 0)).blocksUsed
   alphaCoordinates : GammaTableCoordinateChain (exactOperationalTable input)
     boundaryAnswer alphaOutputs alphaAdvances
+  alphaAccepted :
+    decodeChallengeParameter exactSecureCircleParameterMap (.alpha 0)
+        alphaOutputs =
+      some ((exactOperationalTape input).messages.challengeValue (.alpha 0))
+  alphaExactDecode :
+    decodeTagQM31ExactLE
+        ((exactOperationalTape input).messages.challengeValue (.alpha 0)) =
+      some alphaExactValue
+  alphaOperational :
+    exactChallengeValue
+        (exactOperationalTape input).messages.challengeValue (.alpha 0) =
+      alphaExactValue
+  final256Lookup :
+    tableLookup (exactOperationalTable input)
+        (bytes (gammaTerminalDigest boundaryAnswer alphaAdvances) ++
+          [domAbsorb,
+            (AspisK1.V7Tag73TranscriptSchedule.Payload.final256
+              (exactOperationalTape input).messages.finalValues).label] ++
+          (AspisK1.V7Tag73TranscriptSchedule.Payload.final256
+            (exactOperationalTape input).messages.finalValues).data) =
+      some afterFinal256Digest
+  finalNonceLookup :
+    tableLookup (exactOperationalTable input)
+        (bytes afterFinal256Digest ++ [domAbsorb, finalWorkNonceLabel] ++
+          bytes
+            (exactOperationalTape input).messages.finalGrinding.selected) =
+      some q16Base
+  q16BaseExact : q16Base = (exactOperationalRawTrace input).q16BaseDigest
   rootDecomposition :
     exactFixedRootRecords input.package.root =
       prior ++
@@ -128,14 +163,11 @@ theorem exact_accepted_fold_trial_exists
       fixedInstance sample) :
     Nonempty (ExactAcceptedFoldTrial input) := by
   obtain ⟨beforeRelation, digest, answer, boundaryAnswer, outputs,
-      advances, facts⟩ :=
+      advances, exactValue, afterFinal256Digest, q16Base, facts⟩ :=
     exact_operational_relation_zero_and_fold_work_lookups input
-  have relationLookup := facts.1
-  have workLookup := facts.2.1
-  have accepted := facts.2.2.1
-  have boundaryLookup := facts.2.2.2.1
-  have outputsLength := facts.2.2.2.2.1
-  have coordinates := facts.2.2.2.2.2
+  rcases facts with ⟨relationLookup, workLookup, accepted, boundaryLookup,
+    outputsLength, coordinates, alphaAccepted, alphaExactDecode,
+    alphaOperational, final256Lookup, finalNonceLookup, q16BaseExact⟩
   obtain ⟨actor, member⟩ :=
     exact_final_table_lookup_has_root_record input _ answer workLookup
   obtain ⟨prior, later, decomposition⟩ := (List.mem_iff_append).mp member
@@ -158,6 +190,9 @@ theorem exact_accepted_fold_trial_exists
       boundaryAnswer := boundaryAnswer
       alphaOutputs := outputs
       alphaAdvances := advances
+      alphaExactValue := exactValue
+      afterFinal256Digest := afterFinal256Digest
+      q16Base := q16Base
       trial := trial
       prior := prior
       later := later
@@ -168,6 +203,12 @@ theorem exact_accepted_fold_trial_exists
       boundaryLookup := boundaryLookup
       alphaOutputsLength := outputsLength
       alphaCoordinates := coordinates
+      alphaAccepted := alphaAccepted
+      alphaExactDecode := alphaExactDecode
+      alphaOperational := alphaOperational
+      final256Lookup := final256Lookup
+      finalNonceLookup := finalNonceLookup
+      q16BaseExact := q16BaseExact
       rootDecomposition := decomposition
       trialExact := rfl }⟩
 
