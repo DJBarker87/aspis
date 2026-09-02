@@ -71,6 +71,34 @@ theorem pairTableLookup_of_mem
           exact ⟨(input, answer), tailMember, by simpa [equal]⟩
         simpa [tableLookup, different] using ih tailNodup tailMember
 
+/-- Every enumerated fresh coordinate is carried by a literal history record
+with the same raw input. -/
+theorem freshQueryEnumeration_raw_input_mem_history
+    (records : List QueryRecord) (input : ShaInput) (answer : Digest256)
+    (member : (input, answer) ∈ freshQueryEnumeration records) :
+    runtimeInputToRawHashInput input ∈ records.map
+      (fun record => runtimeInputToRawHashInput record.input) := by
+  induction records with
+  | nil => simp [freshQueryEnumeration] at member
+  | cons record rest ih =>
+      rcases record with ⟨recordInput, recordOutput, recordActor, origin⟩
+      cases origin with
+      | programmed =>
+          simp only [List.map_cons, List.mem_cons]
+          apply Or.inr
+          exact ih (by simpa [freshQueryEnumeration] using member)
+      | fresh =>
+          simp only [freshQueryEnumeration, List.mem_cons, Prod.mk.injEq]
+            at member
+          simp only [List.map_cons, List.mem_cons]
+          rcases member with ⟨inputExact, _outputExact⟩ | tailMember
+          · exact Or.inl (congrArg runtimeInputToRawHashInput inputExact)
+          · exact Or.inr (ih tailMember)
+      | cached =>
+          simp only [List.map_cons, List.mem_cons]
+          apply Or.inr
+          exact ih (by simpa [freshQueryEnumeration] using member)
+
 /-- Every actor-tagged fresh root record has its exact answer in the final
 deployed oracle table. -/
 theorem exact_root_machineFresh_has_operational_lookup
@@ -218,6 +246,7 @@ theorem exactK12Truncate_agrees_on_root_prefix
       simp [exactK12Truncate, selected, outputExact]
 
 #print axioms pairTableLookup_of_mem
+#print axioms freshQueryEnumeration_raw_input_mem_history
 #print axioms exact_root_machineFresh_has_operational_lookup
 #print axioms exposurePrefixLookup_has_machineFresh_record
 #print axioms exactK12Truncate_agrees_on_root_prefix
