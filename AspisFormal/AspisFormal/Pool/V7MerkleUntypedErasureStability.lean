@@ -812,6 +812,14 @@ theorem extractCompleteWords_success_erase_untyped_raw
 def retainTypedMerkleQueries (log : OrderedRawQueryLog) : OrderedRawQueryLog :=
   log.filter fun input => decide (parseTypedPreimage input ≠ none)
 
+/-- Inputs outside the three frozen Merkle wire lengths are untyped. -/
+theorem parseTypedPreimage_eq_none_of_length
+    (input : RawHashInput)
+    (notC1 : input.length ≠ 437) (notC2 : input.length ≠ 220)
+    (notNode : input.length ≠ 53) :
+    parseTypedPreimage input = none := by
+  simp [parseTypedPreimage, notC1, notC2, notNode]
+
 /-- Collision-freedom is inherited when one query is erased. -/
 theorem no_collision_after_erasing_one
     (truncateSha256 : RawHashInput → Digest208)
@@ -968,6 +976,7 @@ theorem extractV7Words_success_yields_complete
 #print axioms extractC2Subtree_success_erase_untyped
 #print axioms extractCompleteWords_success_erase_untyped_raw
 #print axioms retainTypedMerkleQueries
+#print axioms parseTypedPreimage_eq_none_of_length
 #print axioms no_collision_after_erasing_one
 #print axioms no_shared_collision_of_no_universe_collision
 #print axioms extractCompleteWords_success_retain_typed_aux
