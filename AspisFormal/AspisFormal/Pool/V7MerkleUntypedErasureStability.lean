@@ -96,6 +96,86 @@ theorem untyped_pivot_ne_typed_target
 def liftErasedIndex (pivot index : Nat) : Nat :=
   if index < pivot then index else index + 1
 
+/-- Project a non-pivot index of the original log into the shortened log. -/
+def lowerErasedIndex (pivot index : Nat) : Nat :=
+  if index < pivot then index else index - 1
+
+@[simp] theorem lowerErasedIndex_liftErasedIndex (pivot index : Nat) :
+    lowerErasedIndex pivot (liftErasedIndex pivot index) = index := by
+  by_cases before : index < pivot
+  · simp [lowerErasedIndex, liftErasedIndex, before]
+  · have after : pivot ≤ index := Nat.le_of_not_gt before
+    simp [lowerErasedIndex, liftErasedIndex, before]
+    omega
+
+theorem liftErasedIndex_lowerErasedIndex_of_ne
+    (pivot index : Nat) (notPivot : index ≠ pivot) :
+    liftErasedIndex pivot (lowerErasedIndex pivot index) = index := by
+  by_cases before : index < pivot
+  · simp [lowerErasedIndex, liftErasedIndex, before]
+  · have after : pivot < index := Nat.lt_of_le_of_ne
+      (Nat.le_of_not_gt before) (Ne.symm notPivot)
+    have loweredAfter : ¬ index - 1 < pivot := by omega
+    simp [lowerErasedIndex, liftErasedIndex, before, loweredAfter]
+    omega
+
+/-- `getElem?` at a shortened-log index is exactly `getElem?` at its embedded
+original-log index. -/
+theorem getElem?_erase_pivot_lift
+    (pre suffix : OrderedRawQueryLog) (pivot : RawHashInput) (index : Nat) :
+    (pre ++ pivot :: suffix)[liftErasedIndex pre.length index]? =
+      (pre ++ suffix)[index]? := by
+  have erased := congrArg (fun log : OrderedRawQueryLog => log[index]?)
+    (eraseIdx_pivot_append pre suffix pivot)
+  rw [List.getElem?_eraseIdx] at erased
+  by_cases before : index < pre.length
+  · simpa [liftErasedIndex, before] using erased
+  · simpa [liftErasedIndex, before] using erased
+
+/-- A successful C1 node exposes its exact typed outer preimage and digest. -/
+theorem extractC1Subtree_success_outer_exact
+    (truncateSha256 : RawHashInput → Digest208)
+    (log : OrderedRawQueryLog) (height : Nat) (expectedDigest : Digest208)
+    (queryIndex : Nat) (leaves : List C1Leaf)
+    (success : extractC1Subtree truncateSha256 log height expectedDigest
+      queryIndex = .leaves leaves) :
+    ∃ input, log[queryIndex]? = some input ∧
+      truncateSha256 input = expectedDigest ∧
+      parseTypedPreimage input ≠ none := by
+  obtain ⟨input, inputExact, typed⟩ :=
+    extractC1Subtree_success_outer_typed truncateSha256 log height
+      expectedDigest queryIndex leaves success
+  have digestExact : truncateSha256 input = expectedDigest := by
+    cases height <;> simp only [extractC1Subtree] at success
+    all_goals rw [inputExact] at success
+    all_goals
+      by_cases exact : truncateSha256 input = expectedDigest
+      · exact exact
+      · simp [exact] at success
+  exact ⟨input, inputExact, digestExact, typed⟩
+
+/-- A successful C2 node exposes its exact typed outer preimage and digest. -/
+theorem extractC2Subtree_success_outer_exact
+    (truncateSha256 : RawHashInput → Digest208)
+    (log : OrderedRawQueryLog) (height : Nat) (expectedDigest : Digest208)
+    (queryIndex : Nat) (leaves : List C2Leaf)
+    (success : extractC2Subtree truncateSha256 log height expectedDigest
+      queryIndex = .leaves leaves) :
+    ∃ input, log[queryIndex]? = some input ∧
+      truncateSha256 input = expectedDigest ∧
+      parseTypedPreimage input ≠ none := by
+  obtain ⟨input, inputExact, typed⟩ :=
+    extractC2Subtree_success_outer_typed truncateSha256 log height
+      expectedDigest queryIndex leaves success
+  have digestExact : truncateSha256 input = expectedDigest := by
+    cases height <;> simp only [extractC2Subtree] at success
+    all_goals rw [inputExact] at success
+    all_goals
+      by_cases exact : truncateSha256 input = expectedDigest
+      · exact exact
+      · simp [exact] at success
+  exact ⟨input, inputExact, digestExact, typed⟩
+
 /-- `resolveFirstAux` is equivariant under a uniform change of its absolute
 index offset. -/
 theorem resolveFirstAux_offset_add
@@ -271,6 +351,11 @@ theorem classifyReference_erase_miss_earlier
 #print axioms resolveFirst_erase_miss
 #print axioms liftErasedIndex_strictMono
 #print axioms liftErasedIndex_lt_iff
+#print axioms lowerErasedIndex_liftErasedIndex
+#print axioms liftErasedIndex_lowerErasedIndex_of_ne
+#print axioms getElem?_erase_pivot_lift
+#print axioms extractC1Subtree_success_outer_exact
+#print axioms extractC2Subtree_success_outer_exact
 #print axioms classifyReference_erase_miss_earlier
 
 end AspisPool.V7MerkleUntypedErasureStability
