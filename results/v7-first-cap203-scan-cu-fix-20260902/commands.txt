@@ -1,0 +1,16 @@
+# Focused local validation
+cargo test -q -p aspis-prover --lib --features v7-final-nonce-cutoff-audit unpublished_range_miner_advances_between_valid_nonces
+cargo test -q -p aspis-prover --lib --features v7-final-nonce-cutoff-audit v7_final_nonce_selector_
+cargo check -q -p aspis-prover
+cargo check -q --manifest-path tools/v7-live-pool-proof/Cargo.toml --features v7-final-nonce-cutoff-audit --bin prove-from-live-bundle
+
+# NUC release build, systemd-run properties: MemoryHigh=8G, MemoryMax=12G, MemorySwapMax=0, OOMPolicy=stop
+NO_DNA=1 CARGO_BUILD_JOBS=4 cargo build --release --locked --offline --manifest-path tools/v7-live-pool-proof/Cargo.toml --features v7-final-nonce-cutoff-audit --bin prove-from-live-bundle
+
+# NUC disposable Agave lifecycle, systemd-run properties: MemoryHigh=10G, MemoryMax=12G, MemorySwapMax=0, OOMPolicy=stop
+# All builder variables point at tools/v7-live-pool-proof/target/release binaries in the task-owned source snapshot.
+env NO_DNA=1 ASPIS_TXV1_SOURCE_REVISION=0a2c37b14ff592ecb9884ac97063eff6e721c7b4 ASPIS_TXV1_LOCAL_RPC_PORT=19029 ASPIS_TXV1_HARNESS_CONFIG=/home/dombarker/project-offloads/aspis-v7-q16-cutoff-20260902.YdLGoe/config/v7-deposit-promoted-live.json ASPIS_V7_LIVE_OPERATION=withdrawal ASPIS_V7_EXPERIMENTAL_MAX_COMPACT_COUNTER=20 ASPIS_V7_EXPERIMENTAL_FINAL_NONCE_CUTOFF_ACK=I_ACKNOWLEDGE_MEASUREMENT_ONLY_FINAL_NONCE_SELECTION scripts/v7_txv1_disposable_feature_cluster.sh /home/dombarker/project-offloads/aspis-v7-agave-v4.2.0-runtime-20260830-r1/extracted/solana-release/bin /home/dombarker/project-offloads/aspis-v7-q16-cutoff-20260902.YdLGoe/evidence-cutoff20-minimum-draw-live-withdrawal I_ACKNOWLEDGE_AUDIT_ONLY_IDENTITIES_AND_DISPOSABLE_FUNDS -- scripts/v7_live_pool_initialize_child.sh /home/dombarker/project-offloads/aspis-v7-q16-cutoff-20260902.YdLGoe/evidence-cutoff20-minimum-draw-live-withdrawal/live-setup
+
+# Evidence replay
+(cd results/v7-first-cap203-scan-cu-fix-20260902/live-cutoff20-minimum-draw-withdrawal && shasum -a 256 -c SHA256SUMS)
+jq -e '.classification == "MEASUREMENT GREEN; RELEASE PROMOTION BLOCKED BY FINAL-NONCE FORMAL BRIDGE" and .mainnetReady == false and .liveFinalizedMeasurement.terminal.simulatedCu == .liveFinalizedMeasurement.terminal.landedCu and .liveFinalizedMeasurement.terminal.serializedTransactionBytes < 4096 and .liveFinalizedMeasurement.proof.counter <= .liveFinalizedMeasurement.proof.inclusiveCutoff' results/v7-first-cap203-scan-cu-fix-20260902/summary.json

@@ -1,0 +1,184 @@
+{
+  "schema": "aspis.v7.first-cap203-final-nonce-cutoff-cu-fix.v1",
+  "generatedAt": "2026-09-02T13:19:13Z",
+  "repository": {
+    "branch": "research/v7-first-cap203-scan-cu-fix-20260902",
+    "baseRevision": "44602d36d7b10f0a1d97f978fe632863c7ec7e0a",
+    "measuredImplementationRevision": "0a2c37b14ff592ecb9884ac97063eff6e721c7b4"
+  },
+  "classification": "MEASUREMENT GREEN; RELEASE PROMOTION BLOCKED BY FINAL-NONCE FORMAL BRIDGE",
+  "finding": {
+    "cause": "The verifier derives the first q16 candidate with a frontier of at most 203 nodes. Every rejected candidate is recomputed on chain, so a valid proof with a later first acceptable candidate consumes more CU even though the verifier, relation, and proof format are unchanged.",
+    "verifierRegression": false,
+    "poolRegression": false,
+    "proofCanBeInvalid": false,
+    "validProofCanExceedComputeBudget": true,
+    "approximateRejectedCandidateCu": 3983.010752688172,
+    "approximateFrontierNodeCu": 451.290322580643,
+    "fitMaximumAbsoluteErrorCu": 1
+  },
+  "auditPolicy": {
+    "cargoFeature": "v7-final-nonce-cutoff-audit",
+    "defaultOff": true,
+    "explicitAcknowledgementRequired": true,
+    "environment": {
+      "cutoff": "ASPIS_V7_EXPERIMENTAL_MAX_COMPACT_COUNTER",
+      "acknowledgement": "ASPIS_V7_EXPERIMENTAL_FINAL_NONCE_CUTOFF_ACK"
+    },
+    "measuredInclusiveCutoff": 20,
+    "selection": "Inspect ordinary work-valid final nonces in ascending order and publish the first whose unchanged first-cap-203 schedule has counter <= cutoff and whose evaluated q16 candidates each use the minimum 16 distinct draws.",
+    "minimumQuerySqueezeBlocksPerCandidate": 2,
+    "proofBytesChanged": false,
+    "proofFormatChanged": false,
+    "transcriptChanged": false,
+    "relationChanged": false,
+    "verifierChanged": false,
+    "poolChanged": false,
+    "txv1Changed": false,
+    "workPredicateChanged": false,
+    "candidateCountChanged": false,
+    "formalReleaseApproved": false
+  },
+  "freshCandidateModel": {
+    "compactProbabilityPerCandidate": 0.0913,
+    "cutoffs": [
+      {"inclusiveCounter": 10, "qualificationProbability": 0.651160377, "expectedFinalGrindMultiplier": 1.53572},
+      {"inclusiveCounter": 15, "qualificationProbability": 0.783863334, "expectedFinalGrindMultiplier": 1.275733},
+      {"inclusiveCounter": 20, "qualificationProbability": 0.866084425, "expectedFinalGrindMultiplier": 1.154622},
+      {"inclusiveCounter": 25, "qualificationProbability": 0.917027585, "expectedFinalGrindMultiplier": 1.09048},
+      {"inclusiveCounter": 27, "qualificationProbability": 0.931486716, "expectedFinalGrindMultiplier": 1.073553},
+      {"inclusiveCounter": 30, "qualificationProbability": 0.94859133, "expectedFinalGrindMultiplier": 1.054195},
+      {"inclusiveCounter": 32, "qualificationProbability": 0.957550026, "expectedFinalGrindMultiplier": 1.044332}
+    ],
+    "minimumDrawGateEffect": "Negligible under the fresh random-oracle model; it rejects the rare nonce for which any scanned 16-of-2^18 query sample contains an initial duplicate. No empirical multiplier is claimed from two live samples."
+  },
+  "currentBinaryWorstShapeCalibration": {
+    "runtime": "LiteSVM 0.16.0",
+    "transactionFormat": "true Solana TxV1 / VersionedMessage::V1",
+    "operation": "withdrawal",
+    "historyMode": "rollover",
+    "populatedLanePairsBefore": 255,
+    "counter": 0,
+    "frontierNodes": 202,
+    "transactionCu": 1218972,
+    "verifierCu": 1084738,
+    "serializedTransactionBytes": 1043,
+    "proofSha256": "4a1d72848124fcb139fcc134508fc43537000ec804d0cc0122b4bde4f87edc62",
+    "evidence": "current-binaries-c0-rollover.json"
+  },
+  "calibratedEnvelope": {
+    "formula": "ceil(1218972 + (frontierNodes - 202) * 451.290322580643 + counter * 3983.010752688172)",
+    "fixedFrontierNodes": 203,
+    "qualification": "Production-shaped current-binary measurement plus a two-comparison fitted q16/frontier slope. The minimum-draw publication gate removes the known query-collision tail. This remains a calibrated runtime envelope, not an all-reachable-transcript theorem.",
+    "points": [
+      {"inclusiveCounter": 20, "modeledCeilingCu": 1299084, "below1300000": true, "below1330000": true, "below1350000": true, "below1400000": true},
+      {"inclusiveCounter": 25, "modeledCeilingCu": 1318999, "below1300000": false, "below1330000": true, "below1350000": true, "below1400000": true},
+      {"inclusiveCounter": 27, "modeledCeilingCu": 1326965, "below1300000": false, "below1330000": true, "below1350000": true, "below1400000": true},
+      {"inclusiveCounter": 28, "modeledCeilingCu": 1330948, "below1300000": false, "below1330000": false, "below1350000": true, "below1400000": true},
+      {"inclusiveCounter": 32, "modeledCeilingCu": 1346880, "below1300000": false, "below1330000": false, "below1350000": true, "below1400000": true},
+      {"inclusiveCounter": 33, "modeledCeilingCu": 1350863, "below1300000": false, "below1330000": false, "below1350000": false, "below1400000": true},
+      {"inclusiveCounter": 45, "modeledCeilingCu": 1398659, "below1300000": false, "below1330000": false, "below1350000": false, "below1400000": true},
+      {"inclusiveCounter": 46, "modeledCeilingCu": 1402642, "below1300000": false, "below1330000": false, "below1350000": false, "below1400000": false}
+    ],
+    "largestModeledInclusiveCounterBelow1300000": 20,
+    "largestModeledInclusiveCounterBelow1330000": 27,
+    "largestModeledInclusiveCounterBelow1350000": 32,
+    "largestModeledInclusiveCounterBelow1400000": 45,
+    "exactSimulationStillRequired": true
+  },
+  "liveFinalizedMeasurement": {
+    "cluster": {
+      "kind": "disposable-local-validator",
+      "agaveVersion": "4.2.0",
+      "runtimeFeatureSet": 565236538,
+      "genesisHash": "6f7GtJYeyxSY7aLJAADdEayQ1bYdU3TgbeyVNFC1QZ1H",
+      "txv1FeatureId": "txv1aq4pp281K9um3tnPgkfX8UqtFT6wcVW3hNezGLL",
+      "txv1FeatureActive": true,
+      "activationSlot": 0,
+      "auditOnly": true,
+      "disposable": true
+    },
+    "programs": {
+      "pool": {"id": "5PjDJaGfSPJj4tFzMRCiuuAasKg5n8dJKXKenhuwZexx", "sha256": "9cd1401327493134ca42ed13a7e72d7e6c375c488f7aa2ede42b39f402b6c89d"},
+      "verifier": {"id": "7Q2nGsPg8rbjdxKHK4jxTgEWLTyd9o1X4KMSjCieRmue", "sha256": "97df12937d46e25a2eeefeac16ce31925fd473c672d6b656548be9220adbcc6d"},
+      "registry": {"id": "5bV6jUfhDHCQVA1WfKBUnXUsboJgoKgkzkKcxr3joew5", "sha256": "0f14c7b74ec6cbe3b3f637b0f24c7e8cdc46fd09f5b2e495fd51ada16ad8f11b"},
+      "ciphertextCarrier": {"id": "noopb9bkMVfRPU8AsbpTUg8AQkHtKwMYZiFUjNRtMmV", "sha256": "3ebf49dd7d38bd45422caa3482446cd2d4867f956b040b1b75d6aafabdce8db7"}
+    },
+    "proof": {
+      "operation": "withdrawal",
+      "bytes": 30772,
+      "payloadBytes": 31460,
+      "sha256": "1185eb30b8327ff31e2dc6d2687b36fbbca1fc27a01ff52871c2a32426d70fd3",
+      "counter": 9,
+      "frontierNodes": 202,
+      "inclusiveCutoff": 20,
+      "validWorkNoncesTested": 1,
+      "minimumQueryDrawsRequired": true,
+      "elapsedMillis": 83671,
+      "genuineTag73": true,
+      "verifierBypass": false,
+      "trustedResultAccount": false
+    },
+    "terminal": {
+      "signature": "4fjNWMRrdbg1dLTYS4W6hSCkPh8v2W9HREAD8JPVDhCvWYHasi5yTA3uhMjWkqPYGyzzmevcbTR5dsvFeQ8B322W",
+      "slot": 445,
+      "serializedTransactionBytes": 1543,
+      "simulatedCu": 1196956,
+      "landedCu": 1196956,
+      "verifierCu": 1125340,
+      "signedWireSha256": "f1a006bca5fd38658ed00b76c241dc8dffd34b4a91f784f6a5730ebda87fef78",
+      "byteIdenticalSimulationSubmission": true,
+      "terminalTransactionCount": 1,
+      "selectedLane": 3,
+      "protectedAccountsBeforeJsonSha256": "fb9758dd8755c6edf782e60346733729349de4262d2d59e4fdcc5e626ac172e6",
+      "protectedAccountsAfterJsonSha256": "983ddcfa018fe2fc4ea659e40543a4286f82aac216d04836efa3f92042ddf32c",
+      "vaultBefore": 1000,
+      "vaultAfter": 750,
+      "destinationBefore": 0,
+      "destinationAfter": 250,
+      "custodyConservation": true,
+      "withdrawalDestinationBinding": true,
+      "finalized": true
+    },
+    "replay": {
+      "actual": "finalized-rejected",
+      "signature": "dkyQHsZoZgXckFyji1DSDrj1UkKg8qFfmCfwp3Be4ELtSRyEwYqfoYu4BoMdv1ku3smFPCUaqgZcXkpVWiJx6pf",
+      "slot": 477,
+      "serializedTransactionBytes": 1543,
+      "simulatedCu": 30169,
+      "landedCu": 30169,
+      "stateUnchangedExceptPayerFee": true
+    },
+    "evidenceDirectory": "live-cutoff20-minimum-draw-withdrawal"
+  },
+  "resourceUsage": {
+    "nucToolBuild": {"wallSeconds": 9.43, "maximumResidentSetKiB": 514300, "swaps": 0, "exitStatus": 0},
+    "nucSupportingBuilders": {"wallSeconds": 3.09, "maximumResidentSetKiB": 288140, "swaps": 0, "exitStatus": 0},
+    "nucLiveLifecycle": {"wallSeconds": 196.30, "maximumResidentSetKiB": 820628, "swaps": 0, "exitStatus": 0},
+    "memoryHighBytes": 10737418240,
+    "memoryMaxBytes": 12884901888,
+    "memorySwapMaxBytes": 0,
+    "twelveGiBLimitExceeded": false
+  },
+  "invariants": {
+    "ordinaryCanonicalWorkNonce": true,
+    "unchangedFirstCap203Derivation": true,
+    "selectedCounterAtOrBelowCutoff": true,
+    "minimumQueryDrawsForAllScannedCandidates": true,
+    "messageBelow4096Bytes": true,
+    "simulationAndSubmissionByteIdentical": true,
+    "simulationAndLandedCuEqual": true,
+    "oneTerminalSettlementTransaction": true,
+    "withdrawalConservation": true,
+    "replayRejected": true,
+    "replayStateRolledBack": true,
+    "ephemeralKeysDestroyed": true,
+    "exactAllReachableCuTheorem": false,
+    "finalNonceLazyRomBridge": false
+  },
+  "remainingBlocker": "Before promotion, prove the honest final-nonce publication rule (counter cutoff plus minimum-draw predicate) against the real lazy-ROM/final-nonce model and finish an all-reachable current-binary CU envelope or retain exact byte-identical simulation as a mandatory runtime gate.",
+  "publicNetworkEvidenceChanged": false,
+  "publicFinalizedDevnetLifecycleComplete": false,
+  "publicFinalizedTestnetLifecycleComplete": false,
+  "mainnetReady": false
+}
