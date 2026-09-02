@@ -1,0 +1,150 @@
+{
+  "schema": "aspis.v7.terminal-cu-regression-attribution.v1",
+  "generatedAt": "2026-09-02T10:35:35Z",
+  "repository": {
+    "branch": "research/v7-deposit-invariant-promotion-20260902",
+    "baseRevision": "3178834ee04e0f06e85b95c92d0d14a69d4518ae",
+    "measuredImplementationRevision": "44c55bcbc2d50269eb77977850371224336a6f0f"
+  },
+  "classification": "NO VERIFIER REGRESSION; LIVE CU VARIANCE ATTRIBUTED TO FIRST-CAP203 QUERY COUNTER",
+  "finding": {
+    "verifierSourceChanged": false,
+    "cryptographicRelationChanged": false,
+    "proofFormatChanged": false,
+    "depositOptimizationCausedVerifierDelta": false,
+    "sameVerifierBinaryAcrossComparedLiveRuns": true,
+    "verifierBinarySha256": "97df12937d46e25a2eeefeac16ce31925fd473c672d6b656548be9220adbcc6d",
+    "oldPoolBinarySha256": "0e94c98d28437f0b01dce546fdefaad21dc10772a4d46991c2a573d8129cd4f6",
+    "newPoolBinarySha256": "9cd1401327493134ca42ed13a7e72d7e6c375c488f7aa2ede42b39f402b6c89d"
+  },
+  "mechanism": {
+    "candidateCount": 64,
+    "candidateRangeInclusive": [0, 63],
+    "acceptanceRule": "first transcript-derived q16 schedule whose binary frontier has at most 203 nodes",
+    "compactCounterProofCarried": false,
+    "verifierAction": "derive candidates in order and reject every earlier noncompact candidate before accepting the first compact candidate",
+    "proofBodyWithoutFrontiersBytes": 20268,
+    "bytesPerPairedFrontierNode": 52,
+    "frontierFormula": "(proofBytes - 20268) / 52"
+  },
+  "controlledSameVerifierComparisons": [
+    {
+      "operation": "transfer-same-page",
+      "old": {
+        "proofSha256": "de64d59936a84ced7ff8173db307196029b0997b8866ac69f1a02212a44c23ac",
+        "proofBytes": 30720,
+        "compactCounter": 10,
+        "frontierNodes": 201,
+        "verifierCu": 1132448,
+        "transactionCu": 1199794
+      },
+      "new": {
+        "proofSha256": "57d9ad35cf343e6eee9a4460607ae4d33d3019b6633cfe5f122a28a464434ac2",
+        "proofBytes": 30512,
+        "compactCounter": 25,
+        "frontierNodes": 197,
+        "verifierCu": 1190388,
+        "transactionCu": 1245883
+      },
+      "compactCounterDelta": 15,
+      "frontierNodeDelta": -4,
+      "verifierCuDelta": 57940,
+      "transactionCuDelta": 46089
+    },
+    {
+      "operation": "withdrawal-same-page",
+      "old": {
+        "proofSha256": "2d4b577009f70ee9578283d6fe1b651b8b6819ff8c284a57ca36299aeaebb6a7",
+        "proofBytes": 30564,
+        "compactCounter": 14,
+        "frontierNodes": 198,
+        "verifierCu": 1146905,
+        "transactionCu": 1230370
+      },
+      "new": {
+        "proofSha256": "8e405512619f19e2fb332fff626b6aff1bf7bd49d02e603337953c905cb3db62",
+        "proofBytes": 30720,
+        "compactCounter": 26,
+        "frontierNodes": 201,
+        "verifierCu": 1196055,
+        "transactionCu": 1284170
+      },
+      "compactCounterDelta": 12,
+      "frontierNodeDelta": 3,
+      "verifierCuDelta": 49150,
+      "transactionCuDelta": 53800
+    }
+  ],
+  "twoPointVerifierModel": {
+    "purpose": "attribution, not a universal CU bound",
+    "equations": [
+      "15 * candidateCu - 4 * frontierNodeCu = 57940",
+      "12 * candidateCu + 3 * frontierNodeCu = 49150"
+    ],
+    "candidateCuApprox": 3983.010753,
+    "frontierNodeCuApprox": 451.290323,
+    "integerApproximation": {
+      "candidateCu": 3983,
+      "frontierNodeCu": 451,
+      "transferPredictedDelta": 57941,
+      "transferObservedDelta": 57940,
+      "withdrawalPredictedDelta": 49149,
+      "withdrawalObservedDelta": 49150,
+      "maximumAbsoluteErrorCu": 1
+    }
+  },
+  "sameVerifierObservations": [
+    {"case":"nullifier-replay-positive-proof","proofSha256":"101df98d48c669317578a55c33f824e1718bb19e7e12ec17809231462b0dc81a","compactCounter":0,"frontierNodes":203,"verifierCu":1088745},
+    {"case":"old-transfer","proofSha256":"de64d59936a84ced7ff8173db307196029b0997b8866ac69f1a02212a44c23ac","compactCounter":10,"frontierNodes":201,"verifierCu":1132448},
+    {"case":"replay-close-transfer","proofSha256":"1083ab6b78231efbc28cb0adaee48d0da32ab691e0ac263a5f6e231292def979","compactCounter":11,"frontierNodes":202,"verifierCu":1137330},
+    {"case":"old-withdrawal","proofSha256":"2d4b577009f70ee9578283d6fe1b651b8b6819ff8c284a57ca36299aeaebb6a7","compactCounter":14,"frontierNodes":198,"verifierCu":1146905},
+    {"case":"failed-withdrawal-cpi-positive-proof","proofSha256":"c12c427388869b81fe4039105172fe16b6d379f3a545ead801b3c180dd4c18ac","compactCounter":22,"frontierNodes":193,"verifierCu":1174516},
+    {"case":"new-transfer","proofSha256":"57d9ad35cf343e6eee9a4460607ae4d33d3019b6633cfe5f122a28a464434ac2","compactCounter":25,"frontierNodes":197,"verifierCu":1190388},
+    {"case":"new-withdrawal","proofSha256":"8e405512619f19e2fb332fff626b6aff1bf7bd49d02e603337953c905cb3db62","compactCounter":26,"frontierNodes":201,"verifierCu":1196055},
+    {"case":"malformed-carrier-positive-proof","proofSha256":"14e742ed0142363a77cf0a75df1b087f2c422952e47424b6ab9601377589d599","compactCounter":32,"frontierNodes":200,"verifierCu":1220632}
+  ],
+  "observedVerifierSpread": {
+    "minimumCounter": 0,
+    "maximumCounter": 32,
+    "minimumCu": 1088745,
+    "maximumCu": 1220632,
+    "spreadCu": 131887,
+    "warning": "observational samples have different statements and are not a controlled universal bound"
+  },
+  "frozenReferenceCorrection": {
+    "transactionCu": 1201757,
+    "transactionBytes": 997,
+    "operation": "withdrawal-rollover",
+    "compactCounter": 0,
+    "frontierNodes": 202,
+    "verifierCu": 1076980,
+    "runtime": "LiteSVM 0.16.0",
+    "proofSha256": "4a1d72848124fcb139fcc134508fc43537000ec804d0cc0122b4bde4f87edc62",
+    "verifierBinarySha256": "125bba2ebe121d1bda87ba90943904ed866ba02502fc011f7156246ebb871a77",
+    "evidencePath": "results/v7-q16-source-refactor-cu-check-20260828/withdrawal-rollover-counter0.json",
+    "correctInterpretation": "accepted counter-zero reference for a worst-case Pool state shape, not a maximum across all reachable honest transcript counters"
+  },
+  "releaseImpact": {
+    "projectGateCu": 1300000,
+    "solanaTransactionLimitCu": 1400000,
+    "newTransferHeadroomToProjectGateCu": 54117,
+    "newWithdrawalHeadroomToProjectGateCu": 15830,
+    "allReachableHonestProofsBelowProjectGateEstablished": false,
+    "allReachableHonestProofsBelowSolanaLimitEstablished": false,
+    "fundSafetyDefectObserved": false,
+    "livenessAndReleaseMeasurementBlocker": true,
+    "failedTransactionsRemainAtomic": true,
+    "requiredClosure": "complete the independent K1.3-K1.5/final-nonce q16 selection argument or obtain a non-grinding protocol-preserving universal CU bound; do not select a later nonce for CU until that closure is complete"
+  },
+  "inspector": {
+    "source": "tools/v7-live-pool-proof/src/bin/inspect_live_proof.rs",
+    "fullWorkChecks": true,
+    "output": "results/v7-deposit-invariant-promotion-20260902/query-schedule-inspection.txt",
+    "releaseBuildWallSeconds": 31.56,
+    "releaseBuildMaximumResidentSetKiB": 894220,
+    "inspectionWallSeconds": 0.03,
+    "inspectionMaximumResidentSetKiB": 3520,
+    "swaps": 0
+  },
+  "mainnetReady": false
+}

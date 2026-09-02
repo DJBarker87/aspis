@@ -1,0 +1,9 @@
+{
+  "schema": "aspis.v7.live-terminal-replay-rejection.v1",
+  "expected": "reject",
+  "actual": "rejected",
+  "error": "AlreadyProcessed",
+  "finalizedStateBeforeSha256": "9c08ca7888584c378cf1db2fb47fd2a40807a18f3b08fb6c5c5cddf264746f35",
+  "finalizedStateAfterSha256": "9c08ca7888584c378cf1db2fb47fd2a40807a18f3b08fb6c5c5cddf264746f35",
+  "stateUnchanged": true
+}

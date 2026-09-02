@@ -11,6 +11,7 @@ anyhow = "1.0.100"
 aspis-core = { path = "../../crates/aspis-core", features = ["v7-fixed-canonical-audit"] }
 aspis-pool = { path = "../../programs/aspis-pool", default-features = false, features = ["no-entrypoint", "pair-forest-account-evidence"] }
 aspis-prover = { path = "../../crates/aspis-prover" }
+aspis-verifier = { path = "../../programs/aspis-verifier", default-features = false, features = ["no-entrypoint", "v7-pair-forest-one-tx-candidate"] }
 aspis-pool-wallet-v1 = { path = "../../crates/aspis-pool-wallet-v1", features = ["eight-lane-plumbing-v2"] }
 aspis-statement = { path = "../../crates/aspis-statement", features = ["pool-v1-kernel"] }
 base64 = "0.22.1"
@@ -68,3 +69,7 @@ path = "src/bin/build_live_transfer_terminal.rs"
 [[bin]]
 name = "build-live-proof-close"
 path = "src/bin/build_live_proof_close.rs"
+
+[[bin]]
+name = "inspect-live-proof"
+path = "src/bin/inspect_live_proof.rs"

@@ -1,0 +1,15 @@
+{
+  "schema": "aspis.v7.live-pool-checkpoint-finalized.v1",
+  "signature": "3KSnpDBSEXs7ggQwa8miBwcxaktjdS8LQD1FRbv4e7hT3xikduHMhtiUE5UjTUAkH5DHXT5NB3Z1QcTmCKb37V4U",
+  "slot": 215,
+  "checkpointAccount": "9ZiDxh6meBcjSAEmkh4syiy85gMaF8hubkraFcej6cbQ",
+  "simulatedCu": 703267,
+  "landedCu": 703267,
+  "serializedTransactionBytes": 581,
+  "signedWireSha256": "3b233dbf24b1d2c1de722b5896d61f46fda201a3c219c486828ffb34d9cd9e35",
+  "byteIdenticalSimulationSubmission": true,
+  "finalized": true,
+  "auditOnly": true,
+  "disposable": true,
+  "mainnetReady": false
+}
