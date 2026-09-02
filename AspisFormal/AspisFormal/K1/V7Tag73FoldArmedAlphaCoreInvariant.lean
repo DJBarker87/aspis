@@ -24,6 +24,7 @@ open AspisK1.V7Tag73AtomicForkUniformScheduler
 open AspisK1.V7Tag73FoldArmedAlphaZeroController
 open AspisK1.V7Tag73FinalWorkQ16CandidateController
 open AspisK1.V7Tag73IndexedExposureCausalRouter
+open AspisK1.V7Tag73SqueezeInputStateInjectivity
 open AspisK1.V7Tag73TranscriptSchedule
 
 noncomputable section
@@ -144,6 +145,118 @@ theorem replay_seen_alpha_closure_preserves_block_zero_boundary
       exact ih (replaySeenAlphaPass seen producers)
         (replay_seen_alpha_pass_preserves_block_zero_boundary seen producers
           valid)
+
+/-- One complete cached replay pass contains the exact successor of a parent
+whose advance record occurs after the point where that parent is already
+available.  If the source input was consumed earlier in the same pass,
+first-input uniqueness and the producer invariants identify that earlier
+producer with the requested successor. -/
+theorem replay_seen_alpha_pass_contains_ordered_advance_successor
+    (seen : List (ShaInput × Digest256))
+    (producers : List AlphaZeroProducer) (usedSlots : Finset (Fin 4))
+    (seed parent : AlphaZeroProducer) (advanced : Digest256)
+    (bounded : parent.block.val + 1 < 4)
+    (seenInputsNodup : (seen.map Prod.fst).Nodup)
+    (seedLength : seed.sourceInput.length = 43)
+    (currentInvariant : AlphaZeroMemoryProducerInvariant
+      { producers := replaySeenAlphaPass seen producers,
+        usedSlots := usedSlots })
+    (currentBoundary : AlphaZeroBlockZeroBoundaryValid
+      (replaySeenAlphaPass seen producers))
+    (currentDigestNodup :
+      ((replaySeenAlphaPass seen producers).map
+        AlphaZeroProducer.digest).Nodup)
+    (currentProvenance : ∀ producer,
+      producer ∈ replaySeenAlphaPass seen producers →
+        producer = seed ∨ (producer.sourceInput, producer.digest) ∈ seen)
+    (advanceMember :
+      (bytes parent.digest ++ [domAdvance], advanced) ∈ seen)
+    (parentOrdered : ∃ seenBefore seenAfter,
+      seen = seenBefore ++
+        (bytes parent.digest ++ [domAdvance], advanced) :: seenAfter ∧
+      parent ∈ replaySeenAlphaPass seenBefore producers) :
+    ({ digest := advanced,
+        block := ⟨parent.block.val + 1, bounded⟩,
+        sourceInput := bytes parent.digest ++ [domAdvance] } :
+      AlphaZeroProducer) ∈ replaySeenAlphaPass seen producers := by
+  let current := replaySeenAlphaPass seen producers
+  let next : AlphaZeroProducer :=
+    { digest := advanced,
+      block := ⟨parent.block.val + 1, bounded⟩,
+      sourceInput := bytes parent.digest ++ [domAdvance] }
+  obtain ⟨seenBefore, seenAfter, seenExact, parentBefore⟩ := parentOrdered
+  have beforePrefix : replaySeenAlphaPass seenBefore producers <+: current := by
+    simpa [current, seenExact] using
+      replay_seen_alpha_pass_prefix_of_append seenBefore
+      ((bytes parent.digest ++ [domAdvance], advanced) :: seenAfter)
+        producers
+  have parentMember : parent ∈ current := beforePrefix.subset parentBefore
+  by_cases sourceFresh : bytes parent.digest ++ [domAdvance] ∉
+      current.map AlphaZeroProducer.sourceInput
+  · have beforeDigestNodup :
+        ((replaySeenAlphaPass seenBefore producers).map
+          AlphaZeroProducer.digest).Nodup :=
+      (beforePrefix.map AlphaZeroProducer.digest).nodup currentDigestNodup
+    have beforeSourceFresh : bytes parent.digest ++ [domAdvance] ∉
+        (replaySeenAlphaPass seenBefore producers).map
+          AlphaZeroProducer.sourceInput := by
+      intro member
+      apply sourceFresh
+      exact (beforePrefix.map AlphaZeroProducer.sourceInput).subset member
+    subst seen
+    simpa [next] using
+      replay_seen_alpha_pass_append_advance_contains_next seenBefore seenAfter
+        producers parent advanced bounded parentBefore beforeDigestNodup
+          beforeSourceFresh
+  · have sourceUsed : bytes parent.digest ++ [domAdvance] ∈
+        current.map AlphaZeroProducer.sourceInput := by
+      simpa using sourceFresh
+    obtain ⟨existing, existingMember, existingSource⟩ :=
+      List.mem_map.mp sourceUsed
+    have existingNotSeed : existing ≠ seed := by
+      intro exact
+      subst existing
+      have lengthExact := congrArg List.length existingSource
+      simp [seedLength, bytes_length] at lengthExact
+    have existingSeen : (existing.sourceInput, existing.digest) ∈ seen :=
+      (currentProvenance existing existingMember).resolve_left existingNotSeed
+    have digestExact : existing.digest = advanced := by
+      have pairExact :
+          (existing.sourceInput, existing.digest) =
+            (bytes parent.digest ++ [domAdvance], advanced) :=
+        List.inj_on_of_nodup_map seenInputsNodup existingSeen advanceMember
+          (by simpa using existingSource)
+      injection pairExact
+    have existingPositive : existing.block.val ≠ 0 := by
+      intro zero
+      have boundaryLength := currentBoundary existing existingMember zero
+      have lengthExact := congrArg List.length existingSource
+      simp [boundaryLength, bytes_length] at lengthExact
+    rcases currentInvariant.inventoryValid existing existingMember with
+      existingZero | ⟨otherParent, otherParentMember, successor,
+        sourceExact⟩
+    · exact (existingPositive existingZero).elim
+    · have parentDigestExact : otherParent.digest = parent.digest := by
+        apply digest_bytes_injective
+        have fullExact : bytes otherParent.digest ++ [domAdvance] =
+            bytes parent.digest ++ [domAdvance] := by
+          rw [← sourceExact]
+          exact existingSource
+        have prefixExact := congrArg (List.take 32) fullExact
+        simpa [bytes_length] using prefixExact
+      have parentExact : otherParent = parent := by
+        apply List.inj_on_of_nodup_map currentDigestNodup
+          otherParentMember parentMember
+        exact parentDigestExact
+      have blockExact : existing.block =
+          ⟨parent.block.val + 1, bounded⟩ := by
+        apply Fin.ext
+        simpa [parentExact] using successor.symm
+      have existingExact : existing = next := by
+        cases existing
+        simp only [next, AlphaZeroProducer.mk.injEq]
+        exact ⟨digestExact, blockExact, existingSource⟩
+      simpa [current, next, ← existingExact] using existingMember
 
 theorem cached_alpha_producer_closure_invariant
     (seen : List (ShaInput × Digest256))
@@ -304,6 +417,7 @@ theorem fold_armed_alpha_after_memory_preserves_core
           exact targetExact
 
 #print axioms fold_work_input_to_alpha_boundary_length
+#print axioms replay_seen_alpha_pass_contains_ordered_advance_successor
 #print axioms arm_fold_alpha_memory_preserves_core
 #print axioms fold_armed_alpha_after_memory_preserves_core
 

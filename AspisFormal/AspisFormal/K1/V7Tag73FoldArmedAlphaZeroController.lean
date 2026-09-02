@@ -245,6 +245,16 @@ theorem replay_seen_alpha_pass_prefix
           (update_alpha_zero_producers_prefix producers pair.1 pair.2)
           (ih (updateAlphaZeroProducers producers pair.1 pair.2))
 
+/-- Extending the remembered-input list can only extend the producer result
+of one replay pass. -/
+theorem replay_seen_alpha_pass_prefix_of_append
+    (seenBefore seenAfter : List (ShaInput × Digest256))
+    (producers : List AlphaZeroProducer) :
+    replaySeenAlphaPass seenBefore producers <+:
+      replaySeenAlphaPass (seenBefore ++ seenAfter) producers := by
+  simp only [replaySeenAlphaPass, List.foldl_append]
+  exact replay_seen_alpha_pass_prefix seenAfter _
+
 theorem replay_seen_alpha_pass_member_old_or_seen
     (seen : List (ShaInput × Digest256))
     (producers : List AlphaZeroProducer) (producer : AlphaZeroProducer)
@@ -791,6 +801,7 @@ def exactCompilerFoldArmedAlphaFinalWorkQ16Router
 
 #print axioms literal_fold_work_arms_exact_alpha_boundary
 #print axioms replay_seen_alpha_pass_append_advance_contains_next
+#print axioms replay_seen_alpha_pass_prefix_of_append
 #print axioms fold_armed_alpha_preferred
 #print axioms fold_armed_alpha_exact_boundary_installs_block_zero
 #print axioms fold_armed_alpha_nonboundary_uses_advance_update

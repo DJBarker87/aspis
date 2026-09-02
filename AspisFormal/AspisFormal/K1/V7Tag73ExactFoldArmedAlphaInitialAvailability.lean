@@ -321,6 +321,100 @@ theorem exact_fold_armed_initial_producer_available_before_post_fold_output
     input fold finalTrial before later outputActor
       (gammaOutputInput fold.boundaryAnswer) output laterExact ordered
 
+/-- If a live producer's advance is first exposed after the fold, the exact
+successor remains live through every intervening accepted-root record up to
+an arbitrary later child.  This is the inductive post-fold step for alpha
+blocks one through three. -/
+theorem exact_fold_armed_successor_available_after_post_fold_advance
+    {HiddenTape TapeIdentity Observation Statement Payload Result : Type}
+    {parameters : ExactCompilerResourceParameters}
+    {transitionFuel : Nat}
+    {configuration : ExactPlainRomConfiguration HiddenTape TapeIdentity
+      Observation Statement Tag73K12ParsedProof Payload Result parameters}
+    {projection : AcceptedTapeProjection Statement Tag73K12ParsedProof Payload}
+    {fixedInstance : PublicInstance Statement}
+    {sample : ExactCompilerSample HiddenTape parameters}
+    (input : ExactK12OperationalInput transitionFuel configuration projection
+      fixedInstance sample)
+    (fold : ExactAcceptedFoldTrial input)
+    (finalTrial : ExactCompilerExposureTrial parameters)
+    (beforeAdvance between later : List UnifiedExposureRecord)
+    (advanceActor childActor : QueryActor)
+    (parent : AlphaZeroProducer) (advanced : Digest256)
+    (bounded : parent.block.val + 1 < 4)
+    (childInput : ShaInput) (childAnswer : Digest256)
+    (laterExact : fold.later = beforeAdvance ++
+      (.machineFresh advanceActor (gammaAdvanceInput parent.digest) advanced :
+        UnifiedExposureRecord) :: between ++
+      (.machineFresh childActor childInput childAnswer :
+        UnifiedExposureRecord) :: later) :
+    let controller := foldArmedCompleteController
+      (globalOracleCalls := globalFull256OracleCallCap parameters)
+      transitionFuel fold.trial.val finalTrial.val
+    let initial := foldArmedInitialState
+      (exactPlainRomCursor configuration sample.1).erase
+    let reachedFold := indexedStateAfterRecords transitionFuel controller
+      fold.prior initial
+    let afterFold := controller.afterAnswer transitionFuel reachedFold
+      fold.answer
+    let beforeAdvanceState := indexedStateAfterRecords transitionFuel controller
+      beforeAdvance afterFold
+    parent ∈ beforeAdvanceState.memory.2.1.alpha.producers →
+      ({ digest := advanced, block := ⟨parent.block.val + 1, bounded⟩,
+          sourceInput := gammaAdvanceInput parent.digest } : AlphaZeroProducer) ∈
+        (indexedStateAfterRecords transitionFuel controller
+          (beforeAdvance ++
+            [(.machineFresh advanceActor
+              (gammaAdvanceInput parent.digest) advanced :
+                UnifiedExposureRecord)] ++ between)
+          afterFold).memory.2.1.alpha.producers := by
+  let controller := foldArmedCompleteController
+    (globalOracleCalls := globalFull256OracleCallCap parameters)
+    transitionFuel fold.trial.val finalTrial.val
+  let initial := foldArmedInitialState
+    (exactPlainRomCursor configuration sample.1).erase
+  let reachedFold := indexedStateAfterRecords transitionFuel controller
+    fold.prior initial
+  let afterFold := controller.afterAnswer transitionFuel reachedFold fold.answer
+  let beforeAdvanceState := indexedStateAfterRecords transitionFuel controller
+    beforeAdvance afterFold
+  let advanceRecord : UnifiedExposureRecord := .machineFresh advanceActor
+    (gammaAdvanceInput parent.digest) advanced
+  let childRecord : UnifiedExposureRecord := .machineFresh childActor childInput
+    childAnswer
+  let next : AlphaZeroProducer :=
+    { digest := advanced, block := ⟨parent.block.val + 1, bounded⟩,
+      sourceInput := gammaAdvanceInput parent.digest }
+  dsimp only
+  intro parentMember
+  have advanceLaterExact : fold.later = beforeAdvance ++ advanceRecord ::
+      (between ++ childRecord :: later) := by
+    simpa [advanceRecord, childRecord, List.append_assoc] using laterExact
+  have installed := exact_fold_armed_live_producer_advance_installs_next input
+    fold finalTrial beforeAdvance (between ++ childRecord :: later)
+      advanceActor parent advanced bounded advanceLaterExact parentMember
+  have afterAdvanceMember : next ∈
+      (controller.afterAnswer transitionFuel beforeAdvanceState advanced
+        ).memory.2.1.alpha.producers := by
+    simpa [next, controller, initial, reachedFold, afterFold,
+      beforeAdvanceState] using installed
+  have persistLaterExact : fold.later =
+      (beforeAdvance ++ [advanceRecord]) ++ between ++ childRecord :: later := by
+    simpa [advanceRecord, childRecord, List.append_assoc] using laterExact
+  have persisted := exact_fold_armed_live_producer_persists_over_post_fold_segment
+    input fold finalTrial (beforeAdvance ++ [advanceRecord]) between
+      (childRecord :: later) persistLaterExact next
+  have stateAfterAdvance : indexedStateAfterRecords transitionFuel controller
+      (beforeAdvance ++ [advanceRecord]) afterFold =
+        controller.afterAnswer transitionFuel beforeAdvanceState advanced := by
+    simp [beforeAdvanceState, indexed_state_after_records_append,
+      advanceRecord, UnifiedExposureRecord.answer]
+  have persisted' := persisted (by
+    rw [stateAfterAdvance]
+    exact afterAdvanceMember)
+  simpa [next, controller, initial, reachedFold, afterFold,
+    indexed_state_after_records_append] using persisted'
+
 /-- Consequently, a deployed block-zero output first exposed after the fold
 is carried by the literal alpha-zero named coordinate of the complete router. -/
 theorem exact_fold_armed_post_fold_block_zero_output_is_routed
@@ -444,6 +538,7 @@ theorem exact_accepted_fold_alpha_block_zero_residual_or_routed
 
 #print axioms
   exact_fold_armed_initial_producer_available_before_post_fold_output
+#print axioms exact_fold_armed_successor_available_after_post_fold_advance
 #print axioms exact_fold_armed_post_fold_block_zero_output_is_routed
 #print axioms exact_accepted_fold_alpha_block_zero_residual_or_routed
 
