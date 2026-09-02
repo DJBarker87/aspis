@@ -161,6 +161,67 @@ theorem absorb_step_exposes_literal_lookup
 
 /-! ## Strict accepted-source pair -/
 
+/-- Strict source acceptance exposes the two literal root-absorb inputs used
+by the deployed transcript.  The result retains the prior digests and public
+salts because downstream causal-order arguments need the complete SHA inputs,
+not merely the roots parsed from them. -/
+theorem exact_operational_root_absorb_lookups
+    {HiddenTape TapeIdentity Observation Statement Payload Result : Type}
+    {parameters : ExactCompilerResourceParameters}
+    {transitionFuel : Nat}
+    {configuration : ExactPlainRomConfiguration HiddenTape TapeIdentity
+      Observation Statement Tag73K12ParsedProof Payload Result parameters}
+    {projection : AcceptedTapeProjection Statement Tag73K12ParsedProof Payload}
+    {fixedInstance : PublicInstance Statement}
+    {sample : ExactCompilerSample HiddenTape parameters}
+    (input : ExactK12OperationalInput transitionFuel configuration projection
+      fixedInstance sample) :
+    ∃ (c1Before c2Before c1Salt c2Salt c1Answer c2Answer : Digest256),
+      tableLookup (exactOperationalTable input)
+          (bytes c1Before ++ [domAbsorb, c1RootLabel] ++
+            (AspisK1.V7Tag73TranscriptSchedule.Payload.c1Root
+              (exactOperationalTape input).messages.c1Root c1Salt).data) =
+        some c1Answer ∧
+      tableLookup (exactOperationalTable input)
+          (bytes c2Before ++ [domAbsorb, c2RootLabel] ++
+            (AspisK1.V7Tag73TranscriptSchedule.Payload.c2Root
+              (exactOperationalTape input).messages.c2.root c2Salt).data) =
+        some c2Answer := by
+  have strict := input.package.root.fixedRoot.base.strictRefinement
+  have refined := (checked_refinement_is_well_formed
+    (exactOperationalTable input) exactDeterministicDecoders
+    (exactOperationalTape input) (exactOperationalRawTrace input) strict).1
+  rw [refine] at refined
+  obtain ⟨prefixState, prefixRun, _refined⟩ :=
+    Option.bind_eq_some_iff.mp refined
+  rw [runPrefix] at prefixRun
+  obtain ⟨beforeC1, _beforeC1Run, prefixRun⟩ :=
+    Option.bind_eq_some_iff.mp prefixRun
+  obtain ⟨c1Pair, _c1SaltRun, prefixRun⟩ :=
+    Option.bind_eq_some_iff.mp prefixRun
+  rcases c1Pair with ⟨c1Salt, withC1SaltQuery⟩
+  obtain ⟨afterC1, c1AbsorbRun, prefixRun⟩ :=
+    Option.bind_eq_some_iff.mp prefixRun
+  obtain ⟨afterPhaseChallenges, _phaseRun, prefixRun⟩ :=
+    Option.bind_eq_some_iff.mp prefixRun
+  obtain ⟨c2Pair, _c2SaltRun, prefixRun⟩ :=
+    Option.bind_eq_some_iff.mp prefixRun
+  rcases c2Pair with ⟨c2Salt, withC2SaltQuery⟩
+  obtain ⟨afterC2, c2AbsorbRun, _remainingRun⟩ :=
+    Option.bind_eq_some_iff.mp prefixRun
+  have c1Lookup := absorb_step_exposes_literal_lookup
+    (exactOperationalTable input) withC1SaltQuery afterC1
+    (.c1Root (exactOperationalTape input).messages.c1Root c1Salt)
+    c1AbsorbRun
+  have c2Lookup := absorb_step_exposes_literal_lookup
+    (exactOperationalTable input) withC2SaltQuery afterC2
+    (.c2Root (exactOperationalTape input).messages.c2.root c2Salt)
+    c2AbsorbRun
+  refine ⟨withC1SaltQuery.digest, withC2SaltQuery.digest, c1Salt, c2Salt,
+    afterC1.digest, afterC2.digest, ?_, ?_⟩
+  · simpa [AspisK1.V7Tag73TranscriptSchedule.Payload.label] using c1Lookup
+  · simpa [AspisK1.V7Tag73TranscriptSchedule.Payload.label] using c2Lookup
+
 /-- The exact accepted source run supplies one 34-bit successful work digest
 and the following nonce-absorb answer.  The latter is exactly the q16 base in
 the returned deterministic trace. -/
@@ -354,6 +415,7 @@ theorem exact_compiler_full_final_work_pair_scans_paused
 #print axioms prefix_after_c2_final_work_split
 #print axioms run_grinding_choice_exposes_selected_lookup
 #print axioms absorb_step_exposes_literal_lookup
+#print axioms exact_operational_root_absorb_lookups
 #print axioms exact_operational_final_work_pair_lookups
 #print axioms exact_compiler_full_trace_contains_final_work_pair_fresh
 #print axioms exact_compiler_full_final_work_pair_scans_paused
