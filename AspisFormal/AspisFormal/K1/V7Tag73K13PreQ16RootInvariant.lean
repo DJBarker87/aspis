@@ -23,6 +23,8 @@ open AspisK1.V7FsAokExperiment
 open AspisK1.V7Tag73AdaptiveLazyOracle
 open AspisK1.V7Tag73AdaptiveQ16TrialAccounting
 open AspisK1.V7Tag73AtomicForkUniformScheduler
+open AspisK1.V7Tag73CausalQ16FinalWorkProbability
+open AspisK1.V7Tag73CausalFinalWorkQ16UsedForest
 open AspisK1.V7Tag73ExactAdversaryAnchorSelectedInputInvariant
 open AspisK1.V7Tag73ExactClientKnowledgeComposition
 open AspisK1.V7Tag73ExactCompilerResources
@@ -31,6 +33,7 @@ open AspisK1.V7Tag73ExactFixedK12MerkleClassifier
 open AspisK1.V7Tag73ExactFixedK13K14Classifier
 open AspisK1.V7Tag73ExactFixedFullRunFactorization
 open AspisK1.V7Tag73ExactFixedQ16JointEventHandoff
+open AspisK1.V7Tag73ExactFixedQ16VerifierAnchorInvariant
 open AspisK1.V7Tag73ExactPairRootAbsorbChainClosure
 open AspisK1.V7Tag73ExactPlainRomRun
 open AspisK1.V7Tag73ExactRootCausalChain
@@ -301,12 +304,103 @@ def ExactPreQ16K13ParsedProfileSourceInvariant
       (rightWitness : ExactPreQ16K13JointTrialWitness transitionFuel
         configuration projection fixedInstance decoder (hidden, right) trial),
     leftWitness.prior = rightWitness.prior →
+    (exactFixedK13TrialCoordinates transitionFuel configuration trial
+        (hidden, left)).1 =
+      (exactFixedK13TrialCoordinates transitionFuel configuration trial
+        (hidden, right)).1 →
     (exactK13ParsedProof leftWitness.input).schedule =
         (exactK13ParsedProof rightWitness.input).schedule ∧
       (exactK13ParsedProof leftWitness.input).gamma =
         (exactK13ParsedProof rightWitness.input).gamma ∧
       (exactK13ParsedProof leftWitness.input).disclosedFinal =
         (exactK13ParsedProof rightWitness.input).disclosedFinal
+
+/-- The only nontrivial source branch: the selected final-work/q16 coordinate
+was first exposed by the adversary before the verifier reached its cache hit. -/
+def ExactPreQ16K13ParsedProfileSourceInvariantOnAdversaryAnchors
+    {HiddenTape TapeIdentity Observation Statement Payload Witness : Type}
+    {parameters : ExactCompilerResourceParameters}
+    (transitionFuel : Nat)
+    (configuration : ExactPlainRomWitnessConfiguration HiddenTape TapeIdentity
+      Observation Statement Tag73K12ParsedProof Payload Witness parameters)
+    (projection : AcceptedTapeProjection Statement Tag73K12ParsedProof Payload)
+    (fixedInstance : PublicInstance Statement)
+    (decoder : ExactDecoderInstantiation QM31Exact) : Prop :=
+  ∀ (trial : ExactCompilerExposureTrial parameters) (hidden : HiddenTape)
+      (left right : FreshAnswerTape Digest256
+        (exactCompilerTargetCaps parameters).length)
+      (leftWitness : ExactPreQ16K13JointTrialWitness transitionFuel
+        configuration projection fixedInstance decoder (hidden, left) trial)
+      (rightWitness : ExactPreQ16K13JointTrialWitness transitionFuel
+        configuration projection fixedInstance decoder (hidden, right) trial),
+    leftWitness.pivotActor = .adversary →
+    leftWitness.prior = rightWitness.prior →
+    (exactFixedK13TrialCoordinates transitionFuel configuration trial
+        (hidden, left)).1 =
+      (exactFixedK13TrialCoordinates transitionFuel configuration trial
+        (hidden, right)).1 →
+    (exactK13ParsedProof leftWitness.input).schedule =
+        (exactK13ParsedProof rightWitness.input).schedule ∧
+      (exactK13ParsedProof leftWitness.input).gamma =
+        (exactK13ParsedProof rightWitness.input).gamma ∧
+      (exactK13ParsedProof leftWitness.input).disclosedFinal =
+        (exactK13ParsedProof rightWitness.input).disclosedFinal
+
+/-- Verifier-owned first exposures are already closed by the exact scheduler
+prefix theorem.  Consequently only the explicitly named adversary-first
+source endpoint is required. -/
+theorem exact_preQ16_k13_parsed_profile_source_of_adversary_branch
+    {HiddenTape TapeIdentity Observation Statement Payload Witness : Type}
+    {parameters : ExactCompilerResourceParameters}
+    {transitionFuel : Nat}
+    {configuration : ExactPlainRomWitnessConfiguration HiddenTape TapeIdentity
+      Observation Statement Tag73K12ParsedProof Payload Witness parameters}
+    {projection : AcceptedTapeProjection Statement Tag73K12ParsedProof Payload}
+    {fixedInstance : PublicInstance Statement}
+    {decoder : ExactDecoderInstantiation QM31Exact}
+    (programmedCover : 513 ≤ 2 * parameters.forkRequestCap)
+    (adversaryInvariant :
+      ExactPreQ16K13ParsedProfileSourceInvariantOnAdversaryAnchors
+        transitionFuel configuration projection fixedInstance decoder) :
+    ExactPreQ16K13ParsedProfileSourceInvariant transitionFuel configuration
+      projection fixedInstance decoder := by
+  intro trial hidden left right leftWitness rightWitness priorExact residualExact
+  have pivotMember :
+      (.machineFresh leftWitness.pivotActor leftWitness.pivotInput
+        leftWitness.pivotAnswer : UnifiedExposureRecord) ∈
+        exactFixedRootRecords leftWitness.input.package.root := by
+    rw [leftWitness.rootExact]
+    simp
+  rcases exact_fixed_root_machine_fresh_actor_cases leftWitness.input
+      leftWitness.pivotActor leftWitness.pivotInput leftWitness.pivotAnswer
+      pivotMember with actorExact | actorExact
+  ·
+      exact adversaryInvariant trial hidden left right leftWitness rightWitness
+        actorExact priorExact residualExact
+  ·
+      have anchor : ExactFixedK13VerifierAnchor leftWitness.input trial := by
+        exact ⟨leftWitness.prior, leftWitness.later, leftWitness.pivotInput,
+          leftWitness.pivotAnswer, by simpa [actorExact] using
+            leftWitness.rootExact, leftWitness.trialExact⟩
+      obtain ⟨parsedExact, _wordsExact⟩ :=
+        exact_fixed_k13_pre_q16_values_of_verifier_anchor leftWitness.input
+          trial anchor programmedCover right rightWitness.input (by
+            change
+              ((exactCompilerExposureTrialDagRouter parameters transitionFuel
+                trial (exactPlainRomCursor configuration hidden).erase).coordinateEquiv
+                (finalWorkQ16NamedSlotInputTape
+                  (exactCompilerFinalWorkQ16InputTape parameters left))).2 =
+              ((exactCompilerExposureTrialDagRouter parameters transitionFuel
+                trial (exactPlainRomCursor configuration hidden).erase).coordinateEquiv
+                (finalWorkQ16NamedSlotInputTape
+                  (exactCompilerFinalWorkQ16InputTape parameters right))).2
+              at residualExact
+            exact residualExact)
+      have parsedForward : exactK13ParsedProof leftWitness.input =
+          exactK13ParsedProof rightWitness.input := parsedExact.symm
+      exact ⟨congrArg Tag73K12ParsedProof.schedule parsedForward,
+        congrArg Tag73K12ParsedProof.gamma parsedForward,
+        congrArg Tag73K12ParsedProof.disclosedFinal parsedForward⟩
 
 /-- The root/word theorem plus the exact parsed-source endpoint discharge the
 only premise of the corrected finite-measure wrapper. -/
@@ -344,6 +438,7 @@ theorem exact_preQ16_k13_residual_work_invariant_of_source
       rightWitness.trialExact programmedCover residualExact
   obtain ⟨scheduleExact, gammaExact, finalExact⟩ :=
     sourceInvariant trial hidden left right leftWitness rightWitness priorExact
+      residualExact
   have wordsExact := exact_preQ16_k13_words_eq transitionRoom programmedCover
     trial hidden left right leftWitness rightWitness residualExact
   have leftPointwise :
