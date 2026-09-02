@@ -273,6 +273,60 @@ theorem replay_seen_alpha_pass_member_old_or_seen
             simp_all
       · exact Or.inr (List.mem_cons_of_mem _ tailMember)
 
+/-- If one replay pass reaches a fresh advance input below an already
+discovered producer, it installs the exact successor and retains it through
+the rest of the pass.  The freshness and digest-uniqueness hypotheses are
+kept explicit here; accepted-root closure supplies both from causal-input
+uniqueness. -/
+theorem replay_seen_alpha_pass_append_advance_contains_next
+    (seenBefore seenAfter : List (ShaInput × Digest256))
+    (producers : List AlphaZeroProducer)
+    (parent : AlphaZeroProducer) (advanced : Digest256)
+    (bounded : parent.block.val + 1 < 4)
+    (parentMember : parent ∈ replaySeenAlphaPass seenBefore producers)
+    (digestNodup :
+      ((replaySeenAlphaPass seenBefore producers).map
+        AlphaZeroProducer.digest).Nodup)
+    (sourceFresh : bytes parent.digest ++ [domAdvance] ∉
+      (replaySeenAlphaPass seenBefore producers).map
+        AlphaZeroProducer.sourceInput) :
+    ({ digest := advanced,
+        block := ⟨parent.block.val + 1, bounded⟩,
+        sourceInput := bytes parent.digest ++ [domAdvance] } :
+      AlphaZeroProducer) ∈
+      replaySeenAlphaPass
+        (seenBefore ++
+          [(bytes parent.digest ++ [domAdvance], advanced)] ++ seenAfter)
+        producers := by
+  let current := replaySeenAlphaPass seenBefore producers
+  have advancedSlot : alphaZeroAdvancedSlot? current
+      (bytes parent.digest ++ [domAdvance]) =
+        some ⟨parent.block.val + 1, bounded⟩ :=
+    alpha_zero_advanced_slot_of_digest_nodup parent bounded current
+      digestNodup parentMember
+  have added :
+      ({ digest := advanced,
+          block := ⟨parent.block.val + 1, bounded⟩,
+          sourceInput := bytes parent.digest ++ [domAdvance] } :
+        AlphaZeroProducer) ∈
+        updateAlphaZeroProducers current (bytes parent.digest ++ [domAdvance])
+          advanced := by
+    simp [updateAlphaZeroProducers, advancedSlot]
+  have retained :=
+    (replay_seen_alpha_pass_prefix seenAfter
+      (updateAlphaZeroProducers current (bytes parent.digest ++ [domAdvance])
+        advanced)).subset added
+  have sourceFresh' : bytes parent.digest ++ [domAdvance] ∉
+      (List.foldl (fun current pair =>
+        if pair.1 ∈ current.map AlphaZeroProducer.sourceInput then current
+        else updateAlphaZeroProducers current pair.1 pair.2)
+        producers seenBefore).map AlphaZeroProducer.sourceInput := by
+    simpa [current, replaySeenAlphaPass] using sourceFresh
+  simp only [replaySeenAlphaPass, List.foldl_append, List.foldl_cons,
+    List.foldl_nil]
+  rw [if_neg sourceFresh']
+  simpa [current, replaySeenAlphaPass] using retained
+
 theorem replay_seen_alpha_closure_prefix
     (fuel : Nat) (seen : List (ShaInput × Digest256))
     (producers : List AlphaZeroProducer) :
@@ -736,6 +790,7 @@ def exactCompilerFoldArmedAlphaFinalWorkQ16Router
       (foldArmedInitialState cursor)
 
 #print axioms literal_fold_work_arms_exact_alpha_boundary
+#print axioms replay_seen_alpha_pass_append_advance_contains_next
 #print axioms fold_armed_alpha_preferred
 #print axioms fold_armed_alpha_exact_boundary_installs_block_zero
 #print axioms fold_armed_alpha_nonboundary_uses_advance_update

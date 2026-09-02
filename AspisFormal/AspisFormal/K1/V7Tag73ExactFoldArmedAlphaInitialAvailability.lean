@@ -67,10 +67,10 @@ theorem gamma_table_coordinate_chain_nonempty_head
   | next outputLookup advanceLookup tail =>
       exact ⟨_, _, _, _, rfl, rfl, outputLookup, advanceLookup, tail⟩
 
-/-- If the deployed block-zero output is first exposed in the literal root
-suffix after the selected fold record, its source producer is live at that
-exact pre-answer state. -/
-theorem exact_fold_armed_initial_producer_available_before_post_fold_output
+/-- If any child of the deployed alpha boundary is first exposed in the
+literal root suffix after the selected fold record, the block-zero source
+producer is live at that exact pre-answer state. -/
+theorem exact_fold_armed_initial_producer_available_before_post_fold_child
     {HiddenTape TapeIdentity Observation Statement Payload Result : Type}
     {parameters : ExactCompilerResourceParameters}
     {transitionFuel : Nat}
@@ -84,9 +84,9 @@ theorem exact_fold_armed_initial_producer_available_before_post_fold_output
     (fold : ExactAcceptedFoldTrial input)
     (finalTrial : ExactCompilerExposureTrial parameters)
     (before later : List UnifiedExposureRecord)
-    (outputActor : QueryActor) (output : Digest256)
+    (childActor : QueryActor) (childInput : ShaInput) (childAnswer : Digest256)
     (laterExact : fold.later = before ++
-      (.machineFresh outputActor (gammaOutputInput fold.boundaryAnswer) output :
+      (.machineFresh childActor childInput childAnswer :
         UnifiedExposureRecord) :: later)
     (ordered : ∃ rootBefore rootMiddle rootAfter,
       exactRootFreshQueries input =
@@ -94,7 +94,7 @@ theorem exact_fold_armed_initial_producer_available_before_post_fold_output
           (bytes fold.digest ++ [domAbsorb, foldWorkNonceLabel, 0] ++
             bytes (exactOperationalTape input).messages.foldGrinding.selected,
             fold.boundaryAnswer) :: rootMiddle ++
-          (gammaOutputInput fold.boundaryAnswer, output) :: rootAfter) :
+          (childInput, childAnswer) :: rootAfter) :
     let controller := foldArmedCompleteController
       (globalOracleCalls := globalFull256OracleCallCap parameters)
       transitionFuel fold.trial.val finalTrial.val
@@ -124,8 +124,8 @@ theorem exact_fold_armed_initial_producer_available_before_post_fold_output
       sourceInput := bytes fold.digest ++
         [domAbsorb, foldWorkNonceLabel, 0] ++
         bytes (exactOperationalTape input).messages.foldGrinding.selected }
-  let outputRecord : UnifiedExposureRecord := .machineFresh outputActor
-    (gammaOutputInput fold.boundaryAnswer) output
+  let childRecord : UnifiedExposureRecord := .machineFresh childActor
+    childInput childAnswer
   dsimp only
   obtain ⟨boundaryActor, cached | future⟩ :=
     exact_fold_step_cached_or_future_armed input fold finalTrial
@@ -135,8 +135,8 @@ theorem exact_fold_armed_initial_producer_available_before_post_fold_output
       simpa [controller, reachedFold, initial, producer] using cached
     have persisted :=
       exact_fold_armed_live_producer_persists_over_post_fold_segment input fold
-        finalTrial [] before (outputRecord :: later) (by
-          simpa [outputRecord] using laterExact) producer
+        finalTrial [] before (childRecord :: later) (by
+          simpa [childRecord] using laterExact) producer
     have persisted' := persisted (by simpa [afterFold] using initialMember)
     simpa [producer, controller, initial, reachedFold, afterFold] using
       persisted'
@@ -144,27 +144,20 @@ theorem exact_fold_armed_initial_producer_available_before_post_fold_output
     obtain ⟨producerPrior, producerMiddle, producerLater, producerActor,
         childActor, recordsOrder⟩ :=
       exact_root_pair_order_lifts_to_records input producer.sourceInput
-        (gammaOutputInput producer.digest) producer.digest output rootBefore
+        childInput producer.digest childAnswer rootBefore
           rootMiddle rootAfter (by simpa [producer] using pairOrder)
     let producerRecord : UnifiedExposureRecord := .machineFresh producerActor
       producer.sourceInput producer.digest
-    have outputRecordExact :
-        (.machineFresh childActor (gammaOutputInput producer.digest) output :
-          UnifiedExposureRecord) = outputRecord := by
+    have childRecordExact :
+        (.machineFresh childActor childInput childAnswer :
+          UnifiedExposureRecord) = childRecord := by
       apply List.inj_on_of_nodup_map
         (exact_root_record_causal_inputs_nodup input)
       · rw [recordsOrder]
         simp
       · rw [fold.rootDecomposition, laterExact]
-        simp [outputRecord]
-      · simp [causalInput?, outputRecord, producer]
-    change (.machineFresh childActor (gammaOutputInput producer.digest) output :
-      UnifiedExposureRecord) =
-        .machineFresh outputActor (gammaOutputInput fold.boundaryAnswer) output
-          at outputRecordExact
-    have childActorExact : childActor = outputActor := by
-      injection outputRecordExact
-    subst childActor
+        simp [childRecord]
+      · simp [causalInput?, childRecord, producer]
     have orderedPrefix : producerRecord ∈
         fold.prior ++
           (.machineFresh fold.actor
@@ -180,12 +173,12 @@ theorem exact_fold_armed_initial_producer_available_before_post_fold_output
               (bytes fold.digest ++ [domGrind] ++
                 bytes (exactOperationalTape input).messages.foldGrinding.selected)
               fold.answer : UnifiedExposureRecord)] ++ before) later
-          outputRecord outputRecord
+          childRecord childRecord
           (exact_root_record_causal_inputs_nodup input)
-          (by simpa [producerRecord, outputRecord, outputRecordExact,
+          (by simpa [producerRecord, childRecord, childRecordExact,
               List.append_assoc] using recordsOrder)
           (by rw [fold.rootDecomposition, laterExact]
-              simp [outputRecord, List.append_assoc]) rfl
+              simp [childRecord, List.append_assoc]) rfl
       have member : producerRecord ∈
           producerPrior ++ producerRecord :: producerMiddle := by simp
       rw [prefixExact] at member
@@ -244,7 +237,7 @@ theorem exact_fold_armed_initial_producer_available_before_post_fold_output
     have beforeBoundaryExact : canonicalBefore = beforeBoundary := by
       apply alpha_mapped_nodup_selected_prefix_eq causalInput? fold.later
         canonicalBefore canonicalAfter beforeBoundary
-          (afterBoundary ++ outputRecord :: later)
+          (afterBoundary ++ childRecord :: later)
         (.machineFresh boundaryActor producer.sourceInput producer.digest :
           UnifiedExposureRecord)
         (.machineFresh boundaryActor producer.sourceInput producer.digest :
@@ -254,7 +247,7 @@ theorem exact_fold_armed_initial_producer_available_before_post_fold_output
         exact (List.nodup_append.mp rootNodup).2.1.tail
       · simpa [producer] using canonicalExact
       · rw [laterExact, beforeExact]
-        simp [outputRecord, List.append_assoc]
+        simp [childRecord, List.append_assoc]
       · rfl
     subst canonicalBefore
     have installedMember : producer ∈
@@ -275,12 +268,58 @@ theorem exact_fold_armed_initial_producer_available_before_post_fold_output
         finalTrial
         (beforeBoundary ++
           [(.machineFresh boundaryActor producer.sourceInput producer.digest :
-            UnifiedExposureRecord)]) afterBoundary (outputRecord :: later)
+              UnifiedExposureRecord)]) afterBoundary (childRecord :: later)
         (by rw [laterExact, beforeExact]
-            simp [outputRecord, List.append_assoc]) producer
+            simp [childRecord, List.append_assoc]) producer
     have persisted' := persisted installedMember
     simpa [producer, beforeExact, controller, initial, reachedFold, afterFold,
       indexed_state_after_records_append] using persisted'
+
+/-- Squeeze-output specialization of the generic post-fold child theorem. -/
+theorem exact_fold_armed_initial_producer_available_before_post_fold_output
+    {HiddenTape TapeIdentity Observation Statement Payload Result : Type}
+    {parameters : ExactCompilerResourceParameters}
+    {transitionFuel : Nat}
+    {configuration : ExactPlainRomConfiguration HiddenTape TapeIdentity
+      Observation Statement Tag73K12ParsedProof Payload Result parameters}
+    {projection : AcceptedTapeProjection Statement Tag73K12ParsedProof Payload}
+    {fixedInstance : PublicInstance Statement}
+    {sample : ExactCompilerSample HiddenTape parameters}
+    (input : ExactK12OperationalInput transitionFuel configuration projection
+      fixedInstance sample)
+    (fold : ExactAcceptedFoldTrial input)
+    (finalTrial : ExactCompilerExposureTrial parameters)
+    (before later : List UnifiedExposureRecord)
+    (outputActor : QueryActor) (output : Digest256)
+    (laterExact : fold.later = before ++
+      (.machineFresh outputActor (gammaOutputInput fold.boundaryAnswer) output :
+        UnifiedExposureRecord) :: later)
+    (ordered : ∃ rootBefore rootMiddle rootAfter,
+      exactRootFreshQueries input =
+        rootBefore ++
+          (bytes fold.digest ++ [domAbsorb, foldWorkNonceLabel, 0] ++
+            bytes (exactOperationalTape input).messages.foldGrinding.selected,
+            fold.boundaryAnswer) :: rootMiddle ++
+          (gammaOutputInput fold.boundaryAnswer, output) :: rootAfter) :
+    let controller := foldArmedCompleteController
+      (globalOracleCalls := globalFull256OracleCallCap parameters)
+      transitionFuel fold.trial.val finalTrial.val
+    let initial := foldArmedInitialState
+      (exactPlainRomCursor configuration sample.1).erase
+    let reachedFold := indexedStateAfterRecords transitionFuel controller
+      fold.prior initial
+    let afterFold := controller.afterAnswer transitionFuel reachedFold
+      fold.answer
+    let reached := indexedStateAfterRecords transitionFuel controller before
+      afterFold
+    ({ digest := fold.boundaryAnswer, block := 0,
+        sourceInput := bytes fold.digest ++
+          [domAbsorb, foldWorkNonceLabel, 0] ++
+          bytes (exactOperationalTape input).messages.foldGrinding.selected } :
+      AlphaZeroProducer) ∈ reached.memory.2.1.alpha.producers := by
+  exact exact_fold_armed_initial_producer_available_before_post_fold_child
+    input fold finalTrial before later outputActor
+      (gammaOutputInput fold.boundaryAnswer) output laterExact ordered
 
 /-- Consequently, a deployed block-zero output first exposed after the fold
 is carried by the literal alpha-zero named coordinate of the complete router. -/
