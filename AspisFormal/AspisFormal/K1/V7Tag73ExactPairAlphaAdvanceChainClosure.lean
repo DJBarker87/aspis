@@ -65,6 +65,100 @@ theorem alpha_zero_boundary_ne_gamma_advance
     AspisK1.V7Tag73TranscriptSchedule.Payload.data,
     gammaAdvanceInput] at lengths
 
+/-- Every consumed duplex output is looked up at the state in the matching
+position of the initial/advance chain.  This is the pointwise bridge needed
+by the pair proof: advance-state equality fixes the literal SHA input for
+each output without making any claim about SHA-256 injectivity. -/
+theorem exact_root_ordered_q16_chain_output_lookup_at_state
+    {HiddenTape TapeIdentity Observation Statement Payload Result : Type}
+    {parameters : ExactCompilerResourceParameters}
+    {transitionFuel : Nat}
+    {configuration : ExactPlainRomConfiguration HiddenTape TapeIdentity
+      Observation Statement Tag73K12ParsedProof Payload Result parameters}
+    {projection : AcceptedTapeProjection Statement Tag73K12ParsedProof Payload}
+    {fixedInstance : PublicInstance Statement}
+    {sample : ExactCompilerSample HiddenTape parameters}
+    {input : ExactK12OperationalInput transitionFuel configuration projection
+      fixedInstance sample}
+    {producerInput : ShaInput} {digest : Digest256}
+    {outputs advances : List Digest256}
+    (chain : ExactRootOrderedQ16Chain input producerInput digest outputs
+      advances) :
+    ∀ index (inOutputs : index < outputs.length),
+      let inStates : index < (digest :: advances).length := by
+        have lengths := exact_root_ordered_q16_chain_lengths chain
+        simp only [List.length_cons]
+        omega
+      tableLookup (exactOperationalTable input)
+          (gammaOutputInput ((digest :: advances)[index]'inStates)) =
+        some outputs[index] := by
+  induction chain with
+  | done producerInput digest producerFound =>
+      intro index inOutputs
+      simp at inOutputs
+  | @next producerInput digest output advanced outputs advances producerFound
+      outputFound advanceFound producerBeforeOutput producerBeforeAdvance tail
+      ih =>
+      intro index inOutputs
+      cases index with
+      | zero =>
+          simpa using outputFound
+      | succ index =>
+          have inTail : index < outputs.length := by
+            simpa using inOutputs
+          simpa using ih index inTail
+
+/-- Equal initial/advance chains place the two literal output lookups at one
+common SHA input, block by block.  The answers are deliberately not equated
+here: that final step comes from the causal residual/named-coordinate replay,
+not from treating SHA-256 as injective or as a function shared by fiat. -/
+theorem exact_pair_ordered_chains_output_lookups_at_common_states
+    {HiddenTape TapeIdentity Observation Statement Payload Witness : Type}
+    {parameters : ExactCompilerResourceParameters}
+    {transitionFuel : Nat}
+    {configuration : ExactPlainRomWitnessConfiguration HiddenTape TapeIdentity
+      Observation Statement Tag73K12ParsedProof Payload Witness parameters}
+    {projection : AcceptedTapeProjection Statement Tag73K12ParsedProof Payload}
+    {fixedInstance : PublicInstance Statement}
+    {leftSample rightSample : ExactCompilerSample HiddenTape parameters}
+    {leftInput : ExactK12OperationalInput transitionFuel configuration
+      projection fixedInstance leftSample}
+    {rightInput : ExactK12OperationalInput transitionFuel configuration
+      projection fixedInstance rightSample}
+    {leftProducerInput rightProducerInput : ShaInput}
+    {leftInitial rightInitial : Digest256}
+    {leftOutputs leftAdvances rightOutputs rightAdvances : List Digest256}
+    (leftChain : ExactRootOrderedQ16Chain leftInput leftProducerInput
+      leftInitial leftOutputs leftAdvances)
+    (rightChain : ExactRootOrderedQ16Chain rightInput rightProducerInput
+      rightInitial rightOutputs rightAdvances)
+    (initialExact : leftInitial = rightInitial)
+    (advancesExact : leftAdvances = rightAdvances)
+    (lengthsExact : leftOutputs.length = rightOutputs.length) :
+    ∀ index (leftBound : index < leftOutputs.length),
+      let rightBound : index < rightOutputs.length := by omega
+      ∃ state,
+        tableLookup (exactOperationalTable leftInput)
+            (gammaOutputInput state) = some leftOutputs[index] ∧
+          tableLookup (exactOperationalTable rightInput)
+            (gammaOutputInput state) = some rightOutputs[index] := by
+  subst rightInitial
+  subst rightAdvances
+  intro index leftBound
+  have rightBound : index < rightOutputs.length := by omega
+  have stateBound : index < (leftInitial :: leftAdvances).length := by
+    have leftLengths := exact_root_ordered_q16_chain_lengths leftChain
+    simp only [List.length_cons]
+    omega
+  let state := (leftInitial :: leftAdvances)[index]'stateBound
+  refine ⟨state, ?_, ?_⟩
+  · simpa [state] using
+      exact_root_ordered_q16_chain_output_lookup_at_state leftChain index
+        leftBound
+  · simpa [state] using
+      exact_root_ordered_q16_chain_output_lookup_at_state rightChain index
+        rightBound
+
 /-- Two ordered chains whose terminal producer records lie in equal canonical
 root prefixes have identical advance-state chains.  Each initial producer is
 required to be an absorption boundary, expressed by its disjointness from
@@ -367,7 +461,14 @@ theorem exact_fixed_clean_pair_k13_alpha_advance_states_eq
         (leftOutputs leftAdvances rightOutputs rightAdvances : List Digest256),
       leftInitial = rightInitial ∧
       leftAdvances = rightAdvances ∧
-      leftOutputs.length = rightOutputs.length := by
+      leftOutputs.length = rightOutputs.length ∧
+      (∀ index (leftBound : index < leftOutputs.length),
+        ∀ rightBound : index < rightOutputs.length,
+        ∃ state,
+          tableLookup (exactOperationalTable leftWitness.joint.input)
+              (gammaOutputInput state) = some leftOutputs[index] ∧
+            tableLookup (exactOperationalTable rightWitness.joint.input)
+              (gammaOutputInput state) = some rightOutputs[index]) := by
   obtain ⟨leftProducer, rightProducer, leftFinal256Input, rightFinal256Input,
       leftBeforeAlpha, rightBeforeAlpha, leftAfterAlpha, rightAfterAlpha,
       _leftAfterBlocks, _rightAfterBlocks, _leftAfterFinal256,
@@ -453,10 +554,24 @@ theorem exact_fixed_clean_pair_k13_alpha_advance_states_eq
       leftAdvanceLookup' rightAdvanceLookup' leftAdvanceActor rightAdvanceActor
       leftAdvanceMember' rightAdvanceMember'
       (leftOutputs.length + rightOutputs.length) (by omega) (by omega)
+  have pointwise :=
+    exact_pair_ordered_chains_output_lookups_at_common_states leftChain
+      rightChain initialExact advancesExact lengthsExact
+  have pointwise' : ∀ index (leftBound : index < leftOutputs.length),
+      ∀ rightBound : index < rightOutputs.length,
+        ∃ state,
+          tableLookup (exactOperationalTable leftWitness.joint.input)
+              (gammaOutputInput state) = some leftOutputs[index] ∧
+            tableLookup (exactOperationalTable rightWitness.joint.input)
+              (gammaOutputInput state) = some rightOutputs[index] := by
+    intro index leftBound rightBound
+    exact pointwise index leftBound
   exact ⟨leftBeforeAlpha.digest, rightBeforeAlpha.digest, leftOutputs,
     leftAdvances, rightOutputs, rightAdvances, initialExact, advancesExact,
-    lengthsExact⟩
+    lengthsExact, pointwise'⟩
 
+#print axioms exact_root_ordered_q16_chain_output_lookup_at_state
+#print axioms exact_pair_ordered_chains_output_lookups_at_common_states
 #print axioms exact_equal_root_priors_ordered_chain_advance_states_eq
 #print axioms exact_fixed_clean_pair_k13_alpha_advance_states_eq
 
