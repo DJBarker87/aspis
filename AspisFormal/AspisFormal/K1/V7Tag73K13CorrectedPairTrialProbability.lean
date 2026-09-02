@@ -87,6 +87,35 @@ def exactPreQ16CleanK13PairTrialEvent
   {sample | Nonempty (ExactPreQ16CleanK13PairTrialWitness transitionFuel
     configuration projection fixedInstance decoder sample foldTrial finalTrial)}
 
+/-- Adding the literal accepted fold-work index refines, but does not enlarge,
+the clean corrected final-work trial union. -/
+theorem exact_clean_preQ16_trial_union_subset_pair_trial_union
+    {HiddenTape TapeIdentity Observation Statement Payload Witness : Type}
+    {parameters : ExactCompilerResourceParameters}
+    {transitionFuel : Nat}
+    {configuration : ExactPlainRomWitnessConfiguration HiddenTape TapeIdentity
+      Observation Statement Tag73K12ParsedProof Payload Witness parameters}
+    {projection : AcceptedTapeProjection Statement Tag73K12ParsedProof Payload}
+    {fixedInstance : PublicInstance Statement}
+    {decoder : ExactDecoderInstantiation QM31Exact} :
+    (exactFixedPlainRomLegalSameTapeEvent transitionFuel configuration projection
+        fixedInstance ∩
+      ⋃ finalTrial : ExactCompilerExposureTrial parameters,
+        exactPreQ16K13JointTrialEvent transitionFuel configuration projection
+          fixedInstance decoder finalTrial) ⊆
+      ⋃ foldTrial : ExactCompilerExposureTrial parameters,
+        ⋃ finalTrial : ExactCompilerExposureTrial parameters,
+          exactPreQ16CleanK13PairTrialEvent transitionFuel configuration
+            projection fixedInstance decoder foldTrial finalTrial := by
+  intro sample member
+  rcases member with ⟨legal, member⟩
+  obtain ⟨finalTrial, finalMember⟩ := Set.mem_iUnion.mp member
+  let joint := Classical.choice finalMember
+  let foldTrial := (exactAcceptedFoldTrial joint.input).trial
+  apply Set.mem_iUnion.mpr
+  refine ⟨foldTrial, Set.mem_iUnion.mpr ⟨finalTrial, ?_⟩⟩
+  exact ⟨{ joint := joint, legal := legal, foldExact := rfl }⟩
+
 /-- The corrected pointwise bad set, totalized by the empty set off-event. -/
 noncomputable def exactPreQ16CleanK13PairPointwiseBad
     {HiddenTape TapeIdentity Observation Statement Payload Witness : Type}
@@ -455,13 +484,64 @@ theorem exact_preQ16_clean_pair_trial_union_probability_le_one_forest
   exact trials.failure_union_probability_le_one_forest foldExposureCap
     finalExposureCap
 
+/-- Release-facing form for the clean portion of the corrected chronological
+trial union. -/
+theorem exact_clean_preQ16_trial_union_probability_le_one_forest
+    {HiddenTape TapeIdentity Observation Statement Payload Witness : Type}
+    [Fintype HiddenTape]
+    (hiddenLaw : PMF HiddenTape)
+    {parameters : ExactCompilerResourceParameters}
+    {transitionFuel : Nat}
+    {configuration : ExactPlainRomWitnessConfiguration HiddenTape TapeIdentity
+      Observation Statement Tag73K12ParsedProof Payload Witness parameters}
+    {projection : AcceptedTapeProjection Statement Tag73K12ParsedProof Payload}
+    {fixedInstance : PublicInstance Statement}
+    {decoder : ExactDecoderInstantiation QM31Exact}
+    (transitionRoom : 2 ≤ transitionFuel)
+    (programmedCover : 518 ≤ 2 * parameters.forkRequestCap)
+    (frontierExact : ∀
+      (sample : ExactCompilerSample HiddenTape parameters)
+      (input : ExactK12OperationalInput transitionFuel configuration projection
+        fixedInstance sample)
+      (schedule : QuerySchedule),
+      (exactOperationalTape input).frontierNodes schedule =
+        semanticFrontierNodes schedule.positions)
+    (invariant : ExactPreQ16CleanK13PairCoordinateInvariant transitionFuel
+      configuration projection fixedInstance decoder)
+    (reference : AdmittedResult SemanticCap203Admitted)
+    (traceExists : Nonempty
+      (FirstAdmittedTrace q16CandidateOutput SemanticCap203Admitted 64
+        reference.1))
+    (foldExposureCap : unifiedFull256ExposureCap parameters ≤ 2 ^ 31)
+    (finalExposureCap : unifiedFull256ExposureCap parameters ≤ 2 ^ 34) :
+    (exactCompilerJointLaw hiddenLaw parameters).toOuterMeasure
+        (exactFixedPlainRomLegalSameTapeEvent transitionFuel configuration
+            projection fixedInstance ∩
+          ⋃ finalTrial : ExactCompilerExposureTrial parameters,
+            exactPreQ16K13JointTrialEvent transitionFuel configuration projection
+              fixedInstance decoder finalTrial) ≤
+      q16SemanticOneForestRawError := by
+  calc
+    _ ≤ (exactCompilerJointLaw hiddenLaw parameters).toOuterMeasure
+        (⋃ foldTrial, ⋃ finalTrial,
+          exactPreQ16CleanK13PairTrialEvent transitionFuel configuration
+            projection fixedInstance decoder foldTrial finalTrial) := by
+      apply measure_mono
+      exact exact_clean_preQ16_trial_union_subset_pair_trial_union
+    _ ≤ q16SemanticOneForestRawError :=
+      exact_preQ16_clean_pair_trial_union_probability_le_one_forest hiddenLaw
+        transitionRoom programmedCover frontierExact invariant reference
+          traceExists foldExposureCap finalExposureCap
+
 #print axioms ExactPreQ16CleanK13PairTrialWitness
+#print axioms exact_clean_preQ16_trial_union_subset_pair_trial_union
 #print axioms exact_preQ16_clean_k13_pair_pointwise_bad_card
 #print axioms ExactPreQ16CleanK13PairCoordinateInvariant
 #print axioms exact_preQ16_clean_k13_pair_fibre_bad_card
 #print axioms exact_preQ16_clean_k13_pair_fibre_bad_eq_pointwise
 #print axioms exactPreQ16CleanK13PairExposureTrials
 #print axioms exact_preQ16_clean_pair_trial_union_probability_le_one_forest
+#print axioms exact_clean_preQ16_trial_union_probability_le_one_forest
 
 end
 
