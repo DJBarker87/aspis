@@ -17,11 +17,8 @@ use solana_signer::Signer;
 use solana_transaction::versioned::VersionedTransaction;
 
 const SCHEMA: &str = "aspis.v7.txv1-proof-upload-input.v1";
-const AUTHENTICATED_COUNTER_SCHEMA: &str =
-    "aspis.v7.txv1-proof-upload-for-authenticated-counter-input.v1";
 const VERIFIER_PROGRAM: &str = "7Q2nGsPg8rbjdxKHK4jxTgEWLTyd9o1X4KMSjCieRmue";
 const HEADER_BYTES: u64 = 40;
-const AUTHENTICATED_COUNTER_TRAILER_BYTES: u64 = 36;
 const CHUNK_BYTES: usize = 960;
 
 #[derive(Deserialize)]
@@ -35,7 +32,6 @@ struct Input {
     payer_keypair: String,
     proof_keypair: String,
     proof_payload: String,
-    finalization_mode: Option<String>,
 }
 
 fn sha256_hex(bytes: &[u8]) -> String {
@@ -94,20 +90,7 @@ fn main() -> Result<()> {
         .context("usage: build_proof_upload_requests <input.json>")?;
     ensure!(env::args().nth(2).is_none(), "unexpected extra argument");
     let input: Input = serde_json::from_slice(&fs::read(&input_path)?)?;
-    let authenticated_counter = match input.finalization_mode.as_deref() {
-        None => {
-            ensure!(input.schema == SCHEMA, "wrong input schema");
-            false
-        }
-        Some("authenticated-counter") => {
-            ensure!(
-                input.schema == AUTHENTICATED_COUNTER_SCHEMA,
-                "authenticated-counter upload requires its explicit schema"
-            );
-            true
-        }
-        Some(_) => anyhow::bail!("unsupported finalization mode"),
-    };
+    ensure!(input.schema == SCHEMA, "wrong input schema");
     ensure!(
         input.request_id > 0 && input.min_context_slot > 0,
         "invalid RPC identity"
@@ -122,19 +105,12 @@ fn main() -> Result<()> {
     ensure!(!payload.is_empty(), "empty proof payload");
     let payload_len = u32::try_from(payload.len()).context("proof payload too large")?;
     let verifier = Pubkey::from_str(VERIFIER_PROGRAM)?;
-    let proof_account_bytes = HEADER_BYTES
-        + u64::from(payload_len)
-        + if authenticated_counter {
-            AUTHENTICATED_COUNTER_TRAILER_BYTES
-        } else {
-            0
-        };
 
     let create = system_instruction::create_account(
         &payer.pubkey(),
         &proof.pubkey(),
         input.rent_lamports,
-        proof_account_bytes,
+        HEADER_BYTES + u64::from(payload_len),
         &verifier,
     );
     let mut init_data = vec![0u8];
@@ -183,24 +159,22 @@ fn main() -> Result<()> {
         )?);
     }
 
-    if !authenticated_counter {
-        requests.push(signed_request(
-            "proof-finalize".to_string(),
-            input.request_id + 1 + requests.len() as u64,
-            input.min_context_slot,
-            blockhash,
-            &payer,
-            vec![Instruction {
-                program_id: verifier,
-                accounts: vec![
-                    AccountMeta::new(proof.pubkey(), false),
-                    AccountMeta::new_readonly(payer.pubkey(), true),
-                ],
-                data: vec![62],
-            }],
-            &[&payer],
-        )?);
-    }
+    requests.push(signed_request(
+        "proof-finalize".to_string(),
+        input.request_id + 1 + requests.len() as u64,
+        input.min_context_slot,
+        blockhash,
+        &payer,
+        vec![Instruction {
+            program_id: verifier,
+            accounts: vec![
+                AccountMeta::new(proof.pubkey(), false),
+                AccountMeta::new_readonly(payer.pubkey(), true),
+            ],
+            data: vec![62],
+        }],
+        &[&payer],
+    )?);
 
     println!(
         "{}",
@@ -209,12 +183,7 @@ fn main() -> Result<()> {
             "proofAccount": proof.pubkey().to_string(),
             "proofPayloadBytes": payload.len(),
             "proofPayloadSha256": sha256_hex(&payload),
-            "proofAccountBytes": proof_account_bytes,
-            "authenticatedCounterTrailerBytes": if authenticated_counter { AUTHENTICATED_COUNTER_TRAILER_BYTES } else { 0 },
             "uploadChunkBytes": CHUNK_BYTES,
-            "finalizationMode": if authenticated_counter { "authenticated-counter" } else { "legacy-seal" },
-            "uploadedUnsealed": authenticated_counter,
-            "readyForAuthenticatedCounterSeal": authenticated_counter,
             "requestCount": requests.len(),
             "requests": requests
         }))?

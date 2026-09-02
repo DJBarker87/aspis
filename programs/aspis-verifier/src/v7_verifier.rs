@@ -12,8 +12,6 @@ use aspis_core::v6_onefold::{
 use aspis_core::v6_query_batch::V6AuthenticatedQueryBatch;
 #[cfg(feature = "v7-pair-forest-fixed-canonical-audit")]
 use aspis_core::v6_transcript::verify_v7_canonical_transcript_and_relation_prepared_with_hiding_context;
-#[cfg(feature = "v7-pair-forest-authenticated-query-counter-audit")]
-use aspis_core::v6_transcript::verify_v7_canonical_transcript_and_relation_prepared_with_hiding_context_and_authenticated_counter;
 use aspis_core::v6_transcript::{
     verify_v7_compact_transcript_and_relation_prepared,
     verify_v7_compact_transcript_and_relation_prepared_with_hiding_context, V6QueryBatchView,
@@ -517,94 +515,6 @@ pub fn verify_v7_pool_pair_forest_withdrawal_canonical_with_statement_digest(
         row_groups,
         group_masks,
         check_pow,
-        |view| pool_pair_forest_withdrawal_terminal_matches(statement, transition, view),
-        |view| authenticate_and_fold_canonical_queries(hash, &wire, view),
-    )?;
-    Ok(VerifiedV7ReadOnly {
-        folded_query_sum: transcript.folded_query_sum,
-        transcript,
-    })
-}
-
-/// Audit-only terminal verifier for a counter established by the immutable
-/// proof-account certification transition. Every proof, transcript, Merkle,
-/// work, semantic, and relation check remains live; only earlier rejected
-/// query candidates are not recomputed in this transaction.
-#[cfg(feature = "v7-pair-forest-authenticated-query-counter-audit")]
-#[allow(clippy::too_many_arguments)]
-pub fn verify_v7_pool_pair_forest_private_transfer_canonical_with_statement_digest_and_authenticated_counter(
-    hash: HashFn,
-    proof: &[u8],
-    frontier_nodes: usize,
-    program_id: &Pubkey,
-    release_binding: [u8; 32],
-    attempt_id: &Pubkey,
-    statement: &PoolV1PrivateTransferPublicV1,
-    transition: &PoolV1PairLatePublicStatementV1,
-    statement_digest: [u8; 32],
-    authenticated_counter: u8,
-    check_pow: bool,
-) -> Result<VerifiedV7ReadOnly, V7VerifyError> {
-    let wire = V7CanonicalOneFoldWire::parse_deferred_query_canonicality(proof, frontier_nodes)?;
-    let context = V6TranscriptContext {
-        program_id: program_id.to_bytes(),
-        release_binding,
-        statement_digest,
-        attempt_id: attempt_id.to_bytes(),
-    };
-    let row_groups = pool_v1_pair_forest_copy_inactive_row_groups_compiled_v1();
-    let group_masks = pool_v1_pair_forest_copy_inactive_group_masks_compiled_v1();
-    let transcript = verify_v7_canonical_transcript_and_relation_prepared_with_hiding_context_and_authenticated_counter(
-        hash,
-        &wire,
-        &context,
-        StateOnlyHidingContext::pool_v1_pair_forest_v1(statement_digest, attempt_id.to_bytes()),
-        row_groups,
-        group_masks,
-        check_pow,
-        authenticated_counter,
-        |view| pool_pair_forest_private_transfer_terminal_matches(statement, transition, view),
-        |view| authenticate_and_fold_canonical_queries(hash, &wire, view),
-    )?;
-    Ok(VerifiedV7ReadOnly {
-        folded_query_sum: transcript.folded_query_sum,
-        transcript,
-    })
-}
-
-#[cfg(feature = "v7-pair-forest-authenticated-query-counter-audit")]
-#[allow(clippy::too_many_arguments)]
-pub fn verify_v7_pool_pair_forest_withdrawal_canonical_with_statement_digest_and_authenticated_counter(
-    hash: HashFn,
-    proof: &[u8],
-    frontier_nodes: usize,
-    program_id: &Pubkey,
-    release_binding: [u8; 32],
-    attempt_id: &Pubkey,
-    statement: &PoolV1WithdrawalPublicV1,
-    transition: &PoolV1PairLatePublicStatementV1,
-    statement_digest: [u8; 32],
-    authenticated_counter: u8,
-    check_pow: bool,
-) -> Result<VerifiedV7ReadOnly, V7VerifyError> {
-    let wire = V7CanonicalOneFoldWire::parse_deferred_query_canonicality(proof, frontier_nodes)?;
-    let context = V6TranscriptContext {
-        program_id: program_id.to_bytes(),
-        release_binding,
-        statement_digest,
-        attempt_id: attempt_id.to_bytes(),
-    };
-    let row_groups = pool_v1_pair_forest_copy_inactive_row_groups_compiled_v1();
-    let group_masks = pool_v1_pair_forest_copy_inactive_group_masks_compiled_v1();
-    let transcript = verify_v7_canonical_transcript_and_relation_prepared_with_hiding_context_and_authenticated_counter(
-        hash,
-        &wire,
-        &context,
-        StateOnlyHidingContext::pool_v1_pair_forest_v1(statement_digest, attempt_id.to_bytes()),
-        row_groups,
-        group_masks,
-        check_pow,
-        authenticated_counter,
         |view| pool_pair_forest_withdrawal_terminal_matches(statement, transition, view),
         |view| authenticate_and_fold_canonical_queries(hash, &wire, view),
     )?;

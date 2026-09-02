@@ -23,17 +23,14 @@ readonly BUILDER_MANIFEST="$REPO_ROOT/tools/v7-txv1-honest-proof/Cargo.toml"
 readonly RPC_URL=${ASPIS_TXV1_DISPOSABLE_RPC_URL:-}
 readonly PAYER_KEYPAIR=${ASPIS_TXV1_DISPOSABLE_PAYER_KEYPAIR:-}
 readonly PAYER_PUBKEY=${ASPIS_TXV1_DISPOSABLE_PAYER_PUBKEY:-}
-readonly AUTHENTICATED_COUNTER_AUDIT=${ASPIS_V7_AUTHENTICATED_QUERY_COUNTER_AUDIT:-false}
 readonly VERIFIER_PROGRAM="7Q2nGsPg8rbjdxKHK4jxTgEWLTyd9o1X4KMSjCieRmue"
 
 [[ "$RPC_URL" =~ ^http://127\.0\.0\.1:[0-9]+$ ]] || fail "disposable loopback RPC is required"
 [[ -f "$PAYER_KEYPAIR" && -n "$PAYER_PUBKEY" ]] || fail "ephemeral cluster payer is unavailable"
-[[ "$AUTHENTICATED_COUNTER_AUDIT" == false || "$AUTHENTICATED_COUNTER_AUDIT" == true ]] \
-  || fail "ASPIS_V7_AUTHENTICATED_QUERY_COUNTER_AUDIT must be true or false"
 [[ -f "$PROOF_KEYPAIR" && -f "$PROOF_PAYLOAD" ]] || fail "proof keypair or payload is unavailable"
 [[ "$EVIDENCE_DIR" == /* && "$EVIDENCE_DIR" != / && ! -e "$EVIDENCE_DIR" ]] \
   || fail "evidence directory must be a new absolute non-root path"
-for command_name in cargo curl dd jq od openssl seq shasum tail tr wc; do
+for command_name in cargo curl jq od openssl seq shasum tail tr wc; do
   command -v "$command_name" >/dev/null || fail "missing required command: $command_name"
 done
 
@@ -65,43 +62,23 @@ blockhash=$(rpc "$(jq -nc --argjson slot "$slot" \
   '{jsonrpc:"2.0",id:2,method:"getLatestBlockhash",params:[{commitment:"finalized",minContextSlot:$slot}]}')" \
   | jq -er '.result.value.blockhash')
 payload_bytes=$(wc -c <"$PROOF_PAYLOAD" | tr -d ' ')
-trailer_bytes=0
-if [[ "$AUTHENTICATED_COUNTER_AUDIT" == true ]]; then trailer_bytes=36; fi
-space=$((40 + payload_bytes + trailer_bytes))
+space=$((40 + payload_bytes))
 rent_lamports=$(rpc "$(jq -nc --argjson space "$space" \
   '{jsonrpc:"2.0",id:3,method:"getMinimumBalanceForRentExemption",params:[$space,{commitment:"finalized"}]}')" \
   | jq -er '.result')
 
-upload_schema=aspis.v7.txv1-proof-upload-input.v1
-finalization_mode=null
-if [[ "$AUTHENTICATED_COUNTER_AUDIT" == true ]]; then
-  upload_schema=aspis.v7.txv1-proof-upload-for-authenticated-counter-input.v1
-  finalization_mode='"authenticated-counter"'
-fi
-jq -n --arg schema "$upload_schema" --argjson finalizationMode "$finalization_mode" \
-  --arg blockhash "$blockhash" --argjson slot "$slot" --argjson rent "$rent_lamports" \
+jq -n --arg blockhash "$blockhash" --argjson slot "$slot" --argjson rent "$rent_lamports" \
   --arg payer "$PAYER_KEYPAIR" --arg proof "$PROOF_KEYPAIR" --arg payload "$PROOF_PAYLOAD" \
-  '{schema:$schema,recentBlockhash:$blockhash,
+  '{schema:"aspis.v7.txv1-proof-upload-input.v1",recentBlockhash:$blockhash,
     minContextSlot:$slot,requestId:1000,rentLamports:$rent,
-    payerKeypair:$payer,proofKeypair:$proof,proofPayload:$payload,
-    finalizationMode:$finalizationMode}' \
+    payerKeypair:$payer,proofKeypair:$proof,proofPayload:$payload}' \
   >"$WORK_DIR/input.json"
 
 NO_DNA=1 "$BUILDER" "$WORK_DIR/input.json" >"$EVIDENCE_DIR/signed-requests.json"
-jq -e --argjson payloadBytes "$payload_bytes" --argjson accountBytes "$space" \
-  --argjson trailerBytes "$trailer_bytes" \
-  --argjson authenticatedCounter "$AUTHENTICATED_COUNTER_AUDIT" '
+jq -e --argjson payloadBytes "$payload_bytes" '
   .schema == "aspis.v7.txv1-proof-upload-signed-requests.v1" and
   .proofPayloadBytes == $payloadBytes and .uploadChunkBytes == 960 and
-  .proofAccountBytes == $accountBytes and
-  .authenticatedCounterTrailerBytes == $trailerBytes and
   .requestCount == (.requests | length) and .requestCount > 2 and
-  (.uploadedUnsealed == $authenticatedCounter) and
-  (.readyForAuthenticatedCounterSeal == $authenticatedCounter) and
-  (if $authenticatedCounter then .finalizationMode == "authenticated-counter" and
-      all(.requests[]; .name != "proof-finalize")
-    else .finalizationMode == "legacy-seal" and
-      any(.requests[]; .name == "proof-finalize") end) and
   all(.requests[]; .serializedTransactionBytes < 1232 and
     (.signedWireSha256 | test("^[0-9a-f]{64}$")))
 ' "$EVIDENCE_DIR/signed-requests.json" >/dev/null || fail "signed upload plan failed validation"
@@ -176,14 +153,8 @@ jq -er '.result.value.data[0]' "$EVIDENCE_DIR/proof-account-finalized.json" \
 magic=$(od -An -v -tx1 -N4 "$WORK_DIR/proof-account.bin" | tr -d ' \n')
 [[ "$magic" == 41535055 ]] || fail "proof account magic is not ASPU"
 authority_hex=$(od -An -v -tx1 -j8 -N32 "$WORK_DIR/proof-account.bin" | tr -d ' \n')
-if [[ "$AUTHENTICATED_COUNTER_AUDIT" == true ]]; then
-  [[ "$authority_hex" != "$(printf '00%.0s' {1..32})" ]] \
-    || fail "proof account lost its upload authority before authenticated sealing"
-else
-  [[ "$authority_hex" == "$(printf '00%.0s' {1..32})" ]] || fail "proof account was not sealed"
-fi
-dd if="$WORK_DIR/proof-account.bin" of="$WORK_DIR/landed-payload.bin" \
-  bs=1 skip=40 count="$payload_bytes" status=none
+[[ "$authority_hex" == "$(printf '00%.0s' {1..32})" ]] || fail "proof account was not sealed"
+tail -c +41 "$WORK_DIR/proof-account.bin" >"$WORK_DIR/landed-payload.bin"
 [[ "$(shasum -a 256 "$WORK_DIR/landed-payload.bin" | awk '{print $1}')" == \
     "$(shasum -a 256 "$PROOF_PAYLOAD" | awk '{print $1}')" ]] \
   || fail "landed proof payload differs"
@@ -191,18 +162,13 @@ dd if="$WORK_DIR/proof-account.bin" of="$WORK_DIR/landed-payload.bin" \
 jq -n --arg proofAccount "$proof_account" --arg payer "$PAYER_PUBKEY" \
   --arg payloadSha "$(shasum -a 256 "$PROOF_PAYLOAD" | awk '{print $1}')" \
   --arg accountSha "$(shasum -a 256 "$WORK_DIR/proof-account.bin" | awk '{print $1}')" \
-  --argjson authenticatedCounter "$AUTHENTICATED_COUNTER_AUDIT" \
-  --argjson payloadBytes "$payload_bytes" --argjson accountBytes "$space" \
-  --argjson trailerBytes "$trailer_bytes" --argjson requestCount "$request_count" \
+  --argjson payloadBytes "$payload_bytes" --argjson requestCount "$request_count" \
   --slurpfile requests "$EVIDENCE_DIR/signed-requests.json" '
   {schema:"aspis.v7.txv1-proof-upload-finalized.v1",proofAccount:$proofAccount,
     payer:$payer,proofPayload:{bytes:$payloadBytes,sha256:$payloadSha},
-    proofAccountBytes:$accountBytes,authenticatedCounterTrailerBytes:$trailerBytes,
     proofAccountSha256:$accountSha,transactions:$requests[0].requests,
     requestCount:$requestCount,allSimulatedBeforeSubmission:true,
-    allSubmittedByteIdentically:true,allFinalized:true,sealed:($authenticatedCounter|not),
-    uploadedUnsealed:$authenticatedCounter,
-    readyForAuthenticatedCounterSeal:$authenticatedCounter,
+    allSubmittedByteIdentically:true,allFinalized:true,sealed:true,
     keypairCommitted:false,realFundsUsed:false}
 ' >"$EVIDENCE_DIR/proof-upload.json"
 

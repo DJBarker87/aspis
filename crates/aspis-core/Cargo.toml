@@ -28,10 +28,6 @@ v7-fixed-canonical-exact-once-audit = ["v7-fixed-canonical-audit"]
 # are unchanged; only the order in which the same scalar products are summed
 # is specialized to reuse each 26-column power row across all four slots.
 v7-gamma-four-slot-block-audit = []
-# Audit-only consumer for a verifier-authenticated first-cap203 counter that
-# was established while irreversibly sealing the co-resident proof bytes.
-# The ordinary path continues to derive and test every preceding candidate.
-v7-authenticated-query-counter-audit = []
 
 [dependencies]
 
