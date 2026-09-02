@@ -924,6 +924,30 @@ theorem extractV7Words_success_yields_typed_complete
             (Bool.eq_false_of_not_eq_true collision)
         · exact graph
 
+/-- A successful production extraction exposes the exact complete-tree graph
+which produced its returned words, before supplied-opening projection. -/
+theorem extractV7Words_success_yields_complete
+    (truncateSha256 : RawHashInput → Digest208)
+    (roots : Roots) (proof : TwoTreeOpeningProof)
+    (orderedQueries : OrderedRawQueryLog) (words : ExtractedWords)
+    (success : extractV7Words truncateSha256 roots proof orderedQueries =
+      .words words) :
+    extractCompleteWords truncateSha256 roots
+      (deduplicateFirst orderedQueries) = .words words := by
+  by_cases collision : hasRawTruncatedCollision truncateSha256
+      (collisionUniverse truncateSha256 (deduplicateFirst orderedQueries))
+  · simp [extractV7Words, collision] at success
+  · cases graph : extractCompleteWords truncateSha256 roots
+        (deduplicateFirst orderedQueries) with
+    | failure reason => simp [extractV7Words, collision, graph] at success
+    | words candidate =>
+        have finished : finishExtraction truncateSha256 roots proof candidate =
+            .words words := by
+          simpa [extractV7Words, collision, graph] using success
+        have candidateExact := (finishExtraction_success_yields_match
+          truncateSha256 roots proof candidate words finished).1
+        simpa [candidateExact] using graph
+
 #print axioms eraseIdx_pivot_append
 #print axioms truncate_injective_on_log_of_no_collision
 #print axioms untyped_pivot_digest_ne_typed_member
@@ -949,5 +973,6 @@ theorem extractV7Words_success_yields_typed_complete
 #print axioms extractCompleteWords_success_retain_typed_aux
 #print axioms extractCompleteWords_success_retain_typed
 #print axioms extractV7Words_success_yields_typed_complete
+#print axioms extractV7Words_success_yields_complete
 
 end AspisPool.V7MerkleUntypedErasureStability

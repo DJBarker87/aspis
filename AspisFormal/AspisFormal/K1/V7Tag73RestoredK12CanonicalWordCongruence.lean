@@ -1,4 +1,5 @@
 import AspisFormal.K1.V7Tag73ExactRestoredQ16SemanticNoninterference
+import AspisFormal.Pool.V7MerkleUntypedErasureStability
 
 /-!
 # Canonical restored K1.2 word congruence
@@ -21,6 +22,7 @@ open AspisK1.V7Tag73ExactRestoredQ16SemanticNoninterference
 open AspisK1.V7Tag73RestoredNodeK13Classifier
 open AspisPool.V7MerkleQueryExtractor
 open AspisPool.V7MerkleQueryGrammar
+open AspisPool.V7MerkleUntypedErasureStability
 
 noncomputable section
 
@@ -230,6 +232,80 @@ def exactRestoredRootCompleteWords
     (restoredNodeK12Roots node)
     (deduplicateFirst (restoredNodeK12OrderedQueries node))
 
+/-- Two successful restored roots have one common committed complete-tree
+candidate as soon as their hash view, roots, and retained typed query
+subsequence agree.  Arbitrarily interleaved transcript-only SHA queries are
+irrelevant by the order-preserving erasure theorem. -/
+theorem restored_root_common_complete_candidate_of_typed_source
+    {HiddenTape TapeIdentity Observation Statement Payload Result : Type}
+    {parameters : AspisK1.V7Tag73ExactCompilerResources.ExactCompilerResourceParameters}
+    {transitionFuel : Nat}
+    {configuration : AspisK1.V7Tag73ExactPlainRomRun.ExactPlainRomConfiguration
+      HiddenTape TapeIdentity Observation Statement Tag73K12ParsedProof Payload
+      Result parameters}
+    {projection :
+      AspisK1.V7Tag73ExactSourceAcceptanceModel.AcceptedTapeProjection Statement
+        Tag73K12ParsedProof Payload}
+    {fixedInstance : AspisK1.V7FsAokExperiment.PublicInstance Statement}
+    {leftSample rightSample :
+      AspisK1.V7Tag73ExactCompilerResources.ExactCompilerSample HiddenTape
+        parameters}
+    (left : ExactK12OperationalInput transitionFuel configuration projection
+      fixedInstance leftSample)
+    (right : ExactK12OperationalInput transitionFuel configuration projection
+      fixedInstance rightSample)
+    (leftK12 : RestoredNodeK12Certificate
+      left.package.root.fixedRoot.base.runtime.node)
+    (rightK12 : RestoredNodeK12Certificate
+      right.package.root.fixedRoot.base.runtime.node)
+    (truncateExact : restoredNodeK12Truncate
+        left.package.root.fixedRoot.base.runtime.node =
+      restoredNodeK12Truncate right.package.root.fixedRoot.base.runtime.node)
+    (rootsExact : restoredNodeK12Roots
+        left.package.root.fixedRoot.base.runtime.node =
+      restoredNodeK12Roots right.package.root.fixedRoot.base.runtime.node)
+    (typedQueriesExact :
+      retainTypedMerkleQueries (deduplicateFirst (restoredNodeK12OrderedQueries
+        left.package.root.fixedRoot.base.runtime.node)) =
+      retainTypedMerkleQueries (deduplicateFirst (restoredNodeK12OrderedQueries
+        right.package.root.fixedRoot.base.runtime.node))) :
+    ∃ candidate : ExtractedWords,
+      exactRestoredRootCompleteWords left = .words candidate ∧
+      exactRestoredRootCompleteWords right = .words candidate := by
+  let leftNode := left.package.root.fixedRoot.base.runtime.node
+  let rightNode := right.package.root.fixedRoot.base.runtime.node
+  have leftTyped := extractV7Words_success_yields_typed_complete
+    (restoredNodeK12Truncate leftNode) (restoredNodeK12Roots leftNode)
+    (restoredNodeK12Openings leftNode) (restoredNodeK12OrderedQueries leftNode)
+    leftK12.words leftK12.extracted
+  have rightTyped := extractV7Words_success_yields_typed_complete
+    (restoredNodeK12Truncate rightNode) (restoredNodeK12Roots rightNode)
+    (restoredNodeK12Openings rightNode)
+    (restoredNodeK12OrderedQueries rightNode) rightK12.words rightK12.extracted
+  have rightTypedOnLeft :
+      extractCompleteWords (restoredNodeK12Truncate leftNode)
+          (restoredNodeK12Roots leftNode)
+          (retainTypedMerkleQueries
+            (deduplicateFirst (restoredNodeK12OrderedQueries leftNode))) =
+        .words rightK12.words := by
+    simpa [leftNode, rightNode, truncateExact, rootsExact,
+      typedQueriesExact] using rightTyped
+  have wordsExact : leftK12.words = rightK12.words := by
+    rw [leftTyped] at rightTypedOnLeft
+    injection rightTypedOnLeft
+  have leftGraph := extractV7Words_success_yields_complete
+    (restoredNodeK12Truncate leftNode) (restoredNodeK12Roots leftNode)
+    (restoredNodeK12Openings leftNode) (restoredNodeK12OrderedQueries leftNode)
+    leftK12.words leftK12.extracted
+  have rightGraph := extractV7Words_success_yields_complete
+    (restoredNodeK12Truncate rightNode) (restoredNodeK12Roots rightNode)
+    (restoredNodeK12Openings rightNode)
+    (restoredNodeK12OrderedQueries rightNode) rightK12.words rightK12.extracted
+  refine ⟨leftK12.words, ?_, ?_⟩
+  · simpa [exactRestoredRootCompleteWords, leftNode] using leftGraph
+  · simpa [exactRestoredRootCompleteWords, rightNode, wordsExact] using
+      rightGraph
+
 /-- The exact remaining pre-q16 source condition after canonical-word
 pinning.  It asks for one common committed-tree resolution and equality of
 the three verifier-derived transcript fields; q16-selected openings and
@@ -346,6 +422,7 @@ theorem exact_restored_root_residual_invariant_of_committed_invariant
 #print axioms restored_root_k12_queries_eq_exact
 #print axioms restored_root_k12_truncate_eq_exact
 #print axioms restored_root_k12_certificate_words_eq_of_exact_source
+#print axioms restored_root_common_complete_candidate_of_typed_source
 #print axioms exact_restored_pre_q16_semantics_of_committed_invariant
 #print axioms exact_restored_root_residual_invariant_of_committed_invariant
 
