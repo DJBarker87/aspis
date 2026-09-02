@@ -342,6 +342,184 @@ theorem classifyReference_erase_miss_earlier
       unfold classifyReference
       rw [shortPrefixResolved]
 
+/-! ## Recursive subtree transport -/
+
+/-- Successful C1 traversal survives erasure of one untyped, collision-free
+query at an arbitrary chronological position. -/
+theorem extractC1Subtree_success_erase_untyped
+    (truncateSha256 : RawHashInput → Digest208)
+    (pre suffix : OrderedRawQueryLog) (pivot : RawHashInput)
+    (noCollision : hasRawTruncatedCollision truncateSha256
+      (pre ++ pivot :: suffix) = false)
+    (pivotUntyped : parseTypedPreimage pivot = none) :
+    ∀ (height : Nat) (expectedDigest : Digest208) (queryIndex : Nat)
+      (leaves : List C1Leaf),
+      queryIndex < (pre ++ suffix).length →
+      extractC1Subtree truncateSha256 (pre ++ pivot :: suffix) height
+          expectedDigest (liftErasedIndex pre.length queryIndex) =
+        .leaves leaves →
+      extractC1Subtree truncateSha256 (pre ++ suffix) height expectedDigest
+          queryIndex = .leaves leaves := by
+  intro height
+  induction height with
+  | zero =>
+      intro expectedDigest queryIndex leaves queryBound success
+      simp only [extractC1Subtree] at success ⊢
+      rw [getElem?_erase_pivot_lift pre suffix pivot queryIndex] at success
+      exact success
+  | succ height ih =>
+      intro expectedDigest queryIndex leaves queryBound success
+      simp only [extractC1Subtree] at success ⊢
+      rw [getElem?_erase_pivot_lift pre suffix pivot queryIndex] at success
+      generalize inputExact : (pre ++ suffix)[queryIndex]? = inputOption
+        at success ⊢
+      cases inputOption with
+      | none => simp at success
+      | some input =>
+          simp only at success ⊢
+          by_cases digestExact : truncateSha256 input = expectedDigest
+          · simp only [digestExact, ↓reduceIte] at success ⊢
+            generalize typedExact : parseTypedPreimage input = typedOption
+              at success ⊢
+            cases typedOption with
+            | none => simp at success
+            | some typed =>
+                cases typed with
+                | c1Leaf value salt => simp at success
+                | c2Leaf value salt => simp at success
+                | node left right =>
+                    simp only at success ⊢
+                    let fullChild := fun child =>
+                      if child = defaultC1SubtreeDigest truncateSha256 height then
+                        SubtreeResult.leaves
+                          (List.replicate (2 ^ height) defaultC1Leaf)
+                      else
+                        match classifyReference truncateSha256 child
+                            (liftErasedIndex pre.length queryIndex)
+                            (pre ++ pivot :: suffix) with
+                        | .earlier childIndex =>
+                            extractC1Subtree truncateSha256
+                              (pre ++ pivot :: suffix) height child childIndex
+                        | .forward _ => .failure .forwardReference
+                        | .missing => .failure .missingPreimageQuery
+                    let shortChild := fun child =>
+                      if child = defaultC1SubtreeDigest truncateSha256 height then
+                        SubtreeResult.leaves
+                          (List.replicate (2 ^ height) defaultC1Leaf)
+                      else
+                        match classifyReference truncateSha256 child queryIndex
+                            (pre ++ suffix) with
+                        | .earlier childIndex =>
+                            extractC1Subtree truncateSha256 (pre ++ suffix)
+                              height child childIndex
+                        | .forward _ => .failure .forwardReference
+                        | .missing => .failure .missingPreimageQuery
+                    have childSuccess : ∀ child childLeaves,
+                        fullChild child = .leaves childLeaves →
+                          shortChild child = .leaves childLeaves := by
+                      intro child childLeaves childRun
+                      by_cases isDefault : child =
+                          defaultC1SubtreeDigest truncateSha256 height
+                      · simpa [fullChild, shortChild, isDefault] using childRun
+                      · cases referenceExact : classifyReference truncateSha256
+                            child (liftErasedIndex pre.length queryIndex)
+                            (pre ++ pivot :: suffix) with
+                        | earlier fullChildIndex =>
+                            have fullRun : extractC1Subtree truncateSha256
+                                (pre ++ pivot :: suffix) height child
+                                  fullChildIndex = .leaves childLeaves := by
+                              simpa [fullChild, isDefault, referenceExact] using
+                                childRun
+                            obtain ⟨childInput, childInputExact,
+                                childDigestExact, childTyped⟩ :=
+                              extractC1Subtree_success_outer_exact truncateSha256
+                                (pre ++ pivot :: suffix) height child
+                                  fullChildIndex childLeaves fullRun
+                            have childMem : childInput ∈
+                                pre ++ pivot :: suffix :=
+                              List.mem_of_getElem? childInputExact
+                            have childNotPivot : fullChildIndex ≠ pre.length := by
+                              intro indexExact
+                              have pivotAt :
+                                  (pre ++ pivot :: suffix)[pre.length]? =
+                                    some pivot := by simp
+                              have inputsExact : childInput = pivot := by
+                                apply Option.some.inj
+                                exact childInputExact.symm.trans (by
+                                  simpa [indexExact] using pivotAt)
+                              subst childInput
+                              exact childTyped pivotUntyped
+                            let reducedIndex := lowerErasedIndex pre.length
+                              fullChildIndex
+                            have liftedIndex : liftErasedIndex pre.length
+                                reducedIndex = fullChildIndex :=
+                              liftErasedIndex_lowerErasedIndex_of_ne pre.length
+                                fullChildIndex childNotPivot
+                            have fullBefore := earlier_index_lt_parent
+                              truncateSha256 child
+                                (liftErasedIndex pre.length queryIndex)
+                                fullChildIndex (pre ++ pivot :: suffix)
+                                  referenceExact
+                            have reducedBefore : reducedIndex < queryIndex := by
+                              rw [← liftErasedIndex_lt_iff pre.length]
+                              simpa [liftedIndex] using fullBefore
+                            have reducedBound : reducedIndex <
+                                (pre ++ suffix).length :=
+                              lt_trans reducedBefore queryBound
+                            have pivotMiss : truncateSha256 pivot ≠ child := by
+                              intro pivotExact
+                              exact (untyped_pivot_digest_ne_typed_member
+                                truncateSha256 pre suffix pivot childInput
+                                noCollision pivotUntyped childMem childTyped)
+                                  (pivotExact.trans childDigestExact.symm)
+                            have shortReference :=
+                              classifyReference_erase_miss_earlier
+                                truncateSha256 child pre suffix pivot queryIndex
+                                  reducedIndex queryBound pivotMiss (by
+                                    simpa [liftedIndex] using referenceExact)
+                            have shortRun := ih child reducedIndex childLeaves
+                              reducedBound (by simpa [liftedIndex] using fullRun)
+                            simpa [shortChild, isDefault, shortReference] using
+                              shortRun
+                        | forward forwardIndex =>
+                            simp [fullChild, isDefault, referenceExact] at childRun
+                        | missing =>
+                            simp [fullChild, isDefault, referenceExact] at childRun
+                    change (match fullChild left with
+                      | .failure reason => SubtreeResult.failure reason
+                      | .leaves leftLeaves =>
+                          match fullChild right with
+                          | .failure reason => SubtreeResult.failure reason
+                          | .leaves rightLeaves =>
+                              SubtreeResult.leaves
+                                (leftLeaves ++ rightLeaves)) =
+                        SubtreeResult.leaves leaves at success
+                    change (match shortChild left with
+                      | .failure reason => SubtreeResult.failure reason
+                      | .leaves leftLeaves =>
+                          match shortChild right with
+                          | .failure reason => SubtreeResult.failure reason
+                          | .leaves rightLeaves =>
+                              SubtreeResult.leaves
+                                (leftLeaves ++ rightLeaves)) =
+                        SubtreeResult.leaves leaves
+                    cases leftRun : fullChild left with
+                    | failure reason => simp [leftRun] at success
+                    | leaves leftLeaves =>
+                        have leftShort := childSuccess left leftLeaves leftRun
+                        cases rightRun : fullChild right with
+                        | failure reason => simp [leftRun, rightRun] at success
+                        | leaves rightLeaves =>
+                            have rightShort := childSuccess right rightLeaves
+                              rightRun
+                            have leavesExact : leftLeaves ++ rightLeaves =
+                                leaves := by
+                              simpa [leftRun, rightRun] using success
+                            rw [leftShort, rightShort]
+                            exact congrArg SubtreeResult.leaves leavesExact
+          · simp only [digestExact, ↓reduceIte] at success ⊢
+            simp at success
+
 #print axioms eraseIdx_pivot_append
 #print axioms truncate_injective_on_log_of_no_collision
 #print axioms untyped_pivot_digest_ne_typed_member
@@ -357,5 +535,6 @@ theorem classifyReference_erase_miss_earlier
 #print axioms extractC1Subtree_success_outer_exact
 #print axioms extractC2Subtree_success_outer_exact
 #print axioms classifyReference_erase_miss_earlier
+#print axioms extractC1Subtree_success_erase_untyped
 
 end AspisPool.V7MerkleUntypedErasureStability
